@@ -1,0 +1,16 @@
+name = "LeanScript"
+version = "0.1.0"
+defaultTargets = ["LeanScript"]
+
+[[require]]
+name = "aesop"
+scope = "leanprover-community"
+rev = "v4.34.0"
+
+[[lean_lib]]
+name = "LeanScript"
+globs = ["LeanScript.+"]
+
+[[lean_lib]]
+name = "NonEmpty"
+globs = ["NonEmpty.+"]
