@@ -15,10 +15,10 @@ open Std (Format ToFormat)
 inductive LeanPrimTyCovariant (α : Type) where
   /-- Always a JS array. -/
   | array : α → LeanPrimTyCovariant α
-  /-- In JS: `Promise<α>` (async task / worker). -/
-  | task : α → LeanPrimTyCovariant α
-  /-- In JS: `Promise<α>`. -/
-  | promise : α → LeanPrimTyCovariant α
+  -- /-- In JS: `Promise<α>` (async task / worker). -/
+  -- | task : α → LeanPrimTyCovariant α
+  -- /-- In JS: `Promise<α>`. -/
+  -- | promise : α → LeanPrimTyCovariant α
   /-- In JS: `(fn) => { let r; return () => (r === undefined ? (r = fn()) : r); }`. -/
   | thunk : α → LeanPrimTyCovariant α
   /-- In JS: `() => { return ... }`. -/
@@ -30,16 +30,16 @@ namespace LeanPrimTyCovariant
 /-- Extracts the inner wrapped value. -/
 def val : LeanPrimTyCovariant α → α
   | .array a   => a
-  | .task a    => a
-  | .promise a => a
+  -- | .task a    => a
+  -- | .promise a => a
   | .thunk a   => a
   | .lazy a    => a
 
 /-- Maps a function over the covariant wrapper. -/
 def map (f : α → β) : LeanPrimTyCovariant α → LeanPrimTyCovariant β
   | .array a   => .array (f a)
-  | .task a    => .task (f a)
-  | .promise a => .promise (f a)
+  -- | .task a    => .task (f a)
+  -- | .promise a => .promise (f a)
   | .thunk a   => .thunk (f a)
   | .lazy a    => .lazy (f a)
 
@@ -49,8 +49,8 @@ instance : Functor LeanPrimTyCovariant where
 /-- Formats the covariant type into a `Format` document. -/
 def format [ToFormat α] : LeanPrimTyCovariant α → Format
   | .array a   => "(array " ++ Std.format a ++ ")"
-  | .task a    => "(task " ++ Std.format a ++ ")"
-  | .promise a => "(promise " ++ Std.format a ++ ")"
+  -- | .task a    => "(task " ++ Std.format a ++ ")"
+  -- | .promise a => "(promise " ++ Std.format a ++ ")"
   | .thunk a   => "(thunk " ++ Std.format a ++ ")"
   | .lazy a    => "(lazy " ++ Std.format a ++ ")"
 

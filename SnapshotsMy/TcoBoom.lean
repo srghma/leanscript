@@ -1,3 +1,4 @@
+import LeanScript.Term.Elab
 -- Without the proof this function triples n at every step and diverges for every
 -- input.  With h : Safe n the else-branch is dead code: omega derives False from
 -- h (which unfolds to n = 1) and hn (n ≠ 1), so the impossible recursive call
@@ -21,3 +22,20 @@ decreasing_by
   omega             -- n = 1 ∧ n ≠ 1 ⊢ False ⊢ 3 * n < n
 
 example : boom 1 (by simp [Safe]) = 0 := by grind only [boom]
+
+/-! ## Generated `LeanFunction`s
+
+One report per public function of this file; see `LeanScript.Term.Elab`. -/
+
+/--
+info: LeanFunction boom
+  signature   : (n : Nat) → Safe n → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for boom

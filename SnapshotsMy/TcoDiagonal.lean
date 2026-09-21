@@ -1,3 +1,4 @@
+import LeanScript.Term.Elab
 /-
 `diagonal`, a tail-recursive version `diagonal_tr`, and an imperative `while`-loop
 version `diagonalWhile`, together with proofs that all three agree.
@@ -140,3 +141,51 @@ theorem diagonalWhile_eq (m n : Nat) : diagonalWhile m n = diagonal m n := by
 
 -- #print axioms diagonalWhile_eq
 -- #print axioms diagonal_tr_zero_eq_diagonal
+
+/-! ## Generated `LeanFunction`s
+
+One report per public function of this file; see `LeanScript.Term.Elab`. -/
+
+/--
+info: LeanFunction diagonal
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for diagonal
+
+/--
+info: LeanFunction diagonal_tr
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for diagonal_tr
+
+/--
+info: LeanFunction diagonalWhile
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : partial fixpoint   NOT REPRESENTABLE in Term
+  status      : rejected
+  primitives  :
+    Nat.decLt
+  context     :
+    ok  Bool.not  [Init.Prelude]
+    ok  Bool.or  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  bne  [Init.Core]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for diagonalWhile

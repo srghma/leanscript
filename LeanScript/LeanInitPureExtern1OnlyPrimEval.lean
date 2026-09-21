@@ -12,7 +12,7 @@ set_option autoImplicit false
 /-!
 # The meaning of the one-argument terminal externs
 
-One Lean function per entry of `LeanInitPureExtern1OnlyPrim`, on the values its argument
+One Lean function per entry of `LeanInitPureExtern_T_T`, on the values its argument
 and result types denote.  The function is **total**: there is a row for every entry of
 the family, so `eval` answers with `b.denote` and not with `Option b.denote`, and the
 δ-rule of `LeanScript.Eval` that runs a one-argument extern carries no side condition.
@@ -23,8 +23,8 @@ The entries that denoted no function of their argument's value are commented out
 namespace LeanScript
 
 /-- The function a one-argument terminal extern denotes. -/
-def LeanInitPureExtern1OnlyPrim.eval : ∀ {a b : LeanPrimTy},
-    LeanInitPureExtern1OnlyPrim a b → a.denote → b.denote
+def LeanInitPureExtern_T_T.eval : ∀ {a b : LeanPrimTy},
+    LeanInitPureExtern_T_T a b → a.denote → b.denote
   | _, _, .lean_uint32_of_nat_mk, v => (UInt32.ofBitVec v)
   | _, _, .lean_uint32_of_nat_lt, v => (UInt32.ofNat v)
   | _, _, .lean_char_of_nat_aux, v => (Char.ofNat v)

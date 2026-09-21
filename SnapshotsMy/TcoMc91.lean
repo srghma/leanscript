@@ -1,3 +1,4 @@
+import LeanScript.Term.Elab
 import Aesop
 
 -- ============================================================================
@@ -110,3 +111,80 @@ theorem mc91TR_eq_mc91 (n : Nat) : mc91TR n = mc91 n := by
 -- #eval mc91While 99  -- 91
 -- #eval mc91TR 105    -- 95
 -- #eval mc91While 105 -- 95
+
+/-! ## Generated `LeanFunction`s
+
+One report per public function of this file; see `LeanScript.Term.Elab`. -/
+
+/--
+info: LeanFunction mc91
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.decLt
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for mc91
+
+/--
+info: LeanFunction mc91Loop
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  :
+    Nat.decLt
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for mc91Loop
+
+/--
+info: LeanFunction mc91TR
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.decLt
+  context     :
+    ok  mc91Loop  [_current]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for mc91TR
+
+/--
+info: LeanFunction mc91While
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : partial fixpoint   NOT REPRESENTABLE in Term
+  status      : rejected
+  primitives  :
+    Nat.decLt
+  context     :
+    ok  Bool.not  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  bne  [Init.Core]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for mc91While
+
+/--
+info: LeanFunction iter
+  signature   : (Nat → Nat) → Nat → Nat → Nat
+  argTy       : (fn nat nat)
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded as Term.natRec / Term.listRec)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for iter

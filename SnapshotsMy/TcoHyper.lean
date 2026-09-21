@@ -1,3 +1,4 @@
+import LeanScript.Term.Elab
 import Aesop
 
 -- 1. Original recursive definition
@@ -85,3 +86,77 @@ theorem hyperTCO_eq : ∀ n a b, hyperTCO n a b = hyper n a b := by
 -- #eval hyper 3 2 4      -- 2^4 = 16
 -- #eval hyperTCO 3 2 4   -- 16
 -- #eval hyperWhile 3 2 4 -- 16
+
+/-! ## Generated `LeanFunction`s
+
+One report per public function of this file; see `LeanScript.Term.Elab`. -/
+
+/--
+info: LeanFunction hyper
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for hyper
+
+/--
+info: LeanFunction hyperBase
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for hyperBase
+
+/--
+info: LeanFunction hyperLoop
+  signature   : (Nat → Nat) → Nat → Nat → Nat
+  argTy       : (fn nat nat)
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded as Term.natRec / Term.listRec)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for hyperLoop
+
+/--
+info: LeanFunction hyperTCO
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded as Term.natRec / Term.listRec)
+  status      : representable in Term
+  primitives  : -
+  context     :
+    ok  hyperBase  [_current]
+    ok  hyperLoop  [_current]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for hyperTCO
+
+/--
+info: LeanFunction hyperWhile
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded as Term.natRec / Term.listRec)
+  status      : representable in Term
+  primitives  : -
+  context     :
+    ok  Id.run  [Init.Control.Id]
+    ok  hyperBase  [_current]
+    ok  inferInstance  [Init.Prelude]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for hyperWhile

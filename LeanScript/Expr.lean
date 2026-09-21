@@ -59,20 +59,20 @@ abbrev primFn2 (a b c : LeanPrimTy) : Ty := .fn (.prim a) (.fn (.prim b) (.prim 
 abbrev primProd (a b : LeanPrimTy) : Ty := Ty.prod (.prim a) (.prim b)
 
 /-- The one-argument polymorphic externs, at `Ty`. -/
-abbrev Extern1At := @LeanInitPureExtern1 Ty _ _ _ Ty.option Ty.list primProd
+abbrev Extern1At := @LeanInitPureExtern_X_X Ty _ _ _ Ty.option Ty.list primProd
 
 /-- The two-argument polymorphic externs, at `Ty`. -/
-abbrev Extern2At := @LeanInitPureExtern2 Ty _ _ _ Ty.option Ty.list primFn1
+abbrev Extern2At := @LeanInitPureExtern_X_X_X Ty _ _ _ Ty.option Ty.list primFn1
 
 /-- The three-argument polymorphic externs, at `Ty`. -/
 abbrev Extern3At :=
-  @LeanInitPureExtern3 Ty _ _ primFn1 primFn2 Ty.byteArray Ty.floatArray
+  @LeanInitPureExtern_X_X_X_X Ty _ _ primFn1 primFn2 Ty.byteArray Ty.floatArray
 
 /-- The four-argument polymorphic externs, at `Ty`. -/
-abbrev Extern4At := @LeanInitPureExtern4 Ty _ _ Ty.fn
+abbrev Extern4At := @LeanInitPureExtern_X_X_X_X_X Ty _ _ Ty.fn
 
 /-- The six-argument polymorphic externs, at `Ty`. -/
-abbrev Extern6At := @LeanInitPureExtern6 Ty Ty.byteArray
+abbrev Extern6At := @LeanInitPureExtern_X_X_X_X_X_X Ty Ty.byteArray
 
 /-! ## Terms -/
 
@@ -96,18 +96,18 @@ inductive Term (Sg : Sig) : Ctx → RCtx → Ty → Type 1
   /-- A pure constant of the runtime (`lean_version_get_major`, …).  It carries no
       argument, and the type language has no function type of no arguments, so it is a
       *delayed* value: `Ty.lazy`, which `Term.lazyForce` runs. -/
-  | extern_const : ∀ {p : LeanPrimTy}, LeanInitPureExternLazy p → Term Sg Γ Ρ (Ty.arrows  [] (Ty.lazy (.prim p))
+  | extern_const : ∀ {p : LeanPrimTy}, LeanInitPureExtern_U_T p → Term Sg Γ Ρ (Ty.arrows  [] (Ty.lazy (.prim p))
   /-- A one-argument function between terminal types. -/
   | extern_prim1 : ∀ {a b : LeanPrimTy},
-      LeanInitPureExtern1OnlyPrim a b → Term Sg Γ Ρ (Ty.arrows  [.prim a] (.prim b)
+      LeanInitPureExtern_T_T a b → Term Sg Γ Ρ (Ty.arrows  [.prim a] (.prim b)
   /-- A two-argument function between terminal types. -/
   | extern_prim2 : ∀ {a b c : LeanPrimTy},
-      LeanInitPureExtern2OnlyPrim a b c → Term Sg Γ Ρ (Ty.arrows  [.prim a, .prim b] (.prim c)
+      LeanInitPureExtern_T_T_T a b c → Term Sg Γ Ρ (Ty.arrows  [.prim a, .prim b] (.prim c)
   /-- A three-argument function between terminal types. -/
   | extern_prim3 : ∀ {a b c d : LeanPrimTy},
-      LeanInitPureExtern3OnlyPrim a b c d → Term Sg Γ Ρ (Ty.arrows  [.prim a, .prim b, .prim c] (.prim d)
+      LeanInitPureExtern_T_T_T_T a b c d → Term Sg Γ Ρ (Ty.arrows  [.prim a, .prim b, .prim c] (.prim d)
   /-- A five-argument function between terminal types. -/
-  | extern_prim5 : ∀ {a b c d e f : LeanPrimTy}, LeanInitPureExtern5 a b c d e f →
+  | extern_prim5 : ∀ {a b c d e f : LeanPrimTy}, LeanInitPureExtern_T_T_T_T_T a b c d e f →
       Term Sg Γ Ρ (Ty.arrows  [.prim a, .prim b, .prim c, .prim d, .prim e] (.prim f)
   /-- A one-argument function of the polymorphic catalogue. -/
   | extern_poly1 : ∀ {α β : Ty}, Extern1At α β → Term Sg Γ Ρ (Ty.arrows  [α] β
@@ -130,6 +130,8 @@ inductive Term (Sg : Sig) : Ctx → RCtx → Ty → Type 1
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
       erased. -/
   | lazyForce : ∀ {Γ Ρ τ}, Term Sg Γ Ρ (.lazy τ) → Term Sg Γ Ρ τ
+
+  -- TODO: add thunkMk, thunkForce
   /-- `let x = e; body` — `x` is de Bruijn index 0 of `body`. -/
   | letE : ∀ {Γ Ρ σ τ}, Term Sg Γ Ρ σ → Term Sg (σ :: Γ) Ρ τ → Term Sg Γ Ρ τ
   /-- `if c then t else e`. -/

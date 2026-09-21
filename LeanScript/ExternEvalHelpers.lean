@@ -42,8 +42,8 @@ meet that requirement, and all three are commented out of
    `lean_internal_get_hardware_concurrency`, … answer a fact about the machine the
    *compiled program* runs on, and reading it off the machine that runs the *compiler*
    would bake the wrong answer into the semantics.  Marked `(‡)`; the whole
-   `LeanInitPureExternLazy` family is empty until the backend has a target description,
-   and `LeanInitPureExternLazy.eval` is total for that vacuous reason.
+   `LeanInitPureExtern_U_T` family is empty until the backend has a target description,
+   and `LeanInitPureExtern_U_T.eval` is total for that vacuous reason.
 3. **A second name for an entry already in the catalogue.**  `lean_float_to_model` and
    its three companions are the *same* C function as `lean_float_to_bits` and friends,
    and what they answer with is `Float.Model`, not a terminal type.  Marked `(§)`; use

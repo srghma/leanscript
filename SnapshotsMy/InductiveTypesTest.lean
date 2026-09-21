@@ -61,8 +61,8 @@ inductive Foo where
 -- TODO
 /-
 -/
-#guard_msgs in
-def dir_schema : Ty TODO := #leanscript_schema_for_inductive Dir
+-- #guard_msgs in
+-- def dir_schema : Ty TODO := #leanscript_schema_for_inductive Dir
 
 -- TODO same for all
 
@@ -88,6 +88,7 @@ def dir_schema : Ty TODO := #leanscript_schema_for_inductive Dir
 --       acc := acc.push s!"{kind} {n} : {t}"
 --   logInfo m!"===== {p} ({acc.size}) =====\n{String.intercalate "\n" (acc.qsort (· < ·)).toList}"
 --
+-- #eval dumpFor `Array
 -- #eval dumpFor `Dir
 -- #eval dumpFor `Dir3
 -- #eval dumpFor `Point

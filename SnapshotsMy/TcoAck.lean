@@ -1,3 +1,4 @@
+import LeanScript.Term.Elab
 def ack : Nat → Nat → Nat
   | 0,     n     => n + 1
   | m + 1, 0     => ack m 1
@@ -123,3 +124,145 @@ theorem ack2_eq_ack (m n : Nat) : ack2 m n = ack m n := by
     -- ack2 (m + 1) (n + 1) = ack2 m (ack2 (m + 1) n)
     have h : ack2 (m + 1) (n + 1) = ack2 m (ack2 (m + 1) n) := by rfl
     grind [= ack, = ack2]
+
+/-! ## Generated `LeanFunction`s
+
+One report per public function of this file; see `LeanScript.Term.Elab`. -/
+
+/--
+info: LeanFunction ack
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.wfFix: relation and Acc proof sealed inside)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for ack
+
+/--
+info: LeanFunction ack999
+  signature   : Nat
+  argTy       : -                  (a constant, not a function)
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  : -
+  context     :
+    ok  ack  [_current]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for ack999
+
+/--
+info: LeanFunction ack2
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : structural         (encoded as Term.natRec / Term.listRec)
+  status      : representable in Term
+  primitives  : -
+  context     :
+    ok  _private.SnapshotsMy.TcoAck.0.ackInner  [_current]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for ack2
+
+/--
+info: LeanFunction ackWhile
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : partial fixpoint   NOT REPRESENTABLE in Term
+  status      : rejected
+  primitives  : -
+  context     :
+    ok  Bool.not  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  List.isEmpty  [Init.Data.List.Basic]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for ackWhile
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.pair
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.pair
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.isqrt
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : partial fixpoint   NOT REPRESENTABLE in Term
+  status      : rejected
+  primitives  :
+    Nat.decLt
+  context     :
+    ok  Id.run  [Init.Control.Id]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.isqrt
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.unpairLeft
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.decLt
+  context     :
+    BAD AckWithoutStackButUsingCantorPairing.isqrt  [_current]
+    ok  Id.run  [Init.Control.Id]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.unpairLeft
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.unpairRight
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.decLt
+  context     :
+    BAD AckWithoutStackButUsingCantorPairing.isqrt  [_current]
+    ok  Id.run  [Init.Control.Id]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.unpairRight
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.ackNoDataStructure
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : partial fixpoint   NOT REPRESENTABLE in Term
+  status      : rejected
+  primitives  :
+    Nat.decLt
+  context     :
+    BAD AckWithoutStackButUsingCantorPairing.isqrt  [_current]
+    ok  AckWithoutStackButUsingCantorPairing.pair  [_current]
+    ok  AckWithoutStackButUsingCantorPairing.unpairLeft  [_current]
+    ok  AckWithoutStackButUsingCantorPairing.unpairRight  [_current]
+    ok  Bool.not  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  bne  [Init.Core]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.ackNoDataStructure

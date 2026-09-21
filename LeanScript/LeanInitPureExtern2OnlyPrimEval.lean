@@ -10,7 +10,7 @@ set_option autoImplicit false
 /-!
 # The meaning of the two-argument terminal externs
 
-One Lean function per entry of `LeanInitPureExtern2OnlyPrim`, on the values its arguments
+One Lean function per entry of `LeanInitPureExtern_T_T_T`, on the values its arguments
 and its result denote.  A position in a string is a byte index, so `.stringPos` denotes a
 `Nat` and the functions that take one build a `String.Pos.Raw` from it.
 -/
@@ -18,8 +18,8 @@ and its result denote.  A position in a string is a byte index, so `.stringPos` 
 namespace LeanScript
 
 /-- The function a two-argument terminal extern denotes, -/
-def LeanInitPureExtern2OnlyPrim.eval : ∀ {a b c : LeanPrimTy},
-    LeanInitPureExtern2OnlyPrim a b c → a.denote → b.denote → c.denote
+def LeanInitPureExtern_T_T_T.eval : ∀ {a b c : LeanPrimTy},
+    LeanInitPureExtern_T_T_T a b c → a.denote → b.denote → c.denote
   | _, _, _, .lean_uint32_dec_eq, v, w => (v == w)
   | _, _, _, .lean_uint32_dec_lt, v, w => (decide (v < w))
   | _, _, _, .lean_nat_div, v, w => (v / w)
