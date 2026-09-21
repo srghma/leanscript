@@ -7,6 +7,7 @@ public import Init.Data.Format.Basic
 public import Init.Data.Format.Instances
 public import Init.Data.ToString.Basic
 public import Init.Data.String.Basic
+public import Init.ShareCommon
 
 @[expose] public section
 
@@ -99,15 +100,18 @@ inductive LeanPrimTy where
   -- /-- In JS: `Uint8Array` / `ArrayBuffer`. -/
   -- | byteArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array UInt8`. Then in `MoreJsTy` as `Uint8Array`
   /-- A position in a string — like `.uint32`, but strictly non-negative. -/
-  | stringPos : LeanPrimTy
+  | stringPosRaw : LeanPrimTy
+  | stringPos (s : String) : LeanPrimTy -- for `structure Pos (s : String) where`
   /-- In JS: `{ str: string, startPos: number, stopPos: number }`. -/
-  | substring : LeanPrimTy
-  /-- `.substring` or `.string`? -/
+  | substringRaw : LeanPrimTy
+  /-- `.substringRaw` or `.string`? -/
   | stringSlice : LeanPrimTy
   /-- In JS: `number` (IEEE 754 64-bit). -/
   | float     : LeanPrimTy
   /-- In JS: `number` (IEEE 754 32-bit, `Math.fround`). -/
   | float32   : LeanPrimTy
+  | floatModel   : LeanPrimTy
+  | float32Model   : LeanPrimTy
   -- /-- In JS: `Float64Array`. -/
   -- | floatArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array Float`. Then in `MoreJsTy` as `Float64Array`
   -- /-- In JS (node only): a `ChildProcess` handle. -/
@@ -124,7 +128,7 @@ inductive LeanPrimTy where
   -- the four externs that speak about them, `lean_sharecommon_quick` is kept — it is the
   -- identity on values, which is what `Expr.Step.quick` runs — and the three that read a
   -- handle are commented out with the handles: the interning table is erased.
-  deriving Repr, DecidableEq, Inhabited
+  deriving Inhabited--, Repr, DecidableEq
 
 namespace LeanPrimTy
 
@@ -140,8 +144,13 @@ def format : LeanPrimTy → Format
   | .uint8 => "uint8" | .uint16 => "uint16" | .uint32 => "uint32" | .uint64 => "uint64"
   | .int8 => "int8" | .int16 => "int16" | .int32 => "int32" | .int64 => "int64"
   | .char => "char" | .string => "string"
-  | .stringPos => "stringPos" | .substring => "substring" | .stringSlice => "stringSlice"
+  | .stringPos _s => "stringPos"
+  | .stringPosRaw => "stringPosRaw" | .substringRaw => "substringRaw" | .stringSlice => "stringSlice"
   | .float => "float" | .float32 => "float32"
+  | .floatModel => "floatModel"
+  | .float32Model => "floatModel"
+  -- | .shareCommonObject => "shareCommonObject"
+  -- | .shareCommonState _ => "shareCommonState"
 
 /-- The same rendering, as a plain `String`: a `Format` does not reduce in the kernel,
     so an `example` settled by `decide` needs this one. -/
@@ -151,8 +160,13 @@ def pretty : LeanPrimTy → String
   | .uint8 => "uint8" | .uint16 => "uint16" | .uint32 => "uint32" | .uint64 => "uint64"
   | .int8 => "int8" | .int16 => "int16" | .int32 => "int32" | .int64 => "int64"
   | .char => "char" | .string => "string"
-  | .stringPos => "stringPos" | .substring => "substring" | .stringSlice => "stringSlice"
+  | .stringPos _s => "stringPos"
+  | .stringPosRaw => "stringPosRaw" | .substringRaw => "substringRaw" | .stringSlice => "stringSlice"
   | .float => "float" | .float32 => "float32"
+  | .floatModel => "floatModel"
+  | .float32Model => "floatModel"
+  -- | .shareCommonObject => "shareCommonObject"
+  -- | .shareCommonState _ => "shareCommonState"
 
 instance : ToFormat LeanPrimTy where
   format := format
@@ -185,11 +199,16 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .int64 => Int64
   | .char => Char
   | .string => String
-  | .stringPos => String.Pos.Raw
-  | .substring => Substring.Raw
+  | .stringPos s => String.Pos s
+  | .stringPosRaw => String.Pos.Raw
+  | .substringRaw => Substring.Raw
   | .stringSlice => String.Slice
   | .float => Float
   | .float32 => Float32
+  | .floatModel => Float.Model
+  | .float32Model => Float32.Model
+  -- | .shareCommonObject => ShareCommon.Object
+  -- | .shareCommonState σ => ShareCommon.State σ
   -- `.childProcess`, `.shareCommonObject` and `.shareCommonState` are commented out of
   -- `LeanPrimTy`.
 
