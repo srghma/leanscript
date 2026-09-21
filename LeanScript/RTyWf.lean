@@ -48,7 +48,7 @@ def RTy.hasSelf : RTy → Bool
 
 /-- `RTy.hasSelf`, on an invariant type former. -/
 def RTy.hasSelfCov : LeanPrimTyCovariant RTy → Bool
-  | .array a | .list a | .task a | .promise a | .thunk a | .lazy a => RTy.hasSelf a
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.hasSelf a
 
 /-- `RTy.hasSelf`, on a list of types. -/
 def RTy.hasSelfList : List RTy → Bool
@@ -108,7 +108,7 @@ def RTy.selfIdxs : RTy → List Nat
 
 /-- `RTy.selfIdxs`, on an invariant type former. -/
 def RTy.selfIdxsCov : LeanPrimTyCovariant RTy → List Nat
-  | .array a | .list a | .task a | .promise a | .thunk a | .lazy a => RTy.selfIdxs a
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.selfIdxs a
 
 /-- `RTy.selfIdxs`, on a list of types. -/
 def RTy.selfIdxsList : List RTy → List Nat
@@ -141,13 +141,13 @@ def RTy.selfIdxsCP : CtorsWithPayload RTy → List Nat
 end
 
 /-- The members of its family that one member mentions. -/
-def FamMember.selfIdxs : FamMember → List Nat
+def LeanFamMemberSchema_RTy.selfIdxs : LeanFamMemberSchema RTy → List Nat
   | .ctors l => RTy.selfIdxsTU l
   | .record fs => RTy.selfIdxsA2 fs
   | .alias b => RTy.selfIdxs b
 
 /-- Does this member mention the declaration it belongs to at all? -/
-def FamMember.hasSelf : FamMember → Bool
+def LeanFamMemberSchema_RTy.hasSelf : LeanFamMemberSchema RTy → Bool
   | .ctors l => RTy.hasSelfTU l
   | .record fs => RTy.hasSelfA2 fs
   | .alias b => RTy.hasSelf b
@@ -180,7 +180,7 @@ def RTy.inhabWith (avail : List Bool) : RTy → Bool
 /-- `RTy.inhabWith`, on an invariant type former. -/
 def RTy.inhabWithCov (avail : List Bool) : LeanPrimTyCovariant RTy → Bool
   -- the empty array and the empty list hold nothing
-  | .array _ | .list _ => true
+  | .array _ => true
   | .task a | .promise a | .thunk a | .lazy a => RTy.inhabWith avail a
 
 /-- `RTy.inhabWith`, on the fields of one constructor: it needs all of them. -/
@@ -212,34 +212,34 @@ def RTy.inhabWithTU (avail : List Bool) : LeanTaggedUnionSchema RTy → Bool
 end
 
 /-- `RTy.inhabWith`, on one member of a family. -/
-def FamMember.inhabWith (avail : List Bool) : FamMember → Bool
+def LeanFamMemberSchema_RTy.inhabWith (avail : List Bool) : LeanFamMemberSchema RTy → Bool
   | .ctors l => RTy.inhabWithTU avail l
   | .record fs => RTy.inhabWithA2 avail fs
   | .alias b => RTy.inhabWith avail b
 
 /-- One step of the fixed point: which members are buildable, given which were. -/
-def famInhabStep (ms : List FamMember) (avail : List Bool) : List Bool :=
-  ms.map (FamMember.inhabWith avail)
+def famInhabStep (ms : List (LeanFamMemberSchema RTy)) (avail : List Bool) : List Bool :=
+  ms.map (LeanFamMemberSchema_RTy.inhabWith avail)
 
 /-- Iterate `famInhabStep`. -/
-def famInhabIter : Nat → List FamMember → List Bool → List Bool
+def famInhabIter : Nat → List (LeanFamMemberSchema RTy) → List Bool → List Bool
   | 0, _, avail => avail
   | n + 1, ms, avail => famInhabIter n ms (famInhabStep ms avail)
 
 /-- Which members of a recursive declaration have values at all.  The step is monotone
     and there are `ms.length` members, so `ms.length` iterations from "none of them"
     reach the fixed point; one more is taken for good measure. -/
-def famInhabited (ms : List FamMember) : List Bool :=
+def famInhabited (ms : List (LeanFamMemberSchema RTy)) : List Bool :=
   famInhabIter (ms.length + 1) ms (ms.map fun _ => false)
 
 /-- Does every member of this recursive declaration have values? -/
-def famAllInhabited (ms : List FamMember) : Bool := (famInhabited ms).all id
+def famAllInhabited (ms : List (LeanFamMemberSchema RTy)) : Bool := (famInhabited ms).all id
 
 /-! ## Strong connectivity -/
 
 /-- Which members each member mentions. -/
-def famEdges (ms : List FamMember) : List (List Nat) :=
-  ms.map FamMember.selfIdxs
+def famEdges (ms : List (LeanFamMemberSchema RTy)) : List (List Nat) :=
+  ms.map LeanFamMemberSchema_RTy.selfIdxs
 
 /-- Add to `acc` everything its members mention. -/
 def famReachStep (edges : List (List Nat)) (acc : List Nat) : List Nat :=
@@ -252,11 +252,11 @@ def famReachIter : Nat → List (List Nat) → List Nat → List Nat
   | n + 1, edges, acc => famReachIter n edges (famReachStep edges acc)
 
 /-- The members reachable from member `i`, `i` itself included. -/
-def famReach (ms : List FamMember) (i : Nat) : List Nat :=
+def famReach (ms : List (LeanFamMemberSchema RTy)) (i : Nat) : List Nat :=
   famReachIter (ms.length + 1) (famEdges ms) [i]
 
 /-- Does every member of the block reach every member of the block? -/
-def famStronglyConnected (ms : List FamMember) : Bool :=
+def famStronglyConnected (ms : List (LeanFamMemberSchema RTy)) : Bool :=
   (List.range ms.length).all fun i =>
     let r := famReach ms i
     (List.range ms.length).all fun j => r.contains j
@@ -289,7 +289,7 @@ def recAliasWf (b : RTy) : Bool :=
     unrelated declarations — each member reaches every member — and every member of it
     has values. -/
 def famWf (f : LeanMutualRecFamily RTy) : Bool :=
-  f.members.all (fun m => selfIdxsOk f.members.length (FamMember.selfIdxs m))
+  f.members.all (fun m => selfIdxsOk f.members.length (LeanFamMemberSchema_RTy.selfIdxs m))
     && famStronglyConnected f.members && famAllInhabited f.members
 
 /-! ## Well-formedness of a whole payload
@@ -318,11 +318,11 @@ def RTy.wf : RTy → Bool
   | .recTaggedUnion l => recTUWf l && RTy.wfTU l
   | .recObject fs => recObjWf fs && RTy.wfA2 fs
   | .recAlias b => recAliasWf b && RTy.wf b
-  | .mutualRecursiveFamily f => famWf f && FamMember.wfFamily f
+  | .mutualRecursiveFamily f => famWf f && LeanFamMemberSchema_RTy.wfFamily f
 
 /-- `RTy.wf`, on an invariant type former. -/
 def RTy.wfCov : LeanPrimTyCovariant RTy → Bool
-  | .array a | .list a | .task a | .promise a | .thunk a | .lazy a => RTy.wf a
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.wf a
 
 /-- `RTy.wf`, on a list of types. -/
 def RTy.wfList : List RTy → Bool
@@ -353,23 +353,23 @@ def RTy.wfCP : CtorsWithPayload RTy → Bool
   | .skip rest => RTy.wfCP rest
 
 /-- `RTy.wf`, on one member of a family. -/
-def FamMember.wf : FamMember → Bool
+def LeanFamMemberSchema_RTy.wf : LeanFamMemberSchema RTy → Bool
   | .ctors l => RTy.wfTU l
   | .record fs => RTy.wfA2 fs
   | .alias b => RTy.wf b
 
 /-- `RTy.wf`, on the members of a family. -/
-def FamMember.wfList : List FamMember → Bool
+def LeanFamMemberSchema_RTy.wfList : List (LeanFamMemberSchema RTy) → Bool
   | [] => true
-  | m :: ms => FamMember.wf m && FamMember.wfList ms
+  | m :: ms => LeanFamMemberSchema_RTy.wf m && LeanFamMemberSchema_RTy.wfList ms
 
 /-- `RTy.wf`, on every member of a family. -/
-def FamMember.wfFamily : LeanMutualRecFamily RTy → Bool
+def LeanFamMemberSchema_RTy.wfFamily : LeanMutualRecFamily RTy → Bool
   | .selectedThenMore before current next after =>
-      FamMember.wfList before && FamMember.wf current && FamMember.wf next
-        && FamMember.wfList after
+      LeanFamMemberSchema_RTy.wfList before && LeanFamMemberSchema_RTy.wf current && LeanFamMemberSchema_RTy.wf next
+        && LeanFamMemberSchema_RTy.wfList after
   | .selectedLast first before current =>
-      FamMember.wf first && FamMember.wfList before && FamMember.wf current
+      LeanFamMemberSchema_RTy.wf first && LeanFamMemberSchema_RTy.wfList before && LeanFamMemberSchema_RTy.wf current
 
 end
 
@@ -415,7 +415,7 @@ theorem not_wf_negRecObject :
 /-- The same shape one level in: a negative occurrence buried under a list is refused
     too, since `RTy.hasSelf` looks through the covariant type formers. -/
 theorem not_wf_negRecObject_nested :
-    RTy.wf (.recObject ⟨.fn (.list (.self 0)) (.prim .nat), .prim .nat, []⟩) = false := by
+    RTy.wf (.recObject ⟨.fn (.array (.self 0)) (.prim .nat), .prim .nat, []⟩) = false := by
   decide
 
 /-- A **positive** occurrence is untouched: `inductive T | leaf | node : (Nat → T) → T` —

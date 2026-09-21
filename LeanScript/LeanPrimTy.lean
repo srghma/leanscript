@@ -2,6 +2,7 @@ module
 
 prelude
 public import Init.Prelude
+public import Init.Data.Float
 public import Init.Data.Format.Basic
 public import Init.Data.Format.Instances
 public import Init.Data.ToString.Basic
@@ -113,8 +114,7 @@ inductive LeanPrimTy where
   -- | childProcess : LeanPrimTy
   -- Commented out: a `ChildProcess` is a live operating-system process, so it has no
   -- pure meaning and no literal, and a `Term` mentioning it could never be evaluated.
-  -- At this stage `Term` is meant to be completely evaluatable.  See
-  -- `SHARECOMMON_EMULATION.md`.
+  -- At this stage `Term` is meant to be completely evaluatable.
   -- /-- In JS: `object`? / `any`?. -/
   -- | shareCommonObject : LeanPrimTy
   -- /-- In JS: a `Map`? / cache object?. -/
@@ -123,14 +123,14 @@ inductive LeanPrimTy where
   -- so they have no literal and a `Term` mentioning one could never be evaluated.  Of
   -- the four externs that speak about them, `lean_sharecommon_quick` is kept — it is the
   -- identity on values, which is what `Expr.Step.quick` runs — and the three that read a
-  -- handle are commented out with the handles.  This is option A (erasure) of
-  -- `SHARECOMMON_EMULATION.md`.
+  -- handle are commented out with the handles: the interning table is erased.
   deriving Repr, DecidableEq, Inhabited
 
 namespace LeanPrimTy
 
-abbrev usize : LeanPrimTy := uint64
-abbrev isize : LeanPrimTy := int64
+-- abbrev usize : LeanPrimTy := uint64
+-- abbrev isize : LeanPrimTy := int64
+
 -- TODO: name should be constructed as recTaggedUnion
 
 /-- A rendering for debugging and error messages. -/
@@ -166,6 +166,32 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .nat | .int | .uint64 | .int64 => true
   | .bitvec n _ => 32 ≤ n
   | _ => false
+
+/-- The Lean type a terminal type describes: the type of the values its literals hold.
+    Every terminal type has literals: the three run-time handles, which had none, are
+    commented out of `LeanPrimTy`. -/
+@[reducible] def denote : LeanPrimTy → Type
+  | .bool => Bool
+  | .nat => Nat
+  | .int => Int
+  | .bitvec n _ => BitVec n
+  | .uint8 => UInt8
+  | .uint16 => UInt16
+  | .uint32 => UInt32
+  | .uint64 => UInt64
+  | .int8 => Int8
+  | .int16 => Int16
+  | .int32 => Int32
+  | .int64 => Int64
+  | .char => Char
+  | .string => String
+  | .stringPos => String.Pos.Raw
+  | .substring => Substring.Raw
+  | .stringSlice => String.Slice
+  | .float => Float
+  | .float32 => Float32
+  -- `.childProcess`, `.shareCommonObject` and `.shareCommonState` are commented out of
+  -- `LeanPrimTy`.
 
 end LeanPrimTy
 

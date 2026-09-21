@@ -58,9 +58,9 @@ inductive RTy where
       does. -/
   | mutualRecursiveFamily : LeanMutualRecFamily RTy → RTy
 
-/-- One member of a mutual recursive family: a member with constructors, a
-    single-constructor member with fields, or a newtype member. -/
-abbrev FamMember := LeanFamMemberSchema RTy
+-- /-- One member of a mutual recursive family: a member with constructors, a
+--     single-constructor member with fields, or a newtype member. -/
+-- abbrev LeanFamMemberSchema_RTy := LeanFamMemberSchema RTy
 
 /-! ## Deciding equality
 
@@ -68,7 +68,6 @@ abbrev FamMember := LeanFamMemberSchema RTy
 handler covers, so the instance is written out: a structural `RTy.beq` over the whole
 family, and the two lemmas that make it equality. -/
 
-set_option maxHeartbeats 2000000 in
 mutual
 
 /-- Structural equality of two types inside a recursive declaration. -/
@@ -89,7 +88,6 @@ def RTy.beq : RTy → RTy → Bool
 /-- `RTy.beq`, on an invariant type former. -/
 def RTy.beqCov : LeanPrimTyCovariant RTy → LeanPrimTyCovariant RTy → Bool
   | .array a, .array b => RTy.beq a b
-  | .list a, .list b => RTy.beq a b
   | .task a, .task b => RTy.beq a b
   | .promise a, .promise b => RTy.beq a b
   | .thunk a, .thunk b => RTy.beq a b
@@ -131,14 +129,14 @@ def RTy.beqCP : CtorsWithPayload RTy → CtorsWithPayload RTy → Bool
 
 
 /-- Structural equality of two members of a mutual family. -/
-def RTy.beqFam : FamMember → FamMember → Bool
+def RTy.beqFam : LeanFamMemberSchema RTy → LeanFamMemberSchema RTy → Bool
   | .ctors a, .ctors b => RTy.beqTU a b
   | .record a, .record b => RTy.beqA2 a b
   | .alias a, .alias b => RTy.beq a b
   | _, _ => false
 
 /-- `RTy.beqFam`, on a list of members. -/
-def RTy.beqFamList : List FamMember → List FamMember → Bool
+def RTy.beqFamList : List (LeanFamMemberSchema RTy) → List (LeanFamMemberSchema RTy) → Bool
   | [], [] => true
   | a :: as, b :: bs => RTy.beqFam a b && RTy.beqFamList as bs
   | _, _ => false
@@ -155,7 +153,6 @@ end
 
 
 
-set_option maxHeartbeats 2000000 in
 mutual
 
 /-- Types inside a recursive declaration that compare equal are equal. -/
@@ -192,13 +189,17 @@ theorem RTy.eq_of_beqCtors : ∀ {a b : List (List RTy)}, RTy.beqCtors a b = tru
 /-- The same, for the fields of a record. -/
 theorem RTy.eq_of_beqA2 : ∀ {a b : LeanRecordSchema RTy}, RTy.beqA2 a b = true → a = b := by
   intro a b h
-  cases a <;> cases b <;> simp_all [RTy.beqA2]
+  cases a
+  cases b
+  simp_all [RTy.beqA2]
   exact ⟨RTy.eq_of_beq h.1.1, RTy.eq_of_beq h.1.2, RTy.eq_of_beqList h.2⟩
 
 /-- The same, for the fields of a constructor that has at least one. -/
 theorem RTy.eq_of_beqNE : ∀ {a b : NonEmptyList RTy}, RTy.beqNE a b = true → a = b := by
   intro a b h
-  cases a <;> cases b <;> simp_all [RTy.beqNE]
+  cases a
+  cases b
+  simp_all [RTy.beqNE]
   exact ⟨RTy.eq_of_beq h.1, RTy.eq_of_beqList h.2⟩
 
 /-- The same, for the constructors of a tagged union. -/
@@ -219,7 +220,7 @@ theorem RTy.eq_of_beqCP : ∀ {a b : CtorsWithPayload RTy}, RTy.beqCP a b = true
 
 
 /-- The same, for one member of a mutual family. -/
-theorem RTy.eq_of_beqFam : ∀ {a b : FamMember}, RTy.beqFam a b = true → a = b := by
+theorem RTy.eq_of_beqFam : ∀ {a b : LeanFamMemberSchema RTy}, RTy.beqFam a b = true → a = b := by
   intro a b h
   cases a <;> cases b <;> simp_all [RTy.beqFam]
   · exact RTy.eq_of_beqTU h
@@ -228,7 +229,7 @@ theorem RTy.eq_of_beqFam : ∀ {a b : FamMember}, RTy.beqFam a b = true → a = 
 
 /-- The same, for a list of members. -/
 theorem RTy.eq_of_beqFamList :
-    ∀ {a b : List FamMember}, RTy.beqFamList a b = true → a = b := by
+    ∀ {a b : List (LeanFamMemberSchema RTy)}, RTy.beqFamList a b = true → a = b := by
   intro a b h
   cases a <;> cases b <;> simp_all [RTy.beqFamList]
   exact ⟨RTy.eq_of_beqFam h.1, RTy.eq_of_beqFamList h.2⟩
@@ -246,7 +247,6 @@ end
 
 
 
-set_option maxHeartbeats 2000000 in
 mutual
 
 /-- Every type inside a recursive declaration compares equal to itself. -/
@@ -266,7 +266,6 @@ theorem RTy.beq_refl : ∀ (a : RTy), RTy.beq a a = true
 /-- The same, for an invariant type former. -/
 theorem RTy.beqCov_refl : ∀ (a : LeanPrimTyCovariant RTy), RTy.beqCov a a = true
   | .array a => by simp [RTy.beqCov, RTy.beq_refl a]
-  | .list a => by simp [RTy.beqCov, RTy.beq_refl a]
   | .task a => by simp [RTy.beqCov, RTy.beq_refl a]
   | .promise a => by simp [RTy.beqCov, RTy.beq_refl a]
   | .thunk a => by simp [RTy.beqCov, RTy.beq_refl a]
@@ -303,13 +302,13 @@ theorem RTy.beqCP_refl : ∀ (a : CtorsWithPayload RTy), RTy.beqCP a a = true
   | .skip a => by simp [RTy.beqCP, RTy.beqCP_refl a]
 
 /-- The same, for one member of a mutual family. -/
-theorem RTy.beqFam_refl : ∀ (a : FamMember), RTy.beqFam a a = true
+theorem RTy.beqFam_refl : ∀ (a : LeanFamMemberSchema RTy), RTy.beqFam a a = true
   | .ctors a => by simp [RTy.beqFam, RTy.beqTU_refl a]
   | .record a => by simp [RTy.beqFam, RTy.beqA2_refl a]
   | .alias a => by simp [RTy.beqFam, RTy.beq_refl a]
 
 /-- The same, for a list of members. -/
-theorem RTy.beqFamList_refl : ∀ (a : List FamMember), RTy.beqFamList a a = true
+theorem RTy.beqFamList_refl : ∀ (a : List (LeanFamMemberSchema RTy)), RTy.beqFamList a a = true
   | [] => by simp [RTy.beqFamList]
   | a :: as => by simp [RTy.beqFamList, RTy.beqFam_refl a, RTy.beqFamList_refl as]
 
@@ -327,8 +326,14 @@ instance : DecidableEq RTy := fun a b =>
   decidable_of_iff (RTy.beq a b = true) ⟨RTy.eq_of_beq, fun h => h ▸ RTy.beq_refl a⟩
 
 instance : BEq RTy := ⟨RTy.beq⟩
+instance : ReflBEq RTy where
+  rfl {a} := RTy.beq_refl a
+instance : LawfulBEq RTy where
+  eq_of_beq := by intro a b; exact RTy.eq_of_beq
 
-instance : Inhabited RTy := ⟨.prim .bool⟩
+-- instance : Inhabited RTy := ⟨.prim .bool⟩
+instance : CoeOut (LeanPrimTy) RTy := ⟨.prim⟩
+instance : CoeOut (LeanPrimTyCovariant RTy) RTy := ⟨.primCovariant⟩
 
 namespace RTy
 
@@ -336,16 +341,12 @@ namespace RTy
 
 /-- In JS: an array. -/
 @[match_pattern] abbrev array (α : RTy) : RTy := .primCovariant (.array α)
-/-- A cons list. -/
-@[match_pattern] abbrev list (α : RTy) : RTy := .primCovariant (.list α)
 /-- In JS: `Promise<α>`. -/
 @[match_pattern] abbrev task (α : RTy) : RTy := .primCovariant (.task α)
 /-- In JS: `Promise<α>`. -/
 @[match_pattern] abbrev promise (α : RTy) : RTy := .primCovariant (.promise α)
 /-- A thunk. -/
 @[match_pattern] abbrev thunk (α : RTy) : RTy := .primCovariant (.thunk α)
-/-- A delayed value: what a Lean `Unit → α` is once its erased argument is dropped. -/
-@[match_pattern] abbrev lazy (α : RTy) : RTy := .primCovariant (.lazy α)
 
 /-- The enum with `n` constructors numbered from `shift`, one layer down; `none` unless
     `n` is a number of constructors an enum can have. -/

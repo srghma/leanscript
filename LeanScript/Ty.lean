@@ -42,15 +42,13 @@ Six decisions are baked into it.
   `Ty.bool`, so that it prints as `true`/`false`.  There is likewise no `Ty.void` and no
   `Ty.erased`, and `bitvec n` needs `n ≥ 1` because `BitVec 0` is a unit type.
 
-* **no unmodelled type.**  There is no `dynamic`: every Lean type a compiled
-  declaration mentions is either one of the shapes below or the declaration is refused.
-  A parameterised declaration is modelled *at its instantiation* (`Except Nat String`
-  is a `taggedUnion` of `[[nat], [string]]`), and a mutual block of declarations is
-  modelled as a `mutualRecursiveFamily`.  The one type that stands for a value the
-  backend does not know the shape of is `Ty.typeParam`, and it is *parametricity*, not
-  ignorance: it is the type of a value whose Lean type is a type parameter of the
-  enclosing declaration, which the compiled code can only pass around — **no** data
-  operation of `Term` is available at it (`Ty.ctorFields?_typeParam`).
+* **no unmodelled type.**  There is no `dynamic`, and no stand-in for a type the backend
+  does not know the shape of: every Lean type a compiled declaration mentions is either
+  one of the shapes below or the declaration is refused.  A parameterised declaration is
+  modelled *at its instantiation* (`Except Nat String` is a `taggedUnion` of
+  `[[nat], [string]]`) — a polymorphic Lean declaration is translated once per
+  instantiation the module uses, and one with no instantiation is not translated at all —
+  and a mutual block of declarations is modelled as a `mutualRecursiveFamily`.
 
 * **leaves live in `LeanPrimTy`.**  Every terminal type (`bool`, `nat`, `uint32`,
   `bitvec n`, `string`, …) is a constructor of `LeanScript.LeanPrimTy`, and `Ty` embeds them
@@ -102,12 +100,12 @@ recursive declaration is not a `Ty` that fails a test, it is not a `Ty`.
 
 ## The shared type formers
 
-`array`, `list`, `task`, `promise` and `thunk` are the constructors of
-`LeanPrimTyCovariant`, and `fn` and `fn_returnsProd` those of `TyFn`: neither group says
-anything about recursion, and each makes sense at every layer, so both are parametrised
-by the layer's own type and embedded by `Ty` and by `RTy` alike (`Ty.primCovariant`,
-`Ty.fnTy`).  `Ty.fn`, `Ty.array`, … remain available — and usable in patterns — as
-abbreviations.
+`array`, `task`, `promise` and `thunk` are the constructors of
+`LeanPrimTyCovariant`: it says nothing about recursion and makes sense at every layer, so
+it is parametrised by the layer's own type and embedded by `Ty` and by `RTy` alike, with
+`Ty.primCovariant`.  `Ty.array`, … remain available — and usable in patterns —
+as abbreviations for its cases.  The function type is a constructor of each layer in its
+own right (`Ty.fn`).
 -/
 
 /-! ## `Ty`, `RTy` and the members of a mutual family -/
@@ -126,7 +124,7 @@ inductive Ty where
       is a function answering with the one type that holds them (a record). -/
   | fn : Ty → Ty → Ty
   /-- A built-in type former that carries one type: an array, a list, a task, a promise
-      or a thunk.  `Ty.array`, `Ty.list`, … abbreviate the cases. -/
+      or a thunk.  `Ty.array`, … abbreviate the cases. -/
   | primCovariant : LeanPrimTyCovariant Ty → Ty
   /-- A non-recursive sum whose constructors all have no fields, printed as the plain
       numbers `shift`, `shift + 1`, … — of which there are **at least three**, since the
@@ -163,14 +161,6 @@ inductive Ty where
   | mutualRecursiveFamily : (f : LeanMutualRecFamily RTy) →
       (h : RTy.wf (.mutualRecursiveFamily f) = true := by decide) → Ty
 
-
-/-- One member of a mutual recursive family: a member with constructors, a
-    single-constructor member with fields, or a newtype member. -/
-abbrev Ty.FamMember := LeanScript.FamMember
-
-/-- The layer inside a recursive declaration, under the `Ty` namespace as well. -/
-abbrev Ty.RTy := LeanScript.RTy
-
 namespace Ty
 
 /-! ## Deciding equality
@@ -198,7 +188,6 @@ def beq : Ty → Ty → Bool
 /-- Structural equality of two invariant type formers over closed types. -/
 def beqCov : LeanPrimTyCovariant Ty → LeanPrimTyCovariant Ty → Bool
   | .array a, .array b => Ty.beq a b
-  | .list a, .list b => Ty.beq a b
   | .task a, .task b => Ty.beq a b
   | .promise a, .promise b => Ty.beq a b
   | .thunk a, .thunk b => Ty.beq a b
@@ -240,7 +229,6 @@ def beqCP : CtorsWithPayload Ty → CtorsWithPayload Ty → Bool
 
 end
 
-set_option maxHeartbeats 2000000 in
 mutual
 
 /-- Closed types that compare equal are equal. -/
@@ -276,13 +264,17 @@ theorem eq_of_beqCtors : ∀ {a b : List (List Ty)}, Ty.beqCtors a b = true → 
 /-- The same, for the fields of a record of closed types. -/
 theorem eq_of_beqA2 : ∀ {a b : LeanRecordSchema Ty}, Ty.beqA2 a b = true → a = b := by
   intro a b h
-  cases a <;> cases b <;> simp_all [Ty.beqA2]
+  cases a
+  cases b
+  simp_all [Ty.beqA2]
   exact ⟨Ty.eq_of_beq h.1.1, Ty.eq_of_beq h.1.2, Ty.eq_of_beqList h.2⟩
 
 /-- The same, for the fields of a constructor that has at least one. -/
 theorem eq_of_beqNE : ∀ {a b : NonEmptyList Ty}, Ty.beqNE a b = true → a = b := by
   intro a b h
-  cases a <;> cases b <;> simp_all [Ty.beqNE]
+  cases a
+  cases b
+  simp_all [Ty.beqNE]
   exact ⟨Ty.eq_of_beq h.1, Ty.eq_of_beqList h.2⟩
 
 /-- The same, for the constructors of a tagged union of closed types. -/
@@ -302,7 +294,6 @@ theorem eq_of_beqCP : ∀ {a b : CtorsWithPayload Ty}, Ty.beqCP a b = true → a
 
 end
 
-set_option maxHeartbeats 2000000 in
 mutual
 
 /-- Every closed type compares equal to itself. -/
@@ -321,7 +312,6 @@ theorem beq_refl : ∀ (a : Ty), Ty.beq a a = true
 /-- The same, for an invariant type former over closed types. -/
 theorem beqCov_refl : ∀ (a : LeanPrimTyCovariant Ty), Ty.beqCov a a = true
   | .array a => by simp [Ty.beqCov, Ty.beq_refl a]
-  | .list a => by simp [Ty.beqCov, Ty.beq_refl a]
   | .task a => by simp [Ty.beqCov, Ty.beq_refl a]
   | .promise a => by simp [Ty.beqCov, Ty.beq_refl a]
   | .thunk a => by simp [Ty.beqCov, Ty.beq_refl a]
@@ -363,20 +353,20 @@ instance : DecidableEq Ty := fun a b =>
   decidable_of_iff (Ty.beq a b = true) ⟨Ty.eq_of_beq, fun h => h ▸ Ty.beq_refl a⟩
 
 instance : BEq Ty := ⟨Ty.beq⟩
-
-instance : Inhabited Ty := ⟨.prim .bool⟩
+instance : ReflBEq Ty where
+  rfl {a} := Ty.beq_refl a
+instance : LawfulBEq Ty where
+  eq_of_beq := by intro a b; exact eq_of_beq
 
 /-! ## The shared type formers, as abbreviations
 
-`Ty.fnTy` and `Ty.primCovariant` are the only way to build a function, an array, a list,
-a task, a promise or a thunk, but writing `.primCovariant (.array α)` everywhere is
-noise, so each former is also available directly under `Ty` and `RTy`.  They are
-`@[match_pattern]`, so `.array α` works in a pattern as well as in a term. -/
+`Ty.primCovariant` is the only way to build an array, a list, a task, a promise or a
+thunk, but writing `.primCovariant (.array α)` everywhere is noise, so each former is also
+available directly under `Ty` and `RTy`.  They are `@[match_pattern]`, so `.array α` works
+in a pattern as well as in a term. -/
 
 /-- In JS: an array. -/
 @[match_pattern] abbrev array (α : Ty) : Ty := .primCovariant (.array α)
-/-- A cons list. -/
-@[match_pattern] abbrev list (α : Ty) : Ty := .primCovariant (.list α)
 /-- In JS: `Promise<α>`. -/
 @[match_pattern] abbrev task (α : Ty) : Ty := .primCovariant (.task α)
 /-- In JS: `Promise<α>`. -/
@@ -396,51 +386,12 @@ so each `LeanPrimTy` is also available directly under the `Ty` namespace — whi
 makes `.nat`, `.uint32`, `.bitvec 32`, … keep working in a position expecting a
 `Ty`. -/
 
-/-- In JS: `boolean`.  Every two-constructor field-less sum is modelled as this. -/
-abbrev bool : Ty := .prim .bool
-/-- In JS: `number` or `bigint`. -/
-abbrev nat : Ty := .prim .nat
-/-- In JS: `number` or `bigint`. -/
-abbrev int : Ty := .prim .int
-/-- In JS: `number` or `bigint`, by width. -/
-abbrev bitvec (n : Nat) (h_pos : 0 < n := by decide) : Ty := .prim (.bitvec n h_pos)
-/-- In JS: `number`. -/
-abbrev uint8 : Ty := .prim .uint8
-/-- In JS: `number`. -/
-abbrev uint16 : Ty := .prim .uint16
-/-- In JS: `number`. -/
-abbrev uint32 : Ty := .prim .uint32
-/-- In JS: `number` or `bigint`. -/
-abbrev uint64 : Ty := .prim .uint64
-/-- In JS: `number` or `bigint`. -/
-abbrev usize : Ty := .prim .usize
-/-- In JS: `number`. -/
-abbrev int8 : Ty := .prim .int8
-/-- In JS: `number`. -/
-abbrev int16 : Ty := .prim .int16
-/-- In JS: `number`. -/
-abbrev int32 : Ty := .prim .int32
-/-- In JS: `number` or `bigint`. -/
-abbrev int64 : Ty := .prim .int64
-/-- In JS: `number` or `bigint`. -/
-abbrev isize : Ty := .prim .isize
-/-- In JS: `string`. -/
-abbrev char : Ty := .prim .char
-/-- In JS: `string`. -/
-abbrev string : Ty := .prim .string
+instance : CoeOut (LeanPrimTy) Ty := ⟨.prim⟩
+instance : CoeOut (LeanPrimTyCovariant Ty) Ty := ⟨.primCovariant⟩
+
 /-- In JS: `Uint8Array`.  At this layer it is an array of bytes; the later JavaScript
     type language is what turns it into a `Uint8Array`. -/
 abbrev byteArray : Ty := .array (.prim .uint8)
-/-- A position in a string. -/
-abbrev stringPos : Ty := .prim .stringPos
-/-- In JS: `{ str, startPos, stopPos }`. -/
-abbrev substring : Ty := .prim .substring
-/-- A slice of a string. -/
-abbrev stringSlice : Ty := .prim .stringSlice
-/-- In JS: `number` (IEEE 754 64-bit). -/
-abbrev float : Ty := .prim .float
-/-- In JS: `number` (IEEE 754 32-bit). -/
-abbrev float32 : Ty := .prim .float32
 /-- In JS: `Float64Array`.  At this layer it is an array of floats. -/
 abbrev floatArray : Ty := .array (.prim .float)
 /-- `Ordering` is the enum with three constructors whose numbering starts at `-1`, so
@@ -450,41 +401,44 @@ abbrev floatArray : Ty := .array (.prim .float)
 abbrev ordering : Ty := .enum ⟨0, -1⟩
 -- /-- In JS (node only): a `ChildProcess` handle. -/
 -- abbrev childProcess : Ty := .prim .childProcess
--- Commented out with `LeanPrimTy.childProcess`: see `SHARECOMMON_EMULATION.md`.
+-- Commented out with `LeanPrimTy.childProcess`.
 -- /-- In JS: `object` / `any`. -/
 -- abbrev shareCommonObject : Ty := .prim .shareCommonObject
 -- /-- In JS: a `Map` / cache object. -/
 -- abbrev shareCommonState : Ty := .prim .shareCommonState
--- Commented out with the two `ShareCommon` handles of `LeanPrimTy`: see
--- `SHARECOMMON_EMULATION.md` (option A, erasure).
+-- Commented out with the two `ShareCommon` handles of `LeanPrimTy`, which are erased.
 
 /-- The enum with `n` constructors numbered from `shift` — `none` unless `n` is a number
     of constructors an enum can have, which is three or more: with none the type has no
     values, with one it is a unit type and is erased, and with two it is `Ty.bool`. -/
 def enumOfCount? (n : Nat) (shift : Int := 0) : Option Ty :=
-  (LeanEnumSchema.ofCount? n shift).map Ty.enum
+  (LeanEnumSchema.ofCount? n shift).map Ty.enum -- TODO: same as in RTy, refactor
 
 /-- The type of a field-less sum with `n` constructors: `Ty.bool` for two of them and an
     enum for three or more.  `none` for the two degenerate cases, which have no type:
     a sum with no constructors has no values, and one with a single constructor is a
     unit type, which is erased. -/
 def enumOrBool? (n : Nat) (shift : Int := 0) : Option Ty :=
-  if n == 2 && shift == 0 then some Ty.bool else enumOfCount? n shift
-
-
-
-/-- `Option α`: a non-recursive sum whose constructor `0` (`none`) carries nothing and
-    whose constructor `1` (`some`) carries the value. -/
-abbrev option (α : Ty) : Ty := .taggedUnion (.skip (.here ⟨α, []⟩ []))
-
-/-- `α × β`: one constructor with two fields. -/
-abbrev prod (α β : Ty) : Ty := .record ⟨α, β, []⟩
+  if n == 2 && shift == 0 then some LeanPrimTy.bool else enumOfCount? n shift -- TODO: same as in RTy, refactor
 
 infixr:70 " ⇒ " => Ty.fn
 
 /-- The curried function type with these argument types and this result:
     `arrows [σ₁, σ₂] τ` is `σ₁ ⇒ σ₂ ⇒ τ`, and `arrows [] τ` is `τ`. -/
 abbrev arrows (σs : List Ty) (τ : Ty) : Ty := σs.foldr Ty.fn τ
+
+
+/-- `Option α`: a non-recursive sum whose constructor `0` (`none`) carries nothing and
+    whose constructor `1` (`some`) carries the value. -/
+abbrev option (α : Ty) : Ty := .taggedUnion (.skip (.here ⟨α, []⟩ [])) -- TODO: derive using elab
+
+/-- `α × β`: one constructor with two fields. -/
+abbrev prod (α β : Ty) : Ty := .record ⟨α, β, []⟩ -- TODO: derive using elab
+
+/-- `List α`: constructor `0` (`nil`) carries nothing and constructor `1` (`cons`)
+    carries the head of type `α` and tail of type `List α`. -/
+abbrev list (α : Ty) : Ty := sorry -- TODO: refactor and derive
+  -- Ty.recTaggedUnion (.skip (.here ⟨α.toRTy, [.self 0]⟩ [])) (list_wf α.toRTy)
 
 end Ty
 
