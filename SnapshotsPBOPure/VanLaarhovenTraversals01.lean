@@ -1,3 +1,6 @@
+
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 inductive Fun where
   | Abs : String → Fun → Fun
   | App : Fun → Fun → Fun
@@ -62,3 +65,90 @@ theorem rewriteBottomUp_App (k : Fun → Fun) (a b : Fun) :
     rewriteBottomUp k (Fun.App a b) =
       k (Fun.App (rewriteBottomUp k a) (rewriteBottomUp k b)) := by
   rw [rewriteBottomUp_eq]; rfl
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction Fun.size
+  signature   : Fun → Nat
+  argTy       : -
+  resTy       : -
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : rejected           (`Fun` is a recursive declaration with no well-formed shape (it does not mention itself, or it has no value at all))
+  primitives  :
+    Nat.add
+  context     : -
+---
+info: LeanFunction rewriteBottomUp
+  signature   : (Fun → Fun) → Fun → Fun
+  argTy       : -
+  resTy       : -
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (`Fun` is a recursive declaration with no well-formed shape (it does not mention itself, or it has no value at all))
+  primitives  :
+    Nat.add
+  context     :
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  Unit.unit  [Init.Prelude]
+    ok  rewriteBottomUpM  [_current]
+---
+info: LeanFunction rewriteBottomUpM
+  signature   : {m : Type → Type} → [Monad m] → (Fun → m Fun) → Fun → m Fun
+  argTy       : -
+  resTy       : -
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : rejected           (a type or a proposition, which carries no value)
+  primitives  :
+    Nat.add
+  context     :
+    ok  Fun.size  [_current]
+    ok  traverseFun1D  [_current]
+---
+info: LeanFunction traverseFun1
+  signature   : {f : Type → Type} → [Applicative f] → (Fun → f Fun) → Fun → f Fun
+  argTy       : -
+  resTy       : -
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a type or a proposition, which carries no value)
+  primitives  : -
+  context     : -
+---
+info: LeanFunction traverseFun1D
+  signature   : {f : Type → Type} → [Applicative f] → (t : Fun) → ((a : Fun) → a.size < t.size → f Fun) → f Fun
+  argTy       : -
+  resTy       : -
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a type or a proposition, which carries no value)
+  primitives  :
+    Nat.add
+  context     :
+    ok  Fun.size  [_current]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+/--
+info: LeanTerms of this module
+  refused   Fun.size: the type `Fun` has no `Ty`: `Fun` is a recursive declaration with no well-formed shape (it does not mention itself, or it has no value at all)
+  refused   rewriteBottomUp: the type `Fun →   Fun` has no `Ty`: `Fun` is a recursive declaration with no well-formed shape (it does not mention itself, or it has no value at all)
+  refused   rewriteBottomUpM: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  refused   traverseFun1: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  refused   traverseFun1D: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all

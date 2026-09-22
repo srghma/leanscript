@@ -1,4 +1,6 @@
 import Lean
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 open Lean Elab Command
 
 /-! Scratch file: declare one inductive of each shape the type language distinguishes,
@@ -101,3 +103,32 @@ inductive Foo where
 -- #eval dumpFor `Ev
 -- #eval dumpFor `Od
 -- #eval dumpFor `Foo
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: no public function in this module
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+/--
+info: no public function in this module
+---
+info: LeanTerms of this module
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all

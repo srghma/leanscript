@@ -1,4 +1,3 @@
-import LeanScript.Term.Elab
 /-
 `diagonal`, a tail-recursive version `diagonal_tr`, and an imperative `while`-loop
 version `diagonalWhile`, together with proofs that all three agree.
@@ -8,6 +7,8 @@ uses the experimental `mvcgen` verification-condition generator from `Std.Tactic
 It only needs the Lean core library / `Std`; no external packages are required.
 -/
 import Std.Tactic.Do
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 
 def diagonal : Nat → Nat → Nat
   | 0,     0     => 0
@@ -142,6 +143,19 @@ theorem diagonalWhile_eq (m n : Nat) : diagonalWhile m n = diagonal m n := by
 -- #print axioms diagonalWhile_eq
 -- #print axioms diagonal_tr_zero_eq_diagonal
 
+
+/-!
+## The `LeanFunction` reports as an earlier iteration wrote them
+
+The block below is kept exactly as it was written, but commented out.  Its expectations
+were produced by an earlier iteration of `#leanjs_generate_term_and_ctx_for` and name
+the constructors that iteration used (`Term.wfFix`, `Term.natRec`, …).  In this tree the
+term language is `LeanScript.Expr`, whose one well-founded node is `Term.fixAcc` and
+whose structural recursion is the datatype's own recursor, and the report says so — see
+the live, checked report at the end of this file.
+-/
+
+/-
 /-! ## Generated `LeanFunction`s
 
 One report per public function of this file; see `LeanScript.Term.Elab`. -/
@@ -189,3 +203,105 @@ info: LeanFunction diagonalWhile
 -/
 #guard_msgs in
 #leanjs_generate_term_and_ctx_for diagonalWhile
+
+-/
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction diagonal
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  Unit.unit  [Init.Prelude]
+---
+info: LeanFunction diagonalWhile
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decEq
+    Nat.decLt
+    Nat.sub
+  context     :
+    ok  Bool.decEq  [Init.Prelude]
+    ok  Bool.or  [Init.Prelude]
+    ok  Decidable.decide  [Init.Prelude]
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    BAD Lean.Loop.forIn  [Init.While]
+    ok  Unit.unit  [Init.Prelude]
+    ok  bne  [Init.Core]
+---
+info: LeanFunction diagonal_tr
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  Unit.unit  [Init.Prelude]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+-- The measure of this recursion is not one of its arguments, so it is given to the
+-- compiler: `LeanScript.Term.Compile` descends in `<` on a `Nat`, or lexicographically
+-- on a pair of them.
+#leanjs_compile_term_for diagonal measure fun m n => (m + n, m)
+#leanjs_compile_term_for diagonal_tr measure fun m n _acc => (m + n, m)
+
+/--
+info: LeanTerms of this module
+  compiled  diagonal  (above, with a measure of its own)
+  refused   diagonalWhile: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  compiled  diagonal_tr  (above, with a measure of its own)
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all
+
+/-! ## The compiled terms, run
+
+Each line below says that the compiled term and the Lean function answer with the same
+thing, and is settled by `decide +kernel`: the **kernel** reduces
+`LeanScript.Term.evalClosed` applied to the generated term, so each line checks the
+whole pipeline — the type translation, the compiler and the evaluator of
+`LeanScript.Eval` — against Lean's own answer.  The arguments are small on purpose: the
+kernel reduces the evaluator by unfolding it, which is far slower than compiled code.
+
+`diagonal` and `diagonal_tr` are well-founded definitions, and Lean's own well-founded
+recursion does **not** reduce in the kernel — its accessibility proof is a theorem — so
+the two sides are compared through the answer rather than against each other: the
+compiled term reduces to the literal, and the Lean function is shown to equal the same
+literal by its own unfolding lemmas.
+-/
+
+example : diagonal.leanFn 2 2 = 12 := by decide +kernel
+example : diagonal 2 2 = 12 := by simp
+
+example : diagonal_tr.leanFn 2 2 0 = 12 := by decide +kernel
+example : diagonal_tr 2 2 0 = 12 := by simp [diagonal_tr_eq]

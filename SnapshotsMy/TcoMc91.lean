@@ -1,5 +1,6 @@
-import LeanScript.Term.Elab
 import Aesop
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 
 -- ============================================================================
 -- 1. Reference Specification
@@ -112,6 +113,19 @@ theorem mc91TR_eq_mc91 (n : Nat) : mc91TR n = mc91 n := by
 -- #eval mc91TR 105    -- 95
 -- #eval mc91While 105 -- 95
 
+
+/-!
+## The `LeanFunction` reports as an earlier iteration wrote them
+
+The block below is kept exactly as it was written, but commented out.  Its expectations
+were produced by an earlier iteration of `#leanjs_generate_term_and_ctx_for` and name
+the constructors that iteration used (`Term.wfFix`, `Term.natRec`, …).  In this tree the
+term language is `LeanScript.Expr`, whose one well-founded node is `Term.fixAcc` and
+whose structural recursion is the datatype's own recursor, and the report says so — see
+the live, checked report at the end of this file.
+-/
+
+/-
 /-! ## Generated `LeanFunction`s
 
 One report per public function of this file; see `LeanScript.Term.Elab`. -/
@@ -188,3 +202,122 @@ info: LeanFunction iter
 -/
 #guard_msgs in
 #leanjs_generate_term_and_ctx_for iter
+
+-/
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction iter
+  signature   : (Nat → Nat) → Nat → Nat → Nat
+  argTy       : (fn nat nat)
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+---
+info: LeanFunction mc91
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.decLt
+    Nat.sub
+  context     : -
+---
+info: LeanFunction mc91Loop
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.mul
+    Nat.sub
+  context     : -
+---
+info: LeanFunction mc91TR
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.mul
+    Nat.sub
+  context     :
+    ok  mc91Loop  [_current]
+---
+info: LeanFunction mc91While
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decEq
+    Nat.decLt
+    Nat.sub
+  context     :
+    ok  Bool.decEq  [Init.Prelude]
+    ok  Decidable.decide  [Init.Prelude]
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    BAD Lean.Loop.forIn  [Init.While]
+    ok  Unit.unit  [Init.Prelude]
+    ok  bne  [Init.Core]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+-- The measure of this recursion is not one of its arguments, so it is given to the
+-- compiler: `LeanScript.Term.Compile` descends in `<` on a `Nat`, or lexicographically
+-- on a pair of them.
+#leanjs_compile_term_for mc91Loop measure fun c n => 2 * (111 - n) + 21 * c
+
+/--
+info: LeanTerms of this module
+  compiled  iter
+  compiled  mc91
+  compiled  mc91Loop  (above, with a measure of its own)
+  compiled  mc91TR
+  refused   mc91While: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all
+
+/-! ## The compiled terms, run
+
+Each line below says that the compiled term and the Lean function answer with the same
+thing, and is settled by `decide +kernel`: the **kernel** reduces
+`LeanScript.Term.evalClosed` applied to the generated term, so each line checks the
+whole pipeline — the type translation, the compiler and the evaluator of
+`LeanScript.Eval` — against Lean's own answer.  The arguments are small on purpose: the
+kernel reduces the evaluator by unfolding it, which is far slower than compiled code. -/
+
+example : mc91.leanFn 99 = mc91 99 := by decide +kernel
+example : mc91TR.leanFn 99 = mc91TR 99 := by decide +kernel
+example : mc91Loop.leanFn 1 99 = mc91Loop 1 99 := by decide +kernel
+example : iter.leanFn (fun x => x + 2) 3 1 = iter (fun x => x + 2) 3 1 := by decide +kernel

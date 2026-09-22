@@ -1,5 +1,6 @@
-import LeanScript.Term.Elab
 import Aesop
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 
 -- 1. Original recursive definition
 def hyper : Nat → Nat → Nat → Nat
@@ -87,6 +88,19 @@ theorem hyperTCO_eq : ∀ n a b, hyperTCO n a b = hyper n a b := by
 -- #eval hyperTCO 3 2 4   -- 16
 -- #eval hyperWhile 3 2 4 -- 16
 
+
+/-!
+## The `LeanFunction` reports as an earlier iteration wrote them
+
+The block below is kept exactly as it was written, but commented out.  Its expectations
+were produced by an earlier iteration of `#leanjs_generate_term_and_ctx_for` and name
+the constructors that iteration used (`Term.wfFix`, `Term.natRec`, …).  In this tree the
+term language is `LeanScript.Expr`, whose one well-founded node is `Term.fixAcc` and
+whose structural recursion is the datatype's own recursor, and the report says so — see
+the live, checked report at the end of this file.
+-/
+
+/-
 /-! ## Generated `LeanFunction`s
 
 One report per public function of this file; see `LeanScript.Term.Elab`. -/
@@ -160,3 +174,116 @@ info: LeanFunction hyperWhile
 -/
 #guard_msgs in
 #leanjs_generate_term_and_ctx_for hyperWhile
+
+-/
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction hyper
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     : -
+---
+info: LeanFunction hyperBase
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+---
+info: LeanFunction hyperLoop
+  signature   : (Nat → Nat) → Nat → Nat → Nat
+  argTy       : (fn nat nat)
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : representable in Term
+  primitives  : -
+  context     : -
+---
+info: LeanFunction hyperTCO
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  hyperBase  [_current]
+    ok  hyperLoop  [_current]
+---
+info: LeanFunction hyperWhile
+  signature   : Nat → Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat (fn nat nat))
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : representable in Term
+  primitives  :
+    Array.emptyWithCapacity
+    Array.push
+    Nat.add
+    Nat.decLt
+    Nat.mod
+    Nat.sub
+  context     :
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  Std.Legacy.Range.forIn'  [Init.Data.Range.Basic]
+    ok  Unit.unit  [Init.Prelude]
+    ok  hyperBase  [_current]
+    ok  inferInstance  [Init.Prelude]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+-- The measure of this recursion is not one of its arguments, so it is given to the
+-- compiler: `LeanScript.Term.Compile` descends in `<` on a `Nat`, or lexicographically
+-- on a pair of them.
+#leanjs_compile_term_for hyper measure fun n _a b => (n, b)
+
+/--
+info: LeanTerms of this module
+  compiled  hyper  (above, with a measure of its own)
+  compiled  hyperBase
+  compiled  hyperLoop
+  compiled  hyperTCO
+  refused   hyperWhile: the type `Type u_1 → Type u_2` has no `Ty`: a type or a proposition, which carries no value
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all
+
+/-! ## The compiled terms, run
+
+Each line below says that the compiled term and the Lean function answer with the same
+thing, and is settled by `decide +kernel`: the **kernel** reduces
+`LeanScript.Term.evalClosed` applied to the generated term, so each line checks the
+whole pipeline — the type translation, the compiler and the evaluator of
+`LeanScript.Eval` — against Lean's own answer.  The arguments are small on purpose: the
+kernel reduces the evaluator by unfolding it, which is far slower than compiled code. -/
+
+example : hyperBase.leanFn 2 3 = hyperBase 2 3 := by decide +kernel
+example : hyperTCO.leanFn 2 2 2 = hyperTCO 2 2 2 := by decide +kernel
+example : hyperLoop.leanFn (fun x => x + 1) 3 2 = hyperLoop (fun x => x + 1) 3 2 := by
+  decide +kernel

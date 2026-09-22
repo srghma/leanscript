@@ -1,4 +1,5 @@
 import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 def ack : Nat → Nat → Nat
   | 0,     n     => n + 1
   | m + 1, 0     => ack m 1
@@ -125,6 +126,19 @@ theorem ack2_eq_ack (m n : Nat) : ack2 m n = ack m n := by
     have h : ack2 (m + 1) (n + 1) = ack2 m (ack2 (m + 1) n) := by rfl
     grind [= ack, = ack2]
 
+
+/-!
+## The `LeanFunction` reports as an earlier iteration wrote them
+
+The block below is kept exactly as it was written, but commented out.  Its expectations
+were produced by an earlier iteration of `#leanjs_generate_term_and_ctx_for` and name
+the constructors that iteration used (`Term.wfFix`, `Term.natRec`, …).  In this tree the
+term language is `LeanScript.Expr`, whose one well-founded node is `Term.fixAcc` and
+whose structural recursion is the datatype's own recursor, and the report says so — see
+the live, checked report at the end of this file.
+-/
+
+/-
 /-! ## Generated `LeanFunction`s
 
 One report per public function of this file; see `LeanScript.Term.Elab`. -/
@@ -266,3 +280,202 @@ info: LeanFunction AckWithoutStackButUsingCantorPairing.ackNoDataStructure
 -/
 #guard_msgs in
 #leanjs_generate_term_and_ctx_for AckWithoutStackButUsingCantorPairing.ackNoDataStructure
+
+-/
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction AckWithoutStackButUsingCantorPairing.ackNoDataStructure
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decEq
+    Nat.decLt
+    Nat.div
+    Nat.mul
+    Nat.sub
+  context     :
+    ok  AckWithoutStackButUsingCantorPairing.pair  [_current]
+    BAD AckWithoutStackButUsingCantorPairing.unpairLeft  [_current]
+    BAD AckWithoutStackButUsingCantorPairing.unpairRight  [_current]
+    ok  Bool.decEq  [Init.Prelude]
+    ok  Decidable.decide  [Init.Prelude]
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    BAD Lean.Loop.forIn  [Init.While]
+    ok  Unit.unit  [Init.Prelude]
+    ok  bne  [Init.Core]
+---
+info: LeanFunction AckWithoutStackButUsingCantorPairing.isqrt
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.div
+  context     :
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    BAD Lean.Loop.forIn  [Init.While]
+    ok  Unit.unit  [Init.Prelude]
+---
+info: LeanFunction AckWithoutStackButUsingCantorPairing.pair
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+    Nat.div
+    Nat.mul
+  context     : -
+---
+info: LeanFunction AckWithoutStackButUsingCantorPairing.unpairLeft
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.div
+    Nat.mul
+    Nat.sub
+  context     :
+    BAD AckWithoutStackButUsingCantorPairing.isqrt  [_current]
+---
+info: LeanFunction AckWithoutStackButUsingCantorPairing.unpairRight
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.div
+    Nat.mul
+    Nat.sub
+  context     :
+    BAD AckWithoutStackButUsingCantorPairing.isqrt  [_current]
+---
+info: LeanFunction ack
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : well-founded       (encoded as Term.fixAcc: the Acc proof is a field)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     : -
+---
+info: LeanFunction ack2
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : structural         (encoded with the recursor of the datatype)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  Unit.unit  [Init.Prelude]
+---
+info: LeanFunction ack999
+  signature   : Nat
+  argTy       : -                  (a constant, not a function)
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  ack  [_current]
+---
+info: LeanFunction ackWhile
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : rejected           (a definition it calls is not representable)
+  primitives  :
+    Nat.add
+    Nat.decEq
+    Nat.sub
+  context     :
+    ok  Bool.decEq  [Init.Prelude]
+    ok  Bool.not  [Init.Prelude]
+    ok  Decidable.decide  [Init.Prelude]
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    BAD Lean.Loop.forIn  [Init.While]
+    ok  List.isEmpty  [Init.Data.List.Basic]
+    ok  Unit.unit  [Init.Prelude]
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+-- The measure of this recursion is not one of its arguments, so it is given to the
+-- compiler: `LeanScript.Term.Compile` descends in `<` on a `Nat`, or lexicographically
+-- on a pair of them.
+#leanjs_compile_term_for ack measure fun m n => (m, n)
+
+/--
+info: LeanTerms of this module
+  refused   AckWithoutStackButUsingCantorPairing.ackNoDataStructure: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  refused   AckWithoutStackButUsingCantorPairing.isqrt: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  compiled  AckWithoutStackButUsingCantorPairing.pair
+  refused   AckWithoutStackButUsingCantorPairing.unpairLeft: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  refused   AckWithoutStackButUsingCantorPairing.unpairRight: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+  compiled  ack  (above, with a measure of its own)
+  compiled  ack2
+  compiled  ack999
+  refused   ackWhile: the type `Type → Type` has no `Ty`: a type or a proposition, which carries no value
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all
+
+/-! ## The compiled terms, run
+
+Each line below says that the compiled term and the Lean function answer with the same
+thing, and is settled by `decide +kernel`: the **kernel** reduces
+`LeanScript.Term.evalClosed` applied to the generated term, so each line checks the
+whole pipeline — the type translation, the compiler and the evaluator of
+`LeanScript.Eval` — against Lean's own answer.  The arguments are small on purpose: the
+kernel reduces the evaluator by unfolding it, which is far slower than compiled code.
+
+`ack` is a well-founded definition, and Lean's own well-founded recursion does **not**
+reduce in the kernel — its accessibility proof is a theorem — so the compiled term is
+reduced to the literal and the Lean function is shown to equal the same literal by its
+own unfolding lemmas. -/
+
+example : ack.leanFn 2 2 = 7 := by decide +kernel
+example : ack 2 2 = 7 := by simp [ack]
+example : ack2.leanFn 2 2 = ack2 2 2 := by decide +kernel
+example : AckWithoutStackButUsingCantorPairing.pair.leanFn 3 4
+    = AckWithoutStackButUsingCantorPairing.pair 3 4 := by decide +kernel

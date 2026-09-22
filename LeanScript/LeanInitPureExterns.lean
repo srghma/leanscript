@@ -13,9 +13,13 @@ namespace LeanScript
 open LeanPrimTy
 open LeanPrimTyCovariant
 
-protected abbrev LeanPrimTy.usize : LeanPrimTy := uint64
-protected abbrev LeanPrimTy.isize : LeanPrimTy := int64
-protected abbrev USize_size : Nat := UInt64.size
+-- `usize`/`isize` are `uint64`/`int64` in this grammar, so every entry that speaks about
+-- one is already covered by the `UInt64`/`Int64` entries and is commented out below.
+-- protected abbrev LeanPrimTy.usize : LeanPrimTy := uint64
+-- protected abbrev LeanPrimTy.isize : LeanPrimTy := int64
+-- protected abbrev USize_size : Nat := UInt64.size
+-- protected abbrev LeanPrimTy.byteArray : LeanPrimTyCovariant LeanPrimTy := Array UInt8 -- Though array doesnt have analogues to lean_byte_array_copy_slice, lean_byte_array_hash, lean_sarray_dec_eq, lean_string_validate_utf8, lean_string_from_utf8_unchecked, lean_string_to_utf8, lean_string_utf8_get_fast - we will support them differently
+-- protected abbrev LeanPrimTy.floatArray : LeanPrimTyCovariant LeanPrimTy := Array Float
 
 variable {MyTy : Type}
   (denote : MyTy → Type)
@@ -27,15 +31,21 @@ variable {MyTy : Type}
   (fn1 : MyTy → MyTy → MyTy)
   (fn2 : MyTy → MyTy → MyTy → MyTy)
   (prod : MyTy → MyTy → MyTy)
-  (io_promise : MyTy → MyTy)
-  (io_process_child : IO.Process.StdioConfig → MyTy)
-  (shareCommon_object : MyTy)
-  (shareCommon_stateFactory : Type)
-  (shareCommon_state : shareCommon_stateFactory -> MyTy)
-  (name : MyTy)
+  -- the run-time handles are not values, so nothing that speaks about one is listed
+  -- (`IO.Promise`, `IO.Process.Child`, `ShareCommon.Object`, `ShareCommon.State`)
+  -- (io_promise : MyTy → MyTy)
+  -- (io_process_child : IO.Process.StdioConfig → MyTy)
+  -- (shareCommon_object : MyTy)
+  -- (shareCommon_stateFactory : Type)
+  -- (shareCommon_state : shareCommon_stateFactory -> MyTy)
+  -- (name : MyTy)  -- no entry of the catalogue answers with a `Lean.Name`
   (ordering : MyTy)
-  (byteArray : MyTy)
-  (floatArray : MyTy)
+  -- A byte array is `Array UInt8` and a float array is `Array Float`, so neither is a
+  -- type former of its own here; the entries that speak about one are commented out
+  -- below, and will be supported either through the ordinary array entries or through a
+  -- separate API.
+  -- (byteArray : MyTy)
+  -- (floatArray : MyTy)
 
 inductive LeanInitPureExtern : MyTy → Type where
   --------------------
@@ -43,25 +53,25 @@ inductive LeanInitPureExtern : MyTy → Type where
   --------------------
   | lean_uint32_of_nat_mk : BitVec 32 → LeanInitPureExtern uint32 -- UInt32.ofBitVec
   | lean_uint32_dec_eq : UInt32 → UInt32 → LeanInitPureExtern LeanPrimTy.bool -- UInt32.decEq
-  | lean_byte_array_size : ByteArray → LeanInitPureExtern nat -- ByteArray.size
-  | lean_string_to_utf8__String_toByteArray : String → LeanInitPureExtern byteArray -- String.toByteArray
+  -- | lean_byte_array_size : ByteArray → LeanInitPureExtern nat -- ByteArray.size -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_string_to_utf8__String_toByteArray : String → LeanInitPureExtern byteArray -- String.toByteArray -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_uint32_dec_lt : UInt32 → UInt32 → LeanInitPureExtern LeanPrimTy.bool -- UInt32.decLt
   | lean_nat_div : Nat → Nat → LeanInitPureExtern nat -- Nat.div
-  | lean_sorry : (αt : MyTy) → Bool → LeanInitPureExtern αt -- sorryAx -- XXX: DONT IMPLEMENT
+  -- | lean_sorry : (αt : MyTy) → Bool → LeanInitPureExtern αt -- sorryAx -- XXX: DONT IMPLEMENT
   | lean_uint32_of_nat__UInt32_ofNatLT : (n : Nat) → (h : n < UInt32.size) → LeanInitPureExtern uint32 -- UInt32.ofNatLT
   | lean_uint32_of_nat__Char_ofNatAux : (n : Nat) → (h : n.isValidChar) → LeanInitPureExtern char -- Char.ofNatAux
   | lean_array_get_borrowed : (αt : MyTy) → (inhabited_default : denote αt) → Array (denote αt) → Nat → LeanInitPureExtern αt -- Array.get!InternalBorrowed
   | lean_uint8_to_nat__UInt8_toBitVec : UInt8 → LeanInitPureExtern (bitvec 8) -- UInt8.toBitVec
   | lean_nat_dec_lt : Nat → Nat → LeanInitPureExtern LeanPrimTy.bool -- Nat.decLt
-  | lean_string_from_utf8_unchecked : (toByteArray : ByteArray) → toByteArray.IsValidUTF8 → LeanInitPureExtern string -- String.ofByteArray
+  -- | lean_string_from_utf8_unchecked : (toByteArray : ByteArray) → toByteArray.IsValidUTF8 → LeanInitPureExtern string -- String.ofByteArray -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_nat_mod__Nat_modCore : Nat → Nat → LeanInitPureExtern nat -- Nat.modCore
   | lean_nat_mod__Nat_mod : Nat → Nat → LeanInitPureExtern nat -- Nat.mod
   | lean_array_push : (αt : MyTy) → Array (denote αt) → denote αt → LeanInitPureExtern (array αt) -- Array.push
-  | lean_byte_array_mk : Array UInt8 → LeanInitPureExtern byteArray -- ByteArray.mk
+  -- | lean_byte_array_mk : Array UInt8 → LeanInitPureExtern byteArray -- ByteArray.mk -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_nat_sub : Nat → Nat → LeanInitPureExtern nat -- Nat.sub
   | lean_uint8_dec_lt : UInt8 → UInt8 → LeanInitPureExtern LeanPrimTy.bool -- UInt8.decLt
-  | lean_byte_array_data : ByteArray → LeanInitPureExtern (array uint8) -- ByteArray.data
-  | lean_system_platform_nbits : LeanInitPureExtern (lazy nat) -- System.Platform.getNumBits
+  -- | lean_byte_array_data : ByteArray → LeanInitPureExtern (array uint8) -- ByteArray.data -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_system_platform_nbits : LeanInitPureExtern (lazy nat) -- System.Platform.getNumBits
   | lean_uint32_dec_le : UInt32 → UInt32 → LeanInitPureExtern LeanPrimTy.bool -- UInt32.decLe
   | lean_array_get_size : (αt : MyTy) → Array (denote αt) → LeanInitPureExtern nat -- Array.size
   | lean_array_to_list : (αt : MyTy) → Array (denote αt) → LeanInitPureExtern (list αt) -- Array.toList
@@ -72,19 +82,19 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_mk_empty_array_with_capacity__Array_mkEmpty : (αt : MyTy) → Nat → LeanInitPureExtern (array αt) -- Array.mkEmpty
   | lean_uint8_of_nat__UInt8_ofNat : Nat → LeanInitPureExtern uint8 -- UInt8.ofNat
   | lean_uint8_of_nat__UInt8_ofNatLT : (n : Nat) → (h : n < UInt8.size) → LeanInitPureExtern uint8 -- UInt8.ofNatLT
-  | lean_is_scalar : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.bool -- isScalarObj
+  -- | lean_is_scalar : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.bool -- isScalarObj
   | lean_uint8_dec_le : UInt8 → UInt8 → LeanInitPureExtern LeanPrimTy.bool -- UInt8.decLe
   | lean_nat_dec_le__Nat_ble : Nat → Nat → LeanInitPureExtern LeanPrimTy.bool -- Nat.ble
   | lean_nat_dec_le__Nat_decLe : Nat → Nat → LeanInitPureExtern LeanPrimTy.bool -- Nat.decLe
   | lean_array_get : (αt : MyTy) → (inhabited_default : denote αt) → Array (denote αt) → Nat → LeanInitPureExtern αt -- Array.get!Internal
   | lean_nat_add : Nat → Nat → LeanInitPureExtern nat -- Nat.add
-  | lean_panic_fn_borrowed : (αt : MyTy) → String → LeanInitPureExtern αt -- panicCore
+  -- | lean_panic_fn_borrowed : (αt : MyTy) → String → LeanInitPureExtern αt -- panicCore
   | lean_uint16_to_nat__UInt16_toBitVec : UInt16 → LeanInitPureExtern (bitvec 16) -- UInt16.toBitVec
   | lean_uint16_of_nat_mk : BitVec 16 → LeanInitPureExtern uint16 -- UInt16.ofBitVec
   | lean_uint16_dec_eq : UInt16 → UInt16 → LeanInitPureExtern LeanPrimTy.bool -- UInt16.decEq
   | lean_string_dec_eq : String → String → LeanInitPureExtern LeanPrimTy.bool -- String.decEq
   | lean_nat_pred : Nat → LeanInitPureExtern nat -- Nat.pred
-  | lean_usize_of_nat__USize_ofNatLT : (n : Nat) → (h : n < LeanScript.USize_size) → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNatLT
+  -- | lean_usize_of_nat__USize_ofNatLT : (n : Nat) → (h : n < LeanScript.USize_size) → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNatLT
   | lean_string_mk__String_ofList : List Char → LeanInitPureExtern string -- String.ofList
   | lean_string_hash : String → LeanInitPureExtern uint64 -- String.hash
   | lean_uint64_to_nat__UInt64_toBitVec : UInt64 → LeanInitPureExtern (bitvec 64) -- UInt64.toBitVec
@@ -95,32 +105,32 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_uint16_of_nat__UInt16_ofNatLT : (n : Nat) → (h : n < UInt16.size) → LeanInitPureExtern uint16 -- UInt16.ofNatLT
   | lean_name_eq : Lean.Name → Lean.Name → LeanInitPureExtern LeanPrimTy.bool -- Lean.Name.beq
   | lean_uint8_of_nat_mk : BitVec 8 → LeanInitPureExtern uint8 -- UInt8.ofBitVec
-  | lean_mk_empty_byte_array : Nat → LeanInitPureExtern byteArray -- ByteArray.emptyWithCapacity
+  -- | lean_mk_empty_byte_array : Nat → LeanInitPureExtern byteArray -- ByteArray.emptyWithCapacity -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_uint8_dec_eq : UInt8 → UInt8 → LeanInitPureExtern LeanPrimTy.bool -- UInt8.decEq
   | lean_nat_pow : Nat → Nat → LeanInitPureExtern nat -- Nat.pow
-  | lean_usize_dec_eq : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decEq
-  | lean_usize_of_nat_mk : BitVec 64 → LeanInitPureExtern LeanPrimTy.usize -- USize.ofBitVec
+  -- | lean_usize_dec_eq : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decEq
+  -- | lean_usize_of_nat_mk : BitVec 64 → LeanInitPureExtern LeanPrimTy.usize -- USize.ofBitVec
   | lean_array_fget : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → LeanInitPureExtern αt -- Array.getInternal
   | lean_nat_mul : Nat → Nat → LeanInitPureExtern nat -- Nat.mul
-  | lean_usize_to_nat__USize_toBitVec : denote LeanPrimTy.usize → LeanInitPureExtern (bitvec 64) -- USize.toBitVec
+  -- | lean_usize_to_nat__USize_toBitVec : denote LeanPrimTy.usize → LeanInitPureExtern (bitvec 64) -- USize.toBitVec
   | lean_string_utf8_byte_size : String → LeanInitPureExtern nat -- String.utf8ByteSize
-  | lean_byte_array_push : ByteArray → UInt8 → LeanInitPureExtern byteArray -- ByteArray.push
+  -- | lean_byte_array_push : ByteArray → UInt8 → LeanInitPureExtern byteArray -- ByteArray.push -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_array_mk : (αt : MyTy) → List (denote αt) → LeanInitPureExtern (array αt) -- Array.mk
   | lean_uint64_mix_hash : UInt64 → UInt64 → LeanInitPureExtern uint64 -- mixHash
   | lean_uint64_of_nat__UInt64_ofNatLT : (n : Nat) → (h : n < UInt64.size) → LeanInitPureExtern uint64 -- UInt64.ofNatLT
   -----------------
   -- Init/Core.lean
   -----------------
-  | lean_task_map : (αt : MyTy) → (βt : MyTy) → (denote αt → denote βt) → denote (task αt) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → LeanInitPureExtern (task βt) -- Task.map
-  | lean_task_spawn : (αt : MyTy) → (denote (lazy αt)) → (prio : Task.Priority := Task.Priority.default) → LeanInitPureExtern (task αt) -- Task.spawn
+  -- | lean_task_map : (αt : MyTy) → (βt : MyTy) → (denote αt → denote βt) → denote (task αt) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → LeanInitPureExtern (task βt) -- Task.map
+  -- | lean_task_spawn : (αt : MyTy) → (denote (lazy αt)) → (prio : Task.Priority := Task.Priority.default) → LeanInitPureExtern (task αt) -- Task.spawn
   | lean_strict_or : Bool → Bool → LeanInitPureExtern LeanPrimTy.bool -- strictOr
   | lean_thunk_pure : (αt : MyTy) → denote αt → LeanInitPureExtern (thunk αt) -- Thunk.pure
   | lean_mk_thunk : (αt : MyTy) → (denote (lazy αt)) → LeanInitPureExtern (thunk αt) -- Thunk.mk
-  | lean_task_get_own : (αt : MyTy) → denote (task αt) → LeanInitPureExtern αt -- Task.get
-  | lean_task_pure : (αt : MyTy) → denote αt → LeanInitPureExtern (task αt) -- Task.pure
+  -- | lean_task_get_own : (αt : MyTy) → denote (task αt) → LeanInitPureExtern αt -- Task.get
+  -- | lean_task_pure : (αt : MyTy) → denote αt → LeanInitPureExtern (task αt) -- Task.pure
   | lean_thunk_get_own : (αt : MyTy) → Thunk (denote αt) → LeanInitPureExtern αt -- Thunk.get
   | lean_strict_and : Bool → Bool → LeanInitPureExtern LeanPrimTy.bool -- strictAnd
-  | lean_task_bind : (αt : MyTy) → (βt : MyTy) → denote (task αt) → (denote αt → denote (task βt)) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → LeanInitPureExtern (task βt) -- Task.bind
+  -- | lean_task_bind : (αt : MyTy) → (βt : MyTy) → denote (task αt) → (denote αt → denote (task βt)) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → LeanInitPureExtern (task βt) -- Task.bind
   ---------------------------
   -- Init/Data/Int/Basic.lean
   ---------------------------
@@ -152,27 +162,27 @@ inductive LeanInitPureExtern : MyTy → Type where
   -------------------------------
   | lean_uint64_to_nat__UInt64_toNat : UInt64 → LeanInitPureExtern nat -- UInt64.toNat
   | lean_uint32_to_uint8 : UInt32 → LeanInitPureExtern uint8 -- UInt32.toUInt8
-  | lean_usize_to_nat__USize_toNat : denote LeanPrimTy.usize → LeanInitPureExtern nat -- USize.toNat
+  -- | lean_usize_to_nat__USize_toNat : denote LeanPrimTy.usize → LeanInitPureExtern nat -- USize.toNat
   | lean_uint64_to_uint32 : UInt64 → LeanInitPureExtern uint32 -- UInt64.toUInt32
   | lean_uint32_to_uint16 : UInt32 → LeanInitPureExtern uint16 -- UInt32.toUInt16
   | lean_uint16_to_uint32 : UInt16 → LeanInitPureExtern uint32 -- UInt16.toUInt32
   | lean_uint32_to_uint64 : UInt32 → LeanInitPureExtern uint64 -- UInt32.toUInt64
   | lean_uint32_of_nat__UInt32_ofNat : Nat → LeanInitPureExtern uint32 -- UInt32.ofNat
-  | lean_usize_add : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.add
+  -- | lean_usize_add : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.add
   | lean_uint32_sub : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.sub
   | lean_uint16_to_nat__UInt16_toNat : UInt16 → LeanInitPureExtern nat -- UInt16.toNat
   | lean_uint16_to_uint8 : UInt16 → LeanInitPureExtern uint8 -- UInt16.toUInt8
-  | lean_usize_sub : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.sub
+  -- | lean_usize_sub : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.sub
   | lean_uint32_add : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.add
-  | lean_usize_of_nat__USize_ofNat : Nat → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNat
-  | lean_usize_dec_le : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decLe
+  -- | lean_usize_of_nat__USize_ofNat : Nat → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNat
+  -- | lean_usize_dec_le : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decLe
   | lean_uint8_to_uint64 : UInt8 → LeanInitPureExtern uint64 -- UInt8.toUInt64
   | lean_uint8_to_nat__UInt8_toNat : UInt8 → LeanInitPureExtern nat -- UInt8.toNat
   | lean_uint64_of_nat__UInt64_ofNat : Nat → LeanInitPureExtern uint64 -- UInt64.ofNat
   | lean_uint8_to_uint32 : UInt8 → LeanInitPureExtern uint32 -- UInt8.toUInt32
   | lean_uint16_of_nat__UInt16_ofNat : Nat → LeanInitPureExtern uint16 -- UInt16.ofNat
   | lean_uint16_to_uint64 : UInt16 → LeanInitPureExtern uint64 -- UInt16.toUInt64
-  | lean_usize_dec_lt : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decLt
+  -- | lean_usize_dec_lt : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.bool -- USize.decLt
   | lean_uint64_to_uint8 : UInt64 → LeanInitPureExtern uint8 -- UInt64.toUInt8
   | lean_uint64_to_uint16 : UInt64 → LeanInitPureExtern uint16 -- UInt64.toUInt16
   | lean_uint8_to_uint16 : UInt8 → LeanInitPureExtern uint16 -- UInt8.toUInt16
@@ -219,16 +229,16 @@ inductive LeanInitPureExtern : MyTy → Type where
   ----------------------
   -- Init/Data/Repr.lean
   ----------------------
-  | lean_string_of_usize : denote LeanPrimTy.usize → LeanInitPureExtern string -- USize.repr
+  -- | lean_string_of_usize : denote LeanPrimTy.usize → LeanInitPureExtern string -- USize.repr
   -----------------
   -- Init/Util.lean
   -----------------
-  | lean_dbg_sleep : (αt : MyTy) → UInt32 → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgSleep
-  | lean_ptr_addr : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.usize -- ptrAddrUnsafe
-  | lean_dbg_trace : (αt : MyTy) → String → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgTrace
+  -- | lean_dbg_sleep : (αt : MyTy) → UInt32 → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgSleep
+  -- | lean_ptr_addr : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.usize -- ptrAddrUnsafe
+  -- | lean_dbg_trace : (αt : MyTy) → String → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgTrace
   | lean_dbg_trace_if_shared : (αt : MyTy) → String → denote αt → LeanInitPureExtern αt -- dbgTraceIfShared
-  | lean_dbg_stack_trace : (αt : MyTy) → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgStackTrace
-  | lean_is_exclusive_obj : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.bool -- isExclusiveUnsafe
+  -- | lean_dbg_stack_trace : (αt : MyTy) → (denote (lazy αt)) → LeanInitPureExtern αt -- dbgStackTrace
+  -- | lean_is_exclusive_obj : (αt : MyTy) → denote αt → LeanInitPureExtern LeanPrimTy.bool -- isExclusiveUnsafe
   ---------------------------
   -- Init/Data/Array/Set.lean
   ---------------------------
@@ -241,10 +251,10 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_array_uget : (αt : MyTy) → (xs : Array (denote αt)) → (i : USize) → (h : i.toNat < xs.size) → LeanInitPureExtern αt -- Array.uget
   | lean_mk_array : (αt : MyTy) → Nat → denote αt → LeanInitPureExtern (array αt) -- Array.replicate
   | lean_array_swap : (αt : MyTy) → Array (denote αt) → Nat → Nat → LeanInitPureExtern (array αt) -- Array.swapIfInBounds
-  | lean_array_uget_borrowed : (αt : MyTy) → (xs : Array (denote αt)) → (i : USize) → (h : i.toNat < xs.size) → LeanInitPureExtern αt -- Array.ugetBorrowed
+  -- | lean_array_uget_borrowed : (αt : MyTy) → (xs : Array (denote αt)) → (i : USize) → (h : i.toNat < xs.size) → LeanInitPureExtern αt -- Array.ugetBorrowed
   | lean_array_pop : (αt : MyTy) → Array (denote αt) → LeanInitPureExtern (array αt) -- Array.pop
   | lean_array_uset : (αt : MyTy) → (xs : Array (denote αt)) → (i : USize) → denote αt → (h : i.toNat < xs.size) → LeanInitPureExtern (array αt) -- Array.uset
-  | lean_array_size : (αt : MyTy) → Array (denote αt) → LeanInitPureExtern LeanPrimTy.usize -- Array.usize
+  -- | lean_array_size : (αt : MyTy) → Array (denote αt) → LeanInitPureExtern LeanPrimTy.usize -- Array.usize
   ----------------------
   -- Init/Meta/Defs.lean
   ----------------------
@@ -279,13 +289,13 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_uint64_shift_left : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.shiftLeft
   | lean_uint32_mod : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.mod
   | lean_uint16_neg : UInt16 → LeanInitPureExtern uint16 -- UInt16.neg
-  | lean_usize_land : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.land
-  | lean_usize_mul : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.mul
-  | lean_uint16_to_usize : UInt16 → LeanInitPureExtern LeanPrimTy.usize -- UInt16.toUSize
+  -- | lean_usize_land : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.land
+  -- | lean_usize_mul : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.mul
+  -- | lean_uint16_to_usize : UInt16 → LeanInitPureExtern LeanPrimTy.usize -- UInt16.toUSize
   | lean_uint64_shift_right : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.shiftRight
-  | lean_usize_shift_left : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.shiftLeft
+  -- | lean_usize_shift_left : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.shiftLeft
   | lean_uint16_add : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.add
-  | lean_usize_xor : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.xor
+  -- | lean_usize_xor : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.xor
   | lean_uint64_complement : UInt64 → LeanInitPureExtern uint64 -- UInt64.complement
   | lean_bool_to_uint32 : Bool → LeanInitPureExtern uint32 -- Bool.toUInt32
   | lean_uint16_lor : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.lor
@@ -301,19 +311,19 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_uint8_lor : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.lor
   | lean_uint32_shift_right : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.shiftRight
   | lean_uint16_xor : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.xor
-  | lean_usize_lor : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.lor
+  -- | lean_usize_lor : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.lor
   | lean_uint8_div : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.div
   | lean_uint16_shift_left : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.shiftLeft
   | lean_uint32_neg : UInt32 → LeanInitPureExtern uint32 -- UInt32.neg
   | lean_uint16_mod : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.mod
-  | lean_usize_neg : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.neg
+  -- | lean_usize_neg : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.neg
   | lean_uint64_div : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.div
   | lean_uint16_dec_lt : UInt16 → UInt16 → LeanInitPureExtern LeanPrimTy.bool -- UInt16.decLt
   | lean_uint8_shift_right : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.shiftRight
-  | lean_usize_to_uint64 : denote LeanPrimTy.usize → LeanInitPureExtern uint64 -- USize.toUInt64
+  -- | lean_usize_to_uint64 : denote LeanPrimTy.usize → LeanInitPureExtern uint64 -- USize.toUInt64
   | lean_uint32_lor : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.lor
   | lean_uint64_mul : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.mul
-  | lean_usize_shift_right : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.shiftRight
+  -- | lean_usize_shift_right : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.shiftRight
   | lean_uint64_land : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.land
   | lean_uint8_shift_left : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.shiftLeft
   | lean_uint16_div : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.div
@@ -321,49 +331,49 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_uint8_land : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.land
   | lean_uint64_dec_le : UInt64 → UInt64 → LeanInitPureExtern LeanPrimTy.bool -- UInt64.decLe
   | lean_uint8_mul : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.mul
-  | lean_usize_of_nat__USize_ofNat32 : (n : Nat) → (h : n < 4294967296) → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNat32
+  -- | lean_usize_of_nat__USize_ofNat32 : (n : Nat) → (h : n < 4294967296) → LeanInitPureExtern LeanPrimTy.usize -- USize.ofNat32
   | lean_uint64_sub : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.sub
   | lean_uint64_neg : UInt64 → LeanInitPureExtern uint64 -- UInt64.neg
   | lean_uint8_add : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.add
-  | lean_usize_div : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.div
-  | lean_uint32_to_usize : UInt32 → LeanInitPureExtern LeanPrimTy.usize -- UInt32.toUSize
+  -- | lean_usize_div : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.div
+  -- | lean_uint32_to_usize : UInt32 → LeanInitPureExtern LeanPrimTy.usize -- UInt32.toUSize
   | lean_uint8_complement : UInt8 → LeanInitPureExtern uint8 -- UInt8.complement
-  | lean_usize_to_uint16 : denote LeanPrimTy.usize → LeanInitPureExtern uint16 -- USize.toUInt16
+  -- | lean_usize_to_uint16 : denote LeanPrimTy.usize → LeanInitPureExtern uint16 -- USize.toUInt16
   | lean_uint32_xor : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.xor
   | lean_uint16_dec_le : UInt16 → UInt16 → LeanInitPureExtern LeanPrimTy.bool -- UInt16.decLe
-  | lean_usize_to_uint8 : denote LeanPrimTy.usize → LeanInitPureExtern uint8 -- USize.toUInt8
+  -- | lean_usize_to_uint8 : denote LeanPrimTy.usize → LeanInitPureExtern uint8 -- USize.toUInt8
   | lean_uint32_shift_left : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.shiftLeft
   | lean_uint16_sub : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.sub
   | lean_uint32_mul : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.mul
   | lean_uint32_land : UInt32 → UInt32 → LeanInitPureExtern uint32 -- UInt32.land
-  | lean_usize_mod : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.mod
+  -- | lean_usize_mod : denote LeanPrimTy.usize → denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.mod
   | lean_uint8_mod : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.mod
   | lean_uint64_dec_lt : UInt64 → UInt64 → LeanInitPureExtern LeanPrimTy.bool -- UInt64.decLt
   | lean_bool_to_uint8 : Bool → LeanInitPureExtern uint8 -- Bool.toUInt8
   | lean_uint32_complement : UInt32 → LeanInitPureExtern uint32 -- UInt32.complement
-  | lean_uint8_to_usize : UInt8 → LeanInitPureExtern LeanPrimTy.usize -- UInt8.toUSize
+  -- | lean_uint8_to_usize : UInt8 → LeanInitPureExtern LeanPrimTy.usize -- UInt8.toUSize
   | lean_bool_to_uint16 : Bool → LeanInitPureExtern uint16 -- Bool.toUInt16
   | lean_uint8_xor : UInt8 → UInt8 → LeanInitPureExtern uint8 -- UInt8.xor
-  | lean_bool_to_usize : Bool → LeanInitPureExtern LeanPrimTy.usize -- Bool.toUSize
-  | lean_uint64_to_usize : UInt64 → LeanInitPureExtern LeanPrimTy.usize -- UInt64.toUSize
+  -- | lean_bool_to_usize : Bool → LeanInitPureExtern LeanPrimTy.usize -- Bool.toUSize
+  -- | lean_uint64_to_usize : UInt64 → LeanInitPureExtern LeanPrimTy.usize -- UInt64.toUSize
   | lean_uint16_shift_right : UInt16 → UInt16 → LeanInitPureExtern uint16 -- UInt16.shiftRight
-  | lean_usize_to_uint32 : denote LeanPrimTy.usize → LeanInitPureExtern uint32 -- USize.toUInt32
-  | lean_usize_complement : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.complement
+  -- | lean_usize_to_uint32 : denote LeanPrimTy.usize → LeanInitPureExtern uint32 -- USize.toUInt32
+  -- | lean_usize_complement : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.complement
   | lean_uint64_xor : UInt64 → UInt64 → LeanInitPureExtern uint64 -- UInt64.xor
   ---------------------------------
   -- Init/Data/ByteArray/Basic.lean
   ---------------------------------
-  | lean_byte_array_copy_slice : ByteArray → Nat → ByteArray → Nat → Nat → (exact : Bool := true) → LeanInitPureExtern byteArray -- ByteArray.copySlice
-  | lean_byte_array_hash : ByteArray → LeanInitPureExtern uint64 -- ByteArray.hash
-  | lean_sarray_size__ByteArray_usize : ByteArray → LeanInitPureExtern LeanPrimTy.usize -- ByteArray.usize
-  | lean_sarray_dec_eq__ByteArray_beq : ByteArray → ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.beq
-  | lean_sarray_dec_eq__ByteArray_decEq : ByteArray → ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.decEq
-  | lean_byte_array_set : ByteArray → Nat → UInt8 → LeanInitPureExtern byteArray -- ByteArray.set!
-  | lean_byte_array_fget : (a : ByteArray) → (i : Nat) → (h : i < a.size := by get_elem_tactic) → LeanInitPureExtern uint8 -- ByteArray.get
-  | lean_byte_array_uset : (a : ByteArray) → (i : USize) → UInt8 → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern byteArray -- ByteArray.uset
-  | lean_byte_array_fset : (a : ByteArray) → (i : Nat) → UInt8 → (h : i < a.size := by get_elem_tactic) → LeanInitPureExtern byteArray -- ByteArray.set
-  | lean_byte_array_uget : (a : ByteArray) → (i : USize) → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern uint8 -- ByteArray.uget
-  | lean_byte_array_get : ByteArray → Nat → LeanInitPureExtern uint8 -- ByteArray.get!
+  -- | lean_byte_array_copy_slice : ByteArray → Nat → ByteArray → Nat → Nat → (exact : Bool := true) → LeanInitPureExtern byteArray -- ByteArray.copySlice -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_hash : ByteArray → LeanInitPureExtern uint64 -- ByteArray.hash -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_sarray_size__ByteArray_usize : ByteArray → LeanInitPureExtern LeanPrimTy.usize -- ByteArray.usize
+  -- | lean_sarray_dec_eq__ByteArray_beq : ByteArray → ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.beq -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_sarray_dec_eq__ByteArray_decEq : ByteArray → ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.decEq -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_set : ByteArray → Nat → UInt8 → LeanInitPureExtern byteArray -- ByteArray.set! -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_fget : (a : ByteArray) → (i : Nat) → (h : i < a.size := by get_elem_tactic) → LeanInitPureExtern uint8 -- ByteArray.get -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_uset : (a : ByteArray) → (i : USize) → UInt8 → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern byteArray -- ByteArray.uset -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_fset : (a : ByteArray) → (i : Nat) → UInt8 → (h : i < a.size := by get_elem_tactic) → LeanInitPureExtern byteArray -- ByteArray.set -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_uget : (a : ByteArray) → (i : USize) → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern uint8 -- ByteArray.uget -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_byte_array_get : ByteArray → Nat → LeanInitPureExtern uint8 -- ByteArray.get! -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   -------------------------------
   -- Init/Data/String/PosRaw.lean
   -------------------------------
@@ -372,17 +382,17 @@ inductive LeanInitPureExtern : MyTy → Type where
   -----------------------------
   -- Init/Data/String/Defs.lean
   -----------------------------
-  | lean_string_to_utf8__String_toUTF8 : String → LeanInitPureExtern byteArray -- String.toUTF8
+  -- | lean_string_to_utf8__String_toUTF8 : String → LeanInitPureExtern byteArray -- String.toUTF8 -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_string_append__String_append : String → String → LeanInitPureExtern string -- String.append
   ----------------------------
   -- Init/System/Platform.lean
   ----------------------------
-  | lean_internal_get_hardware_concurrency : LeanInitPureExtern (lazy uint32) -- System.Platform.Internal.getHardwareConcurrency
-  | lean_system_platform_linux : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsLinux
+  -- | lean_internal_get_hardware_concurrency : LeanInitPureExtern (lazy uint32) -- System.Platform.Internal.getHardwareConcurrency
+  -- | lean_system_platform_linux : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsLinux
   | lean_system_platform_emscripten : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsEmscripten
   | lean_system_platform_target : LeanInitPureExtern (lazy string) -- System.Platform.getTarget
-  | lean_system_platform_windows : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsWindows
-  | lean_system_platform_osx : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsOSX
+  -- | lean_system_platform_windows : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsWindows
+  -- | lean_system_platform_osx : LeanInitPureExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsOSX
   ------------------------------
   -- Init/Data/String/Basic.lean
   ------------------------------
@@ -404,12 +414,12 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_string_utf8_at_end__String_Pos_Raw_atEnd : String → String.Pos.Raw → LeanInitPureExtern LeanPrimTy.bool -- String.Pos.Raw.atEnd
   | lean_string_utf8_get_bang__String_Pos_Raw_get! : String → String.Pos.Raw → LeanInitPureExtern char -- String.Pos.Raw.get!
   | lean_string_utf8_get_bang__String_get! : String → String.Pos.Raw → LeanInitPureExtern char -- String.get!
-  | lean_string_utf8_get_fast__String_decodeChar : (s : String) → (byteIdx : Nat) → (h : (s.toByteArray.utf8DecodeChar? byteIdx).isSome = Bool.true) → LeanInitPureExtern char -- String.decodeChar
+  -- | lean_string_utf8_get_fast__String_decodeChar : (s : String) → (byteIdx : Nat) → (h : (s.toByteArray.utf8DecodeChar? byteIdx).isSome = Bool.true) → LeanInitPureExtern char -- String.decodeChar -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_string_utf8_get_fast__String_get' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → LeanInitPureExtern char -- String.get'
   | lean_string_utf8_get_fast__String_Pos_Raw_get' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → LeanInitPureExtern char -- String.Pos.Raw.get'
   | lean_string_is_valid_pos : String → String.Pos.Raw → LeanInitPureExtern LeanPrimTy.bool -- String.Pos.Raw.isValid
   | lean_string_dec_lt : String → String → LeanInitPureExtern LeanPrimTy.bool -- String.decidableLT
-  | lean_string_validate_utf8 : ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.validateUTF8
+  -- | lean_string_validate_utf8 : ByteArray → LeanInitPureExtern LeanPrimTy.bool -- ByteArray.validateUTF8 -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_string_utf8_extract__String_Pos_Raw_extract : String → String.Pos.Raw → String.Pos.Raw → LeanInitPureExtern string -- String.Pos.Raw.extract
   -------------------------------
   -- Init/Data/String/Length.lean
@@ -418,86 +428,86 @@ inductive LeanInitPureExtern : MyTy → Type where
   ----------------------------
   -- Init/Data/SInt/Basic.lean
   ----------------------------
-  | lean_isize_complement : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.complement
+  -- | lean_isize_complement : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.complement
   | lean_int8_add : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.add
   | lean_int16_of_nat : Nat → LeanInitPureExtern int16 -- Int16.ofNat
   | lean_int16_dec_le : Int16 → Int16 → LeanInitPureExtern LeanPrimTy.bool -- Int16.decLe
   | lean_int32_of_int : Int → LeanInitPureExtern int32 -- Int32.ofInt
-  | lean_int64_to_isize : Int64 → LeanInitPureExtern LeanPrimTy.isize -- Int64.toISize
+  -- | lean_int64_to_isize : Int64 → LeanInitPureExtern LeanPrimTy.isize -- Int64.toISize
   | lean_int32_land : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.land
   | lean_int8_div : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.div
   | lean_int32_mul : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.mul
   | lean_int64_sub : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.sub
   | lean_int16_shift_right : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.shiftRight
-  | lean_isize_to_int8 : denote LeanPrimTy.isize → LeanInitPureExtern int8 -- ISize.toInt8
+  -- | lean_isize_to_int8 : denote LeanPrimTy.isize → LeanInitPureExtern int8 -- ISize.toInt8
   | lean_int64_xor : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.xor
   | lean_int32_dec_le : Int32 → Int32 → LeanInitPureExtern LeanPrimTy.bool -- Int32.decLe
   | lean_int32_of_nat : Nat → LeanInitPureExtern int32 -- Int32.ofNat
-  | lean_isize_xor : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.xor
+  -- | lean_isize_xor : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.xor
   | lean_int64_to_int8 : Int64 → LeanInitPureExtern int8 -- Int64.toInt8
-  | lean_isize_shift_left : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.shiftLeft
+  -- | lean_isize_shift_left : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.shiftLeft
   | lean_int64_mul : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.mul
   | lean_int32_to_int64 : Int32 → LeanInitPureExtern int64 -- Int32.toInt64
   | lean_int8_to_int16 : Int8 → LeanInitPureExtern int16 -- Int8.toInt16
   | lean_int32_sub : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.sub
   | lean_int64_of_int : Int → LeanInitPureExtern int64 -- Int64.ofInt
-  | lean_int32_to_isize : Int32 → LeanInitPureExtern LeanPrimTy.isize -- Int32.toISize
+  -- | lean_int32_to_isize : Int32 → LeanInitPureExtern LeanPrimTy.isize -- Int32.toISize
   | lean_int64_land : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.land
   | lean_int8_shift_right : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.shiftRight
   | lean_int64_lor : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.lor
   | lean_int16_div : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.div
-  | lean_isize_mod : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.mod
+  -- | lean_isize_mod : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.mod
   | lean_int32_neg : Int32 → LeanInitPureExtern int32 -- Int32.neg
   | lean_int8_mod : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.mod
   | lean_int32_abs : Int32 → LeanInitPureExtern int32 -- Int32.abs
   | lean_bool_to_int8 : Bool → LeanInitPureExtern int8 -- Bool.toInt8
-  | lean_isize_shift_right : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.shiftRight
-  | lean_isize_to_int16 : denote LeanPrimTy.isize → LeanInitPureExtern int16 -- ISize.toInt16
+  -- | lean_isize_shift_right : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.shiftRight
+  -- | lean_isize_to_int16 : denote LeanPrimTy.isize → LeanInitPureExtern int16 -- ISize.toInt16
   | lean_int8_shift_left : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.shiftLeft
   | lean_int16_dec_lt : Int16 → Int16 → LeanInitPureExtern LeanPrimTy.bool -- Int16.decLt
   | lean_int8_xor : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.xor
   | lean_int32_dec_eq : Int32 → Int32 → LeanInitPureExtern LeanPrimTy.bool -- Int32.decEq
   | lean_int16_to_int : Int16 → LeanInitPureExtern int -- Int16.toInt
   | lean_int16_mod : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.mod
-  | lean_isize_div : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.div
+  -- | lean_isize_div : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.div
   | lean_int16_dec_eq : Int16 → Int16 → LeanInitPureExtern LeanPrimTy.bool -- Int16.decEq
   | lean_int8_complement : Int8 → LeanInitPureExtern int8 -- Int8.complement
-  | lean_isize_add : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.add
+  -- | lean_isize_add : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.add
   | lean_bool_to_int16 : Bool → LeanInitPureExtern int16 -- Bool.toInt16
   | lean_int32_dec_lt : Int32 → Int32 → LeanInitPureExtern LeanPrimTy.bool -- Int32.decLt
-  | lean_isize_lor : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.lor
+  -- | lean_isize_lor : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.lor
   | lean_int64_mod : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.mod
-  | lean_isize_of_int : Int → LeanInitPureExtern LeanPrimTy.isize -- ISize.ofInt
+  -- | lean_isize_of_int : Int → LeanInitPureExtern LeanPrimTy.isize -- ISize.ofInt
   | lean_int64_shift_left : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.shiftLeft
   | lean_int16_abs : Int16 → LeanInitPureExtern int16 -- Int16.abs
-  | lean_isize_land : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.land
+  -- | lean_isize_land : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.land
   | lean_int16_to_int32 : Int16 → LeanInitPureExtern int32 -- Int16.toInt32
-  | lean_isize_mul : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.mul
-  | lean_isize_to_int : denote LeanPrimTy.isize → LeanInitPureExtern int -- ISize.toInt
+  -- | lean_isize_mul : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.mul
+  -- | lean_isize_to_int : denote LeanPrimTy.isize → LeanInitPureExtern int -- ISize.toInt
   | lean_int64_dec_lt : Int64 → Int64 → LeanInitPureExtern LeanPrimTy.bool -- Int64.decLt
-  | lean_isize_dec_le : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decLe
+  -- | lean_isize_dec_le : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decLe
   | lean_int8_dec_eq : Int8 → Int8 → LeanInitPureExtern LeanPrimTy.bool -- Int8.decEq
   | lean_int32_xor : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.xor
-  | lean_isize_of_nat : Nat → LeanInitPureExtern LeanPrimTy.isize -- ISize.ofNat
+  -- | lean_isize_of_nat : Nat → LeanInitPureExtern LeanPrimTy.isize -- ISize.ofNat
   | lean_int16_complement : Int16 → LeanInitPureExtern int16 -- Int16.complement
   | lean_int32_shift_left : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.shiftLeft
-  | lean_isize_to_int64 : denote LeanPrimTy.isize → LeanInitPureExtern int64 -- ISize.toInt64
-  | lean_isize_sub : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.sub
+  -- | lean_isize_to_int64 : denote LeanPrimTy.isize → LeanInitPureExtern int64 -- ISize.toInt64
+  -- | lean_isize_sub : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.sub
   | lean_int64_complement : Int64 → LeanInitPureExtern int64 -- Int64.complement
-  | lean_isize_abs : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.abs
+  -- | lean_isize_abs : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.abs
   | lean_int16_land : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.land
   | lean_int16_of_int : Int → LeanInitPureExtern int16 -- Int16.ofInt
   | lean_int32_shift_right : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.shiftRight
   | lean_int8_neg : Int8 → LeanInitPureExtern int8 -- Int8.neg
   | lean_int16_mul : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.mul
-  | lean_isize_to_int32 : denote LeanPrimTy.isize → LeanInitPureExtern int32 -- ISize.toInt32
+  -- | lean_isize_to_int32 : denote LeanPrimTy.isize → LeanInitPureExtern int32 -- ISize.toInt32
   | lean_int64_to_int32 : Int64 → LeanInitPureExtern int32 -- Int64.toInt32
   | lean_int16_shift_left : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.shiftLeft
   | lean_int64_abs : Int64 → LeanInitPureExtern int64 -- Int64.abs
   | lean_int32_complement : Int32 → LeanInitPureExtern int32 -- Int32.complement
   | lean_int16_xor : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.xor
   | lean_bool_to_int64 : Bool → LeanInitPureExtern int64 -- Bool.toInt64
-  | lean_bool_to_isize : Bool → LeanInitPureExtern LeanPrimTy.isize -- Bool.toISize
+  -- | lean_bool_to_isize : Bool → LeanInitPureExtern LeanPrimTy.isize -- Bool.toISize
   | lean_int8_dec_lt : Int8 → Int8 → LeanInitPureExtern LeanPrimTy.bool -- Int8.decLt
   | lean_int64_dec_eq : Int64 → Int64 → LeanInitPureExtern LeanPrimTy.bool -- Int64.decEq
   | lean_int64_dec_le : Int64 → Int64 → LeanInitPureExtern LeanPrimTy.bool -- Int64.decLe
@@ -506,13 +516,13 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_int32_to_int8 : Int32 → LeanInitPureExtern int8 -- Int32.toInt8
   | lean_int64_to_int_sint : Int64 → LeanInitPureExtern int -- Int64.toInt
   | lean_int32_add : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.add
-  | lean_isize_dec_lt : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decLt
+  -- | lean_isize_dec_lt : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decLt
   | lean_int64_neg : Int64 → LeanInitPureExtern int64 -- Int64.neg
   | lean_int32_lor : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.lor
   | lean_int8_abs : Int8 → LeanInitPureExtern int8 -- Int8.abs
   | lean_int8_to_int32 : Int8 → LeanInitPureExtern int32 -- Int8.toInt32
   | lean_int32_mod : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.mod
-  | lean_isize_neg : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.neg
+  -- | lean_isize_neg : denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.isize -- ISize.neg
   | lean_int32_to_int : Int32 → LeanInitPureExtern int -- Int32.toInt
   | lean_int64_add : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.add
   | lean_int8_sub : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.sub
@@ -520,8 +530,8 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_int8_to_int64 : Int8 → LeanInitPureExtern int64 -- Int8.toInt64
   | lean_int16_lor : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.lor
   | lean_int64_div : Int64 → Int64 → LeanInitPureExtern int64 -- Int64.div
-  | lean_int8_to_isize : Int8 → LeanInitPureExtern LeanPrimTy.isize -- Int8.toISize
-  | lean_isize_dec_eq : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decEq
+  -- | lean_int8_to_isize : Int8 → LeanInitPureExtern LeanPrimTy.isize -- Int8.toISize
+  -- | lean_isize_dec_eq : denote LeanPrimTy.isize → denote LeanPrimTy.isize → LeanInitPureExtern LeanPrimTy.bool -- ISize.decEq
   | lean_int16_add : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.add
   | lean_int8_of_nat : Nat → LeanInitPureExtern int8 -- Int8.ofNat
   | lean_int8_dec_le : Int8 → Int8 → LeanInitPureExtern LeanPrimTy.bool -- Int8.decLe
@@ -533,7 +543,7 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_int8_land : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.land
   | lean_int32_div : Int32 → Int32 → LeanInitPureExtern int32 -- Int32.div
   | lean_int8_of_int : Int → LeanInitPureExtern int8 -- Int8.ofInt
-  | lean_int16_to_isize : Int16 → LeanInitPureExtern LeanPrimTy.isize -- Int16.toISize
+  -- | lean_int16_to_isize : Int16 → LeanInitPureExtern LeanPrimTy.isize -- Int16.toISize
   | lean_int16_sub : Int16 → Int16 → LeanInitPureExtern int16 -- Int16.sub
   | lean_int16_to_int64 : Int16 → LeanInitPureExtern int64 -- Int16.toInt64
   | lean_int8_lor : Int8 → Int8 → LeanInitPureExtern int8 -- Int8.lor
@@ -589,11 +599,11 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_float_decLt__Float_lt : Float → Float → LeanInitPureExtern LeanPrimTy.bool -- Float.lt
   | lean_float_to_uint8 : Float → LeanInitPureExtern uint8 -- Float.toUInt8
   | sin : Float → LeanInitPureExtern float -- Float.sin
-  | lean_usize_to_float : denote LeanPrimTy.usize → LeanInitPureExtern float -- USize.toFloat
+  -- | lean_usize_to_float : denote LeanPrimTy.usize → LeanInitPureExtern float -- USize.toFloat
   | cosh : Float → LeanInitPureExtern float -- Float.cosh
   | exp : Float → LeanInitPureExtern float -- Float.exp
   | ceil : Float → LeanInitPureExtern float -- Float.ceil
-  | lean_float_to_usize : Float → LeanInitPureExtern LeanPrimTy.usize -- Float.toUSize
+  -- | lean_float_to_usize : Float → LeanInitPureExtern LeanPrimTy.usize -- Float.toUSize
   | lean_float_isfinite : Float → LeanInitPureExtern LeanPrimTy.bool -- Float.isFinite
   | round : Float → LeanInitPureExtern float -- Float.round
   | cos : Float → LeanInitPureExtern float -- Float.cos
@@ -614,22 +624,22 @@ inductive LeanInitPureExtern : MyTy → Type where
   ----------------------------------
   -- Init/Data/FloatArray/Basic.lean
   ----------------------------------
-  | lean_mk_empty_float_array : Nat → LeanInitPureExtern floatArray -- FloatArray.emptyWithCapacity
-  | lean_float_array_get : FloatArray → Nat → LeanInitPureExtern float -- FloatArray.get!
-  | lean_float_array_uget : (a : FloatArray) → (i : USize) → (h : i.toNat < a.size) → LeanInitPureExtern float -- FloatArray.uget
-  | lean_float_array_fset : (ds : FloatArray) → (i : Nat) → Float → (h : i < ds.size := by get_elem_tactic) → LeanInitPureExtern floatArray -- FloatArray.set
-  | lean_float_array_uset : (a : FloatArray) → (i : USize) → Float → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern floatArray -- FloatArray.uset
-  | lean_float_array_fget : (ds : FloatArray) → (i : Nat) → (h : i < ds.size := by get_elem_tactic) → LeanInitPureExtern float -- FloatArray.get
-  | lean_float_array_set : FloatArray → Nat → Float → LeanInitPureExtern floatArray -- FloatArray.set!
-  | lean_float_array_data : FloatArray → LeanInitPureExtern (array float) -- FloatArray.data
-  | lean_sarray_size__FloatArray_usize : FloatArray → LeanInitPureExtern LeanPrimTy.usize -- FloatArray.usize
-  | lean_float_array_mk : Array Float → LeanInitPureExtern floatArray -- FloatArray.mk
-  | lean_float_array_size : FloatArray → LeanInitPureExtern nat -- FloatArray.size
-  | lean_float_array_push : FloatArray → Float → LeanInitPureExtern floatArray -- FloatArray.push
+  -- | lean_mk_empty_float_array : Nat → LeanInitPureExtern floatArray -- FloatArray.emptyWithCapacity -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_get : FloatArray → Nat → LeanInitPureExtern float -- FloatArray.get! -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_uget : (a : FloatArray) → (i : USize) → (h : i.toNat < a.size) → LeanInitPureExtern float -- FloatArray.uget -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_fset : (ds : FloatArray) → (i : Nat) → Float → (h : i < ds.size := by get_elem_tactic) → LeanInitPureExtern floatArray -- FloatArray.set -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_uset : (a : FloatArray) → (i : USize) → Float → (h : i.toNat < a.size := by get_elem_tactic) → LeanInitPureExtern floatArray -- FloatArray.uset -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_fget : (ds : FloatArray) → (i : Nat) → (h : i < ds.size := by get_elem_tactic) → LeanInitPureExtern float -- FloatArray.get -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_set : FloatArray → Nat → Float → LeanInitPureExtern floatArray -- FloatArray.set! -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_data : FloatArray → LeanInitPureExtern (array float) -- FloatArray.data -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_sarray_size__FloatArray_usize : FloatArray → LeanInitPureExtern LeanPrimTy.usize -- FloatArray.usize
+  -- | lean_float_array_mk : Array Float → LeanInitPureExtern floatArray -- FloatArray.mk -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_size : FloatArray → LeanInitPureExtern nat -- FloatArray.size -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
+  -- | lean_float_array_push : FloatArray → Float → LeanInitPureExtern floatArray -- FloatArray.push -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   ---------------------------
   -- Init/Data/UInt/Log2.lean
   ---------------------------
-  | lean_usize_log2 : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.log2
+  -- | lean_usize_log2 : denote LeanPrimTy.usize → LeanInitPureExtern LeanPrimTy.usize -- USize.log2
   | lean_uint16_log2 : UInt16 → LeanInitPureExtern uint16 -- UInt16.log2
   | lean_uint64_log2 : UInt64 → LeanInitPureExtern uint64 -- UInt64.log2
   | lean_uint8_log2 : UInt8 → LeanInitPureExtern uint8 -- UInt8.log2
@@ -641,12 +651,12 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_float_to_int16 : Float → LeanInitPureExtern int16 -- Float.toInt16
   | lean_int16_to_float : Int16 → LeanInitPureExtern float -- Int16.toFloat
   | lean_float_to_int32 : Float → LeanInitPureExtern int32 -- Float.toInt32
-  | lean_isize_to_float : denote LeanPrimTy.isize → LeanInitPureExtern float -- ISize.toFloat
+  -- | lean_isize_to_float : denote LeanPrimTy.isize → LeanInitPureExtern float -- ISize.toFloat
   | lean_int8_to_float : Int8 → LeanInitPureExtern float -- Int8.toFloat
   | lean_float_to_int8 : Float → LeanInitPureExtern int8 -- Float.toInt8
   | lean_int64_to_float : Int64 → LeanInitPureExtern float -- Int64.toFloat
   | lean_float_to_int64 : Float → LeanInitPureExtern int64 -- Float.toInt64
-  | lean_float_to_isize : Float → LeanInitPureExtern LeanPrimTy.isize -- Float.toISize
+  -- | lean_float_to_isize : Float → LeanInitPureExtern LeanPrimTy.isize -- Float.toISize
   -------------------------------
   -- Init/Data/Float/Float32.lean
   -------------------------------
@@ -667,7 +677,7 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_float32_to_uint64 : Float32 → LeanInitPureExtern uint64 -- Float32.toUInt64
   | lean_float32_sub : Float32 → Float32 → LeanInitPureExtern float32 -- Float32.sub
   | lean_float32_to_uint16 : Float32 → LeanInitPureExtern uint16 -- Float32.toUInt16
-  | lean_usize_to_float32 : denote LeanPrimTy.usize → LeanInitPureExtern float32 -- USize.toFloat32
+  -- | lean_usize_to_float32 : denote LeanPrimTy.usize → LeanInitPureExtern float32 -- USize.toFloat32
   | asinf : Float32 → LeanInitPureExtern float32 -- Float32.asin
   | powf : Float32 → Float32 → LeanInitPureExtern float32 -- Float32.pow
   | lean_float32_beq : Float32 → Float32 → LeanInitPureExtern LeanPrimTy.bool -- Float32.beq
@@ -683,7 +693,7 @@ inductive LeanInitPureExtern : MyTy → Type where
   | lean_uint32_to_float32 : UInt32 → LeanInitPureExtern float32 -- UInt32.toFloat32
   | lean_float32_isinf : Float32 → LeanInitPureExtern LeanPrimTy.bool -- Float32.isInf
   | lean_float32_negate : Float32 → LeanInitPureExtern float32 -- Float32.neg
-  | lean_float32_to_usize : Float32 → LeanInitPureExtern LeanPrimTy.usize -- Float32.toUSize
+  -- | lean_float32_to_usize : Float32 → LeanInitPureExtern LeanPrimTy.usize -- Float32.toUSize
   | ceilf : Float32 → LeanInitPureExtern float32 -- Float32.ceil
   | lean_float32_isfinite : Float32 → LeanInitPureExtern LeanPrimTy.bool -- Float32.isFinite
   | lean_float32_add : Float32 → Float32 → LeanInitPureExtern float32 -- Float32.add
@@ -711,11 +721,11 @@ inductive LeanInitPureExtern : MyTy → Type where
   -- Init/Data/SInt/Float32.lean
   ------------------------------
   | lean_float32_to_int64 : Float32 → LeanInitPureExtern int64 -- Float32.toInt64
-  | lean_float32_to_isize : Float32 → LeanInitPureExtern LeanPrimTy.isize -- Float32.toISize
+  -- | lean_float32_to_isize : Float32 → LeanInitPureExtern LeanPrimTy.isize -- Float32.toISize
   | lean_int32_to_float32 : Int32 → LeanInitPureExtern float32 -- Int32.toFloat32
   | lean_float32_to_int8 : Float32 → LeanInitPureExtern int8 -- Float32.toInt8
   | lean_float32_to_int16 : Float32 → LeanInitPureExtern int16 -- Float32.toInt16
-  | lean_isize_to_float32 : denote LeanPrimTy.isize → LeanInitPureExtern float32 -- ISize.toFloat32
+  -- | lean_isize_to_float32 : denote LeanPrimTy.isize → LeanInitPureExtern float32 -- ISize.toFloat32
   | lean_int8_to_float32 : Int8 → LeanInitPureExtern float32 -- Int8.toFloat32
   | lean_float32_to_int32 : Float32 → LeanInitPureExtern int32 -- Float32.toInt32
   | lean_int16_to_float32 : Int16 → LeanInitPureExtern float32 -- Int16.toFloat32
@@ -727,19 +737,19 @@ inductive LeanInitPureExtern : MyTy → Type where
   ----------------------
   -- Init/System/IO.lean
   ----------------------
-  | lean_io_process_child_pid : {cfg : IO.Process.StdioConfig} → denote (io_process_child cfg) → LeanInitPureExtern uint32 -- IO.Process.Child.pid
+  -- | lean_io_process_child_pid : {cfg : IO.Process.StdioConfig} → denote (io_process_child cfg) → LeanInitPureExtern uint32 -- IO.Process.Child.pid
   ---------------------------
   -- Init/System/Promise.lean
   ---------------------------
-  | lean_io_promise_result_opt : (αt : MyTy) → denote (io_promise αt) → LeanInitPureExtern (task (option αt)) -- IO.Promise.result?
-  | lean_option_get_or_block : (αt : MyTy) → Option (denote αt) → LeanInitPureExtern αt -- _private.Init.System.Promise.0.IO.Option.getOrBlock!
+  -- | lean_io_promise_result_opt : (αt : MyTy) → denote (io_promise αt) → LeanInitPureExtern (task (option αt)) -- IO.Promise.result?
+  -- | lean_option_get_or_block : (αt : MyTy) → Option (denote αt) → LeanInitPureExtern αt -- _private.Init.System.Promise.0.IO.Option.getOrBlock!
   ------------------------
   -- Init/ShareCommon.lean
   ------------------------
-  | lean_sharecommon_quick : (αt : MyTy) → denote αt → LeanInitPureExtern αt -- ShareCommon.shareCommon'
-  | lean_state_sharecommon : (αt : MyTy) → {σ : shareCommon_stateFactory} → denote (shareCommon_state σ) → denote αt → LeanInitPureExtern (prod αt (shareCommon_state σ)) -- ShareCommon.State.shareCommon
-  | lean_sharecommon_eq : denote shareCommon_object → denote shareCommon_object → LeanInitPureExtern LeanPrimTy.bool -- ShareCommon.Object.eq
-  | lean_sharecommon_hash : denote shareCommon_object → LeanInitPureExtern uint64 -- ShareCommon.Object.hash
+  -- | lean_sharecommon_quick : (αt : MyTy) → denote αt → LeanInitPureExtern αt -- ShareCommon.shareCommon'
+  -- | lean_state_sharecommon : (αt : MyTy) → {σ : shareCommon_stateFactory} → denote (shareCommon_state σ) → denote αt → LeanInitPureExtern (prod αt (shareCommon_state σ)) -- ShareCommon.State.shareCommon
+  -- | lean_sharecommon_eq : denote shareCommon_object → denote shareCommon_object → LeanInitPureExtern LeanPrimTy.bool -- ShareCommon.Object.eq
+  -- | lean_sharecommon_hash : denote shareCommon_object → LeanInitPureExtern uint64 -- ShareCommon.Object.hash
 
 end LeanScript
 

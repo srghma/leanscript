@@ -1,3 +1,6 @@
+
+import LeanScript.Term.Elab
+import LeanScript.Term.Compile
 /-!
 Scalar replacement of a constructor a helper is only ever handed
 (`LakeJs.Backend.ScalarRepl`): a parameter every caller builds for the call and that
@@ -60,3 +63,134 @@ private structure Bounds where
   | n + 1, acc => clampSum b n (acc + (if n < b.lo then b.lo else if b.hi < n then b.hi else n))
 
 def test6 (n : Nat) : Nat := clampSum ⟨n % 3, n % 7 + 3⟩ n 0
+
+/-! ## Generated `LeanFunction` reports
+
+One report per **public function** of this file, produced by
+`#leanjs_generate_term_and_ctx_for_all` (see `LeanScript.Term.Elab`).  Each says what
+`Ty` the function has, which kind of recursion Lean used to elaborate it — and so which
+constructor of `LeanScript.Expr.Term` would hold it — which `@[extern]` primitives it
+needs, and which other declarations would have to be translated with it. -/
+
+/--
+info: LeanFunction test1
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Array.emptyWithCapacity
+    Array.push
+    Nat.add
+    Nat.decLt
+    Nat.mod
+    Nat.sub
+  context     :
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  Std.Legacy.Range.forIn'  [Init.Data.Range.Basic]
+    ok  Unit.unit  [Init.Prelude]
+    ok  inferInstance  [Init.Prelude]
+---
+info: LeanFunction test2
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Array.emptyWithCapacity
+    Array.push
+    Nat.add
+    Nat.decLt
+    Nat.mod
+    Nat.sub
+  context     :
+    ok  Function.comp  [Init.Prelude]
+    ok  Function.const  [Init.Prelude]
+    ok  Id.run  [Init.Control.Id]
+    ok  Std.Legacy.Range.forIn'  [Init.Data.Range.Basic]
+    ok  Unit.unit  [Init.Prelude]
+    ok  inferInstance  [Init.Prelude]
+---
+info: LeanFunction test3
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.sub
+  context     : -
+---
+info: LeanFunction test4
+  signature   : Nat → Nat → Nat × Nat
+  argTy       : nat
+  resTy       : (fn nat (record nat nat))
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.decLt
+  context     : -
+---
+info: LeanFunction test5
+  signature   : Nat → Nat → Nat
+  argTy       : nat
+  resTy       : (fn nat nat)
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+  context     :
+    ok  Unit.unit  [Init.Prelude]
+---
+info: LeanFunction test6
+  signature   : Nat → Nat
+  argTy       : nat
+  resTy       : nat
+  recursion   : none               (no recursion to encode)
+  status      : representable in Term
+  primitives  :
+    Nat.add
+    Nat.decLt
+    Nat.mod
+  context     : -
+-/
+#guard_msgs in
+#leanjs_generate_term_and_ctx_for_all
+
+/-! ## The compiled terms
+
+`#leanjs_compile_term_for_all` compiles every public function of this file into a
+`LeanScript.Expr.Term`, bound to `<f>.leanTerm`, and `<f>.leanFn` is that term run by
+`LeanScript.Term.evalClosed`.  The report says which functions were compiled and, for
+the ones that were refused, why. -/
+
+/--
+info: LeanTerms of this module
+  refused   test1: the type `Type u_1 → Type u_2` has no `Ty`: a type or a proposition, which carries no value
+  refused   test2: the type `Type u_1 → Type u_2` has no `Ty`: a type or a proposition, which carries no value
+  compiled  test3
+  compiled  test4
+  compiled  test5
+  compiled  test6
+-/
+#guard_msgs in
+#leanjs_compile_term_for_all
+
+/-! ## The compiled terms, run
+
+Each line below says that the compiled term and the Lean function answer with the same
+thing, and is settled by `decide +kernel`: the **kernel** reduces
+`LeanScript.Term.evalClosed` applied to the generated term, so each line checks the
+whole pipeline — the type translation, the compiler and the evaluator of
+`LeanScript.Eval` — against Lean's own answer.  The arguments are small on purpose: the
+kernel reduces the evaluator by unfolding it, which is far slower than compiled code. -/
+
+example : test3.leanFn 3 8 = test3 3 8 := by decide +kernel
+example : test5.leanFn 3 8 = test5 3 8 := by decide +kernel
+example : test6.leanFn 9 = test6 9 := by decide +kernel

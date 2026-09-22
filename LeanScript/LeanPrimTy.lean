@@ -128,7 +128,7 @@ inductive LeanPrimTy where
   -- the four externs that speak about them, `lean_sharecommon_quick` is kept — it is the
   -- identity on values, which is what `Expr.Step.quick` runs — and the three that read a
   -- handle are commented out with the handles: the interning table is erased.
-  deriving Inhabited--, Repr, DecidableEq
+  deriving Inhabited, Repr, DecidableEq
 
 namespace LeanPrimTy
 
