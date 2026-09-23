@@ -250,6 +250,10 @@ def hexanacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term hexanacci
 
 example : runAdd hexanacci_term 5 = 1 := rfl
+
+-- The kernel check is the same as the ones above; only the elaborator's `isDefEq` budget
+-- is raised, because the six-deep window makes this the largest of them.
+set_option maxHeartbeats 1000000 in
 example : runAdd hexanacci_term 8 = hexanacci 8 := rfl
 
 /-! ## What is still refused

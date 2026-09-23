@@ -104,7 +104,7 @@ def headOrZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .na
 /-- The fold of an array: the non-empty branch binds the head at index `0`, the tail at
     index `1` and the value of the fold over the tail at index `2`. -/
 def foldArray : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) :=
-  .lam (.array_rec (.var (v♯0)) (.nat_mk 0) (.var (v♯2)))
+  .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2)))
 
 /-! ## The user-defined shapes -/
 

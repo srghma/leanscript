@@ -135,12 +135,12 @@ def headOrZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .na
 /-- A fold over an array that answers with the value of the fold over the tail — so it
     is `0` however long the array is. -/
 def foldArrayZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) :=
-  .lam (.array_rec (.var (v♯0)) (.nat_mk 0) (.var (v♯2)))
+  .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2)))
 
 /-- A fold over an array that answers with its **last** element, or `0`: the branch
     takes the head when the fold over the tail is the answer for the empty tail. -/
 def lastOrZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) :=
-  .lam (.array_rec (.var (v♯0)) (.nat_mk 0)
+  .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
     (.array_casesOn (.var (v♯1)) (.var (v♯0)) (.var (v♯4))))
 
 example : run oneTwoThree = [1, 2, 3] := rfl
