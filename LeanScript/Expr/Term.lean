@@ -417,11 +417,28 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   | recAlias_casesOn : ∀ {Γ τ} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)},
       Term Sg Γ (.recAlias b hwf) → Term Sg (TyWf.recAliasUnfold b hwf :: Γ) τ →
       Term Sg Γ τ
-  /-- The fold of a recursive newtype: its branch binds the body and, if the body *is* an
-      occurrence of the newtype, the value of the fold at it. -/
-  | recAlias_rec : ∀ {Γ τ} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)},
+  /-- **The fold of a recursive newtype**, its `Xxx.rec` with a non-dependent motive, that
+      reads `k + 1` levels at a time.  A newtype has one constructor, so there is one
+      branch and nothing to dispatch on: the branch binds the body, unfolded — what
+      `Term.recAlias_casesOn` binds — and then the fold's **lookback window**
+      (`TyWf.recAliasRecBinders`), which holds the answer at each immediate subvalue and,
+      `k` levels deep, the answers below it.
+
+      The answers are given in the shape of the newtype's own body
+      (`TyWf.recAliasAnswerTree`), because a recursive newtype never has a body that is
+      *literally* an occurrence of it: `μX. X` is the equation `T = T`, which no value
+      satisfies (`LeanScript.RecAliasRecFacts`).  At the default depth `k = 0` the branch
+      binds the body and the answers at the immediate subvalues — the plain fold of a
+      newtype, which is what a catamorphism over it takes.
+
+      As in `Term.nat_rec`, `Term.array_rec`, `Term.recTaggedUnion_rec` and
+      `Term.recObject_rec` the answers are *given* to the branch rather than called by it,
+      and they are the answers at **subvalues** of the value being folded, so a term is
+      terminating by construction at every depth. -/
+  | recAlias_rec : ∀ {Γ τ} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)}
+      (k : Nat := 0),
       Term Sg Γ (.recAlias b hwf) →
-      Term Sg (TyWf.recBinders (.recAlias b hwf) τ [b] ++ Γ) τ → Term Sg Γ τ
+      Term Sg (TyWf.recAliasRecBinders b hwf τ k ++ Γ) τ → Term Sg Γ τ
   /-- A value of one member of a **mutual recursive family**: whichever of the three
       shapes that member has, with its fields unfolded in the scope of the whole family,
       so that a field written `Ty.familyMember i` is a value of member `i`.

@@ -282,6 +282,43 @@ def recObjectRecBinders (fs : LeanRecordSchema (TyWfIn 1))
     (hwf : Ty.Wf (recObjectTy fs)) (motive : TyWf) (k : Nat) : List TyWf :=
   (recObjectUnfold fs hwf).toList ++ [recObjectMap fs (recObjectAnswerTree fs motive k)]
 
+/-! ## What a branch of a fold of a recursive **newtype** binds
+
+A recursive newtype is in the same position as a recursive record: its body can never be
+*literally* an occurrence of it, since `μX. X` is the equation `T = T`, which no value
+satisfies (`LeanScript.Ty.not_wf_recAlias_self`).  So `TyWf.recBinders` hands the body
+over as it is, with no value of the fold beside it
+(`LeanScript.TyWf.recBinders_recAlias`), and the answers of a fold of a newtype are given
+in the **shape of its body**: `TyWf.recAliasMap b X` is the body with every occurrence of
+the newtype replaced by `X`, which for `T = Option T` and `X = τ` is `Option τ` — each
+subvalue replaced by the value of the fold at it.
+
+That is a depth-zero fold.  A **depth-`k`** one replaces each subvalue not by its answer
+alone but by its `TyWf.recAliasAnswerTree` of depth `k`: the answer at it, together — in
+the shape of the body — with the answer trees of depth `k - 1` of its own subvalues.  So
+a branch reads the answers at everything `k + 1` levels down, along the path it descends,
+exactly as the depth-`k` branch of `Term.recObject_rec` does. -/
+
+/-- The body of a recursive newtype with every occurrence of the newtype itself replaced
+    by `X`: the body's own shape, carrying an `X` wherever a subvalue sat. -/
+def recAliasMap (b : TyWfIn 1) (X : TyWf) : TyWf := TyWfIn.unfold X b
+
+/-- **The answers at a subvalue of a recursive newtype and at everything `j` levels below
+    it**: at `j = 0` the answer at the subvalue alone, and at `j + 1` that answer paired
+    with the answer trees of depth `j` of the subvalue's own subvalues, in the shape of
+    the body. -/
+def recAliasAnswerTree (b : TyWfIn 1) (motive : TyWf) : Nat → TyWf
+  | 0 => motive
+  | j + 1 => .record ⟨motive, recAliasMap b (recAliasAnswerTree b motive j), []⟩
+
+/-- The binders of the branch of a depth-`k` fold of a recursive newtype: the body,
+    unfolded — what `Term.recAlias_casesOn` binds — and then the fold's **lookback
+    window**, one binder holding the answer trees of depth `k` of the immediate
+    subvalues. -/
+def recAliasRecBinders (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b)) (motive : TyWf)
+    (k : Nat) : List TyWf :=
+  [recAliasUnfold b hwf, recAliasMap b (recAliasAnswerTree b motive k)]
+
 /-- `TyWf.recBinders`, in the scope of a mutual family: a field that is an occurrence of
     member `i` is followed by the value of the fold at that field. -/
 def famRecBinders {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
