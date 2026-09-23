@@ -3,9 +3,10 @@
 Everything about `Ty` lives here: the tree, the proposition that a tree is a type, the
 class that gives a Lean type its tree, and the `deriving` handler that writes one.
 Nothing else in `LeanScript/` defines any of it; `LeanScript/ExprCtx.lean` and
-`LeanScript/Expr.lean` are consumers, and `LeanScript/LeanPrimTy.lean` and
-`LeanScript/LeanPrimTyCovariant.lean` are the leaf types, which say nothing about
-recursion and are shared with the backends.
+`LeanScript/Expr.lean` are consumers — a context and the type of a term are `TyWf`, the
+bundle, so every type a term mentions is a type by construction — and
+`LeanScript/LeanPrimTy.lean` and `LeanScript/LeanPrimTyCovariant.lean` are the leaf types,
+which say nothing about recursion and are shared with the backends.
 
 There is no module that gathers the others: a file imports the modules it uses, one by
 one.
@@ -20,8 +21,11 @@ one.
 | `LeanScript.Ty.TyBEq` | that `Ty.beq` *is* equality, and the `LawfulBEq` and `DecidableEq` instances that follow |
 | `LeanScript.Ty.Wf` | `Ty.Wf` — that a tree *is* a type — as an inductive proposition: scope, real recursion, positivity and inhabitation (`Ty.HabIn`) |
 | `LeanScript.Ty.WfFacts` | inversion for `Ty.Wf`, and what it therefore rules out: a free or captured occurrence, a binder that recurses on nothing, a type with no values, a negative occurrence |
+| `LeanScript.Ty.Unfold` | putting a binder back in for its own occurrences: the unfolding of each recursive shape, and what a branch of a fold over one binds |
+| `LeanScript.Ty.WfSubst` | that unfolding a type gives types, which is what makes the bundled unfoldings below well formed |
 | `LeanScript.Ty.WfTactic` | `ty_wf`, which writes that proof, reusing the proof of every subtree that has one |
 | `LeanScript.Ty.TyWf` | `TyWf`: a tree together with the proof that it is one, whose proof field is written by `ty_wf` unless one is given |
+| `LeanScript.Ty.TyWfIn` | `TyWfIn n` — the same bundle for a tree written inside a binder — and the language's constructors at the level of bundles (`TyWf.prim`, `⇒`, `TyWf.record`, `TyWf.taggedUnion`, the four recursive shapes, and their unfoldings), each composing its proof out of its arguments' |
 | `LeanScript.Ty.Class` | `LeanScriptTyWf`: the bundled tree of a Lean type, with `tyWfOf`, `tyOf` and `tyWf` |
 | `LeanScript.Ty.Instances` | the instances the language comes with: the terminal types, `Array`, `Thunk`, `→`, and the library types |
 | `LeanScript.Ty.Deriving` | `deriving LeanScriptTyWf`, and the table that lets two declarations with the same tree share one |

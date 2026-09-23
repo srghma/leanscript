@@ -54,4 +54,25 @@ macro "ctor_ge" : tactic =>
       | omega
       | decide)
 
+/-- Close a goal `k < n`, where `k` is **how many constructors a partial dispatch names**
+    and `n` is how many constructors the type has.  It is the bound that keeps a
+    `xxx_casesOnWithDefault` from naming every constructor, which would make its default
+    branch unreachable — a dispatch that names them all is an exhaustive
+    `xxx_casesOn` and has to be written as one.
+
+    Both numbers are a computation for a schema written out, so this is the default of
+    the argument (`:= by ctor_lt`) and nothing has to be written by hand. -/
+macro "ctor_lt" : tactic =>
+  `(tactic|
+    first
+      | assumption
+      | (simp only [LeanScript.LeanTaggedUnionSchema.length_map,
+            LeanScript.LeanTaggedUnionSchema.length,
+            LeanScript.LeanRecordSchema.length,
+            LeanScript.CtorsWithPayload.length,
+            LeanScript.LeanEnumSchema.nOfConstructors]
+         omega)
+      | omega
+      | decide)
+
 end

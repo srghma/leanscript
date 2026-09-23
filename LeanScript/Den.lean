@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Ty.Ty
+public import LeanScript.Ty.TyWfIn
 
 @[expose] public section
 
@@ -28,9 +28,14 @@ is the type of the values of `τ`.
 | `Ty.taggedUnion l` | a constructor number **with** that constructor's fields: `(t : Fin l.length) × Ty.DenAt l t` |
 
 The four recursive shapes, and the two occurrence leaves `Ty.self` and
-`Ty.familyMember`, denote `PEmpty`: `LeanScript.Term` has no introduction form for any of
-them (they are the part of `Ty` the grammar deliberately leaves out), so no term ever has
-to produce such a value, and the evaluator is still total.
+`Ty.familyMember`, denote `PEmpty`.  This is therefore a model of the language **without
+recursive data**: it is consistent with taking a value of a recursive shape apart (there
+is nothing to take apart) but not with building one, and `LeanScript.Term` does have
+introduction forms for all four.  `LeanScript.Term.eval` is the evaluator *of this model*
+and so carries `LeanScript.Term.NoRecMk`, the hypothesis that the term builds no such
+value; see the section of `LeanScript.Eval` that states it.  Giving the recursive shapes
+their values needs the least fixpoint of the functor a binder's payload describes, which
+is a construction this module does not have yet.
 
 Every definition here is written the way `LeanScript.Ty.beq` is — one function per shape
 of the nested tree, all in one `mutual` block — so that each recursive call is on a
@@ -188,6 +193,58 @@ theorem Ty.DenTU.field?_mk {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.
 theorem Ty.DenTU.field?_of_ne {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
     (v : Ty.DenTU l) (h : v.1.val ≠ t) : Ty.DenTU.field? t ht v = none := by
   simp [Ty.DenTU.field?, h]
+
+/-! ## The values of a type of the language
+
+`LeanScript.Term` is indexed by `LeanScript.TyWf` — a tree **together with the proof that
+it is a type** — so the evaluator wants the denotation of a bundle, of a list of bundles,
+and of a schema of bundles.  Each of them is the denotation of the tree underneath, which
+is what makes them *definitionally* the ones above: nothing new is denoted here, the
+proofs are simply dropped. -/
+
+/-- The Lean type of the values of a type of the language. -/
+@[reducible] def TyWf.Den (τ : TyWf) : Type := Ty.Den τ.toTy
+
+/-- The values of a list of types, as a product: an environment, the fields of a
+    constructor, the arguments of a call. -/
+@[reducible] def TyWf.DenList (ts : List TyWf) : Type := Ty.DenList (ts.map TyWf.toTy)
+
+/-- The values of a record of types, in declaration order. -/
+@[reducible] def TyWf.DenRecord (fs : LeanRecordSchema TyWf) : Type :=
+  Ty.DenRecord (fs.map TyWf.toTy)
+
+/-- The values of a tagged union of types: a constructor number with that constructor's
+    fields. -/
+@[reducible] def TyWf.DenTU (l : LeanTaggedUnionSchema TyWf) : Type :=
+  Ty.DenTU (l.map TyWf.toTy)
+
+/-- `TyWf.DenTU`, on the constructors that follow a field-less one. -/
+@[reducible] def TyWf.DenAtCP (c : CtorsWithPayload TyWf) (t : Nat) : Type :=
+  Ty.DenAtCP (c.map TyWf.toTy) t
+
+/-- `TyWf.DenTU`, on a plain list of constructors. -/
+@[reducible] def TyWf.DenAtList (cs : List (List TyWf)) (t : Nat) : Type :=
+  Ty.DenAtList (cs.map (List.map TyWf.toTy)) t
+
+/-- A value of a tagged union of types: constructor `t`, with its fields. -/
+def TyWf.DenTU.mk {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
+    (fields : TyWf.DenList (l.get t ht)) : TyWf.DenTU l :=
+  Ty.DenTU.mk t (by simpa using ht)
+    (cast (by rw [LeanTaggedUnionSchema.get_map]) fields)
+
+/-- The fields of a value of a tagged union **if** it is the value of constructor `t`,
+    and nothing if it is the value of another constructor. -/
+def TyWf.DenTU.field? {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
+    (v : TyWf.DenTU l) : Option (TyWf.DenList (l.get t ht)) :=
+  (Ty.DenTU.field? t (by simpa using ht) v).map
+    (cast (by rw [LeanTaggedUnionSchema.get_map]))
+
+/-- Reading the fields of the constructor a value was built with gives them back. -/
+theorem TyWf.DenTU.field?_mk {l : LeanTaggedUnionSchema TyWf} (t : Nat)
+    (ht : t < l.length) (fields : TyWf.DenList (l.get t ht)) :
+    TyWf.DenTU.field? t ht (TyWf.DenTU.mk t ht fields) = some fields := by
+  simp only [TyWf.DenTU.field?, TyWf.DenTU.mk, Ty.DenTU.field?_mk, Option.map_some]
+  exact congrArg some ((cast_cast _ _ _).trans (cast_eq _ _))
 
 end LeanScript
 

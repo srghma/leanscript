@@ -128,6 +128,11 @@ def map (f : α → β) (xs : LeanRecordSchema α) : LeanRecordSchema β :=
 @[simp] theorem toList_map (f : α → β) (xs : LeanRecordSchema α) :
     (xs.map f).toList = xs.toList.map f := rfl
 
+/-- Mapping the field types keeps the fields: a mapped record has as many of them. -/
+@[simp] theorem length_map (f : α → β) (xs : LeanRecordSchema α) :
+    (xs.map f).length = xs.length := by
+  simp [map, length]
+
 /-- The `i`-th element, if there is one. -/
 def get? (xs : LeanRecordSchema α) (i : Nat) : Option α := xs.toList[i]?
 
@@ -234,6 +239,13 @@ def map (f : α → β) : CtorsWithPayload α → CtorsWithPayload β
   induction c with
   | here _ _ => simp [toList, map]
   | skip _ ih => simp [toList, map, ih]
+
+/-- Mapping the field types keeps the constructors: a mapped sum has as many of them. -/
+@[simp] theorem length_map (f : α → β) (c : CtorsWithPayload α) :
+    (c.map f).length = c.length := by
+  induction c with
+  | here _ _ => simp [map, length]
+  | skip _ ih => simp [map, length, ih]
 
 end CtorsWithPayload
 
@@ -385,6 +397,20 @@ def map (f : α → β) : LeanTaggedUnionSchema α → LeanTaggedUnionSchema β
 @[simp] theorem toList_map (f : α → β) (c : LeanTaggedUnionSchema α) :
     (c.map f).toList = c.toList.map (·.map f) := by
   cases c <;> simp [toList, map]
+
+/-- Mapping the field types keeps the constructors: a mapped union has as many of them,
+    in the same order, so a number that is a constructor of one is a constructor of the
+    other. -/
+@[simp] theorem length_map (f : α → β) (c : LeanTaggedUnionSchema α) :
+    (c.map f).length = c.length := by
+  cases c <;> simp [map, length]
+
+/-- The fields of constructor `t` of a mapped union are the fields of constructor `t`,
+    mapped. -/
+theorem get_map (f : α → β) (c : LeanTaggedUnionSchema α) (t : Nat) (ht : t < c.length) :
+    (c.map f).get t (by simpa using ht) = (c.get t ht).map f := by
+  simp only [get, toList_map]
+  rw [List.getElem_map]
 
 end LeanTaggedUnionSchema
 

@@ -1,6 +1,5 @@
 module
-public import LeanScript.Ty.Ty
-public import LeanScript.Ty.TyBEq
+public import LeanScript.Ty.TyWfIn
 public import LeanScript.DeBruijn
 @[expose] public section
 
@@ -8,17 +7,18 @@ namespace LeanScript
 
 /-! ## Variables -/
 
-/-- The types of the values in scope, innermost first. -/
-abbrev Ctx := List Ty
+/-- The types of the values in scope, innermost first.  A context holds **types of
+    the language**: a tree together with the proof that it is one. -/
+abbrev Ctx := List TyWf
 
 /-- A variable: a de Bruijn index into the context, carrying the type it is bound at. -/
-abbrev Var (Γ : Ctx) (τ : Ty) : Type := DeBruijn Γ τ
+abbrev Var (Γ : Ctx) (τ : TyWf) : Type := DeBruijn Γ τ
 
 /-- The variable just bound. -/
-abbrev Var.head {Γ : Ctx} {τ : Ty} : Var (τ :: Γ) τ := DeBruijn.head
+abbrev Var.head {Γ : Ctx} {τ : TyWf} : Var (τ :: Γ) τ := DeBruijn.head
 
 /-- A variable bound further out. -/
-abbrev Var.tail {Γ : Ctx} {τ1 τ2 : Ty} (v : Var Γ τ1) : Var (τ2 :: Γ) τ1 :=
+abbrev Var.tail {Γ : Ctx} {τ1 τ2 : TyWf} (v : Var Γ τ1) : Var (τ2 :: Γ) τ1 :=
   DeBruijn.tail v
 
 /-- Membership notation: `Γ ∋ τ`. -/
@@ -34,7 +34,7 @@ macro_rules | `(term| var_get_elem $n) => match n.1.toNat with
 macro "v♯" n:term:90 : term => `(var_get_elem $n)
 
 /-- The de Bruijn index of a variable: how many binders out it is. -/
-abbrev Var.index {Γ : Ctx} {τ : Ty} (v : Var Γ τ) : Nat := DeBruijn.index v
+abbrev Var.index {Γ : Ctx} {τ : TyWf} (v : Var Γ τ) : Nat := DeBruijn.index v
 
 /-! ## The signature of a module
 
@@ -54,7 +54,7 @@ structure GlobalDecl where
   /-- The identifier the declaration is bound to. -/
   name : String
   /-- Its type. -/
-  ty : Ty
+  ty : TyWf
   -- `LeanScript.Ty.beq` is the equality of trees (`LeanScript.Ty.TyBEq`), so a
   -- declaration has a decidable equality and its `==` is that equality.
   deriving BEq, DecidableEq, ReflBEq, LawfulBEq
@@ -79,7 +79,7 @@ structure Sig where
     type is the one the signature gives it.  There is no other way to name a global, so
     a `Term` cannot call a name that is not declared, nor call a declared one at a type
     it does not have. -/
-abbrev GlobalRef (ds : List GlobalDecl) (τ : Ty) : Type :=
+abbrev GlobalRef (ds : List GlobalDecl) (τ : TyWf) : Type :=
   DeBruijnProj GlobalDecl.ty ds τ
 
 /-- The declaration just bound. -/
@@ -87,15 +87,15 @@ abbrev GlobalRef (ds : List GlobalDecl) (τ : Ty) : Type :=
     GlobalRef (g :: ds) g.ty := DeBruijnProj.head
 
 /-- A declaration bound further out. -/
-@[match_pattern] abbrev GlobalRef.there {g : GlobalDecl} {ds : List GlobalDecl} {τ : Ty}
+@[match_pattern] abbrev GlobalRef.there {g : GlobalDecl} {ds : List GlobalDecl} {τ : TyWf}
     (r : GlobalRef ds τ) : GlobalRef (g :: ds) τ := DeBruijnProj.tail r
 
 /-- The name a reference resolves to: the name of the declaration it points at. -/
-def GlobalRef.name {ds : List GlobalDecl} {τ : Ty} (r : GlobalRef ds τ) : String :=
+def GlobalRef.name {ds : List GlobalDecl} {τ : TyWf} (r : GlobalRef ds τ) : String :=
   r.entry.name
 
 @[simp] theorem GlobalRef.name_here {g : GlobalDecl} {ds : List GlobalDecl} :
     (GlobalRef.here (g := g) (ds := ds)).name = g.name := rfl
 
-@[simp] theorem GlobalRef.name_there {g : GlobalDecl} {ds : List GlobalDecl} {τ : Ty}
+@[simp] theorem GlobalRef.name_there {g : GlobalDecl} {ds : List GlobalDecl} {τ : TyWf}
     (r : GlobalRef ds τ) : (GlobalRef.there (g := g) r).name = r.name := rfl
