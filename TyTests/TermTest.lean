@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr
+public import LeanScript.Expr.Term
 
 /-!
 # The grammar is usable: a few terms, written out

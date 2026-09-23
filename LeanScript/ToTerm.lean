@@ -1,7 +1,7 @@
 module
 
 public meta import Lean
-public meta import LeanScript.Expr
+public meta import LeanScript.Expr.Term
 public meta import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 

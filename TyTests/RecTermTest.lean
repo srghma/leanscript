@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr
+public import LeanScript.Expr.Term
 public import LeanScript.Eval
 
 /-!
