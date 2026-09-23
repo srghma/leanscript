@@ -27,16 +27,15 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
     A constructor's payload is a list of trees written in the scope the binder opens, and
     a field that is literally `Ty.self` is a value of the type again.  `here` names such
-    a field — the proof that it is one is written by `rfl` — and `there` steps past a
-    field to the ones after it, so `.here`, `.there .here`, … name the payload's
-    occurrences in declaration order.
+    a field — carrying the proof that it is one, which is `rfl` — and `there` steps past
+    a field to the ones after it, so `.here rfl`, `.there (.here rfl)`, … name the
+    payload's occurrences in declaration order.
 
     It is what says that a depth-`k` fold (`LeanScript.Term.recTaggedUnion_rec`) looks
     further down only into a **subvalue**, never into a value it was handed. -/
 inductive SelfField : List (TyWfIn 1) → Type
   /-- The first field is an occurrence of the type. -/
-  | here : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)} (h : a.toTy = Ty.self := by rfl),
-      SelfField (a :: fs)
+  | here : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, a.toTy = Ty.self → SelfField (a :: fs)
   /-- An occurrence among the fields after the first. -/
   | there : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, SelfField fs → SelfField (a :: fs)
   deriving DecidableEq
