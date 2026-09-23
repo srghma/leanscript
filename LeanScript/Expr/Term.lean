@@ -1,5 +1,6 @@
 module
 public import LeanScript.Expr.NatRecCtx
+public import LeanScript.Expr.Extern
 public import LeanScript.Expr.SelfField
 public import LeanScript.Ty.Unfold
 public import LeanScript.Ty.TyWfIn
@@ -87,6 +88,11 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   | floatModel_mk : ∀ {Γ}, Float.Model → Term Sg Γ (.prim .floatModel)
   /-- A literal of the model of a 32-bit float: its bits, with their validity. -/
   | float32Model_mk : ∀ {Γ}, Float32.Model → Term Sg Γ (.prim .float32Model)
+  -- externs
+  /-- A pure extern of `Init` (`LeanScript.LeanInitPureExtern`), applied to all of its
+      arguments.  Like a literal, it holds its arguments as values; its value is the Lean
+      function the extern implements, applied to them (`LeanScript.Extern.eval`). -/
+  | extern : ∀ {Γ τ}, Extern τ → Term Sg Γ τ
   -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`. -/
   | bool_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .bool) → Term Sg Γ τ → Term Sg Γ τ → Term Sg Γ τ

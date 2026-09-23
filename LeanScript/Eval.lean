@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Eval.Env
 public import LeanScript.Eval.NoRecMk
+public import LeanScript.Eval.Extern
 
 @[expose] public section
 
@@ -89,6 +90,8 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .float32_mk x, _, _ => x
   | _, _, .floatModel_mk m, _, _ => m
   | _, _, .float32Model_mk m, _, _ => m
+  -- externs: the Lean function the extern implements, applied to its arguments
+  | _, _, .extern e, _, _ => Extern.eval e
   -- case analysis on a leaf
   | _, _, .bool_casesOn c t e, env, h =>
       let c' : Bool := Term.eval G c env h.1
@@ -361,6 +364,11 @@ theorem Term.eval_lazy_force_mk (e : Term Sg Γ τ) (env : Env Γ) (he : Term.No
 /-- Forcing a thunk gives back what was delayed. -/
 theorem Term.eval_thunk_force_mk (e : Term Sg Γ τ) (env : Env Γ) (he : Term.NoRecMk e) :
     Term.eval G (.thunk_force (.thunk_mk e)) env he = Term.eval G e env he :=
+  rfl
+
+/-- An extern is the Lean function it implements, applied to its arguments. -/
+theorem Term.eval_extern (e : Extern τ) (env : Env Γ) (h : Term.NoRecMk (Sg := Sg) (.extern e)) :
+    Term.eval G (.extern e) env h = Extern.eval e :=
   rfl
 
 /-- The tag of a tagged value is the constructor it was built with. -/
