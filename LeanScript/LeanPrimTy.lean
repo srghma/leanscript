@@ -132,9 +132,6 @@ inductive LeanPrimTy where
 
 namespace LeanPrimTy
 
--- abbrev usize : LeanPrimTy := uint64
--- abbrev isize : LeanPrimTy := int64
-
 -- TODO: name should be constructed as recTaggedUnion
 
 /-- A rendering for debugging and error messages. -/

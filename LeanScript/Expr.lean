@@ -1,6 +1,5 @@
 module
 public import LeanScript.ExprCtx
-public import LeanScript.Den
 
 @[expose] public section
 
@@ -13,8 +12,8 @@ set_option autoImplicit false
 
 | kind | in `Term` |
 | :-- | :-- |
-| structurally recursive | `Term.fixAcc` at `<` on `Nat`, with the structural measure as its subject |
-| well-founded recursive | `Term.fixAcc` on the transcribed `termination_by` subject |
+| structurally recursive | using specialized Term.natFix, arrayFix, etc |
+| well-founded recursive | not supported yet |
 | partial fixpoint | unrepresentable: there is no constructor for a fixpoint that does not descend |
 | coinductive / inductive fixpoint | unrepresentable: `Ty` has no coinductive former and `Term` has no free fixpoint |
 | `partial` | unrepresentable: same |
@@ -23,9 +22,8 @@ set_option autoImplicit false
 * **No `IO`, and no effect at all.**  `Ty` has no effectful former, so an `IO`-returning
   declaration has no image in this language.
 
-* **No failure.**  Every operation answers with a value, which is what lets the evaluator
-  of `LeanScript.Eval` be an ordinary total Lean function into `τ.den`:
-  1. an exhausted recursion is not possible — see `Term.fixAcc` below;
+* **No failure.**
+  1. an exhausted recursion is not possible;
   2. an out-of-range index is not possible: a constructor is a *number with a proof* that
      the type has it, and a field is read by an eliminator that *binds* the fields of the
      constructor it matched, never by a lookup;
@@ -39,87 +37,102 @@ set_option autoImplicit false
   denote the same identity, and the difference between the two wrappers is the code
   printed for them, not the value.  `task` and `promise` are commented out of
   `LeanPrimTyCovariant`.
-
-## Primitive operations
-
-`Term.prim` applies a **total Lean function** to the values of its arguments.  That is
-what a pure `@[extern]` function of the Lean runtime is: `LeanScript.LeanInitPureExterns`
-is the catalogue of exactly which functions a front end is allowed to name here, and
-`Term.prim` is how one of them is applied to *subterms* rather than to values already in
-hand.  The evaluator stays total because a Lean function is total.
 -/
 
-namespace LeanScript.Expr
-
-open LeanScript
-
-/-- A delay denotes the identity: `Ty.lazy τ` and `τ` have the same values, and the
-    wrapper only decides the JavaScript that is printed later. -/
-theorem den_lazy (τ : Ty) : (Ty.lazy τ).den = τ.den := rfl
-
-/-- A thunk denotes the identity too: `Ty.thunk τ` and `τ` have the same values, and
-    what the wrapper decides is that the JavaScript printed for it *memoises*. -/
-theorem den_thunk (τ : Ty) : (Ty.thunk τ).den = τ.den := rfl
-
-/-! ## The fields of a constructor of a recursive tagged union
-
-A recursive declaration is a fixed point taken over *descriptions* (`FDesc`), so the
-fields of one of its constructors are described rather than typed: a field is
-`FDesc.selfD 0` — an occurrence of the declaration itself — rather than a `Ty`, because
-the `Ty` it would be is the one being defined.  `RecFlds` is the bridge: it reads a list
-of descriptions and says which `Ty` each field has, so that a constructor takes an
-ordinary `Spine` and a branch binds ordinary variables.
-
-It covers the two field shapes that are built and taken apart here — a terminal field,
-and an occurrence of the declaration — and there is deliberately no case for the
-others: a declaration with a field the language has no `Ty` for is refused rather than
-approximated. -/
-
-/-- Which `Ty` each field of a constructor of the recursive tagged union `l` has.  The
-    list of descriptions is the constructor's, and the list of types is the context a
-    branch of the eliminator binds, in field order. -/
-inductive RecFlds (l : LeanTaggedUnionSchemaSealed) : List FDesc → List Ty → Type where
-  /-- The constructor has no more fields. -/
-  | nil : RecFlds l [] []
-  /-- One more field, of a terminal type. -/
-  | prim : ∀ {p : LeanPrimTy} {ds σs}, RecFlds l ds σs →
-      RecFlds l (.primD p :: ds) (.prim p :: σs)
-  /-- One more field, an occurrence of the declaration itself. -/
-  | self : ∀ {ds σs}, RecFlds l ds σs →
-      RecFlds l (.selfD 0 :: ds) (.recTaggedUnion l :: σs)
+namespace LeanScript
 
 /-! ## Terms -/
 
 mutual
 
-/-- A well-scoped, simply-typed term of the module whose signature is `Sg`, in the
-    variable context `Γ` and the recursion context `Ρ`.  A term has **no** label context:
-    a jump is a `Tail`, never a `Term`, so no value position of the language can hold
-    one. -/
-inductive Term (Sg : Sig) : Ctx → RCtx → Ty → Type 1
+inductive Term (Sg : Sig) : Ctx → Ty → Type 1
   /-- A variable of `Γ`. -/
-  | var : ∀ {Γ Ρ τ}, Γ ∋ τ → Term Sg Γ Ρ τ
+  | var : ∀ {Γ τ}, Γ ∋ τ → Term Sg Γ τ
   /-- `fun x => body`: **one** parameter, since every function is curried. -/
-  | lam : ∀ {Γ Ρ σ τ}, Term Sg (σ :: Γ) Ρ τ → Term Sg Γ Ρ (σ ⇒ τ)
+  | lam : ∀ {Γ σ τ}, Term Sg (σ :: Γ) τ → Term Sg Γ (σ ⇒ τ)
   /-- `f a`: **one** argument. -/
-  | ap : ∀ {Γ Ρ σ τ}, Term Sg Γ Ρ (σ ⇒ τ) → Term Sg Γ Ρ σ → Term Sg Γ Ρ τ
-  /-- A constant of a terminal type. -/
-  | lit : ∀ {Γ Ρ} (p : LeanPrimTy), p.denote → Term Sg Γ Ρ (.prim p)
+  | ap : ∀ {Γ σ τ}, Term Sg Γ (σ ⇒ τ) → Term Sg Γ σ → Term Sg Γ τ
   /-- A reference to a top-level declaration of the module's signature. -/
-  | global : ∀ {Γ Ρ τ}, GlobalRef Sg.decls τ → Term Sg Γ Ρ τ
+  | global : ∀ {Γ τ}, GlobalRef Sg.decls τ → Term Sg Γ τ
   /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`. -/
-  | letE : ∀ {Γ Ρ σ τ}, Term Sg Γ Ρ σ → Term Sg (σ :: Γ) Ρ τ → Term Sg Γ Ρ τ
+  | letE : ∀ {Γ σ τ}, Term Sg Γ σ → Term Sg (σ :: Γ) τ → Term Sg Γ τ
+  -- LeanPrimTy intro
+  | bool_mk : ∀ {Γ σ τ},  Bool
+  | nat_mk : ∀ {Γ σ τ},  Nat
+  | int_mk : ∀ {Γ σ τ},  Int
+  | bitvec_mk : ∀ {Γ σ τ}, {n : Nat} (h_positive : 0 < n := by decide /- bc Unit-like types should be erased -/) -> BitVec n
+  | uint8_mk : ∀ {Γ σ τ},  UInt8
+  | uint16_mk : ∀ {Γ σ τ},  UInt16
+  | uint32_mk : ∀ {Γ σ τ},  UInt32
+  | uint64_mk : ∀ {Γ σ τ},  UInt64
+  | int8_mk : ∀ {Γ σ τ},  Int8
+  | int16_mk : ∀ {Γ σ τ},  Int16
+  | int32_mk : ∀ {Γ σ τ},  Int32
+  | int64_mk : ∀ {Γ σ τ},  Int64
+  | char_mk : ∀ {Γ σ τ},  Char
+  | string_mk : ∀ {Γ σ τ},  String
+  | stringPos_mk s : ∀ {Γ σ τ},  String.Pos s
+  | stringPosRaw_mk : ∀ {Γ σ τ},  String.Pos.Raw
+  | substringRaw_mk : ∀ {Γ σ τ},  Substring.Raw
+  | stringSlice_mk : ∀ {Γ σ τ},  String.Slice
+  | float_mk : ∀ {Γ σ τ},  Float
+  | float32_mk : ∀ {Γ σ τ},  Float32
+  | floatModel_mk : ∀ {Γ σ τ},  Float.Model
+  | float32Model_mk : ∀ {Γ σ τ},  Float32.Model
+  -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`. -/
-  | bool_elim : ∀ {Γ Ρ τ},
-      Term Sg Γ Ρ (.prim .bool) → Term Sg Γ Ρ τ → Term Sg Γ Ρ τ → Term Sg Γ Ρ τ
+  | bool_rec : ∀ {Γ τ}, Term Sg Γ (.prim .bool) → Term Sg Γ τ → Term Sg Γ τ → Term Sg Γ τ
+  | nat_rec : sorry -> Term -- recursor Nat.rec.{u} {motive : Nat → Sort u} (zero : motive Nat.zero) (succ : (n : Nat) → motive n → motive n.succ) (t : Nat) : motive t
+  | int_rec : sorry -> Term -- recursor Int.rec.{u} {motive : Int → Sort u} (ofNat : (a : Nat) → motive (Int.ofNat a)) (negSucc : (a : Nat) → motive (Int.negSucc a)) (t : Int) : motive t
+  | bitvec_rec : sorry -> Term
+  | uint8_rec : sorry -> Term
+  | uint16_rec : sorry -> Term
+  | uint32_rec : sorry -> Term
+  | uint64_rec : sorry -> Term
+  | int8_rec : sorry -> Term
+  | int16_rec : sorry -> Term
+  | int32_rec : sorry -> Term
+  | int64_rec : sorry -> Term
+  | char_rec : sorry -> Term
+  | string_rec : sorry -> Term
+  | stringPosRaw_rec : sorry -> Term
+  | stringPos_rec : sorry -> Term
+  | substringRaw_rec : sorry -> Term
+  | stringSlice_rec : sorry -> Term
+  | float_rec : sorry -> Term
+  | float32_rec : sorry -> Term
+  | floatModel_rec : sorry -> Term
+  | float32Model_rec : sorry -> Term
+  -- implement if makes sense. But the idea is to support `match ... with ...` using rec constructors (like bool_rec), not full recursors
+  -- recursor BitVec.rec.{u} {w : Nat} {motive : BitVec w → Sort u} (ofFin : (toFin : Fin (2 ^ w)) → motive { toFin := toFin }) (t : BitVec w) : motive t
+  -- recursor UInt8.rec.{u} {motive : UInt8 → Sort u} (ofBitVec : (toBitVec : BitVec 8) → motive { toBitVec := toBitVec }) (t : UInt8) : motive t
+  -- recursor UInt16.rec.{u} {motive : UInt16 → Sort u} (ofBitVec : (toBitVec : BitVec 16) → motive { toBitVec := toBitVec }) (t : UInt16) : motive t
+  -- recursor UInt32.rec.{u} {motive : UInt32 → Sort u} (ofBitVec : (toBitVec : BitVec 32) → motive { toBitVec := toBitVec }) (t : UInt32) : motive t
+  -- recursor UInt64.rec.{u} {motive : UInt64 → Sort u} (ofBitVec : (toBitVec : BitVec 64) → motive { toBitVec := toBitVec }) (t : UInt64) : motive t
+  -- recursor Int8.rec.{u} {motive : Int8 → Sort u} (ofUInt8 : (toUInt8 : UInt8) → motive { toUInt8 := toUInt8 }) (t : Int8) : motive t
+  -- recursor Int16.rec.{u} {motive : Int16 → Sort u} (ofUInt16 : (toUInt16 : UInt16) → motive { toUInt16 := toUInt16 }) (t : Int16) : motive t
+  -- recursor Int32.rec.{u} {motive : Int32 → Sort u} (ofUInt32 : (toUInt32 : UInt32) → motive { toUInt32 := toUInt32 }) (t : Int32) : motive t
+  -- recursor Int64.rec.{u} {motive : Int64 → Sort u} (ofUInt64 : (toUInt64 : UInt64) → motive { toUInt64 := toUInt64 }) (t : Int64) : motive t
+  -- recursor Char.rec.{u} {motive : Char → Sort u} (mk : (val : UInt32) → (valid : val.isValidChar) → motive { val := val, valid := valid }) (t : Char) : motive t
+  -- recursor String.rec.{u} {motive : String → Sort u} (ofByteArray : (toByteArray : ByteArray) → (isValidUTF8 : toByteArray.IsValidUTF8) → motive { toByteArray := toByteArray, isValidUTF8 := isValidUTF8 }) (t : String) : motive t
+  -- recursor String.Pos.Raw.rec.{u} {motive : String.Pos.Raw → Sort u} (mk : (byteIdx : Nat) → motive { byteIdx := byteIdx }) (t : String.Pos.Raw) : motive t
+  -- recursor String.Pos.rec.{u} {s : String} {motive : s.Pos → Sort u} (mk : (offset : String.Pos.Raw) → (isValid : String.Pos.Raw.IsValid s offset) → motive { offset := offset, isValid := isValid }) (t : s.Pos) : motive t
+  -- recursor Substring.Raw.rec.{u} {motive : Substring.Raw → Sort u} (mk : (str : String) → (startPos stopPos : String.Pos.Raw) → motive { str := str, startPos := startPos, stopPos := stopPos }) (t : Substring.Raw) : motive t
+  -- recursor String.Slice.rec.{u} {motive : String.Slice → Sort u} (mk : (str : String) → (startInclusive endExclusive : str.Pos) → (startInclusive_le_endExclusive : startInclusive ≤ endExclusive) → motive { str := str, startInclusive := startInclusive, endExclusive := endExclusive, startInclusive_le_endExclusive := startInclusive_le_endExclusive }) (t : String.Slice) : motive t
+  -- recursor Float.rec.{u} {motive : Float → Sort u} (ofModel : (toModel : Float.Model) → motive { toModel := toModel }) (t : Float) : motive t
+  -- recursor Float32.rec.{u} {motive : Float32 → Sort u} (ofModel : (toModel : Float32.Model) → motive { toModel := toModel }) (t : Float32) : motive t
+  -- recursor Float.Model.rec.{u} {motive : Float.Model → Sort u} (mk : (toBits : UInt64) → (valid : Float.Model.Format.binary64.Valid toBits.toBitVec) → motive { toBits := toBits, valid := valid }) (t : Float.Model) : motive t
+  -- recursor Float32.Model.rec.{u} {motive : Float32.Model → Sort u} (mk : (toBits : UInt32) → (valid : Float.Model.Format.binary32.Valid toBits.toBitVec) → motive { toBits := toBits, valid := valid }) (t : Float32.Model) : motive t
+
+  -- LeanPrimTyCovariant recursors/eliminators
   /-- Delay a value.  This is what a Lean `fun (_ : Unit) => e` becomes once the one
       value of the unit type is erased.
 
       **Unmemoised**: forcing it twice runs it twice. -/
-  | lazyMk : ∀ {Γ Ρ τ}, Term Sg Γ Ρ τ → Term Sg Γ Ρ (.lazy τ)
+  | lazy_mk : ∀ {Γ τ}, Term Sg Γ τ → Term Sg Γ (.lazy τ)
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
       erased. -/
-  | lazyForce : ∀ {Γ Ρ τ}, Term Sg Γ Ρ (.lazy τ) → Term Sg Γ Ρ τ
+  | lazy_rec : ∀ {Γ τ}, Term Sg Γ (.lazy τ) → Term Sg Γ τ
   /-- Delay a value and remember it: a `Thunk`.
 
       **Memoised**: the JavaScript printed for it runs the body at the first force and
@@ -127,175 +140,76 @@ inductive Term (Sg : Sig) : Ctx → RCtx → Ty → Type 1
       this layer the distinction from `Term.lazyMk` is not visible — a `Term` is a total
       Lean function of its environment, so running the body twice gives the same answer
       as running it once — and what it decides is the code that is printed. -/
-  | thunkMk : ∀ {Γ Ρ τ}, Term Sg Γ Ρ τ → Term Sg Γ Ρ (.thunk τ)
+  | thunk_mk : ∀ {Γ τ}, Term Sg Γ τ → Term Sg Γ (.thunk τ)
   /-- Force a thunk: the value it stands for, computed at most once. -/
-  | thunkForce : ∀ {Γ Ρ τ}, Term Sg Γ Ρ (.thunk τ) → Term Sg Γ Ρ τ
-  /-- **A primitive operation**: a total Lean function of the values of its arguments.
-      This is how a pure `@[extern]` function of the runtime is applied to subterms; the
-      catalogue of the ones a front end may name is `LeanScript.LeanInitPureExterns`. -/
-  | prim : ∀ {Γ Ρ τ} (args : List Ty), (Tup (Ty.denList args) → τ.den) →
-      Spine Sg Γ Ρ args → Term Sg Γ Ρ τ
+  | thunk_rec : ∀ {Γ τ}, Term Sg Γ (.thunk τ) → Term Sg Γ τ
+  | array_mk : sorry → Term Sg Γ τ
+  | array_rec : sorry → Term Sg Γ τ
   /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
-  | enum_mk : ∀ {Γ Ρ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ Ρ (.enum s)
+  | enum_mk : ∀ {Γ Ρ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ (.enum s)
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
       fall off the end. -/
-  | enum_elim : ∀ {Γ Ρ τ} {s : LeanEnumSchema},
-      Term Sg Γ Ρ (.enum s) → EnumCases Sg Γ Ρ τ s.nOfConstructors → Term Sg Γ Ρ τ
+  | enum_rec : ∀ {Γ τ} {s : LeanEnumSchema},
+      Term Sg Γ (.enum s) → EnumRecCases Sg Γ τ s.nOfConstructors → Term Sg Γ τ
   /-- A record, from its fields, in declaration order. -/
   | record_mk : ∀ {Γ Ρ} (fs : LeanRecordSchema Ty),
-      Spine Sg Γ Ρ fs.toList → Term Sg Γ Ρ (.record fs)
+      Spine Sg Γ fs.toList → Term Sg Γ (.record fs)
   /-- The eliminator of a record: it **binds** every field, in declaration order, so de
       Bruijn index `0` of the body is the record's first field.  A projection is this
       node followed by a variable. -/
-  | record_elim : ∀ {Γ Ρ τ} {fs : LeanRecordSchema Ty},
-      Term Sg Γ Ρ (.record fs) → Term Sg (fs.toList ++ Γ) Ρ τ → Term Sg Γ Ρ τ
+  | record_rec : ∀ {Γ τ} {fs : LeanRecordSchema Ty},
+      Term Sg Γ (.record fs) → Term Sg (fs.toList ++ Γ) τ → Term Sg Γ τ
   /-- A tagged value: constructor `t` of the union — a number **with the proof that the
       union has it** — and exactly that constructor's fields. -/
   | taggedUnion_mk : ∀ {Γ Ρ} (l : LeanTaggedUnionSchema Ty) (t : Nat)
       (ht : t < l.toList.length),
-      Spine Sg Γ Ρ (l.toList[t]'ht) → Term Sg Γ Ρ (.taggedUnion l)
+      Spine Sg Γ (l.toList[t]'ht) → Term Sg Γ (.taggedUnion l)
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
       constructor's fields, and no default. -/
-  | taggedUnion_elim : ∀ {Γ Ρ τ} {l : LeanTaggedUnionSchema Ty},
-      Term Sg Γ Ρ (.taggedUnion l) → Cases Sg Γ Ρ l.toList τ → Term Sg Γ Ρ τ
+  | taggedUnion_rec : ∀ {Γ τ} {l : LeanTaggedUnionSchema Ty},
+      Term Sg Γ (.taggedUnion l) → TaggedUnionRecCases Sg Γ l τ → Term Sg Γ τ
   /-- **A block**: the one way a term uses labels.  Its tail is written in the *empty*
       label context, so a block is closed for jumps. -/
-  | block : ∀ {Γ Ρ τ}, Tail Sg Γ [] Ρ τ → Term Sg Γ Ρ τ
-  /-- **The recursion**, and the only one.
-
-      It carries no measure the front end had to invent: an arbitrary order `r` on an
-      arbitrary carrier, the **subject** that descends in it, and `hacc`, the termination
-      evidence — a proof that the subject of *every* argument tuple is accessible for
-      `r`.  The evaluator recurses on that proof (`Acc.rec`), so there is no fuel and
-      nothing to consume: the field is a proposition, erased at run time.
-
-      A self call (`Term.selfCall`) re-enters the recursion only at an argument tuple
-      whose subject is `r`-below the current one, and `rdec` is what *computes that
-      proof* at the call: it is the descent evidence, not a test with two outcomes to
-      program for.  **There is no field for a call that does not descend**: the node
-      carries no default value of `τ`, no fuel and no measure a front end had to invent.
-      What a recursion means is `LeanScript.EvalProof`, where running it needs a proof
-      that its self calls descend and nothing else.
-
-      `hne` is the one thing a *junk-completed* run of a term whose calls have **not**
-      been proved to descend needs — that `τ` has some value at all, which is a
-      proposition, not a chosen value.  `LeanScript.Eval` is that run; nothing in the
-      language, and nothing a backend prints, reads it.
-
-      `inv` is the invariant the descent is relative to, which is where an erased
-      `Prop`-typed precondition of the source declaration goes; a recursion that descends
-      unconditionally takes `fun _ => True`. -/
-  | fixAcc : ∀ {Γ Ρ τ} {α : Type} (ps : List Ty) (r : α → α → Prop),
-      DecidableRel r → (subject : Env ps → α) →
-      (hacc : ∀ as : Env ps, Acc r (subject as)) →
-      (inv : Env ps → Prop) →
-      (body : Term Sg (ps ++ Γ) (⟨ps, τ⟩ :: Ρ) τ) →
-      (hne : Nonempty τ.den) →
-      Term Sg Γ Ρ (Ty.arrows ps τ)
-  /-- **The one way to recurse**: call a recursion of `Ρ` with a full argument list.
-      There is no measure argument, and no syntax for one — a `Ρ` entry is only ever
-      bound by `Term.fixAcc`, so a self call outside a recursion cannot be written. -/
-  | selfCall : ∀ {Γ Ρ ps τ}, (Ρ ∋ᵣ ⟨ps, τ⟩) → Spine Sg Γ Ρ ps → Term Sg Γ Ρ τ
-  /-- A value of a **recursive** tagged union: constructor `t` — a number with the proof
-      that the declaration has it — and exactly that constructor's fields, whose types
-      `RecFlds` reads off the constructor's descriptions.  Only *one* level is built
-      here; the recursion is in the fields, which are terms of the declaration's own
-      type. -/
-  | recTU_mk : ∀ {Γ Ρ} (l : LeanTaggedUnionSchemaSealed) (t : Nat),
-      t < (RTy.fdescTU l.schema).length → ∀ {σs : List Ty},
-      RecFlds l ((RTy.fdescTU l.schema).getD t []) σs →
-      Spine Sg Γ Ρ σs → Term Sg Γ Ρ (.recTaggedUnion l)
+  | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
   /-- The eliminator of a recursive tagged union: one branch per constructor, each
       binding that constructor's fields, and no default.  It takes the value **one level**
       apart; a recursion over the whole of one is `Term.fixAcc` descending at
       `Mu.size`. -/
-  | recTU_elim : ∀ {Γ Ρ τ} {l : LeanTaggedUnionSchemaSealed},
-      Term Sg Γ Ρ (.recTaggedUnion l) → RecCases Sg Γ Ρ l (RTy.fdescTU l.schema) τ →
-      Term Sg Γ Ρ τ
+  | recTaggedUnion_rec : sorry -> RecTaggedUnionRecCases -> Term Sg Γ τ
+  | recObject_mk : sorry → Term Sg Γ (.recObject l)
+  | recObject_rec : sorry -> RecTaggedUnionRecCases -> Term Sg Γ τ
+  | recAlias_mk : sorry → Term Sg Γ (.recAlias l)
+  | recAlias_rec : sorry -> sorry -> Term Sg Γ τ
+  | mutualRecursiveFamily_mk : sorry → Term Sg Γ (.mutualRecursiveFamily l)
+  | mutualRecursiveFamily_rec : sorry -> sorry -> Term Sg Γ τ
 
 /-- A list of terms, typed by the list of their types: the arguments of an operation, the
     arguments of a jump, the arguments of a self call, the fields of a constructor. -/
-inductive Spine (Sg : Sig) : Ctx → RCtx → List Ty → Type 1
+inductive Spine (Sg : Sig) : Ctx → List Ty → Type 1
   /-- No more arguments. -/
-  | nil : ∀ {Γ Ρ}, Spine Sg Γ Ρ []
+  | nil : ∀ {Γ Ρ}, Spine Sg Γ []
   /-- One more argument. -/
-  | cons : ∀ {Γ Ρ σ σs}, Term Sg Γ Ρ σ → Spine Sg Γ Ρ σs → Spine Sg Γ Ρ (σ :: σs)
+  | cons : ∀ {Γ σ σs}, Term Sg Γ σ → Spine Sg Γ σs → Spine Sg Γ (σ :: σs)
 
 /-- The branches of a dispatch, one per constructor, in constructor order.  A branch
     **binds the fields** of its constructor, in declaration order, so de Bruijn index `0`
     of its body is that constructor's first field.  There is no default branch and no
     end-of-list before the constructors run out, so a dispatch is exhaustive by
     construction. -/
-inductive Cases (Sg : Sig) : Ctx → RCtx → List (List Ty) → Ty → Type 1
+inductive TaggedUnionRecCases (Sg : Sig) : Ctx → LeanTaggedUnionSchema Ty → Ty → Type 1
   /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ Ρ τ}, Cases Sg Γ Ρ [] τ
+  | nil : ∀ {Γ τ}, TaggedUnionRecCases Sg Γ sorry τ
   /-- The branch of the next constructor. -/
-  | cons : ∀ {Γ Ρ fs rest τ},
-      Term Sg (fs ++ Γ) Ρ τ → Cases Sg Γ Ρ rest τ → Cases Sg Γ Ρ (fs :: rest) τ
-
-/-- The branches of a dispatch on a recursive tagged union, one per constructor, in
-    constructor order.  A branch binds the fields of its constructor, at the types
-    `RecFlds` reads off their descriptions. -/
-inductive RecCases (Sg : Sig) : Ctx → RCtx → (l : LeanTaggedUnionSchemaSealed) →
-    List (List FDesc) → Ty → Type 1
-  /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ Ρ l τ}, RecCases Sg Γ Ρ l [] τ
-  /-- The branch of the next constructor. -/
-  | cons : ∀ {Γ Ρ l ds σs rest τ}, RecFlds l ds σs → Term Sg (σs ++ Γ) Ρ τ →
-      RecCases Sg Γ Ρ l rest τ → RecCases Sg Γ Ρ l (ds :: rest) τ
+  | cons : ∀ {Γ fs rest τ},
+      Term Sg (fs ++ Γ) τ → TaggedUnionRecCases Sg Γ rest τ → TaggedUnionElimCases Sg Γ sorry τ
 
 /-- The branches of a dispatch on an enum: `n` of them, binding nothing. -/
-inductive EnumCases (Sg : Sig) : Ctx → RCtx → Ty → Nat → Type 1
+inductive EnumRecCases (Sg : Sig) : Ctx → Ty → Nat → Type 1
   /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ Ρ τ}, EnumCases Sg Γ Ρ τ 0
+  | nil : ∀ {Γ τ}, EnumRecCases Sg Γ τ 0
   /-- The branch of the next constructor. -/
-  | cons : ∀ {Γ Ρ τ n},
-      Term Sg Γ Ρ τ → EnumCases Sg Γ Ρ τ n → EnumCases Sg Γ Ρ τ (n + 1)
-
-/-- A **tail**: a basic block of the block grammar, answering with `τ`.  Every position of
-    a `Tail` is a tail position of the enclosing `Term.block`, which is why a jump is
-    allowed here and nowhere else. -/
-inductive Tail (Sg : Sig) : Ctx → LCtx → RCtx → Ty → Type 1
-  /-- Answer with this value: the block is done. -/
-  | ret : ∀ {Γ Ω Ρ τ}, Term Sg Γ Ρ τ → Tail Sg Γ Ω Ρ τ
-  /-- Jump to a join point in scope, with one argument per parameter. -/
-  | jmp : ∀ {Γ Ω Ρ ps τ}, Ω ∋ₗ ps → Spine Sg Γ Ρ ps → Tail Sg Γ Ω Ρ τ
-  /-- `let x = e;` in front of the rest of the block. -/
-  | letT : ∀ {Γ Ω Ρ σ τ}, Term Sg Γ Ρ σ → Tail Sg (σ :: Γ) Ω Ρ τ → Tail Sg Γ Ω Ρ τ
-  /-- A two-way branch, both arms being blocks. -/
-  | iteT : ∀ {Γ Ω Ρ τ},
-      Term Sg Γ Ρ (.prim .bool) → Tail Sg Γ Ω Ρ τ → Tail Sg Γ Ω Ρ τ → Tail Sg Γ Ω Ρ τ
-  /-- A dispatch on a tagged union, every arm being a block. -/
-  | caseT : ∀ {Γ Ω Ρ τ} {l : LeanTaggedUnionSchema Ty},
-      Term Sg Γ Ρ (.taggedUnion l) → CasesT Sg Γ Ω Ρ l.toList τ → Tail Sg Γ Ω Ρ τ
-  /-- A dispatch on an enum, every arm being a block. -/
-  | enumCaseT : ∀ {Γ Ω Ρ τ} {s : LeanEnumSchema},
-      Term Sg Γ Ρ (.enum s) → EnumCasesT Sg Γ Ω Ρ τ s.nOfConstructors → Tail Sg Γ Ω Ρ τ
-  /-- **A join point**, taking the arguments `ps`, in scope in `rest` as label index `0`.
-
-      Its `body` is typed in the *outer* label context `Ω`, so it cannot jump back to
-      itself — control passes through it once per jump.  There is no loop here, and none
-      can be written: repeating work is `Term.fixAcc` and nothing else. -/
-  | join : ∀ {Γ Ω Ρ τ} (ps : List Ty),
-      (body : Tail Sg (ps ++ Γ) Ω Ρ τ) →
-      (rest : Tail Sg Γ (ps :: Ω) Ρ τ) → Tail Sg Γ Ω Ρ τ
-
-/-- The branches of a `Tail.caseT`: `Cases`, with a block in place of each term, so that
-    a branch may answer *or* jump. -/
-inductive CasesT (Sg : Sig) : Ctx → LCtx → RCtx → List (List Ty) → Ty → Type 1
-  /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ Ω Ρ τ}, CasesT Sg Γ Ω Ρ [] τ
-  /-- The branch of the next constructor. -/
-  | cons : ∀ {Γ Ω Ρ fs rest τ}, Tail Sg (fs ++ Γ) Ω Ρ τ → CasesT Sg Γ Ω Ρ rest τ →
-      CasesT Sg Γ Ω Ρ (fs :: rest) τ
-
-/-- The branches of a `Tail.enumCaseT`. -/
-inductive EnumCasesT (Sg : Sig) : Ctx → LCtx → RCtx → Ty → Nat → Type 1
-  /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ Ω Ρ τ}, EnumCasesT Sg Γ Ω Ρ τ 0
-  /-- The branch of the next constructor. -/
-  | cons : ∀ {Γ Ω Ρ τ n}, Tail Sg Γ Ω Ρ τ → EnumCasesT Sg Γ Ω Ρ τ n →
-      EnumCasesT Sg Γ Ω Ρ τ (n + 1)
+  | cons : ∀ {Γ τ n},
+      Term Sg Γ τ → EnumRecCases Sg Γ τ n → EnumElimCases Sg Γ τ (n + 1)
 
 end
 

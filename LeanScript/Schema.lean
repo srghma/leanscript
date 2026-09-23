@@ -249,9 +249,9 @@ end CtorsWithPayload
     is three constructors at `shift = -1`, printing as `-1 | 0 | 1`). -/
 structure LeanEnumSchema where
   /-- How many constructors the enum has **beyond** the three it has at minimum. -/
-  extraConstructors : Nat
+  extraConstructors : Nat := 0
   /-- The number the first constructor prints as. -/
-  shift : Int
+  shift : Int := 0
   deriving DecidableEq, Repr, Inhabited, BEq, ReflBEq, LawfulBEq
 
 namespace LeanEnumSchema
@@ -487,46 +487,6 @@ def map (f : α → β) : LeanMutualRecFamily α → LeanMutualRecFamily β
       .selectedLast (first.map f) (before.map (·.map f)) (current.map f)
 
 end LeanMutualRecFamily
-
-/-! ## Computed fields
-
-A Lean declaration may cache a value that is a **function of the value itself** —
-`Lean.Name` stores its own `hash`, declared `@[computed_field]`.  Nothing about *which*
-values the declaration has changes: a computed field is determined by the rest, so it is
-not a field a constructor takes.  What it changes is the *object* the runtime holds, and
-therefore the JavaScript that is printed, which is why it belongs in the type language at
-all.
-
-A schema with computed fields is therefore the schema of the declaration together with
-one entry per computed field — at least one, or it would not be a declaration with
-computed fields.  An entry says what the cached value *is*: at this layer, the type it
-has. -/
-
-/-- A schema, together with the computed fields of the declaration it describes: `σ` is
-    the schema of the declaration — an enum, a record, a tagged union, a recursive one of
-    those, a mutual family — and `γ` is what one computed field is described by. -/
-structure LeanWithComputedFieldsSchema (σ γ : Type) where
-  /-- The declaration, without its computed fields. -/
-  base : σ
-  /-- Its computed fields, in declaration order; there is at least one. -/
-  computed : NonEmptyList γ
-  deriving Repr, DecidableEq, Inhabited
-
-/-- An enum with computed fields. -/
-abbrev LeanEnumWithComputedFieldsSchema (γ : Type) :=
-  LeanWithComputedFieldsSchema LeanEnumSchema γ
-
-/-- A single-constructor record with computed fields. -/
-abbrev LeanRecordWithComputedFieldsSchema (α γ : Type) :=
-  LeanWithComputedFieldsSchema (LeanRecordSchema α) γ
-
-/-- A tagged union with computed fields. -/
-abbrev LeanTaggedUnionWithComputedFieldsSchema (α γ : Type) :=
-  LeanWithComputedFieldsSchema (LeanTaggedUnionSchema α) γ
-
-/-- A mutual recursive family with computed fields. -/
-abbrev LeanMutualRecFamilyWithComputedFieldsSchema (α γ : Type) :=
-  LeanWithComputedFieldsSchema (LeanMutualRecFamily α) γ
 
 end LeanScript
 

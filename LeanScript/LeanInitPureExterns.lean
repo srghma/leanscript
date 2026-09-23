@@ -2,10 +2,10 @@ module
 prelude
 public import LeanScript.LeanPrimTy
 public import LeanScript.LeanPrimTyCovariant
-public import Init.Data.FloatArray.Basic
-public import Init.System.IO
-public import Init.System.Promise
-public import Init.ShareCommon
+-- public import Init.Data.FloatArray.Basic
+-- public import Init.System.IO
+-- public import Init.System.Promise
+-- public import Init.ShareCommon
 set_option autoImplicit false
 @[expose] public section
 namespace LeanScript

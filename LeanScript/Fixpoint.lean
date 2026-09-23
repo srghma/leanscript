@@ -4,33 +4,6 @@ module
 
 namespace LeanScript
 
-/-!
-# One layer of a recursive declaration
-
-A recursive type is a *fixed point*: its body is a shape whose children are either the
-declaration itself again, or another shape.  The two wrappers here are that "or", and
-they are what says — in the type, not in a side condition — how many declarations a
-body may point back at.
-
-* `WithSelf f` is one layer of a declaration that recurses **on its own**.  There is
-  exactly one thing to point back at, so `self` carries no number: an occurrence *is*
-  the information.  This is the shape of `inductive List α | nil | cons α (List α)`.
-
-* `WithRefToMutualDatatype familySize f` is one layer of a member of a **mutual**
-  family.  Here an occurrence must say *which* member it is, and `Fin familySize` is
-  the only thing it can be, so a body cannot point outside its own family.
-
-`LeanScript.RTy` — the payload language of the recursive shapes of `LeanScript.Ty` — is a
-single type rather than two, so that a nested declaration inside a family, and a family
-inside a plain recursive declaration, are still one language.  Its self-references are
-therefore one constructor, `RTy.selfRef`, over the alphabet `LeanScript.SelfRef`, and
-`RTy.asWithSelf` / `RTy.asMutualRef` read a layer of it back as one of the two wrappers
-above: the first refuses a reference to a sibling, which a non-mutual declaration has
-none of, and the second refuses a bare `self` and an out-of-range member number, which
-is what makes its result a `Fin familySize`.  `LeanScript.RTyWf` asks for exactly those
-two conditions, one per kind of scope.
--/
-
 /-- One layer of a declaration that recurses on its own: an occurrence of the
     declaration, or a shape `f` of the type language.  `self` carries no number —
     there is only one declaration in scope to point at. -/

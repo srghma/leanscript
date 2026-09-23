@@ -1,6 +1,6 @@
 name = "LeanScript"
 version = "0.1.0"
-defaultTargets = ["LeanScript", "NonEmpty", "SnapshotsMy", "SnapshotsPBOPure"]
+defaultTargets = ["LeanScript", "NonEmpty", "SnapshotsMy"]
 
 [[require]]
 name = "aesop"
@@ -18,7 +18,3 @@ globs = ["NonEmpty.+"]
 [[lean_lib]]
 name = "SnapshotsMy"
 globs = ["SnapshotsMy.+"]
-
-[[lean_lib]]
-name = "SnapshotsPBOPure"
-globs = ["SnapshotsPBOPure.+"]

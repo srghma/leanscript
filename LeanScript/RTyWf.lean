@@ -18,9 +18,8 @@ mention the type language itself, and they are the decidable predicates of this 
 
 * a recursive shape **mentions itself** (`RTy.hasSelf`): a wrapper that does not is
   erased into its field;
-* every self-reference is one the scope allows (`RTy.selfRefs`, `selfRefsPlain` and
-  `selfRefsInFamily`): a declaration that recurses on its own is pointed at by `.self`,
-  and a member of a family by `.familyMember i` with `i` a member the family **has**;
+* every `.self` points at a member the declaration **has** (`RTy.selfIdxs`,
+  `selfIdxsOk`);
 * the type **has values** (`famAllInhabited`): `inductive Bad | mk : Bad → Bad` is the
   equation `T = T`, which no value satisfies;
 * a mutual family is **strongly connected** (`famStronglyConnected`): declarations that
@@ -33,101 +32,119 @@ take the proof as an argument, so a `Ty` is well formed by construction and ther
 subtype of the well-formed types to carry around.
 -/
 
+/-! ## Does a payload mention the declaration it sits in? -/
+
+mutual
+
+/-- Does this type mention the recursive declaration whose body it sits in?  A *nested*
+    recursive shape is not looked into: its `.self`s are its own. -/
+def RTy.hasSelf : RTy → Bool
+  | .self _ => true
+  | .fn a b => RTy.hasSelf a || RTy.hasSelf b
+  | .primCovariant s => RTy.hasSelfCov s
+  | .record fs => RTy.hasSelfA2 fs
+  | .taggedUnion l => RTy.hasSelfTU l
+  | _ => false
+
+/-- `RTy.hasSelf`, on an invariant type former. -/
+def RTy.hasSelfCov : LeanPrimTyCovariant RTy → Bool
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.hasSelf a
+
+/-- `RTy.hasSelf`, on a list of types. -/
+def RTy.hasSelfList : List RTy → Bool
+  | [] => false
+  | t :: ts => RTy.hasSelf t || RTy.hasSelfList ts
+
+/-- `RTy.hasSelf`, on the constructors of a layout. -/
+def RTy.hasSelfCtors : List (List RTy) → Bool
+  | [] => false
+  | fs :: l => RTy.hasSelfList fs || RTy.hasSelfCtors l
+
+/-- `RTy.hasSelf`, on the fields of a record. -/
+def RTy.hasSelfA2 : LeanRecordSchema RTy → Bool
+  | ⟨a, b, rest⟩ => RTy.hasSelf a || RTy.hasSelf b || RTy.hasSelfList rest
+
+/-- `RTy.hasSelf`, on the fields of a constructor that has at least one. -/
+def RTy.hasSelfNE : NonEmptyList RTy → Bool
+  | ⟨a, as⟩ => RTy.hasSelf a || RTy.hasSelfList as
+
+/-- `RTy.hasSelf`, on the constructors of a tagged union. -/
+def RTy.hasSelfTU : LeanTaggedUnionSchema RTy → Bool
+  | .payloadFirst f n r => RTy.hasSelfNE f || RTy.hasSelfList n || RTy.hasSelfCtors r
+  | .skip rest => RTy.hasSelfCP rest
+
+/-- `RTy.hasSelf`, on the constructors that follow a field-less one. -/
+def RTy.hasSelfCP : CtorsWithPayload RTy → Bool
+  | .here f r => RTy.hasSelfNE f || RTy.hasSelfCtors r
+  | .skip rest => RTy.hasSelfCP rest
+
+end
+
+/-- `RTy.hasSelf`, on the constructors of a recursive tagged union. -/
+def RTy.hasSelfRecTU : LeanTaggedUnionSchema RTy → Bool
+  | l => RTy.hasSelfTU l
+
+/-- `RTy.hasSelf`, on the fields of a recursive record. -/
+def RTy.hasSelfRecObj : LeanRecordSchema RTy → Bool
+  | fs => RTy.hasSelfA2 fs
+
+/-- `RTy.hasSelf`, on the body of a recursive newtype. -/
+def RTy.hasSelfAlias : RTy → Bool
+  | b => RTy.hasSelf b
 
 /-! ## Which members of a recursive declaration a payload mentions -/
 
 mutual
 
-/-- The self-references of the enclosing recursive declaration that this type makes.  A
+/-- The members of the enclosing recursive declaration that this type mentions.  A
     *nested* recursive shape is not looked into: its `.self`s are its own. -/
-def RTy.selfRefs : RTy → List SelfRef
-  | .selfRef s => [s]
-  | .fn a b => RTy.selfRefs a ++ RTy.selfRefs b
-  | .primCovariant s => RTy.selfRefsCov s
-  | .record fs => RTy.selfRefsA2 fs
-  | .taggedUnion l => RTy.selfRefsTU l
-  | .withComputedFields b _ => RTy.selfRefs b
+def RTy.selfIdxs : RTy → List Nat
+  | .self i => [i]
+  | .fn a b => RTy.selfIdxs a ++ RTy.selfIdxs b
+  | .primCovariant s => RTy.selfIdxsCov s
+  | .record fs => RTy.selfIdxsA2 fs
+  | .taggedUnion l => RTy.selfIdxsTU l
   | _ => []
 
-/-- `RTy.selfRefs`, on an invariant type former. -/
-def RTy.selfRefsCov : LeanPrimTyCovariant RTy → List SelfRef
-  | .array a | .thunk a | .lazy a => RTy.selfRefs a
+/-- `RTy.selfIdxs`, on an invariant type former. -/
+def RTy.selfIdxsCov : LeanPrimTyCovariant RTy → List Nat
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.selfIdxs a
 
-/-- `RTy.selfRefs`, on a list of types. -/
-def RTy.selfRefsList : List RTy → List SelfRef
+/-- `RTy.selfIdxs`, on a list of types. -/
+def RTy.selfIdxsList : List RTy → List Nat
   | [] => []
-  | t :: ts => RTy.selfRefs t ++ RTy.selfRefsList ts
+  | t :: ts => RTy.selfIdxs t ++ RTy.selfIdxsList ts
 
-/-- `RTy.selfRefs`, on the constructors of a layout. -/
-def RTy.selfRefsCtors : List (List RTy) → List SelfRef
+/-- `RTy.selfIdxs`, on the constructors of a layout. -/
+def RTy.selfIdxsCtors : List (List RTy) → List Nat
   | [] => []
-  | fs :: l => RTy.selfRefsList fs ++ RTy.selfRefsCtors l
+  | fs :: l => RTy.selfIdxsList fs ++ RTy.selfIdxsCtors l
 
-/-- `RTy.selfRefs`, on the fields of a record. -/
-def RTy.selfRefsA2 : LeanRecordSchema RTy → List SelfRef
-  | ⟨a, b, rest⟩ => RTy.selfRefs a ++ RTy.selfRefs b ++ RTy.selfRefsList rest
+/-- `RTy.selfIdxs`, on the fields of a record. -/
+def RTy.selfIdxsA2 : LeanRecordSchema RTy → List Nat
+  | ⟨a, b, rest⟩ => RTy.selfIdxs a ++ RTy.selfIdxs b ++ RTy.selfIdxsList rest
 
-/-- `RTy.selfRefs`, on the fields of a constructor that has at least one. -/
-def RTy.selfRefsNE : NonEmptyList RTy → List SelfRef
-  | ⟨a, as⟩ => RTy.selfRefs a ++ RTy.selfRefsList as
+/-- `RTy.selfIdxs`, on the fields of a constructor that has at least one. -/
+def RTy.selfIdxsNE : NonEmptyList RTy → List Nat
+  | ⟨a, as⟩ => RTy.selfIdxs a ++ RTy.selfIdxsList as
 
-/-- `RTy.selfRefs`, on the constructors of a tagged union. -/
-def RTy.selfRefsTU : LeanTaggedUnionSchema RTy → List SelfRef
-  | .payloadFirst f n r => RTy.selfRefsNE f ++ RTy.selfRefsList n ++ RTy.selfRefsCtors r
-  | .skip rest => RTy.selfRefsCP rest
+/-- `RTy.selfIdxs`, on the constructors of a tagged union. -/
+def RTy.selfIdxsTU : LeanTaggedUnionSchema RTy → List Nat
+  | .payloadFirst f n r => RTy.selfIdxsNE f ++ RTy.selfIdxsList n ++ RTy.selfIdxsCtors r
+  | .skip rest => RTy.selfIdxsCP rest
 
-/-- `RTy.selfRefs`, on the constructors that follow a field-less one. -/
-def RTy.selfRefsCP : CtorsWithPayload RTy → List SelfRef
-  | .here f r => RTy.selfRefsNE f ++ RTy.selfRefsCtors r
-  | .skip rest => RTy.selfRefsCP rest
+/-- `RTy.selfIdxs`, on the constructors that follow a field-less one. -/
+def RTy.selfIdxsCP : CtorsWithPayload RTy → List Nat
+  | .here f r => RTy.selfIdxsNE f ++ RTy.selfIdxsCtors r
+  | .skip rest => RTy.selfIdxsCP rest
 
 end
 
-/-- The self-references one member of a family makes. -/
-def LeanFamMemberSchema_RTy.selfRefs : LeanFamMemberSchema RTy → List SelfRef
-  | .ctors l => RTy.selfRefsTU l
-  | .record fs => RTy.selfRefsA2 fs
-  | .alias b => RTy.selfRefs b
-
-
-/-! ## Does a payload mention the declaration it sits in?
-
-A payload mentions it exactly when it makes a self-reference at all, so these are
-`RTy.selfRefs` read as a `Bool` rather than a second traversal of the same shapes. -/
-
-/-- Does this type mention the recursive declaration whose body it sits in?  A *nested*
-    recursive shape is not looked into: its `.self`s are its own. -/
-def RTy.hasSelf (t : RTy) : Bool := !(RTy.selfRefs t).isEmpty
-
-/-- `RTy.hasSelf`, on an invariant type former. -/
-def RTy.hasSelfCov (s : LeanPrimTyCovariant RTy) : Bool := !(RTy.selfRefsCov s).isEmpty
-
-/-- `RTy.hasSelf`, on a list of types. -/
-def RTy.hasSelfList (ts : List RTy) : Bool := !(RTy.selfRefsList ts).isEmpty
-
-/-- `RTy.hasSelf`, on the constructors of a layout. -/
-def RTy.hasSelfCtors (l : List (List RTy)) : Bool := !(RTy.selfRefsCtors l).isEmpty
-
-/-- `RTy.hasSelf`, on the fields of a record. -/
-def RTy.hasSelfA2 (fs : LeanRecordSchema RTy) : Bool := !(RTy.selfRefsA2 fs).isEmpty
-
-/-- `RTy.hasSelf`, on the fields of a constructor that has at least one. -/
-def RTy.hasSelfNE (f : NonEmptyList RTy) : Bool := !(RTy.selfRefsNE f).isEmpty
-
-/-- `RTy.hasSelf`, on the constructors of a tagged union. -/
-def RTy.hasSelfTU (l : LeanTaggedUnionSchema RTy) : Bool := !(RTy.selfRefsTU l).isEmpty
-
-/-- `RTy.hasSelf`, on the constructors that follow a field-less one. -/
-def RTy.hasSelfCP (c : CtorsWithPayload RTy) : Bool := !(RTy.selfRefsCP c).isEmpty
-
-/-- `RTy.hasSelf`, on the constructors of a recursive tagged union. -/
-def RTy.hasSelfRecTU (l : LeanTaggedUnionSchema RTy) : Bool := RTy.hasSelfTU l
-
-/-- `RTy.hasSelf`, on the fields of a recursive record. -/
-def RTy.hasSelfRecObj (fs : LeanRecordSchema RTy) : Bool := RTy.hasSelfA2 fs
-
-/-- `RTy.hasSelf`, on the body of a recursive newtype. -/
-def RTy.hasSelfAlias (b : RTy) : Bool := RTy.hasSelf b
+/-- The members of its family that one member mentions. -/
+def LeanFamMemberSchema_RTy.selfIdxs : LeanFamMemberSchema RTy → List Nat
+  | .ctors l => RTy.selfIdxsTU l
+  | .record fs => RTy.selfIdxsA2 fs
+  | .alias b => RTy.selfIdxs b
 
 /-- Does this member mention the declaration it belongs to at all? -/
 def LeanFamMemberSchema_RTy.hasSelf : LeanFamMemberSchema RTy → Bool
@@ -135,22 +152,8 @@ def LeanFamMemberSchema_RTy.hasSelf : LeanFamMemberSchema RTy → Bool
   | .record fs => RTy.hasSelfA2 fs
   | .alias b => RTy.hasSelf b
 
-/-- Are these the self-references of a declaration that **recurses on its own** — each of
-    them a bare `.self`, and none of them a reference to a sibling, which it has none of?
-    This is what makes `RTy.asWithSelf` total on the payload. -/
-def selfRefsPlain (refs : List SelfRef) : Bool := refs.all (· == SelfRef.self)
-
-/-- Are these the self-references of one member of a family of `numMembers` members —
-    each of them a member the family has, and none of them a bare `.self`, which says
-    nothing inside a family?  This is what makes `RTy.asMutualRef numMembers` total on
-    the payload. -/
-def selfRefsInFamily (numMembers : Nat) (refs : List SelfRef) : Bool :=
-  refs.all fun r => match r with
-    | .self => false
-    | .familyMember i => i < numMembers
-
-/-- The members of its family that a list of self-references points at. -/
-def selfRefMembers (refs : List SelfRef) : List Nat := refs.filterMap SelfRef.member?
+/-- Does every `.self` here point at a member the declaration has? -/
+def selfIdxsOk (numMembers : Nat) (idxs : List Nat) : Bool := idxs.all (· < numMembers)
 
 /-! ## Which members have values at all -/
 
@@ -159,7 +162,7 @@ mutual
 /-- Can a value of this type be built when member `i` of the enclosing recursive
     declaration can be built exactly when `avail[i]!` says so? -/
 def RTy.inhabWith (avail : List Bool) : RTy → Bool
-  | .selfRef s => (avail[s.slot]?).getD false
+  | .self i => (avail[i]?).getD false
   | .prim _ => true
   -- a function needs no argument to exist, only a result
   | .fn _ r => RTy.inhabWith avail r
@@ -173,14 +176,12 @@ def RTy.inhabWith (avail : List Bool) : RTy → Bool
   | .recObject _ => true
   | .recAlias _ => true
   | .mutualRecursiveFamily _ => true
-  -- caching a value computed from the value changes nothing about which values there are
-  | .withComputedFields b _ => RTy.inhabWith avail b
 
 /-- `RTy.inhabWith`, on an invariant type former. -/
 def RTy.inhabWithCov (avail : List Bool) : LeanPrimTyCovariant RTy → Bool
   -- the empty array and the empty list hold nothing
   | .array _ => true
-  | .thunk a | .lazy a => RTy.inhabWith avail a
+  | .task a | .promise a | .thunk a | .lazy a => RTy.inhabWith avail a
 
 /-- `RTy.inhabWith`, on the fields of one constructor: it needs all of them. -/
 def RTy.inhabWithAll (avail : List Bool) : List RTy → Bool
@@ -238,7 +239,7 @@ def famAllInhabited (ms : List (LeanFamMemberSchema RTy)) : Bool := (famInhabite
 
 /-- Which members each member mentions. -/
 def famEdges (ms : List (LeanFamMemberSchema RTy)) : List (List Nat) :=
-  ms.map (fun m => selfRefMembers (LeanFamMemberSchema_RTy.selfRefs m))
+  ms.map LeanFamMemberSchema_RTy.selfIdxs
 
 /-- Add to `acc` everything its members mention. -/
 def famReachStep (edges : List (List Nat)) (acc : List Nat) : List Nat :=
@@ -270,26 +271,25 @@ exists.  They are what the recursive constructors of `LeanScript.Ty` ask a proof
     that it has values at all: `inductive Bad | l : Bad → Bad | r : Bad → Bad` has
     none. -/
 def recTUWf (l : LeanTaggedUnionSchema RTy) : Bool :=
-  RTy.hasSelfTU l && selfRefsPlain (RTy.selfRefsTU l) && famAllInhabited [.ctors l]
+  RTy.hasSelfTU l && selfIdxsOk 1 (RTy.selfIdxsTU l) && famAllInhabited [.ctors l]
 
 /-- A recursive record mentions itself, points only at itself, and has values:
     `structure S where s : S; n : Nat` has none. -/
 def recObjWf (fs : LeanRecordSchema RTy) : Bool :=
-  RTy.hasSelfA2 fs && selfRefsPlain (RTy.selfRefsA2 fs) && famAllInhabited [.record fs]
+  RTy.hasSelfA2 fs && selfIdxsOk 1 (RTy.selfIdxsA2 fs) && famAllInhabited [.record fs]
 
 /-- A recursive newtype mentions itself — otherwise the wrapper is erased into its field
     and there is no `recAlias` at all — and does so guardedly, so that the equation it
-    stands for has a solution: `recAlias (.self)` is `T = T`, which no value
-    satisfies, while `recAlias (.array (.self))` is the empty array and more. -/
+    stands for has a solution: `recAlias (.self 0)` is `T = T`, which no value
+    satisfies, while `recAlias (.array (.self 0))` is the empty array and more. -/
 def recAliasWf (b : RTy) : Bool :=
-  RTy.hasSelf b && selfRefsPlain (RTy.selfRefs b) && famAllInhabited [.alias b]
+  RTy.hasSelf b && selfIdxsOk 1 (RTy.selfIdxs b) && famAllInhabited [.alias b]
 
 /-- A family mentions only members it has, is a family rather than a `mutual` block of
     unrelated declarations — each member reaches every member — and every member of it
     has values. -/
 def famWf (f : LeanMutualRecFamily RTy) : Bool :=
-  f.members.all
-      (fun m => selfRefsInFamily f.members.length (LeanFamMemberSchema_RTy.selfRefs m))
+  f.members.all (fun m => selfIdxsOk f.members.length (LeanFamMemberSchema_RTy.selfIdxs m))
     && famStronglyConnected f.members && famAllInhabited f.members
 
 /-! ## Well-formedness of a whole payload
@@ -308,7 +308,7 @@ mutual
     `LeanScript/DivergeNeg.lean` used to prove.  Nothing a Lean source declaration needs is
     lost: Lean's own inductive types are strictly positive. -/
 def RTy.wf : RTy → Bool
-  | .selfRef _ => true
+  | .self _ => true
   | .prim _ => true
   | .fn a b => !RTy.hasSelf a && RTy.wf a && RTy.wf b
   | .primCovariant s => RTy.wfCov s
@@ -319,11 +319,10 @@ def RTy.wf : RTy → Bool
   | .recObject fs => recObjWf fs && RTy.wfA2 fs
   | .recAlias b => recAliasWf b && RTy.wf b
   | .mutualRecursiveFamily f => famWf f && LeanFamMemberSchema_RTy.wfFamily f
-  | .withComputedFields b _ => RTy.wf b
 
 /-- `RTy.wf`, on an invariant type former. -/
 def RTy.wfCov : LeanPrimTyCovariant RTy → Bool
-  | .array a | .thunk a | .lazy a => RTy.wf a
+  | .array a | .task a | .promise a | .thunk a | .lazy a => RTy.wf a
 
 /-- `RTy.wf`, on a list of types. -/
 def RTy.wfList : List RTy → Bool
@@ -374,82 +373,6 @@ def LeanFamMemberSchema_RTy.wfFamily : LeanMutualRecFamily RTy → Bool
 
 end
 
-/-! ## Sealed payloads: a payload that carries its own well-formedness
-
-The recursive shapes of `LeanScript.Ty` used to take *two* arguments, a payload and a
-proof about it, with the proof defaulted to `by decide`.  They take one now: a **sealed**
-payload, which is the payload together with `h_wf`, the proposition that says the shape
-it describes is a type that exists.
-
-Two things follow.  A recursive constructor of `Ty` has one argument again, so a match on
-it binds one thing and the proof travels with the payload rather than beside it.  And the
-proof field is a `Prop`, so it is irrelevant to equality: two sealed payloads with the
-same schema *are* the same sealed payload, and `Ty.beq` never has to look at a proof.
-
-Writing one out costs a `by decide` and nothing else — the field is an auto-bound
-`by decide` when the structure is built with `LeanTaggedUnionSchemaSealed.mk l`, and
-`⟨l, by decide⟩` in anonymous-constructor notation — whenever `l` is a recursive tagged
-union that a value exists of. -/
-
-/-- Well-formedness of a payload, as a proposition: the shape it describes is a type that
-    exists.  This is `RTy.wf`, read as a `Prop`, and it is decidable, so a payload written
-    out settles it `by decide`. -/
-def RTy.Wf (t : RTy) : Prop := RTy.wf t = true
-
-instance (t : RTy) : Decidable (RTy.Wf t) := inferInstanceAs (Decidable (RTy.wf t = true))
-
-/-- A recursive tagged union that carries its own well-formedness: the payload of
-    `Ty.recTaggedUnion`. -/
-structure LeanTaggedUnionSchemaSealed where
-  /-- The constructors of the declaration, in declaration order. -/
-  schema : LeanTaggedUnionSchema RTy
-  /-- It mentions itself, points only at itself, and has values. -/
-  h_wf : RTy.Wf (.recTaggedUnion schema) := by decide
-
-/-- A recursive record that carries its own well-formedness: the payload of
-    `Ty.recObject`. -/
-structure LeanRecordSchemaSealed where
-  /-- The fields of the declaration, in declaration order. -/
-  fields : LeanRecordSchema RTy
-  /-- It mentions itself, points only at itself, and has values. -/
-  h_wf : RTy.Wf (.recObject fields) := by decide
-
-/-- A recursive newtype that carries its own well-formedness: the payload of
-    `Ty.recAlias`. -/
-structure RTySealed where
-  /-- The single field of the declaration, with the wrapper erased. -/
-  body : RTy
-  /-- It mentions itself, guardedly, so the equation it stands for has a solution. -/
-  h_wf : RTy.Wf (.recAlias body) := by decide
-
-/-- A mutual recursive family that carries its own well-formedness: the payload of
-    `Ty.mutualRecursiveFamily`. -/
-structure LeanMutualRecFamilySealed where
-  /-- The members of the family, and which of them this type is. -/
-  family : LeanMutualRecFamily RTy
-  /-- Every `.self` points at a member the family has, the family is strongly connected,
-      and every member has values. -/
-  h_wf : RTy.Wf (.mutualRecursiveFamily family) := by decide
-
-/-- Sealed payloads with the same schema are equal: the proof field is a `Prop`. -/
-theorem LeanTaggedUnionSchemaSealed.eq_of_schema_eq :
-    ∀ {a b : LeanTaggedUnionSchemaSealed}, a.schema = b.schema → a = b
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
-/-- The same, for a recursive record. -/
-theorem LeanRecordSchemaSealed.eq_of_fields_eq :
-    ∀ {a b : LeanRecordSchemaSealed}, a.fields = b.fields → a = b
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
-/-- The same, for a recursive newtype. -/
-theorem RTySealed.eq_of_body_eq : ∀ {a b : RTySealed}, a.body = b.body → a = b
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
-/-- The same, for a mutual family. -/
-theorem LeanMutualRecFamilySealed.eq_of_family_eq :
-    ∀ {a b : LeanMutualRecFamilySealed}, a.family = b.family → a = b
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
 /-! ## The degenerate recursive declarations, refuted
 
 These are the declarations Lean accepts and no compiled program can hold a value of.
@@ -459,11 +382,11 @@ be applied. -/
 
 /-- `inductive Bad | mk : Bad → Bad` is read as the recursive newtype whose body is the
     declaration itself, i.e. as the equation `T = T`.  No value satisfies it. -/
-theorem not_recAliasWf_selfLoop : recAliasWf (.self) = false := by decide
+theorem not_recAliasWf_selfLoop : recAliasWf (.self 0) = false := by decide
 
 /-- `structure Worse where w : Worse; n : Nat` is the same mistake one shape along: a
     record needs *all* of its fields, and one of them is the record itself. -/
-theorem not_recObjWf_selfField : recObjWf ⟨.self, .prim .nat, []⟩ = false := by decide
+theorem not_recObjWf_selfField : recObjWf ⟨.self 0, .prim .nat, []⟩ = false := by decide
 
 /-- A recursive newtype that does *not* mention itself is not one either: its wrapper is
     erased into its field, and the type it describes is just that field. -/
@@ -471,38 +394,10 @@ theorem not_recAliasWf_noSelf : recAliasWf (.prim .nat) = false := by decide
 
 /-- A guarded recursive newtype — `structure Rose where kids : Array Rose` — *is* well
     formed: the empty array holds no `Rose`, so a `Rose` can be built. -/
-theorem recAliasWf_array : recAliasWf (.array (.self)) = true := by decide
+theorem recAliasWf_array : recAliasWf (.array (.self 0)) = true := by decide
 
 /-- And so is a recursive sum with a base case: `inductive T | leaf | node : T → T → T`. -/
-theorem recTUWf_tree : recTUWf (.skip (.here ⟨.self, [.self]⟩ [])) = true := by decide
-
-/-! ### A declaration points back with the reference its scope has
-
-A declaration that recurses on its own is pointed at by `.self`, and a member of a
-family by `.familyMember i`.  Neither scope accepts the other's reference, which is what
-makes `RTy.asWithSelf` and `RTy.asMutualRef` the readings of a well-formed payload. -/
-
-/-- `mutual inductive Tree | node : Nat → Forest; inductive Forest | nil | cons : Tree →
-    Forest → Forest end` is a family of two members that each point at the other by
-    number, and it is well formed: `Forest.nil` builds a value without one of either. -/
-theorem famWf_treeForest :
-    RTy.wf (.mutualRecursiveFamily (.selectedThenMore []
-      (.record ⟨.prim .nat, .familyMember 1, []⟩)
-      (.ctors (.skip (.here ⟨.familyMember 0, [.familyMember 1]⟩ [])))
-      [])) = true := by decide
-
-/-- The same family with a bare `.self` in place of each member number is **not** well
-    formed: inside a family, `.self` does not say which member is meant. -/
-theorem not_famWf_treeForest_plainSelf :
-    RTy.wf (.mutualRecursiveFamily (.selectedThenMore []
-      (.record ⟨.prim .nat, .self, []⟩)
-      (.ctors (.skip (.here ⟨.self, [.self]⟩ [])))
-      [])) = false := by decide
-
-/-- And a declaration that recurses on its own is not written with a member number: it
-    is not a family, so it has no member `0` to point at. -/
-theorem not_recTUWf_familyMember :
-    recTUWf (.skip (.here ⟨.familyMember 0, [.familyMember 0]⟩ [])) = false := by decide
+theorem recTUWf_tree : recTUWf (.skip (.here ⟨.self 0, [.self 0]⟩ [])) = true := by decide
 
 /-! ## Strict positivity, refuted and permitted
 
@@ -515,30 +410,30 @@ refuses it, so there is no such `Ty`. -/
     `Ω` is written at — is **not** well formed: `.self` stands in the domain of an
     arrow. -/
 theorem not_wf_negRecObject :
-    RTy.wf (.recObject ⟨.fn (.self) (.prim .nat), .prim .nat, []⟩) = false := by decide
+    RTy.wf (.recObject ⟨.fn (.self 0) (.prim .nat), .prim .nat, []⟩) = false := by decide
 
 /-- The same shape one level in: a negative occurrence buried under a list is refused
     too, since `RTy.hasSelf` looks through the covariant type formers. -/
 theorem not_wf_negRecObject_nested :
-    RTy.wf (.recObject ⟨.fn (.array (.self)) (.prim .nat), .prim .nat, []⟩) = false := by
+    RTy.wf (.recObject ⟨.fn (.array (.self 0)) (.prim .nat), .prim .nat, []⟩) = false := by
   decide
 
 /-- A **positive** occurrence is untouched: `inductive T | leaf | node : (Nat → T) → T` —
     an infinitely branching tree — has `.self` to the *right* of an arrow, and is well
     formed. -/
 theorem wf_posRecTU :
-    RTy.wf (.recTaggedUnion (.skip (.here ⟨.fn (.prim .nat) (.self), []⟩ []))) = true := by
+    RTy.wf (.recTaggedUnion (.skip (.here ⟨.fn (.prim .nat) (.self 0), []⟩ []))) = true := by
   decide
 
 /-- The negative counterpart of the same declaration,
     `inductive Bad | leaf | node : (Bad → Nat) → Bad`, is refused. -/
 theorem not_wf_negRecTU :
-    RTy.wf (.recTaggedUnion (.skip (.here ⟨.fn (.self) (.prim .nat), []⟩ []))) = false := by
+    RTy.wf (.recTaggedUnion (.skip (.here ⟨.fn (.self 0) (.prim .nat), []⟩ []))) = false := by
   decide
 
 /-- And so is the shape every Lean inductive type has: no arrow over `.self` at all. -/
 theorem wf_recTU_tree :
-    RTy.wf (.recTaggedUnion (.skip (.here ⟨.self, [.self]⟩ []))) = true := by decide
+    RTy.wf (.recTaggedUnion (.skip (.here ⟨.self 0, [.self 0]⟩ []))) = true := by decide
 
 end LeanScript
 
