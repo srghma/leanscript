@@ -18,11 +18,11 @@ all and the tree would not be a type (`Ty.not_wf_recObject_self`).
 
 `recBinders_recObject` below is that statement: at a recursive record the binders of the
 old fold are *exactly* the binders of `Term.recObject_casesOn`, so the plain fold handed
-its branch no answer whatsoever.  What the depth-`k` fold hands it instead is the
-**lookback window** `TyWf.recObjectAnswerWindow` — the answers one level down, two levels
-down, …, `k + 1` levels down, each in the shape of the record's own fields — and
-`recObjectRecBinders_zero` says that the default depth is the old branch context with the
-one answer the old one was missing appended to it.
+its branch no answer whatsoever.  What the depth-`k` fold hands it instead is one
+**lookback window** binder — the record's own fields with each subvalue replaced by its
+answer tree of depth `k` (`TyWf.recObjectAnswerTree`) — and `recObjectRecBinders_zero`
+says that the default depth is the old branch context with the one answer the old one was
+missing appended to it.
 -/
 
 namespace LeanScript
@@ -81,30 +81,23 @@ theorem recObjectRecBinders_zero (fs : LeanRecordSchema (TyWfIn 1))
     (hwf : Ty.Wf (recObjectTy fs)) (motive : TyWf) :
     recObjectRecBinders fs hwf motive 0 =
       recBinders (recObject fs hwf) motive fs.toList ++
-        [recObjectAnswerTy fs motive 1] := by
+        [recObjectMap fs motive] := by
   rw [recObjectRecBinders, recBinders_recObject]
   rfl
 
-/-- One more depth is one more answer, at the end of the window. -/
-theorem recObjectRecBinders_succ (fs : LeanRecordSchema (TyWfIn 1))
-    (hwf : Ty.Wf (recObjectTy fs)) (motive : TyWf) (k : Nat) :
-    recObjectRecBinders fs hwf motive (k + 1) =
-      recObjectRecBinders fs hwf motive k ++ [recObjectAnswerTy fs motive (k + 2)] := by
-  simp only [recObjectRecBinders, recObjectAnswerWindow, List.append_assoc]
+/-- One more depth is one more level inside the window: the answer tree of depth `k + 1`
+    at a subvalue is the answer at it beside the depth-`k` trees of *its* subvalues. -/
+theorem recObjectAnswerTree_succ (fs : LeanRecordSchema (TyWfIn 1)) (motive : TyWf)
+    (k : Nat) :
+    recObjectAnswerTree fs motive (k + 1) =
+      .record ⟨motive, recObjectMap fs (recObjectAnswerTree fs motive k), []⟩ := rfl
 
-/-- A depth-`k` fold reads `k + 1` levels. -/
-theorem length_recObjectAnswerWindow (fs : LeanRecordSchema (TyWfIn 1)) (motive : TyWf) :
-    (k : Nat) → (recObjectAnswerWindow fs motive k).length = k + 1
-  | 0 => rfl
-  | k + 1 => by
-    simp [recObjectAnswerWindow, length_recObjectAnswerWindow fs motive k]
-
-/-- So the branch of a depth-`k` fold binds the record's fields and `k + 1` answers. -/
+/-- The branch of a depth-`k` fold binds the record's fields and one answer window. -/
 theorem length_recObjectRecBinders (fs : LeanRecordSchema (TyWfIn 1))
     (hwf : Ty.Wf (recObjectTy fs)) (motive : TyWf) (k : Nat) :
-    (recObjectRecBinders fs hwf motive k).length = fs.length + (k + 1) := by
-  simp [recObjectRecBinders, length_recObjectAnswerWindow, recObjectUnfold,
-    LeanRecordSchema.map, LeanRecordSchema.length]
+    (recObjectRecBinders fs hwf motive k).length = fs.length + 1 := by
+  simp [recObjectRecBinders, recObjectUnfold, LeanRecordSchema.map,
+    LeanRecordSchema.length]
 
 end TyWf
 

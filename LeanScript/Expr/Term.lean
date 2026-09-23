@@ -387,12 +387,12 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
       reads `k + 1` levels at a time.  A record has one constructor, so there is one
       branch and nothing to dispatch on: the branch binds every field, unfolded — what
-      `Term.recObject_casesOn` binds — and then the fold's **lookback window**, the
-      answers one level down, two levels down, …, `k + 1` levels down, nearest first
-      (`TyWf.recObjectRecBinders`).
+      `Term.recObject_casesOn` binds — and then the fold's **lookback window**
+      (`TyWf.recObjectRecBinders`), which holds the answer at each immediate subvalue
+      and, `k` levels deep, the answers below it.
 
       The answers are given in the shape of the record's own fields
-      (`TyWf.recObjectAnswerTy`), because a recursive record never has a field that is
+      (`TyWf.recObjectAnswerTree`), because a recursive record never has a field that is
       *literally* an occurrence of it: all of its fields have to have values, so a field
       written `Ty.self` would leave the record with none
       (`LeanScript.RecObjectRecFacts`).  At the default depth `k = 0` the branch binds
