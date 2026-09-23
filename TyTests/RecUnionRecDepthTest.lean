@@ -3,6 +3,7 @@ module
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecUnionRecFacts
+public import TyTests.FibWindowTest
 
 @[expose] public section
 
@@ -47,6 +48,7 @@ below, one for one.
 | `Peano.trib`, `Peano.tetra`, `Peano.penta`, `Peano.hexa` | `recTaggedUnion_rec 2 … 5` | `tribTerm`, `tetraTerm`, `pentaTerm`, `hexaTerm` |
 | `Peano.fibLoopTR` (tail-recursive, two accumulators) | `recTaggedUnion_rec 0` **at a function type** | `fibTRTerm` |
 | `Peano.fibPair` (pair recursion) | `recTaggedUnion_rec 0` at a record type | `fibPairTerm` |
+| `cont` (the continuant, over a **list** union) | `recTaggedUnion_rec 1`, descending into the *second* field | `contTerm` |
 | `fibFast` (halves its argument) | no depth reaches it | the prose at the end |
 
 **What is checked.**  `LeanScript.Ty.Den` gives a recursive shape no values — there is no
@@ -58,9 +60,20 @@ than the documented one.  What the contexts are is pinned separately, by the `rf
 examples of §1, and the Lean programs at the top of each section say what each term
 means.
 
-The depth-zero fold is the fold that was there before the depth was added: §7 checks
+Those Lean programs are themselves checked, in §0: their values at `10` by `#guard`, that
+`Peano.fib` is the ordinary `fib` at *every* argument (`Peano.fib_ofNat`), and the three
+theorems of the request — `Peano.fibPair_eq`, `Peano.fibPair_fst_eq_fib` and
+`Peano.fibTR_eq_fib`, that the pair recursion and the tail-recursive loop both compute
+`fib`.
+
+The depth-zero fold is the fold that was there before the depth was added: §8 checks
 that, at `k = 0`, no branch can look down at all, and `LeanScript.RecUnionRecFacts` proves
 that the branches of a depth-zero fold are exactly the branches of the plain fold.
+
+The terms are **written out**, as the first half of `TyTests/NatRecDepthTest.lean` and all
+of `TyTests/ArrayRecDepthTest.lean` are: `#leanscript_to_term` compiles a recursion on a
+`Nat` at any depth, and a recursion on a list one constructor at a time, so a depth-`k`
+recursion on a union is not something it reads yet.
 -/
 
 namespace TyTests.RecUnionRecDepth
@@ -95,6 +108,39 @@ def trib : Peano → Nat
   | .succ (.succ .zero) => 1
   | .succ (.succ (.succ n)) => trib n + trib (.succ n) + trib (.succ (.succ n))
 
+/-- The tetranacci numbers: four constructors down. -/
+def tetra : Peano → Nat
+  | .zero => 0
+  | .succ .zero => 0
+  | .succ (.succ .zero) => 0
+  | .succ (.succ (.succ .zero)) => 1
+  | .succ (.succ (.succ (.succ n))) =>
+      tetra n + tetra (.succ n) + tetra (.succ (.succ n)) + tetra (.succ (.succ (.succ n)))
+
+/-- The pentanacci numbers: five constructors down. -/
+def penta : Peano → Nat
+  | .zero => 0
+  | .succ .zero => 0
+  | .succ (.succ .zero) => 0
+  | .succ (.succ (.succ .zero)) => 0
+  | .succ (.succ (.succ (.succ .zero))) => 1
+  | .succ (.succ (.succ (.succ (.succ n)))) =>
+      penta n + penta (.succ n) + penta (.succ (.succ n)) + penta (.succ (.succ (.succ n)))
+        + penta (.succ (.succ (.succ (.succ n))))
+
+/-- The hexanacci numbers: six constructors down. -/
+def hexa : Peano → Nat
+  | .zero => 0
+  | .succ .zero => 0
+  | .succ (.succ .zero) => 0
+  | .succ (.succ (.succ .zero)) => 0
+  | .succ (.succ (.succ (.succ .zero))) => 0
+  | .succ (.succ (.succ (.succ (.succ .zero)))) => 1
+  | .succ (.succ (.succ (.succ (.succ (.succ n))))) =>
+      hexa n + hexa (.succ n) + hexa (.succ (.succ n)) + hexa (.succ (.succ (.succ n)))
+        + hexa (.succ (.succ (.succ (.succ n))))
+        + hexa (.succ (.succ (.succ (.succ (.succ n)))))
+
 /-- The tail-recursive loop, with two accumulators. -/
 def fibLoopTR : Peano → Nat → Nat → Nat
   | .zero, a, _ => a
@@ -107,6 +153,69 @@ def fibTR (n : Peano) : Nat := fibLoopTR n 0 1
 def fibPair : Peano → Nat × Nat
   | .zero => (0, 1)
   | .succ n => let (a, b) := fibPair n; (b, a + b)
+
+/-- A Peano natural from a `Nat`, for the checks below. -/
+def ofNat : Nat → Peano
+  | 0 => .zero
+  | n + 1 => .succ (ofNat n)
+
+-- The reference programs are the familiar sequences.
+#guard fib (ofNat 10) = 55
+#guard fibTR (ofNat 10) = 55
+#guard fibPair (ofNat 10) = (55, 89)
+#guard trib (ofNat 10) = 81
+#guard tetra (ofNat 10) = 56
+#guard penta (ofNat 10) = 31
+#guard hexa (ofNat 10) = 16
+
+/-- The Peano `fib` is the `fib` of `TyTests.FibWindow`, at **every** argument. -/
+theorem fib_ofNat : (n : Nat) → fib (ofNat n) = TyTests.FibWindow.fib n
+  | 0 => rfl
+  | 1 => rfl
+  | n + 2 => by
+      show fib (ofNat n) + fib (ofNat (n + 1)) =
+        TyTests.FibWindow.fib n + TyTests.FibWindow.fib (n + 1)
+      rw [fib_ofNat n, fib_ofNat (n + 1)]
+
+/-- Addition of Peano naturals, by recursion on the left argument. -/
+def add : Peano → Peano → Peano
+  | .zero, m => m
+  | .succ n, m => .succ (add n m)
+
+@[simp] theorem add_succ : (n m : Peano) → add n (.succ m) = .succ (add n m)
+  | .zero, _ => rfl
+  | .succ n, m => congrArg Peano.succ (add_succ n m)
+
+/-- The pair recursion carries the answer at `n` and the answer at `n + 1`. -/
+theorem fibPair_eq : (n : Peano) → fibPair n = (fib n, fib (.succ n))
+  | .zero => rfl
+  | .succ n => by
+      show (let (a, b) := fibPair n; ((b, a + b) : Nat × Nat)) = _
+      rw [fibPair_eq n]
+      rfl
+
+/-- The first component of the pair recursion is `fib`. -/
+theorem fibPair_fst_eq_fib (n : Peano) : (fibPair n).1 = fib n := by
+  rw [fibPair_eq]
+
+/-- The loop, started at the answers at `m` and `m + 1`, answers at `n + m`. -/
+theorem fibLoopTR_eq : (n m : Peano) →
+    fibLoopTR n (fib m) (fib (.succ m)) = fib (add n m)
+  | .zero, _ => rfl
+  | .succ n, m => by
+      show fibLoopTR n (fib (.succ m)) (fib m + fib (.succ m)) = fib (.succ (add n m))
+      rw [show fib m + fib (.succ m) = fib (.succ (.succ m)) from rfl,
+        fibLoopTR_eq n (.succ m), add_succ]
+
+/-- The tail-recursive program is `fib`. -/
+theorem fibTR_eq_fib (n : Peano) : fibTR n = fib n := by
+  show fibLoopTR n (fib .zero) (fib (.succ .zero)) = fib n
+  rw [fibLoopTR_eq n .zero]
+  show fib (add n .zero) = fib n
+  rw [show add n .zero = n from by
+    induction n with
+    | zero => rfl
+    | succ n ih => exact congrArg Peano.succ ih]
 
 end Peano
 
