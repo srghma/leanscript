@@ -3,7 +3,7 @@ module
 public import LeanScript.Eval
 public import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
-public meta import LeanScript.ToTerm
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
