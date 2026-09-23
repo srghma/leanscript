@@ -150,6 +150,38 @@ def listFold {α β : Type} (z : β) (s : α → List α → β → β) : List �
   | [] => z
   | a :: as => s a as (listFold z s as)
 
+/-! ### The window of a fold of an array that descends more than one element
+
+`Term.array_rec k` descends `k + 1` elements, so its branch, at `a :: as`, is given the
+answers at the `k + 1` suffixes `as`, `as.drop 1`, …, `as.drop k`.  The evaluator carries
+them in the very same window as the fold of a natural number does — `k + 1` values of
+`τ`, nearest first — and shifts a new answer in at each element, so this fold is linear
+too.  The lists that are **shorter** than the window are answered by a separate function
+of the list, which in the evaluator is `LeanScript.ArrayRecBases.eval`. -/
+
+/-- A window every entry of which is the same answer: the window of the empty list, whose
+    every suffix is the empty list again. -/
+def NatWin.const {τ : TyWf} (a : TyWf.Den τ) : (k : Nat) → NatWin τ k
+  | 0 => PUnit.unit
+  | k + 1 => (a, NatWin.const a k)
+
+/-- The window of the depth-`k + 1` fold of an array at `l`: it holds the answers at `l`,
+    `l.drop 1`, …, `l.drop k`, nearest first. -/
+def listFoldKAux {α : Type} {τ : TyWf} {k : Nat} (z : List α → TyWf.Den τ)
+    (s : α → List α → NatWin τ (k + 1) → TyWf.Den τ) : List α → NatWin τ (k + 1)
+  | [] => NatWin.const (z []) (k + 1)
+  | a :: as =>
+      let w := listFoldKAux z s as
+      NatWin.push (if as.length < k then z (a :: as) else s a as w) w
+
+/-- The depth-`k + 1` fold of an array: the meaning of `Term.array_rec k`.  `z` answers
+    for the lists of at most `k` elements, and `s a as w` is the branch at `a :: as` when
+    `as` has at least `k` elements, given the head, the tail and the window of the
+    answers at `as`, `as.drop 1`, …, `as.drop k`. -/
+def listFoldK {α : Type} {τ : TyWf} {k : Nat} (z : List α → TyWf.Den τ)
+    (s : α → List α → NatWin τ (k + 1) → TyWf.Den τ) (l : List α) : TyWf.Den τ :=
+  (listFoldKAux z s l).1
+
 /-! ## The fragment the evaluator interprets
 
 `LeanScript.Ty.Den` gives the four recursive shapes of `Ty` **no values**: each of them
@@ -208,7 +240,8 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   -- arrays
   | _, _, .array_mk ts => Terms.NoRecMk ts
   | _, _, .array_casesOn a z s => Term.NoRecMk a ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, .array_rec a z s => Term.NoRecMk a ∧ Term.NoRecMk z ∧ Term.NoRecMk s
+  | _, _, .array_rec _ a bases branch =>
+      Term.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
   -- enums
   | _, _, .enum_casesOn e cases => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
   | _, _, .enum_casesOnWithDefault e cases dflt _ =>
@@ -243,6 +276,12 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
 def Terms.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Terms Sg Γ τ → Prop
   | _, _, .nil => True
   | _, _, .cons t ts => Term.NoRecMk t ∧ Terms.NoRecMk ts
+
+/-- `Term.NoRecMk`, on the answers a fold of an array gives to the short lists. -/
+def ArrayRecBases.NoRecMk {Sg : Sig} :
+    {Γ : Ctx} → {σ τ : TyWf} → {k : Nat} → ArrayRecBases Sg Γ σ τ k → Prop
+  | _, _, _, _, .nil e => Term.NoRecMk e
+  | _, _, _, _, .cons e more => Term.NoRecMk e ∧ ArrayRecBases.NoRecMk more
 
 /-- `Term.NoRecMk`, on a list of terms. -/
 def Spine.NoRecMk {Sg : Sig} : {Γ : Ctx} → {σs : List TyWf} → Spine Sg Γ σs → Prop
@@ -407,9 +446,9 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match a' with
       | [] => Term.eval G z env h.2.1
       | x :: xs => Term.eval G s (x, xs, env) h.2.2
-  | _, _, .array_rec a z s, env, h =>
-      listFold (Term.eval G z env h.2.1)
-        (fun hd tl ih => Term.eval G s (hd, tl, ih, env) h.2.2)
+  | _, _, .array_rec _ a bases branch, env, h =>
+      listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
+        (fun hd tl w => Term.eval G branch (hd, tl, Env.ofWin w env) h.2.2)
         (show List _ from Term.eval G a env h.1)
   -- enums
   | _, _, .enum_mk _ i, _, _ => i
@@ -456,6 +495,19 @@ def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     List (TyWf.Den τ)
   | _, _, .nil, _, _ => []
   | _, _, .cons t ts, env, h => Term.eval G t env h.1 :: Terms.eval G ts env h.2
+
+/-- The answer a fold of an array gives to a list shorter than its window: the elements
+    are peeled off one at a time and bound, and the answer of the list that is left is
+    read off the answers of one lower depth.  A list that is **not** short — one the fold
+    never consults these answers for — runs out of depth and gets the answer of the empty
+    list of the innermost block. -/
+def ArrayRecBases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {Γ : Ctx} → {σ τ : TyWf} → {k : Nat} → (bs : ArrayRecBases Sg Γ σ τ k) → Env Γ →
+    List (TyWf.Den σ) → ArrayRecBases.NoRecMk bs → TyWf.Den τ
+  | _, _, _, _, .nil e, env, _, h => Term.eval G e env h
+  | _, _, _, _, .cons e _, env, [], h => Term.eval G e env h.1
+  | _, _, _, _, .cons _ more, env, a :: as, h =>
+      ArrayRecBases.eval G more (a, env) as h.2
 
 /-- The values of a list of terms, typed by the list of their types. -/
 def Spine.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :

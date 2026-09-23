@@ -196,15 +196,25 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       it; that is `Term.array_rec`. -/
   | array_casesOn : ∀ {Γ σ τ}, Term Sg Γ (.array σ) →
       Term Sg Γ τ → Term Sg (σ :: TyWf.array σ :: Γ) τ → Term Sg Γ τ
-  /-- The fold of an array, `List.rec` with a non-dependent motive: an empty branch, and
-      a non-empty branch that **binds** the first element, the rest of the array, and
-      the value of the fold over that rest, in that order — so the head is de Bruijn
-      index `0`, the tail index `1` and the recursive value index `2`.
+  /-- The fold of an array that descends `k + 1` elements at a time.  Its branch, at a
+      list `a :: as` whose tail is at least `k` long, **binds** the first element (de
+      Bruijn index `0`), the rest of the array (index `1`) and then the values of the
+      fold at the `k + 1` suffixes `as`, `as.drop 1`, …, `as.drop k` — **nearest first**,
+      so indices `2 … k + 2`.  The lists that are shorter than that — the ones that have
+      no such block of suffixes — are answered by `LeanScript.ArrayRecBases`, which binds
+      their elements.
+
+      At the default depth `k = 0` this is `List.rec` with a non-dependent motive: one
+      value for the empty list, and a branch binding the head at index `0`, the tail at
+      index `1` and the value of the fold over that tail at index `2`.
 
       As with `Term.nat_rec`, the recursive value is given rather than called, so a term
-      is still terminating by construction. -/
-  | array_rec : ∀ {Γ σ τ}, Term Sg Γ (.array σ) →
-      Term Sg Γ τ → Term Sg (σ :: TyWf.array σ :: τ :: Γ) τ → Term Sg Γ τ
+      is still terminating by construction, at every depth; and the evaluator carries the
+      window of the last `k + 1` answers rather than recomputing them, so the fold is
+      linear. -/
+  | array_rec : ∀ {Γ σ τ} (k : Nat := 0), Term Sg Γ (.array σ) →
+      ArrayRecBases Sg Γ σ τ k →
+      Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ → Term Sg Γ τ
   /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
   | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ (.enum s)
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
@@ -415,6 +425,27 @@ inductive Terms (Sg : Sig) : Ctx → TyWf → Type 1
   | nil : ∀ {Γ τ}, Terms Sg Γ τ
   /-- One more element, at the front. -/
   | cons : ∀ {Γ τ}, Term Sg Γ τ → Terms Sg Γ τ → Terms Sg Γ τ
+
+/-- The answers a depth-`k` fold of an array (`LeanScript.Term.array_rec`) gives to the
+    lists that are **shorter than its window**: the lists of fewer than `k + 1` elements,
+    which have no block of `k + 1` shorter suffixes for the branch to be given.
+
+    It is read by peeling one element at a time, and each element peeled is **bound**: at
+    depth `j + 1` there is the answer for the empty list, which binds nothing, and then —
+    with the first element bound as de Bruijn index `0` — the answers of depth `j` for
+    what is left of the list.  So the branch for a list of `j` elements is written in the
+    context `natRecCtx σ j Γ`, in which index `0` is the **last** of those elements and
+    index `j - 1` the first.
+
+    At depth `0` only the empty list is short, so there is one answer and it binds
+    nothing: that is the base value of an ordinary `List.rec`. -/
+inductive ArrayRecBases (Sg : Sig) : Ctx → TyWf → TyWf → Nat → Type 1
+  /-- Depth zero: the answer for the empty list. -/
+  | nil : ∀ {Γ σ τ}, Term Sg Γ τ → ArrayRecBases Sg Γ σ τ 0
+  /-- The answer for the empty list, and — with the first element bound as de Bruijn
+      index `0` — the answers for the one-element-shorter lists that are left. -/
+  | cons : ∀ {Γ σ τ} {j : Nat}, Term Sg Γ τ → ArrayRecBases Sg (σ :: Γ) σ τ j →
+      ArrayRecBases Sg Γ σ τ (j + 1)
 
 /-- A list of terms, typed by the list of their types: the arguments of an operation, the
     arguments of a jump, the arguments of a self call, the fields of a constructor. -/
