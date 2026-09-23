@@ -239,6 +239,50 @@ def recBinders (r motive : TyWf) : List (TyWfIn 1) → List TyWf
   | ⟨.self, _⟩ :: fs => r :: motive :: recBinders r motive fs
   | a :: fs => TyWfIn.unfold r a :: recBinders r motive fs
 
+/-! ## What a branch of a fold of a recursive **record** binds
+
+A recursive record is the one binder whose fields can never be an occurrence of it
+*literally*: a record has values only when **all** of its fields do, so a field written
+`Ty.self` would make the record the equation `T = … × T × …`, which no value satisfies
+(`LeanScript.Ty.not_wf_recObject_self`).  Its occurrences of itself therefore always sit
+**inside** another former — `Array T`, or a union with a constructor that does not mention
+it — and `TyWf.recBinders` hands such a field over as it is, with no value of the fold
+beside it (`LeanScript.RecObjectRecFacts.recBinders_recObject`).
+
+So the answers of a fold of a record are given in the **shape of the record's own
+fields**: `TyWf.recObjectMap fs X` is the record with every occurrence of the record
+replaced by `X`, which for `T = { n : Nat, kids : Array T }` and `X = τ` is
+`{ n : Nat, kids : Array τ }` — each subvalue replaced by the value of the fold at it.
+Iterating it is the fold's **lookback window**: `TyWf.recObjectAnswerTy fs τ j` is the
+answers `j` levels down, and a depth-`k` fold binds the levels `1, …, k + 1`, nearest
+first, exactly as `Term.nat_rec` at depth `k` binds the answers at `n - 1, …, n - 1 - k`. -/
+
+/-- The fields of a recursive record with every occurrence of the record itself replaced
+    by `X`: the record's own shape, carrying an `X` wherever a subvalue sat. -/
+def recObjectMap (fs : LeanRecordSchema (TyWfIn 1)) (X : TyWf) : TyWf :=
+  .record (fs.map (TyWfIn.unfold X))
+
+/-- **The answers `j` levels below a value of a recursive record**, at motive `motive`:
+    level `0` is the answer at the value itself, and each further level replaces every
+    occurrence of the record by the answers of the level below it. -/
+def recObjectAnswerTy (fs : LeanRecordSchema (TyWfIn 1)) (motive : TyWf) : Nat → TyWf
+  | 0 => motive
+  | j + 1 => recObjectMap fs (recObjectAnswerTy fs motive j)
+
+/-- The **lookback window** of a depth-`k` fold of a recursive record: the answers one
+    level down, two levels down, …, `k + 1` levels down, nearest first. -/
+def recObjectAnswerWindow (fs : LeanRecordSchema (TyWfIn 1)) (motive : TyWf) :
+    Nat → List TyWf
+  | 0 => [recObjectAnswerTy fs motive 1]
+  | k + 1 => recObjectAnswerWindow fs motive k ++ [recObjectAnswerTy fs motive (k + 2)]
+
+/-- The binders of the branch of a depth-`k` fold of a recursive record: every field of
+    the record, unfolded — what `Term.recObject_casesOn` binds — and then the fold's
+    lookback window, the answers at the levels `1, …, k + 1` below the value. -/
+def recObjectRecBinders (fs : LeanRecordSchema (TyWfIn 1))
+    (hwf : Ty.Wf (recObjectTy fs)) (motive : TyWf) (k : Nat) : List TyWf :=
+  (recObjectUnfold fs hwf).toList ++ recObjectAnswerWindow fs motive k
+
 /-- `TyWf.recBinders`, in the scope of a mutual family: a field that is an occurrence of
     member `i` is followed by the value of the fold at that field. -/
 def famRecBinders {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))

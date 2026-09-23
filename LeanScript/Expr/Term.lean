@@ -384,13 +384,29 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       {hwf : Ty.Wf (TyWf.recObjectTy fs)},
       Term Sg Γ (.recObject fs hwf) →
       Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) τ → Term Sg Γ τ
-  /-- The fold of a recursive record: its one branch binds every field and, right after
-      a field that is an occurrence of the record, the value of the fold at that
-      field. -/
+  /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
+      reads `k + 1` levels at a time.  A record has one constructor, so there is one
+      branch and nothing to dispatch on: the branch binds every field, unfolded — what
+      `Term.recObject_casesOn` binds — and then the fold's **lookback window**, the
+      answers one level down, two levels down, …, `k + 1` levels down, nearest first
+      (`TyWf.recObjectRecBinders`).
+
+      The answers are given in the shape of the record's own fields
+      (`TyWf.recObjectAnswerTy`), because a recursive record never has a field that is
+      *literally* an occurrence of it: all of its fields have to have values, so a field
+      written `Ty.self` would leave the record with none
+      (`LeanScript.RecObjectRecFacts`).  At the default depth `k = 0` the branch binds
+      the fields and the answers at the immediate subvalues — the plain fold of a record,
+      which is what a catamorphism over it takes.
+
+      As in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec` the answers
+      are *given* to the branch rather than called by it, and they are the answers at
+      **subvalues** of the value being folded, so a term is terminating by construction
+      at every depth. -/
   | recObject_rec : ∀ {Γ τ} {fs : LeanRecordSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recObjectTy fs)},
+      {hwf : Ty.Wf (TyWf.recObjectTy fs)} (k : Nat := 0),
       Term Sg Γ (.recObject fs hwf) →
-      Term Sg (TyWf.recBinders (.recObject fs hwf) τ fs.toList ++ Γ) τ → Term Sg Γ τ
+      Term Sg (TyWf.recObjectRecBinders fs hwf τ k ++ Γ) τ → Term Sg Γ τ
   /-- A value of a **recursive newtype**: a value of its body, unfolded.  The wrapper is
       erased, so the two have the same runtime representation.  `hwf`, written by
       `ty_wf`, is the proof that the newtype describes a type. -/
