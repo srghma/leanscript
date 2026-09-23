@@ -38,13 +38,13 @@ projections it recognises a tree of one by instead.
 
 A declaration with a field whose value is a **type** — `State : Type`, and any field whose
 type ends in `Type` — hides a type from the language, and `deriving LeanScriptTyWf`
-refuses it: *existential typing is not yet supported*.  `TyTests/InductiveTypesTest.lean`
+refuses it: *existential typing is not yet supported*.  `TyTests/InductiveTypesTest/`
 pins that refusal for a stream `Unfold`, a client/server pair and a compiler engine, and
 shows the parameterised declarations (`ClientTwin`, `ServerTwin`) that *are* modelled.
 
 ## Tests
 
-`TyTests/InductiveTypesTest.lean` — what each shape of Lean declaration is modelled by,
+`TyTests/InductiveTypesTest/` — what each shape of Lean declaration is modelled by,
 and what is refused; `TyTests/SharedTreesTest.lean` — one tree per shape, one check per
 type; `TyTests/CrossModuleSharingTest.lean` — that the sharing spans modules;
 `TyTests/WfTest.lean` — what `Ty.Wf` admits and refuses;

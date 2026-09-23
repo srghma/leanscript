@@ -187,7 +187,7 @@ example : Ty.Wf (tyOf (Option (Option (Option (Option (Option (Option (Option (O
 occurrence inside the union denoted the bare union rather than the whole cached value — a
 wrong answer, not a rejection.  A `@[computed_field]` is an ordinary field now, so the
 declaration is one recursive *record* and `Ty.self` inside it is that record; the two
-cases are pinned in `TyTests/InductiveTypesTest.lean` (`NatList`, `Lean.Name`). -/
+cases are pinned in `TyTests/InductiveTypesTest/` (`NatList`, `Lean.Name`). -/
 
 /-! ## 11. Recursion through another type constructor — fixed
 

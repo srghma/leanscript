@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Brec
+public meta import LeanScript.ToTerm.Cases
 
 @[expose] public section
 
@@ -477,20 +477,20 @@ partial def transSparseCasesOn? (c : TCtx) (e : Expr) (n : Name) (lvls : List Le
   let kE := mkNatLit named.length
   let core ← match view with
     | .enum s =>
-        let cases ← mkEnumSomeCases c τ s named 0 minors ctors
+        let cases ← mkEnumSomeCases (transBranch c) c τ s named 0 minors ctors
         let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, nE])
         pure <| mkAppN (mkConst ``LeanScript.Term.enum_casesOnWithDefault)
           #[c.sg, c.gamma, τ, s, kE, scrut, cases, dfltTerm, hk]
     | .taggedUnion l =>
-        let cases ← mkTaggedUnionSomeCases c τ l named 0 minors ctors
+        let cases ← mkTaggedUnionSomeCases (transBranch c) c τ l named 0 minors ctors
         let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
         pure <| mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOnWithDefault)
           #[c.sg, c.gamma, τ, l, kE, scrut, cases, dfltTerm, hk]
     | .recTaggedUnion l hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
-        let cases ← mkTaggedUnionSomeCases c τ unfE named 0 minors ctors
+        let cases ← mkTaggedUnionSomeCases (transBranch c) c τ unfE named 0 minors ctors
         let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE unfE
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
         pure <| mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_casesOnWithDefault)
@@ -766,25 +766,25 @@ partial def transRecCore (c : TCtx) (ri : RecursorVal) (τ : Expr) (minors : Arr
           -- a `match` with a wildcard repeats one branch: that is the partial dispatch
           if let some (dflt, group) ← repeatedBranch? minors ctors then
             let named := (List.range ctors.size).filter (fun i => !group.contains i)
-            let cases ← mkTaggedUnionSomeCases c τ l named 0 minors ctors
+            let cases ← mkTaggedUnionSomeCases (transBranch c) c τ l named 0 minors ctors
             let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
             let hk ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit named.length, lenE])
             return mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOnWithDefault)
               #[c.sg, c.gamma, τ, l, mkNatLit named.length, scrut, cases,
                 ← trans c dflt, hk]
-          let cases ← mkTaggedUnionCases c τ l 0 minors ctors
+          let cases ← mkTaggedUnionCases (transBranch c) c τ l 0 minors ctors
           return mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOn)
             #[c.sg, c.gamma, τ, l, scrut, cases]
       | .enum s =>
           if let some (dflt, group) ← repeatedBranch? minors ctors then
             let named := (List.range ctors.size).filter (fun i => !group.contains i)
-            let cases ← mkEnumSomeCases c τ s named 0 minors ctors
+            let cases ← mkEnumSomeCases (transBranch c) c τ s named 0 minors ctors
             let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
             let hk ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit named.length, nE])
             return mkAppN (mkConst ``LeanScript.Term.enum_casesOnWithDefault)
               #[c.sg, c.gamma, τ, s, mkNatLit named.length, scrut, cases,
                 ← trans c dflt, hk]
-          let cases ← mkEnumCases c τ s minors ctors
+          let cases ← mkEnumCases (transBranch c) c τ s minors ctors
           return mkAppN (mkConst ``LeanScript.Term.enum_casesOn)
             #[c.sg, c.gamma, τ, s, scrut, cases]
       | .prim _ =>
@@ -799,128 +799,6 @@ partial def transRecCore (c : TCtx) (ri : RecursorVal) (τ : Expr) (minors : Arr
             return ← transBranch c minors[0]! ctors[0]! [← tyOfTerm major]
           throwError "`#leanscript_to_term`: the tree of {ind} has no dispatch in the \
             grammar"
-
-/-- The branches of a **partial** dispatch on a tagged union: the constructors `named`,
-    in increasing order, each binding its fields.  `lo` is the smallest constructor a
-    branch may still name, which is what keeps the list in order. -/
-partial def mkTaggedUnionSomeCases (c : TCtx) (τ l : Expr) (named : List Nat) (lo : Nat)
-    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
-  let ctys ← taggedUnionCtorTys l
-  let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
-  let branchOf (t : Nat) : MetaM (Expr × Expr) := do
-    let some fieldTys := ctys[t]?
-      | throwError "`#leanscript_to_term`: the tree of the dispatched type has no \
-          constructor {t}"
-    let ht ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit t, lenE])
-    return (ht, ← transBranch c minors[t]! ctors[t]! fieldTys)
-  match named with
-  | [] =>
-      throwError "`#leanscript_to_term`: internal: a partial dispatch names no \
-        constructor"
-  | [t] =>
-      let (ht, branch) ← branchOf t
-      let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit t])
-      return mkAppN (mkConst ``LeanScript.TaggedUnionSomeCases.last)
-        #[c.sg, c.gamma, l, τ, mkNatLit lo, mkNatLit t, ht, branch, hi]
-  | t :: rest =>
-      let (ht, branch) ← branchOf t
-      let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit t])
-      let restCases ← mkTaggedUnionSomeCases c τ l rest (t + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionSomeCases.cons)
-        #[c.sg, c.gamma, l, τ, mkNatLit rest.length, mkNatLit lo, mkNatLit t, ht, branch,
-          restCases, hi]
-
-/-- The branches of a **partial** dispatch on an enum: the constructors `named`, in
-    increasing order. -/
-partial def mkEnumSomeCases (c : TCtx) (τ s : Expr) (named : List Nat) (lo : Nat)
-    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
-  let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
-  match named with
-  | [] =>
-      throwError "`#leanscript_to_term`: internal: a partial dispatch names no \
-        constructor"
-  | [i] =>
-      let iE ← mkFinLit nE i
-      let branch ← transBranch c minors[i]! ctors[i]! []
-      let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit i])
-      return mkAppN (mkConst ``LeanScript.EnumSomeCases.last)
-        #[c.sg, c.gamma, τ, s, mkNatLit lo, iE, branch, hi]
-  | i :: rest =>
-      let iE ← mkFinLit nE i
-      let branch ← transBranch c minors[i]! ctors[i]! []
-      let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit i])
-      let restCases ← mkEnumSomeCases c τ s rest (i + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.EnumSomeCases.cons)
-        #[c.sg, c.gamma, τ, s, mkNatLit rest.length, mkNatLit lo, iE, branch, restCases,
-          hi]
-
-/-- The branches of a dispatch on a tagged union, in the shape of its schema. -/
-partial def mkTaggedUnionCases (c : TCtx) (τ l : Expr) (start : Nat)
-    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
-  match (← whnf l).getAppFnArgs with
-  | (``LeanScript.LeanTaggedUnionSchema.payloadFirst, #[_, fields, next, rest]) =>
-      let f0 ← nonEmptyTys fields
-      let f1 ← listOfExpr next
-      let b0 ← transBranch c minors[start]! ctors[start]! f0
-      let b1 ← transBranch c minors[start + 1]! ctors[start + 1]! f1
-      let restCases ← mkTaggedUnionRest c τ rest (start + 2) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCases.payloadFirst)
-        #[c.sg, c.gamma, τ, fields, next, rest, b0, b1, restCases]
-  | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
-      let b0 ← transBranch c minors[start]! ctors[start]! []
-      let restCases ← mkCtorsWithPayloadCases c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCases.skip)
-        #[c.sg, c.gamma, τ, rest, b0, restCases]
-  | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
-
-/-- The branches of the constructors a `CtorsWithPayload` holds. -/
-partial def mkCtorsWithPayloadCases (c : TCtx) (τ cp : Expr) (start : Nat)
-    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
-  match (← whnf cp).getAppFnArgs with
-  | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
-      let b ← transBranch c minors[start]! ctors[start]! (← nonEmptyTys fields)
-      let restCases ← mkTaggedUnionRest c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.CtorsWithPayloadCases.here)
-        #[c.sg, c.gamma, τ, fields, rest, b, restCases]
-  | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
-      let b ← transBranch c minors[start]! ctors[start]! []
-      let restCases ← mkCtorsWithPayloadCases c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.CtorsWithPayloadCases.skip)
-        #[c.sg, c.gamma, τ, rest, b, restCases]
-  | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
-
-/-- The branches of the constructors a schema leaves as a plain list. -/
-partial def mkTaggedUnionRest (c : TCtx) (τ rest : Expr) (start : Nat)
-    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
-  match (← whnf rest).getAppFnArgs with
-  | (``List.nil, _) =>
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCasesRest.nil) #[c.sg, c.gamma, τ]
-  | (``List.cons, #[_, fs, more]) =>
-      let b ← transBranch c minors[start]! ctors[start]! (← listOfExpr fs)
-      let restCases ← mkTaggedUnionRest c τ more (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCasesRest.cons)
-        #[c.sg, c.gamma, τ, fs, more, b, restCases]
-  | _ => throwError "`#leanscript_to_term`: not a list of constructors: {rest}"
-
-/-- The branches of a dispatch on an enum, in the shape of its schema. -/
-partial def mkEnumCases (c : TCtx) (τ s : Expr) (minors : Array Expr)
-    (ctors : Array Name) : MetaM Expr := do
-  let (extra, shift) ← match (← whnf s).getAppFnArgs with
-    | (``LeanScript.LeanEnumSchema.mk, #[e, sh]) => pure (← natOfExpr e, sh)
-    | _ => throwError "`#leanscript_to_term`: not an enum schema: {s}"
-  let rec go (i : Nat) (k : Nat) : MetaM Expr := do
-    if k == 0 then
-      let b0 ← transBranch c minors[i]! ctors[i]! []
-      let b1 ← transBranch c minors[i + 1]! ctors[i + 1]! []
-      let b2 ← transBranch c minors[i + 2]! ctors[i + 2]! []
-      return mkAppN (mkConst ``LeanScript.EnumCases.three)
-        #[c.sg, c.gamma, τ, shift, b0, b1, b2]
-    else
-      let b ← transBranch c minors[i]! ctors[i]! []
-      let rest ← go (i + 1) (k - 1)
-      return mkAppN (mkConst ``LeanScript.EnumCases.cons)
-        #[c.sg, c.gamma, τ, mkNatLit (k - 1), shift, b, rest]
-  go 0 extra
 
 /-- A call of an inlinable function: its definition is translated, once, and used
     here. -/
