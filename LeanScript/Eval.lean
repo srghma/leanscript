@@ -99,6 +99,50 @@ def natFold {α : Type} (z : α) (s : Nat → α → α) : Nat → α
   | 0 => z
   | n + 1 => s n (natFold z s n)
 
+/-! ### The window of a fold that descends more than one step
+
+`Term.nat_rec k` descends `k + 1` steps, so its branch is given the answers at the
+`k + 1` previous arguments.  The evaluator carries them as a **window** — `k + 1` values
+of `τ`, nearest first — and shifts a new answer in at each step, so the fold is linear
+and no answer is ever recomputed.  The window is literally an environment of the block
+`natRecCtx τ (k + 1) []` of the branch's context, which is why the base values (an
+ordinary `Spine`) and the branch's environment need no conversion and no cast. -/
+
+/-- The window a depth-`k` fold carries: `k` values of `τ`, nearest first. -/
+abbrev NatWin (τ : TyWf) (k : Nat) : Type := TyWf.DenList (natRecCtx τ k [])
+
+/-- Shift a new answer in at the front, dropping the oldest: the one step of the fold. -/
+def NatWin.push {τ : TyWf} : {k : Nat} → TyWf.Den τ → NatWin τ (k + 1) → NatWin τ (k + 1)
+  | 0, a, _ => (a, PUnit.unit)
+  | _ + 1, a, w => (a, NatWin.push w.1 w.2)
+
+/-- The oldest answer the window holds: the value of the fold at the argument the window
+    was built for. -/
+def NatWin.last {τ : TyWf} : {k : Nat} → NatWin τ (k + 1) → TyWf.Den τ
+  | 0, w => w.1
+  | _ + 1, w => NatWin.last w.2
+
+/-- The environment the branch of a depth-`k` fold runs in: the window in front of the
+    environment of the ambient context. -/
+def Env.ofWin {τ : TyWf} {Γ : Ctx} :
+    {k : Nat} → NatWin τ k → Env Γ → Env (natRecCtx τ k Γ)
+  | 0, _, env => env
+  | _ + 1, w, env => (w.1, Env.ofWin w.2 env)
+
+/-- The window of the depth-`k + 1` fold at `n`: it holds the answers at
+    `n + k, …, n + 1, n`. -/
+def natFoldKAux {τ : TyWf} {k : Nat} (z : NatWin τ (k + 1))
+    (s : Nat → NatWin τ (k + 1) → TyWf.Den τ) : Nat → NatWin τ (k + 1)
+  | 0 => z
+  | n + 1 => let w := natFoldKAux z s n; NatWin.push (s n w) w
+
+/-- The depth-`k + 1` fold of a natural number: the meaning of `Term.nat_rec k`.  `z`
+    holds the answers at `k, …, 0`, nearest first, and `s n w` is the branch at
+    `n + k + 1`, given `n` and the window of the previous `k + 1` answers. -/
+def natFoldK {τ : TyWf} {k : Nat} (z : NatWin τ (k + 1))
+    (s : Nat → NatWin τ (k + 1) → TyWf.Den τ) (n : Nat) : TyWf.Den τ :=
+  NatWin.last (natFoldKAux z s n)
+
 /-- `List.rec` with a non-dependent motive: the fold of an array.  The step is given the
     head, the tail, and the value of the fold over the tail — the three things
     `Term.array_rec`'s branch binds. -/
@@ -137,7 +181,8 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   -- case analysis on a leaf
   | _, _, .bool_casesOn c t e => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
   | _, _, .nat_casesOn n z s => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, .nat_rec n z s => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
+  | _, _, .nat_rec _ n base branch =>
+      Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
   | _, _, .int_casesOn i a b => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
   | _, _, .uint8_casesOn v b => Term.NoRecMk v ∧ Term.NoRecMk b
   | _, _, .uint16_casesOn v b => Term.NoRecMk v ∧ Term.NoRecMk b
@@ -308,9 +353,9 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match n' with
       | 0 => Term.eval G z env h.2.1
       | k + 1 => Term.eval G s (k, env) h.2.2
-  | _, _, .nat_rec n z s, env, h =>
-      natFold (Term.eval G z env h.2.1)
-        (fun k ih => Term.eval G s (k, ih, env) h.2.2)
+  | _, _, .nat_rec _ n base branch, env, h =>
+      natFoldK (Spine.eval G base env h.2.1)
+        (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
         (show Nat from Term.eval G n env h.1)
   | _, _, .int_casesOn i ofNat negSucc, env, h =>
       let i' : Int := Term.eval G i env h.1

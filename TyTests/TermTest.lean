@@ -67,7 +67,7 @@ def pred : Term emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
     successor branch binds the predecessor at index `0` and the value of the fold at
     index `1`, and this one answers with the latter. -/
 def foldNat : Term emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.nat_rec (.var (v♯0)) (.nat_mk 0) (.var (v♯1)))
+  .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1)))
 
 /-- The code point of a character, as a `uint32`. -/
 def charCode : Term emptySig [] (TyWf.prim .char ⇒ TyWf.prim .uint32) :=

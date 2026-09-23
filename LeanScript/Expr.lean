@@ -355,6 +355,38 @@ its fold asks for the branches of **every** member (`LeanScript.FamilyFoldCases`
 one motive answering for all of them.
 -/
 
+/-- The context a block of `k` previous answers is written in: `k` copies of `τ` in front
+    of `Γ`.
+
+    Written as a recursion rather than as `List.replicate k τ ++ Γ` — the two are equal
+    (`natRecCtx_eq_replicate`), and this one reduces on a `k + 1` that is not a literal,
+    which is what the evaluator's clause for `Term.nat_rec` needs.  At a literal depth it
+    is the context one would have written by hand: `natRecCtx τ 2 Γ` is `τ :: τ :: Γ`. -/
+def natRecCtx (τ : TyWf) : Nat → Ctx → Ctx
+  | 0, Γ => Γ
+  | k + 1, Γ => τ :: natRecCtx τ k Γ
+
+@[simp] theorem natRecCtx_zero (τ : TyWf) (Γ : Ctx) : natRecCtx τ 0 Γ = Γ := rfl
+
+@[simp] theorem natRecCtx_succ (τ : TyWf) (k : Nat) (Γ : Ctx) :
+    natRecCtx τ (k + 1) Γ = τ :: natRecCtx τ k Γ := rfl
+
+theorem natRecCtx_eq_replicate (τ : TyWf) (Γ : Ctx) :
+    (k : Nat) → natRecCtx τ k Γ = List.replicate k τ ++ Γ
+  | 0 => rfl
+  | k + 1 => by
+      show τ :: natRecCtx τ k Γ = _
+      rw [natRecCtx_eq_replicate τ Γ k]
+      rfl
+
+theorem natRecCtx_length (τ : TyWf) (Γ : Ctx) :
+    (k : Nat) → (natRecCtx τ k Γ).length = k + Γ.length
+  | 0 => (Nat.zero_add _).symm
+  | k + 1 => by
+      show (natRecCtx τ k Γ).length + 1 = _
+      rw [natRecCtx_length τ Γ k]
+      omega
+
 mutual
 
 /-- A term of the language: a typed tree, in a context `Γ` of the types in scope and
@@ -427,15 +459,22 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       `Nat.casesOn`, and the fold is `Term.nat_rec`. -/
   | nat_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .nat) →
       Term Sg Γ τ → Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg Γ τ
-  /-- `Nat.rec` with a non-dependent motive: a fold over a natural number.  The
-      successor branch **binds** the predecessor as de Bruijn index `0` and the value
-      the fold gives for it as de Bruijn index `1` — the two arguments of `Nat.rec`'s
-      successor branch, in order.
+  /-- `Nat.rec` that descends `k + 1` steps.  `base` holds the answers at `k, …, 1, 0` —
+      **nearest first**, so it reads `(f k, …, f 0)` — and the branch for `n + k + 1` binds
+      `n` (index `0`) and then the answers at `n + k, …, n + 1, n` (indices `1 … k + 1`).
 
-      It is terminating by construction: the branch is *given* the value at the
-      predecessor, so there is no call it could make on anything larger. -/
-  | nat_rec : ∀ {Γ τ}, Term Sg Γ (.prim .nat) →
-      Term Sg Γ τ → Term Sg (TyWf.prim .nat :: τ :: Γ) τ → Term Sg Γ τ
+      At the default depth `k = 0` this is `Nat.rec` with a non-dependent motive: one base
+      value, and a branch binding the predecessor as index `0` and the value of the fold
+      at it as index `1`.
+
+      It is terminating by construction, at every depth: the branch is *given* the answers
+      at the `k + 1` predecessors, so there is no call it could make on anything larger.
+      It is also **linear**: the evaluator carries the window of the last `k + 1` answers
+      and shifts it, so no answer is ever recomputed. -/
+  | nat_rec : ∀ {Γ τ} (k : Nat := 0), Term Sg Γ (.prim .nat) →
+      Spine Sg Γ (natRecCtx τ (k + 1) []) →
+      Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ →
+      Term Sg Γ τ
   /-- `match i with | .ofNat n => … | .negSucc n => …`: each branch binds its `nat`. -/
   | int_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int) →
       Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg Γ τ

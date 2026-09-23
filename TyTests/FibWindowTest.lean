@@ -7,23 +7,27 @@ public import LeanScript.Eval
 /-!
 # `fib` in the grammar as it stands: the sliding-window fold
 
-`FibProposals.md` proposes four ways to give the language a recursion that descends more
+`FibProposals.md` proposes five ways to give the language a recursion that descends more
 than one step at a time.  This file *runs* the first of them, the one that needs no new
-constructor: a recursion that reads its own value at `n` and at `n + 1` is a fold whose
+constructor (the grammar has since gained the depth-indexed node as well): a recursion that reads its own value at `n` and at `n + 1` is a fold whose
 value is the **window** of the last two answers, a record of two `nat`s, and the answer
 is the first field of that window.
 
 Everything here is a term of the grammar exactly as it is today — `Term.nat_rec`,
-`Term.record_mk`, `Term.record_casesOn` — and the check at the end is by the kernel: the
-term's value is the one Lean's `fib` has.
+`Term.record_mk`, `Term.record_casesOn` — and `fib_term_eval` proves that the term's
+value **is** `fib n`, at every `n`, rather than only at the arguments a test would try.
 -/
 
 namespace TyTests.FibWindow
 
 open LeanScript
 
-/-- The definition to be expressed: it reads its own value at `n` and at `n + 1`, so it
-    is the example `#leanscript_to_term` refuses today. -/
+/-- The definition to be expressed: it reads its own value at `n` and at `n + 1`.  Since
+    this file was written the grammar has gained the depth-indexed fold
+    `Term.nat_rec k`, so `#leanscript_to_term` translates it directly
+    (`TyTests/NatRecDepthTest.lean`); what is written here is the *other* way of saying
+    it, as a one-step fold whose value is a window, and it still typechecks and still
+    computes `fib`. -/
 def fib : Nat → Nat
   | 0 => 0
   | 1 => 1
@@ -69,7 +73,7 @@ def step {Γ : Ctx} : Term sigAdd (TyWf.prim .nat :: Win :: Γ) Win :=
 
 /-- The fold itself: the window at the argument. -/
 def window {Γ : Ctx} : Term sigAdd Γ (TyWf.prim .nat ⇒ Win) :=
-  .lam (.nat_rec (.var (v♯0)) seed step)
+  .lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
 
 /-- `fib`, as a term of the language: the first field of the window. -/
 def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
@@ -77,7 +81,7 @@ def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
 
 /-! ## What it computes
 
-The kernel checks, by `rfl`, that the term's value is the one Lean's `fib` has. -/
+First a few values, checked by the kernel, and then the general statement. -/
 
 example : runAdd fib_term 0 = 0 := rfl
 example : runAdd fib_term 1 = 1 := rfl
@@ -86,6 +90,26 @@ example : runAdd fib_term 10 = 55 := rfl
 
 example : runAdd fib_term 12 = fib 12 := rfl
 example : runAdd fib_term 15 = 610 := rfl
+
+/-- The window term's value at `n` is the pair `(fib n, fib (n + 1))` — at **every**
+    argument, not only at the ones checked above. -/
+theorem window_eval (n : Nat) :
+    runAdd window n = (fib n, fib (n + 1), PUnit.unit) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      have hstep : runAdd window (n + 1) =
+          ((runAdd window n).2.1,
+            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := rfl
+      rw [hstep, ih]
+      show ((fib (n + 1), fib n + fib (n + 1), PUnit.unit) : Nat × Nat × PUnit) =
+        (fib (n + 1), fib (n + 2), PUnit.unit)
+      rw [show fib (n + 2) = fib n + fib (n + 1) from rfl]
+
+/-- `fib_term` computes `fib`, at every argument. -/
+theorem fib_term_eval (n : Nat) : runAdd fib_term n = fib n := by
+  have h : runAdd fib_term n = (runAdd window n).1 := rfl
+  rw [h, window_eval]
 
 /-! ## The semantics a two-step fold would have
 
@@ -129,151 +153,3 @@ theorem natFold2_fib (n : Nat) : natFold2 0 1 (fun _ a b => a + b) n = fib n := 
       rfl
 
 end TyTests.FibWindow
-
-
-def fib : Nat → Nat
-| 0 => 0
-| 1 => 1
-| n + 2 => fib n + fib (n + 1)
-
-#eval fib 10
-
-#print fib
-
-def fibLoopTR : Nat → Nat → Nat → Nat
-  | 0,     a, _ => a
-  | n + 1, a, b => fibLoopTR n b (a + b)
-
-#print fibLoopTR
-
-def fibTR (n : Nat) : Nat :=
-  fibLoopTR n 0 1
-
-#eval fibTR 10
-
-def fibLoop (n : Nat) : Nat := Id.run do
-  let mut a := 0
-  let mut b := 1
-  for _ in [:n] do
-    let next := a + b
-    a := b
-    b := next
-  return a
-
-#print fibLoop
-
-#eval fibLoop 100
-
-def fibPair : Nat → Nat × Nat
-  | 0 => (0, 1)
-  | n + 1 =>
-    let (a, b) := fibPair n
-    (b, a + b)
-
-#print fibPair
-def fib2 (n : Nat) : Nat :=
-  (fibPair n).1
-
-#eval fib 10
-
-def fibFastAux (n : Nat) : Nat × Nat :=
-  if h : n = 0 then
-    (0, 1)
-  else
-    have : n / 2 < n := Nat.div_lt_self (Nat.pos_of_ne_zero h) (by decide)
-    let (a, b) := fibFastAux (n / 2)
-    let c := a * (2 * b - a)
-    let d := a * a + b * b
-    if n % 2 == 0 then
-      (c, d)
-    else
-      (d, c + d)
-termination_by n
-
-#print fibFastAux
-
-def fibFast (n : Nat) : Nat :=
-  (fibFastAux n).1
-
-#eval fibFast 100000  -- Computes almost instantly
-
-theorem fibPair_eq (n : Nat) : fibPair n = (fib n, fib (n + 1)) := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    simp [fibPair, ih]
-    -- fib (n + 2) is definitionally equal to fib n + fib (n + 1)
-    rfl
-
--- Main theorem:
-theorem fibPair_fst_eq_fib (n : Nat) : (fibPair n).1 = fib n := by
-  rw [fibPair_eq]
-
-theorem fibLoopTR_eq (n k : Nat) :
-    fibLoopTR n (fib k) (fib (k + 1)) = fib (n + k) := by
-  induction n generalizing k with
-  | zero =>
-    grind [= fibLoopTR, = fib]
-  | succ n ih =>
-    -- Step 1: fib k + fib (k + 1) is definitionally fib (k + 2)
-    have h : fib k + fib (k + 1) = fib (k + 2) := rfl
-    -- Step 2: Unfold one iteration of the loop
-    rw [fibLoopTR, h]
-    -- Step 3: Apply induction hypothesis with (k + 1)
-    rw [ih (k + 1)]
-    -- Step 4: Show (n + (k + 1)) = ((n + 1) + k)
-    congr 1
-    omega
-
--- Main theorem: set k = 0
-theorem fibTR_eq_fib (n : Nat) : fibTR n = fib n := by
-  have h : fibTR n = fibLoopTR n (fib 0) (fib 1) := rfl
-  rw [h, fibLoopTR_eq n 0]
-  rw [Nat.add_zero]
-
-
-def tribonacci : Nat → Nat
-  | 0     => 0
-  | 1     => 0
-  | 2     => 1
-  | n + 3 => tribonacci n + tribonacci (n + 1) + tribonacci (n + 2)
-
-#print tribonacci
-
-def tetranacci : Nat → Nat
-  | 0     => 0
-  | 1     => 0
-  | 2     => 0
-  | 3     => 1
-  | n + 4 => tetranacci n + tetranacci (n + 1) + tetranacci (n + 2) + tetranacci (n + 3)
-
-#print tetranacci
-
-def pentanacci : Nat → Nat
-  | 0     => 0
-  | 1     => 0
-  | 2     => 0
-  | 3     => 0
-  | 4     => 1
-  | n + 5 => pentanacci n + pentanacci (n + 1) + pentanacci (n + 2)
-           + pentanacci (n + 3) + pentanacci (n + 4)
-
-#print pentanacci
-
-def hexanacci : Nat → Nat
-  | 0     => 0
-  | 1     => 0
-  | 2     => 0
-  | 3     => 0
-  | 4     => 0
-  | 5     => 1
-  | n + 6 => hexanacci n + hexanacci (n + 1) + hexanacci (n + 2)
-           + hexanacci (n + 3) + hexanacci (n + 4) + hexanacci (n + 5)
-
-#print hexanacci
-
-def sumList (l : List Nat) : Nat :=
-  l.foldr (· + ·) 0
-
-#print List.foldr
-#print sumList

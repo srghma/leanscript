@@ -51,6 +51,9 @@ context are used.
 | `match`, `X.casesOn`, a projection | `record_casesOn`, `taggedUnion_casesOn`, `enum_casesOn`, `bool_casesOn`, `recTaggedUnion_casesOn`, `nat_casesOn` |
 | a `match` that leaves constructors out | `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` |
 | `Nat.rec`, `List.rec` (non-dependent motive), a structural recursion Lean compiled through `Nat.brecOn` / `List.brecOn` | `nat_rec`, `recTaggedUnion_rec` — or `nat_casesOn` / `recTaggedUnion_casesOn`, when the branch does not use the value of the fold |
+| a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
+| `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
+| `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | a name of the signature | `global` |
 
 **A list and an array are different types here.**  `Array α` is `Ty.array`, the one
@@ -88,14 +91,16 @@ being translated.
   total value to translate.
 * well-founded recursion (`WellFounded.fix`, `Acc.rec`) and partial fixpoints
   (`Lean.Order.fix`).
-* a recursion that descends more than one step: the two folds the translation produces
-  are `nat_rec` and `recTaggedUnion_rec`, which give a branch the value of the recursion
-  at the immediate predecessor, so `fib` — which reads it at `n` and at `n + 1` — has no
-  term.  A recursion on a `Nat` or on a `List` that descends one step is translated
-  however it is written: as `Nat.rec` / `List.rec` with a non-dependent motive, or as the
-  `match` Lean compiled through `Nat.brecOn` / `List.brecOn`, whose *history* of earlier
-  values is reduced away.  A structural recursion on any other type is still refused,
-  since those two are the only folds.
+* a recursion on a `Nat` that does **not** descend by a fixed number of steps: a call at
+  `n / 2`, say.  A recursion that descends `k + 1` steps for some fixed `k` — `fib` reads
+  its value at `n` and at `n + 1`, the hexanacci numbers at the six previous arguments —
+  is translated as `nat_rec k`, and the depth is read off the compiled recursion: it is
+  the smallest number of steps at which the *history* the `brecOn` hands the branch is
+  fully read.  A recursion on a `List` still descends one step, and a structural
+  recursion on any other type is still refused, since those are the only folds.
+* a `for` loop that leaves early (`break`, `return`), or over a range that does not start
+  at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
+  only one that is not an effect.
 
 ## Which dispatch a `match` becomes
 
@@ -802,11 +807,11 @@ def sparseCasesOnInfo? (n : Name) : MetaM (Option (Nat × List Nat)) := do
 
 Lean compiles a structurally recursive definition into `X.brecOn`, which hands the branch
 the whole **history** of the recursion — the value of the function at every smaller
-argument — rather than just the value at the immediate predecessor.  The grammar has only
-the immediate one (`LeanScript.Term.nat_rec`, `LeanScript.Term.recTaggedUnion_rec`), so a
+argument — while the grammar's folds hand the branch a fixed number of the nearest
+answers (`LeanScript.Term.nat_rec k`, `LeanScript.Term.recTaggedUnion_rec`).  So a
 `brecOn` is translated by *reducing the history away*: the branch is instantiated at a
-history whose first entry is a variable standing for the value at the predecessor, and
-the translation succeeds exactly when nothing else of the history is read. -/
+history whose nearest entries are variables standing for those answers, and the
+translation succeeds exactly when nothing else of the history is read. -/
 
 /-- Reduce an application far enough to see the branch it takes: beta, `match`, `casesOn`
     and the auxiliary the compiler names `_f`, and **nothing else** — a call the
@@ -827,17 +832,66 @@ partial def reduceBrecBody (e : Expr) : MetaM Expr := do
       else return e
   | _ => return e
 
+/-- `reduceBrecBody`, continued **under the binders** the branch opens.  A recursion that
+    takes more than one argument is compiled with the later arguments in the motive, so
+    its branch is a function and the `match` that reads the history sits under a lambda;
+    reducing there is what lets an accumulator-passing loop be seen as a fold. -/
+partial def reduceBrecBodyDeep (e : Expr) : MetaM Expr := do
+  let e ← reduceBrecBody e
+  match e with
+  | .lam .. =>
+      lambdaBoundedTelescope e 1 fun xs b => do
+        mkLambdaFVars xs (← reduceBrecBodyDeep b)
+  | _ => return e
+
+/-- How deep a recursion on a natural number the translation looks for: `fib` descends
+    two steps, the hexanacci numbers six, and a definition that descends more steps than
+    this is refused rather than searched for indefinitely. -/
+def maxNatRecDepth : Nat := 16
+
+/-- One component of a `PProd`, however it is written: `(0, x)` for the first component
+    of `x` and `(1, x)` for the second, whether it is a projection or an application of
+    `PProd.fst` / `PProd.snd`. -/
+def pprodProj? (e : Expr) : Option (Nat × Expr) :=
+  match e.consumeMData with
+  | .proj ``PProd i x => some (i, x)
+  | e' =>
+      match e'.getAppFnArgs with
+      | (``PProd.fst, #[_, _, x]) => some (0, x)
+      | (``PProd.snd, #[_, _, x]) => some (1, x)
+      | _ => none
+
+/-- The history `i` steps back: `hist` itself is `0`, and `t.2` is one step further than
+    `t`, since `below (n + 1)` is `motive n ×' below n`. -/
+partial def histTail? (hist : FVarId) (e : Expr) : Option Nat :=
+  match e.consumeMData with
+  | .fvar f => if f == hist then some 0 else none
+  | e' =>
+      match pprodProj? e' with
+      | some (1, x) => (histTail? hist x).map (· + 1)
+      | _ => none
+
+/-- Which entry of the history does this expression read?  `hist.1` is the value at the
+    immediate predecessor, `hist.2.1` the value one step further back, and so on. -/
+def histEntry? (hist : FVarId) (e : Expr) : Option Nat :=
+  match pprodProj? e with
+  | some (0, x) => histTail? hist x
+  | _ => none
+
+/-- Read the values of the recursion at the nearest predecessors out of the history:
+    entry `i` becomes `ihs[i]`.  Whatever still mentions the history afterwards is a read
+    the fold that is being built cannot serve. -/
+def substHistory (e : Expr) (hist : FVarId) (ihs : Array Expr) : Expr :=
+  e.replace fun s =>
+    match histEntry? hist s with
+    | some i => ihs[i]?
+    | none => none
+
 /-- Read the value of the recursion at the immediate predecessor out of the history:
     `history.1` becomes the variable that stands for it.  Whatever is left of the history
-    afterwards is a deeper call, which the grammar cannot express. -/
+    afterwards is a deeper call, which a one-step fold cannot express. -/
 def substHistoryHead (e : Expr) (hist : FVarId) (ih : Expr) : Expr :=
-  e.replace fun s =>
-    match s with
-    | .proj ``PProd 0 (.fvar f) => if f == hist then some ih else none
-    | _ =>
-        match s.getAppFnArgs with
-        | (``PProd.fst, #[_, _, .fvar f]) => if f == hist then some ih else none
-        | _ => none
+  substHistory e hist #[ih]
 
 /-! ## The translation -/
 
@@ -972,10 +1026,84 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
       throwError "`#leanscript_to_term`: cannot project the field {idx} of \
         {structName}"
 
+/-- `do` in the identity monad is not an effect: `Id.run`, `pure`, `>>=` and `<$>` are
+    the plumbing a `do` block leaves behind, and each of them is a `let` or an
+    application once the monad is `Id`.  A `for` over a range is the one that is not:
+    it is a fold, and `transForInRange?` builds it.  In any other monad this answers
+    `none`, and the call is refused as any other undeclared call is. -/
+partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let isId (m : Expr) : MetaM Bool := do return m.consumeMData.isConstOf ``Id
+  match n with
+  | ``Id.run =>
+      let some x := args[1]? | return none
+      return some (← trans c x)
+  | ``Pure.pure =>
+      unless args.size == 4 do return none
+      unless ← isId args[0]! do return none
+      return some (← trans c args[3]!)
+  | ``Bind.bind =>
+      unless args.size == 6 do return none
+      unless ← isId args[0]! do return none
+      return some (← trans c (mkApp args[5]! args[4]!).headBeta)
+  | ``Functor.map =>
+      unless args.size == 6 do return none
+      unless ← isId args[0]! do return none
+      return some (← trans c (mkApp args[4]! args[5]!).headBeta)
+  | ``ForIn.forIn =>
+      unless args.size ≥ 8 do return none
+      unless ← isId args[0]! do return none
+      transForInRange? c args[1]! args[args.size - 3]! args[args.size - 2]! args[args.size - 1]!
+  | _ => return none
+
+/-- `for i in [:n] do …`, in the identity monad: the loop is the fold of `n` whose value
+    is the state, so it is `Term.nat_rec` — the branch binds the index (de Bruijn index
+    `0`) and the state before the iteration (index `1`), and answers with the state
+    after it.
+
+    The range must start at `0` and step by `1`, and the body must always `yield`: a
+    `break` or a `return` out of the loop would need a state the grammar's fold does not
+    carry, and is refused rather than silently ignored. -/
+partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Option Expr) := do
+  unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
+  let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
+    | throwError "`#leanscript_to_term`: the range of this `for` is not written out"
+  let some start ← evalNat (← whnf startE) | throwError
+    "`#leanscript_to_term`: the range of this `for` does not start at a known number"
+  let some step ← evalNat (← whnf stepE) | throwError
+    "`#leanscript_to_term`: the range of this `for` does not step by a known number"
+  unless start == 0 && step == 1 do
+    throwError "`#leanscript_to_term`: a `for` over a range is the fold of its bound, so \
+      the range has to start at `0` and step by `1`; this one starts at {start} and \
+      steps by {step}"
+  let β ← inferType init
+  let τ ← tyOfType β
+  let natTy ← tyOfType (mkConst ``Nat)
+  let scrut ← trans c stopE
+  let z ← trans c init
+  let branch ← withLocalDeclD `i (mkConst ``Nat) fun i =>
+    withLocalDeclD `state β fun s => do
+      let stepBody ← whnf (mkApp2 body i s).headBeta
+      let stepBody ← match stepBody.getAppFnArgs with
+        | (``Pure.pure, #[_, _, _, v]) => whnf v
+        | _ => pure stepBody
+      let next ← match stepBody.getAppFnArgs with
+        | (``ForInStep.yield, #[_, v]) => pure v
+        | (``ForInStep.done, #[_, _]) =>
+            throwError "`#leanscript_to_term`: this `for` leaves the loop early (`break` \
+              or `return`), which the fold a loop becomes cannot express"
+        | _ =>
+            throwError "`#leanscript_to_term`: the body of this `for` does not yield the \
+              state of the next iteration"
+      let c' := c.pushFields #[(i.fvarId!, natTy), (s.fvarId!, τ)]
+      trans c' next
+  return some <| mkAppN (mkConst ``LeanScript.Term.nat_rec)
+    #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], branch]
+
 /-- An application whose head is a constant. -/
 partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     (args : Array Expr) : MetaM Expr := do
   checkConst n
+  if let some t ← transIdOp? c n args then return t
   if n == ``ite then return ← transIte c args
   if n == ``dite then
     throwError "`#leanscript_to_term`: `if h : c then …` binds a proof, which the \
@@ -1105,6 +1233,18 @@ partial def mkSpine (c : TCtx) (tys : List Expr) (vals : Array Expr) : MetaM Exp
     let t ← trans c vals[j]!
     sp := mkAppN (mkConst ``LeanScript.Spine.cons)
       #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
+  return sp
+
+/-- The base values of a fold, already translated, as a `Spine` at `k` copies of `τ` —
+    the type `LeanScript.Term.nat_rec` asks its base values at. -/
+partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : Expr := Id.run do
+  let mut sp := mkAppN (mkConst ``LeanScript.Spine.nil) #[c.sg, c.gamma]
+  let mut tys : List Expr := []
+  for i in [0:vals.size] do
+    let j := vals.size - 1 - i
+    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
+      #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp]
+    tys := τ :: tys
   return sp
 
 /-- An application of a constructor: it is built in place. -/
@@ -1271,9 +1411,13 @@ partial def transSparseCasesOn? (c : TCtx) (e : Expr) (n : Name) (lvls : List Le
     `LeanScript.ToTerm.transRecCore` turns into `nat_rec` / `recTaggedUnion_rec` (or the
     case analysis, when the branch does not use that value).
 
-    A recursion that reads any *other* entry of the history — a call at `n - 2`, say — is
-    refused, naming the definition: the grammar has no fold that descends more than one
-    step. -/
+    On a `Nat` the depth is not fixed at one.  If the branch at `n + 1` reads more of the
+    history than its head, the depths `1, 2, …` are tried in turn: at depth `k` the
+    branch is instantiated at `n + k + 1` with the `k + 1` nearest entries of the history
+    replaced by variables, and the first depth at which nothing of the history is left is
+    the depth of the `nat_rec` that is built — with the answers below it, the branch at
+    `0, …, k`, as its base values.  A recursion that reads the history at an argument
+    that is not a fixed number of steps back is refused. -/
 partial def transBrecOn (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     (args : Array Expr) : MetaM Expr := do
   let isNat := n == ``Nat.brecOn
@@ -1301,7 +1445,7 @@ partial def transBrecOn (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   let branchAt (scrutinee : Expr) (ih? : Option Expr) : MetaM Expr := do
     let ht ← historyTy scrutinee
     withLocalDeclD `history ht fun hist => do
-      let body ← reduceBrecBody (mkApp2 brecF scrutinee hist)
+      let body ← reduceBrecBodyDeep (mkApp2 brecF scrutinee hist)
       let body := match ih? with
         | some ih => substHistoryHead body hist.fvarId! ih
         | none => body
@@ -1310,16 +1454,83 @@ partial def transBrecOn (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
           function at an argument that is not the immediate predecessor, and the \
           grammar's folds descend one step at a time"
       return body
+  -- what to do with the arguments a saturated `brecOn` is applied to on top of its own
+  let finish (core : Expr) : MetaM Expr := do
+    let extra := args.extract arity args.size
+    if extra.isEmpty then return core
+    applyArgs c core (mkAppN (mkConst n lvls) (args.extract 0 arity)) extra
+  if isNat then
+    -- one step first: that is `Nat.rec`, and `transRecCore` may still turn it into the
+    -- case analysis when the branch does not use the value of the fold
+    let depth0? : Option (Array Expr) ←
+      try
+        let z ← branchAt (mkConst ``Nat.zero) none
+        let s ← withLocalDeclD `n (mkConst ``Nat) fun nv =>
+          withLocalDeclD `ih τLean fun ih => do
+            let body ← branchAt (mkApp (mkConst ``Nat.succ) nv) (some ih)
+            mkLambdaFVars #[nv, ih] body
+        pure (some #[z, s])
+      catch _ => pure none
+    if let some minors := depth0? then
+      let some (.recInfo ri) := (← getEnv).find? ``Nat.rec
+        | throwError "`#leanscript_to_term`: internal: no recursor for {n}"
+      return ← finish (← transRecCore c ri τ minors major)
+    -- more than one step: the branch at `n + k + 1`, with the `k + 1` nearest answers
+    -- read out of the history and bound as `ih₀, …, ihₖ` — nearest first
+    let stepAt (k : Nat) : MetaM Expr :=
+      withLocalDeclD `n (mkConst ``Nat) fun nv => do
+        let mut scrutE := nv
+        for _ in [0:k + 1] do scrutE := mkApp (mkConst ``Nat.succ) scrutE
+        let ihDecls : Array (Name × (Array Expr → MetaM Expr)) :=
+          (Array.range (k + 1)).map fun i =>
+            (Name.mkSimple s!"ih{i}", fun _ => pure τLean)
+        withLocalDeclsD ihDecls fun ihs => do
+          let ht ← historyTy scrutE
+          withLocalDeclD `history ht fun hist => do
+            let body ← reduceBrecBodyDeep (mkApp2 brecF scrutE hist)
+            let body := substHistory body hist.fvarId! ihs
+            if body.containsFVar hist.fvarId! then
+              throwError "`#leanscript_to_term`: this recursion reads the value of the \
+                function at an argument that is not one of its {k + 1} nearest \
+                predecessors"
+            mkLambdaFVars (#[nv] ++ ihs) body
+    let mut found : Option (Nat × Expr) := none
+    for k in [1:maxNatRecDepth + 1] do
+      if found.isNone then
+        found ← try pure (some (k, ← stepAt k)) catch _ => pure none
+    let some (k, s) := found
+      | throwError "`#leanscript_to_term`: this recursion does not descend by a fixed \
+          number of steps — the fold of a natural number the grammar has gives its branch \
+          the answers at the `k + 1` nearest predecessors, so a call at an argument such \
+          as `n / 2` has no term"
+    -- the answers below the depth: the branch at `0, …, k`, each one allowed to read the
+    -- answers already known
+    let mut baseVals : Array Expr := #[]
+    for j in [0:k + 1] do
+      let mut jE : Expr := mkConst ``Nat.zero
+      for _ in [0:j] do jE := mkApp (mkConst ``Nat.succ) jE
+      let ht ← historyTy jE
+      let v ← withLocalDeclD `history ht fun hist => do
+        let body ← reduceBrecBodyDeep (mkApp2 brecF jE hist)
+        let body := substHistory body hist.fvarId! baseVals.reverse
+        if body.containsFVar hist.fvarId! then
+          throwError "`#leanscript_to_term`: the answer at {j} reads the value of the \
+            function at an argument the fold has not computed yet"
+        pure body
+      baseVals := baseVals.push v
+    let scrutT ← trans c major
+    let natTy ← tyOfType (mkConst ``Nat)
+    -- the base values are written nearest first: `(f k, …, f 1, f 0)`
+    let baseTerms ← baseVals.reverse.mapM fun v => trans c v
+    let base := mkNatRecBase c τ baseTerms
+    let core ← lambdaBoundedTelescope s (k + 2) fun xs body => do
+      let c' := c.pushFields
+        (#[(xs[0]!.fvarId!, natTy)] ++ (xs.extract 1 xs.size).map fun x => (x.fvarId!, τ))
+      return mkAppN (mkConst ``LeanScript.Term.nat_rec)
+        #[c.sg, c.gamma, τ, mkNatLit k, scrutT, base, ← trans c' body]
+    return ← finish core
   let minors ←
-    if isNat then
-      let zero : Expr := mkConst ``Nat.zero
-      let z ← branchAt zero none
-      let s ← withLocalDeclD `n (mkConst ``Nat) fun nv =>
-        withLocalDeclD `ih τLean fun ih => do
-          let body ← branchAt (mkApp (mkConst ``Nat.succ) nv) (some ih)
-          mkLambdaFVars #[nv, ih] body
-      pure #[z, s]
-    else
+    do
       let α := args[0]!
       let listTy := mkApp (mkConst ``List [← getDecLevel α]) α
       let nil := mkApp (mkConst ``List.nil [← getDecLevel α]) α
@@ -1331,12 +1542,9 @@ partial def transBrecOn (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
             let body ← branchAt cons (some ih)
             mkLambdaFVars #[hd, tl, ih] body
       pure #[z, s]
-  let some (.recInfo ri) := (← getEnv).find? (if isNat then ``Nat.rec else ``List.rec)
+  let some (.recInfo ri) := (← getEnv).find? ``List.rec
     | throwError "`#leanscript_to_term`: internal: no recursor for {n}"
-  let core ← transRecCore c ri τ minors major
-  let extra := args.extract arity args.size
-  if extra.isEmpty then return core
-  applyArgs c core (mkAppN (mkConst n lvls) (args.extract 0 arity)) extra
+  finish (← transRecCore c ri τ minors major)
 
 /-- An application of a recursor. -/
 partial def transRecApp (c : TCtx) (e : Expr) (ri : RecursorVal) (lvls : List Level)
@@ -1378,7 +1586,7 @@ partial def transRecCore (c : TCtx) (ri : RecursorVal) (τ : Expr) (minors : Arr
         if body.containsFVar xs[1]!.fvarId! then
           let c' := c.pushFields #[(xs[0]!.fvarId!, natTy), (xs[1]!.fvarId!, τ)]
           return mkAppN (mkConst ``LeanScript.Term.nat_rec)
-            #[c.sg, c.gamma, τ, scrut, z, ← trans c' body]
+            #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], ← trans c' body]
         else
           let c' := c.pushFields #[(xs[0]!.fvarId!, natTy)]
           return mkAppN (mkConst ``LeanScript.Term.nat_casesOn)

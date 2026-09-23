@@ -79,12 +79,12 @@ def pred : Term emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
 /-- A fold over a natural number whose successor branch answers with the value of the
     fold at the predecessor — so it is `0` however big the number is. -/
 def foldNatZero : Term emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.nat_rec (.var (v♯0)) (.nat_mk 0) (.var (v♯1)))
+  .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1)))
 
 /-- A fold over a natural number whose successor branch answers with the predecessor —
     so it is the predecessor. -/
 def foldNatPred : Term emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.nat_rec (.var (v♯0)) (.nat_mk 0) (.var (v♯0)))
+  .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯0)))
 
 /-- `fun i => match i with | .ofNat n => n | .negSucc n => n`. -/
 def intMagnitude : Term emptySig [] (TyWf.prim .int ⇒ TyWf.prim .nat) :=

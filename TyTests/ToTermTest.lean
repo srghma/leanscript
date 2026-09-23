@@ -443,6 +443,40 @@ def sumL_term : Term sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
 
 example : sumL_term = sumList_term := rfl
 
+/-! ## A recursion that descends more than one step
+
+`Term.nat_rec k` descends `k + 1` steps: its base values are the answers below the depth,
+nearest first, and its branch is given the answers at the `k + 1` nearest predecessors.
+The translation reads the depth off the compiled recursion — it is the smallest number of
+steps at which the history of the `brecOn` is fully read — so a definition of this shape
+is translated as it is written. -/
+
+/-- Two steps: the branch reads the answers at `n` and at `n + 1`. -/
+def fib : Nat → Nat
+  | 0 => 0
+  | 1 => 1
+  | n + 2 => fib n + fib (n + 1)
+
+def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+  #leanscript_to_term fib
+
+example : runAdd fib_term 0 = 0 := rfl
+example : runAdd fib_term 1 = 1 := rfl
+example : runAdd fib_term 10 = 55 := rfl
+example : runAdd fib_term 20 = fib 20 := rfl
+
+/-- Three steps: the tribonacci numbers. -/
+def trib : Nat → Nat
+  | 0 => 0
+  | 1 => 0
+  | 2 => 1
+  | n + 3 => trib n + trib (n + 1) + trib (n + 2)
+
+def trib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+  #leanscript_to_term trib
+
+example : runAdd trib_term 10 = trib 10 := rfl
+
 /-! ## What is refused -/
 
 /-- A definition that is neither declared in the signature nor inlinable cannot be
@@ -469,17 +503,6 @@ unsafe def unsafeId (n : Nat) : Nat := n
 /-- error: `#leanscript_to_term`: `TyTests.ToTerm.unsafeId` is `unsafe` -/
 #guard_msgs (error) in
 example : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term unsafeId
-
-/-- A recursion that descends more than one step at a time is refused: the grammar's
-    folds give a branch the value at the immediate predecessor and nothing deeper. -/
-def fib : Nat → Nat
-  | 0 => 0
-  | 1 => 1
-  | n + 2 => fib n + fib (n + 1)
-
-/-- error: `#leanscript_to_term`: this recursion reads the value of the function at an argument that is not the immediate predecessor, and the grammar's folds descend one step at a time -/
-#guard_msgs (error) in
-example : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term fib
 
 /-- An array and a list are different types, so there is no term for `Array.toList`. -/
 def asList (a : Array Nat) : List Nat := a.toList
