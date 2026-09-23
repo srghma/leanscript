@@ -40,6 +40,28 @@ inductive SelfField : List (TyWfIn 1) → Type
   | there : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, SelfField fs → SelfField (a :: fs)
   deriving DecidableEq
 
+/-- A pointer at a field of a constructor of a **member of a mutual family** that **is**
+    an occurrence of member `i` of that family: the field a deeper look descends into.
+
+    It is `LeanScript.SelfField` in the scope of a family: a member's payload is a list
+    of trees written in the scope of the whole family, and a field that is literally
+    `Ty.familyMember i` is a value of member `i` again.  `here` names such a field —
+    carrying the proof that it is one, which is `rfl` — and `there` steps past a field to
+    the ones after it, so `.here rfl`, `.there (.here rfl)`, … name the payload's
+    occurrences of member `i` in declaration order.
+
+    It is what says that a depth-`k` fold of a mutual family
+    (`LeanScript.Term.mutualRecursiveFamily_rec`) looks further down only into a
+    **subvalue**, never into a value it was handed. -/
+inductive FamilyMemberField {n : Nat} : Nat → List (TyWfIn (n + 2)) → Type
+  /-- The first field is an occurrence of member `i`. -/
+  | here : ∀ {i : Nat} {a : TyWfIn (n + 2)} {fs : List (TyWfIn (n + 2))},
+      a.toTy = Ty.familyMember i → FamilyMemberField i (a :: fs)
+  /-- An occurrence of member `i` among the fields after the first. -/
+  | there : ∀ {i : Nat} {a : TyWfIn (n + 2)} {fs : List (TyWfIn (n + 2))},
+      FamilyMemberField i fs → FamilyMemberField i (a :: fs)
+  deriving DecidableEq
+
 mutual
 
 /-- A term of the language: a typed tree, in a context `Γ` of the types in scope and
@@ -471,16 +493,35 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       Term Sg Γ (.mutualRecursiveFamily f hwf) →
       FamilyMemberSomeCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)) →
       Term Sg Γ τ → Term Sg Γ τ
-  /-- **The fold of a mutual family**: the branches of *every* member of the family, in
-      declaration order, each binding its fields and, right after a field that is an
-      occurrence of a member, the value of the fold at that field.  One motive `τ`
-      answers for every member, which is what lets one list of branches describe the
-      whole family. -/
+  /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
+      branches of *every* member of the family, in declaration order, each binding its
+      fields and, right after a field that is an occurrence of a member, the value of the
+      fold at that field (`TyWf.famRecBinders`), and each branch free to **look further
+      down** — to dispatch on one of those occurrences again, whichever member it belongs
+      to, and so be given *its* fields and the values of the fold at them.  One motive
+      `τ` answers for every member, which is what lets one list of branches describe the
+      whole family, and it is what a deeper look into another member answers with too.
+
+      `LeanScript.FamilyFoldKCases` is that case tree; a branch may stop looking at any
+      point, and at depth `k` it may descend at most `k` times.  At the default depth
+      `k = 0` this is the plain fold: no branch can descend, so the branches are exactly
+      one term each, in the context that binds the member's fields and the values of the
+      fold at its occurrences (`LeanScript.FamilyRecFacts` proves the two families are
+      the same at that depth).  At depth `1` a branch reads the answer at a field *and*
+      at that field's own occurrences — which is what a `fib`-shaped recursion over a
+      family does, reading the answer two constructors down, possibly through another
+      member.
+
+      The recursive value is *given* to the branch rather than called by it, exactly as
+      in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec`, and a deeper
+      look is taken only into a **subvalue** (`LeanScript.FamilyMemberField` picks the
+      occurrence descended into), so a term is still terminating by construction, at
+      every depth. -/
   | mutualRecursiveFamily_rec : ∀ {Γ τ} {n : Nat}
       {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)},
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} (k : Nat := 0),
       Term Sg Γ (.mutualRecursiveFamily f hwf) →
-      FamilyFoldCases Sg (TyWfIn (n + 2)) (TyWf.famRecBinders f hwf τ) Γ τ f.members →
+      FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ τ f.members k →
       Term Sg Γ τ
 
 /-- The elements of an array: any number of terms, all of one type. -/
@@ -903,6 +944,157 @@ inductive FamilyFoldCases (Sg : Sig) :
       {ms : List (LeanFamMemberSchema ι)},
       FamilyMemberFoldCases Sg ι bind Γ τ m → FamilyFoldCases Sg ι bind Γ τ ms →
       FamilyFoldCases Sg ι bind Γ τ (m :: ms)
+
+/-- **What one branch of a depth-`k` fold of a mutual family is**: either an answer, or a
+    deeper look.  It is `LeanScript.FoldKBranch` in the scope of a family.
+
+    `here` is an answer: a term in the context that binds the constructor's fields and,
+    after each field that is an occurrence of a member of the family, the value of the
+    fold at it — `bind fs ++ Γ`, which is the branch of the plain fold.
+
+    `deep` is a look one constructor further down: it names a field that is an occurrence
+    of member `i` (`LeanScript.FamilyMemberField`) and dispatches on **that member** —
+    whose shape is `ms₀[i]`, and which need not be the member the branch belongs to —
+    with a depth one smaller, in that same context.  Each of those branches binds the
+    subvalue's fields and the values of the fold at them, so a branch of the whole tree
+    sees the answers at everything on the path it descended.  A look is only ever taken
+    into a field, so every answer a branch is given is the answer at a **subvalue** of
+    the value being folded.
+
+    `ms₀` is the whole family — every member, in declaration order — because that is
+    what says which member `i` names; at depth `0` there is no `deep`, so a branch is an
+    answer and nothing else. -/
+inductive FamilyFoldKBranch (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → List (TyWfIn (n + 2)) → TyWf → Nat →
+    Type 1
+  /-- The answer, in the context that binds this constructor's fields and the values of
+      the fold at its occurrences. -/
+  | here : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+      {fs : List (TyWfIn (n + 2))} {τ : TyWf} {k : Nat},
+      Term Sg (bind fs ++ Γ) τ → FamilyFoldKBranch Sg n ms₀ bind Γ fs τ k
+  /-- A deeper look: dispatch on the member this field is an occurrence of, at a depth
+      one smaller. -/
+  | deep {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {fs : List (TyWfIn (n + 2))}
+      {τ : TyWf} {k i : Nat} (field : FamilyMemberField i fs)
+      (hi : i < ms₀.length := by ctor_tag)
+      (cases : FamilyMemberFoldKCases Sg n ms₀ bind (bind fs ++ Γ) τ (ms₀[i]'hi) k) :
+      FamilyFoldKBranch Sg n ms₀ bind Γ fs τ (k + 1)
+
+/-- The branches of a **depth-`k` fold** over one member of a mutual family: as
+    `LeanScript.FamilyMemberFoldCases`, except that a branch is a
+    `LeanScript.FamilyFoldKBranch`, which may look further down instead of answering. -/
+inductive FamilyMemberFoldKCases (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → TyWf →
+    LeanFamMemberSchema (TyWfIn (n + 2)) → Nat → Type 1
+  /-- One branch per constructor of a member that has constructors. -/
+  | ctors : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {l : LeanTaggedUnionSchema (TyWfIn (n + 2))},
+      FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ k →
+      FamilyMemberFoldKCases Sg n ms₀ bind Γ τ (.ctors l) k
+  /-- The one branch of a record member. -/
+  | record : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {fs : LeanRecordSchema (TyWfIn (n + 2))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ fs.toList τ k →
+      FamilyMemberFoldKCases Sg n ms₀ bind Γ τ (.record fs) k
+  /-- The one branch of a newtype member. -/
+  | alias : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat} {b : TyWfIn (n + 2)},
+      FamilyFoldKBranch Sg n ms₀ bind Γ [b] τ k →
+      FamilyMemberFoldKCases Sg n ms₀ bind Γ τ (.alias b) k
+
+/-- `LeanScript.TaggedUnionFoldKCases`, for a member of a mutual family: one branch per
+    constructor, in constructor order, indexed by the member's schema, with no default
+    and no end before the constructors run out. -/
+inductive FamilyTaggedUnionFoldKCases (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → LeanTaggedUnionSchema (TyWfIn (n + 2)) →
+    TyWf → Nat → Type 1
+  /-- The branch of constructor `0` (which carries fields), the branch of the constructor
+      after it, and the branches of the remaining constructors. -/
+  | payloadFirst : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {fields : NonEmptyList (TyWfIn (n + 2))} {next : List (TyWfIn (n + 2))}
+      {rest : List (List (TyWfIn (n + 2)))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ fields.toList τ k →
+      FamilyFoldKBranch Sg n ms₀ bind Γ next τ k →
+      FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ k →
+      FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ (.payloadFirst fields next rest) τ k
+  /-- The branch of constructor `0`, which carries no fields, and the branches of the
+      constructors after it. -/
+  | skip : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {rest : CtorsWithPayload (TyWfIn (n + 2))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ [] τ k →
+      FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ rest τ k →
+      FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ (.skip rest) τ k
+
+/-- `LeanScript.FamilyTaggedUnionFoldKCases`, on the constructors a
+    `LeanScript.CtorsWithPayload` holds. -/
+inductive FamilyCtorsWithPayloadFoldKCases (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → CtorsWithPayload (TyWfIn (n + 2)) →
+    TyWf → Nat → Type 1
+  /-- The branch of the first constructor that carries fields, and the branches of the
+      constructors after it. -/
+  | here : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {fields : NonEmptyList (TyWfIn (n + 2))} {rest : List (List (TyWfIn (n + 2)))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ fields.toList τ k →
+      FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ k →
+      FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ (.here fields rest) τ k
+  /-- The branch of a field-less constructor, and the branches of the constructors after
+      it. -/
+  | skip : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {rest : CtorsWithPayload (TyWfIn (n + 2))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ [] τ k →
+      FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ rest τ k →
+      FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ (.skip rest) τ k
+
+/-- `LeanScript.FamilyTaggedUnionFoldKCases`, on the constructors a schema leaves
+    unconstrained: one branch per constructor still to be given one. -/
+inductive FamilyTaggedUnionFoldKCasesRest (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → List (List (TyWfIn (n + 2))) → TyWf →
+    Nat → Type 1
+  /-- Every constructor has a branch. -/
+  | nil : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat},
+      FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ [] τ k
+  /-- The branch of the next constructor. -/
+  | cons : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {fs : List (TyWfIn (n + 2))} {rest : List (List (TyWfIn (n + 2)))},
+      FamilyFoldKBranch Sg n ms₀ bind Γ fs τ k →
+      FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ k →
+      FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ (fs :: rest) τ k
+
+/-- The branches of a **depth-`k` fold** over a whole mutual family: the branches of each
+    member, in declaration order, as `LeanScript.FamilyFoldCases` — so **every** member
+    has its branches and a fold cannot fall off the end wherever the recursion goes, nor
+    wherever a deeper look lands. -/
+inductive FamilyFoldKCases (Sg : Sig) :
+    (n : Nat) → List (LeanFamMemberSchema (TyWfIn (n + 2))) →
+    (List (TyWfIn (n + 2)) → List TyWf) → Ctx → TyWf →
+    List (LeanFamMemberSchema (TyWfIn (n + 2))) → Nat → Type 1
+  /-- Every member has its branches. -/
+  | nil : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat},
+      FamilyFoldKCases Sg n ms₀ bind Γ τ [] k
+  /-- The branches of the next member. -/
+  | cons : ∀ {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+      {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ τ} {k : Nat}
+      {m : LeanFamMemberSchema (TyWfIn (n + 2))}
+      {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))},
+      FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m k →
+      FamilyFoldKCases Sg n ms₀ bind Γ τ ms k →
+      FamilyFoldKCases Sg n ms₀ bind Γ τ (m :: ms) k
 
 end
 

@@ -202,9 +202,9 @@ def aIsNil' : Term recEmptySig [] (tyA ⇒ TyWf.prim .bool) :=
     at index `1`; the `B` branch binds its natural at index `0`, its `A` at index `1` and
     the value of the fold at that `A` at index `2`. -/
 def famFold : Term recEmptySig [] (tyA ⇒ TyWf.prim .nat) :=
-  .lam (.mutualRecursiveFamily_rec (.var (v♯0))
-    (.cons (.ctors (.skip (.nat_mk 0) (.here (.var (v♯1)) .nil)))
-      (.cons (.record (.var (v♯2))) .nil)))
+  .lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
+    (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil)))
+      (.cons (.record (.here (.var (v♯2)))) .nil)))
 
 /-! ## The branch families match the constructors of the type
 
@@ -229,23 +229,24 @@ def natHeadNotExhaustive : Term recEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
 -- the first does not elaborate.
 /--
 error: Application type mismatch: The argument
-  FamilyFoldCases.nil
+  FamilyFoldKCases.nil
 has type
-  FamilyFoldCases ?m.63 ?m.64 ?m.65 ?m.66 ?m.67 []
+  FamilyFoldKCases ?m.91 ?m.92 ?m.93 ?m.94 ?m.95 ?m.96 [] ?m.97
 but is expected to have type
-  FamilyFoldCases recEmptySig (TyWfIn (0 + 2)) (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    (TyWf.prim LeanPrimTy.nat) [memberB]
+  FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
+    (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
-  FamilyFoldCases.cons
-    (FamilyMemberFoldCases.ctors
-      (TaggedUnionFoldCases.skip (Term.nat_mk 0)
-        (CtorsWithPayloadFoldCases.here (Term.var DeBruijn.head.tail) TaggedUnionFoldCasesRest.nil)))
-    FamilyFoldCases.nil
+  FamilyFoldKCases.cons
+    (FamilyMemberFoldKCases.ctors
+      (FamilyTaggedUnionFoldKCases.skip (FamilyFoldKBranch.here (Term.nat_mk 0))
+        (FamilyCtorsWithPayloadFoldKCases.here (FamilyFoldKBranch.here (Term.var DeBruijn.head.tail))
+          FamilyTaggedUnionFoldKCasesRest.nil)))
+    FamilyFoldKCases.nil
 -/
 #guard_msgs (error) in
 def famFoldPartial : Term recEmptySig [] (tyA ⇒ TyWf.prim .nat) :=
-  .lam (.mutualRecursiveFamily_rec (.var (v♯0))
-    (.cons (.ctors (.skip (.nat_mk 0) (.here (.var (v♯1)) .nil))) .nil))
+  .lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
+    (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil))) .nil))
 
 /-! ## An introduction form builds a value of a **type**
 

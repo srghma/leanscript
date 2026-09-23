@@ -270,7 +270,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   | _, _, .mutualRecursiveFamily_mk _ _ _ => False
   | _, _, .mutualRecursiveFamily_casesOn v _ => Term.NoRecMk v
   | _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _ => Term.NoRecMk v
-  | _, _, .mutualRecursiveFamily_rec v _ => Term.NoRecMk v
+  | _, _, .mutualRecursiveFamily_rec _ v _ => Term.NoRecMk v
   -- a variable, a reference to a declaration and every literal
   | _, _, _ => True
 
@@ -489,7 +489,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .mutualRecursiveFamily_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _, env, h =>
       PEmpty.elim (Term.eval G v env h)
-  | _, _, .mutualRecursiveFamily_rec v _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, .mutualRecursiveFamily_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
 
 /-- The values of the elements of an array, in order. -/
 def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
