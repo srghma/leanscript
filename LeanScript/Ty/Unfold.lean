@@ -245,11 +245,16 @@ comes with the value of the fold.  A field that mentions the type only *inside* 
 former (an array of it, say) is bound as it is: the fold of the elements of an array of
 the type is a map, not a binding, and the grammar does not have one. -/
 
-/-- The binders a branch of `LeanScript.Term.recTaggedUnion_rec`,
-    `LeanScript.Term.recObject_rec` or `LeanScript.Term.recAlias_rec` gets, for a
-    constructor whose field types are `fs`: every field, unfolded, and — right after a
-    field that is an occurrence of the type `r` being folded over — the value of the fold
-    at that field, of the type `motive` the fold answers. -/
+/-- The binders a branch of `LeanScript.Term.recTaggedUnion_rec` or
+    `LeanScript.Term.recAlias_rec` gets, for a constructor whose field types are `fs`:
+    every field, unfolded, and — right after a field that is an occurrence of the type
+    `r` being folded over — the value of the fold at that field, of the type `motive` the
+    fold answers.
+
+    A recursive **record** is folded differently: no field of one is literally an
+    occurrence of it, so this gives its branch nothing
+    (`LeanScript.TyWf.recBinders_recObject`) and
+    `LeanScript.Term.recObject_rec` binds `LeanScript.TyWf.recObjectRecBinders` instead. -/
 def recBinders (r motive : Ty) : List Ty → List Ty
   | [] => []
   | .self :: fs => r :: motive :: recBinders r motive fs

@@ -316,6 +316,15 @@ abbrev treeTy (τ : TyWf) : Nat → TyWf
     below replaced by the answer tree of depth `k` at it. -/
 abbrev winTy (τ : TyWf) (k : Nat) : TyWf := .record ⟨natT, optTy (treeTy τ k), []⟩
 
+-- These two equations are the whole of the descent, and they are what the branches below
+-- are written against: **taking a window apart** binds the label and an `Option` of the
+-- answer trees at the cell below, and **taking an answer tree apart** binds the answer at
+-- that cell and the window of one depth less at it.  So each level of descent pushes
+-- `2 + 1 + 2` binders in front of the context, and the answers read so far sit at the
+-- indices `3, 8, 13, …`.
+example (τ : TyWf) (k : Nat) : winTy τ k = .record ⟨natT, optTy (treeTy τ k), []⟩ := rfl
+example (τ : TyWf) (j : Nat) : treeTy τ (j + 1) = .record ⟨τ, winTy τ j, []⟩ := rfl
+
 -- At depth `0` the branch binds the label, the `Option` of cells, and the `Option` of
 -- the answers: the plain fold of the record.
 example (τ : TyWf) (Γ : Ctx) :
@@ -636,6 +645,7 @@ a term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking
 apart is fine — there is nothing to take apart — while *building* one is not. -/
 
 example : Term.NoRecMk fibTerm := by no_rec_mk
+example : Term.NoRecMk tribTerm := by no_rec_mk
 example : Term.NoRecMk hexaTerm := by no_rec_mk
 example : Term.NoRecMk fibTRTerm := by no_rec_mk
 example : Term.NoRecMk fibPairTerm := by no_rec_mk
@@ -662,7 +672,16 @@ example (τ : TyWf) :
 -- window binds the answer at the cell below, a `nat`, so the second descent of §2 —
 -- which is what `fib` needs — cannot be written.
 /--
-error: PLACEHOLDER
+error: Application type mismatch: The argument
+  DeBruijn.head
+has type
+  DeBruijn (?m.56 :: ?m.57) ?m.56
+but is expected to have type
+  { head := treeTy natT 0, tail := [] }.toList ++
+      ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0) ∋
+    TyWf.record ?m.51
+in the application
+  Term.var DeBruijn.head
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow : Term sigAdd (branchCtx natT 0) natT :=
