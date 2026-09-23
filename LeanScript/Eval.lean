@@ -260,7 +260,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   | _, _, .recTaggedUnion_mk _ _ _ _ _ => False
   | _, _, .recTaggedUnion_casesOn v _ => Term.NoRecMk v
   | _, _, .recTaggedUnion_casesOnWithDefault v _ _ _ => Term.NoRecMk v
-  | _, _, .recTaggedUnion_rec v _ => Term.NoRecMk v
+  | _, _, .recTaggedUnion_rec _ v _ => Term.NoRecMk v
   | _, _, .recObject_mk _ _ _ => False
   | _, _, .recObject_casesOn v _ => Term.NoRecMk v
   | _, _, .recObject_rec v _ => Term.NoRecMk v
@@ -478,7 +478,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .recTaggedUnion_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .recTaggedUnion_casesOnWithDefault v _ _ _, env, h =>
       PEmpty.elim (Term.eval G v env h)
-  | _, _, .recTaggedUnion_rec v _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, .recTaggedUnion_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .recObject_mk _ _ _, _, h => h.elim
   | _, _, .recObject_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .recObject_rec v _, env, h => PEmpty.elim (Term.eval G v env h)

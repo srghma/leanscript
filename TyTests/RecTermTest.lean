@@ -74,8 +74,8 @@ def natTail : Term recEmptySig [] (natListTy ⇒ natListTy) :=
     construction.  (The grammar has no arithmetic, so the branch cannot add the head to
     it; an operation on naturals is a declaration of the signature.) -/
 def natFoldZero : Term recEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
-  .lam (.recTaggedUnion_rec (.var (v♯0))
-    (.skip (.nat_mk 0) (.here (.var (v♯2)) .nil)))
+  .lam (.recTaggedUnion_rec 0 (.var (v♯0))
+    (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
 
 /-! ## A recursive record -/
 

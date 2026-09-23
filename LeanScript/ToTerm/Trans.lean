@@ -711,14 +711,25 @@ partial def transRecCore (c : TCtx) (ri : RecursorVal) (τ : Expr) (minors : Arr
             #[(xs[0]!.fvarId!, σ), (xs[1]!.fvarId!, sty), (xs[2]!.fvarId!, τ)]
           let bindE := mkApp2 (mkConst ``LeanScript.TyWf.recBinders) sty τ
           let ι := tyWfInE 1
-          let restCases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldCasesRest.nil)
-            #[c.sg, ι, bindE, c.gamma, τ]
-          let consCases := mkAppN (mkConst ``LeanScript.CtorsWithPayloadFoldCases.here)
-            #[c.sg, ι, bindE, c.gamma, τ, fieldsNE, restL, ← trans c' body, restCases]
-          let cases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldCases.skip)
-            #[c.sg, ι, bindE, c.gamma, τ, cp, nil, consCases]
+          let depth := mkNatLit 0
+          let nilFs := mkApp (mkConst ``List.nil [Level.zero]) ι
+          let consFs := mkApp2
+            (mkConst ``NonEmpty.ListCorrectByConstruction.NonEmptyList.toList [Level.zero])
+            ι fieldsNE
+          -- the branches of a depth-zero fold: one answer each, none of them looking
+          -- further down
+          let nilBranch := mkAppN (mkConst ``LeanScript.FoldKBranch.here)
+            #[c.sg, l, bindE, c.gamma, nilFs, τ, depth, nil]
+          let consBranch := mkAppN (mkConst ``LeanScript.FoldKBranch.here)
+            #[c.sg, l, bindE, c.gamma, consFs, τ, depth, ← trans c' body]
+          let restCases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldKCasesRest.nil)
+            #[c.sg, l, bindE, c.gamma, τ, depth]
+          let consCases := mkAppN (mkConst ``LeanScript.CtorsWithPayloadFoldKCases.here)
+            #[c.sg, l, bindE, c.gamma, τ, depth, fieldsNE, restL, consBranch, restCases]
+          let cases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldKCases.skip)
+            #[c.sg, l, bindE, c.gamma, τ, depth, cp, nilBranch, consCases]
           return mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_rec)
-            #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
+            #[c.sg, c.gamma, τ, l, hwf, depth, scrut, cases]
         else
           -- the case analysis: the branches are over the unfolded schema, in which the
           -- tail is a list again
