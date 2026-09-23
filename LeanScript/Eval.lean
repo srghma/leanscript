@@ -90,9 +90,11 @@ def GlobalEnv.get : {ds : List GlobalDecl} → {τ : TyWf} → GlobalRef ds τ �
 /-! ## Two folds
 
 `Term.nat_rec` and `Term.array_rec` are `Nat.rec` and `List.rec` with a non-dependent
-motive.  They are named here so that the evaluator's clause for each is one line, and so
-that it is visible that the recursion is over the *value*, which is already in hand, and
-not over the term. -/
+motive, each with a **depth**: at depth `k` the branch is given the answers at the `k + 1`
+previous arguments — the `k + 1` predecessors of a natural number, the `k + 1` next
+suffixes of a list — instead of at the immediate one alone.  They are named here so that
+the evaluator's clause for each is one line, and so that it is visible that the recursion
+is over the *value*, which is already in hand, and not over the term. -/
 
 /-- `Nat.rec` with a non-dependent motive: the fold of a natural number. -/
 def natFold {α : Type} (z : α) (s : Nat → α → α) : Nat → α

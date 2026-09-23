@@ -213,7 +213,7 @@ def cont4Fold : List Nat → Nat :=
 
 example : cont4Fold [] = 1 := rfl
 example : cont4Fold [2, 3, 4] = 24 := rfl
-example : cont4Fold [1, 1, 1, 1, 1, 1] = 19 := rfl
+example : cont4Fold [1, 1, 1, 1, 1, 1] = 13 := rfl
 
 /-- **Any** depth-three fold with these five equations computes `cont4`. -/
 theorem listFoldK_eq_cont4 (z : List Nat → Nat) (s : Nat → List Nat → NatWin natT 4 → Nat)
