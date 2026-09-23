@@ -62,6 +62,26 @@ inductive FamilyMemberField {n : Nat} : Nat → List (TyWfIn (n + 2)) → Type
       FamilyMemberField i fs → FamilyMemberField i (a :: fs)
   deriving DecidableEq
 
+/-- **Which member of a family a member number is**: the proof that member `i` of the
+    family `ms` is the member `m`, as a position in the list of members rather than as a
+    number with a bound.
+
+    A deeper look (`LeanScript.FamilyFoldKBranch.deep`) descends into a field that is an
+    occurrence of member `i` and then dispatches on that member's *shape*, so it needs the
+    shape and not only the number: `.here`, `.there .here`, … name the members in
+    declaration order, and a number the family does not have is unwritable. -/
+inductive FamilyMemberAt {n : Nat} :
+    List (LeanFamMemberSchema (TyWfIn (n + 2))) → Nat →
+    LeanFamMemberSchema (TyWfIn (n + 2)) → Type
+  /-- The first member of the list is member `0`. -/
+  | here : ∀ {m : LeanFamMemberSchema (TyWfIn (n + 2))}
+      {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))}, FamilyMemberAt (m :: ms) 0 m
+  /-- Member `i` of the members after the first is member `i + 1`. -/
+  | there : ∀ {i : Nat} {m' m : LeanFamMemberSchema (TyWfIn (n + 2))}
+      {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))},
+      FamilyMemberAt ms i m → FamilyMemberAt (m' :: ms) (i + 1) m
+  deriving DecidableEq
+
 mutual
 
 /-- A term of the language: a typed tree, in a context `Γ` of the types in scope and
@@ -953,9 +973,10 @@ inductive FamilyFoldCases (Sg : Sig) :
     fold at it — `bind fs ++ Γ`, which is the branch of the plain fold.
 
     `deep` is a look one constructor further down: it names a field that is an occurrence
-    of member `i` (`LeanScript.FamilyMemberField`) and dispatches on **that member** —
-    whose shape is `ms₀[i]`, and which need not be the member the branch belongs to —
-    with a depth one smaller, in that same context.  Each of those branches binds the
+    of member `i` (`LeanScript.FamilyMemberField`), says which member of the family that
+    is (`LeanScript.FamilyMemberAt`), and dispatches on **that member** — which need not
+    be the member the branch belongs to — with a depth one smaller, in that same context.
+    Each of those branches binds the
     subvalue's fields and the values of the fold at them, so a branch of the whole tree
     sees the answers at everything on the path it descended.  A look is only ever taken
     into a field, so every answer a branch is given is the answer at a **subvalue** of
@@ -978,9 +999,9 @@ inductive FamilyFoldKBranch (Sg : Sig) :
       one smaller. -/
   | deep {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
       {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {fs : List (TyWfIn (n + 2))}
-      {τ : TyWf} {k i : Nat} (field : FamilyMemberField i fs)
-      (hi : i < ms₀.length := by ctor_tag)
-      (cases : FamilyMemberFoldKCases Sg n ms₀ bind (bind fs ++ Γ) τ (ms₀[i]'hi) k) :
+      {τ : TyWf} {k i : Nat} {m : LeanFamMemberSchema (TyWfIn (n + 2))}
+      (field : FamilyMemberField i fs) (member : FamilyMemberAt ms₀ i m)
+      (cases : FamilyMemberFoldKCases Sg n ms₀ bind (bind fs ++ Γ) τ m k) :
       FamilyFoldKBranch Sg n ms₀ bind Γ fs τ (k + 1)
 
 /-- The branches of a **depth-`k` fold** over one member of a mutual family: as

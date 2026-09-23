@@ -348,6 +348,8 @@ and `mutualRecursiveFamily_casesOnWithDefault` exist because those shapes have
 constructors to leave out, while a recursive record and a recursive newtype have one
 constructor each and so have no partial form at all.  A mutual family is dispatched on
 member by member (`LeanScript.FamilyMemberValue`, `LeanScript.FamilyMemberCases`), and
-its fold asks for the branches of **every** member (`LeanScript.FamilyFoldCases`), with
-one motive answering for all of them.
+its fold asks for the branches of **every** member (`LeanScript.FamilyFoldKCases`), with
+one motive answering for all of them, and a branch of that fold may look one constructor
+further down — into an occurrence of any member — as the fold of a recursive tagged union
+may.
 -/
