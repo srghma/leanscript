@@ -36,6 +36,7 @@ inductive DeBruijnProj {α β : Type} (f : α → β) : List α → β → Type
   /-- An entry bound further out. -/
   | tail : ∀ {x : α} {xs : List α} {b : β},
       DeBruijnProj f xs b → DeBruijnProj f (x :: xs) b
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 /-- How many binders out an index is. -/
 def DeBruijnProj.index {α β : Type} {f : α → β} :

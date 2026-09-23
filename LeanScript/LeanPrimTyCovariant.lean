@@ -5,6 +5,9 @@ public import Init.Prelude
 public import Init.Data.Format.Basic
 public import Init.Data.Format.Instances
 public import Init.Data.ToString.Basic
+public import Init.LawfulBEqTactics
+public import Init.Core
+public import Init.Data.Bool
 
 @[expose] public section
 
@@ -24,7 +27,7 @@ inductive LeanPrimTyCovariant (α : Type) where
   /-- In JS: `() => { return ... }`. -/
   | lazy : α → LeanPrimTyCovariant α
   -- | shareCommonState : α → LeanPrimTyCovariant α
-  deriving Repr, DecidableEq, Inhabited
+  deriving Repr, DecidableEq, Inhabited, BEq, ReflBEq, LawfulBEq
 
 namespace LeanPrimTyCovariant
 

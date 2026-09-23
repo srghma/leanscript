@@ -1,5 +1,6 @@
 module
-public import LeanScript.Ty
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.TyBEq
 public import LeanScript.DeBruijn
 @[expose] public section
 
@@ -54,7 +55,9 @@ structure GlobalDecl where
   name : String
   /-- Its type. -/
   ty : Ty
-  deriving DecidableEq
+  -- `LeanScript.Ty.beq` is the equality of trees (`LeanScript.Ty.TyBEq`), so a
+  -- declaration has a decidable equality and its `==` is that equality.
+  deriving BEq, DecidableEq, ReflBEq, LawfulBEq
 
 /-- Are all of these names different? -/
 def declNamesUnique : List GlobalDecl → Bool
@@ -70,6 +73,7 @@ structure Sig where
   decls : List GlobalDecl
   /-- No name is declared twice. -/
   h_names_unique : declNamesUnique decls = true := by decide
+  deriving BEq, DecidableEq, ReflBEq, LawfulBEq
 
 /-- A reference to a declaration of the signature — a de Bruijn index into it, whose
     type is the one the signature gives it.  There is no other way to name a global, so

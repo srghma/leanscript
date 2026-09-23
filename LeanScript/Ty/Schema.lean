@@ -16,8 +16,8 @@ This module holds the shapes a declaration of a source language can have — a r
 tagged union, a recursive newtype, a mutual family — **without** committing to what a
 field's type is.  Every schema takes the type language as a parameter `α`, so the same
 schema serves `LeanScript.Ty` (the JavaScript backend's type language), the layer inside a
-recursive declaration (`LeanScript.Ty.RTy`), and any further language a later backend adds:
-`LeanRecordSchema Ty` and `LeanRecordSchema Ty.RTy` are the same shape at two layers.
+whatever further language a later backend adds: a schema says how many fields or
+constructors a shape has, and says nothing about what a field's type is.
 
 ## The invariants are in the types, not in a side condition
 
@@ -52,13 +52,12 @@ conventions the translation has to keep to.
 Three conditions are about a whole type rather than about one shape's payload, so they
 cannot be fields of a schema — they mention the type language, which is a parameter:
 
-* a recursive shape **mentions itself** (`Ty.RTy.self`);
-* a recursive shape has **values at all** — `inductive Bad | mk : Bad → Bad` is the
-  equation `T = T`, which no value satisfies;
-* a mutual family is **strongly connected**.
+* a recursive shape **mentions itself** (`Ty.self`);
+* an occurrence names a member the scope in fact has.
 
-They are decidable predicates on the instantiated language, in `LeanScript.RTyWf`
-(`RTy.wf`), and each recursive constructor of `Ty` carries the one that is about it.
+They are stated about a whole tree, as the inductive proposition `LeanScript.Ty.Wf`
+(`LeanScript.Ty.Wf`), and a `LeanScript.LeanScriptTyWf` instance carries a proof of it
+beside its tree.
 
 ## Canonical encodings
 
@@ -87,6 +86,7 @@ structure LeanRecordSchema (α : Type) where
   snd : α
   /-- Everything after the second. -/
   rest : List α
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace LeanRecordSchema
 
@@ -174,6 +174,7 @@ inductive CtorsWithPayload (α : Type) where
   | here (fields : NonEmptyList α) (rest : List (List α))
   /-- This constructor carries no fields, and the one that does comes later. -/
   | skip (rest : CtorsWithPayload α)
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace CtorsWithPayload
 
@@ -263,6 +264,11 @@ theorem three_le_nOfConstructors (s : LeanEnumSchema) : 3 ≤ s.nOfConstructors 
   simp only [nOfConstructors]
   omega
 
+/-- An enum has at least three constructors, so it has at least one: a constructor of it
+    can be written as a plain numeral, `(2 : Fin s.nOfConstructors)`. -/
+instance instNeZeroNOfConstructors (s : LeanEnumSchema) : NeZero s.nOfConstructors :=
+  ⟨by simp only [nOfConstructors]; omega⟩
+
 /-- The enum with this many constructors, if that is a number of constructors an enum
     can have. -/
 def ofCount? (n : Nat) (shift : Int) : Option LeanEnumSchema :=
@@ -295,6 +301,7 @@ inductive LeanTaggedUnionSchema (α : Type) where
   /-- Constructor `0` carries no fields; the constructors after it are at least one,
       and one of them carries a field. -/
   | skip (rest : CtorsWithPayload α)
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace LeanTaggedUnionSchema
 
@@ -325,6 +332,19 @@ theorem two_le_length (c : LeanTaggedUnionSchema α) : 2 ≤ c.toList.length := 
   | skip rest =>
       simp only [toList, List.length_cons, CtorsWithPayload.length_toList]
       cases rest <;> simp only [CtorsWithPayload.length] <;> omega
+
+theorem two_le_length' (c : LeanTaggedUnionSchema α) : 2 ≤ c.length := by
+  have := c.two_le_length
+  simpa using this
+
+/-- The field types of constructor `t`, in declaration order.  The bound is stated
+    against `length` — the number of constructors — rather than against the length of
+    `toList`, so that a caller never has to see the list. -/
+def get (c : LeanTaggedUnionSchema α) (t : Nat) (ht : t < c.length) : List α :=
+  c.toList[t]'(by rw [length_toList]; exact ht)
+
+@[simp] theorem get_eq_getElem (c : LeanTaggedUnionSchema α) (t : Nat) (ht : t < c.length) :
+    c.get t ht = c.toList[t]'(by rw [length_toList]; exact ht) := rfl
 
 /-- Some constructor of this union carries a field. -/
 theorem exists_nonempty (c : LeanTaggedUnionSchema α) : ∃ fs ∈ c.toList, fs ≠ [] := by
@@ -382,6 +402,7 @@ inductive LeanFamMemberSchema (α : Type) where
   /-- A newtype member: it has no object of its own, and a value of it is a value of
       this, its single field. -/
   | alias (body : α)
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace LeanFamMemberSchema
 
@@ -416,6 +437,7 @@ inductive LeanMutualRecFamily (α : Type) where
   /-- The selected member is the last one, and at least one member precedes it. -/
   | selectedLast (first : LeanFamMemberSchema α) (before : List (LeanFamMemberSchema α))
       (current : LeanFamMemberSchema α)
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace LeanMutualRecFamily
 

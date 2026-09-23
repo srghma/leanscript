@@ -1,6 +1,6 @@
 name = "LeanScript"
 version = "0.1.0"
-defaultTargets = ["LeanScript", "NonEmpty", "SnapshotsMy"]
+defaultTargets = ["LeanScript", "NonEmpty", "TyTests"]
 
 [[require]]
 name = "aesop"
@@ -16,5 +16,5 @@ name = "NonEmpty"
 globs = ["NonEmpty.+"]
 
 [[lean_lib]]
-name = "SnapshotsMy"
-globs = ["SnapshotsMy.+"]
+name = "TyTests"
+globs = ["TyTests.+"]

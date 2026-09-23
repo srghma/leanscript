@@ -8,6 +8,7 @@ public import Init.Data.Format.Instances
 public import Init.Data.ToString.Basic
 public import Init.Data.String.Basic
 public import Init.ShareCommon
+public import Init.LawfulBEqTactics
 
 @[expose] public section
 
@@ -128,7 +129,7 @@ inductive LeanPrimTy where
   -- the four externs that speak about them, `lean_sharecommon_quick` is kept — it is the
   -- identity on values, which is what `Expr.Step.quick` runs — and the three that read a
   -- handle are commented out with the handles: the interning table is erased.
-  deriving Inhabited, Repr, DecidableEq
+  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq
 
 namespace LeanPrimTy
 
