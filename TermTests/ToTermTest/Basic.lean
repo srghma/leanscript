@@ -85,7 +85,7 @@ example : run hello_term = "hello" := rfl
 
 def yes : Bool := true
 
-def yes_term := (#leanscript_to_term yes : Term sig0 [] _ (TyWf.prim .bool) .lit)
+def yes_term := (#leanscript_to_term yes : Term sig0 [] _ (TyWf.prim .bool) (.bool true))
 
 example : run yes_term = true := rfl
 

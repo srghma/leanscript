@@ -109,7 +109,8 @@ example : runAdd sumDown_term 4 = 6 := rfl
 /-- The fold is `nat_rec`, the same term `sumUpTo`'s `Nat.rec` translates to. -/
 example : sumDown_term = sumUpTo_term := rfl
 
-/-- A recursion whose branch does not use the recursive value is the case analysis. -/
+/-- A recursion whose step is the recursive call itself is its base value at every
+    argument: the translation writes `fun n => 7`, not a fold. -/
 def constDown : Nat → Nat
   | 0 => 7
   | n + 1 => constDown n
@@ -119,6 +120,8 @@ def constDown_term :=
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : run constDown_term 5 = 7 := rfl
+
+example : constDown_term = .lam (.nat_mk 7) := rfl
 
 /-- A recursion on a list, written as a `match`: the fold `recTaggedUnion_rec`, which is
     what `sumList`'s `List.rec` translates to.  A recursive tree has no values, so the

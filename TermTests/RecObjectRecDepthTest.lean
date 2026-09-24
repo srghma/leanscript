@@ -336,7 +336,23 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isCtor ?m.73 = false
+  Head.isKnown ?m.73 = false
+---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  0 < Usage.front (LeanRecordSchema.toList ?m.95) 0
+---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  0 <
+    Usage.front { fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList
+      (Usage.single DeBruijn.head.tail +
+        (0 +
+          (Usage.drop { head := treeTy natT 0, tail := [] }.toList
+              (?m.94 + Usage.drop (LeanRecordSchema.toList ?m.95) 0) +
+            0)))
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head
@@ -346,12 +362,12 @@ but is expected to have type
   Term sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    ?m.92 (TyWf.record ?m.93) ?m.73
+    ?m.94 (TyWf.record ?m.95) ?m.73
 in the application
   @Term.record_casesOn sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    natT ?m.93 ?m.92 0 ?m.73 Head.lit (Term.var DeBruijn.head)
+    natT ?m.95 ?m.94 0 ?m.73 Head.lit (Term.var DeBruijn.head)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

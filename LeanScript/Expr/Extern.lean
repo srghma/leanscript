@@ -69,6 +69,12 @@ instance instCoePrimCovariantTyWf : Coe (LeanPrimTyCovariant TyWf) TyWf :=
 def Extern : TyWf → Type :=
   LeanInitPureExtern TyWf.Den TyWf.option TyWf.list TyWf.prod TyWf.leanName TyWf.ordering
 
+/-- `m - n` on natural numbers, as the `call` of a `Term.externCall` on two arguments: the
+    countdown `#leanscript_to_term` writes when it turns an accumulator-passing recursion
+    into a loop over its accumulator (`LeanScript.ToTerm.accLoop?`). -/
+def natSubCall : TyWf.DenList [TyWf.prim .nat, TyWf.prim .nat] → Extern (TyWf.prim .nat) :=
+  fun vs => .preludeExtern (.lean_nat_sub vs.1 vs.2.1)
+
 /-! ## Values of the derived type formers
 
 `TyWf.list`, `TyWf.option`, `TyWf.prod`, `TyWf.leanName` and `TyWf.ordering` are shapes of the language, so

@@ -340,7 +340,17 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isCtor ?m.65 = false
+  Head.isKnown ?m.65 = false
+---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  0 < Usage.front (LeanRecordSchema.toList ?m.91) 0
+---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  0 < Usage.front (linkSchema (treeTy natT 0)).toList (?m.90 + Usage.drop (LeanRecordSchema.toList ?m.91) 0)
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head.tail
@@ -349,11 +359,11 @@ has type
 but is expected to have type
   Term sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    ?m.88 (TyWf.record ?m.89) ?m.65
+    ?m.90 (TyWf.record ?m.91) ?m.65
 in the application
   @Term.record_casesOn sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    natT ?m.89 ?m.88 0 ?m.65 Head.lit (Term.var DeBruijn.head.tail)
+    natT ?m.91 ?m.90 0 ?m.65 Head.lit (Term.var DeBruijn.head.tail)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

@@ -166,7 +166,7 @@ info: ((Term.externCall
           (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
           (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
           shareUnderFunDef_term._proof_3)
-        ⋯)
+        ⋯ shareInFoldDef_term._proof_2)
       shareUnderFunDef_term._proof_4 ⋯).lam.lam
 -/
 #guard_msgs in

@@ -33,7 +33,11 @@ function on the type being defined), and two indices suffice:
 
 The grade vector also says whether a fold's branch reads the answers it is given
 (`Usage.sumN`): `Term.nat_rec` and `Term.array_rec` ask that it does, since a fold whose
-branch reads none of them is a case analysis.
+branch reads none of them is a case analysis; and at depth `0` they ask that the branch is
+not a variable, since a variable that reads an answer is that answer, and the fold is its
+base value.  Likewise a dispatch on a type with one constructor (a record, a newtype, a
+primitive wrapper) asks that its branch reads a field (`Usage.front`): there is nothing to
+decide, so a branch that reads no field is the whole dispatch.
 
 Both indices are *computed* by the constructors, so writing a term looks exactly like
 writing a raw one, and every proof argument is discharged by `decide` on closed indices.
@@ -113,6 +117,16 @@ def sumN (τ : TyWf) : (n : Nat) → Usage (natRecCtx τ n Γ) → Nat
   | 0, _ => 0
   | n + 1, u => head (σ := τ) (Γ := natRecCtx τ n Γ) u + sumN τ n (tail u)
 
+/-- The total grade of the variables `Δ` a branch binds in front of `Γ`: how many times the
+    one branch of a dispatch on a type with **one** constructor (a record, a newtype, a
+    primitive wrapper such as `Char` or `UInt8`) reads the fields it is given.  Such a
+    dispatch asks that this is not `0` (`Term.record_casesOn`, `Term.char_casesOn`, …): a
+    branch that reads none of the fields does not need the value taken apart — the
+    language is pure and total, so the dispatch is its branch. -/
+def front : (Δ : Ctx) → Usage (Δ ++ Γ) → Nat
+  | [], _ => 0
+  | σ :: Δ, u => head (σ := σ) (Γ := Δ ++ Γ) u + front Δ (tail u)
+
 end Usage
 
 /-- What the root of a term is.  It is an index of `LeanScript.Term`, computed by the
@@ -125,6 +139,10 @@ inductive Head where
   | lam
   /-- a literal: a value of a primitive type, or a constructor of an enum -/
   | lit
+  /-- a **boolean literal**, whose value the head records: a literal like `Head.lit`, and
+      what lets the grammar see that `if c then true else false` is `c`
+      (`Term.bool_casesOn`) -/
+  | bool (b : Bool)
   /-- a constructor applied to its fields: a record, a tagged value, an array, a delay, a
       value of a recursive type -/
   | ctor
@@ -147,6 +165,17 @@ inductive Head where
       `Term.lazy_force`).  The head of a dispatch is computed from the heads of its
       branches by `Head.join`. -/
   | caseIntro
+  /-- a **dispatch that answers with a known constructor in every branch**: a `match`/`if`
+      each of whose branches is a literal, a constructor or a closed value — or again such
+      a dispatch.  It is a dispatch that may answer with an introduction form
+      (`Head.caseIntro`), and more: a dispatch *on* it is a redex (**case-of-case**), since
+      in every branch the constructor is known.  `match (if c then some a else none) with
+      | some x => f x | none => d` is `if c then f a else d`: the outer dispatch moves into
+      the inner branches, where it meets a constructor and is reduced. -/
+  | caseCtor
+  /-- the head of an **empty list of branches** (`TaggedUnionCasesRest.nil`): never the
+      head of a term, it is the neutral element of `Head.join`. -/
+  | empty
   deriving DecidableEq, Repr, Inhabited
 
 namespace Head
@@ -154,7 +183,7 @@ namespace Head
 /-- Is this head a value an extern can be called on where the term is written: a literal
     or a closed value? -/
 def isValue : Head → Bool
-  | .lit | .val => true
+  | .lit | .bool _ | .val => true
   | _ => false
 
 /-- Is every one of these heads a literal or a closed value?  `Term.externCall` and
@@ -179,14 +208,27 @@ def ctorOf (ks : List Head) : Head := if allValue ks then .val else .ctor
 /-- Is this head an introduction form — a `fun`, a literal, a constructor, a closed value —
     or a dispatch that may answer with one (`Head.caseIntro`)? -/
 def isIntro : Head → Bool
-  | .lam | .lit | .ctor | .val | .caseIntro => true
+  | .lam | .lit | .bool _ | .ctor | .val | .caseIntro | .caseCtor => true
+  | _ => false
+
+/-- Is this head a **known constructor** — a literal, a constructor applied to its fields,
+    a closed value — or a dispatch that answers with one in every branch
+    (`Head.caseCtor`)?  A dispatch asks that what it takes apart is not: on a known
+    constructor it is a redex, and on a dispatch of known constructors it is one in every
+    branch (case-of-case).  (`Head.empty`, which no term has, counts as known, vacuously.) -/
+def isKnown : Head → Bool
+  | .lit | .bool _ | .ctor | .val | .caseCtor | .empty => true
   | _ => false
 
 /-- The head of a dispatch two of whose branches (or groups of branches) have heads `a`
-    and `b`: `Head.caseIntro` when one of them is an introduction form, or such a
-    dispatch, and a plain computation `Head.comp` otherwise.  Its value is always one of
-    those two, so a dispatch is never mistaken for a variable, a `fun` or a constructor. -/
-def join (a b : Head) : Head := if a.isIntro || b.isIntro then .caseIntro else .comp
+    and `b`: `Head.caseCtor` when both are known constructors (`Head.isKnown`),
+    `Head.caseIntro` when one of them is an introduction form, or such a dispatch, and a
+    plain computation `Head.comp` otherwise.  Its value is always one of those three (for a
+    non-empty list of branches), so a dispatch is never mistaken for a variable, a `fun` or
+    a constructor.  `Head.empty` is its neutral element. -/
+def join (a b : Head) : Head :=
+  if a.isKnown && b.isKnown then .caseCtor
+  else if a.isIntro || b.isIntro then .caseIntro else .comp
 
 /-- Is this head a `fun`, or a dispatch that may answer with one?  `Term.ap` asks that its
     function is neither: the first is a β-redex, and the second is one in some branch,
@@ -200,7 +242,7 @@ def isFunLike : Head → Bool
     neither: forcing a delay built right there is a redex, and so is forcing a dispatch
     one of whose branches builds it — the force moves into the branches. -/
 def isCtorLike : Head → Bool
-  | .ctor | .val | .caseIntro => true
+  | .ctor | .val | .caseIntro | .caseCtor => true
   | _ => false
 
 end Head

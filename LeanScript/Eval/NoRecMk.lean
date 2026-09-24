@@ -48,27 +48,27 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   | _, _, _, _, .externCall args _ _ => Spine.NoRecMk args
   | _, _, _, _, .externCallChecked args _ fallback _ => Spine.NoRecMk args ∧ Term.NoRecMk fallback
   -- case analysis on a leaf
-  | _, _, _, _, .bool_casesOn c t e _ => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
+  | _, _, _, _, .bool_casesOn c t e _ _ => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
   | _, _, _, _, .nat_casesOn n z s _ => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, _, _, .nat_rec _ n base branch _ =>
+  | _, _, _, _, .nat_rec _ n base branch _ _ =>
       Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
   | _, _, _, _, .int_casesOn i a b _ => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
-  | _, _, _, _, .uint8_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint16_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint32_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint64_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int8_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int16_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int32_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int64_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .char_casesOn c b _ => Term.NoRecMk c ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPosRaw_casesOn p b _ => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPos_casesOn p b _ => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .substringRaw_casesOn s b _ => Term.NoRecMk s ∧ Term.NoRecMk b
-  | _, _, _, _, .float_casesOn x b _ => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .float32_casesOn x b _ => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .floatModel_casesOn m b _ => Term.NoRecMk m ∧ Term.NoRecMk b
-  | _, _, _, _, .float32Model_casesOn m b _ => Term.NoRecMk m ∧ Term.NoRecMk b
+  | _, _, _, _, .uint8_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint16_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint32_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint64_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int8_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int16_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int32_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int64_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .char_casesOn c b _ _ => Term.NoRecMk c ∧ Term.NoRecMk b
+  | _, _, _, _, .stringPosRaw_casesOn p b _ _ => Term.NoRecMk p ∧ Term.NoRecMk b
+  | _, _, _, _, .stringPos_casesOn p b _ _ => Term.NoRecMk p ∧ Term.NoRecMk b
+  | _, _, _, _, .substringRaw_casesOn s b _ _ => Term.NoRecMk s ∧ Term.NoRecMk b
+  | _, _, _, _, .float_casesOn x b _ _ => Term.NoRecMk x ∧ Term.NoRecMk b
+  | _, _, _, _, .float32_casesOn x b _ _ => Term.NoRecMk x ∧ Term.NoRecMk b
+  | _, _, _, _, .floatModel_casesOn m b _ _ => Term.NoRecMk m ∧ Term.NoRecMk b
+  | _, _, _, _, .float32Model_casesOn m b _ _ => Term.NoRecMk m ∧ Term.NoRecMk b
   -- delays
   | _, _, _, _, .lazy_mk e => Term.NoRecMk e
   | _, _, _, _, .lazy_force e _ => Term.NoRecMk e
@@ -77,7 +77,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   -- arrays
   | _, _, _, _, .array_mk ts => Terms.NoRecMk ts
   | _, _, _, _, .array_casesOn a z s _ => Term.NoRecMk a ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, _, _, .array_rec _ a bases branch _ =>
+  | _, _, _, _, .array_rec _ a bases branch _ _ =>
       Term.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
   -- enums
   | _, _, _, _, .enum_casesOn e cases _ => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
@@ -85,7 +85,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
       Term.NoRecMk e ∧ EnumSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   -- records and tagged unions
   | _, _, _, _, .record_mk _ fields => Spine.NoRecMk fields
-  | _, _, _, _, .record_casesOn r body _ => Term.NoRecMk r ∧ Term.NoRecMk body
+  | _, _, _, _, .record_casesOn r body _ _ => Term.NoRecMk r ∧ Term.NoRecMk body
   | _, _, _, _, .taggedUnion_mk _ _ _ fields => Spine.NoRecMk fields
   | _, _, _, _, .taggedUnion_casesOn v cases _ => Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
   | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _ _ =>
@@ -101,10 +101,10 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   -- the other three recursive shapes: an introduction form has no value in this model,
   -- and an eliminator needs nothing of its branches, since its scrutinee has none either
   | _, _, _, _, .recObject_mk _ _ _ => False
-  | _, _, _, _, .recObject_casesOn v _ _ => Term.NoRecMk v
+  | _, _, _, _, .recObject_casesOn v _ _ _ => Term.NoRecMk v
   | _, _, _, _, .recObject_rec _ v _ => Term.NoRecMk v
   | _, _, _, _, .recAlias_mk _ _ _ => False
-  | _, _, _, _, .recAlias_casesOn v _ _ => Term.NoRecMk v
+  | _, _, _, _, .recAlias_casesOn v _ _ _ => Term.NoRecMk v
   | _, _, _, _, .recAlias_rec _ v _ => Term.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _ => False
   | _, _, _, _, .mutualRecursiveFamily_casesOn v _ _ => Term.NoRecMk v

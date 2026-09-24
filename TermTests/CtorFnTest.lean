@@ -68,7 +68,7 @@ example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := rfl
 example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := rfl
 
 /-- `Bool` is the enum of its two constructors, which the language calls `bool`. -/
-def tt := (#leanscript_ctor `Bool `true : Term sig [] _ boolT .lit)
+def tt := (#leanscript_ctor `Bool `true : Term sig [] _ boolT (.bool true))
 example : run tt = true := rfl
 
 /-- `Ordering`'s instance numbers its constructors from `-1`; the layout keeps that. -/

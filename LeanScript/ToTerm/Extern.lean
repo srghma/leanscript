@@ -68,9 +68,17 @@ def externNameOf (s : String) : Name :=
     | some k => .num n k
     | none => .str n part
 
+/-- Lean functions implemented by the extern of an entry of the catalogue, and **equal** to
+    the Lean function that entry models, so that a call of one is that entry: `n % m` is
+    `lean_nat_mod`, which the catalogue models as `Nat.modCore`, and
+    `Nat.modCore n m = n % m` (`Nat.modCore_eq_mod`).  Without it, `Nat.mod` is unfolded to
+    its definition — a `match` on `n` and a test `m ≤ n` around the same extern. -/
+def externAliases : Array ExternEntry := #[
+  ⟨"Nat.mod", "lean_nat_mod__Nat_modCore", "vv"⟩]
+
 /-- The externs a term can call, by the Lean function they model. -/
 def externMap : Std.HashMap Name ExternEntry :=
-  externTable.foldl (init := {}) fun m e => m.insert (externNameOf e.leanFn) e
+  (externTable ++ externAliases).foldl (init := {}) fun m e => m.insert (externNameOf e.leanFn) e
 
 /-- Is `n` a Lean function the translation calls as an extern? -/
 def isKnownExtern (n : Name) : Bool := externMap.contains n

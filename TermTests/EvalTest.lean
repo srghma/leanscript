@@ -86,10 +86,14 @@ def pred :=
   (.lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-/-- A fold over a natural number whose successor branch answers with the value of the
-    fold at the predecessor — so it is `0` however big the number is. -/
-def foldNatZero :=
-  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1))) :
+/-- A fold over a natural number whose successor branch adds the predecessor to the value
+    of the fold at it: `0 + 1 + ⋯ + (n - 1)`.  (A successor branch that answers with the
+    value of the fold at the predecessor alone, `nat_rec 0 n 0 (fun _ ih => ih)`, is not a
+    term: that fold is its base, `0`, however big the number is.) -/
+def foldNatSum :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil)
+     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯1)) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The predecessor, by case analysis.  (As a fold whose successor branch answers with the
@@ -128,7 +132,7 @@ example : run boolToNat true = 1 := rfl
 example : run boolToNat false = 0 := rfl
 example : run pred 0 = 0 := rfl
 example : run pred 5 = 4 := rfl
-example : run foldNatZero 5 = 0 := rfl
+example : run foldNatSum 5 = 10 := rfl
 example : run foldNatPred 5 = 4 := rfl
 example : run intMagnitude 7 = 7 := rfl
 example : run intMagnitude (-8) = 7 := rfl
@@ -167,10 +171,13 @@ def headOrZero :=
   (.lam (.array_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
     Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
-/-- A fold over an array that answers with the value of the fold over the tail — so it
-    is `0` however long the array is. -/
-def foldArrayZero :=
-  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2))) :
+/-- A fold over an array that adds the head to the value of the fold over the tail: the
+    sum of the elements.  (One that answers with the value of the fold over the tail alone
+    is not a term: that fold is its base, `0`, however long the array is.) -/
+def foldArraySum :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
+     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯2)) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
     Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- A fold over an array that answers with its **last** element, or `0`: the branch
@@ -183,7 +190,7 @@ def lastOrZero :=
 example : run oneTwoThree = #[1, 2, 3] := rfl
 example : run headOrZero #[1, 2, 3] = 1 := rfl
 example : run headOrZero #[] = 0 := rfl
-example : run foldArrayZero #[1, 2, 3] = 0 := rfl
+example : run foldArraySum #[1, 2, 3] = 6 := rfl
 example : run lastOrZero #[1, 2, 3] = 3 := rfl
 example : run lastOrZero #[] = 0 := rfl
 

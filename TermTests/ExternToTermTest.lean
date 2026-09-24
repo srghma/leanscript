@@ -149,7 +149,7 @@ example : externForm? greeting_term = none := rfl
 def twoIsTwo : Bool := Nat.beq 2 2
 def abcLength : Nat := "abc".length
 
-def twoIsTwo_term := (#leanscript_to_term twoIsTwo : Term sig0 [] _ (TyWf.prim .bool) .lit)
+def twoIsTwo_term := (#leanscript_to_term twoIsTwo : Term sig0 [] _ (TyWf.prim .bool) (.bool true))
 def abcLength_term := (#leanscript_to_term abcLength : Term sig0 [] _ (TyWf.prim .nat) .lit)
 
 example : run twoIsTwo_term = true := rfl

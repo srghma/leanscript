@@ -74,10 +74,26 @@ def pred :=
   (.lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-/-- `fun n => Nat.rec 0 (fun k ih => ih) n`: a fold over a natural number.  The
+/-- `fun n => Nat.rec 0 (fun k ih => k + ih) n`: a fold over a natural number.  The
     successor branch binds the predecessor at index `0` and the value of the fold at
-    index `1`, and this one answers with the latter. -/
+    index `1`, and this one adds them. -/
 def foldNat :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil)
+    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯1)) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
+
+-- `fun n => Nat.rec 0 (fun k ih => ih) n`: a one-step fold whose branch is the answer it is
+-- given is its base, `0`, at every `n` — so it is rejected (`hStep`).
+/--
+error: could not synthesize default value for parameter 'hStep' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  0 = 0 → Head.var ≠ Head.var
+is false
+-/
+#guard_msgs (error) in
+def foldNatId :=
   (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
@@ -123,10 +139,40 @@ def headOrZero :=
     Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- The fold of an array: the non-empty branch binds the head at index `0`, the tail at
-    index `1` and the value of the fold over the tail at index `2`. -/
+    index `1` and the value of the fold over the tail at index `2`; this one adds the head
+    to the latter. -/
 def foldArray :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
+    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯2)) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
+
+-- A one-step fold of an array whose branch is the answer over the tail is its base.
+/--
+error: could not synthesize default value for parameter 'hStep' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  0 = 0 → Head.var ≠ Head.var
+is false
+-/
+#guard_msgs (error) in
+def foldArrayId :=
   (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2))) :
     Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
+
+-- A dispatch on a one-constructor value whose branch reads none of the fields is its
+-- branch: `match c with | ⟨code⟩ => 0` is `0`.
+/--
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  0 < Usage.head 0
+is false
+-/
+#guard_msgs (error) in
+def charIgnored :=
+  (.lam (.char_casesOn (.var (v♯0)) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.prim .char ⇒ TyWf.prim .nat) .lam)
 
 /-! ## The user-defined shapes -/
 
@@ -420,7 +466,8 @@ def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyW
 error: could not synthesize default value for parameter 'hValue' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lit = Head.comp ∨ Head.lit = Head.ctor ∨ Head.lit = Head.val ∨ Head.lit = Head.caseIntro
+  Head.lit = Head.comp ∨
+    Head.lit = Head.ctor ∨ Head.lit = Head.val ∨ Head.lit = Head.caseIntro ∨ Head.lit = Head.caseCtor
 is false
 -/
 #guard_msgs (error) in
@@ -448,7 +495,7 @@ def letOnce :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lit ≠ Head.lit
+  (Head.bool true).isKnown = false
 is false
 -/
 #guard_msgs (error) in
@@ -474,7 +521,7 @@ def thunkedThreeForced :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.ctor.isCtor = false
+  Head.ctor.isKnown = false
 is false
 -/
 #guard_msgs (error) in

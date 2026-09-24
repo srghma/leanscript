@@ -103,9 +103,19 @@ def checkConst (n : Name) : MetaM Unit := do
         translate"
   | _ => pure ()
 
+/-- The boolean connectives of `Init`: `!b`, `a && b`, `a || b`.  They are case analyses
+    on their first argument (`Bool.and x y` is `match x with | false => false | true => y`),
+    marked neither `@[inline]` nor `@[macro_inline]` in this version of Lean, so they are
+    named here: inlined, each is a `Term.bool_casesOn` — `a && b` evaluates `b` only when
+    `a` holds, as in Lean — and the dispatches it meets are reduced (`!(!b)` is `b`, and
+    `if !b then t else e` is `if b then e else t`, by case-of-case). -/
+def boolConnectives : Array Name := #[``Bool.not, ``Bool.and, ``Bool.or]
+
 /-- Is a call of this constant inlined?  A constructor and a projection always are, and
-    so is anything the author marked inlinable or reducible. -/
+    so is anything the author marked inlinable or reducible, and the boolean connectives
+    (`boolConnectives`). -/
 def isInlinable (n : Name) : MetaM Bool := do
+  if boolConnectives.contains n then return true
   if (← getEnv).find? n matches some (.ctorInfo _) then return true
   if (← getProjectionFnInfo? n).isSome then return true
   if ← Lean.isReducible n then return true

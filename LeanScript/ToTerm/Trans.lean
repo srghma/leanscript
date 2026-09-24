@@ -228,6 +228,11 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       \"{n.getString!}\" (or \"{n}\") to the signature."
   checkConst n
   if let some t ← transIdOp? c n args then return t
+  -- `decide p` — which is also what `a == b` is at a type whose `BEq` comes from its
+  -- `DecidableEq` (`instBEqOfDecidableEq`), and what a `Bool` written as a proposition
+  -- (`(n < 3 : Bool)`) is — is the `Bool` the decision procedure answers with
+  if n == ``Decidable.decide && args.size == 2 then
+    return ← boolOfDecidable c args[0]! args[1]!
   -- `if`/`cond` applied to more arguments than the test and the branches (a dispatch
   -- that answers with a function, applied): the dispatch, then applied to the rest —
   -- which `mkNode` moves into the branches (`LeanScript.Head.caseIntro`)
@@ -241,6 +246,10 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if n == ``dite then return ← transDite c args
   -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`
   if n == ``GetElem.getElem then
+    if let some x ← decidableExtern? e then return ← trans c x
+  -- `n % m` likewise (`Nat.mod`, which the catalogue models by `Nat.modCore`), rather than
+  -- the unfolding of `Nat.mod` around that extern
+  if n == ``HMod.hMod || n == ``Mod.mod then
     if let some x ← decidableExtern? e then return ← trans c x
   if n == ``cond then
     let some scrut := args[1]? | throwError "`#leanscript_to_term`: `cond` needs its test"
@@ -410,7 +419,25 @@ partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
 
 /-- The `Bool` a decidable proposition tests. -/
 partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr := do
+  let boolLit (b : Bool) : MetaM Expr :=
+    mkNode ``LeanScript.Term.bool_mk #[c.sg, c.gamma, toExpr b]
+  let boolTy ← tyOfType (mkConst ``Bool)
+  -- the test of a proposition `p` that is part of this one, by its own decision procedure
+  let sub (p : Expr) : MetaM Expr := do
+    boolOfDecidable c p (← synthInstance (mkApp (mkConst ``Decidable) p))
   match cnd.getAppFnArgs with
+  -- the connectives, as the boolean connectives they are decided by: `¬ p` is `!p`,
+  -- `p ∧ q` is `p && q` and `p ∨ q` is `p || q` (the second test runs only when needed)
+  | (``Not, #[p]) =>
+      return ← mkBoolCases' c (← sub p) (← boolLit false) (← boolLit true) boolTy
+  | (``Ne, #[α, a, b]) =>
+      let p ← mkAppM ``Eq #[a, b]
+      let _ := α
+      return ← mkBoolCases' c (← sub p) (← boolLit false) (← boolLit true) boolTy
+  | (``And, #[p, q]) =>
+      return ← mkBoolCases' c (← sub p) (← sub q) (← boolLit false) boolTy
+  | (``Or, #[p, q]) =>
+      return ← mkBoolCases' c (← sub p) (← boolLit true) (← sub q) boolTy
   | (``Eq, #[α, lhs, rhs]) =>
       if α.isConstOf ``Bool && rhs.isConstOf ``Bool.true then
         return ← trans c lhs
@@ -424,9 +451,22 @@ partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr :
       if let some x ← decidableExtern? inst then return ← trans c x
       -- `a = b` at a type with a `BEq`: the test is `a == b`
       match ← trySynthInstance (← mkAppM ``BEq #[α]) with
-      | .some _ => return ← trans c (← mkAppM ``BEq.beq #[lhs, rhs])
+      | .some b =>
+          -- (not a `BEq` that is this very decision, which would come back here)
+          unless (← whnfR b).isAppOf ``instBEqOfDecidableEq do
+            return ← trans c (← mkAppM ``BEq.beq #[lhs, rhs])
       | _ => pure ()
-      throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`"
+      -- two booleans are equal when they are both `true` or both `false`:
+      -- `if a then b else !b`
+      if α.isConstOf ``Bool then
+        let b ← trans c rhs
+        let notB ← mkBoolCases' c b (← boolLit false) (← boolLit true) boolTy
+        return ← mkBoolCases' c (← trans c lhs) b notB boolTy
+      -- otherwise the decision procedure, unfolded (`Char`'s is its code points')
+      let d ← whnf (mkApp2 (mkConst ``Decidable.decide) cnd inst)
+      if d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome then
+        throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`"
+      trans c d
   | _ =>
       -- a decision procedure that is an extern (`Nat.decLt`, say) is that extern, whose
       -- value is the `Bool` it decides
