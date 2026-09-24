@@ -59,7 +59,7 @@ open TermTests.ArrayRecK (natT cont cont3 cont4 listFoldK_eq_cont listFoldK_eq_c
 open TermTests.FibWindow (fib)
 
 /-- Running a closed term of `sigArith`. -/
-local macro:max "runArith" t:term:max : term => `(SomeTerm.run (Sg := sigArith) envArith $t)
+local macro:max "runArith" t:term:max : term => `(Term.run (Sg := sigArith) envArith $t)
 
 /-! Sections 1 and 2 — `cont` at depth one, and `cont3`, `cont4` at depths two and three —
 are in `TermTests/ArrayRecDepthTest/Cont.lean`. -/
@@ -125,9 +125,9 @@ def loopStep {Γ : Ctx} :=
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) _ Acc2 _)
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
-def contTRTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
-  ⟨.lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
-    (.nat_mk 0))⟩
+def contTRTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
+  .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+    (.nat_mk 0))
 
 example : runArith contTRTerm #[] = 1 := rfl
 example : runArith contTRTerm #[3, 4] = 13 := rfl
@@ -232,9 +232,9 @@ def contPairTerm {Γ : Ctx} :=
 /-- The continuant read off the pair: its first field.  Applying `contPairTerm` to the
     array would be a β-redex, which is not a term: the fold is written in place, on the
     array the function would have been applied to. -/
-def contFromPairTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
-  ⟨.lam (.record_casesOn (fs := pairSchema)
-    (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0)))⟩
+def contFromPairTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
+  .lam (.record_casesOn (fs := pairSchema)
+    (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0)))
 
 example : runArith contFromPairTerm #[] = 1 := rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := rfl

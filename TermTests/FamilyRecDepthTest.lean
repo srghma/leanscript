@@ -48,8 +48,8 @@ def fibCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 1)
 
 /-- **`fib` over a mutual family**: the depth-one fold. -/
-def fibTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) fibCases)⟩
+def fibTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) fibCases)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -82,8 +82,8 @@ def tribCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 2)
 
 /-- `trib`, as a term. -/
-def tribTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 2 (.var (v♯0)) tribCases)⟩
+def tribTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 2 (.var (v♯0)) tribCases)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraCases :=
@@ -113,8 +113,8 @@ def tetraCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 3)
 
 /-- `tetra`, as a term. -/
-def tetraTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 3 (.var (v♯0)) tetraCases)⟩
+def tetraTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 3 (.var (v♯0)) tetraCases)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaCases :=
@@ -150,8 +150,8 @@ def pentaCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 4)
 
 /-- `penta`, as a term. -/
-def pentaTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 4 (.var (v♯0)) pentaCases)⟩
+def pentaTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 4 (.var (v♯0)) pentaCases)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaCases :=
@@ -193,8 +193,8 @@ def hexaCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 5)
 
 /-- `hexa`, as a term. -/
-def hexaTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 5 (.var (v♯0)) hexaCases)⟩
+def hexaTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 5 (.var (v♯0)) hexaCases)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -219,9 +219,9 @@ def fibTRCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind loopTy) PCtx _ loopTy famPe.members 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.ap (.ap (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0))
-    (.nat_mk 1))⟩
+def fibTRTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.ap (.ap (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0))
+    (.nat_mk 1))
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -251,9 +251,9 @@ def fibPairCases :=
     FamilyFoldKCases sigAdd 0 famPe.members (pbind pairTy) PCtx _ pairTy famPe.members 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
-  ⟨.lam (.record_casesOn (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibPairCases)
-    (.var (v♯0)))⟩
+def fibPairTerm : Term sigAdd [] 0 (peTy ⇒ natT) .lam :=
+  .lam (.record_casesOn (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibPairCases)
+    (.var (v♯0)))
 
 /-! ## 6. The other member: the continuant, and a constructor with two fields
 
@@ -313,8 +313,8 @@ def contCases :=
     FamilyFoldKCases sigAdd 0 famLs.members (lbind natT) LCtx _ natT famLs.members 1)
 
 /-- The continuant, as a term: the depth-one fold over member `1` of the family. -/
-def contTerm : SomeTerm sigAdd [] (lsTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) contCases)⟩
+def contTerm : Term sigAdd [] 0 (lsTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) contCases)
 
 /-! ## 7. What the evaluator says about these terms
 
@@ -322,11 +322,11 @@ A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold ov
 term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
 apart is fine — there is nothing to take apart — while *building* one is not. -/
 
-example : Term.NoRecMk fibTerm.term := by no_rec_mk
-example : Term.NoRecMk hexaTerm.term := by no_rec_mk
-example : Term.NoRecMk fibTRTerm.term := by no_rec_mk
-example : Term.NoRecMk fibPairTerm.term := by no_rec_mk
-example : Term.NoRecMk contTerm.term := by no_rec_mk
+example : Term.NoRecMk fibTerm := by no_rec_mk
+example : Term.NoRecMk hexaTerm := by no_rec_mk
+example : Term.NoRecMk fibTRTerm := by no_rec_mk
+example : Term.NoRecMk fibPairTerm := by no_rec_mk
+example : Term.NoRecMk contTerm := by no_rec_mk
 
 /-! ## 8. A depth is needed: what cannot be written without one
 

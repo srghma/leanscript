@@ -25,15 +25,15 @@ abbrev stringT : TyWf := .prim .string
 abbrev sig : Sig := ⟨[], rfl⟩
 
 /-- Running a closed term of `sig`. -/
-local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig) PUnit.unit $t)
+local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) PUnit.unit $t)
 
 /-! ## The cache
 
 `TermTests.CtorFnTest.Module` generated `Option.some` (and so `Option`'s layout); here it is
 reused, not generated again: the constant is the one of that module. -/
 
-def some4 : SomeTerm sig [] (#leanscript_layout `Option `some natT) :=
-  ⟨#leanscript_ctor `Option `some natT (.nat_mk 4)⟩
+def some4 : Term sig [] 0 (#leanscript_layout `Option `some natT) .ctor :=
+  #leanscript_ctor `Option `some natT (.nat_mk 4)
 
 /--
 info: @[expose] def CtorFnTest.some4 : SomeTerm sig [] (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) :=
@@ -48,34 +48,34 @@ example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := rfl
 
 /-! ## Library datatypes -/
 
-def none' : SomeTerm sig [] (#leanscript_layout `Option `none natT) := ⟨#leanscript_ctor `Option `none natT⟩
+def none' : Term sig [] 0 (#leanscript_layout `Option `none natT) .ctor := #leanscript_ctor `Option `none natT
 example : run none' = ⟨⟨0, by decide⟩, ()⟩ := rfl
 
 /-- A type with one constructor can be named alone. -/
-def pair : SomeTerm sig [] (#leanscript_layout `Prod natT boolT) :=
-  ⟨#leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true)⟩
+def pair : Term sig [] 0 (#leanscript_layout `Prod natT boolT) .ctor :=
+  #leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true)
 example : run pair = (3, true, ()) := rfl
 example : (#leanscript_layout `Prod natT boolT) = tyWfOf (Nat × Bool) := rfl
 
-def inr : SomeTerm sig [] (#leanscript_layout `Sum `inr natT stringT) :=
-  ⟨#leanscript_ctor `Sum `inr natT stringT (.string_mk "x")⟩
+def inr : Term sig [] 0 (#leanscript_layout `Sum `inr natT stringT) .ctor :=
+  #leanscript_ctor `Sum `inr natT stringT (.string_mk "x")
 example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := rfl
 example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := rfl
 
 /-- `Bool` is the enum of its two constructors, which the language calls `bool`. -/
-def tt : SomeTerm sig [] boolT := ⟨#leanscript_ctor `Bool `true⟩
+def tt : Term sig [] 0 boolT .lit := #leanscript_ctor `Bool `true
 example : run tt = true := rfl
 
 /-- `Ordering`'s instance numbers its constructors from `-1`; the layout keeps that. -/
-def gt : SomeTerm sig [] (tyWfOf Ordering) := ⟨#leanscript_ctor `Ordering `gt⟩
+def gt : Term sig [] 0 (tyWfOf Ordering) .lit := #leanscript_ctor `Ordering `gt
 example : (#leanscript_layout `Ordering `gt) = tyWfOf Ordering := rfl
 
 /-- A recursive datatype is built one layer at a time: `List.cons` takes the tree of its
     tail, whatever it is. -/
-def oneTwo : SomeTerm sig [] (#leanscript_layout `List `cons natT
-    (#leanscript_layout `List `cons natT (#leanscript_layout `List `nil natT natT))) :=
-  ⟨#leanscript_ctor `List `cons natT _ (.nat_mk 1)
-    (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT))⟩
+def oneTwo : Term sig [] 0 (#leanscript_layout `List `cons natT
+    (#leanscript_layout `List `cons natT (#leanscript_layout `List `nil natT natT))) .ctor :=
+  #leanscript_ctor `List `cons natT _ (.nat_mk 1)
+    (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT))
 example : run oneTwo =
     ⟨⟨1, by decide⟩, (1, ⟨⟨1, by decide⟩, (2, ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩ := rfl
 
@@ -83,7 +83,7 @@ example : run oneTwo =
 
 /-- An enum. -/
 inductive Shape3 | a | b | c
-def shapeB : SomeTerm sig [] (#leanscript_layout `Shape3 `b) := ⟨#leanscript_ctor `Shape3 `b⟩
+def shapeB : Term sig [] 0 (#leanscript_layout `Shape3 `b) .lit := #leanscript_ctor `Shape3 `b
 example : run shapeB = ⟨1, by decide⟩ := rfl
 
 /-- A structure: erased fields are not arguments, and a structure with one field left is
@@ -92,7 +92,7 @@ structure Wrap where
   val : Nat
   u : Unit
   p : val = val
-def wrap : SomeTerm sig [] natT := ⟨#leanscript_ctor `Wrap (.nat_mk 5)⟩
+def wrap : Term sig [] 0 natT .lit := #leanscript_ctor `Wrap (.nat_mk 5)
 example : run wrap = 5 := rfl
 
 /-- Field types built from the type argument: `Option S` and `S × Nat` are rebuilt from their

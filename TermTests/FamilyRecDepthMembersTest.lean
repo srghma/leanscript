@@ -203,8 +203,8 @@ def evFibCases :=
 
 /-- **`fib` over a family whose members mention each other**: the depth-one fold, whose
     every deeper look crosses to the other member. -/
-def evFibTerm : SomeTerm sigAdd [] (evTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) evFibCases)⟩
+def evFibTerm : Term sigAdd [] 0 (evTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) evFibCases)
 
 /-! ## 2. The other two member shapes: a record member and a newtype member
 
@@ -371,15 +371,15 @@ def nodeFibCases :=
 
 /-- `Node.fib`, as a term: the depth-one fold of a family of a record, a union and a
     newtype. -/
-def nodeFibTerm : SomeTerm sigAdd [] (nodeTy ⇒ natT) :=
-  ⟨.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases)⟩
+def nodeFibTerm : Term sigAdd [] 0 (nodeTy ⇒ natT) .lam :=
+  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases)
 
 /-! ## 3. What the evaluator says about these terms
 
 A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is a
 term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so. -/
 
-example : Term.NoRecMk evFibTerm.term := by no_rec_mk
-example : Term.NoRecMk nodeFibTerm.term := by no_rec_mk
+example : Term.NoRecMk evFibTerm := by no_rec_mk
+example : Term.NoRecMk nodeFibTerm := by no_rec_mk
 
 end TermTests.FamilyRecDepthMembers

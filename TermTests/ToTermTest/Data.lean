@@ -14,10 +14,10 @@ namespace TermTests.ToTerm
 open LeanScript
 
 /-- Running a closed term of `sig0`; see `TermTests.ToTermTest.Basic`. -/
-local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
+local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 /-! ## The cache
 
@@ -36,13 +36,13 @@ def usesB : Nat := twiceB 2
 
 def usesAagain : Nat := twiceA 5
 
-def usesA_term : SomeTerm sigAdd [] (TyWf.prim .nat) := #leanscript_to_term usesA
+def usesA_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesA
 
 /-- `twiceB` has the shape of `twiceA`, which is translated already. -/
-def usesB_term : SomeTerm sigAdd [] (TyWf.prim .nat) := #leanscript_to_term usesB
+def usesB_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesB
 
 /-- `twiceA` is translated already: this is a plain cache hit. -/
-def usesAagain_term : SomeTerm sigAdd [] (TyWf.prim .nat) := #leanscript_to_term usesAagain
+def usesAagain_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesAagain
 
 example : runAdd usesA_term = 4 := rfl
 example : runAdd usesB_term = 4 := rfl
@@ -68,34 +68,34 @@ def widthOf (s : Shape) : Nat :=
   | .circle r => r
   | .rect w _ => w
 
-def widthOf_term : SomeTerm sig0 [] (tyWfOf Shape ⇒ TyWf.prim .nat) :=
+def widthOf_term : Term sig0 [] 0 (tyWfOf Shape ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term widthOf
 
 def aRect : Shape := .rect 3 4
 
-def aRect_term : SomeTerm sig0 [] (tyWfOf Shape) := #leanscript_to_term aRect
+def aRect_term : Term sig0 [] 0 (tyWfOf Shape) .ctor := #leanscript_to_term aRect
 
 example : run widthOf_term (run aRect_term) = 3 := rfl
 
 def swap (p : Nat × Bool) : Bool × Nat := (p.2, p.1)
 
-def swap_term : SomeTerm sig0 [] (tyWfOf (Nat × Bool) ⇒ tyWfOf (Bool × Nat)) :=
+def swap_term : Term sig0 [] 0 (tyWfOf (Nat × Bool) ⇒ tyWfOf (Bool × Nat)) .lam :=
   #leanscript_to_term swap
 
 def aPair : Nat × Bool := (7, true)
 
-def aPair_term : SomeTerm sig0 [] (tyWfOf (Nat × Bool)) := #leanscript_to_term aPair
+def aPair_term : Term sig0 [] 0 (tyWfOf (Nat × Bool)) .ctor := #leanscript_to_term aPair
 
 example : (run swap_term (run aPair_term)).1 = true := rfl
 example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := rfl
 
 @[inline] def delayed : Thunk Nat := Thunk.mk (fun _ => 6)
 
-def delayed_term : SomeTerm sig0 [] (TyWf.thunk (TyWf.prim .nat)) := #leanscript_to_term delayed
+def delayed_term : Term sig0 [] 0 (TyWf.thunk (TyWf.prim .nat)) .ctor := #leanscript_to_term delayed
 
 def forced : Nat := delayed.get
 
-def forced_term : SomeTerm sig0 [] (TyWf.prim .nat) := #leanscript_to_term forced
+def forced_term : Term sig0 [] 0 (TyWf.prim .nat) .lit := #leanscript_to_term forced
 
 example : run forced_term = 6 := rfl
 

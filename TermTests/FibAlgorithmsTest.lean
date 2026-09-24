@@ -41,7 +41,7 @@ namespace TermTests.FibAlgorithms
 open LeanScript
 open TermTests.FibWindow (fib sigAdd envAdd addT)
 
-local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 /-! ## 1. The tail-recursive loop: a fold whose value is a function
 
@@ -92,9 +92,9 @@ def loop_term {Γ : Ctx} :=
 /-- `fibTR`, as a term: the loop started at `(0, 1)`.  (The fold is written out rather than
     applied as `loop_term`: `loop_term` is a `fun`, and applying it would be a β-redex,
     which the grammar does not have.) -/
-def fibTR_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  ⟨.lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
-    (.nat_mk 1))⟩
+def fibTR_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
+  .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
+    (.nat_mk 1))
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
 theorem loop_term_eval (n a b : Nat) : runAdd ⟨loop_term⟩ n a b = fibLoopTR n a b := by

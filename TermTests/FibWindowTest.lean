@@ -42,7 +42,7 @@ def sigAdd : Sig := ⟨[⟨"add", TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.pri
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 /-- The window: the pair `(fib n, fib (n + 1))`. -/
 abbrev winSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .nat, []⟩
@@ -83,9 +83,9 @@ def window {Γ : Ctx} :=
 /-- `fib`, as a term of the language: the first field of the window.  (The fold is written
     out rather than applied as `window`: `window` is a `fun`, and applying it would be a
     β-redex, which the grammar does not have.) -/
-def fib_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  ⟨.lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
-    (.var (v♯0)))⟩
+def fib_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
+  .lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+    (.var (v♯0)))
 
 /-! ## What it computes
 

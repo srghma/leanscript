@@ -361,16 +361,16 @@ example (τ : TyWf) :
 abbrev chainUnion : LeanTaggedUnionSchema TyWf := .skip (.here ⟨linkTy chainTy, []⟩ [])
 
 /-- The empty chain, as a term. -/
-def nilTerm : SomeTerm sigAdd [] chainTy :=
-  ⟨.recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))⟩
+def nilTerm : Term sigAdd [] 0 chainTy .ctor :=
+  .recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))
 
 /-- One more link on top of the chain in scope. -/
-def consTerm : SomeTerm sigAdd [] (natT ⇒ chainTy ⇒ chainTy) :=
-  ⟨.lam (.lam (.recAlias_mk chainBodyW
+def consTerm : Term sigAdd [] 0 (natT ⇒ chainTy ⇒ chainTy) .lam :=
+  .lam (.lam (.recAlias_mk chainBodyW
     (value := .taggedUnion_mk chainUnion 1
       (fields := .cons
         (.record_mk (linkSchema chainTy)
-          (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil))))⟩
+          (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil))))
 
 end TermTests.RecAliasRecDepth
 

@@ -17,9 +17,9 @@ structure Pt where
 
 def natT : TyWf := .prim .nat
 
-def green : SomeTerm ⟨[], rfl⟩ [] (#leanscript_layout `Color `green) := ⟨#leanscript_ctor `Color `green⟩
-def pt : SomeTerm ⟨[], rfl⟩ [] (#leanscript_layout `Pt) := ⟨#leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2)⟩
-def some3 : SomeTerm ⟨[], rfl⟩ [] (#leanscript_layout `Option `some natT) :=
-  ⟨#leanscript_ctor `Option `some natT (.nat_mk 3)⟩
+def green : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Color `green) .lit := #leanscript_ctor `Color `green
+def pt : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Pt) .ctor := #leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2)
+def some3 : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Option `some natT) .ctor :=
+  #leanscript_ctor `Option `some natT (.nat_mk 3)
 
 end CtorFnModuleTest

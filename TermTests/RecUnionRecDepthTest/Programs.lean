@@ -277,11 +277,11 @@ example (τ : TyWf) (Γ : Ctx) :
 abbrev PCtx : Ctx := [peanoTy]
 
 /-- Zero, as a term. -/
-def zeroTerm : SomeTerm sigAdd [] peanoTy :=
-  ⟨.recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)⟩
+def zeroTerm : Term sigAdd [] 0 peanoTy .ctor :=
+  .recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)
 
 /-- The successor of the variable in scope. -/
-def succTerm : SomeTerm sigAdd [] (peanoTy ⇒ peanoTy) :=
-  ⟨.lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))⟩
+def succTerm : Term sigAdd [] 0 (peanoTy ⇒ peanoTy) .lam :=
+  .lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))
 
 end TermTests.RecUnionRecDepth

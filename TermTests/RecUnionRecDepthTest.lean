@@ -43,8 +43,8 @@ def fibCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 1)
 
 /-- **`fib` over a recursive tagged union**: the depth-one fold. -/
-def fibTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)⟩
+def fibTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -70,8 +70,8 @@ def tribCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 2)
 
 /-- `trib`, as a term. -/
-def tribTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)⟩
+def tribTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraCases :=
@@ -95,8 +95,8 @@ def tetraCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 3)
 
 /-- `tetra`, as a term. -/
-def tetraTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)⟩
+def tetraTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaCases :=
@@ -124,8 +124,8 @@ def pentaCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 4)
 
 /-- `penta`, as a term. -/
-def pentaTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)⟩
+def pentaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaCases :=
@@ -158,8 +158,8 @@ def hexaCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 5)
 
 /-- `hexa`, as a term. -/
-def hexaTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)⟩
+def hexaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -181,8 +181,8 @@ def fibTRCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx _ peanoSchema loopTy 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))⟩
+def fibTRTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -208,8 +208,8 @@ def fibPairCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx _ peanoSchema pairTy 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
-  ⟨.lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))⟩
+def fibPairTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
+  .lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))
 
 /-! ## 6. A constructor with more than one field: the continuant over a list
 
@@ -262,8 +262,8 @@ def contCases :=
     TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx _ natListSchema natT 1)
 
 /-- The continuant, as a term: the depth-one fold of a list union. -/
-def contTerm : SomeTerm sigAdd [] (natListTy ⇒ natT) :=
-  ⟨.lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)⟩
+def contTerm : Term sigAdd [] 0 (natListTy ⇒ natT) .lam :=
+  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
 
 /-! ## 7. Running the terms
 
@@ -272,17 +272,17 @@ of its constructors), so these terms run, and the kernel checks them against the
 references.  The depth-`k` folds are evaluated with every answer remembered
 (`LeanScript.WType.memo`), so a deeper look reads answers that are already there. -/
 
-example : Term.NoRecMk fibTerm.term := by no_rec_mk
-example : Term.NoRecMk hexaTerm.term := by no_rec_mk
-example : Term.NoRecMk fibTRTerm.term := by no_rec_mk
-example : Term.NoRecMk fibPairTerm.term := by no_rec_mk
-example : Term.NoRecMk contTerm.term := by no_rec_mk
+example : Term.NoRecMk fibTerm := by no_rec_mk
+example : Term.NoRecMk hexaTerm := by no_rec_mk
+example : Term.NoRecMk fibTRTerm := by no_rec_mk
+example : Term.NoRecMk fibPairTerm := by no_rec_mk
+example : Term.NoRecMk contTerm := by no_rec_mk
 
 /-- The values of `add` and `mul`. -/
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runP" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
+local macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 /-- The Peano natural `n`, built by the terms `zeroTerm` and `succTerm`. -/
 def peanoVal : Nat → TyWf.Den peanoTy

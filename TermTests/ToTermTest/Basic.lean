@@ -25,35 +25,35 @@ open LeanScript
 def sig0 : Sig := ⟨[], by decide⟩
 
 /-- Running a closed term of `sig0`.  It is a macro rather than a function so that the
-    term is the *whole* of its argument: `SomeTerm.run` takes the proof that the term builds
+    term is the *whole* of its argument: `Term.run` takes the proof that the term builds
     no recursive value as a trailing argument written by `no_rec_mk`, and a function
     applied to one more argument would pass that argument as the proof. -/
-local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
+local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-! ## Functions, applications, `let` and literals -/
 
 def idNat (n : Nat) : Nat := n
 
-def idNat_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term idNat
+def idNat_term : Term sig0 [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := #leanscript_to_term idNat
 
 example : run idNat_term 7 = 7 := rfl
 
 def constNat (a : Nat) (_b : Nat) : Nat := a
 
-def constNat_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def constNat_term : Term sig0 [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term constNat
 
 example : run constNat_term 3 9 = 3 := rfl
 
 def letExample : Nat := let x := 4; x
 
-def letExample_term : SomeTerm sig0 [] (TyWf.prim .nat) := #leanscript_to_term letExample
+def letExample_term : Term sig0 [] 0 (TyWf.prim .nat) .lit := #leanscript_to_term letExample
 
 example : run letExample_term = 4 := rfl
 
 def applied : Nat := (fun (f : Nat → Nat) => f 5) (fun n => n)
 
-def applied_term : SomeTerm sig0 [] (TyWf.prim .nat) := #leanscript_to_term applied
+def applied_term : Term sig0 [] 0 (TyWf.prim .nat) .lit := #leanscript_to_term applied
 
 example : run applied_term = 5 := rfl
 
@@ -64,19 +64,19 @@ example : applied_term.head = .lit := rfl
 
 def hello : String := "hello"
 
-def hello_term : SomeTerm sig0 [] (TyWf.prim .string) := #leanscript_to_term hello
+def hello_term : Term sig0 [] 0 (TyWf.prim .string) .lit := #leanscript_to_term hello
 
 example : run hello_term = "hello" := rfl
 
 def yes : Bool := true
 
-def yes_term : SomeTerm sig0 [] (TyWf.prim .bool) := #leanscript_to_term yes
+def yes_term : Term sig0 [] 0 (TyWf.prim .bool) .lit := #leanscript_to_term yes
 
 example : run yes_term = true := rfl
 
 def negOne : Int := -1
 
-def negOne_term : SomeTerm sig0 [] (TyWf.prim .int) := #leanscript_to_term negOne
+def negOne_term : Term sig0 [] 0 (TyWf.prim .int) .lit := #leanscript_to_term negOne
 
 example : run negOne_term = -1 := rfl
 
@@ -84,7 +84,7 @@ example : run negOne_term = -1 := rfl
 
 def pick (b : Bool) : Nat := if b then 1 else 0
 
-def pick_term : SomeTerm sig0 [] (TyWf.prim .bool ⇒ TyWf.prim .nat) := #leanscript_to_term pick
+def pick_term : Term sig0 [] 0 (TyWf.prim .bool ⇒ TyWf.prim .nat) .lam := #leanscript_to_term pick
 
 example : run pick_term true = 1 := rfl
 example : run pick_term false = 0 := rfl
@@ -106,10 +106,10 @@ def double (n : Nat) : Nat := 2 * n
 
 def quadruple (n : Nat) : Nat := double (double n)
 
-def quadruple_term : SomeTerm sigDouble [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def quadruple_term : Term sigDouble [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term quadruple
 
-example : (SomeTerm.run envDouble quadruple_term) 3 = 12 := rfl
+example : (Term.run envDouble quadruple_term) 3 = 12 := rfl
 
 /-! ## Records -/
 
@@ -120,12 +120,12 @@ structure Point where
 
 def mkPoint (a : Nat) (b : Nat) : Point := ⟨a, b⟩
 
-def mkPoint_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ tyWfOf Point) :=
+def mkPoint_term : Term sig0 [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ tyWfOf Point) .lam :=
   #leanscript_to_term mkPoint
 
 def fstOf (p : Point) : Nat := p.x
 
-def fstOf_term : SomeTerm sig0 [] (tyWfOf Point ⇒ TyWf.prim .nat) := #leanscript_to_term fstOf
+def fstOf_term : Term sig0 [] 0 (tyWfOf Point ⇒ TyWf.prim .nat) .lam := #leanscript_to_term fstOf
 
 example : run fstOf_term (run mkPoint_term 2 5) = 2 := rfl
 
@@ -136,12 +136,12 @@ def orZero (o : Option Nat) : Nat :=
   | none => 0
   | some n => n
 
-def orZero_term : SomeTerm sig0 [] (tyWfOf (Option Nat) ⇒ TyWf.prim .nat) :=
+def orZero_term : Term sig0 [] 0 (tyWfOf (Option Nat) ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term orZero
 
 def someThree : Option Nat := some 3
 
-def someThree_term : SomeTerm sig0 [] (tyWfOf (Option Nat)) := #leanscript_to_term someThree
+def someThree_term : Term sig0 [] 0 (tyWfOf (Option Nat)) .ctor := #leanscript_to_term someThree
 
 example : run orZero_term (run someThree_term) = 3 := rfl
 
@@ -159,12 +159,12 @@ def colourCode (c : Colour) : Nat :=
   | .green => 1
   | .blue => 2
 
-def colourCode_term : SomeTerm sig0 [] (tyWfOf Colour ⇒ TyWf.prim .nat) :=
+def colourCode_term : Term sig0 [] 0 (tyWfOf Colour ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term colourCode
 
 def blue : Colour := .blue
 
-def blue_term : SomeTerm sig0 [] (tyWfOf Colour) := #leanscript_to_term blue
+def blue_term : Term sig0 [] 0 (tyWfOf Colour) .lit := #leanscript_to_term blue
 
 example : run colourCode_term (run blue_term) = 2 := rfl
 
@@ -175,7 +175,7 @@ once, so an array literal translates and the term runs. -/
 
 def digits : Array Nat := #[1, 2, 3]
 
-def digits_term : SomeTerm sig0 [] (TyWf.array (TyWf.prim .nat)) := #leanscript_to_term digits
+def digits_term : Term sig0 [] 0 (TyWf.array (TyWf.prim .nat)) .ctor := #leanscript_to_term digits
 
 example : run digits_term = #[1, 2, 3] := rfl
 
@@ -192,12 +192,12 @@ run like any other; `Ty.DenRec.toList` reads a list back as a Lean list to compa
 
 def digitList : List Nat := [1, 2, 3]
 
-def digitList_term : SomeTerm sig0 [] (tyWfOf (List Nat)) := #leanscript_to_term digitList
+def digitList_term : Term sig0 [] 0 (tyWfOf (List Nat)) .ctor := #leanscript_to_term digitList
 
 def prepend (n : Nat) (l : List Nat) : List Nat := n :: l
 
 def prepend_term :
-    SomeTerm sig0 [] (TyWf.prim .nat ⇒ tyWfOf (List Nat) ⇒ tyWfOf (List Nat)) :=
+    Term sig0 [] 0 (TyWf.prim .nat ⇒ tyWfOf (List Nat) ⇒ tyWfOf (List Nat)) .lam :=
   #leanscript_to_term prepend
 
 def firstOrZero (l : List Nat) : Nat :=
@@ -205,7 +205,7 @@ def firstOrZero (l : List Nat) : Nat :=
   | [] => 0
   | hd :: _ => hd
 
-def firstOrZero_term : SomeTerm sig0 [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
+def firstOrZero_term : Term sig0 [] 0 (tyWfOf (List Nat) ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term firstOrZero
 
 example : Ty.DenRec.toList (.prim .nat) (run digitList_term) = [1, 2, 3] := by decide
@@ -220,7 +220,7 @@ def pred (n : Nat) : Nat :=
   | 0 => 0
   | k + 1 => k
 
-def pred_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term pred
+def pred_term : Term sig0 [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := #leanscript_to_term pred
 
 example : run pred_term 5 = 4 := rfl
 example : run pred_term 0 = 0 := rfl
@@ -238,11 +238,11 @@ def sigAdd : Sig := ⟨[⟨"add", TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.pri
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 noncomputable def sumUpTo (n : Nat) : Nat := Nat.rec 0 (fun k ih => k + ih) n
 
-def sumUpTo_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def sumUpTo_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term sumUpTo
 
 example : runAdd sumUpTo_term 4 = 6 := rfl
@@ -252,7 +252,7 @@ noncomputable def sumList (l : List Nat) : Nat :=
 
 /-- The fold over a list, which is `Term.recTaggedUnion_rec`: its `cons` branch binds the
     head, the tail and the value of the fold at the tail. -/
-def sumList_term : SomeTerm sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
+def sumList_term : Term sigAdd [] 0 (tyWfOf (List Nat) ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term sumList
 
 example : runAdd sumList_term (run digitList_term) = 6 := by decide
