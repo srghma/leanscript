@@ -3,6 +3,7 @@ module
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import TermTests.FamilyRecDepthTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -173,8 +174,8 @@ abbrev odSuccFields : List (TyWfIn 2) := [(Ty.familyMember 0).toTyWfIn]
 -- The branch of `Ev.succ` binds an `Od` and the answer at it; the branch of `Od.succ`
 -- binds an `Ev` and the answer at it.  The two members have *different* types, so the
 -- contexts differ, and a motive that answers for both is what makes one fold of them.
-example (τ : TyWf) : ebind τ evSuccFields = [TyWf.famMemberTy famEv evWf 1, τ] := rfl
-example (τ : TyWf) : ebind τ odSuccFields = [evTy, τ] := rfl
+example (τ : TyWf) : ebind τ evSuccFields = [TyWf.famMemberTy famEv evWf 1, τ] := by kernel_rfl
+example (τ : TyWf) : ebind τ odSuccFields = [evTy, τ] := by kernel_rfl
 
 /-- The branches of `fib` over the alternating family: each member's `succ` descends into
     the **other** member — `FamilyMemberAt.there .here` from `Ev`, `FamilyMemberAt.here`
@@ -277,7 +278,7 @@ def Node.ofNat : Nat → Node
   | n + 1 => .mk 0 (.some (Node.ofNat n)) (.mk #[])
 
 -- A chain of `n` nodes is `2 * n + 1` constructors, so its answer is `fib (2 * n + 1)`.
-example : Node.fib (Node.ofNat 5) = 89 := rfl
+example : Node.fib (Node.ofNat 5) = 89 := by kernel_rfl
 
 /-- The `Node` branch of the recursion: a node whose link ends answers `1`. -/
 theorem Node.fib_none (l : Nat) (t : Tags) : Node.fib (.mk l .none t) = 1 := rfl
@@ -345,8 +346,8 @@ example (τ : TyWf) :
     nbind τ [(Ty.prim .nat).toTyWfIn, (Ty.familyMember 1).toTyWfIn,
       (Ty.familyMember 2).toTyWfIn] =
       [natT, TyWf.famMemberTy famNode nodeWf 1, τ, TyWf.famMemberTy famNode nodeWf 2, τ] :=
-  rfl
-example (τ : TyWf) : nbind τ [(Ty.array (Ty.prim .nat)).toTyWfIn] = [TyWf.array natT] := rfl
+  by kernel_rfl
+example (τ : TyWf) : nbind τ [(Ty.array (Ty.prim .nat)).toTyWfIn] = [TyWf.array natT] := by kernel_rfl
 
 /-- The branches of `fib` over the three-member family: the record member descends into
     the link (member `1`), the `some` branch of the link descends into the node

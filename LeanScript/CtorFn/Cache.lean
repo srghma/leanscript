@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.ExprCtx
 public import LeanScript.Ty.Class
 public import LeanScript.Ty.Instances
 public import LeanScript.CtorFn.AsType

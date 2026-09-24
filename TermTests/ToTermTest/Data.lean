@@ -2,6 +2,7 @@ module
 
 public import TermTests.ToTermTest.Basic
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -44,9 +45,9 @@ def usesB_term : Term sigAdd [] (TyWf.prim .nat) := #leanscript_to_term usesB
 /-- `twiceA` is translated already: this is a plain cache hit. -/
 def usesAagain_term : Term sigAdd [] (TyWf.prim .nat) := #leanscript_to_term usesAagain
 
-example : runAdd usesA_term = 4 := rfl
-example : runAdd usesB_term = 4 := rfl
-example : runAdd usesAagain_term = 10 := rfl
+example : runAdd usesA_term = 4 := by kernel_rfl
+example : runAdd usesB_term = 4 := by kernel_rfl
+example : runAdd usesAagain_term = 10 := by kernel_rfl
 
 -- Five definitions were translated (`usesA`, `twiceA`, `usesB`, `twiceB`, `usesAagain`;
 -- `Nat.add` is a signature global, not a translation), `twiceB` turned out to have the
@@ -75,7 +76,7 @@ def aRect : Shape := .rect 3 4
 
 def aRect_term : Term sig0 [] (tyWfOf Shape) := #leanscript_to_term aRect
 
-example : run widthOf_term (run aRect_term) = 3 := rfl
+example : run widthOf_term (run aRect_term) = 3 := by kernel_rfl
 
 def swap (p : Nat × Bool) : Bool × Nat := (p.2, p.1)
 
@@ -86,8 +87,8 @@ def aPair : Nat × Bool := (7, true)
 
 def aPair_term : Term sig0 [] (tyWfOf (Nat × Bool)) := #leanscript_to_term aPair
 
-example : (run swap_term (run aPair_term)).1 = true := rfl
-example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := rfl
+example : (run swap_term (run aPair_term)).1 = true := by kernel_rfl
+example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := by kernel_rfl
 
 @[inline] def delayed : Thunk Nat := Thunk.mk (fun _ => 6)
 
@@ -97,7 +98,7 @@ def forced : Nat := delayed.get
 
 def forced_term : Term sig0 [] (TyWf.prim .nat) := #leanscript_to_term forced
 
-example : run forced_term = 6 := rfl
+example : run forced_term = 6 := by kernel_rfl
 
 /-! ## The type of the translation, inferred
 
@@ -106,7 +107,7 @@ translation can be written with no type ascription at all. -/
 
 def inferred_term := #leanscript_to_term (sig := sigAdd) sumUpTo
 
-example : runAdd inferred_term 4 = 6 := rfl
+example : runAdd inferred_term 4 = 6 := by kernel_rfl
 
 
 end TermTests.ToTerm

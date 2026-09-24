@@ -4,6 +4,7 @@ public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -12,7 +13,7 @@ set_option autoImplicit false
 /-!
 # The `fib` suite, over a recursive record: `recObject_rec` at every depth
 
-`TermTests/NatRecDepthTest.lean` writes the family of Fibonacci programs — the `n + 2`
+`TermTests/NatRecDepthTest/` writes the family of Fibonacci programs — the `n + 2`
 recursion, the tail-recursive loop, the pair recursion, and the tribonacci … hexanacci
 numbers — as terms that fold over a `Nat`; `TermTests/ArrayRecDepthTest.lean` does the same
 for a fold over an array and `TermTests/RecUnionRecDepthTest.lean` for a fold over a
@@ -292,14 +293,14 @@ def cellSchema : LeanRecordSchema (TyWfIn 1) :=
 def cellTy : TyWf := .recObject cellSchema
 
 -- A value of it holds a `nat` and an `Option` of the record itself.
-example : (TyWf.recObjectUnfold cellSchema).toList = [natT, optTy cellTy] := rfl
+example : (TyWf.recObjectUnfold cellSchema).toList = [natT, optTy cellTy] := by kernel_rfl
 
 -- **The old fold bound no answer**: no field of the record is an occurrence of it, so
 -- `TyWf.recBinders` — which is what the branch of every other fold uses — hands the
 -- branch the fields and nothing else (`LeanScript.TyWf.recBinders_recObject`, at every
 -- record).
 example (τ : TyWf) :
-    TyWf.recBinders cellTy τ cellSchema.toList = [natT, optTy cellTy] := rfl
+    TyWf.recBinders cellTy τ cellSchema.toList = [natT, optTy cellTy] := by kernel_rfl
 
 example (τ : TyWf) :
     TyWf.recBinders cellTy τ cellSchema.toList = (TyWf.recObjectUnfold cellSchema).toList :=
@@ -322,14 +323,14 @@ abbrev winTy (τ : TyWf) (k : Nat) : TyWf := .record ⟨natT, optTy (treeTy τ k
 -- that cell and the window of one depth less at it.  So each level of descent pushes
 -- `2 + 1 + 2` binders in front of the context, and the answers read so far sit at the
 -- indices `3, 8, 13, …`.
-example (τ : TyWf) (k : Nat) : winTy τ k = .record ⟨natT, optTy (treeTy τ k), []⟩ := rfl
-example (τ : TyWf) (j : Nat) : treeTy τ (j + 1) = .record ⟨τ, winTy τ j, []⟩ := rfl
+example (τ : TyWf) (k : Nat) : winTy τ k = .record ⟨natT, optTy (treeTy τ k), []⟩ := by kernel_rfl
+example (τ : TyWf) (j : Nat) : treeTy τ (j + 1) = .record ⟨τ, winTy τ j, []⟩ := by kernel_rfl
 
 -- At depth `0` the branch binds the label, the `Option` of cells, and the `Option` of
 -- the answers: the plain fold of the record.
 example (τ : TyWf) (Γ : Ctx) :
     TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 0 ++ Γ =
-      natT :: optTy cellTy :: .record ⟨natT, optTy τ, []⟩ :: Γ := rfl
+      natT :: optTy cellTy :: .record ⟨natT, optTy τ, []⟩ :: Γ := by kernel_rfl
 
 -- At depth `1` the `Option` of the window holds, for the cell below, the answer at it
 -- *and* the answers at the cells below that one.
@@ -337,7 +338,7 @@ example (τ : TyWf) (Γ : Ctx) :
     TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 1 ++ Γ =
       natT :: optTy cellTy ::
         .record ⟨natT, optTy (.record ⟨τ, .record ⟨natT, optTy τ, []⟩, []⟩), []⟩ :: Γ :=
-  rfl
+  by kernel_rfl
 
 /-- The context every fold below is written in: the cell it folds over, bound by the
     `fun` in front of it. -/
@@ -350,17 +351,17 @@ abbrev branchCtx (τ : TyWf) (k : Nat) : Ctx :=
 
 -- That really is the context the grammar asks for, at each of the depths used below.
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 0 ++ CCtx = branchCtx τ 0 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 0 ++ CCtx = branchCtx τ 0 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 1 ++ CCtx = branchCtx τ 1 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 1 ++ CCtx = branchCtx τ 1 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 2 ++ CCtx = branchCtx τ 2 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 2 ++ CCtx = branchCtx τ 2 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 3 ++ CCtx = branchCtx τ 3 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 3 ++ CCtx = branchCtx τ 3 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 4 ++ CCtx = branchCtx τ 4 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 4 ++ CCtx = branchCtx τ 4 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := rfl
+    TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := by kernel_rfl
 
 /-- A cell with no cell below it, as a term. -/
 def leafTerm : Term sigAdd [] cellTy :=

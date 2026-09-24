@@ -4,6 +4,7 @@ public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecAliasRecFacts
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -12,7 +13,7 @@ set_option autoImplicit false
 /-!
 # The `fib` suite, over a recursive newtype: `recAlias_rec` at every depth
 
-`TermTests/NatRecDepthTest.lean` writes the family of Fibonacci programs — the `n + 2`
+`TermTests/NatRecDepthTest/` writes the family of Fibonacci programs — the `n + 2`
 recursion, the tail-recursive loop, the pair recursion, and the tribonacci … hexanacci
 numbers — as terms that fold over a `Nat`; `TermTests/ArrayRecDepthTest.lean` does the same
 for a fold over an array, `TermTests/RecUnionRecDepthTest.lean` for a fold over a recursive
@@ -284,14 +285,14 @@ def chainBodyW : TyWfIn 1 := chainBody.toTyWfIn
 def chainTy : TyWf := .recAlias chainBodyW
 
 -- A value of it is an `Option` of a label and one more chain.
-example : TyWf.recAliasUnfold chainBodyW = optTy (linkTy chainTy) := rfl
+example : TyWf.recAliasUnfold chainBodyW = optTy (linkTy chainTy) := by kernel_rfl
 
 -- **The old fold bound no answer**: the body of the newtype is not an occurrence of it,
 -- so `TyWf.recBinders` — which is what the branch of every other fold uses — hands the
 -- branch the body and nothing else (`LeanScript.TyWf.recBinders_recAlias`, at every
 -- newtype).
 example (τ : TyWf) :
-    TyWf.recBinders chainTy τ [chainBodyW] = [optTy (linkTy chainTy)] := rfl
+    TyWf.recBinders chainTy τ [chainBodyW] = [optTy (linkTy chainTy)] := by kernel_rfl
 
 example (τ : TyWf) :
     TyWf.recBinders chainTy τ [chainBodyW] = [TyWf.recAliasUnfold chainBodyW] :=
@@ -314,22 +315,22 @@ abbrev winTy (τ : TyWf) (k : Nat) : TyWf := optTy (linkTy (treeTy τ k))
 -- that chain and the window of one depth less at it.  So each level of descent pushes
 -- `1 + 2 + 2` binders in front of the context, and the answers read so far sit at the
 -- indices `1, 3, 8, 13, …`.
-example (τ : TyWf) (k : Nat) : winTy τ k = optTy (linkTy (treeTy τ k)) := rfl
-example (τ : TyWf) (j : Nat) : treeTy τ (j + 1) = .record ⟨τ, winTy τ j, []⟩ := rfl
+example (τ : TyWf) (k : Nat) : winTy τ k = optTy (linkTy (treeTy τ k)) := by kernel_rfl
+example (τ : TyWf) (j : Nat) : treeTy τ (j + 1) = .record ⟨τ, winTy τ j, []⟩ := by kernel_rfl
 
 -- At depth `0` the branch binds the body — an `Option` of a label and a chain — and the
 -- window, an `Option` of a label and the answer at the chain below: the plain fold of a
 -- newtype.
 example (τ : TyWf) (Γ : Ctx) :
     TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 0 ++ Γ =
-      optTy (linkTy chainTy) :: optTy (linkTy τ) :: Γ := rfl
+      optTy (linkTy chainTy) :: optTy (linkTy τ) :: Γ := by kernel_rfl
 
 -- At depth `1` the window holds, for the chain below, the answer at it *and* the answers
 -- at the chains below that one.
 example (τ : TyWf) (Γ : Ctx) :
     TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 1 ++ Γ =
       optTy (linkTy chainTy) ::
-        optTy (linkTy (.record ⟨τ, optTy (linkTy τ), []⟩)) :: Γ := rfl
+        optTy (linkTy (.record ⟨τ, optTy (linkTy τ), []⟩)) :: Γ := by kernel_rfl
 
 /-- The context every fold below is written in: the chain it folds over, bound by the
     `fun` in front of it. -/
@@ -342,17 +343,17 @@ abbrev branchCtx (τ : TyWf) (k : Nat) : Ctx :=
 
 -- That really is the context the grammar asks for, at each of the depths used below.
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 0 ++ CCtx = branchCtx τ 0 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 0 ++ CCtx = branchCtx τ 0 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 1 ++ CCtx = branchCtx τ 1 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 1 ++ CCtx = branchCtx τ 1 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 2 ++ CCtx = branchCtx τ 2 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 2 ++ CCtx = branchCtx τ 2 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 3 ++ CCtx = branchCtx τ 3 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 3 ++ CCtx = branchCtx τ 3 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 4 ++ CCtx = branchCtx τ 4 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 4 ++ CCtx = branchCtx τ 4 := by kernel_rfl
 example (τ : TyWf) :
-    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := rfl
+    TyWf.recAliasRecBinders chainBodyW (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := by kernel_rfl
 
 /-- The union the body of the newtype is, once unfolded: what `Term.recAlias_mk` takes
     a value of. -/

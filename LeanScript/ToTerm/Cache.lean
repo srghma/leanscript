@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Ctx
+public meta import LeanScript.ToTerm.ObjectExpr
 
 @[expose] public section
 

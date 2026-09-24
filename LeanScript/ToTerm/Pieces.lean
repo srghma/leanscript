@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Cache
+public meta import LeanScript.ToTerm.Ctx
 
 @[expose] public section
 
@@ -22,21 +22,21 @@ namespace LeanScript.ToTerm
 
 /-- The introduction form of a literal of this Lean type. -/
 def litCtorFor : Name → Option Name
-  | ``Bool => some ``LeanScript.Term.bool_mk
-  | ``Nat => some ``LeanScript.Term.nat_mk
-  | ``Int => some ``LeanScript.Term.int_mk
-  | ``String => some ``LeanScript.Term.string_mk
-  | ``Char => some ``LeanScript.Term.char_mk
-  | ``UInt8 => some ``LeanScript.Term.uint8_mk
-  | ``UInt16 => some ``LeanScript.Term.uint16_mk
-  | ``UInt32 => some ``LeanScript.Term.uint32_mk
-  | ``UInt64 => some ``LeanScript.Term.uint64_mk
-  | ``Int8 => some ``LeanScript.Term.int8_mk
-  | ``Int16 => some ``LeanScript.Term.int16_mk
-  | ``Int32 => some ``LeanScript.Term.int32_mk
-  | ``Int64 => some ``LeanScript.Term.int64_mk
-  | ``Float => some ``LeanScript.Term.float_mk
-  | ``Float32 => some ``LeanScript.Term.float32_mk
+  | ``Bool => some `LeanScript.Term.bool_mk
+  | ``Nat => some `LeanScript.Term.nat_mk
+  | ``Int => some `LeanScript.Term.int_mk
+  | ``String => some `LeanScript.Term.string_mk
+  | ``Char => some `LeanScript.Term.char_mk
+  | ``UInt8 => some `LeanScript.Term.uint8_mk
+  | ``UInt16 => some `LeanScript.Term.uint16_mk
+  | ``UInt32 => some `LeanScript.Term.uint32_mk
+  | ``UInt64 => some `LeanScript.Term.uint64_mk
+  | ``Int8 => some `LeanScript.Term.int8_mk
+  | ``Int16 => some `LeanScript.Term.int16_mk
+  | ``Int32 => some `LeanScript.Term.int32_mk
+  | ``Int64 => some `LeanScript.Term.int64_mk
+  | ``Float => some `LeanScript.Term.float_mk
+  | ``Float32 => some `LeanScript.Term.float32_mk
   | _ => none
 
 /-- Is this expression a literal — a numeral, a string, a character, a boolean, or a
@@ -137,11 +137,11 @@ partial def ctorValueArgs (ci : ConstructorVal) (args : Array Expr) :
 /-- The base values of a fold, already translated, as a `Spine` at `k` copies of `τ` —
     the type `LeanScript.Term.nat_rec` asks its base values at. -/
 partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : Expr := Id.run do
-  let mut sp := mkAppN (mkConst ``LeanScript.Spine.nil) #[c.sg, c.gamma]
+  let mut sp := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   let mut tys : List Expr := []
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
-    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
+    sp := mkAppN (mkConst `LeanScript.Spine.cons)
       #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp]
     tys := τ :: tys
   return sp

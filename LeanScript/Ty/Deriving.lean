@@ -1,5 +1,6 @@
 module
 
+public meta import Lean.Elab.Deriving.Basic
 public meta import LeanScript.Ty.Deriving.Translate
 
 @[expose] public section

@@ -75,12 +75,12 @@ theorem natNil_noRecMk : Term.NoRecMk natNil := by no_rec_mk
 
 /-- The head of `[5]` is `5`. -/
 theorem run_natHead_natFive :
-    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natHead natFive) = 5 := by decide
+    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natHead natFive) = 5 := by decide +kernel
 
 /-- The head of a list and the fold that answers `0` are told apart, on `[5]`. -/
 theorem run_natHead_ne_run_natFoldZero :
     Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natHead natFive) ≠
-      Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natFoldZero natFive) := by decide
+      Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natFoldZero natFive) := by decide +kernel
 
 /-- A rose tree: a label and an array of subtrees — a recursive **record**. -/
 def roseSchema : LeanRecordSchema (TyWfIn 1) :=

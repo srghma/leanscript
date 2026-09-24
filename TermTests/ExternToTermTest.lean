@@ -5,6 +5,7 @@ public import LeanScript.Eval
 import all Init.Prelude
 public import LeanScript.Ty.Instances
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -22,7 +23,7 @@ entry of the catalogue `LeanScript.LeanInitPureExtern` that models it:
 * with arguments that are all closed Lean values, for an entry that takes a proof, to
   `Term.extern` of the entry with the program's own proof.
 
-Each value is checked by `rfl`.
+Each value is checked by `kernel_rfl` (see `LeanScript/KernelRfl.lean`).
 -/
 
 namespace TermTests.ExternToTerm
@@ -54,8 +55,8 @@ def addN (a b : Nat) : Nat := a + b
 def addN_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term addN
 
-example : externForm? addN_term = some "externCall" := by decide
-example : run addN_term 2 3 = 5 := rfl
+example : externForm? addN_term = some "externCall" := by decide +kernel
+example : run addN_term 2 3 = 5 := by kernel_rfl
 
 /-- `Array.toList` is the extern `lean_array_to_list`, whose value is a list of the
     language. -/
@@ -64,7 +65,7 @@ def asList (a : Array Nat) : List Nat := a.toList
 def asList_term : Term sig0 [] (TyWf.array (TyWf.prim .nat) ⇒ tyWfOf (List Nat)) :=
   #leanscript_to_term asList
 
-example : Ty.DenRec.toList (.prim .nat) (run asList_term #[4, 5, 6]) = [4, 5, 6] := by decide
+example : Ty.DenRec.toList (.prim .nat) (run asList_term #[4, 5, 6]) = [4, 5, 6] := by decide +kernel
 
 /-! ## An extern that takes a proof: `Term.externCallChecked`
 
@@ -77,10 +78,10 @@ def getOr (a : Array Nat) (i : Nat) : Nat := if h : i < a.size then a[i] else 0
 def getOr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term getOr
 
-example : run getOr_term #[10, 20, 30] 0 = 10 := rfl
-example : run getOr_term #[10, 20, 30] 2 = 30 := rfl
-example : run getOr_term #[10, 20, 30] 5 = 0 := rfl
-example : run getOr_term #[10, 20, 30] 1 = getOr #[10, 20, 30] 1 := rfl
+example : run getOr_term #[10, 20, 30] 0 = 10 := by kernel_rfl
+example : run getOr_term #[10, 20, 30] 2 = 30 := by kernel_rfl
+example : run getOr_term #[10, 20, 30] 5 = 0 := by kernel_rfl
+example : run getOr_term #[10, 20, 30] 1 = getOr #[10, 20, 30] 1 := by kernel_rfl
 
 /-- `Array.set` with its proof. -/
 def setOr (a : Array Nat) (i v : Nat) : Array Nat := if h : i < a.size then a.set i v h else a
@@ -89,8 +90,8 @@ def setOr_term :
     Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.array (.prim .nat)) :=
   #leanscript_to_term setOr
 
-example : run setOr_term #[1, 2, 3] 1 7 = #[1, 7, 3] := rfl
-example : run setOr_term #[1, 2, 3] 3 7 = #[1, 2, 3] := rfl
+example : run setOr_term #[1, 2, 3] 1 7 = #[1, 7, 3] := by kernel_rfl
+example : run setOr_term #[1, 2, 3] 3 7 = #[1, 2, 3] := by kernel_rfl
 
 /-! ## Closed arguments: `Term.extern`, with the program's own proof -/
 
@@ -98,8 +99,8 @@ def second : Nat := #[1, 2, 3][1]
 
 def second_term : Term sig0 [] (TyWf.prim .nat) := #leanscript_to_term second
 
-example : externForm? second_term = some "extern" := rfl
-example : run second_term = 2 := rfl
+example : externForm? second_term = some "extern" := by kernel_rfl
+example : run second_term = 2 := by kernel_rfl
 
 /-! ## `Lean.Name` is an ordinary inductive of the language -/
 
@@ -124,6 +125,6 @@ def gcdTwice (a : Nat) : Nat := Nat.gcd a (2 * a)
 def gcdTwice_term : Term sigGcd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term gcdTwice
 
-example : (Term.run (Sg := sigGcd) (Nat.gcd, PUnit.unit) gcdTwice_term) 6 = 6 := by decide
+example : (Term.run (Sg := sigGcd) (Nat.gcd, PUnit.unit) gcdTwice_term) 6 = 6 := by decide +kernel
 
 end TermTests.ExternToTerm

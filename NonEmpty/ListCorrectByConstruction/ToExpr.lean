@@ -1,6 +1,5 @@
 module
 public import Lean.ToExpr
-import Lean
 public import NonEmpty.ListCorrectByConstruction.Basic
 public import NonEmpty.ListCorrectByConstruction.Ops
 public import NonEmpty.ListCorrectByConstruction.Instances

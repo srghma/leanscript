@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Eval
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -8,7 +9,7 @@ public import LeanScript.Eval
 # The evaluator, run
 
 Every example below writes a closed term of `LeanScript.Term` and the value
-`LeanScript.Term.eval` gives it, and checks the two agree by `rfl` — that is, by the
+`LeanScript.Term.eval` gives it, and checks the two agree by `kernel_rfl` — that is, by the
 kernel.  The terms mirror those of `TermTests.TermTest`, which pins that the *grammar* is
 usable; this file pins what each of them *computes*.
 
@@ -50,21 +51,21 @@ def letThree : Term emptySig [] (TyWf.prim .nat) := .letE (.nat_mk 3) (.var (v�
 /-- A call of the one declaration of `doubleSig`. -/
 def callDouble : Term doubleSig [] (TyWf.prim .nat) := .ap (.global .here) (.nat_mk 21)
 
-example : run idNat 7 = 7 := rfl
+example : run idNat 7 = 7 := by kernel_rfl
 -- `Term.run'` is the same thing for a module that declares nothing.
-example : (Term.run' idNat) 7 = 7 := rfl
-example : run (.ap idNat (.nat_mk 3)) = 3 := rfl
-example : run constNat 7 true = 7 := rfl
-example : run letThree = 3 := rfl
-example : Term.run doubleEnv callDouble = 42 := rfl
+example : (Term.run' idNat) 7 = 7 := by kernel_rfl
+example : run (.ap idNat (.nat_mk 3)) = 3 := by kernel_rfl
+example : run constNat 7 true = 7 := by kernel_rfl
+example : run letThree = 3 := by kernel_rfl
+example : Term.run doubleEnv callDouble = 42 := by kernel_rfl
 
 /-! ## Literals -/
 
-example : run (.bitvec_mk (v := 7#8)) = 7#8 := rfl
-example : run (.string_mk "hello") = "hello" := rfl
-example : run (.char_mk 'a') = 'a' := rfl
-example : run (.int_mk (-2)) = -2 := rfl
-example : run (.uint8_mk 255) = 255 := rfl
+example : run (.bitvec_mk (v := 7#8)) = 7#8 := by kernel_rfl
+example : run (.string_mk "hello") = "hello" := by kernel_rfl
+example : run (.char_mk 'a') = 'a' := by kernel_rfl
+example : run (.int_mk (-2)) = -2 := by kernel_rfl
+example : run (.uint8_mk 255) = 255 := by kernel_rfl
 
 /-! ## Eliminators of the terminal types -/
 
@@ -106,23 +107,23 @@ def substringStr : Term emptySig [] (TyWf.prim .substringRaw ⇒ TyWf.prim .stri
 def uint8Bits : Term emptySig [] (TyWf.prim .uint8 ⇒ TyWf.prim (.bitvec 8)) :=
   .lam (.uint8_casesOn (.var (v♯0)) (.var (v♯0)))
 
-example : run boolToNat true = 1 := rfl
-example : run boolToNat false = 0 := rfl
-example : run pred 0 = 0 := rfl
-example : run pred 5 = 4 := rfl
-example : run foldNatZero 5 = 0 := rfl
-example : run foldNatPred 5 = 4 := rfl
-example : run intMagnitude 7 = 7 := rfl
-example : run intMagnitude (-8) = 7 := rfl
-example : run charCode 'a' = 97 := rfl
-example : run rawByteIdx ⟨12⟩ = 12 := rfl
-example : run substringStr ⟨"abc", ⟨0⟩, ⟨3⟩⟩ = "abc" := rfl
-example : run uint8Bits 5 = 5#8 := rfl
+example : run boolToNat true = 1 := by kernel_rfl
+example : run boolToNat false = 0 := by kernel_rfl
+example : run pred 0 = 0 := by kernel_rfl
+example : run pred 5 = 4 := by kernel_rfl
+example : run foldNatZero 5 = 0 := by kernel_rfl
+example : run foldNatPred 5 = 4 := by kernel_rfl
+example : run intMagnitude 7 = 7 := by kernel_rfl
+example : run intMagnitude (-8) = 7 := by kernel_rfl
+example : run charCode 'a' = 97 := by kernel_rfl
+example : run rawByteIdx ⟨12⟩ = 12 := by kernel_rfl
+example : run substringStr ⟨"abc", ⟨0⟩, ⟨3⟩⟩ = "abc" := by kernel_rfl
+example : run uint8Bits 5 = 5#8 := by kernel_rfl
 
 /-! ## Delays, and arrays -/
 
-example : run (.thunk_force (.thunk_mk (.nat_mk 3))) = 3 := rfl
-example : run (.lazy_force (.lazy_mk (.nat_mk 3))) = 3 := rfl
+example : run (.thunk_force (.thunk_mk (.nat_mk 3))) = 3 := by kernel_rfl
+example : run (.lazy_force (.lazy_mk (.nat_mk 3))) = 3 := by kernel_rfl
 
 /-- The array `#[1, 2, 3]`. -/
 def oneTwoThree : Term emptySig [] (TyWf.array (TyWf.prim .nat)) :=
@@ -143,12 +144,12 @@ def lastOrZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .na
   .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
     (.array_casesOn (.var (v♯1)) (.var (v♯0)) (.var (v♯4))))
 
-example : run oneTwoThree = #[1, 2, 3] := rfl
-example : run headOrZero #[1, 2, 3] = 1 := rfl
-example : run headOrZero #[] = 0 := rfl
-example : run foldArrayZero #[1, 2, 3] = 0 := rfl
-example : run lastOrZero #[1, 2, 3] = 3 := rfl
-example : run lastOrZero #[] = 0 := rfl
+example : run oneTwoThree = #[1, 2, 3] := by kernel_rfl
+example : run headOrZero #[1, 2, 3] = 1 := by kernel_rfl
+example : run headOrZero #[] = 0 := by kernel_rfl
+example : run foldArrayZero #[1, 2, 3] = 0 := by kernel_rfl
+example : run lastOrZero #[1, 2, 3] = 3 := by kernel_rfl
+example : run lastOrZero #[] = 0 := by kernel_rfl
 
 /-! ## Enums -/
 
@@ -181,18 +182,18 @@ def fiveTwoOrZero : Term emptySig [] (TyWf.enum five ⇒ TyWf.prim .nat) :=
   .lam (.enum_casesOnWithDefault (.var (v♯0))
     (.cons 1 (.nat_mk 1) (.last 3 (.nat_mk 3))) (.nat_mk 0))
 
-example : run middle = ⟨1, by decide⟩ := rfl
-example : run enumToNat ⟨0, by decide⟩ = 0 := rfl
-example : run enumToNat ⟨1, by decide⟩ = 1 := rfl
-example : run enumToNat ⟨2, by decide⟩ = 2 := rfl
-example : run fiveToNat ⟨0, by decide⟩ = 0 := rfl
-example : run fiveToNat ⟨3, by decide⟩ = 3 := rfl
-example : run fiveToNat ⟨4, by decide⟩ = 4 := rfl
-example : run enumLastOrZero ⟨2, by decide⟩ = 2 := rfl
-example : run enumLastOrZero ⟨0, by decide⟩ = 0 := rfl
-example : run fiveTwoOrZero ⟨1, by decide⟩ = 1 := rfl
-example : run fiveTwoOrZero ⟨3, by decide⟩ = 3 := rfl
-example : run fiveTwoOrZero ⟨4, by decide⟩ = 0 := rfl
+example : run middle = ⟨1, by decide⟩ := by kernel_rfl
+example : run enumToNat ⟨0, by decide⟩ = 0 := by kernel_rfl
+example : run enumToNat ⟨1, by decide⟩ = 1 := by kernel_rfl
+example : run enumToNat ⟨2, by decide⟩ = 2 := by kernel_rfl
+example : run fiveToNat ⟨0, by decide⟩ = 0 := by kernel_rfl
+example : run fiveToNat ⟨3, by decide⟩ = 3 := by kernel_rfl
+example : run fiveToNat ⟨4, by decide⟩ = 4 := by kernel_rfl
+example : run enumLastOrZero ⟨2, by decide⟩ = 2 := by kernel_rfl
+example : run enumLastOrZero ⟨0, by decide⟩ = 0 := by kernel_rfl
+example : run fiveTwoOrZero ⟨1, by decide⟩ = 1 := by kernel_rfl
+example : run fiveTwoOrZero ⟨3, by decide⟩ = 3 := by kernel_rfl
+example : run fiveTwoOrZero ⟨4, by decide⟩ = 0 := by kernel_rfl
 
 /-! ## Records -/
 
@@ -209,9 +210,9 @@ def pairFst : Term emptySig [] (TyWf.prim .nat) := .record_casesOn pair (.var (v
 /-- Its second field. -/
 def pairSnd : Term emptySig [] (TyWf.prim .bool) := .record_casesOn pair (.var (v♯1))
 
-example : run pair = (3, true, PUnit.unit) := rfl
-example : run pairFst = 3 := rfl
-example : run pairSnd = true := rfl
+example : run pair = (3, true, PUnit.unit) := by kernel_rfl
+example : run pairFst = 3 := by kernel_rfl
+example : run pairSnd = true := by kernel_rfl
 
 /-! ## Tagged unions
 
@@ -238,13 +239,13 @@ def optNatOrZeroWithDefault : Term emptySig [] (TyWf.taggedUnion optNat ⇒ TyWf
   .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
     (.last 0 (branch := .var (v♯0))) (.nat_mk 0))
 
-example : (run someThree).1 = ⟨0, by decide⟩ := rfl
-example : (run someThree).2 = (3, PUnit.unit) := rfl
-example : (run noneNat).1 = ⟨1, by decide⟩ := rfl
-example : run (.ap optNatOrZero someThree) = 3 := rfl
-example : run (.ap optNatOrZero noneNat) = 0 := rfl
-example : run (.ap optNatOrZeroWithDefault someThree) = 3 := rfl
-example : run (.ap optNatOrZeroWithDefault noneNat) = 0 := rfl
+example : (run someThree).1 = ⟨0, by decide⟩ := by kernel_rfl
+example : (run someThree).2 = (3, PUnit.unit) := by kernel_rfl
+example : (run noneNat).1 = ⟨1, by decide⟩ := by kernel_rfl
+example : run (.ap optNatOrZero someThree) = 3 := by kernel_rfl
+example : run (.ap optNatOrZero noneNat) = 0 := by kernel_rfl
+example : run (.ap optNatOrZeroWithDefault someThree) = 3 := by kernel_rfl
+example : run (.ap optNatOrZeroWithDefault noneNat) = 0 := by kernel_rfl
 
 /-- A union whose first constructor carries no fields. -/
 def natOrNothing : LeanTaggedUnionSchema TyWf := .skip (.here ⟨TyWf.prim .nat, []⟩ [])
@@ -261,8 +262,8 @@ def nothing' : Term emptySig [] (TyWf.taggedUnion natOrNothing) :=
 def justFive : Term emptySig [] (TyWf.taggedUnion natOrNothing) :=
   .taggedUnion_mk natOrNothing 1 (fields := .cons (.nat_mk 5) .nil)
 
-example : run (.ap natOrNothingToNat nothing') = 0 := rfl
-example : run (.ap natOrNothingToNat justFive) = 5 := rfl
+example : run (.ap natOrNothingToNat nothing') = 0 := by kernel_rfl
+example : run (.ap natOrNothingToNat justFive) = 5 := by kernel_rfl
 
 /-- A union with three constructors: `nat`, `bool`, `nat`. -/
 def natBoolNat : LeanTaggedUnionSchema TyWf :=
@@ -295,12 +296,12 @@ def nbnOne : Term emptySig [] (TyWf.taggedUnion natBoolNat) :=
 def nbnTwo : Term emptySig [] (TyWf.taggedUnion natBoolNat) :=
   .taggedUnion_mk natBoolNat 2 (fields := .cons (.nat_mk 9) .nil)
 
-example : run (.ap natBoolNatTwoOrZero nbnZero) = 7 := rfl
-example : run (.ap natBoolNatTwoOrZero nbnOne) = 0 := rfl
-example : run (.ap natBoolNatTwoOrZero nbnTwo) = 9 := rfl
-example : run (.ap natBoolNatAll nbnZero) = 7 := rfl
-example : run (.ap natBoolNatAll nbnOne) = 1 := rfl
-example : run (.ap natBoolNatAll nbnTwo) = 9 := rfl
+example : run (.ap natBoolNatTwoOrZero nbnZero) = 7 := by kernel_rfl
+example : run (.ap natBoolNatTwoOrZero nbnOne) = 0 := by kernel_rfl
+example : run (.ap natBoolNatTwoOrZero nbnTwo) = 9 := by kernel_rfl
+example : run (.ap natBoolNatAll nbnZero) = 7 := by kernel_rfl
+example : run (.ap natBoolNatAll nbnOne) = 1 := by kernel_rfl
+example : run (.ap natBoolNatAll nbnTwo) = 9 := by kernel_rfl
 
 end TermTests.Eval
 

@@ -1,6 +1,5 @@
 module
 public import Lean.Expr
-import Lean
 
 open Lean Meta Elab
 

@@ -84,7 +84,7 @@ def TCtx.var (c : TCtx) (f : FVarId) : MetaM Expr := do
   let k := c.binders.size - 1 - i
   let τ := c.binders[i]!.2
   let idx ← mkIndexE c.binderTys c.base k
-  return mkAppN (mkConst ``LeanScript.Term.var) #[c.sg, c.gamma, τ, idx]
+  return mkAppN (mkConst `LeanScript.Term.var) #[c.sg, c.gamma, τ, idx]
 
 /-! ## The signature -/
 

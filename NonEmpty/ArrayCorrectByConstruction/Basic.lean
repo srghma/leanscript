@@ -1,6 +1,5 @@
 module
 import Init.Data.Array.Lemmas
-import Aesop
 public import NonEmpty.DowngradeMap
 public import NonEmpty.ArrayUtil
 

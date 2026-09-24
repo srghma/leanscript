@@ -1,6 +1,5 @@
 module
 import Init.Data.Array.Lemmas
-import Aesop
 public import NonEmpty.ArrayCorrectByConstruction.Instances
 meta import NonEmpty.ArrayCorrectByConstruction.Basic
 

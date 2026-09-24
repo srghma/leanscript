@@ -1,5 +1,6 @@
 module
 
+public meta import Lean.Meta.Tactic.Delta
 public meta import LeanScript.Ty.Deriving.Build
 
 @[expose] public section

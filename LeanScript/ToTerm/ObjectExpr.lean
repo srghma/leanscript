@@ -1,7 +1,12 @@
 module
 
-public meta import Lean
-public meta import LeanScript.Expr.Term
+public meta import Lean.Elab.Command
+public meta import LeanScript.Expr.NatRecCtx
+public meta import LeanScript.Expr.Extern
+public meta import LeanScript.Expr.SelfField
+public meta import LeanScript.Ty.Unfold
+public meta import LeanScript.Ty.TyWfIn
+public meta import LeanScript.Ty.Wf
 public meta import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 
@@ -15,6 +20,13 @@ meta section
 The pieces of `LeanScript.TyWf`, `LeanScript.Ctx` and the schemas, as `Lean.Expr`s: what
 the translation builds its output out of, and how a payload of trees is bundled with its
 well-formedness proof.  Overview: `LeanScript.ToTerm.Overview`.
+
+**Names of `LeanScript.Term`.**  The translator does not import `LeanScript.Expr.Term`, so
+that it builds in parallel with that (slow) module.  The types of `Expr/Term.lean`
+(`LeanScript.Term`, `LeanScript.Spine`, `LeanScript.TaggedUnionCases`, …) and their
+constructors are therefore written with a single backquote, `` `LeanScript.Term.lam ``,
+which Lean does not check; `TermTests/ToTermTest/TermNames.lean` checks that every such
+name exists.  Every other name keeps the checked double backquote.
 -/
 
 open Lean Meta Elab Term

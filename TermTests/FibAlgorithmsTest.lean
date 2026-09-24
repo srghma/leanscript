@@ -21,14 +21,14 @@ evidence behind the table in §2 of `FibProposals.md`:
 | :-- | :-- | :-- |
 | `fibLoopTR` / `fibTR` | `nat_rec` **at a function type** — already there | `fibTR_term_eval` |
 | `fibPair` / `fib2` | `nat_rec` at a record type — already there | `fibPair_term_eval` |
-| `fibLoop` (`for` loop) | the same fold, and a case for `for` in the translation | prose below; translated in `TermTests/NatRecDepthTest.lean` |
-| `fib` (`n + 2` pattern) | a depth-two fold: a window, or the depth-indexed node | `TermTests/FibWindowTest.lean`, `TermTests/NatRecKTest.lean`, `TermTests/NatRecDepthTest.lean` |
+| `fibLoop` (`for` loop) | the same fold, and a case for `for` in the translation | prose below; translated in `TermTests/NatRecDepthTest/` |
+| `fib` (`n + 2` pattern) | a depth-two fold: a window, or the depth-indexed node | `TermTests/FibWindowTest.lean`, `TermTests/NatRecKTest.lean`, `TermTests/NatRecDepthTest/` |
 | `fibFast` (`n / 2`) | a descent that is not by a fixed number of steps | prose below |
 
 Since this file was written, the node and the two translation cases it names as missing
 have been implemented: `LeanScript.Term.nat_rec k` descends `k + 1` steps, and
 `#leanscript_to_term` translates both the `n + 2` pattern and a `for` loop over a range.
-`TermTests/NatRecDepthTest.lean` hands each of the five definitions to the translation as
+`TermTests/NatRecDepthTest/` hands each of the five definitions to the translation as
 it is written.  What is below is unchanged, and is still the hand-written evidence that
 the first two need nothing beyond a fold at a function type and at a record type.
 
@@ -187,13 +187,13 @@ What is missing is therefore nothing in `Term` and nothing in `Term.eval`: it is
 in `#leanscript_to_term` for `ForIn.forIn` on a range with a literal-free bound, turning
 the loop body into the step of a `nat_rec` whose type is the record of the mutable
 variables.  That case now exists — `LeanScript.ToTerm.transForInRange?` — and
-`TermTests/NatRecDepthTest.lean` translates `fibLoop` as it is written.
+`TermTests/NatRecDepthTest/` translates `fibLoop` as it is written.
 
 ## 4. `fib` itself
 
 The `n + 2` pattern was the one definition of the five that the grammar could not write
 directly, and it is the subject of `FibProposals.md`.  It is now the depth-two instance
-of `Term.nat_rec`, written out and translated in `TermTests/NatRecDepthTest.lean`.  Two
+of `Term.nat_rec`, written out and translated in `TermTests/NatRecDepthTest/`.  Two
 further things are proved elsewhere in the test suite:
 
 * `TermTests.FibWindow.fib_term_eval` — it is writable **today** as a one-step fold whose

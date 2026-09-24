@@ -1,6 +1,6 @@
 module
 
-public meta import Lean
+public meta import Lean.Elab.Command
 public meta import LeanScript.Ty.Schema
 
 @[expose] public section

@@ -1,6 +1,5 @@
 module
 import Init.Data.List.Lemmas
-import Aesop
 public import NonEmpty.ListCorrectByConstruction.Basic
 
 @[expose] public section

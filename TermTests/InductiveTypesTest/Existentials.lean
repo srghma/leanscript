@@ -4,6 +4,7 @@ public import TyTests.InductiveTypesTest.NestedRecursion
 public import LeanScript.Eval
 public import LeanScript.CtorFn
 public import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -98,7 +99,7 @@ closed type works, and `nat` is used.
 Arithmetic and string append are external to the language, so they are the two
 declarations of the signature `ProcessModel.sig`, named after `Nat.add` and
 `String.append`, which `n + 1` and `s ++ "!"` unfold to. The `example`s at the end check,
-by `rfl`, that each term evaluates to the Lean definition with the witnesses filled in.
+by `kernel_rfl`, that each term evaluates to the Lean definition with the witnesses filled in.
 -/
 
 namespace ProcessModel
@@ -155,9 +156,9 @@ abbrev haltTy (H : TyWf) : TyWf := #leanscript_layout `Process `halt natT H
 
 /-- The generated layouts are the ones the language would write by hand. -/
 example (S P : TyWf) :
-    optionTy S P = .taggedUnion (.skip (.here ⟨S, [natT, P]⟩ [])) := rfl
-example (S O : TyWf) : stepTy S O = .record ⟨S, S ⇒ O, []⟩ := rfl
-example (H : TyWf) : haltTy H = TyWf.fn H natT := rfl
+    optionTy S P = .taggedUnion (.skip (.here ⟨S, [natT, P]⟩ [])) := by kernel_rfl
+example (S O : TyWf) : stepTy S O = .record ⟨S, S ⇒ O, []⟩ := by kernel_rfl
+example (H : TyWf) : haltTy H = TyWf.fn H natT := by kernel_rfl
 
 /-- `mixedProcess`: `Process.step Nat`, holding `ProcessOption Nat Nat`, holding
     `Process.step String`, holding `ProcessOption Nat String`, holding `Process.halt Bool`. -/
@@ -190,7 +191,7 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) env $t)
 example : run mixedProcess_term =
     (0, fun n => ⟨⟨1, by decide⟩, (n + 1, 42,
       ("hello", fun s => ⟨⟨1, by decide⟩, (s ++ "!", 99,
-        (fun b => match b with | true => 1 | false => 0), ())⟩, ()), ())⟩, ()) := rfl
+        (fun b => match b with | true => 1 | false => 0), ())⟩, ()), ())⟩, ()) := by kernel_rfl
 
 /-- `varyingProcess`, with the witnesses `Nat`, then `Unit` or `Bool`, filled in. -/
 example : run varyingProcess_term =

@@ -26,7 +26,7 @@ open LeanScript
 /-- The definition to be expressed: it reads its own value at `n` and at `n + 1`.  Since
     this file was written the grammar has gained the depth-indexed fold
     `Term.nat_rec k`, so `#leanscript_to_term` translates it directly
-    (`TermTests/NatRecDepthTest.lean`); what is written here is the *other* way of saying
+    (`TermTests/NatRecDepthTest/`); what is written here is the *other* way of saying
     it, as a one-step fold whose value is a window, and it still typechecks and still
     computes `fib`. -/
 def fib : Nat → Nat
@@ -84,13 +84,13 @@ def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
 
 First a few values, checked by the kernel, and then the general statement. -/
 
-example : runAdd fib_term 0 = 0 := rfl
-example : runAdd fib_term 1 = 1 := rfl
-example : runAdd fib_term 2 = 1 := rfl
-example : runAdd fib_term 10 = 55 := rfl
+example : runAdd fib_term 0 = 0 := by kernel_rfl
+example : runAdd fib_term 1 = 1 := by kernel_rfl
+example : runAdd fib_term 2 = 1 := by kernel_rfl
+example : runAdd fib_term 10 = 55 := by kernel_rfl
 
-example : runAdd fib_term 12 = fib 12 := rfl
-example : runAdd fib_term 15 = 610 := rfl
+example : runAdd fib_term 12 = fib 12 := by kernel_rfl
+example : runAdd fib_term 15 = 610 := by kernel_rfl
 
 /-- The window term's value at `n` is the pair `(fib n, fib (n + 1))` — at **every**
     argument, not only at the ones checked above. -/

@@ -1,6 +1,7 @@
 module
 
 public import TermTests.CtorFnTest.Module
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -42,32 +43,32 @@ TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4)
 #guard_msgs in #print some4
 
 /-- The layout of `Option` is the tree of `Option`'s own instance. -/
-example : (#leanscript_layout `Option `some natT) = tyWfOf (Option Nat) := rfl
-example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := rfl
+example : (#leanscript_layout `Option `some natT) = tyWfOf (Option Nat) := by kernel_rfl
+example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := by kernel_rfl
 
 /-! ## Library datatypes -/
 
 def none' : Term sig [] (#leanscript_layout `Option `none natT) := #leanscript_ctor `Option `none natT
-example : run none' = ⟨⟨0, by decide⟩, ()⟩ := rfl
+example : run none' = ⟨⟨0, by decide⟩, ()⟩ := by kernel_rfl
 
 /-- A type with one constructor can be named alone. -/
 def pair : Term sig [] (#leanscript_layout `Prod natT boolT) :=
   #leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true)
-example : run pair = (3, true, ()) := rfl
-example : (#leanscript_layout `Prod natT boolT) = tyWfOf (Nat × Bool) := rfl
+example : run pair = (3, true, ()) := by kernel_rfl
+example : (#leanscript_layout `Prod natT boolT) = tyWfOf (Nat × Bool) := by kernel_rfl
 
 def inr : Term sig [] (#leanscript_layout `Sum `inr natT stringT) :=
   #leanscript_ctor `Sum `inr natT stringT (.string_mk "x")
-example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := rfl
-example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := rfl
+example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := by kernel_rfl
+example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := by kernel_rfl
 
 /-- `Bool` is the enum of its two constructors, which the language calls `bool`. -/
 def tt : Term sig [] boolT := #leanscript_ctor `Bool `true
-example : run tt = true := rfl
+example : run tt = true := by kernel_rfl
 
 /-- `Ordering`'s instance numbers its constructors from `-1`; the layout keeps that. -/
 def gt : Term sig [] (tyWfOf Ordering) := #leanscript_ctor `Ordering `gt
-example : (#leanscript_layout `Ordering `gt) = tyWfOf Ordering := rfl
+example : (#leanscript_layout `Ordering `gt) = tyWfOf Ordering := by kernel_rfl
 
 /-- A recursive datatype is built one layer at a time: `List.cons` takes the tree of its
     tail, whatever it is. -/
@@ -76,14 +77,14 @@ def oneTwo : Term sig [] (#leanscript_layout `List `cons natT
   #leanscript_ctor `List `cons natT _ (.nat_mk 1)
     (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT))
 example : run oneTwo =
-    ⟨⟨1, by decide⟩, (1, ⟨⟨1, by decide⟩, (2, ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩ := rfl
+    ⟨⟨1, by decide⟩, (1, ⟨⟨1, by decide⟩, (2, ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩ := by kernel_rfl
 
 /-! ## Datatypes of this file -/
 
 /-- An enum. -/
 inductive Shape3 | a | b | c
 def shapeB : Term sig [] (#leanscript_layout `Shape3 `b) := #leanscript_ctor `Shape3 `b
-example : run shapeB = ⟨1, by decide⟩ := rfl
+example : run shapeB = ⟨1, by decide⟩ := by kernel_rfl
 
 /-- A structure: erased fields are not arguments, and a structure with one field left is
     that field. -/
@@ -92,7 +93,7 @@ structure Wrap where
   u : Unit
   p : val = val
 def wrap : Term sig [] natT := #leanscript_ctor `Wrap (.nat_mk 5)
-example : run wrap = 5 := rfl
+example : run wrap = 5 := by kernel_rfl
 
 /-- Field types built from the type argument: `Option S` and `S × Nat` are rebuilt from their
     instances' trees, `List S` is `tyWfOf (List S.AsType)` (its tree is recursive), and a
@@ -114,7 +115,7 @@ info: CtorFnTest.Fancy.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (S : TyWf)
 
 /-- `tyWfOf (List S.AsType)` is `List`'s own tree, at `S`. -/
 example (S : TyWf) :
-    tyWfOf (List S.AsType) = ⟨.recTaggedUnion (.skip (.here ⟨S.toTy, [.self]⟩ [])), by ty_wf⟩ := rfl
+    tyWfOf (List S.AsType) = ⟨.recTaggedUnion (.skip (.here ⟨S.toTy, [.self]⟩ [])), by ty_wf⟩ := by kernel_rfl
 
 /-- An indexed family: a value index (`n : Nat`) is an ordinary field, and the recursive
     occurrence is a type argument. -/

@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Cases
+public meta import LeanScript.ToTerm.Ctx
 public meta import LeanScript.CtorFn.Emit
 
 @[expose] public section
@@ -47,7 +47,7 @@ def natTyWfE : Expr :=
 def termTyOf (t : Expr) : MetaM Expr := do
   let ty ← whnfCore (← instantiateMVars (← inferType t))
   match ty.getAppFnArgs with
-  | (``LeanScript.Term, #[_, _, τ]) => instantiateMVars τ
+  | (`LeanScript.Term, #[_, _, τ]) => instantiateMVars τ
   | _ => throwError "`#leanscript_to_term`: internal: not a term of the language: {t}"
 
 /-- The type of `e` as a tree, or — when the Lean type of `e` has no tree, as a value of a
@@ -91,9 +91,9 @@ def injectOneOf (sg γ τ : Expr) (i : Nat) (alt t : Expr) : MetaM Expr := do
   let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfTyE l
   let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit i, lenE])
   let nilTys := mkApp (mkConst ``List.nil [Level.zero]) tyWfTyE
-  let spine := mkAppN (mkConst ``LeanScript.Spine.cons)
-    #[sg, γ, alt, nilTys, t, mkApp2 (mkConst ``LeanScript.Spine.nil) sg γ]
-  return mkAppN (mkConst ``LeanScript.Term.taggedUnion_mk) #[sg, γ, l, mkNatLit i, prf, spine]
+  let spine := mkAppN (mkConst `LeanScript.Spine.cons)
+    #[sg, γ, alt, nilTys, t, mkApp2 (mkConst `LeanScript.Spine.nil) sg γ]
+  return mkAppN (mkConst `LeanScript.Term.taggedUnion_mk) #[sg, γ, l, mkNatLit i, prf, spine]
 
 /-- The term `t` at the type `τ`: `t` itself when it has that type, and its injection when
     `τ` is a `TyWf.oneOf` one of whose alternatives is the type of `t`. -/
@@ -223,7 +223,7 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
   let mut fields : Array (Expr × Expr) := #[]
   repeat
     let .forallE n d b _ := ty | break
-    let (``LeanScript.Term, #[_, _, τ]) := d.getAppFnArgs
+    let (`LeanScript.Term, #[_, _, τ]) := d.getAppFnArgs
       | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument {n}"
     let some i := (names.extract ci.numParams names.size).findIdx? (· == n)
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` has no field `{n}`"
@@ -233,7 +233,7 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
     if b.hasLooseBVars then
       throwError "`#leanscript_to_term`: internal: `{fnName}` has a dependent type"
     ty := b
-  let (``LeanScript.Term, #[_, _, resTy]) := ty.getAppFnArgs
+  let (`LeanScript.Term, #[_, _, resTy]) := ty.getAppFnArgs
     | throwError "`#leanscript_to_term`: internal: `{fnName}` does not build a term"
   if let some τ := expected? then
     if (← oneOfAlts? τ).isNone then discard <| isDefEq resTy τ

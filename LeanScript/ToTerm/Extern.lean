@@ -136,9 +136,9 @@ def externUnfoldShorthand (entry : Expr) : MetaM Expr := do
 
 /-- The spine of the terms `ts`, of the types `σs`. -/
 def spineE (c : TCtx) (ts σs : Array Expr) : Expr := Id.run do
-  let mut acc := mkAppN (mkConst ``LeanScript.Spine.nil) #[c.sg, c.gamma]
+  let mut acc := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   for j in (List.range ts.size).reverse do
-    acc := mkAppN (mkConst ``LeanScript.Spine.cons)
+    acc := mkAppN (mkConst `LeanScript.Spine.cons)
       #[c.sg, c.gamma, σs[j]!, tyListE (σs.extract (j + 1) σs.size), ts[j]!, acc]
   return acc
 
@@ -245,7 +245,7 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
   let entry? ← if checked && closed then externClosedEntry? kinds own ctor else pure none
   let t ← match entry? with
     | some entry =>
-        pure (mkAppN (mkConst ``LeanScript.Term.extern)
+        pure (mkAppN (mkConst `LeanScript.Term.extern)
           #[c.sg, c.gamma, ← externResultTy entry, entry])
     | none => do
       -- the values: translated, and handed to the entry when the term runs
@@ -288,10 +288,10 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
         let dflt ← if (← whnfR α).isConstOf ``Nat then pure (mkNatLit 0)
           else mkAppOptM ``Inhabited.default #[α, inst]
         let fb ← trans c dflt
-        pure (mkAppN (mkConst ``LeanScript.Term.externCallChecked)
+        pure (mkAppN (mkConst `LeanScript.Term.externCallChecked)
           #[c.sg, c.gamma, σsE, τ, spine, mk, fb])
       else
-        pure (mkAppN (mkConst ``LeanScript.Term.externCall) #[c.sg, c.gamma, σsE, τ, spine, mk])
+        pure (mkAppN (mkConst `LeanScript.Term.externCall) #[c.sg, c.gamma, σsE, τ, spine, mk])
   -- the arguments past the extern's own, if it answers with a function
   return some (← applyArgs trans c t call (args.extract kinds.size args.size))
 

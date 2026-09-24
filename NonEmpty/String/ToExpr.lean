@@ -1,6 +1,5 @@
 module
 public import Lean.ToExpr
-import Lean
 public import NonEmpty.String.Basic
 public import NonEmpty.Utils.Decidable
 

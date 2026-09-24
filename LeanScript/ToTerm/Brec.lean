@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Match
+public meta import LeanScript.ToTerm.ObjectExpr
 
 @[expose] public section
 

@@ -2,6 +2,7 @@ module
 
 public import TermTests.ArrayRecKTest
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -63,11 +64,11 @@ def contBranch :
 def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 1 (.var (v♯0)) contBases contBranch)
 
-example : runArith contTerm #[] = 1 := rfl
-example : runArith contTerm #[3] = 3 := rfl
-example : runArith contTerm #[3, 4] = 13 := rfl
-example : runArith contTerm #[1, 2, 3] = 10 := rfl
-example : runArith contTerm #[1, 1, 1, 1, 1, 1] = 13 := rfl
+example : runArith contTerm #[] = 1 := by kernel_rfl
+example : runArith contTerm #[3] = 3 := by kernel_rfl
+example : runArith contTerm #[3, 4] = 13 := by kernel_rfl
+example : runArith contTerm #[1, 2, 3] = 10 := by kernel_rfl
+example : runArith contTerm #[1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
 
 /-- The fold `Term.eval` runs for `contTerm`, in an arbitrary environment: the short
     lists go to `contBases` and the branch runs with the window in front of the
@@ -128,9 +129,9 @@ def cont3Branch :
 def cont3Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)
 
-example : runArith cont3Term #[] = 1 := rfl
-example : runArith cont3Term #[5, 6] = 30 := rfl
-example : runArith cont3Term #[1, 1, 1, 1, 1, 1] = 17 := rfl
+example : runArith cont3Term #[] = 1 := by kernel_rfl
+example : runArith cont3Term #[5, 6] = 30 := by kernel_rfl
+example : runArith cont3Term #[1, 1, 1, 1, 1, 1] = 17 := by kernel_rfl
 
 /-- The fold `Term.eval` runs for `cont3Term`. -/
 def cont3EvalFold (env : Env ArrCtx) : List Nat → Nat :=
@@ -164,9 +165,9 @@ def cont4Branch :
 def cont4Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)
 
-example : runArith cont4Term #[] = 1 := rfl
-example : runArith cont4Term #[2, 3, 4] = 24 := rfl
-example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := rfl
+example : runArith cont4Term #[] = 1 := by kernel_rfl
+example : runArith cont4Term #[2, 3, 4] = 24 := by kernel_rfl
+example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
 
 /-- The fold `Term.eval` runs for `cont4Term`. -/
 def cont4EvalFold (env : Env ArrCtx) : List Nat → Nat :=

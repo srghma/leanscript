@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
+public meta import LeanScript.KernelRfl
 
 /-!
 # The recursive shapes of the grammar, written out
@@ -43,7 +44,7 @@ def natListTy : TyWf := .recTaggedUnion natListSchema
 -- The unfolding really is the schema with `Ty.self` replaced by the list type, so the
 -- second field of `cons` takes a list.
 example : (TyWf.recTaggedUnionUnfold natListSchema).get 1 (by decide) =
-    [TyWf.prim .nat, natListTy] := rfl
+    [TyWf.prim .nat, natListTy] := by kernel_rfl
 
 /-- The empty list.  The tag's bound is written by `ctor_tag`. -/
 def natNil : Term recEmptySig [] natListTy :=
@@ -123,7 +124,7 @@ def cellTy : TyWf := .recObject cellSchema
 def forestTy : TyWf := .recAlias (Ty.array Ty.self).toTyWfIn
 
 -- Its body unfolds to an array of the newtype.
-example : TyWf.recAliasUnfold (Ty.array Ty.self).toTyWfIn = TyWf.array forestTy := rfl
+example : TyWf.recAliasUnfold (Ty.array Ty.self).toTyWfIn = TyWf.array forestTy := by kernel_rfl
 
 /-- The empty forest.  The wrapper is erased, so this is the empty array. -/
 def emptyForest : Term recEmptySig [] forestTy :=
@@ -165,8 +166,8 @@ def tyB : TyWf := .mutualRecursiveFamily famB
 
 -- Selecting a member of either family gives the type of that member, so an occurrence
 -- of `Ty.familyMember i` inside the family unfolds to the type of member `i`.
-example : Ty.unfoldFamily (famB.map TyWfIn.toTy) (Ty.familyMember 0) = tyA.toTy := rfl
-example : Ty.unfoldFamily (famA.map TyWfIn.toTy) (Ty.familyMember 1) = tyB.toTy := rfl
+example : Ty.unfoldFamily (famB.map TyWfIn.toTy) (Ty.familyMember 0) = tyA.toTy := by kernel_rfl
+example : Ty.unfoldFamily (famA.map TyWfIn.toTy) (Ty.familyMember 1) = tyB.toTy := by kernel_rfl
 
 /-- The field-less constructor of `A`. -/
 def aNil : Term recEmptySig [] tyA :=
@@ -289,21 +290,21 @@ example : Term.NoRecMk natNil := by no_rec_mk
 
 /-- The empty list is constructor `0`. -/
 example : (TyWf.DenRec.unfold natListSchema _ (Term.run GlobalEnv.nil natNil)).1.val = 0 :=
-  rfl
+  by kernel_rfl
 
 /-- The one-element list `[3]` is constructor `1`. -/
 example : (TyWf.DenRec.unfold natListSchema _ (Term.run GlobalEnv.nil natOne)).1.val = 1 :=
-  rfl
+  by kernel_rfl
 
 /-- The head of `[3]` is `3`, and the head of the empty list is the default `0`. -/
-example : Term.run GlobalEnv.nil (.ap natHead natOne) = 3 := by decide
-example : Term.run GlobalEnv.nil (.ap natHead natNil) = 0 := by decide
+example : Term.run GlobalEnv.nil (.ap natHead natOne) = 3 := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap natHead natNil) = 0 := by decide +kernel
 
 /-- The tail of `[3]` is empty, so its head is the default. -/
-example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by decide
+example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by decide +kernel
 
 /-- The fold that answers `0` answers `0`. -/
-example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide
+example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide +kernel
 
 /-- Building a recursive **record** is still outside the model. -/
 example : ¬ Term.NoRecMk roseLeaf := fun h => h

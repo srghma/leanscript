@@ -46,7 +46,7 @@ context are used.
 | a `match` that leaves constructors out | `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` |
 | `Nat.rec`, `List.rec` (non-dependent motive), a structural recursion Lean compiled through `Nat.brecOn` / `List.brecOn` | `nat_rec`, `recTaggedUnion_rec 0` — or `nat_casesOn` / `recTaggedUnion_casesOn`, when the branch does not use the value of the fold |
 | a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
-| `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TermTests/ArrayRecToTermTest.lean` |
+| `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TermTests/ArrayRecToTermTest/` |
 | a recursion on a **list** that descends `k + 1` constructors | *not read yet*: the node for it is `recTaggedUnion_rec k`, which `TermTests/RecUnionRecDepthTest.lean` writes out |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
@@ -190,4 +190,9 @@ The translation itself is split across the modules of this directory:
 functions),
 `LeanScript.ToTerm.Trans` (the translation proper) and
 `LeanScript.ToTerm.Elab` (the elaborator, which is what a user imports).
+
+Each of these modules imports only the modules whose declarations it uses, not simply the
+one before it in this list, so that independent modules (`Cache`, `Match`, `Brec`,
+`Existential`, `Extern`) build in parallel.  When a module starts to use a declaration of
+another one, add that import.
 -/

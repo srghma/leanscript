@@ -1,6 +1,7 @@
 module
 
 public import TermTests.ArrayRecDepthTest.Cont
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -9,7 +10,7 @@ set_option autoImplicit false
 /-!
 # The `fib` suite, over arrays: `array_rec` written out at every depth
 
-`TermTests/NatRecDepthTest.lean` takes the family of Fibonacci programs — the `n + 2`
+`TermTests/NatRecDepthTest/` takes the family of Fibonacci programs — the `n + 2`
 recursion, the tail-recursive loop, the pair recursion, the `for` loop, and the
 tribonacci … hexanacci numbers — and writes each of them as a term of the grammar.  This
 file is the same exercise for a recursion over an **array**, which is what
@@ -44,7 +45,7 @@ What is written out here, in the grammar and with the value of every term proved
 Every program runs in one signature, `sigArith`, whose two declarations are `add` and
 `mul`: arithmetic is external to the language.
 
-The terms here are **written out**, as the first half of `TermTests/NatRecDepthTest.lean`
+The terms here are **written out**, as the first half of `TermTests/NatRecDepthTest/`
 is: `#leanscript_to_term` compiles a recursion on a `Nat` and on a recursive tagged
 union, and a recursion over a list is not one of the shapes it reads yet, so there is no
 translated half to check.  What is checked instead is the same thing that half checks —
@@ -127,9 +128,9 @@ def contTRTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
     (.nat_mk 0))
 
-example : runArith contTRTerm #[] = 1 := rfl
-example : runArith contTRTerm #[3, 4] = 13 := rfl
-example : runArith contTRTerm #[1, 2, 3] = 10 := rfl
+example : runArith contTRTerm #[] = 1 := by kernel_rfl
+example : runArith contTRTerm #[3, 4] = 13 := by kernel_rfl
+example : runArith contTRTerm #[1, 2, 3] = 10 := by kernel_rfl
 
 /-- **Any** depth-zero fold at the accumulator type with these two equations is the
     tail-recursive loop. -/
@@ -228,9 +229,9 @@ def contFromPairTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.record_casesOn (fs := pairSchema)
     (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))
 
-example : runArith contFromPairTerm #[] = 1 := rfl
-example : runArith contFromPairTerm #[3, 4] = 13 := rfl
-example : runArith contFromPairTerm #[1, 2, 3] = 10 := rfl
+example : runArith contFromPairTerm #[] = 1 := by kernel_rfl
+example : runArith contFromPairTerm #[3, 4] = 13 := by kernel_rfl
+example : runArith contFromPairTerm #[1, 2, 3] = 10 := by kernel_rfl
 
 /-- **Any** depth-zero fold at the record type with these two equations is the pair
     recursion. -/
@@ -305,9 +306,9 @@ def contLoop (l : List Nat) : Nat := Id.run do
     a := next
   return a
 
-example : contLoop [] = 1 := rfl
-example : contLoop [3, 4] = 13 := rfl
-example : contLoop [1, 2, 3] = 10 := rfl
+example : contLoop [] = 1 := by kernel_rfl
+example : contLoop [3, 4] = 13 := by kernel_rfl
+example : contLoop [1, 2, 3] = 10 := by kernel_rfl
 
 /-- The same loop, started anywhere: what the induction needs. -/
 def contLoopFrom (l : List Nat) (a0 b0 : Nat) : Nat := Id.run do

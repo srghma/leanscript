@@ -4,6 +4,7 @@ public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.FamilyRecFacts
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -12,7 +13,7 @@ set_option autoImplicit false
 /-!
 # The `fib` suite, over a mutual recursive family: `mutualRecursiveFamily_rec` at every depth
 
-`TermTests/NatRecDepthTest.lean` writes the family of Fibonacci programs — the `n + 2`
+`TermTests/NatRecDepthTest/` writes the family of Fibonacci programs — the `n + 2`
 recursion, the tail-recursive loop, the pair recursion, and the tribonacci … hexanacci
 numbers — as terms that fold over a `Nat`; `TermTests/ArrayRecDepthTest.lean`,
 `TermTests/RecUnionRecDepthTest.lean`, `TermTests/RecObjectRecDepthTest.lean` and
@@ -319,10 +320,10 @@ def famPe : LeanMutualRecFamily (TyWfIn 2) := .selectedThenMore [] memPe memLs [
 def famLs : LeanMutualRecFamily (TyWfIn 2) := .selectedLast memPe [] memLs
 
 -- Both are the same block of declarations: they differ only in which member is selected.
-example : famPe.members = [memPe, memLs] := rfl
-example : famLs.members = [memPe, memLs] := rfl
-example : famPe.memberIdx = 0 := rfl
-example : famLs.memberIdx = 1 := rfl
+example : famPe.members = [memPe, memLs] := by kernel_rfl
+example : famLs.members = [memPe, memLs] := by kernel_rfl
+example : famPe.memberIdx = 0 := by kernel_rfl
+example : famLs.memberIdx = 1 := by kernel_rfl
 
 /-- That the family describes types: every member is mentioned, no occurrence is in the
     domain of a function, and every member has values. -/
@@ -351,16 +352,16 @@ abbrev pbind (τ : TyWf) : List (TyWfIn 2) → List TyWf := TyWf.famRecBinders f
 -- Peano natural — and then the value of the fold at that field; `cons` binds its natural,
 -- its tail and the value of the fold at the tail, since the natural is not an occurrence
 -- of a member.
-example (τ : TyWf) : pbind τ [] = [] := rfl
-example (τ : TyWf) : pbind τ succFields = [peTy, τ] := rfl
-example (τ : TyWf) : pbind τ consFields = [natT, lsTy, τ] := rfl
+example (τ : TyWf) : pbind τ [] = [] := by kernel_rfl
+example (τ : TyWf) : pbind τ succFields = [peTy, τ] := by kernel_rfl
+example (τ : TyWf) : pbind τ consFields = [natT, lsTy, τ] := by kernel_rfl
 
 -- So the branch of `succ` of a depth-zero fold over `Γ` is written in `peTy :: τ :: Γ`,
 -- and a branch reached by descending once more is written in that context again with the
 -- subvalue and the value of the fold at it in front of it.
-example (τ : TyWf) (Γ : Ctx) : pbind τ succFields ++ Γ = peTy :: τ :: Γ := rfl
+example (τ : TyWf) (Γ : Ctx) : pbind τ succFields ++ Γ = peTy :: τ :: Γ := by kernel_rfl
 example (τ : TyWf) (Γ : Ctx) :
-    pbind τ succFields ++ (pbind τ succFields ++ Γ) = peTy :: τ :: peTy :: τ :: Γ := rfl
+    pbind τ succFields ++ (pbind τ succFields ++ Γ) = peTy :: τ :: peTy :: τ :: Γ := by kernel_rfl
 
 /-- The context every fold over member `0` below is written in: the Peano natural it folds
     over, bound by the `fun` in front of it. -/

@@ -348,7 +348,7 @@ Halving is not descending: the cell half way down a chain is not the cell a fixe
 of links below it, so there is no depth at which the branch is *given* the answer at it.
 A fold is given the answers on the path it descended, and a recursion that jumps needs a
 measure and a proof, which a `Term` does not carry.  This is the same boundary
-`TermTests/NatRecDepthTest.lean` records for `Nat`.
+`TermTests/NatRecDepthTest/` records for `Nat`.
 -/
 
 end TermTests.RecObjectRecDepth

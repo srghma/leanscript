@@ -1,6 +1,7 @@
 module
 
 public import TermTests.FamilyRecDepthTest.Programs
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -282,8 +283,8 @@ abbrev LCtx : Ctx := [lsTy]
 
 -- The `cons` branch binds the head, the tail, and the value of the fold at the tail — the
 -- head is not an occurrence of a member, so no value of the fold follows it.
-example (τ : TyWf) : lbind τ consFields = [natT, lsTy, τ] := rfl
-example (τ : TyWf) : lbind τ succFields = [peTy, τ] := rfl
+example (τ : TyWf) : lbind τ consFields = [natT, lsTy, τ] := by kernel_rfl
+example (τ : TyWf) : lbind τ succFields = [peTy, τ] := by kernel_rfl
 
 /-- **The branches of the member this fold does not descend into**: member `0`, the Peano
     naturals.  `zero` answers with the term given here, and `succ` answers with the value
@@ -376,7 +377,7 @@ Halving is not descending: `n / 2` is not `n` with a fixed number of constructor
 it, so there is no depth at which the branch is *given* the answer at it.  A fold over a
 family is given the answers on the path it descended — through whichever members that path
 crosses — and a recursion that jumps needs a measure and a proof, which a `Term` does not
-carry.  This is the same boundary `TermTests/NatRecDepthTest.lean` records for `Nat`.
+carry.  This is the same boundary `TermTests/NatRecDepthTest/` records for `Nat`.
 -/
 
 end TermTests.FamilyRecDepth

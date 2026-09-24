@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.ArrayRecFacts
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -54,7 +55,7 @@ open LeanScript
 /-- The type the folds below run at: its values are Lean's `Nat`. -/
 abbrev natT : TyWf := TyWf.prim .nat
 
-example : TyWf.Den natT = Nat := rfl
+example : TyWf.Den natT = Nat := by kernel_rfl
 
 /-! ## Depth zero is the fold that was there before -/
 
@@ -68,7 +69,7 @@ theorem sumFold_eq_listFold (l : List Nat) :
     sumFold l = listFold 0 (fun a _ ih => a + ih) l :=
   listFoldK_eq_listFold (τ := natT) 0 (fun a _ ih => a + ih) l
 
-example : sumFold [1, 2, 3, 4] = 10 := rfl
+example : sumFold [1, 2, 3, 4] = 10 := by kernel_rfl
 
 /-! ## Depth one: a recursion that reads the tail of the tail -/
 
@@ -87,10 +88,10 @@ def contFold : List Nat → Nat :=
     (fun l => match l with | [] => 1 | a :: _ => a)
     (fun a _ w => a * w.1 + w.2.1)
 
-example : contFold [] = 1 := rfl
-example : contFold [3] = 3 := rfl
-example : contFold [3, 4] = 13 := rfl
-example : contFold [1, 1, 1, 1, 1, 1] = 13 := rfl
+example : contFold [] = 1 := by kernel_rfl
+example : contFold [3] = 3 := by kernel_rfl
+example : contFold [3, 4] = 13 := by kernel_rfl
+example : contFold [1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
 
 /-- **Any** depth-one fold with these three equations computes the continuant: the empty
     list answers `1`, a one-element list answers its element, and the branch multiplies
@@ -145,10 +146,10 @@ def cont3Fold : List Nat → Nat :=
     (fun l => match l with | [] => 1 | [a] => a | a :: b :: _ => a * b)
     (fun a _ w => a * w.1 + w.2.1 + w.2.2.1)
 
-example : cont3Fold [] = 1 := rfl
-example : cont3Fold [5] = 5 := rfl
-example : cont3Fold [5, 6] = 30 := rfl
-example : cont3Fold [1, 1, 1, 1, 1, 1] = 17 := rfl
+example : cont3Fold [] = 1 := by kernel_rfl
+example : cont3Fold [5] = 5 := by kernel_rfl
+example : cont3Fold [5, 6] = 30 := by kernel_rfl
+example : cont3Fold [1, 1, 1, 1, 1, 1] = 17 := by kernel_rfl
 
 theorem cont3Fold_nil : cont3Fold [] = 1 :=
   listFoldK_base (τ := natT) (k := 2) _ _ [] (by simp)
@@ -211,9 +212,9 @@ def cont4Fold : List Nat → Nat :=
       | a :: b :: c :: _ => a * b * c)
     (fun a _ w => a * w.1 + w.2.1 + w.2.2.1 + w.2.2.2.1)
 
-example : cont4Fold [] = 1 := rfl
-example : cont4Fold [2, 3, 4] = 24 := rfl
-example : cont4Fold [1, 1, 1, 1, 1, 1] = 13 := rfl
+example : cont4Fold [] = 1 := by kernel_rfl
+example : cont4Fold [2, 3, 4] = 24 := by kernel_rfl
+example : cont4Fold [1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
 
 /-- **Any** depth-three fold with these five equations computes `cont4`. -/
 theorem listFoldK_eq_cont4 (z : List Nat → Nat) (s : Nat → List Nat → NatWin natT 4 → Nat)
@@ -263,7 +264,7 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf}
 /-- Depth zero: the branch's context is exactly the one-element fold's, so the node
     subsumes it **definitionally** — no term had to be rewritten for the depth. -/
 example : Term Sg (σ :: TyWf.array σ :: natRecCtx τ 1 Γ) τ =
-    Term Sg (σ :: TyWf.array σ :: τ :: Γ) τ := rfl
+    Term Sg (σ :: TyWf.array σ :: τ :: Γ) τ := by kernel_rfl
 
 /-- Depth one: the context a hand-written two-suffix fold would be written in. -/
 theorem arrayBranchCtx_two : σ :: TyWf.array σ :: natRecCtx τ 2 Γ =

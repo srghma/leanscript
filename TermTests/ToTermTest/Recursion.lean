@@ -2,6 +2,7 @@ module
 
 public import TermTests.ToTermTest.Data
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -45,13 +46,13 @@ def green : Colour := .green
 
 def green_term : Term sig0 [] (tyWfOf Colour) := #leanscript_to_term green
 
-example : run isRed_term (run red_term) = true := rfl
-example : run isRed_term (run green_term) = false := rfl
+example : run isRed_term (run red_term) = true := by kernel_rfl
+example : run isRed_term (run green_term) = false := by kernel_rfl
 
 /-- The dispatch is the partial one: it names the constructor `red` and nothing else. -/
 example : isRed_term =
     .lam (.enum_casesOnWithDefault (.var (v♯0))
-      (.last ⟨0, by decide⟩ (.bool_mk true)) (.bool_mk false)) := rfl
+      (.last ⟨0, by decide⟩ (.bool_mk true)) (.bool_mk false)) := by kernel_rfl
 
 /-- A tagged union with three constructors, two of which share the wildcard's branch. -/
 inductive Sized where
@@ -76,14 +77,14 @@ def aPoint : Sized := .point
 
 def aPoint_term : Term sig0 [] (tyWfOf Sized) := #leanscript_to_term aPoint
 
-example : run widthOrZero_term (run aBox_term) = 3 := rfl
-example : run widthOrZero_term (run aPoint_term) = 0 := rfl
+example : run widthOrZero_term (run aBox_term) = 3 := by kernel_rfl
+example : run widthOrZero_term (run aPoint_term) = 0 := by kernel_rfl
 
 /-- A `match` that *does* name every constructor is still the exhaustive dispatch: there
     is no default branch to reach.  `colourCode` above is one, and this pins that its
     translation is `enum_casesOn`. -/
 example : colourCode_term =
-    .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) := rfl
+    .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) := by kernel_rfl
 
 /-! ## A recursion Lean compiled through `brecOn`
 
@@ -101,10 +102,10 @@ def sumDown : Nat → Nat
 def sumDown_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumDown
 
-example : runAdd sumDown_term 4 = 6 := rfl
+example : runAdd sumDown_term 4 = 6 := by kernel_rfl
 
 /-- The fold is `nat_rec`, the same term `sumUpTo`'s `Nat.rec` translates to. -/
-example : sumDown_term = sumUpTo_term := rfl
+example : sumDown_term = sumUpTo_term := by kernel_rfl
 
 /-- A recursion whose branch does not use the recursive value is the case analysis. -/
 def constDown : Nat → Nat
@@ -114,7 +115,7 @@ def constDown : Nat → Nat
 def constDown_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term constDown
 
-example : run constDown_term 5 = 7 := rfl
+example : run constDown_term 5 = 7 := by kernel_rfl
 
 /-- A recursion on a list, written as a `match`: the fold `recTaggedUnion_rec`, which is
     what `sumList`'s `List.rec` translates to.  A recursive tree has no values, so the
@@ -126,7 +127,7 @@ def sumL : List Nat → Nat
 def sumL_term : Term sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumL
 
-example : sumL_term = sumList_term := rfl
+example : sumL_term = sumList_term := by kernel_rfl
 
 /-! ## A recursion that descends more than one step
 
@@ -145,10 +146,10 @@ def fib : Nat → Nat
 def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fib
 
-example : runAdd fib_term 0 = 0 := rfl
-example : runAdd fib_term 1 = 1 := rfl
-example : runAdd fib_term 10 = 55 := rfl
-example : runAdd fib_term 20 = fib 20 := rfl
+example : runAdd fib_term 0 = 0 := by kernel_rfl
+example : runAdd fib_term 1 = 1 := by kernel_rfl
+example : runAdd fib_term 10 = 55 := by kernel_rfl
+example : runAdd fib_term 20 = fib 20 := by kernel_rfl
 
 /-- Three steps: the tribonacci numbers. -/
 def trib : Nat → Nat
@@ -160,7 +161,7 @@ def trib : Nat → Nat
 def trib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term trib
 
-example : runAdd trib_term 10 = trib 10 := rfl
+example : runAdd trib_term 10 = trib 10 := by kernel_rfl
 
 
 end TermTests.ToTerm

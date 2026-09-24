@@ -2,7 +2,6 @@ module
 import Init.Data.List.Lemmas
 -- public import NonEmpty.ListUtil
 public import NonEmpty.DowngradeMap
-import Aesop
 
 @[expose] public section
 

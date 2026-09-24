@@ -1,6 +1,7 @@
 module
 
 public import TermTests.RecUnionRecDepthTest.Programs
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -246,7 +247,7 @@ abbrev LCtx : Ctx := [natListTy]
 
 -- The `cons` branch binds the head, the tail, and the value of the fold at the tail —
 -- the head is not an occurrence of the union, so no value of the fold follows it.
-example (τ : TyWf) : lbind τ consFields = [natT, natListTy, τ] := rfl
+example (τ : TyWf) : lbind τ consFields = [natT, natListTy, τ] := by kernel_rfl
 
 /-- The branches of the continuant: `nil` answers `1`; `cons` descends into its
     **second** field, and then answers `a` for a one-element list and
@@ -281,8 +282,9 @@ example : Term.NoRecMk contTerm := by no_rec_mk
 /-- The values of `add` and `mul`. -/
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
 
-/-- Running a closed term of `sigAdd`. -/
-local macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+/-- Running a closed term of `sigAdd` (scoped: the checks in
+    `TermTests/RecUnionRecDepthTest/Run*.lean` use it too). -/
+scoped macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
 /-- The Peano natural `n`, built by the terms `zeroTerm` and `succTerm`. -/
 def peanoVal : Nat → TyWf.Den peanoTy
@@ -303,31 +305,14 @@ def contRef : List Nat → Nat
   | [a] => a
   | a :: b :: as => a * contRef (b :: as) + contRef as
 
-example : runP fibTerm (peanoVal 10) = 55 := by decide
-example : ∀ n, n < 10 →
-    runP fibTerm (peanoVal n) = Peano.fib (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP tribTerm (peanoVal n) = Peano.trib (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP tetraTerm (peanoVal n) = Peano.tetra (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP pentaTerm (peanoVal n) = Peano.penta (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP hexaTerm (peanoVal n) = Peano.hexa (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP fibTRTerm (peanoVal n) = Peano.fibTR (Peano.ofNat n) := by
-  decide +kernel
-example : ∀ n, n < 10 →
-    runP fibPairTerm (peanoVal n) = (Peano.fibPair (Peano.ofNat n)).1 := by
-  decide +kernel
-example : runP contTerm (natListVal [3, 1, 4, 1, 5]) = contRef [3, 1, 4, 1, 5] := by decide
-example : runP contTerm (natListVal []) = contRef [] := by decide
-example : runP contTerm (natListVal [7]) = contRef [7] := by decide
+example : runP fibTerm (peanoVal 10) = 55 := by decide +kernel
+-- The checks of each term against its reference at the first ten arguments are in
+-- `TermTests/RecUnionRecDepthTest/RunFibToPenta.lean` and
+-- `TermTests/RecUnionRecDepthTest/RunHexaLoopPair.lean`: each takes a few seconds of
+-- kernel time, and in two files of their own they are checked in parallel.
+example : runP contTerm (natListVal [3, 1, 4, 1, 5]) = contRef [3, 1, 4, 1, 5] := by decide +kernel
+example : runP contTerm (natListVal []) = contRef [] := by decide +kernel
+example : runP contTerm (natListVal [7]) = contRef [7] := by decide +kernel
 
 /-! ## 8. A depth is needed: what cannot be written without one
 
@@ -377,7 +362,7 @@ Halving is not descending: `n / 2` is not `n` with a fixed number of constructor
 off it, so there is no depth at which the branch is *given* the answer at it.  The same
 is true of the union — a fold is given the answers on the path it descended, and a
 recursion that jumps needs a measure and a proof, which a `Term` does not carry.  This is
-the same boundary `TermTests/NatRecDepthTest.lean` records for `Nat`.
+the same boundary `TermTests/NatRecDepthTest/` records for `Nat`.
 -/
 
 end TermTests.RecUnionRecDepth

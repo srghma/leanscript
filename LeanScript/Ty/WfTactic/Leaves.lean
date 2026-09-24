@@ -1,6 +1,7 @@
 module
 
-public meta import Lean
+public meta import Lean.Meta.AppBuilder
+public meta import Lean.Elab.Tactic.Basic
 public meta import LeanScript.Ty.Wf
 
 @[expose] public section

@@ -2,6 +2,7 @@ module
 
 public import LeanScript.NatRecFacts
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -42,7 +43,7 @@ open LeanScript
 /-- The type the folds below run at: its values are Lean's `Nat`. -/
 abbrev natT : TyWf := TyWf.prim .nat
 
-example : TyWf.Den natT = Nat := rfl
+example : TyWf.Den natT = Nat := by kernel_rfl
 
 /-! ## Every depth at once: the fold at `k = 0`, `k = 1`, `k = 2` -/
 
@@ -94,10 +95,10 @@ def trib : Nat → Nat
 def tribFold (n : Nat) : Nat :=
   natFoldK (τ := natT) (k := 2) (1, 1, 0, PUnit.unit) (fun _ w => w.2.2.1 + w.2.1 + w.1) n
 
-example : tribFold 0 = 0 := rfl
-example : tribFold 1 = 1 := rfl
-example : tribFold 2 = 1 := rfl
-example : tribFold 12 = 504 := rfl
+example : tribFold 0 = 0 := by kernel_rfl
+example : tribFold 1 = 1 := by kernel_rfl
+example : tribFold 2 = 1 := by kernel_rfl
+example : tribFold 12 = 504 := by kernel_rfl
 
 /-- The step equation of the depth-three fold, read off `natFoldK_step`: the branch is
     given the three previous answers. -/
@@ -129,7 +130,7 @@ variable {Sg : Sig} {Γ : Ctx} {τ : TyWf}
 /-- Depth one: the context of the branch is exactly the one-step fold's, so the node
     subsumes it **definitionally** — no term had to be rewritten for the depth. -/
 example : Term Sg (TyWf.prim .nat :: natRecCtx τ 1 Γ) τ =
-    Term Sg (TyWf.prim .nat :: τ :: Γ) τ := rfl
+    Term Sg (TyWf.prim .nat :: τ :: Γ) τ := by kernel_rfl
 
 /-- Depth two: the context a hand-written two-step fold would be written in. -/
 theorem natRecCtx_two : natRecCtx τ 2 Γ = τ :: τ :: Γ := rfl

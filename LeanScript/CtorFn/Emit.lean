@@ -34,11 +34,11 @@ def addReducibleDef (name : Name) (type value : Expr) : MetaM Unit := do
 
 /-- A spine of the terms `xs`, at the trees `tys`. -/
 def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := do
-  let mut sp := mkApp2 (mkConst ``LeanScript.Spine.nil) sg γ
+  let mut sp := mkApp2 (mkConst `LeanScript.Spine.nil) sg γ
   let tysA := tys.toArray
   for i in [0:xs.size] do
     let j := xs.size - 1 - i
-    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
+    sp := mkAppN (mkConst `LeanScript.Spine.cons)
       #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp]
   return sp
 
@@ -49,20 +49,20 @@ def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs : 
   match shape with
   | .newtype => return xs[0]!
   | .record sch =>
-      return mkAppN (mkConst ``LeanScript.Term.record_mk)
+      return mkAppN (mkConst `LeanScript.Term.record_mk)
         #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs]
   | .union l =>
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, lenE])
-      return mkAppN (mkConst ``LeanScript.Term.taggedUnion_mk)
+      return mkAppN (mkConst `LeanScript.Term.taggedUnion_mk)
         #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs]
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, nE])
-      return mkAppN (mkConst ``LeanScript.Term.enum_mk)
+      return mkAppN (mkConst `LeanScript.Term.enum_mk)
         #[sg, γ, s, mkAppN (mkConst ``Fin.mk) #[nE, mkNatLit cidx, prf]]
   | .bool =>
-      return mkAppN (mkConst ``LeanScript.Term.bool_mk) #[sg, γ, toExpr (cidx == 1)]
+      return mkAppN (mkConst `LeanScript.Term.bool_mk) #[sg, γ, toExpr (cidx == 1)]
 
 /-- The field names and the trees of the fields a constructor keeps, in the context `c`. -/
 def translateFields (c : TrCtx) (xs : Array Expr) : MetaM (Array (Name × Expr)) := do
@@ -117,7 +117,7 @@ def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : S
     throwError "`#leanscript_ctor`: `{fnName}` is already declared"
   withLocalDecl `Sg .implicit (mkConst ``LeanScript.Sig) fun sg =>
   withLocalDecl `Γ .implicit (mkConst ``LeanScript.Ctx) fun γ => do
-    let termOf (τ : Expr) := mkApp3 (mkConst ``LeanScript.Term) sg γ τ
+    let termOf (τ : Expr) := mkApp3 (mkConst `LeanScript.Term) sg γ τ
     let decls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
       fields.map fun (n, τ) => (n, .default, fun _ => pure (termOf τ))
     withLocalDecls decls fun xs => do

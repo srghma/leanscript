@@ -4,6 +4,7 @@ public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecUnionRecFacts
 public import TermTests.FibWindowTest
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -12,7 +13,7 @@ set_option autoImplicit false
 /-!
 # The `fib` suite, over a recursive tagged union: `recTaggedUnion_rec` at every depth
 
-`TermTests/NatRecDepthTest.lean` writes the family of Fibonacci programs — the `n + 2`
+`TermTests/NatRecDepthTest/` writes the family of Fibonacci programs — the `n + 2`
 recursion, the tail-recursive loop, the pair recursion, and the tribonacci … hexanacci
 numbers — as terms that fold over a `Nat`, and `TermTests/ArrayRecDepthTest.lean` does the
 same for a fold over an array.  This file is that exercise for a fold over a **recursive
@@ -70,7 +71,7 @@ The depth-zero fold is the fold that was there before the depth was added: §8 c
 that, at `k = 0`, no branch can look down at all, and `LeanScript.RecUnionRecFacts` proves
 that the branches of a depth-zero fold are exactly the branches of the plain fold.
 
-The terms are **written out**, as the first half of `TermTests/NatRecDepthTest.lean` and all
+The terms are **written out**, as the first half of `TermTests/NatRecDepthTest/` and all
 of `TermTests/ArrayRecDepthTest.lean` are: `#leanscript_to_term` compiles a recursion on a
 `Nat` at any depth, and a recursion on a list one constructor at a time, so a depth-`k`
 recursion on a union is not something it reads yet.
@@ -249,7 +250,7 @@ def peanoTy : TyWf := .recTaggedUnion peanoSchema
 
 -- The unfolding really is the schema with `Ty.self` replaced by the union, so the field
 -- of `succ` takes a Peano natural.
-example : (TyWf.recTaggedUnionUnfold peanoSchema).get 1 (by decide) = [peanoTy] := rfl
+example : (TyWf.recTaggedUnionUnfold peanoSchema).get 1 (by decide) = [peanoTy] := by kernel_rfl
 
 /-- The fields of `succ`, as the branch families see them. -/
 abbrev succFields : List (TyWfIn 1) := [Ty.self.toTyWfIn]
@@ -259,16 +260,16 @@ abbrev pbind (τ : TyWf) : List (TyWfIn 1) → List TyWf := TyWf.recBinders pean
 
 -- What a branch binds: `zero` binds nothing, and `succ` binds its field — a Peano
 -- natural — and then the value of the fold at that field.
-example (τ : TyWf) : pbind τ [] = [] := rfl
-example (τ : TyWf) : pbind τ succFields = [peanoTy, τ] := rfl
+example (τ : TyWf) : pbind τ [] = [] := by kernel_rfl
+example (τ : TyWf) : pbind τ succFields = [peanoTy, τ] := by kernel_rfl
 
 -- So the branch of `succ` of a depth-zero fold over `Γ` is written in `peanoTy :: τ :: Γ`,
 -- and a branch reached by descending once more is written in that context again with the
 -- subvalue and the value of the fold at it in front of it.
-example (τ : TyWf) (Γ : Ctx) : pbind τ succFields ++ Γ = peanoTy :: τ :: Γ := rfl
+example (τ : TyWf) (Γ : Ctx) : pbind τ succFields ++ Γ = peanoTy :: τ :: Γ := by kernel_rfl
 example (τ : TyWf) (Γ : Ctx) :
     pbind τ succFields ++ (pbind τ succFields ++ Γ) =
-      peanoTy :: τ :: peanoTy :: τ :: Γ := rfl
+      peanoTy :: τ :: peanoTy :: τ :: Γ := by kernel_rfl
 
 /-- The context every fold below is written in: the Peano natural it folds over, bound by
     the `fun` in front of it. -/

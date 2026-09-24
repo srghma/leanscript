@@ -4,6 +4,7 @@ public import LeanScript.Eval
 public import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -11,7 +12,7 @@ public meta import LeanScript.ToTerm.Elab
 # `#leanscript_to_term`, run
 
 Every example below translates a Lean definition into a `LeanScript.Term` and, where the
-term is closed, checks by `rfl` — that is, by the kernel — that the evaluator gives it
+term is closed, checks by `kernel_rfl` — that is, by the kernel — that the evaluator gives it
 the value the Lean definition has.  The examples continue in
 `TermTests.ToTermTest.Data` and `TermTests.ToTermTest.Recursion`, and
 `TermTests.ToTermTest.Refused` pins what the translation **refuses**.
@@ -36,44 +37,44 @@ def idNat (n : Nat) : Nat := n
 
 def idNat_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term idNat
 
-example : run idNat_term 7 = 7 := rfl
+example : run idNat_term 7 = 7 := by kernel_rfl
 
 def constNat (a : Nat) (_b : Nat) : Nat := a
 
 def constNat_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term constNat
 
-example : run constNat_term 3 9 = 3 := rfl
+example : run constNat_term 3 9 = 3 := by kernel_rfl
 
 def letExample : Nat := let x := 4; x
 
 def letExample_term : Term sig0 [] (TyWf.prim .nat) := #leanscript_to_term letExample
 
-example : run letExample_term = 4 := rfl
+example : run letExample_term = 4 := by kernel_rfl
 
 def applied : Nat := (fun (f : Nat → Nat) => f 5) (fun n => n)
 
 def applied_term : Term sig0 [] (TyWf.prim .nat) := #leanscript_to_term applied
 
-example : run applied_term = 5 := rfl
+example : run applied_term = 5 := by kernel_rfl
 
 def hello : String := "hello"
 
 def hello_term : Term sig0 [] (TyWf.prim .string) := #leanscript_to_term hello
 
-example : run hello_term = "hello" := rfl
+example : run hello_term = "hello" := by kernel_rfl
 
 def yes : Bool := true
 
 def yes_term : Term sig0 [] (TyWf.prim .bool) := #leanscript_to_term yes
 
-example : run yes_term = true := rfl
+example : run yes_term = true := by kernel_rfl
 
 def negOne : Int := -1
 
 def negOne_term : Term sig0 [] (TyWf.prim .int) := #leanscript_to_term negOne
 
-example : run negOne_term = -1 := rfl
+example : run negOne_term = -1 := by kernel_rfl
 
 /-! ## A test on a `Bool` -/
 
@@ -81,8 +82,8 @@ def pick (b : Bool) : Nat := if b then 1 else 0
 
 def pick_term : Term sig0 [] (TyWf.prim .bool ⇒ TyWf.prim .nat) := #leanscript_to_term pick
 
-example : run pick_term true = 1 := rfl
-example : run pick_term false = 0 := rfl
+example : run pick_term true = 1 := by kernel_rfl
+example : run pick_term false = 0 := by kernel_rfl
 
 /-! ## Calling a declaration of the signature
 
@@ -104,7 +105,7 @@ def quadruple (n : Nat) : Nat := double (double n)
 def quadruple_term : Term sigDouble [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term quadruple
 
-example : (Term.run envDouble quadruple_term) 3 = 12 := rfl
+example : (Term.run envDouble quadruple_term) 3 = 12 := by kernel_rfl
 
 /-! ## Records -/
 
@@ -122,7 +123,7 @@ def fstOf (p : Point) : Nat := p.x
 
 def fstOf_term : Term sig0 [] (tyWfOf Point ⇒ TyWf.prim .nat) := #leanscript_to_term fstOf
 
-example : run fstOf_term (run mkPoint_term 2 5) = 2 := rfl
+example : run fstOf_term (run mkPoint_term 2 5) = 2 := by kernel_rfl
 
 /-! ## Tagged unions -/
 
@@ -138,7 +139,7 @@ def someThree : Option Nat := some 3
 
 def someThree_term : Term sig0 [] (tyWfOf (Option Nat)) := #leanscript_to_term someThree
 
-example : run orZero_term (run someThree_term) = 3 := rfl
+example : run orZero_term (run someThree_term) = 3 := by kernel_rfl
 
 /-! ## Enums -/
 
@@ -161,7 +162,7 @@ def blue : Colour := .blue
 
 def blue_term : Term sig0 [] (tyWfOf Colour) := #leanscript_to_term blue
 
-example : run colourCode_term (run blue_term) = 2 := rfl
+example : run colourCode_term (run blue_term) = 2 := by kernel_rfl
 
 /-! ## Arrays
 
@@ -172,7 +173,7 @@ def digits : Array Nat := #[1, 2, 3]
 
 def digits_term : Term sig0 [] (TyWf.array (TyWf.prim .nat)) := #leanscript_to_term digits
 
-example : run digits_term = #[1, 2, 3] := rfl
+example : run digits_term = #[1, 2, 3] := by kernel_rfl
 
 /-! ## Lists
 
@@ -203,11 +204,11 @@ def firstOrZero (l : List Nat) : Nat :=
 def firstOrZero_term : Term sig0 [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term firstOrZero
 
-example : Ty.DenRec.toList (.prim .nat) (run digitList_term) = [1, 2, 3] := by decide
+example : Ty.DenRec.toList (.prim .nat) (run digitList_term) = [1, 2, 3] := by decide +kernel
 example : Ty.DenRec.toList (.prim .nat) (run prepend_term 7 (run digitList_term)) =
-    [7, 1, 2, 3] := by decide
-example : run firstOrZero_term (run digitList_term) = 1 := by decide
-example : run firstOrZero_term (run prepend_term 7 (run digitList_term)) = 7 := by decide
+    [7, 1, 2, 3] := by decide +kernel
+example : run firstOrZero_term (run digitList_term) = 1 := by decide +kernel
+example : run firstOrZero_term (run prepend_term 7 (run digitList_term)) = 7 := by decide +kernel
 
 /-- A `match` that does not recur is a case analysis: this is `nat_casesOn`. -/
 def pred (n : Nat) : Nat :=
@@ -217,8 +218,8 @@ def pred (n : Nat) : Nat :=
 
 def pred_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term pred
 
-example : run pred_term 5 = 4 := rfl
-example : run pred_term 0 = 0 := rfl
+example : run pred_term 5 = 4 := by kernel_rfl
+example : run pred_term 0 = 0 := by kernel_rfl
 
 /-! ## The two folds
 
@@ -240,7 +241,7 @@ noncomputable def sumUpTo (n : Nat) : Nat := Nat.rec 0 (fun k ih => k + ih) n
 def sumUpTo_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumUpTo
 
-example : runAdd sumUpTo_term 4 = 6 := rfl
+example : runAdd sumUpTo_term 4 = 6 := by kernel_rfl
 
 noncomputable def sumList (l : List Nat) : Nat :=
   List.rec 0 (fun hd _tl ih => hd + ih) l
@@ -250,7 +251,7 @@ noncomputable def sumList (l : List Nat) : Nat :=
 def sumList_term : Term sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumList
 
-example : runAdd sumList_term (run digitList_term) = 6 := by decide
+example : runAdd sumList_term (run digitList_term) = 6 := by decide +kernel
 
 end TermTests.ToTerm
 
