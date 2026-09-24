@@ -283,11 +283,13 @@ def contBranch : Term sigAdd (branchCtx natT 1) natT :=
 def contTerm : Term sigAdd [] (cellTy ⇒ natT) :=
   .lam (.recObject_rec 1 (.var (v♯0)) contBranch)
 
-/-! ## 7. What the evaluator says about these terms
+/-! ## 7. Running the terms
 
-A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is
-a term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
-apart is fine — there is nothing to take apart — while *building* one is not. -/
+A recursive record has values in the model (`LeanScript.Ty.Den` gives it the W-tree of
+its fields), so these terms run, and the kernel checks them against their Lean
+references.  The depth-`k` folds are evaluated with every answer remembered
+(`LeanScript.WType.memo`), and the window a branch takes apart is read off those
+memos (`LeanScript.objRecEnv`). -/
 
 example : Term.NoRecMk fibTerm := by no_rec_mk
 example : Term.NoRecMk tribTerm := by no_rec_mk
@@ -295,6 +297,59 @@ example : Term.NoRecMk hexaTerm := by no_rec_mk
 example : Term.NoRecMk fibTRTerm := by no_rec_mk
 example : Term.NoRecMk fibPairTerm := by no_rec_mk
 example : Term.NoRecMk contTerm := by no_rec_mk
+
+/-- The values of `add` and `mul`. -/
+def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
+
+/-- Running a closed term of `sigAdd`. -/
+scoped macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+
+/-- A cell with no cell below it, labelled by the argument. -/
+def lastCellTerm : Term sigAdd [] (natT ⇒ cellTy) :=
+  .lam (.recObject_mk cellSchema
+    (fields := .cons (.var (v♯0))
+      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil)))
+
+/-- A cell labelled by the first argument, on top of the second. -/
+def consCellTerm : Term sigAdd [] (natT ⇒ cellTy ⇒ cellTy) :=
+  .lam (.lam (.recObject_mk cellSchema
+    (fields := .cons (.var (v♯1))
+      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
+        (fields := .cons (.var (v♯0)) .nil)) .nil))))
+
+/-- The chain `c`, built by the introduction form. -/
+def cellVal : Cell → TyWf.Den cellTy
+  | .mk l none => runP lastCellTerm l
+  | .mk l (some c) => runP consCellTerm l (cellVal c)
+
+/-- A chain with the labels `ls`, the last one at the bottom (`[a]` is one cell). -/
+def ofLabels : List Nat → Cell
+  | [] => .mk 0 none
+  | [a] => .mk a none
+  | a :: b :: rest => .mk a (some (ofLabels (b :: rest)))
+
+-- Each run is checked by the kernel against a number, and the Lean reference is checked
+-- against the same number by `#guard` (most of the references recurse on a subterm two
+-- cells down, which is well-founded rather than structural recursion, so the kernel does
+-- not unfold them).
+example : runP fibTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
+#guard Cell.fib (Cell.ofNat 10) == 55
+example : runP tribTerm (cellVal (Cell.ofNat 10)) = 81 := by decide +kernel
+#guard Cell.trib (Cell.ofNat 10) == 81
+example : runP tetraTerm (cellVal (Cell.ofNat 9)) = 29 := by decide +kernel
+#guard Cell.tetra (Cell.ofNat 9) == 29
+example : runP pentaTerm (cellVal (Cell.ofNat 9)) = 16 := by decide +kernel
+#guard Cell.penta (Cell.ofNat 9) == 16
+example : runP hexaTerm (cellVal (Cell.ofNat 9)) = 8 := by decide +kernel
+#guard Cell.hexa (Cell.ofNat 9) == 8
+example : runP fibTRTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
+#guard Cell.fibTR (Cell.ofNat 10) == 55
+example : runP fibPairTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
+#guard (Cell.fibPair (Cell.ofNat 10)).1 == 55
+example : runP contTerm (cellVal (ofLabels [3, 1, 4, 1, 5])) = 134 := by decide +kernel
+#guard Cell.cont (ofLabels [3, 1, 4, 1, 5]) == 134
+example : runP contTerm (cellVal (ofLabels [7])) = 7 := by decide +kernel
+#guard Cell.cont (ofLabels [7]) == 7
 
 /-! ## 8. The depth-zero fold, and what no depth reaches
 

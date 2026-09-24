@@ -281,8 +281,9 @@ def negativeSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 
 A recursive **tagged union** has values — `LeanScript.Ty.Den` gives it the W-tree of its
 constructors — so `LeanScript.Term.eval` interprets all four of its forms, the
-introduction form included.  The other three recursive shapes still denote `PEmpty`, so
-building one of *them* is outside the model, and `Term.NoRecMk` says so. -/
+introduction form included, and so do a recursive **record** and a recursive **newtype**,
+which denote the W-tree of their fields and of their body.  A mutual family still denotes
+`PEmpty`, so building one of *it* is outside the model, and `Term.NoRecMk` says so. -/
 
 example : Term.NoRecMk natHead := by no_rec_mk
 example : Term.NoRecMk natFoldZero := by no_rec_mk
@@ -306,7 +307,18 @@ example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by de
 /-- The fold that answers `0` answers `0`. -/
 example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide +kernel
 
-/-- Building a recursive **record** is still outside the model. -/
-example : ¬ Term.NoRecMk roseLeaf := fun h => h
+/-- Building a recursive **record** is inside the model: its label reads back. -/
+example : Term.NoRecMk roseLeaf := by no_rec_mk
+example : Term.run GlobalEnv.nil (.ap roseLabel roseLeaf) = 1 := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap roseLabel roseOne) = 2 := by decide +kernel
+
+/-- Building a recursive **newtype** is inside the model too: the empty forest is empty,
+    and a forest of one forest is not. -/
+example : Term.NoRecMk oneForest := by no_rec_mk
+example : Term.run GlobalEnv.nil (.ap forestIsEmpty emptyForest) = true := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap forestIsEmpty oneForest) = false := by decide +kernel
+
+/-- Building a member of a **mutual family** is still outside the model. -/
+example : ¬ Term.NoRecMk aNil := fun h => h
 
 end TermTests

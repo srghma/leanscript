@@ -7,16 +7,17 @@ public import LeanScript.Eval
 # Which terms does the evaluator evaluate?
 
 `Term.eval` is total on the terms that satisfy `Term.NoRecMk` — the terms that build no
-value of a recursive **record**, recursive **newtype** or **mutual family** — and on
-nothing else.  A recursive *tagged union* has values in the model (a W-tree of its
-constructors), so its introduction form is inside the fragment.  This file checks, with
+value of a **mutual family** — and on nothing else.  A recursive *tagged union*, a
+recursive *record* and a recursive *newtype* have values in the model (a W-tree of their
+payload), so their introduction forms are inside the fragment.  This file checks, with
 the kernel, that
 
 * a closed term such as `natNil` (the empty list of naturals) **does** satisfy
   `Term.NoRecMk`, and the evaluator runs it and the eliminators applied to it: `natHead`
   and `natFoldZero` are now told apart;
+* so does a rose tree (a recursive record), which the evaluator builds and takes apart;
 * the restriction that remains is real and cannot be lifted without changing the model
-  `TyWf.Den`: a recursive record denotes an **empty** type, so *no* function whatsoever
+  `TyWf.Den`: a mutual family denotes an **empty** type, so *no* function whatsoever
   — not just this evaluator — can send every closed term to a value of its type.
 -/
 
@@ -93,17 +94,57 @@ def roseTy : TyWf := .recObject roseSchema
 def roseLeaf : Term covEmptySig [] roseTy :=
   .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
 
-/-- A leaf is outside the evaluator's fragment. -/
+/-! The three statements below held when a recursive record denoted `PEmpty`.  They are
+**false** now that it denotes the W-tree of its fields: `roseLeaf` is inside the fragment
+and `roseTy` has values.  They are kept, commented out, as the record of what changed; the
+last theorem of this file is `no_total_evaluator` restated with a mutual family.
+
+```
 theorem roseLeaf_not_noRecMk : ¬ Term.NoRecMk roseLeaf := fun h => h
-
-/-- A rose tree — a recursive record — has no value in the model. -/
 theorem roseTy_den_empty : TyWf.Den roseTy → False := fun v => PEmpty.elim v
-
-/-- **No evaluator into `TyWf.Den` can evaluate every closed term**: there is no function
-    at all giving each closed term of the empty signature a value of its type, since
-    `roseLeaf` would need a value of the empty type `TyWf.Den roseTy`. -/
 theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.Den τ) :
     False :=
   roseTy_den_empty (ev _ roseLeaf)
+```
+-/
+
+/-- A leaf is inside the evaluator's fragment. -/
+theorem roseLeaf_noRecMk : Term.NoRecMk roseLeaf := by no_rec_mk
+
+/-- The label of a rose tree: the eliminator binds every field, so it is index `0`. -/
+def roseLabel : Term covEmptySig [] (roseTy ⇒ TyWf.prim .nat) :=
+  .lam (.recObject_casesOn (.var (v♯0)) (.var (v♯0)))
+
+/-- The label of the leaf reads back. -/
+theorem run_roseLabel_roseLeaf :
+    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap roseLabel roseLeaf) = 1 := by
+  decide +kernel
+
+/-- A mutual family: member `A` has a field-less constructor and one holding a `B`, and
+    `B` is a record of a natural and an `A`. -/
+def covFamA : LeanMutualRecFamily (TyWfIn 2) :=
+  .selectedThenMore []
+    (.ctors (.skip (.here ⟨(Ty.familyMember 1).toTyWfIn, []⟩ [])))
+    (.record ⟨(Ty.prim .nat).toTyWfIn, (Ty.familyMember 0).toTyWfIn, []⟩) []
+
+/-- The type of member `A`. -/
+def covTyA : TyWf := .mutualRecursiveFamily covFamA
+
+/-- The field-less constructor of `A`. -/
+def covANil : Term covEmptySig [] covTyA :=
+  .mutualRecursiveFamily_mk covFamA (value := .ctors _ 0 (fields := .nil))
+
+/-- Building a member of a family is outside the evaluator's fragment. -/
+theorem covANil_not_noRecMk : ¬ Term.NoRecMk covANil := fun h => h
+
+/-- A member of a mutual family has no value in the model. -/
+theorem covTyA_den_empty : TyWf.Den covTyA → False := fun v => PEmpty.elim v
+
+/-- **No evaluator into `TyWf.Den` can evaluate every closed term**: there is no function
+    at all giving each closed term of the empty signature a value of its type, since
+    `covANil` would need a value of the empty type `TyWf.Den covTyA`. -/
+theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.Den τ) :
+    False :=
+  covTyA_den_empty (ev _ covANil)
 
 end TermTests

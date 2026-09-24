@@ -18,28 +18,28 @@ namespace LeanScript
 
 /-! ## The fragment the evaluator interprets
 
-`LeanScript.Ty.Den` gives a recursive **tagged union** its values — the W-tree of its
-constructors — but gives the other three recursive shapes of `Ty` (`Ty.recObject`,
-`Ty.recAlias`, `Ty.mutualRecursiveFamily`) **no values**: each of them denotes `PEmpty`.
-So the one thing this evaluator cannot do is *build* a value of one of those three —
-`Term.recObject_mk`, `Term.recAlias_mk` and `Term.mutualRecursiveFamily_mk` have no image
-in the model.  Everything else does, the eliminators of those shapes included: their
-scrutinee has no values, so a dispatch on one is `PEmpty.elim`.
+`LeanScript.Ty.Den` gives a recursive **tagged union**, a recursive **record** and a
+recursive **newtype** their values — the W-tree of the binder's payload — but gives the
+fourth recursive shape of `Ty`, `Ty.mutualRecursiveFamily`, **no values**: it denotes
+`PEmpty`.  So the one thing this evaluator cannot do is *build* a value of a mutual family
+— `Term.mutualRecursiveFamily_mk` has no image in the model.  Everything else does, the
+eliminators of a family included: their scrutinee has no values, so a dispatch on one is
+`PEmpty.elim`.
 
-`Term.NoRecMk t` says that `t` builds no such value: it is `False` at exactly those three
-constructors and the conjunction of its subterms' everywhere else — the four forms of a
-recursive tagged union included, whose branches really are evaluated — so a term that
-does not mention them at all satisfies it by `no_rec_mk`, which is the default of the
+`Term.NoRecMk t` says that `t` builds no such value: it is `False` at exactly that
+constructor and the conjunction of its subterms' everywhere else — the forms of the other
+three recursive shapes included, whose branches really are evaluated — so a term that
+does not mention it at all satisfies it by `no_rec_mk`, which is the default of the
 hypothesis on `Term.run` and `Term.run'`.
 
-Giving the other three shapes their values needs the same construction as for a
-recursive tagged union (a container and its W-type; an *indexed* one for a mutual
-family); until it is here, the restriction is stated rather than assumed. -/
+Giving a mutual family its values needs the same construction as for the other three
+shapes, with an *indexed* W-type; until it is here, the restriction is stated rather than
+assumed. -/
 
 mutual
 
-/-- The term builds no value of a recursive record, newtype or mutual family, so
-    `Term.eval` can interpret it.  See this section's header. -/
+/-- The term builds no value of a mutual recursive family, so `Term.eval` can interpret
+    it.  See this section's header. -/
 def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → Prop
   | _, _, .lam body => Term.NoRecMk body
   | _, _, .ap f a => Term.NoRecMk f ∧ Term.NoRecMk a
@@ -98,14 +98,15 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
       Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   | _, _, .recTaggedUnion_rec _ v cases =>
       Term.NoRecMk v ∧ TaggedUnionFoldKCases.NoRecMk cases
-  -- the other three recursive shapes: an introduction form has no value in this model,
-  -- and an eliminator needs nothing of its branches, since its scrutinee has none either
-  | _, _, .recObject_mk _ _ _ => False
-  | _, _, .recObject_casesOn v _ => Term.NoRecMk v
-  | _, _, .recObject_rec _ v _ => Term.NoRecMk v
-  | _, _, .recAlias_mk _ _ _ => False
-  | _, _, .recAlias_casesOn v _ => Term.NoRecMk v
-  | _, _, .recAlias_rec _ v _ => Term.NoRecMk v
+  -- recursive records and newtypes have values too: their forms are interpreted
+  | _, _, .recObject_mk _ _ fields => Spine.NoRecMk fields
+  | _, _, .recObject_casesOn v body => Term.NoRecMk v ∧ Term.NoRecMk body
+  | _, _, .recObject_rec _ v body => Term.NoRecMk v ∧ Term.NoRecMk body
+  | _, _, .recAlias_mk _ _ value => Term.NoRecMk value
+  | _, _, .recAlias_casesOn v body => Term.NoRecMk v ∧ Term.NoRecMk body
+  | _, _, .recAlias_rec _ v body => Term.NoRecMk v ∧ Term.NoRecMk body
+  -- a mutual family: an introduction form has no value in this model, and an eliminator
+  -- needs nothing of its branches, since its scrutinee has none either
   | _, _, .mutualRecursiveFamily_mk _ _ _ => False
   | _, _, .mutualRecursiveFamily_casesOn v _ => Term.NoRecMk v
   | _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _ => Term.NoRecMk v
@@ -214,9 +215,9 @@ def TaggedUnionFoldKCasesRest.NoRecMk {Sg : Sig} :
 
 end
 
-/-- Prove that a term builds no value of a recursive record, newtype or mutual family.  A
-    term written out builds none unless one of those three introduction forms is in it,
-    and then the goal is `False` and the tactic fails, which is the honest answer. -/
+/-- Prove that a term builds no value of a mutual recursive family.  A term written out
+    builds none unless `Term.mutualRecursiveFamily_mk` is in it, and then the goal is
+    `False` and the tactic fails, which is the honest answer. -/
 macro "no_rec_mk" : tactic =>
   `(tactic| repeat' first | exact trivial | refine And.intro ?_ ?_)
 

@@ -4,6 +4,7 @@ public import LeanScript.Eval.Env
 public import LeanScript.Eval.NoRecMk
 public import LeanScript.Eval.Extern
 public import LeanScript.Den.Rec
+public import LeanScript.Den.RecObjectAlias
 
 @[expose] public section
 
@@ -25,18 +26,27 @@ terminates on every input — there is no fuel, no `partial` and no `unsafe`, an
 answer is a value rather than a computation that might not stop.
 
 It has one restriction, and it is a restriction of the *model* rather than of the
-language: `LeanScript.Ty.Den` gives a recursive **record**, a recursive **newtype** and a
-**mutual family** no values, so a term that **builds** one has no value here.  That is the
-hypothesis `LeanScript.Term.NoRecMk`, the last argument of `Term.eval`; the tactic
-`no_rec_mk` discharges it for a term that does not use those three introduction forms.  A
-recursive **tagged union** does have values — the W-tree of its constructors — and all
-four of its forms are interpreted: `Term.recTaggedUnion_mk` builds a node
-(`TyWf.DenRec.mk`), a dispatch takes one level off (`TyWf.DenRec.unfold`), and the fold
-of any depth `k` is `WType.memoFold`, which computes the answer at every node once,
-bottom-up, and stores it beside the node, so a branch that looks further down reads
-answers that are already there.  All of it is structural, on the term and on the value,
-so the evaluator is still total with no fuel.  `LeanScript.RecUnionEvalFacts` states what
-it does with them.
+language: `LeanScript.Ty.Den` gives a **mutual family** no values, so a term that
+**builds** one has no value here.  That is the hypothesis `LeanScript.Term.NoRecMk`, the
+last argument of `Term.eval`; the tactic `no_rec_mk` discharges it for a term that does
+not use `Term.mutualRecursiveFamily_mk`.  The other three recursive shapes do have
+values — the W-tree of the binder's payload — and all of their forms are interpreted:
+
+* a recursive **tagged union**: `Term.recTaggedUnion_mk` builds a node
+  (`TyWf.DenRec.mk`), a dispatch takes one level off (`TyWf.DenRec.unfold`), and the fold
+  of any depth `k` is `WType.memoFold`, which computes the answer at every node once,
+  bottom-up, and stores it beside the node, so a branch that looks further down reads
+  answers that are already there;
+* a recursive **record**: `Term.recObject_mk` builds a node from the unfolded fields
+  (`TyWf.DenObj.mk`), `Term.recObject_casesOn` binds them again (`TyWf.DenObj.unfold`),
+  and `Term.recObject_rec` is `WType.memoFold` too, its branch binding the fields and the
+  window of answer trees read off the memo (`LeanScript.objRecEnv`);
+* a recursive **newtype**: the same, with the body for the fields (`TyWf.DenAlias.mk`,
+  `TyWf.DenAlias.unfold`, `LeanScript.aliasRecEnv`).
+
+All of it is structural, on the term and on the value, so the evaluator is still total
+with no fuel.  `LeanScript.RecUnionEvalFacts` and `LeanScript.RecObjectAliasEvalFacts`
+state what it does with them.
 
 That this is possible at all is the point of the grammar: `LeanScript.Term` has no
 fixpoint constructor.  The two recursive forms it does have, `Term.nat_rec` and
@@ -68,9 +78,8 @@ mutual
     of the module's top-level declarations.  It is defined by structural recursion on the
     term, so it terminates on every input.
 
-    The last argument is the one restriction — the term builds no value of a recursive
-    record, newtype or mutual family, which this model has none of; see the section
-    above. -/
+    The last argument is the one restriction — the term builds no value of a mutual
+    family, which this model has none of; see the section above. -/
 def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → (t : Term Sg Γ τ) → Env Γ → Term.NoRecMk t → TyWf.Den τ
   | _, _, .var v, env, _ => Env.get v env
@@ -213,13 +222,29 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
           TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) node.1.val
             ⟨node.2, kids⟩ h.2)
         (Term.eval G v env h.1)
-  -- the other recursive shapes: no value of one is built, and one taken apart has none
-  | _, _, .recObject_mk _ _ _, _, h => h.elim
-  | _, _, .recObject_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, .recObject_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, .recAlias_mk _ _ _, _, h => h.elim
-  | _, _, .recAlias_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, .recAlias_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
+  -- recursive records: a value is a W-tree of the record's shapes, taken apart one level
+  -- by `TyWf.DenObj.unfold` and folded bottom-up with every answer remembered
+  | _, _, .recObject_mk fs hwf fields, env, h =>
+      TyWf.DenObj.mk fs hwf (Spine.eval G fields env h)
+  | _, _, .recObject_casesOn (fs := fs) (hwf := hwf) v body, env, h =>
+      Term.eval G body (Env.append (TyWf.DenObj.unfold fs hwf (Term.eval G v env h.1)) env)
+        h.2
+  | _, τ, .recObject_rec (fs := fs) (hwf := hwf) k v body, env, h =>
+      WType.memoFold
+        (fun node kids => Term.eval G body (Env.append (objRecEnv fs hwf τ k node kids) env)
+          h.2)
+        (Term.eval G v env h.1)
+  -- recursive newtypes: the same, with the body for the fields
+  | _, _, .recAlias_mk b hwf value, env, h =>
+      TyWf.DenAlias.mk b hwf (Term.eval G value env h)
+  | _, _, .recAlias_casesOn (b := b) (hwf := hwf) v body, env, h =>
+      Term.eval G body (TyWf.DenAlias.unfold b hwf (Term.eval G v env h.1), env) h.2
+  | _, τ, .recAlias_rec (b := b) (hwf := hwf) k v body, env, h =>
+      WType.memoFold
+        (fun node kids =>
+          Term.eval G body (Env.append (aliasRecEnv b hwf τ k node kids) env) h.2)
+        (Term.eval G v env h.1)
+  -- a mutual family: no value of one is built, and one taken apart has none
   | _, _, .mutualRecursiveFamily_mk _ _ _, _, h => h.elim
   | _, _, .mutualRecursiveFamily_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _, env, h =>
@@ -416,7 +441,7 @@ end
 
 /-- The value of a term of the empty context: a closed program, run against the values of
     the module's top-level declarations.  The hypothesis is written by `no_rec_mk`, so a
-    term that builds no recursive value needs nothing written by hand. -/
+    term that builds no value of a mutual family needs nothing written by hand. -/
 def Term.run {Sg : Sig} {τ : TyWf} (G : GlobalEnv Sg.decls) (t : Term Sg [] τ)
     (h : Term.NoRecMk t := by no_rec_mk) : TyWf.Den τ :=
   Term.eval G t Env.nil h
