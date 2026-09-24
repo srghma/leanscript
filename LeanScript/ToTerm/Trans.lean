@@ -228,6 +228,15 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       \"{n.getString!}\" (or \"{n}\") to the signature."
   checkConst n
   if let some t ← transIdOp? c n args then return t
+  -- `if`/`cond` applied to more arguments than the test and the branches (a dispatch
+  -- that answers with a function, applied): the dispatch, then applied to the rest —
+  -- which `mkNode` moves into the branches (`LeanScript.Head.caseIntro`)
+  if (n == ``ite || n == ``dite) && args.size > 5 then
+    return ← applyArgs trans c (← trans c (mkAppN (mkConst n lvls) (args.extract 0 5)))
+      (mkAppN (mkConst n lvls) (args.extract 0 5)) (args.extract 5 args.size)
+  if n == ``cond && args.size > 4 then
+    return ← applyArgs trans c (← trans c (mkAppN (mkConst n lvls) (args.extract 0 4)))
+      (mkAppN (mkConst n lvls) (args.extract 0 4)) (args.extract 4 args.size)
   if n == ``ite then return ← transIte c args
   if n == ``dite then return ← transDite c args
   -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`

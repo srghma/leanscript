@@ -336,22 +336,22 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isCtor ?m.70 = false
+  Head.isCtor ?m.73 = false
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head
 has type
-  Term ?m.72 (?m.76 :: ?m.77) (Usage.single DeBruijn.head) ?m.76 Head.var
+  Term ?m.75 (?m.79 :: ?m.80) (Usage.single DeBruijn.head) ?m.79 Head.var
 but is expected to have type
   Term sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    ?m.89 (TyWf.record ?m.90) ?m.70
+    ?m.92 (TyWf.record ?m.93) ?m.73
 in the application
   @Term.record_casesOn sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    natT ?m.90 ?m.89 0 ?m.70 Head.lit (Term.var DeBruijn.head)
+    natT ?m.93 ?m.92 0 ?m.73 Head.lit (Term.var DeBruijn.head)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

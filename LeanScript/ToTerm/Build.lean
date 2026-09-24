@@ -33,7 +33,13 @@ builds a node of any family of the grammar's `mutual` block:
   the fields bound; a forced delay is what it delays; an extern called on literals and
   closed values is **computed** — `Extern.eval` is run (compiled) on their values — and
   replaced by its value, written as a term (`LeanScript.Ty.quote`), when its result type
-  is `LeanScript.TyWf.quotable`, and by `Term.extern` of it otherwise;
+  is `LeanScript.TyWf.quotable`, and by `Term.extern` of it otherwise; an application of
+  a dispatch one of whose branches is a `fun` (`LeanScript.Head.caseIntro`) is moved into
+  the branches (`pushArg`: the argument is bound by a `let` first unless it is a variable
+  or a literal), and so is a force of a dispatch one of whose branches is a delay
+  (`mapBranches`); a fold (`nat_rec`, `array_rec`) whose branch reads none of its
+  answers is written as the nested case analysis it is (`natRecCasesAt`,
+  `arrayRecCasesAt`);
 * otherwise it builds the node, with the proofs written by `decide`.
 
 Inlining is a **substitution**, and a substitution can create new redexes (a variable
@@ -376,6 +382,11 @@ partial def bindersBefore (γ base : Expr) (fuel : Nat := 100000) : MetaM Nat :=
     its fields, closed or not (`LeanScript.Head.isCtor`)? -/
 def isCtorHead (k : Name) : Bool := k == ``LeanScript.Head.ctor || k == ``LeanScript.Head.val
 
+/-- Is this head a `fun`, or a dispatch that may answer with one
+    (`LeanScript.Head.isFunLike`)? -/
+def isFunLikeHead (k : Name) : Bool :=
+  k == ``LeanScript.Head.lam || k == ``LeanScript.Head.caseIntro
+
 /-- Is this head a literal or a closed value (`LeanScript.Head.isValue`)? -/
 def isValueHead (k : Name) : Bool := k == ``LeanScript.Head.lit || k == ``LeanScript.Head.val
 
@@ -463,8 +474,10 @@ partial def floatLet? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) :=
   unless sn.getAppFn.isConstOf ``LeanScript.Term.letE do return none
   let k ← headOf s
   let floats :=
-    if ctor == ``LeanScript.Term.ap || ctor == ``LeanScript.Term.letE then
-      k == ``LeanScript.Head.lam
+    if ctor == ``LeanScript.Term.ap then isFunLikeHead k
+    else if ctor == ``LeanScript.Term.letE then k == ``LeanScript.Head.lam
+    else if ctor == ``LeanScript.Term.thunk_force || ctor == ``LeanScript.Term.lazy_force then
+      isCtorHead k || k == ``LeanScript.Head.caseIntro
     else isCtorHead k
   unless floats do return none
   let e ← fieldNamed sn "e"
@@ -797,7 +810,10 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
   match ctor with
   | ``LeanScript.Term.ap =>
       let f ← arg "f"
-      unless (← headOf f) == ``LeanScript.Head.lam do return none
+      let kf ← headOf f
+      if kf == ``LeanScript.Head.caseIntro then
+        return some (← pushArg sg (← arg "Γ") (← arg "σ") (← arg "τ") f (← arg "a"))
+      unless kf == ``LeanScript.Head.lam do return none
       let body ← lastArg f
       let a ← arg "a"
       let γ ← arg "Γ"
@@ -808,7 +824,8 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       let e ← arg "e"
       let b ← arg "b"
       let k ← headOf e
-      if (k == ``LeanScript.Head.comp || isCtorHead k) && (← usesOf b 0) ≥ 2 then
+      if (k == ``LeanScript.Head.comp || isCtorHead k || k == ``LeanScript.Head.caseIntro) &&
+          (← usesOf b 0) ≥ 2 then
         return none
       some <$> subst0 b e (← arg "Γ")
   | ``LeanScript.Term.bool_casesOn =>
@@ -851,7 +868,13 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       some <$> bindMany sg γ (← arg "b") (← primFields ctor sg γ x)
   | ``LeanScript.Term.lazy_force | ``LeanScript.Term.thunk_force =>
       let e ← arg "e"
-      unless isCtorHead (← headOf e) do return none
+      let ke ← headOf e
+      if ke == ``LeanScript.Head.caseIntro then
+        -- a force of a dispatch one of whose branches is a delay: force each branch
+        let τ ← arg "τ"
+        let τd ← termTyOf e
+        return some (← mapBranches e τd τ fun γc _ b => mkNode ctor #[sg, γc, τ, b])
+      unless isCtorHead ke do return none
       some <$> lastArg e
   | ``LeanScript.Term.array_casesOn =>
       let a ← arg "a"
@@ -936,6 +959,23 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       match ← tuSomeBranch? (← argNamed cases.getAppFn.constName! cases.getAppArgs "cases") t with
       | some b => some <$> bindMany sg γ b (← spineElems (← lastArg value))
       | none => some <$> rebase (← arg "dflt") γ
+  | ``LeanScript.Term.nat_rec =>
+      -- a fold whose branch reads none of its answers is a case analysis
+      let k ← natValue (← arg "k")
+      let branch ← arg "branch"
+      if (← answersRead branch 1 (k + 1)) > 0 then return none
+      let (_, γb, _, _, _) ← termParts branch
+      let natTy := (← ctxCell γb 0).1
+      some <$> natRecCasesAt sg (← arg "τ") natTy k 0 (← arg "Γ") (← arg "n")
+        (← spineElems (← arg "base")) branch
+  | ``LeanScript.Term.array_rec =>
+      let k ← natValue (← arg "k")
+      let branch ← arg "branch"
+      if (← answersRead branch 2 (k + 1)) > 0 then return none
+      let (_, γb, _, _, _) ← termParts branch
+      let arrTy := (← ctxCell γb 1).1
+      some <$> arrayRecCasesAt sg (← arg "σ") arrTy (← arg "τ") k 0 (← arg "Γ") (← arg "a")
+        (← arrayRecBasesElems (← arg "bases")) branch
   | ``LeanScript.Term.extern =>
       -- an extern on values whose value can be written: the value
       let τ ← arg "τ"
@@ -972,6 +1012,118 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
           let h ← mkDecideProof (← mkEq (← mkAppM ``Option.isSome #[opt]) (mkConst ``Bool.true))
           some <$> mkExternNode sg γ τ (← mkAppM ``Option.get #[opt, h])
   | _ => return none
+
+/-- `(match … with | p => fᵖ) a`, where the dispatch `f` has a `fun` in some branch
+    (`LeanScript.Head.caseIntro`): the application moved into the branches,
+    `match … with | p => fᵖ a`, where it meets the `fun` and is reduced.  An argument that
+    is not a variable or a literal is bound by a `let` first, so it is written once;
+    `mkNode` then inlines it where the grammar asks (into the one branch that reads it,
+    say, since the branches of a dispatch run at most once between them). -/
+partial def pushArg (sg γ σ τ f a : Expr) : MetaM Expr := do
+  let ka ← headOf a
+  if ka == ``LeanScript.Head.var || ka == ``LeanScript.Head.lit then
+    let τf ← termTyOf f
+    return ← mapBranches f τf τ fun γc n b => do
+      let a' ← if n == 0 then rebase a γc else shiftBy a γc n
+      mkNode ``LeanScript.Term.ap #[sg, γc, σ, τ, b, a']
+  let γ' := consCtxE σ γ
+  let f' ← shiftBy f γ' 1
+  let body ← mkNode ``LeanScript.Term.ap #[sg, γ', σ, τ, f', ← mkVarTerm sg γ' 0]
+  mkNode ``LeanScript.Term.letE #[sg, γ, σ, τ, a, body]
+
+/-- Rebuild the dispatch `t` (a node of `Term` whose root is a dispatch, or a node of one
+    of the families of branches it holds), whose branches answer with the type `τ`, with
+    every branch `b` replaced by `k γc n b` — `γc` is the context `b` is written in and `n`
+    the number of variables the branch binds — which answers with `τ'`.  What the
+    dispatch is taken on, and every other argument, is kept. -/
+partial def mapBranches (t τ τ' : Expr) (k : Expr → Nat → Expr → MetaM Expr) :
+    MetaM Expr := do
+  let t ← exposeNode t
+  let .const ctor _ := t.getAppFn | unreachable!
+  let args := t.getAppArgs
+  let ci ← getConstInfoCtor ctor
+  let info ← ctorInfo ctor
+  let mut γ := mkConst ``Unit
+  for i in [0:info.roles.size] do
+    if info.roles[i]! == .ctx then γ := args[ci.numParams + i]!
+  -- which fields are branches: the subterms whose type is written with the node's own `τ`
+  let branch ← forallTelescope ci.type fun xs _ => do
+    let fields := xs.extract ci.numParams xs.size
+    let some j := info.names.findIdx? (·.eraseMacroScopes.toString == "τ")
+      | throwError "`#leanscript_to_term`: internal: {ctor} has no result type"
+    let τv := fields[j]!
+    fields.mapM fun x => do
+      let ty ← inferType x
+      return ty.getAppFn.constName?.any isGrammarFamily && ty.getAppArgs.contains τv
+  let mut newArgs := args.extract 0 ci.numParams
+  for i in [0:info.roles.size] do
+    let old := args[ci.numParams + i]!
+    match info.roles[i]! with
+    | .index | .indexProof => continue
+    | .child =>
+        let (fty, γc) ← famTypeOf' (← inferType old)
+        if !branch[i]! then newArgs := newArgs.push old
+        else if fty.getAppFn.isConstOf ``LeanScript.Term then
+          let n ← bindersBefore γc γ
+          newArgs := newArgs.push (← k γc n old)
+        else
+          newArgs := newArgs.push (← mapBranches old τ τ' k)
+    | _ =>
+        if info.names[i]!.eraseMacroScopes.toString == "τ" then newArgs := newArgs.push τ'
+        else newArgs := newArgs.push old
+  mkNode ctor newArgs
+
+/-- How many times the term `b` reads the `n` variables of de Bruijn indices `start`,
+    `start + 1`, …: the answers a fold's branch is given. -/
+partial def answersRead (b : Expr) (start n : Nat) : MetaM Nat := do
+  let mut total := 0
+  for j in [start:start + n] do total := total + (← usesOf b j)
+  return total
+
+/-- `nat_rec k n base branch`, whose branch reads none of its answers, as the case analysis
+    it is: `k + 1` nested `nat_casesOn`, the one at level `j` (in the context `γj`, which
+    binds the `j` predecessors taken so far in front of the fold's context) answering
+    `base` at `j` for zero, and the innermost handing its predecessor — the `n` of the
+    branch — to the branch. -/
+partial def natRecCasesAt (sg τ natTy : Expr) (k j : Nat) (γj n : Expr) (base : Array Expr)
+    (branch : Expr) : MetaM Expr := do
+  if j == k + 1 then
+    -- the branch binds its predecessor, then the `k + 1` answers it never reads
+    return ← mapVars branch γj 0 fun i => pure (.var (if i == 0 then 0 else i - 1))
+  let scrut ← if j == 0 then pure n else mkVarTerm sg γj 0
+  -- `base` holds the answers at `k, …, 0`, nearest first
+  let z ← if j == 0 then rebase base[k]! γj else shiftBy base[k - j]! γj j
+  let s ← natRecCasesAt sg τ natTy k (j + 1) (consCtxE natTy γj) n base branch
+  mkNode ``LeanScript.Term.nat_casesOn #[sg, γj, τ, scrut, z, s]
+
+/-- The answers of an `ArrayRecBases`, for the lists of `0, 1, …, k` elements: the one for
+    `j` elements is written with those elements bound, the last at index `0`. -/
+partial def arrayRecBasesElems (b : Expr) : MetaM (Array Expr) := do
+  let b ← exposeNode b
+  match b.getAppFnArgs with
+  | (``LeanScript.ArrayRecBases.nil, args) => return #[args.back!]
+  | (``LeanScript.ArrayRecBases.cons, args) =>
+      return #[args[args.size - 2]!] ++ (← arrayRecBasesElems args.back!)
+  | _ => throwError "`#leanscript_to_term`: internal: not the bases of a fold: {b}"
+
+/-- `array_rec k a bases branch`, whose branch reads none of its answers, as the case
+    analysis it is: `k + 1` nested `array_casesOn`, the one at level `j` (in the context
+    `γj`, which binds the element and the rest taken at each level so far, the latest at
+    indices `0` and `1`) answering the base for `j` elements when the rest is empty, and
+    the innermost handing the first element and the first rest — the head and the tail
+    of the branch — to the branch. -/
+partial def arrayRecCasesAt (sg σ arrTy τ : Expr) (k j : Nat) (γj a : Expr)
+    (bases : Array Expr) (branch : Expr) : MetaM Expr := do
+  if j == k + 1 then
+    -- the branch binds the head, the tail, then the `k + 1` answers it never reads
+    return ← mapVars branch γj 0 fun i => pure (.var
+      (if i == 0 then 2 * k else if i == 1 then 2 * k + 1 else i + k - 1))
+  let scrut ← if j == 0 then pure a else mkVarTerm sg γj 1
+  let z ← if j == 0 then rebase bases[0]! γj else
+    mapVars bases[j]! γj 0 fun i => pure (.var (if i < j then 2 * i else i + j))
+  let γ' := consCtxE σ (consCtxE arrTy γj)
+  let s ← arrayRecCasesAt sg σ arrTy τ k (j + 1) γ' a bases branch
+  mkNode ``LeanScript.Term.array_casesOn #[sg, γj, σ, τ, scrut, z, s]
 
 /-- Is every term of this spine a literal or a closed value? -/
 partial def allValues (sp : Expr) : MetaM Bool := do

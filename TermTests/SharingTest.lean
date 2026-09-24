@@ -89,7 +89,7 @@ def letInThunk :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lam ≠ Head.lam
+  Head.lam.isFunLike = false
 is false
 -/
 #guard_msgs (error) in
@@ -109,7 +109,7 @@ def hiddenBeta :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.comp]).isCtor = false
+  (Head.ctorOf [Head.comp]).isCtorLike = false
 is false
 -/
 #guard_msgs (error) in
@@ -165,7 +165,8 @@ info: ((Term.externCall
         (Term.externCall
           (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
           (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
-          shareUnderFunDef_term._proof_3))
+          shareUnderFunDef_term._proof_3)
+        ⋯)
       shareUnderFunDef_term._proof_4 ⋯).lam.lam
 -/
 #guard_msgs in

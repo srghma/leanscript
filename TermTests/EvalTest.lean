@@ -92,10 +92,11 @@ def foldNatZero :=
   (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-/-- A fold over a natural number whose successor branch answers with the predecessor —
-    so it is the predecessor. -/
+/-- The predecessor, by case analysis.  (As a fold whose successor branch answers with the
+    predecessor, `nat_rec 0 n 0 (fun m _ => m)`, it is not a term: that branch reads none of
+    the answers the fold gives it, so it is this case analysis.) -/
 def foldNatPred :=
-  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯0))) :
+  (.lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun i => match i with | .ofNat n => n | .negSucc n => n`. -/

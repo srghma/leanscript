@@ -50,7 +50,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   -- case analysis on a leaf
   | _, _, _, _, .bool_casesOn c t e _ => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
   | _, _, _, _, .nat_casesOn n z s _ => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, _, _, .nat_rec _ n base branch =>
+  | _, _, _, _, .nat_rec _ n base branch _ =>
       Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
   | _, _, _, _, .int_casesOn i a b _ => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
   | _, _, _, _, .uint8_casesOn v b _ => Term.NoRecMk v ∧ Term.NoRecMk b
@@ -77,7 +77,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   -- arrays
   | _, _, _, _, .array_mk ts => Terms.NoRecMk ts
   | _, _, _, _, .array_casesOn a z s _ => Term.NoRecMk a ∧ Term.NoRecMk z ∧ Term.NoRecMk s
-  | _, _, _, _, .array_rec _ a bases branch =>
+  | _, _, _, _, .array_rec _ a bases branch _ =>
       Term.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
   -- enums
   | _, _, _, _, .enum_casesOn e cases _ => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
@@ -132,47 +132,48 @@ def Spine.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {ks : List Head
 
 /-- `Term.NoRecMk`, on the branches of a dispatch on a tagged union. -/
 def TaggedUnionCases.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} →
-    TaggedUnionCases Sg Γ u l τ → Prop
-  | _, _, _, _, .payloadFirst b0 b1 rest =>
+    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {kh : Head} →
+    TaggedUnionCases Sg Γ u l τ kh → Prop
+  | _, _, _, _, _, .payloadFirst b0 b1 rest =>
       Term.NoRecMk b0 ∧ Term.NoRecMk b1 ∧ TaggedUnionCasesRest.NoRecMk rest
-  | _, _, _, _, .skip b0 rest =>
+  | _, _, _, _, _, .skip b0 rest =>
       Term.NoRecMk b0 ∧ CtorsWithPayloadCases.NoRecMk rest
 
 /-- `Term.NoRecMk`, on the branches of the constructors that follow a field-less one. -/
 def CtorsWithPayloadCases.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {c : CtorsWithPayload TyWf} → {τ : TyWf} →
-    CtorsWithPayloadCases Sg Γ u c τ → Prop
-  | _, _, _, _, .here b rest => Term.NoRecMk b ∧ TaggedUnionCasesRest.NoRecMk rest
-  | _, _, _, _, .skip b rest => Term.NoRecMk b ∧ CtorsWithPayloadCases.NoRecMk rest
+    {Γ : Ctx} → {u : Usage Γ} → {c : CtorsWithPayload TyWf} → {τ : TyWf} → {kh : Head} →
+    CtorsWithPayloadCases Sg Γ u c τ kh → Prop
+  | _, _, _, _, _, .here b rest => Term.NoRecMk b ∧ TaggedUnionCasesRest.NoRecMk rest
+  | _, _, _, _, _, .skip b rest => Term.NoRecMk b ∧ CtorsWithPayloadCases.NoRecMk rest
 
 /-- `Term.NoRecMk`, on a plain list of branches. -/
 def TaggedUnionCasesRest.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {cs : List (List TyWf)} → {τ : TyWf} →
-    TaggedUnionCasesRest Sg Γ u cs τ → Prop
-  | _, _, _, _, .nil => True
-  | _, _, _, _, .cons b rest => Term.NoRecMk b ∧ TaggedUnionCasesRest.NoRecMk rest
+    {Γ : Ctx} → {u : Usage Γ} → {cs : List (List TyWf)} → {τ : TyWf} → {kh : Head} →
+    TaggedUnionCasesRest Sg Γ u cs τ kh → Prop
+  | _, _, _, _, _, .nil => True
+  | _, _, _, _, _, .cons b rest => Term.NoRecMk b ∧ TaggedUnionCasesRest.NoRecMk rest
 
 /-- `Term.NoRecMk`, on the branches of a partial dispatch on a tagged union. -/
 def TaggedUnionSomeCases.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {k lo : Nat} →
-    TaggedUnionSomeCases Sg Γ u l τ k lo → Prop
-  | _, _, _, _, _, _, .last _ _ branch _ => Term.NoRecMk branch
-  | _, _, _, _, _, _, .cons _ _ branch rest _ =>
+    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {kh : Head} →
+    {k lo : Nat} → TaggedUnionSomeCases Sg Γ u l τ kh k lo → Prop
+  | _, _, _, _, _, _, _, .last _ _ branch _ => Term.NoRecMk branch
+  | _, _, _, _, _, _, _, .cons _ _ branch rest _ =>
       Term.NoRecMk branch ∧ TaggedUnionSomeCases.NoRecMk rest
 
 /-- `Term.NoRecMk`, on the branches of a dispatch on an enum. -/
 def EnumCases.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → EnumCases Sg Γ u τ s → Prop
-  | _, _, _, _, .three b0 b1 b2 => Term.NoRecMk b0 ∧ Term.NoRecMk b1 ∧ Term.NoRecMk b2
-  | _, _, _, _, .cons b rest => Term.NoRecMk b ∧ EnumCases.NoRecMk rest
+    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {kh : Head} →
+    EnumCases Sg Γ u τ s kh → Prop
+  | _, _, _, _, _, .three b0 b1 b2 => Term.NoRecMk b0 ∧ Term.NoRecMk b1 ∧ Term.NoRecMk b2
+  | _, _, _, _, _, .cons b rest => Term.NoRecMk b ∧ EnumCases.NoRecMk rest
 
 /-- `Term.NoRecMk`, on the branches of a partial dispatch on an enum. -/
 def EnumSomeCases.NoRecMk {Sg : Sig} :
-    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {k lo : Nat} →
-    EnumSomeCases Sg Γ u τ s k lo → Prop
-  | _, _, _, _, _, _, .last _ branch _ => Term.NoRecMk branch
-  | _, _, _, _, _, _, .cons _ branch rest _ =>
+    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {kh : Head} →
+    {k lo : Nat} → EnumSomeCases Sg Γ u τ s kh k lo → Prop
+  | _, _, _, _, _, _, _, .last _ branch _ => Term.NoRecMk branch
+  | _, _, _, _, _, _, _, .cons _ branch rest _ =>
       Term.NoRecMk branch ∧ EnumSomeCases.NoRecMk rest
 
 /-- `Term.NoRecMk`, on one branch of a depth-`k` fold of a recursive tagged union. -/

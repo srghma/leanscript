@@ -49,9 +49,14 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       shared, not inlined into the body, which would recompute it at every call. -/
   | lam : ∀ {Γ σ τ} {u : Usage (σ :: Γ)} {kb : Head},
       Term Sg (σ :: Γ) u τ kb → Term Sg Γ (Usage.many (Usage.tail u)) (σ ⇒ τ) .lam
-  /-- `f a`: **one** argument. -/
+  /-- `f a`: **one** argument.
+
+      `f` is not a `fun` — that is a β-redex — and not a dispatch one of whose branches is
+      a `fun` (`Head.caseIntro`, `Head.isFunLike`): `(if c then fun y => b else g) a` is a
+      β-redex in a branch, and its optimized form applies each branch,
+      `if c then b[a/y] else g a`. -/
   | ap {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {kf ka : Head}
-      (f : Term Sg Γ u (σ ⇒ τ) kf) (a : Term Sg Γ v σ ka) (h : kf ≠ .lam := by decide) :
+      (f : Term Sg Γ u (σ ⇒ τ) kf) (a : Term Sg Γ v σ ka) (h : Head.isFunLike kf = false := by decide) :
       Term Sg Γ (u + v) τ .comp
   /-- A reference to a top-level declaration of the module's signature. -/
   | global : ∀ {Γ τ}, GlobalRef Sg.decls τ → Term Sg Γ 0 τ .var
@@ -65,7 +70,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       literal or a closed value: those do not use `x`, or use it once.) -/
   | letE {Γ : Ctx} {σ τ : TyWf} {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
       (e : Term Sg Γ u σ ke) (b : Term Sg (σ :: Γ) v τ kb)
-      (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val := by decide)
+      (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val ∨ ke = .caseIntro := by decide)
       (hUsed : 2 ≤ Usage.head v := by decide) :
       Term Sg Γ (Usage.letU u v) τ kb
   -- LeanPrimTy intro
@@ -158,14 +163,14 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- `if c then t else e`. -/
   | bool_casesOn {Γ : Ctx} {τ : TyWf} {u v w : Usage Γ} {kc kt ke : Head}
       (c : Term Sg Γ u (.prim .bool) kc) (t : Term Sg Γ v τ kt) (e : Term Sg Γ w τ ke)
-      (h : kc ≠ .lit := by decide) : Term Sg Γ (u + v + w) τ .comp
+      (h : kc ≠ .lit := by decide) : Term Sg Γ (u + v + w) τ (Head.join kt ke)
   /-- `match n with | 0 => … | k + 1 => …`: the successor branch **binds** the
       predecessor as de Bruijn index `0`.  There is no recursive value — this is
       `Nat.casesOn`, and the fold is `Term.nat_rec`. -/
   | nat_casesOn {Γ : Ctx} {τ : TyWf} {u v : Usage Γ} {w : Usage (TyWf.prim .nat :: Γ)}
       {kn kz ks : Head} (n : Term Sg Γ u (.prim .nat) kn) (z : Term Sg Γ v τ kz)
       (s : Term Sg (TyWf.prim .nat :: Γ) w τ ks) (h : kn ≠ .lit := by decide) :
-      Term Sg Γ (u + v + Usage.tail w) τ .comp
+      Term Sg Γ (u + v + Usage.tail w) τ (Head.join kz ks)
   /-- `Nat.rec` that descends `k + 1` steps.  `base` holds the answers at `k, …, 1, 0` —
       **nearest first**, so it reads `(f k, …, f 0)` — and the branch for `n + k + 1` binds
       `n` (index `0`) and then the answers at `n + k, …, n + 1, n` (indices `1 … k + 1`).
@@ -177,65 +182,70 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       It is terminating by construction, at every depth: the branch is *given* the answers
       at the `k + 1` predecessors, so there is no call it could make on anything larger.
       It is also **linear**: the evaluator carries the window of the last `k + 1` answers
-      and shifts it, so no answer is ever recomputed. -/
+      and shifts it, so no answer is ever recomputed.
+
+      The branch **reads at least one of the answers** (`hRec`): a branch that reads none
+      of them makes the fold a case analysis — `k + 1` nested `Term.nat_casesOn`, the
+      innermost of which is the branch — and that is how it is written. -/
   | nat_rec {Γ : Ctx} {τ : TyWf} (k : Nat := 0) {u ub : Usage Γ}
       {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
       (n : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
-      (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb) :
+      (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
+      (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w) := by usage_pos) :
       Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp
   /-- `match i with | .ofNat n => … | .negSucc n => …`: each branch binds its `nat`. -/
   | int_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v w : Usage (TyWf.prim .nat :: Γ)}
       {ki ka kb : Head} (i : Term Sg Γ u (.prim .int) ki)
       (ofNat : Term Sg (TyWf.prim .nat :: Γ) v τ ka)
       (negSucc : Term Sg (TyWf.prim .nat :: Γ) w τ kb) (h : ki ≠ .lit := by decide) :
-      Term Sg Γ (u + Usage.tail v + Usage.tail w) τ .comp
+      Term Sg Γ (u + Usage.tail v + Usage.tail w) τ (Head.join ka kb)
   /-- Take an 8-bit unsigned value apart: its branch binds the bit vector. -/
   | uint8_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 8) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint8) kx) (b : Term Sg (TyWf.prim (.bitvec 8) :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 16-bit unsigned value apart: its branch binds the bit vector. -/
   | uint16_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 16) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint16) kx) (b : Term Sg (TyWf.prim (.bitvec 16) :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 32-bit unsigned value apart: its branch binds the bit vector. -/
   | uint32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 32) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint32) kx) (b : Term Sg (TyWf.prim (.bitvec 32) :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 64-bit unsigned value apart: its branch binds the bit vector. -/
   | uint64_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 64) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint64) kx) (b : Term Sg (TyWf.prim (.bitvec 64) :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take an 8-bit signed value apart: its branch binds the unsigned value. -/
   | int8_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint8 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int8) kx) (b : Term Sg (TyWf.prim .uint8 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 16-bit signed value apart: its branch binds the unsigned value. -/
   | int16_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint16 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int16) kx) (b : Term Sg (TyWf.prim .uint16 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 32-bit signed value apart: its branch binds the unsigned value. -/
   | int32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int32) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 64-bit signed value apart: its branch binds the unsigned value. -/
   | int64_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint64 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int64) kx) (b : Term Sg (TyWf.prim .uint64 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a character apart: its branch binds the code point, a `uint32`.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | char_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .char) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take an unchecked position apart: its branch binds the byte index. -/
   | stringPosRaw_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .nat :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .stringPosRaw) kx) (b : Term Sg (TyWf.prim .nat :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a checked position apart: its branch binds the unchecked one.  The proof that
       it is valid is a proposition, so it is erased and is not bound. -/
   | stringPos_casesOn {Γ : Ctx} {τ : TyWf} {s : String} {u : Usage Γ}
       {v : Usage (TyWf.prim .stringPosRaw :: Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.prim (.stringPos s)) kx) (b : Term Sg (TyWf.prim .stringPosRaw :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take an unchecked substring apart: its branch binds the string and the two
       positions, in declaration order. -/
   | substringRaw_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ}
@@ -244,25 +254,25 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (b : Term Sg (TyWf.prim .string :: TyWf.prim .stringPosRaw :: TyWf.prim .stringPosRaw :: Γ)
         v τ kb)
       (h : kx ≠ .lit := by decide) :
-      Term Sg Γ (u + Usage.tail (Usage.tail (Usage.tail v))) τ .comp
+      Term Sg Γ (u + Usage.tail (Usage.tail (Usage.tail v))) τ (Head.join kb .comp)
   /-- Take a 64-bit float apart: its branch binds its model. -/
   | float_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .floatModel :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float) kx) (b : Term Sg (TyWf.prim .floatModel :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take a 32-bit float apart: its branch binds its model. -/
   | float32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .float32Model :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float32) kx) (b : Term Sg (TyWf.prim .float32Model :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take the model of a 64-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | floatModel_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint64 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .floatModel) kx) (b : Term Sg (TyWf.prim .uint64 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   /-- Take the model of a 32-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | float32Model_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float32Model) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ .comp
+      (h : kx ≠ .lit := by decide) : Term Sg Γ (u + Usage.tail v) τ (Head.join kb .comp)
   -- `bitvec_casesOn`, `string_casesOn` and `stringSlice_casesOn` are not here: see this
   -- section's header for why their fields have no type in this language.
   -- LeanPrimTyCovariant intro and elimination
@@ -273,9 +283,10 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | lazy_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head},
       Term Sg Γ u τ ke → Term Sg Γ (Usage.many u) (.lazy τ) (Head.ctorOf [ke])
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
-      erased. -/
+      erased.  What is run is not a delay built right there, nor a dispatch one of whose
+      branches builds one (`Head.isCtorLike`): the force moves into the branches. -/
   | lazy_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.lazy τ) ke)
-      (h : Head.isCtor ke = false := by decide) : Term Sg Γ u τ .comp
+      (h : Head.isCtorLike ke = false := by decide) : Term Sg Γ u τ .comp
   /-- Delay a value and remember it: a `Thunk`.
 
       **Memoised**: the JavaScript printed for it runs the body at the first force and
@@ -284,9 +295,11 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       Lean function of its environment, so running the body twice gives the same answer
       as running it once — and what it decides is the code that is printed. -/
   | thunk_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.thunk τ) (Head.ctorOf [ke])
-  /-- Force a thunk: the value it stands for, computed at most once. -/
+  /-- Force a thunk: the value it stands for, computed at most once.  What is forced is
+      not a thunk built right there, nor a dispatch one of whose branches builds one
+      (`Head.isCtorLike`): `(if c then thunk e else t).get` is `if c then e else t.get`. -/
   | thunk_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.thunk τ) ke)
-      (h : Head.isCtor ke = false := by decide) : Term Sg Γ u τ .comp
+      (h : Head.isCtorLike ke = false := by decide) : Term Sg Γ u τ .comp
   /-- An array, from its elements, in order. -/
   | array_mk : ∀ {Γ τ} {u : Usage Γ} {ks : List Head},
       Terms Sg Γ u τ ks → Term Sg Γ u (.array τ) (Head.ctorOf ks)
@@ -297,7 +310,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | array_casesOn {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {w : Usage (σ :: TyWf.array σ :: Γ)}
       {ka kz ks : Head} (a : Term Sg Γ u (.array σ) ka) (z : Term Sg Γ v τ kz)
       (s : Term Sg (σ :: TyWf.array σ :: Γ) w τ ks) (h : Head.isCtor ka = false := by decide) :
-      Term Sg Γ (u + v + Usage.tail (Usage.tail w)) τ .comp
+      Term Sg Γ (u + v + Usage.tail (Usage.tail w)) τ (Head.join kz ks)
   /-- The fold of an array that descends `k + 1` elements at a time.  Its branch, at a
       list `a :: as` whose tail is at least `k` long, **binds** the first element (de
       Bruijn index `0`), the rest of the array (index `1`) and then the values of the
@@ -313,19 +326,23 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       As with `Term.nat_rec`, the recursive value is given rather than called, so a term
       is still terminating by construction, at every depth; and the evaluator carries the
       window of the last `k + 1` answers rather than recomputing them, so the fold is
-      linear. -/
+      linear.
+
+      As for `Term.nat_rec`, the branch **reads at least one of the answers** (`hRec`); a
+      branch that reads none makes the fold `k + 1` nested `Term.array_casesOn`. -/
   | array_rec {Γ : Ctx} {σ τ : TyWf} (k : Nat := 0) {u ub : Usage Γ}
       {w : Usage (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ)} {ka kb : Head}
       (a : Term Sg Γ u (.array σ) ka) (bases : ArrayRecBases Sg Γ ub σ τ k)
-      (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb) :
+      (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb)
+      (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail (Usage.tail w)) := by usage_pos) :
       Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp
   /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
   | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ 0 (.enum s) .lit
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
       fall off the end. -/
-  | enum_casesOn {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {u v : Usage Γ} {ke : Head}
-      (e : Term Sg Γ u (.enum s) ke) (cases : EnumCases Sg Γ v τ s)
-      (h : ke ≠ .lit := by decide) : Term Sg Γ (u + v) τ .comp
+  | enum_casesOn {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {u v : Usage Γ} {ke kc : Head}
+      (e : Term Sg Γ u (.enum s) ke) (cases : EnumCases Sg Γ v τ s kc)
+      (h : ke ≠ .lit := by decide) : Term Sg Γ (u + v) τ kc
   /-- A dispatch on an enum that branches on **some** of the constructors and sends the
       rest to a default branch.  The branches are given as a list of
       (constructor number, branch) pairs, in the order they are tried, and the last
@@ -339,11 +356,11 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       writing an exhaustive `Term.enum_casesOn` either: the default branch is always
       reachable. -/
   | enum_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k : Nat}
-      {u v w : Usage Γ} {ke kd : Head}
-      (e : Term Sg Γ u (.enum s) ke) (cases : EnumSomeCases Sg Γ v τ s k)
+      {u v w : Usage Γ} {ke kc kd : Head}
+      (e : Term Sg Γ u (.enum s) ke) (cases : EnumSomeCases Sg Γ v τ s kc k)
       (dflt : Term Sg Γ w τ kd)
       (hk : k < s.nOfConstructors := by ctor_lt) (h : ke ≠ .lit := by decide) :
-      Term Sg Γ (u + v + w) τ .comp
+      Term Sg Γ (u + v + w) τ (Head.join kc kd)
   /-- A record, from its fields, in declaration order. -/
   | record_mk : ∀ {Γ} (fs : LeanRecordSchema TyWf) {u : Usage Γ} {ks : List Head},
       Spine Sg Γ u fs.toList ks → Term Sg Γ u (.record fs) .ctor
@@ -353,7 +370,8 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | record_casesOn {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf} {u : Usage Γ}
       {v : Usage (fs.toList ++ Γ)} {kr kb : Head}
       (r : Term Sg Γ u (.record fs) kr) (body : Term Sg (fs.toList ++ Γ) v τ kb)
-      (h : Head.isCtor kr = false := by decide) : Term Sg Γ (u + Usage.drop fs.toList v) τ .comp
+      (h : Head.isCtor kr = false := by decide) :
+      Term Sg Γ (u + Usage.drop fs.toList v) τ (Head.join kb .comp)
   /-- A tagged value: constructor `t` of the union — a number **with the proof that the
       union has it** — and exactly that constructor's fields.
 
@@ -367,8 +385,8 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
       constructor's fields, and no default. -/
   | taggedUnion_casesOn {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {u w : Usage Γ}
-      {kx : Head} (x : Term Sg Γ u (.taggedUnion l) kx) (cases : TaggedUnionCases Sg Γ w l τ)
-      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
+      {kx kc : Head} (x : Term Sg Γ u (.taggedUnion l) kx) (cases : TaggedUnionCases Sg Γ w l τ kc)
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ kc
   /-- A dispatch on a tagged union that branches on **some** of the constructors and
       sends the rest to a default branch.  A branch names its constructor by number —
       with the same `t < l.length` bound, written by `ctor_tag` — and binds that
@@ -382,10 +400,10 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       writing an exhaustive `Term.taggedUnion_casesOn` either: the default branch is
       always reachable. -/
   | taggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
-      {k : Nat} {u w d : Usage Γ} {kx kd : Head} (v : Term Sg Γ u (.taggedUnion l) kx)
-      (cases : TaggedUnionSomeCases Sg Γ w l τ k) (dflt : Term Sg Γ d τ kd)
+      {k : Nat} {u w d : Usage Γ} {kx kc kd : Head} (v : Term Sg Γ u (.taggedUnion l) kx)
+      (cases : TaggedUnionSomeCases Sg Γ w l τ kc k) (dflt : Term Sg Γ d τ kd)
       (hk : k < l.length := by ctor_lt) (h : Head.isCtor kx = false := by decide) :
-      Term Sg Γ (u + w + d) τ .comp
+      Term Sg Γ (u + w + d) τ (Head.join kc kd)
   -- The four recursive shapes of `Ty`.  The sketch they replace read
   --
   -- | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
@@ -423,21 +441,21 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       *one level* apart — a field that is an occurrence of the union is bound as a value
       of the union, not descended into; descending is `Term.recTaggedUnion_rec`. -/
   | recTaggedUnion_casesOn {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {u w : Usage Γ} {kx : Head}
+      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {u w : Usage Γ} {kx kc : Head}
       (x : Term Sg Γ u (.recTaggedUnion l hwf) kx)
-      (cases : TaggedUnionCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ)
-      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
+      (cases : TaggedUnionCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ kc)
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ kc
   /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
       default for the rest.  As for a non-recursive union the branches name their
       constructors in strictly increasing order, there is at least one of them, and there
       are fewer of them than the union has constructors, so the default is reachable. -/
   | recTaggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf}
       {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)}
-      {k : Nat} {u w d : Usage Γ} {kx kd : Head} (v : Term Sg Γ u (.recTaggedUnion l hwf) kx)
-      (cases : TaggedUnionSomeCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ k)
+      {k : Nat} {u w d : Usage Γ} {kx kc kd : Head} (v : Term Sg Γ u (.recTaggedUnion l hwf) kx)
+      (cases : TaggedUnionSomeCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ kc k)
       (dflt : Term Sg Γ d τ kd)
       (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt)
-      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w + d) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w + d) τ (Head.join kc kd)
   /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
       motive, that descends `k + 1` constructors at a time: one branch per constructor,
       each binding that constructor's fields and, right after a field that is an
@@ -483,7 +501,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (x : Term Sg Γ u (.recObject fs hwf) kx)
       (body : Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) w τ kb)
       (h : Head.isCtor kx = false := by decide) :
-      Term Sg Γ (u + Usage.drop (TyWf.recObjectUnfold fs hwf).toList w) τ .comp
+      Term Sg Γ (u + Usage.drop (TyWf.recObjectUnfold fs hwf).toList w) τ (Head.join kb .comp)
   /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
       reads `k + 1` levels at a time.  A record has one constructor, so there is one
       branch and nothing to dispatch on: the branch binds every field, unfolded — what
@@ -521,7 +539,8 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {u : Usage Γ} {w : Usage (TyWf.recAliasUnfold b hwf :: Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recAlias b hwf) kx)
       (body : Term Sg (TyWf.recAliasUnfold b hwf :: Γ) w τ kb)
-      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + Usage.tail w) τ .comp
+      (h : Head.isCtor kx = false := by decide) :
+      Term Sg Γ (u + Usage.tail w) τ (Head.join kb .comp)
   /-- **The fold of a recursive newtype**, its `Xxx.rec` with a non-dependent motive, that
       reads `k + 1` levels at a time.  A newtype has one constructor, so there is one
       branch and nothing to dispatch on: the branch binds the body, unfolded — what
@@ -565,21 +584,21 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       member — and no default. -/
   | mutualRecursiveFamily_casesOn {Γ : Ctx} {τ : TyWf} {n : Nat}
       {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w : Usage Γ} {kx : Head}
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w : Usage Γ} {kx kc : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
-      (cases : FamilyMemberCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)))
-      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
+      (cases : FamilyMemberCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)) kc)
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ kc
   /-- A dispatch on **some** of the constructors of a member of a mutual family, with a
       default for the rest.  Only a member that *has* constructors to choose between — a
       `ctors` member — can be dispatched on partially, which is what
       `LeanScript.FamilyMemberSomeCases` says by having no other case. -/
   | mutualRecursiveFamily_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {n : Nat}
       {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w d : Usage Γ} {kx kd : Head}
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w d : Usage Γ} {kx kc kd : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
-      (cases : FamilyMemberSomeCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)))
+      (cases : FamilyMemberSomeCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)) kc)
       (dflt : Term Sg Γ d τ kd) (h : Head.isCtor kx = false := by decide) :
-      Term Sg Γ (u + w + d) τ .comp
+      Term Sg Γ (u + w + d) τ (Head.join kc kd)
   /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
       branches of *every* member of the family, in declaration order, each binding its
       fields and, right after a field that is an occurrence of a member, the value of the
@@ -665,50 +684,51 @@ inductive Spine (Sg : Sig) : (Γ : Ctx) → Usage Γ → List TyWf → List Head
     and no end-of-list before the constructors run out, so a dispatch is exhaustive by
     construction. -/
 inductive TaggedUnionCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → LeanTaggedUnionSchema TyWf → TyWf → Type 1
+    (Γ : Ctx) → Usage Γ → LeanTaggedUnionSchema TyWf → TyWf → Head → Type 1
   /-- The branch of constructor `0` (which carries fields, so it binds them), the branch
       of the constructor after it, and the branches of the remaining constructors. -/
   | payloadFirst : ∀ {Γ τ} {fields : NonEmptyList TyWf} {next : List TyWf}
       {rest : List (List TyWf)} {u : Usage (fields.toList ++ Γ)} {v : Usage (next ++ Γ)}
-      {w : Usage Γ} {ka kb : Head},
+      {w : Usage Γ} {ka kb kr : Head},
       Term Sg (fields.toList ++ Γ) u τ ka → Term Sg (next ++ Γ) v τ kb →
-      TaggedUnionCasesRest Sg Γ w rest τ →
+      TaggedUnionCasesRest Sg Γ w rest τ kr →
       TaggedUnionCases Sg Γ (Usage.drop fields.toList u + Usage.drop next v + w)
-        (.payloadFirst fields next rest) τ
+        (.payloadFirst fields next rest) τ (Head.join ka (Head.join kb kr))
   /-- The branch of constructor `0`, which carries no fields and so binds nothing, and
       the branches of the constructors after it. -/
-  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka : Head},
-      Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ →
-      TaggedUnionCases Sg Γ (u + w) (.skip rest) τ
+  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
+      Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
+      TaggedUnionCases Sg Γ (u + w) (.skip rest) τ (Head.join ka kr)
 
 /-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
     `LeanScript.TaggedUnionCases`, with the same shape as that schema. -/
 inductive CtorsWithPayloadCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → CtorsWithPayload TyWf → TyWf → Type 1
+    (Γ : Ctx) → Usage Γ → CtorsWithPayload TyWf → TyWf → Head → Type 1
   /-- The branch of the first constructor that carries fields, which binds them, and the
       branches of the constructors after it. -/
   | here : ∀ {Γ τ} {fields : NonEmptyList TyWf} {rest : List (List TyWf)}
-      {u : Usage (fields.toList ++ Γ)} {w : Usage Γ} {ka : Head},
-      Term Sg (fields.toList ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ →
+      {u : Usage (fields.toList ++ Γ)} {w : Usage Γ} {ka kr : Head},
+      Term Sg (fields.toList ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
       CtorsWithPayloadCases Sg Γ (Usage.drop fields.toList u + w) (.here fields rest) τ
+        (Head.join ka kr)
   /-- The branch of a field-less constructor, which binds nothing, and the branches of
       the constructors after it. -/
-  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka : Head},
-      Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ →
-      CtorsWithPayloadCases Sg Γ (u + w) (.skip rest) τ
+  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
+      Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
+      CtorsWithPayloadCases Sg Γ (u + w) (.skip rest) τ (Head.join ka kr)
 
 /-- The branches of the constructors a schema leaves unconstrained: a plain list, one
     entry per constructor still to be given a branch, each as the list of its field
     types. -/
 inductive TaggedUnionCasesRest (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → List (List TyWf) → TyWf → Type 1
+    (Γ : Ctx) → Usage Γ → List (List TyWf) → TyWf → Head → Type 1
   /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ τ}, TaggedUnionCasesRest Sg Γ 0 [] τ
+  | nil : ∀ {Γ τ}, TaggedUnionCasesRest Sg Γ 0 [] τ .comp
   /-- The branch of the next constructor, which binds that constructor's fields. -/
   | cons : ∀ {Γ τ} {fs : List TyWf} {rest : List (List TyWf)} {u : Usage (fs ++ Γ)}
-      {w : Usage Γ} {ka : Head},
-      Term Sg (fs ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ →
-      TaggedUnionCasesRest Sg Γ (Usage.drop fs u + w) (fs :: rest) τ
+      {w : Usage Γ} {ka kr : Head},
+      Term Sg (fs ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
+      TaggedUnionCasesRest Sg Γ (Usage.drop fs u + w) (fs :: rest) τ (Head.join ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of a tagged union, used
     with a default: a list of (constructor number, branch) pairs, in the order they are
@@ -734,26 +754,28 @@ inductive TaggedUnionCasesRest (Sg : Sig) :
     dispatch whose default is unreachable, and the bound `k < l.length` there makes it
     unwritable.
 
-    `lo` is an `optParam` that starts at `0`, so `TaggedUnionSomeCases Sg Γ l τ k` is the
+    `lo` is an `optParam` that starts at `0`, so `TaggedUnionSomeCases Sg Γ u l τ kh k` is the
     type of a whole list of `k` branches; and the bound `lo ≤ t` is the last argument of
     each constructor, with `ctor_ge` as its default, so a list of concrete numbers needs
     nothing written by hand. -/
 inductive TaggedUnionSomeCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → LeanTaggedUnionSchema TyWf → TyWf → Nat → optParam Nat 0 → Type 1
+    (Γ : Ctx) → Usage Γ → LeanTaggedUnionSchema TyWf → TyWf → Head → Nat → optParam Nat 0 →
+      Type 1
   /-- The last branch: the constructor of number `t`, whose fields it binds, and no
       constructor after it has a branch. -/
   | last {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {lo : Nat} (t : Nat)
       (ht : t < l.length := by ctor_tag) {u : Usage (l.get t ht ++ Γ)} {ka : Head}
       (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
-      (hi : lo ≤ t := by ctor_ge) : TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u) l τ 1 lo
+      (hi : lo ≤ t := by ctor_ge) :
+      TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u) l τ (Head.join ka .comp) 1 lo
   /-- One more branch, for constructor `t`, binding that constructor's fields; every
       branch after it names a **bigger** constructor. -/
   | cons {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {k lo : Nat} (t : Nat)
       (ht : t < l.length := by ctor_tag) {u : Usage (l.get t ht ++ Γ)} {w : Usage Γ}
-      {ka : Head} (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
-      (rest : TaggedUnionSomeCases Sg Γ w l τ k (t + 1))
+      {ka kr : Head} (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
+      (rest : TaggedUnionSomeCases Sg Γ w l τ kr k (t + 1))
       (hi : lo ≤ t := by ctor_ge) :
-      TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u + w) l τ (k + 1) lo
+      TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u + w) l τ (Head.join ka kr) (k + 1) lo
 
 /-- The branches of a dispatch on an enum: one per constructor, in constructor order,
     binding nothing, and **indexed by the schema itself** rather than by the number of
@@ -763,17 +785,17 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
 
     There is no end-of-list before the constructors run out and no default, so a
     dispatch is exhaustive by construction. -/
-inductive EnumCases (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSchema → Type 1
+inductive EnumCases (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSchema → Head → Type 1
   /-- The branches of the three constructors an enum has at minimum, in constructor
       order. -/
   | three : ∀ {Γ τ} {shift : Int} {u v w : Usage Γ} {ka kb kc : Head},
       Term Sg Γ u τ ka → Term Sg Γ v τ kb → Term Sg Γ w τ kc →
-      EnumCases Sg Γ (u + v + w) τ ⟨0, shift⟩
+      EnumCases Sg Γ (u + v + w) τ ⟨0, shift⟩ (Head.join ka (Head.join kb kc))
   /-- The branch of the first constructor, and the branches of the ones after it — one
       constructor beyond the schema of the rest. -/
-  | cons : ∀ {Γ τ} {extra : Nat} {shift : Int} {u w : Usage Γ} {ka : Head},
-      Term Sg Γ u τ ka → EnumCases Sg Γ w τ ⟨extra, shift⟩ →
-      EnumCases Sg Γ (u + w) τ ⟨extra + 1, shift⟩
+  | cons : ∀ {Γ τ} {extra : Nat} {shift : Int} {u w : Usage Γ} {ka kr : Head},
+      Term Sg Γ u τ ka → EnumCases Sg Γ w τ ⟨extra, shift⟩ kr →
+      EnumCases Sg Γ (u + w) τ ⟨extra + 1, shift⟩ (Head.join ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of the enum `s`, used with
     a default: (constructor number, branch) pairs.  A constructor may be left out — that
@@ -800,23 +822,24 @@ inductive EnumCases (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSc
     `LeanScript.TaggedUnionSomeCases` is indexed by the schema of its union, so branches
     written for one enum are not branches for another.
 
-    `lo` is an `optParam` that starts at `0`, so `EnumSomeCases Sg Γ τ s k` is the type of
+    `lo` is an `optParam` that starts at `0`, so `EnumSomeCases Sg Γ u τ s kh k` is the type of
     a whole list of `k` branches; and the bound `lo ≤ i` is the last argument of each
     constructor, with `ctor_ge` as its default, so a list of concrete numbers needs
     nothing written by hand. -/
 inductive EnumSomeCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSchema → Nat → optParam Nat 0 → Type 1
+    (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSchema → Head → Nat → optParam Nat 0 → Type 1
   /-- The last branch: the constructor of this number, and no constructor after it has a
       branch. -/
   | last {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {lo : Nat} (i : Fin s.nOfConstructors)
       {u : Usage Γ} {ka : Head} (branch : Term Sg Γ u τ ka) (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ u τ s 1 lo
+      EnumSomeCases Sg Γ u τ s (Head.join ka .comp) 1 lo
   /-- One more branch, for the constructor of this number; every branch after it names a
       **bigger** number. -/
   | cons {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k lo : Nat} (i : Fin s.nOfConstructors)
-      {u w : Usage Γ} {ka : Head} (branch : Term Sg Γ u τ ka)
-      (rest : EnumSomeCases Sg Γ w τ s k (i.val + 1))
-      (hi : lo ≤ i.val := by ctor_ge) : EnumSomeCases Sg Γ (u + w) τ s (k + 1) lo
+      {u w : Usage Γ} {ka kr : Head} (branch : Term Sg Γ u τ ka)
+      (rest : EnumSomeCases Sg Γ w τ s kr k (i.val + 1))
+      (hi : lo ≤ i.val := by ctor_ge) :
+      EnumSomeCases Sg Γ (u + w) τ s (Head.join ka kr) (k + 1) lo
 
 /-- The branches of a **fold** over a sum type: the same family as
     `LeanScript.TaggedUnionCases`, and so the same shape as the schema it branches on,
@@ -1003,17 +1026,18 @@ inductive FamilyMemberValue (Sg : Sig) :
     constructor, in order — and the two single-constructor members have the one branch
     that binds what they hold. -/
 inductive FamilyMemberCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → TyWf → LeanFamMemberSchema TyWf → Type 1
+    (Γ : Ctx) → Usage Γ → TyWf → LeanFamMemberSchema TyWf → Head → Type 1
   /-- One branch per constructor of a member that has constructors. -/
-  | ctors : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf} {u : Usage Γ},
-      TaggedUnionCases Sg Γ u l τ → FamilyMemberCases Sg Γ u τ (.ctors l)
+  | ctors : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf} {u : Usage Γ} {kc : Head},
+      TaggedUnionCases Sg Γ u l τ kc → FamilyMemberCases Sg Γ u τ (.ctors l) kc
   /-- The one branch of a record member, which binds its fields in declaration order. -/
   | record : ∀ {Γ τ} {fs : LeanRecordSchema TyWf} {u : Usage (fs.toList ++ Γ)} {kb : Head},
       Term Sg (fs.toList ++ Γ) u τ kb →
-      FamilyMemberCases Sg Γ (Usage.drop fs.toList u) τ (.record fs)
+      FamilyMemberCases Sg Γ (Usage.drop fs.toList u) τ (.record fs) (Head.join kb .comp)
   /-- The one branch of a newtype member, which binds its body. -/
   | alias : ∀ {Γ τ} {b : TyWf} {u : Usage (b :: Γ)} {kb : Head},
-      Term Sg (b :: Γ) u τ kb → FamilyMemberCases Sg Γ (Usage.tail u) τ (.alias b)
+      Term Sg (b :: Γ) u τ kb →
+      FamilyMemberCases Sg Γ (Usage.tail u) τ (.alias b) (Head.join kb .comp)
 
 /-- The branches of a dispatch on **some** of the constructors of one member of a mutual
     family, used with a default.  There is one case and not three: a member with a single
@@ -1021,13 +1045,13 @@ inductive FamilyMemberCases (Sg : Sig) :
     `LeanScript.Term.mutualRecursiveFamily_casesOn` or its default and nothing else, and
     the type makes that unwritable. -/
 inductive FamilyMemberSomeCases (Sg : Sig) :
-    (Γ : Ctx) → Usage Γ → TyWf → LeanFamMemberSchema TyWf → Type 1
+    (Γ : Ctx) → Usage Γ → TyWf → LeanFamMemberSchema TyWf → Head → Type 1
   /-- Branches for some of the constructors of a member that has constructors, named in
       strictly increasing order, at least one of them, and fewer of them than the member
       has constructors — so the default of the dispatch is reachable. -/
   | ctors {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {k : Nat} {u : Usage Γ}
-      (cases : TaggedUnionSomeCases Sg Γ u l τ k) (hk : k < l.length := by ctor_lt) :
-      FamilyMemberSomeCases Sg Γ u τ (.ctors l)
+      {kc : Head} (cases : TaggedUnionSomeCases Sg Γ u l τ kc k)
+      (hk : k < l.length := by ctor_lt) : FamilyMemberSomeCases Sg Γ u τ (.ctors l) kc
 
 /-- The branches of a **fold** over one member of a mutual family: as
     `LeanScript.FamilyMemberCases`, but each branch is also given the value of the fold

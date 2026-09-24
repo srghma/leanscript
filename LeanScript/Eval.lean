@@ -119,7 +119,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match n' with
       | 0 => Term.eval G z env h.2.1
       | k + 1 => Term.eval G s (k, env) h.2.2
-  | _, _, _, _, .nat_rec _ n base branch, env, h =>
+  | _, _, _, _, .nat_rec _ n base branch _, env, h =>
       natFoldK (Spine.eval G base env h.2.1)
         (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
         (show Nat from Term.eval G n env h.1)
@@ -173,7 +173,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match a'.toList with
       | [] => Term.eval G z env h.2.1
       | x :: xs => Term.eval G s (x, xs.toArray, env) h.2.2
-  | _, _, _, _, .array_rec _ a bases branch, env, h =>
+  | _, _, _, _, .array_rec _ a bases branch _, env, h =>
       listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
         (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
         (show Array _ from Term.eval G a env h.1).toList
@@ -258,55 +258,55 @@ def Spine.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     the schema and the value carries a tag that the schema has, so there is always
     exactly one branch to take. -/
 def TaggedUnionCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} →
-    (cases : TaggedUnionCases Sg Γ u l τ) → Env Γ → TyWf.DenTU l →
+    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {kh : Head} →
+    (cases : TaggedUnionCases Sg Γ u l τ kh) → Env Γ → TyWf.DenTU l →
     TaggedUnionCases.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, .payloadFirst b0 b1 rest, env, v, h =>
+  | _, _, _, _, _, .payloadFirst b0 b1 rest, env, v, h =>
       match v with
       | ⟨⟨0, _⟩, f⟩ => Term.eval G b0 (Env.append (cast (Ty.denNE_eq _) f) env) h.1
       | ⟨⟨1, _⟩, f⟩ => Term.eval G b1 (Env.append f env) h.2.1
       | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest env n f h.2.2
-  | _, _, _, _, .skip b0 rest, env, v, h =>
+  | _, _, _, _, _, .skip b0 rest, env, v, h =>
       match v with
       | ⟨⟨0, _⟩, _⟩ => Term.eval G b0 env h.1
       | ⟨⟨n + 1, _⟩, f⟩ => CtorsWithPayloadCases.eval G rest env n f h.2
 
 /-- `TaggedUnionCases.eval`, on the constructors that follow a field-less one. -/
 def CtorsWithPayloadCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {c : CtorsWithPayload TyWf} → {τ : TyWf} →
-    (cases : CtorsWithPayloadCases Sg Γ u c τ) → Env Γ → (t : Nat) → TyWf.DenAtCP c t →
+    {Γ : Ctx} → {u : Usage Γ} → {c : CtorsWithPayload TyWf} → {τ : TyWf} → {kh : Head} →
+    (cases : CtorsWithPayloadCases Sg Γ u c τ kh) → Env Γ → (t : Nat) → TyWf.DenAtCP c t →
     CtorsWithPayloadCases.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, .here b _, env, 0, f, h =>
+  | _, _, _, _, _, .here b _, env, 0, f, h =>
       Term.eval G b (Env.append (cast (Ty.denNE_eq _) f) env) h.1
-  | _, _, _, _, .here _ rest, env, n + 1, f, h =>
+  | _, _, _, _, _, .here _ rest, env, n + 1, f, h =>
       TaggedUnionCasesRest.eval G rest env n f h.2
-  | _, _, _, _, .skip b _, env, 0, _, h => Term.eval G b env h.1
-  | _, _, _, _, .skip _ rest, env, n + 1, f, h =>
+  | _, _, _, _, _, .skip b _, env, 0, _, h => Term.eval G b env h.1
+  | _, _, _, _, _, .skip _ rest, env, n + 1, f, h =>
       CtorsWithPayloadCases.eval G rest env n f h.2
 
 /-- `TaggedUnionCases.eval`, on a plain list of constructors.  A tag past the end of the
     list has no value — `Ty.DenAtList [] n` is `PEmpty` — which is why the empty list of
     branches needs no branch. -/
 def TaggedUnionCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {cs : List (List TyWf)} → {τ : TyWf} →
-    (cases : TaggedUnionCasesRest Sg Γ u cs τ) → Env Γ → (t : Nat) → TyWf.DenAtList cs t →
+    {Γ : Ctx} → {u : Usage Γ} → {cs : List (List TyWf)} → {τ : TyWf} → {kh : Head} →
+    (cases : TaggedUnionCasesRest Sg Γ u cs τ kh) → Env Γ → (t : Nat) → TyWf.DenAtList cs t →
     TaggedUnionCasesRest.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, .nil, _, _, f, _ => PEmpty.elim f
-  | _, _, _, _, .cons b _, env, 0, f, h => Term.eval G b (Env.append f env) h.1
-  | _, _, _, _, .cons _ rest, env, n + 1, f, h =>
+  | _, _, _, _, _, .nil, _, _, f, _ => PEmpty.elim f
+  | _, _, _, _, _, .cons b _, env, 0, f, h => Term.eval G b (Env.append f env) h.1
+  | _, _, _, _, _, .cons _ rest, env, n + 1, f, h =>
       TaggedUnionCasesRest.eval G rest env n f h.2
 
 /-- The value of a dispatch on **some** of the constructors of a tagged union: the first
     branch whose constructor the value has, and the default if it has none of them. -/
 def TaggedUnionSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {k lo : Nat} →
-    (cases : TaggedUnionSomeCases Sg Γ u l τ k lo) → Env Γ → TyWf.DenTU l → TyWf.Den τ →
+    {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {kh : Head} →
+    {k lo : Nat} → (cases : TaggedUnionSomeCases Sg Γ u l τ kh k lo) → Env Γ → TyWf.DenTU l → TyWf.Den τ →
     TaggedUnionSomeCases.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, _, _, .last t ht branch _, env, v, dflt, h =>
+  | _, _, _, _, _, _, _, .last t ht branch _, env, v, dflt, h =>
       match TyWf.DenTU.field? t ht v with
       | some f => Term.eval G branch (Env.append f env) h
       | none => dflt
-  | _, _, _, _, _, _, .cons t ht branch rest _, env, v, dflt, h =>
+  | _, _, _, _, _, _, _, .cons t ht branch rest _, env, v, dflt, h =>
       match TyWf.DenTU.field? t ht v with
       | some f => Term.eval G branch (Env.append f env) h.1
       | none => TaggedUnionSomeCases.eval G rest env v dflt h.2
@@ -314,16 +314,16 @@ def TaggedUnionSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 /-- The value of the branch a constructor of an enum takes.  The branches are indexed by
     the schema, so there is always exactly one branch to take. -/
 def EnumCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} →
-    (cases : EnumCases Sg Γ u τ s) → Env Γ → Fin s.nOfConstructors →
+    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {kh : Head} →
+    (cases : EnumCases Sg Γ u τ s kh) → Env Γ → Fin s.nOfConstructors →
     EnumCases.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, .three b0 b1 b2, env, i, h =>
+  | _, _, _, _, _, .three b0 b1 b2, env, i, h =>
       match i with
       | ⟨0, _⟩ => Term.eval G b0 env h.1
       | ⟨1, _⟩ => Term.eval G b1 env h.2.1
       | ⟨2, _⟩ => Term.eval G b2 env h.2.2
       | ⟨_ + 3, hi⟩ => absurd hi (by simp [LeanEnumSchema.nOfConstructors])
-  | _, _, _, _, .cons b rest, env, i, h =>
+  | _, _, _, _, _, .cons b rest, env, i, h =>
       match i with
       | ⟨0, _⟩ => Term.eval G b env h.1
       | ⟨n + 1, hi⟩ =>
@@ -333,12 +333,12 @@ def EnumCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 /-- The value of a dispatch on **some** of the constructors of an enum: the first branch
     whose constructor the value is, and the default if it is none of them. -/
 def EnumSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {k lo : Nat} →
-    (cases : EnumSomeCases Sg Γ u τ s k lo) → Env Γ → Fin s.nOfConstructors → TyWf.Den τ →
+    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {s : LeanEnumSchema} → {kh : Head} →
+    {k lo : Nat} → (cases : EnumSomeCases Sg Γ u τ s kh k lo) → Env Γ → Fin s.nOfConstructors → TyWf.Den τ →
     EnumSomeCases.NoRecMk cases → TyWf.Den τ
-  | _, _, _, _, _, _, .last j branch _, env, i, dflt, h =>
+  | _, _, _, _, _, _, _, .last j branch _, env, i, dflt, h =>
       if i = j then Term.eval G branch env h else dflt
-  | _, _, _, _, _, _, .cons j branch rest _, env, i, dflt, h =>
+  | _, _, _, _, _, _, _, .cons j branch rest _, env, i, dflt, h =>
       if i = j then Term.eval G branch env h.1
       else EnumSomeCases.eval G rest env i dflt h.2
 
@@ -442,7 +442,7 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf} (G : GlobalEnv Sg.decls)
 /-- `let x = e; body` binds the value of `e`. -/
 theorem Term.eval_letE {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
     (e : Term Sg Γ u σ ke) (body : Term Sg (σ :: Γ) v τ kb)
-    (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val) (hUsed : 2 ≤ Usage.head v) (env : Env Γ)
+    (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val ∨ ke = .caseIntro) (hUsed : 2 ≤ Usage.head v) (env : Env Γ)
     (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
     Term.eval G (.letE e body hValue hUsed) env ⟨he, hb⟩ =
       Term.eval G body (Term.eval G e env he, env) hb :=

@@ -26,7 +26,14 @@ function on the type being defined), and two indices suffice:
   expression is a computation (or a constructor, whose fields it shares), and an extern
   applied to terms that not all of them are literals or closed values — an extern on
   values is computed where the term is written (`Term.externCall`, and `Term.extern`
-  together with `LeanScript.TyWf.quotable`).
+  together with `LeanScript.TyWf.quotable`).  The head of a dispatch is computed from the
+  heads of its branches (`Head.join`): it is `Head.caseIntro` when a branch is an
+  introduction form, and applying or forcing such a dispatch is a redex too — the
+  application or the force belongs in the branches.
+
+The grade vector also says whether a fold's branch reads the answers it is given
+(`Usage.sumN`): `Term.nat_rec` and `Term.array_rec` ask that it does, since a fold whose
+branch reads none of them is a case analysis.
 
 Both indices are *computed* by the constructors, so writing a term looks exactly like
 writing a raw one, and every proof argument is discharged by `decide` on closed indices.
@@ -98,6 +105,14 @@ def dropN (τ : TyWf) : (n : Nat) → Usage (natRecCtx τ n Γ) → Usage Γ
   | 0, u => u
   | n + 1, u => dropN τ n (tail u)
 
+/-- The total grade of the `n` innermost variables of a context `natRecCtx τ n Γ`: how
+    many times a fold's branch reads the `n` answers it is given (`Term.nat_rec`,
+    `Term.array_rec`).  A fold asks that this is not `0` — a branch that reads none of the
+    answers makes the fold a case analysis, which is what it is written as. -/
+def sumN (τ : TyWf) : (n : Nat) → Usage (natRecCtx τ n Γ) → Nat
+  | 0, _ => 0
+  | n + 1, u => head (σ := τ) (Γ := natRecCtx τ n Γ) u + sumN τ n (tail u)
+
 end Usage
 
 /-- What the root of a term is.  It is an index of `LeanScript.Term`, computed by the
@@ -122,6 +137,16 @@ inductive Head where
       variable and no computation, so its value is known where the term is written: an
       extern called on literals and closed values is a redex too (`Term.externCall`). -/
   | val
+  /-- a **dispatch that may answer with an introduction form**: a `match`/`if` at least one
+      of whose branches is a `fun`, a literal, a constructor or a closed value — or again
+      such a dispatch.  It is a computation like `Head.comp` (a `let` may bind it), but
+      what it answers with may be known branch by branch: applying it to an argument
+      (`(if c then fun y => b else g) a`) or forcing it (`(if c then thunk e else t).get`)
+      is a redex, reduced by moving the application or the force into the branches,
+      where it meets the `fun` or the delay (`Term.ap`, `Term.thunk_force`,
+      `Term.lazy_force`).  The head of a dispatch is computed from the heads of its
+      branches by `Head.join`. -/
+  | caseIntro
   deriving DecidableEq, Repr, Inhabited
 
 namespace Head
@@ -150,6 +175,33 @@ def isCtor : Head → Bool
 /-- The head of a constructor applied to fields of heads `ks`: a closed value when every
     field is a literal or a closed value, a constructor otherwise. -/
 def ctorOf (ks : List Head) : Head := if allValue ks then .val else .ctor
+
+/-- Is this head an introduction form — a `fun`, a literal, a constructor, a closed value —
+    or a dispatch that may answer with one (`Head.caseIntro`)? -/
+def isIntro : Head → Bool
+  | .lam | .lit | .ctor | .val | .caseIntro => true
+  | _ => false
+
+/-- The head of a dispatch two of whose branches (or groups of branches) have heads `a`
+    and `b`: `Head.caseIntro` when one of them is an introduction form, or such a
+    dispatch, and a plain computation `Head.comp` otherwise.  Its value is always one of
+    those two, so a dispatch is never mistaken for a variable, a `fun` or a constructor. -/
+def join (a b : Head) : Head := if a.isIntro || b.isIntro then .caseIntro else .comp
+
+/-- Is this head a `fun`, or a dispatch that may answer with one?  `Term.ap` asks that its
+    function is neither: the first is a β-redex, and the second is one in some branch,
+    reached by applying each branch instead. -/
+def isFunLike : Head → Bool
+  | .lam | .caseIntro => true
+  | _ => false
+
+/-- Is this head a constructor applied to its fields (closed or not), or a dispatch that may
+    answer with one?  `Term.thunk_force` and `Term.lazy_force` ask that what they force is
+    neither: forcing a delay built right there is a redex, and so is forcing a dispatch
+    one of whose branches builds it — the force moves into the branches. -/
+def isCtorLike : Head → Bool
+  | .ctor | .val | .caseIntro => true
+  | _ => false
 
 end Head
 

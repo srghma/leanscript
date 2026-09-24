@@ -409,7 +409,7 @@ redex out by hand therefore fails, and says which rule it breaks. -/
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lam ≠ Head.lam
+  Head.lam.isFunLike = false
 is false
 -/
 #guard_msgs (error) in
@@ -420,7 +420,7 @@ def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyW
 error: could not synthesize default value for parameter 'hValue' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lit = Head.comp ∨ Head.lit = Head.ctor ∨ Head.lit = Head.val
+  Head.lit = Head.comp ∨ Head.lit = Head.ctor ∨ Head.lit = Head.val ∨ Head.lit = Head.caseIntro
 is false
 -/
 #guard_msgs (error) in
@@ -461,7 +461,7 @@ def ifTrue :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.lit]).isCtor = false
+  (Head.ctorOf [Head.lit]).isCtorLike = false
 is false
 -/
 #guard_msgs (error) in

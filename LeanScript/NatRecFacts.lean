@@ -148,12 +148,13 @@ variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls) {u ub : Usage 
     {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
     (nT : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
     (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
-    (env : Env Γ) (h : Term.NoRecMk (Term.nat_rec k nT base branch))
+    (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w))
+    (env : Env Γ) (h : Term.NoRecMk (Term.nat_rec k nT base branch hRec))
 
 /-- The value of the node **is** the fold: its base values are the `Spine`, and its step
     runs the branch with the window in front of the environment. -/
 theorem Term.eval_nat_rec :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
+    Term.eval G (Term.nat_rec k nT base branch hRec) env h =
       natFoldK (Spine.eval G base env h.2.1)
         (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
         (show Nat from Term.eval G nT env h.1) :=
@@ -162,7 +163,7 @@ theorem Term.eval_nat_rec :
 /-- Below the depth, the node answers with the base value written for the argument. -/
 theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
     (hn : (show Nat from Term.eval G nT env h.1) = j) :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
+    Term.eval G (Term.nat_rec k nT base branch hRec) env h =
       NatWin.get (Spine.eval G base env h.2.1) (k - j) (by omega) := by
   rw [Term.eval_nat_rec, hn, natFoldK_base _ _ j hj]
 
@@ -170,7 +171,7 @@ theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
     the window of the previous `k + 1` answers. -/
 theorem Term.eval_nat_rec_step (n : Nat)
     (hn : (show Nat from Term.eval G nT env h.1) = n + k + 1) :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
+    Term.eval G (Term.nat_rec k nT base branch hRec) env h =
       Term.eval G branch
         (n, Env.ofWin
           (NatWin.ofFun

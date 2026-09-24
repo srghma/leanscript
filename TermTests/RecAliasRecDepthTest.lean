@@ -340,20 +340,20 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isCtor ?m.62 = false
+  Head.isCtor ?m.65 = false
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head.tail
 has type
-  Term ?m.64 (?m.69 :: ?m.72 :: ?m.73) (Usage.single DeBruijn.head.tail) ?m.72 Head.var
+  Term ?m.67 (?m.72 :: ?m.75 :: ?m.76) (Usage.single DeBruijn.head.tail) ?m.75 Head.var
 but is expected to have type
   Term sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    ?m.85 (TyWf.record ?m.86) ?m.62
+    ?m.88 (TyWf.record ?m.89) ?m.65
 in the application
   @Term.record_casesOn sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    natT ?m.86 ?m.85 0 ?m.62 Head.lit (Term.var DeBruijn.head.tail)
+    natT ?m.89 ?m.88 0 ?m.65 Head.lit (Term.var DeBruijn.head.tail)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

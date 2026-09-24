@@ -58,7 +58,7 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 /-- The depth of a term that is an `array_rec`, or `none`. -/
 def arrayRecDepthOf? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
     Term sig0 Γ u τ h → Option Nat
-  | .array_rec k _ _ _ => some k
+  | .array_rec k _ _ _ _ => some k
   | _ => none
 
 /-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is, or

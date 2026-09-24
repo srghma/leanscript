@@ -236,7 +236,7 @@ constructors run out, does not elaborate. -/
 error: Unknown constant `LeanScript.CtorsWithPayloadCases.nil`
 
 Note: Inferred this name from the expected resulting type of `.nil`:
-  CtorsWithPayloadCases ?m.42 ?m.43 ?m.40 ?m.38 (TyWf.prim LeanPrimTy.nat)
+  CtorsWithPayloadCases ?m.45 ?m.46 ?m.42 ?m.40 (TyWf.prim LeanPrimTy.nat) ?m.44
 -/
 #guard_msgs (error) in
 def natHeadNotExhaustive :=
