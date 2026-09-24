@@ -42,7 +42,8 @@ That this is possible at all is the point of the grammar: `LeanScript.Term` has 
 fixpoint constructor.  The two recursive forms it does have, `Term.nat_rec` and
 `Term.array_rec`, are folds — the branch is *given* the value of the recursion on the
 smaller argument (as a de Bruijn index) rather than being able to call anything — so
-evaluating them is `Nat.rec` and `List.rec`, and every other constructor evaluates its
+evaluating them is `Nat.rec` and `List.rec` (an array of the language denotes a Lean
+`Array`, and its fold runs over the list of its elements), and every other constructor evaluates its
 immediate subterms.  In particular:
 
 * a dispatch always has a branch to take: `EnumCases` and `TaggedUnionCases` are indexed
@@ -161,16 +162,16 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .thunk_mk e, env, h => let v := Term.eval G e env h; v
   | _, _, .thunk_force e, env, h => let v := Term.eval G e env h; v
   -- arrays
-  | _, _, .array_mk ts, env, h => Terms.eval G ts env h
+  | _, _, .array_mk ts, env, h => (Terms.eval G ts env h).toArray
   | _, _, .array_casesOn a z s, env, h =>
-      let a' : List _ := Term.eval G a env h.1
-      match a' with
+      let a' : Array _ := Term.eval G a env h.1
+      match a'.toList with
       | [] => Term.eval G z env h.2.1
-      | x :: xs => Term.eval G s (x, xs, env) h.2.2
+      | x :: xs => Term.eval G s (x, xs.toArray, env) h.2.2
   | _, _, .array_rec _ a bases branch, env, h =>
       listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
-        (fun hd tl w => Term.eval G branch (hd, tl, Env.ofWin w env) h.2.2)
-        (show List _ from Term.eval G a env h.1)
+        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
+        (show Array _ from Term.eval G a env h.1).toList
   -- enums
   | _, _, .enum_mk _ i, _, _ => i
   | _, _, .enum_casesOn e cases, env, h =>
@@ -220,7 +221,8 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       PEmpty.elim (Term.eval G v env h)
   | _, _, .mutualRecursiveFamily_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
 
-/-- The values of the elements of an array, in order. -/
+/-- The values of the elements of an array, in order, as a list; `Term.array_mk` turns it
+    into the Lean `Array` an array of the language denotes. -/
 def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → (ts : Terms Sg Γ τ) → Env Γ → Terms.NoRecMk ts →
     List (TyWf.Den τ)

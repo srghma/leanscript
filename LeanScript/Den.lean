@@ -22,7 +22,7 @@ is the type of the values of `τ`.
 | :-- | :-- |
 | `Ty.prim p` | `LeanScript.LeanPrimTy.denote p` — the Lean type of that leaf's literals |
 | `σ ⇒ τ` | `Ty.Den σ → Ty.Den τ` — a **Lean** function, so there is no closure and no environment in a value |
-| `Ty.array α` | `List (Ty.Den α)` |
+| `Ty.array α` | `Array (Ty.Den α)` |
 | `Ty.thunk α`, `Ty.lazy α` | `Ty.Den α` — a delay carries nothing beyond the value it stands for; the two wrappers differ only in the code printed for them |
 | `Ty.enum s` | `Fin s.nOfConstructors` — a constructor *number*, which is what the runtime holds |
 | `Ty.record fs` | the product of its fields' denotations, in declaration order |
@@ -84,7 +84,7 @@ mutual
 
 /-- `Ty.Cont`, on an array, a thunk or a lazy value. -/
 @[reducible] def Ty.ContCov : LeanPrimTyCovariant Ty → Cont
-  | .array a => Cont.list (Ty.Cont a)
+  | .array a => Cont.array (Ty.Cont a)
   | .thunk a => Ty.Cont a
   | .lazy a => Ty.Cont a
 

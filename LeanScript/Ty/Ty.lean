@@ -113,6 +113,11 @@ def enumOfCount? (n : Nat) (shift : Int := 0) : Option Ty :=
 def enumOrBool? (n : Nat) (shift : Int := 0) : Option Ty :=
   if n == 2 && shift == 0 then some (.prim .bool) else enumOfCount? n shift
 
+/-- The schema of a list of `a`, the payload of the recursive tagged union that models
+    `List`: constructor `0` (`nil`) has no field, constructor `1` (`cons`) has an element
+    and the list itself (`Ty.self`).  `LeanScript.TyWf.list` is the type built from it. -/
+abbrev listSchema (a : Ty) : LeanTaggedUnionSchema Ty := .skip (.here ⟨a, [.self]⟩ [])
+
 /-! ## The children of a node
 
 Every traversal of a tree — well-formedness, rendering, a backend — needs the types one

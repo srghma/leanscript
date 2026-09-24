@@ -36,9 +36,9 @@ example : Term.run' externLet = "leanscript" := by decide
 example : Term.run' (.extern (.lean_uint32_add 4000000000 500000000) :
     Term ⟨[], rfl⟩ [] (.prim .uint32)) = 205032704 := by decide
 
-/-- An extern whose result is an array: arrays denote lists. -/
+/-- An extern whose result is an array: arrays denote Lean arrays. -/
 example : Term.run' (.extern (.lean_array_push (TyWf.prim .nat) #[1, 2] 3) :
-    Term ⟨[], rfl⟩ [] (.array (.prim .nat))) = [1, 2, 3] := by decide
+    Term ⟨[], rfl⟩ [] (.array (.prim .nat))) = #[1, 2, 3] := rfl
 
 /-- An extern whose result is an `Ordering`: the enum with three constructors. -/
 example (a b : String) : Term.run' (.extern (.lean_string_compare a b) :
@@ -59,5 +59,24 @@ example : Term.run' (.extern (.lean_nat_gcd__Nat_gcd 12 18) :
 example (x : Float) : Term.run' (.extern (.lean_float_frexp x) :
     Term ⟨[], rfl⟩ [] (TyWf.prod (.prim .float) (.prim .int))) =
       TyWf.Den.ofProd (α := .prim .float) (β := .prim .int) (Float.frExp x) := rfl
+
+/-- An extern whose result is a list: the recursive tagged union `nil | cons α self`, the
+    model of `List`; `Ty.DenRec.toList` reads it back. -/
+example : Ty.DenRec.toList (.prim .nat) (Term.run' (.extern (.lean_array_to_list (TyWf.prim .nat)
+    #[1, 2, 3]) : Term ⟨[], rfl⟩ [] (TyWf.list (.prim .nat)))) = [1, 2, 3] := by decide
+
+example : Ty.DenRec.toList (.prim .char) (Term.run' (.extern (.lean_string_data__String_toList "ab") :
+    Term ⟨[], rfl⟩ [] (TyWf.list (.prim .char)))) = ['a', 'b'] := by decide
+
+/-! ## The derived type formers are the models of the Lean types
+
+The externs use the same model of `List`, `Option`, `×` and `Ordering` as the rest of the
+language: the model `LeanScriptTyWf` gives the Lean type. -/
+
+example : tyWfOf (List Nat) = TyWf.list (.prim .nat) := rfl
+example : tyWfOf (Option Char) = TyWf.option (.prim .char) := rfl
+example : tyWfOf (Float × Int) = TyWf.prod (.prim .float) (.prim .int) := rfl
+example : tyWfOf Ordering = TyWf.ordering := rfl
+example : tyOf Ordering = .enum ⟨0, -1⟩ := rfl
 
 end TyTests

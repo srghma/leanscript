@@ -72,7 +72,7 @@ def rollShape : (s : TyShape Ty) → Ty.Den (.shape (substOccShape R .familyMemb
 /-- `Ty.roll`, on an array, a thunk or a lazy value. -/
 def rollCov : (c : LeanPrimTyCovariant Ty) →
     Ty.Den (.primCovariant (substOccCov R .familyMember c)) → (Ty.ContCov c).Ext (Ty.Den R)
-  | .array a, xs => Cont.Ext.list (fun x => roll a x) xs
+  | .array a, xs => Cont.Ext.array (fun x => roll a x) xs
   | .thunk a, x => roll a x
   | .lazy a, x => roll a x
 
@@ -138,7 +138,7 @@ def unrollShape : (s : TyShape Ty) → (Ty.ContShape s).Ext (Ty.Den R) →
 /-- `Ty.unroll`, on an array, a thunk or a lazy value. -/
 def unrollCov : (c : LeanPrimTyCovariant Ty) →
     (Ty.ContCov c).Ext (Ty.Den R) → Ty.Den (.primCovariant (substOccCov R .familyMember c))
-  | .array a, x => Cont.Ext.unlist (fun y => unroll a y) x.1 x.2
+  | .array a, x => Cont.Ext.unarray (fun y => unroll a y) x.1 x.2
   | .thunk a, x => unroll a x
   | .lazy a, x => unroll a x
 
@@ -245,7 +245,7 @@ theorem unroll_rollShape : ∀ (s : TyShape Ty)
 theorem unroll_rollCov : ∀ (c : LeanPrimTyCovariant Ty)
     (x : Ty.Den (.primCovariant (substOccCov R .familyMember c))),
     unrollCov R c (rollCov R c x) = x
-  | .array a, xs => Cont.Ext.unlist_list _ _ (fun x => unroll_roll a x) xs
+  | .array a, xs => Cont.Ext.unarray_array _ _ (fun x => unroll_roll a x) xs
   | .thunk a, x => unroll_roll a x
   | .lazy a, x => unroll_roll a x
 
@@ -334,7 +334,7 @@ theorem roll_unrollShape : ∀ (s : TyShape Ty) (x : (Ty.ContShape s).Ext (Ty.De
 
 theorem roll_unrollCov : ∀ (c : LeanPrimTyCovariant Ty) (x : (Ty.ContCov c).Ext (Ty.Den R)),
     rollCov R c (unrollCov R c x) = x
-  | .array a, ⟨ss, g⟩ => Cont.Ext.list_unlist _ _ (fun e => roll_unroll a e) ss g
+  | .array a, ⟨ss, g⟩ => Cont.Ext.array_unarray _ _ (fun e => roll_unroll a e) ss g
   | .thunk a, x => roll_unroll a x
   | .lazy a, x => roll_unroll a x
 
@@ -527,11 +527,10 @@ def selfFieldMemo {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
 /-! ## Reading a list back
 
 `List α` is the recursive tagged union `nil | cons α self` (its `LeanScriptTyWf`
-instance).  `Ty.DenRec.toList` reads a value of it back as a Lean list, so a test can
-compare the result of a program with a Lean list. -/
-
-/-- The schema of a list of `a`: `nil | cons a self`. -/
-abbrev Ty.listSchema (a : Ty) : LeanTaggedUnionSchema Ty := .skip (.here ⟨a, [.self]⟩ [])
+instance, `LeanScript.TyWf.list`).  `Ty.DenRec.toList` reads a value of it back as a Lean
+list, so a test can compare the result of a program with a Lean list, and
+`Ty.DenRec.ofList` builds one from a Lean list, which is how an extern answering with a
+list (`Array.toList`, `String.toList`) gives its value. -/
 
 /-- A value of a list of `a`, as a Lean list. -/
 def Ty.DenRec.toList (a : Ty) : Ty.Den (.recTaggedUnion (Ty.listSchema a)) → List (Ty.Den a) :=
@@ -539,6 +538,21 @@ def Ty.DenRec.toList (a : Ty) : Ty.Den (.recTaggedUnion (Ty.listSchema a)) → L
     match node, ih with
     | ⟨⟨0, _⟩, _⟩, _ => []
     | ⟨⟨1, _⟩, (x, _)⟩, ih => x :: ih (.inr (.inl PUnit.unit))
+
+/-- A Lean list, as a value of a list of `a`: `[]` is the node `nil`, which has no
+    subtree, and `x :: xs` is the node `cons` holding `x`, whose one subtree is `xs`. -/
+def Ty.DenRec.ofList (a : Ty) : List (Ty.Den a) → Ty.Den (.recTaggedUnion (Ty.listSchema a))
+  | [] => WTree.mk ⟨⟨0, Nat.zero_lt_succ 1⟩, PUnit.unit⟩ (fun h => nomatch h)
+  | x :: xs =>
+      WTree.mk ⟨⟨1, Nat.lt_succ_self 1⟩, (x, PUnit.unit, PUnit.unit)⟩
+        (fun _ => Ty.DenRec.ofList a xs)
+
+/-- Reading back a list built from a Lean list gives that list. -/
+theorem Ty.DenRec.toList_ofList (a : Ty) (xs : List (Ty.Den a)) :
+    Ty.DenRec.toList a (Ty.DenRec.ofList a xs) = xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => exact congrArg (x :: ·) ih
 
 end LeanScript
 

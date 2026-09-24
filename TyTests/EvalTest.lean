@@ -143,12 +143,12 @@ def lastOrZero : Term emptySig [] (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .na
   .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
     (.array_casesOn (.var (v♯1)) (.var (v♯0)) (.var (v♯4))))
 
-example : run oneTwoThree = [1, 2, 3] := rfl
-example : run headOrZero [1, 2, 3] = 1 := rfl
-example : run headOrZero [] = 0 := rfl
-example : run foldArrayZero [1, 2, 3] = 0 := rfl
-example : run lastOrZero [1, 2, 3] = 3 := rfl
-example : run lastOrZero [] = 0 := rfl
+example : run oneTwoThree = #[1, 2, 3] := rfl
+example : run headOrZero #[1, 2, 3] = 1 := rfl
+example : run headOrZero #[] = 0 := rfl
+example : run foldArrayZero #[1, 2, 3] = 0 := rfl
+example : run lastOrZero #[1, 2, 3] = 3 := rfl
+example : run lastOrZero #[] = 0 := rfl
 
 /-! ## Enums -/
 

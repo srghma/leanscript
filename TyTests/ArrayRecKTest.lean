@@ -289,7 +289,7 @@ theorem win_eq_denList : NatWin τ 3 = TyWf.DenList (natRecCtx τ 3 []) := rfl
 
 /-- And the environment of the branch is the head, the tail, and the window in front of
     the environment of the ambient context — no cast and no length proof. -/
-example (hd : TyWf.Den σ) (tl : List (TyWf.Den σ)) (w : NatWin τ 2) (env : Env Γ) :
+example (hd : TyWf.Den σ) (tl : Array (TyWf.Den σ)) (w : NatWin τ 2) (env : Env Γ) :
     Env (σ :: TyWf.array σ :: natRecCtx τ 2 Γ) := (hd, tl, Env.ofWin w env)
 
 end Types

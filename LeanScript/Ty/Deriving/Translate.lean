@@ -247,7 +247,10 @@ partial def tyWfOfWrapper (ctx : Ctx) (e : Expr) : MetaM (Option TransRes) := do
       let e' := mkAppN fn args'
       let .some inst ← trySynthInstance (← mkAppM ``LeanScript.LeanScriptTyWf #[e'])
         | return none
-      let tree ← whnf (← mkAppOptM ``LeanScript.tyOf #[some e', some inst])
+      -- the schema of a list is a definition of its own (`Ty.listSchema`, which `List`'s
+      -- model is written with); it is unfolded so that the binder's payload is visible
+      let tree ← deltaExpand (← whnf (← mkAppOptM ``LeanScript.tyOf #[some e', some inst]))
+        (· == ``LeanScript.Ty.listSchema)
       -- the occurrence goes where the stand-in is; if it would land inside a binder of
       -- the former's own model, that binder is hoisted into a member of a family instead
       let out? ←

@@ -53,19 +53,11 @@ def consCtxE (t rest : Expr) : Expr :=
 def mkCtxE (ts : List Expr) (base : Expr) : Expr := ts.foldr consCtxE base
 
 /-- The schema of `List α` as the language sees it, as a schema of **trees**:
-    constructor `0` is `nil`, which has no fields, and constructor `1` is `cons`, whose
-    fields are an element and the list itself (`Ty.self`).  This is the schema of the
-    `LeanScriptTyWf (List α)` instance. -/
-def listSchemaE (σ : Expr) : Expr :=
-  let nilTys := mkApp (mkConst ``List.nil [Level.zero]) treeE
-  let tl := mkApp3 (mkConst ``List.cons [Level.zero]) treeE
-    (mkConst ``LeanScript.Ty.self) nilTys
-  let ne := mkApp3 (mkConst ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk
-    [Level.zero]) treeE σ tl
-  let nilCtors := mkApp (mkConst ``List.nil [Level.zero])
-    (mkApp (mkConst ``List [Level.zero]) treeE)
-  let here := mkApp3 (mkConst ``LeanScript.CtorsWithPayload.here) treeE ne nilCtors
-  mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.skip) treeE here
+    `LeanScript.Ty.listSchema σ`, the schema the `LeanScriptTyWf (List α)` instance
+    (`LeanScript.TyWf.list`) is built from — constructor `0` is `nil`, which has no fields,
+    and constructor `1` is `cons`, whose fields are an element and the list itself
+    (`Ty.self`).  Every use goes through `reduceTy`, which unfolds it. -/
+def listSchemaE (σ : Expr) : Expr := mkApp (mkConst ``LeanScript.Ty.listSchema) σ
 
 /-- The tree of `List α`: the recursive tagged union `nil | cons α self`. -/
 def listTyE (σ : Expr) : Expr :=

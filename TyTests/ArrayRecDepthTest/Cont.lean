@@ -63,11 +63,11 @@ def contBranch :
 def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 1 (.var (v♯0)) contBases contBranch)
 
-example : runArith contTerm [] = 1 := rfl
-example : runArith contTerm [3] = 3 := rfl
-example : runArith contTerm [3, 4] = 13 := rfl
-example : runArith contTerm [1, 2, 3] = 10 := rfl
-example : runArith contTerm [1, 1, 1, 1, 1, 1] = 13 := rfl
+example : runArith contTerm #[] = 1 := rfl
+example : runArith contTerm #[3] = 3 := rfl
+example : runArith contTerm #[3, 4] = 13 := rfl
+example : runArith contTerm #[1, 2, 3] = 10 := rfl
+example : runArith contTerm #[1, 1, 1, 1, 1, 1] = 13 := rfl
 
 /-- The fold `Term.eval` runs for `contTerm`, in an arbitrary environment: the short
     lists go to `contBases` and the branch runs with the window in front of the
@@ -75,7 +75,7 @@ example : runArith contTerm [1, 1, 1, 1, 1, 1] = 13 := rfl
 def contEvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 1)
     (fun m => ArrayRecBases.eval envArith contBases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith contBranch (hd, tl, Env.ofWin w env) (by no_rec_mk))
+    (fun hd tl w => Term.eval envArith contBranch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
 
 /-- That fold is the continuant — by the two equations of `LeanScript.ArrayRecFacts`,
     whatever the environment is. -/
@@ -84,8 +84,8 @@ theorem contEvalFold_eq (env : Env ArrCtx) (l : List Nat) : contEvalFold env l =
 
 /-- **The term computes the continuant, at every list** — not only at the ones checked by
     `rfl` above. -/
-theorem contTerm_eval (l : List Nat) : runArith contTerm l = cont l :=
-  contEvalFold_eq (l, Env.nil) l
+theorem contTerm_eval (l : List Nat) : runArith contTerm l.toArray = cont l :=
+  contEvalFold_eq (l.toArray, Env.nil) l
 
 /-! ### The continuant is `fib`
 
@@ -104,7 +104,7 @@ theorem cont_replicate_one : (n : Nat) → cont (List.replicate n 1) = fib (n + 
 
 /-- So the term of the grammar computes `fib`, on the arrays of ones. -/
 theorem contTerm_eval_ones (n : Nat) :
-    runArith contTerm (List.replicate n 1) = fib (n + 1) := by
+    runArith contTerm (List.replicate n 1).toArray = fib (n + 1) := by
   rw [contTerm_eval, cont_replicate_one]
 
 /-! ## 2. Three and four suffixes: the same node at depth two and three
@@ -128,22 +128,22 @@ def cont3Branch :
 def cont3Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)
 
-example : runArith cont3Term [] = 1 := rfl
-example : runArith cont3Term [5, 6] = 30 := rfl
-example : runArith cont3Term [1, 1, 1, 1, 1, 1] = 17 := rfl
+example : runArith cont3Term #[] = 1 := rfl
+example : runArith cont3Term #[5, 6] = 30 := rfl
+example : runArith cont3Term #[1, 1, 1, 1, 1, 1] = 17 := rfl
 
 /-- The fold `Term.eval` runs for `cont3Term`. -/
 def cont3EvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 2)
     (fun m => ArrayRecBases.eval envArith cont3Bases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith cont3Branch (hd, tl, Env.ofWin w env) (by no_rec_mk))
+    (fun hd tl w => Term.eval envArith cont3Branch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
 
 theorem cont3EvalFold_eq (env : Env ArrCtx) (l : List Nat) : cont3EvalFold env l = cont3 l :=
   listFoldK_eq_cont3 _ _ rfl (fun _ => rfl) (fun _ _ => rfl) (fun _ _ _ => rfl) l
 
 /-- The depth-two term computes `cont3`, at every list. -/
-theorem cont3Term_eval (l : List Nat) : runArith cont3Term l = cont3 l :=
-  cont3EvalFold_eq (l, Env.nil) l
+theorem cont3Term_eval (l : List Nat) : runArith cont3Term l.toArray = cont3 l :=
+  cont3EvalFold_eq (l.toArray, Env.nil) l
 
 /-- The answers for the short lists of the depth-three fold: `1`, `a`, `a * b`,
     `a * b * c`. -/
@@ -164,23 +164,23 @@ def cont4Branch :
 def cont4Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)
 
-example : runArith cont4Term [] = 1 := rfl
-example : runArith cont4Term [2, 3, 4] = 24 := rfl
-example : runArith cont4Term [1, 1, 1, 1, 1, 1] = 13 := rfl
+example : runArith cont4Term #[] = 1 := rfl
+example : runArith cont4Term #[2, 3, 4] = 24 := rfl
+example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := rfl
 
 /-- The fold `Term.eval` runs for `cont4Term`. -/
 def cont4EvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 3)
     (fun m => ArrayRecBases.eval envArith cont4Bases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith cont4Branch (hd, tl, Env.ofWin w env) (by no_rec_mk))
+    (fun hd tl w => Term.eval envArith cont4Branch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
 
 theorem cont4EvalFold_eq (env : Env ArrCtx) (l : List Nat) : cont4EvalFold env l = cont4 l :=
   listFoldK_eq_cont4 _ _ rfl (fun _ => rfl) (fun _ _ => rfl) (fun _ _ _ => rfl)
     (fun _ _ _ => rfl) l
 
 /-- The depth-three term computes `cont4`, at every list. -/
-theorem cont4Term_eval (l : List Nat) : runArith cont4Term l = cont4 l :=
-  cont4EvalFold_eq (l, Env.nil) l
+theorem cont4Term_eval (l : List Nat) : runArith cont4Term l.toArray = cont4 l :=
+  cont4EvalFold_eq (l.toArray, Env.nil) l
 
 end TyTests.ArrayRecDepth
 

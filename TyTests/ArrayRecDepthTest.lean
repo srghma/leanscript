@@ -127,9 +127,9 @@ def contTRTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
     (.nat_mk 0))
 
-example : runArith contTRTerm [] = 1 := rfl
-example : runArith contTRTerm [3, 4] = 13 := rfl
-example : runArith contTRTerm [1, 2, 3] = 10 := rfl
+example : runArith contTRTerm #[] = 1 := rfl
+example : runArith contTRTerm #[3, 4] = 13 := rfl
+example : runArith contTRTerm #[1, 2, 3] = 10 := rfl
 
 /-- **Any** depth-zero fold at the accumulator type with these two equations is the
     tail-recursive loop. -/
@@ -159,15 +159,15 @@ def loopEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Acc2 :=
 def loopEvalS (env : Env ArrCtx) :
     Nat → List Nat → NatWin Acc2 1 → TyWf.Den Acc2 :=
   fun hd tl w =>
-    Term.eval envArith (loopStep (Γ := ArrCtx)) (hd, tl, Env.ofWin w env) (by no_rec_mk)
+    Term.eval envArith (loopStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env) (by no_rec_mk)
 
 theorem loopEvalFold_eq (env : Env ArrCtx) (l : List Nat) (a b : Nat) :
     listFoldK (τ := Acc2) (k := 0) (loopEvalZ env) (loopEvalS env) l a b = contTR l a b :=
   listFoldK_eq_contTR _ _ rfl (fun _ _ _ => rfl) l a b
 
 /-- The tail-recursive term computes the continuant, at every list. -/
-theorem contTRTerm_eval (l : List Nat) : runArith contTRTerm l = cont l := by
-  show listFoldK (τ := Acc2) (k := 0) (loopEvalZ (l, Env.nil)) (loopEvalS (l, Env.nil))
+theorem contTRTerm_eval (l : List Nat) : runArith contTRTerm l.toArray = cont l := by
+  show listFoldK (τ := Acc2) (k := 0) (loopEvalZ (l.toArray, Env.nil)) (loopEvalS (l.toArray, Env.nil))
     l 1 0 = cont l
   rw [loopEvalFold_eq]
   exact contTR_start l
@@ -228,9 +228,9 @@ def contFromPairTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   .lam (.record_casesOn (fs := pairSchema)
     (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))
 
-example : runArith contFromPairTerm [] = 1 := rfl
-example : runArith contFromPairTerm [3, 4] = 13 := rfl
-example : runArith contFromPairTerm [1, 2, 3] = 10 := rfl
+example : runArith contFromPairTerm #[] = 1 := rfl
+example : runArith contFromPairTerm #[3, 4] = 13 := rfl
+example : runArith contFromPairTerm #[1, 2, 3] = 10 := rfl
 
 /-- **Any** depth-zero fold at the record type with these two equations is the pair
     recursion. -/
@@ -259,7 +259,7 @@ def pairEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Pair :=
 
 def pairEvalS (env : Env ArrCtx) : Nat → List Nat → NatWin Pair 1 → TyWf.Den Pair :=
   fun hd tl w =>
-    Term.eval envArith (pairStep (Γ := ArrCtx)) (hd, tl, Env.ofWin w env) (by no_rec_mk)
+    Term.eval envArith (pairStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env) (by no_rec_mk)
 
 theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
     listFoldK (τ := Pair) (k := 0) (pairEvalZ env) (pairEvalS env) l =
@@ -268,13 +268,13 @@ theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
 
 /-- The record-valued term **is** `contPair`, field by field. -/
 theorem contPairTerm_eval (l : List Nat) :
-    runArith (contPairTerm (Γ := [])) l = ((contPair l).1, (contPair l).2, PUnit.unit) := by
-  show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l, Env.nil)) (pairEvalS (l, Env.nil)) l = _
+    runArith (contPairTerm (Γ := [])) l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
+  show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil)) l = _
   rw [pairEvalFold_eq, contPair_eq l]
 
 /-- And its first field is the continuant, at every list. -/
-theorem contFromPairTerm_eval (l : List Nat) : runArith contFromPairTerm l = cont l := by
-  show (listFoldK (τ := Pair) (k := 0) (pairEvalZ (l, Env.nil)) (pairEvalS (l, Env.nil))
+theorem contFromPairTerm_eval (l : List Nat) : runArith contFromPairTerm l.toArray = cont l := by
+  show (listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil))
     l).1 = cont l
   rw [pairEvalFold_eq]
 

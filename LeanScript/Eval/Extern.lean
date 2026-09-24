@@ -18,9 +18,10 @@ out (the `USize`/`ISize` entries, the byte and float arrays, the run-time handle
 entries whose meaning is not a value) are commented out here too.
 
 Where the result has one of the derived type formers of `LeanScript.Expr.Extern`, the Lean value
-is converted into the value of that shape: an array denotes a `List`
-(`Array.toList`), and an `Option`, a pair and an `Ordering` become a value of
-`TyWf.option`, `TyWf.prod` and `TyWf.ordering`.
+is converted into the value of that shape: a `List`, an `Option`, a pair and an
+`Ordering` become a value of `TyWf.list`, `TyWf.option`, `TyWf.prod` and `TyWf.ordering`.
+(An *array* result needs no conversion: an array of the language denotes a Lean
+`Array`.)
 -/
 
 /-- The value of a pure extern of `Init`: the Lean function it implements, applied to its
@@ -41,7 +42,7 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   -- a byte or float array: | _, .lean_string_from_utf8_unchecked x1 x2 => String.ofByteArray x1 x2
   | _, .lean_nat_mod__Nat_modCore x1 x2 => x1 % x2  -- `Nat.modCore_eq_mod`: `Nat.modCore` is `%`, and is `@[irreducible]` with no compiled form
   | _, .lean_nat_mod__Nat_mod x1 x2 => Nat.mod x1 x2
-  | _, .lean_array_push _ x2 x3 => (Array.push x2 x3).toList
+  | _, .lean_array_push _ x2 x3 => Array.push x2 x3
   -- a byte or float array: | _, .lean_byte_array_mk x1 => ByteArray.mk x1
   | _, .lean_nat_sub x1 x2 => Nat.sub x1 x2
   | _, .lean_uint8_dec_lt x1 x2 => @Decidable.decide _ (UInt8.decLt x1 x2)
@@ -49,12 +50,12 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   -- NO handle: | _, .lean_system_platform_nbits => some (@Decidable.decide _ (System.Platform.getNumBits))
   | _, .lean_uint32_dec_le x1 x2 => @Decidable.decide _ (UInt32.decLe x1 x2)
   | _, .lean_array_get_size _ x2 => Array.size x2
-  | _, .lean_array_to_list _ x2 => Array.toList x2
+  | _, .lean_array_to_list _ x2 => TyWf.Den.ofList (Array.toList x2)
   | _, .lean_nat_dec_eq__Nat_decEq x1 x2 => @Decidable.decide _ (Nat.decEq x1 x2)
   | _, .lean_nat_dec_eq__Nat_beq x1 x2 => Nat.beq x1 x2
   | _, .lean_array_fget_borrowed _ x2 x3 x4 => Array.getInternal x2 x3 x4  -- borrowing is a representation detail a pure semantics does not see
-  | _, .lean_mk_empty_array_with_capacity__Array_emptyWithCapacity _ x2 => (Array.emptyWithCapacity x2).toList
-  | _, .lean_mk_empty_array_with_capacity__Array_mkEmpty _ x2 => (Array.mkEmpty x2).toList
+  | _, .lean_mk_empty_array_with_capacity__Array_emptyWithCapacity _ x2 => Array.emptyWithCapacity x2
+  | _, .lean_mk_empty_array_with_capacity__Array_mkEmpty _ x2 => Array.mkEmpty x2
   | _, .lean_uint8_of_nat__UInt8_ofNat x1 => UInt8.ofNat x1
   | _, .lean_uint8_of_nat__UInt8_ofNatLT x1 x2 => UInt8.ofNatLT x1 x2
   -- NO unsafe:| _, .lean_is_scalar x1 x2 => some (isScalarObj x2)
@@ -90,7 +91,7 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   -- NO usize: | _, .lean_usize_to_nat__USize_toBitVec x1 => some (@Decidable.decide _ (USize.toBitVec x1))
   | _, .lean_string_utf8_byte_size x1 => String.utf8ByteSize x1
   -- a byte or float array: | _, .lean_byte_array_push x1 x2 => ByteArray.push x1 x2
-  | _, .lean_array_mk _ x2 => (Array.mk x2).toList
+  | _, .lean_array_mk _ x2 => Array.mk x2
   | _, .lean_uint64_mix_hash x1 x2 => mixHash x1 x2
   | _, .lean_uint64_of_nat__UInt64_ofNatLT x1 x2 => UInt64.ofNatLT x1 x2
   -- NO handle: | _, .lean_task_map _ _ x3 x4 x5 x6 => some (@Decidable.decide _ (Task.map x3 x4 x5 x6))
@@ -190,15 +191,15 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_dbg_trace_if_shared _ x2 x3 => dbgTraceIfShared x2 x3
   -- NO handle: | _, .lean_dbg_stack_trace _ x2 => some (@Decidable.decide _ (dbgStackTrace x2))
   -- NO unsafe:| _, .lean_is_exclusive_obj x1 x2 => some (isExclusiveUnsafe x2)
-  | _, .lean_array_set _ x2 x3 x4 => (Array.set! x2 x3 x4).toList
-  | _, .lean_array_fset _ x2 x3 x4 x5 => (Array.set x2 x3 x4 x5).toList
-  | _, .lean_array_fswap _ x2 x3 x4 x5 x6 => (Array.swap x2 x3 x4 x5 x6).toList
+  | _, .lean_array_set _ x2 x3 x4 => Array.set! x2 x3 x4
+  | _, .lean_array_fset _ x2 x3 x4 x5 => Array.set x2 x3 x4 x5
+  | _, .lean_array_fswap _ x2 x3 x4 x5 x6 => Array.swap x2 x3 x4 x5 x6
   | _, .lean_array_uget _ x2 x3 x4 => Array.uget x2 x3 x4
-  | _, .lean_mk_array _ x2 x3 => (Array.replicate x2 x3).toList
-  | _, .lean_array_swap _ x2 x3 x4 => (Array.swapIfInBounds x2 x3 x4).toList
+  | _, .lean_mk_array _ x2 x3 => Array.replicate x2 x3
+  | _, .lean_array_swap _ x2 x3 x4 => Array.swapIfInBounds x2 x3 x4
   -- NO unsafe:| _, .lean_array_uget_borrowed x1 x2 x3 x4 => some (Array.ugetBorrowed x2 x3 x4)
-  | _, .lean_array_pop _ x2 => (Array.pop x2).toList
-  | _, .lean_array_uset _ x2 x3 x4 x5 => (Array.uset x2 x3 x4 x5).toList
+  | _, .lean_array_pop _ x2 => Array.pop x2
+  | _, .lean_array_uset _ x2 x3 x4 x5 => Array.uset x2 x3 x4 x5
   -- NO usize: | _, .lean_array_size _ x2 => some (@Decidable.decide _ (Array.usize x2))
   | _, .lean_version_get_special_desc => ("leanscript" : String)
   | _, .lean_version_get_is_release => false
@@ -322,8 +323,8 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_string_utf8_next_fast__String_next' x1 x2 x3 => String.Pos.Raw.next' x1 x2 x3  -- `String.next'` is a deprecated alias of `String.Pos.Raw.next'`
   | _, .lean_string_utf8_next_fast__String_Pos_Raw_next' x1 x2 x3 => String.Pos.Raw.next' x1 x2 x3
   | _, .lean_string_utf8_next_fast__String_Pos_next x1 x2 => String.Pos.next x1 x2
-  | _, .lean_string_data__String_data x1 => String.toList x1  -- `String.data` is a deprecated alias of `String.toList`
-  | _, .lean_string_data__String_toList x1 => String.toList x1
+  | _, .lean_string_data__String_data x1 => TyWf.Den.ofList (α := .prim .char) (String.toList x1)  -- `String.data` is a deprecated alias of `String.toList`
+  | _, .lean_string_data__String_toList x1 => TyWf.Den.ofList (α := .prim .char) (String.toList x1)
   | _, .lean_string_utf8_extract_fast x1 x2 => String.extract x1 x2
   | _, .lean_string_utf8_at_end__String_atEnd x1 x2 => String.Pos.Raw.atEnd x1 x2  -- `String.atEnd` is a deprecated alias of `String.Pos.Raw.atEnd`
   | _, .lean_string_utf8_at_end__String_Pos_Raw_atEnd x1 x2 => String.Pos.Raw.atEnd x1 x2

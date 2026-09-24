@@ -172,7 +172,7 @@ def digits : Array Nat := #[1, 2, 3]
 
 def digits_term : Term sig0 [] (TyWf.array (TyWf.prim .nat)) := #leanscript_to_term digits
 
-example : run digits_term = [1, 2, 3] := rfl
+example : run digits_term = #[1, 2, 3] := rfl
 
 /-! ## Lists
 

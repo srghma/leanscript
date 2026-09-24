@@ -49,8 +49,14 @@ inductive WTree (S : Type) (P : S → Type) : Type
   | [] => PEmpty
   | s :: ss => P s ⊕ ListPos P ss
 
-/-- A list: a list of shapes, with the holes of each. -/
+/-- A list: a list of shapes, with the holes of each.  No type of the language denotes
+    it — `Ty.array` denotes `Cont.array` — but it is what `Cont.array` is built from, and
+    the list-level functions below work on it. -/
 @[reducible] def Cont.list (c : Cont) : Cont := ⟨List c.S, ListPos c.P⟩
+
+/-- An array: an array of shapes, with the holes of each, in order — the holes of the
+    list of its elements. -/
+@[reducible] def Cont.array (c : Cont) : Cont := ⟨Array c.S, fun a => ListPos c.P a.toList⟩
 
 /-- The least fixpoint, which has no holes left: it is closed. -/
 @[reducible] def Cont.mu (c : Cont) : Cont := Cont.const (WTree c.S c.P)
@@ -85,6 +91,16 @@ def unlist {c : Cont} {Y : Type} {α : Type} (h : c.Ext Y → α) : (xs : List c
   | [], _ => []
   | s :: ss, g => h ⟨s, fun p => g (.inl p)⟩ :: unlist h ss (fun q => g (.inr q))
 
+/-- An array of extensions, from an array of values and a way to turn each into one. -/
+def array {c : Cont} {Y : Type} {α : Type} (f : α → c.Ext Y) (xs : Array α) :
+    (Cont.array c).Ext Y :=
+  ⟨⟨(list f xs.toList).1⟩, (list f xs.toList).2⟩
+
+/-- The other direction of `Cont.Ext.array`. -/
+def unarray {c : Cont} {Y : Type} {α : Type} (h : c.Ext Y → α) (xs : Array c.S)
+    (g : ListPos c.P xs.toList → Y) : Array α :=
+  ⟨unlist h xs.toList g⟩
+
 /-- An extension of an exponent, pointwise. -/
 def pi {c : Cont} {Y : Type} {A : Type} (g : A → c.Ext Y) : (Cont.pi A c).Ext Y :=
   ⟨fun y => (g y).1, fun q => (g q.1).2 q.2⟩
@@ -118,6 +134,24 @@ theorem list_unlist {c : Cont} {Y : Type} {α : Type} (f : α → c.Ext Y) (h : 
       generalize Cont.Ext.list f (Cont.Ext.unlist h ss fun q => g (.inr q)) = B at ih ⊢
       subst hx ih
       exact congrArg (Sigma.mk (s :: ss)) (funext fun | .inl _ => rfl | .inr _ => rfl)
+
+theorem unarray_array {c : Cont} {Y : Type} {α : Type} (f : α → c.Ext Y) (h : c.Ext Y → α)
+    (hr : ∀ x, h (f x) = x) (xs : Array α) :
+    Cont.Ext.unarray h (Cont.Ext.array f xs).1 (Cont.Ext.array f xs).2 = xs := by
+  cases xs with
+  | mk l => exact congrArg Array.mk (unlist_list f h hr l)
+
+theorem array_unarray {c : Cont} {Y : Type} {α : Type} (f : α → c.Ext Y) (h : c.Ext Y → α)
+    (hr : ∀ e, f (h e) = e) (ss : Array c.S) (g : ListPos c.P ss.toList → Y) :
+    Cont.Ext.array f (Cont.Ext.unarray h ss g) = ⟨ss, g⟩ := by
+  cases ss with
+  | mk l =>
+      have e := list_unlist f h hr l g
+      show (⟨⟨(Cont.Ext.list f (Cont.Ext.unlist h l g)).1⟩,
+        (Cont.Ext.list f (Cont.Ext.unlist h l g)).2⟩ : (Cont.array c).Ext Y) = _
+      generalize Cont.Ext.list f (Cont.Ext.unlist h l g) = B at e ⊢
+      subst e
+      rfl
 
 end Cont.Ext
 

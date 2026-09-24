@@ -69,28 +69,51 @@ instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α → β) :=
 
 Each of these is the tree `deriving LeanScriptTyWf` would give it, written out here because
 the declaration belongs to the core library and cannot carry a `deriving` clause — except
-`Ordering`, whose model is a decision (see the header). -/
+`Ordering`, whose model is a decision (see the header).
 
-/-- Constructor `0` (`none`) carries nothing; constructor `1` (`some`) carries the
-    value. -/
-instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) :=
-  ⟨.taggedUnion (.skip (.here ⟨tyWfOf α, []⟩ [])), by ty_wf⟩
+The trees are stated once, as type formers of the language (`TyWf.option`, `TyWf.prod`,
+`TyWf.sum`, `TyWf.list`, `TyWf.ordering`), and the instances are these formers applied to
+the models of the arguments.  Everything else that needs the model of one of these types —
+the externs of `Init` (`LeanScript.Expr.Extern`), the reading back of a list value
+(`LeanScript.Den.Rec`), `#leanscript_to_term` — uses the same formers, so there is one
+model of each. -/
 
-/-- One constructor with two fields. -/
+namespace TyWf
+
+/-- `Option α`: constructor `0` (`none`) carries nothing; constructor `1` (`some`) carries
+    the value. -/
+@[reducible] def option (α : TyWf) : TyWf :=
+  ⟨.taggedUnion (.skip (.here ⟨α, []⟩ [])), by ty_wf⟩
+
+/-- `α × β`: one constructor with two fields, in that order. -/
+@[reducible] def prod (α β : TyWf) : TyWf := ⟨.record ⟨α, β, []⟩, by ty_wf⟩
+
+/-- `α ⊕ β`: two constructors, each with one field. -/
+@[reducible] def sum (α β : TyWf) : TyWf :=
+  ⟨.taggedUnion (.payloadFirst ⟨α, []⟩ [β] []), by ty_wf⟩
+
+/-- `List α`: the recursive sum `nil | cons (_ : α) (_ : self)`. -/
+@[reducible] def list (α : TyWf) : TyWf := ⟨.recTaggedUnion (Ty.listSchema α), by ty_wf⟩
+
+/-- `Ordering`: `lt`, `eq` and `gt` are `-1`, `0` and `1` — the enum is shifted, which a
+    mechanical translation of the declaration would not have done.  Its values are still
+    the constructor numbers `0`, `1`, `2`, in the order of the constructors of
+    `Ordering`. -/
+@[reducible] def ordering : TyWf := ⟨.enum ⟨0, -1⟩, by ty_wf⟩
+
+end TyWf
+
+instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) := ⟨TyWf.option (tyWfOf α)⟩
+
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α × β) :=
-  ⟨.record ⟨tyWfOf α, tyWfOf β, []⟩, by ty_wf⟩
+  ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
 
-/-- Two constructors, each with one field. -/
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
-  ⟨.taggedUnion (.payloadFirst ⟨tyWfOf α, []⟩ [tyWfOf β] []), by ty_wf⟩
+  ⟨TyWf.sum (tyWfOf α) (tyWfOf β)⟩
 
-/-- A list is the recursive sum `nil | cons (_ : α) (_ : self)`. -/
-instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) :=
-  ⟨.recTaggedUnion (.skip (.here ⟨tyWfOf α, [.self]⟩ [])), by ty_wf⟩
+instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩
 
-/-- `lt`, `eq` and `gt` are `-1`, `0` and `1`: the enum is shifted, which a mechanical
-    translation of the declaration would not have done. -/
-instance : LeanScriptTyWf Ordering := ⟨.enum ⟨0, -1⟩, by ty_wf⟩
+instance : LeanScriptTyWf Ordering := ⟨TyWf.ordering⟩
 
 end LeanScript
 
