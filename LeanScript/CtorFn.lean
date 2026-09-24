@@ -7,20 +7,6 @@ public meta import LeanScript.Ty.Deriving.Build
 
 @[expose] public section
 
-namespace LeanScript
-
-/-- The bundle the instance of `F α` gives when `α` is modelled by the bundle `t`.  This is
-    how `#leanscript_ctor` writes the tree of a field of type `F S`, for a type argument `S`,
-    when the tree of `F`'s instance is one the bundled smart constructors cannot rebuild — a
-    recursive one, such as `List S`'s.  `α` itself is `PUnit`: only its model is read. -/
-@[reducible] def TyWf.modelAt.{u, v} (F : Type u → Type v)
-    [inst : ∀ α : Type u, [LeanScriptTyWf α] → LeanScriptTyWf (F α)] (t : TyWf) : TyWf :=
-  @tyWfOf (F PUnit) (@inst PUnit (t.asModelOf PUnit))
-
-end LeanScript
-
-meta section
-
 /-!
 # `#leanscript_ctor`: a constructor of any datatype, as a function on terms
 
@@ -57,7 +43,8 @@ The function takes the arguments the Lean constructor takes, in the same order, 
 Process.halt  : (α : Type) → (HaltedState : Type) → (HaltedState → Nat) → Process α
 #leanscript_ctor `Process `halt :
   {Sg : Sig} → {Γ : Ctx} → (α HaltedState : TyWf) →
-    Term Sg Γ (HaltedState ⇒ .prim .nat) → Term Sg Γ (Process.halt.leanScriptLayout α HaltedState)
+    Term Sg Γ (HaltedState ⇒ .prim .nat) →
+      Term Sg Γ (Process.halt.leanScriptLayout α HaltedState)
 ```
 
 A type is a parameter of the datatype, one of its type indices, or a type field of the
@@ -73,8 +60,14 @@ down, where every layer may choose different types.
 Every other field type is translated: a type argument is its `TyWf`, a function type is
 `TyWf.fn` (a domain the language erases — `Unit`, a proof, an instance — is dropped), and an
 application of a type former (`Option S`, `S × Nat`, `Array S`, `List S`, …) is the tree of
-the former's own `LeanScriptTyWf` instance with the arguments' trees in place.  A field the
-language erases is not an argument at all.
+the former's own `LeanScriptTyWf` instance with the arguments' trees in place — rebuilt with
+the bundled smart constructors (`TyWf.taggedUnion`, `TyWf.record`, …) when the instance's tree
+is not recursive, and `tyWfOf (List S.AsType)` otherwise (`LeanScript.TyWf.AsType`).  A field
+the language erases is not an argument at all.
+
+Note that a recursive datatype built one layer at a time is **not** the type its
+`LeanScriptTyWf` instance gives it: `tyWfOf (List α)` is a recursive tagged union, and a list
+of it is built by `#leanscript_to_term`, not by `List.cons`'s constructor function.
 
 ## Two kinds of datatype
 
@@ -95,7 +88,32 @@ introduction form of their own; `Bool` is the enum of its two constructors, and 
 whose instance chooses its own numbering (`Ordering`) keeps it.  A constructor that carries
 no value (`Unit.unit`, `PUnit.unit`, a structure without fields), a proposition, and a
 datatype that hides a *family* of types (`Elem : State → Type`) are refused.
+
+## Commands
+
+* `#leanscript_ctor I c`, written as a command, generates (or finds) the two definitions and
+  shows the signature of the constructor function.
+* `#leanscript_ctor_cache` lists every generated definition, here and in the imported
+  modules.
 -/
+
+
+namespace LeanScript
+
+/-- A Lean type that stands for the bundle `t`: its values are irrelevant (it is `PUnit`), and
+    its `LeanScriptTyWf` instance is `t`.  So `tyWfOf (F t.AsType)` is the tree `F`'s own
+    instance gives `F α` when `α` is modelled by `t`.  This is how `#leanscript_ctor` writes
+    the tree of a field of type `F S`, for a type argument `S`, when the tree of `F`'s instance
+    is one the bundled smart constructors cannot rebuild — a recursive one, such as
+    `List S`'s: it is `tyWfOf (List S.AsType)`. -/
+def TyWf.AsType.{u} (_t : TyWf) : Type u := PUnit
+
+instance TyWf.instLeanScriptTyWfAsType.{u} (t : TyWf) : LeanScriptTyWf (TyWf.AsType.{u} t) := ⟨t⟩
+
+end LeanScript
+
+meta section
+
 
 open Lean Meta Elab Term
 
@@ -372,22 +390,16 @@ partial def trFormer (c : TrCtx) (field : Name) (t : Expr) : MetaM Expr := do
         let r ← match clean? with
           | some r => pure r
           | none => do
-            -- the instance itself, at `PUnit` with the stand-in's tree as its model
+            -- the former's own instance, at stand-in types whose models are the trees
             let mut vals : Array Expr := #[]
-            for x in xs do vals := vals.push (mkConst ``PUnit [← sortLevel x])
-            let mut instVals : Array Expr := #[]
             for k in [0:xs.size] do
-              instVals := instVals.push (← mkAppM ``LeanScript.TyWf.asModelOf #[ys[k]!, vals[k]!])
-            if h : xs.size = 1 then
-              -- one argument: `TyWf.modelAt F t`, which shows what it is
-              let lvlX ← sortLevel xs[0]
-              let lvlF ← sortLevel t'
-              if let (.succ u, .succ v) := (lvlX, lvlF) then
-                let F := (← mkLambdaFVars #[xs[0]] t').eta
-                let instF ← mkLambdaFVars (#[xs[0]] ++ insts) inst
-                return some ((mkApp3 (mkConst ``LeanScript.TyWf.modelAt [u, v]) F instF ys[0]!).replaceFVars ys subs)
-            let bundle ← mkAppOptM ``LeanScript.tyWfOf #[some t', some inst]
-            pure ((← mkLambdaFVars (xs ++ insts) bundle).beta (vals ++ instVals))
+              let .succ u ← sortLevel xs[k]!
+                | throwError "`#leanscript_ctor`: {xs[k]!} is not a type"
+              vals := vals.push (mkApp (mkConst ``LeanScript.TyWf.AsType [u]) ys[k]!)
+            let t'' := t'.replaceFVars xs vals
+            let .some inst' ← trySynthInstance (← mkAppM ``LeanScript.LeanScriptTyWf #[t''])
+              | throwError "`#leanscript_ctor`: no instance for {t''}"
+            mkAppOptM ``LeanScript.tyWfOf #[some t'', some inst']
         return some (r.replaceFVars ys subs)
   match r? with
   | some r => return r
@@ -788,6 +800,30 @@ def elabLeanscriptLayout : TermElab := fun stx expected? => do
   let c ← ctorOfSyntax stx
   let (lay, _) ← ensureCtorFn c
   elabTerm (mkCIdentFrom stx lay) expected?
+
+/-- `#leanscript_ctor I c`, as a **command**: generate (or find in the cache) the constructor
+    function of `I.c` and its layout, and show the signature of the function. -/
+syntax (name := leanscriptCtorCmd) "#leanscript_ctor " name (ppSpace name)? : command
+
+@[command_elab leanscriptCtorCmd]
+def elabLeanscriptCtorCmd : Command.CommandElab := fun stx => Command.liftTermElabM do
+  let c ← ctorOfSyntax stx
+  let (_, fn) ← ensureCtorFn c
+  logInfo (MessageData.signature fn)
+
+/-- `#leanscript_ctor_cache`: the constructor functions and layouts generated so far, here
+    and in the imported modules — what a later `#leanscript_ctor` reuses. -/
+syntax (name := leanscriptCtorCache) "#leanscript_ctor_cache" : command
+
+@[command_elab leanscriptCtorCache]
+def elabLeanscriptCtorCache : Command.CommandElab := fun _ => do
+  let env ← getEnv
+  let es := (ctorFnExt.getState env).filter (env.contains ·.decl)
+  if es.isEmpty then
+    logInfo m!"no constructor function has been generated"
+  else
+    logInfo (MessageData.joinSep (es.toList.map fun e =>
+      m!"{e.kind} of {e.key}: {e.decl}") "\n")
 
 end LeanScript.CtorFn
 
