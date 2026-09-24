@@ -2,6 +2,9 @@ module
 public import Lean.ToExpr
 import Lean
 public import NonEmpty.ArrayCorrectByConstruction.Basic
+public import NonEmpty.ArrayCorrectByConstruction.Ops
+public import NonEmpty.ArrayCorrectByConstruction.Instances
+public import NonEmpty.ArrayCorrectByConstruction.Notation
 
 open Lean Meta Elab
 

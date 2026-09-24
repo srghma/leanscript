@@ -42,6 +42,7 @@ inductive TyView where
   | recTaggedUnion (l hwf : Expr)
   /-- Anything else — another recursive binder or an occurrence. -/
   | other
+  deriving BEq, Repr
 
 /-- The node a type of the language is, with the children **bundled**: what the view
     hands back is what the grammar's constructors ask for. -/

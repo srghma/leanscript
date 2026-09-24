@@ -70,6 +70,7 @@ inductive Ty where
   /-- A mutual recursive family, together with which member of it this type is;
       `Ty.familyMember i` inside it is an occurrence of member `i` of *this* family. -/
   | mutualRecursiveFamily : LeanMutualRecFamily Ty → Ty
+  deriving Repr
 
 namespace Ty
 
@@ -252,6 +253,8 @@ instance : CoeOut LeanPrimTy Ty := ⟨.prim⟩
 instance : CoeOut (LeanPrimTyCovariant Ty) Ty := ⟨.primCovariant⟩
 /-- A node whose children are types is a type. -/
 instance : CoeOut (TyShape Ty) Ty := ⟨.shape⟩
+/-- An enum schema is a type. -/
+instance : CoeOut LeanEnumSchema Ty := ⟨Ty.enum⟩
 
 end LeanScript
 

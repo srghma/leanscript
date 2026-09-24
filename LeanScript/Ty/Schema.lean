@@ -89,7 +89,7 @@ structure LeanRecordSchema (α : Type) where
   snd : α
   /-- Everything after the second. -/
   rest : List α
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 namespace LeanRecordSchema
 
@@ -182,7 +182,7 @@ inductive CtorsWithPayload (α : Type) where
   | here (fields : NonEmptyList α) (rest : List (List α))
   /-- This constructor carries no fields, and the one that does comes later. -/
   | skip (rest : CtorsWithPayload α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 namespace CtorsWithPayload
 
@@ -316,7 +316,7 @@ inductive LeanTaggedUnionSchema (α : Type) where
   /-- Constructor `0` carries no fields; the constructors after it are at least one,
       and one of them carries a field. -/
   | skip (rest : CtorsWithPayload α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 namespace LeanTaggedUnionSchema
 
@@ -431,7 +431,7 @@ inductive LeanFamMemberSchema (α : Type) where
   /-- A newtype member: it has no object of its own, and a value of it is a value of
       this, its single field. -/
   | alias (body : α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 namespace LeanFamMemberSchema
 
@@ -466,7 +466,7 @@ inductive LeanMutualRecFamily (α : Type) where
   /-- The selected member is the last one, and at least one member precedes it. -/
   | selectedLast (first : LeanFamMemberSchema α) (before : List (LeanFamMemberSchema α))
       (current : LeanFamMemberSchema α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 namespace LeanMutualRecFamily
 
@@ -538,6 +538,145 @@ def map (f : α → β) : LeanMutualRecFamily α → LeanMutualRecFamily β
       .selectedLast (first.map f) (before.map (·.map f)) (current.map f)
 
 end LeanMutualRecFamily
+
+/-! ## Every schema is a lawful functor
+
+`map` applies a function to every type a schema mentions and changes nothing else, so
+each schema is a `Functor` whose `<$>` is that `map`, and the functor laws hold: mapping
+the identity changes nothing, and mapping a composite is mapping one function after the
+other. -/
+
+namespace NonEmptyListSchema
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (xs : NonEmptyList α) : map id xs = xs := by
+  cases xs; simp [map]
+
+theorem map_comp (g : β → γ) (h : α → β) (xs : NonEmptyList α) :
+    map (fun x => g (h x)) xs = map g (map h xs) := by
+  cases xs; simp [map]
+
+end NonEmptyListSchema
+
+namespace LeanRecordSchema
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (xs : LeanRecordSchema α) : xs.map id = xs := by
+  cases xs; simp [map]
+
+theorem map_comp (g : β → γ) (h : α → β) (xs : LeanRecordSchema α) :
+    xs.map (fun x => g (h x)) = (xs.map h).map g := by
+  cases xs; simp [map]
+
+instance : Functor LeanRecordSchema where
+  map := map
+
+instance : LawfulFunctor LeanRecordSchema where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h xs := map_comp h g xs
+
+end LeanRecordSchema
+
+namespace CtorsWithPayload
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (c : CtorsWithPayload α) : c.map id = c := by
+  induction c with
+  | here fields rest => simp [map]
+  | skip rest ih => simp [map, ih]
+
+theorem map_comp (g : β → γ) (h : α → β) (c : CtorsWithPayload α) :
+    c.map (fun x => g (h x)) = (c.map h).map g := by
+  induction c with
+  | here fields rest => simp [map, NonEmptyListSchema.map_comp]
+  | skip rest ih => simp [map, ih]
+
+instance : Functor CtorsWithPayload where
+  map := map
+
+instance : LawfulFunctor CtorsWithPayload where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h c := map_comp h g c
+
+end CtorsWithPayload
+
+namespace LeanTaggedUnionSchema
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (c : LeanTaggedUnionSchema α) : c.map id = c := by
+  cases c <;> simp [map]
+
+theorem map_comp (g : β → γ) (h : α → β) (c : LeanTaggedUnionSchema α) :
+    c.map (fun x => g (h x)) = (c.map h).map g := by
+  cases c <;>
+    simp [map, NonEmptyListSchema.map_comp, CtorsWithPayload.map_comp]
+
+instance : Functor LeanTaggedUnionSchema where
+  map := map
+
+instance : LawfulFunctor LeanTaggedUnionSchema where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h c := map_comp h g c
+
+end LeanTaggedUnionSchema
+
+namespace LeanFamMemberSchema
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (m : LeanFamMemberSchema α) : m.map id = m := by
+  cases m <;> simp [map]
+
+theorem map_comp (g : β → γ) (h : α → β) (m : LeanFamMemberSchema α) :
+    m.map (fun x => g (h x)) = (m.map h).map g := by
+  cases m <;> simp [map, LeanRecordSchema.map_comp, LeanTaggedUnionSchema.map_comp]
+
+instance : Functor LeanFamMemberSchema where
+  map := map
+
+instance : LawfulFunctor LeanFamMemberSchema where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h m := map_comp h g m
+
+end LeanFamMemberSchema
+
+namespace LeanMutualRecFamily
+
+variable {α β γ : Type}
+
+@[simp] theorem map_id (f : LeanMutualRecFamily α) : f.map id = f := by
+  cases f <;> simp [map, LeanFamMemberSchema.map_id]
+
+theorem map_comp (g : β → γ) (h : α → β) (f : LeanMutualRecFamily α) :
+    f.map (fun x => g (h x)) = (f.map h).map g := by
+  cases f <;> simp [map, LeanFamMemberSchema.map_comp]
+
+instance : Functor LeanMutualRecFamily where
+  map := map
+
+instance : LawfulFunctor LeanMutualRecFamily where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h f := map_comp h g f
+
+end LeanMutualRecFamily
+
+/-! ## Coercions between the schemas
+
+A record or a tagged union is a member of a family, and a sum whose first constructor
+has no fields is a tagged union. -/
+
+instance {α : Type} : CoeOut (CtorsWithPayload α) (LeanTaggedUnionSchema α) := ⟨.skip⟩
+instance {α : Type} : CoeOut (LeanTaggedUnionSchema α) (LeanFamMemberSchema α) := ⟨.ctors⟩
+instance {α : Type} : CoeOut (LeanRecordSchema α) (LeanFamMemberSchema α) := ⟨.record⟩
 
 end LeanScript
 

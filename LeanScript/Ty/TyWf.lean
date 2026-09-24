@@ -21,6 +21,7 @@ structure TyWf where
   toTy : Ty
   /-- That the tree is a type of the language. -/
   isWf : Ty.Wf toTy := by ty_wf
+  deriving Repr
 
 namespace TyWf
 

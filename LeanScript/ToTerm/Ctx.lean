@@ -28,6 +28,7 @@ structure GlobalEntry where
   ty : Expr
   /-- The `LeanScript.GlobalRef` that points at it. -/
   ref : Expr
+  deriving BEq, Repr
 
 /-- Where a translation stands: the signature, the context it started in, and the
     binders it has entered since. -/
@@ -40,6 +41,7 @@ structure TCtx where
   base : Expr
   /-- The binders entered since, **outermost first**, each with its tree. -/
   binders : Array (FVarId × Expr) := #[]
+  deriving BEq, Repr
 
 /-- The context of the translation, as an expression: the binders entered, innermost
     first, in front of the context it started in. -/

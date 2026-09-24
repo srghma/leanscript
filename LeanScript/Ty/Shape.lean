@@ -40,12 +40,22 @@ inductive TyShape (α : Type) where
   /-- A non-recursive sum type with fields: one entry per constructor, in declaration
       order, each holding the types of that constructor's fields. -/
   | taggedUnion : LeanTaggedUnionSchema α → TyShape α
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 /-- An array, a thunk or a lazy value is a node.  (There is no such instance for
     `LeanPrimTy`: the type it would be coerced into does not mention `LeanPrimTy`, so the
     children of the node are not determined by the source of the coercion.) -/
 instance {α : Type} : CoeOut (LeanPrimTyCovariant α) (TyShape α) := ⟨.primCovariant⟩
+/-- A record schema is a node. -/
+instance {α : Type} : CoeOut (LeanRecordSchema α) (TyShape α) := ⟨.record⟩
+/-- A tagged-union schema is a node. -/
+instance {α : Type} : CoeOut (LeanTaggedUnionSchema α) (TyShape α) := ⟨.taggedUnion⟩
+
+/-- `LeanPrimTyCovariant.map` obeys the functor laws. -/
+instance : LawfulFunctor LeanPrimTyCovariant where
+  map_const := rfl
+  id_map c := by cases c <;> rfl
+  comp_map _ _ c := by cases c <;> rfl
 
 namespace TyShape
 
@@ -68,6 +78,26 @@ def children : TyShape α → List α
   | .enum _ => []
   | .record fs => fs.toList
   | .taggedUnion l => l.toList.flatten
+
+@[simp] theorem map_id (s : TyShape α) : s.map id = s := by
+  cases s with
+  | primCovariant c => cases c <;> rfl
+  | _ => simp [map]
+
+theorem map_comp {γ : Type} (g : β → γ) (h : α → β) (s : TyShape α) :
+    s.map (fun x => g (h x)) = (s.map h).map g := by
+  cases s with
+  | primCovariant c => cases c <;> rfl
+  | _ => simp [map, LeanRecordSchema.map_comp, LeanTaggedUnionSchema.map_comp]
+
+/-- `<$>` is `TyShape.map`: it applies a function to every child and keeps the node. -/
+instance : Functor TyShape where
+  map := map
+
+instance : LawfulFunctor TyShape where
+  map_const := rfl
+  id_map := map_id
+  comp_map g h s := map_comp h g s
 
 end TyShape
 

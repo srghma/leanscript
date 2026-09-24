@@ -32,7 +32,7 @@ inductive SelfField : List (TyWfIn 1) → Type
   | here : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, a.toTy = Ty.self → SelfField (a :: fs)
   /-- An occurrence among the fields after the first. -/
   | there : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, SelfField fs → SelfField (a :: fs)
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 /-- A pointer at a field of a constructor of a **member of a mutual family** that **is**
     an occurrence of member `i` of that family: the field a deeper look descends into.
@@ -54,7 +54,7 @@ inductive FamilyMemberField {n : Nat} : Nat → List (TyWfIn (n + 2)) → Type
   /-- An occurrence of member `i` among the fields after the first. -/
   | there : ∀ {i : Nat} {a : TyWfIn (n + 2)} {fs : List (TyWfIn (n + 2))},
       FamilyMemberField i fs → FamilyMemberField i (a :: fs)
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 /-- **Which member of a family a member number is**: the proof that member `i` of the
     family `ms` is the member `m`, as a position in the list of members rather than as a
@@ -74,7 +74,7 @@ inductive FamilyMemberAt {n : Nat} :
   | there : ∀ {i : Nat} {m' m : LeanFamMemberSchema (TyWfIn (n + 2))}
       {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))},
       FamilyMemberAt ms i m → FamilyMemberAt (m' :: ms) (i + 1) m
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 end LeanScript
 

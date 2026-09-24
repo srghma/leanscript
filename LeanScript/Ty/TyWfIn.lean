@@ -47,6 +47,7 @@ structure TyWfIn (n : Nat) where
   toTy : Ty
   /-- That the tree is well formed in a scope of `n` members. -/
   isWfIn : Ty.WfIn n toTy := by ty_wf
+  deriving Repr
 
 namespace TyWfIn
 
@@ -84,6 +85,9 @@ def _root_.LeanScript.Ty.toTyWfIn (t : Ty) {n : Nat} (h : Ty.WfIn n t := by ty_w
 def ofTyWf (t : TyWf) : TyWfIn n := ⟨t.toTy, .closed t.isWf⟩
 
 @[simp] theorem toTy_ofTyWf (t : TyWf) : (ofTyWf (n := n) t).toTy = t.toTy := rfl
+
+/-- A closed type stands wherever a tree of some scope is wanted. -/
+instance : Coe TyWf (TyWfIn n) := ⟨ofTyWf⟩
 
 /-- **A field of a binder's payload, unfolded**: the tree with the binder `S` put back in
     for its occurrences, which `LeanScript.Ty.wf_unfoldSelf` says is a type. -/

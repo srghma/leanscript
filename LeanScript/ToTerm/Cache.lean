@@ -30,7 +30,7 @@ structure CacheEntry where
   fn : Expr
   /-- The hash of the translation, for the shape lookup. -/
   hash : UInt64
-  deriving Inhabited
+  deriving Inhabited, BEq, Repr
 
 /-- What the cache holds, and what it has done. -/
 structure CacheState where
@@ -41,7 +41,7 @@ structure CacheState where
   /-- How often a *new* definition turned out to have the shape of one already
       translated, and was replaced by it. -/
   shared : Nat := 0
-  deriving Inhabited
+  deriving Inhabited, BEq, Repr
 
 /-- The cache of translated definitions.  It survives between calls of
     `#leanscript_to_term`, so a function called from two definitions is translated

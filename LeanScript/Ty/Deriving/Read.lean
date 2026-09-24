@@ -30,7 +30,7 @@ structure SharedTy where
   declName : Name
   /-- The `theorem` that it is a type. -/
   wfName : Name
-  deriving Inhabited, DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving Inhabited, DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
 
 /-- Every tree `deriving LeanScriptTyWf` has built, in this module and in every module it
     imports.  Sharing spans modules because this does. -/
