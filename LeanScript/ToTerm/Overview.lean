@@ -158,7 +158,7 @@ call sites point at one tree in memory.  `#leanscript_to_term_cache_stats` repor
 many entries, cache hits and shape merges there have been, and
 `#leanscript_to_term_cache_clear` empties the cache.
 
-`TyTests/ToTermTest.lean` runs all of this: it translates about twenty definitions and
+`TyTests/ToTermTest/` runs all of this: it translates about twenty definitions and
 checks, by the kernel, that `LeanScript.Term.eval` gives each translation the value the
 Lean definition has — except for the lists, which have no values and are checked by their
 types — and it pins what the translation refuses.

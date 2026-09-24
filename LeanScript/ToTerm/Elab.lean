@@ -45,7 +45,7 @@ def translate (sg base : Expr) (e : Expr) : MetaM Expr := do
       let info ← getConstInfo n
       let some val := info.value?
         | throwError "`#leanscript_to_term`: `{n}` has no definition to translate"
-      transClosedCached c (val.instantiateLevelParams info.levelParams lvls)
+      transClosedCached trans c (val.instantiateLevelParams info.levelParams lvls)
   | _ => trans c e
 
 /-- `#leanscript_to_term e`: the `LeanScript.Term` that means what the Lean definition
