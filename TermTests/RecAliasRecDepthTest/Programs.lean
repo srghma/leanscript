@@ -65,13 +65,13 @@ def Chain.fib : Chain → Nat
 | `Chain.cont` (the continuant, which reads the **label** too) | `recAlias_rec 1` | `contTerm` |
 | `fibFast` (halves its argument) | no depth reaches it | the prose at the end |
 
-**What is checked.**  `LeanScript.Ty.Den` gives a recursive shape no values — there is no
-least fixpoint in the model yet — so, exactly as in `TermTests/RecTermTest.lean` and
-`TermTests/RecObjectRecDepthTest.lean`, a term over a recursive newtype is checked **by its
-type** rather than by running it: each definition below states the type of the term it
-builds, so the file fails to build if the branch a program needs cannot be written at that
-depth, or is written in a context other than the documented one.  What the contexts are is
-pinned separately, by the `rfl` examples of §1.
+**What is checked.**  Each definition below states the type of the term it builds, so the
+file fails to build if the branch a program needs cannot be written at that depth, or is
+written in a context other than the documented one; what the contexts are is pinned
+separately, by the `rfl` examples of §1.  And `LeanScript.Ty.Den` gives a recursive
+newtype its values — the W-tree of its body — so the terms also **run**: §7 of
+`TermTests.RecAliasRecDepthTest` builds chains with the introduction form and checks, with
+the kernel, that every term answers what its Lean reference does.
 
 The Lean programs the terms transcribe are checked too, in §0: their values at a chain of
 ten links by `#guard`, that `Chain.fib` is the ordinary `fib` of the chain's length, and

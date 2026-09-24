@@ -287,11 +287,13 @@ def contBranch : Term sigAdd (branchCtx natT 1) natT :=
 def contTerm : Term sigAdd [] (chainTy ⇒ natT) :=
   .lam (.recAlias_rec 1 (.var (v♯0)) contBranch)
 
-/-! ## 7. What the evaluator says about these terms
+/-! ## 7. Running the terms
 
-A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is
-a term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
-apart is fine — there is nothing to take apart — while *building* one is not. -/
+A recursive newtype has values in the model (`LeanScript.Ty.Den` gives it the W-tree of
+its body), so these terms run, and the kernel checks them against their Lean
+references.  The depth-`k` folds are evaluated with every answer remembered
+(`LeanScript.WType.memo`), and the window a branch takes apart is read off those
+memos (`LeanScript.aliasRecEnv`). -/
 
 example : Term.NoRecMk fibTerm := by no_rec_mk
 example : Term.NoRecMk tribTerm := by no_rec_mk
@@ -299,6 +301,36 @@ example : Term.NoRecMk hexaTerm := by no_rec_mk
 example : Term.NoRecMk fibTRTerm := by no_rec_mk
 example : Term.NoRecMk fibPairTerm := by no_rec_mk
 example : Term.NoRecMk contTerm := by no_rec_mk
+
+/-- The values of `add` and `mul`. -/
+def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
+
+/-- Running a closed term of `sigAdd`. -/
+scoped macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+
+/-- The chain `c`, built by the introduction form (`nilTerm` and `consTerm`). -/
+def chainVal : Chain → TyWf.Den chainTy
+  | .nil => runP nilTerm
+  | .cons l r => runP consTerm l (chainVal r)
+
+-- Each run is checked by the kernel against the value its Lean reference has at the
+-- same chain, which §0 of `TermTests.RecAliasRecDepthTest.Programs` checks by `#guard`
+-- (most of the references recurse two links down, by well-founded recursion, which the
+-- kernel does not unfold, so the two are compared through that number).
+example : runP fibTerm (chainVal (Chain.ofNat 10)) = 55 := by decide +kernel
+example : runP fibTRTerm (chainVal (Chain.ofNat 10)) = 55 := by decide +kernel
+example : runP fibPairTerm (chainVal (Chain.ofNat 10)) = 55 := by decide +kernel
+example : runP tribTerm (chainVal (Chain.ofNat 10)) = 81 := by decide +kernel
+example : runP tetraTerm (chainVal (Chain.ofNat 10)) = 56 := by decide +kernel
+example : runP pentaTerm (chainVal (Chain.ofNat 10)) = 31 := by decide +kernel
+example : runP hexaTerm (chainVal (Chain.ofNat 10)) = 16 := by decide +kernel
+example : runP contTerm (chainVal (.cons 3 (.cons 2 (.cons 1 .nil)))) = 10 := by
+  decide +kernel
+
+-- `fib` of the chain of `n` links is the ordinary `fib n`, and the term agrees with it
+-- along the first few chains.
+example : ∀ n < 8, runP fibTerm (chainVal (Chain.ofNat n)) = TermTests.FibWindow.fib n := by
+  decide +kernel
 
 /-! ## 8. The depth-zero fold, and what no depth reaches
 

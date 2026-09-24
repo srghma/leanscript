@@ -322,34 +322,24 @@ def cellVal : Cell → TyWf.Den cellTy
   | .mk l none => runP lastCellTerm l
   | .mk l (some c) => runP consCellTerm l (cellVal c)
 
-/-- A chain with the labels `ls`, the last one at the bottom (`[a]` is one cell). -/
-def ofLabels : List Nat → Cell
-  | [] => .mk 0 none
-  | [a] => .mk a none
-  | a :: b :: rest => .mk a (some (ofLabels (b :: rest)))
-
--- Each run is checked by the kernel against a number, and the Lean reference is checked
--- against the same number by `#guard` (most of the references recurse on a subterm two
--- cells down, which is well-founded rather than structural recursion, so the kernel does
--- not unfold them).
+-- Each run is checked by the kernel against the value its Lean reference has at the
+-- same chain, which §0 of `TermTests.RecObjectRecDepthTest.Programs` checks by `#guard`
+-- (most of the references recurse two cells down, by well-founded recursion, which the
+-- kernel does not unfold, so the two are compared through that number).
 example : runP fibTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
-#guard Cell.fib (Cell.ofNat 10) == 55
-example : runP tribTerm (cellVal (Cell.ofNat 10)) = 81 := by decide +kernel
-#guard Cell.trib (Cell.ofNat 10) == 81
-example : runP tetraTerm (cellVal (Cell.ofNat 9)) = 29 := by decide +kernel
-#guard Cell.tetra (Cell.ofNat 9) == 29
-example : runP pentaTerm (cellVal (Cell.ofNat 9)) = 16 := by decide +kernel
-#guard Cell.penta (Cell.ofNat 9) == 16
-example : runP hexaTerm (cellVal (Cell.ofNat 9)) = 8 := by decide +kernel
-#guard Cell.hexa (Cell.ofNat 9) == 8
 example : runP fibTRTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
-#guard Cell.fibTR (Cell.ofNat 10) == 55
 example : runP fibPairTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
-#guard (Cell.fibPair (Cell.ofNat 10)).1 == 55
-example : runP contTerm (cellVal (ofLabels [3, 1, 4, 1, 5])) = 134 := by decide +kernel
-#guard Cell.cont (ofLabels [3, 1, 4, 1, 5]) == 134
-example : runP contTerm (cellVal (ofLabels [7])) = 7 := by decide +kernel
-#guard Cell.cont (ofLabels [7]) == 7
+example : runP tribTerm (cellVal (Cell.ofNat 10)) = 81 := by decide +kernel
+example : runP tetraTerm (cellVal (Cell.ofNat 10)) = 56 := by decide +kernel
+example : runP pentaTerm (cellVal (Cell.ofNat 10)) = 31 := by decide +kernel
+example : runP hexaTerm (cellVal (Cell.ofNat 10)) = 16 := by decide +kernel
+example : runP contTerm (cellVal (.mk 3 (some (.mk 2 (some (.mk 1 none)))))) = 10 := by
+  decide +kernel
+
+-- `fib` of the chain of `n + 1` cells is the ordinary `fib n` (`Cell.fib_ofNat`), and the
+-- term agrees with it along the first few chains.
+example : ∀ n < 8, runP fibTerm (cellVal (Cell.ofNat n)) = TermTests.FibWindow.fib n := by
+  decide +kernel
 
 /-! ## 8. The depth-zero fold, and what no depth reaches
 
