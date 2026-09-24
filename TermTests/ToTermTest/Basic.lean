@@ -70,7 +70,7 @@ example : run applied_term = 5 := rfl
 #guard_msgs in #check applied_term
 /--
 info: TermTests.ToTerm.idNat_term :
-  Term sig0 [] (Usage.single DeBruijnProj.head).tail
+  Term sig0 [] (Usage.single DeBruijnProj.head).tail.many
     ({ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ⋯ } ⇒
       { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ⋯ })
     Head.lam

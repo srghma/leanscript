@@ -14,7 +14,10 @@ inductive, the facts they talk about must be indices of it (a constructor cannot
 function on the type being defined), and two indices suffice:
 
 * `LeanScript.Usage Γ` — the **grade vector** of a term: how many times each variable of
-  `Γ` is used.  `Term.letE` demands that its variable is used at least twice;
+  `Γ` is used, where a use under a binder that may run many times (a `fun`, a fold
+  branch, an unmemoised delay) counts as many (`Usage.many`).  `Term.letE` demands that
+  its variable is used at least twice — so a `let` is inlined only where inlining cannot
+  duplicate work;
 * `LeanScript.Head` — **what the root of a term is**: a variable, a `fun`, a literal, a
   constructor, a closed value (a constructor of literals and closed values), or a
   computation.  `Term.ap` demands that its function is not a `fun` (no β-redex), a
@@ -50,6 +53,17 @@ def smul (k : Nat) (u : Usage Γ) : Usage Γ := fun τ x => k * u τ x
 instance : Zero (Usage Γ) := ⟨zero⟩
 
 instance : Add (Usage Γ) := ⟨add⟩
+
+/-- The uses of a subterm that may **run any number of times**: the body of a `fun`, the
+    branch of a fold, an unmemoised delay.  A use there is not one use — the body runs
+    once per call, per step, per force — so every use counts as (at least) two, which is
+    what `Term.letE` reads as "shared".  Without it, `let x = n * n; fun y => x + y`
+    would count `x` as used once, the grammar would reject the `let`, and the only term
+    left would be `fun y => n * n + y`, which recomputes `n * n` at every call.
+
+    The grades stay natural numbers: `0` is "unused", `1` is "used exactly once, and
+    run at most once", and `≥ 2` is "shared" — which is all that `Term.letE` asks. -/
+def many (u : Usage Γ) : Usage Γ := smul 2 u
 
 /-- Extend a grade vector by the grade `k` of a newly bound variable. -/
 def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) := fun _ x =>
@@ -99,7 +113,8 @@ inductive Head where
   /-- a constructor applied to its fields: a record, a tagged value, an array, a delay, a
       value of a recursive type -/
   | ctor
-  /-- a computation: an application, a `let`, a dispatch, a fold or an extern -/
+  /-- a computation: an application, a dispatch, a fold or an extern (a `let` has the
+      head of its body) -/
   | comp
   /-- a **closed value** that is not a literal: an array whose elements are all literals
       or closed values, or a delay of one.  It is a constructor like `Head.ctor` (a

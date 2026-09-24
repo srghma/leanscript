@@ -25,7 +25,11 @@ builds a node of any family of the grammar's `mutual` block:
 * when the node would be a redex, it does not build it: it **reduces** it, and builds
   what the redex reduces to instead.  A β-redex becomes a `let`; a `let` whose bound
   expression is a variable, a `fun` or a literal, or whose variable is used fewer than
-  twice, is inlined; a dispatch on a literal or on a constructor takes its branch, with
+  twice, is inlined — a use under a `fun`, in a fold's branch or in a `lazy` counts as
+  many (`LeanScript.Usage.many`), so inlining never moves a computation to where it
+  would run more often; a `let` in the function position of an application, in the
+  bound expression of another `let` (of a `fun`) or in a scrutinee (of a constructor)
+  is floated out first, since a `let` has the head of its body and hides the redex; a dispatch on a literal or on a constructor takes its branch, with
   the fields bound; a forced delay is what it delays; an extern called on literals and
   closed values is **computed** — `Extern.eval` is run (compiled) on their values — and
   replaced by its value, written as a term (`LeanScript.Ty.quote`), when its result type
@@ -253,6 +257,7 @@ partial def gradeOf (u : Expr) (i : Nat) : MetaM Nat := do
   | (``LeanScript.Usage.cons, #[_, _, k, v]) =>
       if i == 0 then natValue k else gradeOf v (i - 1)
   | (``LeanScript.Usage.smul, #[_, k, v]) => return (← natValue k) * (← gradeOf v i)
+  | (``LeanScript.Usage.many, #[_, v]) => return 2 * (← gradeOf v i)
   | (``LeanScript.Usage.letU, #[_, _, a, b]) =>
       return (← gradeOf b 0) * (← gradeOf a i) + (← gradeOf b (i + 1))
   | (``LeanScript.Usage.drop, #[_, δ, v]) => gradeOf v (i + (← listElems δ).length)
@@ -405,13 +410,104 @@ def quoteExtern (τ e : Expr) : MetaM LeanScript.Quoted := do
   | some q => return q
   | none => throwError "`#leanscript_to_term`: internal: the value of {e} cannot be written"
 
+/-! ## Floating a `let` out
+
+A `let` has the head of its body (`Term.letE`), so a node whose function, bound expression
+or scrutinee is a `let` of a `fun` or of a constructor is a redex behind the `let`.  It is
+rewritten `N[let x = e; b] ↦ let x = e; N[b]` — the rest of `N` weakened past `x` — and
+the node `N[b]` is then reduced as any other. -/
+
+/-- The argument of a node whose root the grammar checks, when a `let` there must float
+    out: the function of an application, the bound expression of a `let`, the scrutinee
+    of a force or of a dispatch on a datatype.  (A dispatch on a primitive, or an extern,
+    checks for a literal or a closed value, and a `let` is never one.) -/
+def scrutineeArg? : Name → Option String
+  | ``LeanScript.Term.ap => some "f"
+  | ``LeanScript.Term.letE => some "e"
+  | ``LeanScript.Term.lazy_force | ``LeanScript.Term.thunk_force => some "e"
+  | ``LeanScript.Term.array_casesOn => some "a"
+  | ``LeanScript.Term.record_casesOn => some "r"
+  | ``LeanScript.Term.recObject_casesOn | ``LeanScript.Term.recAlias_casesOn
+  | ``LeanScript.Term.taggedUnion_casesOn | ``LeanScript.Term.recTaggedUnion_casesOn
+  | ``LeanScript.Term.mutualRecursiveFamily_casesOn
+  | ``LeanScript.Term.mutualRecursiveFamily_casesOnWithDefault => some "x"
+  | ``LeanScript.Term.taggedUnion_casesOnWithDefault
+  | ``LeanScript.Term.recTaggedUnion_casesOnWithDefault => some "v"
+  | _ => none
+
+/-- The field named `n` of an exposed node (all of its arguments, indices included). -/
+def fieldNamed (t : Expr) (n : String) : MetaM Expr := do
+  let ctor := t.getAppFn.constName!
+  let info ← ctorInfo ctor
+  let ci ← getConstInfoCtor ctor
+  for i in [0:info.names.size] do
+    if info.names[i]!.eraseMacroScopes.toString == n then
+      return t.getAppArgs[ci.numParams + i]!
+  throwError "`#leanscript_to_term`: internal: {ctor} has no field {n}"
+
 mutual
 
 /-- The node `ctor` from its arguments without indices: reduced, if it is a redex; built
     as it stands otherwise.  **The** constructor of the translation. -/
 partial def mkNode (ctor : Name) (args : Array Expr) : MetaM Expr := do
+  if let some t ← floatLet? ctor args then return t
   if let some t ← reduceRedex? ctor args then return t
   buildNode ctor args
+
+/-- If the node `ctor args` hides a redex behind a `let` (see the section header), the
+    `let` floated out of it. -/
+partial def floatLet? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let some sName := scrutineeArg? ctor | return none
+  let s ← argNamed ctor args sName
+  let sn ← exposeNode s
+  unless sn.getAppFn.isConstOf ``LeanScript.Term.letE do return none
+  let k ← headOf s
+  let floats :=
+    if ctor == ``LeanScript.Term.ap || ctor == ``LeanScript.Term.letE then
+      k == ``LeanScript.Head.lam
+    else isCtorHead k
+  unless floats do return none
+  let e ← fieldNamed sn "e"
+  let b ← fieldNamed sn "b"
+  let γ ← argNamed ctor args "Γ"
+  let σ ← termTyOf e
+  let inner ← rebuildPast ctor args (consCtxE σ γ) sName b
+  some <$> mkNode ``LeanScript.Term.letE #[args[0]!, γ, σ, ← termTyOf inner, e, inner]
+
+/-- The node `ctor args` (arguments without indices) rebuilt in the context `γ'`, which
+    has one more variable, innermost, than the node's: the argument named `sName` is
+    replaced by `b` (already written in `γ'`) and every other subterm is weakened. -/
+partial def rebuildPast (ctor : Name) (args : Array Expr) (γ' : Expr) (sName : String)
+    (b : Expr) : MetaM Expr := do
+  let info ← ctorInfo ctor
+  let ci ← getConstInfoCtor ctor
+  let params := args.extract 0 ci.numParams
+  let mut cur ← instantiateForall ci.type params
+  let mut newArgs := params
+  let mut k := ci.numParams
+  for i in [0:info.roles.size] do
+    let cur' ← whnf cur
+    let .forallE _ dom body _ := cur'
+      | throwError "`#leanscript_to_term`: internal: {ctor} has too few arguments"
+    let r := info.roles[i]!
+    if r == .index || r == .indexProof then
+      -- the contexts of the subterms do not depend on the indices
+      cur := body.instantiate1 (← mkFreshExprMVar dom)
+      continue
+    let old := args[k]!
+    k := k + 1
+    let v ← match r with
+      | .ctx => pure γ'
+      | .child =>
+          if info.names[i]!.eraseMacroScopes.toString == sName then pure b
+          else
+            let γc := (← famTypeOf' dom).2
+            let n ← bindersBefore γc γ'
+            mapVars old γc n fun j => pure (.var (j + 1))
+      | _ => pure old
+    newArgs := newArgs.push v
+    cur := body.instantiate1 v
+  mkNode ctor newArgs
 
 /-- Rebuild `t` in the new context `γ`; see this section's header. -/
 partial def mapVars (t : Expr) (γ : Expr) (d : Nat) (ρ : Nat → MetaM Image) : MetaM Expr := do

@@ -42,21 +42,32 @@ mutual
 inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- A variable of `Γ`. -/
   | var : ∀ {Γ τ} (x : Γ ∋ τ), Term Sg Γ (Usage.single x) τ .var
-  /-- `fun x => body`: **one** parameter, since every function is curried. -/
+  /-- `fun x => body`: **one** parameter, since every function is curried.
+
+      The body runs once per call, so its uses of the variables around it count as many
+      (`Usage.many`): a `let` outside the `fun` whose variable the body reads once is
+      shared, not inlined into the body, which would recompute it at every call. -/
   | lam : ∀ {Γ σ τ} {u : Usage (σ :: Γ)} {kb : Head},
-      Term Sg (σ :: Γ) u τ kb → Term Sg Γ (Usage.tail u) (σ ⇒ τ) .lam
+      Term Sg (σ :: Γ) u τ kb → Term Sg Γ (Usage.many (Usage.tail u)) (σ ⇒ τ) .lam
   /-- `f a`: **one** argument. -/
   | ap {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {kf ka : Head}
       (f : Term Sg Γ u (σ ⇒ τ) kf) (a : Term Sg Γ v σ ka) (h : kf ≠ .lam := by decide) :
       Term Sg Γ (u + v) τ .comp
   /-- A reference to a top-level declaration of the module's signature. -/
   | global : ∀ {Γ τ}, GlobalRef Sg.decls τ → Term Sg Γ 0 τ .var
-  /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`. -/
+  /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`.
+
+      Its head is its **body's**: a `let` is transparent to the checks that look at the
+      root of a term.  So `(let x = e; fun y => b) a` is rejected by `Term.ap` as the
+      β-redex it hides, and so is a dispatch on `let x = e; (x, x)`; the optimized forms
+      float the `let` out, `let x = e; (fun y => b) a` and `let x = e; match (x, x) …`,
+      where the redex is then reduced.  (The body of a `let` is never a variable, a
+      literal or a closed value: those do not use `x`, or use it once.) -/
   | letE {Γ : Ctx} {σ τ : TyWf} {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
       (e : Term Sg Γ u σ ke) (b : Term Sg (σ :: Γ) v τ kb)
       (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val := by decide)
       (hUsed : 2 ≤ Usage.head v := by decide) :
-      Term Sg Γ (Usage.letU u v) τ .comp
+      Term Sg Γ (Usage.letU u v) τ kb
   -- LeanPrimTy intro
   /-- A boolean literal. -/
   | bool_mk : ∀ {Γ}, Bool → Term Sg Γ 0 (.prim .bool) .lit
@@ -171,7 +182,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
       (n : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
       (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb) :
-      Term Sg Γ (u + ub + Usage.dropN τ (k + 1) (Usage.tail w)) τ .comp
+      Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp
   /-- `match i with | .ofNat n => … | .negSucc n => …`: each branch binds its `nat`. -/
   | int_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v w : Usage (TyWf.prim .nat :: Γ)}
       {ki ka kb : Head} (i : Term Sg Γ u (.prim .int) ki)
@@ -259,7 +270,8 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       value of the unit type is erased.
 
       **Unmemoised**: forcing it twice runs it twice. -/
-  | lazy_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.lazy τ) (Head.ctorOf [ke])
+  | lazy_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head},
+      Term Sg Γ u τ ke → Term Sg Γ (Usage.many u) (.lazy τ) (Head.ctorOf [ke])
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
       erased. -/
   | lazy_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.lazy τ) ke)
@@ -306,7 +318,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ)} {ka kb : Head}
       (a : Term Sg Γ u (.array σ) ka) (bases : ArrayRecBases Sg Γ ub σ τ k)
       (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb) :
-      Term Sg Γ (u + ub + Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w))) τ .comp
+      Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp
   /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
   | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ 0 (.enum s) .lit
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
@@ -452,7 +464,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       Term Sg Γ u (.recTaggedUnion l hwf) kx →
       TaggedUnionFoldKCases Sg l
         (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ w l τ k →
-      Term Sg Γ (u + w) τ .comp
+      Term Sg Γ (u + Usage.many w) τ .comp
   /-- A value of a **recursive record**: its fields, in declaration order, unfolded.
       `hwf`, written by `ty_wf`, is the proof that the record describes a type; note that
       a recursive record with a field written `Ty.self` states the equation
@@ -496,7 +508,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage (TyWf.recObjectRecBinders fs hwf τ k ++ Γ)} {kx kb : Head},
       Term Sg Γ u (.recObject fs hwf) kx →
       Term Sg (TyWf.recObjectRecBinders fs hwf τ k ++ Γ) w τ kb →
-      Term Sg Γ (u + Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w) τ .comp
+      Term Sg Γ (u + Usage.many (Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w)) τ .comp
   /-- A value of a **recursive newtype**: a value of its body, unfolded.  The wrapper is
       erased, so the two have the same runtime representation.  `hwf`, written by
       `ty_wf`, is the proof that the newtype describes a type. -/
@@ -533,7 +545,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {kx kb : Head},
       Term Sg Γ u (.recAlias b hwf) kx →
       Term Sg (TyWf.recAliasRecBinders b hwf τ k ++ Γ) w τ kb →
-      Term Sg Γ (u + Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w) τ .comp
+      Term Sg Γ (u + Usage.many (Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w)) τ .comp
   /-- A value of one member of a **mutual recursive family**: whichever of the three
       shapes that member has, with its fields unfolded in the scope of the whole family,
       so that a field written `Ty.familyMember i` is a value of member `i`.
@@ -598,7 +610,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {kx : Head},
       Term Sg Γ u (.mutualRecursiveFamily f hwf) kx →
       FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ w τ f.members k →
-      Term Sg Γ (u + w) τ .comp
+      Term Sg Γ (u + Usage.many w) τ .comp
 
 /-- The elements of an array: any number of terms, all of one type, indexed by their
     heads (so that an array of values is a value, `Head.ctorOf`). -/
