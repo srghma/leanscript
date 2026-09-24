@@ -52,8 +52,8 @@ def roll : (a : Ty) → Ty.Den (substOcc R .familyMember a) → (Ty.toPFunctor a
   | .familyMember _, x => PEmpty.elim x
   | .shape s, x => rollShape s x
   | .recTaggedUnion _, x => ⟨x, fun p => PEmpty.elim p⟩
-  | .recObject _, x => PEmpty.elim x
-  | .recAlias _, x => PEmpty.elim x
+  | .recObject _, x => ⟨x, fun p => PEmpty.elim p⟩
+  | .recAlias _, x => ⟨x, fun p => PEmpty.elim p⟩
   | .mutualRecursiveFamily _, x => PEmpty.elim x
 
 /-- `Ty.roll`, on a node. -/
@@ -118,8 +118,8 @@ def unroll : (a : Ty) → (Ty.toPFunctor a).Obj (Ty.Den R) → Ty.Den (substOcc 
   | .familyMember _, x => PEmpty.elim x.1
   | .shape s, x => unrollShape s x
   | .recTaggedUnion _, x => x.1
-  | .recObject _, x => PEmpty.elim x.1
-  | .recAlias _, x => PEmpty.elim x.1
+  | .recObject _, x => x.1
+  | .recAlias _, x => x.1
   | .mutualRecursiveFamily _, x => PEmpty.elim x.1
 
 /-- `Ty.unroll`, on a node. -/
@@ -222,8 +222,8 @@ theorem unroll_roll : ∀ (a : Ty) (x : Ty.Den (substOcc R .familyMember a)),
   | .familyMember _, x => PEmpty.elim x
   | .shape s, x => unroll_rollShape s x
   | .recTaggedUnion _, _ => rfl
-  | .recObject _, x => PEmpty.elim x
-  | .recAlias _, x => PEmpty.elim x
+  | .recObject _, _ => rfl
+  | .recAlias _, _ => rfl
   | .mutualRecursiveFamily _, x => PEmpty.elim x
 
 theorem unroll_rollShape : ∀ (s : TyShape Ty)
@@ -293,8 +293,8 @@ theorem roll_unroll : ∀ (a : Ty) (x : (Ty.toPFunctor a).Obj (Ty.Den R)), roll 
   | .familyMember _, x => PEmpty.elim x.1
   | .shape s, x => roll_unrollShape s x
   | .recTaggedUnion _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
-  | .recObject _, x => PEmpty.elim x.1
-  | .recAlias _, x => PEmpty.elim x.1
+  | .recObject _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
+  | .recAlias _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
   | .mutualRecursiveFamily _, x => PEmpty.elim x.1
 
 theorem roll_unrollShape : ∀ (s : TyShape Ty) (x : (Ty.toPFunctorShape s).Obj (Ty.Den R)),

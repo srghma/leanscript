@@ -27,10 +27,11 @@ is the type of the values of `τ`.
 | `Ty.enum s` | `Fin s.nOfConstructors` — a constructor *number*, which is what the runtime holds |
 | `Ty.record fs` | the product of its fields' denotations, in declaration order |
 | `Ty.taggedUnion l` | a constructor number **with** that constructor's fields: `(t : Fin l.length) × Ty.DenAt l t` |
-
 | `Ty.recTaggedUnion l` | a **W-tree**: a node is a constructor number with that constructor's fields with their occurrences of the union blanked out, and one subtree per occurrence |
+| `Ty.recObject fs` | a **W-tree**: a node is the record's fields with its occurrences of itself blanked out, and one subtree per occurrence |
+| `Ty.recAlias b` | a **W-tree**: a node is the body with its occurrences of the newtype blanked out, and one subtree per occurrence |
 
-## Recursive tagged unions: containers
+## Recursive shapes: containers
 
 Every type is read as a **container** (`PFunctor`, in `LeanScript.Den.PFunctor`):
 `Ty.toPFunctor τ` has a type of shapes and, for each shape, a type of *holes* — the places
@@ -45,12 +46,19 @@ node of it to the constructor's *unfolded* fields (`Ty.roll`, `Ty.unroll`,
 `Ty.DenRec.mk`, `Ty.DenRec.unfold`), which is what the evaluator's introduction form and
 eliminators use.
 
-The three other recursive shapes (`Ty.recObject`, `Ty.recAlias`,
-`Ty.mutualRecursiveFamily`) and the occurrence leaf `Ty.familyMember` still denote
-`PEmpty`, and `Ty.self` — which only occurs outside a binder in an ill-formed tree —
-denotes `PUnit`, the one hole.  So `LeanScript.Term.eval` still carries
-`LeanScript.Term.NoRecMk`, the hypothesis that the term builds no value of one of those
-three shapes; see the section of `LeanScript.Eval.NoRecMk` that states it.
+A recursive record and a recursive newtype are read the same way: the least fixpoint of
+the container of the record's fields (`Ty.toPFunctorRecord`) and of the newtype's body,
+so each denotes a W-type too, and `LeanScript.Den.Rec` relates a node of it to the
+*unfolded* fields or body (`Ty.DenObj.mk`/`unfold`, `Ty.DenAlias.mk`/`unfold`).  A record
+or newtype that could only be built from an occurrence of itself has no finite value, and
+its W-type is empty, which is the right answer: `ty_wf` rejects those anyway.
+
+A **mutual family** (`Ty.mutualRecursiveFamily`) and the occurrence leaf
+`Ty.familyMember` still denote `PEmpty` — a family needs an *indexed* W-type — and
+`Ty.self`, which only occurs outside a binder in an ill-formed tree, denotes `PUnit`, the
+one hole.  So `LeanScript.Term.eval` still carries `LeanScript.Term.NoRecMk`, the
+hypothesis that the term builds no value of a mutual family; see the section of
+`LeanScript.Eval.NoRecMk` that states it.
 
 Every definition here is written the way `LeanScript.Ty.beq` is — one function per shape
 of the nested tree, all in one `mutual` block — so that each recursive call is on a
@@ -68,8 +76,8 @@ mutual
   | .familyMember _ => PFunctor.const PEmpty
   | .shape s => Ty.toPFunctorShape s
   | .recTaggedUnion l => PFunctor.mu (PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val))
-  | .recObject _ => PFunctor.const PEmpty
-  | .recAlias _ => PFunctor.const PEmpty
+  | .recObject fs => PFunctor.mu (Ty.toPFunctorRecord fs)
+  | .recAlias b => PFunctor.mu (Ty.toPFunctor b)
   | .mutualRecursiveFamily _ => PFunctor.const PEmpty
 
 /-- `Ty.toPFunctor`, on a node.  The domain of an arrow is used as a type — its holes are
