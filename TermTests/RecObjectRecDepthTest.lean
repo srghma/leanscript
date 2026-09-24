@@ -336,7 +336,7 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  ?m.70 ≠ Head.ctor
+  Head.isCtor ?m.70 = false
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head

@@ -45,14 +45,16 @@ def constNat :=
   (.lam (.lam (.var (v♯1))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) .lam)
 
-/-- `let x = 1 + 2; x + x`.  The bound value is a computation and the variable is used
-    twice: a `let` of a literal, or of a variable used once, is a redex, and is not a
-    term. -/
+/-- `fun n => let x = n + 2; x + x`.  The bound value is a computation and the variable is
+    used twice: a `let` of a literal, or of a variable used once, is a redex, and is not a
+    term.  (Nor is `let x = 1 + 2; …`: an extern on literals is a redex too, whose value
+    `3` is a literal.) -/
 def letSix :=
-  (.letE (.extern (.lean_nat_add 1 2))
+  (.lam (.letE (.externCall (.cons (.var (v♯0)) (.cons (.nat_mk 2) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1))
      (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
-    Term emptySig [] _ (TyWf.prim .nat) .comp)
+       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A call of the one declaration of `doubleSig`. -/
 def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) .comp)
@@ -61,7 +63,7 @@ example : run idNat 7 = 7 := rfl
 -- `Term.run'` is the same thing for a module that declares nothing.
 example : (Term.run' idNat) 7 = 7 := rfl
 example : run constNat 7 true = 7 := rfl
-example : run letSix = 6 := rfl
+example : run letSix 1 = 6 := rfl
 example : Term.run doubleEnv callDouble = 42 := rfl
 
 /-! ## Literals -/
@@ -157,7 +159,7 @@ example : run lazyTwice = 6 := rfl
 /-- The array `#[1, 2, 3]`. -/
 def oneTwoThree :=
   (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))) :
-    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .ctor)
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .val)
 
 /-- The first element of an array of naturals, or `0`. -/
 def headOrZero :=

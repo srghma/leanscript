@@ -14,8 +14,9 @@ namespace LeanScript.ToTerm
 
 The Lean functions of `Init` that are implemented by a pure extern, each with the entry of
 the catalogue `LeanScript.LeanInitPureExtern` that models it.  A call of one of them is
-translated to that entry: `LeanScript.Term.extern` of it when every argument is a closed
-Lean value, and otherwise `LeanScript.Term.externCall` (or `Term.externCallChecked`, for
+translated to that entry: its **value** when every argument is a literal or a closed value
+and the value can be written as a term (`LeanScript.TyWf.quotable`), `LeanScript.Term.extern`
+of it when every argument is one but the value cannot be written, and otherwise `LeanScript.Term.externCall` (or `Term.externCallChecked`, for
 an entry that takes a proof) applied to the terms of its arguments.  A call of any other
 function marked `@[extern]` is refused, except `Nat.gcd`, which is translated as an
 ordinary function.

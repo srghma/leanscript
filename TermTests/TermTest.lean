@@ -99,8 +99,9 @@ def substringStr :=
 
 /-! ## Delays, and arrays -/
 
-/-- A memoised delay of `3`. -/
-def thunkedThree := (.thunk_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.thunk (TyWf.prim .nat)) .ctor)
+/-- A memoised delay of `3`: a closed value (`Head.val`), since what it delays is a
+    literal. -/
+def thunkedThree := (.thunk_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.thunk (TyWf.prim .nat)) .val)
 
 /-- Forcing a memoised delay given as an argument. -/
 def forceThunk :=
@@ -108,12 +109,12 @@ def forceThunk :=
     Term emptySig [] _ (TyWf.thunk (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- An unmemoised delay of `3`. -/
-def lazyThree := (.lazy_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.lazy (TyWf.prim .nat)) .ctor)
+def lazyThree := (.lazy_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.lazy (TyWf.prim .nat)) .val)
 
-/-- The array `#[1, 2, 3]`. -/
+/-- The array `#[1, 2, 3]`: a closed value (`Head.val`), since its elements are literals. -/
 def oneTwoThree :=
   (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))) :
-    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .ctor)
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .val)
 
 /-- The first element of an array of naturals, or `0`: the non-empty branch binds the
     head and the tail, in that order. -/
@@ -419,7 +420,7 @@ def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyW
 error: could not synthesize default value for parameter 'hValue' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lit = Head.comp ∨ Head.lit = Head.ctor
+  Head.lit = Head.comp ∨ Head.lit = Head.ctor ∨ Head.lit = Head.val
 is false
 -/
 #guard_msgs (error) in
@@ -460,7 +461,7 @@ def ifTrue :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.ctor ≠ Head.ctor
+  (Head.ctorOf [Head.lit]).isCtor = false
 is false
 -/
 #guard_msgs (error) in
@@ -473,7 +474,7 @@ def thunkedThreeForced :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.ctor ≠ Head.ctor
+  Head.ctor.isCtor = false
 is false
 -/
 #guard_msgs (error) in
@@ -484,7 +485,7 @@ def pairFstOfPair := (.record_casesOn pair (.var (v♯0)) : Term emptySig [] _ (
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.allLit [Head.lit, Head.lit] = false
+  Head.allValue [Head.lit, Head.lit] = false
 is false
 -/
 #guard_msgs (error) in
@@ -492,5 +493,35 @@ def onePlusTwo :=
   (.externCall (.cons (.nat_mk 1) (.cons (.nat_mk 2) .nil))
      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1) :
     Term emptySig [] _ (TyWf.prim .nat) .comp)
+
+-- `#[1, 2, 3][2]'h`: an extern that takes a proof, called on an array literal and a
+-- literal.  An array of literals is a closed value, so the call is computed where the term
+-- is written (it is `3`).
+/--
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.allValue [Head.ctorOf [Head.lit, Head.lit, Head.lit], Head.lit] = false
+is false
+-/
+#guard_msgs (error) in
+def oneTwoThreeAt2 :=
+  (.externCallChecked (.cons oneTwoThree (.cons (.nat_mk 2) .nil))
+     (fun vs => if h : vs.2.1 < vs.1.size then
+       some (.preludeExtern (.lean_array_fget (TyWf.prim .nat) vs.1 vs.2.1 h)) else none)
+     (.nat_mk 0) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
+
+-- An extern on values held directly: `Nat.add 1 2`, whose value `3` is a literal.
+/--
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (TyWf.prim LeanPrimTy.nat).quotable = false
+is false
+-/
+#guard_msgs (error) in
+def onePlusTwoExtern :=
+  (.extern (.preludeExtern (.lean_nat_add 1 2)) : Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 end TermTests

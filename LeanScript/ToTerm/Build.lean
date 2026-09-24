@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.ObjectExpr
+public meta import LeanScript.Eval.Quote
 
 @[expose] public section
 
@@ -25,8 +26,10 @@ builds a node of any family of the grammar's `mutual` block:
   what the redex reduces to instead.  A β-redex becomes a `let`; a `let` whose bound
   expression is a variable, a `fun` or a literal, or whose variable is used fewer than
   twice, is inlined; a dispatch on a literal or on a constructor takes its branch, with
-  the fields bound; a forced delay is what it delays; an extern called on literals is
-  folded into `Term.extern`;
+  the fields bound; a forced delay is what it delays; an extern called on literals and
+  closed values is **computed** — `Extern.eval` is run (compiled) on their values — and
+  replaced by its value, written as a term (`LeanScript.Ty.quote`), when its result type
+  is `LeanScript.TyWf.quotable`, and by `Term.extern` of it otherwise;
 * otherwise it builds the node, with the proofs written by `decide`.
 
 Inlining is a **substitution**, and a substitution can create new redexes (a variable
@@ -362,6 +365,46 @@ partial def bindersBefore (γ base : Expr) (fuel : Nat := 100000) : MetaM Nat :=
       if ← isDefEq γ' base then return 0
       throwError "`#leanscript_to_term`: internal: context {γ} is not over {base}"
 
+/-! ## Values, and externs called on them -/
+
+/-- Is this head (the name of a `LeanScript.Head` constructor) a constructor applied to
+    its fields, closed or not (`LeanScript.Head.isCtor`)? -/
+def isCtorHead (k : Name) : Bool := k == ``LeanScript.Head.ctor || k == ``LeanScript.Head.val
+
+/-- Is this head a literal or a closed value (`LeanScript.Head.isValue`)? -/
+def isValueHead (k : Name) : Bool := k == ``LeanScript.Head.lit || k == ``LeanScript.Head.val
+
+/-- Is the type `τ` quotable (`LeanScript.TyWf.quotable`): must an extern on values that
+    answers with it be replaced by its value? -/
+def isQuotable (τ : Expr) : MetaM Bool := do
+  let b ← whnf (mkApp (mkConst ``LeanScript.TyWf.quotable) τ)
+  if b.isConstOf ``Bool.true then return true
+  if b.isConstOf ``Bool.false then return false
+  throwError "`#leanscript_to_term`: internal: cannot decide whether {τ} is quotable"
+
+/-- Run a closed expression of type `Option LeanScript.Quoted` (compiled). -/
+def evalQuoted (e : Expr) : MetaM (Option LeanScript.Quoted) := do
+  let ty := mkApp (mkConst ``Option [0]) (mkConst ``LeanScript.Quoted)
+  unsafe evalExpr (Option LeanScript.Quoted) ty e
+
+/-- Run a closed expression of type `Option (Option LeanScript.Quoted)` (compiled). -/
+def evalQuotedChecked (e : Expr) : MetaM (Option (Option LeanScript.Quoted)) := do
+  let ty := mkApp (mkConst ``Option [0])
+    (mkApp (mkConst ``Option [0]) (mkConst ``LeanScript.Quoted))
+  unsafe evalExpr (Option (Option LeanScript.Quoted)) ty e
+
+/-- Run a closed boolean expression (compiled). -/
+def evalBool (e : Expr) : MetaM Bool :=
+  unsafe evalExpr Bool (mkConst ``Bool) e
+
+/-- The value of an extern on values whose result type `τ` is quotable, as the term that
+    denotes it: `Extern.eval` is run (compiled), and its value read back
+    (`LeanScript.Extern.quote`). -/
+def quoteExtern (τ e : Expr) : MetaM LeanScript.Quoted := do
+  match ← evalQuoted (mkApp2 (mkConst ``LeanScript.Extern.quote) τ e) with
+  | some q => return q
+  | none => throwError "`#leanscript_to_term`: internal: the value of {e} cannot be written"
+
 mutual
 
 /-- The node `ctor` from its arguments without indices: reduced, if it is a redex; built
@@ -575,13 +618,81 @@ partial def primFields (ctor : Name) (sg γ lit : Expr) : MetaM (Array Expr) := 
       return #[← mk ``LeanScript.Term.uint32_mk (mkApp (mkConst ``Float32.Model.toBits) v)]
   | _ => throwError "`#leanscript_to_term`: internal: {ctor} is not a primitive dispatch"
 
-/-- The value of a spine of literals, as the nested pairs `TyWf.DenList` is. -/
-partial def literalValues (sp : Expr) : MetaM Expr := do
+/-- The elements of an array, in order. -/
+partial def termsElems (ts : Expr) : MetaM (Array Expr) := do
+  let ts ← exposeNode ts
+  match ts.getAppFnArgs with
+  | (``LeanScript.Terms.nil, _) => return #[]
+  | (``LeanScript.Terms.cons, args) => return #[args[args.size - 2]!] ++
+      (← termsElems args[args.size - 1]!)
+  | _ => throwError "`#leanscript_to_term`: internal: not the elements of an array: {ts}"
+
+/-- The value of a term that is a literal or a closed value, as an expression of its
+    denotation: the payload of a literal, the Lean array of the values of an array's
+    elements, and the value a delay stands for. -/
+partial def valueDen (t : Expr) : MetaM Expr := do
+  let n ← exposeNode t
+  match n.getAppFn.constName! with
+  | ``LeanScript.Term.array_mk =>
+      let σ := n.getAppArgs[2]!
+      let ty := mkApp (mkConst ``LeanScript.TyWf.Den) σ
+      let ds ← (← termsElems (← lastArg n)).mapM valueDen
+      return mkApp2 (mkConst ``List.toArray [0]) ty (← mkListLit ty ds.toList)
+  | ``LeanScript.Term.thunk_mk | ``LeanScript.Term.lazy_mk => valueDen (← lastArg n)
+  | _ => lastArg n
+
+/-- The values of a spine of literals and closed values, as the nested pairs
+    `TyWf.DenList` is. -/
+partial def valueDens (sp : Expr) : MetaM Expr := do
   let es ← spineElems sp
   let mut acc := mkConst ``PUnit.unit [Level.one]
   for e in es.reverse do
-    acc ← mkAppM ``Prod.mk #[← lastArg e, acc]
+    acc ← mkAppM ``Prod.mk #[← valueDen e, acc]
   return acc
+
+/-- The term that denotes a computed value of type `τ`, from its description. -/
+partial def quotedTerm (sg γ τ : Expr) : LeanScript.Quoted → MetaM Expr
+  | .lit c p => return mkAppN (mkConst c) #[sg, γ, p]
+  | .bitvec w p => do
+      let wE := mkNatLit w
+      let h ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit 0, wE])
+      return mkAppN (mkConst ``LeanScript.Term.bitvec_mk) #[sg, γ, wE, h, p]
+  | .enum i => do
+      let s ← mkFreshExprMVar (mkConst ``LeanScript.LeanEnumSchema)
+      unless ← isDefEq τ (mkApp (mkConst ``LeanScript.TyWf.enum) s) do
+        throwError "`#leanscript_to_term`: internal: {τ} is not an enum"
+      let s ← instantiateMVars s
+      let n := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
+      let h ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit i, n])
+      return mkAppN (mkConst ``LeanScript.Term.enum_mk)
+        #[sg, γ, s, mkApp3 (mkConst ``Fin.mk) n (mkNatLit i) h]
+  | .array xs => do
+      let σ ← mkFreshExprMVar tyE
+      unless ← isDefEq τ (mkApp (mkConst ``LeanScript.TyWf.array) σ) do
+        throwError "`#leanscript_to_term`: internal: {τ} is not an array type"
+      let σ ← instantiateMVars σ
+      let mut ts ← mkNode ``LeanScript.Terms.nil #[sg, γ, σ]
+      for x in xs.reverse do
+        ts ← mkNode ``LeanScript.Terms.cons #[sg, γ, σ, ← quotedTerm sg γ σ x, ts]
+      mkNode ``LeanScript.Term.array_mk #[sg, γ, σ, ts]
+  | .delay lazy x => do
+      let σ ← mkFreshExprMVar tyE
+      let former := if lazy then ``LeanScript.TyWf.lazy else ``LeanScript.TyWf.thunk
+      unless ← isDefEq τ (mkApp (mkConst former) σ) do
+        throwError "`#leanscript_to_term`: internal: {τ} is not a delay"
+      let σ ← instantiateMVars σ
+      let ctor := if lazy then ``LeanScript.Term.lazy_mk else ``LeanScript.Term.thunk_mk
+      mkNode ctor #[sg, γ, σ, ← quotedTerm sg γ σ x]
+
+/-- The extern `e` (an entry of the catalogue applied to values) of result type `τ`, as a
+    term: its value when that can be written (`LeanScript.TyWf.quotable`), and
+    `Term.extern e` otherwise. -/
+partial def mkExternNode (sg γ τ e : Expr) : MetaM Expr := do
+  if ← isQuotable τ then
+    return ← quotedTerm sg γ τ (← quoteExtern τ e)
+  let h ← mkDecideProof (← mkEq (mkApp (mkConst ``LeanScript.TyWf.quotable) τ)
+    (mkConst ``Bool.false))
+  buildNode ``LeanScript.Term.extern #[sg, γ, τ, e, h]
 
 /-- If the node `ctor args` is a redex, what it reduces to. -/
 partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
@@ -601,7 +712,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       let e ← arg "e"
       let b ← arg "b"
       let k ← headOf e
-      if (k == ``LeanScript.Head.comp || k == ``LeanScript.Head.ctor) && (← usesOf b 0) ≥ 2 then
+      if (k == ``LeanScript.Head.comp || isCtorHead k) && (← usesOf b 0) ≥ 2 then
         return none
       some <$> subst0 b e (← arg "Γ")
   | ``LeanScript.Term.bool_casesOn =>
@@ -644,11 +755,11 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       some <$> bindMany sg γ (← arg "b") (← primFields ctor sg γ x)
   | ``LeanScript.Term.lazy_force | ``LeanScript.Term.thunk_force =>
       let e ← arg "e"
-      unless (← headOf e) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf e) do return none
       some <$> lastArg e
   | ``LeanScript.Term.array_casesOn =>
       let a ← arg "a"
-      unless (← headOf a) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf a) do return none
       let γ ← arg "Γ"
       let ts ← exposeNode (← lastArg a)
       match ts.getAppFnArgs with
@@ -673,22 +784,22 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       | none => some <$> rebase (← arg "dflt") (← arg "Γ")
   | ``LeanScript.Term.record_casesOn =>
       let r ← arg "r"
-      unless (← headOf r) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf r) do return none
       let γ ← arg "Γ"
       some <$> bindMany sg γ (← arg "body") (← spineElems (← lastArg r))
   | ``LeanScript.Term.recObject_casesOn =>
       let x ← arg "x"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       some <$> bindMany sg γ (← arg "body") (← spineElems (← lastArg x))
   | ``LeanScript.Term.recAlias_casesOn =>
       let x ← arg "x"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       some <$> bindMany sg γ (← arg "body") #[← lastArg x]
   | ``LeanScript.Term.taggedUnion_casesOn | ``LeanScript.Term.recTaggedUnion_casesOn =>
       let x ← arg "x"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       let xn ← exposeNode x
       let t ← natValue (← argNamed xn.getAppFn.constName! xn.getAppArgs "t")
@@ -696,7 +807,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
   | ``LeanScript.Term.taggedUnion_casesOnWithDefault
   | ``LeanScript.Term.recTaggedUnion_casesOnWithDefault =>
       let x ← arg "v"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       let xn ← exposeNode x
       let t ← natValue (← argNamed xn.getAppFn.constName! xn.getAppArgs "t")
@@ -705,7 +816,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       | none => some <$> rebase (← arg "dflt") γ
   | ``LeanScript.Term.mutualRecursiveFamily_casesOn =>
       let x ← arg "x"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       let value ← exposeNode (← lastArg x)
       let cases ← exposeNode (← arg "cases")
@@ -721,7 +832,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       | a, b => throwError "`#leanscript_to_term`: internal: {a} dispatched by {b}"
   | ``LeanScript.Term.mutualRecursiveFamily_casesOnWithDefault =>
       let x ← arg "x"
-      unless (← headOf x) == ``LeanScript.Head.ctor do return none
+      unless isCtorHead (← headOf x) do return none
       let γ ← arg "Γ"
       let value ← exposeNode (← lastArg x)
       let cases ← exposeNode (← arg "cases")
@@ -729,28 +840,47 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       match ← tuSomeBranch? (← argNamed cases.getAppFn.constName! cases.getAppArgs "cases") t with
       | some b => some <$> bindMany sg γ b (← spineElems (← lastArg value))
       | none => some <$> rebase (← arg "dflt") γ
+  | ``LeanScript.Term.extern =>
+      -- an extern on values whose value can be written: the value
+      let τ ← arg "τ"
+      unless ← isQuotable τ do return none
+      some <$> quotedTerm sg (← arg "Γ") τ (← quoteExtern τ (← arg "e"))
   | ``LeanScript.Term.externCall =>
       let sp ← arg "args"
-      unless ← allLiterals sp do return none
+      unless ← allValues sp do return none
       let call ← arg "call"
-      let e := (mkApp call (← literalValues sp)).headBeta
-      some <$> buildNode ``LeanScript.Term.extern #[sg, ← arg "Γ", ← arg "τ", e]
+      let e := (mkApp call (← valueDens sp)).headBeta
+      some <$> mkExternNode sg (← arg "Γ") (← arg "τ") e
   | ``LeanScript.Term.externCallChecked =>
       let sp ← arg "args"
-      unless ← allLiterals sp do return none
+      unless ← allValues sp do return none
       let call ← arg "call"
-      let r ← whnf (mkApp call (← literalValues sp)).headBeta
+      let τ ← arg "τ"
+      let γ ← arg "Γ"
+      let opt := (mkApp call (← valueDens sp)).headBeta
+      if ← isQuotable τ then
+        -- decided and computed at once, compiled
+        match ← evalQuotedChecked (mkApp2 (mkConst ``LeanScript.Extern.quoteChecked) τ opt) with
+        | some (some q) => return some (← quotedTerm sg γ τ q)
+        | some none => throwError "`#leanscript_to_term`: internal: the value of {opt} \
+            cannot be written"
+        | none => return some (← rebase (← arg "fallback") γ)
+      let r ← whnf opt
       match r.getAppFnArgs with
-      | (``Option.some, #[_, e]) =>
-          some <$> buildNode ``LeanScript.Term.extern #[sg, ← arg "Γ", ← arg "τ", e]
-      | (``Option.none, _) => some <$> rebase (← arg "fallback") (← arg "Γ")
-      | _ => throwError "`#leanscript_to_term`: internal: cannot decide the extern call {r}"
+      | (``Option.some, #[_, e]) => some <$> mkExternNode sg γ τ e
+      | (``Option.none, _) => some <$> rebase (← arg "fallback") γ
+      | _ =>
+          -- the decision does not unfold here: run it, and take the entry out of the option
+          unless ← evalBool (← mkAppM ``Option.isSome #[opt]) do
+            return some (← rebase (← arg "fallback") γ)
+          let h ← mkDecideProof (← mkEq (← mkAppM ``Option.isSome #[opt]) (mkConst ``Bool.true))
+          some <$> mkExternNode sg γ τ (← mkAppM ``Option.get #[opt, h])
   | _ => return none
 
-/-- Is every term of this spine a literal? -/
-partial def allLiterals (sp : Expr) : MetaM Bool := do
+/-- Is every term of this spine a literal or a closed value? -/
+partial def allValues (sp : Expr) : MetaM Bool := do
   for e in ← spineElems sp do
-    unless (← headOf e) == ``LeanScript.Head.lit do return false
+    unless isValueHead (← headOf e) do return false
   return true
 
 /-- A subterm written in a context defeq to `γ` (a branch that binds nothing), rebuilt in

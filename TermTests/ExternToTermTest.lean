@@ -19,8 +19,10 @@ entry of the catalogue `LeanScript.LeanInitPureExtern` that models it:
 * for an entry that takes a proof, to `Term.externCallChecked`: the proposition is decided
   on the values when the term runs and the proof handed to the entry, with a fallback for
   values that do not satisfy it (which a Lean program cannot give);
-* with arguments that are all closed Lean values, for an entry that takes a proof, to
-  `Term.extern` of the entry with the program's own proof.
+* with arguments that are all literals or closed values, to **the value** of the call:
+  the grammar rejects an extern on values whose result can be written as a term
+  (`TyWf.quotable`), so the translation computes it where the term is written — `1 + 2`
+  is the literal `3`, and `#[1, 2, 3][1]` (with the program's own proof) is `2`.
 
 Each value is checked by `rfl`.
 -/
@@ -43,7 +45,7 @@ def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
   | .lam b => externForm? b
   | .ap f a _ => externForm? f <|> externForm? a
   | .letE a b _ _ => externForm? a <|> externForm? b
-  | .extern _ => some "extern"
+  | .extern _ _ => some "extern"
   | .externCall _ _ _ => some "externCall"
   | .externCallChecked _ _ _ _ => some "externCallChecked"
   | _ => none
@@ -96,14 +98,71 @@ def setOr_term :=
 example : run setOr_term #[1, 2, 3] 1 7 = #[1, 7, 3] := rfl
 example : run setOr_term #[1, 2, 3] 3 7 = #[1, 2, 3] := rfl
 
-/-! ## Closed arguments: `Term.extern`, with the program's own proof -/
+/-! ## Closed arguments: the value of the call
 
+An extern called on literals and closed values is computed where the term is written, and
+the term is its value: no extern is left. -/
+
+/-- `Array.getInternal` on an array literal, with the program's own proof. -/
 def second : Nat := #[1, 2, 3][1]
 
-def second_term := (#leanscript_to_term second : Term sig0 [] _ (TyWf.prim .nat) .comp)
+def second_term := (#leanscript_to_term second : Term sig0 [] _ (TyWf.prim .nat) .lit)
 
-example : externForm? second_term = some "extern" := rfl
+example : externForm? second_term = none := rfl
 example : run second_term = 2 := rfl
+
+/-- `Nat.add` on two literals. -/
+def onePlusTwo : Nat := 1 + 2
+
+def onePlusTwo_term := (#leanscript_to_term onePlusTwo : Term sig0 [] _ (TyWf.prim .nat) .lit)
+
+example : externForm? onePlusTwo_term = none := rfl
+example : run onePlusTwo_term = 3 := rfl
+
+/-- An extern whose result is an array: the value is an array literal, a closed value. -/
+def pushed : Array Nat := #[1, 2].push 3
+
+def pushed_term :=
+  (#leanscript_to_term pushed : Term sig0 [] _ (TyWf.array (TyWf.prim .nat)) .val)
+
+example : externForm? pushed_term = none := rfl
+example : run pushed_term = #[1, 2, 3] := rfl
+
+/-- Externs on values nested inside a function: `(1 + 2) * n` computes `1 + 2` where the
+    term is written, and keeps the multiplication by the argument. -/
+def timesThree (n : Nat) : Nat := (1 + 2) * n
+
+def timesThree_term :=
+  (#leanscript_to_term timesThree : Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
+
+example : run timesThree_term 5 = 15 := rfl
+
+/-- A string extern on literals. -/
+def greeting : String := "lean" ++ "script"
+
+def greeting_term :=
+  (#leanscript_to_term greeting : Term sig0 [] _ (TyWf.prim .string) .lit)
+
+example : externForm? greeting_term = none := rfl
+
+/-- More results that are literals: a boolean and the length of a string. -/
+def twoIsTwo : Bool := Nat.beq 2 2
+def abcLength : Nat := "abc".length
+
+def twoIsTwo_term := (#leanscript_to_term twoIsTwo : Term sig0 [] _ (TyWf.prim .bool) .lit)
+def abcLength_term := (#leanscript_to_term abcLength : Term sig0 [] _ (TyWf.prim .nat) .lit)
+
+example : run twoIsTwo_term = true := rfl
+example : run abcLength_term = 3 := rfl
+
+/-- An extern whose result is not quotable (a list, a recursive tagged union) stays an
+    extern on values: `Term.extern`. -/
+def chars : List Char := "ab".toList
+
+def chars_term := (#leanscript_to_term chars : Term sig0 [] _ (tyWfOf (List Char)) .comp)
+
+example : externForm? chars_term = some "extern" := rfl
+example : Ty.DenRec.toList (.prim .char) (run chars_term) = ['a', 'b'] := by decide
 
 /-! ## `Lean.Name` is an ordinary inductive of the language -/
 

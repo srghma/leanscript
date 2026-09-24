@@ -102,7 +102,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, .floatModel_mk m, _, _ => m
   | _, _, _, _, .float32Model_mk m, _, _ => m
   -- externs: the Lean function the extern implements, called on its arguments
-  | _, _, _, _, .extern e, _, _ => Extern.eval e
+  | _, _, _, _, .extern e _, _, _ => Extern.eval e
   | _, _, _, _, .externCall args call _, env, h => Extern.eval (call (Spine.eval G args env h))
   | _, _, _, _, .externCallChecked args call fallback _, env, h =>
       match call (Spine.eval G args env h.1) with
@@ -229,10 +229,10 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 /-- The values of the elements of an array, in order, as a list; `Term.array_mk` turns it
     into the Lean `Array` an array of the language denotes. -/
 def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → (ts : Terms Sg Γ u τ) → Env Γ → Terms.NoRecMk ts →
-    List (TyWf.Den τ)
-  | _, _, _, .nil, _, _ => []
-  | _, _, _, .cons t ts, env, h => Term.eval G t env h.1 :: Terms.eval G ts env h.2
+    {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {ks : List Head} → (ts : Terms Sg Γ u τ ks) →
+    Env Γ → Terms.NoRecMk ts → List (TyWf.Den τ)
+  | _, _, _, _, .nil, _, _ => []
+  | _, _, _, _, .cons t ts, env, h => Term.eval G t env h.1 :: Terms.eval G ts env h.2
 
 /-- The answer a fold of an array gives to a list shorter than its window: the elements
     are peeled off one at a time and bound, and the answer of the list that is left is
@@ -442,21 +442,22 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf} (G : GlobalEnv Sg.decls)
 /-- `let x = e; body` binds the value of `e`. -/
 theorem Term.eval_letE {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
     (e : Term Sg Γ u σ ke) (body : Term Sg (σ :: Γ) v τ kb)
-    (hValue : ke = .comp ∨ ke = .ctor) (hUsed : 2 ≤ Usage.head v) (env : Env Γ)
+    (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val) (hUsed : 2 ≤ Usage.head v) (env : Env Γ)
     (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
     Term.eval G (.letE e body hValue hUsed) env ⟨he, hb⟩ =
       Term.eval G body (Term.eval G e env he, env) hb :=
   rfl
 
 /-- An extern is the Lean function it implements. -/
-theorem Term.eval_extern (e : Extern τ) (env : Env Γ) (h : Term.NoRecMk (Sg := Sg) (.extern e)) :
-    Term.eval G (.extern e) env h = Extern.eval e :=
+theorem Term.eval_extern (e : Extern τ) (hq : TyWf.quotable τ = false) (env : Env Γ)
+    (h : Term.NoRecMk (Sg := Sg) (.extern e hq)) :
+    Term.eval G (.extern e hq) env h = Extern.eval e :=
   rfl
 
 /-- An extern applied to terms is the Lean function called on their values. -/
 theorem Term.eval_externCall {σs : List TyWf} {u : Usage Γ} {ks : List Head}
     (args : Spine Sg Γ u σs ks) (call : TyWf.DenList σs → Extern τ)
-    (hArgs : Head.allLit ks = false) (env : Env Γ) (h : Spine.NoRecMk args) :
+    (hArgs : Head.allValue ks = false) (env : Env Γ) (h : Spine.NoRecMk args) :
     Term.eval G (.externCall args call hArgs) env h =
       Extern.eval (call (Spine.eval G args env h)) :=
   rfl
@@ -466,7 +467,7 @@ theorem Term.eval_externCall {σs : List TyWf} {u : Usage Γ} {ks : List Head}
 theorem Term.eval_externCallChecked_of_some {σs : List TyWf} {u v : Usage Γ}
     {ks : List Head} {kf : Head} (args : Spine Sg Γ u σs ks)
     (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ v τ kf)
-    (hArgs : Head.allLit ks = false) (env : Env Γ)
+    (hArgs : Head.allValue ks = false) (env : Env Γ)
     (h : Spine.NoRecMk args ∧ Term.NoRecMk fallback) (e : Extern τ)
     (he : call (Spine.eval G args env h.1) = some e) :
     Term.eval G (.externCallChecked args call fallback hArgs) env h = Extern.eval e := by

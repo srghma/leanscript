@@ -1,6 +1,7 @@
 module
 public import LeanScript.Expr.NatRecCtx
 public import LeanScript.Expr.Usage
+public import LeanScript.Expr.Quotable
 public import LeanScript.Expr.Extern
 public import LeanScript.Expr.SelfField
 public import LeanScript.Ty.Unfold
@@ -53,7 +54,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`. -/
   | letE {Γ : Ctx} {σ τ : TyWf} {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
       (e : Term Sg Γ u σ ke) (b : Term Sg (σ :: Γ) v τ kb)
-      (hValue : ke = .comp ∨ ke = .ctor := by decide)
+      (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val := by decide)
       (hUsed : 2 ≤ Usage.head v := by decide) :
       Term Sg Γ (Usage.letU u v) τ .comp
   -- LeanPrimTy intro
@@ -108,15 +109,25 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- A pure extern of `Init` applied to values: an entry of the catalogue
       `LeanScript.LeanInitPureExtern` with all of its arguments, and the proofs it takes
       (`Term.extern (.lean_array_fget αt a i h)`).  Its value is `LeanScript.Extern.eval`,
-      the Lean function called on them.  Externs are not declarations of the signature. -/
-  | extern : ∀ {Γ τ}, Extern τ → Term Sg Γ 0 τ .comp
+      the Lean function called on them.  Externs are not declarations of the signature.
+
+      Its value is known where the term is written, so when that value can be written as
+      a term — when the result type is `TyWf.quotable` (a literal, an enum constructor, or
+      an array or delay of those) — the call is a redex, and `h` rejects it: the term
+      must be the value instead (`1 + 2` is `3`, `#[1, 2, 3][2]'h` is `3`). -/
+  | extern {Γ : Ctx} {τ : TyWf} (e : Extern τ) (h : TyWf.quotable τ = false := by decide) :
+      Term Sg Γ 0 τ .comp
   /-- A pure extern of `Init` applied to the terms of its arguments, which are computed
       when the term runs.  `call` builds the entry of the catalogue from their values
       (`fun vs => .lean_nat_add vs.1 vs.2.1`); the value is `Extern.eval` of it.  This is
-      the form for an extern that takes no proof. -/
+      the form for an extern that takes no proof.
+
+      Not every argument is a literal or a closed value (`h`): a call on values is
+      computed where the term is written — into the value when it can be written as a
+      term, into `Term.extern` otherwise. -/
   | externCall {Γ : Ctx} {σs : List TyWf} {τ : TyWf} {u : Usage Γ} {ks : List Head}
       (args : Spine Sg Γ u σs ks) (call : TyWf.DenList σs → Extern τ)
-      (h : Head.allLit ks = false := by decide) : Term Sg Γ u τ .comp
+      (h : Head.allValue ks = false := by decide) : Term Sg Γ u τ .comp
   /-- A pure extern of `Init` that takes a proof, applied to the terms of its arguments.
       The language erases propositions, so the proof is not in hand when the term runs:
       `call` **decides** the proposition on the values of the arguments and builds the
@@ -124,11 +135,14 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       then some (.lean_array_fget αt vs.1 vs.2.1 h) else none`), and the value is
       `Extern.eval` of it.  Where the proposition does not hold — which cannot happen in a
       term translated from a Lean program, since that program had to supply the proof —
-      the value is `fallback`'s. -/
+      the value is `fallback`'s.
+
+      As for `Term.externCall`, not every argument is a literal or a closed value (`h`):
+      `somearray[2]'h` on an array literal is computed where the term is written. -/
   | externCallChecked {Γ : Ctx} {σs : List TyWf} {τ : TyWf} {u v : Usage Γ}
       {ks : List Head} {kf : Head} (args : Spine Sg Γ u σs ks)
       (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ v τ kf)
-      (h : Head.allLit ks = false := by decide) : Term Sg Γ (u + v) τ .comp
+      (h : Head.allValue ks = false := by decide) : Term Sg Γ (u + v) τ .comp
   -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`. -/
   | bool_casesOn {Γ : Ctx} {τ : TyWf} {u v w : Usage Γ} {kc kt ke : Head}
@@ -245,11 +259,11 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       value of the unit type is erased.
 
       **Unmemoised**: forcing it twice runs it twice. -/
-  | lazy_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.lazy τ) .ctor
+  | lazy_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.lazy τ) (Head.ctorOf [ke])
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
       erased. -/
   | lazy_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.lazy τ) ke)
-      (h : ke ≠ .ctor := by decide) : Term Sg Γ u τ .comp
+      (h : Head.isCtor ke = false := by decide) : Term Sg Γ u τ .comp
   /-- Delay a value and remember it: a `Thunk`.
 
       **Memoised**: the JavaScript printed for it runs the body at the first force and
@@ -257,19 +271,20 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       this layer the distinction from `Term.lazy_mk` is not visible — a `Term` is a total
       Lean function of its environment, so running the body twice gives the same answer
       as running it once — and what it decides is the code that is printed. -/
-  | thunk_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.thunk τ) .ctor
+  | thunk_mk : ∀ {Γ τ} {u : Usage Γ} {ke : Head}, Term Sg Γ u τ ke → Term Sg Γ u (.thunk τ) (Head.ctorOf [ke])
   /-- Force a thunk: the value it stands for, computed at most once. -/
   | thunk_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.thunk τ) ke)
-      (h : ke ≠ .ctor := by decide) : Term Sg Γ u τ .comp
+      (h : Head.isCtor ke = false := by decide) : Term Sg Γ u τ .comp
   /-- An array, from its elements, in order. -/
-  | array_mk : ∀ {Γ τ} {u : Usage Γ}, Terms Sg Γ u τ → Term Sg Γ u (.array τ) .ctor
+  | array_mk : ∀ {Γ τ} {u : Usage Γ} {ks : List Head},
+      Terms Sg Γ u τ ks → Term Sg Γ u (.array τ) (Head.ctorOf ks)
   /-- Take an array apart: an empty branch, and a non-empty branch that **binds** the
       first element and the rest of the array, in that order.  This is the case
       analysis — the branch gets the rest of the array, not the value of a fold over
       it; that is `Term.array_rec`. -/
   | array_casesOn {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {w : Usage (σ :: TyWf.array σ :: Γ)}
       {ka kz ks : Head} (a : Term Sg Γ u (.array σ) ka) (z : Term Sg Γ v τ kz)
-      (s : Term Sg (σ :: TyWf.array σ :: Γ) w τ ks) (h : ka ≠ .ctor := by decide) :
+      (s : Term Sg (σ :: TyWf.array σ :: Γ) w τ ks) (h : Head.isCtor ka = false := by decide) :
       Term Sg Γ (u + v + Usage.tail (Usage.tail w)) τ .comp
   /-- The fold of an array that descends `k + 1` elements at a time.  Its branch, at a
       list `a :: as` whose tail is at least `k` long, **binds** the first element (de
@@ -326,7 +341,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | record_casesOn {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf} {u : Usage Γ}
       {v : Usage (fs.toList ++ Γ)} {kr kb : Head}
       (r : Term Sg Γ u (.record fs) kr) (body : Term Sg (fs.toList ++ Γ) v τ kb)
-      (h : kr ≠ .ctor := by decide) : Term Sg Γ (u + Usage.drop fs.toList v) τ .comp
+      (h : Head.isCtor kr = false := by decide) : Term Sg Γ (u + Usage.drop fs.toList v) τ .comp
   /-- A tagged value: constructor `t` of the union — a number **with the proof that the
       union has it** — and exactly that constructor's fields.
 
@@ -341,7 +356,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       constructor's fields, and no default. -/
   | taggedUnion_casesOn {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {u w : Usage Γ}
       {kx : Head} (x : Term Sg Γ u (.taggedUnion l) kx) (cases : TaggedUnionCases Sg Γ w l τ)
-      (h : kx ≠ .ctor := by decide) : Term Sg Γ (u + w) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
   /-- A dispatch on a tagged union that branches on **some** of the constructors and
       sends the rest to a default branch.  A branch names its constructor by number —
       with the same `t < l.length` bound, written by `ctor_tag` — and binds that
@@ -357,7 +372,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | taggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
       {k : Nat} {u w d : Usage Γ} {kx kd : Head} (v : Term Sg Γ u (.taggedUnion l) kx)
       (cases : TaggedUnionSomeCases Sg Γ w l τ k) (dflt : Term Sg Γ d τ kd)
-      (hk : k < l.length := by ctor_lt) (h : kx ≠ .ctor := by decide) :
+      (hk : k < l.length := by ctor_lt) (h : Head.isCtor kx = false := by decide) :
       Term Sg Γ (u + w + d) τ .comp
   -- The four recursive shapes of `Ty`.  The sketch they replace read
   --
@@ -399,7 +414,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {u w : Usage Γ} {kx : Head}
       (x : Term Sg Γ u (.recTaggedUnion l hwf) kx)
       (cases : TaggedUnionCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ)
-      (h : kx ≠ .ctor := by decide) : Term Sg Γ (u + w) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
   /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
       default for the rest.  As for a non-recursive union the branches name their
       constructors in strictly increasing order, there is at least one of them, and there
@@ -410,7 +425,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (cases : TaggedUnionSomeCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ k)
       (dflt : Term Sg Γ d τ kd)
       (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt)
-      (h : kx ≠ .ctor := by decide) : Term Sg Γ (u + w + d) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w + d) τ .comp
   /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
       motive, that descends `k + 1` constructors at a time: one branch per constructor,
       each binding that constructor's fields and, right after a field that is an
@@ -455,7 +470,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage ((TyWf.recObjectUnfold fs hwf).toList ++ Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recObject fs hwf) kx)
       (body : Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) w τ kb)
-      (h : kx ≠ .ctor := by decide) :
+      (h : Head.isCtor kx = false := by decide) :
       Term Sg Γ (u + Usage.drop (TyWf.recObjectUnfold fs hwf).toList w) τ .comp
   /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
       reads `k + 1` levels at a time.  A record has one constructor, so there is one
@@ -494,7 +509,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {u : Usage Γ} {w : Usage (TyWf.recAliasUnfold b hwf :: Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recAlias b hwf) kx)
       (body : Term Sg (TyWf.recAliasUnfold b hwf :: Γ) w τ kb)
-      (h : kx ≠ .ctor := by decide) : Term Sg Γ (u + Usage.tail w) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + Usage.tail w) τ .comp
   /-- **The fold of a recursive newtype**, its `Xxx.rec` with a non-dependent motive, that
       reads `k + 1` levels at a time.  A newtype has one constructor, so there is one
       branch and nothing to dispatch on: the branch binds the body, unfolded — what
@@ -541,7 +556,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w : Usage Γ} {kx : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
       (cases : FamilyMemberCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)))
-      (h : kx ≠ .ctor := by decide) : Term Sg Γ (u + w) τ .comp
+      (h : Head.isCtor kx = false := by decide) : Term Sg Γ (u + w) τ .comp
   /-- A dispatch on **some** of the constructors of a member of a mutual family, with a
       default for the rest.  Only a member that *has* constructors to choose between — a
       `ctors` member — can be dispatched on partially, which is what
@@ -551,7 +566,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w d : Usage Γ} {kx kd : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
       (cases : FamilyMemberSomeCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)))
-      (dflt : Term Sg Γ d τ kd) (h : kx ≠ .ctor := by decide) :
+      (dflt : Term Sg Γ d τ kd) (h : Head.isCtor kx = false := by decide) :
       Term Sg Γ (u + w + d) τ .comp
   /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
       branches of *every* member of the family, in declaration order, each binding its
@@ -585,13 +600,14 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ w τ f.members k →
       Term Sg Γ (u + w) τ .comp
 
-/-- The elements of an array: any number of terms, all of one type. -/
-inductive Terms (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Type 1
+/-- The elements of an array: any number of terms, all of one type, indexed by their
+    heads (so that an array of values is a value, `Head.ctorOf`). -/
+inductive Terms (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → List Head → Type 1
   /-- No more elements. -/
-  | nil : ∀ {Γ τ}, Terms Sg Γ 0 τ
+  | nil : ∀ {Γ τ}, Terms Sg Γ 0 τ []
   /-- One more element, at the front. -/
-  | cons : ∀ {Γ τ} {u v : Usage Γ} {k : Head},
-      Term Sg Γ u τ k → Terms Sg Γ v τ → Terms Sg Γ (u + v) τ
+  | cons : ∀ {Γ τ} {u v : Usage Γ} {k : Head} {ks : List Head},
+      Term Sg Γ u τ k → Terms Sg Γ v τ ks → Terms Sg Γ (u + v) τ (k :: ks)
 
 /-- The answers a depth-`k` fold of an array (`LeanScript.Term.array_rec`) gives to the
     lists that are **shorter than its window**: the lists of fewer than `k + 1` elements,

@@ -340,7 +340,7 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  ?m.62 ≠ Head.ctor
+  Head.isCtor ?m.62 = false
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head.tail

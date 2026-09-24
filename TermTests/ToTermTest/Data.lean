@@ -95,7 +95,7 @@ example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := rfl
 
 def delayed_term :=
   (#leanscript_to_term delayed :
-    Term sig0 [] _ (TyWf.thunk (TyWf.prim .nat)) .ctor)
+    Term sig0 [] _ (TyWf.thunk (TyWf.prim .nat)) .val)
 
 def forced : Nat := delayed.get
 

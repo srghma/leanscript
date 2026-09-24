@@ -83,8 +83,12 @@ catalogue `LeanScript.LeanInitPureExtern` that models it (`LeanScript/ToTerm/Ext
 their values; for an entry that takes a proof (`Array.getInternal`, `Array.set`, ...),
 `Term.externCallChecked`, which decides the proposition when the term runs and hands the
 proof to the entry, with a fallback for the values that do not satisfy it (a Lean program
-cannot give those); and, when every argument is a closed Lean value, `Term.extern` with the
-program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
+cannot give those).  When every argument is a literal or a closed value, the call is not
+kept at all: its value is computed where the term is written (`Extern.eval`, compiled)
+and written as a term — `1 + 2` is the literal `3` and `#[1, 2, 3][1]` is `2` — which the
+grammar demands whenever the result type has such a form (`TyWf.quotable`); only an
+extern whose result cannot be written (a list, an option, a function, …) stays, as
+`Term.extern` with the program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
 `@[extern]`, and `Nat.gcd._unary` is read as `Nat.gcd`.
 
 Every **other** top-level function must be declared in the signature: it is translated

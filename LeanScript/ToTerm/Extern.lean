@@ -18,13 +18,16 @@ catalogue that stands for it.  `LeanScript.Extern` is the catalogue applied to v
 a call is translated to that entry:
 
 * when every argument (and every proof) is a closed Lean value and the entry takes a
-  proof, to `Term.extern` of the entry applied to them — the proof is the program's own;
+  proof, to the entry applied to them — the proof is the program's own — which is then
+  computed, and the term is its value when that can be written (`TyWf.quotable`,
+  `LeanScript.ToTerm.mkExternNode`), and `Term.extern` of the entry otherwise;
 * otherwise to `Term.externCall` applied to the terms of the value arguments, with the
   function that builds the entry from their values; for an entry that takes a proof, to
   `Term.externCallChecked`, whose function *decides* each proposition on those values and
   hands the proof it gets to the entry, and whose fallback (for values that do not
   satisfy it, which a Lean program cannot give) is the translation of the `Inhabited`
-  default of the result type.
+  default of the result type.  Should every argument term turn out to be a literal or a
+  closed value, `mkNode` computes the call instead (see `LeanScript.ToTerm.Build`).
 
 The catalogue is in two levels (a family per section of `Init`, and `LeanInitPureExtern`
 with one constructor per family), so an entry is built through its shorthand
@@ -245,8 +248,7 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
   let entry? ← if checked && closed then externClosedEntry? kinds own ctor else pure none
   let t ← match entry? with
     | some entry =>
-        pure ((← mkNode ``LeanScript.Term.extern
-          #[c.sg, c.gamma, ← externResultTy entry, entry]))
+        mkExternNode c.sg c.gamma (← externResultTy entry) entry
     | none => do
       -- the values: translated, and handed to the entry when the term runs
       let mut ts : Array Expr := #[]

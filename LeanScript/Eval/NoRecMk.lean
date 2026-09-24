@@ -114,9 +114,10 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   | _, _, _, _, _ => True
 
 /-- `Term.NoRecMk`, on the elements of an array. -/
-def Terms.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → Terms Sg Γ u τ → Prop
-  | _, _, _, .nil => True
-  | _, _, _, .cons t ts => Term.NoRecMk t ∧ Terms.NoRecMk ts
+def Terms.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {ks : List Head} →
+    Terms Sg Γ u τ ks → Prop
+  | _, _, _, _, .nil => True
+  | _, _, _, _, .cons t ts => Term.NoRecMk t ∧ Terms.NoRecMk ts
 
 /-- `Term.NoRecMk`, on the answers a fold of an array gives to the short lists. -/
 def ArrayRecBases.NoRecMk {Sg : Sig} :

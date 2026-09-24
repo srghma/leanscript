@@ -190,11 +190,12 @@ example : run colourCode_term (run blue_term) = 2 := rfl
 /-! ## Arrays
 
 `Array α` is the grammar's `TyWf.array`, whose introduction form takes every element at
-once, so an array literal translates and the term runs. -/
+once, so an array literal translates and the term runs.  An array of literals is a closed
+value (`Head.val`). -/
 
 def digits : Array Nat := #[1, 2, 3]
 
-def digits_term := (#leanscript_to_term digits : Term sig0 [] _ (TyWf.array (TyWf.prim .nat)) .ctor)
+def digits_term := (#leanscript_to_term digits : Term sig0 [] _ (TyWf.array (TyWf.prim .nat)) .val)
 
 example : run digits_term = #[1, 2, 3] := rfl
 
