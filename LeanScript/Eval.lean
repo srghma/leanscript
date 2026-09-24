@@ -427,12 +427,6 @@ def Term.run' {u : Usage []} {τ : TyWf} {k : Head} (t : Term ⟨[], rfl⟩ [] u
     (h : Term.NoRecMk t := by no_rec_mk) : TyWf.Den τ :=
   Term.eval GlobalEnv.nil t Env.nil h
 
-/-- The value of a closed term, whatever its grades and head: `Term.run` of the term the
-    bundle holds. -/
-def SomeTerm.run {Sg : Sig} {τ : TyWf} (G : GlobalEnv Sg.decls) (t : SomeTerm Sg [] τ)
-    (h : Term.NoRecMk t.term := by no_rec_mk) : TyWf.Den τ :=
-  Term.eval G t.term Env.nil h
-
 /-! ## What the evaluator does, stated
 
 The clauses below are the ones worth naming: they hold by `rfl`, and they say that a

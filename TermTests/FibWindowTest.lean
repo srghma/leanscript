@@ -102,13 +102,13 @@ example : runAdd fib_term 15 = 610 := rfl
 /-- The window term's value at `n` is the pair `(fib n, fib (n + 1))` — at **every**
     argument, not only at the ones checked above. -/
 theorem window_eval (n : Nat) :
-    runAdd ⟨window⟩ n = (fib n, fib (n + 1), PUnit.unit) := by
+    runAdd window n = (fib n, fib (n + 1), PUnit.unit) := by
   induction n with
   | zero => rfl
   | succ n ih =>
-      have hstep : runAdd ⟨window⟩ (n + 1) =
-          ((runAdd ⟨window⟩ n).2.1,
-            (runAdd ⟨window⟩ n).1 + (runAdd ⟨window⟩ n).2.1, PUnit.unit) := by
+      have hstep : runAdd window (n + 1) =
+          ((runAdd window n).2.1,
+            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := by
         -- `kernel_rfl`, not `rfl`: the elaborator's own check of this equation is slow
         -- (the extern call goes through the case splits of `Extern.eval`);
         -- the kernel checks it quickly (see `LeanScript/KernelRfl.lean`)
@@ -120,7 +120,7 @@ theorem window_eval (n : Nat) :
 
 /-- `fib_term` computes `fib`, at every argument. -/
 theorem fib_term_eval (n : Nat) : runAdd fib_term n = fib n := by
-  have h : runAdd fib_term n = (runAdd ⟨window⟩ n).1 := rfl
+  have h : runAdd fib_term n = (runAdd window n).1 := rfl
   rw [h, window_eval]
 
 /-! ## The semantics a two-step fold would have

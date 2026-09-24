@@ -1199,30 +1199,20 @@ inductive FamilyFoldKCases (Sg : Sig) :
 
 end
 
-/-- A term of type `τ` in `Γ`, **with whatever grade vector and head it has**.
+/-! ## Writing down the type of a term
 
-    `LeanScript.Term` carries its grade vector and its head as indices, because the
-    proofs that a node is not a redex are stated in terms of them; but the indices are
-    computed by the constructors, so a declaration that holds a term does not want to
-    write them.  This bundle is what such a declaration's type is:
+`LeanScript.Term` carries its grade vector and its head as indices, and a declaration that
+holds a term states both in its type, so they can be read off the declaration:
 
-    ```lean
-    def idNat : SomeTerm sg [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := ⟨.lam (.var (v♯0))⟩
-    ```
+```lean
+def idNat : Term sg [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := .lam (.var (v♯0))
+```
 
-    and `#leanscript_to_term` produces one when it is what is expected. -/
-structure SomeTerm (Sg : Sig) (Γ : Ctx) (τ : TyWf) : Type 1 where
-  /-- The anonymous constructor: the indices are read off the term. -/
-  mk ::
-  /-- How many times the term uses each variable of `Γ`. -/
-  {usage : Usage Γ}
-  /-- What the root of the term is. -/
-  {head : Head}
-  /-- The term. -/
-  term : Term Sg Γ usage τ head
-
-instance {Sg : Sig} {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
-    CoeOut (Term Sg Γ u τ k) (SomeTerm Sg Γ τ) := ⟨SomeTerm.mk⟩
+The grade vector of a **closed** term is always `0`, and definitionally so: the grades a
+constructor computes are functions of the variables of the context, and every one of
+them reduces to `0` at the variable `x.succ` that `Usage.tail` asks about, so `0` is
+accepted wherever the computed vector is expected.  Only the head is really information,
+and it is checked: a declaration that states the wrong head does not elaborate. -/
 
 end LeanScript
 

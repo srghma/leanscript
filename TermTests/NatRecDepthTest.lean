@@ -280,7 +280,7 @@ termination_by n
 
 /-- error: `#leanscript_to_term`: well-founded recursion (WellFounded.Nat.fix) is not supported — the only folds the translation produces are `nat_rec` and `recTaggedUnion_rec`, so write the recursion as `Nat.rec` or `List.rec` with a non-dependent motive -/
 #guard_msgs (error) in
-example : Term sigAdd [] 0 (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) .UNKNOWN :=
+example : Term sigAdd [] 0 (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) .lam :=
   #leanscript_to_term fibFastAux
 
 end TermTests.NatRecDepth

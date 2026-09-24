@@ -164,7 +164,7 @@ example (H : TyWf) : haltTy H = TyWf.fn H natT := rfl
 abbrev mixedTy : TyWf :=
   stepTy natT (optionTy natT (stepTy stringT (optionTy stringT (haltTy boolT))))
 
-example : Term sig [] 0 mixedTy .UNKNOWN := mixedProcess_term
+example : Term sig [] 0 mixedTy .ctor := mixedProcess_term
 
 /-- `ProcessOption Nat Unit`: `nextState : Unit` is erased, and only `none` is ever built,
     so `proc` is `nat` (see above). -/
@@ -179,7 +179,7 @@ abbrev varyingProcTy : TyWf := .oneOf varyingOptUnitTy (stepTy boolT (optionTy b
     the two processes. -/
 abbrev varyingTy : TyWf := stepTy natT (optionTy natT varyingProcTy)
 
-example : Term sig [] 0 varyingTy .UNKNOWN := varyingProcess_term
+example : Term sig [] 0 varyingTy .ctor := varyingProcess_term
 
 /-! #### What they evaluate to -/
 

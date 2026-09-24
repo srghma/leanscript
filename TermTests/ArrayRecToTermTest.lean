@@ -233,7 +233,7 @@ where
 error: `#leanscript_to_term`: this recursion on the elements of an array is not the fold of an array — the fold `array_rec k` gives its branch the head and the values at the `k + 1` nearest suffixes of the tail, so a branch that reads an element past the head, or the tail itself, or the value at a list that is not a suffix, has no term
 -/
 #guard_msgs in
-def adjArr_term : Term sig0 [] 0 (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) .UNKNOWN :=
+def adjArr_term : Term sig0 [] 0 (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) .lam :=
   #leanscript_to_term adjArr
 
 end TermTests.ArrayRecToTerm

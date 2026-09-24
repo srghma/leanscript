@@ -37,21 +37,21 @@ def natListSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 def natListTy : TyWf := .recTaggedUnion natListSchema
 
 /-- The empty list. -/
-def natNil : Term covEmptySig [] 0 natListTy .UNKNOWN :=
+def natNil : Term covEmptySig [] 0 natListTy .ctor :=
   .recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)
 
 /-- The head of a list, or `0`. -/
-def natHead : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .UNKNOWN :=
+def natHead : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
   .lam (.recTaggedUnion_casesOn (.var (v♯0))
     (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
 
 /-- The fold over a list that answers `0`. -/
-def natFoldZero : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .UNKNOWN :=
+def natFoldZero : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
   .lam (.recTaggedUnion_rec 0 (.var (v♯0))
     (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
 
 /-- `[5]`. -/
-def natFive : Term covEmptySig [] 0 natListTy .UNKNOWN :=
+def natFive : Term covEmptySig [] 0 natListTy .ctor :=
   .recTaggedUnion_mk natListSchema (t := 1) 
     (fields := .cons (.nat_mk 5) (.cons natNil .nil))
 
@@ -94,7 +94,7 @@ def roseSchema : LeanRecordSchema (TyWfIn 1) :=
 def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
-def roseLeaf : Term covEmptySig [] 0 roseTy .UNKNOWN :=
+def roseLeaf : Term covEmptySig [] 0 roseTy .ctor :=
   .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
 
 /-- A leaf is outside the evaluator's fragment. -/

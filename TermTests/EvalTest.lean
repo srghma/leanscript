@@ -64,11 +64,11 @@ example : Term.run doubleEnv callDouble = 42 := rfl
 
 /-! ## Literals -/
 
-example : run ⟨.bitvec_mk (v := 7#8)⟩ = 7#8 := rfl
-example : run ⟨.string_mk "hello"⟩ = "hello" := rfl
-example : run ⟨.char_mk 'a'⟩ = 'a' := rfl
-example : run ⟨.int_mk (-2)⟩ = -2 := rfl
-example : run ⟨.uint8_mk 255⟩ = 255 := rfl
+example : run (.bitvec_mk (v := 7#8)) = 7#8 := rfl
+example : run (.string_mk "hello") = "hello" := rfl
+example : run (.char_mk 'a') = 'a' := rfl
+example : run (.int_mk (-2)) = -2 := rfl
+example : run (.uint8_mk 255) = 255 := rfl
 
 /-! ## Eliminators of the terminal types -/
 
