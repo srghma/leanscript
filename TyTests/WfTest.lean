@@ -1,4 +1,17 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.WfFacts
+public import LeanScript.Ty.TyWf
+public import LeanScript.Ty.Class
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+
+@[expose] public section
+
+/-!
 # What `Ty.Wf` says, and what `ty_wf` refuses
 
 `LeanScript.Ty` is a plain tree, so a tree can be written that is not a type: an
@@ -10,14 +23,6 @@ the tree, and by *reusing* the proof of any subtree that already has one.
 This file pins both halves: the trees `ty_wf` proves, and the ones it refuses, with the
 message it refuses them with.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.Wf
-import LeanScript.Ty.WfFacts
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.Class
-import LeanScript.Ty.WfTactic
-import LeanScript.Ty.Instances
-import LeanScript.Ty.Deriving
 
 open LeanScript
 

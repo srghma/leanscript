@@ -1,19 +1,26 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.TyBEq
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.TyWf
+public meta import LeanScript.Ty.TyWf
+public import LeanScript.Ty.TyWfIn
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.ExprCtx
+public meta import LeanScript.ExprCtx
+public import LeanScript.DeBruijn
+public import LeanScript.Expr.SelfField
+
+@[expose] public section
+
+/-!
 # Printing, mapping and the remaining coercions
 
 Pins the `Repr` instances of the trees and the schemas, the `Functor`/`LawfulFunctor`
 instances of the schemas and shapes (whose `<$>` is their `map`), and the coercions
 between the schemas.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.TyBEq
-import LeanScript.Ty.Wf
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.TyWfIn
-import LeanScript.Ty.WfTactic
-import LeanScript.ExprCtx
-import LeanScript.DeBruijn
-import LeanScript.Expr.SelfField
 
 open LeanScript
 

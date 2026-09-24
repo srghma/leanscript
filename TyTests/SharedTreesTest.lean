@@ -1,4 +1,17 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.WfFacts
+public import LeanScript.Ty.TyWf
+public import LeanScript.Ty.Class
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+
+@[expose] public section
+
+/-!
 # One tree per shape, and one check per type
 
 This file pins the two things that make `deriving LeanScriptTyWf` cheap, by printing the
@@ -12,14 +25,6 @@ declarations it generates.
   declaration whose tree is already there gets an instance and nothing else: no second
   tree, and no second proof.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.Wf
-import LeanScript.Ty.WfFacts
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.Class
-import LeanScript.Ty.WfTactic
-import LeanScript.Ty.Instances
-import LeanScript.Ty.Deriving
 
 open LeanScript
 
@@ -30,7 +35,7 @@ structure Point where
   y : Nat
   deriving LeanScriptTyWf
 
-/-- info: def SharedTreesTest.Point.leanScriptTyOf : Ty :=
+/-- info: @[expose] def SharedTreesTest.Point.leanScriptTyOf : Ty :=
 Ty.record { fst := tyOf Nat, snd := tyOf Nat, rest := [] } -/
 #guard_msgs in
 #print Point.leanScriptTyOf
@@ -43,7 +48,7 @@ structure Offset where
 
 -- No `Offset.leanScriptTyOf` is added: the instance is `Point`'s tree and `Point`'s
 -- proof.
-/-- info: @[reducible] def SharedTreesTest.Offset.instLeanScriptTyWf : LeanScriptTyWf Offset :=
+/-- info: @[reducible, expose] def SharedTreesTest.Offset.instLeanScriptTyWf : LeanScriptTyWf Offset :=
 { tyWfOf := { toTy := Point.leanScriptTyOf, isWf := Point.leanScriptTyOf_wf } } -/
 #guard_msgs in
 #print Offset.instLeanScriptTyWf
@@ -89,7 +94,7 @@ structure Holder where
   name : String
   deriving LeanScriptTyWf
 
-/-- info: def SharedTreesTest.Holder.leanScriptTyOf : Ty :=
+/-- info: @[expose] def SharedTreesTest.Holder.leanScriptTyOf : Ty :=
 Ty.record { fst := tyOf (List Point), snd := tyOf String, rest := [] } -/
 #guard_msgs in
 #print Holder.leanScriptTyOf

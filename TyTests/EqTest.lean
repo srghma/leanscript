@@ -1,4 +1,16 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.TyBEq
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.TyWf
+public import LeanScript.Ty.Class
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.Ty.Instances
+
+@[expose] public section
+
+/-!
 # Equality of trees, and the coercions between them
 
 `Ty.beq` is the equality of trees (`LeanScript.Ty.TyBEq`), so `==` on a `Ty` is lawful and
@@ -6,13 +18,6 @@ a `Ty` has a decidable equality; the same holds of a bundled `TyWf`, whose secon
 a proof.  This file pins both, together with the coercions that let a leaf, a node or a
 bundled tree stand where a tree is wanted.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.TyBEq
-import LeanScript.Ty.Wf
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.Class
-import LeanScript.Ty.WfTactic
-import LeanScript.Ty.Instances
 
 open LeanScript
 

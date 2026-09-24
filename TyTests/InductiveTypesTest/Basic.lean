@@ -1,4 +1,17 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.WfFacts
+public import LeanScript.Ty.TyWf
+public import LeanScript.Ty.Class
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+
+@[expose] public section
+
+/-!
 # `deriving LeanScriptTyWf`: the `Ty` of a Lean inductive type
 
 Every `example` below is checked by the kernel, so this file *is* the expectation: what
@@ -15,14 +28,6 @@ Two notes.
 * Everything is declared inside `namespace InductiveTypesTest` so that names such as
   `MProd` do not collide with the ones the core library already has.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.Wf
-import LeanScript.Ty.WfFacts
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.Class
-import LeanScript.Ty.WfTactic
-import LeanScript.Ty.Instances
-import LeanScript.Ty.Deriving
 
 open LeanScript
 

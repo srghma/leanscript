@@ -1,11 +1,16 @@
-/-
+module
+
+public import TyTests.SharedTreesTest
+
+@[expose] public section
+
+/-!
 # Sharing spans modules
 
 The table of trees `deriving LeanScriptTyWf` keeps is an environment extension, so a
 declaration in *this* module whose tree was already built in an imported one gets that
 module's constant and that module's proof — no second tree, and no second check.
 -/
-import TyTests.SharedTreesTest
 
 open LeanScript
 
@@ -17,7 +22,7 @@ structure Coord where
   v : Nat
   deriving LeanScriptTyWf
 
-/-- info: @[reducible] def CrossModuleSharingTest.Coord.instLeanScriptTyWf : LeanScriptTyWf Coord :=
+/-- info: @[reducible, expose] def CrossModuleSharingTest.Coord.instLeanScriptTyWf : LeanScriptTyWf Coord :=
 { tyWfOf := { toTy := SharedTreesTest.Point.leanScriptTyOf, isWf := SharedTreesTest.Point.leanScriptTyOf_wf } } -/
 #guard_msgs in
 #print Coord.instLeanScriptTyWf

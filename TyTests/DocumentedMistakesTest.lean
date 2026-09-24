@@ -1,4 +1,17 @@
-/-
+module
+
+public import LeanScript.Ty.Ty
+public import LeanScript.Ty.Wf
+public import LeanScript.Ty.WfFacts
+public import LeanScript.Ty.TyWf
+public import LeanScript.Ty.Class
+public meta import LeanScript.Ty.WfTactic
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+
+@[expose] public section
+
+/-!
 # The mistakes the earlier type languages made, one by one
 
 Every defect recorded in the design documents of the previous representations is listed
@@ -15,14 +28,6 @@ here with the evidence that it cannot happen now, in the order of `docs/DesignAn
 Two defects are *not* excluded by `Ty.Wf`, deliberately; they are at the end, with proofs
 that the trees are well formed, so that nothing here is claimed that is not true.
 -/
-import LeanScript.Ty.Ty
-import LeanScript.Ty.Wf
-import LeanScript.Ty.WfFacts
-import LeanScript.Ty.TyWf
-import LeanScript.Ty.Class
-import LeanScript.Ty.WfTactic
-import LeanScript.Ty.Instances
-import LeanScript.Ty.Deriving
 
 open LeanScript
 

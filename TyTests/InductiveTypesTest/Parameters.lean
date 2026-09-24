@@ -1,4 +1,8 @@
-import TyTests.InductiveTypesTest.Basic
+module
+
+public import TyTests.InductiveTypesTest.Basic
+
+@[expose] public section
 
 /-!
 # `deriving LeanScriptTyWf`: type parameters, recursion through a shape, refusals

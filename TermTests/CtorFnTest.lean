@@ -1,4 +1,8 @@
-import TermTests.CtorFnTest.Module
+module
+
+public import TermTests.CtorFnTest.Module
+
+@[expose] public section
 
 /-!
 # `#leanscript_ctor`: constructor functions for every datatype
@@ -32,7 +36,7 @@ def some4 : Term sig [] (#leanscript_layout `Option `some natT) :=
   #leanscript_ctor `Option `some natT (.nat_mk 4)
 
 /--
-info: def CtorFnTest.some4 : Term sig [] (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) :=
+info: @[expose] def CtorFnTest.some4 : Term sig [] (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) :=
 TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4)
 -/
 #guard_msgs in #print some4

@@ -1,4 +1,8 @@
-import TyTests.InductiveTypesTest.Parameters
+module
+
+public import TyTests.InductiveTypesTest.Parameters
+
+@[expose] public section
 
 /-!
 # `deriving LeanScriptTyWf`: recursion through a type whose own model is recursive

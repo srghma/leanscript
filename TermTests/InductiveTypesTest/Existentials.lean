@@ -1,7 +1,11 @@
-import TyTests.InductiveTypesTest.NestedRecursion
-import LeanScript.Eval
-import LeanScript.CtorFn
-import LeanScript.ToTerm.Elab
+module
+
+public import TyTests.InductiveTypesTest.NestedRecursion
+public import LeanScript.Eval
+public import LeanScript.CtorFn
+public import LeanScript.ToTerm.Elab
+
+@[expose] public section
 
 /-!
 # `deriving LeanScriptTyWf`: declarations with existentially typed fields
