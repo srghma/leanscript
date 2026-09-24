@@ -1,7 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.Cases
-public meta import LeanScript.CtorFn
+public meta import LeanScript.CtorFn.Emit
 
 @[expose] public section
 

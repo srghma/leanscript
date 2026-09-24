@@ -33,6 +33,9 @@ context are used.
 | `fun x => b`, `f a`, `let x := v; b` | `lam`, `ap`, `letE` |
 | a literal of a terminal type | `bool_mk`, `nat_mk`, `int_mk`, `string_mk`, … |
 | `if b then t else e` (`b : Bool`), `cond` | `bool_casesOn` |
+| `if n = 0 then t else e` (`n : Nat`) | `nat_casesOn` |
+| `fun _ : Unit => b` | `b`: a `Unit` binder is erased, as a `Unit` argument is |
+| a constructor of a datatype with existentials | its `#leanscript_ctor` constructor function (see below) |
 | a constructor of a record-shaped type | `record_mk` |
 | a constructor of a tagged union | `taggedUnion_mk` |
 | a constructor of an enum | `enum_mk` |
