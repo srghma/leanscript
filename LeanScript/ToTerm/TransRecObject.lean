@@ -243,7 +243,8 @@ def recObjLeaf (trans : TransFn) (info : RecObjInfo) (brecF : Expr) (motives : A
     if body.containsFVar g.fvarId! then
       throwError "`#leanscript_to_term`: this recursion on a recursive record takes apart \
         a value further down than the depth tried"
-  trans c body
+  let indName := (← getConstInfoCtor info.ctor).induct
+  trans { c with foldInds := c.foldInds.push indName } body
 
 mutual
 

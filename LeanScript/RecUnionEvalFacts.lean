@@ -249,46 +249,52 @@ mutual
 
 /-- The evaluator's answer at a node, for branches that answer where they stand, is the
     answer of those branches read as a plain fold. -/
-theorem TaggedUnionFoldKCases.eval_toFoldK {k : Nat} {bind : List (TyWfIn 1) → List TyWf}
-    {Γ : Ctx} {l : LeanTaggedUnionSchema (TyWfIn 1)} :
+theorem TaggedUnionFoldKCases.eval_toFoldK {k : Nat} {outer : List (List (TyWfIn 1))}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {l : LeanTaggedUnionSchema (TyWfIn 1)} :
     ∀ (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
+      (fr : RecFrames l₀ τ outer)
       (t : Nat) (e : (Ty.toPFunctorAt (recL l) t).Obj (RecMemo l₀ τ)),
-      TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (k := k) c) env mkEnv t e =
+      TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (k := k) c) env mkEnv fr
+          t e =
         TaggedUnionFoldCases.evalAt G c env mkEnv t e
-  | .payloadFirst _ _ _, _, _, 0, _ => rfl
-  | .payloadFirst _ _ _, _, _, 1, _ => rfl
-  | .payloadFirst _ _ rest, env, mkEnv, n + 2, e =>
-      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv n e
-  | .skip _ _, _, _, 0, _ => rfl
-  | .skip _ rest, env, mkEnv, n + 1, e =>
-      CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv n e
+  | .payloadFirst _ _ _, _, _, _, 0, _ => rfl
+  | .payloadFirst _ _ _, _, _, _, 1, _ => rfl
+  | .payloadFirst _ _ rest, env, mkEnv, fr, n + 2, e =>
+      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv fr n e
+  | .skip _ _, _, _, _, 0, _ => rfl
+  | .skip _ rest, env, mkEnv, fr, n + 1, e =>
+      CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv fr n e
 
-theorem CtorsWithPayloadFoldKCases.eval_toFoldK {k : Nat}
+theorem CtorsWithPayloadFoldKCases.eval_toFoldK {k : Nat} {outer : List (List (TyWfIn 1))}
     {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {c : CtorsWithPayload (TyWfIn 1)} :
     ∀ (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ c τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
+      (fr : RecFrames l₀ τ outer)
       (t : Nat) (e : (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj (RecMemo l₀ τ)),
-      CtorsWithPayloadFoldKCases.eval G (CtorsWithPayloadFoldCases.toFoldK (k := k) cs) env mkEnv t e =
+      CtorsWithPayloadFoldKCases.eval G (CtorsWithPayloadFoldCases.toFoldK (k := k) cs) env
+          mkEnv fr t e =
         CtorsWithPayloadFoldCases.evalAt G cs env mkEnv t e
-  | .here _ _, _, _, 0, _ => rfl
-  | .here _ rest, env, mkEnv, n + 1, e =>
-      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv n e
-  | .skip _ _, _, _, 0, _ => rfl
-  | .skip _ rest, env, mkEnv, n + 1, e =>
-      CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv n e
+  | .here _ _, _, _, _, 0, _ => rfl
+  | .here _ rest, env, mkEnv, fr, n + 1, e =>
+      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv fr n e
+  | .skip _ _, _, _, _, 0, _ => rfl
+  | .skip _ rest, env, mkEnv, fr, n + 1, e =>
+      CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv fr n e
 
-theorem TaggedUnionFoldKCasesRest.eval_toFoldK {k : Nat}
+theorem TaggedUnionFoldKCasesRest.eval_toFoldK {k : Nat} {outer : List (List (TyWfIn 1))}
     {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {cs : List (List (TyWfIn 1))} :
     ∀ (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ cs τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
+      (fr : RecFrames l₀ τ outer)
       (t : Nat) (e : (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ)),
-      TaggedUnionFoldKCasesRest.eval G (TaggedUnionFoldCasesRest.toFoldK (k := k) r) env mkEnv t e =
+      TaggedUnionFoldKCasesRest.eval G (TaggedUnionFoldCasesRest.toFoldK (k := k) r) env
+          mkEnv fr t e =
         TaggedUnionFoldCasesRest.evalAt G r env mkEnv t e
-  | .nil, _, _, _, e => PEmpty.elim e.1
-  | .cons _ _, _, _, 0, _ => rfl
-  | .cons _ rest, env, mkEnv, n + 1, e =>
-      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv n e
+  | .nil, _, _, _, _, e => PEmpty.elim e.1
+  | .cons _ _, _, _, _, 0, _ => rfl
+  | .cons _ rest, env, mkEnv, fr, n + 1, e =>
+      TaggedUnionFoldKCasesRest.eval_toFoldK rest env mkEnv fr n e
 
 end
 
@@ -372,8 +378,8 @@ abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnion
     (env : Env Γ) :
     (node : Ty.RecNode (recL l)) → (Ty.RecHole (recL l) node → RecMemo l τ) → TyWf.Den τ :=
   fun node kids =>
-    TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (k := k) c) env (recBindEnv l hwf τ)
-      node.1.val ⟨node.2, kids⟩
+    TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (k := k) (outer := []) c) env (recBindEnv l hwf τ)
+      RecFrames.nil node.1.val ⟨node.2, kids⟩
 
 /-- **The evaluator's memoised fold is the plain fold**, at every depth, for branches that
     answer where they stand. -/
@@ -388,8 +394,8 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
   generalize Term.eval G v env = w
   induction w with
   | mk node f ih =>
-      show TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK c) env
-          (recBindEnv l hwf τ) node.1.val ⟨node.2, fun p => WType.memo _ (f p)⟩ = _
+      show TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (outer := []) c) env
+          (recBindEnv l hwf τ) RecFrames.nil node.1.val ⟨node.2, fun p => WType.memo _ (f p)⟩ = _
       rw [TaggedUnionFoldKCases.eval_toFoldK,
         TaggedUnionFoldCases.evalAt_map G (fun m => (WType.Memo.tree m, WType.Memo.answer m))
           (recBindEnv l hwf τ) (recBindEnvOf l hwf τ)

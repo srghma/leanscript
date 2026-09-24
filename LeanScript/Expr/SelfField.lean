@@ -84,6 +84,25 @@ inductive FamilyMemberAt {n : Nat} :
       FamilyMemberAt ms i m → FamilyMemberAt (m' :: ms) (i + 1) m
   deriving DecidableEq, Repr
 
+/-- A pointer at an occurrence of the type being folded over among the fields of a node
+    **above** the one a deeper look stands at: the nodes a depth-`k` fold has already
+    dispatched on along its path, innermost first, each given by the list of its field
+    trees.  `.here sf` names the occurrence `sf` of the innermost of them, and `.there`
+    steps out to the node above it.
+
+    It is what lets a branch of `LeanScript.Term.recTaggedUnion_rec` look into **several**
+    subvalues: after descending into one child it can still descend into a sibling
+    (`LeanScript.FoldKBranch.deepOuter`).  Every node named is on the path from the value
+    being folded, so the occurrence is still a **subvalue** of it. -/
+inductive OuterSelfField : List (List (TyWfIn 1)) → Type
+  /-- An occurrence among the fields of the innermost node above. -/
+  | here : ∀ {fs : List (TyWfIn 1)} {outer : List (List (TyWfIn 1))},
+      SelfField fs → OuterSelfField (fs :: outer)
+  /-- An occurrence among the fields of a node further up. -/
+  | there : ∀ {fs : List (TyWfIn 1)} {outer : List (List (TyWfIn 1))},
+      OuterSelfField outer → OuterSelfField (fs :: outer)
+  deriving DecidableEq, Repr
+
 end LeanScript
 
 end

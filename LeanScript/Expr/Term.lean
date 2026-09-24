@@ -362,8 +362,11 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       occurrence of the union, the value of the fold at that field (`TyWf.recBinders`),
       and each branch free to **look further down** — to dispatch on one of those
       occurrences again, and so be given *its* fields and the values of the fold at
-      them.  `LeanScript.TaggedUnionFoldKCases` is that case tree; a branch may stop
-      looking at any point, and at depth `k` it may descend at most `k` times.
+      them, or on an occurrence at a node above it that it has not looked into yet (a
+      sibling of the subvalue it looked into, `LeanScript.FoldKBranch.deepOuter`), so
+      that it can read below **several** subvalues.  `LeanScript.TaggedUnionFoldKCases`
+      is that case tree; a branch may stop looking at any point, and at depth `k` it may
+      look at most `k` times in all.
 
       At the default depth `k = 0` this is the plain fold: no branch can descend, so the
       branches are exactly one term each, in the context that binds the constructor's
@@ -375,13 +378,14 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
 
       The recursive value is *given* to the branch rather than called by it, exactly as
       in `Term.nat_rec` and `Term.array_rec`, and a deeper look is taken only into a
-      **subvalue** (`LeanScript.SelfField` picks the occurrence descended into), so a
-      term is still terminating by construction, at every depth. -/
+      **subvalue** (`LeanScript.SelfField` and `LeanScript.OuterSelfField` pick the
+      occurrence descended into, at a node on the path), so a term is still terminating
+      by construction, at every depth. -/
   | recTaggedUnion_rec : ∀ {Γ τ} {l : LeanTaggedUnionSchema (TyWfIn 1)}
       {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat := 0),
       Term Sg Γ (.recTaggedUnion l hwf) →
       TaggedUnionFoldKCases Sg l
-        (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ l τ k →
+        (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ l τ k [] →
       Term Sg Γ τ
   /-- A value of a **recursive record**: its fields, in declaration order, unfolded.
       `hwf`, written by `ty_wf`, is the proof that the record describes a type; note that
@@ -734,25 +738,43 @@ inductive TaggedUnionFoldCasesRest (Sg : Sig) :
     fields (`LeanScript.SelfField`) and dispatches on it, with a depth one smaller, in
     that same context.  Each of *those* branches binds that subvalue's fields and the
     values of the fold at them, so a branch of the whole tree sees the answers at
-    everything on the path it descended.  A look is only ever taken into a field, so
-    every answer a branch is given is the answer at a **subvalue** of the value being
-    folded.
+    everything on the path it descended.
 
-    At depth `0` there is no `deep`, so a branch is an answer and nothing else. -/
+    `deepOuter` is a look into an occurrence among the fields of a node **above** this
+    one, which the fold dispatched on earlier along the path (`LeanScript.OuterSelfField`):
+    after looking into a node's left child a branch can still look into its right child,
+    and so read the answers below **both**.  `outer` lists those nodes, innermost first;
+    it is `[]` at the root, and a deeper look pushes the node it stands at.
+
+    A look is only ever taken into a field of a node on the path, so every answer a
+    branch is given is the answer at a **subvalue** of the value being folded.  Each look
+    costs one unit of depth, so at depth `k` a branch looks at most `k` times in all.
+
+    At depth `0` there is no `deep` and no `deepOuter`, so a branch is an answer and
+    nothing else. -/
 inductive FoldKBranch (Sg : Sig) :
     LeanTaggedUnionSchema (TyWfIn 1) → (List (TyWfIn 1) → List TyWf) → Ctx →
-    List (TyWfIn 1) → TyWf → Nat → Type 1
+    List (TyWfIn 1) → TyWf → Nat → List (List (TyWfIn 1)) → Type 1
   /-- The answer, in the context that binds this constructor's fields and the values of
       the fold at its occurrences. -/
   | here : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ : Ctx} {fs : List (TyWfIn 1)} {τ : TyWf} {k : Nat},
-      Term Sg (bind fs ++ Γ) τ → FoldKBranch Sg l₀ bind Γ fs τ k
+      {Γ : Ctx} {fs : List (TyWfIn 1)} {τ : TyWf} {k : Nat} {outer : List (List (TyWfIn 1))},
+      Term Sg (bind fs ++ Γ) τ → FoldKBranch Sg l₀ bind Γ fs τ k outer
   /-- A deeper look: dispatch on one of this constructor's occurrences of the union, at
       a depth one smaller. -/
   | deep : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ : Ctx} {fs : List (TyWfIn 1)} {τ : TyWf} {k : Nat},
-      SelfField fs → TaggedUnionFoldKCases Sg l₀ bind (bind fs ++ Γ) l₀ τ k →
-      FoldKBranch Sg l₀ bind Γ fs τ (k + 1)
+      {Γ : Ctx} {fs : List (TyWfIn 1)} {τ : TyWf} {k : Nat} {outer : List (List (TyWfIn 1))},
+      SelfField fs → TaggedUnionFoldKCases Sg l₀ bind (bind fs ++ Γ) l₀ τ k (fs :: outer) →
+      FoldKBranch Sg l₀ bind Γ fs τ (k + 1) outer
+  /-- A deeper look into an occurrence of the union among the fields of a node above this
+      one on the path — a sibling of a subvalue looked into before — at a depth one
+      smaller. -/
+  | deepOuter : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
+      {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {fs : List (TyWfIn 1)} {τ : TyWf}
+      {k : Nat} {outer : List (List (TyWfIn 1))},
+      OuterSelfField outer →
+      TaggedUnionFoldKCases Sg l₀ bind (bind fs ++ Γ) l₀ τ k (fs :: outer) →
+      FoldKBranch Sg l₀ bind Γ fs τ (k + 1) outer
 
 /-- The branches of a **depth-`k` fold** over a recursive tagged union: the same shape as
     `LeanScript.TaggedUnionFoldCases` — one branch per constructor, in constructor order,
@@ -761,58 +783,67 @@ inductive FoldKBranch (Sg : Sig) :
     instead of answering.
 
     `l₀` is the union the fold is over, which a deeper look dispatches on again; `bind`
-    is how the value of the fold reaches a branch, as for the plain fold. -/
+    is how the value of the fold reaches a branch, as for the plain fold; `outer` are the
+    nodes dispatched on above, innermost first, whose other occurrences a branch may
+    still look into (`[]` for the fold itself). -/
 inductive TaggedUnionFoldKCases (Sg : Sig) :
     LeanTaggedUnionSchema (TyWfIn 1) → (List (TyWfIn 1) → List TyWf) → Ctx →
-    LeanTaggedUnionSchema (TyWfIn 1) → TyWf → Nat → Type 1
+    LeanTaggedUnionSchema (TyWfIn 1) → TyWf → Nat → List (List (TyWfIn 1)) → Type 1
   /-- The branch of constructor `0` (which carries fields), the branch of the constructor
       after it, and the branches of the remaining constructors. -/
   | payloadFirst : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-      {bind : List (TyWfIn 1) → List TyWf} {Γ τ} {k : Nat}
+      {bind : List (TyWfIn 1) → List TyWf} {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))}
       {fields : NonEmptyList (TyWfIn 1)} {next : List (TyWfIn 1)}
       {rest : List (List (TyWfIn 1))},
-      FoldKBranch Sg l₀ bind Γ fields.toList τ k → FoldKBranch Sg l₀ bind Γ next τ k →
-      TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k →
-      TaggedUnionFoldKCases Sg l₀ bind Γ (.payloadFirst fields next rest) τ k
+      FoldKBranch Sg l₀ bind Γ fields.toList τ k outer →
+      FoldKBranch Sg l₀ bind Γ next τ k outer →
+      TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k outer →
+      TaggedUnionFoldKCases Sg l₀ bind Γ (.payloadFirst fields next rest) τ k outer
   /-- The branch of constructor `0`, which carries no fields, and the branches of the
       constructors after it. -/
   | skip : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ τ} {k : Nat} {rest : CtorsWithPayload (TyWfIn 1)},
-      FoldKBranch Sg l₀ bind Γ [] τ k → CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ k →
-      TaggedUnionFoldKCases Sg l₀ bind Γ (.skip rest) τ k
+      {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))} {rest : CtorsWithPayload (TyWfIn 1)},
+      FoldKBranch Sg l₀ bind Γ [] τ k outer →
+      CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ k outer →
+      TaggedUnionFoldKCases Sg l₀ bind Γ (.skip rest) τ k outer
 
 /-- `LeanScript.TaggedUnionFoldKCases`, on the constructors a
     `LeanScript.CtorsWithPayload` holds. -/
 inductive CtorsWithPayloadFoldKCases (Sg : Sig) :
     LeanTaggedUnionSchema (TyWfIn 1) → (List (TyWfIn 1) → List TyWf) → Ctx →
-    CtorsWithPayload (TyWfIn 1) → TyWf → Nat → Type 1
+    CtorsWithPayload (TyWfIn 1) → TyWf → Nat → List (List (TyWfIn 1)) → Type 1
   /-- The branch of the first constructor that carries fields, and the branches of the
       constructors after it. -/
   | here : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ τ} {k : Nat} {fields : NonEmptyList (TyWfIn 1)} {rest : List (List (TyWfIn 1))},
-      FoldKBranch Sg l₀ bind Γ fields.toList τ k →
-      TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k →
-      CtorsWithPayloadFoldKCases Sg l₀ bind Γ (.here fields rest) τ k
+      {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))} {fields : NonEmptyList (TyWfIn 1)}
+      {rest : List (List (TyWfIn 1))},
+      FoldKBranch Sg l₀ bind Γ fields.toList τ k outer →
+      TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k outer →
+      CtorsWithPayloadFoldKCases Sg l₀ bind Γ (.here fields rest) τ k outer
   /-- The branch of a field-less constructor, and the branches of the constructors after
       it. -/
   | skip : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ τ} {k : Nat} {rest : CtorsWithPayload (TyWfIn 1)},
-      FoldKBranch Sg l₀ bind Γ [] τ k → CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ k →
-      CtorsWithPayloadFoldKCases Sg l₀ bind Γ (.skip rest) τ k
+      {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))} {rest : CtorsWithPayload (TyWfIn 1)},
+      FoldKBranch Sg l₀ bind Γ [] τ k outer →
+      CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ k outer →
+      CtorsWithPayloadFoldKCases Sg l₀ bind Γ (.skip rest) τ k outer
 
 /-- `LeanScript.TaggedUnionFoldKCases`, on the constructors a schema leaves
     unconstrained: one branch per constructor still to be given one. -/
 inductive TaggedUnionFoldKCasesRest (Sg : Sig) :
     LeanTaggedUnionSchema (TyWfIn 1) → (List (TyWfIn 1) → List TyWf) → Ctx →
-    List (List (TyWfIn 1)) → TyWf → Nat → Type 1
+    List (List (TyWfIn 1)) → TyWf → Nat → List (List (TyWfIn 1)) → Type 1
   /-- Every constructor has a branch. -/
   | nil : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ τ} {k : Nat}, TaggedUnionFoldKCasesRest Sg l₀ bind Γ [] τ k
+      {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))},
+      TaggedUnionFoldKCasesRest Sg l₀ bind Γ [] τ k outer
   /-- The branch of the next constructor. -/
   | cons : ∀ {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf}
-      {Γ τ} {k : Nat} {fs : List (TyWfIn 1)} {rest : List (List (TyWfIn 1))},
-      FoldKBranch Sg l₀ bind Γ fs τ k → TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k →
-      TaggedUnionFoldKCasesRest Sg l₀ bind Γ (fs :: rest) τ k
+      {Γ τ} {k : Nat} {outer : List (List (TyWfIn 1))} {fs : List (TyWfIn 1)}
+      {rest : List (List (TyWfIn 1))},
+      FoldKBranch Sg l₀ bind Γ fs τ k outer →
+      TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k outer →
+      TaggedUnionFoldKCasesRest Sg l₀ bind Γ (fs :: rest) τ k outer
 
 /-- A value of one member of a mutual recursive family: the family has the same three
     cases as `LeanScript.LeanFamMemberSchema`, and the type says which of them a member

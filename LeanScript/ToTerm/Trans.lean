@@ -4,6 +4,7 @@ public meta import LeanScript.ToTerm.TransBrec
 public meta import LeanScript.ToTerm.TransRecObject
 public meta import LeanScript.ToTerm.TransRecUnion
 public meta import LeanScript.ToTerm.TransRecFamily
+public meta import LeanScript.ToTerm.TransRecCases
 public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
@@ -283,6 +284,9 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   | some (.ctorInfo ci) => return ← transCtorApp c e ci args
   | some (.recInfo ri) => return ← transRecApp trans c e ri lvls args
   | _ => pure ()
+  -- a one-level `match` on a value of a user-defined recursive type (a recursive union,
+  -- record or newtype, or a member of a mutual block): its `…_casesOn`, not its recursor
+  if let some t ← transRecKindCasesOn? trans c e n lvls args then return t
   if (← Meta.isMatcherApp e) || n.getString! == "casesOn" || n.getString! == "recOn" then
     if let some e' ← unfoldHere? e then
       return ← trans c e'

@@ -25,23 +25,26 @@ the one-step translation of `LeanScript.ToTerm.TransBrec` cannot serve it.)
 Lean compiles such a recursion into `Tree.brecOn`, whose branch is handed the whole
 history of the recursion; the grammar's fold, `LeanScript.Term.recTaggedUnion_rec k`,
 hands each branch the constructor's fields and the answers at its occurrences of the
-union (`TyWf.recBinders`), and lets a branch **look further down**, at most `k` times
-along a path: dispatch again on one of those occurrences (`LeanScript.FoldKBranch.deep`)
-and be handed *its* fields and answers.
+union (`TyWf.recBinders`), and lets a branch **look further down**, at most `k` times:
+dispatch again on one of those occurrences (`LeanScript.FoldKBranch.deep`), or on an
+occurrence at a node above it that it has not looked into (`FoldKBranch.deepOuter`), and
+be handed *its* fields and answers.
 
 **How the branch is read.**  The case tree is built top down.  At each node the value's
 shape is known down to that node: the constructors dispatched on along the path, and a
 variable for every field not descended into.  The Lean branch is instantiated at that
 shape and at the history built for it — whose entry at a subvalue that is bound is the
 variable standing for the answer there, and whose deeper parts are unknown — and reduced.
-If nothing unknown is left, that is the answer (`FoldKBranch.here`).  Otherwise, when the
-depth allows it, each occurrence among the node's fields is tried in turn as the one to
-look into (`FoldKBranch.deep`).
+If nothing unknown is left, that is the answer (`FoldKBranch.here`).  Otherwise the
+unknown parts are the histories below subvalues not looked into yet, each a metavariable
+whose type names its subvalue; when the depth allows it, each of those subvalues is tried
+in turn as the one to look into — at this node (`FoldKBranch.deep`) or at a node above
+(`FoldKBranch.deepOuter`), those furthest up first.  So a recursion that reads the
+answers at the grandchildren below **both** children of a binary tree looks into the left
+child and then, from there, into the right one: depth `2`.
 
 The depth is the smallest `k` (up to `maxRecUnionRecDepth`) at which every branch is
-served.  A recursion that needs to look into **two** subvalues at once (the answers at
-the grandchildren below both children of a binary tree) has no term, since a deeper look
-descends one path.
+served.
 -/
 
 open Lean Meta Elab Term
@@ -117,9 +120,16 @@ def resolveShape (descend : Array (FVarId × Expr)) (e : Expr) : Expr :=
 /-- The branch of the fold at a node of the case tree: the Lean branch instantiated at the
     shape found so far (`top` resolved through `descend`) and at the history in which the
     answer at a bound subvalue is its variable (`answers`), reduced, and translated in
-    `c`.  Fails when the reduced branch still reads something the fold has not given. -/
+    `c`.
+
+    When the reduced branch still reads something the fold has not given — the history
+    below a subvalue that has not been looked into — the result is `.inr` of those of the
+    `pending` subvalues (the occurrences not yet looked into, at this node and at the
+    nodes above it) whose history it reads: a deeper look into one of them is what the
+    branch needs.  It fails when it reads nothing that a deeper look could give. -/
 def recUnionLeaf (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (top : Expr)
-    (descend : Array (FVarId × Expr)) (answers : Array (Expr × Expr)) : MetaM Expr := do
+    (descend : Array (FVarId × Expr)) (answers : Array (Expr × Expr))
+    (pending : Array FVarId) : MetaM (Expr ⊕ Array FVarId) := do
   let shape := resolveShape descend top
   let answers := answers.map fun (s, a) => (resolveShape descend s, a)
   let fty ← instantiateForall (← inferType info.brecF) #[shape]
@@ -143,10 +153,18 @@ def recUnionLeaf (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (top : Expr)
   let body ← reduceBrecBodyDeep (mkAppN info.brecF #[shape, hist])
   let body ← instantiateMVars (← reduceHistoryProjs body)
   if body.hasExprMVar then
+    -- the unknown parts of the history are the histories below the subvalues not looked
+    -- into, each a metavariable whose type names its subvalue
+    let mut tys : Array Expr := #[]
+    for m in ← getMVars body do
+      tys := tys.push (← instantiateMVars (← m.getType))
+    let needed := pending.filter fun f => tys.any (·.containsFVar f)
+    unless needed.isEmpty do return .inr needed
     throwError "`#leanscript_to_term`: this recursion on a recursive tagged union reads \
       the value of the function, or takes a value apart, further down than the fold \
       looks at this depth"
-  trans c body
+  let indName := (← whnf (← inferType top)).getAppFn.constName?
+  return .inl (← trans { c with foldInds := c.foldInds ++ indName.toArray } body)
 
 /-- The pointer at the `p`-th field of this list of field trees, which is an occurrence
     of the union. -/
@@ -203,23 +221,57 @@ partial def mkRecUnionFoldKCases (pre : Array Expr) (l : Expr) (branches : Array
         (pre ++ #[cp, branches[0]!, ← cpCases cp 1])
   | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
 
+/-- A node of the case tree the fold has dispatched on: its constructor's field trees
+    (`fsE`, with elements `fsL`) and, for each of its occurrences of the union, the
+    position of the field and the variable bound for the subvalue there. -/
+structure RecUnionFrame where
+  /-- The list of the constructor's field trees, the index of its branch. -/
+  fsE : Expr
+  /-- The elements of `fsE`. -/
+  fsL : Array Expr
+  /-- The occurrences of the union among the fields: position and variable. -/
+  subs : Array (Nat × FVarId)
+  deriving Inhabited
+
+/-- The nodes above a branch, innermost first, as the expression of type
+    `List (List (TyWfIn 1))` the families of the case tree are indexed by. -/
+def recUnionOuterE (outer : List RecUnionFrame) : MetaM Expr :=
+  mkListLit (mkApp (mkConst ``List [Level.zero]) (tyWfInE 1)) (outer.map (·.fsE))
+
+/-- The pointer `LeanScript.OuterSelfField` at the occurrence `sf` of the `i`-th node
+    above (`0` the innermost). -/
+def mkOuterSelfFieldE : List RecUnionFrame → Nat → Expr → MetaM Expr
+  | f :: rest, 0, sf => do
+      return mkAppN (mkConst ``LeanScript.OuterSelfField.here)
+        #[f.fsE, ← recUnionOuterE rest, sf]
+  | f :: rest, i + 1, sf => do
+      return mkAppN (mkConst ``LeanScript.OuterSelfField.there)
+        #[f.fsE, ← recUnionOuterE rest, ← mkOuterSelfFieldE rest i sf]
+  | [], _, _ => throwError "`#leanscript_to_term`: internal: no node above to look into"
+
 mutual
 
 /-- The branches of a depth-`j` dispatch on the union, bound at `target` (a variable of
-    the Lean type of the union, which each branch's shape is found for). -/
+    the Lean type of the union, which each branch's shape is found for), below the nodes
+    `outer` (innermost first); `descended` are the subvalues already looked into. -/
 partial def recUnionCases (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j : Nat)
     (top : Expr) (target : FVarId) (descend : Array (FVarId × Expr))
-    (answers : Array (Expr × Expr)) : MetaM Expr := do
+    (answers : Array (Expr × Expr)) (outer : List RecUnionFrame)
+    (descended : Array FVarId) : MetaM Expr := do
   let branches ← info.ctors.mapM fun ct =>
-    recUnionBranch trans info c j top target descend answers ct
-  let pre : Array Expr := #[c.sg, info.l, info.bindE, c.gamma, info.τ, mkNatLit j]
+    recUnionBranch trans info c j top target descend answers outer descended ct
+  let pre : Array Expr :=
+    #[c.sg, info.l, info.bindE, c.gamma, info.τ, mkNatLit j, ← recUnionOuterE outer]
   mkRecUnionFoldKCases pre info.l branches
 
 /-- The branch of one constructor, at depth `j`: the answer, if the Lean branch is served
-    by what is known at this node, and otherwise a look into one of its occurrences. -/
+    by what is known at this node, and otherwise a look into an occurrence whose history
+    it reads — one of this node's (`FoldKBranch.deep`) or one of a node above
+    (`FoldKBranch.deepOuter`). -/
 partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j : Nat)
     (top : Expr) (target : FVarId) (descend : Array (FVarId × Expr))
-    (answers : Array (Expr × Expr)) (ct : RecUnionCtor) : MetaM Expr := do
+    (answers : Array (Expr × Expr)) (outer : List RecUnionFrame) (descended : Array FVarId)
+    (ct : RecUnionCtor) : MetaM Expr := do
   let bTys := (← listOfExpr (← reduceTy (mkApp info.bindE ct.fsE)))
   -- the Lean variables the branch binds: each field, and after each occurrence the
   -- answer at it
@@ -251,21 +303,72 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
     let shape := mkAppN (mkConst ct.name info.lvls) (info.params ++ vals)
     let descend' := descend.push (target, shape)
     let answers' := answers ++ subs.map fun (_, s, a) => (s, a)
+    let descended' := descended.push target
+    let frame : RecUnionFrame :=
+      { fsE := ct.fsE, fsL := ct.fsL, subs := subs.map fun (p, s, _) => (p, s.fvarId!) }
+    -- the occurrences not yet looked into: those of the nodes above (`some i`, the
+    -- `i`-th innermost), outermost first, then this node's (`none`)
+    let mut cands : Array (Option Nat × Nat × FVarId) := #[]
+    for h : r in [0:outer.length] do
+      let i := outer.length - 1 - r
+      for (p, f) in outer[i]!.subs do
+        unless descended'.contains f do
+          cands := cands.push (some i, p, f)
+    for (p, f) in frame.subs do
+      cands := cands.push (none, p, f)
+    let outerE ← recUnionOuterE outer
     let hereE := mkAppN (mkConst `LeanScript.FoldKBranch.here)
-      #[c.sg, info.l, info.bindE, c.gamma, ct.fsE, info.τ, mkNatLit j]
-    try
-      return mkApp hereE (← recUnionLeaf trans info c' top descend' answers')
-    catch ex =>
-      if j == 0 then throw ex
-      let mut lastEx := ex
-      for (p, s, _) in subs do
-        try
-          let inner ← recUnionCases trans info c' (j - 1) top s.fvarId! descend' answers'
+      #[c.sg, info.l, info.bindE, c.gamma, ct.fsE, info.τ, mkNatLit j, outerE]
+    -- a look into the occurrence `cand`, whose nested dispatch is at depth `j - 1`
+    let look (cand : Option Nat × Nat × FVarId) : MetaM Expr := do
+      let (where_, p, f) := cand
+      let inner ← recUnionCases trans info c' (j - 1) top f descend' answers'
+        (frame :: outer) descended'
+      let pre := #[c.sg, info.l, info.bindE, c.gamma, ct.fsE, info.τ, mkNatLit (j - 1),
+        outerE]
+      match where_ with
+      | none =>
           let sf ← mkSelfFieldE ct.fsL p
-          return mkAppN (mkConst `LeanScript.FoldKBranch.deep)
-            #[c.sg, info.l, info.bindE, c.gamma, ct.fsE, info.τ, mkNatLit (j - 1), sf, inner]
-        catch ex' => lastEx := ex'
-      throw lastEx
+          return mkAppN (mkConst `LeanScript.FoldKBranch.deep) (pre ++ #[sf, inner])
+      | some i =>
+          let sf ← mkSelfFieldE outer[i]!.fsL p
+          let osf ← mkOuterSelfFieldE outer i sf
+          return mkAppN (mkConst `LeanScript.FoldKBranch.deepOuter) (pre ++ #[osf, inner])
+    let res ← try
+        pure (Except.ok (← recUnionLeaf trans info c' top descend' answers'
+          (cands.map (·.2.2))))
+      catch ex => pure (Except.error ex)
+    match res with
+    | .ok (.inl body) => return mkApp hereE body
+    | .ok (.inr needed) =>
+        -- the branch reads the history below the subvalues `needed`: each of them is
+        -- tried in turn as the one to look into, those of the nodes furthest up first
+        -- (a branch stuck on a `match` on a sibling can mention the histories below
+        -- this node's own occurrences without needing them)
+        if j == 0 then
+          throwError "`#leanscript_to_term`: this recursion on a recursive tagged union \
+            reads the value of the function further down than the fold looks at this \
+            depth"
+        let mut lastEx : Option Exception := none
+        for cand in cands do
+          if needed.contains cand.2.2 then
+            try
+              return ← look cand
+            catch ex' => lastEx := some ex'
+        match lastEx with
+        | some ex' => throw ex'
+        | none => throwError "`#leanscript_to_term`: internal: no occurrence to look into"
+    | .error ex =>
+        -- nothing below is read, but the branch is not translated as it stands: looking
+        -- into one of this node's occurrences may still expose what it takes apart
+        if j == 0 then throw ex
+        let mut lastEx := ex
+        for cand in cands do
+          if cand.1.isNone then
+            try
+              return ← look cand
+            catch ex' => lastEx := ex'
+        throw lastEx
 
 end
 
@@ -344,7 +447,7 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let scrutT ← trans c major
   let attempt (k : Nat) : MetaM Expr :=
     withLocalDeclD `top selfTy fun top => do
-      let cases ← recUnionCases trans info c k top top.fvarId! #[] #[]
+      let cases ← recUnionCases trans info c k top top.fvarId! #[] #[] [] #[]
       return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_rec)
         #[c.sg, c.gamma, τ, l, hwf, mkNatLit k, scrutT, cases]
   let mut found : Option Expr := none
@@ -359,10 +462,10 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     | throwError "`#leanscript_to_term`: this recursion on the recursive tagged union \
         {ind} is not the fold of a recursive tagged union at any depth up to \
         {maxRecUnionRecDepth} — the fold `recTaggedUnion_rec k` gives each branch the \
-        constructor's fields and the answers at its occurrences, and may look into one \
-        occurrence at a time, at most `k` times along a path, so a branch that reads \
-        the value of the function further down, or looks into two subvalues at once, \
-        has no term.  At the last depth tried: {lastErr.getD m!"(no error)"}"
+        constructor's fields and the answers at its occurrences, and may look into an \
+        occurrence at most `k` times, so a branch that reads the value of the function \
+        further down than that has no term.  At the last depth tried: \
+        {lastErr.getD m!"(no error)"}"
   let extra := args.extract arity args.size
   if extra.isEmpty then return some core
   return some (← applyArgs trans c core (mkAppN (mkConst n lvls) (args.extract 0 arity))

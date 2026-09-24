@@ -12,7 +12,8 @@ public meta import LeanScript.ToTerm.Elab
 
 Part of the `recTaggedUnion_rec k` translation tests; see
 `TermTests/RecUnionToTermTest/Common.lean` for what is checked and for the datatypes.
-At depth `3` a branch may look three times, along one path. -/
+At depth `3` a branch may look three times; the programs here look along one path (see
+`BothSubtrees.lean` for looks into several subvalues). -/
 
 namespace TermTests.RecUnionToTerm
 

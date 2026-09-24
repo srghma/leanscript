@@ -16,16 +16,21 @@ public meta import LeanScript.ToTerm.Elab
 for `LeanScript.Term.array_rec k` and `TermTests/RecObjectToTermTest/` for
 `LeanScript.Term.recObject_rec k`.  These files do it for
 `LeanScript.Term.recTaggedUnion_rec k`, the fold of a **recursive tagged union** whose
-branches may look `k` constructors further down, one subvalue at a time.
+branches may look `k` times further down, into one subvalue or into several.
 
 **Which Lean program is a `recTaggedUnion_rec k`.**  Any structural recursion on an
 inductive type whose tree is `Ty.recTaggedUnion` — several constructors, each field
 either the type itself or a value that does not mention it.  Lean compiles it into
 `X.brecOn`, and the translation (`LeanScript.ToTerm.TransRecUnion`) reads it as
 `recTaggedUnion_rec k`, where `k` is the smallest depth at which every branch is served
-by the constructor's fields, the answers at its subvalues, and at most `k` looks into one
-subvalue at a time (`LeanScript.FoldKBranch.deep`).  The programs are written as ordinary
+by the constructor's fields, the answers at its subvalues, and at most `k` looks — each
+into a subvalue of the node the branch stands at (`LeanScript.FoldKBranch.deep`) or of a
+node above it (`LeanScript.FoldKBranch.deepOuter`).  The programs are written as ordinary
 Lean, with no annotation and nothing added for the translation.
+
+`BothSubtrees.lean` has programs that read below several subvalues at once (the sum of
+the labels at even levels, which reads the grandchildren below both children), and
+`Refused.lean` one the translation refuses.
 
 One file per depth, `K0.lean` … `K4.lean`, each with programs on three datatypes (the
 datatypes, and the inputs built for them, are defined here):

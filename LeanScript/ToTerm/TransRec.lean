@@ -62,6 +62,15 @@ def transBranch (trans : TransFn) (c : TCtx) (minor : Expr) (ctorName : Name)
     let c' := c.pushFields ((keep.zip fieldTys.toArray).map fun (x, t) => (x.fvarId!, t))
     trans c' ((mkAppN minor xs).headBeta)
 
+/-- The member a family selects, with its fields unfolded in the scope of the whole
+    family: the index of `mutualRecursiveFamily_mk`, `…_casesOn` and
+    `…_casesOnWithDefault`. -/
+def famCurrentUnfolded (nE f hwf : Expr) : MetaM Expr := do
+  let sc := (← natOfExpr nE) + 2
+  let curE := mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.current) (tyWfInE sc) f
+  reduceTy (mkAppN (mkConst ``LeanScript.LeanFamMemberSchema.map)
+    #[tyWfInE sc, tyE, mkApp3 (mkConst ``LeanScript.TyWfIn.unfoldFam) nE f hwf, curE])
+
 /-- A `match` that names only some of the constructors, as Lean compiled it: the
     auxiliary `f._sparseCasesOn_i`.  Its branches and its `else` branch are the branches
     and the default of the grammar's partial dispatch, so this is where
@@ -83,9 +92,13 @@ def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls
   -- the grammar has a partial dispatch for a sum type only
   let view ← tyView sty
   match view with
-  | .enum _ | .taggedUnion _ | .recTaggedUnion _ _ => pure ()
+  | .enum _ | .taggedUnion _ | .recTaggedUnion _ _ | .mutualRecursiveFamily _ _ _ => pure ()
   | _ => return none
   let .const indName _ := (← whnf (← inferType major)).getAppFn | return none
+  -- inside the branches of a fold of a family, taking one of its values apart is the
+  -- fold's look further down (see `TCtx.foldInds`)
+  if view matches .mutualRecursiveFamily .. then
+    if c.foldInds.contains indName then return none
   let indInfo ← getConstInfoInduct indName
   let ctors := indInfo.ctors.toArray
   if named.length ≥ ctors.size then return none
@@ -132,6 +145,18 @@ def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
         pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOnWithDefault)
           #[c.sg, c.gamma, τ, l, hwf, kE, scrut, cases, dfltTerm, hk]
+    | .mutualRecursiveFamily nE f hwf =>
+        -- only a member with constructors can be dispatched on partially
+        let (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) :=
+            (← famCurrentUnfolded nE f hwf).getAppFnArgs
+          | return none
+        let cases ← mkTaggedUnionSomeCases (transBranch trans c) c τ l named 0 minors ctors
+        let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+        let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
+        let someCases := mkAppN (mkConst `LeanScript.FamilyMemberSomeCases.ctors)
+          #[c.sg, c.gamma, τ, l, kE, cases, hk]
+        pure <| mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_casesOnWithDefault)
+          #[c.sg, c.gamma, τ, nE, f, hwf, scrut, someCases, dfltTerm]
     | _ => return none
   let extra := args.extract arity args.size
   if extra.isEmpty then return some core
@@ -179,6 +204,8 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
           let bindE := mkApp2 (mkConst ``LeanScript.TyWf.recBinders) sty τ
           let ι := tyWfInE 1
           let depth := mkNatLit 0
+          let outerNil := mkApp (mkConst ``List.nil [Level.zero])
+            (mkApp (mkConst ``List [Level.zero]) ι)
           let nilFs := mkApp (mkConst ``List.nil [Level.zero]) ι
           let consFs := mkApp2
             (mkConst ``NonEmpty.ListCorrectByConstruction.NonEmptyList.toList [Level.zero])
@@ -186,15 +213,15 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
           -- the branches of a depth-zero fold: one answer each, none of them looking
           -- further down
           let nilBranch := mkAppN (mkConst `LeanScript.FoldKBranch.here)
-            #[c.sg, l, bindE, c.gamma, nilFs, τ, depth, nil]
+            #[c.sg, l, bindE, c.gamma, nilFs, τ, depth, outerNil, nil]
           let consBranch := mkAppN (mkConst `LeanScript.FoldKBranch.here)
-            #[c.sg, l, bindE, c.gamma, consFs, τ, depth, ← trans c' body]
+            #[c.sg, l, bindE, c.gamma, consFs, τ, depth, outerNil, ← trans c' body]
           let restCases := mkAppN (mkConst `LeanScript.TaggedUnionFoldKCasesRest.nil)
-            #[c.sg, l, bindE, c.gamma, τ, depth]
+            #[c.sg, l, bindE, c.gamma, τ, depth, outerNil]
           let consCases := mkAppN (mkConst `LeanScript.CtorsWithPayloadFoldKCases.here)
-            #[c.sg, l, bindE, c.gamma, τ, depth, fieldsNE, restL, consBranch, restCases]
+            #[c.sg, l, bindE, c.gamma, τ, depth, outerNil, fieldsNE, restL, consBranch, restCases]
           let cases := mkAppN (mkConst `LeanScript.TaggedUnionFoldKCases.skip)
-            #[c.sg, l, bindE, c.gamma, τ, depth, cp, nilBranch, consCases]
+            #[c.sg, l, bindE, c.gamma, τ, depth, outerNil, cp, nilBranch, consCases]
           return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_rec)
             #[c.sg, c.gamma, τ, l, hwf, depth, scrut, cases]
         else

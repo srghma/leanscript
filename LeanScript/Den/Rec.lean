@@ -518,6 +518,25 @@ def selfFieldMemo {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
   | a :: _, .here h, e => e.prodFst.2 (selfHole a.toTy h e.prodFst.1)
   | _ :: _, .there sf, e => selfFieldMemo sf e.prodSnd
 
+/-- The nodes a deeper look has dispatched on above the one it stands at, innermost
+    first: for each, its fields' shape with the memo of a subtree in each hole. -/
+def RecFrames (l : LeanTaggedUnionSchema (TyWfIn 1)) (τ : TyWf) :
+    List (List (TyWfIn 1)) → Type
+  | [] => PUnit
+  | fs :: outer => RecFields l τ fs × RecFrames l τ outer
+
+/-- No node above: the frames at the root of the fold. -/
+def RecFrames.nil {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} : RecFrames l τ [] :=
+  PUnit.unit
+
+/-- The memo of the subtree at an occurrence among the fields of a node above, which a
+    deeper look (`LeanScript.FoldKBranch.deepOuter`) descends into. -/
+def outerSelfFieldMemo {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
+    {outer : List (List (TyWfIn 1))} → OuterSelfField outer → RecFrames l τ outer →
+      RecMemo l τ
+  | _ :: _, .here sf, fr => selfFieldMemo sf fr.1
+  | _ :: _, .there o, fr => outerSelfFieldMemo o fr.2
+
 /-! ## Reading a list back
 
 `List α` is the recursive tagged union `nil | cons α self` (its `LeanScriptTyWf`

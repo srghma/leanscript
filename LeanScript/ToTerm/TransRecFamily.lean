@@ -168,10 +168,13 @@ def recFamLeaf (trans : TransFn) (info : RecFamInfo) (c : TCtx) (topM : Nat) (to
   unless mi.answering do
     let some d := info.dflt
       | throwError "`#leanscript_to_term`: internal: no default answer"
-    -- the default of `Nat` unfolds to `Nat.zero`, which is written as the literal
-    let d' ← whnf d
-    if d'.isConstOf ``Nat.zero then return ← trans c (mkNatLit 0)
-    return ← trans c d
+    -- the default is unfolded all the way — for an answer that is a function (a recursion
+    -- with arguments after the value) it is `fun _ => default`, and the instance is not a
+    -- value of the language — and the default of `Nat`, `Nat.zero`, is written as the
+    -- literal
+    let d' ← Meta.reduce d
+    let d' := d'.replace fun s => if s.isConstOf ``Nat.zero then some (mkNatLit 0) else none
+    return ← trans c d'
   let shape := resolveShape descend top
   let answers := answers.map fun (s, a) => (resolveShape descend s, a)
   let fty ← instantiateForall (← inferType mi.brecF) #[shape]
@@ -199,7 +202,7 @@ def recFamLeaf (trans : TransFn) (info : RecFamInfo) (c : TCtx) (topM : Nat) (to
     throwError "`#leanscript_to_term`: this recursion on a mutual family reads the value \
       of the function, or takes a value apart, further down than the fold looks at this \
       depth"
-  trans c body
+  trans { c with foldInds := c.foldInds ++ info.members.map (·.ind) } body
 
 /-- The pointer at the `p`-th field of this list of field trees, which is an occurrence
     of member `i` of the family. -/

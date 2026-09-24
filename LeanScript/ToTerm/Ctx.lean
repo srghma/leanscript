@@ -41,6 +41,11 @@ structure TCtx where
   base : Expr
   /-- The binders entered since, **outermost first**, each with its tree. -/
   binders : Array (FVarId × Expr) := #[]
+  /-- The inductives whose fold the translation is inside the branches of.  A `match` on
+      a value of one of them is the fold's own look further down, never a `…_casesOn`
+      (`LeanScript.ToTerm.TransRecCases`), so that the depth of a fold is how far its
+      branches read and does not change with how Lean happened to compile them. -/
+  foldInds : Array Name := #[]
   deriving BEq, Repr
 
 /-- The context of the translation, as an expression: the binders entered, innermost

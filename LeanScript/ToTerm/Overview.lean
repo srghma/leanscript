@@ -42,13 +42,13 @@ context are used.
 | an array literal | `array_mk` |
 | a constructor of `List` | `recTaggedUnion_mk` |
 | `Thunk.mk (fun _ => e)`, `t.get` | `thunk_mk`, `thunk_force` |
-| `match`, `X.casesOn`, a projection | `record_casesOn`, `taggedUnion_casesOn`, `enum_casesOn`, `bool_casesOn`, `recTaggedUnion_casesOn`, `nat_casesOn` |
+| `match`, `X.casesOn`, a projection | `record_casesOn`, `taggedUnion_casesOn`, `enum_casesOn`, `bool_casesOn`, `recTaggedUnion_casesOn`, `nat_casesOn`; on a recursive record, a recursive newtype or a member of a `mutual` block, `recObject_casesOn`, `recAlias_casesOn`, `mutualRecursiveFamily_casesOn` (`LeanScript.ToTerm.TransRecCases`) |
 | a `match` that leaves constructors out | `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` |
 | `Nat.rec`, `List.rec` (non-dependent motive), a structural recursion Lean compiled through `Nat.brecOn` / `List.brecOn` | `nat_rec`, `recTaggedUnion_rec 0` — or `nat_casesOn` / `recTaggedUnion_casesOn`, when the branch does not use the value of the fold |
 | a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
 | `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TermTests/ArrayRecToTermTest/` |
 | a structural recursion on a **list** that descends `k + 1` constructors (`fib` of the length, the tribonacci numbers, …) | `recTaggedUnion_rec k` — see `TermTests/RecUnionToTermTest/` and `LeanScript.ToTerm.TransRecUnion` |
-| a structural recursion on a **recursive tagged union** — an inductive type with several constructors whose fields are the type itself or values that do not mention it, such as `inductive Tree \| leaf \| node (l : Tree) (v : Nat) (r : Tree)` — whose branches look at most `k` constructors further down, one subvalue at a time | `recTaggedUnion_rec k` — see `TermTests/RecUnionToTermTest/` and `LeanScript.ToTerm.TransRecUnion` |
+| a structural recursion on a **recursive tagged union** — an inductive type with several constructors whose fields are the type itself or values that do not mention it, such as `inductive Tree \| leaf \| node (l : Tree) (v : Nat) (r : Tree)` — whose branches look at most `k` times further down, into one subvalue or into several (the grandchildren below both children of a node) | `recTaggedUnion_rec k` — see `TermTests/RecUnionToTermTest/` and `LeanScript.ToTerm.TransRecUnion` |
 | a structural recursion on a **recursive record** — an inductive type with one constructor that mentions itself inside a union field, such as `inductive Cell \| mk (label : Nat) (next : Option Cell)` — that reads the labels and the values of the recursion at most `k + 1` levels down (`fib` on a chain, the tribonacci numbers, …) | `recObject_rec k` — see `TermTests/RecObjectToTermTest/` and `LeanScript.ToTerm.TransRecObject` |
 | a constructor of a recursive record | `recObject_mk` |
 | a structural recursion on a **recursive newtype** — an inductive type with one constructor of one field that mentions itself inside a union, such as `inductive Chain \| mk (link : Link Chain)` — that reads the labels and the values of the recursion at most `k + 1` levels down | `recAlias_rec k` — see `TermTests/RecAliasToTermTest/` and `LeanScript.ToTerm.TransRecObject` |
@@ -132,11 +132,22 @@ being translated.
   (`LeanScript.ToTerm.TransRecObject`); one on a recursive tagged union (a `List`
   included) or on a member of a `mutual` block as `recTaggedUnion_rec k` or
   `mutualRecursiveFamily_rec k` (`LeanScript.ToTerm.TransRecUnion`,
-  `LeanScript.ToTerm.TransRecFamily`), whose branches look one subvalue at a time — a
-  recursion that reads under two subvalues at once is refused.  A recursive newtype is
+  `LeanScript.ToTerm.TransRecFamily`).  The branches of `recTaggedUnion_rec k` may look
+  into several subvalues (after the left child, the right one); those of
+  `mutualRecursiveFamily_rec k` look one subvalue at a time, so a recursion on a `mutual`
+  block that reads under two subvalues at once is refused.  A recursive newtype is
   folded when its body is a union whose constructors hold the newtype itself, values
   that do not mention it, or a structure whose fields are one of those
   (`Link Chain`, `Option Chain`, `Option (Nat × Chain)`).
+* a `match` on a field of a value that the recursion takes apart but does not descend
+  into (a value of *another* `mutual` block, say), written directly in the branch of a
+  structural recursion: Lean passes the history of the recursion through that `match`.
+  Moving the `match` into a small `@[inline]` function makes it translatable
+  (`TermTests/MutualFamilyToTermTest/CrossBlock/`).
+* nested inductive types whose recursive occurrence sits under a type other than a union
+  or a structure of the language (`inductive Rose | node (kids : List Rose)`), a recursive
+  newtype whose body is a structure rather than a union (`Pair2 | mk (Nat × Option Pair2)`),
+  and `mutual` blocks whose members also occur nested (`Option Q` inside `P`).
 * a `for` loop that leaves early (`break`, `return`), or over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.

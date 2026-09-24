@@ -1,0 +1,121 @@
+module
+
+public meta import LeanScript.ToTerm.TransRec
+
+@[expose] public section
+
+meta section
+
+/-!
+# The translation: a plain `match` on a value of a recursive type
+
+`transRecKindCasesOn?`, the clause of the translation for `X.casesOn` — the one-level case
+analysis a `match` compiles to — when the tree of `X` is one of the four recursive
+binders with a user-defined inductive behind it:
+
+| the tree of `X` | the dispatch |
+|---|---|
+| `Ty.recTaggedUnion` (`Tree`, `Nat`-like unions) | `recTaggedUnion_casesOn` |
+| `Ty.recObject` (`Cell := mk (label : Nat) (next : Option Cell)`) | `recObject_casesOn` |
+| `Ty.recAlias` (`Chain := mk (Link Chain)`) | `recAlias_casesOn` |
+| `Ty.mutualRecursiveFamily` (a member of a `mutual` block) | `mutualRecursiveFamily_casesOn` |
+
+Without this clause `X.casesOn` is unfolded to `X.rec`, which for a recursive type is
+either not an eliminator of the language (a nested or mutual type has several motives) or
+refused as a recursion — although the `match` recurses on nothing.  The branches bind the
+constructor's fields **unfolded**, exactly as the `…_mk` of the same type builds them, so a
+field that holds the type again is bound as a value of the type, which a further `match`
+may take apart in turn (a match several levels deep is a nest of these dispatches).
+
+A structural *recursion* is not a `casesOn`: Lean compiles it into `X.brecOn`, which is
+the fold (`LeanScript.ToTerm.TransRecUnion`, `TransRecObject`, `TransRecFamily`).
+-/
+
+open Lean Meta Elab Term
+
+namespace LeanScript.ToTerm
+
+/-- `X.casesOn` on a value whose tree is a recursive tagged union, a recursive record, a
+    recursive newtype or a member of a mutual family: the matching `…_casesOn` of the
+    grammar (see the module documentation).  `none` for any other type, which the other
+    clauses of the translation serve. -/
+def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
+    (lvls : List Level) (args : Array Expr) : MetaM (Option Expr) := do
+  unless n.getString! == "casesOn" do return none
+  let ind := n.getPrefix
+  let some (.inductInfo ii) := (← getEnv).find? ind | return none
+  unless ii.numIndices == 0 do return none
+  -- `List` and `Nat` keep their own translation
+  if ind == ``List || ind == ``Nat then return none
+  -- inside the branches of a fold of this very type, taking a value apart is the fold's
+  -- look further down (see `TCtx.foldInds`)
+  if c.foldInds.contains ind then return none
+  let nP := ii.numParams
+  let nC := ii.ctors.length
+  let arity := nP + 2 + nC
+  if args.size < nP + 2 then return none
+  let major := args[nP + 1]!
+  let sty ← tyOfTerm major
+  let view ← tyView sty
+  match view with
+  | .recTaggedUnion .. | .recObject .. | .recAlias .. | .mutualRecursiveFamily .. => pure ()
+  | _ => return none
+  if args.size < arity then
+    return some (← trans c (← etaExpand e))
+  let motive ← whnf args[nP]!
+  unless motive.isLambda do return none
+  let τ ← lambdaBoundedTelescope motive 1 fun xs body => do
+    let body ← whnf body
+    if body.containsFVar xs[0]!.fvarId! then
+      throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
+        language has no eliminator for"
+    tyOfType body
+  let minors := args.extract (nP + 2) arity
+  let ctors := ii.ctors.toArray
+  let scrut ← trans c major
+  let core ← match view with
+    | .recTaggedUnion l hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
+        let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
+        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn)
+          #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
+    | .recObject fs hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
+        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn)
+          #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
+    | .recAlias b hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
+        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn)
+          #[c.sg, c.gamma, τ, b, hwf, scrut, body]
+    | .mutualRecursiveFamily nE f hwf =>
+        let unfE ← famCurrentUnfolded nE f hwf
+        let cases ← match unfE.getAppFnArgs with
+          | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
+              let cs ← mkTaggedUnionCases (transBranch trans c) c τ l 0 minors ctors
+              pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.ctors)
+                #[c.sg, c.gamma, τ, l, cs]
+          | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
+              let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys fs)
+              pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.record)
+                #[c.sg, c.gamma, τ, fs, body]
+          | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
+              let body ← transBranch trans c minors[0]! ctors[0]! [b]
+              pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.alias)
+                #[c.sg, c.gamma, τ, b, body]
+          | _ => throwError "`#leanscript_to_term`: internal: the member of the family \
+              {ind} has no shape: {unfE}"
+        pure <| mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_casesOn)
+          #[c.sg, c.gamma, τ, nE, f, hwf, scrut, cases]
+    | _ => return none
+  let extra := args.extract arity args.size
+  if extra.isEmpty then return some core
+  return some (← applyArgs trans c core (mkAppN (mkConst n lvls) (args.extract 0 arity))
+    extra)
+
+end LeanScript.ToTerm
+
+end
+
+end

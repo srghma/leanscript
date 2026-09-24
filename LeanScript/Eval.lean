@@ -223,8 +223,8 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases, env =>
       WType.memoFold
         (fun node kids =>
-          TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) node.1.val
-            ⟨node.2, kids⟩)
+          TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) RecFrames.nil
+            node.1.val ⟨node.2, kids⟩)
         (Term.eval G v env)
   -- recursive records: a value is a W-tree of the record's shapes, taken apart one level
   -- by `TyWf.DenObj.unfold` and folded bottom-up with every answer remembered
@@ -387,69 +387,83 @@ def EnumSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       else EnumSomeCases.eval G rest env i dflt
 
 /-- The answer of one branch of the fold of a recursive tagged union, at a node whose
-    fields are `e` — their shape, with the memo of the subtree in each hole.  An answer is
-    its term, in the environment `mkEnv` reads off the node; a deeper look takes the memo
-    of the occurrence it names and dispatches on *its* node, so every answer it reads
-    below is already stored there and nothing is recomputed. -/
+    fields are `e` — their shape, with the memo of the subtree in each hole — below the
+    nodes `fr` dispatched on above it.  An answer is its term, in the environment `mkEnv`
+    reads off the node; a deeper look takes the memo of the occurrence it names, at this
+    node or at one above, and dispatches on *its* node, so every answer it reads below is
+    already stored there and nothing is recomputed. -/
 def FoldKBranch.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
     {Γ : Ctx} → {fs : List (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
-    (br : FoldKBranch Sg l₀ bind Γ fs τ k) → Env Γ →
+    {outer : List (List (TyWfIn 1))} →
+    (br : FoldKBranch Sg l₀ bind Γ fs τ k outer) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
-    RecFields l₀ τ fs → TyWf.Den τ
-  | _, _, _, _, _, _, .here body, env, mkEnv, e =>
+    RecFrames l₀ τ outer → RecFields l₀ τ fs → TyWf.Den τ
+  | _, _, _, _, _, _, _, .here body, env, mkEnv, _, e =>
       Term.eval G body (Env.append (mkEnv _ e) env)
-  | _, _, _, _, _, _, .deep sf cases, env, mkEnv, e =>
+  | _, _, _, _, _, _, _, .deep sf cases, env, mkEnv, fr, e =>
       match selfFieldMemo sf e with
       | .mk (node, _) kids =>
-          TaggedUnionFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv node.1.val
-            ⟨node.2, kids⟩
+          TaggedUnionFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv (e, fr)
+            node.1.val ⟨node.2, kids⟩
+  | _, _, _, _, _, _, _, .deepOuter o cases, env, mkEnv, fr, e =>
+      match outerSelfFieldMemo o fr with
+      | .mk (node, _) kids =>
+          TaggedUnionFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv (e, fr)
+            node.1.val ⟨node.2, kids⟩
 
 /-- The answer of the fold of a recursive tagged union at a node of constructor `t`: the
     branch of that constructor, as `TaggedUnionCases.eval` selects it. -/
 def TaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
     {Γ : Ctx} → {l : LeanTaggedUnionSchema (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
-    (cases : TaggedUnionFoldKCases Sg l₀ bind Γ l τ k) → Env Γ →
+    {outer : List (List (TyWfIn 1))} →
+    (cases : TaggedUnionFoldKCases Sg l₀ bind Γ l τ k outer) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    RecFrames l₀ τ outer →
     (t : Nat) → (Ty.toPFunctorAt (recL l) t).Obj (RecMemo l₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e =>
-      FoldKBranch.eval G b0 env mkEnv e
-  | _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e =>
-      FoldKBranch.eval G b1 env mkEnv e
-  | _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, n + 2, e =>
-      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e
-  | _, _, _, _, _, _, .skip b0 _, env, mkEnv, 0, e =>
-      FoldKBranch.eval G b0 env mkEnv e
-  | _, _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e =>
-      CtorsWithPayloadFoldKCases.eval G rest env mkEnv n e
+  | _, _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, fr, 0, e =>
+      FoldKBranch.eval G b0 env mkEnv fr e
+  | _, _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, fr, 1, e =>
+      FoldKBranch.eval G b1 env mkEnv fr e
+  | _, _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, fr, n + 2, e =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
+  | _, _, _, _, _, _, _, .skip b0 _, env, mkEnv, fr, 0, e =>
+      FoldKBranch.eval G b0 env mkEnv fr e
+  | _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, fr, n + 1, e =>
+      CtorsWithPayloadFoldKCases.eval G rest env mkEnv fr n e
 
 /-- `TaggedUnionFoldKCases.eval`, on the constructors that follow a field-less one. -/
 def CtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
     {Γ : Ctx} → {c : CtorsWithPayload (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
-    (cases : CtorsWithPayloadFoldKCases Sg l₀ bind Γ c τ k) → Env Γ →
+    {outer : List (List (TyWfIn 1))} →
+    (cases : CtorsWithPayloadFoldKCases Sg l₀ bind Γ c τ k outer) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    RecFrames l₀ τ outer →
     (t : Nat) → (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj (RecMemo l₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, .here b _, env, mkEnv, 0, e => FoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, .here _ rest, env, mkEnv, n + 1, e =>
-      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e
-  | _, _, _, _, _, _, .skip b _, env, mkEnv, 0, e => FoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e =>
-      CtorsWithPayloadFoldKCases.eval G rest env mkEnv n e
+  | _, _, _, _, _, _, _, .here b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, .here _ rest, env, mkEnv, fr, n + 1, e =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
+  | _, _, _, _, _, _, _, .skip b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, fr, n + 1, e =>
+      CtorsWithPayloadFoldKCases.eval G rest env mkEnv fr n e
 
 /-- `TaggedUnionFoldKCases.eval`, on a plain list of constructors; past the end there is
     no node. -/
 def TaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
     {Γ : Ctx} → {cs : List (List (TyWfIn 1))} → {τ : TyWf} → {k : Nat} →
-    (cases : TaggedUnionFoldKCasesRest Sg l₀ bind Γ cs τ k) → Env Γ →
+    {outer : List (List (TyWfIn 1))} →
+    (cases : TaggedUnionFoldKCasesRest Sg l₀ bind Γ cs τ k outer) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
-    (t : Nat) → (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, .nil, _, _, _, e => PEmpty.elim e.1
-  | _, _, _, _, _, _, .cons b _, env, mkEnv, 0, e => FoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, .cons _ rest, env, mkEnv, n + 1, e =>
-      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e
+    RecFrames l₀ τ outer →
+    (t : Nat) → (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ) →
+      TyWf.Den τ
+  | _, _, _, _, _, _, _, .nil, _, _, _, _, e => PEmpty.elim e.1
+  | _, _, _, _, _, _, _, .cons b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, fr, n + 1, e =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
 
 /-- The value of a member of a mutual family, built from the shape that member has. -/
 def FamilyMemberValue.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :

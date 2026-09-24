@@ -91,7 +91,7 @@ def fibTRTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.f
     `fun a b => a`, and `succ` answers `fun a b => ih b (a + b)`, where `ih` is the loop at
     the predecessor. -/
 def fibTRCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx peanoSchema loopTy 0 :=
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx peanoSchema loopTy 0 [] :=
   #leanscript_fold_branch fibTRTerm
 
 example : recUnionRecDepth? fibTRTerm = some 0 := by kernel_rfl
@@ -114,7 +114,7 @@ def fibPairTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano
     `(0, 1)`, and `succ` takes the pair at the predecessor apart — binding `a` at index `0`
     and `b` at index `1` — and answers `(b, a + b)`. -/
 def fibPairCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx peanoSchema pairTy 0 :=
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx peanoSchema pairTy 0 [] :=
   #leanscript_fold_branch fibPairTerm
 
 example : recUnionRecDepth? fibPairTerm = some 0 := by kernel_rfl
@@ -221,18 +221,18 @@ constructor further down before it can answer, is not a branch of the plain fold
 
 /--
 error: Type mismatch
-  FoldKBranch.deep (ListAnyT.here ?m.16)
+  FoldKBranch.deep (ListAnyT.here ?m.18)
     (TaggedUnionFoldKCases.skip (FoldKBranch.here (Term.nat_mk 1))
       (CtorsWithPayloadFoldKCases.here (FoldKBranch.here (Term.nat_mk 2)) TaggedUnionFoldKCasesRest.nil))
 has type
-  FoldKBranch ?m.54 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.41 [])) ?m.56 ?m.6 (?m.12 :: ?m.13)
-    (TyWf.prim LeanPrimTy.nat) (?m.59 + 1)
+  FoldKBranch ?m.60 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.46 [])) ?m.62 ?m.7 (?m.14 :: ?m.15)
+    (TyWf.prim LeanPrimTy.nat) (?m.65 + 1) ?m.11
 but is expected to have type
-  FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0
+  FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0 []
 -/
 #guard_msgs (error) in
 def succBranchTooShallow :
-    FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0 :=
+    FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0 [] :=
   .deep (.here rfl)
     (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil))
 
