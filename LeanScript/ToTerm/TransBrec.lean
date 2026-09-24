@@ -18,6 +18,110 @@ open Lean Meta Elab Term
 
 namespace LeanScript.ToTerm
 
+/-- The array whose elements an expression lists: `a` for `Array.toList a` (or the
+    projection it unfolds to). -/
+def arrayOfToList? (e : Expr) : Option Expr :=
+  match e.consumeMData with
+  | .proj ``Array 0 a => some a
+  | e' =>
+      match e'.getAppFnArgs with
+      | (``Array.toList, #[_, a]) => some a
+      | _ => none
+
+/-- A structural recursion on a list, run on the **elements of an array**:
+    `List.brecOn a.toList F`, which is what `go a.toList` unfolds to when `go` is a
+    structurally recursive function on lists.  That is the fold of the array,
+    `LeanScript.Term.array_rec k`.
+
+    The depth `k` is found as for a `Nat`: the branch is instantiated at the list
+    `hd :: y₁ :: … :: yₖ :: rest`, with the `k + 1` nearest entries of the history — the
+    values at `y₁ :: … :: rest`, …, `rest` — replaced by variables, and the smallest `k`
+    at which nothing of the history, of the `yᵢ` and of `rest` is left is the depth.  The
+    branch of `array_rec` is given the head and the fold values only (and the tail as an
+    array, which a Lean list cannot name), so a branch that reads an element past the
+    head, or the tail as a list, is refused.
+
+    The lists of at most `k` elements are the base answers (`LeanScript.ArrayRecBases`):
+    the branch at `[x₁, …, xⱼ]`, each one reading the answers at its own suffixes. -/
+def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
+    (historyTy : Expr → MetaM Expr) (arr : Expr) : MetaM Expr := do
+  let u ← getDecLevel α
+  let listTy := mkApp (mkConst ``List [u]) α
+  let consE (hd tl : Expr) : Expr := mkApp3 (mkConst ``List.cons [u]) α hd tl
+  let nilE := mkApp (mkConst ``List.nil [u]) α
+  let listOf (xs : Array Expr) (tail : Expr) : Expr := xs.foldr consE tail
+  let σ ← tyOfType α
+  let arrTy ← tyOfType (mkApp (mkConst ``Array [u]) α)
+  -- the branch at a concrete list, the history read as `ihs` (nearest first)
+  let valueAt (l : Expr) (ihs : Array Expr) : MetaM Expr := do
+    let ht ← historyTy l
+    withLocalDeclD `history ht fun hist => do
+      let body ← reduceBrecBodyDeep (mkApp2 brecF l hist)
+      let body := substHistory body hist.fvarId! ihs
+      if body.containsFVar hist.fvarId! then
+        throwError "`#leanscript_to_term`: this recursion on the elements of an array \
+          reads the value of the function at a list that is not one of the suffixes the \
+          fold has computed"
+      pure body
+  -- the branch at `hd :: y₁ :: … :: yₖ :: rest`, translated in the context of `array_rec`
+  let stepAt (k : Nat) : MetaM Expr :=
+    withLocalDeclD `head α fun hd => do
+      let yDecls : Array (Name × (Array Expr → MetaM Expr)) :=
+        (Array.range k).map fun i => (Name.mkSimple s!"y{i + 1}", fun _ => pure α)
+      withLocalDeclsD yDecls fun ys =>
+        withLocalDeclD `rest listTy fun rest => do
+          let ihDecls : Array (Name × (Array Expr → MetaM Expr)) :=
+            (Array.range (k + 1)).map fun i =>
+              (Name.mkSimple s!"ih{i}", fun _ => pure τLean)
+          withLocalDeclsD ihDecls fun ihs => do
+            let body ← valueAt (consE hd (listOf ys rest)) ihs
+            if ys.any (fun y => body.containsFVar y.fvarId!) ||
+                body.containsFVar rest.fvarId! then
+              throwError "`#leanscript_to_term`: at depth {k} the branch still reads the \
+                elements of the tail"
+            withLocalDeclD `tail (mkApp (mkConst ``Array [u]) α) fun tl => do
+              let c' := c.pushFields
+                (#[(hd.fvarId!, σ), (tl.fvarId!, arrTy)] ++ ihs.map fun ih => (ih.fvarId!, τ))
+              trans c' body
+  let mut found : Option (Nat × Expr) := none
+  for k in [0:maxNatRecDepth + 1] do
+    if found.isNone then
+      found ← try pure (some (k, ← stepAt k)) catch _ => pure none
+  let some (k, branch) := found
+    | throwError "`#leanscript_to_term`: this recursion on the elements of an array is not \
+        the fold of an array — the fold `array_rec k` gives its branch the head and the \
+        values at the `k + 1` nearest suffixes of the tail, so a branch that reads an \
+        element past the head, or the tail itself, or the value at a list that is not a \
+        suffix, has no term"
+  -- the answers for the lists of at most `k` elements, `[x₁, …, xⱼ]`, `x₁` bound first
+  let xDecls : Array (Name × (Array Expr → MetaM Expr)) :=
+    (Array.range k).map fun i => (Name.mkSimple s!"x{i + 1}", fun _ => pure α)
+  let bases ← withLocalDeclsD xDecls fun xs => do
+    let mut levels : Array (Expr × Expr) := #[]
+    let mut cj := c
+    for j in [0:k + 1] do
+      if j > 0 then cj := cj.push xs[j - 1]!.fvarId! σ
+      let elems := xs.extract 0 j
+      -- the values at the suffixes, the shortest first
+      let mut vals : Array Expr := #[]
+      for i in [0:j + 1] do
+        let start := j - i
+        let v ← valueAt (listOf (elems.extract start j) nilE) vals.reverse
+        vals := vals.push v
+      let t ← trans cj vals.back!
+      levels := levels.push (cj.gamma, t)
+    let (gk, tk) := levels[k]!
+    let mut acc := mkAppN (mkConst ``LeanScript.ArrayRecBases.nil) #[c.sg, gk, σ, τ, tk]
+    for i in [0:k] do
+      let j := k - 1 - i
+      let (gj, tj) := levels[j]!
+      acc := mkAppN (mkConst ``LeanScript.ArrayRecBases.cons)
+        #[c.sg, gj, σ, τ, mkNatLit (k - 1 - j), tj, acc]
+    pure acc
+  let scrutT ← trans c arr
+  return mkAppN (mkConst ``LeanScript.Term.array_rec)
+    #[c.sg, c.gamma, σ, τ, mkNatLit k, scrutT, bases, branch]
+
 /-- A structural recursion as Lean compiled it: `Nat.brecOn` or `List.brecOn`.
 
     The branch of a `brecOn` is given the **history** of the recursion — the value of the
@@ -147,6 +251,9 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
       return mkAppN (mkConst ``LeanScript.Term.nat_rec)
         #[c.sg, c.gamma, τ, mkNatLit k, scrutT, base, ← trans c' body]
     return ← finish core
+  -- a recursion on the elements of an array, `go a.toList`: the fold of the array
+  if let some arr := arrayOfToList? major then
+    return ← finish (← transArrayBrecOn trans c τLean τ args[0]! brecF historyTy arr)
   let minors ←
     do
       let α := args[0]!

@@ -247,6 +247,15 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     if let some e' ← unfoldHere? e then
       return ← trans c e'
     throwError "`#leanscript_to_term`: cannot take apart the dispatch {n}"
+  -- a structural recursion on lists applied to the elements of an array: unfolded, it
+  -- is a `List.brecOn` on `a.toList`, which is the fold of the array `a`
+  if args.any (fun a => (arrayOfToList? a).isSome) then
+    if let some e' ← unfoldHere? e then
+      let e' := e'.headBeta
+      if e'.isAppOf ``List.brecOn then
+        if let some major := e'.getAppArgs[2]? then
+          if (arrayOfToList? major).isSome then
+            return ← trans c e'
   if let some g := c.global? n then
     let gt := mkAppN (mkConst ``LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
     return ← applyArgs trans c gt (mkConst n lvls) args

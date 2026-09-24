@@ -46,6 +46,7 @@ context are used.
 | a `match` that leaves constructors out | `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` |
 | `Nat.rec`, `List.rec` (non-dependent motive), a structural recursion Lean compiled through `Nat.brecOn` / `List.brecOn` | `nat_rec`, `recTaggedUnion_rec 0` — or `nat_casesOn` / `recTaggedUnion_casesOn`, when the branch does not use the value of the fold |
 | a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
+| `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TyTests/ArrayRecToTermTest.lean` |
 | a recursion on a **list** that descends `k + 1` constructors | *not read yet*: the node for it is `recTaggedUnion_rec k`, which `TyTests/RecUnionRecDepthTest.lean` writes out |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
@@ -60,7 +61,10 @@ array literal translates and a non-literal array does not.  `List α` is the tre
 not have to be written out.
 
 The two are not interchangeable, and neither `Array.toList` nor a `match` on an array has
-a term.  A list is a recursive tagged union, which `LeanScript.Ty.Den` gives the W-tree
+a term — with one exception: a structurally recursive function on lists applied to
+`a.toList` is the fold of the array `a`, `array_rec k`, since Lean cannot recurse
+structurally on an array itself.  Its branch is given the head and the values at the
+`k + 1` nearest suffixes, so a `go` that reads a later element or the tail is refused.  A list is a recursive tagged union, which `LeanScript.Ty.Den` gives the W-tree
 of its constructors as values, so a translated list program is run by
 `LeanScript.Term.eval` like any other, and `LeanScript.Ty.DenRec.toList` reads a list
 back as a Lean list.
