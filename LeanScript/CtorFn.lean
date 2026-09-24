@@ -80,7 +80,13 @@ of it is built by `#leanscript_to_term`, not by `List.cons`'s constructor functi
 * **With existentials** (`Process`): each constructor application may choose different types,
   so each constructor builds its own layout, `I.c.leanScriptLayout`: its record, or its one
   field.  Where values built with different choices meet, the caller puts them into a union
-  of its own, as `TyTests/InductiveTypesTest/Existentials.lean` does.
+  of its own — `#leanscript_to_term` uses `TyWf.oneOf` (`LeanScript.ToTerm.Existential`).
+
+`ensureCtorFn` can also generate the function for a use at which some type variables are
+`Unit`: the language has no `Unit` to pass, so those are not arguments, and the `Unit` fields
+and binders they give rise to are dropped (the names get the suffix `_erased…`).
+`#leanscript_to_term` asks for these; the syntax `#leanscript_ctor I c` always gives the
+general function.
 
 A datatype whose model is a terminal type (`Nat`, `String`, `Char`, …) or a built-in type
 former (`Array`, `Thunk`) has no constructor function — its values are literals, or have an
@@ -109,6 +115,15 @@ namespace LeanScript
 def TyWf.AsType.{u} (_t : TyWf) : Type u := PUnit
 
 instance TyWf.instLeanScriptTyWfAsType.{u} (t : TyWf) : LeanScriptTyWf (TyWf.AsType.{u} t) := ⟨t⟩
+
+/-- **One of** the types `a`, `b`, `cs…`: the tagged union with one constructor per type,
+    whose one field is a value of that type.
+
+    `#leanscript_to_term` builds it where values of *different* types meet — the branches of
+    an `if` that build a datatype with existentials with different choices of the hidden
+    types — and injects each value with the constructor of its own type. -/
+@[reducible] def TyWf.oneOf (a b : TyWf) (cs : List TyWf) : TyWf :=
+  TyWf.taggedUnion (.payloadFirst ⟨a, []⟩ [b] (cs.map fun c => [c]))
 
 end LeanScript
 
@@ -171,6 +186,9 @@ structure TrCtx where
   holes : IO.Ref (Array (Expr × Name × FVarId))
   /-- The names already taken by arguments. -/
   used : IO.Ref (Array Name)
+  /-- The type variables the language erases at this use (`Unit`), each with the erased type
+      that stands for it in the field types. -/
+  subst : Array (Expr × Expr) := #[]
 
 /-- Run `k` with the holes created so far in the local context. -/
 def withHoles (c : TrCtx) (k : MetaM α) : MetaM α := do
@@ -458,6 +476,35 @@ def classify (ind : InductiveVal) (params : Array Expr) (typeIdx : Array Bool) :
       if names[k]!.isNone && !n.hasMacroScopes then names := names.set! k (some n)
   return { whole, idxMaps := maps, idxNames := names }
 
+/-- The type variables of the constructor function of `ci` at an application of `ci` to
+    `args` (its parameters and at least all its fields): the Lean types they stand for, in
+    the order the function takes them — the parameters, then the type indices of the result
+    (a datatype without existentials) or the type fields of the constructor (one with
+    existentials). -/
+def tyVarValues (ci : ConstructorVal) (args : Array Expr) : MetaM (Array Expr) := do
+  let ind ← getConstInfoInduct ci.induct
+  let params := args.extract 0 ci.numParams
+  let (whole, typeIdx) ← forallBoundedTelescope ind.type ind.numParams fun ps indBody =>
+    forallTelescopeReducing indBody fun idxs _ => do
+      let typeIdx ← idxs.mapM fun x => do isTypeField (← inferType x)
+      return ((← classify ind ps typeIdx).whole, typeIdx)
+  let mut out := params
+  if whole then
+    let resTy ← whnf (← instantiateForall ci.type (args.extract 0 (ci.numParams + ci.numFields)))
+    let idxArgs := resTy.getAppArgs.extract ind.numParams resTy.getAppArgs.size
+    for k in [0:idxArgs.size] do
+      if typeIdx.getD k false then out := out.push idxArgs[k]!
+  else
+    let mut t ← instantiateForall ci.type params
+    for i in [0:ci.numFields] do
+      let .forallE _ d b _ ← whnf t
+        | throwError "`#leanscript_ctor`: the constructor `{ci.name}` has fewer fields than \
+            its declaration says"
+      let a := args[ci.numParams + i]!
+      if ← isTypeField d then out := out.push a
+      t := b.instantiate1 a
+  return out
+
 /-- Walk the fields of the constructor `di` at `params`, a field that is type index `i`
     becoming `idxVars[i]`, and run `k` on the others. -/
 def withCtorFields {α : Type} (di : ConstructorVal) (params idxVars : Array Expr)
@@ -620,23 +667,31 @@ def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs : 
 def translateFields (c : TrCtx) (xs : Array Expr) : MetaM (Array (Name × Expr)) := do
   let mut out := #[]
   for x in xs do
-    let t ← inferType x
+    let t := (← inferType x).replaceFVars (c.subst.map (·.1)) (c.subst.map (·.2))
     if ← erasedBinder t then continue
     let n ← x.fvarId!.getUserName
     if let some a ← trTy c n t then out := out.push (n, a)
   return out
 
 /-- Declare a `TyWf` local for each type variable, named as it is. -/
-def withTyVarHoles {α : Type} [Inhabited α] (vars : Array (Expr × Name)) (k : Array (Expr × Expr) → MetaM α) :
-    MetaM α := do
+def withTyVarHoles {α : Type} [Inhabited α] (vars : Array (Expr × Name)) (erased : Array Bool)
+    (k : Array (Expr × Expr) → Array (Expr × Expr) → MetaM α) : MetaM α := do
+  let isErased (i : Nat) : Bool := erased.getD i false
+  let kept := (vars.zipIdx.filter fun (_, i) => !isErased i).map (·.1)
+  let mut subst : Array (Expr × Expr) := #[]
+  for (v, i) in vars.zipIdx do
+    if isErased i then
+      let .sort u ← whnf (← inferType v.1)
+        | throwError "`#leanscript_ctor`: {v.1} is not a type"
+      subst := subst.push (v.1, mkConst ``PUnit [u])
   let decls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
-    vars.map fun (_, n) => (n, .default, fun _ => pure tyWfE)
-  withLocalDecls decls fun hs => k (vars.map (·.1) |>.zip hs)
+    kept.map fun (_, n) => (n, .default, fun _ => pure tyWfE)
+  withLocalDecls decls fun hs => k (kept.map (·.1) |>.zip hs) subst
 
 /-- Generate the layout and the constructor function once the fields are translated:
     `holes` are the arguments, `shape`/`layout` the layout, `fields` the kept fields of the
     constructor. -/
-def emit (cName layoutKey layoutOwner : Name) (layoutBase : Name) (c : TrCtx)
+def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : String) (c : TrCtx)
     (tyVarHoles : Array Expr) (shape : Shape) (layout : Expr) (cidx : Nat)
     (fields : Array (Name × Expr)) : MetaM (Name × Name) := withHoles c do
   let holeIds := (← c.holes.get).map fun (_, _, id) => Expr.fvar id
@@ -645,7 +700,7 @@ def emit (cName layoutKey layoutOwner : Name) (layoutBase : Name) (c : TrCtx)
   let layoutName ← match ← cached? layoutKey "layout" with
     | some n => pure n
     | none => do
-      let n ← declNameFor layoutOwner layoutBase "leanScriptLayout"
+      let n ← declNameFor layoutOwner layoutBase ("leanScriptLayout" ++ sfx)
       if (← getEnv).contains n then
         throwError "`#leanscript_ctor`: `{n}` is already declared"
       addReducibleDef n (← mkForallFVars holes tyWfE) (← mkLambdaFVars holes layout)
@@ -656,7 +711,7 @@ def emit (cName layoutKey layoutOwner : Name) (layoutBase : Name) (c : TrCtx)
   unless ← isDefEq layoutApp layout do
     throwError "`#leanscript_ctor`: the cached layout `{layoutName}` does not match the \
       datatype any more"
-  let fnName ← declNameFor layoutOwner cName "leanScriptCtor"
+  let fnName ← declNameFor layoutOwner cName ("leanScriptCtor" ++ sfx)
   if (← getEnv).contains fnName then
     throwError "`#leanscript_ctor`: `{fnName}` is already declared"
   withLocalDecl `Sg .implicit (mkConst ``LeanScript.Sig) fun sg =>
@@ -669,16 +724,38 @@ def emit (cName layoutKey layoutOwner : Name) (layoutBase : Name) (c : TrCtx)
       let binders := #[sg, γ] ++ holes ++ xs
       addReducibleDef fnName (← mkForallFVars binders (termOf layoutApp))
         (← mkLambdaFVars binders body)
-  modifyEnv fun env => ctorFnExt.addEntry env { key := cName, kind := "fn", decl := fnName }
+  modifyEnv fun env => ctorFnExt.addEntry env { key := fnKey, kind := "fn", decl := fnName }
   return (layoutName, fnName)
 
+/-- The suffix of the names generated for a use at which the type variables marked in
+    `erased` are erased types (`Unit`): `""` when none is, `_erased0110` otherwise. -/
+def erasedSuffix (erased : Array Bool) : String :=
+  if erased.any id then "_erased" ++ String.join (erased.toList.map fun b => if b then "1" else "0")
+  else ""
+
+/-- The cache key of a use of `key` at which the type variables marked in `erased` are
+    erased. -/
+def erasedKey (key : Name) (erased : Array Bool) : Name :=
+  let sfx := erasedSuffix erased
+  if sfx.isEmpty then key else Name.str key sfx
+
 /-- The layout and the constructor function of the constructor `cName`, generated if they
-    have not been. -/
-def ensureCtorFn (cName : Name) : MetaM (Name × Name) := do
-  if let some fn ← cached? cName "fn" then
-    if let some lay ← cached? cName "layout" then return (lay, fn)
+    have not been.
+
+    `erased` marks the type variables of the constructor function — the parameters of the
+    datatype, then its type indices (a datatype without existentials) or the type fields of
+    the constructor (one with existentials) — that are erased types (`Unit`) at this use.
+    Such a type variable is not an argument of the function: the language has no `Unit` to
+    pass.  It is `Unit` in the field types instead, so a field of that type is dropped and a
+    binder of that type is dropped from a function field, as everywhere in the language.
+    The functions generated for such a use are cached separately, with the suffix
+    `erasedSuffix erased`. -/
+def ensureCtorFn (cName : Name) (erased : Array Bool := #[]) : MetaM (Name × Name) := do
+  let sfx := erasedSuffix erased
+  if let some fn ← cached? (erasedKey cName erased) "fn" then
+    if let some lay ← cached? (erasedKey cName erased) "layout" then return (lay, fn)
     let ci ← getConstInfoCtor cName
-    if let some lay ← cached? ci.induct "layout" then return (lay, fn)
+    if let some lay ← cached? (erasedKey ci.induct erased) "layout" then return (lay, fn)
   let ci ← getConstInfoCtor cName
   let ind ← getConstInfoInduct ci.induct
   if ← forallTelescopeReducing ind.type fun _ body => pure body.isProp then
@@ -704,9 +781,9 @@ def ensureCtorFn (cName : Name) : MetaM (Name × Name) := do
               | none => pure (← idxs[k]!.fvarId!.getUserName).eraseMacroScopes
             idxVars := idxVars.push (idxs[k]!, n)
         let vars := paramVars ++ idxVars
-        withTyVarHoles vars fun tyVars => do
+        withTyVarHoles vars erased fun tyVars subst => do
           let c : TrCtx := { members := ind.all.toArray, tyVars, holes := holesRef,
-                             used := ← IO.mkRef (vars.map (·.2)) }
+                             used := ← IO.mkRef (vars.map (·.2)), subst }
           let mut cls : Array (Array Expr) := #[]
           let mut mine : Array (Name × Expr) := #[]
           for j in [0:ind.ctors.length] do
@@ -716,7 +793,8 @@ def ensureCtorFn (cName : Name) : MetaM (Name × Name) := do
             cls := cls.push (fs.map (·.2))
             if d == cName then mine := fs
           let (shape, layout) ← withHoles c (wholeShape ind.name enumOverride cls)
-          emit cName ind.name ind.name ind.name c (tyVars.map (·.2)) shape layout ci.cidx mine
+          emit cName (erasedKey cName erased) (erasedKey ind.name erased) ind.name ind.name sfx c
+            (tyVars.map (·.2)) shape layout ci.cidx mine
       else
         let di := ci
         withCtorFields di params #[] (cl.idxMaps[ci.cidx]!.map fun _ => none) fun xs => do
@@ -725,13 +803,14 @@ def ensureCtorFn (cName : Name) : MetaM (Name × Name) := do
             if ← isTypeField (← inferType x) then
               exVars := exVars.push (x, (← x.fvarId!.getUserName).eraseMacroScopes)
           let vars := paramVars ++ exVars
-          withTyVarHoles vars fun tyVars => do
+          withTyVarHoles vars erased fun tyVars subst => do
             let c : TrCtx := { members := ind.all.toArray, tyVars, holes := holesRef,
-                               used := ← IO.mkRef (vars.map (·.2)) }
+                               used := ← IO.mkRef (vars.map (·.2)), subst }
             let fs ← translateFields c xs
             let (shape, layout) ← withHoles c
               (singleShape m!"the constructor `{cName}`" (fs.map (·.2)))
-            emit cName cName ind.name cName c (tyVars.map (·.2)) shape layout ci.cidx fs
+            emit cName (erasedKey cName erased) (erasedKey cName erased) ind.name cName sfx c
+              (tyVars.map (·.2)) shape layout ci.cidx fs
 
 /-! ## The elaborators -/
 

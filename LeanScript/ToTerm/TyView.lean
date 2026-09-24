@@ -100,6 +100,9 @@ partial def treeOfType (α : Expr) : MetaM Expr := do
   | _ =>
     match α' with
     | .forallE _ d b _ =>
+        -- a domain the language erases (`Unit`, a proof, an instance) is dropped
+        if !b.hasLooseBVar 0 && (← LeanScript.Deriving.erasedBinder d) then
+          return ← treeOfType b
         if b.hasLooseBVar 0 then
           throwError "`#leanscript_to_term`: the language has no dependent function \
             type, so {α} cannot be translated"

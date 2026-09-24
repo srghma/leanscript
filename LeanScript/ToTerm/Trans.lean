@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Cases
+public meta import LeanScript.ToTerm.Existential
 
 @[expose] public section
 
@@ -41,24 +41,27 @@ partial def transLam (c : TCtx) (e : Expr) : MetaM Expr := do
   let fty ← whnf (← inferType e)
   let .forallE _ d _ _ := fty
     | throwError "`#leanscript_to_term`: not a function: {e}"
+  -- a binder the language erases (`Unit`) is dropped, as a `Unit` domain is
+  if ← LeanScript.Deriving.erasedBinder d then
+    return ← trans c (← dropErasedBinder e)
   let σ ← tyOfType d
   lambdaBoundedTelescope e 1 fun xs body => do
     let c' := c.push xs[0]!.fvarId! σ
-    let τ ← tyOfTerm body
     let b ← trans c' body
+    let τ ← tyOfTermOr body b
     return mkAppN (mkConst ``LeanScript.Term.lam) #[c.sg, c.gamma, σ, τ, b]
 
 /-- `let x := v; b`. -/
 partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
   let .letE n t v b _ := e
     | throwError "`#leanscript_to_term`: internal: not a `let`"
-  let σ ← tyOfType t
   let v' ← trans c v
+  let σ ← tyOfTermOr v v'
   withLetDecl n t v fun x => do
     let c' := c.push x.fvarId! σ
     let body := b.instantiate1 x
-    let τ ← tyOfTerm body
     let b' ← trans c' body
+    let τ ← tyOfTermOr body b'
     return mkAppN (mkConst ``LeanScript.Term.letE) #[c.sg, c.gamma, σ, τ, v', b']
 
 /-- A literal of a terminal type, carried into the term as it stands. -/
@@ -273,9 +276,87 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
 /-- `if c then t else e`: the test must be a `Bool`. -/
 partial def transIte (c : TCtx) (args : Array Expr) : MetaM Expr := do
   let some cnd := args[1]? | throwError "`#leanscript_to_term`: `ite` needs its test"
+  if let some n ← natZeroTest? cnd then
+    return ← mkNatZeroCases c n args[3]! args[4]! none
   let inst := args[2]!
   let test ← boolOfDecidable c cnd inst
   mkBoolCases c test args[3]! args[4]!
+
+/-- The natural number `n` of the test `n = 0` (or `0 = n`). -/
+partial def natZeroTest? (cnd : Expr) : MetaM (Option Expr) := do
+  let (``Eq, #[α, lhs, rhs]) := cnd.getAppFnArgs | return none
+  unless (← whnf α).isConstOf ``Nat do return none
+  if (← evalNat rhs) == some 0 then return some lhs
+  if (← evalNat lhs) == some 0 then return some rhs
+  return none
+
+/-- `if n = 0 then t else e`: the case analysis on `n`, whose successor branch does not
+    read the predecessor.  With `τ?`, both branches are translated against that type. -/
+partial def mkNatZeroCases (c : TCtx) (n thenB elseB : Expr) (τ? : Option Expr) :
+    MetaM Expr := do
+  let natTy ← tyOfType (mkConst ``Nat)
+  let scrut ← trans c n
+  let c' := c.pushFields #[(← mkFreshFVarId, natTy)]
+  let (τ, z, s) ← match τ? with
+    | some τ => pure (τ, ← transCheck c thenB τ, ← transCheck c' elseB τ)
+    | none => transBranchPair c thenB c' elseB
+  return mkAppN (mkConst ``LeanScript.Term.nat_casesOn) #[c.sg, c.gamma, τ, scrut, z, s]
+
+/-- Two branches of one dispatch, each in its own context: their common type and their
+    translations.  When the Lean type of the branches has no tree (a datatype with
+    existentials), each branch is translated first; if the two types differ, they are joined
+    (`joinTy`) and both branches are translated again against the join. -/
+partial def transBranchPair (c1 : TCtx) (e1 : Expr) (c2 : TCtx) (e2 : Expr) :
+    MetaM (Expr × Expr × Expr) := do
+  match ← (try some <$> tyOfTerm e1 catch _ => pure none) with
+  | some τ => return (τ, ← trans c1 e1, ← trans c2 e2)
+  | none =>
+    let t1 ← trans c1 e1
+    let t2 ← trans c2 e2
+    let τ1 ← termTyOf t1
+    let τ2 ← termTyOf t2
+    if ← isDefEq τ1 τ2 then return (τ1, t1, t2)
+    let j ← joinTy τ1 τ2
+    return (j, ← transCheck c1 e1 j, ← transCheck c2 e2 j)
+
+/-- The term an expression translates to, **against** the type `τ`.  A constructor of a
+    datatype with existentials takes the trees of its holes from `τ`, a function and the
+    branches of an `if` pass `τ` on, and a value whose type is one alternative of a
+    `TyWf.oneOf` is injected into it; any other expression is translated as it stands, and
+    must have the type `τ`. -/
+partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
+  let τ ← instantiateMVars τ0
+  let e := (← instantiateMVars e0).headBeta.consumeMData
+  if τ.hasExprMVar then
+    let t ← trans c e
+    let τt ← termTyOf t
+    unless ← isDefEq τt τ do
+      throwError "`#leanscript_to_term`: this value has the type{indentExpr τt}\nwhich is \
+        not of the form{indentExpr τ}"
+    return t
+  match e with
+  | .lam _ d _ _ =>
+      if ← LeanScript.Deriving.erasedBinder d then
+        return ← transCheck c (← dropErasedBinder e) τ
+      match τ.getAppFnArgs with
+      | (``LeanScript.TyWf.fn, #[σ, ρ]) =>
+          lambdaBoundedTelescope e 1 fun xs body => do
+            let b ← transCheck (c.push xs[0]!.fvarId! σ) body ρ
+            return mkAppN (mkConst ``LeanScript.Term.lam) #[c.sg, c.gamma, σ, ρ, b]
+      | _ => coerceTo c (← trans c e) τ
+  | _ =>
+    if let .const n _ := e.getAppFn then
+      let args := e.getAppArgs
+      if n == ``ite && args.size == 5 then
+        if let some m ← natZeroTest? args[1]! then
+          return ← mkNatZeroCases c m args[3]! args[4]! (some τ)
+        let test ← boolOfDecidable c args[1]! args[2]!
+        return ← mkBoolCases' c test (← transCheck c args[3]! τ) (← transCheck c args[4]! τ) τ
+      if let some (.ctorInfo ci) := (← getEnv).find? n then
+        if args.size ≥ ci.numParams + ci.numFields then
+          if (← usesCtorFn e ci) && (← oneOfAlts? τ).isNone then
+            return ← coerceTo c (← ctorFnApp trans transCheck c ci args (some τ)) τ
+    coerceTo c (← trans c e) τ
 
 /-- The `Bool` a decidable proposition tests. -/
 partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr := do
@@ -303,8 +384,8 @@ partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr :
 
 /-- `bool_casesOn`, from the two Lean branches. -/
 partial def mkBoolCases (c : TCtx) (test : Expr) (thenB elseB : Expr) : MetaM Expr := do
-  let τ ← tyOfTerm thenB
-  mkBoolCases' c test (← trans c thenB) (← trans c elseB) τ
+  let (τ, t, e) ← transBranchPair c thenB c elseB
+  mkBoolCases' c test t e τ
 
 /-- `bool_casesOn`, from the two translated branches. -/
 partial def mkBoolCases' (c : TCtx) (test t e τ : Expr) : MetaM Expr := do
@@ -354,6 +435,9 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
     return ← trans c (← etaExpand e)
   if ci.induct == ``Array then
     return ← transListLit c e
+  -- a value of a datatype with existentials: its constructor function
+  if ← usesCtorFn e ci then
+    return ← ctorFnApp trans transCheck c ci args none
   let ty ← tyOfTerm e
   let fields ← ctorValueArgs ci args
   -- a delay

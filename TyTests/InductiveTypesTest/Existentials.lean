@@ -1,6 +1,7 @@
 import TyTests.InductiveTypesTest.NestedRecursion
 import LeanScript.Eval
 import LeanScript.CtorFn
+import LeanScript.ToTerm.Elab
 
 /-!
 # `deriving LeanScriptTyWf`: declarations with existentially typed fields
@@ -65,36 +66,35 @@ is described with ordinary records, tagged unions and functions of the language.
 existential is simply replaced, at each constructor application, by the witness that
 application uses.
 
-The constructors are not written out by hand: `#leanscript_ctor I c` is the constructor
-function of `I.c` — it takes the `TyWf` of each type argument of the constructor, then the
-`Term` of each field — and `#leanscript_layout I c` is the `TyWf` of what it builds.  Both
-are generated on first use and cached (`LeanScript.CtorFn`):
+`#leanscript_to_term` does this on its own.  `Process` and `ProcessOption` have no
+`LeanScriptTyWf` instance, so a constructor application of either is built by the
+**constructor function** of `#leanscript_ctor` (`LeanScript.CtorFn`), generated the first
+time and reused from its cache after that:
 
 * `Process` has existentials, so each of its constructors builds its own layout:
-  `#leanscript_ctor Process step α S transTy seed trans` is the record
-  `{ seed : S, trans : S ⇒ transTy }`, and `#leanscript_ctor Process halt α H get` has one
-  field, so it is that field, `H ⇒ nat`, as for any one-field constructor;
+  `Process.step S seed trans` is the record `{ seed : S, trans : S ⇒ transTy }`, and
+  `Process.halt H get` has one field, so it is that field, `H ⇒ nat`;
 * `ProcessOption α S` has no existential of its own (its `State` is its index), so it is
   one tagged union, `none | some (nextState : S) (value : α) (proc : procTy)` with Lean's
-  tags (`none` = 0, `some` = 1), and both constructors take the same type arguments;
-* `transTy` and `procTy` are the trees of the fields whose type is `Process`/`ProcessOption`
-  itself: the language has no one tree for those, so each application says which tree it
-  uses there — this is where the type of the term follows the value;
-* `Unit` is erased as everywhere in the language: a `Unit` field is dropped, and a
-  `Unit →` binder is dropped.  The constructor functions cannot be applied at `Unit` (the
-  language has no `Unit` type to pass), so the one `Unit` layout below is written by hand;
+  tags (`none` = 0, `some` = 1);
+* `transTy` and `procTy` — the trees of the fields whose type is `Process`/`ProcessOption`
+  itself — are read off the translation of those fields: the type of the term follows the
+  value, and is inferred rather than written;
+* a witness that is `Unit` is erased as everywhere in the language: the constructor function
+  generated for that use (`…_erased01`) drops the `Unit` field `seed` and the `Unit` binder
+  of `trans`;
 * where values built with *different* witnesses meet (the two branches of the `if` in
-  `varyingProcess`), each one is injected into a tagged union with one constructor per
-  layout that occurs there.
+  `varyingProcess`), the two types are joined: the value is injected into `TyWf.oneOf`, the
+  tagged union with one constructor per layout that occurs there.
 
-So the type of the term is determined by the value, not by `Process Nat` alone. The one
-free choice is the type of `proc` in a `ProcessOption` in which only `none` is ever built
-(the inner transitions of `varyingProcess`): no process is ever stored there, so any
+The one free choice is the type of `proc` in a `ProcessOption` in which only `none` is ever
+built (the inner transitions of `varyingProcess`): no process is ever stored there, so any
 closed type works, and `nat` is used.
 
 Arithmetic and string append are external to the language, so they are the two
-declarations of the signature `ProcessModel.sig`. The `example`s at the end check, by
-`rfl`, that each term evaluates to the Lean definition with the witnesses filled in.
+declarations of the signature `ProcessModel.sig`, named after `Nat.add` and
+`String.append`, which `n + 1` and `s ++ "!"` unfold to. The `example`s at the end check,
+by `rfl`, that each term evaluates to the Lean definition with the witnesses filled in.
 -/
 
 namespace ProcessModel
@@ -111,13 +111,34 @@ def sig : Sig :=
 /-- The values of the declarations of `sig`. -/
 def env : GlobalEnv sig.decls := (Nat.add, String.append, PUnit.unit)
 
-/-- `a + b`. -/
-def addT {Γ : Ctx} (a b : Term sig Γ natT) : Term sig Γ natT :=
-  .ap (.ap (.global .here) a) b
+/-- `mixedProcess`, as a term. -/
+def mixedProcess_term   := #leanscript_to_term (sig := sig) mixedProcess
+/-- `varyingProcess`, as a term. -/
+def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
 
-/-- `a ++ b`. -/
-def appendT {Γ : Ctx} (a b : Term sig Γ stringT) : Term sig Γ stringT :=
-  .ap (.ap (.global (.there .here)) a) b
+/-! Every constructor function the two translations used, generated once and cached — the
+`#leanscript_layout`s below are these same definitions, found in the cache.  (`_erased01`:
+the use at which the hidden type is `Unit`.) -/
+/--
+info: layout of Process.step: Process.step.leanScriptLayout
+fn of Process.step: Process.step.leanScriptCtor
+layout of ProcessOption: ProcessOption.leanScriptLayout
+fn of ProcessOption.some: ProcessOption.some.leanScriptCtor
+layout of Process.halt: Process.halt.leanScriptLayout
+fn of Process.halt: Process.halt.leanScriptCtor
+layout of Process.step._erased01: Process.step.leanScriptLayout_erased01
+fn of Process.step._erased01: Process.step.leanScriptCtor_erased01
+layout of ProcessOption._erased01: ProcessOption.leanScriptLayout_erased01
+fn of ProcessOption.none._erased01: ProcessOption.none.leanScriptCtor_erased01
+fn of ProcessOption.none: ProcessOption.none.leanScriptCtor
+-/
+#guard_msgs in
+#leanscript_ctor_cache
+
+/-! #### Their types
+
+The types were inferred; here they are written out with the layouts of
+`#leanscript_layout`, which are the constructor functions' own. -/
 
 /-- `ProcessOption Nat S` whose `proc` field has type `P`:
     `none | some (nextState : S) (value : nat) (proc : P)`. -/
@@ -134,74 +155,27 @@ example (S P : TyWf) :
 example (S O : TyWf) : stepTy S O = .record ⟨S, S ⇒ O, []⟩ := rfl
 example (H : TyWf) : haltTy H = TyWf.fn H natT := rfl
 
-/-! #### `mixedProcess` -/
+/-- `mixedProcess`: `Process.step Nat`, holding `ProcessOption Nat Nat`, holding
+    `Process.step String`, holding `ProcessOption Nat String`, holding `Process.halt Bool`. -/
+abbrev mixedTy : TyWf :=
+  stepTy natT (optionTy natT (stepTy stringT (optionTy stringT (haltTy boolT))))
 
-/-- Leaf level: `Process.halt Bool _`. -/
-abbrev mixedLeafTy : TyWf := haltTy boolT
-/-- `ProcessOption Nat String`, holding the leaf. -/
-abbrev mixedOpt2Ty : TyWf := optionTy stringT mixedLeafTy
-/-- Next level: `Process.step String _ _`. -/
-abbrev mixedProc2Ty : TyWf := stepTy stringT mixedOpt2Ty
-/-- `ProcessOption Nat Nat`, holding the next level. -/
-abbrev mixedOpt1Ty : TyWf := optionTy natT mixedProc2Ty
-/-- Top level: `Process.step Nat _ _`. -/
-abbrev mixedTy : TyWf := stepTy natT mixedOpt1Ty
-
-/-- `mixedProcess`, as a term: the Lean definition, constructor for constructor. -/
-def mixedProcess_term : Term sig [] mixedTy :=
-  -- Top level: State is Nat
-  #leanscript_ctor `Process `step natT natT mixedOpt1Ty (.nat_mk 0) (.lam
-    -- `ProcessOption.some (n + 1) 42 (…)`
-    (#leanscript_ctor `ProcessOption `some natT natT mixedProc2Ty
-      (addT (.var (v♯0)) (.nat_mk 1)) (.nat_mk 42)
-      -- Next level: State is String
-      (#leanscript_ctor `Process `step natT stringT mixedOpt2Ty (.string_mk "hello") (.lam
-        -- `ProcessOption.some (s ++ "!") 99 (…)`
-        (#leanscript_ctor `ProcessOption `some natT stringT mixedLeafTy
-          (appendT (.var (v♯0)) (.string_mk "!")) (.nat_mk 99)
-          -- Leaf level: `Process.halt Bool (fun b => if b then 1 else 0)`
-          (#leanscript_ctor `Process `halt natT boolT
-            (.lam (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0)))))))))
-
-/-! #### `varyingProcess` -/
+example : Term sig [] mixedTy := mixedProcess_term
 
 /-- `ProcessOption Nat Unit`: `nextState : Unit` is erased, and only `none` is ever built,
-    so `proc` is `nat` (see above).  Written by hand: the generated layout cannot be taken
-    at `Unit`. -/
-abbrev varyingOptUnitU : LeanTaggedUnionSchema TyWf := .skip (.here ⟨natT, [natT]⟩ [])
-/-- The type of `varyingOptUnitU`. -/
-abbrev varyingOptUnitTy : TyWf := .taggedUnion varyingOptUnitU
-/-- `ProcessOption Nat Bool`, in which only `none` is ever built. -/
-abbrev varyingOptBoolTy : TyWf := optionTy boolT natT
+    so `proc` is `nat` (see above). -/
+abbrev varyingOptUnitTy : TyWf := .taggedUnion (.skip (.here ⟨natT, [natT]⟩ []))
 /-- The two processes the `if` chooses between, one constructor per layout:
     0. `Process.step Unit () trans`: `seed : Unit` is erased and so is the `Unit` binder of
        `trans`, which leaves the one field `ProcessOption Nat Unit`;
-    1. `Process.step Bool true trans`: the fields `bool` and `bool ⇒ ProcessOption Nat Bool`,
-       those of `stepTy boolT varyingOptBoolTy`. -/
-abbrev varyingProcU : LeanTaggedUnionSchema TyWf :=
-  .payloadFirst ⟨varyingOptUnitTy, []⟩ [boolT, boolT ⇒ varyingOptBoolTy] []
-/-- The type of `varyingProcU`. -/
-abbrev varyingProcTy : TyWf := .taggedUnion varyingProcU
-/-- `ProcessOption Nat Nat`, holding one of the two processes. -/
-abbrev varyingOptTy : TyWf := optionTy natT varyingProcTy
-/-- Top level: `Process.step Nat _ _`. -/
-abbrev varyingTy : TyWf := stepTy natT varyingOptTy
+    1. `Process.step Bool true trans`: the record of `bool` and
+       `bool ⇒ ProcessOption Nat Bool`. -/
+abbrev varyingProcTy : TyWf := .oneOf varyingOptUnitTy (stepTy boolT (optionTy boolT natT)) []
+/-- `varyingProcess`: `Process.step Nat`, holding `ProcessOption Nat Nat`, holding one of
+    the two processes. -/
+abbrev varyingTy : TyWf := stepTy natT (optionTy natT varyingProcTy)
 
-/-- `ProcessOption.some 1 7 p`. -/
-def varyingSome {Γ : Ctx} (p : Term sig Γ varyingProcTy) : Term sig Γ varyingOptTy :=
-  #leanscript_ctor `ProcessOption `some natT natT varyingProcTy (.nat_mk 1) (.nat_mk 7) p
-
-/-- `varyingProcess`, as a term.  `if n = 0 then … else …` is the case analysis on `n`. -/
-def varyingProcess_term : Term sig [] varyingTy :=
-  #leanscript_ctor `Process `step natT natT varyingOptTy (.nat_mk 0) (.lam
-    (.nat_casesOn (.var (v♯0))
-      -- `ProcessOption.some 1 7 (Process.step Unit () (fun _ => ProcessOption.none))`
-      (varyingSome (.taggedUnion_mk varyingProcU 0 (fields :=
-        .cons (.taggedUnion_mk varyingOptUnitU 0 (fields := .nil)) .nil)))
-      -- `ProcessOption.some 1 7 (Process.step Bool true (fun _ => ProcessOption.none))`
-      (varyingSome (.taggedUnion_mk varyingProcU 1 (fields :=
-        .cons (.bool_mk true) (.cons (.lam
-          (#leanscript_ctor `ProcessOption `none natT boolT natT)) .nil))))))
+example : Term sig [] varyingTy := varyingProcess_term
 
 /-! #### What they evaluate to -/
 
@@ -219,7 +193,7 @@ example : run varyingProcess_term =
     (0, fun n => match n with
       | 0 => ⟨⟨1, by decide⟩, (1, 7, ⟨⟨0, by decide⟩, (⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩
       | _ + 1 => ⟨⟨1, by decide⟩, (1, 7,
-          ⟨⟨1, by decide⟩, (true, fun _ => ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩, ()) := rfl
+          ⟨⟨1, by decide⟩, ((true, fun _ => ⟨⟨0, by decide⟩, ()⟩, ()), ())⟩, ())⟩, ()) := rfl
 
 end ProcessModel
 

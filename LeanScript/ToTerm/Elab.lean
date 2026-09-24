@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.Trans
+public import LeanScript.CtorFn
 
 @[expose] public section
 

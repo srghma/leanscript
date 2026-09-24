@@ -109,8 +109,38 @@ constructors it names**:
 * it is the branch of a recursion whose body uses the value at the smaller argument: the
   fold, `nat_rec` or `recTaggedUnion_rec`.
 * a dependent motive, a dependent function type, and any type with no
-  `LeanScript.LeanScriptTyWf` instance (an existentially typed structure, for one, has
-  no instance: see `LeanScript.Ty.Deriving`).
+  `LeanScript.LeanScriptTyWf` instance — except a datatype with existentials, below.
+
+## Datatypes with existentials
+
+A datatype one of whose constructors hides a type (`Process`, whose `step` hides the type
+of its state), and every datatype in its `mutual` block, has no `LeanScriptTyWf` instance:
+the type of a value depends on the hidden types it chooses.  A *closed* value of it is
+still translated, constructor for constructor, by **the constructor functions of
+`#leanscript_ctor`** (`LeanScript.CtorFn`), generated on first use and taken from their
+cache afterwards:
+
+```lean
+def mixedProcess_term   := #leanscript_to_term (sig := sig) mixedProcess
+def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
+```
+
+* each type argument of the constructor function is the tree of the Lean type the
+  application uses — parameter, type index or hidden type;
+* the tree of a field the constructor function leaves open (an occurrence of the datatype,
+  `procTy`, `transTy`) is read off the translation of that field, so the type of the term
+  is **inferred** from the value; one that nothing fixes (a `proc` field of a `none` that
+  is never filled) is `nat`;
+* a hidden type that is `Unit` is erased: the constructor function generated for that use
+  (suffix `_erased…`) drops the `Unit` fields and `Unit` binders, and a `fun _ : Unit => b`
+  is translated as `b`;
+* where two values of different types meet — the branches of an `if`, or of an
+  `if n = 0 then … else …`, which is `nat_casesOn` — the types are joined: a hole of a
+  layout hole by hole, and two different layouts as `TyWf.oneOf`, the tagged union with one
+  constructor per layout, into which each branch is injected.
+
+This is `LeanScript.ToTerm.Existential`.  `TyTests/InductiveTypesTest/Existentials.lean`
+translates `mixedProcess` and `varyingProcess` and checks, by `rfl`, what they evaluate to.
 
 ## The cache
 
@@ -138,6 +168,8 @@ The translation itself is split across the modules of this directory:
 `LeanScript.ToTerm.Pieces` (literals, and small pieces of the object language),
 `LeanScript.ToTerm.Match` (a dispatch Lean compiled with a default),
 `LeanScript.ToTerm.Brec` (the compiled form of a structural recursion),
+`LeanScript.ToTerm.Existential` (datatypes with existentials, through the constructor
+functions),
 `LeanScript.ToTerm.Trans` (the translation proper) and
 `LeanScript.ToTerm.Elab` (the elaborator, which is what a user imports).
 -/
