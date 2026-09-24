@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 
@@ -38,23 +37,27 @@ def natListSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 def natListTy : TyWf := .recTaggedUnion natListSchema
 
 /-- The empty list. -/
-def natNil : Term covEmptySig [] 0 natListTy .ctor :=
-  indexed% .recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)
+def natNil :=
+  (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
+    Term covEmptySig [] _ natListTy .ctor)
 
 /-- The head of a list, or `0`. -/
-def natHead : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recTaggedUnion_casesOn (.var (v♯0))
-    (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
+def natHead :=
+  (.lam (.recTaggedUnion_casesOn (.var (v♯0))
+     (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil))) :
+    Term covEmptySig [] _ (natListTy ⇒ TyWf.prim .nat) .lam)
 
 /-- The fold over a list that answers `0`. -/
-def natFoldZero : Term covEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 0 (.var (v♯0))
-    (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
+def natFoldZero :=
+  (.lam (.recTaggedUnion_rec 0 (.var (v♯0))
+     (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil))) :
+    Term covEmptySig [] _ (natListTy ⇒ TyWf.prim .nat) .lam)
 
 /-- `[5]`. -/
-def natFive : Term covEmptySig [] 0 natListTy .ctor :=
-  indexed% .recTaggedUnion_mk natListSchema (t := 1) 
-    (fields := .cons (.nat_mk 5) (.cons natNil .nil))
+def natFive :=
+  (.recTaggedUnion_mk natListSchema (t := 1) 
+     (fields := .cons (.nat_mk 5) (.cons natNil .nil)) :
+    Term covEmptySig [] _ natListTy .ctor)
 
 /-! The four statements below held when a recursive tagged union denoted `PEmpty`.  They
 are **false** now that it denotes the W-tree of its constructors: `natNil` is inside the
@@ -95,8 +98,9 @@ def roseSchema : LeanRecordSchema (TyWfIn 1) :=
 def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
-def roseLeaf : Term covEmptySig [] 0 roseTy .ctor :=
-  indexed% .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
+def roseLeaf :=
+  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil)) :
+    Term covEmptySig [] _ roseTy .ctor)
 
 /-- A leaf is outside the evaluator's fragment. -/
 theorem roseLeaf_not_noRecMk : ¬ Term.NoRecMk roseLeaf := fun h => h

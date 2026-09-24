@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import TermTests.RecUnionRecDepthTest.Programs
 
 @[expose] public section
@@ -44,8 +43,9 @@ def fibCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 1)
 
 /-- **`fib` over a recursive tagged union**: the depth-one fold. -/
-def fibTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)
+def fibTerm :=
+  (.lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -71,8 +71,9 @@ def tribCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 2)
 
 /-- `trib`, as a term. -/
-def tribTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)
+def tribTerm :=
+  (.lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraCases :=
@@ -96,8 +97,9 @@ def tetraCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 3)
 
 /-- `tetra`, as a term. -/
-def tetraTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)
+def tetraTerm :=
+  (.lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaCases :=
@@ -125,8 +127,9 @@ def pentaCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 4)
 
 /-- `penta`, as a term. -/
-def pentaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)
+def pentaTerm :=
+  (.lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaCases :=
@@ -159,8 +162,9 @@ def hexaCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 5)
 
 /-- `hexa`, as a term. -/
-def hexaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)
+def hexaTerm :=
+  (.lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -182,8 +186,9 @@ def fibTRCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx _ peanoSchema loopTy 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))
+def fibTRTerm :=
+  (.lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1)) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -209,8 +214,9 @@ def fibPairCases :=
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx _ peanoSchema pairTy 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  indexed% .lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))
+def fibPairTerm :=
+  (.lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0))) :
+    Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 6. A constructor with more than one field: the continuant over a list
 
@@ -263,8 +269,9 @@ def contCases :=
     TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx _ natListSchema natT 1)
 
 /-- The continuant, as a term: the depth-one fold of a list union. -/
-def contTerm : Term sigAdd [] 0 (natListTy ⇒ natT) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
+def contTerm :=
+  (.lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases) :
+    Term sigAdd [] _ (natListTy ⇒ natT) .lam)
 
 /-! ## 7. Running the terms
 
@@ -292,11 +299,11 @@ def peanoVal : Nat → TyWf.Den peanoTy
 
 /-- The list of naturals `l`, built by the introduction form. -/
 def natListVal : List Nat → TyWf.Den natListTy
-  | [] => runP ⟨(.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-      Term sigAdd [] _ natListTy _)⟩
-  | a :: as => runP ⟨(.lam (.recTaggedUnion_mk natListSchema (t := 1)
+  | [] => runP (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
+      Term sigAdd [] _ natListTy _)
+  | a :: as => runP (.lam (.recTaggedUnion_mk natListSchema (t := 1)
       (fields := .cons (.nat_mk a) (.cons (.var (v♯0)) .nil))) :
-      Term sigAdd [] _ (natListTy ⇒ natListTy) _)⟩ (natListVal as)
+      Term sigAdd [] _ (natListTy ⇒ natListTy) _) (natListVal as)
 
 /-- The continuant, in Lean: the reference `contTerm` is checked against. -/
 def contRef : List Nat → Nat

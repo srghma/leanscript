@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecAliasRecFacts
@@ -362,16 +361,18 @@ example (τ : TyWf) :
 abbrev chainUnion : LeanTaggedUnionSchema TyWf := .skip (.here ⟨linkTy chainTy, []⟩ [])
 
 /-- The empty chain, as a term. -/
-def nilTerm : Term sigAdd [] 0 chainTy .ctor :=
-  indexed% .recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))
+def nilTerm :=
+  (.recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil)) :
+    Term sigAdd [] _ chainTy .ctor)
 
 /-- One more link on top of the chain in scope. -/
-def consTerm : Term sigAdd [] 0 (natT ⇒ chainTy ⇒ chainTy) .lam :=
-  indexed% .lam (.lam (.recAlias_mk chainBodyW
-    (value := .taggedUnion_mk chainUnion 1
-      (fields := .cons
-        (.record_mk (linkSchema chainTy)
-          (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil))))
+def consTerm :=
+  (.lam (.lam (.recAlias_mk chainBodyW
+     (value := .taggedUnion_mk chainUnion 1
+       (fields := .cons
+         (.record_mk (linkSchema chainTy)
+           (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil)))) :
+    Term sigAdd [] _ (natT ⇒ chainTy ⇒ chainTy) .lam)
 
 end TermTests.RecAliasRecDepth
 

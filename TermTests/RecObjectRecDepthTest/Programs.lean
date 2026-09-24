@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
@@ -366,17 +365,19 @@ example (τ : TyWf) :
     TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := rfl
 
 /-- A cell with no cell below it, as a term. -/
-def leafTerm : Term sigAdd [] 0 cellTy .ctor :=
-  indexed% .recObject_mk cellSchema
-    (fields := .cons (.nat_mk 1)
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil))
+def leafTerm :=
+  (.recObject_mk cellSchema
+     (fields := .cons (.nat_mk 1)
+       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil)) :
+    Term sigAdd [] _ cellTy .ctor)
 
 /-- One more cell on top of the one in scope. -/
-def consTerm : Term sigAdd [] 0 (cellTy ⇒ cellTy) .lam :=
-  indexed% .lam (.recObject_mk cellSchema
-    (fields := .cons (.nat_mk 1)
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
-        (fields := .cons (.var (v♯0)) .nil)) .nil)))
+def consTerm :=
+  (.lam (.recObject_mk cellSchema
+     (fields := .cons (.nat_mk 1)
+       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
+         (fields := .cons (.var (v♯0)) .nil)) .nil))) :
+    Term sigAdd [] _ (cellTy ⇒ cellTy) .lam)
 
 end TermTests.RecObjectRecDepth
 

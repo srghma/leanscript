@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import TermTests.ArrayRecKTest
 public import TermTests.FibWindowTest
 
@@ -64,8 +63,9 @@ def contBranch :=
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) _ natT _)
 
 /-- The continuant, as a term of the grammar: the depth-one fold of an array. -/
-def contTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  indexed% .lam (.array_rec 1 (.var (v♯0)) contBases contBranch)
+def contTerm :=
+  (.lam (.array_rec 1 (.var (v♯0)) contBases contBranch) :
+    Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contTerm #[] = 1 := rfl
 example : runArith contTerm #[3] = 3 := rfl
@@ -130,8 +130,9 @@ def cont3Branch :=
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) _ natT _)
 
 /-- `cont3`, as a term: the depth-two fold of an array. -/
-def cont3Term : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  indexed% .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)
+def cont3Term :=
+  (.lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch) :
+    Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith cont3Term #[] = 1 := rfl
 example : runArith cont3Term #[5, 6] = 30 := rfl
@@ -167,8 +168,9 @@ def cont4Branch :=
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) _ natT _)
 
 /-- `cont4`, as a term: the depth-three fold of an array. -/
-def cont4Term : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  indexed% .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)
+def cont4Term :=
+  (.lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch) :
+    Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith cont4Term #[] = 1 := rfl
 example : runArith cont4Term #[2, 3, 4] = 24 := rfl

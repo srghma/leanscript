@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 
 /-!
@@ -23,100 +22,110 @@ def doubleSig : Sig := ⟨[⟨"double", TyWf.prim .nat ⇒ TyWf.prim .nat⟩], b
 /-! ## Variables, functions and applications -/
 
 /-- `fun x => x`, at `nat ⇒ nat`. -/
-def idNat : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := indexed% .lam (.var (v♯0))
+def idNat := (.lam (.var (v♯0)) : Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- `f 3`, for a function `f` that is a variable: an application whose function is not
     a `fun`. -/
-def applyTo3 : Term emptySig [] 0 ((TyWf.prim .nat ⇒ TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.ap (.var (v♯0)) (.nat_mk 3))
+def applyTo3 :=
+  (.lam (.ap (.var (v♯0)) (.nat_mk 3)) :
+    Term emptySig [] _ ((TyWf.prim .nat ⇒ TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun x => fun y => x`: a curried constant function. -/
-def constNat : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.lam (.var (v♯1)))
+def constNat :=
+  (.lam (.lam (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun n => let x = n + n; x + x`: a `let` of a computation whose variable is used
     twice — the one `let` the grammar keeps. -/
-def letTwice : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.letE
-    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
-    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)))
+def letTwice :=
+  (.lam (.letE
+     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+       fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+       fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A call of the one declaration of `doubleSig`. -/
-def callDouble : Term doubleSig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .ap (.global .here) (.nat_mk 21)
+def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) .comp)
 
 /-! ## Literals -/
 
 /-- A bit-vector literal: the positivity of the width is written by `by decide`. -/
-def bv : Term emptySig [] 0 (TyWf.prim (.bitvec 8)) .lit := indexed% .bitvec_mk (v := 7#8)
+def bv := (.bitvec_mk (v := 7#8) : Term emptySig [] _ (TyWf.prim (.bitvec 8)) .lit)
 
 /-- A string literal. -/
-def hello : Term emptySig [] 0 (TyWf.prim .string) .lit := indexed% .string_mk "hello.term"
+def hello := (.string_mk "hello.term" : Term emptySig [] _ (TyWf.prim .string) .lit)
 
 /-- A character literal. -/
-def theLetterA : Term emptySig [] 0 (TyWf.prim .char) .lit := indexed% .char_mk 'a'
+def theLetterA := (.char_mk 'a' : Term emptySig [] _ (TyWf.prim .char) .lit)
 
 /-- A 64-bit float literal. -/
-def half : Term emptySig [] 0 (TyWf.prim .float) .lit := indexed% .float_mk 0.5
+def half := (.float_mk 0.5 : Term emptySig [] _ (TyWf.prim .float) .lit)
 
 /-! ## Eliminators of the terminal types -/
 
 /-- `if b then 1 else 0`, as a function of `b`. -/
-def boolToNat : Term emptySig [] 0 (TyWf.prim .bool ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0))
+def boolToNat :=
+  (.lam (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.prim .bool ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun n => match n with | 0 => 0 | k + 1 => k`: the predecessor, by case analysis. -/
-def pred : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0)))
+def pred :=
+  (.lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun n => Nat.rec 0 (fun k ih => ih) n`: a fold over a natural number.  The
     successor branch binds the predecessor at index `0` and the value of the fold at
     index `1`, and this one answers with the latter. -/
-def foldNat : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1)))
+def foldNat :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The code point of a character, as a `uint32`. -/
-def charCode : Term emptySig [] 0 (TyWf.prim .char ⇒ TyWf.prim .uint32) .lam :=
-  indexed% .lam (.char_casesOn (.var (v♯0)) (.var (v♯0)))
+def charCode :=
+  (.lam (.char_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .char ⇒ TyWf.prim .uint32) .lam)
 
 /-- The byte index of an unchecked position. -/
-def rawByteIdx : Term emptySig [] 0 (TyWf.prim .stringPosRaw ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.stringPosRaw_casesOn (.var (v♯0)) (.var (v♯0)))
+def rawByteIdx :=
+  (.lam (.stringPosRaw_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .stringPosRaw ⇒ TyWf.prim .nat) .lam)
 
 /-- The string an unchecked substring is into: its branch binds the three fields, and
     the string is the first of them. -/
-def substringStr : Term emptySig [] 0 (TyWf.prim .substringRaw ⇒ TyWf.prim .string) .lam :=
-  indexed% .lam (.substringRaw_casesOn (.var (v♯0)) (.var (v♯0)))
+def substringStr :=
+  (.lam (.substringRaw_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .substringRaw ⇒ TyWf.prim .string) .lam)
 
 /-! ## Delays, and arrays -/
 
 /-- A memoised delay of `3`. -/
-def thunkedThree : Term emptySig [] 0 (TyWf.thunk (TyWf.prim .nat)) .ctor :=
-  indexed% .thunk_mk (.nat_mk 3)
+def thunkedThree := (.thunk_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.thunk (TyWf.prim .nat)) .ctor)
 
 /-- Forcing a memoised delay given as an argument. -/
-def forceThunk : Term emptySig [] 0 (TyWf.thunk (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.thunk_force (.var (v♯0)))
+def forceThunk :=
+  (.lam (.thunk_force (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.thunk (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- An unmemoised delay of `3`. -/
-def lazyThree : Term emptySig [] 0 (TyWf.lazy (TyWf.prim .nat)) .ctor :=
-  indexed% .lazy_mk (.nat_mk 3)
+def lazyThree := (.lazy_mk (.nat_mk 3) : Term emptySig [] _ (TyWf.lazy (TyWf.prim .nat)) .ctor)
 
 /-- The array `#[1, 2, 3]`. -/
-def oneTwoThree : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat)) .ctor :=
-  indexed% .array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil)))
+def oneTwoThree :=
+  (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .ctor)
 
 /-- The first element of an array of naturals, or `0`: the non-empty branch binds the
     head and the tail, in that order. -/
-def headOrZero : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.array_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0)))
+def headOrZero :=
+  (.lam (.array_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- The fold of an array: the non-empty branch binds the head at index `0`, the tail at
     index `1` and the value of the fold over the tail at index `2`. -/
-def foldArray : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2)))
+def foldArray :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-! ## The user-defined shapes -/
 
@@ -124,70 +133,80 @@ def foldArray : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .n
 def three : LeanEnumSchema := ⟨0, 0⟩
 
 /-- The middle constructor of `three`. -/
-def middle : Term emptySig [] 0 (TyWf.enum three) .lit := indexed% .enum_mk three ⟨1, by decide⟩
+def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) .lit)
 
 /-- A dispatch on `three`: one branch per constructor, and no default.  The branches
     follow the shape of the schema, which has exactly the three constructors an enum has
     at minimum. -/
-def enumToNat : Term emptySig [] 0 (TyWf.enum three ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2)))
+def enumToNat :=
+  (.lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) :
+    Term emptySig [] _ (TyWf.enum three ⇒ TyWf.prim .nat) .lam)
 
 /-- An enum of five constructors: two beyond the minimum. -/
 def five : LeanEnumSchema := ⟨2, 0⟩
 
 /-- Its dispatch: a branch for each of the two extra constructors, and then the three an
     enum always has. -/
-def fiveToNat : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOn (.var (v♯0))
-    (.cons (.nat_mk 0) (.cons (.nat_mk 1)
-      (.three (.nat_mk 2) (.nat_mk 3) (.nat_mk 4)))))
+def fiveToNat :=
+  (.lam (.enum_casesOn (.var (v♯0))
+     (.cons (.nat_mk 0) (.cons (.nat_mk 1)
+       (.three (.nat_mk 2) (.nat_mk 3) (.nat_mk 4))))) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 /-- A record of a `nat` and a `bool`. -/
 def pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .bool, []⟩
 
 /-- The record `(3, true)`. -/
-def pair : Term emptySig [] 0 (TyWf.record pairSchema) .ctor :=
-  indexed% .record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil))
+def pair :=
+  (.record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil)) :
+    Term emptySig [] _ (TyWf.record pairSchema) .ctor)
 
 /-- The first field of such a record: the eliminator binds both fields, and the first is
     index `0`. -/
-def pairFst : Term emptySig [] 0 (TyWf.record pairSchema ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.record_casesOn (.var (v♯0)) (.var (v♯0)))
+def pairFst :=
+  (.lam (.record_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.record pairSchema ⇒ TyWf.prim .nat) .lam)
 
 /-- Its second field, at index `1`. -/
-def pairSnd : Term emptySig [] 0 (TyWf.record pairSchema ⇒ TyWf.prim .bool) .lam :=
-  indexed% .lam (.record_casesOn (.var (v♯0)) (.var (v♯1)))
+def pairSnd :=
+  (.lam (.record_casesOn (.var (v♯0)) (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.record pairSchema ⇒ TyWf.prim .bool) .lam)
 
 /-- A union of a constructor with one `nat` field and a field-less one. -/
 def optNat : LeanTaggedUnionSchema TyWf := .payloadFirst ⟨TyWf.prim .nat, []⟩ [] []
 
 /-- Its first constructor, applied to `3`: the bound on the tag is written by the
     default tactic, so nothing stands between the tag and the fields. -/
-def someThree : Term emptySig [] 0 (TyWf.taggedUnion optNat) .ctor :=
-  indexed% .taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil)
+def someThree :=
+  (.taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
 
 /-- Its second, field-less constructor: the tag is `1`, which is in range because the
     union has two constructors. -/
-def noneNat : Term emptySig [] 0 (TyWf.taggedUnion optNat) .ctor :=
-  indexed% .taggedUnion_mk optNat 1 (fields := .nil)
+def noneNat :=
+  (.taggedUnion_mk optNat 1 (fields := .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
 
 /-- A bound that is given by hand still works. -/
-def someThree' : Term emptySig [] 0 (TyWf.taggedUnion optNat) .ctor :=
-  indexed% .taggedUnion_mk optNat 0 (by decide) (.cons (.nat_mk 3) .nil)
+def someThree' :=
+  (.taggedUnion_mk optNat 0 (by decide) (.cons (.nat_mk 3) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
 
 /-- A dispatch on it: the branches follow the shape of the schema — the first
     constructor carries a field, so its branch binds it; the second binds nothing; and
     there is no constructor after them. -/
-def optNatOrZero : Term emptySig [] 0 (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOn (.var (v♯0)) (.payloadFirst (.var (v♯0)) (.nat_mk 0) .nil))
+def optNatOrZero :=
+  (.lam (.taggedUnion_casesOn (.var (v♯0)) (.payloadFirst (.var (v♯0)) (.nat_mk 0) .nil)) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam)
 
 /-- A dispatch on *some* of its constructors, with a default: only constructor `0` gets
     a branch — and that branch binds its field — while constructor `1` falls to the
     default.  A one-branch list is `last`; the bound on the tag is written by `ctor_tag`
     and the bound that keeps the numbers in order by `ctor_ge`. -/
-def optNatOrZeroWithDefault : Term emptySig [] 0 (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.last 0 (branch := .var (v♯0))) (.nat_mk 0))
+def optNatOrZeroWithDefault :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.last 0 (branch := .var (v♯0))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam)
 
 /-- A union whose first constructor carries no fields: the branches then go through
     `CtorsWithPayloadCases`. -/
@@ -195,21 +214,24 @@ def natOrNothing : LeanTaggedUnionSchema TyWf := .skip (.here ⟨TyWf.prim .nat,
 
 /-- Its dispatch: a branch for the field-less constructor, then the branch of the
     constructor that carries the `nat`, which binds it. -/
-def natOrNothingToNat : Term emptySig [] 0 (TyWf.taggedUnion natOrNothing ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOn (.var (v♯0)) (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
+def natOrNothingToNat :=
+  (.lam (.taggedUnion_casesOn (.var (v♯0)) (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil))) :
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing ⇒ TyWf.prim .nat) .lam)
 
 /-- A dispatch on the enum `three` that names only its last constructor and sends the
     other two to the default.  A one-branch list is `last`, and the bound that keeps the
     numbers in order is written by `ctor_ge`. -/
-def enumLastOrZero : Term emptySig [] 0 (TyWf.enum three ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0)) (.last ⟨2, by decide⟩ (.nat_mk 2))
-    (.nat_mk 0))
+def enumLastOrZero :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0)) (.last ⟨2, by decide⟩ (.nat_mk 2))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum three ⇒ TyWf.prim .nat) .lam)
 
 /-- Two of the five constructors, named smallest first; the other three take the
     default. -/
-def fiveTwoOrZero : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
-    (.cons 1 (.nat_mk 1) (.last 3 (.nat_mk 3))) (.nat_mk 0))
+def fiveTwoOrZero :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0))
+     (.cons 1 (.nat_mk 1) (.last 3 (.nat_mk 3))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 -- The order is not a convention but a typing rule: a list whose numbers go down does
 -- not elaborate.
@@ -221,9 +243,10 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def fiveOutOfOrder : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
-    (.cons 3 (.nat_mk 3) (.last 1 (.nat_mk 1))) (.nat_mk 0))
+def fiveOutOfOrder :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0))
+     (.cons 3 (.nat_mk 3) (.last 1 (.nat_mk 1))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 -- Nor does one that names the same constructor twice.
 /--
@@ -234,9 +257,10 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def fiveRepeated : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
-    (.cons 1 (.nat_mk 1) (.last 1 (.nat_mk 2))) (.nat_mk 0))
+def fiveRepeated :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0))
+     (.cons 1 (.nat_mk 1) (.last 1 (.nat_mk 2))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 /-! ## A partial dispatch on a union is validated the same way -/
 
@@ -247,11 +271,11 @@ def natBoolNat : LeanTaggedUnionSchema TyWf :=
 /-- Two of its three constructors, named smallest first, each binding its field; the
     third takes the default.  Both bounds — the tag's and the order's — are written by
     the default tactics. -/
-def natBoolNatTwoOrZero :
-    Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (branch := .var (v♯0)) (rest := .last 2 (branch := .var (v♯0))))
-    (.nat_mk 0))
+def natBoolNatTwoOrZero :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (branch := .var (v♯0)) (rest := .last 2 (branch := .var (v♯0))))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 -- As for an enum, the order is a typing rule: a list whose numbers go down does not
 -- elaborate.
@@ -263,11 +287,11 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def natBoolNatOutOfOrder :
-    Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 2 (branch := .var (v♯0)) (rest := .last 0 (branch := .var (v♯0))))
-    (.nat_mk 0))
+def natBoolNatOutOfOrder :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 2 (branch := .var (v♯0)) (rest := .last 0 (branch := .var (v♯0))))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 -- Nor does one that names the same constructor twice.
 /--
@@ -278,11 +302,11 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def natBoolNatRepeated :
-    Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (branch := .var (v♯0)) (rest := .last 0 (branch := .var (v♯0))))
-    (.nat_mk 0))
+def natBoolNatRepeated :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (branch := .var (v♯0)) (rest := .last 0 (branch := .var (v♯0))))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 /-! ## A partial dispatch may not name **every** constructor
 
@@ -302,10 +326,11 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def threeAllNamed : Term emptySig [] 0 (TyWf.enum three ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (.nat_mk 0) (.cons 1 (.nat_mk 1) (.last 2 (.nat_mk 2))))
-    (.nat_mk 9))
+def threeAllNamed :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (.nat_mk 0) (.cons 1 (.nat_mk 1) (.last 2 (.nat_mk 2))))
+     (.nat_mk 9)) :
+    Term emptySig [] _ (TyWf.enum three ⇒ TyWf.prim .nat) .lam)
 
 -- Both constructors of `optNat` named, likewise.
 /--
@@ -316,19 +341,20 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def optNatAllNamed : Term emptySig [] 0 (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (branch := .var (v♯0)) (rest := .last 1 (branch := .nat_mk 1)))
-    (.nat_mk 0))
+def optNatAllNamed :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (branch := .var (v♯0)) (rest := .last 1 (branch := .nat_mk 1)))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam)
 
 /-- Naming all but one constructor is still fine: the two smallest constructors of
     `natBoolNat`, with the third taking the default — one fewer branch than the union has
     constructors, which is what `ctor_lt` checks. -/
-def natBoolNatAllButOne :
-    Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (branch := .var (v♯0)) (rest := .last 1 (branch := .nat_mk 1)))
-    (.nat_mk 0))
+def natBoolNatAllButOne :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (branch := .var (v♯0)) (rest := .last 1 (branch := .nat_mk 1)))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 /-! ## A term is indexed by a **type**, not by a tree
 
@@ -358,7 +384,7 @@ error: could not synthesize default value for parameter 'h' using tactics
 error: ty_wf: `Ty.self` is not a type in a scope of 0 members
 -/
 #guard_msgs (error) in
-def atOccurrenceLeaf : Term emptySig [] 0 (Ty.self.toTyWf) .lit := indexed% .nat_mk 0
+def atOccurrenceLeaf := (.nat_mk 0 : Term emptySig [] _ (Ty.self.toTyWf) .lit)
 
 -- So is a binder that mentions itself to the left of an arrow.
 /--
@@ -367,8 +393,9 @@ error: could not synthesize default value for parameter 'h' using tactics
 error: ty_wf: the declaration being defined occurs to the left of an arrow, which no type of the language does
 -/
 #guard_msgs (error) in
-def atNonPositiveBinder : Term emptySig [] 0 ((Ty.recTaggedUnion (.payloadFirst ⟨.fn .self (.prim .nat), []⟩ [] [])).toTyWf) .lit :=
-  indexed% .nat_mk 0
+def atNonPositiveBinder :=
+  (.nat_mk 0 :
+    Term emptySig [] _ ((Ty.recTaggedUnion (.payloadFirst ⟨.fn .self (.prim .nat), []⟩ [] [])).toTyWf) .lit)
 
 /-! ## A redex does not elaborate
 
@@ -385,8 +412,7 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def idNatAt3 : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .ap (.lam (.var (v♯0))) (.nat_mk 3)
+def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 -- A `let` of a literal: `let x = 3; x + x`.  A value is inlined, never bound.
 /--
@@ -397,9 +423,10 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def letThree : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .letE (.nat_mk 3) (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-    fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+def letThree :=
+  (.letE (.nat_mk 3) (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+     fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 -- A `let` whose variable is used once: `fun n => let x = n + n; x`.
 /--
@@ -410,9 +437,10 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def letOnce : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.letE (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-    fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) (.var (v♯0)))
+def letOnce :=
+  (.lam (.letE (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+     fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 -- A test on a literal: `if true then 1 else 0`.
 /--
@@ -423,8 +451,9 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def ifTrue : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .bool_casesOn (.bool_mk true) (.nat_mk 1) (.nat_mk 0)
+def ifTrue :=
+  (.bool_casesOn (.bool_mk true) (.nat_mk 1) (.nat_mk 0) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 -- A forced delay: `(thunk 3).force`.
 /--
@@ -435,20 +464,20 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def thunkedThreeForced : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .thunk_force (.thunk_mk (.nat_mk 3))
+def thunkedThreeForced :=
+  (.thunk_force (.thunk_mk (.nat_mk 3)) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 -- A dispatch on a constructor: the first field of the record `(3, true)`.
 /--
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  pair.head ≠ Head.ctor
+  Head.ctor ≠ Head.ctor
 is false
 -/
 #guard_msgs (error) in
-def pairFstOfPair : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .record_casesOn pair (.var (v♯0))
+def pairFstOfPair := (.record_casesOn pair (.var (v♯0)) : Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 -- An extern called on literals only: `1 + 2`, which is a constant.
 /--
@@ -459,8 +488,9 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def onePlusTwo : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .externCall (.cons (.nat_mk 1) (.cons (.nat_mk 2) .nil))
-    fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)
+def onePlusTwo :=
+  (.externCall (.cons (.nat_mk 1) (.cons (.nat_mk 2) .nil))
+     fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 end TermTests

@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import TermTests.NatRecKTest
 
 @[expose] public section
@@ -93,12 +92,13 @@ def loop_term {Γ : Ctx} :=
 /-- `fibTR`, as a term: the loop started at `(0, 1)`.  (The fold is written out rather than
     applied as `loop_term`: `loop_term` is a `fun`, and applying it would be a β-redex,
     which the grammar does not have.) -/
-def fibTR_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
-    (.nat_mk 1))
+def fibTR_term :=
+  (.lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
+     (.nat_mk 1)) :
+    Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
-theorem loop_term_eval (n a b : Nat) : runAdd ⟨loop_term⟩ n a b = fibLoopTR n a b := by
+theorem loop_term_eval (n a b : Nat) : runAdd loop_term n a b = fibLoopTR n a b := by
   induction n generalizing a b with
   | zero => rfl
   | succ n ih => exact ih b (a + b)
@@ -119,7 +119,7 @@ theorem fibLoopTR_eq (n k : Nat) : fibLoopTR n (fib k) (fib (k + 1)) = fib (n + 
 
 /-- The tail-recursive term computes `fib`, at every argument. -/
 theorem fibTR_term_eval (n : Nat) : runAdd fibTR_term n = fib n := by
-  have h : runAdd fibTR_term n = runAdd ⟨loop_term⟩ n 0 1 := rfl
+  have h : runAdd fibTR_term n = runAdd loop_term n 0 1 := rfl
   rw [h, loop_term_eval]
   exact (fibLoopTR_eq n 0).trans (by rw [Nat.add_zero])
 
@@ -163,7 +163,7 @@ theorem fibPair_eq : (n : Nat) → fibPair n = (fib n, fib (n + 1))
 /-- The pair recursion is the fold at a two-field record: the term of
     `TermTests/FibWindowTest.lean` computes `fibPair`, field by field. -/
 theorem fibPair_term_eval (n : Nat) :
-    runAdd ⟨TermTests.FibWindow.window⟩ n = ((fibPair n).1, (fibPair n).2, PUnit.unit) := by
+    runAdd TermTests.FibWindow.window n = ((fibPair n).1, (fibPair n).2, PUnit.unit) := by
   rw [TermTests.FibWindow.window_eval, fibPair_eq n]
 
 /-- And its projection is `fib_term`, so `fib2` is written today. -/

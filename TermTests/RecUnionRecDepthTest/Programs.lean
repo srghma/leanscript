@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecUnionRecFacts
@@ -278,11 +277,13 @@ example (τ : TyWf) (Γ : Ctx) :
 abbrev PCtx : Ctx := [peanoTy]
 
 /-- Zero, as a term. -/
-def zeroTerm : Term sigAdd [] 0 peanoTy .ctor :=
-  indexed% .recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)
+def zeroTerm :=
+  (.recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil) :
+    Term sigAdd [] _ peanoTy .ctor)
 
 /-- The successor of the variable in scope. -/
-def succTerm : Term sigAdd [] 0 (peanoTy ⇒ peanoTy) .lam :=
-  indexed% .lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))
+def succTerm :=
+  (.lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil)) :
+    Term sigAdd [] _ (peanoTy ⇒ peanoTy) .lam)
 
 end TermTests.RecUnionRecDepth

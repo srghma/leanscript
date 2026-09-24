@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import TermTests.ArrayRecDepthTest.Cont
 
 @[expose] public section
@@ -126,9 +125,10 @@ def loopStep {Γ : Ctx} :=
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) _ Acc2 _)
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
-def contTRTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  indexed% .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
-    (.nat_mk 0))
+def contTRTerm :=
+  (.lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+     (.nat_mk 0)) :
+    Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contTRTerm #[] = 1 := rfl
 example : runArith contTRTerm #[3, 4] = 13 := rfl
@@ -233,9 +233,10 @@ def contPairTerm {Γ : Ctx} :=
 /-- The continuant read off the pair: its first field.  Applying `contPairTerm` to the
     array would be a β-redex, which is not a term: the fold is written in place, on the
     array the function would have been applied to. -/
-def contFromPairTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  indexed% .lam (.record_casesOn (fs := pairSchema)
-    (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0)))
+def contFromPairTerm :=
+  (.lam (.record_casesOn (fs := pairSchema)
+     (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0))) :
+    Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contFromPairTerm #[] = 1 := rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := rfl
@@ -279,7 +280,7 @@ theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
 
 /-- The record-valued term **is** `contPair`, field by field. -/
 theorem contPairTerm_eval (l : List Nat) :
-    runArith ⟨contPairTerm (Γ := [])⟩ l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
+    runArith (contPairTerm (Γ := [])) l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
   show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil)) l = _
   rw [pairEvalFold_eq, contPair_eq l]
 

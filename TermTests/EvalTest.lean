@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Eval
 
 @[expose] public section
@@ -39,22 +38,24 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := emptySig) GlobalEnv
 /-! ## Variables, functions, applications and `let` -/
 
 /-- `fun x => x`, at `nat ⇒ nat`. -/
-def idNat : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := indexed% .lam (.var (v♯0))
+def idNat := (.lam (.var (v♯0)) : Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun x => fun y => x`. -/
-def constNat : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.lam (.var (v♯1)))
+def constNat :=
+  (.lam (.lam (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) .lam)
 
 /-- `let x = 1 + 2; x + x`.  The bound value is a computation and the variable is used
     twice: a `let` of a literal, or of a variable used once, is a redex, and is not a
     term. -/
-def letSix : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .letE (.extern (.lean_nat_add 1 2))
-    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
-      (fun vs => .lean_nat_add vs.1 vs.2.1))
+def letSix :=
+  (.letE (.extern (.lean_nat_add 1 2))
+     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 /-- A call of the one declaration of `doubleSig`. -/
-def callDouble : Term doubleSig [] 0 (TyWf.prim .nat) .comp := indexed% .ap (.global .here) (.nat_mk 21)
+def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) .comp)
 
 example : run idNat 7 = 7 := rfl
 -- `Term.run'` is the same thing for a module that declares nothing.
@@ -74,42 +75,51 @@ example : run (.uint8_mk 255) = 255 := rfl
 /-! ## Eliminators of the terminal types -/
 
 /-- `fun b => if b then 1 else 0`. -/
-def boolToNat : Term emptySig [] 0 (TyWf.prim .bool ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0))
+def boolToNat :=
+  (.lam (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.prim .bool ⇒ TyWf.prim .nat) .lam)
 
 /-- The predecessor, by case analysis on a natural number. -/
-def pred : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0)))
+def pred :=
+  (.lam (.nat_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A fold over a natural number whose successor branch answers with the value of the
     fold at the predecessor — so it is `0` however big the number is. -/
-def foldNatZero : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1)))
+def foldNatZero :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A fold over a natural number whose successor branch answers with the predecessor —
     so it is the predecessor. -/
-def foldNatPred : Term emptySig [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯0)))
+def foldNatPred :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons (.nat_mk 0) .nil) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- `fun i => match i with | .ofNat n => n | .negSucc n => n`. -/
-def intMagnitude : Term emptySig [] 0 (TyWf.prim .int ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.int_casesOn (.var (v♯0)) (.var (v♯0)) (.var (v♯0)))
+def intMagnitude :=
+  (.lam (.int_casesOn (.var (v♯0)) (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .int ⇒ TyWf.prim .nat) .lam)
 
 /-- The code point of a character. -/
-def charCode : Term emptySig [] 0 (TyWf.prim .char ⇒ TyWf.prim .uint32) .lam :=
-  indexed% .lam (.char_casesOn (.var (v♯0)) (.var (v♯0)))
+def charCode :=
+  (.lam (.char_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .char ⇒ TyWf.prim .uint32) .lam)
 
 /-- The byte index of an unchecked position. -/
-def rawByteIdx : Term emptySig [] 0 (TyWf.prim .stringPosRaw ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.stringPosRaw_casesOn (.var (v♯0)) (.var (v♯0)))
+def rawByteIdx :=
+  (.lam (.stringPosRaw_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .stringPosRaw ⇒ TyWf.prim .nat) .lam)
 
 /-- The string an unchecked substring is into. -/
-def substringStr : Term emptySig [] 0 (TyWf.prim .substringRaw ⇒ TyWf.prim .string) .lam :=
-  indexed% .lam (.substringRaw_casesOn (.var (v♯0)) (.var (v♯0)))
+def substringStr :=
+  (.lam (.substringRaw_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .substringRaw ⇒ TyWf.prim .string) .lam)
 
 /-- The bit vector inside an 8-bit unsigned value. -/
-def uint8Bits : Term emptySig [] 0 (TyWf.prim .uint8 ⇒ TyWf.prim (.bitvec 8)) .lam :=
-  indexed% .lam (.uint8_casesOn (.var (v♯0)) (.var (v♯0)))
+def uint8Bits :=
+  (.lam (.uint8_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.prim .uint8 ⇒ TyWf.prim (.bitvec 8)) .lam)
 
 example : run boolToNat true = 1 := rfl
 example : run boolToNat false = 0 := rfl
@@ -128,38 +138,44 @@ example : run uint8Bits 5 = 5#8 := rfl
 
 /-- `let t := Thunk.mk (fun _ => 3); t.get + t.get`.  Forcing a delay built in place is a
     redex, and is not a term, so the delay is bound and forced through its variable. -/
-def thunkTwice : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .letE (.thunk_mk (.nat_mk 3))
-    (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
-      (fun vs => .lean_nat_add vs.1 vs.2.1))
+def thunkTwice :=
+  (.letE (.thunk_mk (.nat_mk 3))
+     (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 /-- The same with an unmemoised delay. -/
-def lazyTwice : Term emptySig [] 0 (TyWf.prim .nat) .comp :=
-  indexed% .letE (.lazy_mk (.nat_mk 3))
-    (.externCall (.cons (.lazy_force (.var (v♯0))) (.cons (.lazy_force (.var (v♯0))) .nil))
-      (fun vs => .lean_nat_add vs.1 vs.2.1))
+def lazyTwice :=
+  (.letE (.lazy_mk (.nat_mk 3))
+     (.externCall (.cons (.lazy_force (.var (v♯0))) (.cons (.lazy_force (.var (v♯0))) .nil))
+       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
+    Term emptySig [] _ (TyWf.prim .nat) .comp)
 
 example : run thunkTwice = 6 := rfl
 example : run lazyTwice = 6 := rfl
 
 /-- The array `#[1, 2, 3]`. -/
-def oneTwoThree : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat)) .ctor :=
-  indexed% .array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil)))
+def oneTwoThree :=
+  (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat)) .ctor)
 
 /-- The first element of an array of naturals, or `0`. -/
-def headOrZero : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.array_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0)))
+def headOrZero :=
+  (.lam (.array_casesOn (.var (v♯0)) (.nat_mk 0) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- A fold over an array that answers with the value of the fold over the tail — so it
     is `0` however long the array is. -/
-def foldArrayZero : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2)))
+def foldArrayZero :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0)) (.var (v♯2))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /-- A fold over an array that answers with its **last** element, or `0`: the branch
     takes the head when the fold over the tail is the answer for the empty tail. -/
-def lastOrZero : Term emptySig [] 0 (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
-    (.array_casesOn (.var (v♯1)) (.var (v♯0)) (.var (v♯4))))
+def lastOrZero :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil (.nat_mk 0))
+     (.array_casesOn (.var (v♯1)) (.var (v♯0)) (.var (v♯4)))) :
+    Term emptySig [] _ (TyWf.array (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 example : run oneTwoThree = #[1, 2, 3] := rfl
 example : run headOrZero #[1, 2, 3] = 1 := rfl
@@ -177,27 +193,31 @@ def three : LeanEnumSchema := ⟨0, 0⟩
 def five : LeanEnumSchema := ⟨2, 0⟩
 
 /-- The middle constructor of `three`. -/
-def middle : Term emptySig [] 0 (TyWf.enum three) .lit := indexed% .enum_mk three ⟨1, by decide⟩
+def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) .lit)
 
 /-- A dispatch on `three`: one branch per constructor, and no default. -/
-def enumToNat : Term emptySig [] 0 (TyWf.enum three ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2)))
+def enumToNat :=
+  (.lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) :
+    Term emptySig [] _ (TyWf.enum three ⇒ TyWf.prim .nat) .lam)
 
 /-- A dispatch on `five`. -/
-def fiveToNat : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOn (.var (v♯0))
-    (.cons (.nat_mk 0) (.cons (.nat_mk 1)
-      (.three (.nat_mk 2) (.nat_mk 3) (.nat_mk 4)))))
+def fiveToNat :=
+  (.lam (.enum_casesOn (.var (v♯0))
+     (.cons (.nat_mk 0) (.cons (.nat_mk 1)
+       (.three (.nat_mk 2) (.nat_mk 3) (.nat_mk 4))))) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 /-- A dispatch on `three` that names only its last constructor. -/
-def enumLastOrZero : Term emptySig [] 0 (TyWf.enum three ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0)) (.last ⟨2, by decide⟩ (.nat_mk 2))
-    (.nat_mk 0))
+def enumLastOrZero :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0)) (.last ⟨2, by decide⟩ (.nat_mk 2))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum three ⇒ TyWf.prim .nat) .lam)
 
 /-- Two of the five constructors, named smallest first. -/
-def fiveTwoOrZero : Term emptySig [] 0 (TyWf.enum five ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
-    (.cons 1 (.nat_mk 1) (.last 3 (.nat_mk 3))) (.nat_mk 0))
+def fiveTwoOrZero :=
+  (.lam (.enum_casesOnWithDefault (.var (v♯0))
+     (.cons 1 (.nat_mk 1) (.last 3 (.nat_mk 3))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.enum five ⇒ TyWf.prim .nat) .lam)
 
 example : run middle = ⟨1, by decide⟩ := rfl
 example : run enumToNat ⟨0, by decide⟩ = 0 := rfl
@@ -218,17 +238,20 @@ example : run fiveTwoOrZero ⟨4, by decide⟩ = 0 := rfl
 abbrev pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .bool, []⟩
 
 /-- The record `(3, true)`. -/
-def pair : Term emptySig [] 0 (TyWf.record pairSchema) .ctor :=
-  indexed% .record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil))
+def pair :=
+  (.record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil)) :
+    Term emptySig [] _ (TyWf.record pairSchema) .ctor)
 
 /-- The first projection.  Projecting out of a record built in place is a redex, and is
     not a term, so the projections are functions, applied to the value of `pair`. -/
-def pairFst : Term emptySig [] 0 (TyWf.record pairSchema ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.record_casesOn (.var (v♯0)) (.var (v♯0)))
+def pairFst :=
+  (.lam (.record_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term emptySig [] _ (TyWf.record pairSchema ⇒ TyWf.prim .nat) .lam)
 
 /-- The second projection. -/
-def pairSnd : Term emptySig [] 0 (TyWf.record pairSchema ⇒ TyWf.prim .bool) .lam :=
-  indexed% .lam (.record_casesOn (.var (v♯0)) (.var (v♯1)))
+def pairSnd :=
+  (.lam (.record_casesOn (.var (v♯0)) (.var (v♯1))) :
+    Term emptySig [] _ (TyWf.record pairSchema ⇒ TyWf.prim .bool) .lam)
 
 example : run pair = (3, true, PUnit.unit) := rfl
 example : run pairFst (run pair) = 3 := rfl
@@ -243,21 +266,25 @@ fields. -/
 def optNat : LeanTaggedUnionSchema TyWf := .payloadFirst ⟨TyWf.prim .nat, []⟩ [] []
 
 /-- Its first constructor, applied to `3`. -/
-def someThree : Term emptySig [] 0 (TyWf.taggedUnion optNat) .ctor :=
-  indexed% .taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil)
+def someThree :=
+  (.taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
 
 /-- Its second, field-less constructor. -/
-def noneNat : Term emptySig [] 0 (TyWf.taggedUnion optNat) .ctor :=
-  indexed% .taggedUnion_mk optNat 1 (fields := .nil)
+def noneNat :=
+  (.taggedUnion_mk optNat 1 (fields := .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
 
 /-- A dispatch on it, with one branch per constructor. -/
-def optNatOrZero : Term emptySig [] 0 (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOn (.var (v♯0)) (.payloadFirst (.var (v♯0)) (.nat_mk 0) .nil))
+def optNatOrZero :=
+  (.lam (.taggedUnion_casesOn (.var (v♯0)) (.payloadFirst (.var (v♯0)) (.nat_mk 0) .nil)) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam)
 
 /-- A dispatch on only its first constructor, with a default. -/
-def optNatOrZeroWithDefault : Term emptySig [] 0 (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.last 0 (branch := .var (v♯0))) (.nat_mk 0))
+def optNatOrZeroWithDefault :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.last 0 (branch := .var (v♯0))) (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion optNat ⇒ TyWf.prim .nat) .lam)
 
 example : (run someThree).1 = ⟨0, by decide⟩ := rfl
 example : (run someThree).2 = (3, PUnit.unit) := rfl
@@ -271,16 +298,19 @@ example : run optNatOrZeroWithDefault (run noneNat) = 0 := rfl
 def natOrNothing : LeanTaggedUnionSchema TyWf := .skip (.here ⟨TyWf.prim .nat, []⟩ [])
 
 /-- Its dispatch. -/
-def natOrNothingToNat : Term emptySig [] 0 (TyWf.taggedUnion natOrNothing ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOn (.var (v♯0)) (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
+def natOrNothingToNat :=
+  (.lam (.taggedUnion_casesOn (.var (v♯0)) (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil))) :
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing ⇒ TyWf.prim .nat) .lam)
 
 /-- Its field-less constructor. -/
-def nothing' : Term emptySig [] 0 (TyWf.taggedUnion natOrNothing) .ctor :=
-  indexed% .taggedUnion_mk natOrNothing 0 (fields := .nil)
+def nothing' :=
+  (.taggedUnion_mk natOrNothing 0 (fields := .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .ctor)
 
 /-- Its constructor that carries a `nat`, applied to `5`. -/
-def justFive : Term emptySig [] 0 (TyWf.taggedUnion natOrNothing) .ctor :=
-  indexed% .taggedUnion_mk natOrNothing 1 (fields := .cons (.nat_mk 5) .nil)
+def justFive :=
+  (.taggedUnion_mk natOrNothing 1 (fields := .cons (.nat_mk 5) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .ctor)
 
 example : run natOrNothingToNat (run nothing') = 0 := rfl
 example : run natOrNothingToNat (run justFive) = 5 := rfl
@@ -291,30 +321,34 @@ def natBoolNat : LeanTaggedUnionSchema TyWf :=
 
 /-- Two of its three constructors, each binding its field; the third takes the
     default. -/
-def natBoolNatTwoOrZero :
-    Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
-    (.cons 0 (branch := .var (v♯0)) (rest := .last 2 (branch := .var (v♯0))))
-    (.nat_mk 0))
+def natBoolNatTwoOrZero :=
+  (.lam (.taggedUnion_casesOnWithDefault (.var (v♯0))
+     (.cons 0 (branch := .var (v♯0)) (rest := .last 2 (branch := .var (v♯0))))
+     (.nat_mk 0)) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 /-- One branch per constructor, with no default: the middle constructor's branch binds
     its `bool`. -/
-def natBoolNatAll : Term emptySig [] 0 (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.taggedUnion_casesOn (.var (v♯0))
-    (.payloadFirst (.var (v♯0)) (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0))
-      (.cons (.var (v♯0)) .nil)))
+def natBoolNatAll :=
+  (.lam (.taggedUnion_casesOn (.var (v♯0))
+     (.payloadFirst (.var (v♯0)) (.bool_casesOn (.var (v♯0)) (.nat_mk 1) (.nat_mk 0))
+       (.cons (.var (v♯0)) .nil))) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat ⇒ TyWf.prim .nat) .lam)
 
 /-- Constructor `0` of `natBoolNat`, carrying a `nat`. -/
-def nbnZero : Term emptySig [] 0 (TyWf.taggedUnion natBoolNat) .ctor :=
-  indexed% .taggedUnion_mk natBoolNat 0 (fields := .cons (.nat_mk 7) .nil)
+def nbnZero :=
+  (.taggedUnion_mk natBoolNat 0 (fields := .cons (.nat_mk 7) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
 
 /-- Constructor `1`, carrying a `bool`. -/
-def nbnOne : Term emptySig [] 0 (TyWf.taggedUnion natBoolNat) .ctor :=
-  indexed% .taggedUnion_mk natBoolNat 1 (fields := .cons (.bool_mk true) .nil)
+def nbnOne :=
+  (.taggedUnion_mk natBoolNat 1 (fields := .cons (.bool_mk true) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
 
 /-- Constructor `2`, carrying a `nat`. -/
-def nbnTwo : Term emptySig [] 0 (TyWf.taggedUnion natBoolNat) .ctor :=
-  indexed% .taggedUnion_mk natBoolNat 2 (fields := .cons (.nat_mk 9) .nil)
+def nbnTwo :=
+  (.taggedUnion_mk natBoolNat 2 (fields := .cons (.nat_mk 9) .nil) :
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
 
 example : run natBoolNatTwoOrZero (run nbnZero) = 7 := rfl
 example : run natBoolNatTwoOrZero (run nbnOne) = 0 := rfl

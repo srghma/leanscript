@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 
@@ -47,26 +46,30 @@ example : (TyWf.recTaggedUnionUnfold natListSchema).get 1 (by decide) =
     [TyWf.prim .nat, natListTy] := rfl
 
 /-- The empty list.  The tag's bound is written by `ctor_tag`. -/
-def natNil : Term recEmptySig [] 0 natListTy .ctor :=
-  indexed% .recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)
+def natNil :=
+  (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
+    Term recEmptySig [] _ natListTy .ctor)
 
 /-- `[3]`: `cons` of `3` and the empty list. -/
-def natOne : Term recEmptySig [] 0 natListTy .ctor :=
-  indexed% .recTaggedUnion_mk natListSchema (t := 1)
-    (fields := .cons (.nat_mk 3) (.cons natNil .nil))
+def natOne :=
+  (.recTaggedUnion_mk natListSchema (t := 1)
+     (fields := .cons (.nat_mk 3) (.cons natNil .nil)) :
+    Term recEmptySig [] _ natListTy .ctor)
 
 /-- The head of a list, or `0` — a dispatch on **every** constructor, whose `cons` branch
     binds the head at index `0` and the tail at index `1`. -/
-def natHead : Term recEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recTaggedUnion_casesOn (.var (v♯0))
-    (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
+def natHead :=
+  (.lam (.recTaggedUnion_casesOn (.var (v♯0))
+     (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil))) :
+    Term recEmptySig [] _ (natListTy ⇒ TyWf.prim .nat) .lam)
 
 /-- The tail of a list, or the empty list — a dispatch on the one constructor that has
     one, with a default for the other. -/
-def natTail : Term recEmptySig [] 0 (natListTy ⇒ natListTy) .lam :=
-  indexed% .lam (.recTaggedUnion_casesOnWithDefault (.var (v♯0))
-    (.last 1 (branch := .var (v♯1)))
-    (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)))
+def natTail :=
+  (.lam (.recTaggedUnion_casesOnWithDefault (.var (v♯0))
+     (.last 1 (branch := .var (v♯1)))
+     (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil))) :
+    Term recEmptySig [] _ (natListTy ⇒ natListTy) .lam)
 
 /-- **A fold over a list**: the `nil` branch answers `0`, and the `cons` branch binds the
     head at index `0`, the tail at index `1` and the value of the fold at the tail at
@@ -74,9 +77,10 @@ def natTail : Term recEmptySig [] 0 (natListTy ⇒ natListTy) .lam :=
     recursive value is *given* to the branch, so the term is terminating by
     construction.  (The grammar has no arithmetic, so the branch cannot add the head to
     it; an operation on naturals is a declaration of the signature.) -/
-def natFoldZero : Term recEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recTaggedUnion_rec 0 (.var (v♯0))
-    (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
+def natFoldZero :=
+  (.lam (.recTaggedUnion_rec 0 (.var (v♯0))
+     (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil))) :
+    Term recEmptySig [] _ (natListTy ⇒ TyWf.prim .nat) .lam)
 
 /-! ## A recursive record -/
 
@@ -88,17 +92,20 @@ def roseSchema : LeanRecordSchema (TyWfIn 1) :=
 def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
-def roseLeaf : Term recEmptySig [] 0 roseTy .ctor :=
-  indexed% .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
+def roseLeaf :=
+  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil)) :
+    Term recEmptySig [] _ roseTy .ctor)
 
 /-- A tree with one child. -/
-def roseOne : Term recEmptySig [] 0 roseTy .ctor :=
-  indexed% .recObject_mk roseSchema
-    (fields := .cons (.nat_mk 2) (.cons (.array_mk (.cons roseLeaf .nil)) .nil))
+def roseOne :=
+  (.recObject_mk roseSchema
+     (fields := .cons (.nat_mk 2) (.cons (.array_mk (.cons roseLeaf .nil)) .nil)) :
+    Term recEmptySig [] _ roseTy .ctor)
 
 /-- The label of a tree: the eliminator binds every field, so the label is index `0`. -/
-def roseLabel : Term recEmptySig [] 0 (roseTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recObject_casesOn (.var (v♯0)) (.var (v♯0)))
+def roseLabel :=
+  (.lam (.recObject_casesOn (.var (v♯0)) (.var (v♯0))) :
+    Term recEmptySig [] _ (roseTy ⇒ TyWf.prim .nat) .lam)
 
 /-- A record whose **second field is the record itself**: the payload of a binder is
     written in the scope the binder opens, so `Ty.self` is a field of it. -/
@@ -127,17 +134,20 @@ def forestTy : TyWf := .recAlias (Ty.array Ty.self).toTyWfIn
 example : TyWf.recAliasUnfold (Ty.array Ty.self).toTyWfIn = TyWf.array forestTy := rfl
 
 /-- The empty forest.  The wrapper is erased, so this is the empty array. -/
-def emptyForest : Term recEmptySig [] 0 forestTy .ctor :=
-  indexed% .recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk .nil)
+def emptyForest :=
+  (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk .nil) :
+    Term recEmptySig [] _ forestTy .ctor)
 
 /-- A forest of one empty forest. -/
-def oneForest : Term recEmptySig [] 0 forestTy .ctor :=
-  indexed% .recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk (.cons emptyForest .nil))
+def oneForest :=
+  (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk (.cons emptyForest .nil)) :
+    Term recEmptySig [] _ forestTy .ctor)
 
 /-- Is a forest empty?  The eliminator binds the body, which is an array. -/
-def forestIsEmpty : Term recEmptySig [] 0 (forestTy ⇒ TyWf.prim .bool) .lam :=
-  indexed% .lam (.recAlias_casesOn (.var (v♯0))
-    (.array_casesOn (.var (v♯0)) (.bool_mk true) (.bool_mk false)))
+def forestIsEmpty :=
+  (.lam (.recAlias_casesOn (.var (v♯0))
+     (.array_casesOn (.var (v♯0)) (.bool_mk true) (.bool_mk false))) :
+    Term recEmptySig [] _ (forestTy ⇒ TyWf.prim .bool) .lam)
 
 /-! ## A mutual recursive family
 
@@ -170,42 +180,49 @@ example : Ty.unfoldFamily (famB.map TyWfIn.toTy) (Ty.familyMember 0) = tyA.toTy 
 example : Ty.unfoldFamily (famA.map TyWfIn.toTy) (Ty.familyMember 1) = tyB.toTy := rfl
 
 /-- The field-less constructor of `A`. -/
-def aNil : Term recEmptySig [] 0 tyA .ctor :=
-  indexed% .mutualRecursiveFamily_mk famA (value := .ctors _ 0 (fields := .nil))
+def aNil :=
+  (.mutualRecursiveFamily_mk famA (value := .ctors _ 0 (fields := .nil)) :
+    Term recEmptySig [] _ tyA .ctor)
 
 /-- A `B`: the natural `7` and the `A` above. -/
-def bOne : Term recEmptySig [] 0 tyB .ctor :=
-  indexed% .mutualRecursiveFamily_mk famB
-    (value := .record _ (.cons (.nat_mk 7) (.cons aNil .nil)))
+def bOne :=
+  (.mutualRecursiveFamily_mk famB
+     (value := .record _ (.cons (.nat_mk 7) (.cons aNil .nil))) :
+    Term recEmptySig [] _ tyB .ctor)
 
 /-- An `A` built from that `B`. -/
-def aOne : Term recEmptySig [] 0 tyA .ctor :=
-  indexed% .mutualRecursiveFamily_mk famA (value := .ctors _ 1 (fields := .cons bOne .nil))
+def aOne :=
+  (.mutualRecursiveFamily_mk famA (value := .ctors _ 1 (fields := .cons bOne .nil)) :
+    Term recEmptySig [] _ tyA .ctor)
 
 /-- The natural a `B` holds: a record member has one branch, which binds its fields. -/
-def bLabel : Term recEmptySig [] 0 (tyB ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_casesOn (.var (v♯0)) (.record (.var (v♯0))))
+def bLabel :=
+  (.lam (.mutualRecursiveFamily_casesOn (.var (v♯0)) (.record (.var (v♯0)))) :
+    Term recEmptySig [] _ (tyB ⇒ TyWf.prim .nat) .lam)
 
 /-- Is an `A` the field-less constructor?  A dispatch on every constructor of the member
     `A` is. -/
-def aIsNil : Term recEmptySig [] 0 (tyA ⇒ TyWf.prim .bool) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_casesOn (.var (v♯0))
-    (.ctors (.skip (.bool_mk true) (.here (.bool_mk false) .nil))))
+def aIsNil :=
+  (.lam (.mutualRecursiveFamily_casesOn (.var (v♯0))
+     (.ctors (.skip (.bool_mk true) (.here (.bool_mk false) .nil)))) :
+    Term recEmptySig [] _ (tyA ⇒ TyWf.prim .bool) .lam)
 
 /-- The same, written as a dispatch on the one constructor that has a field, with a
     default for the other. -/
-def aIsNil' : Term recEmptySig [] 0 (tyA ⇒ TyWf.prim .bool) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_casesOnWithDefault (.var (v♯0))
-    (.ctors (.last 1 (branch := .bool_mk false))) (.bool_mk true))
+def aIsNil' :=
+  (.lam (.mutualRecursiveFamily_casesOnWithDefault (.var (v♯0))
+     (.ctors (.last 1 (branch := .bool_mk false))) (.bool_mk true)) :
+    Term recEmptySig [] _ (tyA ⇒ TyWf.prim .bool) .lam)
 
 /-- **A fold over the whole family**: branches for *both* members, in declaration order.
     The `A` branch that holds a `B` binds it at index `0` and the value of the fold at it
     at index `1`; the `B` branch binds its natural at index `0`, its `A` at index `1` and
     the value of the fold at that `A` at index `2`. -/
-def famFold : Term recEmptySig [] 0 (tyA ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
-    (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil)))
-      (.cons (.record (.here (.var (v♯2)))) .nil)))
+def famFold :=
+  (.lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
+     (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil)))
+       (.cons (.record (.here (.var (v♯2)))) .nil))) :
+    Term recEmptySig [] _ (tyA ⇒ TyWf.prim .nat) .lam)
 
 /-! ## The branch families match the constructors of the type
 
@@ -219,12 +236,13 @@ constructors run out, does not elaborate. -/
 error: Unknown constant `LeanScript.CtorsWithPayloadCases.nil`
 
 Note: Inferred this name from the expected resulting type of `.nil`:
-  CtorsWithPayloadCases ?m.45 ?m.46 ?m.43 ?m.41 (TyWf.prim LeanPrimTy.nat)
+  CtorsWithPayloadCases ?m.42 ?m.43 ?m.40 ?m.38 (TyWf.prim LeanPrimTy.nat)
 -/
 #guard_msgs (error) in
-def natHeadNotExhaustive : Term recEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.recTaggedUnion_casesOn (.var (v♯0))
-    (.skip (.nat_mk 0) (.skip (.nat_mk 0) .nil)))
+def natHeadNotExhaustive :=
+  (.lam (.recTaggedUnion_casesOn (.var (v♯0))
+     (.skip (.nat_mk 0) (.skip (.nat_mk 0) .nil))) :
+    Term recEmptySig [] _ (natListTy ⇒ TyWf.prim .nat) .lam)
 
 -- A fold over the family needs the branches of **every** member: a list that stops after
 -- the first does not elaborate.
@@ -232,10 +250,10 @@ def natHeadNotExhaustive : Term recEmptySig [] 0 (natListTy ⇒ TyWf.prim .nat) 
 error: Application type mismatch: The argument
   FamilyFoldKCases.nil
 has type
-  FamilyFoldKCases ?m.112 ?m.113 ?m.114 ?m.115 ?m.116 0 ?m.117 [] ?m.118
+  FamilyFoldKCases ?m.109 ?m.110 ?m.111 ?m.112 ?m.113 0 ?m.114 [] ?m.115
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    ?m.40 (TyWf.prim LeanPrimTy.nat) [memberB] 0
+    ?m.117 (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
   FamilyFoldKCases.cons
     (FamilyMemberFoldKCases.ctors
@@ -245,9 +263,10 @@ in the application
     FamilyFoldKCases.nil
 -/
 #guard_msgs (error) in
-def famFoldPartial : Term recEmptySig [] 0 (tyA ⇒ TyWf.prim .nat) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
-    (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil))) .nil))
+def famFoldPartial :=
+  (.lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
+     (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil))) .nil)) :
+    Term recEmptySig [] _ (tyA ⇒ TyWf.prim .nat) .lam)
 
 /-! ## An introduction form builds a value of a **type**
 

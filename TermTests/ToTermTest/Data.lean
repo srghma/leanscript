@@ -36,13 +36,13 @@ def usesB : Nat := twiceB 2
 
 def usesAagain : Nat := twiceA 5
 
-def usesA_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesA
+def usesA_term := (#leanscript_to_term usesA : Term sigAdd [] _ (TyWf.prim .nat) .comp)
 
 /-- `twiceB` has the shape of `twiceA`, which is translated already. -/
-def usesB_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesB
+def usesB_term := (#leanscript_to_term usesB : Term sigAdd [] _ (TyWf.prim .nat) .comp)
 
 /-- `twiceA` is translated already: this is a plain cache hit. -/
-def usesAagain_term : Term sigAdd [] 0 (TyWf.prim .nat) .comp := #leanscript_to_term usesAagain
+def usesAagain_term := (#leanscript_to_term usesAagain : Term sigAdd [] _ (TyWf.prim .nat) .comp)
 
 example : runAdd usesA_term = 4 := rfl
 example : runAdd usesB_term = 4 := rfl
@@ -68,34 +68,38 @@ def widthOf (s : Shape) : Nat :=
   | .circle r => r
   | .rect w _ => w
 
-def widthOf_term : Term sig0 [] 0 (tyWfOf Shape ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term widthOf
+def widthOf_term :=
+  (#leanscript_to_term widthOf :
+    Term sig0 [] _ (tyWfOf Shape ⇒ TyWf.prim .nat) .lam)
 
 def aRect : Shape := .rect 3 4
 
-def aRect_term : Term sig0 [] 0 (tyWfOf Shape) .ctor := #leanscript_to_term aRect
+def aRect_term := (#leanscript_to_term aRect : Term sig0 [] _ (tyWfOf Shape) .ctor)
 
 example : run widthOf_term (run aRect_term) = 3 := rfl
 
 def swap (p : Nat × Bool) : Bool × Nat := (p.2, p.1)
 
-def swap_term : Term sig0 [] 0 (tyWfOf (Nat × Bool) ⇒ tyWfOf (Bool × Nat)) .lam :=
-  #leanscript_to_term swap
+def swap_term :=
+  (#leanscript_to_term swap :
+    Term sig0 [] _ (tyWfOf (Nat × Bool) ⇒ tyWfOf (Bool × Nat)) .lam)
 
 def aPair : Nat × Bool := (7, true)
 
-def aPair_term : Term sig0 [] 0 (tyWfOf (Nat × Bool)) .ctor := #leanscript_to_term aPair
+def aPair_term := (#leanscript_to_term aPair : Term sig0 [] _ (tyWfOf (Nat × Bool)) .ctor)
 
 example : (run swap_term (run aPair_term)).1 = true := rfl
 example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := rfl
 
 @[inline] def delayed : Thunk Nat := Thunk.mk (fun _ => 6)
 
-def delayed_term : Term sig0 [] 0 (TyWf.thunk (TyWf.prim .nat)) .ctor := #leanscript_to_term delayed
+def delayed_term :=
+  (#leanscript_to_term delayed :
+    Term sig0 [] _ (TyWf.thunk (TyWf.prim .nat)) .ctor)
 
 def forced : Nat := delayed.get
 
-def forced_term : Term sig0 [] 0 (TyWf.prim .nat) .lit := #leanscript_to_term forced
+def forced_term := (#leanscript_to_term forced : Term sig0 [] _ (TyWf.prim .nat) .lit)
 
 example : run forced_term = 6 := rfl
 
@@ -106,7 +110,7 @@ translation can be written with no type ascription at all. -/
 
 def inferred_term := #leanscript_to_term (sig := sigAdd) sumUpTo
 
-example : runAdd ⟨inferred_term⟩ 4 = 6 := rfl
+example : runAdd inferred_term 4 = 6 := rfl
 
 
 end TermTests.ToTerm

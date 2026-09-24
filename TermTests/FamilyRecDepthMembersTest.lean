@@ -1,6 +1,5 @@
 module
 
-public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import TermTests.FamilyRecDepthTest
@@ -204,8 +203,9 @@ def evFibCases :=
 
 /-- **`fib` over a family whose members mention each other**: the depth-one fold, whose
     every deeper look crosses to the other member. -/
-def evFibTerm : Term sigAdd [] 0 (evTy ⇒ natT) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) evFibCases)
+def evFibTerm :=
+  (.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) evFibCases) :
+    Term sigAdd [] _ (evTy ⇒ natT) .lam)
 
 /-! ## 2. The other two member shapes: a record member and a newtype member
 
@@ -372,8 +372,9 @@ def nodeFibCases :=
 
 /-- `Node.fib`, as a term: the depth-one fold of a family of a record, a union and a
     newtype. -/
-def nodeFibTerm : Term sigAdd [] 0 (nodeTy ⇒ natT) .lam :=
-  indexed% .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases)
+def nodeFibTerm :=
+  (.lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases) :
+    Term sigAdd [] _ (nodeTy ⇒ natT) .lam)
 
 /-! ## 3. What the evaluator says about these terms
 

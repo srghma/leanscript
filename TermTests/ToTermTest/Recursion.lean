@@ -1,7 +1,6 @@
 module
 
 public import TermTests.ToTermTest.Data
-public meta import LeanScript.Expr.Indexed
 public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
@@ -35,23 +34,24 @@ def isRed (c : Colour) : Bool :=
   | .red => true
   | _ => false
 
-def isRed_term : Term sig0 [] 0 (tyWfOf Colour ⇒ TyWf.prim .bool) .lam :=
-  #leanscript_to_term isRed
+def isRed_term :=
+  (#leanscript_to_term isRed :
+    Term sig0 [] _ (tyWfOf Colour ⇒ TyWf.prim .bool) .lam)
 
 def red : Colour := .red
 
-def red_term : Term sig0 [] 0 (tyWfOf Colour) .lit := #leanscript_to_term red
+def red_term := (#leanscript_to_term red : Term sig0 [] _ (tyWfOf Colour) .lit)
 
 def green : Colour := .green
 
-def green_term : Term sig0 [] 0 (tyWfOf Colour) .lit := #leanscript_to_term green
+def green_term := (#leanscript_to_term green : Term sig0 [] _ (tyWfOf Colour) .lit)
 
 example : run isRed_term (run red_term) = true := rfl
 example : run isRed_term (run green_term) = false := rfl
 
 /-- The dispatch is the partial one: it names the constructor `red` and nothing else. -/
 example : isRed_term =
-    indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
+    .lam (.enum_casesOnWithDefault (.var (v♯0))
       (.last ⟨0, by decide⟩ (.bool_mk true)) (.bool_mk false)) := rfl
 
 /-- A tagged union with three constructors, two of which share the wildcard's branch. -/
@@ -66,16 +66,17 @@ def widthOrZero (s : Sized) : Nat :=
   | .box w _ => w
   | _ => 0
 
-def widthOrZero_term : Term sig0 [] 0 (tyWfOf Sized ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term widthOrZero
+def widthOrZero_term :=
+  (#leanscript_to_term widthOrZero :
+    Term sig0 [] _ (tyWfOf Sized ⇒ TyWf.prim .nat) .lam)
 
 def aBox : Sized := .box 3 4
 
-def aBox_term : Term sig0 [] 0 (tyWfOf Sized) .ctor := #leanscript_to_term aBox
+def aBox_term := (#leanscript_to_term aBox : Term sig0 [] _ (tyWfOf Sized) .ctor)
 
 def aPoint : Sized := .point
 
-def aPoint_term : Term sig0 [] 0 (tyWfOf Sized) .ctor := #leanscript_to_term aPoint
+def aPoint_term := (#leanscript_to_term aPoint : Term sig0 [] _ (tyWfOf Sized) .ctor)
 
 example : run widthOrZero_term (run aBox_term) = 3 := rfl
 example : run widthOrZero_term (run aPoint_term) = 0 := rfl
@@ -84,7 +85,7 @@ example : run widthOrZero_term (run aPoint_term) = 0 := rfl
     is no default branch to reach.  `colourCode` above is one, and this pins that its
     translation is `enum_casesOn`. -/
 example : colourCode_term =
-    indexed% .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) := rfl
+    .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) := rfl
 
 /-! ## A recursion Lean compiled through `brecOn`
 
@@ -99,8 +100,9 @@ def sumDown : Nat → Nat
   | 0 => 0
   | n + 1 => n + sumDown n
 
-def sumDown_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term sumDown
+def sumDown_term :=
+  (#leanscript_to_term sumDown :
+    Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd sumDown_term 4 = 6 := rfl
 
@@ -112,8 +114,9 @@ def constDown : Nat → Nat
   | 0 => 7
   | n + 1 => constDown n
 
-def constDown_term : Term sig0 [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term constDown
+def constDown_term :=
+  (#leanscript_to_term constDown :
+    Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : run constDown_term 5 = 7 := rfl
 
@@ -124,8 +127,9 @@ def sumL : List Nat → Nat
   | [] => 0
   | x :: xs => x + sumL xs
 
-def sumL_term : Term sigAdd [] 0 (tyWfOf (List Nat) ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term sumL
+def sumL_term :=
+  (#leanscript_to_term sumL :
+    Term sigAdd [] _ (tyWfOf (List Nat) ⇒ TyWf.prim .nat) .lam)
 
 example : sumL_term = sumList_term := rfl
 
@@ -143,8 +147,7 @@ def fib : Nat → Nat
   | 1 => 1
   | n + 2 => fib n + fib (n + 1)
 
-def fib_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term fib
+def fib_term := (#leanscript_to_term fib : Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd fib_term 0 = 0 := rfl
 example : runAdd fib_term 1 = 1 := rfl
@@ -158,8 +161,9 @@ def trib : Nat → Nat
   | 2 => 1
   | n + 3 => trib n + trib (n + 1) + trib (n + 2)
 
-def trib_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  #leanscript_to_term trib
+def trib_term :=
+  (#leanscript_to_term trib :
+    Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd trib_term 10 = trib 10 := rfl
 

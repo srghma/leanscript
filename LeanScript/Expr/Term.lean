@@ -1202,22 +1202,20 @@ end
 /-! ## Writing down the type of a term
 
 `LeanScript.Term` carries its grade vector and its head as indices, and a declaration that
-holds a term states both in its type, so they can be read off the declaration:
+holds a term keeps both in its type, where they can be read (`#check`, hovering):
 
 ```lean
-def idNat : Term sg [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := indexed% .lam (.var (v♯0))
+def idNat := (.lam (.var (v♯0)) : Term sg [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
+-- idNat : Term sg [] (Usage.single (v♯0)).tail (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam
 ```
 
-The grade vector of a **closed** term written out of the constructors is `0`, and by
-computation: a context with no variables has nothing to count, and the vector the
-constructors compute (`(Usage.single (v♯0)).tail` for `idNat`) reduces to `0` at every
-variable it is asked about, so `0` is accepted where it is expected.  (A term whose grade
-vector is itself a variable is another matter: that one has to be stated as it is.)  The head is checked too: a declaration
-that states the wrong one does not elaborate.
+The head is written out, and checked: a declaration that states a head its term does not
+have does not elaborate.  The grade vector is left to the constructors (`_`), which
+compute it; the type of the declaration is then the one the term was built with.
 
-A term written out by hand goes through `indexed%` (`LeanScript.Expr.Indexed`), which
-elaborates it with its indices inferred before comparing them with the stated ones;
-`#leanscript_to_term` does that by itself. -/
+(The grade vector of a closed term reduces to `0`, but only by unfolding the grades of
+every subterm, which the elaborator does again at every reduction that goes through the
+declaration; a closed term's vector is therefore not restated as `0`.) -/
 
 end LeanScript
 
