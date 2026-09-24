@@ -46,8 +46,8 @@ context are used.
 | a `match` that leaves constructors out | `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` |
 | `Nat.rec`, `List.rec` (non-dependent motive), a structural recursion Lean compiled through `Nat.brecOn` / `List.brecOn` | `nat_rec`, `recTaggedUnion_rec 0` — or `nat_casesOn` / `recTaggedUnion_casesOn`, when the branch does not use the value of the fold |
 | a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
-| `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TyTests/ArrayRecToTermTest.lean` |
-| a recursion on a **list** that descends `k + 1` constructors | *not read yet*: the node for it is `recTaggedUnion_rec k`, which `TyTests/RecUnionRecDepthTest.lean` writes out |
+| `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TermTests/ArrayRecToTermTest.lean` |
+| a recursion on a **list** that descends `k + 1` constructors | *not read yet*: the node for it is `recTaggedUnion_rec k`, which `TermTests/RecUnionRecDepthTest.lean` writes out |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | a name of the signature | `global` |
@@ -147,7 +147,7 @@ def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
   layout hole by hole, and two different layouts as `TyWf.oneOf`, the tagged union with one
   constructor per layout, into which each branch is injected.
 
-This is `LeanScript.ToTerm.Existential`.  `TyTests/InductiveTypesTest/Existentials.lean`
+This is `LeanScript.ToTerm.Existential`.  `TermTests/InductiveTypesTest/Existentials.lean`
 translates `mixedProcess` and `varyingProcess` and checks, by `rfl`, what they evaluate to.
 
 ## The cache
@@ -163,7 +163,7 @@ call sites point at one tree in memory.  `#leanscript_to_term_cache_stats` repor
 many entries, cache hits and shape merges there have been, and
 `#leanscript_to_term_cache_clear` empties the cache.
 
-`TyTests/ToTermTest/` runs all of this: it translates about twenty definitions and
+`TermTests/ToTermTest/` runs all of this: it translates about twenty definitions and
 checks, by the kernel, that `LeanScript.Term.eval` gives each translation the value the
 Lean definition has — the lists included, whose values are read back with
 `LeanScript.Ty.DenRec.toList` — and it pins what the translation refuses.

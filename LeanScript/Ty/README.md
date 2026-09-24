@@ -50,3 +50,6 @@ type; `TyTests/CrossModuleSharingTest.lean` — that the sharing spans modules;
 `TyTests/WfTest.lean` — what `Ty.Wf` admits and refuses;
 `TyTests/DocumentedMistakesTest.lean` — every defect of the earlier representations with
 the theorem or the message that excludes it now.
+
+Tests of terms, evaluation and `#leanscript_to_term` (including
+`TermTests/InductiveTypesTest/Existentials.lean`) live in `TermTests/`.
