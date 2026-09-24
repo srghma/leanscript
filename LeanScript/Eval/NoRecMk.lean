@@ -18,28 +18,28 @@ namespace LeanScript
 
 /-! ## The fragment the evaluator interprets
 
-`LeanScript.Ty.Den` gives the four recursive shapes of `Ty` **no values**: each of them
-denotes `PEmpty`.  That is a model of the language without recursive data, and it is the
-model this evaluator works in, so the one thing it cannot do is *build* a value of a
-recursive type — `Term.recTaggedUnion_mk`, `Term.recObject_mk`, `Term.recAlias_mk` and
-`Term.mutualRecursiveFamily_mk` have no image in it.  Everything else does, the four
-eliminators of those shapes included: their scrutinee has no values, so a dispatch on one
-is `PEmpty.elim`.
+`LeanScript.Ty.Den` gives a recursive **tagged union** its values — the W-tree of its
+constructors — but gives the other three recursive shapes of `Ty` (`Ty.recObject`,
+`Ty.recAlias`, `Ty.mutualRecursiveFamily`) **no values**: each of them denotes `PEmpty`.
+So the one thing this evaluator cannot do is *build* a value of one of those three —
+`Term.recObject_mk`, `Term.recAlias_mk` and `Term.mutualRecursiveFamily_mk` have no image
+in the model.  Everything else does, the eliminators of those shapes included: their
+scrutinee has no values, so a dispatch on one is `PEmpty.elim`.
 
-`Term.NoRecMk t` says that `t` builds no recursive value: it is `False` at exactly those
-four constructors and the conjunction of its subterms' everywhere else, so a term that
+`Term.NoRecMk t` says that `t` builds no such value: it is `False` at exactly those three
+constructors and the conjunction of its subterms' everywhere else — the four forms of a
+recursive tagged union included, whose branches really are evaluated — so a term that
 does not mention them at all satisfies it by `no_rec_mk`, which is the default of the
 hypothesis on `Term.run` and `Term.run'`.
 
-A model in which the recursive shapes *do* have values needs the least fixpoint of the
-functor a binder's payload describes, which is a construction (a container, and its
-`WType`) this module does not have; until it is here, the restriction is stated rather
-than assumed. -/
+Giving the other three shapes their values needs the same construction as for a
+recursive tagged union (a container and its W-type; an *indexed* one for a mutual
+family); until it is here, the restriction is stated rather than assumed. -/
 
 mutual
 
-/-- The term builds no value of a recursive shape, so `Term.eval` can interpret it.  See
-    this section's header. -/
+/-- The term builds no value of a recursive record, newtype or mutual family, so
+    `Term.eval` can interpret it.  See this section's header. -/
 def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → Prop
   | _, _, .lam body => Term.NoRecMk body
   | _, _, .ap f a => Term.NoRecMk f ∧ Term.NoRecMk a
@@ -87,12 +87,16 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   | _, _, .taggedUnion_casesOn v cases => Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
   | _, _, .taggedUnion_casesOnWithDefault v cases dflt _ =>
       Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
-  -- the recursive shapes: an introduction form has no value in this model, and an
-  -- eliminator needs nothing of its branches, since its scrutinee has none either
-  | _, _, .recTaggedUnion_mk _ _ _ _ _ => False
-  | _, _, .recTaggedUnion_casesOn v _ => Term.NoRecMk v
-  | _, _, .recTaggedUnion_casesOnWithDefault v _ _ _ => Term.NoRecMk v
-  | _, _, .recTaggedUnion_rec _ v _ => Term.NoRecMk v
+  -- recursive tagged unions have values: their forms are interpreted like the others
+  | _, _, .recTaggedUnion_mk _ _ _ _ fields => Spine.NoRecMk fields
+  | _, _, .recTaggedUnion_casesOn v cases =>
+      Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
+  | _, _, .recTaggedUnion_casesOnWithDefault v cases dflt _ =>
+      Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
+  | _, _, .recTaggedUnion_rec _ v cases =>
+      Term.NoRecMk v ∧ TaggedUnionFoldKCases.NoRecMk cases
+  -- the other three recursive shapes: an introduction form has no value in this model,
+  -- and an eliminator needs nothing of its branches, since its scrutinee has none either
   | _, _, .recObject_mk _ _ _ => False
   | _, _, .recObject_casesOn v _ => Term.NoRecMk v
   | _, _, .recObject_rec _ v _ => Term.NoRecMk v
@@ -167,11 +171,49 @@ def EnumSomeCases.NoRecMk {Sg : Sig} :
   | _, _, _, _, _, .cons _ branch rest _ =>
       Term.NoRecMk branch ∧ EnumSomeCases.NoRecMk rest
 
+/-- `Term.NoRecMk`, on one branch of a depth-`k` fold of a recursive tagged union. -/
+def FoldKBranch.NoRecMk {Sg : Sig} :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {fs : List (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    FoldKBranch Sg l₀ bind Γ fs τ k → Prop
+  | _, _, _, _, _, _, .here body => Term.NoRecMk body
+  | _, _, _, _, _, _, .deep _ cases => TaggedUnionFoldKCases.NoRecMk cases
+
+/-- `Term.NoRecMk`, on the branches of a depth-`k` fold of a recursive tagged union. -/
+def TaggedUnionFoldKCases.NoRecMk {Sg : Sig} :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {l : LeanTaggedUnionSchema (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    TaggedUnionFoldKCases Sg l₀ bind Γ l τ k → Prop
+  | _, _, _, _, _, _, .payloadFirst b0 b1 rest =>
+      FoldKBranch.NoRecMk b0 ∧ FoldKBranch.NoRecMk b1 ∧ TaggedUnionFoldKCasesRest.NoRecMk rest
+  | _, _, _, _, _, _, .skip b0 rest =>
+      FoldKBranch.NoRecMk b0 ∧ CtorsWithPayloadFoldKCases.NoRecMk rest
+
+/-- `Term.NoRecMk`, on the fold branches of the constructors that follow a field-less
+    one. -/
+def CtorsWithPayloadFoldKCases.NoRecMk {Sg : Sig} :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {c : CtorsWithPayload (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    CtorsWithPayloadFoldKCases Sg l₀ bind Γ c τ k → Prop
+  | _, _, _, _, _, _, .here b rest =>
+      FoldKBranch.NoRecMk b ∧ TaggedUnionFoldKCasesRest.NoRecMk rest
+  | _, _, _, _, _, _, .skip b rest =>
+      FoldKBranch.NoRecMk b ∧ CtorsWithPayloadFoldKCases.NoRecMk rest
+
+/-- `Term.NoRecMk`, on a plain list of fold branches. -/
+def TaggedUnionFoldKCasesRest.NoRecMk {Sg : Sig} :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {cs : List (List (TyWfIn 1))} → {τ : TyWf} → {k : Nat} →
+    TaggedUnionFoldKCasesRest Sg l₀ bind Γ cs τ k → Prop
+  | _, _, _, _, _, _, .nil => True
+  | _, _, _, _, _, _, .cons b rest =>
+      FoldKBranch.NoRecMk b ∧ TaggedUnionFoldKCasesRest.NoRecMk rest
+
 end
 
-/-- Prove that a term builds no value of a recursive shape.  A term written out builds
-    none unless one of the four introduction forms is in it, and then the goal is
-    `False` and the tactic fails, which is the honest answer. -/
+/-- Prove that a term builds no value of a recursive record, newtype or mutual family.  A
+    term written out builds none unless one of those three introduction forms is in it,
+    and then the goal is `False` and the tactic fails, which is the honest answer. -/
 macro "no_rec_mk" : tactic =>
   `(tactic| repeat' first | exact trivial | refine And.intro ?_ ?_)
 

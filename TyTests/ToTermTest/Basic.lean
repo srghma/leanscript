@@ -182,9 +182,8 @@ which is the tree of its `LeanScriptTyWf` instance.  So `[]` and `hd :: tl` tran
 `List.rec` to `Term.recTaggedUnion_rec`.  Unlike an array literal, a list does not have
 to be written out: `prepend` below builds one from a variable tail.
 
-`Ty.Den` gives a recursive tree no values, so these terms are outside the fragment the
-evaluator interprets (`Term.NoRecMk`) and cannot be run; each one is checked by its type
-instead, which is what says the translation is well typed. -/
+A value of a list is a W-tree of its constructors (`LeanScript.Ty.Den`), so these terms
+run like any other; `Ty.DenRec.toList` reads a list back as a Lean list to compare it. -/
 
 def digitList : List Nat := [1, 2, 3]
 
@@ -203,6 +202,12 @@ def firstOrZero (l : List Nat) : Nat :=
 
 def firstOrZero_term : Term sig0 [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term firstOrZero
+
+example : Ty.DenRec.toList (.prim .nat) (run digitList_term) = [1, 2, 3] := by decide
+example : Ty.DenRec.toList (.prim .nat) (run prepend_term 7 (run digitList_term)) =
+    [7, 1, 2, 3] := by decide
+example : run firstOrZero_term (run digitList_term) = 1 := by decide
+example : run firstOrZero_term (run prepend_term 7 (run digitList_term)) = 7 := by decide
 
 /-- A `match` that does not recur is a case analysis: this is `nat_casesOn`. -/
 def pred (n : Nat) : Nat :=
@@ -241,10 +246,11 @@ noncomputable def sumList (l : List Nat) : Nat :=
   List.rec 0 (fun hd _tl ih => hd + ih) l
 
 /-- The fold over a list, which is `Term.recTaggedUnion_rec`: its `cons` branch binds the
-    head, the tail and the value of the fold at the tail.  A recursive tree has no
-    values, so this term is not one the evaluator runs. -/
+    head, the tail and the value of the fold at the tail. -/
 def sumList_term : Term sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumList
+
+example : runAdd sumList_term (run digitList_term) = 6 := by decide
 
 end TyTests.ToTerm
 

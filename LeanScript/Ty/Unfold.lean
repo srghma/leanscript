@@ -62,7 +62,7 @@ def substOcc (s : Ty) (m : Nat → Ty) : Ty → Ty
 /-- `Ty.substOcc`, on a node. -/
 def substOccShape (s : Ty) (m : Nat → Ty) : TyShape Ty → TyShape Ty
   | .prim p => .prim p
-  | .fn a b => .fn (substOcc s m a) (substOcc s m b)
+  | .fn a b => .fn a (substOcc s m b)
   | .primCovariant c => .primCovariant (substOccCov s m c)
   | .enum e => .enum e
   | .record fs => .record (substOccRecord s m fs)
@@ -148,18 +148,6 @@ theorem substOccTU_eq_map (s : Ty) (m : Nat → Ty) (l : LeanTaggedUnionSchema T
         substOccList_eq_map, substOccCtors_eq_map]
   | skip c =>
       simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map]
-
-theorem substOccShape_eq_map (s : Ty) (m : Nat → Ty) (sh : TyShape Ty) :
-    substOccShape s m sh = sh.map (substOcc s m) := by
-  cases sh with
-  | prim => rfl
-  | fn _ _ => rfl
-  | primCovariant c =>
-      cases c <;> simp only [substOccShape, substOccCov, TyShape.map,
-        LeanPrimTyCovariant.map]
-  | enum => rfl
-  | record _ => simp only [substOccShape, TyShape.map, substOccRecord_eq_map]
-  | taggedUnion _ => simp only [substOccShape, TyShape.map, substOccTU_eq_map]
 
 /-! ## The two scopes
 

@@ -89,8 +89,8 @@ theorem wf_substOcc {S : Ty} (hS : Wf S) {m : Nat → Ty} :
       (try intro _); exact .mutualRecursiveFamily hw ho hh
   | prim => (try intro _); exact .prim
   | enum => (try intro _); exact .enum
-  | fn _ _ iha ihb =>
-      (try intro _); exact .fn (iha (by omega)) (ihb (by assumption))
+  | fn ha _ _ ihb =>
+      (try intro _); exact .fn ha (ihb (by assumption))
   | @primCovariant _ s _ ih =>
       (try intro _)
       cases s with
@@ -137,8 +137,8 @@ theorem wf_substOccFam {S : Ty} {m : Nat → Ty} (hm : ∀ i, Wf (m i)) :
       (try intro _); exact .mutualRecursiveFamily hw ho hh
   | prim => (try intro _); exact .prim
   | enum => (try intro _); exact .enum
-  | fn _ _ iha ihb =>
-      (try intro _); exact .fn (iha (by omega)) (ihb (by assumption))
+  | fn ha _ _ ihb =>
+      (try intro _); exact .fn ha (ihb (by assumption))
   | @primCovariant _ s _ ih =>
       (try intro _)
       cases s with

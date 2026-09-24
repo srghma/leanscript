@@ -60,9 +60,10 @@ array literal translates and a non-literal array does not.  `List α` is the tre
 not have to be written out.
 
 The two are not interchangeable, and neither `Array.toList` nor a `match` on an array has
-a term.  Note also that `LeanScript.Ty.Den` gives a recursive tree no values, so a
-translated list is outside the fragment `LeanScript.Term.eval` interprets
-(`LeanScript.Term.NoRecMk`): it is checked by its type, not run.
+a term.  A list is a recursive tagged union, which `LeanScript.Ty.Den` gives the W-tree
+of its constructors as values, so a translated list program is run by
+`LeanScript.Term.eval` like any other, and `LeanScript.Ty.DenRec.toList` reads a list
+back as a Lean list.
 
 ## Which calls are allowed
 
@@ -160,8 +161,8 @@ many entries, cache hits and shape merges there have been, and
 
 `TyTests/ToTermTest/` runs all of this: it translates about twenty definitions and
 checks, by the kernel, that `LeanScript.Term.eval` gives each translation the value the
-Lean definition has — except for the lists, which have no values and are checked by their
-types — and it pins what the translation refuses.
+Lean definition has — the lists included, whose values are read back with
+`LeanScript.Ty.DenRec.toList` — and it pins what the translation refuses.
 
 The translation itself is split across the modules of this directory:
 `LeanScript.ToTerm.ObjectExpr` (the expressions of the object language),

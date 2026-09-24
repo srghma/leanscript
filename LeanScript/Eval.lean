@@ -3,6 +3,7 @@ module
 public import LeanScript.Eval.Env
 public import LeanScript.Eval.NoRecMk
 public import LeanScript.Eval.Extern
+public import LeanScript.Den.Rec
 
 @[expose] public section
 
@@ -24,10 +25,18 @@ terminates on every input — there is no fuel, no `partial` and no `unsafe`, an
 answer is a value rather than a computation that might not stop.
 
 It has one restriction, and it is a restriction of the *model* rather than of the
-language: `LeanScript.Ty.Den` gives the four recursive shapes no values, so a term that
-**builds** one has no value here.  That is the hypothesis `LeanScript.Term.NoRecMk`, the
-last argument of `Term.eval`; the section below states it and the tactic `no_rec_mk`
-discharges it for a term that does not use those four introduction forms.
+language: `LeanScript.Ty.Den` gives a recursive **record**, a recursive **newtype** and a
+**mutual family** no values, so a term that **builds** one has no value here.  That is the
+hypothesis `LeanScript.Term.NoRecMk`, the last argument of `Term.eval`; the tactic
+`no_rec_mk` discharges it for a term that does not use those three introduction forms.  A
+recursive **tagged union** does have values — the W-tree of its constructors — and all
+four of its forms are interpreted: `Term.recTaggedUnion_mk` builds a node
+(`TyWf.DenRec.mk`), a dispatch takes one level off (`TyWf.DenRec.unfold`), and the fold
+of any depth `k` is `WTree.memoFold`, which computes the answer at every node once,
+bottom-up, and stores it beside the node, so a branch that looks further down reads
+answers that are already there.  All of it is structural, on the term and on the value,
+so the evaluator is still total with no fuel.  `LeanScript.RecUnionEvalFacts` states what
+it does with them.
 
 That this is possible at all is the point of the grammar: `LeanScript.Term` has no
 fixpoint constructor.  The two recursive forms it does have, `Term.nat_rec` and
@@ -59,7 +68,8 @@ mutual
     term, so it terminates on every input.
 
     The last argument is the one restriction — the term builds no value of a recursive
-    shape, which this model has none of; see the section above. -/
+    record, newtype or mutual family, which this model has none of; see the section
+    above. -/
 def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → (t : Term Sg Γ τ) → Env Γ → Term.NoRecMk t → TyWf.Den τ
   | _, _, .var v, env, _ => Env.get v env
@@ -182,12 +192,22 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env, h =>
       TaggedUnionSomeCases.eval G cases env (Term.eval G v env h.1)
         (Term.eval G dflt env h.2.2) h.2.1
-  -- the recursive shapes: no value of one is built, and one taken apart has none
-  | _, _, .recTaggedUnion_mk _ _ _ _ _, _, h => h.elim
-  | _, _, .recTaggedUnion_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, .recTaggedUnion_casesOnWithDefault v _ _ _, env, h =>
-      PEmpty.elim (Term.eval G v env h)
-  | _, _, .recTaggedUnion_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
+  -- recursive tagged unions: a value is a W-tree, taken apart one level by
+  -- `TyWf.DenRec.unfold` and folded bottom-up with every answer remembered
+  | _, _, .recTaggedUnion_mk l hwf t ht fields, env, h =>
+      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env h))
+  | _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases, env, h =>
+      TaggedUnionCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1)) h.2
+  | _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _, env, h =>
+      TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1))
+        (Term.eval G dflt env h.2.2) h.2.1
+  | _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases, env, h =>
+      WTree.memoFold
+        (fun node kids =>
+          TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) node.1.val
+            ⟨node.2, kids⟩ h.2)
+        (Term.eval G v env h.1)
+  -- the other recursive shapes: no value of one is built, and one taken apart has none
   | _, _, .recObject_mk _ _ _, _, h => h.elim
   | _, _, .recObject_casesOn v _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, .recObject_rec _ v _, env, h => PEmpty.elim (Term.eval G v env h)
@@ -314,6 +334,74 @@ def EnumSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, _, .cons j branch rest _, env, i, dflt, h =>
       if i = j then Term.eval G branch env h.1
       else EnumSomeCases.eval G rest env i dflt h.2
+
+/-- The answer of one branch of the fold of a recursive tagged union, at a node whose
+    fields are `e` — their shape, with the memo of the subtree in each hole.  An answer is
+    its term, in the environment `mkEnv` reads off the node; a deeper look takes the memo
+    of the occurrence it names and dispatches on *its* node, so every answer it reads
+    below is already stored there and nothing is recomputed. -/
+def FoldKBranch.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {fs : List (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    (br : FoldKBranch Sg l₀ bind Γ fs τ k) → Env Γ →
+    ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    RecFields l₀ τ fs → FoldKBranch.NoRecMk br → TyWf.Den τ
+  | _, _, _, _, _, _, .here body, env, mkEnv, e, h =>
+      Term.eval G body (Env.append (mkEnv _ e) env) h
+  | _, _, _, _, _, _, .deep sf cases, env, mkEnv, e, h =>
+      match selfFieldMemo sf e with
+      | .mk (node, _) kids =>
+          TaggedUnionFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv node.1.val
+            ⟨node.2, kids⟩ h
+
+/-- The answer of the fold of a recursive tagged union at a node of constructor `t`: the
+    branch of that constructor, as `TaggedUnionCases.eval` selects it. -/
+def TaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {l : LeanTaggedUnionSchema (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    (cases : TaggedUnionFoldKCases Sg l₀ bind Γ l τ k) → Env Γ →
+    ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    (t : Nat) → (Ty.ContAt (recL l) t).Ext (RecMemo l₀ τ) →
+    TaggedUnionFoldKCases.NoRecMk cases → TyWf.Den τ
+  | _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e, h =>
+      FoldKBranch.eval G b0 env mkEnv e h.1
+  | _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e, h =>
+      FoldKBranch.eval G b1 env mkEnv e h.2.1
+  | _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, n + 2, e, h =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e h.2.2
+  | _, _, _, _, _, _, .skip b0 _, env, mkEnv, 0, e, h =>
+      FoldKBranch.eval G b0 env mkEnv e h.1
+  | _, _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
+      CtorsWithPayloadFoldKCases.eval G rest env mkEnv n e h.2
+
+/-- `TaggedUnionFoldKCases.eval`, on the constructors that follow a field-less one. -/
+def CtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {c : CtorsWithPayload (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
+    (cases : CtorsWithPayloadFoldKCases Sg l₀ bind Γ c τ k) → Env Γ →
+    ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    (t : Nat) → (Ty.ContAtCP (c.map TyWfIn.toTy) t).Ext (RecMemo l₀ τ) →
+    CtorsWithPayloadFoldKCases.NoRecMk cases → TyWf.Den τ
+  | _, _, _, _, _, _, .here b _, env, mkEnv, 0, e, h => FoldKBranch.eval G b env mkEnv e h.1
+  | _, _, _, _, _, _, .here _ rest, env, mkEnv, n + 1, e, h =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e h.2
+  | _, _, _, _, _, _, .skip b _, env, mkEnv, 0, e, h => FoldKBranch.eval G b env mkEnv e h.1
+  | _, _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
+      CtorsWithPayloadFoldKCases.eval G rest env mkEnv n e h.2
+
+/-- `TaggedUnionFoldKCases.eval`, on a plain list of constructors; past the end there is
+    no node. -/
+def TaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} → {bind : List (TyWfIn 1) → List TyWf} →
+    {Γ : Ctx} → {cs : List (List (TyWfIn 1))} → {τ : TyWf} → {k : Nat} →
+    (cases : TaggedUnionFoldKCasesRest Sg l₀ bind Γ cs τ k) → Env Γ →
+    ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
+    (t : Nat) → (Ty.ContAtList (cs.map (List.map TyWfIn.toTy)) t).Ext (RecMemo l₀ τ) →
+    TaggedUnionFoldKCasesRest.NoRecMk cases → TyWf.Den τ
+  | _, _, _, _, _, _, .nil, _, _, _, e, _ => PEmpty.elim e.1
+  | _, _, _, _, _, _, .cons b _, env, mkEnv, 0, e, h => FoldKBranch.eval G b env mkEnv e h.1
+  | _, _, _, _, _, _, .cons _ rest, env, mkEnv, n + 1, e, h =>
+      TaggedUnionFoldKCasesRest.eval G rest env mkEnv n e h.2
 
 end
 

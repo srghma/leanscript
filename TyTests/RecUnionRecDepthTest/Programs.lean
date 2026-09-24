@@ -51,12 +51,12 @@ below, one for one.
 | `cont` (the continuant, over a **list** union) | `recTaggedUnion_rec 1`, descending into the *second* field | `contTerm` |
 | `fibFast` (halves its argument) | no depth reaches it | the prose at the end |
 
-**What is checked.**  `LeanScript.Ty.Den` gives a recursive shape no values — there is no
-least fixpoint in the model yet — so, exactly as in `TyTests/RecTermTest.lean`, a term
-over a recursive union is checked **by its type** rather than by running it: each
-definition below states the type of the term it builds, so the file fails to build if the
-branch a program needs cannot be written at that depth, or is written in a context other
-than the documented one.  What the contexts are is pinned separately, by the `rfl`
+**What is checked.**  Each definition states the type of the term it builds, so the file
+fails to build if the branch a program needs cannot be written at that depth, or is
+written in a context other than the documented one.  A recursive tagged union also has
+values in the model (`LeanScript.Ty.Den` gives it the W-tree of its constructors), so §7
+of `TyTests.RecUnionRecDepthTest` **runs** every term and checks it, by the kernel,
+against its Lean program.  What the contexts are is pinned separately, by the `rfl`
 examples of §1, and the Lean programs at the top of each section say what each term
 means.
 

@@ -278,23 +278,34 @@ def negativeSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 
 /-! ## What the evaluator says about them
 
-`LeanScript.Ty.Den` gives a recursive shape no values, so `LeanScript.Term.eval` is the
-evaluator of a model **without recursive data**: it interprets every term that does not
-*build* one of these values — taking one apart included, since there is nothing to take
-apart — and `LeanScript.Term.run` asks for that by its `Term.NoRecMk` hypothesis. -/
+A recursive **tagged union** has values — `LeanScript.Ty.Den` gives it the W-tree of its
+constructors — so `LeanScript.Term.eval` interprets all four of its forms, the
+introduction form included.  The other three recursive shapes still denote `PEmpty`, so
+building one of *them* is outside the model, and `Term.NoRecMk` says so. -/
 
 example : Term.NoRecMk natHead := by no_rec_mk
 example : Term.NoRecMk natFoldZero := by no_rec_mk
+example : Term.NoRecMk natNil := by no_rec_mk
 
--- Building a recursive value is outside the model, and the hypothesis says so rather
--- than the evaluator pretending to have a value for it.
-/--
-error: could not synthesize default value for parameter 'h' using tactics
----
-error: unsolved goals
-⊢ natNil.NoRecMk
--/
-#guard_msgs (error) in
-noncomputable example : TyWf.Den natListTy := Term.run GlobalEnv.nil natNil
+/-- The empty list is constructor `0`. -/
+example : (TyWf.DenRec.unfold natListSchema _ (Term.run GlobalEnv.nil natNil)).1.val = 0 :=
+  rfl
+
+/-- The one-element list `[3]` is constructor `1`. -/
+example : (TyWf.DenRec.unfold natListSchema _ (Term.run GlobalEnv.nil natOne)).1.val = 1 :=
+  rfl
+
+/-- The head of `[3]` is `3`, and the head of the empty list is the default `0`. -/
+example : Term.run GlobalEnv.nil (.ap natHead natOne) = 3 := by decide
+example : Term.run GlobalEnv.nil (.ap natHead natNil) = 0 := by decide
+
+/-- The tail of `[3]` is empty, so its head is the default. -/
+example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by decide
+
+/-- The fold that answers `0` answers `0`. -/
+example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide
+
+/-- Building a recursive **record** is still outside the model. -/
+example : ¬ Term.NoRecMk roseLeaf := fun h => h
 
 end TyTests

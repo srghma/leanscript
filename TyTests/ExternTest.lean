@@ -46,7 +46,7 @@ example (a b : String) : Term.run' (.extern (.lean_string_compare a b) :
 
 /-- An extern whose result is an `Option`: the tagged union `none | some α`. -/
 example : Term.run' (.extern (.lean_string_utf8_get_opt__String_Pos_Raw_get? "ab" ⟨1⟩) :
-    Term ⟨[], rfl⟩ [] (TyWf.option (.prim .char))) = TyWf.Den.ofOption (some 'b') :=
+    Term ⟨[], rfl⟩ [] (TyWf.option (.prim .char))) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
   rfl
 
 /-- `Nat.gcd`, as a term. -/

@@ -265,17 +265,69 @@ def contCases :
 def contTerm : Term sigAdd [] (natListTy ⇒ natT) :=
   .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
 
-/-! ## 7. What the evaluator says about these terms
+/-! ## 7. Running the terms
 
-A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is
-a term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
-apart is fine — there is nothing to take apart — while *building* one is not. -/
+A recursive tagged union has values in the model (`LeanScript.Ty.Den` gives it the W-tree
+of its constructors), so these terms run, and the kernel checks them against their Lean
+references.  The depth-`k` folds are evaluated with every answer remembered
+(`LeanScript.WTree.memo`), so a deeper look reads answers that are already there. -/
 
 example : Term.NoRecMk fibTerm := by no_rec_mk
 example : Term.NoRecMk hexaTerm := by no_rec_mk
 example : Term.NoRecMk fibTRTerm := by no_rec_mk
 example : Term.NoRecMk fibPairTerm := by no_rec_mk
 example : Term.NoRecMk contTerm := by no_rec_mk
+
+/-- The values of `add` and `mul`. -/
+def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
+
+/-- Running a closed term of `sigAdd`. -/
+local macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+
+/-- The Peano natural `n`, built by the terms `zeroTerm` and `succTerm`. -/
+def peanoVal : Nat → TyWf.Den peanoTy
+  | 0 => runP zeroTerm
+  | n + 1 => runP succTerm (peanoVal n)
+
+/-- The list of naturals `l`, built by the introduction form. -/
+def natListVal : List Nat → TyWf.Den natListTy
+  | [] => runP (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
+      Term sigAdd [] natListTy)
+  | a :: as => runP (.lam (.recTaggedUnion_mk natListSchema (t := 1)
+      (fields := .cons (.nat_mk a) (.cons (.var (v♯0)) .nil))) :
+      Term sigAdd [] (natListTy ⇒ natListTy)) (natListVal as)
+
+/-- The continuant, in Lean: the reference `contTerm` is checked against. -/
+def contRef : List Nat → Nat
+  | [] => 1
+  | [a] => a
+  | a :: b :: as => a * contRef (b :: as) + contRef as
+
+example : runP fibTerm (peanoVal 10) = 55 := by decide
+example : ∀ n, n < 10 →
+    runP fibTerm (peanoVal n) = Peano.fib (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP tribTerm (peanoVal n) = Peano.trib (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP tetraTerm (peanoVal n) = Peano.tetra (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP pentaTerm (peanoVal n) = Peano.penta (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP hexaTerm (peanoVal n) = Peano.hexa (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP fibTRTerm (peanoVal n) = Peano.fibTR (Peano.ofNat n) := by
+  decide +kernel
+example : ∀ n, n < 10 →
+    runP fibPairTerm (peanoVal n) = (Peano.fibPair (Peano.ofNat n)).1 := by
+  decide +kernel
+example : runP contTerm (natListVal [3, 1, 4, 1, 5]) = contRef [3, 1, 4, 1, 5] := by decide
+example : runP contTerm (natListVal []) = contRef [] := by decide
+example : runP contTerm (natListVal [7]) = contRef [7] := by decide
 
 /-! ## 8. A depth is needed: what cannot be written without one
 

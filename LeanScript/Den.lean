@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Ty.TyWfIn
+public import LeanScript.Den.Cont
 
 @[expose] public section
 
@@ -27,15 +28,29 @@ is the type of the values of `τ`.
 | `Ty.record fs` | the product of its fields' denotations, in declaration order |
 | `Ty.taggedUnion l` | a constructor number **with** that constructor's fields: `(t : Fin l.length) × Ty.DenAt l t` |
 
-The four recursive shapes, and the two occurrence leaves `Ty.self` and
-`Ty.familyMember`, denote `PEmpty`.  This is therefore a model of the language **without
-recursive data**: it is consistent with taking a value of a recursive shape apart (there
-is nothing to take apart) but not with building one, and `LeanScript.Term` does have
-introduction forms for all four.  `LeanScript.Term.eval` is the evaluator *of this model*
-and so carries `LeanScript.Term.NoRecMk`, the hypothesis that the term builds no such
-value; see the section of `LeanScript.Eval` that states it.  Giving the recursive shapes
-their values needs the least fixpoint of the functor a binder's payload describes, which
-is a construction this module does not have yet.
+| `Ty.recTaggedUnion l` | a **W-tree**: a node is a constructor number with that constructor's fields with their occurrences of the union blanked out, and one subtree per occurrence |
+
+## Recursive tagged unions: containers
+
+Every type is read as a **container** (`LeanScript.Cont`, in `LeanScript.Den.Cont`):
+`Ty.Cont τ` has a type of shapes and, for each shape, a type of *holes* — the places
+where the shape holds an occurrence `Ty.self` of the binder it is written under.  A
+closed type has no holes, the domain of an arrow is used as a type (`Ty.WfIn` keeps
+`Ty.self` out of it), and `Ty.Den τ` is the type of shapes, `(Ty.Cont τ).S`.  Every
+equation of the table holds by `rfl`.
+
+A recursive tagged union is then the least fixpoint of the container of its
+constructors, which is its W-type (`LeanScript.WTree`).  `LeanScript.Den.Rec` relates a
+node of it to the constructor's *unfolded* fields (`Ty.roll`, `Ty.unroll`,
+`Ty.DenRec.mk`, `Ty.DenRec.unfold`), which is what the evaluator's introduction form and
+eliminators use.
+
+The three other recursive shapes (`Ty.recObject`, `Ty.recAlias`,
+`Ty.mutualRecursiveFamily`) and the occurrence leaf `Ty.familyMember` still denote
+`PEmpty`, and `Ty.self` — which only occurs outside a binder in an ill-formed tree —
+denotes `PUnit`, the one hole.  So `LeanScript.Term.eval` still carries
+`LeanScript.Term.NoRecMk`, the hypothesis that the term builds no value of one of those
+three shapes; see the section of `LeanScript.Eval.NoRecMk` that states it.
 
 Every definition here is written the way `LeanScript.Ty.beq` is — one function per shape
 of the nested tree, all in one `mutual` block — so that each recursive call is on a
@@ -45,71 +60,104 @@ makes the equations hold definitionally, which the evaluator relies on.
 
 mutual
 
-/-- The Lean type of the values of a type of the language. -/
-@[reducible] def Ty.Den : Ty → Type
-  | .self => PEmpty
-  | .familyMember _ => PEmpty
-  | .shape s => Ty.DenShape s
-  | .recTaggedUnion _ => PEmpty
-  | .recObject _ => PEmpty
-  | .recAlias _ => PEmpty
-  | .mutualRecursiveFamily _ => PEmpty
+/-- The container a type of the language describes: its values are the shapes, and the
+    holes of a shape are the places where it holds an occurrence `Ty.self` of the binder
+    it is written under.  A closed type has no holes.  See the section header. -/
+@[reducible] def Ty.Cont : Ty → Cont
+  | .self => ⟨PUnit, fun _ => PUnit⟩
+  | .familyMember _ => Cont.const PEmpty
+  | .shape s => Ty.ContShape s
+  | .recTaggedUnion l => Cont.mu (Cont.sigma (Fin l.length) (fun t => Ty.ContAt l t.val))
+  | .recObject _ => Cont.const PEmpty
+  | .recAlias _ => Cont.const PEmpty
+  | .mutualRecursiveFamily _ => Cont.const PEmpty
+
+/-- `Ty.Cont`, on a node.  The domain of an arrow is used as a type — its holes are
+    ignored, and `LeanScript.Ty.WfIn` keeps `Ty.self` out of it anyway. -/
+@[reducible] def Ty.ContShape : TyShape Ty → Cont
+  | .prim p => Cont.const p.denote
+  | .fn a b => Cont.pi (Ty.Cont a).S (Ty.Cont b)
+  | .primCovariant c => Ty.ContCov c
+  | .enum s => Cont.const (Fin s.nOfConstructors)
+  | .record fs => Ty.ContRecord fs
+  | .taggedUnion l => Cont.sigma (Fin l.length) (fun t => Ty.ContAt l t.val)
+
+/-- `Ty.Cont`, on an array, a thunk or a lazy value. -/
+@[reducible] def Ty.ContCov : LeanPrimTyCovariant Ty → Cont
+  | .array a => Cont.list (Ty.Cont a)
+  | .thunk a => Ty.Cont a
+  | .lazy a => Ty.Cont a
+
+/-- `Ty.ContList`, on a list that has at least one entry. -/
+@[reducible] def Ty.ContNE : NonEmptyList Ty → Cont
+  | ⟨a, as⟩ => Cont.prod (Ty.Cont a) (Ty.ContList as)
+
+/-- `Ty.ContList`, on the fields of a record. -/
+@[reducible] def Ty.ContRecord : LeanRecordSchema Ty → Cont
+  | ⟨a, b, rest⟩ => Cont.prod (Ty.Cont a) (Cont.prod (Ty.Cont b) (Ty.ContList rest))
+
+/-- The product of the containers of a list of types, in order. -/
+@[reducible] def Ty.ContList : List Ty → Cont
+  | [] => Cont.const PUnit
+  | τ :: ts => Cont.prod (Ty.Cont τ) (Ty.ContList ts)
+
+/-- The container of the fields of constructor number `t` of a tagged union; out of range
+    it is empty. -/
+@[reducible] def Ty.ContAt : LeanTaggedUnionSchema Ty → Nat → Cont
+  | .payloadFirst fields _ _, 0 => Ty.ContNE fields
+  | .payloadFirst _ next _, 1 => Ty.ContList next
+  | .payloadFirst _ _ rest, n + 2 => Ty.ContAtList rest n
+  | .skip _, 0 => Cont.const PUnit
+  | .skip rest, n + 1 => Ty.ContAtCP rest n
+
+/-- `Ty.ContAt`, on the constructors that follow a field-less one. -/
+@[reducible] def Ty.ContAtCP : CtorsWithPayload Ty → Nat → Cont
+  | .here fields _, 0 => Ty.ContNE fields
+  | .here _ rest, n + 1 => Ty.ContAtList rest n
+  | .skip _, 0 => Cont.const PUnit
+  | .skip rest, n + 1 => Ty.ContAtCP rest n
+
+/-- `Ty.ContAt`, on a plain list of constructors. -/
+@[reducible] def Ty.ContAtList : List (List Ty) → Nat → Cont
+  | [], _ => Cont.const PEmpty
+  | fs :: _, 0 => Ty.ContList fs
+  | _ :: rest, n + 1 => Ty.ContAtList rest n
+
+end
+
+/-- The Lean type of the values of a type of the language: the shapes of its container. -/
+@[reducible] def Ty.Den (t : Ty) : Type := (Ty.Cont t).S
 
 /-- `Ty.Den`, on a node. -/
-@[reducible] def Ty.DenShape : TyShape Ty → Type
-  | .prim p => p.denote
-  | .fn a b => Ty.Den a → Ty.Den b
-  | .primCovariant c => Ty.DenCov c
-  | .enum s => Fin s.nOfConstructors
-  | .record fs => Ty.DenRecord fs
-  | .taggedUnion l => (t : Fin l.length) × Ty.DenAt l t.val
+@[reducible] def Ty.DenShape (s : TyShape Ty) : Type := (Ty.ContShape s).S
 
 /-- `Ty.Den`, on an array, a thunk or a lazy value.  A delay denotes the value it stands
     for: a `Term` is a total function of its environment, so forcing it twice cannot give
     two answers, and memoisation is invisible here. -/
-@[reducible] def Ty.DenCov : LeanPrimTyCovariant Ty → Type
-  | .array a => List (Ty.Den a)
-  | .thunk a => Ty.Den a
-  | .lazy a => Ty.Den a
+@[reducible] def Ty.DenCov (c : LeanPrimTyCovariant Ty) : Type := (Ty.ContCov c).S
 
 /-- `Ty.DenList`, on a list that has at least one entry. -/
-@[reducible] def Ty.DenNE : NonEmptyList Ty → Type
-  | ⟨a, as⟩ => Ty.Den a × Ty.DenList as
+@[reducible] def Ty.DenNE (xs : NonEmptyList Ty) : Type := (Ty.ContNE xs).S
 
 /-- `Ty.DenList`, on the fields of a record — of which there are at least two. -/
-@[reducible] def Ty.DenRecord : LeanRecordSchema Ty → Type
-  | ⟨a, b, rest⟩ => Ty.Den a × Ty.Den b × Ty.DenList rest
+@[reducible] def Ty.DenRecord (fs : LeanRecordSchema Ty) : Type := (Ty.ContRecord fs).S
 
 /-- The product of the denotations of a list of types, in order: an environment, the
     fields of a constructor, the arguments of a call. -/
-@[reducible] def Ty.DenList : List Ty → Type
-  | [] => PUnit
-  | τ :: ts => Ty.Den τ × Ty.DenList ts
+@[reducible] def Ty.DenList (ts : List Ty) : Type := (Ty.ContList ts).S
 
 /-- The fields of constructor number `t` of a tagged union, as a product.  Out of range
     it is `PEmpty`, which is what makes a dispatch on a union exhaustive without a
     bound. -/
-@[reducible] def Ty.DenAt : LeanTaggedUnionSchema Ty → Nat → Type
-  | .payloadFirst fields _ _, 0 => Ty.DenNE fields
-  | .payloadFirst _ next _, 1 => Ty.DenList next
-  | .payloadFirst _ _ rest, n + 2 => Ty.DenAtList rest n
-  | .skip _, 0 => PUnit
-  | .skip rest, n + 1 => Ty.DenAtCP rest n
+@[reducible] def Ty.DenAt (l : LeanTaggedUnionSchema Ty) (t : Nat) : Type :=
+  (Ty.ContAt l t).S
 
 /-- `Ty.DenAt`, on the constructors that follow a field-less one. -/
-@[reducible] def Ty.DenAtCP : CtorsWithPayload Ty → Nat → Type
-  | .here fields _, 0 => Ty.DenNE fields
-  | .here _ rest, n + 1 => Ty.DenAtList rest n
-  | .skip _, 0 => PUnit
-  | .skip rest, n + 1 => Ty.DenAtCP rest n
+@[reducible] def Ty.DenAtCP (c : CtorsWithPayload Ty) (t : Nat) : Type := (Ty.ContAtCP c t).S
 
 /-- `Ty.DenAt`, on a plain list of constructors. -/
-@[reducible] def Ty.DenAtList : List (List Ty) → Nat → Type
-  | [], _ => PEmpty
-  | fs :: _, 0 => Ty.DenList fs
-  | _ :: rest, n + 1 => Ty.DenAtList rest n
-
-end
+@[reducible] def Ty.DenAtList (cs : List (List Ty)) (t : Nat) : Type :=
+  (Ty.ContAtList cs t).S
 
 /-- The values of a tagged union: a constructor number, with exactly that constructor's
     fields.  There is no way to build one whose tag is out of range, and no way to read a
