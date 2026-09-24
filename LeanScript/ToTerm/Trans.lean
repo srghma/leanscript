@@ -2,6 +2,7 @@ module
 
 public meta import LeanScript.ToTerm.TransBrec
 public meta import LeanScript.ToTerm.TransRecObject
+public meta import LeanScript.ToTerm.TransRecUnion
 public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
@@ -232,6 +233,10 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   -- a structural recursion on a recursive record is the fold of the record
   if n.getString! == "brecOn" then
     if let some t ← transRecObjectBrecOn? trans c e n lvls args then return t
+    -- a structural recursion on a recursive tagged union other than a list is the fold
+    -- of the union, at the depth it needs
+    if n != ``List.brecOn then
+      if let some t ← transRecUnionBrecOn? trans c e n lvls args then return t
   checkConst n
   if let some t ← transIdOp? c n args then return t
   if n == ``ite then return ← transIte c args
@@ -249,7 +254,22 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if n == ``List.toArray || n == ``Array.mk then
     -- an array literal, written as the list of its elements
     return ← transListLit c e
-  if n == ``Nat.brecOn || n == ``List.brecOn then
+  if n == ``List.brecOn then
+    -- the one-step translation first (which also serves a recursion on the elements of
+    -- an array); a recursion that reads further down the list is the fold of the list
+    -- as a recursive tagged union, at the depth it needs
+    let onArray := match args[2]? with
+      | some major => (arrayOfToList? major).isSome
+      | none => false
+    try
+      return ← transBrecOn trans c e n lvls args
+    catch ex =>
+      let fallback? : Option Expr ←
+        if onArray = true then pure none else transRecUnionBrecOn? trans c e n lvls args
+      match fallback? with
+      | some t => return t
+      | none => throw ex
+  if n == ``Nat.brecOn then
     return ← transBrecOn trans c e n lvls args
   if isSparseCasesOn n then
     if let some t ← transSparseCasesOn? trans c e n lvls args then return t
