@@ -46,8 +46,9 @@ def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
 local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
 
 /-- `add a b`, for two terms in hand. -/
-def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (TyWf.prim .nat) :=
-  .ap (.ap (.global .here) a) b
+def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua (TyWf.prim .nat) ka)
+    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb) :=
+  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ (TyWf.prim .nat) _)
 
 /-- The definition every term below computes. -/
 def fib : Nat → Nat
@@ -140,7 +141,7 @@ example : runAdd fibLoopTR_term 1 0 1 = 1 := rfl
 /-- `fibTR n = fibLoopTR n 0 1`, which is the loop applied to the two starting
     accumulators.  The value of this fold is a *function*, so the kernel has a closure to
     reduce at every step and the checks are kept small. -/
-example : runAdd fibLoopTR_term 3 0 1 = 2 := rfl
+example : runAdd fibLoopTR_term 3 0 1 = 2 := by kernel_rfl
 
 /-- And the wrapper itself: `fibLoopTR` is marked `@[inline]`, so the call is built in
     place and `fibTR` translates as it is written. -/
@@ -277,24 +278,9 @@ def fibFastAux (n : Nat) : Nat × Nat :=
       (d, c + d)
 termination_by n
 
-/--
-error: overloaded, errors 
-  Type mismatch
-    TyWf.prim LeanPrimTy.nat ⇒ tyWfOf (ℕ × ℕ)
-  has type
-    TyWf
-  but is expected to have type
-    Usage []
-  
-  Type mismatch
-    (TyWf.prim LeanPrimTy.nat).toTy ⇒ (tyWfOf (ℕ × ℕ)).toTy
-  has type
-    Ty
-  but is expected to have type
-    Usage []
--/
+/-- error: `#leanscript_to_term`: well-founded recursion (WellFounded.Nat.fix) is not supported — the only folds the translation produces are `nat_rec` and `recTaggedUnion_rec`, so write the recursion as `Nat.rec` or `List.rec` with a non-dependent motive -/
 #guard_msgs (error) in
-example : Term sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
+example : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
   #leanscript_to_term fibFastAux
 
 end TermTests.NatRecDepth

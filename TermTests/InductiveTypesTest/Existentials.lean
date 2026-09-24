@@ -164,7 +164,7 @@ example (H : TyWf) : haltTy H = TyWf.fn H natT := rfl
 abbrev mixedTy : TyWf :=
   stepTy natT (optionTy natT (stepTy stringT (optionTy stringT (haltTy boolT))))
 
-example : Term sig [] mixedTy := mixedProcess_term
+example : SomeTerm sig [] mixedTy := ⟨mixedProcess_term⟩
 
 /-- `ProcessOption Nat Unit`: `nextState : Unit` is erased, and only `none` is ever built,
     so `proc` is `nat` (see above). -/
@@ -179,7 +179,7 @@ abbrev varyingProcTy : TyWf := .oneOf varyingOptUnitTy (stepTy boolT (optionTy b
     the two processes. -/
 abbrev varyingTy : TyWf := stepTy natT (optionTy natT varyingProcTy)
 
-example : Term sig [] varyingTy := varyingProcess_term
+example : SomeTerm sig [] varyingTy := ⟨varyingProcess_term⟩
 
 /-! #### What they evaluate to -/
 
@@ -187,13 +187,13 @@ example : Term sig [] varyingTy := varyingProcess_term
 local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig) env $t)
 
 /-- `mixedProcess`, with the witnesses `Nat`, `String` and `Bool` filled in. -/
-example : run mixedProcess_term =
+example : run ⟨mixedProcess_term⟩ =
     (0, fun n => ⟨⟨1, by decide⟩, (n + 1, 42,
       ("hello", fun s => ⟨⟨1, by decide⟩, (s ++ "!", 99,
         (fun b => match b with | true => 1 | false => 0), ())⟩, ()), ())⟩, ()) := rfl
 
 /-- `varyingProcess`, with the witnesses `Nat`, then `Unit` or `Bool`, filled in. -/
-example : run varyingProcess_term =
+example : run ⟨varyingProcess_term⟩ =
     (0, fun n => match n with
       | 0 => ⟨⟨1, by decide⟩, (1, 7, ⟨⟨0, by decide⟩, (⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩
       | _ + 1 => ⟨⟨1, by decide⟩, (1, 7,

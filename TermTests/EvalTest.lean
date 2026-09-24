@@ -44,27 +44,31 @@ def idNat : SomeTerm emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := ⟨.lam 
 def constNat : SomeTerm emptySig [] (TyWf.prim .nat ⇒ TyWf.prim .bool ⇒ TyWf.prim .nat) :=
   ⟨.lam (.lam (.var (v♯1)))⟩
 
-/-- `let x = 3; x`. -/
-def letThree : SomeTerm emptySig [] (TyWf.prim .nat) := ⟨.letE (.nat_mk 3) (.var (v♯0))⟩
+/-- `let x = 1 + 2; x + x`.  The bound value is a computation and the variable is used
+    twice: a `let` of a literal, or of a variable used once, is a redex, and is not a
+    term. -/
+def letSix : SomeTerm emptySig [] (TyWf.prim .nat) :=
+  ⟨.letE (.extern (.lean_nat_add 1 2))
+    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+      (fun vs => .lean_nat_add vs.1 vs.2.1))⟩
 
 /-- A call of the one declaration of `doubleSig`. -/
 def callDouble : SomeTerm doubleSig [] (TyWf.prim .nat) := ⟨.ap (.global .here) (.nat_mk 21)⟩
 
 example : run idNat 7 = 7 := rfl
 -- `Term.run'` is the same thing for a module that declares nothing.
-example : (Term.run' idNat) 7 = 7 := rfl
-example : run (.ap idNat (.nat_mk 3)) = 3 := rfl
+example : (Term.run' idNat.term) 7 = 7 := rfl
 example : run constNat 7 true = 7 := rfl
-example : run letThree = 3 := rfl
-example : Term.run doubleEnv callDouble = 42 := rfl
+example : run letSix = 6 := rfl
+example : SomeTerm.run doubleEnv callDouble = 42 := rfl
 
 /-! ## Literals -/
 
-example : run (.bitvec_mk (v := 7#8)) = 7#8 := rfl
-example : run (.string_mk "hello") = "hello" := rfl
-example : run (.char_mk 'a') = 'a' := rfl
-example : run (.int_mk (-2)) = -2 := rfl
-example : run (.uint8_mk 255) = 255 := rfl
+example : run ⟨.bitvec_mk (v := 7#8)⟩ = 7#8 := rfl
+example : run ⟨.string_mk "hello"⟩ = "hello" := rfl
+example : run ⟨.char_mk 'a'⟩ = 'a' := rfl
+example : run ⟨.int_mk (-2)⟩ = -2 := rfl
+example : run ⟨.uint8_mk 255⟩ = 255 := rfl
 
 /-! ## Eliminators of the terminal types -/
 
@@ -121,8 +125,21 @@ example : run uint8Bits 5 = 5#8 := rfl
 
 /-! ## Delays, and arrays -/
 
-example : run (.thunk_force (.thunk_mk (.nat_mk 3))) = 3 := rfl
-example : run (.lazy_force (.lazy_mk (.nat_mk 3))) = 3 := rfl
+/-- `let t := Thunk.mk (fun _ => 3); t.get + t.get`.  Forcing a delay built in place is a
+    redex, and is not a term, so the delay is bound and forced through its variable. -/
+def thunkTwice : SomeTerm emptySig [] (TyWf.prim .nat) :=
+  ⟨.letE (.thunk_mk (.nat_mk 3))
+    (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
+      (fun vs => .lean_nat_add vs.1 vs.2.1))⟩
+
+/-- The same with an unmemoised delay. -/
+def lazyTwice : SomeTerm emptySig [] (TyWf.prim .nat) :=
+  ⟨.letE (.lazy_mk (.nat_mk 3))
+    (.externCall (.cons (.lazy_force (.var (v♯0))) (.cons (.lazy_force (.var (v♯0))) .nil))
+      (fun vs => .lean_nat_add vs.1 vs.2.1))⟩
+
+example : run thunkTwice = 6 := rfl
+example : run lazyTwice = 6 := rfl
 
 /-- The array `#[1, 2, 3]`. -/
 def oneTwoThree : SomeTerm emptySig [] (TyWf.array (TyWf.prim .nat)) :=
@@ -203,15 +220,18 @@ abbrev pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .bool,
 def pair : SomeTerm emptySig [] (TyWf.record pairSchema) :=
   ⟨.record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil))⟩
 
-/-- Its first field. -/
-def pairFst : SomeTerm emptySig [] (TyWf.prim .nat) := ⟨.record_casesOn pair.term (.var (v♯0))⟩
+/-- The first projection.  Projecting out of a record built in place is a redex, and is
+    not a term, so the projections are functions, applied to the value of `pair`. -/
+def pairFst : SomeTerm emptySig [] (TyWf.record pairSchema ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.record_casesOn (.var (v♯0)) (.var (v♯0)))⟩
 
-/-- Its second field. -/
-def pairSnd : SomeTerm emptySig [] (TyWf.prim .bool) := ⟨.record_casesOn pair.term (.var (v♯1))⟩
+/-- The second projection. -/
+def pairSnd : SomeTerm emptySig [] (TyWf.record pairSchema ⇒ TyWf.prim .bool) :=
+  ⟨.lam (.record_casesOn (.var (v♯0)) (.var (v♯1)))⟩
 
 example : run pair = (3, true, PUnit.unit) := rfl
-example : run pairFst = 3 := rfl
-example : run pairSnd = true := rfl
+example : run pairFst (run pair) = 3 := rfl
+example : run pairSnd (run pair) = true := rfl
 
 /-! ## Tagged unions
 
@@ -241,10 +261,10 @@ def optNatOrZeroWithDefault : SomeTerm emptySig [] (TyWf.taggedUnion optNat ⇒ 
 example : (run someThree).1 = ⟨0, by decide⟩ := rfl
 example : (run someThree).2 = (3, PUnit.unit) := rfl
 example : (run noneNat).1 = ⟨1, by decide⟩ := rfl
-example : run (.ap optNatOrZero someThree) = 3 := rfl
-example : run (.ap optNatOrZero noneNat) = 0 := rfl
-example : run (.ap optNatOrZeroWithDefault someThree) = 3 := rfl
-example : run (.ap optNatOrZeroWithDefault noneNat) = 0 := rfl
+example : run optNatOrZero (run someThree) = 3 := rfl
+example : run optNatOrZero (run noneNat) = 0 := rfl
+example : run optNatOrZeroWithDefault (run someThree) = 3 := rfl
+example : run optNatOrZeroWithDefault (run noneNat) = 0 := rfl
 
 /-- A union whose first constructor carries no fields. -/
 def natOrNothing : LeanTaggedUnionSchema TyWf := .skip (.here ⟨TyWf.prim .nat, []⟩ [])
@@ -261,8 +281,8 @@ def nothing' : SomeTerm emptySig [] (TyWf.taggedUnion natOrNothing) :=
 def justFive : SomeTerm emptySig [] (TyWf.taggedUnion natOrNothing) :=
   ⟨.taggedUnion_mk natOrNothing 1 (fields := .cons (.nat_mk 5) .nil)⟩
 
-example : run (.ap natOrNothingToNat nothing') = 0 := rfl
-example : run (.ap natOrNothingToNat justFive) = 5 := rfl
+example : run natOrNothingToNat (run nothing') = 0 := rfl
+example : run natOrNothingToNat (run justFive) = 5 := rfl
 
 /-- A union with three constructors: `nat`, `bool`, `nat`. -/
 def natBoolNat : LeanTaggedUnionSchema TyWf :=
@@ -295,12 +315,12 @@ def nbnOne : SomeTerm emptySig [] (TyWf.taggedUnion natBoolNat) :=
 def nbnTwo : SomeTerm emptySig [] (TyWf.taggedUnion natBoolNat) :=
   ⟨.taggedUnion_mk natBoolNat 2 (fields := .cons (.nat_mk 9) .nil)⟩
 
-example : run (.ap natBoolNatTwoOrZero nbnZero) = 7 := rfl
-example : run (.ap natBoolNatTwoOrZero nbnOne) = 0 := rfl
-example : run (.ap natBoolNatTwoOrZero nbnTwo) = 9 := rfl
-example : run (.ap natBoolNatAll nbnZero) = 7 := rfl
-example : run (.ap natBoolNatAll nbnOne) = 1 := rfl
-example : run (.ap natBoolNatAll nbnTwo) = 9 := rfl
+example : run natBoolNatTwoOrZero (run nbnZero) = 7 := rfl
+example : run natBoolNatTwoOrZero (run nbnOne) = 0 := rfl
+example : run natBoolNatTwoOrZero (run nbnTwo) = 9 := rfl
+example : run natBoolNatAll (run nbnZero) = 7 := rfl
+example : run natBoolNatAll (run nbnOne) = 1 := rfl
+example : run natBoolNatAll (run nbnTwo) = 9 := rfl
 
 end TermTests.Eval
 

@@ -269,12 +269,14 @@ def sigAdd : Sig :=
   ⟨[⟨"add", natT ⇒ natT ⇒ natT⟩, ⟨"mul", natT ⇒ natT ⇒ natT⟩], by decide⟩
 
 /-- `add a b`, for two terms in hand. -/
-def addT {Γ : Ctx} (a b : Term sigAdd Γ natT) : Term sigAdd Γ natT :=
-  .ap (.ap (.global .here) a) b
+def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
+    (b : Term sigAdd Γ ub natT kb) :=
+  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
-def mulT {Γ : Ctx} (a b : Term sigAdd Γ natT) : Term sigAdd Γ natT :=
-  .ap (.ap (.global (.there .here)) a) b
+def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
+    (b : Term sigAdd Γ ub natT kb) :=
+  (.ap (.ap (.global (.there .here)) a) b : Term sigAdd Γ _ natT _)
 
 /-- `Option τ`, as a union of the language: `none` first, then `some`. -/
 abbrev optTy (τ : TyWf) : TyWf := .taggedUnion (.skip (.here ⟨τ, []⟩ []))

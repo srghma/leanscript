@@ -26,34 +26,37 @@ open LeanScript
 /-- `Nat.add 2 3`, as a term. -/
 def externAdd : SomeTerm ⟨[], rfl⟩ [] (.prim .nat) := ⟨.extern (.lean_nat_add 2 3)⟩
 
-example : Term.run' externAdd = 5 := by decide
+example : Term.run' externAdd.term = 5 := by decide
 
 /-- An extern used inside a larger term: `if 2 < 3 then 7 * 6 else 0`. -/
 def externIf : SomeTerm ⟨[], rfl⟩ [] (.prim .nat) :=
   ⟨.bool_casesOn (.extern (.lean_nat_dec_lt 2 3)) (.extern (.lean_nat_mul 7 6)) (.nat_mk 0)⟩
 
-example : Term.run' externIf = 42 := by decide
+example : Term.run' externIf.term = 42 := by decide
 
-/-- An extern applied through a `let`: the bound value is an extern, the body a variable. -/
+/-- An extern applied through a `let`: the bound value is an extern, and the body uses it
+    twice — a `let` whose variable is used once is a redex, and is not a term. -/
 def externLet : SomeTerm ⟨[], rfl⟩ [] (.prim .string) :=
-  ⟨.letE (.extern (.lean_string_append__String_append "lean" "script")) (.var .head)⟩
+  ⟨.letE (.extern (.lean_string_append__String_append "lean" "script"))
+    (.externCall (.cons (.var .head) (.cons (.var .head) .nil))
+      (fun vs => .lean_string_append__String_append vs.1 vs.2.1))⟩
 
-example : Term.run' externLet = "leanscript" := by decide
+example : Term.run' externLet.term = "leanscriptleanscript" := by decide
 
 /-- An extern of `UInt32`. -/
 example : Term.run' (.extern (.lean_uint32_add 4000000000 500000000) :
-    Term ⟨[], rfl⟩ [] (.prim .uint32)) = 205032704 := by decide
+    Term ⟨[], rfl⟩ [] _ (.prim .uint32) _) = 205032704 := by decide
 
 /-- An extern whose result is an array: arrays denote Lean arrays. -/
 example : Term.run' (.extern (.lean_array_push (TyWf.prim .nat) #[1, 2] 3) :
-    Term ⟨[], rfl⟩ [] (.array (.prim .nat))) = #[1, 2, 3] := rfl
+    Term ⟨[], rfl⟩ [] _ (.array (.prim .nat)) _) = #[1, 2, 3] := rfl
 
 /-- `String.compare "a" "b"`, as a (compiled) definition.  `lean_string_compare` is the last
     entry of the catalogue; with the catalogue in one inductive of 460 constructors, its
     number (459) was too big for compiled code, and this definition did not compile. -/
 def externCompare : SomeTerm ⟨[], rfl⟩ [] TyWf.ordering := ⟨.extern (.lean_string_compare "a" "b")⟩
 
-example : Term.run' externCompare = TyWf.Den.ofOrdering (String.compare "a" "b") := rfl
+example : Term.run' externCompare.term = TyWf.Den.ofOrdering (String.compare "a" "b") := rfl
 
 /-- An entry is written through its shorthand, `.lean_nat_add 2 3`, which unfolds to the
     constructor of its family wrapped in the one of the catalogue. -/
@@ -69,32 +72,32 @@ example : isNatAdd (.lean_nat_sub 2 3 : Extern (.prim .nat)) = false := by decid
 
 /-- An extern whose result is an `Ordering`: the enum with three constructors. -/
 example (a b : String) : Term.run' (.extern (.lean_string_compare a b) :
-    Term ⟨[], rfl⟩ [] TyWf.ordering) = TyWf.Den.ofOrdering (String.compare a b) := rfl
+    Term ⟨[], rfl⟩ [] _ TyWf.ordering _) = TyWf.Den.ofOrdering (String.compare a b) := rfl
 
 /-- An extern whose result is an `Option`: the tagged union `none | some α`. -/
 example : Term.run' (.extern (.lean_string_utf8_get_opt__String_Pos_Raw_get? "ab" ⟨1⟩) :
-    Term ⟨[], rfl⟩ [] (TyWf.option (.prim .char))) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
+    Term ⟨[], rfl⟩ [] _ (TyWf.option (.prim .char)) _) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
   rfl
 
 /-- An extern that takes a proof holds it: `Array.getInternal #[1, 2, 3] 1 h`, with the
     proof `h : 1 < #[1, 2, 3].size`, is `Array.getInternal` called with that proof. -/
 example : Term.run' (.extern (.lean_array_fget (TyWf.prim .nat) #[1, 2, 3] 1 (by decide)) :
-    Term ⟨[], rfl⟩ [] (.prim .nat)) = 2 := by decide
+    Term ⟨[], rfl⟩ [] _ (.prim .nat) _) = 2 := by decide
 
 /-- `String.Pos.next`: its argument is a position into the string `s`, whose type names
     `s`, so `s` is a parameter of the entry, fixed where the term is written. -/
 example : Term.run' (.extern (.lean_string_utf8_next_fast__String_Pos_next
       ("ab" : String).startPos (by decide)) :
-    Term ⟨[], rfl⟩ [] (.prim (.stringPos "ab"))) = ("ab" : String).startPos.next (by decide) :=
+    Term ⟨[], rfl⟩ [] _ (.prim (.stringPos "ab")) _) = ("ab" : String).startPos.next (by decide) :=
   rfl
 
 /-- `Lean.Name.beq`: a `Lean.Name` is the recursive tagged union
     `anonymous | str self String | num self Nat` (`TyWf.leanName`). -/
 example : Term.run' (.extern (.lean_name_eq (TyWf.Den.ofName `a.b) (TyWf.Den.ofName `a.b)) :
-    Term ⟨[], rfl⟩ [] (.prim .bool)) = true := by decide +kernel
+    Term ⟨[], rfl⟩ [] _ (.prim .bool) _) = true := by decide +kernel
 
 example : Term.run' (.extern (.lean_name_eq (TyWf.Den.ofName `a.b) (TyWf.Den.ofName `a.«1»)) :
-    Term ⟨[], rfl⟩ [] (.prim .bool)) = false := by decide +kernel
+    Term ⟨[], rfl⟩ [] _ (.prim .bool) _) = false := by decide +kernel
 
 example : tyWfOf Lean.Name = TyWf.leanName := rfl
 
@@ -102,16 +105,16 @@ example : tyWfOf Lean.Name = TyWf.leanName := rfl
     reduce in the kernel, so this only checks that the value is the pair `Float.frExp`
     answers with. -/
 example (x : Float) : Term.run' (.extern (.lean_float_frexp x) :
-    Term ⟨[], rfl⟩ [] (TyWf.prod (.prim .float) (.prim .int))) =
+    Term ⟨[], rfl⟩ [] _ (TyWf.prod (.prim .float) (.prim .int)) _) =
       TyWf.Den.ofProd (α := .prim .float) (β := .prim .int) (Float.frExp x) := rfl
 
 /-- An extern whose result is a list: the recursive tagged union `nil | cons α self`, the
     model of `List`; `Ty.DenRec.toList` reads it back. -/
 example : Ty.DenRec.toList (.prim .nat) (Term.run' (.extern (.lean_array_to_list (TyWf.prim .nat)
-    #[1, 2, 3]) : Term ⟨[], rfl⟩ [] (TyWf.list (.prim .nat)))) = [1, 2, 3] := by decide
+    #[1, 2, 3]) : Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .nat)) _)) = [1, 2, 3] := by decide
 
 example : Ty.DenRec.toList (.prim .char) (Term.run' (.extern (.lean_string_data__String_toList "ab") :
-    Term ⟨[], rfl⟩ [] (TyWf.list (.prim .char)))) = ['a', 'b'] := by decide
+    Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .char)) _)) = ['a', 'b'] := by decide
 
 /-! ## The derived type formers are the models of the Lean types
 

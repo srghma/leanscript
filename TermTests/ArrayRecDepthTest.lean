@@ -131,7 +131,7 @@ def contTRTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
 
 example : runArith contTRTerm #[] = 1 := rfl
 example : runArith contTRTerm #[3, 4] = 13 := rfl
-example : runArith contTRTerm #[1, 2, 3] = 10 := rfl
+example : runArith contTRTerm #[1, 2, 3] = 10 := by decide +kernel
 
 /-- **Any** depth-zero fold at the accumulator type with these two equations is the
     tail-recursive loop. -/
@@ -151,7 +151,9 @@ theorem listFoldK_eq_contTR (z : List Nat → TyWf.Den Acc2)
       rfl
 
 /-- The fold `Term.eval` runs for the loop. -/
-def loopBases : ArrayRecBases sigArith ArrCtx natT Acc2 0 := .nil loopZero
+def loopBases :=
+  (.nil loopZero :
+    ArrayRecBases sigArith ArrCtx _ natT Acc2 0)
 
 /-- The short-list answers `Term.eval` uses for the loop. -/
 def loopEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Acc2 :=
@@ -227,10 +229,12 @@ def contPairTerm {Γ : Ctx} :=
   (.lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) :
     Term sigArith Γ _ (TyWf.array natT ⇒ Pair) _)
 
-/-- The continuant read off the pair: its first field. -/
+/-- The continuant read off the pair: its first field.  Applying `contPairTerm` to the
+    array would be a β-redex, which is not a term: the fold is written in place, on the
+    array the function would have been applied to. -/
 def contFromPairTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
   ⟨.lam (.record_casesOn (fs := pairSchema)
-    (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))⟩
+    (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0)))⟩
 
 example : runArith contFromPairTerm #[] = 1 := rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := rfl
@@ -256,7 +260,9 @@ theorem listFoldK_eq_contPair (z : List Nat → TyWf.Den Pair)
         show contTail (x :: xs) = cont xs from rfl]
 
 /-- The short-list answers and the branch `Term.eval` uses for the pair recursion. -/
-def pairBases : ArrayRecBases sigArith ArrCtx natT Pair 0 := .nil pairZero
+def pairBases :=
+  (.nil pairZero :
+    ArrayRecBases sigArith ArrCtx _ natT Pair 0)
 
 def pairEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Pair :=
   fun m => ArrayRecBases.eval envArith pairBases env m (by no_rec_mk)
@@ -272,7 +278,7 @@ theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
 
 /-- The record-valued term **is** `contPair`, field by field. -/
 theorem contPairTerm_eval (l : List Nat) :
-    runArith (contPairTerm (Γ := [])) l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
+    runArith ⟨contPairTerm (Γ := [])⟩ l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
   show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil)) l = _
   rw [pairEvalFold_eq, contPair_eq l]
 

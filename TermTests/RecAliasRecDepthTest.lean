@@ -301,12 +301,12 @@ A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold ov
 a term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
 apart is fine — there is nothing to take apart — while *building* one is not. -/
 
-example : Term.NoRecMk fibTerm := by no_rec_mk
-example : Term.NoRecMk tribTerm := by no_rec_mk
-example : Term.NoRecMk hexaTerm := by no_rec_mk
-example : Term.NoRecMk fibTRTerm := by no_rec_mk
-example : Term.NoRecMk fibPairTerm := by no_rec_mk
-example : Term.NoRecMk contTerm := by no_rec_mk
+example : Term.NoRecMk fibTerm.term := by no_rec_mk
+example : Term.NoRecMk tribTerm.term := by no_rec_mk
+example : Term.NoRecMk hexaTerm.term := by no_rec_mk
+example : Term.NoRecMk fibTRTerm.term := by no_rec_mk
+example : Term.NoRecMk fibPairTerm.term := by no_rec_mk
+example : Term.NoRecMk contTerm.term := by no_rec_mk
 
 /-! ## 8. The depth-zero fold, and what no depth reaches
 
@@ -329,17 +329,23 @@ example (τ : TyWf) :
 -- window binds a label and the answer at the chain below, a `nat`, so the second descent
 -- of §2 — which is what `fib` needs — cannot be written.
 /--
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Expected type must not contain metavariables
+  ?m.62 ≠ Head.ctor
+---
 error: Application type mismatch: The argument
-  DeBruijn.head
+  Term.var DeBruijn.head.tail
 has type
-  DeBruijn (?m.52 :: ?m.53) ?m.52
+  Term ?m.64 (?m.69 :: ?m.72 :: ?m.73) (Usage.single DeBruijn.head.tail) ?m.72 Head.var
 but is expected to have type
-  DeBruijn
-    (((linkSchema (treeTy natT 0)).snd :: (linkSchema (treeTy natT 0)).rest).append
-      ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    (TyWf.record ?m.43)
+  Term sigAdd
+    ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
+    ?m.85 (TyWf.record ?m.86) ?m.62
 in the application
-  DeBruijn.head.tail
+  @Term.record_casesOn sigAdd
+    ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
+    natT ?m.86 ?m.85 0 ?m.62 Head.lit (Term.var DeBruijn.head.tail)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

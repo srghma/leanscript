@@ -33,14 +33,14 @@ with `n` in hand, so:
   which is the `fib n + fib (n + 1)` of the program. -/
 
 /-- The branches of `fib`. -/
-def fibCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 1 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 1))
-          (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil)))
-      .nil)
+def fibCases :=
+  (.skip (.here (.nat_mk 0))
+      (.here
+        (.deep (.here rfl)
+          (.skip (.here (.nat_mk 1))
+            (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 1)
 
 /-- **`fib` over a recursive tagged union**: the depth-one fold. -/
 def fibTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
@@ -54,108 +54,108 @@ times, and the answers at the values it descended past are the odd indices `1, 3
 the context. -/
 
 /-- The tribonacci numbers: a depth-two fold. -/
-def tribCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 2 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 1))
-                (.here
-                  (.here (addT (addT (.var (v♯1)) (.var (v♯3))) (.var (v♯5))))
-                  .nil)))
-            .nil)))
-      .nil)
+def tribCases :=
+  (.skip (.here (.nat_mk 0))
+      (.here
+        (.deep (.here rfl)
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl)
+                (.skip (.here (.nat_mk 1))
+                  (.here
+                    (.here (addT (addT (.var (v♯1)) (.var (v♯3))) (.var (v♯5))))
+                    .nil)))
+              .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 2)
 
 /-- `trib`, as a term. -/
 def tribTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
   ⟨.lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)⟩
 
 /-- The tetranacci numbers: a depth-three fold. -/
-def tetraCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 3 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 1))
-                      (.here
-                        (.here (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
-                          (.var (v♯5))) (.var (v♯7))))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
+def tetraCases :=
+  (.skip (.here (.nat_mk 0))
+      (.here
+        (.deep (.here rfl)
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl)
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl)
+                      (.skip (.here (.nat_mk 1))
+                        (.here
+                          (.here (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
+                            (.var (v♯5))) (.var (v♯7))))
+                          .nil)))
+                    .nil)))
+              .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 3)
 
 /-- `tetra`, as a term. -/
 def tetraTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
   ⟨.lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)⟩
 
 /-- The pentanacci numbers: a depth-four fold. -/
-def pentaCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 4 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 0))
-                      (.here
-                        (.deep (.here rfl)
-                          (.skip (.here (.nat_mk 1))
-                            (.here
-                              (.here (addT (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
-                                (.var (v♯5))) (.var (v♯7))) (.var (v♯9))))
-                              .nil)))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
+def pentaCases :=
+  (.skip (.here (.nat_mk 0))
+      (.here
+        (.deep (.here rfl)
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl)
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl)
+                      (.skip (.here (.nat_mk 0))
+                        (.here
+                          (.deep (.here rfl)
+                            (.skip (.here (.nat_mk 1))
+                              (.here
+                                (.here (addT (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
+                                  (.var (v♯5))) (.var (v♯7))) (.var (v♯9))))
+                                .nil)))
+                          .nil)))
+                    .nil)))
+              .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 4)
 
 /-- `penta`, as a term. -/
 def pentaTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
   ⟨.lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)⟩
 
 /-- The hexanacci numbers: a depth-five fold. -/
-def hexaCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 5 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 0))
-                      (.here
-                        (.deep (.here rfl)
-                          (.skip (.here (.nat_mk 0))
-                            (.here
-                              (.deep (.here rfl)
-                                (.skip (.here (.nat_mk 1))
-                                  (.here
-                                    (.here (addT (addT (addT (addT (addT
-                                      (.var (v♯1)) (.var (v♯3))) (.var (v♯5)))
-                                      (.var (v♯7))) (.var (v♯9))) (.var (v♯11))))
-                                    .nil)))
-                              .nil)))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
+def hexaCases :=
+  (.skip (.here (.nat_mk 0))
+      (.here
+        (.deep (.here rfl)
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl)
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl)
+                      (.skip (.here (.nat_mk 0))
+                        (.here
+                          (.deep (.here rfl)
+                            (.skip (.here (.nat_mk 0))
+                              (.here
+                                (.deep (.here rfl)
+                                  (.skip (.here (.nat_mk 1))
+                                    (.here
+                                      (.here (addT (addT (addT (addT (addT
+                                        (.var (v♯1)) (.var (v♯3))) (.var (v♯5)))
+                                        (.var (v♯7))) (.var (v♯9))) (.var (v♯11))))
+                                      .nil)))
+                                .nil)))
+                          .nil)))
+                    .nil)))
+              .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx _ peanoSchema natT 5)
 
 /-- `hexa`, as a term. -/
 def hexaTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
@@ -172,13 +172,13 @@ abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 
 /-- The branches of the loop: `zero` answers `fun a b => a`, and `succ` answers
     `fun a b => ih b (a + b)`, where `ih` is the loop at the predecessor. -/
-def fibTRCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx peanoSchema loopTy 0 :=
-  .skip (.here (.lam (.lam (.var (v♯1)))))
-    (.here
-      (.here (.lam (.lam (.ap (.ap (.var (v♯3)) (.var (v♯0)))
-        (addT (.var (v♯1)) (.var (v♯0)))))))
-      .nil)
+def fibTRCases :=
+  (.skip (.here (.lam (.lam (.var (v♯1)))))
+      (.here
+        (.here (.lam (.lam (.ap (.ap (.var (v♯3)) (.var (v♯0)))
+          (addT (.var (v♯1)) (.var (v♯0)))))))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx _ peanoSchema loopTy 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
@@ -198,14 +198,14 @@ abbrev pairTy : TyWf := .record pairSchema
 /-- The branches of the pair recursion: `zero` answers `(0, 1)`, and `succ` takes the
     pair at the predecessor apart — binding `a` at index `0` and `b` at index `1` — and
     answers `(b, a + b)`. -/
-def fibPairCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx peanoSchema pairTy 0 :=
-  .skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
-    (.here
-      (.here (.record_casesOn (.var (v♯1))
-        (.record_mk pairSchema
-          (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
-      .nil)
+def fibPairCases :=
+  (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
+      (.here
+        (.here (.record_casesOn (.var (v♯1))
+          (.record_mk pairSchema
+            (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx _ peanoSchema pairTy 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm : SomeTerm sigAdd [] (peanoTy ⇒ natT) :=
@@ -252,14 +252,14 @@ example (τ : TyWf) : lbind τ consFields = [natT, natListTy, τ] := rfl
     **second** field, and then answers `a` for a one-element list and
     `a * K (b :: bs) + K bs` for a longer one.  In that last branch the context binds
     `b`, `bs`, `K bs`, `a`, `as = b :: bs` and `K as`, in that order. -/
-def contCases :
-    TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx natListSchema natT 1 :=
-  .skip (.here (.nat_mk 1))
-    (.here
-      (.deep (.there (.here rfl))
-        (.skip (.here (.var (v♯0)))
-          (.here (.here (addT (mulT (.var (v♯3)) (.var (v♯5))) (.var (v♯2)))) .nil)))
-      .nil)
+def contCases :=
+  (.skip (.here (.nat_mk 1))
+      (.here
+        (.deep (.there (.here rfl))
+          (.skip (.here (.var (v♯0)))
+            (.here (.here (addT (mulT (.var (v♯3)) (.var (v♯5))) (.var (v♯2)))) .nil)))
+        .nil) :
+    TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx _ natListSchema natT 1)
 
 /-- The continuant, as a term: the depth-one fold of a list union. -/
 def contTerm : SomeTerm sigAdd [] (natListTy ⇒ natT) :=
@@ -272,11 +272,11 @@ of its constructors), so these terms run, and the kernel checks them against the
 references.  The depth-`k` folds are evaluated with every answer remembered
 (`LeanScript.WType.memo`), so a deeper look reads answers that are already there. -/
 
-example : Term.NoRecMk fibTerm := by no_rec_mk
-example : Term.NoRecMk hexaTerm := by no_rec_mk
-example : Term.NoRecMk fibTRTerm := by no_rec_mk
-example : Term.NoRecMk fibPairTerm := by no_rec_mk
-example : Term.NoRecMk contTerm := by no_rec_mk
+example : Term.NoRecMk fibTerm.term := by no_rec_mk
+example : Term.NoRecMk hexaTerm.term := by no_rec_mk
+example : Term.NoRecMk fibTRTerm.term := by no_rec_mk
+example : Term.NoRecMk fibPairTerm.term := by no_rec_mk
+example : Term.NoRecMk contTerm.term := by no_rec_mk
 
 /-- The values of `add` and `mul`. -/
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
@@ -291,11 +291,11 @@ def peanoVal : Nat → TyWf.Den peanoTy
 
 /-- The list of naturals `l`, built by the introduction form. -/
 def natListVal : List Nat → TyWf.Den natListTy
-  | [] => runP (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-      Term sigAdd [] natListTy)
-  | a :: as => runP (.lam (.recTaggedUnion_mk natListSchema (t := 1)
+  | [] => runP ⟨(.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
+      Term sigAdd [] _ natListTy _)⟩
+  | a :: as => runP ⟨(.lam (.recTaggedUnion_mk natListSchema (t := 1)
       (fields := .cons (.nat_mk a) (.cons (.var (v♯0)) .nil))) :
-      Term sigAdd [] (natListTy ⇒ natListTy)) (natListVal as)
+      Term sigAdd [] _ (natListTy ⇒ natListTy) _)⟩ (natListVal as)
 
 /-- The continuant, in Lean: the reference `contTerm` is checked against. -/
 def contRef : List Nat → Nat
@@ -337,20 +337,22 @@ constructor further down before it can answer, is not a branch of the plain fold
 
 /--
 error: Type mismatch
-  FoldKBranch.deep (SelfField.here ?m.14)
+  FoldKBranch.deep (SelfField.here ?m.17)
     (TaggedUnionFoldKCases.skip (FoldKBranch.here (Term.nat_mk 1))
       (CtorsWithPayloadFoldKCases.here (FoldKBranch.here (Term.nat_mk 2)) TaggedUnionFoldKCasesRest.nil))
 has type
-  FoldKBranch ?m.52 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.39 [])) ?m.54 ?m.6 (?m.10 :: ?m.11)
-    (TyWf.prim LeanPrimTy.nat) (?m.57 + 1)
+  FoldKBranch ?m.63 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.46 [])) ?m.65 ?m.8
+    (Usage.drop (?m.65 (?m.13 :: ?m.14))
+      (Usage.drop (?m.65 []) 0 + (Usage.drop (?m.65 (NonEmptyList.toList ?m.46)) 0 + 0)))
+    (?m.13 :: ?m.14) (TyWf.prim LeanPrimTy.nat) (?m.68 + 1)
 but is expected to have type
-  FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0
+  FoldKBranch sigAdd peanoSchema (pbind natT) PCtx ?m.70 succFields natT 0
 -/
 #guard_msgs (error) in
-def succBranchTooShallow :
-    FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0 :=
-  .deep (.here rfl)
-    (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil))
+def succBranchTooShallow :=
+  (.deep (.here rfl)
+      (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil)) :
+    FoldKBranch sigAdd peanoSchema (pbind natT) PCtx _ succFields natT 0)
 
 -- And a depth-zero fold *is* the fold that was there before the depth was added: the
 -- branches of the loop of §4, read as branches of the plain fold and back, are the same

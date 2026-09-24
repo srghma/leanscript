@@ -296,12 +296,14 @@ def sigAdd : Sig :=
   ⟨[⟨"add", natT ⇒ natT ⇒ natT⟩, ⟨"mul", natT ⇒ natT ⇒ natT⟩], by decide⟩
 
 /-- `add a b`, for two terms in hand. -/
-def addT {Γ : Ctx} (a b : Term sigAdd Γ natT) : Term sigAdd Γ natT :=
-  .ap (.ap (.global .here) a) b
+def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
+    (b : Term sigAdd Γ ub natT kb) :=
+  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
-def mulT {Γ : Ctx} (a b : Term sigAdd Γ natT) : Term sigAdd Γ natT :=
-  .ap (.ap (.global (.there .here)) a) b
+def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
+    (b : Term sigAdd Γ ub natT kb) :=
+  (.ap (.ap (.global (.there .here)) a) b : Term sigAdd Γ _ natT _)
 
 /-- Member `0` of the family: the Peano naturals, `zero | succ (n : member 0)`. -/
 def memPe : LeanFamMemberSchema (TyWfIn 2) :=
@@ -380,8 +382,9 @@ def succTerm : SomeTerm sigAdd [] (peTy ⇒ peTy) :=
     the term given here, and `cons` answers with the value of the fold at its tail, which
     its branch binds at index `2`.  It is written once, for every motive and every depth,
     and used by every fold below. -/
-def lsCases {τ : TyWf} {Γ : Ctx} {k : Nat} (nilAnswer : Term sigAdd Γ τ) :
-    FamilyMemberFoldKCases sigAdd 0 famPe.members (pbind τ) Γ τ memLs k :=
-  .ctors (.skip (.here nilAnswer) (.here (.here (.var (v♯2))) .nil))
+def lsCases {τ : TyWf} {Γ : Ctx} {k : Nat} {u : Usage Γ} {h : Head}
+    (nilAnswer : Term sigAdd Γ u τ h) :=
+  (.ctors (.skip (.here nilAnswer) (.here (.here (.var (v♯2))) .nil)) :
+    FamilyMemberFoldKCases sigAdd 0 famPe.members (pbind τ) Γ _ τ memLs k)
 
 end TermTests.FamilyRecDepth

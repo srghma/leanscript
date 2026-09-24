@@ -33,12 +33,14 @@ def envArith : GlobalEnv sigArith.decls := (Nat.add, Nat.mul, PUnit.unit)
 local macro:max "runArith" t:term:max : term => `(SomeTerm.run (Sg := sigArith) envArith $t)
 
 /-- `add a b`, for two terms in hand. -/
-def addT {Γ : Ctx} (a b : Term sigArith Γ natT) : Term sigArith Γ natT :=
-  .ap (.ap (.global .here) a) b
+def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigArith Γ ua natT ka)
+    (b : Term sigArith Γ ub natT kb) :=
+  (.ap (.ap (.global .here) a) b : Term sigArith Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
-def mulT {Γ : Ctx} (a b : Term sigArith Γ natT) : Term sigArith Γ natT :=
-  .ap (.ap (.global (.there .here)) a) b
+def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigArith Γ ua natT ka)
+    (b : Term sigArith Γ ub natT kb) :=
+  (.ap (.ap (.global (.there .here)) a) b : Term sigArith Γ _ natT _)
 
 /-- The context the folds below are written in: the array they fold over. -/
 abbrev ArrCtx : Ctx := [TyWf.array natT]
@@ -51,8 +53,9 @@ The lists of at most one element are answered by the `ArrayRecBases`: the empty 
 (index `2`) and the answer at `as.drop 1` (index `3`). -/
 
 /-- The answers for the short lists: `K [] = 1` and `K [a] = a`. -/
-def contBases : ArrayRecBases sigArith ArrCtx natT natT 1 :=
-  .cons (.nat_mk 1) (.nil (.var (v♯0)))
+def contBases :=
+  (.cons (.nat_mk 1) (.nil (.var (v♯0))) :
+    ArrayRecBases sigArith ArrCtx _ natT natT 1)
 
 /-- The branch: `a * K as + K (as.drop 1)`. -/
 def contBranch :=
@@ -116,8 +119,9 @@ in the window. -/
 /-- The answers for the short lists of the depth-two fold: `1`, `a`, `a * b`.  In the
     last one the first element is bound outermost, so `a` is index `1` and `b` index
     `0`. -/
-def cont3Bases : ArrayRecBases sigArith ArrCtx natT natT 2 :=
-  .cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0)))))
+def cont3Bases :=
+  (.cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0))))) :
+    ArrayRecBases sigArith ArrCtx _ natT natT 2)
 
 /-- The branch of the depth-two fold: `a * K as + K (as.drop 1) + K (as.drop 2)`. -/
 def cont3Branch :=
@@ -147,11 +151,12 @@ theorem cont3Term_eval (l : List Nat) : runArith cont3Term l.toArray = cont3 l :
 
 /-- The answers for the short lists of the depth-three fold: `1`, `a`, `a * b`,
     `a * b * c`. -/
-def cont4Bases : ArrayRecBases sigArith ArrCtx natT natT 3 :=
-  .cons (.nat_mk 1)
-    (.cons (.var (v♯0))
-      (.cons (mulT (.var (v♯1)) (.var (v♯0)))
-        (.nil (mulT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))))
+def cont4Bases :=
+  (.cons (.nat_mk 1)
+      (.cons (.var (v♯0))
+        (.cons (mulT (.var (v♯1)) (.var (v♯0)))
+          (.nil (mulT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0)))))) :
+    ArrayRecBases sigArith ArrCtx _ natT natT 3)
 
 /-- The branch of the depth-three fold: the head times the nearest answer, plus the other
     three the window holds. -/

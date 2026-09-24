@@ -34,18 +34,18 @@ again.  In that dispatch the value is `succ n` with `n` in hand, so:
 
 /-- The branches of `fib`: those of member `0`, which descend, and those of member `1`,
     which answer. -/
-def fibCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx natT famPe.members 1 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) .here
-            (.ctors
-              (.skip (.here (.nat_mk 1))
-                (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
-          .nil)))
-    (.cons (lsCases (.nat_mk 0)) .nil)
+def fibCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.nat_mk 0))
+          (.here
+            (.deep (.here rfl) .here
+              (.ctors
+                (.skip (.here (.nat_mk 1))
+                  (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
+            .nil)))
+      (.cons (lsCases (.nat_mk 0)) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 1)
 
 /-- **`fib` over a mutual family**: the depth-one fold. -/
 def fibTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
@@ -61,136 +61,136 @@ that is the member whose constructor the fold is walking down; `TermTests/Family
 *other* member. -/
 
 /-- The tribonacci numbers: a depth-two fold. -/
-def tribCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx natT famPe.members 2 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) .here
-            (.ctors
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl) .here
-                    (.ctors
-                      (.skip (.here (.nat_mk 1))
-                        (.here
-                          (.here (addT (addT (.var (v♯1)) (.var (v♯3))) (.var (v♯5))))
-                          .nil))))
-                  .nil))))
-          .nil)))
-    (.cons (lsCases (.nat_mk 0)) .nil)
+def tribCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.nat_mk 0))
+          (.here
+            (.deep (.here rfl) .here
+              (.ctors
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl) .here
+                      (.ctors
+                        (.skip (.here (.nat_mk 1))
+                          (.here
+                            (.here (addT (addT (.var (v♯1)) (.var (v♯3))) (.var (v♯5))))
+                            .nil))))
+                    .nil))))
+            .nil)))
+      (.cons (lsCases (.nat_mk 0)) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 2)
 
 /-- `trib`, as a term. -/
 def tribTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
   ⟨.lam (.mutualRecursiveFamily_rec 2 (.var (v♯0)) tribCases)⟩
 
 /-- The tetranacci numbers: a depth-three fold. -/
-def tetraCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx natT famPe.members 3 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) .here
-            (.ctors
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl) .here
-                    (.ctors
-                      (.skip (.here (.nat_mk 0))
-                        (.here
-                          (.deep (.here rfl) .here
-                            (.ctors
-                              (.skip (.here (.nat_mk 1))
-                                (.here
-                                  (.here (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
-                                    (.var (v♯5))) (.var (v♯7))))
-                                  .nil))))
-                          .nil))))
-                  .nil))))
-          .nil)))
-    (.cons (lsCases (.nat_mk 0)) .nil)
+def tetraCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.nat_mk 0))
+          (.here
+            (.deep (.here rfl) .here
+              (.ctors
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl) .here
+                      (.ctors
+                        (.skip (.here (.nat_mk 0))
+                          (.here
+                            (.deep (.here rfl) .here
+                              (.ctors
+                                (.skip (.here (.nat_mk 1))
+                                  (.here
+                                    (.here (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
+                                      (.var (v♯5))) (.var (v♯7))))
+                                    .nil))))
+                            .nil))))
+                    .nil))))
+            .nil)))
+      (.cons (lsCases (.nat_mk 0)) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 3)
 
 /-- `tetra`, as a term. -/
 def tetraTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
   ⟨.lam (.mutualRecursiveFamily_rec 3 (.var (v♯0)) tetraCases)⟩
 
 /-- The pentanacci numbers: a depth-four fold. -/
-def pentaCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx natT famPe.members 4 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) .here
-            (.ctors
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl) .here
-                    (.ctors
-                      (.skip (.here (.nat_mk 0))
-                        (.here
-                          (.deep (.here rfl) .here
-                            (.ctors
-                              (.skip (.here (.nat_mk 0))
-                                (.here
-                                  (.deep (.here rfl) .here
-                                    (.ctors
-                                      (.skip (.here (.nat_mk 1))
-                                        (.here
-                                          (.here (addT (addT (addT (addT (.var (v♯1))
-                                            (.var (v♯3))) (.var (v♯5))) (.var (v♯7)))
-                                            (.var (v♯9))))
-                                          .nil))))
-                                  .nil))))
-                          .nil))))
-                  .nil))))
-          .nil)))
-    (.cons (lsCases (.nat_mk 0)) .nil)
+def pentaCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.nat_mk 0))
+          (.here
+            (.deep (.here rfl) .here
+              (.ctors
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl) .here
+                      (.ctors
+                        (.skip (.here (.nat_mk 0))
+                          (.here
+                            (.deep (.here rfl) .here
+                              (.ctors
+                                (.skip (.here (.nat_mk 0))
+                                  (.here
+                                    (.deep (.here rfl) .here
+                                      (.ctors
+                                        (.skip (.here (.nat_mk 1))
+                                          (.here
+                                            (.here (addT (addT (addT (addT (.var (v♯1))
+                                              (.var (v♯3))) (.var (v♯5))) (.var (v♯7)))
+                                              (.var (v♯9))))
+                                            .nil))))
+                                    .nil))))
+                            .nil))))
+                    .nil))))
+            .nil)))
+      (.cons (lsCases (.nat_mk 0)) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 4)
 
 /-- `penta`, as a term. -/
 def pentaTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
   ⟨.lam (.mutualRecursiveFamily_rec 4 (.var (v♯0)) pentaCases)⟩
 
 /-- The hexanacci numbers: a depth-five fold. -/
-def hexaCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx natT famPe.members 5 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) .here
-            (.ctors
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl) .here
-                    (.ctors
-                      (.skip (.here (.nat_mk 0))
-                        (.here
-                          (.deep (.here rfl) .here
-                            (.ctors
-                              (.skip (.here (.nat_mk 0))
-                                (.here
-                                  (.deep (.here rfl) .here
-                                    (.ctors
-                                      (.skip (.here (.nat_mk 0))
-                                        (.here
-                                          (.deep (.here rfl) .here
-                                            (.ctors
-                                              (.skip (.here (.nat_mk 1))
-                                                (.here
-                                                  (.here (addT (addT (addT (addT (addT
-                                                    (.var (v♯1)) (.var (v♯3)))
-                                                    (.var (v♯5))) (.var (v♯7)))
-                                                    (.var (v♯9))) (.var (v♯11))))
-                                                  .nil))))
-                                          .nil))))
-                                  .nil))))
-                          .nil))))
-                  .nil))))
-          .nil)))
-    (.cons (lsCases (.nat_mk 0)) .nil)
+def hexaCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.nat_mk 0))
+          (.here
+            (.deep (.here rfl) .here
+              (.ctors
+                (.skip (.here (.nat_mk 0))
+                  (.here
+                    (.deep (.here rfl) .here
+                      (.ctors
+                        (.skip (.here (.nat_mk 0))
+                          (.here
+                            (.deep (.here rfl) .here
+                              (.ctors
+                                (.skip (.here (.nat_mk 0))
+                                  (.here
+                                    (.deep (.here rfl) .here
+                                      (.ctors
+                                        (.skip (.here (.nat_mk 0))
+                                          (.here
+                                            (.deep (.here rfl) .here
+                                              (.ctors
+                                                (.skip (.here (.nat_mk 1))
+                                                  (.here
+                                                    (.here (addT (addT (addT (addT (addT
+                                                      (.var (v♯1)) (.var (v♯3)))
+                                                      (.var (v♯5))) (.var (v♯7)))
+                                                      (.var (v♯9))) (.var (v♯11))))
+                                                    .nil))))
+                                            .nil))))
+                                    .nil))))
+                            .nil))))
+                    .nil))))
+            .nil)))
+      (.cons (lsCases (.nat_mk 0)) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind natT) PCtx _ natT famPe.members 5)
 
 /-- `hexa`, as a term. -/
 def hexaTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
@@ -207,16 +207,16 @@ abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 
 /-- The branches of the loop: `zero` answers `fun a b => a`, and `succ` answers
     `fun a b => ih b (a + b)`, where `ih` is the loop at the predecessor. -/
-def fibTRCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind loopTy) PCtx loopTy famPe.members 0 :=
-  .cons
-    (.ctors
-      (.skip (.here (.lam (.lam (.var (v♯1)))))
-        (.here
-          (.here (.lam (.lam (.ap (.ap (.var (v♯3)) (.var (v♯0)))
-            (addT (.var (v♯1)) (.var (v♯0)))))))
-          .nil)))
-    (.cons (lsCases (.lam (.lam (.nat_mk 0)))) .nil)
+def fibTRCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.lam (.lam (.var (v♯1)))))
+          (.here
+            (.here (.lam (.lam (.ap (.ap (.var (v♯3)) (.var (v♯0)))
+              (addT (.var (v♯1)) (.var (v♯0)))))))
+            .nil)))
+      (.cons (lsCases (.lam (.lam (.nat_mk 0)))) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind loopTy) PCtx _ loopTy famPe.members 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
@@ -237,18 +237,18 @@ abbrev pairTy : TyWf := .record pairSchema
 /-- The branches of the pair recursion: `zero` answers `(0, 1)`, and `succ` takes the pair
     at the predecessor apart — binding `a` at index `0` and `b` at index `1` — and answers
     `(b, a + b)`. -/
-def fibPairCases :
-    FamilyFoldKCases sigAdd 0 famPe.members (pbind pairTy) PCtx pairTy famPe.members 0 :=
-  .cons
-    (.ctors
-      (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
-        (.here
-          (.here (.record_casesOn (.var (v♯1))
-            (.record_mk pairSchema
-              (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
-          .nil)))
-    (.cons (lsCases (.record_mk pairSchema
-      (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))) .nil)
+def fibPairCases :=
+  (.cons
+      (.ctors
+        (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
+          (.here
+            (.here (.record_casesOn (.var (v♯1))
+              (.record_mk pairSchema
+                (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
+            .nil)))
+      (.cons (lsCases (.record_mk pairSchema
+        (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))) .nil) :
+    FamilyFoldKCases sigAdd 0 famPe.members (pbind pairTy) PCtx _ pairTy famPe.members 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm : SomeTerm sigAdd [] (peTy ⇒ natT) :=
@@ -288,28 +288,29 @@ example (τ : TyWf) : lbind τ succFields = [peTy, τ] := rfl
 /-- **The branches of the member this fold does not descend into**: member `0`, the Peano
     naturals.  `zero` answers with the term given here, and `succ` answers with the value
     of the fold at its predecessor, which its branch binds at index `1`. -/
-def peCases {τ : TyWf} {Γ : Ctx} {k : Nat} (zeroAnswer : Term sigAdd Γ τ) :
-    FamilyMemberFoldKCases sigAdd 0 famLs.members (lbind τ) Γ τ memPe k :=
-  .ctors (.skip (.here zeroAnswer) (.here (.here (.var (v♯1))) .nil))
+def peCases {τ : TyWf} {Γ : Ctx} {k : Nat} {u : Usage Γ} {h : Head}
+    (zeroAnswer : Term sigAdd Γ u τ h) :=
+  (.ctors (.skip (.here zeroAnswer) (.here (.here (.var (v♯1))) .nil)) :
+    FamilyMemberFoldKCases sigAdd 0 famLs.members (lbind τ) Γ _ τ memPe k)
 
 /-- The branches of the continuant: `nil` answers `1`; `cons` descends into its **second**
     field, and then answers `a` for a one-element list and `a * K (b :: bs) + K bs` for a
     longer one.  In that last branch the context binds `b`, `bs`, `K bs`, `a`,
     `as = b :: bs` and `K as`, in that order. -/
-def contCases :
-    FamilyFoldKCases sigAdd 0 famLs.members (lbind natT) LCtx natT famLs.members 1 :=
-  .cons (peCases (.nat_mk 0))
-    (.cons
-      (.ctors
-        (.skip (.here (.nat_mk 1))
-          (.here
-            (.deep (.there (.here rfl)) (.there .here)
-              (.ctors
-                (.skip (.here (.var (v♯0)))
-                  (.here (.here (addT (mulT (.var (v♯3)) (.var (v♯5))) (.var (v♯2))))
-                    .nil))))
-            .nil)))
-      .nil)
+def contCases :=
+  (.cons (peCases (.nat_mk 0))
+      (.cons
+        (.ctors
+          (.skip (.here (.nat_mk 1))
+            (.here
+              (.deep (.there (.here rfl)) (.there .here)
+                (.ctors
+                  (.skip (.here (.var (v♯0)))
+                    (.here (.here (addT (mulT (.var (v♯3)) (.var (v♯5))) (.var (v♯2))))
+                      .nil))))
+              .nil)))
+        .nil) :
+    FamilyFoldKCases sigAdd 0 famLs.members (lbind natT) LCtx _ natT famLs.members 1)
 
 /-- The continuant, as a term: the depth-one fold over member `1` of the family. -/
 def contTerm : SomeTerm sigAdd [] (lsTy ⇒ natT) :=
@@ -321,11 +322,11 @@ A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold ov
 term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
 apart is fine — there is nothing to take apart — while *building* one is not. -/
 
-example : Term.NoRecMk fibTerm := by no_rec_mk
-example : Term.NoRecMk hexaTerm := by no_rec_mk
-example : Term.NoRecMk fibTRTerm := by no_rec_mk
-example : Term.NoRecMk fibPairTerm := by no_rec_mk
-example : Term.NoRecMk contTerm := by no_rec_mk
+example : Term.NoRecMk fibTerm.term := by no_rec_mk
+example : Term.NoRecMk hexaTerm.term := by no_rec_mk
+example : Term.NoRecMk fibTRTerm.term := by no_rec_mk
+example : Term.NoRecMk fibPairTerm.term := by no_rec_mk
+example : Term.NoRecMk contTerm.term := by no_rec_mk
 
 /-! ## 8. A depth is needed: what cannot be written without one
 
@@ -335,23 +336,25 @@ constructor further down before it can answer, is not a branch of the plain fold
 
 /--
 error: Type mismatch
-  FamilyFoldKBranch.deep (FamilyMemberField.here ?m.22) FamilyMemberAt.here
+  FamilyFoldKBranch.deep (FamilyMemberField.here ?m.25) FamilyMemberAt.here
     (FamilyMemberFoldKCases.ctors
       (FamilyTaggedUnionFoldKCases.skip (FamilyFoldKBranch.here (Term.nat_mk 1))
         (FamilyCtorsWithPayloadFoldKCases.here (FamilyFoldKBranch.here (Term.nat_mk 2))
           FamilyTaggedUnionFoldKCasesRest.nil)))
 has type
-  FamilyFoldKBranch ?m.75 ?m.76
-    (LeanFamMemberSchema.ctors (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.61 [])) :: ?m.25) ?m.78 ?m.10
-    (?m.18 :: ?m.19) (TyWf.prim LeanPrimTy.nat) (?m.81 + 1)
+  FamilyFoldKBranch ?m.87 ?m.88
+    (LeanFamMemberSchema.ctors (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.69 [])) :: ?m.28) ?m.90 ?m.12
+    (Usage.drop (?m.90 (?m.21 :: ?m.22))
+      (Usage.drop (?m.90 []) 0 + (Usage.drop (?m.90 (NonEmptyList.toList ?m.69)) 0 + 0)))
+    (?m.21 :: ?m.22) (TyWf.prim LeanPrimTy.nat) (?m.93 + 1)
 but is expected to have type
-  FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0
+  FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx ?m.95 succFields natT 0
 -/
 #guard_msgs (error) in
-def succBranchTooShallow :
-    FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0 :=
-  .deep (.here rfl) .here
-    (.ctors (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil)))
+def succBranchTooShallow :=
+  (.deep (.here rfl) .here
+      (.ctors (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil))) :
+    FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx _ succFields natT 0)
 
 -- And a depth-zero fold *is* the fold that was there before the depth was added: the
 -- branches of the loop of §4 and of the pair recursion of §5, read as branches of the

@@ -179,27 +179,27 @@ example (τ : TyWf) : ebind τ odSuccFields = [evTy, τ] := rfl
 /-- The branches of `fib` over the alternating family: each member's `succ` descends into
     the **other** member — `FamilyMemberAt.there .here` from `Ev`, `FamilyMemberAt.here`
     from `Od` — and answers with the two answers it then has in hand. -/
-def evFibCases :
-    FamilyFoldKCases sigAdd 0 famEv.members (ebind natT) ECtx natT famEv.members 1 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) (.there .here)
-            (.ctors
-              (.skip (.here (.nat_mk 1))
-                (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
-          .nil)))
-    (.cons
+def evFibCases :=
+  (.cons
       (.ctors
         (.skip (.here (.nat_mk 0))
           (.here
-            (.deep (.here rfl) .here
+            (.deep (.here rfl) (.there .here)
               (.ctors
                 (.skip (.here (.nat_mk 1))
                   (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
             .nil)))
-      .nil)
+      (.cons
+        (.ctors
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl) .here
+                (.ctors
+                  (.skip (.here (.nat_mk 1))
+                    (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
+              .nil)))
+        .nil) :
+    FamilyFoldKCases sigAdd 0 famEv.members (ebind natT) ECtx _ natT famEv.members 1)
 
 /-- **`fib` over a family whose members mention each other**: the depth-one fold, whose
     every deeper look crosses to the other member. -/
@@ -352,22 +352,22 @@ example (τ : TyWf) : nbind τ [(Ty.array (Ty.prim .nat)).toTyWfIn] = [TyWf.arra
     the link (member `1`), the `some` branch of the link descends into the node
     (member `0`, a **record** member, so what it is given is that record's one branch), and
     the newtype member answers. -/
-def nodeFibCases :
-    FamilyFoldKCases sigAdd 1 famNode.members (nbind natT) NCtx natT famNode.members 1 :=
-  .cons
-    (.record
-      (.deep (.there (.here rfl)) (.there .here)
+def nodeFibCases :=
+  (.cons
+      (.record
+        (.deep (.there (.here rfl)) (.there .here)
+          (.ctors
+            (.skip (.here (.nat_mk 1))
+              (.here (.here (addT (.var (v♯1)) (.var (v♯4)))) .nil)))))
+      (.cons
         (.ctors
-          (.skip (.here (.nat_mk 1))
-            (.here (.here (addT (.var (v♯1)) (.var (v♯4)))) .nil)))))
-    (.cons
-      (.ctors
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl) .here
-              (.record (.here (addT (.var (v♯6)) (.var (v♯2))))))
-            .nil)))
-      (.cons (.alias (.here (.nat_mk 0))) .nil))
+          (.skip (.here (.nat_mk 0))
+            (.here
+              (.deep (.here rfl) .here
+                (.record (.here (addT (.var (v♯6)) (.var (v♯2))))))
+              .nil)))
+        (.cons (.alias (.here (.nat_mk 0))) .nil)) :
+    FamilyFoldKCases sigAdd 1 famNode.members (nbind natT) NCtx _ natT famNode.members 1)
 
 /-- `Node.fib`, as a term: the depth-one fold of a family of a record, a union and a
     newtype. -/
@@ -379,7 +379,7 @@ def nodeFibTerm : SomeTerm sigAdd [] (nodeTy ⇒ natT) :=
 A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is a
 term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so. -/
 
-example : Term.NoRecMk evFibTerm := by no_rec_mk
-example : Term.NoRecMk nodeFibTerm := by no_rec_mk
+example : Term.NoRecMk evFibTerm.term := by no_rec_mk
+example : Term.NoRecMk nodeFibTerm.term := by no_rec_mk
 
 end TermTests.FamilyRecDepthMembers

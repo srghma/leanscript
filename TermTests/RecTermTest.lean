@@ -218,7 +218,7 @@ constructors run out, does not elaborate. -/
 error: Unknown constant `LeanScript.CtorsWithPayloadCases.nil`
 
 Note: Inferred this name from the expected resulting type of `.nil`:
-  CtorsWithPayloadCases ?m.29 ?m.30 ?m.28 (TyWf.prim LeanPrimTy.nat)
+  CtorsWithPayloadCases ?m.45 ?m.46 ?m.43 ?m.41 (TyWf.prim LeanPrimTy.nat)
 -/
 #guard_msgs (error) in
 def natHeadNotExhaustive : SomeTerm recEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
@@ -231,10 +231,10 @@ def natHeadNotExhaustive : SomeTerm recEmptySig [] (natListTy ⇒ TyWf.prim .nat
 error: Application type mismatch: The argument
   FamilyFoldKCases.nil
 has type
-  FamilyFoldKCases ?m.91 ?m.92 ?m.93 ?m.94 ?m.95 ?m.96 [] ?m.97
+  FamilyFoldKCases ?m.112 ?m.113 ?m.114 ?m.115 ?m.116 0 ?m.117 [] ?m.118
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    (TyWf.prim LeanPrimTy.nat) [memberB] 0
+    ?m.40 (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
   FamilyFoldKCases.cons
     (FamilyMemberFoldKCases.ctors
@@ -283,9 +283,9 @@ constructors — so `LeanScript.Term.eval` interprets all four of its forms, the
 introduction form included.  The other three recursive shapes still denote `PEmpty`, so
 building one of *them* is outside the model, and `Term.NoRecMk` says so. -/
 
-example : Term.NoRecMk natHead := by no_rec_mk
-example : Term.NoRecMk natFoldZero := by no_rec_mk
-example : Term.NoRecMk natNil := by no_rec_mk
+example : Term.NoRecMk natHead.term := by no_rec_mk
+example : Term.NoRecMk natFoldZero.term := by no_rec_mk
+example : Term.NoRecMk natNil.term := by no_rec_mk
 
 /-- The empty list is constructor `0`. -/
 example : (TyWf.DenRec.unfold natListSchema _ (SomeTerm.run GlobalEnv.nil natNil)).1.val = 0 :=
@@ -296,16 +296,20 @@ example : (TyWf.DenRec.unfold natListSchema _ (SomeTerm.run GlobalEnv.nil natOne
   rfl
 
 /-- The head of `[3]` is `3`, and the head of the empty list is the default `0`. -/
-example : Term.run GlobalEnv.nil (.ap natHead natOne) = 3 := by decide
-example : Term.run GlobalEnv.nil (.ap natHead natNil) = 0 := by decide
+example : (SomeTerm.run GlobalEnv.nil natHead) (SomeTerm.run GlobalEnv.nil natOne) = 3 := by
+  decide
+example : (SomeTerm.run GlobalEnv.nil natHead) (SomeTerm.run GlobalEnv.nil natNil) = 0 := by
+  decide
 
 /-- The tail of `[3]` is empty, so its head is the default. -/
-example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by decide
+example : (SomeTerm.run GlobalEnv.nil natHead)
+    ((SomeTerm.run GlobalEnv.nil natTail) (SomeTerm.run GlobalEnv.nil natOne)) = 0 := by decide
 
 /-- The fold that answers `0` answers `0`. -/
-example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide
+example : (SomeTerm.run GlobalEnv.nil natFoldZero) (SomeTerm.run GlobalEnv.nil natOne) = 0 := by
+  decide
 
 /-- Building a recursive **record** is still outside the model. -/
-example : ¬ Term.NoRecMk roseLeaf := fun h => h
+example : ¬ Term.NoRecMk roseLeaf.term := fun h => h
 
 end TermTests

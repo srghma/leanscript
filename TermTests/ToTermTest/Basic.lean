@@ -57,6 +57,11 @@ def applied_term : SomeTerm sig0 [] (TyWf.prim .nat) := #leanscript_to_term appl
 
 example : run applied_term = 5 := rfl
 
+-- The translation emits already-optimized terms: the `let` of a literal is inlined, and the
+-- two β-redexes of `applied` are reduced, so both translations are the bare literal.
+example : letExample_term.head = .lit := rfl
+example : applied_term.head = .lit := rfl
+
 def hello : String := "hello"
 
 def hello_term : SomeTerm sig0 [] (TyWf.prim .string) := #leanscript_to_term hello

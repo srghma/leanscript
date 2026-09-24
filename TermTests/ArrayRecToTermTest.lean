@@ -56,13 +56,15 @@ def sig0 : Sig := ⟨[], by decide⟩
 local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- The depth of a term that is an `array_rec`, or `none`. -/
-def arrayRecDepthOf? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
+def arrayRecDepthOf? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
+    Term sig0 Γ u τ h → Option Nat
   | .array_rec k _ _ _ => some k
   | _ => none
 
 /-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is, or
     `none` if the translation is not of that shape. -/
-def arrayRecDepth? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
+def arrayRecDepth? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
+    Term sig0 Γ u τ h → Option Nat
   | .lam b => arrayRecDepthOf? b
   | _ => none
 
@@ -79,7 +81,7 @@ where
 def sumArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumArr
 
-example : arrayRecDepth? sumArr_term = some 0 := rfl
+example : arrayRecDepth? sumArr_term.term = some 0 := rfl
 example : run sumArr_term #[] = 0 := rfl
 example : run sumArr_term #[5] = 5 := rfl
 example : run sumArr_term #[1, 2, 3, 4] = 10 := rfl
@@ -101,7 +103,7 @@ where
 def fibArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibArr
 
-example : arrayRecDepth? fibArr_term = some 1 := rfl
+example : arrayRecDepth? fibArr_term.term = some 1 := rfl
 example : run fibArr_term #[] = 0 := rfl
 example : run fibArr_term #[4] = 4 := rfl
 example : run fibArr_term #[1, 2] = 3 := rfl
@@ -127,7 +129,7 @@ where
 def tribArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tribArr
 
-example : arrayRecDepth? tribArr_term = some 2 := rfl
+example : arrayRecDepth? tribArr_term.term = some 2 := rfl
 example : run tribArr_term #[] = 0 := rfl
 example : run tribArr_term #[6] = 6 := rfl
 example : run tribArr_term #[1, 2] = 3 := rfl
@@ -157,7 +159,7 @@ where
 def tetraArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tetraArr
 
-example : arrayRecDepth? tetraArr_term = some 3 := rfl
+example : arrayRecDepth? tetraArr_term.term = some 3 := rfl
 example : run tetraArr_term #[] = 0 := rfl
 example : run tetraArr_term #[2] = 2 := rfl
 example : run tetraArr_term #[1, 2] = 3 := rfl
@@ -189,7 +191,7 @@ where
 def pentaArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term pentaArr
 
-example : arrayRecDepth? pentaArr_term = some 4 := rfl
+example : arrayRecDepth? pentaArr_term.term = some 4 := rfl
 example : run pentaArr_term #[] = 0 := rfl
 example : run pentaArr_term #[1, 2, 3] = 0 := rfl
 example : run pentaArr_term #[7, 2, 3, 4] = 7 := rfl
