@@ -5,6 +5,9 @@ public import LeanScript.Eval
 public import LeanScript.RecAliasRecFacts
 public import TermTests.FibWindowTest
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -41,8 +44,11 @@ of `Term.recObject_rec` does.
 
 ```lean
 inductive Chain where
-  | nil
-  | cons (label : Nat) (rest : Chain)
+  | mk (link : Option (Nat × Chain))
+
+@[match_pattern] abbrev Chain.nil : Chain := .mk none
+@[match_pattern] abbrev Chain.cons (label : Nat) (rest : Chain) : Chain :=
+  .mk (some (label, rest))
 ```
 
 a list of labels, written as the newtype `Chain = Option (Nat × Chain)`: one binder whose
@@ -53,8 +59,11 @@ is the program the depth is for:
 def Chain.fib : Chain → Nat
   | .nil => 0
   | .cons _ .nil => 1
-  | .cons _ t@(.cons _ r) => fib t + fib r
+  | .cons _ (.cons l r) => fib (.cons l r) + fib r
 ```
+
+(the chain below is rebuilt rather than named with `t@…`, so that Lean compiles the
+recursion structurally, which is what `#leanscript_to_term` translates).
 
 | the program | the node | the term |
 | --- | --- | --- |
@@ -65,10 +74,10 @@ def Chain.fib : Chain → Nat
 | `Chain.cont` (the continuant, which reads the **label** too) | `recAlias_rec 1` | `contTerm` |
 | `fibFast` (halves its argument) | no depth reaches it | the prose at the end |
 
-**What is checked.**  Each definition below states the type of the term it builds, so the
-file fails to build if the branch a program needs cannot be written at that depth, or is
-written in a context other than the documented one; what the contexts are is pinned
-separately, by the `rfl` examples of §1.  And `LeanScript.Ty.Den` gives a recursive
+**What is checked.**  Each term of `TermTests.RecAliasRecDepthTest` is the Lean program
+of §0 translated by `#leanscript_to_term`, at the type it states, so the file fails to
+build if a program is not the fold at the documented depth; what the contexts of the
+branches are is pinned separately, by the `rfl` examples of §1.  And `LeanScript.Ty.Den` gives a recursive
 newtype its values — the W-tree of its body — so the terms also **run**: §7 of
 `TermTests.RecAliasRecDepthTest` builds chains with the introduction form and checks, with
 the kernel, that every term answers what its Lean reference does.
@@ -89,14 +98,20 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
 The reference definitions: what each term of the language below is a transcription of. -/
 
-/-- A chain of labels: the recursive newtype this file folds over. -/
+/-- A chain of labels: the recursive newtype this file folds over, `Option (Nat × Chain)`
+    — one constructor of one field, which mentions the type itself inside a union. -/
 inductive Chain where
-  /-- The chain ends. -/
-  | nil
-  /-- A label, and the rest of the chain. -/
-  | cons (label : Nat) (rest : Chain)
+  /-- The one constructor: the wrapper is erased. -/
+  | mk (link : Option (Nat × Chain))
+  deriving LeanScriptTyWf
 
 namespace Chain
+
+/-- The chain ends. -/
+@[match_pattern] abbrev nil : Chain := .mk none
+
+/-- A label, and the rest of the chain. -/
+@[match_pattern] abbrev cons (label : Nat) (rest : Chain) : Chain := .mk (some (label, rest))
 
 /-- How many links the chain has. -/
 def len : Chain → Nat
@@ -116,14 +131,14 @@ def ofNat : Nat → Chain
 def fib : Chain → Nat
   | .nil => 0
   | .cons _ .nil => 1
-  | .cons _ t@(.cons _ r) => fib t + fib r
+  | .cons _ (.cons l r) => fib (.cons l r) + fib r
 
 /-- The tribonacci numbers: three links down. -/
 def trib : Chain → Nat
   | .nil => 0
   | .cons _ .nil => 0
   | .cons _ (.cons _ .nil) => 1
-  | .cons _ t@(.cons _ u@(.cons _ r)) => trib t + trib u + trib r
+  | .cons _ (.cons l₂ (.cons l₃ r)) => trib (.cons l₂ (.cons l₃ r)) + trib (.cons l₃ r) + trib r
 
 /-- The tetranacci numbers: four links down. -/
 def tetra : Chain → Nat
@@ -131,7 +146,9 @@ def tetra : Chain → Nat
   | .cons _ .nil => 0
   | .cons _ (.cons _ .nil) => 0
   | .cons _ (.cons _ (.cons _ .nil)) => 1
-  | .cons _ t@(.cons _ u@(.cons _ v@(.cons _ r))) => tetra t + tetra u + tetra v + tetra r
+  | .cons _ (.cons l₂ (.cons l₃ (.cons l₄ r))) =>
+      tetra (.cons l₂ (.cons l₃ (.cons l₄ r))) + tetra (.cons l₃ (.cons l₄ r)) +
+        tetra (.cons l₄ r) + tetra r
 
 /-- The pentanacci numbers: five links down. -/
 def penta : Chain → Nat
@@ -140,8 +157,10 @@ def penta : Chain → Nat
   | .cons _ (.cons _ .nil) => 0
   | .cons _ (.cons _ (.cons _ .nil)) => 0
   | .cons _ (.cons _ (.cons _ (.cons _ .nil))) => 1
-  | .cons _ t@(.cons _ u@(.cons _ v@(.cons _ w@(.cons _ r)))) =>
-      penta t + penta u + penta v + penta w + penta r
+  | .cons _ (.cons l₂ (.cons l₃ (.cons l₄ (.cons l₅ r)))) =>
+      penta (.cons l₂ (.cons l₃ (.cons l₄ (.cons l₅ r)))) +
+        penta (.cons l₃ (.cons l₄ (.cons l₅ r))) + penta (.cons l₄ (.cons l₅ r)) +
+        penta (.cons l₅ r) + penta r
 
 /-- The hexanacci numbers: six links down. -/
 def hexa : Chain → Nat
@@ -151,21 +170,29 @@ def hexa : Chain → Nat
   | .cons _ (.cons _ (.cons _ .nil)) => 0
   | .cons _ (.cons _ (.cons _ (.cons _ .nil))) => 0
   | .cons _ (.cons _ (.cons _ (.cons _ (.cons _ .nil)))) => 1
-  | .cons _ t@(.cons _ u@(.cons _ v@(.cons _ w@(.cons _ x@(.cons _ r))))) =>
-      hexa t + hexa u + hexa v + hexa w + hexa x + hexa r
+  | .cons _ (.cons l₂ (.cons l₃ (.cons l₄ (.cons l₅ (.cons l₆ r))))) =>
+      hexa (.cons l₂ (.cons l₃ (.cons l₄ (.cons l₅ (.cons l₆ r))))) +
+        hexa (.cons l₃ (.cons l₄ (.cons l₅ (.cons l₆ r)))) +
+        hexa (.cons l₄ (.cons l₅ (.cons l₆ r))) + hexa (.cons l₅ (.cons l₆ r)) +
+        hexa (.cons l₆ r) + hexa r
 
-/-- The tail-recursive loop, with two accumulators. -/
-def fibLoopTR : Chain → Nat → Nat → Nat
+/-- The tail-recursive loop, with two accumulators (`@[inline]`, so that `fibTR` below
+    translates to the loop itself, applied to `0` and `1`). -/
+@[inline] def fibLoopTR : Chain → Nat → Nat → Nat
   | .nil, a, _ => a
   | .cons _ r, a, b => fibLoopTR r b (a + b)
 
 /-- `fib`, as the loop above started at `0, 1`. -/
 def fibTR (t : Chain) : Nat := fibLoopTR t 0 1
 
-/-- The pair recursion: the answer at the chain and the answer at one link more. -/
-def fibPair : Chain → Nat × Nat
+/-- The pair recursion: the answer at the chain and the answer at one link more
+    (`@[inline]`, so that `fibPairFst` below translates to the fold itself). -/
+@[inline] def fibPair : Chain → Nat × Nat
   | .nil => (0, 1)
   | .cons _ r => let (a, b) := fibPair r; (b, a + b)
+
+/-- `fib`, as the first component of the pair recursion. -/
+def fibPairFst (t : Chain) : Nat := (fibPair t).1
 
 /-- The **continuant** of the labels of a chain, the one program here that reads the
     newtype's own label as well as the answers: `K ⟨⟩ = 1`, `K ⟨a⟩ = a` and
@@ -173,7 +200,7 @@ def fibPair : Chain → Nat × Nat
 def cont : Chain → Nat
   | .nil => 1
   | .cons a .nil => a
-  | .cons a t@(.cons _ r) => a * cont t + cont r
+  | .cons a (.cons l r) => a * cont (.cons l r) + cont r
 
 -- The reference programs are the familiar sequences.
 #guard fib (ofNat 10) = 55
@@ -209,7 +236,8 @@ theorem fibPair_eq : (t : Chain) → fibPair t = (fib t, fib (.cons 0 t))
   | .nil => by simp [fibPair, fib]
   | .cons l c => by
       have ih := fibPair_eq c
-      have hfib : fib (.cons l c) = fib (.cons 0 c) := by cases c <;> simp [fib]
+      have hfib : fib (.cons l c) = fib (.cons 0 c) := by
+        rcases c with ⟨_ | ⟨_, _⟩⟩ <;> simp [fib]
       show (let (a, b) := fibPair c; ((b, a + b) : Nat × Nat)) = _
       rw [ih]
       have hup : fib (.cons 0 (.cons l c)) = fib (.cons l c) + fib c := by simp [fib]
@@ -283,6 +311,10 @@ def chainBodyW : TyWfIn 1 := chainBody.toTyWfIn
 
 /-- The type of a chain. -/
 def chainTy : TyWf := .recAlias chainBodyW
+
+-- It is the tree `LeanScriptTyWf` derives for the Lean `Chain` of §0, so the Lean programs
+-- there translate to terms of this type.
+example : tyWfOf Chain = chainTy := by kernel_rfl
 
 -- A value of it is an `Option` of a label and one more chain.
 example : TyWf.recAliasUnfold chainBodyW = optTy (linkTy chainTy) := by kernel_rfl
@@ -359,17 +391,12 @@ example (τ : TyWf) :
     a value of. -/
 abbrev chainUnion : LeanTaggedUnionSchema TyWf := .skip (.here ⟨linkTy chainTy, []⟩ [])
 
-/-- The empty chain, as a term. -/
-def nilTerm : Term sigAdd [] chainTy :=
-  .recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))
+/-- The empty chain, as a term: `Chain.nil`, translated. -/
+def nilTerm : Term sigAdd [] chainTy := #leanscript_to_term Chain.nil
 
-/-- One more link on top of the chain in scope. -/
-def consTerm : Term sigAdd [] (natT ⇒ chainTy ⇒ chainTy) :=
-  .lam (.lam (.recAlias_mk chainBodyW
-    (value := .taggedUnion_mk chainUnion 1
-      (fields := .cons
-        (.record_mk (linkSchema chainTy)
-          (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil))))
+/-- One more link on top of the chain in scope: `Chain.cons`, translated. -/
+def consTerm : Term sigAdd [] (natT ⇒ chainTy ⇒ chainTy) := #leanscript_to_term Chain.cons
+
 
 end TermTests.RecAliasRecDepth
 

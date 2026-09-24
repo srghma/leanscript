@@ -494,8 +494,9 @@ def recBindEnv (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTagg
   | ⟨.self, _⟩ :: fs, e =>
       let m := e.prodFst.2 PUnit.unit
       (m.tree, m.answer, recBindEnv l hwf τ fs e.prodSnd)
-  | ⟨.familyMember i, h⟩ :: fs, e =>
-      (recBindField l hwf τ ⟨.familyMember i, h⟩ e.prodFst, recBindEnv l hwf τ fs e.prodSnd)
+  | ⟨.familyMember _, h⟩ :: _, _ =>
+      -- A lone binder's payload holds no member occurrence (`Ty.WfIn 1` needs `2 ≤ 1`).
+      absurd h Ty.not_wfIn_one_familyMember
   | ⟨.shape sh, h⟩ :: fs, e =>
       (recBindField l hwf τ ⟨.shape sh, h⟩ e.prodFst, recBindEnv l hwf τ fs e.prodSnd)
   | ⟨.recTaggedUnion l', h⟩ :: fs, e =>

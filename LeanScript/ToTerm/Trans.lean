@@ -299,6 +299,13 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if let some g := c.global? n then
     let gt := mkAppN (mkConst `LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
     return ← applyArgs trans c gt (mkConst n lvls) args
+  -- the projection function of a structure, applied to a value: that projection, which
+  -- is the record's case analysis rather than a function applied to the value
+  if let some pinfo ← getProjectionFnInfo? n then
+    if !pinfo.fromClass && args.size > pinfo.numParams then
+      let ci ← getConstInfoCtor pinfo.ctorName
+      let p := Expr.proj ci.induct pinfo.i args[pinfo.numParams]!
+      return ← trans c (mkAppN p (args.extract (pinfo.numParams + 1) args.size))
   if ← isInlinable n then
     return ← transInline trans c e n lvls args
   throwError "`#leanscript_to_term`: `{n}` is not declared in the signature and is not \
@@ -523,10 +530,12 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
     let inner := (mkApp body (mkConst ``Unit.unit)).headBeta
     return mkAppN (mkConst `LeanScript.Term.thunk_mk)
       #[c.sg, c.gamma, σ, ← trans c inner]
-  -- a one-field wrapper is its field
+  -- a one-field wrapper is its field (a type with one constructor: a constructor of a
+  -- union whose one field is the union itself, `succ n`, is not a wrapper)
   if h : fields.size = 1 then
+    let indInfo ← getConstInfoInduct ci.induct
     let fty ← tyOfTerm fields[0]
-    if fty == ty then return ← trans c fields[0]
+    if indInfo.ctors.length == 1 && fty == ty then return ← trans c fields[0]
   match ← tyView ty with
   | .record fs =>
       let fieldTys ← recordFieldTys fs

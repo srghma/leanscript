@@ -2,6 +2,7 @@ module
 
 public import TermTests.RecUnionRecDepthTest.Programs
 public meta import LeanScript.KernelRfl
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -11,8 +12,8 @@ set_option autoImplicit false
 # The `fib` suite over a recursive tagged union: the terms
 
 The Lean reference programs, the type the fold runs over and what its branches bind
-are in `TermTests.RecUnionRecDepthTest.Programs`; this file writes the programs as terms of the
-language and checks them against the references.
+are in `TermTests.RecUnionRecDepthTest.Programs`; this file translates the programs to terms
+of the language with `#leanscript_to_term` and checks the terms against the references.
 -/
 
 namespace TermTests.RecUnionRecDepth
@@ -21,169 +22,79 @@ open LeanScript
 
 open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
-/-! ## 2. `fib`, written out at depth one
+/-! ## 2. `fib`: the depth-one fold
 
-The `zero` branch answers `0`.  The `succ` branch does not answer: it descends into its
-field — the only occurrence of the union among its fields, which is
-`SelfField`'s `.here rfl` — and dispatches on it.  In that dispatch the value is `succ n`
-with `n` in hand, so:
+`Peano.fib` reads the answer two constructors down, so it translates to
+`recTaggedUnion_rec 1`.  The `zero` branch answers `0`.  The `succ` branch does not
+answer: it descends into its field — the only occurrence of the union among its fields,
+which is `SelfField`'s `.here rfl` — and dispatches on it.  In that dispatch the value is
+`succ n` with `n` in hand, so:
 
 * if `n` is `zero` the value is `succ zero`, and the answer is `1`;
 * if `n` is `succ m`, the context binds `m` (index `0`), the answer at `m` (index `1`),
   `n` (index `2`) and the answer at `n` (index `3`), and the answer is `fib m + fib n` —
   which is the `fib n + fib (n + 1)` of the program. -/
 
-/-- The branches of `fib`. -/
-def fibCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 1 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 1))
-          (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil)))
-      .nil)
-
-/-- **`fib` over a recursive tagged union**: the depth-one fold. -/
-def fibTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)
+/-- **`fib` over a recursive tagged union**: `Peano.fib`, translated to the depth-one
+    fold. -/
+def fibTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.fib
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
-The `n + k` recursions of the request, transcribed: at depth `k` the branch descends `k`
-times, and the answers at the values it descended past are the odd indices `1, 3, …,
-2k + 1` — nearest last, since each descent pushes the subvalue and its answer in front of
-the context. -/
+The `n + k` recursions of the request: at depth `k` the branch descends `k` times, and the
+answers at the values it descended past are the odd indices `1, 3, …, 2k + 1` — nearest
+last, since each descent pushes the subvalue and its answer in front of the context. -/
 
-/-- The tribonacci numbers: a depth-two fold. -/
-def tribCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 2 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 1))
-                (.here
-                  (.here (addT (addT (.var (v♯1)) (.var (v♯3))) (.var (v♯5))))
-                  .nil)))
-            .nil)))
-      .nil)
+/-- `trib`, as a term: a depth-two fold. -/
+def tribTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.trib
 
-/-- `trib`, as a term. -/
-def tribTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)
+/-- `tetra`, as a term: a depth-three fold. -/
+def tetraTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.tetra
 
-/-- The tetranacci numbers: a depth-three fold. -/
-def tetraCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 3 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 1))
-                      (.here
-                        (.here (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
-                          (.var (v♯5))) (.var (v♯7))))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
+/-- `penta`, as a term: a depth-four fold. -/
+def pentaTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.penta
 
-/-- `tetra`, as a term. -/
-def tetraTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)
+/-- `hexa`, as a term: a depth-five fold. -/
+def hexaTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.hexa
 
-/-- The pentanacci numbers: a depth-four fold. -/
-def pentaCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 4 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 0))
-                      (.here
-                        (.deep (.here rfl)
-                          (.skip (.here (.nat_mk 1))
-                            (.here
-                              (.here (addT (addT (addT (addT (.var (v♯1)) (.var (v♯3)))
-                                (.var (v♯5))) (.var (v♯7))) (.var (v♯9))))
-                              .nil)))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
+/-- The depth of the `recTaggedUnion_rec` a translated function is: the fold under the
+    `fun`s of its arguments, and under the applications and the case analysis around it.
+    `none` if the translation is not of that shape. -/
+def recUnionRecDepth? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
+  | .recTaggedUnion_rec k _ _ => some k
+  | .lam b => recUnionRecDepth? b
+  | .ap f _ => recUnionRecDepth? f
+  | .record_casesOn s _ => recUnionRecDepth? s
+  | _ => none
 
-/-- `penta`, as a term. -/
-def pentaTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)
-
-/-- The hexanacci numbers: a depth-five fold. -/
-def hexaCases :
-    TaggedUnionFoldKCases sigAdd peanoSchema (pbind natT) PCtx peanoSchema natT 5 :=
-  .skip (.here (.nat_mk 0))
-    (.here
-      (.deep (.here rfl)
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl)
-              (.skip (.here (.nat_mk 0))
-                (.here
-                  (.deep (.here rfl)
-                    (.skip (.here (.nat_mk 0))
-                      (.here
-                        (.deep (.here rfl)
-                          (.skip (.here (.nat_mk 0))
-                            (.here
-                              (.deep (.here rfl)
-                                (.skip (.here (.nat_mk 1))
-                                  (.here
-                                    (.here (addT (addT (addT (addT (addT
-                                      (.var (v♯1)) (.var (v♯3))) (.var (v♯5)))
-                                      (.var (v♯7))) (.var (v♯9))) (.var (v♯11))))
-                                    .nil)))
-                              .nil)))
-                        .nil)))
-                  .nil)))
-            .nil)))
-      .nil)
-
-/-- `hexa`, as a term. -/
-def hexaTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)
+-- Each program is the fold at the depth it reads.
+example : recUnionRecDepth? fibTerm = some 1 := by kernel_rfl
+example : recUnionRecDepth? tribTerm = some 2 := by kernel_rfl
+example : recUnionRecDepth? tetraTerm = some 3 := by kernel_rfl
+example : recUnionRecDepth? pentaTerm = some 4 := by kernel_rfl
+example : recUnionRecDepth? hexaTerm = some 5 := by kernel_rfl
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
 `fibLoopTR` never reads the answer at anything but the immediate predecessor, so no depth
 is needed: what makes it a fold is that its motive is a function, `nat ⇒ nat ⇒ nat`, and
-the branch returns the loop with its accumulators swapped and added. -/
+the branch returns the loop with its accumulators swapped and added.  `fibTR` is that loop
+applied to `0` and `1`. -/
 
 /-- The motive of the loop: two accumulators still to come. -/
 abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 
-/-- The branches of the loop: `zero` answers `fun a b => a`, and `succ` answers
-    `fun a b => ih b (a + b)`, where `ih` is the loop at the predecessor. -/
+/-- `fibTR`: the loop, started at `0` and `1`. -/
+def fibTRTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.fibTR
+
+/-- The branches of the loop, read back out of `fibTRTerm`: `zero` answers
+    `fun a b => a`, and `succ` answers `fun a b => ih b (a + b)`, where `ih` is the loop at
+    the predecessor. -/
 def fibTRCases :
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx peanoSchema loopTy 0 :=
-  .skip (.here (.lam (.lam (.var (v♯1)))))
-    (.here
-      (.here (.lam (.lam (.ap (.ap (.var (v♯3)) (.var (v♯0)))
-        (addT (.var (v♯1)) (.var (v♯0)))))))
-      .nil)
+  #leanscript_fold_branch fibTRTerm
 
-/-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))
+example : recUnionRecDepth? fibTRTerm = some 0 := by kernel_rfl
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -196,34 +107,23 @@ def pairSchema : LeanRecordSchema TyWf := ⟨natT, natT, []⟩
 /-- The type of that pair. -/
 abbrev pairTy : TyWf := .record pairSchema
 
-/-- The branches of the pair recursion: `zero` answers `(0, 1)`, and `succ` takes the
-    pair at the predecessor apart — binding `a` at index `0` and `b` at index `1` — and
-    answers `(b, a + b)`. -/
+/-- `fib`, as the first component of the pair recursion. -/
+def fibPairTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.fibPairFst
+
+/-- The branches of the pair recursion, read back out of `fibPairTerm`: `zero` answers
+    `(0, 1)`, and `succ` takes the pair at the predecessor apart — binding `a` at index `0`
+    and `b` at index `1` — and answers `(b, a + b)`. -/
 def fibPairCases :
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx peanoSchema pairTy 0 :=
-  .skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
-    (.here
-      (.here (.record_casesOn (.var (v♯1))
-        (.record_mk pairSchema
-          (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
-      .nil)
+  #leanscript_fold_branch fibPairTerm
 
-/-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : Term sigAdd [] (peanoTy ⇒ natT) :=
-  .lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))
+example : recUnionRecDepth? fibPairTerm = some 0 := by kernel_rfl
 
 /-! ## 6. A constructor with more than one field: the continuant over a list
 
 Every constructor above has at most one field, so a deeper look had only one field it
 could descend into.  The **continuant** is the same `fib`-shaped recursion over a union
-whose recursive constructor carries a payload first:
-
-```lean
-def cont : List Nat → Nat
-  | [] => 1
-  | [a] => a
-  | a :: b :: as => a * cont (b :: as) + cont as
-```
+whose recursive constructor carries a payload first, a list (`contRef` below).
 
 Its `cons` branch reads the answer at the tail *of the tail*, so it descends once, and
 the field it descends into is the **second** — which is what `SelfField`'s `.there` says. -/
@@ -235,6 +135,9 @@ def natListSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 
 /-- The type of a list of naturals. -/
 def natListTy : TyWf := .recTaggedUnion natListSchema
+
+-- It is the tree of a Lean `List Nat`.
+example : tyWfOf (List Nat) = natListTy := by kernel_rfl
 
 /-- The fields of `cons`. -/
 abbrev consFields : List (TyWfIn 1) := [(Ty.prim .nat).toTyWfIn, Ty.self.toTyWfIn]
@@ -249,22 +152,19 @@ abbrev LCtx : Ctx := [natListTy]
 -- the head is not an occurrence of the union, so no value of the fold follows it.
 example (τ : TyWf) : lbind τ consFields = [natT, natListTy, τ] := by kernel_rfl
 
-/-- The branches of the continuant: `nil` answers `1`; `cons` descends into its
-    **second** field, and then answers `a` for a one-element list and
-    `a * K (b :: bs) + K bs` for a longer one.  In that last branch the context binds
-    `b`, `bs`, `K bs`, `a`, `as = b :: bs` and `K as`, in that order. -/
-def contCases :
-    TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx natListSchema natT 1 :=
-  .skip (.here (.nat_mk 1))
-    (.here
-      (.deep (.there (.here rfl))
-        (.skip (.here (.var (v♯0)))
-          (.here (.here (addT (mulT (.var (v♯3)) (.var (v♯5))) (.var (v♯2)))) .nil)))
-      .nil)
+/-- The continuant, in Lean: `K [] = 1`, `K [a] = a` and `K (a :: b :: as) =
+    a * K (b :: as) + K as`. -/
+def contRef : List Nat → Nat
+  | [] => 1
+  | [a] => a
+  | a :: b :: as => a * contRef (b :: as) + contRef as
 
-/-- The continuant, as a term: the depth-one fold of a list union. -/
-def contTerm : Term sigAdd [] (natListTy ⇒ natT) :=
-  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
+/-- The continuant, as a term: `contRef`, translated to the depth-one fold of a list.  Its
+    `cons` branch descends into its **second** field, and then answers `a` for a
+    one-element list and `a * K (b :: bs) + K bs` for a longer one. -/
+def contTerm : Term sigAdd [] (natListTy ⇒ natT) := #leanscript_to_term contRef
+
+example : recUnionRecDepth? contTerm = some 1 := by kernel_rfl
 
 /-! ## 7. Running the terms
 
@@ -286,19 +186,23 @@ def peanoVal : Nat → TyWf.Den peanoTy
   | 0 => runP zeroTerm
   | n + 1 => runP succTerm (peanoVal n)
 
+/-- The empty list. -/
+def nilList : List Nat := []
+
+/-- A natural on top of a list. -/
+def consList (a : Nat) (as : List Nat) : List Nat := a :: as
+
+/-- The empty list, as a term: `nilList`, translated. -/
+def nilListTerm : Term sigAdd [] natListTy := #leanscript_to_term nilList
+
+/-- A natural on top of a list, as a term: `consList`, translated. -/
+def consListTerm : Term sigAdd [] (natT ⇒ natListTy ⇒ natListTy) :=
+  #leanscript_to_term consList
+
 /-- The list of naturals `l`, built by the introduction form. -/
 def natListVal : List Nat → TyWf.Den natListTy
-  | [] => runP (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-      Term sigAdd [] natListTy)
-  | a :: as => runP (.lam (.recTaggedUnion_mk natListSchema (t := 1)
-      (fields := .cons (.nat_mk a) (.cons (.var (v♯0)) .nil))) :
-      Term sigAdd [] (natListTy ⇒ natListTy)) (natListVal as)
-
-/-- The continuant, in Lean: the reference `contTerm` is checked against. -/
-def contRef : List Nat → Nat
-  | [] => 1
-  | [a] => a
-  | a :: b :: as => a * contRef (b :: as) + contRef as
+  | [] => runP nilListTerm
+  | a :: as => runP consListTerm a (natListVal as)
 
 example : runP fibTerm (peanoVal 10) = 55 := by decide +kernel
 -- The checks of each term against its reference at the first ten arguments are in

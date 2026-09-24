@@ -5,6 +5,9 @@ public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
 public import TermTests.FibWindowTest
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -93,6 +96,7 @@ The reference definitions: what each term of the language below is a transcripti
 inductive Cell where
   /-- A label, and perhaps one more cell. -/
   | mk (label : Nat) (next : Option Cell)
+  deriving LeanScriptTyWf
 
 namespace Cell
 
@@ -115,7 +119,6 @@ def fib : Cell → Nat
   | .mk _ none => 0
   | .mk _ (some (.mk _ none)) => 1
   | .mk _ (some (.mk l (some g))) => fib (.mk l (some g)) + fib g
-decreasing_by all_goals (simp_wf; omega)
 
 /-- The tribonacci numbers: three cells down. -/
 def trib : Cell → Nat
@@ -124,7 +127,6 @@ def trib : Cell → Nat
   | .mk _ (some (.mk _ (some (.mk _ none)))) => 1
   | .mk _ (some (.mk l₂ (some (.mk l₃ (some g))))) =>
       trib (.mk l₂ (some (.mk l₃ (some g)))) + trib (.mk l₃ (some g)) + trib g
-decreasing_by all_goals (simp_wf; omega)
 
 /-- The tetranacci numbers: four cells down. -/
 def tetra : Cell → Nat
@@ -135,7 +137,6 @@ def tetra : Cell → Nat
   | .mk _ (some (.mk l₂ (some (.mk l₃ (some (.mk l₄ (some g))))))) =>
       tetra (.mk l₂ (some (.mk l₃ (some (.mk l₄ (some g)))))) +
       tetra (.mk l₃ (some (.mk l₄ (some g)))) + tetra (.mk l₄ (some g)) + tetra g
-decreasing_by all_goals (simp_wf; omega)
 
 /-- The pentanacci numbers: five cells down. -/
 def penta : Cell → Nat
@@ -148,7 +149,6 @@ def penta : Cell → Nat
       penta (.mk l₂ (some (.mk l₃ (some (.mk l₄ (some (.mk l₅ (some g)))))))) +
       penta (.mk l₃ (some (.mk l₄ (some (.mk l₅ (some g)))))) +
       penta (.mk l₄ (some (.mk l₅ (some g)))) + penta (.mk l₅ (some g)) + penta g
-decreasing_by all_goals (simp_wf; omega)
 
 /-- The hexanacci numbers: six cells down. -/
 def hexa : Cell → Nat
@@ -165,20 +165,36 @@ def hexa : Cell → Nat
         + hexa (.mk l₃ (some (.mk l₄ (some (.mk l₅ (some (.mk l₆ (some g))))))))
         + hexa (.mk l₄ (some (.mk l₅ (some (.mk l₆ (some g))))))
         + hexa (.mk l₅ (some (.mk l₆ (some g)))) + hexa (.mk l₆ (some g)) + hexa g
-decreasing_by all_goals (simp_wf; omega)
 
-/-- The tail-recursive loop, with two accumulators. -/
-def fibLoopTR : Cell → Nat → Nat → Nat
+/-- The tail-recursive loop, with two accumulators (`@[inline]`, so that `fibTR` below
+    translates to the loop itself, applied to `0` and `1`). -/
+@[inline] def fibLoopTR : Cell → Nat → Nat → Nat
   | .mk _ none, a, _ => a
   | .mk _ (some c), a, b => fibLoopTR c b (a + b)
 
 /-- `fib`, as the loop above started at `0, 1`. -/
 def fibTR (t : Cell) : Nat := fibLoopTR t 0 1
 
-/-- The pair recursion: the answer at the chain and the answer at one cell more. -/
-def fibPair : Cell → Nat × Nat
+/-- The pair recursion: the answer at the chain and the answer at one cell more
+    (`@[inline]`, so that `fibPairFst` below translates to the fold itself). -/
+@[inline] def fibPair : Cell → Nat × Nat
   | .mk _ none => (0, 1)
   | .mk _ (some c) => let (a, b) := fibPair c; (b, a + b)
+
+/-- `fib`, as the first component of the pair recursion. -/
+def fibPairFst (t : Cell) : Nat := (fibPair t).1
+
+/-- A cell with no cell below it, labelled by the argument. -/
+def last (l : Nat) : Cell := .mk l none
+
+/-- A cell labelled by the first argument, on top of the second. -/
+def push (l : Nat) (c : Cell) : Cell := .mk l (some c)
+
+/-- A cell labelled `1` with no cell below it. -/
+def leaf : Cell := .mk 1 none
+
+/-- One more cell, labelled `1`, on top of the argument. -/
+def cons1 (c : Cell) : Cell := .mk 1 (some c)
 
 /-- The **continuant** of the labels of a chain, the one program here that reads the
     record's own field as well as the answers: `K ⟨a⟩ = a` and
@@ -187,7 +203,6 @@ def cont : Cell → Nat
   | .mk a none => a
   | .mk a (some (.mk b none)) => a * cont (.mk b none) + 1
   | .mk a (some (.mk b (some g))) => a * cont (.mk b (some g)) + cont g
-decreasing_by all_goals (simp_wf; omega)
 
 -- The reference programs are the familiar sequences.
 #guard fib (ofNat 10) = 55
@@ -292,6 +307,10 @@ def cellSchema : LeanRecordSchema (TyWfIn 1) :=
 /-- The type of a cell. -/
 def cellTy : TyWf := .recObject cellSchema
 
+-- It is the tree `LeanScriptTyWf` derives for the Lean `Cell` of §0, so the Lean programs
+-- there translate to terms of this type.
+example : tyWfOf Cell = cellTy := by kernel_rfl
+
 -- A value of it holds a `nat` and an `Option` of the record itself.
 example : (TyWf.recObjectUnfold cellSchema).toList = [natT, optTy cellTy] := by kernel_rfl
 
@@ -363,18 +382,11 @@ example (τ : TyWf) :
 example (τ : TyWf) :
     TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := by kernel_rfl
 
-/-- A cell with no cell below it, as a term. -/
-def leafTerm : Term sigAdd [] cellTy :=
-  .recObject_mk cellSchema
-    (fields := .cons (.nat_mk 1)
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil))
+/-- A cell with no cell below it, as a term: `Cell.leaf`, translated. -/
+def leafTerm : Term sigAdd [] cellTy := #leanscript_to_term Cell.leaf
 
-/-- One more cell on top of the one in scope. -/
-def consTerm : Term sigAdd [] (cellTy ⇒ cellTy) :=
-  .lam (.recObject_mk cellSchema
-    (fields := .cons (.nat_mk 1)
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
-        (fields := .cons (.var (v♯0)) .nil)) .nil)))
+/-- One more cell on top of the one in scope: `Cell.cons1`, translated. -/
+def consTerm : Term sigAdd [] (cellTy ⇒ cellTy) := #leanscript_to_term Cell.cons1
 
 end TermTests.RecObjectRecDepth
 

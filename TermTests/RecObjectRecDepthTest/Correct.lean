@@ -1,6 +1,7 @@
 module
 
 public import TermTests.RecObjectRecDepthTest
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -28,6 +29,24 @@ for an arbitrary such environment `e`, and the runs instantiate it.
 namespace TermTests.RecObjectRecDepth
 
 open LeanScript
+
+/-! ## The branches of the folds
+
+The terms are translations of the Lean programs; a statement about the fold's step names
+its branch, which is read back out of the translated term. -/
+
+/-- The branch of `fibTerm`. -/
+def fibBranch : Term sigAdd (branchCtx natT 1) natT := #leanscript_fold_branch fibTerm
+
+/-- The branch of `contTerm`. -/
+def contBranch : Term sigAdd (branchCtx natT 1) natT := #leanscript_fold_branch contTerm
+
+/-- The branch of `fibTRTerm`. -/
+def fibTRBranch : Term sigAdd (branchCtx loopTy 0) loopTy := #leanscript_fold_branch fibTRTerm
+
+/-- The branch of `fibPairTerm`. -/
+def fibPairBranch : Term sigAdd (branchCtx pairTy 0) pairTy :=
+  #leanscript_fold_branch fibPairTerm
 
 /-! ## `fib` -/
 

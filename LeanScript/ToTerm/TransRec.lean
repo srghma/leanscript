@@ -315,6 +315,42 @@ def transClosedCached (trans : TransFn) (c : TCtx) (v : Expr) : MetaM Expr := do
       shared := if shared?.isSome then s.shared + 1 else s.shared }
   return mkApp fn c.gamma
 
+/-- The de Bruijn index a `DeBruijnProj` expression reads: the number of `tail`s around
+    its `head`. -/
+partial def deBruijnIndexOf? (e : Expr) : Option Nat :=
+  match e.consumeMData.getAppFnArgs with
+  | (``LeanScript.DeBruijnProj.head, _) => some 0
+  | (``LeanScript.DeBruijnProj.tail, #[_, _, _, _, _, _, v]) => (deBruijnIndexOf? v).map (· + 1)
+  | _ => none
+
+/-- A translated function that is the **eta-expansion of a declaration of the
+    signature**, `lam … lam (global g (var (k-1)) … (var 0))` (which is what an instance
+    such as `instHAdd` unfolds to, when `Nat.add` is declared): the tree and the reference
+    of `g`, and the number `k` of its `lam`s.  The body is read under the binder of the
+    context the cached translation is a function of, so `g` must not mention it. -/
+partial def etaGlobal? (body : Expr) : Option (Expr × Expr × Nat) := Id.run do
+  -- the `lam`s
+  let mut cur := body
+  let mut k := 0
+  while cur.isAppOfArity `LeanScript.Term.lam 5 do
+    cur := cur.appArg!
+    k := k + 1
+  if k == 0 then return none
+  -- the applications, outermost last: the argument of the `i`-th from the outside is the
+  -- variable `i`
+  for i in [0:k] do
+    unless cur.isAppOfArity `LeanScript.Term.ap 6 do return none
+    let a := cur.appArg!
+    unless a.isAppOfArity `LeanScript.Term.var 4 do return none
+    unless deBruijnIndexOf? a.appArg! == some i do return none
+    cur := cur.appFn!.appArg!
+  unless cur.isAppOfArity `LeanScript.Term.global 4 do return none
+  let args := cur.getAppArgs
+  let ty := args[2]!
+  let ref := args[3]!
+  if ty.hasLooseBVars || ref.hasLooseBVars then return none
+  return some (ty, ref, k)
+
 /-- A call of an inlinable function: its definition is translated, once, and used
     here. -/
 def transInline (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
@@ -336,7 +372,27 @@ def transInline (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     let some e' ← unfoldHere? e
       | throwError "`#leanscript_to_term`: cannot inline `{n}`"
     return ← trans c e'
+  let rest := args.extract nLeading args.size
+  -- applied to variables (and literals) only, the definition is substituted rather than
+  -- applied: `fibTR t = fibLoopTR t 0 1` is the fold of `t` applied to `0` and `1`, not a
+  -- redex whose function is the fold of its own bound variable.  Nothing is duplicated,
+  -- since a variable or a literal costs nothing to read twice.  A call on literals alone
+  -- is a closed value, which the cache serves.
+  if headVal.isLambda && rest.any (·.consumeMData.isFVar) &&
+      rest.all (fun a => a.consumeMData.isFVar || isLitLike a) then
+    return ← trans c (mkAppN headVal rest).headBeta
   let t ← transClosedCached trans c headVal
+  -- an inlined function that is only the eta-expansion of a declaration of the signature
+  -- is that declaration, applied directly: `a + b` is `global add a b`, with no redex
+  let t := match t.getAppFn with
+    | .lam _ _ body _ =>
+        match etaGlobal? body with
+        | some (ty, ref, k) =>
+            if rest.size ≥ k then
+              mkAppN (mkConst `LeanScript.Term.global) #[c.sg, c.gamma, ty, ref]
+            else t
+        | none => t
+    | _ => t
   applyArgs trans c t (mkAppN (mkConst n lvls) leading) (args.extract nLeading args.size)
 
 end LeanScript.ToTerm

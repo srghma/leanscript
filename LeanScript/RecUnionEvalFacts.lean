@@ -108,9 +108,7 @@ def recBindEnvOf (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTa
   | ⟨.self, _⟩ :: fs, e =>
       let p := e.prodFst.2 PUnit.unit
       (p.1, p.2, recBindEnvOf l hwf τ fs e.prodSnd)
-  | ⟨.familyMember i, _⟩ :: fs, e =>
-      (Ty.unroll (TyWf.recTaggedUnionTy l) (Ty.familyMember i) ⟨e.prodFst.1, fun p => (e.prodFst.2 p).1⟩,
-        recBindEnvOf l hwf τ fs e.prodSnd)
+  | ⟨.familyMember _, h⟩ :: _, _ => absurd h Ty.not_wfIn_one_familyMember
   | ⟨.shape sh, _⟩ :: fs, e =>
       (Ty.unroll (TyWf.recTaggedUnionTy l) (Ty.shape sh) ⟨e.prodFst.1, fun p => (e.prodFst.2 p).1⟩,
         recBindEnvOf l hwf τ fs e.prodSnd)
@@ -140,9 +138,7 @@ theorem recBindEnv_eq_recBindEnvOf (l : LeanTaggedUnionSchema (TyWfIn 1))
   | ⟨.self, _⟩ :: fs, e => by
       show (_, _, recBindEnv l hwf τ fs e.prodSnd) = (_, _, recBindEnvOf l hwf τ fs _)
       rw [recBindEnv_eq_recBindEnvOf l hwf τ fs e.prodSnd]; rfl
-  | ⟨.familyMember _, _⟩ :: fs, e => by
-      show (_, recBindEnv l hwf τ fs e.prodSnd) = (_, recBindEnvOf l hwf τ fs _)
-      rw [recBindEnv_eq_recBindEnvOf l hwf τ fs e.prodSnd]; rfl
+  | ⟨.familyMember _, h⟩ :: _, _ => absurd h Ty.not_wfIn_one_familyMember
   | ⟨.shape _, _⟩ :: fs, e => by
       show (_, recBindEnv l hwf τ fs e.prodSnd) = (_, recBindEnvOf l hwf τ fs _)
       rw [recBindEnv_eq_recBindEnvOf l hwf τ fs e.prodSnd]; rfl

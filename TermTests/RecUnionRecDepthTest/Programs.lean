@@ -5,6 +5,9 @@ public import LeanScript.Eval
 public import LeanScript.RecUnionRecFacts
 public import TermTests.FibWindowTest
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -93,6 +96,7 @@ inductive Peano where
   | zero
   /-- The successor of a Peano natural. -/
   | succ (n : Peano)
+  deriving LeanScriptTyWf
 
 namespace Peano
 
@@ -142,18 +146,29 @@ def hexa : Peano → Nat
         + hexa (.succ (.succ (.succ (.succ n))))
         + hexa (.succ (.succ (.succ (.succ (.succ n)))))
 
-/-- The tail-recursive loop, with two accumulators. -/
-def fibLoopTR : Peano → Nat → Nat → Nat
+/-- The tail-recursive loop, with two accumulators (`@[inline]`, so that `fibTR` below
+    translates to the loop itself, applied to `0` and `1`). -/
+@[inline] def fibLoopTR : Peano → Nat → Nat → Nat
   | .zero, a, _ => a
   | .succ n, a, b => fibLoopTR n b (a + b)
 
 /-- `fib`, as the loop above started at `0, 1`. -/
 def fibTR (n : Peano) : Nat := fibLoopTR n 0 1
 
-/-- The pair recursion: the answer at `n` together with the answer at `n + 1`. -/
-def fibPair : Peano → Nat × Nat
+/-- The pair recursion: the answer at `n` together with the answer at `n + 1`
+    (`@[inline]`, so that `fibPairFst` below translates to the fold itself). -/
+@[inline] def fibPair : Peano → Nat × Nat
   | .zero => (0, 1)
   | .succ n => let (a, b) := fibPair n; (b, a + b)
+
+/-- `fib`, as the first component of the pair recursion. -/
+def fibPairFst (n : Peano) : Nat := (fibPair n).1
+
+/-- Zero, as a closed value. -/
+def zeroVal : Peano := .zero
+
+/-- The successor, as a function. -/
+def succFn (n : Peano) : Peano := .succ n
 
 /-- A Peano natural from a `Nat`, for the checks below. -/
 def ofNat : Nat → Peano
@@ -248,6 +263,10 @@ def peanoSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 /-- The type of a Peano natural. -/
 def peanoTy : TyWf := .recTaggedUnion peanoSchema
 
+-- It is the tree `LeanScriptTyWf` derives for the Lean `Peano` of §0, so the Lean programs
+-- there translate to terms of this type.
+example : tyWfOf Peano = peanoTy := by kernel_rfl
+
 -- The unfolding really is the schema with `Ty.self` replaced by the union, so the field
 -- of `succ` takes a Peano natural.
 example : (TyWf.recTaggedUnionUnfold peanoSchema).get 1 (by decide) = [peanoTy] := by kernel_rfl
@@ -275,12 +294,10 @@ example (τ : TyWf) (Γ : Ctx) :
     the `fun` in front of it. -/
 abbrev PCtx : Ctx := [peanoTy]
 
-/-- Zero, as a term. -/
-def zeroTerm : Term sigAdd [] peanoTy :=
-  .recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)
+/-- Zero, as a term: `Peano.zeroVal`, translated. -/
+def zeroTerm : Term sigAdd [] peanoTy := #leanscript_to_term Peano.zeroVal
 
-/-- The successor of the variable in scope. -/
-def succTerm : Term sigAdd [] (peanoTy ⇒ peanoTy) :=
-  .lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))
+/-- The successor of the variable in scope: `Peano.succFn`, translated. -/
+def succTerm : Term sigAdd [] (peanoTy ⇒ peanoTy) := #leanscript_to_term Peano.succFn
 
 end TermTests.RecUnionRecDepth

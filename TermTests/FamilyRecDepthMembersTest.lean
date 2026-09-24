@@ -4,6 +4,9 @@ public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import TermTests.FamilyRecDepthTest
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -92,6 +95,9 @@ inductive Od where
 
 end
 
+deriving instance LeanScriptTyWf for Ev
+deriving instance LeanScriptTyWf for Od
+
 mutual
 
 /-- `fib` of the length of an `Ev` chain. -/
@@ -177,35 +183,20 @@ abbrev odSuccFields : List (TyWfIn 2) := [(Ty.familyMember 0).toTyWfIn]
 example (τ : TyWf) : ebind τ evSuccFields = [TyWf.famMemberTy famEv evWf 1, τ] := by kernel_rfl
 example (τ : TyWf) : ebind τ odSuccFields = [evTy, τ] := by kernel_rfl
 
-/-- The branches of `fib` over the alternating family: each member's `succ` descends into
-    the **other** member — `FamilyMemberAt.there .here` from `Ev`, `FamilyMemberAt.here`
-    from `Od` — and answers with the two answers it then has in hand. -/
+-- It is the tree `LeanScriptTyWf` derives for the Lean `Ev`, so `Ev.fib` translates to a
+-- term of this type.
+example : tyWfOf Ev = evTy := by kernel_rfl
+
+/-- **`fib` over a family whose members mention each other**: `Ev.fib`, translated to the
+    depth-one fold.  Each member's `succ` descends into the **other** member —
+    `FamilyMemberAt.there .here` from `Ev`, `FamilyMemberAt.here` from `Od` — and answers
+    with the two answers it then has in hand. -/
+def evFibTerm : Term sigAdd [] (evTy ⇒ natT) := #leanscript_to_term Ev.fib
+
+/-- The branches of `fib` over the alternating family, read back out of `evFibTerm`. -/
 def evFibCases :
     FamilyFoldKCases sigAdd 0 famEv.members (ebind natT) ECtx natT famEv.members 1 :=
-  .cons
-    (.ctors
-      (.skip (.here (.nat_mk 0))
-        (.here
-          (.deep (.here rfl) (.there .here)
-            (.ctors
-              (.skip (.here (.nat_mk 1))
-                (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
-          .nil)))
-    (.cons
-      (.ctors
-        (.skip (.here (.nat_mk 0))
-          (.here
-            (.deep (.here rfl) .here
-              (.ctors
-                (.skip (.here (.nat_mk 1))
-                  (.here (.here (addT (.var (v♯1)) (.var (v♯3)))) .nil))))
-            .nil)))
-      .nil)
-
-/-- **`fib` over a family whose members mention each other**: the depth-one fold, whose
-    every deeper look crosses to the other member. -/
-def evFibTerm : Term sigAdd [] (evTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) evFibCases)
+  #leanscript_fold_branch evFibTerm
 
 /-! ## 2. The other two member shapes: a record member and a newtype member
 
@@ -352,7 +343,12 @@ example (τ : TyWf) : nbind τ [(Ty.array (Ty.prim .nat)).toTyWfIn] = [TyWf.arra
 /-- The branches of `fib` over the three-member family: the record member descends into
     the link (member `1`), the `some` branch of the link descends into the node
     (member `0`, a **record** member, so what it is given is that record's one branch), and
-    the newtype member answers. -/
+    the newtype member answers.
+
+    These are written out rather than translated: `Tags` does not mention `Node` or `Opt`,
+    so `LeanScriptTyWf` models it as a type of its own (a type has one model: a `mutual`
+    block is split into the groups of declarations that mention each other), and no Lean
+    type has this three-member family as its tree. -/
 def nodeFibCases :
     FamilyFoldKCases sigAdd 1 famNode.members (nbind natT) NCtx natT famNode.members 1 :=
   .cons

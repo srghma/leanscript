@@ -15,8 +15,9 @@ non-dependent motive.
 
 These files check the node from both ends:
 
-* **written out** (`TermTests/NatRecDepthTest/Written.lean`).  `fibTerm` is `fib` as a
-  term of the grammar, at depth two, and `fibTerm_eval` proves that its value is `fib n`
+* **proved** (`TermTests/NatRecDepthTest/Written.lean`).  `fibTerm` is `fib` as a
+  term of the grammar, at depth two (translated, and checked against the term written
+  out), and `fibTerm_eval` proves that its value is `fib n`
   at **every** `n` — by the two equations of `LeanScript.NatRecFacts`, not by testing.
 * **translated** (one file per program, so that they build in parallel).  Each of the
   Fibonacci programs of the request is handed to `#leanscript_to_term` as it is written,

@@ -50,16 +50,27 @@ open Lean Meta Elab Term
 
 namespace LeanScript.ToTerm
 
+/-- How the fold of a record reads one field of a constructor of a union field. -/
+inductive RecObjPayloadField where
+  /-- A value that does not mention the record, of this Lean type. -/
+  | plain (ty : Expr)
+  /-- The record itself. -/
+  | self
+  /-- A value of a (non-recursive) structure (`Nat × Cell`): its constructor, universe
+      levels and parameters, and how each of its fields is read. -/
+  | struct (ctor : Name) (lvls : List Level) (params : Array Expr)
+      (fields : Array RecObjPayloadField)
+  deriving Inhabited
+
 /-- How the fold of a record reads one field of it. -/
 inductive RecObjField where
   /-- A field that does not mention the record, of this Lean type. -/
   | plain (ty : Expr)
-  /-- A field of a union type (`Option Cell`): the inductive, its universe levels and
-      parameters, and for each constructor its name and its fields — `none` for a field
-      that is the record itself, `some α` for one of the Lean type `α`, which does not
-      mention it. -/
+  /-- A field of a union type (`Option Cell`, `Option (Nat × Cell)`): the inductive, its
+      universe levels and parameters, and for each constructor its name and how each of
+      its fields is read. -/
   | union (ind : Name) (lvls : List Level) (params : Array Expr)
-      (ctors : Array (Name × Array (Option Expr)))
+      (ctors : Array (Name × Array RecObjPayloadField))
   deriving Inhabited
 
 /-- What the fold of a record needs to know about it and about the recursion. -/
@@ -84,6 +95,42 @@ structure RecObjInfo where
       a window is that body itself rather than a record of fields. -/
   isAlias : Bool := false
 
+/-- How a field of this Lean type, inside a constructor of a union field of the recursive
+    record `ind`, is read: the record itself, a value that does not mention it, or a
+    value of a non-recursive structure whose fields are read in the same way. -/
+partial def classifyRecObjPayload (ind : Name) (selfTy : Expr) (t : Expr) :
+    MetaM RecObjPayloadField := do
+  let mentions (t : Expr) : Bool := (t.find? fun s => s.isConstOf ind).isSome
+  if ← isDefEq t selfTy then return .self
+  if !mentions t then return .plain t
+  let t' ← whnf t
+  let .const j jl := t'.getAppFn
+    | throwError "`#leanscript_to_term`: the field of type {t} mentions the recursive \
+        record {ind} other than as the record itself"
+  let some (.inductInfo ji) := (← getEnv).find? j
+    | throwError "`#leanscript_to_term`: the field of type {t} mentions the recursive \
+        record {ind} other than as the record itself"
+  let jargs := t'.getAppArgs
+  unless ji.numIndices == 0 && jargs.size == ji.numParams && !ji.isRec &&
+      ji.ctors.length == 1 do
+    throwError "`#leanscript_to_term`: the field of type {t} mentions the recursive record \
+      {ind} other than as the record itself or inside a structure"
+  let cn := ji.ctors[0]!
+  let ci ← getConstInfoCtor cn
+  let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams jl) jargs
+  let fs ← forallTelescopeReducing cty fun xs _ => do
+    let mut out : Array RecObjPayloadField := #[]
+    for x in xs do
+      let ft ← inferType x
+      if ft.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then
+        throwError "`#leanscript_to_term`: the constructor {cn} has a dependent field"
+      if ← LeanScript.Deriving.erasedBinder ft then
+        throwError "`#leanscript_to_term`: the constructor {cn} has a field the \
+          language erases, which the fold of a record does not read"
+      out := out.push (← classifyRecObjPayload ind selfTy ft)
+    return out
+  return .struct cn jl jargs fs
+
 /-- How a field of this Lean type is read by the fold of the record `info`. -/
 def classifyRecObjField (ind : Name) (selfTy : Expr) (fty : Expr) : MetaM RecObjField := do
   let mentions (t : Expr) : Bool := (t.find? fun s => s.isConstOf ind).isSome
@@ -104,7 +151,7 @@ def classifyRecObjField (ind : Name) (selfTy : Expr) (fty : Expr) : MetaM RecObj
     let ci ← getConstInfoCtor cn
     let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams jl) jargs
     let fs ← forallTelescopeReducing cty fun xs _ => do
-      let mut out : Array (Option Expr) := #[]
+      let mut out : Array RecObjPayloadField := #[]
       for x in xs do
         let t ← inferType x
         if t.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then
@@ -112,11 +159,7 @@ def classifyRecObjField (ind : Name) (selfTy : Expr) (fty : Expr) : MetaM RecObj
         if ← LeanScript.Deriving.erasedBinder t then
           throwError "`#leanscript_to_term`: the constructor {cn} has a field the \
             language erases, which the fold of a record does not read"
-        if ← isDefEq t selfTy then out := out.push none
-        else if mentions t then
-          throwError "`#leanscript_to_term`: the field of type {t} of {cn} mentions the \
-            recursive record {ind} other than as the record itself"
-        else out := out.push (some t)
+        out := out.push (← classifyRecObjPayload ind selfTy t)
       return out
     ctors := ctors.push (cn, fs)
   return .union j jl jargs ctors
@@ -209,7 +252,8 @@ mutual
     continue with the Lean values of the fields. -/
 partial def recObjLevel (info : RecObjInfo) (c : TCtx) (answers : Array (Expr × Expr))
     (frontier : Array Expr) (wv : FVarId) (wTy : Expr) (j : Nat)
-    (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr) :
+    (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr)
+    (outer : Option (Array Expr) := none) :
     MetaM Expr := do
   if info.isAlias then
     -- a newtype has one field, its body, and the window is that body itself
@@ -229,7 +273,14 @@ partial def recObjLevel (info : RecObjInfo) (c : TCtx) (answers : Array (Expr ×
   let scrut ← c.var wv
   withLocalDeclsD decls fun xs => do
     let c' := c.pushFields (xs.zip fTys |>.map fun (x, t) => (x.fvarId!, t))
-    let body ← recObjFieldsFrom info c' answers frontier xs fTys 0 #[] j k
+    -- at the top level, a field that does not mention the record is read where the
+    -- branch binds it, not out of the window, which holds the same value
+    let plainVals := match outer with
+      | some o => xs.mapIdx fun i x => match info.fields[i]!, o[i]? with
+          | .plain _, some v => v
+          | _, _ => x
+      | none => xs
+    let body ← recObjFieldsFrom info c' answers frontier xs fTys 0 #[] j k plainVals
     return mkAppN (mkConst `LeanScript.Term.record_casesOn)
       #[c.sg, c.gamma, info.τ, fsW, scrut, body]
 
@@ -237,12 +288,14 @@ partial def recObjLevel (info : RecObjInfo) (c : TCtx) (answers : Array (Expr ×
     each branch binding the constructor's fields. -/
 partial def recObjFieldsFrom (info : RecObjInfo) (c : TCtx) (answers : Array (Expr × Expr))
     (frontier : Array Expr) (xs fTys : Array Expr) (i : Nat) (vals : Array Expr) (j : Nat)
-    (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr) :
+    (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr)
+    (plainVals : Array Expr := xs) :
     MetaM Expr := do
   if h : i < xs.size then
     match info.fields[i]! with
     | .plain _ =>
-        recObjFieldsFrom info c answers frontier xs fTys (i + 1) (vals.push xs[i]) j k
+        recObjFieldsFrom info c answers frontier xs fTys (i + 1)
+          (vals.push (plainVals[i]?.getD xs[i])) j k plainVals
     | .union _ ulvls uparams uctors =>
         let .taggedUnion l ← tyView fTys[i]!
           | throwError "`#leanscript_to_term`: the field {i} of the recursive record \
@@ -254,6 +307,7 @@ partial def recObjFieldsFrom (info : RecObjInfo) (c : TCtx) (answers : Array (Ex
             fun c' answers' frontier' pvals =>
               let v := mkAppN (mkConst cn ulvls) (uparams ++ pvals)
               recObjFieldsFrom info c' answers' frontier' xs fTys (i + 1) (vals.push v) j k
+                plainVals
         let minors := (Array.range uctors.size).map mkNatLit
         let cases ← mkTaggedUnionCases mkBranch c info.τ l 0 minors (uctors.map (·.1))
         return mkAppN (mkConst `LeanScript.Term.taggedUnion_casesOn)
@@ -267,7 +321,7 @@ partial def recObjFieldsFrom (info : RecObjInfo) (c : TCtx) (answers : Array (Ex
     otherwise the answer beside the window of its own fields, which is taken apart in
     turn. -/
 partial def recObjPayload (info : RecObjInfo) (c : TCtx) (answers : Array (Expr × Expr))
-    (frontier : Array Expr) (pfs : Array (Option Expr)) (pTys : Array Expr) (j : Nat)
+    (frontier : Array Expr) (pfs : Array RecObjPayloadField) (pTys : Array Expr) (j : Nat)
     (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr) :
     MetaM Expr := do
   unless pfs.size == pTys.size do
@@ -275,25 +329,38 @@ partial def recObjPayload (info : RecObjInfo) (c : TCtx) (answers : Array (Expr 
       has {pfs.size} fields, its tree {pTys.size}"
   let decls : Array (Name × (Array Expr → MetaM Expr)) :=
     pfs.mapIdx fun i f => match f with
-      | some t => (Name.mkSimple s!"p{i}", fun _ => pure t)
-      | none =>
+      | .plain t => (Name.mkSimple s!"p{i}", fun _ => pure t)
+      | .self =>
           if j == 0 then (Name.mkSimple s!"ans{i}", fun _ => pure info.τLean)
           else (Name.mkSimple s!"tree{i}", fun _ => pure (mkConst ``Unit))
+      | .struct .. => (Name.mkSimple s!"s{i}", fun _ => pure (mkConst ``Unit))
   withLocalDeclsD decls fun ps => do
     let c' := c.pushFields (ps.zip pTys |>.map fun (x, t) => (x.fvarId!, t))
     recObjPayloadFrom info c' answers frontier pfs ps pTys j 0 #[] k
 
 /-- The fields of one constructor of a union field, from the `i`-th on. -/
 partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (Expr × Expr))
-    (frontier : Array Expr) (pfs : Array (Option Expr)) (ps pTys : Array Expr) (j : Nat)
+    (frontier : Array Expr) (pfs : Array RecObjPayloadField) (ps pTys : Array Expr) (j : Nat)
     (i : Nat) (pvals : Array Expr)
     (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr) :
     MetaM Expr := do
   let go := recObjPayloadFrom info
   if h : i < ps.size then
     match pfs[i]! with
-    | some _ => go c answers frontier pfs ps pTys j (i + 1) (pvals.push ps[i]) k
-    | none =>
+    | .plain _ => go c answers frontier pfs ps pTys j (i + 1) (pvals.push ps[i]) k
+    | .struct sc slvls sparams sfs =>
+        -- a structure around the record: its case analysis, and its fields read in turn
+        let .record fsS ← tyView pTys[i]!
+          | throwError "`#leanscript_to_term`: internal: the tree of a structure inside \
+              {info.ind} is not a record"
+        let sTys := (← recordFieldTys fsS).toArray
+        let inner ← recObjPayload info c answers frontier sfs sTys j
+          fun c' answers' frontier' svals => do
+            let v := mkAppN (mkConst sc slvls) (sparams ++ svals)
+            go c' answers' frontier' pfs ps pTys j (i + 1) (pvals.push v) k
+        return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+          #[c.sg, c.gamma, info.τ, fsS, ← c.var ps[i].fvarId!, inner]
+    | .self =>
         if j == 0 then
           -- the frontier: the answer is bound, the subvalue is a variable nothing may
           -- take apart
@@ -389,11 +456,21 @@ def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       (mkAppN (mkConst (if isAlias then ``LeanScript.TyWf.recAliasRecBinders
         else ``LeanScript.TyWf.recObjectRecBinders)) #[fs, hwf, τ, mkNatLit k])
     let bTys := (← listOfExpr bindersE).toArray
-    let ids ← bTys.mapM fun _ => mkFreshFVarId
+    -- the binders of the branch: the fields of the record (Lean variables, for the ones
+    -- that do not mention it), then the window
+    let nF := if isAlias then 0 else fields.size
+    let decls : Array (Name × (Array Expr → MetaM Expr)) :=
+      (Array.range nF).map fun i => match fields[i]! with
+        | .plain t => (Name.mkSimple s!"b{i}", fun _ => pure t)
+        | .union .. => (Name.mkSimple s!"b{i}", fun _ => pure (mkConst ``Unit))
+    withLocalDeclsD decls fun bs => do
+    let ids ← (Array.range bTys.size).mapM fun i =>
+      if h : i < bs.size then pure bs[i].fvarId! else mkFreshFVarId
     let c1 := c.pushFields (ids.zip bTys)
     let branch ← recObjLevel info c1 #[] #[] ids.back! bTys.back! k
-      fun c' answers frontier vals =>
-        recObjLeaf trans info brecF motives c' answers frontier vals
+      (fun c' answers frontier vals =>
+        recObjLeaf trans info brecF motives c' answers frontier vals)
+      (outer := if isAlias then none else some bs)
     return mkAppN (mkConst (if isAlias then `LeanScript.Term.recAlias_rec
       else `LeanScript.Term.recObject_rec))
       #[c.sg, c.gamma, τ, fs, hwf, mkNatLit k, scrutT, branch]

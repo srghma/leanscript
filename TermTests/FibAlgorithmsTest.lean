@@ -1,6 +1,10 @@
 module
 
 public import TermTests.NatRecKTest
+public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -14,7 +18,8 @@ that the code the backend prints should look like the code that was written, so 
 question "which of these is a term of the grammar today?" has to be answered one
 definition at a time rather than for `fib` in general.
 
-This file answers it by writing the terms and proving what they compute.  It is the
+This file answers it by translating the definitions with `#leanscript_to_term` (the terms
+are written out beside them in `example`s) and proving what they compute.  It is the
 evidence behind the table in §2 of `FibProposals.md`:
 
 | definition | what it needs | here |
@@ -29,8 +34,8 @@ Since this file was written, the node and the two translation cases it names as 
 have been implemented: `LeanScript.Term.nat_rec k` descends `k + 1` steps, and
 `#leanscript_to_term` translates both the `n + 2` pattern and a `for` loop over a range.
 `TermTests/NatRecDepthTest/` hands each of the five definitions to the translation as
-it is written.  What is below is unchanged, and is still the hand-written evidence that
-the first two need nothing beyond a fold at a function type and at a record type.
+it is written.  What is below is the evidence that the first two need nothing beyond a
+fold at a function type and at a record type.
 
 Everything below runs in the signature of `TermTests/FibWindowTest.lean`: one declaration,
 `add`.
@@ -47,8 +52,8 @@ local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $
 
 ```lean
 def fibLoopTR : Nat → Nat → Nat → Nat
-  | 0,     a, _ => a
-  | n + 1, a, b => fibLoopTR n b (a + b)
+  | 0     => fun a _ => a
+  | n + 1 => fun a b => fibLoopTR n b (a + b)
 
 def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
 ```
@@ -61,10 +66,14 @@ given the value at the predecessor" suggests that an accumulator-passing loop is
 reach.
 -/
 
-/-- The Lean definition to be expressed. -/
-def fibLoopTR : Nat → Nat → Nat → Nat
-  | 0, a, _ => a
-  | n + 1, a, b => fibLoopTR n b (a + b)
+/-- The Lean definition to be expressed.  It matches on the counter only and answers
+    with the function of the two accumulators, so that its translation is the fold
+    itself, `.lam (.nat_rec …)`; matching on all three arguments would translate to the
+    same fold under three `lam`s, applied to the accumulators (`@[inline]`, so that
+    `fibTR` below translates to the fold applied to `0` and `1`). -/
+@[inline] def fibLoopTR : Nat → Nat → Nat → Nat
+  | 0 => fun a _ => a
+  | n + 1 => fun a b => fibLoopTR n b (a + b)
 
 /-- `fibTR`, the wrapper. -/
 def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
@@ -72,24 +81,34 @@ def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
 /-- The type the fold runs at: the two accumulators. -/
 abbrev Acc2 : TyWf := TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat
 
+/-- `fibLoopTR`, as a term: a fold at a function type. -/
+def loop_term : Term sigAdd [] (TyWf.prim .nat ⇒ Acc2) := #leanscript_to_term fibLoopTR
+
 /-- The base value: `fun a _ => a`. -/
-def loopZero {Γ : Ctx} : Term sigAdd Γ Acc2 :=
-  .lam (.lam (.var (v♯1)))
+def loopZero : Term sigAdd [TyWf.prim .nat] Acc2 :=
+  match (#leanscript_fold_bases loop_term :
+      Spine sigAdd [TyWf.prim .nat] (natRecCtx Acc2 1 [])) with
+  | .cons z .nil => z
 
 /-- The step: it binds the predecessor (index `0`) and the loop at the predecessor
     (index `1`), and answers `fun a b => loop b (a + b)`. -/
-def loopStep {Γ : Ctx} : Term sigAdd (TyWf.prim .nat :: Acc2 :: Γ) Acc2 :=
-  .lam (.lam
-    (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0)))))
+def loopStep : Term sigAdd (TyWf.prim .nat :: Acc2 :: [TyWf.prim .nat]) Acc2 :=
+  #leanscript_fold_branch loop_term
 
-/-- `fibLoopTR`, as a term: a fold at a function type. -/
-def loop_term {Γ : Ctx} : Term sigAdd Γ (TyWf.prim .nat ⇒ Acc2) :=
-  .lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep)
+example : loopZero = .lam (.lam (.var (v♯1))) := by kernel_rfl
+example : loopStep =
+    .lam (.lam
+      (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0))))) := by kernel_rfl
+example : loop_term = .lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) := by
+  kernel_rfl
 
-/-- `fibTR`, as a term: the loop started at `(0, 1)`. -/
-def fibTR_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.ap (.ap (.ap (loop_term (Γ := [TyWf.prim .nat])) (.var (v♯0))) (.nat_mk 0))
-    (.nat_mk 1))
+/-- `fibTR`, as a term: the loop started at `(0, 1)`.  The translation inlines the loop,
+    so the term applies the fold itself rather than `loop_term`. -/
+def fibTR_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term fibTR
+
+example : fibTR_term =
+    .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
+      (.nat_mk 1)) := by kernel_rfl
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
 theorem loop_term_eval (n a b : Nat) : runAdd loop_term n a b = fibLoopTR n a b := by

@@ -89,9 +89,13 @@ What a deeper look into **another member** looks like, and what the branches of 
 member and of a newtype member are, is the companion file
 `TermTests/FamilyRecDepthMembersTest.lean`.
 
-The terms are **written out**: `#leanscript_to_term` compiles a recursion on a `Nat` at any
-depth, and a recursion on a list one constructor at a time, so a depth-`k` recursion over a
-mutual family is not something it reads yet.
+The terms are **written out**, not translated by `#leanscript_to_term`: `Pe` and `Ls` do
+not mention each other, so `LeanScriptTyWf` models each as a recursive tagged union of its
+own (a type has one model, and a `mutual` block is split into the groups of declarations
+that mention each other), and no Lean type has the two-member family of §1 as its tree.
+The folds over families that *are* translated — members that mention each other — are
+`evFibTerm` in `TermTests/FamilyRecDepthMembersTest.lean` and
+`TermTests/MutualFamilyToTermTest/`.
 -/
 
 namespace TermTests.FamilyRecDepth

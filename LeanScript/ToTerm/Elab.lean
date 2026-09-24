@@ -70,6 +70,60 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
   | some ty => Term.ensureHasType ty t
   | none => return t
 
+/-- The folds of the grammar, with the number of arguments of each: the last one is the
+    branch (or the cases) of the fold. -/
+def foldNodes : List (Name × Nat) :=
+  [(`LeanScript.Term.nat_rec, 7), (`LeanScript.Term.array_rec, 8),
+   (`LeanScript.Term.recTaggedUnion_rec, 8), (`LeanScript.Term.recObject_rec, 8),
+   (`LeanScript.Term.recAlias_rec, 8), (`LeanScript.Term.mutualRecursiveFamily_rec, 9)]
+
+/-- Unfold the definitions at the head of `e`, beta-reducing on the way. -/
+partial def unfoldHeadConsts (e : Expr) : MetaM Expr := do
+  let e := e.headBeta
+  match e.getAppFn with
+  | .const .. =>
+      match ← withTransparency .all (unfoldDefinition? e) with
+      | some e' => unfoldHeadConsts e'
+      | none => return e
+  | _ => return e
+
+/-- `#leanscript_fold_branch t`: the branch of the first fold in the term `t` (a
+    definition, typically one built by `#leanscript_to_term`), outermost first.  It is
+    what a proof about the fold's step names: the translation builds the whole function,
+    and this reads the branch back out of it, in the context the fold gives it. -/
+syntax (name := leanscriptFoldBranch) "#leanscript_fold_branch " term : term
+
+@[term_elab leanscriptFoldBranch]
+def elabLeanscriptFoldBranch : TermElab := fun stx expected? => do
+  let t ← instantiateMVars (← elabTerm stx[1] none)
+  let v ← unfoldHeadConsts t
+  let isFold (s : Expr) : Bool :=
+    foldNodes.any fun (n, k) => s.isAppOfArity n k
+  let some node := v.find? fun s => isFold s && !s.hasLooseBVars
+    | throwError "`#leanscript_fold_branch`: no fold in{indentExpr v}"
+  let b := node.appArg!
+  match expected? with
+  | some ty => Term.ensureHasType ty b
+  | none => return b
+
+/-- `#leanscript_fold_bases t`: the answers for the short arguments of the first fold in
+    the term `t` — the `NatRecBases` of a `nat_rec k`, the `ArrayRecBases` of an
+    `array_rec k` — which is the argument of the fold just before its branch. -/
+syntax (name := leanscriptFoldBases) "#leanscript_fold_bases " term : term
+
+@[term_elab leanscriptFoldBases]
+def elabLeanscriptFoldBases : TermElab := fun stx expected? => do
+  let t ← instantiateMVars (← elabTerm stx[1] none)
+  let v ← unfoldHeadConsts t
+  let isBasesFold (s : Expr) : Bool :=
+    s.isAppOfArity `LeanScript.Term.nat_rec 7 || s.isAppOfArity `LeanScript.Term.array_rec 8
+  let some node := v.find? fun s => isBasesFold s && !s.hasLooseBVars
+    | throwError "`#leanscript_fold_bases`: no `nat_rec` or `array_rec` in{indentExpr v}"
+  let b := node.appFn!.appArg!
+  match expected? with
+  | some ty => Term.ensureHasType ty b
+  | none => return b
+
 /-- `#leanscript_to_term_cache_stats`: how many definitions the translation cache holds,
     how often one was reused, and how often two definitions turned out to have the same
     shape and were merged into one tree. -/

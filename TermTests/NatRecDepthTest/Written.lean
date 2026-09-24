@@ -3,11 +3,15 @@ module
 public import TermTests.NatRecDepthTest.Common
 public import LeanScript.NatRecFacts
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
 /-! Part of the `nat_rec k` tests (see `TermTests/NatRecDepthTest/Common.lean`): `fib`
-written out as a term at depth two, and proved correct at every argument. -/
+as a term at depth two — translated by `#leanscript_to_term`, with the term it is
+written out beside it — and proved correct at every argument. -/
 
 namespace TermTests.NatRecDepth
 
@@ -23,16 +27,19 @@ def fib : Nat → Nat
   | 1 => 1
   | n + 2 => fib n + fib (n + 1)
 
-/-! ## `fib`, written out at depth two
+/-! ## `fib` at depth two
 
 The base values are `(fib 1, fib 0) = (1, 0)`, nearest first, and the branch at `n + 2`
 binds `n` at index `0`, `fib (n + 1)` at index `1` and `fib n` at index `2`. -/
 
 /-- `fib`, as a term of the grammar: the depth-two fold. -/
-def fibTerm : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.nat_rec 1 (.var (v♯0))
-    (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
-    (addT (.var (v♯2)) (.var (v♯1))))
+def fibTerm : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term fib
+
+/-- The term, written out. -/
+example : fibTerm =
+    .lam (.nat_rec 1 (.var (v♯0))
+      (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
+      (addT (.var (v♯2)) (.var (v♯1)))) := by kernel_rfl
 
 example : runAdd fibTerm 0 = 0 := by kernel_rfl
 example : runAdd fibTerm 1 = 1 := by kernel_rfl

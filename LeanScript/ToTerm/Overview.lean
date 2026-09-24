@@ -82,7 +82,21 @@ A **constructor is inlinable**: an application of one is built in place, as the
 `record_mk`, `taggedUnion_mk`, `enum_mk` or `array_mk` node it denotes.  So are
 projections and anything marked `@[inline]`, `@[macro_inline]`, `@[always_inline]` or
 `@[reducible]` (an `abbrev`): their definition is translated and cached, and the
-translation is used at the call site.
+translation is used at the call site.  Three refinements keep the result the term one
+would write by hand:
+
+* a projection of a (non-class) structure, `p.1` or `s.field`, becomes a
+  `record_casesOn` that reads the field;
+* an inlined definition whose translation is the eta-expansion of a declaration of the
+  signature, `lam … lam (global g (var …) …)` (what `a + b` unfolds to when `Nat.add`
+  is declared), is used as `global g` itself, so `a + b` is `global add a b`;
+* an inlined call whose arguments are variables and literals, at least one a variable,
+  is **substituted**: the body of the definition is translated with the arguments in
+  place (so an `@[inline]` fold called on the argument is the fold itself, not a
+  function applied to it).  A call on closed arguments only is cached as above.
+
+A `let (a, b) := e; …` (a `match` on a structure) is kept as **one** `record_casesOn`,
+also inside the branch of a fold.
 
 A call of a function implemented by a **pure extern of `Init`** is the entry of the
 catalogue `LeanScript.LeanInitPureExtern` that models it (`LeanScript/ToTerm/Extern.lean`):
@@ -120,8 +134,9 @@ being translated.
   `mutualRecursiveFamily_rec k` (`LeanScript.ToTerm.TransRecUnion`,
   `LeanScript.ToTerm.TransRecFamily`), whose branches look one subvalue at a time — a
   recursion that reads under two subvalues at once is refused.  A recursive newtype is
-  folded only when its body is a union whose constructors hold the newtype itself or
-  values that do not mention it (`Link Chain`, `Option Chain`; not `Option (Nat × Chain)`).
+  folded when its body is a union whose constructors hold the newtype itself, values
+  that do not mention it, or a structure whose fields are one of those
+  (`Link Chain`, `Option Chain`, `Option (Nat × Chain)`).
 * a `for` loop that leaves early (`break`, `return`), or over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.
@@ -191,6 +206,11 @@ many entries, cache hits and shape merges there have been, and
 checks, by the kernel, that `LeanScript.Term.eval` gives each translation the value the
 Lean definition has — the lists included, whose values are read back with
 `LeanScript.Ty.DenRec.toList` — and it pins what the translation refuses.
+
+Two term elaborators read pieces back out of a translated term, for proofs about a fold
+that name its step: `#leanscript_fold_branch t` is the branch (or the cases) of the first
+fold in the term `t`, in the context the fold gives it, and `#leanscript_fold_bases t` the
+answers for the short arguments of the first `nat_rec k` or `array_rec k` in `t`.
 
 The translation itself is split across the modules of this directory:
 `LeanScript.ToTerm.ObjectExpr` (the expressions of the object language),

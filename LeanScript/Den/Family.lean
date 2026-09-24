@@ -524,8 +524,9 @@ def famBindEnv {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
   | ⟨.familyMember i, _⟩ :: fs, e =>
       let m : FamMemoAt f.members τ i := e.prodFst.2 PUnit.unit
       (famSubtree f hwf τ i m, FamMemo.answer m, famBindEnv f hwf τ fs e.prodSnd)
-  | ⟨.self, h⟩ :: fs, e =>
-      (famBindField f hwf τ ⟨.self, h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
+  | ⟨.self, h⟩ :: _, _ =>
+      -- A family's payload holds no `Ty.self` (it is legal only in a scope of one member).
+      absurd h (Ty.not_wfIn_self_of_family (by omega))
   | ⟨.shape sh, h⟩ :: fs, e =>
       (famBindField f hwf τ ⟨.shape sh, h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
   | ⟨.recTaggedUnion l', h⟩ :: fs, e =>

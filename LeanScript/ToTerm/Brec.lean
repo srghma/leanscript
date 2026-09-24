@@ -34,9 +34,29 @@ def isBrecAux (n : Name) : Bool :=
   let s := n.getString!
   s == "_f" || s.startsWith "match_" || s == "casesOn" || s == "brecOn" || s == "_unary"
 
+/-- Is this `match` stuck on a value of a structure that is not built in place (the
+    answer of the recursion, say, when it is a pair)?  Reducing it would only take the
+    value apart into its projections, one per use, so it is left standing: the
+    translation takes it apart once, as the record's case analysis. -/
+def matchStuckOnStructure (e : Expr) : MetaM Bool := do
+  let some m ← matchMatcherApp? e | return false
+  for d in m.discrs do
+    let d' ← whnfCore d
+    if let .const cn _ := d'.getAppFn then
+      if (← getEnv).find? cn matches some (.ctorInfo _) then continue
+    let ty ← whnf (← inferType d)
+    let .const indName _ := ty.getAppFn | continue
+    let some (.inductInfo ii) := (← getEnv).find? indName | continue
+    if ii.ctors.length == 1 && ii.numIndices == 0 && !ii.isRec then return true
+  return false
+
 /-- `whnfCore`, unfolding the auxiliaries of a compiled recursion on the way. -/
 partial def reduceBrecBody (e : Expr) : MetaM Expr := do
-  let e ← whnfCore e
+  -- `whnfCore`, one `match` or recursor at a time, so that a `match` stuck on a
+  -- structure is seen before it is taken apart into projections
+  let e ← withConfig (fun cfg => { cfg with iota := false }) (whnfCore e)
+  if ← matchStuckOnStructure e then return e
+  if let some e' ← reduceRecMatcher? e then return ← reduceBrecBody e'
   match e.getAppFn with
   | .const n _ =>
       if isBrecAux n then

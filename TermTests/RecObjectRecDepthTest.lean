@@ -1,6 +1,8 @@
 module
 
 public import TermTests.RecObjectRecDepthTest.Programs
+public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -10,8 +12,8 @@ set_option autoImplicit false
 # The `fib` suite over a recursive record: the terms
 
 The Lean reference programs, the type the fold runs over and what its branches bind
-are in `TermTests.RecObjectRecDepthTest.Programs`; this file writes the programs as terms of the
-language and checks them against the references.
+are in `TermTests.RecObjectRecDepthTest.Programs`; this file translates the programs to terms
+of the language with `#leanscript_to_term` and checks the terms against the references.
 -/
 
 namespace TermTests.RecObjectRecDepth
@@ -20,9 +22,10 @@ open LeanScript
 
 open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
-/-! ## 2. `fib`, written out at depth one
+/-! ## 2. `fib`: the depth-one fold
 
-The branch binds the label (index `0`), the `Option` of cells below (index `1`) and the
+`Cell.fib` reads the answer two cells down, so it translates to `recObject_rec 1`.  Its
+branch binds the label (index `0`), the `Option` of cells below (index `1`) and the
 window (index `2`).  Taking the window apart is the descent: its second field is an
 `Option` of the answer tree at the cell below, and
 
@@ -33,22 +36,8 @@ window (index `2`).  Taking the window apart is the descent: its second field is
   `fib (cell below) + fib (cell below that)`, which is the `fib n + fib (n + 1)` of the
   program. -/
 
-/-- The branch of `fib`. -/
-def fibBranch : Term sigAdd (branchCtx natT 1) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 1)
-                  (.here (addT (.var (v♯3)) (.var (v♯0))) .nil)))))
-          .nil)))
-
-/-- **`fib` over a recursive record**: the depth-one fold. -/
-def fibTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 1 (.var (v♯0)) fibBranch)
+/-- **`fib` over a recursive record**: `Cell.fib`, translated to the depth-one fold. -/
+def fibTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.fib
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -57,172 +46,49 @@ that cell, and its fields' shape), take that shape apart (the label, and the `Op
 below it), and dispatch — so a level pushes five binders in front of the context and the
 answers read so far sit at the indices `3, 8, 13, …`, nearest first. -/
 
-/-- The tribonacci numbers: a depth-two fold. -/
-def tribBranch : Term sigAdd (branchCtx natT 2) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 1)
-                            (.here
-                              (addT (addT (.var (v♯8)) (.var (v♯3))) (.var (v♯0)))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+/-- `trib`, as a term: a depth-two fold. -/
+def tribTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.trib
 
-/-- `trib`, as a term. -/
-def tribTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 2 (.var (v♯0)) tribBranch)
+/-- `tetra`, as a term: a depth-three fold. -/
+def tetraTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.tetra
 
-/-- The tetranacci numbers: a depth-three fold. -/
-def tetraBranch : Term sigAdd (branchCtx natT 3) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 1)
-                                      (.here
-                                        (addT (addT (addT (.var (v♯13)) (.var (v♯8)))
-                                          (.var (v♯3))) (.var (v♯0)))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+/-- `penta`, as a term: a depth-four fold. -/
+def pentaTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.penta
 
-/-- `tetra`, as a term. -/
-def tetraTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 3 (.var (v♯0)) tetraBranch)
+/-- `hexa`, as a term: a depth-five fold. -/
+def hexaTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.hexa
 
-/-- The pentanacci numbers: a depth-four fold. -/
-def pentaBranch : Term sigAdd (branchCtx natT 4) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 0)
-                                      (.here
-                                        (.record_casesOn (.var (v♯0))
-                                          (.record_casesOn (.var (v♯1))
-                                            (.taggedUnion_casesOn (.var (v♯1))
-                                              (.skip (.nat_mk 1)
-                                                (.here
-                                                  (addT (addT (addT (addT
-                                                    (.var (v♯18)) (.var (v♯13)))
-                                                    (.var (v♯8))) (.var (v♯3)))
-                                                    (.var (v♯0)))
-                                                  .nil)))))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+/-- The depth of the `recObject_rec` a translated function is: the fold under the `fun`s
+    of its arguments, and under the applications and the case analysis around it.  `none`
+    if the translation is not of that shape. -/
+def recObjectRecDepth? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
+  | .recObject_rec k _ _ => some k
+  | .lam b => recObjectRecDepth? b
+  | .ap f _ => recObjectRecDepth? f
+  | .record_casesOn s _ => recObjectRecDepth? s
+  | _ => none
 
-/-- `penta`, as a term. -/
-def pentaTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 4 (.var (v♯0)) pentaBranch)
-
-/-- The hexanacci numbers: a depth-five fold. -/
-def hexaBranch : Term sigAdd (branchCtx natT 5) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 0)
-                                      (.here
-                                        (.record_casesOn (.var (v♯0))
-                                          (.record_casesOn (.var (v♯1))
-                                            (.taggedUnion_casesOn (.var (v♯1))
-                                              (.skip (.nat_mk 0)
-                                                (.here
-                                                  (.record_casesOn (.var (v♯0))
-                                                    (.record_casesOn (.var (v♯1))
-                                                      (.taggedUnion_casesOn (.var (v♯1))
-                                                        (.skip (.nat_mk 1)
-                                                          (.here
-                                                            (addT (addT (addT (addT (addT
-                                                              (.var (v♯23)) (.var (v♯18)))
-                                                              (.var (v♯13))) (.var (v♯8)))
-                                                              (.var (v♯3))) (.var (v♯0)))
-                                                            .nil)))))
-                                                  .nil)))))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
-
-/-- `hexa`, as a term. -/
-def hexaTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 5 (.var (v♯0)) hexaBranch)
+-- Each program is the fold at the depth it reads.
+example : recObjectRecDepth? fibTerm = some 1 := by kernel_rfl
+example : recObjectRecDepth? tribTerm = some 2 := by kernel_rfl
+example : recObjectRecDepth? tetraTerm = some 3 := by kernel_rfl
+example : recObjectRecDepth? pentaTerm = some 4 := by kernel_rfl
+example : recObjectRecDepth? hexaTerm = some 5 := by kernel_rfl
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
 `fibLoopTR` never reads the answer at anything but the cell immediately below, so no depth
 is needed: what makes it a fold is that its motive is a function, `nat ⇒ nat ⇒ nat`, and
-the branch returns the loop with its accumulators swapped and added. -/
+the branch returns the loop with its accumulators swapped and added.  `fibTR` is that loop
+applied to `0` and `1`. -/
 
 /-- The motive of the loop: two accumulators still to come. -/
 abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 
-/-- The branch of the loop: with no cell below, `fun a b => a`; with the loop `ih` at the
-    cell below, `fun a b => ih b (a + b)`. -/
-def fibTRBranch : Term sigAdd (branchCtx loopTy 0) loopTy :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.lam (.lam (.var (v♯1))))
-        (.here
-          (.lam (.lam (.ap (.ap (.var (v♯2)) (.var (v♯0)))
-            (addT (.var (v♯1)) (.var (v♯0))))))
-          .nil)))
-
 /-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1))
+def fibTRTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.fibTR
+
+example : recObjectRecDepth? fibTRTerm = some 0 := by kernel_rfl
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -235,26 +101,15 @@ def pairSchema : LeanRecordSchema TyWf := ⟨natT, natT, []⟩
 /-- The type of that pair. -/
 abbrev pairTy : TyWf := .record pairSchema
 
-/-- The branch of the pair recursion: with no cell below, `(0, 1)`; with the pair at the
-    cell below taken apart as `a` and `b`, `(b, a + b)`. -/
-def fibPairBranch : Term sigAdd (branchCtx pairTy 0) pairTy :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_mk pairSchema
-              (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))))
-          .nil)))
-
 /-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0)))
+def fibPairTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.fibPairFst
+
+example : recObjectRecDepth? fibPairTerm = some 0 := by kernel_rfl
 
 /-! ## 6. The continuant: a fold that reads the record's **own field** as well
 
-Every branch above ignores the label the record carries.  The continuant does not: it is
-the `fib`-shaped recursion
+Every branch above ignores the label the record carries.  The continuant `Cell.cont` does
+not: it is the `fib`-shaped recursion
 
 ```lean
 def cont : Cell → Nat
@@ -266,22 +121,10 @@ def cont : Cell → Nat
 so its branch multiplies the label — index `0` of the branch, pushed further out by each
 descent — by the answer one cell down and adds the answer two cells down. -/
 
-/-- The branch of the continuant. -/
-def contBranch : Term sigAdd (branchCtx natT 1) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.var (v♯2))
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (addT (mulT (.var (v♯7)) (.var (v♯2))) (.nat_mk 1))
-                  (.here (addT (mulT (.var (v♯8)) (.var (v♯3))) (.var (v♯0))) .nil)))))
-          .nil)))
-
 /-- The continuant, as a term: the depth-one fold that also reads the label. -/
-def contTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 1 (.var (v♯0)) contBranch)
+def contTerm : Term sigAdd [] (cellTy ⇒ natT) := #leanscript_to_term Cell.cont
+
+example : recObjectRecDepth? contTerm = some 1 := by kernel_rfl
 
 /-! ## 7. Running the terms
 
@@ -298,18 +141,11 @@ def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
 /-- Running a closed term of `sigAdd`. -/
 scoped macro:max "runP" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
 
-/-- A cell with no cell below it, labelled by the argument. -/
-def lastCellTerm : Term sigAdd [] (natT ⇒ cellTy) :=
-  .lam (.recObject_mk cellSchema
-    (fields := .cons (.var (v♯0))
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil)))
+/-- A cell with no cell below it, labelled by the argument: `Cell.last`, translated. -/
+def lastCellTerm : Term sigAdd [] (natT ⇒ cellTy) := #leanscript_to_term Cell.last
 
-/-- A cell labelled by the first argument, on top of the second. -/
-def consCellTerm : Term sigAdd [] (natT ⇒ cellTy ⇒ cellTy) :=
-  .lam (.lam (.recObject_mk cellSchema
-    (fields := .cons (.var (v♯1))
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
-        (fields := .cons (.var (v♯0)) .nil)) .nil))))
+/-- A cell labelled by the first argument, on top of the second: `Cell.push`, translated. -/
+def consCellTerm : Term sigAdd [] (natT ⇒ cellTy ⇒ cellTy) := #leanscript_to_term Cell.push
 
 /-- The chain `c`, built by the introduction form. -/
 def cellVal : Cell → TyWf.Den cellTy
@@ -318,8 +154,8 @@ def cellVal : Cell → TyWf.Den cellTy
 
 -- Each run is checked by the kernel against the value its Lean reference has at the
 -- same chain, which §0 of `TermTests.RecObjectRecDepthTest.Programs` checks by `#guard`
--- (most of the references recurse two cells down, by well-founded recursion, which the
--- kernel does not unfold, so the two are compared through that number).
+-- (the two are compared through that number; `Correct.lean` proves them equal on every
+-- chain).
 example : runP fibTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
 example : runP fibTRTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel
 example : runP fibPairTerm (cellVal (Cell.ofNat 10)) = 55 := by decide +kernel

@@ -2,6 +2,9 @@ module
 
 public import TermTests.ArrayRecDepthTest.Cont
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -45,11 +48,12 @@ What is written out here, in the grammar and with the value of every term proved
 Every program runs in one signature, `sigArith`, whose two declarations are `add` and
 `mul`: arithmetic is external to the language.
 
-The terms here are **written out**, as the first half of `TermTests/NatRecDepthTest/`
-is: `#leanscript_to_term` compiles a recursion on a `Nat` and on a recursive tagged
-union, and a recursion over a list is not one of the shapes it reads yet, so there is no
-translated half to check.  What is checked instead is the same thing that half checks —
-the value of each term, at **every** argument.
+Every term here is the Lean program **translated** by `#leanscript_to_term`, which reads
+a structurally recursive function on `List Nat` applied to `a.toList` as `array_rec k` on
+`a` (`TermTests/ArrayRecToTermTest/Common.lean`).  The bases and the branch the proofs
+name are read back out of the translated term with `#leanscript_fold_bases` and
+`#leanscript_fold_branch`, and an `example` beside each pins the term it is.  What is
+checked on top is the value of each term, at **every** argument.
 -/
 
 namespace TermTests.ArrayRecDepth
@@ -112,21 +116,31 @@ theorem contTR_start (l : List Nat) : contTR l 1 0 = cont l := by
 /-- The type the fold runs at: the two accumulators. -/
 abbrev Acc2 : TyWf := natT ⇒ natT ⇒ natT
 
+/-- The loop started at `(1, 0)`, on the elements of an array. -/
+def contTRArr (a : Array Nat) : Nat := contTR a.toList 1 0
+
+/-- `contTR`, as a term: the fold of an array at a function type. -/
+def contTRTerm : Term sigArith [] (TyWf.array natT ⇒ natT) := #leanscript_to_term contTRArr
+
+/-- The short-list answer of the loop: `.nil loopZero`. -/
+def loopBases : ArrayRecBases sigArith ArrCtx natT Acc2 0 := #leanscript_fold_bases contTRTerm
+
 /-- The value for the empty list: `fun a _ => a`. -/
-def loopZero {Γ : Ctx} : Term sigArith Γ Acc2 := .lam (.lam (.var (v♯1)))
+def loopZero : Term sigArith ArrCtx Acc2 := match loopBases with | .nil z => z
 
 /-- The step: it binds the head `x` (index `0`), the tail (index `1`) and the loop over
     the tail (index `2`), and answers `fun a b => loop (x * a + b) a`. -/
-def loopStep {Γ : Ctx} :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) Acc2 :=
-  .lam (.lam
-    (.ap (.ap (.var (v♯4)) (addT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))
-      (.var (v♯1))))
+def loopStep : Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 ArrCtx) Acc2 :=
+  #leanscript_fold_branch contTRTerm
 
-/-- `contTR`, as a term: the fold of an array at a function type. -/
-def contTRTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
-    (.nat_mk 0))
+example : contTRTerm =
+    .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+      (.nat_mk 0)) := by kernel_rfl
+example : loopZero = .lam (.lam (.var (v♯1))) := by kernel_rfl
+example : loopStep =
+    .lam (.lam
+      (.ap (.ap (.var (v♯4)) (addT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))
+        (.var (v♯1)))) := by kernel_rfl
 
 example : runArith contTRTerm #[] = 1 := by kernel_rfl
 example : runArith contTRTerm #[3, 4] = 13 := by kernel_rfl
@@ -149,9 +163,6 @@ theorem listFoldK_eq_contTR (z : List Nat → TyWf.Den Acc2)
       rw [listFoldK_eq_contTR z s hz hs xs (x * a + b) a]
       rfl
 
-/-- The fold `Term.eval` runs for the loop. -/
-def loopBases : ArrayRecBases sigArith ArrCtx natT Acc2 0 := .nil loopZero
-
 /-- The short-list answers `Term.eval` uses for the loop. -/
 def loopEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Acc2 :=
   fun m => ArrayRecBases.eval envArith loopBases env m
@@ -160,7 +171,7 @@ def loopEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Acc2 :=
 def loopEvalS (env : Env ArrCtx) :
     Nat → List Nat → NatWin Acc2 1 → TyWf.Den Acc2 :=
   fun hd tl w =>
-    Term.eval envArith (loopStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env)
+    Term.eval envArith loopStep (hd, tl.toArray, Env.ofWin w env)
 
 theorem loopEvalFold_eq (env : Env ArrCtx) (l : List Nat) (a b : Nat) :
     listFoldK (τ := Acc2) (k := 0) (loopEvalZ env) (loopEvalS env) l a b = contTR l a b :=
@@ -178,24 +189,25 @@ theorem contTRTerm_eval (l : List Nat) : runArith contTRTerm l.toArray = cont l 
 ```lean
 def contPair : List Nat → Nat × Nat
   | [] => (1, 0)
-  | x :: xs => let p := contPair xs; (x * p.1 + p.2, p.1)
+  | x :: xs => let (a, b) := contPair xs; (x * a + b, a)
 ```
 
 The array-valued `fibPair`: the one-element fold at a two-field record, whose fields are
 the continuant of the list and the continuant of its tail. -/
 
-/-- The pair recursion. -/
-def contPair : List Nat → Nat × Nat
+/-- The pair recursion (`@[inline]`, so that `contFromPair` below translates to the
+    fold itself). -/
+@[inline] def contPair : List Nat → Nat × Nat
   | [] => (1, 0)
   | x :: xs =>
-    let p := contPair xs
-    (x * p.1 + p.2, p.1)
+    let (a, b) := contPair xs
+    (x * a + b, a)
 
 /-- The user's own invariant: the pair at `l` is `(K l, K (tail l))`. -/
 theorem contPair_eq : (l : List Nat) → contPair l = (cont l, contTail l)
   | [] => rfl
   | x :: xs => by
-      show ((x * (contPair xs).1 + (contPair xs).2, (contPair xs).1) : Nat × Nat) =
+      show (match contPair xs with | (a, b) => ((x * a + b, a) : Nat × Nat)) =
         (cont (x :: xs), contTail (x :: xs))
       rw [contPair_eq xs, cont_cons x xs, show contTail (x :: xs) = cont xs from rfl]
 
@@ -205,29 +217,48 @@ abbrev pairSchema : LeanRecordSchema TyWf := ⟨natT, natT, []⟩
 /-- Its type. -/
 abbrev Pair : TyWf := TyWf.record pairSchema
 
+/-- The pair recursion on the elements of an array. -/
+def contPairArr (a : Array Nat) : Nat × Nat := contPair a.toList
+
+/-- The continuant read off the pair. -/
+def contFromPair (a : Array Nat) : Nat := (contPair a.toList).1
+
+/-- `contPair`, as a term: the fold of an array at a record type. -/
+def contPairTerm : Term sigArith [] (TyWf.array natT ⇒ Pair) :=
+  #leanscript_to_term contPairArr
+
+/-- The short-list answer of the pair recursion: `.nil pairZero`. -/
+def pairBases : ArrayRecBases sigArith ArrCtx natT Pair 0 := #leanscript_fold_bases contPairTerm
+
 /-- The pair of the empty list: `(1, 0)`. -/
-def pairZero {Γ : Ctx} : Term sigArith Γ Pair :=
-  .record_mk pairSchema (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
+def pairZero : Term sigArith ArrCtx Pair := match pairBases with | .nil z => z
 
 /-- The step: it binds the head (index `0`), the tail (index `1`) and the pair at the
     tail (index `2`), takes that pair apart — so inside, index `0` is `K xs` and index
     `1` is `K (tail xs)`, and the head has moved to index `2` — and answers with the pair
     at `x :: xs`. -/
-def pairStep {Γ : Ctx} :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 Γ) Pair :=
-  .record_casesOn (.var (v♯2))
-    (.record_mk pairSchema
-      (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
-        (.cons (.var (v♯0)) .nil)))
+def pairStep : Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 ArrCtx) Pair :=
+  #leanscript_fold_branch contPairTerm
 
-/-- `contPair`, as a term: the fold of an array at a record type. -/
-def contPairTerm {Γ : Ctx} : Term sigArith Γ (TyWf.array natT ⇒ Pair) :=
-  .lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep)
+example : contPairTerm = .lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) := by
+  kernel_rfl
+example : pairZero = .record_mk pairSchema (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil)) := by
+  kernel_rfl
+example : pairStep =
+    .record_casesOn (.var (v♯2))
+      (.record_mk pairSchema
+        (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
+          (.cons (.var (v♯0)) .nil))) := by kernel_rfl
 
-/-- The continuant read off the pair: its first field. -/
+/-- The continuant read off the pair: its first field.  The translation inlines the
+    fold, so the term takes apart the fold itself rather than applying `contPairTerm`:
+    `.lam (.record_casesOn (.array_rec 0 (.var (v♯0)) pairBases pairStep) (.var (v♯0)))`. -/
 def contFromPairTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.record_casesOn (fs := pairSchema)
-    (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))
+  #leanscript_to_term contFromPair
+
+example : contFromPairTerm =
+    .lam (.record_casesOn (fs := pairSchema) (.array_rec 0 (.var (v♯0)) pairBases pairStep)
+      (.var (v♯0))) := by kernel_rfl
 
 example : runArith contFromPairTerm #[] = 1 := by kernel_rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := by kernel_rfl
@@ -253,14 +284,12 @@ theorem listFoldK_eq_contPair (z : List Nat → TyWf.Den Pair)
         show contTail (x :: xs) = cont xs from rfl]
 
 /-- The short-list answers and the branch `Term.eval` uses for the pair recursion. -/
-def pairBases : ArrayRecBases sigArith ArrCtx natT Pair 0 := .nil pairZero
-
 def pairEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Pair :=
   fun m => ArrayRecBases.eval envArith pairBases env m
 
 def pairEvalS (env : Env ArrCtx) : Nat → List Nat → NatWin Pair 1 → TyWf.Den Pair :=
   fun hd tl w =>
-    Term.eval envArith (pairStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env)
+    Term.eval envArith pairStep (hd, tl.toArray, Env.ofWin w env)
 
 theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
     listFoldK (τ := Pair) (k := 0) (pairEvalZ env) (pairEvalS env) l =
@@ -269,7 +298,7 @@ theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
 
 /-- The record-valued term **is** `contPair`, field by field. -/
 theorem contPairTerm_eval (l : List Nat) :
-    runArith (contPairTerm (Γ := [])) l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
+    runArith contPairTerm l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
   show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil)) l = _
   rw [pairEvalFold_eq, contPair_eq l]
 

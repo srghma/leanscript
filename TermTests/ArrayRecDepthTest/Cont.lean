@@ -3,6 +3,9 @@ module
 public import TermTests.ArrayRecKTest
 public import TermTests.FibWindowTest
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -44,25 +47,48 @@ def mulT {Γ : Ctx} (a b : Term sigArith Γ natT) : Term sigArith Γ natT :=
 /-- The context the folds below are written in: the array they fold over. -/
 abbrev ArrCtx : Ctx := [TyWf.array natT]
 
-/-! ## 1. `cont`, written out at depth one
+/-! ## 0. The programs
+
+Each term of the suite is a Lean program on the elements of an array — a structurally
+recursive function on `List Nat`, applied to `a.toList` — translated by
+`#leanscript_to_term`, which reads such a recursion as `array_rec k` (see
+`TermTests/ArrayRecToTermTest/Common.lean`).  The bases and the branch the proofs name are
+read back out of the translated term with `#leanscript_fold_bases` and
+`#leanscript_fold_branch`. -/
+
+/-- The continuant of the elements of an array. -/
+def contArr (a : Array Nat) : Nat := cont a.toList
+
+/-- `cont3` of the elements of an array. -/
+def cont3Arr (a : Array Nat) : Nat := cont3 a.toList
+
+/-- `cont4` of the elements of an array. -/
+def cont4Arr (a : Array Nat) : Nat := cont4 a.toList
+
+/-! ## 1. `cont` at depth one
 
 The lists of at most one element are answered by the `ArrayRecBases`: the empty list by
 `1`, and a one-element list by its element, which the block **binds**.  The branch, at
 `a :: as` with `as` non-empty, binds `a` (index `0`), `as` (index `1`), the answer at `as`
 (index `2`) and the answer at `as.drop 1` (index `3`). -/
 
-/-- The answers for the short lists: `K [] = 1` and `K [a] = a`. -/
-def contBases : ArrayRecBases sigArith ArrCtx natT natT 1 :=
-  .cons (.nat_mk 1) (.nil (.var (v♯0)))
+/-- The continuant, as a term of the grammar: the depth-one fold of an array,
+    `.lam (.array_rec 1 (.var (v♯0)) contBases contBranch)`. -/
+def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) := #leanscript_to_term contArr
 
-/-- The branch: `a * K as + K (as.drop 1)`. -/
+/-- The answers for the short lists: `K [] = 1` and `K [a] = a`, that is
+    `.cons (.nat_mk 1) (.nil (.var (v♯0)))`. -/
+def contBases : ArrayRecBases sigArith ArrCtx natT natT 1 := #leanscript_fold_bases contTerm
+
+/-- The branch: `a * K as + K (as.drop 1)`, that is
+    `addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))`. -/
 def contBranch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) natT :=
-  addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))
+  #leanscript_fold_branch contTerm
 
-/-- The continuant, as a term of the grammar: the depth-one fold of an array. -/
-def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 1 (.var (v♯0)) contBases contBranch)
+example : contTerm = .lam (.array_rec 1 (.var (v♯0)) contBases contBranch) := by kernel_rfl
+example : contBases = .cons (.nat_mk 1) (.nil (.var (v♯0))) := by kernel_rfl
+example : contBranch = addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3)) := by kernel_rfl
 
 example : runArith contTerm #[] = 1 := by kernel_rfl
 example : runArith contTerm #[3] = 3 := by kernel_rfl
@@ -114,20 +140,25 @@ theorem contTerm_eval_ones (n : Nat) :
 `fib`.  Nothing changes but the depth: one more short list to answer, and one more entry
 in the window. -/
 
+/-- `cont3`, as a term: the depth-two fold of an array. -/
+def cont3Term : Term sigArith [] (TyWf.array natT ⇒ natT) := #leanscript_to_term cont3Arr
+
 /-- The answers for the short lists of the depth-two fold: `1`, `a`, `a * b`.  In the
     last one the first element is bound outermost, so `a` is index `1` and `b` index
     `0`. -/
-def cont3Bases : ArrayRecBases sigArith ArrCtx natT natT 2 :=
-  .cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0)))))
+def cont3Bases : ArrayRecBases sigArith ArrCtx natT natT 2 := #leanscript_fold_bases cont3Term
 
 /-- The branch of the depth-two fold: `a * K as + K (as.drop 1) + K (as.drop 2)`. -/
 def cont3Branch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) natT :=
-  addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4))
+  #leanscript_fold_branch cont3Term
 
-/-- `cont3`, as a term: the depth-two fold of an array. -/
-def cont3Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)
+example : cont3Term = .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch) := by kernel_rfl
+example : cont3Bases =
+    .cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0))))) := by
+  kernel_rfl
+example : cont3Branch =
+    addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)) := by kernel_rfl
 
 example : runArith cont3Term #[] = 1 := by kernel_rfl
 example : runArith cont3Term #[5, 6] = 30 := by kernel_rfl
@@ -146,24 +177,28 @@ theorem cont3EvalFold_eq (env : Env ArrCtx) (l : List Nat) : cont3EvalFold env l
 theorem cont3Term_eval (l : List Nat) : runArith cont3Term l.toArray = cont3 l :=
   cont3EvalFold_eq (l.toArray, Env.nil) l
 
+/-- `cont4`, as a term: the depth-three fold of an array. -/
+def cont4Term : Term sigArith [] (TyWf.array natT ⇒ natT) := #leanscript_to_term cont4Arr
+
 /-- The answers for the short lists of the depth-three fold: `1`, `a`, `a * b`,
     `a * b * c`. -/
-def cont4Bases : ArrayRecBases sigArith ArrCtx natT natT 3 :=
-  .cons (.nat_mk 1)
-    (.cons (.var (v♯0))
-      (.cons (mulT (.var (v♯1)) (.var (v♯0)))
-        (.nil (mulT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))))
+def cont4Bases : ArrayRecBases sigArith ArrCtx natT natT 3 := #leanscript_fold_bases cont4Term
 
 /-- The branch of the depth-three fold: the head times the nearest answer, plus the other
     three the window holds. -/
 def cont4Branch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) natT :=
-  addT (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)))
-    (.var (v♯5))
+  #leanscript_fold_branch cont4Term
 
-/-- `cont4`, as a term: the depth-three fold of an array. -/
-def cont4Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)
+example : cont4Term = .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch) := by kernel_rfl
+example : cont4Bases =
+    .cons (.nat_mk 1)
+      (.cons (.var (v♯0))
+        (.cons (mulT (.var (v♯1)) (.var (v♯0)))
+          (.nil (mulT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0)))))) := by kernel_rfl
+example : cont4Branch =
+    addT (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)))
+      (.var (v♯5)) := by kernel_rfl
 
 example : runArith cont4Term #[] = 1 := by kernel_rfl
 example : runArith cont4Term #[2, 3, 4] = 24 := by kernel_rfl

@@ -2,6 +2,9 @@ module
 
 public import LeanScript.Eval
 public meta import LeanScript.KernelRfl
+public import LeanScript.Ty.Instances
+public meta import LeanScript.Ty.Deriving
+public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
@@ -15,7 +18,9 @@ value is the **window** of the last two answers, a record of two `nat`s, and the
 is the first field of that window.
 
 Everything here is a term of the grammar exactly as it is today — `Term.nat_rec`,
-`Term.record_mk`, `Term.record_casesOn` — and `fib_term_eval` proves that the term's
+`Term.record_mk`, `Term.record_casesOn` — produced by `#leanscript_to_term` from the Lean
+program that computes the window, with the terms written out beside them in `example`s;
+and `fib_term_eval` proves that the term's
 value **is** `fib n`, at every `n`, rather than only at the arguments a test would try.
 -/
 
@@ -54,10 +59,32 @@ abbrev Win : TyWf := TyWf.record winSchema
 def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (TyWf.prim .nat) :=
   .ap (.ap (.global .here) a) b
 
+/-- The window as a Lean program: `(fib n, fib (n + 1))`, one step at a time
+    (`@[inline]`, so that `fibFromWin` below translates to the fold itself). -/
+@[inline] def fibWin : Nat → Nat × Nat
+  | 0 => (0, 1)
+  | n + 1 =>
+    let (a, b) := fibWin n
+    (b, a + b)
+
+/-- `fib`, read off the window. -/
+def fibFromWin (n : Nat) : Nat := (fibWin n).1
+
+/-- The fold itself: the window at the argument,
+    `.lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)`. -/
+def window : Term sigAdd [] (TyWf.prim .nat ⇒ Win) := #leanscript_to_term fibWin
+
+/-- The context the fold is written in: the argument. -/
+abbrev WinCtx : Ctx := [TyWf.prim .nat]
+
 /-- The window at `0`: `(fib 0, fib 1) = (0, 1)`.  These are the base branches of the
     Lean definition, which read nothing of the recursion. -/
-def seed {Γ : Ctx} : Term sigAdd Γ Win :=
-  .record_mk winSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))
+def seed : Term sigAdd WinCtx Win :=
+  match (#leanscript_fold_bases window : Spine sigAdd WinCtx (natRecCtx Win 1 [])) with
+  | .cons z .nil => z
+
+example : seed = .record_mk winSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)) := by
+  kernel_rfl
 
 /-- The step of the fold: it binds the predecessor `k` (index `0`) and the window at `k`
     (index `1`), takes the window apart — so inside, index `0` is `fib k` and index `1`
@@ -67,18 +94,25 @@ def seed {Γ : Ctx} : Term sigAdd Γ Win :=
     The recursion that the branch of the Lean definition writes at `n` and at `n + 1` is
     read off the window: nothing is called, so the term is still terminating by
     construction. -/
-def step {Γ : Ctx} : Term sigAdd (TyWf.prim .nat :: Win :: Γ) Win :=
-  .record_casesOn (.var (v♯1))
-    (.record_mk winSchema
-      (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))
+def step : Term sigAdd (TyWf.prim .nat :: Win :: WinCtx) Win :=
+  #leanscript_fold_branch window
 
-/-- The fold itself: the window at the argument. -/
-def window {Γ : Ctx} : Term sigAdd Γ (TyWf.prim .nat ⇒ Win) :=
-  .lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+example : step =
+    .record_casesOn (.var (v♯1))
+      (.record_mk winSchema
+        (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))) := by kernel_rfl
 
-/-- `fib`, as a term of the language: the first field of the window. -/
+example : window = .lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step) := by kernel_rfl
+
+/-- `fib`, as a term of the language: the first field of the window.  The translation
+    inlines the fold, so the term takes apart the fold itself rather than applying
+    `window`. -/
 def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.record_casesOn (fs := winSchema) (.ap window (.var (v♯0))) (.var (v♯0)))
+  #leanscript_to_term fibFromWin
+
+example : fib_term =
+    .lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+      (.var (v♯0))) := by kernel_rfl
 
 /-! ## What it computes
 
