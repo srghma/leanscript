@@ -7,6 +7,18 @@ public meta import LeanScript.Ty.Deriving.Build
 
 @[expose] public section
 
+namespace LeanScript
+
+/-- The bundle the instance of `F α` gives when `α` is modelled by the bundle `t`.  This is
+    how `#leanscript_ctor` writes the tree of a field of type `F S`, for a type argument `S`,
+    when the tree of `F`'s instance is one the bundled smart constructors cannot rebuild — a
+    recursive one, such as `List S`'s.  `α` itself is `PUnit`: only its model is read. -/
+@[reducible] def TyWf.modelAt.{u, v} (F : Type u → Type v)
+    [inst : ∀ α : Type u, [LeanScriptTyWf α] → LeanScriptTyWf (F α)] (t : TyWf) : TyWf :=
+  @tyWfOf (F PUnit) (@inst PUnit (t.asModelOf PUnit))
+
+end LeanScript
+
 meta section
 
 /-!
@@ -177,12 +189,27 @@ def holeFor (c : TrCtx) (field : Name) (t : Expr) : MetaM Expr := do
   c.holes.modify (·.push (t, n, id))
   return .fvar id
 
+/-- The node a reduced tree is, when it is not a recursive binder: the name of the
+    `TyShape` (or, under `primCovariant`, the `LeanPrimTyCovariant`) constructor, and its
+    arguments after the type parameter. -/
+def shapeView? (e : Expr) : MetaM (Option (Name × Array Expr)) := do
+  let e ← whnf e
+  let (``LeanScript.Ty.shape, #[s]) := e.getAppFnArgs | return none
+  let s ← whnf s
+  let .const n _ := s.getAppFn | return none
+  let args := s.getAppArgs.extract 1 s.getAppArgs.size
+  if n == ``LeanScript.TyShape.primCovariant then
+    let some c := args[0]? | return none
+    let c ← whnf c
+    let .const m _ := c.getAppFn | return none
+    return some (m, c.getAppArgs.extract 1 c.getAppArgs.size)
+  return some (n, args)
+
 /-- The bundle of a closed type that has an instance: `TyWf.prim p` for a terminal type,
     `tyWfOf t` otherwise. -/
 def closedLayout (t inst : Expr) : MetaM Expr := do
   let b ← mkAppOptM ``LeanScript.tyWfOf #[some t, some inst]
-  let tree ← whnf (mkApp (mkConst ``LeanScript.TyWf.toTy) b)
-  if let (``LeanScript.Ty.prim, #[p]) := tree.getAppFnArgs then
+  if let some (``LeanScript.TyShape.prim, #[p]) ← shapeView? (mkApp (mkConst ``LeanScript.TyWf.toTy) b) then
     return mkApp (mkConst ``LeanScript.TyWf.prim) p
   return b
 
@@ -195,8 +222,7 @@ partial def convTy (sub : Array (Expr × Expr)) (e : Expr) : MetaM (Option Expr)
   if let some α ← modelledType? e then
     if let some (_, y) := sub.find? (·.1 == α) then return some y
     if sub.any (fun (x, _) => α.containsFVar x.fvarId!) then return none
-    let tree ← whnf e
-    if let (``LeanScript.Ty.prim, #[p]) := tree.getAppFnArgs then
+    if let some (``LeanScript.TyShape.prim, #[p]) ← shapeView? e then
       return some (mkApp (mkConst ``LeanScript.TyWf.prim) p)
     match e with
     | .proj _ 0 b => return some b
@@ -209,26 +235,25 @@ partial def convTy (sub : Array (Expr × Expr)) (e : Expr) : MetaM (Option Expr)
   let un (ctor : Name) (a : Expr) : MetaM (Option Expr) := do
     let some a' ← convTy sub a | return none
     return some (mkApp (mkConst ctor) a')
-  match e.getAppFnArgs with
-  | (``LeanScript.Ty.prim, #[p]) => return some (mkApp (mkConst ``LeanScript.TyWf.prim) p)
-  | (``LeanScript.Ty.fn, #[a, b]) =>
+  match ← shapeView? e with
+  | some (``LeanScript.TyShape.prim, #[p]) =>
+      return some (mkApp (mkConst ``LeanScript.TyWf.prim) p)
+  | some (``LeanScript.TyShape.fn, #[a, b]) =>
       let some a' ← convTy sub a | return none
       let some b' ← convTy sub b | return none
       return some (mkApp2 (mkConst ``LeanScript.TyWf.fn) a' b')
-  | (``LeanScript.Ty.array, #[a]) => un ``LeanScript.TyWf.array a
-  | (``LeanScript.Ty.thunk, #[a]) => un ``LeanScript.TyWf.thunk a
-  | (``LeanScript.Ty.lazy, #[a]) => un ``LeanScript.TyWf.lazy a
-  | (``LeanScript.Ty.enum, #[s]) => return some (mkApp (mkConst ``LeanScript.TyWf.enum) s)
-  | (``LeanScript.Ty.record, #[fs]) =>
+  | some (``LeanScript.LeanPrimTyCovariant.array, #[a]) => un ``LeanScript.TyWf.array a
+  | some (``LeanScript.LeanPrimTyCovariant.thunk, #[a]) => un ``LeanScript.TyWf.thunk a
+  | some (``LeanScript.LeanPrimTyCovariant.lazy, #[a]) => un ``LeanScript.TyWf.lazy a
+  | some (``LeanScript.TyShape.enum, #[s]) =>
+      return some (mkApp (mkConst ``LeanScript.TyWf.enum) s)
+  | some (``LeanScript.TyShape.record, #[fs]) =>
       let some fs' ← convSch sub fs | return none
       return some (mkApp (mkConst ``LeanScript.TyWf.record) fs')
-  | (``LeanScript.Ty.taggedUnion, #[l]) =>
+  | some (``LeanScript.TyShape.taggedUnion, #[l]) =>
       let some l' ← convSch sub l | return none
       return some (mkApp (mkConst ``LeanScript.TyWf.taggedUnion) l')
-  | _ =>
-      let e' ← whnf e
-      if e' == e then return none
-      convTy sub e'
+  | _ => return none
 
 /-- A schema, a list or a non-empty list of trees, rewritten element by element. -/
 partial def convSch (sub : Array (Expr × Expr)) (e : Expr) : MetaM (Option Expr) := do
@@ -241,7 +266,11 @@ partial def convSch (sub : Array (Expr × Expr)) (e : Expr) : MetaM (Option Expr
       out := mkApp out tyWfE
       continue
     let aty ← whnf (← inferType a)
-    if aty.isConstOf ``LeanScript.Ty then
+    if aty.isSort then
+      -- a type argument (`List Ty`): the same type, of bundles
+      out := mkApp out (a.replace fun x =>
+        if x.isConstOf ``LeanScript.Ty then some tyWfE else none)
+    else if aty.isConstOf ``LeanScript.Ty then
       let some a' ← convTy sub a | return none
       out := mkApp out a'
     else if (aty.find? (·.isConstOf ``LeanScript.Ty)).isSome then
@@ -349,6 +378,14 @@ partial def trFormer (c : TrCtx) (field : Name) (t : Expr) : MetaM Expr := do
             let mut instVals : Array Expr := #[]
             for k in [0:xs.size] do
               instVals := instVals.push (← mkAppM ``LeanScript.TyWf.asModelOf #[ys[k]!, vals[k]!])
+            if h : xs.size = 1 then
+              -- one argument: `TyWf.modelAt F t`, which shows what it is
+              let lvlX ← sortLevel xs[0]
+              let lvlF ← sortLevel t'
+              if let (.succ u, .succ v) := (lvlX, lvlF) then
+                let F := (← mkLambdaFVars #[xs[0]] t').eta
+                let instF ← mkLambdaFVars (#[xs[0]] ++ insts) inst
+                return some ((mkApp3 (mkConst ``LeanScript.TyWf.modelAt [u, v]) F instF ys[0]!).replaceFVars ys subs)
             let bundle ← mkAppOptM ``LeanScript.tyWfOf #[some t', some inst]
             pure ((← mkLambdaFVars (xs ++ insts) bundle).beta (vals ++ instVals))
         return some (r.replaceFVars ys subs)
@@ -496,24 +533,27 @@ def wholeShape (name : Name) (enumOverride : Option Expr) (cls : Array (Array Ex
     the numbering of an enum whose instance chooses its own. -/
 def builtinModel (ind : InductiveVal) (params : Array Expr) : MetaM (Option Expr) := do
   if ind.numIndices != 0 then return none
+  for p in params do
+    let .sort (.succ _) ← whnf (← inferType p) | return none
   let instDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
     params.mapIdx fun k p => (Name.mkSimple s!"inst{k}", .instImplicit,
       fun _ => mkAppM ``LeanScript.LeanScriptTyWf #[p])
   withLocalDecls instDecls fun _ => do
     let ty := mkAppN (mkConst ind.name (ind.levelParams.map Level.param)) params
-    let .some inst ← trySynthInstance (← mkAppM ``LeanScript.LeanScriptTyWf #[ty])
-      | return none
-    let tree ← whnf (← mkAppOptM ``LeanScript.tyOf #[some ty, some inst])
-    match tree.getAppFnArgs with
-    | (``LeanScript.Ty.prim, _) =>
+    let cls ← try mkAppM ``LeanScript.LeanScriptTyWf #[ty] catch _ => return none
+    let .some inst ← trySynthInstance cls | return none
+    match ← shapeView? (← mkAppOptM ``LeanScript.tyOf #[some ty, some inst]) with
+    | some (``LeanScript.TyShape.prim, _) =>
         if ind.name == ``Bool then return none
         throwError "`#leanscript_ctor`: `{ind.name}` is modelled by a terminal type of the \
           language, whose values are literals; it has no constructor function"
-    | (``LeanScript.Ty.array, _) | (``LeanScript.Ty.thunk, _) | (``LeanScript.Ty.lazy, _)
-    | (``LeanScript.Ty.fn, _) =>
+    | some (``LeanScript.LeanPrimTyCovariant.array, _)
+    | some (``LeanScript.LeanPrimTyCovariant.thunk, _)
+    | some (``LeanScript.LeanPrimTyCovariant.lazy, _)
+    | some (``LeanScript.TyShape.fn, _) =>
         throwError "`#leanscript_ctor`: `{ind.name}` is modelled by a built-in type former of \
           the language, which has an introduction form of its own"
-    | (``LeanScript.Ty.enum, #[s]) =>
+    | some (``LeanScript.TyShape.enum, #[s]) =>
         if s.hasFVar then return none else return some s
     | _ => return none
 
@@ -525,10 +565,11 @@ def addReducibleDef (name : Name) (type value : Expr) : MetaM Unit := do
   let value ← instantiateMVars value
   if type.hasMVar || value.hasMVar then
     throwError "`#leanscript_ctor`: internal error, `{name}` still has metavariables"
-  let lvls := LeanScript.Deriving.usedLevels type value
-  addDecl (.defnDecl { name, levelParams := lvls, type, value, hints := .abbrev,
-    safety := .safe })
-  try compileDecls [name] catch _ => pure ()
+  let lvls := (collectLevelParams (collectLevelParams {} type) value).params.toList
+  addDecl (.defnDecl
+    { name := name, levelParams := lvls, type := type, value := value, hints := .abbrev,
+      safety := .safe })
+  try compileDecls #[name] catch _ => pure ()
   setReducibleAttribute name
 
 /-- A spine of the terms `xs`, at the trees `tys`. -/
@@ -574,7 +615,7 @@ def translateFields (c : TrCtx) (xs : Array Expr) : MetaM (Array (Name × Expr))
   return out
 
 /-- Declare a `TyWf` local for each type variable, named as it is. -/
-def withTyVarHoles {α : Type} (vars : Array (Expr × Name)) (k : Array (Expr × Expr) → MetaM α) :
+def withTyVarHoles {α : Type} [Inhabited α] (vars : Array (Expr × Name)) (k : Array (Expr × Expr) → MetaM α) :
     MetaM α := do
   let decls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
     vars.map fun (_, n) => (n, .default, fun _ => pure tyWfE)
@@ -656,7 +697,7 @@ def ensureCtorFn (cName : Name) : MetaM (Name × Name) := do
                              used := ← IO.mkRef (vars.map (·.2)) }
           let mut cls : Array (Array Expr) := #[]
           let mut mine : Array (Name × Expr) := #[]
-          for h : j in [0:ind.ctors.length] do
+          for j in [0:ind.ctors.length] do
             let d := ind.ctors[j]!
             let di ← getConstInfoCtor d
             let fs ← withCtorFields di params idxs cl.idxMaps[j]! fun xs => translateFields c xs
@@ -698,6 +739,17 @@ def resolveName (n : Name) : TermElabM Name := do
     if (← getEnv).contains n then return n
     throwError "`#leanscript_ctor`: unknown constant `{n}`"
 
+/-- A type written through an abbreviation (`Unit` is `PUnit`) is the datatype it unfolds
+    to. -/
+def unfoldToInductive (n : Name) : MetaM Name := do
+  match (← getEnv).find? n with
+  | some (.defnInfo d) =>
+      let v ← lambdaTelescope d.value fun _ b => whnf b
+      match v.getAppFn with
+      | .const m _ => if (← getEnv).find? m matches some (.inductInfo _) then return m else return n
+      | _ => return n
+  | _ => return n
+
 /-- The constructor the syntax names. -/
 def ctorOfSyntax (stx : Syntax) : TermElabM Name := do
   let some n1 := stx[1].isNameLit? | throwUnsupportedSyntax
@@ -705,7 +757,7 @@ def ctorOfSyntax (stx : Syntax) : TermElabM Name := do
   let env ← getEnv
   match n2? with
   | some n2 =>
-      let i ← resolveName n1
+      let i ← unfoldToInductive (← resolveName n1)
       let some (.inductInfo ind) := env.find? i
         | throwError "`#leanscript_ctor`: `{i}` is not an inductive type"
       if ind.ctors.contains (i ++ n2) then return i ++ n2
@@ -715,7 +767,7 @@ def ctorOfSyntax (stx : Syntax) : TermElabM Name := do
         throwError "`#leanscript_ctor`: `{c}` is not a constructor of `{i}`"
       return c
   | none =>
-      let x ← resolveName n1
+      let x ← unfoldToInductive (← resolveName n1)
       match env.find? x with
       | some (.ctorInfo _) => return x
       | some (.inductInfo ind) =>
