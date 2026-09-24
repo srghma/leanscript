@@ -14,10 +14,10 @@ namespace TermTests.ToTerm
 open LeanScript
 
 /-- Running a closed term of `sig0`; see `TermTests.ToTermTest.Basic`. -/
-local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
+local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
 
 /-! ## A `match` that does not name every constructor
 
@@ -34,16 +34,16 @@ def isRed (c : Colour) : Bool :=
   | .red => true
   | _ => false
 
-def isRed_term : Term sig0 [] (tyWfOf Colour ⇒ TyWf.prim .bool) :=
+def isRed_term : SomeTerm sig0 [] (tyWfOf Colour ⇒ TyWf.prim .bool) :=
   #leanscript_to_term isRed
 
 def red : Colour := .red
 
-def red_term : Term sig0 [] (tyWfOf Colour) := #leanscript_to_term red
+def red_term : SomeTerm sig0 [] (tyWfOf Colour) := #leanscript_to_term red
 
 def green : Colour := .green
 
-def green_term : Term sig0 [] (tyWfOf Colour) := #leanscript_to_term green
+def green_term : SomeTerm sig0 [] (tyWfOf Colour) := #leanscript_to_term green
 
 example : run isRed_term (run red_term) = true := rfl
 example : run isRed_term (run green_term) = false := rfl
@@ -65,16 +65,16 @@ def widthOrZero (s : Sized) : Nat :=
   | .box w _ => w
   | _ => 0
 
-def widthOrZero_term : Term sig0 [] (tyWfOf Sized ⇒ TyWf.prim .nat) :=
+def widthOrZero_term : SomeTerm sig0 [] (tyWfOf Sized ⇒ TyWf.prim .nat) :=
   #leanscript_to_term widthOrZero
 
 def aBox : Sized := .box 3 4
 
-def aBox_term : Term sig0 [] (tyWfOf Sized) := #leanscript_to_term aBox
+def aBox_term : SomeTerm sig0 [] (tyWfOf Sized) := #leanscript_to_term aBox
 
 def aPoint : Sized := .point
 
-def aPoint_term : Term sig0 [] (tyWfOf Sized) := #leanscript_to_term aPoint
+def aPoint_term : SomeTerm sig0 [] (tyWfOf Sized) := #leanscript_to_term aPoint
 
 example : run widthOrZero_term (run aBox_term) = 3 := rfl
 example : run widthOrZero_term (run aPoint_term) = 0 := rfl
@@ -98,7 +98,7 @@ def sumDown : Nat → Nat
   | 0 => 0
   | n + 1 => n + sumDown n
 
-def sumDown_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def sumDown_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumDown
 
 example : runAdd sumDown_term 4 = 6 := rfl
@@ -111,7 +111,7 @@ def constDown : Nat → Nat
   | 0 => 7
   | n + 1 => constDown n
 
-def constDown_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def constDown_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term constDown
 
 example : run constDown_term 5 = 7 := rfl
@@ -123,7 +123,7 @@ def sumL : List Nat → Nat
   | [] => 0
   | x :: xs => x + sumL xs
 
-def sumL_term : Term sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
+def sumL_term : SomeTerm sigAdd [] (tyWfOf (List Nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumL
 
 example : sumL_term = sumList_term := rfl
@@ -142,7 +142,7 @@ def fib : Nat → Nat
   | 1 => 1
   | n + 2 => fib n + fib (n + 1)
 
-def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def fib_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fib
 
 example : runAdd fib_term 0 = 0 := rfl
@@ -157,7 +157,7 @@ def trib : Nat → Nat
   | 2 => 1
   | n + 3 => trib n + trib (n + 1) + trib (n + 2)
 
-def trib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def trib_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term trib
 
 example : runAdd trib_term 10 = trib 10 := rfl

@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.TyView
+public meta import LeanScript.ToTerm.Build
 
 @[expose] public section
 

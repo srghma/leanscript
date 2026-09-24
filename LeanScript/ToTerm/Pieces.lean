@@ -136,13 +136,13 @@ partial def ctorValueArgs (ci : ConstructorVal) (args : Array Expr) :
 
 /-- The base values of a fold, already translated, as a `Spine` at `k` copies of `τ` —
     the type `LeanScript.Term.nat_rec` asks its base values at. -/
-partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : Expr := Id.run do
-  let mut sp := mkAppN (mkConst ``LeanScript.Spine.nil) #[c.sg, c.gamma]
+partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : MetaM Expr := do
+  let mut sp := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
   let mut tys : List Expr := []
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
-    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
-      #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp]
+    sp := (← mkNode ``LeanScript.Spine.cons
+      #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp])
     tys := τ :: tys
   return sp
 

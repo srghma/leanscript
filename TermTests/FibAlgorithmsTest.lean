@@ -41,7 +41,7 @@ namespace TermTests.FibAlgorithms
 open LeanScript
 open TermTests.FibWindow (fib sigAdd envAdd addT)
 
-local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
 
 /-! ## 1. The tail-recursive loop: a fold whose value is a function
 
@@ -73,23 +73,26 @@ def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
 abbrev Acc2 : TyWf := TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat
 
 /-- The base value: `fun a _ => a`. -/
-def loopZero {Γ : Ctx} : Term sigAdd Γ Acc2 :=
-  .lam (.lam (.var (v♯1)))
+def loopZero {Γ : Ctx} :=
+  (.lam (.lam (.var (v♯1))) :
+    Term sigAdd Γ _ Acc2 _)
 
 /-- The step: it binds the predecessor (index `0`) and the loop at the predecessor
     (index `1`), and answers `fun a b => loop b (a + b)`. -/
-def loopStep {Γ : Ctx} : Term sigAdd (TyWf.prim .nat :: Acc2 :: Γ) Acc2 :=
-  .lam (.lam
-    (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0)))))
+def loopStep {Γ : Ctx} :=
+  (.lam (.lam
+      (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0))))) :
+    Term sigAdd (TyWf.prim .nat :: Acc2 :: Γ) _ Acc2 _)
 
 /-- `fibLoopTR`, as a term: a fold at a function type. -/
-def loop_term {Γ : Ctx} : Term sigAdd Γ (TyWf.prim .nat ⇒ Acc2) :=
-  .lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep)
+def loop_term {Γ : Ctx} :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) :
+    Term sigAdd Γ _ (TyWf.prim .nat ⇒ Acc2) _)
 
 /-- `fibTR`, as a term: the loop started at `(0, 1)`. -/
-def fibTR_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.ap (.ap (.ap (loop_term (Γ := [TyWf.prim .nat])) (.var (v♯0))) (.nat_mk 0))
-    (.nat_mk 1))
+def fibTR_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.ap (.ap (.ap (loop_term (Γ := [TyWf.prim .nat])) (.var (v♯0))) (.nat_mk 0))
+    (.nat_mk 1))⟩
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
 theorem loop_term_eval (n a b : Nat) : runAdd loop_term n a b = fibLoopTR n a b := by

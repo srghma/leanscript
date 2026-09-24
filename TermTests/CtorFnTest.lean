@@ -25,19 +25,20 @@ abbrev stringT : TyWf := .prim .string
 abbrev sig : Sig := ⟨[], rfl⟩
 
 /-- Running a closed term of `sig`. -/
-local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) PUnit.unit $t)
+local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig) PUnit.unit $t)
 
 /-! ## The cache
 
 `TermTests.CtorFnTest.Module` generated `Option.some` (and so `Option`'s layout); here it is
 reused, not generated again: the constant is the one of that module. -/
 
-def some4 : Term sig [] (#leanscript_layout `Option `some natT) :=
-  #leanscript_ctor `Option `some natT (.nat_mk 4)
+def some4 : SomeTerm sig [] (#leanscript_layout `Option `some natT) :=
+  ⟨#leanscript_ctor `Option `some natT (.nat_mk 4)⟩
 
 /--
-info: @[expose] def CtorFnTest.some4 : Term sig [] (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) :=
-TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4)
+info: @[expose] def CtorFnTest.some4 : SomeTerm sig [] (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) :=
+{ usage := 0 + 0, head := Head.ctor,
+  term := TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4) }
 -/
 #guard_msgs in #print some4
 
@@ -47,34 +48,34 @@ example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := rfl
 
 /-! ## Library datatypes -/
 
-def none' : Term sig [] (#leanscript_layout `Option `none natT) := #leanscript_ctor `Option `none natT
+def none' : SomeTerm sig [] (#leanscript_layout `Option `none natT) := ⟨#leanscript_ctor `Option `none natT⟩
 example : run none' = ⟨⟨0, by decide⟩, ()⟩ := rfl
 
 /-- A type with one constructor can be named alone. -/
-def pair : Term sig [] (#leanscript_layout `Prod natT boolT) :=
-  #leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true)
+def pair : SomeTerm sig [] (#leanscript_layout `Prod natT boolT) :=
+  ⟨#leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true)⟩
 example : run pair = (3, true, ()) := rfl
 example : (#leanscript_layout `Prod natT boolT) = tyWfOf (Nat × Bool) := rfl
 
-def inr : Term sig [] (#leanscript_layout `Sum `inr natT stringT) :=
-  #leanscript_ctor `Sum `inr natT stringT (.string_mk "x")
+def inr : SomeTerm sig [] (#leanscript_layout `Sum `inr natT stringT) :=
+  ⟨#leanscript_ctor `Sum `inr natT stringT (.string_mk "x")⟩
 example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := rfl
 example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := rfl
 
 /-- `Bool` is the enum of its two constructors, which the language calls `bool`. -/
-def tt : Term sig [] boolT := #leanscript_ctor `Bool `true
+def tt : SomeTerm sig [] boolT := ⟨#leanscript_ctor `Bool `true⟩
 example : run tt = true := rfl
 
 /-- `Ordering`'s instance numbers its constructors from `-1`; the layout keeps that. -/
-def gt : Term sig [] (tyWfOf Ordering) := #leanscript_ctor `Ordering `gt
+def gt : SomeTerm sig [] (tyWfOf Ordering) := ⟨#leanscript_ctor `Ordering `gt⟩
 example : (#leanscript_layout `Ordering `gt) = tyWfOf Ordering := rfl
 
 /-- A recursive datatype is built one layer at a time: `List.cons` takes the tree of its
     tail, whatever it is. -/
-def oneTwo : Term sig [] (#leanscript_layout `List `cons natT
+def oneTwo : SomeTerm sig [] (#leanscript_layout `List `cons natT
     (#leanscript_layout `List `cons natT (#leanscript_layout `List `nil natT natT))) :=
-  #leanscript_ctor `List `cons natT _ (.nat_mk 1)
-    (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT))
+  ⟨#leanscript_ctor `List `cons natT _ (.nat_mk 1)
+    (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT))⟩
 example : run oneTwo =
     ⟨⟨1, by decide⟩, (1, ⟨⟨1, by decide⟩, (2, ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩ := rfl
 
@@ -82,7 +83,7 @@ example : run oneTwo =
 
 /-- An enum. -/
 inductive Shape3 | a | b | c
-def shapeB : Term sig [] (#leanscript_layout `Shape3 `b) := #leanscript_ctor `Shape3 `b
+def shapeB : SomeTerm sig [] (#leanscript_layout `Shape3 `b) := ⟨#leanscript_ctor `Shape3 `b⟩
 example : run shapeB = ⟨1, by decide⟩ := rfl
 
 /-- A structure: erased fields are not arguments, and a structure with one field left is
@@ -91,7 +92,7 @@ structure Wrap where
   val : Nat
   u : Unit
   p : val = val
-def wrap : Term sig [] natT := #leanscript_ctor `Wrap (.nat_mk 5)
+def wrap : SomeTerm sig [] natT := ⟨#leanscript_ctor `Wrap (.nat_mk 5)⟩
 example : run wrap = 5 := rfl
 
 /-- Field types built from the type argument: `Option S` and `S × Nat` are rebuilt from their
@@ -104,11 +105,14 @@ structure Fancy (S : Type) where
   n : Nat × S
 
 /--
-info: CtorFnTest.Fancy.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (S : TyWf)
-  (o : Term Sg Γ (TyWf.taggedUnion (LeanTaggedUnionSchema.skip (CtorsWithPayload.here { head := S, tail := [] } []))))
-  (l : Term Sg Γ (tyWfOf (List S.AsType))) (f : Term Sg Γ (S ⇒ S.array))
-  (n : Term Sg Γ (TyWf.record { fst := TyWf.prim LeanPrimTy.nat, snd := S, rest := [] })) :
-  Term Sg Γ (Fancy.leanScriptLayout S)
+info: CtorFnTest.Fancy.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (S : TyWf) {o_usage : Usage Γ} {o_head : Head}
+  {l_usage : Usage Γ} {l_head : Head} {f_usage : Usage Γ} {f_head : Head} {n_usage : Usage Γ} {n_head : Head}
+  (o :
+    Term Sg Γ o_usage
+      (TyWf.taggedUnion (LeanTaggedUnionSchema.skip (CtorsWithPayload.here { head := S, tail := [] } []))) o_head)
+  (l : Term Sg Γ l_usage (tyWfOf (List S.AsType)) l_head) (f : Term Sg Γ f_usage (S ⇒ S.array) f_head)
+  (n : Term Sg Γ n_usage (TyWf.record { fst := TyWf.prim LeanPrimTy.nat, snd := S, rest := [] }) n_head) :
+  Term Sg Γ (o_usage + (l_usage + (f_usage + (n_usage + 0)))) (Fancy.leanScriptLayout S) Head.ctor
 -/
 #guard_msgs in #leanscript_ctor `Fancy `mk
 
@@ -122,8 +126,11 @@ inductive Vec (α : Type) : Nat → Type where
   | nil : Vec α 0
   | cons {n : Nat} (a : α) (v : Vec α n) : Vec α (n + 1)
 /--
-info: CtorFnTest.Vec.cons.leanScriptCtor {Sg : Sig} {Γ : Ctx} (α vTy : TyWf) (n : Term Sg Γ (TyWf.prim LeanPrimTy.nat))
-  (a : Term Sg Γ α) (v : Term Sg Γ vTy) : Term Sg Γ (Vec.leanScriptLayout α vTy)
+info: CtorFnTest.Vec.cons.leanScriptCtor {Sg : Sig} {Γ : Ctx} (α vTy : TyWf) {n_usage : Usage Γ} {n_head : Head}
+  {a_usage : Usage Γ} {a_head : Head} {v_usage : Usage Γ} {v_head : Head}
+  (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head) (a : Term Sg Γ a_usage α a_head)
+  (v : Term Sg Γ v_usage vTy v_head) :
+  Term Sg Γ (n_usage + (a_usage + (v_usage + 0))) (Vec.leanScriptLayout α vTy) Head.ctor
 -/
 #guard_msgs in #leanscript_ctor `Vec `cons
 
@@ -132,8 +139,9 @@ structure Dep where
   n : Nat
   f : Fin n
 /--
-info: CtorFnTest.Dep.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (fTy : TyWf) (n : Term Sg Γ (TyWf.prim LeanPrimTy.nat))
-  (f : Term Sg Γ fTy) : Term Sg Γ (Dep.leanScriptLayout fTy)
+info: CtorFnTest.Dep.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (fTy : TyWf) {n_usage : Usage Γ} {n_head : Head}
+  {f_usage : Usage Γ} {f_head : Head} (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head)
+  (f : Term Sg Γ f_usage fTy f_head) : Term Sg Γ (n_usage + (f_usage + 0)) (Dep.leanScriptLayout fTy) Head.ctor
 -/
 #guard_msgs in #leanscript_ctor `Dep `mk
 
@@ -150,10 +158,10 @@ mutual
         (receive : ServerState → Req → Resp × Client Req Resp) : Server Req Resp
 end
 /--
-info: CtorFnTest.Client.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (Req Resp ClientState sendTy : TyWf)
-  (seed : Term Sg Γ ClientState)
-  (send : Term Sg Γ (ClientState ⇒ TyWf.record { fst := Req, snd := sendTy, rest := [] })) :
-  Term Sg Γ (Client.mk.leanScriptLayout Req Resp ClientState sendTy)
+info: CtorFnTest.Client.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (Req Resp ClientState sendTy : TyWf) {seed_usage : Usage Γ}
+  {seed_head : Head} {send_usage : Usage Γ} {send_head : Head} (seed : Term Sg Γ seed_usage ClientState seed_head)
+  (send : Term Sg Γ send_usage (ClientState ⇒ TyWf.record { fst := Req, snd := sendTy, rest := [] }) send_head) :
+  Term Sg Γ (seed_usage + (send_usage + 0)) (Client.mk.leanScriptLayout Req Resp ClientState sendTy) Head.ctor
 -/
 #guard_msgs in #leanscript_ctor `Client `mk
 

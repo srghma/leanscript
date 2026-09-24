@@ -48,20 +48,22 @@ mutual
     answers where it stands, looking no further down. -/
 def FamilyFoldCases.toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))} {k : Nat} :
-    FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ τ ms →
-    FamilyFoldKCases Sg n ms₀ bind Γ τ ms k
+    FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ ms →
+    FamilyFoldKCases Sg n ms₀ bind Γ u τ ms k
+
   | .nil => .nil
   | .cons m ms => .cons (FamilyMemberFoldCases.toFoldK m) (FamilyFoldCases.toFoldK ms)
 
 /-- `FamilyFoldCases.toFoldK`, on the branches of one member. -/
 def FamilyMemberFoldCases.toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {m : LeanFamMemberSchema (TyWfIn (n + 2))} {k : Nat} :
-    FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ τ m →
-    FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m k
+    FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ m →
+    FamilyMemberFoldKCases Sg n ms₀ bind Γ u τ m k
+
   | .ctors c => .ctors (TaggedUnionFoldCases.toFamFoldK c)
   | .record b => .record (.here b)
   | .alias b => .alias (.here b)
@@ -69,10 +71,11 @@ def FamilyMemberFoldCases.toFoldK {n : Nat}
 /-- `FamilyFoldCases.toFoldK`, on the constructors of a member that has constructors. -/
 def TaggedUnionFoldCases.toFamFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn (n + 2))} {τ : TyWf} {k : Nat} :
-    TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ l τ →
-    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ k
+    TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ u l τ →
+    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ u l τ k
+
   | .payloadFirst b₀ b₁ rest =>
       .payloadFirst (.here b₀) (.here b₁) (TaggedUnionFoldCasesRest.toFamFoldK rest)
   | .skip b₀ rest => .skip (.here b₀) (CtorsWithPayloadFoldCases.toFamFoldK rest)
@@ -80,20 +83,22 @@ def TaggedUnionFoldCases.toFamFoldK {n : Nat}
 /-- `TaggedUnionFoldCases.toFamFoldK`, on the constructors a `CtorsWithPayload` holds. -/
 def CtorsWithPayloadFoldCases.toFamFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn (n + 2))} {τ : TyWf} {k : Nat} :
-    CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ rest τ →
-    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ rest τ k
+    CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ u rest τ →
+    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ u rest τ k
+
   | .here b rest => .here (.here b) (TaggedUnionFoldCasesRest.toFamFoldK rest)
   | .skip b rest => .skip (.here b) (CtorsWithPayloadFoldCases.toFamFoldK rest)
 
 /-- `TaggedUnionFoldCases.toFamFoldK`, on the constructors still to be given a branch. -/
 def TaggedUnionFoldCasesRest.toFamFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn (n + 2)))} {τ : TyWf} {k : Nat} :
-    TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ rest τ →
-    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ k
+    TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ u rest τ →
+    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ u rest τ k
+
   | .nil => .nil
   | .cons b rest => .cons (.here b) (TaggedUnionFoldCasesRest.toFamFoldK rest)
 
@@ -107,20 +112,22 @@ mutual
     those of the plain fold. -/
 def FamilyFoldKCases.ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))} :
-    FamilyFoldKCases Sg n ms₀ bind Γ τ ms 0 →
-    FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ τ ms
+    FamilyFoldKCases Sg n ms₀ bind Γ u τ ms 0 →
+    FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ ms
+
   | .nil => .nil
   | .cons m ms => .cons (FamilyMemberFoldKCases.ofFoldK m) (FamilyFoldKCases.ofFoldK ms)
 
 /-- `FamilyFoldKCases.ofFoldK`, on the branches of one member. -/
 def FamilyMemberFoldKCases.ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {m : LeanFamMemberSchema (TyWfIn (n + 2))} :
-    FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m 0 →
-    FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ τ m
+    FamilyMemberFoldKCases Sg n ms₀ bind Γ u τ m 0 →
+    FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ m
+
   | .ctors c => .ctors (FamilyTaggedUnionFoldKCases.ofFoldK c)
   | .record (.here b) => .record b
   | .alias (.here b) => .alias b
@@ -129,10 +136,11 @@ def FamilyMemberFoldKCases.ofFoldK {n : Nat}
     constructors. -/
 def FamilyTaggedUnionFoldKCases.ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn (n + 2))} {τ : TyWf} :
-    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ 0 →
-    TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ l τ
+    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ u l τ 0 →
+    TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ u l τ
+
   | .payloadFirst (.here b₀) (.here b₁) rest =>
       .payloadFirst b₀ b₁ (FamilyTaggedUnionFoldKCasesRest.ofFoldK rest)
   | .skip (.here b₀) rest => .skip b₀ (FamilyCtorsWithPayloadFoldKCases.ofFoldK rest)
@@ -141,10 +149,11 @@ def FamilyTaggedUnionFoldKCases.ofFoldK {n : Nat}
     holds. -/
 def FamilyCtorsWithPayloadFoldKCases.ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn (n + 2))} {τ : TyWf} :
-    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ rest τ 0 →
-    CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ rest τ
+    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ u rest τ 0 →
+    CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ u rest τ
+
   | .here (.here b) rest => .here b (FamilyTaggedUnionFoldKCasesRest.ofFoldK rest)
   | .skip (.here b) rest => .skip b (FamilyCtorsWithPayloadFoldKCases.ofFoldK rest)
 
@@ -152,10 +161,11 @@ def FamilyCtorsWithPayloadFoldKCases.ofFoldK {n : Nat}
     branch. -/
 def FamilyTaggedUnionFoldKCasesRest.ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn (n + 2)))} {τ : TyWf} :
-    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ 0 →
-    TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ rest τ
+    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ u rest τ 0 →
+    TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ u rest τ
+
   | .nil => .nil
   | .cons (.here b) rest => .cons b (FamilyTaggedUnionFoldKCasesRest.ofFoldK rest)
 
@@ -169,9 +179,9 @@ mutual
     again. -/
 theorem FamilyFoldKCases.ofFoldK_toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))} :
-    ∀ c : FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ τ ms,
+    ∀ c : FamilyFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ ms,
       FamilyFoldKCases.ofFoldK (FamilyFoldCases.toFoldK (ms₀ := ms₀) (k := 0) c) = c
   | .nil => rfl
   | .cons m ms => by
@@ -182,9 +192,9 @@ theorem FamilyFoldKCases.ofFoldK_toFoldK {n : Nat}
 /-- `FamilyFoldKCases.ofFoldK_toFoldK`, on the branches of one member. -/
 theorem FamilyMemberFoldKCases.ofFoldK_toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {m : LeanFamMemberSchema (TyWfIn (n + 2))} :
-    ∀ c : FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ τ m,
+    ∀ c : FamilyMemberFoldCases Sg (TyWfIn (n + 2)) bind Γ u τ m,
       FamilyMemberFoldKCases.ofFoldK
         (FamilyMemberFoldCases.toFoldK (ms₀ := ms₀) (k := 0) c) = c
   | .ctors c => by
@@ -197,9 +207,9 @@ theorem FamilyMemberFoldKCases.ofFoldK_toFoldK {n : Nat}
     constructors. -/
 theorem FamilyTaggedUnionFoldKCases.ofFoldK_toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn (n + 2))} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ l τ,
+    ∀ c : TaggedUnionFoldCases Sg (TyWfIn (n + 2)) bind Γ u l τ,
       FamilyTaggedUnionFoldKCases.ofFoldK
         (TaggedUnionFoldCases.toFamFoldK (ms₀ := ms₀) (k := 0) c) = c
   | .payloadFirst _ _ rest => by
@@ -213,9 +223,9 @@ theorem FamilyTaggedUnionFoldKCases.ofFoldK_toFoldK {n : Nat}
     `CtorsWithPayload` holds. -/
 theorem FamilyCtorsWithPayloadFoldKCases.ofFoldK_toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn (n + 2))} {τ : TyWf} :
-    ∀ c : CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ rest τ,
+    ∀ c : CtorsWithPayloadFoldCases Sg (TyWfIn (n + 2)) bind Γ u rest τ,
       FamilyCtorsWithPayloadFoldKCases.ofFoldK
         (CtorsWithPayloadFoldCases.toFamFoldK (ms₀ := ms₀) (k := 0) c) = c
   | .here _ rest => by
@@ -231,9 +241,9 @@ theorem FamilyCtorsWithPayloadFoldKCases.ofFoldK_toFoldK {n : Nat}
     a branch. -/
 theorem FamilyTaggedUnionFoldKCasesRest.ofFoldK_toFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn (n + 2)))} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ rest τ,
+    ∀ c : TaggedUnionFoldCasesRest Sg (TyWfIn (n + 2)) bind Γ u rest τ,
       FamilyTaggedUnionFoldKCasesRest.ofFoldK
         (TaggedUnionFoldCasesRest.toFamFoldK (ms₀ := ms₀) (k := 0) c) = c
   | .nil => rfl
@@ -250,9 +260,9 @@ mutual
     again. -/
 theorem FamilyFoldKCases.toFoldK_ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))} :
-    ∀ c : FamilyFoldKCases Sg n ms₀ bind Γ τ ms 0,
+    ∀ c : FamilyFoldKCases Sg n ms₀ bind Γ u τ ms 0,
       FamilyFoldCases.toFoldK (ms₀ := ms₀) (k := 0) (FamilyFoldKCases.ofFoldK c) = c
   | .nil => rfl
   | .cons m ms => by
@@ -262,9 +272,9 @@ theorem FamilyFoldKCases.toFoldK_ofFoldK {n : Nat}
 /-- `FamilyFoldKCases.toFoldK_ofFoldK`, on the branches of one member. -/
 theorem FamilyMemberFoldKCases.toFoldK_ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {τ : TyWf}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {m : LeanFamMemberSchema (TyWfIn (n + 2))} :
-    ∀ c : FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m 0,
+    ∀ c : FamilyMemberFoldKCases Sg n ms₀ bind Γ u τ m 0,
       FamilyMemberFoldCases.toFoldK (ms₀ := ms₀) (k := 0)
         (FamilyMemberFoldKCases.ofFoldK c) = c
   | .ctors c => by
@@ -277,9 +287,9 @@ theorem FamilyMemberFoldKCases.toFoldK_ofFoldK {n : Nat}
     constructors. -/
 theorem FamilyTaggedUnionFoldKCases.toFoldK_ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn (n + 2))} {τ : TyWf} :
-    ∀ c : FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ 0,
+    ∀ c : FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ u l τ 0,
       TaggedUnionFoldCases.toFamFoldK (ms₀ := ms₀) (k := 0)
         (FamilyTaggedUnionFoldKCases.ofFoldK c) = c
   | .payloadFirst (.here _) (.here _) rest => by
@@ -293,9 +303,9 @@ theorem FamilyTaggedUnionFoldKCases.toFoldK_ofFoldK {n : Nat}
     `CtorsWithPayload` holds. -/
 theorem FamilyCtorsWithPayloadFoldKCases.toFoldK_ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn (n + 2))} {τ : TyWf} :
-    ∀ c : FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ rest τ 0,
+    ∀ c : FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ u rest τ 0,
       CtorsWithPayloadFoldCases.toFamFoldK (ms₀ := ms₀) (k := 0)
         (FamilyCtorsWithPayloadFoldKCases.ofFoldK c) = c
   | .here (.here _) rest => by
@@ -311,9 +321,9 @@ theorem FamilyCtorsWithPayloadFoldKCases.toFoldK_ofFoldK {n : Nat}
     a branch. -/
 theorem FamilyTaggedUnionFoldKCasesRest.toFoldK_ofFoldK {n : Nat}
     {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
-    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn (n + 2)) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn (n + 2)))} {τ : TyWf} :
-    ∀ c : FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ rest τ 0,
+    ∀ c : FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ u rest τ 0,
       TaggedUnionFoldCasesRest.toFamFoldK (ms₀ := ms₀) (k := 0)
         (FamilyTaggedUnionFoldKCasesRest.ofFoldK c) = c
   | .nil => rfl

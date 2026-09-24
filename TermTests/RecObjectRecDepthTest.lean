@@ -34,21 +34,22 @@ window (index `2`).  Taking the window apart is the descent: its second field is
   program. -/
 
 /-- The branch of `fib`. -/
-def fibBranch : Term sigAdd (branchCtx natT 1) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 1)
-                  (.here (addT (.var (v♯3)) (.var (v♯0))) .nil)))))
-          .nil)))
+def fibBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (.nat_mk 1)
+                    (.here (addT (.var (v♯3)) (.var (v♯0))) .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 1) _ natT _)
 
 /-- **`fib` over a recursive record**: the depth-one fold. -/
-def fibTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 1 (.var (v♯0)) fibBranch)
+def fibTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 1 (.var (v♯0)) fibBranch)⟩
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -58,147 +59,151 @@ below it), and dispatch — so a level pushes five binders in front of the conte
 answers read so far sit at the indices `3, 8, 13, …`, nearest first. -/
 
 /-- The tribonacci numbers: a depth-two fold. -/
-def tribBranch : Term sigAdd (branchCtx natT 2) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 1)
-                            (.here
-                              (addT (addT (.var (v♯8)) (.var (v♯3))) (.var (v♯0)))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+def tribBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (.nat_mk 0)
+                    (.here
+                      (.record_casesOn (.var (v♯0))
+                        (.record_casesOn (.var (v♯1))
+                          (.taggedUnion_casesOn (.var (v♯1))
+                            (.skip (.nat_mk 1)
+                              (.here
+                                (addT (addT (.var (v♯8)) (.var (v♯3))) (.var (v♯0)))
+                                .nil)))))
+                      .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 2) _ natT _)
 
 /-- `trib`, as a term. -/
-def tribTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 2 (.var (v♯0)) tribBranch)
+def tribTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 2 (.var (v♯0)) tribBranch)⟩
 
 /-- The tetranacci numbers: a depth-three fold. -/
-def tetraBranch : Term sigAdd (branchCtx natT 3) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 1)
-                                      (.here
-                                        (addT (addT (addT (.var (v♯13)) (.var (v♯8)))
-                                          (.var (v♯3))) (.var (v♯0)))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+def tetraBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (.nat_mk 0)
+                    (.here
+                      (.record_casesOn (.var (v♯0))
+                        (.record_casesOn (.var (v♯1))
+                          (.taggedUnion_casesOn (.var (v♯1))
+                            (.skip (.nat_mk 0)
+                              (.here
+                                (.record_casesOn (.var (v♯0))
+                                  (.record_casesOn (.var (v♯1))
+                                    (.taggedUnion_casesOn (.var (v♯1))
+                                      (.skip (.nat_mk 1)
+                                        (.here
+                                          (addT (addT (addT (.var (v♯13)) (.var (v♯8)))
+                                            (.var (v♯3))) (.var (v♯0)))
+                                          .nil)))))
+                                .nil)))))
+                      .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 3) _ natT _)
 
 /-- `tetra`, as a term. -/
-def tetraTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 3 (.var (v♯0)) tetraBranch)
+def tetraTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 3 (.var (v♯0)) tetraBranch)⟩
 
 /-- The pentanacci numbers: a depth-four fold. -/
-def pentaBranch : Term sigAdd (branchCtx natT 4) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 0)
-                                      (.here
-                                        (.record_casesOn (.var (v♯0))
-                                          (.record_casesOn (.var (v♯1))
-                                            (.taggedUnion_casesOn (.var (v♯1))
-                                              (.skip (.nat_mk 1)
-                                                (.here
-                                                  (addT (addT (addT (addT
-                                                    (.var (v♯18)) (.var (v♯13)))
-                                                    (.var (v♯8))) (.var (v♯3)))
-                                                    (.var (v♯0)))
-                                                  .nil)))))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+def pentaBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (.nat_mk 0)
+                    (.here
+                      (.record_casesOn (.var (v♯0))
+                        (.record_casesOn (.var (v♯1))
+                          (.taggedUnion_casesOn (.var (v♯1))
+                            (.skip (.nat_mk 0)
+                              (.here
+                                (.record_casesOn (.var (v♯0))
+                                  (.record_casesOn (.var (v♯1))
+                                    (.taggedUnion_casesOn (.var (v♯1))
+                                      (.skip (.nat_mk 0)
+                                        (.here
+                                          (.record_casesOn (.var (v♯0))
+                                            (.record_casesOn (.var (v♯1))
+                                              (.taggedUnion_casesOn (.var (v♯1))
+                                                (.skip (.nat_mk 1)
+                                                  (.here
+                                                    (addT (addT (addT (addT
+                                                      (.var (v♯18)) (.var (v♯13)))
+                                                      (.var (v♯8))) (.var (v♯3)))
+                                                      (.var (v♯0)))
+                                                    .nil)))))
+                                          .nil)))))
+                                .nil)))))
+                      .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 4) _ natT _)
 
 /-- `penta`, as a term. -/
-def pentaTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 4 (.var (v♯0)) pentaBranch)
+def pentaTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 4 (.var (v♯0)) pentaBranch)⟩
 
 /-- The hexanacci numbers: a depth-five fold. -/
-def hexaBranch : Term sigAdd (branchCtx natT 5) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (.nat_mk 0)
-                  (.here
-                    (.record_casesOn (.var (v♯0))
-                      (.record_casesOn (.var (v♯1))
-                        (.taggedUnion_casesOn (.var (v♯1))
-                          (.skip (.nat_mk 0)
-                            (.here
-                              (.record_casesOn (.var (v♯0))
-                                (.record_casesOn (.var (v♯1))
-                                  (.taggedUnion_casesOn (.var (v♯1))
-                                    (.skip (.nat_mk 0)
-                                      (.here
-                                        (.record_casesOn (.var (v♯0))
-                                          (.record_casesOn (.var (v♯1))
-                                            (.taggedUnion_casesOn (.var (v♯1))
-                                              (.skip (.nat_mk 0)
-                                                (.here
-                                                  (.record_casesOn (.var (v♯0))
-                                                    (.record_casesOn (.var (v♯1))
-                                                      (.taggedUnion_casesOn (.var (v♯1))
-                                                        (.skip (.nat_mk 1)
-                                                          (.here
-                                                            (addT (addT (addT (addT (addT
-                                                              (.var (v♯23)) (.var (v♯18)))
-                                                              (.var (v♯13))) (.var (v♯8)))
-                                                              (.var (v♯3))) (.var (v♯0)))
-                                                            .nil)))))
-                                                  .nil)))))
-                                        .nil)))))
-                              .nil)))))
-                    .nil)))))
-          .nil)))
+def hexaBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (.nat_mk 0)
+                    (.here
+                      (.record_casesOn (.var (v♯0))
+                        (.record_casesOn (.var (v♯1))
+                          (.taggedUnion_casesOn (.var (v♯1))
+                            (.skip (.nat_mk 0)
+                              (.here
+                                (.record_casesOn (.var (v♯0))
+                                  (.record_casesOn (.var (v♯1))
+                                    (.taggedUnion_casesOn (.var (v♯1))
+                                      (.skip (.nat_mk 0)
+                                        (.here
+                                          (.record_casesOn (.var (v♯0))
+                                            (.record_casesOn (.var (v♯1))
+                                              (.taggedUnion_casesOn (.var (v♯1))
+                                                (.skip (.nat_mk 0)
+                                                  (.here
+                                                    (.record_casesOn (.var (v♯0))
+                                                      (.record_casesOn (.var (v♯1))
+                                                        (.taggedUnion_casesOn (.var (v♯1))
+                                                          (.skip (.nat_mk 1)
+                                                            (.here
+                                                              (addT (addT (addT (addT (addT
+                                                                (.var (v♯23)) (.var (v♯18)))
+                                                                (.var (v♯13))) (.var (v♯8)))
+                                                                (.var (v♯3))) (.var (v♯0)))
+                                                              .nil)))))
+                                                    .nil)))))
+                                          .nil)))))
+                                .nil)))))
+                      .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 5) _ natT _)
 
 /-- `hexa`, as a term. -/
-def hexaTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 5 (.var (v♯0)) hexaBranch)
+def hexaTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 5 (.var (v♯0)) hexaBranch)⟩
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -211,18 +216,19 @@ abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 
 /-- The branch of the loop: with no cell below, `fun a b => a`; with the loop `ih` at the
     cell below, `fun a b => ih b (a + b)`. -/
-def fibTRBranch : Term sigAdd (branchCtx loopTy 0) loopTy :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.lam (.lam (.var (v♯1))))
-        (.here
-          (.lam (.lam (.ap (.ap (.var (v♯2)) (.var (v♯0)))
-            (addT (.var (v♯1)) (.var (v♯0))))))
-          .nil)))
+def fibTRBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.lam (.lam (.var (v♯1))))
+          (.here
+            (.lam (.lam (.ap (.ap (.var (v♯2)) (.var (v♯0)))
+              (addT (.var (v♯1)) (.var (v♯0))))))
+            .nil))) :
+    Term sigAdd (branchCtx loopTy 0) _ loopTy _)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
-def fibTRTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1))
+def fibTRTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1))⟩
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -237,19 +243,20 @@ abbrev pairTy : TyWf := .record pairSchema
 
 /-- The branch of the pair recursion: with no cell below, `(0, 1)`; with the pair at the
     cell below taken apart as `a` and `b`, `(b, a + b)`. -/
-def fibPairBranch : Term sigAdd (branchCtx pairTy 0) pairTy :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_mk pairSchema
-              (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))))
-          .nil)))
+def fibPairBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_mk pairSchema
+                (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))))
+            .nil))) :
+    Term sigAdd (branchCtx pairTy 0) _ pairTy _)
 
 /-- `fib`, as the first component of the pair recursion. -/
-def fibPairTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0)))
+def fibPairTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0)))⟩
 
 /-! ## 6. The continuant: a fold that reads the record's **own field** as well
 
@@ -267,21 +274,22 @@ so its branch multiplies the label — index `0` of the branch, pushed further o
 descent — by the answer one cell down and adds the answer two cells down. -/
 
 /-- The branch of the continuant. -/
-def contBranch : Term sigAdd (branchCtx natT 1) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.var (v♯2))
-        (.here
-          (.record_casesOn (.var (v♯0))
-            (.record_casesOn (.var (v♯1))
-              (.taggedUnion_casesOn (.var (v♯1))
-                (.skip (addT (mulT (.var (v♯7)) (.var (v♯2))) (.nat_mk 1))
-                  (.here (addT (mulT (.var (v♯8)) (.var (v♯3))) (.var (v♯0))) .nil)))))
-          .nil)))
+def contBranch :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.var (v♯2))
+          (.here
+            (.record_casesOn (.var (v♯0))
+              (.record_casesOn (.var (v♯1))
+                (.taggedUnion_casesOn (.var (v♯1))
+                  (.skip (addT (mulT (.var (v♯7)) (.var (v♯2))) (.nat_mk 1))
+                    (.here (addT (mulT (.var (v♯8)) (.var (v♯3))) (.var (v♯0))) .nil)))))
+            .nil))) :
+    Term sigAdd (branchCtx natT 1) _ natT _)
 
 /-- The continuant, as a term: the depth-one fold that also reads the label. -/
-def contTerm : Term sigAdd [] (cellTy ⇒ natT) :=
-  .lam (.recObject_rec 1 (.var (v♯0)) contBranch)
+def contTerm : SomeTerm sigAdd [] (cellTy ⇒ natT) :=
+  ⟨.lam (.recObject_rec 1 (.var (v♯0)) contBranch)⟩
 
 /-! ## 7. What the evaluator says about these terms
 
@@ -329,11 +337,12 @@ in the application
   Term.var DeBruijn.head
 -/
 #guard_msgs (error) in
-def fibBranchTooShallow : Term sigAdd (branchCtx natT 0) natT :=
-  .record_casesOn (.var (v♯2))
-    (.taggedUnion_casesOn (.var (v♯1))
-      (.skip (.nat_mk 0)
-        (.here (.record_casesOn (.var (v♯0)) (.nat_mk 1)) .nil)))
+def fibBranchTooShallow :=
+  (.record_casesOn (.var (v♯2))
+      (.taggedUnion_casesOn (.var (v♯1))
+        (.skip (.nat_mk 0)
+          (.here (.record_casesOn (.var (v♯0)) (.nat_mk 1)) .nil))) :
+    Term sigAdd (branchCtx natT 0) _ natT _)
 
 /-! ### The recursion that no depth reaches
 

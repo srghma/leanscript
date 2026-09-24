@@ -32,36 +32,37 @@ open LeanScript
 def sig0 : Sig := ⟨[], by decide⟩
 
 /-- Running a closed term of `sig0`. -/
-local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
+local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- The first of `Term.extern`, `Term.externCall` and `Term.externCallChecked` in the term,
     looking under binders, applications and `let`s.  (The translation of `a + b` goes
     through the instances `HAdd Nat` and `Add Nat`, each a function applied to its
     arguments, before it reaches `Nat.add`.) -/
-def externForm? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option String
+def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Term sig0 Γ u τ k → Option String
   | .lam b => externForm? b
-  | .ap f a => externForm? f <|> externForm? a
-  | .letE a b => externForm? a <|> externForm? b
+  | .ap f a _ => externForm? f <|> externForm? a
+  | .letE a b _ _ => externForm? a <|> externForm? b
   | .extern _ => some "extern"
-  | .externCall _ _ => some "externCall"
-  | .externCallChecked _ _ _ => some "externCallChecked"
+  | .externCall _ _ _ => some "externCall"
+  | .externCallChecked _ _ _ _ => some "externCallChecked"
   | _ => none
 
 /-! ## An extern without a proof: `Term.externCall` -/
 
 def addN (a b : Nat) : Nat := a + b
 
-def addN_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def addN_term : SomeTerm sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term addN
 
-example : externForm? addN_term = some "externCall" := by decide
+example : externForm? addN_term.term = some "externCall" := by decide
 example : run addN_term 2 3 = 5 := rfl
 
 /-- `Array.toList` is the extern `lean_array_to_list`, whose value is a list of the
     language. -/
 def asList (a : Array Nat) : List Nat := a.toList
 
-def asList_term : Term sig0 [] (TyWf.array (TyWf.prim .nat) ⇒ tyWfOf (List Nat)) :=
+def asList_term : SomeTerm sig0 [] (TyWf.array (TyWf.prim .nat) ⇒ tyWfOf (List Nat)) :=
   #leanscript_to_term asList
 
 example : Ty.DenRec.toList (.prim .nat) (run asList_term #[4, 5, 6]) = [4, 5, 6] := by decide
@@ -74,7 +75,7 @@ to `Array.getInternal`. -/
 
 def getOr (a : Array Nat) (i : Nat) : Nat := if h : i < a.size then a[i] else 0
 
-def getOr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def getOr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term getOr
 
 example : run getOr_term #[10, 20, 30] 0 = 10 := rfl
@@ -86,7 +87,7 @@ example : run getOr_term #[10, 20, 30] 1 = getOr #[10, 20, 30] 1 := rfl
 def setOr (a : Array Nat) (i v : Nat) : Array Nat := if h : i < a.size then a.set i v h else a
 
 def setOr_term :
-    Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.array (.prim .nat)) :=
+    SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.array (.prim .nat)) :=
   #leanscript_to_term setOr
 
 example : run setOr_term #[1, 2, 3] 1 7 = #[1, 7, 3] := rfl
@@ -96,16 +97,16 @@ example : run setOr_term #[1, 2, 3] 3 7 = #[1, 2, 3] := rfl
 
 def second : Nat := #[1, 2, 3][1]
 
-def second_term : Term sig0 [] (TyWf.prim .nat) := #leanscript_to_term second
+def second_term : SomeTerm sig0 [] (TyWf.prim .nat) := #leanscript_to_term second
 
-example : externForm? second_term = some "extern" := rfl
+example : externForm? second_term.term = some "extern" := rfl
 example : run second_term = 2 := rfl
 
 /-! ## `Lean.Name` is an ordinary inductive of the language -/
 
 def sameName (a b : Lean.Name) : Bool := a == b
 
-def sameName_term : Term sig0 [] (TyWf.leanName ⇒ TyWf.leanName ⇒ TyWf.prim .bool) :=
+def sameName_term : SomeTerm sig0 [] (TyWf.leanName ⇒ TyWf.leanName ⇒ TyWf.prim .bool) :=
   #leanscript_to_term sameName
 
 example : run sameName_term (TyWf.Den.ofName `a.b) (TyWf.Den.ofName `a.b) = true := by decide +kernel
@@ -121,9 +122,9 @@ def sigGcd : Sig :=
 
 def gcdTwice (a : Nat) : Nat := Nat.gcd a (2 * a)
 
-def gcdTwice_term : Term sigGcd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def gcdTwice_term : SomeTerm sigGcd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term gcdTwice
 
-example : (Term.run (Sg := sigGcd) (Nat.gcd, PUnit.unit) gcdTwice_term) 6 = 6 := by decide
+example : (SomeTerm.run (Sg := sigGcd) (Nat.gcd, PUnit.unit) gcdTwice_term) 6 = 6 := by decide
 
 end TermTests.ExternToTerm

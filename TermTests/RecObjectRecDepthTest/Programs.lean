@@ -363,17 +363,17 @@ example (τ : TyWf) :
     TyWf.recObjectRecBinders cellSchema (by ty_wf) τ 5 ++ CCtx = branchCtx τ 5 := rfl
 
 /-- A cell with no cell below it, as a term. -/
-def leafTerm : Term sigAdd [] cellTy :=
-  .recObject_mk cellSchema
+def leafTerm : SomeTerm sigAdd [] cellTy :=
+  ⟨.recObject_mk cellSchema
     (fields := .cons (.nat_mk 1)
-      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil))
+      (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil))⟩
 
 /-- One more cell on top of the one in scope. -/
-def consTerm : Term sigAdd [] (cellTy ⇒ cellTy) :=
-  .lam (.recObject_mk cellSchema
+def consTerm : SomeTerm sigAdd [] (cellTy ⇒ cellTy) :=
+  ⟨.lam (.recObject_mk cellSchema
     (fields := .cons (.nat_mk 1)
       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
-        (fields := .cons (.var (v♯0)) .nil)) .nil)))
+        (fields := .cons (.var (v♯0)) .nil)) .nil)))⟩
 
 end TermTests.RecObjectRecDepth
 

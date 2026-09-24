@@ -53,7 +53,7 @@ partial def transLam (c : TCtx) (e : Expr) : MetaM Expr := do
     let c' := c.push xs[0]!.fvarId! σ
     let b ← trans c' body
     let τ ← tyOfTermOr body b
-    return mkAppN (mkConst ``LeanScript.Term.lam) #[c.sg, c.gamma, σ, τ, b]
+    return (← mkNode ``LeanScript.Term.lam #[c.sg, c.gamma, σ, τ, b])
 
 /-- `let x := v; b`. -/
 partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
@@ -66,7 +66,7 @@ partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
     let body := b.instantiate1 x
     let b' ← trans c' body
     let τ ← tyOfTermOr body b'
-    return mkAppN (mkConst ``LeanScript.Term.letE) #[c.sg, c.gamma, σ, τ, v', b']
+    return (← mkNode ``LeanScript.Term.letE #[c.sg, c.gamma, σ, τ, v', b'])
 
 /-- A literal of a terminal type, carried into the term as it stands. -/
 partial def transLit? (c : TCtx) (e : Expr) : MetaM (Option Expr) := do
@@ -129,8 +129,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
         | throwError "`#leanscript_to_term`: the field {idx} of {structName} is not a \
             field of its tree"
       let body ← c'.var fid
-      return mkAppN (mkConst ``LeanScript.Term.record_casesOn)
-        #[c.sg, c.gamma, τ, fs, scrut, body]
+      return (← mkNode ``LeanScript.Term.record_casesOn
+        #[c.sg, c.gamma, τ, fs, scrut, body])
   | _ =>
       -- a one-field structure is its field: the wrapper is erased
       if k == 0 then return scrut
@@ -207,8 +207,8 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
               state of the next iteration"
       let c' := c.pushFields #[(i.fvarId!, natTy), (s.fvarId!, τ)]
       trans c' next
-  return some <| mkAppN (mkConst ``LeanScript.Term.nat_rec)
-    #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], branch]
+  return some <| (← mkNode ``LeanScript.Term.nat_rec
+    #[c.sg, c.gamma, τ, mkNatLit 0, scrut, ← mkNatRecBase c τ #[z], branch])
 
 /-- An application whose head is a constant. -/
 partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
@@ -221,7 +221,7 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   -- is a declaration of the signature, whatever its definition is
   if externAsOrdinary.contains n then
     if let some g := c.global? n then
-      let gt := mkAppN (mkConst ``LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
+      let gt := (← mkNode ``LeanScript.Term.global #[c.sg, c.gamma, g.ty, g.ref])
       return ← applyArgs trans c gt (mkConst n lvls) args
     throwError "`#leanscript_to_term`: `{n}` is translated as an ordinary function, and is \
       not declared in the signature, so a term cannot call it.  Add a `GlobalDecl` named \
@@ -239,7 +239,7 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if n == ``Thunk.get then
     let some t := args[1]? | throwError "`#leanscript_to_term`: `Thunk.get` needs a thunk"
     let τ ← tyOfTerm e
-    return mkAppN (mkConst ``LeanScript.Term.thunk_force) #[c.sg, c.gamma, τ, ← trans c t]
+    return (← mkNode ``LeanScript.Term.thunk_force #[c.sg, c.gamma, τ, ← trans c t])
   if n == ``List.toArray || n == ``Array.mk then
     -- an array literal, written as the list of its elements
     return ← transListLit c e
@@ -267,7 +267,7 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
           if (arrayOfToList? major).isSome then
             return ← trans c e'
   if let some g := c.global? n then
-    let gt := mkAppN (mkConst ``LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
+    let gt := (← mkNode ``LeanScript.Term.global #[c.sg, c.gamma, g.ty, g.ref])
     return ← applyArgs trans c gt (mkConst n lvls) args
   if ← isInlinable n then
     return ← transInline trans c e n lvls args
@@ -341,7 +341,7 @@ partial def mkNatZeroCases (c : TCtx) (n thenB elseB : Expr) (τ? : Option Expr)
   let (τ, z, s) ← match τ? with
     | some τ => pure (τ, ← transCheck c thenB τ, ← transCheck c' elseB τ)
     | none => transBranchPair c thenB c' elseB
-  return mkAppN (mkConst ``LeanScript.Term.nat_casesOn) #[c.sg, c.gamma, τ, scrut, z, s]
+  return (← mkNode ``LeanScript.Term.nat_casesOn #[c.sg, c.gamma, τ, scrut, z, s])
 
 /-- Two branches of one dispatch, each in its own context: their common type and their
     translations.  When the Lean type of the branches has no tree (a datatype with
@@ -383,7 +383,7 @@ partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
       | (``LeanScript.TyWf.fn, #[σ, ρ]) =>
           lambdaBoundedTelescope e 1 fun xs body => do
             let b ← transCheck (c.push xs[0]!.fvarId! σ) body ρ
-            return mkAppN (mkConst ``LeanScript.Term.lam) #[c.sg, c.gamma, σ, ρ, b]
+            return (← mkNode ``LeanScript.Term.lam #[c.sg, c.gamma, σ, ρ, b])
       | _ => coerceTo c (← trans c e) τ
   | _ =>
     if let .const n _ := e.getAppFn then
@@ -407,9 +407,9 @@ partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr :
         return ← trans c lhs
       if α.isConstOf ``Bool && rhs.isConstOf ``Bool.false then
         let t ← trans c lhs
-        return ← mkBoolCases' c t (mkAppN (mkConst ``LeanScript.Term.bool_mk)
-            #[c.sg, c.gamma, mkConst ``Bool.false])
-          (mkAppN (mkConst ``LeanScript.Term.bool_mk) #[c.sg, c.gamma, mkConst ``Bool.true])
+        return ← mkBoolCases' c t ((← mkNode ``LeanScript.Term.bool_mk
+            #[c.sg, c.gamma, mkConst ``Bool.false]))
+          ((← mkNode ``LeanScript.Term.bool_mk #[c.sg, c.gamma, mkConst ``Bool.true]))
           (← tyOfType (mkConst ``Bool))
       -- a decision procedure that is an extern (`Nat.decEq`, say) is that extern
       if let some x ← decidableExtern? inst then return ← trans c x
@@ -435,7 +435,7 @@ partial def mkBoolCases (c : TCtx) (test : Expr) (thenB elseB : Expr) : MetaM Ex
 
 /-- `bool_casesOn`, from the two translated branches. -/
 partial def mkBoolCases' (c : TCtx) (test t e τ : Expr) : MetaM Expr := do
-  return mkAppN (mkConst ``LeanScript.Term.bool_casesOn) #[c.sg, c.gamma, τ, test, t, e]
+  return (← mkNode ``LeanScript.Term.bool_casesOn #[c.sg, c.gamma, τ, test, t, e])
 
 /-- A list, or an array, written out: every element of it at once. -/
 partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do
@@ -454,24 +454,24 @@ partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do
         throwError "`#leanscript_to_term`: the grammar builds an array from all of its \
           elements at once, so only a list written out can be translated; {cur} is not \
           one"
-  let mut ts := mkAppN (mkConst ``LeanScript.Terms.nil) #[c.sg, c.gamma, σ]
+  let mut ts := (← mkNode ``LeanScript.Terms.nil #[c.sg, c.gamma, σ])
   for i in [0:elems.size] do
     let a := elems[elems.size - 1 - i]!
-    ts := mkAppN (mkConst ``LeanScript.Terms.cons) #[c.sg, c.gamma, σ, ← trans c a, ts]
-  return mkAppN (mkConst ``LeanScript.Term.array_mk) #[c.sg, c.gamma, σ, ts]
+    ts := (← mkNode ``LeanScript.Terms.cons #[c.sg, c.gamma, σ, ← trans c a, ts])
+  return (← mkNode ``LeanScript.Term.array_mk #[c.sg, c.gamma, σ, ts])
 
 /-- A spine of arguments at the given trees. -/
 partial def mkSpine (c : TCtx) (tys : List Expr) (vals : Array Expr) : MetaM Expr := do
   unless tys.length == vals.size do
     throwError "`#leanscript_to_term`: this constructor carries {vals.size} values but \
       its tree has {tys.length} fields"
-  let mut sp := mkAppN (mkConst ``LeanScript.Spine.nil) #[c.sg, c.gamma]
+  let mut sp := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
   let tysA := tys.toArray
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
     let t ← trans c vals[j]!
-    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
-      #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
+    sp := (← mkNode ``LeanScript.Spine.cons
+      #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp])
   return sp
 
 /-- An application of a constructor: it is built in place. -/
@@ -491,8 +491,8 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
     let some body := fields[0]?
       | throwError "`#leanscript_to_term`: a thunk needs its body"
     let inner := (mkApp body (mkConst ``Unit.unit)).headBeta
-    return mkAppN (mkConst ``LeanScript.Term.thunk_mk)
-      #[c.sg, c.gamma, σ, ← trans c inner]
+    return (← mkNode ``LeanScript.Term.thunk_mk
+      #[c.sg, c.gamma, σ, ← trans c inner])
   -- a one-field wrapper is its field
   if h : fields.size = 1 then
     let fty ← tyOfTerm fields[0]
@@ -501,7 +501,7 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
   | .record fs =>
       let fieldTys ← recordFieldTys fs
       let spine ← mkSpine c fieldTys fields
-      return mkAppN (mkConst ``LeanScript.Term.record_mk) #[c.sg, c.gamma, fs, spine]
+      return (← mkNode ``LeanScript.Term.record_mk #[c.sg, c.gamma, fs, spine])
   | .taggedUnion l =>
       let ctys ← taggedUnionCtorTys l
       let some fieldTys := ctys[ci.cidx]?
@@ -510,8 +510,8 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let spine ← mkSpine c fieldTys fields
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
-      return mkAppN (mkConst ``LeanScript.Term.taggedUnion_mk)
-        #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
+      return (← mkNode ``LeanScript.Term.taggedUnion_mk
+        #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine])
   | .recTaggedUnion l hwf =>
       -- the fields of a value are the payload **unfolded**: a field that is an
       -- occurrence of the union is a value of the union again
@@ -523,16 +523,16 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let spine ← mkSpine c fieldTys fields
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE unfE
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
-      return mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_mk)
-        #[c.sg, c.gamma, l, hwf, mkNatLit ci.cidx, prf, spine]
+      return (← mkNode ``LeanScript.Term.recTaggedUnion_mk
+        #[c.sg, c.gamma, l, hwf, mkNatLit ci.cidx, prf, spine])
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
-      return mkAppN (mkConst ``LeanScript.Term.enum_mk)
-        #[c.sg, c.gamma, s, ← mkFinLit nE ci.cidx]
+      return (← mkNode ``LeanScript.Term.enum_mk
+        #[c.sg, c.gamma, s, ← mkFinLit nE ci.cidx])
   | .prim _ =>
       if ← isBoolTy ty then
-        return mkAppN (mkConst ``LeanScript.Term.bool_mk)
-          #[c.sg, c.gamma, toExpr (ci.cidx == 1)]
+        return (← mkNode ``LeanScript.Term.bool_mk
+          #[c.sg, c.gamma, toExpr (ci.cidx == 1)])
       throwError "`#leanscript_to_term`: {ci.name} builds a value of a terminal type, \
         which has no constructor in the language; write it as a literal"
   | _ =>

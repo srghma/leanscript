@@ -155,9 +155,10 @@ theorem listFoldK_eq_listFold (z0 : TyWf.Den τ) (s0 : α → List α → TyWf.D
 
 section Node
 
-variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls)
-    (arr : Term Sg Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
-    (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ)
+variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls) {u ub : Usage Γ}
+    {w : Usage (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ)} {ka kb : Head}
+    (arr : Term Sg Γ u (.array σ) ka) (bases : ArrayRecBases Sg Γ ub σ τ k)
+    (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb)
     (env : Env Γ) (h : Term.NoRecMk (Term.array_rec k arr bases branch))
 
 /-- The value of the node **is** the fold: the short lists are answered by its

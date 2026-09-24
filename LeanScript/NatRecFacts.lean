@@ -144,9 +144,10 @@ theorem natFoldK_base {k : Nat} (z : NatWin τ (k + 1))
 
 /-! ## The node, evaluated -/
 
-variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls)
-    (nT : Term Sg Γ (.prim .nat)) (base : Spine Sg Γ (natRecCtx τ (k + 1) []))
-    (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ)
+variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls) {u ub : Usage Γ}
+    {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
+    (nT : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
+    (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
     (env : Env Γ) (h : Term.NoRecMk (Term.nat_rec k nT base branch))
 
 /-- The value of the node **is** the fold: its base values are the `Spine`, and its step

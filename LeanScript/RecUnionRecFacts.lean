@@ -44,29 +44,32 @@ mutual
 /-- Every branch of the plain fold is a branch of a depth-`k` fold: it answers where it
     stands, looking no further down. -/
 def TaggedUnionFoldCases.toFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} {k : Nat} :
-    TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ →
-    TaggedUnionFoldKCases Sg l₀ bind Γ l τ k
+    TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ →
+    TaggedUnionFoldKCases Sg l₀ bind Γ u l τ k
+
   | .payloadFirst b₀ b₁ rest =>
       .payloadFirst (.here b₀) (.here b₁) (TaggedUnionFoldCasesRest.toFoldK rest)
   | .skip b₀ rest => .skip (.here b₀) (CtorsWithPayloadFoldCases.toFoldK rest)
 
 /-- `TaggedUnionFoldCases.toFoldK`, on the constructors a `CtorsWithPayload` holds. -/
 def CtorsWithPayloadFoldCases.toFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {rest : CtorsWithPayload (TyWfIn 1)}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {rest : CtorsWithPayload (TyWfIn 1)}
     {τ : TyWf} {k : Nat} :
-    CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ rest τ →
-    CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ k
+    CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u rest τ →
+    CtorsWithPayloadFoldKCases Sg l₀ bind Γ u rest τ k
+
   | .here b rest => .here (.here b) (TaggedUnionFoldCasesRest.toFoldK rest)
   | .skip b rest => .skip (.here b) (CtorsWithPayloadFoldCases.toFoldK rest)
 
 /-- `TaggedUnionFoldCases.toFoldK`, on the constructors still to be given a branch. -/
 def TaggedUnionFoldCasesRest.toFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {rest : List (List (TyWfIn 1))}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {rest : List (List (TyWfIn 1))}
     {τ : TyWf} {k : Nat} :
-    TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ rest τ →
-    TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k
+    TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u rest τ →
+    TaggedUnionFoldKCasesRest Sg l₀ bind Γ u rest τ k
+
   | .nil => .nil
   | .cons b rest => .cons (.here b) (TaggedUnionFoldCasesRest.toFoldK rest)
 
@@ -79,29 +82,32 @@ mutual
 /-- At depth `0` a branch of a fold cannot look down, so the branches are those of the
     plain fold. -/
 def TaggedUnionFoldKCases.ofFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
-    TaggedUnionFoldKCases Sg l₀ bind Γ l τ 0 →
-    TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ
+    TaggedUnionFoldKCases Sg l₀ bind Γ u l τ 0 →
+    TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ
+
   | .payloadFirst (.here b₀) (.here b₁) rest =>
       .payloadFirst b₀ b₁ (TaggedUnionFoldKCasesRest.ofFoldK rest)
   | .skip (.here b₀) rest => .skip b₀ (CtorsWithPayloadFoldKCases.ofFoldK rest)
 
 /-- `TaggedUnionFoldKCases.ofFoldK`, on the constructors a `CtorsWithPayload` holds. -/
 def CtorsWithPayloadFoldKCases.ofFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {rest : CtorsWithPayload (TyWfIn 1)}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {rest : CtorsWithPayload (TyWfIn 1)}
     {τ : TyWf} :
-    CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ 0 →
-    CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ rest τ
+    CtorsWithPayloadFoldKCases Sg l₀ bind Γ u rest τ 0 →
+    CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u rest τ
+
   | .here (.here b) rest => .here b (TaggedUnionFoldKCasesRest.ofFoldK rest)
   | .skip (.here b) rest => .skip b (CtorsWithPayloadFoldKCases.ofFoldK rest)
 
 /-- `TaggedUnionFoldKCases.ofFoldK`, on the constructors still to be given a branch. -/
 def TaggedUnionFoldKCasesRest.ofFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {rest : List (List (TyWfIn 1))}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {rest : List (List (TyWfIn 1))}
     {τ : TyWf} :
-    TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ 0 →
-    TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ rest τ
+    TaggedUnionFoldKCasesRest Sg l₀ bind Γ u rest τ 0 →
+    TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u rest τ
+
   | .nil => .nil
   | .cons (.here b) rest => .cons b (TaggedUnionFoldKCasesRest.ofFoldK rest)
 
@@ -114,9 +120,9 @@ mutual
 /-- Reading the branches of the plain fold as depth-zero branches and back gives them
     again. -/
 theorem TaggedUnionFoldKCases.ofFoldK_toFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ,
+    ∀ c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ,
       TaggedUnionFoldKCases.ofFoldK (TaggedUnionFoldCases.toFoldK (l₀ := l₀) (k := 0) c) = c
   | .payloadFirst _ _ rest => by
       simp only [TaggedUnionFoldCases.toFoldK, TaggedUnionFoldKCases.ofFoldK,
@@ -128,9 +134,9 @@ theorem TaggedUnionFoldKCases.ofFoldK_toFoldK {l₀ : LeanTaggedUnionSchema (TyW
 /-- `TaggedUnionFoldKCases.ofFoldK_toFoldK`, on the constructors a `CtorsWithPayload`
     holds. -/
 theorem CtorsWithPayloadFoldKCases.ofFoldK_toFoldK
-    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn 1)} {τ : TyWf} :
-    ∀ c : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ rest τ,
+    ∀ c : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u rest τ,
       CtorsWithPayloadFoldKCases.ofFoldK
         (CtorsWithPayloadFoldCases.toFoldK (l₀ := l₀) (k := 0) c) = c
   | .here _ rest => by
@@ -143,9 +149,9 @@ theorem CtorsWithPayloadFoldKCases.ofFoldK_toFoldK
 /-- `TaggedUnionFoldKCases.ofFoldK_toFoldK`, on the constructors still to be given a
     branch. -/
 theorem TaggedUnionFoldKCasesRest.ofFoldK_toFoldK
-    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn 1))} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ rest τ,
+    ∀ c : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u rest τ,
       TaggedUnionFoldKCasesRest.ofFoldK
         (TaggedUnionFoldCasesRest.toFoldK (l₀ := l₀) (k := 0) c) = c
   | .nil => rfl
@@ -160,9 +166,9 @@ mutual
 /-- Reading depth-zero branches as branches of the plain fold and back gives them
     again. -/
 theorem TaggedUnionFoldKCases.toFoldK_ofFoldK {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldKCases Sg l₀ bind Γ l τ 0,
+    ∀ c : TaggedUnionFoldKCases Sg l₀ bind Γ u l τ 0,
       TaggedUnionFoldCases.toFoldK (l₀ := l₀) (k := 0)
         (TaggedUnionFoldKCases.ofFoldK c) = c
   | .payloadFirst (.here _) (.here _) rest => by
@@ -175,9 +181,9 @@ theorem TaggedUnionFoldKCases.toFoldK_ofFoldK {l₀ : LeanTaggedUnionSchema (TyW
 /-- `TaggedUnionFoldKCases.toFoldK_ofFoldK`, on the constructors a `CtorsWithPayload`
     holds. -/
 theorem CtorsWithPayloadFoldKCases.toFoldK_ofFoldK
-    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : CtorsWithPayload (TyWfIn 1)} {τ : TyWf} :
-    ∀ c : CtorsWithPayloadFoldKCases Sg l₀ bind Γ rest τ 0,
+    ∀ c : CtorsWithPayloadFoldKCases Sg l₀ bind Γ u rest τ 0,
       CtorsWithPayloadFoldCases.toFoldK (l₀ := l₀) (k := 0)
         (CtorsWithPayloadFoldKCases.ofFoldK c) = c
   | .here (.here _) rest => by
@@ -190,9 +196,9 @@ theorem CtorsWithPayloadFoldKCases.toFoldK_ofFoldK
 /-- `TaggedUnionFoldKCases.toFoldK_ofFoldK`, on the constructors still to be given a
     branch. -/
 theorem TaggedUnionFoldKCasesRest.toFoldK_ofFoldK
-    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx}
+    {l₀ : LeanTaggedUnionSchema (TyWfIn 1)} {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ}
     {rest : List (List (TyWfIn 1))} {τ : TyWf} :
-    ∀ c : TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ 0,
+    ∀ c : TaggedUnionFoldKCasesRest Sg l₀ bind Γ u rest τ 0,
       TaggedUnionFoldCasesRest.toFoldK (l₀ := l₀) (k := 0)
         (TaggedUnionFoldKCasesRest.ofFoldK c) = c
   | .nil => rfl

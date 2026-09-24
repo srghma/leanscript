@@ -42,7 +42,7 @@ def sigAdd : Sig := ⟨[⟨"add", TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.pri
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
 
 /-- The window: the pair `(fib n, fib (n + 1))`. -/
 abbrev winSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .nat, []⟩
@@ -51,13 +51,15 @@ abbrev winSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .nat, [
 abbrev Win : TyWf := TyWf.record winSchema
 
 /-- `add a b`, for two terms in hand. -/
-def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (TyWf.prim .nat) :=
-  .ap (.ap (.global .here) a) b
+def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua (TyWf.prim .nat) ka)
+    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb) :=
+  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ (TyWf.prim .nat) _)
 
 /-- The window at `0`: `(fib 0, fib 1) = (0, 1)`.  These are the base branches of the
     Lean definition, which read nothing of the recursion. -/
-def seed {Γ : Ctx} : Term sigAdd Γ Win :=
-  .record_mk winSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))
+def seed {Γ : Ctx} :=
+  (.record_mk winSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)) :
+    Term sigAdd Γ _ Win _)
 
 /-- The step of the fold: it binds the predecessor `k` (index `0`) and the window at `k`
     (index `1`), takes the window apart — so inside, index `0` is `fib k` and index `1`
@@ -67,18 +69,23 @@ def seed {Γ : Ctx} : Term sigAdd Γ Win :=
     The recursion that the branch of the Lean definition writes at `n` and at `n + 1` is
     read off the window: nothing is called, so the term is still terminating by
     construction. -/
-def step {Γ : Ctx} : Term sigAdd (TyWf.prim .nat :: Win :: Γ) Win :=
-  .record_casesOn (.var (v♯1))
-    (.record_mk winSchema
-      (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))
+def step {Γ : Ctx} :=
+  (.record_casesOn (.var (v♯1))
+      (.record_mk winSchema
+        (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))) :
+    Term sigAdd (TyWf.prim .nat :: Win :: Γ) _ Win _)
 
 /-- The fold itself: the window at the argument. -/
-def window {Γ : Ctx} : Term sigAdd Γ (TyWf.prim .nat ⇒ Win) :=
-  .lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+def window {Γ : Ctx} :=
+  (.lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step) :
+    Term sigAdd Γ _ (TyWf.prim .nat ⇒ Win) _)
 
-/-- `fib`, as a term of the language: the first field of the window. -/
-def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.record_casesOn (fs := winSchema) (.ap window (.var (v♯0))) (.var (v♯0)))
+/-- `fib`, as a term of the language: the first field of the window.  (The fold is written
+    out rather than applied as `window`: `window` is a `fun`, and applying it would be a
+    β-redex, which the grammar does not have.) -/
+def fib_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+    (.var (v♯0)))⟩
 
 /-! ## What it computes
 
@@ -95,13 +102,13 @@ example : runAdd fib_term 15 = 610 := rfl
 /-- The window term's value at `n` is the pair `(fib n, fib (n + 1))` — at **every**
     argument, not only at the ones checked above. -/
 theorem window_eval (n : Nat) :
-    runAdd window n = (fib n, fib (n + 1), PUnit.unit) := by
+    runAdd ⟨window⟩ n = (fib n, fib (n + 1), PUnit.unit) := by
   induction n with
   | zero => rfl
   | succ n ih =>
-      have hstep : runAdd window (n + 1) =
-          ((runAdd window n).2.1,
-            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := by
+      have hstep : runAdd ⟨window⟩ (n + 1) =
+          ((runAdd ⟨window⟩ n).2.1,
+            (runAdd ⟨window⟩ n).1 + (runAdd ⟨window⟩ n).2.1, PUnit.unit) := by
         -- `kernel_rfl`, not `rfl`: the elaborator's own check of this equation is slow
         -- (the extern call goes through the case splits of `Extern.eval`);
         -- the kernel checks it quickly (see `LeanScript/KernelRfl.lean`)
@@ -113,7 +120,7 @@ theorem window_eval (n : Nat) :
 
 /-- `fib_term` computes `fib`, at every argument. -/
 theorem fib_term_eval (n : Nat) : runAdd fib_term n = fib n := by
-  have h : runAdd fib_term n = (runAdd window n).1 := rfl
+  have h : runAdd fib_term n = (runAdd ⟨window⟩ n).1 := rfl
   rw [h, window_eval]
 
 /-! ## The semantics a two-step fold would have

@@ -40,7 +40,7 @@ def applyArgs (trans : TransFn) (c : TCtx) (t : Expr) (fn : Expr)
     let σ ← tyOfType d
     let τ ← tyOfTerm next
     let a' ← trans c a
-    t := mkAppN (mkConst ``LeanScript.Term.ap) #[c.sg, c.gamma, σ, τ, t, a']
+    t := (← mkNode ``LeanScript.Term.ap #[c.sg, c.gamma, σ, τ, t, a'])
     cur := next
   return t
 
@@ -115,21 +115,21 @@ def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls
         let cases ← mkEnumSomeCases (transBranch trans c) c τ s named 0 minors ctors
         let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, nE])
-        pure <| mkAppN (mkConst ``LeanScript.Term.enum_casesOnWithDefault)
-          #[c.sg, c.gamma, τ, s, kE, scrut, cases, dfltTerm, hk]
+        pure <| (← mkNode ``LeanScript.Term.enum_casesOnWithDefault
+          #[c.sg, c.gamma, τ, s, kE, scrut, cases, dfltTerm, hk])
     | .taggedUnion l =>
         let cases ← mkTaggedUnionSomeCases (transBranch trans c) c τ l named 0 minors ctors
         let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
-        pure <| mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOnWithDefault)
-          #[c.sg, c.gamma, τ, l, kE, scrut, cases, dfltTerm, hk]
+        pure <| (← mkNode ``LeanScript.Term.taggedUnion_casesOnWithDefault
+          #[c.sg, c.gamma, τ, l, kE, scrut, cases, dfltTerm, hk])
     | .recTaggedUnion l hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
         let cases ← mkTaggedUnionSomeCases (transBranch trans c) c τ unfE named 0 minors ctors
         let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE unfE
         let hk ← mkDecideProof (← mkAppM ``LT.lt #[kE, lenE])
-        pure <| mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_casesOnWithDefault)
-          #[c.sg, c.gamma, τ, l, hwf, kE, scrut, cases, dfltTerm, hk]
+        pure <| (← mkNode ``LeanScript.Term.recTaggedUnion_casesOnWithDefault
+          #[c.sg, c.gamma, τ, l, hwf, kE, scrut, cases, dfltTerm, hk])
     | _ => return none
   let extra := args.extract arity args.size
   if extra.isEmpty then return some core
@@ -150,12 +150,12 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
         let body := (mkAppN minors[1]! xs).headBeta
         if body.containsFVar xs[1]!.fvarId! then
           let c' := c.pushFields #[(xs[0]!.fvarId!, natTy), (xs[1]!.fvarId!, τ)]
-          return mkAppN (mkConst ``LeanScript.Term.nat_rec)
-            #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], ← trans c' body]
+          return (← mkNode ``LeanScript.Term.nat_rec
+            #[c.sg, c.gamma, τ, mkNatLit 0, scrut, ← mkNatRecBase c τ #[z], ← trans c' body])
         else
           let c' := c.pushFields #[(xs[0]!.fvarId!, natTy)]
-          return mkAppN (mkConst ``LeanScript.Term.nat_casesOn)
-            #[c.sg, c.gamma, τ, scrut, z, ← trans c' body]
+          return (← mkNode ``LeanScript.Term.nat_casesOn
+            #[c.sg, c.gamma, τ, scrut, z, ← trans c' body])
   | ``List =>
       let sty ← tyOfTerm major
       let .recTaggedUnion l hwf ← tyView sty
@@ -183,18 +183,18 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
             ι fieldsNE
           -- the branches of a depth-zero fold: one answer each, none of them looking
           -- further down
-          let nilBranch := mkAppN (mkConst ``LeanScript.FoldKBranch.here)
-            #[c.sg, l, bindE, c.gamma, nilFs, τ, depth, nil]
-          let consBranch := mkAppN (mkConst ``LeanScript.FoldKBranch.here)
-            #[c.sg, l, bindE, c.gamma, consFs, τ, depth, ← trans c' body]
-          let restCases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldKCasesRest.nil)
-            #[c.sg, l, bindE, c.gamma, τ, depth]
-          let consCases := mkAppN (mkConst ``LeanScript.CtorsWithPayloadFoldKCases.here)
-            #[c.sg, l, bindE, c.gamma, τ, depth, fieldsNE, restL, consBranch, restCases]
-          let cases := mkAppN (mkConst ``LeanScript.TaggedUnionFoldKCases.skip)
-            #[c.sg, l, bindE, c.gamma, τ, depth, cp, nilBranch, consCases]
-          return mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_rec)
-            #[c.sg, c.gamma, τ, l, hwf, depth, scrut, cases]
+          let nilBranch := (← mkNode ``LeanScript.FoldKBranch.here
+            #[c.sg, l, bindE, c.gamma, nilFs, τ, depth, nil])
+          let consBranch := (← mkNode ``LeanScript.FoldKBranch.here
+            #[c.sg, l, bindE, c.gamma, consFs, τ, depth, ← trans c' body])
+          let restCases := (← mkNode ``LeanScript.TaggedUnionFoldKCasesRest.nil
+            #[c.sg, l, bindE, c.gamma, τ, depth])
+          let consCases := (← mkNode ``LeanScript.CtorsWithPayloadFoldKCases.here
+            #[c.sg, l, bindE, c.gamma, τ, depth, fieldsNE, restL, consBranch, restCases])
+          let cases := (← mkNode ``LeanScript.TaggedUnionFoldKCases.skip
+            #[c.sg, l, bindE, c.gamma, τ, depth, cp, nilBranch, consCases])
+          return (← mkNode ``LeanScript.Term.recTaggedUnion_rec
+            #[c.sg, c.gamma, τ, l, hwf, depth, scrut, cases])
         else
           -- the case analysis: the branches are over the unfolded schema, in which the
           -- tail is a list again
@@ -202,17 +202,17 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
             listSchemaParts (← reduceTy
               (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf))
           let c' := c.pushFields #[(xs[0]!.fvarId!, σ), (xs[1]!.fvarId!, sty)]
-          let restCases := mkAppN (mkConst ``LeanScript.TaggedUnionCasesRest.nil)
-            #[c.sg, c.gamma, τ]
-          let consCases := mkAppN (mkConst ``LeanScript.CtorsWithPayloadCases.here)
-            #[c.sg, c.gamma, τ, fieldsU, restU, ← trans c' body, restCases]
-          let cases := mkAppN (mkConst ``LeanScript.TaggedUnionCases.skip)
-            #[c.sg, c.gamma, τ, cpU, nil, consCases]
-          return mkAppN (mkConst ``LeanScript.Term.recTaggedUnion_casesOn)
-            #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
+          let restCases := (← mkNode ``LeanScript.TaggedUnionCasesRest.nil
+            #[c.sg, c.gamma, τ])
+          let consCases := (← mkNode ``LeanScript.CtorsWithPayloadCases.here
+            #[c.sg, c.gamma, τ, fieldsU, restU, ← trans c' body, restCases])
+          let cases := (← mkNode ``LeanScript.TaggedUnionCases.skip
+            #[c.sg, c.gamma, τ, cpU, nil, consCases])
+          return (← mkNode ``LeanScript.Term.recTaggedUnion_casesOn
+            #[c.sg, c.gamma, τ, l, hwf, scrut, cases])
   | ``Bool =>
-      return mkAppN (mkConst ``LeanScript.Term.bool_casesOn)
-        #[c.sg, c.gamma, τ, scrut, ← trans c minors[1]!, ← trans c minors[0]!]
+      return (← mkNode ``LeanScript.Term.bool_casesOn
+        #[c.sg, c.gamma, τ, scrut, ← trans c minors[1]!, ← trans c minors[0]!])
   | _ =>
       let indInfo ← getConstInfoInduct ind
       if indInfo.isRec then
@@ -225,8 +225,8 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
       | .record fs =>
           let fieldTys ← recordFieldTys fs
           let body ← transBranch trans c minors[0]! ctors[0]! fieldTys
-          return mkAppN (mkConst ``LeanScript.Term.record_casesOn)
-            #[c.sg, c.gamma, τ, fs, scrut, body]
+          return (← mkNode ``LeanScript.Term.record_casesOn
+            #[c.sg, c.gamma, τ, fs, scrut, body])
       | .taggedUnion l =>
           -- a `match` with a wildcard repeats one branch: that is the partial dispatch
           if let some (dflt, group) ← repeatedBranch? minors ctors then
@@ -234,29 +234,29 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
             let cases ← mkTaggedUnionSomeCases (transBranch trans c) c τ l named 0 minors ctors
             let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
             let hk ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit named.length, lenE])
-            return mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOnWithDefault)
+            return (← mkNode ``LeanScript.Term.taggedUnion_casesOnWithDefault
               #[c.sg, c.gamma, τ, l, mkNatLit named.length, scrut, cases,
-                ← trans c dflt, hk]
+                ← trans c dflt, hk])
           let cases ← mkTaggedUnionCases (transBranch trans c) c τ l 0 minors ctors
-          return mkAppN (mkConst ``LeanScript.Term.taggedUnion_casesOn)
-            #[c.sg, c.gamma, τ, l, scrut, cases]
+          return (← mkNode ``LeanScript.Term.taggedUnion_casesOn
+            #[c.sg, c.gamma, τ, l, scrut, cases])
       | .enum s =>
           if let some (dflt, group) ← repeatedBranch? minors ctors then
             let named := (List.range ctors.size).filter (fun i => !group.contains i)
             let cases ← mkEnumSomeCases (transBranch trans c) c τ s named 0 minors ctors
             let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
             let hk ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit named.length, nE])
-            return mkAppN (mkConst ``LeanScript.Term.enum_casesOnWithDefault)
+            return (← mkNode ``LeanScript.Term.enum_casesOnWithDefault
               #[c.sg, c.gamma, τ, s, mkNatLit named.length, scrut, cases,
-                ← trans c dflt, hk]
+                ← trans c dflt, hk])
           let cases ← mkEnumCases (transBranch trans c) c τ s minors ctors
-          return mkAppN (mkConst ``LeanScript.Term.enum_casesOn)
-            #[c.sg, c.gamma, τ, s, scrut, cases]
+          return (← mkNode ``LeanScript.Term.enum_casesOn
+            #[c.sg, c.gamma, τ, s, scrut, cases])
       | .prim _ =>
           if (← isBoolTy sty) && minors.size == 2 then
-            return mkAppN (mkConst ``LeanScript.Term.bool_casesOn)
+            return (← mkNode ``LeanScript.Term.bool_casesOn
               #[c.sg, c.gamma, τ, scrut, ← transBranch trans c minors[1]! ctors[1]! [],
-                ← transBranch trans c minors[0]! ctors[0]! []]
+                ← transBranch trans c minors[0]! ctors[0]! []])
           throwError "`#leanscript_to_term`: a terminal type has no dispatch of its own"
       | _ =>
           if minors.size == 1 then

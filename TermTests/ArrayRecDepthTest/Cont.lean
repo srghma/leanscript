@@ -30,7 +30,7 @@ def sigArith : Sig :=
 def envArith : GlobalEnv sigArith.decls := (Nat.add, Nat.mul, PUnit.unit)
 
 /-- Running a closed term of `sigArith`. -/
-local macro:max "runArith" t:term:max : term => `(Term.run (Sg := sigArith) envArith $t)
+local macro:max "runArith" t:term:max : term => `(SomeTerm.run (Sg := sigArith) envArith $t)
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} (a b : Term sigArith Γ natT) : Term sigArith Γ natT :=
@@ -55,13 +55,13 @@ def contBases : ArrayRecBases sigArith ArrCtx natT natT 1 :=
   .cons (.nat_mk 1) (.nil (.var (v♯0)))
 
 /-- The branch: `a * K as + K (as.drop 1)`. -/
-def contBranch :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) natT :=
-  addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))
+def contBranch :=
+  (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3)) :
+    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) _ natT _)
 
 /-- The continuant, as a term of the grammar: the depth-one fold of an array. -/
-def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 1 (.var (v♯0)) contBases contBranch)
+def contTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
+  ⟨.lam (.array_rec 1 (.var (v♯0)) contBases contBranch)⟩
 
 example : runArith contTerm #[] = 1 := rfl
 example : runArith contTerm #[3] = 3 := rfl
@@ -120,13 +120,13 @@ def cont3Bases : ArrayRecBases sigArith ArrCtx natT natT 2 :=
   .cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0)))))
 
 /-- The branch of the depth-two fold: `a * K as + K (as.drop 1) + K (as.drop 2)`. -/
-def cont3Branch :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) natT :=
-  addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4))
+def cont3Branch :=
+  (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)) :
+    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) _ natT _)
 
 /-- `cont3`, as a term: the depth-two fold of an array. -/
-def cont3Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)
+def cont3Term : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
+  ⟨.lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch)⟩
 
 example : runArith cont3Term #[] = 1 := rfl
 example : runArith cont3Term #[5, 6] = 30 := rfl
@@ -155,14 +155,14 @@ def cont4Bases : ArrayRecBases sigArith ArrCtx natT natT 3 :=
 
 /-- The branch of the depth-three fold: the head times the nearest answer, plus the other
     three the window holds. -/
-def cont4Branch :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) natT :=
-  addT (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)))
-    (.var (v♯5))
+def cont4Branch :=
+  (addT (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)))
+      (.var (v♯5)) :
+    Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) _ natT _)
 
 /-- `cont4`, as a term: the depth-three fold of an array. -/
-def cont4Term : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)
+def cont4Term : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
+  ⟨.lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch)⟩
 
 example : runArith cont4Term #[] = 1 := rfl
 example : runArith cont4Term #[2, 3, 4] = 24 := rfl

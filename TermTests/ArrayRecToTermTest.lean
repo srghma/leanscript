@@ -53,7 +53,7 @@ open LeanScript
 def sig0 : Sig := ⟨[], by decide⟩
 
 /-- Running a closed term of `sig0`. -/
-local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
+local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- The depth of a term that is an `array_rec`, or `none`. -/
 def arrayRecDepthOf? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
@@ -76,7 +76,7 @@ where
     | [] => 0
     | x :: xs => x + go xs
 
-def sumArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def sumArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumArr
 
 example : arrayRecDepth? sumArr_term = some 0 := rfl
@@ -98,7 +98,7 @@ where
     | [x] => x
     | x :: y :: xs => x + go (y :: xs) + go xs
 
-def fibArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def fibArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibArr
 
 example : arrayRecDepth? fibArr_term = some 1 := rfl
@@ -124,7 +124,7 @@ where
     | [x, y] => x + go [y]
     | x :: y :: z :: xs => x + go (y :: z :: xs) + go (z :: xs) + go xs
 
-def tribArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def tribArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tribArr
 
 example : arrayRecDepth? tribArr_term = some 2 := rfl
@@ -154,7 +154,7 @@ where
     | x :: y :: z :: w :: xs =>
         x + go (y :: z :: w :: xs) + go (z :: w :: xs) + go (w :: xs) + go xs
 
-def tetraArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def tetraArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tetraArr
 
 example : arrayRecDepth? tetraArr_term = some 3 := rfl
@@ -186,7 +186,7 @@ where
         x + go (y :: z :: w :: v :: xs) + go (z :: w :: v :: xs) + go (w :: v :: xs)
           + go (v :: xs) + go xs
 
-def pentaArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def pentaArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term pentaArr
 
 example : arrayRecDepth? pentaArr_term = some 4 := rfl
@@ -208,7 +208,7 @@ where
     | [], acc => acc
     | x :: xs, acc => go xs (acc + x)
 
-def sumAccArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def sumAccArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumAccArr
 
 example : run sumAccArr_term #[] = 0 := rfl
@@ -231,7 +231,7 @@ where
 error: `#leanscript_to_term`: this recursion on the elements of an array is not the fold of an array — the fold `array_rec k` gives its branch the head and the values at the `k + 1` nearest suffixes of the tail, so a branch that reads an element past the head, or the tail itself, or the value at a list that is not a suffix, has no term
 -/
 #guard_msgs in
-def adjArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def adjArr_term : SomeTerm sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term adjArr
 
 end TermTests.ArrayRecToTerm

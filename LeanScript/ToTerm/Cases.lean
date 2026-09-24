@@ -45,15 +45,15 @@ partial def mkTaggedUnionSomeCases (mkBranch : BranchFn) (c : TCtx) (τ l : Expr
   | [t] =>
       let (ht, branch) ← branchOf t
       let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit t])
-      return mkAppN (mkConst ``LeanScript.TaggedUnionSomeCases.last)
-        #[c.sg, c.gamma, l, τ, mkNatLit lo, mkNatLit t, ht, branch, hi]
+      return (← mkNode ``LeanScript.TaggedUnionSomeCases.last
+        #[c.sg, c.gamma, l, τ, mkNatLit lo, mkNatLit t, ht, branch, hi])
   | t :: rest =>
       let (ht, branch) ← branchOf t
       let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit t])
       let restCases ← mkTaggedUnionSomeCases mkBranch c τ l rest (t + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionSomeCases.cons)
+      return (← mkNode ``LeanScript.TaggedUnionSomeCases.cons
         #[c.sg, c.gamma, l, τ, mkNatLit rest.length, mkNatLit lo, mkNatLit t, ht, branch,
-          restCases, hi]
+          restCases, hi])
 
 /-- The branches of a **partial** dispatch on an enum: the constructors `named`, in
     increasing order. -/
@@ -68,16 +68,16 @@ partial def mkEnumSomeCases (mkBranch : BranchFn) (c : TCtx) (τ s : Expr) (name
       let iE ← mkFinLit nE i
       let branch ← mkBranch minors[i]! ctors[i]! []
       let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit i])
-      return mkAppN (mkConst ``LeanScript.EnumSomeCases.last)
-        #[c.sg, c.gamma, τ, s, mkNatLit lo, iE, branch, hi]
+      return (← mkNode ``LeanScript.EnumSomeCases.last
+        #[c.sg, c.gamma, τ, s, mkNatLit lo, iE, branch, hi])
   | i :: rest =>
       let iE ← mkFinLit nE i
       let branch ← mkBranch minors[i]! ctors[i]! []
       let hi ← mkDecideProof (← mkAppM ``LE.le #[mkNatLit lo, mkNatLit i])
       let restCases ← mkEnumSomeCases mkBranch c τ s rest (i + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.EnumSomeCases.cons)
+      return (← mkNode ``LeanScript.EnumSomeCases.cons
         #[c.sg, c.gamma, τ, s, mkNatLit rest.length, mkNatLit lo, iE, branch, restCases,
-          hi]
+          hi])
 
 /-- The branches of a dispatch on a tagged union, in the shape of its schema. -/
 partial def mkTaggedUnionCases (mkBranch : BranchFn) (c : TCtx) (τ l : Expr) (start : Nat)
@@ -89,13 +89,13 @@ partial def mkTaggedUnionCases (mkBranch : BranchFn) (c : TCtx) (τ l : Expr) (s
       let b0 ← mkBranch minors[start]! ctors[start]! f0
       let b1 ← mkBranch minors[start + 1]! ctors[start + 1]! f1
       let restCases ← mkTaggedUnionRest mkBranch c τ rest (start + 2) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCases.payloadFirst)
-        #[c.sg, c.gamma, τ, fields, next, rest, b0, b1, restCases]
+      return (← mkNode ``LeanScript.TaggedUnionCases.payloadFirst
+        #[c.sg, c.gamma, τ, fields, next, rest, b0, b1, restCases])
   | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
       let b0 ← mkBranch minors[start]! ctors[start]! []
       let restCases ← mkCtorsWithPayloadCases mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCases.skip)
-        #[c.sg, c.gamma, τ, rest, b0, restCases]
+      return (← mkNode ``LeanScript.TaggedUnionCases.skip
+        #[c.sg, c.gamma, τ, rest, b0, restCases])
   | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
 
 /-- The branches of the constructors a `CtorsWithPayload` holds. -/
@@ -105,13 +105,13 @@ partial def mkCtorsWithPayloadCases (mkBranch : BranchFn) (c : TCtx) (τ cp : Ex
   | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
       let b ← mkBranch minors[start]! ctors[start]! (← nonEmptyTys fields)
       let restCases ← mkTaggedUnionRest mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.CtorsWithPayloadCases.here)
-        #[c.sg, c.gamma, τ, fields, rest, b, restCases]
+      return (← mkNode ``LeanScript.CtorsWithPayloadCases.here
+        #[c.sg, c.gamma, τ, fields, rest, b, restCases])
   | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
       let b ← mkBranch minors[start]! ctors[start]! []
       let restCases ← mkCtorsWithPayloadCases mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.CtorsWithPayloadCases.skip)
-        #[c.sg, c.gamma, τ, rest, b, restCases]
+      return (← mkNode ``LeanScript.CtorsWithPayloadCases.skip
+        #[c.sg, c.gamma, τ, rest, b, restCases])
   | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
 
 /-- The branches of the constructors a schema leaves as a plain list. -/
@@ -119,12 +119,12 @@ partial def mkTaggedUnionRest (mkBranch : BranchFn) (c : TCtx) (τ rest : Expr) 
     (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
   match (← whnf rest).getAppFnArgs with
   | (``List.nil, _) =>
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCasesRest.nil) #[c.sg, c.gamma, τ]
+      return (← mkNode ``LeanScript.TaggedUnionCasesRest.nil #[c.sg, c.gamma, τ])
   | (``List.cons, #[_, fs, more]) =>
       let b ← mkBranch minors[start]! ctors[start]! (← listOfExpr fs)
       let restCases ← mkTaggedUnionRest mkBranch c τ more (start + 1) minors ctors
-      return mkAppN (mkConst ``LeanScript.TaggedUnionCasesRest.cons)
-        #[c.sg, c.gamma, τ, fs, more, b, restCases]
+      return (← mkNode ``LeanScript.TaggedUnionCasesRest.cons
+        #[c.sg, c.gamma, τ, fs, more, b, restCases])
   | _ => throwError "`#leanscript_to_term`: not a list of constructors: {rest}"
 
 /-- The branches of a dispatch on an enum, in the shape of its schema. -/
@@ -138,13 +138,13 @@ partial def mkEnumCases (mkBranch : BranchFn) (c : TCtx) (τ s : Expr) (minors :
       let b0 ← mkBranch minors[i]! ctors[i]! []
       let b1 ← mkBranch minors[i + 1]! ctors[i + 1]! []
       let b2 ← mkBranch minors[i + 2]! ctors[i + 2]! []
-      return mkAppN (mkConst ``LeanScript.EnumCases.three)
-        #[c.sg, c.gamma, τ, shift, b0, b1, b2]
+      return (← mkNode ``LeanScript.EnumCases.three
+        #[c.sg, c.gamma, τ, shift, b0, b1, b2])
     else
       let b ← mkBranch minors[i]! ctors[i]! []
       let rest ← go (i + 1) (k - 1)
-      return mkAppN (mkConst ``LeanScript.EnumCases.cons)
-        #[c.sg, c.gamma, τ, mkNatLit (k - 1), shift, b, rest]
+      return (← mkNode ``LeanScript.EnumCases.cons
+        #[c.sg, c.gamma, τ, mkNatLit (k - 1), shift, b, rest])
   go 0 extra
 
 end

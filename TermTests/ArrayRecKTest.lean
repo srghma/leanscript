@@ -262,8 +262,9 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf}
 
 /-- Depth zero: the branch's context is exactly the one-element fold's, so the node
     subsumes it **definitionally** — no term had to be rewritten for the depth. -/
-example : Term Sg (σ :: TyWf.array σ :: natRecCtx τ 1 Γ) τ =
-    Term Sg (σ :: TyWf.array σ :: τ :: Γ) τ := rfl
+example (u : Usage (σ :: TyWf.array σ :: τ :: Γ)) (k : Head) :
+    Term Sg (σ :: TyWf.array σ :: natRecCtx τ 1 Γ) u τ k =
+      Term Sg (σ :: TyWf.array σ :: τ :: Γ) u τ k := rfl
 
 /-- Depth one: the context a hand-written two-suffix fold would be written in. -/
 theorem arrayBranchCtx_two : σ :: TyWf.array σ :: natRecCtx τ 2 Γ =
@@ -275,13 +276,14 @@ theorem arrayBranchCtx_three : σ :: TyWf.array σ :: natRecCtx τ 3 Γ =
 
 /-- The short lists are answered by a block written out as usual: the answer for the
     empty list, then — with the first element bound — the answer for what is left. -/
-def basesOne (empty : Term Sg Γ τ) (single : Term Sg (σ :: Γ) τ) :
-    ArrayRecBases Sg Γ σ τ 1 :=
+def basesOne {u : Usage Γ} {v : Usage (σ :: Γ)} {k k' : Head} (empty : Term Sg Γ u τ k)
+    (single : Term Sg (σ :: Γ) v τ k') : ArrayRecBases Sg Γ (u + Usage.tail v) σ τ 1 :=
   .cons empty (.nil single)
 
 /-- At depth zero there is one short list, the empty one, and its answer binds
     nothing. -/
-def basesZero (empty : Term Sg Γ τ) : ArrayRecBases Sg Γ σ τ 0 := .nil empty
+def basesZero {u : Usage Γ} {k : Head} (empty : Term Sg Γ u τ k) : ArrayRecBases Sg Γ u σ τ 0 :=
+  .nil empty
 
 /-- The window the evaluator carries is the same one the fold of a natural number
     carries: the environment of that block of the context. -/

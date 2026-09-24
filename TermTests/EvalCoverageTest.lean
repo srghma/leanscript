@@ -37,22 +37,23 @@ def natListSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 def natListTy : TyWf := .recTaggedUnion natListSchema
 
 /-- The empty list. -/
-def natNil : Term covEmptySig [] natListTy :=
-  .recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)
+def natNil : SomeTerm covEmptySig [] natListTy :=
+  ⟨.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil)⟩
 
 /-- The head of a list, or `0`. -/
-def natHead : Term covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
-  .lam (.recTaggedUnion_casesOn (.var (v♯0))
-    (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
+def natHead : SomeTerm covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.recTaggedUnion_casesOn (.var (v♯0))
+    (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))⟩
 
 /-- The fold over a list that answers `0`. -/
-def natFoldZero : Term covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
-  .lam (.recTaggedUnion_rec 0 (.var (v♯0))
-    (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
+def natFoldZero : SomeTerm covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.recTaggedUnion_rec 0 (.var (v♯0))
+    (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))⟩
 
 /-- `[5]`. -/
-def natFive : Term covEmptySig [] natListTy :=
-  .recTaggedUnion_mk natListSchema (t := 1) (fields := .cons (.nat_mk 5) (.cons natNil .nil))
+def natFive : SomeTerm covEmptySig [] natListTy :=
+  ⟨.recTaggedUnion_mk natListSchema (t := 1) 
+    (fields := .cons (.nat_mk 5) (.cons natNil.term .nil))⟩
 
 /-! The four statements below held when a recursive tagged union denoted `PEmpty`.  They
 are **false** now that it denotes the W-tree of its constructors: `natNil` is inside the
@@ -71,16 +72,19 @@ theorem run_natHead_eq_run_natFoldZero :
 -/
 
 /-- The empty list of naturals is inside the evaluator's fragment. -/
-theorem natNil_noRecMk : Term.NoRecMk natNil := by no_rec_mk
+theorem natNil_noRecMk : Term.NoRecMk natNil.term := by no_rec_mk
 
-/-- The head of `[5]` is `5`. -/
+/-- The head of `[5]` is `5`: the function run, applied to the value of `[5]`. -/
 theorem run_natHead_natFive :
-    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natHead natFive) = 5 := by decide
+    (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natHead)
+      (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natFive) = 5 := by decide
 
 /-- The head of a list and the fold that answers `0` are told apart, on `[5]`. -/
 theorem run_natHead_ne_run_natFoldZero :
-    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natHead natFive) ≠
-      Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap natFoldZero natFive) := by decide
+    (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natHead)
+        (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natFive) ≠
+      (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natFoldZero)
+        (SomeTerm.run (Sg := covEmptySig) GlobalEnv.nil natFive) := by decide
 
 /-- A rose tree: a label and an array of subtrees — a recursive **record**. -/
 def roseSchema : LeanRecordSchema (TyWfIn 1) :=
@@ -90,11 +94,11 @@ def roseSchema : LeanRecordSchema (TyWfIn 1) :=
 def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
-def roseLeaf : Term covEmptySig [] roseTy :=
-  .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
+def roseLeaf : SomeTerm covEmptySig [] roseTy :=
+  ⟨.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))⟩
 
 /-- A leaf is outside the evaluator's fragment. -/
-theorem roseLeaf_not_noRecMk : ¬ Term.NoRecMk roseLeaf := fun h => h
+theorem roseLeaf_not_noRecMk : ¬ Term.NoRecMk roseLeaf.term := fun h => h
 
 /-- A rose tree — a recursive record — has no value in the model. -/
 theorem roseTy_den_empty : TyWf.Den roseTy → False := fun v => PEmpty.elim v
@@ -102,8 +106,9 @@ theorem roseTy_den_empty : TyWf.Den roseTy → False := fun v => PEmpty.elim v
 /-- **No evaluator into `TyWf.Den` can evaluate every closed term**: there is no function
     at all giving each closed term of the empty signature a value of its type, since
     `roseLeaf` would need a value of the empty type `TyWf.Den roseTy`. -/
-theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.Den τ) :
+theorem no_total_evaluator
+    (ev : ∀ (u : Usage []) (τ : TyWf) (k : Head), Term covEmptySig [] u τ k → TyWf.Den τ) :
     False :=
-  roseTy_den_empty (ev _ roseLeaf)
+  roseTy_den_empty (ev _ _ _ roseLeaf.term)
 
 end TermTests

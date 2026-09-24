@@ -35,48 +35,18 @@ The recursive analogue of the facts at the end of `LeanScript.Eval`.
 
 variable {Sg : Sig} (G : GlobalEnv Sg.decls)
 
-/-! ## ι-rules for a dispatch -/
+/-! ## What the introduction form builds
 
-/-- Dispatching on a value built by the introduction form of a recursive tagged union is
-    dispatching on the tagged value of its unfolded constructors. -/
-theorem Term.eval_recTaggedUnion_casesOn_mk {Γ : Ctx} {τ : TyWf}
-    (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
-    (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
-    (cases : TaggedUnionCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ) (env : Env Γ)
-    (h : Term.NoRecMk (.recTaggedUnion_casesOn (.recTaggedUnion_mk l hwf t ht fields) cases)) :
-    Term.eval G (.recTaggedUnion_casesOn (.recTaggedUnion_mk l hwf t ht fields) cases) env h =
-      Term.eval G (.taggedUnion_casesOn (.taggedUnion_mk _ t ht fields) cases) env h := by
-  show TaggedUnionCases.eval G cases env
-      (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) h.2 = _
-  rw [TyWf.DenRec.unfold_mk]
-  rfl
-
-/-- The same, for a dispatch on some of the constructors with a default. -/
-theorem Term.eval_recTaggedUnion_casesOnWithDefault_mk {Γ : Ctx} {τ : TyWf} {k : Nat}
-    (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
-    (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
-    (cases : TaggedUnionSomeCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ k)
-    (dflt : Term Sg Γ τ) (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length) (env : Env Γ)
-    (h : Term.NoRecMk
-      (.recTaggedUnion_casesOnWithDefault (.recTaggedUnion_mk l hwf t ht fields) cases dflt hk)) :
-    Term.eval G
-        (.recTaggedUnion_casesOnWithDefault (.recTaggedUnion_mk l hwf t ht fields) cases dflt hk)
-        env h =
-      Term.eval G (.taggedUnion_casesOnWithDefault (.taggedUnion_mk _ t ht fields) cases dflt hk)
-        env h := by
-  show TaggedUnionSomeCases.eval G cases env
-      (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) _ h.2.1 = _
-  rw [TyWf.DenRec.unfold_mk]
-  rfl
+A dispatch on the introduction form itself is a redex, which the grammar does not have
+(`LeanScript.Expr.Usage`); what can be said is what the value it builds holds. -/
 
 /-- The tag of a value built by the introduction form is the constructor it was built
     with. -/
-theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx}
+theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ)
+    {ks : List Head}
+    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks) (env : Env Γ)
     (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
     (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)).1.val
       = t := by
@@ -85,10 +55,11 @@ theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx}
   rfl
 
 /-- The fields of a value built by the introduction form are the ones it was built with. -/
-theorem Term.eval_recTaggedUnion_field? {Γ : Ctx}
+theorem Term.eval_recTaggedUnion_field? {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ)
+    {ks : List Head}
+    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks) (env : Env Γ)
     (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
     TyWf.DenTU.field? t ht
         (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)) =
@@ -174,59 +145,59 @@ mutual
     read at any depth. -/
 def TaggedUnionFoldCases.evalAt {Y : Type} {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
     {k : Nat} :
-    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {l : LeanTaggedUnionSchema (TyWfIn 1)} →
-    {τ : TyWf} → (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ) → Env Γ →
+    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {u : Usage Γ} → {l : LeanTaggedUnionSchema (TyWfIn 1)} →
+    {τ : TyWf} → (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ) → Env Γ →
     ((fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs)) →
     (t : Nat) → (Ty.toPFunctorAt (recL l) t).Obj Y →
     TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l₀) (k := k) c) →
     TyWf.Den τ
-  | _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e, h =>
+  | _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e, h =>
       Term.eval G b0 (Env.append (mkEnv _ e) env) h.1
-  | _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e, h =>
+  | _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e, h =>
       Term.eval G b1 (Env.append (mkEnv _ e) env) h.2.1
-  | _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, n + 2, e, h =>
+  | _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, n + 2, e, h =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e h.2.2
-  | _, _, _, _, .skip b0 _, env, mkEnv, 0, e, h =>
+  | _, _, _, _, _, .skip b0 _, env, mkEnv, 0, e, h =>
       Term.eval G b0 (Env.append (mkEnv _ e) env) h.1
-  | _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
+  | _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
       CtorsWithPayloadFoldCases.evalAt rest env mkEnv n e h.2
 
 /-- `TaggedUnionFoldCases.evalAt`, on the constructors that follow a field-less one. -/
 def CtorsWithPayloadFoldCases.evalAt {Y : Type} {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
     {k : Nat} :
-    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {c : CtorsWithPayload (TyWfIn 1)} →
-    {τ : TyWf} → (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ c τ) → Env Γ →
+    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {u : Usage Γ} → {c : CtorsWithPayload (TyWfIn 1)} →
+    {τ : TyWf} → (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u c τ) → Env Γ →
     ((fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs)) →
     (t : Nat) → (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj Y →
     CtorsWithPayloadFoldKCases.NoRecMk
       (CtorsWithPayloadFoldCases.toFoldK (l₀ := l₀) (k := k) cs) →
     TyWf.Den τ
-  | _, _, _, _, .here b _, env, mkEnv, 0, e, h =>
+  | _, _, _, _, _, .here b _, env, mkEnv, 0, e, h =>
       Term.eval G b (Env.append (mkEnv _ e) env) h.1
-  | _, _, _, _, .here _ rest, env, mkEnv, n + 1, e, h =>
+  | _, _, _, _, _, .here _ rest, env, mkEnv, n + 1, e, h =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e h.2
-  | _, _, _, _, .skip b _, env, mkEnv, 0, e, h =>
+  | _, _, _, _, _, .skip b _, env, mkEnv, 0, e, h =>
       Term.eval G b (Env.append (mkEnv _ e) env) h.1
-  | _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
+  | _, _, _, _, _, .skip _ rest, env, mkEnv, n + 1, e, h =>
       CtorsWithPayloadFoldCases.evalAt rest env mkEnv n e h.2
 
 /-- `TaggedUnionFoldCases.evalAt`, on a plain list of constructors. -/
 def TaggedUnionFoldCasesRest.evalAt {Y : Type} {l₀ : LeanTaggedUnionSchema (TyWfIn 1)}
     {k : Nat} :
-    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {cs : List (List (TyWfIn 1))} →
-    {τ : TyWf} → (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ cs τ) → Env Γ →
+    {bind : List (TyWfIn 1) → List TyWf} → {Γ : Ctx} → {u : Usage Γ} → {cs : List (List (TyWfIn 1))} →
+    {τ : TyWf} → (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u cs τ) → Env Γ →
     ((fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs)) →
     (t : Nat) → (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj Y →
     TaggedUnionFoldKCasesRest.NoRecMk
       (TaggedUnionFoldCasesRest.toFoldK (l₀ := l₀) (k := k) r) →
     TyWf.Den τ
-  | _, _, _, _, .nil, _, _, _, e, _ => PEmpty.elim e.1
-  | _, _, _, _, .cons b _, env, mkEnv, 0, e, h =>
+  | _, _, _, _, _, .nil, _, _, _, e, _ => PEmpty.elim e.1
+  | _, _, _, _, _, .cons b _, env, mkEnv, 0, e, h =>
       Term.eval G b (Env.append (mkEnv _ e) env) h.1
-  | _, _, _, _, .cons _ rest, env, mkEnv, n + 1, e, h =>
+  | _, _, _, _, _, .cons _ rest, env, mkEnv, n + 1, e, h =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e h.2
 
 end
@@ -235,9 +206,9 @@ end
     they stand: the answer at a node is its constructor's branch, evaluated on its fields
     and the answers of the fold at its occurrences.  Written with `WType.fold`, so no
     answer is stored. -/
-def TaggedUnionFoldCases.recFold {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
+def TaggedUnionFoldCases.recFold {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
     {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {k : Nat}
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ)
     (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l) (k := k) c)) :
     TyWf.Den (TyWf.recTaggedUnion l hwf) → TyWf.Den τ :=
@@ -248,9 +219,9 @@ def TaggedUnionFoldCases.recFold {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSche
 /-- **The ι-rule of the fold**: the answer at a node is the branch of its constructor,
     evaluated on its fields and, after each field that is literally `Ty.self`, the subtree
     there together with the answer of the fold at it. -/
-theorem TaggedUnionFoldCases.recFold_mk {Γ : Ctx} {τ : TyWf}
+theorem TaggedUnionFoldCases.recFold_mk {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {k : Nat}
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ)
     (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l) (k := k) c))
     (node : Ty.RecNode (recL l)) (f : Ty.RecHole (recL l) node → TyWf.Den (TyWf.recTaggedUnion l hwf)) :
@@ -269,8 +240,8 @@ mutual
 /-- The evaluator's answer at a node, for branches that answer where they stand, is the
     answer of those branches read as a plain fold. -/
 theorem TaggedUnionFoldKCases.eval_toFoldK {k : Nat} {bind : List (TyWfIn 1) → List TyWf}
-    {Γ : Ctx} {l : LeanTaggedUnionSchema (TyWfIn 1)} :
-    ∀ (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ) (env : Env Γ)
+    {Γ : Ctx} {u : Usage Γ} {l : LeanTaggedUnionSchema (TyWfIn 1)} :
+    ∀ (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
       (t : Nat) (e : (Ty.toPFunctorAt (recL l) t).Obj (RecMemo l₀ τ))
       (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l₀) (k := k) c)),
@@ -285,8 +256,8 @@ theorem TaggedUnionFoldKCases.eval_toFoldK {k : Nat} {bind : List (TyWfIn 1) →
       CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv n e h.2
 
 theorem CtorsWithPayloadFoldKCases.eval_toFoldK {k : Nat}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {c : CtorsWithPayload (TyWfIn 1)} :
-    ∀ (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ c τ) (env : Env Γ)
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {c : CtorsWithPayload (TyWfIn 1)} :
+    ∀ (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u c τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
       (t : Nat) (e : (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj (RecMemo l₀ τ))
       (h : CtorsWithPayloadFoldKCases.NoRecMk
@@ -301,8 +272,8 @@ theorem CtorsWithPayloadFoldKCases.eval_toFoldK {k : Nat}
       CtorsWithPayloadFoldKCases.eval_toFoldK rest env mkEnv n e h.2
 
 theorem TaggedUnionFoldKCasesRest.eval_toFoldK {k : Nat}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {cs : List (List (TyWfIn 1))} :
-    ∀ (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ cs τ) (env : Env Γ)
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {cs : List (List (TyWfIn 1))} :
+    ∀ (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u cs τ) (env : Env Γ)
       (mkEnv : (fs : List (TyWfIn 1)) → RecFields l₀ τ fs → TyWf.DenList (bind fs))
       (t : Nat) (e : (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ))
       (h : TaggedUnionFoldKCasesRest.NoRecMk
@@ -327,13 +298,13 @@ mutual
     through the environments they give, and not on the depth its hypothesis is stated
     at. -/
 theorem TaggedUnionFoldCases.evalAt_map {k k' : Nat} {bind : List (TyWfIn 1) → List TyWf}
-    {Γ : Ctx} {l : LeanTaggedUnionSchema (TyWfIn 1)}
+    {Γ : Ctx} {u : Usage Γ} {l : LeanTaggedUnionSchema (TyWfIn 1)}
     (mkEnv : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs))
     (mkEnv' : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y' →
       TyWf.DenList (bind fs))
     (hm : ∀ fs e, mkEnv fs e = mkEnv' fs (PFunctor.map _ g e)) :
-    ∀ (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ l τ) (env : Env Γ)
+    ∀ (c : TaggedUnionFoldCases Sg (TyWfIn 1) bind Γ u l τ) (env : Env Γ)
       (t : Nat) (e : (Ty.toPFunctorAt (recL l) t).Obj Y)
       (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l₀) (k := k) c))
       (h' : TaggedUnionFoldKCases.NoRecMk
@@ -352,13 +323,13 @@ theorem TaggedUnionFoldCases.evalAt_map {k k' : Nat} {bind : List (TyWfIn 1) →
       CtorsWithPayloadFoldCases.evalAt_map mkEnv mkEnv' hm rest env n e h.2 h'.2
 
 theorem CtorsWithPayloadFoldCases.evalAt_map {k k' : Nat}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {c : CtorsWithPayload (TyWfIn 1)}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {c : CtorsWithPayload (TyWfIn 1)}
     (mkEnv : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs))
     (mkEnv' : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y' →
       TyWf.DenList (bind fs))
     (hm : ∀ fs e, mkEnv fs e = mkEnv' fs (PFunctor.map _ g e)) :
-    ∀ (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ c τ) (env : Env Γ)
+    ∀ (cs : CtorsWithPayloadFoldCases Sg (TyWfIn 1) bind Γ u c τ) (env : Env Γ)
       (t : Nat) (e : (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj Y)
       (h : CtorsWithPayloadFoldKCases.NoRecMk
         (CtorsWithPayloadFoldCases.toFoldK (l₀ := l₀) (k := k) cs))
@@ -376,13 +347,13 @@ theorem CtorsWithPayloadFoldCases.evalAt_map {k k' : Nat}
       CtorsWithPayloadFoldCases.evalAt_map mkEnv mkEnv' hm rest env n e h.2 h'.2
 
 theorem TaggedUnionFoldCasesRest.evalAt_map {k k' : Nat}
-    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {cs : List (List (TyWfIn 1))}
+    {bind : List (TyWfIn 1) → List TyWf} {Γ : Ctx} {u : Usage Γ} {cs : List (List (TyWfIn 1))}
     (mkEnv : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y →
       TyWf.DenList (bind fs))
     (mkEnv' : (fs : List (TyWfIn 1)) → (Ty.toPFunctorList (fs.map TyWfIn.toTy)).Obj Y' →
       TyWf.DenList (bind fs))
     (hm : ∀ fs e, mkEnv fs e = mkEnv' fs (PFunctor.map _ g e)) :
-    ∀ (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ cs τ) (env : Env Γ)
+    ∀ (r : TaggedUnionFoldCasesRest Sg (TyWfIn 1) bind Γ u cs τ) (env : Env Γ)
       (t : Nat) (e : (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj Y)
       (h : TaggedUnionFoldKCasesRest.NoRecMk
         (TaggedUnionFoldCasesRest.toFoldK (l₀ := l₀) (k := k) r))
@@ -401,9 +372,9 @@ end
 end
 
 /-- The plain fold does not depend on the depth its hypothesis is stated at. -/
-theorem TaggedUnionFoldCases.recFold_depth {Γ : Ctx} {τ : TyWf}
+theorem TaggedUnionFoldCases.recFold_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {k k' : Nat}
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ)
     (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l) (k := k) c))
     (h' : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l) (k := k') c)) :
@@ -418,9 +389,9 @@ theorem TaggedUnionFoldCases.recFold_depth {Γ : Ctx} {τ : TyWf}
 
 /-- The step of the evaluator's memoised fold, for branches that answer where they
     stand. -/
-abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
+abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
     {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {k : Nat}
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ)
     (h : TaggedUnionFoldKCases.NoRecMk (TaggedUnionFoldCases.toFoldK (l₀ := l) (k := k) c)) :
     (node : Ty.RecNode (recL l)) → (Ty.RecHole (recL l) node → RecMemo l τ) → TyWf.Den τ :=
@@ -430,10 +401,10 @@ abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnion
 
 /-- **The evaluator's memoised fold is the plain fold**, at every depth, for branches that
     answer where they stand. -/
-theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
+theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
-    (v : Term Sg Γ (.recTaggedUnion l hwf))
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c))) :
     Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env h =
       TaggedUnionFoldCases.recFold G c env h.2 (Term.eval G v env h.1) := by
@@ -457,10 +428,10 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
 
 /-- **Depth does not change meaning**: branches that answer where they stand give the same
     value at every depth. -/
-theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {τ : TyWf}
+theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
-    (v : Term Sg Γ (.recTaggedUnion l hwf))
-    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
+    {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
+    (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
     (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)))
     (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c))) :
     Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env h =

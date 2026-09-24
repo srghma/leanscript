@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.CtorFn.Classify
+public meta import LeanScript.ToTerm.Build
 
 @[expose] public section
 
@@ -34,12 +35,12 @@ def addReducibleDef (name : Name) (type value : Expr) : MetaM Unit := do
 
 /-- A spine of the terms `xs`, at the trees `tys`. -/
 def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := do
-  let mut sp := mkApp2 (mkConst ``LeanScript.Spine.nil) sg γ
+  let mut sp ← LeanScript.ToTerm.buildNode ``LeanScript.Spine.nil #[sg, γ]
   let tysA := tys.toArray
   for i in [0:xs.size] do
     let j := xs.size - 1 - i
-    sp := mkAppN (mkConst ``LeanScript.Spine.cons)
-      #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp]
+    sp := (← LeanScript.ToTerm.buildNode ``LeanScript.Spine.cons
+      #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp])
   return sp
 
 /-- The body of the constructor function: the value of shape `shape` built as constructor
@@ -49,20 +50,20 @@ def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs : 
   match shape with
   | .newtype => return xs[0]!
   | .record sch =>
-      return mkAppN (mkConst ``LeanScript.Term.record_mk)
-        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs]
+      return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.record_mk
+        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs])
   | .union l =>
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, lenE])
-      return mkAppN (mkConst ``LeanScript.Term.taggedUnion_mk)
-        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs]
+      return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.taggedUnion_mk
+        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs])
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, nE])
-      return mkAppN (mkConst ``LeanScript.Term.enum_mk)
-        #[sg, γ, s, mkAppN (mkConst ``Fin.mk) #[nE, mkNatLit cidx, prf]]
+      return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.enum_mk
+        #[sg, γ, s, mkAppN (mkConst ``Fin.mk) #[nE, mkNatLit cidx, prf]])
   | .bool =>
-      return mkAppN (mkConst ``LeanScript.Term.bool_mk) #[sg, γ, toExpr (cidx == 1)]
+      return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.bool_mk #[sg, γ, toExpr (cidx == 1)])
 
 /-- The field names and the trees of the fields a constructor keeps, in the context `c`. -/
 def translateFields (c : TrCtx) (xs : Array Expr) : MetaM (Array (Name × Expr)) := do
@@ -117,13 +118,25 @@ def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : S
     throwError "`#leanscript_ctor`: `{fnName}` is already declared"
   withLocalDecl `Sg .implicit (mkConst ``LeanScript.Sig) fun sg =>
   withLocalDecl `Γ .implicit (mkConst ``LeanScript.Ctx) fun γ => do
-    let termOf (τ : Expr) := mkApp3 (mkConst ``LeanScript.Term) sg γ τ
+    let usageTy := mkApp (Lean.mkConst ``LeanScript.Usage) γ
+    let headTy := Lean.mkConst ``LeanScript.Head
+    -- each field is a term of any grade vector and any head: both are implicit
+    let idxDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
+      fields.foldl (init := #[]) fun acc (n, _) =>
+        acc.push (n.appendAfter "_usage", .implicit, fun _ => pure usageTy)
+          |>.push (n.appendAfter "_head", .implicit, fun _ => pure headTy)
+    withLocalDecls idxDecls fun idx => do
     let decls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
-      fields.map fun (n, τ) => (n, .default, fun _ => pure (termOf τ))
+      fields.mapIdx fun i (n, τ) => (n, .default, fun _ =>
+        pure (mkAppN (Lean.mkConst ``LeanScript.Term) #[sg, γ, idx[2 * i]!, τ, idx[2 * i + 1]!]))
     withLocalDecls decls fun xs => do
       let body ← mkBody sg γ shape cidx (fields.map (·.2)) xs
-      let binders := #[sg, γ] ++ holes ++ xs
-      addReducibleDef fnName (← mkForallFVars binders (termOf layoutApp))
+      let binders := #[sg, γ] ++ holes ++ idx ++ xs
+      -- the result is at the layout, with the grade vector and the head of the body
+      let bodyTy ← instantiateMVars (← inferType body)
+      let resTy := mkAppN (Lean.mkConst ``LeanScript.Term)
+        #[sg, γ, bodyTy.getArg! 2, layoutApp, bodyTy.getArg! 4]
+      addReducibleDef fnName (← mkForallFVars binders resTy)
         (← mkLambdaFVars binders body)
   modifyEnv fun env => ctorFnExt.addEntry env { key := fnKey, kind := "fn", decl := fnName }
   return (layoutName, fnName)

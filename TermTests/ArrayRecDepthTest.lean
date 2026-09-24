@@ -59,7 +59,7 @@ open TermTests.ArrayRecK (natT cont cont3 cont4 listFoldK_eq_cont listFoldK_eq_c
 open TermTests.FibWindow (fib)
 
 /-- Running a closed term of `sigArith`. -/
-local macro:max "runArith" t:term:max : term => `(Term.run (Sg := sigArith) envArith $t)
+local macro:max "runArith" t:term:max : term => `(SomeTerm.run (Sg := sigArith) envArith $t)
 
 /-! Sections 1 and 2 — `cont` at depth one, and `cont3`, `cont4` at depths two and three —
 are in `TermTests/ArrayRecDepthTest/Cont.lean`. -/
@@ -112,20 +112,22 @@ theorem contTR_start (l : List Nat) : contTR l 1 0 = cont l := by
 abbrev Acc2 : TyWf := natT ⇒ natT ⇒ natT
 
 /-- The value for the empty list: `fun a _ => a`. -/
-def loopZero {Γ : Ctx} : Term sigArith Γ Acc2 := .lam (.lam (.var (v♯1)))
+def loopZero {Γ : Ctx} :=
+  (.lam (.lam (.var (v♯1))) :
+    Term sigArith Γ _ Acc2 _)
 
 /-- The step: it binds the head `x` (index `0`), the tail (index `1`) and the loop over
     the tail (index `2`), and answers `fun a b => loop (x * a + b) a`. -/
-def loopStep {Γ : Ctx} :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) Acc2 :=
-  .lam (.lam
-    (.ap (.ap (.var (v♯4)) (addT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))
-      (.var (v♯1))))
+def loopStep {Γ : Ctx} :=
+  (.lam (.lam
+      (.ap (.ap (.var (v♯4)) (addT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))
+        (.var (v♯1)))) :
+    Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) _ Acc2 _)
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
-def contTRTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
-    (.nat_mk 0))
+def contTRTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
+  ⟨.lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+    (.nat_mk 0))⟩
 
 example : runArith contTRTerm #[] = 1 := rfl
 example : runArith contTRTerm #[3, 4] = 13 := rfl
@@ -205,28 +207,30 @@ abbrev pairSchema : LeanRecordSchema TyWf := ⟨natT, natT, []⟩
 abbrev Pair : TyWf := TyWf.record pairSchema
 
 /-- The pair of the empty list: `(1, 0)`. -/
-def pairZero {Γ : Ctx} : Term sigArith Γ Pair :=
-  .record_mk pairSchema (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
+def pairZero {Γ : Ctx} :=
+  (.record_mk pairSchema (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil)) :
+    Term sigArith Γ _ Pair _)
 
 /-- The step: it binds the head (index `0`), the tail (index `1`) and the pair at the
     tail (index `2`), takes that pair apart — so inside, index `0` is `K xs` and index
     `1` is `K (tail xs)`, and the head has moved to index `2` — and answers with the pair
     at `x :: xs`. -/
-def pairStep {Γ : Ctx} :
-    Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 Γ) Pair :=
-  .record_casesOn (.var (v♯2))
-    (.record_mk pairSchema
-      (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
-        (.cons (.var (v♯0)) .nil)))
+def pairStep {Γ : Ctx} :=
+  (.record_casesOn (.var (v♯2))
+      (.record_mk pairSchema
+        (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
+          (.cons (.var (v♯0)) .nil))) :
+    Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 Γ) _ Pair _)
 
 /-- `contPair`, as a term: the fold of an array at a record type. -/
-def contPairTerm {Γ : Ctx} : Term sigArith Γ (TyWf.array natT ⇒ Pair) :=
-  .lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep)
+def contPairTerm {Γ : Ctx} :=
+  (.lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) :
+    Term sigArith Γ _ (TyWf.array natT ⇒ Pair) _)
 
 /-- The continuant read off the pair: its first field. -/
-def contFromPairTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
-  .lam (.record_casesOn (fs := pairSchema)
-    (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))
+def contFromPairTerm : SomeTerm sigArith [] (TyWf.array natT ⇒ natT) :=
+  ⟨.lam (.record_casesOn (fs := pairSchema)
+    (.ap (contPairTerm (Γ := ArrCtx)) (.var (v♯0))) (.var (v♯0)))⟩
 
 example : runArith contFromPairTerm #[] = 1 := rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := rfl

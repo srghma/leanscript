@@ -32,8 +32,14 @@ def sigAndCtxOf? (expected? : Option Expr) : MetaM (Expr × Expr) := do
   | none => return (emptySigE, nilCtxE)
   | some t =>
     match (← whnf (← instantiateMVars t)).getAppFnArgs with
-    | (``LeanScript.Term, #[sg, γ, _]) => return (sg, γ)
+    | (``LeanScript.Term, #[sg, γ, _, _, _]) => return (sg, γ)
+    | (``LeanScript.SomeTerm, #[sg, γ, _]) => return (sg, γ)
     | _ => return (emptySigE, nilCtxE)
+
+/-- Is the expected type a `LeanScript.SomeTerm`: a term whose indices are left to it? -/
+def expectsSomeTerm (expected? : Option Expr) : MetaM Bool := do
+  let some t := expected? | return false
+  return (← whnf (← instantiateMVars t)).isAppOf ``LeanScript.SomeTerm
 
 /-- Translate `e` — the value of a definition, or an expression written out. -/
 def translate (sg base : Expr) (e : Expr) : MetaM Expr := do
@@ -66,6 +72,11 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
   let sg ← if sigStx.isNone then pure sgOfExpected else
     instantiateMVars (← elabTerm sigStx[3] (mkConst ``LeanScript.Sig))
   let t ← translate sg base e
+  -- a `SomeTerm` is expected: the term, with the indices it was built with
+  let t ← if ← expectsSomeTerm expected? then
+      let (sg', γ, u, τ, k) ← termParts t
+      pure (mkAppN (mkConst ``LeanScript.SomeTerm.mk) #[sg', γ, τ, u, k, t])
+    else pure t
   match expected? with
   | some ty => Term.ensureHasType ty t
   | none => return t

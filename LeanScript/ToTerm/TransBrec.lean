@@ -111,16 +111,16 @@ def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
       let t ← trans cj vals.back!
       levels := levels.push (cj.gamma, t)
     let (gk, tk) := levels[k]!
-    let mut acc := mkAppN (mkConst ``LeanScript.ArrayRecBases.nil) #[c.sg, gk, σ, τ, tk]
+    let mut acc := (← mkNode ``LeanScript.ArrayRecBases.nil #[c.sg, gk, σ, τ, tk])
     for i in [0:k] do
       let j := k - 1 - i
       let (gj, tj) := levels[j]!
-      acc := mkAppN (mkConst ``LeanScript.ArrayRecBases.cons)
-        #[c.sg, gj, σ, τ, mkNatLit (k - 1 - j), tj, acc]
+      acc := (← mkNode ``LeanScript.ArrayRecBases.cons
+        #[c.sg, gj, σ, τ, mkNatLit (k - 1 - j), tj, acc])
     pure acc
   let scrutT ← trans c arr
-  return mkAppN (mkConst ``LeanScript.Term.array_rec)
-    #[c.sg, c.gamma, σ, τ, mkNatLit k, scrutT, bases, branch]
+  return (← mkNode ``LeanScript.Term.array_rec
+    #[c.sg, c.gamma, σ, τ, mkNatLit k, scrutT, bases, branch])
 
 /-- A structural recursion as Lean compiled it: `Nat.brecOn` or `List.brecOn`.
 
@@ -244,12 +244,12 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     let natTy ← tyOfType (mkConst ``Nat)
     -- the base values are written nearest first: `(f k, …, f 1, f 0)`
     let baseTerms ← baseVals.reverse.mapM fun v => trans c v
-    let base := mkNatRecBase c τ baseTerms
+    let base ← mkNatRecBase c τ baseTerms
     let core ← lambdaBoundedTelescope s (k + 2) fun xs body => do
       let c' := c.pushFields
         (#[(xs[0]!.fvarId!, natTy)] ++ (xs.extract 1 xs.size).map fun x => (x.fvarId!, τ))
-      return mkAppN (mkConst ``LeanScript.Term.nat_rec)
-        #[c.sg, c.gamma, τ, mkNatLit k, scrutT, base, ← trans c' body]
+      return (← mkNode ``LeanScript.Term.nat_rec
+        #[c.sg, c.gamma, τ, mkNatLit k, scrutT, base, ← trans c' body])
     return ← finish core
   -- a recursion on the elements of an array, `go a.toList`: the fold of the array
   if let some arr := arrayOfToList? major then

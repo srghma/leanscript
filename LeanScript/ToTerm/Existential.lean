@@ -43,13 +43,6 @@ def tyWfTyE : Expr := mkConst ``LeanScript.TyWf
 def natTyWfE : Expr :=
   mkApp (mkConst ``LeanScript.TyWf.prim) (mkConst ``LeanScript.LeanPrimTy.nat)
 
-/-- The type of the language a translated term has: `τ` for `Term Sg Γ τ`. -/
-def termTyOf (t : Expr) : MetaM Expr := do
-  let ty ← whnfCore (← instantiateMVars (← inferType t))
-  match ty.getAppFnArgs with
-  | (``LeanScript.Term, #[_, _, τ]) => instantiateMVars τ
-  | _ => throwError "`#leanscript_to_term`: internal: not a term of the language: {t}"
-
 /-- The type of `e` as a tree, or — when the Lean type of `e` has no tree, as a value of a
     datatype with existentials has not — the type of its translation `t`. -/
 def tyOfTermOr (e t : Expr) : MetaM Expr := do
@@ -91,9 +84,9 @@ def injectOneOf (sg γ τ : Expr) (i : Nat) (alt t : Expr) : MetaM Expr := do
   let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfTyE l
   let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit i, lenE])
   let nilTys := mkApp (mkConst ``List.nil [Level.zero]) tyWfTyE
-  let spine := mkAppN (mkConst ``LeanScript.Spine.cons)
-    #[sg, γ, alt, nilTys, t, mkApp2 (mkConst ``LeanScript.Spine.nil) sg γ]
-  return mkAppN (mkConst ``LeanScript.Term.taggedUnion_mk) #[sg, γ, l, mkNatLit i, prf, spine]
+  let spine := (← mkNode ``LeanScript.Spine.cons
+    #[sg, γ, alt, nilTys, t, ← mkNode ``LeanScript.Spine.nil #[sg, γ]])
+  return (← mkNode ``LeanScript.Term.taggedUnion_mk #[sg, γ, l, mkNatLit i, prf, spine])
 
 /-- The term `t` at the type `τ`: `t` itself when it has that type, and its injection when
     `τ` is a `TyWf.oneOf` one of whose alternatives is the type of `t`. -/
@@ -220,24 +213,30 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
     ty := b.instantiate1 m
   -- the fields: each binder of the function is named after a field of the constructor
   let names ← forallTelescope ci.type fun xs _ => xs.mapM (·.fvarId!.getUserName)
-  let mut fields : Array (Expr × Expr) := #[]
+  let mut fields : Array (Expr × Expr × Expr) := #[]
   repeat
-    let .forallE n d b _ := ty | break
-    let (``LeanScript.Term, #[_, _, τ]) := d.getAppFnArgs
+    let .forallE n d b bi := ty | break
+    -- the grade vector and the head of a field: found when the field is translated
+    if bi.isImplicit then
+      let m ← mkFreshExprMVar d
+      cur := mkApp cur m
+      ty := b.instantiate1 m
+      continue
+    let (``LeanScript.Term, #[_, _, _, τ, _]) := d.getAppFnArgs
       | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument {n}"
     let some i := (names.extract ci.numParams names.size).findIdx? (· == n)
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` has no field `{n}`"
     let some a := args[ci.numParams + i]?
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` lacks its field `{n}`"
-    fields := fields.push (a, τ)
+    fields := fields.push (a, τ, d)
     if b.hasLooseBVars then
       throwError "`#leanscript_to_term`: internal: `{fnName}` has a dependent type"
     ty := b
-  let (``LeanScript.Term, #[_, _, resTy]) := ty.getAppFnArgs
+  let (``LeanScript.Term, #[_, _, _, resTy, _]) := ty.getAppFnArgs
     | throwError "`#leanscript_to_term`: internal: `{fnName}` does not build a term"
   if let some τ := expected? then
     if (← oneOfAlts? τ).isNone then discard <| isDefEq resTy τ
-  for (a, τ) in fields do
+  for (a, τ, d) in fields do
     let τ ← instantiateMVars τ
     let t ← if τ.hasExprMVar then do
         let t ← synth c a
@@ -247,6 +246,12 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
             value of type{indentExpr τt}\nwhich is not of the form{indentExpr τ}"
         pure t
       else check c a τ
+    let (_, _, u, _, k) ← termParts t
+    let (``LeanScript.Term, #[_, _, du, _, dk]) := (← instantiateMVars d).getAppFnArgs
+      | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument"
+    unless (← isDefEq du u) && (← isDefEq dk k) do
+      throwError "`#leanscript_to_term`: internal: the field {a} of `{ci.name}` has an \
+        unexpected grade vector or head"
     cur := mkApp cur t
   -- a hole nothing determined (a field that is never built) is given `nat`
   for m in holes do

@@ -128,8 +128,9 @@ variable {Sg : Sig} {Γ : Ctx} {τ : TyWf}
 
 /-- Depth one: the context of the branch is exactly the one-step fold's, so the node
     subsumes it **definitionally** — no term had to be rewritten for the depth. -/
-example : Term Sg (TyWf.prim .nat :: natRecCtx τ 1 Γ) τ =
-    Term Sg (TyWf.prim .nat :: τ :: Γ) τ := rfl
+example (u : Usage (TyWf.prim .nat :: τ :: Γ)) (k : Head) :
+    Term Sg (TyWf.prim .nat :: natRecCtx τ 1 Γ) u τ k =
+      Term Sg (TyWf.prim .nat :: τ :: Γ) u τ k := rfl
 
 /-- Depth two: the context a hand-written two-step fold would be written in. -/
 theorem natRecCtx_two : natRecCtx τ 2 Γ = τ :: τ :: Γ := rfl
@@ -138,7 +139,8 @@ theorem natRecCtx_two : natRecCtx τ 2 Γ = τ :: τ :: Γ := rfl
 theorem natRecCtx_three : natRecCtx τ 3 Γ = τ :: τ :: τ :: Γ := rfl
 
 /-- The base values are a `Spine` written out as usual — nothing to prove at its type. -/
-def baseSpine_two (a b : Term Sg Γ τ) : Spine Sg Γ (natRecCtx τ 2 []) :=
+def baseSpine_two {u v : Usage Γ} {k k' : Head} (a : Term Sg Γ u τ k) (b : Term Sg Γ v τ k') :
+    Spine Sg Γ (u + (v + 0)) (natRecCtx τ 2 []) [k, k'] :=
   .cons a (.cons b .nil)
 
 /-- The window the evaluator carries **is** the environment of that block of the

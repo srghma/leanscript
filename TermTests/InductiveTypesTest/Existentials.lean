@@ -184,7 +184,7 @@ example : Term sig [] varyingTy := varyingProcess_term
 /-! #### What they evaluate to -/
 
 /-- Running a closed term of `sig`. -/
-local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) env $t)
+local macro:max "run" t:term:max : term => `(SomeTerm.run (Sg := sig) env $t)
 
 /-- `mixedProcess`, with the witnesses `Nat`, `String` and `Bool` filled in. -/
 example : run mixedProcess_term =

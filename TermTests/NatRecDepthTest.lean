@@ -43,7 +43,7 @@ def sigAdd : Sig := ⟨[⟨"add", TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.pri
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
 
 /-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+local macro:max "runAdd" t:term:max : term => `(SomeTerm.run (Sg := sigAdd) envAdd $t)
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (TyWf.prim .nat) :=
@@ -61,10 +61,10 @@ The base values are `(fib 1, fib 0) = (1, 0)`, nearest first, and the branch at 
 binds `n` at index `0`, `fib (n + 1)` at index `1` and `fib n` at index `2`. -/
 
 /-- `fib`, as a term of the grammar: the depth-two fold. -/
-def fibTerm : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
-  .lam (.nat_rec 1 (.var (v♯0))
+def fibTerm : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+  ⟨.lam (.nat_rec 1 (.var (v♯0))
     (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
-    (addT (.var (v♯2)) (.var (v♯1))))
+    (addT (.var (v♯2)) (.var (v♯1))))⟩
 
 example : runAdd fibTerm 0 = 0 := rfl
 example : runAdd fibTerm 1 = 1 := rfl
@@ -113,7 +113,7 @@ def fibDef : Nat → Nat
   | 1 => 1
   | n + 2 => fibDef n + fibDef (n + 1)
 
-def fibDef_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def fibDef_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibDef
 
 example : runAdd fibDef_term 0 = 0 := rfl
@@ -131,7 +131,7 @@ type, function types included, so this is the depth-zero instance. -/
   | n + 1, a, b => fibLoopTR n b (a + b)
 
 def fibLoopTR_term :
-    Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+    SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibLoopTR
 
 example : runAdd fibLoopTR_term 0 0 1 = 0 := rfl
@@ -146,7 +146,7 @@ example : runAdd fibLoopTR_term 3 0 1 = 2 := rfl
     place and `fibTR` translates as it is written. -/
 def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
 
-def fibTR_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def fibTR_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibTR
 
 example : runAdd fibTR_term 0 = 0 := rfl
@@ -163,7 +163,7 @@ def fibPair : Nat → Nat × Nat
     let (a, b) := fibPair n
     (b, a + b)
 
-def fibPair_term : Term sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
+def fibPair_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
   #leanscript_to_term fibPair
 
 example : runAdd fibPair_term 0 = ((0, 1, PUnit.unit) : Nat × Nat × PUnit) := rfl
@@ -184,7 +184,7 @@ def fibLoop (n : Nat) : Nat := Id.run do
     b := next
   return a
 
-def fibLoop_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def fibLoop_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibLoop
 
 example : runAdd fibLoop_term 0 = 0 := rfl
@@ -203,7 +203,7 @@ def tribonacci : Nat → Nat
   | 2     => 1
   | n + 3 => tribonacci n + tribonacci (n + 1) + tribonacci (n + 2)
 
-def tribonacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def tribonacci_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tribonacci
 
 example : runAdd tribonacci_term 2 = 1 := rfl
@@ -216,7 +216,7 @@ def tetranacci : Nat → Nat
   | 3     => 1
   | n + 4 => tetranacci n + tetranacci (n + 1) + tetranacci (n + 2) + tetranacci (n + 3)
 
-def tetranacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def tetranacci_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tetranacci
 
 example : runAdd tetranacci_term 3 = 1 := rfl
@@ -231,7 +231,7 @@ def pentanacci : Nat → Nat
   | n + 5 => pentanacci n + pentanacci (n + 1) + pentanacci (n + 2)
            + pentanacci (n + 3) + pentanacci (n + 4)
 
-def pentanacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def pentanacci_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term pentanacci
 
 example : runAdd pentanacci_term 4 = 1 := rfl
@@ -247,7 +247,7 @@ def hexanacci : Nat → Nat
   | n + 6 => hexanacci n + hexanacci (n + 1) + hexanacci (n + 2)
            + hexanacci (n + 3) + hexanacci (n + 4) + hexanacci (n + 5)
 
-def hexanacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
+def hexanacci_term : SomeTerm sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term hexanacci
 
 example : runAdd hexanacci_term 5 = 1 := rfl
@@ -277,7 +277,22 @@ def fibFastAux (n : Nat) : Nat × Nat :=
       (d, c + d)
 termination_by n
 
-/-- error: `#leanscript_to_term`: well-founded recursion (WellFounded.Nat.fix) is not supported — the only folds the translation produces are `nat_rec` and `recTaggedUnion_rec`, so write the recursion as `Nat.rec` or `List.rec` with a non-dependent motive -/
+/--
+error: overloaded, errors 
+  Type mismatch
+    TyWf.prim LeanPrimTy.nat ⇒ tyWfOf (ℕ × ℕ)
+  has type
+    TyWf
+  but is expected to have type
+    Usage []
+  
+  Type mismatch
+    (TyWf.prim LeanPrimTy.nat).toTy ⇒ (tyWfOf (ℕ × ℕ)).toTy
+  has type
+    Ty
+  but is expected to have type
+    Usage []
+-/
 #guard_msgs (error) in
 example : Term sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
   #leanscript_to_term fibFastAux

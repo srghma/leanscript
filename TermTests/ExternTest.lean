@@ -24,19 +24,19 @@ namespace TermTests
 open LeanScript
 
 /-- `Nat.add 2 3`, as a term. -/
-def externAdd : Term ⟨[], rfl⟩ [] (.prim .nat) := .extern (.lean_nat_add 2 3)
+def externAdd : SomeTerm ⟨[], rfl⟩ [] (.prim .nat) := ⟨.extern (.lean_nat_add 2 3)⟩
 
 example : Term.run' externAdd = 5 := by decide
 
 /-- An extern used inside a larger term: `if 2 < 3 then 7 * 6 else 0`. -/
-def externIf : Term ⟨[], rfl⟩ [] (.prim .nat) :=
-  .bool_casesOn (.extern (.lean_nat_dec_lt 2 3)) (.extern (.lean_nat_mul 7 6)) (.nat_mk 0)
+def externIf : SomeTerm ⟨[], rfl⟩ [] (.prim .nat) :=
+  ⟨.bool_casesOn (.extern (.lean_nat_dec_lt 2 3)) (.extern (.lean_nat_mul 7 6)) (.nat_mk 0)⟩
 
 example : Term.run' externIf = 42 := by decide
 
 /-- An extern applied through a `let`: the bound value is an extern, the body a variable. -/
-def externLet : Term ⟨[], rfl⟩ [] (.prim .string) :=
-  .letE (.extern (.lean_string_append__String_append "lean" "script")) (.var .head)
+def externLet : SomeTerm ⟨[], rfl⟩ [] (.prim .string) :=
+  ⟨.letE (.extern (.lean_string_append__String_append "lean" "script")) (.var .head)⟩
 
 example : Term.run' externLet = "leanscript" := by decide
 
@@ -51,7 +51,7 @@ example : Term.run' (.extern (.lean_array_push (TyWf.prim .nat) #[1, 2] 3) :
 /-- `String.compare "a" "b"`, as a (compiled) definition.  `lean_string_compare` is the last
     entry of the catalogue; with the catalogue in one inductive of 460 constructors, its
     number (459) was too big for compiled code, and this definition did not compile. -/
-def externCompare : Term ⟨[], rfl⟩ [] TyWf.ordering := .extern (.lean_string_compare "a" "b")
+def externCompare : SomeTerm ⟨[], rfl⟩ [] TyWf.ordering := ⟨.extern (.lean_string_compare "a" "b")⟩
 
 example : Term.run' externCompare = TyWf.Den.ofOrdering (String.compare "a" "b") := rfl
 
