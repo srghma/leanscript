@@ -4,6 +4,7 @@ public import LeanScript.NatRecFacts
 public import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -251,10 +252,10 @@ def hexanacci_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
 
 example : runAdd hexanacci_term 5 = 1 := rfl
 
--- The kernel check is the same as the ones above; only the elaborator's `isDefEq` budget
--- is raised, because the six-deep window makes this the largest of them.
-set_option maxHeartbeats 1000000 in
-example : runAdd hexanacci_term 8 = hexanacci 8 := rfl
+-- The six-deep window makes this the largest of the checks, and the elaborator's own
+-- `isDefEq` check of it is slow, so the equation is left to the kernel alone
+-- (`kernel_rfl`, see `LeanScript/KernelRfl.lean`); no raised heartbeat budget is needed.
+example : runAdd hexanacci_term 8 = hexanacci 8 := by kernel_rfl
 
 /-! ## What is still refused
 

@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.TransBrec
+public meta import LeanScript.ToTerm.Extern
 
 @[expose] public section
 
@@ -212,12 +213,26 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
 /-- An application whose head is a constant. -/
 partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     (args : Array Expr) : MetaM Expr := do
+  -- a function implemented by an extern of `Init` is that extern: it is never looked up
+  -- in the signature, and one the catalogue does not model is refused
+  unless (← isSpecialConst n args) do
+    if let some t ← transExternApp? trans c e n lvls args then return t
+  -- a function marked `@[extern]` that is translated as an ordinary function (`Nat.gcd`)
+  -- is a declaration of the signature, whatever its definition is
+  if externAsOrdinary.contains n then
+    if let some g := c.global? n then
+      let gt := mkAppN (mkConst ``LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
+      return ← applyArgs trans c gt (mkConst n lvls) args
+    throwError "`#leanscript_to_term`: `{n}` is translated as an ordinary function, and is \
+      not declared in the signature, so a term cannot call it.  Add a `GlobalDecl` named \
+      \"{n.getString!}\" (or \"{n}\") to the signature."
   checkConst n
   if let some t ← transIdOp? c n args then return t
   if n == ``ite then return ← transIte c args
-  if n == ``dite then
-    throwError "`#leanscript_to_term`: `if h : c then …` binds a proof, which the \
-      language erases; write the test as a `Bool`"
+  if n == ``dite then return ← transDite c args
+  -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`
+  if n == ``GetElem.getElem then
+    if let some x ← decidableExtern? e then return ← trans c x
   if n == ``cond then
     let some scrut := args[1]? | throwError "`#leanscript_to_term`: `cond` needs its test"
     return ← mkBoolCases c (← trans c scrut) args[2]! args[3]!
@@ -228,11 +243,6 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if n == ``List.toArray || n == ``Array.mk then
     -- an array literal, written as the list of its elements
     return ← transListLit c e
-  if n == ``Array.toList then
-    throwError "`#leanscript_to_term`: a list and an array are different types here — \
-      `List α` is the recursive tagged union it is and `Array α` is `Ty.array` — and \
-      the grammar builds an array from all of its elements at once, so there is no \
-      term for `Array.toList`"
   if n == ``Nat.brecOn || n == ``List.brecOn then
     return ← transBrecOn trans c e n lvls args
   if isSparseCasesOn n then
@@ -265,6 +275,25 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     inlinable, so a term cannot call it.  Either add a `GlobalDecl` named \
     \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`."
 
+/-- Is this call one the translation builds itself, although its head is implemented by
+    an extern?  A constructor (`Thunk.mk`, `Array.mk`) is built in place, an array literal
+    is built from all of its elements at once, and `Thunk.get` is `thunk_force`. -/
+partial def isSpecialConst (n : Name) (args : Array Expr) : MetaM Bool := do
+  if n == ``Array.mk then
+    if let some l := args[1]? then return isListLit l
+  if (← getEnv).find? n matches some (.ctorInfo _) then return true
+  if n == ``Thunk.get then return true
+  if n == ``List.toArray then
+    if let some l := args[1]? then return isListLit l
+  return false
+
+/-- Is this list written out, element by element? -/
+partial def isListLit (l : Expr) : Bool :=
+  match l.consumeMData.getAppFnArgs with
+  | (``List.nil, _) => true
+  | (``List.cons, #[_, _, as]) => isListLit as
+  | _ => false
+
 /-- `if c then t else e`: the test must be a `Bool`. -/
 partial def transIte (c : TCtx) (args : Array Expr) : MetaM Expr := do
   let some cnd := args[1]? | throwError "`#leanscript_to_term`: `ite` needs its test"
@@ -273,6 +302,26 @@ partial def transIte (c : TCtx) (args : Array Expr) : MetaM Expr := do
   let inst := args[2]!
   let test ← boolOfDecidable c cnd inst
   mkBoolCases c test args[3]! args[4]!
+
+/-- `if h : c then t else e`: the test is decided as for `if c then t else e`, and the
+    proof `h` each branch binds is erased — a branch can still hand it to an extern that
+    takes a proof, which decides the proposition again when the term runs
+    (`Term.externCallChecked`). -/
+partial def transDite (c : TCtx) (args : Array Expr) : MetaM Expr := do
+  let some cnd := args[1]? | throwError "`#leanscript_to_term`: `dite` needs its test"
+  unless args.size == 5 do
+    throwError "`#leanscript_to_term`: this `if h : c then … else …` is applied to \
+      arguments, which the translation does not take apart"
+  let test ← boolOfDecidable c cnd args[2]!
+  let τ ← tyOfType args[0]!
+  let branch (p : Expr) (b : Expr) : MetaM Expr :=
+    withLocalDeclD `h p fun h => do
+      let t ← trans c (mkApp b h).headBeta
+      if t.containsFVar h.fvarId! then
+        throwError "`#leanscript_to_term`: a branch of `if h : {cnd} then … else …` uses \
+          the proof `h` as a value, and the language erases proofs"
+      return t
+  mkBoolCases' c test (← branch cnd args[3]!) (← branch (mkNot cnd) args[4]!) τ
 
 /-- The natural number `n` of the test `n = 0` (or `0 = n`). -/
 partial def natZeroTest? (cnd : Expr) : MetaM (Option Expr) := do
@@ -362,12 +411,17 @@ partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr :
             #[c.sg, c.gamma, mkConst ``Bool.false])
           (mkAppN (mkConst ``LeanScript.Term.bool_mk) #[c.sg, c.gamma, mkConst ``Bool.true])
           (← tyOfType (mkConst ``Bool))
+      -- a decision procedure that is an extern (`Nat.decEq`, say) is that extern
+      if let some x ← decidableExtern? inst then return ← trans c x
       -- `a = b` at a type with a `BEq`: the test is `a == b`
       match ← trySynthInstance (← mkAppM ``BEq #[α]) with
       | .some _ => return ← trans c (← mkAppM ``BEq.beq #[lhs, rhs])
       | _ => pure ()
       throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`"
   | _ =>
+      -- a decision procedure that is an extern (`Nat.decLt`, say) is that extern, whose
+      -- value is the `Bool` it decides
+      if let some x ← decidableExtern? inst then return ← trans c x
       let d ← whnf (mkApp2 (mkConst ``Decidable.decide) cnd inst)
       if d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome then
         throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`: write the \

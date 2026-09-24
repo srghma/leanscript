@@ -9,11 +9,19 @@ set_option autoImplicit false
 namespace LeanScript
 
 /-!
-# The value of an extern
+# The value of an extern call
 
-`Extern.eval` gives every pure extern of `Init` the value the Lean function it implements
-answers with.  An extern holds its arguments as values, so this is a plain case analysis:
-each case applies the Lean function to the arguments.  The entries the catalogue comments
+`Extern.eval` gives every pure extern of `Init`, applied to values, the value the Lean function it implements
+answers with.  The catalogue is in two levels (`LeanScript.LeanInitPureExterns`), and so is
+`Extern.eval`: a short dispatch on the family of the entry, to the `eval` of that family
+(`PreludeExtern.eval`, `StringBasicExtern.eval`, …).  Reducing a call thus goes through a
+split over the 35 families and one over the entries of one family (at most 55), not
+through one split over all 460 entries.  An extern holds its arguments as values, so each
+family's `eval` is a plain case analysis: each case applies the Lean function to the arguments — the native function itself, so a
+term runs what the compiled program runs.  An entry that takes a proof (`Array.getInternal`,
+`String.Pos.Raw.next'`, `String.Pos.next`, ...) holds it, and the case hands it to the Lean
+function.  `Lean.Name.beq` reads its arguments back as `Lean.Name`s (`TyWf.Den.toName`).
+The entries the catalogue comments
 out (the `USize`/`ISize` entries, the byte and float arrays, the run-time handles, and the
 entries whose meaning is not a value) are commented out here too.
 
@@ -24,9 +32,8 @@ is converted into the value of that shape: a `List`, an `Option`, a pair and an
 `Array`.)
 -/
 
-/-- The value of a pure extern of `Init`: the Lean function it implements, applied to its
-    arguments. -/
-def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
+/-- The value of an entry of `PreludeExtern` (`Init/Prelude.lean`). -/
+def PreludeExtern.eval : {τ : TyWf} → PreludeExtern TyWf.Den TyWf.list TyWf.leanName τ → TyWf.Den τ
   | _, .lean_uint32_of_nat_mk x1 => UInt32.ofBitVec x1
   | _, .lean_uint32_dec_eq x1 x2 => @Decidable.decide _ (UInt32.decEq x1 x2)
   -- a byte or float array: | _, .lean_byte_array_size x1 => ByteArray.size x1
@@ -79,7 +86,7 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_uint32_to_nat__UInt32_toBitVec x1 => UInt32.toBitVec x1
   | _, .lean_uint64_dec_eq x1 x2 => @Decidable.decide _ (UInt64.decEq x1 x2)
   | _, .lean_uint16_of_nat__UInt16_ofNatLT x1 x2 => UInt16.ofNatLT x1 x2
-  | _, .lean_name_eq x1 x2 => Lean.Name.beq x1 x2
+  | _, .lean_name_eq x1 x2 => Lean.Name.beq (TyWf.Den.toName x1) (TyWf.Den.toName x2)
   | _, .lean_uint8_of_nat_mk x1 => UInt8.ofBitVec x1
   -- a byte or float array: | _, .lean_mk_empty_byte_array x1 => ByteArray.emptyWithCapacity x1
   | _, .lean_uint8_dec_eq x1 x2 => @Decidable.decide _ (UInt8.decEq x1 x2)
@@ -94,6 +101,9 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_array_mk _ x2 => Array.mk x2
   | _, .lean_uint64_mix_hash x1 x2 => mixHash x1 x2
   | _, .lean_uint64_of_nat__UInt64_ofNatLT x1 x2 => UInt64.ofNatLT x1 x2
+
+/-- The value of an entry of `CoreExtern` (`Init/Core.lean`). -/
+def CoreExtern.eval : {τ : TyWf} → CoreExtern TyWf.Den τ → TyWf.Den τ
   -- NO handle: | _, .lean_task_map _ _ x3 x4 x5 x6 => some (@Decidable.decide _ (Task.map x3 x4 x5 x6))
   -- NO handle: | _, .lean_task_spawn _ x2 x3 => some (@Decidable.decide _ (Task.spawn x2 x3))
   | _, .lean_strict_or x1 x2 => strictOr x1 x2
@@ -104,6 +114,9 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_thunk_get_own _ x2 => Thunk.get x2
   | _, .lean_strict_and x1 x2 => strictAnd x1 x2
   -- NO handle: | _, .lean_task_bind _ _ x3 x4 x5 x6 => some (@Decidable.decide _ (Task.bind x3 x4 x5 x6))
+
+/-- The value of an entry of `IntBasicExtern` (`Init/Data/Int/Basic.lean`). -/
+def IntBasicExtern.eval : {τ : TyWf} → IntBasicExtern τ → TyWf.Den τ
   | _, .lean_nat_to_int x1 => Int.ofNat x1
   | _, .lean_int_dec_le x1 x2 => @Decidable.decide _ (Int.decLe x1 x2)
   | _, .lean_int_dec_lt x1 x2 => @Decidable.decide _ (Int.decLt x1 x2)
@@ -115,12 +128,21 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_int_neg x1 => Int.neg x1
   | _, .lean_int_sub x1 x2 => Int.sub x1 x2
   | _, .lean_nat_abs x1 => Int.natAbs x1
+
+/-- The value of an entry of `NatDivExtern` (`Init/Data/Nat/Div/Basic.lean`). -/
+def NatDivExtern.eval : {τ : TyWf} → NatDivExtern τ → TyWf.Den τ
   | _, .lean_nat_div_exact x1 x2 x3 => Nat.divExact x1 x2 x3
+
+/-- The value of an entry of `NatBitwiseExtern` (`Init/Data/Nat/Bitwise/Basic.lean`). -/
+def NatBitwiseExtern.eval : {τ : TyWf} → NatBitwiseExtern τ → TyWf.Den τ
   | _, .lean_nat_lxor x1 x2 => Nat.xor x1 x2
   | _, .lean_nat_shiftl x1 x2 => Nat.shiftLeft x1 x2
   | _, .lean_nat_shiftr x1 x2 => Nat.shiftRight x1 x2
   | _, .lean_nat_land x1 x2 => Nat.land x1 x2
   | _, .lean_nat_lor x1 x2 => Nat.lor x1 x2
+
+/-- The value of an entry of `UIntBasicAuxExtern` (`Init/Data/UInt/BasicAux.lean`). -/
+def UIntBasicAuxExtern.eval : {τ : TyWf} → UIntBasicAuxExtern τ → TyWf.Den τ
   | _, .lean_uint64_to_nat__UInt64_toNat x1 => UInt64.toNat x1
   | _, .lean_uint32_to_uint8 x1 => UInt32.toUInt8 x1
   -- NO usize: | _, .lean_usize_to_nat__USize_toNat x1 => some (@Decidable.decide _ (USize.toNat x1))
@@ -147,6 +169,9 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_uint64_to_uint8 x1 => UInt64.toUInt8 x1
   | _, .lean_uint64_to_uint16 x1 => UInt64.toUInt16 x1
   | _, .lean_uint8_to_uint16 x1 => UInt8.toUInt16 x1
+
+/-- The value of an entry of `StringBootstrapExtern` (`Init/Data/String/Bootstrap.lean`). -/
+def StringBootstrapExtern.eval : {τ : TyWf} → StringBootstrapExtern τ → TyWf.Den τ
   | _, .lean_string_utf8_get__String_Internal_get x1 x2 => String.Internal.get x1 x2
   | _, .lean_string_trim x1 => String.Internal.trim x1
   | _, .lean_substring_drop x1 x2 => Substring.Raw.Internal.drop x1 x2
@@ -162,7 +187,7 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_string_dropright x1 x2 => String.Internal.dropRight x1 x2
   | _, .lean_substring_takewhile x1 x2 => Substring.Raw.Internal.takeWhile x1 x2
   | _, .lean_substring_get x1 x2 => Substring.Raw.Internal.get x1 x2
-  | _, .lean_string_uget_byte_fast x1 x2 x3 => String.Internal.ugetUTF8Byte x1 x2 x3
+  -- `USize` is `Nat` here (`lean_string_get_byte_fast__String_Internal_getUTF8Byte`): | _, .lean_string_uget_byte_fast x1 x2 x3 => String.Internal.ugetUTF8Byte x1 x2 x3
   | _, .lean_string_contains x1 x2 => String.Internal.contains x1 x2
   | _, .lean_string_front x1 => String.Internal.front x1
   | _, .lean_string_posof x1 x2 => String.Internal.posOf x1 x2
@@ -184,23 +209,34 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_string_pos_sub x1 x2 => String.Pos.Raw.Internal.sub x1 x2
   | _, .lean_substring_isempty x1 => Substring.Raw.Internal.isEmpty x1
   | _, .lean_string_offsetofpos x1 x2 => String.Internal.offsetOfPos x1 x2
-  -- NO usize: | _, .lean_string_of_usize x1 => some (@Decidable.decide _ (USize.repr x1))
+
+/-- The value of an entry of `UtilExtern` (`Init/Util.lean`). -/
+def UtilExtern.eval : {τ : TyWf} → UtilExtern TyWf.Den τ → TyWf.Den τ
   -- NO handle: | _, .lean_dbg_sleep _ x2 x3 => some (@Decidable.decide _ (dbgSleep x2 x3))
   -- NO usize: | _, .lean_ptr_addr _ x2 => some (@Decidable.decide _ (ptrAddrUnsafe x2))
   -- NO handle: | _, .lean_dbg_trace _ x2 x3 => some (@Decidable.decide _ (dbgTrace x2 x3))
   | _, .lean_dbg_trace_if_shared _ x2 x3 => dbgTraceIfShared x2 x3
   -- NO handle: | _, .lean_dbg_stack_trace _ x2 => some (@Decidable.decide _ (dbgStackTrace x2))
   -- NO unsafe:| _, .lean_is_exclusive_obj x1 x2 => some (isExclusiveUnsafe x2)
+
+/-- The value of an entry of `ArraySetExtern` (`Init/Data/Array/Set.lean`). -/
+def ArraySetExtern.eval : {τ : TyWf} → ArraySetExtern TyWf.Den τ → TyWf.Den τ
   | _, .lean_array_set _ x2 x3 x4 => Array.set! x2 x3 x4
   | _, .lean_array_fset _ x2 x3 x4 x5 => Array.set x2 x3 x4 x5
+
+/-- The value of an entry of `ArrayBasicExtern` (`Init/Data/Array/Basic.lean`). -/
+def ArrayBasicExtern.eval : {τ : TyWf} → ArrayBasicExtern TyWf.Den τ → TyWf.Den τ
   | _, .lean_array_fswap _ x2 x3 x4 x5 x6 => Array.swap x2 x3 x4 x5 x6
-  | _, .lean_array_uget _ x2 x3 x4 => Array.uget x2 x3 x4
+  -- `USize` is `Nat` here (`lean_array_fget`): | _, .lean_array_uget _ x2 x3 x4 => Array.uget x2 x3 x4
   | _, .lean_mk_array _ x2 x3 => Array.replicate x2 x3
   | _, .lean_array_swap _ x2 x3 x4 => Array.swapIfInBounds x2 x3 x4
   -- NO unsafe:| _, .lean_array_uget_borrowed x1 x2 x3 x4 => some (Array.ugetBorrowed x2 x3 x4)
   | _, .lean_array_pop _ x2 => Array.pop x2
-  | _, .lean_array_uset _ x2 x3 x4 x5 => Array.uset x2 x3 x4 x5
+  -- `USize` is `Nat` here (`lean_array_fset`): | _, .lean_array_uset _ x2 x3 x4 x5 => Array.uset x2 x3 x4 x5
   -- NO usize: | _, .lean_array_size _ x2 => some (@Decidable.decide _ (Array.usize x2))
+
+/-- The value of an entry of `MetaDefsExtern` (`Init/Meta/Defs.lean`). -/
+def MetaDefsExtern.eval : {τ : TyWf} → MetaDefsExtern τ → TyWf.Den τ
   | _, .lean_version_get_special_desc => ("leanscript" : String)
   | _, .lean_version_get_is_release => false
   | _, .lean_version_get_major => (0 : Nat)
@@ -209,109 +245,126 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_version_get_minor => (0 : Nat)
   | _, .lean_get_githash => ("leanscript" : String)
   | _, .lean_internal_has_llvm_backend => false
+
+/-- The value of an entry of `NatLog2Extern` (`Init/Data/Nat/Log2.lean`). -/
+def NatLog2Extern.eval : {τ : TyWf} → NatLog2Extern τ → TyWf.Den τ
   | _, .lean_nat_log2 x1 => Nat.log2 x1
+
+/-- The value of an entry of `IntDivModExtern` (`Init/Data/Int/DivMod/Basic.lean`). -/
+def IntDivModExtern.eval : {τ : TyWf} → IntDivModExtern τ → TyWf.Den τ
   | _, .lean_int_emod x1 x2 => Int.emod x1 x2
   | _, .lean_int_div_exact x1 x2 x3 => Int.divExact x1 x2 x3
   | _, .lean_int_mod x1 x2 => Int.tmod x1 x2
   | _, .lean_int_ediv x1 x2 => Int.ediv x1 x2
   | _, .lean_int_div x1 x2 => Int.tdiv x1 x2
-  | _, .lean_nat_gcd__Nat_gcd__unary x1 => Nat.gcd x1.1 x1.2  -- `Nat.gcd._unary` is the packed form of `Nat.gcd`, and is noncomputable
-  | _, .lean_nat_gcd__Nat_gcd x1 x2 => Nat.gcd x1 x2
-  | _, .lean_uint64_shift_left x1 x2 => UInt64.shiftLeft x1 x2
-  | _, .lean_uint32_mod x1 x2 => UInt32.mod x1 x2
+
+/-- The value of an entry of `UInt8BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt8` entries). -/
+def UInt8BasicExtern.eval : {τ : TyWf} → UInt8BasicExtern τ → TyWf.Den τ
+  | _, .lean_uint8_sub x1 x2 => UInt8.sub x1 x2
+  | _, .lean_uint8_neg x1 => UInt8.neg x1
+  | _, .lean_uint8_lor x1 x2 => UInt8.lor x1 x2
+  | _, .lean_uint8_div x1 x2 => UInt8.div x1 x2
+  | _, .lean_uint8_shift_right x1 x2 => UInt8.shiftRight x1 x2
+  | _, .lean_uint8_shift_left x1 x2 => UInt8.shiftLeft x1 x2
+  | _, .lean_uint8_land x1 x2 => UInt8.land x1 x2
+  | _, .lean_uint8_mul x1 x2 => UInt8.mul x1 x2
+  | _, .lean_uint8_add x1 x2 => UInt8.add x1 x2
+  | _, .lean_uint8_complement x1 => UInt8.complement x1
+  | _, .lean_uint8_mod x1 x2 => UInt8.mod x1 x2
+  | _, .lean_bool_to_uint8 x1 => Bool.toUInt8 x1
+  | _, .lean_uint8_xor x1 x2 => UInt8.xor x1 x2
+
+/-- The value of an entry of `UInt16BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt16` entries). -/
+def UInt16BasicExtern.eval : {τ : TyWf} → UInt16BasicExtern τ → TyWf.Den τ
   | _, .lean_uint16_neg x1 => UInt16.neg x1
+  | _, .lean_uint16_add x1 x2 => UInt16.add x1 x2
+  | _, .lean_uint16_lor x1 x2 => UInt16.lor x1 x2
+  | _, .lean_uint16_mul x1 x2 => UInt16.mul x1 x2
+  | _, .lean_uint16_land x1 x2 => UInt16.land x1 x2
+  | _, .lean_uint16_complement x1 => UInt16.complement x1
+  | _, .lean_uint16_xor x1 x2 => UInt16.xor x1 x2
+  | _, .lean_uint16_shift_left x1 x2 => UInt16.shiftLeft x1 x2
+  | _, .lean_uint16_mod x1 x2 => UInt16.mod x1 x2
+  | _, .lean_uint16_dec_lt x1 x2 => @Decidable.decide _ (UInt16.decLt x1 x2)
+  | _, .lean_uint16_div x1 x2 => UInt16.div x1 x2
+  | _, .lean_uint16_dec_le x1 x2 => @Decidable.decide _ (UInt16.decLe x1 x2)
+  | _, .lean_uint16_sub x1 x2 => UInt16.sub x1 x2
+  | _, .lean_bool_to_uint16 x1 => Bool.toUInt16 x1
+  | _, .lean_uint16_shift_right x1 x2 => UInt16.shiftRight x1 x2
+
+/-- The value of an entry of `UInt32BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt32` entries). -/
+def UInt32BasicExtern.eval : {τ : TyWf} → UInt32BasicExtern τ → TyWf.Den τ
+  | _, .lean_uint32_mod x1 x2 => UInt32.mod x1 x2
+  | _, .lean_bool_to_uint32 x1 => Bool.toUInt32 x1
+  | _, .lean_uint32_div x1 x2 => UInt32.div x1 x2
+  | _, .lean_uint32_shift_right x1 x2 => UInt32.shiftRight x1 x2
+  | _, .lean_uint32_neg x1 => UInt32.neg x1
+  | _, .lean_uint32_lor x1 x2 => UInt32.lor x1 x2
+  | _, .lean_uint32_xor x1 x2 => UInt32.xor x1 x2
+  | _, .lean_uint32_shift_left x1 x2 => UInt32.shiftLeft x1 x2
+  | _, .lean_uint32_mul x1 x2 => UInt32.mul x1 x2
+  | _, .lean_uint32_land x1 x2 => UInt32.land x1 x2
+  | _, .lean_uint32_complement x1 => UInt32.complement x1
+
+/-- The value of an entry of `UInt64BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt64` entries). -/
+def UInt64BasicExtern.eval : {τ : TyWf} → UInt64BasicExtern τ → TyWf.Den τ
+  | _, .lean_uint64_shift_left x1 x2 => UInt64.shiftLeft x1 x2
   -- NO usize: | _, .lean_usize_land x1 x2 => some (@Decidable.decide _ (USize.land x1 x2))
   -- NO usize: | _, .lean_usize_mul x1 x2 => some (@Decidable.decide _ (USize.mul x1 x2))
   -- NO usize: | _, .lean_uint16_to_usize x1 => some (@Decidable.decide _ (UInt16.toUSize x1))
   | _, .lean_uint64_shift_right x1 x2 => UInt64.shiftRight x1 x2
   -- NO usize: | _, .lean_usize_shift_left x1 x2 => some (@Decidable.decide _ (USize.shiftLeft x1 x2))
-  | _, .lean_uint16_add x1 x2 => UInt16.add x1 x2
   -- NO usize: | _, .lean_usize_xor x1 x2 => some (@Decidable.decide _ (USize.xor x1 x2))
   | _, .lean_uint64_complement x1 => UInt64.complement x1
-  | _, .lean_bool_to_uint32 x1 => Bool.toUInt32 x1
-  | _, .lean_uint16_lor x1 x2 => UInt16.lor x1 x2
-  | _, .lean_uint16_mul x1 x2 => UInt16.mul x1 x2
-  | _, .lean_uint16_land x1 x2 => UInt16.land x1 x2
-  | _, .lean_uint8_sub x1 x2 => UInt8.sub x1 x2
-  | _, .lean_uint32_div x1 x2 => UInt32.div x1 x2
   | _, .lean_uint64_add x1 x2 => UInt64.add x1 x2
-  | _, .lean_uint8_neg x1 => UInt8.neg x1
-  | _, .lean_uint16_complement x1 => UInt16.complement x1
   | _, .lean_uint64_lor x1 x2 => UInt64.lor x1 x2
   | _, .lean_uint64_mod x1 x2 => UInt64.mod x1 x2
-  | _, .lean_uint8_lor x1 x2 => UInt8.lor x1 x2
-  | _, .lean_uint32_shift_right x1 x2 => UInt32.shiftRight x1 x2
-  | _, .lean_uint16_xor x1 x2 => UInt16.xor x1 x2
   -- NO usize: | _, .lean_usize_lor x1 x2 => some (@Decidable.decide _ (USize.lor x1 x2))
-  | _, .lean_uint8_div x1 x2 => UInt8.div x1 x2
-  | _, .lean_uint16_shift_left x1 x2 => UInt16.shiftLeft x1 x2
-  | _, .lean_uint32_neg x1 => UInt32.neg x1
-  | _, .lean_uint16_mod x1 x2 => UInt16.mod x1 x2
   -- NO usize: | _, .lean_usize_neg x1 => some (@Decidable.decide _ (USize.neg x1))
   | _, .lean_uint64_div x1 x2 => UInt64.div x1 x2
-  | _, .lean_uint16_dec_lt x1 x2 => @Decidable.decide _ (UInt16.decLt x1 x2)
-  | _, .lean_uint8_shift_right x1 x2 => UInt8.shiftRight x1 x2
   -- NO usize: | _, .lean_usize_to_uint64 x1 => some (@Decidable.decide _ (USize.toUInt64 x1))
-  | _, .lean_uint32_lor x1 x2 => UInt32.lor x1 x2
   | _, .lean_uint64_mul x1 x2 => UInt64.mul x1 x2
   -- NO usize: | _, .lean_usize_shift_right x1 x2 => some (@Decidable.decide _ (USize.shiftRight x1 x2))
   | _, .lean_uint64_land x1 x2 => UInt64.land x1 x2
-  | _, .lean_uint8_shift_left x1 x2 => UInt8.shiftLeft x1 x2
-  | _, .lean_uint16_div x1 x2 => UInt16.div x1 x2
   | _, .lean_bool_to_uint64 x1 => Bool.toUInt64 x1
-  | _, .lean_uint8_land x1 x2 => UInt8.land x1 x2
   | _, .lean_uint64_dec_le x1 x2 => @Decidable.decide _ (UInt64.decLe x1 x2)
-  | _, .lean_uint8_mul x1 x2 => UInt8.mul x1 x2
   -- NO usize: | _, .lean_usize_of_nat__USize_ofNat32 x1 x2 => some (@Decidable.decide _ (USize.ofNat32 x1 x2))
   | _, .lean_uint64_sub x1 x2 => UInt64.sub x1 x2
   | _, .lean_uint64_neg x1 => UInt64.neg x1
-  | _, .lean_uint8_add x1 x2 => UInt8.add x1 x2
   -- NO usize: | _, .lean_usize_div x1 x2 => some (@Decidable.decide _ (USize.div x1 x2))
   -- NO usize: | _, .lean_uint32_to_usize x1 => some (@Decidable.decide _ (UInt32.toUSize x1))
-  | _, .lean_uint8_complement x1 => UInt8.complement x1
   -- NO usize: | _, .lean_usize_to_uint16 x1 => some (@Decidable.decide _ (USize.toUInt16 x1))
-  | _, .lean_uint32_xor x1 x2 => UInt32.xor x1 x2
-  | _, .lean_uint16_dec_le x1 x2 => @Decidable.decide _ (UInt16.decLe x1 x2)
   -- NO usize: | _, .lean_usize_to_uint8 x1 => some (@Decidable.decide _ (USize.toUInt8 x1))
-  | _, .lean_uint32_shift_left x1 x2 => UInt32.shiftLeft x1 x2
-  | _, .lean_uint16_sub x1 x2 => UInt16.sub x1 x2
-  | _, .lean_uint32_mul x1 x2 => UInt32.mul x1 x2
-  | _, .lean_uint32_land x1 x2 => UInt32.land x1 x2
   -- NO usize: | _, .lean_usize_mod x1 x2 => some (@Decidable.decide _ (USize.mod x1 x2))
-  | _, .lean_uint8_mod x1 x2 => UInt8.mod x1 x2
   | _, .lean_uint64_dec_lt x1 x2 => @Decidable.decide _ (UInt64.decLt x1 x2)
-  | _, .lean_bool_to_uint8 x1 => Bool.toUInt8 x1
-  | _, .lean_uint32_complement x1 => UInt32.complement x1
   -- NO usize: | _, .lean_uint8_to_usize x1 => some (@Decidable.decide _ (UInt8.toUSize x1))
-  | _, .lean_bool_to_uint16 x1 => Bool.toUInt16 x1
-  | _, .lean_uint8_xor x1 x2 => UInt8.xor x1 x2
   -- NO usize: | _, .lean_bool_to_usize x1 => some (@Decidable.decide _ (Bool.toUSize x1))
   -- NO usize: | _, .lean_uint64_to_usize x1 => some (@Decidable.decide _ (UInt64.toUSize x1))
-  | _, .lean_uint16_shift_right x1 x2 => UInt16.shiftRight x1 x2
   -- NO usize: | _, .lean_usize_to_uint32 x1 => some (@Decidable.decide _ (USize.toUInt32 x1))
   -- NO usize: | _, .lean_usize_complement x1 => some (@Decidable.decide _ (USize.complement x1))
   | _, .lean_uint64_xor x1 x2 => UInt64.xor x1 x2
-  -- a byte or float array: | _, .lean_byte_array_copy_slice x1 x2 x3 x4 x5 x6 => ByteArray.copySlice x1 x2 x3 x4 x5 x6
-  -- a byte or float array: | _, .lean_byte_array_hash x1 => ByteArray.hash x1
-  -- NO usize: | _, .lean_sarray_size__ByteArray_usize x1 => some (@Decidable.decide _ (ByteArray.usize x1))
-  -- a byte or float array: | _, .lean_sarray_dec_eq__ByteArray_beq x1 x2 => ByteArray.beq x1 x2
-  -- a byte or float array: | _, .lean_sarray_dec_eq__ByteArray_decEq x1 x2 => @Decidable.decide _ (ByteArray.decEq x1 x2)
-  -- a byte or float array: | _, .lean_byte_array_set x1 x2 x3 => ByteArray.set! x1 x2 x3
-  -- a byte or float array: | _, .lean_byte_array_fget x1 x2 x3 => ByteArray.get x1 x2 x3
-  -- a byte or float array: | _, .lean_byte_array_uset x1 x2 x3 x4 => ByteArray.uset x1 x2 x3 x4
-  -- a byte or float array: | _, .lean_byte_array_fset x1 x2 x3 x4 => ByteArray.set x1 x2 x3 x4
-  -- a byte or float array: | _, .lean_byte_array_uget x1 x2 x3 => ByteArray.uget x1 x2 x3
-  -- a byte or float array: | _, .lean_byte_array_get x1 x2 => ByteArray.get! x1 x2
+
+/-- The value of an entry of `StringPosRawExtern` (`Init/Data/String/PosRaw.lean`). -/
+def StringPosRawExtern.eval : {τ : TyWf} → StringPosRawExtern τ → TyWf.Den τ
   | _, .lean_string_get_byte_fast__String_getUtf8Byte x1 x2 x3 => String.getUTF8Byte x1 x2 x3  -- `String.getUtf8Byte` is a deprecated alias of `String.getUTF8Byte`
   | _, .lean_string_get_byte_fast__String_getUTF8Byte x1 x2 x3 => String.getUTF8Byte x1 x2 x3
+
+/-- The value of an entry of `StringDefsExtern` (`Init/Data/String/Defs.lean`). -/
+def StringDefsExtern.eval : {τ : TyWf} → StringDefsExtern τ → TyWf.Den τ
   -- a byte or float array: | _, .lean_string_to_utf8__String_toUTF8 x1 => String.toUTF8 x1
   | _, .lean_string_append__String_append x1 x2 => String.append x1 x2
+
+/-- The value of an entry of `PlatformExtern` (`Init/System/Platform.lean`). -/
+def PlatformExtern.eval : {τ : TyWf} → PlatformExtern τ → TyWf.Den τ
   -- NO handle: | _, .lean_internal_get_hardware_concurrency => some (@Decidable.decide _ (System.Platform.Internal.getHardwareConcurrency))
   -- NO handle: | _, .lean_system_platform_linux => some (@Decidable.decide _ (System.Platform.getIsLinux))
   | _, .lean_system_platform_emscripten => false
   | _, .lean_system_platform_target => ("nodeorbrowser" : String)
   -- NO handle: | _, .lean_system_platform_windows => some (@Decidable.decide _ (System.Platform.getIsWindows))
   -- NO handle: | _, .lean_system_platform_osx => some (@Decidable.decide _ (System.Platform.getIsOSX))
+
+/-- The value of an entry of `StringBasicExtern` (`Init/Data/String/Basic.lean`). -/
+def StringBasicExtern.eval : {τ : TyWf} → StringBasicExtern TyWf.option TyWf.list τ → TyWf.Den τ
   | _, .lean_string_utf8_next__String_next x1 x2 => String.Pos.Raw.next x1 x2  -- `String.next` is a deprecated alias of `String.Pos.Raw.next`
   | _, .lean_string_utf8_next__String_Pos_Raw_next x1 x2 => String.Pos.Raw.next x1 x2
   | _, .lean_string_utf8_get__String_Pos_Raw_get x1 x2 => String.Pos.Raw.get x1 x2
@@ -321,7 +374,7 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_string_utf8_prev__String_Pos_Raw_prev x1 x2 => String.Pos.Raw.prev x1 x2
   | _, .lean_string_utf8_prev__String_prev x1 x2 => String.Pos.Raw.prev x1 x2  -- `String.prev` is a deprecated alias of `String.Pos.Raw.prev`
   | _, .lean_string_utf8_next_fast__String_next' x1 x2 x3 => String.Pos.Raw.next' x1 x2 x3  -- `String.next'` is a deprecated alias of `String.Pos.Raw.next'`
-  | _, .lean_string_utf8_next_fast__String_Pos_Raw_next' x1 x2 x3 => String.Pos.Raw.next' x1 x2 x3
+  -- the same as `lean_string_utf8_next_fast__String_next'`: | _, .lean_string_utf8_next_fast__String_Pos_Raw_next' x1 x2 x3 => String.Pos.Raw.next' x1 x2 x3
   | _, .lean_string_utf8_next_fast__String_Pos_next x1 x2 => String.Pos.next x1 x2
   | _, .lean_string_data__String_data x1 => TyWf.Den.ofList (α := .prim .char) (String.toList x1)  -- `String.data` is a deprecated alias of `String.toList`
   | _, .lean_string_data__String_toList x1 => TyWf.Den.ofList (α := .prim .char) (String.toList x1)
@@ -337,133 +390,160 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_string_dec_lt x1 x2 => @Decidable.decide _ (String.decidableLT x1 x2)
   -- a byte or float array: | _, .lean_string_validate_utf8 x1 => ByteArray.validateUTF8 x1
   | _, .lean_string_utf8_extract__String_Pos_Raw_extract x1 x2 x3 => String.Pos.Raw.extract x1 x2 x3
+
+/-- The value of an entry of `StringLengthExtern` (`Init/Data/String/Length.lean`). -/
+def StringLengthExtern.eval : {τ : TyWf} → StringLengthExtern τ → TyWf.Den τ
   | _, .lean_string_length__String_length x1 => String.length x1
-  -- NO usize: | _, .lean_isize_complement x1 => some (@Decidable.decide _ (ISize.complement x1))
+
+/-- The value of an entry of `Int8BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int8` entries). -/
+def Int8BasicExtern.eval : {τ : TyWf} → Int8BasicExtern τ → TyWf.Den τ
   | _, .lean_int8_add x1 x2 => Int8.add x1 x2
+  | _, .lean_int8_div x1 x2 => Int8.div x1 x2
+  | _, .lean_int8_to_int16 x1 => Int8.toInt16 x1
+  | _, .lean_int8_shift_right x1 x2 => Int8.shiftRight x1 x2
+  | _, .lean_int8_mod x1 x2 => Int8.mod x1 x2
+  | _, .lean_bool_to_int8 x1 => Bool.toInt8 x1
+  | _, .lean_int8_shift_left x1 x2 => Int8.shiftLeft x1 x2
+  | _, .lean_int8_xor x1 x2 => Int8.xor x1 x2
+  | _, .lean_int8_complement x1 => Int8.complement x1
+  | _, .lean_int8_dec_eq x1 x2 => @Decidable.decide _ (Int8.decEq x1 x2)
+  | _, .lean_int8_neg x1 => Int8.neg x1
+  | _, .lean_int8_dec_lt x1 x2 => @Decidable.decide _ (Int8.decLt x1 x2)
+  | _, .lean_int8_abs x1 => Int8.abs x1
+  | _, .lean_int8_to_int32 x1 => Int8.toInt32 x1
+  | _, .lean_int8_sub x1 x2 => Int8.sub x1 x2
+  | _, .lean_int8_to_int64 x1 => Int8.toInt64 x1
+  | _, .lean_int8_of_nat x1 => Int8.ofNat x1
+  | _, .lean_int8_dec_le x1 x2 => @Decidable.decide _ (Int8.decLe x1 x2)
+  | _, .lean_int8_to_int x1 => Int8.toInt x1
+  | _, .lean_int8_mul x1 x2 => Int8.mul x1 x2
+  | _, .lean_int8_land x1 x2 => Int8.land x1 x2
+  | _, .lean_int8_of_int x1 => Int8.ofInt x1
+  | _, .lean_int8_lor x1 x2 => Int8.lor x1 x2
+
+/-- The value of an entry of `Int16BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int16` entries). -/
+def Int16BasicExtern.eval : {τ : TyWf} → Int16BasicExtern τ → TyWf.Den τ
   | _, .lean_int16_of_nat x1 => Int16.ofNat x1
   | _, .lean_int16_dec_le x1 x2 => @Decidable.decide _ (Int16.decLe x1 x2)
-  | _, .lean_int32_of_int x1 => Int32.ofInt x1
-  -- NO usize: | _, .lean_int64_to_isize x1 => some (@Decidable.decide _ (Int64.toISize x1))
-  | _, .lean_int32_land x1 x2 => Int32.land x1 x2
-  | _, .lean_int8_div x1 x2 => Int8.div x1 x2
-  | _, .lean_int32_mul x1 x2 => Int32.mul x1 x2
-  | _, .lean_int64_sub x1 x2 => Int64.sub x1 x2
   | _, .lean_int16_shift_right x1 x2 => Int16.shiftRight x1 x2
-  -- NO usize: | _, .lean_isize_to_int8 x1 => some (@Decidable.decide _ (ISize.toInt8 x1))
-  | _, .lean_int64_xor x1 x2 => Int64.xor x1 x2
+  | _, .lean_int16_div x1 x2 => Int16.div x1 x2
+  | _, .lean_int16_dec_lt x1 x2 => @Decidable.decide _ (Int16.decLt x1 x2)
+  | _, .lean_int16_to_int x1 => Int16.toInt x1
+  | _, .lean_int16_mod x1 x2 => Int16.mod x1 x2
+  | _, .lean_int16_dec_eq x1 x2 => @Decidable.decide _ (Int16.decEq x1 x2)
+  | _, .lean_bool_to_int16 x1 => Bool.toInt16 x1
+  | _, .lean_int16_abs x1 => Int16.abs x1
+  | _, .lean_int16_to_int32 x1 => Int16.toInt32 x1
+  | _, .lean_int16_complement x1 => Int16.complement x1
+  | _, .lean_int16_land x1 x2 => Int16.land x1 x2
+  | _, .lean_int16_of_int x1 => Int16.ofInt x1
+  | _, .lean_int16_mul x1 x2 => Int16.mul x1 x2
+  | _, .lean_int16_shift_left x1 x2 => Int16.shiftLeft x1 x2
+  | _, .lean_int16_xor x1 x2 => Int16.xor x1 x2
+  | _, .lean_int16_lor x1 x2 => Int16.lor x1 x2
+  | _, .lean_int16_add x1 x2 => Int16.add x1 x2
+  | _, .lean_int16_to_int8 x1 => Int16.toInt8 x1
+  | _, .lean_int16_neg x1 => Int16.neg x1
+  | _, .lean_int16_sub x1 x2 => Int16.sub x1 x2
+  | _, .lean_int16_to_int64 x1 => Int16.toInt64 x1
+
+/-- The value of an entry of `Int32BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int32` entries). -/
+def Int32BasicExtern.eval : {τ : TyWf} → Int32BasicExtern τ → TyWf.Den τ
+  | _, .lean_int32_of_int x1 => Int32.ofInt x1
+  | _, .lean_int32_land x1 x2 => Int32.land x1 x2
+  | _, .lean_int32_mul x1 x2 => Int32.mul x1 x2
   | _, .lean_int32_dec_le x1 x2 => @Decidable.decide _ (Int32.decLe x1 x2)
   | _, .lean_int32_of_nat x1 => Int32.ofNat x1
+  | _, .lean_int32_to_int64 x1 => Int32.toInt64 x1
+  | _, .lean_int32_sub x1 x2 => Int32.sub x1 x2
+  | _, .lean_int32_neg x1 => Int32.neg x1
+  | _, .lean_int32_abs x1 => Int32.abs x1
+  | _, .lean_int32_dec_eq x1 x2 => @Decidable.decide _ (Int32.decEq x1 x2)
+  | _, .lean_int32_dec_lt x1 x2 => @Decidable.decide _ (Int32.decLt x1 x2)
+  | _, .lean_int32_xor x1 x2 => Int32.xor x1 x2
+  | _, .lean_int32_shift_left x1 x2 => Int32.shiftLeft x1 x2
+  | _, .lean_int32_shift_right x1 x2 => Int32.shiftRight x1 x2
+  | _, .lean_int32_complement x1 => Int32.complement x1
+  | _, .lean_bool_to_int32 x1 => Bool.toInt32 x1
+  | _, .lean_int32_to_int8 x1 => Int32.toInt8 x1
+  | _, .lean_int32_add x1 x2 => Int32.add x1 x2
+  | _, .lean_int32_lor x1 x2 => Int32.lor x1 x2
+  | _, .lean_int32_mod x1 x2 => Int32.mod x1 x2
+  | _, .lean_int32_to_int x1 => Int32.toInt x1
+  | _, .lean_int32_to_int16 x1 => Int32.toInt16 x1
+  | _, .lean_int32_div x1 x2 => Int32.div x1 x2
+
+/-- The value of an entry of `Int64BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int64` entries). -/
+def Int64BasicExtern.eval : {τ : TyWf} → Int64BasicExtern τ → TyWf.Den τ
+  -- NO usize: | _, .lean_isize_complement x1 => some (@Decidable.decide _ (ISize.complement x1))
+  -- NO usize: | _, .lean_int64_to_isize x1 => some (@Decidable.decide _ (Int64.toISize x1))
+  | _, .lean_int64_sub x1 x2 => Int64.sub x1 x2
+  -- NO usize: | _, .lean_isize_to_int8 x1 => some (@Decidable.decide _ (ISize.toInt8 x1))
+  | _, .lean_int64_xor x1 x2 => Int64.xor x1 x2
   -- NO usize: | _, .lean_isize_xor x1 x2 => some (@Decidable.decide _ (ISize.xor x1 x2))
   | _, .lean_int64_to_int8 x1 => Int64.toInt8 x1
   -- NO usize: | _, .lean_isize_shift_left x1 x2 => some (@Decidable.decide _ (ISize.shiftLeft x1 x2))
   | _, .lean_int64_mul x1 x2 => Int64.mul x1 x2
-  | _, .lean_int32_to_int64 x1 => Int32.toInt64 x1
-  | _, .lean_int8_to_int16 x1 => Int8.toInt16 x1
-  | _, .lean_int32_sub x1 x2 => Int32.sub x1 x2
   | _, .lean_int64_of_int x1 => Int64.ofInt x1
   -- NO usize: | _, .lean_int32_to_isize x1 => some (@Decidable.decide _ (Int32.toISize x1))
   | _, .lean_int64_land x1 x2 => Int64.land x1 x2
-  | _, .lean_int8_shift_right x1 x2 => Int8.shiftRight x1 x2
   | _, .lean_int64_lor x1 x2 => Int64.lor x1 x2
-  | _, .lean_int16_div x1 x2 => Int16.div x1 x2
   -- NO usize: | _, .lean_isize_mod x1 x2 => some (@Decidable.decide _ (ISize.mod x1 x2))
-  | _, .lean_int32_neg x1 => Int32.neg x1
-  | _, .lean_int8_mod x1 x2 => Int8.mod x1 x2
-  | _, .lean_int32_abs x1 => Int32.abs x1
-  | _, .lean_bool_to_int8 x1 => Bool.toInt8 x1
   -- NO usize: | _, .lean_isize_shift_right x1 x2 => some (@Decidable.decide _ (ISize.shiftRight x1 x2))
   -- NO usize: | _, .lean_isize_to_int16 x1 => some (@Decidable.decide _ (ISize.toInt16 x1))
-  | _, .lean_int8_shift_left x1 x2 => Int8.shiftLeft x1 x2
-  | _, .lean_int16_dec_lt x1 x2 => @Decidable.decide _ (Int16.decLt x1 x2)
-  | _, .lean_int8_xor x1 x2 => Int8.xor x1 x2
-  | _, .lean_int32_dec_eq x1 x2 => @Decidable.decide _ (Int32.decEq x1 x2)
-  | _, .lean_int16_to_int x1 => Int16.toInt x1
-  | _, .lean_int16_mod x1 x2 => Int16.mod x1 x2
   -- NO usize: | _, .lean_isize_div x1 x2 => some (@Decidable.decide _ (ISize.div x1 x2))
-  | _, .lean_int16_dec_eq x1 x2 => @Decidable.decide _ (Int16.decEq x1 x2)
-  | _, .lean_int8_complement x1 => Int8.complement x1
   -- NO usize: | _, .lean_isize_add x1 x2 => some (@Decidable.decide _ (ISize.add x1 x2))
-  | _, .lean_bool_to_int16 x1 => Bool.toInt16 x1
-  | _, .lean_int32_dec_lt x1 x2 => @Decidable.decide _ (Int32.decLt x1 x2)
   -- NO usize: | _, .lean_isize_lor x1 x2 => some (@Decidable.decide _ (ISize.lor x1 x2))
   | _, .lean_int64_mod x1 x2 => Int64.mod x1 x2
   -- NO usize: | _, .lean_isize_of_int x1 => some (@Decidable.decide _ (ISize.ofInt x1))
   | _, .lean_int64_shift_left x1 x2 => Int64.shiftLeft x1 x2
-  | _, .lean_int16_abs x1 => Int16.abs x1
   -- NO usize: | _, .lean_isize_land x1 x2 => some (@Decidable.decide _ (ISize.land x1 x2))
-  | _, .lean_int16_to_int32 x1 => Int16.toInt32 x1
   -- NO usize: | _, .lean_isize_mul x1 x2 => some (@Decidable.decide _ (ISize.mul x1 x2))
   -- NO usize: | _, .lean_isize_to_int x1 => some (@Decidable.decide _ (ISize.toInt x1))
   | _, .lean_int64_dec_lt x1 x2 => @Decidable.decide _ (Int64.decLt x1 x2)
   -- NO usize: | _, .lean_isize_dec_le x1 x2 => some (@Decidable.decide _ (ISize.decLe x1 x2))
-  | _, .lean_int8_dec_eq x1 x2 => @Decidable.decide _ (Int8.decEq x1 x2)
-  | _, .lean_int32_xor x1 x2 => Int32.xor x1 x2
   -- NO usize: | _, .lean_isize_of_nat x1 => some (@Decidable.decide _ (ISize.ofNat x1))
-  | _, .lean_int16_complement x1 => Int16.complement x1
-  | _, .lean_int32_shift_left x1 x2 => Int32.shiftLeft x1 x2
   -- NO usize: | _, .lean_isize_to_int64 x1 => some (@Decidable.decide _ (ISize.toInt64 x1))
   -- NO usize: | _, .lean_isize_sub x1 x2 => some (@Decidable.decide _ (ISize.sub x1 x2))
   | _, .lean_int64_complement x1 => Int64.complement x1
   -- NO usize: | _, .lean_isize_abs x1 => some (@Decidable.decide _ (ISize.abs x1))
-  | _, .lean_int16_land x1 x2 => Int16.land x1 x2
-  | _, .lean_int16_of_int x1 => Int16.ofInt x1
-  | _, .lean_int32_shift_right x1 x2 => Int32.shiftRight x1 x2
-  | _, .lean_int8_neg x1 => Int8.neg x1
-  | _, .lean_int16_mul x1 x2 => Int16.mul x1 x2
   -- NO usize: | _, .lean_isize_to_int32 x1 => some (@Decidable.decide _ (ISize.toInt32 x1))
   | _, .lean_int64_to_int32 x1 => Int64.toInt32 x1
-  | _, .lean_int16_shift_left x1 x2 => Int16.shiftLeft x1 x2
   | _, .lean_int64_abs x1 => Int64.abs x1
-  | _, .lean_int32_complement x1 => Int32.complement x1
-  | _, .lean_int16_xor x1 x2 => Int16.xor x1 x2
   | _, .lean_bool_to_int64 x1 => Bool.toInt64 x1
   -- NO usize: | _, .lean_bool_to_isize x1 => some (@Decidable.decide _ (Bool.toISize x1))
-  | _, .lean_int8_dec_lt x1 x2 => @Decidable.decide _ (Int8.decLt x1 x2)
   | _, .lean_int64_dec_eq x1 x2 => @Decidable.decide _ (Int64.decEq x1 x2)
   | _, .lean_int64_dec_le x1 x2 => @Decidable.decide _ (Int64.decLe x1 x2)
-  | _, .lean_bool_to_int32 x1 => Bool.toInt32 x1
   | _, .lean_int64_of_nat x1 => Int64.ofNat x1
-  | _, .lean_int32_to_int8 x1 => Int32.toInt8 x1
   | _, .lean_int64_to_int_sint x1 => Int64.toInt x1
-  | _, .lean_int32_add x1 x2 => Int32.add x1 x2
   -- NO usize: | _, .lean_isize_dec_lt x1 x2 => some (@Decidable.decide _ (ISize.decLt x1 x2))
   | _, .lean_int64_neg x1 => Int64.neg x1
-  | _, .lean_int32_lor x1 x2 => Int32.lor x1 x2
-  | _, .lean_int8_abs x1 => Int8.abs x1
-  | _, .lean_int8_to_int32 x1 => Int8.toInt32 x1
-  | _, .lean_int32_mod x1 x2 => Int32.mod x1 x2
   -- NO usize: | _, .lean_isize_neg x1 => some (@Decidable.decide _ (ISize.neg x1))
-  | _, .lean_int32_to_int x1 => Int32.toInt x1
   | _, .lean_int64_add x1 x2 => Int64.add x1 x2
-  | _, .lean_int8_sub x1 x2 => Int8.sub x1 x2
-  | _, .lean_int32_to_int16 x1 => Int32.toInt16 x1
-  | _, .lean_int8_to_int64 x1 => Int8.toInt64 x1
-  | _, .lean_int16_lor x1 x2 => Int16.lor x1 x2
   | _, .lean_int64_div x1 x2 => Int64.div x1 x2
   -- NO usize: | _, .lean_int8_to_isize x1 => some (@Decidable.decide _ (Int8.toISize x1))
   -- NO usize: | _, .lean_isize_dec_eq x1 x2 => some (@Decidable.decide _ (ISize.decEq x1 x2))
-  | _, .lean_int16_add x1 x2 => Int16.add x1 x2
-  | _, .lean_int8_of_nat x1 => Int8.ofNat x1
-  | _, .lean_int8_dec_le x1 x2 => @Decidable.decide _ (Int8.decLe x1 x2)
-  | _, .lean_int16_to_int8 x1 => Int16.toInt8 x1
-  | _, .lean_int8_to_int x1 => Int8.toInt x1
-  | _, .lean_int8_mul x1 x2 => Int8.mul x1 x2
-  | _, .lean_int16_neg x1 => Int16.neg x1
   | _, .lean_int64_to_int16 x1 => Int64.toInt16 x1
-  | _, .lean_int8_land x1 x2 => Int8.land x1 x2
-  | _, .lean_int32_div x1 x2 => Int32.div x1 x2
-  | _, .lean_int8_of_int x1 => Int8.ofInt x1
   -- NO usize: | _, .lean_int16_to_isize x1 => some (@Decidable.decide _ (Int16.toISize x1))
-  | _, .lean_int16_sub x1 x2 => Int16.sub x1 x2
-  | _, .lean_int16_to_int64 x1 => Int16.toInt64 x1
-  | _, .lean_int8_lor x1 x2 => Int8.lor x1 x2
   | _, .lean_int64_shift_right x1 x2 => Int64.shiftRight x1 x2
+
+/-- The value of an entry of `StringPatternExtern` (`Init/Data/String/Pattern/Basic.lean`). -/
+def StringPatternExtern.eval : {τ : TyWf} → StringPatternExtern τ → TyWf.Den τ
   | _, .lean_string_memcmp x1 x2 x3 x4 x5 x6 x7 => String.Slice.Pattern.Internal.memcmpStr x1 x2 x3 x4 x5 x6 x7
+
+/-- The value of an entry of `StringSliceExtern` (`Init/Data/String/Slice.lean`). -/
+def StringSliceExtern.eval : {τ : TyWf} → StringSliceExtern τ → TyWf.Den τ
   | _, .lean_slice_dec_lt x1 x2 => @Decidable.decide _ (String.Slice.instDecidableLt x1 x2)
   | _, .lean_slice_hash x1 => String.Slice.hash x1
+
+/-- The value of an entry of `StringModifyExtern` (`Init/Data/String/Modify.lean`). -/
+def StringModifyExtern.eval : {τ : TyWf} → StringModifyExtern τ → TyWf.Den τ
   | _, .lean_string_utf8_set__String_Pos_Raw_set x1 x2 x3 => String.Pos.Raw.set x1 x2 x3
   | _, .lean_string_utf8_set__String_Pos_set x1 x2 x3 => String.Pos.set x1 x2 x3
   | _, .lean_string_utf8_set__String_set x1 x2 x3 => String.Pos.Raw.set x1 x2 x3  -- `String.set` is a deprecated alias of `String.Pos.Raw.set`
+
+/-- The value of an entry of `FloatExtern` (`Init/Data/Float/Float.lean`). -/
+def FloatExtern.eval : {τ : TyWf} → FloatExtern TyWf.prod τ → TyWf.Den τ
   | _, .lean_float_frexp x1 => TyWf.Den.ofProd (Float.frExp x1)
   | _, .lean_uint8_to_float x1 => UInt8.toFloat x1
   | _, .lean_float_to_bits__Float_toModel x1 => Float.toModel x1
@@ -519,23 +599,17 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_float_sub x1 x2 => Float.sub x1 x2
   | _, .lean_float_negate x1 => Float.neg x1
   | _, .lean_float_isinf x1 => Float.isInf x1
-  -- a byte or float array: | _, .lean_mk_empty_float_array x1 => FloatArray.emptyWithCapacity x1
-  -- a byte or float array: | _, .lean_float_array_get x1 x2 => FloatArray.get! x1 x2
-  -- a byte or float array: | _, .lean_float_array_uget x1 x2 x3 => FloatArray.uget x1 x2 x3
-  -- a byte or float array: | _, .lean_float_array_fset x1 x2 x3 x4 => FloatArray.set x1 x2 x3 x4
-  -- a byte or float array: | _, .lean_float_array_uset x1 x2 x3 x4 => FloatArray.uset x1 x2 x3 x4
-  -- a byte or float array: | _, .lean_float_array_fget x1 x2 x3 => FloatArray.get x1 x2 x3
-  -- a byte or float array: | _, .lean_float_array_set x1 x2 x3 => FloatArray.set! x1 x2 x3
-  -- a byte or float array: | _, .lean_float_array_data x1 => FloatArray.data x1
-  -- NO usize: | _, .lean_sarray_size__FloatArray_usize x1 => some (@Decidable.decide _ (FloatArray.usize x1))
-  -- a byte or float array: | _, .lean_float_array_mk x1 => FloatArray.mk x1
-  -- a byte or float array: | _, .lean_float_array_size x1 => FloatArray.size x1
-  -- a byte or float array: | _, .lean_float_array_push x1 x2 => FloatArray.push x1 x2
+
+/-- The value of an entry of `UIntLog2Extern` (`Init/Data/UInt/Log2.lean`). -/
+def UIntLog2Extern.eval : {τ : TyWf} → UIntLog2Extern τ → TyWf.Den τ
   -- NO usize: | _, .lean_usize_log2 x1 => some (@Decidable.decide _ (USize.log2 x1))
   | _, .lean_uint16_log2 x1 => UInt16.log2 x1
   | _, .lean_uint64_log2 x1 => UInt64.log2 x1
   | _, .lean_uint8_log2 x1 => UInt8.log2 x1
   | _, .lean_uint32_log2 x1 => UInt32.log2 x1
+
+/-- The value of an entry of `SIntFloatExtern` (`Init/Data/SInt/Float.lean`). -/
+def SIntFloatExtern.eval : {τ : TyWf} → SIntFloatExtern τ → TyWf.Den τ
   | _, .lean_int32_to_float x1 => Int32.toFloat x1
   | _, .lean_float_to_int16 x1 => Float.toInt16 x1
   | _, .lean_int16_to_float x1 => Int16.toFloat x1
@@ -546,6 +620,9 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_int64_to_float x1 => Int64.toFloat x1
   | _, .lean_float_to_int64 x1 => Float.toInt64 x1
   -- NO usize: | _, .lean_float_to_isize x1 => some (@Decidable.decide _ (Float.toISize x1))
+
+/-- The value of an entry of `Float32Extern` (`Init/Data/Float/Float32.lean`). -/
+def Float32Extern.eval : {τ : TyWf} → Float32Extern TyWf.prod τ → TyWf.Den τ
   | _, .tanhf x1 => Float32.tanh x1
   | _, .exp2f x1 => Float32.exp2 x1
   | _, .lean_float32_div x1 x2 => Float32.div x1 x2
@@ -603,6 +680,9 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .coshf x1 => Float32.cosh x1
   | _, .expf x1 => Float32.exp x1
   | _, .lean_float32_to_uint8 x1 => Float32.toUInt8 x1
+
+/-- The value of an entry of `SIntFloat32Extern` (`Init/Data/SInt/Float32.lean`). -/
+def SIntFloat32Extern.eval : {τ : TyWf} → SIntFloat32Extern τ → TyWf.Den τ
   | _, .lean_float32_to_int64 x1 => Float32.toInt64 x1
   -- NO usize: | _, .lean_float32_to_isize x1 => some (@Decidable.decide _ (Float32.toISize x1))
   | _, .lean_int32_to_float32 x1 => Int32.toFloat32 x1
@@ -613,14 +693,85 @@ def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
   | _, .lean_float32_to_int32 x1 => Float32.toInt32 x1
   | _, .lean_int16_to_float32 x1 => Int16.toFloat32 x1
   | _, .lean_int64_to_float32 x1 => Int64.toFloat32 x1
+
+/-- The value of an entry of `OrdStringExtern` (`Init/Data/Ord/String.lean`). -/
+def OrdStringExtern.eval : {τ : TyWf} → OrdStringExtern TyWf.ordering τ → TyWf.Den τ
   | _, .lean_string_compare x1 x2 => TyWf.Den.ofOrdering (String.compare x1 x2)
-  -- NO handle: | _, .lean_io_process_child_pid x1 => IO.Process.Child.pid x1
-  -- NO handle: | _, .lean_io_promise_result_opt _ x2 => some (@Decidable.decide _ (IO.Promise.result? x2))
-  -- NO private: _, .lean_option_get_or_block x1 x2 => some (_private.Init.System.Promise.0.IO.Option.getOrBlock! x2)
-  -- NO handle: | _, .lean_sharecommon_quick _ x2 => ShareCommon.shareCommon' x2
-  -- NO handle: | _, .lean_state_sharecommon _ x2 x3 => ShareCommon.State.shareCommon x2 x3
-  -- NO unsafe:| _, .lean_sharecommon_eq x1 x2 => some (ShareCommon.Object.eq x1 x2)
-  -- NO unsafe:| _, .lean_sharecommon_hash x1 => some (ShareCommon.Object.hash x1)
+
+-- the entries of the sections of the catalogue whose entries are all commented out (so
+-- they have no family)
+-- NO usize: | _, .lean_string_of_usize x1 => some (@Decidable.decide _ (USize.repr x1))
+-- `Nat.gcd` is an ordinary function: | _, .lean_nat_gcd__Nat_gcd__unary x1 => Nat.gcd x1.1 x1.2
+-- `Nat.gcd` is an ordinary function: | _, .lean_nat_gcd__Nat_gcd x1 x2 => Nat.gcd x1 x2
+-- a byte or float array: | _, .lean_byte_array_copy_slice x1 x2 x3 x4 x5 x6 => ByteArray.copySlice x1 x2 x3 x4 x5 x6
+-- a byte or float array: | _, .lean_byte_array_hash x1 => ByteArray.hash x1
+-- NO usize: | _, .lean_sarray_size__ByteArray_usize x1 => some (@Decidable.decide _ (ByteArray.usize x1))
+-- a byte or float array: | _, .lean_sarray_dec_eq__ByteArray_beq x1 x2 => ByteArray.beq x1 x2
+-- a byte or float array: | _, .lean_sarray_dec_eq__ByteArray_decEq x1 x2 => @Decidable.decide _ (ByteArray.decEq x1 x2)
+-- a byte or float array: | _, .lean_byte_array_set x1 x2 x3 => ByteArray.set! x1 x2 x3
+-- a byte or float array: | _, .lean_byte_array_fget x1 x2 x3 => ByteArray.get x1 x2 x3
+-- a byte or float array: | _, .lean_byte_array_uset x1 x2 x3 x4 => ByteArray.uset x1 x2 x3 x4
+-- a byte or float array: | _, .lean_byte_array_fset x1 x2 x3 x4 => ByteArray.set x1 x2 x3 x4
+-- a byte or float array: | _, .lean_byte_array_uget x1 x2 x3 => ByteArray.uget x1 x2 x3
+-- a byte or float array: | _, .lean_byte_array_get x1 x2 => ByteArray.get! x1 x2
+-- a byte or float array: | _, .lean_mk_empty_float_array x1 => FloatArray.emptyWithCapacity x1
+-- a byte or float array: | _, .lean_float_array_get x1 x2 => FloatArray.get! x1 x2
+-- a byte or float array: | _, .lean_float_array_uget x1 x2 x3 => FloatArray.uget x1 x2 x3
+-- a byte or float array: | _, .lean_float_array_fset x1 x2 x3 x4 => FloatArray.set x1 x2 x3 x4
+-- a byte or float array: | _, .lean_float_array_uset x1 x2 x3 x4 => FloatArray.uset x1 x2 x3 x4
+-- a byte or float array: | _, .lean_float_array_fget x1 x2 x3 => FloatArray.get x1 x2 x3
+-- a byte or float array: | _, .lean_float_array_set x1 x2 x3 => FloatArray.set! x1 x2 x3
+-- a byte or float array: | _, .lean_float_array_data x1 => FloatArray.data x1
+-- NO usize: | _, .lean_sarray_size__FloatArray_usize x1 => some (@Decidable.decide _ (FloatArray.usize x1))
+-- a byte or float array: | _, .lean_float_array_mk x1 => FloatArray.mk x1
+-- a byte or float array: | _, .lean_float_array_size x1 => FloatArray.size x1
+-- a byte or float array: | _, .lean_float_array_push x1 x2 => FloatArray.push x1 x2
+-- NO handle: | _, .lean_io_process_child_pid x1 => IO.Process.Child.pid x1
+-- NO handle: | _, .lean_io_promise_result_opt _ x2 => some (@Decidable.decide _ (IO.Promise.result? x2))
+-- NO private: _, .lean_option_get_or_block x1 x2 => some (_private.Init.System.Promise.0.IO.Option.getOrBlock! x2)
+-- NO handle: | _, .lean_sharecommon_quick _ x2 => ShareCommon.shareCommon' x2
+-- NO handle: | _, .lean_state_sharecommon _ x2 x3 => ShareCommon.State.shareCommon x2 x3
+-- NO unsafe:| _, .lean_sharecommon_eq x1 x2 => some (ShareCommon.Object.eq x1 x2)
+-- NO unsafe:| _, .lean_sharecommon_hash x1 => some (ShareCommon.Object.hash x1)
+
+/-- The value of a pure extern of `Init`: the Lean function it implements, applied to its
+    arguments.  A short dispatch to the `eval` of the entry's family. -/
+def Extern.eval : {τ : TyWf} → Extern τ → TyWf.Den τ
+  | _, .preludeExtern e => PreludeExtern.eval e
+  | _, .coreExtern e => CoreExtern.eval e
+  | _, .intBasicExtern e => IntBasicExtern.eval e
+  | _, .natDivExtern e => NatDivExtern.eval e
+  | _, .natBitwiseExtern e => NatBitwiseExtern.eval e
+  | _, .uintBasicAuxExtern e => UIntBasicAuxExtern.eval e
+  | _, .stringBootstrapExtern e => StringBootstrapExtern.eval e
+  | _, .utilExtern e => UtilExtern.eval e
+  | _, .arraySetExtern e => ArraySetExtern.eval e
+  | _, .arrayBasicExtern e => ArrayBasicExtern.eval e
+  | _, .metaDefsExtern e => MetaDefsExtern.eval e
+  | _, .natLog2Extern e => NatLog2Extern.eval e
+  | _, .intDivModExtern e => IntDivModExtern.eval e
+  | _, .uint8BasicExtern e => UInt8BasicExtern.eval e
+  | _, .uint16BasicExtern e => UInt16BasicExtern.eval e
+  | _, .uint32BasicExtern e => UInt32BasicExtern.eval e
+  | _, .uint64BasicExtern e => UInt64BasicExtern.eval e
+  | _, .stringPosRawExtern e => StringPosRawExtern.eval e
+  | _, .stringDefsExtern e => StringDefsExtern.eval e
+  | _, .platformExtern e => PlatformExtern.eval e
+  | _, .stringBasicExtern e => StringBasicExtern.eval e
+  | _, .stringLengthExtern e => StringLengthExtern.eval e
+  | _, .int8BasicExtern e => Int8BasicExtern.eval e
+  | _, .int16BasicExtern e => Int16BasicExtern.eval e
+  | _, .int32BasicExtern e => Int32BasicExtern.eval e
+  | _, .int64BasicExtern e => Int64BasicExtern.eval e
+  | _, .stringPatternExtern e => StringPatternExtern.eval e
+  | _, .stringSliceExtern e => StringSliceExtern.eval e
+  | _, .stringModifyExtern e => StringModifyExtern.eval e
+  | _, .floatExtern e => FloatExtern.eval e
+  | _, .uintLog2Extern e => UIntLog2Extern.eval e
+  | _, .sIntFloatExtern e => SIntFloatExtern.eval e
+  | _, .float32Extern e => Float32Extern.eval e
+  | _, .sIntFloat32Extern e => SIntFloat32Extern.eval e
+  | _, .ordStringExtern e => OrdStringExtern.eval e
 
 end LeanScript
 

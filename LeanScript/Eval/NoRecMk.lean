@@ -44,6 +44,9 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {τ : TyWf} → Term Sg Γ τ → P
   | _, _, .lam body => Term.NoRecMk body
   | _, _, .ap f a => Term.NoRecMk f ∧ Term.NoRecMk a
   | _, _, .letE e body => Term.NoRecMk e ∧ Term.NoRecMk body
+  -- externs applied to terms
+  | _, _, .externCall args _ => Spine.NoRecMk args
+  | _, _, .externCallChecked args _ fallback => Spine.NoRecMk args ∧ Term.NoRecMk fallback
   -- case analysis on a leaf
   | _, _, .bool_casesOn c t e => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
   | _, _, .nat_casesOn n z s => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s

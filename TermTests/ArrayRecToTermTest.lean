@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Eval
+public meta import LeanScript.KernelRfl
 public import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 public meta import LeanScript.ToTerm.Elab
@@ -46,23 +47,22 @@ namespace TermTests.ArrayRecToTerm
 
 open LeanScript
 
-/-- A signature with one declaration, `add : nat ⇒ nat ⇒ nat`. -/
-def sigAdd : Sig := ⟨[⟨"add", TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat⟩], by decide⟩
+/-- The empty signature: `+` is `Nat.add`, which is implemented by the extern
+    `lean_nat_add`, so the translation calls it as `Term.extern .lean_nat_add` and the
+    signature needs no declaration for it. -/
+def sig0 : Sig := ⟨[], by decide⟩
 
-/-- The values of the declarations of `sigAdd`. -/
-def envAdd : GlobalEnv sigAdd.decls := (Nat.add, PUnit.unit)
-
-/-- Running a closed term of `sigAdd`. -/
-local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $t)
+/-- Running a closed term of `sig0`. -/
+local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
 /-- The depth of a term that is an `array_rec`, or `none`. -/
-def arrayRecDepthOf? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
+def arrayRecDepthOf? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
   | .array_rec k _ _ _ => some k
   | _ => none
 
 /-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is, or
     `none` if the translation is not of that shape. -/
-def arrayRecDepth? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
+def arrayRecDepth? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
   | .lam b => arrayRecDepthOf? b
   | _ => none
 
@@ -76,15 +76,15 @@ where
     | [] => 0
     | x :: xs => x + go xs
 
-def sumArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def sumArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumArr
 
 example : arrayRecDepth? sumArr_term = some 0 := rfl
-example : runAdd sumArr_term #[] = 0 := rfl
-example : runAdd sumArr_term #[5] = 5 := rfl
-example : runAdd sumArr_term #[1, 2, 3, 4] = 10 := rfl
-example : runAdd sumArr_term #[1, 2, 3, 4] = sumArr #[1, 2, 3, 4] := rfl
-example : runAdd sumArr_term #[7, 0, 9, 1, 1] = sumArr #[7, 0, 9, 1, 1] := rfl
+example : run sumArr_term #[] = 0 := rfl
+example : run sumArr_term #[5] = 5 := rfl
+example : run sumArr_term #[1, 2, 3, 4] = 10 := rfl
+example : run sumArr_term #[1, 2, 3, 4] = sumArr #[1, 2, 3, 4] := rfl
+example : run sumArr_term #[7, 0, 9, 1, 1] = sumArr #[7, 0, 9, 1, 1] := rfl
 
 /-! ## `k = 1`: a Fibonacci recursion on the elements
 
@@ -98,17 +98,17 @@ where
     | [x] => x
     | x :: y :: xs => x + go (y :: xs) + go xs
 
-def fibArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def fibArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibArr
 
 example : arrayRecDepth? fibArr_term = some 1 := rfl
-example : runAdd fibArr_term #[] = 0 := rfl
-example : runAdd fibArr_term #[4] = 4 := rfl
-example : runAdd fibArr_term #[1, 2] = 3 := rfl
-example : runAdd fibArr_term #[1, 2, 3, 4] = 21 := rfl
-example : runAdd fibArr_term #[1, 1, 1, 1, 1, 1] = 20 := rfl
-example : runAdd fibArr_term #[1, 2, 3, 4] = fibArr #[1, 2, 3, 4] := rfl
-example : runAdd fibArr_term #[3, 1, 4, 1, 5, 9, 2, 6] = fibArr #[3, 1, 4, 1, 5, 9, 2, 6] :=
+example : run fibArr_term #[] = 0 := rfl
+example : run fibArr_term #[4] = 4 := rfl
+example : run fibArr_term #[1, 2] = 3 := rfl
+example : run fibArr_term #[1, 2, 3, 4] = 21 := rfl
+example : run fibArr_term #[1, 1, 1, 1, 1, 1] = 20 := rfl
+example : run fibArr_term #[1, 2, 3, 4] = fibArr #[1, 2, 3, 4] := rfl
+example : run fibArr_term #[3, 1, 4, 1, 5, 9, 2, 6] = fibArr #[3, 1, 4, 1, 5, 9, 2, 6] :=
   rfl
 
 /-! ## `k = 2`: a tribonacci recursion on the elements
@@ -124,18 +124,21 @@ where
     | [x, y] => x + go [y]
     | x :: y :: z :: xs => x + go (y :: z :: xs) + go (z :: xs) + go xs
 
-def tribArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def tribArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tribArr
 
 example : arrayRecDepth? tribArr_term = some 2 := rfl
-example : runAdd tribArr_term #[] = 0 := rfl
-example : runAdd tribArr_term #[6] = 6 := rfl
-example : runAdd tribArr_term #[1, 2] = 3 := rfl
-example : runAdd tribArr_term #[1, 2, 3] = 9 := rfl
-example : runAdd tribArr_term #[1, 1, 1, 1, 1, 1] = 28 := rfl
-example : runAdd tribArr_term #[1, 2, 3, 4, 5] = tribArr #[1, 2, 3, 4, 5] := rfl
-example : runAdd tribArr_term #[3, 1, 4, 1, 5, 9, 2, 6] = tribArr #[3, 1, 4, 1, 5, 9, 2, 6] :=
-  rfl
+example : run tribArr_term #[] = 0 := rfl
+example : run tribArr_term #[6] = 6 := rfl
+example : run tribArr_term #[1, 2] = 3 := rfl
+example : run tribArr_term #[1, 2, 3] = 9 := rfl
+example : run tribArr_term #[1, 1, 1, 1, 1, 1] = 28 := rfl
+example : run tribArr_term #[1, 2, 3, 4, 5] = tribArr #[1, 2, 3, 4, 5] := rfl
+-- `kernel_rfl`, not `rfl`: the elaborator's own check of the equation is slow here (every
+-- extern call goes through the case splits of `Extern.eval`), while the
+-- kernel checks it quickly (see `LeanScript/KernelRfl.lean`).
+example : run tribArr_term #[3, 1, 4, 1, 5, 9, 2, 6] = tribArr #[3, 1, 4, 1, 5, 9, 2, 6] :=
+  by kernel_rfl
 
 /-! ## `k = 3`: a tetranacci recursion on the elements
 
@@ -151,17 +154,23 @@ where
     | x :: y :: z :: w :: xs =>
         x + go (y :: z :: w :: xs) + go (z :: w :: xs) + go (w :: xs) + go xs
 
-def tetraArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def tetraArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term tetraArr
 
 example : arrayRecDepth? tetraArr_term = some 3 := rfl
-example : runAdd tetraArr_term #[] = 0 := rfl
-example : runAdd tetraArr_term #[2] = 2 := rfl
-example : runAdd tetraArr_term #[1, 2] = 3 := rfl
-example : runAdd tetraArr_term #[1, 2, 3] = 9 := rfl
-example : runAdd tetraArr_term #[1, 1, 1, 1] = 8 := rfl
-example : runAdd tetraArr_term #[1, 2, 3, 4, 5] = tetraArr #[1, 2, 3, 4, 5] := rfl
-example : runAdd tetraArr_term #[3, 1, 4, 1, 5] = tetraArr #[3, 1, 4, 1, 5] := rfl
+example : run tetraArr_term #[] = 0 := rfl
+example : run tetraArr_term #[2] = 2 := rfl
+example : run tetraArr_term #[1, 2] = 3 := rfl
+example : run tetraArr_term #[1, 2, 3] = 9 := rfl
+example : run tetraArr_term #[1, 1, 1, 1] = 8 := rfl
+-- `kernel_rfl`, not `rfl`: the elaborator's own check of the equation is slow here (every
+-- extern call goes through the case splits of `Extern.eval`), while the
+-- kernel checks it quickly (see `LeanScript/KernelRfl.lean`).
+example : run tetraArr_term #[1, 2, 3, 4, 5] = tetraArr #[1, 2, 3, 4, 5] := by kernel_rfl
+-- `kernel_rfl`, not `rfl`: the elaborator's own check of the equation is slow here (every
+-- extern call goes through the case splits of `Extern.eval`), while the
+-- kernel checks it quickly (see `LeanScript/KernelRfl.lean`).
+example : run tetraArr_term #[3, 1, 4, 1, 5] = tetraArr #[3, 1, 4, 1, 5] := by kernel_rfl
 
 /-! ## `k = 4`: a pentanacci recursion on the elements -/
 
@@ -177,15 +186,15 @@ where
         x + go (y :: z :: w :: v :: xs) + go (z :: w :: v :: xs) + go (w :: v :: xs)
           + go (v :: xs) + go xs
 
-def pentaArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def pentaArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term pentaArr
 
 example : arrayRecDepth? pentaArr_term = some 4 := rfl
-example : runAdd pentaArr_term #[] = 0 := rfl
-example : runAdd pentaArr_term #[1, 2, 3] = 0 := rfl
-example : runAdd pentaArr_term #[7, 2, 3, 4] = 7 := rfl
-example : runAdd pentaArr_term #[1, 1, 1, 1, 1, 1] = 4 := rfl
-example : runAdd pentaArr_term #[3, 1, 4, 1, 5, 9] = pentaArr #[3, 1, 4, 1, 5, 9] := rfl
+example : run pentaArr_term #[] = 0 := rfl
+example : run pentaArr_term #[1, 2, 3] = 0 := rfl
+example : run pentaArr_term #[7, 2, 3, 4] = 7 := rfl
+example : run pentaArr_term #[1, 1, 1, 1, 1, 1] = 4 := rfl
+example : run pentaArr_term #[3, 1, 4, 1, 5, 9] = pentaArr #[3, 1, 4, 1, 5, 9] := rfl
 
 /-! ## `k = 0` at a function type: an accumulator
 
@@ -199,12 +208,12 @@ where
     | [], acc => acc
     | x :: xs, acc => go xs (acc + x)
 
-def sumAccArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def sumAccArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term sumAccArr
 
-example : runAdd sumAccArr_term #[] = 0 := rfl
-example : runAdd sumAccArr_term #[1, 2, 3, 4] = 10 := rfl
-example : runAdd sumAccArr_term #[1, 2, 3, 4] = sumAccArr #[1, 2, 3, 4] := rfl
+example : run sumAccArr_term #[] = 0 := rfl
+example : run sumAccArr_term #[1, 2, 3, 4] = 10 := rfl
+example : run sumAccArr_term #[1, 2, 3, 4] = sumAccArr #[1, 2, 3, 4] := rfl
 
 /-! ## What is refused
 
@@ -222,7 +231,7 @@ where
 error: `#leanscript_to_term`: this recursion on the elements of an array is not the fold of an array — the fold `array_rec k` gives its branch the head and the values at the `k + 1` nearest suffixes of the tail, so a branch that reads an element past the head, or the tail itself, or the value at a list that is not a suffix, has no term
 -/
 #guard_msgs in
-def adjArr_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
+def adjArr_term : Term sig0 [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) :=
   #leanscript_to_term adjArr
 
 end TermTests.ArrayRecToTerm

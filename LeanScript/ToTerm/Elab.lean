@@ -67,7 +67,7 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
     instantiateMVars (← elabTerm sigStx[3] (mkConst ``LeanScript.Sig))
   let t ← translate sg base e
   match expected? with
-  | some ty => ensureHasType ty t
+  | some ty => Term.ensureHasType ty t
   | none => return t
 
 /-- `#leanscript_to_term_cache_stats`: how many definitions the translation cache holds,

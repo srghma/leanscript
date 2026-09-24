@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Eval
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -100,7 +101,11 @@ theorem window_eval (n : Nat) :
   | succ n ih =>
       have hstep : runAdd window (n + 1) =
           ((runAdd window n).2.1,
-            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := rfl
+            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := by
+        -- `kernel_rfl`, not `rfl`: the elaborator's own check of this equation is slow
+        -- (the extern call goes through the case splits of `Extern.eval`);
+        -- the kernel checks it quickly (see `LeanScript/KernelRfl.lean`)
+        kernel_rfl
       rw [hstep, ih]
       show ((fib (n + 1), fib n + fib (n + 1), PUnit.unit) : Nat × Nat × PUnit) =
         (fib (n + 1), fib (n + 2), PUnit.unit)

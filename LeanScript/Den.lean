@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.Ty.TyWfIn
-public import LeanScript.Den.Cont
+public import LeanScript.Den.PFunctor
 
 @[expose] public section
 
@@ -32,15 +32,15 @@ is the type of the values of `τ`.
 
 ## Recursive tagged unions: containers
 
-Every type is read as a **container** (`LeanScript.Cont`, in `LeanScript.Den.Cont`):
-`Ty.Cont τ` has a type of shapes and, for each shape, a type of *holes* — the places
+Every type is read as a **container** (`PFunctor`, in `LeanScript.Den.PFunctor`):
+`Ty.toPFunctor τ` has a type of shapes and, for each shape, a type of *holes* — the places
 where the shape holds an occurrence `Ty.self` of the binder it is written under.  A
 closed type has no holes, the domain of an arrow is used as a type (`Ty.WfIn` keeps
-`Ty.self` out of it), and `Ty.Den τ` is the type of shapes, `(Ty.Cont τ).S`.  Every
+`Ty.self` out of it), and `Ty.Den τ` is the type of shapes, `(Ty.toPFunctor τ).A`.  Every
 equation of the table holds by `rfl`.
 
 A recursive tagged union is then the least fixpoint of the container of its
-constructors, which is its W-type (`LeanScript.WTree`).  `LeanScript.Den.Rec` relates a
+constructors, which is its W-type (`WType`).  `LeanScript.Den.Rec` relates a
 node of it to the constructor's *unfolded* fields (`Ty.roll`, `Ty.unroll`,
 `Ty.DenRec.mk`, `Ty.DenRec.unfold`), which is what the evaluator's introduction form and
 eliminators use.
@@ -63,101 +63,101 @@ mutual
 /-- The container a type of the language describes: its values are the shapes, and the
     holes of a shape are the places where it holds an occurrence `Ty.self` of the binder
     it is written under.  A closed type has no holes.  See the section header. -/
-@[reducible] def Ty.Cont : Ty → Cont
+@[reducible] def Ty.toPFunctor : Ty → PFunctor.{0, 0}
   | .self => ⟨PUnit, fun _ => PUnit⟩
-  | .familyMember _ => Cont.const PEmpty
-  | .shape s => Ty.ContShape s
-  | .recTaggedUnion l => Cont.mu (Cont.sigma (Fin l.length) (fun t => Ty.ContAt l t.val))
-  | .recObject _ => Cont.const PEmpty
-  | .recAlias _ => Cont.const PEmpty
-  | .mutualRecursiveFamily _ => Cont.const PEmpty
+  | .familyMember _ => PFunctor.const PEmpty
+  | .shape s => Ty.toPFunctorShape s
+  | .recTaggedUnion l => PFunctor.mu (PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val))
+  | .recObject _ => PFunctor.const PEmpty
+  | .recAlias _ => PFunctor.const PEmpty
+  | .mutualRecursiveFamily _ => PFunctor.const PEmpty
 
-/-- `Ty.Cont`, on a node.  The domain of an arrow is used as a type — its holes are
+/-- `Ty.toPFunctor`, on a node.  The domain of an arrow is used as a type — its holes are
     ignored, and `LeanScript.Ty.WfIn` keeps `Ty.self` out of it anyway. -/
-@[reducible] def Ty.ContShape : TyShape Ty → Cont
-  | .prim p => Cont.const p.denote
-  | .fn a b => Cont.pi (Ty.Cont a).S (Ty.Cont b)
-  | .primCovariant c => Ty.ContCov c
-  | .enum s => Cont.const (Fin s.nOfConstructors)
-  | .record fs => Ty.ContRecord fs
-  | .taggedUnion l => Cont.sigma (Fin l.length) (fun t => Ty.ContAt l t.val)
+@[reducible] def Ty.toPFunctorShape : TyShape Ty → PFunctor.{0, 0}
+  | .prim p => PFunctor.const p.denote
+  | .fn a b => PFunctor.pi (Ty.toPFunctor a).A (Ty.toPFunctor b)
+  | .primCovariant c => Ty.toPFunctorCov c
+  | .enum s => PFunctor.const (Fin s.nOfConstructors)
+  | .record fs => Ty.toPFunctorRecord fs
+  | .taggedUnion l => PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val)
 
-/-- `Ty.Cont`, on an array, a thunk or a lazy value. -/
-@[reducible] def Ty.ContCov : LeanPrimTyCovariant Ty → Cont
-  | .array a => Cont.array (Ty.Cont a)
-  | .thunk a => Ty.Cont a
-  | .lazy a => Ty.Cont a
+/-- `Ty.toPFunctor`, on an array, a thunk or a lazy value. -/
+@[reducible] def Ty.toPFunctorCov : LeanPrimTyCovariant Ty → PFunctor.{0, 0}
+  | .array a => PFunctor.array (Ty.toPFunctor a)
+  | .thunk a => Ty.toPFunctor a
+  | .lazy a => Ty.toPFunctor a
 
-/-- `Ty.ContList`, on a list that has at least one entry. -/
-@[reducible] def Ty.ContNE : NonEmptyList Ty → Cont
-  | ⟨a, as⟩ => Cont.prod (Ty.Cont a) (Ty.ContList as)
+/-- `Ty.toPFunctorList`, on a list that has at least one entry. -/
+@[reducible] def Ty.toPFunctorNE : NonEmptyList Ty → PFunctor.{0, 0}
+  | ⟨a, as⟩ => PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorList as)
 
-/-- `Ty.ContList`, on the fields of a record. -/
-@[reducible] def Ty.ContRecord : LeanRecordSchema Ty → Cont
-  | ⟨a, b, rest⟩ => Cont.prod (Ty.Cont a) (Cont.prod (Ty.Cont b) (Ty.ContList rest))
+/-- `Ty.toPFunctorList`, on the fields of a record. -/
+@[reducible] def Ty.toPFunctorRecord : LeanRecordSchema Ty → PFunctor.{0, 0}
+  | ⟨a, b, rest⟩ => PFunctor.prod (Ty.toPFunctor a) (PFunctor.prod (Ty.toPFunctor b) (Ty.toPFunctorList rest))
 
 /-- The product of the containers of a list of types, in order. -/
-@[reducible] def Ty.ContList : List Ty → Cont
-  | [] => Cont.const PUnit
-  | τ :: ts => Cont.prod (Ty.Cont τ) (Ty.ContList ts)
+@[reducible] def Ty.toPFunctorList : List Ty → PFunctor.{0, 0}
+  | [] => PFunctor.const PUnit
+  | τ :: ts => PFunctor.prod (Ty.toPFunctor τ) (Ty.toPFunctorList ts)
 
 /-- The container of the fields of constructor number `t` of a tagged union; out of range
     it is empty. -/
-@[reducible] def Ty.ContAt : LeanTaggedUnionSchema Ty → Nat → Cont
-  | .payloadFirst fields _ _, 0 => Ty.ContNE fields
-  | .payloadFirst _ next _, 1 => Ty.ContList next
-  | .payloadFirst _ _ rest, n + 2 => Ty.ContAtList rest n
-  | .skip _, 0 => Cont.const PUnit
-  | .skip rest, n + 1 => Ty.ContAtCP rest n
+@[reducible] def Ty.toPFunctorAt : LeanTaggedUnionSchema Ty → Nat → PFunctor.{0, 0}
+  | .payloadFirst fields _ _, 0 => Ty.toPFunctorNE fields
+  | .payloadFirst _ next _, 1 => Ty.toPFunctorList next
+  | .payloadFirst _ _ rest, n + 2 => Ty.toPFunctorAtList rest n
+  | .skip _, 0 => PFunctor.const PUnit
+  | .skip rest, n + 1 => Ty.toPFunctorAtCP rest n
 
-/-- `Ty.ContAt`, on the constructors that follow a field-less one. -/
-@[reducible] def Ty.ContAtCP : CtorsWithPayload Ty → Nat → Cont
-  | .here fields _, 0 => Ty.ContNE fields
-  | .here _ rest, n + 1 => Ty.ContAtList rest n
-  | .skip _, 0 => Cont.const PUnit
-  | .skip rest, n + 1 => Ty.ContAtCP rest n
+/-- `Ty.toPFunctorAt`, on the constructors that follow a field-less one. -/
+@[reducible] def Ty.toPFunctorAtCP : CtorsWithPayload Ty → Nat → PFunctor.{0, 0}
+  | .here fields _, 0 => Ty.toPFunctorNE fields
+  | .here _ rest, n + 1 => Ty.toPFunctorAtList rest n
+  | .skip _, 0 => PFunctor.const PUnit
+  | .skip rest, n + 1 => Ty.toPFunctorAtCP rest n
 
-/-- `Ty.ContAt`, on a plain list of constructors. -/
-@[reducible] def Ty.ContAtList : List (List Ty) → Nat → Cont
-  | [], _ => Cont.const PEmpty
-  | fs :: _, 0 => Ty.ContList fs
-  | _ :: rest, n + 1 => Ty.ContAtList rest n
+/-- `Ty.toPFunctorAt`, on a plain list of constructors. -/
+@[reducible] def Ty.toPFunctorAtList : List (List Ty) → Nat → PFunctor.{0, 0}
+  | [], _ => PFunctor.const PEmpty
+  | fs :: _, 0 => Ty.toPFunctorList fs
+  | _ :: rest, n + 1 => Ty.toPFunctorAtList rest n
 
 end
 
 /-- The Lean type of the values of a type of the language: the shapes of its container. -/
-@[reducible] def Ty.Den (t : Ty) : Type := (Ty.Cont t).S
+@[reducible] def Ty.Den (t : Ty) : Type := (Ty.toPFunctor t).A
 
 /-- `Ty.Den`, on a node. -/
-@[reducible] def Ty.DenShape (s : TyShape Ty) : Type := (Ty.ContShape s).S
+@[reducible] def Ty.DenShape (s : TyShape Ty) : Type := (Ty.toPFunctorShape s).A
 
 /-- `Ty.Den`, on an array, a thunk or a lazy value.  A delay denotes the value it stands
     for: a `Term` is a total function of its environment, so forcing it twice cannot give
     two answers, and memoisation is invisible here. -/
-@[reducible] def Ty.DenCov (c : LeanPrimTyCovariant Ty) : Type := (Ty.ContCov c).S
+@[reducible] def Ty.DenCov (c : LeanPrimTyCovariant Ty) : Type := (Ty.toPFunctorCov c).A
 
 /-- `Ty.DenList`, on a list that has at least one entry. -/
-@[reducible] def Ty.DenNE (xs : NonEmptyList Ty) : Type := (Ty.ContNE xs).S
+@[reducible] def Ty.DenNE (xs : NonEmptyList Ty) : Type := (Ty.toPFunctorNE xs).A
 
 /-- `Ty.DenList`, on the fields of a record — of which there are at least two. -/
-@[reducible] def Ty.DenRecord (fs : LeanRecordSchema Ty) : Type := (Ty.ContRecord fs).S
+@[reducible] def Ty.DenRecord (fs : LeanRecordSchema Ty) : Type := (Ty.toPFunctorRecord fs).A
 
 /-- The product of the denotations of a list of types, in order: an environment, the
     fields of a constructor, the arguments of a call. -/
-@[reducible] def Ty.DenList (ts : List Ty) : Type := (Ty.ContList ts).S
+@[reducible] def Ty.DenList (ts : List Ty) : Type := (Ty.toPFunctorList ts).A
 
 /-- The fields of constructor number `t` of a tagged union, as a product.  Out of range
     it is `PEmpty`, which is what makes a dispatch on a union exhaustive without a
     bound. -/
 @[reducible] def Ty.DenAt (l : LeanTaggedUnionSchema Ty) (t : Nat) : Type :=
-  (Ty.ContAt l t).S
+  (Ty.toPFunctorAt l t).A
 
 /-- `Ty.DenAt`, on the constructors that follow a field-less one. -/
-@[reducible] def Ty.DenAtCP (c : CtorsWithPayload Ty) (t : Nat) : Type := (Ty.ContAtCP c t).S
+@[reducible] def Ty.DenAtCP (c : CtorsWithPayload Ty) (t : Nat) : Type := (Ty.toPFunctorAtCP c t).A
 
 /-- `Ty.DenAt`, on a plain list of constructors. -/
 @[reducible] def Ty.DenAtList (cs : List (List Ty)) (t : Nat) : Type :=
-  (Ty.ContAtList cs t).S
+  (Ty.toPFunctorAtList cs t).A
 
 /-- The values of a tagged union: a constructor number, with exactly that constructor's
     fields.  There is no way to build one whose tag is out of range, and no way to read a

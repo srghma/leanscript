@@ -270,7 +270,7 @@ def contTerm : Term sigAdd [] (natListTy ⇒ natT) :=
 A recursive tagged union has values in the model (`LeanScript.Ty.Den` gives it the W-tree
 of its constructors), so these terms run, and the kernel checks them against their Lean
 references.  The depth-`k` folds are evaluated with every answer remembered
-(`LeanScript.WTree.memo`), so a deeper look reads answers that are already there. -/
+(`LeanScript.WType.memo`), so a deeper look reads answers that are already there. -/
 
 example : Term.NoRecMk fibTerm := by no_rec_mk
 example : Term.NoRecMk hexaTerm := by no_rec_mk

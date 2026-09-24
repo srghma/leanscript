@@ -18,6 +18,14 @@ set_option autoImplicit false
 The grammar itself: `Term` and the families of branches it dispatches through, as one
 `mutual` block.  The prose that explains the recursion discipline, and the sketch this
 block was made from, are in `LeanScript.Expr.Design`.
+
+**No `DecidableEq`/`BEq`.**  The float literals (`Term.float_mk`, `Term.float32_mk`,
+`Term.floatModel_mk`, `Term.float32Model_mk`) are not what prevents it: `Float`, `Float32`
+and their models have `DecidableEq`.  What does is that some constructors hold
+**functions**: `Term.externCall` and `Term.externCallChecked` hold
+`call : TyWf.DenList σs → Extern τ` (resp. `→ Option (Extern τ)`), and `Term.extern` holds
+a `LeanScript.Extern`, which has no decidable equality either (see
+`LeanScript.LeanInitPureExtern`).  Equality of such functions cannot be decided.
 -/
 
 namespace LeanScript
@@ -89,10 +97,28 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   /-- A literal of the model of a 32-bit float: its bits, with their validity. -/
   | float32Model_mk : ∀ {Γ}, Float32.Model → Term Sg Γ (.prim .float32Model)
   -- externs
-  /-- A pure extern of `Init` (`LeanScript.LeanInitPureExtern`), applied to all of its
-      arguments.  Like a literal, it holds its arguments as values; its value is the Lean
-      function the extern implements, applied to them (`LeanScript.Extern.eval`). -/
+  /-- A pure extern of `Init` applied to values: an entry of the catalogue
+      `LeanScript.LeanInitPureExtern` with all of its arguments, and the proofs it takes
+      (`Term.extern (.lean_array_fget αt a i h)`).  Its value is `LeanScript.Extern.eval`,
+      the Lean function called on them.  Externs are not declarations of the signature. -/
   | extern : ∀ {Γ τ}, Extern τ → Term Sg Γ τ
+  /-- A pure extern of `Init` applied to the terms of its arguments, which are computed
+      when the term runs.  `call` builds the entry of the catalogue from their values
+      (`fun vs => .lean_nat_add vs.1 vs.2.1`); the value is `Extern.eval` of it.  This is
+      the form for an extern that takes no proof. -/
+  | externCall : ∀ {Γ σs τ}, Spine Sg Γ σs → (call : TyWf.DenList σs → Extern τ) →
+      Term Sg Γ τ
+  /-- A pure extern of `Init` that takes a proof, applied to the terms of its arguments.
+      The language erases propositions, so the proof is not in hand when the term runs:
+      `call` **decides** the proposition on the values of the arguments and builds the
+      entry of the catalogue with the proof it gets (`fun vs => if h : vs.2.1 < vs.1.size
+      then some (.lean_array_fget αt vs.1 vs.2.1 h) else none`), and the value is
+      `Extern.eval` of it.  Where the proposition does not hold — which cannot happen in a
+      term translated from a Lean program, since that program had to supply the proof —
+      the value is `fallback`'s. -/
+  | externCallChecked : ∀ {Γ σs τ}, Spine Sg Γ σs →
+      (call : TyWf.DenList σs → Option (Extern τ)) → (fallback : Term Sg Γ τ) →
+      Term Sg Γ τ
   -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`. -/
   | bool_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .bool) → Term Sg Γ τ → Term Sg Γ τ → Term Sg Γ τ

@@ -2,13 +2,21 @@ module
 
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
+-- The kernel checks of `Lean.Name.beq` below need its body, which `Init` does not expose.
+import all Init.Prelude
 
 /-!
 # Externs as terms
 
-`Term.extern` holds a pure extern of `Init` applied to its arguments, and `Term.eval`
-gives it the value of the Lean function it implements.  Each check below is settled by the
-kernel.
+`Term.extern` holds a pure extern of `Init` applied to its arguments (and to the proofs it
+takes), and `Term.eval` gives it the value of the Lean function it implements, called on
+them.  Each check below is settled by the kernel.
+
+The catalogue is in two levels (a family of entries per section of `Init`, and
+`LeanInitPureExtern` with one constructor per family), so no inductive has more
+constructors than compiled code can build (the runtime keeps a constructor's number in
+8 bits, and only `0 … 243` are for ordinary constructors): a *definition* may build any
+entry, `lean_string_compare` included (`externCompare` below).
 -/
 
 namespace TermTests
@@ -40,6 +48,25 @@ example : Term.run' (.extern (.lean_uint32_add 4000000000 500000000) :
 example : Term.run' (.extern (.lean_array_push (TyWf.prim .nat) #[1, 2] 3) :
     Term ⟨[], rfl⟩ [] (.array (.prim .nat))) = #[1, 2, 3] := rfl
 
+/-- `String.compare "a" "b"`, as a (compiled) definition.  `lean_string_compare` is the last
+    entry of the catalogue; with the catalogue in one inductive of 460 constructors, its
+    number (459) was too big for compiled code, and this definition did not compile. -/
+def externCompare : Term ⟨[], rfl⟩ [] TyWf.ordering := .extern (.lean_string_compare "a" "b")
+
+example : Term.run' externCompare = TyWf.Den.ofOrdering (String.compare "a" "b") := rfl
+
+/-- An entry is written through its shorthand, `.lean_nat_add 2 3`, which unfolds to the
+    constructor of its family wrapped in the one of the catalogue. -/
+example : (.lean_nat_add 2 3 : Extern (.prim .nat)) = .preludeExtern (.lean_nat_add 2 3) := rfl
+
+/-- The shorthands are patterns too. -/
+def isNatAdd : {τ : TyWf} → Extern τ → Bool
+  | _, .lean_nat_add _ _ => true
+  | _, _ => false
+
+example : isNatAdd (.lean_nat_add 2 3 : Extern (.prim .nat)) = true := by decide
+example : isNatAdd (.lean_nat_sub 2 3 : Extern (.prim .nat)) = false := by decide
+
 /-- An extern whose result is an `Ordering`: the enum with three constructors. -/
 example (a b : String) : Term.run' (.extern (.lean_string_compare a b) :
     Term ⟨[], rfl⟩ [] TyWf.ordering) = TyWf.Den.ofOrdering (String.compare a b) := rfl
@@ -49,9 +76,27 @@ example : Term.run' (.extern (.lean_string_utf8_get_opt__String_Pos_Raw_get? "ab
     Term ⟨[], rfl⟩ [] (TyWf.option (.prim .char))) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
   rfl
 
-/-- `Nat.gcd`, as a term. -/
-example : Term.run' (.extern (.lean_nat_gcd__Nat_gcd 12 18) :
-    Term ⟨[], rfl⟩ [] (.prim .nat)) = 6 := by decide
+/-- An extern that takes a proof holds it: `Array.getInternal #[1, 2, 3] 1 h`, with the
+    proof `h : 1 < #[1, 2, 3].size`, is `Array.getInternal` called with that proof. -/
+example : Term.run' (.extern (.lean_array_fget (TyWf.prim .nat) #[1, 2, 3] 1 (by decide)) :
+    Term ⟨[], rfl⟩ [] (.prim .nat)) = 2 := by decide
+
+/-- `String.Pos.next`: its argument is a position into the string `s`, whose type names
+    `s`, so `s` is a parameter of the entry, fixed where the term is written. -/
+example : Term.run' (.extern (.lean_string_utf8_next_fast__String_Pos_next
+      ("ab" : String).startPos (by decide)) :
+    Term ⟨[], rfl⟩ [] (.prim (.stringPos "ab"))) = ("ab" : String).startPos.next (by decide) :=
+  rfl
+
+/-- `Lean.Name.beq`: a `Lean.Name` is the recursive tagged union
+    `anonymous | str self String | num self Nat` (`TyWf.leanName`). -/
+example : Term.run' (.extern (.lean_name_eq (TyWf.Den.ofName `a.b) (TyWf.Den.ofName `a.b)) :
+    Term ⟨[], rfl⟩ [] (.prim .bool)) = true := by decide +kernel
+
+example : Term.run' (.extern (.lean_name_eq (TyWf.Den.ofName `a.b) (TyWf.Den.ofName `a.«1»)) :
+    Term ⟨[], rfl⟩ [] (.prim .bool)) = false := by decide +kernel
+
+example : tyWfOf Lean.Name = TyWf.leanName := rfl
 
 /-- An extern whose result is a pair: the record of its two fields.  `Float.frExp` does not
     reduce in the kernel, so this only checks that the value is the pair `Float.frExp`

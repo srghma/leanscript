@@ -101,6 +101,11 @@ namespace TyWf
     `Ordering`. -/
 @[reducible] def ordering : TyWf := ⟨.enum ⟨0, -1⟩, by ty_wf⟩
 
+/-- `Lean.Name`: the recursive tagged union `anonymous | str self String | num self Nat`,
+    the tree `deriving LeanScriptTyWf` gives the declaration. -/
+@[reducible] def leanName : TyWf :=
+  ⟨.recTaggedUnion (.skip (.here ⟨.self, [.prim .string]⟩ [[.self, .prim .nat]])), by ty_wf⟩
+
 end TyWf
 
 instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) := ⟨TyWf.option (tyWfOf α)⟩
@@ -114,6 +119,8 @@ instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
 instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩
 
 instance : LeanScriptTyWf Ordering := ⟨TyWf.ordering⟩
+
+instance : LeanScriptTyWf Lean.Name := ⟨TyWf.leanName⟩
 
 end LeanScript
 

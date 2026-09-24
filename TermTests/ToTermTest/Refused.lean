@@ -40,13 +40,8 @@ unsafe def unsafeId (n : Nat) : Nat := n
 #guard_msgs (error) in
 example : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term unsafeId
 
-/-- An array and a list are different types, so there is no term for `Array.toList`. -/
-def asList (a : Array Nat) : List Nat := a.toList
-
-/-- error: `#leanscript_to_term`: a list and an array are different types here — `List α` is the recursive tagged union it is and `Array α` is `Ty.array` — and the grammar builds an array from all of its elements at once, so there is no term for `Array.toList` -/
-#guard_msgs (error) in
-example : Term sig0 [] (TyWf.array (TyWf.prim .nat) ⇒ tyWfOf (List Nat)) :=
-  #leanscript_to_term asList
+-- `Array.toList` used to be refused here; it is the extern `lean_array_to_list`, and is now
+-- translated (`TermTests/ExternToTermTest.lean`).
 
 /-- A well-founded recursion is refused. -/
 def halve (n : Nat) : Nat :=

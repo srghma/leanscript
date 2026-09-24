@@ -32,7 +32,7 @@ hypothesis `LeanScript.Term.NoRecMk`, the last argument of `Term.eval`; the tact
 recursive **tagged union** does have values — the W-tree of its constructors — and all
 four of its forms are interpreted: `Term.recTaggedUnion_mk` builds a node
 (`TyWf.DenRec.mk`), a dispatch takes one level off (`TyWf.DenRec.unfold`), and the fold
-of any depth `k` is `WTree.memoFold`, which computes the answer at every node once,
+of any depth `k` is `WType.memoFold`, which computes the answer at every node once,
 bottom-up, and stores it beside the node, so a branch that looks further down reads
 answers that are already there.  All of it is structural, on the term and on the value,
 so the evaluator is still total with no fuel.  `LeanScript.RecUnionEvalFacts` states what
@@ -101,8 +101,13 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .float32_mk x, _, _ => x
   | _, _, .floatModel_mk m, _, _ => m
   | _, _, .float32Model_mk m, _, _ => m
-  -- externs: the Lean function the extern implements, applied to its arguments
+  -- externs: the Lean function the extern implements, called on its arguments
   | _, _, .extern e, _, _ => Extern.eval e
+  | _, _, .externCall args call, env, h => Extern.eval (call (Spine.eval G args env h))
+  | _, _, .externCallChecked args call fallback, env, h =>
+      match call (Spine.eval G args env h.1) with
+      | some e => Extern.eval e
+      | none => Term.eval G fallback env h.2
   -- case analysis on a leaf
   | _, _, .bool_casesOn c t e, env, h =>
       let c' : Bool := Term.eval G c env h.1
@@ -203,7 +208,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1))
         (Term.eval G dflt env h.2.2) h.2.1
   | _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases, env, h =>
-      WTree.memoFold
+      WType.memoFold
         (fun node kids =>
           TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) node.1.val
             ⟨node.2, kids⟩ h.2)
@@ -363,7 +368,7 @@ def TaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {l : LeanTaggedUnionSchema (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
     (cases : TaggedUnionFoldKCases Sg l₀ bind Γ l τ k) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
-    (t : Nat) → (Ty.ContAt (recL l) t).Ext (RecMemo l₀ τ) →
+    (t : Nat) → (Ty.toPFunctorAt (recL l) t).Obj (RecMemo l₀ τ) →
     TaggedUnionFoldKCases.NoRecMk cases → TyWf.Den τ
   | _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e, h =>
       FoldKBranch.eval G b0 env mkEnv e h.1
@@ -382,7 +387,7 @@ def CtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {c : CtorsWithPayload (TyWfIn 1)} → {τ : TyWf} → {k : Nat} →
     (cases : CtorsWithPayloadFoldKCases Sg l₀ bind Γ c τ k) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
-    (t : Nat) → (Ty.ContAtCP (c.map TyWfIn.toTy) t).Ext (RecMemo l₀ τ) →
+    (t : Nat) → (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj (RecMemo l₀ τ) →
     CtorsWithPayloadFoldKCases.NoRecMk cases → TyWf.Den τ
   | _, _, _, _, _, _, .here b _, env, mkEnv, 0, e, h => FoldKBranch.eval G b env mkEnv e h.1
   | _, _, _, _, _, _, .here _ rest, env, mkEnv, n + 1, e, h =>
@@ -398,7 +403,7 @@ def TaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {cs : List (List (TyWfIn 1))} → {τ : TyWf} → {k : Nat} →
     (cases : TaggedUnionFoldKCasesRest Sg l₀ bind Γ cs τ k) → Env Γ →
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
-    (t : Nat) → (Ty.ContAtList (cs.map (List.map TyWfIn.toTy)) t).Ext (RecMemo l₀ τ) →
+    (t : Nat) → (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ) →
     TaggedUnionFoldKCasesRest.NoRecMk cases → TyWf.Den τ
   | _, _, _, _, _, _, .nil, _, _, _, e, _ => PEmpty.elim e.1
   | _, _, _, _, _, _, .cons b _, env, mkEnv, 0, e, h => FoldKBranch.eval G b env mkEnv e h.1
@@ -456,10 +461,28 @@ theorem Term.eval_thunk_force_mk (e : Term Sg Γ τ) (env : Env Γ) (he : Term.N
     Term.eval G (.thunk_force (.thunk_mk e)) env he = Term.eval G e env he :=
   rfl
 
-/-- An extern is the Lean function it implements, applied to its arguments. -/
+/-- An extern is the Lean function it implements. -/
 theorem Term.eval_extern (e : Extern τ) (env : Env Γ) (h : Term.NoRecMk (Sg := Sg) (.extern e)) :
     Term.eval G (.extern e) env h = Extern.eval e :=
   rfl
+
+/-- An extern applied to terms is the Lean function called on their values. -/
+theorem Term.eval_externCall {σs : List TyWf} (args : Spine Sg Γ σs)
+    (call : TyWf.DenList σs → Extern τ) (env : Env Γ) (h : Spine.NoRecMk args) :
+    Term.eval G (.externCall args call) env h = Extern.eval (call (Spine.eval G args env h)) :=
+  rfl
+
+/-- An extern that takes a proof, applied to terms whose values satisfy the proposition,
+    is the Lean function called on those values, with the proof. -/
+theorem Term.eval_externCallChecked_of_some {σs : List TyWf} (args : Spine Sg Γ σs)
+    (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ τ) (env : Env Γ)
+    (h : Spine.NoRecMk args ∧ Term.NoRecMk fallback) (e : Extern τ)
+    (he : call (Spine.eval G args env h.1) = some e) :
+    Term.eval G (.externCallChecked args call fallback) env h = Extern.eval e := by
+  show (match call (Spine.eval G args env h.1) with
+    | some e => Extern.eval e
+    | none => Term.eval G fallback env h.2) = _
+  rw [he]
 
 /-- The tag of a tagged value is the constructor it was built with. -/
 theorem Term.eval_taggedUnion_mk_fst {l : LeanTaggedUnionSchema TyWf} (t : Nat)

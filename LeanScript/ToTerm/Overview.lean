@@ -60,10 +60,10 @@ array literal translates and a non-literal array does not.  `List α` is the tre
 `recTaggedUnion_casesOn` and `List.rec` is `recTaggedUnion_rec`.  A list therefore does
 not have to be written out.
 
-The two are not interchangeable, and neither `Array.toList` nor a `match` on an array has
-a term — with one exception: a structurally recursive function on lists applied to
-`a.toList` is the fold of the array `a`, `array_rec k`, since Lean cannot recurse
-structurally on an array itself.  Its branch is given the head and the values at the
+The two are different types.  `Array.toList` is the pure extern `lean_array_to_list`, so
+it translates (to `Term.externCall`), but a `match` on an array has no term.  A
+structurally recursive function on lists applied to `a.toList` is the fold of the array
+`a`, `array_rec k`, since Lean cannot recurse structurally on an array itself.  Its branch is given the head and the values at the
 `k + 1` nearest suffixes, so a `go` that reads a later element or the tail is refused.  A list is a recursive tagged union, which `LeanScript.Ty.Den` gives the W-tree
 of its constructors as values, so a translated list program is run by
 `LeanScript.Term.eval` like any other, and `LeanScript.Ty.DenRec.toList` reads a list
@@ -76,6 +76,16 @@ A **constructor is inlinable**: an application of one is built in place, as the
 projections and anything marked `@[inline]`, `@[macro_inline]`, `@[always_inline]` or
 `@[reducible]` (an `abbrev`): their definition is translated and cached, and the
 translation is used at the call site.
+
+A call of a function implemented by a **pure extern of `Init`** is the entry of the
+catalogue `LeanScript.LeanInitPureExtern` that models it (`LeanScript/ToTerm/Extern.lean`):
+`Term.externCall`, the terms of the arguments and the function that builds the entry from
+their values; for an entry that takes a proof (`Array.getInternal`, `Array.set`, ...),
+`Term.externCallChecked`, which decides the proposition when the term runs and hands the
+proof to the entry, with a fallback for the values that do not satisfy it (a Lean program
+cannot give those); and, when every argument is a closed Lean value, `Term.extern` with the
+program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
+`@[extern]`, and `Nat.gcd._unary` is read as `Nat.gcd`.
 
 Every **other** top-level function must be declared in the signature: it is translated
 to `Term.global`, the reference the signature gives it.  A call of a function that is

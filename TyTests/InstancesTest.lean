@@ -26,6 +26,18 @@ open LeanScript
 
 namespace InstancesTest
 
+/-! ## Floats have decidable equality
+
+`Float`, `Float32` and their models have `DecidableEq` (equality of the bits), so a type
+holding them is not kept from having one.  Note that `==` on `Float` is IEEE equality,
+which is not `LawfulBEq` (`NaN != NaN`, `0.0 == -0.0`), so it is not the `BEq` that
+comes from `DecidableEq`. -/
+
+example : DecidableEq Float := inferInstance
+example : DecidableEq Float32 := inferInstance
+example : DecidableEq Float.Model := inferInstance
+example : DecidableEq Float32.Model := inferInstance
+
 /-! ## `Repr` -/
 
 /--
