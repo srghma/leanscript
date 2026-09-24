@@ -316,17 +316,64 @@ def contCases :
 def contTerm : Term sigAdd [] (lsTy ⇒ natT) :=
   .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) contCases)
 
-/-! ## 7. What the evaluator says about these terms
+/-! ## 7. Running the terms
 
-A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is a
-term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so: taking a value
-apart is fine — there is nothing to take apart — while *building* one is not. -/
+A mutual family denotes the indexed W-tree of its members (`LeanScript.Ty.Den`), so the
+evaluator runs every fold above.  The checks below build Peano naturals and lists as terms,
+run the programs on them with `add` and `mul` supplied as `Nat.add` and `Nat.mul`, and
+compare with the Lean references of §0; they are closed by the kernel. -/
 
-example : Term.NoRecMk fibTerm := by no_rec_mk
-example : Term.NoRecMk hexaTerm := by no_rec_mk
-example : Term.NoRecMk fibTRTerm := by no_rec_mk
-example : Term.NoRecMk fibPairTerm := by no_rec_mk
-example : Term.NoRecMk contTerm := by no_rec_mk
+/-- The top-level declarations of `sigAdd`, as Lean functions. -/
+def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)
+
+/-- The Peano natural `n`, as a term. -/
+def peNat : Nat → Term sigAdd [] peTy
+  | 0 => zeroTerm
+  | n + 1 => .ap succTerm (peNat n)
+
+/-- The empty list, as a term. -/
+def lsNil : Term sigAdd [] lsTy :=
+  .mutualRecursiveFamily_mk famLs lsWf (value := .ctors _ 0 (fields := .nil))
+
+/-- `a :: as`, as a term. -/
+def lsCons (a : Nat) (as : Term sigAdd [] lsTy) : Term sigAdd [] lsTy :=
+  .mutualRecursiveFamily_mk famLs lsWf
+    (value := .ctors _ 1 (fields := .cons (.nat_mk a) (.cons as .nil)))
+
+/-- A list of naturals, as a term. -/
+def lsList : List Nat → Term sigAdd [] lsTy
+  | [] => lsNil
+  | a :: as => lsCons a (lsList as)
+
+/-- Run a program over member `0` on the Peano natural `n`. -/
+def runPe (t : Term sigAdd [] (peTy ⇒ natT)) (n : Nat) : Nat :=
+  Term.run envAdd (.ap t (peNat n))
+
+/-- Run a program over member `1` on a list. -/
+def runLs (t : Term sigAdd [] (lsTy ⇒ natT)) (l : List Nat) : Nat :=
+  Term.run envAdd (.ap t (lsList l))
+
+example : (List.range 11).map (runPe fibTerm) = (List.range 11).map (Pe.fib ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe tribTerm) = (List.range 11).map (Pe.trib ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe tetraTerm) =
+    (List.range 11).map (Pe.tetra ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe pentaTerm) =
+    (List.range 11).map (Pe.penta ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe hexaTerm) = (List.range 11).map (Pe.hexa ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe fibTRTerm) = (List.range 11).map (Pe.fib ∘ Pe.ofNat) := by
+  decide +kernel
+example : (List.range 11).map (runPe fibPairTerm) =
+    (List.range 11).map (Pe.fib ∘ Pe.ofNat) := by
+  decide +kernel
+example : runPe fibTerm 10 = 55 := by decide +kernel
+example : runLs contTerm [] = 1 := by decide +kernel
+example : runLs contTerm [3, 1, 4] = 3 * (1 * 4 + 1) + 4 := by decide +kernel
+example : runLs contTerm [1, 1, 1, 1, 1, 1] = 13 := by decide +kernel
 
 /-! ## 8. A depth is needed: what cannot be written without one
 

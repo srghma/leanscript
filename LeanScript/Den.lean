@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Ty.TyWfIn
 public import LeanScript.Den.PFunctor
+public import LeanScript.Den.IPFunctor
 
 @[expose] public section
 
@@ -30,6 +31,7 @@ is the type of the values of `τ`.
 | `Ty.recTaggedUnion l` | a **W-tree**: a node is a constructor number with that constructor's fields with their occurrences of the union blanked out, and one subtree per occurrence |
 | `Ty.recObject fs` | a **W-tree**: a node is the record's fields with its occurrences of itself blanked out, and one subtree per occurrence |
 | `Ty.recAlias b` | a **W-tree**: a node is the body with its occurrences of the newtype blanked out, and one subtree per occurrence |
+| `Ty.mutualRecursiveFamily f` | an **indexed W-tree**: a node of member `i` is that member's value with its occurrences of members blanked out, and one subtree per occurrence, rooted at the member it names |
 
 ## Recursive shapes: containers
 
@@ -53,12 +55,18 @@ so each denotes a W-type too, and `LeanScript.Den.Rec` relates a node of it to t
 or newtype that could only be built from an occurrence of itself has no finite value, and
 its W-type is empty, which is the right answer: `ty_wf` rejects those anyway.
 
-A **mutual family** (`Ty.mutualRecursiveFamily`) and the occurrence leaf
-`Ty.familyMember` still denote `PEmpty` — a family needs an *indexed* W-type — and
+A **mutual family** (`Ty.mutualRecursiveFamily f`) is the least fixpoint of *one container
+per member*, whose holes are its occurrences `Ty.familyMember j` of members: an indexed
+polynomial functor (`LeanScript.IPFunctor`, in `LeanScript.Den.IPFunctor`), which records
+the member each hole holds.  `Ty.toIPF` is the container of a type written in the scope
+of a family, `Ty.toIPFFamily f` the list of containers of `f`'s members, and the values of
+the family are the indexed W-tree `FamW (Ty.toIPFFamily f) f.memberIdx` rooted at the
+member `f` selects.  `LeanScript.Den.Family` relates a node of it to the member's unfolded
+constructors, fields or body (`Ty.DenFam.mk`, `Ty.DenFam.unfold`).
+
+The occurrence leaves are not types on their own: `Ty.familyMember` denotes `PEmpty`, and
 `Ty.self`, which only occurs outside a binder in an ill-formed tree, denotes `PUnit`, the
-one hole.  So `LeanScript.Term.eval` still carries `LeanScript.Term.NoRecMk`, the
-hypothesis that the term builds no value of a mutual family; see the section of
-`LeanScript.Eval.NoRecMk` that states it.
+one hole.  Every *closed* type has values, so `LeanScript.Term.eval` interprets every term.
 
 Every definition here is written the way `LeanScript.Ty.beq` is — one function per shape
 of the nested tree, all in one `mutual` block — so that each recursive call is on a
@@ -78,7 +86,7 @@ mutual
   | .recTaggedUnion l => PFunctor.mu (PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val))
   | .recObject fs => PFunctor.mu (Ty.toPFunctorRecord fs)
   | .recAlias b => PFunctor.mu (Ty.toPFunctor b)
-  | .mutualRecursiveFamily _ => PFunctor.const PEmpty
+  | .mutualRecursiveFamily f => PFunctor.const (FamW (Ty.toIPFFamily f) f.memberIdx)
 
 /-- `Ty.toPFunctor`, on a node.  The domain of an arrow is used as a type — its holes are
     ignored, and `LeanScript.Ty.WfIn` keeps `Ty.self` out of it anyway. -/
@@ -130,6 +138,89 @@ mutual
   | [], _ => PFunctor.const PEmpty
   | fs :: _, 0 => Ty.toPFunctorList fs
   | _ :: rest, n + 1 => Ty.toPFunctorAtList rest n
+
+/-- The container a type **written in the scope of a mutual family** describes: its values
+    are the shapes, a hole is an occurrence `Ty.familyMember j`, and its target is `j`.
+    A nested binder is closed, so it is a constant, as is `Ty.self`, which a family's scope
+    does not have. -/
+@[reducible] def Ty.toIPF : Ty → IPFunctor
+  | .self => IPFunctor.const PUnit
+  | .familyMember j => IPFunctor.hole j
+  | .shape s => Ty.toIPFShape s
+  | .recTaggedUnion l =>
+      IPFunctor.const (PFunctor.mu (PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val))).A
+  | .recObject fs => IPFunctor.const (PFunctor.mu (Ty.toPFunctorRecord fs)).A
+  | .recAlias b => IPFunctor.const (PFunctor.mu (Ty.toPFunctor b)).A
+  | .mutualRecursiveFamily f => IPFunctor.const (FamW (Ty.toIPFFamily f) f.memberIdx)
+
+/-- `Ty.toIPF`, on a node.  The domain of an arrow is a closed type. -/
+@[reducible] def Ty.toIPFShape : TyShape Ty → IPFunctor
+  | .prim p => IPFunctor.const p.denote
+  | .fn a b => IPFunctor.pi (Ty.toPFunctor a).A (Ty.toIPF b)
+  | .primCovariant c => Ty.toIPFCov c
+  | .enum s => IPFunctor.const (Fin s.nOfConstructors)
+  | .record fs => Ty.toIPFRecord fs
+  | .taggedUnion l => IPFunctor.sigma (Fin l.length) (fun t => Ty.toIPFAt l t.val)
+
+/-- `Ty.toIPF`, on an array, a thunk or a lazy value. -/
+@[reducible] def Ty.toIPFCov : LeanPrimTyCovariant Ty → IPFunctor
+  | .array a => IPFunctor.array (Ty.toIPF a)
+  | .thunk a => Ty.toIPF a
+  | .lazy a => Ty.toIPF a
+
+/-- `Ty.toIPFList`, on a list that has at least one entry. -/
+@[reducible] def Ty.toIPFNE : NonEmptyList Ty → IPFunctor
+  | ⟨a, as⟩ => IPFunctor.prod (Ty.toIPF a) (Ty.toIPFList as)
+
+/-- `Ty.toIPFList`, on the fields of a record. -/
+@[reducible] def Ty.toIPFRecord : LeanRecordSchema Ty → IPFunctor
+  | ⟨a, b, rest⟩ => IPFunctor.prod (Ty.toIPF a) (IPFunctor.prod (Ty.toIPF b) (Ty.toIPFList rest))
+
+/-- The product of the containers of a list of types, in order. -/
+@[reducible] def Ty.toIPFList : List Ty → IPFunctor
+  | [] => IPFunctor.const PUnit
+  | τ :: ts => IPFunctor.prod (Ty.toIPF τ) (Ty.toIPFList ts)
+
+/-- The container of the fields of constructor number `t`; out of range it is empty. -/
+@[reducible] def Ty.toIPFAt : LeanTaggedUnionSchema Ty → Nat → IPFunctor
+  | .payloadFirst fields _ _, 0 => Ty.toIPFNE fields
+  | .payloadFirst _ next _, 1 => Ty.toIPFList next
+  | .payloadFirst _ _ rest, n + 2 => Ty.toIPFAtList rest n
+  | .skip _, 0 => IPFunctor.const PUnit
+  | .skip rest, n + 1 => Ty.toIPFAtCP rest n
+
+/-- `Ty.toIPFAt`, on the constructors that follow a field-less one. -/
+@[reducible] def Ty.toIPFAtCP : CtorsWithPayload Ty → Nat → IPFunctor
+  | .here fields _, 0 => Ty.toIPFNE fields
+  | .here _ rest, n + 1 => Ty.toIPFAtList rest n
+  | .skip _, 0 => IPFunctor.const PUnit
+  | .skip rest, n + 1 => Ty.toIPFAtCP rest n
+
+/-- `Ty.toIPFAt`, on a plain list of constructors. -/
+@[reducible] def Ty.toIPFAtList : List (List Ty) → Nat → IPFunctor
+  | [], _ => IPFunctor.const PEmpty
+  | fs :: _, 0 => Ty.toIPFList fs
+  | _ :: rest, n + 1 => Ty.toIPFAtList rest n
+
+/-- The container of one member of a family: its constructors, its fields or its body. -/
+@[reducible] def Ty.toIPFMember : LeanFamMemberSchema Ty → IPFunctor
+  | .ctors l => IPFunctor.sigma (Fin l.length) (fun t => Ty.toIPFAt l t.val)
+  | .record fs => Ty.toIPFRecord fs
+  | .alias b => Ty.toIPF b
+
+/-- The containers of a list of members, in order. -/
+@[reducible] def Ty.toIPFMemberList : List (LeanFamMemberSchema Ty) → List IPFunctor
+  | [] => []
+  | m :: ms => Ty.toIPFMember m :: Ty.toIPFMemberList ms
+
+/-- The containers of the members of a family, in declaration order
+    (`LeanScript.Ty.toIPFFamily_eq` says it is `f.members.map Ty.toIPFMember`). -/
+@[reducible] def Ty.toIPFFamily : LeanMutualRecFamily Ty → List IPFunctor
+  | .selectedThenMore before current next after =>
+      Ty.toIPFMemberList before ++ Ty.toIPFMember current :: Ty.toIPFMember next ::
+        Ty.toIPFMemberList after
+  | .selectedLast first before current =>
+      Ty.toIPFMember first :: (Ty.toIPFMemberList before ++ [Ty.toIPFMember current])
 
 end
 

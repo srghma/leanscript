@@ -171,10 +171,15 @@ namespace LeanMutualRecFamily
 
 variable {α : Type}
 
-/-- The same family, with member `i` selected — and the family unchanged when `i` is not
-    a member of it, which `LeanScript.Ty.WfIn` rules out. -/
+/-- The same family, with member `i` selected — and member `0` selected when `i` is not a
+    member of it, which `LeanScript.Ty.WfIn` rules out.  Falling back on member `0`, rather
+    than on the member `f` selects, makes the member selected depend on the members
+    alone, which is what lets a value of `Ty.familyMember i` be a node of the family's
+    W-type (`LeanScript.FamW`) without a proof that `i` is in range. -/
 def select (f : LeanMutualRecFamily α) (i : Nat) : LeanMutualRecFamily α :=
-  (ofMembers? f.members i).getD f
+  match ofMembers? f.members i with
+  | some g => g
+  | none => (ofMembers? f.members 0).getD f
 
 
 end LeanMutualRecFamily

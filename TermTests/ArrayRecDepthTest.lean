@@ -154,13 +154,13 @@ def loopBases : ArrayRecBases sigArith ArrCtx natT Acc2 0 := .nil loopZero
 
 /-- The short-list answers `Term.eval` uses for the loop. -/
 def loopEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Acc2 :=
-  fun m => ArrayRecBases.eval envArith loopBases env m (by no_rec_mk)
+  fun m => ArrayRecBases.eval envArith loopBases env m
 
 /-- The branch `Term.eval` uses for the loop. -/
 def loopEvalS (env : Env ArrCtx) :
     Nat → List Nat → NatWin Acc2 1 → TyWf.Den Acc2 :=
   fun hd tl w =>
-    Term.eval envArith (loopStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env) (by no_rec_mk)
+    Term.eval envArith (loopStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env)
 
 theorem loopEvalFold_eq (env : Env ArrCtx) (l : List Nat) (a b : Nat) :
     listFoldK (τ := Acc2) (k := 0) (loopEvalZ env) (loopEvalS env) l a b = contTR l a b :=
@@ -256,11 +256,11 @@ theorem listFoldK_eq_contPair (z : List Nat → TyWf.Den Pair)
 def pairBases : ArrayRecBases sigArith ArrCtx natT Pair 0 := .nil pairZero
 
 def pairEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Pair :=
-  fun m => ArrayRecBases.eval envArith pairBases env m (by no_rec_mk)
+  fun m => ArrayRecBases.eval envArith pairBases env m
 
 def pairEvalS (env : Env ArrCtx) : Nat → List Nat → NatWin Pair 1 → TyWf.Den Pair :=
   fun hd tl w =>
-    Term.eval envArith (pairStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env) (by no_rec_mk)
+    Term.eval envArith (pairStep (Γ := ArrCtx)) (hd, tl.toArray, Env.ofWin w env)
 
 theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
     listFoldK (τ := Pair) (k := 0) (pairEvalZ env) (pairEvalS env) l =

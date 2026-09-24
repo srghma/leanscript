@@ -118,8 +118,7 @@ def constDown_term : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
 example : run constDown_term 5 = 7 := by kernel_rfl
 
 /-- A recursion on a list, written as a `match`: the fold `recTaggedUnion_rec`, which is
-    what `sumList`'s `List.rec` translates to.  A recursive tree has no values, so the
-    term is checked by its type. -/
+    what `sumList`'s `List.rec` translates to; it is the same term as `sumList_term`. -/
 def sumL : List Nat → Nat
   | [] => 0
   | x :: xs => x + sumL xs

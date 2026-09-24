@@ -75,8 +75,8 @@ example : runArith contTerm #[1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
     environment. -/
 def contEvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 1)
-    (fun m => ArrayRecBases.eval envArith contBases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith contBranch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
+    (fun m => ArrayRecBases.eval envArith contBases env m)
+    (fun hd tl w => Term.eval envArith contBranch ((hd, tl.toArray, Env.ofWin w env)))
 
 /-- That fold is the continuant — by the two equations of `LeanScript.ArrayRecFacts`,
     whatever the environment is. -/
@@ -136,8 +136,8 @@ example : runArith cont3Term #[1, 1, 1, 1, 1, 1] = 17 := by kernel_rfl
 /-- The fold `Term.eval` runs for `cont3Term`. -/
 def cont3EvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 2)
-    (fun m => ArrayRecBases.eval envArith cont3Bases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith cont3Branch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
+    (fun m => ArrayRecBases.eval envArith cont3Bases env m)
+    (fun hd tl w => Term.eval envArith cont3Branch ((hd, tl.toArray, Env.ofWin w env)))
 
 theorem cont3EvalFold_eq (env : Env ArrCtx) (l : List Nat) : cont3EvalFold env l = cont3 l :=
   listFoldK_eq_cont3 _ _ rfl (fun _ => rfl) (fun _ _ => rfl) (fun _ _ _ => rfl) l
@@ -172,8 +172,8 @@ example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := by kernel_rfl
 /-- The fold `Term.eval` runs for `cont4Term`. -/
 def cont4EvalFold (env : Env ArrCtx) : List Nat → Nat :=
   listFoldK (τ := natT) (k := 3)
-    (fun m => ArrayRecBases.eval envArith cont4Bases env m (by no_rec_mk))
-    (fun hd tl w => Term.eval envArith cont4Branch ((hd, tl.toArray, Env.ofWin w env)) (by no_rec_mk))
+    (fun m => ArrayRecBases.eval envArith cont4Bases env m)
+    (fun hd tl w => Term.eval envArith cont4Branch ((hd, tl.toArray, Env.ofWin w env)))
 
 theorem cont4EvalFold_eq (env : Env ArrCtx) (l : List Nat) : cont4EvalFold env l = cont4 l :=
   listFoldK_eq_cont4 _ _ rfl (fun _ => rfl) (fun _ _ => rfl) (fun _ _ _ => rfl)

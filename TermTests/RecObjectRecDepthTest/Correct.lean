@@ -36,7 +36,7 @@ abbrev fibStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctorRecord (objF cellSchema)).A)
       (kids : (Ty.toPFunctorRecord (objF cellSchema)).B node → ObjMemo cellSchema natT) =>
     Term.eval envAdd fibBranch (Env.append (objRecEnv cellSchema (by ty_wf) natT 1 node kids) e)
-      (by no_rec_mk)
+     
 
 set_option maxHeartbeats 4000000 in
 /-- Two cells down, the fold adds the answers at the two cells below. -/
@@ -66,7 +66,7 @@ abbrev contStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctorRecord (objF cellSchema)).A)
       (kids : (Ty.toPFunctorRecord (objF cellSchema)).B node → ObjMemo cellSchema natT) =>
     Term.eval envAdd contBranch (Env.append (objRecEnv cellSchema (by ty_wf) natT 1 node kids) e)
-      (by no_rec_mk)
+     
 
 set_option maxHeartbeats 4000000 in
 /-- Two cells down, the continuant multiplies the label by the answer one cell down and
@@ -97,7 +97,7 @@ abbrev fibTRStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctorRecord (objF cellSchema)).A)
       (kids : (Ty.toPFunctorRecord (objF cellSchema)).B node → ObjMemo cellSchema loopTy) =>
     Term.eval envAdd fibTRBranch
-      (Env.append (objRecEnv cellSchema (by ty_wf) loopTy 0 node kids) e) (by no_rec_mk)
+      (Env.append (objRecEnv cellSchema (by ty_wf) loopTy 0 node kids) e)
 
 /-- The fold of `fibTRTerm` is the loop `Cell.fibLoopTR`, in every environment. -/
 theorem fibTR_memoFold (e : Env CCtx) : ∀ (c : Cell) (a b : Nat),
@@ -118,7 +118,7 @@ abbrev fibPairStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctorRecord (objF cellSchema)).A)
       (kids : (Ty.toPFunctorRecord (objF cellSchema)).B node → ObjMemo cellSchema pairTy) =>
     Term.eval envAdd fibPairBranch
-      (Env.append (objRecEnv cellSchema (by ty_wf) pairTy 0 node kids) e) (by no_rec_mk)
+      (Env.append (objRecEnv cellSchema (by ty_wf) pairTy 0 node kids) e)
 
 /-- The fold of `fibPairTerm` carries the pair `Cell.fibPair`, in every environment. -/
 theorem fibPair_memoFold (e : Env CCtx) : ∀ c : Cell,

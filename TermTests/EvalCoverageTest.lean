@@ -6,19 +6,19 @@ public import LeanScript.Eval
 /-!
 # Which terms does the evaluator evaluate?
 
-`Term.eval` is total on the terms that satisfy `Term.NoRecMk` — the terms that build no
-value of a **mutual family** — and on nothing else.  A recursive *tagged union*, a
-recursive *record* and a recursive *newtype* have values in the model (a W-tree of their
-payload), so their introduction forms are inside the fragment.  This file checks, with
-the kernel, that
+**All of them.**  `Term.eval` is a total function on every term: every type of the language
+has values in the model `TyWf.Den` — a recursive *tagged union*, a recursive *record* and
+a recursive *newtype* denote the W-tree of their payload, and a *mutual family* the
+indexed W-tree of its members — so every introduction form, the one of a mutual family
+included, has a value.  This file checks, with the kernel, that
 
-* a closed term such as `natNil` (the empty list of naturals) **does** satisfy
-  `Term.NoRecMk`, and the evaluator runs it and the eliminators applied to it: `natHead`
-  and `natFoldZero` are now told apart;
+* a closed term such as `natNil` (the empty list of naturals) runs, and so do the
+  eliminators applied to it: `natHead` and `natFoldZero` are told apart;
 * so does a rose tree (a recursive record), which the evaluator builds and takes apart;
-* the restriction that remains is real and cannot be lifted without changing the model
-  `TyWf.Den`: a mutual family denotes an **empty** type, so *no* function whatsoever
-  — not just this evaluator — can send every closed term to a value of its type.
+* so does a member of a mutual family, which the evaluator builds and dispatches on; the
+  statements that held when a family denoted an empty type — that no function at all
+  could send every closed term to a value of its type — are kept, commented out, as the
+  record of what changed, and `total_evaluator` is that function.
 -/
 
 namespace TermTests
@@ -56,8 +56,7 @@ def natFive : Term covEmptySig [] natListTy :=
   .recTaggedUnion_mk natListSchema (t := 1) (fields := .cons (.nat_mk 5) (.cons natNil .nil))
 
 /-! The four statements below held when a recursive tagged union denoted `PEmpty`.  They
-are **false** now that it denotes the W-tree of its constructors: `natNil` is inside the
-fragment, `natListTy` has values, and `natHead` and `natFoldZero` differ on `[5]`.  They
+are **false** now that it denotes the W-tree of its constructors: `natNil` has a value, `natListTy` has values, and `natHead` and `natFoldZero` differ on `[5]`.  They
 are kept, commented out, as the record of what changed.
 
 ```
@@ -70,9 +69,6 @@ theorem run_natHead_eq_run_natFoldZero :
       Term.run (Sg := covEmptySig) GlobalEnv.nil natFoldZero
 ```
 -/
-
-/-- The empty list of naturals is inside the evaluator's fragment. -/
-theorem natNil_noRecMk : Term.NoRecMk natNil := by no_rec_mk
 
 /-- The head of `[5]` is `5`. -/
 theorem run_natHead_natFive :
@@ -95,9 +91,8 @@ def roseLeaf : Term covEmptySig [] roseTy :=
   .recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil))
 
 /-! The three statements below held when a recursive record denoted `PEmpty`.  They are
-**false** now that it denotes the W-tree of its fields: `roseLeaf` is inside the fragment
-and `roseTy` has values.  They are kept, commented out, as the record of what changed; the
-last theorem of this file is `no_total_evaluator` restated with a mutual family.
+**false** now that it denotes the W-tree of its fields: `roseLeaf` has a value and
+`roseTy` has values.  They are kept, commented out, as the record of what changed.
 
 ```
 theorem roseLeaf_not_noRecMk : ¬ Term.NoRecMk roseLeaf := fun h => h
@@ -107,9 +102,6 @@ theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.
   roseTy_den_empty (ev _ roseLeaf)
 ```
 -/
-
-/-- A leaf is inside the evaluator's fragment. -/
-theorem roseLeaf_noRecMk : Term.NoRecMk roseLeaf := by no_rec_mk
 
 /-- The label of a rose tree: the eliminator binds every field, so it is index `0`. -/
 def roseLabel : Term covEmptySig [] (roseTy ⇒ TyWf.prim .nat) :=
@@ -134,17 +126,36 @@ def covTyA : TyWf := .mutualRecursiveFamily covFamA
 def covANil : Term covEmptySig [] covTyA :=
   .mutualRecursiveFamily_mk covFamA (value := .ctors _ 0 (fields := .nil))
 
-/-- Building a member of a family is outside the evaluator's fragment. -/
+/-- Is an `A` the field-less constructor?  A dispatch on both constructors of `A`. -/
+def covAIsNil : Term covEmptySig [] (covTyA ⇒ TyWf.prim .bool) :=
+  .lam (.mutualRecursiveFamily_casesOn (.var (v♯0))
+    (.ctors (.skip (.bool_mk true) (.here (.bool_mk false) .nil))))
+
+/-- The field-less constructor of `A` reads back. -/
+theorem run_covAIsNil_covANil :
+    Term.run (Sg := covEmptySig) GlobalEnv.nil (.ap covAIsNil covANil) = true := by
+  decide +kernel
+
+/-! The three statements below held when a mutual family denoted `PEmpty`.  They are
+**false** now that it denotes the indexed W-tree of its members: `covANil` has a value,
+and so `covTyA` has values.  They are kept, commented out, as the record of what changed.
+
+```
 theorem covANil_not_noRecMk : ¬ Term.NoRecMk covANil := fun h => h
-
-/-- A member of a mutual family has no value in the model. -/
 theorem covTyA_den_empty : TyWf.Den covTyA → False := fun v => PEmpty.elim v
-
-/-- **No evaluator into `TyWf.Den` can evaluate every closed term**: there is no function
-    at all giving each closed term of the empty signature a value of its type, since
-    `covANil` would need a value of the empty type `TyWf.Den covTyA`. -/
 theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.Den τ) :
     False :=
   covTyA_den_empty (ev _ covANil)
+```
+-/
+
+/-- A member of a mutual family has values in the model. -/
+theorem covTyA_den_nonempty : Nonempty (TyWf.Den covTyA) :=
+  ⟨Term.run GlobalEnv.nil covANil⟩
+
+/-- **The evaluator evaluates every closed term**: it gives each closed term of the empty
+    signature a value of its type, with no side condition. -/
+def total_evaluator : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.Den τ :=
+  fun _ t => Term.run GlobalEnv.nil t
 
 end TermTests

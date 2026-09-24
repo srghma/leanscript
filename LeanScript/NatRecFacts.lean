@@ -147,36 +147,35 @@ theorem natFoldK_base {k : Nat} (z : NatWin τ (k + 1))
 variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls)
     (nT : Term Sg Γ (.prim .nat)) (base : Spine Sg Γ (natRecCtx τ (k + 1) []))
     (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ)
-    (env : Env Γ) (h : Term.NoRecMk (Term.nat_rec k nT base branch))
+    (env : Env Γ)
 
 /-- The value of the node **is** the fold: its base values are the `Spine`, and its step
     runs the branch with the window in front of the environment. -/
 theorem Term.eval_nat_rec :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
-      natFoldK (Spine.eval G base env h.2.1)
-        (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
-        (show Nat from Term.eval G nT env h.1) :=
+    Term.eval G (Term.nat_rec k nT base branch) env =
+      natFoldK (Spine.eval G base env)
+        (fun m w => Term.eval G branch (m, Env.ofWin w env))
+        (show Nat from Term.eval G nT env) :=
   rfl
 
 /-- Below the depth, the node answers with the base value written for the argument. -/
 theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
-    (hn : (show Nat from Term.eval G nT env h.1) = j) :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
-      NatWin.get (Spine.eval G base env h.2.1) (k - j) (by omega) := by
+    (hn : (show Nat from Term.eval G nT env) = j) :
+    Term.eval G (Term.nat_rec k nT base branch) env =
+      NatWin.get (Spine.eval G base env) (k - j) (by omega) := by
   rw [Term.eval_nat_rec, hn, natFoldK_base _ _ j hj]
 
 /-- At and above the depth, the node answers with its branch, given the predecessor and
     the window of the previous `k + 1` answers. -/
 theorem Term.eval_nat_rec_step (n : Nat)
-    (hn : (show Nat from Term.eval G nT env h.1) = n + k + 1) :
-    Term.eval G (Term.nat_rec k nT base branch) env h =
+    (hn : (show Nat from Term.eval G nT env) = n + k + 1) :
+    Term.eval G (Term.nat_rec k nT base branch) env =
       Term.eval G branch
         (n, Env.ofWin
           (NatWin.ofFun
-            (natFoldK (Spine.eval G base env h.2.1)
-              (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)) (k + 1) n)
-          env)
-        h.2.2 := by
+            (natFoldK (Spine.eval G base env)
+              (fun m w => Term.eval G branch (m, Env.ofWin w env))) (k + 1) n)
+          env) := by
   rw [Term.eval_nat_rec, hn, natFoldK_step]
 
 end LeanScript

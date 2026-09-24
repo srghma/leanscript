@@ -19,7 +19,7 @@ made of members with **constructors**, and every deeper look stays inside the me
 started in, because the two members of that family do not mention each other.
 
 This file is the other half of the exercise, and its terms are checked the same way — by
-their types, since a recursive shape has no values in the model:
+their types, and by running them against the Lean references (§3):
 
 * §1 folds over a family whose two members are defined **in terms of each other**, so
   every deeper look crosses from one member to the other;
@@ -375,12 +375,74 @@ def nodeFibCases :
 def nodeFibTerm : Term sigAdd [] (nodeTy ⇒ natT) :=
   .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases)
 
-/-! ## 3. What the evaluator says about these terms
+/-! ## 3. Running the terms
 
-A recursive shape has no values in the model (`LeanScript.Ty.Den`), so a fold over one is a
-term the evaluator does not run, and `LeanScript.Term.NoRecMk` says so. -/
+A mutual family denotes the indexed W-tree of its members (`LeanScript.Ty.Den`), so the
+evaluator runs both folds above.  The checks below build chains as terms — crossing from
+one member to the other at every link — run the programs on them with `add` supplied as
+`Nat.add`, and compare with the Lean references; they are closed by the kernel. -/
 
-example : Term.NoRecMk evFibTerm := by no_rec_mk
-example : Term.NoRecMk nodeFibTerm := by no_rec_mk
+open TermTests.FamilyRecDepth (envAdd)
+
+/-- The alternating family, selecting member `1`. -/
+def famOd : LeanMutualRecFamily (TyWfIn 2) := .selectedLast memEv [] memOd
+
+/-- The type of member `1` of the alternating family. -/
+def odTy : TyWf := .mutualRecursiveFamily famOd
+
+mutual
+
+/-- An `Ev` chain of `n` links, as a term. -/
+def evNat : Nat → Term sigAdd [] evTy
+  | 0 => .mutualRecursiveFamily_mk famEv evWf (value := .ctors _ 0 (fields := .nil))
+  | n + 1 =>
+      .mutualRecursiveFamily_mk famEv evWf (value := .ctors _ 1 (fields := .cons (odNat n) .nil))
+
+/-- An `Od` chain of `n` links, as a term. -/
+def odNat : Nat → Term sigAdd [] odTy
+  | 0 => .mutualRecursiveFamily_mk famOd (value := .ctors _ 0 (fields := .nil))
+  | n + 1 =>
+      .mutualRecursiveFamily_mk famOd (value := .ctors _ 1 (fields := .cons (evNat n) .nil))
+
+end
+
+example : (List.range 11).map (fun n => Term.run envAdd (.ap evFibTerm (evNat n))) =
+    (List.range 11).map (fun n => Ev.fib (Ev.ofNat n)) := by
+  decide +kernel
+
+/-- The three-member family, selecting the `Opt` member. -/
+def famOpt : LeanMutualRecFamily (TyWfIn 3) := .selectedThenMore [memNode] memOpt memTags []
+
+/-- The three-member family, selecting the `Tags` member. -/
+def famTags : LeanMutualRecFamily (TyWfIn 3) := .selectedLast memNode [memOpt] memTags
+
+/-- The type of the `Opt` member. -/
+def optTy : TyWf := .mutualRecursiveFamily famOpt
+
+/-- The type of the `Tags` member. -/
+def tagsTy : TyWf := .mutualRecursiveFamily famTags
+
+/-- No tags, as a term: the newtype member wraps an empty array. -/
+def tagsNil : Term sigAdd [] tagsTy :=
+  .mutualRecursiveFamily_mk famTags (value := .alias _ (Term.array_mk .nil : Term sigAdd [] (TyWf.array natT)))
+
+/-- A node with label `0`, the given link and no tags, as a term. -/
+def nodeOf (o : Term sigAdd [] optTy) : Term sigAdd [] nodeTy :=
+  .mutualRecursiveFamily_mk famNode nodeWf
+    (value := .record _ (.cons (.nat_mk 0) (.cons o (.cons tagsNil .nil))))
+
+/-- The link below a chain of `n` nodes, as a term. -/
+def optNat : Nat → Term sigAdd [] optTy
+  | 0 => .mutualRecursiveFamily_mk famOpt (value := .ctors _ 0 (fields := .nil))
+  | n + 1 =>
+      .mutualRecursiveFamily_mk famOpt
+        (value := .ctors _ 1 (fields := .cons (nodeOf (optNat n)) .nil))
+
+/-- A chain of `n` nodes, as a term. -/
+def nodeNat (n : Nat) : Term sigAdd [] nodeTy := nodeOf (optNat n)
+
+example : (List.range 6).map (fun n => Term.run envAdd (.ap nodeFibTerm (nodeNat n))) =
+    (List.range 6).map (fun n => Node.fib (Node.ofNat n)) := by
+  decide +kernel
 
 end TermTests.FamilyRecDepthMembers

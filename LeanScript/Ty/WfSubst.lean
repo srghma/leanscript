@@ -263,9 +263,12 @@ theorem _root_.LeanScript.LeanMutualRecFamily.members_ofMembers? {α : Type}
 theorem _root_.LeanScript.LeanMutualRecFamily.members_select {α : Type}
     (f : LeanMutualRecFamily α) (i : Nat) : (f.select i).members = f.members := by
   unfold LeanMutualRecFamily.select
-  cases h : LeanMutualRecFamily.ofMembers? f.members i with
-  | none => simp
-  | some g => simpa [h] using LeanMutualRecFamily.members_ofMembers? h
+  split
+  · rename_i g h
+    exact LeanMutualRecFamily.members_ofMembers? h
+  · cases h : LeanMutualRecFamily.ofMembers? f.members 0 with
+    | none => rfl
+    | some g => exact LeanMutualRecFamily.members_ofMembers? h
 
 /-- Every member of a family that is a type is a type. -/
 theorem wf_familyMemberTy {f : LeanMutualRecFamily Ty}

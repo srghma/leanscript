@@ -36,7 +36,7 @@ abbrev fibStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctor chainBodyW.toTy).A)
       (kids : (Ty.toPFunctor chainBodyW.toTy).B node → AliasMemo chainBodyW natT) =>
     Term.eval envAdd fibBranch (Env.append (aliasRecEnv chainBodyW (by ty_wf) natT 1 node kids) e)
-      (by no_rec_mk)
+     
 
 set_option maxHeartbeats 4000000 in
 /-- Two links down, the fold adds the answers at the two chains below. -/
@@ -64,7 +64,7 @@ abbrev contStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctor chainBodyW.toTy).A)
       (kids : (Ty.toPFunctor chainBodyW.toTy).B node → AliasMemo chainBodyW natT) =>
     Term.eval envAdd contBranch (Env.append (aliasRecEnv chainBodyW (by ty_wf) natT 1 node kids) e)
-      (by no_rec_mk)
+     
 
 set_option maxHeartbeats 4000000 in
 /-- Two links down, the continuant multiplies the label by the answer one link down and
@@ -93,7 +93,7 @@ abbrev fibTRStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctor chainBodyW.toTy).A)
       (kids : (Ty.toPFunctor chainBodyW.toTy).B node → AliasMemo chainBodyW loopTy) =>
     Term.eval envAdd fibTRBranch
-      (Env.append (aliasRecEnv chainBodyW (by ty_wf) loopTy 0 node kids) e) (by no_rec_mk)
+      (Env.append (aliasRecEnv chainBodyW (by ty_wf) loopTy 0 node kids) e)
 
 /-- The fold of `fibTRTerm` is the loop `Chain.fibLoopTR`, in every environment. -/
 theorem fibTR_memoFold (e : Env CCtx) : ∀ (c : Chain) (a b : Nat),
@@ -114,7 +114,7 @@ abbrev fibPairStep (e : Env CCtx) :=
   fun (node : (Ty.toPFunctor chainBodyW.toTy).A)
       (kids : (Ty.toPFunctor chainBodyW.toTy).B node → AliasMemo chainBodyW pairTy) =>
     Term.eval envAdd fibPairBranch
-      (Env.append (aliasRecEnv chainBodyW (by ty_wf) pairTy 0 node kids) e) (by no_rec_mk)
+      (Env.append (aliasRecEnv chainBodyW (by ty_wf) pairTy 0 node kids) e)
 
 /-- The fold of `fibPairTerm` carries the pair `Chain.fibPair`, in every environment. -/
 theorem fibPair_memoFold (e : Env CCtx) : ∀ c : Chain,

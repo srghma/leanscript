@@ -30,10 +30,8 @@ def doubleSig : Sig := ⟨[⟨"double", TyWf.prim .nat ⇒ TyWf.prim .nat⟩], b
 /-- The values of the declarations of `doubleSig`: the one function `double`. -/
 def doubleEnv : GlobalEnv doubleSig.decls := (fun n => 2 * n, PUnit.unit)
 
-/-- Running a closed term of `emptySig`.  It is a macro rather than a function so that
-    the term is the *whole* of its argument: `Term.run` takes the proof that the term
-    builds no recursive value as a trailing argument written by `no_rec_mk`, and a
-    function applied to one more argument would pass that argument as the proof. -/
+/-- Running a closed term of `emptySig`: `Term.run` evaluates every closed term, with no
+    side condition.  It is a macro so that `run t x` applies the value of `t` to `x`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := emptySig) GlobalEnv.nil $t)
 
 /-! ## Variables, functions, applications and `let` -/

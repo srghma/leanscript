@@ -158,39 +158,39 @@ section Node
 variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls)
     (arr : Term Sg Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
     (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ)
-    (env : Env Γ) (h : Term.NoRecMk (Term.array_rec k arr bases branch))
+    (env : Env Γ)
 
 /-- The value of the node **is** the fold: the short lists are answered by its
     `ArrayRecBases`, and its step runs the branch with the head, the tail and the window
     in front of the environment. -/
 theorem Term.eval_array_rec :
-    Term.eval G (Term.array_rec k arr bases branch) env h =
-      listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
-        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
-        (show Array _ from Term.eval G arr env h.1).toList :=
+    Term.eval G (Term.array_rec k arr bases branch) env =
+      listFoldK (fun l => ArrayRecBases.eval G bases env l)
+        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env))
+        (show Array _ from Term.eval G arr env).toList :=
   rfl
 
 /-- Below the depth, the node answers with its `ArrayRecBases`. -/
 theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
-    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env h.1).toList = l) :
-    Term.eval G (Term.array_rec k arr bases branch) env h =
-      ArrayRecBases.eval G bases env l h.2.1 := by
+    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env).toList = l) :
+    Term.eval G (Term.array_rec k arr bases branch) env =
+      ArrayRecBases.eval G bases env l := by
   rw [Term.eval_array_rec, harr, listFoldK_base _ _ l hl]
 
 /-- At and above the depth, the node answers with its branch, given the head, the tail
     and the window of the answers at the `k + 1` suffixes of the tail. -/
 theorem Term.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
     (hk : k ≤ as.length)
-    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env h.1).toList = a :: as) :
-    Term.eval G (Term.array_rec k arr bases branch) env h =
+    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env).toList = a :: as) :
+    Term.eval G (Term.array_rec k arr bases branch) env =
       Term.eval G branch
         (a, as.toArray, Env.ofWin
           (NatWin.ofFunList
-            (listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
-              (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2))
+            (listFoldK (fun l => ArrayRecBases.eval G bases env l)
+              (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env)))
             (k + 1) as)
           env)
-        h.2.2 := by
+        := by
   rw [Term.eval_array_rec, harr, listFoldK_step _ _ a as hk]
 
 end Node

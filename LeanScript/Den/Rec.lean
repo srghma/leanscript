@@ -54,7 +54,7 @@ def roll : (a : Ty) → Ty.Den (substOcc R .familyMember a) → (Ty.toPFunctor a
   | .recTaggedUnion _, x => ⟨x, fun p => PEmpty.elim p⟩
   | .recObject _, x => ⟨x, fun p => PEmpty.elim p⟩
   | .recAlias _, x => ⟨x, fun p => PEmpty.elim p⟩
-  | .mutualRecursiveFamily _, x => PEmpty.elim x
+  | .mutualRecursiveFamily _, x => ⟨x, fun p => PEmpty.elim p⟩
 
 /-- `Ty.roll`, on a node. -/
 def rollShape : (s : TyShape Ty) → Ty.Den (.shape (substOccShape R .familyMember s)) →
@@ -120,7 +120,7 @@ def unroll : (a : Ty) → (Ty.toPFunctor a).Obj (Ty.Den R) → Ty.Den (substOcc 
   | .recTaggedUnion _, x => x.1
   | .recObject _, x => x.1
   | .recAlias _, x => x.1
-  | .mutualRecursiveFamily _, x => PEmpty.elim x.1
+  | .mutualRecursiveFamily _, x => x.1
 
 /-- `Ty.unroll`, on a node. -/
 def unrollShape : (s : TyShape Ty) → (Ty.toPFunctorShape s).Obj (Ty.Den R) →
@@ -224,7 +224,7 @@ theorem unroll_roll : ∀ (a : Ty) (x : Ty.Den (substOcc R .familyMember a)),
   | .recTaggedUnion _, _ => rfl
   | .recObject _, _ => rfl
   | .recAlias _, _ => rfl
-  | .mutualRecursiveFamily _, x => PEmpty.elim x
+  | .mutualRecursiveFamily _, _ => rfl
 
 theorem unroll_rollShape : ∀ (s : TyShape Ty)
     (x : Ty.Den (.shape (substOccShape R .familyMember s))),
@@ -295,7 +295,7 @@ theorem roll_unroll : ∀ (a : Ty) (x : (Ty.toPFunctor a).Obj (Ty.Den R)), roll 
   | .recTaggedUnion _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
   | .recObject _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
   | .recAlias _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
-  | .mutualRecursiveFamily _, x => PEmpty.elim x.1
+  | .mutualRecursiveFamily _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
 
 theorem roll_unrollShape : ∀ (s : TyShape Ty) (x : (Ty.toPFunctorShape s).Obj (Ty.Den R)),
     rollShape R s (unrollShape R s x) = x

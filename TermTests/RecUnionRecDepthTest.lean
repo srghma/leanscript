@@ -273,11 +273,6 @@ of its constructors), so these terms run, and the kernel checks them against the
 references.  The depth-`k` folds are evaluated with every answer remembered
 (`LeanScript.WType.memo`), so a deeper look reads answers that are already there. -/
 
-example : Term.NoRecMk fibTerm := by no_rec_mk
-example : Term.NoRecMk hexaTerm := by no_rec_mk
-example : Term.NoRecMk fibTRTerm := by no_rec_mk
-example : Term.NoRecMk fibPairTerm := by no_rec_mk
-example : Term.NoRecMk contTerm := by no_rec_mk
 
 /-- The values of `add` and `mul`. -/
 def envAdd : GlobalEnv sigAdd.decls := (Nat.add, Nat.mul, PUnit.unit)

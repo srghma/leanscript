@@ -207,6 +207,13 @@ def famFold : Term recEmptySig [] (tyA ⇒ TyWf.prim .nat) :=
     (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil)))
       (.cons (.record (.here (.var (v♯2)))) .nil)))
 
+/-- A fold over the whole family that reads a label: an `A` that holds a `B` answers the
+    value of the fold at that `B`, and a `B` answers its natural. -/
+def famLabel : Term recEmptySig [] (tyA ⇒ TyWf.prim .nat) :=
+  .lam (.mutualRecursiveFamily_rec 0 (.var (v♯0))
+    (.cons (.ctors (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯1))) .nil)))
+      (.cons (.record (.here (.var (v♯0)))) .nil)))
+
 /-! ## The branch families match the constructors of the type
 
 The branches of a dispatch on a recursive shape are indexed by the shape's own schema, so
@@ -279,15 +286,11 @@ def negativeSchema : LeanTaggedUnionSchema (TyWfIn 1) :=
 
 /-! ## What the evaluator says about them
 
-A recursive **tagged union** has values — `LeanScript.Ty.Den` gives it the W-tree of its
-constructors — so `LeanScript.Term.eval` interprets all four of its forms, the
-introduction form included, and so do a recursive **record** and a recursive **newtype**,
-which denote the W-tree of their fields and of their body.  A mutual family still denotes
-`PEmpty`, so building one of *it* is outside the model, and `Term.NoRecMk` says so. -/
-
-example : Term.NoRecMk natHead := by no_rec_mk
-example : Term.NoRecMk natFoldZero := by no_rec_mk
-example : Term.NoRecMk natNil := by no_rec_mk
+Every recursive shape has values — `LeanScript.Ty.Den` gives a recursive **tagged union**
+the W-tree of its constructors, a recursive **record** and a recursive **newtype** the
+W-tree of their fields and of their body, and a **mutual family** the indexed W-tree of
+its members — so `LeanScript.Term.eval` interprets all of their forms, the introduction
+forms included. -/
 
 /-- The empty list is constructor `0`. -/
 example : (TyWf.DenRec.unfold natListSchema _ (Term.run GlobalEnv.nil natNil)).1.val = 0 :=
@@ -308,17 +311,25 @@ example : Term.run GlobalEnv.nil (.ap natHead (.ap natTail natOne)) = 0 := by de
 example : Term.run GlobalEnv.nil (.ap natFoldZero natOne) = 0 := by decide +kernel
 
 /-- Building a recursive **record** is inside the model: its label reads back. -/
-example : Term.NoRecMk roseLeaf := by no_rec_mk
 example : Term.run GlobalEnv.nil (.ap roseLabel roseLeaf) = 1 := by decide +kernel
 example : Term.run GlobalEnv.nil (.ap roseLabel roseOne) = 2 := by decide +kernel
 
 /-- Building a recursive **newtype** is inside the model too: the empty forest is empty,
     and a forest of one forest is not. -/
-example : Term.NoRecMk oneForest := by no_rec_mk
 example : Term.run GlobalEnv.nil (.ap forestIsEmpty emptyForest) = true := by decide +kernel
 example : Term.run GlobalEnv.nil (.ap forestIsEmpty oneForest) = false := by decide +kernel
 
-/-- Building a member of a **mutual family** is still outside the model. -/
-example : ¬ Term.NoRecMk aNil := fun h => h
+/-- Building a member of a **mutual family** is inside the model as well: a `B` reads back
+    its natural, an `A` reads back its constructor — by a full dispatch and by a partial
+    one with a default — and the folds over the whole family run, passing from a member
+    to the other and back. -/
+example : Term.run GlobalEnv.nil (.ap bLabel bOne) = 7 := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap aIsNil aNil) = true := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap aIsNil aOne) = false := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap aIsNil' aNil) = true := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap aIsNil' aOne) = false := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap famFold aOne) = 0 := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap famLabel aNil) = 0 := by decide +kernel
+example : Term.run GlobalEnv.nil (.ap famLabel aOne) = 7 := by decide +kernel
 
 end TermTests
