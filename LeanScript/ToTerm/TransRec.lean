@@ -204,12 +204,12 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
             listSchemaParts (← reduceTy
               (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf))
           let c' := c.pushFields #[(xs[0]!.fvarId!, σ), (xs[1]!.fvarId!, sty)]
-          let restCases := mkAppN (mkConst `LeanScript.TaggedUnionCasesRest.nil)
-            #[c.sg, c.gamma, τ]
-          let consCases := mkAppN (mkConst `LeanScript.CtorsWithPayloadCases.here)
-            #[c.sg, c.gamma, τ, fieldsU, restU, ← trans c' body, restCases]
-          let cases := mkAppN (mkConst `LeanScript.TaggedUnionCases.skip)
-            #[c.sg, c.gamma, τ, cpU, nil, consCases]
+          let restCases := mkAppN (mkConst `LeanScript.TaggedUnionFoldCasesRest.nil)
+            #[c.sg, tyE, idBindE, c.gamma, τ]
+          let consCases := mkAppN (mkConst `LeanScript.CtorsWithPayloadFoldCases.here)
+            #[c.sg, tyE, idBindE, c.gamma, τ, fieldsU, restU, ← trans c' body, restCases]
+          let cases := mkAppN (mkConst `LeanScript.TaggedUnionFoldCases.skip)
+            #[c.sg, tyE, idBindE, c.gamma, τ, cpU, nil, consCases]
           return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn)
             #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
   | ``Bool =>
@@ -221,8 +221,9 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
         throwError "`#leanscript_to_term`: {ind} is a recursive type, and the only folds \
           the translation produces from a recursor are `nat_rec` and `recTaggedUnion_rec`, \
           for `Nat` and `List` (a structural recursion on a recursive record or a \
-          recursive tagged union, as Lean compiles it, is `recObject_rec` or \
-          `recTaggedUnion_rec`)"
+          recursive tagged union, a recursive newtype or a mutual block, as Lean \
+          compiles it, is `recObject_rec`, `recTaggedUnion_rec`, `recAlias_rec` or \
+          `mutualRecursiveFamily_rec`)"
       let sty ← tyOfTerm major
       let ctors := indInfo.ctors.toArray
       match ← tyView sty with

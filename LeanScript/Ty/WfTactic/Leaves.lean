@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Meta.AppBuilder
+public meta import Lean.Meta.LitValues
 public meta import Lean.Elab.Tactic.Basic
 public meta import LeanScript.Ty.Wf
 
@@ -28,11 +29,10 @@ partial def listElems (e : Expr) : MetaM (List Expr) := do
   | (``List.cons, #[_, h, t]) => return h :: (← listElems t)
   | _ => throwError "ty_wf: not a list of types: {e}"
 
-/-- A natural number argument of a goal, when it is a literal. -/
+/-- A natural number argument of a goal, when it reduces to a literal: core's
+    `Lean.Meta.getNatValue?` after `whnf`. -/
 def natOf? (e : Expr) : MetaM (Option Nat) := do
-  let e ← whnf e
-  if let some n := e.rawNatLit? then return some n
-  return e.nat?
+  getNatValue? (← whnf e)
 
 /-- A natural number as an expression. -/
 def natE (n : Nat) : Expr := mkNatLit n

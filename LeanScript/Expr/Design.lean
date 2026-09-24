@@ -325,7 +325,8 @@ and a dispatch is still exhaustive by construction.
 
 Each of the four also has a `_rec`: the fold, `Xxx.rec` with a non-dependent motive.  Its
 branches are `LeanScript.TaggedUnionFoldCases` (or the single branch of a record or a
-newtype), which is the same family as `TaggedUnionCases` except for what a branch binds:
+newtype).  `TaggedUnionCases` *is* that family, at `ι := TyWf` and `bind := id` (an
+abbreviation declared after the `mutual` block); a fold differs only in what a branch binds:
 `LeanScript.TyWf.recBinders` binds every field, unfolded, and follows a field that *is* an
 occurrence of the type being folded over by the value of the fold at that field.  As in
 `nat_rec` and `array_rec` the recursive value is *given* to the branch, so a term is still

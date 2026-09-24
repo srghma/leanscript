@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Elab.Command
+public meta import Lean.Util.SCC
 public meta import LeanScript.Ty.Class
 public meta import LeanScript.Ty.WfTactic
 
@@ -178,25 +179,13 @@ def blockDeps (names : List Name) (params : Array Expr) (m : Name) :
       if !deps.contains d then deps := deps ++ [d]
   return .ok deps
 
-/-- Everything reachable from `start` in the graph `edges`, `start` included. -/
-def nameReach (edges : List (Name × List Name)) (start : Name) : List Name :=
-  go edges.length [start] [start]
-where
-  /-- Breadth-first closure: `acc` is what has been reached, `frontier` what was reached
-      last, and `fuel` bounds the number of rounds by the number of members. -/
-  go : Nat → List Name → List Name → List Name
-    | 0, acc, _ => acc
-    | _ + 1, acc, [] => acc
-    | k + 1, acc, frontier =>
-        let next := frontier.flatMap fun m => ((edges.find? (·.1 == m)).map (·.2)).getD []
-        let fresh := next.filter fun m => !acc.contains m
-        go k (acc ++ fresh) fresh
-
 /-- The members of the block `names` that belong to the same strongly connected component
-    as `n`: the ones `n` reaches and that reach `n`, in declaration order. -/
+    as `n` in the graph `edges` (core's `Lean.SCC.scc`), in declaration order. -/
 def blockComponent (names : List Name) (edges : List (Name × List Name)) (n : Name) :
     List Name :=
-  names.filter fun m => (nameReach edges n).contains m && (nameReach edges m).contains n
+  let succs (m : Name) : List Name := ((edges.find? (·.1 == m)).map (·.2)).getD []
+  let comp := ((Lean.SCC.scc names succs).find? (·.contains n)).getD [n]
+  names.filter comp.contains
 
 end LeanScript.Deriving
 

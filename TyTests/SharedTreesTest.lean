@@ -36,7 +36,7 @@ structure Point where
   deriving LeanScriptTyWf
 
 /-- info: @[expose] def SharedTreesTest.Point.leanScriptTyOf : Ty :=
-Ty.record { fst := tyOf Nat, snd := tyOf Nat, rest := [] } -/
+Ty.record { fst := tyOf ℕ, snd := tyOf ℕ, rest := [] } -/
 #guard_msgs in
 #print Point.leanScriptTyOf
 
@@ -78,7 +78,7 @@ end
 deriving instance LeanScriptTyWf for EvA
 deriving instance LeanScriptTyWf for EvB
 
-/-- info: @[reducible] def SharedTreesTest.EvB.instLeanScriptTyWf : LeanScriptTyWf EvB :=
+/-- info: @[reducible, expose] def SharedTreesTest.EvB.instLeanScriptTyWf : LeanScriptTyWf EvB :=
 { tyWfOf := { toTy := EvA.leanScriptTyOf, isWf := EvA.leanScriptTyOf_wf } } -/
 #guard_msgs in
 #print EvB.instLeanScriptTyWf

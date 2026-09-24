@@ -43,8 +43,4 @@ end
 instance : CoeOut (NonEmpty.ArrayCorrectByConstruction.NonEmptyArray α) (Array α) where
   coe xs := xs.toArr
 
-@[inline]
-instance : NonEmpty.DowngradeMap NonEmpty.ArrayCorrectByConstruction.NonEmptyArray where
-  map := NonEmpty.ArrayCorrectByConstruction.NonEmptyArray.map
-
 end NonEmpty.ArrayCorrectByConstruction

@@ -282,12 +282,31 @@ is what discharges it: a closed type has values, so nothing about it is looked a
 time.  This is the inhabitation counterpart of `Ty.WfIn.closed`, and it is a theorem
 rather than a rule so that `Ty.HabIn` is a definition in its own right. -/
 
-/-- A prefix of a list of fields that all have values all have values. -/
-theorem HabAllIn.of_append_left {S : List Nat} {xs ys : List Ty}
-    (h : HabAllIn S (xs ++ ys)) : HabAllIn S xs := by
-  induction xs with
-  | nil => exact .nil
-  | cons _ _ ih => cases h with | cons ha hs => exact .cons ha (ih hs)
+/-- A list is all types exactly when each of its elements is one, so facts about sublists,
+    concatenations and flattenings follow from the `List` membership lemmas. -/
+theorem WfAllIn.iff_forall {n : Nat} {ts : List Ty} : WfAllIn n ts ↔ ∀ t ∈ ts, WfIn n t := by
+  induction ts with
+  | nil => exact ⟨fun _ _ h => absurd h List.not_mem_nil, fun _ => .nil⟩
+  | cons t ts ih =>
+      constructor
+      · intro h; cases h with
+        | cons ht hs => exact List.forall_mem_cons.2 ⟨ht, ih.1 hs⟩
+      · intro h
+        have h' := List.forall_mem_cons.1 h
+        exact .cons h'.1 (ih.2 h'.2)
+
+/-- A list of fields all has values exactly when each of its elements has. -/
+theorem HabAllIn.iff_forall {S : List Nat} {ts : List Ty} :
+    HabAllIn S ts ↔ ∀ t ∈ ts, HabIn S t := by
+  induction ts with
+  | nil => exact ⟨fun _ _ h => absurd h List.not_mem_nil, fun _ => .nil⟩
+  | cons t ts ih =>
+      constructor
+      · intro h; cases h with
+        | cons ht hs => exact List.forall_mem_cons.2 ⟨ht, ih.1 hs⟩
+      · intro h
+        have h' := List.forall_mem_cons.1 h
+        exact .cons h'.1 (ih.2 h'.2)
 
 /-- **A closed type has values.**  Every rule of `Ty.WfIn` that builds a binder carries
     the binder's own inhabitation condition, and every other rule preserves inhabitation,
@@ -319,7 +338,8 @@ theorem HabIn.of_wf {S : List Nat} {t : Ty} (h : Wf t) : HabIn S t := by
         have hall := ih hn
         cases l with
         | payloadFirst _ _ _ =>
-            exact .taggedUnion (.head (HabAllIn.of_append_left hall))
+            exact .taggedUnion (.head (HabAllIn.iff_forall.2 fun _ ht =>
+              HabAllIn.iff_forall.1 hall _ (List.mem_append_left _ ht)))
         | skip _ => exact .taggedUnion (.head .nil)
     | nil _ => exact .nil
     | cons _ _ ih1 ih2 hn => exact .cons (ih1 hn) (ih2 hn)

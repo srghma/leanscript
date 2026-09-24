@@ -350,12 +350,12 @@ example (τ : TyWf) :
 error: Application type mismatch: The argument
   DeBruijn.head
 has type
-  DeBruijn (?m.52 :: ?m.53) ?m.52
+  DeBruijn (?m.56 :: ?m.57) ?m.56
 but is expected to have type
   DeBruijn
     (((linkSchema (treeTy natT 0)).snd :: (linkSchema (treeTy natT 0)).rest).append
-      ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    (TyWf.record ?m.43)
+      (id { head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
+    (TyWf.record ?m.47)
 in the application
   DeBruijn.head.tail
 -/

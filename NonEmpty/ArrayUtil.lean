@@ -6,26 +6,7 @@ namespace NonEmpty.ArrayUtil
 
 @[simp] theorem flatten_map_singleton (t : Array α) (f : α → β) :
     (t.map (fun a => #[f a])).flatten = t.map f := by
-  have H : (t.map (fun a => #[f a])).flatten.toList = (t.map f).toList := by
-    simp only [Array.toList_flatten, Array.toList_map, List.map_map, Function.comp_def]
-    induction t.toList with
-    | nil => rfl
-    | cons x xs ih => simp only [List.map_cons, List.flatten_cons, ih, List.cons_append,
-      List.nil_append]
-  cases h₁ : (t.map (fun a => #[f a])).flatten with | mk l₁ =>
-  cases h₂ : t.map f with | mk l₂ =>
-  simp_all
-
-@[simp] theorem flatMap_singleton_eq_map (as : Array α) (f : α → β) :
-    as.flatMap (fun a => #[f a]) = as.map f := by
-  have H : (as.flatMap (fun a => #[f a])).toList = (as.map f).toList := by
-    simp only [Array.toList_flatMap, Array.toList_map]
-    induction as.toList
-    · simp only [List.flatMap_nil, List.map_nil]
-    · simp only [List.flatMap_cons, List.cons_append, List.nil_append, List.map_cons, *]
-  cases h₁ : as.flatMap (fun a => #[f a])
-  cases h₂ : as.map f
-  simp_all
+  simp [← Array.flatMap_def, ← Array.map_eq_flatMap]
 
 @[simp] theorem append_flatten_assoc (a : Array α) (b : Array (Array α)) (c : Array (Array α)) :
     a ++ (b ++ c).flatten = a ++ b.flatten ++ c.flatten := by

@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Den
 public import LeanScript.Expr.SelfField
+public import LeanScript.Ty.Traversable
 
 @[expose] public section
 
@@ -412,15 +413,6 @@ have the same values, and `TyWf.DenRec.mk` / `TyWf.DenRec.unfold` move along tha
 equation.  On a concrete union the equation is between two closed types that are
 definitionally equal, so the `cast` reduces and a concrete run still computes. -/
 
-/-- Mapping twice is mapping the composite. -/
-theorem LeanTaggedUnionSchema.map_map {α β γ : Type} (f : α → β) (g : β → γ)
-    (c : LeanTaggedUnionSchema α) : (c.map f).map g = c.map (g ∘ f) := by
-  have h : ((c.map f).map g).toList = (c.map (g ∘ f)).toList := by
-    simp [List.map_map, Function.comp_def]
-  have h' := congrArg LeanTaggedUnionSchema.ofList? h
-  rwa [LeanTaggedUnionSchema.ofList?_toList, LeanTaggedUnionSchema.ofList?_toList,
-    Option.some.injEq] at h'
-
 namespace TyWf
 
 /-- The trees of the unfolded constructors of a recursive union of bundles are the
@@ -428,8 +420,9 @@ namespace TyWf
 theorem recTaggedUnionUnfold_map_toTy (l : LeanTaggedUnionSchema (TyWfIn 1))
     (hwf : Ty.Wf (recTaggedUnionTy l)) :
     (recTaggedUnionUnfold l hwf).map TyWf.toTy = Ty.recUnfoldTy (l.map TyWfIn.toTy) := by
-  simp only [Ty.recUnfoldTy, Ty.substOccTU_eq_map, recTaggedUnionUnfold,
-    LeanTaggedUnionSchema.map_map]
+  simp only [Ty.recUnfoldTy, Ty.substOccTU_eq_map, recTaggedUnionUnfold]
+  show (_ <$> _ <$> l) = (_ <$> _ <$> l)
+  rw [Functor.map_map, Functor.map_map]
   rfl
 
 /-- The values of the unfolded constructors, as bundles and as trees, are the same. -/

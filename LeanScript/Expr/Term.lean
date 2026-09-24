@@ -289,7 +289,7 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
       constructor's fields, and no default. -/
   | taggedUnion_casesOn : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf},
-      Term Sg Γ (.taggedUnion l) → TaggedUnionCases Sg Γ l τ → Term Sg Γ τ
+      Term Sg Γ (.taggedUnion l) → TaggedUnionFoldCases Sg TyWf id Γ l τ → Term Sg Γ τ
   /-- A dispatch on a tagged union that branches on **some** of the constructors and
       sends the rest to a default branch.  A branch names its constructor by number —
       with the same `t < l.length` bound, written by `ctor_tag` — and binds that
@@ -345,7 +345,7 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   | recTaggedUnion_casesOn : ∀ {Γ τ} {l : LeanTaggedUnionSchema (TyWfIn 1)}
       {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)},
       Term Sg Γ (.recTaggedUnion l hwf) →
-      TaggedUnionCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ → Term Sg Γ τ
+      TaggedUnionFoldCases Sg TyWf id Γ (TyWf.recTaggedUnionUnfold l hwf) τ → Term Sg Γ τ
   /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
       default for the rest.  As for a non-recursive union the branches name their
       constructors in strictly increasing order, there is at least one of them, and there
@@ -553,57 +553,6 @@ inductive Spine (Sg : Sig) : Ctx → List TyWf → Type 1
   /-- One more argument. -/
   | cons : ∀ {Γ σ σs}, Term Sg Γ σ → Spine Sg Γ σs → Spine Sg Γ (σ :: σs)
 
-/-- The branches of a dispatch on a tagged union: one per constructor, in constructor
-    order, **indexed by the schema itself** rather than by the list of constructors it
-    denotes.  So the family has the same shape as `LeanScript.LeanTaggedUnionSchema`: a
-    schema whose first constructor carries fields wants that constructor's branch, the
-    branch of the constructor that must follow it, and then the branches of the rest;
-    a schema that starts with field-less constructors wants a branch for each of them,
-    through `LeanScript.CtorsWithPayloadCases`.
-
-    A branch **binds the fields** of its constructor, in declaration order, so de Bruijn
-    index `0` of its body is that constructor's first field.  There is no default branch
-    and no end-of-list before the constructors run out, so a dispatch is exhaustive by
-    construction. -/
-inductive TaggedUnionCases (Sg : Sig) : Ctx → LeanTaggedUnionSchema TyWf → TyWf → Type 1
-  /-- The branch of constructor `0` (which carries fields, so it binds them), the branch
-      of the constructor after it, and the branches of the remaining constructors. -/
-  | payloadFirst : ∀ {Γ τ} {fields : NonEmptyList TyWf} {next : List TyWf}
-      {rest : List (List TyWf)},
-      Term Sg (fields.toList ++ Γ) τ → Term Sg (next ++ Γ) τ →
-      TaggedUnionCasesRest Sg Γ rest τ →
-      TaggedUnionCases Sg Γ (.payloadFirst fields next rest) τ
-  /-- The branch of constructor `0`, which carries no fields and so binds nothing, and
-      the branches of the constructors after it. -/
-  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf},
-      Term Sg Γ τ → CtorsWithPayloadCases Sg Γ rest τ →
-      TaggedUnionCases Sg Γ (.skip rest) τ
-
-/-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
-    `LeanScript.TaggedUnionCases`, with the same shape as that schema. -/
-inductive CtorsWithPayloadCases (Sg : Sig) : Ctx → CtorsWithPayload TyWf → TyWf → Type 1
-  /-- The branch of the first constructor that carries fields, which binds them, and the
-      branches of the constructors after it. -/
-  | here : ∀ {Γ τ} {fields : NonEmptyList TyWf} {rest : List (List TyWf)},
-      Term Sg (fields.toList ++ Γ) τ → TaggedUnionCasesRest Sg Γ rest τ →
-      CtorsWithPayloadCases Sg Γ (.here fields rest) τ
-  /-- The branch of a field-less constructor, which binds nothing, and the branches of
-      the constructors after it. -/
-  | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf},
-      Term Sg Γ τ → CtorsWithPayloadCases Sg Γ rest τ →
-      CtorsWithPayloadCases Sg Γ (.skip rest) τ
-
-/-- The branches of the constructors a schema leaves unconstrained: a plain list, one
-    entry per constructor still to be given a branch, each as the list of its field
-    types. -/
-inductive TaggedUnionCasesRest (Sg : Sig) : Ctx → List (List TyWf) → TyWf → Type 1
-  /-- Every constructor has a branch. -/
-  | nil : ∀ {Γ τ}, TaggedUnionCasesRest Sg Γ [] τ
-  /-- The branch of the next constructor, which binds that constructor's fields. -/
-  | cons : ∀ {Γ τ} {fs : List TyWf} {rest : List (List TyWf)},
-      Term Sg (fs ++ Γ) τ → TaggedUnionCasesRest Sg Γ rest τ →
-      TaggedUnionCasesRest Sg Γ (fs :: rest) τ
-
 /-- The branches of a dispatch on **some** of the constructors of a tagged union, used
     with a default: a list of (constructor number, branch) pairs, in the order they are
     tried.  The number carries the same `t < l.length` bound as
@@ -707,10 +656,18 @@ inductive EnumSomeCases (Sg : Sig) :
       (branch : Term Sg Γ τ) (rest : EnumSomeCases Sg Γ τ s k (i.val + 1))
       (hi : lo ≤ i.val := by ctor_ge) : EnumSomeCases Sg Γ τ s (k + 1) lo
 
-/-- The branches of a **fold** over a sum type: the same family as
-    `LeanScript.TaggedUnionCases`, and so the same shape as the schema it branches on,
-    except that what a branch binds is `bind` of its constructor's field types rather
-    than those types themselves.
+/-- The branches of a dispatch on, or a **fold** over, a sum type: one per constructor,
+    in constructor order, **indexed by the schema itself** rather than by the list of
+    constructors it denotes.  So the family has the same shape as
+    `LeanScript.LeanTaggedUnionSchema`: a schema whose first constructor carries fields
+    wants that constructor's branch, the branch of the constructor that must follow it,
+    and then the branches of the rest; a schema that starts with field-less constructors
+    wants a branch for each of them, through `LeanScript.CtorsWithPayloadFoldCases`.
+
+    A branch binds `bind` of its constructor's field types, in declaration order.  A
+    plain dispatch (`LeanScript.TaggedUnionCases`) is the family at `ι := TyWf` and
+    `bind := id`: a branch binds the **fields** of its constructor, so de Bruijn index `0`
+    of its body is that constructor's first field.
 
     `bind` is how the value of the fold reaches the branch: `LeanScript.TyWf.recBinders`
     binds each field, unfolded, and follows a field that is an occurrence of the type
@@ -883,7 +840,7 @@ inductive FamilyMemberValue (Sg : Sig) : Ctx → LeanFamMemberSchema TyWf → Ty
 inductive FamilyMemberCases (Sg : Sig) : Ctx → TyWf → LeanFamMemberSchema TyWf → Type 1
   /-- One branch per constructor of a member that has constructors. -/
   | ctors : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf},
-      TaggedUnionCases Sg Γ l τ → FamilyMemberCases Sg Γ τ (.ctors l)
+      TaggedUnionFoldCases Sg TyWf id Γ l τ → FamilyMemberCases Sg Γ τ (.ctors l)
   /-- The one branch of a record member, which binds its fields in declaration order. -/
   | record : ∀ {Γ τ} {fs : LeanRecordSchema TyWf},
       Term Sg (fs.toList ++ Γ) τ → FamilyMemberCases Sg Γ τ (.record fs)
@@ -1091,6 +1048,31 @@ inductive FamilyFoldKCases (Sg : Sig) :
       FamilyFoldKCases Sg n ms₀ bind Γ τ (m :: ms) k
 
 end
+
+/-! ## Plain dispatches
+
+A plain dispatch on a tagged union is the fold-case family at `ι := TyWf` and
+`bind := id`, so a branch's context `id fs ++ Γ` is `fs ++ Γ` by definition.  These
+abbreviations are the names the rest of the project uses for it. -/
+
+/-- The branches of a dispatch on a tagged union: one per constructor, in constructor
+    order, each binding its constructor's fields, and no default — exhaustive by
+    construction.  It is `LeanScript.TaggedUnionFoldCases` at `ι := TyWf`, `bind := id`. -/
+abbrev TaggedUnionCases (Sg : Sig) (Γ : Ctx) (l : LeanTaggedUnionSchema TyWf) (τ : TyWf) :
+    Type 1 :=
+  TaggedUnionFoldCases Sg TyWf id Γ l τ
+
+/-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
+    `LeanScript.TaggedUnionCases`. -/
+abbrev CtorsWithPayloadCases (Sg : Sig) (Γ : Ctx) (c : CtorsWithPayload TyWf) (τ : TyWf) :
+    Type 1 :=
+  CtorsWithPayloadFoldCases Sg TyWf id Γ c τ
+
+/-- The branches of the constructors a schema leaves unconstrained: one branch per
+    constructor still to be given one, each binding that constructor's fields. -/
+abbrev TaggedUnionCasesRest (Sg : Sig) (Γ : Ctx) (cs : List (List TyWf)) (τ : TyWf) :
+    Type 1 :=
+  TaggedUnionFoldCasesRest Sg TyWf id Γ cs τ
 
 end LeanScript
 

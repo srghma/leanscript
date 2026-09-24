@@ -9,52 +9,60 @@ set_option autoImplicit false
 /-!
 # Pointers at the fields a deeper look descends into
 
-`SelfField`, `FamilyMemberField` and `FamilyMemberAt`: the indices the depth-`k` folds of
+`SelfField` and `FamilyMemberField` (both a `ListAnyT`), and `FamilyMemberAt`: the indices the depth-`k` folds of
 `LeanScript.Term` (in `LeanScript.Expr.Term`) use to name a subvalue, or a member of a
 family, to look further down into.
 -/
 
 namespace LeanScript
 
+/-- A pointer at an element of a list that satisfies `p`: `here` says the first element
+    does — carrying the proof — and `there` steps past the first element to the ones after
+    it.  It is `List.Any` valued in `Type`, so that the position is data a fold can
+    dispatch on; neither core Lean nor Mathlib has a type-valued version. -/
+inductive ListAnyT {α : Type} (p : α → Prop) : List α → Type
+  /-- The first element satisfies `p`. -/
+  | here : ∀ {a : α} {as : List α}, p a → ListAnyT p (a :: as)
+  /-- An element after the first satisfies `p`. -/
+  | there : ∀ {a : α} {as : List α}, ListAnyT p as → ListAnyT p (a :: as)
+  deriving DecidableEq, Repr
+
+/-- A field that is literally `Ty.self`: an occurrence of the type being folded over. -/
+abbrev IsSelfField (a : TyWfIn 1) : Prop := a.toTy = Ty.self
+
 /-- A pointer at a field of a constructor that **is** an occurrence of the type being
     folded over: the field a deeper look descends into.
 
     A constructor's payload is a list of trees written in the scope the binder opens, and
-    a field that is literally `Ty.self` is a value of the type again.  `here` names such
-    a field — carrying the proof that it is one, which is `rfl` — and `there` steps past
+    a field that is literally `Ty.self` is a value of the type again.  `.here` names such
+    a field — carrying the proof that it is one, which is `rfl` — and `.there` steps past
     a field to the ones after it, so `.here rfl`, `.there (.here rfl)`, … name the
     payload's occurrences in declaration order.
 
     It is what says that a depth-`k` fold (`LeanScript.Term.recTaggedUnion_rec`) looks
     further down only into a **subvalue**, never into a value it was handed. -/
-inductive SelfField : List (TyWfIn 1) → Type
-  /-- The first field is an occurrence of the type. -/
-  | here : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, a.toTy = Ty.self → SelfField (a :: fs)
-  /-- An occurrence among the fields after the first. -/
-  | there : ∀ {a : TyWfIn 1} {fs : List (TyWfIn 1)}, SelfField fs → SelfField (a :: fs)
-  deriving DecidableEq, Repr
+abbrev SelfField (fs : List (TyWfIn 1)) : Type := ListAnyT IsSelfField fs
+
+/-- A field that is literally `Ty.familyMember i`: an occurrence of member `i` of the
+    family being folded over. -/
+abbrev IsFamilyMemberField {n : Nat} (i : Nat) (a : TyWfIn (n + 2)) : Prop :=
+  a.toTy = Ty.familyMember i
 
 /-- A pointer at a field of a constructor of a **member of a mutual family** that **is**
     an occurrence of member `i` of that family: the field a deeper look descends into.
 
     It is `LeanScript.SelfField` in the scope of a family: a member's payload is a list
     of trees written in the scope of the whole family, and a field that is literally
-    `Ty.familyMember i` is a value of member `i` again.  `here` names such a field —
-    carrying the proof that it is one, which is `rfl` — and `there` steps past a field to
+    `Ty.familyMember i` is a value of member `i` again.  `.here` names such a field —
+    carrying the proof that it is one, which is `rfl` — and `.there` steps past a field to
     the ones after it, so `.here rfl`, `.there (.here rfl)`, … name the payload's
     occurrences of member `i` in declaration order.
 
     It is what says that a depth-`k` fold of a mutual family
     (`LeanScript.Term.mutualRecursiveFamily_rec`) looks further down only into a
     **subvalue**, never into a value it was handed. -/
-inductive FamilyMemberField {n : Nat} : Nat → List (TyWfIn (n + 2)) → Type
-  /-- The first field is an occurrence of member `i`. -/
-  | here : ∀ {i : Nat} {a : TyWfIn (n + 2)} {fs : List (TyWfIn (n + 2))},
-      a.toTy = Ty.familyMember i → FamilyMemberField i (a :: fs)
-  /-- An occurrence of member `i` among the fields after the first. -/
-  | there : ∀ {i : Nat} {a : TyWfIn (n + 2)} {fs : List (TyWfIn (n + 2))},
-      FamilyMemberField i fs → FamilyMemberField i (a :: fs)
-  deriving DecidableEq, Repr
+abbrev FamilyMemberField {n : Nat} (i : Nat) (fs : List (TyWfIn (n + 2))) : Type :=
+  ListAnyT (IsFamilyMemberField i) fs
 
 /-- **Which member of a family a member number is**: the proof that member `i` of the
     family `ms` is the member `m`, as a position in the list of members rather than as a

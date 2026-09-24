@@ -1,7 +1,6 @@
 module
 import Init.Data.List.Lemmas
 -- public import NonEmpty.ListUtil
-public import NonEmpty.DowngradeMap
 
 @[expose] public section
 

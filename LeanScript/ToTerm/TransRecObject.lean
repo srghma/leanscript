@@ -80,6 +80,9 @@ structure RecObjInfo where
   τLean : Expr
   /-- The language's type of the answers. -/
   τ : Expr
+  /-- Is it a recursive **newtype** (`Ty.recAlias`)?  Then the one field is the body, and
+      a window is that body itself rather than a record of fields. -/
+  isAlias : Bool := false
 
 /-- How a field of this Lean type is read by the fold of the record `info`. -/
 def classifyRecObjField (ind : Name) (selfTy : Expr) (fty : Expr) : MetaM RecObjField := do
@@ -208,6 +211,9 @@ partial def recObjLevel (info : RecObjInfo) (c : TCtx) (answers : Array (Expr ×
     (frontier : Array Expr) (wv : FVarId) (wTy : Expr) (j : Nat)
     (k : TCtx → Array (Expr × Expr) → Array Expr → Array Expr → MetaM Expr) :
     MetaM Expr := do
+  if info.isAlias then
+    -- a newtype has one field, its body, and the window is that body itself
+    return ← recObjFieldsFrom info c answers frontier #[mkFVar wv] #[wTy] 0 #[] j k
   let .record fsW ← tyView wTy
     | throwError "`#leanscript_to_term`: internal: the window of the fold is not a record"
   let fTys := (← recordFieldTys fsW).toArray
@@ -336,7 +342,11 @@ def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     return some (← trans c (← etaExpand e))
   let major := args[nP + nM]!
   let sty ← tyOfTerm major
-  let .recObject fs hwf ← tyView sty | return none
+  -- a recursive record, or a recursive newtype (whose one field is its body)
+  let (isAlias, fs, hwf) ← match ← tyView sty with
+    | .recObject fs hwf => pure (false, fs, hwf)
+    | .recAlias b hwf => pure (true, b, hwf)
+    | _ => return none
   let params := args.extract 0 nP
   let motives := args.extract nP (nP + nM)
   let brecF := args[nP + nM + 1]!
@@ -367,19 +377,25 @@ def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
           language erases, which the fold of a record does not read"
       out := out.push (← classifyRecObjField ind selfTy t)
     return out
+  if isAlias then
+    unless fields.size == 1 && fields.all (· matches .union ..) do
+      throwError "`#leanscript_to_term`: the recursive newtype {ind} is folded only when \
+        its body is a value of a union type (such as `Option {ind}`)"
   let info : RecObjInfo :=
-    { ind, ctor, lvls := ilvls, params, selfTy, fields, τLean, τ }
+    { ind, ctor, lvls := ilvls, params, selfTy, fields, τLean, τ, isAlias }
   let scrutT ← trans c major
   let attempt (k : Nat) : MetaM Expr := do
     let bindersE ← reduceTy
-      (mkAppN (mkConst ``LeanScript.TyWf.recObjectRecBinders) #[fs, hwf, τ, mkNatLit k])
+      (mkAppN (mkConst (if isAlias then ``LeanScript.TyWf.recAliasRecBinders
+        else ``LeanScript.TyWf.recObjectRecBinders)) #[fs, hwf, τ, mkNatLit k])
     let bTys := (← listOfExpr bindersE).toArray
     let ids ← bTys.mapM fun _ => mkFreshFVarId
     let c1 := c.pushFields (ids.zip bTys)
     let branch ← recObjLevel info c1 #[] #[] ids.back! bTys.back! k
       fun c' answers frontier vals =>
         recObjLeaf trans info brecF motives c' answers frontier vals
-    return mkAppN (mkConst `LeanScript.Term.recObject_rec)
+    return mkAppN (mkConst (if isAlias then `LeanScript.Term.recAlias_rec
+      else `LeanScript.Term.recObject_rec))
       #[c.sg, c.gamma, τ, fs, hwf, mkNatLit k, scrutT, branch]
   let mut found : Option Expr := none
   let mut lastErr : Option MessageData := none
@@ -390,8 +406,9 @@ def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       catch ex =>
         lastErr := some ex.toMessageData
   let some core := found
-    | throwError "`#leanscript_to_term`: this recursion on the recursive record {ind} is \
-        not the fold of a record at any depth up to {maxRecObjectRecDepth} — the fold \
+    | throwError "`#leanscript_to_term`: this recursion on the recursive record (or \
+        newtype) {ind} is not the fold of a record at any depth up to \
+        {maxRecObjectRecDepth} — the fold \
         `recObject_rec k` gives its branch the fields and the answers `k + 1` levels \
         down, so a branch that takes apart or reads a value further down, or uses a \
         subvalue other than through the answer at it, has no term.  At the last depth \

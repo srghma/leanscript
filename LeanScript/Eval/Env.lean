@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Expr.Term
 public import LeanScript.Den
+public import Mathlib.Data.Prod.TProd
 
 @[expose] public section
 
@@ -43,10 +44,10 @@ def Env.append : {as : List TyWf} → {Γ : Ctx} → TyWf.DenList as → Env Γ 
   | _ :: _, _, vs, env => (vs.1, Env.append vs.2 env)
 
 /-- An environment for the module's signature: a value for every top-level declaration,
-    at the type the signature gives it. -/
-def GlobalEnv : List GlobalDecl → Type
-  | [] => PUnit
-  | d :: ds => TyWf.Den d.ty × GlobalEnv ds
+    at the type the signature gives it.  This is Mathlib's `List.TProd` — the right-nested
+    product `TyWf.Den d₁.ty × (TyWf.Den d₂.ty × (… × PUnit))` over the declarations. -/
+abbrev GlobalEnv (ds : List GlobalDecl) : Type :=
+  List.TProd (fun d : GlobalDecl => TyWf.Den d.ty) ds
 
 /-- No declarations, nothing to supply. -/
 abbrev GlobalEnv.nil : GlobalEnv [] := PUnit.unit
@@ -56,6 +57,25 @@ def GlobalEnv.get : {ds : List GlobalDecl} → {τ : TyWf} → GlobalRef ds τ �
     TyWf.Den τ
   | _ :: _, _, .head, g => g.1
   | _ :: _, _, .tail r, g => GlobalEnv.get r g.2
+
+/-- The values of a list of types are Mathlib's `List.TProd` of their values, so the
+    `List.TProd` lemmas apply to them.  `Ty.DenList` itself stays a shape of the `mutual`
+    translation to polynomial functors, where `List.TProd` (a `List.foldr`) would not be
+    structural. -/
+theorem Ty.denList_eq_tprod : ∀ ts : List Ty, Ty.DenList ts = List.TProd Ty.Den ts
+  | [] => rfl
+  | t :: ts => by
+      show (Ty.Den t × Ty.DenList ts) = (Ty.Den t × List.TProd Ty.Den ts)
+      rw [Ty.denList_eq_tprod ts]
+
+/-- The values of a list of bundled types are Mathlib's `List.TProd` of their values. -/
+theorem TyWf.denList_eq_tprod (ts : List TyWf) :
+    TyWf.DenList ts = List.TProd TyWf.Den ts := by
+  induction ts with
+  | nil => rfl
+  | cons t ts ih =>
+      show (TyWf.Den t × TyWf.DenList ts) = (TyWf.Den t × List.TProd TyWf.Den ts)
+      rw [ih]
 
 /-! ## Two folds
 

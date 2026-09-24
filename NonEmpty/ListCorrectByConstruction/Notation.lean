@@ -43,8 +43,4 @@ end
 instance : CoeOut (NonEmpty.ListCorrectByConstruction.NonEmptyList α) (List α) where
   coe xs := xs.toList
 
-@[inline]
-instance : NonEmpty.DowngradeMap NonEmpty.ListCorrectByConstruction.NonEmptyList where
-  map := NonEmpty.ListCorrectByConstruction.NonEmptyList.map
-
 end NonEmpty.ListCorrectByConstruction

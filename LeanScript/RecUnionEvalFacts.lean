@@ -46,7 +46,7 @@ theorem Term.eval_recTaggedUnion_casesOn_mk {Γ : Ctx} {τ : TyWf}
     (cases : TaggedUnionCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ) (env : Env Γ) :
     Term.eval G (.recTaggedUnion_casesOn (.recTaggedUnion_mk l hwf t ht fields) cases) env =
       Term.eval G (.taggedUnion_casesOn (.taggedUnion_mk _ t ht fields) cases) env := by
-  show TaggedUnionCases.eval G cases env
+  show TaggedUnionCases.eval G cases rfl .rfl .rfl env
       (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk]
   rfl

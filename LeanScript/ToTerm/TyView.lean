@@ -43,9 +43,52 @@ inductive TyView where
   /-- A **recursive record**, with its fields — a schema of `TyWfIn 1` — and the proof
       that the binder is a type. -/
   | recObject (fs hwf : Expr)
+  /-- A **recursive newtype**, with its body — a tree of `TyWfIn 1` — and the proof that
+      the binder is a type. -/
+  | recAlias (b hwf : Expr)
+  /-- A member of a **mutual recursive family**: the number `n` for which the family has
+      `n + 2` members, the family — schemas of `TyWfIn (n + 2)`, with the member it
+      selects — and the proof that the family describes types. -/
+  | mutualRecursiveFamily (n f hwf : Expr)
   /-- Anything else — another recursive binder or an occurrence. -/
   | other
   deriving BEq, Repr
+
+/-- One member of a family, bundled at the scope `sc` of the whole family. -/
+def bundleFamMemberE (sc : Nat) (m : Expr) : MetaM Expr := do
+  let ι := scopeTyE sc
+  match (← whnf m).getAppFnArgs with
+  | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
+      return mkApp2 (mkConst ``LeanScript.LeanFamMemberSchema.ctors) ι (← bundleTUE sc l)
+  | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
+      return mkApp2 (mkConst ``LeanScript.LeanFamMemberSchema.record) ι
+        (← bundleRecordE sc fs)
+  | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
+      return mkApp2 (mkConst ``LeanScript.LeanFamMemberSchema.alias) ι (← bundleTyE sc b)
+  | _ => throwError "`#leanscript_to_term`: not a member of a family: {m}"
+
+/-- A list of members of a family, bundled at the scope `sc` of the whole family. -/
+def bundleFamMembersE (sc : Nat) (ms : Expr) : MetaM Expr := do
+  let xs ← (← listOfExpr ms).mapM (bundleFamMemberE sc)
+  let elem := mkApp (mkConst ``LeanScript.LeanFamMemberSchema) (scopeTyE sc)
+  return xs.foldr (fun a acc => mkApp3 (mkConst ``List.cons [Level.zero]) elem a acc)
+    (mkApp (mkConst ``List.nil [Level.zero]) elem)
+
+/-- A mutual family of trees, with the number of its members, bundled at the scope of the
+    whole family: the family, and that number. -/
+def bundleFamE (f : Expr) : MetaM (Expr × Nat) := do
+  match (← whnf f).getAppFnArgs with
+  | (``LeanScript.LeanMutualRecFamily.selectedThenMore, #[_, before, cur, next, after]) =>
+      let sc := (← listOfExpr before).length + 2 + (← listOfExpr after).length
+      return (mkAppN (mkConst ``LeanScript.LeanMutualRecFamily.selectedThenMore)
+        #[scopeTyE sc, ← bundleFamMembersE sc before, ← bundleFamMemberE sc cur,
+          ← bundleFamMemberE sc next, ← bundleFamMembersE sc after], sc)
+  | (``LeanScript.LeanMutualRecFamily.selectedLast, #[_, first, before, cur]) =>
+      let sc := (← listOfExpr before).length + 2
+      return (mkAppN (mkConst ``LeanScript.LeanMutualRecFamily.selectedLast)
+        #[scopeTyE sc, ← bundleFamMemberE sc first, ← bundleFamMembersE sc before,
+          ← bundleFamMemberE sc cur], sc)
+  | _ => throwError "`#leanscript_to_term`: not a mutual family: {f}"
 
 /-- The node a type of the language is, with the children **bundled**: what the view
     hands back is what the grammar's constructors ask for. -/
@@ -79,6 +122,13 @@ def tyView (τ : Expr) : MetaM TyView := do
   | (``LeanScript.Ty.recObject, #[fs]) =>
       let hwf ← LeanScript.Ty.mkWfIn 0 t
       return .recObject (← bundleRecordE 1 fs) hwf
+  | (``LeanScript.Ty.recAlias, #[b]) =>
+      let hwf ← LeanScript.Ty.mkWfIn 0 t
+      return .recAlias (← bundleTyE 1 b) hwf
+  | (``LeanScript.Ty.mutualRecursiveFamily, #[f]) =>
+      let hwf ← LeanScript.Ty.mkWfIn 0 t
+      let (fB, sc) ← bundleFamE f
+      return .mutualRecursiveFamily (mkNatLit (sc - 2)) fB hwf
   | _ => return .other
 
 /-- Is this the terminal type `bool`? -/

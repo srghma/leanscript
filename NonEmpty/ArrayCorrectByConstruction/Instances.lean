@@ -266,12 +266,12 @@ instance : LawfulApplicative NonEmptyArray where
     apply NonEmptyArray.ext
     · simp only [Seq.seq, NonEmptyArray.seq, pure, NonEmptyArray.singleton, Functor.map,
       List.map_toArray, List.map_nil, Array.mapNonEmptyArray, NonEmptyArray.toArr,
-      Array.append_empty, NonEmpty.ArrayUtil.flatMap_singleton_eq_map, Array.append_eq_append,
+      Array.append_empty, ← Array.map_eq_flatMap, Array.append_eq_append,
       Array.empty_append, NonEmptyArray.map]
     · obtain ⟨g, gt⟩ := f
       simp only [Seq.seq, NonEmptyArray.seq, pure, NonEmptyArray.singleton, Functor.map,
         List.map_toArray, List.map_nil, Array.mapNonEmptyArray, NonEmptyArray.toArr,
-        Array.append_empty, NonEmpty.ArrayUtil.flatMap_singleton_eq_map, Array.append_eq_append,
+        Array.append_empty, ← Array.map_eq_flatMap, Array.append_eq_append,
         Array.empty_append, NonEmptyArray.map]
 
   seq_assoc x g f := by
@@ -288,7 +288,7 @@ instance : LawfulApplicative NonEmptyArray where
       cases xt with | mk l =>
       induction l generalizing gh gt fh ft
       · simp only [Function.comp_def, List.map_toArray, List.map_nil, Array.append_empty,
-        NonEmpty.ArrayUtil.flatMap_singleton_eq_map, Array.map_map, Array.empty_append, Array.flatMap_map,
+        ← Array.map_eq_flatMap, Array.map_map, Array.empty_append, Array.flatMap_map,
         Function.comp_apply, Array.flatMap_assoc, Array.flatMap_append, List.flatMap_toArray,
         List.flatMap_cons, List.flatMap_nil, List.append_nil]
       · rename_i a as ih
@@ -327,7 +327,7 @@ instance : LawfulMonad NonEmptyArray where
     · obtain ⟨xh, xt⟩ := x
       simp only [bind, NonEmptyArray.flatten, pure, NonEmptyArray.singleton, Array.mapNonEmptyArray,
         NonEmptyArray.toArr, id_eq, Array.flatMap_map, Array.append_empty,
-        NonEmpty.ArrayUtil.flatMap_singleton_eq_map, Array.empty_append, NonEmptyArray.map_tail]
+        ← Array.map_eq_flatMap, Array.empty_append, NonEmptyArray.map_tail]
 
   bind_map f x := by
     apply NonEmptyArray.ext

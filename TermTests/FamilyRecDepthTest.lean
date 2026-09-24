@@ -25,7 +25,7 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
 The `zero` branch answers `0`.  The `succ` branch does not answer: it descends into its
 field — the only occurrence of a member among its fields, which is
-`FamilyMemberField.here rfl`, an occurrence of member `0` — and dispatches on member `0`
+`FamilyMemberField`'s `.here rfl`, an occurrence of member `0` — and dispatches on member `0`
 again.  In that dispatch the value is `succ n` with `n` in hand, so:
 
 * if `n` is `zero` the value is `succ zero`, and the answer is `1`;
@@ -270,7 +270,7 @@ def Ls.cont : Ls → Nat
 ```
 
 Its `cons` branch reads the answer at the tail *of the tail*, so it descends once, and the
-field it descends into is the **second** — which is what `FamilyMemberField.there` says.
+field it descends into is the **second** — which is what `FamilyMemberField`'s `.there` says.
 This is a fold over the *same family*, selecting the other member, so the branches are
 those of the same two members and the descent is into member `1`
 (`FamilyMemberAt.there .here`). -/
@@ -383,7 +383,7 @@ constructor further down before it can answer, is not a branch of the plain fold
 
 /--
 error: Type mismatch
-  FamilyFoldKBranch.deep (FamilyMemberField.here ?m.22) FamilyMemberAt.here
+  FamilyFoldKBranch.deep (ListAnyT.here ?m.22) FamilyMemberAt.here
     (FamilyMemberFoldKCases.ctors
       (FamilyTaggedUnionFoldKCases.skip (FamilyFoldKBranch.here (Term.nat_mk 1))
         (FamilyCtorsWithPayloadFoldKCases.here (FamilyFoldKBranch.here (Term.nat_mk 2))

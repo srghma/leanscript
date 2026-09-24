@@ -124,19 +124,20 @@ theorem substOccCtors_eq_map (s : Ty) (m : Nat → Ty) :
         substOccCtors_eq_map s m as]
 
 theorem substOccNE_eq_map (s : Ty) (m : Nat → Ty) (xs : NonEmptyList Ty) :
-    substOccNE s m xs = NonEmptyListSchema.map (substOcc s m) xs := by
+    substOccNE s m xs = xs.map (substOcc s m) := by
   cases xs
-  simp only [substOccNE, NonEmptyListSchema.map, substOccList_eq_map]
+  simp only [substOccNE, NonEmptyList.map, substOccList_eq_map]
 
 theorem substOccRecord_eq_map (s : Ty) (m : Nat → Ty) (fs : LeanRecordSchema Ty) :
     substOccRecord s m fs = fs.map (substOcc s m) := by
   cases fs
-  simp only [substOccRecord, LeanRecordSchema.map, substOccList_eq_map]
+  simp only [substOccRecord, LeanRecordSchema.map, substOccList_eq_map, Functor.map]
 
 theorem substOccCP_eq_map (s : Ty) (m : Nat → Ty) :
     ∀ c : CtorsWithPayload Ty, substOccCP s m c = c.map (substOcc s m)
   | .here _ _ => by
-      simp only [substOccCP, CtorsWithPayload.map, substOccNE_eq_map, substOccCtors_eq_map]
+      simp only [substOccCP, CtorsWithPayload.map, substOccNE_eq_map, substOccCtors_eq_map,
+        Functor.map]
   | .skip c => by
       simp only [substOccCP, CtorsWithPayload.map, substOccCP_eq_map s m c]
 
@@ -145,9 +146,9 @@ theorem substOccTU_eq_map (s : Ty) (m : Nat → Ty) (l : LeanTaggedUnionSchema T
   cases l with
   | payloadFirst _ _ _ =>
       simp only [substOccTU, LeanTaggedUnionSchema.map, substOccNE_eq_map,
-        substOccList_eq_map, substOccCtors_eq_map]
+        substOccList_eq_map, substOccCtors_eq_map, Functor.map]
   | skip c =>
-      simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map]
+      simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map, Functor.map]
 
 /-! ## The two scopes
 

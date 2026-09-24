@@ -3,6 +3,7 @@ module
 public meta import LeanScript.ToTerm.TransBrec
 public meta import LeanScript.ToTerm.TransRecObject
 public meta import LeanScript.ToTerm.TransRecUnion
+public meta import LeanScript.ToTerm.TransRecFamily
 public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
@@ -232,6 +233,9 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       \"{n.getString!}\" (or \"{n}\") to the signature."
   -- a structural recursion on a recursive record is the fold of the record
   if n.getString! == "brecOn" then
+    -- a structural recursion on a member of a mutual inductive block is the fold of
+    -- the family, at the depth it needs
+    if let some t ← transRecFamilyBrecOn? trans c e n lvls args then return t
     if let some t ← transRecObjectBrecOn? trans c e n lvls args then return t
     -- a structural recursion on a recursive tagged union other than a list is the fold
     -- of the union, at the depth it needs
@@ -558,6 +562,49 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let fieldTys ← recordFieldTys (← reduceTy unfE)
       let spine ← mkSpine c fieldTys fields
       return mkAppN (mkConst `LeanScript.Term.recObject_mk) #[c.sg, c.gamma, fs, hwf, spine]
+  | .recAlias b hwf =>
+      -- the one field of a value is the body **unfolded**: an occurrence of the newtype
+      -- inside it is a value of the newtype again
+      let some v := fields[0]?
+        | throwError "`#leanscript_to_term`: a value of the recursive newtype \
+            {ci.induct} needs its body"
+      unless fields.size == 1 do
+        throwError "`#leanscript_to_term`: the constructor of the recursive newtype \
+          {ci.induct} has {fields.size} fields"
+      return mkAppN (mkConst `LeanScript.Term.recAlias_mk)
+        #[c.sg, c.gamma, b, hwf, ← trans c v]
+  | .mutualRecursiveFamily nE f hwf =>
+      -- a value of the member the family selects, with its fields **unfolded** in the
+      -- scope of the whole family: an occurrence of a member is a value of that member
+      let curE := mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.current)
+        (tyWfInE ((← natOfExpr nE) + 2)) f
+      let unfE ← reduceTy (mkAppN (mkConst ``LeanScript.LeanFamMemberSchema.map)
+        #[tyWfInE ((← natOfExpr nE) + 2), tyE,
+          mkApp3 (mkConst ``LeanScript.TyWfIn.unfoldFam) nE f hwf, curE])
+      let value ← match unfE.getAppFnArgs with
+        | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
+            let ctys ← taggedUnionCtorTys l
+            let some fieldTys := ctys[ci.cidx]?
+              | throwError "`#leanscript_to_term`: the tree of {ci.induct} has no \
+                  constructor {ci.cidx}"
+            let spine ← mkSpine c fieldTys fields
+            let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+            let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.ctors)
+              #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
+        | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
+            let spine ← mkSpine c (← recordFieldTys fs) fields
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.record)
+              #[c.sg, c.gamma, fs, spine]
+        | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
+            let some v := fields[0]?
+              | throwError "`#leanscript_to_term`: a value of {ci.induct} needs its body"
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.alias)
+              #[c.sg, c.gamma, b, ← trans c v]
+        | _ => throwError "`#leanscript_to_term`: internal: the member of the family \
+            {ci.induct} has no shape: {unfE}"
+      return mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_mk)
+        #[c.sg, c.gamma, nE, f, hwf, value]
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       return mkAppN (mkConst `LeanScript.Term.enum_mk)

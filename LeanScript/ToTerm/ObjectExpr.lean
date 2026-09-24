@@ -48,6 +48,12 @@ def treeE : Expr := mkConst ``LeanScript.Ty
     expression. -/
 def tyWfInE (n : Nat) : Expr := mkApp (mkConst ``LeanScript.TyWfIn) (mkNatLit n)
 
+/-- `id : List TyWf → List TyWf`, as an expression: what a branch of a **plain** dispatch
+    binds (`LeanScript.TaggedUnionCases` is the fold-case family at `ι := TyWf` and this
+    `bind`). -/
+def idBindE : Expr :=
+  mkApp (mkConst ``id [Level.one]) (mkApp (mkConst ``List [Level.zero]) tyE)
+
 /-- The bundles of a scope: `TyWf` closed, `TyWfIn n` inside a binder. -/
 def scopeTyE (n : Nat) : Expr := if n == 0 then tyE else tyWfInE n
 

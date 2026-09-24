@@ -166,7 +166,7 @@ structure NeedsInstance where
 
 /--
 error: the type `InductiveTypesTest.NeedsInstance` has no `Ty`: `Except String
-  Nat` has no `LeanScriptTyWf` instance; derive or write one for it first
+  ℕ` has no `LeanScriptTyWf` instance; derive or write one for it first
 -/
 #guard_msgs in
 deriving instance LeanScriptTyWf for NeedsInstance

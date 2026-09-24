@@ -22,6 +22,18 @@ layers, and the only part of that arrangement worth keeping now that there is on
 language.
 -/
 
+/-- Apply an effectful function to the value an array, a thunk or a lazy value holds. -/
+def LeanPrimTyCovariant.traverse {m : Type → Type} [Applicative m] {α β : Type} (f : α → m β) :
+    LeanPrimTyCovariant α → m (LeanPrimTyCovariant β)
+  | .array a => .array <$> f a
+  | .thunk a => .thunk <$> f a
+  | .lazy a => .lazy <$> f a
+
+/-- `LeanPrimTyCovariant` is traversable, with its existing `Functor` instance: this is
+    what `TyShape` needs to derive its instance. -/
+instance : Traversable LeanPrimTyCovariant where
+  traverse := LeanPrimTyCovariant.traverse
+
 /-- One node of the type language whose children are `α`s: everything except an
     occurrence of the declaration being defined and the four recursive binders, which
     `LeanScript.Ty` adds. -/
@@ -40,7 +52,7 @@ inductive TyShape (α : Type) where
   /-- A non-recursive sum type with fields: one entry per constructor, in declaration
       order, each holding the types of that constructor's fields. -/
   | taggedUnion : LeanTaggedUnionSchema α → TyShape α
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 /-- An array, a thunk or a lazy value is a node.  (There is no such instance for
     `LeanPrimTy`: the type it would be coerced into does not mention `LeanPrimTy`, so the
@@ -51,24 +63,9 @@ instance {α : Type} : CoeOut (LeanRecordSchema α) (TyShape α) := ⟨.record�
 /-- A tagged-union schema is a node. -/
 instance {α : Type} : CoeOut (LeanTaggedUnionSchema α) (TyShape α) := ⟨.taggedUnion⟩
 
-/-- `LeanPrimTyCovariant.map` obeys the functor laws. -/
-instance : LawfulFunctor LeanPrimTyCovariant where
-  map_const := rfl
-  id_map c := by cases c <;> rfl
-  comp_map _ _ c := by cases c <;> rfl
-
 namespace TyShape
 
-variable {α β : Type}
-
-/-- Rebuild a node with every child mapped. -/
-def map (f : α → β) : TyShape α → TyShape β
-  | .prim p => .prim p
-  | .fn a b => .fn (f a) (f b)
-  | .primCovariant s => .primCovariant (s.map f)
-  | .enum e => .enum e
-  | .record fs => .record (fs.map f)
-  | .taggedUnion l => .taggedUnion (l.map f)
+variable {α : Type}
 
 /-- The children of a node, in order. -/
 def children : TyShape α → List α
@@ -78,26 +75,6 @@ def children : TyShape α → List α
   | .enum _ => []
   | .record fs => fs.toList
   | .taggedUnion l => l.toList.flatten
-
-@[simp] theorem map_id (s : TyShape α) : s.map id = s := by
-  cases s with
-  | primCovariant c => cases c <;> rfl
-  | _ => simp [map]
-
-theorem map_comp {γ : Type} (g : β → γ) (h : α → β) (s : TyShape α) :
-    s.map (fun x => g (h x)) = (s.map h).map g := by
-  cases s with
-  | primCovariant c => cases c <;> rfl
-  | _ => simp [map, LeanRecordSchema.map_comp, LeanTaggedUnionSchema.map_comp]
-
-/-- `<$>` is `TyShape.map`: it applies a function to every child and keeps the node. -/
-instance : Functor TyShape where
-  map := map
-
-instance : LawfulFunctor TyShape where
-  map_const := rfl
-  id_map := map_id
-  comp_map g h s := map_comp h g s
 
 end TyShape
 

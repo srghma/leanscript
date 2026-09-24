@@ -160,9 +160,11 @@ def mkSelfFieldE (fsL : Array Expr) (p : Nat) : MetaM Expr := do
     match acc with
     | none =>
         let h ← mkEqRefl (mkConst ``LeanScript.Ty.self)
-        acc := some (mkAppN (mkConst ``LeanScript.SelfField.here) #[a, rest, h])
+        acc := some (mkAppN (mkConst ``LeanScript.ListAnyT.here)
+          #[ι, mkConst ``LeanScript.IsSelfField, a, rest, h])
     | some inner =>
-        acc := some (mkAppN (mkConst ``LeanScript.SelfField.there) #[a, rest, inner])
+        acc := some (mkAppN (mkConst ``LeanScript.ListAnyT.there)
+          #[ι, mkConst ``LeanScript.IsSelfField, a, rest, inner])
   return acc.get!
 
 /-- The branches of a fold over the schema `l`, in its shape: `pre` are the implicit

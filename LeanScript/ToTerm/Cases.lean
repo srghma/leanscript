@@ -89,13 +89,13 @@ partial def mkTaggedUnionCases (mkBranch : BranchFn) (c : TCtx) (τ l : Expr) (s
       let b0 ← mkBranch minors[start]! ctors[start]! f0
       let b1 ← mkBranch minors[start + 1]! ctors[start + 1]! f1
       let restCases ← mkTaggedUnionRest mkBranch c τ rest (start + 2) minors ctors
-      return mkAppN (mkConst `LeanScript.TaggedUnionCases.payloadFirst)
-        #[c.sg, c.gamma, τ, fields, next, rest, b0, b1, restCases]
+      return mkAppN (mkConst `LeanScript.TaggedUnionFoldCases.payloadFirst)
+        #[c.sg, tyE, idBindE, c.gamma, τ, fields, next, rest, b0, b1, restCases]
   | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
       let b0 ← mkBranch minors[start]! ctors[start]! []
       let restCases ← mkCtorsWithPayloadCases mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst `LeanScript.TaggedUnionCases.skip)
-        #[c.sg, c.gamma, τ, rest, b0, restCases]
+      return mkAppN (mkConst `LeanScript.TaggedUnionFoldCases.skip)
+        #[c.sg, tyE, idBindE, c.gamma, τ, rest, b0, restCases]
   | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
 
 /-- The branches of the constructors a `CtorsWithPayload` holds. -/
@@ -105,13 +105,13 @@ partial def mkCtorsWithPayloadCases (mkBranch : BranchFn) (c : TCtx) (τ cp : Ex
   | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
       let b ← mkBranch minors[start]! ctors[start]! (← nonEmptyTys fields)
       let restCases ← mkTaggedUnionRest mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst `LeanScript.CtorsWithPayloadCases.here)
-        #[c.sg, c.gamma, τ, fields, rest, b, restCases]
+      return mkAppN (mkConst `LeanScript.CtorsWithPayloadFoldCases.here)
+        #[c.sg, tyE, idBindE, c.gamma, τ, fields, rest, b, restCases]
   | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
       let b ← mkBranch minors[start]! ctors[start]! []
       let restCases ← mkCtorsWithPayloadCases mkBranch c τ rest (start + 1) minors ctors
-      return mkAppN (mkConst `LeanScript.CtorsWithPayloadCases.skip)
-        #[c.sg, c.gamma, τ, rest, b, restCases]
+      return mkAppN (mkConst `LeanScript.CtorsWithPayloadFoldCases.skip)
+        #[c.sg, tyE, idBindE, c.gamma, τ, rest, b, restCases]
   | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
 
 /-- The branches of the constructors a schema leaves as a plain list. -/
@@ -119,12 +119,13 @@ partial def mkTaggedUnionRest (mkBranch : BranchFn) (c : TCtx) (τ rest : Expr) 
     (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
   match (← whnf rest).getAppFnArgs with
   | (``List.nil, _) =>
-      return mkAppN (mkConst `LeanScript.TaggedUnionCasesRest.nil) #[c.sg, c.gamma, τ]
+      return mkAppN (mkConst `LeanScript.TaggedUnionFoldCasesRest.nil)
+        #[c.sg, tyE, idBindE, c.gamma, τ]
   | (``List.cons, #[_, fs, more]) =>
       let b ← mkBranch minors[start]! ctors[start]! (← listOfExpr fs)
       let restCases ← mkTaggedUnionRest mkBranch c τ more (start + 1) minors ctors
-      return mkAppN (mkConst `LeanScript.TaggedUnionCasesRest.cons)
-        #[c.sg, c.gamma, τ, fs, more, b, restCases]
+      return mkAppN (mkConst `LeanScript.TaggedUnionFoldCasesRest.cons)
+        #[c.sg, tyE, idBindE, c.gamma, τ, fs, more, b, restCases]
   | _ => throwError "`#leanscript_to_term`: not a list of constructors: {rest}"
 
 /-- The branches of a dispatch on an enum, in the shape of its schema. -/

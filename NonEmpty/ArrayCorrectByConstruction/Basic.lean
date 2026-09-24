@@ -1,6 +1,5 @@
 module
 import Init.Data.Array.Lemmas
-public import NonEmpty.DowngradeMap
 public import NonEmpty.ArrayUtil
 
 @[expose] public section
@@ -242,7 +241,7 @@ def back? (xs : NonEmptyArray α) : Option α := some xs.back
 @[simp] theorem _root_.Array.mapNonEmptyArray_singleton (as : Array α) (f : α → β) :
     as.mapNonEmptyArray (fun a => singleton (f a)) = as.map f := by
   simp only [Array.mapNonEmptyArray, toArr, singleton, Array.append_empty,
-    ArrayUtil.flatMap_singleton_eq_map]
+    ← Array.map_eq_flatMap]
 
 @[simp] def ofFn {n : Nat} (f : Fin (n + 1) → α) : NonEmptyArray α :=
   ⟨f ⟨0, by omega⟩, Array.ofFn (fun (i : Fin n) => f ⟨i.val + 1, by omega⟩)⟩

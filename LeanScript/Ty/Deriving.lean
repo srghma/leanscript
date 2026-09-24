@@ -181,7 +181,13 @@ tests. -/
 /-- The handler `deriving LeanScriptTyWf` runs: one instance per declaration named. -/
 def leanScriptTyWfHandler (declNames : Array Name) : CommandElabM Bool := do
   for n in declNames do
-    Command.liftTermElabM (mkInstanceFor n)
+    -- the tree, its proof and the instance are added with their bodies **exported**
+    -- (unless the declaration itself is private): a `deriving instance … for` command
+    -- runs outside the exporting scope of the declaration, and a tree whose body is not
+    -- exported cannot be unfolded where it is used — in the body of an exposed
+    -- definition of the same module, or in another module
+    Command.liftTermElabM <| withExporting (isExporting := !isPrivateName n) <|
+      mkInstanceFor n
   return true
 
 initialize registerDerivingHandler ``LeanScript.LeanScriptTyWf leanScriptTyWfHandler

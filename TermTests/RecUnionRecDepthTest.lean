@@ -25,7 +25,7 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
 The `zero` branch answers `0`.  The `succ` branch does not answer: it descends into its
 field — the only occurrence of the union among its fields, which is
-`SelfField.here rfl` — and dispatches on it.  In that dispatch the value is `succ n`
+`SelfField`'s `.here rfl` — and dispatches on it.  In that dispatch the value is `succ n`
 with `n` in hand, so:
 
 * if `n` is `zero` the value is `succ zero`, and the answer is `1`;
@@ -226,7 +226,7 @@ def cont : List Nat → Nat
 ```
 
 Its `cons` branch reads the answer at the tail *of the tail*, so it descends once, and
-the field it descends into is the **second** — which is what `SelfField.there` says. -/
+the field it descends into is the **second** — which is what `SelfField`'s `.there` says. -/
 
 /-- The schema of a list of naturals: `nil` carries nothing, `cons` carries a natural and
     the list itself. -/
@@ -317,12 +317,12 @@ constructor further down before it can answer, is not a branch of the plain fold
 
 /--
 error: Type mismatch
-  FoldKBranch.deep (SelfField.here ?m.14)
+  FoldKBranch.deep (ListAnyT.here ?m.16)
     (TaggedUnionFoldKCases.skip (FoldKBranch.here (Term.nat_mk 1))
       (CtorsWithPayloadFoldKCases.here (FoldKBranch.here (Term.nat_mk 2)) TaggedUnionFoldKCasesRest.nil))
 has type
-  FoldKBranch ?m.52 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.39 [])) ?m.54 ?m.6 (?m.10 :: ?m.11)
-    (TyWf.prim LeanPrimTy.nat) (?m.57 + 1)
+  FoldKBranch ?m.54 (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.41 [])) ?m.56 ?m.6 (?m.12 :: ?m.13)
+    (TyWf.prim LeanPrimTy.nat) (?m.59 + 1)
 but is expected to have type
   FoldKBranch sigAdd peanoSchema (pbind natT) PCtx succFields natT 0
 -/

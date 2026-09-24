@@ -223,10 +223,10 @@ constructors run out, does not elaborate. -/
 -- The list type's second constructor carries fields, so its branch is `here` and not
 -- another `skip`.
 /--
-error: Unknown constant `LeanScript.CtorsWithPayloadCases.nil`
+error: Unknown constant `LeanScript.CtorsWithPayloadFoldCases.nil`
 
 Note: Inferred this name from the expected resulting type of `.nil`:
-  CtorsWithPayloadCases ?m.29 ?m.30 ?m.28 (TyWf.prim LeanPrimTy.nat)
+  CtorsWithPayloadFoldCases ?m.33 ?m.28 ?m.29 ?m.30 ?m.32 (TyWf.prim LeanPrimTy.nat)
 -/
 #guard_msgs (error) in
 def natHeadNotExhaustive : Term recEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=

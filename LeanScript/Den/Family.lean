@@ -130,7 +130,7 @@ theorem memberIdx_map {β : Type} (g : α → β) (f : LeanMutualRecFamily α) :
 
 theorem members_map {β : Type} (g : α → β) (f : LeanMutualRecFamily α) :
     (f.map g).members = f.members.map (·.map g) := by
-  cases f <;> simp [map, members]
+  cases f <;> simp [map, members, Functor.map]
 
 end LeanMutualRecFamily
 
@@ -413,12 +413,16 @@ theorem famCurrentUnfold_map_toTy (f : LeanMutualRecFamily (TyWfIn (n + 2)))
   simp only [Ty.famCurrentUnfold, LeanMutualRecFamily.current_map]
   cases f.current with
   | ctors l =>
-      simp only [LeanFamMemberSchema.map, Ty.substOccMember, Ty.substOccTU_eq_map,
-        ← LeanTaggedUnionSchema.map_comp]
+      simp only [LeanFamMemberSchema.map, Ty.substOccMember, Ty.substOccTU_eq_map]
+      congr 1
+      show (_ <$> _ <$> l) = (_ <$> _ <$> l)
+      rw [Functor.map_map, Functor.map_map]
       rfl
   | record fs =>
-      simp only [LeanFamMemberSchema.map, Ty.substOccMember, Ty.substOccRecord_eq_map,
-        ← LeanRecordSchema.map_comp]
+      simp only [LeanFamMemberSchema.map, Ty.substOccMember, Ty.substOccRecord_eq_map]
+      congr 1
+      show (_ <$> _ <$> fs) = (_ <$> _ <$> fs)
+      rw [Functor.map_map, Functor.map_map]
       rfl
   | «alias» b => rfl
 

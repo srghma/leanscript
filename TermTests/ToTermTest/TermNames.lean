@@ -22,7 +22,8 @@ namespace TermTests.ToTermNames
 
 open Lean Elab Command
 
-/-- The types declared by the `mutual` block of `LeanScript/Expr/Term.lean`. -/
+/-- The types declared by the `mutual` block of `LeanScript/Expr/Term.lean`, and the
+    plain-dispatch abbreviations (`TaggedUnionCases`, …) declared after it. -/
 meta def termTypes : List String :=
   ["Term", "Terms", "ArrayRecBases", "Spine", "TaggedUnionCases", "CtorsWithPayloadCases",
    "TaggedUnionCasesRest", "TaggedUnionSomeCases", "EnumCases", "EnumSomeCases",

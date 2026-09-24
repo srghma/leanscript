@@ -206,7 +206,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .taggedUnion_mk _ t ht fields, env =>
       TyWf.DenTU.mk t ht (Spine.eval G fields env)
   | _, _, .taggedUnion_casesOn v cases, env =>
-      TaggedUnionCases.eval G cases env (Term.eval G v env)
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env (Term.eval G v env)
   | _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env =>
       TaggedUnionSomeCases.eval G cases env (Term.eval G v env)
         (Term.eval G dflt env)
@@ -215,7 +215,8 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .recTaggedUnion_mk l hwf t ht fields, env =>
       TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env))
   | _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases, env =>
-      TaggedUnionCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env))
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env
+        (TyWf.DenRec.unfold l hwf (Term.eval G v env))
   | _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _, env =>
       TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env))
         (Term.eval G dflt env)
@@ -293,42 +294,54 @@ def Spine.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 
 /-- The value of the branch a value of a tagged union takes.  The branches are indexed by
     the schema and the value carries a tag that the schema has, so there is always
-    exactly one branch to take. -/
+    exactly one branch to take.
+
+    A plain dispatch is the fold-case family at `ι := TyWf` and `bind := id`
+    (`LeanScript.TaggedUnionCases`).  Structural recursion needs the indices of the family
+    to be variables, so the evaluator is stated for any `ι` and `bind` together with the
+    equations that pin them — the caller passes `rfl`, and matching on those `rfl`s makes
+    a branch's context `fs ++ Γ` again. -/
 def TaggedUnionCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} →
-    (cases : TaggedUnionCases Sg Γ l τ) → Env Γ → TyWf.DenTU l → TyWf.Den τ
-  | _, _, _, .payloadFirst b0 b1 rest, env, v =>
+    {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {l : LeanTaggedUnionSchema ι} →
+    {τ : TyWf} → (cases : TaggedUnionFoldCases Sg ι bind Γ l τ) →
+    {l' : LeanTaggedUnionSchema TyWf} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
+    l ≍ l' → Env Γ → TyWf.DenTU l' → TyWf.Den τ
+  | _, _, _, _, _, .payloadFirst b0 b1 rest, _, rfl, .rfl, .rfl, env, v =>
       match v with
       | ⟨⟨0, _⟩, f⟩ => Term.eval G b0 (Env.append (cast (Ty.denNE_eq _) f) env)
       | ⟨⟨1, _⟩, f⟩ => Term.eval G b1 (Env.append f env)
-      | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest env n f
-  | _, _, _, .skip b0 rest, env, v =>
+      | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
+  | _, _, _, _, _, .skip b0 rest, _, rfl, .rfl, .rfl, env, v =>
       match v with
       | ⟨⟨0, _⟩, _⟩ => Term.eval G b0 env
-      | ⟨⟨n + 1, _⟩, f⟩ => CtorsWithPayloadCases.eval G rest env n f
+      | ⟨⟨n + 1, _⟩, f⟩ => CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env n f
 
 /-- `TaggedUnionCases.eval`, on the constructors that follow a field-less one. -/
 def CtorsWithPayloadCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {c : CtorsWithPayload TyWf} → {τ : TyWf} →
-    (cases : CtorsWithPayloadCases Sg Γ c τ) → Env Γ → (t : Nat) → TyWf.DenAtCP c t → TyWf.Den τ
-  | _, _, _, .here b _, env, 0, f =>
+    {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {c : CtorsWithPayload ι} →
+    {τ : TyWf} → (cases : CtorsWithPayloadFoldCases Sg ι bind Γ c τ) →
+    {c' : CtorsWithPayload TyWf} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
+    c ≍ c' → Env Γ → (t : Nat) → TyWf.DenAtCP c' t → TyWf.Den τ
+  | _, _, _, _, _, .here b _, _, rfl, .rfl, .rfl, env, 0, f =>
       Term.eval G b (Env.append (cast (Ty.denNE_eq _) f) env)
-  | _, _, _, .here _ rest, env, n + 1, f =>
-      TaggedUnionCasesRest.eval G rest env n f
-  | _, _, _, .skip b _, env, 0, _ => Term.eval G b env
-  | _, _, _, .skip _ rest, env, n + 1, f =>
-      CtorsWithPayloadCases.eval G rest env n f
+  | _, _, _, _, _, .here _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
+      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
+  | _, _, _, _, _, .skip b _, _, rfl, .rfl, .rfl, env, 0, _ => Term.eval G b env
+  | _, _, _, _, _, .skip _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
+      CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env n f
 
 /-- `TaggedUnionCases.eval`, on a plain list of constructors.  A tag past the end of the
     list has no value — `Ty.DenAtList [] n` is `PEmpty` — which is why the empty list of
     branches needs no branch. -/
 def TaggedUnionCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {cs : List (List TyWf)} → {τ : TyWf} →
-    (cases : TaggedUnionCasesRest Sg Γ cs τ) → Env Γ → (t : Nat) → TyWf.DenAtList cs t → TyWf.Den τ
-  | _, _, _, .nil, _, _, f => PEmpty.elim f
-  | _, _, _, .cons b _, env, 0, f => Term.eval G b (Env.append f env)
-  | _, _, _, .cons _ rest, env, n + 1, f =>
-      TaggedUnionCasesRest.eval G rest env n f
+    {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {cs : List (List ι)} →
+    {τ : TyWf} → (cases : TaggedUnionFoldCasesRest Sg ι bind Γ cs τ) →
+    {cs' : List (List TyWf)} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
+    cs ≍ cs' → Env Γ → (t : Nat) → TyWf.DenAtList cs' t → TyWf.Den τ
+  | _, _, _, _, _, .nil, _, rfl, .rfl, .rfl, _, _, f => PEmpty.elim f
+  | _, _, _, _, _, .cons b _, _, rfl, .rfl, .rfl, env, 0, f => Term.eval G b (Env.append f env)
+  | _, _, _, _, _, .cons _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
+      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
 
 /-- The value of a dispatch on **some** of the constructors of a tagged union: the first
     branch whose constructor the value has, and the default if it has none of them. -/
@@ -452,7 +465,7 @@ def FamilyMemberValue.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 def FamilyMemberCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → {m : LeanFamMemberSchema TyWf} →
     FamilyMemberCases Sg Γ τ m → Env Γ → TyWf.DenMember m → TyWf.Den τ
-  | _, _, _, .ctors cases, env, v => TaggedUnionCases.eval G cases env v
+  | _, _, _, .ctors cases, env, v => TaggedUnionCases.eval G cases rfl .rfl .rfl env v
   | _, _, _, .record body, env, v =>
       Term.eval G body (Env.append (cast (Ty.denRecord_eq _) v) env)
   | _, _, _, .alias body, env, v => Term.eval G body (v, env)

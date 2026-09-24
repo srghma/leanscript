@@ -359,11 +359,11 @@ example (τ : TyWf) :
 error: Application type mismatch: The argument
   DeBruijn.head
 has type
-  DeBruijn (?m.56 :: ?m.57) ?m.56
+  DeBruijn (?m.60 :: ?m.61) ?m.60
 but is expected to have type
-  { head := treeTy natT 0, tail := [] }.toList ++
+  id { head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0) ∋
-    TyWf.record ?m.51
+    TyWf.record ?m.55
 in the application
   Term.var DeBruijn.head
 -/

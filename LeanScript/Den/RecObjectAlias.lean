@@ -113,7 +113,7 @@ theorem recordUnfold_map_toTy (fs : LeanRecordSchema (TyWfIn 1)) (X : TyWf) :
       Ty.substOccRecord X.toTy .familyMember (fs.map TyWfIn.toTy) := by
   rw [Ty.substOccRecord_eq_map]
   obtain ⟨a, b, rest⟩ := fs
-  simp only [LeanRecordSchema.map, List.map_map]
+  simp only [LeanRecordSchema.map, Functor.map, List.map_map]
   rfl
 
 /-- The unfolded fields of a recursive record of bundles are, as trees, the unfolded
