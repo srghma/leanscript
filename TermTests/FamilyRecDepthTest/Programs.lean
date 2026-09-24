@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.FamilyRecFacts
@@ -370,11 +371,11 @@ abbrev PCtx : Ctx := [peTy]
 
 /-- Zero, as a term. -/
 def zeroTerm : Term sigAdd [] 0 peTy .ctor :=
-  .mutualRecursiveFamily_mk famPe peWf (value := .ctors _ 0 (fields := .nil))
+  indexed% .mutualRecursiveFamily_mk famPe peWf (value := .ctors _ 0 (fields := .nil))
 
 /-- The successor of the variable in scope. -/
 def succTerm : Term sigAdd [] 0 (peTy ⇒ peTy) .lam :=
-  .lam (.mutualRecursiveFamily_mk famPe peWf
+  indexed% .lam (.mutualRecursiveFamily_mk famPe peWf
     (value := .ctors _ 1 (fields := .cons (.var (v♯0)) .nil)))
 
 /-- **The branches of the member the fold does not descend into.**  Every fold over this

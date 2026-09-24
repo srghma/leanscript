@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import TermTests.NatRecKTest
 
 @[expose] public section
@@ -93,7 +94,7 @@ def loop_term {Γ : Ctx} :=
     applied as `loop_term`: `loop_term` is a `fun`, and applying it would be a β-redex,
     which the grammar does not have.) -/
 def fibTR_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
+  indexed% .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
     (.nat_mk 1))
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/

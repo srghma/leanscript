@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import TermTests.RecObjectRecDepthTest.Programs
 
 @[expose] public section
@@ -49,7 +50,7 @@ def fibBranch :=
 
 /-- **`fib` over a recursive record**: the depth-one fold. -/
 def fibTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 1 (.var (v♯0)) fibBranch)
+  indexed% .lam (.recObject_rec 1 (.var (v♯0)) fibBranch)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -82,7 +83,7 @@ def tribBranch :=
 
 /-- `trib`, as a term. -/
 def tribTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 2 (.var (v♯0)) tribBranch)
+  indexed% .lam (.recObject_rec 2 (.var (v♯0)) tribBranch)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraBranch :=
@@ -115,7 +116,7 @@ def tetraBranch :=
 
 /-- `tetra`, as a term. -/
 def tetraTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 3 (.var (v♯0)) tetraBranch)
+  indexed% .lam (.recObject_rec 3 (.var (v♯0)) tetraBranch)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaBranch :=
@@ -156,7 +157,7 @@ def pentaBranch :=
 
 /-- `penta`, as a term. -/
 def pentaTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 4 (.var (v♯0)) pentaBranch)
+  indexed% .lam (.recObject_rec 4 (.var (v♯0)) pentaBranch)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaBranch :=
@@ -203,7 +204,7 @@ def hexaBranch :=
 
 /-- `hexa`, as a term. -/
 def hexaTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 5 (.var (v♯0)) hexaBranch)
+  indexed% .lam (.recObject_rec 5 (.var (v♯0)) hexaBranch)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -228,7 +229,7 @@ def fibTRBranch :=
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1))
+  indexed% .lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1))
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -256,7 +257,7 @@ def fibPairBranch :=
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0)))
+  indexed% .lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0)))
 
 /-! ## 6. The continuant: a fold that reads the record's **own field** as well
 
@@ -289,7 +290,7 @@ def contBranch :=
 
 /-- The continuant, as a term: the depth-one fold that also reads the label. -/
 def contTerm : Term sigAdd [] 0 (cellTy ⇒ natT) .lam :=
-  .lam (.recObject_rec 1 (.var (v♯0)) contBranch)
+  indexed% .lam (.recObject_rec 1 (.var (v♯0)) contBranch)
 
 /-! ## 7. What the evaluator says about these terms
 

@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecUnionRecFacts
@@ -278,10 +279,10 @@ abbrev PCtx : Ctx := [peanoTy]
 
 /-- Zero, as a term. -/
 def zeroTerm : Term sigAdd [] 0 peanoTy .ctor :=
-  .recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)
+  indexed% .recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil)
 
 /-- The successor of the variable in scope. -/
 def succTerm : Term sigAdd [] 0 (peanoTy ⇒ peanoTy) .lam :=
-  .lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))
+  indexed% .lam (.recTaggedUnion_mk peanoSchema (t := 1) (fields := .cons (.var (v♯0)) .nil))
 
 end TermTests.RecUnionRecDepth

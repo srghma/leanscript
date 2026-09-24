@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import TermTests.ArrayRecDepthTest.Cont
 
 @[expose] public section
@@ -126,7 +127,7 @@ def loopStep {Γ : Ctx} :=
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
 def contTRTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+  indexed% .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
     (.nat_mk 0))
 
 example : runArith contTRTerm #[] = 1 := rfl
@@ -233,7 +234,7 @@ def contPairTerm {Γ : Ctx} :=
     array would be a β-redex, which is not a term: the fold is written in place, on the
     array the function would have been applied to. -/
 def contFromPairTerm : Term sigArith [] 0 (TyWf.array natT ⇒ natT) .lam :=
-  .lam (.record_casesOn (fs := pairSchema)
+  indexed% .lam (.record_casesOn (fs := pairSchema)
     (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0)))
 
 example : runArith contFromPairTerm #[] = 1 := rfl

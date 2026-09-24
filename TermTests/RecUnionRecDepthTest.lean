@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import TermTests.RecUnionRecDepthTest.Programs
 
 @[expose] public section
@@ -44,7 +45,7 @@ def fibCases :=
 
 /-- **`fib` over a recursive tagged union**: the depth-one fold. -/
 def fibTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)
+  indexed% .lam (.recTaggedUnion_rec 1 (.var (v♯0)) fibCases)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -71,7 +72,7 @@ def tribCases :=
 
 /-- `trib`, as a term. -/
 def tribTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)
+  indexed% .lam (.recTaggedUnion_rec 2 (.var (v♯0)) tribCases)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraCases :=
@@ -96,7 +97,7 @@ def tetraCases :=
 
 /-- `tetra`, as a term. -/
 def tetraTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)
+  indexed% .lam (.recTaggedUnion_rec 3 (.var (v♯0)) tetraCases)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaCases :=
@@ -125,7 +126,7 @@ def pentaCases :=
 
 /-- `penta`, as a term. -/
 def pentaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)
+  indexed% .lam (.recTaggedUnion_rec 4 (.var (v♯0)) pentaCases)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaCases :=
@@ -159,7 +160,7 @@ def hexaCases :=
 
 /-- `hexa`, as a term. -/
 def hexaTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)
+  indexed% .lam (.recTaggedUnion_rec 5 (.var (v♯0)) hexaCases)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -182,7 +183,7 @@ def fibTRCases :=
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))
+  indexed% .lam (.ap (.ap (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0)) (.nat_mk 1))
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
 
@@ -209,7 +210,7 @@ def fibPairCases :=
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm : Term sigAdd [] 0 (peanoTy ⇒ natT) .lam :=
-  .lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))
+  indexed% .lam (.record_casesOn (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.var (v♯0)))
 
 /-! ## 6. A constructor with more than one field: the continuant over a list
 
@@ -263,7 +264,7 @@ def contCases :=
 
 /-- The continuant, as a term: the depth-one fold of a list union. -/
 def contTerm : Term sigAdd [] 0 (natListTy ⇒ natT) .lam :=
-  .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
+  indexed% .lam (.recTaggedUnion_rec 1 (.var (v♯0)) contCases)
 
 /-! ## 7. Running the terms
 

@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.Eval
 public meta import LeanScript.KernelRfl
 
@@ -84,7 +85,7 @@ def window {Γ : Ctx} :=
     out rather than applied as `window`: `window` is a `fun`, and applying it would be a
     β-redex, which the grammar does not have.) -/
 def fib_term : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  .lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+  indexed% .lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
     (.var (v♯0)))
 
 /-! ## What it computes

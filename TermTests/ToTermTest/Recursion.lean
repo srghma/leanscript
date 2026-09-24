@@ -1,6 +1,7 @@
 module
 
 public import TermTests.ToTermTest.Data
+public meta import LeanScript.Expr.Indexed
 public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
@@ -50,8 +51,8 @@ example : run isRed_term (run green_term) = false := rfl
 
 /-- The dispatch is the partial one: it names the constructor `red` and nothing else. -/
 example : isRed_term =
-    ⟨.lam (.enum_casesOnWithDefault (.var (v♯0))
-      (.last ⟨0, by decide⟩ (.bool_mk true)) (.bool_mk false))⟩ := rfl
+    indexed% .lam (.enum_casesOnWithDefault (.var (v♯0))
+      (.last ⟨0, by decide⟩ (.bool_mk true)) (.bool_mk false)) := rfl
 
 /-- A tagged union with three constructors, two of which share the wildcard's branch. -/
 inductive Sized where
@@ -83,7 +84,7 @@ example : run widthOrZero_term (run aPoint_term) = 0 := rfl
     is no default branch to reach.  `colourCode` above is one, and this pins that its
     translation is `enum_casesOn`. -/
 example : colourCode_term =
-    ⟨.lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2)))⟩ := rfl
+    indexed% .lam (.enum_casesOn (.var (v♯0)) (.three (.nat_mk 0) (.nat_mk 1) (.nat_mk 2))) := rfl
 
 /-! ## A recursion Lean compiled through `brecOn`
 

@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.CtorFn
 public import LeanScript.Eval
 
@@ -17,9 +18,9 @@ structure Pt where
 
 def natT : TyWf := .prim .nat
 
-def green : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Color `green) .lit := #leanscript_ctor `Color `green
-def pt : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Pt) .ctor := #leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2)
+def green : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Color `green) .lit := indexed% #leanscript_ctor `Color `green
+def pt : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Pt) .ctor := indexed% #leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2)
 def some3 : Term ⟨[], rfl⟩ [] 0 (#leanscript_layout `Option `some natT) .ctor :=
-  #leanscript_ctor `Option `some natT (.nat_mk 3)
+  indexed% #leanscript_ctor `Option `some natT (.nat_mk 3)
 
 end CtorFnModuleTest

@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.NatRecFacts
 public import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
@@ -63,7 +64,7 @@ binds `n` at index `0`, `fib (n + 1)` at index `1` and `fib n` at index `2`. -/
 
 /-- `fib`, as a term of the grammar: the depth-two fold. -/
 def fibTerm : Term sigAdd [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam :=
-  .lam (.nat_rec 1 (.var (v♯0))
+  indexed% .lam (.nat_rec 1 (.var (v♯0))
     (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
     (addT (.var (v♯2)) (.var (v♯1))))
 

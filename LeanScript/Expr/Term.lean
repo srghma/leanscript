@@ -1205,14 +1205,19 @@ end
 holds a term states both in its type, so they can be read off the declaration:
 
 ```lean
-def idNat : Term sg [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := .lam (.var (v♯0))
+def idNat : Term sg [] 0 (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam := indexed% .lam (.var (v♯0))
 ```
 
-The grade vector of a **closed** term is always `0`, and definitionally so: the grades a
-constructor computes are functions of the variables of the context, and every one of
-them reduces to `0` at the variable `x.succ` that `Usage.tail` asks about, so `0` is
-accepted wherever the computed vector is expected.  Only the head is really information,
-and it is checked: a declaration that states the wrong head does not elaborate. -/
+The grade vector of a **closed** term written out of the constructors is `0`, and by
+computation: a context with no variables has nothing to count, and the vector the
+constructors compute (`(Usage.single (v♯0)).tail` for `idNat`) reduces to `0` at every
+variable it is asked about, so `0` is accepted where it is expected.  (A term whose grade
+vector is itself a variable is another matter: that one has to be stated as it is.)  The head is checked too: a declaration
+that states the wrong one does not elaborate.
+
+A term written out by hand goes through `indexed%` (`LeanScript.Expr.Indexed`), which
+elaborates it with its indices inferred before comparing them with the stated ones;
+`#leanscript_to_term` does that by itself. -/
 
 end LeanScript
 

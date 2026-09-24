@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
@@ -366,13 +367,13 @@ example (τ : TyWf) :
 
 /-- A cell with no cell below it, as a term. -/
 def leafTerm : Term sigAdd [] 0 cellTy .ctor :=
-  .recObject_mk cellSchema
+  indexed% .recObject_mk cellSchema
     (fields := .cons (.nat_mk 1)
       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil))
 
 /-- One more cell on top of the one in scope. -/
 def consTerm : Term sigAdd [] 0 (cellTy ⇒ cellTy) .lam :=
-  .lam (.recObject_mk cellSchema
+  indexed% .lam (.recObject_mk cellSchema
     (fields := .cons (.nat_mk 1)
       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
         (fields := .cons (.var (v♯0)) .nil)) .nil)))

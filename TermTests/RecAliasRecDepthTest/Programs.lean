@@ -1,5 +1,6 @@
 module
 
+public meta import LeanScript.Expr.Indexed
 public import LeanScript.Expr.Term
 public import LeanScript.Eval
 public import LeanScript.RecAliasRecFacts
@@ -362,11 +363,11 @@ abbrev chainUnion : LeanTaggedUnionSchema TyWf := .skip (.here ⟨linkTy chainTy
 
 /-- The empty chain, as a term. -/
 def nilTerm : Term sigAdd [] 0 chainTy .ctor :=
-  .recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))
+  indexed% .recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil))
 
 /-- One more link on top of the chain in scope. -/
 def consTerm : Term sigAdd [] 0 (natT ⇒ chainTy ⇒ chainTy) .lam :=
-  .lam (.lam (.recAlias_mk chainBodyW
+  indexed% .lam (.lam (.recAlias_mk chainBodyW
     (value := .taggedUnion_mk chainUnion 1
       (fields := .cons
         (.record_mk (linkSchema chainTy)
