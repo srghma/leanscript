@@ -40,6 +40,9 @@ inductive TyView where
   /-- A **recursive** tagged union, with its payload — a schema of `TyWfIn 1`, the
       shape of `List α` — and the proof that the binder is a type. -/
   | recTaggedUnion (l hwf : Expr)
+  /-- A **recursive record**, with its fields — a schema of `TyWfIn 1` — and the proof
+      that the binder is a type. -/
+  | recObject (fs hwf : Expr)
   /-- Anything else — another recursive binder or an occurrence. -/
   | other
   deriving BEq, Repr
@@ -73,6 +76,9 @@ def tyView (τ : Expr) : MetaM TyView := do
       -- and the binder itself carries the proof that it describes a type
       let hwf ← LeanScript.Ty.mkWfIn 0 t
       return .recTaggedUnion (← bundleTUE 1 l) hwf
+  | (``LeanScript.Ty.recObject, #[fs]) =>
+      let hwf ← LeanScript.Ty.mkWfIn 0 t
+      return .recObject (← bundleRecordE 1 fs) hwf
   | _ => return .other
 
 /-- Is this the terminal type `bool`? -/

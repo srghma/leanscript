@@ -48,6 +48,8 @@ context are used.
 | a recursion on a `Nat` that descends `k + 1` steps (`fib`, the tribonacci numbers, …) | `nat_rec k` |
 | `go a.toList`, where `go` is a structural recursion on lists that descends `k + 1` elements and reads only the head and the values at the suffixes | `array_rec k` on the array `a` — see `TermTests/ArrayRecToTermTest/` |
 | a recursion on a **list** that descends `k + 1` constructors | *not read yet*: the node for it is `recTaggedUnion_rec k`, which `TermTests/RecUnionRecDepthTest.lean` writes out |
+| a structural recursion on a **recursive record** — an inductive type with one constructor that mentions itself inside a union field, such as `inductive Cell \| mk (label : Nat) (next : Option Cell)` — that reads the labels and the values of the recursion at most `k + 1` levels down (`fib` on a chain, the tribonacci numbers, …) | `recObject_rec k` — see `TermTests/RecObjectToTermTest/` and `LeanScript.ToTerm.TransRecObject` |
+| a constructor of a recursive record | `recObject_mk` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | a name of the signature | `global` |
@@ -106,8 +108,10 @@ being translated.
   its value at `n` and at `n + 1`, the hexanacci numbers at the six previous arguments —
   is translated as `nat_rec k`, and the depth is read off the compiled recursion: it is
   the smallest number of steps at which the *history* the `brecOn` hands the branch is
-  fully read.  A recursion on a `List` still descends one step, and a structural
-  recursion on any other type is still refused, since those are the only folds.
+  fully read.  A recursion on a recursive record is translated as `recObject_rec k`, the
+  depth read off the same way (`LeanScript.ToTerm.TransRecObject`).  A recursion on a
+  `List` still descends one step, and a structural recursion on any other type is still
+  refused, since those are the only folds.
 * a `for` loop that leaves early (`break`, `return`), or over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.
@@ -186,6 +190,7 @@ The translation itself is split across the modules of this directory:
 `LeanScript.ToTerm.Pieces` (literals, and small pieces of the object language),
 `LeanScript.ToTerm.Match` (a dispatch Lean compiled with a default),
 `LeanScript.ToTerm.Brec` (the compiled form of a structural recursion),
+`LeanScript.ToTerm.TransRecObject` (a structural recursion on a recursive record),
 `LeanScript.ToTerm.Existential` (datatypes with existentials, through the constructor
 functions),
 `LeanScript.ToTerm.Trans` (the translation proper) and

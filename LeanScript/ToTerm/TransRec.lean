@@ -219,8 +219,9 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
       let indInfo ← getConstInfoInduct ind
       if indInfo.isRec then
         throwError "`#leanscript_to_term`: {ind} is a recursive type, and the only folds \
-          the translation produces are `nat_rec` and `recTaggedUnion_rec`, for `Nat` and \
-          `List`"
+          the translation produces from a recursor are `nat_rec` and `recTaggedUnion_rec`, \
+          for `Nat` and `List` (a structural recursion on a recursive record, as Lean \
+          compiles it, is `recObject_rec`)"
       let sty ← tyOfTerm major
       let ctors := indInfo.ctors.toArray
       match ← tyView sty with

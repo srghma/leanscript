@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.TransBrec
+public meta import LeanScript.ToTerm.TransRecObject
 public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
@@ -228,6 +229,9 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     throwError "`#leanscript_to_term`: `{n}` is translated as an ordinary function, and is \
       not declared in the signature, so a term cannot call it.  Add a `GlobalDecl` named \
       \"{n.getString!}\" (or \"{n}\") to the signature."
+  -- a structural recursion on a recursive record is the fold of the record
+  if n.getString! == "brecOn" then
+    if let some t ← transRecObjectBrecOn? trans c e n lvls args then return t
   checkConst n
   if let some t ← transIdOp? c n args then return t
   if n == ``ite then return ← transIte c args
@@ -527,6 +531,13 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
       return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_mk)
         #[c.sg, c.gamma, l, hwf, mkNatLit ci.cidx, prf, spine]
+  | .recObject fs hwf =>
+      -- the fields of a value are the record's fields **unfolded**: an occurrence of the
+      -- record inside a field is a value of the record again
+      let unfE := mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf
+      let fieldTys ← recordFieldTys (← reduceTy unfE)
+      let spine ← mkSpine c fieldTys fields
+      return mkAppN (mkConst `LeanScript.Term.recObject_mk) #[c.sg, c.gamma, fs, hwf, spine]
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       return mkAppN (mkConst `LeanScript.Term.enum_mk)
