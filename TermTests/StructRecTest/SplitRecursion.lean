@@ -22,9 +22,12 @@ def callGo (n : Nat) : Nat := go n 0
 A call of a structural recursion — a definition Lean compiled through a `brecOn` — is
 inlined even when it is neither `@[inline]` nor declared in the signature, so `callGo`
 translates to the fold `go` compiles to (`LeanScript.ToTerm.isStructuralRecursion`).  So is
-a wrapper of the same module whose body calls one (`callCallGo` below calls `callGo`), up
-to three wrappers deep (`LeanScript.ToTerm.callsStructuralRecursion`).  Any other call
-still has to be inlinable or declared (`TermTests/ToTermTest/Refused.lean`).
+a wrapper whose body calls one (`callCallGo` below calls `callGo`), through any number of
+wrappers of the program's own modules (`LeanScript.ToTerm.callsStructuralRecursion`).  Any
+other call still has to be inlinable or declared (`TermTests/ToTermTest/Refused.lean`).
+More shapes — longer chains, chains across files, `where` helpers, partial application,
+recursions written with `Nat.rec`/`List.rec`, and `mutual` blocks Lean splits — are in
+`TermTests/StructRecTest/SplitRecursionMore.lean`.
 
 Covered below: helpers on `Nat`, on `List`, on a user-defined tree and on a recursive
 newtype; a chain of wrappers; a helper called twice; a recursion whose branch calls another

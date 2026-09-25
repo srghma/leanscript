@@ -66,7 +66,7 @@ context are used.
 | the same with a **user-defined structure** as the body (`Pair3 \| mk (Cell Pair3)`, `structure Cell (α) where val : Nat; next : Option α`), including nested structures, a type parameter, and a `List α` field | `recAlias_rec k` (or a family fold for the `List` field) — see `TermTests/StructRecTest/NewtypeUserStruct.lean` |
 | a structural recursion on an **inductive family with indices** (`Vec α n`) | the fold of its tree, the index erased and a value index an ordinary field — see `TermTests/StructRecTest/IndexedFamily.lean` |
 | a structural recursion on a family **indexed by types** (a GADT, `TExpr : Type → Type` with `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)`), whose type fields only indices mention | the fold of its tree: the type fields hide nothing and are erased, and are Lean variables of each branch; a look into a subvalue at an index that rules a constructor out (`neg : V 1` below a field of type `V 0`) holds a default in that branch — see `TermTests/StructRecTest/IndexedGADT.lean` |
-| a structural recursion **split across two top-level definitions** (`callGo n := go n 0`) | the fold of the callee, inlined — see `TermTests/StructRecTest/SplitRecursion.lean` |
+| a structural recursion **split across top-level definitions** (`callGo n := go n 0`), whatever the callee's attributes: through any chain of wrappers, across files, via a `where` helper, partially applied (`l.map (go 2)`), written with `Nat.rec`/`List.rec`, or a member of a `mutual` block that Lean compiles on its own | the fold of the callee, inlined — see `TermTests/StructRecTest/SplitRecursion.lean` and `TermTests/StructRecTest/SplitRecursionMore.lean` |
 | a function of a **structure with an existentially quantified type field** (`Unfold`, whose `State` is hidden) | specialized to its argument when that is a value written out; otherwise a Lean function of the trees of the hidden types, `fun State => (… : Term Sg Γ (Unfold.mk.leanScriptLayout α State ⇒ …))` — see `TermTests/StructRecTest/Existential.lean` and `LeanScript.ToTerm.ExistentialArgs` |
 | a function of a **non-recursive datatype with existentials of several constructors** (`Src`, whose `gen` hides a type), or of an **indexed** one (a GADT, `Tag : Type → Type` with `wrap {α} (x : α) … : Tag (List α)`) | specialized to its argument when that is a value written out (the `match` on it reduces to the branch of its constructor); otherwise a Lean function of the trees of the hidden types of every constructor, whose argument is `TyWf.oneOf` of the constructors' layouts (a field-less alternative for a constructor that carries no value) and which dispatches with `taggedUnion_casesOn` — see `TermTests/StructRecTest/ExistentialUnion.lean` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
@@ -126,8 +126,16 @@ program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
 Two more kinds of call are inlined although they are neither marked nor declared:
 
 * a **structural recursion** defined on its own (a definition Lean compiled through a
-  `brecOn`), and a wrapper of the same module that calls one, up to three wrappers deep:
-  the call is the fold the callee compiles to (`TermTests/StructRecTest/SplitRecursion.lean`);
+  `brecOn`, or one whose body applies the recursor of a recursive type, such as `Nat.rec`),
+  and a **wrapper** that calls one, through any number of further wrappers: the call is
+  the fold the callee compiles to, so a recursion split across top-level definitions
+  translates without `@[inline]` and without a declaration
+  (`TermTests/StructRecTest/SplitRecursion.lean`,
+  `TermTests/StructRecTest/SplitRecursionMore.lean`).  The recursion may be defined in
+  any module; the wrappers followed are those of the program's own modules (the modules
+  whose name has the same first component as the wrapper's), never definitions of `Init`,
+  `Std` or `Mathlib`.  A non-recursive helper that reaches no recursion — a higher-order
+  `applyTwice f x := f (f x)`, even applied to a recursion — is not a wrapper;
 * a call on, or building, a value of a **datatype with existentials** (`countdown.take n`,
   `firstOut countdown`, `countFrom k`): such a value has no tree, so the function could not
   be declared in the signature; it is inlined and **specialized** to the value, whose
@@ -188,8 +196,10 @@ being translated.
   `mutualRecursiveFamily_rec k`, and each can be raised with `set_option`
   (`TermTests/StructRecTest/DeepFolds.lean`).
 * a call of a function that is neither inlinable, nor declared in the signature, nor a
-  structural recursion (or a wrapper of one, up to three deep) — see *Which calls are
-  allowed*.
+  structural recursion (or a wrapper of one) — see *Which calls are allowed*.
+* a recursion written with the recursor of a **user-defined** type (`Tree.rec …`) instead
+  of by pattern matching: only `Nat.rec` and `List.rec` are read as folds; pattern
+  matching on the type translates.
 * a function of a **recursive** datatype with existentials (`Process`, whose hidden types
   may differ from node to node) whose argument is not a value written out; and a function
   of a non-recursive one at an index that is not a variable of its own (`Tag Nat → …`,
