@@ -11,7 +11,7 @@ public meta import LeanScript.ToTerm.Elab
 /-!
 # The five `fib`s, and which of them the grammar already writes
 
-`FibProposals.md` is written around five Lean definitions of the same function — the
+`proposals/FibProposals.md` is written around five Lean definitions of the same function — the
 two-step recursion, the tail-recursive loop, the `for` loop with two mutable variables,
 the pair recursion, and fast doubling.  The point of supporting them *as they are* is
 that the code the backend prints should look like the code that was written, so the
@@ -20,7 +20,7 @@ definition at a time rather than for `fib` in general.
 
 This file answers it by translating the definitions with `#leanscript_to_term` (the terms
 are written out beside them in `example`s) and proving what they compute.  It is the
-evidence behind the table in §2 of `FibProposals.md`:
+evidence behind the table in §2 of `proposals/FibProposals.md`:
 
 | definition | what it needs | here |
 | :-- | :-- | :-- |
@@ -211,7 +211,7 @@ variables.  That case now exists — `LeanScript.ToTerm.transForInRange?` — an
 ## 4. `fib` itself
 
 The `n + 2` pattern was the one definition of the five that the grammar could not write
-directly, and it is the subject of `FibProposals.md`.  It is now the depth-two instance
+directly, and it is the subject of `proposals/FibProposals.md`.  It is now the depth-two instance
 of `Term.nat_rec`, written out and translated in `TermTests/NatRecDepthTest/`.  Two
 further things are proved elsewhere in the test suite:
 

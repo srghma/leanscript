@@ -8,6 +8,14 @@ public meta import LeanScript.Ty.WfTactic
 
 namespace LeanScript
 
+/-!
+# `TyWf`: a tree of the language together with the proof that it is one
+
+The bundle every context and every term speaks about.  Its proof field defaults to
+`by ty_wf`; it has the coercion `CoeOut TyWf Ty`, the equality instances of its tree, and
+`Ty.toTyWf` for the direction that needs a proof.
+-/
+
 /-- A tree of the language together with the proof that it is one: what a
     `LeanScript.LeanScriptTyWf` instance holds, with the Lean type it models forgotten.
 

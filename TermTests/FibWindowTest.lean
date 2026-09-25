@@ -11,7 +11,7 @@ public meta import LeanScript.ToTerm.Elab
 /-!
 # `fib` in the grammar as it stands: the sliding-window fold
 
-`FibProposals.md` proposes five ways to give the language a recursion that descends more
+`proposals/FibProposals.md` proposes five ways to give the language a recursion that descends more
 than one step at a time.  This file *runs* the first of them, the one that needs no new
 constructor (the grammar has since gained the depth-indexed node as well): a recursion that reads its own value at `n` and at `n + 1` is a fold whose
 value is the **window** of the last two answers, a record of two `nat`s, and the answer
@@ -152,7 +152,7 @@ theorem fib_term_eval (n : Nat) : runAdd fib_term n = fib n := by
 
 /-! ## The semantics a two-step fold would have
 
-`FibProposals.md`'s second proposal adds a constructor `Term.nat_rec2` whose branch is
+`proposals/FibProposals.md`'s second proposal adds a constructor `Term.nat_rec2` whose branch is
 given the value of the recursion at the **two** predecessors.  Its clause in the
 evaluator would be the fold below, and the point of writing it here is that it is
 *linear*: the fold carries the window internally, so a branch that reads both

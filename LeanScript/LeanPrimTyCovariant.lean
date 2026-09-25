@@ -15,6 +15,15 @@ namespace LeanScript
 
 open Std (Format ToFormat)
 
+/-!
+# `LeanPrimTyCovariant`: the leaf type formers
+
+The type formers of the language that take one type and are covariant in it — arrays,
+thunks and lazy values — with the child abstracted, so the same former serves `Ty` and the
+backends.
+-/
+
+/-- A leaf type former with one covariant argument of type `α`. -/
 inductive LeanPrimTyCovariant (α : Type) where
   /-- Always a JS array. -/
   | array : α → LeanPrimTyCovariant α

@@ -9,7 +9,7 @@ public meta import LeanScript.KernelRfl
 /-!
 # One fold for every depth: the node, at depth one, two and three
 
-`FibProposals.md` asked whether **one** constructor can serve `nat_rec`, `nat_rec2`,
+`proposals/FibProposals.md` asked whether **one** constructor can serve `nat_rec`, `nat_rec2`,
 `nat_rec3`, … at once, or whether a fixed, finite family is the better answer.  The
 answer taken is the first one, and `LeanScript.Term.nat_rec` is now that constructor:
 

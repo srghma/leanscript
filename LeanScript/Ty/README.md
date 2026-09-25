@@ -3,7 +3,7 @@
 Everything about `Ty` lives here: the tree, the proposition that a tree is a type, the
 class that gives a Lean type its tree, and the `deriving` handler that writes one.
 Nothing else in `LeanScript/` defines any of it; `LeanScript/ExprCtx.lean` and
-`LeanScript/Expr.lean` are consumers — a context and the type of a term are `TyWf`, the
+`LeanScript/Expr/` are consumers — a context and the type of a term are `TyWf`, the
 bundle, so every type a term mentions is a type by construction — and
 `LeanScript/LeanPrimTy.lean` and `LeanScript/LeanPrimTyCovariant.lean` are the leaf types,
 which say nothing about recursion and are shared with the backends.
@@ -17,6 +17,7 @@ one.
 | :-- | :-- |
 | `LeanScript.Ty.Schema` | the shapes a source declaration can have, parametrised by a type language, with their counting invariants in their types |
 | `LeanScript.Ty.Shape` | `TyShape α` — one node of the language, with its children abstracted |
+| `LeanScript.Ty.Traversable` | the `LawfulTraversable` / `LawfulFunctor` instances of the schemas, `LeanPrimTyCovariant` and `TyShape`, derived together in one module |
 | `LeanScript.Ty.Ty` | `Ty`: one tree for a closed type and for a type inside a recursive declaration alike, its shapes as patterns, its children and its equality |
 | `LeanScript.Ty.TyBEq` | that `Ty.beq` *is* equality, and the `LawfulBEq` and `DecidableEq` instances that follow |
 | `LeanScript.Ty.Wf` | `Ty.Wf` — that a tree *is* a type — as an inductive proposition: scope, real recursion, positivity and inhabitation (`Ty.HabIn`) |

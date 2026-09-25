@@ -47,7 +47,7 @@ namespace LeanScript.ToTerm
     branch; the dispatch of the language still has one, never taken on a value of the
     Lean type, and it is the `default` of the answer's type.  `none` when the value is not
     a variable (the translation then refuses the recursor). -/
-def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (ind : Name)
+def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr)
     (ii : InductiveVal) (args : Array Expr) : MetaM (Option Expr) := do
   let nP := ii.numParams
   let nI := ii.numIndices
@@ -96,7 +96,7 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let ind := n.getPrefix
   let some (.inductInfo ii) := (← getEnv).find? ind | return none
   if ii.numIndices != 0 then
-    return ← transIndexedCasesOn? trans c e ind ii args
+    return ← transIndexedCasesOn? trans c e ii args
   -- `List` and `Nat` keep their own translation — but a list of the declarations of a
   -- nested inductive (`List Rose`) is a member of their family
   if ind == ``Nat then return none

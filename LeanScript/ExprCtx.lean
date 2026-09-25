@@ -5,6 +5,15 @@ public import LeanScript.DeBruijn
 
 namespace LeanScript
 
+/-!
+# Contexts, variables and the signature of a module
+
+What a term is written against: its context `Ctx` (the types in scope, each a `TyWf`), the
+typed de Bruijn variables `Var Γ τ` into it (with the notation `Γ ∋ τ` and the sugar
+`v♯n`), and the module's top-level declarations — `GlobalDecl`, the signature `Sig` and
+the references `GlobalRef` to them.
+-/
+
 /-! ## Variables -/
 
 /-- The types of the values in scope, innermost first.  A context holds **types of
