@@ -71,17 +71,17 @@ def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr)
     | .recTaggedUnion l hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
         let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
-        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn')
           #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
     | .recObject fs hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
-        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
           #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
     | .recAlias b hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
-        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
           #[c.sg, c.gamma, τ, b, hwf, scrut, body]
     | _ => return none
   return some core
@@ -131,17 +131,17 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     | .recTaggedUnion l hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
         let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
-        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn')
           #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
     | .recObject fs hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
-        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
           #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
     | .recAlias b hwf =>
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
-        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
           #[c.sg, c.gamma, τ, b, hwf, scrut, body]
     | .mutualRecursiveFamily nE f hwf =>
         let unfE ← famCurrentUnfolded nE f hwf
@@ -149,18 +149,18 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
           | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
               let cs ← mkTaggedUnionCases (transBranch trans c) c τ l 0 minors ctors
               pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.ctors)
-                #[c.sg, c.gamma, τ, l, cs]
+                #[c.sg, c.gamma, τ, jnilE, l, cs]
           | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
               let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys fs)
               pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.record)
-                #[c.sg, c.gamma, τ, fs, body]
+                #[c.sg, c.gamma, τ, jnilE, fs, body]
           | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
               let body ← transBranch trans c minors[0]! ctors[0]! [b]
               pure <| mkAppN (mkConst `LeanScript.FamilyMemberCases.alias)
-                #[c.sg, c.gamma, τ, b, body]
+                #[c.sg, c.gamma, τ, jnilE, b, body]
           | _ => throwError "`#leanscript_to_term`: internal: the member of the family \
               {ind} has no shape: {unfE}"
-        pure <| mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_casesOn)
+        pure <| mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_casesOn')
           #[c.sg, c.gamma, τ, nE, f, hwf, scrut, cases]
     | _ => return none
   let extra := args.extract arity args.size

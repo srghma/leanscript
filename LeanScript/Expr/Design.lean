@@ -354,3 +354,43 @@ one motive answering for all of them, and a branch of that fold may look one con
 further down — into an occurrence of any member — as the fold of a recursive tagged union
 may.
 -/
+
+/-! ## Strict A-normal form, with join points
+
+The grammar is in **strict A-normal form by construction**, as three layers:
+
+* `LeanScript.Atom` — an operand that does no work: a variable, a reference to a
+  top-level declaration, or a literal of a terminal type;
+* `LeanScript.Comp` — **one** computation step whose operands are atoms and which neither
+  branches nor folds (an application, an extern call, a constructor, a delay, a force, a
+  `fun`, or an atom).  The terms it holds are bodies it does not run — of a function or a
+  delay;
+* `LeanScript.Term` — a block of `let`s (`Term.letE`), each binding a `Comp`, ending in a
+  **tail**: `Term.ret` of a `Comp`, a dispatch (`…_casesOn…`), a fold (`…_rec`), a checked
+  extern call, or a jump to a join point.
+
+So a `let` never binds another `let`, a dispatch or a fold; and a dispatch or a fold is
+always the last thing its block does.  A dispatch or a fold whose value is **used** by what
+follows is written with a **join point**: `Term.letJ jp body` binds `jp` — a term with one
+parameter — as join point `0` of `body`, and each branch of the dispatch in `body` ends by
+jumping to it (`Term.jump j a`, with an atom as argument).  A fold hands its answer to a
+`LeanScript.Dest`: `Dest.ret` when it is the value of the whole term, `Dest.jump j` when it
+goes to a join point.
+
+**Join points have their own context.**  `Term Sg Γ τ J` is indexed by `J : JCtx`, the
+parameter types of the join points in scope, apart from the context `Γ` of variables: a
+join point is not a value, it cannot be passed, stored or called, only jumped to from tail
+position, and every one of them answers with the `τ` of the term that binds it.  A join
+point is not recursive (`jp` sees the join points bound before it, not itself), so the
+grammar stays terminating by construction.  A function body, a delay and a fold branch
+start with `J = []`: a fold branch runs once per step of the fold, so jumping out of it
+would not be a tail.  `J` is an `optParam` defaulting to `[]`, so `Term Sg Γ τ` is a
+whole body.
+
+**Direct style is still writable.**  `LeanScript.Expr.Build` gives each constructor of the
+direct-style grammar a function of the same name (`Term.ap`, `Term.nat_rec'`,
+`Term.record_mk`, `Term.letE'`, …) that takes arbitrary terms: an operand that is already
+an atom is used as it is, one that ends in a computation is let-bound, and one that ends
+in a dispatch or a fold becomes the tail, with the rest of the computation as a join point
+(`Term.bindAtom`, `Term.toJump`).  `TermTests.AnfTest` pins the exact terms these build.
+-/

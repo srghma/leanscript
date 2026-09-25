@@ -57,15 +57,22 @@ def pentaTerm : Term sigAdd [] (chainTy ⇒ natT) := #leanscript_to_term Chain.p
 /-- `hexa`, as a term: a depth-five fold. -/
 def hexaTerm : Term sigAdd [] (chainTy ⇒ natT) := #leanscript_to_term Chain.hexa
 
+mutual
 /-- The depth of the `recAlias_rec` a translated function is: the fold under the `fun`s
     of its arguments, and under the applications and the case analysis around it.  `none`
     if the translation is not of that shape. -/
-def recAliasRecDepth? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
-  | .recAlias_rec k _ _ => some k
-  | .lam b => recAliasRecDepth? b
-  | .ap f _ => recAliasRecDepth? f
-  | .record_casesOn s _ => recAliasRecDepth? s
+def recAliasRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sigAdd Γ τ J → Option Nat
+  | .recAlias_rec k _ _ _ => some k
+  | .ret c => recAliasRecDepth?.comp c
+  | .letE c body => (recAliasRecDepth?.comp c).orElse fun _ => recAliasRecDepth? body
+  | .letJ jp body => (recAliasRecDepth? body).orElse fun _ => recAliasRecDepth? jp
   | _ => none
+
+/-- `recAliasRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def recAliasRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sigAdd Γ τ → Option Nat
+  | .lam b => recAliasRecDepth? b
+  | _ => none
+end
 
 -- Each program is the fold at the depth it reads.
 example : recAliasRecDepth? fibTerm = some 1 := by kernel_rfl
@@ -189,22 +196,22 @@ example (τ : TyWf) :
 error: Application type mismatch: The argument
   DeBruijn.head
 has type
-  DeBruijn (?m.56 :: ?m.57) ?m.56
+  DeBruijn (?m.58 :: ?m.59) ?m.58
 but is expected to have type
   DeBruijn
     (((linkSchema (treeTy natT 0)).snd :: (linkSchema (treeTy natT 0)).rest).append
       (id { head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    (TyWf.record ?m.47)
+    (TyWf.record ?m.49)
 in the application
   DeBruijn.head.tail
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow : Term sigAdd (branchCtx natT 0) natT :=
-  .taggedUnion_casesOn (.var (v♯1))
+  .taggedUnion_casesOn' (.var (v♯1))
     (.skip (.nat_mk 0)
       (.here
-        (.record_casesOn (.var (v♯0))
-          (.record_casesOn (.var (v♯1)) (.nat_mk 1)))
+        (.record_casesOn' (.var (v♯0))
+          (.record_casesOn' (.var (v♯1)) (.nat_mk 1)))
         .nil))
 
 /-! ### The recursion that no depth reaches

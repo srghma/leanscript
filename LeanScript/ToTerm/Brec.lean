@@ -23,7 +23,7 @@ namespace LeanScript.ToTerm
 Lean compiles a structurally recursive definition into `X.brecOn`, which hands the branch
 the whole **history** of the recursion — the value of the function at every smaller
 argument — while the grammar's folds hand the branch a fixed number of the nearest
-answers (`LeanScript.Term.nat_rec k`, `LeanScript.Term.recTaggedUnion_rec`).  So a
+answers (`LeanScript.Term.nat_rec' k`, `LeanScript.Term.recTaggedUnion_rec'`).  So a
 `brecOn` is translated by *reducing the history away*: the branch is instantiated at a
 history whose nearest entries are variables standing for those answers, and the
 translation succeeds exactly when nothing else of the history is read. -/

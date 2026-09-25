@@ -72,7 +72,7 @@ partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
     let body := b.instantiate1 x
     let b' ← trans c' body
     let τ ← tyOfTermOr body b'
-    return mkAppN (mkConst `LeanScript.Term.letE) #[c.sg, c.gamma, σ, τ, v', b']
+    return mkAppN (mkConst `LeanScript.Term.letE') #[c.sg, c.gamma, σ, τ, v', b']
 
 /-- A literal of a terminal type, carried into the term as it stands. -/
 partial def transLit? (c : TCtx) (e : Expr) : MetaM (Option Expr) := do
@@ -143,7 +143,7 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
         | throwError "`#leanscript_to_term`: the field {idx} of {structName} is not a \
             field of its tree"
       let body ← c'.var fid
-      return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+      return mkAppN (mkConst `LeanScript.Term.record_casesOn')
         #[c.sg, c.gamma, τ, fs, scrut, body]
   | _ =>
       -- a one-field structure is its field: the wrapper is erased
@@ -221,7 +221,7 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
               state of the next iteration"
       let c' := c.pushFields #[(i.fvarId!, natTy), (s.fvarId!, τ)]
       trans c' next
-  return some <| mkAppN (mkConst `LeanScript.Term.nat_rec)
+  return some <| mkAppN (mkConst `LeanScript.Term.nat_rec')
     #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], branch]
 
 /-- An application whose head is a constant. -/
@@ -405,7 +405,7 @@ partial def mkNatZeroCases (c : TCtx) (n thenB elseB : Expr) (τ? : Option Expr)
   let (τ, z, s) ← match τ? with
     | some τ => pure (τ, ← transCheck c thenB τ, ← transCheck c' elseB τ)
     | none => transBranchPair c thenB c' elseB
-  return mkAppN (mkConst `LeanScript.Term.nat_casesOn) #[c.sg, c.gamma, τ, scrut, z, s]
+  return mkAppN (mkConst `LeanScript.Term.nat_casesOn') #[c.sg, c.gamma, τ, scrut, z, s]
 
 /-- Two branches of one dispatch, each in its own context: their common type and their
     translations.  When the Lean type of the branches has no tree (a datatype with
@@ -500,7 +500,7 @@ partial def mkBoolCases (c : TCtx) (test : Expr) (thenB elseB : Expr) : MetaM Ex
 
 /-- `bool_casesOn`, from the two translated branches. -/
 partial def mkBoolCases' (c : TCtx) (test t e τ : Expr) : MetaM Expr := do
-  return mkAppN (mkConst `LeanScript.Term.bool_casesOn) #[c.sg, c.gamma, τ, test, t, e]
+  return mkAppN (mkConst `LeanScript.Term.bool_casesOn') #[c.sg, c.gamma, τ, test, t, e]
 
 /-- A list, or an array, written out: every element of it at once. -/
 partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do

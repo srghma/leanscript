@@ -35,18 +35,25 @@ def sig0 : Sig := ⟨[], by decide⟩
 /-- Running a closed term of `sig0`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
+mutual
 /-- The first of `Term.extern`, `Term.externCall` and `Term.externCallChecked` in the term,
     looking under binders, applications and `let`s.  (The translation of `a + b` goes
     through the instances `HAdd Nat` and `Add Nat`, each a function applied to its
     arguments, before it reaches `Nat.add`.) -/
-def externForm? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option String
-  | .lam b => externForm? b
-  | .ap f a => externForm? f <|> externForm? a
-  | .letE a b => externForm? a <|> externForm? b
+def externForm? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option String
+  | .externCallChecked _ _ _ _ => some "externCallChecked"
+  | .ret c => externForm?.comp c
+  | .letE c body => (externForm?.comp c).orElse fun _ => externForm? body
+  | .letJ jp body => (externForm? body).orElse fun _ => externForm? jp
+  | _ => none
+
+/-- `externForm?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def externForm?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option String
   | .extern _ => some "extern"
   | .externCall _ _ => some "externCall"
-  | .externCallChecked _ _ _ => some "externCallChecked"
+  | .lam b => externForm? b
   | _ => none
+end
 
 /-! ## An extern without a proof: `Term.externCall` -/
 

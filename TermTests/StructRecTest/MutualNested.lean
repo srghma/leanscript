@@ -39,12 +39,20 @@ open LeanScript TermTests.NatRecDepth
 /-- A natural number of the language. -/
 abbrev natT : TyWf := .prim .nat
 
+mutual
 /-- The depth of the outermost fold of a translated function. -/
-def foldDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Term Sg Γ τ → Option Nat
-  | .mutualRecursiveFamily_rec k _ _ => some k
-  | .lam b => foldDepth? b
-  | .ap f _ => foldDepth? f
+def foldDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Option Nat
+  | .mutualRecursiveFamily_rec k _ _ _ => some k
+  | .ret c => foldDepth?.comp c
+  | .letE c body => (foldDepth?.comp c).orElse fun _ => foldDepth? body
+  | .letJ jp body => (foldDepth? body).orElse fun _ => foldDepth? jp
   | _ => none
+
+/-- `foldDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def foldDepth?.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option Nat
+  | .lam b => foldDepth? b
+  | _ => none
+end
 
 /-! ## `Option Q` inside `P` -/
 

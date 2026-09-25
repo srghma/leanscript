@@ -117,7 +117,8 @@ def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : S
     throwError "`#leanscript_ctor`: `{fnName}` is already declared"
   withLocalDecl `Sg .implicit (mkConst ``LeanScript.Sig) fun sg =>
   withLocalDecl `Γ .implicit (mkConst ``LeanScript.Ctx) fun γ => do
-    let termOf (τ : Expr) := mkApp3 (mkConst `LeanScript.Term) sg γ τ
+    let termOf (τ : Expr) :=
+      mkApp4 (mkConst `LeanScript.Term) sg γ τ (mkApp (mkConst ``List.nil [Level.zero]) tyWfE)
     let decls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
       fields.map fun (n, τ) => (n, .default, fun _ => pure (termOf τ))
     withLocalDecls decls fun xs => do

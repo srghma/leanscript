@@ -87,14 +87,22 @@ abbrev natT : TyWf := .prim .nat
 example :
     tyOf Chain = .recAlias (.taggedUnion (.skip (.here ⟨.prim .nat, [.self]⟩ []))) := rfl
 
+mutual
 /-- The depth of the `recAlias_rec` a translated function is: the fold under the `fun`s of
     its arguments, applied to the arguments that Lean put in the motive (a recursion with
     accumulators folds to a function).  `none` if the translation is not of that shape. -/
-def recAliasRecDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Term Sg Γ τ → Option Nat
-  | .recAlias_rec k _ _ => some k
-  | .lam b => recAliasRecDepth? b
-  | .ap f _ => recAliasRecDepth? f
+def recAliasRecDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Option Nat
+  | .recAlias_rec k _ _ _ => some k
+  | .ret c => recAliasRecDepth?.comp c
+  | .letE c body => (recAliasRecDepth?.comp c).orElse fun _ => recAliasRecDepth? body
+  | .letJ jp body => (recAliasRecDepth? body).orElse fun _ => recAliasRecDepth? jp
   | _ => none
+
+/-- `recAliasRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def recAliasRecDepth?.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option Nat
+  | .lam b => recAliasRecDepth? b
+  | _ => none
+end
 
 namespace Chain
 

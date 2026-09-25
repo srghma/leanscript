@@ -25,7 +25,7 @@ namespace LeanScript.ToTerm
 def emptySigE : Expr :=
   let nil := mkApp (mkConst ``List.nil [Level.zero]) (mkConst ``LeanScript.GlobalDecl)
   mkApp2 (mkConst ``LeanScript.Sig.mk) nil
-    (mkApp2 (mkConst ``rfl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+    (mkApp (mkConst ``List.nodup_nil [Level.zero]) (mkConst ``String))
 
 /-- The signature and the context the expected type asks for. -/
 def sigAndCtxOf? (expected? : Option Expr) : MetaM (Expr × Expr) := do
@@ -33,7 +33,7 @@ def sigAndCtxOf? (expected? : Option Expr) : MetaM (Expr × Expr) := do
   | none => return (emptySigE, nilCtxE)
   | some t =>
     match (← whnf (← instantiateMVars t)).getAppFnArgs with
-    | (``LeanScript.Term, #[sg, γ, _]) => return (sg, γ)
+    | (``LeanScript.Term, #[sg, γ, _, _]) => return (sg, γ)
     | _ => return (emptySigE, nilCtxE)
 
 /-- Translate `e` — the value of a definition, or an expression written out. -/
@@ -80,15 +80,16 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
 /-- The folds of the grammar, with the number of arguments of each: the last one is the
     branch (or the cases) of the fold. -/
 def foldNodes : List (Name × Nat) :=
-  [(`LeanScript.Term.nat_rec, 7), (`LeanScript.Term.array_rec, 8),
-   (`LeanScript.Term.recTaggedUnion_rec, 8), (`LeanScript.Term.recObject_rec, 8),
-   (`LeanScript.Term.recAlias_rec, 8), (`LeanScript.Term.mutualRecursiveFamily_rec, 9)]
+  [(`LeanScript.Term.nat_rec', 7), (`LeanScript.Term.array_rec', 8),
+   (`LeanScript.Term.recTaggedUnion_rec', 8), (`LeanScript.Term.recObject_rec', 8),
+   (`LeanScript.Term.recAlias_rec', 8), (`LeanScript.Term.mutualRecursiveFamily_rec', 9)]
 
 /-- Unfold the definitions at the head of `e`, beta-reducing on the way. -/
 partial def unfoldHeadConsts (e : Expr) : MetaM Expr := do
   let e := e.headBeta
   match e.getAppFn with
-  | .const .. =>
+  | .const n _ =>
+      if foldNodes.any (·.1 == n) then return e
       match ← withTransparency .all (unfoldDefinition? e) with
       | some e' => unfoldHeadConsts e'
       | none => return e
@@ -123,7 +124,7 @@ def elabLeanscriptFoldBases : TermElab := fun stx expected? => do
   let t ← instantiateMVars (← elabTerm stx[1] none)
   let v ← unfoldHeadConsts t
   let isBasesFold (s : Expr) : Bool :=
-    s.isAppOfArity `LeanScript.Term.nat_rec 7 || s.isAppOfArity `LeanScript.Term.array_rec 8
+    s.isAppOfArity `LeanScript.Term.nat_rec' 7 || s.isAppOfArity `LeanScript.Term.array_rec' 8
   let some node := v.find? fun s => isBasesFold s && !s.hasLooseBVars
     | throwError "`#leanscript_fold_bases`: no `nat_rec` or `array_rec` in{indentExpr v}"
   let b := node.appFn!.appArg!

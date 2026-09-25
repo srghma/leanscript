@@ -1085,21 +1085,21 @@ abbreviations are the names the rest of the project uses for it. -/
 /-- The branches of a dispatch on a tagged union: one per constructor, in constructor
     order, each binding its constructor's fields, and no default — exhaustive by
     construction.  It is `LeanScript.TaggedUnionFoldCases` at `ι := TyWf`, `bind := id`. -/
-abbrev TaggedUnionCases (Sg : Sig) (Γ : Ctx) (l : LeanTaggedUnionSchema TyWf) (τ : TyWf) :
-    Type 1 :=
-  TaggedUnionFoldCases Sg TyWf id Γ l τ
+abbrev TaggedUnionCases (Sg : Sig) (Γ : Ctx) (l : LeanTaggedUnionSchema TyWf) (τ : TyWf)
+    (J : JCtx := []) : Type 1 :=
+  TaggedUnionFoldCases Sg TyWf id Γ l τ J
 
 /-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
     `LeanScript.TaggedUnionCases`. -/
-abbrev CtorsWithPayloadCases (Sg : Sig) (Γ : Ctx) (c : CtorsWithPayload TyWf) (τ : TyWf) :
-    Type 1 :=
-  CtorsWithPayloadFoldCases Sg TyWf id Γ c τ
+abbrev CtorsWithPayloadCases (Sg : Sig) (Γ : Ctx) (c : CtorsWithPayload TyWf) (τ : TyWf)
+    (J : JCtx := []) : Type 1 :=
+  CtorsWithPayloadFoldCases Sg TyWf id Γ c τ J
 
 /-- The branches of the constructors a schema leaves unconstrained: one branch per
     constructor still to be given one, each binding that constructor's fields. -/
-abbrev TaggedUnionCasesRest (Sg : Sig) (Γ : Ctx) (cs : List (List TyWf)) (τ : TyWf) :
-    Type 1 :=
-  TaggedUnionFoldCasesRest Sg TyWf id Γ cs τ
+abbrev TaggedUnionCasesRest (Sg : Sig) (Γ : Ctx) (cs : List (List TyWf)) (τ : TyWf)
+    (J : JCtx := []) : Type 1 :=
+  TaggedUnionFoldCasesRest Sg TyWf id Γ cs τ J
 
 end LeanScript
 

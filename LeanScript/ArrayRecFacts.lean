@@ -156,24 +156,25 @@ theorem listFoldK_eq_listFold (z0 : TyWf.Den τ) (s0 : α → List α → TyWf.D
 section Node
 
 variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls)
-    (arr : Term Sg Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
+    (arr : Atom Sg Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
     (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ)
     (env : Env Γ)
 
-/-- The value of the node **is** the fold: the short lists are answered by its
+/-- The value of the node — answering with the term's own value, `Dest.ret` — **is** the
+    fold: the short lists are answered by its
     `ArrayRecBases`, and its step runs the branch with the head, the tail and the window
     in front of the environment. -/
 theorem Term.eval_array_rec :
-    Term.eval G (Term.array_rec k arr bases branch) env =
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
       listFoldK (fun l => ArrayRecBases.eval G bases env l)
         (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env))
-        (show Array _ from Term.eval G arr env).toList :=
+        (show Array _ from Atom.eval G arr env).toList :=
   rfl
 
 /-- Below the depth, the node answers with its `ArrayRecBases`. -/
 theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
-    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env).toList = l) :
-    Term.eval G (Term.array_rec k arr bases branch) env =
+    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env).toList = l) :
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
       ArrayRecBases.eval G bases env l := by
   rw [Term.eval_array_rec, harr, listFoldK_base _ _ l hl]
 
@@ -181,8 +182,8 @@ theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
     and the window of the answers at the `k + 1` suffixes of the tail. -/
 theorem Term.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
     (hk : k ≤ as.length)
-    (harr : (show Array (TyWf.Den σ) from Term.eval G arr env).toList = a :: as) :
-    Term.eval G (Term.array_rec k arr bases branch) env =
+    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env).toList = a :: as) :
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
       Term.eval G branch
         (a, as.toArray, Env.ofWin
           (NatWin.ofFunList

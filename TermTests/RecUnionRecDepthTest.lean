@@ -57,15 +57,22 @@ def pentaTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.p
 /-- `hexa`, as a term: a depth-five fold. -/
 def hexaTerm : Term sigAdd [] (peanoTy ⇒ natT) := #leanscript_to_term Peano.hexa
 
+mutual
 /-- The depth of the `recTaggedUnion_rec` a translated function is: the fold under the
     `fun`s of its arguments, and under the applications and the case analysis around it.
     `none` if the translation is not of that shape. -/
-def recUnionRecDepth? {Γ : Ctx} {τ : TyWf} : Term sigAdd Γ τ → Option Nat
-  | .recTaggedUnion_rec k _ _ => some k
-  | .lam b => recUnionRecDepth? b
-  | .ap f _ => recUnionRecDepth? f
-  | .record_casesOn s _ => recUnionRecDepth? s
+def recUnionRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sigAdd Γ τ J → Option Nat
+  | .recTaggedUnion_rec k _ _ _ => some k
+  | .ret c => recUnionRecDepth?.comp c
+  | .letE c body => (recUnionRecDepth?.comp c).orElse fun _ => recUnionRecDepth? body
+  | .letJ jp body => (recUnionRecDepth? body).orElse fun _ => recUnionRecDepth? jp
   | _ => none
+
+/-- `recUnionRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def recUnionRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sigAdd Γ τ → Option Nat
+  | .lam b => recUnionRecDepth? b
+  | _ => none
+end
 
 -- Each program is the fold at the depth it reads.
 example : recUnionRecDepth? fibTerm = some 1 := by kernel_rfl

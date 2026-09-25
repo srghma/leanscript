@@ -32,7 +32,7 @@ def arrayOfToList? (e : Expr) : Option Expr :=
 /-- A structural recursion on a list, run on the **elements of an array**:
     `List.brecOn a.toList F`, which is what `go a.toList` unfolds to when `go` is a
     structurally recursive function on lists.  That is the fold of the array,
-    `LeanScript.Term.array_rec k`.
+    `LeanScript.Term.array_rec' k`.
 
     The depth `k` is found as for a `Nat`: the branch is instantiated at the list
     `hd :: y₁ :: … :: yₖ :: rest`, with the `k + 1` nearest entries of the history — the
@@ -104,7 +104,7 @@ def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
                   -- is never taken: it answers the value at the tail, which is at hand
                   let scrut ← trans (cs.getD i c') (tailAt i)
                   let dead ← trans (cs.getD i c') ihs[0]!
-                  acc := mkAppN (mkConst `LeanScript.Term.array_casesOn)
+                  acc := mkAppN (mkConst `LeanScript.Term.array_casesOn')
                     #[c.sg, (cs.getD i c').gamma, σ, τ, scrut, dead, acc]
                 pure acc
   let mut found : Option (Nat × Expr) := none
@@ -145,7 +145,7 @@ def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
         #[c.sg, gj, σ, τ, mkNatLit (k - 1 - j), tj, acc]
     pure acc
   let scrutT ← trans c arr
-  return mkAppN (mkConst `LeanScript.Term.array_rec)
+  return mkAppN (mkConst `LeanScript.Term.array_rec')
     #[c.sg, c.gamma, σ, τ, mkNatLit k, scrutT, bases, branch]
 
 /-- A structural recursion as Lean compiled it: `Nat.brecOn` or `List.brecOn`.
@@ -288,7 +288,7 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     let core ← lambdaBoundedTelescope s (k + 2) fun xs body => do
       let c' := c.pushFields
         (#[(xs[0]!.fvarId!, natTy)] ++ (xs.extract 1 xs.size).map fun x => (x.fvarId!, τ))
-      return mkAppN (mkConst `LeanScript.Term.nat_rec)
+      return mkAppN (mkConst `LeanScript.Term.nat_rec')
         #[c.sg, c.gamma, τ, mkNatLit k, scrutT, base, ← trans c' body]
     return ← finish core
   -- a recursion on the elements of an array, `go a.toList`: the fold of the array

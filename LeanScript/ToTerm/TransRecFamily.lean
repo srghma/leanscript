@@ -28,7 +28,7 @@ whose trees are `Ty.mutualRecursiveFamily` (one per member, each selecting itsel
 Lean compiles a (mutual) structural recursion on such a block into `A.brecOn` (or
 `B.brecOn`), which takes one motive and one branch **per member** and hands each branch
 the whole history of the recursion.  The grammar's fold,
-`LeanScript.Term.mutualRecursiveFamily_rec k`, takes the branches of every member of the
+`LeanScript.Term.mutualRecursiveFamily_rec' k`, takes the branches of every member of the
 family, with one answer type `τ` for all of them, each branch binding the constructor's
 fields and the answers at its occurrences of members (`TyWf.famRecBinders`), and lets a
 branch **look further down**, at most `k` times, into an occurrence of any member: one of
@@ -226,7 +226,7 @@ def famMemberCtorIndices (sc : Nat) (schema : Expr) : MetaM (Array Expr) := do
 
 /-- A structural recursion on a **mutual inductive block**, as Lean compiled it:
     `X.brecOn` on a member whose tree is `Ty.mutualRecursiveFamily`.  It becomes
-    `LeanScript.Term.mutualRecursiveFamily_rec k`, at the smallest depth `k` that serves
+    `LeanScript.Term.mutualRecursiveFamily_rec' k`, at the smallest depth `k` that serves
     every branch (see the module documentation).  `none` when the recursion is not on a
     member of a mutual family. -/
 def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
@@ -400,7 +400,7 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       let restL ← mkListLit elem (schemas.extract (j + 1) schemas.size).toList
       acc := mkAppN (mkConst `LeanScript.FamilyFoldKCases.cons)
         (pre ++ #[schemas[j]!, restL, casesJ, acc])
-    return mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_rec)
+    return mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_rec')
       #[c.sg, c.gamma, τ, nE, fB, hwf, kE, scrutT, acc]
   let mut found : Option Expr := none
   let mut lastErr : Option MessageData := none

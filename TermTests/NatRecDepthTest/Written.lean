@@ -37,7 +37,7 @@ def fibTerm : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_
 
 /-- The term, written out. -/
 example : fibTerm =
-    .lam (.nat_rec 1 (.var (v♯0))
+    .lam (.nat_rec' 1 (.var (v♯0))
       (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil))
       (addT (.var (v♯2)) (.var (v♯1)))) := by kernel_rfl
 

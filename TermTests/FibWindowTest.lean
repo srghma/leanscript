@@ -71,7 +71,7 @@ def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (Ty
 def fibFromWin (n : Nat) : Nat := (fibWin n).1
 
 /-- The fold itself: the window at the argument,
-    `.lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)`. -/
+    `.lam (.nat_rec' 0 (.var (v♯0)) (.cons seed .nil) step)`. -/
 def window : Term sigAdd [] (TyWf.prim .nat ⇒ Win) := #leanscript_to_term fibWin
 
 /-- The context the fold is written in: the argument. -/
@@ -98,11 +98,11 @@ def step : Term sigAdd (TyWf.prim .nat :: Win :: WinCtx) Win :=
   #leanscript_fold_branch window
 
 example : step =
-    .record_casesOn (.var (v♯1))
+    .record_casesOn' (.var (v♯1))
       (.record_mk winSchema
         (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))) := by kernel_rfl
 
-example : window = .lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step) := by kernel_rfl
+example : window = .lam (.nat_rec' 0 (.var (v♯0)) (.cons seed .nil) step) := by kernel_rfl
 
 /-- `fib`, as a term of the language: the first field of the window.  The translation
     inlines the fold, so the term takes apart the fold itself rather than applying
@@ -111,7 +111,7 @@ def fib_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term fibFromWin
 
 example : fib_term =
-    .lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+    .lam (.record_casesOn' (fs := winSchema) (.nat_rec' 0 (.var (v♯0)) (.cons seed .nil) step)
       (.var (v♯0))) := by kernel_rfl
 
 /-! ## What it computes

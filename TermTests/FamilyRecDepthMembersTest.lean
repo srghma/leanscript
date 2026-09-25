@@ -369,7 +369,7 @@ def nodeFibCases :
 /-- `Node.fib`, as a term: the depth-one fold of a family of a record, a union and a
     newtype. -/
 def nodeFibTerm : Term sigAdd [] (nodeTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) nodeFibCases)
+  .lam (.mutualRecursiveFamily_rec' 1 (.var (v♯0)) nodeFibCases)
 
 /-! ## 3. Running the terms
 

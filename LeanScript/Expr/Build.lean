@@ -190,21 +190,50 @@ end
     * If `t` ends in a dispatch or a fold — which cannot be bound by a `let` — what `k`
       writes becomes a **join point**, and every tail of `t` jumps to it with the value it
       gives (`Term.toJump`).  `k` is used once in every case, so nothing is duplicated. -/
-def Term.bindAtom {Γ : Ctx} {σ τ : TyWf} {J : JCtx} :
-    Term Sg Γ σ → (∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) → Term Sg Γ τ J
-  | .ret (.atom a), k => k Ren.id a
-  | .ret c, k => .letE c (k Ren.wk (.var .head))
-  | .letE c t, k => .letE c (t.bindAtom fun ρ a => k (Ren.comp ρ Ren.wk) a)
-  | t, k => .letJ (k Ren.wk (.var .head)) (t.toJump (J₀ := []))
+def Term.bindAtom {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
+    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
+  go t rfl k
+where
+  /-- `Term.bindAtom`, by structural recursion: the join points of the term being bound
+      are a variable `J₀`, pinned to `[]` by an equation, so that the recursion is on a
+      family whose indices are variables (and the builders reduce by `rfl`). -/
+  go {Γ : Ctx} {J₀ : JCtx} :
+      Term Sg Γ σ J₀ → J₀ = [] → (∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) →
+      Term Sg Γ τ J
+    | .ret (.atom a), _, k => k Ren.id a
+    | .ret c, _, k => .letE c (k Ren.wk (.var .head))
+    | .letE c t, h, k => .letE c (go t h fun ρ a => k (Ren.comp ρ Ren.wk) a)
+    | t, h, k => .letJ (k Ren.wk (.var .head)) ((h ▸ t : Term Sg Γ σ).toJump (J₀ := []))
 
 /-- **`let x = t; body`**, for any term `t`: the `let`s of `t` are floated out in front,
     and the computation it ends in is bound to `x`; if `t` ends in a dispatch or a fold,
     `body` becomes a join point that every tail of `t` jumps to. -/
-def Term.bind {Γ : Ctx} {σ τ : TyWf} {J : JCtx} :
-    Term Sg Γ σ → Term Sg (σ :: Γ) τ J → Term Sg Γ τ J
-  | .ret c, body => .letE c body
-  | .letE c t, body => .letE c (t.bind (body.rename (Ren.lift Ren.wk)))
-  | t, body => .letJ body (t.toJump (J₀ := []))
+def Term.bind {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
+    (body : Term Sg (σ :: Γ) τ J) : Term Sg Γ τ J :=
+  go t rfl body
+where
+  /-- `Term.bind`, by structural recursion, as `Term.bindAtom.go`. -/
+  go {Γ : Ctx} {J₀ : JCtx} :
+      Term Sg Γ σ J₀ → J₀ = [] → Term Sg (σ :: Γ) τ J → Term Sg Γ τ J
+    | .ret c, _, body => .letE c body
+    | .letE c t, h, body => .letE c (go t h (body.rename (Ren.lift Ren.wk)))
+    | t, h, body => .letJ body ((h ▸ t : Term Sg Γ σ).toJump (J₀ := []))
+
+/-- `Term.bindAtom`, with a shortcut: if `t` is already an atom, `here` gets it as it is,
+    so that what `k` would have renamed along the identity is not renamed at all.  This
+    is what keeps a dispatch on a variable — the common case — exactly the term one would
+    write by hand. -/
+def Term.bindAtomOr {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
+    (here : Atom Sg Γ σ → Term Sg Γ τ J)
+    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
+  match t with
+  | .ret (.atom a) => here a
+  | t => t.bindAtom k
+
+/-- `let x = e; body` in direct style, with no join point in scope: `Term.bind`. -/
+def Term.letE' {Γ : Ctx} {σ τ : TyWf} (e : Term Sg Γ σ) (body : Term Sg (σ :: Γ) τ) :
+    Term Sg Γ τ :=
+  e.bind body
 
 /-! ## Lists of operands, in direct style -/
 
@@ -256,6 +285,12 @@ def Spine.bindArgs {Γ Δ₀ : Ctx} {τ : TyWf} :
   | _, .cons t ts, ρ, k =>
       (t.rename ρ).bindAtom fun ρ₁ a =>
         ts.bindArgs (Ren.comp ρ₁ ρ) fun ρ₂ as => k (Ren.comp ρ₂ ρ₁) (.cons (a.rename ρ₂) as)
+
+/-- The atoms of a spine that holds only atoms, and `none` otherwise. -/
+def Spine.atoms? {Γ : Ctx} : {σs : List TyWf} → Spine Sg Γ σs → Option (Args Sg Γ σs)
+  | _, .nil => some .nil
+  | _, .cons (.ret (.atom a)) ts => (ts.atoms?).map (.cons a)
+  | _, .cons _ _ => none
 
 /-- Name the operands of a value of a member of a mutual family, and go on with them. -/
 def FamilyMemberValue.bindArgs {Γ : Ctx} {m : LeanFamMemberSchema TyWf} {τ : TyWf} :
@@ -340,7 +375,9 @@ abbrev Term.lam {Γ : Ctx} {σ τ : TyWf} (body : Term Sg (σ :: Γ) τ) : Term 
 
 /-- `f a`, for any terms `f` and `a`: both are named, `f` first. -/
 def Term.ap {Γ : Ctx} {σ τ : TyWf} (f : Term Sg Γ (σ ⇒ τ)) (a : Term Sg Γ σ) : Term Sg Γ τ :=
-  f.bindAtom fun ρ fa => (a.rename ρ).bindAtom fun ρ' aa => .ret (.ap (fa.rename ρ') aa)
+  f.bindAtomOr
+    (fun fa => a.bindAtomOr (fun aa => .ret (.ap fa aa)) fun ρ' aa => .ret (.ap (fa.rename ρ') aa))
+    fun ρ fa => (a.rename ρ).bindAtom fun ρ' aa => .ret (.ap (fa.rename ρ') aa)
 
 /-- A pure extern of `Init` applied to values. -/
 abbrev Term.extern {Γ : Ctx} {τ : TyWf} (e : Extern τ) : Term Sg Γ τ := .ret (.extern e)
@@ -358,18 +395,27 @@ def Term.externCallChecked' {Γ : Ctx} {σs : List TyWf} {τ : TyWf} (args : Spi
 /-- `if c then t else e`. -/
 def Term.bool_casesOn' {Γ : Ctx} {τ : TyWf} (c : Term Sg Γ (.prim .bool))
     (t e : Term Sg Γ τ) : Term Sg Γ τ :=
-  c.bindAtom fun ρ a => (.bool_casesOn a (t.rename ρ) (e.rename ρ))
+  c.bindAtomOr (fun a => (.bool_casesOn a t e))
+    fun ρ a => (.bool_casesOn a (t.rename ρ) (e.rename ρ))
 
 /-- `match n with | 0 => … | k + 1 => …`. -/
 def Term.nat_casesOn' {Γ : Ctx} {τ : TyWf} (n : Term Sg Γ (.prim .nat)) (z : Term Sg Γ τ)
     (s : Term Sg (TyWf.prim .nat :: Γ) τ) : Term Sg Γ τ :=
-  n.bindAtom fun ρ a => (.nat_casesOn a (z.rename ρ) (s.rename (Ren.lift ρ)))
+  n.bindAtomOr (fun a => (.nat_casesOn a z s))
+    fun ρ a => (.nat_casesOn a (z.rename ρ) (s.rename (Ren.lift ρ)))
 
 /-- `Nat.rec` that descends `k + 1` steps. -/
 def Term.nat_rec' {Γ : Ctx} {τ : TyWf} (k : Nat := 0) (n : Term Sg Γ (.prim .nat))
     (base : Spine Sg Γ (natRecCtx τ (k + 1) []))
     (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ) : Term Sg Γ τ :=
-  n.bindAtom fun ρ a =>
+  n.bindAtomOr
+    (fun a => match base.atoms? with
+      | some bs => .nat_rec k a bs branch .ret
+      | none =>
+          base.bindArgs Ren.id fun ρ' bs =>
+            (.nat_rec k (a.rename ρ') bs
+              (branch.rename (Ren.lift (Ren.liftNat τ (k + 1) ρ'))) .ret))
+    fun ρ a =>
     base.bindArgs ρ fun ρ' bs =>
       (.nat_rec k (a.rename ρ') bs
         (branch.rename (Ren.lift (Ren.liftNat τ (k + 1) (Ren.comp ρ' ρ)))) .ret)
@@ -377,91 +423,110 @@ def Term.nat_rec' {Γ : Ctx} {τ : TyWf} (k : Nat := 0) (n : Term Sg Γ (.prim .
 /-- `match i with | .ofNat n => … | .negSucc n => …`. -/
 def Term.int_casesOn' {Γ : Ctx} {τ : TyWf} (i : Term Sg Γ (.prim .int))
     (ofNat negSucc : Term Sg (TyWf.prim .nat :: Γ) τ) : Term Sg Γ τ :=
-  i.bindAtom fun ρ a =>
+  i.bindAtomOr (fun a =>
+    (.int_casesOn a ofNat negSucc))
+    fun ρ a =>
     (.int_casesOn a (ofNat.rename (Ren.lift ρ)) (negSucc.rename (Ren.lift ρ)))
 
 /-- Take an 8-bit unsigned value apart. -/
 def Term.uint8_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .uint8))
     (b : Term Sg (TyWf.prim (.bitvec 8) :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.uint8_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.uint8_casesOn a b))
+    fun ρ a => (.uint8_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 16-bit unsigned value apart. -/
 def Term.uint16_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .uint16))
     (b : Term Sg (TyWf.prim (.bitvec 16) :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.uint16_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.uint16_casesOn a b))
+    fun ρ a => (.uint16_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 32-bit unsigned value apart. -/
 def Term.uint32_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .uint32))
     (b : Term Sg (TyWf.prim (.bitvec 32) :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.uint32_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.uint32_casesOn a b))
+    fun ρ a => (.uint32_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 64-bit unsigned value apart. -/
 def Term.uint64_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .uint64))
     (b : Term Sg (TyWf.prim (.bitvec 64) :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.uint64_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.uint64_casesOn a b))
+    fun ρ a => (.uint64_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take an 8-bit signed value apart. -/
 def Term.int8_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .int8))
     (b : Term Sg (TyWf.prim .uint8 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.int8_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.int8_casesOn a b))
+    fun ρ a => (.int8_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 16-bit signed value apart. -/
 def Term.int16_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .int16))
     (b : Term Sg (TyWf.prim .uint16 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.int16_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.int16_casesOn a b))
+    fun ρ a => (.int16_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 32-bit signed value apart. -/
 def Term.int32_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .int32))
     (b : Term Sg (TyWf.prim .uint32 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.int32_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.int32_casesOn a b))
+    fun ρ a => (.int32_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 64-bit signed value apart. -/
 def Term.int64_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .int64))
     (b : Term Sg (TyWf.prim .uint64 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.int64_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.int64_casesOn a b))
+    fun ρ a => (.int64_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a character apart. -/
 def Term.char_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .char))
     (b : Term Sg (TyWf.prim .uint32 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.char_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.char_casesOn a b))
+    fun ρ a => (.char_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take an unchecked position apart. -/
 def Term.stringPosRaw_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .stringPosRaw))
     (b : Term Sg (TyWf.prim .nat :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.stringPosRaw_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.stringPosRaw_casesOn a b))
+    fun ρ a => (.stringPosRaw_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a checked position apart. -/
 def Term.stringPos_casesOn' {Γ : Ctx} {τ : TyWf} {s : String}
     (v : Term Sg Γ (.prim (.stringPos s)))
     (b : Term Sg (TyWf.prim .stringPosRaw :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.stringPos_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.stringPos_casesOn a b))
+    fun ρ a => (.stringPos_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take an unchecked substring apart. -/
 def Term.substringRaw_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .substringRaw))
     (b : Term Sg (TyWf.prim .string :: TyWf.prim .stringPosRaw :: TyWf.prim .stringPosRaw :: Γ) τ) :
     Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.substringRaw_casesOn a b))
+    fun ρ a =>
     (.substringRaw_casesOn a (b.rename (Ren.lift (Ren.lift (Ren.lift ρ)))))
 
 /-- Take a 64-bit float apart. -/
 def Term.float_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .float))
     (b : Term Sg (TyWf.prim .floatModel :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.float_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.float_casesOn a b))
+    fun ρ a => (.float_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take a 32-bit float apart. -/
 def Term.float32_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .float32))
     (b : Term Sg (TyWf.prim .float32Model :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.float32_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.float32_casesOn a b))
+    fun ρ a => (.float32_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take the model of a 64-bit float apart. -/
 def Term.floatModel_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .floatModel))
     (b : Term Sg (TyWf.prim .uint64 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.floatModel_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.floatModel_casesOn a b))
+    fun ρ a => (.floatModel_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Take the model of a 32-bit float apart. -/
 def Term.float32Model_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .float32Model))
     (b : Term Sg (TyWf.prim .uint32 :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.float32Model_casesOn a (b.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.float32Model_casesOn a b))
+    fun ρ a => (.float32Model_casesOn a (b.rename (Ren.lift ρ)))
 
 /-- Delay a value, unmemoised. -/
 abbrev Term.lazy_mk {Γ : Ctx} {τ : TyWf} (e : Term Sg Γ τ) : Term Sg Γ (.lazy τ) :=
@@ -486,13 +551,17 @@ def Term.array_mk {Γ : Ctx} {τ : TyWf} (ts : Terms Sg Γ τ) : Term Sg Γ (.ar
 /-- Take an array apart. -/
 def Term.array_casesOn' {Γ : Ctx} {σ τ : TyWf} (a : Term Sg Γ (.array σ)) (z : Term Sg Γ τ)
     (s : Term Sg (σ :: TyWf.array σ :: Γ) τ) : Term Sg Γ τ :=
-  a.bindAtom fun ρ x => (.array_casesOn x (z.rename ρ) (s.rename (Ren.lift (Ren.lift ρ))))
+  a.bindAtomOr (fun x => (.array_casesOn x z s))
+    fun ρ x => (.array_casesOn x (z.rename ρ) (s.rename (Ren.lift (Ren.lift ρ))))
 
 /-- The fold of an array that descends `k + 1` elements at a time. -/
 def Term.array_rec' {Γ : Ctx} {σ τ : TyWf} (k : Nat := 0) (a : Term Sg Γ (.array σ))
     (bases : ArrayRecBases Sg Γ σ τ k)
     (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ) : Term Sg Γ τ :=
-  a.bindAtom fun ρ x =>
+  a.bindAtomOr (fun x =>
+    (.array_rec k x bases
+      branch .ret))
+    fun ρ x =>
     (.array_rec k x (bases.rename ρ)
       (branch.rename (Ren.lift (Ren.lift (Ren.liftNat τ (k + 1) ρ)))) .ret)
 
@@ -503,13 +572,15 @@ abbrev Term.enum_mk {Γ : Ctx} (s : LeanEnumSchema) (i : Fin s.nOfConstructors) 
 /-- A dispatch on an enum. -/
 def Term.enum_casesOn' {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} (e : Term Sg Γ (.enum s))
     (cases : EnumCases Sg Γ τ s) : Term Sg Γ τ :=
-  e.bindAtom fun ρ a => (.enum_casesOn a (cases.rename ρ))
+  e.bindAtomOr (fun a => (.enum_casesOn a cases))
+    fun ρ a => (.enum_casesOn a (cases.rename ρ))
 
 /-- A dispatch on some of the constructors of an enum, with a default. -/
 def Term.enum_casesOnWithDefault' {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k : Nat}
     (e : Term Sg Γ (.enum s)) (cases : EnumSomeCases Sg Γ τ s k) (dflt : Term Sg Γ τ)
     (hk : k < s.nOfConstructors := by ctor_lt) : Term Sg Γ τ :=
-  e.bindAtom fun ρ a => (.enum_casesOnWithDefault a (cases.rename ρ) (dflt.rename ρ) hk)
+  e.bindAtomOr (fun a => (.enum_casesOnWithDefault a cases dflt hk))
+    fun ρ a => (.enum_casesOnWithDefault a (cases.rename ρ) (dflt.rename ρ) hk)
 
 /-- A record, from its fields. -/
 def Term.record_mk {Γ : Ctx} (fs : LeanRecordSchema TyWf) (fields : Spine Sg Γ fs.toList) :
@@ -519,7 +590,8 @@ def Term.record_mk {Γ : Ctx} (fs : LeanRecordSchema TyWf) (fields : Spine Sg Γ
 /-- The eliminator of a record. -/
 def Term.record_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf}
     (r : Term Sg Γ (.record fs)) (body : Term Sg (fs.toList ++ Γ) τ) : Term Sg Γ τ :=
-  r.bindAtom fun ρ a => (.record_casesOn a (body.rename (Ren.liftN fs.toList ρ)))
+  r.bindAtomOr (fun a => (.record_casesOn a body))
+    fun ρ a => (.record_casesOn a (body.rename (Ren.liftN fs.toList ρ)))
 
 /-- A tagged value. -/
 def Term.taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
@@ -531,14 +603,17 @@ def Term.taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
 def Term.taggedUnion_casesOn' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
     (v : Term Sg Γ (.taggedUnion l)) (cases : TaggedUnionFoldCases Sg TyWf id Γ l τ) :
     Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.taggedUnion_casesOn a (cases.rename ρ))
+  v.bindAtomOr (fun a => (.taggedUnion_casesOn a cases))
+    fun ρ a => (.taggedUnion_casesOn a (cases.rename ρ))
 
 /-- A dispatch on some of the constructors of a tagged union, with a default. -/
 def Term.taggedUnion_casesOnWithDefault' {Γ : Ctx} {τ : TyWf}
     {l : LeanTaggedUnionSchema TyWf} {k : Nat} (v : Term Sg Γ (.taggedUnion l))
     (cases : TaggedUnionSomeCases Sg Γ l τ k) (dflt : Term Sg Γ τ)
     (hk : k < l.length := by ctor_lt) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.taggedUnion_casesOnWithDefault a cases dflt hk))
+    fun ρ a =>
     (.taggedUnion_casesOnWithDefault a (cases.rename ρ) (dflt.rename ρ) hk)
 
 /-- A value of a recursive tagged union. -/
@@ -554,7 +629,8 @@ def Term.recTaggedUnion_casesOn' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSche
     {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (v : Term Sg Γ (.recTaggedUnion l hwf))
     (cases : TaggedUnionFoldCases Sg TyWf id Γ (TyWf.recTaggedUnionUnfold l hwf) τ) :
     Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.recTaggedUnion_casesOn a (cases.rename ρ))
+  v.bindAtomOr (fun a => (.recTaggedUnion_casesOn a cases))
+    fun ρ a => (.recTaggedUnion_casesOn a (cases.rename ρ))
 
 /-- A dispatch on some of the constructors of a recursive tagged union, with a default. -/
 def Term.recTaggedUnion_casesOnWithDefault' {Γ : Ctx} {τ : TyWf}
@@ -563,7 +639,9 @@ def Term.recTaggedUnion_casesOnWithDefault' {Γ : Ctx} {τ : TyWf}
     (cases : TaggedUnionSomeCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ k)
     (dflt : Term Sg Γ τ)
     (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.recTaggedUnion_casesOnWithDefault a cases dflt hk))
+    fun ρ a =>
     (.recTaggedUnion_casesOnWithDefault a (cases.rename ρ) (dflt.rename ρ) hk)
 
 /-- The fold of a recursive tagged union. -/
@@ -572,7 +650,8 @@ def Term.recTaggedUnion_rec' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema (
     (v : Term Sg Γ (.recTaggedUnion l hwf))
     (cases : TaggedUnionFoldKCases Sg l
       (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ l τ k []) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.recTaggedUnion_rec k a (cases.rename ρ) .ret)
+  v.bindAtomOr (fun a => (.recTaggedUnion_rec k a cases .ret))
+    fun ρ a => (.recTaggedUnion_rec k a (cases.rename ρ) .ret)
 
 /-- A value of a recursive record. -/
 def Term.recObject_mk {Γ : Ctx} (fs : LeanRecordSchema (TyWfIn 1))
@@ -585,14 +664,18 @@ def Term.recObject_mk {Γ : Ctx} (fs : LeanRecordSchema (TyWfIn 1))
 def Term.recObject_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema (TyWfIn 1)}
     {hwf : Ty.Wf (TyWf.recObjectTy fs)} (v : Term Sg Γ (.recObject fs hwf))
     (body : Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.recObject_casesOn a body))
+    fun ρ a =>
     (.recObject_casesOn a (body.rename (Ren.liftN (TyWf.recObjectUnfold fs hwf).toList ρ)))
 
 /-- The fold of a recursive record. -/
 def Term.recObject_rec' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema (TyWfIn 1)}
     {hwf : Ty.Wf (TyWf.recObjectTy fs)} (k : Nat := 0) (v : Term Sg Γ (.recObject fs hwf))
     (body : Term Sg (TyWf.recObjectRecBinders fs hwf τ k ++ Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.recObject_rec k a body .ret))
+    fun ρ a =>
     (.recObject_rec k a (body.rename (Ren.liftN (TyWf.recObjectRecBinders fs hwf τ k) ρ)) .ret)
 
 /-- A value of a recursive newtype. -/
@@ -604,13 +687,16 @@ def Term.recAlias_mk {Γ : Ctx} (b : TyWfIn 1) (hwf : Ty.Wf (TyWf.recAliasTy b) 
 def Term.recAlias_casesOn' {Γ : Ctx} {τ : TyWf} {b : TyWfIn 1}
     {hwf : Ty.Wf (TyWf.recAliasTy b)} (v : Term Sg Γ (.recAlias b hwf))
     (body : Term Sg (TyWf.recAliasUnfold b hwf :: Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.recAlias_casesOn a (body.rename (Ren.lift ρ)))
+  v.bindAtomOr (fun a => (.recAlias_casesOn a body))
+    fun ρ a => (.recAlias_casesOn a (body.rename (Ren.lift ρ)))
 
 /-- The fold of a recursive newtype. -/
 def Term.recAlias_rec' {Γ : Ctx} {τ : TyWf} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)}
     (k : Nat := 0) (v : Term Sg Γ (.recAlias b hwf))
     (body : Term Sg (TyWf.recAliasRecBinders b hwf τ k ++ Γ) τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.recAlias_rec k a body .ret))
+    fun ρ a =>
     (.recAlias_rec k a (body.rename (Ren.liftN (TyWf.recAliasRecBinders b hwf τ k) ρ)) .ret)
 
 /-- A value of one member of a mutual recursive family. -/
@@ -628,7 +714,8 @@ def Term.mutualRecursiveFamily_casesOn' {Γ : Ctx} {τ : TyWf} {n : Nat}
     (v : Term Sg Γ (.mutualRecursiveFamily f hwf))
     (cases : FamilyMemberCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf))) :
     Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.mutualRecursiveFamily_casesOn a (cases.rename ρ))
+  v.bindAtomOr (fun a => (.mutualRecursiveFamily_casesOn a cases))
+    fun ρ a => (.mutualRecursiveFamily_casesOn a (cases.rename ρ))
 
 /-- A dispatch on some of the constructors of a member of a mutual family, with a
     default. -/
@@ -638,7 +725,9 @@ def Term.mutualRecursiveFamily_casesOnWithDefault' {Γ : Ctx} {τ : TyWf} {n : N
     (v : Term Sg Γ (.mutualRecursiveFamily f hwf))
     (cases : FamilyMemberSomeCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)))
     (dflt : Term Sg Γ τ) : Term Sg Γ τ :=
-  v.bindAtom fun ρ a =>
+  v.bindAtomOr (fun a =>
+    (.mutualRecursiveFamily_casesOnWithDefault a cases dflt))
+    fun ρ a =>
     (.mutualRecursiveFamily_casesOnWithDefault a (cases.rename ρ) (dflt.rename ρ))
 
 /-- The fold of a mutual family. -/
@@ -648,7 +737,8 @@ def Term.mutualRecursiveFamily_rec' {Γ : Ctx} {τ : TyWf} {n : Nat}
     (v : Term Sg Γ (.mutualRecursiveFamily f hwf))
     (cases : FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ τ f.members k) :
     Term Sg Γ τ :=
-  v.bindAtom fun ρ a => (.mutualRecursiveFamily_rec k a (cases.rename ρ) .ret)
+  v.bindAtomOr (fun a => (.mutualRecursiveFamily_rec k a cases .ret))
+    fun ρ a => (.mutualRecursiveFamily_rec k a (cases.rename ρ) .ret)
 
 end LeanScript
 

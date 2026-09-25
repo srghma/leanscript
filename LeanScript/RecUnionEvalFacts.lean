@@ -16,10 +16,10 @@ namespace LeanScript
 
 The recursive analogue of the facts at the end of `LeanScript.Eval`.
 
-* **ι-rules for a dispatch.**  Taking apart a value built by `Term.recTaggedUnion_mk` is
+* **ι-rules for a dispatch.**  Taking apart a value bound to `Comp.recTaggedUnion_mk` is
   taking apart the tagged value of the *unfolded* union with the same constructor and
-  fields (`Term.eval_recTaggedUnion_casesOn_mk`,
-  `Term.eval_recTaggedUnion_casesOnWithDefault_mk`).  Both rest on the round trip
+  fields (`Term.evalJ_recTaggedUnion_casesOn_mk`,
+  `Term.evalJ_recTaggedUnion_casesOnWithDefault_mk`).  Both rest on the round trip
   `TyWf.DenRec.unfold_mk` (and `Ty.unroll_roll` / `Ty.roll_unroll` below it, in
   `LeanScript.Den.Rec`).
 * **The fold, and its ι-rule.**  `TaggedUnionFoldCases.recFold` is the plain fold of the
@@ -37,57 +37,62 @@ variable {Sg : Sig} (G : GlobalEnv Sg.decls)
 
 /-! ## ι-rules for a dispatch -/
 
-/-- Dispatching on a value built by the introduction form of a recursive tagged union is
+/-- Dispatching on a value bound to the introduction form of a recursive tagged union is
     dispatching on the tagged value of its unfolded constructors. -/
-theorem Term.eval_recTaggedUnion_casesOn_mk {Γ : Ctx} {τ : TyWf}
+theorem Term.evalJ_recTaggedUnion_casesOn_mk {Γ : Ctx} {τ : TyWf} {J : JCtx}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
-    (cases : TaggedUnionCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ) (env : Env Γ) :
-    Term.eval G (.recTaggedUnion_casesOn (.recTaggedUnion_mk l hwf t ht fields) cases) env =
-      Term.eval G (.taggedUnion_casesOn (.taggedUnion_mk _ t ht fields) cases) env := by
-  show TaggedUnionCases.eval G cases rfl .rfl .rfl env
+    (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
+    (cases : TaggedUnionCases Sg (.recTaggedUnion l hwf :: Γ) (TyWf.recTaggedUnionUnfold l hwf) τ J)
+    (env : Env Γ) (jenv : JEnv τ J) :
+    Term.evalJ G (.letE (.recTaggedUnion_mk l hwf t ht fields)
+        (.recTaggedUnion_casesOn (.var .head) cases)) env jenv =
+      TaggedUnionCases.eval G cases rfl .rfl .rfl
+        (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env, env) jenv
+        (TyWf.DenTU.mk t ht (Args.eval G fields env)) := by
+  show TaggedUnionCases.eval G cases rfl .rfl .rfl _ jenv
       (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk]
-  rfl
 
 /-- The same, for a dispatch on some of the constructors with a default. -/
-theorem Term.eval_recTaggedUnion_casesOnWithDefault_mk {Γ : Ctx} {τ : TyWf} {k : Nat}
+theorem Term.evalJ_recTaggedUnion_casesOnWithDefault_mk {Γ : Ctx} {τ : TyWf} {J : JCtx}
+    {k : Nat}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
-    (cases : TaggedUnionSomeCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ k)
-    (dflt : Term Sg Γ τ) (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length) (env : Env Γ) :
-    Term.eval G
-        (.recTaggedUnion_casesOnWithDefault (.recTaggedUnion_mk l hwf t ht fields) cases dflt hk)
-        env =
-      Term.eval G (.taggedUnion_casesOnWithDefault (.taggedUnion_mk _ t ht fields) cases dflt hk)
-        env := by
-  show TaggedUnionSomeCases.eval G cases env
+    (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht))
+    (cases : TaggedUnionSomeCases Sg (.recTaggedUnion l hwf :: Γ)
+      (TyWf.recTaggedUnionUnfold l hwf) τ k 0 J)
+    (dflt : Term Sg (.recTaggedUnion l hwf :: Γ) τ J)
+    (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length) (env : Env Γ) (jenv : JEnv τ J) :
+    Term.evalJ G (.letE (.recTaggedUnion_mk l hwf t ht fields)
+        (.recTaggedUnion_casesOnWithDefault (.var .head) cases dflt hk)) env jenv =
+      let env' := (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env, env)
+      TaggedUnionSomeCases.eval G cases env' jenv
+        (TyWf.DenTU.mk t ht (Args.eval G fields env)) (Term.evalJ G dflt env' jenv) := by
+  show TaggedUnionSomeCases.eval G cases _ jenv
       (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) _ = _
   rw [TyWf.DenRec.unfold_mk]
-  rfl
 
 /-- The tag of a value built by the introduction form is the constructor it was built
     with. -/
-theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx}
+theorem Comp.eval_recTaggedUnion_mk_tag {Γ : Ctx}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
-    (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env)).1.val
+    (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
+    (TyWf.DenRec.unfold l hwf (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env)).1.val
       = t := by
   show (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)).1.val = t
   rw [TyWf.DenRec.unfold_mk]
   rfl
 
 /-- The fields of a value built by the introduction form are the ones it was built with. -/
-theorem Term.eval_recTaggedUnion_field? {Γ : Ctx}
+theorem Comp.eval_recTaggedUnion_field? {Γ : Ctx}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
-    (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
+    (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
     TyWf.DenTU.field? t ht
-        (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env)) =
-      some (Spine.eval G fields env) := by
+        (TyWf.DenRec.unfold l hwf (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env)) =
+      some (Args.eval G fields env) := by
   show TyWf.DenTU.field? t ht (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk, TyWf.DenTU.field?_mk]
 
@@ -385,13 +390,13 @@ abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnion
     answer where they stand. -/
 theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
-    (v : Term Sg Γ (.recTaggedUnion l hwf))
+    (v : Atom Sg Γ (.recTaggedUnion l hwf))
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
     (env : Env Γ) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env =
-      TaggedUnionFoldCases.recFold G c env (Term.eval G v env) := by
-  show (WType.memo _ (Term.eval G v env)).answer = _
-  generalize Term.eval G v env = w
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) .ret) env =
+      TaggedUnionFoldCases.recFold G c env (Atom.eval G v env) := by
+  show (WType.memo _ (Atom.eval G v env)).answer = _
+  generalize Atom.eval G v env = w
   induction w with
   | mk node f ih =>
       show TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (outer := []) c) env
@@ -412,11 +417,11 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
     value at every depth. -/
 theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
-    (v : Term Sg Γ (.recTaggedUnion l hwf))
+    (v : Atom Sg Γ (.recTaggedUnion l hwf))
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
     (env : Env Γ) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env =
-      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c)) env := by
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) .ret) env =
+      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) .ret) env := by
   rw [Term.eval_recTaggedUnion_rec_toFoldK, Term.eval_recTaggedUnion_rec_toFoldK]
 
 end LeanScript

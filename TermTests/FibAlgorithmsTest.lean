@@ -31,7 +31,7 @@ evidence behind the table in §2 of `proposals/FibProposals.md`:
 | `fibFast` (`n / 2`) | a descent that is not by a fixed number of steps | prose below |
 
 Since this file was written, the node and the two translation cases it names as missing
-have been implemented: `LeanScript.Term.nat_rec k` descends `k + 1` steps, and
+have been implemented: `LeanScript.Term.nat_rec' k` descends `k + 1` steps, and
 `#leanscript_to_term` translates both the `n + 2` pattern and a `for` loop over a range.
 `TermTests/NatRecDepthTest/` hands each of the five definitions to the translation as
 it is written.  What is below is the evidence that the first two need nothing beyond a
@@ -68,7 +68,7 @@ reach.
 
 /-- The Lean definition to be expressed.  It matches on the counter only and answers
     with the function of the two accumulators, so that its translation is the fold
-    itself, `.lam (.nat_rec …)`; matching on all three arguments would translate to the
+    itself, `.lam (.nat_rec' …)`; matching on all three arguments would translate to the
     same fold under three `lam`s, applied to the accumulators (`@[inline]`, so that
     `fibTR` below translates to the fold applied to `0` and `1`). -/
 @[inline] def fibLoopTR : Nat → Nat → Nat → Nat
@@ -99,7 +99,7 @@ example : loopZero = .lam (.lam (.var (v♯1))) := by kernel_rfl
 example : loopStep =
     .lam (.lam
       (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0))))) := by kernel_rfl
-example : loop_term = .lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) := by
+example : loop_term = .lam (.nat_rec' 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) := by
   kernel_rfl
 
 /-- `fibTR`, as a term: the loop started at `(0, 1)`.  The translation inlines the loop,
@@ -107,14 +107,17 @@ example : loop_term = .lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loop
 def fibTR_term : Term sigAdd [] (TyWf.prim .nat ⇒ TyWf.prim .nat) := #leanscript_to_term fibTR
 
 example : fibTR_term =
-    .lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
+    .lam (.ap (.ap (.nat_rec' 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
       (.nat_mk 1)) := by kernel_rfl
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
 theorem loop_term_eval (n a b : Nat) : runAdd loop_term n a b = fibLoopTR n a b := by
   induction n generalizing a b with
-  | zero => rfl
-  | succ n ih => exact ih b (a + b)
+  | zero => kernel_rfl
+  | succ n ih =>
+      have h : runAdd loop_term (n + 1) a b = runAdd loop_term n b (a + b) := by kernel_rfl
+      rw [h]
+      exact ih b (a + b)
 
 /-- `fibLoopTR` started at `(fib k, fib (k + 1))` answers `fib (n + k)` — the user's own
     invariant, which is what makes the tail-recursive loop correct. -/

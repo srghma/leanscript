@@ -50,7 +50,7 @@ def fibCases :
 
 /-- **`fib` over a mutual family**: the depth-one fold. -/
 def fibTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) fibCases)
+  .lam (.mutualRecursiveFamily_rec' 1 (.var (v♯0)) fibCases)
 
 /-! ## 3. Tribonacci … hexanacci: one more level of descent each
 
@@ -84,7 +84,7 @@ def tribCases :
 
 /-- `trib`, as a term. -/
 def tribTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 2 (.var (v♯0)) tribCases)
+  .lam (.mutualRecursiveFamily_rec' 2 (.var (v♯0)) tribCases)
 
 /-- The tetranacci numbers: a depth-three fold. -/
 def tetraCases :
@@ -115,7 +115,7 @@ def tetraCases :
 
 /-- `tetra`, as a term. -/
 def tetraTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 3 (.var (v♯0)) tetraCases)
+  .lam (.mutualRecursiveFamily_rec' 3 (.var (v♯0)) tetraCases)
 
 /-- The pentanacci numbers: a depth-four fold. -/
 def pentaCases :
@@ -152,7 +152,7 @@ def pentaCases :
 
 /-- `penta`, as a term. -/
 def pentaTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 4 (.var (v♯0)) pentaCases)
+  .lam (.mutualRecursiveFamily_rec' 4 (.var (v♯0)) pentaCases)
 
 /-- The hexanacci numbers: a depth-five fold. -/
 def hexaCases :
@@ -195,7 +195,7 @@ def hexaCases :
 
 /-- `hexa`, as a term. -/
 def hexaTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 5 (.var (v♯0)) hexaCases)
+  .lam (.mutualRecursiveFamily_rec' 5 (.var (v♯0)) hexaCases)
 
 /-! ## 4. The tail-recursive loop: a depth-**zero** fold at a function type
 
@@ -221,7 +221,7 @@ def fibTRCases :
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.ap (.ap (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibTRCases) (.nat_mk 0))
+  .lam (.ap (.ap (.mutualRecursiveFamily_rec' 0 (.var (v♯0)) fibTRCases) (.nat_mk 0))
     (.nat_mk 1))
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
@@ -244,7 +244,7 @@ def fibPairCases :
     (.ctors
       (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
         (.here
-          (.here (.record_casesOn (.var (v♯1))
+          (.here (.record_casesOn' (.var (v♯1))
             (.record_mk pairSchema
               (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil)))))
           .nil)))
@@ -253,7 +253,7 @@ def fibPairCases :
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm : Term sigAdd [] (peTy ⇒ natT) :=
-  .lam (.record_casesOn (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibPairCases)
+  .lam (.record_casesOn' (.mutualRecursiveFamily_rec' 0 (.var (v♯0)) fibPairCases)
     (.var (v♯0)))
 
 /-! ## 6. The other member: the continuant, and a constructor with two fields
@@ -315,7 +315,7 @@ def contCases :
 
 /-- The continuant, as a term: the depth-one fold over member `1` of the family. -/
 def contTerm : Term sigAdd [] (lsTy ⇒ natT) :=
-  .lam (.mutualRecursiveFamily_rec 1 (.var (v♯0)) contCases)
+  .lam (.mutualRecursiveFamily_rec' 1 (.var (v♯0)) contCases)
 
 /-! ## 7. Running the terms
 

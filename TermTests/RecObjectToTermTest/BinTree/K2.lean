@@ -8,6 +8,10 @@ public meta import LeanScript.ToTerm.Elab
 
 @[expose] public section
 
+-- The translations below are large terms; compiling them needs a deeper recursion than
+-- the default.
+set_option maxRecDepth 40000
+
 /-! # `recObject_rec 2` on a binary recursive record
 
 Part of the binary-tree tests; see `TermTests/RecObjectToTermTest/BinTree/Common.lean`

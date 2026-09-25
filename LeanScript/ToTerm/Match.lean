@@ -22,8 +22,8 @@ namespace LeanScript.ToTerm
 A `match` whose last pattern is a wildcard is compiled into a dispatch that names *every*
 constructor, with the wildcard's body repeated in the branch of each constructor the
 earlier patterns did not name.  The grammar has a form for exactly that shape —
-`LeanScript.Term.enum_casesOnWithDefault` and
-`LeanScript.Term.taggedUnion_casesOnWithDefault`, which name some of the constructors and
+`LeanScript.Term.enum_casesOnWithDefault'` and
+`LeanScript.Term.taggedUnion_casesOnWithDefault'`, which name some of the constructors and
 send the rest to one default branch — so the repetition is detected here and the partial
 form is what is built.
 

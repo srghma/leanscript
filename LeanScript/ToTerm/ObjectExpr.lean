@@ -84,6 +84,11 @@ def listTyE (σ : Expr) : Expr :=
 /-- `@id TyWf`, the projection the variable scopes use. -/
 def idTyE : Expr := mkApp (mkConst ``id [Level.one]) tyE
 
+/-- The empty context of join points, `([] : List TyWf)`: the translation writes every
+    dispatch in direct style, with no join point in scope, and the builders of
+    `LeanScript.Expr.Build` introduce the join points. -/
+def jnilE : Expr := mkApp (mkConst ``List.nil [Level.zero]) tyE
+
 /-! ## From a tree to a type of the language
 
 A tree becomes a **type** by being bundled with the proof that it is one, which

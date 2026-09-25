@@ -141,14 +141,22 @@ example : tyOf Pr = .mutualRecursiveFamily (.selectedLast
     (.ctors (.payloadFirst ⟨.prim .nat, []⟩ [.familyMember 1] []))
     [] (.record ⟨.familyMember 0, .familyMember 0, []⟩)) := rfl
 
+mutual
 /-- The depth of the `mutualRecursiveFamily_rec` a translated function is: the fold under
     the `fun`s of its arguments, applied to the arguments that Lean put in the motive.
     `none` if the translation is not of that shape. -/
-def familyRecDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Term Sg Γ τ → Option Nat
-  | .mutualRecursiveFamily_rec k _ _ => some k
-  | .lam b => familyRecDepth? b
-  | .ap f _ => familyRecDepth? f
+def familyRecDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Option Nat
+  | .mutualRecursiveFamily_rec k _ _ _ => some k
+  | .ret c => familyRecDepth?.comp c
+  | .letE c body => (familyRecDepth?.comp c).orElse fun _ => familyRecDepth? body
+  | .letJ jp body => (familyRecDepth? body).orElse fun _ => familyRecDepth? jp
   | _ => none
+
+/-- `familyRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def familyRecDepth?.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option Nat
+  | .lam b => familyRecDepth? b
+  | _ => none
+end
 
 /-- An `A` chain of `n` links, labelled `n - 1, …, 1, 0` from the top. -/
 def A.ofNat : Nat → A

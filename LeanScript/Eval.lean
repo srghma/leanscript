@@ -122,6 +122,26 @@ def FamilyMemberArgs.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
   | _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
   | _, .alias _ value, env => Atom.eval G value env
 
+/-! ## Join points -/
+
+/-- The values of the join points in scope, for a term of type `τ`: each join point of
+    parameter type `σ` is the function `TyWf.Den σ → TyWf.Den τ` its body computes. -/
+def JEnv (τ : TyWf) : JCtx → Type
+  | [] => PUnit
+  | σ :: J => (TyWf.Den σ → TyWf.Den τ) × JEnv τ J
+
+/-- The function a join point stands for. -/
+def JEnv.get {τ : TyWf} : {J : JCtx} → {σ : TyWf} → (J ∋ σ) → JEnv τ J →
+    TyWf.Den σ → TyWf.Den τ
+  | _ :: _, _, .head, jenv => jenv.1
+  | _ :: _, _, .tail j, jenv => JEnv.get j jenv.2
+
+/-- Deliver the answer of a fold to its destination: it is the value of the term, or it is
+    passed to a join point. -/
+def Dest.apply {J : JCtx} {ρ τ : TyWf} : Dest J ρ τ → JEnv τ J → TyWf.Den ρ → TyWf.Den τ
+  | .ret, _, v => v
+  | .jump j, jenv, v => JEnv.get j jenv v
+
 /-! ## Terms -/
 
 mutual
@@ -215,7 +235,6 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (Term.evalJ G dflt env jenv)
   | _, _, _, .record_casesOn r body, env, jenv =>
       Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) (Atom.eval G r env)) env) jenv
-       
   | _, _, _, .taggedUnion_casesOn v cases, env, jenv =>
       TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv (Atom.eval G v env)
   | _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env, jenv =>
@@ -236,12 +255,10 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (Atom.eval G v env)
   | _, _, _, .recObject_casesOn (fs := fs) (hwf := hwf) v body, env, jenv =>
       Term.evalJ G body (Env.append (TyWf.DenObj.unfold fs hwf (Atom.eval G v env)) env) jenv
-       
   | _, _, _, .recObject_rec (fs := fs) (hwf := hwf) (ρ := τ) k v body d, env, jenv =>
       Dest.apply d jenv <|
       WType.memoFold
-        (fun node kids => Term.evalJ G body (Env.append (objRecEnv fs hwf τ k node kids) env) PUnit.unit
-         )
+        (fun node kids => Term.evalJ G body (Env.append (objRecEnv fs hwf τ k node kids) env) PUnit.unit)
         (Atom.eval G v env)
   | _, _, _, .recAlias_casesOn (b := b) (hwf := hwf) v body, env, jenv =>
       Term.evalJ G body (TyWf.DenAlias.unfold b hwf (Atom.eval G v env), env) jenv
@@ -268,7 +285,8 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
     evaluated by `Term.eval` in the environment extended with what they bind. -/
 def Comp.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → (t : Comp Sg Γ τ) → Env Γ → TyWf.Den τ
-  | _, _, .atom a, env => Atom.eval G a env  | _, _, .lam body, env => fun x => Term.evalJ G body (x, env) PUnit.unit
+  | _, _, .atom a, env => Atom.eval G a env
+  | _, _, .lam body, env => fun x => Term.evalJ G body (x, env) PUnit.unit
   | _, _, .ap f a, env => (Atom.eval G f env) (Atom.eval G a env)
   | _, _, .extern e, _ => Extern.eval e
   | _, _, .externCall args call, env => Extern.eval (call (Args.eval G args env))
@@ -618,6 +636,12 @@ def FamilyFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       FamilyFoldKCases.eval G rest env mkEnv i node
 
 end
+
+/-- **The value of a term** with no join points in scope: `Term.evalJ` with the empty
+    environment of join points. -/
+abbrev Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} {τ : TyWf}
+    (t : Term Sg Γ τ) (env : Env Γ) : TyWf.Den τ :=
+  Term.evalJ G t env PUnit.unit
 
 /-! ## Running a closed term -/
 

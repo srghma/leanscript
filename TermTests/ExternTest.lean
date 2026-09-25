@@ -31,13 +31,13 @@ example : Term.run' externAdd = 5 := by decide +kernel
 
 /-- An extern used inside a larger term: `if 2 < 3 then 7 * 6 else 0`. -/
 def externIf : Term ⟨[], List.nodup_nil⟩ [] (.prim .nat) :=
-  .bool_casesOn (.extern (.lean_nat_dec_lt 2 3)) (.extern (.lean_nat_mul 7 6)) (.nat_mk 0)
+  .bool_casesOn' (.extern (.lean_nat_dec_lt 2 3)) (.extern (.lean_nat_mul 7 6)) (.nat_mk 0)
 
 example : Term.run' externIf = 42 := by decide +kernel
 
 /-- An extern applied through a `let`: the bound value is an extern, the body a variable. -/
 def externLet : Term ⟨[], List.nodup_nil⟩ [] (.prim .string) :=
-  .letE (.extern (.lean_string_append__String_append "lean" "script")) (.var .head)
+  .letE' (.extern (.lean_string_append__String_append "lean" "script")) (.var .head)
 
 example : Term.run' externLet = "leanscript" := by decide +kernel
 

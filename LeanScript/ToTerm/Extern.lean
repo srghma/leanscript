@@ -288,7 +288,7 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
         let dflt ← if (← whnfR α).isConstOf ``Nat then pure (mkNatLit 0)
           else mkAppOptM ``Inhabited.default #[α, inst]
         let fb ← trans c dflt
-        pure (mkAppN (mkConst `LeanScript.Term.externCallChecked)
+        pure (mkAppN (mkConst `LeanScript.Term.externCallChecked')
           #[c.sg, c.gamma, σsE, τ, spine, mk, fb])
       else
         pure (mkAppN (mkConst `LeanScript.Term.externCall) #[c.sg, c.gamma, σsE, τ, spine, mk])

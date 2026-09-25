@@ -23,7 +23,7 @@ whose tree is `Ty.recTaggedUnion`.  (`List α` is one too; `List.brecOn` comes h
 the one-step translation of `LeanScript.ToTerm.TransBrec` cannot serve it.)
 
 Lean compiles such a recursion into `Tree.brecOn`, whose branch is handed the whole
-history of the recursion; the grammar's fold, `LeanScript.Term.recTaggedUnion_rec k`,
+history of the recursion; the grammar's fold, `LeanScript.Term.recTaggedUnion_rec' k`,
 hands each branch the constructor's fields and the answers at its occurrences of the
 union (`TyWf.recBinders`), and lets a branch **look further down**, at most `k` times:
 dispatch again on one of those occurrences (`LeanScript.FoldKBranch.deep`), or on an
@@ -433,7 +433,7 @@ def maxRecUnionRecDepth : MetaM Nat :=
 
 /-- A structural recursion on a **recursive tagged union**, as Lean compiled it: `X.brecOn`
     on a type whose tree is `Ty.recTaggedUnion`.  It becomes
-    `LeanScript.Term.recTaggedUnion_rec k`, at the smallest depth `k` that serves every
+    `LeanScript.Term.recTaggedUnion_rec' k`, at the smallest depth `k` that serves every
     branch (see the module documentation).  `none` when the recursion is not on a
     recursive tagged union. -/
 def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
@@ -522,7 +522,7 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let attempt (k : Nat) : MetaM Expr :=
     withLocalDeclD `top selfTy fun top => do
       let cases ← recUnionCases trans info c k top top.fvarId! #[] #[] [] #[]
-      return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_rec)
+      return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_rec')
         #[c.sg, c.gamma, τ, l, hwf, mkNatLit k, scrutT, cases]
   let mut found : Option Expr := none
   let mut lastErr : Option MessageData := none

@@ -37,14 +37,21 @@ open LeanScript TermTests.NatRecDepth
 /-- A natural number of the language. -/
 abbrev natT : TyWf := .prim .nat
 
+mutual
 /-- Is there a fold anywhere in this term? -/
-def hasFold {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Term Sg Γ τ → Bool
+def hasFold {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Bool
   | .nat_rec .. | .recTaggedUnion_rec .. | .array_rec .. | .recObject_rec ..
   | .recAlias_rec .. | .mutualRecursiveFamily_rec .. => true
-  | .lam b => hasFold b
-  | .ap f a => hasFold f || hasFold a
-  | .letE v b => hasFold v || hasFold b
+  | .ret c => hasFold.comp c
+  | .letE c body => (hasFold.comp c) || hasFold body
+  | .letJ jp body => (hasFold body) || hasFold jp
   | _ => false
+
+/-- `hasFold`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def hasFold.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Bool
+  | .lam b => hasFold b
+  | _ => false
+end
 
 /-! ## On `Nat`, with an accumulator -/
 

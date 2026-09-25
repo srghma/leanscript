@@ -47,7 +47,7 @@ def natTyWfE : Expr :=
 def termTyOf (t : Expr) : MetaM Expr := do
   let ty ← whnfCore (← instantiateMVars (← inferType t))
   match ty.getAppFnArgs with
-  | (`LeanScript.Term, #[_, _, τ]) => instantiateMVars τ
+  | (`LeanScript.Term, #[_, _, τ, _]) => instantiateMVars τ
   | _ => throwError "`#leanscript_to_term`: internal: not a term of the language: {t}"
 
 /-- The type of `e` as a tree, or — when the Lean type of `e` has no tree, as a value of a
@@ -223,7 +223,7 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
   let mut fields : Array (Expr × Expr) := #[]
   repeat
     let .forallE n d b _ := ty | break
-    let (`LeanScript.Term, #[_, _, τ]) := d.getAppFnArgs
+    let (`LeanScript.Term, #[_, _, τ, _]) := d.getAppFnArgs
       | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument {n}"
     let some i := (names.extract ci.numParams names.size).findIdx? (· == n)
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` has no field `{n}`"
@@ -233,7 +233,7 @@ def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → 
     if b.hasLooseBVars then
       throwError "`#leanscript_to_term`: internal: `{fnName}` has a dependent type"
     ty := b
-  let (`LeanScript.Term, #[_, _, resTy]) := ty.getAppFnArgs
+  let (`LeanScript.Term, #[_, _, resTy, _]) := ty.getAppFnArgs
     | throwError "`#leanscript_to_term`: internal: `{fnName}` does not build a term"
   if let some τ := expected? then
     if (← oneOfAlts? τ).isNone then discard <| isDefEq resTy τ

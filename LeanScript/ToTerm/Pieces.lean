@@ -135,7 +135,7 @@ partial def ctorValueArgs (ci : ConstructorVal) (args : Array Expr) :
     return out
 
 /-- The base values of a fold, already translated, as a `Spine` at `k` copies of `τ` —
-    the type `LeanScript.Term.nat_rec` asks its base values at. -/
+    the type `LeanScript.Term.nat_rec'` asks its base values at. -/
 partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : Expr := Id.run do
   let mut sp := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   let mut tys : List Expr := []

@@ -17,7 +17,7 @@ set_option autoImplicit false
 recursion, the tail-recursive loop, the pair recursion, the `for` loop, and the
 tribonacci … hexanacci numbers — and writes each of them as a term of the grammar.  This
 file is the same exercise for a recursion over an **array**, which is what
-`LeanScript.Term.array_rec k` is for.
+`LeanScript.Term.array_rec' k` is for.
 
 The array-valued `fib` is the **continuant**:
 
@@ -134,7 +134,7 @@ def loopStep : Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 ArrCtx
   #leanscript_fold_branch contTRTerm
 
 example : contTRTerm =
-    .lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
+    .lam (.ap (.ap (.array_rec' 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
       (.nat_mk 0)) := by kernel_rfl
 example : loopZero = .lam (.lam (.var (v♯1))) := by kernel_rfl
 example : loopStep =
@@ -240,24 +240,24 @@ def pairZero : Term sigArith ArrCtx Pair := match pairBases with | .nil z => z
 def pairStep : Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 ArrCtx) Pair :=
   #leanscript_fold_branch contPairTerm
 
-example : contPairTerm = .lam (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) := by
+example : contPairTerm = .lam (.array_rec' 0 (.var (v♯0)) (.nil pairZero) pairStep) := by
   kernel_rfl
 example : pairZero = .record_mk pairSchema (.cons (.nat_mk 1) (.cons (.nat_mk 0) .nil)) := by
   kernel_rfl
 example : pairStep =
-    .record_casesOn (.var (v♯2))
+    .record_casesOn' (.var (v♯2))
       (.record_mk pairSchema
         (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
           (.cons (.var (v♯0)) .nil))) := by kernel_rfl
 
 /-- The continuant read off the pair: its first field.  The translation inlines the
     fold, so the term takes apart the fold itself rather than applying `contPairTerm`:
-    `.lam (.record_casesOn (.array_rec 0 (.var (v♯0)) pairBases pairStep) (.var (v♯0)))`. -/
+    `.lam (.record_casesOn' (.array_rec' 0 (.var (v♯0)) pairBases pairStep) (.var (v♯0)))`. -/
 def contFromPairTerm : Term sigArith [] (TyWf.array natT ⇒ natT) :=
   #leanscript_to_term contFromPair
 
 example : contFromPairTerm =
-    .lam (.record_casesOn (fs := pairSchema) (.array_rec 0 (.var (v♯0)) pairBases pairStep)
+    .lam (.record_casesOn' (fs := pairSchema) (.array_rec' 0 (.var (v♯0)) pairBases pairStep)
       (.var (v♯0))) := by kernel_rfl
 
 example : runArith contFromPairTerm #[] = 1 := by kernel_rfl

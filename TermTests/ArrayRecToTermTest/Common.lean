@@ -54,15 +54,21 @@ def sig0 : Sig := ⟨[], by decide⟩
     opens `TermTests.ArrayRecToTerm`). -/
 scoped macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
-/-- The depth of a term that is an `array_rec`, or `none`. -/
-def arrayRecDepthOf? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
-  | .array_rec k _ _ _ => some k
+mutual
+/-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is — the
+    first fold under its `fun`s and `let`s — or `none` if the translation is not of that
+    shape. -/
+def arrayRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option Nat
+  | .array_rec k _ _ _ _ => some k
+  | .ret c => arrayRecDepth?.comp c
+  | .letE c body => (arrayRecDepth?.comp c).orElse fun _ => arrayRecDepth? body
+  | .letJ jp body => (arrayRecDepth? body).orElse fun _ => arrayRecDepth? jp
   | _ => none
 
-/-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is, or
-    `none` if the translation is not of that shape. -/
-def arrayRecDepth? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
-  | .lam b => arrayRecDepthOf? b
+/-- `arrayRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def arrayRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option Nat
+  | .lam b => arrayRecDepth? b
   | _ => none
+end
 
 end TermTests.ArrayRecToTerm

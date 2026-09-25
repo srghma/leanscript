@@ -73,7 +73,7 @@ The lists of at most one element are answered by the `ArrayRecBases`: the empty 
 (index `2`) and the answer at `as.drop 1` (index `3`). -/
 
 /-- The continuant, as a term of the grammar: the depth-one fold of an array,
-    `.lam (.array_rec 1 (.var (v♯0)) contBases contBranch)`. -/
+    `.lam (.array_rec' 1 (.var (v♯0)) contBases contBranch)`. -/
 def contTerm : Term sigArith [] (TyWf.array natT ⇒ natT) := #leanscript_to_term contArr
 
 /-- The answers for the short lists: `K [] = 1` and `K [a] = a`, that is
@@ -86,7 +86,7 @@ def contBranch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) natT :=
   #leanscript_fold_branch contTerm
 
-example : contTerm = .lam (.array_rec 1 (.var (v♯0)) contBases contBranch) := by kernel_rfl
+example : contTerm = .lam (.array_rec' 1 (.var (v♯0)) contBases contBranch) := by kernel_rfl
 example : contBases = .cons (.nat_mk 1) (.nil (.var (v♯0))) := by kernel_rfl
 example : contBranch = addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3)) := by kernel_rfl
 
@@ -153,7 +153,7 @@ def cont3Branch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) natT :=
   #leanscript_fold_branch cont3Term
 
-example : cont3Term = .lam (.array_rec 2 (.var (v♯0)) cont3Bases cont3Branch) := by kernel_rfl
+example : cont3Term = .lam (.array_rec' 2 (.var (v♯0)) cont3Bases cont3Branch) := by kernel_rfl
 example : cont3Bases =
     .cons (.nat_mk 1) (.cons (.var (v♯0)) (.nil (mulT (.var (v♯1)) (.var (v♯0))))) := by
   kernel_rfl
@@ -190,7 +190,7 @@ def cont4Branch :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) natT :=
   #leanscript_fold_branch cont4Term
 
-example : cont4Term = .lam (.array_rec 3 (.var (v♯0)) cont4Bases cont4Branch) := by kernel_rfl
+example : cont4Term = .lam (.array_rec' 3 (.var (v♯0)) cont4Bases cont4Branch) := by kernel_rfl
 example : cont4Bases =
     .cons (.nat_mk 1)
       (.cons (.var (v♯0))

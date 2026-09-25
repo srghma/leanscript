@@ -87,15 +87,23 @@ def sig0 : Sig := ⟨[], by decide⟩
     opens `TermTests.RecObjectToTerm`). -/
 scoped macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
+mutual
 /-- The depth of the `recObject_rec` a translated function is: the fold under the `fun`s
     of its arguments, applied to the arguments that Lean put in the motive (a recursion
     with accumulators folds to a function).  `none` if the translation is not of that
     shape. -/
-def recObjectRecDepth? {Γ : Ctx} {τ : TyWf} : Term sig0 Γ τ → Option Nat
-  | .recObject_rec k _ _ => some k
-  | .lam b => recObjectRecDepth? b
-  | .ap f _ => recObjectRecDepth? f
+def recObjectRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option Nat
+  | .recObject_rec k _ _ _ => some k
+  | .ret c => recObjectRecDepth?.comp c
+  | .letE c body => (recObjectRecDepth?.comp c).orElse fun _ => recObjectRecDepth? body
+  | .letJ jp body => (recObjectRecDepth? body).orElse fun _ => recObjectRecDepth? jp
   | _ => none
+
+/-- `recObjectRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+def recObjectRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option Nat
+  | .lam b => recObjectRecDepth? b
+  | _ => none
+end
 
 namespace Cell
 

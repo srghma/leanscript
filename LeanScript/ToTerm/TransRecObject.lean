@@ -20,7 +20,7 @@ inductive Cell where
 
 whose tree is `Ty.recObject`.  Lean compiles such a recursion into `Cell.brecOn`, whose
 branch is handed the whole history of the recursion; the grammar's fold of a record,
-`LeanScript.Term.recObject_rec k`, hands its branch the record's fields and a **window**:
+`LeanScript.Term.recObject_rec' k`, hands its branch the record's fields and a **window**:
 the fields again, with every subvalue replaced by the *answer tree* of depth `k` at it
 (`LeanScript.TyWf.recObjectRecBinders`).
 
@@ -78,7 +78,7 @@ partial def recObjLevel (info : RecObjInfo) (c : TCtx) (answers : Array (Expr ×
     | none => #[]
   let body ← recObjPayload info c answers frontier info.fields fTys j k override
   -- `recObjPayload` bound the fields in the context of the branch of this dispatch
-  return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+  return mkAppN (mkConst `LeanScript.Term.record_casesOn')
     #[c.sg, c.gamma, info.τ, fsW, ← c.var wv, body]
 
 /-- The fields of one constructor of a union field: those that do not mention the record
@@ -129,7 +129,7 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
           fun c' answers' frontier' svals => do
             let v := mkAppN (mkConst sc slvls) (sparams ++ svals)
             go c' answers' frontier' pfs ps pTys j (i + 1) (pvals.push v) k
-        return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+        return mkAppN (mkConst `LeanScript.Term.record_casesOn')
           #[c.sg, c.gamma, info.τ, fsS, ← c.var ps[i].fvarId!, inner]
     | .union _ ulvls uparams uctors =>
         -- a union around the record: its dispatch, each branch binding the fields of its
@@ -146,7 +146,7 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
               go c' answers' frontier' pfs ps pTys j (i + 1) (pvals.push v) k
         let minors := (Array.range uctors.size).map mkNatLit
         let cases ← mkTaggedUnionCases mkBranch c info.τ l 0 minors (uctors.map (·.1))
-        return mkAppN (mkConst `LeanScript.Term.taggedUnion_casesOn)
+        return mkAppN (mkConst `LeanScript.Term.taggedUnion_casesOn')
           #[c.sg, c.gamma, info.τ, l, ← c.var ps[i].fvarId!, cases]
     | .arraySelf arrTy =>
         -- an array of the record: a frontier value, whose own answer (if the recursion
@@ -169,7 +169,7 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
                   let cL := c.pushFields #[(ansL.fvarId!, τL)]
                   let body ← cont cL (answers.push (motiveKey mL listOfArr, ansL))
                     (some (mL, ansL))
-                  return mkAppN (mkConst `LeanScript.Term.letE)
+                  return mkAppN (mkConst `LeanScript.Term.letE')
                     #[c.sg, c.gamma, τL, info.τ, listT, body]
           withList fun cL answersL ansL? => do
             -- then the answer at the array, if the recursion has one for arrays
@@ -183,7 +183,7 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
                   let cA := cL.pushFields #[(ansA.fvarId!, τA)]
                   let body ← go cA (answersL.push (motiveKey mA arrV, ansA))
                     (frontier.push arrV) pfs ps pTys j (i + 1) (pvals.push arrV) k
-                  return mkAppN (mkConst `LeanScript.Term.letE)
+                  return mkAppN (mkConst `LeanScript.Term.letE')
                     #[c.sg, cL.gamma, τA, info.τ, arrT, body]
     | .self =>
         if j == 0 then
@@ -206,7 +206,7 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
                 let sub := mkAppN (mkConst info.ctor info.lvls) (info.params ++ subVals)
                 go c3 (answers3.push (sub, ans)) frontier3 pfs ps pTys j (i + 1)
                   (pvals.push sub) k
-            return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+            return mkAppN (mkConst `LeanScript.Term.record_casesOn')
               #[c.sg, c.gamma, info.τ, fsT, ← c.var ps[i].fvarId!, inner]
   else
     k c answers frontier pvals
@@ -219,7 +219,7 @@ def maxRecObjectRecDepth : MetaM Nat :=
   return leanscript.toTerm.maxRecObjectRecDepth.get (← getOptions)
 
 /-- A structural recursion on a **recursive record**, as Lean compiled it: `X.brecOn` on a
-    type whose tree is `Ty.recObject`.  It becomes `LeanScript.Term.recObject_rec k`, at
+    type whose tree is `Ty.recObject`.  It becomes `LeanScript.Term.recObject_rec' k`, at
     the smallest depth `k` that serves every read of the history (see the module
     documentation).  `none` when the recursion is not on a recursive record. -/
 def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
@@ -308,8 +308,8 @@ def transRecObjectBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       (fun c' answers frontier vals =>
         recObjLeaf trans info brecF motives c' answers frontier vals)
       (outer := if isAlias then none else some bs)
-    return mkAppN (mkConst (if isAlias then `LeanScript.Term.recAlias_rec
-      else `LeanScript.Term.recObject_rec))
+    return mkAppN (mkConst (if isAlias then `LeanScript.Term.recAlias_rec'
+      else `LeanScript.Term.recObject_rec'))
       #[c.sg, c.gamma, τ, fs, hwf, mkNatLit k, scrutT, branch]
   let mut found : Option Expr := none
   let mut lastErr : Option MessageData := none

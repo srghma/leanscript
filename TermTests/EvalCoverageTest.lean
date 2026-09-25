@@ -43,12 +43,12 @@ def natNil : Term covEmptySig [] natListTy :=
 
 /-- The head of a list, or `0`. -/
 def natHead : Term covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
-  .lam (.recTaggedUnion_casesOn (.var (v♯0))
+  .lam (.recTaggedUnion_casesOn' (.var (v♯0))
     (.skip (.nat_mk 0) (.here (.var (v♯0)) .nil)))
 
 /-- The fold over a list that answers `0`. -/
 def natFoldZero : Term covEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
-  .lam (.recTaggedUnion_rec 0 (.var (v♯0))
+  .lam (.recTaggedUnion_rec' 0 (.var (v♯0))
     (.skip (.here (.nat_mk 0)) (.here (.here (.var (v♯2))) .nil)))
 
 /-- `[5]`. -/
@@ -105,7 +105,7 @@ theorem no_total_evaluator (ev : ∀ τ : TyWf, Term covEmptySig [] τ → TyWf.
 
 /-- The label of a rose tree: the eliminator binds every field, so it is index `0`. -/
 def roseLabel : Term covEmptySig [] (roseTy ⇒ TyWf.prim .nat) :=
-  .lam (.recObject_casesOn (.var (v♯0)) (.var (v♯0)))
+  .lam (.recObject_casesOn' (.var (v♯0)) (.var (v♯0)))
 
 /-- The label of the leaf reads back. -/
 theorem run_roseLabel_roseLeaf :
@@ -128,7 +128,7 @@ def covANil : Term covEmptySig [] covTyA :=
 
 /-- Is an `A` the field-less constructor?  A dispatch on both constructors of `A`. -/
 def covAIsNil : Term covEmptySig [] (covTyA ⇒ TyWf.prim .bool) :=
-  .lam (.mutualRecursiveFamily_casesOn (.var (v♯0))
+  .lam (.mutualRecursiveFamily_casesOn' (.var (v♯0))
     (.ctors (.skip (.bool_mk true) (.here (.bool_mk false) .nil))))
 
 /-- The field-less constructor of `A` reads back. -/

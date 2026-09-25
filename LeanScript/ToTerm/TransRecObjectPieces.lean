@@ -300,10 +300,10 @@ def recObjListAnswer (info : RecObjInfo) (c : TCtx) (win winTy : Expr) (j : Nat)
         withLocalDeclD `win (mkConst ``Unit) fun w => do
           let c2 := cC.pushFields #[(ans.fvarId!, tTys[0]!), (w.fvarId!, tTys[1]!)]
           let b ← inner c2 ans
-          return mkAppN (mkConst `LeanScript.Term.record_casesOn)
+          return mkAppN (mkConst `LeanScript.Term.record_casesOn')
             #[c.sg, cC.gamma, τL, fsT, ← cC.var hd.fvarId!, b]
   let bases := mkAppN (mkConst `LeanScript.ArrayRecBases.nil) #[c.sg, c.gamma, σ, τL, nilT]
-  return mkAppN (mkConst `LeanScript.Term.array_rec)
+  return mkAppN (mkConst `LeanScript.Term.array_rec')
     #[c.sg, c.gamma, σ, τL, mkNatLit 0, win, bases, consT]
 
 /-- The answer of the motive of `Array Tree` at an array field, as a term in `c`: its

@@ -155,7 +155,7 @@ def layoutOf (c : TCtx) (ci : ConstructorVal) (args : Array Expr) (keptTys : Arr
         else
           if b.hasLooseBVars then failure
           ty := b
-      let (`LeanScript.Term, #[_, _, resTy]) := ty.getAppFnArgs | failure
+      let (`LeanScript.Term, #[_, _, resTy, _]) := ty.getAppFnArgs | failure
       if ← isDefEq resTy mine then
         let resTy ← instantiateMVars resTy
         pure (if resTy.hasExprMVar then none else some resTy)
@@ -196,7 +196,7 @@ partial def transGenericLams (c : TCtx) (e : Expr) (hidden : List Expr) : MetaM 
           let c2 := c1.pushFields (kept.map (·.fvarId!) |>.zip fieldTys.toArray)
           let t ← transGenericLams c2 body hidden
           let τ ← termTyOf t
-          let cases := mkAppN (mkConst `LeanScript.Term.record_casesOn)
+          let cases := mkAppN (mkConst `LeanScript.Term.record_casesOn')
             #[c1.sg, c1.gamma, τ, fs, ← c1.var whole, t]
           return mkLamE c σ τ cases
       if ← LeanScript.Deriving.erasedBinder d then
