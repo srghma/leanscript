@@ -156,6 +156,23 @@ theorem ofArray_toArray {c : PFunctor.{0, 0}} {Y : Type} {α : Type} (f : α →
       subst e
       rfl
 
+/-- A list of values is an extension of the list container, when each value is an
+    extension of the element container: `ofList` and `toList` as a Mathlib `Equiv`. -/
+def listEquiv {c : PFunctor.{0, 0}} {Y : Type} {α : Type} (e : α ≃ c.Obj Y) :
+    List α ≃ (list c).Obj Y where
+  toFun := ofList e
+  invFun x := toList e.symm x.1 x.2
+  left_inv := toList_ofList e e.symm e.symm_apply_apply
+  right_inv x := ofList_toList e e.symm e.apply_symm_apply x.1 x.2
+
+/-- The same for arrays: `ofArray` and `toArray` as a Mathlib `Equiv`. -/
+def arrayEquiv {c : PFunctor.{0, 0}} {Y : Type} {α : Type} (e : α ≃ c.Obj Y) :
+    Array α ≃ (array c).Obj Y where
+  toFun := ofArray e
+  invFun x := toArray e.symm x.1 x.2
+  left_inv := toArray_ofArray e e.symm e.symm_apply_apply
+  right_inv x := ofArray_toArray e e.symm e.apply_symm_apply x.1 x.2
+
 end Obj
 
 end PFunctor
@@ -196,9 +213,10 @@ def fold {S : Type} {P : S → Type} {β : Type}
     (step : (s : S) → (P s → WType P) → (P s → β) → β) : WType P → β
   | .mk s f => step s f (fun p => fold step (f p))
 
-/-- Forgetting the answers of a memo gives back the tree. -/
-def Memo.tree {S : Type} {P : S → Type} {β : Type} : Memo S P β → WType P
-  | .mk (s, _) f => .mk s (fun p => Memo.tree (f p))
+/-- Forgetting the answers of a memo gives back the tree: Mathlib's `WType.elim`, rebuilding
+    every node without its answer. -/
+def Memo.tree {S : Type} {P : S → Type} {β : Type} : Memo S P β → WType P :=
+  WType.elim _ fun x => .mk x.1.1 x.2
 
 theorem memo_mk {S : Type} {P : S → Type} {β : Type}
     (step : (s : S) → (P s → Memo S P β) → β) (s : S) (f : P s → WType P) :

@@ -48,28 +48,35 @@ abbrev recObjUnfoldTy (F : LeanRecordSchema Ty) : LeanRecordSchema Ty :=
 example (F : LeanRecordSchema Ty) :
     Ty.Den (.recObject F) = WType (Ty.toPFunctorRecord F).B := rfl
 
-/-- **The introduction form** of a recursive record: its fields, unfolded. -/
+/-- **The introduction form** of a recursive record: its fields, unfolded — rolled into
+    one node, which Mathlib's `WType.ofSigma` makes a tree. -/
 def DenObj.mk (F : LeanRecordSchema Ty) (v : Ty.DenRecord (recObjUnfoldTy F)) :
     Ty.Den (.recObject F) :=
-  let r := rollShape (.recObject F) (.record F) v
-  WType.mk r.1 r.2
+  WType.ofSigma (rollShape (.recObject F) (.record F) v)
 
-/-- **One level of a value** of a recursive record: its fields, unfolded. -/
-def DenObj.unfold (F : LeanRecordSchema Ty) :
-    Ty.Den (.recObject F) → Ty.DenRecord (recObjUnfoldTy F)
-  | .mk s f => unrollShape (.recObject F) (.record F) ⟨s, f⟩
+/-- **One level of a value** of a recursive record: its fields, unfolded — the root node
+    (Mathlib's `WType.toSigma`), unrolled. -/
+def DenObj.unfold (F : LeanRecordSchema Ty) (v : Ty.Den (.recObject F)) :
+    Ty.DenRecord (recObjUnfoldTy F) :=
+  unrollShape (.recObject F) (.record F) (WType.toSigma v)
 
 theorem DenObj.unfold_mk (F : LeanRecordSchema Ty) (v : Ty.DenRecord (recObjUnfoldTy F)) :
-    DenObj.unfold F (DenObj.mk F v) = v :=
-  unroll_rollShape (.recObject F) (.record F) v
+    DenObj.unfold F (DenObj.mk F v) = v := by
+  rw [DenObj.unfold, DenObj.mk, WType.toSigma_ofSigma]
+  exact unroll_rollShape (.recObject F) (.record F) v
 
 theorem DenObj.mk_unfold (F : LeanRecordSchema Ty) (v : Ty.Den (.recObject F)) :
     DenObj.mk F (DenObj.unfold F v) = v := by
-  obtain ⟨s, f⟩ := v
-  have key : ∀ r : (Ty.toPFunctorShape (.record F)).Obj (Ty.Den (.recObject F)),
-      r = ⟨s, f⟩ → (WType.mk r.1 r.2 : Ty.Den (.recObject F)) = WType.mk s f := by
-    rintro r rfl; rfl
-  exact key _ (roll_unrollShape (.recObject F) (.record F) ⟨s, f⟩)
+  rw [DenObj.mk, DenObj.unfold, roll_unrollShape, WType.ofSigma_toSigma]
+
+/-- The values of a recursive record **are** the values of its unfolded fields: the two
+    directions `Ty.DenObj.mk` and `Ty.DenObj.unfold`, as a Mathlib `Equiv`. -/
+def DenObj.equiv (F : LeanRecordSchema Ty) :
+    Ty.DenRecord (recObjUnfoldTy F) ≃ Ty.Den (.recObject F) where
+  toFun := DenObj.mk F
+  invFun := DenObj.unfold F
+  left_inv := DenObj.unfold_mk F
+  right_inv := DenObj.mk_unfold F
 
 /-! ## Recursive newtypes, on trees -/
 
@@ -79,26 +86,32 @@ abbrev recAliasUnfoldTy (B : Ty) : Ty := substOcc (.recAlias B) .familyMember B
 /-- A value of `recAlias B` is a W-tree of the shapes of its body. -/
 example (B : Ty) : Ty.Den (.recAlias B) = WType (Ty.toPFunctor B).B := rfl
 
-/-- **The introduction form** of a recursive newtype: its body, unfolded. -/
+/-- **The introduction form** of a recursive newtype: its body, unfolded — rolled into one
+    node, which Mathlib's `WType.ofSigma` makes a tree. -/
 def DenAlias.mk (B : Ty) (v : Ty.Den (recAliasUnfoldTy B)) : Ty.Den (.recAlias B) :=
-  let r := roll (.recAlias B) B v
-  WType.mk r.1 r.2
+  WType.ofSigma (roll (.recAlias B) B v)
 
-/-- **One level of a value** of a recursive newtype: its body, unfolded. -/
-def DenAlias.unfold (B : Ty) : Ty.Den (.recAlias B) → Ty.Den (recAliasUnfoldTy B)
-  | .mk s f => unroll (.recAlias B) B ⟨s, f⟩
+/-- **One level of a value** of a recursive newtype: its body, unfolded — the root node
+    (Mathlib's `WType.toSigma`), unrolled. -/
+def DenAlias.unfold (B : Ty) (v : Ty.Den (.recAlias B)) : Ty.Den (recAliasUnfoldTy B) :=
+  unroll (.recAlias B) B (WType.toSigma v)
 
 theorem DenAlias.unfold_mk (B : Ty) (v : Ty.Den (recAliasUnfoldTy B)) :
-    DenAlias.unfold B (DenAlias.mk B v) = v :=
-  unroll_roll (.recAlias B) B v
+    DenAlias.unfold B (DenAlias.mk B v) = v := by
+  rw [DenAlias.unfold, DenAlias.mk, WType.toSigma_ofSigma]
+  exact unroll_roll (.recAlias B) B v
 
 theorem DenAlias.mk_unfold (B : Ty) (v : Ty.Den (.recAlias B)) :
     DenAlias.mk B (DenAlias.unfold B v) = v := by
-  obtain ⟨s, f⟩ := v
-  have key : ∀ r : (Ty.toPFunctor B).Obj (Ty.Den (.recAlias B)),
-      r = ⟨s, f⟩ → (WType.mk r.1 r.2 : Ty.Den (.recAlias B)) = WType.mk s f := by
-    rintro r rfl; rfl
-  exact key _ (roll_unroll (.recAlias B) B ⟨s, f⟩)
+  rw [DenAlias.mk, DenAlias.unfold, roll_unroll, WType.ofSigma_toSigma]
+
+/-- The values of a recursive newtype **are** the values of its unfolded body, as a
+    Mathlib `Equiv`. -/
+def DenAlias.equiv (B : Ty) : Ty.Den (recAliasUnfoldTy B) ≃ Ty.Den (.recAlias B) where
+  toFun := DenAlias.mk B
+  invFun := DenAlias.unfold B
+  left_inv := DenAlias.unfold_mk B
+  right_inv := DenAlias.mk_unfold B
 
 end Ty
 
@@ -155,6 +168,14 @@ theorem DenObj.mk_unfold (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObj
   simp only [DenObj.unfold, DenObj.mk, cast_cast, cast_eq]
   exact Ty.DenObj.mk_unfold _ v
 
+/-- `TyWf.DenObj.mk` and `TyWf.DenObj.unfold`, as a Mathlib `Equiv`. -/
+def DenObj.equiv (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObjectTy fs)) :
+    TyWf.DenList (recObjectUnfold fs hwf).toList ≃ TyWf.Den (recObject fs hwf) where
+  toFun := DenObj.mk fs hwf
+  invFun := DenObj.unfold fs hwf
+  left_inv := DenObj.unfold_mk fs hwf
+  right_inv := DenObj.mk_unfold fs hwf
+
 /-- **The introduction form** of a recursive newtype of bundles, from the value of its
     unfolded body.  The two types are the same, so there is no `cast`. -/
 def DenAlias.mk (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b))
@@ -174,6 +195,14 @@ theorem DenAlias.unfold_mk (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b))
 theorem DenAlias.mk_unfold (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b))
     (v : TyWf.Den (recAlias b hwf)) : DenAlias.mk b hwf (DenAlias.unfold b hwf v) = v :=
   Ty.DenAlias.mk_unfold b.toTy v
+
+/-- `TyWf.DenAlias.mk` and `TyWf.DenAlias.unfold`, as a Mathlib `Equiv`. -/
+def DenAlias.equiv (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b)) :
+    TyWf.Den (recAliasUnfold b hwf) ≃ TyWf.Den (recAlias b hwf) where
+  toFun := DenAlias.mk b hwf
+  invFun := DenAlias.unfold b hwf
+  left_inv := DenAlias.unfold_mk b hwf
+  right_inv := DenAlias.mk_unfold b hwf
 
 end TyWf
 

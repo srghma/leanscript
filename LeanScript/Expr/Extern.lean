@@ -119,11 +119,10 @@ def TyWf.Den.ofName : Lean.Name → TyWf.leanName.Den
 
 /-- A value of `TyWf.leanName`, read back as a `Lean.Name`. -/
 def TyWf.Den.toName : TyWf.leanName.Den → Lean.Name :=
-  WType.fold fun node _ ih =>
-    match node, ih with
-    | ⟨⟨0, _⟩, _⟩, _ => .anonymous
-    | ⟨⟨1, _⟩, (_, s, _)⟩, ih => .str (ih (.inl PUnit.unit)) s
-    | ⟨⟨2, _⟩, (_, n, _)⟩, ih => .num (ih (.inl PUnit.unit)) n
+  WType.elim _ fun
+    | ⟨⟨⟨0, _⟩, _⟩, _⟩ => .anonymous
+    | ⟨⟨⟨1, _⟩, (_, s, _)⟩, ih⟩ => .str (ih (.inl PUnit.unit)) s
+    | ⟨⟨⟨2, _⟩, (_, n, _)⟩, ih⟩ => .num (ih (.inl PUnit.unit)) n
 
 /-- Reading back a name built from a `Lean.Name` gives that name. -/
 theorem TyWf.Den.toName_ofName (n : Lean.Name) : TyWf.Den.toName (TyWf.Den.ofName n) = n := by

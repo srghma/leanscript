@@ -63,6 +63,16 @@ structure RecUnionCtor where
   fsE : Expr
   /-- The elements of `fsE`. -/
   fsL : Array Expr
+  /-- Its type at the parameters, `∀ fields, X params indices`: a field of an indexed
+      family's constructor may be typed by the ones before it (`v : Vec α n`). -/
+  cty : Expr
+
+/-- The type of the next field of a constructor of type `cty`, after the fields `vals`. -/
+def ctorFieldTy (cty : Expr) (vals : Array Expr) : MetaM Expr := do
+  let t ← whnf (← instantiateForall cty vals)
+  let .forallE _ d _ _ := t
+    | throwError "`#leanscript_to_term`: internal: the constructor has no more fields"
+  return d
 
 /-- What the fold of a recursive tagged union needs to know about it and the recursion. -/
 structure RecUnionInfo where
@@ -88,6 +98,10 @@ structure RecUnionInfo where
   brecF : Expr
   /-- The motives of the `brecOn`. -/
   motives : Array Expr
+  /-- The number of indices of the type (`0` unless it is an indexed family). -/
+  nI : Nat := 0
+  /-- The motive of the `brecOn`, reduced to a `fun`. -/
+  motive0 : Expr := .bvar 0
 
 /-- The index lists of the branches of a dispatch on this schema, one per constructor, in
     order: `fields.toList` for a constructor with a non-empty payload, `[]` for one
@@ -132,12 +146,14 @@ def recUnionLeaf (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (top : Expr)
     (pending : Array FVarId) : MetaM (Expr ⊕ Array FVarId) := do
   let shape := resolveShape descend top
   let answers := answers.map fun (s, a) => (resolveShape descend s, a)
-  let fty ← instantiateForall (← inferType info.brecF) #[shape]
+  let nP := info.params.size
+  -- an indexed family's branch takes the value's indices first
+  let idx := (← whnf (← inferType shape)).getAppArgs.extract nP (nP + info.nI)
+  let fty ← instantiateForall (← inferType info.brecF) (idx.push shape)
   let .forallE _ histTy _ _ ← whnf fty
     | throwError "`#leanscript_to_term`: internal: the branch of the recursion takes no \
         history"
   let (fn, hargs) := histTy.getAppFnArgs
-  let nP := info.params.size
   let nM := info.motives.size
   let motiveTys ← info.motives.mapM inferType
   let decls : Array (Name × (Array Expr → MetaM Expr)) :=
@@ -150,7 +166,15 @@ def recUnionLeaf (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (top : Expr)
     if ms.any (fun m => h.containsFVar m.fvarId!) then
       throwError "`#leanscript_to_term`: internal: the history mentions its motive"
     pure h
-  let body ← reduceBrecBodyDeep (mkAppN info.brecF #[shape, hist])
+  let body ← reduceBrecBodyDeep (mkAppN info.brecF (idx ++ #[shape, hist]))
+  -- a dispatch on an indexed family (another argument, `Vec α n` beside this one) hands
+  -- the history through the equations of its `match`: its branches are read first, so
+  -- that the history is in plain sight
+  let body ← instantiateMVars (← reduceHistoryProjs body)
+  let body ← Meta.transform body (pre := fun t => do
+    match ← normalizeIndexedCasesOn? t with
+    | some t' => return .continue t'
+    | none => return .continue t)
   let body ← instantiateMVars (← reduceHistoryProjs body)
   if body.hasExprMVar then
     -- the unknown parts of the history are the histories below the subvalues not looked
@@ -275,13 +299,27 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
   let bTys := (← listOfExpr (← reduceTy (mkApp info.bindE ct.fsE)))
   -- the Lean variables the branch binds: each field, and after each occurrence the
   -- answer at it
+  -- (a field's type is read off the constructor's, at the fields before it: the index of
+  -- an occurrence of an indexed family is one of them)
   let mut decls : Array (Name × (Array Expr → MetaM Expr)) := #[]
+  let mut fieldPos : Array Nat := #[]
   for h : i in [0:ct.fields.size] do
+    let before := fieldPos
+    let tyAt : Array Expr → MetaM Expr := fun ys => ctorFieldTy ct.cty (before.map (ys[·]!))
+    fieldPos := fieldPos.push decls.size
     match ct.fields[i] with
-    | some t => decls := decls.push (Name.mkSimple s!"x{i}", fun _ => pure t)
+    | some _ => decls := decls.push (Name.mkSimple s!"x{i}", tyAt)
     | none =>
-        decls := decls.push (Name.mkSimple s!"sub{i}", fun _ => pure info.selfTy)
-        decls := decls.push (Name.mkSimple s!"ans{i}", fun _ => pure info.τLean)
+        decls := decls.push (Name.mkSimple s!"sub{i}", tyAt)
+        -- (an indexed family's answer is typed at the indices of its subvalue)
+        let subPos := decls.size - 1
+        let ansTy : Array Expr → MetaM Expr := fun ys =>
+          if info.nI == 0 then pure info.τLean else do
+            let sb := ys[subPos]!
+            let st ← whnf (← inferType sb)
+            let nP := info.params.size
+            return info.motive0.beta (st.getAppArgs.extract nP (nP + info.nI) |>.push sb)
+        decls := decls.push (Name.mkSimple s!"ans{i}", ansTy)
   unless decls.size == bTys.length do
     throwError "`#leanscript_to_term`: internal: the branch of {ct.name} binds \
       {decls.size} values, its tree {bTys.length}"
@@ -301,7 +339,23 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
           subs := subs.push (i, xs[pos]!, xs[pos + 1]!)
           pos := pos + 2
     let shape := mkAppN (mkConst ct.name info.lvls) (info.params ++ vals)
-    let descend' := descend.push (target, shape)
+    let mut descend' := descend.push (target, shape)
+    -- a look into an occurrence of an indexed family (`v : Vec α n`, below a node whose
+    -- field `n` is bound) fixes the fields its index is: `n` is the index of the
+    -- constructor found there (`m + 1` for `cons (n := m) b w`)
+    if info.nI != 0 && target != top.fvarId! then
+      let nP := info.params.size
+      let tIdx := (← whnf (resolveShape descend (← inferType (.fvar target)))).getAppArgs
+        |>.extract nP (nP + info.nI)
+      let sIdx := (← whnf (← inferType shape)).getAppArgs.extract nP (nP + info.nI)
+      for (a, b) in tIdx.zip sIdx do
+        let a := resolveShape descend' a
+        if a.isFVar && !(← a.fvarId!.getDecl).isLet then
+          descend' := descend'.push (a.fvarId!, b)
+        else unless ← isDefEq a b do
+          throwError "`#leanscript_to_term`: this recursion on the indexed family \
+            {info.ind} looks into an occurrence at the index {a}, where the constructor \
+            {ct.name} (of index {b}) cannot be; the fold has no branch for it"
     let answers' := answers ++ subs.map fun (_, s, a) => (s, a)
     let descended' := descended.push target
     let frame : RecUnionFrame :=
@@ -388,27 +442,35 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let ind := n.getPrefix
   let some (.inductInfo ii) := (← getEnv).find? ind | return none
   let some (.recInfo ri) := (← getEnv).find? (ind ++ `rec) | return none
-  unless ii.numIndices == 0 && ri.numMotives == 1 do return none
+  unless ri.numMotives == 1 do return none
   let nP := ii.numParams
-  let arity := nP + 3
+  -- an indexed family's `brecOn` takes the indices before the value
+  let nI := ii.numIndices
+  let arity := nP + nI + 3
   if args.size < arity then
     return some (← trans c (← etaExpand e))
-  let major := args[nP + 1]!
+  let major := args[nP + 1 + nI]!
   let sty ← tyOfTerm major
   let .recTaggedUnion l _ ← tyView sty | return none
   let params := args.extract 0 nP
   let motives := args.extract nP (nP + 1)
-  let brecF := args[nP + 2]!
+  let brecF := args[nP + 2 + nI]!
   let m0 ← whnf motives[0]!
   unless m0.isLambda do
     throwError "`#leanscript_to_term`: the motive of {n} is not a function"
-  let τLean ← lambdaBoundedTelescope m0 1 fun xs body => do
+  -- the motive may mention the indices (`Vec α n` for a map of `Vec α n`), provided the
+  -- language's type of the answers does not: it is the same at every index
+  let (τLean, τ) ← lambdaBoundedTelescope m0 (nI + 1) fun xs body => do
     let body ← whnf body
-    if body.containsFVar xs[0]!.fvarId! then
-      throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
-        language has no eliminator for"
-    return body
-  let τ ← tyOfType τLean
+    let dep : MetaM Unit := throwError "`#leanscript_to_term`: {n} is used with a \
+      dependent motive, which the language has no eliminator for"
+    if xs.size != nI + 1 || body.containsFVar xs[nI]!.fvarId! then dep
+    let τ ← instantiateMVars (← tyOfType body)
+    if xs.any (τ.containsFVar ·.fvarId!) then dep
+    let τLean ← if nI == 0 then pure body else
+      pure (m0.beta ((← whnf (← inferType major)).getAppArgs.extract nP (nP + nI)
+        |>.push major))
+    return (τLean, τ)
   let selfTy ← whnf (← inferType major)
   let ilvls := selfTy.getAppFn.constLevels!
   let idxs ← recUnionCtorIndices l
@@ -417,9 +479,12 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       constructors, the type {ii.ctors.length}"
   -- An occurrence of the type *itself* (same parameters) inside a field; `List (List α)`'s
   -- field `List α` is another type, not an occurrence.
-  let selfArgs := selfTy.getAppArgs
-  let mentions (t : Expr) : Bool :=
-    (t.find? fun s => s.getAppFn.isConstOf ind && s.getAppArgs == selfArgs).isSome
+  -- (of an indexed family, at any indices: `Vec α n` inside `Vec α (n + 1)`)
+  let selfArgs := selfTy.getAppArgs.extract 0 nP
+  let isSelfAt (s : Expr) : Bool :=
+    s.getAppFn.isConstOf ind && s.getAppNumArgs == nP + nI &&
+      s.getAppArgs.extract 0 nP == selfArgs
+  let mentions (t : Expr) : Bool := (t.find? isSelfAt).isSome
   let mut ctors : Array RecUnionCtor := #[]
   for h : i in [0:ii.ctors.length] do
     let cn := ii.ctors[i]
@@ -429,6 +494,9 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       let mut out : Array (Option Expr) := #[]
       for x in xs do
         let t ← inferType x
+        if nI != 0 && isSelfAt t then
+          out := out.push none
+          continue
         if t.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then
           throwError "`#leanscript_to_term`: the constructor {cn} has a dependent field"
         if ← LeanScript.Deriving.erasedBinder t then
@@ -445,10 +513,10 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     unless fsL.size == fields.size do
       throwError "`#leanscript_to_term`: internal: {cn} has {fields.size} fields, its \
         tree {fsL.size}"
-    ctors := ctors.push { name := cn, fields, fsE, fsL }
+    ctors := ctors.push { name := cn, fields, fsE, fsL, cty }
   let bindE := mkApp2 (mkConst ``LeanScript.TyWf.recBinders) sty τ
   let info : RecUnionInfo :=
-    { ind, lvls := ilvls, params, selfTy, ctors, l, bindE, τLean, τ, brecF, motives }
+    { ind, lvls := ilvls, params, selfTy, ctors, l, bindE, τLean, τ, brecF, motives, nI, motive0 := m0 }
   let .recTaggedUnion _ hwf ← tyView sty | return none
   let scrutT ← trans c major
   let attempt (k : Nat) : MetaM Expr :=

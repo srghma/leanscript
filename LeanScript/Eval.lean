@@ -618,7 +618,7 @@ def Term.run {Sg : Sig} {τ : TyWf} (G : GlobalEnv Sg.decls) (t : Term Sg [] τ)
 
 /-- The value of a term of the empty context of a module with no top-level
     declarations. -/
-def Term.run' {τ : TyWf} (t : Term ⟨[], rfl⟩ [] τ) : TyWf.Den τ :=
+def Term.run' {τ : TyWf} (t : Term ⟨[], List.nodup_nil⟩ [] τ) : TyWf.Den τ :=
   Term.eval GlobalEnv.nil t Env.nil
 
 /-! ## What the evaluator does, stated

@@ -178,13 +178,21 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     throwError "`#leanscript_to_term`: the motive of {n} is not a function"
   let major := args[mIdx + 1]!
   let brecF := args[mIdx + 2]!
-  let τLean ← lambdaBoundedTelescope motive 1 fun xs body => do
+  -- the motive may depend on the argument (`Vec α n` for a recursion building a vector
+  -- of length `n`), provided the language's type of the answers does not: it is the same
+  -- type at every argument.  `τLeanAt t` is the Lean type of the answer at `t`.
+  let (τLean, τ, dependent) ← lambdaBoundedTelescope motive 1 fun xs body => do
     let body ← whnf body
-    if body.containsFVar xs[0]!.fvarId! then
-      throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
-        language has no eliminator for"
-    return body
-  let τ ← tyOfType τLean
+    let dependent := body.containsFVar xs[0]!.fvarId!
+    let depErr : MetaM Unit := throwError "`#leanscript_to_term`: {n} is used with a \
+      dependent motive, which the language has no eliminator for"
+    let τ ← try instantiateMVars (← tyOfType body)
+      catch ex => do if dependent then depErr
+                     throw ex
+    if τ.containsFVar xs[0]!.fvarId! then depErr
+    return (body, τ, dependent)
+  let τLeanAt (t : Expr) : MetaM Expr :=
+    if dependent then whnf (motive.beta #[t]) else pure τLean
   let brecFTy ← inferType brecF
   -- the type of the history at a given argument
   let historyTy (t : Expr) : MetaM Expr := do
@@ -213,8 +221,8 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     let depth0? : Option (Array Expr) ←
       try
         let z ← branchAt (mkConst ``Nat.zero) none
-        let s ← withLocalDeclD `n (mkConst ``Nat) fun nv =>
-          withLocalDeclD `ih τLean fun ih => do
+        let s ← withLocalDeclD `n (mkConst ``Nat) fun nv => do
+          withLocalDeclD `ih (← τLeanAt nv) fun ih => do
             let body ← branchAt (mkApp (mkConst ``Nat.succ) nv) (some ih)
             mkLambdaFVars #[nv, ih] body
         pure (some #[z, s])
@@ -229,9 +237,13 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
       withLocalDeclD `n (mkConst ``Nat) fun nv => do
         let mut scrutE := nv
         for _ in [0:k + 1] do scrutE := mkApp (mkConst ``Nat.succ) scrutE
+        -- `ihᵢ` is the answer at `n + k - i`
         let ihDecls : Array (Name × (Array Expr → MetaM Expr)) :=
           (Array.range (k + 1)).map fun i =>
-            (Name.mkSimple s!"ih{i}", fun _ => pure τLean)
+            (Name.mkSimple s!"ih{i}", fun _ => do
+              let mut t := nv
+              for _ in [0:k - i] do t := mkApp (mkConst ``Nat.succ) t
+              τLeanAt t)
         withLocalDeclsD ihDecls fun ihs => do
           let ht ← historyTy scrutE
           withLocalDeclD `history ht fun hist => do
@@ -281,6 +293,9 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
     return ← finish core
   -- a recursion on the elements of an array, `go a.toList`: the fold of the array
   if let some arr := arrayOfToList? major then
+    if dependent then
+      throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
+        language has no eliminator for"
     return ← finish (← transArrayBrecOn trans c τLean τ args[0]! brecF historyTy arr)
   let minors ←
     do
@@ -289,8 +304,8 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
       let nil := mkApp (mkConst ``List.nil [← getDecLevel α]) α
       let z ← branchAt nil none
       let s ← withLocalDeclD `head α fun hd =>
-        withLocalDeclD `tail listTy fun tl =>
-          withLocalDeclD `ih τLean fun ih => do
+        withLocalDeclD `tail listTy fun tl => do
+          withLocalDeclD `ih (← τLeanAt tl) fun ih => do
             let cons := mkApp3 (mkConst ``List.cons [← getDecLevel α]) α hd tl
             let body ← branchAt cons (some ih)
             mkLambdaFVars #[hd, tl, ih] body

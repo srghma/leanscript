@@ -402,6 +402,15 @@ theorem DenRec.mk_unfold (L : LeanTaggedUnionSchema Ty) (v : Ty.Den (.recTaggedU
     rintro r rfl; rfl
   exact key _ (roll_unrollAt (.recTaggedUnion L) L t ⟨s, f⟩)
 
+/-- The values of a recursive tagged union **are** its unfolded constructors: the two
+    directions `Ty.DenRec.mk` and `Ty.DenRec.unfold`, as a Mathlib `Equiv`. -/
+def DenRec.equiv (L : LeanTaggedUnionSchema Ty) :
+    Ty.DenTU (recUnfoldTy L) ≃ Ty.Den (.recTaggedUnion L) where
+  toFun := DenRec.mk L
+  invFun := DenRec.unfold L
+  left_inv := DenRec.unfold_mk L
+  right_inv := DenRec.mk_unfold L
+
 end Ty
 
 /-! ## At the level of bundles
@@ -452,6 +461,14 @@ theorem DenRec.mk_unfold (l : LeanTaggedUnionSchema (TyWfIn 1))
     DenRec.mk l hwf (DenRec.unfold l hwf v) = v := by
   simp only [DenRec.unfold, DenRec.mk, cast_cast, cast_eq]
   exact Ty.DenRec.mk_unfold _ v
+
+/-- `TyWf.DenRec.mk` and `TyWf.DenRec.unfold`, as a Mathlib `Equiv`. -/
+def DenRec.equiv (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (recTaggedUnionTy l)) :
+    TyWf.DenTU (recTaggedUnionUnfold l hwf) ≃ TyWf.Den (recTaggedUnion l hwf) where
+  toFun := DenRec.mk l hwf
+  invFun := DenRec.unfold l hwf
+  left_inv := DenRec.unfold_mk l hwf
+  right_inv := DenRec.mk_unfold l hwf
 
 end TyWf
 
@@ -545,12 +562,12 @@ list, so a test can compare the result of a program with a Lean list, and
 `Ty.DenRec.ofList` builds one from a Lean list, which is how an extern answering with a
 list (`Array.toList`, `String.toList`) gives its value. -/
 
-/-- A value of a list of `a`, as a Lean list. -/
+/-- A value of a list of `a`, as a Lean list: Mathlib's `WType.elim`, the plain fold of a
+    W-tree, since the answer at a node needs only the answer at its subtree. -/
 def Ty.DenRec.toList (a : Ty) : Ty.Den (.recTaggedUnion (Ty.listSchema a)) → List (Ty.Den a) :=
-  WType.fold fun node _ ih =>
-    match node, ih with
-    | ⟨⟨0, _⟩, _⟩, _ => []
-    | ⟨⟨1, _⟩, (x, _)⟩, ih => x :: ih (.inr (.inl PUnit.unit))
+  WType.elim _ fun
+    | ⟨⟨⟨0, _⟩, _⟩, _⟩ => []
+    | ⟨⟨⟨1, _⟩, (x, _)⟩, ih⟩ => x :: ih (.inr (.inl PUnit.unit))
 
 /-- A Lean list, as a value of a list of `a`: `[]` is the node `nil`, which has no
     subtree, and `x :: xs` is the node `cons` holding `x`, whose one subtree is `xs`. -/

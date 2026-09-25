@@ -35,6 +35,57 @@ open Lean Meta Elab Term
 
 namespace LeanScript.ToTerm
 
+/-- `X.casesOn` on a value of an **indexed family** (`Vec α n`), whose tree is a recursive
+    tagged union, record or newtype: the dispatch of the same tree, whose branches are
+    read off the whole application — the `match` Lean compiled carries equations between
+    the indices in its motive, `n = m + 1 → x ≍ cons a v → …`, which hold at the
+    constructor.  So at each constructor the application is instantiated at the value
+    `C fields` and at the indices it has (a variable of the context that is an index is
+    unified with the constructor's: `n + 1 = m + 1` sets `n := m`), and reduced.
+
+    A constructor the index rules out (`nil` for a value of `Vec α (n + 1)`) has no Lean
+    branch; the dispatch of the language still has one, never taken on a value of the
+    Lean type, and it is the `default` of the answer's type.  `none` when the value is not
+    a variable (the translation then refuses the recursor). -/
+def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (ind : Name)
+    (ii : InductiveVal) (args : Array Expr) : MetaM (Option Expr) := do
+  let nP := ii.numParams
+  let nI := ii.numIndices
+  let nC := ii.ctors.length
+  let arity := nP + 2 + nI + nC
+  if args.size < nP + 2 + nI then return none
+  let major := args[nP + 1 + nI]!
+  let sty ← tyOfTerm major
+  let view ← tyView sty
+  match view with
+  | .recTaggedUnion .. | .recObject .. | .recAlias .. => pure ()
+  | _ => return none
+  if args.size < arity then
+    return some (← trans c (← etaExpand e))
+  unless major.isFVar do return none
+  let some (_, minors) ← indexedCasesMinors? e | return none
+  let τ ← tyOfType (← instantiateMVars (← inferType e))
+  let ctors := ii.ctors.toArray
+  let scrut ← trans c major
+  let core ← match view with
+    | .recTaggedUnion l hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
+        let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
+        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn)
+          #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
+    | .recObject fs hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
+        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn)
+          #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
+    | .recAlias b hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
+        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn)
+          #[c.sg, c.gamma, τ, b, hwf, scrut, body]
+    | _ => return none
+  return some core
+
 /-- `X.casesOn` on a value whose tree is a recursive tagged union, a recursive record, a
     recursive newtype or a member of a mutual family: the matching `…_casesOn` of the
     grammar (see the module documentation).  `none` for any other type, which the other
@@ -44,7 +95,8 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   unless n.getString! == "casesOn" do return none
   let ind := n.getPrefix
   let some (.inductInfo ii) := (← getEnv).find? ind | return none
-  unless ii.numIndices == 0 do return none
+  if ii.numIndices != 0 then
+    return ← transIndexedCasesOn? trans c e ind ii args
   -- `List` and `Nat` keep their own translation — but a list of the declarations of a
   -- nested inductive (`List Rose`) is a member of their family
   if ind == ``Nat then return none

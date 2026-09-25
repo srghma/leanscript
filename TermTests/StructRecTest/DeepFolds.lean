@@ -181,6 +181,8 @@ example : Term sigAdd [] (treeT ⇒ natT) := by
   fail_if_success exact #leanscript_to_term leftEighth
   exact .lam (.nat_mk 0)
 
+-- the depth search up to `7` needs more than the default heartbeats
+set_option maxHeartbeats 800000 in
 def leftEighth_term : Term sigAdd [] (treeT ⇒ natT) := #leanscript_to_term leftEighth
 
 example : foldDepth? leftEighth_term = some 7 := by kernel_rfl

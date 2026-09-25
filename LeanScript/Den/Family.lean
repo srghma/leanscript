@@ -138,17 +138,15 @@ end LeanMutualRecFamily
 
 namespace IPFunctorFacts
 
-theorem at_map {α : Type} (F : α → IPFunctor) :
-    ∀ (ms : List α) (i : Nat) (m : α), ms[i]? = some m → IPFunctor.at (ms.map F) i = F m
-  | [], _, _, h => by simp at h
-  | _ :: _, 0, _, h => by simp at h; subst h; rfl
-  | _ :: ms, i + 1, m, h => at_map F ms i m (by simpa using h)
+theorem at_map {α : Type} (F : α → IPFunctor) (ms : List α) (i : Nat) (m : α)
+    (h : ms[i]? = some m) : IPFunctor.at (ms.map F) i = F m := by
+  rw [IPFunctor.at, List.getD_eq_getElem?_getD, List.getElem?_map, h]
+  rfl
 
-theorem at_map_of_le {α : Type} (F : α → IPFunctor) :
-    ∀ (ms : List α) (i : Nat), ms.length ≤ i → IPFunctor.at (ms.map F) i = IPFunctor.const PEmpty
-  | [], _, _ => rfl
-  | _ :: _, 0, h => by simp at h
-  | _ :: ms, i + 1, h => at_map_of_le F ms i (by simp at h; omega)
+theorem at_map_of_le {α : Type} (F : α → IPFunctor) (ms : List α) (i : Nat)
+    (h : ms.length ≤ i) : IPFunctor.at (ms.map F) i = IPFunctor.const PEmpty := by
+  rw [IPFunctor.at, List.getD_eq_getElem?_getD, List.getElem?_map, List.getElem?_eq_none h]
+  rfl
 
 end IPFunctorFacts
 

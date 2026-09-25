@@ -41,13 +41,14 @@ equations definitional.  These theorems are what justify that choice.
 
 namespace Ty
 
-/-- The container `Ty.toPFunctor t` has no holes: `t` holds no occurrence `Ty.self` of an
-    enclosing lone binder. -/
-def NoSelfHoles (t : Ty) : Prop := ∀ a, (Ty.toPFunctor t).B a → False
+/-- The container `Ty.toPFunctor t` has no holes — every shape's type of holes is empty, in
+    the sense of Mathlib's `IsEmpty`: `t` holds no occurrence `Ty.self` of an enclosing lone
+    binder. -/
+def NoSelfHoles (t : Ty) : Prop := ∀ a, IsEmpty ((Ty.toPFunctor t).B a)
 
-/-- The indexed container `Ty.toIPF t` has no holes: `t` holds no occurrence
-    `Ty.familyMember j` of an enclosing family. -/
-def NoMemberHoles (t : Ty) : Prop := ∀ a, (Ty.toIPF t).B a → False
+/-- The indexed container `Ty.toIPF t` has no holes (every shape's type of holes is
+    `IsEmpty`): `t` holds no occurrence `Ty.familyMember j` of an enclosing family. -/
+def NoMemberHoles (t : Ty) : Prop := ∀ a, IsEmpty ((Ty.toIPF t).B a)
 
 /-- A list of shapes has no holes when no shape has any. -/
 theorem listPos_false {S : Type} {P : S → Type} (h : ∀ s, P s → False) :
@@ -61,7 +62,7 @@ theorem listPos_false {S : Type} {P : S → Type} (h : ∀ s, P s → False) :
 theorem noSelfHoles_list : ∀ ts : List Ty, (∀ t ∈ ts, NoSelfHoles t) →
     ∀ a, (Ty.toPFunctorList ts).B a → False
   | [], _, _, p => nomatch p
-  | t :: _, h, a, .inl p => h t (List.mem_cons_self ..) a.1 p
+  | t :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
   | _ :: ts, h, a, .inr p =>
       noSelfHoles_list ts (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
 
@@ -120,21 +121,21 @@ theorem noSelfHoles_of_wfIn {n : Nat} {t : Ty} (h : WfIn n t) (hn : n ≠ 1) :
     (motive_3 := fun n ts _ => n ≠ 1 → ∀ t ∈ ts, NoSelfHoles t) with
   | closed _ ih => exact ih (by decide)
   | self => exact absurd rfl hn
-  | familyMember _ _ => intro _ p; exact nomatch p
-  | shape _ ih => exact ih hn
-  | recTaggedUnion _ _ _ _ => intro _ p; exact nomatch p
-  | recObject _ _ _ _ => intro _ p; exact nomatch p
-  | recAlias _ _ _ _ => intro _ p; exact nomatch p
-  | mutualRecursiveFamily _ _ _ _ => intro _ p; exact nomatch p
+  | familyMember _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | shape _ ih => exact fun a => ⟨ih hn a⟩
+  | recTaggedUnion _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | recObject _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | recAlias _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | mutualRecursiveFamily _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
   | prim => rename_i _ _ p; exact nomatch p
   | enum => rename_i _ _ p; exact nomatch p
-  | fn _ _ _ ihb => rename_i hn f p; exact ihb hn (f p.1) p.2
+  | fn _ _ _ ihb => rename_i hn f p; exact (ihb hn (f p.1)).false p.2
   | @primCovariant _ c _ ih =>
       rename_i hn a p
       cases c with
-      | array _ => exact listPos_false (ih hn) _ p
-      | thunk _ => exact ih hn a p
-      | lazy _ => exact ih hn a p
+      | array _ => exact listPos_false (fun s => (ih hn s).false) _ p
+      | thunk _ => exact (ih hn a).false p
+      | lazy _ => exact (ih hn a).false p
   | @record _ fs _ ih =>
       rename_i hn a p
       cases fs with
@@ -163,7 +164,7 @@ theorem noSelfHoles_of_family {n : Nat} {t : Ty} (h : WfIn (n + 2) t) : NoSelfHo
 theorem noMemberHoles_list : ∀ ts : List Ty, (∀ t ∈ ts, NoMemberHoles t) →
     ∀ a, (Ty.toIPFList ts).B a → False
   | [], _, _, p => nomatch p
-  | t :: _, h, a, .inl p => h t (List.mem_cons_self ..) a.1 p
+  | t :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
   | _ :: ts, h, a, .inr p =>
       noMemberHoles_list ts (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
 
@@ -220,22 +221,22 @@ theorem noMemberHoles_of_wfIn {n : Nat} {t : Ty} (h : WfIn n t) (hn : n ≤ 1) :
     (motive_2 := fun n s _ => n ≤ 1 → ∀ a, (Ty.toIPFShape s).B a → False)
     (motive_3 := fun n ts _ => n ≤ 1 → ∀ t ∈ ts, NoMemberHoles t) with
   | closed _ ih => exact ih (by decide)
-  | self => intro _ p; exact nomatch p
+  | self => exact fun _ => ⟨fun p => nomatch p⟩
   | familyMember h2 _ => exact absurd hn (by omega)
-  | shape _ ih => exact ih hn
-  | recTaggedUnion _ _ _ _ => intro _ p; exact nomatch p
-  | recObject _ _ _ _ => intro _ p; exact nomatch p
-  | recAlias _ _ _ _ => intro _ p; exact nomatch p
-  | mutualRecursiveFamily _ _ _ _ => intro _ p; exact nomatch p
+  | shape _ ih => exact fun a => ⟨ih hn a⟩
+  | recTaggedUnion _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | recObject _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | recAlias _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
+  | mutualRecursiveFamily _ _ _ _ => exact fun _ => ⟨fun p => nomatch p⟩
   | prim => rename_i _ _ p; exact nomatch p
   | enum => rename_i _ _ p; exact nomatch p
-  | fn _ _ _ ihb => rename_i hn f p; exact ihb hn (f p.1) p.2
+  | fn _ _ _ ihb => rename_i hn f p; exact (ihb hn (f p.1)).false p.2
   | @primCovariant _ c _ ih =>
       rename_i hn a p
       cases c with
-      | array _ => exact listPos_false (ih hn) _ p
-      | thunk _ => exact ih hn a p
-      | lazy _ => exact ih hn a p
+      | array _ => exact listPos_false (fun s => (ih hn s).false) _ p
+      | thunk _ => exact (ih hn a).false p
+      | lazy _ => exact (ih hn a).false p
   | @record _ fs _ ih =>
       rename_i hn a p
       cases fs with

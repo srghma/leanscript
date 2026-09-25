@@ -98,6 +98,128 @@ def recAsCasesOn? (s : Expr) : MetaM (Option Expr) := do
     (args.extract 0 nP ++ #[motive] ++ args.extract (nP + 1 + nM) arity ++ alts
       ++ args.extract arity args.size))
 
+/-- The casts a `match` on an indexed family leaves in a branch once the indices are
+    known — `Nat.Internal.elimOffset`, `h ▸ x`, `Eq.ndrec`, `cast` — reduced, anywhere:
+    each is an `Eq.rec` whose two sides are then the same, which reduces whatever the
+    proof. -/
+def reduceIndexCasts (e : Expr) : MetaM Expr :=
+  Meta.transform e (post := fun t => do
+    if t.isHeadBetaTarget then return .visit t.headBeta
+    let .const n _ := t.getAppFn | return .done t
+    -- `Eq.rec` reduces (by the rule for equality) once both sides are the same, whatever
+    -- the proof: to its branch, applied to what the cast is applied to
+    let args := t.getAppArgs
+    if n == ``Eq.rec && args.size ≥ 6 then
+      if ← isDefEq args[1]! args[4]! then
+        return .visit (mkAppN args[3]! (args.extract 6 args.size)).headBeta
+      return .done t
+    if n == ``HEq.rec && args.size ≥ 7 then
+      if (← isDefEq args[0]! args[4]!) && (← isDefEq args[1]! args[5]!) then
+        return .visit (mkAppN args[3]! (args.extract 7 args.size)).headBeta
+      return .done t
+    unless n == ``Nat.Internal.elimOffset || n == ``Eq.ndrec || n == ``Eq.mpr ||
+        n == ``Eq.mp || n == ``cast || n == ``HEq.ndrec || n == ``Eq.casesOn ||
+        n == ``HEq.casesOn do
+      return .done t
+    match ← unfoldDefinition? t with
+    | some t' => return .visit t'.headBeta
+    | none => return .done t)
+
+/-- The branches of `X.casesOn` on a variable of an **indexed family** (`Vec α n`), read
+    off the whole application `e` — the `match` Lean compiled carries equations between
+    the indices in its motive, `n = m + 1 → x ≍ cons a v → …`, which hold at the
+    constructor.  So at each constructor the application is instantiated at the value
+    `C fields` and at the indices it has (a variable of the context that an index
+    mentions is unified with the constructor's: `n + 1 = m + 1` sets `n := m`), and its
+    casts reduced (`reduceIndexCasts`): the branch, as `fun fields => …`.
+
+    A constructor the index rules out (`nil` for a value of `Vec α (n + 1)`) has no Lean
+    branch; its branch is the `default` of the answer's type (it is never taken on a value
+    of the Lean type).  Returns the answer's Lean type and the branches; `none` when `e` is
+    not such a dispatch on a variable. -/
+def indexedCasesMinors? (e : Expr) : MetaM (Option (Expr × Array Expr)) := do
+  let .const cn _ := e.getAppFn | return none
+  unless cn.isStr && cn.getString! == "casesOn" do return none
+  let ind := cn.getPrefix
+  let some (.inductInfo ii) := (← getEnv).find? ind | return none
+  let nP := ii.numParams
+  let nI := ii.numIndices
+  let nC := ii.ctors.length
+  let arity := nP + 2 + nI + nC
+  let args := e.getAppArgs
+  unless nI != 0 && args.size ≥ arity do return none
+  let major := args[nP + 1 + nI]!
+  unless major.isFVar do return none
+  let params := args.extract 0 nP
+  let minorsL := args.extract (nP + 2 + nI) arity
+  let extra := args.extract arity args.size
+  let τLean ← instantiateMVars (← inferType e)
+  let majTy ← whnf (← inferType major)
+  -- the constructors' levels are the family's (the `casesOn`'s start with the motive's)
+  let ilvls := majTy.getAppFn.constLevels!
+  -- the indices the dispatch is at: its own index arguments (which a dispatch above may
+  -- have fixed already), rather than the type of the variable
+  let idxM := args.extract (nP + 1) (nP + 1 + nI)
+  -- the variables of the context the indices mention
+  let mut fvs : Array Expr := #[]
+  for a in idxM do
+    for f in (collectFVars {} a).fvarIds do
+      unless (← f.getDecl).isLet || fvs.contains (.fvar f) || f == major.fvarId! do
+        fvs := fvs.push (.fvar f)
+  let ctors := ii.ctors.toArray
+  let mut minors : Array Expr := #[]
+  for h : i in [0:nC] do
+    let cn := ctors[i]
+    let ci ← getConstInfoCtor cn
+    let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams ilvls) params
+    let m ← forallTelescopeReducing cty fun xs resTy => do
+      let shape := mkAppN (mkConst cn ilvls) (params ++ xs)
+      let idxS := resTy.getAppArgs.extract nP (nP + nI)
+      let mvs ← fvs.mapM fun f => do mkFreshExprMVar (← inferType f)
+      let mut ok := true
+      for (a, b) in idxM.zip idxS do
+        if ok then
+          ok ← isDefEq (a.replaceFVars fvs mvs) b
+      let body ← if ok then do
+          let vals ← (mvs.zip fvs).mapM fun (mv, f) => do
+            let v ← instantiateMVars mv
+            pure (if v.hasExprMVar then f else v)
+          let sub (t : Expr) : Expr := t.replaceFVars (fvs.push major) (vals.push shape)
+          -- the step `casesOn (C xs) … ⇒ minor xs`, then the casts the equations make
+          let b := (mkAppN (sub minorsL[i]!) (xs ++ extra.map sub)).headBeta
+          reduceIndexCasts b
+        else do
+          let inst ← try synthInstance (mkApp (mkConst ``Inhabited [← getLevel τLean]) τLean)
+            catch _ => throwError "`#leanscript_to_term`: the constructor {cn} of the \
+              indexed family {ind} cannot have the index of {major}, but the dispatch of \
+              the language has a branch for it, and the answer's type {τLean} has no \
+              `default` to put there"
+          -- (unfolded, and a `Nat.zero` written as the literal the language has)
+          let d ← whnf (mkApp2 (mkConst ``Inhabited.default [← getLevel τLean]) τLean inst)
+          pure <| d.replace fun t =>
+            if t.isConstOf ``Nat.zero then some (mkRawNatLit 0) else none
+      mkLambdaFVars xs body
+    minors := minors.push m
+  return some (τLean, minors)
+
+/-- `indexedCasesMinors?`, written back as a `casesOn` of a motive that mentions nothing,
+    applied to nothing more: what the branches read (the history of a recursion, handed
+    through the dispatch) is then in plain sight.  `none` when `e` is not such a
+    dispatch, or a branch has no term. -/
+def normalizeIndexedCasesOn? (e : Expr) : MetaM (Option Expr) := do
+  let some (τLean, minors) ← (try indexedCasesMinors? e catch _ => pure none) | return none
+  let .const cn us := e.getAppFn | return none
+  let some (.inductInfo ii) := (← getEnv).find? cn.getPrefix | return none
+  let args := e.getAppArgs
+  let nP := ii.numParams
+  let nI := ii.numIndices
+  let motive ← lambdaBoundedTelescope args[nP]! (nI + 1) fun xs _ => mkLambdaFVars xs τLean
+  let ci ← getConstInfo cn
+  let lvl ← getLevel τLean
+  let us' := if ci.levelParams.length == ii.levelParams.length + 1 then lvl :: us.tail else us
+  return some (mkAppN (mkConst cn us')
+    (args.extract 0 nP ++ #[motive] ++ args.extract (nP + 1) (nP + 2 + nI) ++ minors))
+
 /-- A `casesOn` stuck on a value the fold has not dispatched on (a later argument of the
     recursion, say), applied to the history: Lean's `match` passes the history through
     the dispatch when the motive of the recursion is a function.  When the type of the
@@ -116,14 +238,24 @@ def pushHistoryIntoCasesOn? (s : Expr) : MetaM (Option Expr) := do
   let nC := ii.ctors.length
   let arity := nP + 1 + nI + 1 + nC
   unless args.size > arity do return none
-  let a := args[arity]!
-  unless ← isHistoryArg a do return none
+  -- the history is the first extra argument — or, for an indexed family, the first one
+  -- after the equations between the indices a `match` hands its dispatch (`k` of them)
+  let mut k := 0
+  let mut found := false
+  for j in [arity:args.size] do
+    unless found do
+      if ← isHistoryArg args[j]! then found := true else k := k + 1
+  unless found && (k == 0 || nI != 0) do return none
+  let a := args[arity + k]!
   let newMotive? ← lambdaBoundedTelescope args[nP]! (nI + 1) fun xs body => do
     unless xs.size == nI + 1 do return none
-    let .forallE _ dom b _ ← whnf body | return none
-    if dom.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then return none
-    let b' := b.instantiate1 a
-    return some (← mkLambdaFVars xs b', ← getLevel b')
+    forallBoundedTelescope (← whnf body) k fun eqs body' => do
+      unless eqs.size == k do return none
+      let .forallE _ dom b _ ← whnf body' | return none
+      if dom.hasAnyFVar (fun f => xs.any (·.fvarId! == f) || eqs.any (·.fvarId! == f)) then
+        return none
+      let b' := b.instantiate1 a
+      return some (← mkLambdaFVars xs (← mkForallFVars eqs b'), ← getLevel b')
   let some (newMotive, lvl) := newMotive? | return none
   let ci ← getConstInfo cn
   let us' := if ci.levelParams.length == ii.levelParams.length + 1 then
@@ -132,12 +264,12 @@ def pushHistoryIntoCasesOn? (s : Expr) : MetaM (Option Expr) := do
   for i in [0:nC] do
     let alt := args[nP + 1 + nI + 1 + i]!
     let nf := (← getConstInfoCtor ii.ctors[i]!).numFields
-    let alt' ← forallBoundedTelescope (← inferType alt) nf fun fs _ => do
+    let alt' ← forallBoundedTelescope (← inferType alt) (nf + k) fun fs _ => do
       mkLambdaFVars fs (mkAppN alt (fs.push a)).headBeta
     alts := alts.push alt'
   return some (mkAppN (mkConst cn us')
     (args.extract 0 nP ++ #[newMotive] ++ args.extract (nP + 1) (nP + 1 + nI + 1) ++ alts
-      ++ args.extract (arity + 1) args.size))
+      ++ args.extract arity (arity + k) ++ args.extract (arity + k + 1) args.size))
 
 /-- A `match` handed the history of the recursion as an extra argument (Lean passes it
     through the dispatch when the motive of the recursion is a function), unfolded into
@@ -170,6 +302,10 @@ partial def reduceBrecBody (e : Expr) : MetaM Expr := do
               let e'' ← withConfig (fun cfg => { cfg with iota := false }) (whnfCore e')
               if let some r ← reduceRecMatcher? e'' then return ← reduceBrecBody r
               if let some pushed ← pushHistoryIntoCasesOn? e then return pushed
+              -- a stuck dispatch on an indexed family is kept whole: its translation
+              -- reads the equations between the indices it carries
+              if let some (.inductInfo ii) := (← getEnv).find? n.getPrefix then
+                if ii.numIndices != 0 then return e
             reduceBrecBody e'
         | none =>
             match ← unfoldMatcherWithHistory? e with

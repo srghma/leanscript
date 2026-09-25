@@ -3,6 +3,7 @@ module
 public meta import LeanScript.ToTerm.Cases
 public meta import LeanScript.ToTerm.Match
 public meta import LeanScript.ToTerm.Cache
+public meta import LeanScript.ToTerm.Brec
 
 @[expose] public section
 
@@ -345,6 +346,10 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
 /-- An application of a recursor. -/
 def transRecApp (trans : TransFn) (c : TCtx) (e : Expr) (ri : RecursorVal) (lvls : List Level)
     (args : Array Expr) : MetaM Expr := do
+  -- the recursor of an indexed family that a `casesOn` was reduced to (by `whnfCore`),
+  -- applied to the equations of a `match`: that `casesOn` again, which is translated
+  if ri.numIndices != 0 then
+    if let some e' ← recAsCasesOn? e then return ← trans c e'
   unless ri.numMotives == 1 && ri.numIndices == 0 do
     throwError "`#leanscript_to_term`: {ri.name} is not an eliminator the language has"
   let arity := ri.numParams + 1 + ri.numMinors + 1

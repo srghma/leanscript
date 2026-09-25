@@ -86,10 +86,11 @@ suffixes of a list — instead of at the immediate one alone.  They are named he
 the evaluator's clause for each is one line, and so that it is visible that the recursion
 is over the *value*, which is already in hand, and not over the term. -/
 
-/-- `Nat.rec` with a non-dependent motive: the fold of a natural number. -/
-def natFold {α : Type} (z : α) (s : Nat → α → α) : Nat → α
-  | 0 => z
-  | n + 1 => s n (natFold z s n)
+/-- `Nat.rec` with a non-dependent motive: the fold of a natural number.  It is literally
+    the library's `Nat.rec`, which the compiler supports; `List.rec` is not supported by
+    the compiler, which is why `listFold` below is written out. -/
+abbrev natFold {α : Type} (z : α) (s : Nat → α → α) (n : Nat) : α :=
+  Nat.rec (motive := fun _ => α) z s n
 
 /-! ### The window of a fold that descends more than one step
 

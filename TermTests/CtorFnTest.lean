@@ -23,7 +23,7 @@ abbrev boolT : TyWf := .prim .bool
 abbrev stringT : TyWf := .prim .string
 
 /-- A signature with nothing in it. -/
-abbrev sig : Sig := ⟨[], rfl⟩
+abbrev sig : Sig := ⟨[], List.nodup_nil⟩
 
 /-- Running a closed term of `sig`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) PUnit.unit $t)

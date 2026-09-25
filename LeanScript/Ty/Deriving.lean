@@ -86,6 +86,20 @@ instance and nothing else.
 def usedLevels (type value : Expr) : List Name :=
   (collectLevelParams (collectLevelParams {} type) value).params.toList
 
+/-- Make the first `k` binders of a `∀`/`fun` implicit, and the `m` binders from position
+    `from_` on as well (the indices of an indexed family, after its instances). -/
+def setImplicitRange (k from_ m : Nat) (e : Expr) : Expr :=
+  let rec go (i : Nat) (e : Expr) : Expr :=
+    match e with
+    | .forallE nm t b bi =>
+        let bi' := if i < k || (from_ ≤ i && i < from_ + m) then .implicit else bi
+        .forallE nm t (go (i + 1) b) bi'
+    | .lam nm t b bi =>
+        let bi' := if i < k || (from_ ≤ i && i < from_ + m) then .implicit else bi
+        .lam nm t (go (i + 1) b) bi'
+    | e => e
+  go 0 e
+
 /-- Make the first `k` binders of a `∀`/`fun` implicit, which is what an instance's own
     type parameters are. -/
 partial def setImplicit (k : Nat) (e : Expr) : Expr :=
@@ -100,8 +114,9 @@ partial def setImplicit (k : Nat) (e : Expr) : Expr :=
     each such auxiliary type: the same family, **selecting that member**.  So `List T` is
     a type of the language that *is* the member its values are stored as, and a function
     on `List T` is a function on that member.  The auxiliary types of non-recursive
-    wrappers (`Option T`) are not members — the occurrence stands inside the wrapper's
-    shape — and get none. -/
+    wrappers (`Option T`) are members, and get instances, only when the block is a family
+    anyway (a `mutual` block, or one nested through `List`); otherwise the occurrence
+    stands inside the wrapper's shape and they get none. -/
 def mkNestedAuxInstances (n : Name) (ind : InductiveVal) (params binders : Array Expr)
     (tree : Expr) :
     TermElabM Unit := do
@@ -117,6 +132,9 @@ def mkNestedAuxInstances (n : Name) (ind : InductiveVal) (params binders : Array
     let .const h _ := d.getAppFn | return
     let some (.inductInfo hi) := (← getEnv).find? h | return
     if hi.isRec then hoisted := hoisted.push d
+  -- every auxiliary type is a member when one of them is a non-recursive wrapper inside a
+  -- family (`Option Q` inside `P`, see `LeanScript.Deriving.hoistAux`)
+  if ms.2.length == ind.all.length + auxs.size then hoisted := auxs
   unless ms.2.length == ind.all.length + hoisted.size do return
   for h : j in [0:hoisted.size] do
     let d := hoisted[j]
@@ -177,8 +195,8 @@ def mkNestedAuxInstances (n : Name) (ind : InductiveVal) (params binders : Array
 def mkInstanceFor (n : Name) : TermElabM Unit := do
   let some (.inductInfo ind) := (← getEnv).find? n
     | throwError "`{n}` is not an inductive declaration, so it has no `Ty`"
-  if ind.numIndices != 0 then
-    throwError "`{n}` is an indexed family, which the language has no shape for"
+  -- an indexed family (`Vec α n`) has one tree for every index: the indices are erased,
+  -- and a constructor's value index (`{n : Nat}` of `Vec.cons`) is an ordinary field
   if ← forallTelescopeReducing ind.type fun _ body => pure (body == .sort .zero) then
     throwError "the type `{n}` carries no value, so it has no `Ty`"
   forallBoundedTelescope ind.type ind.numParams fun params _ => do
@@ -195,6 +213,10 @@ def mkInstanceFor (n : Name) : TermElabM Unit := do
         fun (_ : Array Expr) => mkAppM ``LeanScript.LeanScriptTyWf #[p])
     withLocalDecls instDecls fun insts => do
       let binders := params ++ insts
+      -- the indices of an indexed family, bound after the instances: the tree does not
+      -- mention them, and the instance is for every index
+      let idxTys ← instantiateForall ind.type params
+      forallBoundedTelescope idxTys ind.numIndices fun indices _ => do
       let tree ← match ← treeOfDecl n ind params with
         | .ok t => pure t
         | .erased => throwError "the type `{n}` carries no value, so it has no `Ty`"
@@ -231,16 +253,18 @@ def mkInstanceFor (n : Name) : TermElabM Unit := do
       -- the instance itself
       let dlvls := ((← getEnv).find? declName).get!.levelParams.map Level.param
       let wlvls := ((← getEnv).find? wfName).get!.levelParams.map Level.param
-      let theType := mkAppN (mkConst n (ind.levelParams.map Level.param)) params
+      let theType := mkAppN (mkConst n (ind.levelParams.map Level.param)) (params ++ indices)
       let bundle ← mkAppOptM ``LeanScript.TyWf.mk
         #[some (mkAppN (mkConst declName dlvls) binders),
           some (mkAppN (mkConst wfName wlvls) binders)]
-      let instValue ← mkLambdaFVars binders (← mkAppOptM ``LeanScript.LeanScriptTyWf.mk
-        #[some theType, some bundle])
-      let instType ← mkForallFVars binders (← mkAppM ``LeanScript.LeanScriptTyWf #[theType])
+      let instValue ← mkLambdaFVars (binders ++ indices)
+        (← mkAppOptM ``LeanScript.LeanScriptTyWf.mk #[some theType, some bundle])
+      let instType ← mkForallFVars (binders ++ indices)
+        (← mkAppM ``LeanScript.LeanScriptTyWf #[theType])
       let instName := n ++ `instLeanScriptTyWf
-      let instType := setImplicit params.size instType
-      let instValue := setImplicit params.size instValue
+      -- the parameters, and the indices after the instances, are implicit
+      let instType := setImplicitRange params.size (binders.size) indices.size instType
+      let instValue := setImplicitRange params.size (binders.size) indices.size instValue
       addAndCompile (.defnDecl
         { name := instName, levelParams := usedLevels instType instValue, type := instType,
           value := instValue, hints := .abbrev, safety := .safe })

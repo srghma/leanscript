@@ -59,20 +59,16 @@ structure GlobalDecl where
   -- declaration has a decidable equality and its `==` is that equality.
   deriving BEq, DecidableEq, ReflBEq, LawfulBEq, Repr
 
-/-- Are all of these names different? -/
-def declNamesUnique : List GlobalDecl → Bool
-  | [] => true
-  | d :: ds => !ds.any (fun e => e.name == d.name) && declNamesUnique ds
-
 /-- The signature of the module being compiled: every top-level name a `Term` of it may
     mention, **each of them declared once**.  The proof is a field, so a signature that
-    declares a name twice cannot be built; `by decide` discharges it for a signature
-    written out. -/
+    declares a name twice cannot be built.  "Declared once" is the library's `List.Nodup`
+    of the names, which is decidable, so `by decide` discharges it for a signature written
+    out. -/
 structure Sig where
   /-- The declarations, in order. -/
   decls : List GlobalDecl
   /-- No name is declared twice. -/
-  h_names_unique : declNamesUnique decls = true := by decide
+  h_names_unique : (decls.map GlobalDecl.name).Nodup := by decide
   deriving BEq, DecidableEq, ReflBEq, LawfulBEq, Repr
 
 /-- A reference to a declaration of the signature — a de Bruijn index into it, whose

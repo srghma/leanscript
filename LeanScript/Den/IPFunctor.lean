@@ -72,11 +72,9 @@ def listTgt (c : IPFunctor) : (xs : List c.A) → PFunctor.ListPos c.B xs → Na
 @[reducible] def array (c : IPFunctor) : IPFunctor :=
   ⟨Array c.A, fun a => PFunctor.ListPos c.B a.toList, fun a => listTgt c a.toList⟩
 
-/-- Entry `i` of a list of containers; past the end, the empty one. -/
-@[reducible] def «at» : List IPFunctor → Nat → IPFunctor
-  | [], _ => const PEmpty
-  | c :: _, 0 => c
-  | _ :: cs, n + 1 => «at» cs n
+/-- Entry `i` of a list of containers; past the end, the empty one — the library's
+    `List.getD` with the empty container as the default. -/
+@[reducible] def «at» (cs : List IPFunctor) (n : Nat) : IPFunctor := cs.getD n (const PEmpty)
 
 namespace Obj
 

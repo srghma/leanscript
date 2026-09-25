@@ -172,8 +172,16 @@ partial def treeOfType (α : Expr) : MetaM Expr := do
         if !b.hasLooseBVar 0 && (← LeanScript.Deriving.erasedBinder d) then
           return ← treeOfType b
         if b.hasLooseBVar 0 then
-          throwError "`#leanscript_to_term`: the language has no dependent function \
-            type, so {α} cannot be translated"
+          -- a dependence only through the index of an indexed family
+          -- (`(m : Nat) → Vec α m → Vec α (m + n)`) leaves the trees independent of the
+          -- argument: that is the function type of the language all the same
+          let r? ← withLocalDeclD `x d fun x => do
+            let t ← try some <$> treeOfType (b.instantiate1 x) catch _ => pure none
+            return t.filter (!·.containsFVar x.fvarId!)
+          let some bt := r?
+            | throwError "`#leanscript_to_term`: the language has no dependent function \
+                type, so {α} cannot be translated"
+          reduceTy (mkApp2 (mkConst ``LeanScript.Ty.fn) (← treeOfType d) bt)
         else
           reduceTy (mkApp2 (mkConst ``LeanScript.Ty.fn) (← treeOfType d)
             (← treeOfType b))

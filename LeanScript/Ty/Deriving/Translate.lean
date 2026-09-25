@@ -138,6 +138,8 @@ partial def hoistBinder (ctx : Ctx) (holes trees : Array Expr) (e : Expr) :
 
 end
 
+instance : Inhabited TransRes := ⟨.erased⟩
+
 mutual
 
 /-- The tree that models the Lean type `e`.
