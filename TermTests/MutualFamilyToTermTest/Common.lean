@@ -147,12 +147,11 @@ mutual
     `none` if the translation is not of that shape. -/
 def familyRecDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Option Nat
   | .mutualRecursiveFamily_rec k _ _ _ => some k
-  | .ret c => familyRecDepth?.comp c
   | .letE c body => (familyRecDepth?.comp c).orElse fun _ => familyRecDepth? body
   | .letJ jp body => (familyRecDepth? body).orElse fun _ => familyRecDepth? jp
   | _ => none
 
-/-- `familyRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `familyRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def familyRecDepth?.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option Nat
   | .lam b => familyRecDepth? b
   | _ => none

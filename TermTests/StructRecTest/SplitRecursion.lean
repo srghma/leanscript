@@ -42,12 +42,11 @@ mutual
 def hasFold {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Bool
   | .nat_rec .. | .recTaggedUnion_rec .. | .array_rec .. | .recObject_rec ..
   | .recAlias_rec .. | .mutualRecursiveFamily_rec .. => true
-  | .ret c => hasFold.comp c
   | .letE c body => (hasFold.comp c) || hasFold body
   | .letJ jp body => (hasFold body) || hasFold jp
   | _ => false
 
-/-- `hasFold`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `hasFold`, in the computation a `let` binds: the body of a `fun`. -/
 def hasFold.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Bool
   | .lam b => hasFold b
   | _ => false

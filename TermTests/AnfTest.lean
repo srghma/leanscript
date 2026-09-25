@@ -9,8 +9,10 @@ public meta import LeanScript.KernelRfl
 # Strict A-normal form, pinned
 
 `LeanScript.Term` is in **strict A-normal form by construction**: the operands of a step
-are atoms, a `let` binds one computation step (`LeanScript.Comp`) and never a dispatch or
-a fold, and a dispatch or a fold is always the last thing a block does.  A dispatch or a
+are atoms, and atoms are variables only — a declaration and a literal are steps, named by
+a `let` like any other; a `let` binds one computation step (`LeanScript.Comp`), never a
+mere variable, a dispatch or a fold; a block ends by returning a variable; and a dispatch
+or a fold is always the last thing a block does.  A dispatch or a
 fold whose value is *used* is written with a **join point** (`Term.letJ`) that its tails
 jump to (`Term.jump`, `LeanScript.Dest.jump`); join points live in their own context
 (`LeanScript.JCtx`), apart from the variables.
@@ -41,7 +43,10 @@ def doubleTwice : Term doubleSig [] natT :=
   .ap (.global .here) (.ap (.global .here) (.nat_mk 1))
 
 example : doubleTwice =
-    .letE (.ap (.global .here) (.nat_mk 1)) (.ret (.ap (.global .here) (.var .head))) := rfl
+    .letE (.nat_mk 1)
+      (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1)))
+        (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1)))
+          (.ret (.var (v♯0))))))) := rfl
 
 example : Term.run doubleEnv doubleTwice = 4 := by kernel_rfl
 
@@ -52,8 +57,10 @@ def doubleIf : Term doubleSig [] (boolT ⇒ natT) :=
   .lam (.ap (.global .here) (.bool_casesOn' (.var (v♯0)) (.nat_mk 1) (.nat_mk 2)))
 
 example : doubleIf =
-    .lam (.letJ (.ret (.ap (.global .here) (.var .head)))
-      (.bool_casesOn (.var .head) (.jump .head (.nat_mk 1)) (.jump .head (.nat_mk 2)))) := rfl
+    .lam (.letJ (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1))) (.ret (.var (v♯0)))))
+      (.bool_casesOn (.var (v♯0))
+        (.letE (.nat_mk 1) (.jump .head (.var (v♯0))))
+        (.letE (.nat_mk 2) (.jump .head (.var (v♯0)))))) := rfl
 
 example : Term.run doubleEnv doubleIf true = 2 := by kernel_rfl
 example : Term.run doubleEnv doubleIf false = 4 := by kernel_rfl
@@ -66,8 +73,10 @@ def letOfMatch : Term doubleSig [] (natT ⇒ natT) :=
     (.ap (.global .here) (.var (v♯0))))
 
 example : letOfMatch =
-    .lam (.letJ (.ret (.ap (.global .here) (.var .head)))
-      (.nat_casesOn (.var .head) (.jump .head (.nat_mk 10)) (.jump .head (.var .head)))) := rfl
+    .lam (.letJ (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1))) (.ret (.var (v♯0)))))
+      (.nat_casesOn (.var (v♯0))
+        (.letE (.nat_mk 10) (.jump .head (.var (v♯0))))
+        (.jump .head (.var (v♯0))))) := rfl
 
 example : Term.run doubleEnv letOfMatch 0 = 20 := by kernel_rfl
 example : Term.run doubleEnv letOfMatch 8 = 14 := by kernel_rfl
@@ -82,12 +91,30 @@ def doubleFold : Term doubleSig [] (natT ⇒ natT) :=
       (.externCall (.cons (.var (v♯1)) .nil) fun vs => .lean_nat_add vs.1 1)))
 
 example : doubleFold =
-    .lam (.letJ (.ret (.ap (.global .here) (.var .head)))
-      (.nat_rec 0 (.var .head) (.cons (.nat_mk 0) .nil)
-        (.ret (.externCall (.cons (.var (.tail .head)) .nil) fun vs => .lean_nat_add vs.1 1))
-        (.jump .head))) := rfl
+    .lam (.letE (.nat_mk 0)
+      (.letJ (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1))) (.ret (.var (v♯0)))))
+        (.nat_rec 0 (.var (v♯1)) (.cons (.var (v♯0)) .nil)
+          (.letE (.externCall (.cons (.var (v♯1)) .nil) fun vs => .lean_nat_add vs.1 1)
+            (.ret (.var (v♯0))))
+          (.jump .head)))) := rfl
 
 example : Term.run doubleEnv doubleFold 5 = 10 := by kernel_rfl
+
+/-! ## Naming a variable is renaming: there is no copy `let`
+
+A `let` never binds a mere variable, so `let m := n; double m` is `double n`: the body is
+renamed, and nothing is bound for `m`.  A step whose value is the term's is bound too,
+and the term returns its name. -/
+
+/-- `fun n => let m := n; double m`. -/
+def letOfVar : Term doubleSig [] (natT ⇒ natT) :=
+  .lam (.letE' (.var (v♯0)) (.ap (.global .here) (.var (v♯0))))
+
+example : letOfVar =
+    .lam (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1))) (.ret (.var (v♯0))))) :=
+  rfl
+
+example : Term.run doubleEnv letOfVar 7 = 14 := by kernel_rfl
 
 /-! ## Two dispatches in a row: two join points, each in its own context -/
 

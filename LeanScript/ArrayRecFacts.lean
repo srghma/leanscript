@@ -156,7 +156,7 @@ theorem listFoldK_eq_listFold (z0 : TyWf.Den τ) (s0 : α → List α → TyWf.D
 section Node
 
 variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls)
-    (arr : Atom Sg Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
+    (arr : Atom Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
     (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ)
     (env : Env Γ)
 
@@ -168,12 +168,12 @@ theorem Term.eval_array_rec :
     Term.eval G (Term.array_rec k arr bases branch .ret) env =
       listFoldK (fun l => ArrayRecBases.eval G bases env l)
         (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env))
-        (show Array _ from Atom.eval G arr env).toList :=
+        (show Array _ from Atom.eval arr env).toList :=
   rfl
 
 /-- Below the depth, the node answers with its `ArrayRecBases`. -/
 theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
-    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env).toList = l) :
+    (harr : (show Array (TyWf.Den σ) from Atom.eval arr env).toList = l) :
     Term.eval G (Term.array_rec k arr bases branch .ret) env =
       ArrayRecBases.eval G bases env l := by
   rw [Term.eval_array_rec, harr, listFoldK_base _ _ l hl]
@@ -182,7 +182,7 @@ theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
     and the window of the answers at the `k + 1` suffixes of the tail. -/
 theorem Term.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
     (hk : k ≤ as.length)
-    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env).toList = a :: as) :
+    (harr : (show Array (TyWf.Den σ) from Atom.eval arr env).toList = a :: as) :
     Term.eval G (Term.array_rec k arr bases branch .ret) env =
       Term.eval G branch
         (a, as.toArray, Env.ofWin

@@ -28,12 +28,11 @@ mutual
     `none` if the translation is not of that shape. -/
 def natRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sigAdd Γ τ J → Option Nat
   | .nat_rec k _ _ _ _ => some k
-  | .ret c => natRecDepth?.comp c
   | .letE c body => (natRecDepth?.comp c).orElse fun _ => natRecDepth? body
   | .letJ jp body => (natRecDepth? body).orElse fun _ => natRecDepth? jp
   | _ => none
 
-/-- `natRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `natRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def natRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sigAdd Γ τ → Option Nat
   | .lam b => natRecDepth? b
   | _ => none

@@ -94,12 +94,11 @@ mutual
     shape. -/
 def recObjectRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option Nat
   | .recObject_rec k _ _ _ => some k
-  | .ret c => recObjectRecDepth?.comp c
   | .letE c body => (recObjectRecDepth?.comp c).orElse fun _ => recObjectRecDepth? body
   | .letJ jp body => (recObjectRecDepth? body).orElse fun _ => recObjectRecDepth? jp
   | _ => none
 
-/-- `recObjectRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `recObjectRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def recObjectRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option Nat
   | .lam b => recObjectRecDepth? b
   | _ => none

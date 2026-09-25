@@ -42,12 +42,11 @@ mutual
     arguments, before it reaches `Nat.add`.) -/
 def externForm? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option String
   | .externCallChecked _ _ _ _ => some "externCallChecked"
-  | .ret c => externForm?.comp c
   | .letE c body => (externForm?.comp c).orElse fun _ => externForm? body
   | .letJ jp body => (externForm? body).orElse fun _ => externForm? jp
   | _ => none
 
-/-- `externForm?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `externForm?`, in the computation a `let` binds: the body of a `fun`. -/
 def externForm?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option String
   | .extern _ => some "extern"
   | .externCall _ _ => some "externCall"

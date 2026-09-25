@@ -60,12 +60,11 @@ mutual
     shape. -/
 def arrayRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sig0 Γ τ J → Option Nat
   | .array_rec k _ _ _ _ => some k
-  | .ret c => arrayRecDepth?.comp c
   | .letE c body => (arrayRecDepth?.comp c).orElse fun _ => arrayRecDepth? body
   | .letJ jp body => (arrayRecDepth? body).orElse fun _ => arrayRecDepth? jp
   | _ => none
 
-/-- `arrayRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `arrayRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def arrayRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sig0 Γ τ → Option Nat
   | .lam b => arrayRecDepth? b
   | _ => none

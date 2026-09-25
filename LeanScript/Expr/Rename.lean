@@ -59,33 +59,9 @@ def Ren.wkN {Γ : Ctx} : (xs : List TyWf) → Ren Γ (xs ++ Γ)
 
 variable {Sg : Sig}
 
-/-- An atom, renamed: a variable is sent where the renaming sends it, and a declaration
-    or a literal is unchanged. -/
-def Atom.rename {Γ Δ : Ctx} {τ : TyWf} (ρ : Ren Γ Δ) : Atom Sg Γ τ → Atom Sg Δ τ
+/-- An atom — a variable — renamed: it is sent where the renaming sends it. -/
+def Atom.rename {Γ Δ : Ctx} {τ : TyWf} (ρ : Ren Γ Δ) : Atom Γ τ → Atom Δ τ
   | .var v => .var (ρ v)
-  | .global r => .global r
-  | .bool_mk b => .bool_mk b
-  | .nat_mk n => .nat_mk n
-  | .int_mk i => .int_mk i
-  | .bitvec_mk h v => .bitvec_mk h v
-  | .uint8_mk v => .uint8_mk v
-  | .uint16_mk v => .uint16_mk v
-  | .uint32_mk v => .uint32_mk v
-  | .uint64_mk v => .uint64_mk v
-  | .int8_mk v => .int8_mk v
-  | .int16_mk v => .int16_mk v
-  | .int32_mk v => .int32_mk v
-  | .int64_mk v => .int64_mk v
-  | .char_mk c => .char_mk c
-  | .string_mk s => .string_mk s
-  | .stringPos_mk s p => .stringPos_mk s p
-  | .stringPosRaw_mk p => .stringPosRaw_mk p
-  | .substringRaw_mk s => .substringRaw_mk s
-  | .stringSlice_mk s => .stringSlice_mk s
-  | .float_mk x => .float_mk x
-  | .float32_mk x => .float32_mk x
-  | .floatModel_mk m => .floatModel_mk m
-  | .float32Model_mk m => .float32Model_mk m
 
 /-- A list of atoms, renamed. -/
 def Args.rename {Γ Δ : Ctx} (ρ : Ren Γ Δ) : {σs : List TyWf} → Args Sg Γ σs → Args Sg Δ σs
@@ -105,7 +81,7 @@ mutual
     variables, so they are left as they are. -/
 def Term.rename {Γ Δ : Ctx} {τ : TyWf} {J : JCtx} (ρ : Ren Γ Δ) :
     Term Sg Γ τ J → Term Sg Δ τ J
-  | .ret c => .ret (c.rename ρ)
+  | .ret a => .ret (a.rename ρ)
   | .letE c body => .letE (c.rename ρ) (body.rename (Ren.lift ρ))
   | .letJ jp body => .letJ (jp.rename (Ren.lift ρ)) (body.rename ρ)
   | .jump j a => .jump j (a.rename ρ)
@@ -168,7 +144,29 @@ def Term.rename {Γ Δ : Ctx} {τ : TyWf} {J : JCtx} (ρ : Ren Γ Δ) :
 
 /-- A computation, renamed. -/
 def Comp.rename {Γ Δ : Ctx} {τ : TyWf} (ρ : Ren Γ Δ) : Comp Sg Γ τ → Comp Sg Δ τ
-  | .atom a => .atom (a.rename ρ)
+  | .global r => .global r
+  | .bool_mk b => .bool_mk b
+  | .nat_mk n => .nat_mk n
+  | .int_mk i => .int_mk i
+  | .bitvec_mk h v => .bitvec_mk h v
+  | .uint8_mk v => .uint8_mk v
+  | .uint16_mk v => .uint16_mk v
+  | .uint32_mk v => .uint32_mk v
+  | .uint64_mk v => .uint64_mk v
+  | .int8_mk v => .int8_mk v
+  | .int16_mk v => .int16_mk v
+  | .int32_mk v => .int32_mk v
+  | .int64_mk v => .int64_mk v
+  | .char_mk c => .char_mk c
+  | .string_mk s => .string_mk s
+  | .stringPos_mk s p => .stringPos_mk s p
+  | .stringPosRaw_mk p => .stringPosRaw_mk p
+  | .substringRaw_mk s => .substringRaw_mk s
+  | .stringSlice_mk s => .stringSlice_mk s
+  | .float_mk x => .float_mk x
+  | .float32_mk x => .float32_mk x
+  | .floatModel_mk m => .floatModel_mk m
+  | .float32Model_mk m => .float32Model_mk m
   | .lam body => .lam (body.rename (Ren.lift ρ))
   | .ap f a => .ap (f.rename ρ) (a.rename ρ)
   | .extern e => .extern e

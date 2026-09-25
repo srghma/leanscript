@@ -23,23 +23,24 @@ theorem Comp.eval_lam (body : Term Sg (σ :: Γ) τ) (env : Env Γ) :
   rfl
 
 /-- The language's application is Lean's. -/
-theorem Comp.eval_ap (f : Atom Sg Γ (σ ⇒ τ)) (a : Atom Sg Γ σ) (env : Env Γ) :
-    Comp.eval G (.ap f a) env = (Atom.eval G f env) (Atom.eval G a env) :=
+theorem Comp.eval_ap (f : Atom Γ (σ ⇒ τ)) (a : Atom Γ σ) (env : Env Γ) :
+    Comp.eval G (.ap f a) env = (Atom.eval f env) (Atom.eval a env) :=
   rfl
 
 /-- Applying an abstraction bound by a `let` is evaluating its body with the argument's
     value bound. -/
-theorem Term.eval_beta (body : Term Sg (σ :: Γ) τ) (a : Atom Sg ((σ ⇒ τ) :: Γ) σ)
+theorem Term.eval_beta (body : Term Sg (σ :: Γ) τ) (a : Atom ((σ ⇒ τ) :: Γ) σ)
     (env : Env Γ) :
-    Term.eval G (.letE (.lam body) (.ret (.ap (.var .head) a))) env =
-      Term.eval G body (Atom.eval G a (Comp.eval G (.lam body) env, env), env) :=
+    Term.eval G (.letE (.lam body) (.letE (.ap (.var .head) a) (.ret (.var .head)))) env =
+      Term.eval G body (Atom.eval a (Comp.eval G (.lam body) env, env), env) :=
   rfl
 
 /-- `let x = c; body` binds the value of `c`. -/
 theorem Term.evalJ_letE {J : JCtx} (c : Comp Sg Γ σ) (body : Term Sg (σ :: Γ) τ J)
     (env : Env Γ) (jenv : JEnv τ J) :
-    Term.evalJ G (.letE c body) env jenv = Term.evalJ G body (Comp.eval G c env, env) jenv :=
-  rfl
+    Term.evalJ G (.letE c body) env jenv = Term.evalJ G body (Comp.eval G c env, env) jenv := by
+  cases body <;> try rfl
+  case ret a => rcases a with ⟨v⟩; cases v <;> rfl
 
 /-- A join point is the function of its parameter its body computes: the body of the
     `letJ` sees it as the innermost join point. -/
@@ -50,21 +51,21 @@ theorem Term.evalJ_letJ {J : JCtx} (jp : Term Sg (σ :: Γ) τ J) (body : Term S
   rfl
 
 /-- Jumping to a join point applies it to the value of the argument. -/
-theorem Term.evalJ_letJ_jump {J : JCtx} (jp : Term Sg (σ :: Γ) τ J) (a : Atom Sg Γ σ)
+theorem Term.evalJ_letJ_jump {J : JCtx} (jp : Term Sg (σ :: Γ) τ J) (a : Atom Γ σ)
     (env : Env Γ) (jenv : JEnv τ J) :
     Term.evalJ G (.letJ jp (.jump .head a)) env jenv =
-      Term.evalJ G jp (Atom.eval G a env, env) jenv :=
+      Term.evalJ G jp (Atom.eval a env, env) jenv :=
   rfl
 
 /-- Forcing a delay gives back what was delayed. -/
 theorem Term.eval_lazy_force_mk (e : Term Sg Γ τ) (env : Env Γ) :
-    Term.eval G (.letE (.lazy_mk e) (.ret (.lazy_force (.var .head)))) env =
+    Term.eval G (.letE (.lazy_mk e) (.letE (.lazy_force (.var .head)) (.ret (.var .head)))) env =
       Term.eval G e env :=
   rfl
 
 /-- Forcing a thunk gives back what was delayed. -/
 theorem Term.eval_thunk_force_mk (e : Term Sg Γ τ) (env : Env Γ) :
-    Term.eval G (.letE (.thunk_mk e) (.ret (.thunk_force (.var .head)))) env =
+    Term.eval G (.letE (.thunk_mk e) (.letE (.thunk_force (.var .head)) (.ret (.var .head)))) env =
       Term.eval G e env :=
   rfl
 

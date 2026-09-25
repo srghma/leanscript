@@ -359,18 +359,20 @@ may.
 
 The grammar is in **strict A-normal form by construction**, as three layers:
 
-* `LeanScript.Atom` — an operand that does no work: a variable, a reference to a
-  top-level declaration, or a literal of a terminal type;
+* `LeanScript.Atom` — an operand: a **variable**, and nothing else;
 * `LeanScript.Comp` — **one** computation step whose operands are atoms and which neither
-  branches nor folds (an application, an extern call, a constructor, a delay, a force, a
-  `fun`, or an atom).  The terms it holds are bodies it does not run — of a function or a
-  delay;
+  branches nor folds: a reference to a top-level declaration, a literal of a terminal
+  type, an application, an extern call, a constructor, a delay, a force or a `fun`.  The
+  terms it holds are bodies it does not run — of a function or a delay;
 * `LeanScript.Term` — a block of `let`s (`Term.letE`), each binding a `Comp`, ending in a
-  **tail**: `Term.ret` of a `Comp`, a dispatch (`…_casesOn…`), a fold (`…_rec`), a checked
-  extern call, or a jump to a join point.
+  **tail**: `Term.ret x` of a variable, a dispatch (`…_casesOn…`), a fold (`…_rec`), a
+  checked extern call, or a jump to a join point.
 
-So a `let` never binds another `let`, a dispatch or a fold; and a dispatch or a fold is
-always the last thing its block does.  A dispatch or a fold whose value is **used** by what
+So every intermediate value — a declaration and a literal included — is named by a `let`
+before it is used; a `let` never binds another `let`, a mere variable (there is no copy
+`let x = y`), a dispatch or a fold; a step is never in tail position unnamed (a block whose
+value is that of a step `c` is `let x = c; ret x`, `Term.ofComp`), so each block has one
+shape; and a dispatch or a fold is always the last thing its block does.  A dispatch or a fold whose value is **used** by what
 follows is written with a **join point**: `Term.letJ jp body` binds `jp` — a term with one
 parameter — as join point `0` of `body`, and each branch of the dispatch in `body` ends by
 jumping to it (`Term.jump j a`, with an atom as argument).  A fold hands its answer to a
@@ -390,7 +392,9 @@ whole body.
 **Direct style is still writable.**  `LeanScript.Expr.Build` gives each constructor of the
 direct-style grammar a function of the same name (`Term.ap`, `Term.nat_rec'`,
 `Term.record_mk`, `Term.letE'`, …) that takes arbitrary terms: an operand that is already
-an atom is used as it is, one that ends in a computation is let-bound, and one that ends
-in a dispatch or a fold becomes the tail, with the rest of the computation as a join point
-(`Term.bindAtom`, `Term.toJump`).  `TermTests.AnfTest` pins the exact terms these build.
+a variable is used as it is, one that ends in a computation is let-bound (a step that reads
+no variable — a declaration, a literal — is bound last, right before its use), and one
+that ends in a dispatch or a fold becomes the tail, with the rest of the computation as a
+join point (`Term.bindAtom`, `Term.toJump`).  `let x = y; body` in direct style is `body`
+renamed (`Term.bind`).  `TermTests.AnfTest` pins the exact terms these build.
 -/

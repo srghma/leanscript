@@ -15,7 +15,7 @@ themselves computations cannot be written with its constructors directly: each o
 to be named by a `let` first.  The functions of this file do that naming.  Each of them is
 named like the constructor of the *direct-style* grammar it stands for (`Term.ap`,
 `Term.nat_casesOn`, `Term.record_mk`, …) and takes arbitrary terms as operands; it binds
-every operand that is not already an atom with `Term.letE`, left to right, and applies the
+every operand that is not already a variable with `Term.letE`, left to right, and applies the
 computation step to the atoms it got.  The branches and bodies it is given are moved under
 those `let`s by renaming (`LeanScript.Expr.Rename`).
 
@@ -25,10 +25,17 @@ So a term written in direct style,
 
 *is* the A-normal term
 
-    .letE (.ap (.global g) (.nat_mk 1)) (.ret (.ap (.global f) (.var .head)))
+    .letE (.nat_mk 1)
+      (.letE (.global g) (.letE (.ap (.var (v♯0)) (.var (v♯1)))
+        (.letE (.global f) (.letE (.ap (.var (v♯0)) (.var (v♯1)))
+          (.ret (.var (v♯0)))))))
 
-— an operand that is already an atom (`.global f`, `.nat_mk 1`, a variable) is used as
-it is, and anything else is let-bound.
+— every operand is a variable: a declaration and a literal are steps like any other, and
+are named by a `let` too (a step that reads no variable is named last, right before the
+step that uses it: see "Closed steps" below); a variable operand is used as it is.  A step
+that gives the value of the term is named as well, and the term returns that name
+(`Term.ofComp`).  A `let` never binds a mere variable: naming a variable, as
+`let x = y; body`, is `body` renamed (`Term.bind`).
 
 The lists of operands of the direct style — `LeanScript.Spine`, `LeanScript.Terms` and
 `LeanScript.FamilyMemberValue` — are here too; the grammar itself holds lists of atoms
@@ -43,6 +50,20 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 def Ren.comp {Γ Δ Θ : Ctx} (ρ' : Ren Δ Θ) (ρ : Ren Γ Δ) : Ren Γ Θ := fun v => ρ' (ρ v)
 
 variable {Sg : Sig}
+
+/-- The renaming that sends the variable just bound to `v`, and the others along `ρ`: what
+    a copy `let x = v; body` would mean, done by renaming `body` instead, since a `let`
+    never binds a mere variable. -/
+def Ren.cons {Γ Δ : Ctx} {σ : TyWf} (v : Δ ∋ σ) (ρ : Ren Γ Δ) : Ren (σ :: Γ) Δ :=
+  fun {_} w =>
+    match w with
+    | .head => v
+    | .tail w => ρ w
+
+/-- **One computation step, as a term**: `let x = c; ret x`.  A block ends by returning a
+    variable, so this is the one way a step gives the value of a term. -/
+abbrev Term.ofComp {Γ : Ctx} {τ : TyWf} {J : JCtx} (c : Comp Sg Γ τ) : Term Sg Γ τ J :=
+  .letE c (.ret (.var .head))
 
 /-! ## Sending the value of a term to a join point -/
 
@@ -72,8 +93,7 @@ mutual
     left alone, since they do not give the value of `t`. -/
 def Term.toJump {Γ : Ctx} {σ τ : TyWf} {J₀ J : JCtx} :
     Term Sg Γ σ J₀ → Term Sg Γ τ (J₀ ++ σ :: J)
-  | .ret (.atom a) => .jump (JVar.mid J₀) a
-  | .ret c => .letE c (.jump (JVar.mid J₀) (.var .head))
+  | .ret a => .jump (JVar.mid J₀) a
   | .letE c body => .letE c body.toJump
   | .letJ jp body => .letJ jp.toJump body.toJump
   | .jump j a => .jump (JVar.embedL j) a
@@ -184,56 +204,103 @@ end
     given the atom in a context `Δ` that extends `Γ`, together with the renaming from `Γ`
     into `Δ`, so that what it writes after can be moved there.
 
-    * If `t` is already an atom nothing is bound and `k` gets it in `Γ` itself.
-    * If `t` ends in a computation, its `let`s are floated out and the computation is
-      bound by one more `let`.
+    * If `t` is already a variable nothing is bound and `k` gets it in `Γ` itself.
+    * If `t` is a block that returns a variable — the one shape a computation has — its
+      `let`s are floated out and `k` gets that variable.
     * If `t` ends in a dispatch or a fold — which cannot be bound by a `let` — what `k`
       writes becomes a **join point**, and every tail of `t` jumps to it with the value it
       gives (`Term.toJump`).  `k` is used once in every case, so nothing is duplicated. -/
 def Term.bindAtom {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
-    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
+    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
   go t rfl k
 where
   /-- `Term.bindAtom`, by structural recursion: the join points of the term being bound
       are a variable `J₀`, pinned to `[]` by an equation, so that the recursion is on a
       family whose indices are variables (and the builders reduce by `rfl`). -/
   go {Γ : Ctx} {J₀ : JCtx} :
-      Term Sg Γ σ J₀ → J₀ = [] → (∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) →
+      Term Sg Γ σ J₀ → J₀ = [] → (∀ {Δ : Ctx}, Ren Γ Δ → Atom Δ σ → Term Sg Δ τ J) →
       Term Sg Γ τ J
-    | .ret (.atom a), _, k => k Ren.id a
-    | .ret c, _, k => .letE c (k Ren.wk (.var .head))
+    | .ret a, _, k => k Ren.id a
     | .letE c t, h, k => .letE c (go t h fun ρ a => k (Ren.comp ρ Ren.wk) a)
     | t, h, k => .letJ (k Ren.wk (.var .head)) ((h ▸ t : Term Sg Γ σ).toJump (J₀ := []))
 
 /-- **`let x = t; body`**, for any term `t`: the `let`s of `t` are floated out in front,
-    and the computation it ends in is bound to `x`; if `t` ends in a dispatch or a fold,
-    `body` becomes a join point that every tail of `t` jumps to. -/
-def Term.bind {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
-    (body : Term Sg (σ :: Γ) τ J) : Term Sg Γ τ J :=
-  go t rfl body
+    and the variable `t` ends by returning stands for `x` in `body` (`body` is renamed, so
+    no copy `let x = y` is written); if `t` ends in a dispatch or a fold, `body` becomes a
+    join point that every tail of `t` jumps to. -/
+def Term.bind {Γ₀ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ₀ σ)
+    (body : Term Sg (σ :: Γ₀) τ J) : Term Sg Γ₀ τ J :=
+  go t rfl Ren.id
 where
-  /-- `Term.bind`, by structural recursion, as `Term.bindAtom.go`. -/
+  /-- `Term.bind`, by structural recursion, as `Term.bindAtom.go`.  The renaming `ρ` from
+      the context of `body` to the context reached is accumulated, so that `body` is
+      renamed once, when it is put in place. -/
   go {Γ : Ctx} {J₀ : JCtx} :
-      Term Sg Γ σ J₀ → J₀ = [] → Term Sg (σ :: Γ) τ J → Term Sg Γ τ J
-    | .ret c, _, body => .letE c body
-    | .letE c t, h, body => .letE c (go t h (body.rename (Ren.lift Ren.wk)))
-    | t, h, body => .letJ body ((h ▸ t : Term Sg Γ σ).toJump (J₀ := []))
+      Term Sg Γ σ J₀ → J₀ = [] → Ren Γ₀ Γ → Term Sg Γ τ J
+    | .ret (.var v), _, ρ => body.rename (Ren.cons v ρ)
+    | .letE c t, h, ρ => .letE c (go t h (Ren.comp Ren.wk ρ))
+    | t, h, ρ => .letJ (body.rename (Ren.lift ρ)) ((h ▸ t : Term Sg Γ σ).toJump (J₀ := []))
 
 /-- `Term.bindAtom`, with a shortcut: if `t` is already an atom, `here` gets it as it is,
     so that what `k` would have renamed along the identity is not renamed at all.  This
     is what keeps a dispatch on a variable — the common case — exactly the term one would
     write by hand. -/
 def Term.bindAtomOr {Γ : Ctx} {σ τ : TyWf} {J : JCtx} (t : Term Sg Γ σ)
-    (here : Atom Sg Γ σ → Term Sg Γ τ J)
-    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Sg Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
+    (here : Atom Γ σ → Term Sg Γ τ J)
+    (k : ∀ {Δ : Ctx}, Ren Γ Δ → Atom Δ σ → Term Sg Δ τ J) : Term Sg Γ τ J :=
   match t with
-  | .ret (.atom a) => here a
+  | .ret a => here a
   | t => t.bindAtom k
 
 /-- `let x = e; body` in direct style, with no join point in scope: `Term.bind`. -/
 def Term.letE' {Γ : Ctx} {σ τ : TyWf} (e : Term Sg Γ σ) (body : Term Sg (σ :: Γ) τ) :
     Term Sg Γ τ :=
   e.bind body
+
+/-! ## Closed steps
+
+A declaration, a literal, an extern applied to values and a constructor of an enum are
+steps that read no variable.  Where one of them is an operand, the builders bind it
+**last**, right before the step that uses it: the operands after it are then not moved
+under its `let`, which keeps the terms they build from being renamed over and over.  (The
+language is pure and total, so the order of the `let`s does not change the value.) -/
+
+/-- The empty renaming: the empty context has no variable. -/
+def Ren.nil {Δ : Ctx} : Ren [] Δ := fun v => nomatch v
+
+/-- The step `c`, if it reads no variable, written in the empty context. -/
+def Comp.closed? {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option (Comp Sg [] τ)
+  | .global r => some (.global r)
+  | .bool_mk b => some (.bool_mk b)
+  | .nat_mk n => some (.nat_mk n)
+  | .int_mk i => some (.int_mk i)
+  | .bitvec_mk h v => some (.bitvec_mk h v)
+  | .uint8_mk v => some (.uint8_mk v)
+  | .uint16_mk v => some (.uint16_mk v)
+  | .uint32_mk v => some (.uint32_mk v)
+  | .uint64_mk v => some (.uint64_mk v)
+  | .int8_mk v => some (.int8_mk v)
+  | .int16_mk v => some (.int16_mk v)
+  | .int32_mk v => some (.int32_mk v)
+  | .int64_mk v => some (.int64_mk v)
+  | .char_mk c => some (.char_mk c)
+  | .string_mk s => some (.string_mk s)
+  | .stringPos_mk s p => some (.stringPos_mk s p)
+  | .stringPosRaw_mk p => some (.stringPosRaw_mk p)
+  | .substringRaw_mk s => some (.substringRaw_mk s)
+  | .stringSlice_mk s => some (.stringSlice_mk s)
+  | .float_mk x => some (.float_mk x)
+  | .float32_mk x => some (.float32_mk x)
+  | .floatModel_mk m => some (.floatModel_mk m)
+  | .float32Model_mk m => some (.float32Model_mk m)
+  | .extern e => some (.extern e)
+  | .enum_mk s i => some (.enum_mk s i)
+  | _ => none
+
+/-- The step `c`, if the term is `let x = c; ret x` and `c` reads no variable. -/
+def Term.closedStep? {Γ : Ctx} {σ : TyWf} : Term Sg Γ σ → Option (Comp Sg [] σ)
+  | .letE c (.ret (.var .head)) => c.closed?
+  | _ => none
 
 /-! ## Lists of operands, in direct style -/
 
@@ -270,11 +337,17 @@ inductive FamilyMemberValue (Sg : Sig) : Ctx → LeanFamMemberSchema TyWf → Ty
     the atoms. -/
 def Terms.bindAtoms {Γ Δ₀ : Ctx} {σ τ : TyWf} :
     Terms Sg Γ σ → Ren Γ Δ₀ →
-    (∀ {Δ : Ctx}, Ren Δ₀ Δ → List (Atom Sg Δ σ) → Term Sg Δ τ) → Term Sg Δ₀ τ
+    (∀ {Δ : Ctx}, Ren Δ₀ Δ → List (Atom Δ σ) → Term Sg Δ τ) → Term Sg Δ₀ τ
   | .nil, _, k => k Ren.id []
   | .cons t ts, ρ, k =>
-      (t.rename ρ).bindAtom fun ρ₁ a =>
-        ts.bindAtoms (Ren.comp ρ₁ ρ) fun ρ₂ as => k (Ren.comp ρ₂ ρ₁) (a.rename ρ₂ :: as)
+      match t.closedStep? with
+      | some c =>
+          ts.bindAtoms ρ fun ρ₂ as =>
+            .letE (c.rename Ren.nil)
+              (k (Ren.comp Ren.wk ρ₂) (.var .head :: as.map (·.rename Ren.wk)))
+      | none =>
+          (t.rename ρ).bindAtom fun ρ₁ a =>
+            ts.bindAtoms (Ren.comp ρ₁ ρ) fun ρ₂ as => k (Ren.comp ρ₂ ρ₁) (a.rename ρ₂ :: as)
 
 /-- Name every term of a spine, left to right, after moving it along `ρ`, and go on with
     the atoms. -/
@@ -283,13 +356,18 @@ def Spine.bindArgs {Γ Δ₀ : Ctx} {τ : TyWf} :
     (∀ {Δ : Ctx}, Ren Δ₀ Δ → Args Sg Δ σs → Term Sg Δ τ) → Term Sg Δ₀ τ
   | _, .nil, _, k => k Ren.id .nil
   | _, .cons t ts, ρ, k =>
-      (t.rename ρ).bindAtom fun ρ₁ a =>
-        ts.bindArgs (Ren.comp ρ₁ ρ) fun ρ₂ as => k (Ren.comp ρ₂ ρ₁) (.cons (a.rename ρ₂) as)
+      match t.closedStep? with
+      | some c =>
+          ts.bindArgs ρ fun ρ₂ as =>
+            .letE (c.rename Ren.nil) (k (Ren.comp Ren.wk ρ₂) (.cons (.var .head) (as.rename Ren.wk)))
+      | none =>
+          (t.rename ρ).bindAtom fun ρ₁ a =>
+            ts.bindArgs (Ren.comp ρ₁ ρ) fun ρ₂ as => k (Ren.comp ρ₂ ρ₁) (.cons (a.rename ρ₂) as)
 
 /-- The atoms of a spine that holds only atoms, and `none` otherwise. -/
 def Spine.atoms? {Γ : Ctx} : {σs : List TyWf} → Spine Sg Γ σs → Option (Args Sg Γ σs)
   | _, .nil => some .nil
-  | _, .cons (.ret (.atom a)) ts => (ts.atoms?).map (.cons a)
+  | _, .cons (.ret a) ts => (ts.atoms?).map (.cons a)
   | _, .cons _ _ => none
 
 /-- Name the operands of a value of a member of a mutual family, and go on with them. -/
@@ -303,89 +381,96 @@ def FamilyMemberValue.bindArgs {Γ : Ctx} {m : LeanFamMemberSchema TyWf} {τ : T
 /-! ## The direct-style forms -/
 
 /-- A variable of `Γ`. -/
-abbrev Term.var {Γ : Ctx} {τ : TyWf} (v : Γ ∋ τ) : Term Sg Γ τ := .ret (.atom (.var v))
+abbrev Term.var {Γ : Ctx} {τ : TyWf} (v : Γ ∋ τ) : Term Sg Γ τ := .ret (.var v)
 
 /-- A reference to a top-level declaration of the module's signature. -/
 abbrev Term.global {Γ : Ctx} {τ : TyWf} (r : GlobalRef Sg.decls τ) : Term Sg Γ τ :=
-  .ret (.atom (.global r))
+  .ofComp (.global r)
 
 /-- An atom, as a term. -/
-abbrev Term.atom {Γ : Ctx} {τ : TyWf} (a : Atom Sg Γ τ) : Term Sg Γ τ := .ret (.atom a)
+abbrev Term.atom {Γ : Ctx} {τ : TyWf} (a : Atom Γ τ) : Term Sg Γ τ := .ret a
 
 /-- A boolean literal. -/
-abbrev Term.bool_mk {Γ : Ctx} (b : Bool) : Term Sg Γ (.prim .bool) := .atom (.bool_mk b)
+abbrev Term.bool_mk {Γ : Ctx} (b : Bool) : Term Sg Γ (.prim .bool) := .ofComp (.bool_mk b)
 /-- A natural number literal. -/
-abbrev Term.nat_mk {Γ : Ctx} (n : Nat) : Term Sg Γ (.prim .nat) := .atom (.nat_mk n)
+abbrev Term.nat_mk {Γ : Ctx} (n : Nat) : Term Sg Γ (.prim .nat) := .ofComp (.nat_mk n)
 /-- An integer literal. -/
-abbrev Term.int_mk {Γ : Ctx} (i : Int) : Term Sg Γ (.prim .int) := .atom (.int_mk i)
+abbrev Term.int_mk {Γ : Ctx} (i : Int) : Term Sg Γ (.prim .int) := .ofComp (.int_mk i)
 /-- A bit-vector literal, of a positive width. -/
 abbrev Term.bitvec_mk {Γ : Ctx} {n : Nat} (h_positive : 0 < n := by decide) (v : BitVec n) :
-    Term Sg Γ (.prim (.bitvec n h_positive)) := .atom (.bitvec_mk h_positive v)
+    Term Sg Γ (.prim (.bitvec n h_positive)) := .ofComp (.bitvec_mk h_positive v)
 /-- An 8-bit unsigned literal. -/
-abbrev Term.uint8_mk {Γ : Ctx} (v : UInt8) : Term Sg Γ (.prim .uint8) := .atom (.uint8_mk v)
+abbrev Term.uint8_mk {Γ : Ctx} (v : UInt8) : Term Sg Γ (.prim .uint8) := .ofComp (.uint8_mk v)
 /-- A 16-bit unsigned literal. -/
 abbrev Term.uint16_mk {Γ : Ctx} (v : UInt16) : Term Sg Γ (.prim .uint16) :=
-  .atom (.uint16_mk v)
+  .ofComp (.uint16_mk v)
 /-- A 32-bit unsigned literal. -/
 abbrev Term.uint32_mk {Γ : Ctx} (v : UInt32) : Term Sg Γ (.prim .uint32) :=
-  .atom (.uint32_mk v)
+  .ofComp (.uint32_mk v)
 /-- A 64-bit unsigned literal. -/
 abbrev Term.uint64_mk {Γ : Ctx} (v : UInt64) : Term Sg Γ (.prim .uint64) :=
-  .atom (.uint64_mk v)
+  .ofComp (.uint64_mk v)
 /-- An 8-bit signed literal. -/
-abbrev Term.int8_mk {Γ : Ctx} (v : Int8) : Term Sg Γ (.prim .int8) := .atom (.int8_mk v)
+abbrev Term.int8_mk {Γ : Ctx} (v : Int8) : Term Sg Γ (.prim .int8) := .ofComp (.int8_mk v)
 /-- A 16-bit signed literal. -/
-abbrev Term.int16_mk {Γ : Ctx} (v : Int16) : Term Sg Γ (.prim .int16) := .atom (.int16_mk v)
+abbrev Term.int16_mk {Γ : Ctx} (v : Int16) : Term Sg Γ (.prim .int16) := .ofComp (.int16_mk v)
 /-- A 32-bit signed literal. -/
-abbrev Term.int32_mk {Γ : Ctx} (v : Int32) : Term Sg Γ (.prim .int32) := .atom (.int32_mk v)
+abbrev Term.int32_mk {Γ : Ctx} (v : Int32) : Term Sg Γ (.prim .int32) := .ofComp (.int32_mk v)
 /-- A 64-bit signed literal. -/
-abbrev Term.int64_mk {Γ : Ctx} (v : Int64) : Term Sg Γ (.prim .int64) := .atom (.int64_mk v)
+abbrev Term.int64_mk {Γ : Ctx} (v : Int64) : Term Sg Γ (.prim .int64) := .ofComp (.int64_mk v)
 /-- A character literal. -/
-abbrev Term.char_mk {Γ : Ctx} (c : Char) : Term Sg Γ (.prim .char) := .atom (.char_mk c)
+abbrev Term.char_mk {Γ : Ctx} (c : Char) : Term Sg Γ (.prim .char) := .ofComp (.char_mk c)
 /-- A string literal. -/
 abbrev Term.string_mk {Γ : Ctx} (s : String) : Term Sg Γ (.prim .string) :=
-  .atom (.string_mk s)
+  .ofComp (.string_mk s)
 /-- A literal position into the string `s`. -/
 abbrev Term.stringPos_mk {Γ : Ctx} (s : String) (p : String.Pos s) :
-    Term Sg Γ (.prim (.stringPos s)) := .atom (.stringPos_mk s p)
+    Term Sg Γ (.prim (.stringPos s)) := .ofComp (.stringPos_mk s p)
 /-- A literal unchecked byte position. -/
 abbrev Term.stringPosRaw_mk {Γ : Ctx} (p : String.Pos.Raw) : Term Sg Γ (.prim .stringPosRaw) :=
-  .atom (.stringPosRaw_mk p)
+  .ofComp (.stringPosRaw_mk p)
 /-- A literal unchecked substring. -/
 abbrev Term.substringRaw_mk {Γ : Ctx} (s : Substring.Raw) : Term Sg Γ (.prim .substringRaw) :=
-  .atom (.substringRaw_mk s)
+  .ofComp (.substringRaw_mk s)
 /-- A literal string slice. -/
 abbrev Term.stringSlice_mk {Γ : Ctx} (s : String.Slice) : Term Sg Γ (.prim .stringSlice) :=
-  .atom (.stringSlice_mk s)
+  .ofComp (.stringSlice_mk s)
 /-- A 64-bit floating point literal. -/
-abbrev Term.float_mk {Γ : Ctx} (x : Float) : Term Sg Γ (.prim .float) := .atom (.float_mk x)
+abbrev Term.float_mk {Γ : Ctx} (x : Float) : Term Sg Γ (.prim .float) := .ofComp (.float_mk x)
 /-- A 32-bit floating point literal. -/
 abbrev Term.float32_mk {Γ : Ctx} (x : Float32) : Term Sg Γ (.prim .float32) :=
-  .atom (.float32_mk x)
+  .ofComp (.float32_mk x)
 /-- A literal of the model of a 64-bit float. -/
 abbrev Term.floatModel_mk {Γ : Ctx} (m : Float.Model) : Term Sg Γ (.prim .floatModel) :=
-  .atom (.floatModel_mk m)
+  .ofComp (.floatModel_mk m)
 /-- A literal of the model of a 32-bit float. -/
 abbrev Term.float32Model_mk {Γ : Ctx} (m : Float32.Model) : Term Sg Γ (.prim .float32Model) :=
-  .atom (.float32Model_mk m)
+  .ofComp (.float32Model_mk m)
 
 /-- `fun x => body`. -/
 abbrev Term.lam {Γ : Ctx} {σ τ : TyWf} (body : Term Sg (σ :: Γ) τ) : Term Sg Γ (σ ⇒ τ) :=
-  .ret (.lam body)
+  .ofComp (.lam body)
 
-/-- `f a`, for any terms `f` and `a`: both are named, `f` first. -/
+/-- `f a`, for any terms `f` and `a`: both are named, `f` first — unless `f` is a closed
+    step (a declaration, typically), which is named last. -/
 def Term.ap {Γ : Ctx} {σ τ : TyWf} (f : Term Sg Γ (σ ⇒ τ)) (a : Term Sg Γ σ) : Term Sg Γ τ :=
-  f.bindAtomOr
-    (fun fa => a.bindAtomOr (fun aa => .ret (.ap fa aa)) fun ρ' aa => .ret (.ap (fa.rename ρ') aa))
-    fun ρ fa => (a.rename ρ).bindAtom fun ρ' aa => .ret (.ap (fa.rename ρ') aa)
+  match f.closedStep? with
+  | some c =>
+      a.bindAtom fun _ aa =>
+        .letE (c.rename Ren.nil) (.ofComp (.ap (.var .head) (aa.rename Ren.wk)))
+  | none =>
+      f.bindAtomOr
+        (fun fa => a.bindAtomOr (fun aa => .ofComp (.ap fa aa))
+          fun ρ' aa => .ofComp (.ap (fa.rename ρ') aa))
+        fun ρ fa => (a.rename ρ).bindAtom fun ρ' aa => .ofComp (.ap (fa.rename ρ') aa)
 
 /-- A pure extern of `Init` applied to values. -/
-abbrev Term.extern {Γ : Ctx} {τ : TyWf} (e : Extern τ) : Term Sg Γ τ := .ret (.extern e)
+abbrev Term.extern {Γ : Ctx} {τ : TyWf} (e : Extern τ) : Term Sg Γ τ := .ofComp (.extern e)
 
 /-- A pure extern of `Init` applied to the terms of its arguments. -/
 def Term.externCall {Γ : Ctx} {σs : List TyWf} {τ : TyWf} (args : Spine Sg Γ σs)
     (call : TyWf.DenList σs → Extern τ) : Term Sg Γ τ :=
-  args.bindArgs Ren.id fun _ as => .ret (.externCall as call)
+  args.bindArgs Ren.id fun _ as => .ofComp (.externCall as call)
 
 /-- A pure extern of `Init` that takes a proof, applied to the terms of its arguments. -/
 def Term.externCallChecked' {Γ : Ctx} {σs : List TyWf} {τ : TyWf} (args : Spine Sg Γ σs)
@@ -530,23 +615,23 @@ def Term.float32Model_casesOn' {Γ : Ctx} {τ : TyWf} (v : Term Sg Γ (.prim .fl
 
 /-- Delay a value, unmemoised. -/
 abbrev Term.lazy_mk {Γ : Ctx} {τ : TyWf} (e : Term Sg Γ τ) : Term Sg Γ (.lazy τ) :=
-  .ret (.lazy_mk e)
+  .ofComp (.lazy_mk e)
 
 /-- Run a delayed value. -/
 def Term.lazy_force {Γ : Ctx} {τ : TyWf} (e : Term Sg Γ (.lazy τ)) : Term Sg Γ τ :=
-  e.bindAtom fun _ a => .ret (.lazy_force a)
+  e.bindAtom fun _ a => .ofComp (.lazy_force a)
 
 /-- Delay a value and remember it: a `Thunk`. -/
 abbrev Term.thunk_mk {Γ : Ctx} {τ : TyWf} (e : Term Sg Γ τ) : Term Sg Γ (.thunk τ) :=
-  .ret (.thunk_mk e)
+  .ofComp (.thunk_mk e)
 
 /-- Force a thunk. -/
 def Term.thunk_force {Γ : Ctx} {τ : TyWf} (e : Term Sg Γ (.thunk τ)) : Term Sg Γ τ :=
-  e.bindAtom fun _ a => .ret (.thunk_force a)
+  e.bindAtom fun _ a => .ofComp (.thunk_force a)
 
 /-- An array, from its elements, in order. -/
 def Term.array_mk {Γ : Ctx} {τ : TyWf} (ts : Terms Sg Γ τ) : Term Sg Γ (.array τ) :=
-  ts.bindAtoms Ren.id fun _ as => .ret (.array_mk as)
+  ts.bindAtoms Ren.id fun _ as => .ofComp (.array_mk as)
 
 /-- Take an array apart. -/
 def Term.array_casesOn' {Γ : Ctx} {σ τ : TyWf} (a : Term Sg Γ (.array σ)) (z : Term Sg Γ τ)
@@ -567,7 +652,7 @@ def Term.array_rec' {Γ : Ctx} {σ τ : TyWf} (k : Nat := 0) (a : Term Sg Γ (.a
 
 /-- A constructor of an enum. -/
 abbrev Term.enum_mk {Γ : Ctx} (s : LeanEnumSchema) (i : Fin s.nOfConstructors) :
-    Term Sg Γ (.enum s) := .ret (.enum_mk s i)
+    Term Sg Γ (.enum s) := .ofComp (.enum_mk s i)
 
 /-- A dispatch on an enum. -/
 def Term.enum_casesOn' {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} (e : Term Sg Γ (.enum s))
@@ -585,7 +670,7 @@ def Term.enum_casesOnWithDefault' {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k
 /-- A record, from its fields. -/
 def Term.record_mk {Γ : Ctx} (fs : LeanRecordSchema TyWf) (fields : Spine Sg Γ fs.toList) :
     Term Sg Γ (.record fs) :=
-  fields.bindArgs Ren.id fun _ as => .ret (.record_mk fs as)
+  fields.bindArgs Ren.id fun _ as => .ofComp (.record_mk fs as)
 
 /-- The eliminator of a record. -/
 def Term.record_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf}
@@ -597,7 +682,7 @@ def Term.record_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf}
 def Term.taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
     (ht : t < l.length := by ctor_tag) (fields : Spine Sg Γ (l.get t ht)) :
     Term Sg Γ (.taggedUnion l) :=
-  fields.bindArgs Ren.id fun _ as => .ret (.taggedUnion_mk l t ht as)
+  fields.bindArgs Ren.id fun _ as => .ofComp (.taggedUnion_mk l t ht as)
 
 /-- The eliminator of a tagged union. -/
 def Term.taggedUnion_casesOn' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
@@ -622,7 +707,7 @@ def Term.recTaggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema (TyWfIn 1))
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_tag)
     (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) :
     Term Sg Γ (.recTaggedUnion l hwf) :=
-  fields.bindArgs Ren.id fun _ as => .ret (.recTaggedUnion_mk l hwf t ht as)
+  fields.bindArgs Ren.id fun _ as => .ofComp (.recTaggedUnion_mk l hwf t ht as)
 
 /-- The eliminator of a recursive tagged union. -/
 def Term.recTaggedUnion_casesOn' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema (TyWfIn 1)}
@@ -658,7 +743,7 @@ def Term.recObject_mk {Γ : Ctx} (fs : LeanRecordSchema (TyWfIn 1))
     (hwf : Ty.Wf (TyWf.recObjectTy fs) := by ty_wf)
     (fields : Spine Sg Γ (TyWf.recObjectUnfold fs hwf).toList) :
     Term Sg Γ (.recObject fs hwf) :=
-  fields.bindArgs Ren.id fun _ as => .ret (.recObject_mk fs hwf as)
+  fields.bindArgs Ren.id fun _ as => .ofComp (.recObject_mk fs hwf as)
 
 /-- The eliminator of a recursive record. -/
 def Term.recObject_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema (TyWfIn 1)}
@@ -681,7 +766,7 @@ def Term.recObject_rec' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema (TyWfIn 1)
 /-- A value of a recursive newtype. -/
 def Term.recAlias_mk {Γ : Ctx} (b : TyWfIn 1) (hwf : Ty.Wf (TyWf.recAliasTy b) := by ty_wf)
     (value : Term Sg Γ (TyWf.recAliasUnfold b hwf)) : Term Sg Γ (.recAlias b hwf) :=
-  value.bindAtom fun _ a => .ret (.recAlias_mk b hwf a)
+  value.bindAtom fun _ a => .ofComp (.recAlias_mk b hwf a)
 
 /-- The eliminator of a recursive newtype. -/
 def Term.recAlias_casesOn' {Γ : Ctx} {τ : TyWf} {b : TyWfIn 1}
@@ -705,7 +790,7 @@ def Term.mutualRecursiveFamily_mk {Γ : Ctx} {n : Nat}
     (hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f) := by ty_wf)
     (value : FamilyMemberValue Sg Γ (f.current.map (TyWfIn.unfoldFam f hwf))) :
     Term Sg Γ (.mutualRecursiveFamily f hwf) :=
-  value.bindArgs fun _ as => .ret (.mutualRecursiveFamily_mk f hwf as)
+  value.bindArgs fun _ as => .ofComp (.mutualRecursiveFamily_mk f hwf as)
 
 /-- The eliminator of a member of a mutual family. -/
 def Term.mutualRecursiveFamily_casesOn' {Γ : Ctx} {τ : TyWf} {n : Nat}

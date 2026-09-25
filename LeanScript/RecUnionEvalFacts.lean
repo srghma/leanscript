@@ -390,13 +390,13 @@ abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnion
     answer where they stand. -/
 theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
-    (v : Atom Sg Γ (.recTaggedUnion l hwf))
+    (v : Atom Γ (.recTaggedUnion l hwf))
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
     (env : Env Γ) :
     Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) .ret) env =
-      TaggedUnionFoldCases.recFold G c env (Atom.eval G v env) := by
-  show (WType.memo _ (Atom.eval G v env)).answer = _
-  generalize Atom.eval G v env = w
+      TaggedUnionFoldCases.recFold G c env (Atom.eval v env) := by
+  show (WType.memo _ (Atom.eval v env)).answer = _
+  generalize Atom.eval v env = w
   induction w with
   | mk node f ih =>
       show TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK (outer := []) c) env
@@ -417,7 +417,7 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {τ : TyWf}
     value at every depth. -/
 theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
-    (v : Atom Sg Γ (.recTaggedUnion l hwf))
+    (v : Atom Γ (.recTaggedUnion l hwf))
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ l τ)
     (env : Env Γ) :
     Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) .ret) env =

@@ -145,7 +145,7 @@ theorem natFoldK_base {k : Nat} (z : NatWin τ (k + 1))
 /-! ## The node, evaluated -/
 
 variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls)
-    (nT : Atom Sg Γ (.prim .nat)) (base : Args Sg Γ (natRecCtx τ (k + 1) []))
+    (nT : Atom Γ (.prim .nat)) (base : Args Sg Γ (natRecCtx τ (k + 1) []))
     (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ)
     (env : Env Γ)
 
@@ -156,12 +156,12 @@ theorem Term.eval_nat_rec :
     Term.eval G (Term.nat_rec k nT base branch .ret) env =
       natFoldK (Args.eval G base env)
         (fun m w => Term.eval G branch (m, Env.ofWin w env))
-        (show Nat from Atom.eval G nT env) :=
+        (show Nat from Atom.eval nT env) :=
   rfl
 
 /-- Below the depth, the node answers with the base value written for the argument. -/
 theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
-    (hn : (show Nat from Atom.eval G nT env) = j) :
+    (hn : (show Nat from Atom.eval nT env) = j) :
     Term.eval G (Term.nat_rec k nT base branch .ret) env =
       NatWin.get (Args.eval G base env) (k - j) (by omega) := by
   rw [Term.eval_nat_rec, hn, natFoldK_base _ _ j hj]
@@ -169,7 +169,7 @@ theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
 /-- At and above the depth, the node answers with its branch, given the predecessor and
     the window of the previous `k + 1` answers. -/
 theorem Term.eval_nat_rec_step (n : Nat)
-    (hn : (show Nat from Atom.eval G nT env) = n + k + 1) :
+    (hn : (show Nat from Atom.eval nT env) = n + k + 1) :
     Term.eval G (Term.nat_rec k nT base branch .ret) env =
       Term.eval G branch
         (n, Env.ofWin

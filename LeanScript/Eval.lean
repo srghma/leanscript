@@ -80,47 +80,22 @@ particular a delay (`Ty.lazy`, `Ty.thunk`) denotes the value it stands for, and 
 
 /-! ## Atoms -/
 
-/-- The value of an atom: a variable's is read off the environment, a declaration's off
-    the values of the signature, and a literal is its own value. -/
-def Atom.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} {τ : TyWf} :
-    Atom Sg Γ τ → Env Γ → TyWf.Den τ
+/-- The value of an atom: the variable is read off the environment. -/
+def Atom.eval {Γ : Ctx} {τ : TyWf} : Atom Γ τ → Env Γ → TyWf.Den τ
   | .var v, env => Env.get v env
-  | .global r, _ => GlobalEnv.get r G
-  | .bool_mk b, _ => b
-  | .nat_mk n, _ => n
-  | .int_mk i, _ => i
-  | .bitvec_mk _ v, _ => v
-  | .uint8_mk v, _ => v
-  | .uint16_mk v, _ => v
-  | .uint32_mk v, _ => v
-  | .uint64_mk v, _ => v
-  | .int8_mk v, _ => v
-  | .int16_mk v, _ => v
-  | .int32_mk v, _ => v
-  | .int64_mk v, _ => v
-  | .char_mk c, _ => c
-  | .string_mk s, _ => s
-  | .stringPos_mk _ p, _ => p
-  | .stringPosRaw_mk p, _ => p
-  | .substringRaw_mk s, _ => s
-  | .stringSlice_mk s, _ => s
-  | .float_mk x, _ => x
-  | .float32_mk x, _ => x
-  | .floatModel_mk m, _ => m
-  | .float32Model_mk m, _ => m
 
 /-- The values of a list of atoms, typed by the list of their types. -/
 def Args.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
     {σs : List TyWf} → Args Sg Γ σs → Env Γ → TyWf.DenList σs
   | _, .nil, _ => PUnit.unit
-  | _, .cons a as, env => (Atom.eval G a env, Args.eval G as env)
+  | _, .cons a as, env => (Atom.eval a env, Args.eval G as env)
 
 /-- The value of a member of a mutual family, built from the shape that member has. -/
 def FamilyMemberArgs.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
     {m : LeanFamMemberSchema TyWf} → FamilyMemberArgs Sg Γ m → Env Γ → TyWf.DenMember m
   | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (Args.eval G fields env)
   | _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
-  | _, .alias _ value, env => Atom.eval G value env
+  | _, .alias _ value, env => Atom.eval value env
 
 /-! ## Join points -/
 
@@ -156,22 +131,26 @@ mutual
 def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → {J : JCtx} → (t : Term Sg Γ τ J) → Env Γ → JEnv τ J →
     TyWf.Den τ
-  | _, _, _, .ret c, env, _ => Comp.eval G c env
+  | _, _, _, .ret a, env, _ => Atom.eval a env
+  -- `let x = c; ret x` is the value of `c`: the same as the general case below
+  -- (`Term.evalJ_letE`), read off directly, which keeps the unfolding of a step in tail
+  -- position as short as it would be without the `let`.
+  | _, _, _, .letE c (.ret (.var .head)), env, _ => Comp.eval G c env
   | _, _, _, .letE c body, env, jenv => Term.evalJ G body (Comp.eval G c env, env) jenv
   | _, _, _, .letJ jp body, env, jenv =>
       Term.evalJ G body env (fun x => Term.evalJ G jp (x, env) jenv, jenv)
-  | _, _, _, .jump j a, env, jenv => JEnv.get j jenv (Atom.eval G a env)
+  | _, _, _, .jump j a, env, jenv => JEnv.get j jenv (Atom.eval a env)
   | _, _, _, .externCallChecked args call d fallback, env, jenv =>
       match call (Args.eval G args env) with
       | some e => Dest.apply d jenv (Extern.eval e)
       | none => Term.evalJ G fallback env jenv
   | _, _, _, .bool_casesOn c t e, env, jenv =>
-      let c' : Bool := Atom.eval G c env
+      let c' : Bool := Atom.eval c env
       match c' with
       | true => Term.evalJ G t env jenv
       | false => Term.evalJ G e env jenv
   | _, _, _, .nat_casesOn n z s, env, jenv =>
-      let n' : Nat := Atom.eval G n env
+      let n' : Nat := Atom.eval n env
       match n' with
       | 0 => Term.evalJ G z env jenv
       | k + 1 => Term.evalJ G s (k, env) jenv
@@ -179,47 +158,47 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
       Dest.apply d jenv <|
       natFoldK (Args.eval G base env)
         (fun m w => Term.evalJ G branch (m, Env.ofWin w env) PUnit.unit)
-        (show Nat from Atom.eval G n env)
+        (show Nat from Atom.eval n env)
   | _, _, _, .int_casesOn i ofNat negSucc, env, jenv =>
-      let i' : Int := Atom.eval G i env
+      let i' : Int := Atom.eval i env
       match i' with
       | .ofNat k => Term.evalJ G ofNat (k, env) jenv
       | .negSucc k => Term.evalJ G negSucc (k, env) jenv
   | _, _, _, .uint8_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toBitVec, env) jenv
   | _, _, _, .uint16_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toBitVec, env) jenv
   | _, _, _, .uint32_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toBitVec, env) jenv
   | _, _, _, .uint64_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toBitVec, env) jenv
   | _, _, _, .int8_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toUInt8, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toUInt8, env) jenv
   | _, _, _, .int16_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toUInt16, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toUInt16, env) jenv
   | _, _, _, .int32_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toUInt32, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toUInt32, env) jenv
   | _, _, _, .int64_casesOn v b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G v env).toUInt64, env) jenv
+      Term.evalJ G b ((Atom.eval v env).toUInt64, env) jenv
   | _, _, _, .char_casesOn c b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G c env).val, env) jenv
+      Term.evalJ G b ((Atom.eval c env).val, env) jenv
   | _, _, _, .stringPosRaw_casesOn p b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G p env).byteIdx, env) jenv
+      Term.evalJ G b ((Atom.eval p env).byteIdx, env) jenv
   | _, _, _, .stringPos_casesOn p b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G p env).offset, env) jenv
+      Term.evalJ G b ((Atom.eval p env).offset, env) jenv
   | _, _, _, .substringRaw_casesOn s b, env, jenv =>
-      let v : Substring.Raw := Atom.eval G s env
+      let v : Substring.Raw := Atom.eval s env
       Term.evalJ G b (v.str, v.startPos, v.stopPos, env) jenv
   | _, _, _, .float_casesOn x b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G x env).toModel, env) jenv
+      Term.evalJ G b ((Atom.eval x env).toModel, env) jenv
   | _, _, _, .float32_casesOn x b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G x env).toModel, env) jenv
+      Term.evalJ G b ((Atom.eval x env).toModel, env) jenv
   | _, _, _, .floatModel_casesOn m b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G m env).toBits, env) jenv
+      Term.evalJ G b ((Atom.eval m env).toBits, env) jenv
   | _, _, _, .float32Model_casesOn m b, env, jenv =>
-      Term.evalJ G b ((Atom.eval G m env).toBits, env) jenv
+      Term.evalJ G b ((Atom.eval m env).toBits, env) jenv
   | _, _, _, .array_casesOn a z s, env, jenv =>
-      let a' : Array _ := Atom.eval G a env
+      let a' : Array _ := Atom.eval a env
       match a'.toList with
       | [] => Term.evalJ G z env jenv
       | x :: xs => Term.evalJ G s (x, xs.toArray, env) jenv
@@ -227,24 +206,24 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
       Dest.apply d jenv <|
       listFoldK (fun l => ArrayRecBases.eval G bases env l)
         (fun hd tl w => Term.evalJ G branch (hd, tl.toArray, Env.ofWin w env) PUnit.unit)
-        (show Array _ from Atom.eval G a env).toList
+        (show Array _ from Atom.eval a env).toList
   | _, _, _, .enum_casesOn e cases, env, jenv =>
-      EnumCases.eval G cases env jenv (Atom.eval G e env)
+      EnumCases.eval G cases env jenv (Atom.eval e env)
   | _, _, _, .enum_casesOnWithDefault e cases dflt _, env, jenv =>
-      EnumSomeCases.eval G cases env jenv (Atom.eval G e env)
+      EnumSomeCases.eval G cases env jenv (Atom.eval e env)
         (Term.evalJ G dflt env jenv)
   | _, _, _, .record_casesOn r body, env, jenv =>
-      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) (Atom.eval G r env)) env) jenv
+      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) (Atom.eval r env)) env) jenv
   | _, _, _, .taggedUnion_casesOn v cases, env, jenv =>
-      TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv (Atom.eval G v env)
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv (Atom.eval v env)
   | _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env, jenv =>
-      TaggedUnionSomeCases.eval G cases env jenv (Atom.eval G v env)
+      TaggedUnionSomeCases.eval G cases env jenv (Atom.eval v env)
         (Term.evalJ G dflt env jenv)
   | _, _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases, env, jenv =>
       TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv
-        (TyWf.DenRec.unfold l hwf (Atom.eval G v env))
+        (TyWf.DenRec.unfold l hwf (Atom.eval v env))
   | _, _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _, env, jenv =>
-      TaggedUnionSomeCases.eval G cases env jenv (TyWf.DenRec.unfold l hwf (Atom.eval G v env))
+      TaggedUnionSomeCases.eval G cases env jenv (TyWf.DenRec.unfold l hwf (Atom.eval v env))
         (Term.evalJ G dflt env jenv)
   | _, _, _, .recTaggedUnion_rec (l := l) (hwf := hwf) (ρ := τ) _ v cases d, env, jenv =>
       Dest.apply d jenv <|
@@ -252,49 +231,71 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (fun node kids =>
           TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) RecFrames.nil
             node.1.val ⟨node.2, kids⟩)
-        (Atom.eval G v env)
+        (Atom.eval v env)
   | _, _, _, .recObject_casesOn (fs := fs) (hwf := hwf) v body, env, jenv =>
-      Term.evalJ G body (Env.append (TyWf.DenObj.unfold fs hwf (Atom.eval G v env)) env) jenv
+      Term.evalJ G body (Env.append (TyWf.DenObj.unfold fs hwf (Atom.eval v env)) env) jenv
   | _, _, _, .recObject_rec (fs := fs) (hwf := hwf) (ρ := τ) k v body d, env, jenv =>
       Dest.apply d jenv <|
       WType.memoFold
         (fun node kids => Term.evalJ G body (Env.append (objRecEnv fs hwf τ k node kids) env) PUnit.unit)
-        (Atom.eval G v env)
+        (Atom.eval v env)
   | _, _, _, .recAlias_casesOn (b := b) (hwf := hwf) v body, env, jenv =>
-      Term.evalJ G body (TyWf.DenAlias.unfold b hwf (Atom.eval G v env), env) jenv
+      Term.evalJ G body (TyWf.DenAlias.unfold b hwf (Atom.eval v env), env) jenv
   | _, _, _, .recAlias_rec (b := b) (hwf := hwf) (ρ := τ) k v body d, env, jenv =>
       Dest.apply d jenv <|
       WType.memoFold
         (fun node kids =>
           Term.evalJ G body (Env.append (aliasRecEnv b hwf τ k node kids) env) PUnit.unit)
-        (Atom.eval G v env)
+        (Atom.eval v env)
   | _, _, _, .mutualRecursiveFamily_casesOn (f := f) (hwf := hwf) v cases, env, jenv =>
-      FamilyMemberCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval G v env))
+      FamilyMemberCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval v env))
   | _, _, _, .mutualRecursiveFamily_casesOnWithDefault (f := f) (hwf := hwf) v cases dflt, env, jenv =>
-      FamilyMemberSomeCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval G v env))
+      FamilyMemberSomeCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval v env))
         (Term.evalJ G dflt env jenv)
   | _, _, _, .mutualRecursiveFamily_rec (f := f) (hwf := hwf) (ρ := τ) _ v cases d, env, jenv =>
       Dest.apply d jenv <|
       IWType.memoFold (β := TyWf.Den τ)
         (fun i a kids =>
           FamilyFoldKCases.eval G cases env (famBindEnv f hwf τ) i ⟨a, kids⟩)
-        (cast (den_mutualRecursiveFamily f hwf) (Atom.eval G v env))
+        (cast (den_mutualRecursiveFamily f hwf) (Atom.eval v env))
 
 /-- **The value of one computation step**: its operands are atoms, whose values are read
     off the environment (`Atom.eval`), and the terms it holds — a body, a branch — are
     evaluated by `Term.eval` in the environment extended with what they bind. -/
 def Comp.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {τ : TyWf} → (t : Comp Sg Γ τ) → Env Γ → TyWf.Den τ
-  | _, _, .atom a, env => Atom.eval G a env
+  | _, _, .global r, _ => GlobalEnv.get r G
+  | _, _, .bool_mk b, _ => b
+  | _, _, .nat_mk n, _ => n
+  | _, _, .int_mk i, _ => i
+  | _, _, .bitvec_mk _ v, _ => v
+  | _, _, .uint8_mk v, _ => v
+  | _, _, .uint16_mk v, _ => v
+  | _, _, .uint32_mk v, _ => v
+  | _, _, .uint64_mk v, _ => v
+  | _, _, .int8_mk v, _ => v
+  | _, _, .int16_mk v, _ => v
+  | _, _, .int32_mk v, _ => v
+  | _, _, .int64_mk v, _ => v
+  | _, _, .char_mk c, _ => c
+  | _, _, .string_mk s, _ => s
+  | _, _, .stringPos_mk _ p, _ => p
+  | _, _, .stringPosRaw_mk p, _ => p
+  | _, _, .substringRaw_mk s, _ => s
+  | _, _, .stringSlice_mk s, _ => s
+  | _, _, .float_mk x, _ => x
+  | _, _, .float32_mk x, _ => x
+  | _, _, .floatModel_mk m, _ => m
+  | _, _, .float32Model_mk m, _ => m
   | _, _, .lam body, env => fun x => Term.evalJ G body (x, env) PUnit.unit
-  | _, _, .ap f a, env => (Atom.eval G f env) (Atom.eval G a env)
+  | _, _, .ap f a, env => (Atom.eval f env) (Atom.eval a env)
   | _, _, .extern e, _ => Extern.eval e
   | _, _, .externCall args call, env => Extern.eval (call (Args.eval G args env))
   | _, _, .lazy_mk e, env => let v := Term.evalJ G e env PUnit.unit; v
-  | _, _, .lazy_force e, env => let v := Atom.eval G e env; v
+  | _, _, .lazy_force e, env => let v := Atom.eval e env; v
   | _, _, .thunk_mk e, env => let v := Term.evalJ G e env PUnit.unit; v
-  | _, _, .thunk_force e, env => let v := Atom.eval G e env; v
-  | _, _, .array_mk ts, env => (ts.map (Atom.eval G · env)).toArray
+  | _, _, .thunk_force e, env => let v := Atom.eval e env; v
+  | _, _, .array_mk ts, env => (ts.map (Atom.eval · env)).toArray
   | _, _, .enum_mk _ i, _ => i
   | _, _, .record_mk fs fields, env =>
       cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
@@ -305,7 +306,7 @@ def Comp.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .recObject_mk fs hwf fields, env =>
       TyWf.DenObj.mk fs hwf (Args.eval G fields env)
   | _, _, .recAlias_mk b hwf value, env =>
-      TyWf.DenAlias.mk b hwf (Atom.eval G value env)
+      TyWf.DenAlias.mk b hwf (Atom.eval value env)
   | _, _, .mutualRecursiveFamily_mk f hwf value, env =>
       TyWf.DenFam.mk f hwf (FamilyMemberArgs.eval G value env)
 

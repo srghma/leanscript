@@ -2,6 +2,7 @@ module
 
 public import TermTests.RecObjectRecDepthTest
 public meta import LeanScript.ToTerm.Elab
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -20,7 +21,8 @@ exactly what its Lean reference does:
 * `fibPairTerm_correct` — the depth-zero fold at a record type computes `Cell.fib`.
 
 Each proof follows the recursion of the reference: the evaluator's memoised fold of a
-chain one or two cells longer unfolds, **by `rfl`**, to the branch applied to the answers
+chain one or two cells longer unfolds, **by `rfl`** (checked by the kernel alone,
+`kernel_rfl`), to the branch applied to the answers
 stored at the cells below — which are the folds of those cells.  The fold's branch is
 evaluated in the context the term stands in, so each statement about the fold is proved
 for an arbitrary such environment `e`, and the runs instantiate it.
@@ -57,12 +59,11 @@ abbrev fibStep (e : Env CCtx) :=
     Term.eval envAdd fibBranch (Env.append (objRecEnv cellSchema (by ty_wf) natT 1 node kids) e)
      
 
-set_option maxHeartbeats 4000000 in
 /-- Two cells down, the fold adds the answers at the two cells below. -/
 theorem fibStep_cons_cons (e : Env CCtx) (l l' : Nat) (g : Cell) :
     WType.memoFold (fibStep e) (cellVal (.mk l (some (.mk l' (some g))))) =
       WType.memoFold (fibStep e) (cellVal (.mk l' (some g))) +
-        WType.memoFold (fibStep e) (cellVal g) := rfl
+        WType.memoFold (fibStep e) (cellVal g) := by kernel_rfl
 
 /-- The fold of `fibTerm` is `Cell.fib`, in every environment. -/
 theorem fib_memoFold (e : Env CCtx) : ∀ c : Cell,
@@ -87,19 +88,18 @@ abbrev contStep (e : Env CCtx) :=
     Term.eval envAdd contBranch (Env.append (objRecEnv cellSchema (by ty_wf) natT 1 node kids) e)
      
 
-set_option maxHeartbeats 4000000 in
 /-- Two cells down, the continuant multiplies the label by the answer one cell down and
     adds the answer two cells down. -/
 theorem contStep_cons_cons (e : Env CCtx) (a b : Nat) (g : Cell) :
     WType.memoFold (contStep e) (cellVal (.mk a (some (.mk b (some g))))) =
       a * WType.memoFold (contStep e) (cellVal (.mk b (some g))) +
-        WType.memoFold (contStep e) (cellVal g) := rfl
+        WType.memoFold (contStep e) (cellVal g) := by kernel_rfl
 
 /-- The fold of `contTerm` is `Cell.cont`, in every environment. -/
 theorem cont_memoFold (e : Env CCtx) : ∀ c : Cell,
     WType.memoFold (contStep e) (cellVal c) = Cell.cont c
-  | .mk a none => by rw [Cell.cont]; rfl
-  | .mk a (some (.mk b none)) => by rw [Cell.cont, Cell.cont]; rfl
+  | .mk a none => by rw [Cell.cont]; kernel_rfl
+  | .mk a (some (.mk b none)) => by rw [Cell.cont, Cell.cont]; kernel_rfl
   | .mk a (some (.mk b (some g))) => by
       rw [contStep_cons_cons, cont_memoFold e (.mk b (some g)), cont_memoFold e g, Cell.cont]
 termination_by c => sizeOf c

@@ -62,22 +62,22 @@ theorem Term.evalJ_recObject_casesOn_mk {Γ : Ctx} {τ : TyWf} {J : JCtx}
 /-- The unfolded body of a newtype built by the introduction form is the value it was
     built with. -/
 theorem Comp.eval_recAlias_mk_unfold {Γ : Ctx} (b : TyWfIn 1)
-    (hwf : Ty.Wf (TyWf.recAliasTy b)) (value : Atom Sg Γ (TyWf.recAliasUnfold b hwf))
+    (hwf : Ty.Wf (TyWf.recAliasTy b)) (value : Atom Γ (TyWf.recAliasUnfold b hwf))
     (env : Env Γ) :
     TyWf.DenAlias.unfold b hwf (Comp.eval G (.recAlias_mk b hwf value) env) =
-      Atom.eval G value env :=
+      Atom.eval value env :=
   TyWf.DenAlias.unfold_mk b hwf _
 
 /-- Taking apart a newtype built by the introduction form binds the value it was built
     with. -/
 theorem Term.evalJ_recAlias_casesOn_mk {Γ : Ctx} {τ : TyWf} {J : JCtx} (b : TyWfIn 1)
-    (hwf : Ty.Wf (TyWf.recAliasTy b)) (value : Atom Sg Γ (TyWf.recAliasUnfold b hwf))
+    (hwf : Ty.Wf (TyWf.recAliasTy b)) (value : Atom Γ (TyWf.recAliasUnfold b hwf))
     (body : Term Sg (TyWf.recAliasUnfold b hwf :: .recAlias b hwf :: Γ) τ J) (env : Env Γ)
     (jenv : JEnv τ J) :
     Term.evalJ G (.letE (.recAlias_mk b hwf value) (.recAlias_casesOn (.var .head) body))
         env jenv =
       Term.evalJ G body
-        (Atom.eval G value env, Comp.eval G (.recAlias_mk b hwf value) env, env) jenv := by
+        (Atom.eval value env, Comp.eval G (.recAlias_mk b hwf value) env, env) jenv := by
   show Term.evalJ G body
       (TyWf.DenAlias.unfold b hwf (TyWf.DenAlias.mk b hwf _), _) jenv = _
   rw [TyWf.DenAlias.unfold_mk]

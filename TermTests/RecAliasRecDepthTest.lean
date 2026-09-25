@@ -63,12 +63,11 @@ mutual
     if the translation is not of that shape. -/
 def recAliasRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sigAdd Γ τ J → Option Nat
   | .recAlias_rec k _ _ _ => some k
-  | .ret c => recAliasRecDepth?.comp c
   | .letE c body => (recAliasRecDepth?.comp c).orElse fun _ => recAliasRecDepth? body
   | .letJ jp body => (recAliasRecDepth? body).orElse fun _ => recAliasRecDepth? jp
   | _ => none
 
-/-- `recAliasRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `recAliasRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def recAliasRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sigAdd Γ τ → Option Nat
   | .lam b => recAliasRecDepth? b
   | _ => none

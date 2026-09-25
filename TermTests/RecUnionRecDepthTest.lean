@@ -63,12 +63,11 @@ mutual
     `none` if the translation is not of that shape. -/
 def recUnionRecDepth? {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term sigAdd Γ τ J → Option Nat
   | .recTaggedUnion_rec k _ _ _ => some k
-  | .ret c => recUnionRecDepth?.comp c
   | .letE c body => (recUnionRecDepth?.comp c).orElse fun _ => recUnionRecDepth? body
   | .letJ jp body => (recUnionRecDepth? body).orElse fun _ => recUnionRecDepth? jp
   | _ => none
 
-/-- `recUnionRecDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `recUnionRecDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def recUnionRecDepth?.comp {Γ : Ctx} {τ : TyWf} : Comp sigAdd Γ τ → Option Nat
   | .lam b => recUnionRecDepth? b
   | _ => none

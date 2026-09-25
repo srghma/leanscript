@@ -45,12 +45,11 @@ mutual
 def foldDepth? {Sg : Sig} {Γ : Ctx} {τ : TyWf} {J : JCtx} : Term Sg Γ τ J → Option Nat
   | .recObject_rec k _ _ _ => some k
   | .recAlias_rec k _ _ _ => some k
-  | .ret c => foldDepth?.comp c
   | .letE c body => (foldDepth?.comp c).orElse fun _ => foldDepth? body
   | .letJ jp body => (foldDepth? body).orElse fun _ => foldDepth? jp
   | _ => none
 
-/-- `foldDepth?`, in the computation a `let` binds or a term returns: the body of a `fun`. -/
+/-- `foldDepth?`, in the computation a `let` binds: the body of a `fun`. -/
 def foldDepth?.comp {Sg : Sig} {Γ : Ctx} {τ : TyWf} : Comp Sg Γ τ → Option Nat
   | .lam b => foldDepth? b
   | _ => none
