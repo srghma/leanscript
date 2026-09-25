@@ -24,9 +24,15 @@ open LeanScript
 def abList := (#leanscript_optimize (.extern (.lean_string_data__String_toList "ab")) :
   Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .char)) _)
 
--- no extern is left: the root is a constructor of the list
-example : abList = (.recTaggedUnion_mk _ _ _ _ :
-    Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .char)) _) := rfl
+/-- Is the root of the term an extern? -/
+def rootIsExtern {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Term ⟨[], rfl⟩ Γ u τ k → Bool
+  | .extern _ _ => true
+  | _ => false
+
+-- no extern is left: the root is the list constructor, with head `.val`
+example : rootIsExtern abList = false := rfl
+example : Term ⟨[], rfl⟩ [] 0 (TyWf.list (.prim .char)) .val := abList
 
 example : Ty.DenRec.toList (.prim .char) (Term.run' abList) = ['a', 'b'] := by decide
 
@@ -49,23 +55,34 @@ def addLen := (#leanscript_optimize
 example : addLen = .lam (.externCall (.cons (.var .head) (.cons (.nat_mk 2) .nil))
       (fun vs => .lean_nat_add vs.1 vs.2.1)) := rfl
 
-example : Term.run' addLen 3 = 5 := rfl
+example : (Term.run' addLen) 3 = 5 := rfl
 
 /-- An extern that answers with a function cannot be written as a value: it stays. -/
-example : ((#leanscript_optimize (.extern (.lean_array_fget ((TyWf.prim .nat ⇒ TyWf.prim .nat : TyWf))
-      #[fun n => n + 1] 0 (by decide))) :
-    Term ⟨[], rfl⟩ [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) _) matches .extern _ _) = true := rfl
+example : rootIsExtern (#leanscript_optimize (.extern (.lean_array_fget
+      ((TyWf.prim .nat ⇒ TyWf.prim .nat : TyWf)) #[fun n => n + 1] 0 (by decide))) :
+    Term ⟨[], rfl⟩ [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) _) = true := rfl
 
--- An error that is not a side condition is still reported.
+/-- Not only externs: a β-redex written by hand, `(fun x => x) 3`, is reduced to `3`. -/
+example : (#leanscript_optimize (.ap (.lam (.var .head)) (.nat_mk 3)) :
+    Term ⟨[], rfl⟩ [] _ (.prim .nat) _) = .nat_mk 3 := rfl
+
+-- An error that is not a side condition is still reported, with the errors of the term as
+-- written.
 /--
 error: Application type mismatch: The argument
   "ab"
 has type
   String
 but is expected to have type
-  Nat
+  ℕ
 in the application
   LeanInitPureExtern.lean_nat_add "ab"
+---
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (TyWf.prim LeanPrimTy.nat).quotable = false
+is false
 -/
 #guard_msgs in
 example := (#leanscript_optimize (.extern (.lean_nat_add "ab" 3)) :

@@ -74,7 +74,7 @@ mutual
 def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → (t : Term Sg Γ u τ hd) → Env Γ → Term.NoRecMk t → TyWf.Den τ
   | _, _, _, _, .var v, env, _ => Env.get v env
-  | _, _, _, _, .lam body, env, h => fun x => Term.eval G body (x, env) h
+  | _, _, _, _, .lam body _, env, h => fun x => Term.eval G body (x, env) h
   | _, _, _, _, .ap f a _ _, env, h => (Term.eval G f env h.1) (Term.eval G a env h.2)
   | _, _, _, _, .global r, _, _ => GlobalEnv.get r G
   | _, _, _, _, .letE e body _ _ _, env, h => Term.eval G body (Term.eval G e env h.1, env) h.2
@@ -109,7 +109,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       | some e => Extern.eval e
       | none => Term.eval G fallback env h.2
   -- case analysis on a leaf
-  | _, _, _, _, .bool_casesOn c t e _ _, env, h =>
+  | _, _, _, _, .bool_casesOn c t e .., env, h =>
       let c' : Bool := Term.eval G c env h.1
       match c' with
       | true => Term.eval G t env h.2.1
@@ -179,32 +179,32 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (show Array _ from Term.eval G a env h.1).toList
   -- enums
   | _, _, _, _, .enum_mk _ i, _, _ => i
-  | _, _, _, _, .enum_casesOn e cases _, env, h =>
+  | _, _, _, _, .enum_casesOn e cases .., env, h =>
       EnumCases.eval G cases env (Term.eval G e env h.1) h.2
-  | _, _, _, _, .enum_casesOnWithDefault e cases dflt _ _, env, h =>
+  | _, _, _, _, .enum_casesOnWithDefault e cases dflt .., env, h =>
       EnumSomeCases.eval G cases env (Term.eval G e env h.1)
         (Term.eval G dflt env h.2.2) h.2.1
   -- records
   | _, _, _, _, .record_mk fs fields, env, h =>
       cast (Ty.denRecord_eq _).symm (Spine.eval G fields env h)
-  | _, _, _, _, .record_casesOn r body _ _ _, env, h =>
+  | _, _, _, _, .record_casesOn r body .., env, h =>
       Term.eval G body (Env.append (cast (Ty.denRecord_eq _) (Term.eval G r env h.1)) env)
         h.2
   -- tagged unions
   | _, _, _, _, .taggedUnion_mk _ t ht fields, env, h =>
       TyWf.DenTU.mk t ht (Spine.eval G fields env h)
-  | _, _, _, _, .taggedUnion_casesOn v cases _ _, env, h =>
+  | _, _, _, _, .taggedUnion_casesOn v cases .., env, h =>
       TaggedUnionCases.eval G cases env (Term.eval G v env h.1) h.2
-  | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _ _ _, env, h =>
+  | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt .., env, h =>
       TaggedUnionSomeCases.eval G cases env (Term.eval G v env h.1)
         (Term.eval G dflt env h.2.2) h.2.1
   -- recursive tagged unions: a value is a W-tree, taken apart one level by
   -- `TyWf.DenRec.unfold` and folded bottom-up with every answer remembered
   | _, _, _, _, .recTaggedUnion_mk l hwf t ht fields, env, h =>
       TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env h))
-  | _, _, _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases _ _, env, h =>
+  | _, _, _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases .., env, h =>
       TaggedUnionCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1)) h.2
-  | _, _, _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _ _ _, env, h =>
+  | _, _, _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt .., env, h =>
       TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1))
         (Term.eval G dflt env h.2.2) h.2.1
   | _, _, _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases _, env, h =>
@@ -215,10 +215,10 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (Term.eval G v env h.1)
   -- the other recursive shapes: no value of one is built, and one taken apart has none
   | _, _, _, _, .recObject_mk _ _ _, _, h => h.elim
-  | _, _, _, _, .recObject_casesOn v _ _ _ _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .recObject_casesOn v .., env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .recObject_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .recAlias_mk _ _ _, _, h => h.elim
-  | _, _, _, _, .recAlias_casesOn v _ _ _ _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .recAlias_casesOn v .., env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .recAlias_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _, _, h => h.elim
   | _, _, _, _, .mutualRecursiveFamily_casesOn v _ _ _, env, h => PEmpty.elim (Term.eval G v env h)
@@ -442,7 +442,7 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf} (G : GlobalEnv Sg.decls)
 /-- `let x = e; body` binds the value of `e`. -/
 theorem Term.eval_letE {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
     (e : Term Sg Γ u σ ke) (body : Term Sg (σ :: Γ) v τ kb)
-    (hValue : ke = .comp ∨ ke = .ctor ∨ ke = .val ∨ ke = .caseIntro ∨ ke = .caseCtor) (hUsed : 2 ≤ Usage.head v)
+    (hValue : Head.isBindable ke = true) (hUsed : 2 ≤ Usage.head v)
     (hClosed : Head.closedComp (Usage.letU u v) τ kb = false) (env : Env Γ)
     (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
     Term.eval G (.letE e body hValue hUsed hClosed) env ⟨he, hb⟩ =

@@ -100,4 +100,13 @@ macro "not_closed" : tactic =>
     | (simp [LeanScript.Head.closedComp, LeanScript.Usage.closed]; done)
     | decide)
 
+/-- Close a goal about the **heads** of the subterms of a node (`LeanScript.Head`): that it
+    is not a redex (`Head.isKnown kx = false`, `Head.rescrutinizes kx w = false`, …).  For a
+    term written out, `decide` computes it; in a context with a variable part
+    (`{Γ : Ctx}`), which `decide` refuses — the head of a variable records its de Bruijn
+    index, `Var.index x`, which mentions the context — it still reduces (`rfl`, after
+    `intro` for an implication).  When the node is a redex, the last `decide` reports it. -/
+macro "head_ok" : tactic =>
+  `(tactic| first | decide | rfl | (intro _; rfl) | decide)
+
 end

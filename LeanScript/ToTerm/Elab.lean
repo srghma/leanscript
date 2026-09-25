@@ -133,6 +133,8 @@ def elabLeanscriptOptimize : TermElab := fun stx expected? => do
       pure t
     catch ex =>
       Core.setMessageLog written
+      -- `t` as written has errors of its own (the rebuild met one of them): report those
+      if written.hasErrors then return e
       throw ex
   if t.hasSorry || t.hasExprMVar then
     -- something other than a side condition is wrong: report `t` as written

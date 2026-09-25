@@ -42,7 +42,7 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
     arguments, before it reaches `Nat.add`.) -/
 def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Option String
-  | .lam b => externForm? b
+  | .lam b _ => externForm? b
   | .ap f a _ _ => externForm? f <|> externForm? a
   | .letE a b _ _ _ => externForm? a <|> externForm? b
   | .extern _ _ => some "extern"

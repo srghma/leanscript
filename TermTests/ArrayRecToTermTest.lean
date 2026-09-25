@@ -65,7 +65,7 @@ def arrayRecDepthOf? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
     `none` if the translation is not of that shape. -/
 def arrayRecDepth? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
     Term sig0 Γ u τ h → Option Nat
-  | .lam b => arrayRecDepthOf? b
+  | .lam b _ => arrayRecDepthOf? b
   | _ => none
 
 /-! ## `k = 0`: the sum of an array

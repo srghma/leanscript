@@ -45,6 +45,7 @@ example := (.extern (.lean_nat_add 2 3) : Term ⟨[], rfl⟩ [] _ (.prim .nat) .
 
 -- Nor is an extern on values that answers with a list (`"ab".toList` is `['a', 'b']`), an
 -- option, a pair or a checked position: every value of those can be written as a term.
+-- (`#leanscript_optimize (.extern …)` writes that value instead: `TermTests/OptimizeTest`.)
 /--
 error: could not synthesize default value for parameter 'h' using tactics
 ---

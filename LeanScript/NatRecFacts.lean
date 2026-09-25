@@ -148,7 +148,7 @@ variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls) {u ub : Usage 
     {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
     (nT : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
     (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
-    (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w)) (hStep : k = 0 → kb ≠ .var)
+    (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w)) (hStep : k = 0 → Head.isVar kb = false)
     (hClosed : Head.closedComp (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp = false)
     (env : Env Γ) (h : Term.NoRecMk (Term.nat_rec k nT base branch hRec hStep hClosed))
 

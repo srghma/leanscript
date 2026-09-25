@@ -73,6 +73,11 @@ structure Usage (Γ : Ctx) : Type where
   /-- How many times a free name — a variable of `Γ` or a declaration of the signature —
       is used, in total. -/
   free : Nat
+  /-- How many times each variable of `Γ`, by de Bruijn index, is **taken apart**: is the
+      scrutinee of a dispatch (`Usage.scrutinize`).  A dispatch on a variable asks that
+      its branches do not take that variable apart again (`Head.rescrutinizes`): in each
+      branch the constructor is known. -/
+  scrut : Nat → Nat
 
 namespace Usage
 
@@ -81,13 +86,15 @@ variable {Γ : Ctx} {σ : TyWf}
 instance : CoeFun (Usage Γ) (fun _ => (τ : TyWf) → Var Γ τ → Nat) := ⟨Usage.count⟩
 
 /-- No variable is used. -/
-def zero : Usage Γ := ⟨fun _ _ => 0, 0⟩
+def zero : Usage Γ := ⟨fun _ _ => 0, 0, fun _ => 0⟩
 
 /-- Pointwise sum: the uses of two subterms. -/
-def add (u v : Usage Γ) : Usage Γ := ⟨fun τ x => u.count τ x + v.count τ x, u.free + v.free⟩
+def add (u v : Usage Γ) : Usage Γ :=
+  ⟨fun τ x => u.count τ x + v.count τ x, u.free + v.free, fun i => u.scrut i + v.scrut i⟩
 
 /-- Scaling: the uses of a subterm copied `k` times. -/
-def smul (k : Nat) (u : Usage Γ) : Usage Γ := ⟨fun τ x => k * u.count τ x, k * u.free⟩
+def smul (k : Nat) (u : Usage Γ) : Usage Γ :=
+  ⟨fun τ x => k * u.count τ x, k * u.free, fun i => k * u.scrut i⟩
 
 instance : Zero (Usage Γ) := ⟨zero⟩
 
@@ -107,20 +114,25 @@ def many (u : Usage Γ) : Usage Γ := smul 2 u
 /-- The grade vector of a reference to a top-level declaration (`Term.global`): no
     variable of `Γ` is used, but a free name is — the term is not closed, since the value
     of the declaration is only known when the term runs. -/
-def global : Usage Γ := ⟨fun _ _ => 0, 1⟩
+def global : Usage Γ := ⟨fun _ _ => 0, 1, fun _ => 0⟩
 
 /-- Extend a grade vector by the grade `k` of a newly bound variable. -/
 def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) :=
   ⟨fun _ x =>
     match x with
     | .head => k
-    | .tail y => u.count _ y, k + u.free⟩
+    | .tail y => u.count _ y, k + u.free,
+   fun i =>
+    match i with
+    | 0 => 0
+    | i + 1 => u.scrut i⟩
 
 /-- The grade of the innermost variable. -/
 def head (u : Usage (σ :: Γ)) : Nat := u.count σ .head
 
 /-- Forget the innermost variable. -/
-def tail (u : Usage (σ :: Γ)) : Usage Γ := ⟨fun τ x => u.count τ x.tail, u.free - head u⟩
+def tail (u : Usage (σ :: Γ)) : Usage Γ :=
+  ⟨fun τ x => u.count τ x.tail, u.free - head u, fun i => u.scrut (i + 1)⟩
 
 /-- The grade vector of a single occurrence of `x`. -/
 def single : {Γ : Ctx} → {τ : TyWf} → Var Γ τ → Usage Γ
@@ -185,9 +197,14 @@ end Usage
 /-- What the root of a term is.  It is an index of `LeanScript.Term`, computed by the
     constructors, and it is what the proofs that a node is not a redex talk about. -/
 inductive Head where
-  /-- a variable, or a reference to a declaration of the signature: a name, which costs
-      nothing to repeat -/
-  | var
+  /-- the variable of de Bruijn index `i`: a name, which costs nothing to repeat.  The
+      head records **which** variable it is, so that the grammar can see that
+      `if c then x else x` is `x` (`Term.bool_casesOn`), and that `fun y => f y` applies
+      `f` to the variable the `fun` binds (`Head.app`, `Term.lam`). -/
+  | var (i : Nat)
+  /-- a reference to a declaration of the signature: a name, which costs nothing to
+      repeat -/
+  | global
   /-- a `fun` -/
   | lam
   /-- a literal: a value of a primitive type, or a constructor of an enum -/
@@ -202,6 +219,11 @@ inductive Head where
   /-- a computation: an application, a dispatch, a fold or an extern (a `let` has the
       head of its body) -/
   | comp
+  /-- an **application** `f a`: a computation like `Head.comp`, which records whether `a`
+      is the innermost variable (de Bruijn index `0`) — what lets the grammar see an
+      η-redex: `fun x => f x`, where `f` does not read `x`, is `f` (`Term.lam`).  A `let`
+      forgets it (`Head.underBinder`): under a `let`, index `0` is the `let`'s variable. -/
+  | app (onVar0 : Bool)
   /-- a **closed value** that is not a literal: an array, a record, a tagged value or a
       value of a recursive tagged union whose fields are all literals or closed values,
       or a delay of one.  It is a constructor like `Head.ctor` (a
@@ -303,10 +325,74 @@ def isCtorLike : Head → Bool
     dispatch (`Head.comp`, `Head.caseIntro`, `Head.caseCtor`) — rather than a name, a `fun`,
     a literal or a constructor? -/
 def isComp : Head → Bool
-  | .comp | .caseIntro | .caseCtor => true
+  | .comp | .app _ | .caseIntro | .caseCtor => true
   | _ => false
 
+/-- Is this head a variable (not a reference to a declaration)? -/
+def isVar : Head → Bool
+  | .var _ => true
+  | _ => false
+
+/-- May a `let` bind a term of this head: a computation (whose value it shares) or a
+    constructor (whose fields it shares)?  A variable, a `fun` or a literal is inlined:
+    binding it saves nothing (`Term.letE`). -/
+def isBindable (k : Head) : Bool := k.isComp || k.isCtor
+
+/-- Is this head the innermost variable, de Bruijn index `0`?  An application to it is
+    what an η-redex's body is (`Head.app`, `Term.ap`). -/
+def isVar0 : Head → Bool
+  | .var 0 => true
+  | _ => false
+
+/-- The head of a `let` whose body has head `k`: the body's, except that an application to
+    the innermost variable is one to the `let`'s variable, which is no longer innermost
+    outside it (`Term.letE`). -/
+def underBinder : Head → Head
+  | .app _ => .app false
+  | k => k
+
+/-- Is `fun x => b`, where `b` has head `kb` and reads `x` `n` times, an **η-redex**:
+    `b` is `f x` (`Head.app true`), and `x` is read only there — `f` does not read it —
+    so the `fun` is `f`?  `Term.lam` asks that it is not. -/
+def isEtaRedex : Head → Nat → Bool
+  | .app onVar0, n => n == 1 && onVar0
+  | _, _ => false
+
+/-- Are these the heads of two terms that are **the same leaf**: the same variable, or the
+    same boolean literal?  A dispatch whose branches are the same leaf — `if c then x else
+    x`, or `if c then true else true` (what `c || true` is) — is that leaf, the language
+    being pure and total (`Term.bool_casesOn`). -/
+def sameLeaf : Head → Head → Bool
+  | .var i, .var j => i == j
+  | .bool a, .bool b => a == b
+  | _, _ => false
+
 end Head
+
+/-- The grades of a **dispatch** on a scrutinee of head `k`, whose parts have grades `u`:
+    `u`, and when the scrutinee is the variable of de Bruijn index `i` (`Head.var`), one
+    more use of `i` **as a scrutinee** (`Usage.scrut`).  This is what lets a dispatch on
+    `i` further out see that it is taken apart again in one of its branches. -/
+def Usage.scrutinize {Γ : Ctx} (k : Head) (u : Usage Γ) : Usage Γ :=
+  match k with
+  | .var i => ⟨u.count, u.free, fun j => if j = i then u.scrut j + 1 else u.scrut j⟩
+  | _ => u
+
+@[simp] theorem Usage.free_scrutinize {Γ : Ctx} (k : Head) (u : Usage Γ) :
+    (Usage.scrutinize k u).free = u.free := by
+  cases k <;> rfl
+
+/-- Does a dispatch on a scrutinee of head `k` whose branches have grades `w` take the
+    scrutinee apart **again** in a branch: is the scrutinee a variable (`Head.var i`) that
+    a dispatch in the branches is on too (`Usage.scrut`)?  That inner dispatch is a
+    redex — **case of a known constructor**: in each branch the constructor of `i` is the
+    branch's own, and its fields are bound — so a dispatch on a variable asks that this is
+    `false`.  `match o with | some x => … (match o with | some y => f y | none => d) …` is
+    `match o with | some x => … f x …`. -/
+def Head.rescrutinizes {Γ : Ctx} (k : Head) (w : Usage Γ) : Bool :=
+  match k with
+  | .var i => w.scrut i != 0
+  | _ => false
 
 /-- Is a term of grades `u`, type `τ` and head `k` a **closed computation that can be
     written as its value**: a computation (`Head.isComp`) that reads no variable and no

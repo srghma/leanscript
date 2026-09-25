@@ -70,7 +70,7 @@ def sumBelowFn_term :=
 
 /-- Is this term `fun n => nat_rec …`? -/
 def isNatRecFn {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} : Term sig0 Γ u τ h → Bool
-  | .lam (.nat_rec ..) => true
+  | .lam (.nat_rec ..) _ => true
   | _ => false
 
 example : isNatRecFn sumBelowFn_term = true := rfl
@@ -138,7 +138,7 @@ error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.closedComp ((0 + (0 + 0)).letU (Usage.single DeBruijn.head + (Usage.single DeBruijn.head + 0 + 0)))
-      (TyWf.prim LeanPrimTy.nat).array.array Head.comp =
+      (Coe.coe (LeanPrimTyCovariant.array (TyWf.prim LeanPrimTy.nat).array)) Head.comp =
     false
 is false
 ---

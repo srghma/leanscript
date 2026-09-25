@@ -84,7 +84,7 @@ def substringIgnored :=
 error: could not synthesize default value for parameter 'hStep' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  0 = 0 → Head.var ≠ Head.var
+  0 = 0 → (Head.var (Var.index DeBruijn.head.tail)).isVar = false
 is false
 -/
 #guard_msgs (error) in
@@ -115,7 +115,7 @@ example : run constDown_term 0 = 7 := rfl
 example : run constDown_term 9 = 7 := rfl
 
 /--
-info: (Term.nat_mk 7).lam
+info: (Term.nat_mk 7).lam ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) constDown_term
@@ -135,7 +135,7 @@ example : run constArr_term #[] = 3 := rfl
 example : run constArr_term #[1, 2, 3] = 3 := rfl
 
 /--
-info: (Term.nat_mk 3).lam
+info: (Term.nat_mk 3).lam ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) constArr_term
@@ -149,7 +149,7 @@ def ignorePair_term :=
   (#leanscript_to_term ignorePair : Term sig0 [] _ (tyWfOf (Nat × Nat) ⇒ TyWf.prim .nat) .lam)
 
 /--
-info: (Term.nat_mk 5).lam
+info: (Term.nat_mk 5).lam ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ignorePair_term
@@ -168,9 +168,10 @@ example : run deadField_term (cast (Ty.denRecord_eq _).symm ((3, 4, ()) : Nat ×
     11 := rfl
 
 /--
-info: (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
-      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) deadField_term._proof_2
-      ⋯).lam.lam
+info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯).lam
+      ⋯).lam
+  ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) deadField_term

@@ -41,14 +41,14 @@ mutual
 /-- The term builds no value of a recursive record, newtype or mutual family, so
     `Term.eval` can interpret it.  See this section's header. -/
 def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → Term Sg Γ u τ hd → Prop
-  | _, _, _, _, .lam body => Term.NoRecMk body
+  | _, _, _, _, .lam body _ => Term.NoRecMk body
   | _, _, _, _, .ap f a _ _ => Term.NoRecMk f ∧ Term.NoRecMk a
   | _, _, _, _, .letE e body _ _ _ => Term.NoRecMk e ∧ Term.NoRecMk body
   -- externs applied to terms
   | _, _, _, _, .externCall args _ _ _ => Spine.NoRecMk args
   | _, _, _, _, .externCallChecked args _ fallback _ _ => Spine.NoRecMk args ∧ Term.NoRecMk fallback
   -- case analysis on a leaf
-  | _, _, _, _, .bool_casesOn c t e _ _ => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
+  | _, _, _, _, .bool_casesOn c t e .. => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
   | _, _, _, _, .nat_casesOn n z s _ => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
   | _, _, _, _, .nat_rec _ n base branch _ _ _ =>
       Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
@@ -80,31 +80,31 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   | _, _, _, _, .array_rec _ a bases branch _ _ _ =>
       Term.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
   -- enums
-  | _, _, _, _, .enum_casesOn e cases _ => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
-  | _, _, _, _, .enum_casesOnWithDefault e cases dflt _ _ =>
+  | _, _, _, _, .enum_casesOn e cases .. => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
+  | _, _, _, _, .enum_casesOnWithDefault e cases dflt .. =>
       Term.NoRecMk e ∧ EnumSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   -- records and tagged unions
   | _, _, _, _, .record_mk _ fields => Spine.NoRecMk fields
-  | _, _, _, _, .record_casesOn r body _ _ _ => Term.NoRecMk r ∧ Term.NoRecMk body
+  | _, _, _, _, .record_casesOn r body .. => Term.NoRecMk r ∧ Term.NoRecMk body
   | _, _, _, _, .taggedUnion_mk _ _ _ fields => Spine.NoRecMk fields
-  | _, _, _, _, .taggedUnion_casesOn v cases _ _ => Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
-  | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _ _ _ =>
+  | _, _, _, _, .taggedUnion_casesOn v cases .. => Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
+  | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt .. =>
       Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   -- recursive tagged unions have values: their forms are interpreted like the others
   | _, _, _, _, .recTaggedUnion_mk _ _ _ _ fields => Spine.NoRecMk fields
-  | _, _, _, _, .recTaggedUnion_casesOn v cases _ _ =>
+  | _, _, _, _, .recTaggedUnion_casesOn v cases .. =>
       Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
-  | _, _, _, _, .recTaggedUnion_casesOnWithDefault v cases dflt _ _ _ =>
+  | _, _, _, _, .recTaggedUnion_casesOnWithDefault v cases dflt .. =>
       Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   | _, _, _, _, .recTaggedUnion_rec _ v cases _ =>
       Term.NoRecMk v ∧ TaggedUnionFoldKCases.NoRecMk cases
   -- the other three recursive shapes: an introduction form has no value in this model,
   -- and an eliminator needs nothing of its branches, since its scrutinee has none either
   | _, _, _, _, .recObject_mk _ _ _ => False
-  | _, _, _, _, .recObject_casesOn v _ _ _ _ => Term.NoRecMk v
+  | _, _, _, _, .recObject_casesOn v .. => Term.NoRecMk v
   | _, _, _, _, .recObject_rec _ v _ _ => Term.NoRecMk v
   | _, _, _, _, .recAlias_mk _ _ _ => False
-  | _, _, _, _, .recAlias_casesOn v _ _ _ _ => Term.NoRecMk v
+  | _, _, _, _, .recAlias_casesOn v .. => Term.NoRecMk v
   | _, _, _, _, .recAlias_rec _ v _ _ => Term.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _ => False
   | _, _, _, _, .mutualRecursiveFamily_casesOn v _ _ _ => Term.NoRecMk v

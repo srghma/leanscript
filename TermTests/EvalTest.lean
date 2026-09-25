@@ -57,7 +57,7 @@ def letSix :=
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A call of the one declaration of `doubleSig`. -/
-def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) .comp)
+def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) (.app false))
 
 example : run idNat 7 = 7 := rfl
 -- `Term.run'` is the same thing for a module that declares nothing.

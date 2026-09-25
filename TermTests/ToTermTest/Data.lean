@@ -36,13 +36,13 @@ def usesB : Nat := twiceB 2
 
 def usesAagain : Nat := twiceA 5
 
-def usesA_term := (#leanscript_to_term usesA : Term sigAdd [] _ (TyWf.prim .nat) .comp)
+def usesA_term := (#leanscript_to_term usesA : Term sigAdd [] _ (TyWf.prim .nat) (.app false))
 
 /-- `twiceB` has the shape of `twiceA`, which is translated already. -/
-def usesB_term := (#leanscript_to_term usesB : Term sigAdd [] _ (TyWf.prim .nat) .comp)
+def usesB_term := (#leanscript_to_term usesB : Term sigAdd [] _ (TyWf.prim .nat) (.app false))
 
 /-- `twiceA` is translated already: this is a plain cache hit. -/
-def usesAagain_term := (#leanscript_to_term usesAagain : Term sigAdd [] _ (TyWf.prim .nat) .comp)
+def usesAagain_term := (#leanscript_to_term usesAagain : Term sigAdd [] _ (TyWf.prim .nat) (.app false))
 
 example : runAdd usesA_term = 4 := rfl
 example : runAdd usesB_term = 4 := rfl

@@ -237,6 +237,18 @@ error: Unknown constant `LeanScript.CtorsWithPayloadCases.nil`
 
 Note: Inferred this name from the expected resulting type of `.nil`:
   CtorsWithPayloadCases ?m.45 ?m.46 ?m.42 ?m.40 (TyWf.prim LeanPrimTy.nat) ?m.44
+---
+error: could not synthesize default value for parameter 'hKnown' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.var (Var.index DeBruijn.head)).rescrutinizes (0 + ?m.54) = false
+---
+error: could not synthesize default value for parameter 'hEta' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.lit.join ?m.32).isEtaRedex
+      (Usage.scrutinize (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head + (0 + ?m.54))).head =
+    false
 -/
 #guard_msgs (error) in
 def natHeadNotExhaustive :=
@@ -253,7 +265,7 @@ has type
   FamilyFoldKCases ?m.109 ?m.110 ?m.111 ?m.112 ?m.113 0 ?m.114 [] ?m.115
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    ?m.118 (TyWf.prim LeanPrimTy.nat) [memberB] 0
+    ?m.119 (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
   FamilyFoldKCases.cons
     (FamilyMemberFoldKCases.ctors

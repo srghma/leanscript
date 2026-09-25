@@ -35,15 +35,15 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 /-- The number of `if`s (`Term.bool_casesOn`) in the term, looking under binders,
     applications and `let`s. -/
 def ifs {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Nat
-  | .lam b => ifs b
+  | .lam b _ => ifs b
   | .ap f a _ _ => ifs f + ifs a
   | .letE a b _ _ _ => ifs a + ifs b
-  | .bool_casesOn c t e _ _ => 1 + ifs c + ifs t + ifs e
+  | .bool_casesOn c t e .. => 1 + ifs c + ifs t + ifs e
   | _ => 0
 
 /-- Whether the term is `fun x₁ … xₙ => y` for a variable `y`. -/
 def lamsOfVar {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Bool
-  | .lam b => lamsOfVar b
+  | .lam b _ => lamsOfVar b
   | .var _ => true
   | _ => false
 
@@ -51,9 +51,9 @@ def lamsOfVar {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u 
     step — a fold at a function type, which builds one closure per step. -/
 def foldsClosures {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Bool
-  | .lam b => foldsClosures b
+  | .lam b _ => foldsClosures b
   | .letE a b _ _ _ => foldsClosures a || foldsClosures b
-  | .nat_rec _ _ _ (.lam _) .. => true
+  | .nat_rec _ _ _ (.lam _ _) .. => true
   | .nat_rec _ _ _ b .. => foldsClosures b
   | _ => false
 

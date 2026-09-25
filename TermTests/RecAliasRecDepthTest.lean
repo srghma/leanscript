@@ -340,35 +340,63 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isKnown ?m.65 = false
+  Head.isKnown ?m.96 = false
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (LeanRecordSchema.toList ?m.94) 0
+  0 < Usage.front (LeanRecordSchema.toList ?m.98) 0
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.closedComp (?m.93 + Usage.drop (LeanRecordSchema.toList ?m.94) 0) natT (Head.lit.join Head.empty) = false
+  Head.closedComp (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0) natT (Head.lit.join Head.empty) = false
+---
+error: could not synthesize default value for parameter 'hKnown' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.rescrutinizes ?m.96 (Usage.drop (LeanRecordSchema.toList ?m.98) 0) = false
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (linkSchema (treeTy natT 0)).toList (?m.93 + Usage.drop (LeanRecordSchema.toList ?m.94) 0)
+  0 <
+    Usage.front (linkSchema (treeTy natT 0)).toList
+      (Usage.scrutinize ?m.96 (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0))
+---
+error: could not synthesize default value for parameter 'hKnown' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.var (Var.index DeBruijn.head)).rescrutinizes
+      (Usage.drop (linkSchema (treeTy natT 0)).toList
+        (Usage.scrutinize ?m.96 (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0))) =
+    false
+---
+error: could not synthesize default value for parameter 'hKnown' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.var (Var.index DeBruijn.head.tail)).rescrutinizes
+      (0 +
+        (Usage.drop { head := linkTy (treeTy natT 0), tail := [] }.toList
+            (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
+              (Usage.single DeBruijn.head +
+                Usage.drop (linkSchema (treeTy natT 0)).toList
+                  (Usage.scrutinize ?m.96 (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0)))) +
+          0)) =
+    false
 ---
 error: Application type mismatch: The argument
   Term.var DeBruijn.head.tail
 has type
-  Term ?m.67 (?m.72 :: ?m.75 :: ?m.76) (Usage.single DeBruijn.head.tail) ?m.75 Head.var
+  Term ?m.67 (?m.72 :: ?m.75 :: ?m.76) (Usage.single DeBruijn.head.tail) ?m.75 (Head.var (Var.index DeBruijn.head.tail))
 but is expected to have type
   Term sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    ?m.93 (TyWf.record ?m.94) ?m.65
+    ?m.97 (TyWf.record ?m.98) ?m.96
 in the application
   @Term.record_casesOn sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    natT ?m.94 ?m.93 0 ?m.65 Head.lit (Term.var DeBruijn.head.tail)
+    natT ?m.98 ?m.97 0 ?m.96 Head.lit (Term.var DeBruijn.head.tail)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

@@ -46,7 +46,7 @@ def letTwice :=
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- A call of the one declaration of `doubleSig`. -/
-def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) .comp)
+def callDouble := (.ap (.global .here) (.nat_mk 21) : Term doubleSig [] _ (TyWf.prim .nat) (.app false))
 
 /-! ## Literals -/
 
@@ -89,7 +89,7 @@ def foldNat :=
 error: could not synthesize default value for parameter 'hStep' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  0 = 0 → Head.var ≠ Head.var
+  0 = 0 → (Head.var (Var.index DeBruijn.head.tail)).isVar = false
 is false
 -/
 #guard_msgs (error) in
@@ -152,7 +152,7 @@ def foldArray :=
 error: could not synthesize default value for parameter 'hStep' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  0 = 0 → Head.var ≠ Head.var
+  0 = 0 → (Head.var (Var.index DeBruijn.head.tail.tail)).isVar = false
 is false
 -/
 #guard_msgs (error) in
@@ -465,22 +465,21 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs (error) in
-def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyWf.prim .nat) .comp)
+def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyWf.prim .nat) (.app false))
 
 -- A `let` of a literal: `let x = 3; x + x`.  A value is inlined, never bound.
 /--
 error: could not synthesize default value for parameter 'hValue' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lit = Head.comp ∨
-    Head.lit = Head.ctor ∨ Head.lit = Head.val ∨ Head.lit = Head.caseIntro ∨ Head.lit = Head.caseCtor
+  Head.lit.isBindable = true
 is false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.closedComp (Usage.letU 0 (Usage.single DeBruijn.head + (Usage.single DeBruijn.head + 0)))
-      (TyWf.prim LeanPrimTy.nat) Head.comp =
+      (Coe.coe LeanPrimTy.nat) Head.comp =
     false
 is false
 -/
@@ -548,7 +547,7 @@ error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.closedComp (0 + (0 + 0) + Usage.drop pairSchema.toList (Usage.single DeBruijn.head)) pairSchema.fst
-      (Head.var.join Head.empty) =
+      ((Head.var (Var.index DeBruijn.head)).join Head.empty) =
     false
 is false
 -/
