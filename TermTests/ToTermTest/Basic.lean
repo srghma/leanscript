@@ -159,7 +159,7 @@ def orZero_term :=
 
 def someThree : Option Nat := some 3
 
-def someThree_term := (#leanscript_to_term someThree : Term sig0 [] _ (tyWfOf (Option Nat)) .ctor)
+def someThree_term := (#leanscript_to_term someThree : Term sig0 [] _ (tyWfOf (Option Nat)) .val)
 
 example : run orZero_term (run someThree_term) = 3 := rfl
 
@@ -212,7 +212,7 @@ run like any other; `Ty.DenRec.toList` reads a list back as a Lean list to compa
 
 def digitList : List Nat := [1, 2, 3]
 
-def digitList_term := (#leanscript_to_term digitList : Term sig0 [] _ (tyWfOf (List Nat)) .ctor)
+def digitList_term := (#leanscript_to_term digitList : Term sig0 [] _ (tyWfOf (List Nat)) .val)
 
 def prepend (n : Nat) (l : List Nat) : List Nat := n :: l
 

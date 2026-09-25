@@ -86,9 +86,13 @@ proof to the entry, with a fallback for the values that do not satisfy it (a Lea
 cannot give those).  When every argument is a literal or a closed value, the call is not
 kept at all: its value is computed where the term is written (`Extern.eval`, compiled)
 and written as a term — `1 + 2` is the literal `3` and `#[1, 2, 3][1]` is `2` — which the
-grammar demands whenever the result type has such a form (`TyWf.quotable`); only an
-extern whose result cannot be written (a list, an option, a function, …) stays, as
-`Term.extern` with the program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
+grammar demands whenever the result type has such a form (`TyWf.quotable`: every type
+that holds no function — `"ab".toList` is the list `['a', 'b']`, `Float.frExp 8.0` the
+pair `(0.5, 4)`); only an extern whose result is a function, or holds one, stays, as
+`Term.extern` with the program's own proof.  A list, an option or a record of literals is
+itself a closed value, so an extern called on one (`String.ofList ['a', 'b']`) is
+computed too, and so is a value of a terminal type built from literals
+(`String.Pos.Raw.mk 1`).  `Nat.gcd` is the exception: it is treated as if it had no
 `@[extern]`, and `Nat.gcd._unary` is read as `Nat.gcd`.
 
 Every **other** top-level function must be declared in the signature: it is translated

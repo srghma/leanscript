@@ -120,10 +120,10 @@ example : run appIfDef_term false 5 = 10 := rfl
 /--
 info: ((Term.var DeBruijnProj.head.tail).bool_casesOn
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) appIfDef_term._proof_4)
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) appIfDef_term._proof_4 ⋯)
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 2) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4)
-      appIfDef_term._proof_5 appIfDef_term._proof_6).lam.lam
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4 ⋯)
+      appIfDef_term._proof_6 appIfDef_term._proof_7).lam.lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) appIfDef_term
@@ -142,13 +142,13 @@ example : run appIfCompDef_term true 3 = 18 := rfl
 /--
 info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
           (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1))
-          appIfCompDef_term._proof_1).letE
+          appIfCompDef_term._proof_1 ⋯).letE
       ((Term.var DeBruijnProj.head.tail.tail).bool_casesOn
         (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
           (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
-          appIfCompDef_term._proof_1)
-        (Term.nat_mk 0) appIfDef_term._proof_5 appIfCompDef_term._proof_2)
-      appIfCompDef_term._proof_3 ⋯).lam.lam
+          appIfCompDef_term._proof_1 ⋯)
+        (Term.nat_mk 0) appIfDef_term._proof_6 appIfCompDef_term._proof_4)
+      appIfCompDef_term._proof_5 ⋯ ⋯).lam.lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) appIfCompDef_term
@@ -163,8 +163,8 @@ def forceIfDef_term :=
 
 /--
 info: ((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.nat_mk 5)
-      ((Term.var DeBruijnProj.head).thunk_force forceIfDef_term._proof_3) appIfDef_term._proof_5
-      forceIfDef_term._proof_4).lam.lam
+      ((Term.var DeBruijnProj.head).thunk_force forceIfDef_term._proof_3 ⋯) appIfDef_term._proof_6
+      forceIfDef_term._proof_5).lam.lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) forceIfDef_term
@@ -190,9 +190,9 @@ info: ((Term.var DeBruijnProj.head.tail).taggedUnion_casesOn
           (Term.externCall
             (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
             (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
-            appIfCompDef_term._proof_1)
+            appIfCompDef_term._proof_1 ⋯)
           TaggedUnionCasesRest.nil))
-      appMatchDef_term._proof_2).lam.lam
+      appMatchDef_term._proof_3 ⋯).lam.lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) appMatchDef_term
@@ -213,8 +213,8 @@ example : run foldNoAccDef_term 5 = 8 := rfl
 /--
 info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 7)
     (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 2) Spine.nil))
-      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4)
-    foldNoAccDef_term._proof_1).lam
+      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4 ⋯)
+    foldNoAccDef_term._proof_2).lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) foldNoAccDef_term
@@ -237,9 +237,9 @@ example : run deepNoAcc_term 5 = 13 := rfl
 info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 1)
     ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 2)
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 10) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) appIfDef_term._proof_4)
-      foldNoAccDef_term._proof_1)
-    foldNoAccDef_term._proof_1).lam
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) appIfDef_term._proof_4 ⋯)
+      foldNoAccDef_term._proof_2)
+    foldNoAccDef_term._proof_2).lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) deepNoAcc_term
@@ -265,9 +265,9 @@ example : run arrNoAcc_term #[1, 2, 3] = 3 := rfl
 info: ((Term.var DeBruijnProj.head).array_casesOn (Term.nat_mk 0)
     ((Term.var DeBruijnProj.head.tail).array_casesOn (Term.var DeBruijnProj.head)
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail.tail) (Spine.cons (Term.nat_mk 3) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4)
-      arrNoAcc_term._proof_2)
-    arrNoAcc_term._proof_2).lam
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) appIfDef_term._proof_4 ⋯)
+      arrNoAcc_term._proof_3 ⋯)
+    arrNoAcc_term._proof_3 ⋯).lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) arrNoAcc_term

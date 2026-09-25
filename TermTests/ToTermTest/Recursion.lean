@@ -72,11 +72,11 @@ def widthOrZero_term :=
 
 def aBox : Sized := .box 3 4
 
-def aBox_term := (#leanscript_to_term aBox : Term sig0 [] _ (tyWfOf Sized) .ctor)
+def aBox_term := (#leanscript_to_term aBox : Term sig0 [] _ (tyWfOf Sized) .val)
 
 def aPoint : Sized := .point
 
-def aPoint_term := (#leanscript_to_term aPoint : Term sig0 [] _ (tyWfOf Sized) .ctor)
+def aPoint_term := (#leanscript_to_term aPoint : Term sig0 [] _ (tyWfOf Sized) .val)
 
 example : run widthOrZero_term (run aBox_term) = 3 := rfl
 example : run widthOrZero_term (run aPoint_term) = 0 := rfl

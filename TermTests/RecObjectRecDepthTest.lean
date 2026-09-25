@@ -341,7 +341,24 @@ error: Expected type must not contain metavariables
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (LeanRecordSchema.toList ?m.95) 0
+  0 < Usage.front (LeanRecordSchema.toList ?m.98) 0
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.closedComp (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0) natT (Head.lit.join Head.empty) = false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.closedComp
+      (Usage.single DeBruijn.head.tail +
+        (0 +
+          (Usage.drop { head := treeTy natT 0, tail := [] }.toList
+              (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0) +
+            0)))
+      natT (Head.lit.join ((Head.lit.join Head.empty).join Head.empty)) =
+    false
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
@@ -351,7 +368,7 @@ error: Expected type must not contain metavariables
       (Usage.single DeBruijn.head.tail +
         (0 +
           (Usage.drop { head := treeTy natT 0, tail := [] }.toList
-              (?m.94 + Usage.drop (LeanRecordSchema.toList ?m.95) 0) +
+              (?m.97 + Usage.drop (LeanRecordSchema.toList ?m.98) 0) +
             0)))
 ---
 error: Application type mismatch: The argument
@@ -362,12 +379,12 @@ but is expected to have type
   Term sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    ?m.94 (TyWf.record ?m.95) ?m.73
+    ?m.97 (TyWf.record ?m.98) ?m.73
 in the application
   @Term.record_casesOn sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    natT ?m.95 ?m.94 0 ?m.73 Head.lit (Term.var DeBruijn.head)
+    natT ?m.98 ?m.97 0 ?m.73 Head.lit (Term.var DeBruijn.head)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

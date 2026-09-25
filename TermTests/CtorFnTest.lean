@@ -34,11 +34,11 @@ reused, not generated again: the constant is the one of that module. -/
 
 def some4 :=
   (#leanscript_ctor `Option `some natT (.nat_mk 4) :
-    Term sig [] _ (#leanscript_layout `Option `some natT) .ctor)
+    Term sig [] _ (#leanscript_layout `Option `some natT) .val)
 
 /--
 info: @[expose] def CtorFnTest.some4 : Term sig [] (0 + 0) (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT)
-  Head.ctor :=
+  (Head.ctorOf [Head.lit]) :=
 TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4)
 -/
 #guard_msgs in #print some4
@@ -51,19 +51,19 @@ example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := rfl
 
 def none' :=
   (#leanscript_ctor `Option `none natT :
-    Term sig [] _ (#leanscript_layout `Option `none natT) .ctor)
+    Term sig [] _ (#leanscript_layout `Option `none natT) .val)
 example : run none' = ⟨⟨0, by decide⟩, ()⟩ := rfl
 
 /-- A type with one constructor can be named alone. -/
 def pair :=
   (#leanscript_ctor `Prod natT boolT (.nat_mk 3) (.bool_mk true) :
-    Term sig [] _ (#leanscript_layout `Prod natT boolT) .ctor)
+    Term sig [] _ (#leanscript_layout `Prod natT boolT) .val)
 example : run pair = (3, true, ()) := rfl
 example : (#leanscript_layout `Prod natT boolT) = tyWfOf (Nat × Bool) := rfl
 
 def inr :=
   (#leanscript_ctor `Sum `inr natT stringT (.string_mk "x") :
-    Term sig [] _ (#leanscript_layout `Sum `inr natT stringT) .ctor)
+    Term sig [] _ (#leanscript_layout `Sum `inr natT stringT) .val)
 example : run inr = ⟨⟨1, by decide⟩, ("x", ())⟩ := rfl
 example : (#leanscript_layout `Sum `inr natT stringT) = tyWfOf (Nat ⊕ String) := rfl
 
@@ -81,7 +81,7 @@ def oneTwo :=
   (#leanscript_ctor `List `cons natT _ (.nat_mk 1)
      (#leanscript_ctor `List `cons natT _ (.nat_mk 2) (#leanscript_ctor `List `nil natT natT)) :
     Term sig [] _ (#leanscript_layout `List `cons natT
-    (#leanscript_layout `List `cons natT (#leanscript_layout `List `nil natT natT))) .ctor)
+    (#leanscript_layout `List `cons natT (#leanscript_layout `List `nil natT natT))) .val)
 example : run oneTwo =
     ⟨⟨1, by decide⟩, (1, ⟨⟨1, by decide⟩, (2, ⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩ := rfl
 
@@ -118,7 +118,8 @@ info: CtorFnTest.Fancy.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (S : TyWf) {o_usa
       (TyWf.taggedUnion (LeanTaggedUnionSchema.skip (CtorsWithPayload.here { head := S, tail := [] } []))) o_head)
   (l : Term Sg Γ l_usage (tyWfOf (List S.AsType)) l_head) (f : Term Sg Γ f_usage (S ⇒ S.array) f_head)
   (n : Term Sg Γ n_usage (TyWf.record { fst := TyWf.prim LeanPrimTy.nat, snd := S, rest := [] }) n_head) :
-  Term Sg Γ (o_usage + (l_usage + (f_usage + (n_usage + 0)))) (Fancy.leanScriptLayout S) Head.ctor
+  Term Sg Γ (o_usage + (l_usage + (f_usage + (n_usage + 0)))) (Fancy.leanScriptLayout S)
+    (Head.ctorOf [o_head, l_head, f_head, n_head])
 -/
 #guard_msgs in #leanscript_ctor `Fancy `mk
 
@@ -136,7 +137,7 @@ info: CtorFnTest.Vec.cons.leanScriptCtor {Sg : Sig} {Γ : Ctx} (α vTy : TyWf) {
   {a_usage : Usage Γ} {a_head : Head} {v_usage : Usage Γ} {v_head : Head}
   (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head) (a : Term Sg Γ a_usage α a_head)
   (v : Term Sg Γ v_usage vTy v_head) :
-  Term Sg Γ (n_usage + (a_usage + (v_usage + 0))) (Vec.leanScriptLayout α vTy) Head.ctor
+  Term Sg Γ (n_usage + (a_usage + (v_usage + 0))) (Vec.leanScriptLayout α vTy) (Head.ctorOf [n_head, a_head, v_head])
 -/
 #guard_msgs in #leanscript_ctor `Vec `cons
 
@@ -147,7 +148,8 @@ structure Dep where
 /--
 info: CtorFnTest.Dep.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (fTy : TyWf) {n_usage : Usage Γ} {n_head : Head}
   {f_usage : Usage Γ} {f_head : Head} (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head)
-  (f : Term Sg Γ f_usage fTy f_head) : Term Sg Γ (n_usage + (f_usage + 0)) (Dep.leanScriptLayout fTy) Head.ctor
+  (f : Term Sg Γ f_usage fTy f_head) :
+  Term Sg Γ (n_usage + (f_usage + 0)) (Dep.leanScriptLayout fTy) (Head.ctorOf [n_head, f_head])
 -/
 #guard_msgs in #leanscript_ctor `Dep `mk
 
@@ -167,7 +169,8 @@ end
 info: CtorFnTest.Client.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (Req Resp ClientState sendTy : TyWf) {seed_usage : Usage Γ}
   {seed_head : Head} {send_usage : Usage Γ} {send_head : Head} (seed : Term Sg Γ seed_usage ClientState seed_head)
   (send : Term Sg Γ send_usage (ClientState ⇒ TyWf.record { fst := Req, snd := sendTy, rest := [] }) send_head) :
-  Term Sg Γ (seed_usage + (send_usage + 0)) (Client.mk.leanScriptLayout Req Resp ClientState sendTy) Head.ctor
+  Term Sg Γ (seed_usage + (send_usage + 0)) (Client.mk.leanScriptLayout Req Resp ClientState sendTy)
+    (Head.ctorOf [seed_head, send_head])
 -/
 #guard_msgs in #leanscript_ctor `Client `mk
 

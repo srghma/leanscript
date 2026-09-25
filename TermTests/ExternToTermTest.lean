@@ -43,11 +43,11 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Option String
   | .lam b => externForm? b
-  | .ap f a _ => externForm? f <|> externForm? a
-  | .letE a b _ _ => externForm? a <|> externForm? b
+  | .ap f a _ _ => externForm? f <|> externForm? a
+  | .letE a b _ _ _ => externForm? a <|> externForm? b
   | .extern _ _ => some "extern"
-  | .externCall _ _ _ => some "externCall"
-  | .externCallChecked _ _ _ _ => some "externCallChecked"
+  | .externCall _ _ _ _ => some "externCall"
+  | .externCallChecked _ _ _ _ _ => some "externCallChecked"
   | _ => none
 
 /-! ## An extern without a proof: `Term.externCall` -/
@@ -155,14 +155,118 @@ def abcLength_term := (#leanscript_to_term abcLength : Term sig0 [] _ (TyWf.prim
 example : run twoIsTwo_term = true := rfl
 example : run abcLength_term = 3 := rfl
 
-/-- An extern whose result is not quotable (a list, a recursive tagged union) stays an
-    extern on values: `Term.extern`. -/
+/-! ## Results that are lists, options, pairs, positions and float models
+
+Every value that holds no function can be written as a term (`TyWf.quotable`), so an
+extern on values is computed whatever its result: a list is written as its constructors,
+an `Option` as `none` or `some`, a pair as the record of its fields, a checked position or
+a string slice as its literal (whose validity proof is rebuilt by `decide`). -/
+
+/-- `"ab".toList` is the list `['a', 'b']`, written out: a closed value (`Head.val`). -/
 def chars : List Char := "ab".toList
 
-def chars_term := (#leanscript_to_term chars : Term sig0 [] _ (tyWfOf (List Char)) .comp)
+def chars_term := (#leanscript_to_term chars : Term sig0 [] _ (tyWfOf (List Char)) .val)
 
-example : externForm? chars_term = some "extern" := rfl
+example : externForm? chars_term = none := rfl
 example : Ty.DenRec.toList (.prim .char) (run chars_term) = ['a', 'b'] := by decide
+
+/-- An `Option`: the character at byte `1` of `"ab"` is `some 'b'`.  (The raw position
+    `⟨1⟩` is a value of a terminal type built from a literal: it is computed too.) -/
+def secondChar : Option Char := String.Pos.Raw.get? "ab" ⟨1⟩
+
+def secondChar_term :=
+  (#leanscript_to_term secondChar : Term sig0 [] _ (tyWfOf (Option Char)) .val)
+
+example : externForm? secondChar_term = none := rfl
+example : run secondChar_term = TyWf.Den.ofOption (α := .prim .char) (some 'b') := rfl
+
+/-- …and at byte `5` it is `none`. -/
+def noChar : Option Char := String.Pos.Raw.get? "ab" ⟨5⟩
+
+def noChar_term := (#leanscript_to_term noChar : Term sig0 [] _ (tyWfOf (Option Char)) .val)
+
+example : externForm? noChar_term = none := rfl
+example : run noChar_term = TyWf.Den.ofOption (α := .prim .char) none := rfl
+
+/-- A pair: `Float.frExp 8.0` is the record of its two fields. -/
+def frexpEight : Float × Int := Float.frExp 8.0
+
+def frexpEight_term :=
+  (#leanscript_to_term frexpEight : Term sig0 [] _ (tyWfOf (Float × Int)) .val)
+
+example : externForm? frexpEight_term = none := rfl
+
+/-- A field of that pair: the dispatch on the computed record is reduced as well, so the
+    term is the literal `4`. -/
+def frexpEightExp : Int := (Float.frExp 8.0).2
+
+def frexpEightExp_term :=
+  (#leanscript_to_term frexpEightExp : Term sig0 [] _ (tyWfOf Int) .lit)
+
+example : run frexpEightExp_term = 4 := rfl
+
+/-- A checked position: `"ab".startPos.next h` is the literal position `1` into `"ab"`,
+    with its validity proved by `decide`. -/
+def secondPos : ("ab" : String).Pos := ("ab" : String).startPos.next (by decide)
+
+def secondPos_term :=
+  (#leanscript_to_term secondPos : Term sig0 [] _ (TyWf.prim (.stringPos "ab")) .lit)
+
+example : externForm? secondPos_term = none := rfl
+example : run secondPos_term = ("ab" : String).startPos.next (by decide) := by decide
+
+/-- The model of a float: `Float.toModel 1.5` is the literal of its bits, whose validity is
+    proved by `decide`. -/
+def modelOfOneHalf : Float.Model := Float.toModel 1.5
+
+def modelOfOneHalf_term :=
+  (#leanscript_to_term modelOfOneHalf : Term sig0 [] _ (TyWf.prim .floatModel) .lit)
+
+example : externForm? modelOfOneHalf_term = none := rfl
+
+-- The literals whose proofs are rebuilt by `decide` — a string slice, and the models of a
+-- single- and a double-precision float (`NaN` included) — are written back from their
+-- values as well-typed terms.
+#guard_msgs in
+run_meta do
+  let γ := Lean.mkApp (Lean.mkConst ``List.nil [0]) (Lean.mkConst ``LeanScript.TyWf)
+  let prim (p : Lean.Name) := Lean.mkApp (Lean.mkConst ``LeanScript.TyWf.prim) (Lean.mkConst p)
+  let cases : List (Lean.Expr × LeanScript.Quoted) :=
+    [(prim ``LeanScript.LeanPrimTy.stringSlice, .stringSlice "héllo" 1 3),
+     (prim ``LeanScript.LeanPrimTy.float32Model, .floatModel true (Float32.toBits 1.5).toNat),
+     (prim ``LeanScript.LeanPrimTy.floatModel, .floatModel false (Float.toBits (0.0 / 0.0)).toNat)]
+  for (τ, q) in cases do
+    let t ← LeanScript.ToTerm.quotedTerm (Lean.mkConst ``sig0) γ τ q
+    Lean.Meta.check t
+
+/-! ## Arguments that are lists
+
+A list (or an option, a pair, a record) of literals is a closed value too (`Head.val`), so
+an extern called on one is computed where the term is written. -/
+
+/-- `String.ofList ['l', 'e', 'a', 'n']` is the literal `"lean"`. -/
+def ofChars : String := String.ofList ['l', 'e', 'a', 'n']
+
+def ofChars_term := (#leanscript_to_term ofChars : Term sig0 [] _ (TyWf.prim .string) .lit)
+
+example : externForm? ofChars_term = none := rfl
+example : run ofChars_term = "lean" := rfl
+
+/-- The round trip `String.ofList "ab".toList`: both calls are computed, the result is
+    `"ab"`. -/
+def roundTrip : String := String.ofList "ab".toList
+
+def roundTrip_term := (#leanscript_to_term roundTrip : Term sig0 [] _ (TyWf.prim .string) .lit)
+
+example : run roundTrip_term = "ab" := rfl
+
+/-- On a variable, the list is only known when the term runs: `Term.externCall`. -/
+def toListOf (s : String) : List Char := s.toList
+
+def toListOf_term :=
+  (#leanscript_to_term toListOf : Term sig0 [] _ (TyWf.prim .string ⇒ tyWfOf (List Char)) .lam)
+
+example : externForm? toListOf_term = some "externCall" := rfl
 
 /-! ## `Lean.Name` is an ordinary inductive of the language -/
 

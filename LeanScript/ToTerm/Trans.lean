@@ -578,10 +578,18 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       return (← mkNode ``LeanScript.Term.enum_mk
         #[c.sg, c.gamma, s, ← mkFinLit nE ci.cidx])
-  | .prim _ =>
+  | .prim p =>
       if ← isBoolTy ty then
         return (← mkNode ``LeanScript.Term.bool_mk
           #[c.sg, c.gamma, toExpr (ci.cidx == 1)])
+      -- a value of a terminal type built from closed values (`String.Pos.Raw.mk 1`): it is
+      -- computed where the term is written, and written as its literal
+      let v := mkAppN e.getAppFn args
+      if !v.hasFVar && !v.hasMVar then
+        let q := mkApp2 (mkConst ``LeanScript.LeanPrimTy.quote) p v
+        if let some q ← evalQuoted (mkApp2 (mkConst ``Option.some [0])
+            (mkConst ``LeanScript.Quoted) q) then
+          return ← quotedTerm c.sg c.gamma ty q
       throwError "`#leanscript_to_term`: {ci.name} builds a value of a terminal type, \
         which has no constructor in the language; write it as a literal"
   | _ =>

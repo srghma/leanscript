@@ -112,6 +112,12 @@ def externNextDomain (cur : Expr) : MetaM (Expr × BinderInfo) := do
     wrapped in a `Thunk`). -/
 def externConvert (x d : Expr) : MetaM Expr := do
   if ← isDefEq (← inferType x) d then return x
+  -- a list: its element type is named, since it cannot be read back off the tree
+  if let (``List, #[β]) := (← whnfR d).getAppFnArgs then
+    try
+      let y ← mkAppOptM ``LeanScript.TyWf.Den.toList #[some (← tyOfType β), some x]
+      if ← isDefEq (← inferType y) d then return y
+    catch _ => pure ()
   for f in [``LeanScript.TyWf.Den.toList, ``Thunk.pure] do
     try
       let y ← mkAppM f #[x]

@@ -143,23 +143,35 @@ example : run uint8Bits 5 = 5#8 := rfl
 
 /-! ## Delays, and arrays -/
 
-/-- `let t := Thunk.mk (fun _ => 3); t.get + t.get`.  Forcing a delay built in place is a
-    redex, and is not a term, so the delay is bound and forced through its variable. -/
+/-- `fun n => let t := Thunk.mk (fun _ => n); t.get + t.get`.  Forcing a delay built in
+    place is a redex, and is not a term, so the delay is bound and forced through its
+    variable.  (It takes `n` as an argument: on a literal, the whole `let` would be a closed
+    computation, which the grammar asks to be written as its value, `6`.) -/
 def thunkTwice :=
-  (.letE (.thunk_mk (.nat_mk 3))
+  (.lam (.letE (.thunk_mk (.var (v♯0)))
      (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
-       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
-    Term emptySig [] _ (TyWf.prim .nat) .comp)
+       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The same with an unmemoised delay. -/
 def lazyTwice :=
-  (.letE (.lazy_mk (.nat_mk 3))
+  (.lam (.letE (.lazy_mk (.var (v♯0)))
      (.externCall (.cons (.lazy_force (.var (v♯0))) (.cons (.lazy_force (.var (v♯0))) .nil))
-       (fun vs => .lean_nat_add vs.1 vs.2.1)) :
-    Term emptySig [] _ (TyWf.prim .nat) .comp)
+       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
+    Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-example : run thunkTwice = 6 := rfl
-example : run lazyTwice = 6 := rfl
+example : run thunkTwice 3 = 6 := rfl
+example : run lazyTwice 3 = 6 := rfl
+
+/-- The same `let` on the literal `3` is a closed computation: the grammar rejects it,
+    since its value is known where it is written. -/
+example : True := by
+  fail_if_success
+    have := (.letE (.thunk_mk (.nat_mk 3))
+      (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
+        (fun vs => .lean_nat_add vs.1 vs.2.1)) :
+      Term emptySig [] _ (TyWf.prim .nat) .comp)
+  trivial
 
 /-- The array `#[1, 2, 3]`. -/
 def oneTwoThree :=
@@ -250,7 +262,7 @@ abbrev pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .bool,
 /-- The record `(3, true)`. -/
 def pair :=
   (.record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil)) :
-    Term emptySig [] _ (TyWf.record pairSchema) .ctor)
+    Term emptySig [] _ (TyWf.record pairSchema) .val)
 
 /-- The first projection.  Projecting out of a record built in place is a redex, and is
     not a term, so the projections are functions, applied to the value of `pair`. -/
@@ -278,12 +290,12 @@ def optNat : LeanTaggedUnionSchema TyWf := .payloadFirst ⟨TyWf.prim .nat, []�
 /-- Its first constructor, applied to `3`. -/
 def someThree :=
   (.taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
 
 /-- Its second, field-less constructor. -/
 def noneNat :=
   (.taggedUnion_mk optNat 1 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
 
 /-- A dispatch on it, with one branch per constructor. -/
 def optNatOrZero :=
@@ -315,12 +327,12 @@ def natOrNothingToNat :=
 /-- Its field-less constructor. -/
 def nothing' :=
   (.taggedUnion_mk natOrNothing 0 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .val)
 
 /-- Its constructor that carries a `nat`, applied to `5`. -/
 def justFive :=
   (.taggedUnion_mk natOrNothing 1 (fields := .cons (.nat_mk 5) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .val)
 
 example : run natOrNothingToNat (run nothing') = 0 := rfl
 example : run natOrNothingToNat (run justFive) = 5 := rfl
@@ -348,17 +360,17 @@ def natBoolNatAll :=
 /-- Constructor `0` of `natBoolNat`, carrying a `nat`. -/
 def nbnZero :=
   (.taggedUnion_mk natBoolNat 0 (fields := .cons (.nat_mk 7) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .val)
 
 /-- Constructor `1`, carrying a `bool`. -/
 def nbnOne :=
   (.taggedUnion_mk natBoolNat 1 (fields := .cons (.bool_mk true) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .val)
 
 /-- Constructor `2`, carrying a `nat`. -/
 def nbnTwo :=
   (.taggedUnion_mk natBoolNat 2 (fields := .cons (.nat_mk 9) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion natBoolNat) .val)
 
 example : run natBoolNatTwoOrZero (run nbnZero) = 7 := rfl
 example : run natBoolNatTwoOrZero (run nbnOne) = 0 := rfl

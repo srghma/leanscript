@@ -74,7 +74,7 @@ def widthOf_term :=
 
 def aRect : Shape := .rect 3 4
 
-def aRect_term := (#leanscript_to_term aRect : Term sig0 [] _ (tyWfOf Shape) .ctor)
+def aRect_term := (#leanscript_to_term aRect : Term sig0 [] _ (tyWfOf Shape) .val)
 
 example : run widthOf_term (run aRect_term) = 3 := rfl
 
@@ -86,7 +86,7 @@ def swap_term :=
 
 def aPair : Nat × Bool := (7, true)
 
-def aPair_term := (#leanscript_to_term aPair : Term sig0 [] _ (tyWfOf (Nat × Bool)) .ctor)
+def aPair_term := (#leanscript_to_term aPair : Term sig0 [] _ (tyWfOf (Nat × Bool)) .val)
 
 example : (run swap_term (run aPair_term)).1 = true := rfl
 example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := rfl

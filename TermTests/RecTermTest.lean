@@ -48,13 +48,13 @@ example : (TyWf.recTaggedUnionUnfold natListSchema).get 1 (by decide) =
 /-- The empty list.  The tag's bound is written by `ctor_tag`. -/
 def natNil :=
   (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-    Term recEmptySig [] _ natListTy .ctor)
+    Term recEmptySig [] _ natListTy .val)
 
 /-- `[3]`: `cons` of `3` and the empty list. -/
 def natOne :=
   (.recTaggedUnion_mk natListSchema (t := 1)
      (fields := .cons (.nat_mk 3) (.cons natNil .nil)) :
-    Term recEmptySig [] _ natListTy .ctor)
+    Term recEmptySig [] _ natListTy .val)
 
 /-- The head of a list, or `0` — a dispatch on **every** constructor, whose `cons` branch
     binds the head at index `0` and the tail at index `1`. -/
@@ -253,7 +253,7 @@ has type
   FamilyFoldKCases ?m.109 ?m.110 ?m.111 ?m.112 ?m.113 0 ?m.114 [] ?m.115
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    ?m.117 (TyWf.prim LeanPrimTy.nat) [memberB] 0
+    ?m.118 (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
   FamilyFoldKCases.cons
     (FamilyMemberFoldKCases.ctors

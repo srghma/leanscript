@@ -206,7 +206,7 @@ def pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .bool, []
 /-- The record `(3, true)`. -/
 def pair :=
   (.record_mk pairSchema (.cons (.nat_mk 3) (.cons (.bool_mk true) .nil)) :
-    Term emptySig [] _ (TyWf.record pairSchema) .ctor)
+    Term emptySig [] _ (TyWf.record pairSchema) .val)
 
 /-- The first field of such a record: the eliminator binds both fields, and the first is
     index `0`. -/
@@ -226,18 +226,18 @@ def optNat : LeanTaggedUnionSchema TyWf := .payloadFirst ⟨TyWf.prim .nat, []�
     default tactic, so nothing stands between the tag and the fields. -/
 def someThree :=
   (.taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
 
 /-- Its second, field-less constructor: the tag is `1`, which is in range because the
     union has two constructors. -/
 def noneNat :=
   (.taggedUnion_mk optNat 1 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
 
 /-- A bound that is given by hand still works. -/
 def someThree' :=
   (.taggedUnion_mk optNat 0 (by decide) (.cons (.nat_mk 3) .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .ctor)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
 
 /-- A dispatch on it: the branches follow the shape of the schema — the first
     constructor carries a field, so its branch binds it; the second binds nothing; and
@@ -457,6 +457,12 @@ error: could not synthesize default value for parameter 'h' using tactics
 error: Tactic `decide` proved that the proposition
   Head.lam.isFunLike = false
 is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp ((Usage.single DeBruijn.head).tail.many + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+is false
 -/
 #guard_msgs (error) in
 def idNatAt3 := (.ap (.lam (.var (v♯0))) (.nat_mk 3) : Term emptySig [] _ (TyWf.prim .nat) .comp)
@@ -468,6 +474,14 @@ error: could not synthesize default value for parameter 'hValue' using tactics
 error: Tactic `decide` proved that the proposition
   Head.lit = Head.comp ∨
     Head.lit = Head.ctor ∨ Head.lit = Head.val ∨ Head.lit = Head.caseIntro ∨ Head.lit = Head.caseCtor
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (Usage.letU 0 (Usage.single DeBruijn.head + (Usage.single DeBruijn.head + 0)))
+      (TyWf.prim LeanPrimTy.nat) Head.comp =
+    false
 is false
 -/
 #guard_msgs (error) in
@@ -510,6 +524,12 @@ error: could not synthesize default value for parameter 'h' using tactics
 error: Tactic `decide` proved that the proposition
   (Head.ctorOf [Head.lit]).isCtorLike = false
 is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp 0 (TyWf.prim LeanPrimTy.nat) Head.comp = false
+is false
 -/
 #guard_msgs (error) in
 def thunkedThreeForced :=
@@ -521,7 +541,15 @@ def thunkedThreeForced :=
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.ctor.isKnown = false
+  (Head.ctorOf [Head.lit, Head.bool true]).isKnown = false
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (0 + (0 + 0) + Usage.drop pairSchema.toList (Usage.single DeBruijn.head)) pairSchema.fst
+      (Head.var.join Head.empty) =
+    false
 is false
 -/
 #guard_msgs (error) in
@@ -533,6 +561,12 @@ error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.allValue [Head.lit, Head.lit] = false
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (0 + (0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs (error) in
@@ -549,6 +583,12 @@ error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.allValue [Head.ctorOf [Head.lit, Head.lit, Head.lit], Head.lit] = false
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (0 + (0 + (0 + 0)) + (0 + 0) + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs (error) in

@@ -160,13 +160,15 @@ variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls) {u ub : Usag
     (arr : Term Sg Γ u (.array σ) ka) (bases : ArrayRecBases Sg Γ ub σ τ k)
     (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb)
     (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail (Usage.tail w))) (hStep : k = 0 → kb ≠ .var)
-    (env : Env Γ) (h : Term.NoRecMk (Term.array_rec k arr bases branch hRec hStep))
+    (hClosed : Head.closedComp
+      (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp = false)
+    (env : Env Γ) (h : Term.NoRecMk (Term.array_rec k arr bases branch hRec hStep hClosed))
 
 /-- The value of the node **is** the fold: the short lists are answered by its
     `ArrayRecBases`, and its step runs the branch with the head, the tail and the window
     in front of the environment. -/
 theorem Term.eval_array_rec :
-    Term.eval G (Term.array_rec k arr bases branch hRec hStep) env h =
+    Term.eval G (Term.array_rec k arr bases branch hRec hStep hClosed) env h =
       listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
         (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
         (show Array _ from Term.eval G arr env h.1).toList :=
@@ -175,7 +177,7 @@ theorem Term.eval_array_rec :
 /-- Below the depth, the node answers with its `ArrayRecBases`. -/
 theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
     (harr : (show Array (TyWf.Den σ) from Term.eval G arr env h.1).toList = l) :
-    Term.eval G (Term.array_rec k arr bases branch hRec hStep) env h =
+    Term.eval G (Term.array_rec k arr bases branch hRec hStep hClosed) env h =
       ArrayRecBases.eval G bases env l h.2.1 := by
   rw [Term.eval_array_rec, harr, listFoldK_base _ _ l hl]
 
@@ -184,7 +186,7 @@ theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
 theorem Term.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
     (hk : k ≤ as.length)
     (harr : (show Array (TyWf.Den σ) from Term.eval G arr env h.1).toList = a :: as) :
-    Term.eval G (Term.array_rec k arr bases branch hRec hStep) env h =
+    Term.eval G (Term.array_rec k arr bases branch hRec hStep hClosed) env h =
       Term.eval G branch
         (a, as.toArray, Env.ofWin
           (NatWin.ofFunList

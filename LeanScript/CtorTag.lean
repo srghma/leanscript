@@ -85,4 +85,19 @@ macro "ctor_lt" : tactic =>
 macro "usage_pos" : tactic =>
   `(tactic| first | decide | exact Nat.succ_pos _ | decide)
 
+set_option hygiene false in
+/-- Close a goal `Head.closedComp u τ k = false`: that a computation is not a closed one
+    that must be written as its value (the `hClosed` of `LeanScript.Term`).  For a term
+    written out, `decide +kernel` computes it; in a context with a variable part (`{Γ : Ctx}`), which
+    `decide` refuses, it still reduces (`rfl`) when the uses it counts are written out; and
+    with a variable grade vector (`{u : Usage Γ}`), the number of uses of free names is
+    rewritten operation by operation (`LeanScript.Usage.free_add`, …) and seen not to be
+    `0` — a reference to a declaration or a variable counts one.  When the term is closed, the last `decide` reports it. -/
+macro "not_closed" : tactic =>
+  `(tactic| first
+    | decide +kernel
+    | rfl
+    | (simp [LeanScript.Head.closedComp, LeanScript.Usage.closed]; done)
+    | decide)
+
 end

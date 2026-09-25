@@ -405,8 +405,9 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyW
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
     {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c))) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env h =
+    (hc : Head.closedComp (w + Usage.many u) τ .comp = false)
+    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc)) :
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
       TaggedUnionFoldCases.recFold G c env h.2 (Term.eval G v env h.1) := by
   show (WType.memo _ (Term.eval G v env h.1)).answer = _
   generalize Term.eval G v env h.1 = w
@@ -432,10 +433,11 @@ theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
     {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)))
-    (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c))) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c)) env h =
-      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c)) env h' := by
+    (hc : Head.closedComp (w + Usage.many u) τ .comp = false)
+    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc))
+    (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc)) :
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
+      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc) env h' := by
   rw [Term.eval_recTaggedUnion_rec_toFoldK, Term.eval_recTaggedUnion_rec_toFoldK]
   exact TaggedUnionFoldCases.recFold_depth G c env h.2 h'.2 _
 

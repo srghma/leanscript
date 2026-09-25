@@ -39,7 +39,7 @@ def natListTy : TyWf := .recTaggedUnion natListSchema
 /-- The empty list. -/
 def natNil :=
   (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-    Term covEmptySig [] _ natListTy .ctor)
+    Term covEmptySig [] _ natListTy .val)
 
 /-- The head of a list, or `0`. -/
 def natHead :=
@@ -57,7 +57,7 @@ def natFoldZero :=
 def natFive :=
   (.recTaggedUnion_mk natListSchema (t := 1) 
      (fields := .cons (.nat_mk 5) (.cons natNil .nil)) :
-    Term covEmptySig [] _ natListTy .ctor)
+    Term covEmptySig [] _ natListTy .val)
 
 /-! The four statements below held when a recursive tagged union denoted `PEmpty`.  They
 are **false** now that it denotes the W-tree of its constructors: `natNil` is inside the

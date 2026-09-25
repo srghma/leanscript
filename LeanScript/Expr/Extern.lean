@@ -23,7 +23,8 @@ language, `LeanScript.TyWf`, with the evaluator's denotation `LeanScript.TyWf.De
 takes: `Extern.lean_array_fget αt a i h`.  Its value is `LeanScript.Extern.eval`
 (`LeanScript.Eval.Extern`), which calls the Lean function itself, handing it those proofs.
 `LeanScript.Term.extern` holds one, when its result cannot be written back as a term
-(`LeanScript.TyWf.quotable`; an extern on values whose result can be is a redex).  The catalogue is in two levels (a family of entries per
+(`LeanScript.TyWf.quotable`: its result holds a function; an extern on values whose result
+can be written is a redex).  The catalogue is in two levels (a family of entries per
 section of `Init`, and one constructor of `LeanInitPureExtern` per family); an entry is
 written through its shorthand (`.lean_nat_add a b`, which is
 `.preludeExtern (.lean_nat_add a b)`; `LeanScript.LeanInitPureExternShorthands`).

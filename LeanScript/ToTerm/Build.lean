@@ -1,7 +1,9 @@
 module
 
 public meta import LeanScript.ToTerm.ObjectExpr
+public meta import LeanScript.ToTerm.TyView
 public meta import LeanScript.Eval.Quote
+public meta import LeanScript.Eval
 
 @[expose] public section
 
@@ -45,7 +47,11 @@ builds a node of any family of the grammar's `mutual` block:
   a dispatch on a dispatch whose branches are all known (literals, constructors, values,
   or such dispatches — `LeanScript.Head.caseCtor`) is pushed into the branches of the
   inner one, where it reduces (case-of-case, `caseOfCase?`); `if c then true else false`
-  is `c`;
+  is `c`; and a **closed computation** — one that reads no variable and no top-level
+  declaration, at a type whose values can be written as terms
+  (`LeanScript.Head.closedComp`) — is **run** where the term is written (`Term.eval`,
+  compiled) and replaced by its value (`closedValue?`): `sumTo 5` is `10`, and
+  `fun x => x + sumTo 4` is `fun x => x + 6`;
 * beyond what the grammar rejects, it also η-reduces `fun x => f x` to `f` (when `f` does
   not read `x`), and turns a depth-`0` fold at a function type whose step is a tail call
   on a new accumulator — `go (k + 1) a = go k (F k a)` — into a fold at the
@@ -279,6 +285,7 @@ partial def gradeOf (u : Expr) (i : Nat) : MetaM Nat := do
   | (``OfNat.ofNat, _) => return 0
   | (``Zero.zero, _) => return 0
   | (``LeanScript.Usage.zero, _) => return 0
+  | (``LeanScript.Usage.global, _) => return 0
   | (``LeanScript.Usage.single, #[_, _, x]) => return if (← varIndex x) == i then 1 else 0
   | (``LeanScript.Usage.tail, #[_, _, v]) => gradeOf v (i + 1)
   | (``LeanScript.Usage.cons, #[_, _, k, v]) =>
@@ -293,6 +300,39 @@ partial def gradeOf (u : Expr) (i : Nat) : MetaM Nat := do
       let u' ← whnfCore u
       if u' == u then throwError "`#leanscript_to_term`: internal: not a grade vector: {u}"
       gradeOf u' i
+
+/-- The number of uses of free names in the grade vector `u` (`LeanScript.Usage.free`),
+    computed by following the definitions of `LeanScript.Usage`, as `gradeOf` does: a term
+    is closed when it is `0`. -/
+partial def freeOf (u : Expr) : MetaM Nat := do
+  let u := u.consumeMData
+  match u.getAppFnArgs with
+  | (``HAdd.hAdd, #[_, _, _, _, a, b]) => return (← freeOf a) + (← freeOf b)
+  | (``LeanScript.Usage.add, #[_, a, b]) => return (← freeOf a) + (← freeOf b)
+  | (``OfNat.ofNat, _) => return 0
+  | (``Zero.zero, _) => return 0
+  | (``LeanScript.Usage.zero, _) => return 0
+  | (``LeanScript.Usage.global, _) => return 1
+  | (``LeanScript.Usage.single, _) => return 1
+  | (``LeanScript.Usage.tail, #[_, _, v]) => return (← freeOf v) - (← gradeOf v 0)
+  | (``LeanScript.Usage.cons, #[_, _, k, v]) => return (← natValue k) + (← freeOf v)
+  | (``LeanScript.Usage.smul, #[_, k, v]) => return (← natValue k) * (← freeOf v)
+  | (``LeanScript.Usage.many, #[_, v]) => return 2 * (← freeOf v)
+  | (``LeanScript.Usage.letU, #[_, _, a, b]) =>
+      let h ← gradeOf b 0
+      return h * (← freeOf a) + ((← freeOf b) - h)
+  | (``LeanScript.Usage.drop, #[_, δ, v]) => dropFree v (← listElems δ).length
+  | (``LeanScript.Usage.dropN, #[_, _, n, v]) => dropFree v (← natValue n)
+  | _ =>
+      let u' ← whnfCore u
+      if u' == u then throwError "`#leanscript_to_term`: internal: not a grade vector: {u}"
+      freeOf u'
+where
+  /-- `freeOf` of `v` with its `n` innermost variables forgotten. -/
+  dropFree (v : Expr) (n : Nat) : MetaM Nat := do
+    let mut f ← freeOf v
+    for i in [0:n] do f := f - (← gradeOf v i)
+    return f
 
 /-- How many times a term uses the variable of de Bruijn index `i`. -/
 def usesOf (t : Expr) (i : Nat) : MetaM Nat := do
@@ -326,11 +366,17 @@ def mkVarTerm (sg γ : Expr) (i : Nat) : MetaM Expr := do
 def proveByDecide (p : Expr) : MetaM Expr := do
   mkDecideProof (← instantiateMVars p)
 
-/-- Build the node `ctor` from its arguments **without** indices — the parameter `Sg` and
-    then every field that is not an index or a proof about the indices, in order — reading
-    the indices off the subterms and proving the side conditions by `decide`.  No check
-    that the node is not a redex is made here: that is `mkNode`. -/
-def buildNode (ctor : Name) (args : Array Expr) : MetaM Expr := do
+/-- A stand-in proof of `p`, for a node that is only **run**, never kept: `unsafeCast` of
+    the unit.  The code that runs it erases proofs, so the stand-in is never looked at. -/
+def placeholderProof (p : Expr) : MetaM Expr := do
+  let lvl ← getLevel p
+  return mkApp3 (mkConst ``unsafeCast [levelOne, lvl]) (mkConst ``PUnit [levelOne]) p
+    (mkConst ``PUnit.unit [levelOne])
+
+/-- `buildNode`; with `placeholder`, the proof `hClosed` (that the node is not a closed
+    computation) is not proved but stood in for (`placeholderProof`): the node is then only
+    fit to be run, by `closedValue?`. -/
+def buildNodeCore (ctor : Name) (args : Array Expr) (placeholder : Bool) : MetaM Expr := do
   let info ← ctorInfo ctor
   let ci ← getConstInfoCtor ctor
   -- place the given arguments
@@ -364,10 +410,20 @@ def buildNode (ctor : Name) (args : Array Expr) : MetaM Expr := do
       | throwError "`#leanscript_to_term`: internal: {ctor} has too few arguments"
     let v ← match vals[i]! with
       | some v => pure v
-      | none => proveByDecide d
+      | none =>
+          if placeholder && info.names[i]!.eraseMacroScopes == `hClosed then
+            placeholderProof d
+          else proveByDecide d
     out := out.push v
     cur := b.instantiate1 v
   return mkAppN (mkConst ctor) out
+
+/-- Build the node `ctor` from its arguments **without** indices — the parameter `Sg` and
+    then every field that is not an index or a proof about the indices, in order — reading
+    the indices off the subterms and proving the side conditions by `decide`.  No check
+    that the node is not a redex is made here: that is `mkNode`. -/
+def buildNode (ctor : Name) (args : Array Expr) : MetaM Expr :=
+  buildNodeCore ctor args false
 
 /-! ## Substitution
 
@@ -429,6 +485,12 @@ def isValueHead (k : Name) : Bool := isLitHead k || k == ``LeanScript.Head.val
     value, or a dispatch that answers with one of those in every branch. -/
 def isKnownHead (k : Name) : Bool :=
   isValueHead k || k == ``LeanScript.Head.ctor || k == ``LeanScript.Head.caseCtor
+
+/-- `LeanScript.Head.isComp`, on the name of a head: a computation — an application, a
+    fold, an extern, a force or a dispatch. -/
+def isCompHead (k : Name) : Bool :=
+  k == ``LeanScript.Head.comp || k == ``LeanScript.Head.caseIntro ||
+    k == ``LeanScript.Head.caseCtor
 
 /-- A dispatch that may answer with an introduction form: `Head.caseIntro` or
     `Head.caseCtor`. -/
@@ -535,6 +597,7 @@ partial def mkNode (ctor : Name) (args : Array Expr) : MetaM Expr := do
   if let some t ← floatLet? ctor args then return t
   if let some t ← caseOfCase? ctor args then return t
   if let some t ← reduceRedex? ctor args then return t
+  if let some t ← closedValue? ctor args then return t
   buildNode ctor args
 
 /-- **Case-of-case.**  A dispatch on a dispatch that answers with a known constructor in
@@ -838,6 +901,19 @@ partial def valueDen (t : Expr) : MetaM Expr := do
       let ds ← (← termsElems (← lastArg n)).mapM valueDen
       return mkApp2 (mkConst ``List.toArray [0]) ty (← mkListLit ty ds.toList)
   | ``LeanScript.Term.thunk_mk | ``LeanScript.Term.lazy_mk => valueDen (← lastArg n)
+  | ``LeanScript.Term.record_mk =>
+      -- the fields, as the nested pairs the record denotes
+      valueDens n.getAppArgs.back!
+  | ``LeanScript.Term.taggedUnion_mk =>
+      let a := n.getAppArgs
+      mkAppOptM ``LeanScript.TyWf.DenTU.mk
+        #[some a[2]!, some a[3]!, some a[4]!, some (← valueDens a.back!)]
+  | ``LeanScript.Term.recTaggedUnion_mk =>
+      let a := n.getAppArgs
+      let unf := mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) a[2]! a[3]!
+      let node ← mkAppOptM ``LeanScript.TyWf.DenTU.mk
+        #[some unf, some a[4]!, some a[5]!, some (← valueDens a.back!)]
+      return mkApp3 (mkConst ``LeanScript.TyWf.DenRec.mk) a[2]! a[3]! node
   | _ => lastArg n
 
 /-- The values of a spine of literals and closed values, as the nested pairs
@@ -848,6 +924,13 @@ partial def valueDens (sp : Expr) : MetaM Expr := do
   for e in es.reverse do
     acc ← mkAppM ``Prod.mk #[← valueDen e, acc]
   return acc
+
+/-- The checked position at byte index `i` into the string `s` (an expression), with its
+    validity proved by `decide`. -/
+partial def quotePosE (s : Expr) (i : Nat) : MetaM Expr := do
+  let raw := mkApp (mkConst ``String.Pos.Raw.mk) (mkNatLit i)
+  let valid ← mkDecideProof (mkApp2 (mkConst ``String.Pos.Raw.IsValid) s raw)
+  return mkApp3 (mkConst ``String.Pos.mk) s raw valid
 
 /-- The term that denotes a computed value of type `τ`, from its description. -/
 partial def quotedTerm (sg γ τ : Expr) : LeanScript.Quoted → MetaM Expr
@@ -882,6 +965,71 @@ partial def quotedTerm (sg γ τ : Expr) : LeanScript.Quoted → MetaM Expr
       let σ ← instantiateMVars σ
       let ctor := if lazy then ``LeanScript.Term.lazy_mk else ``LeanScript.Term.thunk_mk
       mkNode ctor #[sg, γ, σ, ← quotedTerm sg γ σ x]
+  | .stringPos i => do
+      let .prim p ← tyView τ
+        | throwError "`#leanscript_to_term`: internal: {τ} is not a string position"
+      let some s := (← whnf p).getAppFnArgs |> fun
+          | (``LeanScript.LeanPrimTy.stringPos, #[s]) => some s
+          | _ => none
+        | throwError "`#leanscript_to_term`: internal: {τ} is not a string position"
+      return mkAppN (mkConst ``LeanScript.Term.stringPos_mk) #[sg, γ, s, ← quotePosE s i]
+  | .stringSlice str i j => do
+      let s := toExpr str
+      let pi ← quotePosE s i
+      let pj ← quotePosE s j
+      let le ← mkDecideProof (← mkAppM ``LE.le #[pi, pj])
+      let v := mkAppN (mkConst ``String.Slice.mk) #[s, pi, pj, le]
+      return mkAppN (mkConst ``LeanScript.Term.stringSlice_mk) #[sg, γ, v]
+  | .floatModel single bits => do
+      let (bitsE, toBV, model, spec, ctor) := if single then
+          (toExpr (UInt32.ofNat bits), ``UInt32.toBitVec, ``Float32.Model.mk,
+            ``Float.Model.Format.binary32, ``LeanScript.Term.float32Model_mk)
+        else
+          (toExpr (UInt64.ofNat bits), ``UInt64.toBitVec, ``Float.Model.mk,
+            ``Float.Model.Format.binary64, ``LeanScript.Term.floatModel_mk)
+      -- `Valid` is a structure with one field, an implication of decidable equations about
+      -- the bits, so it is proved by `decide`
+      let validMk := mkApp2 (mkConst ``Float.Model.Format.Valid.mk) (mkConst spec)
+        (mkApp (mkConst toBV) bitsE)
+      let .forallE _ d _ _ ← whnf (← inferType validMk)
+        | throwError "`#leanscript_to_term`: internal: unexpected `Float.Model.Format.Valid`"
+      let m := mkApp2 (mkConst model) bitsE (mkApp validMk (← mkDecideProof d))
+      return mkAppN (mkConst ctor) #[sg, γ, m]
+  | .ctor t xs => do
+      match ← tyView τ with
+      | .record fs =>
+          let spine ← quotedSpine sg γ (← recordFieldTys fs) xs
+          mkNode ``LeanScript.Term.record_mk #[sg, γ, fs, spine]
+      | .taggedUnion l =>
+          let some fieldTys := (← taggedUnionCtorTys l)[t]?
+            | throwError "`#leanscript_to_term`: internal: {τ} has no constructor {t}"
+          let spine ← quotedSpine sg γ fieldTys xs
+          let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+          let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit t, lenE])
+          mkNode ``LeanScript.Term.taggedUnion_mk #[sg, γ, l, mkNatLit t, prf, spine]
+      | .recTaggedUnion l hwf =>
+          let unfE := mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf
+          let some fieldTys := (← taggedUnionCtorTys (← reduceTy unfE))[t]?
+            | throwError "`#leanscript_to_term`: internal: {τ} has no constructor {t}"
+          let spine ← quotedSpine sg γ fieldTys xs
+          let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE unfE
+          let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit t, lenE])
+          mkNode ``LeanScript.Term.recTaggedUnion_mk #[sg, γ, l, hwf, mkNatLit t, prf, spine]
+      | _ => throwError "`#leanscript_to_term`: internal: {τ} has no constructors"
+
+/-- The spine of the terms that denote the computed values `xs`, of the types `tys`. -/
+partial def quotedSpine (sg γ : Expr) (tys : List Expr) (xs : List LeanScript.Quoted) :
+    MetaM Expr := do
+  unless tys.length == xs.length do
+    throwError "`#leanscript_to_term`: internal: {xs.length} values for {tys.length} fields"
+  let tysA := tys.toArray
+  let xsA := xs.toArray
+  let mut sp ← mkNode ``LeanScript.Spine.nil #[sg, γ]
+  for i in [0:xsA.size] do
+    let j := xsA.size - 1 - i
+    let t ← quotedTerm sg γ tysA[j]! xsA[j]!
+    sp ← mkNode ``LeanScript.Spine.cons #[sg, γ, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
+  return sp
 
 /-- The extern `e` (an entry of the catalogue applied to values) of result type `τ`, as a
     term: its value when that can be written (`LeanScript.TyWf.quotable`), and
@@ -892,6 +1040,54 @@ partial def mkExternNode (sg γ τ e : Expr) : MetaM Expr := do
   let h ← mkDecideProof (← mkEq (mkApp (mkConst ``LeanScript.TyWf.quotable) τ)
     (mkConst ``Bool.false))
   buildNode ``LeanScript.Term.extern #[sg, γ, τ, e, h]
+
+/-- **A closed computation is its value.**  If the node `ctor args` is a computation that
+    reads no variable and no top-level declaration, at a type whose values can be written
+    as terms (`LeanScript.Head.closedComp`, which the grammar's `hClosed` rejects), its
+    value: the node is built with a stand-in for `hClosed` (`buildNodeCore`), run —
+    `Term.eval`, compiled, with stand-ins for the environments it never reads — and its
+    value written back as a term (`LeanScript.TyWf.quote`).  So `sumTo 5`, a fold on the
+    literal `5`, is the literal `10`. -/
+partial def closedValue? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let info ← ctorInfo ctor
+  unless info.names.any (·.eraseMacroScopes == `hClosed) do return none
+  let t ← buildNodeCore ctor args true
+  let (sg, γ, u, τ, _) ← termParts t
+  unless (← freeOf (← instantiateMVars u)) == 0 do return none
+  unless isCompHead (← headOf t) do return none
+  unless ← isQuotable τ do return none
+  -- the model gives these no value, so a term that builds one cannot be run
+  for n in [``LeanScript.Term.recObject_mk, ``LeanScript.Term.recAlias_mk,
+      ``LeanScript.Term.mutualRecursiveFamily_mk] do
+    if (t.find? (·.isConstOf n)).isSome then
+      throwError "`#leanscript_to_term`: a closed computation builds a value of a recursive \
+        record, newtype or mutual family, which has no value to write: {t}"
+  -- the term reads no declaration, so it is run against the empty signature
+  let noDecls := mkApp (mkConst ``List.nil [0]) (mkConst ``LeanScript.GlobalDecl)
+  let emptySig := mkApp2 (mkConst ``LeanScript.Sig.mk) noDecls
+    (← mkDecideProof (← mkEq (mkApp (mkConst ``LeanScript.declNamesUnique) noDecls)
+      (mkConst ``Bool.true)))
+  let sgE ← instantiateMVars sg
+  let t0 := (← instantiateMVars t).replace fun x => if x == sgE then some emptySig else none
+  let gE := mkConst ``PUnit.unit [levelOne]
+  let envE ← placeholderProof (mkApp (mkConst ``LeanScript.Env) γ)
+  let hE ← placeholderProof (← mkAppM ``LeanScript.Term.NoRecMk #[t0])
+  let v ← mkAppOptM ``LeanScript.Term.eval
+    #[some emptySig, some gE, none, none, none, none, some t0, some envE, some hE]
+  let e ← instantiateMVars (mkApp2 (mkConst ``LeanScript.TyWf.quote) τ v)
+  -- the context the translation writes under is a local (`fun Γ => …`); the term reads
+  -- none of it, so it is run in the empty context
+  let ctxTy := mkConst ``LeanScript.Ctx
+  let mut e := e
+  for fv in (collectFVars {} e).fvarIds do
+    if ← isDefEq (← fv.getType) ctxTy then
+      e := e.replaceFVarId fv (mkApp (mkConst ``List.nil [0]) (mkConst ``LeanScript.TyWf))
+  if e.hasFVar then
+    throwError "`#leanscript_to_term`: internal: a closed computation mentions a local: {e}"
+  let ty := mkApp (mkConst ``Option [0]) (mkConst ``LeanScript.Quoted)
+  let some q ← unsafe evalExpr (Option LeanScript.Quoted) ty e (safety := .unsafe) (checkMeta := false)
+    | throwError "`#leanscript_to_term`: internal: the value of {t} cannot be written"
+  some <$> quotedTerm sg γ τ q
 
 /-- If the node `ctor args` is a redex, what it reduces to. -/
 partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do

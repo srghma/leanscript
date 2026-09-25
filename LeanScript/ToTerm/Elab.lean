@@ -70,6 +70,78 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
   | some ty => Term.ensureHasType ty t
   | none => return t
 
+/-! ## Optimizing a term written by hand
+
+The grammar rejects a redex written by hand: `.extern (.lean_string_data__String_toList
+"ab")` does not elaborate, because the value of the call can be written as a term (the
+list `['a', 'b']`), and `Term.extern` demands `TyWf.quotable τ = false`.  A constructor
+of an inductive can only *check* a side condition; it cannot replace itself by the value.
+`#leanscript_optimize t` is the smart constructor that does: `t` is written with the
+constructors of the grammar as usual, the side conditions it does not meet are set
+aside, and the term is rebuilt from the leaves up through the translation's own
+constructor (`mkNode`), which reduces every redex it meets — an extern on values is its
+value, a closed computation is its value, a β-redex is reduced, … — and proves the side
+conditions of what is left.  If something other than a side condition is wrong with `t`
+(or a redex is left that nothing reduces), the errors of `t` are reported as usual. -/
+
+/-- Rebuild the term `t` bottom-up through `mkNode`: the indices and the proofs about them
+    are dropped and recomputed, and every node that is a redex is reduced. -/
+partial def optimizeTerm (t : Expr) : MetaM Expr := do
+  let t ← instantiateMVars t
+  let fn := t.getAppFn
+  let some ctor := fn.constName? | return t
+  let some (.ctorInfo ci) := (← getEnv).find? ctor | return t
+  unless isGrammarFamily ci.induct do return t
+  let args := t.getAppArgs
+  unless args.size == ci.numParams + ci.numFields do return t
+  let info ← ctorInfo ctor
+  let mut out := args.extract 0 ci.numParams
+  for i in [0:info.roles.size] do
+    let a := args[ci.numParams + i]!
+    match info.roles[i]! with
+    | .index | .indexProof => pure ()
+    | .child => out := out.push (← optimizeTerm a)
+    | _ => out := out.push a
+  mkNode ctor out
+
+/-- `#leanscript_optimize t`: the term `t`, written with the constructors of the grammar,
+    with its redexes reduced.  See the section header. -/
+syntax (name := leanscriptOptimize) "#leanscript_optimize " term : term
+
+/-- The expected type with its grade vector and head left open: reducing a redex changes
+    both (an extern that answers with a list is a computation; its value is a literal). -/
+def openIndices (expected? : Option Expr) : MetaM (Option Expr) := do
+  let some t := expected? | return none
+  match (← whnf (← instantiateMVars t)).getAppFnArgs with
+  | (``LeanScript.Term, #[sg, γ, _, τ, _]) =>
+      let u ← mkFreshExprMVar (mkApp (mkConst ``LeanScript.Usage) γ)
+      let k ← mkFreshExprMVar (mkConst ``LeanScript.Head)
+      return some (mkAppN (mkConst ``LeanScript.Term) #[sg, γ, u, τ, k])
+  | _ => return expected?
+
+@[term_elab leanscriptOptimize]
+def elabLeanscriptOptimize : TermElab := fun stx expected? => do
+  let before ← Core.getMessageLog
+  let e ← withSynthesize (elabTerm stx[1] (← openIndices expected?))
+  let e ← instantiateMVars e
+  let written ← Core.getMessageLog
+  -- the side conditions `t` does not meet are rebuilt, so their errors are set aside
+  Core.setMessageLog before
+  let t ← try
+      let t ← instantiateMVars (← optimizeTerm e)
+      unless t.hasSorry || t.hasExprMVar do Meta.check t
+      pure t
+    catch ex =>
+      Core.setMessageLog written
+      throw ex
+  if t.hasSorry || t.hasExprMVar then
+    -- something other than a side condition is wrong: report `t` as written
+    Core.setMessageLog written
+    return e
+  match expected? with
+  | some ty => Term.ensureHasType ty t
+  | none => return t
+
 /-- `#leanscript_to_term_cache_stats`: how many definitions the translation cache holds,
     how often one was reused, and how often two definitions turned out to have the same
     shape and were merged into one tree. -/

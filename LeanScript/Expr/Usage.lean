@@ -1,5 +1,6 @@
 module
 public import LeanScript.Expr.NatRecCtx
+public import LeanScript.Expr.Quotable
 
 @[expose] public section
 
@@ -39,27 +40,54 @@ base value.  Likewise a dispatch on a type with one constructor (a record, a new
 primitive wrapper) asks that its branch reads a field (`Usage.front`): there is nothing to
 decide, so a branch that reads no field is the whole dispatch.
 
+The grade vector also counts, in total, the uses of **free names** — the variables of `Γ`
+and the top-level declarations of the signature (`Usage.free`, `Usage.global`).  A term
+that uses none is **closed** (`Usage.closed`): its value is known where the term is
+written.  So a closed **computation** at a type whose values can be written back as terms
+(`Head.closedComp`: an application, a `let` read by a computation, an extern call, a fold,
+a force or a dispatch on a type that may hold a function) is a redex, and those
+constructors ask that they are not one (`hClosed`): `sumTo 5` must be written `10`, and
+`fun x => x + sumTo 4` must be written `fun x => x + 6`.  (A dispatch on a primitive type
+or an enum needs no such proof: its scrutinee has a type whose values can be written, so a
+closed one is a literal — already rejected — or a closed computation that is itself
+rejected.)
+
 Both indices are *computed* by the constructors, so writing a term looks exactly like
 writing a raw one, and every proof argument is discharged by `decide` on closed indices.
 -/
 
 namespace LeanScript
 
-/-- A grade vector: how many times each variable of `Γ` is used. -/
-def Usage (Γ : Ctx) : Type := (τ : TyWf) → Var Γ τ → Nat
+/-- A grade vector: how many times each variable of `Γ` is used (`count`), together with
+    the total number of uses of **free names** (`free`): the variables of `Γ`, and the
+    top-level declarations of the signature (`Term.global`).  A term whose `free` is `0`
+    reads nothing it is not given — it is **closed** (`Usage.closed`), and its value is
+    known where the term is written.
+
+    `free` is computed alongside `count` by every operation below, so that it reduces
+    without knowing `Γ`: it is the sum of `count` over `Γ`, plus the uses of declarations
+    (`Usage.global`). -/
+structure Usage (Γ : Ctx) : Type where
+  /-- How many times each variable of `Γ` is used. -/
+  count : (τ : TyWf) → Var Γ τ → Nat
+  /-- How many times a free name — a variable of `Γ` or a declaration of the signature —
+      is used, in total. -/
+  free : Nat
 
 namespace Usage
 
 variable {Γ : Ctx} {σ : TyWf}
 
+instance : CoeFun (Usage Γ) (fun _ => (τ : TyWf) → Var Γ τ → Nat) := ⟨Usage.count⟩
+
 /-- No variable is used. -/
-def zero : Usage Γ := fun _ _ => 0
+def zero : Usage Γ := ⟨fun _ _ => 0, 0⟩
 
 /-- Pointwise sum: the uses of two subterms. -/
-def add (u v : Usage Γ) : Usage Γ := fun τ x => u τ x + v τ x
+def add (u v : Usage Γ) : Usage Γ := ⟨fun τ x => u.count τ x + v.count τ x, u.free + v.free⟩
 
 /-- Scaling: the uses of a subterm copied `k` times. -/
-def smul (k : Nat) (u : Usage Γ) : Usage Γ := fun τ x => k * u τ x
+def smul (k : Nat) (u : Usage Γ) : Usage Γ := ⟨fun τ x => k * u.count τ x, k * u.free⟩
 
 instance : Zero (Usage Γ) := ⟨zero⟩
 
@@ -76,17 +104,23 @@ instance : Add (Usage Γ) := ⟨add⟩
     run at most once", and `≥ 2` is "shared" — which is all that `Term.letE` asks. -/
 def many (u : Usage Γ) : Usage Γ := smul 2 u
 
+/-- The grade vector of a reference to a top-level declaration (`Term.global`): no
+    variable of `Γ` is used, but a free name is — the term is not closed, since the value
+    of the declaration is only known when the term runs. -/
+def global : Usage Γ := ⟨fun _ _ => 0, 1⟩
+
 /-- Extend a grade vector by the grade `k` of a newly bound variable. -/
-def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) := fun _ x =>
-  match x with
-  | .head => k
-  | .tail y => u _ y
+def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) :=
+  ⟨fun _ x =>
+    match x with
+    | .head => k
+    | .tail y => u.count _ y, k + u.free⟩
 
 /-- The grade of the innermost variable. -/
-def head (u : Usage (σ :: Γ)) : Nat := u σ .head
+def head (u : Usage (σ :: Γ)) : Nat := u.count σ .head
 
 /-- Forget the innermost variable. -/
-def tail (u : Usage (σ :: Γ)) : Usage Γ := fun τ x => u τ x.tail
+def tail (u : Usage (σ :: Γ)) : Usage Γ := ⟨fun τ x => u.count τ x.tail, u.free - head u⟩
 
 /-- The grade vector of a single occurrence of `x`. -/
 def single : {Γ : Ctx} → {τ : TyWf} → Var Γ τ → Usage Γ
@@ -97,6 +131,25 @@ def single : {Γ : Ctx} → {τ : TyWf} → Var Γ τ → Usage Γ
     the uses of `b` except `x`, plus the uses of `e` once per use of `x`.  This is the
     usual graded `let` rule — the grade the term would have after inlining `x`. -/
 def letU (u : Usage Γ) (v : Usage (σ :: Γ)) : Usage Γ := smul (head v) u + tail v
+
+/-- Is a term of these grades **closed**: does it use no variable of `Γ` and no top-level
+    declaration?  Its value is then known where the term is written. -/
+def closed (u : Usage Γ) : Bool := u.free == 0
+
+/-! The number of uses of free names, operation by operation: what the tactic `not_closed`
+rewrites with, to see that a term with a variable part is not closed. -/
+
+@[simp] theorem free_zero : (0 : Usage Γ).free = 0 := rfl
+@[simp] theorem free_add (u v : Usage Γ) : (u + v).free = u.free + v.free := rfl
+@[simp] theorem free_smul (k : Nat) (u : Usage Γ) : (smul k u).free = k * u.free := rfl
+@[simp] theorem free_many (u : Usage Γ) : (many u).free = 2 * u.free := rfl
+@[simp] theorem free_global : (global : Usage Γ).free = 1 := rfl
+@[simp] theorem free_cons (k : Nat) (u : Usage Γ) : (cons (σ := σ) k u).free = k + u.free := rfl
+@[simp] theorem free_tail (u : Usage (σ :: Γ)) : (tail u).free = u.free - head u := rfl
+@[simp] theorem free_single {τ : TyWf} (x : Var Γ τ) : (single x).free = 1 := by
+  induction x with
+  | head => rfl
+  | tail y ih => show 0 + (single y).free = 1; rw [ih]
 
 /-- Forget the variables a branch binds in front of `Γ`: the fields of a constructor, the
     values of a fold, … (`Δ` is innermost first, as a context is). -/
@@ -149,8 +202,9 @@ inductive Head where
   /-- a computation: an application, a dispatch, a fold or an extern (a `let` has the
       head of its body) -/
   | comp
-  /-- a **closed value** that is not a literal: an array whose elements are all literals
-      or closed values, or a delay of one.  It is a constructor like `Head.ctor` (a
+  /-- a **closed value** that is not a literal: an array, a record, a tagged value or a
+      value of a recursive tagged union whose fields are all literals or closed values,
+      or a delay of one.  It is a constructor like `Head.ctor` (a
       dispatch on it, or a force of it, is a redex just the same), but it holds no
       variable and no computation, so its value is known where the term is written: an
       extern called on literals and closed values is a redex too (`Term.externCall`). -/
@@ -245,7 +299,26 @@ def isCtorLike : Head → Bool
   | .ctor | .val | .caseIntro | .caseCtor => true
   | _ => false
 
+/-- Is this head a **computation** — an application, a fold, an extern, a force, or a
+    dispatch (`Head.comp`, `Head.caseIntro`, `Head.caseCtor`) — rather than a name, a `fun`,
+    a literal or a constructor? -/
+def isComp : Head → Bool
+  | .comp | .caseIntro | .caseCtor => true
+  | _ => false
+
 end Head
+
+/-- Is a term of grades `u`, type `τ` and head `k` a **closed computation that can be
+    written as its value**: a computation (`Head.isComp`) that reads no variable and no
+    top-level declaration (`Usage.closed`), at a type whose values can be written back as
+    terms (`TyWf.quotable`)?  Its value is known where the term is written, so it is a
+    redex, and the grammar rejects it: the computation constructors of `LeanScript.Term`
+    ask that this is `false` (`hClosed`), and the translation computes the value instead
+    (`sumTo 5` is written `10`, not as a fold on the literal `5`).  A constructor or a `let` of a
+    closed value (`let x = #[…]; (x, x)`) is not a computation, so it is not rejected: a
+    `let` may share a closed value. -/
+def Head.closedComp {Γ : Ctx} (u : Usage Γ) (τ : TyWf) (k : Head) : Bool :=
+  u.closed && k.isComp && τ.quotable
 
 end LeanScript
 

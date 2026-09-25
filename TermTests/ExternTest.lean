@@ -11,8 +11,10 @@ import all Init.Prelude
 `LeanScript.Extern` is a pure extern of `Init` applied to its arguments (and to the proofs
 it takes), and `Extern.eval` gives it the value of the Lean function it implements, called
 on them.  `Term.extern` holds one — but only when its value cannot be written as a term
-(`TyWf.quotable`): an extern on values that answers with a literal, an enum constructor
-or an array or delay of those is a redex, and the grammar asks for the value instead.
+(`TyWf.quotable`): an extern on values whose result holds no function (a literal, an enum
+constructor, a list, an option, a pair, …) is a redex, and the grammar asks for the value
+instead.  Only an extern that answers with a function, or with a value holding one, is
+left as `Term.extern`.
 Each check below is settled by the kernel.
 
 The catalogue is in two levels (a family of entries per section of `Init`, and
@@ -41,12 +43,48 @@ is false
 #guard_msgs in
 example := (.extern (.lean_nat_add 2 3) : Term ⟨[], rfl⟩ [] _ (.prim .nat) .comp)
 
+-- Nor is an extern on values that answers with a list (`"ab".toList` is `['a', 'b']`), an
+-- option, a pair or a checked position: every value of those can be written as a term.
+/--
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (TyWf.prim LeanPrimTy.char).list.quotable = false
+is false
+-/
+#guard_msgs in
+example := (.extern (.lean_string_data__String_toList "ab") :
+  Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .char)) .comp)
+
+/--
+error: could not synthesize default value for parameter 'h' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (TyWf.prim (LeanPrimTy.stringPos "ab")).quotable = false
+is false
+-/
+#guard_msgs in
+example := (.extern (.lean_string_utf8_next_fast__String_Pos_next ("ab" : String).startPos
+    (by decide)) : Term ⟨[], rfl⟩ [] _ (.prim (.stringPos "ab")) .comp)
+
+/-- An extern on values that answers with a **function** stays `Term.extern`: a function
+    cannot be read back as a term.  (Here the element of an array of functions.) -/
+example : (Term.run' (.extern (.lean_array_fget ((TyWf.prim .nat ⇒ TyWf.prim .nat : TyWf))
+      #[fun n => n + 1] 0 (by decide)) :
+    Term ⟨[], rfl⟩ [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .comp)) 4 = 5 := rfl
+
 -- Nor is an extern applied to terms that are all literals (`Term.externCall`).
 /--
 error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.allValue [Head.lit, Head.lit] = false
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (0 + (0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs in
@@ -60,6 +98,12 @@ error: could not synthesize default value for parameter 'h' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.allValue [Head.ctorOf [Head.lit, Head.lit, Head.lit], Head.lit] = false
+is false
+---
+error: could not synthesize default value for parameter 'hClosed' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.closedComp (0 + (0 + (0 + 0)) + (0 + 0) + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs in
@@ -134,8 +178,8 @@ example (a b : String) : Extern.eval (.lean_string_compare a b : Extern TyWf.ord
     TyWf.Den.ofOrdering (String.compare a b) := rfl
 
 /-- An extern whose result is an `Option`: the tagged union `none | some α`. -/
-example : Term.run' (.extern (.lean_string_utf8_get_opt__String_Pos_Raw_get? "ab" ⟨1⟩) :
-    Term ⟨[], rfl⟩ [] _ (TyWf.option (.prim .char)) _) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
+example : Extern.eval (.lean_string_utf8_get_opt__String_Pos_Raw_get? "ab" ⟨1⟩ :
+    Extern (TyWf.option (.prim .char))) = TyWf.Den.ofOption (α := .prim .char) (some 'b') :=
   rfl
 
 /-- An extern that takes a proof holds it: `Array.getInternal #[1, 2, 3] 1 h`, with the
@@ -145,9 +189,9 @@ example : (Extern.eval (.lean_array_fget (TyWf.prim .nat) #[1, 2, 3] 1 (by decid
 
 /-- `String.Pos.next`: its argument is a position into the string `s`, whose type names
     `s`, so `s` is a parameter of the entry, fixed where the term is written. -/
-example : Term.run' (.extern (.lean_string_utf8_next_fast__String_Pos_next
-      ("ab" : String).startPos (by decide)) :
-    Term ⟨[], rfl⟩ [] _ (.prim (.stringPos "ab")) _) = ("ab" : String).startPos.next (by decide) :=
+example : Extern.eval (.lean_string_utf8_next_fast__String_Pos_next
+      ("ab" : String).startPos (by decide) :
+    Extern (.prim (.stringPos "ab"))) = ("ab" : String).startPos.next (by decide) :=
   rfl
 
 /-- `Lean.Name.beq`: a `Lean.Name` is the recursive tagged union
@@ -163,17 +207,17 @@ example : tyWfOf Lean.Name = TyWf.leanName := rfl
 /-- An extern whose result is a pair: the record of its two fields.  `Float.frExp` does not
     reduce in the kernel, so this only checks that the value is the pair `Float.frExp`
     answers with. -/
-example (x : Float) : Term.run' (.extern (.lean_float_frexp x) :
-    Term ⟨[], rfl⟩ [] _ (TyWf.prod (.prim .float) (.prim .int)) _) =
+example (x : Float) : Extern.eval (.lean_float_frexp x :
+    Extern (TyWf.prod (.prim .float) (.prim .int))) =
       TyWf.Den.ofProd (α := .prim .float) (β := .prim .int) (Float.frExp x) := rfl
 
 /-- An extern whose result is a list: the recursive tagged union `nil | cons α self`, the
     model of `List`; `Ty.DenRec.toList` reads it back. -/
-example : Ty.DenRec.toList (.prim .nat) (Term.run' (.extern (.lean_array_to_list (TyWf.prim .nat)
-    #[1, 2, 3]) : Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .nat)) _)) = [1, 2, 3] := by decide
+example : Ty.DenRec.toList (.prim .nat) (Extern.eval (.lean_array_to_list (TyWf.prim .nat)
+    #[1, 2, 3] : Extern (TyWf.list (.prim .nat)))) = [1, 2, 3] := by decide
 
-example : Ty.DenRec.toList (.prim .char) (Term.run' (.extern (.lean_string_data__String_toList "ab") :
-    Term ⟨[], rfl⟩ [] _ (TyWf.list (.prim .char)) _)) = ['a', 'b'] := by decide
+example : Ty.DenRec.toList (.prim .char) (Extern.eval (.lean_string_data__String_toList "ab" :
+    Extern (TyWf.list (.prim .char)))) = ['a', 'b'] := by decide
 
 /-! ## The derived type formers are the models of the Lean types
 

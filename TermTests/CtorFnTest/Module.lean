@@ -22,9 +22,9 @@ def green :=
     Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Color `green) .lit)
 def pt :=
   (#leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2) :
-    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Pt) .ctor)
+    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Pt) .val)
 def some3 :=
   (#leanscript_ctor `Option `some natT (.nat_mk 3) :
-    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Option `some natT) .ctor)
+    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Option `some natT) .val)
 
 end CtorFnModuleTest

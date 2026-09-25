@@ -36,8 +36,8 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
     applications and `let`s. -/
 def ifs {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Nat
   | .lam b => ifs b
-  | .ap f a _ => ifs f + ifs a
-  | .letE a b _ _ => ifs a + ifs b
+  | .ap f a _ _ => ifs f + ifs a
+  | .letE a b _ _ _ => ifs a + ifs b
   | .bool_casesOn c t e _ _ => 1 + ifs c + ifs t + ifs e
   | _ => 0
 
@@ -52,7 +52,7 @@ def lamsOfVar {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u 
 def foldsClosures {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Bool
   | .lam b => foldsClosures b
-  | .letE a b _ _ => foldsClosures a || foldsClosures b
+  | .letE a b _ _ _ => foldsClosures a || foldsClosures b
   | .nat_rec _ _ _ (.lam _) .. => true
   | .nat_rec _ _ _ b .. => foldsClosures b
   | _ => false

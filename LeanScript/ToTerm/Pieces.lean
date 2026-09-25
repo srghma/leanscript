@@ -60,47 +60,6 @@ partial def isLitLike (e : Expr) : Bool :=
 
 /-! ## Small pieces of the object language -/
 
-/-- A list of trees, as an expression. -/
-def mkTyListE (ts : List Expr) : Expr := mkCtxE ts nilCtxE
-
-/-- The field trees of a record schema, in declaration order. -/
-def recordFieldTys (fs : Expr) : MetaM (List Expr) := do
-  match (← whnf fs).getAppFnArgs with
-  | (``LeanScript.LeanRecordSchema.mk, #[_, a, b, rest]) =>
-      return a :: b :: (← listOfExpr rest)
-  | _ => throwError "`#leanscript_to_term`: not a record schema: {fs}"
-
-/-- The fields of a non-empty list of trees. -/
-def nonEmptyTys (ne : Expr) : MetaM (List Expr) := do
-  match (← whnf ne).getAppFnArgs with
-  | (``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk, #[_, hd, tl]) =>
-      return hd :: (← listOfExpr tl)
-  | _ => throwError "`#leanscript_to_term`: not a non-empty list of types: {ne}"
-
-mutual
-
-/-- One entry per constructor of a tagged union, each the trees of its fields. -/
-partial def taggedUnionCtorTys (l : Expr) : MetaM (List (List Expr)) := do
-  match (← whnf l).getAppFnArgs with
-  | (``LeanScript.LeanTaggedUnionSchema.payloadFirst, #[_, fields, next, rest]) =>
-      let restL ← (← listOfExpr rest).mapM listOfExpr
-      return (← nonEmptyTys fields) :: (← listOfExpr next) :: restL
-  | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
-      return [] :: (← ctorsWithPayloadTys rest)
-  | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
-
-/-- One entry per constructor a `CtorsWithPayload` holds. -/
-partial def ctorsWithPayloadTys (cp : Expr) : MetaM (List (List Expr)) := do
-  match (← whnf cp).getAppFnArgs with
-  | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
-      let restL ← (← listOfExpr rest).mapM listOfExpr
-      return (← nonEmptyTys fields) :: restL
-  | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
-      return [] :: (← ctorsWithPayloadTys rest)
-  | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
-
-end
-
 /-- The pieces of the schema of a list: the `CtorsWithPayload` after the field-less
     `nil`, the fields of `cons` and the constructors after it (there are none).  The
     schema is `listSchemaE`, so this is where the element type is read off. -/

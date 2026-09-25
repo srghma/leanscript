@@ -169,8 +169,8 @@ example : run deadField_term (cast (Ty.denRecord_eq _).symm ((3, 4, ()) : Nat ×
 
 /--
 info: (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
-      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
-      deadField_term._proof_2).lam.lam
+      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) deadField_term._proof_2
+      ⋯).lam.lam
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) deadField_term
