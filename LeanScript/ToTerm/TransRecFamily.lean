@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.TransRecFamilyPieces
+public meta import LeanScript.ToTerm.Default
 
 @[expose] public section
 
@@ -59,7 +60,8 @@ def A.len : A → Nat
 ```
 
 — has no Lean branch to translate, and the fold still needs one for it; its branches
-answer `default` (of the `Inhabited` instance of the answer type), an answer that no
+answer a default (of the `Inhabited` instance of the answer type, or else a value built
+from its constructors, `LeanScript.ToTerm.synthDefault?`), an answer that no
 branch of the translated members reads, since their Lean branches have no entry for it.
 
 The depth is the smallest `k` (up to `maxRecFamilyRecDepth`) at which every branch is
@@ -313,11 +315,12 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       comps := comps.push bodies[j]
     else slots := slots.push none
   let unfoldDefault (t : Expr) : MetaM Expr := do
-    let inst ← try synthInstance (← mkAppM ``Inhabited #[t])
-      catch _ => throwError "`#leanscript_to_term`: the members of this recursion on a \
+    let some d0 ← synthDefault? t
+      | throwError "`#leanscript_to_term`: the members of this recursion on a \
         mutual family answer different types, and the fold answers the tuple of them, \
-        filled in with defaults; {t} has no `Inhabited` instance"
-    let d ← Meta.reduce (← mkAppOptM ``Inhabited.default #[t, inst])
+        filled in with defaults; {t} has no `Inhabited` instance, and no constructor \
+        whose fields all have a default"
+    let d ← Meta.reduce d0
     return d.replace fun s => if s.isConstOf ``Nat.zero then some (mkNatLit 0) else none
   let compDflts ← if uniform then pure #[] else comps.mapM unfoldDefault
   let τLeanCur := τLean
@@ -325,8 +328,11 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let τ ← tyOfType τLean
   let dflt ← if answering.all id then pure none
     else if uniform then do
-      let inst ← synthInstance (← mkAppM ``Inhabited #[τLean])
-      pure (some (← mkAppOptM ``Inhabited.default #[τLean, inst]))
+      let some d ← synthDefault? τLean
+        | throwError "`#leanscript_to_term`: the fold of this recursion on a mutual family \
+          fills the members it does not answer at with a default; {τLean} has no \
+          `Inhabited` instance, and no constructor whose fields all have a default"
+      pure (some d)
     else pure (some (← tupleMk compDflts))
   -- the members' schemas, in order
   let msE ← reduceTy (mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.members)
