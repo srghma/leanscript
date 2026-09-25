@@ -160,7 +160,7 @@ info: (((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (T
               (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
               (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
             (Term.nat_mk 0) ⋯ appIfCompDef_term._proof_6 appIfCompDef_term._proof_7 ⋯)
-          appIfCompDef_term._proof_9 ⋯ ⋯).lam
+          appIfCompDef_term._proof_9 ⋯ ⋯ ⋯).lam
       ⋯).lam
   ⋯
 -/
@@ -176,8 +176,8 @@ def forceIfDef_term :=
     Term sig0 [] _ (TyWf.prim .bool ⇒ TyWf.thunk (TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 
 /--
-info: (((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.nat_mk 5) ((Term.var DeBruijnProj.head).thunk_force ⋯ ⋯) ⋯
-          forceIfDef_term._proof_6 forceIfDef_term._proof_7 ⋯).lam
+info: (((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.nat_mk 5) ((Term.var DeBruijnProj.head).thunk_force ⋯ ⋯) ⋯ ⋯ ⋯
+          ⋯).lam
       ⋯).lam
   ⋯
 -/
@@ -230,7 +230,7 @@ example : run foldNoAccDef_term 5 = 8 := rfl
 info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 7)
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 2) Spine.nil))
         (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
-      ⋯).lam
+      ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in
@@ -255,8 +255,8 @@ info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 1)
       ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 2)
         (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 10) Spine.nil))
           (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-        ⋯)
-      ⋯).lam
+        ⋯ ⋯)
+      ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in

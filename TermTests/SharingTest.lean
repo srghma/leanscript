@@ -140,7 +140,7 @@ info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Te
             (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
             (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯).lam
         ⋯)
-      shareUnderFunDef_term._proof_8 ⋯ ⋯).lam
+      shareUnderFunDef_term._proof_8 ⋯ ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in
@@ -167,7 +167,7 @@ info: (((Term.externCall
                 (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
               (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
             ⋯ shareInFoldDef_term._proof_6 ⋯)
-          shareUnderFunDef_term._proof_8 ⋯ ⋯).lam
+          shareUnderFunDef_term._proof_8 ⋯ ⋯ ⋯).lam
       ⋯).lam
   ⋯
 -/

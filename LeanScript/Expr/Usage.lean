@@ -52,6 +52,13 @@ or an enum needs no such proof: its scrutinee has a type whose values can be wri
 closed one is a literal — already rejected — or a closed computation that is itself
 rejected.)
 
+The count of dispatches per variable (`Usage.scrut`) rejects the **case of a known
+constructor**: a dispatch on a variable inside a branch of a dispatch on the same variable
+— on a datatype, a boolean, an enum, a natural number, an integer or a primitive with one
+constructor — and a dispatch on the variable of a `let` that binds a constructor
+(`Head.letKnown`).  And a force records whether it forces a name (`Head.force`), so that
+a delay of it — `Thunk.mk (fun _ => t.get)`, which is `t` — is rejected.
+
 Both indices are *computed* by the constructors, so writing a term looks exactly like
 writing a raw one, and every proof argument is discharged by `decide` on closed indices.
 -/
@@ -224,6 +231,12 @@ inductive Head where
       η-redex: `fun x => f x`, where `f` does not read `x`, is `f` (`Term.lam`).  A `let`
       forgets it (`Head.underBinder`): under a `let`, index `0` is the `let`'s variable. -/
   | app (onVar0 : Bool)
+  /-- a **force** of a delay (`Term.thunk_force` when `memo`, `Term.lazy_force`
+      otherwise): a computation like `Head.comp`, which records whether what is forced is
+      a name — a variable or a declaration.  That is what lets the grammar see that
+      delaying it again, `Thunk.mk (fun _ => t.get)`, is `t` (`Term.thunk_mk`,
+      `Term.lazy_mk`).  A `let` forgets it (`Head.underBinder`). -/
+  | force (memo : Bool) (ofName : Bool)
   /-- a **closed value** that is not a literal: an array, a record, a tagged value or a
       value of a recursive tagged union whose fields are all literals or closed values,
       or a delay of one.  It is a constructor like `Head.ctor` (a
@@ -325,7 +338,7 @@ def isCtorLike : Head → Bool
     dispatch (`Head.comp`, `Head.caseIntro`, `Head.caseCtor`) — rather than a name, a `fun`,
     a literal or a constructor? -/
 def isComp : Head → Bool
-  | .comp | .app _ | .caseIntro | .caseCtor => true
+  | .comp | .app _ | .force _ _ | .caseIntro | .caseCtor => true
   | _ => false
 
 /-- Is this head a variable (not a reference to a declaration)? -/
@@ -349,7 +362,21 @@ def isVar0 : Head → Bool
     outside it (`Term.letE`). -/
 def underBinder : Head → Head
   | .app _ => .app false
+  | .force memo _ => .force memo false
   | k => k
+
+/-- Is this head a name — a variable or a reference to a declaration? -/
+def isName : Head → Bool
+  | .var _ | .global => true
+  | _ => false
+
+/-- Is this head a force of a **name** (`Head.force`), memoised (`memo`) or not?  Delaying
+    it again is a redex: `Thunk.mk (fun _ => t.get)` is `t`, and a delay of `l ()` is `l`
+    (`Term.thunk_mk`, `Term.lazy_mk`).  (A force of a computation is not rejected there:
+    `Thunk.mk (fun _ => (f x).get)` does not run `f x` until it is forced, and `f x` does.) -/
+def isForcedName (memo : Bool) : Head → Bool
+  | .force m true => m == memo
+  | _ => false
 
 /-- Is `fun x => b`, where `b` has head `kb` and reads `x` `n` times, an **η-redex**:
     `b` is `f x` (`Head.app true`), and `x` is read only there — `f` does not read it —
@@ -393,6 +420,16 @@ def Head.rescrutinizes {Γ : Ctx} (k : Head) (w : Usage Γ) : Bool :=
   match k with
   | .var i => w.scrut i != 0
   | _ => false
+
+/-- Does `let x = e; b`, where `e` has head `ke` and `b` has grades `v`, take `x` apart in
+    `b` while `e` is a constructor applied to its fields (`Head.isCtor`)?  Each such
+    dispatch is a redex — **case of a known constructor, bound by a `let`**: its branch is
+    the one of `e`'s constructor, with `e`'s fields.  The optimized form binds the fields
+    (`let a = …; let b = …; let x = (a, b); …`), so that the dispatches read them, and
+    `Term.letE` asks that this is `false`.  `let p = (f y, g y); p.1 + p.2` is
+    `let a = f y; let b = g y; a + b`. -/
+def Head.letKnown {Γ : Ctx} {σ : TyWf} (ke : Head) (v : Usage (σ :: Γ)) : Bool :=
+  ke.isCtor && v.scrut 0 != 0
 
 /-- Is a term of grades `u`, type `τ` and head `k` a **closed computation that can be
     written as its value**: a computation (`Head.isComp`) that reads no variable and no

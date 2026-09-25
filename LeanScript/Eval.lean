@@ -77,7 +77,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, .lam body _, env, h => fun x => Term.eval G body (x, env) h
   | _, _, _, _, .ap f a _ _, env, h => (Term.eval G f env h.1) (Term.eval G a env h.2)
   | _, _, _, _, .global r, _, _ => GlobalEnv.get r G
-  | _, _, _, _, .letE e body _ _ _, env, h => Term.eval G body (Term.eval G e env h.1, env) h.2
+  | _, _, _, _, .letE e body .., env, h => Term.eval G body (Term.eval G e env h.1, env) h.2
   -- literals
   | _, _, _, _, .bool_mk b, _, _ => b
   | _, _, _, _, .nat_mk n, _, _ => n
@@ -114,7 +114,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match c' with
       | true => Term.eval G t env h.2.1
       | false => Term.eval G e env h.2.2
-  | _, _, _, _, .nat_casesOn n z s _, env, h =>
+  | _, _, _, _, .nat_casesOn n z s .., env, h =>
       let n' : Nat := Term.eval G n env h.1
       match n' with
       | 0 => Term.eval G z env h.2.1
@@ -123,48 +123,48 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       natFoldK (Spine.eval G base env h.2.1)
         (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
         (show Nat from Term.eval G n env h.1)
-  | _, _, _, _, .int_casesOn i ofNat negSucc _, env, h =>
+  | _, _, _, _, .int_casesOn i ofNat negSucc .., env, h =>
       let i' : Int := Term.eval G i env h.1
       match i' with
       | .ofNat k => Term.eval G ofNat (k, env) h.2.1
       | .negSucc k => Term.eval G negSucc (k, env) h.2.2
-  | _, _, _, _, .uint8_casesOn v b _ _, env, h =>
+  | _, _, _, _, .uint8_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toBitVec, env) h.2
-  | _, _, _, _, .uint16_casesOn v b _ _, env, h =>
+  | _, _, _, _, .uint16_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toBitVec, env) h.2
-  | _, _, _, _, .uint32_casesOn v b _ _, env, h =>
+  | _, _, _, _, .uint32_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toBitVec, env) h.2
-  | _, _, _, _, .uint64_casesOn v b _ _, env, h =>
+  | _, _, _, _, .uint64_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toBitVec, env) h.2
-  | _, _, _, _, .int8_casesOn v b _ _, env, h =>
+  | _, _, _, _, .int8_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toUInt8, env) h.2
-  | _, _, _, _, .int16_casesOn v b _ _, env, h =>
+  | _, _, _, _, .int16_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toUInt16, env) h.2
-  | _, _, _, _, .int32_casesOn v b _ _, env, h =>
+  | _, _, _, _, .int32_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toUInt32, env) h.2
-  | _, _, _, _, .int64_casesOn v b _ _, env, h =>
+  | _, _, _, _, .int64_casesOn v b .., env, h =>
       Term.eval G b ((Term.eval G v env h.1).toUInt64, env) h.2
-  | _, _, _, _, .char_casesOn c b _ _, env, h =>
+  | _, _, _, _, .char_casesOn c b .., env, h =>
       Term.eval G b ((Term.eval G c env h.1).val, env) h.2
-  | _, _, _, _, .stringPosRaw_casesOn p b _ _, env, h =>
+  | _, _, _, _, .stringPosRaw_casesOn p b .., env, h =>
       Term.eval G b ((Term.eval G p env h.1).byteIdx, env) h.2
-  | _, _, _, _, .stringPos_casesOn p b _ _, env, h =>
+  | _, _, _, _, .stringPos_casesOn p b .., env, h =>
       Term.eval G b ((Term.eval G p env h.1).offset, env) h.2
-  | _, _, _, _, .substringRaw_casesOn s b _ _, env, h =>
+  | _, _, _, _, .substringRaw_casesOn s b .., env, h =>
       let v : Substring.Raw := Term.eval G s env h.1
       Term.eval G b (v.str, v.startPos, v.stopPos, env) h.2
-  | _, _, _, _, .float_casesOn x b _ _, env, h =>
+  | _, _, _, _, .float_casesOn x b .., env, h =>
       Term.eval G b ((Term.eval G x env h.1).toModel, env) h.2
-  | _, _, _, _, .float32_casesOn x b _ _, env, h =>
+  | _, _, _, _, .float32_casesOn x b .., env, h =>
       Term.eval G b ((Term.eval G x env h.1).toModel, env) h.2
-  | _, _, _, _, .floatModel_casesOn m b _ _, env, h =>
+  | _, _, _, _, .floatModel_casesOn m b .., env, h =>
       Term.eval G b ((Term.eval G m env h.1).toBits, env) h.2
-  | _, _, _, _, .float32Model_casesOn m b _ _, env, h =>
+  | _, _, _, _, .float32Model_casesOn m b .., env, h =>
       Term.eval G b ((Term.eval G m env h.1).toBits, env) h.2
   -- delays: a delay denotes the value it stands for
-  | _, _, _, _, .lazy_mk e, env, h => let v := Term.eval G e env h; v
+  | _, _, _, _, .lazy_mk e .., env, h => let v := Term.eval G e env h; v
   | _, _, _, _, .lazy_force e _ _, env, h => let v := Term.eval G e env h; v
-  | _, _, _, _, .thunk_mk e, env, h => let v := Term.eval G e env h; v
+  | _, _, _, _, .thunk_mk e .., env, h => let v := Term.eval G e env h; v
   | _, _, _, _, .thunk_force e _ _, env, h => let v := Term.eval G e env h; v
   -- arrays
   | _, _, _, _, .array_mk ts, env, h => (Terms.eval G ts env h).toArray
@@ -221,7 +221,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, .recAlias_casesOn v .., env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .recAlias_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _, _, h => h.elim
-  | _, _, _, _, .mutualRecursiveFamily_casesOn v _ _ _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .mutualRecursiveFamily_casesOn v _ .., env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _ _ _, env, h =>
       PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .mutualRecursiveFamily_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
@@ -443,9 +443,10 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf} (G : GlobalEnv Sg.decls)
 theorem Term.eval_letE {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
     (e : Term Sg Γ u σ ke) (body : Term Sg (σ :: Γ) v τ kb)
     (hValue : Head.isBindable ke = true) (hUsed : 2 ≤ Usage.head v)
-    (hClosed : Head.closedComp (Usage.letU u v) τ kb = false) (env : Env Γ)
+    (hClosed : Head.closedComp (Usage.letU u v) τ kb = false)
+    (hKnownLet : Head.letKnown ke v = false) (env : Env Γ)
     (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
-    Term.eval G (.letE e body hValue hUsed hClosed) env ⟨he, hb⟩ =
+    Term.eval G (.letE e body hValue hUsed hClosed hKnownLet) env ⟨he, hb⟩ =
       Term.eval G body (Term.eval G e env he, env) hb :=
   rfl
 

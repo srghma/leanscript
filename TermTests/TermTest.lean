@@ -533,7 +533,7 @@ is false
 #guard_msgs (error) in
 def thunkedThreeForced :=
   (.thunk_force (.thunk_mk (.nat_mk 3)) :
-    Term emptySig [] _ (TyWf.prim .nat) .comp)
+    Term emptySig [] _ (TyWf.prim .nat) (.force true false))
 
 -- A dispatch on a constructor: the first field of the record `(3, true)`.
 /--

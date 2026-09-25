@@ -43,36 +43,36 @@ mutual
 def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → Term Sg Γ u τ hd → Prop
   | _, _, _, _, .lam body _ => Term.NoRecMk body
   | _, _, _, _, .ap f a _ _ => Term.NoRecMk f ∧ Term.NoRecMk a
-  | _, _, _, _, .letE e body _ _ _ => Term.NoRecMk e ∧ Term.NoRecMk body
+  | _, _, _, _, .letE e body .. => Term.NoRecMk e ∧ Term.NoRecMk body
   -- externs applied to terms
   | _, _, _, _, .externCall args _ _ _ => Spine.NoRecMk args
   | _, _, _, _, .externCallChecked args _ fallback _ _ => Spine.NoRecMk args ∧ Term.NoRecMk fallback
   -- case analysis on a leaf
   | _, _, _, _, .bool_casesOn c t e .. => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
-  | _, _, _, _, .nat_casesOn n z s _ => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
+  | _, _, _, _, .nat_casesOn n z s .. => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
   | _, _, _, _, .nat_rec _ n base branch _ _ _ =>
       Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
-  | _, _, _, _, .int_casesOn i a b _ => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
-  | _, _, _, _, .uint8_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint16_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint32_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint64_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int8_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int16_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int32_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int64_casesOn v b _ _ => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .char_casesOn c b _ _ => Term.NoRecMk c ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPosRaw_casesOn p b _ _ => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPos_casesOn p b _ _ => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .substringRaw_casesOn s b _ _ => Term.NoRecMk s ∧ Term.NoRecMk b
-  | _, _, _, _, .float_casesOn x b _ _ => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .float32_casesOn x b _ _ => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .floatModel_casesOn m b _ _ => Term.NoRecMk m ∧ Term.NoRecMk b
-  | _, _, _, _, .float32Model_casesOn m b _ _ => Term.NoRecMk m ∧ Term.NoRecMk b
+  | _, _, _, _, .int_casesOn i a b .. => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
+  | _, _, _, _, .uint8_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint16_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint32_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .uint64_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int8_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int16_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int32_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .int64_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
+  | _, _, _, _, .char_casesOn c b .. => Term.NoRecMk c ∧ Term.NoRecMk b
+  | _, _, _, _, .stringPosRaw_casesOn p b .. => Term.NoRecMk p ∧ Term.NoRecMk b
+  | _, _, _, _, .stringPos_casesOn p b .. => Term.NoRecMk p ∧ Term.NoRecMk b
+  | _, _, _, _, .substringRaw_casesOn s b .. => Term.NoRecMk s ∧ Term.NoRecMk b
+  | _, _, _, _, .float_casesOn x b .. => Term.NoRecMk x ∧ Term.NoRecMk b
+  | _, _, _, _, .float32_casesOn x b .. => Term.NoRecMk x ∧ Term.NoRecMk b
+  | _, _, _, _, .floatModel_casesOn m b .. => Term.NoRecMk m ∧ Term.NoRecMk b
+  | _, _, _, _, .float32Model_casesOn m b .. => Term.NoRecMk m ∧ Term.NoRecMk b
   -- delays
-  | _, _, _, _, .lazy_mk e => Term.NoRecMk e
+  | _, _, _, _, .lazy_mk e .. => Term.NoRecMk e
   | _, _, _, _, .lazy_force e _ _ => Term.NoRecMk e
-  | _, _, _, _, .thunk_mk e => Term.NoRecMk e
+  | _, _, _, _, .thunk_mk e .. => Term.NoRecMk e
   | _, _, _, _, .thunk_force e _ _ => Term.NoRecMk e
   -- arrays
   | _, _, _, _, .array_mk ts => Terms.NoRecMk ts
@@ -107,7 +107,7 @@ def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → 
   | _, _, _, _, .recAlias_casesOn v .. => Term.NoRecMk v
   | _, _, _, _, .recAlias_rec _ v _ _ => Term.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _ => False
-  | _, _, _, _, .mutualRecursiveFamily_casesOn v _ _ _ => Term.NoRecMk v
+  | _, _, _, _, .mutualRecursiveFamily_casesOn v _ .. => Term.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _ _ _ => Term.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_rec _ v _ _ => Term.NoRecMk v
   -- a variable, a reference to a declaration and every literal

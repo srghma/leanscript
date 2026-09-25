@@ -57,7 +57,12 @@ builds a node of any family of the grammar's `mutual` block:
   (`LeanScript.Head.isEtaRedex`) is `f`; a dispatch on a variable inside a branch of a
   dispatch on the same variable (`LeanScript.Head.rescrutinizes`) takes the branch the
   outer dispatch already chose (`knownCase?`, `reduceKnown`), so `b || true` is `true`
-  and `match o with | some x => x + o.getD 0 | none => 0` reads `x + x`;
+  and `match o with | some x => x + o.getD 0 | none => 0` reads `x + x` — on natural
+  numbers, integers and the primitives with one constructor as well as on datatypes;
+  a `let` of a constructor that its body takes apart binds the constructor's fields
+  instead, and each dispatch reads them (`letKnown?`): `let p := (f y, g y); p.1 + p.2`
+  is `let a := f y; let b := g y; a + b`; and a delay of a force of a name is the name
+  (`Thunk.mk (fun _ => t.get)` is `t`);
 * beyond what the grammar rejects, it also turns a depth-`0` fold at a function type whose step is a tail call
   on a new accumulator — `go (k + 1) a = go k (F k a)` — into a fold at the
   accumulator's type, one closure instead of one per step (`accLoop?`);
@@ -542,7 +547,7 @@ def isKnownHead (k : Name) : Bool :=
 /-- `LeanScript.Head.isComp`, on the name of a head: a computation — an application, a
     fold, an extern, a force or a dispatch. -/
 def isCompHead (k : Name) : Bool :=
-  k == ``LeanScript.Head.comp || k == ``LeanScript.Head.app ||
+  k == ``LeanScript.Head.comp || k == ``LeanScript.Head.app || k == ``LeanScript.Head.force ||
     k == ``LeanScript.Head.caseIntro || k == ``LeanScript.Head.caseCtor
 
 /-- Is this head a name — a variable or a reference to a declaration — which costs nothing
@@ -637,10 +642,23 @@ def dispatchScrutinee? (ctor : Name) : Option String :=
       ctor == ``LeanScript.Term.lazy_force || ctor == ``LeanScript.Term.thunk_force then none
   else scrutineeArg? ctor
 
+/-- The dispatches on a primitive type with **one** constructor (`UInt8`, `Char`, a float,
+    …): their one branch binds the fields. -/
+def isOneCtorPrimDispatch (ctor : Name) : Bool :=
+  ctor == ``LeanScript.Term.uint8_casesOn || ctor == ``LeanScript.Term.uint16_casesOn ||
+  ctor == ``LeanScript.Term.uint32_casesOn || ctor == ``LeanScript.Term.uint64_casesOn ||
+  ctor == ``LeanScript.Term.int8_casesOn || ctor == ``LeanScript.Term.int16_casesOn ||
+  ctor == ``LeanScript.Term.int32_casesOn || ctor == ``LeanScript.Term.int64_casesOn ||
+  ctor == ``LeanScript.Term.char_casesOn || ctor == ``LeanScript.Term.stringPosRaw_casesOn ||
+  ctor == ``LeanScript.Term.stringPos_casesOn || ctor == ``LeanScript.Term.substringRaw_casesOn ||
+  ctor == ``LeanScript.Term.float_casesOn || ctor == ``LeanScript.Term.float32_casesOn ||
+  ctor == ``LeanScript.Term.floatModel_casesOn || ctor == ``LeanScript.Term.float32Model_casesOn
+
 /-- The dispatches that ask that their branches do not take their scrutinee apart again
     (`hKnown`, `LeanScript.Head.rescrutinizes`): those on a type whose constructor, once
     known, a branch can be reduced by — booleans, enums, records, tagged unions and
-    recursive ones. -/
+    recursive ones, natural numbers and integers (zero or successor, `ofNat` or
+    `negSucc`), and the primitive types with one constructor. -/
 def isKnownCaseCtor (ctor : Name) : Bool :=
   ctor == ``LeanScript.Term.bool_casesOn || ctor == ``LeanScript.Term.enum_casesOn ||
   ctor == ``LeanScript.Term.enum_casesOnWithDefault || ctor == ``LeanScript.Term.record_casesOn ||
@@ -648,7 +666,9 @@ def isKnownCaseCtor (ctor : Name) : Bool :=
   ctor == ``LeanScript.Term.taggedUnion_casesOnWithDefault ||
   ctor == ``LeanScript.Term.recTaggedUnion_casesOn ||
   ctor == ``LeanScript.Term.recTaggedUnion_casesOnWithDefault ||
-  ctor == ``LeanScript.Term.recObject_casesOn || ctor == ``LeanScript.Term.recAlias_casesOn
+  ctor == ``LeanScript.Term.recObject_casesOn || ctor == ``LeanScript.Term.recAlias_casesOn ||
+  ctor == ``LeanScript.Term.nat_casesOn || ctor == ``LeanScript.Term.int_casesOn ||
+  isOneCtorPrimDispatch ctor
 
 /-- The field named `n` of an exposed node (all of its arguments, indices included). -/
 def fieldNamed (t : Expr) (n : String) : MetaM Expr := do
@@ -724,7 +744,13 @@ partial def reduceKnown (ctor : Name) (args : Array Expr) (tag : Nat) (fields : 
       match ← tuSomeBranch? (← arg "cases") tag with
       | some b => bindMany sg γ b fields
       | none => rebase (← arg "dflt") γ
-  | _ => throwError "`#leanscript_to_term`: internal: {ctor} is not a dispatch on a known value"
+  | ``LeanScript.Term.nat_casesOn =>
+      if tag == 0 then rebase (← arg "z") γ else bindMany sg γ (← arg "s") fields
+  | ``LeanScript.Term.int_casesOn =>
+      bindMany sg γ (← arg (if tag == 0 then "ofNat" else "negSucc")) fields
+  | _ =>
+      if isOneCtorPrimDispatch ctor then bindMany sg γ (← arg "b") fields
+      else throwError "`#leanscript_to_term`: internal: {ctor} is not a dispatch on a known value"
 
 /-- `mapBranches` with the rest of the dispatch kept (`τ` unchanged), where the callback is
     also told **which constructor** each branch is for: the number a partial list names
@@ -804,7 +830,7 @@ partial def floatLet? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) :=
   let k ← headOf s
   let floats :=
     if ctor == ``LeanScript.Term.ap then isFunLikeHead k
-    else if ctor == ``LeanScript.Term.letE then k == ``LeanScript.Head.lam
+    else if ctor == ``LeanScript.Term.letE then k == ``LeanScript.Head.lam || isCtorHead k
     else if ctor == ``LeanScript.Term.thunk_force || ctor == ``LeanScript.Term.lazy_force then
       isCtorHead k || isCaseHead k
     else isKnownHead k
@@ -854,7 +880,7 @@ partial def rebuildPast (ctor : Name) (args : Array Expr) (γ' : Expr) (sName : 
 
 /-- Rebuild `t` in the new context `γ`; see this section's header. -/
 partial def mapVars (t : Expr) (γ : Expr) (d : Nat) (ρ : Nat → MetaM Image)
-    (known : Option (Nat × Nat × Nat) := none) : MetaM Expr := do
+    (known : Option (Nat × Nat × Nat) := none) (knownOff : Nat := 0) : MetaM Expr := do
   let t ← exposeNode t
   let .const ctor _ := t.getAppFn | unreachable!
   let args := t.getAppArgs
@@ -882,7 +908,7 @@ partial def mapVars (t : Expr) (γ : Expr) (d : Nat) (ρ : Nat → MetaM Image)
           -- the context this subterm is written in, and how many binders it adds
           let γc := (← famTypeOf' dom).2
           let n ← bindersBefore γc γ
-          mapVars old γc (d + n) ρ known
+          mapVars old γc (d + n) ρ known knownOff
       | _ => pure old
     match info.roles[i]! with
     | .index | .indexProof => pure ()
@@ -897,7 +923,7 @@ partial def mapVars (t : Expr) (γ : Expr) (d : Nat) (ρ : Nat → MetaM Image)
         if sN.getAppFn.isConstOf ``LeanScript.Term.var then
           if (← varIndex sN.getAppArgs.back!) == d + j then
             let mut fields : Array Expr := #[]
-            for f in [0:n] do fields := fields.push (← mkVarTerm sg γ (d + f))
+            for f in [0:n] do fields := fields.push (← mkVarTerm sg γ (d + knownOff + f))
             return ← reduceKnown ctor newArgs tag fields
   mkNode ctor newArgs
 
@@ -1087,7 +1113,7 @@ partial def valueDen (t : Expr) : MetaM Expr := do
       let ty := mkApp (mkConst ``LeanScript.TyWf.Den) σ
       let ds ← (← termsElems (← lastArg n)).mapM valueDen
       return mkApp2 (mkConst ``List.toArray [0]) ty (← mkListLit ty ds.toList)
-  | ``LeanScript.Term.thunk_mk | ``LeanScript.Term.lazy_mk => valueDen (← lastArg n)
+  | ``LeanScript.Term.thunk_mk | ``LeanScript.Term.lazy_mk => valueDen (← fieldNamed n "e")
   | ``LeanScript.Term.record_mk =>
       -- the fields, as the nested pairs the record denotes
       valueDens n.getAppArgs.back!
@@ -1276,6 +1302,62 @@ partial def closedValue? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
     | throwError "`#leanscript_to_term`: internal: the value of {t} cannot be written"
   some <$> quotedTerm sg γ τ q
 
+/-- **Case of a constructor bound by a `let`.**  `let x = C(e₁, …, eₙ); b`, where `b`
+    takes `x` apart (`LeanScript.Head.letKnown`), is
+    `let y₁ = e₁; …; let yₙ = eₙ; let x = C(y₁, …, yₙ); b'`, where each dispatch on `x` in
+    `b'` is replaced by its branch for `C`, reading the `yᵢ` (`mapVars` with `known`).
+    `mkNode` then inlines each `let` that is used fewer than twice — `x` too, when `b`
+    only took it apart. -/
+partial def letKnown? (args : Array Expr) : MetaM (Option Expr) := do
+  let letE := ``LeanScript.Term.letE
+  let sg := args[0]!
+  let γ ← argNamed letE args "Γ"
+  let e ← argNamed letE args "e"
+  let b ← argNamed letE args "b"
+  unless isCtorHead (← headOf e) do return none
+  let (_, _, v, _, _) ← termParts b
+  unless (← scrutOf (← instantiateMVars v) 0) > 0 do return none
+  let en ← exposeNode e
+  let ector := en.getAppFn.constName!
+  let (tag, fields) ← match ector with
+    | ``LeanScript.Term.record_mk | ``LeanScript.Term.recObject_mk =>
+        pure (0, ← spineElems (← lastArg en))
+    | ``LeanScript.Term.taggedUnion_mk | ``LeanScript.Term.recTaggedUnion_mk =>
+        pure (← natValue (← fieldNamed en "t"), ← spineElems (← lastArg en))
+    | ``LeanScript.Term.recAlias_mk => pure (0, #[← lastArg en])
+    | _ => throwError "`#leanscript_to_term`: internal: a `let` of {ector} taken apart"
+  let n := fields.size
+  -- the context with the fields bound, the first field innermost
+  let tys ← fields.mapM termTyOf
+  let mut γf := γ
+  for σf in tys.reverse do γf := consCtxE σf γf
+  -- the constructor again, on the variables of its fields
+  let vars ← (List.range n).toArray.mapM (mkVarTerm sg γf ·)
+  let newLast ← if ector == ``LeanScript.Term.recAlias_mk then pure vars[0]! else do
+    let mut sp ← mkNode ``LeanScript.Spine.nil #[sg, γf]
+    for i in [0:n] do
+      let j := n - 1 - i
+      sp ← mkNode ``LeanScript.Spine.cons
+        #[sg, γf, tys[j]!, mkTyListE (tys.toList.drop (j + 1)), vars[j]!, sp]
+    pure sp
+  let info ← ctorInfo ector
+  let ci ← getConstInfoCtor ector
+  let mut cargs := en.getAppArgs.extract 0 ci.numParams
+  for i in [0:info.roles.size] do
+    match info.roles[i]! with
+    | .index | .indexProof => pure ()
+    | .ctx => cargs := cargs.push γf
+    | _ => cargs := cargs.push en.getAppArgs[ci.numParams + i]!
+  cargs := cargs.set! (cargs.size - 1) newLast
+  let c ← mkNode ector cargs
+  -- the body, where each dispatch on the `let`'s variable reads the fields
+  let σ ← termTyOf e
+  let γx := consCtxE σ γf
+  let b' ← mapVars b γx 0 (fun j => pure (.var (if j == 0 then 0 else j + n)))
+    (known := some (0, tag, n)) (knownOff := 1)
+  let body ← mkNode letE #[sg, γf, σ, ← termTyOf b', c, b']
+  some <$> bindMany sg γ body fields
+
 /-- If the node `ctor args` is a redex, what it reduces to. -/
 partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let arg (n : String) : MetaM Expr := argNamed ctor args n
@@ -1314,7 +1396,8 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       let k ← headOf e
       if (isCompHead k || isCtorHead k) &&
           (← usesOf b 0) ≥ 2 then
-        return none
+        -- a shared constructor that the body takes apart: bind its fields instead
+        return ← letKnown? args
       some <$> subst0 b e (← arg "Γ")
   | ``LeanScript.Term.bool_casesOn =>
       let c ← arg "c"
@@ -1372,7 +1455,16 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
         let τd ← termTyOf e
         return some (← mapBranches e τd τ fun γc _ b => mkNode ctor #[sg, γc, τ, b])
       unless isCtorHead ke do return none
-      some <$> lastArg e
+      some <$> fieldNamed (← exposeNode e) "e"
+  | ``LeanScript.Term.thunk_mk | ``LeanScript.Term.lazy_mk =>
+      -- a delay of a force of a name is the name: `Thunk.mk (fun _ => t.get)` is `t`
+      let e ← exposeNode (← arg "e")
+      let force := if ctor == ``LeanScript.Term.thunk_mk then ``LeanScript.Term.thunk_force
+        else ``LeanScript.Term.lazy_force
+      unless e.getAppFn.isConstOf force do return none
+      let x ← fieldNamed e "e"
+      unless isNameHead (← headOf x) do return none
+      return some x
   | ``LeanScript.Term.array_casesOn =>
       let a ← arg "a"
       unless isCtorHead (← headOf a) do return none
