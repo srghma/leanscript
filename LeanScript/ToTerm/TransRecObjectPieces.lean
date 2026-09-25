@@ -47,11 +47,13 @@ inductive RecObjPayloadField where
       subvalue at every argument.  The window holds the function `dom ⇒ τ` of the answers
       at them, and the history Lean hands its branch is, at this field, the function
       `fun a => ⟨answer at (f a), …⟩`, so a read of the answer at `f a` is an application
-      of the window.  Only the depth-`0` fold reads such a field. -/
+      of the window.  Deeper than `0` the window holds the function of the answer trees,
+      and the function of the answers is bound beside it. -/
   | fn (ty dom : Expr)
   /-- A delayed record (`Thunk Tree`), of the Lean type `ty`: Lean holds it as
       `Thunk.mk g` with `g : Unit → Tree`, and the window holds the delayed answer, whose
-      forcing is the answer at `g ()`.  Only the depth-`0` fold reads such a field. -/
+      forcing is the answer at `g ()`.  Deeper than `0` the window holds the delayed answer
+      tree, and the delayed answer is bound beside it. -/
   | thunk (ty : Expr)
   deriving Inhabited
 

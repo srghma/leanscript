@@ -43,10 +43,16 @@ The record's fields may be values that do not mention the record, or values of a
 (non-recursive) union or structure type — `Option Cell`, `Nat × Cell` — whose fields are
 read in the same way, or arrays of such values (`Array Cell`, `Array (Option Cell)`,
 `Array (Array Cell)`): an array is a frontier value, and the answer of the recursion at it
-(and at its list) is the fold of the window's array (`recObjListAnswer`).  At depth `0`
-a field may also be a function into the record (`Nat → Cell`), whose window is the
-function of the answers, or a delay of it (`Thunk Cell`), whose window is the delayed
-answer.
+(and at its list) is the fold of the window's array (`recObjListAnswer`).  A field may
+also be a function into the record (`Nat → Cell`) or a delay of it (`Thunk Cell`), a
+frontier value at every depth.  Its window is the function of the answer trees (or the
+delayed answer tree): at depth `0` that is the function of the answers (the delayed
+answer), and deeper the function of the answers, `fun a => (window a).1` (the delayed
+answer, `Thunk.mk (window.get).1`), is bound beside it (`LeanScript.Term.fnTreeAnswer`, `LeanScript.Term.thunkTreeAnswer`,
+whose values `LeanScript.RecFnFieldFacts` proves are the depth-`0` window).  Either way
+the answer at `f a` is that function applied to `a`.  The value `f a` itself is never
+taken apart: Lean's structural recursion does not accept a recursive call on what a
+`match` on `f a` binds, so no branch does that.
 
 A declaration of **several constructors** whose occurrences sit inside other types is a
 recursive newtype whose body is the union of its constructors
@@ -57,6 +63,22 @@ constructors are the declaration's own (`RecObjInfo.unionAlias`).
 open Lean Meta Elab Term
 
 namespace LeanScript.ToTerm
+
+/-- The two fields of an answer tree `R` of the fold of `info`: the language type of the
+    answers, and that of the window below. -/
+def recObjTreeFields (info : RecObjInfo) (R : Expr) : MetaM (Expr × Expr) := do
+  let .record fsT ← tyView R
+    | throwError "`#leanscript_to_term`: internal: an answer tree of {info.ind} is not a record"
+  let tTys := (← recordFieldTys fsT).toArray
+  unless tTys.size == 2 do
+    throwError "`#leanscript_to_term`: internal: an answer tree of {info.ind} has \
+      {tTys.size} fields"
+  return (tTys[0]!, tTys[1]!)
+
+/-- The de Bruijn variable (`Γ ∋ τ`) of the variable `f` of the context: the argument of the
+    `Term.var` that reads it. -/
+def TCtx.varIdx (c : TCtx) (f : FVarId) : MetaM Expr :=
+  return (← c.var f).appArg!
 
 mutual
 
@@ -201,31 +223,63 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
                     (frontier.push arrV) pfs ps pTys j (i + 1) (pvals.push arrV) k
                   return mkAppN (mkConst `LeanScript.Term.letE')
                     #[c.sg, cL.gamma, τA, info.τ, arrT, body]
-    | .fn fTy _ =>
-        unless j == 0 do
-          throwError "`#leanscript_to_term`: the fold of {info.ind} reads a function field \
-            only at depth 0: its window is the function of the answers, which a deeper \
-            look would have to take apart at every argument"
-        -- the frontier: the window is the function of the answers, the function itself a
-        -- variable nothing may take apart
-        withLocalDeclD `fn fTy fun g =>
-          go c (answers.push (fnKey g, ps[i])) (frontier.push g) pfs ps pTys j (i + 1)
-            (pvals.push g) k
+    | .fn fTy dom =>
+        -- the frontier: the function itself is a variable nothing may take apart, and the
+        -- answer at `f a` is read from the window at `a`
+        withLocalDeclD `fn fTy fun g => do
+          if j == 0 then
+            -- the window is the function of the answers
+            go c (answers.push (fnKey g, ps[i])) (frontier.push g) pfs ps pTys j (i + 1)
+              (pvals.push g) k
+          else
+            -- the window is the function of the answer trees: the function of the answers
+            -- is bound beside it, `fun a => (window a).1`
+            let .fn σ R ← tyView pTys[i]!
+              | throwError "`#leanscript_to_term`: internal: the window of a function field \
+                  of {info.ind} is not a function"
+            let (τA, W) ← recObjTreeFields info R
+            let ansTy := mkApp2 (mkConst ``LeanScript.TyWf.fn) σ τA
+            -- `LeanScript.Term.fnTreeAnswer`, whose value `LeanScript.Term.eval_fnTreeAnswer`
+            -- gives
+            let ansT := mkAppN (mkConst `LeanScript.Term.fnTreeAnswer)
+              #[c.sg, c.gamma, σ, τA, W, ← c.varIdx ps[i].fvarId!]
+            withLocalDeclD `ansFn (← mkArrow dom info.τLean) fun ansF => do
+              let cF := c.pushFields #[(ansF.fvarId!, ansTy)]
+              let body ← go cF (answers.push (fnKey g, ansF)) (frontier.push g) pfs ps pTys j
+                (i + 1) (pvals.push g) k
+              return mkAppN (mkConst `LeanScript.Term.letE')
+                #[c.sg, c.gamma, ansTy, info.τ, ansT, body]
     | .thunk _ =>
-        unless j == 0 do
-          throwError "`#leanscript_to_term`: the fold of {info.ind} reads a delayed field \
-            only at depth 0: its window is the delayed answer, which a deeper look would \
-            have to force"
         -- the frontier: Lean holds the delay as `Thunk.mk g`, and the answer at `g ()` is
-        -- the window forced
+        -- the delayed answer forced
         let u ← getDecLevel info.selfTy
         withLocalDeclD `g (← mkArrow (mkConst ``Unit) info.selfTy) fun g => do
           let uτ ← getDecLevel info.τLean
-          let force := mkLambda `u .default (mkConst ``Unit)
-            (mkApp2 (mkConst ``Thunk.get [uτ]) info.τLean ps[i])
           let v := mkApp2 (mkConst ``Thunk.mk [u]) info.selfTy g
-          go c (answers.push (fnKey g, force)) (frontier.push g) pfs ps pTys j (i + 1)
-            (pvals.push v) k
+          let force (d : Expr) := mkLambda `u .default (mkConst ``Unit)
+            (mkApp2 (mkConst ``Thunk.get [uτ]) info.τLean d)
+          if j == 0 then
+            -- the window is the delayed answer
+            go c (answers.push (fnKey g, force ps[i])) (frontier.push g) pfs ps pTys j (i + 1)
+              (pvals.push v) k
+          else
+            -- the window is the delayed answer tree: the delayed answer is bound beside it,
+            -- still delayed, `Thunk.mk (window.get).1`
+            let .thunk R ← tyView pTys[i]!
+              | throwError "`#leanscript_to_term`: internal: the window of a delayed field \
+                  of {info.ind} is not a delay"
+            let (τA, W) ← recObjTreeFields info R
+            let ansTy := mkApp (mkConst ``LeanScript.TyWf.thunk) τA
+            -- `LeanScript.Term.thunkTreeAnswer`, whose value
+            -- `LeanScript.Term.eval_thunkTreeAnswer` gives
+            let ansT := mkAppN (mkConst `LeanScript.Term.thunkTreeAnswer)
+              #[c.sg, c.gamma, τA, W, ← c.varIdx ps[i].fvarId!]
+            withLocalDeclD `ansThunk (mkApp (mkConst ``Thunk [uτ]) info.τLean) fun ansD => do
+              let cD := c.pushFields #[(ansD.fvarId!, ansTy)]
+              let body ← go cD (answers.push (fnKey g, force ansD)) (frontier.push g) pfs ps
+                pTys j (i + 1) (pvals.push v) k
+              return mkAppN (mkConst `LeanScript.Term.letE')
+                #[c.sg, c.gamma, ansTy, info.τ, ansT, body]
     | .self =>
         if j == 0 then
           -- the frontier: the answer is bound, the subvalue is a variable nothing may
@@ -275,8 +329,15 @@ partial def recObjListAnswer (info : RecObjInfo) (c : TCtx) (win winTy elemTy : 
   let nilT ← trans c nilBody
   let isSelf := elem matches .self
   -- a head and a tail, whose answers the fold of the array gives
-  let consT ← withLocalDeclD `head (if isSelf && j == 0 then info.τLean else mkConst ``Unit)
-    fun hd =>
+  -- the Lean type of the head's window, where it is a value Lean can type: the answer
+  -- (an element that is the record), the function of the answers or the delayed answer,
+  -- at depth `0`
+  let headTy ← match elem, j with
+    | .self, 0 => pure info.τLean
+    | .fn _ dom, 0 => mkArrow dom info.τLean
+    | .thunk _, 0 => mkAppM ``Thunk #[info.τLean]
+    | _, _ => pure (mkConst ``Unit)
+  let consT ← withLocalDeclD `head headTy fun hd =>
     withLocalDeclD `tail (mkConst ``Unit) fun tl =>
     withLocalDeclD `ih τLLean fun ih =>
     withLocalDeclD `ts listTy fun ts => do

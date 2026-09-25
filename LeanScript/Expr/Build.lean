@@ -825,6 +825,28 @@ def Term.mutualRecursiveFamily_rec' {Γ : Ctx} {τ : TyWf} {n : Nat}
   v.bindAtomOr (fun a => (.mutualRecursiveFamily_rec k a cases .ret))
     fun ρ a => (.mutualRecursiveFamily_rec k a (cases.rename ρ) .ret)
 
+/-! ## Reading the answers out of a window of answer trees
+
+What `#leanscript_to_term` binds beside the window of a fold of depth above `0`, at a field
+that is a function or a delay (`LeanScript.RecFnFieldFacts` proves their values). -/
+
+/-- **The function of the answers at a function field**, as the translation writes it: the
+    window `w : σ ⇒ ⟨τ, W⟩` holds, at every argument, the answer tree there, and the term
+    is `fun a => (w a).1`. It is a `lam` around a `record_casesOn'` of `w a` that returns
+    the first field. -/
+def Term.fnTreeAnswer {Γ : Ctx} {σ τ W : TyWf} (w : Γ ∋ (σ ⇒ .record ⟨τ, W, []⟩)) :
+    Term Sg Γ (σ ⇒ τ) :=
+  Term.lam (Term.record_casesOn' (fs := ⟨τ, W, []⟩)
+    (Term.ap (Term.var (Var.tail w)) (Term.var Var.head)) (Term.var Var.head))
+
+/-- **The delayed answer at a delayed field**, as the translation writes it: the window
+    `w : thunk ⟨τ, W⟩` holds the delayed answer tree, and the term delays the first field
+    of it, `thunk_mk (thunk_force w).1`. -/
+def Term.thunkTreeAnswer {Γ : Ctx} {τ W : TyWf} (w : Γ ∋ .thunk (.record ⟨τ, W, []⟩)) :
+    Term Sg Γ (.thunk τ) :=
+  Term.thunk_mk (Term.record_casesOn' (fs := ⟨τ, W, []⟩)
+    (Term.thunk_force (Term.var w)) (Term.var Var.head))
+
 end LeanScript
 
 end

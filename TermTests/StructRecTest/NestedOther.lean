@@ -29,6 +29,7 @@ occurrence can sit in, apart from `List` (`TermTests/ShapesTest/Nested.lean`):
 * **A function into the declaration** (`node (f : Nat → FnTree)`): the window is the
   function of the answers, so the answer at `f a` is the window applied to `a`.
 * **A delay** (`Thunk T`): the window is the delayed answer.
+  (Both are read by deeper folds too: `TermTests/StructRecTest/NestedFnDeep.lean`.)
 * **A container of one's own** with a `LeanScriptTyWf` instance (`MyList T`), which,
   like `List`, becomes a member of a family.
 
