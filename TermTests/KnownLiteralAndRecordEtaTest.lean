@@ -305,22 +305,22 @@ info: ((Term.var DeBruijnProj.head).enum_casesOn
             rest := [] }
           (Spine.cons (Term.nat_mk 0)
             (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_3⟩) Spine.nil))
-          colourKeep_term._proof_4)
+          colourKeep_term._proof_5)
         (Term.record_mk
           { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_2 },
             snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
             rest := [] }
           (Spine.cons (Term.nat_mk 1)
             (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_3⟩) Spine.nil))
-          colourKeep_term._proof_4)
+          colourKeep_term._proof_5)
         (Term.record_mk
           { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_2 },
             snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
             rest := [] }
           (Spine.cons (Term.nat_mk 2)
-            (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨2, colourKeep_term._proof_5⟩) Spine.nil))
-          colourKeep_term._proof_4))
-      ⋯ ⋯ ⋯).lam
+            (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨2, colourKeep_term._proof_4⟩) Spine.nil))
+          colourKeep_term._proof_6))
+      ⋯ ⋯ ⋯ colourKeep_term._proof_10 colourKeep_term._proof_11).lam
   ⋯
 -/
 #guard_msgs in

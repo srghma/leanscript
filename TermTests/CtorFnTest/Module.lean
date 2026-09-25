@@ -19,7 +19,7 @@ def natT : TyWf := .prim .nat
 
 def green :=
   (#leanscript_ctor `Color `green :
-    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Color `green) .lit)
+    Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Color `green) (.enumLit 1))
 def pt :=
   (#leanscript_ctor `Pt (.nat_mk 1) (.nat_mk 2) :
     Term ⟨[], rfl⟩ [] _ (#leanscript_layout `Pt) .val)

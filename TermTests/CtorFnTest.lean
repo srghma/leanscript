@@ -38,7 +38,7 @@ def some4 :=
 
 /--
 info: @[expose] def CtorFnTest.some4 : Term sig [] (Usage.arg Head.lit 0 + 0)
-  (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) (Head.ctorOf [Head.lit]) :=
+  (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) (Head.ctorAtOf 1 [Head.lit]) :=
 (fun α val => TermTests.CtorFnTest.Module.Option.some.leanScriptCtor α val some4._proof_1) natT (Term.nat_mk 4)
 -/
 #guard_msgs in #print some4
@@ -51,7 +51,7 @@ example : run some4 = ⟨⟨1, by decide⟩, (4, ())⟩ := rfl
 
 def none' :=
   (#leanscript_ctor `Option `none natT :
-    Term sig [] _ (#leanscript_layout `Option `none natT) .val)
+    Term sig [] _ (#leanscript_layout `Option `none natT) (.ctorAt 0 0))
 example : run none' = ⟨⟨0, by decide⟩, ()⟩ := rfl
 
 /-- A type with one constructor can be named alone. -/
@@ -72,7 +72,7 @@ def tt := (#leanscript_ctor `Bool `true : Term sig [] _ boolT (.bool true))
 example : run tt = true := rfl
 
 /-- `Ordering`'s instance numbers its constructors from `-1`; the layout keeps that. -/
-def gt := (#leanscript_ctor `Ordering `gt : Term sig [] _ (tyWfOf Ordering) .lit)
+def gt := (#leanscript_ctor `Ordering `gt : Term sig [] _ (tyWfOf Ordering) (.enumLit 2))
 example : (#leanscript_layout `Ordering `gt) = tyWfOf Ordering := rfl
 
 /-- A recursive datatype is built one layer at a time: `List.cons` takes the tree of its
@@ -89,7 +89,7 @@ example : run oneTwo =
 
 /-- An enum. -/
 inductive Shape3 | a | b | c
-def shapeB := (#leanscript_ctor `Shape3 `b : Term sig [] _ (#leanscript_layout `Shape3 `b) .lit)
+def shapeB := (#leanscript_ctor `Shape3 `b : Term sig [] _ (#leanscript_layout `Shape3 `b) (.enumLit 1))
 example : run shapeB = ⟨1, by decide⟩ := rfl
 
 /-- A structure: erased fields are not arguments, and a structure with one field left is
@@ -143,7 +143,7 @@ info: CtorFnTest.Vec.cons.leanScriptCtor {Sg : Sig} {Γ : Ctx} (α vTy : TyWf) {
   (v : Term Sg Γ v_usage vTy v_head) (n_atom : n_head.isAtom = true := by head_ok)
   (a_atom : a_head.isAtom = true := by head_ok) (v_atom : v_head.isAtom = true := by head_ok) :
   Term Sg Γ (Usage.arg n_head n_usage + (Usage.arg a_head a_usage + (Usage.arg v_head v_usage + 0)))
-    (Vec.leanScriptLayout α vTy) (Head.ctorOf [n_head, a_head, v_head])
+    (Vec.leanScriptLayout α vTy) (Head.ctorAtOf 1 [n_head, a_head, v_head])
 -/
 #guard_msgs in #leanscript_ctor `Vec `cons
 

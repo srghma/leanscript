@@ -180,7 +180,7 @@ def charIgnored :=
 def three : LeanEnumSchema := ⟨0, 0⟩
 
 /-- The middle constructor of `three`. -/
-def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) .lit)
+def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) (.enumLit 1))
 
 /-- A dispatch on `three`: one branch per constructor, and no default.  The branches
     follow the shape of the schema, which has exactly the three constructors an enum has
@@ -232,7 +232,7 @@ def someThree :=
     union has two constructors. -/
 def noneNat :=
   (.taggedUnion_mk optNat 1 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) (.ctorAt 1 0))
 
 /-- A bound that is given by hand still works. -/
 def someThree' :=

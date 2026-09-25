@@ -70,6 +70,20 @@ constructor — and a dispatch on the variable of a `let` that binds a construct
 (`Head.letKnown`).  And a force records whether it forces a name (`Head.force`), so that
 a delay of it — `Thunk.mk (fun _ => t.get)`, which is `t` — is rejected.
 
+The head of a dispatch on a tagged union, a recursive tagged union or an enum also
+summarizes its branches (`Head.summarize`, `Head.branchAt`, `Head.withDefault`): whether
+they are all the **same leaf** (`Head.caseLeaf`: one variable bound outside the dispatch,
+one `bool` literal or one enum literal), and whether each **rebuilds its own
+constructor** from exactly the fields it binds (`Head.caseEta`, from the heads
+`Head.ctorAt` of union constructors and `Head.enumLit` of enum constructors).  The first is
+the dispatch `match o with | none => x | some _ => x`, which is `x` (`hSame`,
+`Head.isCaseLeaf`); the second is the **union η-redex**
+`match o with | none => none | some a => some a`, which is `o` (`hEta`, `Head.isUnionEta`,
+`Head.isUnionEtaDflt`).  These summaries are never the head of a term: the dispatch's head
+is `Head.settle` of them.  And the grade vector records the uses in field-less branches of
+those dispatches (`Usage.alt`, `Usage.lit`): there the scrutinee *is* that constructor, a
+literal, and a branch that reads it is a redex (`hLit`, `Head.readsInFieldless`).
+
 Both indices are *computed* by the constructors, so writing a term looks exactly like
 writing a raw one, and every proof argument is discharged by `decide` on closed indices.
 -/
@@ -119,6 +133,15 @@ structure Usage (Γ : Ctx) : Type where
       is needed — `let x = f y; if c then g x else 0` is
       `if c then (let x = f y; g x) else 0`. -/
   need : Nat → Nat
+  /-- For the grades of the **branches of a dispatch on a tagged union**
+      (`LeanScript.TaggedUnionCases`, …): whether each variable of `Γ`, by de Bruijn
+      index, is read in a branch of a constructor **without fields** (`Usage.alt`) — `1`
+      if it is, `0` if not.  In such a branch the scrutinee is that constructor, a known
+      value, so a dispatch on a variable asks that its field-less branches do not read it
+      (`Head.readsInFieldless`): `match o with | none => f o | some a => g a` is
+      `match o with | none => f none | some a => g a`.  Every other branch resets it, so
+      it only ever says something about the branches of one dispatch. -/
+  lit : Nat → Nat
 
 namespace Usage
 
@@ -127,7 +150,7 @@ variable {Γ : Ctx} {σ : TyWf}
 instance : CoeFun (Usage Γ) (fun _ => (τ : TyWf) → Var Γ τ → Nat) := ⟨Usage.count⟩
 
 /-- No variable is used. -/
-def zero : Usage Γ := ⟨fun _ _ => 0, 0, fun _ => 0, fun _ => 0, fun _ => 0⟩
+def zero : Usage Γ := ⟨fun _ _ => 0, 0, fun _ => 0, fun _ => 0, fun _ => 0, fun _ => 0⟩
 
 /-- Where a variable is needed by two subterms that are both run, given where each of them
     needs it (`Usage.need`): where the one that uses it needs it, when only one does; and
@@ -137,12 +160,13 @@ def needJoin (a b : Nat) : Nat := if a = 0 then b else if b = 0 then a else 2
 /-- Pointwise sum: the uses of two subterms. -/
 def add (u v : Usage Γ) : Usage Γ :=
   ⟨fun τ x => u.count τ x + v.count τ x, u.free + v.free, fun i => u.scrut i + v.scrut i,
-   fun i => u.opnd i + v.opnd i, fun i => needJoin (u.need i) (v.need i)⟩
+   fun i => u.opnd i + v.opnd i, fun i => needJoin (u.need i) (v.need i),
+   fun i => u.lit i + v.lit i⟩
 
 /-- Scaling: the uses of a subterm copied `k` times. -/
 def smul (k : Nat) (u : Usage Γ) : Usage Γ :=
   ⟨fun τ x => k * u.count τ x, k * u.free, fun i => k * u.scrut i, fun i => k * u.opnd i,
-   fun i => if k = 0 then 0 else u.need i⟩
+   fun i => if k = 0 then 0 else u.need i, fun i => k * u.lit i⟩
 
 instance : Zero (Usage Γ) := ⟨zero⟩
 
@@ -159,7 +183,7 @@ instance : Add (Usage Γ) := ⟨add⟩
     run at most once", and `≥ 2` is "shared" — which is all that `Term.letE` asks. -/
 def many (u : Usage Γ) : Usage Γ :=
   ⟨fun τ x => 2 * u.count τ x, 2 * u.free, fun i => 2 * u.scrut i, fun i => 2 * u.opnd i,
-   fun i => if u.need i = 0 then 0 else 2⟩
+   fun i => if u.need i = 0 then 0 else 2, fun i => 2 * u.lit i⟩
 
 /-- The uses of a subterm that runs **at most once, and maybe not at all**: a branch of a
     dispatch with several branches, or the body of a memoised delay.  The counts are those
@@ -167,7 +191,7 @@ def many (u : Usage Γ) : Usage Γ :=
     `Usage.need`): a `let` of it, outside, would run a computation the region may never
     ask for, so it belongs inside. -/
 def cond (u : Usage Γ) : Usage Γ :=
-  ⟨u.count, u.free, u.scrut, u.opnd, fun i => if u.need i = 0 then 0 else 1⟩
+  ⟨u.count, u.free, u.scrut, u.opnd, fun i => if u.need i = 0 then 0 else 1, u.lit⟩
 
 /-- Is every use of the variable of de Bruijn index `i` in **one conditional region**
     (`Usage.need` is `1`)?  `Term.letE` asks that its variable is not: its `let` would
@@ -177,7 +201,7 @@ def confined (u : Usage Γ) (i : Nat) : Bool := u.need i == 1
 /-- The grade vector of a reference to a top-level declaration (`Term.global`): no
     variable of `Γ` is used, but a free name is — the term is not closed, since the value
     of the declaration is only known when the term runs. -/
-def global : Usage Γ := ⟨fun _ _ => 0, 1, fun _ => 0, fun _ => 0, fun _ => 0⟩
+def global : Usage Γ := ⟨fun _ _ => 0, 1, fun _ => 0, fun _ => 0, fun _ => 0, fun _ => 0⟩
 
 /-- Extend a grade vector by the grade `k` of a newly bound variable. -/
 def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) :=
@@ -196,7 +220,11 @@ def cons (k : Nat) (u : Usage Γ) : Usage (σ :: Γ) :=
    fun i =>
     match i with
     | 0 => if k = 0 then 0 else 2
-    | i + 1 => u.need i⟩
+    | i + 1 => u.need i,
+   fun i =>
+    match i with
+    | 0 => 0
+    | i + 1 => u.lit i⟩
 
 /-- The grade of the innermost variable. -/
 def head (u : Usage (σ :: Γ)) : Nat := u.count σ .head
@@ -204,7 +232,7 @@ def head (u : Usage (σ :: Γ)) : Nat := u.count σ .head
 /-- Forget the innermost variable. -/
 def tail (u : Usage (σ :: Γ)) : Usage Γ :=
   ⟨fun τ x => u.count τ x.tail, u.free - head u, fun i => u.scrut (i + 1),
-   fun i => u.opnd (i + 1), fun i => u.need (i + 1)⟩
+   fun i => u.opnd (i + 1), fun i => u.need (i + 1), fun i => u.lit (i + 1)⟩
 
 /-- The grade vector of a single occurrence of `x`. -/
 def single : {Γ : Ctx} → {τ : TyWf} → Var Γ τ → Usage Γ
@@ -241,6 +269,18 @@ rewrites with, to see that a term with a variable part is not closed. -/
 def drop : (Δ : Ctx) → Usage (Δ ++ Γ) → Usage Γ
   | [], u => u
   | _ :: Δ, u => drop Δ (tail u)
+
+/-- The grades of **one branch of a dispatch on a tagged union** — a branch that binds the
+    fields `Δ` of its constructor, and has grades `u` — as the dispatch sees them: the
+    fields forgotten (`Usage.drop`), the branch a conditional region (`Usage.cond`), and
+    `Usage.lit` recording the variables the branch reads when its constructor has **no
+    fields** (`Δ = []`), where the scrutinee is a known value. -/
+def alt (Δ : Ctx) (u : Usage (Δ ++ Γ)) : Usage Γ :=
+  let d := drop Δ u
+  ⟨d.count, d.free, d.scrut, d.opnd, fun i => if d.need i = 0 then 0 else 1,
+   fun i => if Δ.isEmpty && d.need i != 0 then 1 else 0⟩
+
+@[simp] theorem free_alt (Δ : Ctx) (u : Usage (Δ ++ Γ)) : (alt Δ u).free = (drop Δ u).free := rfl
 
 /-- Forget the `n` previous answers a fold binds in front of `Γ` (`LeanScript.natRecCtx`). -/
 def dropN (τ : TyWf) : (n : Nat) → Usage (natRecCtx τ n Γ) → Usage Γ
@@ -286,6 +326,13 @@ inductive Head where
       what lets the grammar see that `if c then true else false` is `c`
       (`Term.bool_casesOn`) -/
   | bool (b : Bool)
+  /-- a **constructor of an enum**, whose number the head records: a literal like
+      `Head.lit` in every respect, and what lets the grammar see that a dispatch on an enum
+      each of whose branches answers its own constructor — `match c with | red => red |
+      green => green | blue => blue` — is `c` (`Head.isUnionEta`), and that a dispatch
+      whose branches all answer the same constructor is that constructor
+      (`Head.caseLeaf`). -/
+  | enumLit (i : Nat)
   /-- a constructor applied to its fields: a record, a tagged value, an array, a delay, a
       value of a recursive type -/
   | ctor
@@ -297,6 +344,15 @@ inductive Head where
       (a, b)`, is `p` (`Term.record_casesOn`, `Head.isRecordEta`).  A `let` has its own
       head (`Head.letIn`). -/
   | rebuild (n : Nat)
+  /-- **constructor number `t` of a tagged union** (recursive or not) applied to the `n`
+      innermost variables, in order — de Bruijn index `0` first (`Head.ctorAtOf`).  With
+      `n = 0` it is a constructor without fields, a closed value like `Head.val` in every
+      respect; with `n ≥ 1` it is a constructor like `Head.ctor` in every respect.  It
+      records **which** constructor, and that its fields are those variables, so that
+      the grammar can see a **union η-redex**: a dispatch each of whose branches rebuilds
+      the constructor it is the branch of, from the fields it binds —
+      `match o with | none => none | some a => some a` — is `o` (`Head.isUnionEta`). -/
+  | ctorAt (t : Nat) (n : Nat)
   /-- a computation: an application, a dispatch, a fold or an extern (a `let` has its
       own head, `Head.letIn`) -/
   | comp
@@ -339,6 +395,24 @@ inductive Head where
   /-- the head of an **empty list of branches** (`TaggedUnionCasesRest.nil`): never the
       head of a term, it is the neutral element of `Head.join`. -/
   | empty
+  /-- the head of a **group of branches every one of which is the leaf `l`** of the
+      context outside the dispatch — the same variable of it (`Head.var`, with the
+      variables the branches bind taken off), or the same boolean literal
+      (`Head.branchAt`).  Never the head of a term: a dispatch whose branches are all the
+      same leaf is that leaf, the language being pure and total, and the dispatches ask
+      that their branches are not that (`hSame`, `Head.isCaseLeaf`).  `Head.settle` turns a
+      group of branches into the head of the dispatch.  When every branch also rebuilds
+      its own constructor (`Head.caseEta`) — which only one branch, a constructor of an
+      enum, can do while being a leaf — `eta` is its mark. -/
+  | caseLeaf (l : Head) (eta : Option Nat)
+  /-- the head of a **group of branches every one of which rebuilds its own constructor**
+      (`Head.ctorAt`) from the fields it binds, `s` being the number of that constructor
+      plus the number of constructors after it — the same for every branch exactly when
+      each branch builds its own constructor (`Head.branchAt`).  Never the head of a term:
+      a dispatch on a tagged union all of whose branches do that is a union η-redex
+      (`hEta`, `Head.isUnionEta`), and otherwise `Head.settle` makes it a known
+      constructor (`Head.caseCtor`). -/
+  | caseEta (s : Nat)
   /-- a **`let`** (`Term.letE`) whose body has head `body`.  A `let` is never an atom: in
       A-normal form it stands only where any expression may — a branch, the body of a
       `fun`, of a delay or of another `let` — and never as an operand or as the bound
@@ -359,7 +433,7 @@ namespace Head
 /-- Is this head a value an extern can be called on where the term is written: a literal
     or a closed value? -/
 def isValue : Head → Bool
-  | .lit | .bool _ | .val => true
+  | .lit | .bool _ | .enumLit _ | .val | .ctorAt _ 0 => true
   | _ => false
 
 /-- Is every one of these heads a literal or a closed value?  `Term.externCall` and
@@ -374,7 +448,7 @@ def allValue : List Head → Bool
 /-- Is this head a constructor applied to its fields — closed (`Head.val`) or not
     (`Head.ctor`)?  A dispatch on one, or a force of one, is a redex. -/
 def isCtor : Head → Bool
-  | .ctor | .rebuild _ | .val => true
+  | .ctor | .rebuild _ | .val | .ctorAt _ _ => true
   | _ => false
 
 /-- Are these the heads of the variables of de Bruijn index `i`, `i + 1`, …, in order? -/
@@ -392,12 +466,33 @@ def ctorOf (ks : List Head) : Head :=
   else if 2 ≤ ks.length && isVarRun 0 ks then .rebuild ks.length
   else .ctor
 
+/-- The head of **constructor number `t` of a tagged union** (recursive or not) applied to
+    fields of heads `ks`: `Head.ctorAt t 0` for a constructor without fields — a closed
+    value that records which constructor it is — a closed value (`Head.val`) when every
+    field is a literal or a closed value, `Head.ctorAt t n` when the fields are the `n`
+    innermost variables in order, and a constructor (`Head.ctor`) otherwise.  What a
+    union η-redex is made of (`Head.isUnionEta`). -/
+def ctorAtOf (t : Nat) (ks : List Head) : Head :=
+  if ks.isEmpty then .ctorAt t 0
+  else if allValue ks then .val
+  else if isVarRun 0 ks then .ctorAt t ks.length
+  else .ctor
+
+/-- Is this head a **closed value** that is not a literal: `Head.val`, or a constructor of a
+    tagged union without fields (`Head.ctorAt t 0`)?  A `let` binds one only to share it
+    (`Head.letUsed`). -/
+def isClosedValue : Head → Bool
+  | .val | .ctorAt _ 0 => true
+  | _ => false
+
 /-- Is this head an introduction form — a `fun`, a literal, a constructor, a closed value —
     or a dispatch that may answer with one (`Head.caseIntro`), or a `let` whose body is
     one of those (`Head.letIn`)? -/
 def isIntro : Head → Bool
-  | .lam | .lit | .bool _ | .ctor | .rebuild _ | .val | .caseIntro | .caseCtor => true
+  | .lam | .lit | .bool _ | .enumLit _ | .ctor | .rebuild _ | .val | .ctorAt _ _ | .caseIntro
+  | .caseCtor | .caseEta _ => true
   | .letIn b => isIntro b
+  | .caseLeaf l _ => isIntro l
   | _ => false
 
 /-- Is this head a **known constructor** — a literal, a constructor applied to its fields,
@@ -408,8 +503,10 @@ def isIntro : Head → Bool
     branch in A-normal form often is.  (`Head.empty`, which no term has, counts as known,
     vacuously.) -/
 def isKnown : Head → Bool
-  | .lit | .bool _ | .ctor | .rebuild _ | .val | .caseCtor | .empty => true
+  | .lit | .bool _ | .enumLit _ | .ctor | .rebuild _ | .val | .ctorAt _ _ | .caseCtor | .empty
+  | .caseEta _ => true
   | .letIn b => isKnown b
+  | .caseLeaf l _ => isKnown l
   | _ => false
 
 /-- The head of a dispatch two of whose branches (or groups of branches) have heads `a`
@@ -421,6 +518,116 @@ def isKnown : Head → Bool
 def join (a b : Head) : Head :=
   if a.isKnown && b.isKnown then .caseCtor
   else if a.isIntro || b.isIntro then .caseIntro else .comp
+
+/-- The **leaf** a branch of head `a` that binds `n` variables of its own is, in the context
+    outside the dispatch: a variable of that context (the index with the `n` variables the
+    branch binds taken off), or a boolean literal; `none` for anything else, a variable the
+    branch binds included. -/
+def leafPast (n : Nat) : Head → Option Head
+  | .var i => if n ≤ i then some (.var (i - n)) else none
+  | .bool b => some (.bool b)
+  | .enumLit i => some (.enumLit i)
+  | _ => none
+
+/-- The constructor a branch of head `a` that binds `n` variables **rebuilds**: `t` when
+    `a` is constructor `t` of a tagged union applied to exactly those `n` variables, in
+    order (`Head.ctorAt t n`); `none` otherwise. -/
+def rebuildsAt (n : Nat) : Head → Option Nat
+  | .ctorAt t m => if m == n then some t else none
+  | .enumLit t => if n == 0 then some t else none
+  | _ => none
+
+/-- The head of a group of branches whose **leaf** (`leaf`) and **mark** (`eta`) are
+    already known to be shared by every branch, if they are (`Head.summarize`): the
+    group's head `Head.caseLeaf`, `Head.caseEta`, or, when neither is shared, the
+    `Head.join` of a branch of head `a` and the rest of head `b`. -/
+def group (leaf : Option Head) (eta : Option Nat) (a b : Head) : Head :=
+  match leaf, eta with
+  | some l, e => .caseLeaf l e
+  | none, some s => .caseEta s
+  | none, none => join a b
+
+/-- The head of a group of branches: a branch of head `a` — which is the leaf `leaf` of the
+    context outside, if it is one, and which rebuilds its own constructor with the mark
+    `eta`, if it does — followed by a group of branches of head `b`.  It is
+    `Head.caseLeaf l` when every branch is the leaf `l`, `Head.caseEta s` when every
+    branch rebuilds with the same mark `s`, and `Head.join a b` otherwise (`Head.join`
+    reads a group of branches as the head it stands for, `Head.isKnown`, `Head.isIntro`). -/
+def summarize (leaf : Option Head) (eta : Option Nat) (a b : Head) : Head :=
+  let bLeaf : Option Head := match b with
+    | .caseLeaf l _ => some l
+    | _ => none
+  let bEta : Option Nat := match b with
+    | .caseEta s => some s
+    | .caseLeaf _ e => e
+    | _ => none
+  let leaf' := if b == .empty then leaf else if leaf.isSome && leaf == bLeaf then leaf else none
+  let eta' := if b == .empty then eta else if eta.isSome && eta == bEta then eta else none
+  group leaf' eta' a b
+
+/-- The head of a group of branches of an **exhaustive** dispatch (on a tagged union, a
+    recursive tagged union or an enum): a branch of head `a` that binds `n` variables and
+    is followed by `d` more constructors, then the branches of head `b` for those.  The
+    mark of a branch that rebuilds constructor `t` is `t + d`, which is the number of the
+    last constructor for every branch exactly when each rebuilds its own. -/
+def branchAt (n d : Nat) (a b : Head) : Head :=
+  summarize (leafPast n a) ((rebuildsAt n a).map (· + d)) a b
+
+/-- The head of a group of branches of a **partial** dispatch, which names its
+    constructors: a branch of head `a`, for constructor `t`, that binds `n` variables, then
+    the branches of head `b`.  A branch that rebuilds constructor `t` itself has mark `0`. -/
+def branchTag (n t : Nat) (a b : Head) : Head :=
+  summarize (leafPast n a) ((rebuildsAt n a).bind fun t' => if t' == t then some 0 else none) a b
+
+/-- The head of the branches of a partial dispatch, of head `kc`, together with its default
+    branch, of head `kd`: a group of branches like the others, except that the default
+    rebuilds no constructor. -/
+def withDefault (kd kc : Head) : Head :=
+  summarize (leafPast 0 kd) none kd kc
+
+/-- The head of the **dispatch** whose group of branches has head `k`: what `Head.join` of
+    its branches is — `Head.comp` for branches that are all the same variable,
+    `Head.caseCtor` for branches that are all the same boolean literal or all rebuild a
+    constructor — and `k` itself otherwise. -/
+def settle : Head → Head
+  | .caseLeaf l _ => join l .empty
+  | .caseEta _ => .caseCtor
+  | k => k
+
+/-- Is this the head of a group of branches that are **all the same leaf** of the context
+    outside (`Head.caseLeaf`)?  The dispatch is that leaf, so the dispatches on a tagged
+    union, a recursive tagged union and an enum ask that it is not (`hSame`):
+    `match o with | none => x | some _ => x` is `x`. -/
+def isCaseLeaf : Head → Bool
+  | .caseLeaf _ _ => true
+  | _ => false
+
+/-- The mark of a group of branches every one of which rebuilds its own constructor
+    (`Head.caseEta`, or a lone branch that is also a leaf, `Head.caseLeaf`), if it is
+    one. -/
+def etaMark : Head → Option Nat
+  | .caseEta s => some s
+  | .caseLeaf _ e => e
+  | _ => none
+
+/-- Is an exhaustive dispatch on a tagged union of `L` constructors, whose branches have
+    head `k`, a **union η-redex**: does every branch rebuild its own constructor from the
+    fields it binds (`Head.caseEta (L - 1)`), at the type of the scrutinee (`sameTy`)?  The
+    dispatch is then its scrutinee: `match o with | none => none | some a => some a` is
+    `o`.  `Term.taggedUnion_casesOn` and `Term.recTaggedUnion_casesOn` ask that it is not
+    (`hEta`). -/
+def isUnionEta (k : Head) (L : Nat) (sameTy : Bool) : Bool :=
+  match k.etaMark with
+  | some s => s + 1 == L && sameTy
+  | none => false
+
+/-- Is a partial dispatch on a tagged union, on a scrutinee of head `kx`, whose named
+    branches have head `kc` and whose default has head `kd`, a **union η-redex**: does
+    every named branch rebuild its own constructor (`Head.caseEta 0`), at the type of the
+    scrutinee (`sameTy`), while the default is the scrutinee itself, a variable?
+    `match o with | some a => some a | _ => o` is `o`. -/
+def isUnionEtaDflt (kc kd kx : Head) (sameTy : Bool) : Bool :=
+  kc.etaMark == some 0 && (match kx with | .var _ => true | _ => false) && kd == kx && sameTy
 
 /-- Is this head a `fun`, or a dispatch that may answer with one?  `Term.ap` asks that its
     function is neither: the first is a β-redex, and the second is one in some branch,
@@ -434,7 +641,7 @@ def isFunLike : Head → Bool
     neither: forcing a delay built right there is a redex, and so is forcing a dispatch
     one of whose branches builds it — the force moves into the branches. -/
 def isCtorLike : Head → Bool
-  | .ctor | .rebuild _ | .val | .caseIntro | .caseCtor => true
+  | .ctor | .rebuild _ | .val | .ctorAt _ _ | .caseIntro | .caseCtor => true
   | _ => false
 
 /-- Is this head a **computation** — an application, a fold, an extern, a force, or a
@@ -461,7 +668,7 @@ def isBindable (k : Head) : Bool := k.isComp || k.isCtor
     computation, a constructor or a `let` in such a place is bound by a `let` first, and
     the operand is its variable. -/
 def isAtom : Head → Bool
-  | .var _ | .global | .lam | .lit | .bool _ | .val => true
+  | .var _ | .global | .lam | .lit | .bool _ | .enumLit _ | .val | .ctorAt _ 0 => true
   | _ => false
 
 /-- Is every one of these heads an atom (`Head.isAtom`)?  The arguments of an extern and
@@ -528,7 +735,7 @@ end Head
 def Usage.scrutinize {Γ : Ctx} (k : Head) (u : Usage Γ) : Usage Γ :=
   match k with
   | .var i => ⟨u.count, u.free, fun j => if j = i then u.scrut j + 1 else u.scrut j,
-      fun j => if j = i then u.opnd j + 1 else u.opnd j, u.need⟩
+      fun j => if j = i then u.opnd j + 1 else u.opnd j, u.need, u.lit⟩
   | _ => u
 
 @[simp] theorem Usage.free_scrutinize {Γ : Ctx} (k : Head) (u : Usage Γ) :
@@ -554,7 +761,7 @@ def Head.rescrutinizes {Γ : Ctx} (k : Head) (w : Usage Γ) : Bool :=
 def Usage.arg {Γ : Ctx} (k : Head) (u : Usage Γ) : Usage Γ :=
   match k with
   | .var i => ⟨u.count, u.free, u.scrut, fun j => if j = i then u.opnd j + 1 else u.opnd j,
-      u.need⟩
+      u.need, u.lit⟩
   | _ => u
 
 @[simp] theorem Usage.free_arg {Γ : Ctx} (k : Head) (u : Usage Γ) :
@@ -570,6 +777,32 @@ def TyWf.isFunOrDelay (τ : TyWf) : Bool :=
   | .shape (.primCovariant (.lazy _)) => true
   | _ => false
 
+/-- Is this a (non-recursive) **tagged union of `L` constructors**?  A dispatch on a
+    tagged union of `L` constructors whose branches rebuild, each, its own constructor at
+    such a type answers the very value it takes apart: the constructors of the two types
+    have the same fields (those the branches bind), and a tagged union is its list of
+    constructors (`Head.isUnionEta`). -/
+def TyWf.isTaggedUnionOf (τ : TyWf) (L : Nat) : Bool :=
+  match τ.toTy with
+  | .shape (.taggedUnion l) => l.length == L
+  | _ => false
+
+/-- Is this the **enum** of schema `s`?  A dispatch on an enum each of whose branches answers
+    its own constructor, at that type, answers the very value it takes apart
+    (`Head.isUnionEta`). -/
+def TyWf.isEnumOf (τ : TyWf) (s : LeanEnumSchema) : Bool :=
+  match τ.toTy with
+  | .shape (.enum s') => s' == s
+  | _ => false
+
+/-- Is this a **recursive tagged union of `L` constructors**?  As for
+    `TyWf.isTaggedUnionOf`: the unfolded constructors of the two types have the same
+    fields, and each type mentions itself, so they are the same type. -/
+def TyWf.isRecTaggedUnionOf (τ : TyWf) (L : Nat) : Bool :=
+  match τ.toTy with
+  | .recTaggedUnion l => l.length == L
+  | _ => false
+
 /-- Is `let x = e`, where `e` has head `ke` and `x` is read `n` times, `o` of them as an
     operand (`Usage.opnd`), a `let` that A-normal form needs?  A closed value (`Head.val`)
     is an atom, which may stand as an operand itself, so it is bound only to be shared:
@@ -580,7 +813,7 @@ def TyWf.isFunOrDelay (τ : TyWf) : Bool :=
     `if c then f y else z`.  A variable read `0` times is dead.  `Term.letE` asks that this
     holds (`hUsed`). -/
 def Head.letUsed (ke : Head) (n o : Nat) : Bool :=
-  if ke == .val then 2 ≤ n else 2 ≤ n || (n == 1 && o != 0)
+  if ke.isClosedValue then 2 ≤ n else 2 ≤ n || (n == 1 && o != 0)
 
 /-- Does `let x = e; b`, where `e` has head `ke` and type `σ` and `b` has grades `v`, hide a
     redex at a place where `b` takes `x` apart (`Usage.scrut`)?  `Term.letE` asks that it
@@ -633,6 +866,20 @@ def Usage.countIdx : {Γ : Ctx} → Usage Γ → Nat → Nat
 def Head.readsScrutinee {Γ : Ctx} (k : Head) (w : Usage Γ) : Bool :=
   match k with
   | .var i => w.countIdx i != 0
+  | _ => false
+
+/-- Does a field-less branch of a dispatch on a tagged union, on a scrutinee of head `k`
+    whose branches have grades `w`, **read** the scrutinee, when it is a variable
+    (`Head.var i`, `Usage.lit`)?  There the scrutinee is the branch's constructor — a known
+    value, without fields — and a read of it is a redex, that constructor being what the
+    branch reads: `match o with | none => f o | some a => g a` is
+    `match o with | none => f none | some a => g a`.  The dispatches on a tagged union and on
+    a recursive tagged union ask that this is `false` (`hLit`), as the dispatches on a
+    boolean, an enum and a natural number already ask it of their field-less branches
+    (`Head.readsScrutinee`). -/
+def Head.readsInFieldless {Γ : Ctx} (k : Head) (w : Usage Γ) : Bool :=
+  match k with
+  | .var i => w.lit i != 0
   | _ => false
 
 /-- Are these the heads of the two branches of a dispatch the **second** of which binds one

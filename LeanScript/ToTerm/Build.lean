@@ -67,7 +67,14 @@ builds a node of any family of the grammar's `mutual` block:
   natural number or an integer whose branches are the same leaf of the context outside is
   that leaf (`LeanScript.Head.sameLeafOver`, `LeanScript.Head.sameLeafPast`); a dispatch
   on a record whose body rebuilds it from the fields it binds, in order, is the record
-  (`LeanScript.Head.isRecordEta`), so `{ s with b := s.b }` is `s`;
+  (`LeanScript.Head.isRecordEta`), so `{ s with b := s.b }` is `s`; a dispatch on a
+  tagged union, a recursive tagged union or an enum whose branches are all the same leaf
+  is that leaf (`groupRedex?`, `LeanScript.Head.isCaseLeaf`), so
+  `match o with | none => x | some _ => x` is `x`; one whose branches each rebuild their
+  own constructor from the fields they bind is its scrutinee (`groupRedex?`,
+  `LeanScript.Head.isUnionEta`), so `o.map id` is `o`; and in a field-less branch of such
+  a dispatch the scrutinee is that constructor (`knownLit?`,
+  `LeanScript.Head.readsInFieldless`);
 * it puts the node in **A-normal form**, which the grammar demands: a `let` in an
   operand position (an argument, a field, a scrutinee, what is called or forced, the
   bound expression of another `let`) is floated out first (`floatLets?`), and an operand
@@ -238,7 +245,20 @@ def headOf (t : Expr) : MetaM Name := do
   let (_, _, _, _, k) ← termParts t
   let k ← whnf k
   let some n := k.getAppFn.constName? | throwError "`#leanscript_to_term`: internal: no head: {k}"
-  return n
+  -- a constructor of a tagged union that records its number (`LeanScript.Head.ctorAt`) is
+  -- a closed value without fields, and a constructor otherwise; a group of branches
+  -- stands for the head `LeanScript.Head.settle` gives it
+  match n, k.getAppArgs with
+  | ``LeanScript.Head.ctorAt, #[_, m] =>
+      return if (← whnf m).isAppOfArity ``Nat.zero 0 || (← evalNat m) == some 0
+        then ``LeanScript.Head.val else ``LeanScript.Head.ctor
+  | ``LeanScript.Head.caseEta, _ => return ``LeanScript.Head.caseCtor
+  | ``LeanScript.Head.enumLit, _ => return ``LeanScript.Head.lit
+  | ``LeanScript.Head.caseLeaf, #[l, _] =>
+      let k' ← whnf (mkApp2 (mkConst ``LeanScript.Head.join) l (mkConst ``LeanScript.Head.empty))
+      let some n' := k'.getAppFn.constName? | throwError "`#leanscript_to_term`: internal: no head: {k'}"
+      return n'
+  | _, _ => return n
 
 /-- The value of a boolean literal, read off its head (`LeanScript.Head.bool`); `none` for
     any other term. -/
@@ -341,6 +361,7 @@ partial def gradeOf (u : Expr) (i : Nat) : MetaM Nat := do
   | (``LeanScript.Usage.letU, #[_, _, a, b]) =>
       return (← gradeOf b 0) * (← gradeOf a i) + (← gradeOf b (i + 1))
   | (``LeanScript.Usage.drop, #[_, δ, v]) => gradeOf v (i + (← listElems δ).length)
+  | (``LeanScript.Usage.alt, #[_, δ, v]) => gradeOf v (i + (← listElems δ).length)
   | (``LeanScript.Usage.dropN, #[_, _, n, v]) => gradeOf v (i + (← natValue n))
   | (``LeanScript.Usage.scrutinize, #[_, _, v]) => gradeOf v i
   | (``LeanScript.Usage.arg, #[_, _, v]) => gradeOf v i
@@ -371,6 +392,7 @@ partial def freeOf (u : Expr) : MetaM Nat := do
       let h ← gradeOf b 0
       return h * (← freeOf a) + ((← freeOf b) - h)
   | (``LeanScript.Usage.drop, #[_, δ, v]) => dropFree v (← listElems δ).length
+  | (``LeanScript.Usage.alt, #[_, δ, v]) => dropFree v (← listElems δ).length
   | (``LeanScript.Usage.dropN, #[_, _, n, v]) => dropFree v (← natValue n)
   | (``LeanScript.Usage.scrutinize, #[_, _, v]) => freeOf v
   | (``LeanScript.Usage.arg, #[_, _, v]) => freeOf v
@@ -413,6 +435,7 @@ partial def scrutOf (u : Expr) (i : Nat) (opnd : Bool := false) : MetaM Nat := d
   | (``LeanScript.Usage.letU, #[_, _, a, b]) =>
       return (← gradeOf b 0) * (← go a i) + (← go b (i + 1))
   | (``LeanScript.Usage.drop, #[_, δ, v]) => go v (i + (← listElems δ).length)
+  | (``LeanScript.Usage.alt, #[_, δ, v]) => go v (i + (← listElems δ).length)
   | (``LeanScript.Usage.dropN, #[_, _, n, v]) => go v (i + (← natValue n))
   | (``LeanScript.Usage.scrutinize, #[_, k, v]) => bump k (← go v i)
   | (``LeanScript.Usage.arg, #[_, k, v]) =>
@@ -449,6 +472,7 @@ partial def needOf (u : Expr) (i : Nat) : MetaM Nat := do
       let ea ← if (← gradeOf b 0) == 0 then pure 0 else needOf a i
       return join ea (← needOf b (i + 1))
   | (``LeanScript.Usage.drop, #[_, δ, v]) => needOf v (i + (← listElems δ).length)
+  | (``LeanScript.Usage.alt, #[_, δ, v]) => return min (← needOf v (i + (← listElems δ).length)) 1
   | (``LeanScript.Usage.dropN, #[_, _, n, v]) => needOf v (i + (← natValue n))
   | (``LeanScript.Usage.scrutinize, #[_, _, v]) => needOf v i
   | (``LeanScript.Usage.arg, #[_, _, v]) => needOf v i
@@ -876,14 +900,19 @@ partial def mkNode (ctor : Name) (args : Array Expr) : MetaM Expr := do
 
 /-- **A read of a scrutinee whose value is a known literal.**  In a branch of a dispatch on
     a variable `x` for a constructor without fields — `true` or `false` for an `if`, each
-    constructor of an enum, `0` for a natural number — `x` **is** that literal
-    (`LeanScript.Head.readsScrutinee`), so each read of `x` there is replaced by it
+    constructor of an enum, `0` for a natural number, each field-less constructor of a
+    (recursive) tagged union — `x` **is** that literal (`LeanScript.Head.readsScrutinee`,
+    `LeanScript.Head.readsInFieldless`), so each read of `x` there is replaced by it
     (`mapVars`), and whatever that substitution makes a redex is reduced as it is rebuilt:
     `if b then b else false` becomes `if b then true else false`, which is `b`. -/
 partial def knownLit? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let tu := ctor == ``LeanScript.Term.taggedUnion_casesOn ||
+    ctor == ``LeanScript.Term.taggedUnion_casesOnWithDefault
+  let rtu := ctor == ``LeanScript.Term.recTaggedUnion_casesOn ||
+    ctor == ``LeanScript.Term.recTaggedUnion_casesOnWithDefault
   unless ctor == ``LeanScript.Term.bool_casesOn || ctor == ``LeanScript.Term.nat_casesOn ||
       ctor == ``LeanScript.Term.enum_casesOn ||
-      ctor == ``LeanScript.Term.enum_casesOnWithDefault do return none
+      ctor == ``LeanScript.Term.enum_casesOnWithDefault || tu || rtu do return none
   let some sName := dispatchScrutinee? ctor | return none
   let sN ← exposeNode (← argNamed ctor args sName)
   unless sN.getAppFn.isConstOf ``LeanScript.Term.var do return none
@@ -899,6 +928,22 @@ partial def knownLit? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) :=
         if tag == 0 then some <$> buildNode ``LeanScript.Term.nat_mk #[sg, γc, mkNatLit 0]
         else return none
     | _ =>
+      if tu || rtu then
+        -- the constructor of a tagged union without fields that the branch is for
+        let l ← argNamed ctor args "l"
+        let nil ← buildNode ``LeanScript.Spine.nil #[sg, γc]
+        if tu then
+          let h ← mkDecideProof (← mkAppM ``LT.lt
+            #[mkNatLit tag, ← mkAppM ``LeanScript.LeanTaggedUnionSchema.length #[l]])
+          some <$> buildNode ``LeanScript.Term.taggedUnion_mk #[sg, γc, l, mkNatLit tag, h, nil]
+        else
+          let hwf ← argNamed ctor args "hwf"
+          let h ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit tag,
+            ← mkAppM ``LeanScript.LeanTaggedUnionSchema.length
+              #[mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf]])
+          some <$> buildNode ``LeanScript.Term.recTaggedUnion_mk
+            #[sg, γc, l, hwf, mkNatLit tag, h, nil]
+      else
         let sch ← argNamed ctor args "s"
         let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) sch
         let h ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit tag, nE])
@@ -1729,10 +1774,81 @@ partial def letKnown? (args : Array Expr) : MetaM (Option Expr) := do
   let body ← mkNode letE #[sg, γf, σ, ← termTyOf b', c, b']
   some <$> bindMany sg γ body fields
 
+/-- **A dispatch on a tagged union, a recursive tagged union or an enum read off the head of
+    its group of branches.**  When every branch — the default included — is the same leaf
+    of the context outside (`LeanScript.Head.caseLeaf`), the dispatch is that leaf:
+    `match o with | none => x | some _ => x` is `x`.  When every branch of a dispatch on a
+    tagged union rebuilds its own constructor from the fields it binds, at the scrutinee's
+    type (`LeanScript.Head.isUnionEta`, `LeanScript.Head.isUnionEtaDflt`), the dispatch is
+    its scrutinee: `match o with | none => none | some a => some a` is `o`. -/
+partial def groupRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let exhaustive := ctor == ``LeanScript.Term.taggedUnion_casesOn ||
+    ctor == ``LeanScript.Term.recTaggedUnion_casesOn || ctor == ``LeanScript.Term.enum_casesOn
+  let partial_ := ctor == ``LeanScript.Term.taggedUnion_casesOnWithDefault ||
+    ctor == ``LeanScript.Term.recTaggedUnion_casesOnWithDefault ||
+    ctor == ``LeanScript.Term.enum_casesOnWithDefault
+  unless exhaustive || partial_ do return none
+  let arg (n : String) : MetaM Expr := argNamed ctor args n
+  let sg := args[0]!
+  let γ ← arg "Γ"
+  let τ ← arg "τ"
+  -- the head of the group of branches (`LeanScript.Head.branchAt`, `LeanScript.Head.branchTag`)
+  let kc := (← famTypeOf (← arg "cases")).getAppArgs[5]!
+  let kd? ← if partial_ then do
+      let (_, _, _, _, kd) ← termParts (← arg "dflt"); pure (some kd)
+    else pure none
+  let group := match kd? with
+    | some kd => mkApp2 (mkConst ``LeanScript.Head.withDefault) kd kc
+    | none => kc
+  -- every branch is the same leaf of the context outside: the dispatch is that leaf
+  let g ← whnf group
+  if g.isAppOfArity ``LeanScript.Head.caseLeaf 2 then
+    let l ← whnf g.appFn!.appArg!
+    match l.getAppFnArgs with
+    | (``LeanScript.Head.var, #[j]) => return some (← mkVarTerm sg γ (← natValue j))
+    | (``LeanScript.Head.bool, #[b]) =>
+        return some (← buildNode ``LeanScript.Term.bool_mk #[sg, γ, ← whnf b])
+    | (``LeanScript.Head.enumLit, #[i]) =>
+        -- the constructor of the enum `τ` of that number
+        let ty ← whnf (mkApp (mkConst ``LeanScript.TyWf.toTy) τ)
+        let some sh := ty.getAppArgs.back? | throwError "`#leanscript_to_term`: internal: {ty}"
+        let (``LeanScript.TyShape.enum, #[_, sch]) := (← whnf sh).getAppFnArgs
+          | throwError "`#leanscript_to_term`: internal: not an enum: {ty}"
+        let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) sch
+        let iv := mkNatLit (← natValue i)
+        let h ← mkDecideProof (← mkAppM ``LT.lt #[iv, nE])
+        return some (← buildNode ``LeanScript.Term.enum_mk
+          #[sg, γ, sch, mkApp3 (mkConst ``Fin.mk) nE iv h])
+    | _ => throwError "`#leanscript_to_term`: internal: not a leaf: {l}"
+  -- every branch rebuilds its own constructor at the scrutinee's type: the dispatch is its
+  -- scrutinee (a union η-redex)
+  let enum := ctor == ``LeanScript.Term.enum_casesOn ||
+    ctor == ``LeanScript.Term.enum_casesOnWithDefault
+  let rec_ := ctor == ``LeanScript.Term.recTaggedUnion_casesOn ||
+    ctor == ``LeanScript.Term.recTaggedUnion_casesOnWithDefault
+  let (lenE, sameTy) ← if enum then do
+      let sch ← arg "s"
+      pure (mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) sch,
+        mkApp2 (mkConst ``LeanScript.TyWf.isEnumOf) τ sch)
+    else do
+      let lenE ← mkAppM ``LeanScript.LeanTaggedUnionSchema.length #[← arg "l"]
+      pure (lenE, mkApp2 (mkConst (if rec_ then ``LeanScript.TyWf.isRecTaggedUnionOf
+        else ``LeanScript.TyWf.isTaggedUnionOf)) τ lenE)
+  let x ← arg (if enum then "e" else if exhaustive then "x" else "v")
+  let (_, _, _, τx, kx) ← termParts x
+  let eta := match kd? with
+    | some kd => mkApp4 (mkConst ``LeanScript.Head.isUnionEtaDflt) kc kd kx sameTy
+    | none => mkApp3 (mkConst ``LeanScript.Head.isUnionEta) kc lenE sameTy
+  unless (← whnf eta).isConstOf ``Bool.true do return none
+  unless ← isDefEq τx τ do
+    throwError "`#leanscript_to_term`: internal: a union η-redex at another type: {τx}, {τ}"
+  return some x
+
 /-- If the node `ctor args` is a redex, what it reduces to. -/
 partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let arg (n : String) : MetaM Expr := argNamed ctor args n
   let sg := args[0]!
+  if let some t ← groupRedex? ctor args then return some t
   match ctor with
   | ``LeanScript.Term.lam =>
       -- η: `fun x => f x`, where `f` does not read `x`, is `f`.  (The grammar does not

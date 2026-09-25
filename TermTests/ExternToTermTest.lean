@@ -183,7 +183,7 @@ example : run secondChar_term = TyWf.Den.ofOption (α := .prim .char) (some 'b')
 /-- …and at byte `5` it is `none`. -/
 def noChar : Option Char := String.Pos.Raw.get? "ab" ⟨5⟩
 
-def noChar_term := (#leanscript_to_term noChar : Term sig0 [] _ (tyWfOf (Option Char)) .val)
+def noChar_term := (#leanscript_to_term noChar : Term sig0 [] _ (tyWfOf (Option Char)) (.ctorAt 0 0))
 
 example : externForm? noChar_term = none := rfl
 example : run noChar_term = TyWf.Den.ofOption (α := .prim .char) none := rfl

@@ -42,6 +42,52 @@ theorem join_ne_bool (a b : Head) (c : Bool) : Head.join a b ≠ .bool c := by
 theorem join_ne_rebuild (a b : Head) (n : Nat) : Head.join a b ≠ .rebuild n := by
   unfold Head.join; split <;> [simp; split <;> simp]
 
+theorem settle_join (a b : Head) : Head.settle (Head.join a b) = Head.join a b := by
+  unfold Head.join; split <;> [rfl; split <;> rfl]
+
+/-- The head of a dispatch, `Head.settle` of the head of its group of branches
+    (`Head.summarize`), is a `Head.join` of two heads. -/
+theorem settle_group (l : Option Head) (e : Option Nat) (x y : Head) :
+    ∃ a b, Head.settle (Head.group l e x y) = Head.join a b := by
+  unfold Head.group
+  split
+  · exact ⟨_, _, rfl⟩
+  · exact ⟨.lit, .lit, rfl⟩
+  · exact ⟨_, _, settle_join _ _⟩
+
+theorem settle_summarize (l : Option Head) (e : Option Nat) (x y : Head) :
+    ∃ a b, Head.settle (Head.summarize l e x y) = Head.join a b :=
+  settle_group _ _ _ _
+
+theorem settle_summarize_ne_var (l : Option Head) (e : Option Nat) (x y : Head) (i : Nat) :
+    Head.settle (Head.summarize l e x y) ≠ .var i := by
+  obtain ⟨a, b, h⟩ := settle_summarize l e x y
+  rw [h]; exact join_ne_var a b i
+
+theorem settle_summarize_ne_bool (l : Option Head) (e : Option Nat) (x y : Head) (c : Bool) :
+    Head.settle (Head.summarize l e x y) ≠ .bool c := by
+  obtain ⟨a, b, h⟩ := settle_summarize l e x y
+  rw [h]; exact join_ne_bool a b c
+
+theorem settle_summarize_ne_rebuild (l : Option Head) (e : Option Nat) (x y : Head) (n : Nat) :
+    Head.settle (Head.summarize l e x y) ≠ .rebuild n := by
+  obtain ⟨a, b, h⟩ := settle_summarize l e x y
+  rw [h]; exact join_ne_rebuild a b n
+
+theorem settle_withDefault_ne_rebuild (kd kc : Head) (n : Nat) :
+    Head.settle (Head.withDefault kd kc) ≠ .rebuild n :=
+  settle_summarize_ne_rebuild _ _ _ _ n
+
+theorem ctorAtOf_ne_var (t : Nat) (ks : List Head) (i : Nat) : Head.ctorAtOf t ks ≠ .var i := by
+  unfold Head.ctorAtOf; split <;> [simp; split <;> [simp; split <;> simp]]
+
+theorem ctorAtOf_ne_bool (t : Nat) (ks : List Head) (c : Bool) : Head.ctorAtOf t ks ≠ .bool c := by
+  unfold Head.ctorAtOf; split <;> [simp; split <;> [simp; split <;> simp]]
+
+theorem ctorAtOf_ne_rebuild (t : Nat) (ks : List Head) (n : Nat) :
+    Head.ctorAtOf t ks ≠ .rebuild n := by
+  unfold Head.ctorAtOf; split <;> [simp; split <;> [simp; split <;> simp]]
+
 theorem ctorOf_ne_var (ks : List Head) (i : Nat) : Head.ctorOf ks ≠ .var i := by
   unfold Head.ctorOf; split <;> [simp; split <;> simp]
 
@@ -54,12 +100,13 @@ section
 variable {Sg : Sig}
 
 theorem EnumCases.head_join {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {s : LeanEnumSchema} {k : Head}
-    (c : EnumCases Sg Γ u τ s k) : ∃ a b, k = Head.join a b := by
-  cases c <;> exact ⟨_, _, rfl⟩
+    (c : EnumCases Sg Γ u τ s k) : ∃ a b, Head.settle k = Head.join a b := by
+  cases c <;> exact Head.settle_summarize _ _ _ _
 
 theorem TaggedUnionCases.head_join {Γ : Ctx} {u : Usage Γ} {l : LeanTaggedUnionSchema TyWf}
-    {τ : TyWf} {k : Head} (c : TaggedUnionCases Sg Γ u l τ k) : ∃ a b, k = Head.join a b := by
-  cases c <;> exact ⟨_, _, rfl⟩
+    {τ : TyWf} {k : Head} (c : TaggedUnionCases Sg Γ u l τ k) :
+    ∃ a b, Head.settle k = Head.join a b := by
+  cases c <;> exact Head.settle_summarize _ _ _ _
 
 theorem FamilyMemberCases.head_join {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {m : LeanFamMemberSchema TyWf} {k : Head} (c : FamilyMemberCases Sg Γ u τ m k) :
@@ -104,6 +151,8 @@ theorem Term.eval_of_head_var_aux (n : Nat) : ∀ {Γ : Ctx} {u : Usage Γ} {τ 
     exfalso
     first
       | exact Head.join_ne_var _ _ _ hh
+      | exact Head.settle_summarize_ne_var _ _ _ _ _ hh
+      | exact Head.ctorAtOf_ne_var _ _ _ hh
       | exact Head.ctorOf_ne_var _ _ hh
       | exact absurd hh (by simp)
 
@@ -133,6 +182,8 @@ theorem Term.eval_of_head_bool_aux (n : Nat) : ∀ {Γ : Ctx} {u : Usage Γ} {τ
     exfalso
     first
       | exact Head.join_ne_bool _ _ _ hh
+      | exact Head.settle_summarize_ne_bool _ _ _ _ _ hh
+      | exact Head.ctorAtOf_ne_bool _ _ _ hh
       | exact Head.ctorOf_ne_bool _ _ hh
       | exact absurd hh (by simp)
 
@@ -406,13 +457,13 @@ theorem Term.eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
     exact (Term.eval_record_mk_heq G sp hAnf _ h).trans ((hsp _ env h).trans (cast_heq _ _))
   | enum_casesOn _ cs =>
     obtain ⟨a, b, e⟩ := EnumCases.head_join cs
-    subst e; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
+    rw [e] at hη; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
   | taggedUnion_casesOn _ cs =>
     obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    subst e; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
+    rw [e] at hη; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
   | recTaggedUnion_casesOn _ cs =>
     obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    subst e; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
+    rw [e] at hη; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
   | mutualRecursiveFamily_casesOn _ cs =>
     obtain ⟨a, b, e⟩ := FamilyMemberCases.head_join cs
     subst e; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
@@ -421,6 +472,10 @@ theorem Term.eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
     first
       | exact Bool.false_ne_true hη
       | (rw [Head.isRecordEta_of_ne (Head.join_ne_rebuild _ _)] at hη
+         exact Bool.false_ne_true hη)
+      | (rw [Head.isRecordEta_of_ne (Head.settle_withDefault_ne_rebuild _ _)] at hη
+         exact Bool.false_ne_true hη)
+      | (rw [Head.isRecordEta_of_ne (Head.ctorAtOf_ne_rebuild _ _)] at hη
          exact Bool.false_ne_true hη)
       | exact Bool.false_ne_true (Head.isRecordEta_ctorOf hη).2.2
 

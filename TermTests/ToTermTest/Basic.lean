@@ -183,7 +183,7 @@ def colourCode_term :=
 
 def blue : Colour := .blue
 
-def blue_term := (#leanscript_to_term blue : Term sig0 [] _ (tyWfOf Colour) .lit)
+def blue_term := (#leanscript_to_term blue : Term sig0 [] _ (tyWfOf Colour) (.enumLit 2))
 
 example : run colourCode_term (run blue_term) = 2 := rfl
 

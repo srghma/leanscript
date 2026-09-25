@@ -39,7 +39,7 @@ def natListTy : TyWf := .recTaggedUnion natListSchema
 /-- The empty list. -/
 def natNil :=
   (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-    Term covEmptySig [] _ natListTy .val)
+    Term covEmptySig [] _ natListTy (.ctorAt 0 0))
 
 /-- The head of a list, or `0`. -/
 def natHead :=

@@ -341,42 +341,45 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isName ?m.102 = true
+  Head.isName ?m.105 = true
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (LeanRecordSchema.toList ?m.104) 0
+  0 < Usage.front (LeanRecordSchema.toList ?m.107) 0
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.closedComp (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0) natT (Head.lit.join Head.empty) = false
+  Head.closedComp (?m.106 + Usage.drop (LeanRecordSchema.toList ?m.107) 0) natT (Head.lit.join Head.empty) = false
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.rescrutinizes ?m.102 (Usage.drop (LeanRecordSchema.toList ?m.104) 0) = false
+  Head.rescrutinizes ?m.105 (Usage.drop (LeanRecordSchema.toList ?m.107) 0) = false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
   Head.closedComp
       (Usage.single DeBruijn.head.tail +
-        (Usage.cond 0 +
-          ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
-                (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
+        (Usage.alt [] 0 +
+          (Usage.alt { head := treeTy natT 0, tail := [] }.toList
+              (Usage.scrutinize ?m.105 (?m.106 + Usage.drop (LeanRecordSchema.toList ?m.107) 0)) +
             0)))
-      natT (Head.lit.join ((Head.lit.join Head.empty).join Head.empty)) =
+      natT
+      (Head.branchAt 0 (CtorsWithPayload.here { head := treeTy natT 0, tail := [] } []).length Head.lit
+          (Head.branchAt { head := treeTy natT 0, tail := [] }.toList.length [].length (Head.lit.join Head.empty)
+            Head.empty)).settle =
     false
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
   (Head.var (Var.index DeBruijn.head.tail)).rescrutinizes
-      (Usage.cond 0 +
-        ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
-              (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
+      (Usage.alt [] 0 +
+        (Usage.alt { head := treeTy natT 0, tail := [] }.toList
+            (Usage.scrutinize ?m.105 (?m.106 + Usage.drop (LeanRecordSchema.toList ?m.107) 0)) +
           0)) =
     false
 ---
@@ -387,9 +390,9 @@ error: Expected type must not contain metavariables
     Usage.front { fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList
       (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
         (Usage.single DeBruijn.head.tail +
-          (Usage.cond 0 +
-            ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
-                  (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
+          (Usage.alt [] 0 +
+            (Usage.alt { head := treeTy natT 0, tail := [] }.toList
+                (Usage.scrutinize ?m.105 (?m.106 + Usage.drop (LeanRecordSchema.toList ?m.107) 0)) +
               0))))
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
@@ -399,9 +402,9 @@ error: Expected type must not contain metavariables
       (Usage.drop { fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList
         (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
           (Usage.single DeBruijn.head.tail +
-            (Usage.cond 0 +
-              ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
-                    (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
+            (Usage.alt [] 0 +
+              (Usage.alt { head := treeTy natT 0, tail := [] }.toList
+                  (Usage.scrutinize ?m.105 (?m.106 + Usage.drop (LeanRecordSchema.toList ?m.107) 0)) +
                 0))))) =
     false
 ---
@@ -413,12 +416,12 @@ but is expected to have type
   Term sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    ?m.103 (TyWf.record ?m.104) ?m.102
+    ?m.106 (TyWf.record ?m.107) ?m.105
 in the application
   @Term.record_casesOn sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    natT ?m.104 ?m.103 0 ?m.102 Head.lit (Term.var DeBruijn.head)
+    natT ?m.107 ?m.106 0 ?m.105 Head.lit (Term.var DeBruijn.head)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

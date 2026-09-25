@@ -283,7 +283,7 @@ abbrev PCtx : Ctx := [peanoTy]
 /-- Zero, as a term. -/
 def zeroTerm :=
   (.recTaggedUnion_mk peanoSchema (t := 0) (fields := .nil) :
-    Term sigAdd [] _ peanoTy .val)
+    Term sigAdd [] _ peanoTy (.ctorAt 0 0))
 
 /-- The successor of the variable in scope. -/
 def succTerm :=

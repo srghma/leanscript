@@ -48,7 +48,7 @@ example : (TyWf.recTaggedUnionUnfold natListSchema).get 1 (by decide) =
 /-- The empty list.  The tag's bound is written by `ctor_tag`. -/
 def natNil :=
   (.recTaggedUnion_mk natListSchema (t := 0) (fields := .nil) :
-    Term recEmptySig [] _ natListTy .val)
+    Term recEmptySig [] _ natListTy (.ctorAt 0 0))
 
 /-- `[3]`: `cons` of `3` and the empty list. -/
 def natOne :=
@@ -247,14 +247,50 @@ Note: Inferred this name from the expected resulting type of `.nil`:
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
-  (Head.var (Var.index DeBruijn.head)).rescrutinizes (Usage.cond 0 + ?m.54) = false
+  (Head.var (Var.index DeBruijn.head)).rescrutinizes (Usage.alt [] 0 + ?m.57) = false
+---
+error: could not synthesize default value for parameter 'hSame' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.branchAt 0
+        (CtorsWithPayload.map (TyWfIn.unfold (TyWf.recTaggedUnion natListSchema natListTy._proof_1))
+            (CtorsWithPayload.here
+              { head := (Ty.prim LeanPrimTy.nat).toTyWfIn natListSchema._proof_1,
+                tail := [Ty.self.toTyWfIn Ty.WfIn.self] }
+              [])).length
+        Head.lit ?m.32).isCaseLeaf =
+    false
+---
+error: could not synthesize default value for parameter 'hLit' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.var (Var.index DeBruijn.head)).readsInFieldless (Usage.alt [] 0 + ?m.57) = false
 ---
 error: could not synthesize default value for parameter 'hEta' using tactics
 ---
 error: Expected type must not contain metavariables
-  (Head.lit.join ?m.32).isEtaRedex
+  (Head.branchAt 0
+          (CtorsWithPayload.map (TyWfIn.unfold (TyWf.recTaggedUnion natListSchema natListTy._proof_1))
+              (CtorsWithPayload.here
+                { head := (Ty.prim LeanPrimTy.nat).toTyWfIn natListSchema._proof_1,
+                  tail := [Ty.self.toTyWfIn Ty.WfIn.self] }
+                [])).length
+          Head.lit ?m.32).isUnionEta
+      natListSchema.length ((TyWf.prim LeanPrimTy.nat).isRecTaggedUnionOf natListSchema.length) =
+    false
+---
+error: could not synthesize default value for parameter 'hEta' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.branchAt 0
+            (CtorsWithPayload.map (TyWfIn.unfold (TyWf.recTaggedUnion natListSchema natListTy._proof_1))
+                (CtorsWithPayload.here
+                  { head := (Ty.prim LeanPrimTy.nat).toTyWfIn natListSchema._proof_1,
+                    tail := [Ty.self.toTyWfIn Ty.WfIn.self] }
+                  [])).length
+            Head.lit ?m.32).settle.isEtaRedex
       (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
-          (Usage.single DeBruijn.head + (Usage.cond 0 + ?m.54))).head =
+          (Usage.single DeBruijn.head + (Usage.alt [] 0 + ?m.57))).head =
     false
 -/
 #guard_msgs (error) in

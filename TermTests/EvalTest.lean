@@ -218,7 +218,7 @@ def three : LeanEnumSchema := ⟨0, 0⟩
 def five : LeanEnumSchema := ⟨2, 0⟩
 
 /-- The middle constructor of `three`. -/
-def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) .lit)
+def middle := (.enum_mk three ⟨1, by decide⟩ : Term emptySig [] _ (TyWf.enum three) (.enumLit 1))
 
 /-- A dispatch on `three`: one branch per constructor, and no default. -/
 def enumToNat :=
@@ -298,7 +298,7 @@ def someThree :=
 /-- Its second, field-less constructor. -/
 def noneNat :=
   (.taggedUnion_mk optNat 1 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion optNat) .val)
+    Term emptySig [] _ (TyWf.taggedUnion optNat) (.ctorAt 1 0))
 
 /-- A dispatch on it, with one branch per constructor. -/
 def optNatOrZero :=
@@ -330,7 +330,7 @@ def natOrNothingToNat :=
 /-- Its field-less constructor. -/
 def nothing' :=
   (.taggedUnion_mk natOrNothing 0 (fields := .nil) :
-    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) .val)
+    Term emptySig [] _ (TyWf.taggedUnion natOrNothing) (.ctorAt 0 0))
 
 /-- Its constructor that carries a `nat`, applied to `5`. -/
 def justFive :=

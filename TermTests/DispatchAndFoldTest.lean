@@ -211,7 +211,7 @@ info: (((Term.var DeBruijnProj.head.tail).taggedUnion_casesOn
                 (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
                 (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
               TaggedUnionCasesRest.nil))
-          ⋯ ⋯ ⋯).lam
+          ⋯ ⋯ ⋯ ⋯ ⋯ ⋯).lam
       ⋯).lam
   ⋯
 -/

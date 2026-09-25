@@ -299,7 +299,7 @@ info: ((Term.var DeBruijnProj.head).taggedUnion_casesOn
           (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
             (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
           TaggedUnionCasesRest.nil))
-      ⋯ ⋯ ⋯).lam
+      ⋯ ⋯ ⋯ optTwice_term._proof_8 ⋯ optTwice_term._proof_10).lam
   ⋯
 -/
 #guard_msgs in

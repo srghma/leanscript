@@ -530,21 +530,28 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (hAnf : Head.isAtom ka = true := by head_ok)
       (hClosed : Head.closedComp (Usage.arg ka u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp = false := by not_closed) :
       Term Sg Γ (Usage.arg ka u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp
-  /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
-  | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ 0 (.enum s) .lit
+  /-- A constructor of an enum: its **number**, which is what the runtime holds.  The head
+      records the number (`Head.enumLit`), so a dispatch can tell whether its branches
+      are the same literal, or each its own constructor. -/
+  | enum_mk : ∀ {Γ} (s : LeanEnumSchema) (i : Fin s.nOfConstructors), Term Sg Γ 0 (.enum s) (.enumLit i.val)
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
       fall off the end.
 
       When the scrutinee is a variable, no branch reads it (`hLit`,
       `Head.readsScrutinee`): in each branch it is that branch's constructor, a literal.
       (`Term.enum_casesOnWithDefault` asks the same of its named branches; its default
-      branch knows no constructor, and may read it.) -/
+      branch knows no constructor, and may read it.)  Its branches are not all the same
+      leaf (`hSame`, `Head.isCaseLeaf`), and they are not each their own constructor
+      (`hEta`, `Head.isUnionEta`: `match c with | red => red | green => green | ...` is
+      `c`). -/
   | enum_casesOn {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {u v : Usage Γ} {ke kc : Head}
       (e : Term Sg Γ u (.enum s) ke) (cases : EnumCases Sg Γ v τ s kc)
       (hAnf : Head.isName ke = true := by head_ok)
       (hKnown : Head.rescrutinizes ke v = false := by head_ok)
-      (hLit : Head.readsScrutinee ke v = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize ke (u + v)) τ kc
+      (hLit : Head.readsScrutinee ke v = false := by head_ok)
+      (hSame : Head.isCaseLeaf kc = false := by head_ok)
+      (hEta : Head.isUnionEta kc s.nOfConstructors (TyWf.isEnumOf τ s) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize ke (u + v)) τ (Head.settle kc)
   /-- A dispatch on an enum that branches on **some** of the constructors and sends the
       rest to a default branch.  The branches are given as a list of
       (constructor number, branch) pairs, in the order they are tried, and the last
@@ -563,8 +570,10 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (dflt : Term Sg Γ w τ kd)
       (hk : k < s.nOfConstructors := by ctor_lt) (hAnf : Head.isName ke = true := by head_ok)
       (hKnown : Head.rescrutinizes ke v = false := by head_ok)
-      (hLit : Head.readsScrutinee ke v = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize ke (u + v + Usage.cond w)) τ (Head.join kc kd)
+      (hLit : Head.readsScrutinee ke v = false := by head_ok)
+      (hSame : Head.isCaseLeaf (Head.withDefault kd kc) = false := by head_ok)
+      (hEta : Head.isUnionEtaDflt kc kd ke (TyWf.isEnumOf τ s) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize ke (u + v + Usage.cond w)) τ (Head.settle (Head.withDefault kd kc))
   /-- A record, from its fields, in declaration order.  Like an array, it is a closed
       value (`Head.val`) when every field is a literal or a closed value
       (`Head.ctorOf`), so an extern called on it is computed where the term is written. -/
@@ -601,15 +610,27 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
       (ht : t < l.length := by ctor_tag) {u : Usage Γ} {ks : List Head}
       (fields : Spine Sg Γ u (l.get t ht) ks) (hAnf : Head.allAtom ks = true := by head_ok) :
-      Term Sg Γ u (.taggedUnion l) (Head.ctorOf ks)
+      Term Sg Γ u (.taggedUnion l) (Head.ctorAtOf t ks)
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
-      constructor's fields, and no default. -/
+      constructor's fields, and no default.
+
+      It is not a redex of its branches: they are not all the same leaf (`hSame`,
+      `Head.isCaseLeaf` — `match o with | none => x | some _ => x` is `x`), they do not
+      each rebuild their own constructor from the fields they bind (`hEta`,
+      `Head.isUnionEta` — `match o with | none => none | some a => some a` is `o`), and a
+      branch of a constructor without fields does not read the scrutinee, which is that
+      constructor there (`hLit`, `Head.readsInFieldless`).  The dispatches with a default
+      and those on recursive unions ask the same; with a default, the η-redex is
+      `match o with | some a => some a | _ => o` (`Head.isUnionEtaDflt`). -/
   | taggedUnion_casesOn {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {u w : Usage Γ}
       {kx kc : Head} (x : Term Sg Γ u (.taggedUnion l) kx) (cases : TaggedUnionCases Sg Γ w l τ kc)
       (hAnf : Head.isName kx = true := by head_ok)
-      (hClosed : Head.closedComp (u + w) τ kc = false := by not_closed)
-      (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w)) τ kc
+      (hClosed : Head.closedComp (u + w) τ (Head.settle kc) = false := by not_closed)
+      (hKnown : Head.rescrutinizes kx w = false := by head_ok)
+      (hSame : Head.isCaseLeaf kc = false := by head_ok)
+      (hLit : Head.readsInFieldless kx w = false := by head_ok)
+      (hEta : Head.isUnionEta kc l.length (TyWf.isTaggedUnionOf τ l.length) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kx (u + w)) τ (Head.settle kc)
   /-- A dispatch on a tagged union that branches on **some** of the constructors and
       sends the rest to a default branch.  A branch names its constructor by number —
       with the same `t < l.length` bound, written by `ctor_tag` — and binds that
@@ -626,9 +647,12 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {k : Nat} {u w d : Usage Γ} {kx kc kd : Head} (v : Term Sg Γ u (.taggedUnion l) kx)
       (cases : TaggedUnionSomeCases Sg Γ w l τ kc k) (dflt : Term Sg Γ d τ kd)
       (hk : k < l.length := by ctor_lt) (hAnf : Head.isName kx = true := by head_ok)
-      (hClosed : Head.closedComp (u + w + d) τ (Head.join kc kd) = false := by not_closed)
-      (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.join kc kd)
+      (hClosed : Head.closedComp (u + w + d) τ (Head.settle (Head.withDefault kd kc)) = false := by not_closed)
+      (hKnown : Head.rescrutinizes kx w = false := by head_ok)
+      (hSame : Head.isCaseLeaf (Head.withDefault kd kc) = false := by head_ok)
+      (hLit : Head.readsInFieldless kx w = false := by head_ok)
+      (hEta : Head.isUnionEtaDflt kc kd kx (TyWf.isTaggedUnionOf τ l.length) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.settle (Head.withDefault kd kc))
   -- The four recursive shapes of `Ty`.  The sketch they replace read
   --
   -- | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
@@ -663,7 +687,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_tag) {u : Usage Γ}
       {ks : List Head} (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
       (hAnf : Head.allAtom ks = true := by head_ok) :
-      Term Sg Γ u (.recTaggedUnion l hwf) (Head.ctorOf ks)
+      Term Sg Γ u (.recTaggedUnion l hwf) (Head.ctorAtOf t ks)
   /-- The eliminator of a recursive tagged union: one branch per constructor, each
       binding that constructor's **unfolded** fields, and no default.  It takes the value
       *one level* apart — a field that is an occurrence of the union is bound as a value
@@ -673,9 +697,12 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (x : Term Sg Γ u (.recTaggedUnion l hwf) kx)
       (cases : TaggedUnionCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ kc)
       (hAnf : Head.isName kx = true := by head_ok)
-      (hClosed : Head.closedComp (u + w) τ kc = false := by not_closed)
-      (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w)) τ kc
+      (hClosed : Head.closedComp (u + w) τ (Head.settle kc) = false := by not_closed)
+      (hKnown : Head.rescrutinizes kx w = false := by head_ok)
+      (hSame : Head.isCaseLeaf kc = false := by head_ok)
+      (hLit : Head.readsInFieldless kx w = false := by head_ok)
+      (hEta : Head.isUnionEta kc l.length (TyWf.isRecTaggedUnionOf τ l.length) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kx (u + w)) τ (Head.settle kc)
   /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
       default for the rest.  As for a non-recursive union the branches name their
       constructors in strictly increasing order, there is at least one of them, and there
@@ -687,9 +714,12 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (dflt : Term Sg Γ d τ kd)
       (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt)
       (hAnf : Head.isName kx = true := by head_ok)
-      (hClosed : Head.closedComp (u + w + d) τ (Head.join kc kd) = false := by not_closed)
-      (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.join kc kd)
+      (hClosed : Head.closedComp (u + w + d) τ (Head.settle (Head.withDefault kd kc)) = false := by not_closed)
+      (hKnown : Head.rescrutinizes kx w = false := by head_ok)
+      (hSame : Head.isCaseLeaf (Head.withDefault kd kc) = false := by head_ok)
+      (hLit : Head.readsInFieldless kx w = false := by head_ok)
+      (hEta : Head.isUnionEtaDflt kc kd kx (TyWf.isRecTaggedUnionOf τ l.length) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.settle (Head.withDefault kd kc))
   /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
       motive, that descends `k + 1` constructors at a time: one branch per constructor,
       each binding that constructor's fields and, right after a field that is an
@@ -944,13 +974,15 @@ inductive TaggedUnionCases (Sg : Sig) :
       {w : Usage Γ} {ka kb kr : Head},
       Term Sg (fields.toList ++ Γ) u τ ka → Term Sg (next ++ Γ) v τ kb →
       TaggedUnionCasesRest Sg Γ w rest τ kr →
-      TaggedUnionCases Sg Γ (Usage.cond (Usage.drop fields.toList u) + Usage.cond (Usage.drop next v) + w)
-        (.payloadFirst fields next rest) τ (Head.join ka (Head.join kb kr))
+      TaggedUnionCases Sg Γ (Usage.alt fields.toList u + Usage.alt next v + w)
+        (.payloadFirst fields next rest) τ
+        (Head.branchAt fields.toList.length (rest.length + 1) ka
+          (Head.branchAt next.length rest.length kb kr))
   /-- The branch of constructor `0`, which carries no fields and so binds nothing, and
       the branches of the constructors after it. -/
   | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
-      TaggedUnionCases Sg Γ (Usage.cond u + w) (.skip rest) τ (Head.join ka kr)
+      TaggedUnionCases Sg Γ (Usage.alt [] u + w) (.skip rest) τ (Head.branchAt 0 rest.length ka kr)
 
 /-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
     `LeanScript.TaggedUnionCases`, with the same shape as that schema. -/
@@ -961,13 +993,13 @@ inductive CtorsWithPayloadCases (Sg : Sig) :
   | here : ∀ {Γ τ} {fields : NonEmptyList TyWf} {rest : List (List TyWf)}
       {u : Usage (fields.toList ++ Γ)} {w : Usage Γ} {ka kr : Head},
       Term Sg (fields.toList ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
-      CtorsWithPayloadCases Sg Γ (Usage.cond (Usage.drop fields.toList u) + w) (.here fields rest) τ
-        (Head.join ka kr)
+      CtorsWithPayloadCases Sg Γ (Usage.alt fields.toList u + w) (.here fields rest) τ
+        (Head.branchAt fields.toList.length rest.length ka kr)
   /-- The branch of a field-less constructor, which binds nothing, and the branches of
       the constructors after it. -/
   | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
-      CtorsWithPayloadCases Sg Γ (Usage.cond u + w) (.skip rest) τ (Head.join ka kr)
+      CtorsWithPayloadCases Sg Γ (Usage.alt [] u + w) (.skip rest) τ (Head.branchAt 0 rest.length ka kr)
 
 /-- The branches of the constructors a schema leaves unconstrained: a plain list, one
     entry per constructor still to be given a branch, each as the list of its field
@@ -980,7 +1012,8 @@ inductive TaggedUnionCasesRest (Sg : Sig) :
   | cons : ∀ {Γ τ} {fs : List TyWf} {rest : List (List TyWf)} {u : Usage (fs ++ Γ)}
       {w : Usage Γ} {ka kr : Head},
       Term Sg (fs ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
-      TaggedUnionCasesRest Sg Γ (Usage.cond (Usage.drop fs u) + w) (fs :: rest) τ (Head.join ka kr)
+      TaggedUnionCasesRest Sg Γ (Usage.alt fs u + w) (fs :: rest) τ
+        (Head.branchAt fs.length rest.length ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of a tagged union, used
     with a default: a list of (constructor number, branch) pairs, in the order they are
@@ -1019,7 +1052,8 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
       (ht : t < l.length := by ctor_tag) {u : Usage (l.get t ht ++ Γ)} {ka : Head}
       (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
       (hi : lo ≤ t := by ctor_ge) :
-      TaggedUnionSomeCases Sg Γ (Usage.cond (Usage.drop (l.get t ht) u)) l τ (Head.join ka .empty) 1 lo
+      TaggedUnionSomeCases Sg Γ (Usage.alt (l.get t ht) u) l τ
+        (Head.branchTag (l.get t ht).length t ka .empty) 1 lo
   /-- One more branch, for constructor `t`, binding that constructor's fields; every
       branch after it names a **bigger** constructor. -/
   | cons {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {k lo : Nat} (t : Nat)
@@ -1027,7 +1061,8 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
       {ka kr : Head} (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
       (rest : TaggedUnionSomeCases Sg Γ w l τ kr k (t + 1))
       (hi : lo ≤ t := by ctor_ge) :
-      TaggedUnionSomeCases Sg Γ (Usage.cond (Usage.drop (l.get t ht) u) + w) l τ (Head.join ka kr) (k + 1) lo
+      TaggedUnionSomeCases Sg Γ (Usage.alt (l.get t ht) u + w) l τ
+        (Head.branchTag (l.get t ht).length t ka kr) (k + 1) lo
 
 /-- The branches of a dispatch on an enum: one per constructor, in constructor order,
     binding nothing, and **indexed by the schema itself** rather than by the number of
@@ -1042,12 +1077,13 @@ inductive EnumCases (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSc
       order. -/
   | three : ∀ {Γ τ} {shift : Int} {u v w : Usage Γ} {ka kb kc : Head},
       Term Sg Γ u τ ka → Term Sg Γ v τ kb → Term Sg Γ w τ kc →
-      EnumCases Sg Γ (Usage.cond u + Usage.cond v + Usage.cond w) τ ⟨0, shift⟩ (Head.join ka (Head.join kb kc))
+      EnumCases Sg Γ (Usage.cond u + Usage.cond v + Usage.cond w) τ ⟨0, shift⟩
+        (Head.branchAt 0 2 ka (Head.branchAt 0 1 kb (Head.branchAt 0 0 kc .empty)))
   /-- The branch of the first constructor, and the branches of the ones after it — one
       constructor beyond the schema of the rest. -/
   | cons : ∀ {Γ τ} {extra : Nat} {shift : Int} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → EnumCases Sg Γ w τ ⟨extra, shift⟩ kr →
-      EnumCases Sg Γ (Usage.cond u + w) τ ⟨extra + 1, shift⟩ (Head.join ka kr)
+      EnumCases Sg Γ (Usage.cond u + w) τ ⟨extra + 1, shift⟩ (Head.branchAt 0 (extra + 3) ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of the enum `s`, used with
     a default: (constructor number, branch) pairs.  A constructor may be left out — that
@@ -1084,14 +1120,14 @@ inductive EnumSomeCases (Sg : Sig) :
       branch. -/
   | last {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {lo : Nat} (i : Fin s.nOfConstructors)
       {u : Usage Γ} {ka : Head} (branch : Term Sg Γ u τ ka) (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ (Usage.cond u) τ s (Head.join ka .empty) 1 lo
+      EnumSomeCases Sg Γ (Usage.cond u) τ s (Head.branchTag 0 i.val ka .empty) 1 lo
   /-- One more branch, for the constructor of this number; every branch after it names a
       **bigger** number. -/
   | cons {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k lo : Nat} (i : Fin s.nOfConstructors)
       {u w : Usage Γ} {ka kr : Head} (branch : Term Sg Γ u τ ka)
       (rest : EnumSomeCases Sg Γ w τ s kr k (i.val + 1))
       (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ (Usage.cond u + w) τ s (Head.join ka kr) (k + 1) lo
+      EnumSomeCases Sg Γ (Usage.cond u + w) τ s (Head.branchTag 0 i.val ka kr) (k + 1) lo
 
 /-- The branches of a **fold** over a sum type: the same family as
     `LeanScript.TaggedUnionCases`, and so the same shape as the schema it branches on,
@@ -1284,7 +1320,7 @@ inductive FamilyMemberCases (Sg : Sig) :
     (Γ : Ctx) → Usage Γ → TyWf → LeanFamMemberSchema TyWf → Head → Type 1
   /-- One branch per constructor of a member that has constructors. -/
   | ctors : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf} {u : Usage Γ} {kc : Head},
-      TaggedUnionCases Sg Γ u l τ kc → FamilyMemberCases Sg Γ u τ (.ctors l) kc
+      TaggedUnionCases Sg Γ u l τ kc → FamilyMemberCases Sg Γ u τ (.ctors l) (Head.settle kc)
   /-- The one branch of a record member, which binds its fields in declaration order. -/
   | record : ∀ {Γ τ} {fs : LeanRecordSchema TyWf} {u : Usage (fs.toList ++ Γ)} {kb : Head},
       Term Sg (fs.toList ++ Γ) u τ kb →
@@ -1306,7 +1342,7 @@ inductive FamilyMemberSomeCases (Sg : Sig) :
       has constructors — so the default of the dispatch is reachable. -/
   | ctors {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {k : Nat} {u : Usage Γ}
       {kc : Head} (cases : TaggedUnionSomeCases Sg Γ u l τ kc k)
-      (hk : k < l.length := by ctor_lt) : FamilyMemberSomeCases Sg Γ u τ (.ctors l) kc
+      (hk : k < l.length := by ctor_lt) : FamilyMemberSomeCases Sg Γ u τ (.ctors l) (Head.settle kc)
 
 /-- The branches of a **fold** over one member of a mutual family: as
     `LeanScript.FamilyMemberCases`, but each branch is also given the value of the fold

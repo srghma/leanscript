@@ -344,48 +344,48 @@ example (τ : TyWf) :
 error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isName ?m.98 = true
+  Head.isName ?m.101 = true
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (LeanRecordSchema.toList ?m.100) 0
+  0 < Usage.front (LeanRecordSchema.toList ?m.103) 0
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.closedComp (?m.99 + Usage.drop (LeanRecordSchema.toList ?m.100) 0) natT (Head.lit.join Head.empty) = false
+  Head.closedComp (?m.102 + Usage.drop (LeanRecordSchema.toList ?m.103) 0) natT (Head.lit.join Head.empty) = false
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.rescrutinizes ?m.98 (Usage.drop (LeanRecordSchema.toList ?m.100) 0) = false
+  Head.rescrutinizes ?m.101 (Usage.drop (LeanRecordSchema.toList ?m.103) 0) = false
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
   0 <
     Usage.front (linkSchema (treeTy natT 0)).toList
-      (Usage.scrutinize ?m.98 (?m.99 + Usage.drop (LeanRecordSchema.toList ?m.100) 0))
+      (Usage.scrutinize ?m.101 (?m.102 + Usage.drop (LeanRecordSchema.toList ?m.103) 0))
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
   (Head.var (Var.index DeBruijn.head)).rescrutinizes
       (Usage.drop (linkSchema (treeTy natT 0)).toList
-        (Usage.scrutinize ?m.98 (?m.99 + Usage.drop (LeanRecordSchema.toList ?m.100) 0))) =
+        (Usage.scrutinize ?m.101 (?m.102 + Usage.drop (LeanRecordSchema.toList ?m.103) 0))) =
     false
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
   (Head.var (Var.index DeBruijn.head.tail)).rescrutinizes
-      (Usage.cond 0 +
-        ((Usage.drop { head := linkTy (treeTy natT 0), tail := [] }.toList
-              (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
-                (Usage.single DeBruijn.head +
-                  Usage.drop (linkSchema (treeTy natT 0)).toList
-                    (Usage.scrutinize ?m.98 (?m.99 + Usage.drop (LeanRecordSchema.toList ?m.100) 0))))).cond +
+      (Usage.alt [] 0 +
+        (Usage.alt { head := linkTy (treeTy natT 0), tail := [] }.toList
+            (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
+              (Usage.single DeBruijn.head +
+                Usage.drop (linkSchema (treeTy natT 0)).toList
+                  (Usage.scrutinize ?m.101 (?m.102 + Usage.drop (LeanRecordSchema.toList ?m.103) 0)))) +
           0)) =
     false
 ---
@@ -396,11 +396,11 @@ has type
 but is expected to have type
   Term sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    ?m.99 (TyWf.record ?m.100) ?m.98
+    ?m.102 (TyWf.record ?m.103) ?m.101
 in the application
   @Term.record_casesOn sigAdd
     ((linkSchema (treeTy natT 0)).toList ++ ({ head := linkTy (treeTy natT 0), tail := [] }.toList ++ branchCtx natT 0))
-    natT ?m.100 ?m.99 0 ?m.98 Head.lit (Term.var DeBruijn.head.tail)
+    natT ?m.103 ?m.102 0 ?m.101 Head.lit (Term.var DeBruijn.head.tail)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

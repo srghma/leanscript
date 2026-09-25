@@ -40,11 +40,11 @@ def isRed_term :=
 
 def red : Colour := .red
 
-def red_term := (#leanscript_to_term red : Term sig0 [] _ (tyWfOf Colour) .lit)
+def red_term := (#leanscript_to_term red : Term sig0 [] _ (tyWfOf Colour) (.enumLit 0))
 
 def green : Colour := .green
 
-def green_term := (#leanscript_to_term green : Term sig0 [] _ (tyWfOf Colour) .lit)
+def green_term := (#leanscript_to_term green : Term sig0 [] _ (tyWfOf Colour) (.enumLit 1))
 
 example : run isRed_term (run red_term) = true := rfl
 example : run isRed_term (run green_term) = false := rfl
@@ -76,7 +76,7 @@ def aBox_term := (#leanscript_to_term aBox : Term sig0 [] _ (tyWfOf Sized) .val)
 
 def aPoint : Sized := .point
 
-def aPoint_term := (#leanscript_to_term aPoint : Term sig0 [] _ (tyWfOf Sized) .val)
+def aPoint_term := (#leanscript_to_term aPoint : Term sig0 [] _ (tyWfOf Sized) (.ctorAt 2 0))
 
 example : run widthOrZero_term (run aBox_term) = 3 := rfl
 example : run widthOrZero_term (run aPoint_term) = 0 := rfl
