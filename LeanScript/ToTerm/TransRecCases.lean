@@ -35,6 +35,24 @@ open Lean Meta Elab Term
 
 namespace LeanScript.ToTerm
 
+/-- The dispatch on a value of a declaration of **several constructors** whose tree is a
+    recursive newtype (it holds itself inside another type, `Array T`, and its body is the
+    union of its constructors): `recAlias_casesOn` binds the body, unfolded, and a
+    `taggedUnion_casesOn` on it dispatches on the constructors. -/
+def transUnionAliasCases (trans : TransFn) (c : TCtx) (τ b hwf scrut : Expr)
+    (minors : Array Expr) (ctors : Array Name) : MetaM Expr := do
+  let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+  let .taggedUnion l ← tyView unfE
+    | throwError "`#leanscript_to_term`: internal: the body of a recursive newtype of \
+        several constructors is not a tagged union"
+  let fid ← mkFreshFVarId
+  let c1 := c.push fid unfE
+  let cases ← mkTaggedUnionCases (transBranch trans c1) c1 τ l 0 minors ctors
+  let body := mkAppN (mkConst `LeanScript.Term.taggedUnion_casesOn')
+    #[c1.sg, c1.gamma, τ, l, ← c1.var fid, cases]
+  return mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
+    #[c.sg, c.gamma, τ, b, hwf, scrut, body]
+
 /-- `X.casesOn` on a value of an **indexed family** (`Vec α n`), whose tree is a recursive
     tagged union, record or newtype: the dispatch of the same tree, whose branches are
     read off the whole application — the `match` Lean compiled carries equations between
@@ -79,6 +97,9 @@ def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr)
         pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
           #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
     | .recAlias b hwf =>
+        if ctors.size > 1 then
+          transUnionAliasCases trans c τ b hwf scrut minors ctors
+        else
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
         pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
@@ -139,6 +160,9 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
         pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
           #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
     | .recAlias b hwf =>
+        if ctors.size > 1 then
+          transUnionAliasCases trans c τ b hwf scrut minors ctors
+        else
         let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
         let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
         pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')

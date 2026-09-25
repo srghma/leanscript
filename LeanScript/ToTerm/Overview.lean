@@ -59,6 +59,8 @@ context are used.
 | a structural recursion on a **nested inductive** whose recursive occurrence sits under `List` (`inductive Rose \| node (v : Nat) (kids : List Rose)`), with helpers on `List Rose`, `List (List Rose)`, … | `mutualRecursiveFamily_rec k` on the family `Rose`, `List Rose`, … that `deriving LeanScriptTyWf` gives it — see `TermTests/ShapesTest/Nested.lean` |
 | a recursion on a `mutual` block whose members answer different types (`Tree → Bool` with `Forest → Nat`) | `mutualRecursiveFamily_rec k` answering the tuple of the types, each member filling in its own component (the others are `default`) |
 | a structural recursion on a **nested inductive through `Array`** (`inductive ATree \| node (v : Nat) (kids : Array ATree)`), written as a `mutual` block over `ATree`, `Array ATree` and `List ATree` | `recObject_rec k` (or `recAlias_rec k`), whose window holds the array of the answers at the children — see `TermTests/StructRecTest/NestedArray.lean` |
+| a structural recursion on a nested inductive of **several constructors** whose occurrence sits inside another type (`inductive UTree \| leaf \| node (v : Nat) (kids : Array UTree)`, a JSON-like type, `Option T` or `Nat × T` inside a constructor) | `recAlias_rec k`: `deriving LeanScriptTyWf` gives such a declaration the tree of a recursive newtype whose body is the union of its constructors (`Ty.recAlias (Ty.taggedUnion …)`), whose constructors are `recAlias_mk` around `taggedUnion_mk` and whose `match` is `recAlias_casesOn` around `taggedUnion_casesOn` — see `TermTests/StructRecTest/NestedOther.lean` |
+| a structural recursion whose occurrences sit in an **array of values that hold the type** (`Array (Array T)`, `Array (Option T)`, `Array (String × T)`), under a **function** (`node (f : Nat → T)`) or under a **delay** (`Thunk T`) | `recObject_rec k` / `recAlias_rec k`, the window holding the array of the elements' windows, the function of the answers or the delayed answer — see `TermTests/StructRecTest/NestedOther.lean` |
 | a structural recursion on a `mutual` block whose members **also occur nested** (`Option Q` inside `P`) | `mutualRecursiveFamily_rec k` on the family `P`, `Q`, `Option Q` — see `TermTests/StructRecTest/MutualNested.lean` |
 | a structural recursion on a **recursive newtype whose body is a structure** (`Pair2 \| mk (Nat × Option Pair2)`) | `recAlias_rec k` — see `TermTests/StructRecTest/NewtypeStruct.lean` |
 | a structural recursion on an **inductive family with indices** (`Vec α n`) | the fold of its tree, the index erased and a value index an ordinary field — see `TermTests/StructRecTest/IndexedFamily.lean` |
@@ -155,19 +157,25 @@ being translated.
   `mutualRecursiveFamily_rec k` may look into several subvalues (after the left child,
   the right one), each look costing one unit of depth; the window of `recObject_rec k`
   and `recAlias_rec k` holds the answers below every child at once, and so does that of
-  `nat_rec k` and `array_rec k` along their one chain.  A recursive newtype is
-  folded when its body is a union whose constructors hold the newtype itself, values
-  that do not mention it, or a structure whose fields are one of those
-  (`Link Chain`, `Option Chain`, `Option (Nat × Chain)`).
+  `nat_rec k` and `array_rec k` along their one chain.  A recursive record or newtype is
+  folded when each occurrence of it sits, through unions, structures and arrays
+  (`Link Chain`, `Option Chain`, `Option (Nat × Chain)`, `Array (Option Chain)`), in a
+  field that is the type itself, a function into it (`Nat → Chain`) or a delay of it
+  (`Thunk Chain`); a function or a delay is read only by the depth-`0` fold.
 * a `match` on a field of a value that the recursion takes apart but does not descend
   into (a value of *another* `mutual` block, say), written directly in the branch of a
   structural recursion: Lean passes the history of the recursion through that `match`.
   Moving the `match` into a small `@[inline]` function makes it translatable
   (`TermTests/MutualFamilyToTermTest/CrossBlock/`).
 * a nested inductive whose recursive occurrence sits under a type former that is neither
-  a shape of the language (`List`, `Array`, a union, a structure) nor a type with a
-  `LeanScriptTyWf` instance of its own; and an inductive family whose index the language
-  cannot erase (one whose tree changes with the index).
+  a shape of the language (`List`, `Array`, `Thunk`, a function, a union, a structure)
+  nor a type with a `LeanScriptTyWf` instance of its own; and an inductive family whose
+  index the language cannot erase (one whose tree changes with the index).
+* a structural recursion on a **family** (a `mutual` block, or a type nested through
+  `List` or another recursive container) one of whose members holds a member inside an
+  array, a function or a delay — `List (Array T)`, `Array (List T)`: the fold of a
+  family hands over an answer only at a field that *is* a member
+  (`TermTests/StructRecTest/NestedOther.lean`).
 * a fold deeper than the translation looks for.  The bounds are options
   (`LeanScript/ToTerm/Options.lean`), with defaults `64` for `nat_rec k` / `array_rec k`,
   `24` for `recObject_rec k` / `recAlias_rec k` and `16` for `recTaggedUnion_rec k` /

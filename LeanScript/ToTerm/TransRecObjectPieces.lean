@@ -35,13 +35,30 @@ inductive RecObjPayloadField where
       and how each of its fields is read. -/
   | union (ind : Name) (lvls : List Level) (params : Array Expr)
       (ctors : Array (Name × Array RecObjPayloadField))
-  /-- An array of the record itself (`Array Tree`), of this Lean type.  Lean folds it
-      through two auxiliary motives, one for `Array Tree` and one for `List Tree`, and the
-      window of the fold holds the array of the answers at its elements; the answer of
-      the array's own motive is the fold of that array (`array_rec`) by the branches of
-      those two motives. -/
-  | arraySelf (ty : Expr)
+  /-- An array of values that mention the record (`Array Tree`, `Array (Array Tree)`,
+      `Array (Option Tree)`, `Array (Nat × Tree)`), of the Lean type `ty` = `Array elemTy`,
+      whose elements are read as `elem` says.  Lean folds it through two auxiliary
+      motives, one for `Array elemTy` and one for `List elemTy`, and the window of the fold
+      holds the array of the elements' windows; the answer of the array's own motive is
+      the fold of that array (`array_rec`) by the branches of those two motives, each
+      element's window taken apart as `elem` says. -/
+  | array (ty elemTy : Expr) (elem : RecObjPayloadField)
+  /-- A function into the record (`Nat → Tree`), of the Lean type `ty` = `dom → Tree`: a
+      subvalue at every argument.  The window holds the function `dom ⇒ τ` of the answers
+      at them, and the history Lean hands its branch is, at this field, the function
+      `fun a => ⟨answer at (f a), …⟩`, so a read of the answer at `f a` is an application
+      of the window.  Only the depth-`0` fold reads such a field. -/
+  | fn (ty dom : Expr)
+  /-- A delayed record (`Thunk Tree`), of the Lean type `ty`: Lean holds it as
+      `Thunk.mk g` with `g : Unit → Tree`, and the window holds the delayed answer, whose
+      forcing is the answer at `g ()`.  Only the depth-`0` fold reads such a field. -/
+  | thunk (ty : Expr)
   deriving Inhabited
+
+/-- The key under which `answers` holds the window of a function field `f`: the answer at
+    `f a` is that window applied to `a`. -/
+def fnKey (f : Expr) : Expr :=
+  mkMData (KVMap.empty.insert `leanscriptFn (.ofBool true)) f
 
 /-- How the fold of a record reads one field of it: a field is read like a field of a
     constructor inside it — a value that does not mention the record, a structure around
@@ -70,6 +87,11 @@ structure RecObjInfo where
   /-- Is it a recursive **newtype** (`Ty.recAlias`)?  Then the one field is the body, and
       a window is that body itself rather than a record of fields. -/
   isAlias : Bool := false
+  /-- Is it a declaration of **several constructors** folded as a recursive newtype (it
+      holds itself inside another type, `Array T`)?  Then the body is the union of its
+      constructors, and a value is the constructor application the union's dispatch
+      builds, not `ctor` applied to it. -/
+  unionAlias : Bool := false
   /-- The translation, for the branches of the auxiliary motives of an array field. -/
   trans : TransFn := fun _ e => pure e
   /-- The motives of the `brecOn`. -/
@@ -78,6 +100,13 @@ structure RecObjInfo where
   brecFs : Array Expr := #[]
   /-- The type each motive is a function of: the record, then the auxiliary types. -/
   motiveDoms : Array Expr := #[]
+
+/-- The value of the record built from the values `vals` of its fields: the constructor
+    applied to them — or, for a declaration of several constructors folded as a newtype,
+    the one value, its body, which is already a constructor application. -/
+def RecObjInfo.mkValue (info : RecObjInfo) (vals : Array Expr) : Expr :=
+  if info.unionAlias then vals[0]!
+  else mkAppN (mkConst info.ctor info.lvls) (info.params ++ vals)
 
 /-- The key under which `answers` holds the answer of motive `m` at `x`: `x` itself for
     the record's own motive, `x` marked with the motive's number for an auxiliary one
@@ -94,9 +123,16 @@ partial def classifyRecObjPayload (ind : Name) (selfTy : Expr) (t : Expr) :
   if ← isDefEq t selfTy then return .self
   if !mentions t then return .plain t
   if t.isAppOfArity ``Array 1 then
-    if ← isDefEq t.appArg! selfTy then return .arraySelf t
-    throwError "`#leanscript_to_term`: the field of type {t} holds the recursive record \
-      {ind} in an array other than as its elements"
+    return .array t t.appArg! (← classifyRecObjPayload ind selfTy t.appArg!)
+  if t.isAppOfArity ``Thunk 1 then
+    if ← isDefEq t.appArg! selfTy then return .thunk t
+    throwError "`#leanscript_to_term`: the field of type {t} delays a value that holds the \
+      recursive record {ind} other than as the record itself"
+  if let .forallE _ dom cod _ := t then
+    if !cod.hasLooseBVars && !mentions dom then
+      if ← isDefEq cod selfTy then return .fn t dom
+    throwError "`#leanscript_to_term`: the field of type {t} is a function that holds the \
+      recursive record {ind} other than as its result"
   let t' ← whnf t
   let .const j jl := t'.getAppFn
     | throwError "`#leanscript_to_term`: the field of type {t} mentions the recursive \
@@ -159,6 +195,16 @@ partial def buildRecObjHistory (motiveVars : Array Expr) (motives : Array Expr)
     (answers : Array (Expr × Expr)) (placeholder : Expr) : MetaM Expr := do
   let real (t : Expr) : Expr := t.replaceFVars motiveVars motives
   let t ← whnf placeholder
+  -- below a function field `f`: at every argument `a`, the answer at `f a` (the window of
+  -- `f` applied to `a`) and what is below it
+  if let .forallE n d b bi := t then
+    return ← withLocalDecl n bi (real d) fun a => do
+      let extra := answers.filterMap fun (s, ans) => match s with
+        | .mdata md f => if md.getBool `leanscriptFn then some (mkApp f a, (mkApp ans a).headBeta)
+            else none
+        | _ => none
+      let v ← buildRecObjHistory motiveVars motives (answers ++ extra) (b.instantiate1 a)
+      mkLambdaFVars #[a] v
   match t.getAppFn, t.getAppArgs with
   | .const ``PProd ls, #[a, b] =>
       let va ← buildRecObjHistory motiveVars motives answers a
@@ -232,7 +278,7 @@ def recObjBranchBody (info : RecObjInfo) (brecF : Expr) (motives : Array Expr)
 def recObjLeaf (trans : TransFn) (info : RecObjInfo) (brecF : Expr) (motives : Array Expr)
     (c : TCtx) (answers : Array (Expr × Expr)) (frontier : Array Expr) (vals : Array Expr) :
     MetaM Expr := do
-  let shape := mkAppN (mkConst info.ctor info.lvls) (info.params ++ vals)
+  let shape := info.mkValue vals
   let body ← recObjBranchBody info brecF motives shape answers frontier
   let indName := (← getConstInfoCtor info.ctor).induct
   trans { c with foldInds := c.foldInds.push indName } body
@@ -258,63 +304,15 @@ def recObjAuxMotive (info : RecObjInfo) (dom : Expr) : MetaM (Option (Nat × Exp
     if body.isConstOf ``PUnit || body.isAppOf ``PUnit then return none
     return some (m, body)
 
-/-- The answer of the auxiliary motive of an array field `Array Tree` at that field, as a
-    term in `c`: the array `win` of the window holds the answer trees of depth `j` at the
-    elements, and the answer is the fold of that array, `array_rec 0`, by the branches of
-    the motive of `List Tree` — each given the answer at the head and the answer at the
-    tail, the head and the tail themselves being frontier values — followed by the branch
-    of the motive of `Array Tree`, given the answer at its list. -/
-def recObjListAnswer (info : RecObjInfo) (c : TCtx) (win winTy : Expr) (j : Nat)
-    (mL : Nat) (τLLean : Expr) : MetaM Expr := do
-  let trans := info.trans
-  let τL ← tyOfType τLLean
-  let .array σ ← tyView winTy
-    | throwError "`#leanscript_to_term`: internal: the window of an array field is not an array"
-  let u ← getDecLevel info.selfTy
-  let listTy := mkApp (mkConst ``List [u]) info.selfTy
-  -- the empty list
-  let nilV := mkApp (mkConst ``List.nil [u]) info.selfTy
-  let nilBody ← recObjBranchBody info info.brecFs[mL]! info.motives nilV #[] #[]
-  let nilT ← trans c nilBody
-  -- a head and a tail, whose answers the fold of the array gives
-  let consT ← withLocalDeclD `head (if j == 0 then info.τLean else mkConst ``Unit) fun hd =>
-    withLocalDeclD `tail (mkConst ``Unit) fun tl =>
-    withLocalDeclD `ih τLLean fun ih =>
-    withLocalDeclD `t info.selfTy fun t =>
-    withLocalDeclD `ts listTy fun ts => do
-      let cC := c.pushFields #[(hd.fvarId!, σ), (tl.fvarId!, mkApp (mkConst ``LeanScript.TyWf.array) σ),
-        (ih.fvarId!, τL)]
-      let consV := mkApp3 (mkConst ``List.cons [u]) info.selfTy t ts
-      let inner (cB : TCtx) (hdAns : Expr) : MetaM Expr := do
-        let body ← recObjBranchBody info info.brecFs[mL]! info.motives consV
-          #[(t, hdAns), (motiveKey mL ts, ih)] #[t, ts]
-        trans cB body
-      if j == 0 then
-        inner cC hd
-      else
-        -- the head is an answer tree: its answer is the first field
-        let .record fsT ← tyView σ
-          | throwError "`#leanscript_to_term`: internal: an answer tree is not a record"
-        let tTys := (← recordFieldTys fsT).toArray
-        withLocalDeclD `ans info.τLean fun ans =>
-        withLocalDeclD `win (mkConst ``Unit) fun w => do
-          let c2 := cC.pushFields #[(ans.fvarId!, tTys[0]!), (w.fvarId!, tTys[1]!)]
-          let b ← inner c2 ans
-          return mkAppN (mkConst `LeanScript.Term.record_casesOn')
-            #[c.sg, cC.gamma, τL, fsT, ← cC.var hd.fvarId!, b]
-  let bases := mkAppN (mkConst `LeanScript.ArrayRecBases.nil) #[c.sg, c.gamma, σ, τL, nilT]
-  return mkAppN (mkConst `LeanScript.Term.array_rec')
-    #[c.sg, c.gamma, σ, τL, mkNatLit 0, win, bases, consT]
-
-/-- The answer of the motive of `Array Tree` at an array field, as a term in `c`: its
+/-- The answer of the motive of `Array elemTy` at an array field, as a term in `c`: its
     branch at `Array.mk l`, given the answer `ansL` at `l` (a variable of `c`) when the
     recursion has one for lists. -/
-def recObjArrAnswer (info : RecObjInfo) (c : TCtx) (mA : Nat) (ansL? : Option (Nat × Expr)) :
-    MetaM Expr := do
-  let u ← getDecLevel info.selfTy
-  let listTy := mkApp (mkConst ``List [u]) info.selfTy
+def recObjArrAnswer (info : RecObjInfo) (c : TCtx) (elemTy : Expr) (mA : Nat)
+    (ansL? : Option (Nat × Expr)) : MetaM Expr := do
+  let u ← getDecLevel elemTy
+  let listTy := mkApp (mkConst ``List [u]) elemTy
   withLocalDeclD `l listTy fun l => do
-    let arrV := mkApp2 (mkConst ``Array.mk [u]) info.selfTy l
+    let arrV := mkApp2 (mkConst ``Array.mk [u]) elemTy l
     let answers := match ansL? with
       | some (mL, ansL) => #[(motiveKey mL l, ansL)]
       | none => #[]

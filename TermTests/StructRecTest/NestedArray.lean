@@ -30,7 +30,10 @@ are bound with `letE` before the branch of `ATree.node` reads them.
 The helpers may answer types other than the main function (`ATree.labels` answers a
 `List Nat`), and a recursive newtype over an array (`Rose | mk (kids : Array Rose)`) is
 folded the same way, as `recAlias_rec k`.  A helper that takes a child apart rather than
-reading its answer has no term: the children themselves are not in the window. -/
+reading its answer has no term: the children themselves are not in the window.
+
+Declarations of several constructors, arrays of arrays (or of options, or of pairs),
+functions and delays are in `TermTests/StructRecTest/NestedOther.lean`. -/
 
 namespace TermTests.StructRec.NestedArray
 

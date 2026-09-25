@@ -600,6 +600,24 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let spine ← mkSpine c fieldTys fields
       return mkAppN (mkConst `LeanScript.Term.recObject_mk) #[c.sg, c.gamma, fs, hwf, spine]
   | .recAlias b hwf =>
+      let indInfo ← getConstInfoInduct ci.induct
+      if indInfo.ctors.length > 1 then
+        -- a declaration of several constructors with an occurrence of itself inside
+        -- another type: its body is the union of its constructors, **unfolded**
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+        let .taggedUnion l ← tyView unfE
+          | throwError "`#leanscript_to_term`: internal: the body of {ci.induct} is not a \
+              tagged union"
+        let ctys ← taggedUnionCtorTys l
+        let some fieldTys := ctys[ci.cidx]?
+          | throwError "`#leanscript_to_term`: the tree of {ci.induct} has no constructor \
+              {ci.cidx}"
+        let spine ← mkSpine c fieldTys fields
+        let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+        let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
+        let body := mkAppN (mkConst `LeanScript.Term.taggedUnion_mk)
+          #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
+        return mkAppN (mkConst `LeanScript.Term.recAlias_mk) #[c.sg, c.gamma, b, hwf, body]
       -- the one field of a value is the body **unfolded**: an occurrence of the newtype
       -- inside it is a value of the newtype again
       let some v := fields[0]?

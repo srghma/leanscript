@@ -78,7 +78,10 @@ def mkEnumOrBool? (n : Nat) : MetaM (Option Expr) := do
 
 /-- The shape a declaration with these constructors has, as a tree.  `rec` says whether
     the declaration mentions itself, which is what tells `Ty.record` from
-    `Ty.recObject`. -/
+    `Ty.recObject`.  A recursive declaration of several constructors is a
+    `Ty.recTaggedUnion` when every occurrence of it is a field of its own, and otherwise
+    (`Array T`, `Option T`, `Nat → T` among the fields) a `Ty.recAlias` whose body is the
+    union of its constructors. -/
 def assembleShape (name : Name) (ctors : List (List Expr)) : MetaM TransRes := do
   let isRec := ctors.any (·.any mentionsScope)
   match ctors with
@@ -102,9 +105,21 @@ def assembleShape (name : Name) (ctors : List (List Expr)) : MetaM TransRes := d
         match ← mkTaggedUnion? ctors with
         | none => return .no m!"`{name}` is a tagged union the schema refuses"
         | some sch =>
+            if isRec && ctors.any (·.any nestedOcc) then
+              -- an occurrence inside another type (`Array T`, `Option T`, `Nat × T`): the
+              -- fold of a recursive tagged union hands over the answers only at the
+              -- fields that *are* the union, so the declaration is a recursive newtype
+              -- whose body is the union of its constructors, whose fold hands over the
+              -- answers wherever an occurrence sits
+              let u ← mkAppM ``LeanScript.Ty.taggedUnion #[sch]
+              return .ok (← mkAppM ``LeanScript.Ty.recAlias #[u])
             return .ok (← mkAppM
               (if isRec then ``LeanScript.Ty.recTaggedUnion else ``LeanScript.Ty.taggedUnion)
               #[sch])
+where
+  /-- A field that mentions the declaration without being an occurrence of it. -/
+  nestedOcc (f : Expr) : Bool :=
+    !f.isConstOf ``LeanScript.Ty.self && mentionsScope f
 
 /-- The shape of one member of a mutual family, from its constructors. -/
 def assembleFamMember (name : Name) (ctors : List (List Expr)) :
