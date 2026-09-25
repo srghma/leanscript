@@ -2,6 +2,8 @@ module
 
 public meta import LeanScript.ToTerm.Trans
 public meta import LeanScript.ToTerm.ExistentialArgs
+public meta import LeanScript.ToTerm.Normalize
+public meta import LeanScript.ToTerm.Options
 public import LeanScript.CtorFn
 
 @[expose] public section
@@ -73,6 +75,11 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
   let sg ← if sigStx.isNone then pure sgOfExpected else
     instantiateMVars (← elabTerm sigStx[3] (mkConst ``LeanScript.Sig))
   let t ← translate sg base e
+  let opts ← getOptions
+  let t ← instantiateMVars t
+  let t ← if leanscript.toTerm.normalize.get opts &&
+      grammarNodeCount t ≤ leanscript.toTerm.normalizeMaxNodes.get opts then
+    normalizeTerm t else pure t
   match expected? with
   | some ty => Term.ensureHasType ty t
   | none => return t
@@ -84,12 +91,19 @@ def foldNodes : List (Name × Nat) :=
    (`LeanScript.Term.recTaggedUnion_rec', 8), (`LeanScript.Term.recObject_rec', 8),
    (`LeanScript.Term.recAlias_rec', 8), (`LeanScript.Term.mutualRecursiveFamily_rec', 9)]
 
+/-- The folds of the grammar as constructors, with the number of arguments of each: the
+    last one is the fold's `Dest`, and the one before it is the branch (or the cases). -/
+def foldCtors : List (Name × Nat) :=
+  [(``LeanScript.Term.nat_rec, 10), (``LeanScript.Term.array_rec, 11),
+   (``LeanScript.Term.recTaggedUnion_rec, 11), (``LeanScript.Term.recObject_rec, 11),
+   (``LeanScript.Term.recAlias_rec, 11), (``LeanScript.Term.mutualRecursiveFamily_rec, 12)]
+
 /-- Unfold the definitions at the head of `e`, beta-reducing on the way. -/
 partial def unfoldHeadConsts (e : Expr) : MetaM Expr := do
   let e := e.headBeta
   match e.getAppFn with
   | .const n _ =>
-      if foldNodes.any (·.1 == n) then return e
+      if foldNodes.any (·.1 == n) || foldCtors.any (·.1 == n) then return e
       match ← withTransparency .all (unfoldDefinition? e) with
       | some e' => unfoldHeadConsts e'
       | none => return e
@@ -107,9 +121,15 @@ def elabLeanscriptFoldBranch : TermElab := fun stx expected? => do
   let v ← unfoldHeadConsts t
   let isFold (s : Expr) : Bool :=
     foldNodes.any fun (n, k) => s.isAppOfArity n k
-  let some node := v.find? fun s => isFold s && !s.hasLooseBVars
-    | throwError "`#leanscript_fold_branch`: no fold in{indentExpr v}"
-  let b := node.appArg!
+  let isFoldCtor (s : Expr) : Bool :=
+    foldCtors.any fun (n, k) => s.isAppOfArity n k
+  -- a direct-style fold (`Term.nat_rec'`, …) has its branch last; a fold of a normalized
+  -- term (`Term.nat_rec`, …, `LeanScript.ToTerm.Normalize`) has it just before its `Dest`
+  let b ← match v.find? fun s => isFold s && !s.hasLooseBVars with
+    | some node => pure node.appArg!
+    | none => match v.find? fun s => isFoldCtor s && !s.hasLooseBVars with
+      | some node => pure node.appFn!.appArg!
+      | none => throwError "`#leanscript_fold_branch`: no fold in{indentExpr v}"
   match expected? with
   | some ty => Term.ensureHasType ty b
   | none => return b
@@ -125,9 +145,16 @@ def elabLeanscriptFoldBases : TermElab := fun stx expected? => do
   let v ← unfoldHeadConsts t
   let isBasesFold (s : Expr) : Bool :=
     s.isAppOfArity `LeanScript.Term.nat_rec' 7 || s.isAppOfArity `LeanScript.Term.array_rec' 8
-  let some node := v.find? fun s => isBasesFold s && !s.hasLooseBVars
-    | throwError "`#leanscript_fold_bases`: no `nat_rec` or `array_rec` in{indentExpr v}"
-  let b := node.appFn!.appArg!
+  let isBasesFoldCtor (s : Expr) : Bool :=
+    s.isAppOfArity ``LeanScript.Term.nat_rec 10 || s.isAppOfArity ``LeanScript.Term.array_rec 11
+  -- as in `#leanscript_fold_branch`: of a normalized term, the bases are the argument
+  -- before the branch and its `Dest` (for a `nat_rec`, atoms rather than terms)
+  let b ← match v.find? fun s => isBasesFold s && !s.hasLooseBVars with
+    | some node => pure node.appFn!.appArg!
+    | none => match v.find? fun s => isBasesFoldCtor s && !s.hasLooseBVars with
+      | some node => pure node.appFn!.appFn!.appArg!
+      | none =>
+        throwError "`#leanscript_fold_bases`: no `nat_rec` or `array_rec` in{indentExpr v}"
   match expected? with
   | some ty => Term.ensureHasType ty b
   | none => return b

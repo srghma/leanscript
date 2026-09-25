@@ -271,6 +271,20 @@ checks, by the kernel, that `LeanScript.Term.eval` gives each translation the va
 Lean definition has — the lists included, whose values are read back with
 `LeanScript.Ty.DenRec.toList` — and it pins what the translation refuses.
 
+## Normalizing the result
+
+The translation writes its term with the direct-style builders of
+`LeanScript.Expr.Build`, which compute the A-normal form (the `let`s naming every operand,
+the renamings, the join points).  Left as it is, that computation is redone by the kernel
+in every proof that runs the term.  So `#leanscript_to_term` reduces its result once, to
+constructors of the grammar (`LeanScript.ToTerm.Normalize`), when the term has at most
+`leanscript.toTerm.normalizeMaxNodes` nodes (default `1000`); a larger term is left in
+direct style, since each run of it only reduces the branches it takes.
+`set_option leanscript.toTerm.normalize false` turns this off.  The normalized term is
+definitionally equal to the direct-style one, so an equation stated about either holds
+of both; `TermTests/NormalizeTest.lean` proves the equation for sample terms, closed and
+generic in a hidden type.
+
 Two term elaborators read pieces back out of a translated term, for proofs about a fold
 that name its step: `#leanscript_fold_branch t` is the branch (or the cases) of the first
 fold in the term `t`, in the context the fold gives it, and `#leanscript_fold_bases t` the
@@ -289,7 +303,8 @@ The translation itself is split across the modules of this directory:
 functions),
 `LeanScript.ToTerm.ExistentialArgs` (functions of a structure with an existential type
 field),
-`LeanScript.ToTerm.Trans` (the translation proper) and
+`LeanScript.ToTerm.Trans` (the translation proper),
+`LeanScript.ToTerm.Normalize` (the result, reduced once to constructors of the grammar) and
 `LeanScript.ToTerm.Elab` (the elaborator, which is what a user imports).
 
 Each of these modules imports only the modules whose declarations it uses, not simply the

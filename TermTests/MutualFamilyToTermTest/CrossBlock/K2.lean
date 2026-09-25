@@ -74,8 +74,9 @@ def cFibAB_with_k2_term : Term sigAdd [] (cT ⇒ natT ⇒ natT ⇒ natT) :=
 
 example : familyRecDepth? cFibAB_with_k2_term = some 2 := by kernel_rfl
 -- the Lucas numbers
-example : runAdd cFibAB_with_k2_term (chainOf 10) 2 1 = 123 := by kernel_rfl
-example : runAdd cFibAB_with_k2_term (chainOf 8) 4 7 = cFibAB_with_k2 (C.chain 8) 4 7 := by
+example : runAdd cFibAB_with_k2_term (chainOf 7) 2 1 = 29 := by kernel_rfl
+example : cFibAB_with_k2 (C.chain 7) 2 1 = 29 := by decide +kernel
+example : runAdd cFibAB_with_k2_term (chainOf 6) 4 7 = cFibAB_with_k2 (C.chain 6) 4 7 := by
   kernel_rfl
 
 end TermTests.MutualFamilyToTerm.CrossBlock

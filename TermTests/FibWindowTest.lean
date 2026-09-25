@@ -70,6 +70,9 @@ def addT {Γ : Ctx} (a b : Term sigAdd Γ (TyWf.prim .nat)) : Term sigAdd Γ (Ty
 /-- `fib`, read off the window. -/
 def fibFromWin (n : Nat) : Nat := (fibWin n).1
 
+-- kept in direct style (not normalized, `LeanScript.ToTerm.Normalize`), so that
+-- `#leanscript_fold_bases` reads its base values as terms (a `Spine`)
+set_option leanscript.toTerm.normalize false in
 /-- The fold itself: the window at the argument,
     `.lam (.nat_rec' 0 (.var (v♯0)) (.cons seed .nil) step)`. -/
 def window : Term sigAdd [] (TyWf.prim .nat ⇒ Win) := #leanscript_to_term fibWin

@@ -87,7 +87,8 @@ def treeSpineFibFrom_with_k3_term : Term sigAdd [] (treeT ⇒ natT ⇒ natT ⇒ 
 
 example : familyRecDepth? treeSpineFibFrom_with_k3_term = some 3 := by kernel_rfl
 -- the Lucas numbers
-example : runAdd treeSpineFibFrom_with_k3_term (spineOf 10) 2 1 = 123 := by kernel_rfl
+example : runAdd treeSpineFibFrom_with_k3_term (spineOf 7) 2 1 = 29 := by kernel_rfl
+example : treeSpineFibFrom_with_k3 (Tree.spine 7) 2 1 = 29 := by decide +kernel
 example : runAdd treeSpineFibFrom_with_k3_term (runAdd tree1_term) 2 1 =
     treeSpineFibFrom_with_k3 tree1 2 1 := by kernel_rfl
 

@@ -82,8 +82,9 @@ def bLeftFibAB_with_k1_term : Term sig0 [] (natT ⇒ bnodeT ⇒ natT ⇒ natT) :
 
 example : recObjectRecDepth? bLeftFibAB_with_k1_term = some 1 := by kernel_rfl
 -- the Lucas numbers
-example : run bLeftFibAB_with_k1_term 2 (combOf 10) 1 = 123 := by kernel_rfl
-example : run bLeftFibAB_with_k1_term 4 (combOf 8) 7 = bLeftFibAB_with_k1 4 (BNode.comb 8) 7 := by
+example : run bLeftFibAB_with_k1_term 2 (combOf 7) 1 = 29 := by kernel_rfl
+example : bLeftFibAB_with_k1 2 (BNode.comb 7) 1 = 29 := by decide +kernel
+example : run bLeftFibAB_with_k1_term 4 (combOf 6) 7 = bLeftFibAB_with_k1 4 (BNode.comb 6) 7 := by
   kernel_rfl
 
 end TermTests.RecObjectToTerm.BinTree

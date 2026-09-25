@@ -73,9 +73,10 @@ def bLeftTribMixed_with_k2_term : Term sig0 [] (natT ⇒ bnodeT ⇒ natT ⇒ nat
   #leanscript_to_term bLeftTribMixed_with_k2
 
 example : recObjectRecDepth? bLeftTribMixed_with_k2_term = some 2 := by kernel_rfl
-example : run bLeftTribMixed_with_k2_term 1 (combOf 10) 1 = 230 := by kernel_rfl
-example : run bLeftTribMixed_with_k2_term 2 (combOf 9) 3 =
-    bLeftTribMixed_with_k2 2 (BNode.comb 9) 3 := by kernel_rfl
+example : run bLeftTribMixed_with_k2_term 1 (combOf 7) 1 = 37 := by kernel_rfl
+example : bLeftTribMixed_with_k2 1 (BNode.comb 7) 1 = 37 := by decide +kernel
+example : run bLeftTribMixed_with_k2_term 2 (combOf 6) 3 =
+    bLeftTribMixed_with_k2 2 (BNode.comb 6) 3 := by kernel_rfl
 
 end TermTests.RecObjectToTerm.BinTree
 

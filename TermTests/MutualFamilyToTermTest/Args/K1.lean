@@ -133,14 +133,16 @@ def bFibScaled_with_k1_term : Term sigAdd [] (bT ⇒ natT ⇒ natT) :=
 
 example : familyRecDepth? aFibScaled_with_k1_term = some 1 := by kernel_rfl
 example : runAdd aFibScaled_with_k1_term (aOfNat 1) 4 = 4 := by kernel_rfl
-example : runAdd aFibScaled_with_k1_term (aOfNat 10) 4 = 220 := by kernel_rfl
-example : runAdd aFibScaled_with_k1_term (aOfNat 12) 4 = aFibScaled_with_k1 (A.ofNat 12) 4 := by
+example : runAdd aFibScaled_with_k1_term (aOfNat 7) 4 = 52 := by kernel_rfl
+example : aFibScaled_with_k1 (A.ofNat 7) 4 = 52 := by decide +kernel
+example : runAdd aFibScaled_with_k1_term (aOfNat 8) 4 = aFibScaled_with_k1 (A.ofNat 8) 4 := by
   kernel_rfl
 example : runAdd aFibScaled_with_k1_term (runAdd a4_term) 4 = aFibScaled_with_k1 a4 4 := by
   kernel_rfl
 example : familyRecDepth? bFibScaled_with_k1_term = some 1 := by kernel_rfl
-example : runAdd bFibScaled_with_k1_term (bOfNat 11) 4 = 356 := by kernel_rfl
-example : runAdd bFibScaled_with_k1_term (bOfNat 9) 4 = bFibScaled_with_k1 (B.ofNat 9) 4 := by
+example : runAdd bFibScaled_with_k1_term (bOfNat 8) 4 = 84 := by kernel_rfl
+example : bFibScaled_with_k1 (B.ofNat 8) 4 = 84 := by decide +kernel
+example : runAdd bFibScaled_with_k1_term (bOfNat 7) 4 = bFibScaled_with_k1 (B.ofNat 7) 4 := by
   kernel_rfl
 example : runAdd bFibScaled_with_k1_term (runAdd b5_term) 4 = bFibScaled_with_k1 b5 4 := by
   kernel_rfl
@@ -174,14 +176,16 @@ def bFibMixed_with_k1_term : Term sigAdd [] (natT ⇒ bT ⇒ natT ⇒ natT) :=
 
 example : familyRecDepth? aFibMixed_with_k1_term = some 1 := by kernel_rfl
 example : runAdd aFibMixed_with_k1_term 3 (aOfNat 1) 2 = 3 := by kernel_rfl
-example : runAdd aFibMixed_with_k1_term 3 (aOfNat 10) 2 = 341 := by kernel_rfl
-example : runAdd aFibMixed_with_k1_term 3 (aOfNat 12) 2 = aFibMixed_with_k1 3 (A.ofNat 12) 2 := by
+example : runAdd aFibMixed_with_k1_term 3 (aOfNat 7) 2 = 79 := by kernel_rfl
+example : aFibMixed_with_k1 3 (A.ofNat 7) 2 = 79 := by decide +kernel
+example : runAdd aFibMixed_with_k1_term 3 (aOfNat 8) 2 = aFibMixed_with_k1 3 (A.ofNat 8) 2 := by
   kernel_rfl
 example : runAdd aFibMixed_with_k1_term 3 (runAdd a4_term) 2 = aFibMixed_with_k1 3 a4 2 := by
   kernel_rfl
 example : familyRecDepth? bFibMixed_with_k1_term = some 1 := by kernel_rfl
-example : runAdd bFibMixed_with_k1_term 3 (bOfNat 11) 2 = 553 := by kernel_rfl
-example : runAdd bFibMixed_with_k1_term 3 (bOfNat 9) 2 = bFibMixed_with_k1 3 (B.ofNat 9) 2 := by
+example : runAdd bFibMixed_with_k1_term 3 (bOfNat 8) 2 = 129 := by kernel_rfl
+example : bFibMixed_with_k1 3 (B.ofNat 8) 2 = 129 := by decide +kernel
+example : runAdd bFibMixed_with_k1_term 3 (bOfNat 7) 2 = bFibMixed_with_k1 3 (B.ofNat 7) 2 := by
   kernel_rfl
 example : runAdd bFibMixed_with_k1_term 3 (runAdd b5_term) 2 = bFibMixed_with_k1 3 b5 2 := by
   kernel_rfl

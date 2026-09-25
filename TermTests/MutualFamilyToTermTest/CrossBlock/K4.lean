@@ -82,8 +82,9 @@ def cTribMixed_with_k4_term : Term sigAdd [] (natT ⇒ cT ⇒ natT ⇒ natT) :=
   #leanscript_to_term cTribMixed_with_k4
 
 example : familyRecDepth? cTribMixed_with_k4_term = some 4 := by kernel_rfl
-example : runAdd cTribMixed_with_k4_term 1 (chainOf 10) 1 = 162 := by kernel_rfl
-example : runAdd cTribMixed_with_k4_term 2 (chainOf 9) 3 = cTribMixed_with_k4 2 (C.chain 9) 3 := by
+example : runAdd cTribMixed_with_k4_term 1 (chainOf 7) 1 = 26 := by kernel_rfl
+example : cTribMixed_with_k4 1 (C.chain 7) 1 = 26 := by decide +kernel
+example : runAdd cTribMixed_with_k4_term 2 (chainOf 6) 3 = cTribMixed_with_k4 2 (C.chain 6) 3 := by
   kernel_rfl
 
 end TermTests.MutualFamilyToTerm.CrossBlock

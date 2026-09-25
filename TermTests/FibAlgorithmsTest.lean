@@ -81,6 +81,9 @@ def fibTR (n : Nat) : Nat := fibLoopTR n 0 1
 /-- The type the fold runs at: the two accumulators. -/
 abbrev Acc2 : TyWf := TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat
 
+-- kept in direct style (not normalized, `LeanScript.ToTerm.Normalize`), so that
+-- `#leanscript_fold_bases` reads its base value as a term (a `Spine`)
+set_option leanscript.toTerm.normalize false in
 /-- `fibLoopTR`, as a term: a fold at a function type. -/
 def loop_term : Term sigAdd [] (TyWf.prim .nat ⇒ Acc2) := #leanscript_to_term fibLoopTR
 

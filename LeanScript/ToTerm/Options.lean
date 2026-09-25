@@ -48,4 +48,22 @@ register_option leanscript.toTerm.maxRecFamilyRecDepth : Nat := {
     that the translation searches for"
 }
 
+/-- Whether `#leanscript_to_term` normalizes the term it builds into constructors of the
+    grammar, once, when it is defined (`LeanScript.ToTerm.Normalize`). -/
+register_option leanscript.toTerm.normalize : Bool := {
+  defValue := true
+  descr := "`#leanscript_to_term`: reduce the translated term to constructors of the grammar \
+    when it is built, so that the A-normal form is computed once rather than by every proof \
+    that runs the term"
+}
+
+/-- The largest translated term (counted in nodes of the grammar, see
+    `LeanScript.ToTerm.grammarNodeCount`) that `#leanscript_to_term` normalizes. -/
+register_option leanscript.toTerm.normalizeMaxNodes : Nat := {
+  defValue := 1000
+  descr := "`#leanscript_to_term`: normalize the translated term only if it has at most this \
+    many nodes of the grammar; a larger term is left in direct style, since a proof that runs \
+    it only reduces the branches it takes"
+}
+
 end

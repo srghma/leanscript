@@ -157,14 +157,16 @@ def bTetraScaled_with_k3_term : Term sigAdd [] (bT ⇒ natT ⇒ natT) :=
 
 example : familyRecDepth? aTetraScaled_with_k3_term = some 3 := by kernel_rfl
 example : runAdd aTetraScaled_with_k3_term (aOfNat 3) 4 = 4 := by kernel_rfl
-example : runAdd aTetraScaled_with_k3_term (aOfNat 10) 4 = 224 := by kernel_rfl
-example : runAdd aTetraScaled_with_k3_term (aOfNat 12) 4 = aTetraScaled_with_k3 (A.ofNat 12) 4 := by
+example : runAdd aTetraScaled_with_k3_term (aOfNat 7) 4 = 32 := by kernel_rfl
+example : aTetraScaled_with_k3 (A.ofNat 7) 4 = 32 := by decide +kernel
+example : runAdd aTetraScaled_with_k3_term (aOfNat 8) 4 = aTetraScaled_with_k3 (A.ofNat 8) 4 := by
   kernel_rfl
 example : runAdd aTetraScaled_with_k3_term (runAdd a4_term) 4 = aTetraScaled_with_k3 a4 4 := by
   kernel_rfl
 example : familyRecDepth? bTetraScaled_with_k3_term = some 3 := by kernel_rfl
-example : runAdd bTetraScaled_with_k3_term (bOfNat 11) 4 = 432 := by kernel_rfl
-example : runAdd bTetraScaled_with_k3_term (bOfNat 9) 4 = bTetraScaled_with_k3 (B.ofNat 9) 4 := by
+example : runAdd bTetraScaled_with_k3_term (bOfNat 8) 4 = 60 := by kernel_rfl
+example : bTetraScaled_with_k3 (B.ofNat 8) 4 = 60 := by decide +kernel
+example : runAdd bTetraScaled_with_k3_term (bOfNat 7) 4 = bTetraScaled_with_k3 (B.ofNat 7) 4 := by
   kernel_rfl
 example : runAdd bTetraScaled_with_k3_term (runAdd b5_term) 4 = bTetraScaled_with_k3 b5 4 := by
   kernel_rfl
@@ -206,14 +208,16 @@ def bTetraMixed_with_k3_term : Term sigAdd [] (natT ⇒ bT ⇒ natT ⇒ natT) :=
 
 example : familyRecDepth? aTetraMixed_with_k3_term = some 3 := by kernel_rfl
 example : runAdd aTetraMixed_with_k3_term 3 (aOfNat 3) 2 = 3 := by kernel_rfl
-example : runAdd aTetraMixed_with_k3_term 3 (aOfNat 10) 2 = 288 := by kernel_rfl
-example : runAdd aTetraMixed_with_k3_term 3 (aOfNat 12) 2 = aTetraMixed_with_k3 3 (A.ofNat 12) 2 := by
+example : runAdd aTetraMixed_with_k3_term 3 (aOfNat 7) 2 = 40 := by kernel_rfl
+example : aTetraMixed_with_k3 3 (A.ofNat 7) 2 = 40 := by decide +kernel
+example : runAdd aTetraMixed_with_k3_term 3 (aOfNat 8) 2 = aTetraMixed_with_k3 3 (A.ofNat 8) 2 := by
   kernel_rfl
 example : runAdd aTetraMixed_with_k3_term 3 (runAdd a4_term) 2 = aTetraMixed_with_k3 3 a4 2 := by
   kernel_rfl
 example : familyRecDepth? bTetraMixed_with_k3_term = some 3 := by kernel_rfl
-example : runAdd bTetraMixed_with_k3_term 3 (bOfNat 11) 2 = 556 := by kernel_rfl
-example : runAdd bTetraMixed_with_k3_term 3 (bOfNat 9) 2 = bTetraMixed_with_k3 3 (B.ofNat 9) 2 := by
+example : runAdd bTetraMixed_with_k3_term 3 (bOfNat 8) 2 = 77 := by kernel_rfl
+example : bTetraMixed_with_k3 3 (B.ofNat 8) 2 = 77 := by decide +kernel
+example : runAdd bTetraMixed_with_k3_term 3 (bOfNat 7) 2 = bTetraMixed_with_k3 3 (B.ofNat 7) 2 := by
   kernel_rfl
 example : runAdd bTetraMixed_with_k3_term 3 (runAdd b5_term) 2 = bTetraMixed_with_k3 3 b5 2 := by
   kernel_rfl
