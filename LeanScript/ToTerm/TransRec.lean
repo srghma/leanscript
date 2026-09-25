@@ -438,6 +438,40 @@ def argHasNoTree (a : Expr) : MetaM Bool := do
     return false
   catch _ => return true
 
+/-- A dispatch (`match`, `X.casesOn`, `X.rec`) on a **constructor application** whose type
+    the language has no tree for — a value of a datatype with existentials that is written
+    out, `(Src.gen Nat 4 f).value` once `Src.value` is specialized to it: the branch of that
+    constructor, applied to its fields.  The dispatch could not be translated as it stands
+    (the scrutinee has no type of the language), and need not be: its constructor is known.
+    `none` when `e` is not such a dispatch. -/
+def reduceDispatchOnNoTreeCtor? (e : Expr) (n : Name) : MetaM (Option Expr) := do
+  if ← Meta.isMatcherApp e then
+    let some m ← matchMatcherApp? e | return none
+    let mut hit := false
+    for d in m.discrs do
+      let d' ← whnfR d
+      if d'.getAppFn.isConst && (← isConstructorApp d') && (← argHasNoTree d) then hit := true
+    unless hit do return none
+    match ← Lean.Meta.reduceMatcher? e with
+    | ReduceMatcherResult.reduced e' => return some e'.headBeta
+    | _ => return none
+  unless n.isStr && (n.getString! == "casesOn" || n.getString! == "rec") do return none
+  let some (.inductInfo ii) := (← getEnv).find? n.getPrefix | return none
+  let args := e.getAppArgs
+  let majorIdx := if n.getString! == "casesOn" then ii.numParams + 1 + ii.numIndices
+    else ii.numParams + ii.numNested + 1 + ii.ctors.length + ii.numIndices
+  let some major := args[majorIdx]? | return none
+  unless ← isConstructorApp (← whnfR major) do return none
+  unless ← argHasNoTree major do return none
+  let e' ← if n.getString! == "casesOn" then
+      match ← unfoldDefinition? e with
+      | some u => pure u
+      | none => return none
+    else pure e
+  let r ← whnfCore e'
+  if r == e' then return none
+  return some r
+
 /-- The call `f args`, **specialized** to its arguments that have no tree (values of a
     datatype with existentials): those arguments are substituted into the body of `f`,
     and so are the arguments that cost nothing to read twice (variables, literals, erased

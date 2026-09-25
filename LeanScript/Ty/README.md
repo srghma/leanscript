@@ -42,6 +42,14 @@ type ends in `Type` — hides a type from the language, and `deriving LeanScript
 refuses it: *existential typing is not yet supported*.  `TyTests/InductiveTypesTest/`
 pins that refusal for a stream `Unfold`, a client/server pair and a compiler engine, and
 shows the parameterised declarations (`ClientTwin`, `ServerTwin`) that *are* modelled.
+Values of such declarations, and functions of the non-recursive ones, are still translated
+to terms (`LeanScript/ToTerm/ExistentialArgs.lean`, `TermTests/StructRecTest/Existential.lean`,
+`TermTests/StructRecTest/ExistentialUnion.lean`).
+
+A type field that no value depends on is not an existential: in a family indexed by types
+(`TExpr : Type → Type`, with `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)`) the
+`α` and `β` appear only in indices, which are erased, so the declaration has one tree
+(`TermTests/StructRecTest/IndexedGADT.lean`).
 
 ## Tests
 

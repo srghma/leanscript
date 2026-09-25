@@ -65,8 +65,10 @@ context are used.
 | a structural recursion on a **recursive newtype whose body is a structure** (`Pair2 \| mk (Nat × Option Pair2)`) | `recAlias_rec k` — see `TermTests/StructRecTest/NewtypeStruct.lean` |
 | the same with a **user-defined structure** as the body (`Pair3 \| mk (Cell Pair3)`, `structure Cell (α) where val : Nat; next : Option α`), including nested structures, a type parameter, and a `List α` field | `recAlias_rec k` (or a family fold for the `List` field) — see `TermTests/StructRecTest/NewtypeUserStruct.lean` |
 | a structural recursion on an **inductive family with indices** (`Vec α n`) | the fold of its tree, the index erased and a value index an ordinary field — see `TermTests/StructRecTest/IndexedFamily.lean` |
+| a structural recursion on a family **indexed by types** (a GADT, `TExpr : Type → Type` with `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)`), whose type fields only indices mention | the fold of its tree: the type fields hide nothing and are erased, and are Lean variables of each branch; a look into a subvalue at an index that rules a constructor out (`neg : V 1` below a field of type `V 0`) holds a default in that branch — see `TermTests/StructRecTest/IndexedGADT.lean` |
 | a structural recursion **split across two top-level definitions** (`callGo n := go n 0`) | the fold of the callee, inlined — see `TermTests/StructRecTest/SplitRecursion.lean` |
 | a function of a **structure with an existentially quantified type field** (`Unfold`, whose `State` is hidden) | specialized to its argument when that is a value written out; otherwise a Lean function of the trees of the hidden types, `fun State => (… : Term Sg Γ (Unfold.mk.leanScriptLayout α State ⇒ …))` — see `TermTests/StructRecTest/Existential.lean` and `LeanScript.ToTerm.ExistentialArgs` |
+| a function of a **non-recursive datatype with existentials of several constructors** (`Src`, whose `gen` hides a type), or of an **indexed** one (a GADT, `Tag : Type → Type` with `wrap {α} (x : α) … : Tag (List α)`) | specialized to its argument when that is a value written out (the `match` on it reduces to the branch of its constructor); otherwise a Lean function of the trees of the hidden types of every constructor, whose argument is `TyWf.oneOf` of the constructors' layouts (a field-less alternative for a constructor that carries no value) and which dispatches with `taggedUnion_casesOn` — see `TermTests/StructRecTest/ExistentialUnion.lean` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | a name of the signature | `global` |
@@ -171,7 +173,10 @@ being translated.
 * a nested inductive whose recursive occurrence sits under a type former that is neither
   a shape of the language (`List`, `Array`, `Thunk`, a function, a union, a structure)
   nor a type with a `LeanScriptTyWf` instance of its own; and an inductive family whose
-  index the language cannot erase (one whose tree changes with the index).
+  index the language cannot erase (one whose tree changes with the index): a value field
+  whose type is a type field (`lit {α} (x : α) : E α` — an existential, see below), or a
+  function whose *answer's* type is the index (`eval : TExpr α → α`), which is refused as a
+  dependent motive.
 * a structural recursion on a **family** (a `mutual` block, or a type nested through
   `List` or another recursive container) one of whose members holds a member inside an
   array, a function or a delay — `List (Array T)`, `Array (List T)`: the fold of a
@@ -185,9 +190,10 @@ being translated.
 * a call of a function that is neither inlinable, nor declared in the signature, nor a
   structural recursion (or a wrapper of one, up to three deep) — see *Which calls are
   allowed*.
-* a function of a datatype with existentials other than a structure — one whose
-  existentials sit in several constructors, or under its own recursion (`Process`) — whose
-  argument is not a value written out.
+* a function of a **recursive** datatype with existentials (`Process`, whose hidden types
+  may differ from node to node) whose argument is not a value written out; and a function
+  of a non-recursive one at an index that is not a variable of its own (`Tag Nat → …`,
+  rather than `{β} → Tag β → …`).
 * a `for` loop that leaves early (`break`, `return`), or over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.
@@ -237,18 +243,25 @@ def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
   layout hole by hole, and two different layouts as `TyWf.oneOf`, the tagged union with one
   constructor per layout, into which each branch is injected.
 
-A **function** of such a value is translated too, when the datatype is a structure with
-existentially quantified type fields (`Unfold`, whose `State` is hidden;
-`LeanScript.ToTerm.ExistentialArgs`):
+A **function** of such a value is translated too, when the datatype is not recursive: a
+structure with existentially quantified type fields (`Unfold`, whose `State` is hidden), a
+datatype of several constructors (`Src`), or an indexed one (`Tag`)
+(`LeanScript.ToTerm.ExistentialArgs`):
 
 * called on a value written out (`countdown.take n`, `(countFrom k).take n`), it is
   specialized to that value, and its projections are the value's own;
 * translated itself (`#leanscript_to_term (Unfold.take (α := Nat))`), it is a Lean function
   of the trees of the hidden types, a term for each choice of them:
   `fun State => (… : Term Sg Γ (Unfold.mk.leanScriptLayout (.prim .nat) State ⇒ …))`.
-  Applied to the tree a value chose, it applies to that value.
+  Applied to the tree a value chose, it applies to that value;
+* of several constructors, it is a Lean function of the hidden types of every constructor,
+  and its argument is **one of** the constructors' layouts, `TyWf.oneOf`, in the order of the
+  constructors (a constructor that carries no value is an alternative with no field); the
+  function dispatches on which (`taggedUnion_casesOn`), and each branch is the function at
+  that constructor, at the constructor's indices for an indexed datatype.
 
-`TermTests/StructRecTest/Existential.lean` runs both.
+`TermTests/StructRecTest/Existential.lean` and `TermTests/StructRecTest/ExistentialUnion.lean`
+run both.
 
 This is `LeanScript.ToTerm.Existential`.  `TermTests/InductiveTypesTest/Existentials.lean`
 translates `mixedProcess` and `varyingProcess` and checks, by `rfl`, what they evaluate to.

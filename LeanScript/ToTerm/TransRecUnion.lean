@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.TransRecObject
+public meta import LeanScript.ToTerm.Default
 
 @[expose] public section
 
@@ -58,6 +59,10 @@ structure RecUnionCtor where
   /-- Its fields: `none` for a field that is the union itself, `some α` for one of the
       Lean type `α`, which does not mention it. -/
   fields : Array (Option Expr)
+  /-- Which fields the language erases (a type, a proof, an instance): bound as Lean
+      variables, but not by the branch of the language, and absent from `fsL`.  The type
+      `α` of `pair {α β : Type} (a : TExpr α) (b : TExpr β)` is one.  Empty when none is. -/
+  erased : Array Bool := #[]
   /-- The list of its field trees, as an expression of type `List (TyWfIn 1)` — the index
       of its branch. -/
   fsE : Expr
@@ -303,16 +308,25 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
   -- an occurrence of an indexed family is one of them)
   let mut decls : Array (Name × (Array Expr → MetaM Expr)) := #[]
   let mut fieldPos : Array Nat := #[]
+  -- the positions among `decls` of the variables the branch of the language binds
+  let mut bound : Array Nat := #[]
   for h : i in [0:ct.fields.size] do
     let before := fieldPos
     let tyAt : Array Expr → MetaM Expr := fun ys => ctorFieldTy ct.cty (before.map (ys[·]!))
     fieldPos := fieldPos.push decls.size
+    if ct.erased.getD i false then
+      decls := decls.push (Name.mkSimple s!"e{i}", tyAt)
+      continue
     match ct.fields[i] with
-    | some _ => decls := decls.push (Name.mkSimple s!"x{i}", tyAt)
+    | some _ =>
+        bound := bound.push decls.size
+        decls := decls.push (Name.mkSimple s!"x{i}", tyAt)
     | none =>
+        bound := bound.push decls.size
         decls := decls.push (Name.mkSimple s!"sub{i}", tyAt)
         -- (an indexed family's answer is typed at the indices of its subvalue)
         let subPos := decls.size - 1
+        bound := bound.push decls.size
         let ansTy : Array Expr → MetaM Expr := fun ys =>
           if info.nI == 0 then pure info.τLean else do
             let sb := ys[subPos]!
@@ -320,29 +334,39 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
             let nP := info.params.size
             return info.motive0.beta (st.getAppArgs.extract nP (nP + info.nI) |>.push sb)
         decls := decls.push (Name.mkSimple s!"ans{i}", ansTy)
-  unless decls.size == bTys.length do
+  unless bound.size == bTys.length do
     throwError "`#leanscript_to_term`: internal: the branch of {ct.name} binds \
-      {decls.size} values, its tree {bTys.length}"
+      {bound.size} values, its tree {bTys.length}"
   withLocalDeclsD decls fun xs => do
-    let c' := c.pushFields (xs.zip bTys.toArray |>.map fun (x, t) => (x.fvarId!, t))
+    let c' := c.pushFields (bound.map (xs[·]!) |>.zip bTys.toArray |>.map fun (x, t) =>
+      (x.fvarId!, t))
     -- the Lean fields, the subvalues and their answers
     let mut vals : Array Expr := #[]
     let mut subs : Array (Nat × Expr × Expr) := #[]
     let mut pos := 0
+    -- (the position of a field among those the tree has: the erased ones are not there)
+    let mut kept := 0
     for h : i in [0:ct.fields.size] do
+      if ct.erased.getD i false then
+        vals := vals.push xs[pos]!
+        pos := pos + 1
+        continue
       match ct.fields[i] with
       | some _ =>
           vals := vals.push xs[pos]!
           pos := pos + 1
       | none =>
           vals := vals.push xs[pos]!
-          subs := subs.push (i, xs[pos]!, xs[pos + 1]!)
+          subs := subs.push (kept, xs[pos]!, xs[pos + 1]!)
           pos := pos + 2
+      kept := kept + 1
     let shape := mkAppN (mkConst ct.name info.lvls) (info.params ++ vals)
     let mut descend' := descend.push (target, shape)
     -- a look into an occurrence of an indexed family (`v : Vec α n`, below a node whose
     -- field `n` is bound) fixes the fields its index is: `n` is the index of the
     -- constructor found there (`m + 1` for `cons (n := m) b w`)
+    -- the index at which the constructor cannot be, if the index rules it out
+    let mut impossible : Option (Expr × Expr) := none
     if info.nI != 0 && target != top.fvarId! then
       let nP := info.params.size
       let tIdx := (← whnf (resolveShape descend (← inferType (.fvar target)))).getAppArgs
@@ -350,12 +374,17 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
       let sIdx := (← whnf (← inferType shape)).getAppArgs.extract nP (nP + info.nI)
       for (a, b) in tIdx.zip sIdx do
         let a := resolveShape descend' a
-        if a.isFVar && !(← a.fvarId!.getDecl).isLet then
+        -- (the declaration is read only for a variable: `a` may be a literal, `V 0`)
+        let isVar ← if a.isFVar then pure !(← a.fvarId!.getDecl).isLet else pure false
+        -- an index the language erases (a type: `α × β` of `fst (p : TExpr (α × β))`)
+        -- does not choose the branch of the language; the tree is the same at every one
+        let erasedIdx ← LeanScript.Deriving.erasedBinder (← inferType a)
+        if isVar then
           descend' := descend'.push (a.fvarId!, b)
+        else if erasedIdx then
+          pure ()
         else unless ← isDefEq a b do
-          throwError "`#leanscript_to_term`: this recursion on the indexed family \
-            {info.ind} looks into an occurrence at the index {a}, where the constructor \
-            {ct.name} (of index {b}) cannot be; the fold has no branch for it"
+          impossible := some (a, b)
     let answers' := answers ++ subs.map fun (_, s, a) => (s, a)
     let descended' := descended.push target
     let frame : RecUnionFrame :=
@@ -373,6 +402,18 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
     let outerE ← recUnionOuterE outer
     let hereE := mkAppN (mkConst `LeanScript.FoldKBranch.here)
       #[c.sg, info.l, info.bindE, c.gamma, ct.fsE, info.τ, mkNatLit j, outerE]
+    -- a constructor the index rules out (`neg : V 1` below a field of type `V 0`) is a
+    -- branch of the language that a value of the Lean type never takes: it holds a
+    -- default of the answer's type
+    if let some (a, b) := impossible then
+      let some d ← synthDefault? info.τLean
+        | throwError "`#leanscript_to_term`: this recursion on the indexed family \
+            {info.ind} looks into an occurrence at the index {a}, where the constructor \
+            {ct.name} (of index {b}) cannot be, and the answer's type {info.τLean} has no \
+            default to put in the branch of the language for it"
+      let d ← whnf d
+      let d := d.replace fun t => if t.isConstOf ``Nat.zero then some (mkRawNatLit 0) else none
+      return mkApp hereE (← trans c' d)
     -- a look into the occurrence `cand`, whose nested dispatch is at depth `j - 1`
     let look (cand : Option Nat × Nat × FVarId) : MetaM Expr := do
       let (where_, p, f) := cand
@@ -465,7 +506,9 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     let dep : MetaM Unit := throwError "`#leanscript_to_term`: {n} is used with a \
       dependent motive, which the language has no eliminator for"
     if xs.size != nI + 1 || body.containsFVar xs[nI]!.fvarId! then dep
-    let τ ← instantiateMVars (← tyOfType body)
+    -- (an answer whose type *is* an index, `α` for `eval : TExpr α → α`, has no tree)
+    let τ ← try instantiateMVars (← tyOfType body) catch ex =>
+      if xs.any (body.containsFVar ·.fvarId!) then do dep; throw ex else throw ex
     if xs.any (τ.containsFVar ·.fvarId!) then dep
     let τLean ← if nI == 0 then pure body else
       pure (m0.beta ((← whnf (← inferType major)).getAppArgs.extract nP (nP + nI)
@@ -490,30 +533,37 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     let cn := ii.ctors[i]
     let ci ← getConstInfoCtor cn
     let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams ilvls) params
-    let fields ← forallTelescopeReducing cty fun xs _ => do
+    let (fields, erased) ← forallTelescopeReducing cty fun xs _ => do
       let mut out : Array (Option Expr) := #[]
+      let mut erased : Array Bool := #[]
       for x in xs do
         let t ← inferType x
         if nI != 0 && isSelfAt t then
           out := out.push none
+          erased := erased.push false
           continue
+        -- a field the language erases (the type `α` of `pair {α β : Type} …`, a proof) is
+        -- a Lean variable of the branch and not a variable of the language
+        if ← LeanScript.Deriving.erasedBinder t then
+          out := out.push (some t)
+          erased := erased.push true
+          continue
+        erased := erased.push false
         if t.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then
           throwError "`#leanscript_to_term`: the constructor {cn} has a dependent field"
-        if ← LeanScript.Deriving.erasedBinder t then
-          throwError "`#leanscript_to_term`: the constructor {cn} has a field the \
-            language erases, which the fold of a recursive tagged union does not read"
         if ← isDefEq t selfTy then out := out.push none
         else if mentions t then
           throwError "`#leanscript_to_term`: the field of type {t} of {cn} mentions {ind} \
             other than as the type itself"
         else out := out.push (some t)
-      return out
+      return (out, erased)
     let fsE := idxs[i]!
     let fsL := (← listOfExpr (← reduceTy fsE)).toArray
-    unless fsL.size == fields.size do
-      throwError "`#leanscript_to_term`: internal: {cn} has {fields.size} fields, its \
+    let nKept := (erased.filter (!·)).size
+    unless fsL.size == nKept do
+      throwError "`#leanscript_to_term`: internal: {cn} has {nKept} fields, its \
         tree {fsL.size}"
-    ctors := ctors.push { name := cn, fields, fsE, fsL, cty }
+    ctors := ctors.push { name := cn, fields, erased, fsE, fsL, cty }
   let bindE := mkApp2 (mkConst ``LeanScript.TyWf.recBinders) sty τ
   let info : RecUnionInfo :=
     { ind, lvls := ilvls, params, selfTy, ctors, l, bindE, τLean, τ, brecF, motives, nI, motive0 := m0 }

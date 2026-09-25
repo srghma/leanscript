@@ -53,7 +53,7 @@ partial def transLam (c : TCtx) (e : Expr) : MetaM Expr := do
     | throwError "`#leanscript_to_term`: not a function: {e}"
   -- a binder the language erases (`Unit`) is dropped, as a `Unit` domain is
   if ← LeanScript.Deriving.erasedBinder d then
-    return ← trans c (← dropErasedBinder e)
+    return ← withErasedBinder e (trans c)
   let σ ← tyOfType d
   lambdaBoundedTelescope e 1 fun xs body => do
     let c' := c.push xs[0]!.fvarId! σ
@@ -292,6 +292,9 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     -- a type whose tree has no partial dispatch: the exhaustive one
     if let some e' ← sparseAsCasesOn? n args then return ← trans c e'
     if let some e' ← unfoldHere? e then return ← trans c e'
+  -- a dispatch on a value written out whose type has no tree (a datatype with
+  -- existentials): the branch of its constructor
+  if let some e' ← reduceDispatchOnNoTreeCtor? e n then return ← trans c e'
   match (← getEnv).find? n with
   | some (.ctorInfo ci) => return ← transCtorApp c e ci args
   | some (.recInfo ri) => return ← transRecApp trans c e ri lvls args
@@ -442,7 +445,7 @@ partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
   match e with
   | .lam _ d _ _ =>
       if ← LeanScript.Deriving.erasedBinder d then
-        return ← transCheck c (← dropErasedBinder e) τ
+        return ← withErasedBinder e fun b => transCheck c b τ
       match τ.getAppFnArgs with
       | (``LeanScript.TyWf.fn, #[σ, ρ]) =>
           lambdaBoundedTelescope e 1 fun xs body => do

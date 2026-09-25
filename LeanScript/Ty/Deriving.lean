@@ -69,7 +69,9 @@ Two cases, because two kinds of field mention something no instance can answer f
   declaration as a whole, naming the field — *existential typing is not yet supported* —
   rather than modelling it.  What does work is the parameterised declaration: take the
   hidden type as a parameter of the declaration, and each *choice* of it is a type the
-  language has.
+  language has.  A type field that **no value depends on** hides nothing and is erased: the
+  `α` of `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)` in a family indexed by
+  types appears only in indices, which the language erases (`existentialField?`).
 
 ## The same tree is stored once
 

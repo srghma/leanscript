@@ -83,22 +83,6 @@ def isTypeField (t : Expr) : MetaM Bool := do
 def isExistentialField (t : Expr) : MetaM Bool :=
   forallTelescopeReducing t fun _ body => isTypeField body
 
-/-- The first field of `n` that hides a type, if it has one.  The declaration is refused
-    as a whole: `LeanScript` has no existential type, so a declaration whose values carry
-    a type of their own is not one it models. -/
-def existentialField? (n : Name) (params : Array Expr) : MetaM (Option Name) := do
-  let some (.inductInfo ind) := (← getEnv).find? n | return none
-  for c in ind.ctors do
-    let ci ← getConstInfoCtor c
-    let cty ← instantiateForall ci.type (params.extract 0 ind.numParams)
-    let hit? ← forallTelescopeReducing cty fun xs _ => do
-      for x in xs do
-        if ← isExistentialField (← inferType x) then
-          return some (← x.fvarId!.getUserName)
-      return none
-    if let some f := hit? then return some f
-  return none
-
 /-- Is this a binder the translation drops — a proof, a type, an instance or a one-value
     type? -/
 def erasedBinder (t : Expr) : MetaM Bool := do
@@ -107,6 +91,69 @@ def erasedBinder (t : Expr) : MetaM Bool := do
   if ← isErasedType t then return true
   if (← isClass? t).isSome then return true
   return false
+
+/-- Does the free variable `x` occur in `t` anywhere but in an **index** of an occurrence of
+    a declaration of the block `block` (whose declarations have `numParams` parameters)?
+    The language erases the indices of an indexed family — `TExpr α` has the same tree at
+    every `α` — so a type that only an index mentions is invisible to it. -/
+partial def occursOutsideBlockIndices (block : List Name) (numParams : Nat) (x : FVarId) :
+    Expr → Bool
+  | .fvar y => y == x
+  | e@(.app ..) =>
+      let f := e.getAppFn
+      let args := e.getAppArgs
+      match f with
+      | .const k _ =>
+          if block.contains k then
+            (args.extract 0 numParams).any (occursOutsideBlockIndices block numParams x)
+          else args.any (occursOutsideBlockIndices block numParams x)
+      | _ => occursOutsideBlockIndices block numParams x f ||
+          args.any (occursOutsideBlockIndices block numParams x)
+  | .forallE _ d b _ => occursOutsideBlockIndices block numParams x d ||
+      occursOutsideBlockIndices block numParams x b
+  | .lam _ d b _ => occursOutsideBlockIndices block numParams x d ||
+      occursOutsideBlockIndices block numParams x b
+  | .letE _ t v b _ => occursOutsideBlockIndices block numParams x t ||
+      occursOutsideBlockIndices block numParams x v || occursOutsideBlockIndices block numParams x b
+  | .mdata _ e => occursOutsideBlockIndices block numParams x e
+  | .proj _ _ e => occursOutsideBlockIndices block numParams x e
+  | _ => false
+
+/-- The first field of `n` that hides a type, if it has one.  The declaration is refused
+    as a whole: `LeanScript` has no existential type, so a declaration whose values carry
+    a type of their own is not one it models.
+
+    A type field that **no value of the constructor depends on** hides nothing, and is not
+    an existential: the type `α` of `pair {α β : Type} (a : TExpr α) (b : TExpr β) : TExpr
+    (α × β)` appears only in indices of occurrences of the declaration itself, which the
+    language erases, and in the constructor's own index — so the tree of `a` is the same at
+    every `α`, and the field is erased like any other type.  A type field is an existential
+    when some field that carries a value (not a proof, a type or an instance) mentions it
+    outside such an index: `seed : State`, `x : α`, `xs : List α`.  A field that is a
+    *family* of types (`f : Nat → Type`) is always one. -/
+def existentialField? (n : Name) (params : Array Expr) : MetaM (Option Name) := do
+  let some (.inductInfo ind) := (← getEnv).find? n | return none
+  for c in ind.ctors do
+    let ci ← getConstInfoCtor c
+    let cty ← instantiateForall ci.type (params.extract 0 ind.numParams)
+    let hit? ← forallTelescopeReducing cty fun xs _ => do
+      for i in [0:xs.size] do
+        let x := xs[i]!
+        if ← isExistentialField (← inferType x) then
+          -- a family of types (`f : Nat → Type`) is not erased: it hides types whatever
+          -- depends on it
+          let mut hides := !(← isTypeField (← inferType x))
+          for y in xs[i+1:] do
+            if hides then break
+            let t ← instantiateMVars (← inferType y)
+            if ← erasedBinder t then continue
+            if occursOutsideBlockIndices ind.all ind.numParams x.fvarId! t then
+              hides := true
+              break
+          if hides then return some (← x.fvarId!.getUserName)
+      return none
+    if let some f := hit? then return some f
+  return none
 
 /-- The types of the values the declaration `n` **caches** — a `@[computed_field]` is
     stored in the runtime object, so it is one more field of it — in declaration order.

@@ -178,6 +178,24 @@ def dropErasedBinder (e : Expr) : MetaM Expr := do
   | _ => throwError "`#leanscript_to_term`: `{n}` has the type {d}, which the language \
       erases, and is used"
 
+/-- Translate `fun x => b` whose binder the language erases: `b` itself, by `k`.  A `Unit`
+    binder is read as `()` (`dropErasedBinder`); a **type** binder, or a proof, that the
+    body still mentions — the index `α` of an indexed family, `fun {α} (e : TExpr α) => …`,
+    or the index a `match` refines — is bound as a Lean variable that the language never
+    sees: it may occur in the *types* of the body (`TExpr α`), whose trees do not depend on
+    it, but the term the body translates to must not mention it. -/
+def withErasedBinder (e : Expr) (k : Expr → MetaM Expr) : MetaM Expr := do
+  let .lam n d b bi := e | throwError "`#leanscript_to_term`: internal: not a function"
+  unless b.hasLooseBVars do return ← k b
+  if let .const ``PUnit [u] := (← whnf d) then
+    return ← k (b.instantiate1 (mkConst ``PUnit.unit [u]))
+  withLocalDecl n bi d fun x => do
+    let t ← instantiateMVars (← k (b.instantiate1 x))
+    if t.containsFVar x.fvarId! then
+      throwError "`#leanscript_to_term`: `{n}` has the type {d}, which the language \
+        erases, and is used"
+    return t
+
 /-- The type of the language that models the Lean type `α`, written `TyWf.prim p` when it
     is a terminal type. -/
 def tyWfOfType (α : Expr) : MetaM Expr := do
