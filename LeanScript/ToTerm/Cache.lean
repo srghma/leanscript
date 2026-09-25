@@ -114,6 +114,36 @@ def isInlinable (n : Name) : MetaM Bool := do
     || Compiler.hasMacroInlineAttribute env n
     || Compiler.hasInlineIfReduceAttribute env n
 
+/-- Is this constant a **structural recursion** — a safe definition that Lean compiled
+    through a `brecOn` (its own, or that of a `mutual` block)?  A call of one is inlined
+    even when it is neither marked inlinable nor declared in the signature, so that a
+    recursion split across two top-level definitions (`f n := go n 0`, with `go` the
+    recursion) is translated: the recursion is the fold it compiles to, at the call
+    site. -/
+def isStructuralRecursion (n : Name) : MetaM Bool := do
+  let some (.defnInfo d) := (← getEnv).find? n | return false
+  unless d.safety == .safe do return false
+  if Compiler.hasNoInlineAttribute (← getEnv) n then return false
+  return (d.value.find? fun s => match s with
+    | .const m _ => !m.isAnonymous && !m.isNum && m.getString! == "brecOn"
+    | _ => false).isSome
+
+/-- Is this constant a structural recursion, or a wrapper that calls one — a safe
+    definition of the same module whose body calls a structural recursion, directly or
+    through at most `depth` further such wrappers (`f n := g (n + 1)`,
+    `g n := go n 0`)? -/
+partial def callsStructuralRecursion (n : Name) (depth : Nat := 3) : MetaM Bool := do
+  if ← isStructuralRecursion n then return true
+  if depth == 0 then return false
+  let env ← getEnv
+  let some (.defnInfo d) := env.find? n | return false
+  unless d.safety == .safe do return false
+  if Compiler.hasNoInlineAttribute env n then return false
+  let mod := env.getModuleIdxFor? n
+  let callees := d.value.getUsedConstants.filter fun m =>
+    m != n && env.getModuleIdxFor? m == mod
+  callees.anyM fun m => callsStructuralRecursion m (depth - 1)
+
 end LeanScript.ToTerm
 
 end

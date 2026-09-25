@@ -45,8 +45,9 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let ind := n.getPrefix
   let some (.inductInfo ii) := (← getEnv).find? ind | return none
   unless ii.numIndices == 0 do return none
-  -- `List` and `Nat` keep their own translation
-  if ind == ``List || ind == ``Nat then return none
+  -- `List` and `Nat` keep their own translation — but a list of the declarations of a
+  -- nested inductive (`List Rose`) is a member of their family
+  if ind == ``Nat then return none
   -- inside the branches of a fold of this very type, taking a value apart is the fold's
   -- look further down (see `TCtx.foldInds`)
   if c.foldInds.contains ind then return none
@@ -58,7 +59,8 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let sty ← tyOfTerm major
   let view ← tyView sty
   match view with
-  | .recTaggedUnion .. | .recObject .. | .recAlias .. | .mutualRecursiveFamily .. => pure ()
+  | .mutualRecursiveFamily .. => pure ()
+  | .recTaggedUnion .. | .recObject .. | .recAlias .. => if ind == ``List then return none
   | _ => return none
   if args.size < arity then
     return some (← trans c (← etaExpand e))

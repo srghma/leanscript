@@ -551,6 +551,28 @@ def famFieldMemo {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
   | a :: _, .here h, e => famHoleKid a.toTy h e.prodFst
   | _ :: _, .there sf, e => famFieldMemo sf e.prodSnd
 
+/-- The nodes a deeper look into a family has dispatched on above the one it stands at,
+    innermost first: for each, its fields' shape with the memo of a subtree in each
+    hole. -/
+def FamFrames {n : Nat} (ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))) (τ : TyWf) :
+    List (List (TyWfIn (n + 2))) → Type
+  | [] => PUnit
+  | fs :: outer => FamFields ms₀ τ fs × FamFrames ms₀ τ outer
+
+/-- No node above: the frames at the root of the fold of a family. -/
+def FamFrames.nil {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} {τ : TyWf} :
+    FamFrames ms₀ τ [] :=
+  PUnit.unit
+
+/-- The memo of the subtree at an occurrence among the fields of a node above, which a
+    deeper look (`LeanScript.FamilyFoldKBranch.deepOuter`) descends into. -/
+def famOuterFieldMemo {n : Nat} {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
+    {τ : TyWf} {i : Nat} :
+    {outer : List (List (TyWfIn (n + 2)))} → FamilyOuterMemberField i outer →
+      FamFrames ms₀ τ outer → FamMemoAt ms₀ τ i
+  | _ :: _, .here sf, fr => famFieldMemo sf fr.1
+  | _ :: _, .there o, fr => famOuterFieldMemo o fr.2
+
 theorem FamilyMemberAt.lt {n : Nat} {ms : List (LeanFamMemberSchema (TyWfIn (n + 2)))}
     {i : Nat} {m : LeanFamMemberSchema (TyWfIn (n + 2))} : FamilyMemberAt ms i m → i < ms.length
   | .here => by simp

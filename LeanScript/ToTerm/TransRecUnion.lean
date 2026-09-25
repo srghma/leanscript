@@ -372,8 +372,10 @@ partial def recUnionBranch (trans : TransFn) (info : RecUnionInfo) (c : TCtx) (j
 
 end
 
-/-- How deep a fold of a recursive tagged union the translation looks for. -/
-def maxRecUnionRecDepth : Nat := 6
+/-- How deep a fold of a recursive tagged union the translation looks for: the option
+    `leanscript.toTerm.maxRecUnionRecDepth` (`16` by default). -/
+def maxRecUnionRecDepth : MetaM Nat :=
+  return leanscript.toTerm.maxRecUnionRecDepth.get (← getOptions)
 
 /-- A structural recursion on a **recursive tagged union**, as Lean compiled it: `X.brecOn`
     on a type whose tree is `Ty.recTaggedUnion`.  It becomes
@@ -413,7 +415,11 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   unless idxs.size == ii.ctors.length do
     throwError "`#leanscript_to_term`: internal: the tree of {ind} has {idxs.size} \
       constructors, the type {ii.ctors.length}"
-  let mentions (t : Expr) : Bool := (t.find? fun s => s.isConstOf ind).isSome
+  -- An occurrence of the type *itself* (same parameters) inside a field; `List (List α)`'s
+  -- field `List α` is another type, not an occurrence.
+  let selfArgs := selfTy.getAppArgs
+  let mentions (t : Expr) : Bool :=
+    (t.find? fun s => s.getAppFn.isConstOf ind && s.getAppArgs == selfArgs).isSome
   let mut ctors : Array RecUnionCtor := #[]
   for h : i in [0:ii.ctors.length] do
     let cn := ii.ctors[i]
@@ -452,7 +458,8 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
         #[c.sg, c.gamma, τ, l, hwf, mkNatLit k, scrutT, cases]
   let mut found : Option Expr := none
   let mut lastErr : Option MessageData := none
-  for k in [0:maxRecUnionRecDepth + 1] do
+  let maxK ← maxRecUnionRecDepth
+  for k in [0:maxK + 1] do
     if found.isNone then
       try
         found := some (← attempt k)
@@ -461,7 +468,7 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let some core := found
     | throwError "`#leanscript_to_term`: this recursion on the recursive tagged union \
         {ind} is not the fold of a recursive tagged union at any depth up to \
-        {maxRecUnionRecDepth} — the fold `recTaggedUnion_rec k` gives each branch the \
+        {maxK} (the option `leanscript.toTerm.maxRecUnionRecDepth`) — the fold `recTaggedUnion_rec k` gives each branch the \
         constructor's fields and the answers at its occurrences, and may look into an \
         occurrence at most `k` times, so a branch that reads the value of the function \
         further down than that has no term.  At the last depth tried: \

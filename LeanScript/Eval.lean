@@ -492,22 +492,26 @@ def FamilyMemberSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, .ctors cases _, env, v, dflt => TaggedUnionSomeCases.eval G cases env v dflt
 
 /-- The answer of one branch of the fold of a mutual family, at a node whose fields are
-    `e` — their shape, with the memo of the subtree in each hole.  An answer is its term,
-    in the environment `mkEnv` reads off the node; a deeper look takes the memo of the
-    occurrence it names and dispatches on *its* node — whichever member it is a value of —
-    so every answer it reads below is already stored there and nothing is recomputed. -/
+    `e` — their shape, with the memo of the subtree in each hole — below the nodes `fr`
+    dispatched on above it.  An answer is its term, in the environment `mkEnv` reads off
+    the node; a deeper look takes the memo of the occurrence it names, at this node or at
+    one above, and dispatches on *its* node — whichever member it is a value of — so every
+    answer it reads below is already stored there and nothing is recomputed. -/
 def FamilyFoldKBranch.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {n : Nat} → {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} →
     {bind : List (TyWfIn (n + 2)) → List TyWf} → {Γ : Ctx} → {fs : List (TyWfIn (n + 2))} →
-    {τ : TyWf} → {k : Nat} →
-    FamilyFoldKBranch Sg n ms₀ bind Γ fs τ k → Env Γ →
+    {τ : TyWf} → {k : Nat} → {outer : List (List (TyWfIn (n + 2)))} →
+    FamilyFoldKBranch Sg n ms₀ bind Γ fs τ k outer → Env Γ →
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
-    FamFields ms₀ τ fs → TyWf.Den τ
-  | _, _, _, _, _, _, _, .here body, env, mkEnv, e =>
+    FamFrames ms₀ τ outer → FamFields ms₀ τ fs → TyWf.Den τ
+  | _, _, _, _, _, _, _, _, .here body, env, mkEnv, _, e =>
       Term.eval G body (Env.append (mkEnv _ e) env)
-  | _, _, _, _, _, _, _, .deep field member cases, env, mkEnv, e =>
-      FamilyMemberFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv
+  | _, _, _, _, _, _, _, _, .deep field member cases, env, mkEnv, fr, e =>
+      FamilyMemberFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv (e, fr)
         (FamW.memoNodeAt _ _ member.at_famFs (famFieldMemo field e)).2
+  | _, _, _, _, _, _, _, _, .deepOuter field member cases, env, mkEnv, fr, e =>
+      FamilyMemberFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv (e, fr)
+        (FamW.memoNodeAt _ _ member.at_famFs (famOuterFieldMemo field fr)).2
 
 /-- The answer of the fold of a mutual family at a node of a given member: the branch of
     that member's constructor, field list or body. -/
@@ -515,14 +519,16 @@ def FamilyMemberFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {n : Nat} → {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} →
     {bind : List (TyWfIn (n + 2)) → List TyWf} → {Γ : Ctx} → {τ : TyWf} →
     {m : LeanFamMemberSchema (TyWfIn (n + 2))} → {k : Nat} →
-    FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m k → Env Γ →
+    {outer : List (List (TyWfIn (n + 2)))} →
+    FamilyMemberFoldKCases Sg n ms₀ bind Γ τ m k outer → Env Γ →
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
-    (famIPF m).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, _, .ctors cases, env, mkEnv, x =>
-      FamilyTaggedUnionFoldKCases.eval G cases env mkEnv x.1.1.val ⟨x.1.2, x.2⟩
-  | _, _, _, _, _, _, _, .record br, env, mkEnv, x => FamilyFoldKBranch.eval G br env mkEnv x
-  | _, _, _, _, _, _, _, .alias br, env, mkEnv, x =>
-      FamilyFoldKBranch.eval G br env mkEnv
+    FamFrames ms₀ τ outer → (famIPF m).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
+  | _, _, _, _, _, _, _, _, .ctors cases, env, mkEnv, fr, x =>
+      FamilyTaggedUnionFoldKCases.eval G cases env mkEnv fr x.1.1.val ⟨x.1.2, x.2⟩
+  | _, _, _, _, _, _, _, _, .record br, env, mkEnv, fr, x =>
+      FamilyFoldKBranch.eval G br env mkEnv fr x
+  | _, _, _, _, _, _, _, _, .alias br, env, mkEnv, fr, x =>
+      FamilyFoldKBranch.eval G br env mkEnv fr
         (IPFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩)
 
 /-- The answer of the fold of a member with constructors, at a node of constructor `t`. -/
@@ -530,34 +536,40 @@ def FamilyTaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {n : Nat} → {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} →
     {bind : List (TyWfIn (n + 2)) → List TyWf} → {Γ : Ctx} →
     {l : LeanTaggedUnionSchema (TyWfIn (n + 2))} → {τ : TyWf} → {k : Nat} →
-    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ k → Env Γ →
+    {outer : List (List (TyWfIn (n + 2)))} →
+    FamilyTaggedUnionFoldKCases Sg n ms₀ bind Γ l τ k outer → Env Γ →
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
+    FamFrames ms₀ τ outer →
     (t : Nat) → (Ty.toIPFAt (l.map TyWfIn.toTy) t).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e =>
-      FamilyFoldKBranch.eval G b0 env mkEnv e
-  | _, _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e =>
-      FamilyFoldKBranch.eval G b1 env mkEnv e
-  | _, _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, t + 2, e =>
-      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv t e
-  | _, _, _, _, _, _, _, .skip b0 _, env, mkEnv, 0, e =>
-      FamilyFoldKBranch.eval G b0 env mkEnv e
-  | _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, t + 1, e =>
-      FamilyCtorsWithPayloadFoldKCases.eval G rest env mkEnv t e
+  | _, _, _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, fr, 0, e =>
+      FamilyFoldKBranch.eval G b0 env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, fr, 1, e =>
+      FamilyFoldKBranch.eval G b1 env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, fr, t + 2, e =>
+      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
+  | _, _, _, _, _, _, _, _, .skip b0 _, env, mkEnv, fr, 0, e =>
+      FamilyFoldKBranch.eval G b0 env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, fr, t + 1, e =>
+      FamilyCtorsWithPayloadFoldKCases.eval G rest env mkEnv fr t e
 
 /-- `FamilyTaggedUnionFoldKCases.eval`, on the constructors that follow a field-less one. -/
 def FamilyCtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {n : Nat} → {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} →
     {bind : List (TyWfIn (n + 2)) → List TyWf} → {Γ : Ctx} →
     {c : CtorsWithPayload (TyWfIn (n + 2))} → {τ : TyWf} → {k : Nat} →
-    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ c τ k → Env Γ →
+    {outer : List (List (TyWfIn (n + 2)))} →
+    FamilyCtorsWithPayloadFoldKCases Sg n ms₀ bind Γ c τ k outer → Env Γ →
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
+    FamFrames ms₀ τ outer →
     (t : Nat) → (Ty.toIPFAtCP (c.map TyWfIn.toTy) t).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, _, .here b _, env, mkEnv, 0, e => FamilyFoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, _, .here _ rest, env, mkEnv, t + 1, e =>
-      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv t e
-  | _, _, _, _, _, _, _, .skip b _, env, mkEnv, 0, e => FamilyFoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, t + 1, e =>
-      FamilyCtorsWithPayloadFoldKCases.eval G rest env mkEnv t e
+  | _, _, _, _, _, _, _, _, .here b _, env, mkEnv, fr, 0, e =>
+      FamilyFoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .here _ rest, env, mkEnv, fr, t + 1, e =>
+      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
+  | _, _, _, _, _, _, _, _, .skip b _, env, mkEnv, fr, 0, e =>
+      FamilyFoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .skip _ rest, env, mkEnv, fr, t + 1, e =>
+      FamilyCtorsWithPayloadFoldKCases.eval G rest env mkEnv fr t e
 
 /-- `FamilyTaggedUnionFoldKCases.eval`, on a plain list of constructors; past the end
     there is no node. -/
@@ -565,14 +577,17 @@ def FamilyTaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {n : Nat} → {ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2)))} →
     {bind : List (TyWfIn (n + 2)) → List TyWf} → {Γ : Ctx} →
     {cs : List (List (TyWfIn (n + 2)))} → {τ : TyWf} → {k : Nat} →
-    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ cs τ k → Env Γ →
+    {outer : List (List (TyWfIn (n + 2)))} →
+    FamilyTaggedUnionFoldKCasesRest Sg n ms₀ bind Γ cs τ k outer → Env Γ →
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
+    FamFrames ms₀ τ outer →
     (t : Nat) → (Ty.toIPFAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (FamMemoAt ms₀ τ) →
     TyWf.Den τ
-  | _, _, _, _, _, _, _, .nil, _, _, _, e => PEmpty.elim e.1
-  | _, _, _, _, _, _, _, .cons b _, env, mkEnv, 0, e => FamilyFoldKBranch.eval G b env mkEnv e
-  | _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, t + 1, e =>
-      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv t e
+  | _, _, _, _, _, _, _, _, .nil, _, _, _, _, e => PEmpty.elim e.1
+  | _, _, _, _, _, _, _, _, .cons b _, env, mkEnv, fr, 0, e =>
+      FamilyFoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, fr, t + 1, e =>
+      FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
 
 /-- The answer of the fold of a mutual family at a node of member `i`: the branches of
     member `i`, found by walking the members in declaration order.  The node is given as a
@@ -588,7 +603,7 @@ def FamilyFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     (i : Nat) → (IPFunctor.at (famFs ms) i).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
   | _, _, _, _, _, _, _, .nil, _, _, _, node => PEmpty.elim node.1
   | _, _, _, _, _, _, _, .cons c _, env, mkEnv, 0, node =>
-      FamilyMemberFoldKCases.eval G c env mkEnv node
+      FamilyMemberFoldKCases.eval G c env mkEnv FamFrames.nil node
   | _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, i + 1, node =>
       FamilyFoldKCases.eval G rest env mkEnv i node
 

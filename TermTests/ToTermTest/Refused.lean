@@ -21,7 +21,7 @@ def notDeclared (n : Nat) : Nat := n
 
 def callsNotDeclared (n : Nat) : Nat := notDeclared n
 
-/-- error: `#leanscript_to_term`: `TermTests.ToTerm.notDeclared` is not declared in the signature and is not inlinable, so a term cannot call it.  Either add a `GlobalDecl` named "notDeclared" (or "TermTests.ToTerm.notDeclared") to the signature, or mark `TermTests.ToTerm.notDeclared` `@[inline]`. -/
+/-- error: `#leanscript_to_term`: `TermTests.ToTerm.notDeclared` is not declared in the signature and is not inlinable, so a term cannot call it.  Either add a `GlobalDecl` named "notDeclared" (or "TermTests.ToTerm.notDeclared") to the signature, or mark `TermTests.ToTerm.notDeclared` `@[inline]`.  (A structural recursion is inlined without either.) -/
 #guard_msgs (error) in
 example : Term sig0 [] (TyWf.prim .nat ⇒ TyWf.prim .nat) :=
   #leanscript_to_term callsNotDeclared

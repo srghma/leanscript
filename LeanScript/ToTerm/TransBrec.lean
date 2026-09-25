@@ -37,10 +37,11 @@ def arrayOfToList? (e : Expr) : Option Expr :=
     The depth `k` is found as for a `Nat`: the branch is instantiated at the list
     `hd :: y₁ :: … :: yₖ :: rest`, with the `k + 1` nearest entries of the history — the
     values at `y₁ :: … :: rest`, …, `rest` — replaced by variables, and the smallest `k`
-    at which nothing of the history, of the `yᵢ` and of `rest` is left is the depth.  The
-    branch of `array_rec` is given the head and the fold values only (and the tail as an
-    array, which a Lean list cannot name), so a branch that reads an element past the
-    head, or the tail as a list, is refused.
+    at which nothing of the history and of `rest` is left is the depth.  The branch of
+    `array_rec` is given the head, the tail as an array and the fold values; an element
+    `yᵢ` past the head that the branch reads is taken off the tail by `i` nested
+    `array_casesOn`s (whose empty cases are never taken there: the tail has at least `k`
+    elements).  A branch that reads the rest of the list after them is refused.
 
     The lists of at most `k` elements are the base answers (`LeanScript.ArrayRecBases`):
     the branch at `[x₁, …, xⱼ]`, each one reading the answers at its own suffixes. -/
@@ -57,7 +58,7 @@ def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
   let valueAt (l : Expr) (ihs : Array Expr) : MetaM Expr := do
     let ht ← historyTy l
     withLocalDeclD `history ht fun hist => do
-      let body ← reduceBrecBodyDeep (mkApp2 brecF l hist)
+      let body ← reduceBranchMatches =<< reduceBrecBodyDeep (mkApp2 brecF l hist)
       let body := substHistory body hist.fvarId! ihs
       if body.containsFVar hist.fvarId! then
         throwError "`#leanscript_to_term`: this recursion on the elements of an array \
@@ -76,24 +77,48 @@ def transArrayBrecOn (trans : TransFn) (c : TCtx) (τLean τ α brecF : Expr)
               (Name.mkSimple s!"ih{i}", fun _ => pure τLean)
           withLocalDeclsD ihDecls fun ihs => do
             let body ← valueAt (consE hd (listOf ys rest)) ihs
-            if ys.any (fun y => body.containsFVar y.fvarId!) ||
-                body.containsFVar rest.fvarId! then
+            if body.containsFVar rest.fvarId! then
               throwError "`#leanscript_to_term`: at depth {k} the branch still reads the \
-                elements of the tail"
-            withLocalDeclD `tail (mkApp (mkConst ``Array [u]) α) fun tl => do
+                rest of the list"
+            -- the elements `y₁ … yₘ` past the head that the branch reads, `m ≤ k`
+            let m := (ys.toList.zipIdx.filterMap fun (y, i) =>
+              if body.containsFVar y.fvarId! then some (i + 1) else none).foldl max 0
+            let arrLean := mkApp (mkConst ``Array [u]) α
+            withLocalDeclD `tail arrLean fun tl => do
               let c' := c.pushFields
                 (#[(hd.fvarId!, σ), (tl.fvarId!, arrTy)] ++ ihs.map fun ih => (ih.fvarId!, τ))
-              trans c' body
+              -- the tails `tail₁ … tailₘ` that the dispatches on the tail bind
+              let tDecls : Array (Name × (Array Expr → MetaM Expr)) :=
+                (Array.range m).map fun i => (Name.mkSimple s!"tail{i + 1}", fun _ => pure arrLean)
+              withLocalDeclsD tDecls fun tls => do
+                -- the contexts of the nested dispatches: `cs[i]` binds `y₁ … yᵢ`
+                let mut cs : Array TCtx := #[c']
+                for i in [0:m] do
+                  cs := cs.push ((cs.getD i c').pushFields
+                    #[(ys[i]!.fvarId!, σ), (tls[i]!.fvarId!, arrTy)])
+                let tailAt (i : Nat) : Expr := if i == 0 then tl else tls[i - 1]!
+                let mut acc ← trans (cs.getD m c') body
+                for r in [0:m] do
+                  let i := m - 1 - r
+                  -- the tail has at least `k` elements at this branch, so its empty case
+                  -- is never taken: it answers the value at the tail, which is at hand
+                  let scrut ← trans (cs.getD i c') (tailAt i)
+                  let dead ← trans (cs.getD i c') ihs[0]!
+                  acc := mkAppN (mkConst `LeanScript.Term.array_casesOn)
+                    #[c.sg, (cs.getD i c').gamma, σ, τ, scrut, dead, acc]
+                pure acc
   let mut found : Option (Nat × Expr) := none
-  for k in [0:maxNatRecDepth + 1] do
+  let maxK ← maxNatRecDepth
+  for k in [0:maxK + 1] do
     if found.isNone then
       found ← try pure (some (k, ← stepAt k)) catch _ => pure none
   let some (k, branch) := found
     | throwError "`#leanscript_to_term`: this recursion on the elements of an array is not \
-        the fold of an array — the fold `array_rec k` gives its branch the head and the \
-        values at the `k + 1` nearest suffixes of the tail, so a branch that reads an \
-        element past the head, or the tail itself, or the value at a list that is not a \
-        suffix, has no term"
+        the fold of an array at any depth up to {maxK} (the option \
+        `leanscript.toTerm.maxNatRecDepth`) — the fold `array_rec k` gives its branch the \
+        head, the tail and the values at the `k + 1` nearest suffixes of the tail, and the \
+        branch may read the first `k` elements of the tail, so a branch that reads the rest \
+        of the list after them, or the value at a list that is not a suffix, has no term"
   -- the answers for the lists of at most `k` elements, `[x₁, …, xⱼ]`, `x₁` bound first
   let xDecls : Array (Name × (Array Expr → MetaM Expr)) :=
     (Array.range k).map fun i => (Name.mkSimple s!"x{i + 1}", fun _ => pure α)
@@ -168,7 +193,7 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
   let branchAt (scrutinee : Expr) (ih? : Option Expr) : MetaM Expr := do
     let ht ← historyTy scrutinee
     withLocalDeclD `history ht fun hist => do
-      let body ← reduceBrecBodyDeep (mkApp2 brecF scrutinee hist)
+      let body ← reduceBranchMatches =<< reduceBrecBodyDeep (mkApp2 brecF scrutinee hist)
       let body := match ih? with
         | some ih => substHistoryHead body hist.fvarId! ih
         | none => body
@@ -210,7 +235,7 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
         withLocalDeclsD ihDecls fun ihs => do
           let ht ← historyTy scrutE
           withLocalDeclD `history ht fun hist => do
-            let body ← reduceBrecBodyDeep (mkApp2 brecF scrutE hist)
+            let body ← reduceBranchMatches =<< reduceBrecBodyDeep (mkApp2 brecF scrutE hist)
             let body := substHistory body hist.fvarId! ihs
             if body.containsFVar hist.fvarId! then
               throwError "`#leanscript_to_term`: this recursion reads the value of the \
@@ -218,12 +243,14 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
                 predecessors"
             mkLambdaFVars (#[nv] ++ ihs) body
     let mut found : Option (Nat × Expr) := none
-    for k in [1:maxNatRecDepth + 1] do
+    let maxK ← maxNatRecDepth
+    for k in [1:maxK + 1] do
       if found.isNone then
         found ← try pure (some (k, ← stepAt k)) catch _ => pure none
     let some (k, s) := found
       | throwError "`#leanscript_to_term`: this recursion does not descend by a fixed \
-          number of steps — the fold of a natural number the grammar has gives its branch \
+          number of steps, at most {maxK} (the option `leanscript.toTerm.maxNatRecDepth`) \
+          — the fold of a natural number the grammar has gives its branch \
           the answers at the `k + 1` nearest predecessors, so a call at an argument such \
           as `n / 2` has no term"
     -- the answers below the depth: the branch at `0, …, k`, each one allowed to read the
@@ -234,7 +261,7 @@ def transBrecOn (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
       for _ in [0:j] do jE := mkApp (mkConst ``Nat.succ) jE
       let ht ← historyTy jE
       let v ← withLocalDeclD `history ht fun hist => do
-        let body ← reduceBrecBodyDeep (mkApp2 brecF jE hist)
+        let body ← reduceBranchMatches =<< reduceBrecBodyDeep (mkApp2 brecF jE hist)
         let body := substHistory body hist.fvarId! baseVals.reverse
         if body.containsFVar hist.fvarId! then
           throwError "`#leanscript_to_term`: the answer at {j} reads the value of the \

@@ -289,8 +289,9 @@ example (τ : TyWf) : lbind τ succFields = [peTy, τ] := by kernel_rfl
 /-- **The branches of the member this fold does not descend into**: member `0`, the Peano
     naturals.  `zero` answers with the term given here, and `succ` answers with the value
     of the fold at its predecessor, which its branch binds at index `1`. -/
-def peCases {τ : TyWf} {Γ : Ctx} {k : Nat} (zeroAnswer : Term sigAdd Γ τ) :
-    FamilyMemberFoldKCases sigAdd 0 famLs.members (lbind τ) Γ τ memPe k :=
+def peCases {τ : TyWf} {Γ : Ctx} {k : Nat} {outer : List (List (TyWfIn 2))}
+    (zeroAnswer : Term sigAdd Γ τ) :
+    FamilyMemberFoldKCases sigAdd 0 famLs.members (lbind τ) Γ τ memPe k outer :=
   .ctors (.skip (.here zeroAnswer) (.here (.here (.var (v♯1))) .nil))
 
 /-- The branches of the continuant: `nil` answers `1`; `cons` descends into its **second**
@@ -378,26 +379,27 @@ example : runLs contTerm [1, 1, 1, 1, 1, 1] = 13 := by decide +kernel
 /-! ## 8. A depth is needed: what cannot be written without one
 
 At depth `0` a branch is an answer and nothing else — `LeanScript.FamilyFoldKBranch.deep`
-is a branch of a depth `k + 1` fold — so the `succ` branch of `fib`, which has to look one
-constructor further down before it can answer, is not a branch of the plain fold. -/
+and `LeanScript.FamilyFoldKBranch.deepOuter` are branches of a depth `k + 1` fold — so
+the `succ` branch of `fib`, which has to look one constructor further down before it can
+answer, is not a branch of the plain fold. -/
 
 /--
 error: Type mismatch
-  FamilyFoldKBranch.deep (ListAnyT.here ?m.22) FamilyMemberAt.here
+  FamilyFoldKBranch.deep (ListAnyT.here ?m.24) FamilyMemberAt.here
     (FamilyMemberFoldKCases.ctors
       (FamilyTaggedUnionFoldKCases.skip (FamilyFoldKBranch.here (Term.nat_mk 1))
         (FamilyCtorsWithPayloadFoldKCases.here (FamilyFoldKBranch.here (Term.nat_mk 2))
           FamilyTaggedUnionFoldKCasesRest.nil)))
 has type
-  FamilyFoldKBranch ?m.75 ?m.76
-    (LeanFamMemberSchema.ctors (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.61 [])) :: ?m.25) ?m.78 ?m.10
-    (?m.18 :: ?m.19) (TyWf.prim LeanPrimTy.nat) (?m.81 + 1)
+  FamilyFoldKBranch ?m.82 ?m.83
+    (LeanFamMemberSchema.ctors (LeanTaggedUnionSchema.skip (CtorsWithPayload.here ?m.67 [])) :: ?m.27) ?m.85 ?m.11
+    (?m.20 :: ?m.21) (TyWf.prim LeanPrimTy.nat) (?m.88 + 1) ?m.17
 but is expected to have type
-  FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0
+  FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0 []
 -/
 #guard_msgs (error) in
 def succBranchTooShallow :
-    FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0 :=
+    FamilyFoldKBranch sigAdd 0 famPe.members (pbind natT) PCtx succFields natT 0 [] :=
   .deep (.here rfl) .here
     (.ctors (.skip (.here (.nat_mk 1)) (.here (.here (.nat_mk 2)) .nil)))
 

@@ -27,8 +27,9 @@ where
 The translation reads `go a.toList` — a structurally recursive function on lists applied
 to the elements of an array — as `array_rec k` on `a`.  The depth `k` is read off the
 compiled recursion exactly as for `nat_rec k`: it is the smallest `k` for which the branch
-at `x :: y₁ :: … :: yₖ :: rest` reads only the head `x` and the values of `go` at the
-`k + 1` suffixes `y₁ :: … :: rest`, …, `rest`.  The patterns for the lists of at most `k`
+at `x :: y₁ :: … :: yₖ :: rest` reads only the head `x`, the elements `y₁ … yₖ` and the
+values of `go` at the `k + 1` suffixes `y₁ :: … :: rest`, …, `rest`
+(`TermTests/ArrayRecToTermTest/Elements.lean`).  The patterns for the lists of at most `k`
 elements become the `LeanScript.ArrayRecBases`.
 
 Each program (one file per program, so that they build in parallel) is written

@@ -233,7 +233,7 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       not declared in the signature, so a term cannot call it.  Add a `GlobalDecl` named \
       \"{n.getString!}\" (or \"{n}\") to the signature."
   -- a structural recursion on a recursive record is the fold of the record
-  if n.getString! == "brecOn" then
+  if n.getString! == "brecOn" || (n.isStr && n.getString!.startsWith "brecOn_") then
     -- a structural recursion on a member of a mutual inductive block is the fold of
     -- the family, at the depth it needs
     if let some t ← transRecFamilyBrecOn? trans c e n lvls args then return t
@@ -246,6 +246,9 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   if let some t ← transIdOp? c n args then return t
   if n == ``ite then return ← transIte c args
   if n == ``dite then return ← transDite c args
+  -- `decide p`: the `Bool` the decision procedure gives, as the test of an `if` is read
+  if n == ``Decidable.decide && args.size == 2 then
+    return ← boolOfDecidable c args[0]! args[1]!
   -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`
   if n == ``GetElem.getElem then
     if let some x ← decidableExtern? e then return ← trans c x
@@ -278,7 +281,8 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     return ← transBrecOn trans c e n lvls args
   if isSparseCasesOn n then
     if let some t ← transSparseCasesOn? trans c e n lvls args then return t
-    -- a type whose tree has no partial dispatch: the exhaustive one, from the unfolding
+    -- a type whose tree has no partial dispatch: the exhaustive one
+    if let some e' ← sparseAsCasesOn? n args then return ← trans c e'
     if let some e' ← unfoldHere? e then return ← trans c e'
   match (← getEnv).find? n with
   | some (.ctorInfo ci) => return ← transCtorApp c e ci args
@@ -312,9 +316,14 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       return ← trans c (mkAppN p (args.extract (pinfo.numParams + 1) args.size))
   if ← isInlinable n then
     return ← transInline trans c e n lvls args
+  -- a structural recursion defined on its own and called from here (or a wrapper of
+  -- one): the fold it compiles to, inlined at the call site
+  if ← callsStructuralRecursion n then
+    return ← transInline trans c e n lvls args
   throwError "`#leanscript_to_term`: `{n}` is not declared in the signature and is not \
     inlinable, so a term cannot call it.  Either add a `GlobalDecl` named \
-    \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`."
+    \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`.  (A \
+    structural recursion is inlined without either.)"
 
 /-- Is this call one the translation builds itself, although its head is implemented by
     an extern?  A constructor (`Thunk.mk`, `Array.mk`) is built in place, an array literal
@@ -464,7 +473,8 @@ partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr :
       -- value is the `Bool` it decides
       if let some x ← decidableExtern? inst then return ← trans c x
       let d ← whnf (mkApp2 (mkConst ``Decidable.decide) cnd inst)
-      if d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome then
+      if d.isAppOfArity ``Decidable.decide 2 ||
+          (d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome) then
         throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`: write the \
           condition as a `Bool`, or declare the decision procedure in the signature"
       trans c d

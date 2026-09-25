@@ -214,6 +214,23 @@ partial def substHoles (holes : Array Expr) (trees : Array Expr) (underBinder : 
       return some (.proj s i b')
   | _ => return some e
 
+/-- The auxiliary types Lean adds for a **nested** inductive block (`List T`, for a field
+    of type `List T`), in the order of the motives of its recursor, at the parameters
+    `params`.  Empty when the block is not nested. -/
+def nestedAuxTypes (ind : InductiveVal) (params : Array Expr) : MetaM (Array Expr) := do
+  let some (.recInfo ri) := (← getEnv).find? (ind.name ++ `rec) | return #[]
+  if ri.numMotives ≤ ind.all.length then return #[]
+  let indLvls := ind.levelParams.map Level.param
+  let lvls := if ri.levelParams.length == ind.levelParams.length + 1 then
+    Level.one :: indLvls else indLvls
+  let recTy ← instantiateForall (ri.type.instantiateLevelParams ri.levelParams lvls) params
+  forallBoundedTelescope recTy ri.numMotives fun ms _ => do
+    let mut out : Array Expr := #[]
+    for m in ms.extract ind.all.length ms.size do
+      let .forallE _ d _ _ ← whnf (← inferType m) | return #[]
+      out := out.push d
+    return out
+
 /-- What a declaration is translated in: the members of its family (itself alone, when it
     is not a family) and the type parameters it is being translated at. -/
 structure Ctx where
@@ -227,6 +244,12 @@ structure Ctx where
   /-- The members hoisted out of a recursive wrapper, in the order they were created; see
       the section on hoisting.  They follow the members above in the family. -/
   extra : IO.Ref (Array Expr)
+  /-- The auxiliary types Lean added for the block (`nestedAuxTypes`), when **every** one
+      of them is hoisted into a member of the family: member `baseCount + j` is
+      `auxTys[j]`, in the order of the motives of the recursor, so that the family is the
+      one the recursor folds.  Empty when wrappers are hoisted only where a binder would
+      capture the occurrence. -/
+  auxTys : Array Expr := #[]
 
 end LeanScript.Deriving
 

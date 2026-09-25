@@ -103,6 +103,27 @@ inductive OuterSelfField : List (List (TyWfIn 1)) → Type
       OuterSelfField outer → OuterSelfField (fs :: outer)
   deriving DecidableEq, Repr
 
+/-- `LeanScript.OuterSelfField`, in the scope of a mutual family: a pointer at an
+    occurrence of member `i` among the fields of a node **above** the one a deeper look
+    stands at — the nodes a depth-`k` fold of a family has already dispatched on along its
+    path, innermost first, each given by the list of its field trees.  `.here field` names
+    the occurrence `field` of the innermost of them, and `.there` steps out to the node
+    above it.
+
+    It is what lets a branch of `LeanScript.Term.mutualRecursiveFamily_rec` look into
+    **several** subvalues (`LeanScript.FamilyFoldKBranch.deepOuter`).  Every node named is
+    on the path from the value being folded, so the occurrence is still a **subvalue** of
+    it. -/
+inductive FamilyOuterMemberField {n : Nat} (i : Nat) :
+    List (List (TyWfIn (n + 2))) → Type
+  /-- An occurrence among the fields of the innermost node above. -/
+  | here : ∀ {fs : List (TyWfIn (n + 2))} {outer : List (List (TyWfIn (n + 2)))},
+      FamilyMemberField i fs → FamilyOuterMemberField i (fs :: outer)
+  /-- An occurrence among the fields of a node further up. -/
+  | there : ∀ {fs : List (TyWfIn (n + 2))} {outer : List (List (TyWfIn (n + 2)))},
+      FamilyOuterMemberField i outer → FamilyOuterMemberField i (fs :: outer)
+  deriving DecidableEq, Repr
+
 end LeanScript
 
 end

@@ -385,8 +385,9 @@ def succTerm : Term sigAdd [] (peTy ⇒ peTy) :=
     the term given here, and `cons` answers with the value of the fold at its tail, which
     its branch binds at index `2`.  It is written once, for every motive and every depth,
     and used by every fold below. -/
-def lsCases {τ : TyWf} {Γ : Ctx} {k : Nat} (nilAnswer : Term sigAdd Γ τ) :
-    FamilyMemberFoldKCases sigAdd 0 famPe.members (pbind τ) Γ τ memLs k :=
+def lsCases {τ : TyWf} {Γ : Ctx} {k : Nat} {outer : List (List (TyWfIn 2))}
+    (nilAnswer : Term sigAdd Γ τ) :
+    FamilyMemberFoldKCases sigAdd 0 famPe.members (pbind τ) Γ τ memLs k outer :=
   .ctors (.skip (.here nilAnswer) (.here (.here (.var (v♯2))) .nil))
 
 end TermTests.FamilyRecDepth

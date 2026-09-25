@@ -15,8 +15,9 @@ public meta import LeanScript.ToTerm.Elab
 `tribonacci`, `tetranacci`, `pentanacci`, … ; the other `…ToTermTest/` directories do the
 same for the other folds.  These files do it for
 `LeanScript.Term.mutualRecursiveFamily_rec k`, the fold of a **mutual recursive family**,
-whose branches may look `k` constructors further down, one subvalue at a time, into any
-member of the family.
+whose branches may look `k` constructors further down into any member of the family —
+into one subvalue after another along a path, or, after one of them, into a sibling
+(`TermTests/MutualFamilyToTermTest/BothSubtrees/`).
 
 **Which Lean program is a `mutualRecursiveFamily_rec k`.**  A structural recursion on a
 member of a `mutual … end` block of inductive types.  Each member's tree is

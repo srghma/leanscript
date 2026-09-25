@@ -71,6 +71,51 @@ def famCurrentUnfolded (nE f hwf : Expr) : MetaM Expr := do
   reduceTy (mkAppN (mkConst ``LeanScript.LeanFamMemberSchema.map)
     #[tyWfInE sc, tyE, mkApp3 (mkConst ``LeanScript.TyWfIn.unfoldFam) nE f hwf, curE])
 
+/-- A `_sparseCasesOn_` auxiliary written as the exhaustive `casesOn` it stands for: the
+    named constructors keep their branches, every other one takes the `else` branch (when
+    that branch does not use the proof that the value is none of the named constructors,
+    which the language erases).  Used for a type with no partial dispatch of its own. -/
+def sparseAsCasesOn? (n : Name) (args : Array Expr) :
+    MetaM (Option Expr) := do
+  let some (arity, named, p) ← sparseCasesOnInfo? n | return none
+  if args.size < arity then return none
+  let motive := args[p]!
+  let major := args[p + 1]!
+  let mty ← whnf (← inferType major)
+  let .const indName indLvls := mty.getAppFn | return none
+  let some (.inductInfo ii) := (← getEnv).find? indName | return none
+  unless ii.numIndices == 0 do return none
+  let ctors := ii.ctors.toArray
+  if named.length ≥ ctors.size then return none
+  unless (← getEnv).contains (indName ++ `casesOn) do return none
+  let motiveLvl ← do
+    let mt ← whnf (← inferType motive)
+    let .forallE _ _ b _ := mt | return none
+    let .sort u := (← whnf b) | return none
+    pure u
+  let elseArg := args[p + 2 + named.length]!
+  let .forallE _ dom _ _ ← whnf (← inferType elseArg) | return none
+  let dflt? ← withLocalDeclD `h dom fun hv => do
+    let b ← whnfCore (mkApp elseArg hv)
+    if b.containsFVar hv.fvarId! then return none
+    return some b
+  let some dflt := dflt? | return none
+  let params := mty.getAppArgs
+  let casesOn := mkAppN (mkConst (indName ++ `casesOn) (motiveLvl :: indLvls))
+    (params ++ #[motive, major])
+  let mut cur := casesOn
+  for i in [0:ctors.size] do
+    let minor ← match named.idxOf? i with
+      | some j => pure args[p + 2 + j]!
+      | none => do
+          let .forallE _ d _ _ ← whnf (← inferType cur)
+            | throwError "`#leanscript_to_term`: internal: {indName}.casesOn takes too few \
+                branches"
+          forallTelescopeReducing d fun xs _ => mkLambdaFVars xs dflt
+    cur := mkApp cur minor
+  let extra := args.extract arity args.size
+  return some (mkAppN cur extra)
+
 /-- A `match` that names only some of the constructors, as Lean compiled it: the
     auxiliary `f._sparseCasesOn_i`.  Its branches and its `else` branch are the branches
     and the default of the grammar's partial dispatch, so this is where
@@ -82,12 +127,12 @@ def famCurrentUnfolded (nE f hwf : Expr) : MetaM Expr := do
     is built instead, which is what `none` means. -/
 def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
     (args : Array Expr) : MetaM (Option Expr) := do
-  let some (arity, named) ← sparseCasesOnInfo? n | return none
+  let some (arity, named, p) ← sparseCasesOnInfo? n | return none
   if args.size < arity then
     return some (← trans c (← etaExpand e))
-  let motive ← whnf args[0]!
+  let motive ← whnf args[p]!
   unless motive.isLambda do return none
-  let major := args[1]!
+  let major := args[p + 1]!
   let sty ← tyOfTerm major
   -- the grammar has a partial dispatch for a sum type only
   let view ← tyView sty
@@ -111,8 +156,8 @@ def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls
   -- the branches, by constructor number, and the default
   let mut minors : Array Expr := ctors.map fun _ => (Lean.mkConst ``True)
   for j in [0:named.length] do
-    minors := minors.set! named[j]! args[2 + j]!
-  let elseArg := args[2 + named.length]!
+    minors := minors.set! named[j]! args[p + 2 + j]!
+  let elseArg := args[p + 2 + named.length]!
   let elseTy ← whnf (← inferType elseArg)
   let .forallE _ dom _ _ := elseTy | return none
   let dflt ← withLocalDeclD `h dom fun hv => do

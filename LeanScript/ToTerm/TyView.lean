@@ -139,6 +139,15 @@ def isBoolTy (τ : Expr) : MetaM Bool := do
 
 /-! ## The tree that models a Lean type -/
 
+/-- The tree of an auxiliary type of a nested inductive (`List Rose`), from the instance
+    `deriving LeanScriptTyWf` added for it, which selects its member of the family. -/
+def nestedAuxTree? (α : Expr) : MetaM (Option Expr) := do
+  let cls ← mkAppM ``LeanScript.LeanScriptTyWf #[α]
+  let .some inst ← trySynthInstance cls | return none
+  let .const n _ := inst.getAppFn | return none
+  unless n.isStr && n.getString!.startsWith "instLeanScriptTyWfNested" do return none
+  return some (← reduceTy (← mkAppOptM ``LeanScript.tyOf #[α, inst]))
+
 /-- The tree of the language that models the Lean type `α`, reduced.
 
     `List α` is the recursive tagged union it is, `Array α` is `Ty.array`; a
@@ -148,6 +157,9 @@ partial def treeOfType (α : Expr) : MetaM Expr := do
   let α' ← whnf α
   match α'.getAppFnArgs with
   | (``List, #[β]) =>
+      -- the list of the declarations of a nested inductive (`List Rose`) is a member of
+      -- their family, the instance `deriving LeanScriptTyWf` added for it
+      if let some t ← nestedAuxTree? α' then return t
       reduceTy (listTyE (← treeOfType β))
   | (``Array, #[β]) =>
       reduceTy (mkApp (mkConst ``LeanScript.Ty.array) (← treeOfType β))

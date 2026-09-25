@@ -239,7 +239,7 @@ def natHeadNotExhaustive : Term recEmptySig [] (natListTy ⇒ TyWf.prim .nat) :=
 error: Application type mismatch: The argument
   FamilyFoldKCases.nil
 has type
-  FamilyFoldKCases ?m.91 ?m.92 ?m.93 ?m.94 ?m.95 ?m.96 [] ?m.97
+  FamilyFoldKCases ?m.97 ?m.98 ?m.99 ?m.100 ?m.101 ?m.102 [] ?m.103
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
     (TyWf.prim LeanPrimTy.nat) [memberB] 0

@@ -113,6 +113,11 @@ instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) := ⟨TyWf.option (tyW
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α × β) :=
   ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
 
+/-- `PProd` at `Type`, the pair Lean uses for the answers of the functions of a `mutual`
+    block that recurse on the same type: the same record as `α × β`. -/
+instance {α β : Type} [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (PProd α β) :=
+  ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
+
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
   ⟨TyWf.sum (tyWfOf α) (tyWfOf β)⟩
 

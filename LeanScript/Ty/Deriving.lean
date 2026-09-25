@@ -95,6 +95,82 @@ partial def setImplicit (k : Nat) (e : Expr) : Expr :=
   | k + 1, .lam nm t b _ => .lam nm t (setImplicit k b) .implicit
   | _, e => e
 
+/-- For a nested inductive block, whose tree is a family with a member for each auxiliary
+    type whose own model is a binder (`List T`, any recursive wrapper), the instance of
+    each such auxiliary type: the same family, **selecting that member**.  So `List T` is
+    a type of the language that *is* the member its values are stored as, and a function
+    on `List T` is a function on that member.  The auxiliary types of non-recursive
+    wrappers (`Option T`) are not members — the occurrence stands inside the wrapper's
+    shape — and get none. -/
+def mkNestedAuxInstances (n : Name) (ind : InductiveVal) (params binders : Array Expr)
+    (tree : Expr) :
+    TermElabM Unit := do
+  let auxs ← nestedAuxTypes ind params
+  if auxs.isEmpty then return
+  let t ← whnfD tree
+  let (``LeanScript.Ty.mutualRecursiveFamily, #[fam]) := t.getAppFnArgs | return
+  let members ← whnfD (mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.members) tyE fam)
+  let some ms := members.listLit? | return
+  -- the auxiliary types that are members, in order, after the declared members
+  let mut hoisted : Array Expr := #[]
+  for d in auxs do
+    let .const h _ := d.getAppFn | return
+    let some (.inductInfo hi) := (← getEnv).find? h | return
+    if hi.isRec then hoisted := hoisted.push d
+  unless ms.2.length == ind.all.length + hoisted.size do return
+  for h : j in [0:hoisted.size] do
+    let d := hoisted[j]
+    let k := ind.all.length + j
+    -- the same members, selecting member `k`
+    let msA := ms.2.toArray
+    let schemaTy := mkApp (mkConst ``LeanScript.LeanFamMemberSchema) tyE
+    let listOf (xs : Array Expr) : MetaM Expr := mkListLit schemaTy xs.toList
+    let famK ← if k + 1 < msA.size then
+        pure (mkAppN (mkConst ``LeanScript.LeanMutualRecFamily.selectedThenMore)
+          #[tyE, ← listOf (msA.extract 0 k), msA[k]!, msA[k + 1]!,
+            ← listOf (msA.extract (k + 2) msA.size)])
+      else
+        pure (mkAppN (mkConst ``LeanScript.LeanMutualRecFamily.selectedLast)
+          #[tyE, msA[0]!, ← listOf (msA.extract 1 k), msA[k]!])
+    let sel := mkApp (mkConst ``LeanScript.Ty.mutualRecursiveFamily) famK
+    let defValue ← mkLambdaFVars binders sel
+    let defType ← mkForallFVars binders tyE
+    let declName := n ++ Name.mkSimple s!"leanScriptTyOfNested{k}"
+    let wfName := n ++ Name.mkSimple s!"leanScriptTyOfNested{k}_wf"
+    let lvls := usedLevels defType defValue
+    addAndCompile (.defnDecl
+      { name := declName, levelParams := lvls, type := defType, value := defValue,
+        hints := .abbrev, safety := .safe })
+    let app := mkAppN (mkConst declName (lvls.map .param)) binders
+    let wfProof ←
+      try LeanScript.Ty.mkWfIn 0 app
+      catch e => throwError "the auxiliary type `{d}` of `{n}` has no `Ty`: {e.toMessageData}"
+    let wfValue ← mkLambdaFVars binders wfProof
+    let wfType ← mkForallFVars binders
+      (mkApp2 (mkConst ``LeanScript.Ty.WfIn) (mkNatLit 0) app)
+    addDecl (.thmDecl
+      { name := wfName, levelParams := usedLevels wfType wfValue, type := wfType,
+        value := wfValue })
+    let dlvls := ((← getEnv).find? declName).get!.levelParams.map Level.param
+    let wlvls := ((← getEnv).find? wfName).get!.levelParams.map Level.param
+    let bundle ← mkAppOptM ``LeanScript.TyWf.mk
+      #[some (mkAppN (mkConst declName dlvls) binders),
+        some (mkAppN (mkConst wfName wlvls) binders)]
+    let instValue ← mkLambdaFVars binders (← mkAppOptM ``LeanScript.LeanScriptTyWf.mk
+      #[some d, some bundle])
+    let instType ← mkForallFVars binders (← mkAppM ``LeanScript.LeanScriptTyWf #[d])
+    let instName := n ++ Name.mkSimple s!"instLeanScriptTyWfNested{k}"
+    let nP := params.size
+    let instType := setImplicit nP instType
+    let instValue := setImplicit nP instValue
+    addAndCompile (.defnDecl
+      { name := instName, levelParams := usedLevels instType instValue, type := instType,
+        value := instValue, hints := .abbrev, safety := .safe })
+    setReducibleAttribute instName
+    -- above the generic instance of the wrapper (`List α`), which would give the list
+    -- of them its own tree rather than the member
+    addInstance instName .global (eval_prio high)
+
 /-- Add the instance for the declaration `n`: its tree, the proof that the tree is a
     type, and the instance holding them.  The tree and the proof are shared with any
     declaration that already has the same tree. -/
@@ -170,6 +246,10 @@ def mkInstanceFor (n : Name) : TermElabM Unit := do
           value := instValue, hints := .abbrev, safety := .safe })
       setReducibleAttribute instName
       addInstance instName .global (eval_prio default)
+      -- a nested inductive: the auxiliary types Lean adds for it (`List T`) are members
+      -- of the family too, and get instances selecting those members
+      if n == ind.all.headD n then
+        mkNestedAuxInstances n ind params binders (mkAppN (mkConst declName dlvls) binders)
 
 /-! ## The `deriving` clause
 
