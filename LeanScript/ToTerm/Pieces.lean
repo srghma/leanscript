@@ -100,7 +100,7 @@ partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : MetaM Expr
   let mut tys : List Expr := []
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
-    sp := (← mkNode ``LeanScript.Spine.cons
+    sp := (← mkNode ``LeanScript.Spine.consT
       #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp])
     tys := τ :: tys
   return sp

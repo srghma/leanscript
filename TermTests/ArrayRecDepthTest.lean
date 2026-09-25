@@ -120,14 +120,14 @@ def loopZero {Γ : Ctx} :=
     the tail (index `2`), and answers `fun a b => loop (x * a + b) a`. -/
 def loopStep {Γ : Ctx} :=
   (.lam (.lam
-      (.letE (mulT (.var (v♯2)) (.var (v♯1)))
-        (.letE (addT (.var (v♯0)) (.var (v♯1)))
+      (.letT (mulT (.var (v♯2)) (.var (v♯1)))
+        (.letT (addT (.var (v♯0)) (.var (v♯1)))
           (.ap (.ap (.var (v♯6)) (.var (v♯0))) (.var (v♯3)))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) _ Acc2 _)
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
 def contTRTerm :=
-  (.lam (.letE (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep)
+  (.lam (.letT (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep)
      (.ap (.ap (.var (v♯0)) (.nat_mk 1)) (.nat_mk 0))) :
     Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
@@ -221,8 +221,8 @@ def pairZero {Γ : Ctx} :=
     at `x :: xs`. -/
 def pairStep {Γ : Ctx} :=
   (.record_casesOn (.var (v♯2))
-      (.letE (mulT (.var (v♯2)) (.var (v♯0)))
-        (.letE (addT (.var (v♯0)) (.var (v♯2)))
+      (.letT (mulT (.var (v♯2)) (.var (v♯0)))
+        (.letT (addT (.var (v♯0)) (.var (v♯2)))
           (.record_mk pairSchema (.cons (.var (v♯0)) (.cons (.var (v♯2)) .nil))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 Γ) _ Pair _)
 
@@ -235,13 +235,13 @@ def contPairTerm {Γ : Ctx} :=
     array would be a β-redex, which is not a term: the fold is written in place, on the
     array the function would have been applied to. -/
 def contFromPairTerm :=
-  (.lam (.letE (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep)
+  (.lam (.letT (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep)
      (.record_casesOn (fs := pairSchema) (.var (v♯0)) (.var (v♯0)))) :
     Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contFromPairTerm #[] = 1 := rfl
 example : runArith contFromPairTerm #[3, 4] = 13 := rfl
-example : runArith contFromPairTerm #[1, 2, 3] = 10 := rfl
+example : runArith contFromPairTerm #[1, 2, 3] = 10 := by decide +kernel
 
 /-- **Any** depth-zero fold at the record type with these two equations is the pair
     recursion. -/

@@ -215,25 +215,46 @@ def deep_term :=
       TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /--
-info: (((((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
-                      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-                  (((Term.var DeBruijnProj.head.tail.tail).ap (Term.var DeBruijnProj.head) ⋯ ⋯).letE
-                    ((Term.var DeBruijnProj.head.tail.tail.tail.tail.tail).bool_casesOn
-                      (((Term.var DeBruijnProj.head.tail.tail.tail).ap (Term.var DeBruijnProj.head.tail.tail) ⋯ ⋯).letE
-                        ((Term.var DeBruijnProj.head.tail.tail.tail.tail.tail).bool_casesOn
-                          (Term.externCall
-                            (Spine.cons (Term.var DeBruijnProj.head)
-                              (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-                            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-                          (Term.var DeBruijnProj.head) ⋯ ⋯ ⋯ ⋯ ⋯)
-                        ⋯ ⋯ ⋯ ⋯ ⋯)
-                      (Term.var DeBruijnProj.head) ⋯ ⋯ ⋯ ⋯ ⋯)
-                    ⋯ ⋯ ⋯ ⋯ ⋯)
-                  deep_term._proof_32 ⋯ ⋯ ⋯ ⋯).lam
-              ⋯).lam
-          ⋯).lam
-      ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.atom
+          (Atom.lam
+            (Term.atom
+              (Atom.lam
+                (Term.letE
+                  (Comp.externCall
+                    (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) (Spine.cons (Atom.nat_mk 1) Spine.nil))
+                    (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+                  (Term.letE
+                    (Comp.ap (Callee.ref (Ref.var DeBruijnProj.head.tail.tail)) (Atom.ref (Ref.var DeBruijnProj.head))
+                      ⋯)
+                    (Term.comp
+                      (Comp.bool_casesOn (Ref.var DeBruijnProj.head.tail.tail.tail.tail.tail)
+                        (Term.letE
+                          (Comp.ap (Callee.ref (Ref.var DeBruijnProj.head.tail.tail.tail))
+                            (Atom.ref (Ref.var DeBruijnProj.head.tail.tail)) ⋯)
+                          (Term.comp
+                            (Comp.bool_casesOn (Ref.var DeBruijnProj.head.tail.tail.tail.tail.tail)
+                              (Term.comp
+                                (Comp.externCall
+                                  (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+                                    (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) Spine.nil))
+                                  (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1))
+                                  ⋯ ⋯)
+                                deep_term._proof_8)
+                              (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) ⋯ ⋯ ⋯ ⋯)
+                            ⋯)
+                          ⋯ ⋯ ⋯ ⋯)
+                        (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) ⋯ ⋯ ⋯ ⋯)
+                      ⋯)
+                    ⋯ ⋯ ⋯ ⋯)
+                  ⋯ ⋯ ⋯ ⋯)
+                ⋯))
+            ⋯))
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) deep_term

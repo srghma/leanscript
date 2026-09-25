@@ -149,14 +149,24 @@ example : run shareUnderFunDef_term 3 4 = 13 := rfl
 
 -- The `let` is kept, outside the inner `fun`.
 /--
-info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-      ((Term.externCall
-            (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).lam
-        ⋯)
-      shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.letE
+      (Comp.externCall
+        (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+          (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+      (Term.atom
+        (Atom.lam
+          (Term.comp
+            (Comp.externCall
+              (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail))
+                (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+            shareUnderFunDef_term._proof_7)
+          ⋯))
+      ⋯ ⋯ ⋯ ⋯)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) shareUnderFunDef_term
@@ -173,18 +183,28 @@ example : run shareInFoldDef_term 3 5 = 45 := rfl
 
 -- The `let` is kept, outside the fold.
 /--
-info: (((Term.externCall
-              (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-          (Term.nat_rec 0 (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 0) Spine.nil)
-            (Term.externCall
-              (Spine.cons (Term.var DeBruijnProj.head.tail)
-                (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
-              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-            ⋯ shareInFoldDef_term._proof_8 ⋯ ⋯)
-          shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
-      ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.letE
+          (Comp.externCall
+            (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail))
+              (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) Spine.nil))
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+          (Term.comp
+            (Comp.nat_rec 0 (Atom.ref (Ref.var DeBruijnProj.head.tail)) (Spine.cons (Atom.nat_mk 0) Spine.nil)
+              (Term.comp
+                (Comp.externCall
+                  (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail))
+                    (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail.tail)) Spine.nil))
+                  (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+                shareUnderFunDef_term._proof_7)
+              ⋯ shareInFoldDef_term._proof_6 ⋯)
+            shareUnderFunDef_term._proof_7)
+          ⋯ ⋯ ⋯ ⋯)
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) shareInFoldDef_term
@@ -201,13 +221,21 @@ def hiddenBetaDef_term :=
 example : run hiddenBetaDef_term 5 = 30 := rfl
 
 /--
-info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-      (Term.externCall
-        (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-      shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.letE
+      (Comp.externCall
+        (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+          (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+      (Term.comp
+        (Comp.externCall
+          (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+            (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) Spine.nil))
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+        shareUnderFunDef_term._proof_7)
+      ⋯ ⋯ ⋯ ⋯)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) hiddenBetaDef_term

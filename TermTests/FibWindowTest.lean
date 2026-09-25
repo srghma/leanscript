@@ -74,13 +74,13 @@ def seed {Γ : Ctx} :=
     construction. -/
 def step {Γ : Ctx} :=
   (.record_casesOn (.var (v♯1))
-      (.letE (addT (.var (v♯0)) (.var (v♯1)))
+      (.letT (addT (.var (v♯0)) (.var (v♯1)))
         (.record_mk winSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil)))) :
     Term sigAdd (TyWf.prim .nat :: Win :: Γ) _ Win _)
 
 /-- The fold itself: the window at the argument. -/
 def window {Γ : Ctx} :=
-  (.lam (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step) :
+  (.lam (.nat_rec 0 (.var (v♯0)) (.consT seed .nil) step) :
     Term sigAdd Γ _ (TyWf.prim .nat ⇒ Win) _)
 
 /-- `fib`, as a term of the language: the first field of the window.  (The fold is written
@@ -88,7 +88,7 @@ def window {Γ : Ctx} :=
     β-redex, which the grammar does not have.  The fold is bound by a `let`, since what a
     dispatch takes apart is a name.) -/
 def fib_term :=
-  (.lam (.letE (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+  (.lam (.letE (.nat_rec 0 (.var (v♯0)) (.consT seed .nil) step)
      (.record_casesOn (fs := winSchema) (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 

@@ -58,14 +58,14 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 /-- The depth of a term that is an `array_rec`, or `none`. -/
 def arrayRecDepthOf? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
     Term sig0 Γ u τ h → Option Nat
-  | .array_rec k .. => some k
+  | .comp (.array_rec k ..) _ => some k
   | _ => none
 
 /-- The depth of the `array_rec` a translated function `fun a => array_rec k …` is, or
     `none` if the translation is not of that shape. -/
 def arrayRecDepth? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} :
     Term sig0 Γ u τ h → Option Nat
-  | .lam b _ => arrayRecDepthOf? b
+  | .atom (.lam b _) => arrayRecDepthOf? b
   | _ => none
 
 /-! ## `k = 0`: the sum of an array
@@ -137,8 +137,8 @@ example : run tribArr_term #[] = 0 := rfl
 example : run tribArr_term #[6] = 6 := rfl
 example : run tribArr_term #[1, 2] = 3 := rfl
 example : run tribArr_term #[1, 2, 3] = 9 := rfl
-example : run tribArr_term #[1, 1, 1, 1, 1, 1] = 28 := rfl
-example : run tribArr_term #[1, 2, 3, 4, 5] = tribArr #[1, 2, 3, 4, 5] := rfl
+example : run tribArr_term #[1, 1, 1, 1, 1, 1] = 28 := by decide +kernel
+example : run tribArr_term #[1, 2, 3, 4, 5] = tribArr #[1, 2, 3, 4, 5] := by decide +kernel
 -- `kernel_rfl`, not `rfl`: the elaborator's own check of the equation is slow here (every
 -- extern call goes through the case splits of `Extern.eval`), while the
 -- kernel checks it quickly (see `LeanScript/KernelRfl.lean`).
@@ -168,7 +168,7 @@ example : run tetraArr_term #[] = 0 := rfl
 example : run tetraArr_term #[2] = 2 := rfl
 example : run tetraArr_term #[1, 2] = 3 := rfl
 example : run tetraArr_term #[1, 2, 3] = 9 := rfl
-example : run tetraArr_term #[1, 1, 1, 1] = 8 := rfl
+example : run tetraArr_term #[1, 1, 1, 1] = 8 := by decide +kernel
 -- `kernel_rfl`, not `rfl`: the elaborator's own check of the equation is slow here (every
 -- extern call goes through the case splits of `Extern.eval`), while the
 -- kernel checks it quickly (see `LeanScript/KernelRfl.lean`).
@@ -200,8 +200,8 @@ example : arrayRecDepth? pentaArr_term = some 4 := rfl
 example : run pentaArr_term #[] = 0 := rfl
 example : run pentaArr_term #[1, 2, 3] = 0 := rfl
 example : run pentaArr_term #[7, 2, 3, 4] = 7 := rfl
-example : run pentaArr_term #[1, 1, 1, 1, 1, 1] = 4 := rfl
-example : run pentaArr_term #[3, 1, 4, 1, 5, 9] = pentaArr #[3, 1, 4, 1, 5, 9] := rfl
+example : run pentaArr_term #[1, 1, 1, 1, 1, 1] = 4 := by decide +kernel
+example : run pentaArr_term #[3, 1, 4, 1, 5, 9] = pentaArr #[3, 1, 4, 1, 5, 9] := by decide +kernel
 
 /-! ## `k = 0` at a function type: an accumulator
 

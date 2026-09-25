@@ -64,7 +64,7 @@ def tribCases :=
               (.deep (.here rfl)
                 (.skip (.here (.nat_mk 1))
                   (.here
-                    (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
+                    (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
                              (addT (.var (v♯0)) (.var (v♯6)))))
                     .nil)))
               .nil)))
@@ -89,8 +89,8 @@ def tetraCases :=
                     (.deep (.here rfl)
                       (.skip (.here (.nat_mk 1))
                         (.here
-                          (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                   (.letE (addT (.var (v♯0)) (.var (v♯6)))
+                          (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                   (.letT (addT (.var (v♯0)) (.var (v♯6)))
                                      (addT (.var (v♯0)) (.var (v♯9))))))
                           .nil)))
                     .nil)))
@@ -119,9 +119,9 @@ def pentaCases :=
                           (.deep (.here rfl)
                             (.skip (.here (.nat_mk 1))
                               (.here
-                                (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                         (.letE (addT (.var (v♯0)) (.var (v♯6)))
-                                           (.letE (addT (.var (v♯0)) (.var (v♯9)))
+                                (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                         (.letT (addT (.var (v♯0)) (.var (v♯6)))
+                                           (.letT (addT (.var (v♯0)) (.var (v♯9)))
                                              (addT (.var (v♯0)) (.var (v♯12)))))))
                                 .nil)))
                           .nil)))
@@ -154,10 +154,10 @@ def hexaCases :=
                                 (.deep (.here rfl)
                                   (.skip (.here (.nat_mk 1))
                                     (.here
-                                      (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                               (.letE (addT (.var (v♯0)) (.var (v♯6)))
-                                                 (.letE (addT (.var (v♯0)) (.var (v♯9)))
-                                                   (.letE (addT (.var (v♯0)) (.var (v♯12)))
+                                      (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                               (.letT (addT (.var (v♯0)) (.var (v♯6)))
+                                                 (.letT (addT (.var (v♯0)) (.var (v♯9)))
+                                                   (.letT (addT (.var (v♯0)) (.var (v♯12)))
                                                      (addT (.var (v♯0)) (.var (v♯15))))))))
                                       .nil)))
                                 .nil)))
@@ -186,14 +186,14 @@ abbrev loopTy : TyWf := natT ⇒ natT ⇒ natT
 def fibTRCases :=
   (.skip (.here (.lam (.lam (.var (v♯1)))))
       (.here
-        (.here (.lam (.lam (.letE (addT (.var (v♯1)) (.var (v♯0)))
+        (.here (.lam (.lam (.letT (addT (.var (v♯1)) (.var (v♯0)))
           (.ap (.ap (.var (v♯4)) (.var (v♯1))) (.var (v♯0)))))))
         .nil) :
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind loopTy) PCtx _ peanoSchema loopTy 0)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm :=
-  (.lam (.letE (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
+  (.lam (.letT (.recTaggedUnion_rec 0 (.var (v♯0)) fibTRCases) (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
@@ -214,14 +214,14 @@ def fibPairCases :=
   (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
       (.here
         (.here (.record_casesOn (.var (v♯1))
-          (.letE (addT (.var (v♯0)) (.var (v♯1)))
+          (.letT (addT (.var (v♯0)) (.var (v♯1)))
             (.record_mk pairSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil))))))
         .nil) :
     TaggedUnionFoldKCases sigAdd peanoSchema (pbind pairTy) PCtx _ peanoSchema pairTy 0)
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm :=
-  (.lam (.letE (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
+  (.lam (.letT (.recTaggedUnion_rec 0 (.var (v♯0)) fibPairCases) (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (peanoTy ⇒ natT) .lam)
 
 /-! ## 6. A constructor with more than one field: the continuant over a list
@@ -270,7 +270,7 @@ def contCases :=
       (.here
         (.deep (.there (.here rfl))
           (.skip (.here (.var (v♯0)))
-            (.here (.here (.letE (mulT (.var (v♯3)) (.var (v♯5)))
+            (.here (.here (.letT (mulT (.var (v♯3)) (.var (v♯5)))
                             (addT (.var (v♯0)) (.var (v♯3))))) .nil)))
         .nil) :
     TaggedUnionFoldKCases sigAdd natListSchema (lbind natT) LCtx _ natListSchema natT 1)

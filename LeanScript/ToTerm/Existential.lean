@@ -84,7 +84,7 @@ def injectOneOf (sg γ τ : Expr) (i : Nat) (alt t : Expr) : MetaM Expr := do
   let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfTyE l
   let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit i, lenE])
   let nilTys := mkApp (mkConst ``List.nil [Level.zero]) tyWfTyE
-  let spine := (← mkNode ``LeanScript.Spine.cons
+  let spine := (← mkNode ``LeanScript.Spine.consT
     #[sg, γ, alt, nilTys, t, ← mkNode ``LeanScript.Spine.nil #[sg, γ]])
   return (← mkNode ``LeanScript.Term.taggedUnion_mk #[sg, γ, l, mkNatLit i, prf, spine])
 
@@ -293,7 +293,7 @@ where
         for i in [0:ts.size] do
           ts' := ts'.push (← if i == j then mkVarTerm sg γ' 0 else shiftBy ts[i]! γ' 1)
         let body ← applyAnf fnHead pre nRest sg γ' ts'
-        mkNode ``LeanScript.Term.letE #[sg, γ, σ, ← termTyOf body, ts[j]!, body]
+        mkNode ``LeanScript.Term.letT #[sg, γ, σ, ← termTyOf body, ts[j]!, body]
     | none =>
         let mut cur := mkAppN fnHead (#[sg, γ] ++ pre.extract 2 pre.size)
         let mut ty ← inferType cur

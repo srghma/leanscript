@@ -66,7 +66,7 @@ partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
     let body := b.instantiate1 x
     let b' ← trans c' body
     let τ ← tyOfTermOr body b'
-    return (← mkNode ``LeanScript.Term.letE #[c.sg, c.gamma, σ, τ, v', b'])
+    return (← mkNode ``LeanScript.Term.letT #[c.sg, c.gamma, σ, τ, v', b'])
 
 /-- A literal of a terminal type, carried into the term as it stands. -/
 partial def transLit? (c : TCtx) (e : Expr) : MetaM (Option Expr) := do
@@ -506,7 +506,7 @@ partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do
   let mut ts := (← mkNode ``LeanScript.Terms.nil #[c.sg, c.gamma, σ])
   for i in [0:elems.size] do
     let a := elems[elems.size - 1 - i]!
-    ts := (← mkNode ``LeanScript.Terms.cons #[c.sg, c.gamma, σ, ← trans c a, ts])
+    ts := (← mkNode ``LeanScript.Terms.consT #[c.sg, c.gamma, σ, ← trans c a, ts])
   return (← mkNode ``LeanScript.Term.array_mk #[c.sg, c.gamma, σ, ts])
 
 /-- A spine of arguments at the given trees. -/
@@ -519,7 +519,7 @@ partial def mkSpine (c : TCtx) (tys : List Expr) (vals : Array Expr) : MetaM Exp
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
     let t ← trans c vals[j]!
-    sp := (← mkNode ``LeanScript.Spine.cons
+    sp := (← mkNode ``LeanScript.Spine.consT
       #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp])
   return sp
 

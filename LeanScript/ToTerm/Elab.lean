@@ -65,7 +65,7 @@ def elabLeanscriptToTerm : TermElab := fun stx expected? => do
   let (sgOfExpected, base) ← sigAndCtxOf? expected?
   let sg ← if sigStx.isNone then pure sgOfExpected else
     instantiateMVars (← elabTerm sigStx[3] (mkConst ``LeanScript.Sig))
-  let t ← translate sg base e
+  let t ← unflatten (← translate sg base e)
   match expected? with
   | some ty => Term.ensureHasType ty t
   | none => return t
@@ -88,13 +88,17 @@ conditions of what is left.  If something other than a side condition is wrong w
     are dropped and recomputed, and every node that is a redex is reduced. -/
 partial def optimizeTerm (t : Expr) : MetaM Expr := do
   let t ← instantiateMVars t
+  -- a real constructor of the categories is read as its flat view
+  let t ← match ← flatView? t with
+    | some v => pure v
+    | none => pure t
   let fn := t.getAppFn
   let some ctor := fn.constName? | return t
-  let some (.ctorInfo ci) := (← getEnv).find? ctor | return t
-  unless isGrammarFamily ci.induct do return t
+  unless isNodeConst (← getEnv) ctor do return t
+  let ci ← nodeConstInfo ctor
   let args := t.getAppArgs
-  unless args.size == ci.numParams + ci.numFields do return t
   let info ← ctorInfo ctor
+  unless args.size == ci.numParams + info.roles.size do return t
   let mut out := args.extract 0 ci.numParams
   for i in [0:info.roles.size] do
     let a := args[ci.numParams + i]!
@@ -128,7 +132,7 @@ def elabLeanscriptOptimize : TermElab := fun stx expected? => do
   -- the side conditions `t` does not meet are rebuilt, so their errors are set aside
   Core.setMessageLog before
   let t ← try
-      let t ← instantiateMVars (← optimizeTerm e)
+      let t ← unflatten (← instantiateMVars (← optimizeTerm e))
       unless t.hasSorry || t.hasExprMVar do Meta.check t
       pure t
     catch ex =>

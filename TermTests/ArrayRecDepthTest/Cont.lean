@@ -63,7 +63,7 @@ def contBases :=
 
 /-- The branch: `a * K as + K (as.drop 1)`. -/
 def contBranch :=
-  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
+  (.letT (mulT (.var (v♯0)) (.var (v♯2)))
      (addT (.var (v♯0)) (.var (v♯4))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) _ natT _)
 
@@ -131,8 +131,8 @@ def cont3Bases :=
 
 /-- The branch of the depth-two fold: `a * K as + K (as.drop 1) + K (as.drop 2)`. -/
 def cont3Branch :=
-  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
-     (.letE (addT (.var (v♯0)) (.var (v♯4)))
+  (.letT (mulT (.var (v♯0)) (.var (v♯2)))
+     (.letT (addT (.var (v♯0)) (.var (v♯4)))
        (addT (.var (v♯0)) (.var (v♯6)))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) _ natT _)
 
@@ -164,16 +164,16 @@ def cont4Bases :=
   (.cons (.nat_mk 1)
       (.cons (.var (v♯0))
         (.cons (mulT (.var (v♯1)) (.var (v♯0)))
-          (.nil (.letE (mulT (.var (v♯2)) (.var (v♯1)))
+          (.nil (.letT (mulT (.var (v♯2)) (.var (v♯1)))
                   (mulT (.var (v♯0)) (.var (v♯1))))))) :
     ArrayRecBases sigArith ArrCtx _ natT natT 3)
 
 /-- The branch of the depth-three fold: the head times the nearest answer, plus the other
     three the window holds. -/
 def cont4Branch :=
-  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
-     (.letE (addT (.var (v♯0)) (.var (v♯4)))
-       (.letE (addT (.var (v♯0)) (.var (v♯6)))
+  (.letT (mulT (.var (v♯0)) (.var (v♯2)))
+     (.letT (addT (.var (v♯0)) (.var (v♯4)))
+       (.letT (addT (.var (v♯0)) (.var (v♯6)))
          (addT (.var (v♯0)) (.var (v♯8))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) _ natT _)
 
@@ -184,7 +184,7 @@ def cont4Term :=
 
 example : runArith cont4Term #[] = 1 := rfl
 example : runArith cont4Term #[2, 3, 4] = 24 := rfl
-example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := rfl
+example : runArith cont4Term #[1, 1, 1, 1, 1, 1] = 13 := by decide +kernel
 
 /-- The fold `Term.eval` runs for `cont4Term`. -/
 def cont4EvalFold (env : Env ArrCtx) : List Nat → Nat :=

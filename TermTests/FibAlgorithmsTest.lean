@@ -82,13 +82,13 @@ def loopZero {Γ : Ctx} :=
     A-normal form). -/
 def loopStep {Γ : Ctx} :=
   (.lam (.lam
-      (.letE (addT (.var (v♯1)) (.var (v♯0)))
+      (.letT (addT (.var (v♯1)) (.var (v♯0)))
         (.ap (.ap (.var (v♯4)) (.var (v♯1))) (.var (v♯0))))) :
     Term sigAdd (TyWf.prim .nat :: Acc2 :: Γ) _ Acc2 _)
 
 /-- `fibLoopTR`, as a term: a fold at a function type. -/
 def loop_term {Γ : Ctx} :=
-  (.lam (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) :
+  (.lam (.nat_rec 0 (.var (v♯0)) (.consT loopZero .nil) loopStep) :
     Term sigAdd Γ _ (TyWf.prim .nat ⇒ Acc2) _)
 
 /-- `fibTR`, as a term: the loop started at `(0, 1)`.  (The fold is written out rather than
@@ -96,7 +96,7 @@ def loop_term {Γ : Ctx} :=
     which the grammar does not have.  The fold is bound by a `let` before it is applied:
     what an application calls is a name.) -/
 def fibTR_term :=
-  (.lam (.letE (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep)
+  (.lam (.letT (.nat_rec 0 (.var (v♯0)) (.consT loopZero .nil) loopStep)
      (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 

@@ -168,7 +168,7 @@ def trib_term :=
   (#leanscript_to_term trib :
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-example : runAdd trib_term 10 = trib 10 := rfl
+example : runAdd trib_term 10 = trib 10 := by decide +kernel
 
 
 end TermTests.ToTerm

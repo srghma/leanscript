@@ -1,7 +1,7 @@
 module
 
 public import Lean.ToExpr
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 public import LeanScript.Eval.Extern
 
 @[expose] public section

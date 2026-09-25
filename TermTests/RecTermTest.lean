@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 public import LeanScript.Eval
 
 /-!
@@ -53,7 +53,7 @@ def natNil :=
 /-- `[3]`: `cons` of `3` and the empty list. -/
 def natOne :=
   (.recTaggedUnion_mk natListSchema (t := 1)
-     (fields := .cons (.nat_mk 3) (.cons natNil .nil)) :
+     (fields := .cons (.nat_mk 3) (.consT natNil .nil)) :
     Term recEmptySig [] _ natListTy .val)
 
 /-- The head of a list, or `0` — a dispatch on **every** constructor, whose `cons` branch
@@ -93,13 +93,13 @@ def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
 def roseLeaf :=
-  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil)) :
+  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.consT (.array_mk .nil) .nil)) :
     Term recEmptySig [] _ roseTy .ctor)
 
 /-- A tree with one child.  A field of a constructor is an atom (A-normal form), so the
     child and the array of children are bound by `let`s first. -/
 def roseOne :=
-  (.letE roseLeaf (.letE (.array_mk (.cons (.var (v♯0)) .nil))
+  (.letT roseLeaf (.letE (.array_mk (.cons (.var (v♯0)) .nil))
     (.recObject_mk roseSchema (fields := .cons (.nat_mk 2) (.cons (.var (v♯0)) .nil)))) :
     Term recEmptySig [] _ roseTy (.letIn _))
 
@@ -142,7 +142,7 @@ def emptyForest :=
 /-- A forest of one empty forest (the inner forest and the array are bound by `let`s: the
     fields of a constructor are atoms). -/
 def oneForest :=
-  (.letE emptyForest (.letE (.array_mk (.cons (.var (v♯0)) .nil))
+  (.letT emptyForest (.letE (.array_mk (.cons (.var (v♯0)) .nil))
     (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .var (v♯0)))) :
     Term recEmptySig [] _ forestTy (.letIn _))
 
@@ -189,14 +189,14 @@ def aNil :=
 
 /-- A `B`: the natural `7` and the `A` above. -/
 def bOne :=
-  (.letE aNil (.mutualRecursiveFamily_mk famB
+  (.letT aNil (.mutualRecursiveFamily_mk famB
      (value := .record _ (.cons (.nat_mk 7) (.cons (.var (v♯0)) .nil)))) :
     Term recEmptySig [] _ tyB (.letIn _))
 
 /-- An `A` built from that `B`.  A `let` does not bind another `let` (A-normal form), so
     the `let`s of `bOne` come first: `let a := aNil; let b := ⟨7, a⟩; .ctor1 b`. -/
 def aOne :=
-  (.letE aNil (.letE (.mutualRecursiveFamily_mk famB
+  (.letT aNil (.letE (.mutualRecursiveFamily_mk famB
      (value := .record _ (.cons (.nat_mk 7) (.cons (.var (v♯0)) .nil))))
     (.mutualRecursiveFamily_mk famA (value := .ctors _ 1 (fields := .cons (.var (v♯0)) .nil)))) :
     Term recEmptySig [] _ tyA (.letIn _))

@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 public import LeanScript.Eval
 
 /-!
@@ -56,7 +56,7 @@ def natFoldZero :=
 /-- `[5]`. -/
 def natFive :=
   (.recTaggedUnion_mk natListSchema (t := 1) 
-     (fields := .cons (.nat_mk 5) (.cons natNil .nil)) :
+     (fields := .cons (.nat_mk 5) (.consT natNil .nil)) :
     Term covEmptySig [] _ natListTy .val)
 
 /-! The four statements below held when a recursive tagged union denoted `PEmpty`.  They
@@ -99,7 +99,7 @@ def roseTy : TyWf := .recObject roseSchema
 
 /-- A leaf: the label `1` and no children. -/
 def roseLeaf :=
-  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil)) :
+  (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.consT (.array_mk .nil) .nil)) :
     Term covEmptySig [] _ roseTy .ctor)
 
 /-- A leaf is outside the evaluator's fragment. -/

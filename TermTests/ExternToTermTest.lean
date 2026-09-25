@@ -36,19 +36,41 @@ def sig0 : Sig := ⟨[], by decide⟩
 /-- Running a closed term of `sig0`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
+mutual
+
 /-- The first of `Term.extern`, `Term.externCall` and `Term.externCallChecked` in the term,
     looking under binders, applications and `let`s.  (The translation of `a + b` goes
     through the instances `HAdd Nat` and `Add Nat`, each a function applied to its
     arguments, before it reaches `Nat.add`.) -/
 def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Option String
+  | .atom a => externFormA? a
+  | .comp c _ => externFormC? c
+  | .letE a b .. => externFormC? a <|> externForm? b
+
+/-- `externForm?`, on an atom. -/
+def externFormA? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Atom sig0 Γ u τ k → Option String
   | .lam b _ => externForm? b
-  | .ap f a .. => externForm? f <|> externForm? a
-  | .letE a b .. => externForm? a <|> externForm? b
+  | .val c _ => externFormC? c
+  | _ => none
+
+/-- `externForm?`, on a computation. -/
+def externFormC? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Comp sig0 Γ u τ k → Option String
+  | .ap f a .. => externFormF? f <|> externFormA? a
   | .extern _ _ => some "extern"
   | .externCall .. => some "externCall"
   | .externCallChecked .. => some "externCallChecked"
   | _ => none
+
+/-- `externForm?`, on what an application calls. -/
+def externFormF? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Callee sig0 Γ u τ k → Option String
+  | .ref _ => none
+  | .app c => externFormC? c
+
+end
 
 /-! ## An extern without a proof: `Term.externCall` -/
 

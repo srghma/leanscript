@@ -38,13 +38,13 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.allAtom [Head.comp, Head.var (Var.index DeBruijn.head)] = true
+  Head.comp.isAtom = true
 is false
 -/
 #guard_msgs (error) in
 def nestedExtern :=
   (.lam (.externCall
-    (.cons (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+    (.consT (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
         fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
       (.cons (.var (v♯0)) .nil))
     fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) :
@@ -121,15 +121,21 @@ abbrev pairSchema : LeanRecordSchema TyWf := ⟨TyWf.prim .nat, TyWf.prim .nat, 
 error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.allAtom [Head.comp, Head.comp] = true
+  Head.comp.isAtom = true
+is false
+---
+error: could not synthesize default value for parameter 'hAnf' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.comp.isAtom = true
 is false
 -/
 #guard_msgs (error) in
 def pairOfComputations :=
   (.lam (.record_mk pairSchema
-    (.cons (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+    (.consT (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
         fun vs => .preludeExtern (.lean_nat_mul vs.1 vs.2.1))
-      (.cons (.externCall (.cons (.var (v♯0)) (.cons (.nat_mk 1) .nil))
+      (.consT (.externCall (.cons (.var (v♯0)) (.cons (.nat_mk 1) .nil))
         fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) .nil))) :
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.record pairSchema) .lam)
 
@@ -154,7 +160,7 @@ is false
 -/
 #guard_msgs (error) in
 def letOfLet :=
-  (.lam (.letE
+  (.lam (.letT
     (.letE
       (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
         fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
@@ -242,14 +248,22 @@ def smallTimesSix_term :=
   (#leanscript_to_term smallTimesSix : Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /--
-info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 3) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_dec_lt vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-      ((Term.var DeBruijnProj.head).bool_casesOn
-        (Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 6) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-        (Term.nat_mk 0) ⋯ smallTimesSix_term._proof_8 smallTimesSix_term._proof_9 ⋯ ⋯)
-      sumSq_term._proof_12 ⋯ ⋯ ⋯ ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.letE
+      (Comp.externCall (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) (Spine.cons (Atom.nat_mk 3) Spine.nil))
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_dec_lt vs.1 vs.2.1)) ⋯ ⋯)
+      (Term.comp
+        (Comp.bool_casesOn (Ref.var DeBruijnProj.head)
+          (Term.comp
+            (Comp.externCall
+              (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) (Spine.cons (Atom.nat_mk 6) Spine.nil))
+              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+            sumSq_term._proof_9)
+          (Term.atom (Atom.nat_mk 0)) smallTimesSix_term._proof_5 smallTimesSix_term._proof_6 ⋯ ⋯)
+        smallTimesSix_term._proof_9)
+      ⋯ ⋯ ⋯ ⋯)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) smallTimesSix_term
@@ -266,17 +280,26 @@ def squareAndSucc_term :=
     Term sig0 [] _ (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) .lam)
 
 /--
-info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-      ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 1) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
-        (Term.record_mk
-          { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := sumSq_term._proof_1 },
-            snd := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := sumSq_term._proof_1 }, rest := [] }
-          (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil)) ⋯)
-        sumSq_term._proof_12 ⋯ ⋯ ⋯ ⋯)
-      sumSq_term._proof_12 ⋯ ⋯ ⋯ ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.letE
+      (Comp.externCall
+        (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+          (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+      (Term.letE
+        (Comp.externCall (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) (Spine.cons (Atom.nat_mk 1) Spine.nil))
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+        (Term.comp
+          (Comp.record_mk
+            { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := sumSq_term._proof_1 },
+              snd := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := sumSq_term._proof_1 }, rest := [] }
+            (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail))
+              (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil)))
+          ⋯)
+        ⋯ ⋯ ⋯ ⋯)
+      ⋯ ⋯ ⋯ ⋯)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) squareAndSucc_term

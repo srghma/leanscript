@@ -274,48 +274,72 @@ example : shapeId_term = .lam (.var (v♯0)) := rfl
 def shapeSwap_term := (#leanscript_to_term shapeSwap : Term sig0 [] _ (tyWfOf Shape ⇒ tyWfOf Shape) .lam)
 -- Swapping the constructors is not an η-redex: the dispatch stays.
 /--
-info: ((Term.var DeBruijnProj.head).taggedUnion_casesOn
-      (TaggedUnionCases.payloadFirst
-        (Term.taggedUnion_mk
-          (LeanTaggedUnionSchema.payloadFirst
-            { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }, tail := [] }
-            [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }] [[]])
-          1 shapeSwap_term._proof_1 (Spine.cons (Term.var DeBruijnProj.head) Spine.nil) ⋯)
-        (Term.taggedUnion_mk
-          (LeanTaggedUnionSchema.payloadFirst
-            { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }, tail := [] }
-            [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }] [[]])
-          0 shapeSwap_term._proof_3 (Spine.cons (Term.var DeBruijnProj.head) Spine.nil) ⋯)
-        (TaggedUnionCasesRest.cons
-          (Term.taggedUnion_mk
-            (LeanTaggedUnionSchema.payloadFirst
-              { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }, tail := [] }
-              [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 }] [[]])
-            2 shapeSwap_term._proof_4 Spine.nil shapeSwap_term._proof_5)
-          TaggedUnionCasesRest.nil))
-      ⋯ ⋯ ⋯ ⋯ ⋯ ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.comp
+      (Comp.taggedUnion_casesOn (Ref.var DeBruijnProj.head)
+        (TaggedUnionCases.payloadFirst
+          (Term.comp
+            (Comp.taggedUnion_mk
+              (LeanTaggedUnionSchema.payloadFirst
+                { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 },
+                  tail := [] }
+                [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 }] [[]])
+              1 shapeSwap_term._proof_1 (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+            ⋯)
+          (Term.comp
+            (Comp.taggedUnion_mk
+              (LeanTaggedUnionSchema.payloadFirst
+                { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 },
+                  tail := [] }
+                [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 }] [[]])
+              0 shapeSwap_term._proof_3 (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+            ⋯)
+          (TaggedUnionCasesRest.cons
+            (Term.atom
+              (Atom.val
+                (Comp.taggedUnion_mk
+                  (LeanTaggedUnionSchema.payloadFirst
+                    { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 },
+                      tail := [] }
+                    [{ toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 }] [[]])
+                  2 shapeSwap_term._proof_5 Spine.nil)
+                ⋯))
+            TaggedUnionCasesRest.nil))
+        ⋯ ⋯ ⋯ ⋯ ⋯)
+      ⋯)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) shapeSwap_term
 def optNoneRead_term := (#leanscript_to_term optNoneRead : Term sig0 [] _ (tyWfOf (Option Nat) ⇒ (tyWfOf (Option Nat) ⇒ TyWf.prim .nat) ⇒ TyWf.prim .nat) .lam)
 -- In the `none` branch, `f o` is `f none`.
 /--
-info: (((Term.var DeBruijnProj.head.tail).taggedUnion_casesOn
-          (TaggedUnionCases.skip
-            ((Term.var DeBruijnProj.head).ap
-              (Term.taggedUnion_mk
-                (LeanTaggedUnionSchema.skip
-                  (CtorsWithPayload.here
-                    { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_3 },
-                      tail := [] }
-                    []))
-                0 optNoneRead_term._proof_3 Spine.nil shapeSwap_term._proof_5)
-              ⋯ ⋯)
-            (CtorsWithPayloadCases.here (Term.var DeBruijnProj.head) TaggedUnionCasesRest.nil))
-          ⋯ ⋯ ⋯ ⋯ ⋯ ⋯).lam
-      ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.comp
+          (Comp.taggedUnion_casesOn (Ref.var DeBruijnProj.head.tail)
+            (TaggedUnionCases.skip
+              (Term.comp
+                (Comp.ap (Callee.ref (Ref.var DeBruijnProj.head))
+                  (Atom.val
+                    (Comp.taggedUnion_mk
+                      (LeanTaggedUnionSchema.skip
+                        (CtorsWithPayload.here
+                          { head := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := optSame_term._proof_2 },
+                            tail := [] }
+                          []))
+                      0 optNoneRead_term._proof_3 Spine.nil)
+                    ⋯)
+                  ⋯)
+                optNoneRead_term._proof_5)
+              (CtorsWithPayloadCases.here (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) TaggedUnionCasesRest.nil))
+            ⋯ ⋯ ⋯ ⋯ ⋯)
+          ⋯)
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) optNoneRead_term

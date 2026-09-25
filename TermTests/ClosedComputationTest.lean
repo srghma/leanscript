@@ -70,7 +70,7 @@ def sumBelowFn_term :=
 
 /-- Is this term `fun n => nat_rec …`? -/
 def isNatRecFn {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {h : Head} : Term sig0 Γ u τ h → Bool
-  | .lam (.nat_rec ..) _ => true
+  | .atom (.lam (.comp (.nat_rec ..) _) _) => true
   | _ => false
 
 example : isNatRecFn sumBelowFn_term = true := rfl
@@ -138,7 +138,7 @@ def foldWithGlobal :=
 error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.allAtom [Head.var (Var.index DeBruijn.head), Head.ctorOf [Head.var (Var.index DeBruijn.head)]] = true
+  (Head.ctorOf [Head.var (Var.index DeBruijn.head)]).isAtom = true
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
@@ -188,16 +188,16 @@ error: Expected type must not contain metavariables
     false
 ---
 error: Type mismatch
-  (Term.array_mk (Terms.cons (Term.nat_mk 1) (Terms.cons (Term.nat_mk 2) Terms.nil)) letValueComp._proof_1).letE
+  Term.letE (Comp.array_mk (Terms.cons (Atom.nat_mk 1) (Terms.cons (Atom.nat_mk 2) Terms.nil)))
     (Term.externCall
-      (Spine.cons (Term.var DeBruijn.head)
-        (Spine.cons (Term.array_mk (Terms.cons (Term.var DeBruijn.head) Terms.nil) ⋯) Spine.nil))
+      (Spine.cons (Atom.var DeBruijn.head)
+        (Spine.consT (Term.array_mk (Terms.cons (Atom.var DeBruijn.head) Terms.nil)) Spine.nil ?m.93))
       (fun vs =>
         LeanInitPureExtern.preludeExtern (PreludeExtern.lean_array_push (TyWf.prim LeanPrimTy.nat).array vs.2.1 vs.1))
-      ⋯ ?m.121 ⋯)
-    letValueComp._proof_7 ?m.124 ?m.125 ?m.126 ?m.127
+      ⋯ ⋯)
+    ?m.121 ?m.122 ?m.123 ?m.124
 has type
-  Term ?m.93 ?m.88
+  Term ?m.91 ?m.87
     ((Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0)).letU
       (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
         (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
@@ -205,12 +205,12 @@ has type
           0)))
     (Coe.coe (LeanPrimTyCovariant.array (TyWf.prim LeanPrimTy.nat).array)) Head.comp.letIn
 but is expected to have type
-  Term sig0 [] ?m.129 (TyWf.prim LeanPrimTy.nat).array.array Head.comp
+  Term sig0 [] ?m.126 (TyWf.prim LeanPrimTy.nat).array.array Head.comp
 -/
 #guard_msgs (error) in
 def letValueComp :=
   (.letE (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) .nil)))
-    (.externCall (.cons (.var (v♯0)) (.cons (.array_mk (.cons (.var (v♯0)) .nil)) .nil))
+    (.externCall (.cons (.var (v♯0)) (.consT (.array_mk (.cons (.var (v♯0)) .nil)) .nil))
       (fun vs => .preludeExtern (.lean_array_push (TyWf.array (TyWf.prim .nat)) vs.2.1 vs.1))) :
     Term sig0 [] _ (TyWf.array (TyWf.array (TyWf.prim .nat))) .comp)
 

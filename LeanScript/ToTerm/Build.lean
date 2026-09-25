@@ -179,10 +179,185 @@ def ctxPosOf (fam : Name) : MetaM Nat := do
         return i
     throwError "`#leanscript_to_term`: internal: {fam} has no context"
 
+/-! ## The flat view of the split categories
+
+The grammar is split into the categories of A-normal form (`LeanScript.Ref`,
+`LeanScript.Callee`, `LeanScript.Atom`, `LeanScript.Comp`, `LeanScript.Term`), but the
+translation reads and builds terms through their **flat view** (`LeanScript.Expr.Flat`):
+one function `Term.X` per constructor of the categories, each returning a `Term`, whose
+operands are terms.  A node of the translation is an application of one of those functions
+(or of a constructor of a family that is not split, such as `Spine.nil`); a real
+constructor of the categories met on the way is read as its flat view (`flatView?`), and
+the finished term is unfolded to the real constructors (`unflatten`). -/
+
+/-- The categories the grammar's `Term` is split into. -/
+def splitFamilies : Array Name := #[``LeanScript.Ref, ``LeanScript.Callee,
+  ``LeanScript.Atom, ``LeanScript.Comp]
+
+/-- The constructors of the grammar's families that take an operand in a category, and so
+    are not nodes of the flat view themselves, with the flat function that stands for
+    each. -/
+def splitCtorFlat : Array (Name × Name) := #[
+  (``LeanScript.Term.letE, ``LeanScript.Term.letT),
+  (``LeanScript.Spine.cons, ``LeanScript.Spine.consT),
+  (``LeanScript.Terms.cons, ``LeanScript.Terms.consT),
+  (``LeanScript.FamilyMemberValue.alias, ``LeanScript.FamilyMemberValue.aliasT)]
+
+/-- The flat function (`LeanScript.Expr.Flat`) that stands for a real constructor of one of
+    the categories, if it is one that has one. -/
+def flatNameOf? (n : Name) : Option Name :=
+  if let some (_, f) := splitCtorFlat.find? (·.1 == n) then some f
+  else if splitFamilies.contains n.getPrefix then
+    some (``LeanScript.Term ++ Name.mkSimple n.getString!)
+  else none
+
+/-- Is `n` a flat function (`LeanScript.Expr.Flat`) standing for a constructor? -/
+def isFlatFn (env : Environment) (n : Name) : Bool :=
+  (splitCtorFlat.any (·.2 == n)) ||
+  (n.getPrefix == ``LeanScript.Term && !n.isAnonymous && match n with
+    | .str _ s => splitFamilies.any fun f =>
+        let c := f ++ Name.mkSimple s
+        (env.find? c matches some (.ctorInfo _)) && c != ``LeanScript.Atom.ref &&
+          c != ``LeanScript.Atom.val && c != ``LeanScript.Callee.ref &&
+          c != ``LeanScript.Callee.app
+    | _ => false)
+
+/-- Is `n` a node of the flat view: a flat function, or a constructor of a family of the
+    grammar that is not one of the constructors taking an operand in a category? -/
+def isNodeConst (env : Environment) (n : Name) : Bool :=
+  isFlatFn env n || match env.find? n with
+    | some (.ctorInfo ci) =>
+        isGrammarFamily ci.induct && !(splitCtorFlat.any (·.1 == n)) &&
+          n != ``LeanScript.Term.atom && n != ``LeanScript.Term.comp
+    | _ => false
+
+/-- What the translation needs to know of a node's constant: its parameters, its type, and
+    the family of its result. -/
+structure NodeConstInfo where
+  /-- The number of parameters (`Sg`) before the fields. -/
+  numParams : Nat
+  /-- Its type. -/
+  type : Expr
+  /-- The family of what it builds. -/
+  induct : Name
+
+/-- The `NodeConstInfo` of a node's constant: a constructor, or a flat function (whose only
+    parameter is the signature `Sg`). -/
+def nodeConstInfo (n : Name) : MetaM NodeConstInfo := do
+  match ← getConstInfo n with
+  | .ctorInfo ci => return { numParams := ci.numParams, type := ci.type, induct := ci.induct }
+  | info =>
+    let fam ← forallTelescopeReducing info.type fun _ res =>
+      pure res.getAppFn.constName?
+    let some fam := fam | throwError "`#leanscript_to_term`: internal: {n} is not a node"
+    return { numParams := 1, type := info.type, induct := fam }
+
+/-- An expression of one of the categories (`splitFamilies`) or of `Term`, as a term. -/
+partial def asTermE (e : Expr) : MetaM Expr := do
+  let ty ← whnf (← inferType e)
+  match ty.getAppFn.constName? with
+  | some ``LeanScript.Term => return e
+  | some ``LeanScript.Atom => mkAppM ``LeanScript.Term.atom #[e]
+  | some ``LeanScript.Comp => mkAppM ``LeanScript.Term.ofComp #[e]
+  | some ``LeanScript.Ref =>
+      mkAppM ``LeanScript.Term.atom #[← mkAppM ``LeanScript.Atom.ref #[e]]
+  | some ``LeanScript.Callee =>
+      match e.getAppFnArgs with
+      | (``LeanScript.Callee.ref, args) => asTermE args.back!
+      | (``LeanScript.Callee.app, args) => mkAppM ``LeanScript.Term.ofComp #[args.back!]
+      | _ =>
+        match (← whnf e).getAppFnArgs with
+        | (``LeanScript.Callee.ref, args) => asTermE args.back!
+        | (``LeanScript.Callee.app, args) => mkAppM ``LeanScript.Term.ofComp #[args.back!]
+        | _ => throwError "`#leanscript_to_term`: internal: not a callee: {e}"
+  | _ => return e
+
+/-- The flat view of a real constructor of the categories (or of `Term.ofComp`): the same
+    node, written with its flat function, its operands as terms and the proofs that they are
+    in their categories by `decide`.  `none` when `e` is not one. -/
+partial def flatView? (e : Expr) : MetaM (Option Expr) := do
+  let e := e.consumeMData.headBeta
+  let .const n _ := e.getAppFn | return none
+  let args := e.getAppArgs
+  match n with
+  | ``LeanScript.Term.atom | ``LeanScript.Term.comp | ``LeanScript.Term.ofComp
+  | ``LeanScript.Atom.ref | ``LeanScript.Atom.val | ``LeanScript.Callee.ref
+  | ``LeanScript.Callee.app =>
+      let ci ← getConstInfo n
+      let nArgs ← forallTelescopeReducing ci.type fun xs _ => pure xs.size
+      unless args.size == nArgs do return none
+      -- the operand: the one argument of a category (the last but a proof, or the last)
+      let op ← if n == ``LeanScript.Term.comp || n == ``LeanScript.Atom.val then
+          pure args[args.size - 2]! else pure args.back!
+      let some v ← flatView? op | return none
+      return some v
+  | _ =>
+    let some (.ctorInfo ci) := (← getEnv).find? n | do
+      -- a shortcut such as `Atom.var`, `Callee.ap`: unfold it
+      if !(isNodeConst (← getEnv) n) && (← isReducible n) then
+        let e' ← whnfR e
+        if e' != e then return ← flatView? e'
+      return none
+    let some f := flatNameOf? n | return none
+    unless args.size == ci.numParams + ci.numFields do return none
+    let fields ← forallTelescope ci.type fun xs _ => do
+      let mut out : Array (Name × Expr) := #[]
+      for i in [ci.numParams:xs.size] do
+        out := out.push ((← xs[i]!.fvarId!.getUserName).eraseMacroScopes, args[i]!)
+      pure out
+    let finfo ← getConstInfo f
+    let mut cur := finfo.type
+    let mut out : Array Expr := #[]
+    let mut first := true
+    -- the next field of the constructor, for a binder of the flat function that has no
+    -- field of its name (the constructor's binders may be anonymous)
+    let mut next := 0
+    while true do
+      let cur' ← whnf cur
+      let .forallE bn d b _ := cur' | break
+      let v ← if first then pure args[0]! else
+        match fields.findIdx? (·.1 == bn.eraseMacroScopes) with
+        | some i =>
+            next := i + 1
+            if (← isProp d) then pure fields[i]!.2 else asTermE fields[i]!.2
+        | none =>
+            if ← isProp d then proveByDecideFlat d
+            else if h : next < fields.size then
+              let v := fields[next].2
+              next := next + 1
+              asTermE v
+            else throwError "`#leanscript_to_term`: internal: no field {bn} of {n} for {f}"
+      first := false
+      out := out.push v
+      cur := b.instantiate1 v
+    return some (mkAppN (mkConst f) out)
+where
+  /-- A proof by `decide` of a proposition about closed indices. -/
+  proveByDecideFlat (p : Expr) : MetaM Expr := do
+    let p ← instantiateMVars p
+    let p := if p.isAppOfArity ``autoParam 2 || p.isAppOfArity ``optParam 2
+      then p.appFn!.appArg! else p
+    mkDecideProof p
+
+/-- The term `t`, written with the flat functions, unfolded to the real constructors of the
+    categories: what the translation emits. -/
+def unflatten (t : Expr) : MetaM Expr := do
+  let env ← getEnv
+  let conv : Array Name := #[``LeanScript.Term.ofComp, ``LeanScript.Term.toAtom,
+    ``LeanScript.Term.toRef, ``LeanScript.Term.toCallee, ``LeanScript.Term.toComp,
+    ``LeanScript.Atom.toRef]
+  Meta.transform (← instantiateMVars t) (pre := fun e => do
+    let .const n _ := e.getAppFn | return .continue
+    if isFlatFn env n || conv.contains n then
+      let e' ← whnf e
+      if e' == e then return .continue
+      return .visit e'
+    return .continue)
+
 /-- What the arguments of the constructor `ctor` are, read off its type. -/
 def ctorInfo (ctor : Name) : MetaM CtorInfo := do
   if let some i := (← ctorInfoRef.get)[ctor]? then return i
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let gpos ← ctxPosOf ci.induct
   let info ← forallTelescope ci.type fun xs res => do
     let fields := xs.extract ci.numParams xs.size
@@ -274,17 +449,17 @@ def boolHeadOf? (t : Expr) : MetaM (Option Bool) := do
 /-- The node a term is, with any application of a cached translation or of a reducible
     constructor function unfolded until a constructor of the grammar is at the root. -/
 def exposeNode (t : Expr) : MetaM Expr := do
-  let isNode (e : Expr) : MetaM Bool := do
-    let some n := e.getAppFn.constName? | return false
-    match (← getEnv).find? n with
-    | some (.ctorInfo ci) => return isGrammarFamily ci.induct
-    | _ => return false
+  let env ← getEnv
+  let isNode (e : Expr) : Bool := e.getAppFn.constName?.any (isNodeConst env)
   let t := t.consumeMData.headBeta
-  if ← isNode t then return t
+  if isNode t then return t
+  if let some v ← flatView? t then return v
   let t' ← whnfR t
-  if ← isNode t' then return t'
+  if isNode t' then return t'
+  if let some v ← flatView? t' then return v
   let t' ← whnf t
-  if ← isNode t' then return t'
+  if isNode t' then return t'
+  if let some v ← flatView? t' then return v
   throwError "`#leanscript_to_term`: internal: not a node of the grammar: {t}"
 
 /-- The value of a closed natural-number expression. -/
@@ -538,8 +713,8 @@ def proveByDecide (p : Expr) : MetaM Expr := do
     the unit.  The code that runs it erases proofs, so the stand-in is never looked at. -/
 def placeholderProof (p : Expr) : MetaM Expr := do
   let lvl ← getLevel p
-  return mkApp3 (mkConst ``unsafeCast [levelOne, lvl]) (mkConst ``PUnit [levelOne]) p
-    (mkConst ``PUnit.unit [levelOne])
+  return mkApp3 (mkConst ``unsafeCast [Level.one, lvl]) (mkConst ``PUnit [Level.one]) p
+    (mkConst ``PUnit.unit [Level.one])
 
 /-- `buildNode`; with `placeholder`, the proof `hClosed` (that the node is not a closed
     computation) is not proved but stood in for (`placeholderProof`): the node is then only
@@ -547,7 +722,7 @@ def placeholderProof (p : Expr) : MetaM Expr := do
 def buildNodeCore (ctor : Name) (args : Array Expr) (placeholder : Bool)
     (given : Array (Name × Expr) := #[]) : MetaM Expr := do
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   -- place the given arguments
   let mut vals : Array (Option Expr) := #[]
   let mut k := ci.numParams
@@ -762,7 +937,7 @@ def primScrutinee? : Name → Option String
     `let` is never one.) -/
 def scrutineeArg? : Name → Option String
   | ``LeanScript.Term.ap => some "f"
-  | ``LeanScript.Term.letE => some "e"
+  | ``LeanScript.Term.letT => some "e"
   | ``LeanScript.Term.lazy_force | ``LeanScript.Term.thunk_force => some "e"
   | ``LeanScript.Term.array_casesOn => some "a"
   | ``LeanScript.Term.record_casesOn => some "r"
@@ -777,7 +952,7 @@ def scrutineeArg? : Name → Option String
 /-- The scrutinee of a **dispatch** (not of an application, a `let` or a force): what
     case-of-case looks at. -/
 def dispatchScrutinee? (ctor : Name) : Option String :=
-  if ctor == ``LeanScript.Term.ap || ctor == ``LeanScript.Term.letE ||
+  if ctor == ``LeanScript.Term.ap || ctor == ``LeanScript.Term.letT ||
       ctor == ``LeanScript.Term.lazy_force || ctor == ``LeanScript.Term.thunk_force then none
   else scrutineeArg? ctor
 
@@ -847,7 +1022,7 @@ inductive SlotKind where
 def operandSlots (ctor : Name) : Array (String × SlotKind) :=
   match ctor with
   | ``LeanScript.Term.ap => #[("f", .callee), ("a", .atom)]
-  | ``LeanScript.Term.letE => #[("e", .rhs)]
+  | ``LeanScript.Term.letT => #[("e", .rhs)]
   | ``LeanScript.Term.lazy_force | ``LeanScript.Term.thunk_force => #[("e", .name)]
   | ``LeanScript.Term.nat_rec => #[("n", .atom), ("base", .seq)]
   | ``LeanScript.Term.array_rec => #[("a", .atom)]
@@ -878,7 +1053,7 @@ def needsBinding (kind : SlotKind) (k : Name) : Bool :=
 def fieldNamed (t : Expr) (n : String) : MetaM Expr := do
   let ctor := t.getAppFn.constName!
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   for i in [0:info.names.size] do
     if info.names[i]!.eraseMacroScopes.toString == n then
       return t.getAppArgs[ci.numParams + i]!
@@ -1036,7 +1211,7 @@ partial def mapBranchesTagged (t τ : Expr) (ctr : IO.Ref Nat) (rebuild : Bool)
   let t ← exposeNode t
   let .const ctor _ := t.getAppFn | unreachable!
   let args := t.getAppArgs
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let info ← ctorInfo ctor
   let mut γ := mkConst ``Unit
   for i in [0:info.roles.size] do
@@ -1099,7 +1274,7 @@ partial def nodeArgs (t : Expr) : MetaM (Name × Array Expr) := do
   let t ← exposeNode t
   let ctor := t.getAppFn.constName!
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let all := t.getAppArgs
   let mut out := all.extract 0 ci.numParams
   for i in [0:info.roles.size] do
@@ -1117,16 +1292,16 @@ partial def replaceInSeq (sq γ' : Expr) (p : Nat) (b : Expr) : MetaM Expr := do
   match sq.getAppFn.constName! with
   | ``LeanScript.Spine.nil => mkNode ``LeanScript.Spine.nil #[a[0]!, γ']
   | ``LeanScript.Terms.nil => mkNode ``LeanScript.Terms.nil #[a[0]!, γ', a[2]!]
-  | ``LeanScript.Spine.cons =>
-      let t' ← if p == 0 then pure b else shiftBy a[a.size - 2]! γ' 1
-      let rest' ← if p == 0 then shiftBy a[a.size - 1]! γ' 1
-        else replaceInSeq a[a.size - 1]! γ' (p - 1) b
-      mkNode ``LeanScript.Spine.cons #[a[0]!, γ', a[2]!, a[3]!, t', rest']
-  | ``LeanScript.Terms.cons =>
-      let t' ← if p == 0 then pure b else shiftBy a[a.size - 2]! γ' 1
-      let rest' ← if p == 0 then shiftBy a[a.size - 1]! γ' 1
-        else replaceInSeq a[a.size - 1]! γ' (p - 1) b
-      mkNode ``LeanScript.Terms.cons #[a[0]!, γ', a[2]!, t', rest']
+  | ``LeanScript.Spine.consT =>
+      let t' ← if p == 0 then pure b else shiftBy a[a.size - 3]! γ' 1
+      let rest' ← if p == 0 then shiftBy a[a.size - 2]! γ' 1
+        else replaceInSeq a[a.size - 2]! γ' (p - 1) b
+      mkNode ``LeanScript.Spine.consT #[a[0]!, γ', a[2]!, a[3]!, t', rest']
+  | ``LeanScript.Terms.consT =>
+      let t' ← if p == 0 then pure b else shiftBy a[a.size - 3]! γ' 1
+      let rest' ← if p == 0 then shiftBy a[a.size - 2]! γ' 1
+        else replaceInSeq a[a.size - 2]! γ' (p - 1) b
+      mkNode ``LeanScript.Terms.consT #[a[0]!, γ', a[2]!, t', rest']
   | c => throwError "`#leanscript_to_term`: internal: not a spine: {c}"
 
 /-- The operands held by the argument `c` of a slot of kind `kind`: `c` itself, or the
@@ -1136,11 +1311,11 @@ partial def slotElems (kind : SlotKind) (c : Expr) : MetaM (Array Expr) := do
   | .seq =>
       let n ← exposeNode c
       if n.getAppFn.constName?.any (· == ``LeanScript.Terms.nil) ||
-          n.getAppFn.constName?.any (· == ``LeanScript.Terms.cons) then termsElems c
+          n.getAppFn.constName?.any (· == ``LeanScript.Terms.consT) then termsElems c
       else spineElems c
   | .fam =>
       let (fc, fargs) ← nodeArgs c
-      if fc == ``LeanScript.FamilyMemberValue.alias then return #[← argNamed fc fargs "value"]
+      if fc == ``LeanScript.FamilyMemberValue.aliasT then return #[← argNamed fc fargs "value"]
       spineElems (← argNamed fc fargs "fields")
   | _ => return #[c]
 
@@ -1154,7 +1329,7 @@ partial def withOperand (ctor : Name) (args : Array Expr) (slot : String) (kind 
     | .seq => replaceInSeq c γ' p b
     | .fam => do
         let (fc, fargs) ← nodeArgs c
-        if fc == ``LeanScript.FamilyMemberValue.alias then rebuildPast fc fargs γ' "value" b
+        if fc == ``LeanScript.FamilyMemberValue.aliasT then rebuildPast fc fargs γ' "value" b
         else rebuildPast fc fargs γ' "fields" (← replaceInSeq (← argNamed fc fargs "fields") γ' p b)
     | _ => pure b
   rebuildPast ctor args γ' slot r
@@ -1167,7 +1342,7 @@ partial def bindOperand (ctor : Name) (args : Array Expr) (slot : String) (kind 
   let sg := args[0]!
   let γ ← argNamed ctor args "Γ"
   let en ← exposeNode e
-  let (bound, b?) ← if en.getAppFn.isConstOf ``LeanScript.Term.letE then
+  let (bound, b?) ← if en.getAppFn.isConstOf ``LeanScript.Term.letT then
       pure (← fieldNamed en "e", some (← fieldNamed en "b"))
     else pure (e, none)
   let σ ← termTyOf bound
@@ -1176,7 +1351,7 @@ partial def bindOperand (ctor : Name) (args : Array Expr) (slot : String) (kind 
     | some b => pure b
     | none => mkVarTerm sg γ' 0
   let inner ← withOperand ctor args slot kind p γ' b
-  mkNode ``LeanScript.Term.letE #[sg, γ, σ, ← termTyOf inner, bound, inner]
+  mkNode ``LeanScript.Term.letT #[sg, γ, σ, ← termTyOf inner, bound, inner]
 
 /-- If an operand of the node `ctor args` (or the bound expression, of a `let`) is a `let`,
     that `let` floated out of it (see the section header). -/
@@ -1184,7 +1359,7 @@ partial def floatLets? (ctor : Name) (args : Array Expr) : MetaM (Option Expr) :
   for (slot, kind) in operandSlots ctor do
     let es ← slotElems kind (← argNamed ctor args slot)
     for p in [0:es.size] do
-      if (← exposeNode es[p]!).getAppFn.isConstOf ``LeanScript.Term.letE then
+      if (← exposeNode es[p]!).getAppFn.isConstOf ``LeanScript.Term.letT then
         return some (← bindOperand ctor args slot kind p es[p]!)
   return none
 
@@ -1205,7 +1380,7 @@ partial def bindOperands? (ctor : Name) (args : Array Expr) : MetaM (Option Expr
 partial def rebuildPast (ctor : Name) (args : Array Expr) (γ' : Expr) (sName : String)
     (b : Expr) (m : Nat := 1) : MetaM Expr := do
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let params := args.extract 0 ci.numParams
   let mut cur ← instantiateForall ci.type params
   let mut newArgs := params
@@ -1240,7 +1415,7 @@ partial def mapVars (t : Expr) (γ : Expr) (d : Nat) (ρ : Nat → MetaM Image)
   let t ← exposeNode t
   let .const ctor _ := t.getAppFn | unreachable!
   let args := t.getAppArgs
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let sg := args[0]!
   if ctor == ``LeanScript.Term.var then
     let i ← varIndex args[3]!
@@ -1315,7 +1490,7 @@ partial def bindMany (sg γ : Expr) (body : Expr) (es : Array Expr) : MetaM Expr
     rest := rest.push (← shiftBy e γ' 1)
   let body' ← bindMany sg γ' body rest
   let τ ← termTyOf body'
-  mkNode ``LeanScript.Term.letE #[sg, γ, σ, τ, eLast, body']
+  mkNode ``LeanScript.Term.letT #[sg, γ, σ, τ, eLast, body']
 
 /-- **Move a `let` to where its variable is needed** (`LeanScript.Usage.confined`).
     `t` is a node written in a context whose `d` innermost binders are above the `let`'s
@@ -1329,7 +1504,7 @@ partial def sinkInto (t γ : Expr) (d : Nat) (e σ : Expr) : MetaM Expr := do
   let t ← exposeNode t
   let .const ctor _ := t.getAppFn | unreachable!
   let args := t.getAppArgs
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let sg := args[0]!
   let info ← ctorInfo ctor
   let params := args.extract 0 ci.numParams
@@ -1357,7 +1532,7 @@ partial def sinkInto (t γ : Expr) (d : Nat) (e σ : Expr) : MetaM Expr := do
             let γx := consCtxE σ γc
             let old' ← mapVars old γx 0 fun k =>
               pure (.var (if k < j then k + 1 else if k == j then 0 else k))
-            mkNode ``LeanScript.Term.letE #[sg, γc, σ, ← termTyOf old', e', old']
+            mkNode ``LeanScript.Term.letT #[sg, γc, σ, ← termTyOf old', e', old']
           else sinkInto old γc j e σ
       | _ => pure old
     match info.roles[i]! with
@@ -1372,14 +1547,14 @@ partial def spineElems (sp : Expr) : MetaM (Array Expr) := do
   let sp ← exposeNode sp
   match sp.getAppFnArgs with
   | (``LeanScript.Spine.nil, _) => return #[]
-  | (``LeanScript.Spine.cons, args) => return #[args[args.size - 2]!] ++
-      (← spineElems args[args.size - 1]!)
+  | (``LeanScript.Spine.consT, args) => return #[args[args.size - 3]!] ++
+      (← spineElems args[args.size - 2]!)
   | _ => throwError "`#leanscript_to_term`: internal: not a spine: {sp}"
 
 /-- The argument of a node that the constructor's type names `n`. -/
 partial def argNamed (ctor : Name) (args : Array Expr) (n : String) : MetaM Expr := do
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let mut k := ci.numParams
   for i in [0:info.roles.size] do
     let r := info.roles[i]!
@@ -1394,7 +1569,7 @@ partial def lastArg (t : Expr) : MetaM Expr := do
   let t ← exposeNode t
   let ctor := t.getAppFn.constName!
   let info ← ctorInfo ctor
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   -- the proofs about the indices that follow it (`hAnf`) are not what is asked for
   let mut i := info.roles.size
   while i > 0 && info.roles[i - 1]! == .indexProof do i := i - 1
@@ -1511,8 +1686,8 @@ partial def termsElems (ts : Expr) : MetaM (Array Expr) := do
   let ts ← exposeNode ts
   match ts.getAppFnArgs with
   | (``LeanScript.Terms.nil, _) => return #[]
-  | (``LeanScript.Terms.cons, args) => return #[args[args.size - 2]!] ++
-      (← termsElems args[args.size - 1]!)
+  | (``LeanScript.Terms.consT, args) => return #[args[args.size - 3]!] ++
+      (← termsElems args[args.size - 2]!)
   | _ => throwError "`#leanscript_to_term`: internal: not the elements of an array: {ts}"
 
 /-- The value of a term that is a literal or a closed value, as an expression of its
@@ -1581,7 +1756,7 @@ partial def quotedTerm (sg γ τ : Expr) : LeanScript.Quoted → MetaM Expr
       let σ ← instantiateMVars σ
       let mut ts ← mkNode ``LeanScript.Terms.nil #[sg, γ, σ]
       for x in xs.reverse do
-        ts ← mkNode ``LeanScript.Terms.cons #[sg, γ, σ, ← quotedTerm sg γ σ x, ts]
+        ts ← mkNode ``LeanScript.Terms.consT #[sg, γ, σ, ← quotedTerm sg γ σ x, ts]
       mkNode ``LeanScript.Term.array_mk #[sg, γ, σ, ts]
   | .delay lazy x => do
       let σ ← mkFreshExprMVar tyE
@@ -1654,7 +1829,7 @@ partial def quotedSpine (sg γ : Expr) (tys : List Expr) (xs : List LeanScript.Q
   for i in [0:xsA.size] do
     let j := xsA.size - 1 - i
     let t ← quotedTerm sg γ tysA[j]! xsA[j]!
-    sp ← mkNode ``LeanScript.Spine.cons #[sg, γ, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
+    sp ← mkNode ``LeanScript.Spine.consT #[sg, γ, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
   return sp
 
 /-- The extern `e` (an entry of the catalogue applied to values) of result type `τ`, as a
@@ -1681,7 +1856,7 @@ partial def closedValue? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
   let (sg, γ, u, τ, _) ← termParts t
   unless (← freeOf (← instantiateMVars u)) == 0 do return none
   -- a `let` is a computation when its body is one
-  let k ← if ctor == ``LeanScript.Term.letE then headOf (← argNamed ctor args "b")
+  let k ← if ctor == ``LeanScript.Term.letT then headOf (← argNamed ctor args "b")
     else headOf t
   unless isCompHead k do return none
   unless ← isQuotable τ do return none
@@ -1698,7 +1873,7 @@ partial def closedValue? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       (mkConst ``Bool.true)))
   let sgE ← instantiateMVars sg
   let t0 := (← instantiateMVars t).replace fun x => if x == sgE then some emptySig else none
-  let gE := mkConst ``PUnit.unit [levelOne]
+  let gE := mkConst ``PUnit.unit [Level.one]
   let envE ← placeholderProof (mkApp (mkConst ``LeanScript.Env) γ)
   let hE ← placeholderProof (← mkAppM ``LeanScript.Term.NoRecMk #[t0])
   let v ← mkAppOptM ``LeanScript.Term.eval
@@ -1725,7 +1900,7 @@ partial def closedValue? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
     `mkNode` then inlines each `let` that is used fewer than twice — `x` too, when `b`
     only took it apart. -/
 partial def letKnown? (args : Array Expr) : MetaM (Option Expr) := do
-  let letE := ``LeanScript.Term.letE
+  let letE := ``LeanScript.Term.letT
   let sg := args[0]!
   let γ ← argNamed letE args "Γ"
   let e ← argNamed letE args "e"
@@ -1753,11 +1928,11 @@ partial def letKnown? (args : Array Expr) : MetaM (Option Expr) := do
     let mut sp ← mkNode ``LeanScript.Spine.nil #[sg, γf]
     for i in [0:n] do
       let j := n - 1 - i
-      sp ← mkNode ``LeanScript.Spine.cons
+      sp ← mkNode ``LeanScript.Spine.consT
         #[sg, γf, tys[j]!, mkTyListE (tys.toList.drop (j + 1)), vars[j]!, sp]
     pure sp
   let info ← ctorInfo ector
-  let ci ← getConstInfoCtor ector
+  let ci ← nodeConstInfo ector
   let mut cargs := en.getAppArgs.extract 0 ci.numParams
   for i in [0:info.roles.size] do
     match info.roles[i]! with
@@ -1876,8 +2051,8 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       let γ ← arg "Γ"
       let σ ← termTyOf a
       let τ ← termTyOf body
-      some <$> mkNode ``LeanScript.Term.letE #[sg, γ, σ, τ, a, body]
-  | ``LeanScript.Term.letE =>
+      some <$> mkNode ``LeanScript.Term.letT #[sg, γ, σ, τ, a, body]
+  | ``LeanScript.Term.letT =>
       let e ← arg "e"
       let b ← arg "b"
       let γ ← arg "Γ"
@@ -1988,9 +2163,9 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       let ts ← exposeNode (← lastArg a)
       match ts.getAppFnArgs with
       | (``LeanScript.Terms.nil, _) => some <$> rebase (← arg "z") γ
-      | (``LeanScript.Terms.cons, targs) =>
-          let hd := targs[targs.size - 2]!
-          let tl := targs[targs.size - 1]!
+      | (``LeanScript.Terms.consT, targs) =>
+          let hd := targs[targs.size - 3]!
+          let tl := targs[targs.size - 2]!
           let tlArr ← mkNode ``LeanScript.Term.array_mk #[sg, γ, ← arg "σ", tl]
           some <$> bindMany sg γ (← arg "s") #[hd, tlArr]
       | _ => throwError "`#leanscript_to_term`: internal: not the elements of an array: {ts}"
@@ -2012,7 +2187,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
       -- `match p with | (a, b) => (a, b)` is `p` (a record η-redex)
       let body ← arg "body"
       let (_, _, _, τb, kb) ← termParts body
-      let nE := mkApp (mkConst ``List.length [levelZero]) (mkConst ``LeanScript.TyWf)
+      let nE := mkApp (mkConst ``List.length [Level.zero]) (mkConst ``LeanScript.TyWf)
       let nE := mkApp nE (mkApp2 (mkConst ``LeanScript.LeanRecordSchema.toList)
         (mkConst ``LeanScript.TyWf) (← arg "fs"))
       if (← whnf (mkApp3 (mkConst ``LeanScript.Head.isRecordEta) kb nE τb)).isConstOf
@@ -2060,7 +2235,7 @@ partial def reduceRedex? (ctor : Name) (args : Array Expr) : MetaM (Option Expr)
             (← spineElems (← lastArg value))
       | ``LeanScript.FamilyMemberValue.record, ``LeanScript.FamilyMemberCases.record =>
           some <$> bindMany sg γ (← lastArg cases) (← spineElems (← lastArg value))
-      | ``LeanScript.FamilyMemberValue.alias, ``LeanScript.FamilyMemberCases.alias =>
+      | ``LeanScript.FamilyMemberValue.aliasT, ``LeanScript.FamilyMemberCases.alias =>
           some <$> bindMany sg γ (← lastArg cases) #[← lastArg value]
       | a, b => throwError "`#leanscript_to_term`: internal: {a} dispatched by {b}"
   | ``LeanScript.Term.mutualRecursiveFamily_casesOnWithDefault =>
@@ -2153,7 +2328,7 @@ partial def pushArg (sg γ σ τ f a : Expr) : MetaM Expr := do
   let γ' := consCtxE σ γ
   let f' ← shiftBy f γ' 1
   let body ← mkNode ``LeanScript.Term.ap #[sg, γ', σ, τ, f', ← mkVarTerm sg γ' 0]
-  mkNode ``LeanScript.Term.letE #[sg, γ, σ, τ, a, body]
+  mkNode ``LeanScript.Term.letT #[sg, γ, σ, τ, a, body]
 
 /-- Rebuild the dispatch `t` (a node of `Term` whose root is a dispatch, or a node of one
     of the families of branches it holds), whose branches answer with the type `τ`, with
@@ -2165,7 +2340,7 @@ partial def mapBranches (t τ τ' : Expr) (k : Expr → Nat → Expr → MetaM E
   let t ← exposeNode t
   let .const ctor _ := t.getAppFn | unreachable!
   let args := t.getAppArgs
-  let ci ← getConstInfoCtor ctor
+  let ci ← nodeConstInfo ctor
   let info ← ctorInfo ctor
   let mut γ := mkConst ``Unit
   for i in [0:info.roles.size] do
@@ -2272,9 +2447,9 @@ partial def allValues (sp : Expr) : MetaM Bool := do
 partial def natSubTerm (sg γ x y : Expr) : MetaM Expr := do
   let natTy ← termTyOf x
   let tyNil := mkApp (mkConst ``List.nil [Level.zero]) tyE
-  let sp ← mkNode ``LeanScript.Spine.cons
+  let sp ← mkNode ``LeanScript.Spine.consT
     #[sg, γ, natTy, tyNil, y, ← mkNode ``LeanScript.Spine.nil #[sg, γ]]
-  let sp ← mkNode ``LeanScript.Spine.cons #[sg, γ, natTy, consCtxE natTy tyNil, x, sp]
+  let sp ← mkNode ``LeanScript.Spine.consT #[sg, γ, natTy, consCtxE natTy tyNil, x, sp]
   mkNode ``LeanScript.Term.externCall
     #[sg, γ, consCtxE natTy (consCtxE natTy tyNil), natTy, sp, mkConst ``LeanScript.natSubCall]
 
@@ -2310,7 +2485,7 @@ partial def accLoop? (args : Array Expr) : MetaM (Option Expr) := do
   unless isNameHead kn || isLitHead kn do
     let γ' := consCtxE natTy γ
     let inner ← rebuildPast ``LeanScript.Term.nat_rec args γ' "n" (← mkVarTerm sg γ' 0)
-    return some (← mkNode ``LeanScript.Term.letE #[sg, γ, natTy, ← termTyOf inner, n, inner])
+    return some (← mkNode ``LeanScript.Term.letT #[sg, γ, natTy, ← termTyOf inner, n, inner])
   let B ← fieldNamed baseN "b"
   let (_, γB, _, ρ, _) ← termParts B
   let σ := (← ctxCell γB 0).1
@@ -2330,16 +2505,16 @@ partial def accLoop? (args : Array Expr) : MetaM (Option Expr) := do
       answer"
     return .var (i + 2)
   let kTerm ← natSubTerm sg γb (← mkVarTerm sg γb 2) (← mkVarTerm sg γb 0)
-  let step ← mkNode ``LeanScript.Term.letE #[sg, γb, natTy, σ, kTerm, F']
+  let step ← mkNode ``LeanScript.Term.letT #[sg, γb, natTy, σ, kTerm, F']
   let tyNil := mkApp (mkConst ``List.nil [Level.zero]) tyE
-  let base ← mkNode ``LeanScript.Spine.cons
+  let base ← mkNode ``LeanScript.Spine.consT
     #[sg, γp, σ, tyNil, ← mkVarTerm sg γp 1, ← mkNode ``LeanScript.Spine.nil #[sg, γp]]
   let fold ← mkNode ``LeanScript.Term.nat_rec
     #[sg, γp, σ, mkNatLit 0, ← shiftBy n γp 2, base, step]
   -- `B`, whose accumulator is the answer of the loop
   let B' ← mapVars B (consCtxE σ γp) 0 fun i => pure (.var (if i == 0 then 0 else i + 2))
-  let body ← mkNode ``LeanScript.Term.letE #[sg, γp, σ, ρ, fold, B']
-  let body ← mkNode ``LeanScript.Term.letE #[sg, γa, natTy, ρ, p, body]
+  let body ← mkNode ``LeanScript.Term.letT #[sg, γp, σ, ρ, fold, B']
+  let body ← mkNode ``LeanScript.Term.letT #[sg, γa, natTy, ρ, p, body]
   some <$> mkNode ``LeanScript.Term.lam #[sg, γ, σ, ρ, body]
 
 /-- If `t` is `let x₁ = e₁; …; let xₙ = eₙ; f a`, where `f` is the variable of de Bruijn
@@ -2347,13 +2522,13 @@ partial def accLoop? (args : Array Expr) : MetaM (Option Expr) := do
     context as `t`): the argument of that tail call, computed as `t` computes it. -/
 partial def tailCallArg? (t : Expr) (i : Nat) : MetaM (Option Expr) := do
   let n ← exposeNode t
-  if n.getAppFn.isConstOf ``LeanScript.Term.letE then
+  if n.getAppFn.isConstOf ``LeanScript.Term.letT then
     let e ← fieldNamed n "e"
     let b ← fieldNamed n "b"
     let some b' ← tailCallArg? b (i + 1) | return none
     let (sg, γ, _, _, _) ← termParts t
     let σ ← termTyOf e
-    return some (← mkNode ``LeanScript.Term.letE #[sg, γ, σ, ← termTyOf b', e, b'])
+    return some (← mkNode ``LeanScript.Term.letT #[sg, γ, σ, ← termTyOf b', e, b'])
   unless n.getAppFn.isConstOf ``LeanScript.Term.ap do return none
   let fN ← exposeNode (← fieldNamed n "f")
   unless fN.getAppFn.isConstOf ``LeanScript.Term.var do return none

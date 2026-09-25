@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 
 /-!
 # The grammar is usable: a few terms, written out
@@ -516,7 +516,7 @@ error: Expected type must not contain metavariables
 -/
 #guard_msgs (error) in
 def letThree :=
-  (.letE (.nat_mk 3) (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+  (.letT (.nat_mk 3) (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) :
     Term emptySig [] _ (TyWf.prim .nat) .comp)
 
@@ -632,7 +632,7 @@ is false
 -/
 #guard_msgs (error) in
 def oneTwoThreeAt2 :=
-  (.externCallChecked (.cons oneTwoThree (.cons (.nat_mk 2) .nil))
+  (.externCallChecked (.consT oneTwoThree (.cons (.nat_mk 2) .nil))
      (fun vs => if h : vs.2.1 < vs.1.size then
        some (.preludeExtern (.lean_array_fget (TyWf.prim .nat) vs.1 vs.2.1 h)) else none)
      (.nat_mk 0) :

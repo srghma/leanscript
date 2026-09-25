@@ -125,83 +125,43 @@ theorem Usage.head_zero {Γ : Ctx} {σ : TyWf} : Usage.head (0 : Usage (σ :: Γ
 
 variable {Sg : Sig} (G : GlobalEnv Sg.decls)
 
-theorem Term.eval_of_head_var_aux (n : Nat) : ∀ {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {hd : Head}
-    (t : Term Sg Γ u τ hd), sizeOf t < n → ∀ (i : Nat), hd = .var i →
-    ∃ x : Γ ∋ τ, x.index = i ∧ u = Usage.single x ∧
-      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = Env.get x env := by
-  induction n with
-  | zero => intro _ _ _ _ _ hn; omega
-  | succ n ih =>
-  intro Γ u τ hd t hn i hh
-  cases t with
-  | var x => exact ⟨x, by cases hh; rfl, rfl, fun _ _ => rfl⟩
-  | enum_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := EnumCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_var a b i)
-  | taggedUnion_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_var a b i)
-  | recTaggedUnion_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_var a b i)
-  | mutualRecursiveFamily_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := FamilyMemberCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_var a b i)
-  | _ =>
-    exfalso
-    first
-      | exact Head.join_ne_var _ _ _ hh
-      | exact Head.settle_summarize_ne_var _ _ _ _ _ hh
-      | exact Head.ctorAtOf_ne_var _ _ _ hh
-      | exact Head.ctorOf_ne_var _ _ hh
-      | exact absurd hh (by simp)
-
-theorem Term.eval_of_head_bool_aux (n : Nat) : ∀ {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {hd : Head}
-    (t : Term Sg Γ u τ hd), sizeOf t < n → ∀ (c : Bool), hd = .bool c →
-    ∃ hτ : τ = .prim .bool, u = 0 ∧
-      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = hτ ▸ (c : TyWf.Den (.prim .bool)) := by
-  induction n with
-  | zero => intro _ _ _ _ _ hn; omega
-  | succ n ih =>
-  intro Γ u τ hd t hn i hh
-  cases t with
-  | bool_mk c => cases hh; exact ⟨rfl, rfl, fun _ _ => rfl⟩
-  | enum_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := EnumCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_bool a b i)
-  | taggedUnion_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_bool a b i)
-  | recTaggedUnion_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := TaggedUnionCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_bool a b i)
-  | mutualRecursiveFamily_casesOn _ cs =>
-    obtain ⟨a, b, e⟩ := FamilyMemberCases.head_join cs
-    exact absurd (e.symm.trans hh) (Head.join_ne_bool a b i)
-  | _ =>
-    exfalso
-    first
-      | exact Head.join_ne_bool _ _ _ hh
-      | exact Head.settle_summarize_ne_bool _ _ _ _ _ hh
-      | exact Head.ctorAtOf_ne_bool _ _ _ hh
-      | exact Head.ctorOf_ne_bool _ _ hh
-      | exact absurd hh (by simp)
-
 /-- **A term whose head is a variable is that variable**: its grades are one use of it, and
     its value is the variable's value.  (The only other constructor that could have such a
     head, a `let`, cannot: its body would read the `let`'s variable at most once.) -/
 theorem Term.eval_of_head_var {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {hd : Head}
     (t : Term Sg Γ u τ hd) (i : Nat) (hh : hd = .var i) :
     ∃ x : Γ ∋ τ, x.index = i ∧ u = Usage.single x ∧
-      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = Env.get x env :=
-  Term.eval_of_head_var_aux G _ t (Nat.lt_succ_self _) i hh
+      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = Env.get x env := by
+  subst hh
+  match t with
+  | .atom (.ref (.var x)) => exact ⟨x, rfl, rfl, fun _ _ => rfl⟩
+  | .atom (.val _ hc) => simp [Head.isClosedValue] at hc
+  | .comp c _ => exact absurd c.isCompHead.isName_eq_false (by simp [Head.isName])
 
 /-- **A term whose head is a boolean literal is that literal.** -/
 theorem Term.eval_of_head_bool {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {hd : Head}
     (t : Term Sg Γ u τ hd) (c : Bool) (hh : hd = .bool c) :
     ∃ hτ : τ = .prim .bool, u = 0 ∧
-      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = hτ ▸ (c : TyWf.Den (.prim .bool)) :=
-  Term.eval_of_head_bool_aux G _ t (Nat.lt_succ_self _) c hh
+      ∀ (env : Env Γ) (h : Term.NoRecMk t), Term.eval G t env h = hτ ▸ (c : TyWf.Den (.prim .bool)) := by
+  subst hh
+  cases t with
+  | atom a =>
+    cases a with
+    | bool_mk _ => exact ⟨rfl, rfl, fun _ _ => rfl⟩
+    | val _ hc => simp [Head.isClosedValue] at hc
+    | ref n => cases n
+  | comp c _ =>
+      have h1 := c.isCompHead.1
+      have h2 := c.isCompHead.2
+      simp [Head.isAtom, Head.isClosedValue] at h1 h2
+
+/-- **An atom whose head is a variable is that variable** (`Term.eval_of_head_var`). -/
+theorem Atom.eval_of_head_var {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {hd : Head}
+    (a : Atom Sg Γ u τ hd) (i : Nat) (hh : hd = .var i) :
+    ∃ x : Γ ∋ τ, x.index = i ∧ u = Usage.single x ∧
+      ∀ (env : Env Γ) (h : Atom.NoRecMk a), Atom.eval G a env h = Env.get x env := by
+  obtain ⟨x, h1, h2, h3⟩ := Term.eval_of_head_var G (.atom a) i hh
+  exact ⟨x, h1, h2, fun env h => h3 env h⟩
 
 /-- Two variables of one context and one type at the same de Bruijn index are the same. -/
 theorem DeBruijnProj.eq_of_index_eq {α : Type} : ∀ {xs : List α} {b : α}
@@ -394,13 +354,13 @@ theorem Spine.eval_varRun_aux (n : Nat) : ∀ {as : List TyWf} {Γ : Ctx} {u : U
     obtain ⟨hk, hrun'⟩ := Head.isVarRun_cons hrun
     simp only [List.length_cons] at hlen
     have hj : j < as.length := by omega
-    obtain ⟨x, hx, -, hxe⟩ := Term.eval_of_head_var G t j hk
+    obtain ⟨x, hx, -, hxe⟩ := Atom.eval_of_head_var G t j hk
     obtain ⟨hσ, hget⟩ := Env.get_append_of_index x j hj hx
     obtain ⟨hbs, hrest⟩ := ih rest (by simp at hn; omega) (j + 1) hrun' (by omega)
     subst hσ hbs
     refine ⟨(List.drop_eq_getElem_cons hj).symm, fun vs env h => ?_⟩
     refine HEq.trans ?_ (TyWf.DenList.dropAt_heq vs j hj).symm
-    show HEq (Term.eval G t (Env.append vs env) h.1, Spine.eval G rest (Env.append vs env) h.2) _
+    show HEq (Atom.eval G t (Env.append vs env) h.1, Spine.eval G rest (Env.append vs env) h.2) _
     rw [hxe]
     exact heq_of_eq (Prod.ext (eq_of_heq (hget vs env)) (eq_of_heq (hrest vs env h.2)))
 
@@ -431,16 +391,21 @@ theorem LeanRecordSchema.toList_inj {α : Type} {a b : LeanRecordSchema α}
   rfl
 
 /-- The value of a record built from a spine is the spine's values. -/
-theorem Term.eval_record_mk_heq {Γ : Ctx} {fs : LeanRecordSchema TyWf} {u : Usage Γ}
-    {ks : List Head} (sp : Spine Sg Γ u fs.toList ks) (hAnf : Head.allAtom ks = true)
-    (env : Env Γ) (h : Term.NoRecMk (Term.record_mk fs sp hAnf)) :
-    HEq (Term.eval G (Term.record_mk fs sp hAnf) env h) (Spine.eval G sp env h) :=
-  cast_heq _ _
+theorem Comp.eval_record_mk_heq {Γ : Ctx} {fs : LeanRecordSchema TyWf} {u : Usage Γ}
+    {ks : List Head} (sp : Spine Sg Γ u fs.toList ks)
+    (env : Env Γ) (h : Comp.NoRecMk (Comp.record_mk fs sp)) :
+    HEq (Comp.eval G (Comp.record_mk fs sp) env h) (Spine.eval G sp env h) := by
+  conv => arg 1; whnf
+  exact HEq.rfl
+
+theorem Head.isRecordEta_of_isAtom {k : Head} (ha : k.isAtom = true) (n : Nat) (τ : TyWf) :
+    Head.isRecordEta k n τ = false :=
+  Head.isRecordEta_of_ne (fun m hm => by subst hm; simp [Head.isAtom] at ha) n τ
 
 /-- **The record η-redex, formally**: a body of a dispatch on a record of schema `fs` that
-    `Term.record_casesOn` rejects as an η-redex (`Head.isRecordEta`) has the record's own
+    `Comp.record_casesOn` rejects as an η-redex (`Head.isRecordEta`) has the record's own
     type, and, run with the fields of a record value `rv` bound — which is how
-    `Term.eval` runs the body of `Term.record_casesOn` — its value is `rv` itself.  So the
+    `Comp.eval` runs the body of `Comp.record_casesOn` — its value is `rv` itself.  So the
     rejected dispatch would be its scrutinee: `match p with | (a, b) => (a, b)` is `p`. -/
 theorem Term.eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
     {v : Usage (fs.toList ++ Γ)} {τ : TyWf} {kb : Head}
@@ -449,12 +414,16 @@ theorem Term.eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
     τ = .record fs ∧ ∀ (rv : TyWf.Den (.record fs)) (env : Env Γ) (h : Term.NoRecMk body),
       HEq (Term.eval G body (Env.append (cast (Ty.denRecord_eq _) rv) env) h) rv := by
   cases body with
-  | record_mk fs' sp hAnf =>
+  | atom a => rw [Head.isRecordEta_of_isAtom a.isAtom_head] at hη; exact absurd hη Bool.false_ne_true
+  | letE => rw [Head.isRecordEta_of_ne (fun m hm => by cases hm)] at hη; exact absurd hη Bool.false_ne_true
+  | comp c hc =>
+  cases c with
+  | record_mk fs' sp =>
     obtain ⟨hrun, hlen, -⟩ := Head.isRecordEta_ctorOf hη
     obtain ⟨hbs, hsp⟩ := Spine.eval_varRun_aux G _ sp (Nat.lt_succ_self _) 0 hrun (by omega)
     obtain rfl := LeanRecordSchema.toList_inj hbs
     refine ⟨rfl, fun rv env h => ?_⟩
-    exact (Term.eval_record_mk_heq G sp hAnf _ h).trans ((hsp _ env h).trans (cast_heq _ _))
+    exact (Comp.eval_record_mk_heq G sp _ h).trans ((hsp _ env h).trans (cast_heq _ _))
   | enum_casesOn _ cs =>
     obtain ⟨a, b, e⟩ := EnumCases.head_join cs
     rw [e] at hη; simp [Head.isRecordEta_of_ne (Head.join_ne_rebuild a b)] at hη
@@ -479,16 +448,16 @@ theorem Term.eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
          exact Bool.false_ne_true hη)
       | exact Bool.false_ne_true (Head.isRecordEta_ctorOf hη).2.2
 
-/-- **The record η-redex, as `Term.eval` reads `Term.record_casesOn`**: with a body that
+/-- **The record η-redex, as `Comp.eval` reads `Comp.record_casesOn`**: with a body that
     `hEta` rejects, the dispatch `match r with | fields => body` would have the value of
     `r`. -/
-theorem Term.record_casesOn_eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
+theorem Comp.record_casesOn_eval_of_isRecordEta {Γ : Ctx} {fs : LeanRecordSchema TyWf}
     {u : Usage Γ} {v : Usage (fs.toList ++ Γ)} {τ : TyWf} {kr kb : Head}
-    (r : Term Sg Γ u (.record fs) kr) (body : Term Sg (fs.toList ++ Γ) v τ kb)
+    (r : Ref Sg Γ u (.record fs) kr) (body : Term Sg (fs.toList ++ Γ) v τ kb)
     (hη : Head.isRecordEta kb fs.toList.length τ = true) (env : Env Γ)
-    (hr : Term.NoRecMk r) (hb : Term.NoRecMk body) :
-    HEq (Term.eval G body (Env.append (cast (Ty.denRecord_eq _) (Term.eval G r env hr)) env) hb)
-      (Term.eval G r env hr) :=
+    (hb : Term.NoRecMk body) :
+    HEq (Term.eval G body (Env.append (cast (Ty.denRecord_eq _) (Ref.eval G r env)) env) hb)
+      (Ref.eval G r env) :=
   (Term.eval_of_isRecordEta G body hη).2 _ env hb
 
 /-! ## A read of a scrutinee known to be a literal -/

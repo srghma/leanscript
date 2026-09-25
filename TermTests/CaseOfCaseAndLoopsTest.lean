@@ -32,30 +32,61 @@ def sig0 : Sig := ⟨[], by decide⟩
 /-- Running a closed term of `sig0`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil $t)
 
+mutual
+
 /-- The number of `if`s (`Term.bool_casesOn`) in the term, looking under binders,
     applications and `let`s. -/
 def ifs {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Nat
+  | .atom a => ifsA a
+  | .comp c _ => ifsC c
+  | .letE a b .. => ifsC a + ifs b
+
+/-- `ifs`, on an atom. -/
+def ifsA {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Atom sig0 Γ u τ k → Nat
   | .lam b _ => ifs b
-  | .ap f a .. => ifs f + ifs a
-  | .letE a b .. => ifs a + ifs b
-  | .bool_casesOn c t e .. => 1 + ifs c + ifs t + ifs e
+  | .val c _ => ifsC c
   | _ => 0
+
+/-- `ifs`, on a computation. -/
+def ifsC {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Comp sig0 Γ u τ k → Nat
+  | .ap f a .. => ifsF f + ifsA a
+  | .bool_casesOn _ t e .. => 1 + ifs t + ifs e
+  | _ => 0
+
+/-- `ifs`, on what an application calls. -/
+def ifsF {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Callee sig0 Γ u τ k → Nat
+  | .ref _ => 0
+  | .app c => ifsC c
+
+end
 
 /-- Whether the term is `fun x₁ … xₙ => y` for a variable `y`. -/
 def lamsOfVar {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Bool
-  | .lam b _ => lamsOfVar b
-  | .var _ => true
+  | .atom (.lam b _) => lamsOfVar b
+  | .atom (.ref r) => match r with
+    | .var _ => true
+    | .global _ => false
   | _ => false
 
-/-- Whether some `Term.nat_rec` in the term (under binders and `let`s) has a `fun` for its
+mutual
+
+/-- Whether some `Comp.nat_rec` in the term (under binders and `let`s) has a `fun` for its
     step — a fold at a function type, which builds one closure per step. -/
 def foldsClosures {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Bool
-  | .lam b _ => foldsClosures b
-  | .letE a b .. => foldsClosures a || foldsClosures b
-  | .nat_rec _ _ _ (.lam _ _) .. => true
+  | .atom (.lam b _) => foldsClosures b
+  | .letE a b .. => foldsClosuresC a || foldsClosures b
+  | .comp c _ => foldsClosuresC c
+  | _ => false
+
+/-- `foldsClosures`, on a computation. -/
+def foldsClosuresC {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
+    Comp sig0 Γ u τ k → Bool
+  | .nat_rec _ _ _ (.atom (.lam _ _)) .. => true
   | .nat_rec _ _ _ b .. => foldsClosures b
   | _ => false
+
+end
 
 /-! ## The grammar rejects the redexes
 
@@ -199,7 +230,7 @@ def sumTo (n : Nat) : Nat := loopAcc n 0
 
 def sumTo_term := (#leanscript_to_term sumTo : Term sig0 [] _ _ _)
 
-example : run sumTo_term 10 = 45 := rfl
+example : run sumTo_term 10 = 45 := by decide +kernel
 
 /-- The counter is read twice by the step: bound once per step by a `let`. -/
 def powAcc : Nat → Nat → Nat
@@ -209,7 +240,7 @@ def powAcc : Nat → Nat → Nat
 def powAcc_term := (#leanscript_to_term powAcc : Term sig0 [] _ _ _)
 
 example : foldsClosures powAcc_term = false := by decide
-example : run powAcc_term 4 1 = powAcc 4 1 := rfl
+example : run powAcc_term 4 1 = powAcc 4 1 := by decide +kernel
 example : run powAcc_term 0 1 = powAcc 0 1 := rfl
 
 /-- Not a tail call: the answer at the predecessor is used, not returned — still a fold at
@@ -221,6 +252,6 @@ def notTail : Nat → Nat → Nat
 def notTail_term := (#leanscript_to_term notTail : Term sig0 [] _ _ _)
 
 example : foldsClosures notTail_term = true := by decide
-example : run notTail_term 3 2 = notTail 3 2 := rfl
+example : run notTail_term 3 2 = notTail 3 2 := by decide +kernel
 
 end TermTests.CaseOfCaseAndLoops

@@ -186,6 +186,7 @@ example := (varyingProcess_term : Term sig [] _ varyingTy .ctor)
 /-- Running a closed term of `sig`. -/
 local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) env $t)
 
+set_option maxHeartbeats 1000000 in
 /-- `mixedProcess`, with the witnesses `Nat`, `String` and `Bool` filled in. -/
 example : run mixedProcess_term =
     (0, fun n => ⟨⟨1, by decide⟩, (n + 1, 42,

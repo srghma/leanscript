@@ -28,7 +28,7 @@ The recursive analogue of the facts at the end of `LeanScript.Eval`.
   branch of its constructor, evaluated on its fields and, after each field that is
   literally `Ty.self`, the answer of the fold at that field.
 * **Depth does not change meaning.**  The evaluator folds by `WType.memo`, remembering
-  every answer; `Term.eval_recTaggedUnion_rec_toFoldK` says that at **every** depth `k`,
+  every answer; `Comp.eval_recTaggedUnion_rec_toFoldK` says that at **every** depth `k`,
   branches that answer where they stand (`TaggedUnionFoldCases.toFoldK`) give exactly
   that plain fold.
 -/
@@ -42,29 +42,29 @@ A dispatch on the introduction form itself is a redex, which the grammar does no
 
 /-- The tag of a value built by the introduction form is the constructor it was built
     with. -/
-theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx} {u : Usage Γ}
+theorem Comp.eval_recTaggedUnion_mk_tag {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
     {ks : List Head}
     (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
-    (hAnf : Head.allAtom ks = true) (env : Env Γ)
-    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields hAnf)) :
-    (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields hAnf) env h)).1.val
+    (env : Env Γ)
+    (h : Comp.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
+    (TyWf.DenRec.unfold l hwf (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)).1.val
       = t := by
   show (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)).1.val = t
   rw [TyWf.DenRec.unfold_mk]
   rfl
 
 /-- The fields of a value built by the introduction form are the ones it was built with. -/
-theorem Term.eval_recTaggedUnion_field? {Γ : Ctx} {u : Usage Γ}
+theorem Comp.eval_recTaggedUnion_field? {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
     {ks : List Head}
     (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
-    (hAnf : Head.allAtom ks = true) (env : Env Γ)
-    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields hAnf)) :
+    (env : Env Γ)
+    (h : Comp.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
     TyWf.DenTU.field? t ht
-        (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields hAnf) env h)) =
+        (TyWf.DenRec.unfold l hwf (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)) =
       some (Spine.eval G fields env h) := by
   show TyWf.DenTU.field? t ht (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk, TyWf.DenTU.field?_mk]
@@ -403,17 +403,16 @@ abbrev TaggedUnionFoldCases.memoStep {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {l : 
 
 /-- **The evaluator's memoised fold is the plain fold**, at every depth, for branches that
     answer where they stand. -/
-theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
+theorem Comp.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
-    {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
+    {w : Usage Γ} {hd : Head} (v : Atom Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (hAnf : Head.isAtom hd = true)
     (hc : Head.closedComp (Usage.arg hd w + Usage.many u) τ .comp = false)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc)) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h =
-      TaggedUnionFoldCases.recFold G c env h.2 (Term.eval G v env h.1) := by
-  show (WType.memo _ (Term.eval G v env h.1)).answer = _
-  generalize Term.eval G v env h.1 = w
+    (env : Env Γ) (h : Comp.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc)) :
+    Comp.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
+      TaggedUnionFoldCases.recFold G c env h.2 (Atom.eval G v env h.1) := by
+  show (WType.memo _ (Atom.eval G v env h.1)).answer = _
+  generalize Atom.eval G v env h.1 = w
   induction w with
   | mk node f ih =>
       show TaggedUnionFoldKCases.eval G (TaggedUnionFoldCases.toFoldK c) env
@@ -432,17 +431,16 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyW
 
 /-- **Depth does not change meaning**: branches that answer where they stand give the same
     value at every depth. -/
-theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
+theorem Comp.eval_recTaggedUnion_rec_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
-    {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
+    {w : Usage Γ} {hd : Head} (v : Atom Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (hAnf : Head.isAtom hd = true)
     (hc : Head.closedComp (Usage.arg hd w + Usage.many u) τ .comp = false)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc))
-    (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hAnf hc)) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h =
-      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h' := by
-  rw [Term.eval_recTaggedUnion_rec_toFoldK, Term.eval_recTaggedUnion_rec_toFoldK]
+    (env : Env Γ) (h : Comp.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc))
+    (h' : Comp.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc)) :
+    Comp.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
+      Comp.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc) env h' := by
+  rw [Comp.eval_recTaggedUnion_rec_toFoldK, Comp.eval_recTaggedUnion_rec_toFoldK]
   exact TaggedUnionFoldCases.recFold_depth G c env h.2 h'.2 _
 
 end LeanScript

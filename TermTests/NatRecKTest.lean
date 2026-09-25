@@ -139,7 +139,7 @@ theorem natRecCtx_two : natRecCtx τ 2 Γ = τ :: τ :: Γ := rfl
 theorem natRecCtx_three : natRecCtx τ 3 Γ = τ :: τ :: τ :: Γ := rfl
 
 /-- The base values are a `Spine` written out as usual — nothing to prove at its type. -/
-def baseSpine_two {u v : Usage Γ} {k k' : Head} (a : Term Sg Γ u τ k) (b : Term Sg Γ v τ k') :
+def baseSpine_two {u v : Usage Γ} {k k' : Head} (a : Atom Sg Γ u τ k) (b : Atom Sg Γ v τ k') :
     Spine Sg Γ (Usage.arg k u + (Usage.arg k' v + 0)) (natRecCtx τ 2 []) [k, k'] :=
   .cons a (.cons b .nil)
 

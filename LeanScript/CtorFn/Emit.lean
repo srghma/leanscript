@@ -34,10 +34,10 @@ def addReducibleDef (name : Name) (type value : Expr) : MetaM Unit := do
   setReducibleAttribute name
 
 /-- The tactic block `by head_ok` of a proof argument of the grammar, as the second argument
-    of `autoParam`: read off the type of `LeanScript.Term.recAlias_mk`, whose `hAnf` is
+    of `autoParam`: read off the type of `LeanScript.Spine.consT`, whose `hAnf` is
     written by it. -/
 def anfAutoParam : MetaM Expr := do
-  let ci ← getConstInfoCtor ``LeanScript.Term.recAlias_mk
+  let ci ← getConstInfo ``LeanScript.Spine.consT
   forallTelescope ci.type fun xs _ => do
     for x in xs do
       if (← x.fvarId!.getUserName).eraseMacroScopes == `hAnf then
@@ -45,14 +45,14 @@ def anfAutoParam : MetaM Expr := do
         if ty.isAppOfArity ``autoParam 2 then return ty.appArg!
     throwError "`#leanscript_ctor`: internal: no `by head_ok` to reuse"
 
-/-- A spine of the terms `xs`, at the trees `tys`. -/
-def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := do
+/-- A spine of the terms `xs`, at the trees `tys`; `hs` are the proofs that they are atoms. -/
+def mkSpineE (sg γ : Expr) (tys : List Expr) (xs hs : Array Expr) : MetaM Expr := do
   let mut sp ← LeanScript.ToTerm.buildNode ``LeanScript.Spine.nil #[sg, γ]
   let tysA := tys.toArray
   for i in [0:xs.size] do
     let j := xs.size - 1 - i
-    sp := (← LeanScript.ToTerm.buildNode ``LeanScript.Spine.cons
-      #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp])
+    sp := (← LeanScript.ToTerm.buildNode ``LeanScript.Spine.consT
+      #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp] #[(`hAnf, hs[j]!)])
   return sp
 
 /-- Does a constructor function of this shape build a constructor node, whose fields are
@@ -60,18 +60,6 @@ def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := 
 def Shape.hasFields : Shape → Bool
   | .record _ | .union _ => true
   | _ => false
-
-/-- The proof that the fields, of heads `ks`, are atoms (`LeanScript.Head.allAtom`), from a
-    proof `hs[i]` that the head of field `i` is one. -/
-def allAtomProof (ks hs : Array Expr) : MetaM Expr := do
-  let headTy := Lean.mkConst ``LeanScript.Head
-  let mut prf := Lean.mkConst ``LeanScript.Head.allAtom_nil
-  let mut rest ← mkListLit headTy []
-  for i in [0:ks.size] do
-    let j := ks.size - 1 - i
-    prf := mkAppN (Lean.mkConst ``LeanScript.Head.allAtom_cons) #[ks[j]!, rest, hs[j]!, prf]
-    rest := mkApp3 (Lean.mkConst ``List.cons [0]) headTy ks[j]! rest
-  return prf
 
 /-- The body of the constructor function: the value of shape `shape` built as constructor
     `cidx` from the terms `xs`, of heads `ks`, at the trees `tys`; `hs` are the proofs that
@@ -82,13 +70,12 @@ def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs ks
   | .newtype => return xs[0]!
   | .record sch =>
       return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.record_mk
-        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs] #[(`hAnf, ← allAtomProof ks hs)])
+        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs hs])
   | .union l =>
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, lenE])
       return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.taggedUnion_mk
-        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs]
-        #[(`hAnf, ← allAtomProof ks hs)])
+        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs hs])
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, nE])
@@ -169,8 +156,8 @@ def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : S
     let hDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
       if shape.hasFields then
         fields.mapIdx fun i (n, _) => (n.appendAfter "_atom", .default, fun _ =>
-          pure (mkApp2 (Lean.mkConst ``autoParam [levelZero])
-            (mkApp3 (Lean.mkConst ``Eq [levelOne]) (Lean.mkConst ``Bool)
+          pure (mkApp2 (Lean.mkConst ``autoParam [Level.zero])
+            (mkApp3 (Lean.mkConst ``Eq [Level.one]) (Lean.mkConst ``Bool)
               (mkApp (Lean.mkConst ``LeanScript.Head.isAtom) ks[i]!) (Lean.mkConst ``Bool.true)) autoE))
       else #[]
     withLocalDecls hDecls fun hs => do

@@ -76,7 +76,7 @@ def tribBranch :=
                           (.skip (.nat_mk 1)
                             (.here
                               (.record_casesOn (.var (v♯0))
-                                (.letE (addT (.var (v♯8)) (.var (v♯3)))
+                                (.letT (addT (.var (v♯8)) (.var (v♯3)))
                                   (addT (.var (v♯0)) (.var (v♯2)))))
                               .nil)))))
                     .nil)))))
@@ -109,8 +109,8 @@ def tetraBranch :=
                                     (.skip (.nat_mk 1)
                                       (.here
                                         (.record_casesOn (.var (v♯0))
-                                          (.letE (addT (.var (v♯13)) (.var (v♯8)))
-                                            (.letE (addT (.var (v♯0)) (.var (v♯4)))
+                                          (.letT (addT (.var (v♯13)) (.var (v♯8)))
+                                            (.letT (addT (.var (v♯0)) (.var (v♯4)))
                                               (addT (.var (v♯0)) (.var (v♯3))))))
                                         .nil)))))
                               .nil)))))
@@ -149,9 +149,9 @@ def pentaBranch :=
                                               (.skip (.nat_mk 1)
                                                 (.here
                                                   (.record_casesOn (.var (v♯0))
-                                                    (.letE (addT (.var (v♯18)) (.var (v♯13)))
-                                                      (.letE (addT (.var (v♯0)) (.var (v♯9)))
-                                                        (.letE (addT (.var (v♯0)) (.var (v♯5)))
+                                                    (.letT (addT (.var (v♯18)) (.var (v♯13)))
+                                                      (.letT (addT (.var (v♯0)) (.var (v♯9)))
+                                                        (.letT (addT (.var (v♯0)) (.var (v♯5)))
                                                           (addT (.var (v♯0)) (.var (v♯4)))))))
                                                   .nil)))))
                                         .nil)))))
@@ -196,10 +196,10 @@ def hexaBranch :=
                                                         (.skip (.nat_mk 1)
                                                           (.here
                                                             (.record_casesOn (.var (v♯0))
-                                                              (.letE (addT (.var (v♯23)) (.var (v♯18)))
-                                                                (.letE (addT (.var (v♯0)) (.var (v♯14)))
-                                                                  (.letE (addT (.var (v♯0)) (.var (v♯10)))
-                                                                    (.letE (addT (.var (v♯0)) (.var (v♯6)))
+                                                              (.letT (addT (.var (v♯23)) (.var (v♯18)))
+                                                                (.letT (addT (.var (v♯0)) (.var (v♯14)))
+                                                                  (.letT (addT (.var (v♯0)) (.var (v♯10)))
+                                                                    (.letT (addT (.var (v♯0)) (.var (v♯6)))
                                                                       (addT (.var (v♯0)) (.var (v♯5))))))))
                                                             .nil)))))
                                                   .nil)))))
@@ -230,14 +230,14 @@ def fibTRBranch :=
       (.skip (.lam (.lam (.var (v♯1))))
         (.here
           (.record_casesOn (.var (v♯0))
-            (.lam (.lam (.letE (addT (.var (v♯1)) (.var (v♯0)))
+            (.lam (.lam (.letT (addT (.var (v♯1)) (.var (v♯0)))
               (.ap (.ap (.var (v♯4)) (.var (v♯1))) (.var (v♯0)))))))
           .nil)) :
     Term sigAdd (branchCtx loopTy 0) _ loopTy _)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm :=
-  (.lam (.letE (.recAlias_rec 0 (.var (v♯0)) fibTRBranch) (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
+  (.lam (.letT (.recAlias_rec 0 (.var (v♯0)) fibTRBranch) (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (chainTy ⇒ natT) .lam)
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
@@ -259,14 +259,14 @@ def fibPairBranch :=
         (.here
           (.record_casesOn (.var (v♯0))
             (.record_casesOn (.var (v♯1))
-              (.letE (addT (.var (v♯0)) (.var (v♯1)))
+              (.letT (addT (.var (v♯0)) (.var (v♯1)))
                 (.record_mk pairSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil))))))
           .nil)) :
     Term sigAdd (branchCtx pairTy 0) _ pairTy _)
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm :=
-  (.lam (.letE (.recAlias_rec 0 (.var (v♯0)) fibPairBranch) (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
+  (.lam (.letT (.recAlias_rec 0 (.var (v♯0)) fibPairBranch) (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (chainTy ⇒ natT) .lam)
 
 /-! ## 6. The continuant: a fold that reads the newtype's **own label** as well
@@ -296,7 +296,7 @@ def contBranch :=
                 (.skip (.var (v♯2))
                   (.here
                     (.record_casesOn (.var (v♯0))
-                      (.letE (mulT (.var (v♯5)) (.var (v♯3)))
+                      (.letT (mulT (.var (v♯5)) (.var (v♯3)))
                         (addT (.var (v♯0)) (.var (v♯2)))))
                     .nil)))))
           .nil)) :

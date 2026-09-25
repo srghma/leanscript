@@ -241,16 +241,25 @@ example : run ifPass_term true 4 = 2 := rfl
 example : run ifPass_term false 3 = 0 := rfl
 
 /--
-info: (((Term.var DeBruijnProj.head.tail).bool_casesOn
-          ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 3) Spine.nil))
-                (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_dec_eq__Nat_decEq vs.1 vs.2.1)) ⋯ ⋯
-                ⋯).letE
-            ((Term.var DeBruijnProj.head).bool_casesOn (Term.nat_mk 1) (Term.nat_mk 2) ⋯ ifPass_term._proof_7
-              ifPass_term._proof_8 ⋯ ⋯)
-            ifPass_term._proof_11 ⋯ ⋯ ⋯ ⋯)
-          (Term.nat_mk 0) ⋯ ifPass_term._proof_17 ifPass_term._proof_18 ⋯ ⋯).lam
-      ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.comp
+          (Comp.bool_casesOn (Ref.var DeBruijnProj.head.tail)
+            (Term.letE
+              (Comp.externCall
+                (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) (Spine.cons (Atom.nat_mk 3) Spine.nil))
+                (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_dec_eq__Nat_decEq vs.1 vs.2.1)) ⋯ ⋯)
+              (Term.comp
+                (Comp.bool_casesOn (Ref.var DeBruijnProj.head) (Term.atom (Atom.nat_mk 1)) (Term.atom (Atom.nat_mk 2))
+                  ifPass_term._proof_5 ifPass_term._proof_6 ⋯ ⋯)
+                ifPass_term._proof_9)
+              ⋯ ⋯ ⋯ ⋯)
+            (Term.atom (Atom.nat_mk 0)) ifPass_term._proof_14 ifPass_term._proof_15 ⋯ ⋯)
+          ifPass_term._proof_18)
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ifPass_term
@@ -297,31 +306,41 @@ def colourKeep_term :=
   (#leanscript_to_term colourKeep : Term sig0 [] _ (tyWfOf Colour ⇒ tyWfOf (Nat × Colour)) .lam)
 
 /--
-info: ((Term.var DeBruijnProj.head).enum_casesOn
-      (EnumCases.three
-        (Term.record_mk
-          { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_2 },
-            snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
-            rest := [] }
-          (Spine.cons (Term.nat_mk 0)
-            (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_3⟩) Spine.nil))
-          colourKeep_term._proof_5)
-        (Term.record_mk
-          { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_2 },
-            snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
-            rest := [] }
-          (Spine.cons (Term.nat_mk 1)
-            (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_3⟩) Spine.nil))
-          colourKeep_term._proof_5)
-        (Term.record_mk
-          { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_2 },
-            snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
-            rest := [] }
-          (Spine.cons (Term.nat_mk 2)
-            (Spine.cons (Term.enum_mk { shift := Int.ofNat 0 } ⟨2, colourKeep_term._proof_4⟩) Spine.nil))
-          colourKeep_term._proof_6))
-      ⋯ ⋯ ⋯ colourKeep_term._proof_10 colourKeep_term._proof_11).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.comp
+      (Comp.enum_casesOn (Ref.var DeBruijnProj.head)
+        (EnumCases.three
+          (Term.atom
+            (Atom.val
+              (Comp.record_mk
+                { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_1 },
+                  snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
+                  rest := [] }
+                (Spine.cons (Atom.nat_mk 0)
+                  (Spine.cons (Atom.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_2⟩) Spine.nil)))
+              ⋯))
+          (Term.atom
+            (Atom.val
+              (Comp.record_mk
+                { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_1 },
+                  snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
+                  rest := [] }
+                (Spine.cons (Atom.nat_mk 1)
+                  (Spine.cons (Atom.enum_mk { shift := Int.ofNat 0 } ⟨1, colourKeep_term._proof_2⟩) Spine.nil)))
+              ⋯))
+          (Term.atom
+            (Atom.val
+              (Comp.record_mk
+                { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := ifPass_term._proof_1 },
+                  snd := { toTy := Ty.shape (TyShape.enum { shift := Int.ofNat 0 }), isWf := colourKeep_term._proof_1 },
+                  rest := [] }
+                (Spine.cons (Atom.nat_mk 2)
+                  (Spine.cons (Atom.enum_mk { shift := Int.ofNat 0 } ⟨2, colourKeep_term._proof_3⟩) Spine.nil)))
+              ⋯)))
+        ⋯ ⋯ colourKeep_term._proof_7 colourKeep_term._proof_8)
+      colourKeep_term._proof_9)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) colourKeep_term

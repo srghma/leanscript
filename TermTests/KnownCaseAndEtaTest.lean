@@ -209,7 +209,7 @@ def orTrue_term := (#leanscript_to_term orTrue : Term sig0 [] _ (TyWf.prim .bool
 example : run orTrue_term false = true := rfl
 
 /--
-info: (Term.bool_mk true).lam ⋯
+info: Term.atom (Atom.lam (Term.atom (Atom.bool_mk true)) ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) orTrue_term
@@ -223,7 +223,7 @@ def andFalse_term :=
 example : run andFalse_term true = false := rfl
 
 /--
-info: (Term.bool_mk false).lam ⋯
+info: Term.atom (Atom.lam (Term.atom (Atom.bool_mk false)) ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) andFalse_term
@@ -237,7 +237,7 @@ def ifSame_term :=
 example : run ifSame_term true 4 = 4 := rfl
 
 /--
-info: ((Term.var DeBruijnProj.head).lam ⋯).lam ⋯
+info: Term.atom (Atom.lam (Term.atom (Atom.lam (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) ⋯)) ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ifSame_term
@@ -252,7 +252,16 @@ example : run ifIf_term true 5 = 5 := rfl
 example : run ifIf_term false 5 = 3 := rfl
 
 /--
-info: (((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.var DeBruijnProj.head) (Term.nat_mk 3) ⋯ ⋯ ⋯ ⋯ ⋯).lam ⋯).lam ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.comp
+          (Comp.bool_casesOn (Ref.var DeBruijnProj.head.tail) (Term.atom (Atom.ref (Ref.var DeBruijnProj.head)))
+            (Term.atom (Atom.nat_mk 3)) ⋯ ⋯ ⋯ ⋯)
+          ⋯)
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ifIf_term
@@ -270,11 +279,20 @@ example : run ifIfBoth_term true 5 6 = 5 := rfl
 example : run ifIfBoth_term false 5 6 = 6 := rfl
 
 /--
-info: ((((Term.var DeBruijnProj.head.tail.tail).bool_casesOn (Term.var DeBruijnProj.head.tail) (Term.var DeBruijnProj.head) ⋯
-              ⋯ ⋯ ⋯ ⋯).lam
-          ⋯).lam
-      ⋯).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.atom
+      (Atom.lam
+        (Term.atom
+          (Atom.lam
+            (Term.comp
+              (Comp.bool_casesOn (Ref.var DeBruijnProj.head.tail.tail)
+                (Term.atom (Atom.ref (Ref.var DeBruijnProj.head.tail)))
+                (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) ⋯ ⋯ ⋯ ⋯)
+              ⋯)
+            ⋯))
+        ⋯))
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ifIfBoth_term
@@ -293,14 +311,22 @@ example : run optTwice_term ⟨⟨1, by decide⟩, (3, ())⟩ = 6 := rfl
 example : run optTwice_term ⟨⟨0, by decide⟩, ()⟩ = 1 := rfl
 
 /--
-info: ((Term.var DeBruijnProj.head).taggedUnion_casesOn
-      (TaggedUnionCases.skip (Term.nat_mk 1)
-        (CtorsWithPayloadCases.here
-          (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-          TaggedUnionCasesRest.nil))
-      ⋯ ⋯ ⋯ optTwice_term._proof_8 ⋯ optTwice_term._proof_10).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.comp
+      (Comp.taggedUnion_casesOn (Ref.var DeBruijnProj.head)
+        (TaggedUnionCases.skip (Term.atom (Atom.nat_mk 1))
+          (CtorsWithPayloadCases.here
+            (Term.comp
+              (Comp.externCall
+                (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+                  (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head)) Spine.nil))
+                (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+              optTwice_term._proof_4)
+            TaggedUnionCasesRest.nil))
+        ⋯ ⋯ optTwice_term._proof_7 ⋯ optTwice_term._proof_9)
+      optTwice_term._proof_10)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) optTwice_term
@@ -318,12 +344,19 @@ example : run pairProj_term (cast (Ty.denRecord_eq _).symm ((3, 4, ()) : Nat × 
     12 := rfl
 
 /--
-info: ((Term.var DeBruijnProj.head).record_casesOn
-      (Term.externCall
-        (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯)
-      ⋯ ⋯ ⋯ ⋯ pairProj_term._proof_9).lam
-  ⋯
+info: Term.atom
+  (Atom.lam
+    (Term.comp
+      (Comp.record_casesOn (Ref.var DeBruijnProj.head)
+        (Term.comp
+          (Comp.externCall
+            (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head))
+              (Spine.cons (Atom.ref (Ref.var DeBruijnProj.head.tail)) Spine.nil))
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
+          optTwice_term._proof_4)
+        ⋯ ⋯ ⋯ pairProj_term._proof_7)
+      pairProj_term._proof_8)
+    ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) pairProj_term
@@ -339,7 +372,7 @@ def etaDef_term :=
 example : run etaDef_term (· + 1) 4 = 5 := rfl
 
 /--
-info: (Term.var DeBruijnProj.head).lam ⋯
+info: Term.atom (Atom.lam (Term.atom (Atom.ref (Ref.var DeBruijnProj.head))) ⋯)
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) etaDef_term

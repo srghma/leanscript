@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
 public import TermTests.FibWindowTest
@@ -372,7 +372,7 @@ example (τ : TyWf) :
 def leafTerm :=
   (.recObject_mk cellSchema
      (fields := .cons (.nat_mk 1)
-       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil)) :
+       (.cons (.val (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil))) .nil)) :
     Term sigAdd [] _ cellTy .ctor)
 
 /-- One more cell on top of the one in scope (the tagged value is bound by a `let`: the

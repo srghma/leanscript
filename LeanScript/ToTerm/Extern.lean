@@ -155,7 +155,7 @@ def externUnfoldShorthand (entry : Expr) : MetaM Expr := do
 def spineE (c : TCtx) (ts σs : Array Expr) : MetaM Expr := do
   let mut acc := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
   for j in (List.range ts.size).reverse do
-    acc := (← mkNode ``LeanScript.Spine.cons
+    acc := (← mkNode ``LeanScript.Spine.consT
       #[c.sg, c.gamma, σs[j]!, tyListE (σs.extract (j + 1) σs.size), ts[j]!, acc])
   return acc
 

@@ -196,7 +196,7 @@ def fibLoop_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd fibLoop_term 0 = 0 := rfl
-example : runAdd fibLoop_term 1 = 1 := rfl
+example : runAdd fibLoop_term 1 = 1 := by decide +kernel
 example : runAdd fibLoop_term 4 = 3 := by decide +kernel
 
 /-! ### Three steps and more
@@ -216,7 +216,7 @@ def tribonacci_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd tribonacci_term 2 = 1 := rfl
-example : runAdd tribonacci_term 10 = tribonacci 10 := rfl
+example : runAdd tribonacci_term 10 = tribonacci 10 := by decide +kernel
 
 def tetranacci : Nat → Nat
   | 0     => 0

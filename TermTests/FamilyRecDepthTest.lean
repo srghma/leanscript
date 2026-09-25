@@ -75,7 +75,7 @@ def tribCases :=
                       (.ctors
                         (.skip (.here (.nat_mk 1))
                           (.here
-                            (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
+                            (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
                                      (addT (.var (v♯0)) (.var (v♯6)))))
                             .nil))))
                     .nil))))
@@ -106,8 +106,8 @@ def tetraCases :=
                               (.ctors
                                 (.skip (.here (.nat_mk 1))
                                   (.here
-                                    (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                             (.letE (addT (.var (v♯0)) (.var (v♯6)))
+                                    (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                             (.letT (addT (.var (v♯0)) (.var (v♯6)))
                                                (addT (.var (v♯0)) (.var (v♯9))))))
                                     .nil))))
                             .nil))))
@@ -143,9 +143,9 @@ def pentaCases :=
                                       (.ctors
                                         (.skip (.here (.nat_mk 1))
                                           (.here
-                                            (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                                     (.letE (addT (.var (v♯0)) (.var (v♯6)))
-                                                       (.letE (addT (.var (v♯0)) (.var (v♯9)))
+                                            (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                                     (.letT (addT (.var (v♯0)) (.var (v♯6)))
+                                                       (.letT (addT (.var (v♯0)) (.var (v♯9)))
                                                          (addT (.var (v♯0)) (.var (v♯12)))))))
                                             .nil))))
                                     .nil))))
@@ -186,10 +186,10 @@ def hexaCases :=
                                               (.ctors
                                                 (.skip (.here (.nat_mk 1))
                                                   (.here
-                                                    (.here (.letE (addT (.var (v♯1)) (.var (v♯3)))
-                                                             (.letE (addT (.var (v♯0)) (.var (v♯6)))
-                                                               (.letE (addT (.var (v♯0)) (.var (v♯9)))
-                                                                 (.letE (addT (.var (v♯0)) (.var (v♯12)))
+                                                    (.here (.letT (addT (.var (v♯1)) (.var (v♯3)))
+                                                             (.letT (addT (.var (v♯0)) (.var (v♯6)))
+                                                               (.letT (addT (.var (v♯0)) (.var (v♯9)))
+                                                                 (.letT (addT (.var (v♯0)) (.var (v♯12)))
                                                                    (addT (.var (v♯0)) (.var (v♯15))))))))
                                                     .nil))))
                                             .nil))))
@@ -221,7 +221,7 @@ def fibTRCases :=
       (.ctors
         (.skip (.here (.lam (.lam (.var (v♯1)))))
           (.here
-            (.here (.lam (.lam (.letE (addT (.var (v♯1)) (.var (v♯0)))
+            (.here (.lam (.lam (.letT (addT (.var (v♯1)) (.var (v♯0)))
               (.ap (.ap (.var (v♯4)) (.var (v♯1))) (.var (v♯0)))))))
             .nil)))
       (.cons (lsCases (.lam (.lam (.nat_mk 0)))) .nil) :
@@ -229,7 +229,7 @@ def fibTRCases :=
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm :=
-  (.lam (.letE (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibTRCases)
+  (.lam (.letT (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibTRCases)
      (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (peTy ⇒ natT) .lam)
 
@@ -253,7 +253,7 @@ def fibPairCases :=
         (.skip (.here (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil))))
           (.here
             (.here (.record_casesOn (.var (v♯1))
-              (.letE (addT (.var (v♯0)) (.var (v♯1)))
+              (.letT (addT (.var (v♯0)) (.var (v♯1)))
                 (.record_mk pairSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil))))))
             .nil)))
       (.cons (lsCases (.record_mk pairSchema
@@ -262,7 +262,7 @@ def fibPairCases :=
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm :=
-  (.lam (.letE (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibPairCases)
+  (.lam (.letT (.mutualRecursiveFamily_rec 0 (.var (v♯0)) fibPairCases)
      (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (peTy ⇒ natT) .lam)
 
@@ -317,7 +317,7 @@ def contCases :=
               (.deep (.there (.here rfl)) (.there .here)
                 (.ctors
                   (.skip (.here (.var (v♯0)))
-                    (.here (.here (.letE (mulT (.var (v♯3)) (.var (v♯5)))
+                    (.here (.here (.letT (mulT (.var (v♯3)) (.var (v♯5)))
                                     (addT (.var (v♯0)) (.var (v♯3)))))
                       .nil))))
               .nil)))

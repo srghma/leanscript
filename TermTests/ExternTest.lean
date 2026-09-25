@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Flat
 public import LeanScript.Eval
 -- The kernel checks of `Lean.Name.beq` below need its body, which `Init` does not expose.
 import all Init.Prelude
@@ -115,7 +115,7 @@ is false
 -/
 #guard_msgs in
 example := (.externCallChecked
-    (.cons (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))))
+    (.consT (.array_mk (.cons (.nat_mk 1) (.cons (.nat_mk 2) (.cons (.nat_mk 3) .nil))))
       (.cons (.nat_mk 1) .nil))
     (fun vs => if h : vs.2.1 < vs.1.size then some (.lean_array_fget (TyWf.prim .nat) vs.1 vs.2.1 h)
       else none)

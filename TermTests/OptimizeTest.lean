@@ -48,7 +48,7 @@ example : (#leanscript_optimize (.externCall (.cons (.nat_mk 2) (.cons (.nat_mk 
 /-- Redexes nested under a `fun`: `fun n => n + ("ab".length)` becomes `fun n => n + 2`. -/
 def addLen := (#leanscript_optimize
     (.lam (.externCall (.cons (.var .head)
-      (.cons (.extern (.lean_string_length__String_length "ab")) .nil))
+      (.consT (.extern (.lean_string_length__String_length "ab")) .nil))
       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
   Term ⟨[], rfl⟩ [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) _)
 

@@ -38,86 +38,102 @@ family); until it is here, the restriction is stated rather than assumed. -/
 
 mutual
 
-/-- The term builds no value of a recursive record, newtype or mutual family, so
-    `Term.eval` can interpret it.  See this section's header. -/
-def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → Term Sg Γ u τ hd → Prop
+/-- What an application calls builds no value of a recursive record, newtype or mutual
+    family (`Term.NoRecMk`); a name builds nothing. -/
+def Callee.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} →
+    Callee Sg Γ u τ hd → Prop
+  | _, _, _, _, .ref _ => True
+  | _, _, _, _, .app c => Comp.NoRecMk c
+
+/-- An atom builds no value of a recursive record, newtype or mutual family
+    (`Term.NoRecMk`): only a `fun` and a closed value have parts. -/
+def Atom.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} →
+    Atom Sg Γ u τ hd → Prop
   | _, _, _, _, .lam body _ => Term.NoRecMk body
-  | _, _, _, _, .ap f a .. => Term.NoRecMk f ∧ Term.NoRecMk a
-  | _, _, _, _, .letE e body .. => Term.NoRecMk e ∧ Term.NoRecMk body
+  | _, _, _, _, .val c _ => Comp.NoRecMk c
+  -- a name and every literal
+  | _, _, _, _, _ => True
+
+/-- A computation builds no value of a recursive record, newtype or mutual family
+    (`Term.NoRecMk`).  What it takes apart is a name, which builds nothing. -/
+def Comp.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} →
+    Comp Sg Γ u τ hd → Prop
+  | _, _, _, _, .ap f a .. => Callee.NoRecMk f ∧ Atom.NoRecMk a
   -- externs applied to terms
   | _, _, _, _, .externCall args .. => Spine.NoRecMk args
   | _, _, _, _, .externCallChecked args _ fallback .. => Spine.NoRecMk args ∧ Term.NoRecMk fallback
   -- case analysis on a leaf
-  | _, _, _, _, .bool_casesOn c t e .. => Term.NoRecMk c ∧ Term.NoRecMk t ∧ Term.NoRecMk e
-  | _, _, _, _, .nat_casesOn n z s .. => Term.NoRecMk n ∧ Term.NoRecMk z ∧ Term.NoRecMk s
+  | _, _, _, _, .bool_casesOn _ t e .. => Term.NoRecMk t ∧ Term.NoRecMk e
+  | _, _, _, _, .nat_casesOn _ z s .. => Term.NoRecMk z ∧ Term.NoRecMk s
   | _, _, _, _, .nat_rec _ n base branch .. =>
-      Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
-  | _, _, _, _, .int_casesOn i a b .. => Term.NoRecMk i ∧ Term.NoRecMk a ∧ Term.NoRecMk b
-  | _, _, _, _, .uint8_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint16_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint32_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .uint64_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int8_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int16_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int32_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .int64_casesOn v b .. => Term.NoRecMk v ∧ Term.NoRecMk b
-  | _, _, _, _, .char_casesOn c b .. => Term.NoRecMk c ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPosRaw_casesOn p b .. => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .stringPos_casesOn p b .. => Term.NoRecMk p ∧ Term.NoRecMk b
-  | _, _, _, _, .substringRaw_casesOn s b .. => Term.NoRecMk s ∧ Term.NoRecMk b
-  | _, _, _, _, .float_casesOn x b .. => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .float32_casesOn x b .. => Term.NoRecMk x ∧ Term.NoRecMk b
-  | _, _, _, _, .floatModel_casesOn m b .. => Term.NoRecMk m ∧ Term.NoRecMk b
-  | _, _, _, _, .float32Model_casesOn m b .. => Term.NoRecMk m ∧ Term.NoRecMk b
+      Atom.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch
+  | _, _, _, _, .int_casesOn _ a b .. => Term.NoRecMk a ∧ Term.NoRecMk b
+  | _, _, _, _, .uint8_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .uint16_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .uint32_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .uint64_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .int8_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .int16_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .int32_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .int64_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .char_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .stringPosRaw_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .stringPos_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .substringRaw_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .float_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .float32_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .floatModel_casesOn _ b .. => Term.NoRecMk b
+  | _, _, _, _, .float32Model_casesOn _ b .. => Term.NoRecMk b
   -- delays
   | _, _, _, _, .lazy_mk e .. => Term.NoRecMk e
-  | _, _, _, _, .lazy_force e .. => Term.NoRecMk e
   | _, _, _, _, .thunk_mk e .. => Term.NoRecMk e
-  | _, _, _, _, .thunk_force e .. => Term.NoRecMk e
   -- arrays
   | _, _, _, _, .array_mk ts .. => Terms.NoRecMk ts
-  | _, _, _, _, .array_casesOn a z s .. => Term.NoRecMk a ∧ Term.NoRecMk z ∧ Term.NoRecMk s
+  | _, _, _, _, .array_casesOn _ z s .. => Term.NoRecMk z ∧ Term.NoRecMk s
   | _, _, _, _, .array_rec _ a bases branch .. =>
-      Term.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
+      Atom.NoRecMk a ∧ ArrayRecBases.NoRecMk bases ∧ Term.NoRecMk branch
   -- enums
-  | _, _, _, _, .enum_casesOn e cases .. => Term.NoRecMk e ∧ EnumCases.NoRecMk cases
-  | _, _, _, _, .enum_casesOnWithDefault e cases dflt .. =>
-      Term.NoRecMk e ∧ EnumSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
+  | _, _, _, _, .enum_casesOn _ cases .. => EnumCases.NoRecMk cases
+  | _, _, _, _, .enum_casesOnWithDefault _ cases dflt .. =>
+      EnumSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   -- records and tagged unions
   | _, _, _, _, .record_mk _ fields .. => Spine.NoRecMk fields
-  | _, _, _, _, .record_casesOn r body .. => Term.NoRecMk r ∧ Term.NoRecMk body
+  | _, _, _, _, .record_casesOn _ body .. => Term.NoRecMk body
   | _, _, _, _, .taggedUnion_mk _ _ _ fields .. => Spine.NoRecMk fields
-  | _, _, _, _, .taggedUnion_casesOn v cases .. => Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
-  | _, _, _, _, .taggedUnion_casesOnWithDefault v cases dflt .. =>
-      Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
+  | _, _, _, _, .taggedUnion_casesOn _ cases .. => TaggedUnionCases.NoRecMk cases
+  | _, _, _, _, .taggedUnion_casesOnWithDefault _ cases dflt .. =>
+      TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   -- recursive tagged unions have values: their forms are interpreted like the others
   | _, _, _, _, .recTaggedUnion_mk _ _ _ _ fields .. => Spine.NoRecMk fields
-  | _, _, _, _, .recTaggedUnion_casesOn v cases .. =>
-      Term.NoRecMk v ∧ TaggedUnionCases.NoRecMk cases
-  | _, _, _, _, .recTaggedUnion_casesOnWithDefault v cases dflt .. =>
-      Term.NoRecMk v ∧ TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
+  | _, _, _, _, .recTaggedUnion_casesOn _ cases .. => TaggedUnionCases.NoRecMk cases
+  | _, _, _, _, .recTaggedUnion_casesOnWithDefault _ cases dflt .. =>
+      TaggedUnionSomeCases.NoRecMk cases ∧ Term.NoRecMk dflt
   | _, _, _, _, .recTaggedUnion_rec _ v cases .. =>
-      Term.NoRecMk v ∧ TaggedUnionFoldKCases.NoRecMk cases
+      Atom.NoRecMk v ∧ TaggedUnionFoldKCases.NoRecMk cases
   -- the other three recursive shapes: an introduction form has no value in this model,
   -- and an eliminator needs nothing of its branches, since its scrutinee has none either
   | _, _, _, _, .recObject_mk .. => False
-  | _, _, _, _, .recObject_casesOn v .. => Term.NoRecMk v
-  | _, _, _, _, .recObject_rec _ v .. => Term.NoRecMk v
+  | _, _, _, _, .recObject_rec _ v .. => Atom.NoRecMk v
   | _, _, _, _, .recAlias_mk .. => False
-  | _, _, _, _, .recAlias_casesOn v .. => Term.NoRecMk v
-  | _, _, _, _, .recAlias_rec _ v .. => Term.NoRecMk v
+  | _, _, _, _, .recAlias_rec _ v .. => Atom.NoRecMk v
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _ => False
-  | _, _, _, _, .mutualRecursiveFamily_casesOn v _ .. => Term.NoRecMk v
-  | _, _, _, _, .mutualRecursiveFamily_casesOnWithDefault v .. => Term.NoRecMk v
-  | _, _, _, _, .mutualRecursiveFamily_rec _ v .. => Term.NoRecMk v
-  -- a variable, a reference to a declaration and every literal
+  | _, _, _, _, .mutualRecursiveFamily_rec _ v .. => Atom.NoRecMk v
+  -- an extern applied to values, a force of a name, and a dispatch on a value of one of
+  -- the three recursive shapes above (which has none)
   | _, _, _, _, _ => True
+
+/-- The term builds no value of a recursive record, newtype or mutual family, so
+    `Term.eval` can interpret it.  See this section's header. -/
+def Term.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → Term Sg Γ u τ hd → Prop
+  | _, _, _, _, .atom a => Atom.NoRecMk a
+  | _, _, _, _, .comp c _ => Comp.NoRecMk c
+  | _, _, _, _, .letE e body .. => Comp.NoRecMk e ∧ Term.NoRecMk body
 
 /-- `Term.NoRecMk`, on the elements of an array. -/
 def Terms.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {τ : TyWf} → {ks : List Head} →
     Terms Sg Γ u τ ks → Prop
   | _, _, _, _, .nil => True
-  | _, _, _, _, .cons t ts => Term.NoRecMk t ∧ Terms.NoRecMk ts
+  | _, _, _, _, .cons t ts => Atom.NoRecMk t ∧ Terms.NoRecMk ts
 
 /-- `Term.NoRecMk`, on the answers a fold of an array gives to the short lists. -/
 def ArrayRecBases.NoRecMk {Sg : Sig} :
@@ -128,7 +144,7 @@ def ArrayRecBases.NoRecMk {Sg : Sig} :
 /-- `Term.NoRecMk`, on a list of terms. -/
 def Spine.NoRecMk {Sg : Sig} : {Γ : Ctx} → {u : Usage Γ} → {ks : List Head} → {σs : List TyWf} → Spine Sg Γ u σs ks → Prop
   | _, _, _, _, .nil => True
-  | _, _, _, _, .cons t ts => Term.NoRecMk t ∧ Spine.NoRecMk ts
+  | _, _, _, _, .cons t ts => Atom.NoRecMk t ∧ Spine.NoRecMk ts
 
 /-- `Term.NoRecMk`, on the branches of a dispatch on a tagged union. -/
 def TaggedUnionCases.NoRecMk {Sg : Sig} :
