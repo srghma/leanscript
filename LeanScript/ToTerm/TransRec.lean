@@ -428,6 +428,41 @@ partial def etaGlobal? (body : Expr) : Option (Expr × Expr × Nat) := Id.run do
   if ty.hasLooseBVars || ref.hasLooseBVars then return none
   return some (ty, ref, k)
 
+/-- Does the language have no tree for the type of this argument?  An argument the
+    language erases (a type, a proof, an instance) is not such an argument. -/
+def argHasNoTree (a : Expr) : MetaM Bool := do
+  let ty ← inferType a
+  if ← LeanScript.Deriving.erasedBinder ty then return false
+  try
+    let _ ← treeOfType ty
+    return false
+  catch _ => return true
+
+/-- The call `f args`, **specialized** to its arguments that have no tree (values of a
+    datatype with existentials): those arguments are substituted into the body of `f`,
+    and so are the arguments that cost nothing to read twice (variables, literals, erased
+    arguments); every other argument is bound once by a `let`, so nothing is computed
+    twice.  `none` when no argument lacks a tree, unless `force` (the call builds a value
+    without a tree, which the cache of closed definitions cannot hold). -/
+def transSpecialized? (trans : TransFn) (c : TCtx) (f : Expr) (args : Array Expr)
+    (force : Bool := false) : MetaM (Option Expr) := do
+  let noTree ← args.mapM argHasNoTree
+  unless force || noTree.any id do return none
+  let rec go (i : Nat) (acc : Array Expr) : MetaM Expr := do
+    if h : i < args.size then
+      let a := args[i]
+      let atomic := a.consumeMData.isFVar || isLitLike a ||
+        (← LeanScript.Deriving.erasedBinder (← inferType a))
+      if noTree[i]! || atomic then
+        go (i + 1) (acc.push a)
+      else
+        withLetDecl `x (← inferType a) a fun x => do
+          let b ← go (i + 1) (acc.push x)
+          mkLetFVars #[x] b
+    else
+      return (mkAppN f acc).headBeta
+  return some (← trans c (← go 0 #[]))
+
 /-- A call of an inlinable function: its definition is translated, once, and used
     here. -/
 def transInline (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
@@ -450,6 +485,13 @@ def transInline (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : List 
       | throwError "`#leanscript_to_term`: cannot inline `{n}`"
     return ← trans c e'
   let rest := args.extract nLeading args.size
+  -- applied to a value whose Lean type has no tree (a value of a datatype with
+  -- existentials, `Unfold`), the definition is **specialized** to that value: it is
+  -- substituted, so that its projections (`u.State`, `u.seed`, `u.step`) are those of the
+  -- value, which the translation reduces when the value is closed
+  if headVal.isLambda then
+    if let some t ← transSpecialized? trans c headVal rest (force := ← argHasNoTree e) then
+      return t
   -- applied to variables (and literals) only, the definition is substituted rather than
   -- applied: `fibTR t = fibLoopTR t 0 1` is the fold of `t` applied to `0` and `1`, not a
   -- redex whose function is the fold of its own bound variable.  Nothing is duplicated,

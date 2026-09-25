@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.ToTerm.Trans
+public meta import LeanScript.ToTerm.ExistentialArgs
 public import LeanScript.CtorFn
 
 @[expose] public section
@@ -45,8 +46,14 @@ def translate (sg base : Expr) (e : Expr) : MetaM Expr := do
       let info ← getConstInfo n
       let some val := info.value?
         | throwError "`#leanscript_to_term`: `{n}` has no definition to translate"
-      transClosedCached trans c (val.instantiateLevelParams info.levelParams lvls)
-  | _ => trans c e
+      let val := val.instantiateLevelParams info.levelParams lvls
+      -- a function of a structure with an existential type field is generic in its
+      -- hidden types (`LeanScript.ToTerm.ExistentialArgs`)
+      if let some t ← translateGeneric? c val then return t
+      transClosedCached trans c val
+  | _ =>
+      if let some t ← translateGeneric? c (← etaExpand e) then return t
+      trans c e
 
 /-- `#leanscript_to_term e`: the `LeanScript.Term` that means what the Lean definition
     `e` means.  See this module's header.

@@ -105,7 +105,15 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
   unless s.hasFVar do
     let e' ← whnf e
     unless e' == e do return ← trans c e'
-  let sty ← tyOfTerm s
+  let sty? ← try some <$> tyOfTerm s catch _ => pure none
+  let some sty := sty? | do
+    -- a field of a value of a datatype with existentials that is written out
+    -- (`(countFrom k).seed`) is that value's field
+    let e' ← whnf e
+    if e' == e then
+      let _ ← tyOfTerm s
+      throwError "`#leanscript_to_term`: cannot project out of {s}"
+    return ← trans c e'
   let scrut ← trans c s
   let ind ← getConstInfoInduct structName
   let [ctorName] := ind.ctors
@@ -320,6 +328,12 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   -- one): the fold it compiles to, inlined at the call site
   if ← callsStructuralRecursion n then
     return ← transInline trans c e n lvls args
+  -- a call on a value of a datatype with existentials, or one that builds such a value:
+  -- that value has no tree, so the function cannot be declared in the signature; it is
+  -- inlined, and specialized to the value
+  if (← getEnv).find? n matches some (.defnInfo _) then
+    if (← args.anyM argHasNoTree) || (← argHasNoTree e) then
+      return ← transInline trans c e n lvls args
   throwError "`#leanscript_to_term`: `{n}` is not declared in the signature and is not \
     inlinable, so a term cannot call it.  Either add a `GlobalDecl` named \
     \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`.  (A \

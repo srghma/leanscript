@@ -95,6 +95,10 @@ constructors build out of the bundled payload, and the proofs never have to agre
 /-- The tree `t`, bundled at scope `n`: `LeanScript.TyWf` closed, `LeanScript.TyWfIn n`
     inside a binder. -/
 def bundleTyE (n : Nat) (t : Expr) : MetaM Expr := do
+  -- the tree of a bundle, bundled again, is that bundle
+  if n == 0 then
+    if let (``LeanScript.TyWf.toTy, #[b]) := t.getAppFnArgs then return b
+    if let .proj ``LeanScript.TyWf 0 b := t then return b
   let prf ← LeanScript.Ty.mkWfIn n t
   if n == 0 then
     return mkApp2 (mkConst ``LeanScript.TyWf.mk) t prf

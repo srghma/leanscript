@@ -58,6 +58,12 @@ context are used.
 | a `mutual` block of functions over **one** type (`isEven`/`isOdd` on `Nat`, two folds of one `List`, `Tree`, recursive record or newtype, or several per member of a `mutual` block) | the fold of that type, answering the tuple (`PProd`) of the functions' answers, of which the function translated reads its own |
 | a structural recursion on a **nested inductive** whose recursive occurrence sits under `List` (`inductive Rose \| node (v : Nat) (kids : List Rose)`), with helpers on `List Rose`, `List (List Rose)`, … | `mutualRecursiveFamily_rec k` on the family `Rose`, `List Rose`, … that `deriving LeanScriptTyWf` gives it — see `TermTests/ShapesTest/Nested.lean` |
 | a recursion on a `mutual` block whose members answer different types (`Tree → Bool` with `Forest → Nat`) | `mutualRecursiveFamily_rec k` answering the tuple of the types, each member filling in its own component (the others are `default`) |
+| a structural recursion on a **nested inductive through `Array`** (`inductive ATree \| node (v : Nat) (kids : Array ATree)`), written as a `mutual` block over `ATree`, `Array ATree` and `List ATree` | `recObject_rec k` (or `recAlias_rec k`), whose window holds the array of the answers at the children — see `TermTests/StructRecTest/NestedArray.lean` |
+| a structural recursion on a `mutual` block whose members **also occur nested** (`Option Q` inside `P`) | `mutualRecursiveFamily_rec k` on the family `P`, `Q`, `Option Q` — see `TermTests/StructRecTest/MutualNested.lean` |
+| a structural recursion on a **recursive newtype whose body is a structure** (`Pair2 \| mk (Nat × Option Pair2)`) | `recAlias_rec k` — see `TermTests/StructRecTest/NewtypeStruct.lean` |
+| a structural recursion on an **inductive family with indices** (`Vec α n`) | the fold of its tree, the index erased and a value index an ordinary field — see `TermTests/StructRecTest/IndexedFamily.lean` |
+| a structural recursion **split across two top-level definitions** (`callGo n := go n 0`) | the fold of the callee, inlined — see `TermTests/StructRecTest/SplitRecursion.lean` |
+| a function of a **structure with an existentially quantified type field** (`Unfold`, whose `State` is hidden) | specialized to its argument when that is a value written out; otherwise a Lean function of the trees of the hidden types, `fun State => (… : Term Sg Γ (Unfold.mk.leanScriptLayout α State ⇒ …))` — see `TermTests/StructRecTest/Existential.lean` and `LeanScript.ToTerm.ExistentialArgs` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | a name of the signature | `global` |
@@ -112,10 +118,19 @@ cannot give those); and, when every argument is a closed Lean value, `Term.exter
 program's own proof.  `Nat.gcd` is the exception: it is treated as if it had no
 `@[extern]`, and `Nat.gcd._unary` is read as `Nat.gcd`.
 
+Two more kinds of call are inlined although they are neither marked nor declared:
+
+* a **structural recursion** defined on its own (a definition Lean compiled through a
+  `brecOn`), and a wrapper of the same module that calls one, up to three wrappers deep:
+  the call is the fold the callee compiles to (`TermTests/StructRecTest/SplitRecursion.lean`);
+* a call on, or building, a value of a **datatype with existentials** (`countdown.take n`,
+  `firstOut countdown`, `countFrom k`): such a value has no tree, so the function could not
+  be declared in the signature; it is inlined and **specialized** to the value, whose
+  projections then reduce (`LeanScript.ToTerm.ExistentialArgs`).
+
 Every **other** top-level function must be declared in the signature: it is translated
 to `Term.global`, the reference the signature gives it.  A call of a function that is
-neither inlinable nor declared is refused, naming the function — there is no third way
-for a term to mention a top-level name.
+neither inlinable nor declared is refused, naming the function.
 
 The definition `#leanscript_to_term` is *applied to* is always unfolded: it is the thing
 being translated.
@@ -149,19 +164,21 @@ being translated.
   structural recursion: Lean passes the history of the recursion through that `match`.
   Moving the `match` into a small `@[inline]` function makes it translatable
   (`TermTests/MutualFamilyToTermTest/CrossBlock/`).
-* nested inductive types whose recursive occurrence sits under a type other than `List`,
-  a union or a structure of the language (`inductive R | node (kids : Array R)`), a
-  recursive newtype whose body is a structure rather than a union
-  (`Pair2 | mk (Nat × Option Pair2)`), and `mutual` blocks whose members also occur nested
-  (`Option Q` inside `P`); inductive families with indices, and inductives with an
-  existentially quantified type field.
-* a fold deeper than the translation looks for: `nat_rec k` up to `k = 16`,
-  `recObject_rec k` / `recAlias_rec k` up to `8`, `recTaggedUnion_rec k` and
-  `mutualRecursiveFamily_rec k` up to `6` (the constants `maxNatRecDepth`, … of the
-  translation).
-* a structural recursion split over two top-level definitions (a non-recursive function
-  calling a separately defined recursion) is translated only when the callee is
-  `@[inline]` or declared in the signature, like any other call.
+* a nested inductive whose recursive occurrence sits under a type former that is neither
+  a shape of the language (`List`, `Array`, a union, a structure) nor a type with a
+  `LeanScriptTyWf` instance of its own; and an inductive family whose index the language
+  cannot erase (one whose tree changes with the index).
+* a fold deeper than the translation looks for.  The bounds are options
+  (`LeanScript/ToTerm/Options.lean`), with defaults `64` for `nat_rec k` / `array_rec k`,
+  `24` for `recObject_rec k` / `recAlias_rec k` and `16` for `recTaggedUnion_rec k` /
+  `mutualRecursiveFamily_rec k`, and each can be raised with `set_option`
+  (`TermTests/StructRecTest/DeepFolds.lean`).
+* a call of a function that is neither inlinable, nor declared in the signature, nor a
+  structural recursion (or a wrapper of one, up to three deep) — see *Which calls are
+  allowed*.
+* a function of a datatype with existentials other than a structure — one whose
+  existentials sit in several constructors, or under its own recursion (`Process`) — whose
+  argument is not a value written out.
 * a `for` loop that leaves early (`break`, `return`), or over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.
@@ -211,6 +228,19 @@ def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
   layout hole by hole, and two different layouts as `TyWf.oneOf`, the tagged union with one
   constructor per layout, into which each branch is injected.
 
+A **function** of such a value is translated too, when the datatype is a structure with
+existentially quantified type fields (`Unfold`, whose `State` is hidden;
+`LeanScript.ToTerm.ExistentialArgs`):
+
+* called on a value written out (`countdown.take n`, `(countFrom k).take n`), it is
+  specialized to that value, and its projections are the value's own;
+* translated itself (`#leanscript_to_term (Unfold.take (α := Nat))`), it is a Lean function
+  of the trees of the hidden types, a term for each choice of them:
+  `fun State => (… : Term Sg Γ (Unfold.mk.leanScriptLayout (.prim .nat) State ⇒ …))`.
+  Applied to the tree a value chose, it applies to that value.
+
+`TermTests/StructRecTest/Existential.lean` runs both.
+
 This is `LeanScript.ToTerm.Existential`.  `TermTests/InductiveTypesTest/Existentials.lean`
 translates `mixedProcess` and `varyingProcess` and checks, by `rfl`, what they evaluate to.
 
@@ -248,6 +278,8 @@ The translation itself is split across the modules of this directory:
 `LeanScript.ToTerm.TransRecObject` (a structural recursion on a recursive record),
 `LeanScript.ToTerm.Existential` (datatypes with existentials, through the constructor
 functions),
+`LeanScript.ToTerm.ExistentialArgs` (functions of a structure with an existential type
+field),
 `LeanScript.ToTerm.Trans` (the translation proper) and
 `LeanScript.ToTerm.Elab` (the elaborator, which is what a user imports).
 

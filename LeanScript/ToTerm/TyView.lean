@@ -148,6 +148,23 @@ def nestedAuxTree? (α : Expr) : MetaM (Option Expr) := do
   unless n.isStr && n.getString!.startsWith "instLeanScriptTyWfNested" do return none
   return some (← reduceTy (← mkAppOptM ``LeanScript.tyOf #[α, inst]))
 
+/-- Reduce, inside a type, every projection out of a value that is written out
+    (`countdown.State`, where `countdown : Unfold Nat` is a value of a datatype with
+    existentials, or `(countFrom k).State`): the type that value chose for its type field.
+    A projection out of a variable (`u.State`, for `u : Unfold Nat` bound by a `fun`) does
+    not reduce, and is left as it is. -/
+def reduceClosedTypeProjs (α : Expr) : MetaM Expr :=
+  Meta.transform α (pre := fun e => return .continue e.headBeta) (post := fun e => do
+    if e.hasLooseBVars || e.hasMVar then return .continue
+    let isProj : Bool ← match e, e.getAppFn with
+      | .proj .., _ => pure true
+      | _, .const n _ => pure (← getProjectionFnInfo? n).isSome
+      | _, _ => pure false
+    unless isProj do return .continue
+    let e' ← whnf e
+    if e' == e then return .continue
+    return .done e')
+
 /-- The tree of the language that models the Lean type `α`, reduced.
 
     `List α` is the recursive tagged union it is, `Array α` is `Ty.array`; a
@@ -190,6 +207,10 @@ partial def treeOfType (α : Expr) : MetaM Expr := do
       match ← trySynthInstance cls with
       | .some inst => reduceTy (← mkAppOptM ``LeanScript.tyOf #[α', inst])
       | _ =>
+        -- a type field of a value of a datatype with existentials that is written out
+        -- (`countdown.State`) is the type that value chose
+        let α'' ← reduceClosedTypeProjs α'
+        if α'' != α' then return ← treeOfType α''
         if let .const ind _ := α'.getAppFn then
           if (← getEnv).find? ind matches some (.inductInfo _) then
             if let some f ← LeanScript.Deriving.existentialField? ind α'.getAppArgs then
