@@ -78,199 +78,218 @@ particular a delay (`Ty.lazy`, `Ty.thunk`) denotes the value it stands for, and 
 
 /-! ## The evaluator -/
 
+/-! ## Atoms -/
+
+/-- The value of an atom: a variable's is read off the environment, a declaration's off
+    the values of the signature, and a literal is its own value. -/
+def Atom.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} {τ : TyWf} :
+    Atom Sg Γ τ → Env Γ → TyWf.Den τ
+  | .var v, env => Env.get v env
+  | .global r, _ => GlobalEnv.get r G
+  | .bool_mk b, _ => b
+  | .nat_mk n, _ => n
+  | .int_mk i, _ => i
+  | .bitvec_mk _ v, _ => v
+  | .uint8_mk v, _ => v
+  | .uint16_mk v, _ => v
+  | .uint32_mk v, _ => v
+  | .uint64_mk v, _ => v
+  | .int8_mk v, _ => v
+  | .int16_mk v, _ => v
+  | .int32_mk v, _ => v
+  | .int64_mk v, _ => v
+  | .char_mk c, _ => c
+  | .string_mk s, _ => s
+  | .stringPos_mk _ p, _ => p
+  | .stringPosRaw_mk p, _ => p
+  | .substringRaw_mk s, _ => s
+  | .stringSlice_mk s, _ => s
+  | .float_mk x, _ => x
+  | .float32_mk x, _ => x
+  | .floatModel_mk m, _ => m
+  | .float32Model_mk m, _ => m
+
+/-- The values of a list of atoms, typed by the list of their types. -/
+def Args.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
+    {σs : List TyWf} → Args Sg Γ σs → Env Γ → TyWf.DenList σs
+  | _, .nil, _ => PUnit.unit
+  | _, .cons a as, env => (Atom.eval G a env, Args.eval G as env)
+
+/-- The value of a member of a mutual family, built from the shape that member has. -/
+def FamilyMemberArgs.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
+    {m : LeanFamMemberSchema TyWf} → FamilyMemberArgs Sg Γ m → Env Γ → TyWf.DenMember m
+  | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (Args.eval G fields env)
+  | _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
+  | _, .alias _ value, env => Atom.eval G value env
+
+/-! ## Terms -/
+
 mutual
 
-/-- **The value of a term**: a total function of the term, its environment and the values
-    of the module's top-level declarations.  It is defined by structural recursion on the
-    term, so it terminates on every input, and it interprets every term. -/
-def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → (t : Term Sg Γ τ) → Env Γ → TyWf.Den τ
-  | _, _, .var v, env => Env.get v env
-  | _, _, .lam body, env => fun x => Term.eval G body (x, env)
-  | _, _, .ap f a, env => (Term.eval G f env) (Term.eval G a env)
-  | _, _, .global r, _ => GlobalEnv.get r G
-  | _, _, .letE e body, env => Term.eval G body (Term.eval G e env, env)
-  -- literals
-  | _, _, .bool_mk b, _ => b
-  | _, _, .nat_mk n, _ => n
-  | _, _, .int_mk i, _ => i
-  | _, _, .bitvec_mk _ v, _ => v
-  | _, _, .uint8_mk v, _ => v
-  | _, _, .uint16_mk v, _ => v
-  | _, _, .uint32_mk v, _ => v
-  | _, _, .uint64_mk v, _ => v
-  | _, _, .int8_mk v, _ => v
-  | _, _, .int16_mk v, _ => v
-  | _, _, .int32_mk v, _ => v
-  | _, _, .int64_mk v, _ => v
-  | _, _, .char_mk c, _ => c
-  | _, _, .string_mk s, _ => s
-  | _, _, .stringPos_mk _ p, _ => p
-  | _, _, .stringPosRaw_mk p, _ => p
-  | _, _, .substringRaw_mk s, _ => s
-  | _, _, .stringSlice_mk s, _ => s
-  | _, _, .float_mk x, _ => x
-  | _, _, .float32_mk x, _ => x
-  | _, _, .floatModel_mk m, _ => m
-  | _, _, .float32Model_mk m, _ => m
-  -- externs: the Lean function the extern implements, called on its arguments
-  | _, _, .extern e, _ => Extern.eval e
-  | _, _, .externCall args call, env => Extern.eval (call (Spine.eval G args env))
-  | _, _, .externCallChecked args call fallback, env =>
-      match call (Spine.eval G args env) with
-      | some e => Extern.eval e
-      | none => Term.eval G fallback env
-  -- case analysis on a leaf
-  | _, _, .bool_casesOn c t e, env =>
-      let c' : Bool := Term.eval G c env
+/-- **The value of a term**: a total function of the term, its environment, the join points
+    in scope and the values of the module's top-level declarations.  It is defined by
+    structural recursion on the term, so it terminates on every input, and it interprets
+    every term.  A `let` binds the value of its computation; a join point is the function
+    of its parameter its body computes, and a jump applies it; a dispatch takes the value
+    of the branch the value it takes apart selects; and a fold delivers its answer to its
+    `LeanScript.Dest`. -/
+def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {Γ : Ctx} → {τ : TyWf} → {J : JCtx} → (t : Term Sg Γ τ J) → Env Γ → JEnv τ J →
+    TyWf.Den τ
+  | _, _, _, .ret c, env, _ => Comp.eval G c env
+  | _, _, _, .letE c body, env, jenv => Term.evalJ G body (Comp.eval G c env, env) jenv
+  | _, _, _, .letJ jp body, env, jenv =>
+      Term.evalJ G body env (fun x => Term.evalJ G jp (x, env) jenv, jenv)
+  | _, _, _, .jump j a, env, jenv => JEnv.get j jenv (Atom.eval G a env)
+  | _, _, _, .externCallChecked args call d fallback, env, jenv =>
+      match call (Args.eval G args env) with
+      | some e => Dest.apply d jenv (Extern.eval e)
+      | none => Term.evalJ G fallback env jenv
+  | _, _, _, .bool_casesOn c t e, env, jenv =>
+      let c' : Bool := Atom.eval G c env
       match c' with
-      | true => Term.eval G t env
-      | false => Term.eval G e env
-  | _, _, .nat_casesOn n z s, env =>
-      let n' : Nat := Term.eval G n env
+      | true => Term.evalJ G t env jenv
+      | false => Term.evalJ G e env jenv
+  | _, _, _, .nat_casesOn n z s, env, jenv =>
+      let n' : Nat := Atom.eval G n env
       match n' with
-      | 0 => Term.eval G z env
-      | k + 1 => Term.eval G s (k, env)
-  | _, _, .nat_rec _ n base branch, env =>
-      natFoldK (Spine.eval G base env)
-        (fun m w => Term.eval G branch (m, Env.ofWin w env))
-        (show Nat from Term.eval G n env)
-  | _, _, .int_casesOn i ofNat negSucc, env =>
-      let i' : Int := Term.eval G i env
+      | 0 => Term.evalJ G z env jenv
+      | k + 1 => Term.evalJ G s (k, env) jenv
+  | _, _, _, .nat_rec _ n base branch d, env, jenv =>
+      Dest.apply d jenv <|
+      natFoldK (Args.eval G base env)
+        (fun m w => Term.evalJ G branch (m, Env.ofWin w env) PUnit.unit)
+        (show Nat from Atom.eval G n env)
+  | _, _, _, .int_casesOn i ofNat negSucc, env, jenv =>
+      let i' : Int := Atom.eval G i env
       match i' with
-      | .ofNat k => Term.eval G ofNat (k, env)
-      | .negSucc k => Term.eval G negSucc (k, env)
-  | _, _, .uint8_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toBitVec, env)
-  | _, _, .uint16_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toBitVec, env)
-  | _, _, .uint32_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toBitVec, env)
-  | _, _, .uint64_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toBitVec, env)
-  | _, _, .int8_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toUInt8, env)
-  | _, _, .int16_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toUInt16, env)
-  | _, _, .int32_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toUInt32, env)
-  | _, _, .int64_casesOn v b, env =>
-      Term.eval G b ((Term.eval G v env).toUInt64, env)
-  | _, _, .char_casesOn c b, env =>
-      Term.eval G b ((Term.eval G c env).val, env)
-  | _, _, .stringPosRaw_casesOn p b, env =>
-      Term.eval G b ((Term.eval G p env).byteIdx, env)
-  | _, _, .stringPos_casesOn p b, env =>
-      Term.eval G b ((Term.eval G p env).offset, env)
-  | _, _, .substringRaw_casesOn s b, env =>
-      let v : Substring.Raw := Term.eval G s env
-      Term.eval G b (v.str, v.startPos, v.stopPos, env)
-  | _, _, .float_casesOn x b, env =>
-      Term.eval G b ((Term.eval G x env).toModel, env)
-  | _, _, .float32_casesOn x b, env =>
-      Term.eval G b ((Term.eval G x env).toModel, env)
-  | _, _, .floatModel_casesOn m b, env =>
-      Term.eval G b ((Term.eval G m env).toBits, env)
-  | _, _, .float32Model_casesOn m b, env =>
-      Term.eval G b ((Term.eval G m env).toBits, env)
-  -- delays: a delay denotes the value it stands for
-  | _, _, .lazy_mk e, env => let v := Term.eval G e env; v
-  | _, _, .lazy_force e, env => let v := Term.eval G e env; v
-  | _, _, .thunk_mk e, env => let v := Term.eval G e env; v
-  | _, _, .thunk_force e, env => let v := Term.eval G e env; v
-  -- arrays
-  | _, _, .array_mk ts, env => (Terms.eval G ts env).toArray
-  | _, _, .array_casesOn a z s, env =>
-      let a' : Array _ := Term.eval G a env
+      | .ofNat k => Term.evalJ G ofNat (k, env) jenv
+      | .negSucc k => Term.evalJ G negSucc (k, env) jenv
+  | _, _, _, .uint8_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+  | _, _, _, .uint16_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+  | _, _, _, .uint32_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+  | _, _, _, .uint64_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toBitVec, env) jenv
+  | _, _, _, .int8_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toUInt8, env) jenv
+  | _, _, _, .int16_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toUInt16, env) jenv
+  | _, _, _, .int32_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toUInt32, env) jenv
+  | _, _, _, .int64_casesOn v b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G v env).toUInt64, env) jenv
+  | _, _, _, .char_casesOn c b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G c env).val, env) jenv
+  | _, _, _, .stringPosRaw_casesOn p b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G p env).byteIdx, env) jenv
+  | _, _, _, .stringPos_casesOn p b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G p env).offset, env) jenv
+  | _, _, _, .substringRaw_casesOn s b, env, jenv =>
+      let v : Substring.Raw := Atom.eval G s env
+      Term.evalJ G b (v.str, v.startPos, v.stopPos, env) jenv
+  | _, _, _, .float_casesOn x b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G x env).toModel, env) jenv
+  | _, _, _, .float32_casesOn x b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G x env).toModel, env) jenv
+  | _, _, _, .floatModel_casesOn m b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G m env).toBits, env) jenv
+  | _, _, _, .float32Model_casesOn m b, env, jenv =>
+      Term.evalJ G b ((Atom.eval G m env).toBits, env) jenv
+  | _, _, _, .array_casesOn a z s, env, jenv =>
+      let a' : Array _ := Atom.eval G a env
       match a'.toList with
-      | [] => Term.eval G z env
-      | x :: xs => Term.eval G s (x, xs.toArray, env)
-  | _, _, .array_rec _ a bases branch, env =>
+      | [] => Term.evalJ G z env jenv
+      | x :: xs => Term.evalJ G s (x, xs.toArray, env) jenv
+  | _, _, _, .array_rec _ a bases branch d, env, jenv =>
+      Dest.apply d jenv <|
       listFoldK (fun l => ArrayRecBases.eval G bases env l)
-        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env))
-        (show Array _ from Term.eval G a env).toList
-  -- enums
-  | _, _, .enum_mk _ i, _ => i
-  | _, _, .enum_casesOn e cases, env =>
-      EnumCases.eval G cases env (Term.eval G e env)
-  | _, _, .enum_casesOnWithDefault e cases dflt _, env =>
-      EnumSomeCases.eval G cases env (Term.eval G e env)
-        (Term.eval G dflt env)
-  -- records
-  | _, _, .record_mk fs fields, env =>
-      cast (Ty.denRecord_eq _).symm (Spine.eval G fields env)
-  | _, _, .record_casesOn r body, env =>
-      Term.eval G body (Env.append (cast (Ty.denRecord_eq _) (Term.eval G r env)) env)
+        (fun hd tl w => Term.evalJ G branch (hd, tl.toArray, Env.ofWin w env) PUnit.unit)
+        (show Array _ from Atom.eval G a env).toList
+  | _, _, _, .enum_casesOn e cases, env, jenv =>
+      EnumCases.eval G cases env jenv (Atom.eval G e env)
+  | _, _, _, .enum_casesOnWithDefault e cases dflt _, env, jenv =>
+      EnumSomeCases.eval G cases env jenv (Atom.eval G e env)
+        (Term.evalJ G dflt env jenv)
+  | _, _, _, .record_casesOn r body, env, jenv =>
+      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) (Atom.eval G r env)) env) jenv
        
-  -- tagged unions
-  | _, _, .taggedUnion_mk _ t ht fields, env =>
-      TyWf.DenTU.mk t ht (Spine.eval G fields env)
-  | _, _, .taggedUnion_casesOn v cases, env =>
-      TaggedUnionCases.eval G cases rfl .rfl .rfl env (Term.eval G v env)
-  | _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env =>
-      TaggedUnionSomeCases.eval G cases env (Term.eval G v env)
-        (Term.eval G dflt env)
-  -- recursive tagged unions: a value is a W-tree, taken apart one level by
-  -- `TyWf.DenRec.unfold` and folded bottom-up with every answer remembered
-  | _, _, .recTaggedUnion_mk l hwf t ht fields, env =>
-      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env))
-  | _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases, env =>
-      TaggedUnionCases.eval G cases rfl .rfl .rfl env
-        (TyWf.DenRec.unfold l hwf (Term.eval G v env))
-  | _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _, env =>
-      TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env))
-        (Term.eval G dflt env)
-  | _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases, env =>
+  | _, _, _, .taggedUnion_casesOn v cases, env, jenv =>
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv (Atom.eval G v env)
+  | _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env, jenv =>
+      TaggedUnionSomeCases.eval G cases env jenv (Atom.eval G v env)
+        (Term.evalJ G dflt env jenv)
+  | _, _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases, env, jenv =>
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv
+        (TyWf.DenRec.unfold l hwf (Atom.eval G v env))
+  | _, _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt _, env, jenv =>
+      TaggedUnionSomeCases.eval G cases env jenv (TyWf.DenRec.unfold l hwf (Atom.eval G v env))
+        (Term.evalJ G dflt env jenv)
+  | _, _, _, .recTaggedUnion_rec (l := l) (hwf := hwf) (ρ := τ) _ v cases d, env, jenv =>
+      Dest.apply d jenv <|
       WType.memoFold
         (fun node kids =>
           TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) RecFrames.nil
             node.1.val ⟨node.2, kids⟩)
-        (Term.eval G v env)
-  -- recursive records: a value is a W-tree of the record's shapes, taken apart one level
-  -- by `TyWf.DenObj.unfold` and folded bottom-up with every answer remembered
-  | _, _, .recObject_mk fs hwf fields, env =>
-      TyWf.DenObj.mk fs hwf (Spine.eval G fields env)
-  | _, _, .recObject_casesOn (fs := fs) (hwf := hwf) v body, env =>
-      Term.eval G body (Env.append (TyWf.DenObj.unfold fs hwf (Term.eval G v env)) env)
+        (Atom.eval G v env)
+  | _, _, _, .recObject_casesOn (fs := fs) (hwf := hwf) v body, env, jenv =>
+      Term.evalJ G body (Env.append (TyWf.DenObj.unfold fs hwf (Atom.eval G v env)) env) jenv
        
-  | _, τ, .recObject_rec (fs := fs) (hwf := hwf) k v body, env =>
+  | _, _, _, .recObject_rec (fs := fs) (hwf := hwf) (ρ := τ) k v body d, env, jenv =>
+      Dest.apply d jenv <|
       WType.memoFold
-        (fun node kids => Term.eval G body (Env.append (objRecEnv fs hwf τ k node kids) env)
+        (fun node kids => Term.evalJ G body (Env.append (objRecEnv fs hwf τ k node kids) env) PUnit.unit
          )
-        (Term.eval G v env)
-  -- recursive newtypes: the same, with the body for the fields
-  | _, _, .recAlias_mk b hwf value, env =>
-      TyWf.DenAlias.mk b hwf (Term.eval G value env)
-  | _, _, .recAlias_casesOn (b := b) (hwf := hwf) v body, env =>
-      Term.eval G body (TyWf.DenAlias.unfold b hwf (Term.eval G v env), env)
-  | _, τ, .recAlias_rec (b := b) (hwf := hwf) k v body, env =>
+        (Atom.eval G v env)
+  | _, _, _, .recAlias_casesOn (b := b) (hwf := hwf) v body, env, jenv =>
+      Term.evalJ G body (TyWf.DenAlias.unfold b hwf (Atom.eval G v env), env) jenv
+  | _, _, _, .recAlias_rec (b := b) (hwf := hwf) (ρ := τ) k v body d, env, jenv =>
+      Dest.apply d jenv <|
       WType.memoFold
         (fun node kids =>
-          Term.eval G body (Env.append (aliasRecEnv b hwf τ k node kids) env))
-        (Term.eval G v env)
-  -- mutual families: a value is an indexed W-tree, rooted at the member the family
-  -- selects, taken apart one level by `TyWf.DenFam.unfold` and folded bottom-up with every
-  -- answer remembered
-  | _, _, .mutualRecursiveFamily_mk f hwf value, env =>
-      TyWf.DenFam.mk f hwf (FamilyMemberValue.eval G value env)
-  | _, _, .mutualRecursiveFamily_casesOn (f := f) (hwf := hwf) v cases, env =>
-      FamilyMemberCases.eval G cases env (TyWf.DenFam.unfold f hwf (Term.eval G v env))
-  | _, _, .mutualRecursiveFamily_casesOnWithDefault (f := f) (hwf := hwf) v cases dflt, env =>
-      FamilyMemberSomeCases.eval G cases env (TyWf.DenFam.unfold f hwf (Term.eval G v env))
-        (Term.eval G dflt env)
-  | _, τ, .mutualRecursiveFamily_rec (f := f) (hwf := hwf) _ v cases, env =>
+          Term.evalJ G body (Env.append (aliasRecEnv b hwf τ k node kids) env) PUnit.unit)
+        (Atom.eval G v env)
+  | _, _, _, .mutualRecursiveFamily_casesOn (f := f) (hwf := hwf) v cases, env, jenv =>
+      FamilyMemberCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval G v env))
+  | _, _, _, .mutualRecursiveFamily_casesOnWithDefault (f := f) (hwf := hwf) v cases dflt, env, jenv =>
+      FamilyMemberSomeCases.eval G cases env jenv (TyWf.DenFam.unfold f hwf (Atom.eval G v env))
+        (Term.evalJ G dflt env jenv)
+  | _, _, _, .mutualRecursiveFamily_rec (f := f) (hwf := hwf) (ρ := τ) _ v cases d, env, jenv =>
+      Dest.apply d jenv <|
       IWType.memoFold (β := TyWf.Den τ)
         (fun i a kids =>
           FamilyFoldKCases.eval G cases env (famBindEnv f hwf τ) i ⟨a, kids⟩)
-        (cast (den_mutualRecursiveFamily f hwf) (Term.eval G v env))
+        (cast (den_mutualRecursiveFamily f hwf) (Atom.eval G v env))
 
-/-- The values of the elements of an array, in order, as a list; `Term.array_mk` turns it
-    into the Lean `Array` an array of the language denotes. -/
-def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → (ts : Terms Sg Γ τ) → Env Γ →
-    List (TyWf.Den τ)
-  | _, _, .nil, _ => []
-  | _, _, .cons t ts, env => Term.eval G t env :: Terms.eval G ts env
+/-- **The value of one computation step**: its operands are atoms, whose values are read
+    off the environment (`Atom.eval`), and the terms it holds — a body, a branch — are
+    evaluated by `Term.eval` in the environment extended with what they bind. -/
+def Comp.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
+    {Γ : Ctx} → {τ : TyWf} → (t : Comp Sg Γ τ) → Env Γ → TyWf.Den τ
+  | _, _, .atom a, env => Atom.eval G a env  | _, _, .lam body, env => fun x => Term.evalJ G body (x, env) PUnit.unit
+  | _, _, .ap f a, env => (Atom.eval G f env) (Atom.eval G a env)
+  | _, _, .extern e, _ => Extern.eval e
+  | _, _, .externCall args call, env => Extern.eval (call (Args.eval G args env))
+  | _, _, .lazy_mk e, env => let v := Term.evalJ G e env PUnit.unit; v
+  | _, _, .lazy_force e, env => let v := Atom.eval G e env; v
+  | _, _, .thunk_mk e, env => let v := Term.evalJ G e env PUnit.unit; v
+  | _, _, .thunk_force e, env => let v := Atom.eval G e env; v
+  | _, _, .array_mk ts, env => (ts.map (Atom.eval G · env)).toArray
+  | _, _, .enum_mk _ i, _ => i
+  | _, _, .record_mk fs fields, env =>
+      cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
+  | _, _, .taggedUnion_mk _ t ht fields, env =>
+      TyWf.DenTU.mk t ht (Args.eval G fields env)
+  | _, _, .recTaggedUnion_mk l hwf t ht fields, env =>
+      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Args.eval G fields env))
+  | _, _, .recObject_mk fs hwf fields, env =>
+      TyWf.DenObj.mk fs hwf (Args.eval G fields env)
+  | _, _, .recAlias_mk b hwf value, env =>
+      TyWf.DenAlias.mk b hwf (Atom.eval G value env)
+  | _, _, .mutualRecursiveFamily_mk f hwf value, env =>
+      TyWf.DenFam.mk f hwf (FamilyMemberArgs.eval G value env)
 
 /-- The answer a fold of an array gives to a list shorter than its window: the elements
     are peeled off one at a time and bound, and the answer of the list that is left is
@@ -280,17 +299,10 @@ def Terms.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
 def ArrayRecBases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {σ τ : TyWf} → {k : Nat} → (bs : ArrayRecBases Sg Γ σ τ k) → Env Γ →
     List (TyWf.Den σ) → TyWf.Den τ
-  | _, _, _, _, .nil e, env, _ => Term.eval G e env
-  | _, _, _, _, .cons e _, env, [] => Term.eval G e env
+  | _, _, _, _, .nil e, env, _ => Term.evalJ G e env PUnit.unit
+  | _, _, _, _, .cons e _, env, [] => Term.evalJ G e env PUnit.unit
   | _, _, _, _, .cons _ more, env, a :: as =>
       ArrayRecBases.eval G more (a, env) as
-
-/-- The values of a list of terms, typed by the list of their types. -/
-def Spine.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {σs : List TyWf} → (ts : Spine Sg Γ σs) → Env Γ →
-    TyWf.DenList σs
-  | _, _, .nil, _ => PUnit.unit
-  | _, _, .cons t ts, env => (Term.eval G t env, Spine.eval G ts env)
 
 /-- The value of the branch a value of a tagged union takes.  The branches are indexed by
     the schema and the value carries a tag that the schema has, so there is always
@@ -303,88 +315,91 @@ def Spine.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     a branch's context `fs ++ Γ` again. -/
 def TaggedUnionCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {l : LeanTaggedUnionSchema ι} →
-    {τ : TyWf} → (cases : TaggedUnionFoldCases Sg ι bind Γ l τ) →
+    {τ : TyWf} → {J : JCtx} → (cases : TaggedUnionFoldCases Sg ι bind Γ l τ J) →
     {l' : LeanTaggedUnionSchema TyWf} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
-    l ≍ l' → Env Γ → TyWf.DenTU l' → TyWf.Den τ
-  | _, _, _, _, _, .payloadFirst b0 b1 rest, _, rfl, .rfl, .rfl, env, v =>
+    l ≍ l' → Env Γ → JEnv τ J → TyWf.DenTU l' → TyWf.Den τ
+  | _, _, _, _, _, _, .payloadFirst b0 b1 rest, _, rfl, .rfl, .rfl, env, jenv, v =>
       match v with
-      | ⟨⟨0, _⟩, f⟩ => Term.eval G b0 (Env.append (cast (Ty.denNE_eq _) f) env)
-      | ⟨⟨1, _⟩, f⟩ => Term.eval G b1 (Env.append f env)
-      | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
-  | _, _, _, _, _, .skip b0 rest, _, rfl, .rfl, .rfl, env, v =>
+      | ⟨⟨0, _⟩, f⟩ => Term.evalJ G b0 (Env.append (cast (Ty.denNE_eq _) f) env) jenv
+      | ⟨⟨1, _⟩, f⟩ => Term.evalJ G b1 (Env.append f env) jenv
+      | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
+  | _, _, _, _, _, _, .skip b0 rest, _, rfl, .rfl, .rfl, env, jenv, v =>
       match v with
-      | ⟨⟨0, _⟩, _⟩ => Term.eval G b0 env
-      | ⟨⟨n + 1, _⟩, f⟩ => CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env n f
+      | ⟨⟨0, _⟩, _⟩ => Term.evalJ G b0 env jenv
+      | ⟨⟨n + 1, _⟩, f⟩ => CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env jenv n f
 
 /-- `TaggedUnionCases.eval`, on the constructors that follow a field-less one. -/
 def CtorsWithPayloadCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {c : CtorsWithPayload ι} →
-    {τ : TyWf} → (cases : CtorsWithPayloadFoldCases Sg ι bind Γ c τ) →
+    {τ : TyWf} → {J : JCtx} → (cases : CtorsWithPayloadFoldCases Sg ι bind Γ c τ J) →
     {c' : CtorsWithPayload TyWf} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
-    c ≍ c' → Env Γ → (t : Nat) → TyWf.DenAtCP c' t → TyWf.Den τ
-  | _, _, _, _, _, .here b _, _, rfl, .rfl, .rfl, env, 0, f =>
-      Term.eval G b (Env.append (cast (Ty.denNE_eq _) f) env)
-  | _, _, _, _, _, .here _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
-      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
-  | _, _, _, _, _, .skip b _, _, rfl, .rfl, .rfl, env, 0, _ => Term.eval G b env
-  | _, _, _, _, _, .skip _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
-      CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env n f
+    c ≍ c' → Env Γ → JEnv τ J → (t : Nat) → TyWf.DenAtCP c' t → TyWf.Den τ
+  | _, _, _, _, _, _, .here b _, _, rfl, .rfl, .rfl, env, jenv, 0, f =>
+      Term.evalJ G b (Env.append (cast (Ty.denNE_eq _) f) env) jenv
+  | _, _, _, _, _, _, .here _ rest, _, rfl, .rfl, .rfl, env, jenv, n + 1, f =>
+      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
+  | _, _, _, _, _, _, .skip b _, _, rfl, .rfl, .rfl, env, jenv, 0, _ => Term.evalJ G b env jenv
+  | _, _, _, _, _, _, .skip _ rest, _, rfl, .rfl, .rfl, env, jenv, n + 1, f =>
+      CtorsWithPayloadCases.eval G rest rfl .rfl .rfl env jenv n f
 
 /-- `TaggedUnionCases.eval`, on a plain list of constructors.  A tag past the end of the
     list has no value — `Ty.DenAtList [] n` is `PEmpty` — which is why the empty list of
     branches needs no branch. -/
 def TaggedUnionCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {ι : Type} → {bind : List ι → List TyWf} → {Γ : Ctx} → {cs : List (List ι)} →
-    {τ : TyWf} → (cases : TaggedUnionFoldCasesRest Sg ι bind Γ cs τ) →
+    {τ : TyWf} → {J : JCtx} → (cases : TaggedUnionFoldCasesRest Sg ι bind Γ cs τ J) →
     {cs' : List (List TyWf)} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
-    cs ≍ cs' → Env Γ → (t : Nat) → TyWf.DenAtList cs' t → TyWf.Den τ
-  | _, _, _, _, _, .nil, _, rfl, .rfl, .rfl, _, _, f => PEmpty.elim f
-  | _, _, _, _, _, .cons b _, _, rfl, .rfl, .rfl, env, 0, f => Term.eval G b (Env.append f env)
-  | _, _, _, _, _, .cons _ rest, _, rfl, .rfl, .rfl, env, n + 1, f =>
-      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env n f
+    cs ≍ cs' → Env Γ → JEnv τ J → (t : Nat) → TyWf.DenAtList cs' t → TyWf.Den τ
+  | _, _, _, _, _, _, .nil, _, rfl, .rfl, .rfl, _, _, _, f => PEmpty.elim f
+  | _, _, _, _, _, _, .cons b _, _, rfl, .rfl, .rfl, env, jenv, 0, f =>
+      Term.evalJ G b (Env.append f env) jenv
+  | _, _, _, _, _, _, .cons _ rest, _, rfl, .rfl, .rfl, env, jenv, n + 1, f =>
+      TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
 
 /-- The value of a dispatch on **some** of the constructors of a tagged union: the first
     branch whose constructor the value has, and the default if it has none of them. -/
 def TaggedUnionSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {k lo : Nat} →
-    (cases : TaggedUnionSomeCases Sg Γ l τ k lo) → Env Γ → TyWf.DenTU l → TyWf.Den τ → TyWf.Den τ
-  | _, _, _, _, _, .last t ht branch _, env, v, dflt =>
+    {Γ : Ctx} → {l : LeanTaggedUnionSchema TyWf} → {τ : TyWf} → {k lo : Nat} → {J : JCtx} →
+    (cases : TaggedUnionSomeCases Sg Γ l τ k lo J) → Env Γ → JEnv τ J → TyWf.DenTU l →
+    TyWf.Den τ → TyWf.Den τ
+  | _, _, _, _, _, _, .last t ht branch _, env, jenv, v, dflt =>
       match TyWf.DenTU.field? t ht v with
-      | some f => Term.eval G branch (Env.append f env)
+      | some f => Term.evalJ G branch (Env.append f env) jenv
       | none => dflt
-  | _, _, _, _, _, .cons t ht branch rest _, env, v, dflt =>
+  | _, _, _, _, _, _, .cons t ht branch rest _, env, jenv, v, dflt =>
       match TyWf.DenTU.field? t ht v with
-      | some f => Term.eval G branch (Env.append f env)
-      | none => TaggedUnionSomeCases.eval G rest env v dflt
+      | some f => Term.evalJ G branch (Env.append f env) jenv
+      | none => TaggedUnionSomeCases.eval G rest env jenv v dflt
 
 /-- The value of the branch a constructor of an enum takes.  The branches are indexed by
     the schema, so there is always exactly one branch to take. -/
 def EnumCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → {s : LeanEnumSchema} →
-    (cases : EnumCases Sg Γ τ s) → Env Γ → Fin s.nOfConstructors → TyWf.Den τ
-  | _, _, _, .three b0 b1 b2, env, i =>
+    {Γ : Ctx} → {τ : TyWf} → {s : LeanEnumSchema} → {J : JCtx} →
+    (cases : EnumCases Sg Γ τ s J) → Env Γ → JEnv τ J → Fin s.nOfConstructors → TyWf.Den τ
+  | _, _, _, _, .three b0 b1 b2, env, jenv, i =>
       match i with
-      | ⟨0, _⟩ => Term.eval G b0 env
-      | ⟨1, _⟩ => Term.eval G b1 env
-      | ⟨2, _⟩ => Term.eval G b2 env
+      | ⟨0, _⟩ => Term.evalJ G b0 env jenv
+      | ⟨1, _⟩ => Term.evalJ G b1 env jenv
+      | ⟨2, _⟩ => Term.evalJ G b2 env jenv
       | ⟨_ + 3, hi⟩ => absurd hi (by simp [LeanEnumSchema.nOfConstructors])
-  | _, _, _, .cons b rest, env, i =>
+  | _, _, _, _, .cons b rest, env, jenv, i =>
       match i with
-      | ⟨0, _⟩ => Term.eval G b env
+      | ⟨0, _⟩ => Term.evalJ G b env jenv
       | ⟨n + 1, hi⟩ =>
-          EnumCases.eval G rest env ⟨n, by
+          EnumCases.eval G rest env jenv ⟨n, by
             simp only [LeanEnumSchema.nOfConstructors] at hi ⊢; omega⟩
 
 /-- The value of a dispatch on **some** of the constructors of an enum: the first branch
     whose constructor the value is, and the default if it is none of them. -/
 def EnumSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → {s : LeanEnumSchema} → {k lo : Nat} →
-    (cases : EnumSomeCases Sg Γ τ s k lo) → Env Γ → Fin s.nOfConstructors → TyWf.Den τ → TyWf.Den τ
-  | _, _, _, _, _, .last j branch _, env, i, dflt =>
-      if i = j then Term.eval G branch env else dflt
-  | _, _, _, _, _, .cons j branch rest _, env, i, dflt =>
-      if i = j then Term.eval G branch env
-      else EnumSomeCases.eval G rest env i dflt
+    {Γ : Ctx} → {τ : TyWf} → {s : LeanEnumSchema} → {k lo : Nat} → {J : JCtx} →
+    (cases : EnumSomeCases Sg Γ τ s k lo J) → Env Γ → JEnv τ J → Fin s.nOfConstructors →
+    TyWf.Den τ → TyWf.Den τ
+  | _, _, _, _, _, _, .last j branch _, env, jenv, i, dflt =>
+      if i = j then Term.evalJ G branch env jenv else dflt
+  | _, _, _, _, _, _, .cons j branch rest _, env, jenv, i, dflt =>
+      if i = j then Term.evalJ G branch env jenv
+      else EnumSomeCases.eval G rest env jenv i dflt
 
 /-- The answer of one branch of the fold of a recursive tagged union, at a node whose
     fields are `e` — their shape, with the memo of the subtree in each hole — below the
@@ -400,7 +415,7 @@ def FoldKBranch.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
     RecFrames l₀ τ outer → RecFields l₀ τ fs → TyWf.Den τ
   | _, _, _, _, _, _, _, .here body, env, mkEnv, _, e =>
-      Term.eval G body (Env.append (mkEnv _ e) env)
+      Term.evalJ G body (Env.append (mkEnv _ e) env) PUnit.unit
   | _, _, _, _, _, _, _, .deep sf cases, env, mkEnv, fr, e =>
       match selfFieldMemo sf e with
       | .mk (node, _) kids =>
@@ -465,31 +480,26 @@ def TaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, fr, n + 1, e =>
       TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
 
-/-- The value of a member of a mutual family, built from the shape that member has. -/
-def FamilyMemberValue.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {m : LeanFamMemberSchema TyWf} → FamilyMemberValue Sg Γ m → Env Γ →
-    TyWf.DenMember m
-  | _, _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (Spine.eval G fields env)
-  | _, _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Spine.eval G fields env)
-  | _, _, .alias _ value, env => Term.eval G value env
-
 /-- The value of the branch a value of a member of a mutual family takes: a dispatch on its
     constructor for a member with constructors, and the one branch, binding what the value
     holds, for a record or a newtype member. -/
 def FamilyMemberCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → {m : LeanFamMemberSchema TyWf} →
-    FamilyMemberCases Sg Γ τ m → Env Γ → TyWf.DenMember m → TyWf.Den τ
-  | _, _, _, .ctors cases, env, v => TaggedUnionCases.eval G cases rfl .rfl .rfl env v
-  | _, _, _, .record body, env, v =>
-      Term.eval G body (Env.append (cast (Ty.denRecord_eq _) v) env)
-  | _, _, _, .alias body, env, v => Term.eval G body (v, env)
+    {Γ : Ctx} → {τ : TyWf} → {m : LeanFamMemberSchema TyWf} → {J : JCtx} →
+    FamilyMemberCases Sg Γ τ m J → Env Γ → JEnv τ J → TyWf.DenMember m → TyWf.Den τ
+  | _, _, _, _, .ctors cases, env, jenv, v =>
+      TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv v
+  | _, _, _, _, .record body, env, jenv, v =>
+      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) v) env) jenv
+  | _, _, _, _, .alias body, env, jenv, v => Term.evalJ G body (v, env) jenv
 
 /-- The value of a partial dispatch on a member of a mutual family: the first branch whose
     constructor the value has, and the default if it has none of them. -/
 def FamilyMemberSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
-    {Γ : Ctx} → {τ : TyWf} → {m : LeanFamMemberSchema TyWf} →
-    FamilyMemberSomeCases Sg Γ τ m → Env Γ → TyWf.DenMember m → TyWf.Den τ → TyWf.Den τ
-  | _, _, _, .ctors cases _, env, v, dflt => TaggedUnionSomeCases.eval G cases env v dflt
+    {Γ : Ctx} → {τ : TyWf} → {m : LeanFamMemberSchema TyWf} → {J : JCtx} →
+    FamilyMemberSomeCases Sg Γ τ m J → Env Γ → JEnv τ J → TyWf.DenMember m → TyWf.Den τ →
+    TyWf.Den τ
+  | _, _, _, _, .ctors cases _, env, jenv, v, dflt =>
+      TaggedUnionSomeCases.eval G cases env jenv v dflt
 
 /-- The answer of one branch of the fold of a mutual family, at a node whose fields are
     `e` — their shape, with the memo of the subtree in each hole — below the nodes `fr`
@@ -505,7 +515,7 @@ def FamilyFoldKBranch.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     ((fs' : List (TyWfIn (n + 2))) → FamFields ms₀ τ fs' → TyWf.DenList (bind fs')) →
     FamFrames ms₀ τ outer → FamFields ms₀ τ fs → TyWf.Den τ
   | _, _, _, _, _, _, _, _, .here body, env, mkEnv, _, e =>
-      Term.eval G body (Env.append (mkEnv _ e) env)
+      Term.evalJ G body (Env.append (mkEnv _ e) env) PUnit.unit
   | _, _, _, _, _, _, _, _, .deep field member cases, env, mkEnv, fr, e =>
       FamilyMemberFoldKCases.eval G cases (Env.append (mkEnv _ e) env) mkEnv (e, fr)
         (FamW.memoNodeAt _ _ member.at_famFs (famFieldMemo field e)).2

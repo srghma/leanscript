@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Build
 public import LeanScript.Eval
 -- The kernel checks of `Lean.Name.beq` below need its body, which `Init` does not expose.
 import all Init.Prelude

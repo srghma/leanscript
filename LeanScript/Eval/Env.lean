@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Build
 public import LeanScript.Den
 public import Mathlib.Data.Prod.TProd
 

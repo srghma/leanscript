@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Build
 public import LeanScript.Eval
 public import LeanScript.RecObjectRecFacts
 public import TermTests.FibWindowTest

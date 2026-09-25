@@ -1,3 +1,1563 @@
+# Summary of changes for run ed97b000-bf7b-428d-96dd-8f5dbe4cb56a
+I split the large files, tidied the repository and did some refactoring. The full `lake build` passes (986 jobs) with no warnings, and there is no `sorry` in `LeanScript`, `NonEmpty`, `TyTests` or `TermTests`. Everything is committed.
+
+**Build fix first.** `lakefile.toml` requires Mathlib, and several modules import it, but `lake-manifest.json` had no Mathlib entry, so `lake build` stopped with "dependency 'mathlib' not in manifest". I added the entry, pinned to Lean v4.34.0, together with the packages Mathlib brings in.
+
+**Files split**
+- **Extern catalogue:** `LeanScript/LeanInitPureExterns.lean` (1006 lines) is now four modules by theme in `LeanScript/LeanInitPureExterns/`: `Core`, `FixedWidth`, `String` and `Float`. The main file keeps its overview, the sections that are entirely commented out, and `LeanInitPureExtern` itself.
+- **Generator script:** `scripts/gen_externs.py` now reads all five files and orders entries by the constructors of `LeanInitPureExtern`. The `LeanScript/ToTerm/ExternTable.lean` it produces is the same as before apart from its header comment.
+- **Extern evaluator:** `LeanScript/Eval/Extern.lean` (778 lines) is split the same way. The `eval` of each family moved to `LeanScript/Eval/Extern/{Core,FixedWidth,String,Float}.lean`, and the main file keeps the `Extern.eval` dispatch.
+- **Recursion translations:** the data structures and helpers of `ToTerm/TransRecFamily.lean` (766 → 441 lines) and `ToTerm/TransRecObject.lean` (642 → 341 lines) moved to the new `ToTerm/TransRecFamilyPieces.lean` and `ToTerm/TransRecObjectPieces.lean`.
+- **Evaluator lemmas:** the `rfl` lemmas that were in `LeanScript/Eval.lean` (`Term.eval_beta`, `eval_letE`, …) moved to the new `LeanScript/EvalFacts.lean`. Nothing else in the project used them.
+
+Two files stay large because they can't be cut without rewriting the design:
+- `Expr/Term.lean` (1144 lines) is a single `mutual` block of inductive types, and Lean requires such a block to be in one file.
+- `ToTerm/Trans.lean` (665 lines) is a single `mutual` block of functions.
+
+**Housekeeping**
+- **Root folder:** design notes (`TermTypeSafety.md`, `WfUsage.md`, `RecSnapshots.md`, `MATHLIB_REUSE.md`) moved to `docs/`. The proposals and reviews (`FibProposals.md`, `ImprovementProposals.md`, …) moved to `proposals/`. Every reference to them in code, tests, scripts and docs now uses the new path.
+- **README:** `README.md` now describes the project, the directory layout and how to regenerate the extern table.
+- **Module docs:** I added the missing module docs to `ExprCtx.lean`, `LeanPrimTyCovariant.lean` (plus a docstring on the inductive), `Ty/Class.lean` and `Ty/TyWf.lean`.
+- **`LeanScript/Ty/README.md`:** it now lists `LeanScript.Ty.Traversable` and no longer points to `LeanScript/Expr.lean`, which doesn't exist.
+- **Warning:** I fixed the only build warning by removing the unused `ind` parameter from `transIndexedCasesOn?` in `ToTerm/TransRecCases.lean`.
+
+**Left alone**
+- `Scratch.lean` at the root, which looks like your own benchmarking scratch.
+- `LeanScript/LeanInitImpureExterns.lean_`.
+- `TyTests/DocumentedMistakesTest.lean` refers to `docs/DesignAnswers.md`, which isn't in the repository; you may want to add it or change the reference.
+
+# Summary of changes for run 2a93113c-2205-4602-8570-acb4be30a083
+Five of the six items on your list were already supported when I started, each with its own passing test file, even though `ARISTOTLE_SUMMARY.md` and the "What is refused" section of `LeanScript/ToTerm/Overview.lean` still listed them as unsupported. The sixth, structures with an existentially quantified type field (your `Unfold` example), was not supported, and I added it. The full `lake build` passes (all four libraries, 975 jobs). I added no `sorry`, `axiom` or `implemented_by`.
+
+**Already supported, one test file each in `TermTests/StructRecTest/`:**
+- nested inductives through `Array` → `NestedArray.lean`
+- a `mutual` block whose members also occur nested (`Option Q` inside `P`) → `MutualNested.lean`
+- a recursive newtype whose body is a structure (`Pair2`) → `NewtypeStruct.lean`
+- inductive families with indices (`Vec α n`, …) → `IndexedFamily.lean`
+- folds deeper than the old limits. The limits are now options, defaulting to 64, 24, 16 and 16, and `set_option` raises them → `DeepFolds.lean`
+- a structural recursion split across two top-level definitions → `SplitRecursion.lean`
+
+**New: structures with an existentially quantified type field** (new test file `TermTests/StructRecTest/Existential.lean`)
+`Unfold Nat` still has no `LeanScriptTyWf` instance, because it has no single type in the language, and the test checks that deriving one is refused. Functions on it now translate in two ways:
+- **Called on a value written out** (`countdown.take n`, `(countFrom k).take n`, `firstOut countdown`): the call is inlined with that value substituted in, so `u.State`, `u.seed` and `u.step` become the value's own. This happens even when the function is neither `@[inline]` nor declared, since a function on such a value could not be declared in the signature anyway. It also applies to calls that build such a value.
+- **Translated on its own** (`#leanscript_to_term (Unfold.take (α := Nat))`): the result is a Lean function over the type of each hidden field: `fun (State : TyWf) => (… : Term Sg Γ (Unfold.mk.leanScriptLayout (.prim .nat) State ⇒ …))`. In other words, one term for every choice of `State`. You apply it to the type a particular value chose, which Lean can infer (`(take_term _).ap countdown_term`).
+
+The test covers `Unfold` with a state that is a `Nat`, a triple and a list; a structure with two hidden types (`Pipe`); a recursion whose answer has the hidden type (`Boxed.iter`); two existential arguments at once; and a function that builds a new value of the structure (`Boxed.bump`). Every case runs the term in the kernel and compares it with fixed numbers and with the Lean definition.
+
+**Limitations of the existential support:**
+- The version generic in `State` only works for a structure (one constructor, no index), and only for the leading arguments of the definition being translated. The `State` type is an ordinary Lean argument, so it has to sit outside the whole term.
+- Datatypes like `Process`, whose hidden types sit in several constructors or under their own recursion, still only get closed values, built as before.
+- Defining `Unfold.take` for the test crashed Lean's code generator, so the test file declares everything inside a `noncomputable section`. The translation doesn't need compiled code.
+
+**Changes:**
+- The new module `LeanScript/ToTerm/ExistentialArgs.lean` holds the translation that is generic in the hidden types.
+- `LeanScript/CtorFn/AsType.lean` gains `TyWf.Hidden`, a Lean type standing for a hidden type. The existing `TyWf.AsType` couldn't be used because it is `PUnit`, so values of it would be erased.
+- Smaller changes to `Trans.lean`, `TransRec.lean`, `TyView.lean`, `ObjectExpr.lean` and `Elab.lean`.
+- `Overview.lean`: the table of supported forms has a row per feature pointing at its test, the section on which calls are allowed is updated, and the out-of-date entries under "What is refused" are replaced.
+
+**Building:** as in earlier runs, `lake-manifest.json` has no Mathlib entry. I pointed it at a local Mathlib copy of v4.34.0 to build, and left that edit uncommitted, so a fresh checkout still needs `lake update mathlib`.
+
+# Summary of changes for run f1512019-d623-4262-8743-b0bf31c45cd2
+I replaced several of the project's own definitions with the Mathlib or core Lean definitions they were special cases of. The full `lake build` (all four libraries, 973 jobs) passes, and I added no `sorry`: the only ones are still in the work-in-progress `LeanScript/Expr/Design.lean`. Earlier runs had already moved a lot onto Mathlib (`PFunctor`, `WType`, `List.TProd`, derived `Traversable`), so this pass covered what was left.
+
+**Definitions replaced by library ones**
+- **Signature names** (`LeanScript/ExprCtx.lean`): the hand-written Boolean `declNamesUnique` is gone. `Sig.h_names_unique` is now `(decls.map GlobalDecl.name).Nodup`, using the library's `List.Nodup`. `by decide` still discharges it. The 21 places that wrote an empty signature as `⟨[], rfl⟩` now write `⟨[], List.nodup_nil⟩`.
+- **Folds that ignore the subtrees**: `Ty.DenRec.toList`, `TyWf.Den.toName` and `WType.Memo.tree` now use Mathlib's `WType.elim`. `WType.fold` stays only where the subtrees are actually read (`RecUnionEvalFacts.lean`).
+- **Root node of a recursive record or newtype**: `Ty.DenObj.mk`/`unfold` and `Ty.DenAlias.mk`/`unfold` now use `WType.ofSigma`/`WType.toSigma`. Their round-trip proofs now use Mathlib's `ofSigma_toSigma`/`toSigma_ofSigma`.
+- **`IPFunctor.at`** is now `List.getD` with the empty container as the default. `at_map` and `at_map_of_le` are proved from the core `List` lemmas instead of by hand-written recursion.
+- **`natFold`** is now `Nat.rec`, which the compiler supports. `listFold` has to stay as it is, because the compiler rejects `List.rec` (I checked).
+- **`NoSelfHoles` / `NoMemberHoles`** (`Den/Holes.lean`) are now stated with Mathlib's `IsEmpty`.
+
+**Added Mathlib `Equiv`s**: the existing round-trip theorems are now also packaged as `Equiv`s:
+- `Ty.DenRec.equiv`, `Ty.DenObj.equiv` and `Ty.DenAlias.equiv`, plus their `TyWf.` versions;
+- `PFunctor.Obj.listEquiv` and `PFunctor.Obj.arrayEquiv`.
+
+**Other changes**
+- `TermTests/StructRecTest/DeepFolds.lean` was already failing before any of my changes: translating `leftEighth` ran out of heartbeats. I raised the limit for that one definition with `set_option maxHeartbeats 800000 in`.
+- `MATHLIB_REUSE.md` now lists each of these changes.
+
+**Build setup:** `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it. To build, I pointed the manifest at a local Mathlib copy of the same version (v4.34.0). That edit is left uncommitted, and the committed manifest is your original, so a fresh checkout still needs `lake update mathlib` first.
+
+# Summary of changes for run 9bbaafbb-a60c-4534-baf9-be40268a5c0c
+Short answer: mostly yes. The `evenLevelSum` shape, where a branch reads answers below both subtrees at once, now works with every fold kind you listed: `nat_rec`, `array_rec`, `recTaggedUnion_rec`, `recObject_rec`, `recAlias_rec` and `mutualRecursiveFamily_rec`. A few kinds of structural recursion are still not covered (listed at the end). The full `lake build` passes (966 jobs), and I added no new `sorry`s; the only ones in the project are the existing ones in the work-in-progress file `LeanScript/Expr/Design.lean`.
+
+**Shapes that now translate, for every fold:**
+- `match`es on children or grandchildren anywhere in a branch, not only at the head.
+- A match on another argument (zip-like: `f (x::xs) (y::ys)`).
+- A `match` on the result of a recursive call, and recursive results passed as arguments of recursive calls.
+- `let`, `if` and `decide` inside branches.
+- Looks two levels down, into one subtree or both.
+- Lists of lists.
+
+**Mutual recursion:**
+- Several functions over one type now translate: `isEven`/`isOdd` on `Nat`, two folds over one `List`, `Tree`, `Cell` or `Chain`, and several functions per member of a `mutual` block (three- and four-way). The fold answers a tuple (`PProd`) of the functions' answers, and each function reads its own part.
+- A `mutual` block whose members answer different types (e.g. `Tree → Bool` together with `Forest → Nat`) now translates the same way. Each member fills in its own part of the tuple and puts `default` in the others, so every answer type needs an `Inhabited` instance.
+
+**Nested inductives:** types that recurse through `List` now translate, e.g. `inductive Rose | node (v : Nat) (kids : List Rose)`, a version with a type parameter, and `List (List R)`. `deriving LeanScriptTyWf` now also gives `List Rose` its place in the family `Rose`/`List Rose`. Recursions over these, helpers on `List Rose` (including the grandchildren-sum version), and `match`es on the children list with list patterns all become `mutualRecursiveFamily_rec k`.
+
+**Fix to wildcard `match`es:** a `match` with a wildcard on a type with parameters (`List α`, `Option α`) used to fail even for `List Nat`, with "List.rec is used with a dependent motive". It now translates.
+
+**Tests:** new files `TermTests/ShapesTest/Folds.lean`, `Mutual.lean`, `Objects.lean` and `Nested.lean`. Many cases include `kernel_rfl` checks that the term computes the same result as the Lean function. The supported and refused lists in `LeanScript/ToTerm/Overview.lean` are updated.
+
+**Still not covered:**
+- Nested inductives through anything other than `List`, a union or a structure (e.g. `Array`).
+- A `mutual` block whose members also appear nested (`Option Q` inside `P`).
+- A recursive newtype whose body is a structure (`Pair2 | mk (Nat × Option Pair2)`).
+- Inductive families with indices, and inductives with an existentially quantified type field (the `Unfold` example you said to leave out).
+- Folds deeper than the search limits: 16 for `nat_rec`, 8 for `recObject_rec`/`recAlias_rec`, 6 for `recTaggedUnion_rec`/`mutualRecursiveFamily_rec`.
+- A recursion split across two top-level definitions translates only if the callee is `@[inline]` or declared in the signature, as with any other call.
+
+To build locally I edited `lake-manifest.json` without committing it. The committed manifest is your original.
+
+# Summary of changes for run d603b47d-bbb6-4979-a624-e39d3195b292
+**Short answer:** before this change, the `mutual`-block fold was the only one that refused this shape, and it now translates. `recObject_rec` and `recAlias_rec` already handled it. `nat_rec` and `array_rec` have only one subvalue per step, so there is no second subtree to read. I also extended `array_rec` for a related case. The full default `lake build` passes (962 jobs). The changes add no `sorry`, `axiom` or `implemented_by`.
+
+**Status of each fold** (each has a test that checks the depth and uses `kernel_rfl` to compare the term with the Lean function):
+- **`recTaggedUnion_rec`**: `evenLevelSum` translates at depth 2 (done in the previous run).
+- **`mutualRecursiveFamily_rec`**: fixed in this run (details below). The `mutual` version of `evenLevelSum`, on binary trees whose levels alternate between two members `ETree`/`OTree`, is now depth 2.
+- **`recObject_rec` and `recAlias_rec`**: these already worked, with no change needed. Their window holds the answers at every subvalue `k + 1` levels down, below all children at once. So `evenLevelSum`-shaped programs on a binary record (`BNode`) or a binary newtype (`BTree | mk (Fork BTree)`) are depth 1. Reading the grandchildren's labels as well as their answers is depth 2.
+- **`nat_rec` and `array_rec`**: a number or a list has one subvalue per step, and the window already holds the answers at all `k + 1` predecessors or suffixes. Skipping levels therefore works: `paritySum` (only `f n` at `n + 2`) is depth 1. For arrays, the analogue of looking into a subvalue is reading the elements after the head, and that was refused before (see below).
+
+**Changes**
+- **Families** (same approach as the previous run's `recTaggedUnion_rec` change):
+  - The family branch types now carry the nodes already dispatched on above (`outer`).
+  - A new constructor `FamilyFoldKBranch.deepOuter` looks into an unvisited field of one of those nodes; the pointer type is `FamilyOuterMemberField`.
+  - The evaluator reads that sibling's answers from memos already stored (`FamFrames` and `famOuterFieldMemo`), so nothing is recomputed.
+  - The proofs in `FamilyRecFacts.lean` were updated and still build.
+  - The translator (`TransRecFamily.lean`) now only tries the subtrees a branch still needs, at this node or at nodes above it.
+- **`array_rec`** (`TransBrec.lean`): a branch may now read the first `k` elements after the head. For example, `x :: y :: xs => x * y + go xs` is depth 1; the translator takes `y` off the tail with `array_casesOn`. The empty case of that `array_casesOn` is never reached, because the tail has at least `k` elements there, so I made it return the answer at the tail.
+  - As a result, `adjArr` in `ArrayRecToTermTest/Acc.lean` now translates, so it became a passing test.
+  - The refusal test there now uses `lenArr` instead, which reads the rest of the list.
+
+**New tests**
+- `TermTests/MutualFamilyToTermTest/BothSubtrees/`:
+  - `Common.lean`: the `ETree`/`OTree` family and some sample trees.
+  - `Even.lean`: the even-levels sum, a weighted version with two arguments, a zigzag and the two outer spines (depth 4).
+  - `TreeForest.lean`: reading below both the first tree and the rest of a forest (depth 3).
+- `TermTests/RecObjectToTermTest/BinTree/BothSubtrees.lean`
+- `TermTests/RecAliasToTermTest/BothSubtrees.lean`
+- `TermTests/ArrayRecToTermTest/Elements.lean`
+- `TermTests/NatRecDepthTest/Skip.lean`
+
+I also updated three existing tests for the new index (`FamilyRecDepthTest.lean`, `FamilyRecDepthTest/Programs.lean`, `RecTermTest.lean`), including two expected error messages. The docs are updated too (`Overview.lean`, the `Term.lean` docstrings, the test headers).
+
+**Still not supported:** as in earlier runs, a function in a `mutual` block that Lean compiles separately (one that only calls the other function without recursing on its own, like `oEven`) is not translated. I dropped that one example.
+
+**Building:** `lake-manifest.json` still has no Mathlib entry. As in earlier runs I added it locally to build and did not commit it, so a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run b8dc8107-d77f-4640-83d5-0d2f1b01daab
+`evenLevelSum` now translates. `#leanscript_to_term evenLevelSum` produces a `recTaggedUnion_rec 2` term, and tests check with `kernel_rfl` that it computes the same values as the Lean function. The full default `lake build` passes (955 jobs), and the changes add no `sorry`, `axiom` or `implemented_by`.
+
+**Change to the language** (`LeanScript/Expr/Term.lean`, `LeanScript/Expr/SelfField.lean`)
+- Before, a deeper look could only go into a field of the node the branch stood at, so after looking into the left child the right child's subtrees were out of reach.
+- The branch families (`FoldKBranch`, `TaggedUnionFoldKCases`, `CtorsWithPayloadFoldKCases`, `TaggedUnionFoldKCasesRest`) now have an extra index, `outer`: the nodes already dispatched on above, innermost first. `recTaggedUnion_rec` starts with `outer = []`.
+- A new branch constructor, `FoldKBranch.deepOuter`, looks into an unvisited child of one of those nodes. A new pointer type, `OuterSelfField`, says which one.
+- A look still only goes into a subvalue, so terms still terminate by construction. Each look (`deep` or `deepOuter`) costs one unit of depth, so reading the grandchildren below both children is depth 2.
+
+**Evaluation and existing proofs**
+- In `Eval.lean`, the fold evaluator now also takes the memos of the nodes above (`RecFrames` and `outerSelfFieldMemo`, in `Den/Rec.lean`). A look into a sibling reads answers that are already stored; nothing is recomputed.
+- The theorems in `RecUnionRecFacts.lean` and `RecUnionEvalFacts.lean` were updated for the new index and still prove the same things.
+
+**Translator** (`LeanScript/ToTerm/TransRecUnion.lean`)
+- When a branch still needs values that are not yet available, the translator reads off which unvisited subtrees they come from. It tries only those, at the current node or at a node above, starting with the ones highest up. This is also more targeted than the old approach of trying every field.
+- `TransRec.lean` passes the new empty `outer` argument.
+
+**Tests**
+- New file `TermTests/RecUnionToTermTest/BothSubtrees.lean`. Each program has a depth check plus `runAdd` checks against fixed numbers and/or against the Lean function:
+  - `evenLevelSum`, depth 2
+  - a weighted two-argument version, depth 2
+  - `zigzag`, which reads the left child's right child and the right child's left child, depth 2
+  - `outerSpines`, three levels down both outer spines, depth 4
+  - a `Tree3` program, `firstGrand3`, depth 2
+- **`Refused.lean` changed:** since `evenLevelSum` now works, the file instead checks that a recursion needing 7 looks (`leftEighth`) is refused, because the translator only searches up to depth 6.
+- `RecUnionRecDepthTest.lean` was updated for the new index (three type annotations and one expected error message).
+- Docs updated: `Overview.lean`, `Common.lean`, and the headers of `K2`–`K4`.
+
+**Not covered:** the fold for `mutual` blocks (`mutualRecursiveFamily_rec`) still looks into one subvalue at a time. `Overview.lean` says so.
+
+**Building:** as in earlier runs, `lake-manifest.json` has no Mathlib entry. I edited it locally to build and did not commit that change, so a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run 63262c9d-d4f4-4905-88aa-72e6fb639d85
+I added the new fold tests and fixed the translator where the tests needed it. The full project build passes (954 jobs, no errors), and there is no `sorry` in the code: the only matches for the word are in comments that were already there.
+
+**Translator changes** (`LeanScript/ToTerm/`)
+- A one-level `match`/`X.casesOn` on a recursive tagged union, recursive record, recursive newtype or member of a `mutual` block now becomes its `…_casesOn`. For family members, a partial match becomes `mutualRecursiveFamily_casesOnWithDefault`. The code is in the new file `TransRecCases.lean`, hooked into `Trans.lean`.
+- In a recursion on one member of a `mutual` block, the default answer for the other members can now be a function, so recursions with extra arguments work.
+- `Overview.lean` now documents both changes and lists the shapes that are still refused.
+
+**New tests** (one directory per type, one file per depth `k`). Each function has a `…_term := #leanscript_to_term …`, a check of the fold depth, `runAdd`/`run … = number` examples, and `runAdd … = the Lean function …` examples:
+- `TermTests/MutualFamilyToTermTest/ThreeMembers/{Common,K0..K3}`: a three-member cycle X/Y/Z and three differently shaped members.
+- `…/Args/{K0..K3}`: 2- and 3-argument functions, with the value argument first, last or in the middle.
+- `…/TreeForest/{Common,K0..K3}`: mutual trees (`Tree`/`Forest`).
+- `…/CrossBlock/{Common,K0..K4}`: a `mutual` block C/D whose members hold values of the other block A/B. The branches fold the A/B values or read their first link. It covers 1–3 arguments, with Fibonacci-style (depth 2), depth-3 and tribonacci-style (depth 4) recursions.
+- `TermTests/RecObjectToTermTest/BinTree/{Common,K0..K2}`: a binary recursive record `BNode | mk (label : Nat) (left right : Option BNode)`. It covers sum, height, a weighted sum, a depth-weighted accumulator, Fibonacci/Lucas and tribonacci along the left spine, and a function reading both children's labels, with 1–3 arguments.
+
+**Not supported yet** (listed in `Overview.lean`):
+- **`match` inside a recursive branch:** a `match` written directly in a branch, on a field the recursion doesn't descend into (such as an A value inside D), is not translated. Lean passes the recursion's history through that `match`. Moving the `match` into a small `@[inline]` function works, and that is what `aHead`/`bHead` in CrossBlock do.
+- **Some nested types are refused:**
+  - `Rose | node (List Rose)`
+  - a recursive newtype whose body is a structure (`Pair2 | mk (Nat × Option Pair2)`)
+  - `mutual` blocks whose members also appear nested (`Option Q` inside `P`)
+- **Split functions:** a pair of functions that Lean splits into separate definitions is not handled when one calls the other as a non-inline function. In CrossBlock `K1` I replaced that test with a recursion on `D` alone.
+
+**Building:** I did not commit `lake-manifest.json`, but it has no Mathlib entry and the project needs Mathlib. Run `lake update mathlib` (or add Mathlib back to the manifest) before `lake build`.
+
+# Summary of changes for run 9ed2010f-8393-4c82-919a-0a93eddcce7f
+**Short answer:** mostly no, and there was room to improve. Before this change, the scope facts in `TyWf`/`TyWfIn` were used to build the *types*: `TyWfIn.unfold` needs `wf_unfoldSelf`, `TyWf.recTaggedUnion l hwf` needs its proof, and `Term` is indexed by `TyWf`. They were not used to skip impossible branches. The container functions `Ty.toPFunctor`/`Ty.toIPF` and `roll`/`unroll` take a raw `Ty` and return a placeholder value in the impossible cases: `familyMember` becomes `PEmpty`, and `self` gets one hole even where there is no binder to fill it. Three fold-environment functions did real work in branches that can't happen: `recBindEnv` and `recBindEnvOf` for a `familyMember` field of a recursive type's payload, and `famBindEnv` for a `self` field of a family's payload. The inhabitation and "really recursive" conditions are never used by the denotation.
+
+Two corrections to how you put it:
+- `Ty.enum` holds no `Ty` at all, so it has no occurrences by construction, with no proof involved. The shapes that do hold types (`fn`, `array`, `record`, `taggedUnion`, …) *can* contain `self`/`familyMember` when nested inside a binder's payload.
+- Your third case presumably meant `mutualRecursiveFamily`: inside it only `familyMember` can appear. Inside `recTaggedUnion`, `recObject` and `recAlias`, only `self` can appear.
+
+**What I changed:**
+1. The impossible branches in `recBindEnv` (`LeanScript/Den/Rec.lean`), `recBindEnvOf` (`LeanScript/RecUnionEvalFacts.lean`) and `famBindEnv` (`LeanScript/Den/Family.lean`) now use the proof to rule the case out. They call the existing `not_wfIn_one_familyMember` / `not_wfIn_self_of_family` lemmas instead of computing a value. The matching case of `recBindEnv_eq_recBindEnvOf` is now a one-line contradiction. The evaluator's results are unchanged.
+2. New file `LeanScript/Den/Holes.lean` with two proved theorems saying the placeholder cases are never reached from well-formed types:
+   - `Ty.noSelfHoles_of_wfIn`: a closed type or a family field has no holes in `Ty.toPFunctor`.
+   - `Ty.noMemberHoles_of_wfIn`: a closed type or a field of a recursive type's payload has no holes in `Ty.toIPF`.
+
+   There are corollaries for closed types, binder payloads and family payloads. Both theorems use only the standard axioms `propext` and `Quot.sound`, and they are in the Properties table as proved.
+3. `WfUsage.md` has the full analysis and further improvements I did not make:
+   - Prove `Ty.Wf t → Nonempty (Ty.Den t)`. `Den.lean`'s docstring claims every closed type has values, but nothing proves it, and it would be the first real use of the inhabitation conditions.
+   - Make positivity explicit: the denotation treats a function's domain as closed without stating that this relies on positivity.
+   - Use a scope-indexed `Ty` so wrong occurrences can't be written at all (a larger redesign).
+   - Add a small "is it `self`?" view so `recBindEnv`/`famBindEnv` need two cases instead of seven.
+
+   I recommend keeping the placeholder values rather than passing proofs into `Ty.toPFunctor`: that would break the `rfl` equations the evaluator relies on, and the theorems above give the same guarantee.
+
+**Building:** the full default `lake build` passes and no `sorry` was added. `lakefile.toml` requires mathlib, but `lake-manifest.json` has no entry for it, so `lake build` stops with "dependency 'mathlib' not in manifest". To build here I added a local entry pointing at the mathlib copy that matches your toolchain version. I did **not** commit that change, so you'll need `lake update mathlib` (or your own manifest) to build.
+
+# Summary of changes for run cf6dec3a-5869-4b62-b406-f5c1551fa815
+I switched the test terms that come from a Lean program over to `#leanscript_to_term`. Each translated term is checked against the old hand-written term by `kernel_rfl`, and in the files converted this session those checks stay in the tests as `example`s. The full default `lake build` (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) passes, and no `sorry` was added (the only ones are the existing ones in `LeanScript/Expr/Design.lean`, which I did not touch).
+
+**Changes to the translator (`LeanScript/ToTerm`)** — needed so the translated terms match the hand-written ones:
+- Structure projections (`p.1`, `s.field`) become `record_casesOn`.
+- `a + b` becomes `global add a b` directly, instead of a wrapped function.
+- An inlined call whose arguments are variables is substituted in place, so an `@[inline]` fold called on the argument is the fold itself.
+- `let (a, b) := …` stays a single `record_casesOn`, including inside a fold's branch.
+- Recursive newtypes whose body holds `Option (Nat × Self)` can now be folded.
+- Fixed a bug: a single-field constructor of a type with several constructors was dropped (`Peano.succ n` translated to `n`).
+- Two new term elaborators read pieces back out of a translated term, so the proofs don't need hand-written copies: `#leanscript_fold_branch t` (a fold's branch) and `#leanscript_fold_bases t` (the answers for short arguments of `nat_rec k` / `array_rec k`).
+- `LeanScript/ToTerm/Overview.lean` documents all of this.
+
+**Tests converted:** `RecAliasRecDepthTest`, `RecObjectRecDepthTest` and `RecUnionRecDepthTest` (each with their `Programs`/`Correct` files), `evFibTerm` in `FamilyRecDepthMembersTest`, `ArrayRecDepthTest` and its `Cont.lean`, `NatRecDepthTest/Written.lean`, `FibWindowTest`, and `FibAlgorithmsTest`.
+
+**Where the Lean programs or terms changed:**
+- Some programs had to be rewritten slightly to translate to the same term: `Chain` became `inductive Chain | mk (link : Option (Nat × Chain))`; pair recursions use `let (a, b) := …`; `fibLoopTR` matches on the counter only and returns `fun a b => …`; some helpers are marked `@[inline]`.
+- Three terms differ from the old ones, because the translator inlines the fold instead of applying a separate fold term to the argument: `contFromPairTerm`, `FibWindow.fib_term` and `fibTR_term`. They compute the same values, the proofs about them still go through, and the new shape is pinned in an `example`.
+- `window`, `loop_term`, `contPairTerm`, `seed`, `step` and similar used to work in any context; they are now closed terms or fixed to one context.
+
+**Left hand-written, with a comment explaining why:**
+- `FamilyRecDepthTest`: its two types don't refer to each other, so the deriver treats them as separate types rather than one family.
+- `nodeFibCases`.
+- The tests that are supposed to fail with "too shallow".
+- The grammar and evaluator unit tests (`TermTest`, `EvalTest`, `RecTermTest`, `EvalCoverageTest`, `CtorFnTest`, `ExternTest`). These test each constructor directly and have no Lean program behind them.
+
+My earlier question — what to do when a term can't be reproduced exactly — is still unanswered. Meanwhile I extended the translator where I could, and otherwise kept the hand-written term with a comment.
+
+**Build setup:** the project's `lake-manifest.json` did not list mathlib, so I regenerated it to include mathlib and the packages it pulls in. That change is committed and is needed for the build to resolve.
+
+# Summary of changes for run 358249be-8e2f-43e4-8d4f-cfba4fd7f4c7
+I implemented sections 1–7 of `proposals/DeduplicationProposal.md`. I skipped section 8. The full default build (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) passes with no warnings. No new `sorry` was added; the only ones left are in `LeanScript/Expr/Design.lean`, which already had them as a work-in-progress design file.
+
+**What changed, by section:**
+- **§1:** `Traversable` is now derived for every schema and for `TyShape`. The hand-written `map`, `map_id`, `map_comp`, `Functor` and `LawfulFunctor` code is gone. `LawfulTraversable` is derived in a new file, `LeanScript/Ty/Traversable.lean`. Two instances, `NonEmptyList.traverse` and `LeanPrimTyCovariant.traverse`, are still written by hand, because a derived instance can't be used from another module.
+- **§2:** `GlobalEnv ds` is now `List.TProd (fun d => TyWf.Den d.ty) ds`. Two new lemmas, `Ty.denList_eq_tprod` and `TyWf.denList_eq_tprod`, connect it to the old form.
+- **§3:**
+  - Removed the `NonEmptyListSchema` namespace (use `NonEmptyList.map`), `LeanTaggedUnionSchema.map_map` and `NonEmpty/DowngradeMap.lean`.
+  - Added `WfAllIn.iff_forall` and `HabAllIn.iff_forall`, and removed the `of_append_*` lemmas that these make redundant.
+- **§4:** The separate plain dispatch-case inductives are gone from `Expr/Term.lean`. They are now the fold-case family with `ι := TyWf` and `bind := id`, kept under the old names as abbrevs.
+  - **This changes the evaluators' signatures:** they now take extra equality arguments, so callers pass `rfl .rfl .rfl`. Lean needed this to accept the recursion.
+- **§5:** `SelfField` and `FamilyMemberField` are now built on a new `ListAnyT` type. The metaprograms and test expectations were updated to match.
+- **§6:** `flatMap_singleton_eq_map` was removed in favour of the core library lemma. `ToExpr` is now derived for `NonEmptyList` and `NonEmptyArray`.
+- **§7:** `blockComponent` now uses the core library's SCC function, and `natOf?` uses `getNatValue?`.
+
+**Why §8 was skipped:** it would replace `TyWf` with `abbrev TyWf := TyWfIn 0`. The proposal marks it optional, it touches about 42 files, and it conflicts with your earlier choice to keep `TyWf` as its own structure in `LeanScript/Ty/TyWf.lean`. I asked you about this and got no answer, so I left `TyWf` as it is.
+
+**Side effects to be aware of:**
+- Every `LeanScript` module now loads Mathlib. As a result, `Nat` prints as `ℕ` (two expected messages in `TyTests` were updated) and Mathlib's linters now run on the project.
+- `lake-manifest.json` has no Mathlib entry even though the lakefile requires it. Run `lake update mathlib` to fix this. I edited the manifest only locally to get the build working and did not commit that change.
+- `MATHLIB_REUSE.md` was rewritten to describe the current state. All work is committed.
+
+# Summary of changes for run 83a4d7e1-49a9-4247-8203-ba2d5d9fb5ef
+I added `k = 0 … 4` tests, one file per depth, for the two recursive constructors that had none: `recAlias_rec` and `mutualRecursiveFamily_rec`. `#leanscript_to_term` could produce neither before, so the translator had to change. I also split the existing `recTaggedUnion_rec` tests into one file per depth, so the folds with Lean-program tests all use a directory per constructor (`nat_rec` and `array_rec` keep their existing layout). The full `lake build` passes (923 jobs) with no errors or warnings, and there is no `sorry` in the new code.
+
+**Translator changes (`LeanScript/ToTerm/`)**
+- **Recursive newtypes → `recAlias_mk` / `recAlias_rec k`** (`TyView.lean`, `Trans.lean`, `TransRecObject.lean`). This reuses the recursive-record translation. The newtype's body must be a union whose constructors hold the newtype itself or values that don't mention it, e.g. `Link Chain` or `Option Nest`. A body like `Option (Nat × Chain)` is still refused.
+- **Mutual blocks → `mutualRecursiveFamily_mk` / `mutualRecursiveFamily_rec k`** (new `TransRecFamily.lean`). This works from a `mutual` block of functions, or from a single function whose recursion passes through another member. `k` is the smallest depth, up to 6, that answers every branch. It covers members with several constructors, one-field members (these become newtypes) and multi-field members (records).
+  - All members must return the same type.
+  - When Lean gives a member no function of its own, its branches return `default`, so the answer type needs an `Inhabited` instance. No branch reads those answers.
+- **Fix to `LeanScript/Ty/Deriving.lean`:** the code generated by `deriving instance LeanScriptTyWf for X` could not be unfolded inside public definitions of a module. That made translation fail for any type derived that way. The generated code is now exported. As a result, the expected `#print` output in `TyTests/SharedTreesTest.lean` now shows `@[reducible, expose]`, and I updated it.
+
+**Tests** (each file follows your template: `def f_with_kN`, `def f_with_kN_term := #leanscript_to_term f_with_kN`, then examples checking the depth, specific numbers, and agreement with the Lean function):
+- `TermTests/RecAliasToTermTest/`:
+  - `Common.lean`: `Chain := mk (Link Chain)`, and inputs built by translated `ofNat`/`ofList` functions.
+  - `K0`: sum, length, accumulator sum, plus a newtype over `Option` (`Nest`).
+  - `K1`: fib, products of neighbours, continuant.
+  - `K2`–`K4`: tribonacci, tetranacci, pentanacci.
+- `TermTests/MutualFamilyToTermTest/`:
+  - `Common.lean`: the alternating chains `A`/`B`, plus `Ev`/`Od` and `Tm`/`Pr`.
+  - `K0`: mutual sums, an accumulator version, `Ev`/`Od` (newtype member), `Tm`/`Pr` (record member).
+  - `K1`: mutual fib, a single function `aLen` going through `B`, products of neighbours.
+  - `K2`–`K4`: mutual tribonacci, tetranacci, pentanacci.
+- `TermTests/RecUnionToTermTest/`: now `K0`–`K4` plus `Refused.lean`. The datatypes and inputs moved to `Common.lean`; the test contents are unchanged.
+
+**Differences from your template**
+- Proofs use `kernel_rfl` instead of `rfl`. I checked that plain `rfl` runs out of heartbeats on these equations. `kernel_rfl` is still `Eq.refl`, checked by the kernel.
+- I checked that a wrong value and a wrong depth are both rejected.
+
+`Overview.lean` and one error message in `TransRec.lean` describe the new folds. As in earlier runs, `lake-manifest.json` has no Mathlib entry. I added it locally to build but didn't commit it, so a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run 5b9719a1-9f25-4c43-acff-759334d768b7
+I added `recTaggedUnion_rec k` tests at k = 0 to 4 for three datatypes, one file each, in the format you asked for. The full `lake build` passes (907 jobs) with no errors, warnings or `sorry`.
+
+**The translator had to change.** Before, `#leanscript_to_term` only produced `recTaggedUnion_rec 0`, and only for `List.rec`/`List.brecOn` when the branch reads the value at the tail. A recursion on a user-defined recursive type like `Tree` was refused. The test functions are plain Lean: no annotations and no `decreasing_by`.
+
+- **New file `LeanScript/ToTerm/TransRecUnion.lean`:** a structural recursion (`X.brecOn`) on any type whose tree is `Ty.recTaggedUnion` now becomes `recTaggedUnion_rec k`.
+  - The branches are built from the top down. At each node, the Lean branch is run on the shape known so far, with the answers at the bound subvalues filled in.
+  - If the branch needs nothing more, the node is `FoldKBranch.here`. Otherwise, while the depth allows, it tries each recursive field in turn as a `FoldKBranch.deep` look (the `SelfField` is built for that field).
+  - `k` is the smallest depth (up to 6) that answers every branch.
+- **`Trans.lean`:** hooks in the new step. For `List`, the old one-step translation is tried first, so existing results and the array case don't change. The new step is used only when a recursion reads further down the list.
+- **`Overview.lean` and one error message in `TransRec.lean`** are updated.
+
+**Tests (`TermTests/RecUnionToTermTest/`)**
+- `Common.lean`: the depth checker `recUnionRecDepth?`. It reuses `sigAdd` and `runAdd` from `NatRecDepthTest`, so the checks use `runAdd` as in your template.
+- `List.lean` (one recursive point):
+  - k0: `listSum_with_k0`, and `listSumAcc_with_k0` (the fold returns a function)
+  - k1: `listFib_with_k1` and `listNeighbourProducts_with_k1`
+  - k2–k4: tribonacci, tetranacci and pentanacci of the length
+- `Tree.lean` (`leaf | node left val right`, two recursive points):
+  - k0: sum of labels, number of leaves, an accumulator loop
+  - k1: `leftFib_with_k1` (looks into the left child) and `rightProducts_with_k1` (looks into the right child)
+  - k2: tribonacci down the left spine, plus the answers at the right subtrees
+  - k3: tetranacci down the right spine
+  - k4: pentanacci down the left spine
+- `Tree3.lean` (`leaf val | node a b c`, three recursive points; its schema starts with `payloadFirst`):
+  - k0: sum of the leaves, number of nodes
+  - k1: `midFib_with_k1` (middle child) and `lastGrandSum_with_k1` (last child)
+  - k2: tribonacci down the first child
+  - k3: tetranacci down the middle child
+  - k4: pentanacci down the last child
+
+Each function follows your pattern: `def f_with_kN`, then `def f_with_kN_term := #leanscript_to_term f_with_kN`, then three kinds of check:
+- the term is a `recTaggedUnion_rec` of the expected depth;
+- it computes specific numbers, e.g. `runAdd listTrib_with_k2_term (natList (List.replicate 10 0)) = 81`;
+- it agrees with the Lean function, e.g. `runAdd midTetra_with_k3_term (runAdd full3_term 5) = midTetra_with_k3 (Tree3.full 5)`.
+
+The tree inputs are built by translated Lean code too: complete trees and spines from `nat_rec` with `recTaggedUnion_mk`, plus literal trees. I confirmed that a wrong value and a wrong depth are both rejected.
+
+**Limitation:** a deeper look follows a single path. So a recursion that reads under two subvalues at once, such as the grandchildren under both children of a binary tree, has no `recTaggedUnion_rec` term at any depth. `Tree.lean` checks that `evenLevelSum` is refused.
+
+**Differences from your template:**
+- **`kernel_rfl`, not `rfl`:** plain `rfl` fails on these equations. `kernel_rfl` is still a proof by `Eq.refl`, checked by the kernel.
+- **Mathlib entry:** as in earlier runs, `lake-manifest.json` has no Mathlib entry. I added it locally to build and did not commit it, so a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run 5326d9b9-e75f-497c-8b56-7cfb7c2c55c5
+I added `recObject_rec` tests at k = 0 through 5 in the format you asked for (plain Lean function, `_term := #leanscript_to_term f`, checks on the result). The full `lake build` passes (902 jobs) with no errors, warnings or `sorry`.
+
+**The translator had to change.** `#leanscript_to_term` refused any structural recursion that wasn't on `Nat` or `List`, so no Lean function could produce `recObject_rec` before. The functions themselves are plain Lean: no annotations and no `decreasing_by`. The recursive record they use is:
+
+```lean
+inductive Cell where
+  | mk (label : Nat) (next : Option Cell)
+  deriving LeanScriptTyWf
+```
+
+Its derived type is `Ty.recObject ⟨nat, Option self⟩`, and Lean compiles recursions on it structurally, through `Cell.brecOn`.
+
+**Translator changes:**
+- **New file `LeanScript/ToTerm/TransRecObject.lean`:** a `X.brecOn` on a type whose tree is a recursive record now becomes `recObject_rec k`.
+  - At depth `k` the branch takes the window completely apart, `k + 1` levels down.
+  - At each leaf of that case split it runs the Lean branch on the value's shape and a history whose entries are the answers from the window. The branch then simplifies to an ordinary expression, which is translated as usual.
+  - `k` is the smallest depth (up to 8) at which the branch never looks further down than that.
+  - Supported fields: fields that don't mention the record, and fields of a non-recursive union type (like `Option Cell`) whose constructors hold the record itself or unrelated values. Anything else is refused with an explanation.
+- **`TyView.lean`:** added a `recObject` case.
+- **`Trans.lean`:** a constructor of a recursive record now becomes `recObject_mk`, and the new `brecOn` clause is hooked in.
+- **`Overview.lean`:** the table of what translates to what is updated.
+
+**Tests (`TermTests/RecObjectToTermTest/`)**, one file per depth so they build in parallel:
+- `Common.lean`: `Cell`, `sig0`, the `run` macro and `recObjectRecDepth?`. Test inputs are built by translated Lean code as well: `Cell.ofNat` (becomes `nat_rec` plus `recObject_mk`), `Cell.ofList` (a list fold) and a literal chain.
+- `K0.lean`: `cellSum`, `cellLen`, `cellFibLoop` (the fold returns a function) and `cellFibPair` (the fold returns a pair).
+- `K1.lean`: `cellFib`, `cellCont` (the continuant, which also reads labels) and `cellNeighbourProducts`, which is depth 1 because it reads the label one cell down.
+- `K2.lean` to `K5.lean`: tribonacci, tetranacci, pentanacci and hexanacci on chains.
+
+Each function has three kinds of check: the translated term is a `recObject_rec` of the expected depth, it computes specific numbers (for example `run cellFib_term (cellOfNat 10) = 55`), and it agrees with the Lean function (for example `run cellTrib_term (cellOfNat 12) = cellTrib (Cell.ofNat 12)`). I confirmed that a wrong value or a wrong depth is rejected.
+
+**Differences from your template:**
+- **`kernel_rfl`, not `rfl`:** plain `rfl` runs out of time (200000 heartbeats) on these equations, as the existing array tests note. `kernel_rfl` is still `Eq.refl`, checked by the kernel.
+- **`run`, not `runAdd`:** there is no `runAdd`, so I used the same `run` macro as the array tests.
+- **Pair results:** for `cellFibPair` I compare the two components separately, because a record value can't be written as a Lean pair literal.
+
+`lake-manifest.json` still has no Mathlib entry. I added it locally to build and did not commit it, so a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run c0fd6332-4e1b-42af-8fa6-e4e972fbd065
+`Term.eval` now evaluates every term, and `Term.NoRecMk` is gone. `Term.run` and `Term.run'` take a closed term with no side condition. A full `lake build` of all four default targets (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) passes. The Lean files have no `sorry` outside comments, apart from the design sketch in `LeanScript/Expr/Design.lean` that was already there. `Term.run` depends only on the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**What was missing, and what I added**
+- Recursive tagged unions, records and newtypes already had values in the model. Mutual recursive families did not, so the evaluator could not run their introduction or elimination forms. That was the only reason `NoRecMk` still existed.
+- `LeanScript/Den/IPFunctor.lean` (new) adds indexed containers and an indexed W-type (a tree type with one index per family member). It also has a memoised fold that stores the answer at each node, so a fold of any depth can reuse answers from further down.
+- `LeanScript/Den.lean` now gives a family member a real type of values: the indexed W-type of the whole family, taken at the selected member.
+- `LeanScript/Den/Family.lean` (new) has the helpers for building and taking apart family values: `TyWf.DenFam.mk` / `TyWf.DenFam.unfold`, and the environments the fold's branches bind.
+- I changed one existing definition: `LeanMutualRecFamily.select` (in `LeanScript/Ty/Unfold.lean`) now falls back to member 0 instead of the selected member when the index is out of range. This makes the chosen member depend only on the list of members, which the new model needs. I updated the proof that relies on it in `WfSubst`.
+- `LeanScript/Eval.lean` now evaluates the family forms: building a value, dispatch with and without a default, and the fold at every depth, including looks into another member.
+
+**What was removed**
+- `LeanScript/Eval/NoRecMk.lean` (the predicate and the `no_rec_mk` tactic).
+- Every `NoRecMk` argument, and every `(by no_rec_mk)` in the tests.
+- I updated the fact files (`NatRecFacts`, `ArrayRecFacts`, `RecUnionEvalFacts`, `RecObjectAliasEvalFacts`) to drop the hypothesis.
+
+**Tests**
+Each test below builds the input values as terms and checks the result with `decide +kernel`:
+- `TermTests/RecTermTest.lean` runs the family examples.
+- `TermTests/FamilyRecDepthTest.lean` §7 runs `fib`, tribonacci, tetranacci, pentanacci, hexanacci, the tail-recursive `fib` and the pair-recursion `fib` on 0–10, comparing each with its Lean reference. It also checks the continuant (`contTerm`) on several lists.
+- `TermTests/FamilyRecDepthMembersTest.lean` §3 runs `Ev.fib` (whose members refer to each other) on 0–10 and `Node.fib` (a family with a record, a union and a newtype) on 0–5.
+- `TermTests/EvalCoverageTest.lean` now contains `total_evaluator`, a value for every closed term, plus checks that the recursive types have values. The old statements that these types were empty are kept in comments, marked as no longer true.
+
+Doc comments that said recursive types have no values are updated. The older proposal `.md` files are left as they were.
+
+**Caveats**
+- The Properties table has many earlier rows and I could only see the first few. I updated the two recursive record/newtype rows I could see and added one for `Term.run`. Other rows whose Lean snippet still shows a `NoRecMk` hypothesis may be out of date; the files on disk are correct.
+- To build here I added the mathlib entries to `lake-manifest.json` locally but did not commit that change. A fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run f8216d33-ac81-4dff-9be9-28679470e684
+The evaluator changes from last time were already written and machine-checked in Lean. What this session adds are correctness theorems that hold for every input, not just the handful of sample chains the kernel checked before. The full `lake build` passes (893 jobs) with no errors, warnings or `sorry`, and the new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**New theorems for the recursive record (`TermTests/RecObjectRecDepthTest/Correct.lean`).** For every chain `c` built with `recObject_mk` (`cellVal c`):
+- `fibTerm_correct`: `runP fibTerm (cellVal c) = Cell.fib c`. This is the depth-one fold.
+- `contTerm_correct`: the continuant term, which also reads each cell's label, computes `Cell.cont c`.
+- `fibTRTerm_correct`: the depth-0 fold whose result is a function (the tail-recursive loop) computes `Cell.fibTR c`.
+- `fibPairTerm_correct`: the depth-0 fold whose result is a pair computes `Cell.fib c`.
+
+**The same four for the recursive newtype (`TermTests/RecAliasRecDepthTest/Correct.lean`).** Each is stated for every chain built with `recAlias_mk` (`chainVal c`), against `Chain.fib`, `Chain.cont` and `Chain.fibTR`.
+
+**How the proofs work.** Each proof follows the recursion of the Lean reference program. When the chain is one or two cells longer, the evaluator's fold unfolds by `rfl` to the branch applied to the answers stored at the cells below. Those answers are the folds of the shorter chains, so induction finishes the proof. The fold's branch runs inside the term's own context, so each fold lemma is proved for any value of that context, and the correctness theorems apply it to the actual one.
+
+**Formalized earlier, unchanged:**
+- **Values:** recursive records and newtypes have values (`LeanScript/Den.lean`). Building a value and taking it apart are proved inverse (`LeanScript/Den/RecObjectAlias.lean`).
+- **Evaluator:** `Term.eval` interprets all six `recObject_*` and `recAlias_*` forms.
+- **Unfolding rules:** taking apart a value built by `_mk` gives back what it was built from (`LeanScript/RecObjectAliasEvalFacts.lean`).
+- **Kernel-checked runs:** the sample runs remain in `RecObjectRecDepthTest`, `RecAliasRecDepthTest`, `RecTermTest` and `EvalCoverageTest`.
+
+The two new `fibTerm_correct` theorems are marked proved in the properties table.
+
+`lake-manifest.json` still has no Mathlib entry, even though `lakefile.toml` requires it. I added it locally to build and didn't commit it, so a fresh checkout needs `lake update mathlib` before it builds.
+
+# Summary of changes for run 6601bd30-6cdc-4eb7-a065-53c1cbf0d491
+I replaced the 2,340-line generated `LeanScript/LeanInitPureExternShorthands.lean` with a 39-line file. It now contains the module doc and one line, `derive_catalogue_shorthands LeanInitPureExtern`.
+
+**Why a coercion alone wasn't enough.** I looked at a `Coe`/`CoeOut` instance from each family (`PreludeExtern`, …) to `LeanInitPureExtern`, but it can't do what the shorthands do:
+- `.lean_nat_add a b` is looked up by name in the namespace of the expected type, so the names `LeanInitPureExtern.lean_nat_add` etc. have to exist.
+- Patterns such as `| _, .lean_nat_add _ _ => …` can't go through a coercion.
+- `#leanscript_to_term` finds an entry by the name of its shorthand.
+- Also, `Extern` is a plain `def`, so instance search wouldn't unfold it to reach a coercion to `LeanInitPureExtern`.
+
+So instead of coercions, the shorthands are now computed from the constructors.
+
+**What changed**
+- **New `LeanScript/CatalogueShorthands.lean`** (a meta module, about 130 lines) defines the command `derive_catalogue_shorthands Outer`.
+  - For each constructor of `Outer` that wraps a family, and each entry `F.c` of that family, it adds `Outer.c` defined as `fun … => .wrap (.c …)`.
+  - Each shorthand is `@[match_pattern]` and reducible, is compiled, is exported (visible to modules that import it), and has a docstring.
+  - It takes `Outer`'s parameters implicitly and in order (except the index), followed by the entry's own arguments.
+  - It handles the fact that Lean turns a type index into a parameter when every constructor uses the same one. This happens for `LeanInitPureExtern`'s `τ`, and in `UtilExtern`, so `lean_dbg_trace_if_shared` keeps its explicit `αt` argument.
+  - Since everything comes from the constructors, nothing needs regenerating when you add, change or remove a catalogue entry.
+- **`LeanInitPureExternShorthands.lean`** only uses the command, through a non-public `meta import`, so modules downstream don't inherit that import.
+- **`scripts/gen_externs.py`** no longer writes the shorthands file; it only writes `LeanScript/ToTerm/ExternTable.lean`. I reran it and that file is byte-for-byte unchanged. I also updated the note in `LeanInitPureExterns.lean` that called the shorthands module "generated".
+
+**Checking**
+- I dumped the type, value, reducibility, `match_pattern` tag and docstring of every definition in the `LeanInitPureExtern` namespace, before and after the change, and compared the 468 declarations.
+- They match exactly, with one exception: 6 shorthands now use their family's auxiliary constants (the `by get_elem_tactic` default in `lean_array_fset`/`fswap`, and the proof in `bitvec 8/16/32/64`) instead of their own copies.
+- A full `lake build` (889 jobs) succeeds with no errors or warnings. That includes `TermTests/ExternTest.lean`, which covers building an entry, unfolding a shorthand, pattern matching and extern calls, and all the translator tests downstream.
+- There is no `sorry`.
+
+**Mathlib manifest:** `lake-manifest.json` still has no Mathlib entry, so a fresh checkout needs `lake update mathlib` before it builds. I added the entry locally for the build and did not commit it; only the Lean files and the script are committed.
+
+# Summary of changes for run 01b0ebe9-f339-49d5-8988-dce0faa73211
+I wrote the proposal in `proposals/DeduplicationProposal.md`. No Lean file of the project was changed.
+
+**How I checked the claims.** This workspace still has no Mathlib entry in `lake-manifest.json`, so the project itself can't be built here. I tested each Mathlib claim in a separate scratch project pinned to Lean 4.34.0 and Mathlib v4.34.0, using stand-in copies of your types rather than the real files. Claims that only need core Lean were tested with your toolchain the same way. The test files are in `proposals/dedup-probes/`. They are outside the lake build, and each file's header says what result to expect. Anything I didn't test is marked *(not tested)* in the proposal.
+
+**Main proposals, safest first:**
+1. **Duplicates inside the project:**
+   - `NonEmptyListSchema.map`, `ofList?`, `map_id` and `map_comp` repeat `NonEmptyList.map`, `fromList?` and its lemmas.
+   - `LeanTaggedUnionSchema.map_map` in `Den/Rec.lean` is `map_comp` with the sides swapped.
+   - `NonEmpty.DowngradeMap` is `Functor.map` without the laws, and nothing uses it.
+2. **Things core Lean already has:**
+   - Both `NonEmpty.ArrayUtil` lemmas follow from core lemmas (tested).
+   - `ToExpr (NonEmptyList α)` can be derived (tested). `NonEmptyString` can't, because of its proof field.
+   - `nameReach`/`blockComponent` could use core `Lean.SCC.scc`, and `natOf?` could use `getNatValue?`. I checked only that these names exist, not the swap itself.
+3. **`GlobalEnv` becomes Mathlib's `List.TProd`.** The existing `get`/`append` compile unchanged on top of it (tested). `Ty.DenList` should stay as it is, with a bridge lemma, because it sits inside the `mutual` block.
+4. **Derive `Traversable, LawfulTraversable`** (Mathlib) for the 8 schema-like types. This replaces about 16 hand-written `map`/`map_id`/`map_comp` lemmas and 16 `Functor`/`LawfulFunctor` instances.
+   - On the stand-in copies, the derived `map` unfolds to the same terms by `rfl`, so kernel `rfl` proofs should keep working.
+   - The cost: modules near the root of the dependency chain that load no Mathlib today would load about 2 000 modules. Worth weighing against the build-speed work.
+5. **Remove 3 of the 28 types in the `mutual` block of `Expr/Term.lean`.** `TaggedUnionCases`, `CtorsWithPayloadCases` and `TaggedUnionCasesRest` are the existing `…FoldCases` types at `ι := TyWf` and `bind := id`.
+   - A small stand-in `mutual` block compiles, and looking up a branch needs no cast.
+   - This will probably also speed up that file's build, but I didn't measure it.
+   - A single generic "one branch per constructor" family can't replace the others: Lean rejects it (tested).
+6. **Two larger or untested ideas:**
+   - Merge `SelfField` and `FamilyMemberField` into one family, since they have the same shape.
+   - Make `TyWf` an alias of `TyWfIn 0`. This is risky because the `ty_wf` tactic and the code generators refer to `TyWf` by name.
+
+**What stays, and why** (also in the proposal):
+- **`PFunctor.const/prod/sigma/pi/…`:** Mathlib v4.34.0 has none of these (confirmed).
+- **`WType.fold`/`memo`:** `WType.elim` doesn't pass the subtrees, and `WType.rec` can't be compiled, which the `#guard` tests need.
+- **`Ty.beq`:** Lean 4.34.0 still can't derive `DecidableEq` or `ReflBEq` for nested inductives (tested).
+- **`NonEmptyList`/`NonEmptyArray`/`NonEmptyString` and `DeBruijnProj`:** no library has an equivalent.
+- **The folds, `NatWin` and the per-shape `mutual` families:** replacing them would lose compiled evaluation, casts-free evaluation or the definitional unfolding the kernel `rfl` proofs depend on.
+
+**Also:** `MATHLIB_REUSE.md` is out of date. It still describes `Cont` as a structure that converts to and from `PFunctor`, but `Cont` has since been removed.
+
+The proposal and the probe files are committed.
+
+# Summary of changes for run b014224e-c626-4777-868d-702ac5c89427
+I implemented most of the speed proposals and skipped #3, as you asked. On this machine a clean `lake build` now takes **5 min 43 s instead of 10 min 06 s** (CPU time went from 31 to 23 min). It still has no errors, no warnings and no `sorry`, and no check was removed or weakened. `proposals/BuildSpeedResults.md` has the details and measurements, and `BuildSpeedProposals.md` now points to it.
+
+**What changed**
+- **1a – heavy test files split into one file per program**, so they build in parallel.
+  - `TermTests/ArrayRecToTermTest.lean` became `TermTests/ArrayRecToTermTest/{Common,Sum,Fib,Trib,Tetra,Penta,Acc}.lean`.
+  - `TermTests/NatRecDepthTest.lean` became `TermTests/NatRecDepthTest/{Common,Written,Fib,FibLoops,Tribonacci,Tetranacci,Pentanacci,Hexanacci}.lean`.
+  - I did the same for `RecUnionRecDepthTest`, which had become the last module in the build. Its seven `∀ n < 10` checks moved unchanged into `RecUnionRecDepthTest/RunFibToPenta.lean` and `RunHexaLoopPair.lean`.
+  - The old 117 s, 77 s and 53 s files are now pieces of about 17–28 s each. There are no umbrella files, and the `run`/`runAdd`/`runP` shorthands are now scoped macros so the pieces can share them.
+- **1b – each `ToTerm/*` module imports only what it uses.** The chain of translator modules drops from 13 to 9. One use the earlier scan missed (`TransRec` needs `Cache`) is handled.
+- **1c – the translator no longer waits for `Expr.Term`.**
+  - `ToTerm/ObjectExpr` and `CtorFn/Cache` no longer import it.
+  - Names of `Expr/Term.lean`'s types and constructors are now written with a single backquote, which Lean does not check. The new test `TermTests/ToTermTest/TermNames.lean` puts that check back: it scans the translator's sources and fails on any such name that doesn't exist. I confirmed it catches a misspelled name.
+- **2a – cheaper imports.**
+  - `import Aesop` in 8 `NonEmpty` files, and a non-public `import Lean` in 4 more, were never used; I removed them.
+  - The four `public meta import Lean` lines now import only the parts of `Lean` needed.
+  - `import LeanScript.Ty.Instances` now loads 932 modules instead of more than the 2 356 in all of `Lean`.
+- **4a – kernel-only checks.** 297 `:= rfl` value checks now use `by kernel_rfl`, and 31 `by decide` checks use `by decide +kernel`. They are still proofs checked by the kernel; I confirmed a false one is rejected. The only difference is that a failure shows up as a kernel type mismatch instead of the usual `rfl` message.
+
+**Not implemented**
+- **3:** left out, as you asked. `Expr.Term` (74 s) is now the largest single step in the build.
+- **2b, 4b, 4c:** not done, per your answers. All bounds and samples are unchanged.
+- **2c (merging light test files):** skipped. After 2a those files import in about 3 s and none are on the build's longest chain, so merging would save about 1 % of CPU time and nothing in wall time.
+- **5 (`@[expose]` only where needed):** tried, but it doesn't help here, so I reverted it.
+  - For meta modules, changing a function body still rebuilt everything downstream even without `@[expose]`.
+  - The `…Facts` files stop compiling without it, and so do tests that use them.
+
+**Mathlib manifest:** `lake-manifest.json` still lacks the Mathlib entry, so a fresh checkout needs `lake update mathlib` first. I added it locally to build and did not commit it.
+
+**Properties table:** I first put the wrong file on the `fib-term-eval` entry, then reset it to `TermTests/FibWindowTest.lean`. I believe that entry is `fib_term_eval` in that file, but I couldn't read the table back to confirm. Any other table entries that point at the two deleted test files still list the old paths, which I could not look up.
+
+# Summary of changes for run c5de845e-9968-4078-b251-3a180c0a1c40
+I wrote `proposals/BuildSpeedProposals.md` with more ideas for speeding up the build and the checks. It follows on from `proposals/ExternCatalogueSpeed.md`. Nothing in the Lean code is changed: these are proposals only.
+
+To ground them, I timed a full build and every one of the 131 modules on this machine. The main findings:
+- **The build waits on one long chain of imports.** A full `lake build` took 16 min 42 s, and the longest chain (36 modules) accounts for about 957 s of that. Extra cores don't help much.
+- **Most time goes into loading imports.** That was 81% of per-module time, and 106 of the 131 modules do less than 5 s of their own work.
+- **Only a few modules do real work.** The big ones are `ArrayRecToTermTest` (128 s), `Expr/Term.lean` (86 s), `NatRecDepthTest` and `RecUnionRecDepthTest`.
+
+The proposals, in order of expected gain for the cost:
+1. **Shorten the chain.**
+   - Split `ArrayRecToTermTest` and `NatRecDepthTest` into one file per program so they build in parallel. I estimate the end of the build drops from about 128 s to 30–40 s, but I didn't measure this.
+   - Have each `ToTerm/*` file import only what it uses. A text search suggests this would shorten that 13-file chain to 9, but it's not confirmed; you'd need to change the imports and rebuild to check.
+   - Riskier: let the translator build before `Expr.Term` is finished.
+2. **Make imports cheaper.**
+   - Four files have `public meta import Lean`. Narrower imports load two to three times faster (measured).
+   - Only `Den/PFunctor.lean` uses Mathlib, but it pulls in 722 modules, and first-time setup took 8 min and 5.8 GB. The effect on each module's import time was too small to tell apart from noise.
+   - Merge small test files that aren't on the long chain.
+3. **Replace the 28-type `mutual` block in `Expr/Term.lean` with one inductive indexed by a tag.** Profiling shows 17 s of that file's 30 s kernel time goes to code Lean generates for each type in the block. In a stand-alone test of the same shape, declaring the types got about 6× cheaper in the kernel and recursive definitions over them 3–4× cheaper. However, evaluation got slower (0.12 s → 0.27 s), so this should be tried on one test first. This is a large refactor.
+4. **Faster test checks.**
+   - Use `decide +kernel` or `kernel_rfl` for all fixed-value checks. An earlier trial took `ArrayRecToTermTest` from about 105 s to about 49 s.
+   - Optionally, check bulk samples with `#guard`. That's fast but not a proof.
+   - Use smaller bounds in the `∀ n < 10` checks, which take about 4 s each.
+5. **Faster rebuilds after edits.** 70 of the 72 files in `LeanScript/` start with `@[expose] public section`, so any change to a definition's body rebuilds everything downstream. Exposing only what proofs need to unfold would avoid that (not measured).
+6. **Workflow tips.** `lake env` costs about 5 s per call here, and `lake build LeanScript` skips the tests.
+
+The file ends with a summary table that marks each gain as measured, estimated, or unmeasured.
+
+**Your manifest is missing Mathlib.** `lakefile.toml` requires Mathlib but `lake-manifest.json` has no entry for it, so a fresh checkout doesn't build until you run `lake update mathlib`. I added the entry only locally to take the measurements, and did not commit it.
+
+I also added two scripts so you can rerun the numbers:
+- `scripts/profile_modules.sh` times every module;
+- `scripts/bench_mutual_vs_indexed.py` is the stand-alone test for proposal 3.
+
+Times on this machine are high and noisy, so the ratios matter more than the absolute numbers.
+
+# Summary of changes for run 09bfad6e-e199-45a7-8e11-d2b048511422
+I implemented the two-level catalogue from `proposals/ExternCatalogueSpeed.md`. It fixes the "tag too big" error and makes each extern call cheaper to check. The full `lake build` succeeds with no errors, warnings or `sorry`, and no existing test had to change.
+
+**What changed**
+- **`LeanScript/LeanInitPureExterns.lean`:** each `-- Init/…` section is now its own inductive, a *family* (`PreludeExtern`, `StringBasicExtern`, `FloatExtern`, …).
+  - The two long sections, `UInt/Basic` (54 entries) and `SInt/Basic` (92), are split by width (`UInt8BasicExtern` … `Int64BasicExtern`).
+  - That gives 35 families, the largest with 55 entries, and still 460 entries in all.
+  - `LeanInitPureExtern` now has one constructor per family (`preludeExtern`, …).
+  - Sections whose entries are all commented out keep them, but get no family.
+  - A family only takes the catalogue parameters (`denote`, `option`, `list`, …) that its entries use. So if you add an entry that uses a new one, you also have to update that family's constructor in `LeanInitPureExtern`. Lean reports an error if you forget.
+- **Shorthands (new, generated): `LeanScript/LeanInitPureExternShorthands.lean`.** Each entry gets a shorthand usable in patterns, e.g. `LeanInitPureExtern.lean_nat_add a b` is `.preludeExtern (.lean_nat_add a b)`. So `.lean_nat_add a b` still works wherever an `Extern τ` is expected, both as a term and as a pattern.
+- **`LeanScript/Eval/Extern.lean`:** one `eval` per family, holding the old alternatives unchanged, plus `Extern.eval` as a 35-way dispatch.
+- **`scripts/gen_externs.py`:** now reads the families and writes both the shorthands file and `ToTerm/ExternTable.lean`. After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
+- **`ToTerm/Extern.lean`:** builds an entry through its shorthand, then unfolds it. Translated terms therefore contain the real constructors (`LeanInitPureExtern.preludeExtern (PreludeExtern.lean_array_fget …)`); I checked this on a translated `if h : i < a.size then a[i] else 0`.
+- **Docs and tests:** comments in `KernelRfl.lean`, `ExternTest.lean`, `ArrayRecToTermTest.lean` and `FibWindowTest.lean` are updated. `TermTests/ExternTest.lean` gains three checks:
+  - a compiled `def externCompare` that builds `lean_string_compare`, the last entry (number 459 in the old numbering);
+  - a check that the shorthand unfolds to the two constructors;
+  - a compiled `def` that uses a shorthand as a pattern.
+
+**Measurements** (old tree against new tree, same machine; also recorded in section 4 of the proposal):
+
+| Check | Before | After |
+|---|---|---|
+| 2000 `Extern.eval (.lean_nat_add …)` calls, kernel time | 4.5 s | 0.83 s |
+| 150 such calls through `decide` | 0.70 s | 0.36 s |
+| `def externCompare := .extern (.lean_string_compare "a" "b")` | "tag too big" | compiles and runs |
+| Build of the catalogue module | 33 s | 6 s, plus 4 s for the shorthands |
+| Build of `Eval/Extern` | 24 s | 6 s |
+| `rfl` for `hstep` in `FibWindowTest` | 15.6 s, needed a raised heartbeat limit | 8.8 s, within the default |
+
+**Not faster:** the large test files (`ArrayRecToTermTest`, `NatRecDepthTest`) take about as long as before. Profiling shows their time goes into elaborating the translations and value checks, not into extern calls. I kept the existing `kernel_rfl` uses because they are still faster than `rfl`.
+
+**Setup change:** `lakefile.toml` requires Mathlib but `lake-manifest.json` had no entry for it, so the project didn't build. I added Mathlib v4.34.0 and its dependencies to the manifest; this is committed separately.
+
+# Summary of changes for run ba0e4d83-f72d-4eb7-98ae-b9df29f466b7
+Both problems have the same cause: `LeanInitPureExtern` is one inductive with 460 constructors, and `Extern.eval` is one 460-way `match` on it. I've removed every raised heartbeat limit. The real fix for both problems is splitting the catalogue, which I've written up but not done. The full `lake build` succeeds with no `sorry`. Measurements, the proposed design and the list of files it would touch are in `proposals/ExternCatalogueSpeed.md`.
+
+**Why "tag too big".** Compiled code stores a constructor's number in an 8-bit tag. Only numbers 0–243 are for ordinary constructors; 244–255 are reserved for the runtime's own objects (arrays, strings, closures, …). So compiled code can't build a constructor numbered above 243 if it has fields. Every catalogue entry has fields, so the 216 entries numbered 244–459 can't be built in a compiled `def`. I checked both sides: `lean_int32_dec_le` (number 243) compiles, while `lean_string_compare` (459) gives exactly this error. Proofs never go through the compiler, which is why only `def`s fail.
+
+**Why the checks got slower.**
+- **Each extern call costs time proportional to the whole catalogue.** Reducing `Extern.eval (.lean_nat_add a b)` means handling all 460 match alternatives, even though only one is used.
+  - In the project: 2000 calls through `Extern.eval` took about 4.4 s of kernel time; the same loop calling `Nat.add` directly took negligible time.
+  - In a stand-alone benchmark (`scripts/bench_extern_dispatch.py`): one 460-constructor type took about 11 s; the same 460 entries split into 20 types of 23 took about 0.4 s.
+- **Most of the time was the elaborator's check, not the kernel's.** `:= rfl` is checked twice: first by the elaborator, then by the kernel. Only the first counts heartbeats, and here it is much slower. For `hstep` in `window_eval` it took 15.6 s, against 0.3 s for the kernel. So the raised limits were paying for the elaborator's work, not the kernel's.
+
+**What I changed.**
+- **New tactic `kernel_rfl`** (`LeanScript/KernelRfl.lean`). It proves `a = b` without the elaborator's check and leaves the check to the kernel. A wrong equation is still rejected, reported as a kernel error on the declaration; I tested this. Unlike `decide +kernel`, it works on goals with variables.
+- **Every raised heartbeat limit is gone.** I used `kernel_rfl` at each of those spots:
+
+| File | Spot | Build time |
+|---|---|---|
+| `TermTests/FibWindowTest.lean` | `hstep` in `window_eval` | 38 s → 16 s |
+| `TermTests/ArrayRecToTermTest.lean` | the three `tribArr`/`tetraArr` checks | 109 s → 90 s |
+| `TermTests/NatRecDepthTest.lean` | the older `hexanacci 8` check | 61 s → 50 s |
+
+In a trial run, using `kernel_rfl` or `decide +kernel` for every value check in `ArrayRecToTermTest.lean` brought that file to about 49 s. I didn't apply that, because it would rewrite every check in the file. The downside is that failures appear as kernel type mismatches instead of the usual `rfl` message.
+
+**Recommended but not done: split the catalogue in two levels.** One inductive per family (for example following the `-- Init/…` section headers already in the file), wrapped by a small outer inductive. `Extern.eval` would become a short dispatch to one small `eval` per family. This fixes both problems: every type stays well under 244 constructors, and each call handles about 20 + 40 alternatives instead of 460. It changes the catalogue, `Eval/Extern.lean`, the generator script and `ToTerm/Extern.lean`. Existing code like `.lean_nat_add a b` could keep working through generated pattern-usable shorthands. I can do this if you'd like.
+
+**Manifest change.** To build at all, I had to add Mathlib (v4.34.0) back to `lake-manifest.json`, because `lakefile.toml` requires it. That change is committed with the rest.
+
+# Summary of changes for run d06867a5-a39a-44f2-8a1c-306ce9bef58b
+I finished both items. All four libraries (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) build, and no `sorry` was added.
+
+**Build fix first.** The project didn't build at the start because `lakefile.toml` requires `mathlib` but `lake-manifest.json` had no entry for it. I added mathlib (Lean v4.34.0) and its dependencies to the manifest.
+
+**1. DecidableEq for types that contain Float.** You're right that Float isn't the problem: `Float`, `Float32`, `Float.Model` and `Float32.Model` all have `DecidableEq` here. The only types in `LeanScript/` that contain Float are `LeanInitPureExtern` and the `Term` families. Neither can have a computable `DecidableEq`, because they hold function values:
+- `lean_string_foldl` holds a `String → Char → String`.
+- `Term.externCall` and `Term.externCallChecked` hold `call : TyWf.DenList σs → Extern τ`.
+
+Equality of such functions can't be decided. As you chose, I left both without `DecidableEq` and corrected the documentation of the reason:
+- a doc comment on `LeanInitPureExtern` in `LeanScript/LeanInitPureExterns.lean`;
+- a paragraph in the header of `LeanScript/Expr/Term.lean`;
+- in `TyTests/InstancesTest.lean`, checks that the four float types have `DecidableEq`, with a note that Float's `==` is IEEE equality and not `LawfulBEq`.
+
+**2. `Cont` and `WTree` removed; Mathlib's versions used instead.**
+- `LeanScript/Den/Cont.lean` is now `LeanScript/Den/PFunctor.lean`.
+- `structure Cont` is gone and `PFunctor.{0, 0}` is used directly: `c.S`/`c.P` became `c.A`/`c.B`, and `c.Ext X` became Mathlib's `c.Obj X`.
+- `WTree` is gone and `WType` is used directly: `WTree.mk` is now `WType.mk`.
+- `Cont.Ext.map` was replaced by Mathlib's `PFunctor.map`.
+- The building blocks Mathlib doesn't have stay as small definitions on `PFunctor`: `PFunctor.const`, `prod`, `sigma`, `pi`, `list`, `array` and `mu`.
+- The fold helpers are now `WType.Memo`, `WType.memo`, `WType.memoFold` and `WType.fold`.
+
+**Renames you'll see:**
+- The translation functions `Ty.Cont`, `Ty.ContShape`, `Ty.ContAt`, … are now `Ty.toPFunctor`, `Ty.toPFunctorShape`, `Ty.toPFunctorAt`, …. A plain `Ty.PFunctor` would have hidden Mathlib's `PFunctor` inside the `Ty` namespace.
+- The product projections `Ext.fst`/`Ext.snd` are now `Obj.prodFst`/`Obj.prodSnd`, because `.fst`/`.snd` on `PFunctor.Obj` already mean something else in Mathlib.
+- The list/array helpers are now `Obj.ofList`/`Obj.toList`/`Obj.ofArray`/`Obj.toArray`/`Obj.ofPi`/`Obj.cons`. Their lemmas follow the same names, e.g. `pair_prodFst_prodSnd` and `toArray_ofArray`.
+
+Uses in `Den.lean`, `Den/Rec.lean`, `Eval.lean`, `Expr/Extern.lean`, `RecUnionEvalFacts.lean` and one test comment were updated. The older proposal documents (e.g. `RecTaggedUnionEvalProposal.md`) still describe `Cont`/`WTree` as they were written.
+
+# Summary of changes for run b8fcb564-392a-4207-9c9e-304158617179
+I wrote the proposal in `ProofCarryingDiteProposal.md`. None of it is implemented in the project yet, and the project itself doesn't build right now: `lakefile.toml` requires `mathlib`, but `lake-manifest.json` has no entry for it.
+
+**Why the proof gets lost.** This is a limit of the grammar, not just the translator. A `Term` context holds only values, so there is nowhere to keep `h`. `transDite` drops it, and `a[i]'h` then becomes `externCallChecked`, which checks the condition a second time and carries a fallback that can never be reached.
+
+**Proposed design.** Add a second context `Δ` of *closed* facts. Each fact stores the values that were tested, captured when the test ran, plus the proof about them. Because a fact doesn't refer to the value context `Γ`, entering a binder never shifts or weakens it. `Ctx`, `Env` and `TyWf` stay as they are, so `TyWf` keeps its `DecidableEq`. Two new term forms use it:
+- `guard` tests a condition once and gives the then-branch the proof and the else-branch the negation.
+- `externHyp` builds a catalogue entry from the stored facts, whole, so it also covers proofs combining several nested guards and proofs derived from `h`, such as `Nat.lt_of_not_le h` or the output of `by omega`.
+
+The evaluator stays total and structural, with no fallback. The only soundness argument is that Lean type-checks the `call` the translator builds. If it doesn't type-check, the translator produces what it produces today, so nothing gets worse.
+
+**Also in the document:**
+- the changes to `transDite` and `transExternApp?`: capturing the tested values, replacing them and `h` with reads from the stored facts, and checking the result;
+- why `call` must read the captured values rather than the variables again;
+- what a code generator should do: treat the facts as erased and keep captured values as variables, which avoids extra references to arrays that are updated in place;
+- the limits: tests through functions from the signature, proofs that use values that weren't captured, `match h :`, and proof parameters of the definition being translated;
+- four alternatives with their trade-offs: facts inside `Ctx`, an index `Φ : Env Γ → Prop`, a refinement type in `TyWf`, and a pass that removes the second check afterwards;
+- a six-step plan (the largest step adds `Δ` to every family of `Term`, with a `Term₀` alias so existing tests keep compiling), a list of tests to add, and the risks.
+
+**Small model.** `proposals/ProofCarryingDiteToy.lean` is a stand-alone model with its own tiny `Term` and evaluator, not part of the Lake build. It checks with plain `lean`: the new forms type-check, and `decide +kernel` confirms both examples evaluate correctly. The first is `if h : 1 < a.size then a[1] else 0`. The second is an else-branch that passes a proof derived from `h` to the extern.
+
+Both files are committed.
+
+# Summary of changes for run 474bb6b7-e975-49d4-9376-d1b08f243db6
+**Short answer:** yes, but only when the call's arguments are closed expressions in the definition being translated. `#leanscript_to_term` never builds a proof itself. It reuses the proof the Lean program already contains, and only when nothing in the call refers to a local variable.
+
+**What the translator does (`transExternApp?` in `LeanScript/ToTerm/Extern.lean`)**
+- For an entry that takes a proof, it first checks every argument of the call, the proof included. If none contains a local variable or metavariable, it builds the catalogue entry directly from those arguments: `externClosedEntry?` applies the constructor to the arguments and to the program's own proof. The result is `Term.extern entry`, with no `externCallChecked` and no fallback.
+- If that check or the type check fails, you get `Term.externCallChecked`, which decides the proposition when the term runs.
+- An entry that takes no proof always becomes `Term.externCall`, even when its arguments are closed.
+- Closed arguments are copied into the entry as the Lean expressions they are (`3 * 4` stays `3 * 4`); they are not translated into terms.
+
+**What I tried.** Your current `lakefile.toml` requires `mathlib`, but `lake-manifest.json` has no entry for it, so the project doesn't build as it stands. I ran these experiments in a separate copy with Mathlib linked in. Your project is unchanged and I committed nothing.
+
+| Lean source | What `#leanscript_to_term` produced |
+|---|---|
+| `UInt8.ofNatLT 200 (by decide)` | `Term.extern` |
+| `Nat.divExact 12 4 (by decide)` | `Term.extern` |
+| `Nat.divExact (3 * 4) 4 (by decide)` | `Term.extern` |
+| `String.Internal.getUTF8Byte "abc" 1 (by decide)` | `Term.extern` |
+| `arr[1]'(by decide)`, where `arr` is a top-level `def` | `Term.extern` (a constant counts as closed) |
+| `fun x => x + Nat.divExact 12 4 (by decide)` | `Term.extern` for the `divExact`, `externCall` for the `+` (a closed call inside a function with parameters is still handled) |
+| `Char.ofNatAux 65 (by decide)` | Neither: a closed `Char` becomes a character literal, `Term.char_mk (Char.ofNatAux 65 _)` |
+| `let a := #[1,2,3]; a[1]'(by simp [a])` | `externCallChecked`: `a` is a local variable, so the check fails even though the value is known |
+| `fun a => if h : 1 < a.size then a[1] else 0` | `externCallChecked`: the proof `h` is a local hypothesis, so it is not reused |
+
+**Limits:**
+- **Nothing is computed first.** The translator doesn't evaluate or inline anything before the check. A value bound by `let`/`have`, or a parameter that only gets a constant at some call site (e.g. `def getAt (a) (i) (h : i < a.size) := a[i]` called as `getAt #[1,2,3] 1 _`), still gives `externCallChecked`, because each definition is translated once for all its arguments.
+- **A proof from `if h : …` isn't reused.** The proof is discarded and the check is done again when the term runs, which is correct but redundant. Fixing this would mean the translator carrying the proof along, which it doesn't do.
+- **`USize` arguments are never handled this way.** The code rules out any entry that takes a `USize` (`Array.uget`, `Array.uset`).
+- **Side finding, a bug:** `#[1,2,3].uget 1 (by simp)` with a literal `USize` index is refused outright. The translator turns the literal `1 : USize` into `USize.toNat 1`, and `USize.toNat` is an extern the catalogue doesn't model. The code that maps a `USize` to a `Nat` (`natOfUSize`) doesn't recognise `OfNat.ofNat` literals. A `USize` parameter can't be tested either, because `USize` has no `LeanScriptTyWf` instance.
+
+Of your 9 externs, I ran the closed case for `UInt8.ofNatLT`, `Char.ofNatAux`, `Array.getInternal` (via `arr[1]`), `Nat.divExact` and `String.Internal.getUTF8Byte`. The other four (`UInt16`/`UInt32`/`UInt64.ofNatLT`, `Array.getInternalBorrowed`) go through the same code, but I didn't run them. `Array.getInternalBorrowed` is the same kind of entry as `Array.getInternal`.
+
+# Summary of changes for run 35948cfe-be0e-4ecb-9b7b-f55fad91970d
+The changes you asked for are in, and the full `lake build` passes (all 870 jobs). No `sorry`, axiom or `implemented_by` was added. The only `sorry`s in the tree are in the existing design sketch `LeanScript/Expr/Design.lean`, and the build reports none.
+
+**How externs are represented and run**
+- `LeanScript/Expr/Extern.lean` now defines `Extern τ` as the catalogue `LeanInitPureExtern` applied to values, proofs included. The catalogue's type parameters are `TyWf.Den`, `option`, `list`, `prod`, `leanName` and `ordering`.
+- `LeanScript/Eval/Extern.lean` is rolled back to your `Extern.eval`: one case per entry, calling the native Lean function and passing along any proof the entry holds. Entries removed from the catalogue are commented out here too.
+- `Term.extern` is unchanged. Two constructors are added for calls whose arguments are only known when the term runs:
+  - `Term.externCall`: the argument terms, plus a function that builds the catalogue entry from their values.
+  - `Term.externCallChecked`: the same, for entries that take a proof. It decides the proposition when the term runs, hands the proof to the entry, and otherwise uses a fallback term. As you chose, a Lean program can never reach that fallback. The fallback is the translation of `Inhabited.default` (`0` for `Nat`).
+- Evaluation and the `NoRecMk` pass handle both. `Term.eval_externCall` and `Term.eval_externCallChecked_of_some` are proved.
+
+**What `#leanscript_to_term` now does**
+- It builds the proof-taking externs instead of refusing them:
+  - `Array.getInternal` and `Array.getInternalBorrowed` (including `xs[i]` inside `if h : i < xs.size`);
+  - `Array.set`;
+  - `String.Pos.next`, `String.extract` and `String.Pos.set`.
+- When every argument is a closed Lean value, it emits `Term.extern` with the program's own proof.
+- The three `String.Pos` entries name the string in their type, so a run-time call needs that string to be closed (known when the term is written).
+- It translates `dite` to `bool_casesOn` and drops the proof binder.
+- `externSkipped` is gone. `scripts/gen_externs.py` now only generates `ToTerm/ExternTable.lean`.
+
+**Catalogue changes (`LeanScript/LeanInitPureExterns.lean`)**
+- **`Lean.Name`** is an ordinary recursive inductive (`anonymous | str self String | num self Nat`). `TyWf.leanName` and `instance : LeanScriptTyWf Lean.Name` are in `Ty/Instances.lean`. `lean_name_eq` takes `denote leanName`, and `leanName` is a new catalogue parameter.
+- **USize → Nat:**
+  - `lean_array_uget` and `lean_array_uset` are commented out; the translator turns them into `lean_array_fget` and `lean_array_fset`.
+  - `lean_string_uget_byte_fast` is commented out; it becomes the `String.Internal.getUTF8Byte` entry.
+  - USize entries that were already commented out are left as they were.
+- **gcd:** both gcd constructors are commented out. `Nat.gcd` is treated as an ordinary function looked up in the signature, and `Nat.gcd._unary` is silently rewritten to `Nat.gcd`.
+- **`String.Pos.Raw.next'`:** its entry is commented out, and the translator uses the `String.next'` entry instead.
+
+**Tests**
+- `TermTests/ExternToTermTest.lean` (new) covers:
+  - `a + b`, `Array.toList`;
+  - checked `a[i]` and `Array.set`;
+  - a closed `#[1,2,3][1]`;
+  - `Lean.Name` equality;
+  - `Nat.gcd` through a signature.
+- `TermTests/ExternTest.lean` is updated. The `Array.toList` refusal test in `TermTests/ToTermTest/Refused.lean` is removed, since `Array.toList` is now translated.
+- The `Lean.Name` checks need `import all Init.Prelude`, because `Init` does not expose the body of `Lean.Name.beq` to the kernel.
+
+**Caveats**
+- **Compiled defs fail on some entries.** A compiled `def` that builds a catalogue entry past roughly index 244 (e.g. `lean_string_compare`) fails to compile with "tag too big". Use `noncomputable section` or `example` for those.
+- **Some kernel checks are slower.** Kernel evaluation got somewhat slower, so I raised the heartbeat limit locally, with a comment at each spot:
+  - `window_eval` in `TermTests/FibWindowTest.lean`: 400000;
+  - three `tribArr`/`tetraArr` checks in `TermTests/ArrayRecToTermTest.lean`: 800000.
+
+`LeanScript/ToTerm/Overview.lean` and the header of `Eval/Extern.lean` are updated to describe all this. Everything is committed.
+
+# Summary of changes for run b5f4404f-cea9-4949-b812-d9d05913f281
+I added Mathlib and Batteries `v4.34.0` to `lakefile.toml` and updated `lake-manifest.json`. Batteries was already coming in through Aesop; it is now a direct requirement. The full `lake build` succeeds (867 jobs), and no file I changed contains `sorry`.
+
+**W-types: yes, Mathlib has them, and the project now uses them.** Mathlib's `WType` (in `Mathlib.Data.W.Basic`) is the same thing as your `WTree`. In `LeanScript/Den/Cont.lean`:
+- **`WTree`** is no longer its own inductive. It is now `abbrev WTree S P := WType P`, and `WTree.mk` is a pattern-usable shorthand for `WType.mk`, so the existing code and pattern matches work without changes. This also gives you Mathlib's `WType` results, such as `depth`, `elim` and `equivSigma`.
+- **`Cont`** is the same data as Mathlib's polynomial functor `PFunctor`. I kept `Cont` as its own structure and added conversions both ways, `Cont.toPFunctor` and `Cont.ofPFunctor`. I also added two facts, proved by `rfl`:
+  - `Cont.ext_eq_obj`: `Cont.Ext` is `PFunctor.Obj`.
+  - `WTree.eq_pfunctor_W`: `WTree c.S c.P` is `PFunctor.W`.
+- **Why `Cont` is not simply renamed to `PFunctor`:** I tried making `Cont` a direct alias of `PFunctor`. It compiles, but every shape lookup then takes an extra unfolding step, and these add up when types are computed by evaluation. `rfl` proofs got much slower: `TermTests/FibWindowTest.lean` ran past the default time limit. So I switched back to the conversion approach, which needs no raised limits.
+
+**Side fix.** Once Mathlib is imported, `ensureHasType` in `LeanScript/ToTerm/Elab.lean` became ambiguous, so it now reads `Term.ensureHasType`.
+
+**What Mathlib and Batteries don't cover.** I searched both libraries and found no matching type for:
+- `NonEmptyList`, `NonEmptyArray` and `NonEmptyString`.
+- `DeBruijnProj`: the only library list membership is `List.Mem`, which is a proposition you can't compute with.
+- `ListPos`.
+- The schema types, `Ty`/`TyShape`, and the well-formedness predicates. These are specific to your language.
+
+**Not done:**
+- `WTree.fold` also passes each step the subtrees themselves, so Mathlib's `WType.elim` can't replace it directly; I left it and `WTree.memo` as they are.
+- The lemmas in `LeanScript.Den.Rec` could be restated using Mathlib's `WType.equivSigma`.
+- `proposals/RecTaggedUnionEvalSketch.lean` is outside the build and still has its own `WTree`.
+
+The details are in `MATHLIB_REUSE.md`, and everything is committed.
+
+# Summary of changes for run a94f87d2-39e4-4b83-a8ba-06d93720e1d7
+All 127 `.lean` files in the project now start with `module`. The full `lake build` succeeds (299 jobs) and the converted files contain no `sorry`. The work is committed.
+
+**Files converted.** Twelve files were not yet modules:
+- `TyTests/`: `WfTest`, `SharedTreesTest`, `CrossModuleSharingTest`, `InstancesTest`, `DocumentedMistakesTest`, `EqTest`, `InductiveTypesTest/{Basic, Parameters, NestedRecursion}`
+- `TermTests/`: `CtorFnTest`, `InductiveTypesTest/Existentials`
+- `proposals/RecTaggedUnionEvalSketch.lean`
+
+I gave them the same layout as the files that were already modules: `module` first, then `public import …`, then `@[expose] public section`. `LeanScript.Ty.WfTactic` and `LeanScript.Ty.Deriving` are imported with `public meta import`, as elsewhere in `LeanScript/`. Each file's header comment used to come before its imports, which a module doesn't allow, so it now sits after the imports as a `/-! … -/` module doc.
+
+**Test changes the conversion required**
+- **`#print` output:** in a module, definitions inside `@[expose] public section` print with `expose` added. I updated the expected output in `SharedTreesTest`, `CrossModuleSharingTest` and `CtorFnTest` to match (`@[expose] def …`, `@[reducible, expose] def …`).
+  - One exception: the instance made by `deriving instance LeanScriptTyWf for EvB`, for the mutual inductive in `SharedTreesTest`, still prints without `expose`, so its expected output is unchanged.
+- **`InstancesTest`:** its `#eval`s print a `TyWf` and a `GlobalDecl`. In a module that needs a `meta` import of the modules that define them, but the `example`s in the same file need the ordinary import. The file therefore imports both `LeanScript.Ty.TyWf` and `LeanScript.ExprCtx` twice, once with `public import` and once with `public meta import`.
+
+**The proposal sketch** is still outside the Lake build. I checked it separately with `lake env lean proposals/RecTaggedUnionEvalSketch.lean`, and it compiles without errors.
+
+# Summary of changes for run a1472360-1132-4d67-b3f9-8aa40e837b40
+I split `TyTests/` into two libraries, `TyTests/` and `TermTests/`. The full `lake build` succeeds (299 jobs), and neither directory contains a `sorry`.
+
+**What went where.** I sorted the files by what they test.
+- **`TyTests/`** keeps the tests that only need `LeanScript.Ty.*`: `CrossModuleSharingTest`, `DocumentedMistakesTest`, `EqTest`, `InstancesTest`, `SharedTreesTest`, `WfTest`, and `InductiveTypesTest/{Basic, Parameters, NestedRecursion}`.
+  - `InstancesTest` also imports `ExprCtx`, `DeBruijn` and `Expr.SelfField`. I left it here because it tests `Repr`, `Functor` and coercion instances, not terms.
+- **`TermTests/`** gets everything about terms, evaluation, externs, recursion depth and `#leanscript_to_term`. That covers all the `*RecDepthTest` and `*RecKTest` files (with their `Programs`/`Cont` subfolders), plus `ArrayRecToTermTest`, `CtorFnTest` (with `Module`), `EvalTest`, `EvalCoverageTest`, `ExternTest`, `FibAlgorithmsTest`, `FibWindowTest`, `RecTermTest`, `TermTest` and `ToTermTest/*`.
+  - `InductiveTypesTest/Existentials.lean` also moved here, because it uses `Eval`, `CtorFn` and `ToTerm.Elab`. It still imports `TyTests.InductiveTypesTest.NestedRecursion`, so `TermTests` depends on `TyTests` in that one place.
+
+**Other changes**
+- **`lakefile.toml`:** there is a new `[[lean_lib]] TermTests` (globs `TermTests.+`), and it is added to `defaultTargets`.
+- **Imports:** every import of a moved module now reads `TermTests.…`.
+- **Namespaces:** in the moved files, namespaces such as `TyTests.ToTerm` and `TyTests.FibWindow` became `TermTests.…`. The expected error messages in `ToTermTest/Refused.lean` that include these names were updated to match.
+- **Documentation:** path references now point to the new locations in `LeanScript/ToTerm/Overview.lean`, `LeanScript/Ty/README.md` and the proposal and notes markdown files. The README's Tests section now also says that the term tests live in `TermTests/`.
+
+The work is committed.
+
+# Summary of changes for run 6ae5b148-00e3-4294-88ce-14a9d7fe66c4
+I didn't change any code this time. Here is the answer to your question.
+
+**Why `PUnit.unit` is there, and why it doesn't make `NatWin` non-empty**
+
+`NatWin τ k` holds exactly `k` values, not at least one. It is defined in `LeanScript/Eval/Env.lean` as `TyWf.DenList (natRecCtx τ k [])`. `DenList` turns a list of types into a right-nested product that ends in `PUnit`, because `Ty.ContList [] = Cont.const PUnit`. So:
+
+- `NatWin τ 0 = PUnit`
+- `NatWin τ 1 = Den τ × PUnit`
+- `NatWin τ 2 = Den τ × (Den τ × PUnit)`
+
+`PUnit` plays the role of `[]` (nil) and `×` plays the role of `::` (cons). `NatWin τ 0` is the empty window: its only inhabitant, `PUnit.unit`, carries no data, just as `[]` does. So `| 0, _ => PUnit.unit` in `NatWin.ofFunList` means "return the empty window", the same as `| 0, _ => []` in a function that builds a list of length `k`.
+
+**Can the `PUnit` be avoided?**
+
+- **Only the spelling can change.** The `0` case has to return the unique value of `NatWin τ 0`, and that type is `PUnit`. You can write it as `()` or `⟨⟩`. I checked against the current build that `example : NatWin τ 0 = PUnit := rfl` holds, and that a copy of `ofFunList` with `| 0, _ => ()` compiles.
+- **A base case at 1 doesn't remove it.** You could try to avoid `k = 0` by starting the recursion at 1 (`| 0, l => (f l, ())`), but that value still ends in `PUnit`, because every `DenList` does.
+- **Changing the representation isn't worth it.** Dropping the terminator would mean encoding the window as, say, `Den τ` for 1 and `Den τ × w` for `k + 1`. That still can't express a window of length 0 without some unit type. Worse, the window would stop being definitionally the environment of the context block `natRecCtx τ k []`. At the moment that identity is what lets the evaluator pass the window, the base values and the branch's environment around with no conversion or cast (`Env.ofWin`, `win_eq_denList : NatWin τ 3 = TyWf.DenList (natRecCtx τ 3 []) := rfl`). Every environment in the language uses the same `PUnit`-terminated encoding: `GlobalEnv.nil` and the empty `Env` are also `PUnit.unit`.
+
+If you'd rather see `()` than `PUnit.unit` in `ofFunList`, `NatWin.const`, `NatWin.push` and the matching `@[simp]` lemmas, I can make that purely cosmetic change.
+
+# Summary of changes for run cc674e40-dd30-4dfc-bc75-7c30c1e3e5c9
+I added a self-contained test file, `TyTests/ArrayRecToTermTest.lean`, that tests `array_rec k` for k = 0, 1, 2, 3 and 4 in the format you asked for. I had to extend the translator first: before this, `#leanscript_to_term` never produced `array_rec`, and it refused `Array.toList`. The full `lake build` succeeds (298 jobs) and there is no `sorry`.
+
+**Which Lean function becomes `array_rec`.** Lean can't recurse structurally on an `Array`. A definition with patterns like `⟨x :: xs⟩ => … f ⟨xs⟩` is compiled as well-founded recursion, which is irreducible, so a `:= rfl` comparison with the Lean function fails. What Lean does compile structurally, and what works with `rfl`, is plain code like this, with no attributes or helper combinators:
+```lean
+def fibArr (a : Array Nat) : Nat := go a.toList
+where
+  go : List Nat → Nat
+    | [] => 0
+    | [x] => x
+    | x :: y :: xs => x + go (y :: xs) + go xs
+```
+The translator now reads `go a.toList` as `array_rec k` on `a`, where `go` is any structurally recursive function on lists that is not in the signature. The depth `k` is worked out the same way as for `nat_rec k`: it is the smallest `k` at which the case for `x :: y₁ :: … :: yₖ :: rest` uses only the head `x` and the values of `go` at the `k + 1` suffixes. The patterns for lists of at most `k` elements become the `ArrayRecBases`, and each of those may call `go` on its own suffixes.
+
+**Translator changes**
+- `LeanScript/ToTerm/TransBrec.lean`: new `arrayOfToList?` and `transArrayBrecOn`, which build the bases and the branch. `transBrecOn` uses them when the list being recursed on is `a.toList`. Extra arguments such as accumulators are still supported (the fold is then at a function type).
+- `LeanScript/ToTerm/Trans.lean`: a call with an `a.toList` argument that unfolds to such a recursion is unfolded and translated this way.
+- `LeanScript/ToTerm/Overview.lean`: the documentation now describes this case.
+
+**The test file** defines its own signature (`add`) and `runAdd`. There are five functions: `sumArr` (k=0), `fibArr` (k=1), `tribArr` (k=2), `tetraArr` (k=3) and `pentaArr` (k=4). For each one the file has:
+- `def f_term : Term sigAdd [] (TyWf.array (.prim .nat) ⇒ TyWf.prim .nat) := #leanscript_to_term f`;
+- a check, by `rfl`, that the generated term is literally `.lam (.array_rec k …)` with the expected `k`;
+- `example : runAdd f_term #[…] = <number> := rfl` on the empty array, arrays shorter than the window, and longer arrays;
+- `example : runAdd f_term #[…] = f #[…] := rfl`.
+
+The file also has an accumulator-style `sumAccArr` (k=0 at type `nat ⇒ nat`), and a `#guard_msgs` test that a `go` reading the second element (`x + y + go (y :: xs)`) is refused.
+
+**Limitations**
+- The case for a longer list may use only the head and the recursive values. `array_rec`'s branch receives the tail as an array, not as its elements, so a function that reads a later element or the tail list is rejected with a clear error.
+- The `rfl` checks slow down roughly exponentially as the arrays get longer, as the existing `nat_rec` tests do. So the k=3 and k=4 comparisons use arrays of at most 5–6 elements, and the file takes about 70 seconds to build.
+- These are finite `rfl` checks on specific inputs, not theorems for all arrays.
+
+The work is committed.
+
+# Summary of changes for run 3ca984a7-39a2-4887-96a6-45dc7e2add09
+Values of `Ty.array α` are now Lean `Array (Ty.Den α)`, not `List`. The full `lake build` succeeds (297 jobs), with no new `sorry` or errors.
+
+**Core change**
+- **`Den/Cont.lean`:** there is a new container `Cont.array c` whose shapes are `Array c.S`. Its holes (the spots that hold an occurrence of the recursive type, `self`) are those of `xs.toList`, so they are the holes of its elements in order.
+  - It comes with `Cont.Ext.array` and `Cont.Ext.unarray` and their two round-trip lemmas (`unarray_array`, `array_unarray`), all proved.
+  - These are built on the existing list functions (`Cont.list`, `Cont.Ext.list`, `unlist`) and their proofs, which I kept as the list-level helpers.
+- **`Den.lean`:** `Ty.ContCov (.array a)` is now `Cont.array (Ty.Cont a)`, and the table in the doc comment reads `Array (Ty.Den α)`.
+- **`Den/Rec.lean`:** `roll`, `unroll` and their inverse proofs now use the array versions.
+
+**Evaluator (`Eval.lean`)**
+- `array_mk` turns its elements into an array with `List.toArray`.
+- `array_casesOn` matches on `a.toList` and gives the non-empty branch the tail as an `Array`.
+- `array_rec` still runs the depth-`k` fold `listFoldK` over `a.toList`, and hands the branch `tl.toArray`.
+- Doc comments are updated to say so.
+
+**Externs (`Eval/Extern.lean`)**
+- The array-returning externs (`push`, `set`, `swap`, `pop`, `mk`, `replicate`, …) no longer add `.toList`: the Lean `Array` is the value.
+
+**Facts (`ArrayRecFacts.lean`)**
+- `Term.eval_array_rec`, `_base` and `_step` are restated: the hypothesis is now about `(eval arr).toList`, and the branch gets `as.toArray`.
+- All three are proved again. The general facts about `listFoldK` did not change.
+
+**Tests**
+- Array values in `EvalTest`, `ExternTest`, `ToTermTest/Basic`, `ArrayRecKTest`, `ArrayRecDepthTest` and `ArrayRecDepthTest/Cont` are now written as `#[…]`.
+- The whole-input theorems (e.g. `contTerm_eval`, `contTRTerm_eval`, `contPairTerm_eval`) are now stated for `l.toArray`, where `l` is a Lean list.
+- The `lean_array_push` check is proved by `rfl`; `decide` gets stuck on `Array` equality.
+
+I did not change `proposals/RecTaggedUnionEvalSketch.lean`. It is not part of the build and still says arrays denote lists. The work is committed.
+
+# Summary of changes for run 679b2644-4e1e-4804-a0a6-af6c4c499728
+`TyWf.list`, `TyWf.option`, `TyWf.prod`, `TyWf.ordering` and a new `TyWf.sum` are now each defined once, in `LeanScript/Ty/Instances.lean`, with `:= by ty_wf`. The `LeanScriptTyWf` instances and the externs both use these definitions, so there is no second copy. The full `lake build` succeeds (297 jobs) with no errors, warnings or `sorry`, and that includes the new tests.
+
+**What changed**
+- **`Ty/Instances.lean`:** the list is `⟨.recTaggedUnion (Ty.listSchema α), by ty_wf⟩` and `Ordering` is `⟨.enum ⟨0, -1⟩, by ty_wf⟩`. Each instance just applies one of these, e.g. `LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩`.
+- **`Ty.listSchema` (`nil | cons a self`):** moved to `Ty/Ty.lean`. That file sits low enough that the list type, reading lists back, `#leanscript_to_term` and the deriving handler can all import this one definition.
+- **`Expr/Extern.lean`:** its own `option`, `list`, `prod` and `ordering` are deleted and it imports the shared ones instead. Two changes in behaviour follow:
+  - `list α` used to be `TyWf.array α`. It is now the recursive tagged union.
+  - `ordering` used to be `TyWf.enum {}`, numbered from 0. It is now the enum numbered from −1, the same as the instance.
+  - There is a new `TyWf.Den.ofList`, and the doc table is updated.
+- **List values (`Den/Rec.lean`):** a list value is now a tree, not a Lean `List`. The new `Ty.DenRec.ofList` builds one from a Lean list. I proved `Ty.DenRec.toList_ofList`: build a value, read it back, and you get the original list.
+  - I did not prove the other direction. It is false in general, because the element type may itself mention `self`.
+- **`Eval/Extern.lean`:** the three externs that return lists (`Array.toList`, `String.data`, `String.toList`) now wrap their result with `TyWf.Den.ofList`. `Ordering` values are unchanged: they are still constructor numbers 0, 1, 2, and the shift only affects how the enum is numbered.
+- **`#leanscript_to_term` (`ToTerm/ObjectExpr.lean`):** it used to build the list schema by hand; now it refers to `Ty.listSchema`.
+- **`deriving LeanScriptTyWf` (`Ty/Deriving/Translate.lean`):** when it reads a type former's instance, it now unfolds `Ty.listSchema`. Without this, types like `RoseList` and `TreeL` broke once the `List` instance went through a definition.
+- **Tests (`TyTests/ExternTest.lean`):**
+  - The kernel checks the two list-returning externs, reading their results back with `toList`.
+  - `rfl` checks that `tyWfOf (List Nat)`, `tyWfOf (Option Char)`, `tyWfOf (Float × Int)` and `tyWfOf Ordering` are exactly the formers the externs use.
+  - Another check confirms `tyOf Ordering = .enum ⟨0, -1⟩`.
+
+**Other inconsistencies I looked for**
+- **Hand-written `List` schema in `#leanscript_to_term`:** a real duplicate; fixed as described above.
+- **`Option` and `×` in the externs:** they already had the same trees as the instances; now they are the same definitions.
+- **`Array`, `Thunk` and `→`:** `#leanscript_to_term` and the deriving handler hard-code these instead of asking the instance. They build the same trees as the instances, so they agree. The hard-coding exists so they can handle arguments that have no instance, e.g. function types whose `Unit` argument is dropped. I left them as they are.
+- **Extern arguments that are Lean lists (`Array.mk`, `String.ofList`, `String.mk`):** the catalogue takes arguments as plain Lean values (array arguments are `Array (denote α)` too) and only converts results. These follow that rule, so I did not change them.
+
+In the properties table, `TyWf.list` and `TyWf.ordering` are registered as definitions and `Ty.DenRec.toList_ofList` is marked proved.
+
+# Summary of changes for run 48fa313b-3947-46c7-99eb-696f430f02f2
+I implemented `RecTaggedUnionEvalProposal.md`. `Term.eval` now runs recursive tagged unions and is still a total, structurally recursive function (no fuel, no `partial`). The full `lake build` passes (297 jobs) with no errors, warnings or `sorry`. The main theorems depend only on the standard axioms.
+
+**What changed in the library**
+- **Substitution:** I applied the one-clause change to `Ty.substOcc` (the domain of an arrow is left alone). I deleted `Ty.substOccShape_eq_map`, which became false, and fixed the two proofs in `Ty/WfSubst.lean`.
+- **Values (`Den/Cont.lean`, `Den.lean`):** `Den/Cont.lean` is new and has containers, W-trees, and `WTree.memo`/`memoFold`. In `Den.lean`, every type is now read as a container (`Ty.Cont`), and `Ty.Den` and its companions are its shapes. All existing `rfl` equations still hold. `Ty.recTaggedUnion l` now denotes a W-tree, and `Ty.Den .self` is `PUnit`.
+- **Moving between trees and unfolded fields (`Den/Rec.lean`, new):**
+  - `Ty.roll`/`Ty.unroll`, written without any `cast`.
+  - `Ty.DenRec.mk`/`unfold` and their `TyWf` versions, which move along one proved equation between the two unfolded schemas.
+  - `recBindEnv`, the environment a fold branch binds, and `Ty.DenRec.toList`, which reads a list value back as a Lean list.
+  - Proved round trips: `unroll_roll`, `roll_unroll`, `DenRec.unfold_mk`, `DenRec.mk_unfold`.
+- **Evaluator (`Eval.lean`, `Eval/NoRecMk.lean`):** the four recursive-union forms are interpreted, including depth-`k` folds. The fold stores the answer at every node, so a branch that looks further down reads answers already computed. `NoRecMk` of `recTaggedUnion_mk` is now `Spine.NoRecMk fields`. There are four new `FoldK` evaluators and four matching `NoRecMk` predicates.
+- **Theorems (`RecUnionEvalFacts.lean`, new):**
+  - ι-rules for `casesOn` and `casesOnWithDefault` applied to `recTaggedUnion_mk`, plus the tag and `field?` read back from a built value.
+  - A plain fold `recFold` with its ι-rule `recFold_mk`.
+  - `Term.eval_recTaggedUnion_rec_toFoldK`: the memoised fold equals the plain fold at every depth. As a consequence, `Term.eval_recTaggedUnion_rec_depth` shows depths `k` and `k'` give the same value.
+
+**Tests**
+- `EvalCoverageTest`: the four statements that became false are commented out with an explanation. `no_total_evaluator` is restated using a recursive-record term, and new positive checks run the list programs.
+- `RecTermTest`: the old failing `#guard_msgs` block is replaced by runs.
+- `RecUnionRecDepthTest` §7: kernel `decide` checks that fib, trib, tetra, penta and hexa (depths 1–5), fibTR, fibPair and the continuant match their Lean definitions.
+- `ToTermTest/Basic` "Lists": the translated `digitList`, `prepend`, `firstOrZero` and `sumList` now run.
+- `ExternTest`: one test needed an explicit `(α := .prim .char)`. The new definition of `Ty.Den` changes elaboration there, and user code that calls `TyWf.Den.ofOption` without the type argument may need the same annotation.
+
+I also updated the prose that said recursive trees have no values, and added a status note at the top of the proposal.
+
+**Not done:**
+- The inverse of `toList` (building a list value from a Lean list), `Repr` for W-trees, and extending the construction to `recObject`, `recAlias` and `mutualRecursiveFamily`. Those shapes still have no values and still need `NoRecMk`.
+- The general statement that a deeper-look branch equals a depth-0 program. Deeper-look programs at depths 1–5 are checked on concrete inputs only.
+
+# Summary of changes for run eb3cdc95-165d-456d-902e-a8aaae139050
+Mostly yes. The bottom line of the assessment is right: the design doesn't let anything unsound in, and the least-checked parts are the `TyWf` bridge and the memoised fold. Of its four points, two were fair and now have concrete answers, one is partly out of date, and one uses the wrong example. I checked each point in Lean rather than arguing it; the full write-up is in `RecTaggedUnionEvalReview.md`.
+
+1. **The `substOcc` change is global: fair, and the proposal missed a casualty.** I applied the change to the real library and ran a full `lake build`.
+   - The lemma `Ty.substOccShape_eq_map` becomes false, because `TyShape.map` maps both sides of an arrow. Nothing else uses it, so it has to be deleted.
+   - The two `fn` cases in `Ty/WfSubst.lean` each need a one-line fix.
+   - The change also affects the unfolding of mutual families, which the proposal didn't mention. Their arrow domains are closed too, so well-formed trees are unaffected.
+   - Nothing else broke. With the changes above, all 294 jobs build, tests included, with no errors or warnings.
+
+2. **`Ty.Den .self` was only checked by text search: fair, and now checked by building.** The same full build includes the `.self => PUnit` change and still passes. So no proof relied on that type being empty, including through instance search.
+
+3. **The sketch only covered the easy half: partly out of date.**
+   - Both round trips (`unroll_roll` and `roll_unroll`) are now proved for every tree, with no extra hypothesis. The only difficulty was that goals have to be restated at the unfolded container types before `rw` works.
+   - The `TyWf` bridge cast follows a pattern `TyWf.DenTU.mk` already uses and that the existing tests run concretely, but its lemmas are not written yet.
+   - The memoised depth-`k` fold is still design only, as the assessment says.
+
+4. **Positivity check granularity: it is a flat ban, but the example is wrong.**
+   - In `(X → self) → Y`, `self` is negative, not doubly negated; the positive shape would be `(self → X) → Y`.
+   - I proved that the real `Ty.WfIn` refuses both.
+   - Refusing the positive one is intended. The check is strict positivity, the same rule Lean applies to its own inductive types. The container encoding needs it: the domain of an arrow has no holes, and a positive but not strictly positive occurrence has no W-type fixpoint.
+
+**Files:**
+- `RecTaggedUnionEvalReview.md`: the point-by-point answer.
+- `proposals/RecTaggedUnionEvalStep1.patch`: the `substOcc` and `Ty.Den .self` changes with their repairs, i.e. what I built. It is **not** applied to `LeanScript/`, which is unchanged.
+- `proposals/RecTaggedUnionEvalSketch.lean`: now also has the round-trip proofs and the two positivity checks. It compiles with no `sorry` using the command in its header.
+- `RecTaggedUnionEvalProposal.md`: I corrected §3.2, §3.3, §9 and §10 to match these results.
+
+The sketch is not part of the Lake build and no library files changed, so there are no Lake build targets to report. Still unchecked: the `TyWf` bridge lemmas, the memoised fold, and the `Term.eval` / `NoRecMk` changes.
+
+# Summary of changes for run 3a890f85-7673-4f6f-a967-acbb031c5d98
+I wrote the proposal in `RecTaggedUnionEvalProposal.md`, plus a small Lean sketch, `proposals/RecTaggedUnionEvalSketch.lean`, that checks the central construction. It's only a proposal: no file under `LeanScript/` or `TyTests/` was changed.
+
+**The proposal**
+- **Values.** Describe each type tree as a "container": the possible shapes of a value, plus the holes where `Ty.self` sits. A `recTaggedUnion l` then denotes a tree of nodes (`WTree`), where each node is a constructor number, its fields with the holes blanked out, and one subtree per hole. This is a three-line inductive type, with no Mathlib and no fuel. It works because the language already guarantees that `Ty.self` never appears to the left of an arrow, and that a nested recursive type never refers to the outer one.
+- **`Ty.Den`** becomes a projection of that container description. Every existing equation still holds by `rfl`, so the current evaluator and tests should be unaffected. The only visible change is that `Ty.Den .self` becomes `PUnit` instead of `PEmpty`, which only matters for ill-formed trees.
+- **One-clause change to `Ty.substOcc`:** leave the left side of an arrow unchanged. For well-formed trees the result is the same, and it means converting between a constructor's fields and a node needs no `cast` and no well-formedness proof.
+- **`Term.NoRecMk`:** the `recTaggedUnion_mk` clause becomes `Spine.NoRecMk fields` instead of `False`. The eliminators now also require their branches to satisfy it, since the branches actually run, and four small predicates are added for the depth-`k` fold branches. The `no_rec_mk` tactic doesn't change.
+- **`Term.eval`:** the constructor builds a node and `casesOn` / `casesOnWithDefault` unfold one level, reusing the existing dispatch code. `recTaggedUnion_rec k` runs as a fold that stores the answer at every node. A branch that looks further down then reads answers that are already computed, so the fold takes linear time and `Term.eval` stays structurally recursive.
+- The document also lists the theorems to prove (round trips, the computation rules for `casesOn` and the fold, and that the depth `k` doesn't change the result). It lists which tests become false and must be rewritten, for example in `EvalCoverageTest` and the `#guard_msgs` block in `RecTermTest`, and which become runnable, such as the `List` programs in `ToTermTest`. It closes with how to extend the approach to `recObject`, `recAlias` and mutual families later, and a suggested order of work.
+
+**What was checked in Lean**
+The sketch is not part of the Lake build. It compiles with no errors and no `sorry` against the current tree with `lake env lean proposals/RecTaggedUnionEvalSketch.lean`. It checks:
+- the container description of types, which Lean accepts as structurally recursive;
+- `rfl` checks that `Ty.Den` keeps its current equations;
+- the field/node conversions in both directions, with no `cast`;
+- a small `List Nat` example: building `[3, 4]` and summing it gives `7` by `decide` and `rfl`, and a `head` function gives `5` and `0` by `rfl`.
+
+The round-trip proofs, the bridge to the `TyWf` layer, the depth-`k` fold and the actual changes to `Term.eval` and `NoRecMk` are designed in the document but not implemented or checked.
+
+# Summary of changes for run 83b54b58-6be7-497b-91e2-29ed15809cac
+I split the largest files into smaller modules and did some refactoring along the way. `lake build` passes on the whole project, including all tests, with no warnings and no `sorry`. The only `sorry`s left in `.lean` files are in comments and prose, as before. No new umbrella files that just re-export other modules were added: each file imports only the modules it needs. Where a file had other files importing it, I kept it as the last stage of its chain so those imports didn't have to change.
+
+**What was split**
+- **`LeanScript/CtorFn.lean`** (911 lines → 211): it keeps the overview and the `#leanscript_ctor` / `#leanscript_layout` / `#leanscript_ctor_cache` elaborators. The rest moved to new files under `LeanScript/CtorFn/`, each importing the one before:
+  - `AsType.lean`: `TyWf.AsType` and `TyWf.oneOf`
+  - `Cache.lean`: the cache of generated definitions
+  - `FieldTy.lean`: translating the type of a field
+  - `Classify.lean`: reading the datatype
+  - `Emit.lean`: `ensureCtorFn`
+
+  `ToTerm/Existential.lean` now imports only `LeanScript.CtorFn.Emit`.
+- **`LeanScript/Ty/WfTactic.lean`** (506 → 84): it keeps the overview and the `ty_wf` tactic. The rest moved to `Ty/WfTactic/Leaves.lean`, `Ty/WfTactic/Hab.lean` and `Ty/WfTactic/WfIn.lean`. The inhabitation builders don't call the well-formedness builders, so the old single `mutual` block became two independent blocks, one per file.
+- **`LeanScript/Ty/Schema.lean`** (683 → about 200): it keeps the overview, the `Functor`/`LawfulFunctor` instances and the coercions. The schemas moved to `Ty/Schema/Containers.lean` (record, non-empty list, `CtorsWithPayload`), `Ty/Schema/Sum.lean` (enum, tagged union) and `Ty/Schema/Family.lean` (mutual families). References in the docs were updated.
+- **`LeanScript/ToTerm/Trans.lean`** (938 → 485): this one needed a real change, because everything was in one `mutual` block. I added `abbrev TransFn := TCtx → Expr → MetaM Expr` and moved the clauses that only need to call back into the translation out of the block. They are now ordinary definitions that take `trans` as their first argument:
+  - `ToTerm/TransRec.lean`: `applyArgs`, `transBranch`, `transSparseCasesOn?`, `transRecCore`, `transRecApp`, `transClosedCached`, `transInline`
+  - `ToTerm/TransBrec.lean`: `transBrecOn`
+
+  The `mutual` block calls them as `transBrecOn trans c …`, and `ToTerm/Elab.lean` calls `transClosedCached trans c …`.
+- **Tests:**
+  - `TyTests/ToTermTest.lean` became `TyTests/ToTermTest/Basic.lean`, `Data.lean`, `Recursion.lean` and `Refused.lean`. The expected error messages are unchanged.
+  - `TyTests/ArrayRecDepthTest.lean` keeps sections 3–6. The signature and sections 1–2 moved to `TyTests/ArrayRecDepthTest/Cont.lean`, following the same parent-and-child layout as the other depth suites.
+
+**What was not split, and why**
+- `LeanScript/Expr/Term.lean` (1071 lines) is a single `mutual` inductive, and the types of a `mutual` block have to be declared together.
+- `LeanScript/LeanInitPureExterns.lean` (756) is one catalogue inductive.
+- `LeanScript/Eval/Extern.lean` (626) is one case-by-case function over that catalogue.
+
+Splitting any of these would mean redesigning the datatypes. `ImprovementProposals.md` (section D2) now reflects what was done and what remains, and the `TyTests/ToTermTest.lean` paths in `ImprovementProposals.md` and `ToTerm/Overview.lean` now point to the new folder. I didn't edit `ARISTOTLE_SUMMARY.md`.
+
+One thing I couldn't finish: I couldn't read the full list of tracked results, so any entries that point at the old files (for example ones in `CtorFn.lean` or `Schema.lean`) may still show the old file paths.
+
+# Summary of changes for run 2b077f50-0672-4a81-9171-de3757cc361c
+`mixedProcess_term` and `varyingProcess_term` are now generated by `#leanscript_to_term`, which builds each constructor through `#leanscript_ctor` and its cache. `lake build` passes on the whole project, including all tests, with no `sorry` and no warnings.
+
+In `TyTests/InductiveTypesTest/Existentials.lean`:
+```lean
+def mixedProcess_term   := #leanscript_to_term (sig := sig) mixedProcess
+def varyingProcess_term := #leanscript_to_term (sig := sig) varyingProcess
+```
+**This isn't quite the form you asked for:** I had to keep `(sig := sig)`. `n + 1` and `s ++ "!"` call `Nat.add` and `String.append`, which aren't in the language, so the translation has to find them in the signature. With no signature it would stop at `Nat.add`.
+
+The existing `rfl` checks of what both terms evaluate to still pass. New checks confirm that the inferred types equal the layouts written with `#leanscript_layout`. A pinned `#leanscript_ctor_cache` lists which constructor functions were generated and reused.
+
+**How it works** (new file `LeanScript/ToTerm/Existential.lean`, hooked into `LeanScript/ToTerm/Trans.lean`):
+- **Using `#leanscript_ctor`:** a constructor of a datatype with existentials (or of one in its `mutual` block, like `ProcessOption`) is built by its `#leanscript_ctor` function. That function is found in the existing cache or generated once. Its type arguments are the trees of the Lean types the application uses.
+- **Inferred types:** field trees the function leaves open (`procTy`, `transTy`) are read off the translated fields, so the term's type comes from the value.
+- **Unit hidden types:** `ensureCtorFn` in `LeanScript/CtorFn.lean` now also generates, and caches separately, a version for a use where a hidden type is `Unit`, e.g. `Process.step.leanScriptCtor_erased01`. It drops the `Unit` fields and binders. This removes the last hand-written layout in `varyingProcess`.
+- **Branches of different types:** where branches build values of different types, their types are joined:
+  - if the two values differ only in the tree of an open field, only that field's type is joined;
+  - if the layouts differ, they become the new `TyWf.oneOf`, a tagged union with one constructor per layout, and each branch is injected into it.
+- **One arbitrary choice remains:** the `proc` field of a `ProcessOption` that only ever holds `none` defaults to `nat`, as before.
+
+**Other changes:**
+- **Changed value in the tests:** in `varyingProcess`, the `Bool` alternative is now one record field of the union rather than two separate fields. I updated its `rfl` check to match.
+- **General translator changes:**
+  - `if n = 0 then … else …` on a `Nat` now becomes `nat_casesOn`. Before, it failed.
+  - A `fun _ : Unit => b` becomes `b`, and a `Unit` argument in a function type is dropped, as already done for arguments.
+- **Imports:** `LeanScript.ToTerm.Elab` now imports `LeanScript.CtorFn`, so generated terms can refer to the generated constructor functions and `TyWf.oneOf`.
+- **Docs:** I updated the documentation in `LeanScript/ToTerm/Overview.lean` and `LeanScript/CtorFn.lean`.
+
+# Summary of changes for run 0eaf3e9d-8ac1-4c73-af48-801cf4e87e78
+I added `#leanscript_ctor I c`, a term elaborator that builds the constructor function of a constructor `I.c` for any datatype. Each function is generated the first time it is asked for and cached after that. The whole project builds with `lake build`, with no warnings or `sorry` in the new files.
+
+**How it works** (new file `LeanScript/CtorFn.lean`)
+- The generated function takes the constructor's arguments in Lean's order. Each type becomes a `TyWf` and each value becomes a `Term`. Types here means parameters, type indices and existentials.
+- A field type the language has no tree for gets one extra `TyWf` argument, named after the field (`procTy`, `transTy`). Mainly these are occurrences of the datatype itself or of another type in its `mutual` block. Fields of the same type share that argument.
+- Other field types are translated. Functions become `⇒` (a `Unit`, proof or instance argument is dropped). `Option S`, `S × Nat`, `Array S` and similar are rebuilt from their own instance's tree. `List S` becomes `tyWfOf (List S.AsType)`, using a new small helper type `TyWf.AsType`.
+- **Datatypes without existentials** (`Option`, `Prod`, `Sum`, `Bool`, enums, structures, `ProcessOption`, indexed families) are one type shared by all their constructors. Each constructor builds that type with its own tag. For `Option`, `Prod` and `Sum` the tests check by `rfl` that this type equals `tyWfOf` of the Lean type. `Ordering` keeps its instance's numbering.
+- **Datatypes with existentials** (`Process`, `Client`/`Server`) get a layout per constructor: a record, or the single field.
+- **Refused, with a message:** unit-like constructors (`Unit.unit`, a structure whose fields are all erased), propositions, types modelled by a built-in type (`Nat`, `String`, `Array`, `Thunk`), and types that hide a family of types (`Keyed`).
+
+**The cache**
+- The generated definitions are `I.c.leanScriptCtor` and `I.c.leanScriptLayout` (or `I.leanScriptLayout` for a shared type).
+- They are recorded in a table that carries across imports, so a later use in the same module or in any importing module reuses the existing definition.
+- For a datatype declared in another module (e.g. `Option`), the names go under the current module's name. This avoids clashes between two modules that don't import each other.
+
+**Other forms**
+- `#leanscript_layout I c` gives the type of what the constructor builds.
+- `#leanscript_ctor I` works when `I` has only one constructor.
+- `#leanscript_ctor I c` written as a command generates the function and shows its signature.
+- `#leanscript_ctor_cache` lists everything generated so far.
+
+**Tests**
+- In `TyTests/InductiveTypesTest/Existentials.lean`, `ProcessModel` now builds `mixedProcess_term` and `varyingProcess_term` with `#leanscript_ctor`, replacing the hand-written schemas. The existing `rfl` checks of what they evaluate to still pass, and new `rfl` checks confirm the generated layouts equal the old hand-written ones.
+- The one `Unit` layout in `varyingProcess` is still written by hand: there is no `Unit` type in the language to pass to a constructor function.
+- New `TyTests/CtorFnTest.lean` covers library and user datatypes, including evaluation checks where the model can run them. It also pins the exact error for each refusal and shows cache reuse from `TyTests/CtorFnTest/Module.lean`. That second file is a `module` file, so the new commands also work under the module system.
+
+**Limitation:** a recursive datatype is built one layer at a time. So `List.cons`'s function does not produce the recursive `tyWfOf (List α)` type; lists of that type are still built by `#leanscript_to_term`.
+
+I also added a short update note to `LeanScriptTyCtorProposal.md`.
+
+# Summary of changes for run 95959c4a-76ed-4164-93dc-cc7f620e9c00
+You were right: both values can be written as terms today, using only ordinary records, tagged unions and functions. I added `mixedProcess_term` and `varyingProcess_term` in `TyTests/InductiveTypesTest/Existentials.lean`, right after `varyingProcess`, inside a namespace `ProcessModel`. The file builds with no `sorry`. For each term, an `example` proved by `rfl` checks that it evaluates to its definition with the concrete types filled in.
+
+**How the terms are built.** Each value is closed, so every hidden `State`/`HaltedState` type is known. At each constructor call it is replaced by the type that call uses:
+- `Process.step S seed trans` becomes the record `{ seed : S, trans : S ⇒ … }`.
+- `Process.halt H get` has one field, so it is just that field, `H ⇒ nat`, as with any one-field constructor.
+- `ProcessOption` becomes the tagged union `none | some (nextState) (value) (proc)`, with Lean's tags (`none` = 0, `some` = 1).
+- `n + 1` and `s ++ "!"` call the two declarations of a small signature (`add` and `append`), since arithmetic is outside the language.
+- `if b then 1 else 0` is `bool_casesOn`, and `if n = 0 then … else …` is `nat_casesOn`.
+
+**`mixedProcess_term`** uses only records and functions. Its hidden types are `Nat`, `String` and `Bool` at the three levels.
+
+**`varyingProcess_term`** needs one extra step. The two branches of the `if` hold processes with different hidden types (`Unit` and `Bool`), and the branches of a case must have the same type. So the `proc` slot there is a tagged union with one constructor per layout that occurs:
+- The `Unit` process: `Unit` is dropped, as elsewhere in the language, which leaves one field.
+- The `Bool` process: the fields `bool` and `bool ⇒ …`.
+
+**Two limitations:**
+- **One arbitrary type:** in the inner `ProcessOption`s of `varyingProcess`, only `none` is ever built, so the `proc` field of `some` never holds anything. Its type isn't determined by the value; I chose `nat`.
+- **No shared type:** each term's type depends on the value, so this does not give one type for every `Process Nat`. For example, a function whose result uses a different hidden type for each input would need infinitely many alternatives.
+
+I also added a correction to §1.1 of `LeanScriptTyCtorProposal.md`. It retracts the claim that `mixedProcess` can't be described, points to the two terms, and says that the rest of the proposal is about that shared type.
+
+# Summary of changes for run 01b824b3-38b0-4252-967a-233050b59cf9
+I added the requested instances wherever Lean allows them. The whole project builds with `lake build`, including all tests. There are no new `sorry`s.
+
+**Added `Repr`:**
+- `Ty`: derived, even though it is a nested inductive.
+- `TyWf` and `TyWfIn n`: derived. The proof field prints as `_`.
+- The schemas: `LeanRecordSchema`, `CtorsWithPayload`, `LeanTaggedUnionSchema`, `LeanFamMemberSchema`, `LeanMutualRecFamily`.
+- `TyShape`, `DeBruijnProj`, `GlobalDecl`, `Sig`, `SharedTy`.
+- `SelfField`, `FamilyMemberField`, `FamilyMemberAt`.
+- The meta structures `TyView`, `GlobalEntry`, `TCtx`, `CacheEntry` and `CacheState` also got `BEq`.
+
+**`Functor` + `LawfulFunctor`:** added for `LeanRecordSchema`, `CtorsWithPayload`, `LeanTaggedUnionSchema`, `LeanFamMemberSchema`, `LeanMutualRecFamily` and `TyShape`. `LeanPrimTyCovariant` already had `Functor` and now has `LawfulFunctor` too. In each case `<$>` is the existing `map`, and the laws are proved from new `map_id`/`map_comp` lemmas (in `LeanScript/Ty/Schema.lean` and `LeanScript/Ty/Shape.lean`).
+
+**`BEq`/`ReflBEq`/`LawfulBEq`/`DecidableEq`:** these were already on everything that can have them.
+- On `SelfField` and `FamilyMemberField`, deriving `LawfulBEq` fails, because a constructor holds an equality proof. For all three pointer types, `BEq` and `LawfulBEq` therefore come from their `DecidableEq`, which the tests confirm.
+
+**`CoeOut` (and one `Coe`):**
+- `CtorsWithPayload α → LeanTaggedUnionSchema α`
+- `LeanRecordSchema α` and `LeanTaggedUnionSchema α → LeanFamMemberSchema α` and `→ TyShape α`. When α is `Ty`, these chain on to `Ty`.
+- `LeanEnumSchema → Ty`
+- `Coe TyWf (TyWfIn n)`, using the existing `ofTyWf`, since a closed type is valid in every scope. This has to be `Coe`, not `CoeOut`, because `n` can't be worked out from the source type.
+
+**What cannot have these instances:**
+- **`LeanInitPureExtern`:** its fields are values of an arbitrary `denote t`, which can be a function, so it has no `Repr` or `BEq`.
+- **The `Term` families:** they hold such externs and `Float` literals (`Float`'s `==` is not lawful), so they get neither.
+- **`TransRes`:** it holds `MessageData`.
+- **The deriving `Ctx`:** it holds an `IO.Ref`.
+- **`Tree`:** it only appears as an example in a doc comment.
+- **`Functor` on the other types:** none of them has a type parameter.
+
+The new test file `TyTests/InstancesTest.lean` checks the `Repr` output with `#guard_msgs`, and also every `LawfulFunctor` instance, `<$>` on sample values, and every new coercion.
+
+# Summary of changes for run 52a31e85-2df2-4467-a9d2-10b910039be7
+I wrote the proposal in `LeanScriptTyCtorProposal.md` at the project root. It is a design document only: no Lean code was changed, and its Lean sketches have not been compiled. The one thing I checked in Lean: in `ProcessOption`, `State` is an index (1 parameter, 1 index), while in `Process.step` it is an existential field.
+
+**The blocker: `Process Nat` needs a type.** A `Term` is indexed by `TyWf`, so for `mixedProcess_term` to type-check, `Process Nat` needs one. Constructor functions alone can't give it that. A structural `Ty` for `Process` would need an existential binder, plus applying the family member `ProcessOption α` to the bound `State`, which `Ty` can't express.
+
+**Recommended fix: a named type.** Add two leaves to `Ty`:
+- `Ty.named "Process" [args]`, so `Process Nat` becomes `.named "Process" [.prim .nat]`.
+- `Ty.tyVar k`, used only inside a new first-order `TyDecl` that lists the constructors.
+
+Recursion then goes by name, so there are no recursive binders and no mutual-family hoisting, and `BEq`/`DecidableEq` still hold everywhere. Your `LeanScriptTyWf` refusal stays exactly as written in the test. The document compares this with a structural `∃` and with storing constructor types as Lean functions.
+
+**Your `ctorTy` question: neither form works as stated.**
+- `Fin n → Type` doesn't typecheck: `Process.step` quantifies over `Type`, so its type is in `Type 1`. It also couldn't serve as a `Term`'s type.
+- `Fin n → Ty` can't express the `(State : Type)` binder.
+
+What fits is `ctorSig : Fin nOfCtors → CtorSig`, a type with holes (a number of existential type slots plus field types over them). The dependent term is `ctorMk i xs : Spine … (ctorFieldTys i xs) → Term Sg Γ selfTy`. The existential types `xs` are chosen by the translator at each call site (`Nat`, then `String`, then `Bool`), so `Term` doesn't need type abstraction. One new `Term.named_mk` constructor supports this.
+
+**The document also covers:**
+- **Deriver:** how it tells a uniform index (`ProcessOption`'s `State`) from an existential (`Process.step`'s `State`), and what it refuses (real indexed families, `Keyed`'s `Elem : State → Type`). It emits one cached constructor definition per constructor; for types without existentials it emits the structural version.
+- **`#leanscript_to_term`:** how it uses the instance, including the new error when a constructor's type has no `LeanScriptTyCtor` instance, and which constructors are exempt.
+- **Your two examples:** why both type-check, and that `varyingProcess` works because the witness is not part of the type.
+- **Also:** where the class must sit to avoid another circular import, why taking such values apart (`match`) is left for later, a test plan, and an order of work.
+
+**Decisions I need from you (§9 of the document):**
+1. Named type (recommended) or structural `∃`?
+2. The class name: you wrote both `LeanScriptCtor` and `LeanScriptTyCtor`; I used `LeanScriptTyCtor`.
+3. `varyingProcess` uses `Unit` as a witness, which the language erases, so it currently has no type. Should that be handled by dropping those fields, by adding a unit type, or refused for now?
+4. Should `deriving LeanScriptTyWf` also emit `LeanScriptTyCtor`? Without that, the new error would break every existing test that builds a user-defined value.
+5. `nOfCtors ≠ 0` as a field, or `[NeZero nOfCtors]`?
+
+# Summary of changes for run ca4f66f4-a3bf-4aab-8299-00898a1c5b83
+The pure `Init` externs can now be used inside `Term`, and the evaluator handles them following your sketch. The full `lake build` (`LeanScript`, `NonEmpty`, `TyTests`) passes with no errors, no warnings and no `sorry`.
+
+**How they fit into `Term`.** Rather than copying all 466 constructors into `Term`, I added one wrapper constructor, `Term.extern : Extern τ → Term Sg Γ τ` (in `LeanScript/Expr/Term.lean`). An extern holds its arguments as values, the same way the literal constructors hold theirs. This keeps `LeanInitPureExterns.lean` unchanged as the one catalogue. If you'd rather have each extern as its own `Term` constructor, that can be done instead.
+
+**New file `LeanScript/Expr/Extern.lean`.** This defines `Extern`, which is `LeanInitPureExtern` applied to the language's types `TyWf`, with `TyWf.Den` as the meaning of each type. It also adds the three `Coe` instances the catalogue needs. The catalogue refers to four types the language doesn't have directly, so I mapped each one onto an existing type:
+- `list α` → `TyWf.array α` (an array already means a `List` in the evaluator)
+- `option α` → the tagged union `none | some α`
+- `prod α β` → a record with the two fields
+- `ordering` → an enum with three constructors, numbered 0, 1, 2 like `lt`, `eq`, `gt`
+
+For the last three there are helpers to build values from ordinary Lean values: `TyWf.Den.ofOption`, `ofProd` and `ofOrdering`.
+
+**New file `LeanScript/Eval/Extern.lean`.** `Extern.eval` is your sketch case by case, and the lines you marked as unsupported (usize, byte/float arrays, handles and so on) stay commented out. I changed it in three places:
+- **Array results:** these become a `List` via `.toList`, because arrays mean lists in the evaluator.
+- **`Option`, pair and `Ordering` results:** these go through the helpers above.
+- **Deprecated functions:** 12 are replaced by what Lean suggests, e.g. `String.prev` → `String.Pos.Raw.prev`, `String.mk` → `String.ofList`, `String.data` → `String.toList`. Each has a comment saying so.
+
+In `LeanScript/Eval.lean`, `Term.eval` now handles `.extern e` by calling `Extern.eval e`. There's also a theorem `Term.eval_extern` stating this; it holds by `rfl` and uses only the standard axioms.
+
+**Tests (`TyTests/ExternTest.lean`).** These check, with the kernel, externs on their own and inside `if`/`let` terms:
+- `Nat` add, mul, `<` and gcd, `UInt32` add with wraparound, and string append are checked against concrete results.
+- `Array.push` gives `[1, 2, 3]`.
+- `String.Pos.Raw.get?` gives `some 'b'`.
+- `String.compare` and `Float.frExp` are checked only in general (the result is the converted value), because neither function reduces in the kernel.
+
+# Summary of changes for run 017239ee-6c3b-4b1a-9173-99c2dfeb273c
+**No, the evaluator can't evaluate every `Term`.** It only handles terms that never build a value of a recursive type. I added a test file that proves this, and it builds with no `sorry`.
+
+**What the evaluator covers.** `Term.eval` (in `LeanScript/Eval.lean`) is a total function defined by structural recursion on the term, but it takes the proof `Term.NoRecMk t` as an argument. That condition fails at exactly four constructors: `recTaggedUnion_mk`, `recObject_mk`, `recAlias_mk` and `mutualRecursiveFamily_mk`. Any term that avoids them, which covers the whole non-recursive language, is evaluated, and `Term.run` fills in the condition automatically.
+
+**Why the rest can't be evaluated.** `LeanScript/Den.lean` sends every recursive type to `PEmpty`, so there is nothing for a term that builds, say, a list to evaluate to. This comes from the value model, not from a missing case in the evaluator.
+
+**Proofs in `TyTests/EvalCoverageTest.lean`** (new file; it uses only the standard axioms):
+- `natNil_not_noRecMk`: the closed term `natNil`, the empty list of naturals as a recursive tagged union, is outside the evaluator's fragment.
+- `natListTy_den_empty`: the list type has no values in the model.
+- `no_total_evaluator`: no function at all, not just this evaluator, can give every closed term a value of its type, because `natNil` would need a value of an empty type.
+- `den_fun_natList_subsingleton` and `run_natHead_eq_run_natFoldZero`: terms that only take recursive values apart (`recTaggedUnion_casesOn`, `_rec` and so on) are accepted by `Term.run`, but the result is meaningless. Their values are functions out of an empty type, so "head of a list" and "fold that answers 0" get equal values.
+
+**Two related limits that follow from the same model (not stated as separate theorems):**
+- An open term whose context contains a recursive type can only be evaluated vacuously, because no environment exists for that context.
+- A signature that declares a global of recursive type has no `GlobalEnv`, so terms over it can't be run.
+
+**What it would take to evaluate everything.** The model would need real values for recursive types: the least fixed point of the shape a recursive type describes, for example with `WType`. Once `Ty.Den` gives those values, `NoRecMk` could be dropped and the four `_mk` constructors would have evaluator cases. The design notes in `LeanScript/Eval/NoRecMk.lean` already say this. I haven't implemented it.
+
+# Summary of changes for run 4a309b8a-7dff-4e20-96a8-3968146bfb12
+I wrote `ImprovementProposals.md` in the project root, a list of proposed improvements based on a read-through of the code. It's a written document only: no Lean code changed, and none of the proposals has been tried or checked in Lean.
+
+The proposals are grouped by area:
+
+- **A. Correctness guarantees** — the largest gaps I found:
+  - Have `#leanscript_to_term` also produce a proof that the translated term evaluates to the original Lean definition. Today the tests only check single inputs with `rfl`.
+  - Add a lawful version of `LeanScriptTyWf` that links `Ty.Den (tyOf α)` back to `α`. Today nothing ties the tree to the type it models.
+  - Add renaming and substitution for `Term`, with proofs that evaluation respects them.
+  - Add a decidable checker for `Ty.Wf` that `ty_wf` can fall back on.
+- **B. The type language**:
+  - Replace the unrestricted `bind` function in `TaggedUnionFoldCases` with a two-case datatype (already noted as open in `TermTypeSafety.md`).
+  - Notes for when you do want existential fields: a design that avoids twins, and a smaller first step of erasing proof fields like `decreasing`.
+  - `Repr`/`Hashable`/printing instances for `Ty`/`TyWf`.
+  - One shared traversal over `Ty` for the proof-level passes; `Ty.Den` should stay hand-written.
+  - A shorthand syntax for writing trees in tests.
+- **C. Terms and the evaluator**:
+  - Move the commented-out sketches that contain `sorry` (in `Expr/Design.lean` and `Expr/Term.lean`) into a markdown note.
+  - A pretty-printer for `Term`.
+  - Possibly merge the six folds that take a lookback depth into one.
+  - Options for a faster evaluator, justified with `@[csimp]` so the kernel checks it.
+- **D. Engineering**:
+  - CI that fails on `sorry`, axioms and warnings.
+  - Split `Expr/Term.lean`, which is 1065 lines.
+  - An automated check of the import graph, so a module that re-exports others or a circular import (like the old one in `Ty/Class.lean`) can't come back.
+  - Gather the design notes in one folder.
+  - `#guard_msgs` tests for each of the roughly 90 translator error messages.
+
+The file ends with a suggested order: first the cheap items that make later checks automatic (C1, D1), then the correctness work, then the larger refactors, with existential fields last.
+
+# Summary of changes for run 617a3f83-e918-4972-96f9-f9fe40a4079d
+I split the large files into smaller, topic-based ones. The whole project still builds with `lake build` (268 jobs, up from 248 because there are more files now). I only moved code: no definition or proof changed, except one small change in `Trans.lean` described below. The number of `sorry`s is the same as before (44, all in pre-existing commented-out sketches). I didn't add any umbrella files that just re-export others. Where a file was split, it now imports the pieces it needs directly, and every file that used it imports the new pieces by name.
+
+**Library**
+- **`NonEmpty/ListCorrectByConstruction/Basic.lean`** (891 lines) and **`NonEmpty/ArrayCorrectByConstruction/Basic.lean`** (986 lines) are each split into four files, 50–363 lines each:
+  - `Basic`: the structure, indexing and core operations.
+  - `Ops`: `fromList`/`fromArray`, reverse, append, zip, search and folds, with their lemmas.
+  - `Instances`: membership, `ForIn`, and the Functor/Applicative/Monad instances with their lawfulness proofs.
+  - `Notation`: the `![…]` / `#![…]` literals and the coercions.
+  
+  The files that used to import `…Basic` (`LeanScript/Ty/Schema.lean`, the `ToExpr` files, the `Intercalate` files and the two top-level `NonEmpty` files) now import all four pieces.
+- **`LeanScript/Ty/Deriving.lean`** (966 lines) is split into `Deriving/Read.lean` (the table of already-built trees, reading a declaration, the dependency graph), `Deriving/Build.lean` (building trees) and `Deriving/Translate.lean` (hoisting and translation). `Deriving.lean` itself keeps the overview and the `deriving` handler (192 lines).
+- **`LeanScript/Eval.lean`** (677 lines) is split into `Eval/Env.lean` (environments and folds), `Eval/NoRecMk.lean` (`Term.NoRecMk` and the `no_rec_mk` tactic) and `Eval.lean` (the evaluator and its facts, 383 lines).
+- **`LeanScript/ToTerm/Trans.lean`** (976 → 854 lines): the six builders for the branches of a dispatch (`mkTaggedUnionCases`, `mkEnumCases`, …) moved to the new `ToTerm/Cases.lean`. They were part of the `trans` mutual block only because they call `transBranch`. They now take that function as an argument, of type `BranchFn`, and the call sites pass `transBranch c`. This is the one code change.
+- **`LeanScript/Expr/Term.lean`** (1124 → 1065 lines): `SelfField`, `FamilyMemberField` and `FamilyMemberAt` moved to the new `Expr/SelfField.lean`.
+
+**Tests**
+- `TyTests/InductiveTypesTest.lean` (749 lines) is now the folder `TyTests/InductiveTypesTest/`, with `Basic`, `Parameters`, `NestedRecursion` and `Existentials`. These still don't start with `module`, like the original. I updated the references to it in `LeanScript/Ty/README.md` and `TyTests/DocumentedMistakesTest.lean`.
+- `FamilyRecDepthTest`, `RecAliasRecDepthTest`, `RecObjectRecDepthTest` and `RecUnionRecDepthTest` (593–746 lines each) are each split in two. A new `…/Programs.lean` holds the Lean reference programs, the type being folded over and what its branches bind. The original file keeps the terms and their checks, so files that import it (such as `FamilyRecDepthMembersTest`) didn't need changing.
+
+**Two files are still long, because they can't be split without changing their meaning:**
+- `LeanScript/Expr/Term.lean` (1065 lines) is almost entirely one `mutual` block of inductive types, and a mutual block has to stay in one file.
+- `LeanScript/LeanInitPureExterns.lean` (756 lines) is a single inductive type.
+
+Every file is now under 900 lines except `Term.lean`, and the work is committed.
+
+# Summary of changes for run 5f5e93bb-ea6c-4009-8b29-18dd50e9da00
+I gave the fold of a mutual recursive family a lookback depth — the way `nat_rec`, `array_rec`, the tagged-union fold, the record fold and the newtype fold already had one — and wrote the `fib` family of tests against it. The whole project builds (248 targets) and no `sorry` was added; the only ones remaining are the pre-existing ones in the commented-out sketches.
+
+**The node.** `LeanScript.Term.mutualRecursiveFamily_rec` in `LeanScript/Expr/Term.lean` now takes a depth `k` (defaulting to `0`), and its branches are `LeanScript.FamilyFoldKCases`. A branch is either an **answer**, in the context the plain fold gave it — the member's fields, with the value of the fold after each field that is an occurrence of a member (`TyWf.famRecBinders`) — or a **deeper look**: it names such a field (`LeanScript.FamilyMemberField`, the family-scoped `SelfField`), says which member of the family that field is an occurrence of (`LeanScript.FamilyMemberAt`, a position in the list of members carrying that member's shape) and dispatches on **that member**, whichever one it is, at a depth one smaller. So a depth-`k` branch reads the answers at everything `k + 1` constructors down along the path it descends, crossing members as the path does; because a look is only ever taken into a field, every answer is still the answer at a subvalue and a term stays terminating by construction. The four auxiliary branch families mirror the plain ones one for one, so a fold still has the branches of *every* member and cannot fall off the end wherever a look lands. The evaluator needed only the extra argument in its two patterns.
+
+**Nothing is lost at the default depth.** `LeanScript/FamilyRecFacts.lean` (new) gives the two translations between the plain branches and the depth-zero branches and proves them mutually inverse (`FamilyFoldKCases.ofFoldK_toFoldK`, `FamilyFoldKCases.toFoldK_ofFoldK`, and the same for the four auxiliary families).
+
+**The tests.** `TyTests/FamilyRecDepthTest.lean` (new) is the requested suite over a family that is the `mutual` block `Pe` (the Peano naturals) and `Ls` (a list of naturals): the reference Lean programs with `#guard`s on their values at `10`, the theorem that the family's `fib` is the ordinary `fib`, the request's own theorems that the pair recursion and the tail-recursive loop compute `fib`, and the continuant; then each program as a term of the language — `fib` as a depth-one fold, tribonacci to hexanacci at depths two to five, the loop as a depth-zero fold at a function type, the pair recursion as a depth-zero fold at a record type, and the continuant, over the family's other member, whose look descends into a constructor's *second* field. `rfl` examples pin what each branch binds, `no_rec_mk` examples record that a fold over a recursive shape is a term the model does not run, a `#guard_msgs` example records that the `fib` branch cannot be written at depth zero, and the depth-zero facts are applied to the two depth-zero folds. `TyTests/FamilyRecDepthMembersTest.lean` (new) is the other half: a fold over a family whose two members are defined in terms of each other, where every deeper look crosses to the other member, and a fold over a family with all three member shapes — a record member, a member with constructors and a newtype member, written in a scope of three members — where both recursive members descend and the newtype member answers. As elsewhere in the project each term is checked by its type, since a recursive shape has no values in the model.
+
+`TyTests/RecTermTest.lean` needed only `.here` wrappers on the branches of its existing fold and the new elaboration message; the prose in `TermTypeSafety.md` and `LeanScript/Expr/Design.lean` records the change. The boundary the depth does not reach — a recursion that halves its argument — is stated at the end of the suite, as on the other sides.
+
+# Summary of changes for run ef94de08-9f08-4b52-801e-dc9f5a4d63b8
+I gave the fold of a recursive newtype a lookback depth — the way `nat_rec`, `array_rec`, the tagged-union fold and the record fold already had one — and wrote the `fib` family of tests against it. The whole project builds (245 targets) and no `sorry` was added; the only ones remaining are the pre-existing ones in the commented-out sketch in `LeanScript/Expr/Term.lean`.
+
+**Why the node had to change.** A recursive newtype can never have a body that is *literally* an occurrence of itself: `μX. X` is the equation `T = T`, which no value satisfies. `TyWf.recBinders`, which every other fold's branch used, only puts an answer after such a field — so the old `recAlias_rec` handed its branch *no answer at all*, exactly the situation the record fold was in. `LeanScript/RecAliasRecFacts.lean` (new) proves this: `Ty.ne_self_of_wf_recAlias` (the body of a recursive newtype is not `Ty.self`) and `TyWf.recBinders_recAlias` (its old branch context was just the body, the same context `recAlias_casesOn` binds).
+
+**The node.** `LeanScript.Term.recAlias_rec` now takes a depth `k` (defaulting to `0`). Its branch binds the body, unfolded, and then one **lookback window** (`TyWf.recAliasRecBinders`): the body with every subvalue replaced by the answer there (`TyWf.recAliasMap`), and at depth `k` by the **answer tree** of depth `k` at that subvalue (`TyWf.recAliasAnswerTree`) — the answer at it beside, in the shape of the body, the depth-`k − 1` trees of its own subvalues. So a depth-`k` branch reads the answers at everything `k + 1` levels down along the path it descends, and the answers are still *given* rather than called, so a term stays terminating by construction. `TyWf.recAliasRecBinders_zero` says the default depth is the old branch context with precisely the one answer it was missing appended, so nothing writable before is lost. The evaluator needed only the extra argument in its two patterns.
+
+**The tests.** `TyTests/RecAliasRecDepthTest.lean` (new) is the requested suite over the newtype `Chain = Option (Nat × Chain)`, a list of labels: the reference Lean programs (`fib`, `trib`, `tetra`, `penta`, `hexa`, the tail-recursive loop, the pair recursion and the continuant) with `#guard`s on their values, the theorems that the chain's `fib` is the ordinary `fib` of its length, that the pair recursion carries `(fib n, fib (n+1))` and that the loop computes `fib`; then each program as a term of the language — `fib` as a depth-one fold, tribonacci to hexanacci at depths two to five, the loop as a depth-zero fold at a function type, the pair recursion as a depth-zero fold at a record type, and the continuant, which also reads the newtype's own label, at depth one. `rfl` examples pin the branch context at each depth, `no_rec_mk` examples record that a fold over a recursive shape is a term the model does not run, and a `#guard_msgs` example records that the `fib` branch genuinely cannot be written at depth zero. The prose also records the boundary the depth does not reach (a recursion that halves its argument).
+
+`TermTypeSafety.md` gained a short update noting that `TyWf.recBinders` is now used only where a field can really be an occurrence: the fold of a recursive tagged union and the fold of a mutual family.
+
+# Summary of changes for run 619f2835-4218-48c6-ae90-378301edaed1
+I gave the fold of a recursive record a lookback depth, the way `nat_rec`, `array_rec` and the tagged-union fold already had one, and then wrote the `fib` family of tests against it.  The whole project builds (243 targets) and no `sorry` was added — the only occurrences remain the pre-existing ones in the commented-out sketch inside `LeanScript/Expr/Term.lean`.
+
+**Why the node had to change.**  A recursive record can never have a field that is *literally* an occurrence of itself: all of a record's fields must have values, so a field written `Ty.self` would leave the record with none and the tree would not be a type.  `TyWf.recBinders`, which every other fold's branch uses, only puts an answer after such a field — so the old `recObject_rec` handed its branch *no answer at all*, and no recursion over a record could be written.  `LeanScript/RecObjectRecFacts.lean` (new) proves exactly this: `Ty.ne_self_of_wf_recObject` (no field of a recursive record is `Ty.self`) and `TyWf.recBinders_recObject` (its old branch context was just the fields, the same context `recObject_casesOn` binds).
+
+**The node.**  `LeanScript.Term.recObject_rec` in `LeanScript/Expr/Term.lean` now takes a depth `k` (defaulting to `0`).  Its branch binds the record's fields, unfolded, and then one **lookback window** (`TyWf.recObjectRecBinders`): the record's own fields with every subvalue replaced by the answer there (`TyWf.recObjectMap`), and at depth `k` by the **answer tree** of depth `k` at that subvalue (`TyWf.recObjectAnswerTree`) — the answer at it beside, in the shape of *its* fields, the depth-`k - 1` trees of its own subvalues.  So a depth-`k` branch reads the answers at everything `k + 1` levels down, along the path it descends, and the answers are still *given* rather than called, so a term stays terminating by construction.  `TyWf.recObjectRecBinders_zero` says the default depth is the old branch context with precisely the one answer it was missing appended, so nothing that was writable before is lost.  The evaluator needed only the extra argument in its two patterns; recursive shapes still have no values in the model.
+
+**The tests.**  `TyTests/RecObjectRecDepthTest.lean` (new) is the requested suite over a chain of labelled cells — `Cell.mk (label : Nat) (next : Option Cell)`, the shortest recursive record there is: `fib` as a depth-one fold whose descent matches the Lean `match` step for step, the tribonacci, tetranacci, pentanacci and hexanacci numbers at depths two to five, the tail-recursive two-accumulator loop as a depth-zero fold at a function type, the pair recursion as a depth-zero fold at a record type, and the continuant, a depth-one fold that also reads the record's own label field.  As elsewhere in the project each term is checked by its type, with `rfl` examples pinning the branch contexts and the two equations that make up the descent, `NoRecMk` checks, a negative check that `fib`'s branch cannot be written at depth zero, and the depth-zero facts applied to this record.  The Lean programs the terms transcribe are checked too: their values at `10` by `#guard`, that the chain's `fib` is the ordinary `fib` of its length, and the request's own theorems — the pair recursion carries `(fib n, fib (n + 1))`, its first component is `fib`, and the tail-recursive loop computes `fib`.  The halving recursion (`fibFast`) is out of reach at any depth, and the file says why.  The prose in `TermTypeSafety.md` and in `LeanScript/Ty/Unfold.lean`, which recorded that the record fold could never answer, now carries a note that this is what changed.
+
+# Summary of changes for run 2115b128-17c3-4b7d-9ff2-b59663c7c315
+I gave the fold of a recursive tagged union a lookback depth, the way `nat_rec` and `array_rec` already had one, and then wrote the `fib` family of tests against it.  Everything builds (241 targets) and no `sorry` was added — the only occurrences in the project remain the pre-existing ones in the commented-out sketch of `LeanScript/Expr/Design.lean`.
+
+**The node.**  `LeanScript.Term.recTaggedUnion_rec` in `LeanScript/Expr/Term.lean` now takes a depth `k` (defaulting to `0`).  A branch is no longer just a term: `LeanScript.FoldKBranch` is either an answer — in the same context the plain fold's branch had, binding the constructor's fields and the value of the fold at each field that is an occurrence of the union — or a **deeper look**, which names an occurrence among those fields and dispatches on the union again at depth `k - 1`, so that branch is handed the subvalue's fields and the values of the fold at them.  The occurrence descended into is named by `LeanScript.SelfField`, which can only point at a field, so every answer a branch receives is still the answer at a subvalue and a term is terminating by construction at every depth.  `LeanScript.TaggedUnionFoldKCases` (with its two auxiliaries) is the case tree; at depth `0` a deeper look is unavailable, so the branches are exactly the old ones, and only `.here e` wrappers change at existing use sites — in the translation (`LeanScript/ToTerm/Trans.lean`, which still produces depth `0` for `List.rec`) and in `TyTests/RecTermTest.lean`.
+
+**The proof.**  `LeanScript/RecUnionRecFacts.lean` (new) gives the two translations between the plain branches and the depth-zero branches and proves they are mutually inverse (`TaggedUnionFoldKCases.ofFoldK_toFoldK`, `TaggedUnionFoldKCases.toFoldK_ofFoldK`, and the same for the auxiliary families), so the default depth changes nothing.
+
+**The tests.**  `TyTests/RecUnionRecDepthTest.lean` (new) is the requested suite over the Peano naturals as a union of the language: `fib` as a depth-one fold — its nesting matches the Lean `match` one for one — the tribonacci, tetranacci, pentanacci and hexanacci numbers at depths two to five, the tail-recursive two-accumulator loop as a depth-zero fold at a function type, the pair recursion as a depth-zero fold at a record type, and the continuant over a list-shaped union, whose deeper look has to descend into the constructor's *second* field.  Since the evaluator's model gives a recursive shape no values, each term is checked by its type (as elsewhere in the project), together with `rfl` checks that the branch contexts are the documented ones, `NoRecMk` checks, a negative check that `fib`'s branch cannot be written at depth zero, and the round-trip facts applied to the two depth-zero folds.  The Lean reference programs the terms transcribe are themselves checked: their values at `10` by `#guard`, that the Peano `fib` is the ordinary `fib` at every argument, and the request's own theorems — the pair recursion carries `(fib n, fib (n+1))`, its first component is `fib`, and the tail-recursive loop computes `fib`.  The halving recursion (`fibFast`) is still out of reach at any depth, and the file says why.
+
+# Summary of changes for run a4e0de6c-1389-4be4-bcd2-94156dea2f67
+I gave the array recursor a lookback depth, the way `nat_rec` already had one, and then wrote the `fib` family of tests over arrays against it.
+
+**The node.** `LeanScript.Term.array_rec` in `LeanScript/Expr/Term.lean` now takes a depth `k` (defaulting to `0`): its branch binds the head, the tail and the values of the fold at the `k + 1` suffixes `as`, `as.drop 1`, …, `as.drop k`, nearest first. The lists that are shorter than that window need answers that can depend on their *elements* (unlike a natural number's base values), so they are given by a new family `LeanScript.ArrayRecBases`, which peels one element at a time and binds it. At the default depth the node is exactly the old `List.rec` — same branch context definitionally — so the only change at existing use sites is wrapping the base value as `.nil e`.
+
+**The meaning.** `LeanScript/Eval.lean` evaluates it with `listFoldK`, which carries the last `k + 1` answers in the same window `nat_rec` uses and shifts a new one in at each element, so the fold stays linear. `LeanScript/ArrayRecFacts.lean` (new) proves, at every depth: the base equation (`listFoldK_base`), the step equation (`listFoldK_step`), the invariant that the window really is the history of answers (`listFoldKAux_eq_ofFunList`), that depth zero **is** the old one-element fold (`listFoldK_eq_listFold`), and the three corresponding facts about `Term.eval` of the node.
+
+**The tests.** `TyTests/ArrayRecKTest.lean` (new) checks the fold at depths zero, one, two and three, and that the branch's context at a literal depth reduces to the readable `σ :: array σ :: τ :: τ :: Γ`. `TyTests/ArrayRecDepthTest.lean` (new) is the request's `fib` suite in array form, around the **continuant** `K [] = 1`, `K [a] = a`, `K (a :: b :: as) = a * K (b :: as) + K as` — the array-valued `fib`, which reads the tail of the tail exactly as `fib` reads `n + 2`. Written out as terms of the grammar and proved at *every* list, not just at sample values: the continuant at depth one, its three- and four-suffix versions (the array tribonacci and tetranacci) at depths two and three, the tail-recursive two-accumulator loop as a fold at a function type, the pair recursion as a fold at a record type, and the `for x in l do` loop; plus the bridge `cont (List.replicate n 1) = fib (n + 1)`, so the array term computes `fib` on a list of ones. The halving recursion (the analogue of `fibFast`) is discussed and explained as out of reach of any depth, as on the `Nat` side.
+
+These terms are written out by hand: `#leanscript_to_term` does not read recursions over lists yet, so there is no translated half for the array suite (the file says so). One pre-existing kernel check in `TyTests/NatRecDepthTest.lean` (the hexanacci value) needed a larger elaboration budget after the grammar gained a constructor; only the `maxHeartbeats` option was added there, the check itself is unchanged. `lake build` is clean across all 239 targets and no `sorry` was added — the only occurrences remain the pre-existing ones inside the commented-out design sketch.
+
+# Summary of changes for run 31877bbb-d1b8-463a-b383-ec175fdfe121
+I split the two oversized modules into directories of smaller ones, following the convention you asked for earlier: no umbrella file, each module imported directly by whoever needs it.
+
+`LeanScript/Expr.lean` (1090 lines) → `LeanScript/Expr/`:
+- `Design.lean` — the prose only: the recursion discipline, your original sketch kept verbatim as a comment, and the four decisions that turned it into the grammar. It declares nothing.
+- `NatRecCtx.lean` — `natRecCtx` and its four facts (`natRecCtx_zero`, `_succ`, `_eq_replicate`, `_length`).
+- `Term.lean` (725 lines) — the grammar itself: the one `mutual` block with `Term`, `Terms`, `Spine` and every branch family. It stays a single file because a `mutual` block is one command.
+
+`LeanScript/ToTerm.lean` (1933 lines) → `LeanScript/ToTerm/`, a linear import chain:
+`Overview.lean` (the module documentation, prose only) and then `ObjectExpr.lean` (the pieces of the object language as expressions, and bundling) → `TyView.lean` (a tree as a view, and the tree of a Lean type) → `Ctx.lean` (where a translation stands, and the signature) → `Cache.lean` (the cache, and what may be translated at all) → `Pieces.lean` (literals and small constructions) → `Match.lean` (a dispatch Lean compiled with a default) → `Brec.lean` (the compiled form of a structural recursion) → `Trans.lean` (the translation, one `mutual` block) → `Elab.lean` (`#leanscript_to_term` and the two cache commands — the module a user imports).
+
+Two helpers that are not part of the recursion, `ctorValueArgs` and `mkNatRecBase`, moved out of the `mutual` block into `Pieces.lean`. Every remaining file in the project is now under 1000 lines, the largest being `LeanScript/ToTerm/Trans.lean` at 965.
+
+Importers were updated: `LeanScript/Eval.lean`, `TyTests/TermTest.lean` and `TyTests/RecTermTest.lean` now import `LeanScript.Expr.Term`; `TyTests/ToTermTest.lean` and `TyTests/NatRecDepthTest.lean` import `LeanScript.ToTerm.Elab`. `TermTypeSafety.md`'s pointer to the old path was updated.
+
+Nothing was deleted or rewritten: I checked line by line that every non-blank line of the two old files is present in the new ones, so the split is a pure move plus per-module headers and docstrings. `lake build` is clean across all 236 targets and no `sorry` was added (the only occurrences are the pre-existing ones inside the commented-out sketch).
+
+# Summary of changes for run 5fd63f28-43c0-4424-982c-05a516b61e93
+I implemented the depth-indexed fold exactly as you wrote it, gave it a meaning and a translation, and checked it against your Fibonacci programs. The whole project builds with no `sorry` and the new theorems use only the standard axioms.
+
+**The node** (`LeanScript/Expr.lean`). `Term.nat_rec` now reads
+
+```lean
+| nat_rec : ∀ {Γ τ} (k : Nat := 0), Term Sg Γ (.prim .nat) →
+    Spine Sg Γ (natRecCtx τ (k + 1) []) →
+    Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ →
+    Term Sg Γ τ
+```
+
+— one constructor, the old one-step fold being its `k = 0` instance (its branch's context is definitionally the old one). `natRecCtx τ k Γ` is `k` copies of `τ` in front of `Γ`, written as a recursion so it reduces on a symbolic `k + 1` and reads as `τ :: τ :: Γ` at a literal depth. One caveat worth knowing: Lean only fills a default argument when the later arguments are omitted too, so a term written positionally still names the depth — `.nat_rec 0 n (.cons z .nil) branch`, `.nat_rec 1 …` — and `(k := 2)` works as usual.
+
+**Its meaning** (`LeanScript/Eval.lean`, `LeanScript/NatRecFacts.lean`). The evaluator carries the last `k + 1` answers as a window that is literally the environment of that block of the branch's context, so the base values are an ordinary `Spine`, the branch's environment is built with no cast, and the fold is linear. `NatRecFacts` proves, at every depth: the base equation, the step equation, the invariant that the window really is the tuple of the previous answers, and the three corresponding facts about `Term.eval`.
+
+**The translation** (`LeanScript/ToTerm.lean`). `#leanscript_to_term` now reads the depth off the compiled recursion — it tries one step, then two, …, and takes the first depth at which the `brecOn`'s history is fully read, using the branch at `0, …, k` as the base values. It also reduces a branch under the binders a multi-argument recursion opens (so an accumulator-passing loop is seen as a fold), and it understands `do` in the identity monad (`Id.run`, `pure`, `>>=`, `<$>`, `let mut`) and a `for i in [:n] do …` over a range, which becomes the fold of `n` whose value is the state of the loop. A loop that leaves early, or a range that does not start at `0` or steps by more than `1`, is refused with the reason.
+
+**Your programs** (`TyTests/NatRecDepthTest.lean`, new). `fib` is written out at depth two and proved to compute `fib` at *every* argument from the node's two equations; and `fib`, `fibLoopTR`, `fibTR` (through the inlined loop), `fibPair`, `fibLoop`, `tribonacci`, `tetranacci`, `pentanacci` and `hexanacci` are each handed to the translation as you wrote them, with the value of the resulting term checked by the kernel. `fibFast` stays refused: its call is at `n / 2`, Lean compiles it by well-founded recursion, and the refusal is pinned by `#guard_msgs`. The checked arguments are kept small on purpose — evaluating a term at a record or function type inside the kernel is slow — not because anything larger fails.
+
+**Housekeeping.** `TyTests/NatRecKTest.lean` was rewritten to use the implemented node instead of its earlier stand-alone prototype (it now checks that depth one is the old one-step fold, depth two the two-step fold and `fib`, depth three the tribonacci numbers, plus the type-level reductions); `TyTests/ToTermTest.lean` moved `fib` from the "refused" section to the supported one and added a depth-three case; and the stale prose in `FibProposals.md`, `TyTests/FibWindowTest.lean` and `TyTests/FibAlgorithmsTest.lean` now says the node and the `for`-loop case exist, with the original text kept for the record.
+
+# Summary of changes for run b0e49061-c862-4ab0-98ca-7d5f078df939
+I revised `FibProposals.md` around the option you picked and answered the design question it raised, backing every claim with Lean that builds and is `sorry`-free.
+
+**The answer to "one constructor for all depths, or a finite family?"** One constructor, with the cut-off in the translation rather than in the grammar. The note now recommends a single depth-indexed fold node, `nat_recK k` — whose branch binds the predecessor and then the `k + 1` previous answers, nearest first — with `nat_rec` kept as it is and `nat_rec2` kept as an *abbreviation* for its `k = 1` instance, so the term you write and the loop that gets printed are exactly what the two-step proposal promised. The reason is that the general node costs the same clauses as `nat_rec2` alone (one constructor, one `NoRecMk` clause, one evaluator clause, one translation case, one printer case) and does not have to be paid again at depth three; and if you want depth-three-and-up refused, refusing it in `#leanscript_to_term` is one line and one option, whereas refusing it in the grammar is a commitment that can only be undone by adding another constructor. The case *for* the fixed family (and exactly when it wins — if the backend's node set must be closed and hand-written) is set out too, rather than dismissed.
+
+**The objection the earlier version raised against a depth-indexed node is withdrawn, because it was measured and is false.** It claimed the computed types would force casts, length proofs and unreadable indices. In `TyTests/NatRecKTest.lean`: the branch's context at depth two and three reduces to the readable `τ :: τ :: Γ` / `τ :: τ :: τ :: Γ` by `rfl`; depth one is `nat_rec`'s own type definitionally; the base values are an ordinary `Spine`; the window is literally the environment of that block of the context; and the evaluator clause (`evalNatRecK`) elaborates as written, with the two conversions it needs being four-line structural recursions and no cast anywhere. The same file proves the node's *semantics* in full generality — the base equation, the step equation, and the invariant that the window it carries really is the tuple of the previous answers, which is what makes the fold linear instead of exponential — plus that the existing one-step fold is its `k = 0` instance, that the proposed two-step fold is its `k = 1` instance, that it computes `fib`, and that a genuine depth-three recursion (tribonacci) runs on it.
+
+**Your five Fibonacci programs are now checked one at a time**, in `TyTests/FibAlgorithmsTest.lean`, since the point of the design is that each should be printable as written: `fibTR`/`fibLoopTR` is writable *today* (the existing fold taken at a function type — its accumulators are the value of the fold, proved equal to `fib` at every argument and both accumulators); `fibPair`/`fib2` is writable today (the fold at a two-field record — the term already in the test suite, matched field by field with your `fibPair`); `fibLoop` desugars to that same fold, so it needs nothing in the grammar and only a `ForIn`/`Std.Range` case in the translation; `fib` is the one that needs the new node; and `fibFast` is out of reach of every proposal, because a call at `n / 2` is not a descent by a fixed number of steps — the note says so explicitly and records the one well-foundedness-free shape it could take.
+
+The note also keeps all five original proposals for the record with their verdicts and the corrections marked, adds a per-file change table, the printed JavaScript loop for a `k + 1`-accumulator fold, and a narrowed refusal message. No existing file was modified; the two new test files are additions, `lake build` is clean across all 223 targets, and the new theorems use only the standard axioms. Implementing the node in `Expr.lean`/`Eval.lean`/`ToTerm.lean` is the natural next step and is not done here — the note is the plan and the tests are its verified semantics.
+
+# Summary of changes for run 6af93159-f3e2-4eb7-a2e3-47b3ede8a254
+Answer to the question: nothing in that block depends on `TyWfIn` — `TyWf.prim`, `fn`, `array`, `thunk`, `lazy`, `enum`, `record` and `taggedUnion` build a closed type out of closed types, so they belong beside the `TyWf` structure itself. They were only sitting in `LeanScript/Ty/TyWfIn.lean` because the two groups of constructors had been written together; the recursive ones (`recTaggedUnion`, `recObject`, `recAlias`, `mutualRecursiveFamily`, the unfolds and the fold binders) genuinely do need a tree written inside a binder, i.e. `TyWfIn`, so they have to stay there.
+
+So I moved them, rather than extracting a third file:
+
+- `LeanScript/Ty/TyWf.lean` now carries the three helper facts the constructors need (`Ty.wfAllIn_map_toTy`, `Ty.wfAllIn_record_map_toTy`, `Ty.wfAllIn_taggedUnion_map_toTy` — none of which mention `TyWfIn` either), the eight non-recursive `TyWf` constructors with their `@[simp] toTy_*` equations, and the `σ ⇒ τ` notation for `TyWf.fn`.
+- `LeanScript/Ty/TyWfIn.lean` keeps only what is about trees under a binder: the `TyWfIn` structure and its instances, `TyWfIn.unfold`/`unfoldFam`, the recursive shape constructors and their unfolds, and the fold-binder lists. Its `namespace TyWf` block now opens where the recursive shapes begin, and its module docstring was updated to say where the closed constructors live.
+
+No declaration was renamed, removed or restated, and the import graph is unchanged (`TyWfIn` still imports `TyWf`), so downstream files (`Den`, `Expr`, `ExprCtx`, the `TyTests` suite) are untouched. The whole project — all 221 targets, including `TyTests` — builds cleanly with no errors, no warnings and no `sorry`, and the change is committed.
+
+# Summary of changes for run b02ecb80-85f9-4cd5-9fd7-a3819984f95f
+I answered the question "how would the language support a recursion that descends more than one step, such as `fib`?" with a design note plus a working, proved demonstration.
+
+**`FibProposals.md`** (new, at the project root) explains first *why* `fib` is refused today — the only folds over a number and over a recursive union hand a branch the value at the immediate predecessor, and the translation of a compiled `brecOn` reduces the history away and fails as soon as anything but its head is read — and then sets out five proposals, each with exact signatures, the evaluator clause it would need, the files it touches, and what it costs:
+
+1. **No new constructor.** A recursion reading its value at the last `k` arguments is a one-step fold whose value is the *window* of the last `k` answers, held in a record; the work is a single function inside the translation, and nothing in the grammar, the evaluator or any existing test changes.
+2. **One new constructor, `nat_rec2`** — a fold whose branch binds both predecessors' values — with its evaluator fold written so that it stays linear, and a table of every file that would change.
+3. **A depth-indexed `nat_recK`**, and why paying the window's complexity inside the grammar (contexts mentioning `List.replicate k τ`) is worse than paying it in the translation.
+4. **A course-of-values node** carrying the whole history as an array: the most expressive, but it introduces defaults for out-of-range reads and `O(n)` memory.
+5. **A general fixpoint with a measure** (well-founded recursion), noted only to keep it distinct from the small proposals, which need none of it.
+
+The recommendation is proposal 1, with 2 added only if the shape of the printed loop matters; the note also points out that the refusal message should then be narrowed to genuinely non-uniform descents such as a call at `n / 2`.
+
+**`TyTests/FibWindowTest.lean`** (new) backs the note with real code rather than assertions. It writes `fib` out as a term of the grammar *exactly as it stands* — `nat_rec`, `record_mk`, `record_casesOn` over a two-field window — and proves `fib_term_eval : run fib_term n = fib n` for **every** `n` (via the invariant `window_eval`, that the window at `n` is `(fib n, fib (n + 1))`), alongside a few kernel-checked sample values. It also defines the two-step fold proposal 2 would put in the evaluator and proves its promised equation, `natFold2_succ_succ`, and that it computes `fib` — so the proposed constructor's semantics is checked before any of it is added.
+
+The whole project builds cleanly with no `sorry`, and the new proofs use only the standard axioms.
+
+# Summary of changes for run d07b9166-d1ca-4cbe-903c-628d50192c1a
+I picked up the in-flight change that makes `Term` use `TyWf` (a tree **together with** the proof that it is a type of the language) instead of the bare tree `Ty`, checked it through the whole tree, closed the loose ends, and left the project building clean.
+
+**State of the migration, audited file by file.** `Term Sg : Ctx → TyWf → Type 1` and `Ctx = List TyWf`; every branch family (`Terms`, `Spine`, `TaggedUnionCases` and its two companions, `EnumCases`, the two `SomeCases` lists, the fold families and the mutual-family families) is indexed by bundles; a payload written inside a binder is `TyWfIn n`, and the schemas of the grammar are schemas of bundles (`LeanRecordSchema TyWf`, `LeanTaggedUnionSchema TyWf`, `LeanTaggedUnionSchema (TyWfIn 1)`, `LeanMutualRecFamily (TyWfIn (n + 2))`). The consumers agree: `LeanScript/Den.lean` has the bundled denotations (`TyWf.Den`, `TyWf.DenList`, `TyWf.DenTU`, …), `LeanScript/Eval.lean` evaluates into them, `LeanScript/ToTerm.lean` builds bundled types, and the test files are written with `TyWf.prim`, `⇒`, `TyWf.array`, `TyWf.record`, `TyWf.taggedUnion`. The four recursive introduction forms keep their `hwf … := by ty_wf` argument, which is the condition the bundled recursive constructors ask for too — being a binder that describes a type is not a consequence of its payload being well formed in the scope it opens. No use site needs anything written by hand.
+
+**What I added.** A new section at the end of `TyTests/TermTest.lean` that pins the point of the change: two theorems, `type_of_term_is_wf` (the type of any term is a type of the language) and `ctx_of_term_is_wf` (so is every type of its context), both proved without `sorry` and using only the standard axioms; and two `#guard_msgs` tests showing that a tree which is *not* a type indexes no term at all — a free occurrence leaf `Ty.self`, and a binder that mentions itself to the left of an arrow are each refused where the index is written, with the type checker's own explanation.
+
+**Documentation brought up to date.** The grammar section of `LeanScript/Expr.lean` now names the bundled unfoldings and binders (`TyWf.recTaggedUnionUnfold`, `TyWf.recBinders`, …) instead of their tree-level predecessors; `TermTypeSafety.md` records the change as the closure of the first of its two residual items, with what was writable before and why nothing is now, and its remaining residual item is restated in current terms; `LeanScript/Ty/README.md` gained the rows for the unfolding, substitution and bundle modules and says that `Expr.lean`/`ExprCtx.lean` consume the bundle.
+
+`lake build` is clean across all three libraries (220 jobs, tests included), and the only `sorry`s in the tree remain the ones inside the preserved commented-out original sketch. Everything is committed.
+
+# Summary of changes for run 2f3ced2e-0f12-4b05-8a55-07f83bbd7b6f
+I audited every constructor of `Term` (and of the branch families its constructors mention) for terms that are well typed but should not be writable, found three gaps, and closed all three. The whole project still builds clean — `lake build`, 218 jobs, all test files included — and the only `sorry`s in the tree remain the ones inside your preserved commented-out sketch.
+
+**1. A partial dispatch could name *every* constructor.** `enum_casesOnWithDefault`, `taggedUnion_casesOnWithDefault`, `recTaggedUnion_casesOnWithDefault` and the family form took a branch list that was already ordered and non-empty by typing, but nothing stopped it from naming all the constructors — and then the default branch is dead code, an exhaustive dispatch written the long way round. `EnumSomeCases` and `TaggedUnionSomeCases` now **count their branches** in a new index, and each dispatch carries the bound `k < n` against the number of constructors the type has. The bound is the last argument and its default is a new tactic `ctor_lt` (in `LeanScript/CtorTag.lean`), so every existing term is unchanged and nothing has to be written by hand.
+
+**2. `EnumSomeCases` was indexed by a bare constructor count.** It is now indexed by the `LeanEnumSchema` itself, like `EnumCases`, `TaggedUnionCases` and `TaggedUnionSomeCases`, so branches written for one enum are not branches for another with the same number of constructors.
+
+**3. A recursive introduction form accepted a tree that is not a type.** `recTaggedUnion_mk`, `recObject_mk`, `recAlias_mk` and `mutualRecursiveFamily_mk` took any schema — including a binder that mentions itself nowhere, a non-positive one (`μX. X ⇒ Nat`) or an uninhabited one (`μX. X`, and any recursive record with a field written `Ty.self`). Following your answer, each now carries `(hwf : Ty.Wf … := by ty_wf)` for the tree it builds a value of; the proof is written by the existing tactic, and `#leanscript_to_term` writes it too, so nothing changed at any use site. The eliminators deliberately do not carry it, since such a tree has no value to take apart.
+
+**Tests.** `TyTests/TermTest.lean` gained `#guard_msgs` tests that a dispatch naming all three constructors of `three`, or both of `optNat`, no longer elaborates, plus one that naming all but one still does; `TyTests/RecTermTest.lean` gained tests that the uninhabited `cellTy` and a union mentioning itself in the domain of a function cannot be built. Existing tests are untouched and still pass.
+
+**The audit itself** is written up in `TermTypeSafety.md`: the three findings above, the checks that passed (literals at their own type, tags carrying their bound, spines typed by the matched constructor's fields, branch families that mirror their schema and so are exhaustive by construction, folds that are *given* the recursive value, typed de Bruijn variables and global references), and two residual items I describe precisely but did not change — the non-recursive introduction forms do not ask for `Ty.Wf` either (no closed term is affected, since an occurrence leaf has no values), and `TaggedUnionFoldCases` is indexed by an arbitrary `List Ty → List Ty` rather than by the two binders it is ever used with. It also records one consequence worth knowing: with the `Ty.Wf` check in place, the extra "value of the fold" binder of `recObject_rec` and `recAlias_rec` only ever occurs for a type that now has no introduction form, because a lone recursive record or newtype with a field written `Ty.self` is uninhabited; a reachable fold binder needs a union, which has a base-case constructor.
+
+# Summary of changes for run 13c98822-177a-490e-864c-0e2f43a143fa
+The four recursive shapes of `Ty` now have a full set of term forms, and the translator uses them for Lean's `List`.
+
+**The grammar (`LeanScript/Expr.lean`).** The eight `sorry`-typed sketch constructors are replaced by fifteen real ones — for each of `recTaggedUnion`, `recObject`, `recAlias` and `mutualRecursiveFamily`: an introduction form `_mk`, a case analysis `_casesOn`, a fold `_rec`, and a partial case analysis `_casesOnWithDefault` where the shape has constructors to leave out (a recursive record and a recursive newtype have a single constructor, so a partial dispatch on them would be their own `_casesOn`). The case-describing inductives are indexed by the schema itself, so they are structurally valid and match the constructors of the type: `TaggedUnionCases`/`CtorsWithPayloadCases`/`TaggedUnionCasesRest` for a dispatch, the new `TaggedUnionFoldCases`/`CtorsWithPayloadFoldCases`/`TaggedUnionFoldCasesRest` for a fold, and `FamilyMemberValue`, `FamilyMemberCases`, `FamilyMemberSomeCases`, `FamilyMemberFoldCases`, `FamilyFoldCases` for a mutual family. None of them has a default branch or an early end, so a dispatch and a fold are exhaustive by construction, and a fold's branch is *given* the recursive value rather than calling it, so a term still terminates by construction. The user's original commented sketch is kept verbatim.
+
+**Unfolding (`LeanScript/Ty/Unfold.lean`, new).** A value of a recursive shape holds the binder's payload with `Ty.self` / `Ty.familyMember i` replaced by the types they stand for. This module defines that one-level substitution and the unfolding of each shape (`recTaggedUnionUnfold`, `recObjectUnfold`, `recAliasUnfold`, `famCtorsUnfold`, `famRecordUnfold`), plus `recBinders` / `famRecBinders`, which say what a fold's branch binds: every field unfolded, and the value of the fold right after a field that is an occurrence of the type being folded over. All of it reduces definitionally on a concrete schema.
+
+**The evaluator (`LeanScript/Eval.lean`).** `Ty.Den` gives the recursive shapes no values, so the evaluator's domain is now stated rather than assumed: `Term.NoRecMk` says a term builds no recursive value, the `no_rec_mk` tactic writes it, and it is the default argument of `Term.run`/`Term.run'`, so every term that did run before still runs unchanged.
+
+**The translator (`LeanScript/ToTerm.lean`).** `List α` and `Array α` are no longer the same type. `Array α` stays `Ty.array`, whose introduction form takes every element at once; `List α` is now the recursive tagged union its `LeanScriptTyWf` instance gives it, so `[]` and `hd :: tl` translate to `recTaggedUnion_mk` (a list no longer has to be written out — a cons onto a variable tail works), a `match` on a list to `recTaggedUnion_casesOn`, and `List.rec` with a non-dependent motive to `recTaggedUnion_rec`. `Array.toList` is refused with a message explaining why. Header documentation and error messages are updated throughout.
+
+**Tests.** `TyTests/RecTermTest.lean` (new) builds terms for all four shapes and pins that the branch families are exhaustive and that the evaluator states its fragment; `TyTests/ToTermTest.lean` has separate array and list sections, with the list translations checked by their types and a new snapshot for the `Array.toList` refusal. `lake build` is green across all three libraries, with no `sorry` outside the preserved comment.
+
+# Summary of changes for run 68cc9fb2-5eaa-4fac-88c4-46d122b2a5fc
+I implemented `#leanscript_to_term`, the elaborator that turns a Lean definition into a `LeanScript.Term`, in the new module `LeanScript/ToTerm.lean`, and exercised it in the new test file `TyTests/ToTermTest.lean`. `lake build` is clean (216 jobs) and no `sorry` was added.
+
+**How it is written.** `#leanscript_to_term e` is a *term* elaborator, so the type it is checked against says which signature and context the term lives in: the expected type is a `Term Sg Γ τ`. The signature can also be named directly — `#leanscript_to_term (sig := s) e` — and then no type ascription is needed at all, since the type of the translation is inferred. With neither, the empty signature and the empty context are used.
+
+**What is translated.** Functions, applications and `let`; literals of the terminal types (`Bool`, `Nat`, `Int`, `String`, `Char`, the fixed-width integers, the floats); `if b then … else …` and `cond` on a `Bool`; the constructors of a record-shaped type, of a tagged union (`Option`, a pair, a user `inductive` with fields), of an enum and of a two-constructor field-less type (which is a `Bool`); list and array literals; `Thunk.mk` and `.get`; `match`, `X.casesOn` and projections, which become `record_casesOn`, `taggedUnion_casesOn` (branches built in the shape of the schema), `enum_casesOn`, `bool_casesOn`, `array_casesOn` or `nat_casesOn`; and the two folds, `Nat.rec` and `List.rec` with a non-dependent motive, which become `nat_rec` and `array_rec` — or the corresponding case analysis when the branch does not use the value of the fold. Lean's `List α` and `Array α` are both modelled by `Ty.array`, the one sequence the grammar has an introduction form for.
+
+**Which calls are allowed.** A constructor is always inlinable and is built in place, as are projections and anything marked `@[inline]`, `@[macro_inline]`, `@[always_inline]` or `@[reducible]`. Every *other* top-level function must be declared in the signature, and is translated to `Term.global` — the `GlobalRef` the signature gives it, matched by the declaration's name in full or by its last component. A call that is neither inlinable nor declared is refused, naming the function and both names a `GlobalDecl` could use.
+
+**The cache.** Each closed definition that is inlined is translated once and stored as a function of the context, `fun Γ => …`, so one translation serves every depth it is called from. A new tree is hashed (`Lean.Expr.hash`) and compared against the entries of that hash; an equal one is returned as the *same object*, so two definitions of the same shape are not duplicated but share one tree in memory. `#leanscript_to_term_cache_stats` reports entries, hits and shape merges, and `#leanscript_to_term_cache_clear` empties the cache.
+
+**What is refused, with a message saying why:** `partial` and `unsafe` definitions, opaque constants and axioms; well-founded recursion (`WellFounded.fix`, `Acc.rec`, `invImage`); a `partial_fixpoint` (`Lean.Order.fix`); structural recursion Lean compiled through `brecOn`, pointing at `Nat.rec` / `List.rec` instead; a dependent motive; a dependent function type; and a type with no tree — an existentially typed structure such as the `Process` of your example is named as such (“`State` is an existential”), matching what `deriving LeanScriptTyWf` already says about it.
+
+**The tests.** `TyTests/ToTermTest.lean` translates about twenty-five definitions and checks each closed one by `rfl` — that is, by the kernel — against the value `Term.eval` gives it: identity and constant functions, `let`, an application, literals, a `Bool` test, a call of a signature global, a record and a projection, `Option` and a user tagged union with fields, an enum, a pair, a thunk, array literals, `nat_casesOn`, `array_casesOn`, and the two folds summing a number and an array. The cache section pins `entries: 5, hits: 2, shape merges: 1` for two same-shape definitions and a repeated one, and the last section pins the exact refusal message for an undeclared call, a `partial` definition, an `unsafe` definition, a `brecOn` recursion, a well-founded recursion, a partial fixpoint and an existentially typed structure.
+
+# Summary of changes for run 432bbf9c-418b-4648-9890-1182111d2814
+I implemented an evaluator for the language, and it is terminating by construction: it is a total Lean function defined by **structural recursion on the term**, with no fuel, no `Option`, no `partial` and no `unsafe`. `lake build` is clean (214 jobs, no warnings) and no `sorry` was added.
+
+**`LeanScript/Den.lean` — what a type of the language *is*.** `Ty.Den τ` is the Lean type of the values of `τ`: a leaf denotes its literals' type (`LeanPrimTy.denote`), `σ ⇒ τ` a Lean function, `array α` a `List`, a delay (`thunk`, `lazy`) the value it stands for, an enum a constructor number `Fin s.nOfConstructors`, a record the product of its fields in declaration order, and a tagged union a constructor number **with exactly that constructor's fields**, `(t : Fin l.length) × Ty.DenAt l t`. The four recursive shapes of `Ty` and the two occurrence leaves denote `PEmpty` — the grammar has no introduction form for them, so no term ever has to produce such a value. `Ty` is a nested inductive, so, exactly as `Ty.beq` does, the denotation is one function per shape of the tree in a single `mutual` block; that is what makes the family structurally recursive and its equations hold definitionally, which the evaluator relies on. The file also proves `Ty.denAt_eq` (a value's fields at tag `t` are the fields the schema gives constructor `t`), and from it `Ty.DenTU.mk` / `Ty.DenTU.field?` with `field?_mk` and `field?_of_ne`.
+
+**`LeanScript/Eval.lean` — the evaluator.** `Term.eval G t env : Ty.Den τ`, where `env : Env Γ` holds a value for every type of the context and `G : GlobalEnv Sg.decls` a value for every top-level declaration of the signature; `Term.run` and `Term.run'` run a closed term. Every constructor of the grammar is covered: variables, `lam`/`ap`/`letE`/`global`, every literal, every `_casesOn` (each binding the fields of the constructor it matched), the two folds `nat_rec` and `array_rec` (evaluated by `Nat.rec` and `List.rec` on the value, which is already in hand), the delays, arrays, enums, records and tagged unions, including the two dispatch forms with a default. It is defined in one `mutual` block with the evaluators of `Terms`, `Spine`, `TaggedUnionCases`, `CtorsWithPayloadCases`, `TaggedUnionCasesRest`, `TaggedUnionSomeCases`, `EnumCases` and `EnumSomeCases`. Nothing can fail: a dispatch always has a branch (the exhaustive branch families are indexed by the schema, and a tag past the end of a list of constructors has type `PEmpty`), and a field is bound rather than looked up. Six equations are stated and proved by `rfl`: beta, `let`, forcing either delay, and the tag and the fields of a tagged value.
+
+**`TyTests/EvalTest.lean` — the evaluator run.** About seventy closed terms together with the value the evaluator gives them, each checked by the kernel with `rfl`: application, `let`, a call of a signature global, literals, the predecessor by case analysis, both folds (including one that reads the last element of an array), character codes and substring fields, arrays, the three- and five-constructor enums and their partial dispatches, records and both projections, and tagged unions in all three shapes — first constructor with fields, first constructor field-less, and a three-constructor union — with both the exhaustive and the with-default dispatches.
+
+I did not modify any existing file; the three files above are new.
+
+# Summary of changes for run 92056ec6-6eca-4e71-a5a0-9f4d25e7ae69
+`TaggedUnionSomeCases` is now validated by its type, exactly as `EnumSomeCases` already was, and `lake build` is clean (211 jobs; the only `sorry`s remain in the preserved commented-out original sketch).
+
+**The family.** In `LeanScript/Expr.lean` it reads
+
+```
+inductive TaggedUnionSomeCases (Sg : Sig) :
+    Ctx → LeanTaggedUnionSchema Ty → Ty → optParam Nat 0 → Type 1
+  | last {Γ l τ lo} (t : Nat) (ht : t < l.length := by ctor_tag)
+      (branch : Term Sg (l.get t ht ++ Γ) τ) (hi : lo ≤ t := by ctor_ge) :
+      TaggedUnionSomeCases Sg Γ l τ lo
+  | cons {Γ l τ lo} (t : Nat) (ht : t < l.length := by ctor_tag)
+      (branch : Term Sg (l.get t ht ++ Γ) τ)
+      (rest : TaggedUnionSomeCases Sg Γ l τ (t + 1)) (hi : lo ≤ t := by ctor_ge) :
+      TaggedUnionSomeCases Sg Γ l τ lo
+```
+
+so all three conditions hold by typing: the list ends with `last` rather than an empty case, so **at least one** constructor is named and a `taggedUnion_casesOnWithDefault` that is just its default is unwritable; and the extra index is the smallest constructor number a branch may still name — the tail after the branch of `t` starts at `t + 1`, and each branch carries `lo ≤ t` — so the numbers **strictly increase**, giving both **smallest-to-biggest order** and **no repeats**. That index is an `optParam` starting at `0`, so `taggedUnion_casesOnWithDefault`'s signature is unchanged and still reads `TaggedUnionSomeCases Sg Γ l τ`. Each branch keeps the `t < l.length` tag bound written by `ctor_tag`, and the new ordering bound is written by `ctor_ge`, so a list of concrete numbers needs nothing written by hand.
+
+**Tests.** `TyTests/TermTest.lean`: the existing one-branch partial union dispatch is now `.last 0 …`; a new three-constructor union exercises a two-branch list written smallest-first, each branch binding its field, with both bounds left to the default tactics; and two `#guard_msgs` tests pin that a list whose numbers go down and a list naming the same constructor twice both fail to elaborate. The grammar section at the top of `LeanScript/Expr.lean`, the `taggedUnion_casesOnWithDefault` docstring and the `ctor_ge` docstring were updated to describe the union case too. Nothing was deleted.
+
+# Summary of changes for run 86ab5a60-47dc-4cb9-9171-ea7b09f31f82
+Both changes to the enum forms of `Term` are in, and `lake build` is clean (211 jobs, no `sorry` outside the preserved commented-out sketch).
+
+**`enum_casesOn` now branches on the schema.** It reads `Term Sg Γ (.enum s) → EnumCases Sg Γ τ s → Term Sg Γ τ`, and `EnumCases Sg : Ctx → Ty → LeanEnumSchema → Type 1` mirrors `LeanEnumSchema` the way `TaggedUnionCases` mirrors its own schema: `three` is the branches of the three constructors an enum has at minimum, and `cons` is one more branch for one more constructor. So no count and no `nOfConstructors` appears in a dispatch, and it is still exhaustive by construction — there is no empty case before the constructors run out and no default. `enum_casesOnWithDefault` keeps the signature you gave: `Term Sg Γ (.enum s) → EnumSomeCases Sg Γ τ s.nOfConstructors → Term Sg Γ τ → Term Sg Γ τ`.
+
+**`EnumSomeCases` is validated by its type.** It has exactly the two branch shapes you asked for, plus the three conditions:
+
+* *at least one case* — the list ends with `last` (the branch of the last constructor named), not with an empty case, so a `enum_casesOnWithDefault` that names nothing, which is just its default, is unwritable;
+* *no repeats, smallest to biggest* — the family carries the smallest constructor number a branch may still name: `cons i branch rest` has `rest : EnumSomeCases Sg Γ τ n (i.val + 1)`, and each branch carries `hi : lo ≤ i.val`. Strict increase gives both order and distinctness.
+
+That extra "smallest number still allowed" index is an `optParam` starting at `0`, which is why `EnumSomeCases Sg Γ τ s.nOfConstructors` is still the type of a whole list and reads exactly as you wrote it. The bound is the last argument of each constructor with `by ctor_ge` as its default — a new tactic beside `ctor_tag` in `LeanScript/CtorTag.lean` — so a list of concrete numbers needs nothing written by hand: `.cons 1 b₁ (.last 3 b₃)`. Plain numerals work as constructor numbers because `LeanScript/Ty/Schema.lean` gained the instance that an enum's constructor count is nonzero.
+
+`TyTests/TermTest.lean` pins all of it: the three-constructor dispatch is now `.three …`, a new five-constructor enum exercises `cons`, a two-branch partial dispatch is written smallest-first, and two `#guard_msgs` tests record that a list whose numbers go down and a list that names the same constructor twice both fail to elaborate. The grammar section at the top of `LeanScript/Expr.lean` and every affected docstring were updated; nothing was deleted.
+
+# Summary of changes for run e805aa05-1c20-4b5e-9fed-d2081a84a6be
+`lake build` is clean (211 jobs), with no `sorry` outside the preserved commented-out sketch.
+
+**`taggedUnion_casesOn` now takes its branches indexed by the schema.** It reads `Term Sg Γ (.taggedUnion l) → TaggedUnionCases Sg Γ l τ → Term Sg Γ τ`, and no `toList` appears anywhere in a dispatch. To make that well founded, the branch family was split into three, each mirroring the schema it branches on:
+
+* `TaggedUnionCases Sg : Ctx → LeanTaggedUnionSchema Ty → Ty → Type 1` has `payloadFirst` — the branch of constructor `0`, which binds its fields, the branch of the constructor that must follow it, and `TaggedUnionCasesRest` for the rest — and `skip` — the branch of the field-less constructor `0`, which binds nothing, and `CtorsWithPayloadCases` for what follows;
+* `CtorsWithPayloadCases Sg : Ctx → CtorsWithPayload Ty → Ty → Type 1` mirrors `CtorsWithPayload` the same way (`here`/`skip`);
+* `TaggedUnionCasesRest Sg : Ctx → List (List Ty) → Ty → Type 1` is the plain list of remaining branches (the old family, renamed).
+
+Because the family is the schema's own shape, a dispatch is still exhaustive by construction: there is no early end and no default.
+
+**`EnumCases`** keeps the shape you asked for, `Ctx → Ty → Nat → Type 1`, indexed by `s.nOfConstructors`.
+
+**Matching on only some constructors.** Two new `Term` constructors take a partial branch list plus a default, so nothing can fall off the end:
+
+* `enum_casesOnWithDefault : Term Sg Γ (.enum s) → EnumSomeCases Sg Γ τ s.nOfConstructors → Term Sg Γ τ → Term Sg Γ τ`, where `EnumSomeCases` is a list of (constructor number as a `Fin`, branch) pairs;
+* `taggedUnion_casesOnWithDefault : Term Sg Γ (.taggedUnion l) → TaggedUnionSomeCases Sg Γ l τ → Term Sg Γ τ → Term Sg Γ τ`, where a branch of `TaggedUnionSomeCases` names its constructor by number, carrying the same `t < l.length` bound as `taggedUnion_mk` with the `:= by ctor_tag` default, and binds that constructor's fields.
+
+Branches are tried in the order given and every unnamed constructor takes the default.
+
+**Tests and documentation.** `TyTests/TermTest.lean` updates the existing union dispatch to the schema-shaped branches and adds four more: a union whose first constructor is field-less (exercising `CtorsWithPayloadCases`), a partial union dispatch with a default whose tag bound is written by the default tactic, and a partial enum dispatch with a default. The grammar section at the top of `LeanScript/Expr.lean` gained two paragraphs describing the schema-indexed branch families and the with-default forms, and every new declaration carries a docstring. Nothing was deleted.
+
+# Summary of changes for run 45d43d5d-0efd-4b4d-ba95-d23cffb874d7
+All three requests are done and `lake build` is clean (211 jobs, no `sorry` outside the preserved comments).
+
+**`taggedUnion_mk` now states its tag's bound against the schema, with a default tactic.** It reads
+
+```
+| taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema Ty) (t : Nat)
+    (ht : t < l.length := by ctor_tag) (fields : Spine Sg Γ (l.get t ht)) :
+    Term Sg Γ (.taggedUnion l)
+```
+
+(the binders are written in constructor style rather than under a `∀`, because the parser does not accept a default value inside a `∀`). `LeanTaggedUnionSchema.length` already *is* the number of constructors — `length_toList` proves it equals `l.toList.length`, and for the `payloadFirst` shape it is literally `rest.length + 2` — so nothing about it had to change; what changed is that the bound is now stated against it, and `LeanScript/Ty/Schema.lean` gained `LeanTaggedUnionSchema.get l t ht`, the field types of constructor `t` under that bound, plus `two_le_length'` (`2 ≤ l.length`). The new `ctor_tag` tactic in `LeanScript/CtorTag.lean` writes the bound: `assumption` for a tag whose bound is in context, `decide` for a concrete schema and tag, and unfolding the schema lengths followed by `omega` otherwise. `TyTests/TermTest.lean` now builds a tagged value with the bound left to the tactic (`.taggedUnion_mk optNat 0 (fields := .cons (.nat_mk 3) .nil)`), one with the field-less second constructor, and one with the proof still given by hand, so both styles are pinned.
+
+**`nat_rec` → `nat_casesOn`, and a real `nat_rec`.** Every eliminator that is a case analysis is renamed `xxx_casesOn`: `bool_casesOn`, `nat_casesOn`, `int_casesOn`, `uint8_casesOn`…`int64_casesOn`, `char_casesOn`, `stringPosRaw_casesOn`, `stringPos_casesOn`, `substringRaw_casesOn`, `float_casesOn`, `float32_casesOn`, `floatModel_casesOn`, `float32Model_casesOn`, `array_casesOn`, `enum_casesOn`, `record_casesOn`, `taggedUnion_casesOn`; the two branch families are `TaggedUnionCases` and `EnumCases`. Forcing a delay is not the eliminator of an inductive type at all (`Ty.lazy` is an erased unit function, `Ty.thunk` a `Thunk`, eliminated by `Thunk.get`), so `lazy_rec`/`thunk_rec` are now `lazy_force`/`thunk_force`. The `_rec` name is kept only where it really is `Xxx.rec`: the two new constructors `nat_rec` (`Nat.rec` with a non-dependent motive — the successor branch binds the predecessor at index `0` and the value of the fold at index `1`) and `array_rec` (the fold of a list — the branch binds head, tail and the fold over the tail at indices `0`, `1`, `2`). Both are still terminating by construction, since the recursive value is *given* to the branch rather than called by it. For the remaining types `Xxx.rec` and `Xxx.casesOn` coincide — they are not recursive — so only the `_casesOn` name is given, which is the one that describes what the constructor does; the file's header section explains this rule. `TyTests/TermTest.lean` was updated to the new names and gained a fold over a natural number and a fold over an array.
+
+Nothing was deleted: the original sketch at the top of `LeanScript/Expr.lean` and the commented-out recursive shapes are untouched.
+
 # Summary of changes for run fbde98b9-faaf-4341-89fa-6d631640b686
 `Term` is implemented and the whole project builds (`lake build`, 210 jobs, no `sorry` outside comments).
 

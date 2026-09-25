@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Term
+public import LeanScript.Expr.Build
 
 @[expose] public section
 

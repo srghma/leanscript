@@ -1,4 +1,5 @@
 module
+public import LeanScript.Expr.Atom
 public import LeanScript.Expr.NatRecCtx
 public import LeanScript.Expr.Extern
 public import LeanScript.Expr.SelfField
@@ -34,80 +35,42 @@ open NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
 mutual
 
-/-- A term of the language: a typed tree, in a context `Γ` of the types in scope and
-    against the signature `Sg` of the module's top-level declarations.  It is total by
-    construction — it has no fixpoint constructor, no effect and no partial operation. -/
-inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
-  /-- A variable of `Γ`. -/
-  | var : ∀ {Γ τ}, Γ ∋ τ → Term Sg Γ τ
-  /-- `fun x => body`: **one** parameter, since every function is curried. -/
-  | lam : ∀ {Γ σ τ}, Term Sg (σ :: Γ) τ → Term Sg Γ (σ ⇒ τ)
-  /-- `f a`: **one** argument. -/
-  | ap : ∀ {Γ σ τ}, Term Sg Γ (σ ⇒ τ) → Term Sg Γ σ → Term Sg Γ τ
-  /-- A reference to a top-level declaration of the module's signature. -/
-  | global : ∀ {Γ τ}, GlobalRef Sg.decls τ → Term Sg Γ τ
-  /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`. -/
-  | letE : ∀ {Γ σ τ}, Term Sg Γ σ → Term Sg (σ :: Γ) τ → Term Sg Γ τ
-  -- LeanPrimTy intro
-  /-- A boolean literal. -/
-  | bool_mk : ∀ {Γ}, Bool → Term Sg Γ (.prim .bool)
-  /-- A natural number literal. -/
-  | nat_mk : ∀ {Γ}, Nat → Term Sg Γ (.prim .nat)
-  /-- An integer literal. -/
-  | int_mk : ∀ {Γ}, Int → Term Sg Γ (.prim .int)
-  /-- A bit-vector literal.  The width is positive, because `BitVec 0` is a unit type and
-      unit types are erased. -/
-  | bitvec_mk {Γ : Ctx} {n : Nat} (h_positive : 0 < n := by decide) (v : BitVec n) :
-      Term Sg Γ (.prim (.bitvec n h_positive))
-  /-- An 8-bit unsigned literal. -/
-  | uint8_mk : ∀ {Γ}, UInt8 → Term Sg Γ (.prim .uint8)
-  /-- A 16-bit unsigned literal. -/
-  | uint16_mk : ∀ {Γ}, UInt16 → Term Sg Γ (.prim .uint16)
-  /-- A 32-bit unsigned literal. -/
-  | uint32_mk : ∀ {Γ}, UInt32 → Term Sg Γ (.prim .uint32)
-  /-- A 64-bit unsigned literal. -/
-  | uint64_mk : ∀ {Γ}, UInt64 → Term Sg Γ (.prim .uint64)
-  /-- An 8-bit signed literal. -/
-  | int8_mk : ∀ {Γ}, Int8 → Term Sg Γ (.prim .int8)
-  /-- A 16-bit signed literal. -/
-  | int16_mk : ∀ {Γ}, Int16 → Term Sg Γ (.prim .int16)
-  /-- A 32-bit signed literal. -/
-  | int32_mk : ∀ {Γ}, Int32 → Term Sg Γ (.prim .int32)
-  /-- A 64-bit signed literal. -/
-  | int64_mk : ∀ {Γ}, Int64 → Term Sg Γ (.prim .int64)
-  /-- A character literal. -/
-  | char_mk : ∀ {Γ}, Char → Term Sg Γ (.prim .char)
-  /-- A string literal. -/
-  | string_mk : ∀ {Γ}, String → Term Sg Γ (.prim .string)
-  /-- A literal position **into the string `s`**: the type of a checked position names
-      the string it is into, so the string is part of the type. -/
-  | stringPos_mk : ∀ {Γ} (s : String), String.Pos s → Term Sg Γ (.prim (.stringPos s))
-  /-- A literal unchecked byte position. -/
-  | stringPosRaw_mk : ∀ {Γ}, String.Pos.Raw → Term Sg Γ (.prim .stringPosRaw)
-  /-- A literal unchecked substring. -/
-  | substringRaw_mk : ∀ {Γ}, Substring.Raw → Term Sg Γ (.prim .substringRaw)
-  /-- A literal string slice. -/
-  | stringSlice_mk : ∀ {Γ}, String.Slice → Term Sg Γ (.prim .stringSlice)
-  /-- A 64-bit floating point literal. -/
-  | float_mk : ∀ {Γ}, Float → Term Sg Γ (.prim .float)
-  /-- A 32-bit floating point literal. -/
-  | float32_mk : ∀ {Γ}, Float32 → Term Sg Γ (.prim .float32)
-  /-- A literal of the model of a 64-bit float: its bits, with their validity. -/
-  | floatModel_mk : ∀ {Γ}, Float.Model → Term Sg Γ (.prim .floatModel)
-  /-- A literal of the model of a 32-bit float: its bits, with their validity. -/
-  | float32Model_mk : ∀ {Γ}, Float32.Model → Term Sg Γ (.prim .float32Model)
-  -- externs
-  /-- A pure extern of `Init` applied to values: an entry of the catalogue
-      `LeanScript.LeanInitPureExtern` with all of its arguments, and the proofs it takes
-      (`Term.extern (.lean_array_fget αt a i h)`).  Its value is `LeanScript.Extern.eval`,
-      the Lean function called on them.  Externs are not declarations of the signature. -/
-  | extern : ∀ {Γ τ}, Extern τ → Term Sg Γ τ
-  /-- A pure extern of `Init` applied to the terms of its arguments, which are computed
-      when the term runs.  `call` builds the entry of the catalogue from their values
-      (`fun vs => .lean_nat_add vs.1 vs.2.1`); the value is `Extern.eval` of it.  This is
-      the form for an extern that takes no proof. -/
-  | externCall : ∀ {Γ σs τ}, Spine Sg Γ σs → (call : TyWf.DenList σs → Extern τ) →
-      Term Sg Γ τ
+/-- A term of the language, in **strict A-normal form**: a block of `let`s, each naming the
+    value of one computation step (`LeanScript.Comp`), ending in a **tail**: the step whose
+    value is the term's, a jump to a join point, or a dispatch or a fold.  It is typed, in
+    a context `Γ` of the types in scope, a context `J` of the join points in scope (their
+    argument types; every one of them answers with `τ`), and against the signature `Sg` of
+    the module's top-level declarations.  It is total by construction — it has no fixpoint
+    constructor, no effect and no partial operation.
+
+    Strict A-normal form is a property of the *type*: the operands of every step are atoms
+    (`LeanScript.Atom`); a `let` binds a `LeanScript.Comp`, never another `let`, never a
+    dispatch and never a fold; and a dispatch or a fold is always the last thing a block
+    does.  A dispatch whose value is used by what follows is written with a **join point**
+    (`Term.letJ`): what follows becomes the join point, and each branch ends by jumping to
+    it (`Term.jump`).  A fold delivers its answer to a `LeanScript.Dest`: either it is the
+    value of the term, or it is passed to a join point.  Join points live in their own
+    context `J`, apart from the variables, and they are not values: they can only be jumped
+    to, from tail position, and a function body, a delay or a fold branch starts with none.
+
+    `J` is an `optParam` that defaults to `[]`, so `Term Sg Γ τ` is a term with no join
+    point in scope — a whole function body.  The functions named like the constructors of
+    the direct-style grammar (`LeanScript.Term.ap`, `LeanScript.Term.nat_rec`, …, in
+    `LeanScript.Expr.Build`) take arbitrary terms and put them in this form. -/
+inductive Term (Sg : Sig) : Ctx → TyWf → optParam JCtx [] → Type 1
+  /-- The last step: the value of the computation is the value of the term. -/
+  | ret : ∀ {Γ τ} {J : JCtx}, Comp Sg Γ τ → Term Sg Γ τ J
+  /-- `let x = c; body` — the value of the computation `c` is bound as de Bruijn index `0`
+      of `body`. -/
+  | letE : ∀ {Γ σ τ} {J : JCtx}, Comp Sg Γ σ → Term Sg (σ :: Γ) τ J → Term Sg Γ τ J
+  /-- `join j x = jp; body` — the join point `jp`, whose parameter is de Bruijn index `0`
+      of its own body, is bound as join point `0` of `body`.  It is not recursive: `jp` sees
+      the join points in scope before it, not itself. -/
+  | letJ : ∀ {Γ σ τ} {J : JCtx}, (jp : Term Sg (σ :: Γ) τ J) → (body : Term Sg Γ τ (σ :: J)) →
+      Term Sg Γ τ J
+  /-- `jump j a` — go to the join point `j` with the atom `a` as its argument: its answer
+      is the value of the term. -/
+  | jump : ∀ {Γ σ τ} {J : JCtx}, (j : J ∋ σ) → Atom Sg Γ σ → Term Sg Γ τ J
   /-- A pure extern of `Init` that takes a proof, applied to the terms of its arguments.
       The language erases propositions, so the proof is not in hand when the term runs:
       `call` **decides** the proposition on the values of the arguments and builds the
@@ -116,17 +79,17 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       `Extern.eval` of it.  Where the proposition does not hold — which cannot happen in a
       term translated from a Lean program, since that program had to supply the proof —
       the value is `fallback`'s. -/
-  | externCallChecked : ∀ {Γ σs τ}, Spine Sg Γ σs →
-      (call : TyWf.DenList σs → Option (Extern τ)) → (fallback : Term Sg Γ τ) →
-      Term Sg Γ τ
+  | externCallChecked : ∀ {Γ σs ρ τ} {J : JCtx}, Args Sg Γ σs →
+      (call : TyWf.DenList σs → Option (Extern ρ)) → (d : Dest J ρ τ) →
+      (fallback : Term Sg Γ τ J) → Term Sg Γ τ J
   -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`. -/
-  | bool_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .bool) → Term Sg Γ τ → Term Sg Γ τ → Term Sg Γ τ
+  | bool_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .bool) → Term Sg Γ τ J → Term Sg Γ τ J → Term Sg Γ τ J
   /-- `match n with | 0 => … | k + 1 => …`: the successor branch **binds** the
       predecessor as de Bruijn index `0`.  There is no recursive value — this is
       `Nat.casesOn`, and the fold is `Term.nat_rec`. -/
-  | nat_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .nat) →
-      Term Sg Γ τ → Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg Γ τ
+  | nat_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .nat) →
+      Term Sg Γ τ J → Term Sg (TyWf.prim .nat :: Γ) τ J → Term Sg Γ τ J
   /-- `Nat.rec` that descends `k + 1` steps.  `base` holds the answers at `k, …, 1, 0` —
       **nearest first**, so it reads `(f k, …, f 0)` — and the branch for `n + k + 1` binds
       `n` (index `0`) and then the answers at `n + k, …, n + 1, n` (indices `1 … k + 1`).
@@ -139,96 +102,73 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       at the `k + 1` predecessors, so there is no call it could make on anything larger.
       It is also **linear**: the evaluator carries the window of the last `k + 1` answers
       and shifts it, so no answer is ever recomputed. -/
-  | nat_rec : ∀ {Γ τ} (k : Nat := 0), Term Sg Γ (.prim .nat) →
-      Spine Sg Γ (natRecCtx τ (k + 1) []) →
-      Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ →
-      Term Sg Γ τ
+  | nat_rec : ∀ {Γ ρ τ} {J : JCtx} (k : Nat := 0), Atom Sg Γ (.prim .nat) →
+      Args Sg Γ (natRecCtx ρ (k + 1) []) →
+      Term Sg (TyWf.prim .nat :: natRecCtx ρ (k + 1) Γ) ρ →
+      (d : Dest J ρ τ) → Term Sg Γ τ J
   /-- `match i with | .ofNat n => … | .negSucc n => …`: each branch binds its `nat`. -/
-  | int_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int) →
-      Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg Γ τ
+  | int_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .int) →
+      Term Sg (TyWf.prim .nat :: Γ) τ J → Term Sg (TyWf.prim .nat :: Γ) τ J → Term Sg Γ τ J
   /-- Take an 8-bit unsigned value apart: its branch binds the bit vector. -/
-  | uint8_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .uint8) →
-      Term Sg (TyWf.prim (.bitvec 8) :: Γ) τ → Term Sg Γ τ
+  | uint8_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .uint8) →
+      Term Sg (TyWf.prim (.bitvec 8) :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 16-bit unsigned value apart: its branch binds the bit vector. -/
-  | uint16_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .uint16) →
-      Term Sg (TyWf.prim (.bitvec 16) :: Γ) τ → Term Sg Γ τ
+  | uint16_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .uint16) →
+      Term Sg (TyWf.prim (.bitvec 16) :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 32-bit unsigned value apart: its branch binds the bit vector. -/
-  | uint32_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .uint32) →
-      Term Sg (TyWf.prim (.bitvec 32) :: Γ) τ → Term Sg Γ τ
+  | uint32_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .uint32) →
+      Term Sg (TyWf.prim (.bitvec 32) :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 64-bit unsigned value apart: its branch binds the bit vector. -/
-  | uint64_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .uint64) →
-      Term Sg (TyWf.prim (.bitvec 64) :: Γ) τ → Term Sg Γ τ
+  | uint64_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .uint64) →
+      Term Sg (TyWf.prim (.bitvec 64) :: Γ) τ J → Term Sg Γ τ J
   /-- Take an 8-bit signed value apart: its branch binds the unsigned value. -/
-  | int8_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int8) →
-      Term Sg (TyWf.prim .uint8 :: Γ) τ → Term Sg Γ τ
+  | int8_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .int8) →
+      Term Sg (TyWf.prim .uint8 :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 16-bit signed value apart: its branch binds the unsigned value. -/
-  | int16_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int16) →
-      Term Sg (TyWf.prim .uint16 :: Γ) τ → Term Sg Γ τ
+  | int16_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .int16) →
+      Term Sg (TyWf.prim .uint16 :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 32-bit signed value apart: its branch binds the unsigned value. -/
-  | int32_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int32) →
-      Term Sg (TyWf.prim .uint32 :: Γ) τ → Term Sg Γ τ
+  | int32_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .int32) →
+      Term Sg (TyWf.prim .uint32 :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 64-bit signed value apart: its branch binds the unsigned value. -/
-  | int64_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .int64) →
-      Term Sg (TyWf.prim .uint64 :: Γ) τ → Term Sg Γ τ
+  | int64_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .int64) →
+      Term Sg (TyWf.prim .uint64 :: Γ) τ J → Term Sg Γ τ J
   /-- Take a character apart: its branch binds the code point, a `uint32`.  The validity
       field is a proposition, so it is erased and is not bound. -/
-  | char_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .char) →
-      Term Sg (TyWf.prim .uint32 :: Γ) τ → Term Sg Γ τ
+  | char_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .char) →
+      Term Sg (TyWf.prim .uint32 :: Γ) τ J → Term Sg Γ τ J
   /-- Take an unchecked position apart: its branch binds the byte index. -/
-  | stringPosRaw_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .stringPosRaw) →
-      Term Sg (TyWf.prim .nat :: Γ) τ → Term Sg Γ τ
+  | stringPosRaw_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .stringPosRaw) →
+      Term Sg (TyWf.prim .nat :: Γ) τ J → Term Sg Γ τ J
   /-- Take a checked position apart: its branch binds the unchecked one.  The proof that
       it is valid is a proposition, so it is erased and is not bound. -/
-  | stringPos_casesOn : ∀ {Γ τ} {s : String}, Term Sg Γ (.prim (.stringPos s)) →
-      Term Sg (TyWf.prim .stringPosRaw :: Γ) τ → Term Sg Γ τ
+  | stringPos_casesOn : ∀ {Γ τ} {J : JCtx} {s : String}, Atom Sg Γ (.prim (.stringPos s)) →
+      Term Sg (TyWf.prim .stringPosRaw :: Γ) τ J → Term Sg Γ τ J
   /-- Take an unchecked substring apart: its branch binds the string and the two
       positions, in declaration order. -/
-  | substringRaw_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .substringRaw) →
-      Term Sg (TyWf.prim .string :: TyWf.prim .stringPosRaw :: TyWf.prim .stringPosRaw :: Γ) τ →
-      Term Sg Γ τ
+  | substringRaw_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .substringRaw) →
+      Term Sg (TyWf.prim .string :: TyWf.prim .stringPosRaw :: TyWf.prim .stringPosRaw :: Γ) τ J →
+      Term Sg Γ τ J
   /-- Take a 64-bit float apart: its branch binds its model. -/
-  | float_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .float) →
-      Term Sg (TyWf.prim .floatModel :: Γ) τ → Term Sg Γ τ
+  | float_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .float) →
+      Term Sg (TyWf.prim .floatModel :: Γ) τ J → Term Sg Γ τ J
   /-- Take a 32-bit float apart: its branch binds its model. -/
-  | float32_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .float32) →
-      Term Sg (TyWf.prim .float32Model :: Γ) τ → Term Sg Γ τ
+  | float32_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .float32) →
+      Term Sg (TyWf.prim .float32Model :: Γ) τ J → Term Sg Γ τ J
   /-- Take the model of a 64-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
-  | floatModel_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .floatModel) →
-      Term Sg (TyWf.prim .uint64 :: Γ) τ → Term Sg Γ τ
+  | floatModel_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .floatModel) →
+      Term Sg (TyWf.prim .uint64 :: Γ) τ J → Term Sg Γ τ J
   /-- Take the model of a 32-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
-  | float32Model_casesOn : ∀ {Γ τ}, Term Sg Γ (.prim .float32Model) →
-      Term Sg (TyWf.prim .uint32 :: Γ) τ → Term Sg Γ τ
-  -- `bitvec_casesOn`, `string_casesOn` and `stringSlice_casesOn` are not here: see this
-  -- section's header for why their fields have no type in this language.
-  -- LeanPrimTyCovariant intro and elimination
-  /-- Delay a value.  This is what a Lean `fun (_ : Unit) => e` becomes once the one
-      value of the unit type is erased.
-
-      **Unmemoised**: forcing it twice runs it twice. -/
-  | lazy_mk : ∀ {Γ τ}, Term Sg Γ τ → Term Sg Γ (.lazy τ)
-  /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
-      erased. -/
-  | lazy_force : ∀ {Γ τ}, Term Sg Γ (.lazy τ) → Term Sg Γ τ
-  /-- Delay a value and remember it: a `Thunk`.
-
-      **Memoised**: the JavaScript printed for it runs the body at the first force and
-      answers with the stored value afterwards.  Forcing it is `Term.thunk_force`.  At
-      this layer the distinction from `Term.lazy_mk` is not visible — a `Term` is a total
-      Lean function of its environment, so running the body twice gives the same answer
-      as running it once — and what it decides is the code that is printed. -/
-  | thunk_mk : ∀ {Γ τ}, Term Sg Γ τ → Term Sg Γ (.thunk τ)
-  /-- Force a thunk: the value it stands for, computed at most once. -/
-  | thunk_force : ∀ {Γ τ}, Term Sg Γ (.thunk τ) → Term Sg Γ τ
-  /-- An array, from its elements, in order. -/
-  | array_mk : ∀ {Γ τ}, Terms Sg Γ τ → Term Sg Γ (.array τ)
+  | float32Model_casesOn : ∀ {Γ τ} {J : JCtx}, Atom Sg Γ (.prim .float32Model) →
+      Term Sg (TyWf.prim .uint32 :: Γ) τ J → Term Sg Γ τ J
   /-- Take an array apart: an empty branch, and a non-empty branch that **binds** the
       first element and the rest of the array, in that order.  This is the case
       analysis — the branch gets the rest of the array, not the value of a fold over
       it; that is `Term.array_rec`. -/
-  | array_casesOn : ∀ {Γ σ τ}, Term Sg Γ (.array σ) →
-      Term Sg Γ τ → Term Sg (σ :: TyWf.array σ :: Γ) τ → Term Sg Γ τ
+  | array_casesOn : ∀ {Γ σ τ} {J : JCtx}, Atom Sg Γ (.array σ) →
+      Term Sg Γ τ J → Term Sg (σ :: TyWf.array σ :: Γ) τ J → Term Sg Γ τ J
   /-- The fold of an array that descends `k + 1` elements at a time.  Its branch, at a
       list `a :: as` whose tail is at least `k` long, **binds** the first element (de
       Bruijn index `0`), the rest of the array (index `1`) and then the values of the
@@ -245,15 +185,13 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       is still terminating by construction, at every depth; and the evaluator carries the
       window of the last `k + 1` answers rather than recomputing them, so the fold is
       linear. -/
-  | array_rec : ∀ {Γ σ τ} (k : Nat := 0), Term Sg Γ (.array σ) →
-      ArrayRecBases Sg Γ σ τ k →
-      Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ → Term Sg Γ τ
-  /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
-  | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ (.enum s)
+  | array_rec : ∀ {Γ σ ρ τ} {J : JCtx} (k : Nat := 0), Atom Sg Γ (.array σ) →
+      ArrayRecBases Sg Γ σ ρ k →
+      Term Sg (σ :: TyWf.array σ :: natRecCtx ρ (k + 1) Γ) ρ → (d : Dest J ρ τ) → Term Sg Γ τ J
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
       fall off the end. -/
-  | enum_casesOn : ∀ {Γ τ} {s : LeanEnumSchema},
-      Term Sg Γ (.enum s) → EnumCases Sg Γ τ s → Term Sg Γ τ
+  | enum_casesOn : ∀ {Γ τ} {J : JCtx} {s : LeanEnumSchema},
+      Atom Sg Γ (.enum s) → EnumCases Sg Γ τ s J → Term Sg Γ τ J
   /-- A dispatch on an enum that branches on **some** of the constructors and sends the
       rest to a default branch.  The branches are given as a list of
       (constructor number, branch) pairs, in the order they are tried, and the last
@@ -266,30 +204,18 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       not a roundabout way of writing its own default, and it is not a roundabout way of
       writing an exhaustive `Term.enum_casesOn` either: the default branch is always
       reachable. -/
-  | enum_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k : Nat}
-      (e : Term Sg Γ (.enum s)) (cases : EnumSomeCases Sg Γ τ s k) (dflt : Term Sg Γ τ)
-      (hk : k < s.nOfConstructors := by ctor_lt) : Term Sg Γ τ
-  /-- A record, from its fields, in declaration order. -/
-  | record_mk : ∀ {Γ} (fs : LeanRecordSchema TyWf),
-      Spine Sg Γ fs.toList → Term Sg Γ (.record fs)
+  | enum_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {J : JCtx} {s : LeanEnumSchema} {k : Nat}
+      (e : Atom Sg Γ (.enum s)) (cases : EnumSomeCases Sg Γ τ s k 0 J) (dflt : Term Sg Γ τ J)
+      (hk : k < s.nOfConstructors := by ctor_lt) : Term Sg Γ τ J
   /-- The eliminator of a record: it **binds** every field, in declaration order, so de
       Bruijn index `0` of the body is the record's first field.  A projection is this
       node followed by a variable. -/
-  | record_casesOn : ∀ {Γ τ} {fs : LeanRecordSchema TyWf},
-      Term Sg Γ (.record fs) → Term Sg (fs.toList ++ Γ) τ → Term Sg Γ τ
-  /-- A tagged value: constructor `t` of the union — a number **with the proof that the
-      union has it** — and exactly that constructor's fields.
-
-      The bound is against `LeanTaggedUnionSchema.length`, the number of constructors,
-      and it is written by `ctor_tag` unless one is given, so a concrete tag needs
-      nothing written by hand. -/
-  | taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
-      (ht : t < l.length := by ctor_tag) (fields : Spine Sg Γ (l.get t ht)) :
-      Term Sg Γ (.taggedUnion l)
+  | record_casesOn : ∀ {Γ τ} {J : JCtx} {fs : LeanRecordSchema TyWf},
+      Atom Sg Γ (.record fs) → Term Sg (fs.toList ++ Γ) τ J → Term Sg Γ τ J
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
       constructor's fields, and no default. -/
-  | taggedUnion_casesOn : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf},
-      Term Sg Γ (.taggedUnion l) → TaggedUnionFoldCases Sg TyWf id Γ l τ → Term Sg Γ τ
+  | taggedUnion_casesOn : ∀ {Γ τ} {J : JCtx} {l : LeanTaggedUnionSchema TyWf},
+      Atom Sg Γ (.taggedUnion l) → TaggedUnionFoldCases Sg TyWf id Γ l τ J → Term Sg Γ τ J
   /-- A dispatch on a tagged union that branches on **some** of the constructors and
       sends the rest to a default branch.  A branch names its constructor by number —
       with the same `t < l.length` bound, written by `ctor_tag` — and binds that
@@ -302,10 +228,229 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
       not a roundabout way of writing its own default, and it is not a roundabout way of
       writing an exhaustive `Term.taggedUnion_casesOn` either: the default branch is
       always reachable. -/
-  | taggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
-      {k : Nat} (v : Term Sg Γ (.taggedUnion l))
-      (cases : TaggedUnionSomeCases Sg Γ l τ k) (dflt : Term Sg Γ τ)
-      (hk : k < l.length := by ctor_lt) : Term Sg Γ τ
+  | taggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {J : JCtx} {l : LeanTaggedUnionSchema TyWf}
+      {k : Nat} (v : Atom Sg Γ (.taggedUnion l))
+      (cases : TaggedUnionSomeCases Sg Γ l τ k 0 J) (dflt : Term Sg Γ τ J)
+      (hk : k < l.length := by ctor_lt) : Term Sg Γ τ J
+  /-- The eliminator of a recursive tagged union: one branch per constructor, each
+      binding that constructor's **unfolded** fields, and no default.  It takes the value
+      *one level* apart — a field that is an occurrence of the union is bound as a value
+      of the union, not descended into; descending is `Term.recTaggedUnion_rec`. -/
+  | recTaggedUnion_casesOn : ∀ {Γ τ} {J : JCtx} {l : LeanTaggedUnionSchema (TyWfIn 1)}
+      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)},
+      Atom Sg Γ (.recTaggedUnion l hwf) →
+      TaggedUnionFoldCases Sg TyWf id Γ (TyWf.recTaggedUnionUnfold l hwf) τ J → Term Sg Γ τ J
+  /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
+      default for the rest.  As for a non-recursive union the branches name their
+      constructors in strictly increasing order, there is at least one of them, and there
+      are fewer of them than the union has constructors, so the default is reachable. -/
+  | recTaggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {J : JCtx}
+      {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)}
+      {k : Nat} (v : Atom Sg Γ (.recTaggedUnion l hwf))
+      (cases : TaggedUnionSomeCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ k 0 J)
+      (dflt : Term Sg Γ τ J)
+      (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt) : Term Sg Γ τ J
+  /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
+      motive, that descends `k + 1` constructors at a time: one branch per constructor,
+      each binding that constructor's fields and, right after a field that is an
+      occurrence of the union, the value of the fold at that field (`TyWf.recBinders`),
+      and each branch free to **look further down** — to dispatch on one of those
+      occurrences again, and so be given *its* fields and the values of the fold at
+      them, or on an occurrence at a node above it that it has not looked into yet (a
+      sibling of the subvalue it looked into, `LeanScript.FoldKBranch.deepOuter`), so
+      that it can read below **several** subvalues.  `LeanScript.TaggedUnionFoldKCases`
+      is that case tree; a branch may stop looking at any point, and at depth `k` it may
+      look at most `k` times in all.
+
+      At the default depth `k = 0` this is the plain fold: no branch can descend, so the
+      branches are exactly one term each, in the context that binds the constructor's
+      fields and the values of the fold at its occurrences
+      (`LeanScript.RecUnionRecFacts` proves the two families are the same at that
+      depth).  At depth `1` a branch reads the answer at a field *and* at that field's
+      own occurrences — which is what a `fib`-shaped recursion on a Peano-style union
+      does, reading the answer two constructors down.
+
+      The recursive value is *given* to the branch rather than called by it, exactly as
+      in `Term.nat_rec` and `Term.array_rec`, and a deeper look is taken only into a
+      **subvalue** (`LeanScript.SelfField` and `LeanScript.OuterSelfField` pick the
+      occurrence descended into, at a node on the path), so a term is still terminating
+      by construction, at every depth. -/
+  | recTaggedUnion_rec : ∀ {Γ ρ τ} {J : JCtx} {l : LeanTaggedUnionSchema (TyWfIn 1)}
+      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat := 0),
+      Atom Sg Γ (.recTaggedUnion l hwf) →
+      TaggedUnionFoldKCases Sg l
+        (TyWf.recBinders (.recTaggedUnion l hwf) ρ) Γ l ρ k [] →
+      (d : Dest J ρ τ) → Term Sg Γ τ J
+  /-- The eliminator of a recursive record: it **binds** every field, unfolded, in
+      declaration order.  A record has one constructor, so there is nothing to dispatch
+      on and no partial form: `Term.recObject_casesOnWithDefault` would be this node with
+      a branch that is never taken. -/
+  | recObject_casesOn : ∀ {Γ τ} {J : JCtx} {fs : LeanRecordSchema (TyWfIn 1)}
+      {hwf : Ty.Wf (TyWf.recObjectTy fs)},
+      Atom Sg Γ (.recObject fs hwf) →
+      Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) τ J → Term Sg Γ τ J
+  /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
+      reads `k + 1` levels at a time.  A record has one constructor, so there is one
+      branch and nothing to dispatch on: the branch binds every field, unfolded — what
+      `Term.recObject_casesOn` binds — and then the fold's **lookback window**
+      (`TyWf.recObjectRecBinders`), which holds the answer at each immediate subvalue
+      and, `k` levels deep, the answers below it.
+
+      The answers are given in the shape of the record's own fields
+      (`TyWf.recObjectAnswerTree`), because a recursive record never has a field that is
+      *literally* an occurrence of it: all of its fields have to have values, so a field
+      written `Ty.self` would leave the record with none
+      (`LeanScript.RecObjectRecFacts`).  At the default depth `k = 0` the branch binds
+      the fields and the answers at the immediate subvalues — the plain fold of a record,
+      which is what a catamorphism over it takes.
+
+      As in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec` the answers
+      are *given* to the branch rather than called by it, and they are the answers at
+      **subvalues** of the value being folded, so a term is terminating by construction
+      at every depth. -/
+  | recObject_rec : ∀ {Γ ρ τ} {J : JCtx} {fs : LeanRecordSchema (TyWfIn 1)}
+      {hwf : Ty.Wf (TyWf.recObjectTy fs)} (k : Nat := 0),
+      Atom Sg Γ (.recObject fs hwf) →
+      Term Sg (TyWf.recObjectRecBinders fs hwf ρ k ++ Γ) ρ → (d : Dest J ρ τ) → Term Sg Γ τ J
+  /-- The eliminator of a recursive newtype: its one branch **binds** the body.  As for a
+      record there is one constructor, so there is no partial form. -/
+  | recAlias_casesOn : ∀ {Γ τ} {J : JCtx} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)},
+      Atom Sg Γ (.recAlias b hwf) → Term Sg (TyWf.recAliasUnfold b hwf :: Γ) τ J →
+      Term Sg Γ τ J
+  /-- **The fold of a recursive newtype**, its `Xxx.rec` with a non-dependent motive, that
+      reads `k + 1` levels at a time.  A newtype has one constructor, so there is one
+      branch and nothing to dispatch on: the branch binds the body, unfolded — what
+      `Term.recAlias_casesOn` binds — and then the fold's **lookback window**
+      (`TyWf.recAliasRecBinders`), which holds the answer at each immediate subvalue and,
+      `k` levels deep, the answers below it.
+
+      The answers are given in the shape of the newtype's own body
+      (`TyWf.recAliasAnswerTree`), because a recursive newtype never has a body that is
+      *literally* an occurrence of it: `μX. X` is the equation `T = T`, which no value
+      satisfies (`LeanScript.RecAliasRecFacts`).  At the default depth `k = 0` the branch
+      binds the body and the answers at the immediate subvalues — the plain fold of a
+      newtype, which is what a catamorphism over it takes.
+
+      As in `Term.nat_rec`, `Term.array_rec`, `Term.recTaggedUnion_rec` and
+      `Term.recObject_rec` the answers are *given* to the branch rather than called by it,
+      and they are the answers at **subvalues** of the value being folded, so a term is
+      terminating by construction at every depth. -/
+  | recAlias_rec : ∀ {Γ ρ τ} {J : JCtx} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)}
+      (k : Nat := 0),
+      Atom Sg Γ (.recAlias b hwf) →
+      Term Sg (TyWf.recAliasRecBinders b hwf ρ k ++ Γ) ρ → (d : Dest J ρ τ) → Term Sg Γ τ J
+  /-- The eliminator of a member of a mutual family: the branches of the shape *that
+      member* has — one per constructor for a `ctors` member, the one branch binding the
+      fields for a `record` member, the one branch binding the body for an `alias`
+      member — and no default. -/
+  | mutualRecursiveFamily_casesOn : ∀ {Γ τ} {J : JCtx} {n : Nat}
+      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)},
+      Atom Sg Γ (.mutualRecursiveFamily f hwf) →
+      FamilyMemberCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)) J → Term Sg Γ τ J
+  /-- A dispatch on **some** of the constructors of a member of a mutual family, with a
+      default for the rest.  Only a member that *has* constructors to choose between — a
+      `ctors` member — can be dispatched on partially, which is what
+      `LeanScript.FamilyMemberSomeCases` says by having no other case. -/
+  | mutualRecursiveFamily_casesOnWithDefault : ∀ {Γ τ} {J : JCtx} {n : Nat}
+      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)},
+      Atom Sg Γ (.mutualRecursiveFamily f hwf) →
+      FamilyMemberSomeCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)) J →
+      Term Sg Γ τ J → Term Sg Γ τ J
+  /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
+      branches of *every* member of the family, in declaration order, each binding its
+      fields and, right after a field that is an occurrence of a member, the value of the
+      fold at that field (`TyWf.famRecBinders`), and each branch free to **look further
+      down** — to dispatch on one of those occurrences again, whichever member it belongs
+      to, or on an occurrence it has not looked into yet at a node above it on the path
+      (`LeanScript.FamilyFoldKBranch.deepOuter`), and so be given *its* fields and the
+      values of the fold at them.  One motive
+      `τ` answers for every member, which is what lets one list of branches describe the
+      whole family, and it is what a deeper look into another member answers with too.
+
+      `LeanScript.FamilyFoldKCases` is that case tree; a branch may stop looking at any
+      point, and at depth `k` it may descend at most `k` times.  At the default depth
+      `k = 0` this is the plain fold: no branch can descend, so the branches are exactly
+      one term each, in the context that binds the member's fields and the values of the
+      fold at its occurrences (`LeanScript.FamilyRecFacts` proves the two families are
+      the same at that depth).  At depth `1` a branch reads the answer at a field *and*
+      at that field's own occurrences — which is what a `fib`-shaped recursion over a
+      family does, reading the answer two constructors down, possibly through another
+      member.
+
+      The recursive value is *given* to the branch rather than called by it, exactly as
+      in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec`, and a deeper
+      look is taken only into a **subvalue** (`LeanScript.FamilyMemberField` and
+      `LeanScript.FamilyOuterMemberField` pick the occurrence descended into), so a term is still terminating by construction, at
+      every depth. -/
+  | mutualRecursiveFamily_rec : ∀ {Γ ρ τ} {J : JCtx} {n : Nat}
+      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
+      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} (k : Nat := 0),
+      Atom Sg Γ (.mutualRecursiveFamily f hwf) →
+      FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf ρ) Γ ρ f.members k →
+      (d : Dest J ρ τ) → Term Sg Γ τ J
+
+/-- **One computation step**, whose operands are atoms and which neither branches nor
+    folds: the steps a `let` may bind.  The terms it holds are bodies it does not run when
+    it is evaluated — of a function or of a delay — so they start with no join point in
+    scope. -/
+inductive Comp (Sg : Sig) : Ctx → TyWf → Type 1
+  /-- An atom: a variable, a declaration, or a literal. -/
+  | atom : ∀ {Γ τ}, Atom Sg Γ τ → Comp Sg Γ τ
+  /-- `fun x => body`: **one** parameter, since every function is curried. -/
+  | lam : ∀ {Γ σ τ}, Term Sg (σ :: Γ) τ → Comp Sg Γ (σ ⇒ τ)
+  /-- `f a`: **one** argument. -/
+  | ap : ∀ {Γ σ τ}, Atom Sg Γ (σ ⇒ τ) → Atom Sg Γ σ → Comp Sg Γ τ
+  -- externs
+  /-- A pure extern of `Init` applied to values: an entry of the catalogue
+      `LeanScript.LeanInitPureExtern` with all of its arguments, and the proofs it takes
+      (`Term.extern (.lean_array_fget αt a i h)`).  Its value is `LeanScript.Extern.eval`,
+      the Lean function called on them.  Externs are not declarations of the signature. -/
+  | extern : ∀ {Γ τ}, Extern τ → Comp Sg Γ τ
+  /-- A pure extern of `Init` applied to the terms of its arguments, which are computed
+      when the term runs.  `call` builds the entry of the catalogue from their values
+      (`fun vs => .lean_nat_add vs.1 vs.2.1`); the value is `Extern.eval` of it.  This is
+      the form for an extern that takes no proof. -/
+  | externCall : ∀ {Γ σs τ}, Args Sg Γ σs → (call : TyWf.DenList σs → Extern τ) →
+      Comp Sg Γ τ
+  -- `bitvec_casesOn`, `string_casesOn` and `stringSlice_casesOn` are not here: see this
+  -- section's header for why their fields have no type in this language.
+  -- LeanPrimTyCovariant intro and elimination
+  /-- Delay a value.  This is what a Lean `fun (_ : Unit) => e` becomes once the one
+      value of the unit type is erased.
+
+      **Unmemoised**: forcing it twice runs it twice. -/
+  | lazy_mk : ∀ {Γ τ}, Term Sg Γ τ → Comp Sg Γ (.lazy τ)
+  /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
+      erased. -/
+  | lazy_force : ∀ {Γ τ}, Atom Sg Γ (.lazy τ) → Comp Sg Γ τ
+  /-- Delay a value and remember it: a `Thunk`.
+
+      **Memoised**: the JavaScript printed for it runs the body at the first force and
+      answers with the stored value afterwards.  Forcing it is `Term.thunk_force`.  At
+      this layer the distinction from `Term.lazy_mk` is not visible — a `Term` is a total
+      Lean function of its environment, so running the body twice gives the same answer
+      as running it once — and what it decides is the code that is printed. -/
+  | thunk_mk : ∀ {Γ τ}, Term Sg Γ τ → Comp Sg Γ (.thunk τ)
+  /-- Force a thunk: the value it stands for, computed at most once. -/
+  | thunk_force : ∀ {Γ τ}, Atom Sg Γ (.thunk τ) → Comp Sg Γ τ
+  /-- An array, from its elements, in order. -/
+  | array_mk : ∀ {Γ τ}, List (Atom Sg Γ τ) → Comp Sg Γ (.array τ)
+  /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
+  | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Comp Sg Γ (.enum s)
+  /-- A record, from its fields, in declaration order. -/
+  | record_mk : ∀ {Γ} (fs : LeanRecordSchema TyWf),
+      Args Sg Γ fs.toList → Comp Sg Γ (.record fs)
+  /-- A tagged value: constructor `t` of the union — a number **with the proof that the
+      union has it** — and exactly that constructor's fields.
+
+      The bound is against `LeanTaggedUnionSchema.length`, the number of constructors,
+      and it is written by `ctor_tag` unless one is given, so a concrete tag needs
+      nothing written by hand. -/
+  | taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
+      (ht : t < l.length := by ctor_tag) (fields : Args Sg Γ (l.get t ht)) :
+      Comp Sg Γ (.taggedUnion l)
   -- The four recursive shapes of `Ty`.  The sketch they replace read
   --
   -- | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
@@ -336,128 +481,21 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   | recTaggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema (TyWfIn 1))
       (hwf : Ty.Wf (TyWf.recTaggedUnionTy l) := by ty_wf) (t : Nat)
       (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_tag)
-      (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) :
-      Term Sg Γ (.recTaggedUnion l hwf)
-  /-- The eliminator of a recursive tagged union: one branch per constructor, each
-      binding that constructor's **unfolded** fields, and no default.  It takes the value
-      *one level* apart — a field that is an occurrence of the union is bound as a value
-      of the union, not descended into; descending is `Term.recTaggedUnion_rec`. -/
-  | recTaggedUnion_casesOn : ∀ {Γ τ} {l : LeanTaggedUnionSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)},
-      Term Sg Γ (.recTaggedUnion l hwf) →
-      TaggedUnionFoldCases Sg TyWf id Γ (TyWf.recTaggedUnionUnfold l hwf) τ → Term Sg Γ τ
-  /-- A dispatch on **some** of the constructors of a recursive tagged union, with a
-      default for the rest.  As for a non-recursive union the branches name their
-      constructors in strictly increasing order, there is at least one of them, and there
-      are fewer of them than the union has constructors, so the default is reachable. -/
-  | recTaggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf}
-      {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)}
-      {k : Nat} (v : Term Sg Γ (.recTaggedUnion l hwf))
-      (cases : TaggedUnionSomeCases Sg Γ (TyWf.recTaggedUnionUnfold l hwf) τ k)
-      (dflt : Term Sg Γ τ)
-      (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt) : Term Sg Γ τ
-  /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
-      motive, that descends `k + 1` constructors at a time: one branch per constructor,
-      each binding that constructor's fields and, right after a field that is an
-      occurrence of the union, the value of the fold at that field (`TyWf.recBinders`),
-      and each branch free to **look further down** — to dispatch on one of those
-      occurrences again, and so be given *its* fields and the values of the fold at
-      them, or on an occurrence at a node above it that it has not looked into yet (a
-      sibling of the subvalue it looked into, `LeanScript.FoldKBranch.deepOuter`), so
-      that it can read below **several** subvalues.  `LeanScript.TaggedUnionFoldKCases`
-      is that case tree; a branch may stop looking at any point, and at depth `k` it may
-      look at most `k` times in all.
-
-      At the default depth `k = 0` this is the plain fold: no branch can descend, so the
-      branches are exactly one term each, in the context that binds the constructor's
-      fields and the values of the fold at its occurrences
-      (`LeanScript.RecUnionRecFacts` proves the two families are the same at that
-      depth).  At depth `1` a branch reads the answer at a field *and* at that field's
-      own occurrences — which is what a `fib`-shaped recursion on a Peano-style union
-      does, reading the answer two constructors down.
-
-      The recursive value is *given* to the branch rather than called by it, exactly as
-      in `Term.nat_rec` and `Term.array_rec`, and a deeper look is taken only into a
-      **subvalue** (`LeanScript.SelfField` and `LeanScript.OuterSelfField` pick the
-      occurrence descended into, at a node on the path), so a term is still terminating
-      by construction, at every depth. -/
-  | recTaggedUnion_rec : ∀ {Γ τ} {l : LeanTaggedUnionSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat := 0),
-      Term Sg Γ (.recTaggedUnion l hwf) →
-      TaggedUnionFoldKCases Sg l
-        (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ l τ k [] →
-      Term Sg Γ τ
+      (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) :
+      Comp Sg Γ (.recTaggedUnion l hwf)
   /-- A value of a **recursive record**: its fields, in declaration order, unfolded.
       `hwf`, written by `ty_wf`, is the proof that the record describes a type; note that
       a recursive record with a field written `Ty.self` states the equation
       `T = … × T × …`, which no value satisfies, so it has no value here. -/
   | recObject_mk {Γ : Ctx} (fs : LeanRecordSchema (TyWfIn 1))
       (hwf : Ty.Wf (TyWf.recObjectTy fs) := by ty_wf)
-      (fields : Spine Sg Γ (TyWf.recObjectUnfold fs hwf).toList) :
-      Term Sg Γ (.recObject fs hwf)
-  /-- The eliminator of a recursive record: it **binds** every field, unfolded, in
-      declaration order.  A record has one constructor, so there is nothing to dispatch
-      on and no partial form: `Term.recObject_casesOnWithDefault` would be this node with
-      a branch that is never taken. -/
-  | recObject_casesOn : ∀ {Γ τ} {fs : LeanRecordSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recObjectTy fs)},
-      Term Sg Γ (.recObject fs hwf) →
-      Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) τ → Term Sg Γ τ
-  /-- **The fold of a recursive record**, its `Xxx.rec` with a non-dependent motive, that
-      reads `k + 1` levels at a time.  A record has one constructor, so there is one
-      branch and nothing to dispatch on: the branch binds every field, unfolded — what
-      `Term.recObject_casesOn` binds — and then the fold's **lookback window**
-      (`TyWf.recObjectRecBinders`), which holds the answer at each immediate subvalue
-      and, `k` levels deep, the answers below it.
-
-      The answers are given in the shape of the record's own fields
-      (`TyWf.recObjectAnswerTree`), because a recursive record never has a field that is
-      *literally* an occurrence of it: all of its fields have to have values, so a field
-      written `Ty.self` would leave the record with none
-      (`LeanScript.RecObjectRecFacts`).  At the default depth `k = 0` the branch binds
-      the fields and the answers at the immediate subvalues — the plain fold of a record,
-      which is what a catamorphism over it takes.
-
-      As in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec` the answers
-      are *given* to the branch rather than called by it, and they are the answers at
-      **subvalues** of the value being folded, so a term is terminating by construction
-      at every depth. -/
-  | recObject_rec : ∀ {Γ τ} {fs : LeanRecordSchema (TyWfIn 1)}
-      {hwf : Ty.Wf (TyWf.recObjectTy fs)} (k : Nat := 0),
-      Term Sg Γ (.recObject fs hwf) →
-      Term Sg (TyWf.recObjectRecBinders fs hwf τ k ++ Γ) τ → Term Sg Γ τ
+      (fields : Args Sg Γ (TyWf.recObjectUnfold fs hwf).toList) :
+      Comp Sg Γ (.recObject fs hwf)
   /-- A value of a **recursive newtype**: a value of its body, unfolded.  The wrapper is
       erased, so the two have the same runtime representation.  `hwf`, written by
       `ty_wf`, is the proof that the newtype describes a type. -/
   | recAlias_mk {Γ : Ctx} (b : TyWfIn 1) (hwf : Ty.Wf (TyWf.recAliasTy b) := by ty_wf)
-      (value : Term Sg Γ (TyWf.recAliasUnfold b hwf)) : Term Sg Γ (.recAlias b hwf)
-  /-- The eliminator of a recursive newtype: its one branch **binds** the body.  As for a
-      record there is one constructor, so there is no partial form. -/
-  | recAlias_casesOn : ∀ {Γ τ} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)},
-      Term Sg Γ (.recAlias b hwf) → Term Sg (TyWf.recAliasUnfold b hwf :: Γ) τ →
-      Term Sg Γ τ
-  /-- **The fold of a recursive newtype**, its `Xxx.rec` with a non-dependent motive, that
-      reads `k + 1` levels at a time.  A newtype has one constructor, so there is one
-      branch and nothing to dispatch on: the branch binds the body, unfolded — what
-      `Term.recAlias_casesOn` binds — and then the fold's **lookback window**
-      (`TyWf.recAliasRecBinders`), which holds the answer at each immediate subvalue and,
-      `k` levels deep, the answers below it.
-
-      The answers are given in the shape of the newtype's own body
-      (`TyWf.recAliasAnswerTree`), because a recursive newtype never has a body that is
-      *literally* an occurrence of it: `μX. X` is the equation `T = T`, which no value
-      satisfies (`LeanScript.RecAliasRecFacts`).  At the default depth `k = 0` the branch
-      binds the body and the answers at the immediate subvalues — the plain fold of a
-      newtype, which is what a catamorphism over it takes.
-
-      As in `Term.nat_rec`, `Term.array_rec`, `Term.recTaggedUnion_rec` and
-      `Term.recObject_rec` the answers are *given* to the branch rather than called by it,
-      and they are the answers at **subvalues** of the value being folded, so a term is
-      terminating by construction at every depth. -/
-  | recAlias_rec : ∀ {Γ τ} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)}
-      (k : Nat := 0),
-      Term Sg Γ (.recAlias b hwf) →
-      Term Sg (TyWf.recAliasRecBinders b hwf τ k ++ Γ) τ → Term Sg Γ τ
+      (value : Atom Sg Γ (TyWf.recAliasUnfold b hwf)) : Comp Sg Γ (.recAlias b hwf)
   /-- A value of one member of a **mutual recursive family**: whichever of the three
       shapes that member has, with its fields unfolded in the scope of the whole family,
       so that a field written `Ty.familyMember i` is a value of member `i`.
@@ -469,66 +507,9 @@ inductive Term (Sg : Sig) : Ctx → TyWf → Type 1
   | mutualRecursiveFamily_mk {Γ : Ctx} {n : Nat}
       (f : LeanMutualRecFamily (TyWfIn (n + 2)))
       (hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f) := by ty_wf)
-      (value : FamilyMemberValue Sg Γ (f.current.map (TyWfIn.unfoldFam f hwf))) :
-      Term Sg Γ (.mutualRecursiveFamily f hwf)
-  /-- The eliminator of a member of a mutual family: the branches of the shape *that
-      member* has — one per constructor for a `ctors` member, the one branch binding the
-      fields for a `record` member, the one branch binding the body for an `alias`
-      member — and no default. -/
-  | mutualRecursiveFamily_casesOn : ∀ {Γ τ} {n : Nat}
-      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)},
-      Term Sg Γ (.mutualRecursiveFamily f hwf) →
-      FamilyMemberCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)) → Term Sg Γ τ
-  /-- A dispatch on **some** of the constructors of a member of a mutual family, with a
-      default for the rest.  Only a member that *has* constructors to choose between — a
-      `ctors` member — can be dispatched on partially, which is what
-      `LeanScript.FamilyMemberSomeCases` says by having no other case. -/
-  | mutualRecursiveFamily_casesOnWithDefault : ∀ {Γ τ} {n : Nat}
-      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)},
-      Term Sg Γ (.mutualRecursiveFamily f hwf) →
-      FamilyMemberSomeCases Sg Γ τ (f.current.map (TyWfIn.unfoldFam f hwf)) →
-      Term Sg Γ τ → Term Sg Γ τ
-  /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
-      branches of *every* member of the family, in declaration order, each binding its
-      fields and, right after a field that is an occurrence of a member, the value of the
-      fold at that field (`TyWf.famRecBinders`), and each branch free to **look further
-      down** — to dispatch on one of those occurrences again, whichever member it belongs
-      to, or on an occurrence it has not looked into yet at a node above it on the path
-      (`LeanScript.FamilyFoldKBranch.deepOuter`), and so be given *its* fields and the
-      values of the fold at them.  One motive
-      `τ` answers for every member, which is what lets one list of branches describe the
-      whole family, and it is what a deeper look into another member answers with too.
+      (value : FamilyMemberArgs Sg Γ (f.current.map (TyWfIn.unfoldFam f hwf))) :
+      Comp Sg Γ (.mutualRecursiveFamily f hwf)
 
-      `LeanScript.FamilyFoldKCases` is that case tree; a branch may stop looking at any
-      point, and at depth `k` it may descend at most `k` times.  At the default depth
-      `k = 0` this is the plain fold: no branch can descend, so the branches are exactly
-      one term each, in the context that binds the member's fields and the values of the
-      fold at its occurrences (`LeanScript.FamilyRecFacts` proves the two families are
-      the same at that depth).  At depth `1` a branch reads the answer at a field *and*
-      at that field's own occurrences — which is what a `fib`-shaped recursion over a
-      family does, reading the answer two constructors down, possibly through another
-      member.
-
-      The recursive value is *given* to the branch rather than called by it, exactly as
-      in `Term.nat_rec`, `Term.array_rec` and `Term.recTaggedUnion_rec`, and a deeper
-      look is taken only into a **subvalue** (`LeanScript.FamilyMemberField` and
-      `LeanScript.FamilyOuterMemberField` pick the occurrence descended into), so a term is still terminating by construction, at
-      every depth. -/
-  | mutualRecursiveFamily_rec : ∀ {Γ τ} {n : Nat}
-      {f : LeanMutualRecFamily (TyWfIn (n + 2))}
-      {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} (k : Nat := 0),
-      Term Sg Γ (.mutualRecursiveFamily f hwf) →
-      FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ τ f.members k →
-      Term Sg Γ τ
-
-/-- The elements of an array: any number of terms, all of one type. -/
-inductive Terms (Sg : Sig) : Ctx → TyWf → Type 1
-  /-- No more elements. -/
-  | nil : ∀ {Γ τ}, Terms Sg Γ τ
-  /-- One more element, at the front. -/
-  | cons : ∀ {Γ τ}, Term Sg Γ τ → Terms Sg Γ τ → Terms Sg Γ τ
 
 /-- The answers a depth-`k` fold of an array (`LeanScript.Term.array_rec`) gives to the
     lists that are **shorter than its window**: the lists of fewer than `k + 1` elements,
@@ -550,14 +531,6 @@ inductive ArrayRecBases (Sg : Sig) : Ctx → TyWf → TyWf → Nat → Type 1
       index `0` — the answers for the one-element-shorter lists that are left. -/
   | cons : ∀ {Γ σ τ} {j : Nat}, Term Sg Γ τ → ArrayRecBases Sg (σ :: Γ) σ τ j →
       ArrayRecBases Sg Γ σ τ (j + 1)
-
-/-- A list of terms, typed by the list of their types: the arguments of an operation, the
-    arguments of a jump, the arguments of a self call, the fields of a constructor. -/
-inductive Spine (Sg : Sig) : Ctx → List TyWf → Type 1
-  /-- No more arguments. -/
-  | nil : ∀ {Γ}, Spine Sg Γ []
-  /-- One more argument. -/
-  | cons : ∀ {Γ σ σs}, Term Sg Γ σ → Spine Sg Γ σs → Spine Sg Γ (σ :: σs)
 
 /-- The branches of a dispatch on **some** of the constructors of a tagged union, used
     with a default: a list of (constructor number, branch) pairs, in the order they are
@@ -588,18 +561,18 @@ inductive Spine (Sg : Sig) : Ctx → List TyWf → Type 1
     each constructor, with `ctor_ge` as its default, so a list of concrete numbers needs
     nothing written by hand. -/
 inductive TaggedUnionSomeCases (Sg : Sig) :
-    Ctx → LeanTaggedUnionSchema TyWf → TyWf → Nat → optParam Nat 0 → Type 1
+    Ctx → LeanTaggedUnionSchema TyWf → TyWf → Nat → optParam Nat 0 → optParam JCtx [] → Type 1
   /-- The last branch: the constructor of number `t`, whose fields it binds, and no
       constructor after it has a branch. -/
-  | last {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {lo : Nat} (t : Nat)
-      (ht : t < l.length := by ctor_tag) (branch : Term Sg (l.get t ht ++ Γ) τ)
-      (hi : lo ≤ t := by ctor_ge) : TaggedUnionSomeCases Sg Γ l τ 1 lo
+  | last {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {J : JCtx} {lo : Nat} (t : Nat)
+      (ht : t < l.length := by ctor_tag) (branch : Term Sg (l.get t ht ++ Γ) τ J)
+      (hi : lo ≤ t := by ctor_ge) : TaggedUnionSomeCases Sg Γ l τ 1 lo J
   /-- One more branch, for constructor `t`, binding that constructor's fields; every
       branch after it names a **bigger** constructor. -/
-  | cons {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {k lo : Nat} (t : Nat)
-      (ht : t < l.length := by ctor_tag) (branch : Term Sg (l.get t ht ++ Γ) τ)
-      (rest : TaggedUnionSomeCases Sg Γ l τ k (t + 1))
-      (hi : lo ≤ t := by ctor_ge) : TaggedUnionSomeCases Sg Γ l τ (k + 1) lo
+  | cons {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {J : JCtx} {k lo : Nat} (t : Nat)
+      (ht : t < l.length := by ctor_tag) (branch : Term Sg (l.get t ht ++ Γ) τ J)
+      (rest : TaggedUnionSomeCases Sg Γ l τ k (t + 1) J)
+      (hi : lo ≤ t := by ctor_ge) : TaggedUnionSomeCases Sg Γ l τ (k + 1) lo J
 
 /-- The branches of a dispatch on an enum: one per constructor, in constructor order,
     binding nothing, and **indexed by the schema itself** rather than by the number of
@@ -609,16 +582,16 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
 
     There is no end-of-list before the constructors run out and no default, so a
     dispatch is exhaustive by construction. -/
-inductive EnumCases (Sg : Sig) : Ctx → TyWf → LeanEnumSchema → Type 1
+inductive EnumCases (Sg : Sig) : Ctx → TyWf → LeanEnumSchema → optParam JCtx [] → Type 1
   /-- The branches of the three constructors an enum has at minimum, in constructor
       order. -/
-  | three : ∀ {Γ τ} {shift : Int},
-      Term Sg Γ τ → Term Sg Γ τ → Term Sg Γ τ → EnumCases Sg Γ τ ⟨0, shift⟩
+  | three : ∀ {Γ τ} {J : JCtx} {shift : Int},
+      Term Sg Γ τ J → Term Sg Γ τ J → Term Sg Γ τ J → EnumCases Sg Γ τ ⟨0, shift⟩ J
   /-- The branch of the first constructor, and the branches of the ones after it — one
       constructor beyond the schema of the rest. -/
-  | cons : ∀ {Γ τ} {extra : Nat} {shift : Int},
-      Term Sg Γ τ → EnumCases Sg Γ τ ⟨extra, shift⟩ →
-      EnumCases Sg Γ τ ⟨extra + 1, shift⟩
+  | cons : ∀ {Γ τ} {J : JCtx} {extra : Nat} {shift : Int},
+      Term Sg Γ τ J → EnumCases Sg Γ τ ⟨extra, shift⟩ J →
+      EnumCases Sg Γ τ ⟨extra + 1, shift⟩ J
 
 /-- The branches of a dispatch on **some** of the constructors of the enum `s`, used with
     a default: (constructor number, branch) pairs.  A constructor may be left out — that
@@ -650,17 +623,18 @@ inductive EnumCases (Sg : Sig) : Ctx → TyWf → LeanEnumSchema → Type 1
     constructor, with `ctor_ge` as its default, so a list of concrete numbers needs
     nothing written by hand. -/
 inductive EnumSomeCases (Sg : Sig) :
-    Ctx → TyWf → LeanEnumSchema → Nat → optParam Nat 0 → Type 1
+    Ctx → TyWf → LeanEnumSchema → Nat → optParam Nat 0 → optParam JCtx [] → Type 1
   /-- The last branch: the constructor of this number, and no constructor after it has a
       branch. -/
-  | last {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {lo : Nat} (i : Fin s.nOfConstructors)
-      (branch : Term Sg Γ τ) (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ τ s 1 lo
+  | last {Γ : Ctx} {τ : TyWf} {J : JCtx} {s : LeanEnumSchema} {lo : Nat}
+      (i : Fin s.nOfConstructors) (branch : Term Sg Γ τ J) (hi : lo ≤ i.val := by ctor_ge) :
+      EnumSomeCases Sg Γ τ s 1 lo J
   /-- One more branch, for the constructor of this number; every branch after it names a
       **bigger** number. -/
-  | cons {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k lo : Nat} (i : Fin s.nOfConstructors)
-      (branch : Term Sg Γ τ) (rest : EnumSomeCases Sg Γ τ s k (i.val + 1))
-      (hi : lo ≤ i.val := by ctor_ge) : EnumSomeCases Sg Γ τ s (k + 1) lo
+  | cons {Γ : Ctx} {τ : TyWf} {J : JCtx} {s : LeanEnumSchema} {k lo : Nat}
+      (i : Fin s.nOfConstructors)
+      (branch : Term Sg Γ τ J) (rest : EnumSomeCases Sg Γ τ s k (i.val + 1) J)
+      (hi : lo ≤ i.val := by ctor_ge) : EnumSomeCases Sg Γ τ s (k + 1) lo J
 
 /-- The branches of a dispatch on, or a **fold** over, a sum type: one per constructor,
     in constructor order, **indexed by the schema itself** rather than by the list of
@@ -686,48 +660,53 @@ inductive EnumSomeCases (Sg : Sig) :
     There is no default branch and no end-of-list before the constructors run out, so a
     fold is exhaustive by construction. -/
 inductive TaggedUnionFoldCases (Sg : Sig) :
-    (ι : Type) → (List ι → List TyWf) → Ctx → LeanTaggedUnionSchema ι → TyWf → Type 1
+    (ι : Type) → (List ι → List TyWf) → Ctx → LeanTaggedUnionSchema ι → TyWf →
+    optParam JCtx [] → Type 1
   /-- The branch of constructor `0` (which carries fields), the branch of the constructor
       after it, and the branches of the remaining constructors. -/
-  | payloadFirst : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {fields : NonEmptyList ι}
-      {next : List ι} {rest : List (List ι)},
-      Term Sg (bind fields.toList ++ Γ) τ → Term Sg (bind next ++ Γ) τ →
-      TaggedUnionFoldCasesRest Sg ι bind Γ rest τ →
-      TaggedUnionFoldCases Sg ι bind Γ (.payloadFirst fields next rest) τ
+  | payloadFirst : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx}
+      {fields : NonEmptyList ι} {next : List ι} {rest : List (List ι)},
+      Term Sg (bind fields.toList ++ Γ) τ J → Term Sg (bind next ++ Γ) τ J →
+      TaggedUnionFoldCasesRest Sg ι bind Γ rest τ J →
+      TaggedUnionFoldCases Sg ι bind Γ (.payloadFirst fields next rest) τ J
   /-- The branch of constructor `0`, which carries no fields, and the branches of the
       constructors after it. -/
-  | skip : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {rest : CtorsWithPayload ι},
-      Term Sg (bind [] ++ Γ) τ → CtorsWithPayloadFoldCases Sg ι bind Γ rest τ →
-      TaggedUnionFoldCases Sg ι bind Γ (.skip rest) τ
+  | skip : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx}
+      {rest : CtorsWithPayload ι},
+      Term Sg (bind [] ++ Γ) τ J → CtorsWithPayloadFoldCases Sg ι bind Γ rest τ J →
+      TaggedUnionFoldCases Sg ι bind Γ (.skip rest) τ J
 
 /-- `LeanScript.TaggedUnionFoldCases`, on the constructors a
     `LeanScript.CtorsWithPayload` holds. -/
 inductive CtorsWithPayloadFoldCases (Sg : Sig) :
-    (ι : Type) → (List ι → List TyWf) → Ctx → CtorsWithPayload ι → TyWf → Type 1
+    (ι : Type) → (List ι → List TyWf) → Ctx → CtorsWithPayload ι → TyWf →
+    optParam JCtx [] → Type 1
   /-- The branch of the first constructor that carries fields, and the branches of the
       constructors after it. -/
-  | here : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {fields : NonEmptyList ι}
-      {rest : List (List ι)},
-      Term Sg (bind fields.toList ++ Γ) τ → TaggedUnionFoldCasesRest Sg ι bind Γ rest τ →
-      CtorsWithPayloadFoldCases Sg ι bind Γ (.here fields rest) τ
+  | here : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx}
+      {fields : NonEmptyList ι} {rest : List (List ι)},
+      Term Sg (bind fields.toList ++ Γ) τ J → TaggedUnionFoldCasesRest Sg ι bind Γ rest τ J →
+      CtorsWithPayloadFoldCases Sg ι bind Γ (.here fields rest) τ J
   /-- The branch of a field-less constructor, and the branches of the constructors after
       it. -/
-  | skip : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {rest : CtorsWithPayload ι},
-      Term Sg (bind [] ++ Γ) τ → CtorsWithPayloadFoldCases Sg ι bind Γ rest τ →
-      CtorsWithPayloadFoldCases Sg ι bind Γ (.skip rest) τ
+  | skip : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx}
+      {rest : CtorsWithPayload ι},
+      Term Sg (bind [] ++ Γ) τ J → CtorsWithPayloadFoldCases Sg ι bind Γ rest τ J →
+      CtorsWithPayloadFoldCases Sg ι bind Γ (.skip rest) τ J
 
 /-- `LeanScript.TaggedUnionFoldCases`, on the constructors a schema leaves
     unconstrained: one branch per constructor still to be given one. -/
 inductive TaggedUnionFoldCasesRest (Sg : Sig) :
-    (ι : Type) → (List ι → List TyWf) → Ctx → List (List ι) → TyWf → Type 1
+    (ι : Type) → (List ι → List TyWf) → Ctx → List (List ι) → TyWf →
+    optParam JCtx [] → Type 1
   /-- Every constructor has a branch. -/
-  | nil : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ},
-      TaggedUnionFoldCasesRest Sg ι bind Γ [] τ
+  | nil : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx},
+      TaggedUnionFoldCasesRest Sg ι bind Γ [] τ J
   /-- The branch of the next constructor. -/
-  | cons : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {fs : List ι}
+  | cons : ∀ {ι : Type} {bind : List ι → List TyWf} {Γ τ} {J : JCtx} {fs : List ι}
       {rest : List (List ι)},
-      Term Sg (bind fs ++ Γ) τ → TaggedUnionFoldCasesRest Sg ι bind Γ rest τ →
-      TaggedUnionFoldCasesRest Sg ι bind Γ (fs :: rest) τ
+      Term Sg (bind fs ++ Γ) τ J → TaggedUnionFoldCasesRest Sg ι bind Γ rest τ J →
+      TaggedUnionFoldCasesRest Sg ι bind Γ (fs :: rest) τ J
 
 /-- **What one branch of a depth-`k` fold of a recursive tagged union is**: either an
     answer, or a deeper look.
@@ -847,39 +826,22 @@ inductive TaggedUnionFoldKCasesRest (Sg : Sig) :
       TaggedUnionFoldKCasesRest Sg l₀ bind Γ rest τ k outer →
       TaggedUnionFoldKCasesRest Sg l₀ bind Γ (fs :: rest) τ k outer
 
-/-- A value of one member of a mutual recursive family: the family has the same three
-    cases as `LeanScript.LeanFamMemberSchema`, and the type says which of them a member
-    is, so the value built is the one that member's shape admits and no other.  The
-    member it is indexed by is the **unfolded** one — every field is already read in the
-    scope of the family, so a field written `Ty.familyMember i` is a value of member
-    `i` — which is why this family mentions neither the family nor its proof. -/
-inductive FamilyMemberValue (Sg : Sig) : Ctx → LeanFamMemberSchema TyWf → Type 1
-  /-- A member with constructors: constructor `t` of it, and that constructor's
-      fields. -/
-  | ctors {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
-      (ht : t < l.length := by ctor_tag) (fields : Spine Sg Γ (l.get t ht)) :
-      FamilyMemberValue Sg Γ (.ctors l)
-  /-- A record member: its fields, in declaration order. -/
-  | record {Γ : Ctx} (fs : LeanRecordSchema TyWf) (fields : Spine Sg Γ fs.toList) :
-      FamilyMemberValue Sg Γ (.record fs)
-  /-- A newtype member: a value of its body, whose wrapper is erased. -/
-  | alias {Γ : Ctx} (b : TyWf) (value : Term Sg Γ b) : FamilyMemberValue Sg Γ (.alias b)
-
 /-- The branches of a dispatch on one member of a mutual family: whichever branches that
     member's shape calls for, and no default.  A `ctors` member is dispatched on by
     `LeanScript.TaggedUnionCases` over its unfolded schema — so one branch per
     constructor, in order — and the two single-constructor members have the one branch
     that binds what they hold. -/
-inductive FamilyMemberCases (Sg : Sig) : Ctx → TyWf → LeanFamMemberSchema TyWf → Type 1
+inductive FamilyMemberCases (Sg : Sig) :
+    Ctx → TyWf → LeanFamMemberSchema TyWf → optParam JCtx [] → Type 1
   /-- One branch per constructor of a member that has constructors. -/
-  | ctors : ∀ {Γ τ} {l : LeanTaggedUnionSchema TyWf},
-      TaggedUnionFoldCases Sg TyWf id Γ l τ → FamilyMemberCases Sg Γ τ (.ctors l)
+  | ctors : ∀ {Γ τ} {J : JCtx} {l : LeanTaggedUnionSchema TyWf},
+      TaggedUnionFoldCases Sg TyWf id Γ l τ J → FamilyMemberCases Sg Γ τ (.ctors l) J
   /-- The one branch of a record member, which binds its fields in declaration order. -/
-  | record : ∀ {Γ τ} {fs : LeanRecordSchema TyWf},
-      Term Sg (fs.toList ++ Γ) τ → FamilyMemberCases Sg Γ τ (.record fs)
+  | record : ∀ {Γ τ} {J : JCtx} {fs : LeanRecordSchema TyWf},
+      Term Sg (fs.toList ++ Γ) τ J → FamilyMemberCases Sg Γ τ (.record fs) J
   /-- The one branch of a newtype member, which binds its body. -/
-  | alias : ∀ {Γ τ} {b : TyWf},
-      Term Sg (b :: Γ) τ → FamilyMemberCases Sg Γ τ (.alias b)
+  | alias : ∀ {Γ τ} {J : JCtx} {b : TyWf},
+      Term Sg (b :: Γ) τ J → FamilyMemberCases Sg Γ τ (.alias b) J
 
 /-- The branches of a dispatch on **some** of the constructors of one member of a mutual
     family, used with a default.  There is one case and not three: a member with a single
@@ -887,13 +849,13 @@ inductive FamilyMemberCases (Sg : Sig) : Ctx → TyWf → LeanFamMemberSchema Ty
     `LeanScript.Term.mutualRecursiveFamily_casesOn` or its default and nothing else, and
     the type makes that unwritable. -/
 inductive FamilyMemberSomeCases (Sg : Sig) :
-    Ctx → TyWf → LeanFamMemberSchema TyWf → Type 1
+    Ctx → TyWf → LeanFamMemberSchema TyWf → optParam JCtx [] → Type 1
   /-- Branches for some of the constructors of a member that has constructors, named in
       strictly increasing order, at least one of them, and fewer of them than the member
       has constructors — so the default of the dispatch is reachable. -/
-  | ctors {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {k : Nat}
-      (cases : TaggedUnionSomeCases Sg Γ l τ k) (hk : k < l.length := by ctor_lt) :
-      FamilyMemberSomeCases Sg Γ τ (.ctors l)
+  | ctors {Γ : Ctx} {τ : TyWf} {J : JCtx} {l : LeanTaggedUnionSchema TyWf} {k : Nat}
+      (cases : TaggedUnionSomeCases Sg Γ l τ k 0 J) (hk : k < l.length := by ctor_lt) :
+      FamilyMemberSomeCases Sg Γ τ (.ctors l) J
 
 /-- The branches of a **fold** over one member of a mutual family: as
     `LeanScript.FamilyMemberCases`, but each branch is also given the value of the fold
