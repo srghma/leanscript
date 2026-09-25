@@ -52,8 +52,10 @@ abbrev Win : TyWf := TyWf.record winSchema
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua (TyWf.prim .nat) ka)
-    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ (TyWf.prim .nat) _)
+    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ (TyWf.prim .nat) _)
 
 /-- The window at `0`: `(fib 0, fib 1) = (0, 1)`.  These are the base branches of the
     Lean definition, which read nothing of the recursion. -/
@@ -64,15 +66,16 @@ def seed {Γ : Ctx} :=
 /-- The step of the fold: it binds the predecessor `k` (index `0`) and the window at `k`
     (index `1`), takes the window apart — so inside, index `0` is `fib k` and index `1`
     is `fib (k + 1)` — and answers with the window at `k + 1`,
-    `(fib (k + 1), fib k + fib (k + 1))`.
+    `(fib (k + 1), fib k + fib (k + 1))`.  (The fields of a constructor are atoms — the
+    grammar is in A-normal form — so the sum is bound by a `let` first.)
 
     The recursion that the branch of the Lean definition writes at `n` and at `n + 1` is
     read off the window: nothing is called, so the term is still terminating by
     construction. -/
 def step {Γ : Ctx} :=
   (.record_casesOn (.var (v♯1))
-      (.record_mk winSchema
-        (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))) :
+      (.letE (addT (.var (v♯0)) (.var (v♯1)))
+        (.record_mk winSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil)))) :
     Term sigAdd (TyWf.prim .nat :: Win :: Γ) _ Win _)
 
 /-- The fold itself: the window at the argument. -/
@@ -82,10 +85,11 @@ def window {Γ : Ctx} :=
 
 /-- `fib`, as a term of the language: the first field of the window.  (The fold is written
     out rather than applied as `window`: `window` is a `fun`, and applying it would be a
-    β-redex, which the grammar does not have.) -/
+    β-redex, which the grammar does not have.  The fold is bound by a `let`, since what a
+    dispatch takes apart is a name.) -/
 def fib_term :=
-  (.lam (.record_casesOn (fs := winSchema) (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
-     (.var (v♯0))) :
+  (.lam (.letE (.nat_rec 0 (.var (v♯0)) (.cons seed .nil) step)
+     (.record_casesOn (fs := winSchema) (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-! ## What it computes

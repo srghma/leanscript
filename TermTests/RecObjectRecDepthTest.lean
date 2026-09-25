@@ -75,7 +75,8 @@ def tribBranch :=
                           (.taggedUnion_casesOn (.var (v♯1))
                             (.skip (.nat_mk 1)
                               (.here
-                                (addT (addT (.var (v♯8)) (.var (v♯3))) (.var (v♯0)))
+                                (.letE (addT (.var (v♯8)) (.var (v♯3)))
+                                  (addT (.var (v♯0)) (.var (v♯1))))
                                 .nil)))))
                       .nil)))))
             .nil))) :
@@ -107,8 +108,9 @@ def tetraBranch :=
                                     (.taggedUnion_casesOn (.var (v♯1))
                                       (.skip (.nat_mk 1)
                                         (.here
-                                          (addT (addT (addT (.var (v♯13)) (.var (v♯8)))
-                                            (.var (v♯3))) (.var (v♯0)))
+                                          (.letE (addT (.var (v♯13)) (.var (v♯8)))
+                                            (.letE (addT (.var (v♯0)) (.var (v♯4)))
+                                              (addT (.var (v♯0)) (.var (v♯2)))))
                                           .nil)))))
                                 .nil)))))
                       .nil)))))
@@ -146,10 +148,10 @@ def pentaBranch :=
                                               (.taggedUnion_casesOn (.var (v♯1))
                                                 (.skip (.nat_mk 1)
                                                   (.here
-                                                    (addT (addT (addT (addT
-                                                      (.var (v♯18)) (.var (v♯13)))
-                                                      (.var (v♯8))) (.var (v♯3)))
-                                                      (.var (v♯0)))
+                                                    (.letE (addT (.var (v♯18)) (.var (v♯13)))
+                                                      (.letE (addT (.var (v♯0)) (.var (v♯9)))
+                                                        (.letE (addT (.var (v♯0)) (.var (v♯5)))
+                                                          (addT (.var (v♯0)) (.var (v♯3))))))
                                                     .nil)))))
                                           .nil)))))
                                 .nil)))))
@@ -193,10 +195,11 @@ def hexaBranch :=
                                                         (.taggedUnion_casesOn (.var (v♯1))
                                                           (.skip (.nat_mk 1)
                                                             (.here
-                                                              (addT (addT (addT (addT (addT
-                                                                (.var (v♯23)) (.var (v♯18)))
-                                                                (.var (v♯13))) (.var (v♯8)))
-                                                                (.var (v♯3))) (.var (v♯0)))
+                                                              (.letE (addT (.var (v♯23)) (.var (v♯18)))
+                                                                (.letE (addT (.var (v♯0)) (.var (v♯14)))
+                                                                  (.letE (addT (.var (v♯0)) (.var (v♯10)))
+                                                                    (.letE (addT (.var (v♯0)) (.var (v♯6)))
+                                                                      (addT (.var (v♯0)) (.var (v♯4)))))))
                                                               .nil)))))
                                                     .nil)))))
                                           .nil)))))
@@ -226,14 +229,14 @@ def fibTRBranch :=
       (.taggedUnion_casesOn (.var (v♯1))
         (.skip (.lam (.lam (.var (v♯1))))
           (.here
-            (.lam (.lam (.ap (.ap (.var (v♯2)) (.var (v♯0)))
-              (addT (.var (v♯1)) (.var (v♯0))))))
+            (.lam (.lam (.letE (addT (.var (v♯1)) (.var (v♯0)))
+              (.ap (.ap (.var (v♯3)) (.var (v♯1))) (.var (v♯0))))))
             .nil))) :
     Term sigAdd (branchCtx loopTy 0) _ loopTy _)
 
 /-- `fibTR`: the loop, started at `0` and `1`. -/
 def fibTRTerm :=
-  (.lam (.ap (.ap (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.nat_mk 0)) (.nat_mk 1)) :
+  (.lam (.letE (.recObject_rec 0 (.var (v♯0)) fibTRBranch) (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (cellTy ⇒ natT) .lam)
 
 /-! ## 5. The pair recursion: a depth-zero fold at a record type
@@ -255,14 +258,14 @@ def fibPairBranch :=
         (.skip (.record_mk pairSchema (.cons (.nat_mk 0) (.cons (.nat_mk 1) .nil)))
           (.here
             (.record_casesOn (.var (v♯0))
-              (.record_mk pairSchema
-                (.cons (.var (v♯1)) (.cons (addT (.var (v♯0)) (.var (v♯1))) .nil))))
+              (.letE (addT (.var (v♯0)) (.var (v♯1)))
+                (.record_mk pairSchema (.cons (.var (v♯2)) (.cons (.var (v♯0)) .nil)))))
             .nil))) :
     Term sigAdd (branchCtx pairTy 0) _ pairTy _)
 
 /-- `fib`, as the first component of the pair recursion. -/
 def fibPairTerm :=
-  (.lam (.record_casesOn (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.var (v♯0))) :
+  (.lam (.letE (.recObject_rec 0 (.var (v♯0)) fibPairBranch) (.record_casesOn (.var (v♯0)) (.var (v♯0)))) :
     Term sigAdd [] _ (cellTy ⇒ natT) .lam)
 
 /-! ## 6. The continuant: a fold that reads the record's **own field** as well
@@ -289,8 +292,10 @@ def contBranch :=
             (.record_casesOn (.var (v♯0))
               (.record_casesOn (.var (v♯1))
                 (.taggedUnion_casesOn (.var (v♯1))
-                  (.skip (addT (mulT (.var (v♯7)) (.var (v♯2))) (.nat_mk 1))
-                    (.here (addT (mulT (.var (v♯8)) (.var (v♯3))) (.var (v♯0))) .nil)))))
+                  (.skip (.letE (mulT (.var (v♯7)) (.var (v♯2)))
+                           (addT (.var (v♯0)) (.nat_mk 1)))
+                    (.here (.letE (mulT (.var (v♯8)) (.var (v♯3)))
+                             (addT (.var (v♯0)) (.var (v♯1)))) .nil)))))
             .nil))) :
     Term sigAdd (branchCtx natT 1) _ natT _)
 
@@ -333,34 +338,34 @@ example (τ : TyWf) :
 -- window binds the answer at the cell below, a `nat`, so the second descent of §2 —
 -- which is what `fib` needs — cannot be written.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.isKnown ?m.100 = false
+  Head.isName ?m.102 = true
 ---
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Expected type must not contain metavariables
-  0 < Usage.front (LeanRecordSchema.toList ?m.102) 0
+  0 < Usage.front (LeanRecordSchema.toList ?m.104) 0
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.closedComp (?m.101 + Usage.drop (LeanRecordSchema.toList ?m.102) 0) natT (Head.lit.join Head.empty) = false
+  Head.closedComp (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0) natT (Head.lit.join Head.empty) = false
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
-  Head.rescrutinizes ?m.100 (Usage.drop (LeanRecordSchema.toList ?m.102) 0) = false
+  Head.rescrutinizes ?m.102 (Usage.drop (LeanRecordSchema.toList ?m.104) 0) = false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Expected type must not contain metavariables
   Head.closedComp
       (Usage.single DeBruijn.head.tail +
-        (0 +
-          (Usage.drop { head := treeTy natT 0, tail := [] }.toList
-              (Usage.scrutinize ?m.100 (?m.101 + Usage.drop (LeanRecordSchema.toList ?m.102) 0)) +
+        (Usage.cond 0 +
+          ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
+                (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
             0)))
       natT (Head.lit.join ((Head.lit.join Head.empty).join Head.empty)) =
     false
@@ -369,9 +374,9 @@ error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
   (Head.var (Var.index DeBruijn.head.tail)).rescrutinizes
-      (0 +
-        (Usage.drop { head := treeTy natT 0, tail := [] }.toList
-            (Usage.scrutinize ?m.100 (?m.101 + Usage.drop (LeanRecordSchema.toList ?m.102) 0)) +
+      (Usage.cond 0 +
+        ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
+              (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
           0)) =
     false
 ---
@@ -382,9 +387,9 @@ error: Expected type must not contain metavariables
     Usage.front { fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList
       (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
         (Usage.single DeBruijn.head.tail +
-          (0 +
-            (Usage.drop { head := treeTy natT 0, tail := [] }.toList
-                (Usage.scrutinize ?m.100 (?m.101 + Usage.drop (LeanRecordSchema.toList ?m.102) 0)) +
+          (Usage.cond 0 +
+            ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
+                  (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
               0))))
 ---
 error: could not synthesize default value for parameter 'hKnown' using tactics
@@ -394,9 +399,9 @@ error: Expected type must not contain metavariables
       (Usage.drop { fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList
         (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
           (Usage.single DeBruijn.head.tail +
-            (0 +
-              (Usage.drop { head := treeTy natT 0, tail := [] }.toList
-                  (Usage.scrutinize ?m.100 (?m.101 + Usage.drop (LeanRecordSchema.toList ?m.102) 0)) +
+            (Usage.cond 0 +
+              ((Usage.drop { head := treeTy natT 0, tail := [] }.toList
+                    (Usage.scrutinize ?m.102 (?m.103 + Usage.drop (LeanRecordSchema.toList ?m.104) 0))).cond +
                 0))))) =
     false
 ---
@@ -408,12 +413,12 @@ but is expected to have type
   Term sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    ?m.101 (TyWf.record ?m.102) ?m.100
+    ?m.103 (TyWf.record ?m.104) ?m.102
 in the application
   @Term.record_casesOn sigAdd
     ({ head := treeTy natT 0, tail := [] }.toList ++
       ({ fst := natT, snd := optTy (treeTy natT 0), rest := [] }.toList ++ branchCtx natT 0))
-    natT ?m.102 ?m.101 0 ?m.100 Head.lit (Term.var DeBruijn.head)
+    natT ?m.104 ?m.103 0 ?m.102 Head.lit (Term.var DeBruijn.head)
 -/
 #guard_msgs (error) in
 def fibBranchTooShallow :=

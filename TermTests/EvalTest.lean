@@ -143,21 +143,24 @@ example : run uint8Bits 5 = 5#8 := rfl
 
 /-! ## Delays, and arrays -/
 
-/-- `fun n => let t := Thunk.mk (fun _ => n); t.get + t.get`.  Forcing a delay built in
+/-- `fun n => let t := Thunk.mk (fun _ => n); let a := t.get; let b := t.get; a + b`.  Forcing a delay built in
     place is a redex, and is not a term, so the delay is bound and forced through its
-    variable.  (It takes `n` as an argument: on a literal, the whole `let` would be a closed
+    variable; each force is an operand of the addition, so in A-normal form it is bound
+    too.  (It takes `n` as an argument: on a literal, the whole `let` would be a closed
     computation, which the grammar asks to be written as its value, `6`.) -/
 def thunkTwice :=
   (.lam (.letE (.thunk_mk (.var (v♯0)))
-     (.externCall (.cons (.thunk_force (.var (v♯0))) (.cons (.thunk_force (.var (v♯0))) .nil))
-       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
+     (.letE (.thunk_force (.var (v♯0))) (.letE (.thunk_force (.var (v♯1)))
+       (.externCall (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))
+         (fun vs => .lean_nat_add vs.1 vs.2.1))))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The same with an unmemoised delay. -/
 def lazyTwice :=
   (.lam (.letE (.lazy_mk (.var (v♯0)))
-     (.externCall (.cons (.lazy_force (.var (v♯0))) (.cons (.lazy_force (.var (v♯0))) .nil))
-       (fun vs => .lean_nat_add vs.1 vs.2.1))) :
+     (.letE (.lazy_force (.var (v♯0))) (.letE (.lazy_force (.var (v♯1)))
+       (.externCall (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))
+         (fun vs => .lean_nat_add vs.1 vs.2.1))))) :
     Term emptySig [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : run thunkTwice 3 = 6 := rfl

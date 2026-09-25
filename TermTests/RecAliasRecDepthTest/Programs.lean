@@ -253,13 +253,17 @@ def sigAdd : Sig :=
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
 def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global (.there .here)) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global (.there .here)) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- `Option τ`, as a union of the language: `none` first, then `some`. -/
 abbrev optTy (τ : TyWf) : TyWf := .taggedUnion (.skip (.here ⟨τ, []⟩ []))
@@ -365,13 +369,13 @@ def nilTerm :=
   (.recAlias_mk chainBodyW (value := .taggedUnion_mk chainUnion 0 (fields := .nil)) :
     Term sigAdd [] _ chainTy .ctor)
 
-/-- One more link on top of the chain in scope. -/
+/-- One more link on top of the chain in scope (the link and the tagged value are bound by
+    `let`s: what a constructor holds is an atom). -/
 def consTerm :=
-  (.lam (.lam (.recAlias_mk chainBodyW
-     (value := .taggedUnion_mk chainUnion 1
-       (fields := .cons
-         (.record_mk (linkSchema chainTy)
-           (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))) .nil)))) :
+  (.lam (.lam (.letE (.record_mk (linkSchema chainTy)
+           (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil)))
+    (.letE (.taggedUnion_mk chainUnion 1 (fields := .cons (.var (v♯0)) .nil))
+      (.recAlias_mk chainBodyW (value := .var (v♯0)))))) :
     Term sigAdd [] _ (natT ⇒ chainTy ⇒ chainTy) .lam)
 
 end TermTests.RecAliasRecDepth

@@ -452,16 +452,18 @@ redex out by hand therefore fails, and says which rule it breaks. -/
 
 -- A β-redex: `(fun x => x) 3`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lam.isFunLike = false
+  (Head.lam.isCallee && Head.lit.isAtom) = true
 is false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp ((Usage.single DeBruijn.head).tail.many + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp (Usage.scrutinize Head.lam (Usage.arg Head.lit ((Usage.single DeBruijn.head).tail.many + 0)))
+      (TyWf.prim LeanPrimTy.nat) Head.comp =
+    false
 is false
 -/
 #guard_msgs (error) in
@@ -475,13 +477,42 @@ error: Tactic `decide` proved that the proposition
   Head.lit.isBindable = true
 is false
 ---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.lit.letUsed
+      (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)).head
+      ((Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+            (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)).opnd
+        0) =
+    true
+---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
-error: Tactic `decide` proved that the proposition
-  Head.closedComp (Usage.letU 0 (Usage.single DeBruijn.head + (Usage.single DeBruijn.head + 0)))
+error: Expected type must not contain metavariables
+  Head.closedComp
+      (Usage.letU 0
+        (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)))
       (Coe.coe LeanPrimTy.nat) Head.comp =
     false
-is false
+---
+error: could not synthesize default value for parameter 'hKnownLet' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.lit.letKnown (TyWf.prim LeanPrimTy.nat)
+      (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+        (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)) =
+    false
+---
+error: could not synthesize default value for parameter 'hPlace' using tactics
+---
+error: Expected type must not contain metavariables
+  (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)).confined
+      0 =
+    false
 -/
 #guard_msgs (error) in
 def letThree :=
@@ -494,7 +525,7 @@ def letThree :=
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  2 ≤ (Usage.single DeBruijn.head).head
+  Head.comp.letUsed (Usage.single DeBruijn.head).head ((Usage.single DeBruijn.head).opnd 0) = true
 is false
 -/
 #guard_msgs (error) in
@@ -505,10 +536,10 @@ def letOnce :=
 
 -- A test on a literal: `if true then 1 else 0`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.bool true).isKnown = false
+  (Head.bool true).isName = true
 is false
 -/
 #guard_msgs (error) in
@@ -518,16 +549,17 @@ def ifTrue :=
 
 -- A forced delay: `(thunk 3).force`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.lit]).isCtorLike = false
+  (Head.ctorOf [Head.lit]).isName = true
 is false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp 0 (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp (Usage.scrutinize (Head.ctorOf [Head.lit]) (Usage.cond 0)) (TyWf.prim LeanPrimTy.nat) Head.comp =
+    false
 is false
 -/
 #guard_msgs (error) in
@@ -537,17 +569,19 @@ def thunkedThreeForced :=
 
 -- A dispatch on a constructor: the first field of the record `(3, true)`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.lit, Head.bool true]).isKnown = false
+  (Head.ctorOf [Head.lit, Head.bool true]).isName = true
 is false
 ---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp (0 + (0 + 0) + Usage.drop pairSchema.toList (Usage.single DeBruijn.head)) pairSchema.fst
-      ((Head.var (Var.index DeBruijn.head)).join Head.empty) =
+  Head.closedComp
+      (Usage.arg Head.lit 0 + (Usage.arg (Head.bool true) 0 + 0) +
+        Usage.drop pairSchema.toList (Usage.single DeBruijn.head))
+      pairSchema.fst ((Head.var (Var.index DeBruijn.head)).join Head.empty) =
     false
 is false
 -/
@@ -565,7 +599,7 @@ is false
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp (0 + (0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs (error) in
@@ -587,7 +621,13 @@ is false
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp (0 + (0 + (0 + 0)) + (0 + 0) + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp
+      (Usage.arg (Head.ctorOf [Head.lit, Head.lit, Head.lit])
+            (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0))) +
+          (Usage.arg Head.lit 0 + 0) +
+        0)
+      (TyWf.prim LeanPrimTy.nat) Head.comp =
+    false
 is false
 -/
 #guard_msgs (error) in

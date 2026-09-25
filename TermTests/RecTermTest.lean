@@ -96,11 +96,12 @@ def roseLeaf :=
   (.recObject_mk roseSchema (fields := .cons (.nat_mk 1) (.cons (.array_mk .nil) .nil)) :
     Term recEmptySig [] _ roseTy .ctor)
 
-/-- A tree with one child. -/
+/-- A tree with one child.  A field of a constructor is an atom (A-normal form), so the
+    child and the array of children are bound by `let`s first. -/
 def roseOne :=
-  (.recObject_mk roseSchema
-     (fields := .cons (.nat_mk 2) (.cons (.array_mk (.cons roseLeaf .nil)) .nil)) :
-    Term recEmptySig [] _ roseTy .ctor)
+  (.letE roseLeaf (.letE (.array_mk (.cons (.var (v♯0)) .nil))
+    (.recObject_mk roseSchema (fields := .cons (.nat_mk 2) (.cons (.var (v♯0)) .nil)))) :
+    Term recEmptySig [] _ roseTy (.letIn _))
 
 /-- The label of a tree: the eliminator binds every field, so the label is index `0`. -/
 def roseLabel :=
@@ -138,10 +139,12 @@ def emptyForest :=
   (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk .nil) :
     Term recEmptySig [] _ forestTy .ctor)
 
-/-- A forest of one empty forest. -/
+/-- A forest of one empty forest (the inner forest and the array are bound by `let`s: the
+    fields of a constructor are atoms). -/
 def oneForest :=
-  (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .array_mk (.cons emptyForest .nil)) :
-    Term recEmptySig [] _ forestTy .ctor)
+  (.letE emptyForest (.letE (.array_mk (.cons (.var (v♯0)) .nil))
+    (.recAlias_mk (Ty.array Ty.self).toTyWfIn (value := .var (v♯0)))) :
+    Term recEmptySig [] _ forestTy (.letIn _))
 
 /-- Is a forest empty?  The eliminator binds the body, which is an array. -/
 def forestIsEmpty :=
@@ -186,14 +189,17 @@ def aNil :=
 
 /-- A `B`: the natural `7` and the `A` above. -/
 def bOne :=
-  (.mutualRecursiveFamily_mk famB
-     (value := .record _ (.cons (.nat_mk 7) (.cons aNil .nil))) :
-    Term recEmptySig [] _ tyB .ctor)
+  (.letE aNil (.mutualRecursiveFamily_mk famB
+     (value := .record _ (.cons (.nat_mk 7) (.cons (.var (v♯0)) .nil)))) :
+    Term recEmptySig [] _ tyB (.letIn _))
 
-/-- An `A` built from that `B`. -/
+/-- An `A` built from that `B`.  A `let` does not bind another `let` (A-normal form), so
+    the `let`s of `bOne` come first: `let a := aNil; let b := ⟨7, a⟩; .ctor1 b`. -/
 def aOne :=
-  (.mutualRecursiveFamily_mk famA (value := .ctors _ 1 (fields := .cons bOne .nil)) :
-    Term recEmptySig [] _ tyA .ctor)
+  (.letE aNil (.letE (.mutualRecursiveFamily_mk famB
+     (value := .record _ (.cons (.nat_mk 7) (.cons (.var (v♯0)) .nil))))
+    (.mutualRecursiveFamily_mk famA (value := .ctors _ 1 (fields := .cons (.var (v♯0)) .nil)))) :
+    Term recEmptySig [] _ tyA (.letIn _))
 
 /-- The natural a `B` holds: a record member has one branch, which binds its fields. -/
 def bLabel :=
@@ -241,13 +247,14 @@ Note: Inferred this name from the expected resulting type of `.nil`:
 error: could not synthesize default value for parameter 'hKnown' using tactics
 ---
 error: Expected type must not contain metavariables
-  (Head.var (Var.index DeBruijn.head)).rescrutinizes (0 + ?m.54) = false
+  (Head.var (Var.index DeBruijn.head)).rescrutinizes (Usage.cond 0 + ?m.54) = false
 ---
 error: could not synthesize default value for parameter 'hEta' using tactics
 ---
 error: Expected type must not contain metavariables
   (Head.lit.join ?m.32).isEtaRedex
-      (Usage.scrutinize (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head + (0 + ?m.54))).head =
+      (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
+          (Usage.single DeBruijn.head + (Usage.cond 0 + ?m.54))).head =
     false
 -/
 #guard_msgs (error) in
@@ -265,7 +272,7 @@ has type
   FamilyFoldKCases ?m.109 ?m.110 ?m.111 ?m.112 ?m.113 0 ?m.114 [] ?m.115
 but is expected to have type
   FamilyFoldKCases recEmptySig 0 famA.members (TyWf.famRecBinders famA tyA._proof_1 (TyWf.prim LeanPrimTy.nat)) [tyA]
-    ?m.119 (TyWf.prim LeanPrimTy.nat) [memberB] 0
+    ?m.120 (TyWf.prim LeanPrimTy.nat) [memberB] 0
 in the application
   FamilyFoldKCases.cons
     (FamilyMemberFoldKCases.ctors

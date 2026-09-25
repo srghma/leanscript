@@ -78,10 +78,12 @@ def loopZero {Γ : Ctx} :=
     Term sigAdd Γ _ Acc2 _)
 
 /-- The step: it binds the predecessor (index `0`) and the loop at the predecessor
-    (index `1`), and answers `fun a b => loop b (a + b)`. -/
+    (index `1`), and answers `fun a b => let s = a + b; loop b s` (an argument is an atom:
+    A-normal form). -/
 def loopStep {Γ : Ctx} :=
   (.lam (.lam
-      (.ap (.ap (.var (v♯3)) (.var (v♯0))) (addT (.var (v♯1)) (.var (v♯0))))) :
+      (.letE (addT (.var (v♯1)) (.var (v♯0)))
+        (.ap (.ap (.var (v♯4)) (.var (v♯1))) (.var (v♯0))))) :
     Term sigAdd (TyWf.prim .nat :: Acc2 :: Γ) _ Acc2 _)
 
 /-- `fibLoopTR`, as a term: a fold at a function type. -/
@@ -91,17 +93,23 @@ def loop_term {Γ : Ctx} :=
 
 /-- `fibTR`, as a term: the loop started at `(0, 1)`.  (The fold is written out rather than
     applied as `loop_term`: `loop_term` is a `fun`, and applying it would be a β-redex,
-    which the grammar does not have.) -/
+    which the grammar does not have.  The fold is bound by a `let` before it is applied:
+    what an application calls is a name.) -/
 def fibTR_term :=
-  (.lam (.ap (.ap (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep) (.nat_mk 0))
-     (.nat_mk 1)) :
+  (.lam (.letE (.nat_rec 0 (.var (v♯0)) (.cons loopZero .nil) loopStep)
+     (.ap (.ap (.var (v♯0)) (.nat_mk 0)) (.nat_mk 1))) :
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 /-- The term **is** `fibLoopTR`, at every argument and at both accumulators. -/
 theorem loop_term_eval (n a b : Nat) : runAdd loop_term n a b = fibLoopTR n a b := by
   induction n generalizing a b with
   | zero => rfl
-  | succ n ih => exact ih b (a + b)
+  | succ n ih =>
+      -- `kernel_rfl`: the elaborator's own check of this unfolding is slow (the step
+      -- binds the sum by a `let`), the kernel's is quick
+      have h : runAdd loop_term (n + 1) a b = runAdd loop_term n b (a + b) := by kernel_rfl
+      rw [h]
+      exact ih b (a + b)
 
 /-- `fibLoopTR` started at `(fib k, fib (k + 1))` answers `fib (n + k)` — the user's own
     invariant, which is what makes the tail-recursive loop correct. -/

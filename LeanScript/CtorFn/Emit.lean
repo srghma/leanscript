@@ -33,6 +33,18 @@ def addReducibleDef (name : Name) (type value : Expr) : MetaM Unit := do
   try compileDecls #[name] catch _ => pure ()
   setReducibleAttribute name
 
+/-- The tactic block `by head_ok` of a proof argument of the grammar, as the second argument
+    of `autoParam`: read off the type of `LeanScript.Term.recAlias_mk`, whose `hAnf` is
+    written by it. -/
+def anfAutoParam : MetaM Expr := do
+  let ci ← getConstInfoCtor ``LeanScript.Term.recAlias_mk
+  forallTelescope ci.type fun xs _ => do
+    for x in xs do
+      if (← x.fvarId!.getUserName).eraseMacroScopes == `hAnf then
+        let ty ← inferType x
+        if ty.isAppOfArity ``autoParam 2 then return ty.appArg!
+    throwError "`#leanscript_ctor`: internal: no `by head_ok` to reuse"
+
 /-- A spine of the terms `xs`, at the trees `tys`. -/
 def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := do
   let mut sp ← LeanScript.ToTerm.buildNode ``LeanScript.Spine.nil #[sg, γ]
@@ -43,20 +55,40 @@ def mkSpineE (sg γ : Expr) (tys : List Expr) (xs : Array Expr) : MetaM Expr := 
       #[sg, γ, tysA[j]!, ← mkListLit tyWfE (tys.drop (j + 1)), xs[j]!, sp])
   return sp
 
+/-- Does a constructor function of this shape build a constructor node, whose fields are
+    operands and so must be atoms (`LeanScript.Head.isAtom`)? -/
+def Shape.hasFields : Shape → Bool
+  | .record _ | .union _ => true
+  | _ => false
+
+/-- The proof that the fields, of heads `ks`, are atoms (`LeanScript.Head.allAtom`), from a
+    proof `hs[i]` that the head of field `i` is one. -/
+def allAtomProof (ks hs : Array Expr) : MetaM Expr := do
+  let headTy := Lean.mkConst ``LeanScript.Head
+  let mut prf := Lean.mkConst ``LeanScript.Head.allAtom_nil
+  let mut rest ← mkListLit headTy []
+  for i in [0:ks.size] do
+    let j := ks.size - 1 - i
+    prf := mkAppN (Lean.mkConst ``LeanScript.Head.allAtom_cons) #[ks[j]!, rest, hs[j]!, prf]
+    rest := mkApp3 (Lean.mkConst ``List.cons [0]) headTy ks[j]! rest
+  return prf
+
 /-- The body of the constructor function: the value of shape `shape` built as constructor
-    `cidx` from the terms `xs`, at the trees `tys`. -/
-def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs : Array Expr) :
+    `cidx` from the terms `xs`, of heads `ks`, at the trees `tys`; `hs` are the proofs that
+    those heads are atoms. -/
+def mkBody (sg γ : Expr) (shape : Shape) (cidx : Nat) (tys : Array Expr) (xs ks hs : Array Expr) :
     MetaM Expr := do
   match shape with
   | .newtype => return xs[0]!
   | .record sch =>
       return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.record_mk
-        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs])
+        #[sg, γ, sch, ← mkSpineE sg γ tys.toList xs] #[(`hAnf, ← allAtomProof ks hs)])
   | .union l =>
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, lenE])
       return (← LeanScript.ToTerm.buildNode ``LeanScript.Term.taggedUnion_mk
-        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs])
+        #[sg, γ, l, mkNatLit cidx, prf, ← mkSpineE sg γ tys.toList xs]
+        #[(`hAnf, ← allAtomProof ks hs)])
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit cidx, nE])
@@ -130,8 +162,20 @@ def emit (cName fnKey layoutKey layoutOwner : Name) (layoutBase : Name) (sfx : S
       fields.mapIdx fun i (n, τ) => (n, .default, fun _ =>
         pure (mkAppN (Lean.mkConst ``LeanScript.Term) #[sg, γ, idx[2 * i]!, τ, idx[2 * i + 1]!]))
     withLocalDecls decls fun xs => do
-      let body ← mkBody sg γ shape cidx (fields.map (·.2)) xs
-      let binders := #[sg, γ] ++ holes ++ idx ++ xs
+    -- each field is an operand of the constructor, so an atom (A-normal form): a proof of
+    -- it per field, written by `head_ok` by default
+    let ks := (List.range fields.size).toArray.map fun i => idx[2 * i + 1]!
+    let autoE ← anfAutoParam
+    let hDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
+      if shape.hasFields then
+        fields.mapIdx fun i (n, _) => (n.appendAfter "_atom", .default, fun _ =>
+          pure (mkApp2 (Lean.mkConst ``autoParam [levelZero])
+            (mkApp3 (Lean.mkConst ``Eq [levelOne]) (Lean.mkConst ``Bool)
+              (mkApp (Lean.mkConst ``LeanScript.Head.isAtom) ks[i]!) (Lean.mkConst ``Bool.true)) autoE))
+      else #[]
+    withLocalDecls hDecls fun hs => do
+      let body ← mkBody sg γ shape cidx (fields.map (·.2)) xs ks hs
+      let binders := #[sg, γ] ++ holes ++ idx ++ xs ++ hs
       -- the result is at the layout, with the grade vector and the head of the body
       let bodyTy ← instantiateMVars (← inferType body)
       let resTy := mkAppN (Lean.mkConst ``LeanScript.Term)

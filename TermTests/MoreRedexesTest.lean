@@ -61,7 +61,7 @@ error: Tactic `decide` proved that the proposition
   (Head.var (Var.index DeBruijn.head)).rescrutinizes
       (0 +
         (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
-            (Usage.single DeBruijn.head.tail + 0 + (Usage.single DeBruijn.head).tail)).tail) =
+            (Usage.single DeBruijn.head.tail + Usage.cond 0 + (Usage.single DeBruijn.head).tail.cond)).tail) =
     false
 is false
 -/
@@ -88,8 +88,8 @@ error: could not synthesize default value for parameter 'hKnown' using tactics
 error: Tactic `decide` proved that the proposition
   (Head.var (Var.index DeBruijn.head)).rescrutinizes
       ((Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
-            (Usage.single DeBruijn.head.tail + (Usage.single DeBruijn.head).tail +
-              (Usage.single DeBruijn.head).tail)).tail +
+            (Usage.single DeBruijn.head.tail + (Usage.single DeBruijn.head).tail.cond +
+              (Usage.single DeBruijn.head).tail.cond)).tail +
         (Usage.single DeBruijn.head).tail) =
     false
 is false
@@ -109,7 +109,9 @@ error: Tactic `decide` proved that the proposition
   (Head.var (Var.index DeBruijn.head)).rescrutinizes
       (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
           (Usage.single DeBruijn.head.tail +
-            (Usage.single DeBruijn.head + (Usage.single DeBruijn.head.tail + 0)).tail)).tail =
+            (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+                (Usage.arg (Head.var (Var.index DeBruijn.head.tail)) (Usage.single DeBruijn.head.tail) +
+                  0)).tail)).tail =
     false
 is false
 -/
@@ -132,14 +134,31 @@ example : run charOnce 'a' = 194 := rfl
 -- `fun n => let p = (n * n, n + 1); (match p with | (a, _) => a) + (match p with
 -- | (_, b) => b)`: `p` is known to be the pair.
 /--
+error: could not synthesize default value for parameter 'hAnf' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.allAtom [Head.comp, Head.comp] = true
+is false
+---
+error: could not synthesize default value for parameter 'hAnf' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  Head.allAtom
+      [(Head.var (Var.index DeBruijn.head)).join Head.empty,
+        (Head.var (Var.index DeBruijn.head.tail)).join Head.empty] =
+    true
+is false
+---
 error: could not synthesize default value for parameter 'hKnownLet' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.comp, Head.comp]).letKnown
-      (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
-          (Usage.single DeBruijn.head + Usage.drop pairSchema.toList (Usage.single DeBruijn.head)) +
-        (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
-            (Usage.single DeBruijn.head + Usage.drop pairSchema.toList (Usage.single DeBruijn.head.tail)) +
+  (Head.ctorOf [Head.comp, Head.comp]).letKnown (TyWf.record pairSchema)
+      (Usage.arg ((Head.var (Var.index DeBruijn.head)).join Head.empty)
+          (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
+            (Usage.single DeBruijn.head + Usage.drop pairSchema.toList (Usage.single DeBruijn.head))) +
+        (Usage.arg ((Head.var (Var.index DeBruijn.head.tail)).join Head.empty)
+            (Usage.scrutinize (Head.var (Var.index DeBruijn.head))
+              (Usage.single DeBruijn.head + Usage.drop pairSchema.toList (Usage.single DeBruijn.head.tail))) +
           0)) =
     false
 is false
@@ -164,33 +183,32 @@ def letPairTakenApart :=
       fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))) :
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
-/-- `fun n => let a = n * n; let b = n + 1; a + b + a`: the fields bound, a term. -/
+/-- `fun n => let a = n * n; let b = n + 1; let c = a + b; c + a`: the fields bound (and,
+    in A-normal form, every operand an atom), a term. -/
 def letFieldsBound :=
   (.lam (.letE
     (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
       fun vs => .preludeExtern (.lean_nat_mul vs.1 vs.2.1))
-    (.externCall
-      (.cons (.externCall
-          (.cons (.var (v♯0))
-            (.cons (.externCall (.cons (.var (v♯1)) (.cons (.nat_mk 1) .nil))
-              fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) .nil))
-          fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
-        (.cons (.var (v♯0)) .nil))
-      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))) :
+    (.letE (.externCall (.cons (.var (v♯1)) (.cons (.nat_mk 1) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+    (.letE (.externCall (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+    (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯2)) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))))) :
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : run letFieldsBound 3 = 22 := rfl
 
-/-- `fun n => let p = (n * n, n + 1); (p, p)`: a `let` of a constructor that is shared but
-    not taken apart, a term. -/
+/-- `fun n => let a = n * n; let b = n + 1; let p = (a, b); (p, p)`: a `let` of a
+    constructor that is shared but not taken apart, a term (its fields are atoms, so they
+    are bound first). -/
 def letPairShared :=
-  (.lam (.letE
-    (.record_mk pairSchema
-      (.cons (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+  (.lam (.letE (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
           fun vs => .preludeExtern (.lean_nat_mul vs.1 vs.2.1))
-        (.cons (.externCall (.cons (.var (v♯0)) (.cons (.nat_mk 1) .nil))
-          fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) .nil)))
-    (.record_mk pairPairSchema (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil)))) :
+    (.letE (.externCall (.cons (.var (v♯1)) (.cons (.nat_mk 1) .nil))
+          fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+    (.letE (.record_mk pairSchema (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil)))
+    (.record_mk pairPairSchema (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil)))))) :
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.record pairPairSchema) .lam)
 
 -- `fun t => Thunk.mk (fun _ => t.get)`: that is `t`.
@@ -219,10 +237,11 @@ def lazyOfForce :=
   (.lam (.lazy_mk (.lazy_force (.var (v♯0)))) :
     Term sig0 [] _ (.lazy (TyWf.prim .nat) ⇒ .lazy (TyWf.prim .nat)) .lam)
 
-/-- `fun f n => Thunk.mk (fun _ => (f n).get)`: what is forced is a computation, which the
-    delay defers — a term. -/
+/-- `fun f n => Thunk.mk (fun _ => let t = f n; t.get)`: what is forced is a computation,
+    which the delay defers — a term (in A-normal form the computation is bound, and its
+    variable forced). -/
 def thunkOfForcedCall :=
-  (.lam (.lam (.thunk_mk (.thunk_force (.ap (.var (v♯1)) (.var (v♯0)))))) :
+  (.lam (.lam (.thunk_mk (.letE (.ap (.var (v♯1)) (.var (v♯0))) (.thunk_force (.var (v♯0)))))) :
     Term sig0 [] _ ((TyWf.prim .nat ⇒ .thunk (TyWf.prim .nat)) ⇒ TyWf.prim .nat ⇒ .thunk (TyWf.prim .nat)) .lam)
 
 example : run thunkOfForcedCall (fun n => n + 1) 4 = 5 := rfl
@@ -269,12 +288,12 @@ example : (#leanscript_optimize (.lam (.letE
         (.cons (.record_casesOn (.var (v♯0)) (.var (v♯1))) .nil))
       fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)))) :
     Term sig0 [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) _) =
-  .lam (.externCall
-    (.cons (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
+  .lam (.letE (.externCall (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))
         fun vs => .preludeExtern (.lean_nat_mul vs.1 vs.2.1))
-      (.cons (.externCall (.cons (.var (v♯0)) (.cons (.nat_mk 1) .nil))
-        fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) .nil))
-    fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) := rfl
+    (.letE (.externCall (.cons (.var (v♯1)) (.cons (.nat_mk 1) .nil))
+        fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1))
+    (.externCall (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))
+      fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)))) := rfl
 
 /-! ## Translated: what `#leanscript_to_term` emits -/
 
@@ -293,8 +312,8 @@ example : run natTwice_term 4 = 6 := rfl
 /--
 info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 1)
       (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-      ⋯ ⋯).lam
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
+      ⋯ ⋯ ⋯ natTwice_term._proof_8).lam
   ⋯
 -/
 #guard_msgs in
@@ -314,7 +333,7 @@ example : run natZeroTwice_term 0 = 7 := rfl
 example : run natZeroTwice_term 5 = 4 := rfl
 
 /--
-info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 7) (Term.var DeBruijnProj.head) ⋯ ⋯).lam ⋯
+info: ((Term.var DeBruijnProj.head).nat_casesOn (Term.nat_mk 7) (Term.var DeBruijnProj.head) ⋯ ⋯ ⋯ ⋯).lam ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) natZeroTwice_term
@@ -331,19 +350,18 @@ example : run letPair_term 3 = 22 := rfl
 
 /--
 info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯).letE
-      (Term.externCall
-        (Spine.cons
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+      ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 1) Spine.nil))
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+        ((Term.externCall
+              (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
+              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
           (Term.externCall
-            (Spine.cons (Term.var DeBruijnProj.head)
-              (Spine.cons
-                (Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 1) Spine.nil))
-                  (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-                Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-          (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-      letPair_term._proof_9 ⋯ ⋯ ⋯).lam
+            (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
+          letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯)
+        letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯)
+      letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in
@@ -359,35 +377,34 @@ def letPairKeep_term :=
   (#leanscript_to_term letPairKeep : Term sig0 [] _ (TyWf.prim .nat ⇒ tyWfOf (Nat × (Nat × Nat))) .lam)
 
 /--
-info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.nat_mk 1) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯).letE
-      ((Term.externCall
-            (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯).letE
-        (Term.record_mk
-          { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 },
-            snd :=
-              {
-                toTy :=
-                  Ty.shape
-                    (TyShape.record
-                      { fst := Ty.shape (TyShape.prim LeanPrimTy.nat), snd := Ty.shape (TyShape.prim LeanPrimTy.nat),
-                        rest := [] }),
-                isWf := letPairKeep_term._proof_2 },
-            rest := [] }
-          (Spine.cons
-            (Term.externCall
-              (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-            (Spine.cons
-              (Term.record_mk
-                { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 },
-                  snd := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 },
-                  rest := [] }
-                (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil)))
-              Spine.nil)))
-        letPair_term._proof_9 ⋯ ⋯ ⋯)
-      letPair_term._proof_9 ⋯ ⋯ ⋯).lam
+info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+      ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 1) Spine.nil))
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+        ((Term.record_mk
+              { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 },
+                snd := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 }, rest := [] }
+              (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil)) ⋯).letE
+          ((Term.externCall
+                (Spine.cons (Term.var DeBruijnProj.head.tail.tail)
+                  (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
+                (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+            (Term.record_mk
+              { fst := { toTy := Ty.shape (TyShape.prim LeanPrimTy.nat), isWf := natTwice_term._proof_1 },
+                snd :=
+                  {
+                    toTy :=
+                      Ty.shape
+                        (TyShape.record
+                          { fst := Ty.shape (TyShape.prim LeanPrimTy.nat),
+                            snd := Ty.shape (TyShape.prim LeanPrimTy.nat), rest := [] }),
+                    isWf := letPairKeep_term._proof_2 },
+                rest := [] }
+              (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil)) ⋯)
+            letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯)
+          ⋯ ⋯ ⋯ ⋯ ⋯)
+        letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯)
+      letPair_term._proof_13 ⋯ ⋯ ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in

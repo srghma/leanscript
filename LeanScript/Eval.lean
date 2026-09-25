@@ -75,7 +75,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {Γ : Ctx} → {u : Usage Γ} → {hd : Head} → {τ : TyWf} → (t : Term Sg Γ u τ hd) → Env Γ → Term.NoRecMk t → TyWf.Den τ
   | _, _, _, _, .var v, env, _ => Env.get v env
   | _, _, _, _, .lam body _, env, h => fun x => Term.eval G body (x, env) h
-  | _, _, _, _, .ap f a _ _, env, h => (Term.eval G f env h.1) (Term.eval G a env h.2)
+  | _, _, _, _, .ap f a .., env, h => (Term.eval G f env h.1) (Term.eval G a env h.2)
   | _, _, _, _, .global r, _, _ => GlobalEnv.get r G
   | _, _, _, _, .letE e body .., env, h => Term.eval G body (Term.eval G e env h.1, env) h.2
   -- literals
@@ -103,8 +103,8 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, .float32Model_mk m, _, _ => m
   -- externs: the Lean function the extern implements, called on its arguments
   | _, _, _, _, .extern e _, _, _ => Extern.eval e
-  | _, _, _, _, .externCall args call _ _, env, h => Extern.eval (call (Spine.eval G args env h))
-  | _, _, _, _, .externCallChecked args call fallback _ _, env, h =>
+  | _, _, _, _, .externCall args call .., env, h => Extern.eval (call (Spine.eval G args env h))
+  | _, _, _, _, .externCallChecked args call fallback .., env, h =>
       match call (Spine.eval G args env h.1) with
       | some e => Extern.eval e
       | none => Term.eval G fallback env h.2
@@ -119,7 +119,7 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       match n' with
       | 0 => Term.eval G z env h.2.1
       | k + 1 => Term.eval G s (k, env) h.2.2
-  | _, _, _, _, .nat_rec _ n base branch _ _ _, env, h =>
+  | _, _, _, _, .nat_rec _ n base branch .., env, h =>
       natFoldK (Spine.eval G base env h.2.1)
         (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
         (show Nat from Term.eval G n env h.1)
@@ -163,17 +163,17 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       Term.eval G b ((Term.eval G m env h.1).toBits, env) h.2
   -- delays: a delay denotes the value it stands for
   | _, _, _, _, .lazy_mk e .., env, h => let v := Term.eval G e env h; v
-  | _, _, _, _, .lazy_force e _ _, env, h => let v := Term.eval G e env h; v
+  | _, _, _, _, .lazy_force e .., env, h => let v := Term.eval G e env h; v
   | _, _, _, _, .thunk_mk e .., env, h => let v := Term.eval G e env h; v
-  | _, _, _, _, .thunk_force e _ _, env, h => let v := Term.eval G e env h; v
+  | _, _, _, _, .thunk_force e .., env, h => let v := Term.eval G e env h; v
   -- arrays
-  | _, _, _, _, .array_mk ts, env, h => (Terms.eval G ts env h).toArray
-  | _, _, _, _, .array_casesOn a z s _ _, env, h =>
+  | _, _, _, _, .array_mk ts .., env, h => (Terms.eval G ts env h).toArray
+  | _, _, _, _, .array_casesOn a z s .., env, h =>
       let a' : Array _ := Term.eval G a env h.1
       match a'.toList with
       | [] => Term.eval G z env h.2.1
       | x :: xs => Term.eval G s (x, xs.toArray, env) h.2.2
-  | _, _, _, _, .array_rec _ a bases branch _ _ _, env, h =>
+  | _, _, _, _, .array_rec _ a bases branch .., env, h =>
       listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
         (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
         (show Array _ from Term.eval G a env h.1).toList
@@ -185,13 +185,13 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
       EnumSomeCases.eval G cases env (Term.eval G e env h.1)
         (Term.eval G dflt env h.2.2) h.2.1
   -- records
-  | _, _, _, _, .record_mk fs fields, env, h =>
+  | _, _, _, _, .record_mk fs fields .., env, h =>
       cast (Ty.denRecord_eq _).symm (Spine.eval G fields env h)
   | _, _, _, _, .record_casesOn r body .., env, h =>
       Term.eval G body (Env.append (cast (Ty.denRecord_eq _) (Term.eval G r env h.1)) env)
         h.2
   -- tagged unions
-  | _, _, _, _, .taggedUnion_mk _ t ht fields, env, h =>
+  | _, _, _, _, .taggedUnion_mk _ t ht fields .., env, h =>
       TyWf.DenTU.mk t ht (Spine.eval G fields env h)
   | _, _, _, _, .taggedUnion_casesOn v cases .., env, h =>
       TaggedUnionCases.eval G cases env (Term.eval G v env h.1) h.2
@@ -200,31 +200,31 @@ def Term.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
         (Term.eval G dflt env h.2.2) h.2.1
   -- recursive tagged unions: a value is a W-tree, taken apart one level by
   -- `TyWf.DenRec.unfold` and folded bottom-up with every answer remembered
-  | _, _, _, _, .recTaggedUnion_mk l hwf t ht fields, env, h =>
+  | _, _, _, _, .recTaggedUnion_mk l hwf t ht fields .., env, h =>
       TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env h))
   | _, _, _, _, .recTaggedUnion_casesOn (l := l) (hwf := hwf) v cases .., env, h =>
       TaggedUnionCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1)) h.2
   | _, _, _, _, .recTaggedUnion_casesOnWithDefault (l := l) (hwf := hwf) v cases dflt .., env, h =>
       TaggedUnionSomeCases.eval G cases env (TyWf.DenRec.unfold l hwf (Term.eval G v env h.1))
         (Term.eval G dflt env h.2.2) h.2.1
-  | _, _, _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases _, env, h =>
+  | _, _, _, τ, .recTaggedUnion_rec (l := l) (hwf := hwf) _ v cases .., env, h =>
       WType.memoFold
         (fun node kids =>
           TaggedUnionFoldKCases.eval G cases env (recBindEnv l hwf τ) node.1.val
             ⟨node.2, kids⟩ h.2)
         (Term.eval G v env h.1)
   -- the other recursive shapes: no value of one is built, and one taken apart has none
-  | _, _, _, _, .recObject_mk _ _ _, _, h => h.elim
+  | _, _, _, _, .recObject_mk .., _, h => h.elim
   | _, _, _, _, .recObject_casesOn v .., env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, _, _, .recObject_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, _, _, .recAlias_mk _ _ _, _, h => h.elim
+  | _, _, _, _, .recObject_rec _ v .., env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .recAlias_mk .., _, h => h.elim
   | _, _, _, _, .recAlias_casesOn v .., env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, _, _, .recAlias_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .recAlias_rec _ v .., env, h => PEmpty.elim (Term.eval G v env h)
   | _, _, _, _, .mutualRecursiveFamily_mk _ _ _, _, h => h.elim
   | _, _, _, _, .mutualRecursiveFamily_casesOn v _ .., env, h => PEmpty.elim (Term.eval G v env h)
-  | _, _, _, _, .mutualRecursiveFamily_casesOnWithDefault v _ _ _ _, env, h =>
+  | _, _, _, _, .mutualRecursiveFamily_casesOnWithDefault v .., env, h =>
       PEmpty.elim (Term.eval G v env h)
-  | _, _, _, _, .mutualRecursiveFamily_rec _ v _ _, env, h => PEmpty.elim (Term.eval G v env h)
+  | _, _, _, _, .mutualRecursiveFamily_rec _ v .., env, h => PEmpty.elim (Term.eval G v env h)
 
 /-- The values of the elements of an array, in order, as a list; `Term.array_mk` turns it
     into the Lean `Array` an array of the language denotes. -/
@@ -442,11 +442,11 @@ variable {Sg : Sig} {Γ : Ctx} {σ τ : TyWf} (G : GlobalEnv Sg.decls)
 /-- `let x = e; body` binds the value of `e`. -/
 theorem Term.eval_letE {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
     (e : Term Sg Γ u σ ke) (body : Term Sg (σ :: Γ) v τ kb)
-    (hValue : Head.isBindable ke = true) (hUsed : 2 ≤ Usage.head v)
+    (hValue : Head.isBindable ke = true) (hUsed : Head.letUsed ke (Usage.head v) (v.opnd 0) = true)
     (hClosed : Head.closedComp (Usage.letU u v) τ kb = false)
-    (hKnownLet : Head.letKnown ke v = false) (env : Env Γ)
-    (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
-    Term.eval G (.letE e body hValue hUsed hClosed hKnownLet) env ⟨he, hb⟩ =
+    (hKnownLet : Head.letKnown ke σ v = false) (hPlace : Usage.confined v 0 = false)
+    (env : Env Γ) (he : Term.NoRecMk e) (hb : Term.NoRecMk body) :
+    Term.eval G (.letE e body hValue hUsed hClosed hKnownLet hPlace) env ⟨he, hb⟩ =
       Term.eval G body (Term.eval G e env he, env) hb :=
   rfl
 
@@ -459,9 +459,10 @@ theorem Term.eval_extern (e : Extern τ) (hq : TyWf.quotable τ = false) (env : 
 /-- An extern applied to terms is the Lean function called on their values. -/
 theorem Term.eval_externCall {σs : List TyWf} {u : Usage Γ} {ks : List Head}
     (args : Spine Sg Γ u σs ks) (call : TyWf.DenList σs → Extern τ)
-    (hArgs : Head.allValue ks = false) (hClosed : Head.closedComp u τ .comp = false)
+    (hArgs : Head.allValue ks = false) (hAnf : Head.allAtom ks = true)
+    (hClosed : Head.closedComp u τ .comp = false)
     (env : Env Γ) (h : Spine.NoRecMk args) :
-    Term.eval G (.externCall args call hArgs hClosed) env h =
+    Term.eval G (.externCall args call hArgs hAnf hClosed) env h =
       Extern.eval (call (Spine.eval G args env h)) :=
   rfl
 
@@ -470,10 +471,11 @@ theorem Term.eval_externCall {σs : List TyWf} {u : Usage Γ} {ks : List Head}
 theorem Term.eval_externCallChecked_of_some {σs : List TyWf} {u v : Usage Γ}
     {ks : List Head} {kf : Head} (args : Spine Sg Γ u σs ks)
     (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ v τ kf)
-    (hArgs : Head.allValue ks = false) (hClosed : Head.closedComp (u + v) τ .comp = false)
+    (hArgs : Head.allValue ks = false) (hAnf : Head.allAtom ks = true)
+    (hClosed : Head.closedComp (u + v) τ .comp = false)
     (env : Env Γ) (h : Spine.NoRecMk args ∧ Term.NoRecMk fallback) (e : Extern τ)
     (he : call (Spine.eval G args env h.1) = some e) :
-    Term.eval G (.externCallChecked args call fallback hArgs hClosed) env h = Extern.eval e := by
+    Term.eval G (.externCallChecked args call fallback hArgs hAnf hClosed) env h = Extern.eval e := by
   show (match call (Spine.eval G args env h.1) with
     | some e => Extern.eval e
     | none => Term.eval G fallback env h.2) = _
@@ -482,15 +484,15 @@ theorem Term.eval_externCallChecked_of_some {σs : List TyWf} {u v : Usage Γ}
 /-- The tag of a tagged value is the constructor it was built with. -/
 theorem Term.eval_taggedUnion_mk_fst {l : LeanTaggedUnionSchema TyWf} (t : Nat)
     (ht : t < l.length) {u : Usage Γ} {ks : List Head} (fields : Spine Sg Γ u (l.get t ht) ks)
-    (env : Env Γ) (hf : Spine.NoRecMk fields) :
-    (Term.eval G (.taggedUnion_mk l t ht fields) env hf).1.val = t :=
+    (hAnf : Head.allAtom ks = true) (env : Env Γ) (hf : Spine.NoRecMk fields) :
+    (Term.eval G (.taggedUnion_mk l t ht fields hAnf) env hf).1.val = t :=
   rfl
 
 /-- The fields of a tagged value are the ones it was built with. -/
 theorem Term.eval_taggedUnion_field? {l : LeanTaggedUnionSchema TyWf} (t : Nat)
     (ht : t < l.length) {u : Usage Γ} {ks : List Head} (fields : Spine Sg Γ u (l.get t ht) ks)
-    (env : Env Γ) (hf : Spine.NoRecMk fields) :
-    TyWf.DenTU.field? t ht (Term.eval G (.taggedUnion_mk l t ht fields) env hf) =
+    (hAnf : Head.allAtom ks = true) (env : Env Γ) (hf : Spine.NoRecMk fields) :
+    TyWf.DenTU.field? t ht (Term.eval G (.taggedUnion_mk l t ht fields hAnf) env hf) =
       some (Spine.eval G fields env hf) :=
   TyWf.DenTU.field?_mk t ht _
 

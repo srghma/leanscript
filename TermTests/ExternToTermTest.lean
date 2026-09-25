@@ -43,11 +43,11 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
 def externForm? {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} :
     Term sig0 Γ u τ k → Option String
   | .lam b _ => externForm? b
-  | .ap f a _ _ => externForm? f <|> externForm? a
+  | .ap f a .. => externForm? f <|> externForm? a
   | .letE a b .. => externForm? a <|> externForm? b
   | .extern _ _ => some "extern"
-  | .externCall _ _ _ _ => some "externCall"
-  | .externCallChecked _ _ _ _ _ => some "externCallChecked"
+  | .externCall .. => some "externCall"
+  | .externCallChecked .. => some "externCallChecked"
   | _ => none
 
 /-! ## An extern without a proof: `Term.externCall` -/

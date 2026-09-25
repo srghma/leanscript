@@ -34,13 +34,17 @@ local macro:max "runArith" t:term:max : term => `(Term.run (Sg := sigArith) envA
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigArith Γ ua natT ka)
-    (b : Term sigArith Γ ub natT kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigArith Γ _ natT _)
+    (b : Term sigArith Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigArith Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
 def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigArith Γ ua natT ka)
-    (b : Term sigArith Γ ub natT kb) :=
-  (.ap (.ap (.global (.there .here)) a) b : Term sigArith Γ _ natT _)
+    (b : Term sigArith Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global (.there .here)) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigArith Γ _ natT _)
 
 /-- The context the folds below are written in: the array they fold over. -/
 abbrev ArrCtx : Ctx := [TyWf.array natT]
@@ -59,7 +63,8 @@ def contBases :=
 
 /-- The branch: `a * K as + K (as.drop 1)`. -/
 def contBranch :=
-  (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3)) :
+  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
+     (addT (.var (v♯0)) (.var (v♯4))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 2 ArrCtx) _ natT _)
 
 /-- The continuant, as a term of the grammar: the depth-one fold of an array. -/
@@ -126,7 +131,9 @@ def cont3Bases :=
 
 /-- The branch of the depth-two fold: `a * K as + K (as.drop 1) + K (as.drop 2)`. -/
 def cont3Branch :=
-  (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)) :
+  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
+     (.letE (addT (.var (v♯0)) (.var (v♯4)))
+       (addT (.var (v♯0)) (.var (v♯6)))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 3 ArrCtx) _ natT _)
 
 /-- `cont3`, as a term: the depth-two fold of an array. -/
@@ -157,14 +164,17 @@ def cont4Bases :=
   (.cons (.nat_mk 1)
       (.cons (.var (v♯0))
         (.cons (mulT (.var (v♯1)) (.var (v♯0)))
-          (.nil (mulT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0)))))) :
+          (.nil (.letE (mulT (.var (v♯2)) (.var (v♯1)))
+                  (mulT (.var (v♯0)) (.var (v♯1))))))) :
     ArrayRecBases sigArith ArrCtx _ natT natT 3)
 
 /-- The branch of the depth-three fold: the head times the nearest answer, plus the other
     three the window holds. -/
 def cont4Branch :=
-  (addT (addT (addT (mulT (.var (v♯0)) (.var (v♯2))) (.var (v♯3))) (.var (v♯4)))
-      (.var (v♯5)) :
+  (.letE (mulT (.var (v♯0)) (.var (v♯2)))
+     (.letE (addT (.var (v♯0)) (.var (v♯4)))
+       (.letE (addT (.var (v♯0)) (.var (v♯6)))
+         (addT (.var (v♯0)) (.var (v♯8))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx natT 4 ArrCtx) _ natT _)
 
 /-- `cont4`, as a term: the depth-three fold of an array. -/

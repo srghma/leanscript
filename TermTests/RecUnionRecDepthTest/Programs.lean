@@ -233,13 +233,17 @@ def sigAdd : Sig :=
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
 def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global (.there .here)) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global (.there .here)) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- The schema of the Peano naturals: constructor `0` is `zero`, which has no fields;
     constructor `1` is `succ`, whose one field is the union itself. -/

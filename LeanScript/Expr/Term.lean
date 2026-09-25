@@ -21,6 +21,39 @@ The grammar itself: `Term` and the families of branches it dispatches through, a
 `mutual` block.  The prose that explains the recursion discipline, and the sketch this
 block was made from, are in `LeanScript.Expr.Design`.
 
+**A-normal form.**  A `Term` is in A-normal form **by construction**: every *operand* is
+an **atom** (`Head.isAtom`) — a variable, a reference to a declaration, a literal, a closed
+value or a `fun` — and every intermediate computation is named by a `let`.  Concretely:
+
+* `Term.ap` calls a name or another application (`Head.isCallee`: `f a b` is
+  `(f a) b`), and its argument is an atom (`hAnf`);
+* every dispatch (`Term.bool_casesOn`, `Term.record_casesOn`, `Term.nat_casesOn`, …) and
+  every force (`Term.thunk_force`, `Term.lazy_force`) takes apart a **name**
+  (`Head.isName`, `hAnf`);
+* the arguments of an extern (`Term.externCall`, `Term.externCallChecked`), the fields
+  of every constructor (`Term.record_mk`, `Term.array_mk`, `Term.taggedUnion_mk`,
+  `Term.recObject_mk`, `Term.recTaggedUnion_mk`, `Term.recAlias_mk`, the members of a
+  mutual family) and what a fold descends (`Term.nat_rec`, `Term.array_rec`, …) are
+  atoms (`Head.allAtom`, `hAnf`);
+* a `let` never binds another `let` (`Head.isBindable`; a `let` has head `Head.letIn`):
+  `let x = (let y = a; b); c` is `let y = a; let x = b; c`.
+
+`let`s are introduced only where A-normal form needs them (`Head.letUsed`): a `let` binds
+a computation or a constructor that is either **shared** (read at least twice) or read
+once **as an operand** (`Usage.opnd` counts those reads) — where only an atom may stand.
+Everywhere else (a branch, the body of a `let`, of a `fun` or of a delay) a computation
+stands as itself.  And a `let` stands **where its variable is needed** (`hPlace`,
+`Usage.confined`): never above a dispatch one branch of which is the only place that
+reads it, nor above a memoised delay that is the only place that reads it — it goes
+inside, `let x = f y; if c then g x else 0` is `if c then (let x = f y; g x) else 0`.  So
+the grammar has exactly one A-normal form per program, and that form runs a computation
+only on the paths that need it.  A `let` in a branch does not hide what the branch
+answers with: `Head.letIn` records the head of its body, so `if c then (let a = f y;
+some a) else none` is still a dispatch of known constructors (`Head.caseCtor`).  The redex
+checks (β, η, known case, case of case, closed computations, …) see through the `let`s:
+`let f = (fun y => b); f a` and `let p = (a, b); match p …` are rejected as the redexes
+they are (`hUsed`, `hKnownLet`, `Head.letKnown`).
+
 **Closed computations.**  Every computation constructor whose value could be known where
 the term is written — `Term.ap`, `Term.letE`, `Term.externCall`, `Term.externCallChecked`,
 the folds (`Term.nat_rec`, `Term.array_rec`, `Term.recTaggedUnion_rec`, …), the forces
@@ -65,38 +98,60 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (b : Term Sg (σ :: Γ) u τ kb)
       (hEta : Head.isEtaRedex kb (Usage.head u) = false := by head_ok) :
       Term Sg Γ (Usage.many (Usage.tail u)) (σ ⇒ τ) .lam
-  /-- `f a`: **one** argument.
+  /-- `f a`: **one** argument, in A-normal form (`hAnf`).
 
-      `f` is not a `fun` — that is a β-redex — and not a dispatch one of whose branches is
-      a `fun` (`Head.caseIntro`, `Head.isFunLike`): `(if c then fun y => b else g) a` is a
-      β-redex in a branch, and its optimized form applies each branch,
-      `if c then b[a/y] else g a`. -/
+      `f` is a **callee** (`Head.isCallee`): a variable, a declaration, or another
+      application (`f a b` is `(f a) b`).  So it is never a `fun` — that is a β-redex —
+      nor a dispatch, a fold or a `let`, which are bound by a `let` first:
+      `(if c then f else g) a` is `let h = (if c then f else g); h a`.  (A dispatch one
+      of whose branches is a `fun`, bound and then applied once, is rejected at the `let`,
+      `Head.letKnown`: its optimized form applies each branch.)
+
+      `a` is an **atom** (`Head.isAtom`): `f (g x)` is `let y = g x; f y`. -/
   | ap {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {kf ka : Head}
-      (f : Term Sg Γ u (σ ⇒ τ) kf) (a : Term Sg Γ v σ ka) (h : Head.isFunLike kf = false := by head_ok)
-      (hClosed : Head.closedComp (u + v) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + v) τ (.app ka.isVar0)
+      (f : Term Sg Γ u (σ ⇒ τ) kf) (a : Term Sg Γ v σ ka)
+      (hAnf : (Head.isCallee kf && Head.isAtom ka) = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.scrutinize kf (Usage.arg ka (u + v))) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.scrutinize kf (Usage.arg ka (u + v))) τ (.app ka.isVar0)
   /-- A reference to a top-level declaration of the module's signature. -/
   | global : ∀ {Γ τ}, GlobalRef Sg.decls τ → Term Sg Γ Usage.global τ .global
-  /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`.
+  /-- `let x = e; body` — `x` is de Bruijn index `0` of `body`: the one binder of
+      A-normal form.
 
-      Its head is its **body's**: a `let` is transparent to the checks that look at the
-      root of a term.  So `(let x = e; fun y => b) a` is rejected by `Term.ap` as the
-      β-redex it hides, and so is a dispatch on `let x = e; (x, x)`; the optimized forms
-      float the `let` out, `let x = e; (fun y => b) a` and `let x = e; match (x, x) …`,
-      where the redex is then reduced.  (The body of a `let` is never a variable, a
-      literal or a closed value: those do not use `x`, or use it once.)
+      Its head is `Head.letIn` of its body's head, which is not an atom, not a callee and
+      not a name, so a `let` never stands as an operand, is never applied or taken apart,
+      and is never bound by another `let` (`hValue`, `Head.isBindable`): in A-normal form
+      the `let`s float out, `f (let x = e; b)` is `let x = e; let y = b; f y`.
 
-      A `let` of a constructor is not taken apart in its body (`hKnownLet`,
+      `e` is a computation or a constructor (`hValue`): a variable, a literal or a `fun`
+      is inlined.  It is bound only where A-normal form needs a name for
+      it (`hUsed`, `Head.letUsed`): `x` is read at least twice (shared), or once **as an
+      operand** (`Usage.opnd`), where only an atom may stand.  Read once anywhere else, or
+      not at all, the `let` is inlined (`let x = f y; x` is `f y`).  A closed value is an
+      atom, so it is bound only to be shared.
+
+      A `let` does not hide a redex where its body takes `x` apart (`hKnownLet`,
       `Head.letKnown`): `let p = (a, b); … match p with | (x, y) => …` is a case of a
-      known constructor, and its optimized form binds the fields,
-      `let x = a; let y = b; …`. -/
+      known constructor, and its optimized form binds the fields instead; and a `let` of
+      a `fun`-like dispatch, of a delay or of a constructor-like dispatch that is read
+      once, where it is taken apart, is the β-redex, force of a delay or case of case it
+      hides.
+
+      And a `let` stands **where its variable is needed** (`hPlace`, `Usage.confined`):
+      not above a dispatch one branch of which is the only place that reads it, nor above
+      a memoised delay that is the only place that reads it — there the `let` would run
+      its computation even when that branch is not taken, or that delay never forced.
+      `let x = f y; if c then g x else 0` is `if c then (let x = f y; g x) else 0`.  (It
+      may stand above a `fun` or a fold whose body reads it: that body may run many times,
+      and the `let` shares the computation between the runs.) -/
   | letE {Γ : Ctx} {σ τ : TyWf} {u : Usage Γ} {v : Usage (σ :: Γ)} {ke kb : Head}
       (e : Term Sg Γ u σ ke) (b : Term Sg (σ :: Γ) v τ kb)
       (hValue : Head.isBindable ke = true := by head_ok)
-      (hUsed : 2 ≤ Usage.head v := by head_ok)
+      (hUsed : Head.letUsed ke (Usage.head v) (v.opnd 0) = true := by head_ok)
       (hClosed : Head.closedComp (Usage.letU u v) τ kb = false := by not_closed)
-      (hKnownLet : Head.letKnown ke v = false := by head_ok) :
-      Term Sg Γ (Usage.letU u v) τ (Head.underBinder kb)
+      (hKnownLet : Head.letKnown ke σ v = false := by head_ok)
+      (hPlace : Usage.confined v 0 = false := by head_ok) :
+      Term Sg Γ (Usage.letU u v) τ (.letIn kb)
   -- LeanPrimTy intro
   /-- A boolean literal. -/
   | bool_mk : ∀ {Γ} (b : Bool), Term Sg Γ 0 (.prim .bool) (.bool b)
@@ -166,10 +221,12 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
 
       Not every argument is a literal or a closed value (`h`): a call on values is
       computed where the term is written — into the value when it can be written as a
-      term, into `Term.extern` otherwise. -/
+      term, into `Term.extern` otherwise.  And every argument is an **atom** (`hAnf`,
+      A-normal form): `f x + g y` is `let a = f x; let b = g y; a + b`. -/
   | externCall {Γ : Ctx} {σs : List TyWf} {τ : TyWf} {u : Usage Γ} {ks : List Head}
       (args : Spine Sg Γ u σs ks) (call : TyWf.DenList σs → Extern τ)
       (h : Head.allValue ks = false := by head_ok)
+      (hAnf : Head.allAtom ks = true := by head_ok)
       (hClosed : Head.closedComp (u) τ .comp = false := by not_closed) : Term Sg Γ u τ .comp
   /-- A pure extern of `Init` that takes a proof, applied to the terms of its arguments.
       The language erases propositions, so the proof is not in hand when the term runs:
@@ -181,40 +238,61 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       the value is `fallback`'s.
 
       As for `Term.externCall`, not every argument is a literal or a closed value (`h`):
-      `somearray[2]'h` on an array literal is computed where the term is written. -/
+      `somearray[2]'h` on an array literal is computed where the term is written; and
+      every argument is an atom (`hAnf`). -/
   | externCallChecked {Γ : Ctx} {σs : List TyWf} {τ : TyWf} {u v : Usage Γ}
       {ks : List Head} {kf : Head} (args : Spine Sg Γ u σs ks)
       (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ v τ kf)
       (h : Head.allValue ks = false := by head_ok)
+      (hAnf : Head.allAtom ks = true := by head_ok)
       (hClosed : Head.closedComp (u + v) τ .comp = false := by not_closed) : Term Sg Γ (u + v) τ .comp
   -- LeanPrimTy recursors/eliminators
   /-- `if c then t else e`.
 
-      `c` is not a literal, nor a dispatch that answers with a literal in every branch
-      (`h`): the first is a redex, and the second is one in every branch (case-of-case —
+      `c` is a **name** (`hAnf`, `Head.isName`) — a variable or a declaration — as every
+      scrutinee is in A-normal form: a computation is bound by a `let` first
+      (`let b = n < 3; if b then … else …`).  So it is not a literal, which would be a
+      redex; and a dispatch that answers with a literal in every branch, bound and then
+      tested, is the case-of-case redex that `Term.letE` rejects (`Head.letKnown`:
       `if !c then t else e` is `if c then e else t`).  And the branches are not `true` and
       `false`, in that order (`hId`): `if c then true else false` is `c`.  And they are
       not the same leaf (`hSame`, `Head.sameLeaf`): `if c then x else x` is `x`, and
-      `if c then true else true` — what `c || true` is — is `true`. -/
+      `if c then true else true` — what `c || true` is — is `true`.
+
+      And when `c` is a variable, neither branch reads it (`hLit`,
+      `Head.readsScrutinee`): in `t` it is the literal `true` and in `e` the literal
+      `false`, so `if b then f b else g` is `if b then f true else g`, and
+      `if b then b else false` — what `b && b` is — is `b`. -/
   | bool_casesOn {Γ : Ctx} {τ : TyWf} {u v w : Usage Γ} {kc kt ke : Head}
       (c : Term Sg Γ u (.prim .bool) kc) (t : Term Sg Γ v τ kt) (e : Term Sg Γ w τ ke)
-      (h : Head.isKnown kc = false := by head_ok)
+      (hAnf : Head.isName kc = true := by head_ok)
       (hId : (kt, ke) ≠ (.bool true, .bool false) := by head_ok)
       (hSame : Head.sameLeaf kt ke = false := by head_ok)
-      (hKnown : Head.rescrutinizes kc (v + w) = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kc (u + v + w)) τ (Head.join kt ke)
+      (hKnown : Head.rescrutinizes kc (v + w) = false := by head_ok)
+      (hLit : Head.readsScrutinee kc (v + w) = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kc (u + Usage.cond v + Usage.cond w)) τ (Head.join kt ke)
   /-- `match n with | 0 => … | k + 1 => …`: the successor branch **binds** the
       predecessor as de Bruijn index `0`.  There is no recursive value — this is
       `Nat.casesOn`, and the fold is `Term.nat_rec`.
 
+      What it takes apart is a name (`hAnf`), as for every dispatch.
+
       As for the dispatches on datatypes, a dispatch on a variable does not take it apart
       again in a branch (`hKnown`): there, whether it is `0` or `k + 1` is known.  The
-      same holds for `Term.int_casesOn` and for every one-branch dispatch below. -/
+      same holds for `Term.int_casesOn` and for every one-branch dispatch below.
+
+      In the `0` branch a variable scrutinee is the literal `0`, so that branch does not
+      read it (`hLit`, `Head.readsScrutinee`): `match n with | 0 => f n | …` is
+      `match n with | 0 => f 0 | …`.  And the branches are not the same leaf of the
+      context outside (`hSame`, `Head.sameLeafOver`): `match n with | 0 => x | _ + 1 => x`
+      is `x`.  (`Term.int_casesOn` asks the same of its two branches, `Head.sameLeafPast`.) -/
   | nat_casesOn {Γ : Ctx} {τ : TyWf} {u v : Usage Γ} {w : Usage (TyWf.prim .nat :: Γ)}
       {kn kz ks : Head} (n : Term Sg Γ u (.prim .nat) kn) (z : Term Sg Γ v τ kz)
-      (s : Term Sg (TyWf.prim .nat :: Γ) w τ ks) (h : Head.isKnown kn = false := by head_ok)
-      (hKnown : Head.rescrutinizes kn (v + Usage.tail w) = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kn (u + v + Usage.tail w)) τ (Head.join kz ks)
+      (s : Term Sg (TyWf.prim .nat :: Γ) w τ ks) (hAnf : Head.isName kn = true := by head_ok)
+      (hKnown : Head.rescrutinizes kn (v + Usage.tail w) = false := by head_ok)
+      (hLit : Head.readsScrutinee kn v = false := by head_ok)
+      (hSame : Head.sameLeafOver kz ks = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize kn (u + Usage.cond v + Usage.cond (Usage.tail w))) τ (Head.join kz ks)
   /-- `Nat.rec` that descends `k + 1` steps.  `base` holds the answers at `k, …, 1, 0` —
       **nearest first**, so it reads `(f k, …, f 0)` — and the branch for `n + k + 1` binds
       `n` (index `0`) and then the answers at `n + k, …, n + 1, n` (indices `1 … k + 1`).
@@ -232,81 +310,85 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       of them makes the fold a case analysis — `k + 1` nested `Term.nat_casesOn`, the
       innermost of which is the branch — and that is how it is written.  And at depth `0`
       the branch is **not a variable** (`hStep`): a variable that reads an answer is the
-      answer itself, `Nat.rec b (fun _ ih => ih)`, and that fold is `b` at every `n`. -/
+      answer itself, `Nat.rec b (fun _ ih => ih)`, and that fold is `b` at every `n`.
+
+      What it descends and the base values are atoms (`hAnf`, A-normal form). -/
   | nat_rec {Γ : Ctx} {τ : TyWf} (k : Nat := 0) {u ub : Usage Γ}
       {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
       (n : Term Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
       (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
       (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w) := by usage_pos)
       (hStep : k = 0 → Head.isVar kb = false := by head_ok)
-      (hClosed : Head.closedComp (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp
+      (hAnf : (Head.isAtom kn && Head.allAtom ks) = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kn u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg kn u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp
   /-- `match i with | .ofNat n => … | .negSucc n => …`: each branch binds its `nat`. -/
   | int_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v w : Usage (TyWf.prim .nat :: Γ)}
       {ki ka kb : Head} (i : Term Sg Γ u (.prim .int) ki)
       (ofNat : Term Sg (TyWf.prim .nat :: Γ) v τ ka)
-      (negSucc : Term Sg (TyWf.prim .nat :: Γ) w τ kb) (h : Head.isKnown ki = false := by head_ok)
-      (hKnown : Head.rescrutinizes ki (Usage.tail v + Usage.tail w) = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize ki (u + Usage.tail v + Usage.tail w)) τ (Head.join ka kb)
+      (negSucc : Term Sg (TyWf.prim .nat :: Γ) w τ kb) (hAnf : Head.isName ki = true := by head_ok)
+      (hKnown : Head.rescrutinizes ki (Usage.tail v + Usage.tail w) = false := by head_ok)
+      (hSame : Head.sameLeafPast ka kb = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize ki (u + Usage.cond (Usage.tail v) + Usage.cond (Usage.tail w))) τ (Head.join ka kb)
   /-- Take an 8-bit unsigned value apart: its branch binds the bit vector. -/
   | uint8_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 8) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint8) kx) (b : Term Sg (TyWf.prim (.bitvec 8) :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 16-bit unsigned value apart: its branch binds the bit vector. -/
   | uint16_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 16) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint16) kx) (b : Term Sg (TyWf.prim (.bitvec 16) :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 32-bit unsigned value apart: its branch binds the bit vector. -/
   | uint32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 32) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint32) kx) (b : Term Sg (TyWf.prim (.bitvec 32) :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 64-bit unsigned value apart: its branch binds the bit vector. -/
   | uint64_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim (.bitvec 64) :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .uint64) kx) (b : Term Sg (TyWf.prim (.bitvec 64) :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take an 8-bit signed value apart: its branch binds the unsigned value. -/
   | int8_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint8 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int8) kx) (b : Term Sg (TyWf.prim .uint8 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 16-bit signed value apart: its branch binds the unsigned value. -/
   | int16_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint16 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int16) kx) (b : Term Sg (TyWf.prim .uint16 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 32-bit signed value apart: its branch binds the unsigned value. -/
   | int32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int32) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 64-bit signed value apart: its branch binds the unsigned value. -/
   | int64_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint64 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .int64) kx) (b : Term Sg (TyWf.prim .uint64 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a character apart: its branch binds the code point, a `uint32`.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | char_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .char) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take an unchecked position apart: its branch binds the byte index. -/
   | stringPosRaw_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .nat :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .stringPosRaw) kx) (b : Term Sg (TyWf.prim .nat :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a checked position apart: its branch binds the unchecked one.  The proof that
@@ -314,7 +396,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | stringPos_casesOn {Γ : Ctx} {τ : TyWf} {s : String} {u : Usage Γ}
       {v : Usage (TyWf.prim .stringPosRaw :: Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.prim (.stringPos s)) kx) (b : Term Sg (TyWf.prim .stringPosRaw :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take an unchecked substring apart: its branch binds the string and the two
@@ -324,7 +406,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {kx kb : Head} (x : Term Sg Γ u (.prim .substringRaw) kx)
       (b : Term Sg (TyWf.prim .string :: TyWf.prim .stringPosRaw :: TyWf.prim .stringPosRaw :: Γ)
         v τ kb)
-      (h : Head.isKnown kx = false := by head_ok)
+      (hAnf : Head.isName kx = true := by head_ok)
       (hUsed : 0 < Usage.front
         [TyWf.prim .string, TyWf.prim .stringPosRaw, TyWf.prim .stringPosRaw] v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail (Usage.tail (Usage.tail v))) = false := by head_ok) :
@@ -332,27 +414,27 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   /-- Take a 64-bit float apart: its branch binds its model. -/
   | float_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .floatModel :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float) kx) (b : Term Sg (TyWf.prim .floatModel :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take a 32-bit float apart: its branch binds its model. -/
   | float32_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .float32Model :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float32) kx) (b : Term Sg (TyWf.prim .float32Model :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take the model of a 64-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | floatModel_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint64 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .floatModel) kx) (b : Term Sg (TyWf.prim .uint64 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   /-- Take the model of a 32-bit float apart: its branch binds its bits.  The validity
       field is a proposition, so it is erased and is not bound. -/
   | float32Model_casesOn {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {v : Usage (TyWf.prim .uint32 :: Γ)}
       {kx kb : Head} (x : Term Sg Γ u (.prim .float32Model) kx) (b : Term Sg (TyWf.prim .uint32 :: Γ) v τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head v := by usage_pos)
       (hKnown : Head.rescrutinizes kx (Usage.tail v) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail v)) τ (Head.join kb .empty)
   -- Each of the one-branch dispatches above asks that its branch reads a field (`hUsed`,
@@ -374,12 +456,14 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (hEta : Head.isForcedName false ke = false := by head_ok) :
       Term Sg Γ (Usage.many u) (.lazy τ) (Head.ctorOf [ke])
   /-- Run a delayed value: what an application `f ()` becomes once the unit argument is
-      erased.  What is run is not a delay built right there, nor a dispatch one of whose
-      branches builds one (`Head.isCtorLike`): the force moves into the branches. -/
+      erased.  What is run is a **name** (`hAnf`, A-normal form): a computation is bound
+      by a `let` first.  So it is not a delay built right there, and a delay or a
+      dispatch one of whose branches builds one, bound and forced once, is the redex that
+      `Term.letE` rejects (`Head.letKnown`): the force moves into the branches. -/
   | lazy_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.lazy τ) ke)
-      (h : Head.isCtorLike ke = false := by head_ok)
-      (hClosed : Head.closedComp (u) τ .comp = false := by not_closed) :
-      Term Sg Γ u τ (.force false ke.isName)
+      (hAnf : Head.isName ke = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.scrutinize ke u) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.scrutinize ke u) τ (.force false ke.isName)
   /-- Delay a value and remember it: a `Thunk`.
 
       **Memoised**: the JavaScript printed for it runs the body at the first force and
@@ -393,26 +477,29 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       delay defers the computation. -/
   | thunk_mk {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u τ ke)
       (hEta : Head.isForcedName true ke = false := by head_ok) :
-      Term Sg Γ u (.thunk τ) (Head.ctorOf [ke])
-  /-- Force a thunk: the value it stands for, computed at most once.  What is forced is
-      not a thunk built right there, nor a dispatch one of whose branches builds one
-      (`Head.isCtorLike`): `(if c then thunk e else t).get` is `if c then e else t.get`. -/
+      Term Sg Γ (Usage.cond u) (.thunk τ) (Head.ctorOf [ke])
+  /-- Force a thunk: the value it stands for, computed at most once.  What is forced is a
+      **name** (`hAnf`, A-normal form).  So it is not a thunk built right there, and a
+      thunk or a dispatch one of whose branches builds one, bound and forced once, is the
+      redex that `Term.letE` rejects (`Head.letKnown`):
+      `let t = (if c then thunk e else u); t.get` is `if c then e else u.get`. -/
   | thunk_force {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ke : Head} (e : Term Sg Γ u (.thunk τ) ke)
-      (h : Head.isCtorLike ke = false := by head_ok)
-      (hClosed : Head.closedComp (u) τ .comp = false := by not_closed) :
-      Term Sg Γ u τ (.force true ke.isName)
-  /-- An array, from its elements, in order. -/
-  | array_mk : ∀ {Γ τ} {u : Usage Γ} {ks : List Head},
-      Terms Sg Γ u τ ks → Term Sg Γ u (.array τ) (Head.ctorOf ks)
+      (hAnf : Head.isName ke = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.scrutinize ke u) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.scrutinize ke u) τ (.force true ke.isName)
+  /-- An array, from its elements, in order.  Every element is an atom (`hAnf`, A-normal
+      form). -/
+  | array_mk {Γ : Ctx} {τ : TyWf} {u : Usage Γ} {ks : List Head} (elems : Terms Sg Γ u τ ks)
+      (hAnf : Head.allAtom ks = true := by head_ok) : Term Sg Γ u (.array τ) (Head.ctorOf ks)
   /-- Take an array apart: an empty branch, and a non-empty branch that **binds** the
       first element and the rest of the array, in that order.  This is the case
       analysis — the branch gets the rest of the array, not the value of a fold over
       it; that is `Term.array_rec`. -/
   | array_casesOn {Γ : Ctx} {σ τ : TyWf} {u v : Usage Γ} {w : Usage (σ :: TyWf.array σ :: Γ)}
       {ka kz ks : Head} (a : Term Sg Γ u (.array σ) ka) (z : Term Sg Γ v τ kz)
-      (s : Term Sg (σ :: TyWf.array σ :: Γ) w τ ks) (h : Head.isKnown ka = false := by head_ok)
-      (hClosed : Head.closedComp (u + v + Usage.tail (Usage.tail w)) τ (Head.join kz ks) = false := by not_closed) :
-      Term Sg Γ (u + v + Usage.tail (Usage.tail w)) τ (Head.join kz ks)
+      (s : Term Sg (σ :: TyWf.array σ :: Γ) w τ ks) (hAnf : Head.isName ka = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg ka (u + Usage.cond v + Usage.cond (Usage.tail (Usage.tail w)))) τ (Head.join kz ks) = false := by not_closed) :
+      Term Sg Γ (Usage.arg ka (u + Usage.cond v + Usage.cond (Usage.tail (Usage.tail w)))) τ (Head.join kz ks)
   /-- The fold of an array that descends `k + 1` elements at a time.  Its branch, at a
       list `a :: as` whose tail is at least `k` long, **binds** the first element (de
       Bruijn index `0`), the rest of the array (index `1`) and then the values of the
@@ -440,16 +527,23 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb)
       (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail (Usage.tail w)) := by usage_pos)
       (hStep : k = 0 → Head.isVar kb = false := by head_ok)
-      (hClosed : Head.closedComp (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp
+      (hAnf : Head.isAtom ka = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg ka u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg ka u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp
   /-- A constructor of an enum: its **number**, which is what the runtime holds. -/
   | enum_mk : ∀ {Γ} (s : LeanEnumSchema), Fin s.nOfConstructors → Term Sg Γ 0 (.enum s) .lit
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
-      fall off the end. -/
+      fall off the end.
+
+      When the scrutinee is a variable, no branch reads it (`hLit`,
+      `Head.readsScrutinee`): in each branch it is that branch's constructor, a literal.
+      (`Term.enum_casesOnWithDefault` asks the same of its named branches; its default
+      branch knows no constructor, and may read it.) -/
   | enum_casesOn {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {u v : Usage Γ} {ke kc : Head}
       (e : Term Sg Γ u (.enum s) ke) (cases : EnumCases Sg Γ v τ s kc)
-      (h : Head.isKnown ke = false := by head_ok)
-      (hKnown : Head.rescrutinizes ke v = false := by head_ok) :
+      (hAnf : Head.isName ke = true := by head_ok)
+      (hKnown : Head.rescrutinizes ke v = false := by head_ok)
+      (hLit : Head.readsScrutinee ke v = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize ke (u + v)) τ kc
   /-- A dispatch on an enum that branches on **some** of the constructors and sends the
       rest to a default branch.  The branches are given as a list of
@@ -467,28 +561,35 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {u v w : Usage Γ} {ke kc kd : Head}
       (e : Term Sg Γ u (.enum s) ke) (cases : EnumSomeCases Sg Γ v τ s kc k)
       (dflt : Term Sg Γ w τ kd)
-      (hk : k < s.nOfConstructors := by ctor_lt) (h : Head.isKnown ke = false := by head_ok)
-      (hKnown : Head.rescrutinizes ke v = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize ke (u + v + w)) τ (Head.join kc kd)
+      (hk : k < s.nOfConstructors := by ctor_lt) (hAnf : Head.isName ke = true := by head_ok)
+      (hKnown : Head.rescrutinizes ke v = false := by head_ok)
+      (hLit : Head.readsScrutinee ke v = false := by head_ok) :
+      Term Sg Γ (Usage.scrutinize ke (u + v + Usage.cond w)) τ (Head.join kc kd)
   /-- A record, from its fields, in declaration order.  Like an array, it is a closed
       value (`Head.val`) when every field is a literal or a closed value
       (`Head.ctorOf`), so an extern called on it is computed where the term is written. -/
-  | record_mk : ∀ {Γ} (fs : LeanRecordSchema TyWf) {u : Usage Γ} {ks : List Head},
-      Spine Sg Γ u fs.toList ks → Term Sg Γ u (.record fs) (Head.ctorOf ks)
+  | record_mk {Γ : Ctx} (fs : LeanRecordSchema TyWf) {u : Usage Γ} {ks : List Head}
+      (fields : Spine Sg Γ u fs.toList ks) (hAnf : Head.allAtom ks = true := by head_ok) :
+      Term Sg Γ u (.record fs) (Head.ctorOf ks)
   /-- The eliminator of a record: it **binds** every field, in declaration order, so de
       Bruijn index `0` of the body is the record's first field.  A projection is this
       node followed by a variable.
 
       The body **reads at least one field** (`hUsed`): a record has one constructor, so
       there is nothing to decide, and a body that reads no field is the whole node — the
-      language is pure and total, so the record need not be computed. -/
+      language is pure and total, so the record need not be computed.
+
+      It is not a **record η-redex** (`hEta`, `Head.isRecordEta`): a body that rebuilds
+      the record from the fields it binds, in order — `match p with | (a, b) => (a, b)` —
+      makes the node `p`. -/
   | record_casesOn {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf} {u : Usage Γ}
       {v : Usage (fs.toList ++ Γ)} {kr kb : Head}
       (r : Term Sg Γ u (.record fs) kr) (body : Term Sg (fs.toList ++ Γ) v τ kb)
-      (h : Head.isKnown kr = false := by head_ok)
+      (hAnf : Head.isName kr = true := by head_ok)
       (hUsed : 0 < Usage.front fs.toList v := by usage_pos)
       (hClosed : Head.closedComp (u + Usage.drop fs.toList v) τ (Head.join kb .empty) = false := by not_closed)
-      (hKnown : Head.rescrutinizes kr (Usage.drop fs.toList v) = false := by head_ok) :
+      (hKnown : Head.rescrutinizes kr (Usage.drop fs.toList v) = false := by head_ok)
+      (hEta : Head.isRecordEta kb fs.toList.length τ = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kr (u + Usage.drop fs.toList v)) τ (Head.join kb .empty)
   /-- A tagged value: constructor `t` of the union — a number **with the proof that the
       union has it** — and exactly that constructor's fields.
@@ -499,13 +600,13 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       literal or a closed value (`Head.ctorOf`). -/
   | taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
       (ht : t < l.length := by ctor_tag) {u : Usage Γ} {ks : List Head}
-      (fields : Spine Sg Γ u (l.get t ht) ks) :
+      (fields : Spine Sg Γ u (l.get t ht) ks) (hAnf : Head.allAtom ks = true := by head_ok) :
       Term Sg Γ u (.taggedUnion l) (Head.ctorOf ks)
   /-- The eliminator of a tagged union: one branch per constructor, each binding that
       constructor's fields, and no default. -/
   | taggedUnion_casesOn {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf} {u w : Usage Γ}
       {kx kc : Head} (x : Term Sg Γ u (.taggedUnion l) kx) (cases : TaggedUnionCases Sg Γ w l τ kc)
-      (h : Head.isKnown kx = false := by head_ok)
+      (hAnf : Head.isName kx = true := by head_ok)
       (hClosed : Head.closedComp (u + w) τ kc = false := by not_closed)
       (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + w)) τ kc
@@ -524,10 +625,10 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | taggedUnion_casesOnWithDefault {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
       {k : Nat} {u w d : Usage Γ} {kx kc kd : Head} (v : Term Sg Γ u (.taggedUnion l) kx)
       (cases : TaggedUnionSomeCases Sg Γ w l τ kc k) (dflt : Term Sg Γ d τ kd)
-      (hk : k < l.length := by ctor_lt) (h : Head.isKnown kx = false := by head_ok)
+      (hk : k < l.length := by ctor_lt) (hAnf : Head.isName kx = true := by head_ok)
       (hClosed : Head.closedComp (u + w + d) τ (Head.join kc kd) = false := by not_closed)
       (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w + d)) τ (Head.join kc kd)
+      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.join kc kd)
   -- The four recursive shapes of `Ty`.  The sketch they replace read
   --
   -- | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
@@ -560,7 +661,8 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
   | recTaggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema (TyWfIn 1))
       (hwf : Ty.Wf (TyWf.recTaggedUnionTy l) := by ty_wf) (t : Nat)
       (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_tag) {u : Usage Γ}
-      {ks : List Head} (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks) :
+      {ks : List Head} (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
+      (hAnf : Head.allAtom ks = true := by head_ok) :
       Term Sg Γ u (.recTaggedUnion l hwf) (Head.ctorOf ks)
   /-- The eliminator of a recursive tagged union: one branch per constructor, each
       binding that constructor's **unfolded** fields, and no default.  It takes the value
@@ -570,7 +672,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} {u w : Usage Γ} {kx kc : Head}
       (x : Term Sg Γ u (.recTaggedUnion l hwf) kx)
       (cases : TaggedUnionCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ kc)
-      (h : Head.isKnown kx = false := by head_ok)
+      (hAnf : Head.isName kx = true := by head_ok)
       (hClosed : Head.closedComp (u + w) τ kc = false := by not_closed)
       (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + w)) τ kc
@@ -584,10 +686,10 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (cases : TaggedUnionSomeCases Sg Γ w (TyWf.recTaggedUnionUnfold l hwf) τ kc k)
       (dflt : Term Sg Γ d τ kd)
       (hk : k < (TyWf.recTaggedUnionUnfold l hwf).length := by ctor_lt)
-      (h : Head.isKnown kx = false := by head_ok)
+      (hAnf : Head.isName kx = true := by head_ok)
       (hClosed : Head.closedComp (u + w + d) τ (Head.join kc kd) = false := by not_closed)
       (hKnown : Head.rescrutinizes kx w = false := by head_ok) :
-      Term Sg Γ (Usage.scrutinize kx (u + w + d)) τ (Head.join kc kd)
+      Term Sg Γ (Usage.scrutinize kx (u + w + Usage.cond d)) τ (Head.join kc kd)
   /-- **The fold of a recursive tagged union**, its `Xxx.rec` with a non-dependent
       motive, that descends `k + 1` constructors at a time: one branch per constructor,
       each binding that constructor's fields and, right after a field that is an
@@ -614,15 +716,17 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       (x : Term Sg Γ u (.recTaggedUnion l hwf) kx)
       (cases : TaggedUnionFoldKCases Sg l
         (TyWf.recBinders (.recTaggedUnion l hwf) τ) Γ w l τ k)
-      (hClosed : Head.closedComp (u + Usage.many w) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + Usage.many w) τ .comp
+      (hAnf : Head.isAtom kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx u + Usage.many w) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx u + Usage.many w) τ .comp
   /-- A value of a **recursive record**: its fields, in declaration order, unfolded.
       `hwf`, written by `ty_wf`, is the proof that the record describes a type; note that
       a recursive record with a field written `Ty.self` states the equation
       `T = … × T × …`, which no value satisfies, so it has no value here. -/
   | recObject_mk {Γ : Ctx} (fs : LeanRecordSchema (TyWfIn 1))
       (hwf : Ty.Wf (TyWf.recObjectTy fs) := by ty_wf) {u : Usage Γ} {ks : List Head}
-      (fields : Spine Sg Γ u (TyWf.recObjectUnfold fs hwf).toList ks) :
+      (fields : Spine Sg Γ u (TyWf.recObjectUnfold fs hwf).toList ks)
+      (hAnf : Head.allAtom ks = true := by head_ok) :
       Term Sg Γ u (.recObject fs hwf) .ctor
   /-- The eliminator of a recursive record: it **binds** every field, unfolded, in
       declaration order.  A record has one constructor, so there is nothing to dispatch
@@ -633,7 +737,7 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage ((TyWf.recObjectUnfold fs hwf).toList ++ Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recObject fs hwf) kx)
       (body : Term Sg ((TyWf.recObjectUnfold fs hwf).toList ++ Γ) w τ kb)
-      (h : Head.isKnown kx = false := by head_ok)
+      (hAnf : Head.isName kx = true := by head_ok)
       (hUsed : 0 < Usage.front (TyWf.recObjectUnfold fs hwf).toList w := by usage_pos)
       (hClosed : Head.closedComp (u + Usage.drop (TyWf.recObjectUnfold fs hwf).toList w) τ (Head.join kb .empty) = false := by not_closed)
       (hKnown : Head.rescrutinizes kx (Usage.drop (TyWf.recObjectUnfold fs hwf).toList w) = false := by head_ok) :
@@ -662,21 +766,23 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {w : Usage (TyWf.recObjectRecBinders fs hwf τ k ++ Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recObject fs hwf) kx)
       (branch : Term Sg (TyWf.recObjectRecBinders fs hwf τ k ++ Γ) w τ kb)
-      (hClosed : Head.closedComp (u + Usage.many (Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w)) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + Usage.many (Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w)) τ .comp
+      (hAnf : Head.isAtom kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx u + Usage.many (Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w)) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx u + Usage.many (Usage.drop (TyWf.recObjectRecBinders fs hwf τ k) w)) τ .comp
   /-- A value of a **recursive newtype**: a value of its body, unfolded.  The wrapper is
       erased, so the two have the same runtime representation.  `hwf`, written by
       `ty_wf`, is the proof that the newtype describes a type. -/
   | recAlias_mk {Γ : Ctx} (b : TyWfIn 1) (hwf : Ty.Wf (TyWf.recAliasTy b) := by ty_wf)
-      {u : Usage Γ} {kv : Head} (value : Term Sg Γ u (TyWf.recAliasUnfold b hwf) kv) :
-      Term Sg Γ u (.recAlias b hwf) .ctor
+      {u : Usage Γ} {kv : Head} (value : Term Sg Γ u (TyWf.recAliasUnfold b hwf) kv)
+      (hAnf : Head.isAtom kv = true := by head_ok) :
+      Term Sg Γ (Usage.arg kv u) (.recAlias b hwf) .ctor
   /-- The eliminator of a recursive newtype: its one branch **binds** the body.  As for a
       record there is one constructor, so there is no partial form. -/
   | recAlias_casesOn {Γ : Ctx} {τ : TyWf} {b : TyWfIn 1} {hwf : Ty.Wf (TyWf.recAliasTy b)}
       {u : Usage Γ} {w : Usage (TyWf.recAliasUnfold b hwf :: Γ)} {kx kb : Head}
       (x : Term Sg Γ u (.recAlias b hwf) kx)
       (body : Term Sg (TyWf.recAliasUnfold b hwf :: Γ) w τ kb)
-      (h : Head.isKnown kx = false := by head_ok) (hUsed : 0 < Usage.head w := by usage_pos)
+      (hAnf : Head.isName kx = true := by head_ok) (hUsed : 0 < Usage.head w := by usage_pos)
       (hClosed : Head.closedComp (u + Usage.tail w) τ (Head.join kb .empty) = false := by not_closed)
       (hKnown : Head.rescrutinizes kx (Usage.tail w) = false := by head_ok) :
       Term Sg Γ (Usage.scrutinize kx (u + Usage.tail w)) τ (Head.join kb .empty)
@@ -703,8 +809,9 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {kx kb : Head}
       (x : Term Sg Γ u (.recAlias b hwf) kx)
       (branch : Term Sg (TyWf.recAliasRecBinders b hwf τ k ++ Γ) w τ kb)
-      (hClosed : Head.closedComp (u + Usage.many (Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w)) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + Usage.many (Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w)) τ .comp
+      (hAnf : Head.isAtom kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx u + Usage.many (Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w)) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx u + Usage.many (Usage.drop (TyWf.recAliasRecBinders b hwf τ k) w)) τ .comp
   /-- A value of one member of a **mutual recursive family**: whichever of the three
       shapes that member has, with its fields unfolded in the scope of the whole family,
       so that a field written `Ty.familyMember i` is a value of member `i`.
@@ -727,8 +834,9 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w : Usage Γ} {kx kc : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
       (cases : FamilyMemberCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)) kc)
-      (h : Head.isKnown kx = false := by head_ok)
-      (hClosed : Head.closedComp (u + w) τ kc = false := by not_closed) : Term Sg Γ (u + w) τ kc
+      (hAnf : Head.isName kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx (u + w)) τ kc = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx (u + w)) τ kc
   /-- A dispatch on **some** of the constructors of a member of a mutual family, with a
       default for the rest.  Only a member that *has* constructors to choose between — a
       `ctors` member — can be dispatched on partially, which is what
@@ -738,9 +846,9 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f)} {u w d : Usage Γ} {kx kc kd : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
       (cases : FamilyMemberSomeCases Sg Γ w τ (f.current.map (TyWfIn.unfoldFam f hwf)) kc)
-      (dflt : Term Sg Γ d τ kd) (h : Head.isKnown kx = false := by head_ok)
-      (hClosed : Head.closedComp (u + w + d) τ (Head.join kc kd) = false := by not_closed) :
-      Term Sg Γ (u + w + d) τ (Head.join kc kd)
+      (dflt : Term Sg Γ d τ kd) (hAnf : Head.isName kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx (u + w + Usage.cond d)) τ (Head.join kc kd) = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx (u + w + Usage.cond d)) τ (Head.join kc kd)
   /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
       branches of *every* member of the family, in declaration order, each binding its
       fields and, right after a field that is an occurrence of a member, the value of the
@@ -771,8 +879,9 @@ inductive Term (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → Head → Type 1
       {kx : Head}
       (x : Term Sg Γ u (.mutualRecursiveFamily f hwf) kx)
       (cases : FamilyFoldKCases Sg n f.members (TyWf.famRecBinders f hwf τ) Γ w τ f.members k)
-      (hClosed : Head.closedComp (u + Usage.many w) τ .comp = false := by not_closed) :
-      Term Sg Γ (u + Usage.many w) τ .comp
+      (hAnf : Head.isAtom kx = true := by head_ok)
+      (hClosed : Head.closedComp (Usage.arg kx u + Usage.many w) τ .comp = false := by not_closed) :
+      Term Sg Γ (Usage.arg kx u + Usage.many w) τ .comp
 
 /-- The elements of an array: any number of terms, all of one type, indexed by their
     heads (so that an array of values is a value, `Head.ctorOf`). -/
@@ -781,7 +890,7 @@ inductive Terms (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → List Head → 
   | nil : ∀ {Γ τ}, Terms Sg Γ 0 τ []
   /-- One more element, at the front. -/
   | cons : ∀ {Γ τ} {u v : Usage Γ} {k : Head} {ks : List Head},
-      Term Sg Γ u τ k → Terms Sg Γ v τ ks → Terms Sg Γ (u + v) τ (k :: ks)
+      Term Sg Γ u τ k → Terms Sg Γ v τ ks → Terms Sg Γ (Usage.arg k u + v) τ (k :: ks)
 
 /-- The answers a depth-`k` fold of an array (`LeanScript.Term.array_rec`) gives to the
     lists that are **shorter than its window**: the lists of fewer than `k + 1` elements,
@@ -812,7 +921,7 @@ inductive Spine (Sg : Sig) : (Γ : Ctx) → Usage Γ → List TyWf → List Head
   | nil : ∀ {Γ}, Spine Sg Γ 0 [] []
   /-- One more argument. -/
   | cons : ∀ {Γ σ σs} {u v : Usage Γ} {k : Head} {ks : List Head},
-      Term Sg Γ u σ k → Spine Sg Γ v σs ks → Spine Sg Γ (u + v) (σ :: σs) (k :: ks)
+      Term Sg Γ u σ k → Spine Sg Γ v σs ks → Spine Sg Γ (Usage.arg k u + v) (σ :: σs) (k :: ks)
 
 /-- The branches of a dispatch on a tagged union: one per constructor, in constructor
     order, **indexed by the schema itself** rather than by the list of constructors it
@@ -835,13 +944,13 @@ inductive TaggedUnionCases (Sg : Sig) :
       {w : Usage Γ} {ka kb kr : Head},
       Term Sg (fields.toList ++ Γ) u τ ka → Term Sg (next ++ Γ) v τ kb →
       TaggedUnionCasesRest Sg Γ w rest τ kr →
-      TaggedUnionCases Sg Γ (Usage.drop fields.toList u + Usage.drop next v + w)
+      TaggedUnionCases Sg Γ (Usage.cond (Usage.drop fields.toList u) + Usage.cond (Usage.drop next v) + w)
         (.payloadFirst fields next rest) τ (Head.join ka (Head.join kb kr))
   /-- The branch of constructor `0`, which carries no fields and so binds nothing, and
       the branches of the constructors after it. -/
   | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
-      TaggedUnionCases Sg Γ (u + w) (.skip rest) τ (Head.join ka kr)
+      TaggedUnionCases Sg Γ (Usage.cond u + w) (.skip rest) τ (Head.join ka kr)
 
 /-- The branches of the constructors a `LeanScript.CtorsWithPayload` holds: the tail of
     `LeanScript.TaggedUnionCases`, with the same shape as that schema. -/
@@ -852,13 +961,13 @@ inductive CtorsWithPayloadCases (Sg : Sig) :
   | here : ∀ {Γ τ} {fields : NonEmptyList TyWf} {rest : List (List TyWf)}
       {u : Usage (fields.toList ++ Γ)} {w : Usage Γ} {ka kr : Head},
       Term Sg (fields.toList ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
-      CtorsWithPayloadCases Sg Γ (Usage.drop fields.toList u + w) (.here fields rest) τ
+      CtorsWithPayloadCases Sg Γ (Usage.cond (Usage.drop fields.toList u) + w) (.here fields rest) τ
         (Head.join ka kr)
   /-- The branch of a field-less constructor, which binds nothing, and the branches of
       the constructors after it. -/
   | skip : ∀ {Γ τ} {rest : CtorsWithPayload TyWf} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → CtorsWithPayloadCases Sg Γ w rest τ kr →
-      CtorsWithPayloadCases Sg Γ (u + w) (.skip rest) τ (Head.join ka kr)
+      CtorsWithPayloadCases Sg Γ (Usage.cond u + w) (.skip rest) τ (Head.join ka kr)
 
 /-- The branches of the constructors a schema leaves unconstrained: a plain list, one
     entry per constructor still to be given a branch, each as the list of its field
@@ -871,7 +980,7 @@ inductive TaggedUnionCasesRest (Sg : Sig) :
   | cons : ∀ {Γ τ} {fs : List TyWf} {rest : List (List TyWf)} {u : Usage (fs ++ Γ)}
       {w : Usage Γ} {ka kr : Head},
       Term Sg (fs ++ Γ) u τ ka → TaggedUnionCasesRest Sg Γ w rest τ kr →
-      TaggedUnionCasesRest Sg Γ (Usage.drop fs u + w) (fs :: rest) τ (Head.join ka kr)
+      TaggedUnionCasesRest Sg Γ (Usage.cond (Usage.drop fs u) + w) (fs :: rest) τ (Head.join ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of a tagged union, used
     with a default: a list of (constructor number, branch) pairs, in the order they are
@@ -910,7 +1019,7 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
       (ht : t < l.length := by ctor_tag) {u : Usage (l.get t ht ++ Γ)} {ka : Head}
       (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
       (hi : lo ≤ t := by ctor_ge) :
-      TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u) l τ (Head.join ka .empty) 1 lo
+      TaggedUnionSomeCases Sg Γ (Usage.cond (Usage.drop (l.get t ht) u)) l τ (Head.join ka .empty) 1 lo
   /-- One more branch, for constructor `t`, binding that constructor's fields; every
       branch after it names a **bigger** constructor. -/
   | cons {Γ : Ctx} {l : LeanTaggedUnionSchema TyWf} {τ : TyWf} {k lo : Nat} (t : Nat)
@@ -918,7 +1027,7 @@ inductive TaggedUnionSomeCases (Sg : Sig) :
       {ka kr : Head} (branch : Term Sg (l.get t ht ++ Γ) u τ ka)
       (rest : TaggedUnionSomeCases Sg Γ w l τ kr k (t + 1))
       (hi : lo ≤ t := by ctor_ge) :
-      TaggedUnionSomeCases Sg Γ (Usage.drop (l.get t ht) u + w) l τ (Head.join ka kr) (k + 1) lo
+      TaggedUnionSomeCases Sg Γ (Usage.cond (Usage.drop (l.get t ht) u) + w) l τ (Head.join ka kr) (k + 1) lo
 
 /-- The branches of a dispatch on an enum: one per constructor, in constructor order,
     binding nothing, and **indexed by the schema itself** rather than by the number of
@@ -933,12 +1042,12 @@ inductive EnumCases (Sg : Sig) : (Γ : Ctx) → Usage Γ → TyWf → LeanEnumSc
       order. -/
   | three : ∀ {Γ τ} {shift : Int} {u v w : Usage Γ} {ka kb kc : Head},
       Term Sg Γ u τ ka → Term Sg Γ v τ kb → Term Sg Γ w τ kc →
-      EnumCases Sg Γ (u + v + w) τ ⟨0, shift⟩ (Head.join ka (Head.join kb kc))
+      EnumCases Sg Γ (Usage.cond u + Usage.cond v + Usage.cond w) τ ⟨0, shift⟩ (Head.join ka (Head.join kb kc))
   /-- The branch of the first constructor, and the branches of the ones after it — one
       constructor beyond the schema of the rest. -/
   | cons : ∀ {Γ τ} {extra : Nat} {shift : Int} {u w : Usage Γ} {ka kr : Head},
       Term Sg Γ u τ ka → EnumCases Sg Γ w τ ⟨extra, shift⟩ kr →
-      EnumCases Sg Γ (u + w) τ ⟨extra + 1, shift⟩ (Head.join ka kr)
+      EnumCases Sg Γ (Usage.cond u + w) τ ⟨extra + 1, shift⟩ (Head.join ka kr)
 
 /-- The branches of a dispatch on **some** of the constructors of the enum `s`, used with
     a default: (constructor number, branch) pairs.  A constructor may be left out — that
@@ -975,14 +1084,14 @@ inductive EnumSomeCases (Sg : Sig) :
       branch. -/
   | last {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {lo : Nat} (i : Fin s.nOfConstructors)
       {u : Usage Γ} {ka : Head} (branch : Term Sg Γ u τ ka) (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ u τ s (Head.join ka .empty) 1 lo
+      EnumSomeCases Sg Γ (Usage.cond u) τ s (Head.join ka .empty) 1 lo
   /-- One more branch, for the constructor of this number; every branch after it names a
       **bigger** number. -/
   | cons {Γ : Ctx} {τ : TyWf} {s : LeanEnumSchema} {k lo : Nat} (i : Fin s.nOfConstructors)
       {u w : Usage Γ} {ka kr : Head} (branch : Term Sg Γ u τ ka)
       (rest : EnumSomeCases Sg Γ w τ s kr k (i.val + 1))
       (hi : lo ≤ i.val := by ctor_ge) :
-      EnumSomeCases Sg Γ (u + w) τ s (Head.join ka kr) (k + 1) lo
+      EnumSomeCases Sg Γ (Usage.cond u + w) τ s (Head.join ka kr) (k + 1) lo
 
 /-- The branches of a **fold** over a sum type: the same family as
     `LeanScript.TaggedUnionCases`, and so the same shape as the schema it branches on,
@@ -1155,13 +1264,16 @@ inductive FamilyMemberValue (Sg : Sig) :
       fields. -/
   | ctors {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
       (ht : t < l.length := by ctor_tag) {u : Usage Γ} {ks : List Head}
-      (fields : Spine Sg Γ u (l.get t ht) ks) : FamilyMemberValue Sg Γ u (.ctors l)
+      (fields : Spine Sg Γ u (l.get t ht) ks) (hAnf : Head.allAtom ks = true := by head_ok) :
+      FamilyMemberValue Sg Γ u (.ctors l)
   /-- A record member: its fields, in declaration order. -/
   | record {Γ : Ctx} (fs : LeanRecordSchema TyWf) {u : Usage Γ} {ks : List Head}
-      (fields : Spine Sg Γ u fs.toList ks) : FamilyMemberValue Sg Γ u (.record fs)
+      (fields : Spine Sg Γ u fs.toList ks) (hAnf : Head.allAtom ks = true := by head_ok) :
+      FamilyMemberValue Sg Γ u (.record fs)
   /-- A newtype member: a value of its body, whose wrapper is erased. -/
-  | alias {Γ : Ctx} (b : TyWf) {u : Usage Γ} {kv : Head} (value : Term Sg Γ u b kv) :
-      FamilyMemberValue Sg Γ u (.alias b)
+  | alias {Γ : Ctx} (b : TyWf) {u : Usage Γ} {kv : Head} (value : Term Sg Γ u b kv)
+      (hAnf : Head.isAtom kv = true := by head_ok) :
+      FamilyMemberValue Sg Γ (Usage.arg kv u) (.alias b)
 
 /-- The branches of a dispatch on one member of a mutual family: whichever branches that
     member's shape calls for, and no default.  A `ctors` member is dispatched on by

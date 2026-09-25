@@ -16,10 +16,10 @@ Two properties of the optimized grammar, and of what `#leanscript_to_term` emits
   term with `n + n` moved into the `fun` would recompute it at every call.  A memoised
   delay (`thunk`) runs its body at most once, so a `let` read once there is still
   inlined.
-* **A `let` does not hide a redex.**  A `let` has the head of its body, so
-  `(let x = e; fun y => b) a` is rejected as the β-redex it is, and so is forcing
-  `let x = e; thunk …`.  The translation floats the `let` out and reduces what is then
-  exposed.
+* **A `let` does not hide a redex.**  The grammar is in A-normal form, so a `let` never
+  stands where it is applied or forced: `(let x = e; fun y => b) a` and forcing
+  `let x = e; thunk …` are rejected.  The translation floats the `let` out and reduces
+  what is then exposed.
 -/
 
 namespace TermTests.Sharing
@@ -73,7 +73,13 @@ def shareInLazy :=
 error: could not synthesize default value for parameter 'hUsed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  2 ≤ (Usage.single DeBruijn.head).head
+  Head.comp.letUsed (Usage.single DeBruijn.head).cond.head ((Usage.single DeBruijn.head).cond.opnd 0) = true
+is false
+---
+error: could not synthesize default value for parameter 'hPlace' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (Usage.single DeBruijn.head).cond.confined 0 = false
 is false
 -/
 #guard_msgs (error) in
@@ -86,10 +92,10 @@ def letInThunk :=
 
 -- A β-redex behind a `let`: `fun n => (let x = n + n; fun y => x + y) n`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hAnf' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.lam.underBinder.isFunLike = false
+  (Head.lam.letIn.isCallee && (Head.var (Var.index DeBruijn.head)).isAtom) = true
 is false
 -/
 #guard_msgs (error) in
@@ -106,10 +112,19 @@ def hiddenBeta :=
 
 -- A force of a delay built behind a `let`: `fun n => (let x = n + n; thunk (x + x)).force`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'hPlace' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (Head.ctorOf [Head.comp]).underBinder.isCtorLike = false
+  (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+            (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)).cond.confined
+      0 =
+    false
+is false
+---
+error: could not synthesize default value for parameter 'hAnf' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (Head.ctorOf [Head.comp]).letIn.isName = true
 is false
 -/
 #guard_msgs (error) in
@@ -135,12 +150,12 @@ example : run shareUnderFunDef_term 3 4 = 13 := rfl
 -- The `let` is kept, outside the inner `fun`.
 /--
 info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯).letE
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
       ((Term.externCall
             (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯).lam
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯).lam
         ⋯)
-      shareUnderFunDef_term._proof_8 ⋯ ⋯ ⋯).lam
+      shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in
@@ -160,14 +175,14 @@ example : run shareInFoldDef_term 3 5 = 45 := rfl
 /--
 info: (((Term.externCall
               (Spine.cons (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯).letE
+              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
           (Term.nat_rec 0 (Term.var DeBruijnProj.head.tail) (Spine.cons (Term.nat_mk 0) Spine.nil)
             (Term.externCall
               (Spine.cons (Term.var DeBruijnProj.head.tail)
                 (Spine.cons (Term.var DeBruijnProj.head.tail.tail) Spine.nil))
-              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
-            ⋯ shareInFoldDef_term._proof_6 ⋯)
-          shareUnderFunDef_term._proof_8 ⋯ ⋯ ⋯).lam
+              (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
+            ⋯ shareInFoldDef_term._proof_8 ⋯ ⋯)
+          shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
       ⋯).lam
   ⋯
 -/
@@ -176,7 +191,8 @@ info: (((Term.externCall
 
 /-- A β-redex behind a `let`, in the source.  The translation floats the `let` out, reduces
     the β-redex, and then inlines `x`, which is read once and not under a `fun` any more:
-    what is left is `fun n => n * n + n`, an application of the extern with no `let`. -/
+    what is left is `fun n => let x = n * n; x + n` — the `let` is kept, since in A-normal
+    form an argument of an extern is an atom. -/
 def hiddenBetaDef (n : Nat) : Nat := (let x := n * n; fun y => x + y) n
 
 def hiddenBetaDef_term :=
@@ -185,12 +201,12 @@ def hiddenBetaDef_term :=
 example : run hiddenBetaDef_term 5 = 30 := rfl
 
 /--
-info: (Term.externCall
-      (Spine.cons
-        (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
-        (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-      (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯).lam
+info: ((Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
+          (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯).letE
+      (Term.externCall
+        (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
+      shareUnderFunDef_term._proof_10 ⋯ ⋯ ⋯ ⋯).lam
   ⋯
 -/
 #guard_msgs in

@@ -37,9 +37,9 @@ def some4 :=
     Term sig [] _ (#leanscript_layout `Option `some natT) .val)
 
 /--
-info: @[expose] def CtorFnTest.some4 : Term sig [] (0 + 0) (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT)
-  (Head.ctorOf [Head.lit]) :=
-TermTests.CtorFnTest.Module.Option.some.leanScriptCtor natT (Term.nat_mk 4)
+info: @[expose] def CtorFnTest.some4 : Term sig [] (Usage.arg Head.lit 0 + 0)
+  (TermTests.CtorFnTest.Module.Option.leanScriptLayout natT) (Head.ctorOf [Head.lit]) :=
+(fun α val => TermTests.CtorFnTest.Module.Option.some.leanScriptCtor α val some4._proof_1) natT (Term.nat_mk 4)
 -/
 #guard_msgs in #print some4
 
@@ -117,9 +117,13 @@ info: CtorFnTest.Fancy.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (S : TyWf) {o_usa
     Term Sg Γ o_usage
       (TyWf.taggedUnion (LeanTaggedUnionSchema.skip (CtorsWithPayload.here { head := S, tail := [] } []))) o_head)
   (l : Term Sg Γ l_usage (tyWfOf (List S.AsType)) l_head) (f : Term Sg Γ f_usage (S ⇒ S.array) f_head)
-  (n : Term Sg Γ n_usage (TyWf.record { fst := TyWf.prim LeanPrimTy.nat, snd := S, rest := [] }) n_head) :
-  Term Sg Γ (o_usage + (l_usage + (f_usage + (n_usage + 0)))) (Fancy.leanScriptLayout S)
-    (Head.ctorOf [o_head, l_head, f_head, n_head])
+  (n : Term Sg Γ n_usage (TyWf.record { fst := TyWf.prim LeanPrimTy.nat, snd := S, rest := [] }) n_head)
+  (o_atom : o_head.isAtom = true := by head_ok) (l_atom : l_head.isAtom = true := by head_ok)
+  (f_atom : f_head.isAtom = true := by head_ok) (n_atom : n_head.isAtom = true := by head_ok) :
+  Term Sg Γ
+    (Usage.arg o_head o_usage +
+      (Usage.arg l_head l_usage + (Usage.arg f_head f_usage + (Usage.arg n_head n_usage + 0))))
+    (Fancy.leanScriptLayout S) (Head.ctorOf [o_head, l_head, f_head, n_head])
 -/
 #guard_msgs in #leanscript_ctor `Fancy `mk
 
@@ -136,8 +140,10 @@ inductive Vec (α : Type) : Nat → Type where
 info: CtorFnTest.Vec.cons.leanScriptCtor {Sg : Sig} {Γ : Ctx} (α vTy : TyWf) {n_usage : Usage Γ} {n_head : Head}
   {a_usage : Usage Γ} {a_head : Head} {v_usage : Usage Γ} {v_head : Head}
   (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head) (a : Term Sg Γ a_usage α a_head)
-  (v : Term Sg Γ v_usage vTy v_head) :
-  Term Sg Γ (n_usage + (a_usage + (v_usage + 0))) (Vec.leanScriptLayout α vTy) (Head.ctorOf [n_head, a_head, v_head])
+  (v : Term Sg Γ v_usage vTy v_head) (n_atom : n_head.isAtom = true := by head_ok)
+  (a_atom : a_head.isAtom = true := by head_ok) (v_atom : v_head.isAtom = true := by head_ok) :
+  Term Sg Γ (Usage.arg n_head n_usage + (Usage.arg a_head a_usage + (Usage.arg v_head v_usage + 0)))
+    (Vec.leanScriptLayout α vTy) (Head.ctorOf [n_head, a_head, v_head])
 -/
 #guard_msgs in #leanscript_ctor `Vec `cons
 
@@ -148,8 +154,10 @@ structure Dep where
 /--
 info: CtorFnTest.Dep.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (fTy : TyWf) {n_usage : Usage Γ} {n_head : Head}
   {f_usage : Usage Γ} {f_head : Head} (n : Term Sg Γ n_usage (TyWf.prim LeanPrimTy.nat) n_head)
-  (f : Term Sg Γ f_usage fTy f_head) :
-  Term Sg Γ (n_usage + (f_usage + 0)) (Dep.leanScriptLayout fTy) (Head.ctorOf [n_head, f_head])
+  (f : Term Sg Γ f_usage fTy f_head) (n_atom : n_head.isAtom = true := by head_ok)
+  (f_atom : f_head.isAtom = true := by head_ok) :
+  Term Sg Γ (Usage.arg n_head n_usage + (Usage.arg f_head f_usage + 0)) (Dep.leanScriptLayout fTy)
+    (Head.ctorOf [n_head, f_head])
 -/
 #guard_msgs in #leanscript_ctor `Dep `mk
 
@@ -168,9 +176,10 @@ end
 /--
 info: CtorFnTest.Client.mk.leanScriptCtor {Sg : Sig} {Γ : Ctx} (Req Resp ClientState sendTy : TyWf) {seed_usage : Usage Γ}
   {seed_head : Head} {send_usage : Usage Γ} {send_head : Head} (seed : Term Sg Γ seed_usage ClientState seed_head)
-  (send : Term Sg Γ send_usage (ClientState ⇒ TyWf.record { fst := Req, snd := sendTy, rest := [] }) send_head) :
-  Term Sg Γ (seed_usage + (send_usage + 0)) (Client.mk.leanScriptLayout Req Resp ClientState sendTy)
-    (Head.ctorOf [seed_head, send_head])
+  (send : Term Sg Γ send_usage (ClientState ⇒ TyWf.record { fst := Req, snd := sendTy, rest := [] }) send_head)
+  (seed_atom : seed_head.isAtom = true := by head_ok) (send_atom : send_head.isAtom = true := by head_ok) :
+  Term Sg Γ (Usage.arg seed_head seed_usage + (Usage.arg send_head send_usage + 0))
+    (Client.mk.leanScriptLayout Req Resp ClientState sendTy) (Head.ctorOf [seed_head, send_head])
 -/
 #guard_msgs in #leanscript_ctor `Client `mk
 

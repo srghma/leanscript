@@ -85,7 +85,7 @@ is false
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp (0 + (0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0)) (TyWf.prim LeanPrimTy.nat) Head.comp = false
 is false
 -/
 #guard_msgs in
@@ -104,7 +104,13 @@ is false
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  Head.closedComp (0 + (0 + (0 + 0)) + (0 + 0) + 0) (TyWf.prim LeanPrimTy.nat) Head.comp = false
+  Head.closedComp
+      (Usage.arg (Head.ctorOf [Head.lit, Head.lit, Head.lit])
+            (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0))) +
+          (Usage.arg Head.lit 0 + 0) +
+        0)
+      (TyWf.prim LeanPrimTy.nat) Head.comp =
+    false
 is false
 -/
 #guard_msgs in
@@ -123,14 +129,16 @@ def externAdd :=
 
 example : (Term.run' externAdd) 2 = 5 := by decide
 
-/-- An extern used inside a larger term: `fun n => if n < 3 then n * 6 else 0`. -/
+/-- An extern used inside a larger term: `fun n => let b = n < 3; if b then n * 6 else 0`
+    (in A-normal form the test is bound before it is scrutinized). -/
 def externIf :=
-  (.lam (.bool_casesOn
+  (.lam (.letE
       (.externCall (.cons (.var .head) (.cons (.nat_mk 3) .nil))
         (fun vs => .lean_nat_dec_lt vs.1 vs.2.1))
-      (.externCall (.cons (.var .head) (.cons (.nat_mk 6) .nil))
+    (.bool_casesOn (.var .head)
+      (.externCall (.cons (.var (v♯1)) (.cons (.nat_mk 6) .nil))
         (fun vs => .lean_nat_mul vs.1 vs.2.1))
-      (.nat_mk 0)) :
+      (.nat_mk 0))) :
     Term ⟨[], rfl⟩ [] _ (.prim .nat ⇒ .prim .nat) .lam)
 
 example : (Term.run' externIf) 2 = 12 := by decide

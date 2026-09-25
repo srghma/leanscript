@@ -36,7 +36,7 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig0) GlobalEnv.nil
     applications and `let`s. -/
 def ifs {Γ : Ctx} {u : Usage Γ} {τ : TyWf} {k : Head} : Term sig0 Γ u τ k → Nat
   | .lam b _ => ifs b
-  | .ap f a _ _ => ifs f + ifs a
+  | .ap f a .. => ifs f + ifs a
   | .letE a b .. => ifs a + ifs b
   | .bool_casesOn c t e .. => 1 + ifs c + ifs t + ifs e
   | _ => 0

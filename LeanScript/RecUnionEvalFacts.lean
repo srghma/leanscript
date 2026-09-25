@@ -46,9 +46,10 @@ theorem Term.eval_recTaggedUnion_mk_tag {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
     {ks : List Head}
-    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks) (env : Env Γ)
-    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
-    (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)).1.val
+    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
+    (hAnf : Head.allAtom ks = true) (env : Env Γ)
+    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields hAnf)) :
+    (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields hAnf) env h)).1.val
       = t := by
   show (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)).1.val = t
   rw [TyWf.DenRec.unfold_mk]
@@ -59,10 +60,11 @@ theorem Term.eval_recTaggedUnion_field? {Γ : Ctx} {u : Usage Γ}
     (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTaggedUnionTy l)) (t : Nat)
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
     {ks : List Head}
-    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks) (env : Env Γ)
-    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields)) :
+    (fields : Spine Sg Γ u ((TyWf.recTaggedUnionUnfold l hwf).get t ht) ks)
+    (hAnf : Head.allAtom ks = true) (env : Env Γ)
+    (h : Term.NoRecMk (.recTaggedUnion_mk l hwf t ht fields hAnf)) :
     TyWf.DenTU.field? t ht
-        (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields) env h)) =
+        (TyWf.DenRec.unfold l hwf (Term.eval G (.recTaggedUnion_mk l hwf t ht fields hAnf) env h)) =
       some (Spine.eval G fields env h) := by
   show TyWf.DenTU.field? t ht (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk, TyWf.DenTU.field?_mk]
@@ -405,9 +407,10 @@ theorem Term.eval_recTaggedUnion_rec_toFoldK {Γ : Ctx} {u : Usage Γ} {τ : TyW
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k : Nat)
     {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (hc : Head.closedComp (w + Usage.many u) τ .comp = false)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc)) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
+    (hAnf : Head.isAtom hd = true)
+    (hc : Head.closedComp (Usage.arg hd w + Usage.many u) τ .comp = false)
+    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc)) :
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h =
       TaggedUnionFoldCases.recFold G c env h.2 (Term.eval G v env h.1) := by
   show (WType.memo _ (Term.eval G v env h.1)).answer = _
   generalize Term.eval G v env h.1 = w
@@ -433,11 +436,12 @@ theorem Term.eval_recTaggedUnion_rec_depth {Γ : Ctx} {u : Usage Γ} {τ : TyWf}
     {l : LeanTaggedUnionSchema (TyWfIn 1)} {hwf : Ty.Wf (TyWf.recTaggedUnionTy l)} (k k' : Nat)
     {w : Usage Γ} {hd : Head} (v : Term Sg Γ w (.recTaggedUnion l hwf) hd)
     (c : TaggedUnionFoldCases Sg (TyWfIn 1) (TyWf.recBinders (TyWf.recTaggedUnion l hwf) τ) Γ u l τ)
-    (hc : Head.closedComp (w + Usage.many u) τ .comp = false)
-    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc))
-    (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc)) :
-    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hc) env h =
-      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hc) env h' := by
+    (hAnf : Head.isAtom hd = true)
+    (hc : Head.closedComp (Usage.arg hd w + Usage.many u) τ .comp = false)
+    (env : Env Γ) (h : Term.NoRecMk (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc))
+    (h' : Term.NoRecMk (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hAnf hc)) :
+    Term.eval G (.recTaggedUnion_rec k v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h =
+      Term.eval G (.recTaggedUnion_rec k' v (TaggedUnionFoldCases.toFoldK c) hAnf hc) env h' := by
   rw [Term.eval_recTaggedUnion_rec_toFoldK, Term.eval_recTaggedUnion_rec_toFoldK]
   exact TaggedUnionFoldCases.recFold_depth G c env h.2 h'.2 _
 

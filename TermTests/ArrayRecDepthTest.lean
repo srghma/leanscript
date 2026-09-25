@@ -120,18 +120,19 @@ def loopZero {Γ : Ctx} :=
     the tail (index `2`), and answers `fun a b => loop (x * a + b) a`. -/
 def loopStep {Γ : Ctx} :=
   (.lam (.lam
-      (.ap (.ap (.var (v♯4)) (addT (mulT (.var (v♯2)) (.var (v♯1))) (.var (v♯0))))
-        (.var (v♯1)))) :
+      (.letE (mulT (.var (v♯2)) (.var (v♯1)))
+        (.letE (addT (.var (v♯0)) (.var (v♯1)))
+          (.ap (.ap (.var (v♯6)) (.var (v♯0))) (.var (v♯3)))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Acc2 1 Γ) _ Acc2 _)
 
 /-- `contTR`, as a term: the fold of an array at a function type. -/
 def contTRTerm :=
-  (.lam (.ap (.ap (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep) (.nat_mk 1))
-     (.nat_mk 0)) :
+  (.lam (.letE (.array_rec 0 (.var (v♯0)) (.nil loopZero) loopStep)
+     (.ap (.ap (.var (v♯0)) (.nat_mk 1)) (.nat_mk 0))) :
     Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contTRTerm #[] = 1 := rfl
-example : runArith contTRTerm #[3, 4] = 13 := rfl
+example : runArith contTRTerm #[3, 4] = 13 := by decide +kernel
 example : runArith contTRTerm #[1, 2, 3] = 10 := by decide +kernel
 
 /-- **Any** depth-zero fold at the accumulator type with these two equations is the
@@ -220,9 +221,9 @@ def pairZero {Γ : Ctx} :=
     at `x :: xs`. -/
 def pairStep {Γ : Ctx} :=
   (.record_casesOn (.var (v♯2))
-      (.record_mk pairSchema
-        (.cons (addT (mulT (.var (v♯2)) (.var (v♯0))) (.var (v♯1)))
-          (.cons (.var (v♯0)) .nil))) :
+      (.letE (mulT (.var (v♯2)) (.var (v♯0)))
+        (.letE (addT (.var (v♯0)) (.var (v♯2)))
+          (.record_mk pairSchema (.cons (.var (v♯0)) (.cons (.var (v♯2)) .nil))))) :
     Term sigArith (natT :: TyWf.array natT :: natRecCtx Pair 1 Γ) _ Pair _)
 
 /-- `contPair`, as a term: the fold of an array at a record type. -/
@@ -234,8 +235,8 @@ def contPairTerm {Γ : Ctx} :=
     array would be a β-redex, which is not a term: the fold is written in place, on the
     array the function would have been applied to. -/
 def contFromPairTerm :=
-  (.lam (.record_casesOn (fs := pairSchema)
-     (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep) (.var (v♯0))) :
+  (.lam (.letE (.array_rec 0 (.var (v♯0)) (.nil pairZero) pairStep)
+     (.record_casesOn (fs := pairSchema) (.var (v♯0)) (.var (v♯0)))) :
     Term sigArith [] _ (TyWf.array natT ⇒ natT) .lam)
 
 example : runArith contFromPairTerm #[] = 1 := rfl

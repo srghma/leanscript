@@ -47,8 +47,10 @@ local macro:max "runAdd" t:term:max : term => `(Term.run (Sg := sigAdd) envAdd $
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua (TyWf.prim .nat) ka)
-    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ (TyWf.prim .nat) _)
+    (b : Term sigAdd Γ ub (TyWf.prim .nat) kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ (TyWf.prim .nat) _)
 
 /-- The definition every term below computes. -/
 def fib : Nat → Nat
@@ -138,7 +140,7 @@ def fibLoopTR_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd fibLoopTR_term 0 0 1 = 0 := rfl
-example : runAdd fibLoopTR_term 1 0 1 = 1 := rfl
+example : runAdd fibLoopTR_term 1 0 1 = 1 := by decide +kernel
 
 /-- `fibTR n = fibLoopTR n 0 1`, which is the loop applied to the two starting
     accumulators.  The value of this fold is a *function*, so the kernel has a closure to
@@ -154,7 +156,7 @@ def fibTR_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd fibTR_term 0 = 0 := rfl
-example : runAdd fibTR_term 1 = 1 := rfl
+example : runAdd fibTR_term 1 = 1 := by decide +kernel
 
 /-! ### `fibPair` and `fib2`: the fold at a pair
 
@@ -172,7 +174,7 @@ def fibPair_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) .lam)
 
 example : runAdd fibPair_term 0 = ((0, 1, PUnit.unit) : Nat × Nat × PUnit) := rfl
-example : runAdd fibPair_term 6 = ((8, 13, PUnit.unit) : Nat × Nat × PUnit) := rfl
+example : runAdd fibPair_term 6 = ((8, 13, PUnit.unit) : Nat × Nat × PUnit) := by decide +kernel
 
 /-! ### `fibLoop`: the `for` loop
 
@@ -195,7 +197,7 @@ def fibLoop_term :=
 
 example : runAdd fibLoop_term 0 = 0 := rfl
 example : runAdd fibLoop_term 1 = 1 := rfl
-example : runAdd fibLoop_term 4 = 3 := rfl
+example : runAdd fibLoop_term 4 = 3 := by decide +kernel
 
 /-! ### Three steps and more
 
@@ -228,7 +230,7 @@ def tetranacci_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd tetranacci_term 3 = 1 := rfl
-example : runAdd tetranacci_term 8 = tetranacci 8 := rfl
+example : runAdd tetranacci_term 8 = tetranacci 8 := by decide +kernel
 
 def pentanacci : Nat → Nat
   | 0     => 0
@@ -244,7 +246,7 @@ def pentanacci_term :=
     Term sigAdd [] _ (TyWf.prim .nat ⇒ TyWf.prim .nat) .lam)
 
 example : runAdd pentanacci_term 4 = 1 := rfl
-example : runAdd pentanacci_term 8 = pentanacci 8 := rfl
+example : runAdd pentanacci_term 8 = pentanacci 8 := by decide +kernel
 
 def hexanacci : Nat → Nat
   | 0     => 0

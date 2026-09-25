@@ -97,9 +97,10 @@ error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   Head.closedComp
-      (0 + (0 + 0) +
+      (Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0) +
         (Usage.dropN (TyWf.prim LeanPrimTy.nat) (0 + 1)
-            (Usage.single DeBruijn.head.tail + (Usage.single DeBruijn.head + 0)).tail).many)
+            (Usage.arg (Head.var (Var.index DeBruijn.head.tail)) (Usage.single DeBruijn.head.tail) +
+                (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0)).tail).many)
       (TyWf.prim LeanPrimTy.nat) Head.comp =
     false
 is false
@@ -134,15 +135,77 @@ def foldWithGlobal :=
 
 -- A `let` of a literal array read by an extern is a closed computation, and rejected.
 /--
+error: could not synthesize default value for parameter 'hAnf' using tactics
+---
+error: Expected type must not contain metavariables
+  Head.allAtom [Head.var (Var.index DeBruijn.head), Head.ctorOf [Head.var (Var.index DeBruijn.head)]] = true
+---
+error: could not synthesize default value for parameter 'hUsed' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.ctorOf [Head.lit, Head.lit]).letUsed
+      (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+              (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+            0)).head
+      ((Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+            (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+                (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+              0)).opnd
+        0) =
+    true
+---
 error: could not synthesize default value for parameter 'hClosed' using tactics
 ---
-error: Tactic `decide` proved that the proposition
-  Head.closedComp ((0 + (0 + 0)).letU (Usage.single DeBruijn.head + (Usage.single DeBruijn.head + 0 + 0)))
+error: Expected type must not contain metavariables
+  Head.closedComp
+      ((Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0)).letU
+        (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+              (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+            0)))
       (Coe.coe (LeanPrimTyCovariant.array (TyWf.prim LeanPrimTy.nat).array)) Head.comp =
     false
-is false
 ---
-error: (kernel) declaration has metavariables 'TermTests.ClosedComputation.letValueComp'
+error: could not synthesize default value for parameter 'hKnownLet' using tactics
+---
+error: Expected type must not contain metavariables
+  (Head.ctorOf [Head.lit, Head.lit]).letKnown (TyWf.prim LeanPrimTy.nat).array
+      (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+        (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+            (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+          0)) =
+    false
+---
+error: could not synthesize default value for parameter 'hPlace' using tactics
+---
+error: Expected type must not contain metavariables
+  (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+          (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+              (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+            0)).confined
+      0 =
+    false
+---
+error: Type mismatch
+  (Term.array_mk (Terms.cons (Term.nat_mk 1) (Terms.cons (Term.nat_mk 2) Terms.nil)) letValueComp._proof_1).letE
+    (Term.externCall
+      (Spine.cons (Term.var DeBruijn.head)
+        (Spine.cons (Term.array_mk (Terms.cons (Term.var DeBruijn.head) Terms.nil) ⋯) Spine.nil))
+      (fun vs =>
+        LeanInitPureExtern.preludeExtern (PreludeExtern.lean_array_push (TyWf.prim LeanPrimTy.nat).array vs.2.1 vs.1))
+      ⋯ ?m.121 ⋯)
+    letValueComp._proof_7 ?m.124 ?m.125 ?m.126 ?m.127
+has type
+  Term ?m.93 ?m.88
+    ((Usage.arg Head.lit 0 + (Usage.arg Head.lit 0 + 0)).letU
+      (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+        (Usage.arg (Head.ctorOf [Head.var (Var.index DeBruijn.head)])
+            (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) + 0) +
+          0)))
+    (Coe.coe (LeanPrimTyCovariant.array (TyWf.prim LeanPrimTy.nat).array)) Head.comp.letIn
+but is expected to have type
+  Term sig0 [] ?m.129 (TyWf.prim LeanPrimTy.nat).array.array Head.comp
 -/
 #guard_msgs (error) in
 def letValueComp :=
@@ -158,7 +221,7 @@ def shareValue :=
     (.record_mk ⟨TyWf.array (TyWf.prim .nat), TyWf.array (TyWf.prim .nat), []⟩
       (.cons (.var (v♯0)) (.cons (.var (v♯0)) .nil))) :
     Term sig0 [] _ (.record ⟨TyWf.array (TyWf.prim .nat), TyWf.array (TyWf.prim .nat), []⟩)
-      .ctor)
+      (.letIn _))
 
 end TermTests.ClosedComputation
 

@@ -58,7 +58,9 @@ error: could not synthesize default value for parameter 'hEta' using tactics
 ---
 error: Tactic `decide` proved that the proposition
   (Head.app (Head.var (Var.index DeBruijn.head)).isVar0).isEtaRedex
-      (Usage.single DeBruijn.head.tail + Usage.single DeBruijn.head).head =
+      (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
+          (Usage.arg (Head.var (Var.index DeBruijn.head))
+            (Usage.single DeBruijn.head.tail + Usage.single DeBruijn.head))).head =
     false
 is false
 -/
@@ -130,7 +132,17 @@ error: could not synthesize default value for parameter 'hKnown' using tactics
 error: Tactic `decide` proved that the proposition
   (Head.var (Var.index DeBruijn.head.tail)).rescrutinizes
       (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
-          (Usage.single DeBruijn.head.tail + Usage.single DeBruijn.head + 0) +
+          (Usage.single DeBruijn.head.tail + (Usage.single DeBruijn.head).cond + Usage.cond 0) +
+        0) =
+    false
+is false
+---
+error: could not synthesize default value for parameter 'hLit' using tactics
+---
+error: Tactic `decide` proved that the proposition
+  (Head.var (Var.index DeBruijn.head.tail)).readsScrutinee
+      (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail))
+          (Usage.single DeBruijn.head.tail + (Usage.single DeBruijn.head).cond + Usage.cond 0) +
         0) =
     false
 is false
@@ -161,7 +173,9 @@ error: Tactic `decide` proved that the proposition
         (Usage.scrutinize (Head.var (Var.index DeBruijn.head.tail.tail))
           (Usage.single DeBruijn.head.tail.tail +
             Usage.drop { fst := TyWf.prim LeanPrimTy.nat, snd := TyWf.prim LeanPrimTy.nat, rest := [] }.toList
-              (Usage.single DeBruijn.head + (Usage.single DeBruijn.head.tail.tail + 0))))) =
+              (Usage.arg (Head.var (Var.index DeBruijn.head)) (Usage.single DeBruijn.head) +
+                (Usage.arg (Head.var (Var.index DeBruijn.head.tail.tail)) (Usage.single DeBruijn.head.tail.tail) +
+                  0))))) =
     false
 is false
 -/
@@ -172,13 +186,14 @@ def pairTwice :=
       fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)))) :
     Term sig0 [] _ (pairRec ⇒ TyWf.prim .nat) .lam)
 
-/-- `fun p => (match p with | (a, _) => a) + (match p with | (_, b) => b)`: two dispatches
-    on `p` side by side, neither inside the other, are terms. -/
+/-- `fun p => let a = (match p with | (a, _) => a); let b = (match p with | (_, b) => b); a + b`:
+    two dispatches on `p` side by side, neither inside the other, are terms (in A-normal form
+    each is bound by a `let` before it is added). -/
 def pairSideBySide :=
-  (.lam (.externCall
-    (.cons (.record_casesOn (.var (v♯0)) (.var (v♯0)))
-      (.cons (.record_casesOn (.var (v♯0)) (.var (v♯1))) .nil))
-    fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)) :
+  (.lam (.letE (.record_casesOn (.var (v♯0)) (.var (v♯0)))
+    (.letE (.record_casesOn (.var (v♯1)) (.var (v♯1)))
+      (.externCall (.cons (.var (v♯1)) (.cons (.var (v♯0)) .nil))
+        fun vs => .preludeExtern (.lean_nat_add vs.1 vs.2.1)))) :
     Term sig0 [] _ (pairRec ⇒ TyWf.prim .nat) .lam)
 
 example : run pairSideBySide (cast (Ty.denRecord_eq _).symm ((3, 4, ()) : Nat × Nat × Unit)) =
@@ -237,7 +252,7 @@ example : run ifIf_term true 5 = 5 := rfl
 example : run ifIf_term false 5 = 3 := rfl
 
 /--
-info: (((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.var DeBruijnProj.head) (Term.nat_mk 3) ⋯ ⋯ ⋯ ⋯).lam ⋯).lam ⋯
+info: (((Term.var DeBruijnProj.head.tail).bool_casesOn (Term.var DeBruijnProj.head) (Term.nat_mk 3) ⋯ ⋯ ⋯ ⋯ ⋯).lam ⋯).lam ⋯
 -/
 #guard_msgs in
 #reduce (proofs := false) (types := false) ifIf_term
@@ -256,7 +271,7 @@ example : run ifIfBoth_term false 5 6 = 6 := rfl
 
 /--
 info: ((((Term.var DeBruijnProj.head.tail.tail).bool_casesOn (Term.var DeBruijnProj.head.tail) (Term.var DeBruijnProj.head) ⋯
-              ⋯ ⋯ ⋯).lam
+              ⋯ ⋯ ⋯ ⋯).lam
           ⋯).lam
       ⋯).lam
   ⋯
@@ -282,7 +297,7 @@ info: ((Term.var DeBruijnProj.head).taggedUnion_casesOn
       (TaggedUnionCases.skip (Term.nat_mk 1)
         (CtorsWithPayloadCases.here
           (Term.externCall (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head) Spine.nil))
-            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯)
+            (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_add vs.1 vs.2.1)) ⋯ ⋯ ⋯)
           TaggedUnionCasesRest.nil))
       ⋯ ⋯ ⋯).lam
   ⋯
@@ -306,8 +321,8 @@ example : run pairProj_term (cast (Ty.denRecord_eq _).symm ((3, 4, ()) : Nat × 
 info: ((Term.var DeBruijnProj.head).record_casesOn
       (Term.externCall
         (Spine.cons (Term.var DeBruijnProj.head) (Spine.cons (Term.var DeBruijnProj.head.tail) Spine.nil))
-        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯)
-      ⋯ ⋯ ⋯ ⋯).lam
+        (fun vs => LeanInitPureExtern.preludeExtern (PreludeExtern.lean_nat_mul vs.1 vs.2.1)) ⋯ ⋯ ⋯)
+      ⋯ ⋯ ⋯ ⋯ pairProj_term._proof_9).lam
   ⋯
 -/
 #guard_msgs in

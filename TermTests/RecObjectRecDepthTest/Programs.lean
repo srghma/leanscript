@@ -270,13 +270,17 @@ def sigAdd : Sig :=
 
 /-- `add a b`, for two terms in hand. -/
 def addT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global .here) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global .here) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- `mul a b`, for two terms in hand. -/
 def mulT {Γ : Ctx} {ua ub : Usage Γ} {ka kb : Head} (a : Term sigAdd Γ ua natT ka)
-    (b : Term sigAdd Γ ub natT kb) :=
-  (.ap (.ap (.global (.there .here)) a) b : Term sigAdd Γ _ natT _)
+    (b : Term sigAdd Γ ub natT kb)
+    (ha : Head.isAtom ka = true := by head_ok) (hb : Head.isAtom kb = true := by head_ok) :=
+  (.ap (.ap (.global (.there .here)) a (hAnf := by rw [ha]; rfl)) b (hAnf := by rw [hb]; rfl) :
+    Term sigAdd Γ _ natT _)
 
 /-- `Option τ`, as a union of the language: `none` first, then `some`. -/
 abbrev optTy (τ : TyWf) : TyWf := .taggedUnion (.skip (.here ⟨τ, []⟩ []))
@@ -371,12 +375,12 @@ def leafTerm :=
        (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 0 (fields := .nil)) .nil)) :
     Term sigAdd [] _ cellTy .ctor)
 
-/-- One more cell on top of the one in scope. -/
+/-- One more cell on top of the one in scope (the tagged value is bound by a `let`: the
+    fields of a constructor are atoms). -/
 def consTerm :=
-  (.lam (.recObject_mk cellSchema
-     (fields := .cons (.nat_mk 1)
-       (.cons (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
-         (fields := .cons (.var (v♯0)) .nil)) .nil))) :
+  (.lam (.letE (.taggedUnion_mk (.skip (.here ⟨cellTy, []⟩ [])) 1
+         (fields := .cons (.var (v♯0)) .nil))
+    (.recObject_mk cellSchema (fields := .cons (.nat_mk 1) (.cons (.var (v♯0)) .nil)))) :
     Term sigAdd [] _ (cellTy ⇒ cellTy) .lam)
 
 end TermTests.RecObjectRecDepth
