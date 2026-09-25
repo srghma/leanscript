@@ -282,6 +282,11 @@ partial def hoistAux (ctx : Ctx) (e : Expr) (j : Nat) : MetaM TransRes := do
         | return ← fail m!"its model is not a union, a record, a newtype or a recursive one"
       -- the binder's own `Ty.self` is this member; the stand-ins are what stands there
       let payload := selfToMember idx payload
+      -- a leaf that models another type built from a stand-in (`tyOf (List hole)`, in
+      -- the model of a structure with a field `List α`) is that type's own member
+      let back := fun (x : Expr) => x.replaceFVars holes (idxs.map (args[·]!))
+      let some payload ← expandHoleLeaves ctx holes back false payload
+        | return ← fail m!"a field of the wrapper's model has no tree"
       let some p ← substHoles holes trees false payload
         | return ← fail m!"an argument stands under a binder of the wrapper's own model"
       if holes.any (fun h => p.containsFVar h.fvarId!) then
@@ -289,6 +294,35 @@ partial def hoistAux (ctx : Ctx) (e : Expr) (j : Nat) : MetaM TransRes := do
       let member ← mkAppM kind #[p]
       ctx.extra.modify (·.set! j member)
       return .ok occ
+
+/-- In the model `e` of a type former asked for at stand-in parameters, replace each leaf
+    that is the model of a type which mentions a stand-in without being one (`tyOf (Option
+    hole)`) by the tree of that type at the real arguments (`back` puts them back).  Such a
+    leaf is only expanded outside the model's own binders, where an occurrence of the
+    declaration keeps its meaning; under one it is left, and refused later.  `none` when
+    the type has no tree. -/
+partial def expandHoleLeaves (ctx : Ctx) (holes : Array Expr) (back : Expr → Expr)
+    (underBinder : Bool) (e : Expr) : MetaM (Option Expr) := do
+  if let some α ← modelledType? e then
+    if holes.contains α then return some e
+    if mentionsHole holes α then
+      if underBinder then return some e
+      match ← tyWfOfType ctx (back α) with
+      | .ok t => return some t
+      | _ => return none
+    return some e
+  match e with
+  | .app .. =>
+      let under := underBinder || isBinderCtor e
+      let mut out := e.getAppFn
+      for a in e.getAppArgs do
+        let some a' ← expandHoleLeaves ctx holes back under a | return none
+        out := mkApp out a'
+      return some out
+  | .mdata d b => do
+      let some b' ← expandHoleLeaves ctx holes back underBinder b | return none
+      return some (.mdata d b')
+  | _ => return some e
 
 /-- The tree of a type former applied to the declaration being defined: the former's own
     instance, asked for at a stand-in parameter, with the stand-in's leaf replaced by the
@@ -334,6 +368,11 @@ partial def tyWfOfWrapper (ctx : Ctx) (e : Expr) : MetaM (Option TransRes) := do
         (· == ``LeanScript.Ty.listSchema)
       -- the occurrence goes where the stand-in is; if it would land inside a binder of
       -- the former's own model, that binder is hoisted into a member of a family instead
+      -- a leaf of the former's model that is the model of *another* type built from a
+      -- stand-in (`tyOf (Option hole)`, in the model of a structure `Cell α` with a field
+      -- `Option α`) is translated in its own right, at the argument that stands there
+      let back := fun (x : Expr) => x.replaceFVars holes (idxs.map (args[·]!))
+      let some tree ← expandHoleLeaves ctx holes back false tree | return none
       let out? ←
         match ← substHoles holes trees false tree with
         | some out => pure (some out)

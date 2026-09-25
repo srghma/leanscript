@@ -25,6 +25,9 @@ The same holds for a body that nests unions and structures more deeply
 (`Tri | mk (Option (Nat × Option Tri × Bool))`) and for a recursive record one of whose
 fields is such a structure (`PCell | mk (tag : Nat) (rest : Nat × Option PCell)`).
 
+A body that is a structure declared by the user (`Pair3 | mk (Cell Pair3)`) is in
+`TermTests.StructRec.NewtypeUserStruct`.
+
 Each program is checked three ways: the translation is a `recAlias_rec` (or
 `recObject_rec`) of the expected depth, the term computes the expected numbers, and the term
 computes what the Lean definition computes (`kernel_rfl`). -/
