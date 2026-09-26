@@ -1,3 +1,43 @@
+# Summary of changes for run 3ec5e73c-e86b-41f5-9b13-e98f91797996
+I rewrote `proposals/WTypeTyProposal.md` and extended `proposals/WTyToy.lean` to fix the rose-tree handling. I also added `proposals/UnrepresentableLeanTypes.lean` to answer your last question.
+
+None of these files is part of the Lake build, so there are no build targets. Check the Lean files with `lean proposals/WTyToy.lean` and `lean proposals/UnrepresentableLeanTypes.lean`. Both compile with no errors, warnings or `sorry`, and `Ty.den_not_subsingleton` still uses only the axioms `propext` and `Quot.sound`. Nothing in `LeanScript/`, `TyTests/` or `TermTests/` changed.
+
+**1. Proposal B removed; `#leanscript_get_ctor` kept**
+- Part B and every reference to it are gone. The intro says B is withdrawn because it can't express recursive types.
+- The constructor-API idea is now a new **§A.8**, rewritten for proposal A's `Ty`:
+  - the constructor-counting rules (0 or 1 constructors refused, one field used as-is, etc.) and a table of how each Lean field type is translated;
+  - cached `#leanscript_get_ty` / `#leanscript_get_ctor`, replacing the class and the deriving handler;
+  - the argument rules and examples: `Option`, `Prod`, `List`, `RoseTree`, `LitExpr`, and now also `LitExpr.swap`. For a recursive type the generated function is built from `mu_in`.
+- §C now summarises proposal A and lists 8 decisions. I also fixed the one mention of B in `NominalTyProposal.md`.
+
+**2. Rose trees**
+`Ty` now has three separate guarded containers: `array` (Lean's `Array`), `list` (Lean's `List`) and `finFn` (`(m : Nat) × (Fin m → A)`). Checked in the toy:
+- a closed `array nat` is `Array Nat` and `list nat` is `List Nat`;
+- `node : List Rose → Rose`, `node : Array Rose → Rose` and `node : (m : Nat) → (Fin m → Rose) → Rose` are all accepted and are **three different types**. Unfolding one layer gives exactly `List Rose`, `Array Rose` and `(m : Nat) × (Fin m → Rose)` respectively;
+- unfolding a node gives back the same `List` or `Array` of children;
+- a node count for each tree, written with the fold, computes to 4 on a sample tree.
+
+Inside Lean, a recursive node still stores its children by position rather than in a real `Array`. Lean itself refuses the alternative: it rejects a nested `Array` under an index (this rejection is pinned in the new file). The user-facing types and a JS backend are unaffected.
+
+**3. Lean types that neither toy can represent** (§A.9; every example is declared in `UnrepresentableLeanTypes.lean`, but the "no `Ty`" claims are reasoning, not machine-checked)
+- **No `Ty` at all, in either design:**
+  - dependent fields in general (`cons (n : Nat) (v : Fin (n+2))`, `WT.sup (a : α) (f : β a → …)`); only the `(m : Nat) (f : Fin m → T)` pattern is supported;
+  - families indexed by a value that isn't a literal (`Vec α n`, e.g. a matrix type);
+  - recursion at a growing type argument (`Nest : α → Nest (α × α) → Nest α`), which needs infinitely many members;
+  - quotients (`Quot`, `Multiset`, `Finset`).
+- **Only with a caveat:**
+  - proof-carrying data (`Subtype`, `Fin n`, `Pos`): the proof is erased, so the `Ty` has more values than the Lean type;
+  - nesting through a user-defined *recursive* container (`node : MyList Tree → Tree`): it must be flattened into an extra member, the way Lean's kernel does it. `List`/`Array`/`Option`/`Prod`/`Thunk` don't have this problem;
+  - polymorphic types such as `RoseTree α`: these become one `Ty` per concrete `α`.
+- **Only a problem in the nominal design (`NomTyToy`):**
+  - it has only an `array` that means `(m : Nat) × (Fin m → _)`, so it can't tell the three rose trees apart, and a closed `Array Nat` doesn't mean `Array Nat`;
+  - its fields are flat, so something like `Array (Option T × Nat)` needs an extra member. I did not change the nominal toy.
+
+In the proposal's own design, empty types are the only ones the "has a value" check refuses (argued in §A.9, not checked).
+
+I didn't update the existing Properties-table row for the toy's `Ty` definition, so its shown code predates the three new containers.
+
 # Summary of changes for run 68dcc6d1-c142-44f2-99de-18d28035e3a6
 I wrote `proposals/NominalTyProposal.md`, an alternative to `WTypeTyProposal.md` with the same guarantees but a different design, plus two small Lean files that check its main claims. Both files have no imports and aren't part of the Lake build, so I list no build targets. Check them with `lean proposals/NomTyToy.lean` and `lean proposals/CoTyToy.lean`: both compile with no errors, warnings or `sorry`, and the main results use only the axioms `propext` and `Quot.sound`. I didn't change `LeanScript/`, `TyTests/` or `TermTests/`.
 
