@@ -1,3 +1,37 @@
+# Summary of changes for run 866b65de-0f8b-4c3b-9303-9bce47157184
+I hardened `proposals/WTypeTyProposal.md` and rewrote `proposals/WTyToy.lean` so that `Ty` itself rules out unit-like and empty-like types. There is no well-formedness predicate, no fuel and no measure. The toy still has no imports and isn't part of the Lake build, so I list no build targets. Check it with `lean proposals/WTyToy.lean`: it compiles with no errors, warnings or `sorry`, and the main results use only the axioms `propext` and `Quot.sound`.
+
+**How the new `Ty` enforces it**
+- **Two indices.** The type is `Ty n g`: `n` is the number of recursive holes in scope, and the first `g` of them are *grounded*, meaning they are already known to have values.
+- **Using a hole.** A hole can be used directly only if it is grounded: `var i (h : i < g)`. Any hole can be used under a *guard*: an `array` element (the empty array is always a value), or a union constructor other than the union's *base* constructor.
+- **Minimum sizes.** A record has at least 2 fields and a union at least 2 constructors, with one of them marked as the grounded base. There is no unit type.
+- **No `PUnit`.** A constructor without fields means `Option`/`Bool`, not `PUnit ⊕ _`. So building or matching it takes no payload, and no `PUnit.unit` term exists anywhere.
+- **Recursive types.** Member `j` of a `mu` is a `Ty (k+1) j`, so it can rely directly only on members `< j`.
+- **Rejected by the type checker** (pinned with `#guard_msgs`): `μX. X`, `μX. Nat × X`, and your `unitTy` (there is no one-constructor union).
+
+**What is proved in the toy**
+- `Ty.twoDen : (t : Ty 0 0) → Two (Ty.Den t)` gives two values of every closed type, plus a Boolean test that tells them apart. It is built by structural recursion on the type. Inside a `mu`, it builds member `j` from members `< j` by structural recursion on a `Nat` bound.
+- Corollaries: `Ty.den_nonempty`, `Ty.den_not_subsingleton` and `Ty.den_exists_ne`. Since terms are typed by `Ty 0 0`, no term can have a unit-like or empty-like type either.
+- `muIn`, `muOut` and `muRec` still need no casts and compute by `rfl`:
+  - `List Nat`: `sum [1,2,3] = 6`, and `head?` returns `some 7` on `[7]` and `none` on `[]`.
+  - The two values `Ty.twoDen` picks for `List Nat` are `[]` and `[0]`.
+  - The two-member `LitExprS` family with `swap` still evaluates by `rfl`.
+- The kernel accepts the mutual type and `DecidableEq` derives for it.
+
+**Changes to the proposal**
+- **New §H:** what is enforced and how, what no longer typechecks, and what `Ty.Den` now returns (`Bool`, `Option Nat`, `Option (Nat × List)`, and so on).
+- **§A.1–§A.4 rewritten:**
+  - the new `Ty`/`Fields`/`Ctor`/`Ctors`/`Alts`/`Mems`;
+  - `Ty.Wf`'s inhabitation condition is now enforced by the types;
+  - the term formers take no unit payloads;
+  - `mu_brec` keeps the grounding;
+  - `Ty.fix` now lists members in *grounding order*, marks the first grounded constructor as a union's base, and refuses Lean types that are empty or have one value.
+- **Unindexed fallback withdrawn:** it gave out-of-scope holes the meaning `PEmpty`, which is exactly an empty type.
+- **§B:** notes on keeping Part B hardened too.
+- **Migration steps and §C decisions updated:** decisions 2 and 6 are now settled; new decisions 7 and 8 cover canonical forms.
+
+The sketches outside the toy were not compiled. These include `Ty.ground`, `Ty.fix` and the grounding-order computation, and the other names that appear only in the sketches (`prim`, `thunk`, `lazy`, `enum`). I added two rows to the Properties table: the `WTyToy.Ty` definition, and `WTyToy.Ty.den_not_subsingleton`, marked proved.
+
 # Summary of changes for run 294fbbef-f003-4301-80aa-c6f389b4067b
 `while` loops no longer use fuel. The fuel-based loop node is gone from the term language, and the translator now accepts a `while` / `repeat` / `repeat … until` loop only if it can see from the loop's syntax that it is a structural recursion. Any other loop is rejected with an error. The full `lake build` passes (1027 jobs, no errors, warnings or `sorry`).
 
