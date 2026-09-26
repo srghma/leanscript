@@ -1,3 +1,35 @@
+# Summary of changes for run ddf6780b-1905-47a3-9d14-989726b5f708
+I added `#leanscript_get_ctor` to the proposal N stack in `LeanScript/Nominal/`, together with `#leanscript_get_ty` and `#leanscript_get_cases`, and refactored the generator underneath them. With a local Mathlib, the full `lake build` passes (1046 jobs, no errors or warnings) and there is no `sorry` in the new or changed files. But your committed `lake-manifest.json` still has no Mathlib entry, so a fresh checkout won't build until you run `lake update mathlib`. For that reason I list no build targets for the final check. I put the manifest back unchanged; everything else is committed.
+
+**What I didn't do.** Proposal N is still not complete. I didn't delete the old `Ty/Wf*` / `TyWf` stack (step 4), didn't port `ToTerm/*` (step 7), and didn't write `data_brec`. The old stack, including the old `#leanscript_ctor`, is still there next to the new one.
+
+**Refactor.** The single file `Signature.lean` is now split into a shared generator in `Nominal/Gen/`:
+- `Read.lean` reads a Lean type. It now also handles type variables, and drops fields that are proofs, instances or `Unit`.
+- `Translate.lean` finds the recursive groups of types (SCCs), orders them so each can be built from earlier ones, and marks each union's base constructor. It can either declare new groups, or work against an existing program and refuse any recursive type the program doesn't declare.
+- `Print.lean` turns the result into Lean syntax.
+- `Cache.lean` records every declared program, which program is current, and every definition generated so far. This record carries over into modules that import it.
+
+**Commands:**
+- **`leanscript_signature Prog where …`** declares the program's recursive types and makes `Prog` the current program. It no longer generates constructor functions. **`leanscript_use_signature Prog`** makes an earlier program current again.
+- **`#leanscript_get_ctor c (α := T)…`** returns the constructor function of `c`:
+  - A type parameter you name is fixed; one you leave out becomes a `(α : Ty ks)` argument. Each value field becomes a `Term` argument.
+  - The body follows the constructor-counting rules: one field is used as-is, then record, enum (`Ordering` numbers from `-1`), union, or a `bool` literal.
+  - For a recursive type it is wrapped in `data_in`. Such a function is tied to the current program; a structural one works with any signature.
+  - `#leanscript_get_ctor List.cons` with no `(α := …)` is refused, because every instance of a recursive type is its own member of the signature.
+- **`#leanscript_get_ty T`** returns the `Ty` of a closed Lean type.
+- **`#leanscript_get_cases I …`** is the matching case analysis: one branch per constructor, with `data_out` first for a recursive type.
+
+Each of the three generates its definition once and reuses it afterwards. Written as a command instead of inside a term, each one shows what it generated.
+
+**Behaviour change:** because `Unit` fields are now erased, `Option Unit` is accepted as the two-constructor union that means `Bool`. It used to be refused.
+
+**Tests:**
+- `TyTests/NominalGetCtorTest.lean` pins the generated signatures with `#guard_msgs` and evaluates the results by `rfl` (option, record, enum, `Bool`, a tree fold, a list sum, rose trees). It also checks the error messages and switching between two programs.
+- `TyTests/NominalGetCtorImportTest.lean` checks that an importing module reuses the definitions already generated.
+- `TyTests/NominalSignatureTest.lean` now builds its values through `#leanscript_get_ctor`.
+
+`README.md` and the step 6/8 status notes in `proposals/NominalTyProposal.md` are updated. The Properties table has rows for the three commands and for `leanscript_signature`.
+
 # Summary of changes for run 4fb05dbf-2dc3-42d8-941d-0e6b096fd34a
 I implemented proposal N (declared datatypes) from `proposals/NominalTyProposal.md` in a new namespace `LeanScript.Nominal`, under `LeanScript/Nominal/`. It sits next to the existing type stack, which I left unchanged. The full `lake build` succeeds (1039 jobs), and there is no `sorry` in the new files. Steps 1–3, 5, 6 and 8 of the migration plan (§2.9) are done, except for `data_brec`. Steps 4 and 7 are not done.
 

@@ -2,7 +2,7 @@ module
 
 public import LeanScript.Nominal.Two
 public import LeanScript.Nominal.Eval
-public meta import LeanScript.Nominal.Signature
+public meta import LeanScript.Nominal.GetCtor
 
 @[expose] public section
 
@@ -111,20 +111,30 @@ def treeSum (t : Ty.Den Prog.Δ Prog.tree) : Nat :=
 
 example : treeSum (node (node leaf 1 leaf) 2 (node leaf 3 leaf)) = 6 := rfl
 
-/-- Every requested recursive type gets one term function per constructor, which is
+/-- Every constructor of a declared type is reached through `#leanscript_get_ctor`, which is
     `data_in` of the constructor's fields. -/
 def treeT : Term Prog.Δ [] Prog.tree :=
-  Prog.tree.node (Prog.tree.node Prog.tree.leaf (.lit .nat rfl 1) Prog.tree.leaf) (.lit .nat rfl 2)
-    Prog.tree.leaf
+  (#leanscript_get_ctor Tree.node)
+    ((#leanscript_get_ctor Tree.node) (#leanscript_get_ctor Tree.leaf) (.lit .nat rfl 1)
+      (#leanscript_get_ctor Tree.leaf))
+    (.lit .nat rfl 2) (#leanscript_get_ctor Tree.leaf)
 
 example : treeT.run = node (node leaf 1 leaf) 2 leaf := rfl
 example : treeSum treeT.run = 3 := rfl
 
 def listT : Term Prog.Δ [] Prog.listNat :=
-  Prog.listNat.cons (.lit .nat rfl 7) (Prog.listNat.cons (.lit .nat rfl 8) Prog.listNat.nil)
+  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 7)
+    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 8)
+      (#leanscript_get_ctor List.nil (α := Nat)))
 
-/-- `Even`/`Odd` are one block; `Even`'s constructors are generated. -/
-example : Term Prog.Δ [] Prog.even := Prog.even.zero
+/-- `Even`/`Odd` are one block. -/
+example : Term Prog.Δ [] Prog.even := #leanscript_get_ctor Even.zero
+example : Term Prog.Δ [] Prog.even :=
+  (#leanscript_get_ctor Even.succ) ((#leanscript_get_ctor Odd.succ) (#leanscript_get_ctor Even.zero))
+
+/-- `Rose`'s children are a `List Rose`, the other member of its block. -/
+example : Term Prog.Δ [] Prog.rose :=
+  (#leanscript_get_ctor Rose.node) (.lit .nat rfl 1) (#leanscript_get_ctor List.nil (α := Rose))
 
 /-- Every type of the program has two different values. -/
 example : ∃ x y : Ty.Den Prog.Δ Prog.rose, x ≠ y := Ty.den_exists_ne _ _
@@ -137,23 +147,31 @@ inductive Loop where
   | mk : Loop → Loop
 
 /--
-error: leanscript_signature: these recursive types have no finite value (no grounding order): [Loop]
+error: LeanScript: these recursive types have no finite value (no grounding order): [Loop]
 -/
 #guard_msgs in
 leanscript_signature Bad₁ where
   loop := Loop
 
 /--
-error: leanscript_signature: the type
+error: LeanScript: the type
   PUnit.{1}
 has one constructor and no field (it has one value)
 -/
 #guard_msgs in
 leanscript_signature Bad₂ where
+  u := Unit
+
+-- A `Unit` field is erased: `Option Unit` is the union of two constructors without fields,
+-- which denotes `Bool`.
+leanscript_signature Ok₂ where
   u := Option Unit
 
+example : Ok₂.u = .union (.two .nullary .nullary) := rfl
+example : Ty.Den Ok₂.Δ Ok₂.u = Bool := rfl
+
 /--
-error: leanscript_signature: the type
+error: LeanScript: the type
   Empty
 has no constructor (it has no value)
 -/

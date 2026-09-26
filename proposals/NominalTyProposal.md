@@ -315,11 +315,20 @@ untouched):**
 - Step 4: not done; `Ty/Wf*`, `TyWf` are still used by the old `Term`, `ToTerm` and `CtorFn`.
 - Step 5: done as a new direct-style term language `Nominal/Term.lean` with `Nominal/Eval.lean`
   (`data_in`, `data_out`, `data_rec` at any block); `data_brec` is not implemented.
-- Step 6: done as the command `leanscript_signature` (`Nominal/Signature.lean`), which declares
-  the SCCs once in grounding order and generates the constructors as term functions.
+- Step 6: done. `leanscript_signature Prog where …` (`Nominal/Signature.lean`) declares the
+  SCCs of a program once, in grounding order, and makes `Prog` the current program
+  (`leanscript_use_signature` switches back to an earlier one). The cached term elaborators
+  `#leanscript_get_ty T`, `#leanscript_get_ctor c (α := T)…` and `#leanscript_get_cases I …`
+  (`Nominal/GetCtor.lean`) generate a definition once per request and reuse it, also across
+  modules. Structural types and their constructors are generic in the signature; a recursive
+  type is its name in the current program, its constructor functions are `data_in` of the
+  payload, and its case analysis is `data_out` followed by `…casesOn`. The three share one
+  generator in `Nominal/Gen/` (reading, SCCs and grounding, printing, cache).
 - Step 7: not done (porting `ToTerm/*`).
 - Step 8: `TyTests/NominalTest.lean` (two blocks, the later one storing an older type),
-  `TyTests/NominalSignatureTest.lean`, `TermTests/NominalTermTest.lean`.
+  `TyTests/NominalSignatureTest.lean`, `TyTests/NominalGetCtorTest.lean`,
+  `TyTests/NominalGetCtorImportTest.lean` (the cache across modules),
+  `TermTests/NominalTermTest.lean`.
 
 ---
 
