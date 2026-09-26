@@ -121,6 +121,7 @@ def Term.toJump {Γ : Ctx} {σ τ : TyWf} {J₀ J : JCtx} :
   | .float32Model_casesOn v b => .float32Model_casesOn v b.toJump
   | .array_casesOn a z s => .array_casesOn a z.toJump s.toJump
   | .array_rec k a bases branch d => .array_rec k a bases branch d.toJump
+  | .while_loop init body d => .while_loop init body d.toJump
   | .enum_casesOn e cases => .enum_casesOn e cases.toJump
   | .enum_casesOnWithDefault e cases dflt hk =>
       .enum_casesOnWithDefault e cases.toJump dflt.toJump hk
@@ -718,6 +719,13 @@ def Term.array_rec' {Γ : Ctx} {σ τ : TyWf} (k : Nat := 0) (a : Term Sg Γ (.a
     fun ρ x =>
     (.array_rec k x (bases.rename ρ)
       (branch.rename (Ren.lift (Ren.lift (Ren.liftNat τ (k + 1) ρ)))) .ret)
+
+/-- `while`: the loop from the state `init` whose iteration is `body`, which answers a
+    step `ForInStep τ` (`LeanScript.Term.while_loop`). -/
+def Term.while_loop' {Γ : Ctx} {τ : TyWf} (init : Term Sg Γ τ)
+    (body : Term Sg (τ :: Γ) (TyWf.sum τ τ)) : Term Sg Γ τ :=
+  init.bindAtomOr (fun x => .while_loop x body .ret)
+    fun ρ x => .while_loop x (body.rename (Ren.lift ρ)) .ret
 
 /-- A constructor of an enum. -/
 abbrev Term.enum_mk {Γ : Ctx} (s : LeanEnumSchema) (i : Fin s.nOfConstructors) :

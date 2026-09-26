@@ -187,7 +187,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
 /-- `do` in the identity monad is not an effect: `Id.run`, `pure`, `>>=` and `<$>` are
     the plumbing a `do` block leaves behind, and each of them is a `let` or an
     application once the monad is `Id`.  A `for` is the one that is not: it is a fold,
-    built by `transForInList?` over a list and by `transForInRange?` over a range.  In any other monad this answers
+    built by `transForInList?` over a list and by `transForInRange?` over a range; a
+    `while` / `repeat` loop is `Term.while_loop`, built by `transForInLoop?`.  In any other monad this answers
     `none`, and the call is refused as any other undeclared call is. -/
 partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let isId (m : Expr) : MetaM Bool := do return m.consumeMData.isConstOf ``Id
@@ -210,6 +211,8 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
   | ``ForIn.forIn =>
       unless args.size ≥ 8 do return none
       unless ← isId args[0]! do return none
+      if let some t ← transForInLoop? c args[1]! args[args.size - 2]! args[args.size - 1]! then
+        return some t
       if let some t ← transForInList? c args[1]! args[3]! args[args.size - 3]!
           args[args.size - 2]! args[args.size - 1]! false then
         return some t
@@ -223,6 +226,23 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
       transForIn'Range? c args[1]! args[args.size - 3]! args[args.size - 2]!
         args[args.size - 1]!
   | _ => return none
+
+/-- `while c do …`, `repeat …` and `repeat … until c`, in the identity monad: `do` makes
+    each of them a loop over `Lean.Loop` whose body answers the step `ForInStep β` (a
+    `while` whose condition fails, a `break`, an `until` that holds, or a `return` from
+    inside, is `ForInStep.done`).  It is `Term.while_loop`: the initial state, and the body
+    read as its step (`LeanScript.ToTerm.forInBodyAux`), translated in the context that
+    binds the state as de Bruijn index `0`.  Answers `none` for a loop over anything other
+    than `Lean.Loop`. -/
+partial def transForInLoop? (c : TCtx) (ρ init body : Expr) : MetaM (Option Expr) := do
+  unless (← whnfR ρ).consumeMData.isConstOf ``Lean.Loop do return none
+  let β ← inferType init
+  let τ ← tyOfType β
+  let z ← trans c init
+  let bodyT ← withLocalDeclD `state β fun s => do
+    let step ← forInBodyAux β true (mkApp2 body (mkConst ``Unit.unit) s)
+    trans (c.push s.fvarId! τ) step
+  return some <| mkAppN (mkConst `LeanScript.Term.while_loop') #[c.sg, c.gamma, τ, z, bodyT]
 
 /-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
     the library's `ForIn'` instance: the loop is `List.foldl` of the body read as the next

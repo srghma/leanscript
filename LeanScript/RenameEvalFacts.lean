@@ -215,6 +215,11 @@ theorem Term.evalJ_rename (G : GlobalEnv Sg.decls) :
         exact ArrayRecBases.eval_rename G ρ bases env env' l h
       · funext hd tl w
         exact Term.evalJ_rename G _ branch _ _ _ (EnvRel.lift (EnvRel.lift (EnvRel.liftNat h _ _ w) _) _)
+  | _, _, _, _, ρ, .while_loop init body d, env, env', jenv, h => by
+      unf
+      congr 2
+      funext x
+      exact congrArg TyWf.sumStep (Term.evalJ_rename G _ body _ _ _ (h.lift x))
   | _, _, _, _, ρ, .enum_casesOn e cases, env, env', jenv, h => by
       unf; exact EnumCases.eval_rename G ρ cases env env' jenv _ h
   | _, _, _, _, ρ, .enum_casesOnWithDefault e cases dflt _, env, env', jenv, h => by
