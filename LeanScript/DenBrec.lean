@@ -142,6 +142,28 @@ theorem DSig.dataBrec_dataIn (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty
   rw [Mems.rollMember_unrollMember]
   rfl
 
+/-- **The computation rule of the fold**: on a value built by `dataIn`, `dataRec` is the
+    branch applied to the body in which every child is replaced by the pair of the child and
+    the answer at it. -/
+theorem DSig.dataRec_dataIn (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty ks)
+    (branch : (j : Fin ((Δ.block b).k + 1)) → Ty.Den Δ ((Δ.block b).recBody ρ j) →
+      Ty.Den Δ (ρ j))
+    (j : Fin ((Δ.block b).k + 1)) (x : Ty.Den Δ ((Δ.block b).unfold j)) :
+    Δ.dataRec b ρ branch j (Δ.dataIn b j x) =
+      branch j ((Δ.block b).mapInst (σ' := fun i => Ty.pair (.data ((Δ.block b).ref i)) (ρ i))
+        (fun i c => (c, Δ.dataRec b ρ branch i c)) j x) := by
+  simp only [DSig.dataRec, DSig.dataIn]
+  rw [DSig.Block.toIW_ofIW]
+  simp only [IW.fold]
+  congr 1
+  unfold DSig.Block.mapInst
+  simp only [IPF.Obj.map]
+  congr 1
+  congr 1
+  funext p
+  congr 1
+  exact DSig.Block.ofIW_toIW Δ b _ _
+
 end DataBrec
 
 end LeanScript

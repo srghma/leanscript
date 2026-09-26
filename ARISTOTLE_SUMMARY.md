@@ -1,3 +1,35 @@
+# Summary of changes for run d1969db3-7a45-4f1f-b588-a84b319cb801
+The claims from my earlier explanation are now proved in Lean for every input, not just the sample values. The full `lake build` passes (66 jobs) with no `sorry`, and the main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed, and the results are in the Properties table.
+
+**What is proved** (new file `TermTests/IndexedFamilyProofs.lean`)
+- **The translations compute what the Lean functions compute.** The tool translates `Vec.sum`, `Vec.double` and `Vec.sumRows`, and these theorems cover every vector or matrix:
+  - `vecSumT_correct`: the translated `Vec.sum` returns `v.sum` for every `v : Vec Nat n`.
+  - `vecDoubleT_correct`: the translated `Vec.double` returns the value of `v.double`. `vecSumT_vecDoubleT` combines the two to give `2 * v.sum`.
+  - `sumRowsT_correct` and `firstColumnSum_correct`: `Matrix` really is two numbers plus a list of lists, and the translated function over its rows is correct.
+  - `matSizeT_correct`: holds by `rfl` for every matrix.
+  - `v2T_run` and `mT_run`: the test values the translator builds are exactly the values the proofs use.
+  - The values are built with the generated constructors (`Prog.Vec.cons`, `Prog.Vec.cons_1`, …), so the proofs are about the actual generated code.
+- **Dropping the index loses nothing.**
+  - `vecEnc_injective`: two vectors of any lengths with the same value in the language are the same vector, of the same length. So `n` really is recovered.
+  - `Vec.sigma_equiv_list`: vectors of every length correspond one-to-one with lists.
+  - `vecEnc_eq_listEnc`: the value of a vector depends only on its elements, as a linked list.
+- **The refusals are justified**, since each refused type has at most two values:
+  - `vec_zero_subsingleton`: `Vec α 0` has one value.
+  - `two_zero_two_values`: `Two 0` has exactly two.
+  - `two_two_empty`: `Two 2` has none.
+- **Two gaps I listed earlier are confirmed:**
+  - `vecBool_one_two_values`: `Vec Bool 1` has exactly two values in Lean, yet the tool accepts it.
+  - `idx_subsingleton`: `Idx n` has one value at every `n`, yet the tool accepts it.
+
+**New general facts in the library**
+- `DSig.dataRec_dataIn` in `LeanScript/DenBrec.lean`: the one-step rule for the fold over any declared recursive type, applied to a freshly built value. The project previously had this rule only for the course-of-values fold.
+- `Term.eval_data_rec_data_in` in `LeanScript/Eval.lean`: the same rule, stated for terms.
+
+**Limits**
+- These theorems cover the four translated functions named above. Other functions translated over indexed families are still only checked on examples.
+- Nothing is proved about the translator itself for arbitrary input.
+- `NOT_IMPLEMENTED.md` is updated to say this.
+
 # Summary of changes for run 0dec6181-7a75-40d9-b73b-b7fe8f045d57
 `Chunk` and `Tele` now translate the way you described. `WT` can be read, but every instance of it is still refused: once `Fin a` becomes a number, no `WT` value is ever finite (explained below). The full `lake build` passes (64 jobs) with no warnings and no `sorry`, and everything is committed.
 

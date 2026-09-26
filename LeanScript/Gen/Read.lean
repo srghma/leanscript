@@ -17,7 +17,9 @@ The first stage shared by `leanscript_signature`, `#leanscript_get_ty` and
 (`classify`: a leaf, `→`, `Array`, `Thunk`, a type variable, or an inductive instance), and
 the fields of an inductive instance's constructors are read (`readCtors`), with the fields
 the language erases (proofs and instances) dropped.  A field whose type depends on an earlier
-field is read through its erasure (`eraseDeps`): `Fin n → Nat` is `Nat → Nat`.
+field is read through its erasure (`eraseDeps`): `Fin n → Nat` is `Nat → Nat`.  An inductive
+family is read with its indices erased (`normType`, `erasedFields`): `Vec α n` is `Vec α`, a
+linked list whose `cons` has no length field.
 
 A *type variable* is a local `α : Type`: `#leanscript_get_ctor Option.some` reads `Option α`
 with `α` a local, and `α` becomes an argument `(α : Ty ks)` of the generated function.
@@ -47,20 +49,113 @@ inductive Head where
   /-- An instance of an inductive type. -/
   | node (e : Expr)
 
-/-- Normalise a type: head normal form, type arguments normalised. -/
-partial def normType (e : Expr) : MetaM Expr := do
+/-- Is a field of this type erased: a proof or an instance?  (A `Unit` field is **not**
+    erased: `Unit` has one value, so it has no type in the language, and a constructor with
+    such a field is refused like every other unit-like type.  Two values are `Bool`, never
+    `Option Unit`.) -/
+def isErasedField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
+  if ← isProp t then return true
+  if bi.isInstImplicit then return true
+  return (← isClass? t).isSome
+
+/-- The inductive family (with indices, valued in `Type`) a type is a full application of:
+    its information, universe levels, parameters and indices. -/
+def familyApp? (e : Expr) : MetaM (Option (InductiveVal × List Level × Array Expr × Array Expr)) := do
+  let some (c, us) := e.getAppFn.const? | return none
+  let some (.inductInfo info) := (← getEnv).find? c | return none
+  let args := e.getAppArgs
+  unless info.numIndices > 0 && args.size == info.numParams + info.numIndices do return none
+  if ← isProp e then return none
+  return some (info, us, args[:info.numParams].toArray, args[info.numParams:].toArray)
+
+/-- Which fields of a constructor (the locals `xs`, after its parameters; `res` its result
+    type) are erased: the proofs and instances (`isErasedField`), and, for a constructor of an
+    inductive family, the fields that only name an index: a field `x` that occurs in the
+    indices of the result type and is itself an index of the type of a field kept.  In
+    `Vec.cons {n} (a : α) (v : Vec α n) : Vec α (n + 1)`, `n` is the index of `v`: the
+    language erases the indices of a family (`Vec α n` is the datatype `Vec α` of every
+    length, a linked list), and `n` is recovered from `v` (its length), so it is not a
+    field.  A field of an ordinary structure is never erased this way (`Matrix.rows` stays,
+    even though `cells : Vec _ rows` mentions it). -/
+def erasedFields (xs : Array Expr) (res : Expr) : MetaM (Array Bool) := do
+  let base ← xs.mapM fun x => do
+    let d ← x.fvarId!.getDecl
+    isErasedField d.binderInfo d.type
+  let some (_, _, _, resIdx) ← familyApp? (← whnf res) | return base
+  let mut det : Array FVarId := #[]
+  for (y, e) in xs.zip base do
+    if e then continue
+    if let some (_, _, _, is) ← familyApp? (← whnf (← inferType y)) then
+      for i in is do
+        if i.isFVar then det := det.push i.fvarId!
+  return (xs.zip base).map fun (x, e) =>
+    e || (det.contains x.fvarId! && resIdx.any (·.containsFVar x.fvarId!))
+
+/-- The erased-field mask of a constructor at the given parameters (`erasedFields`). -/
+def ctorErasedMask (ctor : Name) (us : List Level) (params : Array Expr) : MetaM (Array Bool) := do
+  let cinfo ← getConstInfoCtor ctor
+  let ty ← instantiateForall (cinfo.instantiateTypeLevelParams us) params
+  forallTelescopeReducing ty fun xs res => erasedFields xs res
+
+/-- An instance of an inductive family at *closed* indices (`Vec Nat 0`) is checked before its
+    indices are erased: when only field-less constructors can build a value at these indices,
+    it has no value, one, or two, and is refused like every other such type. -/
+def checkClosedIndices (e : Expr) (info : InductiveVal) (us : List Level)
+    (params indices : Array Expr) : MetaM Unit := do
+  let mut matching : Array Name := #[]
+  let mut allNullary := true
+  for ctor in info.ctors do
+    let cinfo ← getConstInfoCtor ctor
+    let ty ← instantiateForall (cinfo.instantiateTypeLevelParams us) params
+    let ok ← withoutModifyingState do
+      let (_, _, res) ← forallMetaTelescopeReducing ty
+      let ris := (← whnf res).getAppArgs[info.numParams:].toArray
+      (ris.zip indices).allM fun (a, b) => isDefEq a b
+    if ok then
+      matching := matching.push ctor
+      if (← ctorErasedMask ctor us params).any (!·) then allNullary := false
+  unless allNullary do return
+  match matching.size with
+  | 0 => throwError m!"{errPrefix}: the type{indentExpr e}\nhas no value (no constructor \
+      builds a value at these indices)"
+  | 1 => throwError m!"{errPrefix}: the type{indentExpr e}\nhas one value (only \
+      `{matching[0]!}` builds a value at these indices, and it has no field)"
+  | 2 => throwError m!"{errPrefix}: the type{indentExpr e}\nhas two values (only \
+      field-less constructors build a value at these indices): two points are only ever \
+      `Bool`"
+  | _ => return
+
+/-- Normalise a type: head normal form, type arguments normalised.  The indices of an
+    inductive family are erased: `Vec α n` is normalised to `Vec α` (the datatype of vectors
+    of every length), after a check that at closed indices it has at least three values
+    (`checkClosedIndices`).  With `check := false` the check is skipped: the type of a
+    subterm (`Vec.nil : Vec Nat 0` inside `Vec.cons 2 Vec.nil`) is only the datatype its value
+    belongs to, the erased `Vec Nat`; declared types (of fields, parameters, `let`s, results)
+    are checked. -/
+partial def normType (e : Expr) (check : Bool := true) : MetaM Expr := do
   let e ← whnf (← instantiateMVars e)
   match e with
   | .forallE n a b bi =>
     if b.hasLooseBVars then return e
-    return .forallE n (← normType a) (← normType b) bi
+    return .forallE n (← normType a check) (← normType b check) bi
   | _ =>
     let fn := e.getAppFn
     if fn.isConst then
-      let args ← e.getAppArgs.mapM fun a => do
-        if (← isType a) then normType a else pure a
-      return mkAppN fn args
+      if let some (info, us, params, indices) ← familyApp? e then
+        if check && !indices.any (fun i => i.hasFVar || i.hasMVar) then
+          checkClosedIndices e info us params indices
+        return mkAppN fn (← params.mapM (normArg check))
+      return mkAppN fn (← e.getAppArgs.mapM (normArg check))
     return e
+where
+  /-- A type argument is normalised (also an erased family, `Vec Nat`); a value is kept. -/
+  normArg (check : Bool) (a : Expr) : MetaM Expr := do
+    if (← isType a) || (← isErasedFamily a) then normType a check else pure a
+  /-- Is `a` an inductive family with its indices erased (`Vec Nat`)? -/
+  isErasedFamily (a : Expr) : MetaM Bool := do
+    let some (c, _) := a.getAppFn.const? | return false
+    let some (.inductInfo info) := (← getEnv).find? c | return false
+    return info.numIndices > 0 && a.getAppNumArgs == info.numParams
 
 /-- A natural number literal, if the expression evaluates to one. -/
 def natLit? (e : Expr) : MetaM (Option Nat) := do
@@ -137,15 +232,6 @@ def classify (e : Expr) : MetaM Head := do
 def enumShift (c : Name) : Int :=
   if c == ``Ordering then -1 else 0
 
-/-- Is a field of this type erased: a proof or an instance?  (A `Unit` field is **not**
-    erased: `Unit` has one value, so it has no type in the language, and a constructor with
-    such a field is refused like every other unit-like type.  Two values are `Bool`, never
-    `Option Unit`.) -/
-def isErasedField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
-  if ← isProp t then return true
-  if bi.isInstImplicit then return true
-  return (← isClass? t).isSome
-
 mutual
 
 /-- The erasure of a field type `t` that depends on the locals `deps` (the earlier fields of
@@ -186,7 +272,7 @@ partial def eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) : MetaM Expr 
     if c == ``Array && args.size == 1 then
       return mkApp (.const c us) (← eraseDeps ctor deps args[0]!)
     let some (.inductInfo info) := (← getEnv).find? c | refuse
-    unless info.numIndices = 0 && args.size = info.numParams do refuse
+    unless args.size = info.numParams do refuse
     -- the dependency is only in type arguments: erase them
     let valueDep ← args.anyM fun a => return mentions a && !(← isType a)
     unless valueDep do
@@ -206,20 +292,20 @@ partial def eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) : MetaM Expr 
 partial def readCtors (e : Expr) : MetaM (Array (Name × Array Expr)) := do
   let some (c, us) := e.getAppFn.const? | fail m!"not an inductive instance{indentExpr e}"
   let info ← getConstInfoInduct c
-  if info.numIndices ≠ 0 then
-    fail m!"`{c}` is an inductive family with indices, which is not supported{indentExpr e}"
-  let params := e.getAppArgs
+  -- an inductive family is read with its indices erased (`Vec α`, see `normType`)
+  let params := e.getAppArgs[:info.numParams].toArray
   unless params.size = info.numParams do
     fail m!"`{c}` is not fully applied{indentExpr e}"
   info.ctors.toArray.mapM fun ctor => do
     let cinfo ← getConstInfoCtor ctor
     let ty ← instantiateForall (cinfo.instantiateTypeLevelParams us) params
-    forallTelescopeReducing ty fun xs _ => do
+    forallTelescopeReducing ty fun xs res => do
+      let erased ← erasedFields xs res
       let mut fields : Array Expr := #[]
-      for x in xs do
+      for (x, er) in xs.zip erased do
         let decl ← x.fvarId!.getDecl
         let t := decl.type
-        if ← isErasedField decl.binderInfo t then continue
+        if er then continue
         if (← whnf t).isSort then
           fail m!"the constructor `{ctor}` has a field whose value is a type \
             (existential typing is not supported)"

@@ -33,6 +33,8 @@ the `casesOn` it is compiled to.  The translation is in direct style:
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
 | a projection applied to arguments (`c.data i` for a function field) | `Term.app` |
+| a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
+| a cast along an equation (`Eq.ndrec`, `cast`, …, from the `match` of an inductive family) | the value cast |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
 | structural recursion on a `Nat` parameter | `Term.nat_rec` |
@@ -107,6 +109,10 @@ structure Loc where
   nest : Std.HashMap FVarId NShape := {}
   /-- Its parameters. -/
   params : Array Expr := #[]
+  /-- The positions of its parameters that only name an index of a later parameter's type
+      (`n` in `Vec.sum {n} (v : Vec Nat n)`): they have no value in the language, and a
+      recursive call may change them. -/
+  idxParams : Array Nat := #[]
   /-- The program. -/
   prog? : Option ProgInfo := none
   /-- The number of visible blocks (those of the program). -/
@@ -129,10 +135,12 @@ def dbStx : Nat → MetaM Lean.Term
 
 def varStx (i : Nat) : MetaM Lean.Term := do `(LeanScript.Term.var $(← dbStx i))
 
-/-- The closed translation of a type. -/
-def cirOf (L : Loc) (T : Expr) : TM CIR := do
+/-- The closed translation of a type.  With `check := false` (the inferred type of a
+    subterm) an inductive family at closed indices is not checked for having few values
+    (`normType`). -/
+def cirOf (L : Loc) (T : Expr) (check : Bool := true) : TM CIR := do
   let t ← lm do
-    let T ← normType T
+    let T ← normType T check
     discover T
     discard <| declareBlocks false (L.prog?.map ProgInfo.name)
     toCIR T
@@ -162,7 +170,7 @@ def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr) :
     let .forallE _ d b bi := ty | fail m!"{what} is applied to too many arguments"
     let a := args[i]!
     let isVal ← if bi.isExplicit && !(← isProp d) && !(← isType a) then
-        try pure (← cirOf L (← inferType a)).isLeaf catch _ => pure false
+        try pure (← cirOf L (← inferType a) false).isLeaf catch _ => pure false
       else pure false
     if isVal then out := out.push i
     else if a.hasFVar then
@@ -181,7 +189,7 @@ def compStx (v : Lean.Term) (k : Nat) : MetaM Lean.Term := do
     call the function? -/
 def Loc.recParam? (L : Loc) (major : Expr) (minors : Array Expr) : Option Nat :=
   if L.fns.isEmpty || !minors.any L.mentionsFn then none
-  else if L.slots.size != L.params.size then none
+  else if L.slots.size + L.idxParams.size != L.params.size then none
   else L.params.findIdx? (· == major)
 
 /-- Is a (normalised) type one of the members `mems` of the block recursed on? -/
@@ -308,13 +316,13 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
       fail m!"the proof or type{indentExpr e}\nhas no value in the language"
     -- a closed value of a leaf type is a literal
     if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
-      if let .prim p ← cirOf L T then
+      if let .prim p ← cirOf L T false then
         return ← `(LeanScript.Term.lit $p $(← exprToSyntax e))
     trApp L e
 
 /-- A projection `s.i` of a structure. -/
 partial def trProj (L : Loc) (S : Name) (i : Nat) (s : Expr) : TM Lean.Term := do
-  let T ← normType (← inferType s)
+  let T ← normType (← inferType s) false
   let plan ← lm (planType T L.prog?)
   if plan.data?.isSome then modify fun st => { st with usesData := true }
   let ctor := (getStructureCtor (← getEnv) S).name
@@ -375,6 +383,19 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
           return ← tr L b
       return ← trDecide L args[0]!
     if isCasesOnRecursor env c then return ← trCases L c args
+    -- an unreachable branch (`| .nil => absurd` of `Vec.head : Vec α (n + 1) → α`): after the
+    -- indices are erased it is reachable, and the language has no value to put there
+    if c == ``False.elim || c == ``absurd || c == ``False.rec || c == ``Empty.elim ||
+        isNoConfusion env c then
+      fail m!"a branch that Lean proves unreachable{indentExpr e}\nis not supported: the \
+        language has no term for it (and once the indices of an inductive family are erased, \
+        as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)"
+    -- a cast along an equation is the identity on values: the `match` of an inductive family
+    -- (`Vec α n`) is compiled with such casts between the indices of its patterns
+    if (c == ``Eq.ndrec || c == ``Eq.rec) && args.size ≥ 6 then
+      return ← tr L (mkAppN args[3]! args[6:].toArray)
+    if (c == ``cast || c == ``Eq.mpr || c == ``Eq.mp) && args.size ≥ 4 then
+      return ← tr L (mkAppN args[3]! args[4:].toArray)
     -- a fold over an array of members of the block recursed on
     if c == ``Array.foldl && args.size == 7 then
       if let some (arr, .array s) ← nestView? L args[4]! then
@@ -390,8 +411,8 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
       -- a wrapper of one value (`Fin.mk n v h`, `Subtype.mk v h`, `Vector.mk a h`) is erased
       -- to that value, also when its parameters mention locals (`⟨0, h⟩ : Fin c.n`)
       if let some a ← wrapperField? cinfo args then
-        unless (← cirOf L (← inferType e)) matches .data .. do return ← tr L a
-      if !((← cirOf L (← inferType e)) matches .prim _) then
+        unless (← cirOf L (← inferType e) false) matches .data .. do return ← tr L a
+      if !((← cirOf L (← inferType e) false) matches .prim _) then
         return ← trCtor L cinfo fn args
     if let some pinfo ← getProjectionFnInfo? c then
       if !pinfo.fromClass then
@@ -423,7 +444,7 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
 /-- A call of a function on values of leaf types: `Term.extern`. -/
 partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :
     TM Lean.Term := do
-  let τ ← cirOf L (← inferType e)
+  let τ ← cirOf L (← inferType e) false
   unless τ.isLeaf do
     fail m!"the call{indentExpr e}\nreturns a value of a type that is not a leaf; it cannot \
       be an extern"
@@ -461,7 +482,7 @@ partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (
   for k in [0:args.size] do comps := comps.push (← compStx v k)
   call ← `($call $comps*)
   let mut σs : Array Lean.Term := #[]
-  for a in args do σs := σs.push (← tyStx L (← inferType a))
+  for a in args do σs := σs.push (← (← cirOf L (← inferType a) false).stx L.c #[])
   let mut as ← `(LeanScript.Args.nil)
   for a in args.reverse do as ← `(LeanScript.Args.cons $(← tr L a) $as)
   `(LeanScript.Term.extern (σs := [$σs,*]) (τ := $(← τ.stx L.c #[])) $(quote name)
@@ -476,18 +497,19 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
   let mut ty ← inferType fn
   let mut named : Array (TSyntax ``leanscriptNamedArg) := #[]
   let mut fields : Array Lean.Term := #[]
+  let mask ← ctorErasedMask cinfo.name fn.constLevels! args[:cinfo.numParams].toArray
   for i in [0:args.size] do
     ty ← whnf ty
-    let .forallE n d b bi := ty | fail m!"bad constructor `{cinfo.name}`"
+    let .forallE n _ b _ := ty | fail m!"bad constructor `{cinfo.name}`"
     let a := args[i]!
     if i < cinfo.numParams then
       if a.hasFVar then fail m!"the parameter `{n}` of `{cinfo.name}` is not closed{indentExpr a}"
       named := named.push (← `(leanscriptNamedArg| ($(mkIdent n) := $(← exprToSyntax a))))
-    else if !(← isErasedField bi d) then
+    else if !mask[i - cinfo.numParams]! then
       fields := fields.push (← tr L a)
     ty := b.instantiate1 a
-  let T ← normType (← inferType (mkAppN fn args))
-  if (← cirOf L T).hasData then modify fun s => { s with usesData := true }
+  let T ← normType (← inferType (mkAppN fn args)) false
+  if (← cirOf L T false).hasData then modify fun s => { s with usesData := true }
   `((#leanscript_get_ctor $(mkIdent (`_root_ ++ cinfo.name)) $named*) $fields*)
 
 /-- A recursive call `f … y …` on a subvalue `y` the recursion reached: the variable of its
@@ -499,7 +521,7 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
   let mut out? : Option Lean.Term := none
   for i in [0:args.size] do
     let a := args[i]!
-    if a == L.params[i]! then continue
+    if a == L.params[i]! || L.idxParams.contains i then continue
     if out?.isNone then
       if let .fvar y := a then
         if let some slot := L.ans[y]? then
@@ -519,25 +541,25 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
 /-- A case analysis `T.casesOn motive major minors…`. -/
 partial def trCases (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := do
   let ind ← getConstInfoInduct c.getPrefix
-  let nP := ind.numParams
-  unless ind.numIndices == 0 do fail m!"`{ind.name}` is an inductive family with indices"
+  -- the indices of a family are erased: they are skipped, and so are the fields that only
+  -- name an index (`erasedFields`)
+  let nP := ind.numParams + ind.numIndices
   let nM := ind.ctors.length
   unless args.size ≥ nP + 2 + nM do fail m!"`{c}` is not fully applied"
   let major := args[nP + 1]!
   let extra := args[nP + 2 + nM:].toArray
   let minors := (args[nP + 2 : nP + 2 + nM].toArray).map fun m => m
-  let T ← normType (← inferType major)
+  let T ← normType (← inferType major) false
   let ctorInfos ← ind.ctors.toArray.mapM getConstInfoCtor
+  let masks ← ind.ctors.toArray.mapM fun ctor =>
+    ctorErasedMask ctor T.getAppFn.constLevels! T.getAppArgs
   -- open a branch: its fields as locals, the extra arguments pushed inside
   let openMinor {α : Type} (k : Nat) (m : Expr)
       (kont : Array Expr → Array Bool → Expr → TM α) : TM α := do
     let ci := ctorInfos[k]!
     let mTy ← inferType m
     forallBoundedTelescope mTy ci.numFields fun xs _ => do
-      let erased ← xs.mapM fun x => do
-        let d ← x.fvarId!.getDecl
-        isErasedField d.binderInfo d.type
-      kont xs erased (mkAppN (mkAppN m xs) extra).headBeta
+      kont xs masks[k]! (mkAppN (mkAppN m xs) extra).headBeta
   let recPos? := L.recParam? major minors
   -- in a branch of the case analysis of a parameter recursed on, the parameter is the
   -- constructor application
@@ -619,21 +641,19 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := d
     (`openWindows`), and the parameter is the constructor application in each branch. -/
 partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := do
   let ind ← getConstInfoInduct c.getPrefix
-  let nP := ind.numParams
+  let nP := ind.numParams + ind.numIndices
   let nM := ind.ctors.length
   unless args.size ≥ nP + 2 + nM do fail m!"`{c}` is not fully applied"
   let major := args[nP + 1]!
   let extra := args[nP + 2 + nM:].toArray
   let minors := args[nP + 2 : nP + 2 + nM].toArray
-  let T ← normType (← inferType major)
+  let T ← normType (← inferType major) false
   let plan ← lm (planType T L.prog?)
   let ctorInfos ← ind.ctors.toArray.mapM getConstInfoCtor
   let brs ← (List.range nM).toArray.mapM fun k => do
     let ci := ctorInfos[k]!
+    let erased ← ctorErasedMask ci.name T.getAppFn.constLevels! T.getAppArgs
     forallBoundedTelescope (← inferType minors[k]!) ci.numFields fun xs _ => do
-      let erased ← xs.mapM fun x => do
-        let d ← x.fvarId!.getDecl
-        isErasedField d.binderInfo d.type
       let body := (mkAppN (mkAppN minors[k]! xs) extra).headBeta
       let body := body.replaceFVar major
         (mkAppN (mkAppN (mkConst ci.name T.getAppFn.constLevels!) T.getAppArgs) xs)
@@ -650,7 +670,8 @@ partial def peelCases (g : Name) (y e : Expr) : TM (Name × Array Expr) := do
   if let .const c lvls := fn then
     if isCasesOnRecursor (← getEnv) c then
       let ind ← getConstInfoInduct c.getPrefix
-      if args.size > ind.numParams + 1 && args[ind.numParams + 1]! == y then
+      let nP := ind.numParams + ind.numIndices
+      if args.size > nP + 1 && args[nP + 1]! == y then
         return (c, args)
     if ← isMatcher c then
       let info ← getConstInfo c
@@ -700,6 +721,31 @@ partial def trNestFoldl (L : Loc) (arr : Lean.Term) (s : NShape) (args : Array E
 
 end
 
+/-- The positions of the parameters `xs` of a definition that only name an index of the type
+    of a later parameter (`n` in `Vec.sum {n : Nat} (v : Vec Nat n)`): the indices of a family
+    are erased, so they have no value in the language.  Such a parameter must not be used
+    otherwise (it is not bound in the translation). -/
+def indexParams (xs : Array Expr) : MetaM (Array Nat) := do
+  let env ← getEnv
+  -- `s` is an inductive family applied to `x` as one of its indices
+  let isIdxOf (x : Expr) (s : Expr) : Bool := Id.run do
+    let some (c, _) := s.getAppFn.const? | return false
+    let some (.inductInfo info) := env.find? c | return false
+    let args := s.getAppArgs
+    unless info.numIndices > 0 && args.size == info.numParams + info.numIndices do return false
+    return args[info.numParams:].toArray.contains x
+  let mut out := #[]
+  for i in [0:xs.size] do
+    let x := xs[i]!
+    let d ← x.fvarId!.getDecl
+    if d.binderInfo.isInstImplicit || (← isProp d.type) then continue
+    let mut isIdx := false
+    for j in [i + 1:xs.size] do
+      let t ← instantiateMVars (← inferType xs[j]!)
+      if (t.find? (isIdxOf x)).isSome then isIdx := true
+    if isIdx then out := out.push i
+  return out
+
 /-- The translation of the definition `f`, elaborated against `expected?`. -/
 def translateDef (f : Name) (expected? : Option Expr) : TermElabM Expr := do
   let info ← getConstInfo f
@@ -713,17 +759,23 @@ def translateDef (f : Name) (expected? : Option Expr) : TermElabM Expr := do
     unless lhs.getAppArgs == xs do fail m!"unexpected unfolding equation of `{f}`"
     let group ← mutualGroup f
     let recursive := group.any fun g => (rhs.find? (·.isConstOf g)).isSome
-    let L : Loc := { slots := xs.map (some ·.fvarId!), fns := if recursive then group else #[],
-                     params := xs, prog?, c := prog?.map (·.members.size) |>.getD 0 }
+    let idxParams ← indexParams xs
+    let kept := (List.range xs.size).toArray.filter (!idxParams.contains ·) |>.map (xs[·]!)
+    let L : Loc := { slots := kept.map (some ·.fvarId!), fns := if recursive then group else #[],
+                     params := xs, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Lean.Term × Lean.Term) := do
-      for x in xs do
+      for x in kept do
         if ← isType x then fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is a type"
         if (← isClass? (← inferType x)).isSome then
           fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is an instance"
         discard <| cirOf L (← inferType x)
       let mut body ← tr L rhs
-      for _ in xs do body ← `(LeanScript.Term.lam $body)
-      return (body, ← tyStx L info.type)
+      for _ in kept do body ← `(LeanScript.Term.lam $body)
+      -- the type of the translation: the parameters kept, then the result (an index
+      -- parameter only occurs in indices, which are erased)
+      let ty ← if idxParams.isEmpty then pure info.type
+        else mkForallFVars kept (← inferType lhs)
+      return (body, ← tyStx L ty)
     -- the depth of the course-of-values recursion: the first that works
     let mut res? := none
     let mut err? : Option Exception := none

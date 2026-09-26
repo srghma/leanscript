@@ -181,6 +181,19 @@ theorem Term.eval_data_brec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks}
   simp only [Term.eval]
   exact DSig.dataBrec_dataIn Δ b ρt k _ j _
 
+/-- The fold on a value built by `data_in` runs the branch of its member on its body, every
+    child replaced by the pair of the child and the answer at it (`DSig.dataRec_dataIn`). -/
+theorem Term.eval_data_rec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
+    (ρt : Fin ((Δ.block b).k + 1) → Ty ks)
+    (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).recBody ρt i :: Γ) (ρt i))
+    (j : Fin ((Δ.block b).k + 1)) (e : Term Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
+    (Term.data_rec b ρt brs j (.data_in b j e)).eval ρ =
+      (brs j).eval ((Δ.block b).mapInst
+        (σ' := fun i => Ty.pair (.data ((Δ.block b).ref i)) (ρt i))
+        (fun i c => (c, Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ)) i c)) j (e.eval ρ), ρ) := by
+  simp only [Term.eval]
+  exact DSig.dataRec_dataIn Δ b ρt _ j _
+
 /-- The value of a closed term. -/
 abbrev Term.run {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} (e : Term Δ [] τ) : Ty.Den Δ τ :=
   e.eval PUnit.unit

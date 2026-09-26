@@ -10,7 +10,27 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **Existentially typed fields.** A constructor with a field whose value is a type
   (`State : Type` in `Unfold`) is refused (`LeanScript/Gen/Read.lean`, `readCtors`). This
   was deferred on purpose.
-- **Inductive families with indices** are refused (`readCtors`).
+- **Inductive families have their indices erased, not typed.** `Vec α n` is the datatype
+  `Vec α` of every length (`Gen/Read.lean`, `normType`), and a constructor field that only
+  names an index (`n` in `Vec.cons {n} a v`) is dropped (`erasedFields`): `Vec α` is a linked
+  list, and `Matrix` (`rows`, `cols`, `cells : Vec (Vec Nat cols) rows`) a record of two
+  numbers and a list of lists. `TermTests/IndexedFamilyProofs.lean` proves, for every input,
+  that the translations of `Vec.sum`, `Vec.double`, `Vec.sumRows` and `Matrix.size` compute
+  what the Lean functions compute, that the encoding of vectors is injective (the length is
+  recovered), and the value counts behind the refusals and caveats below; other translated
+  functions over families are only checked on samples. Caveats
+  (`TermTests/IndexedFamilyTest.lean`):
+  - the erased type has more values than the Lean one (a `Vec Nat 3` is any list);
+  - at *closed* indices only the constructors that can build a value are checked, one level
+    deep: `Vec Nat 0` (one value), a family with no or two field-less constructors at the
+    index are refused, but `Vec Bool 1` (two values in Lean) is a list of `Bool`;
+  - at an index that is a variable nothing is checked: a family with one value at every
+    index (`Idx : Nat → Type`, `z : Idx 0`, `s : Idx n → Idx (n + 1)`) becomes a unary
+    number;
+  - in `#leanscript_to_term`, a parameter that only names an index (`{n}` in
+    `Vec.sum {n} (v : Vec Nat n)`) is dropped and cannot be used as a value (`Vec.len v := n`
+    is refused), and a branch Lean proves unreachable (`Vec.head : Vec α (n + 1) → α`, whose
+    `nil` branch is reachable after erasure) is refused.
 - **Dependent fields are erased, not typed.** A field whose type depends on an earlier field
   is read through its erasure (`Gen/Read.lean`, `eraseDeps`): the dependency may only go
   through arrows, type arguments, and wrappers of one value besides proofs. `Fin n → Nat` is
