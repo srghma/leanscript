@@ -68,10 +68,13 @@ from those files.
   the stand-alone model `proposals/WellFoundedRecursionToy.lean`, which is not part of the
   build, and it has no agreement theorem for the lexicographic combinator.
 - **Partial fixpoints, coinductive types, `partial` and `unsafe`** cannot be expressed,
-  and that is by design.  The exception is a `while` loop (`Term.while_loop`): its
-  meaning is an iteration with a fuel of `2 ^ 64` steps (`LeanScript/Expr/While.lean`),
-  proved equal to Lean's loop only for a loop that stops within that many iterations
-  (`LeanScript/WhileFacts.lean`).
+  and that is by design.  There is no fuel anywhere: a `while` loop is accepted only
+  when the translator reads off its syntax that it is a structural recursion (a `Nat`
+  counter that moves by one towards a bound on every path that goes on), and is then a
+  `nat_rec` (`LeanScript/ToTerm/While.lean`, proved equal to Lean's loop for every input
+  by `LeanScript.loop_forIn_eq_natRec` in `LeanScript/WhileFacts.lean`).  Any other
+  `while` loop — `m := m / 2`, Euclid, Collatz, `while true` with no counter — is
+  rejected.
 - **No substitution theory.** `Term.rename` / `Term.weaken` exist (`Expr/Rename.lean`),
   but there is no `Term.subst` and no theorem that evaluation respects renaming or
   substitution (§A3). A proved-correct optimisation pass would need these.
@@ -127,7 +130,9 @@ These are the refusals listed in `LeanScript/ToTerm/Overview.lean`, *What is ref
   `TermTests/ToTermTest/ForList.lean`; `break`, and an early `return` from inside a loop, are translated by folding the
   step `ForInStep β`: see `TermTests/ToTermTest/ForBreak.lean` and
   `TermTests/ToTermTest/ForReturn.lean`; `while`, `repeat` and `repeat … until` are
-  translated to `Term.while_loop`: see `TermTests/ToTermTest/While.lean`.)
+  translated when they are structural recursions — a `Nat` counter going down by one
+  under a test that it is not `0`, or up by one below a bound the loop does not change —
+  and rejected otherwise: see `TermTests/ToTermTest/While.lean`.)
 - `List.pmap`, and `attach` / `attachWith` on anything but a `List`, are not translated.
   (`Subtype`, `List.attach` and `List.attachWith` are: a subtype has the tree of its
   values, see `TermTests/ToTermTest/ListLibrary.lean`.)

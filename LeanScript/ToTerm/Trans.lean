@@ -9,6 +9,7 @@ public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
 public meta import LeanScript.ToTerm.ForIn
+public meta import LeanScript.ToTerm.While
 
 @[expose] public section
 
@@ -196,7 +197,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
     the plumbing a `do` block leaves behind, and each of them is a `let` or an
     application once the monad is `Id`.  A `for` is the one that is not: it is a fold,
     built by `transForInList?` over a list and by `transForInRange?` over a range; a
-    `while` / `repeat` loop is `Term.while_loop`, built by `transForInLoop?`.  In any other monad this answers
+    `while` / `repeat` loop is accepted only when it is a structural recursion, and is
+    then a fold too (`transForInLoop?`).  In any other monad this answers
     `none`, and the call is refused as any other undeclared call is. -/
 partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let isId (m : Expr) : MetaM Bool := do return m.consumeMData.isConstOf ``Id
@@ -211,6 +213,10 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
   | ``Bind.bind =>
       unless args.size == 6 do return none
       unless ← isId args[0]! do return none
+      -- a continuation that ignores its argument drops it: still reject a `while` loop in
+      -- it that is not a structural recursion
+      if let .lam _ _ b _ := args[5]!.consumeMData then
+        unless b.hasLooseBVars do checkWhileLoops args[4]!
       return some (← trans c (mkApp args[5]! args[4]!).headBeta)
   | ``Functor.map =>
       unless args.size == 6 do return none
@@ -238,19 +244,21 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
 /-- `while c do …`, `repeat …` and `repeat … until c`, in the identity monad: `do` makes
     each of them a loop over `Lean.Loop` whose body answers the step `ForInStep β` (a
     `while` whose condition fails, a `break`, an `until` that holds, or a `return` from
-    inside, is `ForInStep.done`).  It is `Term.while_loop`: the initial state, and the body
-    read as its step (`LeanScript.ToTerm.forInBodyAux`), translated in the context that
-    binds the state as de Bruijn index `0`.  Answers `none` for a loop over anything other
+    inside, is `ForInStep.done`).  The language has no such loop — no fuel, no measure — so
+    it is accepted only when its syntax shows a structural recursion: a `Nat` counter in
+    the state that every path going on with the loop replaces by its predecessor
+    (`LeanScript.ToTerm.whileCounter?`).  It is then the recursion on the counter's initial
+    value plus one, whose value is the step (`LeanScript.ToTerm.whileAsNatRec`, the
+    equation `LeanScript.loop_forIn_eq_natRec`), translated as any other `Nat.rec`.  Any
+    other loop over `Lean.Loop` is rejected.  Answers `none` for a loop over anything other
     than `Lean.Loop`. -/
 partial def transForInLoop? (c : TCtx) (ρ init body : Expr) : MetaM (Option Expr) := do
   unless (← whnfR ρ).consumeMData.isConstOf ``Lean.Loop do return none
   let β ← inferType init
-  let τ ← tyOfType β
-  let z ← trans c init
-  let bodyT ← withLocalDeclD `state β fun s => do
-    let step ← forInBodyAux β true (mkApp2 body (mkConst ``Unit.unit) s)
-    trans (c.push s.fvarId! τ) step
-  return some <| mkAppN (mkConst `LeanScript.Term.while_loop') #[c.sg, c.gamma, τ, z, bodyT]
+  let e ← withLocalDeclD `state β fun s => do
+    let (step, p) ← whileStepAndCounter β body s
+    whileAsNatRec β init s step p
+  return some (← trans c e)
 
 /-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
     the library's `ForIn'` instance: the loop is `List.foldl` of the body read as the next

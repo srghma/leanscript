@@ -124,7 +124,6 @@ def Term.toJump {Γ : Ctx} {σ τ : TyWf} {J₀ J : JCtx} :
   | .float32Model_casesOn v b => .float32Model_casesOn v b.toJump
   | .array_casesOn a z s => .array_casesOn a z.toJump s.toJump
   | .array_rec k a bases branch d => .array_rec k a bases branch d.toJump
-  | .while_loop init body d => .while_loop init body d.toJump
   | .enum_casesOn e cases => .enum_casesOn e cases.toJump
   | .enum_casesOnWithDefault e cases dflt hk =>
       .enum_casesOnWithDefault e cases.toJump dflt.toJump hk

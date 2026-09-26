@@ -21,7 +21,7 @@ declares nothing, so it costs nothing to import; the grammar itself is in
 | structurally recursive | using specialized Term.natFix, arrayFix, etc |
 | well-founded recursive | not supported yet |
 | partial fixpoint | unrepresentable: there is no constructor for a fixpoint that does not descend |
-| `while` / `repeat` loop (in `Id`) | `Term.while_loop`: meaning `LeanScript.whileIter` with the fuel `2 ^ 64`, equal to Lean's loop whenever it stops within that many iterations (`LeanScript.WhileFacts`) |
+| `while` / `repeat` loop (in `Id`) | no constructor, no fuel, no measure: accepted only when the translator reads off its syntax that it is a structural recursion (a `Nat` counter that every continuing path takes to its predecessor under a test that it is not `0`, or to its successor under a test that it is below a bound the loop does not change); it is then a `Term.nat_rec` on the number of iterations the counter allows (`LeanScript.WhileFacts`).  Any other loop is rejected |
 | coinductive / inductive fixpoint | unrepresentable: `Ty` has no coinductive former and `Term` has no free fixpoint |
 | `partial` | unrepresentable: same |
 | `unsafe` | unrepresentable: same |
@@ -30,9 +30,8 @@ declares nothing, so it costs nothing to import; the grammar itself is in
   declaration has no image in this language.
 
 * **No failure.**
-  1. an exhausted recursion is not possible (a `while` loop that has not stopped after
-     `2 ^ 64` iterations answers the state it has reached: a limit of the model only,
-     see `LeanScript.Expr.While`);
+  1. an exhausted recursion is not possible: every recursion descends, and there is no
+     fuel (a `while` loop that is not a structural recursion is rejected);
   2. an out-of-range index is not possible: a constructor is a *number with a proof* that
      the type has it, and a field is read by an eliminator that *binds* the fields of the
      constructor it matched, never by a lookup;

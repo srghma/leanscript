@@ -149,7 +149,6 @@ theorem Term.evalJ_bindAtom_go (G : GlobalEnv Sg.decls) {σ τ : TyWf} {J : JCtx
       Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
   | _, .array_casesOn .., k, env, K, hk => Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
   | _, .array_rec .., k, env, K, hk => Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
-  | _, .while_loop .., k, env, K, hk => Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
   | _, .enum_casesOn .., k, env, K, hk => Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
   | _, .enum_casesOnWithDefault .., k, env, K, hk =>
       Term.evalJ_bindAtom_go_joinPoint G _ k env jenv K hk
@@ -257,8 +256,6 @@ theorem Term.evalJ_bind_go (G : GlobalEnv Sg.decls) {Γ₀ : Ctx} {σ τ : TyWf}
   | _, .array_casesOn .., ρ, env, h =>
       Term.evalJ_bind_go_joinPoint G body _ ρ env₀ env jenv h
   | _, .array_rec .., ρ, env, h =>
-      Term.evalJ_bind_go_joinPoint G body _ ρ env₀ env jenv h
-  | _, .while_loop .., ρ, env, h =>
       Term.evalJ_bind_go_joinPoint G body _ ρ env₀ env jenv h
   | _, .enum_casesOn .., ρ, env, h =>
       Term.evalJ_bind_go_joinPoint G body _ ρ env₀ env jenv h

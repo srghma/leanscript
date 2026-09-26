@@ -305,13 +305,6 @@ def Term.array_rec' {Γ : Ctx} {σ τ : TyWf} (k : Nat := 0) (a : Term Sg Γ (.a
     (.array_rec k x (bases.rename ρ)
       (branch.rename (Ren.lift (Ren.lift (Ren.liftNat τ (k + 1) ρ)))) .ret)
 
-/-- `while`: the loop from the state `init` whose iteration is `body`, which answers a
-    step `ForInStep τ` (`LeanScript.Term.while_loop`). -/
-def Term.while_loop' {Γ : Ctx} {τ : TyWf} (init : Term Sg Γ τ)
-    (body : Term Sg (τ :: Γ) (TyWf.sum τ τ)) : Term Sg Γ τ :=
-  init.bindAtomOr (fun x => .while_loop x body .ret)
-    fun ρ x => .while_loop x (body.rename (Ren.lift ρ)) .ret
-
 /-- A constructor of an enum. -/
 abbrev Term.enum_mk {Γ : Ctx} (s : LeanEnumSchema) (i : Fin s.nOfConstructors) :
     Term Sg Γ (.enum s) := .ofComp (.enum_mk s i)

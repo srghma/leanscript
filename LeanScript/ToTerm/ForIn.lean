@@ -31,8 +31,10 @@ introduces after an `if` without `else` or with a `continue`), `if`/`if h :`/`ma
   membership proof `h` (the language erases proofs, and `l.attach` is translated as `l`).
   The translator then translates this `List.foldl` as any other.
 * `rangeForInBreakAsNatRec` is the fold of the step for `for i in [:n]`, as `Nat.rec`.
-* A `while` / `repeat` loop (a loop over `Lean.Loop`) is not a fold: its body is read as
-  its step with `forInBodyAux β true`, and `transForInLoop?` makes it `Term.while_loop`.
+* A `while` / `repeat` loop (a loop over `Lean.Loop`): its body is read as its step with
+  `forInBodyAux β true`; it is accepted only when that step shows a structural recursion,
+  and is then the same fold of the step as `rangeForInBreakAsNatRec`
+  (`LeanScript.ToTerm.While`).
 * `rangeForInReindex` turns a range with a start or a step into the loop over `[:size]`,
   and `rangeForIn'AsForIn` turns `for h : i in r` over a range into a loop that does not
   name the membership proof (guarded by `if hj : j < size` when the body reads `h`).

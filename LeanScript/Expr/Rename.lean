@@ -113,7 +113,6 @@ def Term.rename {Γ Δ : Ctx} {τ : TyWf} {J : JCtx} (ρ : Ren Γ Δ) :
   | .array_rec k a bases branch d =>
       .array_rec k (a.rename ρ) (bases.rename ρ)
         (branch.rename (Ren.lift (Ren.lift (Ren.liftNat _ (k + 1) ρ)))) d
-  | .while_loop init body d => .while_loop (init.rename ρ) (body.rename (Ren.lift ρ)) d
   | .enum_casesOn e cases => .enum_casesOn (e.rename ρ) (cases.rename ρ)
   | .enum_casesOnWithDefault e cases dflt hk =>
       .enum_casesOnWithDefault (e.rename ρ) (cases.rename ρ) (dflt.rename ρ) hk

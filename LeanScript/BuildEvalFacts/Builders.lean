@@ -95,23 +95,6 @@ theorem Term.eval_array_rec' {Γ : Ctx} {σ τ : TyWf} (k : Nat) (a : Term Sg Γ
     exact Term.eval_rename G _ branch
       (EnvRel.lift (EnvRel.lift (EnvRel.liftNat h _ _ w) _) _)
 
-/-- **A `while` loop** is `whileIter` of its body, read as a step, from the value of its
-    initial state, with the fuel `whileFuel`. -/
-theorem Term.eval_while_loop' {Γ : Ctx} {τ : TyWf} (init : Term Sg Γ τ)
-    (body : Term Sg (τ :: Γ) (TyWf.sum τ τ)) (env : Env Γ) :
-    Term.eval G (Term.while_loop' init body) env =
-      whileIter (fun s => TyWf.sumStep (Term.eval G body (s, env))) whileFuel
-        (Term.eval G init env) := by
-  refine Term.evalJ_bindAtomOr G init _ _ env (J := []) PUnit.unit
-    (fun v => whileIter (fun s => TyWf.sumStep (Term.eval G body (s, env))) whileFuel v)
-    (fun _ => rfl) ?_
-  intro Δ ρ env' x h
-  show whileIter (fun s => TyWf.sumStep (Term.eval G (body.rename (Ren.lift ρ)) (s, env')))
-    whileFuel _ = _
-  congr 2
-  funext s
-  exact congrArg TyWf.sumStep (Term.eval_rename G _ body (EnvRel.lift h s))
-
 /-! ## Enums, records and tagged unions -/
 
 /-- A dispatch on an enum takes the branch of the constructor the value is. -/

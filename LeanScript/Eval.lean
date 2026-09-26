@@ -1,7 +1,6 @@
 module
 
 public import LeanScript.Eval.Env
-public import LeanScript.Expr.While
 public import LeanScript.Eval.Extern
 public import LeanScript.Den.Rec
 public import LeanScript.Den.RecObjectAlias
@@ -24,10 +23,9 @@ signature, and gives **the** value of that term: an element of `LeanScript.TyWf.
 
 It is a **total Lean function, defined by structural recursion on the term**, so it
 terminates on every input — there is no `partial` and no `unsafe`, and the answer is a
-value rather than a computation that might not stop.  The one fuel is that of a `while`
-loop (`Term.while_loop`), whose meaning is `LeanScript.whileIter` run for at most
-`LeanScript.whileFuel = 2 ^ 64` iterations; `LeanScript.WhileFacts` proves it equal to
-Lean's own loop whenever the loop stops within that many.
+value rather than a computation that might not stop.  There is no fuel anywhere: a
+`while` loop reaches the language only when the translator can read off its syntax that
+it is a structural recursion, and it is then a `Term.nat_rec` (`LeanScript.WhileFacts`).
 
 It interprets **every** term: every type of the language has values
 (`LeanScript.Ty.Den`), so there is no side condition on the term.  The four recursive
@@ -54,13 +52,12 @@ W-tree of its members' payloads — and all of their forms are interpreted:
   (`LeanScript.famBindEnv`).
 
 All of it is structural, on the term and on the value, so the evaluator is still total
-with no fuel (a `while` loop aside, see above).  `LeanScript.RecUnionEvalFacts` and `LeanScript.RecObjectAliasEvalFacts`
+with no fuel.  `LeanScript.RecUnionEvalFacts` and `LeanScript.RecObjectAliasEvalFacts`
 state what it does with them; the family forms are run, against Lean references, by
 `TermTests/RecTermTest.lean` and `TermTests/FamilyRecDepthTest.lean`.
 
 That this is possible at all is the point of the grammar: `LeanScript.Term` has no
-fixpoint constructor (a `while` loop, `Term.while_loop`, is an iteration of its body,
-structural in its fuel).  The two recursive forms it does have, `Term.nat_rec` and
+fixpoint constructor.  The two recursive forms it does have, `Term.nat_rec` and
 `Term.array_rec`, are folds — the branch is *given* the value of the recursion on the
 smaller argument (as a de Bruijn index) rather than being able to call anything — so
 evaluating them is `Nat.rec` and `List.rec` (an array of the language denotes a Lean
@@ -122,16 +119,6 @@ def JEnv.get {τ : TyWf} : {J : JCtx} → {σ : TyWf} → (J ∋ σ) → JEnv τ
 def Dest.apply {J : JCtx} {ρ τ : TyWf} : Dest J ρ τ → JEnv τ J → TyWf.Den ρ → TyWf.Den τ
   | .ret, _, v => v
   | .jump j, jenv, v => JEnv.get j jenv v
-
-/-- A value of `TyWf.sum ρ ρ` read as the step of a loop: constructor `0` is `done`,
-    constructor `1` is `yield` (the tree `ForInStep ρ` has, see
-    `LeanScript.Ty.Instances`).  This is how `Term.while_loop` reads the answer of its
-    body. -/
-def TyWf.sumStep {ρ : TyWf} (v : TyWf.Den (TyWf.sum ρ ρ)) : ForInStep (TyWf.Den ρ) :=
-  match v with
-  | ⟨⟨0, h⟩, x⟩ => .done (cast (Ty.denAt_eq _ 0 h) x)
-  | ⟨⟨1, h⟩, x⟩ => .yield (cast (Ty.denAt_eq _ 1 h) x)
-  | ⟨⟨_ + 2, h⟩, _⟩ => absurd h (by simp [LeanTaggedUnionSchema.length])
 
 /-! ## Terms -/
 
@@ -223,10 +210,6 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
       listFoldK (fun l => ArrayRecBases.eval G bases env l)
         (fun hd tl w => Term.evalJ G branch (hd, tl.toArray, Env.ofWin w env) PUnit.unit)
         (show Array _ from Atom.eval a env).toList
-  | _, _, _, .while_loop init body d, env, jenv =>
-      Dest.apply d jenv <|
-      whileIter (fun s => TyWf.sumStep (Term.evalJ G body (s, env) PUnit.unit)) whileFuel
-        (Atom.eval init env)
   | _, _, _, .enum_casesOn e cases, env, jenv =>
       EnumCases.eval G cases env jenv (Atom.eval e env)
   | _, _, _, .enum_casesOnWithDefault e cases dflt _, env, jenv =>

@@ -41,8 +41,9 @@ mutual
     a context `Γ` of the types in scope, a context `J` of the join points in scope (their
     argument types; every one of them answers with `τ`), and against the signature `Sg` of
     the module's top-level declarations.  It has no fixpoint constructor, no effect and no
-    partial operation; its one loop that is not a fold, `Term.while_loop`, is given meaning
-    by an iteration with a fuel of `2 ^ 64` steps, so its evaluator is still total.
+    partial operation: every loop is a fold (a `while` loop is accepted by the translator
+    only when it is a structural recursion, and is then a `Term.nat_rec`), so its
+    evaluator is total and structural.
 
     Strict A-normal form is a property of the *type*: the operands of every step are atoms
     (`LeanScript.Atom`), which are **variables only** — a declaration and a literal are
@@ -195,20 +196,6 @@ inductive Term (Sg : Sig) : Ctx → TyWf → optParam JCtx [] → Type 1
   | array_rec : ∀ {Γ σ ρ τ} {J : JCtx} (k : Nat := 0), Atom Γ (.array σ) →
       ArrayRecBases Sg Γ σ ρ k →
       Term Sg (σ :: TyWf.array σ :: natRecCtx ρ (k + 1) Γ) ρ → (d : Dest J ρ τ) → Term Sg Γ τ J
-  /-- `while` (and `repeat`, `repeat … until`): the loop that starts from the state `init`
-      and runs `body` on the current state (de Bruijn index `0`) until it answers `done`.
-      `body` answers a step `ForInStep ρ`, the tagged union `TyWf.sum ρ ρ`: constructor `0`
-      (`done s`) stops with the state `s`, constructor `1` (`yield s`) goes on from `s`.
-      The final state is delivered to `d`.  The body starts with no join point in scope,
-      as the branch of a fold does.
-
-      This is the one loop of the language that is **not** a fold: nothing makes it stop.
-      Its meaning is `LeanScript.whileIter` run with the fuel `LeanScript.whileFuel`
-      (`2 ^ 64` iterations), which keeps the evaluator total and structural;
-      `LeanScript.WhileFacts` proves it equal to Lean's loop whenever the loop stops within
-      that many iterations.  The backend prints it as a plain `while`. -/
-  | while_loop : ∀ {Γ ρ τ} {J : JCtx}, (init : Atom Γ ρ) →
-      (body : Term Sg (ρ :: Γ) (TyWf.sum ρ ρ)) → (d : Dest J ρ τ) → Term Sg Γ τ J
   /-- A dispatch on an enum: one branch per constructor, and no default, so it cannot
       fall off the end. -/
   | enum_casesOn : ∀ {Γ τ} {J : JCtx} {s : LeanEnumSchema},

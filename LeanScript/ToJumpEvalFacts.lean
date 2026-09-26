@@ -159,8 +159,6 @@ theorem Term.evalJ_toJump (G : GlobalEnv Sg.decls) :
       | cons x xs => exact Term.evalJ_toJump G s _ k jenv₀ jenv' h
   | _, _, _, _, _, .array_rec _ a bases branch d, env, k, jenv₀, jenv', h => by
       unfk; exact Dest.apply_toJump h d _
-  | _, _, _, _, _, .while_loop init body d, env, k, jenv₀, jenv', h => by
-      unfk; exact Dest.apply_toJump h d _
   | _, _, _, _, _, .enum_casesOn e cases, env, k, jenv₀, jenv', h => by
       unfk; exact EnumCases.eval_toJump G cases env k jenv₀ jenv' _ h
   | _, _, _, _, _, .enum_casesOnWithDefault e cases dflt _, env, k, jenv₀, jenv', h => by

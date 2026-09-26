@@ -1,3 +1,43 @@
+# Summary of changes for run 294fbbef-f003-4301-80aa-c6f389b4067b
+`while` loops no longer use fuel. The fuel-based loop node is gone from the term language, and the translator now accepts a `while` / `repeat` / `repeat … until` loop only if it can see from the loop's syntax that it is a structural recursion. Any other loop is rejected with an error. The full `lake build` passes (1027 jobs, no errors, warnings or `sorry`).
+
+**What's removed**
+- The `Term.while_loop` constructor, together with `whileFuel`/`whileIter`, `TyWf.sumStep`, the builder `Term.while_loop'`, and every evaluator, renaming, `toJump` and proof case that handled it.
+- `LeanScript/Expr/While.lean` and the `2^64`-fuel test file `TermTests/ToTermTest/WhileDiverge.lean` are deleted.
+- The term language has no loop that isn't a fold, and the evaluator uses no fuel anywhere.
+
+**When a loop is accepted** (new file `LeanScript/ToTerm/While.lean`, function `whileCounter?`)
+
+The translator walks the loop body's `let`s, `if`s, `if h :`s and `match`es, and collects the tests on each path. Paths that leave the loop (`break`, `return`, the condition failing) don't matter. On every path that continues, some `Nat` `let mut` variable `x` must move by one:
+- **Down:** to `x - 1` on a path that has tested `x ≠ 0`. That test can be `x > 0`, `x != 0`, `if x == 0 then break`, `if h : x = 0 …`, and so on, including inside `&&` or `decide`. `x` can also go to `n` in the `n + 1` case of a `match` on `x`.
+- **Up:** to `x + 1` on a path that has tested `x < b` or `x ≤ b`, where `b` doesn't depend on the loop state, so the loop can't change it. You asked for this case.
+
+Matching is syntactic, allowing only reducible and instance unfolding. Nothing infers a measure or searches for a proof.
+
+**What an accepted loop becomes**
+
+An accepted loop becomes a `nat_rec` over its maximum iteration count plus one: `x₀ + 1` counting down from `x₀`, or `b - x₀ + 1` counting up to `b`. The `nat_rec` folds the step `ForInStep β`, the same way a `for` loop with `break` over a range is already translated.
+
+This is backed by a new theorem, `LeanScript.loop_forIn_eq_natRec` in `LeanScript/WhileFacts.lean`. If every `yield` makes a measure `μ` smaller, Lean's loop equals exactly this `Nat.rec` expression, for every input. It uses only the standard axioms. The syntactic check is what gives that hypothesis for a particular loop; the check itself is unverified translator code, like the rest of the translator.
+
+**Loops the result is thrown away from are checked too.** Previously, in `Id`, a loop whose result isn't used was silently dropped (`foo`: `while true do pure ()`, then `return 1`). Such loops are now checked as well, so `foo` is rejected.
+
+**Tests**
+- **`TermTests/ToTermTest/While.lean`, accepted loops** (each checked with `kernel_rfl` against the Lean function and `#guard`):
+  - counting down: `while i > 0`, `!=` with `continue`, `repeat` with `if i == 0 then break`, `match` with `k + 1`, the `if h : i = 0` form, early `return`, and nested loops;
+  - counting up: `firstMultiple`, `sumOddBelow`, `parityOfSteps`, an inclusive `≤` bound, and `triangle`, whose inner bound is the outer counter;
+  - a counting-down loop inside a `for`.
+- **Same file, rejected loops** (checked with `#guard_msgs`): halvings, subtraction-based Euclid, Collatz, `while true` counting up with no bound, `repeat i := i - 1 until i == 0`, a `continue` that doesn't move the counter, a bound the loop changes, `bar`, `foo`, and halvings inside a `for`.
+- **`TermTests/ToTermTest/NotAndMod.lean`:** `digitSum` (`m / 10`) and `gcdMod` are now rejection tests. A new `countOdd` keeps `%` and `!=` covered inside an accepted loop.
+
+**Limits**
+- Only a `Nat` variable can be the counter. A list shrinking by `tail`, for example, isn't recognised yet.
+- A `match` whose later case overlaps an earlier one (`| 0 => … | _ => …`) passes the check, but the translator can't handle it for an unrelated reason: Lean compiles it with `Eq.rec`. The `k + 1` form works.
+
+The docs (`Expr/Design.lean`, `Eval.lean`, `Expr/Term.lean`, `ToTerm/Overview.lean`, `ToTerm/ForIn.lean`, `NOT_IMPLEMENTED.md`) are updated to match.
+
+**Build setup:** as in earlier runs, your committed `lake-manifest.json` has no Mathlib entry, so `lake` fails here out of the box. I built against a local Mathlib and then put your `lakefile.toml` and manifest back unchanged. That's why I list no build targets for the final check. Run `lake update mathlib` before building.
+
 # Summary of changes for run 6fad73a4-2c2d-401c-82ce-48d292462710
 The translator now handles both `!`/`!=` and `x % y` on `Nat`. With the test signature, `lake build` passes (1028 jobs, no errors, warnings or `sorry`).
 
