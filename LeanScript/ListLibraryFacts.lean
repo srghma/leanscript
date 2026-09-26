@@ -23,7 +23,11 @@ each replacement is an equation of Lean's logic:
 * `l.attach` and `l.attachWith P h` become `l`: a subtype has the tree of its values
   (`tyWfOf_subtype`), and reading the values of the attached list gives back `l`
   (`attach_unattach`, `attachWith_unattach`), so any `map` or `foldl` that reads only
-  the values is the same function of `l` (`map_attach_val`, `foldl_attach_val`, …).
+  the values is the same function of `l` (`map_attach_val`, `foldl_attach_val`, …);
+* `for x in l do body` in `Id`, whose body always yields, becomes `l.foldl` of the body
+  (`forIn_id_yield_eq_foldl`), and `for h : x in l` a `foldl` over `l.attach`
+  (`forIn'_id_yield_eq_foldl_attach`, or over `l` when `h` is not read:
+  `forIn'_id_yield_eq_foldl`).
 -/
 
 namespace LeanScript.ListLibrary
@@ -137,6 +141,53 @@ theorem map_range_attach_getElem {α : Type u} {β : Type v} (l : List α) (g : 
     rw [getElem_eq_getD l x.1 _ d]
   rw [List.map_congr_left h]
   exact map_attach_val _ (fun i => g (l.getD i d))
+
+/-! ## `for x in l` in `Id`
+
+`for x in l do body` in the identity monad, whose body always yields, is translated as
+`l.foldl` of the body read as the next state (`LeanScript.ToTerm.listForInAsFoldl`); with
+`for h : x in l`, when the body reads `h`, as a `foldl` over `l.attach`.  Reading the next
+state pushes `pure (.yield ·)` inside every `if`, `if h :` and `match` of the body; the
+first two are `ite_pure_yield` and `dite_pure_yield` (a `match` is the same, one
+constructor at a time), and `let`s and join points are definitional. -/
+
+/-- A `for` over a list in `Id` whose body always yields is the `foldl` of the body. -/
+theorem forIn_id_yield_eq_foldl {α : Type u} {β : Type v} (l : List α) (init : β)
+    (g : α → β → β) :
+    (forIn (m := Id) l init fun x s => pure (ForInStep.yield (g x s))) =
+      l.foldl (fun s x => g x s) init :=
+  List.forIn_pure_yield_eq_foldl g init
+
+/-- `for h : x in l` in `Id`, whose body always yields, is the `foldl` of the body over
+    `l.attach`, whose elements carry the proof `h`. -/
+theorem forIn'_id_yield_eq_foldl_attach {α : Type u} {β : Type v} (l : List α) (init : β)
+    (g : (x : α) → x ∈ l → β → β) :
+    (forIn' (m := Id) l init fun x h s => pure (ForInStep.yield (g x h s))) =
+      l.attach.foldl (fun s p => g p.1 p.2 s) init := by
+  rw [List.forIn'_pure_yield_eq_foldl]
+  rfl
+
+/-- When the body of `for h : x in l` does not read `h`, the fold over `l.attach` is the
+    fold over `l`. -/
+theorem forIn'_id_yield_eq_foldl {α : Type u} {β : Type v} (l : List α) (init : β)
+    (g : α → β → β) :
+    (forIn' (m := Id) l init fun x _ s => pure (ForInStep.yield (g x s))) =
+      l.foldl (fun s x => g x s) init := by
+  rw [forIn'_id_yield_eq_foldl_attach (g := fun x _ s => g x s)]
+  exact foldl_attach_val l (fun s x => g x s) init
+
+/-- A yield under an `if` is the `if` of the yielded states. -/
+theorem ite_pure_yield {β : Type v} (c : Prop) [Decidable c] (a b : β) :
+    (if c then pure (ForInStep.yield a) else pure (ForInStep.yield b) : Id (ForInStep β)) =
+      pure (ForInStep.yield (if c then a else b)) := by
+  split <;> rfl
+
+/-- A yield under an `if h :` is the `if h :` of the yielded states. -/
+theorem dite_pure_yield {β : Type v} (c : Prop) [Decidable c] (a : c → β) (b : ¬c → β) :
+    (if h : c then pure (ForInStep.yield (a h)) else pure (ForInStep.yield (b h)) :
+        Id (ForInStep β)) =
+      pure (ForInStep.yield (if h : c then a h else b h)) := by
+  split <;> rfl
 
 end LeanScript.ListLibrary
 

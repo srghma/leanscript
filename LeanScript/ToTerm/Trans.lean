@@ -8,6 +8,7 @@ public meta import LeanScript.ToTerm.TransRecCases
 public meta import LeanScript.ToTerm.Extern
 public meta import LeanScript.ToTerm.Cache
 public meta import LeanScript.ToTerm.Existential
+public meta import LeanScript.ToTerm.ForIn
 
 @[expose] public section
 
@@ -182,8 +183,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
 
 /-- `do` in the identity monad is not an effect: `Id.run`, `pure`, `>>=` and `<$>` are
     the plumbing a `do` block leaves behind, and each of them is a `let` or an
-    application once the monad is `Id`.  A `for` over a range is the one that is not:
-    it is a fold, and `transForInRange?` builds it.  In any other monad this answers
+    application once the monad is `Id`.  A `for` is the one that is not: it is a fold,
+    built by `transForInList?` over a list and by `transForInRange?` over a range.  In any other monad this answers
     `none`, and the call is refused as any other undeclared call is. -/
 partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let isId (m : Expr) : MetaM Bool := do return m.consumeMData.isConstOf ``Id
@@ -206,8 +207,31 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
   | ``ForIn.forIn =>
       unless args.size ≥ 8 do return none
       unless ← isId args[0]! do return none
+      if let some t ← transForInList? c args[1]! args[3]! args[args.size - 3]!
+          args[args.size - 2]! args[args.size - 1]! false then
+        return some t
       transForInRange? c args[1]! args[args.size - 3]! args[args.size - 2]! args[args.size - 1]!
+  | ``ForIn'.forIn' =>
+      unless args.size ≥ 9 do return none
+      unless ← isId args[0]! do return none
+      transForInList? c args[1]! args[4]! args[args.size - 3]! args[args.size - 2]!
+        args[args.size - 1]! true
   | _ => return none
+
+/-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
+    the library's `ForIn'` instance: the loop is `List.foldl` of the body read as the next
+    state (`LeanScript.ToTerm.listForInAsFoldl`), and that fold is translated as any
+    other.  The body must always `yield`, as for a range.  Answers `none` for any other
+    collection. -/
+partial def transForInList? (c : TCtx) (ρ inst coll init body : Expr) (withProof : Bool) :
+    MetaM (Option Expr) := do
+  let ρ ← whnfR ρ
+  unless ρ.isAppOfArity ``List 1 do return none
+  unless (inst.find? (·.isConstOf ``List.instForIn'InferInstanceMembershipOfMonad)).isSome do
+    return none
+  let β ← inferType init
+  let e ← listForInAsFoldl ρ.appArg! β coll init body withProof
+  return some (← trans c e)
 
 /-- `for i in [:n] do …`, in the identity monad: the loop is the fold of `n` whose value
     is the state, so it is `Term.nat_rec` — the branch binds the index (de Bruijn index
@@ -236,18 +260,7 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
   let z ← trans c init
   let branch ← withLocalDeclD `i (mkConst ``Nat) fun i =>
     withLocalDeclD `state β fun s => do
-      let stepBody ← whnf (mkApp2 body i s).headBeta
-      let stepBody ← match stepBody.getAppFnArgs with
-        | (``Pure.pure, #[_, _, _, v]) => whnf v
-        | _ => pure stepBody
-      let next ← match stepBody.getAppFnArgs with
-        | (``ForInStep.yield, #[_, v]) => pure v
-        | (``ForInStep.done, #[_, _]) =>
-            throwError "`#leanscript_to_term`: this `for` leaves the loop early (`break` \
-              or `return`), which the fold a loop becomes cannot express"
-        | _ =>
-            throwError "`#leanscript_to_term`: the body of this `for` does not yield the \
-              state of the next iteration"
+      let next ← forInYieldValue β (mkApp2 body i s)
       let c' := c.pushFields #[(i.fvarId!, natTy), (s.fvarId!, τ)]
       trans c' next
   return some <| mkAppN (mkConst `LeanScript.Term.nat_rec')
