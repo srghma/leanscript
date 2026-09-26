@@ -31,6 +31,32 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
     `Vec.sum {n} (v : Vec Nat n)`) is dropped and cannot be used as a value (`Vec.len v := n`
     is refused), and a branch Lean proves unreachable (`Vec.head : Vec α (n + 1) → α`, whose
     `nil` branch is reachable after erasure) is refused.
+- **Families indexed by a type are erased through a generated element type, not typed.**
+  `Nest : Type → Type 1` with `cons : α → Nest (α × α) → Nest α` has infinitely many
+  instances, so none of them is a block member. `Gen/Read.lean` (`typeFamilySteps`,
+  `ensureElem`, `canonIndex`) generates, once, the Lean inductive
+  `Nest.Elem α := leaf α | node (Nest.Elem α) (Nest.Elem α)` (one `node` per recursive index;
+  a structure index such as `α × α` is flattened into its fields), and reads `Nest τ` as the
+  datatype `Nest (Nest.Elem B)`, `B` being `τ` with the recursive indices peeled off
+  (`Nest (Nat × Nat)` and `Nest Nat` are the same datatype). A value at depth `k` is put in
+  `Nest.Elem B` (`injectElem`: `(2, 3)` is `node (leaf 2) (leaf 3)`). A function generic in
+  the index (`Nest.length`) is translated at the index the program declares the family at,
+  or at `#leanscript_to_term f (α := T)`. `TermTests/NestProofs.lean` proves that the encoding
+  is injective at every index and that the translated `Nest.length` is correct on every
+  value. Caveats (`TermTests/NestTest.lean`):
+  - the erased type has more values than the Lean one (an element may be a tree of any shape,
+    not a perfect tree of the depth of its level);
+  - an element read at its Lean type (`headNat : Nest Nat → Option Nat`, `| .cons a _ => some
+    a`) is refused: in the language it is an element of `Nest.Elem Nat`;
+  - only families with one index, of type `Type`, no universe parameters, and constructors
+    generic in the index (no `G.nat : Nat → G Nat`) are supported; a recursive index in which
+    the index is not positive (`Neg (α → Nat)`) is refused by the kernel check of the element
+    type; a value at an unflattened recursive index (`Two (List α)`) cannot be put in the
+    element type (its type is supported);
+  - `Nest Unit` and `Nest Empty` are refused (the element type holds a `Unit`/`Empty` field),
+    although `Nest Unit` has infinitely many values in Lean;
+  - the element type is declared in the module that first needs it: two modules that both
+    generate it and are then imported together clash.
 - **Dependent fields are erased, not typed.** A field whose type depends on an earlier field
   is read through its erasure (`Gen/Read.lean`, `eraseDeps`): the dependency may only go
   through arrows, type arguments, and wrappers of one value besides proofs. `Fin n → Nat` is

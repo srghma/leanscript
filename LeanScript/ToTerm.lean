@@ -34,6 +34,8 @@ the `casesOn` it is compiled to.  The translation is in direct style:
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
 | a projection applied to arguments (`c.data i` for a function field) | `Term.app` |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
+| a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
+| a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
 | a cast along an equation (`Eq.ndrec`, `cast`, …, from the `match` of an inductive family) | the value cast |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
@@ -70,6 +72,10 @@ namespace LeanScript.Gen
 structure TS where
   st : St
   usesData : Bool := false
+  /-- Fields of type `α` of a type-indexed family opened at an index other than the one the
+      family is read at (`withFields`), with that index and the element type: they have no
+      value of their Lean type in the language. -/
+  unusable : Std.HashMap FVarId (Name × Expr × Expr) := {}
 
 abbrev TM := StateT TS TermElabM
 
@@ -269,7 +275,9 @@ def groupByMember (L : Loc) (p : Nat) (mems : Array Expr) : TM (Array (Option Na
           unless ← isDefEq (← inferType ys[q]!) (← inferType L.params[q]!) do
             fail m!"`{g}` does not take the same parameters as the other functions of its \
               `mutual` group"
-      let T ← normType (← inferType ys[p]!)
+      -- the index parameters are those of the function translated (a type index is fixed)
+      let idx := L.idxParams.filter (· != p)
+      let T ← normType ((← inferType ys[p]!).replaceFVars (idx.map (ys[·]!)) (idx.map (L.params[·]!)))
       mems.findIdxM? fun m => isDefEq T m
     let some i := i? | fail m!"`{g}` does not recurse on a member of the block recursed on"
     if let some g' := assign[i]! then
@@ -277,6 +285,54 @@ def groupByMember (L : Loc) (p : Nat) (mems : Array Expr) : TM (Array (Option Na
         of the block is supported"
     assign := assign.set! i (some g)
   return assign
+
+/-- For a constructor of a type-indexed family: the position of its index field (`α` in
+    `Nest.cons {α} a r`), and for each field whether its type is that index (`some true`),
+    does not mention it outside the family itself (`some false`: `Nest (α × α)` is read at the
+    same index), or mentions it otherwise (`none`). -/
+def ctorIndexKinds (ind : InductiveVal) (ctor : Name) : MetaM (Nat × Array (Option Bool)) := do
+  let p ← indexField ind ctor
+  let cinfo ← getConstInfoCtor ctor
+  let kinds ← forallTelescopeReducing cinfo.type fun xs _ => do
+    let a := xs[cinfo.numParams + p]!
+    xs[cinfo.numParams:].toArray.mapM fun x => do
+      let t ← instantiateMVars (← inferType x)
+      if t == a then return some true
+      let t' := t.replace fun s =>
+        if s.isAppOfArity ind.name (ind.numParams + 1) then some (mkConst ``Unit) else none
+      return if t'.containsFVar a.fvarId! then none else some false
+  return (p, kinds)
+
+/-- Open the fields of a branch (the minor premise `minor`, applied to the extra arguments
+    `extra`) of the constructor `ctor` of `ind`, for the scrutinee `major` whose (normalised)
+    type is `T`; `k` receives the fields and the body.  For a type-indexed family the index
+    field (`α` in `Nest.cons {α} a r`) is not opened: it is the index the family is read at
+    (`Nest.Elem Nat`), so a field of type `α` holds an element of it.  When the scrutinee is at
+    another index (`Nest Nat`, or `Nest (Nest.Elem Nat × Nest.Elem Nat)` one level down), such a
+    field is a value of that index in Lean (a `Nat`), but an element in the language: it must
+    not be used. -/
+partial def withFields {α : Type} (ind : InductiveVal) (T major : Expr) (ctor : Name)
+    (minor : Expr) (extra : Array Expr) (k : Array Expr → Expr → TM α) : TM α := do
+  let n := (← getConstInfoCtor ctor).numFields
+  let body (xs : Array Expr) : Expr := (mkAppN (mkAppN minor xs) extra).headBeta
+  unless ← typeIndexed ind do
+    return ← forallBoundedTelescope (← inferType minor) n fun xs _ => k xs (body xs)
+  let (p, kinds) ← ctorIndexKinds ind ctor
+  let canon := T.getAppArgs[ind.numParams]!
+  let actual := (← whnf (← inferType major)).appArg!
+  let generic ← isDefEq actual canon
+  let rec go (ty : Expr) (i : Nat) (xs : Array Expr) : TM α := do
+    if i = n then
+      unless generic do
+        for q in [0:n] do
+          if kinds[q]! == some true then
+            let x := xs[q]!.fvarId!
+            modify fun s => { s with unusable := s.unusable.insert x (ctor, actual, canon) }
+      return ← k xs (body xs)
+    let .forallE nm d b bi ← whnf ty | fail m!"bad branch of `{ctor}`"
+    if p == i then return ← go (b.instantiate1 canon) (i + 1) (xs.push canon)
+    withLocalDecl nm bi d fun x => go (b.instantiate1 x) (i + 1) (xs.push x)
+  go (← inferType minor) 0 #[]
 
 /-- `fun | ⟨0, _⟩ => x₀ | ⟨1, _⟩ => x₁ | …`: a (dependent) function on `Fin n`. -/
 def finFunStx (xs : Array Lean.Term) : MetaM Lean.Term := do
@@ -292,6 +348,11 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
   match e with
   | .mdata _ e => tr L e
   | .fvar x =>
+    if let some (ctor, actual, canon) := (← get).unusable[x]? then
+      fail m!"the field `{(← x.getUserName).eraseMacroScopes}` of `{ctor}` is used at the \
+        index{indentExpr actual}\nof `{ctor.getPrefix}`: the language reads the family at one \
+        index, where the field is an element of{indentExpr canon}\nso it can only be used by a \
+        function generic in the index"
     if L.nest.contains x then
       fail m!"the field `{← x.getUserName}` holds values of the datatype recursed on, paired \
         with the answers at them: it can only be folded (`Array.foldl`), applied, or passed \
@@ -498,6 +559,14 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
   let mut named : Array (TSyntax ``leanscriptNamedArg) := #[]
   let mut fields : Array Lean.Term := #[]
   let mask ← ctorErasedMask cinfo.name fn.constLevels! args[:cinfo.numParams].toArray
+  -- a constructor of a type-indexed family (`Nest.cons {α} a r`): it is generated at the index
+  -- the family is read at (`Nest.Elem Nat`), and a field of type `α` is put in it
+  let ind ← getConstInfoInduct cinfo.induct
+  let tyIdx? ← if ← typeIndexed ind then
+      let (p, kinds) ← ctorIndexKinds ind cinfo.name
+      let canon := (← normType (← inferType (mkAppN fn args)) false).appArg!
+      pure (some (p, kinds, canon))
+    else pure none
   for i in [0:args.size] do
     ty ← whnf ty
     let .forallE n _ b _ := ty | fail m!"bad constructor `{cinfo.name}`"
@@ -505,6 +574,22 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
     if i < cinfo.numParams then
       if a.hasFVar then fail m!"the parameter `{n}` of `{cinfo.name}` is not closed{indentExpr a}"
       named := named.push (← `(leanscriptNamedArg| ($(mkIdent n) := $(← exprToSyntax a))))
+    else if let some (p, kinds, canon) := tyIdx? then
+      let q := i - cinfo.numParams
+      if q == p then
+        if canon.hasFVar then
+          fail m!"the constructor `{cinfo.name}` is used at the index{indentExpr a}\nwhich is \
+            not closed"
+        named := named.push (← `(leanscriptNamedArg| ($(mkIdent n) := $(← exprToSyntax canon))))
+      else if !mask[q]! then
+        match kinds[q]! with
+        | some true =>
+          let v ← injectElem ind args[:cinfo.numParams].toArray args[cinfo.numParams + p]! a
+          fields := fields.push (← tr L v)
+        | some false => fields := fields.push (← tr L a)
+        | none =>
+          fail m!"the field `{n}` of `{cinfo.name}` mentions the type index other than as the \
+            index itself or inside `{ind.name}`: its value cannot be put in the element type"
     else if !mask[i - cinfo.numParams]! then
       fields := fields.push (← tr L a)
     ty := b.instantiate1 a
@@ -550,23 +635,21 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := d
   let extra := args[nP + 2 + nM:].toArray
   let minors := (args[nP + 2 : nP + 2 + nM].toArray).map fun m => m
   let T ← normType (← inferType major) false
+  let ps := T.getAppArgs[:ind.numParams].toArray
   let ctorInfos ← ind.ctors.toArray.mapM getConstInfoCtor
   let masks ← ind.ctors.toArray.mapM fun ctor =>
-    ctorErasedMask ctor T.getAppFn.constLevels! T.getAppArgs
+    ctorErasedMask ctor T.getAppFn.constLevels! ps
   -- open a branch: its fields as locals, the extra arguments pushed inside
   let openMinor {α : Type} (k : Nat) (m : Expr)
       (kont : Array Expr → Array Bool → Expr → TM α) : TM α := do
-    let ci := ctorInfos[k]!
-    let mTy ← inferType m
-    forallBoundedTelescope mTy ci.numFields fun xs _ => do
-      kont xs masks[k]! (mkAppN (mkAppN m xs) extra).headBeta
+    withFields ind T major ctorInfos[k]!.name m extra fun xs b => kont xs masks[k]! b
   let recPos? := L.recParam? major minors
   -- in a branch of the case analysis of a parameter recursed on, the parameter is the
   -- constructor application
   let subst (k : Nat) (xs : Array Expr) (body : Expr) : Expr :=
     if recPos?.isSome then
       body.replaceFVar major (mkAppN (mkAppN (mkConst ctorInfos[k]!.name T.getAppFn.constLevels!)
-        T.getAppArgs) xs)
+        ps) xs)
     else body
   if ind.name == ``Nat then
     let z ← openMinor 0 minors[0]! fun _ _ b => tr L (subst 0 #[] b)
@@ -585,7 +668,7 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := d
     if let some (bodySlot, d) := L.win[h]? then
       let brs ← (List.range nM).toArray.mapM fun k => openMinor k minors[k]! fun xs erased body => do
         let ctorApp := mkAppN (mkAppN (mkConst ctorInfos[k]!.name T.getAppFn.constLevels!)
-          T.getAppArgs) xs
+          ps) xs
         let body := body.replace fun s => if s == ctorApp then some major else none
         openWindows L L.mems xs erased d (tr · body)
       return ← casesBodyStx plan (← varStx (L.slots.size - 1 - bodySlot)) brs
@@ -650,13 +733,13 @@ partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term :=
   let T ← normType (← inferType major) false
   let plan ← lm (planType T L.prog?)
   let ctorInfos ← ind.ctors.toArray.mapM getConstInfoCtor
+  let ps := T.getAppArgs[:ind.numParams].toArray
   let brs ← (List.range nM).toArray.mapM fun k => do
     let ci := ctorInfos[k]!
-    let erased ← ctorErasedMask ci.name T.getAppFn.constLevels! T.getAppArgs
-    forallBoundedTelescope (← inferType minors[k]!) ci.numFields fun xs _ => do
-      let body := (mkAppN (mkAppN minors[k]! xs) extra).headBeta
+    let erased ← ctorErasedMask ci.name T.getAppFn.constLevels! ps
+    withFields ind T major ci.name minors[k]! extra fun xs body => do
       let body := body.replaceFVar major
-        (mkAppN (mkAppN (mkConst ci.name T.getAppFn.constLevels!) T.getAppArgs) xs)
+        (mkAppN (mkAppN (mkConst ci.name T.getAppFn.constLevels!) ps) xs)
       openWindows (L.bind none) L.mems xs erased L.depth (tr · body)
   casesBodyStx plan (← varStx 0) brs
 
@@ -746,23 +829,92 @@ def indexParams (xs : Array Expr) : MetaM (Array Nat) := do
     if isIdx then out := out.push i
   return out
 
-/-- The translation of the definition `f`, elaborated against `expected?`. -/
-def translateDef (f : Name) (expected? : Option Expr) : TermElabM Expr := do
+/-- The values of the parameters of a definition (its locals `xs`) that are the type index of
+    a later parameter's type-indexed family (`α` in `Nest.size {α} (n : Nest α)`): the index
+    the family is read at (`Nest.Elem Nat`), for the index given by name (`(α := Nat)`) or,
+    when not given, the only one at which the program declares the family. -/
+def typeIndexValues (f : Name) (xs : Array Expr) (idxParams : Array Nat)
+    (named : Array (Ident × Lean.Term)) (prog? : Option ProgInfo) :
+    TermElabM (Array (Option Expr)) := do
+  let mut out : Array (Option Expr) := Array.replicate xs.size none
+  let mut used : Array Name := #[]
+  for i in idxParams do
+    let x := xs[i]!
+    unless (← whnf (← inferType x)).isSort do continue
+    let n ← x.fvarId!.getUserName
+    -- the binder's name in the type of `f` (the unfolding equation may rename it)
+    let n' ← forallTelescope (← getConstInfo f).type fun ys _ =>
+      if h : i < ys.size then ys[i].fvarId!.getUserName else pure n
+    let shown := if n'.hasMacroScopes then n else n'
+    -- the family it is the index of
+    let mut fam? : Option (InductiveVal × Array Expr) := none
+    for j in [i + 1:xs.size] do
+      let t ← whnf (← instantiateMVars (← inferType xs[j]!))
+      let some (c, _) := t.getAppFn.const? | continue
+      let some (.inductInfo ind) := (← getEnv).find? c | continue
+      unless ← typeIndexed ind do continue
+      if t.getAppNumArgs == ind.numParams + 1 && t.appArg! == x then
+        fam? := some (ind, t.getAppArgs[:ind.numParams].toArray)
+        break
+    let some (ind, ps) := fam? | fail m!"the parameter `{n}` of `{f}` is a type"
+    if ps.any (·.hasFVar) then
+      fail m!"the parameters of `{ind.name}` in the type of `{f}` are not closed"
+    let v ← match named.find? (fun a => a.1.getId == n || a.1.getId == n') with
+      | some (a, stx) =>
+        used := used.push a.getId
+        let T ← elabType stx
+        synthesizeSyntheticMVarsNoPostponing
+        pure (← normType (mkAppN (mkConst ind.name) (ps.push (← instantiateMVars T)))).appArg!
+      | none =>
+        let cands := (prog?.map (·.members.flatten) |>.getD #[]).filter fun m =>
+          m.isAppOfArity ind.name (ind.numParams + 1) && m.getAppArgs[:ind.numParams].toArray == ps
+        match cands with
+        | #[m] => pure m.appArg!
+        | _ => fail m!"`{f}` is generic in the type index `{shown}` of `{ind.name}`: give the index \
+            as `#leanscript_to_term {f} ({shown} := …)`"
+    out := out.set! i (some v)
+  for (a, _) in named do
+    unless used.contains a.getId do fail m!"`{f}` has no type index named `{a.getId}`"
+  return out
+
+/-- Instantiate the binders of a `∀` at the positions given a value. -/
+partial def instBinders (e : Expr) (vals : Array (Option Expr)) : Expr :=
+  go e 0
+where
+  go (e : Expr) (i : Nat) : Expr :=
+    match e with
+    | .forallE n d b bi =>
+      match vals[i]?.join with
+      | some v => go (b.instantiate1 v) (i + 1)
+      | none => .forallE n d (go b (i + 1)) bi
+    | e => e
+
+/-- The translation of the definition `f`, elaborated against `expected?`; `named` gives the
+    type indices it is generic in (`(α := Nat)`). -/
+def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
+    TermElabM Expr := do
   let info ← getConstInfo f
   unless info.levelParams.isEmpty do fail m!"`{f}` is universe polymorphic"
   let some eqn ← getUnfoldEqnFor? f (nonRec := true)
     | fail m!"`{f}` is not a definition that can be unfolded"
   let prog? ← currentProg?
   let eqTy ← inferType (mkConst eqn)
+  -- a type index a parameter's family is generic in is fixed first
+  let (idxParams, vals) ← forallTelescope eqTy fun xs _ => do
+    let idxParams ← indexParams xs
+    return (idxParams, ← typeIndexValues f xs idxParams named prog?)
+  let eqTy := instBinders eqTy vals
   let stx ← forallTelescope eqTy fun xs eq => do
     let some (_, lhs, rhs) := eq.eq? | fail m!"unexpected unfolding equation of `{f}`"
-    unless lhs.getAppArgs == xs do fail m!"unexpected unfolding equation of `{f}`"
+    let params := lhs.getAppArgs
+    let given := (List.range params.size).toArray.filter (vals[·]!.isNone) |>.map (params[·]!)
+    unless given == xs do
+      fail m!"unexpected unfolding equation of `{f}`"
     let group ← mutualGroup f
     let recursive := group.any fun g => (rhs.find? (·.isConstOf g)).isSome
-    let idxParams ← indexParams xs
-    let kept := (List.range xs.size).toArray.filter (!idxParams.contains ·) |>.map (xs[·]!)
+    let kept := (List.range params.size).toArray.filter (!idxParams.contains ·) |>.map (params[·]!)
     let L : Loc := { slots := kept.map (some ·.fvarId!), fns := if recursive then group else #[],
-                     params := xs, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
+                     params, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Lean.Term × Lean.Term) := do
       for x in kept do
         if ← isType x then fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is a type"
@@ -806,10 +958,12 @@ def translateDef (f : Name) (expected? : Option Expr) : TermElabM Expr := do
 
 /-- `#leanscript_to_term f`: the translation of the Lean definition `f` to a closed
     `LeanScript.Term`. -/
-syntax:max (name := leanscriptToTerm) "#leanscript_to_term " ident : term
+syntax:max (name := leanscriptToTerm)
+  "#leanscript_to_term " ident (ppSpace leanscriptNamedArg)* : term
 
 /-- `#leanscript_to_term f`, as a command: show the type of the translation. -/
-syntax (name := leanscriptToTermCmd) "#leanscript_to_term " ident : command
+syntax (name := leanscriptToTermCmd)
+  "#leanscript_to_term " ident (ppSpace leanscriptNamedArg)* : command
 
 def resolveDef (id : Ident) : TermElabM Name :=
   try realizeGlobalConstNoOverloadWithInfo id
@@ -817,11 +971,11 @@ def resolveDef (id : Ident) : TermElabM Name :=
 
 @[term_elab leanscriptToTerm]
 def elabToTerm : TermElab := fun stx expected? => do
-  translateDef (← resolveDef ⟨stx[1]⟩) expected?
+  translateDef (← resolveDef ⟨stx[1]⟩) expected? (namedArgs stx[2])
 
 @[command_elab leanscriptToTermCmd]
 def elabToTermCmd : Command.CommandElab := fun stx => Command.liftTermElabM do
-  let v ← translateDef (← resolveDef ⟨stx[1]⟩) none
+  let v ← translateDef (← resolveDef ⟨stx[1]⟩) none (namedArgs stx[2])
   logInfo m!"{stx[1]} : {← inferType v}"
 
 end LeanScript.Gen

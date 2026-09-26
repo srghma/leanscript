@@ -46,7 +46,10 @@ structure Matrix where
   cols : Nat
   cells : Vec (Vec Nat cols) rows
 
-/-! ## 3. Non-regular (polymorphic) recursion: infinitely many members -/
+/-! ## 3. Non-regular (polymorphic) recursion: infinitely many members
+
+(Now read with its type index erased through a generated element type, `Nest.Elem`: see
+`TermTests/NestTest.lean`.) -/
 
 inductive Nest : Type → Type 1 where
   | nil {α : Type} : Nest α

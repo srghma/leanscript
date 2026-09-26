@@ -30,6 +30,7 @@ command, each shows what it generated.
   | a type parameter given as a named argument `(α := T)` | none: fixed when generated, and part of the cache key |
   | a type parameter not given (`α : Type`) | an explicit `(α : Ty ks)` |
   | any other parameter | must be given as a named argument |
+  | the type index of a type-indexed family (`α` in `Nest.cons {α}`) | must be given as a named argument `(α := T)`; every `T` with the same base (`Nat`, `Nat × Nat`, …) gives the same function, at the index `Nest.Elem Nat` the family is read at |
   | a value field | a `Term Δ Γ τ`, `τ` its translated type |
   | a proof or instance field | none (erased) |
 
@@ -235,13 +236,40 @@ def varIdent (n : Name) : Ident :=
 def withInstance {α : Type} (ind : Name) (named : Array (Ident × Lean.Term))
     (k : Expr → Array (Option Expr) → Array Expr → TermElabM α) : TermElabM α := do
   let info ← getConstInfoInduct ind
+  -- a family indexed by a type (`Nest : Type → Type 1`) is given its index by the name of
+  -- the index (`(α := Nat)`: the index of the type, or the index field of its constructors)
+  let tyIdx ← typeIndexed info
+  let idxNames ← if tyIdx then indexNames info else pure #[]
+  let idxArg? := named.find? (idxNames.contains ·.1.getId)
+  let named := named.filter (!idxNames.contains ·.1.getId)
   let us ← info.levelParams.mapM fun _ => mkFreshLevelMVar
   let ty := info.type.instantiateLevelParams info.levelParams us
   withParams ind info.numParams ty named fun ps key vars => do
     for u in us do
       if (← instantiateLevelMVars u).hasMVar then discard <| isLevelDefEq u Level.zero
     let us ← us.mapM instantiateLevelMVars
+    if tyIdx then
+      let some (_, v) := idxArg?
+        | fail m!"`{ind}` is indexed by a type: give the index as \
+            `({idxNames.back?.getD `α} := …)`"
+      let v ← elabType v
+      synthesizeSyntheticMVarsNoPostponing
+      let T ← normType (mkAppN (mkConst ind us) (ps.push (← instantiateMVars v)))
+      -- the cache key is the index the family is read at (`Nest.Elem Nat` for `Nat × Nat`)
+      return ← k T (key.push (some T.appArg!)) vars
     k (← normType (mkAppN (mkConst ind us) ps)) key vars
+where
+  /-- The names the index of a type-indexed family goes by: the binder of the type's index,
+      and the index field of each constructor. -/
+  indexNames (info : InductiveVal) : MetaM (Array Name) := do
+    let mut out ← forallTelescopeReducing info.type fun xs _ => do
+      return #[← xs[info.numParams]!.fvarId!.getUserName]
+    for ctor in info.ctors do
+      let p ← indexField info ctor
+      let n ← forallTelescopeReducing (← getConstInfoCtor ctor).type fun xs _ =>
+        xs[info.numParams + p]!.fvarId!.getUserName
+      unless out.contains n do out := out.push n
+    return out
 
 /-- How a generated function is set up: its signature arguments, the program it is
     specialised to, and the names it uses. -/

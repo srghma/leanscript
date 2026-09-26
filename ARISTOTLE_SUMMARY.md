@@ -1,3 +1,49 @@
+# Summary of changes for run 0116b720-57de-4c92-8bd7-9341c831961f
+`Nest` now translates once it is applied to a concrete type (`Nest Nat`). The type index is dropped the same way `Vec`'s length index is, using a generated element type. The full `lake build` passes (69 jobs) with no errors, warnings or `sorry`. The two new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed, and both theorems are in the Properties table as proved.
+
+**What happened to `Nest` before this change**
+`Nest : Type → Type 1` is refused by `leanscript_signature`, with a misleading error: "the constructor `Nest.nil` has a field whose value is a type (existential typing is not supported)". The real obstacle is the one you quoted: `Nest Nat`, `Nest (Nat × Nat)`, … are infinitely many instances, and a block has only finitely many members.
+
+**What happens now**
+- **One generated element type, then a regular datatype.** When `Nest` is first used, the tool declares a real Lean type: `Nest.Elem α := leaf α | node (Nest.Elem α) (Nest.Elem α)`.
+  - There is one `node` per index the family recurses at. A structure index like `α × α` is split into its fields.
+  - `Nest τ` then becomes the declared datatype `nil | cons (Nest.Elem B) Nest`. `B` is `τ` with the pairs peeled off, so `Nest (Nat × Nat)` is the *same* datatype as `Nest Nat`.
+  - Elements are trees; in Lean, the `k`-th one is a perfect tree of depth `k`.
+- **Values.** `#leanscript_to_term` turns `.cons 1 (.cons (2,3) …)` into `Nest.cons (leaf 1) (Nest.cons (node (leaf 2) (leaf 3)) …)`. A pair held in a variable is taken apart with its projections.
+- **Constructors and case analysis** take the index by name: `#leanscript_get_ctor Nest.cons (α := Nat)`. Writing `(α := Nat × Nat)` gives the same function.
+- **Functions generic in the index** work, including course-of-values recursion. Examples are `Nest.length` and `Nest.pairsOfLevels`.
+  - The type argument `{α}` is dropped from the translation.
+  - The index is fixed to the one the program declares. If the program has several, write `#leanscript_to_term f (α := Nat)`, a new optional argument.
+  - The recursive call at `α × α` is treated as an ordinary call on the tail.
+- **Your NOTE holds:**
+  - `Nest Unit` and `Nest Empty` are refused, because the element type would hold a `Unit` or `Empty` field. This is stricter than Lean: `Nest Unit` has infinitely many values there.
+  - Types with one field-less constructor are still refused, and two points are still only `bool`.
+  - The existing tests are unchanged and all pass.
+
+**Proved for every input** (`TermTests/NestProofs.lean`)
+- `nestEnc_injective_at` / `nestEnc_injective`: dropping the index loses nothing, at every index.
+- `lengthT_correct_at` / `lengthT_correct`: the translated `Nest.length` returns `n.length` on every value.
+- `n3T_run` / `m2T_run`: the encoding used in the proofs is the one the translator produces for the test values.
+
+**Still refused**
+- **Reading an element at its Lean type.** For example, `headNat : Nest Nat → Option Nat` with `| .cons a _ => some a` is refused with an explanation. In the language, `a` is a `Nest.Elem Nat`, not a `Nat`.
+- **Families outside the supported shape:**
+  - a constructor at a fixed index, such as `G.nat : Nat → G Nat`;
+  - more than one index, or universe parameters;
+  - a recursive index where the index is not positive, such as `Neg (α → Nat)`: Lean's kernel rejects the element type.
+
+**Caveats** (recorded in `NOT_IMPLEMENTED.md`)
+- The translated type has more values than the Lean one: an element can be a tree of any shape at any depth.
+- `Nest.Elem` is declared in the first module that needs it. If two modules each generate it and are later imported together, they clash. Reusing it through an import works (`TermTests/NestImportTest.lean`).
+- Only `Nest.length` is proved correct for every input. Other functions over such families are only checked on examples.
+
+**Files**
+- `LeanScript/Gen/Read.lean`: detecting type-indexed families, generating `Nest.Elem`, peeling the index, putting values into the element type.
+- `LeanScript/GetCtor.lean`: the named index argument.
+- `LeanScript/ToTerm.lean`: constructors, branches, the fixed index, the refusal above.
+- Tests: `TermTests/NestTest.lean` and `TermTests/NestImportTest.lean`.
+- Doc updates: `README.md`, `NOT_IMPLEMENTED.md`, the module headers, and a note in `proposals/UnrepresentableLeanTypes.lean`.
+
 # Summary of changes for run d1969db3-7a45-4f1f-b588-a84b319cb801
 The claims from my earlier explanation are now proved in Lean for every input, not just the sample values. The full `lake build` passes (66 jobs) with no `sorry`, and the main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed, and the results are in the Properties table.
 

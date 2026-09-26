@@ -43,7 +43,9 @@ Proof and instance fields are erased.  It refuses, with an error: a type with no
 constructor, a type with one constructor and no field (unit-like, such as `Unit`, also as a
 field: `Option Unit` is refused, since two points are only ever `bool`), an inductive family at
 closed indices where it has no, one or two values (`Vec Nat 0`; otherwise its indices are
-erased: `Vec α n` is `Vec α`), a field whose type is a type or depends on an earlier field in a
+erased: `Vec α n` is `Vec α`; a type index recursed at other indices, as in `Nest α`, is erased
+through a generated element type `Nest.Elem`), a type-indexed family with a constructor at a
+fixed index or with several indices, a field whose type is a type or depends on an earlier field in a
 way that cannot be erased, a recursive
 occurrence in the domain of a function, a `Thunk` (a delay would give `Bool` a second
 type of two values), and a recursive SCC with no
