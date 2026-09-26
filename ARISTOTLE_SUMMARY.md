@@ -1,3 +1,29 @@
+# Summary of changes for run 68dcc6d1-c142-44f2-99de-18d28035e3a6
+I wrote `proposals/NominalTyProposal.md`, an alternative to `WTypeTyProposal.md` with the same guarantees but a different design, plus two small Lean files that check its main claims. Both files have no imports and aren't part of the Lake build, so I list no build targets. Check them with `lean proposals/NomTyToy.lean` and `lean proposals/CoTyToy.lean`: both compile with no errors, warnings or `sorry`, and the main results use only the axioms `propext` and `Quot.sound`. I didn't change `LeanScript/`, `TyTests/` or `TermTests/`.
+
+**Recommended alternative: declared datatypes.** The W-type proposal writes a recursive type *inside* the type as a `mu` tree. This design declares it *once*, beside the types, and refers to it by name, the way Lean's kernel does.
+- **Closed types (`Ty ks`)** have one index and no binder, holes or grounding index. A recursive type is a name, `data r`, pointing into a signature: a list of declared blocks, newest first.
+- **Holes and grounding** exist only in declaration bodies. These are flat: each member is a record, a union with a grounded base constructor, or a one-field wrapper. A field is a hole, an older closed type, an `array`, or a function whose domain is an older type (this gives positivity by typing).
+
+The toy checks that it keeps everything from the W-type proposal:
+- `DecidableEq` is derived for all the new types.
+- `μX. X`, `μX. Nat × X` and a one-constructor union don't typecheck (pinned with `#guard_msgs`), and a block can't use itself as a closed type.
+- `Ty.twoDen Δ t` gives two distinguishable values of every closed type over every signature, with corollaries `den_nonempty`, `den_not_subsingleton` and `den_exists_ne`. It is built by structural recursion, with no fuel or measure.
+- `data_in`, `data_out` and `data_rec` need no casts and compute by `rfl`:
+  - `sum [1,2,3] = 6` and `head? [7] = some 7`;
+  - a three-member block (`LitExprS` with `swap`, and a rose tree that stores an older `List Nat`) is folded with a different answer type per member.
+- Canonical forms come free: a `List Nat` from an older block is literally the same tree in a newer signature, so `Ty.fix` and the `closed` rule are no longer needed.
+
+The cost is that the signature has to be passed through the meaning function, `Term` and `Eval`. Moving terms between modules then needs a weakening step (sketched, not checked), or else one signature per program. Fields with older types go through two copying functions that compute but cost a traversal. Two pieces are also only sketched: a general fold over *older* blocks, and a `data_brec` equivalent of `mu_brec`.
+
+**Final coalgebra.** It can't replace the current design for Lean `inductive` types. It adds infinite values, so the meaning no longer matches the Lean type, and it loses folds: `CoList.no_sum` shows no `sum` on colists satisfies `List.sum`'s equations. It also turns `νX. X` into a one-point type (`IdNu.subsingleton`), so the unit-exclusion rule would need replacing. The note describes an optional `codata` extension instead.
+
+It also gives a way to handle your `Unfold` example without existentials. Its behaviour, with `State` erased, is exactly a list computed with no fuel (`Unfold.behaviour_finite`, `Unfold.behaviour_eq_toList`). The caveat is that this only works for code that just steps the `Unfold` from its seed; something like `u.measure u.seed` can see more.
+
+**Other designs considered and rejected (each with reasons in the note):** descriptions for indexed families, universal values with a typing predicate, Church encodings, approximation chains, and equi-recursive types. The note ends with a comparison table, a migration plan, and six decisions for you, the first being whether to go with this design or the W-type one.
+
+I added four rows to the Properties table: the `Ty` definition, and three results marked proved (`NomTyToy.Ty.den_not_subsingleton`, `CoTyToy.CoList.no_sum`, `CoTyToy.Unfold.behaviour_eq_toList`).
+
 # Summary of changes for run 866b65de-0f8b-4c3b-9303-9bce47157184
 I hardened `proposals/WTypeTyProposal.md` and rewrote `proposals/WTyToy.lean` so that `Ty` itself rules out unit-like and empty-like types. There is no well-formedness predicate, no fuel and no measure. The toy still has no imports and isn't part of the Lake build, so I list no build targets. Check it with `lean proposals/WTyToy.lean`: it compiles with no errors, warnings or `sorry`, and the main results use only the axioms `propext` and `Quot.sound`.
 
