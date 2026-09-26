@@ -196,6 +196,55 @@ end
 /-- Weakening a closed type into a signature with one more (newest) block. -/
 abbrev Ty.weaken {k : Nat} {ks : List Nat} (t : Ty ks) : Ty (k :: ks) := Ty.map .there t
 
+mutual
+/-- Renaming by the identity is the identity. -/
+theorem Ty.map_id {ks : List Nat} : (t : Ty ks) → Ty.map (fun r => r) t = t
+  | .prim _ _ => rfl
+  | .fn a b => by simp only [Ty.map, Ty.map_id a, Ty.map_id b]
+  | .array t => by simp only [Ty.map, Ty.map_id t]
+  | .enum _ => rfl
+  | .record t fs => by simp only [Ty.map, Ty.map_id t, Fields.map_id fs]
+  | .union cs (h := _) => by simp only [Ty.map, Ctors.map_id cs]
+  | .data _ => rfl
+theorem Fields.map_id {ks : List Nat} : (fs : Fields ks) → Fields.map (fun r => r) fs = fs
+  | .one t => by simp only [Fields.map, Ty.map_id t]
+  | .cons t fs => by simp only [Fields.map, Ty.map_id t, Fields.map_id fs]
+theorem Ctor.map_id {ks : List Nat} {b : Bool} : (c : Ctor ks b) → Ctor.map (fun r => r) c = c
+  | .nullary => rfl
+  | .fields fs => by simp only [Ctor.map, Fields.map_id fs]
+theorem Ctors.map_id {ks : List Nat} {bs : List Bool} :
+    (cs : Ctors ks bs) → Ctors.map (fun r => r) cs = cs
+  | .two c d => by simp only [Ctors.map, Ctor.map_id c, Ctor.map_id d]
+  | .cons c cs => by simp only [Ctors.map, Ctor.map_id c, Ctors.map_id cs]
+end
+
+mutual
+/-- Renaming twice is renaming by the composite. -/
+theorem Ty.map_map {ks ks' ks'' : List Nat} (f : Ref ks → Ref ks') (g : Ref ks' → Ref ks'') :
+    (t : Ty ks) → Ty.map g (Ty.map f t) = Ty.map (fun r => g (f r)) t
+  | .prim _ _ => rfl
+  | .fn a b => by simp only [Ty.map, Ty.map_map f g a, Ty.map_map f g b]
+  | .array t => by simp only [Ty.map, Ty.map_map f g t]
+  | .enum _ => rfl
+  | .record t fs => by simp only [Ty.map, Ty.map_map f g t, Fields.map_map f g fs]
+  | .union cs (h := _) => by simp only [Ty.map, Ctors.map_map f g cs]
+  | .data _ => rfl
+theorem Fields.map_map {ks ks' ks'' : List Nat} (f : Ref ks → Ref ks') (g : Ref ks' → Ref ks'') :
+    (fs : Fields ks) → Fields.map g (Fields.map f fs) = Fields.map (fun r => g (f r)) fs
+  | .one t => by simp only [Fields.map, Ty.map_map f g t]
+  | .cons t fs => by simp only [Fields.map, Ty.map_map f g t, Fields.map_map f g fs]
+theorem Ctor.map_map {ks ks' ks'' : List Nat} {b : Bool} (f : Ref ks → Ref ks')
+    (g : Ref ks' → Ref ks'') :
+    (c : Ctor ks b) → Ctor.map g (Ctor.map f c) = Ctor.map (fun r => g (f r)) c
+  | .nullary => rfl
+  | .fields fs => by simp only [Ctor.map, Fields.map_map f g fs]
+theorem Ctors.map_map {ks ks' ks'' : List Nat} {bs : List Bool} (f : Ref ks → Ref ks')
+    (g : Ref ks' → Ref ks'') :
+    (cs : Ctors ks bs) → Ctors.map g (Ctors.map f cs) = Ctors.map (fun r => g (f r)) cs
+  | .two c d => by simp only [Ctors.map, Ctor.map_map f g c, Ctor.map_map f g d]
+  | .cons c cs => by simp only [Ctors.map, Ctor.map_map f g c, Ctors.map_map f g cs]
+end
+
 
 
 end LeanScript

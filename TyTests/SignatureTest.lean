@@ -115,16 +115,16 @@ example : treeSum (node (node leaf 1 leaf) 2 (node leaf 3 leaf)) = 6 := rfl
     `data_in` of the constructor's fields. -/
 def treeT : Term Prog.Δ [] Prog.tree :=
   (#leanscript_get_ctor Tree.node)
-    ((#leanscript_get_ctor Tree.node) (#leanscript_get_ctor Tree.leaf) (.lit .nat rfl 1)
+    ((#leanscript_get_ctor Tree.node) (#leanscript_get_ctor Tree.leaf) (.lit .nat 1)
       (#leanscript_get_ctor Tree.leaf))
-    (.lit .nat rfl 2) (#leanscript_get_ctor Tree.leaf)
+    (.lit .nat 2) (#leanscript_get_ctor Tree.leaf)
 
 example : treeT.run = node (node leaf 1 leaf) 2 leaf := rfl
 example : treeSum treeT.run = 3 := rfl
 
 def listT : Term Prog.Δ [] Prog.listNat :=
-  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 7)
-    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 8)
+  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 7)
+    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 8)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
 /-- `Even`/`Odd` are one block. -/
@@ -134,7 +134,7 @@ example : Term Prog.Δ [] Prog.even :=
 
 /-- `Rose`'s children are a `List Rose`, the other member of its block. -/
 example : Term Prog.Δ [] Prog.rose :=
-  (#leanscript_get_ctor Rose.node) (.lit .nat rfl 1) (#leanscript_get_ctor List.nil (α := Rose))
+  (#leanscript_get_ctor Rose.node) (.lit .nat 1) (#leanscript_get_ctor List.nil (α := Rose))
 
 /-- Every type of the program has two different values. -/
 example : ∃ x y : Ty.Den Prog.Δ Prog.rose, x ≠ y := Ty.den_exists_ne _ _

@@ -112,7 +112,7 @@ def Term.eval : {Γ : Ctx ks} → {τ : Ty ks} → Term Δ Γ τ → Env Δ Γ �
   | _, _, .letE e b, ρ => b.eval (e.eval ρ, ρ)
   | _, _, .lam b, ρ => fun v => b.eval (v, ρ)
   | _, _, .app f a, ρ => f.eval ρ (a.eval ρ)
-  | _, _, .lit _ _ v, _ => v
+  | _, _, .lit _ v _, _ => v
   | _, _, .extern _ f args, ρ => f (args.eval ρ)
   | _, _, .ite c t e, ρ => match (c.eval ρ : Bool) with
       | true => t.eval ρ

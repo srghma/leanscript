@@ -54,7 +54,7 @@ def consT {Γ : Ctx [0, 0]} (x : Term Δ Γ .nat) (xs : Term Δ Γ listNat) : Te
 def nilT {Γ : Ctx [0, 0]} : Term Δ Γ listNat := .data_in listB 0 (.union_mk .two₁ .nil)
 
 /-- A numeral. -/
-def natT {Γ : Ctx [0, 0]} (n : Nat) : Term Δ Γ .nat := .lit .nat rfl n
+def natT {Γ : Ctx [0, 0]} (n : Nat) : Term Δ Γ .nat := .lit .nat n
 
 /-- `Nat.add`, as an extern. -/
 def addT {Γ : Ctx [0, 0]} (a b : Term Δ Γ .nat) : Term Δ Γ .nat :=
@@ -70,33 +70,33 @@ def nodeT {Γ : Ctx [0, 0]} (xs : Term Δ Γ listNat) (cs : Elems Δ Γ rose) : 
     of `List Nat` whose hole is the pair `(tail, sum of the tail)`. -/
 def sumT {Γ : Ctx [0, 0]} : Term Δ Γ (.fn listNat .nat) :=
   .lam (.data_rec listB (fun _ => .nat) (fun ⟨0, _⟩ =>
-    .union_casesOn (.var .head)
+    .union_casesOn (.bvar 0)
       (.two (natT 0)
         -- the fields of `cons`: `n` (index 0), `(tail, s)` (index 1)
-        (.record_casesOn (.var (.tail .head))
+        (.record_casesOn (.bvar 1)
           -- `tail` (index 0), `s` (index 1), `n` (index 2)
-          (addT (.var (.tail (.tail .head))) (.var (.tail .head))))))
-    0 (.var .head))
+          (addT (.bvar 2) (.bvar 1)))))
+    0 (.bvar 0))
 
 /-- `List.head?`, by one layer out. -/
 def headT : Term Δ [] (.fn listNat (Ty.option .nat)) :=
-  .lam (.union_casesOn (.data_out listB 0 (.var .head))
-    (.two (.union_mk .two₁ .nil) (.union_mk .two₂ (.cons (.var .head) .nil))))
+  .lam (.union_casesOn (.data_out listB 0 (.bvar 0))
+    (.two (.union_mk .two₁ .nil) (.union_mk .two₂ (.cons (.bvar 0) .nil))))
 
 /-- The sum of every number in a rose tree: the branch calls the fold of the *older* block
     (`sumT`) on the node's `List Nat`, and sums the answers of the children. -/
 def roseSumT : Term Δ [] (.fn rose .nat) :=
   .lam (.data_rec roseB (fun _ => .nat) (fun ⟨0, _⟩ =>
     -- the node: `(xs, children)`, each child paired with its answer
-    .record_casesOn (.var .head)
+    .record_casesOn (.bvar 0)
       -- `xs` (index 0), `children` (index 1)
-      (addT (.app sumT (.var .head))
-        (.array_foldl (.var (.tail .head)) (natT 0)
+      (addT (.app sumT (.bvar 0))
+        (.array_foldl (.bvar 1) (natT 0)
           -- the child (index 0), the accumulator (index 1)
-          (.record_casesOn (.var .head)
+          (.record_casesOn (.bvar 0)
             -- the subtree (index 0), its answer (index 1), …, the accumulator (index 3)
-            (addT (.var (.tail (.tail (.tail .head)))) (.var (.tail .head)))))))
-    0 (.var .head))
+            (addT (.bvar 3) (.bvar 1))))))
+    0 (.bvar 0))
 
 /-! ## Running them -/
 
@@ -120,18 +120,18 @@ example : (Term.app roseSumT tree).run = (31 : Nat) := rfl
     the answer at it). -/
 def fibLenT : Term Δ [] (.fn listNat .nat) :=
   .lam (.data_brec listB (fun _ => .nat) 1 (fun ⟨0, _⟩ =>
-    .union_casesOn (.var .head)
+    .union_casesOn (.bvar 0)
       (.two (natT 0)
         -- the fields of `cons`: `x` (index 0), the window `w` of the tail (index 1)
-        (.record_casesOn (.var (.tail .head))
+        (.record_casesOn (.bvar 1)
           -- `t` (index 0), `f t` (index 1), the body of `t` (index 2)
-          (.union_casesOn (.var (.tail (.tail .head)))
+          (.union_casesOn (.bvar 2)
             (.two (natT 1)
               -- `t = y :: t'`: `y` (index 0), the window of `t'` (index 1)
-              (.record_casesOn (.var (.tail .head))
+              (.record_casesOn (.bvar 1)
                 -- `t'` (index 0), `f t'` (index 1), …, `f t` (index 5)
-                (addT (.var (.tail (.tail (.tail (.tail (.tail .head)))))) (.var (.tail .head)))))))))
-    0 (.var .head))
+                (addT (.bvar 5) (.bvar 1))))))))
+    0 (.bvar 0))
 
 def list5 : Term Δ [] listNat :=
   consT (natT 1) (consT (natT 2) (consT (natT 3) (consT (natT 4) (consT (natT 5) nilT))))
@@ -143,13 +143,13 @@ example : (Term.app fibLenT list5).run = (5 : Nat) := rfl
 
 /-- `nat_rec`: the triangular number `0 + 1 + … + (n - 1)`. -/
 def triT : Term Δ [] (.fn .nat .nat) :=
-  .lam (.nat_rec (.var .head) (natT 0) (addT (.var .head) (.var (.tail .head))))
+  .lam (.nat_rec (.bvar 0) (natT 0) (addT (.bvar 0) (.bvar 1)))
 
 example : (Term.app triT (natT 5)).run = (10 : Nat) := rfl
 
 /-- `let` and an enum. -/
 example : (Term.letE (Δ := Δ) (Γ := []) (.enum_mk {} 2)
-    (.enum_casesOn (.var .head) (fun i => natT (i.val * 10)))).run = (20 : Nat) := rfl
+    (.enum_casesOn (.bvar 0) (fun i => natT (i.val * 10)))).run = (20 : Nat) := rfl
 
 end TermTest
 

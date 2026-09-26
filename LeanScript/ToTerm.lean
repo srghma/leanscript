@@ -210,7 +210,7 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
     -- a closed value of a leaf type is a literal
     if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
       if let .prim p ← cirOf L T then
-        return ← `(LeanScript.Term.lit $p rfl $(← exprToSyntax e))
+        return ← `(LeanScript.Term.lit $p $(← exprToSyntax e))
     trApp L e
 
 /-- A projection `s.i` of a structure. -/

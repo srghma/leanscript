@@ -309,8 +309,8 @@ def ensureCtor (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Nam
     -- the body
     let args : List Lean.Term := argIds.toList.map fun a => ⟨a.raw⟩
     let payload ← if plan.isBool then
-        if pos == 1 then `(LeanScript.Term.lit LeanPrimTy.bool rfl true)
-        else `(LeanScript.Term.lit LeanPrimTy.bool rfl false)
+        if pos == 1 then `(LeanScript.Term.lit LeanPrimTy.bool true)
+        else `(LeanScript.Term.lit LeanPrimTy.bool false)
       else ctorBodyStx plan.ctors.size pos plan.enum? args
     let body ← match plan.data? with
       | some (b, j) => `(LeanScript.Term.data_in $(← brefStx F.c b) $(quote j) $payload)

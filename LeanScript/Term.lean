@@ -30,8 +30,10 @@ There is no fixpoint and no fuel: every loop is a fold (`data_rec`, `nat_rec`,
 `array_foldl`), so the evaluator (`LeanScript.Term.eval`) is total and structural.
 
 The grammar is in direct style.  Leaf operations are `Term.extern`, a named Lean function on
-the values of its arguments (as the extern calls of `LeanScript.Term` are); because it holds
-a function, `Term` has no decidable equality.
+the values of its arguments; because it holds a function, `Term` has no decidable equality.
+
+Renaming, weakening and substitution of variables, with the facts that they commute with
+evaluation, are in `LeanScript.TermSubst`.
 -/
 
 namespace LeanScript
@@ -84,8 +86,10 @@ inductive Term {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
   | lam {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ (σ :: Γ) τ → Term Δ Γ (.fn σ τ)
   /-- Application. -/
   | app {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ Γ (.fn σ τ) → Term Δ Γ σ → Term Δ Γ τ
-  /-- A literal of a leaf type. -/
-  | lit {Γ : Ctx ks} (p : LeanPrimTy) (h : p.Nondeg = true) (v : p.denote) : Term Δ Γ (.prim p h)
+  /-- A literal of a leaf type: `.lit .nat 3`.  The side condition that the leaf has at least
+      two values is discharged by `decide`, as for `Ty.prim`. -/
+  | lit {Γ : Ctx ks} (p : LeanPrimTy) (v : p.denote) (h : p.Nondeg = true := by decide) :
+      Term Δ Γ (.prim p h)
   /-- A named operation on the values of its arguments (a pure extern). -/
   | extern {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks} (name : String)
       (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → Term Δ Γ τ
@@ -161,7 +165,12 @@ inductive Elems {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
 
 end
 
-
+/-- The variable at de Bruijn position `i` (`0` is the innermost), as a term: `Term.bvar 2`
+    instead of `.var (.tail (.tail .head))`.  The side condition that position `i` of the
+    context has the expected type is closed by `rfl` when the context is known that far. -/
+abbrev Term.bvar {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} (i : Nat)
+    (h : Γ[i]? = some τ := by rfl) : Term Δ Γ τ :=
+  .var (.ofIndex Γ i h)
 
 end LeanScript
 

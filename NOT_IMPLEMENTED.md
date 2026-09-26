@@ -24,7 +24,9 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 
 - **Partial fixpoints, well-founded recursion, coinductive types** cannot be written: every
   loop is a fold (`nat_rec`, `array_foldl`, `data_rec`, `data_brec`).
-- **No substitution theory** (renaming, weakening, substitution lemmas) for `Term`.
+- **Substitution theory is only semantic**: `LeanScript/TermSubst.lean` has renaming,
+  weakening and substitution and proves they commute with evaluation, but not the syntactic
+  laws (substitution composition, `rename` as a special `subst`).
 - **No `DecidableEq`/`Repr` for `Term`**: `Term.extern` holds a Lean function.
 
 ## 3. The translator `#leanscript_to_term`

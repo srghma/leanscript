@@ -44,7 +44,7 @@ info: TyTests.GetCtorImportTest.Sum.inl.leanScriptCtor {ks : List Nat} {Δ : DSi
 #leanscript_get_ctor Sum.inl
 
 /-- The imported definitions compute. -/
-example : treeSum ((#leanscript_get_ctor Tree.node) leaf (.lit .nat rfl 5) leaf :
+example : treeSum ((#leanscript_get_ctor Tree.node) leaf (.lit .nat 5) leaf :
     Term Prog.Δ [] _).run = 5 := rfl
 
 end GetCtorImportTest

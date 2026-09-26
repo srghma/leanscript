@@ -34,13 +34,14 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | path | what it holds |
 | :-- | :-- |
 | `LeanScript/LeanPrimTy.lean`, `LeanScript/EnumSchema.lean` | the leaf types and the payload of an enum |
-| `LeanScript/Ty.lean` | `Ref`, `BRef`, the mutual `Ty`/`Fields`/`Ctor`/`Ctors`, `UnionShape`, with `DecidableEq`, `BEq`, `LawfulBEq`, `Repr` |
+| `LeanScript/Ty.lean` | `Ref`, `BRef`, the mutual `Ty`/`Fields`/`Ctor`/`Ctors`, `UnionShape`, with `DecidableEq`, `BEq`, `LawfulBEq`, `Repr`; renaming `Ty.map` and its laws `Ty.map_id`, `Ty.map_map` |
 | `LeanScript/Decl.lean` | declarations of blocks of datatypes (`Fld`, `Decl`, `Mems`, `DSig`) and `unfold` |
 | `LeanScript/Container.lean`, `LeanScript/Den.lean` | what a type denotes: indexed W-types for the declared blocks, `Ty.den`, `Ty.Den`, `DSig.dataIn`/`dataOut`/`dataRec` |
 | `LeanScript/DenFacts.lean`, `LeanScript/DenBrec.lean` | `dataIn`/`dataOut` are inverse; course-of-values recursion `DSig.dataBrec` and its computation rule |
 | `LeanScript/Two.lean` | every type has two values that a Boolean test tells apart |
 | `LeanScript/Three.lean` | every type other than `bool` has three values that a test tells apart: two points are only ever `bool` |
-| `LeanScript/DeBruijn.lean`, `LeanScript/Term.lean`, `LeanScript/Eval.lean` | the grammar of terms and its evaluator |
+| `LeanScript/DeBruijn.lean`, `LeanScript/Term.lean`, `LeanScript/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`Term.lit p v`, `Term.bvar i`) and its evaluator |
+| `LeanScript/TermSubst.lean` | renaming, weakening and substitution of terms; `Term.eval_rename`, `Term.eval_subst`, β and `let` as substitution |
 | `LeanScript/Signature.lean`, `LeanScript/GetCtor.lean`, `LeanScript/Gen/` | `leanscript_signature`, `#leanscript_get_ty`/`_ctor`/`_cases`, and the generator they share (reading Lean types, SCCs and grounding order, printing, cache) |
 | `LeanScript/ToTerm.lean` | `#leanscript_to_term` |
 | `LeanScript/LeanInitPureExterns.lean`, `LeanScript/LeanInitPureExterns/`, `LeanScript/LeanInitPureExternShorthands.lean`, `LeanScript/CatalogueShorthands.lean`, `LeanScript/LeanPrimTyCovariant.lean` | the catalogue of the pure externs of `Init` (not used by the language) |

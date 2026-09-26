@@ -114,8 +114,8 @@ def tsum : Tree → Nat
 def tsumT := #leanscript_to_term tsum
 
 def mkList : Term Prog.Δ [] Prog.listNat :=
-  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 1)
-    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 2)
+  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
+    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
 example : lsumT.run mkList.run = (3 : Nat) := rfl
@@ -123,8 +123,8 @@ example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := rfl
 
 def leafT : Term Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
 def treeT : Term Prog.Δ [] Prog.tree :=
-  (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leafT (.lit .nat rfl 1) leafT)
-    (.lit .nat rfl 2) leafT
+  (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leafT (.lit .nat 1) leafT)
+    (.lit .nat 2) leafT
 
 example : tsumT.run treeT.run = (3 : Nat) := rfl
 
@@ -138,11 +138,11 @@ def fibL : List Nat → Nat
 def fibLT := #leanscript_to_term fibL
 
 def mkList5 : Term Prog.Δ [] Prog.listNat :=
-  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 1)
-    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 2)
-      ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 3)
-        ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 4)
-          ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 5)
+  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
+    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
+      ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 3)
+        ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 4)
+          ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 5)
             (#leanscript_get_ctor List.nil (α := Nat))))))
 
 example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := rfl

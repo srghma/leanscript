@@ -5,81 +5,109 @@ module
 set_option autoImplicit false
 
 /-!
-# One de Bruijn family, up to a projection
+# Typed de Bruijn indices
 
-Every scope of the language — the variables, the labels, the recursions and the module
-signature — is an instance of the single inductive family defined here.  Three of them
-index an entry *by itself* (`DeBruijn`, the case `f := id`); the fourth, a reference into
-the module signature, indexes a declaration by its **type**, and that projection is
-exactly what the parameter `f` supplies.
+`DeBruijn xs x` is constructive evidence that `x` occurs in the list `xs`, together with
+*where*: `head` is the entry just bound, `tail v` an entry bound further out.  The variables
+of a term (`LeanScript.Var`) are the instance `xs := Γ`, a context of types.
 
-This file used to be the first section of `LeanScript.Expr`.  It is separate so that
-`LeanScript.Env` — the runtime environments, which a `Term` now mentions, because
-the recursion schemes carry a subject of their arguments — can be defined before the
-grammar
-without dragging the grammar in.
+Renamings (`DeBruijn.Ren`) are the maps between the positions of two lists that preserve
+the entry; they are what `LeanScript.Term.rename` acts by.
 -/
 
 namespace LeanScript
 
-/-- **A typed de Bruijn index, up to a projection**: constructive evidence that some
-    entry of `xs` occurs in it *whose image under `f` is `b`*, together with *where*.
-
-    Every scope of the language is an instance of this one family.  The three scopes
-    whose index *is* the entry — variables, labels and recursions — take `f := id`, and
-    are packaged as `DeBruijn`.  The signature of the module takes `f := GlobalDecl.ty`:
-    its entries are declarations, but a reference to one is indexed by the declaration's
-    **type**, and that projection is exactly what `f` supplies. -/
-inductive DeBruijnProj {α β : Type} (f : α → β) : List α → β → Type
+/-- **A typed de Bruijn index**: constructive evidence that `x` occurs in `xs`, and where. -/
+inductive DeBruijn {α : Type} : List α → α → Type where
   /-- The entry just bound. -/
-  | head : ∀ {x : α} {xs : List α}, DeBruijnProj f (x :: xs) (f x)
+  | head {x : α} {xs : List α} : DeBruijn (x :: xs) x
   /-- An entry bound further out. -/
-  | tail : ∀ {x : α} {xs : List α} {b : β},
-      DeBruijnProj f xs b → DeBruijnProj f (x :: xs) b
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  | tail {x y : α} {xs : List α} : DeBruijn xs x → DeBruijn (y :: xs) x
+  deriving Repr
+
+namespace DeBruijn
+variable {α : Type}
 
 /-- How many binders out an index is. -/
-def DeBruijnProj.index {α β : Type} {f : α → β} :
-    ∀ {xs : List α} {b : β}, DeBruijnProj f xs b → Nat
+def index : {xs : List α} → {x : α} → DeBruijn xs x → Nat
   | _, _, .head => 0
-  | _, _, .tail v => DeBruijnProj.index v + 1
-
-/-- The entry of `xs` an index points at. -/
-def DeBruijnProj.entry {α β : Type} {f : α → β} :
-    ∀ {xs : List α} {b : β}, DeBruijnProj f xs b → α
-  | x :: _, _, .head => x
-  | _ :: _, _, .tail v => DeBruijnProj.entry v
+  | _, _, .tail v => v.index + 1
 
 /-- The entry an index points at is one of the entries. -/
-theorem DeBruijnProj.entry_mem {α β : Type} {f : α → β} :
-    ∀ {xs : List α} {b : β} (v : DeBruijnProj f xs b), v.entry ∈ xs
-  | _ :: _, _, .head => by simp [DeBruijnProj.entry]
-  | _ :: _, _, .tail v => by
-      have := DeBruijnProj.entry_mem v
-      simp [DeBruijnProj.entry]
-      exact Or.inr this
+theorem mem : {xs : List α} → {x : α} → DeBruijn xs x → x ∈ xs
+  | _, _, .head => List.mem_cons_self
+  | _, _, .tail v => List.mem_cons_of_mem _ v.mem
 
-/-- The index of an entry is an index at that entry's image. -/
-theorem DeBruijnProj.f_entry {α β : Type} {f : α → β} :
-    ∀ {xs : List α} {b : β} (v : DeBruijnProj f xs b), f v.entry = b
-  | _ :: _, _, .head => rfl
-  | _ :: _, _, .tail v => DeBruijnProj.f_entry v
+/-- The index is a position of the list. -/
+theorem index_lt : {xs : List α} → {x : α} → (v : DeBruijn xs x) → v.index < xs.length
+  | _, _, .head => by simp [index]
+  | _, _, .tail v => by simp [index, v.index_lt]
 
-/-- **A typed de Bruijn index**: constructive evidence that `x` occurs in `xs`, together
-    with *where* — the special case of `DeBruijnProj` whose projection is the identity. -/
-abbrev DeBruijn {α : Type} (xs : List α) (x : α) : Type := DeBruijnProj id xs x
+/-- The entry at the position of an index is the entry it was built for. -/
+theorem getElem_index : {xs : List α} → {x : α} → (v : DeBruijn xs x) →
+    xs[v.index]'v.index_lt = x
+  | _, _, .head => rfl
+  | _, _, .tail v => by simpa [index] using v.getElem_index
 
-/-- The entry just bound. -/
-@[match_pattern] abbrev DeBruijn.head {α : Type} {x : α} {xs : List α} :
-    DeBruijn (x :: xs) x := DeBruijnProj.head
+/-- Two indices into the same list at the same position are equal. -/
+theorem eq_of_index_eq : {xs : List α} → {x : α} → (v w : DeBruijn xs x) →
+    v.index = w.index → v = w
+  | _, _, .head, .head, _ => rfl
+  | _, _, .tail v, .tail w, h => by
+      rw [eq_of_index_eq v w (by simpa [index] using h)]
+  | _, _, .head, .tail _, h => by simp [index] at h
+  | _, _, .tail _, .head, h => by simp [index] at h
 
-/-- An entry bound further out. -/
-@[match_pattern] abbrev DeBruijn.tail {α : Type} {x y : α} {xs : List α}
-    (v : DeBruijn xs x) : DeBruijn (y :: xs) x := DeBruijnProj.tail v
+/-- The index at position `i`, given that the entry there is `x`.  With a concrete position
+    the side condition is closed by `rfl`: `DeBruijn.ofIndex [a, b, c] 2 rfl : DeBruijn _ c`. -/
+def ofIndex : (xs : List α) → (i : Nat) → {x : α} → xs[i]? = some x → DeBruijn xs x
+  | [], _, _, h => nomatch h
+  | _ :: _, 0, _, h => by cases h; exact .head
+  | _ :: xs, i + 1, _, h => .tail (ofIndex xs i h)
 
-/-- How many binders out an index is. -/
-abbrev DeBruijn.index {α : Type} {xs : List α} {x : α} (v : DeBruijn xs x) : Nat :=
-  DeBruijnProj.index v
+/-- `ofIndex` points at the position it was given. -/
+theorem index_ofIndex : (xs : List α) → (i : Nat) → {x : α} → (h : xs[i]? = some x) →
+    (ofIndex xs i h).index = i
+  | [], _, _, h => nomatch h
+  | _ :: _, 0, _, h => by cases h; rfl
+  | _ :: xs, i + 1, _, h => by simp [ofIndex, index, index_ofIndex xs i h]
+
+/-- Two indices into the same list are equal exactly when they are at the same position. -/
+instance {xs : List α} {x : α} : DecidableEq (DeBruijn xs x) := fun v w =>
+  if h : v.index = w.index then isTrue (eq_of_index_eq v w h)
+  else isFalse (fun e => h (e ▸ rfl))
+
+instance {xs : List α} {x : α} : BEq (DeBruijn xs x) := instBEqOfDecidableEq
+
+example {xs : List α} {x : α} : LawfulBEq (DeBruijn xs x) := inferInstance
+
+/-- A renaming from the positions of `xs` to those of `ys` that preserves the entries. -/
+abbrev Ren (xs ys : List α) : Type := ∀ {x : α}, DeBruijn xs x → DeBruijn ys x
+
+namespace Ren
+
+/-- The renaming into a list with one more (innermost) entry. -/
+abbrev weaken {xs : List α} {y : α} : Ren xs (y :: xs) := fun v => .tail v
+
+/-- A renaming under one more binder. -/
+def lift {xs ys : List α} {y : α} (r : Ren xs ys) : Ren (y :: xs) (y :: ys)
+  | _, .head => .head
+  | _, .tail v => .tail (r v)
+
+/-- A renaming under the binders `zs`. -/
+def liftN {xs ys : List α} (r : Ren xs ys) : (zs : List α) → Ren (zs ++ xs) (zs ++ ys)
+  | [], _, v => r v
+  | _ :: zs, _, .head => .head
+  | _ :: zs, _, .tail v => .tail (liftN r zs v)
+
+/-- The renaming that skips the prefix `zs`. -/
+def skip {xs : List α} : (zs : List α) → Ren xs (zs ++ xs)
+  | [], _, v => v
+  | _ :: zs, _, v => .tail (skip zs v)
+
+end Ren
+
+end DeBruijn
 
 end LeanScript
 

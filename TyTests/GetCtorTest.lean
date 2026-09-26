@@ -66,7 +66,7 @@ info: TyTests.GetCtorTest.Prod.mk.leanScriptCtor {ks : List Nat} {Δ : DSig ks} 
 
 /-- A parameter given by name is fixed; the others stay arguments. -/
 example : Term .nil [] (.record .nat (.one .bool)) :=
-  (#leanscript_get_ctor Prod.mk (α := Nat)) _ (.lit .nat rfl 1) (#leanscript_get_ctor Bool.true)
+  (#leanscript_get_ctor Prod.mk (α := Nat)) _ (.lit .nat 1) (#leanscript_get_ctor Bool.true)
 
 /-- `Bool` is a leaf: its constructors are literals. -/
 example : (#leanscript_get_ctor Bool.false : Term DSig.nil [] .bool).run = false := rfl
@@ -79,7 +79,7 @@ example : (#leanscript_get_ctor Color.green : Term DSig.nil [] (.enum ⟨0, 0⟩
 /-- One constructor with two or more fields is a record; `#leanscript_get_ctor Point` names
     its only constructor. -/
 example : (#leanscript_get_ty Point : Ty []) = .record .nat (.one .int) := rfl
-example : ((#leanscript_get_ctor Point) (.lit .nat rfl 1) (.lit .int rfl (-2)) :
+example : ((#leanscript_get_ctor Point) (.lit .nat 1) (.lit .int (-2)) :
     Term DSig.nil [] _).run = ((1 : Nat), (-2 : Int)) := rfl
 
 /-- The proof field is erased. -/
@@ -97,7 +97,7 @@ info: TyTests.GetCtorTest.Option.some.leanScriptCtor {ks : List Nat} {Δ : DSig 
 example : (#leanscript_get_ty (Option Nat) : Ty []) = Ty.option .nat := rfl
 
 def someT : Term DSig.nil [] (#leanscript_get_ty (Option Nat)) :=
-  (#leanscript_get_ctor Option.some) _ (.lit .nat rfl 2)
+  (#leanscript_get_ctor Option.some) _ (.lit .nat 2)
 
 example : someT.run = some (2 : Nat) := rfl
 
@@ -126,8 +126,8 @@ example : (#leanscript_get_ty (Option Tree)) = Ty.option Prog.tree := rfl
 def leaf : Term Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
 
 def treeT : Term Prog.Δ [] Prog.tree :=
-  (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leaf (.lit .nat rfl 1) leaf)
-    (.lit .nat rfl 2) leaf
+  (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leaf (.lit .nat 1) leaf)
+    (.lit .nat 2) leaf
 
 /-- The sum of a tree, by the fold of its block. -/
 def treeSum (t : Ty.Den Prog.Δ Prog.tree) : Nat :=
@@ -143,8 +143,8 @@ example : treeSum treeT.run = 3 := rfl
 
 /-- The type parameter of a recursive type is fixed by name. -/
 def listT : Term Prog.Δ [] Prog.listNat :=
-  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 7)
-    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat rfl 8)
+  (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 7)
+    ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 8)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
 /-- The sum of a list, by the fold of its block. -/
@@ -160,9 +160,9 @@ example : listSum listT.run = 15 := rfl
 
 /-- `Rose`'s children are a `List Rose`: another member of `Rose`'s block. -/
 def roseT : Term Prog.Δ [] Prog.rose :=
-  (#leanscript_get_ctor Rose.node) (.lit .nat rfl 1)
+  (#leanscript_get_ctor Rose.node) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Rose))
-      ((#leanscript_get_ctor Rose.node) (.lit .nat rfl 2) (#leanscript_get_ctor List.nil (α := Rose)))
+      ((#leanscript_get_ctor Rose.node) (.lit .nat 2) (#leanscript_get_ctor List.nil (α := Rose)))
       (#leanscript_get_ctor List.nil (α := Rose)))
 
 /-! ## Case analysis: `#leanscript_get_cases` -/
@@ -177,7 +177,7 @@ info: TyTests.GetCtorTest.Option.leanScriptCases {ks : List Nat} {Δ : DSig ks} 
 
 /-- `Option.getD x 0`: the `some` branch binds the field. -/
 def getD0 : Term DSig.nil [Ty.option .nat] .nat :=
-  (#leanscript_get_cases Option) _ (.var .head) (.lit .nat rfl 0) (.var .head)
+  (#leanscript_get_cases Option) _ (.var .head) (.lit .nat 0) (.var .head)
 
 example : getD0.eval (some (5 : Nat), ()) = (5 : Nat) := rfl
 example : getD0.eval (none, ()) = (0 : Nat) := rfl
@@ -196,8 +196,8 @@ def notT : Term DSig.nil [.bool] .bool :=
 example : notT.eval (true, ()) = false := rfl
 
 def ordT : Term DSig.nil [#leanscript_get_ty Ordering] .nat :=
-  (#leanscript_get_cases Ordering) (.var .head) (.lit .nat rfl 10) (.lit .nat rfl 20)
-    (.lit .nat rfl 30)
+  (#leanscript_get_cases Ordering) (.var .head) (.lit .nat 10) (.lit .nat 20)
+    (.lit .nat 30)
 
 example : ordT.eval ((1 : Fin 3), ()) = (20 : Nat) := rfl
 
@@ -212,7 +212,7 @@ example : isLeaf.eval (treeT.run, ()) = false := rfl
 
 /-- The root label of a tree: the `node` branch binds its three fields. -/
 def rootLabel : Term Prog.Δ [Prog.tree] .nat :=
-  (#leanscript_get_cases Tree) (.var .head) (.lit .nat rfl 0) (.var (.tail .head))
+  (#leanscript_get_cases Tree) (.var .head) (.lit .nat 0) (.var (.tail .head))
 
 example : rootLabel.eval (treeT.run, ()) = (2 : Nat) := rfl
 
