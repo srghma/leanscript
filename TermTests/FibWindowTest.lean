@@ -132,20 +132,20 @@ example : runAdd fib_term 15 = 610 := by kernel_rfl
 /-- The window term's value at `n` is the pair `(fib n, fib (n + 1))` — at **every**
     argument, not only at the ones checked above. -/
 theorem window_eval (n : Nat) :
-    runAdd window n = (fib n, fib (n + 1), PUnit.unit) := by
+    runAdd window n = (fib n, fib (n + 1)) := by
   induction n with
   | zero => rfl
   | succ n ih =>
       have hstep : runAdd window (n + 1) =
-          ((runAdd window n).2.1,
-            (runAdd window n).1 + (runAdd window n).2.1, PUnit.unit) := by
+          ((runAdd window n).2,
+            Nat.add (runAdd window n).1 (runAdd window n).2) := by
         -- `kernel_rfl`, not `rfl`: the elaborator's own check of this equation is slow
         -- (the extern call goes through the case splits of `Extern.eval`);
         -- the kernel checks it quickly (see `LeanScript/KernelRfl.lean`)
         kernel_rfl
       rw [hstep, ih]
-      show ((fib (n + 1), fib n + fib (n + 1), PUnit.unit) : Nat × Nat × PUnit) =
-        (fib (n + 1), fib (n + 2), PUnit.unit)
+      show ((fib (n + 1), fib n + fib (n + 1)) : Nat × Nat) =
+        (fib (n + 1), fib (n + 2))
       rw [show fib (n + 2) = fib n + fib (n + 1) from rfl]
 
 /-- `fib_term` computes `fib`, at every argument. -/

@@ -208,7 +208,7 @@ def pairFst : Term emptySig [] (TyWf.prim .nat) := .record_casesOn' pair (.var (
 /-- Its second field. -/
 def pairSnd : Term emptySig [] (TyWf.prim .bool) := .record_casesOn' pair (.var (v♯1))
 
-example : run pair = (3, true, PUnit.unit) := by kernel_rfl
+example : run pair = (3, true) := by kernel_rfl
 example : run pairFst = 3 := by kernel_rfl
 example : run pairSnd = true := by kernel_rfl
 
@@ -238,7 +238,7 @@ def optNatOrZeroWithDefault : Term emptySig [] (TyWf.taggedUnion optNat ⇒ TyWf
     (.last 0 (branch := .var (v♯0))) (.nat_mk 0))
 
 example : (run someThree).1 = ⟨0, by decide⟩ := by kernel_rfl
-example : (run someThree).2 = (3, PUnit.unit) := by kernel_rfl
+example : (run someThree).2 = (3 : Nat) := by kernel_rfl
 example : (run noneNat).1 = ⟨1, by decide⟩ := by kernel_rfl
 example : run (.ap optNatOrZero someThree) = 3 := by kernel_rfl
 example : run (.ap optNatOrZero noneNat) = 0 := by kernel_rfl

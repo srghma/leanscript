@@ -182,7 +182,7 @@ theorem fibPair_eq : (n : Nat) → fibPair n = (fib n, fib (n + 1))
 /-- The pair recursion is the fold at a two-field record: the term of
     `TermTests/FibWindowTest.lean` computes `fibPair`, field by field. -/
 theorem fibPair_term_eval (n : Nat) :
-    runAdd TermTests.FibWindow.window n = ((fibPair n).1, (fibPair n).2, PUnit.unit) := by
+    runAdd TermTests.FibWindow.window n = ((fibPair n).1, (fibPair n).2) := by
   rw [TermTests.FibWindow.window_eval, fibPair_eq n]
 
 /-- And its projection is `fib_term`, so `fib2` is written today. -/

@@ -142,7 +142,7 @@ abbrev fibPairStep (e : Env CCtx) :=
 /-- The fold of `fibPairTerm` carries the pair `Cell.fibPair`, in every environment. -/
 theorem fibPair_memoFold (e : Env CCtx) : ∀ c : Cell,
     ((WType.memoFold (fibPairStep e) (cellVal c)).1,
-      (WType.memoFold (fibPairStep e) (cellVal c)).2.1) = Cell.fibPair c
+      (WType.memoFold (fibPairStep e) (cellVal c)).2) = Cell.fibPair c
   | .mk _ none => rfl
   | .mk _ (some c) => by
       have ih := fibPair_memoFold e c

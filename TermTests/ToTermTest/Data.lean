@@ -88,7 +88,7 @@ def aPair : Nat × Bool := (7, true)
 def aPair_term : Term sig0 [] (tyWfOf (Nat × Bool)) := #leanscript_to_term aPair
 
 example : (run swap_term (run aPair_term)).1 = true := by kernel_rfl
-example : (run swap_term (run aPair_term)).2.1 = (7 : Nat) := by kernel_rfl
+example : (run swap_term (run aPair_term)).2 = (7 : Nat) := by kernel_rfl
 
 @[inline] def delayed : Thunk Nat := Thunk.mk (fun _ => 6)
 

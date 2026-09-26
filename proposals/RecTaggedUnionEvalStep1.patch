@@ -1,0 +1,71 @@
+diff --git a/LeanScript/Den.lean b/LeanScript/Den.lean
+index 6a2a73d..60d30ac 100644
+--- a/LeanScript/Den.lean
++++ b/LeanScript/Den.lean
+@@ -47,7 +47,7 @@ mutual
+ 
+ /-- The Lean type of the values of a type of the language. -/
+ @[reducible] def Ty.Den : Ty → Type
+-  | .self => PEmpty
++  | .self => PUnit
+   | .familyMember _ => PEmpty
+   | .shape s => Ty.DenShape s
+   | .recTaggedUnion _ => PEmpty
+diff --git a/LeanScript/Ty/Unfold.lean b/LeanScript/Ty/Unfold.lean
+index 0cde581..b407f15 100644
+--- a/LeanScript/Ty/Unfold.lean
++++ b/LeanScript/Ty/Unfold.lean
+@@ -62,7 +62,7 @@ def substOcc (s : Ty) (m : Nat → Ty) : Ty → Ty
+ /-- `Ty.substOcc`, on a node. -/
+ def substOccShape (s : Ty) (m : Nat → Ty) : TyShape Ty → TyShape Ty
+   | .prim p => .prim p
+-  | .fn a b => .fn (substOcc s m a) (substOcc s m b)
++  | .fn a b => .fn a (substOcc s m b)
+   | .primCovariant c => .primCovariant (substOccCov s m c)
+   | .enum e => .enum e
+   | .record fs => .record (substOccRecord s m fs)
+@@ -149,18 +149,6 @@ theorem substOccTU_eq_map (s : Ty) (m : Nat → Ty) (l : LeanTaggedUnionSchema T
+   | skip c =>
+       simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map]
+ 
+-theorem substOccShape_eq_map (s : Ty) (m : Nat → Ty) (sh : TyShape Ty) :
+-    substOccShape s m sh = sh.map (substOcc s m) := by
+-  cases sh with
+-  | prim => rfl
+-  | fn _ _ => rfl
+-  | primCovariant c =>
+-      cases c <;> simp only [substOccShape, substOccCov, TyShape.map,
+-        LeanPrimTyCovariant.map]
+-  | enum => rfl
+-  | record _ => simp only [substOccShape, TyShape.map, substOccRecord_eq_map]
+-  | taggedUnion _ => simp only [substOccShape, TyShape.map, substOccTU_eq_map]
+-
+ /-! ## The two scopes
+ 
+ A lone binder has one thing in scope, the declaration itself, so its unfolding only has
+diff --git a/LeanScript/Ty/WfSubst.lean b/LeanScript/Ty/WfSubst.lean
+index 2765420..60c4f38 100644
+--- a/LeanScript/Ty/WfSubst.lean
++++ b/LeanScript/Ty/WfSubst.lean
+@@ -89,8 +89,8 @@ theorem wf_substOcc {S : Ty} (hS : Wf S) {m : Nat → Ty} :
+       (try intro _); exact .mutualRecursiveFamily hw ho hh
+   | prim => (try intro _); exact .prim
+   | enum => (try intro _); exact .enum
+-  | fn _ _ iha ihb =>
+-      (try intro _); exact .fn (iha (by omega)) (ihb (by assumption))
++  | fn ha _ _ ihb =>
++      (try intro _); exact .fn ha (ihb (by assumption))
+   | @primCovariant _ s _ ih =>
+       (try intro _)
+       cases s with
+@@ -137,8 +137,8 @@ theorem wf_substOccFam {S : Ty} {m : Nat → Ty} (hm : ∀ i, Wf (m i)) :
+       (try intro _); exact .mutualRecursiveFamily hw ho hh
+   | prim => (try intro _); exact .prim
+   | enum => (try intro _); exact .enum
+-  | fn _ _ iha ihb =>
+-      (try intro _); exact .fn (iha (by omega)) (ihb (by assumption))
++  | fn ha _ _ ihb =>
++      (try intro _); exact .fn ha (ihb (by assumption))
+   | @primCovariant _ s _ ih =>
+       (try intro _)
+       cases s with

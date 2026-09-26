@@ -88,10 +88,10 @@ def cellFibPair_term := #leanscript_to_term (sig := sig0) cellFibPair
 
 example : recObjectRecDepth? cellFibPair_term = some 0 := by kernel_rfl
 example : (run cellFibPair_term (cellOfNat 10)).1 = 55 := by kernel_rfl
-example : (run cellFibPair_term (cellOfNat 10)).2.1 = 89 := by kernel_rfl
+example : (run cellFibPair_term (cellOfNat 10)).2 = 89 := by kernel_rfl
 example : (run cellFibPair_term (cellOfNat 10)).1 = (cellFibPair (Cell.ofNat 10)).1 := by
   kernel_rfl
-example : (run cellFibPair_term (cellOf 3 [1, 4, 1])).2.1 =
+example : (run cellFibPair_term (cellOf 3 [1, 4, 1])).2 =
     (cellFibPair (Cell.ofList 3 [1, 4, 1])).2 := by kernel_rfl
 
 end TermTests.RecObjectToTerm

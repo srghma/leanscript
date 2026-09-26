@@ -191,14 +191,14 @@ local macro:max "run" t:term:max : term => `(Term.run (Sg := sig) env $t)
 example : run mixedProcess_term =
     (0, fun n => ⟨⟨1, by decide⟩, (n + 1, 42,
       ("hello", fun s => ⟨⟨1, by decide⟩, (s ++ "!", 99,
-        (fun b => match b with | true => 1 | false => 0), ())⟩, ()), ())⟩, ()) := by kernel_rfl
+        (fun b => match b with | true => 1 | false => 0))⟩))⟩) := by kernel_rfl
 
 /-- `varyingProcess`, with the witnesses `Nat`, then `Unit` or `Bool`, filled in. -/
 example : run varyingProcess_term =
     (0, fun n => match n with
-      | 0 => ⟨⟨1, by decide⟩, (1, 7, ⟨⟨0, by decide⟩, (⟨⟨0, by decide⟩, ()⟩, ())⟩, ())⟩
+      | 0 => ⟨⟨1, by decide⟩, (1, 7, ⟨⟨0, by decide⟩, ⟨⟨0, by decide⟩, ()⟩⟩)⟩
       | _ + 1 => ⟨⟨1, by decide⟩, (1, 7,
-          ⟨⟨1, by decide⟩, ((true, fun _ => ⟨⟨0, by decide⟩, ()⟩, ()), ())⟩, ())⟩, ()) := rfl
+          ⟨⟨1, by decide⟩, (true, fun _ => ⟨⟨0, by decide⟩, ()⟩)⟩)⟩) := rfl
 
 end ProcessModel
 

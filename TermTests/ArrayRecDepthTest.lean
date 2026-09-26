@@ -268,20 +268,21 @@ example : runArith contFromPairTerm #[1, 2, 3] = 10 := by kernel_rfl
     recursion. -/
 theorem listFoldK_eq_contPair (z : List Nat → TyWf.Den Pair)
     (s : Nat → List Nat → NatWin Pair 1 → TyWf.Den Pair)
-    (hz : z [] = (1, 0, PUnit.unit))
-    (hs : ∀ x xs w, s x xs w = (x * w.1.1 + w.1.2.1, w.1.1, PUnit.unit)) :
+    (hz : z [] = ((1, 0) : Nat × Nat))
+    (hs : ∀ x xs w, s x xs w = ((Nat.add (x * w.1.1) w.1.2, w.1.1) : Nat × Nat)) :
     (l : List Nat) →
-      listFoldK (τ := Pair) (k := 0) z s l = (cont l, contTail l, PUnit.unit)
+      listFoldK (τ := Pair) (k := 0) z s l = (cont l, contTail l)
   | [] => by
       rw [listFoldK_base (τ := Pair) (k := 0) _ _ [] (by simp), hz]
       rfl
   | x :: xs => by
       rw [listFoldK_step (τ := Pair) (k := 0) _ _ x xs (by simp), hs]
-      show ((x * (listFoldK (τ := Pair) (k := 0) z s xs).1 +
-            (listFoldK (τ := Pair) (k := 0) z s xs).2.1,
-          (listFoldK (τ := Pair) (k := 0) z s xs).1, PUnit.unit) : Nat × Nat × PUnit) = _
+      show ((Nat.add (x * (listFoldK (τ := Pair) (k := 0) z s xs).1)
+            (listFoldK (τ := Pair) (k := 0) z s xs).2,
+          (listFoldK (τ := Pair) (k := 0) z s xs).1) : Nat × Nat) = _
       rw [listFoldK_eq_contPair z s hz hs xs, cont_cons x xs,
         show contTail (x :: xs) = cont xs from rfl]
+      rfl
 
 /-- The short-list answers and the branch `Term.eval` uses for the pair recursion. -/
 def pairEvalZ (env : Env ArrCtx) : List Nat → TyWf.Den Pair :=
@@ -293,12 +294,12 @@ def pairEvalS (env : Env ArrCtx) : Nat → List Nat → NatWin Pair 1 → TyWf.D
 
 theorem pairEvalFold_eq (env : Env ArrCtx) (l : List Nat) :
     listFoldK (τ := Pair) (k := 0) (pairEvalZ env) (pairEvalS env) l =
-      (cont l, contTail l, PUnit.unit) :=
+      (cont l, contTail l) :=
   listFoldK_eq_contPair _ _ rfl (fun _ _ _ => rfl) l
 
 /-- The record-valued term **is** `contPair`, field by field. -/
 theorem contPairTerm_eval (l : List Nat) :
-    runArith contPairTerm l.toArray = ((contPair l).1, (contPair l).2, PUnit.unit) := by
+    runArith contPairTerm l.toArray = ((contPair l).1, (contPair l).2) := by
   show listFoldK (τ := Pair) (k := 0) (pairEvalZ (l.toArray, Env.nil)) (pairEvalS (l.toArray, Env.nil)) l = _
   rw [pairEvalFold_eq, contPair_eq l]
 

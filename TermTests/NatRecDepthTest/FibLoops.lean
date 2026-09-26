@@ -61,8 +61,8 @@ def fibPair : Nat → Nat × Nat
 def fibPair_term : Term sigAdd [] (TyWf.prim .nat ⇒ tyWfOf (Nat × Nat)) :=
   #leanscript_to_term fibPair
 
-example : runAdd fibPair_term 0 = ((0, 1, PUnit.unit) : Nat × Nat × PUnit) := by kernel_rfl
-example : runAdd fibPair_term 6 = ((8, 13, PUnit.unit) : Nat × Nat × PUnit) := by kernel_rfl
+example : runAdd fibPair_term 0 = ((0, 1) : Nat × Nat) := by kernel_rfl
+example : runAdd fibPair_term 6 = ((8, 13) : Nat × Nat) := by kernel_rfl
 
 /-! ### `fibLoop`: the `for` loop
 

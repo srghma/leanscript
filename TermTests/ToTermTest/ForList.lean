@@ -156,7 +156,7 @@ def dotFor (l : List (Nat × Nat)) : Nat := Id.run do
 def dotFor_term : Term sigAdd [] (tyWfOf (List (Nat × Nat)) ⇒ natT) := #leanscript_to_term dotFor
 
 example : runAdd dotFor_term (Ty.DenRec.ofList (tyWfOf (Nat × Nat)).toTy
-    [((2, 3, ()) : Nat × Nat × PUnit), ((4, 5, ()) : Nat × Nat × PUnit)]) = 26 := by
+    [((2, 3) : Nat × Nat), ((4, 5) : Nat × Nat)]) = 26 := by
   kernel_rfl
 
 /-! ## Reading the rest of the program -/
