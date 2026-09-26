@@ -1,3 +1,22 @@
+# Summary of changes for run 514aa57c-45fe-4dd1-af10-8dd27d5b857b
+**No, it didn't.** On the original translator, four of your seven definitions were refused. A fifth (`ack2`) failed only because the test file used a `public section`, where a public `ack2` cannot use the private `ackInner`. Only `ackInner` and `hyperBase` translated. I extended `#leanscript_to_term` in `LeanScript/ToTerm.lean` without changing `Term`, and all seven now translate. The full `lake build` passes with no `sorry`.
+
+**What failed and what changed:**
+- **`hyperLoop`, `iter`:** the recursive call changes the accumulator, and the translator required every other parameter to stay unchanged. Now the parameters that recursive calls change become arguments of the fold's answer. `nat_rec` (or `data_rec`) answers a function of them and is applied to their current values; each recursive call applies the answer to its own arguments.
+- **`hyperTCO`:** it had two problems.
+  - The recursive call `hyperTCO n a` leaves out `b`. Missing trailing parameters are now treated as changing ones, so the call becomes the answer applied only to the arguments it has.
+  - It passes a function to `hyperLoop`, and a call of another definition could only be an extern on plain values. Now a helper that can't be an extern is inlined: its own translation is used, applied to the arguments. This only applies to definitions outside Lean's own library, and a helper that calls back the function being translated is refused.
+- **`ack2`:** handled by the helper inlining (`ackInner (ack2 m)`). A recursive call with more arguments than parameters (`ack2 m n`) is now also accepted.
+- **`hyperWhile`:** the `for _ in [0:b]` loop was refused. `Id.run`, `pure` and bind in `Id` are now translated. A `for` loop over a range `[a:b:s]` (`forIn` / `forIn'`) in `Id` becomes a `nat_rec` over the number of iterations, with a `ForInStep` state so that `break` works. Other collections and other monads are still refused.
+- **`hyperBase`:** unchanged. It takes and returns numbers only, so calls to it are externs.
+
+**What is proved (`TermTests/TcoTest.lean`):**
+- For all inputs, the translations of `iter`, `hyperLoop`, `ackInner`, `ack2` and `hyperTCO` compute the Lean functions (`iterT_run`, `hyperLoopT_run`, `ackInnerT_run`, `ack2T_run`, `hyperTCOT_run`). These use only the standard axioms.
+- **`hyperWhile` is not proved for all inputs.** It is checked only at `(1,2,3)` and `(3,2,3)`. The Lean side is computed with `native_decide`, because Lean's range loop uses well-founded recursion and the kernel won't unfold it. The translation is checked by the kernel.
+- `stepSum`, a new test loop over `[a:b:3]` with a `break`, is checked the same way on three inputs.
+
+The test file has no `public section`, because the private `ackInner` could not otherwise be used by `ack2`. The table in the header of `LeanScript/ToTerm.lean` and `NOT_IMPLEMENTED.md` are updated. Everything is committed.
+
 # Summary of changes for run 72248a96-8523-4617-afed-54bdfc64d227
 `T5` and all three rose trees (with `List`, `Array` and `Fin m →` children) now translate, and each rose tree is a different datatype. The full `lake build` passes (73 jobs) with no errors, warnings or `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed.
 

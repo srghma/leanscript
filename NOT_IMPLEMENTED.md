@@ -134,8 +134,12 @@ The supported fragment and the refusals are listed in the header of
 `TermTests/ToTermTest.lean`. Not supported yet:
 
 - **Polymorphic definitions** (a parameter that is a type or an instance).
-- **Recursion on a parameter that is not matched at the top of the body**, recursion that
-  changes the other parameters (an accumulator), and recursion through a helper.  (A
+- **Recursion on a parameter that is not matched at the top of the body**, and mutual
+  recursion through a helper (a helper that calls back the function being translated).
+  (Recursion that changes the other parameters, an accumulator, and calls of non-recursive
+  or recursive helpers are translated: `TermTests/TcoTest.lean`.)
+- **`for` loops** only over a `Std.Legacy.Range` (`[a:b]`, `[a:b:s]`) in `Id`; other
+  collections and other monads are refused.  (A
   `mutual` group of functions, one per member of a block, is translated, also when members
   are held inside an `Array` or a function: `TermTests/MutualToTermTest.lean`.)
 - **Two functions of a `mutual` group on the same member** of a block (one fold has one
