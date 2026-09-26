@@ -17,8 +17,8 @@ set_option autoImplicit false
 # `Term`: the one grammar, terminating by construction
 
 The grammar itself: `Term` and the families of branches it dispatches through, as one
-`mutual` block.  The prose that explains the recursion discipline, and the sketch this
-block was made from, are in `LeanScript.Expr.Design`.
+`mutual` block.  The prose that explains the recursion discipline, and how this block
+came to be, is in `LeanScript.Expr.Design`.
 
 **No `DecidableEq`/`BEq`.**  The float literals (`Term.float_mk`, `Term.float32_mk`,
 `Term.floatModel_mk`, `Term.float32Model_mk`) are not what prevents it: `Float`, `Float32`
@@ -507,18 +507,7 @@ inductive Comp (Sg : Sig) : Ctx → TyWf → Type 1
   | taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
       (ht : t < l.length := by ctor_tag) (fields : Args Sg Γ (l.get t ht)) :
       Comp Sg Γ (.taggedUnion l)
-  -- The four recursive shapes of `Ty`.  The sketch they replace read
-  --
-  -- | recTaggedUnion_mk : sorry → Term Sg Γ (.recTaggedUnion l)
-  -- | recTaggedUnion_rec : sorry -> RecTaggedUnionRecCases -> Term Sg Γ τ
-  -- | recObject_mk : sorry → Term Sg Γ (.recObject l)
-  -- | recObject_rec : sorry -> RecTaggedUnionRecCases -> Term Sg Γ τ
-  -- | recAlias_mk : sorry → Term Sg Γ (.recAlias l)
-  -- | recAlias_rec : sorry -> sorry -> Term Sg Γ τ
-  -- | mutualRecursiveFamily_mk : sorry → Term Sg Γ (.mutualRecursiveFamily l)
-  -- | mutualRecursiveFamily_rec : sorry -> sorry -> Term Sg Γ τ
-  --
-  -- A value of one of them is a value of the shape the binder holds with the binder's
+  -- The four recursive shapes of `Ty`.  A value of one of them is a value of the shape the binder holds with the binder's
   -- occurrences (`Ty.self`, `Ty.familyMember i`) instantiated to the binder itself, so an
   -- introduction form for one needs the *unfolding* of a `Ty`, which is
   -- `LeanScript.Ty.unfoldSelf` (`LeanScript.Ty.Unfold`).
@@ -565,7 +554,6 @@ inductive Comp (Sg : Sig) : Ctx → TyWf → Type 1
       (hwf : Ty.Wf (TyWf.mutualRecursiveFamilyTy f) := by ty_wf)
       (value : FamilyMemberArgs Sg Γ (f.current.map (TyWfIn.unfoldFam f hwf))) :
       Comp Sg Γ (.mutualRecursiveFamily f hwf)
-
 
 /-- The answers a depth-`k` fold of an array (`LeanScript.Term.array_rec`) gives to the
     lists that are **shorter than its window**: the lists of fewer than `k + 1` elements,

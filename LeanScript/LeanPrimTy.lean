@@ -135,23 +135,8 @@ namespace LeanPrimTy
 
 -- TODO: name should be constructed as recTaggedUnion
 
-/-- A rendering for debugging and error messages. -/
-def format : LeanPrimTy → Format
-  | .bitvec n _ => "(bitvec " ++ Std.format n ++ ")"
-  | .bool => "bool" | .nat => "nat" | .int => "int"
-  | .uint8 => "uint8" | .uint16 => "uint16" | .uint32 => "uint32" | .uint64 => "uint64"
-  | .int8 => "int8" | .int16 => "int16" | .int32 => "int32" | .int64 => "int64"
-  | .char => "char" | .string => "string"
-  | .stringPos _s => "stringPos"
-  | .stringPosRaw => "stringPosRaw" | .substringRaw => "substringRaw" | .stringSlice => "stringSlice"
-  | .float => "float" | .float32 => "float32"
-  | .floatModel => "floatModel"
-  | .float32Model => "floatModel"
-  -- | .shareCommonObject => "shareCommonObject"
-  -- | .shareCommonState _ => "shareCommonState"
-
-/-- The same rendering, as a plain `String`: a `Format` does not reduce in the kernel,
-    so an `example` settled by `decide` needs this one. -/
+/-- A rendering for debugging and error messages, as a plain `String` (a `Format` does
+    not reduce in the kernel, so an `example` settled by `decide` needs a `String`). -/
 def pretty : LeanPrimTy → String
   | .bitvec n _ => "(bitvec " ++ toString n ++ ")"
   | .bool => "bool" | .nat => "nat" | .int => "int"
@@ -162,15 +147,18 @@ def pretty : LeanPrimTy → String
   | .stringPosRaw => "stringPosRaw" | .substringRaw => "substringRaw" | .stringSlice => "stringSlice"
   | .float => "float" | .float32 => "float32"
   | .floatModel => "floatModel"
-  | .float32Model => "floatModel"
+  | .float32Model => "float32Model"
   -- | .shareCommonObject => "shareCommonObject"
   -- | .shareCommonState _ => "shareCommonState"
+
+/-- `LeanScript.LeanPrimTy.pretty`, as a `Format`. -/
+def format (t : LeanPrimTy) : Format := t.pretty
 
 instance : ToFormat LeanPrimTy where
   format := format
 
 instance : ToString LeanPrimTy where
-  toString x := toString (format x)
+  toString := pretty
 
 /-- Is the JavaScript representation of this type configurable (`number` vs
     `bigint`)?  A bit vector of fewer than 32 bits always fits in a `number`. -/

@@ -39,11 +39,6 @@ namespace LeanScript.ToTerm
     currency of the translation: `LeanScript.Term` is indexed by it. -/
 def tyE : Expr := mkConst ``LeanScript.TyWf
 
-/-- The type `LeanScript.Ty` — a tree — as an expression.  A tree is what a
-    `LeanScriptTyWf` instance holds and what `ty_wf` reasons about; it becomes a type of
-    the language by being bundled with its proof. -/
-def treeE : Expr := mkConst ``LeanScript.Ty
-
 /-- `LeanScript.TyWfIn n`, the trees written in a scope of `n` members, as an
     expression. -/
 def tyWfInE (n : Nat) : Expr := mkApp (mkConst ``LeanScript.TyWfIn) (mkNatLit n)

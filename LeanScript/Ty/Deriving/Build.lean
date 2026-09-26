@@ -21,16 +21,17 @@ namespace LeanScript.Deriving
 
 /-- The type `LeanScript.Ty`, as an expression. -/
 def tyE : Expr := mkConst ``LeanScript.Ty
-/-- The type `List LeanScript.Ty`, as an expression. -/
-def listTyE : Expr := mkApp (mkConst ``List [0]) tyE
-/-- A list of trees, as an expression. -/
-def mkTyList (es : List Expr) : MetaM Expr := mkListLit tyE es
+/-- The type `List elt`, as an expression (`elt : Type`). -/
+def listOfE (elt : Expr) : Expr := mkApp (mkConst ``List [0]) elt
+/-- A list of trees, as an expression.  The trees are `LeanScript.Ty`s unless `elt` says
+    otherwise (`#leanscript_ctor` builds the same schemas over `LeanScript.TyWf`). -/
+def mkTyList (es : List Expr) (elt : Expr := tyE) : MetaM Expr := mkListLit elt es
 /-- A list of lists of trees — the fields of each constructor — as an expression. -/
-def mkTyListList (ess : List (List Expr)) : MetaM Expr := do
-  mkListLit listTyE (← ess.mapM mkTyList)
+def mkTyListList (ess : List (List Expr)) (elt : Expr := tyE) : MetaM Expr := do
+  mkListLit (listOfE elt) (← ess.mapM (mkTyList · elt))
 /-- A non-empty list of trees, as an expression. -/
-def mkNE (e : Expr) (es : List Expr) : MetaM Expr := do
-  mkAppM ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk #[e, ← mkTyList es]
+def mkNE (e : Expr) (es : List Expr) (elt : Expr := tyE) : MetaM Expr := do
+  mkAppM ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk #[e, ← mkTyList es elt]
 
 /-- Does this tree mention the declaration whose scope it is written in? -/
 def mentionsScope (e : Expr) : Bool :=
@@ -38,31 +39,34 @@ def mentionsScope (e : Expr) : Bool :=
     x.isConstOf ``LeanScript.Ty.self || x.isAppOf ``LeanScript.Ty.familyMember).isSome
 
 /-- The record schema of these fields, of which there must be at least two. -/
-def mkRecord? (fs : List Expr) : MetaM (Option Expr) := do
+def mkRecord? (fs : List Expr) (elt : Expr := tyE) : MetaM (Option Expr) := do
   match fs with
   | a :: b :: rest => return some (← mkAppM ``LeanScript.LeanRecordSchema.mk
-      #[a, b, ← mkTyList rest])
+      #[a, b, ← mkTyList rest elt])
   | _ => return none
 
 /-- The constructors of a tagged union from the first that carries a field. -/
-partial def mkCtorsWithPayload? : List (List Expr) → MetaM (Option Expr)
+def mkCtorsWithPayload? (ctors : List (List Expr)) (elt : Expr := tyE) :
+    MetaM (Option Expr) :=
+  match ctors with
   | [] => return none
   | [] :: rest => do
-      match ← mkCtorsWithPayload? rest with
+      match ← mkCtorsWithPayload? rest elt with
       | some r => return some (← mkAppM ``LeanScript.CtorsWithPayload.skip #[r])
       | none => return none
   | (f :: fs) :: rest => do
       return some (← mkAppM ``LeanScript.CtorsWithPayload.here
-        #[← mkNE f fs, ← mkTyListList rest])
+        #[← mkNE f fs elt, ← mkTyListList rest elt])
 
 /-- The tagged-union schema of these constructors: at least two of them, at least one
     with a field. -/
-def mkTaggedUnion? : List (List Expr) → MetaM (Option Expr)
+def mkTaggedUnion? (ctors : List (List Expr)) (elt : Expr := tyE) : MetaM (Option Expr) :=
+  match ctors with
   | (f :: fs) :: next :: rest => do
       return some (← mkAppM ``LeanScript.LeanTaggedUnionSchema.payloadFirst
-        #[← mkNE f fs, ← mkTyList next, ← mkTyListList rest])
+        #[← mkNE f fs elt, ← mkTyList next elt, ← mkTyListList rest elt])
   | [] :: rest => do
-      match ← mkCtorsWithPayload? rest with
+      match ← mkCtorsWithPayload? rest elt with
       | some r => return some (← mkAppM ``LeanScript.LeanTaggedUnionSchema.skip #[r])
       | none => return none
   | _ => return none

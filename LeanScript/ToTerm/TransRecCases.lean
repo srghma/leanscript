@@ -53,6 +53,33 @@ def transUnionAliasCases (trans : TransFn) (c : TCtx) (τ b hwf scrut : Expr)
   return mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
     #[c.sg, c.gamma, τ, b, hwf, scrut, body]
 
+/-- The dispatch of the language on `scrut`, a value of the recursive tagged union, record
+    or newtype `view`, answering with `τ`: one branch per constructor of the Lean type
+    (`ctors`), read off the Lean branches `minors`.  `none` for any other tree. -/
+def transRecShapeCases (trans : TransFn) (c : TCtx) (τ scrut : Expr) (view : TyView)
+    (minors : Array Expr) (ctors : Array Name) : MetaM (Option Expr) := do
+  let core ← match view with
+    | .recTaggedUnion l hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
+        let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
+        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn')
+          #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
+    | .recObject fs hwf =>
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
+        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
+          #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
+    | .recAlias b hwf =>
+        if ctors.size > 1 then
+          transUnionAliasCases trans c τ b hwf scrut minors ctors
+        else
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+        let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
+        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
+          #[c.sg, c.gamma, τ, b, hwf, scrut, body]
+    | _ => return none
+  return some core
+
 /-- `X.casesOn` on a value of an **indexed family** (`Vec α n`), whose tree is a recursive
     tagged union, record or newtype: the dispatch of the same tree, whose branches are
     read off the whole application — the `match` Lean compiled carries equations between
@@ -85,27 +112,7 @@ def transIndexedCasesOn? (trans : TransFn) (c : TCtx) (e : Expr)
   let τ ← tyOfType (← instantiateMVars (← inferType e))
   let ctors := ii.ctors.toArray
   let scrut ← trans c major
-  let core ← match view with
-    | .recTaggedUnion l hwf =>
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
-        let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
-        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn')
-          #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
-    | .recObject fs hwf =>
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
-        let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
-        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
-          #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
-    | .recAlias b hwf =>
-        if ctors.size > 1 then
-          transUnionAliasCases trans c τ b hwf scrut minors ctors
-        else
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
-        let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
-        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
-          #[c.sg, c.gamma, τ, b, hwf, scrut, body]
-    | _ => return none
-  return some core
+  transRecShapeCases trans c τ scrut view minors ctors
 
 /-- `X.casesOn` on a value whose tree is a recursive tagged union, a recursive record, a
     recursive newtype or a member of a mutual family: the matching `…_casesOn` of the
@@ -149,24 +156,6 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let ctors := ii.ctors.toArray
   let scrut ← trans c major
   let core ← match view with
-    | .recTaggedUnion l hwf =>
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recTaggedUnionUnfold) l hwf)
-        let cases ← mkTaggedUnionCases (transBranch trans c) c τ unfE 0 minors ctors
-        pure <| mkAppN (mkConst `LeanScript.Term.recTaggedUnion_casesOn')
-          #[c.sg, c.gamma, τ, l, hwf, scrut, cases]
-    | .recObject fs hwf =>
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf)
-        let body ← transBranch trans c minors[0]! ctors[0]! (← recordFieldTys unfE)
-        pure <| mkAppN (mkConst `LeanScript.Term.recObject_casesOn')
-          #[c.sg, c.gamma, τ, fs, hwf, scrut, body]
-    | .recAlias b hwf =>
-        if ctors.size > 1 then
-          transUnionAliasCases trans c τ b hwf scrut minors ctors
-        else
-        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
-        let body ← transBranch trans c minors[0]! ctors[0]! [unfE]
-        pure <| mkAppN (mkConst `LeanScript.Term.recAlias_casesOn')
-          #[c.sg, c.gamma, τ, b, hwf, scrut, body]
     | .mutualRecursiveFamily nE f hwf =>
         let unfE ← famCurrentUnfolded nE f hwf
         let cases ← match unfE.getAppFnArgs with
@@ -186,7 +175,9 @@ def transRecKindCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
               {ind} has no shape: {unfE}"
         pure <| mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_casesOn')
           #[c.sg, c.gamma, τ, nE, f, hwf, scrut, cases]
-    | _ => return none
+    | _ =>
+        let some core ← transRecShapeCases trans c τ scrut view minors ctors | return none
+        pure core
   let extra := args.extract arity args.size
   if extra.isEmpty then return some core
   return some (← applyArgs trans c core (mkAppN (mkConst n lvls) (args.extract 0 arity))

@@ -29,19 +29,6 @@ inductive LeanFamMemberSchema (α : Type) where
   | alias (body : α)
   deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
-namespace LeanFamMemberSchema
-
-variable {α β : Type}
-
-/-- The constructors of a member, as a list of the field types of each: a `record`
-    member has one constructor and an `alias` member one constructor of one field. -/
-def toCtors : LeanFamMemberSchema α → List (List α)
-  | .ctors s => s.toList
-  | .record s => [s.toList]
-  | .alias b => [[b]]
-
-end LeanFamMemberSchema
-
 /-- The payload of one member of a **mutual recursive family**: the bodies of *all* of
     its members, in declaration order, and which of them this type is.
 

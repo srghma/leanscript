@@ -108,11 +108,12 @@ structure RecUnionInfo where
   /-- The motive of the `brecOn`, reduced to a `fun`. -/
   motive0 : Expr := .bvar 0
 
-/-- The index lists of the branches of a dispatch on this schema, one per constructor, in
-    order: `fields.toList` for a constructor with a non-empty payload, `[]` for one
-    without, as `LeanScript.TaggedUnionFoldKCases` is indexed. -/
-partial def recUnionCtorIndices (l : Expr) : MetaM (Array Expr) := do
-  let ι := tyWfInE 1
+/-- The index lists of the branches of a dispatch on this tagged-union schema of
+    `TyWfIn sc`, one per constructor, in order: `fields.toList` for a constructor with a
+    non-empty payload, `[]` for one without, as `LeanScript.TaggedUnionFoldKCases` (at
+    `sc = 1`) and `LeanScript.FamilyTaggedUnionFoldKCases` are indexed. -/
+partial def schemaCtorIndices (sc : Nat) (l : Expr) : MetaM (Array Expr) := do
+  let ι := tyWfInE sc
   let toListE (ne : Expr) : Expr :=
     mkApp2 (mkConst ``NonEmpty.ListCorrectByConstruction.NonEmptyList.toList [Level.zero])
       ι ne
@@ -516,7 +517,7 @@ def transRecUnionBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
     return (τLean, τ)
   let selfTy ← whnf (← inferType major)
   let ilvls := selfTy.getAppFn.constLevels!
-  let idxs ← recUnionCtorIndices l
+  let idxs ← schemaCtorIndices 1 l
   unless idxs.size == ii.ctors.length do
     throwError "`#leanscript_to_term`: internal: the tree of {ind} has {idxs.size} \
       constructors, the type {ii.ctors.length}"

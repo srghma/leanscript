@@ -302,6 +302,61 @@ def Term.closedStep? {Γ : Ctx} {σ : TyWf} : Term Sg Γ σ → Option (Comp Sg 
   | .letE c (.ret (.var .head)) => c.closed?
   | _ => none
 
+/-! ## Redexes taken apart while building
+
+Three shapes of operand have a value the builder can see without running anything, and
+the builders use it instead of naming the operand:
+
+* **an abstraction applied to an argument** — `Term.ap (Term.lam body) a` is
+  `let x = a; body` (`Term.bind`), with no closure built and no call made.  This is the
+  shape a translated instance method or local function takes once it is applied, so it is
+  the redex that shrinks translated terms the most;
+* **a dispatch on a boolean literal** — `if true then t else e` is `t`;
+* **a dispatch on a natural-number literal** — `match 0 with …` is its zero branch, and
+  `match m + 1 with …` binds the literal `m` in the successor branch.
+
+The language is pure and total, so each of these has the value of the term it replaces
+(`LeanScript.BuildEvalFacts`). -/
+
+/-- A function type determines its domain and its codomain. -/
+theorem TyWf.fn_inj {σ₁ τ₁ σ τ : TyWf} (h : TyWf.fn σ₁ τ₁ = TyWf.fn σ τ) : σ₁ = σ ∧ τ₁ = τ := by
+  have h' := congrArg TyWf.toTy h
+  simp only [TyWf.toTy_fn] at h'
+  injection h' with h1 h2
+  exact ⟨TyWf.ext h1, TyWf.ext h2⟩
+
+/-- The body of the step `c`, if it is an abstraction, at the domain and codomain the
+    equation `h` names. -/
+def Comp.lamBody? {Γ : Ctx} : {ρ : TyWf} → Comp Sg Γ ρ → {σ τ : TyWf} → ρ = TyWf.fn σ τ →
+    Option (Term Sg (σ :: Γ) τ)
+  | _, .lam body, _, _, h => some (cast (by obtain ⟨rfl, rfl⟩ := TyWf.fn_inj h; rfl) body)
+  | _, _, _, _, _ => none
+
+/-- The body of the term, if it is an abstraction: `let f = fun x => body; ret f`. -/
+def Term.lamBody? {Γ : Ctx} {σ τ : TyWf} : Term Sg Γ (TyWf.fn σ τ) → Option (Term Sg (σ :: Γ) τ)
+  | .letE c (.ret (.var .head)) => c.lamBody? rfl
+  | _ => none
+
+/-- The value of the step `c`, if it is a boolean literal. -/
+def Comp.boolLit? {Γ : Ctx} : {ρ : TyWf} → Comp Sg Γ ρ → Option Bool
+  | _, .bool_mk b => some b
+  | _, _ => none
+
+/-- The value of the term, if it is a boolean literal. -/
+def Term.boolLit? {Γ : Ctx} {ρ : TyWf} : Term Sg Γ ρ → Option Bool
+  | .letE c (.ret (.var .head)) => c.boolLit?
+  | _ => none
+
+/-- The value of the step `c`, if it is a natural-number literal. -/
+def Comp.natLit? {Γ : Ctx} : {ρ : TyWf} → Comp Sg Γ ρ → Option Nat
+  | _, .nat_mk n => some n
+  | _, _ => none
+
+/-- The value of the term, if it is a natural-number literal. -/
+def Term.natLit? {Γ : Ctx} {ρ : TyWf} : Term Sg Γ ρ → Option Nat
+  | .letE c (.ret (.var .head)) => c.natLit?
+  | _ => none
+
 /-! ## Lists of operands, in direct style -/
 
 /-- The elements of an array, in direct style: any number of terms, all of one type. -/
@@ -451,9 +506,13 @@ abbrev Term.float32Model_mk {Γ : Ctx} (m : Float32.Model) : Term Sg Γ (.prim .
 abbrev Term.lam {Γ : Ctx} {σ τ : TyWf} (body : Term Sg (σ :: Γ) τ) : Term Sg Γ (σ ⇒ τ) :=
   .ofComp (.lam body)
 
-/-- `f a`, for any terms `f` and `a`: both are named, `f` first — unless `f` is a closed
-    step (a declaration, typically), which is named last. -/
+/-- `f a`, for any terms `f` and `a`.  If `f` is an abstraction `fun x => body`, this is
+    `let x = a; body` (a β-reduction: no closure is built).  Otherwise both are named, `f`
+    first — unless `f` is a closed step (a declaration, typically), which is named last. -/
 def Term.ap {Γ : Ctx} {σ τ : TyWf} (f : Term Sg Γ (σ ⇒ τ)) (a : Term Sg Γ σ) : Term Sg Γ τ :=
+  match f.lamBody? with
+  | some body => a.bind body
+  | none =>
   match f.closedStep? with
   | some c =>
       a.bindAtom fun _ aa =>
@@ -477,17 +536,25 @@ def Term.externCallChecked' {Γ : Ctx} {σs : List TyWf} {τ : TyWf} (args : Spi
     (call : TyWf.DenList σs → Option (Extern τ)) (fallback : Term Sg Γ τ) : Term Sg Γ τ :=
   args.bindArgs Ren.id fun ρ as => (.externCallChecked as call .ret (fallback.rename ρ))
 
-/-- `if c then t else e`. -/
+/-- `if c then t else e`; on a literal condition, the branch it selects. -/
 def Term.bool_casesOn' {Γ : Ctx} {τ : TyWf} (c : Term Sg Γ (.prim .bool))
     (t e : Term Sg Γ τ) : Term Sg Γ τ :=
-  c.bindAtomOr (fun a => (.bool_casesOn a t e))
-    fun ρ a => (.bool_casesOn a (t.rename ρ) (e.rename ρ))
+  match c.boolLit? with
+  | some true => t
+  | some false => e
+  | none =>
+      c.bindAtomOr (fun a => (.bool_casesOn a t e))
+        fun ρ a => (.bool_casesOn a (t.rename ρ) (e.rename ρ))
 
-/-- `match n with | 0 => … | k + 1 => …`. -/
+/-- `match n with | 0 => … | k + 1 => …`; on a literal, the branch it selects. -/
 def Term.nat_casesOn' {Γ : Ctx} {τ : TyWf} (n : Term Sg Γ (.prim .nat)) (z : Term Sg Γ τ)
     (s : Term Sg (TyWf.prim .nat :: Γ) τ) : Term Sg Γ τ :=
-  n.bindAtomOr (fun a => (.nat_casesOn a z s))
-    fun ρ a => (.nat_casesOn a (z.rename ρ) (s.rename (Ren.lift ρ)))
+  match n.natLit? with
+  | some 0 => z
+  | some (m + 1) => .letE (.nat_mk m) s
+  | none =>
+      n.bindAtomOr (fun a => (.nat_casesOn a z s))
+        fun ρ a => (.nat_casesOn a (z.rename ρ) (s.rename (Ren.lift ρ)))
 
 /-- `Nat.rec` that descends `k + 1` steps. -/
 def Term.nat_rec' {Γ : Ctx} {τ : TyWf} (k : Nat := 0) (n : Term Sg Γ (.prim .nat))

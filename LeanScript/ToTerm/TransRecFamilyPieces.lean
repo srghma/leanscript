@@ -425,28 +425,6 @@ def mkFamMemberAtE (info : RecFamInfo) (i : Nat) : MetaM Expr := do
       #[info.nE, mkNatLit (i - 1 - j), ms[j]!, ms[i]!, ← tail (j + 1), acc]
   return acc
 
-/-- The index lists of the branches of a dispatch on this schema of `TyWfIn sc`, one per
-    constructor, in order. -/
-partial def famCtorIndices (sc : Nat) (l : Expr) : MetaM (Array Expr) := do
-  let ι := tyWfInE sc
-  let toListE (ne : Expr) : Expr :=
-    mkApp2 (mkConst ``NonEmpty.ListCorrectByConstruction.NonEmptyList.toList [Level.zero])
-      ι ne
-  let nilE := mkApp (mkConst ``List.nil [Level.zero]) ι
-  let rec cps (cp : Expr) : MetaM (Array Expr) := do
-    match (← whnf cp).getAppFnArgs with
-    | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
-        return #[toListE fields] ++ (← listOfExpr rest).toArray
-    | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
-        return #[nilE] ++ (← cps rest)
-    | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
-  match (← whnf l).getAppFnArgs with
-  | (``LeanScript.LeanTaggedUnionSchema.payloadFirst, #[_, fields, next, rest]) =>
-      return #[toListE fields, next] ++ (← listOfExpr rest).toArray
-  | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
-      return #[nilE] ++ (← cps rest)
-  | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
-
 /-- The branches of a fold over the member schema `l` (of a `ctors` member), in its
     shape: `pre` are the implicit arguments every family of the case tree shares
     (signature, `n`, members, binders, context, answer type, depth). -/

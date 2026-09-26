@@ -238,7 +238,7 @@ def maxRecFamilyRecDepth : MetaM Nat :=
 def famMemberCtorIndices (sc : Nat) (schema : Expr) : MetaM (Array Expr) := do
   let ι := tyWfInE sc
   match (← whnf schema).getAppFnArgs with
-  | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) => famCtorIndices sc l
+  | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) => schemaCtorIndices sc l
   | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
       return #[mkApp2 (mkConst ``LeanScript.LeanRecordSchema.toList) ι fs]
   | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
