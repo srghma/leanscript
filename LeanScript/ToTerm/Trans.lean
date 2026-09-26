@@ -239,7 +239,9 @@ partial def transForInList? (c : TCtx) (ρ inst coll init body : Expr) (withProo
     `0`) and the state before the iteration (index `1`), and answers with the state
     after it.
 
-    The range must start at `0` and step by `1`.  A body that can leave the loop
+    Any other range `[start:stop:step]` is first rewritten as the loop over `[:size]`,
+    `size = (stop - start + step - 1) / step`, whose body reads the index
+    `start + j * step` (`LeanScript.ToTerm.rangeForInReindex`).  A body that can leave the loop
     (`break`, or `return` out of it) makes the state of the fold a `ForInStep β`, the
     step after each iteration: once it is `done` the remaining iterations keep it
     (`LeanScript.ToTerm.rangeForInBreakAsNatRec`). -/
@@ -247,14 +249,15 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
   unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
   let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
     | throwError "`#leanscript_to_term`: the range of this `for` is not written out"
-  let some start ← evalNat (← whnf startE) | throwError
-    "`#leanscript_to_term`: the range of this `for` does not start at a known number"
-  let some step ← evalNat (← whnf stepE) | throwError
-    "`#leanscript_to_term`: the range of this `for` does not step by a known number"
-  unless start == 0 && step == 1 do
-    throwError "`#leanscript_to_term`: a `for` over a range is the fold of its bound, so \
-      the range has to start at `0` and step by `1`; this one starts at {start} and \
-      steps by {step}"
+  -- a start or step that is a known number is written as that literal
+  let start ← evalNat (← whnf startE)
+  let step ← evalNat (← whnf stepE)
+  let startE := match start with | some k => mkNatLit k | none => startE
+  let stepE := match step with | some k => mkNatLit k | none => stepE
+  -- any other range than `[:n]` is the loop over `[:size]` whose body reads the index
+  -- `start + j * step`
+  let (stopE, body) ← if start == some 0 && step == some 1 then pure (stopE, body)
+    else rangeForInReindex startE stopE stepE start step body
   let β ← inferType init
   -- a body that can leave the loop: the recursion whose value is the step, as a Lean
   -- expression, translated as any other `Nat.rec`

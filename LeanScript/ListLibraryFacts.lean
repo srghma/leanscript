@@ -31,7 +31,9 @@ each replacement is an equation of Lean's logic:
 * such a loop whose body can `break` (or `return`) folds the step `ForInStep β` instead
   of the state, and reads the state of the last step (`forIn_id_eq_foldl_step`,
   `forIn'_id_eq_foldl_attach_step`, `forIn'_id_eq_foldl_step`, and for `for i in [:n]`,
-  `forIn_range_id_eq_natRec_step`).
+  `forIn_range_id_eq_natRec_step`);
+* `for i in [start:stop:step]` is the loop over `[:size]` whose body reads the index
+  `start + j * step` (`forIn_range_step_eq`).
 -/
 
 namespace LeanScript.ListLibrary
@@ -289,6 +291,32 @@ theorem forIn_range_id_eq_natRec_step {β : Type v} (n : Nat) (init : β)
   induction n with
   | zero => rfl
   | succ k ih => rw [List.range_succ, List.foldl_append, ih]; rfl
+
+/-- `List.range' s n step` is the list of the `s + j * step` for `j < n`. -/
+theorem range'_eq_map_range_step (s n step : Nat) :
+    List.range' s n step = (List.range n).map (fun j => s + j * step) := by
+  induction n generalizing s with
+  | zero => rfl
+  | succ k ih =>
+    rw [List.range_succ_eq_map, List.range', ih, List.map_cons, List.map_map]
+    simp only [Nat.zero_mul, Nat.add_zero, List.cons.injEq, true_and]
+    apply List.map_congr_left; intro j _; simp only [Function.comp, Nat.succ_mul]; omega
+
+/-- `for i in [start:stop:step]` in `Id` is the loop over `[:size]`, with
+    `size = (stop - start + step - 1) / step` the number of its indices, whose body reads
+    the index `start + j * step`.  This is how a range other than `[:n]` is translated. -/
+theorem forIn_range_step_eq {β : Type v} (start stop step : Nat) (hs : 0 < step) (init : β)
+    (f : Nat → β → Id (ForInStep β)) :
+    forIn (m := Id)
+        ({ start := start, stop := stop, step := step, step_pos := hs } : Std.Legacy.Range)
+        init f =
+      forIn (m := Id) [:(stop - start + step - 1) / step] init
+        (fun j s => f (start + j * step) s) := by
+  rw [Std.Legacy.Range.forIn_eq_forIn_range', Std.Legacy.Range.forIn_eq_forIn_range']
+  simp only [Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one]
+  generalize (stop - start + step - 1) / step = n
+  rw [range'_eq_map_range_step, range'_eq_map_range_step, List.forIn_map, List.forIn_map]
+  simp
 
 end LeanScript.ListLibrary
 

@@ -191,4 +191,31 @@ def rangeForInBreakAsNatRec (β stop init i s next : Expr) : MetaM Expr := do
   let r := mkApp4 (mkConst ``Nat.rec [← getLevel stepTy]) motive init' branch stop
   mkForInStepState β r
 
+/-- `for i in [start:stop:step] do body` as a loop over `[:size]`: its iterations are
+    the indices `start + j * step` for `j < size`, with
+    `size = (stop - start + step - 1) / step` (`Std.Legacy.Range.size`).  Answers the
+    bound `size` and the body `fun j => body (start + j * step)`, both Lean expressions;
+    the rewriting is `LeanScript.ListLibrary.forIn_range_step_eq`.  A start known to be
+    `0` and a step known to be `1` are left out of both (`start`, `step` are the values
+    when known). -/
+def rangeForInReindex (startE stopE stepE : Expr) (start step : Option Nat) (body : Expr) :
+    MetaM (Expr × Expr) := do
+  let nat := mkConst ``Nat
+  let add (a b : Expr) := mkAppM ``HAdd.hAdd #[a, b]
+  let sub (a b : Expr) := mkAppM ``HSub.hSub #[a, b]
+  let startZero := start == some 0
+  let stepOne := step == some 1
+  -- `stop - start + step - 1`, written without the parts that cancel
+  let span ← if startZero then pure stopE else sub stopE startE
+  let size ← if stepOne then pure span else do
+    let num ← match step with
+      | some k => add span (mkNatLit (k - 1))
+      | none => do sub (← add span stepE) (mkNatLit 1)
+    mkAppM ``HDiv.hDiv #[num, stepE]
+  let body' ← withLocalDeclD `j nat fun j => do
+    let scaled ← if stepOne then pure j else mkAppM ``HMul.hMul #[j, stepE]
+    let idx ← if startZero then pure scaled else add startE scaled
+    mkLambdaFVars #[j] (mkApp body idx).headBeta
+  return (size, body')
+
 end LeanScript.ToTerm
