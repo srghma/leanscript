@@ -17,8 +17,9 @@ through arrows, type arguments, and wrappers of one value whose other fields are
 
 * `Chunk` is a record of a `Nat` and a function `Nat → Nat`.
 * `Tele.cons` has two `Nat` fields and the recursive field: `Tele` is a declared datatype.
-* `WT α β` (Lean's W-type) is read, but no instance of it has a type: the empty `β a` that
-  ends a Lean W-type is erased to a type with values, so after erasure it has no finite value.
+* `WT α β` (Lean's W-type) is read.  `WT Nat Fin` has a type: its field `Fin a → WT Nat Fin`
+  is on the recursive cycle, so it is read as `Nat → Option (WT Nat Fin)` (`finOptArrow`), and
+  `a = 0` is a leaf.  `WT Nat (fun _ => Nat)` has no value, in Lean or in the language.
 
 Types of no, one or two values stay refused (`Fin 0`, `Fin 1`, `Fin 2`, a `Unit` field
 behind a dependency, …).
@@ -112,15 +113,18 @@ example : (#leanscript_get_ty V : Ty []) =
 /-- A numeral bound of three or more is `nat`. -/
 example : (#leanscript_get_ty (Fin 3) : Ty []) = .nat := rfl
 
+/-! ## `WT Nat Fin`: `Fin`-indexed children on a recursive cycle -/
+
+/- `WT Nat Fin` (`sup (a : Nat) (f : Fin a → WT Nat Fin)`) is the rose tree of `Fin`-indexed
+    children: the field `Fin a → WT Nat Fin` is on the recursive cycle, so it is read as
+    `Nat → Option (WT Nat Fin)` (`none` from `a` on), and `a = 0` is a leaf. -/
+leanscript_signature OkW₁ where
+  w := WT Nat Fin
+
+example : ∃ r, OkW₁.w = .data r := ⟨_, rfl⟩
+
 /-! ## Refusals -/
 
-/--
-error: LeanScript: these recursive types have no finite value (no grounding order): [WT Nat Fin]
-(an `Array` guards a recursive field, a function field `A → X` does not: every type of the language has values)
--/
-#guard_msgs in
-leanscript_signature BadW₁ where
-  w := WT Nat Fin
 
 -- A generic `WT α β`: `β` is a family of types, not a type, so it must be given.
 /--

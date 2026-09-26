@@ -21,8 +21,9 @@ namespace Unrep
 
 /-! ## 1. Dependent fields: a later field's type mentions an earlier field's value -/
 
-/-- `(n : Nat) × (Fin n → Nat)` spelled as a structure.  The special case where the dependent
-    field is `Fin n → T` is covered by `Ty.finFn`; the general case is not. -/
+/-- `(n : Nat) × (Fin n → Nat)` spelled as a structure: read as `Nat × (Nat → Nat)` (and as
+    `Nat × (Nat → Option T)` when `T` is on a recursive cycle); the general case of a
+    dependent field is not supported. -/
 structure Chunk where
   n : Nat
   data : Fin n → Nat
@@ -65,7 +66,10 @@ inductive MyList (α : Type) where
 inductive Tree where
   | node : Nat → MyList Tree → Tree
 
-/-! ## 5. Structure inside a container element (`WTyToy`: direct; `NomTyToy`: extra member) -/
+/-! ## 5. Structure inside a container element (`WTyToy`: direct; `NomTyToy`: extra member)
+
+(Supported with extra members: `T5`'s block is `T5`, `Option T5`, `Option T5 × Nat`, and the
+array holds the third; see `TermTests/RoseVariantsTest.lean`.) -/
 
 inductive T5 where
   | leaf : Nat → T5
@@ -85,7 +89,11 @@ structure Pos where
   n : Nat
   pos : n > 0
 
-/-! ## 7. A polymorphic type (a meta-level function `Ty 0 0 → Ty 0 0`, not one `Ty`) -/
+/-! ## 7. A polymorphic type (a meta-level function `Ty 0 0 → Ty 0 0`, not one `Ty`)
+
+(Each instance is its own datatype: `RoseTree Nat` with `List`, `Array` or `Fin m →` children
+are three different datatypes — a linked-list member, a `Ty.array`, and a record of a `nat`
+and a function to `Option`; see `TermTests/RoseVariantsTest.lean`.) -/
 
 inductive RoseTree (α : Type u) where
   | node : α → List (RoseTree α) → RoseTree α

@@ -65,12 +65,30 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   A type computed from a value (`cond b Nat String`) is refused. The erased type has more
   values than the Lean one (every `Nat`, not only those below `n`); nothing relates the two.
   (`TermTests/DependentFieldTest.lean`.)
-- **W-types (`WT α β`, `sup (a : α) (f : β a → WT α β)`)** are read, but no instance has a
-  type: a Lean W-type gets its finite values from an *empty* `β a` (`Fin 0`), and after
-  erasure every function domain has values, so the erased type (`μX. Nat × (Nat → X)` for
-  `WT Nat Fin`) has no grounding order and is refused. A generic `WT α β` is refused too
-  (`β` is not a type). Reading `Fin n → X` as `Array X` would make `WT Nat Fin` a rose tree;
-  this was not done, because `Chunk.data : Fin n → Nat` is to be a function.
+- **`Fin m → X` on a recursive cycle is `Nat → Option X`, not typed.** When the bound `m` is
+  an earlier field and `X` is on a recursive cycle through the constructor's type
+  (`RoseF.node : (m : Nat) → (Fin m → RoseF) → RoseF`, `WT Nat Fin`, the `Σ` form
+  `(m : Nat) × (Fin m → RoseS)`), the field is read as `Nat → Option X`
+  (`Gen/Read.lean`, `finOptArrow`): the plain erasure `Nat → X` would have no base value.
+  Caveats:
+  - the translated type has more values than the Lean one: a function that is `none` below
+    `m` or `some` from `m` on has no Lean counterpart;
+  - the rule is syntactic: a bound other than a field (`Fin (m + 1)`, `Fin (2 * m)`) keeps the
+    plain erasure (so `Loop.node : (m : Nat) → (Fin (m + 1) → Loop) → Loop`, empty in Lean, is
+    refused), and "on a recursive cycle" is decided on the constants of constructor types, so
+    a codomain that merely mentions a type whose constructors mention the constructor's own
+    type also gets the `Option`;
+  - a proof field that forbids `m = 0` (`h : m > 0`) is erased, so such a type (empty in Lean)
+    gets values in the language, as with every subtype;
+  - in `#leanscript_to_term`, a child `f i` read on its own (not only through the answer of a
+    recursive call) is taken apart with a branch for the unreachable `none`, which needs an
+    `Inhabited` instance of `X` (refused otherwise); a recursive call on `f i` needs one of
+    its answer type; only `Fin.foldl` iterates over the children (`Fin.foldr`, `List.finRange`,
+    … are not translated);
+  - `RoseF.size` and `RoseF.fan` are proved correct for every input
+    (`TermTests/RoseVariantsProofs.lean`); other functions are only checked on examples.
+- **Generic W-types** (`WT α β` with `β` not given) are refused (`β` is not a type);
+  `WT Nat (fun _ => Nat)` has no value and is refused.
 - **Proofs are erased, so a subtype is its carrier**: `Fin k` for a numeral `k ≥ 3` and
   `Fin n` for a non-numeral `n` are `nat`; `Fin 0`, `Fin 1`, `Fin 2` are refused, but a
   structure or subtype whose proof leaves it with 0, 1 or 2 values (`{x : Nat // x < 1}`) is

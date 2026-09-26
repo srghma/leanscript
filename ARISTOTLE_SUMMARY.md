@@ -1,3 +1,52 @@
+# Summary of changes for run 72248a96-8523-4617-afed-54bdfc64d227
+`T5` and all three rose trees (with `List`, `Array` and `Fin m →` children) now translate, and each rose tree is a different datatype. The full `lake build` passes (73 jobs) with no errors, warnings or `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed.
+
+**What happens to each type**
+
+- **`T5 := node (Array (Option T5 × Nat))`**: the type already translated before this change; only its values did not. As you expected, it is handled like `RoseA := node (Array RoseA)`. Its block has three members:
+  - `T5` itself, a wrapper of an array (the empty array is its base case);
+  - `Option T5`, generated (base `none`);
+  - `Option T5 × Nat`, generated, a record of two fields. The array holds values of this member.
+  - Before, a value such as `#[(some t, 4), (none, 5)]` could not be translated. Array literals whose elements are not simple values now become `Term.array_mk`.
+- **`node : List Rose → Rose`** is a linked list, as you asked: a declared `List Rose := nil | cons Rose (List Rose)`, then `Rose`. This already worked.
+- **`node : Array Rose → Rose`** uses `Ty.array`. This also already worked.
+- **`node : (m : Nat) → (Fin m → Rose) → Rose`** was refused before ("no finite value"). It is now a record of two fields, a `.nat` and a function from `.nat`.
+  - The function's result can't be `Rose` itself. Every value of `Nat → Rose` needs a `Rose` to exist already, so that type would have no finite value.
+  - So the answer to your "`...?`" is `Option Rose`: `.record .nat (.fn .nat (Option Rose))`. `Option Rose` is a generated member of the block. Children are `some` below `m` and `none` from `m` on, and `m = 0` is a leaf.
+  - `Ty` itself is unchanged: there is no new type former.
+- **The same holds for the other forms:** the versions with a label (`RoseTreeL Nat`, `RoseTreeA Nat`, `RoseTreeF Nat`), the `Σ` form `(m : Nat) × (Fin m → RoseS)`, and Lean's W-type `WT Nat Fin` (which was refused before).
+- **When `Option` is added:** only when the bound `m` is an earlier field and the result type is on a recursive cycle through the constructor's own type. `Chunk.data : Fin n → Nat` stays `Nat → Nat`.
+
+**Your NOTE still holds**
+- `RoseTreeL Unit`, `RoseTreeA Unit`, `RoseTreeF Empty`, and children of type `Fin m → Unit` are all refused.
+- Two points are still only `.bool`.
+- `Loop.node : (m : Nat) → (Fin (m + 1) → Loop) → Loop` is empty in Lean and is still refused: a bound like `m + 1` is never 0, so it gets no `Option`.
+
+**What `#leanscript_to_term` now handles for the `Fin` form**
+- Building values: `fun _ => …` on `Fin 2`, and `Fin.elim0`.
+- `Fin.foldl`, which becomes `nat_rec`.
+- Recursive calls on `(f i).size`.
+- Reading a child `f ⟨0, h⟩` directly. The `none` case can't happen, but the language still needs a value for it, so this uses the type's `Inhabited` instance. Without one it is refused with an explanation.
+- All of this is checked on sample values in `TermTests/RoseVariantsTest.lean`.
+
+**Proved for every input** (`TermTests/RoseVariantsProofs.lean`)
+- `roseFEnc_injective`: reading `Fin m → RoseF` as `Nat → Option RoseF` loses nothing.
+- `roseFSizeT_correct`: the translated `RoseF.size` returns `r.size` on every tree.
+- `roseFFanT_correct`: the translated `RoseF.fan n` builds the right value for every `n`.
+
+**Caveats** (added to `NOT_IMPLEMENTED.md`)
+- The translated type has more values than the Lean one: a function that is `none` below `m`, or `some` from `m` on, matches no Lean tree.
+- The check for "on a recursive cycle" looks at which types are named in the constructor types, so it can add an `Option` where it isn't strictly needed.
+- A proof field such as `h : m > 0` is dropped, so a type that is empty because of it gets values in the language.
+- Only `Fin.foldl` goes over the children; `Fin.foldr` and `List.finRange` are not translated.
+
+**Files**
+- `LeanScript/Gen/Read.lean`: the rule that reads `Fin m → X` as `Nat → Option X`.
+- `LeanScript/ToTerm.lean`: the translations above.
+- New: `TermTests/RoseVariantsTest.lean` and `TermTests/RoseVariantsProofs.lean`.
+- `TermTests/DependentFieldTest.lean`: `WT Nat Fin` is now accepted.
+- Docs: `README.md`, `NOT_IMPLEMENTED.md`, `proposals/UnrepresentableLeanTypes.lean`.
+
 # Summary of changes for run 8f36bf68-6080-4aa6-92a1-3e18fa94de87
 `QT` and `Pos` now both translate. The full `lake build` passes (71 jobs) with no errors, warnings or `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed.
 

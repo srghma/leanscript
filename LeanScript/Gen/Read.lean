@@ -472,6 +472,45 @@ def classify (e : Expr) : MetaM Head := do
 def enumShift (c : Name) : Int :=
   if c == ``Ordering then -1 else 0
 
+/-- Does the type `e` mention, directly or through the constructors of the inductive types it
+    mentions (transitively, by constant), one of the inductive types `targets`?  Used to tell
+    whether a field `Fin m → T` of a constructor of `targets` is on a recursive cycle. -/
+partial def reachesInductive (targets : Array Name) (e : Expr) : MetaM Bool := do
+  let env ← getEnv
+  let isInd (c : Name) : Bool := (env.find? c).any (·.isInductive)
+  let mut todo : Array Name := e.getUsedConstants.filter isInd
+  let mut seen : NameSet := {}
+  while h : 0 < todo.size do
+    let c := todo[todo.size - 1]
+    todo := todo.pop
+    if targets.contains c then return true
+    if seen.contains c then continue
+    seen := seen.insert c
+    let some (.inductInfo info) := env.find? c | continue
+    for ctor in info.ctors do
+      let some cinfo := env.find? ctor | continue
+      for d in cinfo.type.getUsedConstants do
+        if isInd d && !seen.contains d then todo := todo.push d
+  return false
+
+/-- Is the field arrow `a → b` of the constructor `ctor` (whose fields are the locals `deps`)
+    read as `Nat → Option b`?  That is the case when its domain is `Fin m` for a bound `m`
+    that is an earlier field (so it may be `0`; a bound such as `m + 1` is never `0`, and
+    `Fin (m + 1) → Loop` keeps the plain erasure, under which a recursive type whose every node
+    has a child has no value, as in Lean), and its codomain is on a recursive
+    cycle through the constructor's own type (`node : (m : Nat) → (Fin m → Rose) → Rose`).
+    Erased to `Nat → Rose`, such a field would have no base value (every value of `Nat → Rose`
+    needs a `Rose` already), so the type would have no finite value in the language; with
+    `Option`, the children are `some` below `m` and `none` from `m` on, and `m = 0` is a
+    value (`fun _ => none`).  A codomain that is not on such a cycle keeps the plain erasure
+    (`Chunk.data : Fin n → Nat` is `Nat → Nat`). -/
+def finOptArrow (ctor : Name) (deps : Array Expr) (a b : Expr) : MetaM Bool := do
+  let a ← whnf a
+  unless a.isAppOfArity ``Fin 1 && deps.contains a.appArg! do return false
+  let some (.ctorInfo cinfo) := (← getEnv).find? ctor | return false
+  let some (.inductInfo info) := (← getEnv).find? cinfo.induct | return false
+  reachesInductive info.all.toArray b
+
 mutual
 
 /-- The erasure of a field type `t` that depends on the locals `deps` (the earlier fields of
@@ -496,9 +535,12 @@ partial def eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) : MetaM Expr 
   match t with
   | .forallE n a b bi =>
     let a' ← eraseDeps ctor deps a
-    if !b.hasLooseBVars then return .forallE n a' (← eraseDeps ctor deps b) bi
+    -- `Fin m → T` on a recursive cycle is `Nat → Option T` (`finOptArrow`)
+    let opt ← finOptArrow ctor deps a b
+    let wrap (b' : Expr) : MetaM Expr := if opt then mkAppM ``Option #[b'] else pure b'
+    if !b.hasLooseBVars then return .forallE n a' (← wrap (← eraseDeps ctor deps b)) bi
     withLocalDecl n bi a fun x => do
-      let b' ← eraseDeps ctor (deps.push x) (b.instantiate1 x)
+      let b' ← wrap (← eraseDeps ctor (deps.push x) (b.instantiate1 x))
       return .forallE n a' (b'.abstract #[x]) bi
   | _ =>
     unless mentions t do return t
