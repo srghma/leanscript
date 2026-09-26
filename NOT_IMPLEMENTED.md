@@ -75,6 +75,22 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   `Fin n` for a non-numeral `n` are `nat`; `Fin 0`, `Fin 1`, `Fin 2` are refused, but a
   structure or subtype whose proof leaves it with 0, 1 or 2 values (`{x : Nat // x < 1}`) is
   not detected and becomes its carrier.
+- **Quotients are read as their carrier, not typed.** `Quot r` (and `Quotient s`) is the type
+  of its representatives (`Gen/Read.lean`, `quotCarrier?`): `QT.node : Quot (· % 2 = · % 2) →
+  QT → QT` has a `nat` field. In `#leanscript_to_term`, `Quot.mk r a` is `a`, `Quot.lift f h q`
+  (and `Quot.liftOn`, `Quot.rec`, `Quot.recOn`, `Quot.hrecOn`, `Quot.recOnSubsingleton`, the
+  `Quotient` versions, `Quotient.lift₂`) is `f` on the representative, and an extern taking a
+  quotient (or an `Array` of them) is given `Quot.mk r a`. `TermTests/QuotientProofs.lean`
+  proves that every `QT` has a value in the language and that the translated `QT.odds` is
+  correct on every representative. Caveats (`TermTests/QuotientTest.lean`):
+  - the erased type has more values than the quotient (parity classes of `Nat` are `Nat`), and
+    a quotient that leaves 0, 1 or 2 classes is not detected (`Quot (fun _ _ : Bool => True)`,
+    one class, is `bool`); a carrier of no, one or two values is refused / `bool` as usual;
+  - a call *returning* a quotient that does not compute to `Quot.mk` (`pick n` for an opaque
+    `pick`) is refused: the language would need a representative (`Quot.out` is not
+    computable);
+  - an extern given an `Array` of quotients receives `Array.map (Quot.mk r) xs`, which the
+    kernel does not reduce by `rfl`.
 - **Types of no or one value** (`Empty`, `Unit`, `PUnit`, a structure with no field, …) and
   **types of two values other than `Bool`** (`Option Unit`, `BitVec 1`, `String.Pos` of a
   one-character string, `Thunk Bool`, …) have no type in the language, by design: they are

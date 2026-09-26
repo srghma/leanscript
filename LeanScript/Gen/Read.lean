@@ -23,6 +23,8 @@ family is read with its indices erased (`normType`, `erasedFields`): `Vec α n` 
 linked list whose `cons` has no length field.  A family indexed by a *type* that recurses at
 other indices (`Nest.cons : α → Nest (α × α) → Nest α`) is read at one index through a
 generated element type (`canonIndex`, `ensureElem`): `Nest τ` is a list of `Nest.Elem B`.
+A quotient `Quot r` (`Quotient s`) is read as its carrier (`quotCarrier?`): a value of it is
+one of its representatives.
 
 A *type variable* is a local `α : Type`: `#leanscript_get_ctor Option.some` reads `Option α`
 with `α` a local, and `α` becomes an argument `(α : Ty ks)` of the generated function.
@@ -347,6 +349,15 @@ def checkClosedIndices (e : Expr) (info : InductiveVal) (us : List Level)
       `Bool`"
   | _ => return
 
+/-- The carrier `α` of a quotient type `@Quot α r` (in head normal form: `Quotient s` is
+    `Quot Setoid.r`).  The language has no quotients: a quotient is read as its carrier, a
+    value of it as one of its representatives.  This is faithful for the functions Lean can
+    write on a quotient (`Quot.lift f h q` is `f` of any representative of `q`, and `h` says
+    that the result does not depend on which), but the carrier may have more values than the
+    quotient (`Quot (· % 2 = · % 2)` on `Nat` has two values, it is read as `Nat`). -/
+def quotCarrier? (e : Expr) : Option Expr :=
+  if e.isAppOfArity ``Quot 2 then some e.appFn!.appArg! else none
+
 /-- Normalise a type: head normal form, type arguments normalised.  The indices of an
     inductive family are erased: `Vec α n` is normalised to `Vec α` (the datatype of vectors
     of every length), after a check that at closed indices it has at least three values
@@ -362,6 +373,9 @@ partial def normType (e : Expr) (check : Bool := true) : MetaM Expr := do
     return .forallE n (← normType a check) (← normType b check) bi
   | _ =>
     let fn := e.getAppFn
+    -- a quotient is read as its carrier: `Quot r` (and `Quotient s`, which unfolds to it) is
+    -- the type of the representatives, and a value is a representative (`quotCarrier?`)
+    if let some α := quotCarrier? e then return ← normType α check
     if fn.isConst then
       if let some (info, us, params, indices) ← familyApp? e then
         if ← typeIndexed info then

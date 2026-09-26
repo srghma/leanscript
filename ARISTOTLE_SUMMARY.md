@@ -1,3 +1,38 @@
+# Summary of changes for run 8f36bf68-6080-4aa6-92a1-3e18fa94de87
+`QT` and `Pos` now both translate. The full `lake build` passes (71 jobs) with no errors, warnings or `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed.
+
+**What happens to them, before and after**
+
+- **`Pos`** already worked before this change. The proof field `pos` is dropped, so `Pos` becomes `.nat`, and functions like `p.n - 1` translated.
+  - One bug was fixed along the way. A closed `Pos` value such as `⟨1, by decide⟩` used to produce an ill-typed literal. It now becomes the number `1`, and `fun n => ⟨n + 1, _⟩` works too.
+- **`QT`** was refused before, with "`Quot` is not an inductive type".
+  - Now, as you suggested, a quotient `Quot r` (and `Quotient s`, which unfolds to it) is read as its carrier. The implementation is otherwise unchanged. `QT` becomes the declared datatype `leaf | node nat QT`.
+  - In `#leanscript_to_term`, `Quot.mk r a` (also `Quotient.mk`, `⟦a⟧`) becomes just `a`.
+  - `Quot.lift f h q` becomes `f` applied to the representative. The same goes for `Quot.liftOn`, `Quot.rec`, `recOn`, `hrecOn`, `recOnSubsingleton`, `Quotient.lift`, `liftOn`, `lift₂` and `liftOn₂`. If `q` is not written as a `Quot.mk`, its value is first bound with a `letE`.
+  - A Lean function called from the translation that takes a quotient, or an array of them, is handed the class `Quot.mk r a` of the representative. So it computes what Lean computes: `decide (p = q)` on parity classes gives `true` for 3 and 5.
+  - A call that *returns* a quotient without reducing to `Quot.mk` is refused. The language would need to pick a representative, and `Quot.out` is not computable.
+
+**Your NOTE still holds**
+- A quotient of `Unit` is refused ("one value"), because its carrier is `Unit`.
+- Two points are still only `.bool`: a quotient of `Bool` becomes `.bool`.
+- Parity classes of `Nat` have two values in Lean, but they become `.nat`, not a two-point type.
+
+**Caveats** (added to `NOT_IMPLEMENTED.md`)
+- The translated type has more values than the quotient, as with subtypes and dropped indices.
+- A quotient that leaves only 0, 1 or 2 classes is not detected: `Quot (fun _ _ : Bool => True)` has one class but becomes `.bool`.
+- When an array of quotients is passed to a Lean function, the result is built with `Array.map`, which `rfl` cannot evaluate. So that case is only checked for building, not run on sample values.
+
+**Proved for every input** (`TermTests/QuotientProofs.lean`)
+- `oddsT_correct`: the translated `QT.odds` returns `t.odds` on every value `c` with `Represents c t`, whichever representatives `c` holds. `oddsT_rep_independent` follows: the answer does not depend on the representatives chosen.
+- `exists_represents`: every `QT` has a value in the language. `q3T_represents`: the translator's output for the sample `q3` represents `q3`.
+- `predT_correct` and `succT_correct`: `Pos.pred` and `Pos.succ` are translated correctly.
+
+**Files**
+- `LeanScript/Gen/Read.lean`: `quotCarrier?`, and `normType` reading a quotient as its carrier.
+- `LeanScript/ToTerm.lean`: the translations above, and the fix for closed `Pos` values.
+- `TermTests/QuotientTest.lean`: the types, values, functions, `Quotient`, Lean calls on quotients, `Pos`, and the refusals, pinned with `#guard_msgs`.
+- Doc updates: `README.md`, `NOT_IMPLEMENTED.md`, the module headers, and §6 of `proposals/UnrepresentableLeanTypes.lean`.
+
 # Summary of changes for run 0116b720-57de-4c92-8bd7-9341c831961f
 `Nest` now translates once it is applied to a concrete type (`Nest Nat`). The type index is dropped the same way `Vec`'s length index is, using a generated element type. The full `lake build` passes (69 jobs) with no errors, warnings or `sorry`. The two new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed, and both theorems are in the Properties table as proved.
 

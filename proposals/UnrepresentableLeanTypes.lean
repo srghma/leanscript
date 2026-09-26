@@ -71,7 +71,11 @@ inductive T5 where
   | leaf : Nat → T5
   | node : Array (Option T5 × Nat) → T5
 
-/-! ## 6. Quotients and proof-carrying data -/
+/-! ## 6. Quotients and proof-carrying data
+
+Supported through erasure (`TermTests/QuotientTest.lean`): a quotient is read as its carrier
+(`QT` is `leaf | node Nat QT`, a class is given by a representative, `Quot.lift f h q` is `f`
+of the representative), and a proof field is dropped (`Pos` is `Nat`). -/
 
 inductive QT where
   | leaf

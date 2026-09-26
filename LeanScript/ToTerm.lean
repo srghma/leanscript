@@ -36,6 +36,9 @@ the `casesOn` it is compiled to.  The translation is in direct style:
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
+| a value of a quotient `Quot r` / `Quotient s` (read as its carrier): `Quot.mk r a`, `⟦a⟧` | the representative `a` |
+| `Quot.lift f h q`, `Quot.liftOn`, `Quot.rec`, `Quot.recOn`, `Quot.hrecOn`, `Quot.recOnSubsingleton`, `Quotient.lift`, `Quotient.lift₂`, … | `f` of the representative (`Term.letE` of `q` unless it is a `Quot.mk`) |
+| an extern argument of a quotient type (or an `Array` of them) | the class `Quot.mk r a` of the representative `a` is passed to the Lean function |
 | a cast along an equation (`Eq.ndrec`, `cast`, …, from the `match` of an inductive family) | the value cast |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
@@ -60,7 +63,8 @@ Everything else is refused with an error, in particular a type with one value or
 (`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a type of two values
 other than `Bool` (such a type *is* `bool`), a parameter that is a type or an instance,
 recursion through a helper, a recursive call that is not on a subvalue, a pattern on a numeral other than
-`0`/`n + 1`, and an extern whose argument or result is not a leaf type.
+`0`/`n + 1`, an extern whose argument or result is not a leaf type, and a call returning a quotient that does
+not compute to `Quot.mk` (the language would need a representative).
 -/
 
 open Lean Meta Elab Term
@@ -334,6 +338,31 @@ partial def withFields {α : Type} (ind : InductiveVal) (T major : Expr) (ctor :
     withLocalDecl nm bi d fun x => go (b.instantiate1 x) (i + 1) (xs.push x)
   go (← inferType minor) 0 #[]
 
+/-- The definitions on quotients that are unfolded to `Quot.mk`, `Quot.lift`, `Quot.rec`. -/
+def quotDefs : List Name :=
+  [``Quot.liftOn, ``Quotient.mk, ``Quotient.mk', ``Quotient.lift, ``Quotient.liftOn,
+    ``Quotient.lift₂, ``Quotient.liftOn₂, ``Quotient.rec, ``Quotient.recOn,
+    ``Quotient.hrecOn, ``Quotient.recOnSubsingleton]
+
+/-- A Lean local standing for a value of type `t` passed to an extern: its type is the one of
+    the translation's value, and the value passed to the Lean function is rebuilt from it.  A
+    quotient is read as its carrier, so a representative `y` of `Quot r` is passed as
+    `Quot.mk r y`: the extern computes on the class, as the Lean function does. -/
+partial def externLocal (t : Expr) : MetaM (Expr × (Expr → MetaM Expr)) := do
+  let t' ← whnf t
+  if let some α := quotCarrier? t' then
+    let (β, g) ← externLocal α
+    return (β, fun y => do
+      return mkApp3 (.const ``Quot.mk t'.getAppFn.constLevels!) α t'.appArg! (← g y))
+  if t'.isAppOfArity ``Array 1 then
+    let (β, g) ← externLocal t'.appArg!
+    if β == t'.appArg! then return (t, pure)
+    -- an array of values of quotients: the array of their classes
+    return (mkApp (.const ``Array t'.getAppFn.constLevels!) β, fun y => do
+      let f ← withLocalDeclD `z β fun z => do mkLambdaFVars #[z] (← g z)
+      mkAppM ``Array.map #[f, y])
+  return (t, pure)
+
 /-- `fun | ⟨0, _⟩ => x₀ | ⟨1, _⟩ => x₁ | …`: a (dependent) function on `Fin n`. -/
 def finFunStx (xs : Array Lean.Term) : MetaM Lean.Term := do
   let alts ← (List.range xs.size).toArray.mapM fun i =>
@@ -378,7 +407,12 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
     -- a closed value of a leaf type is a literal
     if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
       if let .prim p ← cirOf L T false then
-        return ← `(LeanScript.Term.lit $p $(← exprToSyntax e))
+        let d ← instantiateMVars (← Term.elabTerm (← `(LeanPrimTy.denote $p)) none)
+        if ← isDefEq T d then return ← `(LeanScript.Term.lit $p $(← exprToSyntax e))
+        -- a closed value of a type read as a leaf without being one (a wrapper `⟨1, h⟩ : Pos`,
+        -- a quotient `Quot.mk r 3`): its head normal form, whose value is the literal
+        let e' ← whnf e
+        if e' != e then return ← tr L e'
     trApp L e
 
 /-- A projection `s.i` of a structure. -/
@@ -444,6 +478,19 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
           return ← tr L b
       return ← trDecide L args[0]!
     if isCasesOnRecursor env c then return ← trCases L c args
+    -- a quotient is read as its carrier (`quotCarrier?`), a value of it as a representative:
+    -- `Quot.mk r a` is `a`, and a function on the quotient (`Quot.lift f h q`, `Quot.rec`, …)
+    -- is `f` applied to the representative `q`
+    if c == ``Quot.mk && args.size ≥ 3 then return ← tr L (mkAppN args[2]! args[3:].toArray)
+    if (c == ``Quot.lift || c == ``Quot.rec) && args.size == 5 then return ← tr L args[3]!
+    if (c == ``Quot.lift || c == ``Quot.rec) && args.size ≥ 6 then
+      return ← trQuotApp L args[3]! args[5]! args[6:].toArray
+    if (c == ``Quot.recOn || c == ``Quot.hrecOn) && args.size ≥ 5 then
+      return ← trQuotApp L args[4]! args[3]! args[6:].toArray
+    if c == ``Quot.recOnSubsingleton && args.size ≥ 6 then
+      return ← trQuotApp L args[5]! args[4]! args[6:].toArray
+    if quotDefs.contains c then
+      if let some e' ← unfoldDefinition? e then return ← tr L e'
     -- an unreachable branch (`| .nil => absurd` of `Vec.head : Vec α (n + 1) → α`): after the
     -- indices are erased it is reachable, and the language has no value to put there
     if c == ``False.elim || c == ``absurd || c == ``False.rec || c == ``Empty.elim ||
@@ -486,6 +533,20 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
     return r
   | _ => fail m!"cannot translate the application{indentExpr e}"
 
+/-- `f q` for a function `f` on the carrier of a quotient and a value `q` of the quotient
+    (`Quot.lift f h q`), then applied to `extra`.  The value of `q` is a representative: for
+    `Quot.mk r a` it is `a`, so the translation is the one of `f a`; otherwise it is bound
+    (`letE`) to a local of the carrier, to which `f` is applied. -/
+partial def trQuotApp (L : Loc) (f q : Expr) (extra : Array Expr) : TM Lean.Term := do
+  let q ← instantiateMVars q
+  if q.isAppOfArity ``Quot.mk 3 then return ← tr L (mkAppN f (#[q.appArg!] ++ extra))
+  let some α := quotCarrier? (← whnf (← inferType q))
+    | fail m!"the value{indentExpr q}\nis not a value of a quotient"
+  let tq ← tr L q
+  withLocalDeclD `a α fun y => do
+    let body ← tr (L.bind y.fvarId!) (mkAppN f (#[y] ++ extra))
+    `(LeanScript.Term.letE $tq $body)
+
 /-- The only relevant field of a fully applied constructor application, when its type has
     one constructor and that constructor one field besides proofs and instances. -/
 partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Option Expr) := do
@@ -505,15 +566,23 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
 /-- A call of a function on values of leaf types: `Term.extern`. -/
 partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :
     TM Lean.Term := do
+  -- a value of a quotient is a representative: a call that computes to `Quot.mk r a` is `a`,
+  -- any other call returning a quotient has no representative the language could compute
+  if (quotCarrier? (← whnf (← inferType e))).isSome then
+    let e' ← whnf e
+    if e'.isAppOf ``Quot.mk then return ← tr L e'
+    fail m!"the call{indentExpr e}\nreturns a value of a quotient, read as its carrier: it \
+      cannot be an extern, since the language would need a representative of the class \
+      (`Quot.out` is not computable)"
   let τ ← cirOf L (← inferType e) false
   unless τ.isLeaf do
     fail m!"the call{indentExpr e}\nreturns a value of a type that is not a leaf; it cannot \
       be an extern"
   let vs ← valueArgs L m!"`{name}`" fn args
-  let tys ← vs.mapM fun i => inferType args[i]!
+  let tys ← vs.mapM fun i => do externLocal (← inferType args[i]!)
   let g ← withLocalDecls (vs.toList.zipIdx.map fun (_, k) =>
-      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!)).toArray fun ys => do
-    let args' := vs.zipIdx.foldl (fun as (i, k) => as.set! i ys[k]!) args
+      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!.1)).toArray fun ys => do
+    let args' ← vs.zipIdx.foldlM (fun as (i, k) => do return as.set! i (← tys[k]!.2 ys[k]!)) args
     mkLambdaFVars ys (mkAppN fn args')
   externStx L name g (vs.map (args[·]!)) τ
 
@@ -524,10 +593,10 @@ partial def trDecide (L : Loc) (p : Expr) : TM Lean.Term := do
   let args := p.getAppArgs
   let .const c _ := fn | fail m!"cannot translate the condition{indentExpr p}"
   let vs ← valueArgs L m!"`{c}`" fn args
-  let tys ← vs.mapM fun i => inferType args[i]!
+  let tys ← vs.mapM fun i => do externLocal (← inferType args[i]!)
   let g ← withLocalDecls (vs.toList.zipIdx.map fun (_, k) =>
-      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!)).toArray fun ys => do
-    let args' := vs.zipIdx.foldl (fun as (i, k) => as.set! i ys[k]!) args
+      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!.1)).toArray fun ys => do
+    let args' ← vs.zipIdx.foldlM (fun as (i, k) => do return as.set! i (← tys[k]!.2 ys[k]!)) args
     let p' := mkAppN fn args'
     let inst ← try synthInstance (mkApp (mkConst ``Decidable) p')
       catch _ => fail m!"the condition{indentExpr p}\nis not decidable"
