@@ -237,7 +237,9 @@ def groundingOrder (scc : Array Nat) (fields : Std.HashMap Nat (Array (Array FIR
   if order.size < scc.size then
     let names ← scc.filter (!order.contains ·) |>.mapM fun m => do
       return m!"{(← get).nodes[m]!.ty}"
-    fail m!"these recursive types have no finite value (no grounding order): {names.toList}"
+    fail m!"these recursive types have no finite value (no grounding order): {names.toList}\n\
+      (an `Array` guards a recursive field, a function field `A → X` does not: every type of \
+      the language has values)"
   return (order, bases)
 
 /-- Split the newly discovered nodes into SCCs and declare every recursive one as a block

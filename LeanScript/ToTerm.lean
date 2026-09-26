@@ -31,6 +31,8 @@ the `casesOn` it is compiled to.  The translation is in direct style:
 | `if c then t else e`, `cond`, `dite` (the proof unused) | `Term.ite` of `decide c` |
 | a call of any other function on values of leaf types (or `decide` of such a relation) | `Term.extern`, named after the function, on the terms of its value arguments |
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
+| a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
+| a projection applied to arguments (`c.data i` for a function field) | `Term.app` |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
 | structural recursion on a `Nat` parameter | `Term.nat_rec` |
@@ -385,13 +387,38 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
       let v := info.value!.instantiateLevelParams info.levelParams fn.constLevels!
       return ← tr L (← Core.betaReduce (v.beta args))
     if let some (.ctorInfo cinfo) := env.find? c then
+      -- a wrapper of one value (`Fin.mk n v h`, `Subtype.mk v h`, `Vector.mk a h`) is erased
+      -- to that value, also when its parameters mention locals (`⟨0, h⟩ : Fin c.n`)
+      if let some a ← wrapperField? cinfo args then
+        unless (← cirOf L (← inferType e)) matches .data .. do return ← tr L a
       if !((← cirOf L (← inferType e)) matches .prim _) then
         return ← trCtor L cinfo fn args
     if let some pinfo ← getProjectionFnInfo? c then
       if !pinfo.fromClass then
         if let some e' ← unfoldDefinition? e then return ← tr L e'
     trExtern L (toString c) e fn args
+  | .proj .. =>
+    -- a projection applied to arguments (`c.data i` for a function field)
+    let mut r ← tr L fn
+    for a in args do r ← `(LeanScript.Term.app $r $(← tr L a))
+    return r
   | _ => fail m!"cannot translate the application{indentExpr e}"
+
+/-- The only relevant field of a fully applied constructor application, when its type has
+    one constructor and that constructor one field besides proofs and instances. -/
+partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Option Expr) := do
+  unless args.size == cinfo.numParams + cinfo.numFields do return none
+  let ind ← getConstInfoInduct cinfo.induct
+  unless ind.ctors.length == 1 do return none
+  let mut ty ← inferType (mkAppN (mkConst cinfo.name (← mkFreshLevelMVars
+    cinfo.levelParams.length)) args[0:cinfo.numParams].toArray)
+  let mut kept : Array Expr := #[]
+  for a in args[cinfo.numParams:] do
+    ty ← whnf ty
+    let .forallE _ d b bi := ty | return none
+    unless ← isErasedField bi d do kept := kept.push a
+    ty := b.instantiate1 a
+  return if kept.size == 1 then some kept[0]! else none
 
 /-- A call of a function on values of leaf types: `Term.extern`. -/
 partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :

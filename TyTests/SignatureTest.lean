@@ -148,6 +148,7 @@ inductive Loop where
 
 /--
 error: LeanScript: these recursive types have no finite value (no grounding order): [Loop]
+(an `Array` guards a recursive field, a function field `A → X` does not: every type of the language has values)
 -/
 #guard_msgs in
 leanscript_signature Bad₁ where

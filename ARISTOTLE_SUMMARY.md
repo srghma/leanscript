@@ -1,3 +1,37 @@
+# Summary of changes for run 0dec6181-7a75-40d9-b73b-b7fe8f045d57
+`Chunk` and `Tele` now translate the way you described. `WT` can be read, but every instance of it is still refused: once `Fin a` becomes a number, no `WT` value is ever finite (explained below). The full `lake build` passes (64 jobs) with no warnings and no `sorry`, and everything is committed.
+
+**What happens to each type now**
+- **`Chunk`** becomes a record of a `Nat` and a `Nat → Nat` (its meaning is `Nat × (Nat → Nat)`). `#leanscript_get_ctor Chunk.mk` and `#leanscript_to_term` both work on it. For example, `Chunk.first c := if h : 0 < c.n then c.data ⟨0, h⟩ else 0` translates: `⟨0, h⟩` becomes the number `0` and the proof is dropped.
+- **`Tele`** is a declared recursive type. `Tele.cons` has two `Nat` fields plus the rest; `Tele.nil` has no fields. Building values, case analysis, and translating a recursive function over `Tele` all work.
+- **`WT α β`**:
+  - The type itself is accepted, and `β a` is converted to a plain type when possible.
+  - Every instance is still refused, because it has no finite value once converted. In Lean, a `WT` value is finite only because some `β a` is empty (`Fin 0` in `WT Nat Fin`). After conversion the field is `Nat → WT`, and a function field can't end a recursion because every type in the language has values. So `WT Nat Fin` becomes `μX. Nat × (Nat → X)` and is refused with the "no grounding order" error.
+  - `WT Nat (fun _ => Nat)` is refused for the same reason; it has no values in Lean either.
+  - A generic `WT α β` is refused because `β` is not a type.
+- **Unit, empty and two-point types stay refused**, including behind a dependency (e.g. `u : Fin n → Unit`).
+  - Numeral `Fin 0`, `Fin 1` and `Fin 2` are now refused too. Before, they became `Nat`, which broke your rule, just as `BitVec 1` already was refused.
+  - `Fin k` with `k ≥ 3`, and `Fin n` with `n` not a numeral, become `nat`.
+
+**Decision for you:** `WT Nat Fin` could work if `Fin n → X` became `Array X`: `sup n #[]` would then be a finite value, and it would become a rose tree. I didn't do this because it clashes with your choice that `Chunk.data` is a function `Nat → Nat`.
+
+**How it works**
+- **`LeanScript/Gen/Read.lean`:** the old refusal of any field whose type depends on an earlier field is replaced by a conversion to a non-dependent type (`eraseDeps`). The dependency may only pass through:
+  - function arrows (`Fin n → Nat` becomes `Nat → Nat`, and `(i : Fin n) → Fin (i+1)` inside a field becomes `Nat → Nat`);
+  - type arguments (`Option (Fin n)` becomes `Option Nat`);
+  - types with one constructor holding one value besides proofs (`Fin n` becomes `Nat`, `Vector α n` becomes `Array α`, `{x // x < n}` becomes `Nat`).
+  
+  Anything else is refused with an explanation, for example a type computed from a value like `cond b Nat String`. The file also adds the `Fin 0/1/2` checks.
+- **`LeanScript/ToTerm.lean`:** such single-value constructors (`⟨i, h⟩`) become their value even when their parameters mention local variables, and a projection applied to arguments (`c.data i`) now translates.
+- **`LeanScript/Gen/Translate.lean`:** the "no grounding order" error now adds that a function field doesn't end a recursion, only an `Array` does. The snapshot in `TyTests/SignatureTest.lean` is updated.
+
+**Caveats**
+- The converted types have more values than the Lean ones: any `Nat`, not only those below `n`. Nothing formally relates the two.
+- A subtype whose proof leaves 0–2 values (e.g. `{x : Nat // x < 1}`) is not detected and becomes its underlying type.
+- Both caveats and the `WT` situation are recorded in `NOT_IMPLEMENTED.md`; `README.md` is updated.
+
+**Tests:** the new `TermTests/DependentFieldTest.lean` checks the types by `rfl`, builds and runs values, runs the translated `Chunk.size`, `Chunk.first` and `Tele.total` on examples by `rfl`, and pins every refusal message with `#guard_msgs`. As elsewhere in the project, the translations are only checked on examples, with no general proof. There are no new theorems, so I didn't add rows to the Properties table.
+
 # Summary of changes for run d1bced9f-452a-48e8-a454-2283b00da2c3
 The case you quoted is now supported in `#leanscript_to_term`. `Thunk` is the one exception: it is still refused, as it is everywhere in the language. The full `lake build` passes (63 jobs), with no warnings, no `sorry` and no new axioms. Everything is committed.
 

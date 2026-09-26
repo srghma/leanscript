@@ -11,6 +11,24 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   (`State : Type` in `Unfold`) is refused (`LeanScript/Gen/Read.lean`, `readCtors`). This
   was deferred on purpose.
 - **Inductive families with indices** are refused (`readCtors`).
+- **Dependent fields are erased, not typed.** A field whose type depends on an earlier field
+  is read through its erasure (`Gen/Read.lean`, `eraseDeps`): the dependency may only go
+  through arrows, type arguments, and wrappers of one value besides proofs. `Fin n → Nat` is
+  `Nat → Nat`, `Tele.cons (n : Nat) (v : Fin (n + 2)) rest` has two `Nat` fields, `Vector α n`
+  is `Array α`, a dependent arrow `(i : Fin n) → Fin (i + 1)` inside a field is `Nat → Nat`.
+  A type computed from a value (`cond b Nat String`) is refused. The erased type has more
+  values than the Lean one (every `Nat`, not only those below `n`); nothing relates the two.
+  (`TermTests/DependentFieldTest.lean`.)
+- **W-types (`WT α β`, `sup (a : α) (f : β a → WT α β)`)** are read, but no instance has a
+  type: a Lean W-type gets its finite values from an *empty* `β a` (`Fin 0`), and after
+  erasure every function domain has values, so the erased type (`μX. Nat × (Nat → X)` for
+  `WT Nat Fin`) has no grounding order and is refused. A generic `WT α β` is refused too
+  (`β` is not a type). Reading `Fin n → X` as `Array X` would make `WT Nat Fin` a rose tree;
+  this was not done, because `Chunk.data : Fin n → Nat` is to be a function.
+- **Proofs are erased, so a subtype is its carrier**: `Fin k` for a numeral `k ≥ 3` and
+  `Fin n` for a non-numeral `n` are `nat`; `Fin 0`, `Fin 1`, `Fin 2` are refused, but a
+  structure or subtype whose proof leaves it with 0, 1 or 2 values (`{x : Nat // x < 1}`) is
+  not detected and becomes its carrier.
 - **Types of no or one value** (`Empty`, `Unit`, `PUnit`, a structure with no field, …) and
   **types of two values other than `Bool`** (`Option Unit`, `BitVec 1`, `String.Pos` of a
   one-character string, `Thunk Bool`, …) have no type in the language, by design: they are
