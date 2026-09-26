@@ -1,3 +1,33 @@
+# Summary of changes for run 3ce22c9a-4ef3-4f7d-bd74-47c0cf6dd7c8
+I wrote the proposal in `proposals/IndexedExistentialFamilyProposal.md`. Alongside it is a small Lean file, `proposals/IndexedExistentialFamilyToy.lean`, that checks the type trees the proposal relies on. No code in `LeanScript/` changed.
+
+**Core idea.** Each type has a type variable the language can't represent: the index `α` of `LitExpr`, and the `State` field of `Unfold`. The proposal replaces that variable with a finite set of closed Lean types, worked out at elaboration time, with one `Ty.mutualRecursiveFamily` member per element. The existing family fold, including its tuple of answers for members that answer different types, then does the rest.
+
+**`LitExpr`:**
+- **Which indices.** From the closed index at the use site, work out which indices can be reached. For each one, keep the constructors whose result index matches it, found with Lean's own unification. Each index gets the schema the deriver already builds for a member of a `mutual` block.
+- **What stays refused.** A type variable the match doesn't fix but a value depends on (`TExpr.fst`'s `β`) is still an existential. Indices that keep growing are stopped by a size limit.
+- **Why `α` must be a Lean type.** The existing `fun (α : TyWf) => …` approach can't work here: a `TyWf` can't tell `Nat × Bool` from a user structure with two fields.
+- **A limit of the current rules.** `Ty.Wf` requires every family member, the selected one included, to be mentioned somewhere. In `LitExpr` the index only shrinks, so nothing mentions the root. The toy file confirms that the existing `ty_wf` tactic refuses this family with *nothing here mentions member 0*.
+- **Recommended form: families only on cycles.** Use `mutualRecursiveFamily` on each cycle of indices, and plain shapes elsewhere. Order the members canonically, so each Lean type keeps exactly one tree. The current `Ty.Wf` accepts every tree of this form unchanged.
+- **Consequence for `LitExpr` itself: no family.** Its indices never cycle, so its tree is nested plain unions. A family appears once an index can come back, for example with a `swap` constructor.
+- **Recursion.** One local function per index, so `eval : LitExpr α → α` gets its own answer type at each index. That is the dependent-motive case refused today.
+- **Alternative, not recommended.** Always use one family. This means relaxing `Ty.Wf`, and the tree of a type would then depend on where it was reached from.
+
+**`Unfold`, with a state family for the whole program:**
+- **Collect and name the states.** Collect every place the program builds an `Unfold`. Replace each `u.State` by a placeholder `H α`. `H` then becomes an index family exactly like `LitExpr`. It is a real `mutualRecursiveFamily` when states refer to each other across element types, as with `append` or `map` back and forth.
+- **The tree.** `Unfold α` becomes an ordinary record: `seed : H α`, `step : H α ⇒ Option (H α × α)`, `measure : H α ⇒ Nat`. It stays outside the family, because a family member inside a function's argument type is refused.
+- **Building a value.** Each place that builds an `Unfold` wraps its state in its own constructor of `H`. The fallback branches are never taken, because Lean won't let one value's `step` be applied to another value's state. With one such place per element type, the wrapper is erased and costs nothing.
+- **What this enables.** `List (Unfold Nat)`, `if b then u₁ else u₂`, recursions that return an `Unfold`, and `Process`-style datatypes.
+- **The price.** The tree depends on the whole program being translated. So the current per-hidden-type translation stays as the fallback.
+
+The proposal also covers an implementation plan by file, test plan, alternatives I considered, and four decisions I need from you (§4).
+
+**What is checked.** The toy file writes each proposed tree by hand and asks the existing `ty_wf` tactic about it:
+- accepted: the unrolled `LitExpr` trees, the `swap` family, the state family, and the `Unfold` records;
+- refused, pinned with `#guard_msgs`: the single-family `LitExpr`, and a `step` field placed inside the family.
+
+It compiles with no errors and no `sorry`, with `lake env lean proposals/IndexedExistentialFamilyToy.lean` after `lake build LeanScript.Ty.TyWf`. It isn't part of the default Lake build, so I list no build targets. The index algorithm, the translation of recursions and the rewriting of `Unfold` values are not implemented or checked. The committed `lake-manifest.json` is unchanged and still has no Mathlib entry; I pointed it at a local Mathlib only to build.
+
 # Summary of changes for run 1a8aa612-5972-4c51-b0f9-61e4c3467a04
 **Yes, `foo` can be translated to `Term`, but the translation drops the loop.** It gives the answer Lean's logic assigns to `foo`, not what running `foo` does. I checked this in a new test file, `TermTests/ToTermTest/WhileDiverge.lean`, which builds with no `sorry` and uses only the standard axioms.
 
