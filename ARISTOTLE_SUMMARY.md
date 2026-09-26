@@ -1,3 +1,27 @@
+# Summary of changes for run fdc72059-d4e9-4993-909d-ba1fdcf6bb58
+The migration was already finished in the project you uploaded, so I checked each of your points against the code and filled the one gap left. The full `lake build` passes (60 jobs) with no `sorry`.
+
+**Where things stand**
+- **One grammar:** the old `Ty/Wf*` / `TyWf` stack, `Ty/Shape`, `Den/*` and the old `#leanscript_ctor` are gone. There is one type grammar (`LeanScript/Ty.lean`, `LeanScript/Decl.lean`) and one term grammar (`LeanScript/Term.lean`). `#leanscript_to_term` (`LeanScript/ToTerm.lean`) is ported to it, and `data_brec` exists (`LeanScript/DenBrec.lean`, `Term.data_brec`).
+- **Floats:** you're right, and my earlier report was wrong. `Float` and `Float32` have decidable equality in this Lean version, so their cases in `LeanScript/Two.lean` use plain `decide`, and nothing in the project uses `native_decide`. The new test file shows that `Ty.den_exists_ne` depends only on `propext`, `Classical.choice` and `Quot.sound`.
+- **`Unit` / `Option Unit`:** `Unit` fields are refused, not erased (`Gen/Read.lean`). `Option Unit`, `Unit`, `BitVec 0`/`BitVec 1`, `String.Pos` of an empty or one-character string, and unions of only field-less constructors are all refused. `TyTests/SignatureTest.lean` and `TermTests/ToTermTest.lean` check the error messages.
+
+**New: a proof that two values means `.bool` (`LeanScript/Three.lean`)**
+Until now the grammar enforced this but nothing proved it. The new file proves:
+- `Ty.den_exists_three`: every closed type other than `Ty.bool`, over any datatype signature, has three different values. The values are computed by `Ty.threeDen`, and a test tells them apart.
+- `Ty.eq_bool_of_two_points`: a type with at most two values is `Ty.bool`.
+
+The proof goes case by case, in the same style as `Two.lean`:
+- **Leaves:** each non-`bool` leaf that `LeanPrimTy.Nondeg` allows gets three values. `BitVec n` with `n ≥ 2` uses `0`, `1`, `2`. `String.Pos s` for a string of at least two characters uses its start, the position after the first character, and its end.
+- **Functions, arrays, enums, records and unions:** each gets three values; a union can do so because `UnionShape` requires a constructor with fields.
+- **Declared datatypes:** handled member by member in grounding order. A member that just wraps a field can't wrap an older type unchanged, so it can't be a renamed copy of `bool`.
+
+Both theorems use only the standard axioms. `TyTests/ThreeTest.lean` checks this with `#print axioms` and checks the chosen values by `rfl`. `README.md` and `NOT_IMPLEMENTED.md` are updated, and the new theorems are in the Properties table as proved.
+
+**Properties table:** it still has older rows about files that no longer exist. I removed the three I could identify (`mixed-process-term`, `leanscript-ctor-elab`, `schema-lawful-functor`), but the table is too long for me to read in full, so some stale rows are probably still there.
+
+Everything is committed.
+
 # Summary of changes for run eee18ac1-8eae-4450-9c45-101a3f1679a7
 I split the large files under `LeanScript/`, moved one piece of code out of the translator's `mutual` block, and replaced some hand-written proofs with library lemmas. The full `lake build` passes (1058 jobs, including every test in `TyTests/` and `TermTests/`), with no warnings and no `sorry`.
 

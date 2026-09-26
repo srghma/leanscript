@@ -14,11 +14,8 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **Types of no or one value** (`Empty`, `Unit`, `PUnit`, a structure with no field, …) and
   **types of two values other than `Bool`** (`Option Unit`, `BitVec 1`, `String.Pos` of a
   one-character string, `Thunk Bool`, …) have no type in the language, by design: they are
-  refused, never erased. A type of two values is always `Ty.bool`.
-- **No proof of "two points are only `bool`".** `Ty.den_exists_ne` (`LeanScript/Two.lean`)
-  proves that every type has two different values; that every type other than `Ty.bool` has
-  at least three is enforced by the grammar (`UnionShape`, `LeanPrimTy.Nondeg`, no delay
-  wrapper) but not stated as a theorem.
+  refused, never erased. A type of two values is always `Ty.bool`: this is proved,
+  `Ty.eq_bool_of_two_points` (`LeanScript/Three.lean`).
 - **A recursive occurrence in the domain of a function** is refused (`Gen/Translate.lean`,
   `toFIR`).
 - **Effects.** There is no type former for `IO`, tasks or promises.

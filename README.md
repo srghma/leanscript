@@ -16,7 +16,8 @@ terms:
   datatype signature (`DSig ks`), and named (`Ty.data r`).  Every type has at least two
   values (`Ty.den_exists_ne`); a type of no or one value (`Unit`, `Empty`, …) cannot be
   written, and a type of two values is always `Ty.bool` (a union needs a constructor with
-  fields, `BitVec 1` is refused, …);
+  fields, `BitVec 1` is refused, …): every type other than `Ty.bool` has three different
+  values (`Ty.den_exists_three`, `Ty.eq_bool_of_two_points`);
 * **terms** (`Term Δ Γ τ`): a direct-style grammar that terminates by construction (every
   loop is a fold: `nat_rec`, `array_foldl`, `data_rec`, `data_brec`), with a total,
   structural evaluator `Term.eval` into Lean values;
@@ -38,6 +39,7 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | `LeanScript/Container.lean`, `LeanScript/Den.lean` | what a type denotes: indexed W-types for the declared blocks, `Ty.den`, `Ty.Den`, `DSig.dataIn`/`dataOut`/`dataRec` |
 | `LeanScript/DenFacts.lean`, `LeanScript/DenBrec.lean` | `dataIn`/`dataOut` are inverse; course-of-values recursion `DSig.dataBrec` and its computation rule |
 | `LeanScript/Two.lean` | every type has two values that a Boolean test tells apart |
+| `LeanScript/Three.lean` | every type other than `bool` has three values that a test tells apart: two points are only ever `bool` |
 | `LeanScript/DeBruijn.lean`, `LeanScript/Term.lean`, `LeanScript/Eval.lean` | the grammar of terms and its evaluator |
 | `LeanScript/Signature.lean`, `LeanScript/GetCtor.lean`, `LeanScript/Gen/` | `leanscript_signature`, `#leanscript_get_ty`/`_ctor`/`_cases`, and the generator they share (reading Lean types, SCCs and grounding order, printing, cache) |
 | `LeanScript/ToTerm.lean` | `#leanscript_to_term` |
