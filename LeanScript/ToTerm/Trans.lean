@@ -91,10 +91,13 @@ partial def transLam (c : TCtx) (e : Expr) : MetaM Expr := do
     let τ ← tyOfTermOr body b
     return mkAppN (mkConst `LeanScript.Term.lam) #[c.sg, c.gamma, σ, τ, b]
 
-/-- `let x := v; b`. -/
+/-- `let x := v; b`, and `have h : p := proof; b` (the proof in place of `h`). -/
 partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
   let .letE n t v b _ := e
     | throwError "`#leanscript_to_term`: internal: not a `let`"
+  -- `have h : p := proof`: the language erases proofs, so the proof is put in place of
+  -- `h`, where it is erased as any proof is
+  if ← isProp t then return ← trans c (b.instantiate1 v)
   let v' ← trans c v
   let σ ← tyOfTermOr v v'
   withLetDecl n t v fun x => do
@@ -214,8 +217,11 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
   | ``ForIn'.forIn' =>
       unless args.size ≥ 9 do return none
       unless ← isId args[0]! do return none
-      transForInList? c args[1]! args[4]! args[args.size - 3]! args[args.size - 2]!
-        args[args.size - 1]! true
+      if let some t ← transForInList? c args[1]! args[4]! args[args.size - 3]!
+          args[args.size - 2]! args[args.size - 1]! true then
+        return some t
+      transForIn'Range? c args[1]! args[args.size - 3]! args[args.size - 2]!
+        args[args.size - 1]!
   | _ => return none
 
 /-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
@@ -278,6 +284,29 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
       trans c' next
   return some <| mkAppN (mkConst `LeanScript.Term.nat_rec')
     #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], branch]
+
+/-- `for h : i in r do …`, in the identity monad, over a range `r = [start:stop:step]`:
+    the loop that names the membership proof `h : i ∈ r`.  When the body does not read
+    `h`, it is the loop `for i in r` without it.  Otherwise it is the loop over
+    `[:size]` whose body, at `j`, is guarded by `if hj : j < size`, and reads the index
+    `start + j * step` with the proof `Std.Legacy.Range.mem_start_add_mul_step r hj`
+    (`LeanScript.ToTerm.rangeForIn'AsForIn`); that loop is translated by
+    `transForInRange?`.  The proof is erased, as any proof is. -/
+partial def transForIn'Range? (c : TCtx) (ρ coll init body : Expr) : MetaM (Option Expr) := do
+  unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
+  let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
+    | throwError "`#leanscript_to_term`: the range of this `for` is not written out"
+  let start ← evalNat (← whnf startE)
+  let step ← evalNat (← whnf stepE)
+  let startE := match start with | some k => mkNatLit k | none => startE
+  let stepE := match step with | some k => mkNatLit k | none => stepE
+  let β ← inferType init
+  match ← rangeForIn'AsForIn β coll startE stopE stepE start step body with
+  | (none, body') => transForInRange? c ρ coll init body'
+  | (some size, body') =>
+      let coll' := mkApp4 (mkConst ``Std.Legacy.Range.mk) (mkNatLit 0) size (mkNatLit 1)
+        (mkConst ``Nat.zero_lt_one)
+      transForInRange? c ρ coll' init body'
 
 /-- An application whose head is a constant. -/
 partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)

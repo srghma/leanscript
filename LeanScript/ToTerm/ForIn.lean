@@ -31,6 +31,9 @@ introduces after an `if` without `else` or with a `continue`), `if`/`if h :`/`ma
   membership proof `h` (the language erases proofs, and `l.attach` is translated as `l`).
   The translator then translates this `List.foldl` as any other.
 * `rangeForInBreakAsNatRec` is the fold of the step for `for i in [:n]`, as `Nat.rec`.
+* `rangeForInReindex` turns a range with a start or a step into the loop over `[:size]`,
+  and `rangeForIn'AsForIn` turns `for h : i in r` over a range into a loop that does not
+  name the membership proof (guarded by `if hj : j < size` when the body reads `h`).
 
 Each rewriting is proved an equation of Lean's logic in `LeanScript/ListLibraryFacts.lean`.
 -/
@@ -191,6 +194,70 @@ def rangeForInBreakAsNatRec (β stop init i s next : Expr) : MetaM Expr := do
   let r := mkApp4 (mkConst ``Nat.rec [← getLevel stepTy]) motive init' branch stop
   mkForInStepState β r
 
+/-- The number of indices of the range `[start:stop:step]`,
+    `(stop - start + step - 1) / step` (`Std.Legacy.Range.size`), written without the
+    parts that cancel when the start is known to be `0` or the step `1`. -/
+def rangeSizeExpr (startE stopE stepE : Expr) (start step : Option Nat) : MetaM Expr := do
+  let add (a b : Expr) := mkAppM ``HAdd.hAdd #[a, b]
+  let sub (a b : Expr) := mkAppM ``HSub.hSub #[a, b]
+  let span ← if start == some 0 then pure stopE else sub stopE startE
+  if step == some 1 then return span
+  let num ← match step with
+    | some k => add span (mkNatLit (k - 1))
+    | none => do sub (← add span stepE) (mkNatLit 1)
+  mkAppM ``HDiv.hDiv #[num, stepE]
+
+/-- The `j`-th index of the range `[start:stop:step]`, `start + j * step`, written without
+    the start when it is known to be `0` and without the step when it is known to be
+    `1`. -/
+def rangeIndexExpr (startE stepE : Expr) (start step : Option Nat) (j : Expr) :
+    MetaM Expr := do
+  let scaled ← if step == some 1 then pure j else mkAppM ``HMul.hMul #[j, stepE]
+  if start == some 0 then return scaled
+  mkAppM ``HAdd.hAdd #[startE, scaled]
+
+/-- `for h : i in r do body` (`forIn' r init body`) in `Id`, over a range
+    `r = [start:stop:step]`, as a loop `for j in [:size] do body'` that does not name the
+    membership proof: the body, a function `fun i h s => …` of the index, the proof
+    `h : i ∈ r` and the state, is read at the index `start + j * step`, with the proof
+    `Std.Legacy.Range.mem_start_add_mul_step r hj` built from the test `hj : j < size` of
+    an `if hj : j < size then … else pure (.yield s)` around it.  The test always holds,
+    since `j` runs over `[:size]`; it is there because the body needs a proof, and the
+    language erases proofs.  Answers the bound `size` and the body `body'`, a function of
+    `j` and the state.  The rewriting is
+    `LeanScript.ListLibrary.forIn'_range_eq_forIn_guard`.
+
+    When the body does not read `h`, no test is needed: the answer is `none` and the body
+    without `h`, and the loop is `forIn r init body'`, over `r` itself. -/
+def rangeForIn'AsForIn (β coll startE stopE stepE : Expr) (start step : Option Nat)
+    (body : Expr) : MetaM (Option Expr × Expr) := do
+  let nat := mkConst ``Nat
+  -- the body with the proof dropped, when it does not read it
+  let dropped? ← withLocalDeclD `i nat fun i => do
+    let bi ← whnfCore (mkApp body i).headBeta
+    let .lam _ _ b _ := bi | return none
+    if b.hasLooseBVar 0 then return none
+    return some (← mkLambdaFVars #[i] (b.lowerLooseBVars 1 1))
+  if let some body' := dropped? then return (none, body')
+  let size ← rangeSizeExpr startE stopE stepE start step
+  let u ← getDecLevel β
+  let stepTy := mkApp (mkConst ``ForInStep [u]) β
+  let idTy := mkApp (mkConst ``Id [u]) stepTy
+  let body' ← withLocalDeclD `j nat fun j => withLocalDeclD `state β fun s => do
+    let cond ← mkAppM ``LT.lt #[j, size]
+    let idx ← rangeIndexExpr startE stepE start step j
+    let yes ← withLocalDeclD `hj cond fun hj => do
+      let mem := mkApp3 (mkConst `Std.Legacy.Range.mem_start_add_mul_step) coll j hj
+      mkLambdaFVars #[hj] (mkApp3 body idx mem s).headBeta
+    let no ← withLocalDeclD `hj (mkNot cond) fun hj => do
+      let stay := mkApp2 (mkConst ``ForInStep.yield [u]) β s
+      mkLambdaFVars #[hj] (← mkAppOptM ``Pure.pure
+        #[mkConst ``Id [u], none, stepTy, stay])
+    let inst ← synthInstance (mkApp (mkConst ``Decidable) cond)
+    let guarded := mkApp5 (mkConst ``dite [← getLevel idTy]) idTy cond inst yes no
+    mkLambdaFVars #[j, s] guarded
+  return (some size, body')
+
 /-- `for i in [start:stop:step] do body` as a loop over `[:size]`: its iterations are
     the indices `start + j * step` for `j < size`, with
     `size = (stop - start + step - 1) / step` (`Std.Legacy.Range.size`).  Answers the
@@ -201,21 +268,9 @@ def rangeForInBreakAsNatRec (β stop init i s next : Expr) : MetaM Expr := do
 def rangeForInReindex (startE stopE stepE : Expr) (start step : Option Nat) (body : Expr) :
     MetaM (Expr × Expr) := do
   let nat := mkConst ``Nat
-  let add (a b : Expr) := mkAppM ``HAdd.hAdd #[a, b]
-  let sub (a b : Expr) := mkAppM ``HSub.hSub #[a, b]
-  let startZero := start == some 0
-  let stepOne := step == some 1
-  -- `stop - start + step - 1`, written without the parts that cancel
-  let span ← if startZero then pure stopE else sub stopE startE
-  let size ← if stepOne then pure span else do
-    let num ← match step with
-      | some k => add span (mkNatLit (k - 1))
-      | none => do sub (← add span stepE) (mkNatLit 1)
-    mkAppM ``HDiv.hDiv #[num, stepE]
+  let size ← rangeSizeExpr startE stopE stepE start step
   let body' ← withLocalDeclD `j nat fun j => do
-    let scaled ← if stepOne then pure j else mkAppM ``HMul.hMul #[j, stepE]
-    let idx ← if startZero then pure scaled else add startE scaled
-    mkLambdaFVars #[j] (mkApp body idx).headBeta
+    mkLambdaFVars #[j] (mkApp body (← rangeIndexExpr startE stepE start step j)).headBeta
   return (size, body')
 
 end LeanScript.ToTerm

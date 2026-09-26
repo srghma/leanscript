@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Ty.Instances
+public import LeanScript.RangeFacts
 
 @[expose] public section
 
@@ -33,7 +34,12 @@ each replacement is an equation of Lean's logic:
   `forIn'_id_eq_foldl_attach_step`, `forIn'_id_eq_foldl_step`, and for `for i in [:n]`,
   `forIn_range_id_eq_natRec_step`);
 * `for i in [start:stop:step]` is the loop over `[:size]` whose body reads the index
-  `start + j * step` (`forIn_range_step_eq`).
+  `start + j * step` (`forIn_range_step_eq`);
+* `for h : i in r` over a range, which names the membership proof `h : i ∈ r`, is the loop
+  over `[:r.size]` whose body, guarded by `if hj : j < r.size`, reads the index
+  `r.start + j * r.step` with the proof `r.mem_start_add_mul_step hj`
+  (`forIn'_range_eq_forIn_guard`), and the loop `for i in r` when the body does not read
+  `h` (`forIn'_range_eq_forIn`).
 -/
 
 namespace LeanScript.ListLibrary
@@ -317,6 +323,57 @@ theorem forIn_range_step_eq {β : Type v} (start stop step : Nat) (hs : 0 < step
   generalize (stop - start + step - 1) / step = n
   rw [range'_eq_map_range_step, range'_eq_map_range_step, List.forIn_map, List.forIn_map]
   simp
+
+/-- A loop over a list whose body reads a proof of `P a` from the membership proof is the
+    loop that does not name the membership proof and tests `P a` instead: the test always
+    holds on the elements of the list. -/
+theorem forIn'_eq_forIn_dite {α : Type w} {β : Type v} {m : Type v → Type x} [Monad m]
+    (l : List α) (P : α → Prop) [DecidablePred P] (hP : ∀ a, a ∈ l → P a) (init : β)
+    (g : (a : α) → P a → β → m (ForInStep β)) :
+    forIn' l init (fun a h s => g a (hP a h) s) =
+      forIn l init (fun a s => if h : P a then g a h s else pure (ForInStep.yield s)) := by
+  induction l generalizing init with
+  | nil => rfl
+  | cons a as ih =>
+    have ha : P a := hP a List.mem_cons_self
+    rw [List.forIn'_cons, List.forIn_cons]
+    simp only [ha, ↓reduceDIte]
+    congr 1; funext st
+    cases st with
+    | done => rfl
+    | yield s' => exact ih (fun a h => hP a (List.mem_cons_of_mem _ h)) s'
+
+/-- `for h : i in r` in `Id`, over a range `r`, is the loop over `[:r.size]` whose body, at
+    `j`, reads the index `r.start + j * r.step` with the proof that it is a member of `r`,
+    built from the test `j < r.size` (which always holds).  This is how such a loop is
+    translated when its body reads `h`. -/
+theorem forIn'_range_eq_forIn_guard {β : Type v} (r : Std.Legacy.Range) (init : β)
+    (f : (i : Nat) → i ∈ r → β → Id (ForInStep β)) :
+    forIn' (m := Id) r init f =
+      forIn (m := Id) [:r.size] init (fun j s =>
+        if hj : j < r.size then f (r.start + j * r.step) (r.mem_start_add_mul_step hj) s
+        else pure (ForInStep.yield s)) := by
+  rw [Std.Legacy.Range.forIn'_eq_forIn'_range', Std.Legacy.Range.forIn_eq_forIn_range']
+  have hs : ([:r.size] : Std.Legacy.Range).size = r.size := by
+    simp only [Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one]
+  simp only [hs]
+  rw [← List.range_eq_range', ← forIn'_eq_forIn_dite (List.range r.size) (· < r.size)
+    (fun a h => List.mem_range.1 h)]
+  rw [List.forIn'_congr (range'_eq_map_range_step _ _ _) rfl (fun _ _ _ => rfl),
+    List.forIn'_map]
+
+/-- `for h : i in r` whose body does not read `h` is the loop `for i in r`.  This is how
+    such a loop is translated. -/
+theorem forIn'_range_eq_forIn {β : Type v} (r : Std.Legacy.Range) (init : β)
+    (f : Nat → β → Id (ForInStep β)) :
+    forIn' (m := Id) r init (fun i _ s => f i s) = forIn (m := Id) r init f := by
+  rw [Std.Legacy.Range.forIn'_eq_forIn'_range', Std.Legacy.Range.forIn_eq_forIn_range']
+  generalize List.range' r.start r.size r.step = l
+  induction l generalizing init with
+  | nil => rfl
+  | cons a as ih =>
+    rw [List.forIn'_cons, List.forIn_cons]
+    congr 1
 
 end LeanScript.ListLibrary
 

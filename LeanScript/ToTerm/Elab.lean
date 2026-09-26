@@ -5,6 +5,7 @@ public meta import LeanScript.ToTerm.ExistentialArgs
 public meta import LeanScript.ToTerm.Normalize
 public meta import LeanScript.ToTerm.Options
 public import LeanScript.CtorFn
+public import LeanScript.RangeFacts
 
 @[expose] public section
 

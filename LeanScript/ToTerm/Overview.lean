@@ -74,6 +74,8 @@ context are used.
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | `for i in [a:n:k] do …` (also `[a:n]`, `[:n:k]`), a range with a start or a step | the loop over `[:(n - a + k - 1) / k]` whose body reads the index `a + j * k`, translated as above — see `TermTests/ToTermTest/ForRangeStep.lean` |
 | `for x in l do …` and `for h : x in l do …` in `Id`, over a **list** (`if`, `continue`, `match`, several `let mut`s, nested loops inside) | `l.foldl` of the body read as the next state (over `l.attach` when `h` is read), translated as any `List.foldl` — see `TermTests/ToTermTest/ForList.lean` |
+| `for h : i in r do …` over a range, the form that names the membership proof `h : i ∈ r` | when the body does not read `h`, the loop `for i in r`; otherwise the loop over `[:size]` whose body, at `j`, is guarded by `if hj : j < size` and reads the index `start + j * step` with the proof `Std.Legacy.Range.mem_start_add_mul_step r hj` (the test always holds; the proof is erased) — see `TermTests/ToTermTest/ForRangeMem.lean` |
+| `have h : p := proof` | the body with the proof in place of `h`, where it is erased |
 | a `for` whose body can `break` (or `return` from inside it), over a list or a range | the fold (`List.foldl`, or `Nat.rec` for a range) of the **step** `ForInStep β` (the tagged union `done \| yield`): a `done` step is kept, and the state of the last step is the value — see `TermTests/ToTermTest/ForBreak.lean` and `TermTests/ToTermTest/ForReturn.lean`; without a `let mut` the state `Option ρ × Unit` is modelled as `Option ρ` |
 | `List.map`, `List.foldl`, `List.contains`, `List.range`, … — the library's structural recursions | the fold of the list (or of the `Nat`), inlined — see `TermTests/ToTermTest/ListLibrary.lean` |
 | a structural recursion whose `match` has a catch-all pattern (`List.get?Internal`, so `l[i]?` and `List.getD`) | the fold: the `_sparseCasesOn_` auxiliary the `match` compiles to is reduced at the shape the branch is instantiated at (`LeanScript.ToTerm.reduceSparseCasesOnCtor?`) |
@@ -215,8 +217,7 @@ being translated.
   may differ from node to node) whose argument is not a value written out; and a function
   of a non-recursive one at an index that is not a variable of its own (`Tag Nat → …`,
   rather than `{β} → Tag β → …`).
-* a `for h : i in r` over a range (the form that names the membership proof); and `do` in
-  any monad other than `Id`, which is the only one that is not an effect.
+* `do` in any monad other than `Id`, which is the only one that is not an effect.
 
 ## Which dispatch a `match` becomes
 
