@@ -45,8 +45,9 @@ def Terms.eval (G : GlobalEnv Sg.decls) {Γ : Ctx} {τ : TyWf} :
 /-- The value of a member of a mutual family, written in direct style. -/
 def FamilyMemberValue.eval (G : GlobalEnv Sg.decls) {Γ : Ctx} :
     {m : LeanFamMemberSchema TyWf} → FamilyMemberValue Sg Γ m → Env Γ → TyWf.DenMember m
-  | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (Spine.eval G fields env)
-  | _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Spine.eval G fields env)
+  | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Spine.eval G fields env))
+  | _, .record _ fields, env =>
+      cast (Ty.denRecord_eq _).symm (TyWf.DenFields.ofList (Spine.eval G fields env))
   | _, .alias _ value, env => Term.eval G value env
 
 /-! ## Continuations that only look at the value they are given -/
@@ -435,10 +436,11 @@ theorem FamilyMemberValue.eval_bindArgs (G : GlobalEnv Sg.decls) {Γ : Ctx}
   match m, v with
   | _, .ctors l t ht fields =>
       exact Spine.eval_bindArgs G fields Ren.id env env (EnvRel.id' env) _
-        (fun vs => K (TyWf.DenTU.mk t ht vs)) fun ρ env' as h => hk ρ env' _ h
+        (fun vs => K (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList vs))) fun ρ env' as h => hk ρ env' _ h
   | _, .record fs fields =>
       exact Spine.eval_bindArgs G fields Ren.id env env (EnvRel.id' env) _
-        (fun vs => K (cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm vs))
+        (fun vs => K (cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm
+          (TyWf.DenFields.ofList (ts := fs.toList) vs)))
         fun ρ env' as h => hk ρ env' _ h
   | _, .alias b value =>
       exact Term.evalJ_bindAtom G (J := []) value _ env PUnit.unit _ fun ρ env' a h => hk ρ env' _ h

@@ -136,11 +136,11 @@ theorem recObjectUnfold_map_toTy (fs : LeanRecordSchema (TyWfIn 1))
     (recObjectUnfold fs hwf).map TyWf.toTy = Ty.recObjUnfoldTy (fs.map TyWfIn.toTy) :=
   recordUnfold_map_toTy fs (recObject fs hwf)
 
-/-- The values of the unfolded fields, as the list a spine of terms gives and as the
-    record of trees, are the same. -/
-theorem denList_recObjectUnfold (fs : LeanRecordSchema (TyWfIn 1))
+/-- The values of the unfolded fields, as a tuple of bundles and as the record of trees,
+    are the same. -/
+theorem denFields_recObjectUnfold (fs : LeanRecordSchema (TyWfIn 1))
     (hwf : Ty.Wf (recObjectTy fs)) :
-    TyWf.DenList (recObjectUnfold fs hwf).toList =
+    TyWf.DenFields (recObjectUnfold fs hwf).toList =
       Ty.DenRecord (Ty.recObjUnfoldTy (fs.map TyWfIn.toTy)) := by
   rw [← recObjectUnfold_map_toTy fs hwf, Ty.denRecord_eq]
   rfl
@@ -149,23 +149,25 @@ theorem denList_recObjectUnfold (fs : LeanRecordSchema (TyWfIn 1))
     unfolded fields, in declaration order. -/
 def DenObj.mk (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObjectTy fs))
     (v : TyWf.DenList (recObjectUnfold fs hwf).toList) : TyWf.Den (recObject fs hwf) :=
-  Ty.DenObj.mk (fs.map TyWfIn.toTy) (cast (denList_recObjectUnfold fs hwf) v)
+  Ty.DenObj.mk (fs.map TyWfIn.toTy) (cast (denFields_recObjectUnfold fs hwf) (TyWf.DenFields.ofList v))
 
 /-- **One level of a value** of a recursive record of bundles: the values of its unfolded
     fields, in declaration order, which is what `Term.recObject_casesOn` binds. -/
 def DenObj.unfold (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObjectTy fs))
     (v : TyWf.Den (recObject fs hwf)) : TyWf.DenList (recObjectUnfold fs hwf).toList :=
-  cast (denList_recObjectUnfold fs hwf).symm (Ty.DenObj.unfold (fs.map TyWfIn.toTy) v)
+  TyWf.DenFields.toList
+    (cast (denFields_recObjectUnfold fs hwf).symm (Ty.DenObj.unfold (fs.map TyWfIn.toTy) v))
 
 theorem DenObj.unfold_mk (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObjectTy fs))
     (v : TyWf.DenList (recObjectUnfold fs hwf).toList) :
     DenObj.unfold fs hwf (DenObj.mk fs hwf v) = v := by
-  simp only [DenObj.unfold, DenObj.mk, Ty.DenObj.unfold_mk, cast_cast, cast_eq]
+  simp only [DenObj.unfold, DenObj.mk, Ty.DenObj.unfold_mk, cast_cast, cast_eq,
+    Ty.DenFields.toList_ofList]
 
 theorem DenObj.mk_unfold (fs : LeanRecordSchema (TyWfIn 1)) (hwf : Ty.Wf (recObjectTy fs))
     (v : TyWf.Den (recObject fs hwf)) :
     DenObj.mk fs hwf (DenObj.unfold fs hwf v) = v := by
-  simp only [DenObj.unfold, DenObj.mk, cast_cast, cast_eq]
+  simp only [DenObj.unfold, DenObj.mk, Ty.DenFields.ofList_toList, cast_cast, cast_eq]
   exact Ty.DenObj.mk_unfold _ v
 
 /-- `TyWf.DenObj.mk` and `TyWf.DenObj.unfold`, as a Mathlib `Equiv`. -/
@@ -237,7 +239,7 @@ def objAnswerTree (fs : LeanRecordSchema (TyWfIn 1)) (τ : TyWf) :
   | 0, m => m.answer
   | j + 1, .mk (s, a) kids =>
       (a, objMap fs (TyWf.recObjectAnswerTree fs τ j)
-        ⟨s, fun p => objAnswerTree fs τ j (kids p)⟩, PUnit.unit)
+        ⟨s, fun p => objAnswerTree fs τ j (kids p)⟩)
 
 /-- The environment the branch of a depth-`k` fold of a recursive record binds, at a node
     of shape `s` whose subtrees are memos: the node's fields, unfolded, and the window. -/
@@ -267,7 +269,7 @@ def aliasAnswerTree (b : TyWfIn 1) (τ : TyWf) :
   | 0, m => m.answer
   | j + 1, .mk (s, a) kids =>
       (a, aliasMap b (TyWf.recAliasAnswerTree b τ j)
-        ⟨s, fun p => aliasAnswerTree b τ j (kids p)⟩, PUnit.unit)
+        ⟨s, fun p => aliasAnswerTree b τ j (kids p)⟩)
 
 /-- The environment the branch of a depth-`k` fold of a recursive newtype binds, at a node
     of shape `s` whose subtrees are memos: the body, unfolded, and the window. -/

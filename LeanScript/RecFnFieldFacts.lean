@@ -51,7 +51,7 @@ theorem aliasAnswerTree_zero (b : TyWfIn 1) (τ : TyWf) (m : AliasMemo b τ) :
 /-- **The first field of an answer tree of a recursive newtype, at any depth, is the answer
     at its node.** -/
 theorem aliasAnswerTree_succ_fst (b : TyWfIn 1) (τ : TyWf) (j : Nat) (m : AliasMemo b τ) :
-    (show TyWf.Den τ × TyWf.Den (TyWf.recAliasMap b (TyWf.recAliasAnswerTree b τ j)) × PUnit
+    (show TyWf.Den τ × TyWf.Den (TyWf.recAliasMap b (TyWf.recAliasAnswerTree b τ j))
       from aliasAnswerTree b τ (j + 1) m).1 = m.answer := by
   obtain ⟨⟨s, a⟩, kids⟩ := m
   rfl
@@ -65,8 +65,8 @@ theorem objAnswerTree_zero (fs : LeanRecordSchema (TyWfIn 1)) (τ : TyWf) (m : O
     at its node.** -/
 theorem objAnswerTree_succ_fst (fs : LeanRecordSchema (TyWfIn 1)) (τ : TyWf) (j : Nat)
     (m : ObjMemo fs τ) :
-    (show TyWf.Den τ × TyWf.Den (TyWf.recObjectMap fs (TyWf.recObjectAnswerTree fs τ j)) ×
-        PUnit from objAnswerTree fs τ (j + 1) m).1 = m.answer := by
+    (show TyWf.Den τ × TyWf.Den (TyWf.recObjectMap fs (TyWf.recObjectAnswerTree fs τ j))
+        from objAnswerTree fs τ (j + 1) m).1 = m.answer := by
   obtain ⟨⟨s, a⟩, kids⟩ := m
   rfl
 
@@ -82,7 +82,7 @@ theorem Term.eval_fnTreeAnswer (G : GlobalEnv Sg.decls) {Γ : Ctx} {σ τ W : Ty
     (w : Γ ∋ (σ ⇒ .record ⟨τ, W, []⟩))
     (env : Env Γ) :
     Term.eval G (Term.fnTreeAnswer w) env =
-      fun a => (show TyWf.Den τ × TyWf.Den W × PUnit from Env.get w env a).1 := rfl
+      fun a => (show TyWf.Den τ × TyWf.Den W from Env.get w env a).1 := rfl
 
 /-- **The delayed answer the translation binds at a delayed field is the first field of
     the delayed answer tree.** (A delay denotes the value it stands for.) -/
@@ -90,7 +90,7 @@ theorem Term.eval_thunkTreeAnswer (G : GlobalEnv Sg.decls) {Γ : Ctx} {τ W : Ty
     (w : Γ ∋ .thunk (.record ⟨τ, W, []⟩))
     (env : Env Γ) :
     Term.eval (τ := .thunk τ) G (Term.thunkTreeAnswer w) env =
-      (show TyWf.Den τ × TyWf.Den W × PUnit from Env.get w env).1 := rfl
+      (show TyWf.Den τ × TyWf.Den W from Env.get w env).1 := rfl
 
 /-! ## Put together: the bound function is the depth-`0` window -/
 

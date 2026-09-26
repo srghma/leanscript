@@ -104,7 +104,7 @@ theorem Comp.eval_taggedUnion_mk_fst {l : LeanTaggedUnionSchema TyWf} (t : Nat)
 theorem Comp.eval_taggedUnion_field? {l : LeanTaggedUnionSchema TyWf} (t : Nat)
     (ht : t < l.length) (fields : Args Sg Γ (l.get t ht)) (env : Env Γ) :
     TyWf.DenTU.field? t ht (Comp.eval G (.taggedUnion_mk l t ht fields) env) =
-      some (Args.eval G fields env) :=
+      some (TyWf.DenFields.ofList (Args.eval G fields env)) :=
   TyWf.DenTU.field?_mk t ht _
 
 end LeanScript

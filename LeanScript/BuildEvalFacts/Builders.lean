@@ -142,28 +142,32 @@ theorem Term.eval_enum_casesOnWithDefault' {Γ : Ctx} {τ : TyWf} {s : LeanEnumS
 theorem Term.eval_record_mk {Γ : Ctx} (fs : LeanRecordSchema TyWf)
     (fields : Spine Sg Γ fs.toList) (env : Env Γ) :
     Term.eval G (Term.record_mk fs fields) env =
-      cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm (Spine.eval G fields env) :=
+      cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm
+        (TyWf.DenFields.ofList (ts := fs.toList) (Spine.eval G fields env)) :=
   Spine.eval_bindArgs G fields Ren.id env env (EnvRel.id' env) _
-    (fun vs => cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm vs) fun _ _ _ _ => rfl
+    (fun vs => cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm
+      (TyWf.DenFields.ofList (ts := fs.toList) vs)) fun _ _ _ _ => rfl
 
 /-- Taking a record apart binds its fields. -/
 theorem Term.eval_record_casesOn' {Γ : Ctx} {τ : TyWf} {fs : LeanRecordSchema TyWf}
     (r : Term Sg Γ (.record fs)) (body : Term Sg (fs.toList ++ Γ) τ) (env : Env Γ) :
     Term.eval G (Term.record_casesOn' r body) env =
       Term.eval G body
-        (Env.append (cast (Ty.denRecord_eq (fs.map TyWf.toTy)) (Term.eval G r env)) env) :=
+        (Env.append (TyWf.DenFields.toList (ts := fs.toList)
+          (cast (Ty.denRecord_eq (fs.map TyWf.toTy)) (Term.eval G r env))) env) :=
   Term.evalJ_bindAtomOr G r _ _ env (J := []) PUnit.unit
-    (fun v => Term.eval G body (Env.append (cast (Ty.denRecord_eq (fs.map TyWf.toTy)) v) env))
+    (fun v => Term.eval G body (Env.append (TyWf.DenFields.toList (ts := fs.toList)
+      (cast (Ty.denRecord_eq (fs.map TyWf.toTy)) v)) env))
     (fun _ => rfl) fun _ _ _ h => Term.eval_rename G _ body (h.liftN _ _)
 
 /-- A tagged value is its tag and the values of its fields. -/
 theorem Term.eval_taggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema TyWf) (t : Nat)
     (ht : t < l.length) (fields : Spine Sg Γ (l.get t ht)) (env : Env Γ) :
     Term.eval G (Term.taggedUnion_mk l t ht fields) env =
-      TyWf.DenTU.mk t ht (Spine.eval G fields env) := by
+      TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Spine.eval G fields env)) := by
   unfold Term.taggedUnion_mk
   exact Spine.eval_bindArgs (τ := .taggedUnion l) G fields Ren.id env env (EnvRel.id' env) _
-    (TyWf.DenTU.mk t ht) fun _ _ _ _ => rfl
+    (fun vs => TyWf.DenTU.mk t ht (TyWf.DenFields.ofList vs)) fun _ _ _ _ => rfl
 
 /-- A dispatch on a tagged union takes the branch of the value's tag, binding its fields. -/
 theorem Term.eval_taggedUnion_casesOn' {Γ : Ctx} {τ : TyWf} {l : LeanTaggedUnionSchema TyWf}
@@ -200,9 +204,10 @@ theorem Term.eval_recTaggedUnion_mk {Γ : Ctx} (l : LeanTaggedUnionSchema (TyWfI
     (ht : t < (TyWf.recTaggedUnionUnfold l hwf).length)
     (fields : Spine Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
     Term.eval G (Term.recTaggedUnion_mk l hwf t ht fields) env =
-      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Spine.eval G fields env)) :=
+      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Spine.eval G fields env))) :=
   Spine.eval_bindArgs G fields Ren.id env env (EnvRel.id' env) _
-    (fun vs => TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht vs)) fun _ _ _ _ => rfl
+    (fun vs => TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList vs)))
+      fun _ _ _ _ => rfl
 
 /-- A dispatch on a recursive tagged union takes one level off the value. -/
 theorem Term.eval_recTaggedUnion_casesOn' {Γ : Ctx} {τ : TyWf}

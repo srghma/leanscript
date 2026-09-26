@@ -100,11 +100,12 @@ theorem FamilyMemberArgs.eval_rename (G : GlobalEnv Sg.decls) {Γ Δ : Ctx} {ρ 
     {env : Env Γ} {env' : Env Δ} (h : EnvRel ρ env env') :
     {m : LeanFamMemberSchema TyWf} → (as : FamilyMemberArgs Sg Γ m) →
       FamilyMemberArgs.eval G (as.rename ρ) env' = FamilyMemberArgs.eval G as env
-  | _, .ctors _ t ht fields => congrArg (TyWf.DenTU.mk t ht) (Args.eval_rename G h fields)
-  | _, .record _ fields => by
-        conv => lhs; whnf
-        conv => rhs; whnf
-        exact Args.eval_rename G h fields
+  | _, .ctors _ t ht fields =>
+      congrArg (fun x => TyWf.DenTU.mk t ht (TyWf.DenFields.ofList x)) (Args.eval_rename G h fields)
+  | _, .record fs fields =>
+      congrArg (fun x => cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm
+          (TyWf.DenFields.ofList (ts := fs.toList) x))
+        (Args.eval_rename G h fields)
   | _, .alias _ value => Atom.eval_rename h value
 
 
@@ -319,14 +320,13 @@ theorem Comp.eval_rename (G : GlobalEnv Sg.decls) :
       exact List.map_congr_left fun a _ => Atom.eval_rename h a
   | _, _, _, _, .enum_mk _ _, _, _, _ => rfl
   | _, _, _, ρ, .record_mk fs fields, env, env', h =>
-      by
-        conv => lhs; whnf
-        conv => rhs; whnf
-        exact Args.eval_rename G h fields
+      congrArg (fun x => cast (Ty.denRecord_eq (fs.map TyWf.toTy)).symm
+          (TyWf.DenFields.ofList (ts := fs.toList) x))
+        (Args.eval_rename G h fields)
   | _, _, _, ρ, .taggedUnion_mk _ t ht fields, env, env', h =>
-      congrArg (TyWf.DenTU.mk t ht) (Args.eval_rename G h fields)
+      congrArg (fun x => TyWf.DenTU.mk t ht (TyWf.DenFields.ofList x)) (Args.eval_rename G h fields)
   | _, _, _, ρ, .recTaggedUnion_mk l hwf t ht fields, env, env', h =>
-      congrArg (fun x => TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht x))
+      congrArg (fun x => TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList x)))
         (Args.eval_rename G h fields)
   | _, _, _, ρ, .recObject_mk fs hwf fields, env, env', h =>
       congrArg (TyWf.DenObj.mk fs hwf) (Args.eval_rename G h fields)
@@ -493,9 +493,9 @@ theorem TaggedUnionFoldKCases.eval_rename (G : GlobalEnv Sg.decls) :
     TaggedUnionFoldKCases.eval G (cases.rename ρ) env' mkEnv fr t e =
       TaggedUnionFoldKCases.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, ρ, .payloadFirst b0 _ _, env, env', mkEnv, fr, 0, e, h =>
-      FoldKBranch.eval_rename G ρ b0 env env' mkEnv fr e h
+      FoldKBranch.eval_rename G ρ b0 env env' mkEnv fr (Ty.neObjToList _ e) h
   | _, _, _, _, _, _, _, _, ρ, .payloadFirst _ b1 _, env, env', mkEnv, fr, 1, e, h =>
-      FoldKBranch.eval_rename G ρ b1 env env' mkEnv fr e h
+      FoldKBranch.eval_rename G ρ b1 env env' mkEnv fr (Ty.fieldsObjToList _ e) h
   | _, _, _, _, _, _, _, _, ρ, .payloadFirst _ _ rest, env, env', mkEnv, fr, n + 2, e, h =>
       TaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr n e h
   | _, _, _, _, _, _, _, _, ρ, .skip b0 _, env, env', mkEnv, fr, 0, e, h =>
@@ -518,7 +518,7 @@ theorem CtorsWithPayloadFoldKCases.eval_rename (G : GlobalEnv Sg.decls) :
     CtorsWithPayloadFoldKCases.eval G (cases.rename ρ) env' mkEnv fr t e =
       CtorsWithPayloadFoldKCases.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, ρ, .here b _, env, env', mkEnv, fr, 0, e, h =>
-      FoldKBranch.eval_rename G ρ b env env' mkEnv fr e h
+      FoldKBranch.eval_rename G ρ b env env' mkEnv fr (Ty.neObjToList _ e) h
   | _, _, _, _, _, _, _, _, ρ, .here _ rest, env, env', mkEnv, fr, n + 1, e, h =>
       TaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr n e h
   | _, _, _, _, _, _, _, _, ρ, .skip b _, env, env', mkEnv, fr, 0, e, h =>
@@ -542,7 +542,7 @@ theorem TaggedUnionFoldKCasesRest.eval_rename (G : GlobalEnv Sg.decls) :
       TaggedUnionFoldKCasesRest.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, _, .nil, _, _, _, _, _, e, _ => PEmpty.elim e.1
   | _, _, _, _, _, _, _, _, ρ, .cons b _, env, env', mkEnv, fr, 0, e, h =>
-      FoldKBranch.eval_rename G ρ b env env' mkEnv fr e h
+      FoldKBranch.eval_rename G ρ b env env' mkEnv fr (Ty.fieldsObjToList _ e) h
   | _, _, _, _, _, _, _, _, ρ, .cons _ rest, env, env', mkEnv, fr, n + 1, e, h =>
       TaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr n e h
 
@@ -602,8 +602,8 @@ theorem FamilyMemberFoldKCases.eval_rename (G : GlobalEnv Sg.decls) :
       FamilyMemberFoldKCases.eval G cases env mkEnv fr x
   | _, _, _, _, _, _, _, _, _, ρ, .ctors cases, env, env', mkEnv, fr, _, h =>
       FamilyTaggedUnionFoldKCases.eval_rename G ρ cases env env' mkEnv fr _ _ h
-  | _, _, _, _, _, _, _, _, _, ρ, .record br, env, env', mkEnv, fr, _, h =>
-      FamilyFoldKBranch.eval_rename G ρ br env env' mkEnv fr _ h
+  | _, _, _, _, _, _, _, _, _, ρ, .record br, env, env', mkEnv, fr, x, h =>
+      FamilyFoldKBranch.eval_rename G ρ br env env' mkEnv fr (Ty.recordIPFObjToList _ x) h
   | _, _, _, _, _, _, _, _, _, ρ, .alias br, env, env', mkEnv, fr, _, h =>
       FamilyFoldKBranch.eval_rename G ρ br env env' mkEnv fr _ h
 
@@ -622,9 +622,9 @@ theorem FamilyTaggedUnionFoldKCases.eval_rename (G : GlobalEnv Sg.decls) :
     FamilyTaggedUnionFoldKCases.eval G (cases.rename ρ) env' mkEnv fr t e =
       FamilyTaggedUnionFoldKCases.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, _, ρ, .payloadFirst b0 _ _, env, env', mkEnv, fr, 0, e, h =>
-      FamilyFoldKBranch.eval_rename G ρ b0 env env' mkEnv fr e h
+      FamilyFoldKBranch.eval_rename G ρ b0 env env' mkEnv fr (Ty.neIPFObjToList _ e) h
   | _, _, _, _, _, _, _, _, _, ρ, .payloadFirst _ b1 _, env, env', mkEnv, fr, 1, e, h =>
-      FamilyFoldKBranch.eval_rename G ρ b1 env env' mkEnv fr e h
+      FamilyFoldKBranch.eval_rename G ρ b1 env env' mkEnv fr (Ty.fieldsIPFObjToList _ e) h
   | _, _, _, _, _, _, _, _, _, ρ, .payloadFirst _ _ rest, env, env', mkEnv, fr, t + 2, e, h =>
       FamilyTaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr t e h
   | _, _, _, _, _, _, _, _, _, ρ, .skip b0 _, env, env', mkEnv, fr, 0, e, h =>
@@ -648,7 +648,7 @@ theorem FamilyCtorsWithPayloadFoldKCases.eval_rename (G : GlobalEnv Sg.decls) :
     FamilyCtorsWithPayloadFoldKCases.eval G (cases.rename ρ) env' mkEnv fr t e =
       FamilyCtorsWithPayloadFoldKCases.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, _, ρ, .here b _, env, env', mkEnv, fr, 0, e, h =>
-      FamilyFoldKBranch.eval_rename G ρ b env env' mkEnv fr e h
+      FamilyFoldKBranch.eval_rename G ρ b env env' mkEnv fr (Ty.neIPFObjToList _ e) h
   | _, _, _, _, _, _, _, _, _, ρ, .here _ rest, env, env', mkEnv, fr, t + 1, e, h =>
       FamilyTaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr t e h
   | _, _, _, _, _, _, _, _, _, ρ, .skip b _, env, env', mkEnv, fr, 0, e, h =>
@@ -673,7 +673,7 @@ theorem FamilyTaggedUnionFoldKCasesRest.eval_rename (G : GlobalEnv Sg.decls) :
       FamilyTaggedUnionFoldKCasesRest.eval G cases env mkEnv fr t e
   | _, _, _, _, _, _, _, _, _, _, .nil, _, _, _, _, _, e, _ => PEmpty.elim e.1
   | _, _, _, _, _, _, _, _, _, ρ, .cons b _, env, env', mkEnv, fr, 0, e, h =>
-      FamilyFoldKBranch.eval_rename G ρ b env env' mkEnv fr e h
+      FamilyFoldKBranch.eval_rename G ρ b env env' mkEnv fr (Ty.fieldsIPFObjToList _ e) h
   | _, _, _, _, _, _, _, _, _, ρ, .cons _ rest, env, env', mkEnv, fr, t + 1, e, h =>
       FamilyTaggedUnionFoldKCasesRest.eval_rename G ρ rest env env' mkEnv fr t e h
 

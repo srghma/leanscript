@@ -1,3 +1,658 @@
+# Summary of changes for run 326c90a8-7327-49c9-b662-7bc9b44956b1
+Yes, it is possible, and I made the change. `α × β` now denotes `Den α × Den β`, with no `PUnit`. The whole project builds with `lake build` (1026 jobs), with no errors, warnings or `sorry`.
+
+**What changed in `LeanScript/Den.lean`**
+- The fields of a record or a constructor are now denoted by a new type, `Ty.DenFields`, a right-nested tuple with no terminator:
+  - no fields is `PUnit`;
+  - one field is just that field;
+  - `[a, b]` is `Den a × Den b`;
+  - `[a, b, c]` is `Den a × Den b × Den c`.
+- The records, the constructors and the per-member containers of mutual families all use it. For example, `some x` of `Option α` now holds `x` itself rather than `(x, ())`.
+- **Environments and argument lists keep the old `PUnit`-terminated `Ty.DenList`.** This is on purpose: adding a variable to an environment must stay "one more pair" even when the rest of the list is unknown. A terminator-free list can't do that, because its shape depends on whether the rest is empty.
+- To move between the two:
+  - `Ty.DenFields.toList` and `ofList` convert values, with round-trip lemmas;
+  - `Ty.fieldsObjToList`, `neObjToList` and the family versions convert container shapes, which is how the fold of a recursive type reads a node's fields one at a time.
+- `Ty.denNE_eq`, `denRecord_eq` and `denAt_eq` now state equalities with `Ty.DenFields`, and `DenTU.mk` / `DenTU.field?` take and return `DenFields`.
+
+**Knock-on changes (same meaning, adjusted to the new shape)**
+- `Den/Holes.lean`, `Den/Rec.lean` (the roll/unroll functions and their round-trip proofs), `Den/Family.lean`, `Den/RecObjectAlias.lean`, `Expr/Extern.lean` (e.g. `ofProd (a, b) = (a, b)`), `Eval.lean`, `EvalFacts.lean`, `RecFnFieldFacts.lean`, `RecUnionEvalFacts.lean`, `RenameEvalFacts.lean` and `BuildEvalFacts`.
+- The test files whose expected values contained the old `(…, ())` shapes were updated, e.g. `run pair = (3, true)` and `window_eval : runAdd window n = (fib n, fib (n + 1))`.
+- New test file `TermTests/DenTupleTest.lean`. Its theorem `den_prod` shows `TyWf.Den (tyWfOf (α × β)) = TyWf.Den (tyWfOf α) × TyWf.Den (tyWfOf β)` by `rfl` for any two types, and it also checks the three-field, one-field and `Option` cases.
+
+**One limitation.** If a record is built by hand as `TyWf.record schema` from a schema of `TyWf`s, the type of its last field is not simplified automatically during elaboration. So `x.2 + 1` or a numeral in that position can fail to find an instance. The workaround is to state the expected type, e.g. `((1, 0) : Nat × Nat)`, or to use `Nat.add`. The model of `α × β` and the models produced by `deriving` don't have this problem. The only place in the project that needed the workaround was `TermTests/ArrayRecDepthTest.lean`.
+
+I also re-added mathlib to `lake-manifest.json`, which `lakefile.toml` requires; this is in its own commit.
+
+I registered `den_prod` in the Properties table as proved. The table is too large for me to read back in full. Existing entries whose statements changed in this refactor, such as the tagged-union field theorems or `denList_recObjectUnfold`, which is now renamed `denFields_recObjectUnfold`, may still show their old code.
+
+# Summary of changes for run 1501da52-f8d1-4d38-beb8-406a1d88c131
+I split the two largest files that could be split cleanly. The whole project builds with `lake build` (1025 jobs, no errors, warnings or `sorry`).
+
+**Files split**
+- **`LeanScript/Expr/Build.lean`** (929 lines) is now two files:
+  - **`LeanScript/Expr/Build/Bind.lean`** (new, about 440 lines) holds the naming machinery: `Ren.comp`/`Ren.cons`, `Term.ofComp`, `toJump`, `bindAtom`/`bind`/`letE'`, closed steps, redex readers, and the `Spine`/`Terms`/`FamilyMemberValue` operand lists.
+  - **`LeanScript/Expr/Build.lean`** (about 510 lines) keeps the direct-style forms (`Term.var`, `Term.ap`, `…_casesOn'`, `…_rec'`, `Term.while_loop'`, …) and imports the new file.
+- **`LeanScript/BuildEvalFacts/Builders.lean`** (817 lines) is now two files:
+  - **`LeanScript/BuildEvalFacts/BuildersPrim.lean`** (new, about 440 lines) holds the theorems about redexes, applications and extern calls, and the dispatches on primitive types.
+  - **`Builders.lean`** (about 410 lines) keeps delays, arrays, enums, records, tagged unions and the recursive shapes, including `Term.eval_while_loop'`, and imports the new file.
+
+The part that keeps the original name imports its new child file, so no other file's imports had to change and there is no file that only re-exports others. No declaration was renamed or changed; each new file has its own module doc, and the original doc now says where the other half went.
+
+**Files I did not split**
+- **`LeanScript/Expr/Term.lean`** (1165 lines) is still over 1000 lines. Almost all of it (lines 36–1136) is one `mutual` inductive: `Term` together with all its branch families. These types refer to each other, and Lean cannot spread one `mutual` block across files. Only the three `abbrev`s at the end could move, which would save about 30 lines.
+- **`ToTerm/Trans.lean`, `Eval.lean` and `RenameEvalFacts.lean`** (about 700–800 lines each) are also mostly one `mutual` block each. Splitting them would mean changing the code itself, for example passing `trans` as an argument as `TransRec` already does. I did not do that here, but can if you want.
+
+**Change to `lake-manifest.json`:** `lakefile.toml` requires `mathlib`, but the manifest did not list it, so `lake build` failed at the start. I ran `lake update mathlib`, which only added the mathlib entries and left the other dependencies as they were. This is in its own commit.
+
+**Properties table:** I did not update it. The table is too large for me to list in full here, so I could not check every entry that names `LeanScript/Expr/Build.lean` as its file. Entries for declarations that moved into `Build/Bind.lean` or `BuildersPrim.lean` may still name the old file. `Term.eval_while_loop'` did not move, so its entry is still correct.
+
+# Summary of changes for run 6384d118-43cc-400e-9a72-9c76f483e047
+`#leanscript_to_term` now translates `while` loops, and also `repeat …` and `repeat … until c`, in `Id`. `break`, `continue`, early `return` and nesting inside other loops all work. The full `lake build` passes (1023 jobs, no errors or warnings, no `sorry`).
+
+**Why the loop needs a fuel bound.** Your term language is total by design, and its evaluator is a structural function that `kernel_rfl` can run. A `while` loop is not a fold, and Lean itself gives it meaning through `repeatM`, whose implementation is `partial`. So the new node is evaluated by running the loop for at most `whileFuel = 2 ^ 64` iterations. If a loop is still running at that point, the model returns the state it has reached. This limit only affects the Lean model: the future JS backend would print the node as a plain `while`. The kernel only unfolds as many iterations as the loop actually takes, so tests stay fast.
+
+**Code changes**
+- **`LeanScript/Expr/While.lean` (new):** `whileFuel`, `whileIter` (the loop run with fuel) and `whileIter?` (gives `some r` only if the loop stops within the fuel).
+- **`LeanScript/Expr/Term.lean`:** new constructor `Term.while_loop init body d`. The body returns a step `ForInStep ρ`, which the language represents as the tagged union `TyWf.sum ρ ρ`.
+- **`LeanScript/Eval.lean`:** evaluates the new constructor, with `TyWf.sumStep` turning the body's result back into a step.
+- **Existing functions and proofs updated for the new constructor:**
+  - `Rename.lean` and `Build.lean`: renaming, `toJump`, and a new builder `Term.while_loop'`.
+  - `BuildEvalFacts.lean`, `RenameEvalFacts.lean` and `ToJumpEvalFacts.lean`: their proofs are extended to the new case.
+- **`LeanScript/ToTerm/Trans.lean`:** new `transForInLoop?`. It recognises a loop over `Lean.Loop`, reads its body as a step with the existing `forInBodyAux`, and emits `Term.while_loop'`.
+
+**Proofs** (no `sorry`; only the standard axioms `propext`, `Classical.choice`, `Quot.sound`)
+- `LeanScript.loop_forIn_eq_whileIter` (`LeanScript/WhileFacts.lean`): whenever the loop stops within `2 ^ 64` iterations, Lean's loop `forIn Lean.Loop.mk init f` equals the model. Nothing is claimed about a loop that never stops.
+- `Term.eval_while_loop'` (`LeanScript/BuildEvalFacts/Builders.lean`): the builder evaluates to exactly that model.
+
+As with the `for` loops, the translated programs themselves are only checked on test inputs, not proved correct for all inputs.
+
+**Tests** (`TermTests/ToTermTest/While.lean`): each translated program is run by `kernel_rfl` against a value written out, and the original Lean function is checked against the same value with `#guard`. They cover:
+- countdown sums, halving counts and subtraction-based gcd;
+- `break`, `continue`, and `while true` with `return`;
+- `repeat` with `break` (Collatz steps from 27, 111 iterations) and `repeat … until`;
+- a `while` inside a list `for`, and a `while` inside a `while`.
+
+**Two gaps I ran into, not fixed:** these are not caused by loops, and the translator refuses them anywhere with the test signature.
+- `!=`: it goes through `Bool.not`, which is not in the signature.
+- `x % 2` on `Nat`: the previous run already reported this one.
+
+The tests use `m > 0` and `m / 2 * 2 == m` instead.
+
+**Docs:** the Design table (`Expr/Design.lean`), the evaluator and grammar headers, `ToTerm/Overview.lean`, `ToTerm/ForIn.lean` and `NOT_IMPLEMENTED.md` now describe the new loop and its fuel.
+
+**Build setup:** as in earlier runs, your committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib and put your manifest back unchanged, which is why no build targets are listed for the final check. Run `lake update mathlib` before building.
+
+# Summary of changes for run b903a750-ce66-412f-8563-fc082f27cf93
+**`#leanscript_to_term` now translates `for h : i in r` over a range, the form that names the membership proof `h : i ∈ r`.** It works for `[:n]`, `[a:n]`, `[:n:k]`, `[a:n:k]` and a range written out as a structure. `break`, `continue` and early `return` work inside these loops too.
+
+**How it is translated**
+- **The body does not read `h`:** the loop is translated as `for i in r`.
+- **The body reads `h`** (for example `l[i]`, which gets its bound from `h`): the loop becomes the loop over `[:size]`. At step `j`, the body is wrapped in `if hj : j < size then … else (keep the state)` and reads the index `start + j * step`. It gets the proof it needs from `hj` through a new lemma, `Std.Legacy.Range.mem_start_add_mul_step`, in the new file `LeanScript/RangeFacts.lean`. This test always holds; it is there only because the body needs a proof, and it costs one comparison per iteration. The loop is then translated like any other loop over `[:n]`, and the proof is erased.
+
+**Code changes**
+- `LeanScript/ToTerm/ForIn.lean`: new `rangeForIn'AsForIn`. The size and index arithmetic that `rangeForInReindex` already did is moved into two shared helpers.
+- `LeanScript/ToTerm/Trans.lean`: new `transForIn'Range?`, which is tried when a `for h :` loop is not over a list.
+- `LeanScript/ToTerm/Trans.lean` also changes in a second way: a `have h : p := proof` inside a body is now translated by putting the proof in place of `h`, where it is erased. Before, it was refused. Loops like `have : i - 1 < l.length := by …; … l[i - 1] …` need this.
+- `LeanScript/ToTerm/Elab.lean` imports `LeanScript/RangeFacts.lean`, so the lemma is available wherever the command is.
+
+**Proofs** (`LeanScript/ListLibraryFacts.lean`, no `sorry`, only the standard axioms `propext`, `Classical.choice`, `Quot.sound`):
+- `forIn'_range_eq_forIn_guard`: the guarded rewriting equals the original loop, for all ranges, bodies and initial states. It is in the Properties table as proved.
+- `forIn'_range_eq_forIn`: a body that ignores `h` gives the same result as `for i in r`.
+- A helper, `forIn'_eq_forIn_dite`.
+
+As before, the translated programs themselves are only checked on the test inputs, not proved correct for all inputs.
+
+**Tests** (new file `TermTests/ToTermTest/ForRangeMem.lean`): each program is translated, run, and compared by `kernel_rfl` with a value written out. The original Lean function is checked against the same value by `#guard`. They cover:
+- `h` unused, over `[:n]` and over `[k:n:2]`;
+- list indexing by `h`: over `[:l.length]`, with a step, with a start, reading both `l[i-1]` and `l[i]` (with a `have`), and `h` passed to a function;
+- `break`, `continue` and early `return` without `let mut`;
+- nested loops where both loops name their proof and the inner range starts at the outer index.
+
+**Docs:** `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean` no longer list this form as refused.
+
+**Build:** the full `lake build` passes (1020 jobs, no errors or warnings). As in earlier runs, your committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib and then put your manifest back unchanged, which is why no build targets are listed for the final check. Run `lake update mathlib` before building.
+
+# Summary of changes for run ca60cab5-f6d8-4b88-b678-39e8eeaff8cb
+**Answer: the grammar can express ranges with a step (`[0:n:2]`), but `#leanscript_to_term` used to refuse them. It refused any range that did not start at `0` or step by `1`. They are now translated, and there are tests.**
+
+**Why the grammar can express them:** the indices of `[start:stop:step]` are `start + j * step` for `j < size`, where `size = (stop - start + step - 1) / step` (this is Lean's `Std.Legacy.Range.size`). So the loop is the loop over `[:size]` whose body uses the index `start + j * step`. A loop over `[:n]` was already translated as `nat_rec`, and `-`, `+`, `*`, `/` on `Nat` are already externs of the language.
+
+**Changes**
+- `LeanScript/ToTerm/ForIn.lean`: new `rangeForInReindex`, which does this rewriting. A start of `0` or a step of `1` is left out of the arithmetic.
+- `LeanScript/ToTerm/Trans.lean`: `transForInRange?` applies that rewriting to every range except `[:n]`, instead of refusing it. `[:n]` loops are translated exactly as before. `break` and early `return` work too, because they go through the existing handling for steps.
+- `LeanScript/ListLibraryFacts.lean`: new theorem `forIn_range_step_eq`, which proves the rewriting equal to the original loop for all inputs. It uses only the standard axioms, and is in the Properties table as proved. The translated programs themselves are only checked on the test inputs, not proved correct for all inputs.
+- `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean` are updated.
+
+**Tests** (new `TermTests/ToTermTest/ForRangeStep.lean`) cover:
+- `[0:n:2]`, `[:n:3]`, a step larger than the bound (`[0:n:5]`), and a bound that is an expression (`[0:2 * n:2]`);
+- a start without a step (`[k:n]`, including `n ≤ k`), a literal start (`[1:n:2]`) and a variable start (`[k:n:2]`);
+- a step that is not a literal, written as the structure (`step := k + 1`);
+- `break`, `continue`, early `return` without `let mut`, and nested stepped loops, where the inner range starts at the outer index.
+
+Each program is translated, run, and compared with the expected value by `kernel_rfl`. The kernel cannot run Lean's own range loop (it is defined by well-founded recursion). So the original Lean function is checked against the same values by `#guard`, which runs compiled code.
+
+**Still not supported:** `for h : i in r` over a range, the form that names the membership proof. This was already refused before and is now listed in `NOT_IMPLEMENTED.md`.
+
+**Build:** the full `lake build` passes (1018 jobs, no errors, no `sorry`). As in earlier runs, your committed `lake-manifest.json` has no Mathlib entry, so I built against a local Mathlib and then put your manifest back unchanged. That is why no build targets are listed for the final check. Run `lake update mathlib` before building.
+
+# Summary of changes for run 7ff7e28f-6f56-4df6-b9be-8a7caec91a61
+**Answer: an early `return` from a `for` loop is now supported, including when the loop has no `let mut` variable. Before this change it only worked when the loop had a `let mut`. Tests are added.**
+
+**What was checked**
+- Loops over `[:n]`, loops over a list with `for h : x in l`, nested loops, and loops with a `let mut` already translated: `do` turns `return v` into a `break` that also stores `some v`.
+- A loop without a `let mut` was refused, for example:
+  ```
+  for x in l do
+    if x > 10 then return x
+  return 0
+  ```
+  For such a loop, `do` makes the loop state `Option ρ × Unit`. `Unit` has no tree in the language, so there was no model for that state.
+
+**Fix** (`LeanScript/Ty/Instances.lean`): two new instances, `LeanScriptTyWf (α × Unit)` and `LeanScriptTyWf (Unit × β)`. Each models the pair by the tree of its other component. This follows an existing rule: the language already erases `Unit`, and a structure with only one field the language keeps is modelled as that field. The translator needed no other change, because building and reading these pairs already skips `Unit` fields.
+
+**Tests** (new `TermTests/ToTermTest/ForReturn.lean`): each program is translated, run, and checked by `kernel_rfl`. It covers:
+- **No `let mut`:** a `Nat` result, a `Bool` result (`contains`), a result computed from the element, `return` in a `match` arm with a list result, and `return` together with `continue`.
+- **With `let mut`:** one or two variables, and `return` and `break` in the same loop.
+- **Other loop forms:** a loop over `[:n]` (with and without `let mut`), a loop over `List.range n`, and `for h : x in l` with the proof passed on (with and without `let mut`).
+- **Nested loops:** `return` from the inner loop (with and without `let mut`), and from the outer loop.
+- **Against the Lean functions:** some cases are compared with the original Lean function. The loops over ranges are compared with values written out instead, because the kernel cannot evaluate Lean's own range loop (it is defined by well-founded recursion). I confirmed the value `6` used in one of those tests with `native_decide` in a scratch file only.
+
+**Other edits**
+- `TermTests/ToTermTest/ForBreak.lean`: the `#guard_msgs` test that expected the refusal now fails, so I replaced it with a pointer to the new file.
+- `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean` no longer list this case as unsupported.
+- The new instance is in the Properties table.
+
+**Build:** the full `lake build` passes (1017 jobs, no errors or warnings, no `sorry`). As in earlier runs, your committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib and then put your manifest back unchanged, which is why no build targets are listed for the final check. Run `lake update mathlib` before building.
+
+# Summary of changes for run 6982c2c9-9bba-47cc-8b36-a94b31eb4237
+**Answer: the grammar can express `break` in a `for` loop, but `#leanscript_to_term` used to refuse it. It is now translated, and there are tests for it.**
+
+**Why the grammar can express it:** a loop that can `break` is still a fold. The fold's state is the step `ForInStep β` (`done s` or `yield s`) rather than the plain state `β`. It starts from `yield init`. At each element, a `done` step is kept as it is; from `yield s`, the loop takes the body's step. The loop's value is the state carried by the last step. Elements after the `break` are still visited, but they don't change anything.
+
+**Changes**
+- `LeanScript/Ty/Instances.lean`: new instance `LeanScriptTyWf (ForInStep α)`, with the same tree as `α ⊕ α` (constructor 0 is `done`, 1 is `yield`).
+- `LeanScript/ToTerm/ForIn.lean`: the body reader has a new mode that keeps the step (through `let`s, `do`'s helper functions, `if`, `if h :`, `match` and `>>=`). Loops that never `break` are translated exactly as before. Otherwise:
+  - over a list, the loop becomes `List.foldl` of the step (for `for h : x in l`, over `l.attach` when `h` is used);
+  - over `[:n]`, it becomes `Nat.rec` of the step (new `rangeForInBreakAsNatRec`, used from `LeanScript/ToTerm/Trans.lean`).
+- Documentation: `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean` are updated. The old "`break` is refused" tests are removed from `ForList.lean`; the new file covers them.
+
+**Tests** (`TermTests/ToTermTest/ForBreak.lean`): each program is translated, run, and compared with its Lean function by `kernel_rfl`. They cover:
+- `break` before and after updating the state;
+- a list as the state, several `let mut`s with a found flag, and a `Bool` result;
+- `break` together with `continue`, and `break` in a `match` arm;
+- nested loops, with `break` in the inner loop and in the outer loop;
+- a loop over `List.range n`;
+- `for h : x in l`, with `h` unused and with `h` passed on;
+- `for i in [:n]` with `break`.
+
+**`return` inside a loop:** this now works when the loop has a `let mut` variable (tested). Without one, `do` builds the state `Option ρ × Unit`, and `Unit` has no tree in the language, so it is still refused. A `#guard_msgs` test pins the error message.
+
+**Proofs** (`LeanScript/ListLibraryFacts.lean`): these show the rewriting gives the same result for every input:
+- `forIn_id_eq_foldl_step` (loop over a list);
+- `forIn'_id_eq_foldl_attach_step` and `forIn'_id_eq_foldl_step` (the `for h :` forms);
+- `forIn_range_id_eq_natRec_step` (loop over `[:n]`).
+
+They contain no `sorry` and use only standard axioms. The two main theorems are in the Properties table as proved. The translated programs themselves are only checked on the sample inputs in the tests, not proved correct for all inputs.
+
+**Unrelated gap found while testing:** the translator refuses `x % 2` on `Nat` with the test signature, whether or not it is in a loop, so I used other conditions in the tests.
+
+**Build:** the full `lake build` passes (1016 jobs, no errors or warnings). As in earlier runs, your committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib and then put your manifest back unchanged, which is why no build targets are listed for the final check. Run `lake update mathlib` before building.
+
+# Summary of changes for run bdfe10ed-7fd9-4c0b-9a41-9ddf792b576c
+I improved both normal-form layers. The builders in `LeanScript/Expr/Build.lean` now produce smaller terms, and I added proofs that every builder preserves evaluation for all inputs. The full `lake build` passes (1015 jobs). None of the new files contains `sorry`, and the main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**Smaller terms** (new section "Redexes taken apart while building" in `Build.lean`):
+- **Applying an abstraction:** `Term.ap` now β-reduces. Applying `fun x => body` to `a` becomes `let x = a; body`, with no closure built and no call. This is the shape translated instance methods and local functions take once applied, so it is where translated terms shrank most.
+- **Literal conditions:** `Term.bool_casesOn'` on `true`/`false` returns the selected branch.
+- **Natural-number literals:** `Term.nat_casesOn'` on `0` returns the zero branch; on `m+1` it binds the literal `m` in the successor branch.
+- **The normalization pass** (`LeanScript/ToTerm/Normalize.lean`): I didn't change this file. It reduces what the builders produce, and its output is checked against the builders by `rfl`, so it now gets these smaller terms too.
+
+All existing tests passed with the new builders unchanged. I added examples to `TermTests/AnfTest.lean` that pin the new output by `rfl` (β-redex, `if true …`, `match 5 …`) and check their values with `kernel_rfl`.
+
+**Proofs that the builders are correct** (all for arbitrary terms and environments):
+- `LeanScript/RenameEvalFacts.lean`: renaming preserves evaluation (`Term.evalJ_rename` across all the term and case/fold families, plus `Term.eval_rename` and `Term.evalJ_weaken`).
+- `LeanScript/ToJumpEvalFacts.lean`: turning returns into jumps to a join point passes the term's value to that join point (`Term.evalJ_toJump`, `Term.evalJ_toJump_nil`).
+- `LeanScript/BuildEvalFacts.lean`: the core binders `bindAtom`, `bind`/`letE'`, `bindAtomOr`, closed steps, and the list binders (`Spine`, `Terms`, family-member values) compute what the direct-style form means.
+- `LeanScript/BuildEvalFacts/Builders.lean`: one theorem per builder that takes operands. The value of the A-normal term equals the direct-style meaning. For example:
+  - `Term.eval_ap`: `f a` is the value of `f` applied to the value of `a`, including the β case.
+  - `Term.eval_bool_casesOn'` and `Term.eval_nat_casesOn'` include the literal folding.
+  - The other theorems cover extern calls (plain and checked), all the primitive dispatches, `Term.eval_nat_rec'`, lazy/thunk forcing, arrays (build, dispatch, fold), enums, records, tagged unions, recursive tagged unions, recursive objects and aliases, and mutual recursive families.
+
+The docstring of the new section in `Build.lean` points to these theorems. I added seven of the main theorems to the Properties table, all marked proved.
+
+I didn't commit `lake-manifest.json`, so it stays as you had it; building locally needs Mathlib resolved, as before. I didn't edit `ARISTOTLE_SUMMARY.md`.
+
+# Summary of changes for run 20328bec-4a6e-4bfa-92a2-c4bcf5ed4b99
+You chose a general cleanup: remove dead and commented-out code, merge duplicated helpers, split large files, and keep the build green. That work is done and committed in three commits. The full `lake build` passes (1011 jobs, including every test with `#guard_msgs`), with no errors or warnings. No `sorry` was added and no public theorem changed.
+
+**Dead and commented-out code removed**
+- `LeanScript/Expr/Design.lean`: deleted the old commented-out sketch of the grammar (about 185 lines, including `sorry`s in type position). The design prose now refers to it as "in the git history".
+- `LeanScript/Expr/Term.lean`: deleted the leftover commented-out sketch constructors.
+- Removed two definitions nothing used: `treeE` (`ToTerm/ObjectExpr.lean`) and `LeanFamMemberSchema.toCtors` (`Ty/Schema/Family.lean`), plus an empty namespace block.
+
+**Duplicate code merged**
+- **Schema builders:** `CtorFn/Classify.lean` (`#leanscript_ctor`) had its own copies of `mkNE`, `mkCtorsWithPayload?` and the tagged-union builder. The versions in `Ty/Deriving/Build.lean` now take the element type as an optional argument (default `Ty`), and `#leanscript_ctor` calls them with `TyWf`. The copies in `Classify.lean` are gone. `mkCtorsWithPayload?` also no longer needs `partial`.
+- **Constructor indices:** `recUnionCtorIndices` and `famCtorIndices` were the same function. There is now one `schemaCtorIndices sc l` in `ToTerm/TransRecUnion.lean`, used by both the recursive-union and the family translations.
+- **Stand-in types in the deriver:** `hoistAux` and `tyWfOfWrapper` in `Ty/Deriving/Translate.lean` repeated about 20 lines that set up the stand-in types, synthesize the instance and unfold the model. That code is now one helper, `withStandInModel`.
+- **`casesOn` translation:** the `casesOn` code for recursive unions, records and newtypes was written out twice in `ToTerm/TransRecCases.lean` (plain and indexed families). It is now one helper, `transRecShapeCases`.
+- **Type names as text:** `LeanPrimTy.format` and `LeanPrimTy.pretty` were two copies of the same table. Now `pretty` is the only table and `format` and `ToString` use it.
+
+**One small bug fixed:** the text for `float32Model` was `"floatModel"`; it is now `"float32Model"`.
+
+**Not split:** `LeanScript/Expr/Term.lean` is still about 1150 lines. It is one `mutual` block, and Lean requires a `mutual` block to be in a single file, so it can only get shorter by changing the grammar. The other large files are all under 1000 lines. `NOT_IMPLEMENTED.md` now says this, and the item about the old sketch is removed.
+
+**Left alone on purpose:**
+- the commented-out entries in the extern catalogue (they are generated by `scripts/gen_externs.py` and document what is out of scope);
+- the commented-out code with explanatory notes in `NonEmpty/`;
+- `Scratch.lean`, which is not part of any library.
+
+I did not merge a few proofs that look alike, such as the pairs in `Ty/WfSubst.lean` and `Den/Holes.lean`. They are about different constructions and differ in their key steps.
+
+**Build setup:** as in earlier runs, the committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib v4.34.0 and then put your manifest back unchanged, so a fresh checkout needs `lake update mathlib` first. For the same reason, no build targets are listed for the final check.
+
+# Summary of changes for run 13ed191f-a780-4d32-a94d-1166e86872e2
+**Answer: no, `for x in l` over a list was not supported. It is now.** Before this change, `#leanscript_to_term` only handled `for i in [:n]` (a range). Given a loop over a list, it failed with "the type β✝ has no tree of the language". I added support for it and wrote tests.
+
+**How it works**
+- New file `LeanScript/ToTerm/ForIn.lean`. In `Id`, a `for` loop whose body always moves on to the next element is a fold. The translator reads the body as "the next state" and turns the loop into `l.foldl`, which it then translates like any other `List.foldl`.
+- On the way it moves the yield inside `if`, `if h :` and `match`, inlines the join points that `do` creates (after an `if` without `else`, or a `continue`), keeps local `let`s, and handles `>>=` in `Id`.
+- `for h : x in l` becomes a fold over `l.attach` when the body uses `h`, and over `l` otherwise.
+- `break`, or a `return` from inside the loop, is refused with a clear error, as it already was for ranges.
+- The change to the translator itself is in `LeanScript/ToTerm/Trans.lean` (the new `transForInList?`, reached for `ForIn.forIn` and `ForIn'.forIn'`). The existing range translation now uses the same body reader, so a range loop can also contain `if`, `continue` or `match`.
+
+**Tests** (`TermTests/ToTermTest/ForList.lean`): each program is translated, run, and compared with its Lean function using `kernel_rfl`. They cover:
+- a sum, and a reverse (a list as the state);
+- the continuant loop with two `let mut`s, and two accumulators;
+- `if` / `else if` / `continue`, a `match` on the element, and a `Bool` flag;
+- `for (a, b) in l` over a list of pairs;
+- a body that reads another argument, and one that reads `l.length`;
+- a loop inside a loop, and a loop over `List.range n`;
+- `for h : x in l`, with `h` unused and with `h` passed to a function;
+- `#guard_msgs` checks that `break` and an early `return` are refused.
+
+**Proofs** (`LeanScript/ListLibraryFacts.lean`): these show the rewrite gives the same result, for every input:
+- `forIn_id_yield_eq_foldl` (the plain loop is the fold), which is in the Properties table as proved;
+- `forIn'_id_yield_eq_foldl_attach` and `forIn'_id_yield_eq_foldl` (the `for h :` forms);
+- `ite_pure_yield` and `dite_pure_yield` (moving the yield inside an `if`).
+
+They contain no `sorry` and use only `propext` and `Quot.sound`. The translated programs themselves are only checked on the sample inputs in the tests, not proved correct for all inputs.
+
+**Limits** (added to `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean`):
+- `for` over collections other than lists and ranges (e.g. an `Array`) is still not translated.
+- Early exit is refused.
+- Some things inside a loop body fail because the translator doesn't handle them anywhere, loop or not: `&&` (`Bool.and`), and calls to a user function that is neither `@[inline]` nor declared in the signature.
+
+**Build:** the full `lake build` passes (1011 jobs, no errors or warnings). The committed `lake-manifest.json` is still your original one, which has no Mathlib entry even though `lakefile.toml` requires it. To build, I used a local manifest that points at a local Mathlib, and did not commit it; running `lake update mathlib` should fix this on your side. For the same reason I listed no build targets for the final automatic check.
+
+# Summary of changes for run d4c0a686-cd8d-439f-ade3-9faa440c1de0
+I formalized the `List` support in Lean as theorems in two layers. The first layer proves, for every input, that each new translation rule replaces an expression by an equal one. The second checks every translated program against its Lean function on all inputs up to a fixed size. I did **not** prove, for all inputs, that a translated program computes the same thing as its Lean function (see the last paragraph).
+
+The full `lake build` passes (1009 jobs) with no `sorry`, no `native_decide` and no new axioms. The theorems use only `propext`, `Classical.choice` and `Quot.sound`.
+
+**1. The translation rules are sound, for all inputs** (`LeanScript/ListLibraryFacts.lean`)
+- **`panic!`:** `panic msg = default`, and the same holds for `panicWithPos`, `panicWithPosWithDecl` and `outOfBounds`. This is why `panic!` translates to `default`.
+- **`l[i]!`:** `getElem!_eq_getD` proves `l[i]! = l.getD i default`.
+- **`l[i]` with its proof:** `getElem_eq_getD` proves `l[i] = l.getD i d` for any default `d`.
+- **`l[i]?` and `getD`:** `getD_eq_getElem?_getD` proves `l.getD i d = l[i]?.getD d`. `getElem?_eq_nth?` proves that `l[i]?` equals a hand-written recursion with a catch-all case, the shape the translator now simplifies.
+- **Subtypes and `attach`:**
+  - `tyWfOf (Subtype p) = tyWfOf α`, so a subtype is represented like its values.
+  - Reading the values of `l.attach` or `l.attachWith P h` gives back `l`.
+  - So any `map` or `foldl` over them that only reads the values is the same function of `l` (`map_attach_val`, `map_attachWith_val`, `foldl_attach_val`, `foldl_attachWith_val`).
+  - `map_range_attach_getElem` covers the `(List.range l.length).attach.map fun ⟨i, h⟩ => l[i]'…` pattern.
+
+**2. Every translated program is correct on all small inputs** (`TermTests/ToTermTest/ListLibraryBounded/`)
+- There is one theorem per program in `ListLibrary.lean`, 16 in total, covering `map`, `foldl`, `contains`, `getD`, `l[i]?`, `l[i]!`, `panic!`, `range`, `attach` and `attachWith`.
+- Each has the form: for every list `l` with `l.length ≤ 3` and all entries `< 4` (and every extra argument below a stated bound), the translated term gives the same result as the Lean function. For example, `getBang_term_small` covers indices `< 5`, including out-of-range ones where `l[i]!` is `default`. For `range`, the bound is every `n < 12`.
+- The kernel evaluates each check (`decide +kernel`). `mem_smallLists`, proved for every bound, connects the enumerated list of inputs to the stated bounds.
+
+**What is not proved.** I tried to prove correctness for all inputs directly, starting with `mapInc`. The kernel could evaluate the translated program on a list with an unknown first element (in about 7 seconds), but not on an unknown tail. With an unknown tail, one attempt ran out of time. A second attempt, on an abstract list value, finished after about 7 minutes but showed that the two sides are not equal by pure computation. A full proof would need step-by-step rewriting lemmas for the evaluator, applied to each program, which I did not build.
+
+Four of the results are in the Properties table and marked proved.
+
+**Build setup.** The committed `lake-manifest.json` is still your original, which lacks the Mathlib entry that `lakefile.toml` requires. With it, `lake build` stops before building anything. I built with a local manifest that adds Mathlib and did not commit it; `lake update mathlib` should fix this on your side. For the same reason I didn't list build targets for the final automatic check.
+
+# Summary of changes for run 2ff3cc42-c35e-4bb2-9214-ebf946887d09
+Structural recursions on a family that holds its members inside an `Array`, a function or a `Thunk` now translate. That covers `List (Array T)`, `Array (List T)`, an array of another member of a `mutual` block (`node (qs : Array Q)`), `node (f : Nat → G)` and `Thunk Q`. The full `lake build` passes (1003 jobs, no warnings), and I added no `sorry`, `axiom`, `implemented_by` or `native_decide`.
+
+**Change to the fold**
+- The family fold used to hand over an answer only at a field that is itself a member. Now, after a field that holds members inside it, it also hands over the answers at those members, laid out like the field (an array of answers, a function of answers, a delayed answer).
+- Where this lives:
+  - `LeanScript/Ty/Unfold.lean`: new `Ty.hasMemberOcc` and `Ty.famAnswerMap`; updated `Ty.famRecBinders`.
+  - `LeanScript/Ty/TyWfIn.lean`: new `TyWf.famAnswerBinders`.
+  - `LeanScript/Den/Family.lean`: new `famAnswerField` and `famAnswerEnv`; updated `famBindEnv`.
+- The existing general proofs about the family fold still build unchanged.
+
+**New proofs** (`LeanScript/FamilyNestedFacts.lean`)
+- When the extra answers are added and when they are not.
+- Some facts about how arrays map and compose.
+- `famAnswerField_array_memo`: the answers handed over after an `Array` field are, element by element, the fold's value at each element of the field. It uses only the axioms `propext` and `Quot.sound`.
+
+**Translator**
+- In `LeanScript/ToTerm/TransRecFamily*.lean` and `TransRecObject*.lean`, members are matched to Lean's recursion motives, including extra ones Lean creates such as `List (Array T)`. The nested fields are then passed through to the branches.
+- `LeanScript/Ty/Deriving.lean` now also derives the member instance for types like `List (Array LATree)`, which value translation needs.
+
+**Tests**
+- In `TermTests/StructRecTest/NestedOther.lean`, the section that checked the refusal now checks a working `LATree` sum instead.
+- The new `TermTests/StructRecTest/NestedFamily.lean` covers:
+  - `ALTree`
+  - `P`/`Q`: an array of the other member, with recursions started from both members, tuple answers and a one-level-deeper look
+  - `G`/`H`: a function field
+  - `TA`/`TB`: a `Thunk` field
+- Each is checked with `kernel_rfl` against the Lean definition on sample values.
+
+**Remaining limits** (now listed in `NOT_IMPLEMENTED.md` and `LeanScript/ToTerm/Overview.lean`)
+- A call that looks more than one level down through an array, function or delay field is not recognised as the fold.
+- A `Thunk` field has to be matched as `⟨f⟩` and called as `f ()`. Writing `t.get` makes Lean compile the definition by well-founded recursion, which is not supported.
+- Rebuilding an array with `⟨…⟩` inside a map is still refused. This limit was already there and also applies outside families.
+
+I also updated the docs: the `mutualRecursiveFamily_rec` docstring in `LeanScript/Expr/Term.lean`, `Overview.lean` (the refusal note is gone and there is a new row for this case) and `NOT_IMPLEMENTED.md`.
+
+**Build setup:** to build here I edited `lake-manifest.json` locally to point at local copies of the dependencies. That edit is not committed; everything else is.
+
+# Summary of changes for run d0360ff7-88fc-4401-842f-22eceeb29a5b
+I proved in Lean that the new piece of the translation is correct. At a function or `Thunk` field, in a fold deeper than 0, the value the translator binds next to the window equals the depth-0 window. The theorems hold for every signature, context, environment and depth. They are in the new file `LeanScript/RecFnFieldFacts.lean`, contain no `sorry`, and use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). What is still not proved is that a whole translated program equals its Lean function; those are checked on sample inputs only.
+
+**The two bound terms**, now defined in `LeanScript/Expr/Build.lean` next to the other builders:
+- `Term.fnTreeAnswer w`, for a function field: `fun a => (w a).1`.
+- `Term.thunkTreeAnswer w`, for a delayed field: `thunk_mk (thunk_force w).1`.
+
+The translator in `LeanScript/ToTerm/TransRecObject.lean` now emits exactly these two constants instead of spelling the terms out inline. So the theorems are about the terms it actually produces. Two `run_cmd` checks in `TermTests/StructRecTest/NestedFnDeep.lean` confirm that the unnormalized terms for `FT.foo` and `TS.f` contain them.
+
+**Theorems** (all in `RecFnFieldFacts.lean`):
+- `aliasAnswerTree_succ_fst`, `objAnswerTree_succ_fst`: at any depth, the first field of an answer tree is the answer stored at its node. The `_zero` versions say the depth-0 tree is that answer.
+- `Term.eval_fnTreeAnswer`, `Term.eval_thunkTreeAnswer`: the bound terms evaluate to the first fields of the window's answer trees.
+- The main results, for recursive newtypes and recursive records:
+  - `eval_fnTreeAnswer_aliasAnswerTree`, `eval_fnTreeAnswer_objAnswerTree` (function fields);
+  - `eval_thunkTreeAnswer_aliasAnswerTree`, `eval_thunkTreeAnswer_objAnswerTree` (delayed fields).
+
+  Each assumes the window holds the answer trees of depth `j + 1` at the subvalues, as the evaluator builds it. It concludes that the bound function (or delayed value) is the answers at those subvalues, i.e. the depth-0 window, which is what the Lean branch reads as `(f a).foo`.
+
+**Build:** the full `lake build` passes (1001 jobs, no errors or warnings), and I added no `sorry`, `axiom` or `implemented_by`. The existing sample checks in `NestedFnDeep.lean` and `NestedOther.lean` still pass. Everything is committed, and the Properties table lists the definition and the main theorem as proved. As before, the committed `lake-manifest.json` has no Mathlib entry. I built against a local Mathlib v4.34.0 and then restored the manifest, so I'm not listing Lake targets here, and a fresh checkout needs `lake update mathlib` first.
+
+# Summary of changes for run 5e8d0725-3b0f-4c57-afc0-d324b133ccb3
+I wrote `NOT_IMPLEMENTED.md` at the project root: a list of what is not implemented yet, with each item pointing to the file where you can read more. The list comes from the refusal lists in `LeanScript/ToTerm/Overview.lean`, `LeanScript/Ty/README.md` and `LeanScript/Expr/Design.lean`, the pinned error messages in the tests, the `TODO` comments in the code, and the proposals. Several proposal files are out of date: `proposals/ImprovementProposals.md` says none of its items is done, but `Term.rename` and the `BEq`/`DecidableEq` instances now exist. So I searched the code for each item rather than copying the proposals.
+
+The file has seven sections:
+1. **Type language:**
+   - existentially typed fields (deferred on purpose; `Twin`/`Seal` removed);
+   - inductive families whose index changes the tree;
+   - nested inductives under a type former that has no `LeanScriptTyWf` instance;
+   - `Ty.Wf` is not decidable;
+   - nothing links a tree to its Lean type;
+   - no `Repr`/`Hashable`/`ToString` for `Ty`, `TyWf` or `TyWfIn`;
+   - `TyWf` and `TyWfIn 0` are still two separate structures.
+2. **Leaf types and the extern catalogue:**
+   - no effects or `IO`; the impure externs file (`.lean_`) is disabled and several catalogue sections are commented out;
+   - `task`, `promise`, `ByteArray` and `Fin` are missing;
+   - three eliminators are missing;
+   - universe-polymorphic entries are refused.
+3. **Term language:**
+   - well-founded recursion exists only as a plan and a model outside the build;
+   - no substitution, and no theorems that evaluation respects renaming or substitution;
+   - the proof from `if h : …` is not reused;
+   - the commented-out old sketch in `Design.lean` is still there;
+   - no pretty-printer for `Term`;
+   - `SelfField` and `FamilyMemberField` are not merged.
+4. **`#leanscript_to_term` refusals:**
+   - `partial`/`unsafe` definitions and well-founded recursion;
+   - `Nat` recursion at `n / 2`;
+   - a `match` across `mutual` blocks;
+   - a family member inside an `Array`, a function or a `Thunk`;
+   - fold-depth bounds;
+   - undeclared calls such as `applyTwice (go 2)`;
+   - `Tree.rec`;
+   - dependent motives like `eval : TExpr α → α`;
+   - the two remaining existential cases;
+   - a `match` on an array;
+   - `for`/`do` limits;
+   - `Subtype`/`attach`.
+5. **Correctness:** there is no proof that the translator is correct. Its output is checked only on examples.
+6. **Backend:** there is no JavaScript printer. The `MoreJsTy` stage is described only in comments.
+7. **Engineering:**
+   - `lake-manifest.json` has no Mathlib entry, so a fresh checkout needs `lake update mathlib` before it builds;
+   - no CI;
+   - no import-graph test, and not every `throwError` has a `#guard_msgs` test;
+   - `Expr/Term.lean` is about 1160 lines;
+   - build-speed items not done;
+   - two small `TODO`s in the code;
+   - some design notes are out of date.
+
+Only this documentation file was added, and it is committed. No Lean code changed, so there is no build to check.
+
+# Summary of changes for run 23c4a2d6-ee6d-4c8d-9e22-97e5caeeeeeb
+Most of this was already supported. An earlier run made a direct call of a structural recursion (like `callGo n := go n 0`) translate without `@[inline]` or a signature declaration, with tests in `TermTests/StructRecTest/SplitRecursion.lean`. The sentence you quoted comes from an older "not covered" list in `ARISTOTLE_SUMMARY.md`. I tested more shapes of split recursion, fixed the two that were still refused, and updated the docs.
+
+**Gaps fixed** (in `LeanScript/ToTerm/Cache.lean`)
+- **Long chains of wrappers.** A wrapper of a wrapper of a recursion used to be followed at most three levels deep, so `w5 → w4 → … → go` was refused. There is now no depth limit.
+- **Wrappers across files.** Wrappers are followed through any module of your own project: those whose module name starts the same way, e.g. `TermTests.…`. They are never followed into `Init`, `Std` or `Mathlib`, so a library function doesn't become inlinable just because something it calls recurses. The recursion itself can be defined in any module.
+- **Callees written with the recursor.** A helper written with `Nat.rec` or `List.rec`, instead of by pattern matching, now counts as a recursion. Recursors of non-recursive types (`Eq.rec` in a cast, `False.rec`) don't count, and neither does the code Lean generates for `match` (`casesOn`, matchers), so an ordinary function with a `match` still has to be declared.
+
+**New tests:** `TermTests/StructRecTest/SplitRecursionMore.lean`. None of the helpers in it is `@[inline]` or declared. It covers:
+- a chain of six wrappers, and wrappers and recursions from `SplitRecursion.lean`, including a chain that crosses files
+- a `where` helper
+- partial application and eta-reduction (`go n`, `goAlias := go`, `l.map (go 2)`)
+- recursions written with `Nat.rec` and `List.rec`
+- a member of a `mutual` block that Lean compiles on its own (`oddParity`)
+- a `mutual` recursion on `C`/`D` whose branches call a separate, non-inline recursion on `A`/`B` (the case an earlier run had dropped from `CrossBlock`)
+- a recursive branch that calls a wrapper of another recursion
+
+For most cases the kernel runs the translated term on sample inputs (`kernel_rfl`) and compares it with fixed numbers and with the Lean definition. Two cases are checked more weakly: for `sumLensPlus` I only check that the term contains a fold, and `mapGo` is checked against one fixed list. These are tests on examples, not a general proof about the translator.
+
+**Still refused**
+- A plain helper that reaches no recursion, even when it is given one as an argument, e.g. `applyTwice (go 2)`. It still needs `@[inline]` or a declaration, as you described for "any other call"; a `#guard_msgs` test pins the message.
+- A recursion written with the recursor of your own type (`Tree.rec …`). The translator only reads `Nat.rec` and `List.rec` as folds; pattern matching on `Tree` works.
+
+**Docs:** `LeanScript/ToTerm/Overview.lean` (supported table, "Which calls are allowed", "What is refused") and the header of `SplitRecursion.lean` are updated.
+
+**Build:** the full `lake build` passes (999 jobs, no errors or warnings), with no new `sorry`, `axiom` or `implemented_by`. The work is committed. As before, the committed `lake-manifest.json` has no Mathlib entry. I pointed it at a local Mathlib v4.34.0 to build and then restored the committed version, so a fresh checkout still needs `lake update mathlib`. For that reason I'm not listing Lake targets as checked here.
+
+# Summary of changes for run 56ed0eb3-f9e4-4afe-8f41-70433a008c7d
+Both requests were already partly supported. Indexed families like `Vec α n` worked, and so did functions of a *structure* with a hidden type, like your `Unfold`. I closed the remaining gaps I could and documented what is still refused. The full `lake build` passes (all four libraries, 998 jobs), with no new `sorry`, `axiom` or `implemented_by`. Each new case is checked by running the translated term in the kernel (`kernel_rfl`) on sample values and comparing it with fixed numbers and with the Lean definition. These are tests on examples, not a general proof about the translator.
+
+**Inductive families with indices** (new test file `TermTests/StructRecTest/IndexedGADT.lean`)
+- **Families indexed by types now get a tree.** Example: a typed expression language `TExpr : Type → Type` with `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)`. `deriving LeanScriptTyWf` used to refuse it, calling `α` an existential. A type field that no value depends on is now erased; here `α` only appears in indices, which the language already erases. `TExpr α` has the same tree at every `α`. The change is in `Ty/Deriving/Read.lean` (`existentialField?`).
+- **Recursions on such families translate.** Fields the language erases are now allowed in the fold of a recursive tagged union (`ToTerm/TransRecUnion.lean`), and a `fun {α : Type}` whose `α` only appears in types is accepted (`ToTerm/Existential.lean`). Tested: `size`, `lits`, `double : TExpr α → TExpr α`, a look into a subvalue, and a wildcard `match`.
+- **Bug fixed:** a recursion on a family indexed by a value, like `V : Nat → Type`, crashed Lean when it looked into a field at a fixed index such as `V 0`. That was an existing bug, now fixed. If the index rules a constructor out there (`neg : V 1`), its branch in the language holds a default value.
+- **Still refused:** a function whose answer's type is the index, like `eval : TExpr α → α`. It now gets the clear "dependent motive" error.
+
+**Existentially quantified type fields beyond structures** (new test file `TermTests/StructRecTest/ExistentialUnion.lean`)
+- **Functions of non-recursive datatypes with several constructors now translate.** Example: `Src`, with `| const n | gen (S : Type) (seed : S) (out : S → Nat) | pair (S T : Type) …`. As with `Unfold`, the result is a Lean function of the hidden types, here one per hidden type of every constructor. Its argument is one of the constructors' layouts (`TyWf.oneOf`, in constructor order), and it dispatches on which one with `taggedUnion_casesOn`.
+- **Constructors with no value work too:** `Opt.empty` becomes an alternative with no field.
+- **Indexed datatypes with hidden types work** when the function is generic in the index (`{β} → Tag β → …`). Examples: `Tag` with `wrap {α} (x : α) … : Tag (List α)`, and a one-constructor `Box`.
+- **Calls on a value written out:** `(Src.gen … ).value` used to be refused for datatypes with several constructors. It now works: the `match` on a known constructor reduces to that constructor's branch.
+- **Still refused:** recursive datatypes with hidden types, like `Proc`/`Process`, where each node may hide a different type; and a function at a fixed index (`Tag Nat → …`).
+
+**Other changes**
+- Docs updated in `ToTerm/Overview.lean` (supported and refused lists), the `ExistentialArgs` module header, the `Ty/Deriving.lean` header, and `Ty/README.md`.
+- Both test files are listed in the Properties table.
+
+**Build setup:** as in earlier runs, the committed `lake-manifest.json` has no Mathlib entry. I pointed it at a local Mathlib v4.34.0 to build and left that change uncommitted. A fresh checkout still needs `lake update mathlib`.
+
+# Summary of changes for run 0e9678a1-2cc6-4b4c-b4f8-3c407bae31c8
+Support for a `mutual` block whose members also appear nested (`Option Q` inside `P`) already existed when I started. An earlier run added it, with tests in `TermTests/StructRecTest/MutualNested.lean`, and it is listed as supported in `LeanScript/ToTerm/Overview.lean`. You were probably reading an older "not supported" list in `ARISTOTLE_SUMMARY.md`. I rebuilt that test file and it passes. In this run I tested more shapes of the same kind, fixed the one gap I found, and documented the rest.
+
+**New tests** are in `TermTests/StructRecTest/MutualNestedMore.lean`. For each case the kernel checks with `kernel_rfl` that the translated term gives the same value as the Lean function, and for some types the file also checks the derived tree with `rfl`. The shapes covered:
+- Occurrences both ways: `Option Q2` inside `P2`, and `Option P2` inside `Q2`.
+- A member under `List` (`List Q3` inside `P3`). `List Q3` becomes a recursive member of the family.
+- Several wrappers together with the type nested in itself: `Option (Option Q4)` and `Option P4` inside `P4`. Each becomes its own member.
+- A type parameter (`P5 α`, `Q5 α`).
+- A three-member block with a product (`Y × X`), your own structure (`Box Z`) and a `List Y`.
+
+The functions translated on these types are:
+- sums started at any member, including the extra type Lean adds, `Option (Option Q4)`
+- plain `match`es with no recursion
+- a map that rebuilds the value
+- members that answer different types
+- a function with an accumulator
+- a recursion that reads two levels down
+
+**Gap fixed: a map like `P2 → P2` / `Q2 → Q2` no longer needs `Inhabited` instances.** When the functions of a `mutual` block answer different types, the translator fills unused slots with a default value, and it used to require an `Inhabited` instance for that. Lean doesn't generate those for such blocks, so the map was refused unless you wrote the instances by hand. The new `LeanScript/ToTerm/Default.lean` (`synthDefault?`) still uses an instance when there is one. Otherwise it builds a value from a constructor whose fields all have defaults, with a depth limit. `LeanScript/ToTerm/TransRecFamily.lean` now uses it, and `Overview.lean` is updated.
+
+**Still refused, and unchanged:** a member of a `mutual` block held inside `Array`, a function or `Thunk` (e.g. `node (qs : Array Q)`, `node (f : Nat → G)`). The language's fold over a `mutual` block only passes along results at fields that are directly a member of the block, so supporting this would mean changing that fold's definition, its evaluator and its proofs. `Overview.lean` already lists this case.
+
+**Build:** the full default `lake build` passes (996 jobs, no errors or warnings). I added no `sorry`, `axiom` or `implemented_by`, and the changes are committed. As in earlier runs, `lake-manifest.json` has no Mathlib entry. I pointed it at a local Mathlib v4.34.0 to build and then restored the committed version, so a fresh checkout still needs `lake update mathlib` first. For the same reason I'm not listing any Lake targets as checked here.
+
+# Summary of changes for run 68407957-dbbd-499b-a20f-3610e38ef0ef
+I wrote the assessment in `proposals/WellFoundedRecursionAssessment.md`. Alongside it is a small Lean model, `proposals/WellFoundedRecursionToy.lean`, that backs the key claims. It uses only core Lean, isn't part of the Lake build (like `ProofCarryingDiteToy.lean`), and compiles with plain `lean` with no errors, warnings or `sorry`. I didn't change `LeanScript/` or the tests.
+
+**Recommendation on PCL:** don't port it as it stands. Its core mechanism puts the decreasing proof, the path condition `G`, pre/postconditions and the `isNF`/`isCond` proofs into the grammar itself. That is exactly the proof-porting that must not happen during elaboration. With proofs erased, `G`, `pre`, `post` and `Q` would always be `True`, and `dec` can't be `True` at all.
+
+What's worth taking, in proof-free form:
+- **Measure as data:** a recursive function carries a `nat` measure, or a lexicographic pair of them. The evaluator counts down a fuel derived from it, optionally checking each call as it runs, with a fallback term. Lean compiles `termination_by <Nat>` the same way (`WellFounded.Nat.fix` with a fuel), which I saw with `#print` in Lean 4.34.
+- **Recursive function as an ordinary variable:** `fix f x. body` binds `f` as a variable of type `σ ⇒ ρ`, so a recursive call is just `Comp.ap`. That also covers calls under a `lam` or through `List.map`, which Lean's well-founded preprocessing produces often. PCL's first-order `fixSelfCall` can't do this.
+- **Soundness theorems:** the counterparts of `fixFn_eq`/`fixFn_unique`, stated as theorems about `Term.eval` rather than proofs stored in terms.
+- **Later:** recursive join points (`joinrec`, so loops print without stack growth) and a module layer of global definitions with bodies.
+
+Rejected: the `PExpr` layer, `isNF` proofs in the grammar, and a `WellFounded.fix` evaluator over an arbitrary relation. The file has a table with a verdict and reason for each of the 14 PCL ideas.
+
+**Does well-founded recursion subsume the current iteration forms?** It can express nearly all of them, but it doesn't replace them. Keep every fold and add `fix`:
+- **Tree measures need a fold:** the size of a recursive type is itself computed by a fold, or would need a new size primitive.
+- **Complexity:** the `k`-deep folds are linear because they keep a window of past answers; a direct well-founded `fib` is exponential.
+- **Guarantees:** folds need no measure, fallback or run-time check.
+- **No overlap in the translator:** Lean compiles structural recursion through `brecOn` (already translated to folds) and uses well-founded recursion only for `termination_by` definitions, which are refused today.
+
+**What the toy model proves** (only the standard axioms `propext` and `Quot.sound`):
+- Two proof-free combinators, `fuelFix` and `checkedFix`, each with an agreement theorem: the result equals any function satisfying the recursive equation, as long as the body only calls on smaller arguments.
+- `checkedFix_eq`: the checked version unfolds with no hypothesis at all.
+- A tiny term language with a proof-free `fix` node and a structural evaluator. `log2T_correct` shows a translated term with the proofs erased equals Lean's `log2`, proved afterwards rather than carried in the term.
+
+**Evaluation checks in the toy** (`decide +kernel` is what 129 lines in the tests rely on):
+- Lean's own `Nat`-measure recursion runs in the kernel; its lexicographic recursion (`termination_by (a, b)`) does not.
+- A two-fuel lexicographic combinator does run: Ackermann `(3, 3) = 61`, and the same loop Lean's version couldn't run.
+- I have not proved an agreement theorem for the lexicographic combinator, only checked these evaluations.
+
+**Plan for this iteration** (section 3 of the file):
+- Add a `Comp.fix` constructor with a `nat` measure, a fallback and a body, evaluated with `checkedFix`.
+- Recognise `WellFounded.Nat.fix` and measures built from `sizeOf` in the translator. Translate the measure as an ordinary expression, turn each recursive call into an application, and drop its proof.
+- Unpack Lean's packed parameters into a record, and take the fallback from the `Inhabited` default, as `externCallChecked` already does.
+- Erase `attach`/`unattach`/`Subtype`, which Lean inserts to carry membership proofs. This is new work, since `Subtype` isn't translated yet.
+- Out of scope for now: mutual well-founded recursion and other relations.
+
+The JavaScript printer may leave out the run-time check, because Lean proved the calls decrease. That is the allowed use of a proposition for an optimisation; the term's meaning still includes the check.
+
+# Summary of changes for run 50171269-c9f4-468f-a25e-ee836f2752d4
+I formalized in Lean the two parts of last turn's change that can be stated as theorems. Everything builds with no `sorry`. The build times and memory figures can't be stated in Lean, so they stay measurements.
+
+**1. Normalization doesn't change the term** (new file `TermTests/NormalizeTest.lean`). It builds six terms from `TermTests/StructRecTest/Existential.lean` a second time with `leanscript.toTerm.normalize` off:
+- the closed terms `takeCountdown`, `takeFibs` and `mixed`;
+- the terms generic in the hidden type: `Unfold.take`, `Boxed.iter` and `Pipe.run`.
+
+It proves each normalized term equal to its direct-style twin. For the generic ones the equation holds for every choice of hidden type, e.g. `theorem take_normalize_eq (S : TyWf) : take_term S = take_direct S`. As a result, `mixed_normalize_eval` states that both forms give the same value for every input. The proofs use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+A metaprogram check in the same file confirms normalization really changed the stored form: the normalized terms use nothing from `LeanScript.Expr.Build` (the A-NF builders), while the direct-style ones do.
+
+This is checked for these six terms, not proved for the normalizer in general. The normalizer is metaprogram code, so a general theorem about it isn't possible in this setup.
+
+**2. The new expected values are right.** I added 29 checks, one per expected value changed when I made the slow test inputs smaller. Each compares the value directly with the Lean definition, e.g. `aFibScaled_with_k1 (A.ofNat 7) 4 = 52 := by decide +kernel`. The existing tests already checked the translated term against the same numbers. The checks are in `MutualFamilyToTermTest` (`Args/K1–K3`, `ThreeMembers/K1–K3`, `CrossBlock/K2`, `CrossBlock/K4`, `TreeForest/K3`) and `RecObjectToTermTest/BinTree/K1`, `K2`.
+
+`LeanScript/ToTerm/Overview.lean` now mentions the new test file. Both results are recorded as proved in the Properties table. The build still relies on the uncommitted Mathlib entry in `lake-manifest.json` noted last time.
+
+# Summary of changes for run d9d7d0aa-351f-43c3-a4b3-d1735499b53b
+I looked at your exact example first. `inductive Pair2 | mk (Nat × Option Pair2)` was already supported by an earlier run, with tests in `TermTests/StructRecTest/NewtypeStruct.lean`. I rebuilt that file here and it passes. I checked more programs on `Pair2` (projections, accumulators, maps, wrapping and unwrapping the pair, two occurrences in `Nat × Option (BT × BT)`) and all of them translated.
+
+What was still missing was the same shape with a **structure you declare yourself** as the body:
+```lean
+structure Cell (α : Type) where
+  val : Nat
+  next : Option α
+  deriving LeanScriptTyWf
+inductive Pair3 | mk (c : Cell Pair3)
+```
+`deriving LeanScriptTyWf` refused this. `Cell`'s tree stores its field as "the tree of `Option α`" rather than spelling out the `Option`, so the deriver couldn't find where the recursive occurrence goes. That case now works.
+
+**The fix** is in `LeanScript/Ty/Deriving/Translate.lean`. A new helper, `expandHoleLeaves`, handles any field of the wrapper's tree whose type is built from the parameter (such as `Option α`): it translates that type at the real argument (`Option Pair3`). It runs in two places: when an occurrence goes into a non-recursive wrapper (`tyWfOfWrapper`), and when an auxiliary type of a nested block becomes a member of a family (`hoistAux`). Fields under the wrapper's own recursive binders are left alone, as before, so their meaning doesn't change. `Pair3` gets the same tree as `Pair2`, `Ty.recAlias (record ⟨nat, none | some self⟩)`. Values, `match`es and structural recursions then translate to `recAlias_mk` and `recAlias_rec k` with no changes to the translator.
+
+**Tests** are in the new file `TermTests/StructRecTest/NewtypeUserStruct.lean`. For each type, `kernel_rfl` checks that the translated term gives fixed numbers and gives what the Lean function computes. For some types the file also checks the tree by `rfl` and the fold depth. The cases are:
+- `Pair3` itself: sum, head via projection, a depth-1 skip-sum, a map that rebuilds the chain, and an accumulator.
+- `Fork α`, a structure with two occurrences (a binary tree).
+- `Outer α`, a structure nested inside another structure.
+- `PL α`, a newtype with a type parameter.
+- A recursive record and a union that each hold `Cell _`.
+- `LCell α`, a structure with a `List α` field (a rose tree). This one becomes a family fold.
+
+I also added a row to the supported-forms table in `LeanScript/ToTerm/Overview.lean` and a cross-reference in `NewtypeStruct.lean`.
+
+The full `lake build` passes (992 jobs) with no errors or warnings, and I added no `sorry`, `axiom` or `implemented_by`. The changes are committed. As in earlier runs, the committed `lake-manifest.json` has no Mathlib entry. I pointed it at a local Mathlib v4.34.0 to build and left that edit uncommitted, so a fresh checkout still needs `lake update mathlib` first.
+
+# Summary of changes for run d9718d4e-666c-4383-a5c8-972ee483a18e
+Nested inductives through `Array` and several other type formers now translate. Two things were still missing when I started. An earlier run had covered only a single constructor holding the type directly in an `Array` (`ATree`). A declaration with several constructors was refused as soon as it held itself inside anything, even `Option T`. The full `lake build` passes (991 jobs, no warnings), and I added no `sorry`, `axiom` or `implemented_by`.
+
+**What now works** (each case is in the new `TermTests/StructRecTest/NestedOther.lean`, and the kernel checks with `kernel_rfl` that the translated term gives the same value as the Lean function):
+- **Several constructors with a nested occurrence**, e.g. `inductive UTree | leaf | node (v : Nat) (kids : Array UTree)`. This includes a JSON-like type with `arr (Array Json)` and `obj (Array (String × Json))`, and constructors holding `Option T` or `Nat × T`. Values, `match`es (including wildcards) and structural recursions all translate.
+- **Arrays of anything that holds the type**: `Array (Array T)`, `Array (Option T)`, `Array (String × T)`.
+- **Function fields** (`node (f : Nat → T)`) and **`Thunk T` fields**.
+- **A container you write yourself** (`MyList T`). This already worked; the file now tests it.
+
+**How it works**
+- **Deriving** (`LeanScript/Ty/Deriving/Build.lean`): the fold for a type with several constructors only receives the recursion's results at fields that *are* the type. So when some occurrence sits inside another type, `deriving LeanScriptTyWf` now gives the type the tree `Ty.recAlias (Ty.taggedUnion …)`: a recursive newtype whose body is the union of its constructors. That fold receives results wherever an occurrence sits.
+  - Types whose occurrences are all direct fields keep `Ty.recTaggedUnion`.
+  - This changed one existing expectation, `LabelledTree` in `TyTests/InductiveTypesTest/Parameters.lean`, which I updated.
+- **Constructors and `match`** (`ToTerm/Trans.lean`, `ToTerm/TransRecCases.lean`): a constructor becomes `recAlias_mk` around `taggedUnion_mk`, and a `match` becomes `recAlias_casesOn` around `taggedUnion_casesOn`.
+- **Recursion** (`ToTerm/TransRecObject.lean`, `ToTerm/TransRecObjectPieces.lean`):
+  - The fold now reads the several-constructor body as a union of the type's own constructors.
+  - The old "array of the type itself" case now covers an array of any value that holds the type.
+  - New cases handle function fields (the answer at `f a` is the window applied to `a`) and `Thunk` fields (the delayed answer).
+- **Docs**: `ToTerm/Overview.lean` (table of supported forms and "What is refused") and the module docs are updated.
+
+**Limitations**
+- Function and `Thunk` fields are only read by the depth-0 fold, so a recursion that reads further down through them is refused.
+- **Still refused:** an array (or function, or delay) inside a *family*, e.g. `List (Array T)`, `Array (List T)`, or an array of another member of a `mutual` block. The grammar's family fold only receives results at fields that are members. Supporting this would mean changing that fold's semantics and its proofs. The test file checks that this case is refused.
+
+**Build setup:** as in earlier runs, `lake-manifest.json` has no Mathlib entry. To build, I pointed it at a local Mathlib v4.34.0 and left that edit uncommitted, so a fresh checkout still needs `lake update mathlib` first.
+
+# Summary of changes for run f414febd-4445-4be6-9dbf-15ef144a6660
+Yes, it could be made stricter, and I made it stricter. The full `lake build` passes (990 jobs, no errors or warnings). No `sorry` or axioms were added, and everything is committed.
+
+**What's stricter in the grammar** (`LeanScript/Expr/Atom.lean`, `LeanScript/Expr/Term.lean`)
+1. **Atoms are variables only**, as you asked earlier. `Atom` now has the single constructor `var`, and it no longer takes the signature `Sg`. A reference to a declaration and every literal are now steps (`Comp.global`, `Comp.nat_mk`, `Comp.string_mk`, …), so they are named by a `let` before use like any other value.
+2. **No copy `let`.** `Comp.atom` is gone, so a `let` can't bind a bare variable (`let x = y`). In direct style, `letE'` of a variable renames the body instead (`Term.bind`).
+3. **Every block ends by returning a variable.** `Term.ret` now takes a variable, not a `Comp`. A step whose value is the result is written `let x = c; ret x` (`Term.ofComp`). Before, the same term could be written as either `ret c` or `let x = c; ret x`; now only one form exists.
+
+The earlier guarantees still hold: dispatches and folds only in tail position, join points in their own context, and a `let` never binding another `let`, a dispatch or a fold.
+
+**Builders** (`LeanScript/Expr/Build.lean`): the direct-style functions (`Term.ap`, `Term.nat_rec'`, …) produce the new form. A step that reads no variable (a declaration, literal, extern applied to values, or enum constructor) is bound last, just before the step that uses it. This keeps other operands from being renamed again and again. It doesn't change any value, because the language is pure. The evaluator, renaming, translation and tests were updated to match.
+
+**Performance problem I hit and fixed.** The extra `let x = c; ret x` layers made some symbolic proofs much slower. For example, a proof in `TermTests/FibAlgorithmsTest.lean` went from about 1 s to about 97 s in the kernel. I fixed this in two ways:
+- The evaluator reads `let x = c; ret x` directly as the value of `c` (`LeanScript/Eval.lean`). `Term.evalJ_letE` is unchanged in meaning; it is now proved by case analysis instead of `rfl`.
+- Declarations and literals are bound last, as described above.
+
+After that, `FibAlgorithmsTest` and `ArrayRecDepthTest/Cont` pass with no option changes. `TermTests/RecObjectRecDepthTest/Correct.lean` still timed out with `rfl`, so I switched those proofs to `kernel_rfl` and removed its `maxHeartbeats 4000000`. That file now builds in about 9 s, where the old version took 39 s.
+
+**Other changes**
+- **Tests:** removed the `| .ret c => …comp c` branches from the test depth-search helpers, and changed three `.ret (…)` patterns in `LeanScript/EvalFacts.lean`.
+- **`TermTests/AnfTest.lean`:** re-pinned the exact terms the builders produce, all checked by `rfl`. I added one example showing that `let m := n; double m` binds no copy.
+- **Docs:** updated `LeanScript/Expr/Design.lean` and the module docs.
+- **Build fix:** `lake-manifest.json` again had no Mathlib entry, so I added it back.
+
+# Summary of changes for run 40b6289c-1c9d-4338-b21e-63031030d421
+`Term` is now in strict A-normal form by construction, with join points kept in their own context. The full `lake build` passes (990 jobs, no errors or warnings). No `sorry` appears in code; it only shows up in comments that quote the original sketch. No axioms were added. Everything is committed.
+
+**Most of the work was already in the uploaded project**, so I checked it rather than rewrote it. The layout is:
+- `LeanScript/Expr/Atom.lean`: `Atom` (a variable, a global or a primitive literal), the lists of atoms, the join-point context `JCtx` and `Dest` (where a fold's answer goes).
+- `LeanScript/Expr/Term.lean` has three levels:
+  - `Comp` is one step that doesn't branch, with atoms as operands.
+  - `Term` is a chain of `letE`s, each binding a `Comp`, that ends in a tail: `ret`, a `casesOn`, a fold (which hands its answer to a `Dest`), a checked extern call, or a `jump`.
+  - `letJ jp body` binds a join point. Join points are indexed by `J : JCtx`, separate from the variable context `Γ`. They aren't values and aren't recursive. Function bodies, delays and fold branches start with none. `J` defaults to `[]`.
+- `LeanScript/Expr/Build.lean`: functions named like the old constructors (`Term.ap`, `Term.bool_casesOn'`, `Term.nat_rec'`, `Term.letE'`, …) accept arbitrary terms:
+  - an atom operand is used as it is;
+  - an operand that ends in a single step is bound with a `let`;
+  - an operand that ends in a `casesOn` or a fold becomes the tail, and the rest of the computation becomes a join point (`Term.bindAtom`, `Term.toJump`).
+- The evaluator (`Term.evalJ` with a join-point environment), renaming, the translation and the tests were already updated to match.
+
+One difference from what you asked: atoms still include globals and primitive literals, as in the design you approved first. They are not restricted to variables only. Tell me if you want that stricter version too.
+
+**What I changed:**
+- **Build fix:** `lake-manifest.json` had no Mathlib entry, so `lake build` failed. I added it, pinned to v4.34.0, along with the packages Mathlib depends on.
+- **Failing test:** `TermTests/RecObjectToTermTest/BinTree/K2.lean` hit "maximum recursion depth" because A-normal terms are larger. I added `set_option maxRecDepth 40000`, as `BothSubtrees.lean` next to it already does.
+- **New test `TermTests/AnfTest.lean`:** it checks by `rfl` the exact terms the builders produce:
+  - a nested application gets a `letE`;
+  - an `if` or a `Nat.rec` used as an argument becomes the tail and jumps to a `letJ`;
+  - a `let` of a `match` turns its body into a join point;
+  - two `if`s as extern arguments get two join points.
+
+  It also checks with `kernel_rfl` that each term evaluates to the value the direct-style term means.
+- **Docs:** I added a section to `LeanScript/Expr/Design.lean` describing the three levels, join points, their separate context, and how direct style is still written.
+
 # Summary of changes for run ed97b000-bf7b-428d-96dd-8f5dbe4cb56a
 I split the large files, tidied the repository and did some refactoring. The full `lake build` passes (986 jobs) with no warnings, and there is no `sorry` in `LeanScript`, `NonEmpty`, `TyTests` or `TermTests`. Everything is committed.
 

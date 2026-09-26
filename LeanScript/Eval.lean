@@ -98,8 +98,9 @@ def Args.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
 /-- The value of a member of a mutual family, built from the shape that member has. -/
 def FamilyMemberArgs.eval {Sg : Sig} (G : GlobalEnv Sg.decls) {Γ : Ctx} :
     {m : LeanFamMemberSchema TyWf} → FamilyMemberArgs Sg Γ m → Env Γ → TyWf.DenMember m
-  | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (Args.eval G fields env)
-  | _, .record _ fields, env => cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
+  | _, .ctors _ t ht fields, env => TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Args.eval G fields env))
+  | _, .record _ fields, env =>
+      cast (Ty.denRecord_eq _).symm (TyWf.DenFields.ofList (Args.eval G fields env))
   | _, .alias _ value, env => Atom.eval value env
 
 /-! ## Join points -/
@@ -128,8 +129,8 @@ def Dest.apply {J : JCtx} {ρ τ : TyWf} : Dest J ρ τ → JEnv τ J → TyWf.D
     body. -/
 def TyWf.sumStep {ρ : TyWf} (v : TyWf.Den (TyWf.sum ρ ρ)) : ForInStep (TyWf.Den ρ) :=
   match v with
-  | ⟨⟨0, h⟩, x⟩ => .done (cast (Ty.denAt_eq _ 0 h) x).1
-  | ⟨⟨1, h⟩, x⟩ => .yield (cast (Ty.denAt_eq _ 1 h) x).1
+  | ⟨⟨0, h⟩, x⟩ => .done (cast (Ty.denAt_eq _ 0 h) x)
+  | ⟨⟨1, h⟩, x⟩ => .yield (cast (Ty.denAt_eq _ 1 h) x)
   | ⟨⟨_ + 2, h⟩, _⟩ => absurd h (by simp [LeanTaggedUnionSchema.length])
 
 /-! ## Terms -/
@@ -232,7 +233,8 @@ def Term.evalJ {Sg : Sig} (G : GlobalEnv Sg.decls) :
       EnumSomeCases.eval G cases env jenv (Atom.eval e env)
         (Term.evalJ G dflt env jenv)
   | _, _, _, .record_casesOn r body, env, jenv =>
-      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) (Atom.eval r env)) env) jenv
+      Term.evalJ G body
+        (Env.append (TyWf.DenFields.toList (cast (Ty.denRecord_eq _) (Atom.eval r env))) env) jenv
   | _, _, _, .taggedUnion_casesOn v cases, env, jenv =>
       TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv (Atom.eval v env)
   | _, _, _, .taggedUnion_casesOnWithDefault v cases dflt _, env, jenv =>
@@ -317,11 +319,11 @@ def Comp.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, .array_mk ts, env => (ts.map (Atom.eval · env)).toArray
   | _, _, .enum_mk _ i, _ => i
   | _, _, .record_mk fs fields, env =>
-      cast (Ty.denRecord_eq _).symm (Args.eval G fields env)
+      cast (Ty.denRecord_eq _).symm (TyWf.DenFields.ofList (Args.eval G fields env))
   | _, _, .taggedUnion_mk _ t ht fields, env =>
-      TyWf.DenTU.mk t ht (Args.eval G fields env)
+      TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Args.eval G fields env))
   | _, _, .recTaggedUnion_mk l hwf t ht fields, env =>
-      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (Args.eval G fields env))
+      TyWf.DenRec.mk l hwf (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Args.eval G fields env)))
   | _, _, .recObject_mk fs hwf fields, env =>
       TyWf.DenObj.mk fs hwf (Args.eval G fields env)
   | _, _, .recAlias_mk b hwf value, env =>
@@ -358,8 +360,8 @@ def TaggedUnionCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     l ≍ l' → Env Γ → JEnv τ J → TyWf.DenTU l' → TyWf.Den τ
   | _, _, _, _, _, _, .payloadFirst b0 b1 rest, _, rfl, .rfl, .rfl, env, jenv, v =>
       match v with
-      | ⟨⟨0, _⟩, f⟩ => Term.evalJ G b0 (Env.append (cast (Ty.denNE_eq _) f) env) jenv
-      | ⟨⟨1, _⟩, f⟩ => Term.evalJ G b1 (Env.append f env) jenv
+      | ⟨⟨0, _⟩, f⟩ => Term.evalJ G b0 (Env.append (TyWf.DenFields.toList (cast (Ty.denNE_eq _) f)) env) jenv
+      | ⟨⟨1, _⟩, f⟩ => Term.evalJ G b1 (Env.append (TyWf.DenFields.toList f) env) jenv
       | ⟨⟨n + 2, _⟩, f⟩ => TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
   | _, _, _, _, _, _, .skip b0 rest, _, rfl, .rfl, .rfl, env, jenv, v =>
       match v with
@@ -373,7 +375,7 @@ def CtorsWithPayloadCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     {c' : CtorsWithPayload TyWf} → ι = TyWf → bind ≍ (id : List TyWf → List TyWf) →
     c ≍ c' → Env Γ → JEnv τ J → (t : Nat) → TyWf.DenAtCP c' t → TyWf.Den τ
   | _, _, _, _, _, _, .here b _, _, rfl, .rfl, .rfl, env, jenv, 0, f =>
-      Term.evalJ G b (Env.append (cast (Ty.denNE_eq _) f) env) jenv
+      Term.evalJ G b (Env.append (TyWf.DenFields.toList (cast (Ty.denNE_eq _) f)) env) jenv
   | _, _, _, _, _, _, .here _ rest, _, rfl, .rfl, .rfl, env, jenv, n + 1, f =>
       TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
   | _, _, _, _, _, _, .skip b _, _, rfl, .rfl, .rfl, env, jenv, 0, _ => Term.evalJ G b env jenv
@@ -390,7 +392,7 @@ def TaggedUnionCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     cs ≍ cs' → Env Γ → JEnv τ J → (t : Nat) → TyWf.DenAtList cs' t → TyWf.Den τ
   | _, _, _, _, _, _, .nil, _, rfl, .rfl, .rfl, _, _, _, f => PEmpty.elim f
   | _, _, _, _, _, _, .cons b _, _, rfl, .rfl, .rfl, env, jenv, 0, f =>
-      Term.evalJ G b (Env.append f env) jenv
+      Term.evalJ G b (Env.append (TyWf.DenFields.toList f) env) jenv
   | _, _, _, _, _, _, .cons _ rest, _, rfl, .rfl, .rfl, env, jenv, n + 1, f =>
       TaggedUnionCasesRest.eval G rest rfl .rfl .rfl env jenv n f
 
@@ -402,11 +404,11 @@ def TaggedUnionSomeCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     TyWf.Den τ → TyWf.Den τ
   | _, _, _, _, _, _, .last t ht branch _, env, jenv, v, dflt =>
       match TyWf.DenTU.field? t ht v with
-      | some f => Term.evalJ G branch (Env.append f env) jenv
+      | some f => Term.evalJ G branch (Env.append (TyWf.DenFields.toList f) env) jenv
       | none => dflt
   | _, _, _, _, _, _, .cons t ht branch rest _, env, jenv, v, dflt =>
       match TyWf.DenTU.field? t ht v with
-      | some f => Term.evalJ G branch (Env.append f env) jenv
+      | some f => Term.evalJ G branch (Env.append (TyWf.DenFields.toList f) env) jenv
       | none => TaggedUnionSomeCases.eval G rest env jenv v dflt
 
 /-- The value of the branch a constructor of an enum takes.  The branches are indexed by
@@ -476,9 +478,9 @@ def TaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     RecFrames l₀ τ outer →
     (t : Nat) → (Ty.toPFunctorAt (recL l) t).Obj (RecMemo l₀ τ) → TyWf.Den τ
   | _, _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, fr, 0, e =>
-      FoldKBranch.eval G b0 env mkEnv fr e
+      FoldKBranch.eval G b0 env mkEnv fr (Ty.neObjToList _ e)
   | _, _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, fr, 1, e =>
-      FoldKBranch.eval G b1 env mkEnv fr e
+      FoldKBranch.eval G b1 env mkEnv fr (Ty.fieldsObjToList _ e)
   | _, _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, fr, n + 2, e =>
       TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
   | _, _, _, _, _, _, _, .skip b0 _, env, mkEnv, fr, 0, e =>
@@ -495,7 +497,8 @@ def CtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     ((fs' : List (TyWfIn 1)) → RecFields l₀ τ fs' → TyWf.DenList (bind fs')) →
     RecFrames l₀ τ outer →
     (t : Nat) → (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj (RecMemo l₀ τ) → TyWf.Den τ
-  | _, _, _, _, _, _, _, .here b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, .here b _, env, mkEnv, fr, 0, e =>
+      FoldKBranch.eval G b env mkEnv fr (Ty.neObjToList _ e)
   | _, _, _, _, _, _, _, .here _ rest, env, mkEnv, fr, n + 1, e =>
       TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
   | _, _, _, _, _, _, _, .skip b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
@@ -514,7 +517,8 @@ def TaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     (t : Nat) → (Ty.toPFunctorAtList (cs.map (List.map TyWfIn.toTy)) t).Obj (RecMemo l₀ τ) →
       TyWf.Den τ
   | _, _, _, _, _, _, _, .nil, _, _, _, _, e => PEmpty.elim e.1
-  | _, _, _, _, _, _, _, .cons b _, env, mkEnv, fr, 0, e => FoldKBranch.eval G b env mkEnv fr e
+  | _, _, _, _, _, _, _, .cons b _, env, mkEnv, fr, 0, e =>
+      FoldKBranch.eval G b env mkEnv fr (Ty.fieldsObjToList _ e)
   | _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, fr, n + 1, e =>
       TaggedUnionFoldKCasesRest.eval G rest env mkEnv fr n e
 
@@ -527,7 +531,7 @@ def FamilyMemberCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, .ctors cases, env, jenv, v =>
       TaggedUnionCases.eval G cases rfl .rfl .rfl env jenv v
   | _, _, _, _, .record body, env, jenv, v =>
-      Term.evalJ G body (Env.append (cast (Ty.denRecord_eq _) v) env) jenv
+      Term.evalJ G body (Env.append (TyWf.DenFields.toList (cast (Ty.denRecord_eq _) v)) env) jenv
   | _, _, _, _, .alias body, env, jenv, v => Term.evalJ G body (v, env) jenv
 
 /-- The value of a partial dispatch on a member of a mutual family: the first branch whose
@@ -574,7 +578,7 @@ def FamilyMemberFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
   | _, _, _, _, _, _, _, _, .ctors cases, env, mkEnv, fr, x =>
       FamilyTaggedUnionFoldKCases.eval G cases env mkEnv fr x.1.1.val ⟨x.1.2, x.2⟩
   | _, _, _, _, _, _, _, _, .record br, env, mkEnv, fr, x =>
-      FamilyFoldKBranch.eval G br env mkEnv fr x
+      FamilyFoldKBranch.eval G br env mkEnv fr (Ty.recordIPFObjToList _ x)
   | _, _, _, _, _, _, _, _, .alias br, env, mkEnv, fr, x =>
       FamilyFoldKBranch.eval G br env mkEnv fr
         (IPFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩)
@@ -590,9 +594,9 @@ def FamilyTaggedUnionFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     FamFrames ms₀ τ outer →
     (t : Nat) → (Ty.toIPFAt (l.map TyWfIn.toTy) t).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
   | _, _, _, _, _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, fr, 0, e =>
-      FamilyFoldKBranch.eval G b0 env mkEnv fr e
+      FamilyFoldKBranch.eval G b0 env mkEnv fr (Ty.neIPFObjToList _ e)
   | _, _, _, _, _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, fr, 1, e =>
-      FamilyFoldKBranch.eval G b1 env mkEnv fr e
+      FamilyFoldKBranch.eval G b1 env mkEnv fr (Ty.fieldsIPFObjToList _ e)
   | _, _, _, _, _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, fr, t + 2, e =>
       FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
   | _, _, _, _, _, _, _, _, .skip b0 _, env, mkEnv, fr, 0, e =>
@@ -611,7 +615,7 @@ def FamilyCtorsWithPayloadFoldKCases.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     FamFrames ms₀ τ outer →
     (t : Nat) → (Ty.toIPFAtCP (c.map TyWfIn.toTy) t).Obj (FamMemoAt ms₀ τ) → TyWf.Den τ
   | _, _, _, _, _, _, _, _, .here b _, env, mkEnv, fr, 0, e =>
-      FamilyFoldKBranch.eval G b env mkEnv fr e
+      FamilyFoldKBranch.eval G b env mkEnv fr (Ty.neIPFObjToList _ e)
   | _, _, _, _, _, _, _, _, .here _ rest, env, mkEnv, fr, t + 1, e =>
       FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
   | _, _, _, _, _, _, _, _, .skip b _, env, mkEnv, fr, 0, e =>
@@ -633,7 +637,7 @@ def FamilyTaggedUnionFoldKCasesRest.eval {Sg : Sig} (G : GlobalEnv Sg.decls) :
     TyWf.Den τ
   | _, _, _, _, _, _, _, _, .nil, _, _, _, _, e => PEmpty.elim e.1
   | _, _, _, _, _, _, _, _, .cons b _, env, mkEnv, fr, 0, e =>
-      FamilyFoldKBranch.eval G b env mkEnv fr e
+      FamilyFoldKBranch.eval G b env mkEnv fr (Ty.fieldsIPFObjToList _ e)
   | _, _, _, _, _, _, _, _, .cons _ rest, env, mkEnv, fr, t + 1, e =>
       FamilyTaggedUnionFoldKCasesRest.eval G rest env mkEnv fr t e
 

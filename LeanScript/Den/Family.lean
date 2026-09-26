@@ -205,8 +205,7 @@ def famRollShape : (s : TyShape Ty) → Ty.Den (.shape (substOccShape .self M s)
   | .fn _ b, f => IPFunctor.Obj.ofPi (fun y => famRoll b (f y))
   | .primCovariant c, x => famRollCov c x
   | .enum _, x => ⟨x, fun p => PEmpty.elim p⟩
-  | .record ⟨a, b, rest⟩, ⟨x, y, zs⟩ =>
-      IPFunctor.Obj.pair (famRoll a x) (IPFunctor.Obj.pair (famRoll b y) (famRollList rest zs))
+  | .record fs, x => famRollRecord fs x
   | .taggedUnion l, ⟨t, v⟩ =>
       let r := famRollAt l t.val v
       ⟨⟨⟨t.val, length_substOccTU .self M l ▸ t.isLt⟩, r.1⟩, r.2⟩
@@ -218,17 +217,33 @@ def famRollCov : (c : LeanPrimTyCovariant Ty) →
   | .thunk a, x => famRoll a x
   | .lazy a, x => famRoll a x
 
-/-- `Ty.famRoll`, on a list of trees. -/
-def famRollList : (ts : List Ty) → Ty.DenList (substOccList .self M ts) →
-    (Ty.toIPFList ts).Obj (fun j => Ty.Den (M j))
+/-- `Ty.famRoll`, on the fields of a constructor. -/
+def famRollFields : (ts : List Ty) → Ty.DenFields (substOccList .self M ts) →
+    (Ty.toIPFFields ts).Obj (fun j => Ty.Den (M j))
   | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-  | a :: as, ⟨x, xs⟩ => IPFunctor.Obj.pair (famRoll a x) (famRollList as xs)
+  | a :: as, x => match as, x with
+    | [], x => famRoll a x
+    | b :: bs, x => IPFunctor.Obj.pair (famRoll a x.1) (famRollFields (b :: bs) x.2)
+
+/-- `Ty.famRoll`, on the fields of a constructor that has at least one. -/
+def famRollNE : (xs : NonEmptyList Ty) → Ty.DenNE (substOccNE .self M xs) →
+    (Ty.toIPFNE xs).Obj (fun j => Ty.Den (M j))
+  | ⟨a, as⟩, x => match as, x with
+    | [], x => famRoll a x
+    | b :: bs, x => IPFunctor.Obj.pair (famRoll a x.1) (famRollFields (b :: bs) x.2)
+
+/-- `Ty.famRoll`, on the fields of a record. -/
+def famRollRecord : (fs : LeanRecordSchema Ty) → Ty.DenRecord (substOccRecord .self M fs) →
+    (Ty.toIPFRecord fs).Obj (fun j => Ty.Den (M j))
+  | ⟨a, b, rest⟩, x => IPFunctor.Obj.pair (famRoll a x.1) (match rest, x.2 with
+    | [], y => famRoll b y
+    | c :: cs, y => IPFunctor.Obj.pair (famRoll b y.1) (famRollFields (c :: cs) y.2))
 
 /-- `Ty.famRoll`, on the fields of constructor `t`. -/
 def famRollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
     Ty.DenAt (substOccTU .self M l) t → (Ty.toIPFAt l t).Obj (fun j => Ty.Den (M j))
-  | .payloadFirst ⟨a, as⟩ _ _, 0, ⟨x, xs⟩ => IPFunctor.Obj.pair (famRoll a x) (famRollList as xs)
-  | .payloadFirst _ next _, 1, v => famRollList next v
+  | .payloadFirst f _ _, 0, v => famRollNE f v
+  | .payloadFirst _ next _, 1, v => famRollFields next v
   | .payloadFirst _ _ rest, n + 2, v => famRollAtList rest n v
   | .skip _, 0, _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
   | .skip rest, n + 1, v => famRollAtCP rest n v
@@ -236,7 +251,7 @@ def famRollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
 /-- `Ty.famRollAt`, on the constructors that follow a field-less one. -/
 def famRollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
     Ty.DenAtCP (substOccCP .self M c) t → (Ty.toIPFAtCP c t).Obj (fun j => Ty.Den (M j))
-  | .here ⟨a, as⟩ _, 0, ⟨x, xs⟩ => IPFunctor.Obj.pair (famRoll a x) (famRollList as xs)
+  | .here f _, 0, v => famRollNE f v
   | .here _ rest, n + 1, v => famRollAtList rest n v
   | .skip _, 0, _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
   | .skip rest, n + 1, v => famRollAtCP rest n v
@@ -245,7 +260,7 @@ def famRollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
 def famRollAtList : (cs : List (List Ty)) → (t : Nat) →
     Ty.DenAtList (substOccCtors .self M cs) t → (Ty.toIPFAtList cs t).Obj (fun j => Ty.Den (M j))
   | [], _, v => PEmpty.elim v
-  | fs :: _, 0, v => famRollList fs v
+  | fs :: _, 0, v => famRollFields fs v
   | _ :: rest, n + 1, v => famRollAtList rest n v
 
 end
@@ -272,8 +287,7 @@ def famUnrollShape : (s : TyShape Ty) → (Ty.toIPFShape s).Obj (fun j => Ty.Den
   | .fn _ b, x => fun y => famUnroll b ⟨x.1 y, fun p => x.2 ⟨y, p⟩⟩
   | .primCovariant c, x => famUnrollCov c x
   | .enum _, x => x.1
-  | .record ⟨a, b, rest⟩, x =>
-      (famUnroll a x.prodFst, famUnroll b x.prodSnd.prodFst, famUnrollList rest x.prodSnd.prodSnd)
+  | .record fs, x => famUnrollRecord fs x
   | .taggedUnion l, x =>
       ⟨⟨x.1.1.val, (length_substOccTU .self M l).symm ▸ x.1.1.isLt⟩,
         famUnrollAt l x.1.1.val ⟨x.1.2, x.2⟩⟩
@@ -285,17 +299,33 @@ def famUnrollCov : (c : LeanPrimTyCovariant Ty) →
   | .thunk a, x => famUnroll a x
   | .lazy a, x => famUnroll a x
 
-/-- `Ty.famUnroll`, on a list of trees. -/
-def famUnrollList : (ts : List Ty) → (Ty.toIPFList ts).Obj (fun j => Ty.Den (M j)) →
-    Ty.DenList (substOccList .self M ts)
+/-- `Ty.famUnroll`, on the fields of a constructor. -/
+def famUnrollFields : (ts : List Ty) → (Ty.toIPFFields ts).Obj (fun j => Ty.Den (M j)) →
+    Ty.DenFields (substOccList .self M ts)
   | [], _ => PUnit.unit
-  | a :: as, x => (famUnroll a x.prodFst, famUnrollList as x.prodSnd)
+  | a :: as, x => match as, x with
+    | [], x => famUnroll a x
+    | b :: bs, x => (famUnroll a x.prodFst, famUnrollFields (b :: bs) x.prodSnd)
+
+/-- `Ty.famUnroll`, on the fields of a constructor that has at least one. -/
+def famUnrollNE : (xs : NonEmptyList Ty) → (Ty.toIPFNE xs).Obj (fun j => Ty.Den (M j)) →
+    Ty.DenNE (substOccNE .self M xs)
+  | ⟨a, as⟩, x => match as, x with
+    | [], x => famUnroll a x
+    | b :: bs, x => (famUnroll a x.prodFst, famUnrollFields (b :: bs) x.prodSnd)
+
+/-- `Ty.famUnroll`, on the fields of a record. -/
+def famUnrollRecord : (fs : LeanRecordSchema Ty) → (Ty.toIPFRecord fs).Obj (fun j => Ty.Den (M j)) →
+    Ty.DenRecord (substOccRecord .self M fs)
+  | ⟨a, b, rest⟩, x => (famUnroll a x.prodFst, match rest, x.prodSnd with
+    | [], y => famUnroll b y
+    | c :: cs, y => (famUnroll b y.prodFst, famUnrollFields (c :: cs) y.prodSnd))
 
 /-- `Ty.famUnroll`, on the fields of constructor `t`. -/
 def famUnrollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
     (Ty.toIPFAt l t).Obj (fun j => Ty.Den (M j)) → Ty.DenAt (substOccTU .self M l) t
-  | .payloadFirst ⟨a, as⟩ _ _, 0, x => (famUnroll a x.prodFst, famUnrollList as x.prodSnd)
-  | .payloadFirst _ next _, 1, x => famUnrollList next x
+  | .payloadFirst f _ _, 0, x => famUnrollNE f x
+  | .payloadFirst _ next _, 1, x => famUnrollFields next x
   | .payloadFirst _ _ rest, n + 2, x => famUnrollAtList rest n x
   | .skip _, 0, _ => PUnit.unit
   | .skip rest, n + 1, x => famUnrollAtCP rest n x
@@ -303,7 +333,7 @@ def famUnrollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
 /-- `Ty.famUnrollAt`, on the constructors that follow a field-less one. -/
 def famUnrollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
     (Ty.toIPFAtCP c t).Obj (fun j => Ty.Den (M j)) → Ty.DenAtCP (substOccCP .self M c) t
-  | .here ⟨a, as⟩ _, 0, x => (famUnroll a x.prodFst, famUnrollList as x.prodSnd)
+  | .here f _, 0, x => famUnrollNE f x
   | .here _ rest, n + 1, x => famUnrollAtList rest n x
   | .skip _, 0, _ => PUnit.unit
   | .skip rest, n + 1, x => famUnrollAtCP rest n x
@@ -312,7 +342,7 @@ def famUnrollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
 def famUnrollAtList : (cs : List (List Ty)) → (t : Nat) →
     (Ty.toIPFAtList cs t).Obj (fun j => Ty.Den (M j)) → Ty.DenAtList (substOccCtors .self M cs) t
   | [], _, x => PEmpty.elim x.1
-  | fs :: _, 0, x => famUnrollList fs x
+  | fs :: _, 0, x => famUnrollFields fs x
   | _ :: rest, n + 1, x => famUnrollAtList rest n x
 
 end
@@ -340,8 +370,7 @@ def famRollMember (M : Nat → Ty) : (m : LeanFamMemberSchema Ty) →
   | .ctors l, ⟨t, v⟩ =>
       let r := famRollAt M l t.val v
       ⟨⟨⟨t.val, length_substOccTU .self M l ▸ t.isLt⟩, r.1⟩, r.2⟩
-  | .record ⟨a, b, rest⟩, ⟨x, y, zs⟩ =>
-      IPFunctor.Obj.pair (famRoll M a x) (IPFunctor.Obj.pair (famRoll M b y) (famRollList M rest zs))
+  | .record fs, x => famRollRecord M fs x
   | .alias b, x => famRoll M b x
 
 /-- `Ty.famUnroll`, on a member. -/
@@ -350,9 +379,7 @@ def famUnrollMember (M : Nat → Ty) : (m : LeanFamMemberSchema Ty) →
   | .ctors l, x =>
       ⟨⟨x.1.1.val, (length_substOccTU .self M l).symm ▸ x.1.1.isLt⟩,
         famUnrollAt M l x.1.1.val ⟨x.1.2, x.2⟩⟩
-  | .record ⟨a, b, rest⟩, x =>
-      (famUnroll M a x.prodFst, famUnroll M b x.prodSnd.prodFst,
-        famUnrollList M rest x.prodSnd.prodSnd)
+  | .record fs, x => famUnrollRecord M fs x
   | .alias b, x => famUnroll M b x
 
 /-- The member a family selects, unfolded in the scope of the family: what a value of it

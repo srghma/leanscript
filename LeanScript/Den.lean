@@ -26,7 +26,7 @@ is the type of the values of `τ`.
 | `Ty.array α` | `Array (Ty.Den α)` |
 | `Ty.thunk α`, `Ty.lazy α` | `Ty.Den α` — a delay carries nothing beyond the value it stands for; the two wrappers differ only in the code printed for them |
 | `Ty.enum s` | `Fin s.nOfConstructors` — a constructor *number*, which is what the runtime holds |
-| `Ty.record fs` | the product of its fields' denotations, in declaration order |
+| `Ty.record fs` | the product of its fields' denotations, in declaration order, with no trailing `PUnit`: `⟨α, β, []⟩` is `Ty.Den α × Ty.Den β` |
 | `Ty.taggedUnion l` | a constructor number **with** that constructor's fields: `(t : Fin l.length) × Ty.DenAt l t` |
 | `Ty.recTaggedUnion l` | a **W-tree**: a node is a constructor number with that constructor's fields with their occurrences of the union blanked out, and one subtree per occurrence |
 | `Ty.recObject fs` | a **W-tree**: a node is the record's fields with its occurrences of itself blanked out, and one subtree per occurrence |
@@ -104,15 +104,30 @@ mutual
   | .thunk a => Ty.toPFunctor a
   | .lazy a => Ty.toPFunctor a
 
-/-- `Ty.toPFunctorList`, on a list that has at least one entry. -/
+/-- The fields of a constructor that has at least one, as a tuple (`Ty.toPFunctorFields`):
+    a single field is that field itself, and there is no trailing `PUnit`. -/
 @[reducible] def Ty.toPFunctorNE : NonEmptyList Ty → PFunctor.{0, 0}
-  | ⟨a, as⟩ => PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorList as)
+  | ⟨a, rest⟩ => match rest with
+    | [] => Ty.toPFunctor a
+    | _ :: _ => PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorFields rest)
 
-/-- `Ty.toPFunctorList`, on the fields of a record. -/
+/-- The fields of a record, as a tuple (`Ty.toPFunctorFields`): `⟨a, b, []⟩` is `a × b`. -/
 @[reducible] def Ty.toPFunctorRecord : LeanRecordSchema Ty → PFunctor.{0, 0}
-  | ⟨a, b, rest⟩ => PFunctor.prod (Ty.toPFunctor a) (PFunctor.prod (Ty.toPFunctor b) (Ty.toPFunctorList rest))
+  | ⟨a, b, rest⟩ => PFunctor.prod (Ty.toPFunctor a) (match rest with
+    | [] => Ty.toPFunctor b
+    | _ :: _ => PFunctor.prod (Ty.toPFunctor b) (Ty.toPFunctorFields rest))
 
-/-- The product of the containers of a list of types, in order. -/
+/-- The fields of a constructor, as a tuple nested to the right **without** a trailing
+    `PUnit`: `[]` is `PUnit`, `[a]` is `a`, `[a, b]` is `a × b`, `[a, b, c]` is
+    `a × (b × c)`. -/
+@[reducible] def Ty.toPFunctorFields : List Ty → PFunctor.{0, 0}
+  | [] => PFunctor.const PUnit
+  | a :: rest => match rest with
+    | [] => Ty.toPFunctor a
+    | _ :: _ => PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorFields rest)
+
+/-- The product of the containers of a list of types, in order, closed by `PUnit`: the
+    shape of an environment, where extending by one entry must be one more pair. -/
 @[reducible] def Ty.toPFunctorList : List Ty → PFunctor.{0, 0}
   | [] => PFunctor.const PUnit
   | τ :: ts => PFunctor.prod (Ty.toPFunctor τ) (Ty.toPFunctorList ts)
@@ -121,7 +136,7 @@ mutual
     it is empty. -/
 @[reducible] def Ty.toPFunctorAt : LeanTaggedUnionSchema Ty → Nat → PFunctor.{0, 0}
   | .payloadFirst fields _ _, 0 => Ty.toPFunctorNE fields
-  | .payloadFirst _ next _, 1 => Ty.toPFunctorList next
+  | .payloadFirst _ next _, 1 => Ty.toPFunctorFields next
   | .payloadFirst _ _ rest, n + 2 => Ty.toPFunctorAtList rest n
   | .skip _, 0 => PFunctor.const PUnit
   | .skip rest, n + 1 => Ty.toPFunctorAtCP rest n
@@ -136,7 +151,7 @@ mutual
 /-- `Ty.toPFunctorAt`, on a plain list of constructors. -/
 @[reducible] def Ty.toPFunctorAtList : List (List Ty) → Nat → PFunctor.{0, 0}
   | [], _ => PFunctor.const PEmpty
-  | fs :: _, 0 => Ty.toPFunctorList fs
+  | fs :: _, 0 => Ty.toPFunctorFields fs
   | _ :: rest, n + 1 => Ty.toPFunctorAtList rest n
 
 /-- The container a type **written in the scope of a mutual family** describes: its values
@@ -168,15 +183,28 @@ mutual
   | .thunk a => Ty.toIPF a
   | .lazy a => Ty.toIPF a
 
-/-- `Ty.toIPFList`, on a list that has at least one entry. -/
+/-- `Ty.toIPFFields`, on a list that has at least one entry. -/
 @[reducible] def Ty.toIPFNE : NonEmptyList Ty → IPFunctor
-  | ⟨a, as⟩ => IPFunctor.prod (Ty.toIPF a) (Ty.toIPFList as)
+  | ⟨a, rest⟩ => match rest with
+    | [] => Ty.toIPF a
+    | _ :: _ => IPFunctor.prod (Ty.toIPF a) (Ty.toIPFFields rest)
 
-/-- `Ty.toIPFList`, on the fields of a record. -/
+/-- `Ty.toIPFFields`, on the fields of a record. -/
 @[reducible] def Ty.toIPFRecord : LeanRecordSchema Ty → IPFunctor
-  | ⟨a, b, rest⟩ => IPFunctor.prod (Ty.toIPF a) (IPFunctor.prod (Ty.toIPF b) (Ty.toIPFList rest))
+  | ⟨a, b, rest⟩ => IPFunctor.prod (Ty.toIPF a) (match rest with
+    | [] => Ty.toIPF b
+    | _ :: _ => IPFunctor.prod (Ty.toIPF b) (Ty.toIPFFields rest))
 
-/-- The product of the containers of a list of types, in order. -/
+/-- The fields of a constructor, as a tuple without a trailing `PUnit`
+    (see `Ty.toPFunctorFields`). -/
+@[reducible] def Ty.toIPFFields : List Ty → IPFunctor
+  | [] => IPFunctor.const PUnit
+  | a :: rest => match rest with
+    | [] => Ty.toIPF a
+    | _ :: _ => IPFunctor.prod (Ty.toIPF a) (Ty.toIPFFields rest)
+
+/-- The product of the containers of a list of types, in order, closed by `PUnit` (see
+    `Ty.toPFunctorList`). -/
 @[reducible] def Ty.toIPFList : List Ty → IPFunctor
   | [] => IPFunctor.const PUnit
   | τ :: ts => IPFunctor.prod (Ty.toIPF τ) (Ty.toIPFList ts)
@@ -184,7 +212,7 @@ mutual
 /-- The container of the fields of constructor number `t`; out of range it is empty. -/
 @[reducible] def Ty.toIPFAt : LeanTaggedUnionSchema Ty → Nat → IPFunctor
   | .payloadFirst fields _ _, 0 => Ty.toIPFNE fields
-  | .payloadFirst _ next _, 1 => Ty.toIPFList next
+  | .payloadFirst _ next _, 1 => Ty.toIPFFields next
   | .payloadFirst _ _ rest, n + 2 => Ty.toIPFAtList rest n
   | .skip _, 0 => IPFunctor.const PUnit
   | .skip rest, n + 1 => Ty.toIPFAtCP rest n
@@ -199,7 +227,7 @@ mutual
 /-- `Ty.toIPFAt`, on a plain list of constructors. -/
 @[reducible] def Ty.toIPFAtList : List (List Ty) → Nat → IPFunctor
   | [], _ => IPFunctor.const PEmpty
-  | fs :: _, 0 => Ty.toIPFList fs
+  | fs :: _, 0 => Ty.toIPFFields fs
   | _ :: rest, n + 1 => Ty.toIPFAtList rest n
 
 /-- The container of one member of a family: its constructors, its fields or its body. -/
@@ -235,15 +263,122 @@ end
     two answers, and memoisation is invisible here. -/
 @[reducible] def Ty.DenCov (c : LeanPrimTyCovariant Ty) : Type := (Ty.toPFunctorCov c).A
 
-/-- `Ty.DenList`, on a list that has at least one entry. -/
+/-- `Ty.DenFields`, on a list that has at least one entry. -/
 @[reducible] def Ty.DenNE (xs : NonEmptyList Ty) : Type := (Ty.toPFunctorNE xs).A
 
-/-- `Ty.DenList`, on the fields of a record — of which there are at least two. -/
+/-- `Ty.DenFields`, on the fields of a record — of which there are at least two. -/
 @[reducible] def Ty.DenRecord (fs : LeanRecordSchema Ty) : Type := (Ty.toPFunctorRecord fs).A
 
-/-- The product of the denotations of a list of types, in order: an environment, the
-    fields of a constructor, the arguments of a call. -/
+/-- The fields of a constructor or a record, as a tuple: `PUnit` for none, the field
+    itself for one, and `Ty.Den a × Ty.Den b` — **not** `Ty.Den a × (Ty.Den b × PUnit)` —
+    for two.  `Ty.DenFields.toList` and `Ty.DenFields.ofList` convert to and from
+    `Ty.DenList`, the environment-shaped product. -/
+@[reducible] def Ty.DenFields (ts : List Ty) : Type := (Ty.toPFunctorFields ts).A
+
+/-- The product of the denotations of a list of types, in order, closed by `PUnit`: an
+    environment, the arguments of a call.  Extending it by one entry is one more pair,
+    which is what an environment needs; the values of a record or a constructor are held
+    as `Ty.DenFields` instead. -/
 @[reducible] def Ty.DenList (ts : List Ty) : Type := (Ty.toPFunctorList ts).A
+
+/-- A tuple of fields, as an environment-shaped product. -/
+def Ty.DenFields.toList : (ts : List Ty) → Ty.DenFields ts → Ty.DenList ts
+  | [], _ => PUnit.unit
+  | [_], x => (x, PUnit.unit)
+  | _ :: b :: bs, x => (x.1, Ty.DenFields.toList (b :: bs) x.2)
+
+/-- An environment-shaped product, as a tuple of fields. -/
+def Ty.DenFields.ofList : (ts : List Ty) → Ty.DenList ts → Ty.DenFields ts
+  | [], _ => PUnit.unit
+  | [_], x => x.1
+  | _ :: b :: bs, x => (x.1, Ty.DenFields.ofList (b :: bs) x.2)
+
+@[simp] theorem Ty.DenFields.toList_ofList :
+    ∀ (ts : List Ty) (x : Ty.DenList ts), Ty.DenFields.toList ts (Ty.DenFields.ofList ts x) = x
+  | [], _ => rfl
+  | [_], _ => rfl
+  | _ :: b :: bs, x => by
+      show (x.1, Ty.DenFields.toList (b :: bs) (Ty.DenFields.ofList (b :: bs) x.2)) = x
+      rw [Ty.DenFields.toList_ofList]
+
+@[simp] theorem Ty.DenFields.ofList_toList :
+    ∀ (ts : List Ty) (x : Ty.DenFields ts), Ty.DenFields.ofList ts (Ty.DenFields.toList ts x) = x
+  | [], _ => rfl
+  | [_], _ => rfl
+  | _ :: b :: bs, x => by
+      show (x.1, Ty.DenFields.ofList (b :: bs) (Ty.DenFields.toList (b :: bs) x.2)) = x
+      rw [Ty.DenFields.ofList_toList]
+
+/-! ### Shapes of fields, as shapes of an environment
+
+The fold of a recursive type reads a node's fields one at a time, as an environment is
+read, so it sees them as a shape of `Ty.toPFunctorList` (resp. `Ty.toIPFList`); a node
+holds them as a shape of `Ty.toPFunctorFields` (resp. `Ty.toIPFFields`).  These are the
+conversions. -/
+
+/-- A shape of the fields of a constructor, as a shape of the environment-shaped product. -/
+def Ty.fieldsObjToList {X : Type} : (ts : List Ty) → (Ty.toPFunctorFields ts).Obj X →
+    (Ty.toPFunctorList ts).Obj X
+  | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
+  | _ :: as, x => match as, x with
+    | [], x => PFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩
+    | b :: bs, x => PFunctor.Obj.pair x.prodFst (Ty.fieldsObjToList (b :: bs) x.prodSnd)
+
+/-- `Ty.fieldsObjToList`, on the fields of a constructor that has at least one. -/
+def Ty.neObjToList {X : Type} : (xs : NonEmptyList Ty) → (Ty.toPFunctorNE xs).Obj X →
+    (Ty.toPFunctorList xs.toList).Obj X
+  | ⟨a, as⟩, x => Ty.fieldsObjToList (a :: as) x
+
+theorem PFunctor.Obj.map_pair {c d : PFunctor.{0, 0}} {X Y : Type} (g : X → Y) (x : c.Obj X)
+    (y : d.Obj X) :
+    PFunctor.map _ g (PFunctor.Obj.pair x y) =
+      PFunctor.Obj.pair (PFunctor.map _ g x) (PFunctor.map _ g y) := by
+  obtain ⟨a, f⟩ := x
+  obtain ⟨b, h⟩ := y
+  exact congrArg (Sigma.mk _) (funext fun | .inl _ => rfl | .inr _ => rfl)
+
+theorem PFunctor.Obj.map_const {A X Y : Type} (g : X → Y) (a : A) :
+    PFunctor.map (PFunctor.const A) g ⟨a, fun p => PEmpty.elim p⟩ = ⟨a, fun p => PEmpty.elim p⟩ :=
+  congrArg (Sigma.mk a) (funext fun p => PEmpty.elim p)
+
+/-- Converting a shape of fields commutes with changing what its holes hold. -/
+theorem Ty.fieldsObjToList_map {X Y : Type} (g : X → Y) :
+    ∀ (ts : List Ty) (x : (Ty.toPFunctorFields ts).Obj X),
+      PFunctor.map _ g (Ty.fieldsObjToList ts x) =
+        Ty.fieldsObjToList ts (PFunctor.map _ g x)
+  | [], _ => PFunctor.Obj.map_const g _
+  | [_], x => by
+      show PFunctor.map _ g (PFunctor.Obj.pair x _) = PFunctor.Obj.pair (PFunctor.map _ g x) _
+      rw [PFunctor.Obj.map_pair, PFunctor.Obj.map_const]
+  | a :: b :: bs, x => by
+      show PFunctor.map _ g (PFunctor.Obj.pair x.prodFst (Ty.fieldsObjToList (b :: bs) x.prodSnd)) =
+        PFunctor.Obj.pair (PFunctor.map _ g x).prodFst
+          (Ty.fieldsObjToList (b :: bs) (PFunctor.map _ g x).prodSnd)
+      rw [PFunctor.Obj.map_pair, Ty.fieldsObjToList_map g (b :: bs)]
+      rfl
+
+theorem Ty.neObjToList_map {X Y : Type} (g : X → Y) :
+    ∀ (xs : NonEmptyList Ty) (x : (Ty.toPFunctorNE xs).Obj X),
+      PFunctor.map _ g (Ty.neObjToList xs x) = Ty.neObjToList xs (PFunctor.map _ g x)
+  | ⟨a, as⟩, x => Ty.fieldsObjToList_map g (a :: as) x
+
+/-- `Ty.fieldsObjToList`, for a mutual family's containers. -/
+def Ty.fieldsIPFObjToList {X : Nat → Type} : (ts : List Ty) → (Ty.toIPFFields ts).Obj X →
+    (Ty.toIPFList ts).Obj X
+  | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
+  | _ :: as, x => match as, x with
+    | [], x => IPFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩
+    | b :: bs, x => IPFunctor.Obj.pair x.prodFst (Ty.fieldsIPFObjToList (b :: bs) x.prodSnd)
+
+/-- `Ty.fieldsIPFObjToList`, on the fields of a constructor that has at least one. -/
+def Ty.neIPFObjToList {X : Nat → Type} : (xs : NonEmptyList Ty) → (Ty.toIPFNE xs).Obj X →
+    (Ty.toIPFList xs.toList).Obj X
+  | ⟨a, as⟩, x => Ty.fieldsIPFObjToList (a :: as) x
+
+/-- `Ty.fieldsIPFObjToList`, on the fields of a record. -/
+def Ty.recordIPFObjToList {X : Nat → Type} : (fs : LeanRecordSchema Ty) →
+    (Ty.toIPFRecord fs).Obj X → (Ty.toIPFList fs.toList).Obj X
+  | ⟨a, b, rest⟩, x => Ty.fieldsIPFObjToList (a :: b :: rest) x
 
 /-- The fields of constructor number `t` of a tagged union, as a product.  Out of range
     it is `PEmpty`, which is what makes a dispatch on a union exhaustive without a
@@ -268,7 +403,7 @@ abbrev Ty.DenTU (l : LeanTaggedUnionSchema Ty) : Type :=
 
 `LeanScript.Term.taggedUnion_mk` and `LeanScript.TaggedUnionSomeCases` name a constructor
 by a number `t` with a proof `t < l.length`, and speak of its fields as
-`Ty.DenList (l.get t ht)`; a value holds them as `Ty.DenAt l t`.  The two are the same
+`Ty.DenFields (l.get t ht)`; a value holds them as `Ty.DenAt l t`.  The two are the same
 type — that is `Ty.denAt_eq` — and `Ty.DenTU.mk` and `Ty.DenTU.field?` are the two
 directions of that identification. -/
 
@@ -276,22 +411,22 @@ directions of that identification. -/
     denotations.  This is not definitional — `Ty.DenNE` is a case analysis on the schema,
     and a schema in hand is a variable rather than a pair — so an evaluator that has a
     `Ty.DenNE` and wants an environment `cast`s along it. -/
-theorem Ty.denNE_eq (xs : NonEmptyList Ty) : Ty.DenNE xs = Ty.DenList xs.toList := by
+theorem Ty.denNE_eq (xs : NonEmptyList Ty) : Ty.DenNE xs = Ty.DenFields xs.toList := by
   cases xs; rfl
 
 /-- The fields of a record are the product of their denotations, in declaration order. -/
 theorem Ty.denRecord_eq (fs : LeanRecordSchema Ty) :
-    Ty.DenRecord fs = Ty.DenList fs.toList := by
+    Ty.DenRecord fs = Ty.DenFields fs.toList := by
   cases fs; rfl
 
 theorem Ty.denAtList_eq : ∀ (l : List (List Ty)) (t : Nat) (ht : t < l.length),
-    Ty.DenAtList l t = Ty.DenList l[t]
+    Ty.DenAtList l t = Ty.DenFields l[t]
   | [], _, ht => absurd ht (by simp)
   | _ :: _, 0, _ => rfl
   | _ :: rest, n + 1, ht => Ty.denAtList_eq rest n (by simpa using ht)
 
 theorem Ty.denAtCP_eq : ∀ (c : CtorsWithPayload Ty) (t : Nat) (ht : t < c.toList.length),
-    Ty.DenAtCP c t = Ty.DenList c.toList[t]
+    Ty.DenAtCP c t = Ty.DenFields c.toList[t]
   | .here fields _, 0, _ => by cases fields; rfl
   | .here _ rest, n + 1, ht =>
       Ty.denAtList_eq rest n (by simpa [CtorsWithPayload.toList] using ht)
@@ -300,7 +435,7 @@ theorem Ty.denAtCP_eq : ∀ (c : CtorsWithPayload Ty) (t : Nat) (ht : t < c.toLi
       Ty.denAtCP_eq rest n (by simpa [CtorsWithPayload.toList] using ht)
 
 theorem Ty.denAt_eq : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat) (ht : t < l.length),
-    Ty.DenAt l t = Ty.DenList (l.get t ht)
+    Ty.DenAt l t = Ty.DenFields (l.get t ht)
   | .payloadFirst fields _ _, 0, _ => by cases fields; rfl
   | .payloadFirst _ _ _, 1, _ => rfl
   | .payloadFirst _ _ rest, n + 2, ht => by
@@ -316,13 +451,13 @@ theorem Ty.denAt_eq : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat) (ht : t < l.l
 
 /-- A value of a tagged union: constructor `t`, with its fields. -/
 def Ty.DenTU.mk {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (fields : Ty.DenList (l.get t ht)) : Ty.DenTU l :=
+    (fields : Ty.DenFields (l.get t ht)) : Ty.DenTU l :=
   ⟨⟨t, ht⟩, cast (Ty.denAt_eq l t ht).symm fields⟩
 
 /-- The fields of a value of a tagged union **if** it is the value of constructor `t`,
     and nothing if it is the value of another constructor. -/
 def Ty.DenTU.field? {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (v : Ty.DenTU l) : Option (Ty.DenList (l.get t ht)) :=
+    (v : Ty.DenTU l) : Option (Ty.DenFields (l.get t ht)) :=
   if h : v.1.val = t then
     some (cast (by subst h; exact Ty.denAt_eq l _ ht) v.2)
   else
@@ -330,7 +465,7 @@ def Ty.DenTU.field? {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
 
 /-- Reading the fields of the constructor a value was built with gives them back. -/
 theorem Ty.DenTU.field?_mk {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (fields : Ty.DenList (l.get t ht)) :
+    (fields : Ty.DenFields (l.get t ht)) :
     Ty.DenTU.field? t ht (Ty.DenTU.mk t ht fields) = some fields := by
   show (if _ : t = t then _ else _) = _
   simp only [↓reduceDIte]
@@ -356,6 +491,17 @@ proofs are simply dropped. -/
     constructor, the arguments of a call. -/
 @[reducible] def TyWf.DenList (ts : List TyWf) : Type := Ty.DenList (ts.map TyWf.toTy)
 
+/-- The fields of a constructor or a record of types, as a tuple (see `Ty.DenFields`). -/
+@[reducible] def TyWf.DenFields (ts : List TyWf) : Type := Ty.DenFields (ts.map TyWf.toTy)
+
+/-- A tuple of fields, as an environment-shaped product. -/
+abbrev TyWf.DenFields.toList {ts : List TyWf} : TyWf.DenFields ts → TyWf.DenList ts :=
+  Ty.DenFields.toList (ts.map TyWf.toTy)
+
+/-- An environment-shaped product, as a tuple of fields. -/
+abbrev TyWf.DenFields.ofList {ts : List TyWf} : TyWf.DenList ts → TyWf.DenFields ts :=
+  Ty.DenFields.ofList (ts.map TyWf.toTy)
+
 /-- The values of a record of types, in declaration order. -/
 @[reducible] def TyWf.DenRecord (fs : LeanRecordSchema TyWf) : Type :=
   Ty.DenRecord (fs.map TyWf.toTy)
@@ -375,20 +521,20 @@ proofs are simply dropped. -/
 
 /-- A value of a tagged union of types: constructor `t`, with its fields. -/
 def TyWf.DenTU.mk {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
-    (fields : TyWf.DenList (l.get t ht)) : TyWf.DenTU l :=
+    (fields : TyWf.DenFields (l.get t ht)) : TyWf.DenTU l :=
   Ty.DenTU.mk t (by simpa using ht)
     (cast (by rw [LeanTaggedUnionSchema.get_map]) fields)
 
 /-- The fields of a value of a tagged union **if** it is the value of constructor `t`,
     and nothing if it is the value of another constructor. -/
 def TyWf.DenTU.field? {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
-    (v : TyWf.DenTU l) : Option (TyWf.DenList (l.get t ht)) :=
+    (v : TyWf.DenTU l) : Option (TyWf.DenFields (l.get t ht)) :=
   (Ty.DenTU.field? t (by simpa using ht) v).map
     (cast (by rw [LeanTaggedUnionSchema.get_map]))
 
 /-- Reading the fields of the constructor a value was built with gives them back. -/
 theorem TyWf.DenTU.field?_mk {l : LeanTaggedUnionSchema TyWf} (t : Nat)
-    (ht : t < l.length) (fields : TyWf.DenList (l.get t ht)) :
+    (ht : t < l.length) (fields : TyWf.DenFields (l.get t ht)) :
     TyWf.DenTU.field? t ht (TyWf.DenTU.mk t ht fields) = some fields := by
   simp only [TyWf.DenTU.field?, TyWf.DenTU.mk, Ty.DenTU.field?_mk, Option.map_some]
   exact congrArg some ((cast_cast _ _ _).trans (cast_eq _ _))

@@ -49,7 +49,7 @@ theorem Term.evalJ_recTaggedUnion_casesOn_mk {Γ : Ctx} {τ : TyWf} {J : JCtx}
         (.recTaggedUnion_casesOn (.var .head) cases)) env jenv =
       TaggedUnionCases.eval G cases rfl .rfl .rfl
         (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env, env) jenv
-        (TyWf.DenTU.mk t ht (Args.eval G fields env)) := by
+        (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Args.eval G fields env))) := by
   show TaggedUnionCases.eval G cases rfl .rfl .rfl _ jenv
       (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk]
@@ -68,7 +68,7 @@ theorem Term.evalJ_recTaggedUnion_casesOnWithDefault_mk {Γ : Ctx} {τ : TyWf} {
         (.recTaggedUnion_casesOnWithDefault (.var .head) cases dflt hk)) env jenv =
       let env' := (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env, env)
       TaggedUnionSomeCases.eval G cases env' jenv
-        (TyWf.DenTU.mk t ht (Args.eval G fields env)) (Term.evalJ G dflt env' jenv) := by
+        (TyWf.DenTU.mk t ht (TyWf.DenFields.ofList (Args.eval G fields env))) (Term.evalJ G dflt env' jenv) := by
   show TaggedUnionSomeCases.eval G cases _ jenv
       (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) _ = _
   rw [TyWf.DenRec.unfold_mk]
@@ -92,7 +92,7 @@ theorem Comp.eval_recTaggedUnion_field? {Γ : Ctx}
     (fields : Args Sg Γ ((TyWf.recTaggedUnionUnfold l hwf).get t ht)) (env : Env Γ) :
     TyWf.DenTU.field? t ht
         (TyWf.DenRec.unfold l hwf (Comp.eval G (.recTaggedUnion_mk l hwf t ht fields) env)) =
-      some (Args.eval G fields env) := by
+      some (TyWf.DenFields.ofList (Args.eval G fields env)) := by
   show TyWf.DenTU.field? t ht (TyWf.DenRec.unfold l hwf (TyWf.DenRec.mk l hwf _)) = _
   rw [TyWf.DenRec.unfold_mk, TyWf.DenTU.field?_mk]
 
@@ -176,9 +176,9 @@ def TaggedUnionFoldCases.evalAt {Y : Type} :
     (t : Nat) → (Ty.toPFunctorAt (recL l) t).Obj Y →
     TyWf.Den τ
   | _, _, _, _, .payloadFirst b0 _ _, env, mkEnv, 0, e =>
-      Term.eval G b0 (Env.append (mkEnv _ e) env)
+      Term.eval G b0 (Env.append (mkEnv _ (Ty.neObjToList _ e)) env)
   | _, _, _, _, .payloadFirst _ b1 _, env, mkEnv, 1, e =>
-      Term.eval G b1 (Env.append (mkEnv _ e) env)
+      Term.eval G b1 (Env.append (mkEnv _ (Ty.fieldsObjToList _ e)) env)
   | _, _, _, _, .payloadFirst _ _ rest, env, mkEnv, n + 2, e =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e
   | _, _, _, _, .skip b0 _, env, mkEnv, 0, e =>
@@ -195,7 +195,7 @@ def CtorsWithPayloadFoldCases.evalAt {Y : Type} :
     (t : Nat) → (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj Y →
     TyWf.Den τ
   | _, _, _, _, .here b _, env, mkEnv, 0, e =>
-      Term.eval G b (Env.append (mkEnv _ e) env)
+      Term.eval G b (Env.append (mkEnv _ (Ty.neObjToList _ e)) env)
   | _, _, _, _, .here _ rest, env, mkEnv, n + 1, e =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e
   | _, _, _, _, .skip b _, env, mkEnv, 0, e =>
@@ -213,7 +213,7 @@ def TaggedUnionFoldCasesRest.evalAt {Y : Type} :
     TyWf.Den τ
   | _, _, _, _, .nil, _, _, _, e => PEmpty.elim e.1
   | _, _, _, _, .cons b _, env, mkEnv, 0, e =>
-      Term.eval G b (Env.append (mkEnv _ e) env)
+      Term.eval G b (Env.append (mkEnv _ (Ty.fieldsObjToList _ e)) env)
   | _, _, _, _, .cons _ rest, env, mkEnv, n + 1, e =>
       TaggedUnionFoldCasesRest.evalAt rest env mkEnv n e
 
@@ -323,10 +323,12 @@ theorem TaggedUnionFoldCases.evalAt_map {bind : List (TyWfIn 1) → List TyWf}
       (t : Nat) (e : (Ty.toPFunctorAt (recL l) t).Obj Y),
       TaggedUnionFoldCases.evalAt G c env mkEnv t e =
         TaggedUnionFoldCases.evalAt G c env mkEnv' t (PFunctor.map _ g e)
-  | .payloadFirst b0 _ _, env, 0, e => by
-      exact congrArg (fun x => Term.eval G b0 (Env.append x env)) (hm _ _)
-  | .payloadFirst _ b1 _, env, 1, e => by
-      exact congrArg (fun x => Term.eval G b1 (Env.append x env)) (hm _ _)
+  | .payloadFirst b0 _ _, env, 0, e =>
+      congrArg (fun x => Term.eval G b0 (Env.append x env))
+        ((hm _ _).trans (congrArg (mkEnv' _) (Ty.neObjToList_map g _ e)))
+  | .payloadFirst _ b1 _, env, 1, e =>
+      congrArg (fun x => Term.eval G b1 (Env.append x env))
+        ((hm _ _).trans (congrArg (mkEnv' _) (Ty.fieldsObjToList_map g _ e)))
   | .payloadFirst _ _ rest, env, n + 2, e =>
       TaggedUnionFoldCasesRest.evalAt_map mkEnv mkEnv' hm rest env n e
   | .skip b0 _, env, 0, e => by
@@ -345,8 +347,9 @@ theorem CtorsWithPayloadFoldCases.evalAt_map
       (t : Nat) (e : (Ty.toPFunctorAtCP (c.map TyWfIn.toTy) t).Obj Y),
       CtorsWithPayloadFoldCases.evalAt G cs env mkEnv t e =
         CtorsWithPayloadFoldCases.evalAt G cs env mkEnv' t (PFunctor.map _ g e)
-  | .here b _, env, 0, e => by
-      exact congrArg (fun x => Term.eval G b (Env.append x env)) (hm _ _)
+  | .here b _, env, 0, e =>
+      congrArg (fun x => Term.eval G b (Env.append x env))
+        ((hm _ _).trans (congrArg (mkEnv' _) (Ty.neObjToList_map g _ e)))
   | .here _ rest, env, n + 1, e =>
       TaggedUnionFoldCasesRest.evalAt_map mkEnv mkEnv' hm rest env n e
   | .skip b _, env, 0, e => by
@@ -366,8 +369,9 @@ theorem TaggedUnionFoldCasesRest.evalAt_map
       TaggedUnionFoldCasesRest.evalAt G r env mkEnv t e =
         TaggedUnionFoldCasesRest.evalAt G r env mkEnv' t (PFunctor.map _ g e)
   | .nil, _, _, e => PEmpty.elim e.1
-  | .cons b _, env, 0, e => by
-      exact congrArg (fun x => Term.eval G b (Env.append x env)) (hm _ _)
+  | .cons b _, env, 0, e =>
+      congrArg (fun x => Term.eval G b (Env.append x env))
+        ((hm _ _).trans (congrArg (mkEnv' _) (Ty.fieldsObjToList_map g _ e)))
   | .cons _ rest, env, n + 1, e =>
       TaggedUnionFoldCasesRest.evalAt_map mkEnv mkEnv' hm rest env n e
 

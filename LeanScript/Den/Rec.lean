@@ -64,8 +64,10 @@ def rollShape : (s : TyShape Ty) → Ty.Den (.shape (substOccShape R .familyMemb
   | .fn _ b, f => PFunctor.Obj.ofPi (fun y => roll b (f y))
   | .primCovariant c, x => rollCov c x
   | .enum _, x => ⟨x, fun p => PEmpty.elim p⟩
-  | .record ⟨a, b, rest⟩, ⟨x, y, zs⟩ =>
-      PFunctor.Obj.pair (roll a x) (PFunctor.Obj.pair (roll b y) (rollList rest zs))
+  | .record ⟨a, b, rest⟩, x =>
+      PFunctor.Obj.pair (roll a x.1) (match rest, x.2 with
+        | [], y => roll b y
+        | c :: cs, y => PFunctor.Obj.pair (roll b y.1) (rollFields (c :: cs) y.2))
   | .taggedUnion l, ⟨t, v⟩ =>
       let r := rollAt l t.val v
       ⟨⟨⟨t.val, length_substOccTU R .familyMember l ▸ t.isLt⟩, r.1⟩, r.2⟩
@@ -77,17 +79,26 @@ def rollCov : (c : LeanPrimTyCovariant Ty) →
   | .thunk a, x => roll a x
   | .lazy a, x => roll a x
 
-/-- `Ty.roll`, on a list of trees. -/
-def rollList : (ts : List Ty) → Ty.DenList (substOccList R .familyMember ts) →
-    (Ty.toPFunctorList ts).Obj (Ty.Den R)
+/-- `Ty.roll`, on the fields of a constructor. -/
+def rollFields : (ts : List Ty) → Ty.DenFields (substOccList R .familyMember ts) →
+    (Ty.toPFunctorFields ts).Obj (Ty.Den R)
   | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-  | a :: as, ⟨x, xs⟩ => PFunctor.Obj.pair (roll a x) (rollList as xs)
+  | a :: as, x => match as, x with
+    | [], x => roll a x
+    | b :: bs, x => PFunctor.Obj.pair (roll a x.1) (rollFields (b :: bs) x.2)
+
+/-- `Ty.roll`, on the fields of a constructor that has at least one. -/
+def rollNE : (xs : NonEmptyList Ty) → Ty.DenNE (substOccNE R .familyMember xs) →
+    (Ty.toPFunctorNE xs).Obj (Ty.Den R)
+  | ⟨a, as⟩, x => match as, x with
+    | [], x => roll a x
+    | b :: bs, x => PFunctor.Obj.pair (roll a x.1) (rollFields (b :: bs) x.2)
 
 /-- `Ty.roll`, on the fields of constructor `t`. -/
 def rollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
     Ty.DenAt (substOccTU R .familyMember l) t → (Ty.toPFunctorAt l t).Obj (Ty.Den R)
-  | .payloadFirst ⟨a, as⟩ _ _, 0, ⟨x, xs⟩ => PFunctor.Obj.pair (roll a x) (rollList as xs)
-  | .payloadFirst _ next _, 1, v => rollList next v
+  | .payloadFirst f _ _, 0, v => rollNE f v
+  | .payloadFirst _ next _, 1, v => rollFields next v
   | .payloadFirst _ _ rest, n + 2, v => rollAtList rest n v
   | .skip _, 0, _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
   | .skip rest, n + 1, v => rollAtCP rest n v
@@ -95,7 +106,7 @@ def rollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
 /-- `Ty.rollAt`, on the constructors that follow a field-less one. -/
 def rollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
     Ty.DenAtCP (substOccCP R .familyMember c) t → (Ty.toPFunctorAtCP c t).Obj (Ty.Den R)
-  | .here ⟨a, as⟩ _, 0, ⟨x, xs⟩ => PFunctor.Obj.pair (roll a x) (rollList as xs)
+  | .here f _, 0, v => rollNE f v
   | .here _ rest, n + 1, v => rollAtList rest n v
   | .skip _, 0, _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
   | .skip rest, n + 1, v => rollAtCP rest n v
@@ -104,7 +115,7 @@ def rollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
 def rollAtList : (cs : List (List Ty)) → (t : Nat) →
     Ty.DenAtList (substOccCtors R .familyMember cs) t → (Ty.toPFunctorAtList cs t).Obj (Ty.Den R)
   | [], _, v => PEmpty.elim v
-  | fs :: _, 0, v => rollList fs v
+  | fs :: _, 0, v => rollFields fs v
   | _ :: rest, n + 1, v => rollAtList rest n v
 
 end
@@ -131,7 +142,9 @@ def unrollShape : (s : TyShape Ty) → (Ty.toPFunctorShape s).Obj (Ty.Den R) →
   | .primCovariant c, x => unrollCov c x
   | .enum _, x => x.1
   | .record ⟨a, b, rest⟩, x =>
-      (unroll a x.prodFst, unroll b x.prodSnd.prodFst, unrollList rest x.prodSnd.prodSnd)
+      (unroll a x.prodFst, match rest, x.prodSnd with
+        | [], y => unroll b y
+        | c :: cs, y => (unroll b y.prodFst, unrollFields (c :: cs) y.prodSnd))
   | .taggedUnion l, x =>
       ⟨⟨x.1.1.val, (length_substOccTU R .familyMember l).symm ▸ x.1.1.isLt⟩,
         unrollAt l x.1.1.val ⟨x.1.2, x.2⟩⟩
@@ -143,17 +156,26 @@ def unrollCov : (c : LeanPrimTyCovariant Ty) →
   | .thunk a, x => unroll a x
   | .lazy a, x => unroll a x
 
-/-- `Ty.unroll`, on a list of trees. -/
-def unrollList : (ts : List Ty) → (Ty.toPFunctorList ts).Obj (Ty.Den R) →
-    Ty.DenList (substOccList R .familyMember ts)
+/-- `Ty.unroll`, on the fields of a constructor. -/
+def unrollFields : (ts : List Ty) → (Ty.toPFunctorFields ts).Obj (Ty.Den R) →
+    Ty.DenFields (substOccList R .familyMember ts)
   | [], _ => PUnit.unit
-  | a :: as, x => (unroll a x.prodFst, unrollList as x.prodSnd)
+  | a :: as, x => match as, x with
+    | [], x => unroll a x
+    | b :: bs, x => (unroll a x.prodFst, unrollFields (b :: bs) x.prodSnd)
+
+/-- `Ty.unroll`, on the fields of a constructor that has at least one. -/
+def unrollNE : (xs : NonEmptyList Ty) → (Ty.toPFunctorNE xs).Obj (Ty.Den R) →
+    Ty.DenNE (substOccNE R .familyMember xs)
+  | ⟨a, as⟩, x => match as, x with
+    | [], x => unroll a x
+    | b :: bs, x => (unroll a x.prodFst, unrollFields (b :: bs) x.prodSnd)
 
 /-- `Ty.unroll`, on the fields of constructor `t`. -/
 def unrollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
     (Ty.toPFunctorAt l t).Obj (Ty.Den R) → Ty.DenAt (substOccTU R .familyMember l) t
-  | .payloadFirst ⟨a, as⟩ _ _, 0, x => (unroll a x.prodFst, unrollList as x.prodSnd)
-  | .payloadFirst _ next _, 1, x => unrollList next x
+  | .payloadFirst f _ _, 0, x => unrollNE f x
+  | .payloadFirst _ next _, 1, x => unrollFields next x
   | .payloadFirst _ _ rest, n + 2, x => unrollAtList rest n x
   | .skip _, 0, _ => PUnit.unit
   | .skip rest, n + 1, x => unrollAtCP rest n x
@@ -161,7 +183,7 @@ def unrollAt : (l : LeanTaggedUnionSchema Ty) → (t : Nat) →
 /-- `Ty.unrollAt`, on the constructors that follow a field-less one. -/
 def unrollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
     (Ty.toPFunctorAtCP c t).Obj (Ty.Den R) → Ty.DenAtCP (substOccCP R .familyMember c) t
-  | .here ⟨a, as⟩ _, 0, x => (unroll a x.prodFst, unrollList as x.prodSnd)
+  | .here f _, 0, x => unrollNE f x
   | .here _ rest, n + 1, x => unrollAtList rest n x
   | .skip _, 0, _ => PUnit.unit
   | .skip rest, n + 1, x => unrollAtCP rest n x
@@ -170,7 +192,7 @@ def unrollAtCP : (c : CtorsWithPayload Ty) → (t : Nat) →
 def unrollAtList : (cs : List (List Ty)) → (t : Nat) →
     (Ty.toPFunctorAtList cs t).Obj (Ty.Den R) → Ty.DenAtList (substOccCtors R .familyMember cs) t
   | [], _, x => PEmpty.elim x.1
-  | fs :: _, 0, x => unrollList fs x
+  | fs :: _, 0, x => unrollFields fs x
   | _ :: rest, n + 1, x => unrollAtList rest n x
 
 end
@@ -234,10 +256,15 @@ theorem unroll_rollShape : ∀ (s : TyShape Ty)
   | .fn _ b, f => funext fun y => unroll_roll b (f y)
   | .primCovariant c, x => unroll_rollCov c x
   | .enum _, _ => rfl
-  | .record ⟨a, b, rest⟩, ⟨x, y, zs⟩ => by
+  | .record ⟨a, b, []⟩, ⟨x, y⟩ => by
+      show (unroll R a (roll R a x), unroll R b (roll R b y)) = _
+      rw [unroll_roll a x, unroll_roll b y]
+      rfl
+  | .record ⟨a, b, c :: cs⟩, ⟨x, y, zs⟩ => by
       show (unroll R a (roll R a x), unroll R b (roll R b y),
-        unrollList R rest (rollList R rest zs)) = _
-      rw [unroll_roll a x, unroll_roll b y, unroll_rollList rest zs]
+        unrollFields R (c :: cs) (rollFields R (c :: cs) zs)) = _
+      rw [unroll_roll a x, unroll_roll b y, unroll_rollFields (c :: cs) zs]
+      rfl
   | .taggedUnion l, ⟨t, v⟩ => by
       show (⟨⟨t.val, _⟩, unrollAt R l t.val (rollAt R l t.val v)⟩ :
         Ty.Den (.shape (substOccShape R .familyMember (.taggedUnion l)))) = _
@@ -250,20 +277,26 @@ theorem unroll_rollCov : ∀ (c : LeanPrimTyCovariant Ty)
   | .thunk a, x => unroll_roll a x
   | .lazy a, x => unroll_roll a x
 
-theorem unroll_rollList : ∀ (ts : List Ty) (x : Ty.DenList (substOccList R .familyMember ts)),
-    unrollList R ts (rollList R ts x) = x
+theorem unroll_rollFields : ∀ (ts : List Ty) (x : Ty.DenFields (substOccList R .familyMember ts)),
+    unrollFields R ts (rollFields R ts x) = x
   | [], _ => rfl
-  | a :: as, ⟨x, xs⟩ => by
-      show (unroll R a (roll R a x), unrollList R as (rollList R as xs)) = _
-      rw [unroll_roll a x, unroll_rollList as xs]
+  | [a], x => unroll_roll a x
+  | a :: b :: bs, ⟨x, xs⟩ => by
+      show (unroll R a (roll R a x), unrollFields R (b :: bs) (rollFields R (b :: bs) xs)) = _
+      rw [unroll_roll a x, unroll_rollFields (b :: bs) xs]
+
+theorem unroll_rollNE : ∀ (xs : NonEmptyList Ty) (x : Ty.DenNE (substOccNE R .familyMember xs)),
+    unrollNE R xs (rollNE R xs x) = x
+  | ⟨a, []⟩, x => unroll_roll a x
+  | ⟨a, b :: bs⟩, ⟨x, xs⟩ => by
+      show (unroll R a (roll R a x), unrollFields R (b :: bs) (rollFields R (b :: bs) xs)) = _
+      rw [unroll_roll a x, unroll_rollFields (b :: bs) xs]
 
 theorem unroll_rollAt : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat)
     (v : Ty.DenAt (substOccTU R .familyMember l) t),
     unrollAt R l t (rollAt R l t v) = v
-  | .payloadFirst ⟨a, as⟩ _ _, 0, ⟨x, xs⟩ => by
-      show (unroll R a (roll R a x), unrollList R as (rollList R as xs)) = _
-      rw [unroll_roll a x, unroll_rollList as xs]
-  | .payloadFirst _ next _, 1, v => unroll_rollList next v
+  | .payloadFirst f _ _, 0, v => unroll_rollNE f v
+  | .payloadFirst _ next _, 1, v => unroll_rollFields next v
   | .payloadFirst _ _ rest, n + 2, v => unroll_rollAtList rest n v
   | .skip _, 0, _ => rfl
   | .skip rest, n + 1, v => unroll_rollAtCP rest n v
@@ -271,9 +304,7 @@ theorem unroll_rollAt : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat)
 theorem unroll_rollAtCP : ∀ (c : CtorsWithPayload Ty) (t : Nat)
     (v : Ty.DenAtCP (substOccCP R .familyMember c) t),
     unrollAtCP R c t (rollAtCP R c t v) = v
-  | .here ⟨a, as⟩ _, 0, ⟨x, xs⟩ => by
-      show (unroll R a (roll R a x), unrollList R as (rollList R as xs)) = _
-      rw [unroll_roll a x, unroll_rollList as xs]
+  | .here f _, 0, v => unroll_rollNE f v
   | .here _ rest, n + 1, v => unroll_rollAtList rest n v
   | .skip _, 0, _ => rfl
   | .skip rest, n + 1, v => unroll_rollAtCP rest n v
@@ -282,7 +313,7 @@ theorem unroll_rollAtList : ∀ (cs : List (List Ty)) (t : Nat)
     (v : Ty.DenAtList (substOccCtors R .familyMember cs) t),
     unrollAtList R cs t (rollAtList R cs t v) = v
   | [], _, v => PEmpty.elim v
-  | fs :: _, 0, v => unroll_rollList fs v
+  | fs :: _, 0, v => unroll_rollFields fs v
   | _ :: rest, n + 1, v => unroll_rollAtList rest n v
 
 end
@@ -313,16 +344,22 @@ theorem roll_unrollShape : ∀ (s : TyShape Ty) (x : (Ty.toPFunctorShape s).Obj 
       rfl
   | .primCovariant c, x => roll_unrollCov c x
   | .enum _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
-  | .record ⟨a, b, rest⟩, x => by
+  | .record ⟨a, b, []⟩, x => by
       revert x
-      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (PFunctor.prod (Ty.toPFunctor b) (Ty.toPFunctorList rest))).Obj
-          (Ty.Den R),
+      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctor b)).Obj (Ty.Den R),
+        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst)) (roll R b (unroll R b x.prodSnd)) = x
+      intro x
+      rw [roll_unroll a, roll_unroll b, PFunctor.Obj.pair_prodFst_prodSnd]
+  | .record ⟨a, b, c :: cs⟩, x => by
+      revert x
+      show ∀ x : (PFunctor.prod (Ty.toPFunctor a)
+          (PFunctor.prod (Ty.toPFunctor b) (Ty.toPFunctorFields (c :: cs)))).Obj (Ty.Den R),
         PFunctor.Obj.pair (roll R a (unroll R a x.prodFst))
           (PFunctor.Obj.pair (roll R b (unroll R b x.prodSnd.prodFst))
-            (rollList R rest (unrollList R rest x.prodSnd.prodSnd))) = x
+            (rollFields R (c :: cs) (unrollFields R (c :: cs) x.prodSnd.prodSnd))) = x
       intro x
-      rw [roll_unroll a, roll_unroll b, roll_unrollList rest, PFunctor.Obj.pair_prodFst_prodSnd,
-        PFunctor.Obj.pair_prodFst_prodSnd]
+      rw [roll_unroll a, roll_unroll b, roll_unrollFields (c :: cs),
+        PFunctor.Obj.pair_prodFst_prodSnd, PFunctor.Obj.pair_prodFst_prodSnd]
   | .taggedUnion l, x => by
       revert x
       show ∀ x : (PFunctor.sigma (Fin l.length) (fun t => Ty.toPFunctorAt l t.val)).Obj (Ty.Den R),
@@ -339,37 +376,40 @@ theorem roll_unrollCov : ∀ (c : LeanPrimTyCovariant Ty) (x : (Ty.toPFunctorCov
   | .thunk a, x => roll_unroll a x
   | .lazy a, x => roll_unroll a x
 
-theorem roll_unrollList : ∀ (ts : List Ty) (x : (Ty.toPFunctorList ts).Obj (Ty.Den R)),
-    rollList R ts (unrollList R ts x) = x
+theorem roll_unrollFields : ∀ (ts : List Ty) (x : (Ty.toPFunctorFields ts).Obj (Ty.Den R)),
+    rollFields R ts (unrollFields R ts x) = x
   | [], ⟨s, f⟩ => PFunctor.Obj.const_eta s f
-  | a :: as, x => by
+  | [a], x => roll_unroll a x
+  | a :: b :: bs, x => by
       revert x
-      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorList as)).Obj (Ty.Den R),
-        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst)) (rollList R as (unrollList R as x.prodSnd)) = x
+      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorFields (b :: bs))).Obj (Ty.Den R),
+        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst))
+          (rollFields R (b :: bs) (unrollFields R (b :: bs) x.prodSnd)) = x
       intro x
-      rw [roll_unroll a, roll_unrollList as, PFunctor.Obj.pair_prodFst_prodSnd]
+      rw [roll_unroll a, roll_unrollFields (b :: bs), PFunctor.Obj.pair_prodFst_prodSnd]
+
+theorem roll_unrollNE : ∀ (xs : NonEmptyList Ty) (x : (Ty.toPFunctorNE xs).Obj (Ty.Den R)),
+    rollNE R xs (unrollNE R xs x) = x
+  | ⟨a, []⟩, x => roll_unroll a x
+  | ⟨a, b :: bs⟩, x => by
+      revert x
+      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorFields (b :: bs))).Obj (Ty.Den R),
+        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst))
+          (rollFields R (b :: bs) (unrollFields R (b :: bs) x.prodSnd)) = x
+      intro x
+      rw [roll_unroll a, roll_unrollFields (b :: bs), PFunctor.Obj.pair_prodFst_prodSnd]
 
 theorem roll_unrollAt : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat)
     (x : (Ty.toPFunctorAt l t).Obj (Ty.Den R)), rollAt R l t (unrollAt R l t x) = x
-  | .payloadFirst ⟨a, as⟩ _ _, 0, x => by
-      revert x
-      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorList as)).Obj (Ty.Den R),
-        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst)) (rollList R as (unrollList R as x.prodSnd)) = x
-      intro x
-      rw [roll_unroll a, roll_unrollList as, PFunctor.Obj.pair_prodFst_prodSnd]
-  | .payloadFirst _ next _, 1, x => roll_unrollList next x
+  | .payloadFirst f _ _, 0, x => roll_unrollNE f x
+  | .payloadFirst _ next _, 1, x => roll_unrollFields next x
   | .payloadFirst _ _ rest, n + 2, x => roll_unrollAtList rest n x
   | .skip _, 0, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
   | .skip rest, n + 1, x => roll_unrollAtCP rest n x
 
 theorem roll_unrollAtCP : ∀ (c : CtorsWithPayload Ty) (t : Nat)
     (x : (Ty.toPFunctorAtCP c t).Obj (Ty.Den R)), rollAtCP R c t (unrollAtCP R c t x) = x
-  | .here ⟨a, as⟩ _, 0, x => by
-      revert x
-      show ∀ x : (PFunctor.prod (Ty.toPFunctor a) (Ty.toPFunctorList as)).Obj (Ty.Den R),
-        PFunctor.Obj.pair (roll R a (unroll R a x.prodFst)) (rollList R as (unrollList R as x.prodSnd)) = x
-      intro x
-      rw [roll_unroll a, roll_unrollList as, PFunctor.Obj.pair_prodFst_prodSnd]
+  | .here f _, 0, x => roll_unrollNE f x
   | .here _ rest, n + 1, x => roll_unrollAtList rest n x
   | .skip _, 0, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
   | .skip rest, n + 1, x => roll_unrollAtCP rest n x
@@ -377,7 +417,7 @@ theorem roll_unrollAtCP : ∀ (c : CtorsWithPayload Ty) (t : Nat)
 theorem roll_unrollAtList : ∀ (cs : List (List Ty)) (t : Nat)
     (x : (Ty.toPFunctorAtList cs t).Obj (Ty.Den R)), rollAtList R cs t (unrollAtList R cs t x) = x
   | [], _, x => PEmpty.elim x.1
-  | fs :: _, 0, x => roll_unrollList fs x
+  | fs :: _, 0, x => roll_unrollFields fs x
   | _ :: rest, n + 1, x => roll_unrollAtList rest n x
 
 end
@@ -567,14 +607,14 @@ list (`Array.toList`, `String.toList`) gives its value. -/
 def Ty.DenRec.toList (a : Ty) : Ty.Den (.recTaggedUnion (Ty.listSchema a)) → List (Ty.Den a) :=
   WType.elim _ fun
     | ⟨⟨⟨0, _⟩, _⟩, _⟩ => []
-    | ⟨⟨⟨1, _⟩, (x, _)⟩, ih⟩ => x :: ih (.inr (.inl PUnit.unit))
+    | ⟨⟨⟨1, _⟩, (x, _)⟩, ih⟩ => x :: ih (.inr PUnit.unit)
 
 /-- A Lean list, as a value of a list of `a`: `[]` is the node `nil`, which has no
     subtree, and `x :: xs` is the node `cons` holding `x`, whose one subtree is `xs`. -/
 def Ty.DenRec.ofList (a : Ty) : List (Ty.Den a) → Ty.Den (.recTaggedUnion (Ty.listSchema a))
   | [] => WType.mk ⟨⟨0, Nat.zero_lt_succ 1⟩, PUnit.unit⟩ (fun h => nomatch h)
   | x :: xs =>
-      WType.mk ⟨⟨1, Nat.lt_succ_self 1⟩, (x, PUnit.unit, PUnit.unit)⟩
+      WType.mk ⟨⟨1, Nat.lt_succ_self 1⟩, (x, PUnit.unit)⟩
         (fun _ => Ty.DenRec.ofList a xs)
 
 /-- Reading back a list built from a Lean list gives that list. -/

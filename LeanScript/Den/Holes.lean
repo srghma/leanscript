@@ -59,18 +59,19 @@ theorem listPos_false {S : Type} {P : S → Type} (h : ∀ s, P s → False) :
 
 /-! ## No `Ty.self` holes -/
 
-theorem noSelfHoles_list : ∀ ts : List Ty, (∀ t ∈ ts, NoSelfHoles t) →
-    ∀ a, (Ty.toPFunctorList ts).B a → False
+theorem noSelfHoles_fields : ∀ ts : List Ty, (∀ t ∈ ts, NoSelfHoles t) →
+    ∀ a, (Ty.toPFunctorFields ts).B a → False
   | [], _, _, p => nomatch p
-  | t :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
-  | _ :: ts, h, a, .inr p =>
-      noSelfHoles_list ts (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
+  | [t], h, a, p => (h t (List.mem_cons_self ..) a).false p
+  | t :: _ :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
+  | _ :: t' :: ts, h, a, .inr p =>
+      noSelfHoles_fields (t' :: ts) (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
 
 theorem noSelfHoles_atList : ∀ cs : List (List Ty), (∀ t ∈ cs.flatten, NoSelfHoles t) →
     ∀ n a, (Ty.toPFunctorAtList cs n).B a → False
   | [], _, _, a, _ => nomatch a
   | fs :: _, h, 0, a, p =>
-      noSelfHoles_list fs (fun x hx => h x (List.mem_flatten.2 ⟨fs, List.mem_cons_self .., hx⟩))
+      noSelfHoles_fields fs (fun x hx => h x (List.mem_flatten.2 ⟨fs, List.mem_cons_self .., hx⟩))
         a p
   | fs :: rest, h, n + 1, a, p =>
       noSelfHoles_atList rest (fun x hx => h x (by
@@ -79,7 +80,7 @@ theorem noSelfHoles_atList : ∀ cs : List (List Ty), (∀ t ∈ cs.flatten, NoS
 theorem noSelfHoles_atCP : ∀ c : CtorsWithPayload Ty, (∀ t ∈ c.toList.flatten, NoSelfHoles t) →
     ∀ n a, (Ty.toPFunctorAtCP c n).B a → False
   | .here ⟨f, fs⟩ _, h, 0, a, p =>
-      noSelfHoles_list (f :: fs) (fun x hx => h x (by
+      noSelfHoles_fields (f :: fs) (fun x hx => h x (by
         simp only [CtorsWithPayload.toList, List.flatten_cons]
         exact List.mem_append_left _ hx)) a p
   | .here _ rest, h, n + 1, a, p =>
@@ -94,11 +95,11 @@ theorem noSelfHoles_atCP : ∀ c : CtorsWithPayload Ty, (∀ t ∈ c.toList.flat
 theorem noSelfHoles_at : ∀ l : LeanTaggedUnionSchema Ty, (∀ t ∈ l.toList.flatten, NoSelfHoles t) →
     ∀ n a, (Ty.toPFunctorAt l n).B a → False
   | .payloadFirst ⟨f, fs⟩ _ _, h, 0, a, p =>
-      noSelfHoles_list (f :: fs) (fun x hx => h x (by
+      noSelfHoles_fields (f :: fs) (fun x hx => h x (by
         simp only [LeanTaggedUnionSchema.toList, List.flatten_cons]
         exact List.mem_append_left _ hx)) a p
   | .payloadFirst _ next _, h, 1, a, p =>
-      noSelfHoles_list next (fun x hx => h x (by
+      noSelfHoles_fields next (fun x hx => h x (by
         simp only [LeanTaggedUnionSchema.toList, List.flatten_cons]
         exact List.mem_append_right _ (List.mem_append_left _ hx))) a p
   | .payloadFirst _ _ rest, h, n + 2, a, p =>
@@ -139,7 +140,7 @@ theorem noSelfHoles_of_wfIn {n : Nat} {t : Ty} (h : WfIn n t) (hn : n ≠ 1) :
   | @record _ fs _ ih =>
       rename_i hn a p
       cases fs with
-      | mk x y rest => exact noSelfHoles_list (x :: y :: rest) (ih hn) a p
+      | mk x y rest => exact noSelfHoles_fields (x :: y :: rest) (ih hn) a p
   | @taggedUnion _ l _ ih =>
       rename_i hn a p
       exact noSelfHoles_at l (ih hn) a.1.val a.2 p
@@ -161,18 +162,19 @@ theorem noSelfHoles_of_family {n : Nat} {t : Ty} (h : WfIn (n + 2) t) : NoSelfHo
 
 /-! ## No `Ty.familyMember` holes -/
 
-theorem noMemberHoles_list : ∀ ts : List Ty, (∀ t ∈ ts, NoMemberHoles t) →
-    ∀ a, (Ty.toIPFList ts).B a → False
+theorem noMemberHoles_fields : ∀ ts : List Ty, (∀ t ∈ ts, NoMemberHoles t) →
+    ∀ a, (Ty.toIPFFields ts).B a → False
   | [], _, _, p => nomatch p
-  | t :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
-  | _ :: ts, h, a, .inr p =>
-      noMemberHoles_list ts (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
+  | [t], h, a, p => (h t (List.mem_cons_self ..) a).false p
+  | t :: _ :: _, h, a, .inl p => (h t (List.mem_cons_self ..) a.1).false p
+  | _ :: t' :: ts, h, a, .inr p =>
+      noMemberHoles_fields (t' :: ts) (fun x hx => h x (List.mem_cons_of_mem _ hx)) a.2 p
 
 theorem noMemberHoles_atList : ∀ cs : List (List Ty), (∀ t ∈ cs.flatten, NoMemberHoles t) →
     ∀ n a, (Ty.toIPFAtList cs n).B a → False
   | [], _, _, a, _ => nomatch a
   | fs :: _, h, 0, a, p =>
-      noMemberHoles_list fs
+      noMemberHoles_fields fs
         (fun x hx => h x (List.mem_flatten.2 ⟨fs, List.mem_cons_self .., hx⟩)) a p
   | fs :: rest, h, n + 1, a, p =>
       noMemberHoles_atList rest (fun x hx => h x (by
@@ -181,7 +183,7 @@ theorem noMemberHoles_atList : ∀ cs : List (List Ty), (∀ t ∈ cs.flatten, N
 theorem noMemberHoles_atCP : ∀ c : CtorsWithPayload Ty,
     (∀ t ∈ c.toList.flatten, NoMemberHoles t) → ∀ n a, (Ty.toIPFAtCP c n).B a → False
   | .here ⟨f, fs⟩ _, h, 0, a, p =>
-      noMemberHoles_list (f :: fs) (fun x hx => h x (by
+      noMemberHoles_fields (f :: fs) (fun x hx => h x (by
         simp only [CtorsWithPayload.toList, List.flatten_cons]
         exact List.mem_append_left _ hx)) a p
   | .here _ rest, h, n + 1, a, p =>
@@ -196,11 +198,11 @@ theorem noMemberHoles_atCP : ∀ c : CtorsWithPayload Ty,
 theorem noMemberHoles_at : ∀ l : LeanTaggedUnionSchema Ty,
     (∀ t ∈ l.toList.flatten, NoMemberHoles t) → ∀ n a, (Ty.toIPFAt l n).B a → False
   | .payloadFirst ⟨f, fs⟩ _ _, h, 0, a, p =>
-      noMemberHoles_list (f :: fs) (fun x hx => h x (by
+      noMemberHoles_fields (f :: fs) (fun x hx => h x (by
         simp only [LeanTaggedUnionSchema.toList, List.flatten_cons]
         exact List.mem_append_left _ hx)) a p
   | .payloadFirst _ next _, h, 1, a, p =>
-      noMemberHoles_list next (fun x hx => h x (by
+      noMemberHoles_fields next (fun x hx => h x (by
         simp only [LeanTaggedUnionSchema.toList, List.flatten_cons]
         exact List.mem_append_right _ (List.mem_append_left _ hx))) a p
   | .payloadFirst _ _ rest, h, n + 2, a, p =>
@@ -240,7 +242,7 @@ theorem noMemberHoles_of_wfIn {n : Nat} {t : Ty} (h : WfIn n t) (hn : n ≤ 1) :
   | @record _ fs _ ih =>
       rename_i hn a p
       cases fs with
-      | mk x y rest => exact noMemberHoles_list (x :: y :: rest) (ih hn) a p
+      | mk x y rest => exact noMemberHoles_fields (x :: y :: rest) (ih hn) a p
   | @taggedUnion _ l _ ih =>
       rename_i hn a p
       exact noMemberHoles_at l (ih hn) a.1.val a.2 p

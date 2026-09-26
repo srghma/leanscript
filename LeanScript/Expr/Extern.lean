@@ -96,11 +96,11 @@ def TyWf.DenList.tail {σ : TyWf} {σs : List TyWf} (vs : TyWf.DenList (σ :: σ
 /-- The value of `TyWf.option α` a Lean `Option` stands for. -/
 def TyWf.Den.ofOption {α : TyWf} : Option α.Den → (TyWf.option α).Den
   | none => ⟨⟨0, Nat.zero_lt_succ 1⟩, PUnit.unit⟩
-  | some a => ⟨⟨1, Nat.lt_succ_self 1⟩, (a, PUnit.unit)⟩
+  | some a => ⟨⟨1, Nat.lt_succ_self 1⟩, a⟩
 
 /-- The value of `TyWf.prod α β` a Lean pair stands for. -/
 def TyWf.Den.ofProd {α β : TyWf} : α.Den × β.Den → (TyWf.prod α β).Den
-  | (a, b) => (a, b, PUnit.unit)
+  | (a, b) => (a, b)
 
 /-- The value of `TyWf.ordering` a Lean `Ordering` stands for: its constructor number (the
     shift of the enum only changes how the constructors print). -/
@@ -114,15 +114,15 @@ def TyWf.Den.ofOrdering : Ordering → TyWf.ordering.Den
     subtree. -/
 def TyWf.Den.ofName : Lean.Name → TyWf.leanName.Den
   | .anonymous => WType.mk ⟨⟨0, by decide⟩, PUnit.unit⟩ (fun h => nomatch h)
-  | .str p s => WType.mk ⟨⟨1, by decide⟩, (PUnit.unit, s, PUnit.unit)⟩ (fun _ => TyWf.Den.ofName p)
-  | .num p n => WType.mk ⟨⟨2, by decide⟩, (PUnit.unit, n, PUnit.unit)⟩ (fun _ => TyWf.Den.ofName p)
+  | .str p s => WType.mk ⟨⟨1, by decide⟩, (PUnit.unit, s)⟩ (fun _ => TyWf.Den.ofName p)
+  | .num p n => WType.mk ⟨⟨2, by decide⟩, (PUnit.unit, n)⟩ (fun _ => TyWf.Den.ofName p)
 
 /-- A value of `TyWf.leanName`, read back as a `Lean.Name`. -/
 def TyWf.Den.toName : TyWf.leanName.Den → Lean.Name :=
   WType.elim _ fun
     | ⟨⟨⟨0, _⟩, _⟩, _⟩ => .anonymous
-    | ⟨⟨⟨1, _⟩, (_, s, _)⟩, ih⟩ => .str (ih (.inl PUnit.unit)) s
-    | ⟨⟨⟨2, _⟩, (_, n, _)⟩, ih⟩ => .num (ih (.inl PUnit.unit)) n
+    | ⟨⟨⟨1, _⟩, (_, s)⟩, ih⟩ => .str (ih (.inl PUnit.unit)) s
+    | ⟨⟨⟨2, _⟩, (_, n)⟩, ih⟩ => .num (ih (.inl PUnit.unit)) n
 
 /-- Reading back a name built from a `Lean.Name` gives that name. -/
 theorem TyWf.Den.toName_ofName (n : Lean.Name) : TyWf.Den.toName (TyWf.Den.ofName n) = n := by
