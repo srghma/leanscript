@@ -104,11 +104,18 @@ def checkConst (n : Name) : MetaM Unit := do
   | _ => pure ()
 
 /-- Is a call of this constant inlined?  A constructor and a projection always are, and
-    so is anything the author marked inlinable or reducible. -/
+    so is anything the author marked inlinable, reducible or `@[implicit_reducible]`.
+
+    The last covers the small non-extern primitives of `Init` that are defined by a
+    recursor and marked `@[implicit_reducible]` rather than `@[reducible]`: `Bool.not`
+    (`Bool.rec true false x`, so `!b` is a `bool_casesOn`) and `bne` (`a != b`, which is
+    `!(a == b)`).  Their compiled forms (`Bool.Internal.not` through `@[csimp]`) are
+    different code with the same value, and the language follows the logic. -/
 def isInlinable (n : Name) : MetaM Bool := do
   if (← getEnv).find? n matches some (.ctorInfo _) then return true
   if (← getProjectionFnInfo? n).isSome then return true
   if ← Lean.isReducible n then return true
+  if (← getReducibilityStatus n) == .implicitReducible then return true
   let env ← getEnv
   return Compiler.hasInlineAttribute env n
     || Compiler.hasMacroInlineAttribute env n

@@ -33,6 +33,8 @@ context are used.
 | `fun x => b`, `f a`, `let x := v; b` | `lam`, `ap`, `letE` |
 | a literal of a terminal type | `bool_mk`, `nat_mk`, `int_mk`, `string_mk`, … |
 | `if b then t else e` (`b : Bool`), `cond` | `bool_casesOn` |
+| `!b` (`Bool.not`, defined as `Bool.rec true false b`), `a != b` (`bne`, which is `!(a == b)`) | `bool_casesOn`: both are `@[implicit_reducible]`, and such a definition is inlined — see `TermTests/ToTermTest/NotAndMod.lean` |
+| `a % b` on `Nat` (and any operator whose instance field is an extern) | the extern the field names (`Nat.mod`, `lean_nat_mod`): the projection out of the instance is reduced to that constant, not unfolded into its definition |
 | `if n = 0 then t else e` (`n : Nat`) | `nat_casesOn` |
 | `fun _ : Unit => b` | `b`: a `Unit` binder is erased, as a `Unit` argument is |
 | a constructor of a datatype with existentials | its `#leanscript_ctor` constructor function (see below) |

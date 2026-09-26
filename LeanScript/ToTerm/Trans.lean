@@ -136,6 +136,14 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
     | throwError "`#leanscript_to_term`: internal: not a projection"
   -- a projection out of a closed value — an instance, for one — is that value's field
   unless s.hasFVar do
+    -- a field that is an extern or a declaration of the signature (`Nat.instMod.1` is
+    -- `Nat.mod`) is kept as that constant: `whnf` would go on to unfold it (`Nat.mod`,
+    -- which is not `@[irreducible]`, into its `match`), and it is translated as the call
+    -- of the extern or of the declaration instead
+    if let some e' ← reduceProj? e then
+      if let .const m _ := e'.getAppFn then
+        if isExtern (← getEnv) m || (c.global? m).isSome then
+          return ← trans c e'
     let e' ← whnf e
     unless e' == e do return ← trans c e'
   let sty? ← try some <$> tyOfTerm s catch _ => pure none

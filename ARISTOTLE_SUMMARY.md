@@ -1,3 +1,33 @@
+# Summary of changes for run 6fad73a4-2c2d-401c-82ce-48d292462710
+The translator now handles both `!`/`!=` and `x % y` on `Nat`. With the test signature, `lake build` passes (1028 jobs, no errors, warnings or `sorry`).
+
+**`!b` and `a != b`: done with `Bool.rec`, as you suggested, so no new primitive file.**
+- **Why it was refused:** `Bool.not` is marked `@[implicit_reducible]`. The translator only inlined definitions marked `@[reducible]`, `@[inline]` or `@[macro_inline]`, so it looked for `Bool.not` in the signature.
+- **Fix:** `isInlinable` in `LeanScript/ToTerm/Cache.lean` now also inlines anything marked `@[implicit_reducible]`.
+  - `!b` becomes `Bool.rec true false b`. The translator already turns a non-dependent `Bool.rec` into one `bool_casesOn` with the branches swapped.
+  - `a != b` is `bne a b`, which is also `@[implicit_reducible]` and is `!(a == b)`, so it works the same way.
+- The term follows Lean's logic, not the `@[csimp]` form `Bool.Internal.not`. A later pass could still optimise it when converting to `MoreJsTy`.
+- **Side effect:** any other `@[implicit_reducible]` definition you call will now be inlined too, instead of needing a signature entry. Functions declared in the signature are still checked first, so that still wins.
+
+**`x % y` on `Nat`: a translator bug.**
+- `Nat.mod x 2` written directly already worked. `x % y` goes through `Mod.mod Nat.instMod x y`, and the translator reduced that projection with a full `whnf`.
+- `whnf` got to `Nat.mod`, then kept going: `Nat.mod` isn't `@[irreducible]` (`Nat.div` is, which is why `/` worked). So it unfolded into its defining `match`, where the `n+1` pattern produced the "Nat.succ builds a value of a terminal type" error.
+- **Fix:** `transProj` in `LeanScript/ToTerm/Trans.lean` now stops at the field when it is an extern or a function declared in the signature. `x % y` is now an extern call to `lean_nat_mod`.
+- In all other cases the translator reduces projections exactly as before.
+
+**Tests**
+- **New file `TermTests/ToTermTest/NotAndMod.lean`:**
+  - `!x`, with a check by `rfl` that its translation is a single swapped `bool_casesOn`;
+  - `x != y`, and `!` inside `&&` and `||` (xor);
+  - `x % y`, including `3 % 0 = 3`, and `x % 2 == 1`;
+  - `%` and `!=` together in an `if`;
+  - digit sum and Euclid with `%` inside `while` loops.
+- **`TermTests/ToTermTest/While.lean`:** the workaround conditions `i / 2 * 2 == i` are back to `i % 2 == 0`. I added `collatzStepsNe` (tests like `while m != 1 && m != 0`) and `parityOfSteps` (`odd := !odd`).
+- Each program is run with `kernel_rfl` against values written out, and the Lean function is checked against the same values with `#guard`.
+- `LeanScript/ToTerm/Overview.lean` documents both constructs.
+
+**Build setup:** `lake-manifest.json` was again missing the Mathlib entry that `lakefile.toml` requires. I re-added it in a separate commit.
+
 # Summary of changes for run e5a9dc19-a633-4f66-9b7d-d6e18990e41a
 I wrote the proposal in `proposals/WTypeTyProposal.md`, with a small toy Lean file, `proposals/WTyToy.lean`, that checks the core claims at small scale. The toy has no imports and is not part of the Lake build; check it with `lean proposals/WTyToy.lean`. It compiles with no errors, warnings or `sorry`. Nothing in `LeanScript/`, `TyTests/` or `TermTests/` changed, and the Lean sketches in the markdown outside that file have not been compiled.
 
