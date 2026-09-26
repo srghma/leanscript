@@ -1,3 +1,27 @@
+# Summary of changes for run 1a8aa612-5972-4c51-b0f9-61e4c3467a04
+**Yes, `foo` can be translated to `Term`, but the translation drops the loop.** It gives the answer Lean's logic assigns to `foo`, not what running `foo` does. I checked this in a new test file, `TermTests/ToTermTest/WhileDiverge.lean`, which builds with no `sorry` and uses only the standard axioms.
+
+**Why a non-terminating loop has a value at all.** Lean's `while` is `repeatM`. Its compiled code is `partial`, but it isn't opaque to the logic: `repeatM` is defined as *some* solution of the one-step unfolding equation. For a loop that never stops, every function satisfying that equation qualifies, and Lean picks one without saying which.
+
+**`foo`** (written `def foo : Id Nat := do …`; with no type at all, `def foo := do …` doesn't elaborate, because the monad is unknown):
+- In Lean's logic, `foo = 1` holds by `rfl` (`foo_eq`). The loop's state is `PUnit`, and `return 1` never reads it. Running the compiled `foo` still hangs.
+- `#leanscript_to_term foo` succeeds. The term is exactly `let x := 1; x` (`foo_term_eq`) and evaluates to `1` (`foo_term_run`). The loop disappears because, in `Id`, the translator reads `x ← m; k x` as `k m`, and `k` ignores `x`.
+- The same happens with an argument: `fooArg n` translates to a term computing `n + 1`.
+- So a backend printing this term would return `1` where the original program hangs. That doesn't contradict Lean's logic, but it is a change in behaviour.
+
+**A variant where the loop is kept and the answer differs from Lean.** With `bar n` = `x := n; while true do x := x + 1; return x`:
+- The translation keeps the loop (`Term.while_loop`).
+- The loop's model stops after `2 ^ 64` iterations, so the term computes `n + 2 ^ 64` (`bar_term_value`).
+- In Lean, the unfolding equation gives `bar n = bar (n + 1)` (`bar_succ`): Lean's `bar` is some constant it never determines.
+- Together these give `bar_term_ne_bar : ¬ ∀ n, runAdd bar_term n = bar n`.
+- This is consistent with the earlier theorem `loop_forIn_eq_whileIter`, which only covers loops that stop within `2 ^ 64` iterations.
+
+**Kernel checks.** Checking `bar_term` directly with `kernel_rfl` doesn't finish, because the kernel starts unrolling the `2 ^ 64` iterations. So the proof first matches the evaluator to the `whileIter` model in small steps, then proves the value by induction. The test file defines two small helper notations, `while_body%` and `letJ_of%`, to pick those pieces out of the translated term. Any test that asks the kernel to evaluate a never-ending translated loop will hang in the same way.
+
+**Build setup.** `lakefile.toml` requires Mathlib, but `lake-manifest.json` didn't list it, so I ran `lake update mathlib` and committed the updated manifest separately.
+
+I added `foo_term_run` and `bar_term_ne_bar` to the Properties table as proved.
+
 # Summary of changes for run 326c90a8-7327-49c9-b662-7bc9b44956b1
 Yes, it is possible, and I made the change. `α × β` now denotes `Den α × Den β`, with no `PUnit`. The whole project builds with `lake build` (1026 jobs), with no errors, warnings or `sorry`.
 
