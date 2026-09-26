@@ -73,7 +73,7 @@ context are used.
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
 | `for x in l do …` and `for h : x in l do …` in `Id`, over a **list** (`if`, `continue`, `match`, several `let mut`s, nested loops inside) | `l.foldl` of the body read as the next state (over `l.attach` when `h` is read), translated as any `List.foldl` — see `TermTests/ToTermTest/ForList.lean` |
-| a `for` whose body can `break` (or `return`, when the loop has a `let mut`), over a list or `[:n]` | the fold (`List.foldl`, or `Nat.rec` for a range) of the **step** `ForInStep β` (the tagged union `done \| yield`): a `done` step is kept, and the state of the last step is the value — see `TermTests/ToTermTest/ForBreak.lean` |
+| a `for` whose body can `break` (or `return` from inside it), over a list or `[:n]` | the fold (`List.foldl`, or `Nat.rec` for a range) of the **step** `ForInStep β` (the tagged union `done \| yield`): a `done` step is kept, and the state of the last step is the value — see `TermTests/ToTermTest/ForBreak.lean` and `TermTests/ToTermTest/ForReturn.lean`; without a `let mut` the state `Option ρ × Unit` is modelled as `Option ρ` |
 | `List.map`, `List.foldl`, `List.contains`, `List.range`, … — the library's structural recursions | the fold of the list (or of the `Nat`), inlined — see `TermTests/ToTermTest/ListLibrary.lean` |
 | a structural recursion whose `match` has a catch-all pattern (`List.get?Internal`, so `l[i]?` and `List.getD`) | the fold: the `_sparseCasesOn_` auxiliary the `match` compiles to is reduced at the shape the branch is instantiated at (`LeanScript.ToTerm.reduceSparseCasesOnCtor?`) |
 | `panic! msg` (and so `l[i]!` out of range) | `default` of its `Inhabited` instance, which is what `panic!` is in Lean's logic |
@@ -214,10 +214,8 @@ being translated.
   may differ from node to node) whose argument is not a value written out; and a function
   of a non-recursive one at an index that is not a variable of its own (`Tag Nat → …`,
   rather than `{β} → Tag β → …`).
-* a `return` out of a `for` loop that has no `let mut` variable (the state `do` builds is
-  `Option ρ × Unit`, and `Unit` has no tree), or a `for` over a range that does not start
-  at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
-  only one that is not an effect.
+* a `for` over a range that does not start at `0` or steps by more than `1`; and `do` in
+  any monad other than `Id`, which is the only one that is not an effect.
 
 ## Which dispatch a `match` becomes
 

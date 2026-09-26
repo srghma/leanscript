@@ -27,8 +27,8 @@ The elements after a `break` are still visited by the fold, but they do nothing:
 value is that of the loop that stopped.
 
 A `return` from inside the loop is compiled by `do` to a `break` that also records the
-value returned; it is translated the same way when the loop has a `let mut` variable (last
-section).
+value returned; it is translated the same way (last section, and
+`TermTests/ToTermTest/ForReturn.lean`).
 
 Every program is run on inputs and compared with the Lean function it came from, by
 `kernel_rfl` (the kernel's evaluation, no `native_decide`). -/
@@ -266,7 +266,8 @@ example : runAdd isqrtCeil_term 50 5 = 5 := by kernel_rfl
 
 `do` compiles `return v` inside a loop to a `break` whose state also records `some v`, and
 reads it after the loop.  With a `let mut` variable the state is a pair, which is
-translated like the loops above. -/
+translated like the loops above; without one it is `Option ρ × Unit`, which the language
+models as `Option ρ` (`Unit` is erased). -/
 
 /-- The sum before the first element above `10`, returned from inside the loop; `100` more
     when the loop runs to its end. -/
@@ -282,20 +283,8 @@ def returnFromLoop_term : Term sigAdd [] (natListT ⇒ natT) := #leanscript_to_t
 example : runAdd returnFromLoop_term (natList [1, 20, 30]) = 1 := by kernel_rfl
 example : runAdd returnFromLoop_term (natList [1, 2]) = 103 := by kernel_rfl
 
-/-- Without a `let mut` variable, the state `do` builds for a `return` is `Option ρ × Unit`,
-    and `Unit` has no tree of the language (the language erases it), so this is refused. -/
-def firstBig (l : List Nat) : Nat := Id.run do
-  for x in l do
-    if x > 10 then return x
-  return 0
-
-/--
-error: `#leanscript_to_term`: the type ForInStep
-  (Option ℕ ×
-    Unit) has no tree of the language (no `LeanScriptTyWf` instance); derive one with `deriving LeanScriptTyWf`
--/
-#guard_msgs (error) in
-example : Term sigAdd [] (natListT ⇒ natT) := #leanscript_to_term firstBig
+/-! More loops that `return` from inside, without a `let mut` variable, over a range, in
+nested loops and with `for h :`, are in `TermTests/ToTermTest/ForReturn.lean`. -/
 
 end TermTests.ToTerm.ForBreak
 

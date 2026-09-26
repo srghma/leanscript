@@ -113,6 +113,16 @@ instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) := ⟨TyWf.option (tyW
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α × β) :=
   ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
 
+/-- A pair one component of which is `Unit` is the other component: the language erases
+    `Unit`, and a structure with one field the language keeps is that field (as for a
+    structure declared with `deriving LeanScriptTyWf`).  This is the state `do` gives a
+    `for` loop that can `return` from inside and has no `let mut` variable,
+    `Option ρ × Unit`. -/
+instance (priority := high) [LeanScriptTyWf α] : LeanScriptTyWf (α × Unit) := ⟨tyWfOf α⟩
+
+/-- See the instance for `α × Unit`. -/
+instance (priority := high) [LeanScriptTyWf β] : LeanScriptTyWf (Unit × β) := ⟨tyWfOf β⟩
+
 /-- `PProd` at `Type`, the pair Lean uses for the answers of the functions of a `mutual`
     block that recurse on the same type: the same record as `α × β`. -/
 instance {α β : Type} [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (PProd α β) :=
