@@ -72,7 +72,8 @@ context are used.
 | a function of a **non-recursive datatype with existentials of several constructors** (`Src`, whose `gen` hides a type), or of an **indexed** one (a GADT, `Tag : Type → Type` with `wrap {α} (x : α) … : Tag (List α)`) | specialized to its argument when that is a value written out (the `match` on it reduces to the branch of its constructor); otherwise a Lean function of the trees of the hidden types of every constructor, whose argument is `TyWf.oneOf` of the constructors' layouts (a field-less alternative for a constructor that carries no value) and which dispatches with `taggedUnion_casesOn` — see `TermTests/StructRecTest/ExistentialUnion.lean` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
-| `for x in l do …` and `for h : x in l do …` in `Id`, over a **list** (`if`, `continue`, `match`, several `let mut`s, nested loops inside) | `l.foldl` of the body read as the next state (over `l.attach` when `h` is read), translated as any `List.foldl` — see `TermTests/ToTermTest/ForList.lean`; `break`/`return` refused |
+| `for x in l do …` and `for h : x in l do …` in `Id`, over a **list** (`if`, `continue`, `match`, several `let mut`s, nested loops inside) | `l.foldl` of the body read as the next state (over `l.attach` when `h` is read), translated as any `List.foldl` — see `TermTests/ToTermTest/ForList.lean` |
+| a `for` whose body can `break` (or `return`, when the loop has a `let mut`), over a list or `[:n]` | the fold (`List.foldl`, or `Nat.rec` for a range) of the **step** `ForInStep β` (the tagged union `done \| yield`): a `done` step is kept, and the state of the last step is the value — see `TermTests/ToTermTest/ForBreak.lean` |
 | `List.map`, `List.foldl`, `List.contains`, `List.range`, … — the library's structural recursions | the fold of the list (or of the `Nat`), inlined — see `TermTests/ToTermTest/ListLibrary.lean` |
 | a structural recursion whose `match` has a catch-all pattern (`List.get?Internal`, so `l[i]?` and `List.getD`) | the fold: the `_sparseCasesOn_` auxiliary the `match` compiles to is reduced at the shape the branch is instantiated at (`LeanScript.ToTerm.reduceSparseCasesOnCtor?`) |
 | `panic! msg` (and so `l[i]!` out of range) | `default` of its `Inhabited` instance, which is what `panic!` is in Lean's logic |
@@ -213,7 +214,8 @@ being translated.
   may differ from node to node) whose argument is not a value written out; and a function
   of a non-recursive one at an index that is not a variable of its own (`Tag Nat → …`,
   rather than `{β} → Tag β → …`).
-* a `for` loop that leaves early (`break`, `return`), or over a range that does not start
+* a `return` out of a `for` loop that has no `let mut` variable (the state `do` builds is
+  `Option ρ × Unit`, and `Unit` has no tree), or a `for` over a range that does not start
   at `0` or steps by more than `1`; and `do` in any monad other than `Id`, which is the
   only one that is not an effect.
 

@@ -26,8 +26,8 @@ neighbours).  Inside the body:
 * `for h : x in l`, with the membership proof `h` unused or passed to a function (the
   fold is then over `l.attach`, which the language represents as `l`).
 
-A `break`, or a `return` from inside the loop, leaves the loop early, which a fold cannot
-express: it is refused (last section).
+A loop that leaves early (`break`, or `return` from inside it) is a fold of the step
+`ForInStep β` instead of the state: see `TermTests/ToTermTest/ForBreak.lean`.
 
 Every program is run on inputs and compared with the Lean function it came from, by
 `kernel_rfl` (the kernel's evaluation, no `native_decide`). -/
@@ -237,28 +237,6 @@ def sumSuccMem_term : Term sigAdd [] (natListT ⇒ natT) := #leanscript_to_term 
 
 example : runAdd sumSuccMem_term (natList []) = 0 := by kernel_rfl
 example : runAdd sumSuccMem_term (natList [1, 2]) = 5 := by kernel_rfl
-
-/-! ## What is refused: leaving the loop early -/
-
-def sumUntilZero (l : List Nat) : Nat := Id.run do
-  let mut s := 0
-  for x in l do
-    if x == 0 then break
-    s := s + x
-  return s
-
-/-- error: `#leanscript_to_term`: this `for` leaves the loop early (`break` or `return`), which the fold a loop becomes cannot express -/
-#guard_msgs (error) in
-example : Term sigAdd [] (natListT ⇒ natT) := #leanscript_to_term sumUntilZero
-
-def firstBig (l : List Nat) : Nat := Id.run do
-  for x in l do
-    if x > 10 then return x
-  return 0
-
-/-- error: `#leanscript_to_term`: this `for` leaves the loop early (`break` or `return`), which the fold a loop becomes cannot express -/
-#guard_msgs (error) in
-example : Term sigAdd [] (natListT ⇒ natT) := #leanscript_to_term firstBig
 
 end TermTests.ToTerm.ForList
 

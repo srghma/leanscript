@@ -221,7 +221,8 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
 /-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
     the library's `ForIn'` instance: the loop is `List.foldl` of the body read as the next
     state (`LeanScript.ToTerm.listForInAsFoldl`), and that fold is translated as any
-    other.  The body must always `yield`, as for a range.  Answers `none` for any other
+    other.  A body that can leave the loop (`break`, or `return` out of it) folds the
+    step `ForInStep β` instead of the state.  Answers `none` for any other
     collection. -/
 partial def transForInList? (c : TCtx) (ρ inst coll init body : Expr) (withProof : Bool) :
     MetaM (Option Expr) := do
@@ -238,9 +239,10 @@ partial def transForInList? (c : TCtx) (ρ inst coll init body : Expr) (withProo
     `0`) and the state before the iteration (index `1`), and answers with the state
     after it.
 
-    The range must start at `0` and step by `1`, and the body must always `yield`: a
-    `break` or a `return` out of the loop would need a state the grammar's fold does not
-    carry, and is refused rather than silently ignored. -/
+    The range must start at `0` and step by `1`.  A body that can leave the loop
+    (`break`, or `return` out of it) makes the state of the fold a `ForInStep β`, the
+    step after each iteration: once it is `done` the remaining iterations keep it
+    (`LeanScript.ToTerm.rangeForInBreakAsNatRec`). -/
 partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Option Expr) := do
   unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
   let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
@@ -254,6 +256,14 @@ partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Opti
       the range has to start at `0` and step by `1`; this one starts at {start} and \
       steps by {step}"
   let β ← inferType init
+  -- a body that can leave the loop: the recursion whose value is the step, as a Lean
+  -- expression, translated as any other `Nat.rec`
+  let breaking ← withLocalDeclD `i (mkConst ``Nat) fun i =>
+    withLocalDeclD `state β fun s => do
+      let (next, breaks) ← forInBody β (mkApp2 body i s)
+      unless breaks do return none
+      return some (← rangeForInBreakAsNatRec β stopE init i s next)
+  if let some e := breaking then return some (← trans c e)
   let τ ← tyOfType β
   let natTy ← tyOfType (mkConst ``Nat)
   let scrut ← trans c stopE

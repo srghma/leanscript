@@ -123,6 +123,13 @@ instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
 
 instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩
 
+/-- `ForInStep α`, the answer of one iteration of a `for` loop: constructor `0` (`done`,
+    leave the loop) and constructor `1` (`yield`, go on), each carrying the state — the
+    same tagged union as `α ⊕ α`.  A loop that can `break` carries it as its state (see
+    `LeanScript.ToTerm.ForIn`). -/
+instance [LeanScriptTyWf α] : LeanScriptTyWf (ForInStep α) :=
+  ⟨TyWf.sum (tyWfOf α) (tyWfOf α)⟩
+
 /-- A subtype `{x // p x}` is modelled by the tree of `α`: its proof is erased, as every
     proof is, and a structure with one field the language keeps is that field.  So
     `List.attach l` has the tree of `l`. -/
