@@ -315,13 +315,15 @@ the builders use it instead of naming the operand:
 * **a dispatch on a natural-number literal** — `match 0 with …` is its zero branch, and
   `match m + 1 with …` binds the literal `m` in the successor branch.
 
-The language is pure and total, so each of these has the value of the term it replaces
-(`LeanScript.BuildEvalFacts`). -/
+The language is pure and total, so each of these has the value of the term it replaces:
+`Term.eval_ap`, `Term.eval_bool_casesOn'` and `Term.eval_nat_casesOn'` in
+`LeanScript.BuildEvalFacts.Builders` hold for every input, redex or not. -/
 
 /-- A function type determines its domain and its codomain. -/
 theorem TyWf.fn_inj {σ₁ τ₁ σ τ : TyWf} (h : TyWf.fn σ₁ τ₁ = TyWf.fn σ τ) : σ₁ = σ ∧ τ₁ = τ := by
-  have h' := congrArg TyWf.toTy h
-  simp only [TyWf.toTy_fn] at h'
+  have h' : Ty.shape (.fn σ₁.toTy τ₁.toTy) = Ty.shape (.fn σ.toTy τ.toTy) :=
+    congrArg TyWf.toTy h
+  injection h' with h'
   injection h' with h1 h2
   exact ⟨TyWf.ext h1, TyWf.ext h2⟩
 

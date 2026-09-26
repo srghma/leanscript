@@ -130,6 +130,37 @@ def sumOfIfs : Term doubleSig [] (boolT ⇒ natT) :=
 example : Term.run doubleEnv sumOfIfs true = 4 := by kernel_rfl
 example : Term.run doubleEnv sumOfIfs false = 6 := by kernel_rfl
 
+/-! ## Redexes are taken apart while building
+
+An abstraction applied to an operand is β-reduced: the operand is bound, and the body
+runs on it, with no closure built and no call.  A dispatch on a literal is the branch the
+literal selects. -/
+
+/-- `(fun x => double x) 3`. -/
+def betaRedex : Term doubleSig [] natT :=
+  .ap (.lam (.ap (.global .here) (.var (v♯0)))) (.nat_mk 3)
+
+example : betaRedex =
+    .letE (.nat_mk 3)
+      (.letE (.global .here) (.letE (.ap (.var (v♯0)) (.var (v♯1))) (.ret (.var (v♯0))))) :=
+  rfl
+
+example : Term.run doubleEnv betaRedex = 6 := by kernel_rfl
+
+/-- `if true then 1 else 2`. -/
+def ifTrue : Term doubleSig [] natT :=
+  .bool_casesOn' (.bool_mk true) (.nat_mk 1) (.nat_mk 2)
+
+example : ifTrue = .letE (.nat_mk 1) (.ret (.var (v♯0))) := rfl
+
+/-- `match 5 with | 0 => 10 | k + 1 => k`. -/
+def matchFive : Term doubleSig [] natT :=
+  .nat_casesOn' (.nat_mk 5) (.nat_mk 10) (.var (v♯0))
+
+example : matchFive = .letE (.nat_mk 4) (.ret (.var (v♯0))) := rfl
+
+example : Term.run doubleEnv matchFive = 4 := by kernel_rfl
+
 end TermTests.Anf
 
 end
