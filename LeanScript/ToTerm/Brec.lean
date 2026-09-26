@@ -283,6 +283,19 @@ def unfoldMatcherWithHistory? (e : Expr) : MetaM (Option Expr) := do
   let v ← instantiateValueLevelParams ci us
   return some (v.betaRev e.getAppRevArgs)
 
+/-- A `match` with a default (the auxiliary `f._sparseCasesOn_i` Lean compiles it to) on
+    a value whose constructor the shape fixes: the branch that constructor takes.  Lean's
+    `match` with a catch-all pattern (`List.get?Internal`, `| _, _ => none`) is compiled
+    this way, and its motive mentions the history of the recursion, so the dispatch is
+    reduced away here rather than translated.  `none` when the value is not a
+    constructor application. -/
+def reduceSparseCasesOnCtor? (e : Expr) : MetaM (Option Expr) := do
+  let .const n _ := e.getAppFn | return none
+  unless n.isStr && n.getString!.startsWith "_sparseCasesOn" do return none
+  let some u ← withTransparency .all (unfoldDefinition? e) | return none
+  let some r ← reduceRecMatcher? u.headBeta | return none
+  return some r.headBeta
+
 /-- `whnfCore`, unfolding the auxiliaries of a compiled recursion on the way. -/
 partial def reduceBrecBody (e : Expr) : MetaM Expr := do
   -- `whnfCore`, one `match` or recursor at a time, so that a `match` stuck on a
@@ -290,6 +303,7 @@ partial def reduceBrecBody (e : Expr) : MetaM Expr := do
   let e ← withConfig (fun cfg => { cfg with iota := false }) (whnfCore e)
   if ← matchStuckOnStructure e then return e
   if let some e' ← reduceRecMatcher? e then return ← reduceBrecBody e'
+  if let some e' ← reduceSparseCasesOnCtor? e then return ← reduceBrecBody e'
   match e.getAppFn with
   | .const n _ =>
       if isBrecAux n then
@@ -331,6 +345,7 @@ def reduceBranchStep? (s : Expr) : MetaM (Option Expr) := do
             | .const r _ => isRecCore env r
             | _ => false
           unless stuckRec do return some s'.headBeta
+      if let some s' ← reduceSparseCasesOnCtor? s then return some s'
   -- a dispatch stuck on something else, handed the history: push the history inside
   if let some s' ← unfoldMatcherWithHistory? s then return some (← reduceBrecBody s')
   if let some s' ← pushHistoryIntoCasesOn? s then return some s'

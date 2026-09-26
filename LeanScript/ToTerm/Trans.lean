@@ -29,6 +29,35 @@ namespace LeanScript.ToTerm
 
 /-! ## The translation -/
 
+/-- `@default α inst`, unfolded to the value of the instance (a `Nat.zero` written as the
+    literal the language has).  It stays `@default α inst` when the instance is not known
+    (a variable). -/
+def transDefaultValue (α inst : Expr) : MetaM Expr := do
+  let d := mkApp2 (mkConst ``Inhabited.default [← getLevel α]) α inst
+  let d' ← whnf d
+  return d'.replace fun t => if t.isConstOf ``Nat.zero then some (mkRawNatLit 0) else none
+
+/-- The functions `panic!` and the `!` accessors reach, each of which is, in Lean's logic,
+    the `default` of the `Inhabited` instance it takes second (after the type), with the
+    number of arguments each takes. -/
+def panicNames : List (Name × Nat) :=
+  [(``panicCore, 3), (``panic, 3), (``panicWithPos, 6), (``panicWithPosWithDecl, 7),
+    (``outOfBounds, 2)]
+
+/-- `l[i]` on a list, with its proof `i < l.length`, as `l.getD i d` for a default `d` of
+    the elements (`synthDefault?`).  The two are equal whenever the proof holds, and the
+    proof is what the language erases: Lean's own `List.get` is a recursion whose motive
+    mentions it, which the language has no eliminator for.  `none` when the collection is
+    not a list indexed by a `Nat`, or the elements have no default. -/
+def listGetElemAsGetD? (args : Array Expr) : MetaM (Option Expr) := do
+  unless args.size ≥ 8 do return none
+  let coll ← whnfR args[0]!
+  let .const ``List [u] := coll.getAppFn | return none
+  unless (← whnfR args[1]!).isConstOf ``Nat do return none
+  let some d ← synthDefault? args[2]! | return none
+  return some (mkAppN (mkConst ``List.getD [u])
+    (#[args[2]!, args[5]!, args[6]!, d] ++ args.extract 8 args.size))
+
 mutual
 
 /-- The term a Lean expression translates to, in the context `c`. -/
@@ -252,6 +281,27 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
       if let some t ← transRecUnionBrecOn? trans c e n lvls args then return t
   checkConst n
   if let some t ← transIdOp? c n args then return t
+  -- `panic msg` (what `l[i]!`, `a.get!`, … reach on an index out of range) is, in Lean's
+  -- logic, the `default` of the `Inhabited` instance it is handed: the message is an
+  -- effect of the compiled code only
+  if let some (_, arity) := panicNames.find? (·.1 == n) then
+    if args.size ≥ arity then
+      let d ← transDefaultValue args[0]! args[1]!
+      return ← trans c (mkAppN d (args.extract arity args.size)).headBeta
+  -- `xs[i]!` is the `getElem!` of the collection's instance, a function of the
+  -- `Inhabited` instance of the elements: unfolded and applied to it here, so that the
+  -- instance stays a Lean value rather than a binder of the language
+  -- (`List.get!Internal`, `Array.get!Internal`, …)
+  if n == ``GetElem?.getElem! then
+    if let some e' ← unfoldProjInst? e then return ← trans c e'.headBeta
+  -- `l.attach` and `l.attachWith P h` pair each element with a proof, which the language
+  -- erases (a subtype has the tree of its values): they are `l` itself
+  if (n == ``List.attach && args.size ≥ 2) || (n == ``List.attachWith && args.size ≥ 4) then
+    let arity := if n == ``List.attach then 2 else 4
+    return ← trans c (mkAppN args[1]! (args.extract arity args.size))
+  if n == ``Inhabited.default && args.size == 2 then
+    let d ← transDefaultValue args[0]! args[1]!
+    unless d == e do return ← trans c d
   if n == ``ite then return ← transIte c args
   if n == ``dite then return ← transDite c args
   -- `decide p`: the `Bool` the decision procedure gives, as the test of an `if` is read
@@ -260,6 +310,7 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`
   if n == ``GetElem.getElem then
     if let some x ← decidableExtern? e then return ← trans c x
+    if let some x ← listGetElemAsGetD? args then return ← trans c x
   if n == ``cond then
     let some scrut := args[1]? | throwError "`#leanscript_to_term`: `cond` needs its test"
     return ← mkBoolCases c (← trans c scrut) args[2]! args[3]!

@@ -72,6 +72,11 @@ context are used.
 | a function of a **non-recursive datatype with existentials of several constructors** (`Src`, whose `gen` hides a type), or of an **indexed** one (a GADT, `Tag : Type → Type` with `wrap {α} (x : α) … : Tag (List α)`) | specialized to its argument when that is a value written out (the `match` on it reduces to the branch of its constructor); otherwise a Lean function of the trees of the hidden types of every constructor, whose argument is `TyWf.oneOf` of the constructors' layouts (a field-less alternative for a constructor that carries no value) and which dispatches with `taggedUnion_casesOn` — see `TermTests/StructRecTest/ExistentialUnion.lean` |
 | `do` in `Id` — `Id.run`, `pure`, `>>=`, `<$>`, and `let mut` | the `let`s and applications it stands for |
 | `for i in [:n] do …` in `Id`, over `Std.Legacy.Range` | `nat_rec`, folding the state of the loop |
+| `List.map`, `List.foldl`, `List.contains`, `List.range`, … — the library's structural recursions | the fold of the list (or of the `Nat`), inlined — see `TermTests/ToTermTest/ListLibrary.lean` |
+| a structural recursion whose `match` has a catch-all pattern (`List.get?Internal`, so `l[i]?` and `List.getD`) | the fold: the `_sparseCasesOn_` auxiliary the `match` compiles to is reduced at the shape the branch is instantiated at (`LeanScript.ToTerm.reduceSparseCasesOnCtor?`) |
+| `panic! msg` (and so `l[i]!` out of range) | `default` of its `Inhabited` instance, which is what `panic!` is in Lean's logic |
+| `l[i]` on a list, with its proof | `l.getD i d`, for a default `d` of the elements (equal whenever the proof holds) |
+| a subtype `{x // p x}`; `List.attach`, `List.attachWith`; `⟨x, h⟩`, `s.1`, a `match` on `⟨x, h⟩` | the tree of `α`, the proof erased; `l.attach` is `l` |
 | a name of the signature | `global` |
 
 **A list and an array are different types here.**  `Array α` is `Ty.array`, the one

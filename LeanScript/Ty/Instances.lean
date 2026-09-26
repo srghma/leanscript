@@ -123,6 +123,12 @@ instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
 
 instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩
 
+/-- A subtype `{x // p x}` is modelled by the tree of `α`: its proof is erased, as every
+    proof is, and a structure with one field the language keeps is that field.  So
+    `List.attach l` has the tree of `l`. -/
+instance {α : Type u} {p : α → Prop} [LeanScriptTyWf α] : LeanScriptTyWf (Subtype p) :=
+  ⟨tyWfOf α⟩
+
 instance : LeanScriptTyWf Ordering := ⟨TyWf.ordering⟩
 
 instance : LeanScriptTyWf Lean.Name := ⟨TyWf.leanName⟩

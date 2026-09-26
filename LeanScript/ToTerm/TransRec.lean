@@ -208,6 +208,22 @@ def transSparseCasesOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls
   if extra.isEmpty then return some core
   return some (← applyArgs trans c core (mkAppN (mkConst n lvls) (args.extract 0 arity)) extra)
 
+/-- The case analysis of a value of a **structure the language models by its one kept
+    field** (a subtype `{x // p x}`, whose proof is erased): the branch, applied to the
+    projections of the value, which is bound once by a `let` unless it is a variable.
+    `none` when the type has more than one constructor. -/
+def wrapperCasesAsProjs? (major : Expr) (minors : Array Expr) (ctors : Array Name) :
+    MetaM (Option Expr) := do
+  unless minors.size == 1 && ctors.size == 1 do return none
+  let ci ← getConstInfoCtor ctors[0]!
+  unless ci.numFields > 0 do return none
+  let build (v : Expr) : Expr :=
+    (mkAppN minors[0]! ((List.range ci.numFields).toArray.map fun i =>
+      Expr.proj ci.induct i v)).headBeta
+  if major.consumeMData.isFVar then return some (build major)
+  withLetDecl `s (← inferType major) major fun s => do
+    return some (← mkLetFVars #[s] (build s))
+
 /-- The eliminator a recursor becomes. -/
 def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (minors : Array Expr)
     (major : Expr) : MetaM Expr := do
@@ -335,6 +351,10 @@ def transRecCore (trans : TransFn) (c : TCtx) (ri : RecursorVal) (τ : Expr) (mi
             return mkAppN (mkConst `LeanScript.Term.bool_casesOn')
               #[c.sg, c.gamma, τ, scrut, ← transBranch trans c minors[1]! ctors[1]! [],
                 ← transBranch trans c minors[0]! ctors[0]! []]
+          -- a structure whose tree is a terminal type is the one field the language
+          -- keeps (a subtype, whose proof is erased): its case analysis reads the fields
+          if let some e' ← wrapperCasesAsProjs? major minors ctors then
+            return ← trans c e'
           throwError "`#leanscript_to_term`: a terminal type has no dispatch of its own"
       | _ =>
           if minors.size == 1 then
