@@ -102,6 +102,13 @@ structure RecObjInfo where
   brecFs : Array Expr := #[]
   /-- The type each motive is a function of: the record, then the auxiliary types. -/
   motiveDoms : Array Expr := #[]
+  /-- The motive of the record itself: `0`, but for an array of a member of a mutual
+      family (`LeanScript.ToTerm.TransRecFamily`), whose `brecOn` has a motive per member,
+      that member's. -/
+  selfMotive : Nat := 0
+  /-- How the answer of `selfMotive` is read out of an answer of the fold: itself, but in a
+      fold of a family whose members answer different types, its component of the tuple. -/
+  selfProj : Expr → MetaM Expr := pure
 
 /-- The value of the record built from the values `vals` of its fields: the constructor
     applied to them — or, for a declaration of several constructors folded as a newtype,
@@ -194,7 +201,8 @@ def reduceHistoryProjs (e : Expr) : MetaM Expr :=
     stuck — the history below a frontier subvalue — becomes a fresh metavariable, which
     the branch must not read. -/
 partial def buildRecObjHistory (motiveVars : Array Expr) (motives : Array Expr)
-    (answers : Array (Expr × Expr)) (placeholder : Expr) : MetaM Expr := do
+    (answers : Array (Expr × Expr)) (placeholder : Expr) (selfM : Nat := 0)
+    (proj : Expr → MetaM Expr := pure) : MetaM Expr := do
   let real (t : Expr) : Expr := t.replaceFVars motiveVars motives
   let t ← whnf placeholder
   -- below a function field `f`: at every argument `a`, the answer at `f a` (the window of
@@ -206,22 +214,23 @@ partial def buildRecObjHistory (motiveVars : Array Expr) (motives : Array Expr)
             else none
         | _ => none
       let v ← buildRecObjHistory motiveVars motives (answers ++ extra) (b.instantiate1 a)
+        selfM proj
       mkLambdaFVars #[a] v
   match t.getAppFn, t.getAppArgs with
   | .const ``PProd ls, #[a, b] =>
-      let va ← buildRecObjHistory motiveVars motives answers a
-      let vb ← buildRecObjHistory motiveVars motives answers b
+      let va ← buildRecObjHistory motiveVars motives answers a selfM proj
+      let vb ← buildRecObjHistory motiveVars motives answers b selfM proj
       return mkAppN (mkConst ``PProd.mk ls) #[real a, real b, va, vb]
   | .const ``PUnit ls, #[] => return mkConst ``PUnit.unit ls
   | .fvar f, args =>
       if args.isEmpty then return ← mkFreshExprMVar (real t)
       -- the motive's value argument is its last: an indexed family's come before it
       let x := args.back!
-      if motiveVars[0]!.fvarId! == f then
+      if motiveVars[selfM]!.fvarId! == f then
         for (s, ans) in answers do
-          if s == x then return ans
+          if s == x then return ← proj ans
         for (s, ans) in answers do
-          if ← isDefEq s x then return ans
+          if ← isDefEq s x then return ← proj ans
         throwError "`#leanscript_to_term`: internal: no answer for the subvalue {x}"
       else
         -- the answer of an auxiliary motive (of an array of the record), if it is known
@@ -260,7 +269,7 @@ def recObjBranchBody (info : RecObjInfo) (brecF : Expr) (motives : Array Expr)
     let lvls := histTy.getAppFn.constLevels!
     let placeholder := mkAppN (mkConst fn lvls)
       (hargs.extract 0 nP ++ ms ++ hargs.extract (nP + nM) hargs.size)
-    let h ← buildRecObjHistory ms motives answers placeholder
+    let h ← buildRecObjHistory ms motives answers placeholder info.selfMotive info.selfProj
     if ms.any (fun m => h.containsFVar m.fvarId!) then
       throwError "`#leanscript_to_term`: internal: the history mentions its motive"
     pure h

@@ -111,6 +111,108 @@ partial def setImplicit (k : Nat) (e : Expr) : Expr :=
   | k + 1, .lam nm t b _ => .lam nm t (setImplicit k b) .implicit
   | _, e => e
 
+/-- The elements of a list literal, up to definitional unfolding. -/
+partial def listElemsD (e : Expr) : MetaM (Array Expr) := do
+  match (← whnfD e).getAppFnArgs with
+  | (``List.cons, #[_, a, as]) => return #[a] ++ (← listElemsD as)
+  | _ => return #[]
+
+/-- The field trees of each constructor of a member schema of a family of trees, in order
+    (`ctors`: one list per constructor; `record`: its fields; `alias`: its body). -/
+partial def memberCtorFieldTrees (m : Expr) : MetaM (Array (Array Expr)) := do
+  -- the entries of a `NonEmptyList`, and of a record schema: the structure's fields
+  let neList (ne : Expr) : MetaM (Array Expr) := do
+    let args := (← whnfD ne).getAppArgs
+    unless args.size == 3 do return #[]
+    return #[args[1]!] ++ (← listElemsD args[2]!)
+  let rec cps (cp : Expr) : MetaM (Array (Array Expr)) := do
+    match (← whnfD cp).getAppFnArgs with
+    | (``LeanScript.CtorsWithPayload.here, #[_, f, rest]) =>
+        return #[← neList f] ++ (← (← listElemsD rest).mapM listElemsD)
+    | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) => return #[#[]] ++ (← cps rest)
+    | _ => return #[]
+  match (← whnfD m).getAppFnArgs with
+  | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
+      match (← whnfD l).getAppFnArgs with
+      | (``LeanScript.LeanTaggedUnionSchema.payloadFirst, #[_, f, next, rest]) =>
+          return #[← neList f, ← listElemsD next] ++ (← (← listElemsD rest).mapM listElemsD)
+      | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, cp]) => return #[#[]] ++ (← cps cp)
+      | _ => return #[]
+  | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
+      let args := (← whnfD fs).getAppArgs
+      unless args.size == 4 do return #[]
+      return #[#[args[1]!, args[2]!] ++ (← listElemsD args[3]!)]
+  | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) => return #[#[b]]
+  | _ => return #[]
+
+/-- The members of a family a field of Lean type `t` holds, read against the field's tree:
+    an occurrence `Ty.familyMember i` is a value of `t`, and an array, a delay or a function
+    into something is read into.  Each member found, with its Lean type. -/
+partial def alignMemberTree (tree t : Expr) : MetaM (Array (Nat × Expr)) := do
+  match (← whnfD tree).getAppFnArgs with
+  | (``LeanScript.Ty.familyMember, #[i]) =>
+      let some i ← evalNat (← whnfD i) | return #[]
+      return #[(i, t)]
+  | (``LeanScript.Ty.shape, #[sh]) =>
+      match (← whnfD sh).getAppFnArgs with
+      | (``LeanScript.TyShape.primCovariant, #[_, cv]) =>
+          let t' ← whnf t
+          match (← whnfD cv).getAppFnArgs, t'.getAppFnArgs with
+          | (``LeanScript.LeanPrimTyCovariant.array, #[_, a]), (``Array, #[e]) =>
+              alignMemberTree a e
+          | (``LeanScript.LeanPrimTyCovariant.thunk, #[_, a]), (``Thunk, #[e]) =>
+              alignMemberTree a e
+          | _, _ => return #[]
+      | (``LeanScript.TyShape.fn, #[_, _, b]) =>
+          match ← whnf t with
+          | .forallE _ _ cod _ =>
+              if cod.hasLooseBVars then return #[] else alignMemberTree b cod
+          | _ => return #[]
+      | _ => return #[]
+  | _ => return #[]
+
+/-- The Lean type of each member of the family `ms` (member schemas of trees) of a block
+    whose declared types, applied to its parameters, are `declTys` (the first members): the
+    others — the auxiliary types that are members — are found by reading the members'
+    constructor fields against their trees.  An occurrence inside an `Array` stands inside
+    the array's shape, so `Array T` and the `List T` inside it are not members; `List T`
+    and any recursive wrapper are. -/
+def familyMemberLeanTypes (ms : Array Expr) (declTys : Array Expr) :
+    MetaM (Array (Option Expr)) := do
+  let mut tys : Array (Option Expr) := Array.replicate ms.size none
+  for h : j in [0:declTys.size] do
+    if j < ms.size then tys := tys.set! j (some declTys[j])
+  let mut visited : Array Bool := Array.replicate ms.size false
+  let mut progress := true
+  while progress do
+    progress := false
+    for j in [0:ms.size] do
+      let some jTy := tys[j]! | continue
+      if visited[j]! then continue
+      visited := visited.set! j true
+      progress := true
+      let jTy ← whnf jTy
+      let .const jn jlvls := jTy.getAppFn | continue
+      let some (.inductInfo ji) := (← getEnv).find? jn | continue
+      let jargs := jTy.getAppArgs
+      unless jargs.size == ji.numParams do continue
+      let fss ← memberCtorFieldTrees ms[j]!
+      unless fss.size == ji.ctors.length do continue
+      for h : i in [0:ji.ctors.length] do
+        let ci ← getConstInfoCtor ji.ctors[i]
+        let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams jlvls) jargs
+        let fTys ← forallTelescopeReducing cty fun xs _ => do
+          let ts ← xs.mapM inferType
+          return ts.map fun t => if t.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then none
+            else some t
+        let fs := fss[i]!
+        unless fs.size == fTys.size do continue
+        for (a, t?) in fs.zip fTys do
+          let some t := t? | continue
+          for (k, t') in ← alignMemberTree a t do
+            if k < ms.size && tys[k]!.isNone then tys := tys.set! k (some t')
+  return tys
+
 /-- For a nested inductive block, whose tree is a family with a member for each auxiliary
     type whose own model is a binder (`List T`, any recursive wrapper), the instance of
     each such auxiliary type: the same family, **selecting that member**.  So `List T` is
@@ -137,6 +239,19 @@ def mkNestedAuxInstances (n : Name) (ind : InductiveVal) (params binders : Array
   -- every auxiliary type is a member when one of them is a non-recursive wrapper inside a
   -- family (`Option Q` inside `P`, see `LeanScript.Deriving.hoistAux`)
   if ms.2.length == ind.all.length + auxs.size then hoisted := auxs
+  -- otherwise, when an occurrence sits inside an `Array` (`List (Array T)`), the array and
+  -- the `List T` inside it are auxiliary types but not members: the members are read off
+  -- the fields of the declared ones
+  unless ms.2.length == ind.all.length + hoisted.size do
+    let lvls := ind.levelParams.map Level.param
+    let declTys := ind.all.toArray.map fun nm => mkAppN (mkConst nm lvls) params
+    let tys ← familyMemberLeanTypes ms.2.toArray declTys
+    let mut found : Array Expr := #[]
+    for t? in tys.extract ind.all.length tys.size do
+      let some t := t? | return
+      unless ← auxs.anyM (isDefEq t ·) do return
+      found := found.push t
+    hoisted := found
   unless ms.2.length == ind.all.length + hoisted.size do return
   for h : j in [0:hoisted.size] do
     let d := hoisted[j]

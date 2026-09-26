@@ -62,6 +62,7 @@ context are used.
 | a structural recursion on a nested inductive of **several constructors** whose occurrence sits inside another type (`inductive UTree \| leaf \| node (v : Nat) (kids : Array UTree)`, a JSON-like type, `Option T` or `Nat × T` inside a constructor) | `recAlias_rec k`: `deriving LeanScriptTyWf` gives such a declaration the tree of a recursive newtype whose body is the union of its constructors (`Ty.recAlias (Ty.taggedUnion …)`), whose constructors are `recAlias_mk` around `taggedUnion_mk` and whose `match` is `recAlias_casesOn` around `taggedUnion_casesOn` — see `TermTests/StructRecTest/NestedOther.lean` |
 | a structural recursion whose occurrences sit in an **array of values that hold the type** (`Array (Array T)`, `Array (Option T)`, `Array (String × T)`), under a **function** (`node (f : Nat → T)`) or under a **delay** (`Thunk T`) | `recObject_rec k` / `recAlias_rec k`, the window holding the array of the elements' windows, the function of the answer trees or the delayed answer tree — see `TermTests/StructRecTest/NestedOther.lean` and, for folds deeper than `0` through functions and delays, `TermTests/StructRecTest/NestedFnDeep.lean` |
 | a structural recursion on a `mutual` block whose members **also occur nested** (`Option Q` inside `P`) | `mutualRecursiveFamily_rec k` on the family `P`, `Q`, `Option Q` — see `TermTests/StructRecTest/MutualNested.lean`; occurrences both ways (`Option P` inside `Q` too), a member under `List`, several wrappers (`Option (Option Q)`), a type parameter, a product or a user structure around a member, and recursions started at any member, including an auxiliary one such as `Option (Option Q)`, in `TermTests/StructRecTest/MutualNestedMore.lean` |
+| a structural recursion on a family one of whose members holds a member inside an **array, a function or a delay** (`List (Array T)`, `Array (List T)`, `node (qs : Array Q)` in a `mutual` block, `node (f : Nat → G)`, `Thunk Q`) | `mutualRecursiveFamily_rec k`: the fold now hands over the answers at every member nested inside a field (`Ty.famRecBinders`, `famAnswerField`), which at an array are the fold of each element (`famAnswerField_array_memo` in `LeanScript/FamilyNestedFacts.lean`) — see `TermTests/StructRecTest/NestedFamily.lean` and `TermTests/StructRecTest/NestedOther.lean` |
 | a structural recursion on a **recursive newtype whose body is a structure** (`Pair2 \| mk (Nat × Option Pair2)`) | `recAlias_rec k` — see `TermTests/StructRecTest/NewtypeStruct.lean` |
 | the same with a **user-defined structure** as the body (`Pair3 \| mk (Cell Pair3)`, `structure Cell (α) where val : Nat; next : Option α`), including nested structures, a type parameter, and a `List α` field | `recAlias_rec k` (or a family fold for the `List` field) — see `TermTests/StructRecTest/NewtypeUserStruct.lean` |
 | a structural recursion on an **inductive family with indices** (`Vec α n`) | the fold of its tree, the index erased and a value index an ordinary field — see `TermTests/StructRecTest/IndexedFamily.lean` |
@@ -188,11 +189,10 @@ being translated.
   whose type is a type field (`lit {α} (x : α) : E α` — an existential, see below), or a
   function whose *answer's* type is the index (`eval : TExpr α → α`), which is refused as a
   dependent motive.
-* a structural recursion on a **family** (a `mutual` block, or a type nested through
-  `List` or another recursive container) one of whose members holds a member inside an
-  array, a function or a delay — `List (Array T)`, `Array (List T)`: the fold of a
-  family hands over an answer only at a field that *is* a member
-  (`TermTests/StructRecTest/NestedOther.lean`).
+* inside a structural recursion on a **family** whose member holds a member inside an
+  array, a function or a delay (`List (Array T)`, `node (qs : Array Q)`), the answers at
+  those nested members are the answers of the fold itself; a call that looks *deeper*
+  than one level through such a field is not read as the fold.
 * a fold deeper than the translation looks for.  The bounds are options
   (`LeanScript/ToTerm/Options.lean`), with defaults `64` for `nat_rec k` / `array_rec k`,
   `24` for `recObject_rec k` / `recAlias_rec k` and `16` for `recTaggedUnion_rec k` /

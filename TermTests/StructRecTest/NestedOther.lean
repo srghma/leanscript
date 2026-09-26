@@ -33,9 +33,10 @@ occurrence can sit in, apart from `List` (`TermTests/ShapesTest/Nested.lean`):
 * **A container of one's own** with a `LeanScriptTyWf` instance (`MyList T`), which,
   like `List`, becomes a member of a family.
 
-Still refused: an array inside a *family* — `List (Array T)`, `Array (List T)`, or an
-array of another member of a `mutual` block — because the fold of a family hands over an
-answer only at a field that *is* a member (checked at the end). -/
+An array inside a *family* — `List (Array T)`, `Array (List T)`, or an array of another
+member of a `mutual` block — is folded too: the fold of a family hands over, beside a field
+that holds members inside it, the answers at them in the field's shape.  One case is at the
+end of this file; the others are in `TermTests/StructRecTest/NestedFamily.lean`. -/
 
 namespace TermTests.StructRec.NestedOther
 
@@ -317,10 +318,12 @@ def mtSum_term : Term sigAdd [] (tyWfOf MTree ⇒ natT) := #leanscript_to_term M
 
 example : runAdd mtSum_term (runAdd mt1_term) = 10 := by kernel_rfl
 
-/-! ## Refused: an array inside a family
+/-! ## An array inside a family
 
 `List (Array T)` makes `List (Array T)` a member of a family, and the array of `T` inside
-it is not a member: the fold of a family hands over no answer there. -/
+it is not a member: the fold of the family binds, beside that field, the array of the
+answers at its elements (`LeanScript.TyWf.famAnswerBinders`), which the helpers on
+`Array LATree` and `List LATree` are folded over. -/
 
 inductive LATree where
   | node (v : Nat) (kids : List (Array LATree))
@@ -339,9 +342,12 @@ def LATree.sumL : List LATree → Nat
   | t :: ts => t.sum + LATree.sumL ts
 end
 
-example : Term sigAdd [] (tyWfOf LATree ⇒ natT) := by
-  fail_if_success exact #leanscript_to_term LATree.sum
-  exact .lam (.nat_mk 0)
+def la1 : LATree := .node 1 [#[.node 2 [], .node 3 [#[.node 4 []]]], #[], #[.node 5 []]]
+def la1_term : Term sigAdd [] (tyWfOf LATree) := #leanscript_to_term la1
+def laSum_term : Term sigAdd [] (tyWfOf LATree ⇒ natT) := #leanscript_to_term LATree.sum
+
+example : runAdd laSum_term (runAdd la1_term) = 15 := by kernel_rfl
+example : runAdd laSum_term (runAdd la1_term) = la1.sum := by kernel_rfl
 
 end TermTests.StructRec.NestedOther
 

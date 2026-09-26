@@ -109,6 +109,65 @@ def substOccCP (s : Ty) (m : Nat → Ty) :
 
 end
 
+mutual
+
+/-- Does the tree hold an occurrence `Ty.familyMember i` of a member of the family in scope
+    — a leaf `Ty.substOcc` substitutes?  A nested binder is not looked into, and neither is
+    the domain of a function, exactly as `Ty.substOcc` does. -/
+def hasMemberOcc : Ty → Bool
+  | .self => false
+  | .familyMember _ => true
+  | .shape sh => hasMemberOccShape sh
+  | .recTaggedUnion _ => false
+  | .recObject _ => false
+  | .recAlias _ => false
+  | .mutualRecursiveFamily _ => false
+
+/-- `Ty.hasMemberOcc`, on a node. -/
+def hasMemberOccShape : TyShape Ty → Bool
+  | .prim _ => false
+  | .fn _ b => hasMemberOcc b
+  | .primCovariant c => hasMemberOccCov c
+  | .enum _ => false
+  | .record fs => hasMemberOccRecord fs
+  | .taggedUnion l => hasMemberOccTU l
+
+/-- `Ty.hasMemberOcc`, on an array, a thunk or a lazy value. -/
+def hasMemberOccCov : LeanPrimTyCovariant Ty → Bool
+  | .array a => hasMemberOcc a
+  | .thunk a => hasMemberOcc a
+  | .lazy a => hasMemberOcc a
+
+/-- `Ty.hasMemberOcc`, on a list of types. -/
+def hasMemberOccList : List Ty → Bool
+  | [] => false
+  | a :: as => hasMemberOcc a || hasMemberOccList as
+
+/-- `Ty.hasMemberOcc`, on the fields of each constructor. -/
+def hasMemberOccCtors : List (List Ty) → Bool
+  | [] => false
+  | a :: as => hasMemberOccList a || hasMemberOccCtors as
+
+/-- `Ty.hasMemberOcc`, on a list that has at least one entry. -/
+def hasMemberOccNE : NonEmptyList Ty → Bool
+  | ⟨a, as⟩ => hasMemberOcc a || hasMemberOccList as
+
+/-- `Ty.hasMemberOcc`, on the fields of a record. -/
+def hasMemberOccRecord : LeanRecordSchema Ty → Bool
+  | ⟨a, b, rest⟩ => hasMemberOcc a || hasMemberOcc b || hasMemberOccList rest
+
+/-- `Ty.hasMemberOcc`, on the constructors of a tagged union. -/
+def hasMemberOccTU : LeanTaggedUnionSchema Ty → Bool
+  | .payloadFirst f n r => hasMemberOccNE f || hasMemberOccList n || hasMemberOccCtors r
+  | .skip c => hasMemberOccCP c
+
+/-- `Ty.hasMemberOcc`, on the constructors that follow a field-less one. -/
+def hasMemberOccCP : CtorsWithPayload Ty → Bool
+  | .here f r => hasMemberOccNE f || hasMemberOccCtors r
+  | .skip c => hasMemberOccCP c
+
+end
+
 /-! ## The traversal is the `map` of each container -/
 
 theorem substOccList_eq_map (s : Ty) (m : Nat → Ty) :
@@ -255,12 +314,26 @@ def recBinders (r motive : Ty) : List Ty → List Ty
   | .self :: fs => r :: motive :: recBinders r motive fs
   | a :: fs => unfoldSelf r a :: recBinders r motive fs
 
+/-- The answers of a fold of motive `motive` at the occurrences of members **inside** a
+    field `a` (`Array (familyMember i)`, `Nat → familyMember i`, `Thunk (familyMember i)`):
+    the field's own shape with every occurrence replaced by `motive`. -/
+def famAnswerMap (motive : Ty) (a : Ty) : Ty := substOcc .self (fun _ => motive) a
+
+/-- What a branch of the fold of a family binds after a field `a` that is not literally an
+    occurrence of a member, in front of `rest`: the answers at the occurrences inside it
+    (`Ty.famAnswerMap`), when it holds any, and nothing otherwise. -/
+def famAnswerBinders (motive : Ty) (a : Ty) (rest : List Ty) : List Ty :=
+  cond (hasMemberOcc a) (famAnswerMap motive a :: rest) rest
+
 /-- `Ty.recBinders`, in the scope of a mutual family: a field that is an occurrence of
-    member `i` is followed by the value of the fold at that field. -/
+    member `i` is followed by the value of the fold at that field, and a field that holds
+    occurrences of members inside it (an array of them, a function into one, a delay of
+    one) by the answers at them, in the field's shape (`Ty.famAnswerBinders`). -/
 def famRecBinders (f : LeanMutualRecFamily Ty) (motive : Ty) : List Ty → List Ty
   | [] => []
   | .familyMember i :: fs => familyMemberTy f i :: motive :: famRecBinders f motive fs
-  | a :: fs => unfoldFamily f a :: famRecBinders f motive fs
+  | a :: fs => unfoldFamily f a ::
+      famAnswerBinders motive a (famRecBinders f motive fs)
 
 end Ty
 

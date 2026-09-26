@@ -367,7 +367,10 @@ inductive Term (Sg : Sig) : Ctx → TyWf → optParam JCtx [] → Type 1
   /-- **The fold of a mutual family**, that descends `k + 1` constructors at a time: the
       branches of *every* member of the family, in declaration order, each binding its
       fields and, right after a field that is an occurrence of a member, the value of the
-      fold at that field (`TyWf.famRecBinders`), and each branch free to **look further
+      fold at that field (`TyWf.famRecBinders`) — and, right after a field that holds
+      members *inside* it (an `Array`, a function or a `Thunk` of members, `List (Array T)`),
+      the values of the fold at those members in the field's shape
+      (`TyWf.famAnswerBinders`) — and each branch free to **look further
       down** — to dispatch on one of those occurrences again, whichever member it belongs
       to, or on an occurrence it has not looked into yet at a node above it on the path
       (`LeanScript.FamilyFoldKBranch.deepOuter`), and so be given *its* fields and the

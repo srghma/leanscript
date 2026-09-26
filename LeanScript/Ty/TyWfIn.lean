@@ -323,15 +323,39 @@ def recAliasRecBinders (b : TyWfIn 1) (hwf : Ty.Wf (recAliasTy b)) (motive : TyW
     (k : Nat) : List TyWf :=
   [recAliasUnfold b hwf, recAliasMap b (recAliasAnswerTree b motive k)]
 
+/-- The answers of a fold of motive `motive` at the occurrences of members **inside** a
+    field `a` of a member of a family (`Array (familyMember i)`, `Nat → familyMember i`,
+    `Thunk (familyMember i)`): the field's own shape with every occurrence replaced by
+    `motive` (`LeanScript.Ty.famAnswerMap`), which for `Array (familyMember 0)` is
+    `Array motive` — each subvalue replaced by the value of the fold at it. -/
+def famAnswerMap {n : Nat} (motive : TyWf) (a : TyWfIn (n + 2)) : TyWf :=
+  ⟨Ty.famAnswerMap motive.toTy a.toTy,
+    Ty.wf_substOccFam (fun _ => motive.isWf) a.isWfIn (by omega)⟩
+
+@[simp] theorem toTy_famAnswerMap {n : Nat} (motive : TyWf) (a : TyWfIn (n + 2)) :
+    (famAnswerMap motive a).toTy = Ty.famAnswerMap motive.toTy a.toTy := rfl
+
+/-- What a branch of the fold of a family binds after a field `a` that is not literally an
+    occurrence of a member, in front of `rest`: the answers at the occurrences of members
+    inside it (`TyWf.famAnswerMap`), when it holds any (`LeanScript.Ty.hasMemberOcc`), and
+    nothing otherwise. -/
+def famAnswerBinders {n : Nat} (motive : TyWf) (a : TyWfIn (n + 2)) (rest : List TyWf) :
+    List TyWf :=
+  cond (Ty.hasMemberOcc a.toTy) (famAnswerMap motive a :: rest) rest
+
 /-- `TyWf.recBinders`, in the scope of a mutual family: a field that is an occurrence of
-    member `i` is followed by the value of the fold at that field. -/
+    member `i` is followed by the value of the fold at that field, and a field that holds
+    occurrences of members only **inside** it — an array of them, a function into one, a
+    delay of one — by the answers at them, in the field's own shape
+    (`TyWf.famAnswerBinders`).  A field that mentions no member is followed by nothing. -/
 def famRecBinders {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
     (hwf : Ty.Wf (mutualRecursiveFamilyTy f)) (motive : TyWf) :
     List (TyWfIn (n + 2)) → List TyWf
   | [] => []
   | ⟨.familyMember i, _⟩ :: fs =>
       famMemberTy f hwf i :: motive :: famRecBinders f hwf motive fs
-  | a :: fs => TyWfIn.unfoldFam f hwf a :: famRecBinders f hwf motive fs
+  | a :: fs => TyWfIn.unfoldFam f hwf a ::
+      famAnswerBinders motive a (famRecBinders f hwf motive fs)
 
 end TyWf
 

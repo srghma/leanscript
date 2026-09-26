@@ -454,7 +454,9 @@ of their containers, `famFs ms₀` — which is the W-type the value lives in
 (`famFs_eq`).  A branch is evaluated at a node whose subtrees are *memos*, and the
 environment it binds (`LeanScript.TyWf.famRecBinders`) is read off them: a field that is
 literally `Ty.familyMember i` is the subtree **and** the answer stored at it, and every
-other field is `Ty.famUnroll` of the field with the subtrees put back in its holes. -/
+other field is `Ty.famUnroll` of the field with the subtrees put back in its holes —
+followed, when it holds occurrences of members inside it (`Array (familyMember i)`), by
+`Ty.famUnroll` of the field with the *answers* stored at those subtrees put in its holes. -/
 
 /-- The container of a member of a family of bundles. -/
 @[reducible] def famIPF {n : Nat} (m : LeanFamMemberSchema (TyWfIn (n + 2))) : IPFunctor :=
@@ -512,6 +514,25 @@ def famBindField {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
   Ty.famUnroll (Ty.familyMemberTy (f.map TyWfIn.toTy)) a.toTy
     (e.map (fun j m => famSubtree f hwf τ j m))
 
+/-- The answers at the occurrences of members inside a field `a` that is not literally one:
+    the field's shape with the answer stored at each subtree in its hole
+    (`LeanScript.TyWf.famAnswerMap`). -/
+def famAnswerField {n : Nat} (τ : TyWf) (ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2))))
+    (a : TyWfIn (n + 2)) (e : (Ty.toIPF a.toTy).Obj (FamMemoAt ms₀ τ)) :
+    TyWf.Den (TyWf.famAnswerMap τ a) :=
+  Ty.famUnroll (fun _ => τ.toTy) a.toTy (e.map (fun _ m => FamMemo.answer m))
+
+/-- What a branch of the fold of a family binds after a field `a` that is not literally an
+    occurrence of a member, in front of the environment `r` of the fields after it: the
+    answers at the occurrences inside it (`famAnswerField`), when it holds any
+    (`LeanScript.TyWf.famAnswerBinders`). -/
+def famAnswerEnv {n : Nat} (τ : TyWf) (ms₀ : List (LeanFamMemberSchema (TyWfIn (n + 2))))
+    (a : TyWfIn (n + 2)) (e : (Ty.toIPF a.toTy).Obj (FamMemoAt ms₀ τ)) {rest : List TyWf}
+    (r : TyWf.DenList rest) : TyWf.DenList (TyWf.famAnswerBinders τ a rest) :=
+  Bool.casesOn (motive := fun b =>
+      TyWf.DenList (cond b (TyWf.famAnswerMap τ a :: rest) rest))
+    (Ty.hasMemberOcc a.toTy) r (famAnswerField τ ms₀ a e, r)
+
 /-- The environment a branch of the fold of a family binds, at a constructor with fields
     `fs`. -/
 def famBindEnv {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
@@ -526,16 +547,24 @@ def famBindEnv {n : Nat} (f : LeanMutualRecFamily (TyWfIn (n + 2)))
       -- A family's payload holds no `Ty.self` (it is legal only in a scope of one member).
       absurd h (Ty.not_wfIn_self_of_family (by omega))
   | ⟨.shape sh, h⟩ :: fs, e =>
-      (famBindField f hwf τ ⟨.shape sh, h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
+      (famBindField f hwf τ ⟨.shape sh, h⟩ e.prodFst,
+        famAnswerEnv τ f.members ⟨.shape sh, h⟩ e.prodFst (famBindEnv f hwf τ fs e.prodSnd))
   | ⟨.recTaggedUnion l', h⟩ :: fs, e =>
-      (famBindField f hwf τ ⟨.recTaggedUnion l', h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
+      (famBindField f hwf τ ⟨.recTaggedUnion l', h⟩ e.prodFst,
+        famAnswerEnv τ f.members ⟨.recTaggedUnion l', h⟩ e.prodFst
+          (famBindEnv f hwf τ fs e.prodSnd))
   | ⟨.recObject r, h⟩ :: fs, e =>
-      (famBindField f hwf τ ⟨.recObject r, h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
+      (famBindField f hwf τ ⟨.recObject r, h⟩ e.prodFst,
+        famAnswerEnv τ f.members ⟨.recObject r, h⟩ e.prodFst
+          (famBindEnv f hwf τ fs e.prodSnd))
   | ⟨.recAlias b, h⟩ :: fs, e =>
-      (famBindField f hwf τ ⟨.recAlias b, h⟩ e.prodFst, famBindEnv f hwf τ fs e.prodSnd)
+      (famBindField f hwf τ ⟨.recAlias b, h⟩ e.prodFst,
+        famAnswerEnv τ f.members ⟨.recAlias b, h⟩ e.prodFst
+          (famBindEnv f hwf τ fs e.prodSnd))
   | ⟨.mutualRecursiveFamily g, h⟩ :: fs, e =>
       (famBindField f hwf τ ⟨.mutualRecursiveFamily g, h⟩ e.prodFst,
-        famBindEnv f hwf τ fs e.prodSnd)
+        famAnswerEnv τ f.members ⟨.mutualRecursiveFamily g, h⟩ e.prodFst
+          (famBindEnv f hwf τ fs e.prodSnd))
 
 /-- The value in the hole of a field that is `Ty.familyMember i`. -/
 def famHoleKid {X : Nat → Type} {i : Nat} (t : Ty) (h : t = .familyMember i)

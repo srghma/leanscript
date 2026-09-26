@@ -81,11 +81,11 @@ mutual
     runs. -/
 partial def recFamCases (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : Nat)
     (topM : Nat) (top : Expr) (m : Nat) (target : FVarId) (descend : Array (FVarId × Expr))
-    (answers : Array (Expr × Expr)) (outer : List FamFrame) (descended : Array FVarId) :
-    MetaM Expr := do
+    (answers : Array (Expr × Expr)) (outer : List FamFrame) (descended : Array FVarId)
+    (nested : Array FamNested) : MetaM Expr := do
   let mi := info.members[m]!
   let branches ← mi.ctors.mapM fun ct =>
-    recFamBranch trans info c j topM top target descend answers outer descended ct
+    recFamBranch trans info c j topM top target descend answers outer descended nested ct
   let jE := mkNatLit j
   let pre : Array Expr :=
     #[c.sg, info.nE, info.msE, info.bindE, c.gamma, info.τ, jE, ← famOuterE info outer]
@@ -109,7 +109,7 @@ partial def recFamCases (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : Na
 partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : Nat)
     (topM : Nat) (top : Expr) (target : FVarId) (descend : Array (FVarId × Expr))
     (answers : Array (Expr × Expr)) (outer : List FamFrame) (descended : Array FVarId)
-    (ct : FamCtor) : MetaM Expr := do
+    (nested : Array FamNested) (ct : FamCtor) : MetaM Expr := do
   let bTys := (← listOfExpr (← reduceTy (mkApp info.bindE ct.fsE)))
   let mut decls : Array (Name × (Array Expr → MetaM Expr)) := #[]
   for h : i in [0:ct.fields.size] do
@@ -119,6 +119,16 @@ partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : N
         let st := info.members[k]!.selfTy
         decls := decls.push (Name.mkSimple s!"sub{i}", fun _ => pure st)
         decls := decls.push (Name.mkSimple s!"ans{i}", fun _ => pure info.τLean)
+    | .nested t _ p =>
+        -- the field, then the window of the answers at the values it holds: a Lean value
+        -- for a function (of the answers) and a delay (of the answer), and otherwise a
+        -- placeholder, which only the terms folding it read
+        decls := decls.push (Name.mkSimple s!"x{i}", fun _ => pure t)
+        let wTy : MetaM Expr := match p with
+          | .fn _ dom => mkArrow dom info.τLean
+          | .thunk _ => mkAppM ``Thunk #[info.τLean]
+          | _ => pure (mkConst ``Unit)
+        decls := decls.push (Name.mkSimple s!"win{i}", fun _ => wTy)
   unless decls.size == bTys.length do
     throwError "`#leanscript_to_term`: internal: the branch of {ct.name} binds \
       {decls.size} values, its tree {bTys.length}"
@@ -126,6 +136,7 @@ partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : N
     let c' := c.pushFields (xs.zip bTys.toArray |>.map fun (x, t) => (x.fvarId!, t))
     let mut vals : Array Expr := #[]
     let mut subs : Array (Nat × Nat × Expr × Expr) := #[]
+    let mut nested' := nested
     let mut pos := 0
     for h : i in [0:ct.fields.size] do
       match ct.fields[i] with
@@ -135,6 +146,14 @@ partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : N
       | .member k =>
           vals := vals.push xs[pos]!
           subs := subs.push (i, k, xs[pos]!, xs[pos + 1]!)
+          pos := pos + 2
+      | .nested _ k p =>
+          -- a delay is given as `Thunk.mk g`, whose history Lean can take apart
+          let v ← if p matches .thunk _ then famThunkShape xs[pos]! else pure xs[pos]!
+          vals := vals.push v
+          nested' := nested'.push
+            { member := k, read := p, val := v, win := xs[pos + 1]!.fvarId!,
+              winTy := bTys[pos + 1]! }
           pos := pos + 2
     let shape := mkAppN (mkConst ct.name ct.lvls) (ct.params ++ vals)
     let descend' := descend.push (target, shape)
@@ -161,7 +180,7 @@ partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : N
     let look (cand : Option Nat × Nat × Nat × FVarId) : MetaM Expr := do
       let (where_, p, k, f) := cand
       let inner ← recFamCases trans info c' (j - 1) topM top k f descend' answers'
-        (frame :: outer) descended'
+        (frame :: outer) descended' nested'
       let memberAt ← mkFamMemberAtE info k
       let pre := #[c.sg, info.nE, info.msE, info.bindE, c.gamma, ct.fsE, info.τ,
         mkNatLit (j - 1), mkNatLit k, info.members[k]!.schema, outerE]
@@ -177,7 +196,7 @@ partial def recFamBranch (trans : TransFn) (info : RecFamInfo) (c : TCtx) (j : N
             (pre ++ #[ofield, memberAt, inner])
     let res ← try
         pure (Except.ok (← recFamLeaf trans info c' topM top descend' answers'
-          (cands.map (·.2.2.2))))
+          (cands.map (·.2.2.2)) nested'))
       catch ex => pure (Except.error ex)
     match res with
     | .ok (.inl body) => return mkApp hereE body
@@ -251,17 +270,16 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let sty ← tyOfTerm major
   let .mutualRecursiveFamily nE fB hwf ← tyView sty | return none
   let sc := (← natOfExpr nE) + 2
-  unless sc == nM do
+  unless sc ≤ nM do
     throwError "`#leanscript_to_term`: the family of {ind} has {sc} members, its \
-      recursor {nM} motives (a nested occurrence under a wrapper whose model is not \
-      recursive, `Option`, say, has a motive of its own but no member)"
+      recursor {nM} motives"
   let params := args.extract 0 nP
   let motives := args.extract nP (nP + nM)
   let brecFs := args.extract (nP + nM + 1) arity
   let selfTy ← whnf (← inferType major)
   -- the levels of the block: those of `brecOn`, but the one of its motive
   let ilvls := if lvls.length == ii.levelParams.length + 1 then lvls.tail else lvls
-  -- the members' Lean types, in the order of the motives: the declared members, then the
+  -- the Lean types the motives are functions of: the declared members, then the
   -- auxiliary types of a nested inductive
   let recLvls := if ri.levelParams.length == ii.levelParams.length + 1 then
     Level.one :: ilvls else ilvls
@@ -280,6 +298,77 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let some cur := cur?
     | throwError "`#leanscript_to_term`: internal: {selfTy} is not a member of the family \
         of {ind}"
+  -- the members' schemas, in order
+  let msE ← reduceTy (mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.members)
+    (tyWfInE sc) fB)
+  let schemas := (← listOfExpr msE).toArray
+  -- **the Lean type of each member.**  Every auxiliary type of a nested inductive has a
+  -- motive, but not every one is a member: an occurrence inside an `Array` stands inside
+  -- the array's shape (`Array T`, and the `List T` inside it, are not members).  The
+  -- members whose trees the instances name (the declared types, and the auxiliary types
+  -- that are members with an instance of their own) are found from those, and the others
+  -- by reading the members' fields against their trees.
+  let famIdxOf (t : Expr) : MetaM (Option Nat) := do
+    let some tr ← (try some <$> treeOfType t catch _ => pure none) | return none
+    let (``LeanScript.Ty.mutualRecursiveFamily, #[f]) := tr.getAppFnArgs | return none
+    match (← whnf f).getAppFnArgs with
+    | (``LeanScript.LeanMutualRecFamily.selectedThenMore, #[_, before, _, _, after]) =>
+        let b := (← listOfExpr before).length
+        if b + 2 + (← listOfExpr after).length == sc then return some b
+        return none
+    | (``LeanScript.LeanMutualRecFamily.selectedLast, #[_, _, before, _]) =>
+        let b := (← listOfExpr before).length
+        if b + 2 == sc then return some (b + 1)
+        return none
+    | _ => return none
+  let mut memberTys : Array (Option Expr) := Array.replicate sc none
+  for h : m in [0:selfTys.size] do
+    if let some j ← famIdxOf selfTys[m] then
+      if j < sc && memberTys[j]!.isNone then memberTys := memberTys.set! j (some selfTys[m])
+  let mut visited : Array Bool := Array.replicate sc false
+  let mut progress := true
+  while progress do
+    progress := false
+    for j in [0:sc] do
+      let some jTy := memberTys[j]! | continue
+      if visited[j]! then continue
+      visited := visited.set! j true
+      progress := true
+      let .const jn jlvls := jTy.getAppFn | continue
+      let some (.inductInfo ji) := (← getEnv).find? jn | continue
+      let jparams := jTy.getAppArgs
+      let idxs ← famMemberCtorIndices sc schemas[j]!
+      unless idxs.size == ji.ctors.length do continue
+      for h : i in [0:ji.ctors.length] do
+        let ci ← getConstInfoCtor ji.ctors[i]
+        let cty ← instantiateForall (ci.type.instantiateLevelParams ci.levelParams jlvls)
+          jparams
+        let fTys ← forallTelescopeReducing cty fun xs _ => xs.mapM inferType
+        let fsL := (← listOfExpr (← reduceTy idxs[i]!)).toArray
+        unless fsL.size == fTys.size do continue
+        for (a, t) in fsL.zip fTys do
+          if t.hasLooseBVars then continue
+          let tree ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWfIn.toTy) (mkNatLit sc) a)
+          for (i', t') in ← famAlignTree tree t do
+            if i' < sc && memberTys[i']!.isNone then
+              memberTys := memberTys.set! i' (some t')
+  -- the motive of each member
+  let mut memberMotives : Array Nat := #[]
+  for h : j in [0:sc] do
+    let some jTy := memberTys[j]!
+      | throwError "`#leanscript_to_term`: internal: no Lean type of {ind}'s block is member \
+          {j} of its family"
+    let mut mj? : Option Nat := none
+    for h : m in [0:selfTys.size] do
+      if mj?.isNone then
+        if ← isDefEq jTy selfTys[m] then mj? := some m
+    let some mj := mj?
+      | throwError "`#leanscript_to_term`: internal: member {jTy} of the family of {ind} has \
+          no motive"
+    memberMotives := memberMotives.push mj
+  unless memberMotives.contains cur do
+    throwError "`#leanscript_to_term`: {selfTy} is not a member of the family of {ind}"
+  let memberLeanTys := memberTys.map (·.get!)
   -- the answer type: the motive of the member the recursion returns a value of
   let motiveBody (m : Expr) : MetaM (Option Expr) := do
     let m ← whnf m
@@ -291,17 +380,19 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let some τLean ← motiveBody motives[cur]!
     | throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
         language has no eliminator for"
-  let mut answering : Array Bool := #[]
-  let mut bodies : Array Expr := #[]
+  -- the motives of the members; those of the auxiliary types that are not members answer
+  -- whatever they answer, computed beside the fold (`bindFamNested`)
+  let mut answering : Array Bool := Array.replicate nM false
+  let mut bodies : Array (Option Expr) := Array.replicate nM none
   let mut uniform := true
-  for m in motives do
-    match ← motiveBody m with
+  for m in memberMotives do
+    match ← motiveBody motives[m]! with
     | some b =>
-        bodies := bodies.push b
-        if ← isDefEq b τLean then answering := answering.push true
-        else if (← whnf b).isConstOf ``PUnit then answering := answering.push false
+        bodies := bodies.set! m (some b)
+        if ← isDefEq b τLean then answering := answering.set! m true
+        else if (← whnf b).isConstOf ``PUnit then pure ()
         else
-          answering := answering.push true
+          answering := answering.set! m true
           uniform := false
     | none =>
         throwError "`#leanscript_to_term`: {n} is used with a dependent motive, which the \
@@ -309,10 +400,10 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   -- members answering different types: the fold answers the tuple of all of them
   let mut slots : Array (Option Nat) := #[]
   let mut comps : Array Expr := #[]
-  for h : j in [0:bodies.size] do
-    if answering[j]! then
+  for h : m in [0:nM] do
+    if answering[m]! then
       slots := slots.push (some comps.size)
-      comps := comps.push bodies[j]
+      comps := comps.push bodies[m]!.get!
     else slots := slots.push none
   let unfoldDefault (t : Expr) : MetaM Expr := do
     let some d0 ← synthDefault? t
@@ -326,7 +417,7 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
   let τLeanCur := τLean
   let τLean ← if uniform then pure τLean else tupleTy comps
   let τ ← tyOfType τLean
-  let dflt ← if answering.all id then pure none
+  let dflt ← if memberMotives.all (answering[·]!) then pure none
     else if uniform then do
       let some d ← synthDefault? τLean
         | throwError "`#leanscript_to_term`: the fold of this recursion on a mutual family \
@@ -334,19 +425,15 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
           `Inhabited` instance, and no constructor whose fields all have a default"
       pure (some d)
     else pure (some (← tupleMk compDflts))
-  -- the members' schemas, in order
-  let msE ← reduceTy (mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.members)
-    (tyWfInE sc) fB)
-  let schemas := (← listOfExpr msE).toArray
   let mentionsIdx (t : Expr) : MetaM (Option Nat) := do
-    for h : j in [0:selfTys.size] do
-      if ← isDefEq t selfTys[j] then return some j
+    for h : j in [0:memberLeanTys.size] do
+      if ← isDefEq t memberLeanTys[j] then return some j
     return none
   let mentions (t : Expr) : Bool :=
     (t.find? fun s => match s with | .const k _ => ii.all.contains k | _ => false).isSome
   let mut members : Array FamMemberInfo := #[]
-  for h : j in [0:selfTys.size] do
-    let jTy := selfTys[j]
+  for h : j in [0:memberLeanTys.size] do
+    let jTy := memberLeanTys[j]
     let .const jn jlvls := jTy.getAppFn
       | throwError "`#leanscript_to_term`: internal: member {jTy} of the family of {ind} \
           is not an inductive type"
@@ -374,8 +461,13 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
               language erases, which the fold of a family does not read"
           if let some k ← mentionsIdx t then out := out.push (.member k)
           else if mentions t then
-            throwError "`#leanscript_to_term`: the field of type {t} of {cn} mentions the \
-              mutual block other than as one of its members"
+            -- held inside an array, a function or a delay: the fold binds the answers
+            -- at what it holds beside it
+            let some (k, p) ← classifyFamNested mentionsIdx mentions t
+              | throwError "`#leanscript_to_term`: the field of type {t} of {cn} mentions \
+                  the mutual block other than as one of its members, an array of them, a \
+                  function into one or a delay of one"
+            out := out.push (.nested t k p)
           else out := out.push (.plain t)
         return out
       let fsE := idxs[i]!
@@ -384,14 +476,16 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
         throwError "`#leanscript_to_term`: internal: {cn} has {fields.size} fields, its \
           tree {fsL.size}"
       ctors := ctors.push { name := cn, fields, fsE, fsL, lvls := jlvls, params := jparams }
+    let mj := memberMotives[j]!
     members := members.push
-      { ind := jn, selfTy := selfTys[j]!, schema, ctors, brecF := brecFs[j]!,
-        answering := answering[j]! }
+      { ind := jn, selfTy := jTy, schema, ctors, brecF := brecFs[mj]!,
+        answering := answering[mj]!, motive := mj }
   let bindE := mkApp3 (mkConst ``LeanScript.TyWf.famRecBinders) nE fB hwf
   let bindE := mkApp bindE τ
   let info : RecFamInfo :=
     { lvls := ilvls, params, nE, sc, msE, members, bindE, τLean, τ, motives, dflt,
-      tuple := !uniform, slots, comps, compDflts }
+      tuple := !uniform, slots, comps, compDflts, brecFs, motiveDoms := selfTys,
+      motiveAnswering := answering }
   let scrutT ← trans c major
   let elem := mkApp (mkConst ``LeanScript.LeanFamMemberSchema) (tyWfInE sc)
   let attempt (k : Nat) : MetaM Expr := do
@@ -402,7 +496,7 @@ def transRecFamilyBrecOn? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name)
       let j := schemas.size - 1 - r
       let mj := members[j]!
       let casesJ ← withLocalDeclD `top mj.selfTy fun top =>
-        recFamCases trans info c k j top j top.fvarId! #[] #[] [] #[]
+        recFamCases trans info c k j top j top.fvarId! #[] #[] [] #[] #[]
       let restL ← mkListLit elem (schemas.extract (j + 1) schemas.size).toList
       acc := mkAppN (mkConst `LeanScript.FamilyFoldKCases.cons)
         (pre ++ #[schemas[j]!, restL, casesJ, acc])

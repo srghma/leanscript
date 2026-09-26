@@ -190,39 +190,10 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
         -- (if the recursion has one for it) is computed from the windows of its elements
         -- and bound
         withLocalDeclD `arr arrTy fun arrV => do
-          let u ← getDecLevel elemTy
-          let aux? ← recObjAuxMotive info arrTy
-          let list? ← recObjAuxMotive info (mkApp (mkConst ``List [u]) elemTy)
           let win ← c.var ps[i].fvarId!
-          let listOfArr := mkApp2 (mkConst ``Array.toList [u]) elemTy arrV
-          -- the answer at the list inside the array, if the recursion has one for lists
-          let withList (cont : TCtx → Array (Expr × Expr) → Option (Nat × Expr) → MetaM Expr) :
-              MetaM Expr := do
-            match list? with
-            | none => cont c answers none
-            | some (mL, τLLean) =>
-                let τL ← tyOfType τLLean
-                let listT ← recObjListAnswer info c win pTys[i]! elemTy elem j mL τLLean
-                withLocalDeclD `ansList τLLean fun ansL => do
-                  let cL := c.pushFields #[(ansL.fvarId!, τL)]
-                  let body ← cont cL (answers.push (motiveKey mL listOfArr, ansL))
-                    (some (mL, ansL))
-                  return mkAppN (mkConst `LeanScript.Term.letE')
-                    #[c.sg, c.gamma, τL, info.τ, listT, body]
-          withList fun cL answersL ansL? => do
-            -- then the answer at the array, if the recursion has one for arrays
-            match aux? with
-            | none =>
-                go cL answersL (frontier.push arrV) pfs ps pTys j (i + 1) (pvals.push arrV) k
-            | some (mA, τALean) =>
-                let τA ← tyOfType τALean
-                let arrT ← recObjArrAnswer info cL elemTy mA ansL?
-                withLocalDeclD `ansArr τALean fun ansA => do
-                  let cA := cL.pushFields #[(ansA.fvarId!, τA)]
-                  let body ← go cA (answersL.push (motiveKey mA arrV, ansA))
-                    (frontier.push arrV) pfs ps pTys j (i + 1) (pvals.push arrV) k
-                  return mkAppN (mkConst `LeanScript.Term.letE')
-                    #[c.sg, cL.gamma, τA, info.τ, arrT, body]
+          recObjBindArray info c answers arrV win pTys[i]! arrTy elemTy elem j
+            fun c' answers' =>
+              go c' answers' (frontier.push arrV) pfs ps pTys j (i + 1) (pvals.push arrV) k
     | .fn fTy dom =>
         -- the frontier: the function itself is a variable nothing may take apart, and the
         -- answer at `f a` is read from the window at `a`
@@ -306,6 +277,45 @@ partial def recObjPayloadFrom (info : RecObjInfo) (c : TCtx) (answers : Array (E
   else
     k c answers frontier pvals
 
+
+/-- The answers of the recursion at an array `arrV` (of Lean type `arrTy` = `Array elemTy`)
+    of values that mention the record, whose window `win` (of language type `winTy`) holds
+    the windows of its elements, each of depth `j`: the answer of the auxiliary motive of
+    `List elemTy` at its list, if the recursion has one (`recObjListAnswer`), and then that
+    of the motive of `Array elemTy` at it (`recObjArrAnswer`), each let-bound in front of
+    what `cont` builds, with `answers` extended by them. -/
+partial def recObjBindArray (info : RecObjInfo) (c : TCtx) (answers : Array (Expr × Expr))
+    (arrV win winTy arrTy elemTy : Expr) (elem : RecObjPayloadField) (j : Nat)
+    (cont : TCtx → Array (Expr × Expr) → MetaM Expr) : MetaM Expr := do
+  let u ← getDecLevel elemTy
+  let aux? ← recObjAuxMotive info arrTy
+  let list? ← recObjAuxMotive info (mkApp (mkConst ``List [u]) elemTy)
+  let listOfArr := mkApp2 (mkConst ``Array.toList [u]) elemTy arrV
+  -- the answer at the list inside the array, if the recursion has one for lists
+  let withList (cont' : TCtx → Array (Expr × Expr) → Option (Nat × Expr) → MetaM Expr) :
+      MetaM Expr := do
+    match list? with
+    | none => cont' c answers none
+    | some (mL, τLLean) =>
+        let τL ← tyOfType τLLean
+        let listT ← recObjListAnswer info c win winTy elemTy elem j mL τLLean
+        withLocalDeclD `ansList τLLean fun ansL => do
+          let cL := c.pushFields #[(ansL.fvarId!, τL)]
+          let body ← cont' cL (answers.push (motiveKey mL listOfArr, ansL)) (some (mL, ansL))
+          return mkAppN (mkConst `LeanScript.Term.letE')
+            #[c.sg, c.gamma, τL, info.τ, listT, body]
+  withList fun cL answersL ansL? => do
+    -- then the answer at the array, if the recursion has one for arrays
+    match aux? with
+    | none => cont cL answersL
+    | some (mA, τALean) =>
+        let τA ← tyOfType τALean
+        let arrT ← recObjArrAnswer info cL elemTy mA ansL?
+        withLocalDeclD `ansArr τALean fun ansA => do
+          let cA := cL.pushFields #[(ansA.fvarId!, τA)]
+          let body ← cont cA (answersL.push (motiveKey mA arrV, ansA))
+          return mkAppN (mkConst `LeanScript.Term.letE')
+            #[c.sg, cL.gamma, τA, info.τ, arrT, body]
 
 /-- The answer of the auxiliary motive of `List elemTy` at the list of an array field, as
     a term in `c`: the array `win` of the window holds the windows of the elements (of
