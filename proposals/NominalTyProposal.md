@@ -1,6 +1,6 @@
 # Proposal: alternatives to `WTypeTyProposal.md` — declared datatypes (recommended), final coalgebras, and others
 
-> **Status: proposal only.** Nothing in `LeanScript/`, `TyTests/` or `TermTests/` has changed.
+> **Status: implemented** (see §2.9).
 >
 > This note answers: *same properties as `proposals/WTypeTyProposal.md` (Part A, hardened),
 > but a different design.* §1 surveys the candidates, including a final-coalgebra (`ν`) meaning.
@@ -305,32 +305,28 @@ Each step builds on its own and is checked by `lake build` together with an `rg 
 8. Tests: the per-binder suites merge into one `DataTest`. Add a two-block test in which a
    later block stores an older type in a field (as block 2 of the toy does).
 
-**Status of the implementation (in `LeanScript/Nominal/`, built next to the old stack, which is
-untouched):**
+**Status of the implementation: done.** N is now the only grammar of the project; the old
+stack (`Ty/*`, `Ty.Wf`, `TyWf`, `Expr/*`, `Den/*`, `CtorFn/*`, `Deriving/*`, the old
+`ToTerm/*` and their tests) is deleted, and the modules live at the top of `LeanScript/`.
 
-- Steps 1–3: done in `Nominal/Ty.lean`, `Nominal/Decl.lean`, `Nominal/Container.lean`,
-  `Nominal/Den.lean`, `Nominal/Two.lean`, `Nominal/DenFacts.lean` (including
-  `DSig.dataOut_dataIn` and `DSig.dataIn_dataOut`). `Ty/Shape.lean` and `Den/*` are not deleted,
-  because the old stack still uses them.
-- Step 4: not done; `Ty/Wf*`, `TyWf` are still used by the old `Term`, `ToTerm` and `CtorFn`.
-- Step 5: done as a new direct-style term language `Nominal/Term.lean` with `Nominal/Eval.lean`
-  (`data_in`, `data_out`, `data_rec` at any block); `data_brec` is not implemented.
-- Step 6: done. `leanscript_signature Prog where …` (`Nominal/Signature.lean`) declares the
-  SCCs of a program once, in grounding order, and makes `Prog` the current program
-  (`leanscript_use_signature` switches back to an earlier one). The cached term elaborators
-  `#leanscript_get_ty T`, `#leanscript_get_ctor c (α := T)…` and `#leanscript_get_cases I …`
-  (`Nominal/GetCtor.lean`) generate a definition once per request and reuse it, also across
-  modules. Structural types and their constructors are generic in the signature; a recursive
-  type is its name in the current program, its constructor functions are `data_in` of the
-  payload, and its case analysis is `data_out` followed by `…casesOn`. The three share one
-  generator in `Nominal/Gen/` (reading, SCCs and grounding, printing, cache).
-- Step 7: not done (porting `ToTerm/*`).
-- Step 8: `TyTests/NominalTest.lean` (two blocks, the later one storing an older type),
-  `TyTests/NominalSignatureTest.lean`, `TyTests/NominalGetCtorTest.lean`,
-  `TyTests/NominalGetCtorImportTest.lean` (the cache across modules),
-  `TermTests/NominalTermTest.lean`.
-
----
+- Steps 1–3: `Ty.lean`, `Decl.lean`, `Container.lean`, `Den.lean`, `Two.lean`,
+  `DenFacts.lean` (`DSig.dataOut_dataIn`, `DSig.dataIn_dataOut`, `Ty.den_exists_ne`).  Two
+  departures from the text above: a union carries the shape of its constructors
+  (`Ctors ks bs`, `UnionShape bs`), so a union of two constructors without fields cannot be
+  written (two points are only ever `bool`); a `Unit` field is refused, not erased; and there
+  is no `thunk`/`lazy` wrapper (it would denote the value it wraps, so `thunk bool` would be a
+  second type of two values).
+- Step 4: done (deleted).  `Ctx ks := List (Ty ks)`.
+- Step 5: `Term.lean`, `Eval.lean`, in direct style: `data_in`, `data_out`, `data_rec` and
+  `data_brec` at any block (`DenBrec.lean`: `DSig.dataBrec` and its computation rule
+  `DSig.dataBrec_dataIn`).
+- Step 6: `Signature.lean` (`leanscript_signature`), `GetCtor.lean` (`#leanscript_get_ty`,
+  `#leanscript_get_ctor`, `#leanscript_get_cases`), on the generator in `Gen/`.
+- Step 7: `ToTerm.lean` (`#leanscript_to_term`), through `#leanscript_get_ctor` and the
+  `data_*` formers; structural recursion becomes `nat_rec`, `data_rec`, or `data_brec` of the
+  smallest depth that reaches the recursive calls.
+- Step 8: `TyTests/{BlocksTest,SignatureTest,GetCtorTest,GetCtorImportTest}.lean`,
+  `TermTests/{TermTest,ToTermTest}.lean`.
 
 ## 3. Final coalgebra (`ν`): what it would and would not give
 

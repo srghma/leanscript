@@ -42,8 +42,7 @@ variable {MyTy : Type}
   -- (shareCommon_object : MyTy)
   -- (shareCommon_stateFactory : Type)
   -- (shareCommon_state : shareCommon_stateFactory -> MyTy)
-  -- `Lean.Name` is an ordinary inductive of the language (its `LeanScriptTyWf` instance is
-  -- in `LeanScript.Ty.Instances`); no entry of the catalogue answers with one
+  -- `Lean.Name` is an ordinary inductive type; no entry of the catalogue answers with one
   (leanName : MyTy)
   (ordering : MyTy)
   -- A byte array is `Array UInt8` and a float array is `Array Float`, so neither is a
@@ -55,6 +54,11 @@ variable {MyTy : Type}
 
 /-!
 ## The catalogue, in two levels
+
+The catalogue records which functions of `Init` are pure externs, with their types over any
+grammar of types `MyTy`.  The language does not depend on it: `LeanScript.Term.extern` holds
+the Lean function itself, and `#leanscript_to_term` names an extern after the function it
+calls.
 
 The families are in four modules, by theme: `LeanScript.LeanInitPureExterns.Core`
 (`Prelude`, `Core`, `Nat`, `Int`, `Array`, …), `.FixedWidth` (`UInt8` … `Int64`),
@@ -76,14 +80,14 @@ Two reasons for the split:
   (with fields) numbered past `243`: with one inductive of 460 entries, a definition
   building one of the later ones did not compile ("tag too big");
 * a `match` on an inductive is reduced through its recursor, which takes one minor
-  premise per constructor, so every call of a 460-way `Extern.eval` instantiated 460
-  alternatives; the two-level `Extern.eval` instantiates the families plus one family.
+  premise per constructor, so every `match` over a 460-way inductive instantiates 460
+  alternatives; a two-level `match` instantiates the families plus one family.
 
 Every family is written against the same parameters as `LeanInitPureExtern`, but only
 the ones its entries use are its own parameters (as for any inductive in a `variable`
 context), so the constructor of `LeanInitPureExtern` applies each family to those:
 when an entry that uses another parameter (`option`, say) is added to a family, add it
-there too.  After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
+there too.
 -/
 
 ----------------------
@@ -95,7 +99,7 @@ there too.  After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
 -- Init/Data/Nat/Gcd.lean: every entry is commented out, so it has no family
 -------------------------
 -- `Nat.gcd` is translated as an ordinary function (from its definition, as if it had no
--- `@[extern]`), and `#leanscript_to_term` reads `Nat.gcd._unary` as `Nat.gcd`
+-- `@[extern]`)
 -- | lean_nat_gcd__Nat_gcd__unary : (_ : Nat) ×' Nat → LeanInitPureExtern nat -- Nat.gcd._unary
 -- | lean_nat_gcd__Nat_gcd : Nat → Nat → LeanInitPureExtern nat -- Nat.gcd
 

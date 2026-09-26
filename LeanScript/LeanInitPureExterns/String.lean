@@ -12,7 +12,6 @@ namespace LeanScript
 One part of the catalogue `LeanScript.LeanInitPureExtern` (see
 `LeanScript.LeanInitPureExterns` for how it is organised).  Every family is written against
 the same parameters as `LeanInitPureExtern`; only the ones its entries use become its own.
-After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
 -/
 
 open LeanPrimTy
@@ -51,7 +50,7 @@ inductive StringBootstrapExtern : MyTy → Type where
   | lean_string_dropright : String → Nat → StringBootstrapExtern string -- String.Internal.dropRight
   | lean_substring_takewhile : Substring.Raw → (Char → Bool) → StringBootstrapExtern substringRaw -- Substring.Raw.Internal.takeWhile
   | lean_substring_get : Substring.Raw → String.Pos.Raw → StringBootstrapExtern char -- Substring.Raw.Internal.get
-  -- `USize` is `Nat` here, so this is `lean_string_get_byte_fast__String_Internal_getUTF8Byte`; `#leanscript_to_term` translates a call of `String.Internal.ugetUTF8Byte` to that entry
+  -- `USize` is `Nat` here, so this is `lean_string_get_byte_fast__String_Internal_getUTF8Byte`; a call of `String.Internal.ugetUTF8Byte` is that entry
   -- | lean_string_uget_byte_fast : (s : String) → (n : Nat) → (h : n < s.utf8ByteSize) → StringBootstrapExtern uint8 -- String.Internal.ugetUTF8Byte
   | lean_string_contains : String → Char → StringBootstrapExtern LeanPrimTy.bool -- String.Internal.contains
   | lean_string_front : String → StringBootstrapExtern char -- String.Internal.front
@@ -105,7 +104,7 @@ inductive StringBasicExtern : MyTy → Type where
   | lean_string_utf8_prev__String_Pos_Raw_prev : String → String.Pos.Raw → StringBasicExtern stringPosRaw -- String.Pos.Raw.prev
   | lean_string_utf8_prev__String_prev : String → String.Pos.Raw → StringBasicExtern stringPosRaw -- String.prev
   | lean_string_utf8_next_fast__String_next' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → StringBasicExtern stringPosRaw -- String.next'
-  -- the same function as `lean_string_utf8_next_fast__String_next'`; `#leanscript_to_term` translates a call of `String.Pos.Raw.next'` to that entry
+  -- the same function as `lean_string_utf8_next_fast__String_next'`; a call of `String.Pos.Raw.next'` is that entry
   -- | lean_string_utf8_next_fast__String_Pos_Raw_next' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → StringBasicExtern stringPosRaw -- String.Pos.Raw.next'
   | lean_string_utf8_next_fast__String_Pos_next : {s : String} → (pos : s.Pos) → (h : pos ≠ s.endPos) → StringBasicExtern (LeanPrimTy.stringPos s) -- String.Pos.next
   | lean_string_data__String_data : String → StringBasicExtern (list char) -- String.data

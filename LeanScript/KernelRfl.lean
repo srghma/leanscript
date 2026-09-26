@@ -9,13 +9,9 @@ public section
 # `kernel_rfl`: an equation checked by the kernel only
 
 `rfl` (the term, or the tactic) first asks the elaborator's definitional-equality check
-whether the two sides agree, and only then hands the proof to the kernel.  For the
-evaluator of this language the elaborator's check is by far the slower of the two: every
-extern call goes through the case splits of `LeanScript.Extern.eval` (one over the
-families of the catalogue, then one over the entries of a family), and the elaborator's
-reduction of such splits costs much more than the kernel's (for `hstep` in
-`TermTests/FibWindowTest.lean` the elaborator takes about 9 s where the kernel takes well
-under a second; before the catalogue was split in two levels it took about 15 s).  It is
+whether the two sides agree, and only then hands the proof to the kernel.  For a
+large evaluation (a program run by `Term.eval`) the elaborator's check can be much slower
+than the kernel's.  It is
 also the check that counts heartbeats.
 
 `kernel_rfl` closes a goal `a = b` with `Eq.refl a` **without** that first check.  It is

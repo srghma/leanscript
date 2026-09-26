@@ -12,7 +12,6 @@ namespace LeanScript
 One part of the catalogue `LeanScript.LeanInitPureExtern` (see
 `LeanScript.LeanInitPureExterns` for how it is organised).  Every family is written against
 the same parameters as `LeanInitPureExtern`; only the ones its entries use become its own.
-After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
 -/
 
 open LeanPrimTy

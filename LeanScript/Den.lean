@@ -1,306 +1,386 @@
 module
 
-public import LeanScript.Den.Container
+public import LeanScript.Decl
+public import LeanScript.Container
 
 @[expose] public section
 
 set_option autoImplicit false
 
-open NonEmpty.ListCorrectByConstruction (NonEmptyList)
+/-!
+# The meaning of closed types and of declared datatypes
+
+* `Ty.den E t` — the Lean type a closed type denotes, given the meaning `E` of the declared
+  datatypes.  Structural recursion on the type.
+* `DSig.refDen Δ r` — the meaning of a declared datatype: an indexed W-type over its block,
+  whose older fields mean what the older signature says.  Structural recursion on the
+  signature.
+* `Ty.Den Δ t := Ty.den (DSig.refDen Δ) t`.
+
+A value of an older datatype is a value in every extension of the signature, with no
+conversion: `Ty.Den (.cons Δ k bs) (.data (.there r)) = Ty.Den Δ (.data r)` by `rfl`.
+
+The three operations on declared datatypes are here too, at every block of the signature
+(not only the newest one): `DSig.dataIn` (one layer in), `DSig.dataOut` (one layer out)
+and `DSig.dataRec` (the fold, with a different answer type per member).  They are
+structural, need no cast and compute by `rfl`.  The older fields of a body are read through
+the structural transports `Ty.lift`/`Ty.lower`, which are the identity on datatype values.
+-/
 
 namespace LeanScript
 
-/-!
-# `Ty.Den`: what a type of the language *is*
 
-The evaluator of `LeanScript.Term` is a **total Lean function**, so a value of the
-language has to be a value of a Lean type.  This module says which Lean type: `Ty.Den τ`
-is the type of the values of `τ`.
 
-| `τ` | `Ty.Den τ` |
-| :-- | :-- |
-| `Ty.prim p` | `LeanScript.LeanPrimTy.denote p` — the Lean type of that leaf's literals |
-| `σ ⇒ τ` | `Ty.Den σ → Ty.Den τ` — a **Lean** function, so there is no closure and no environment in a value |
-| `Ty.array α` | `Array (Ty.Den α)` |
-| `Ty.thunk α`, `Ty.lazy α` | `Ty.Den α` — a delay carries nothing beyond the value it stands for; the two wrappers differ only in the code printed for them |
-| `Ty.enum s` | `Fin s.nOfConstructors` — a constructor *number*, which is what the runtime holds |
-| `Ty.record fs` | the product of its fields' denotations, in declaration order, with no trailing `PUnit`: `⟨α, β, []⟩` is `Ty.Den α × Ty.Den β` |
-| `Ty.taggedUnion l` | a constructor number **with** that constructor's fields: `(t : Fin l.length) × Ty.DenAt l t` |
-| `Ty.recTaggedUnion l` | a **W-tree**: a node is a constructor number with that constructor's fields with their occurrences of the union blanked out, and one subtree per occurrence |
-| `Ty.recObject fs` | a **W-tree**: a node is the record's fields with its occurrences of itself blanked out, and one subtree per occurrence |
-| `Ty.recAlias b` | a **W-tree**: a node is the body with its occurrences of the newtype blanked out, and one subtree per occurrence |
-| `Ty.mutualRecursiveFamily f` | an **indexed W-tree**: a node of member `i` is that member's value with its occurrences of members blanked out, and one subtree per occurrence, rooted at the member it names |
+/-- Two constructors: a constructor without fields adds `Option`, never `PUnit ⊕ _`. -/
+def twoT : Option Type → Option Type → Type
+  | none, none => Bool
+  | none, some B => Option B
+  | some A, none => Option A
+  | some A, some B => A ⊕ B
 
-## Recursive shapes: containers
+/-- A constructor in front of the others. -/
+def consT : Option Type → Type → Type
+  | none, R => Option R
+  | some A, R => A ⊕ R
 
-Every type is read as a **container** (`PFunctor`, in `LeanScript.Den.PFunctor`):
-`Ty.toPFunctor τ` has a type of shapes and, for each shape, a type of *holes* — the places
-where the shape holds an occurrence `Ty.self` of the binder it is written under.  A
-closed type has no holes, the domain of an arrow is used as a type (`Ty.WfIn` keeps
-`Ty.self` out of it), and `Ty.Den τ` is the type of shapes, `(Ty.toPFunctor τ).A`.  Every
-equation of the table holds by `rfl`.
+mutual
+/-- The meaning of a closed type, given the meaning `E` of the declared datatypes. -/
+def Ty.den {ks : List Nat} (E : Ref ks → Type) : Ty ks → Type
+  | .prim p _ => p.denote
+  | .fn a b => Ty.den E a → Ty.den E b
+  | .array t => Array (Ty.den E t)
+  | .enum s => Fin s.nOfConstructors
+  | .record t fs => Ty.den E t × Fields.den E fs
+  | .union cs (h := _) => Ctors.den E cs
+  | .data r => E r
+/-- The meaning of fields: a nested product. -/
+def Fields.den {ks : List Nat} (E : Ref ks → Type) : Fields ks → Type
+  | .one t => Ty.den E t
+  | .cons t fs => Ty.den E t × Fields.den E fs
+/-- The payload of a constructor, if it has fields. -/
+def Ctor.den {ks : List Nat} {b : Bool} (E : Ref ks → Type) : Ctor ks b → Option Type
+  | .nullary => none
+  | .fields fs => some (Fields.den E fs)
+/-- The meaning of constructors: a nested sum, `Option` for a constructor without fields. -/
+def Ctors.den {ks : List Nat} {bs : List Bool} (E : Ref ks → Type) : Ctors ks bs → Type
+  | .two c d => twoT (Ctor.den E c) (Ctor.den E d)
+  | .cons c cs => consT (Ctor.den E c) (Ctors.den E cs)
+end
 
-A recursive tagged union is then the least fixpoint of the container of its
-constructors, which is its W-type (`WType`).  `LeanScript.Den.Rec` relates a
-node of it to the constructor's *unfolded* fields (`Ty.roll`, `Ty.unroll`,
-`Ty.DenRec.mk`, `Ty.DenRec.unfold`), which is what the evaluator's introduction form and
-eliminators use.
+/-! ## Renaming and its transports -/
 
-A recursive record and a recursive newtype are read the same way: the least fixpoint of
-the container of the record's fields (`Ty.toPFunctorRecord`) and of the newtype's body,
-so each denotes a W-type too, and `LeanScript.Den.Rec` relates a node of it to the
-*unfolded* fields or body (`Ty.DenObj.mk`/`unfold`, `Ty.DenAlias.mk`/`unfold`).  A record
-or newtype that could only be built from an occurrence of itself has no finite value, and
-its W-type is empty, which is the right answer: `ty_wf` rejects those anyway.
+section Transport
+variable {ks ks' : List Nat} (f : Ref ks → Ref ks') (E : Ref ks' → Type)
 
-A **mutual family** (`Ty.mutualRecursiveFamily f`) is the least fixpoint of *one container
-per member*, whose holes are its occurrences `Ty.familyMember j` of members: an indexed
-polynomial functor (`LeanScript.IPFunctor`, in `LeanScript.Den.IPFunctor`), which records
-the member each hole holds.  `Ty.toIPF` is the container of a type written in the scope
-of a family, `Ty.toIPFFamily f` the list of containers of `f`'s members, and the values of
-the family are the indexed W-tree `FamW (Ty.toIPFFamily f) f.memberIdx` rooted at the
-member `f` selects.  `LeanScript.Den.Family` relates a node of it to the member's unfolded
-constructors, fields or body (`Ty.DenFam.mk`, `Ty.DenFam.unfold`).
+mutual
+/-- A value of `t` (datatypes read through `f`) is a value of the renamed type.  Structural,
+    the identity on declared datatypes. -/
+def Ty.lift : (t : Ty ks) → Ty.den (fun r => E (f r)) t → Ty.den E (Ty.map f t)
+  | .prim _ _, x => x
+  | .fn a b, x => fun y => Ty.lift b (x (Ty.lower a y))
+  | .array t, x => x.map (Ty.lift t)
+  | .enum _, x => x
+  | .record t fs, x => (Ty.lift t x.1, Fields.lift fs x.2)
+  | .union cs (h := _), x => Ctors.lift cs x
+  | .data _, x => x
+/-- The inverse of `Ty.lift`. -/
+def Ty.lower : (t : Ty ks) → Ty.den E (Ty.map f t) → Ty.den (fun r => E (f r)) t
+  | .prim _ _, x => x
+  | .fn a b, x => fun y => Ty.lower b (x (Ty.lift a y))
+  | .array t, x => x.map (Ty.lower t)
+  | .enum _, x => x
+  | .record t fs, x => (Ty.lower t x.1, Fields.lower fs x.2)
+  | .union cs (h := _), x => Ctors.lower cs x
+  | .data _, x => x
+def Fields.lift : (fs : Fields ks) → Fields.den (fun r => E (f r)) fs → Fields.den E (Fields.map f fs)
+  | .one t, x => Ty.lift t x
+  | .cons t fs, x => (Ty.lift t x.1, Fields.lift fs x.2)
+def Fields.lower : (fs : Fields ks) → Fields.den E (Fields.map f fs) → Fields.den (fun r => E (f r)) fs
+  | .one t, x => Ty.lower t x
+  | .cons t fs, x => (Ty.lower t x.1, Fields.lower fs x.2)
+def Ctors.lift {bs : List Bool} : (cs : Ctors ks bs) → Ctors.den (fun r => E (f r)) cs → Ctors.den E (Ctors.map f cs)
+  | .two .nullary .nullary, x => x
+  | .two .nullary (.fields fd), x => x.map (Fields.lift fd)
+  | .two (.fields fc) .nullary, x => x.map (Fields.lift fc)
+  | .two (.fields fc) (.fields fd), x =>
+      match x with | .inl a => .inl (Fields.lift fc a) | .inr b => .inr (Fields.lift fd b)
+  | .cons .nullary cs, x => x.map (Ctors.lift cs)
+  | .cons (.fields fc) cs, x =>
+      match x with | .inl a => .inl (Fields.lift fc a) | .inr b => .inr (Ctors.lift cs b)
+def Ctors.lower {bs : List Bool} : (cs : Ctors ks bs) → Ctors.den E (Ctors.map f cs) → Ctors.den (fun r => E (f r)) cs
+  | .two .nullary .nullary, x => x
+  | .two .nullary (.fields fd), x => x.map (Fields.lower fd)
+  | .two (.fields fc) .nullary, x => x.map (Fields.lower fc)
+  | .two (.fields fc) (.fields fd), x =>
+      match x with | .inl a => .inl (Fields.lower fc a) | .inr b => .inr (Fields.lower fd b)
+  | .cons .nullary cs, x => x.map (Ctors.lower cs)
+  | .cons (.fields fc) cs, x =>
+      match x with | .inl a => .inl (Fields.lower fc a) | .inr b => .inr (Ctors.lower cs b)
+end
 
-The occurrence leaves are not types on their own: `Ty.familyMember` denotes `PEmpty`, and
-`Ty.self`, which only occurs outside a binder in an ill-formed tree, denotes `PUnit`, the
-one hole.  Every *closed* type has values, so `LeanScript.Term.eval` interprets every term.
+end Transport
 
-Every definition here is written the way `LeanScript.Ty.beq` is — one function per shape
-of the nested tree, all in one `mutual` block — so that each recursive call is on a
-syntactic subterm and the whole family is *structurally* recursive.  That is also what
-makes the equations hold definitionally, which the evaluator relies on.
--/
+/-! ## Bodies as containers -/
 
-/-! ### Shapes of fields, as shapes of an environment
+section BodyDen
+variable {ks : List Nat} (E : Ref ks → Type)
 
-The fold of a recursive type reads a node's fields one at a time, as an environment is
-read, so it sees them as a shape of `Ty.toPFunctorList` (resp. `Ty.toIPFList`); a node
-holds them as a shape of `Ty.toPFunctorFields` (resp. `Ty.toIPFFields`).  These are the
-conversions. -/
+/-- The container of a field. -/
+def Fld.toIPF {n g : Nat} : Fld ks n g → IPF n
+  | .hole i _ => .hole i
+  | .old t => .const (Ty.den E t)
+  | .array f => .array (Fld.toIPF f)
+  | .fn a f => .fn (Ty.den E a) (Fld.toIPF f)
+def Flds.toIPF {n g : Nat} : Flds ks n g → IPF n
+  | .one f => Fld.toIPF E f
+  | .cons f fs => .prod (Fld.toIPF E f) (Flds.toIPF fs)
+def BCtor.toIPF {n g : Nat} {b : Bool} : BCtor ks n g b → Option (IPF n)
+  | .nullary => none
+  | .fields fs => some (Flds.toIPF E fs)
+def BCtors.toIPF {n : Nat} {bs : List Bool} : BCtors ks n bs → IPF n
+  | .two c d => .twoC (BCtor.toIPF E c) (BCtor.toIPF E d)
+  | .cons c cs => .consC (BCtor.toIPF E c) (BCtors.toIPF cs)
+def Alts.toIPF {n g : Nat} {bs : List Bool} : Alts ks n g bs → IPF n
+  | .two₁ c d => .twoC (BCtor.toIPF E c) (BCtor.toIPF E d)
+  | .two₂ c d => .twoC (BCtor.toIPF E c) (BCtor.toIPF E d)
+  | .here c cs => .consC (BCtor.toIPF E c) (BCtors.toIPF E cs)
+  | .there c u => .consC (BCtor.toIPF E c) (Alts.toIPF u)
+def Decl.toIPF {n g : Nat} : Decl ks n g → IPF n
+  | .wrap f _ => Fld.toIPF E f
+  | .record f fs => .prod (Fld.toIPF E f) (Flds.toIPF E fs)
+  | .union u (h := _) => Alts.toIPF E u
+/-- The container of member `g + i` of a block. -/
+def Mems.member {n g : Nat} : Mems ks n g → (i : Nat) → g + i < n → IPF n
+  | .nil, _, h => absurd h (by omega)
+  | .cons d _, 0, _ => Decl.toIPF E d
+  | .cons _ bs, i + 1, h => Mems.member bs i (by omega)
+end BodyDen
 
-/-- A shape of the fields of a constructor, as a shape of the environment-shaped product. -/
-def Ty.fieldsObjToList {X : Type} : (ts : List Ty) → (Ty.toPFunctorFields ts).Obj X →
-    (Ty.toPFunctorList ts).Obj X
-  | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-  | _ :: as, x => match as, x with
-    | [], x => PFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-    | b :: bs, x => PFunctor.Obj.pair x.prodFst (Ty.fieldsObjToList (b :: bs) x.prodSnd)
+/-- The members of a block, as one indexed container. -/
+abbrev Mems.fam {ks : List Nat} {k : Nat} (E : Ref ks → Type) (bs : Mems ks (k + 1) 0) :
+    Fin (k + 1) → IPF (k + 1) :=
+  fun j => Mems.member E bs j.val (Fin.zero_add_lt' j)
 
-/-- `Ty.fieldsObjToList`, on the fields of a constructor that has at least one. -/
-def Ty.neObjToList {X : Type} : (xs : NonEmptyList Ty) → (Ty.toPFunctorNE xs).Obj X →
-    (Ty.toPFunctorList xs.toList).Obj X
-  | ⟨a, as⟩, x => Ty.fieldsObjToList (a :: as) x
+/-- The meaning of each declared datatype: an indexed W-type over its block, whose older
+    fields mean what the older signature says.  Structural recursion on the signature. -/
+def DSig.refDen : {ks : List Nat} → DSig ks → Ref ks → Type
+  | _, .cons Δ _ bs, .here j => IW (Mems.fam (DSig.refDen Δ) bs) j
+  | _, .cons Δ _ _, .there r => DSig.refDen Δ r
 
-theorem PFunctor.Obj.map_pair {c d : PFunctor.{0, 0}} {X Y : Type} (g : X → Y) (x : c.Obj X)
-    (y : d.Obj X) :
-    PFunctor.map _ g (PFunctor.Obj.pair x y) =
-      PFunctor.Obj.pair (PFunctor.map _ g x) (PFunctor.map _ g y) := by
-  obtain ⟨a, f⟩ := x
-  obtain ⟨b, h⟩ := y
-  exact congrArg (Sigma.mk _) (funext fun | .inl _ => rfl | .inr _ => rfl)
+/-- The meaning of a closed type over a signature. -/
+abbrev Ty.Den {ks : List Nat} (Δ : DSig ks) (t : Ty ks) : Type := Ty.den (DSig.refDen Δ) t
 
-theorem PFunctor.Obj.map_const {A X Y : Type} (g : X → Y) (a : A) :
-    PFunctor.map (PFunctor.const A) g ⟨a, fun p => PEmpty.elim p⟩ = ⟨a, fun p => PEmpty.elim p⟩ :=
-  congrArg (Sigma.mk a) (funext fun p => PEmpty.elim p)
+example {ks : List Nat} (Δ : DSig ks) (k : Nat) (bs : Mems ks (k + 1) 0) (r : Ref ks) :
+    Ty.Den (.cons Δ k bs) (.data (.there r)) = Ty.Den Δ (.data r) := rfl
 
-/-- Converting a shape of fields commutes with changing what its holes hold. -/
-theorem Ty.fieldsObjToList_map {X Y : Type} (g : X → Y) :
-    ∀ (ts : List Ty) (x : (Ty.toPFunctorFields ts).Obj X),
-      PFunctor.map _ g (Ty.fieldsObjToList ts x) =
-        Ty.fieldsObjToList ts (PFunctor.map _ g x)
-  | [], _ => PFunctor.Obj.map_const g _
-  | [_], x => by
-      show PFunctor.map _ g (PFunctor.Obj.pair x _) = PFunctor.Obj.pair (PFunctor.map _ g x) _
-      rw [PFunctor.Obj.map_pair, PFunctor.Obj.map_const]
-  | a :: b :: bs, x => by
-      show PFunctor.map _ g (PFunctor.Obj.pair x.prodFst (Ty.fieldsObjToList (b :: bs) x.prodSnd)) =
-        PFunctor.Obj.pair (PFunctor.map _ g x).prodFst
-          (Ty.fieldsObjToList (b :: bs) (PFunctor.map _ g x).prodSnd)
-      rw [PFunctor.Obj.map_pair, Ty.fieldsObjToList_map g (b :: bs)]
-      rfl
+/-! ## Rolling and unrolling one layer -/
 
-theorem Ty.neObjToList_map {X Y : Type} (g : X → Y) :
-    ∀ (xs : NonEmptyList Ty) (x : (Ty.toPFunctorNE xs).Obj X),
-      PFunctor.map _ g (Ty.neObjToList xs x) = Ty.neObjToList xs (PFunctor.map _ g x)
-  | ⟨a, as⟩, x => Ty.fieldsObjToList_map g (a :: as) x
+section Roll
+variable {ks K : List Nat} (w : Ref ks → Ref K) (E' : Ref K → Type) {n : Nat} (σ : Fin n → Ty K)
 
-/-- `Ty.fieldsObjToList`, for a mutual family's containers. -/
-def Ty.fieldsIPFObjToList {X : Nat → Type} : (ts : List Ty) → (Ty.toIPFFields ts).Obj X →
-    (Ty.toIPFList ts).Obj X
-  | [], _ => ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-  | _ :: as, x => match as, x with
-    | [], x => IPFunctor.Obj.pair x ⟨PUnit.unit, fun p => PEmpty.elim p⟩
-    | b :: bs, x => IPFunctor.Obj.pair x.prodFst (Ty.fieldsIPFObjToList (b :: bs) x.prodSnd)
+def Fld.roll {g : Nat} : (f : Fld ks n g) → Ty.den E' (Fld.inst w σ f) →
+    (Fld.toIPF (fun r => E' (w r)) f).Obj (fun i => Ty.den E' (σ i))
+  | .hole _ _, x => ⟨PUnit.unit, fun _ => x⟩
+  | .old t, x => ⟨Ty.lower w E' t x, fun b => nomatch b⟩
+  | .array f, x =>
+      let o := listRoll (fun d => Fld.roll f d) x.toList
+      ⟨⟨o.1⟩, o.2⟩
+  | .fn a f, x => ⟨fun y => (Fld.roll f (x (Ty.lift w E' a y))).1,
+      fun p => (Fld.roll f (x (Ty.lift w E' a p.1))).2 p.2⟩
 
-/-- `Ty.fieldsIPFObjToList`, on the fields of a constructor that has at least one. -/
-def Ty.neIPFObjToList {X : Nat → Type} : (xs : NonEmptyList Ty) → (Ty.toIPFNE xs).Obj X →
-    (Ty.toIPFList xs.toList).Obj X
-  | ⟨a, as⟩, x => Ty.fieldsIPFObjToList (a :: as) x
+def Fld.unroll {g : Nat} : (f : Fld ks n g) →
+    (Fld.toIPF (fun r => E' (w r)) f).Obj (fun i => Ty.den E' (σ i)) → Ty.den E' (Fld.inst w σ f)
+  | .hole _ _, x => x.2 PUnit.unit
+  | .old t, x => Ty.lift w E' t x.1
+  | .array f, x => ⟨listUnroll (fun o => Fld.unroll f o) x.1.toList x.2⟩
+  | .fn a f, x => fun y => Fld.unroll f ⟨x.1 (Ty.lower w E' a y), fun q => x.2 ⟨Ty.lower w E' a y, q⟩⟩
 
-/-- `Ty.fieldsIPFObjToList`, on the fields of a record. -/
-def Ty.recordIPFObjToList {X : Nat → Type} : (fs : LeanRecordSchema Ty) →
-    (Ty.toIPFRecord fs).Obj X → (Ty.toIPFList fs.toList).Obj X
-  | ⟨a, b, rest⟩, x => Ty.fieldsIPFObjToList (a :: b :: rest) x
+def Flds.roll {g : Nat} : (fs : Flds ks n g) → Fields.den E' (Flds.inst w σ fs) →
+    (Flds.toIPF (fun r => E' (w r)) fs).Obj (fun i => Ty.den E' (σ i))
+  | .one f, x => Fld.roll w E' σ f x
+  | .cons f fs, x => .pair (Fld.roll w E' σ f x.1) (Flds.roll fs x.2)
 
-/-- The fields of constructor number `t` of a tagged union, as a product.  Out of range
-    it is `PEmpty`, which is what makes a dispatch on a union exhaustive without a
-    bound. -/
-@[reducible] def Ty.DenAt (l : LeanTaggedUnionSchema Ty) (t : Nat) : Type :=
-  (Ty.toPFunctorAt l t).A
+def Flds.unroll {g : Nat} : (fs : Flds ks n g) →
+    (Flds.toIPF (fun r => E' (w r)) fs).Obj (fun i => Ty.den E' (σ i)) → Fields.den E' (Flds.inst w σ fs)
+  | .one f, x => Fld.unroll w E' σ f x
+  | .cons f fs, x => (Fld.unroll w E' σ f x.fst, Flds.unroll fs x.snd)
 
-/-- `Ty.DenAt`, on the constructors that follow a field-less one. -/
-@[reducible] def Ty.DenAtCP (c : CtorsWithPayload Ty) (t : Nat) : Type := (Ty.toPFunctorAtCP c t).A
+/-- Two constructors. -/
+def BCtor.rollTwo {g g' : Nat} {a b : Bool} : (c : BCtor ks n g a) → (d : BCtor ks n g' b) →
+    twoT (Ctor.den E' (BCtor.inst w σ c)) (Ctor.den E' (BCtor.inst w σ d)) →
+    (IPF.twoC (BCtor.toIPF (fun r => E' (w r)) c) (BCtor.toIPF (fun r => E' (w r)) d)).Obj
+      (fun i => Ty.den E' (σ i))
+  | .nullary, .nullary, x => .ofConst x
+  | .nullary, .fields fd, x => match x with | .none => .none | .some a => .some (Flds.roll w E' σ fd a)
+  | .fields fc, .nullary, x => match x with | .none => .none | .some a => .some (Flds.roll w E' σ fc a)
+  | .fields fc, .fields fd, x =>
+      match x with | .inl a => .inl (Flds.roll w E' σ fc a) | .inr b => .inr (Flds.roll w E' σ fd b)
 
-/-- `Ty.DenAt`, on a plain list of constructors. -/
-@[reducible] def Ty.DenAtList (cs : List (List Ty)) (t : Nat) : Type :=
-  (Ty.toPFunctorAtList cs t).A
+def BCtor.unrollTwo {g g' : Nat} {a b : Bool} : (c : BCtor ks n g a) → (d : BCtor ks n g' b) →
+    (IPF.twoC (BCtor.toIPF (fun r => E' (w r)) c) (BCtor.toIPF (fun r => E' (w r)) d)).Obj
+      (fun i => Ty.den E' (σ i)) →
+    twoT (Ctor.den E' (BCtor.inst w σ c)) (Ctor.den E' (BCtor.inst w σ d))
+  | .nullary, .nullary, x => x.1
+  | .nullary, .fields fd, x =>
+      match x.caseOpt with | .none => .none | .some o => .some (Flds.unroll w E' σ fd o)
+  | .fields fc, .nullary, x =>
+      match x.caseOpt with | .none => .none | .some o => .some (Flds.unroll w E' σ fc o)
+  | .fields fc, .fields fd, x =>
+      match x.caseSum with
+      | .inl o => .inl (Flds.unroll w E' σ fc o) | .inr o => .inr (Flds.unroll w E' σ fd o)
 
-/-- The values of a tagged union: a constructor number, with exactly that constructor's
-    fields.  There is no way to build one whose tag is out of range, and no way to read a
-    field of a constructor other than the one the value holds. -/
-abbrev Ty.DenTU (l : LeanTaggedUnionSchema Ty) : Type :=
-  (t : Fin l.length) × Ty.DenAt l t.val
+/-- A constructor in front of the others. -/
+def BCtor.rollCons {g : Nat} {a : Bool} {R : IPF n} {RT : Type} (rest : RT → R.Obj (fun i => Ty.den E' (σ i))) :
+    (c : BCtor ks n g a) → consT (Ctor.den E' (BCtor.inst w σ c)) RT →
+    (IPF.consC (BCtor.toIPF (fun r => E' (w r)) c) R).Obj (fun i => Ty.den E' (σ i))
+  | .nullary, x => match x with | .none => .none | .some a => .some (rest a)
+  | .fields fc, x => match x with | .inl a => .inl (Flds.roll w E' σ fc a) | .inr b => .inr (rest b)
 
-/-! ## The fields of a constructor, named by number
+def BCtor.unrollCons {g : Nat} {a : Bool} {R : IPF n} {RT : Type} (rest : R.Obj (fun i => Ty.den E' (σ i)) → RT) :
+    (c : BCtor ks n g a) → (IPF.consC (BCtor.toIPF (fun r => E' (w r)) c) R).Obj (fun i => Ty.den E' (σ i)) →
+    consT (Ctor.den E' (BCtor.inst w σ c)) RT
+  | .nullary, x => match x.caseOpt with | .none => .none | .some o => .some (rest o)
+  | .fields fc, x => match x.caseSum with
+      | .inl o => .inl (Flds.unroll w E' σ fc o) | .inr o => .inr (rest o)
 
-`LeanScript.Term.taggedUnion_mk` and `LeanScript.TaggedUnionSomeCases` name a constructor
-by a number `t` with a proof `t < l.length`, and speak of its fields as
-`Ty.DenFields (l.get t ht)`; a value holds them as `Ty.DenAt l t`.  The two are the same
-type — that is `Ty.denAt_eq` — and `Ty.DenTU.mk` and `Ty.DenTU.field?` are the two
-directions of that identification. -/
+def BCtors.roll {bs : List Bool} : (cs : BCtors ks n bs) → Ctors.den E' (BCtors.inst w σ cs) →
+    (BCtors.toIPF (fun r => E' (w r)) cs).Obj (fun i => Ty.den E' (σ i))
+  | .two c d, x => BCtor.rollTwo w E' σ c d x
+  | .cons c cs, x => BCtor.rollCons w E' σ (BCtors.roll cs) c x
 
-/-- The fields of a constructor that has at least one are the product of their
-    denotations.  This is not definitional — `Ty.DenNE` is a case analysis on the schema,
-    and a schema in hand is a variable rather than a pair — so an evaluator that has a
-    `Ty.DenNE` and wants an environment `cast`s along it. -/
-theorem Ty.denNE_eq (xs : NonEmptyList Ty) : Ty.DenNE xs = Ty.DenFields xs.toList := by
-  cases xs; rfl
+def BCtors.unroll {bs : List Bool} : (cs : BCtors ks n bs) → (BCtors.toIPF (fun r => E' (w r)) cs).Obj (fun i => Ty.den E' (σ i)) →
+    Ctors.den E' (BCtors.inst w σ cs)
+  | .two c d, x => BCtor.unrollTwo w E' σ c d x
+  | .cons c cs, x => BCtor.unrollCons w E' σ (BCtors.unroll cs) c x
 
-/-- The fields of a record are the product of their denotations, in declaration order. -/
-theorem Ty.denRecord_eq (fs : LeanRecordSchema Ty) :
-    Ty.DenRecord fs = Ty.DenFields fs.toList := by
-  cases fs; rfl
+def Alts.roll {g : Nat} {bs : List Bool} : (u : Alts ks n g bs) → Ctors.den E' (Alts.inst w σ u) →
+    (Alts.toIPF (fun r => E' (w r)) u).Obj (fun i => Ty.den E' (σ i))
+  | .two₁ c d, x => BCtor.rollTwo w E' σ c d x
+  | .two₂ c d, x => BCtor.rollTwo w E' σ c d x
+  | .here c cs, x => BCtor.rollCons w E' σ (BCtors.roll w E' σ cs) c x
+  | .there c u, x => BCtor.rollCons w E' σ (Alts.roll u) c x
 
-theorem Ty.denAtList_eq : ∀ (l : List (List Ty)) (t : Nat) (ht : t < l.length),
-    Ty.DenAtList l t = Ty.DenFields l[t]
-  | [], _, ht => absurd ht (by simp)
-  | _ :: _, 0, _ => rfl
-  | _ :: rest, n + 1, ht => Ty.denAtList_eq rest n (by simpa using ht)
+def Alts.unroll {g : Nat} {bs : List Bool} : (u : Alts ks n g bs) → (Alts.toIPF (fun r => E' (w r)) u).Obj (fun i => Ty.den E' (σ i)) →
+    Ctors.den E' (Alts.inst w σ u)
+  | .two₁ c d, x => BCtor.unrollTwo w E' σ c d x
+  | .two₂ c d, x => BCtor.unrollTwo w E' σ c d x
+  | .here c cs, x => BCtor.unrollCons w E' σ (BCtors.unroll w E' σ cs) c x
+  | .there c u, x => BCtor.unrollCons w E' σ (Alts.unroll u) c x
 
-theorem Ty.denAtCP_eq : ∀ (c : CtorsWithPayload Ty) (t : Nat) (ht : t < c.toList.length),
-    Ty.DenAtCP c t = Ty.DenFields c.toList[t]
-  | .here fields _, 0, _ => by cases fields; rfl
-  | .here _ rest, n + 1, ht =>
-      Ty.denAtList_eq rest n (by simpa [CtorsWithPayload.toList] using ht)
-  | .skip _, 0, _ => rfl
-  | .skip rest, n + 1, ht =>
-      Ty.denAtCP_eq rest n (by simpa [CtorsWithPayload.toList] using ht)
+def Decl.roll {g : Nat} : (d : Decl ks n g) → Ty.den E' (Decl.inst w σ d) →
+    (Decl.toIPF (fun r => E' (w r)) d).Obj (fun i => Ty.den E' (σ i))
+  | .wrap f _, x => Fld.roll w E' σ f x
+  | .record f fs, x => .pair (Fld.roll w E' σ f x.1) (Flds.roll w E' σ fs x.2)
+  | .union u (h := _), x => Alts.roll w E' σ u x
 
-theorem Ty.denAt_eq : ∀ (l : LeanTaggedUnionSchema Ty) (t : Nat) (ht : t < l.length),
-    Ty.DenAt l t = Ty.DenFields (l.get t ht)
-  | .payloadFirst fields _ _, 0, _ => by cases fields; rfl
-  | .payloadFirst _ _ _, 1, _ => rfl
-  | .payloadFirst _ _ rest, n + 2, ht => by
-      simp only [LeanTaggedUnionSchema.get, LeanTaggedUnionSchema.toList]
-      exact Ty.denAtList_eq rest n (by
-        simp only [LeanTaggedUnionSchema.length] at ht; omega)
-  | .skip _, 0, _ => rfl
-  | .skip rest, n + 1, ht => by
-      simp only [LeanTaggedUnionSchema.get, LeanTaggedUnionSchema.toList]
-      exact Ty.denAtCP_eq rest n (by
-        simp only [LeanTaggedUnionSchema.length] at ht
-        simpa using ht)
+def Decl.unroll {g : Nat} : (d : Decl ks n g) → (Decl.toIPF (fun r => E' (w r)) d).Obj (fun i => Ty.den E' (σ i)) →
+    Ty.den E' (Decl.inst w σ d)
+  | .wrap f _, x => Fld.unroll w E' σ f x
+  | .record f fs, x => (Fld.unroll w E' σ f x.fst, Flds.unroll w E' σ fs x.snd)
+  | .union u (h := _), x => Alts.unroll w E' σ u x
 
-/-- A value of a tagged union: constructor `t`, with its fields. -/
-def Ty.DenTU.mk {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (fields : Ty.DenFields (l.get t ht)) : Ty.DenTU l :=
-  ⟨⟨t, ht⟩, cast (Ty.denAt_eq l t ht).symm fields⟩
+def Mems.rollMember {g : Nat} : (bs : Mems ks n g) → (i : Nat) → (h : g + i < n) →
+    Ty.den E' (Mems.instMember w σ bs i h) →
+    (Mems.member (fun r => E' (w r)) bs i h).Obj (fun j => Ty.den E' (σ j))
+  | .nil, _, h, _ => absurd h (by omega)
+  | .cons d _, 0, _, x => Decl.roll w E' σ d x
+  | .cons _ bs, i + 1, h, x => Mems.rollMember bs i (by omega) x
 
-/-- The fields of a value of a tagged union **if** it is the value of constructor `t`,
-    and nothing if it is the value of another constructor. -/
-def Ty.DenTU.field? {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (v : Ty.DenTU l) : Option (Ty.DenFields (l.get t ht)) :=
-  if h : v.1.val = t then
-    some (cast (by subst h; exact Ty.denAt_eq l _ ht) v.2)
-  else
-    none
+def Mems.unrollMember {g : Nat} : (bs : Mems ks n g) → (i : Nat) → (h : g + i < n) →
+    (Mems.member (fun r => E' (w r)) bs i h).Obj (fun j => Ty.den E' (σ j)) →
+    Ty.den E' (Mems.instMember w σ bs i h)
+  | .nil, _, h, _ => absurd h (by omega)
+  | .cons d _, 0, _, x => Decl.unroll w E' σ d x
+  | .cons _ bs, i + 1, h, x => Mems.unrollMember bs i (by omega) x
+end Roll
 
-/-- Reading the fields of the constructor a value was built with gives them back. -/
-theorem Ty.DenTU.field?_mk {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (fields : Ty.DenFields (l.get t ht)) :
-    Ty.DenTU.field? t ht (Ty.DenTU.mk t ht fields) = some fields := by
-  show (if _ : t = t then _ else _) = _
-  simp only [↓reduceDIte]
-  exact congrArg some ((cast_cast _ _ _).trans (cast_eq _ _))
+/-! ## Finding a block in a signature
 
-/-- Reading the fields of **another** constructor gives nothing. -/
-theorem Ty.DenTU.field?_of_ne {l : LeanTaggedUnionSchema Ty} (t : Nat) (ht : t < l.length)
-    (v : Ty.DenTU l) (h : v.1.val ≠ t) : Ty.DenTU.field? t ht v = none := by
-  simp [Ty.DenTU.field?, h]
+`DSig.block Δ b` finds block `b` of `Δ` together with the renaming `w` of its own names into
+the whole signature, and the two (identity) transports between the whole signature's reading
+of its members and the block's W-type.  Each step of the recursion is the identity function:
+the transports type-check by unfolding `DSig.refDen`, so nothing is cast. -/
 
-/-! ## The values of a type of the language
+/-- Block `b` of a signature `Δ`, seen from `Δ`. -/
+structure DSig.Block {ks : List Nat} (Δ : DSig ks) where
+  /-- The signature the block was declared over. -/
+  ks' : List Nat
+  /-- The block has `k + 1` members. -/
+  k : Nat
+  /-- The member declarations. -/
+  bs : Mems ks' (k + 1) 0
+  /-- The block's own names (its members, then the older datatypes), in `Δ`. -/
+  w : Ref (k :: ks') → Ref ks
+  /-- A value of member `i`, as a tree of the block's W-type. -/
+  toIW : (i : Fin (k + 1)) → DSig.refDen Δ (w (.here i)) →
+    IW (Mems.fam (fun r => DSig.refDen Δ (w (.there r))) bs) i
+  /-- A tree of the block's W-type, as a value of member `i`. -/
+  ofIW : (i : Fin (k + 1)) → IW (Mems.fam (fun r => DSig.refDen Δ (w (.there r))) bs) i →
+    DSig.refDen Δ (w (.here i))
 
-`LeanScript.Term` is indexed by `LeanScript.TyWf` — a tree **together with the proof that
-it is a type** — so the evaluator wants the denotation of a bundle, of a list of bundles,
-and of a schema of bundles.  Each of them is the denotation of the tree underneath, which
-is what makes them *definitionally* the ones above: nothing new is denoted here, the
-proofs are simply dropped. -/
+/-- Find a block of a signature.  Structural recursion on the signature. -/
+def DSig.block : {ks : List Nat} → (Δ : DSig ks) → BRef ks → Δ.Block
+  | _, .cons _ k bs, .here => ⟨_, k, bs, id, fun _ x => x, fun _ x => x⟩
+  | _, .cons Δ _ _, .there b =>
+      let B := DSig.block Δ b
+      ⟨B.ks', B.k, B.bs, fun r => .there (B.w r), B.toIW, B.ofIW⟩
 
-/-- The Lean type of the values of a type of the language. -/
-@[reducible] def TyWf.Den (τ : TyWf) : Type := Ty.Den τ.toTy
+namespace DSig.Block
+variable {ks : List Nat} {Δ : DSig ks} (B : Δ.Block)
 
-/-- The values of a list of types, as a product: an environment, the fields of a
-    constructor, the arguments of a call. -/
-@[reducible] def TyWf.DenList (ts : List TyWf) : Type := Ty.DenList (ts.map TyWf.toTy)
+/-- Member `i` of the block, as a name in `Δ`. -/
+abbrev ref (i : Fin (B.k + 1)) : Ref ks := B.w (.here i)
 
-/-- The fields of a constructor or a record of types, as a tuple (see `Ty.DenFields`). -/
-@[reducible] def TyWf.DenFields (ts : List TyWf) : Type := Ty.DenFields (ts.map TyWf.toTy)
+/-- The renaming of the block's older datatypes into `Δ`. -/
+abbrev old : Ref B.ks' → Ref ks := fun r => B.w (.there r)
 
-/-- A tuple of fields, as an environment-shaped product. -/
-abbrev TyWf.DenFields.toList {ts : List TyWf} : TyWf.DenFields ts → TyWf.DenList ts :=
-  Ty.DenFields.toList (ts.map TyWf.toTy)
+/-- Member `j`'s body instantiated by `σ`, in `Δ`. -/
+abbrev inst (σ : Fin (B.k + 1) → Ty ks) (j : Fin (B.k + 1)) : Ty ks := Mems.inst B.old σ B.bs j
 
-/-- An environment-shaped product, as a tuple of fields. -/
-abbrev TyWf.DenFields.ofList {ts : List TyWf} : TyWf.DenList ts → TyWf.DenFields ts :=
-  Ty.DenFields.ofList (ts.map TyWf.toTy)
+/-- The unfolded body of member `j`: its holes are the members, by name. -/
+abbrev unfold (j : Fin (B.k + 1)) : Ty ks := B.inst (fun i => .data (B.ref i)) j
 
-/-- The values of a record of types, in declaration order. -/
-@[reducible] def TyWf.DenRecord (fs : LeanRecordSchema TyWf) : Type :=
-  Ty.DenRecord (fs.map TyWf.toTy)
+/-- The body of member `j` for a fold with answer types `ρ`: each hole `i` is the pair of the
+    subvalue and the answer at it. -/
+abbrev recBody (ρ : Fin (B.k + 1) → Ty ks) (j : Fin (B.k + 1)) : Ty ks :=
+  B.inst (fun i => Ty.pair (.data (B.ref i)) (ρ i)) j
 
-/-- The values of a tagged union of types: a constructor number with that constructor's
-    fields. -/
-@[reducible] def TyWf.DenTU (l : LeanTaggedUnionSchema TyWf) : Type :=
-  Ty.DenTU (l.map TyWf.toTy)
+end DSig.Block
 
-/-- `TyWf.DenTU`, on the constructors that follow a field-less one. -/
-@[reducible] def TyWf.DenAtCP (c : CtorsWithPayload TyWf) (t : Nat) : Type :=
-  Ty.DenAtCP (c.map TyWf.toTy) t
+section DataOps
+variable {ks : List Nat} (Δ : DSig ks)
 
-/-- `TyWf.DenTU`, on a plain list of constructors. -/
-@[reducible] def TyWf.DenAtList (cs : List (List TyWf)) (t : Nat) : Type :=
-  Ty.DenAtList (cs.map (List.map TyWf.toTy)) t
+/-- One layer in: the introduction form of every declared datatype. -/
+def DSig.dataIn (b : BRef ks) (j : Fin ((Δ.block b).k + 1))
+    (x : Ty.Den Δ ((Δ.block b).unfold j)) : Ty.Den Δ (.data ((Δ.block b).ref j)) :=
+  let B := Δ.block b
+  let o := Mems.rollMember B.old (DSig.refDen Δ) (fun i => .data (B.ref i)) B.bs j.val
+    (Fin.zero_add_lt' j) x
+  B.ofIW j (IW.mk j o.1 (fun p => B.toIW _ (o.2 p)))
 
-/-- A value of a tagged union of types: constructor `t`, with its fields. -/
-def TyWf.DenTU.mk {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
-    (fields : TyWf.DenFields (l.get t ht)) : TyWf.DenTU l :=
-  Ty.DenTU.mk t (by simpa using ht)
-    (cast (by rw [LeanTaggedUnionSchema.get_map]) fields)
+/-- One layer out. -/
+def DSig.dataOut (b : BRef ks) (j : Fin ((Δ.block b).k + 1))
+    (v : Ty.Den Δ (.data ((Δ.block b).ref j))) : Ty.Den Δ ((Δ.block b).unfold j) :=
+  let B := Δ.block b
+  Mems.unrollMember B.old (DSig.refDen Δ) (fun i => .data (B.ref i)) B.bs j.val
+    (Fin.zero_add_lt' j) ((B.toIW j v).dest.map (fun i y => B.ofIW i y))
 
-/-- The fields of a value of a tagged union **if** it is the value of constructor `t`,
-    and nothing if it is the value of another constructor. -/
-def TyWf.DenTU.field? {l : LeanTaggedUnionSchema TyWf} (t : Nat) (ht : t < l.length)
-    (v : TyWf.DenTU l) : Option (TyWf.DenFields (l.get t ht)) :=
-  (Ty.DenTU.field? t (by simpa using ht) v).map
-    (cast (by rw [LeanTaggedUnionSchema.get_map]))
+/-- The fold over a block: one branch per member `j`, given member `j`'s body with every hole
+    `i` filled by the pair of the subvalue and the answer at it.  Structural recursion on the
+    tree. -/
+def DSig.dataRec (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty ks)
+    (branch : (j : Fin ((Δ.block b).k + 1)) → Ty.Den Δ ((Δ.block b).recBody ρ j) → Ty.Den Δ (ρ j))
+    (j : Fin ((Δ.block b).k + 1)) (v : Ty.Den Δ (.data ((Δ.block b).ref j))) : Ty.Den Δ (ρ j) :=
+  let B := Δ.block b
+  IW.fold (C := fun i => Ty.Den Δ (ρ i))
+    (fun i x => branch i (Mems.unrollMember B.old (DSig.refDen Δ)
+      (fun i' => Ty.pair (.data (B.ref i')) (ρ i')) B.bs i.val (Fin.zero_add_lt' i)
+      (x.map (fun i' y => (B.ofIW i' y.1, y.2)))))
+    (B.toIW j v)
 
-/-- Reading the fields of the constructor a value was built with gives them back. -/
-theorem TyWf.DenTU.field?_mk {l : LeanTaggedUnionSchema TyWf} (t : Nat)
-    (ht : t < l.length) (fields : TyWf.DenFields (l.get t ht)) :
-    TyWf.DenTU.field? t ht (TyWf.DenTU.mk t ht fields) = some fields := by
-  simp only [TyWf.DenTU.field?, TyWf.DenTU.mk, Ty.DenTU.field?_mk, Option.map_some]
-  exact congrArg some ((cast_cast _ _ _).trans (cast_eq _ _))
+end DataOps
+
+
 
 end LeanScript
 

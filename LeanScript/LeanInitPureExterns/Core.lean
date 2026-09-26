@@ -12,7 +12,6 @@ namespace LeanScript
 One part of the catalogue `LeanScript.LeanInitPureExtern` (see
 `LeanScript.LeanInitPureExterns` for how it is organised).  Every family is written against
 the same parameters as `LeanInitPureExtern`; only the ones its entries use become its own.
-After editing the catalogue, rerun `python3 scripts/gen_externs.py`.
 -/
 
 open LeanPrimTy
@@ -181,13 +180,13 @@ inductive ArraySetExtern : MyTy → Type where
 /-- The pure externs of `Init/Data/Array/Basic.lean`. -/
 inductive ArrayBasicExtern : MyTy → Type where
   | lean_array_fswap : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (j : Nat) → (h : i < xs.size := by get_elem_tactic) → (h : j < xs.size := by get_elem_tactic) → ArrayBasicExtern (array αt) -- Array.swap
-  -- `USize` is `Nat` here, so this is `lean_array_fget`; `#leanscript_to_term` translates a call of `Array.uget` to that entry
+  -- `USize` is `Nat` here, so this is `lean_array_fget`; a call of `Array.uget` is that entry
   -- | lean_array_uget : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (h : i < xs.size) → ArrayBasicExtern αt -- Array.uget
   | lean_mk_array : (αt : MyTy) → Nat → denote αt → ArrayBasicExtern (array αt) -- Array.replicate
   | lean_array_swap : (αt : MyTy) → Array (denote αt) → Nat → Nat → ArrayBasicExtern (array αt) -- Array.swapIfInBounds
   -- | lean_array_uget_borrowed : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (h : i < xs.size) → ArrayBasicExtern αt -- Array.ugetBorrowed
   | lean_array_pop : (αt : MyTy) → Array (denote αt) → ArrayBasicExtern (array αt) -- Array.pop
-  -- `USize` is `Nat` here, so this is `lean_array_fset`; `#leanscript_to_term` translates a call of `Array.uset` to that entry
+  -- `USize` is `Nat` here, so this is `lean_array_fset`; a call of `Array.uset` is that entry
   -- | lean_array_uset : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → denote αt → (h : i < xs.size) → ArrayBasicExtern (array αt) -- Array.uset
   -- | lean_array_size : (αt : MyTy) → Array (denote αt) → ArrayBasicExtern LeanPrimTy.usize -- Array.usize
 
