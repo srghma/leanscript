@@ -30,6 +30,7 @@ Build everything, tests included, with `lake build`.
 | `LeanScript/EvalFacts.lean`, `LeanScript/*Facts.lean` | what the evaluator and the folds do, proved |
 | `LeanScript/ToTerm/` | `#leanscript_to_term` (start with `ToTerm/Overview.lean`); `ToTerm/ExternTable.lean` is generated |
 | `LeanScript/CtorFn.lean`, `LeanScript/CtorFn/` | `#leanscript_ctor`, a constructor of any datatype as a function on terms |
+| `LeanScript/Nominal/` | proposal N of `proposals/NominalTyProposal.md`, next to the old stack: closed types over declared blocks (`Ty.lean`, `Decl.lean`), their meaning (`Container.lean`, `Den.lean`, `DenFacts.lean`, `Two.lean`), terms with `data_in`/`data_out`/`data_rec` and their evaluator (`Term.lean`, `Eval.lean`), and the command `leanscript_signature` (`Signature.lean`); tests in `TyTests/Nominal*.lean` and `TermTests/NominalTermTest.lean` |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots) |
 | `docs/` | notes on the design (`TermTypeSafety.md`, `WfUsage.md`, `RecSnapshots.md`, `MATHLIB_REUSE.md`) |

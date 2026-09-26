@@ -305,6 +305,22 @@ Each step builds on its own and is checked by `lake build` together with an `rg 
 8. Tests: the per-binder suites merge into one `DataTest`. Add a two-block test in which a
    later block stores an older type in a field (as block 2 of the toy does).
 
+**Status of the implementation (in `LeanScript/Nominal/`, built next to the old stack, which is
+untouched):**
+
+- Steps 1–3: done in `Nominal/Ty.lean`, `Nominal/Decl.lean`, `Nominal/Container.lean`,
+  `Nominal/Den.lean`, `Nominal/Two.lean`, `Nominal/DenFacts.lean` (including
+  `DSig.dataOut_dataIn` and `DSig.dataIn_dataOut`). `Ty/Shape.lean` and `Den/*` are not deleted,
+  because the old stack still uses them.
+- Step 4: not done; `Ty/Wf*`, `TyWf` are still used by the old `Term`, `ToTerm` and `CtorFn`.
+- Step 5: done as a new direct-style term language `Nominal/Term.lean` with `Nominal/Eval.lean`
+  (`data_in`, `data_out`, `data_rec` at any block); `data_brec` is not implemented.
+- Step 6: done as the command `leanscript_signature` (`Nominal/Signature.lean`), which declares
+  the SCCs once in grounding order and generates the constructors as term functions.
+- Step 7: not done (porting `ToTerm/*`).
+- Step 8: `TyTests/NominalTest.lean` (two blocks, the later one storing an older type),
+  `TyTests/NominalSignatureTest.lean`, `TermTests/NominalTermTest.lean`.
+
 ---
 
 ## 3. Final coalgebra (`ν`): what it would and would not give

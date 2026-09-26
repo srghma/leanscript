@@ -1,3 +1,29 @@
+# Summary of changes for run 4fb05dbf-2dc3-42d8-941d-0e6b096fd34a
+I implemented proposal N (declared datatypes) from `proposals/NominalTyProposal.md` in a new namespace `LeanScript.Nominal`, under `LeanScript/Nominal/`. It sits next to the existing type stack, which I left unchanged. The full `lake build` succeeds (1039 jobs), and there is no `sorry` in the new files. Steps 1–3, 5, 6 and 8 of the migration plan (§2.9) are done, except for `data_brec`. Steps 4 and 7 are not done.
+
+**Environment fix:** `lake-manifest.json` had no entry for mathlib, even though the lakefile requires it. I regenerated the manifest from the pinned mathlib revision and its dependencies, and committed it.
+
+**What was added, by step of §2.9:**
+- **Step 1 (`Nominal/Ty.lean`):** `Ref`, `BRef` and the mutual `Ty`/`Fields`/`Ctor`/`Ctors`, with `DecidableEq`, `Repr`, `BEq`, `ReflBEq` and `LawfulBEq`, plus `Ty.map`/`Ty.weaken`.
+- **Step 2 (`Nominal/Decl.lean`):** `Fld`, `Flds`, `BCtor`, `BCtors`, `Alts`, `Decl`, `Mems`, `DSig` and `Ty.unfold`.
+- **Step 3 (`Nominal/Container.lean`, `Den.lean`, `Two.lean`, `DenFacts.lean`):**
+  - The meaning of types: `Ty.den`, `Ty.Den`, `refDen`, `lift`/`lower`, roll/unroll, and `DSig.dataIn`/`dataOut`/`dataRec` at any block.
+  - `Two`, `Ty.pick`, `DSig.two` and `Ty.twoDen`, with these results proved:
+    - `Ty.den_exists_ne`: every closed type has two different values.
+    - `DSig.dataOut_dataIn` and `DSig.dataIn_dataOut`: `data_out` after `data_in` is the identity, and so is `data_in` after `data_out`.
+  - `Float`/`Float32` have no decidable equality, so the fact that `0.0` and `1.0` differ is checked with `native_decide`. As a result, `den_exists_ne` also depends on the axioms that `native_decide` generates.
+- **Step 5 (`Nominal/Term.lean`, `Nominal/Eval.lean`):** a new term language indexed by `Δ`, with `data_in`, `data_out` and `data_rec` at any block, and a structural evaluator. The theorem `Term.eval_data_out_data_in` is proved. `data_brec` is not implemented.
+- **Step 6 (`Nominal/Signature.lean`):** a command, `leanscript_signature Prog where name := T; ...`. It declares the recursive groups of Lean types once, in grounding order, and generates `Prog.Δ`, one `Prog.<name> : Ty` per type, and constructor term functions. It refuses indexed families, existential or dependent fields, unit-like or empty types, and negative recursion.
+- **Step 8 (tests):** `TyTests/NominalTest.lean` includes the two-block case where a later block stores an older type in a field. The other tests are `TyTests/NominalSignatureTest.lean` and `TermTests/NominalTermTest.lean`. All pass under `lake build`.
+
+**Not done:**
+- **Step 4:** I did not delete `Ty/Wf*` / `TyWf`, because the existing `Term`, `ToTerm` and `CtorFn` still depend on them.
+- **Step 7:** I did not port the `ToTerm` translator to the new stack.
+
+For the same reason, `Ty/Shape.lean` and `Den/*` are still there. The new code replaces all of these but does not remove them yet.
+
+**Docs:** `README.md` has a new row for `LeanScript/Nominal/`, and `proposals/NominalTyProposal.md` §2.9 now has a status note for each step. The Properties table lists the new definitions and the three proved theorems. Everything is committed.
+
 # Summary of changes for run 3ec5e73c-e86b-41f5-9b13-e98f91797996
 I rewrote `proposals/WTypeTyProposal.md` and extended `proposals/WTyToy.lean` to fix the rose-tree handling. I also added `proposals/UnrepresentableLeanTypes.lean` to answer your last question.
 
