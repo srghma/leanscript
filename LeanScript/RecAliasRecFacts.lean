@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Expr.Flat
+public import LeanScript.Expr.Build
 public import LeanScript.RecObjectRecFacts
 
 @[expose] public section

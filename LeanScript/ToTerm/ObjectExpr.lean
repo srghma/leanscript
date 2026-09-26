@@ -1,7 +1,12 @@
 module
 
-public meta import Lean
-public meta import LeanScript.Expr.Flat
+public meta import Lean.Elab.Command
+public meta import LeanScript.Expr.NatRecCtx
+public meta import LeanScript.Expr.Extern
+public meta import LeanScript.Expr.SelfField
+public meta import LeanScript.Ty.Unfold
+public meta import LeanScript.Ty.TyWfIn
+public meta import LeanScript.Ty.Wf
 public meta import LeanScript.Ty.Instances
 public meta import LeanScript.Ty.Deriving
 
@@ -15,6 +20,13 @@ meta section
 The pieces of `LeanScript.TyWf`, `LeanScript.Ctx` and the schemas, as `Lean.Expr`s: what
 the translation builds its output out of, and how a payload of trees is bundled with its
 well-formedness proof.  Overview: `LeanScript.ToTerm.Overview`.
+
+**Names of `LeanScript.Term`.**  The translator does not import `LeanScript.Expr.Term`, so
+that it builds in parallel with that (slow) module.  The types of `Expr/Term.lean`
+(`LeanScript.Term`, `LeanScript.Spine`, `LeanScript.TaggedUnionCases`, …) and their
+constructors are therefore written with a single backquote, `` `LeanScript.Term.lam ``,
+which Lean does not check; `TermTests/ToTermTest/TermNames.lean` checks that every such
+name exists.  Every other name keeps the checked double backquote.
 -/
 
 open Lean Meta Elab Term
@@ -27,14 +39,15 @@ namespace LeanScript.ToTerm
     currency of the translation: `LeanScript.Term` is indexed by it. -/
 def tyE : Expr := mkConst ``LeanScript.TyWf
 
-/-- The type `LeanScript.Ty` — a tree — as an expression.  A tree is what a
-    `LeanScriptTyWf` instance holds and what `ty_wf` reasons about; it becomes a type of
-    the language by being bundled with its proof. -/
-def treeE : Expr := mkConst ``LeanScript.Ty
-
 /-- `LeanScript.TyWfIn n`, the trees written in a scope of `n` members, as an
     expression. -/
 def tyWfInE (n : Nat) : Expr := mkApp (mkConst ``LeanScript.TyWfIn) (mkNatLit n)
+
+/-- `id : List TyWf → List TyWf`, as an expression: what a branch of a **plain** dispatch
+    binds (`LeanScript.TaggedUnionCases` is the fold-case family at `ι := TyWf` and this
+    `bind`). -/
+def idBindE : Expr :=
+  mkApp (mkConst ``id [Level.one]) (mkApp (mkConst ``List [Level.zero]) tyE)
 
 /-- The bundles of a scope: `TyWf` closed, `TyWfIn n` inside a binder. -/
 def scopeTyE (n : Nat) : Expr := if n == 0 then tyE else tyWfInE n
@@ -66,6 +79,11 @@ def listTyE (σ : Expr) : Expr :=
 /-- `@id TyWf`, the projection the variable scopes use. -/
 def idTyE : Expr := mkApp (mkConst ``id [Level.one]) tyE
 
+/-- The empty context of join points, `([] : List TyWf)`: the translation writes every
+    dispatch in direct style, with no join point in scope, and the builders of
+    `LeanScript.Expr.Build` introduce the join points. -/
+def jnilE : Expr := mkApp (mkConst ``List.nil [Level.zero]) tyE
+
 /-! ## From a tree to a type of the language
 
 A tree becomes a **type** by being bundled with the proof that it is one, which
@@ -77,6 +95,10 @@ constructors build out of the bundled payload, and the proofs never have to agre
 /-- The tree `t`, bundled at scope `n`: `LeanScript.TyWf` closed, `LeanScript.TyWfIn n`
     inside a binder. -/
 def bundleTyE (n : Nat) (t : Expr) : MetaM Expr := do
+  -- the tree of a bundle, bundled again, is that bundle
+  if n == 0 then
+    if let (``LeanScript.TyWf.toTy, #[b]) := t.getAppFnArgs then return b
+    if let .proj ``LeanScript.TyWf 0 b := t then return b
   let prf ← LeanScript.Ty.mkWfIn n t
   if n == 0 then
     return mkApp2 (mkConst ``LeanScript.TyWf.mk) t prf

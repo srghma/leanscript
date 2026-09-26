@@ -155,47 +155,44 @@ theorem listFoldK_eq_listFold (z0 : TyWf.Den τ) (s0 : α → List α → TyWf.D
 
 section Node
 
-variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls) {u ub : Usage Γ}
-    {w : Usage (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ)} {ka kb : Head}
-    (arr : Atom Sg Γ u (.array σ) ka) (bases : ArrayRecBases Sg Γ ub σ τ k)
-    (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) w τ kb)
-    (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail (Usage.tail w))) (hStep : k = 0 → Head.isVar kb = false)
-    (hClosed : Head.closedComp
-      (Usage.arg ka u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail (Usage.tail w)))) τ .comp = false)
-    (env : Env Γ) (h : Comp.NoRecMk (Comp.array_rec k arr bases branch hRec hStep hClosed))
+variable {Sg : Sig} {Γ : Ctx} {σ : TyWf} (G : GlobalEnv Sg.decls)
+    (arr : Atom Γ (.array σ)) (bases : ArrayRecBases Sg Γ σ τ k)
+    (branch : Term Sg (σ :: TyWf.array σ :: natRecCtx τ (k + 1) Γ) τ)
+    (env : Env Γ)
 
-/-- The value of the node **is** the fold: the short lists are answered by its
+/-- The value of the node — answering with the term's own value, `Dest.ret` — **is** the
+    fold: the short lists are answered by its
     `ArrayRecBases`, and its step runs the branch with the head, the tail and the window
     in front of the environment. -/
-theorem Comp.eval_array_rec :
-    Comp.eval G (Comp.array_rec k arr bases branch hRec hStep hClosed) env h =
-      listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
-        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2)
-        (show Array _ from Atom.eval G arr env h.1).toList :=
+theorem Term.eval_array_rec :
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
+      listFoldK (fun l => ArrayRecBases.eval G bases env l)
+        (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env))
+        (show Array _ from Atom.eval arr env).toList :=
   rfl
 
 /-- Below the depth, the node answers with its `ArrayRecBases`. -/
-theorem Comp.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
-    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env h.1).toList = l) :
-    Comp.eval G (Comp.array_rec k arr bases branch hRec hStep hClosed) env h =
-      ArrayRecBases.eval G bases env l h.2.1 := by
-  rw [Comp.eval_array_rec, harr, listFoldK_base _ _ l hl]
+theorem Term.eval_array_rec_base (l : List (TyWf.Den σ)) (hl : l.length ≤ k)
+    (harr : (show Array (TyWf.Den σ) from Atom.eval arr env).toList = l) :
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
+      ArrayRecBases.eval G bases env l := by
+  rw [Term.eval_array_rec, harr, listFoldK_base _ _ l hl]
 
 /-- At and above the depth, the node answers with its branch, given the head, the tail
     and the window of the answers at the `k + 1` suffixes of the tail. -/
-theorem Comp.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
+theorem Term.eval_array_rec_step (a : TyWf.Den σ) (as : List (TyWf.Den σ))
     (hk : k ≤ as.length)
-    (harr : (show Array (TyWf.Den σ) from Atom.eval G arr env h.1).toList = a :: as) :
-    Comp.eval G (Comp.array_rec k arr bases branch hRec hStep hClosed) env h =
+    (harr : (show Array (TyWf.Den σ) from Atom.eval arr env).toList = a :: as) :
+    Term.eval G (Term.array_rec k arr bases branch .ret) env =
       Term.eval G branch
         (a, as.toArray, Env.ofWin
           (NatWin.ofFunList
-            (listFoldK (fun l => ArrayRecBases.eval G bases env l h.2.1)
-              (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env) h.2.2))
+            (listFoldK (fun l => ArrayRecBases.eval G bases env l)
+              (fun hd tl w => Term.eval G branch (hd, tl.toArray, Env.ofWin w env)))
             (k + 1) as)
           env)
-        h.2.2 := by
-  rw [Comp.eval_array_rec, harr, listFoldK_step _ _ a as hk]
+        := by
+  rw [Term.eval_array_rec, harr, listFoldK_step _ _ a as hk]
 
 end Node
 

@@ -109,6 +109,65 @@ def substOccCP (s : Ty) (m : Nat → Ty) :
 
 end
 
+mutual
+
+/-- Does the tree hold an occurrence `Ty.familyMember i` of a member of the family in scope
+    — a leaf `Ty.substOcc` substitutes?  A nested binder is not looked into, and neither is
+    the domain of a function, exactly as `Ty.substOcc` does. -/
+def hasMemberOcc : Ty → Bool
+  | .self => false
+  | .familyMember _ => true
+  | .shape sh => hasMemberOccShape sh
+  | .recTaggedUnion _ => false
+  | .recObject _ => false
+  | .recAlias _ => false
+  | .mutualRecursiveFamily _ => false
+
+/-- `Ty.hasMemberOcc`, on a node. -/
+def hasMemberOccShape : TyShape Ty → Bool
+  | .prim _ => false
+  | .fn _ b => hasMemberOcc b
+  | .primCovariant c => hasMemberOccCov c
+  | .enum _ => false
+  | .record fs => hasMemberOccRecord fs
+  | .taggedUnion l => hasMemberOccTU l
+
+/-- `Ty.hasMemberOcc`, on an array, a thunk or a lazy value. -/
+def hasMemberOccCov : LeanPrimTyCovariant Ty → Bool
+  | .array a => hasMemberOcc a
+  | .thunk a => hasMemberOcc a
+  | .lazy a => hasMemberOcc a
+
+/-- `Ty.hasMemberOcc`, on a list of types. -/
+def hasMemberOccList : List Ty → Bool
+  | [] => false
+  | a :: as => hasMemberOcc a || hasMemberOccList as
+
+/-- `Ty.hasMemberOcc`, on the fields of each constructor. -/
+def hasMemberOccCtors : List (List Ty) → Bool
+  | [] => false
+  | a :: as => hasMemberOccList a || hasMemberOccCtors as
+
+/-- `Ty.hasMemberOcc`, on a list that has at least one entry. -/
+def hasMemberOccNE : NonEmptyList Ty → Bool
+  | ⟨a, as⟩ => hasMemberOcc a || hasMemberOccList as
+
+/-- `Ty.hasMemberOcc`, on the fields of a record. -/
+def hasMemberOccRecord : LeanRecordSchema Ty → Bool
+  | ⟨a, b, rest⟩ => hasMemberOcc a || hasMemberOcc b || hasMemberOccList rest
+
+/-- `Ty.hasMemberOcc`, on the constructors of a tagged union. -/
+def hasMemberOccTU : LeanTaggedUnionSchema Ty → Bool
+  | .payloadFirst f n r => hasMemberOccNE f || hasMemberOccList n || hasMemberOccCtors r
+  | .skip c => hasMemberOccCP c
+
+/-- `Ty.hasMemberOcc`, on the constructors that follow a field-less one. -/
+def hasMemberOccCP : CtorsWithPayload Ty → Bool
+  | .here f r => hasMemberOccNE f || hasMemberOccCtors r
+  | .skip c => hasMemberOccCP c
+
+end
+
 /-! ## The traversal is the `map` of each container -/
 
 theorem substOccList_eq_map (s : Ty) (m : Nat → Ty) :
@@ -124,19 +183,20 @@ theorem substOccCtors_eq_map (s : Ty) (m : Nat → Ty) :
         substOccCtors_eq_map s m as]
 
 theorem substOccNE_eq_map (s : Ty) (m : Nat → Ty) (xs : NonEmptyList Ty) :
-    substOccNE s m xs = NonEmptyListSchema.map (substOcc s m) xs := by
+    substOccNE s m xs = xs.map (substOcc s m) := by
   cases xs
-  simp only [substOccNE, NonEmptyListSchema.map, substOccList_eq_map]
+  simp only [substOccNE, NonEmptyList.map, substOccList_eq_map]
 
 theorem substOccRecord_eq_map (s : Ty) (m : Nat → Ty) (fs : LeanRecordSchema Ty) :
     substOccRecord s m fs = fs.map (substOcc s m) := by
   cases fs
-  simp only [substOccRecord, LeanRecordSchema.map, substOccList_eq_map]
+  simp only [substOccRecord, LeanRecordSchema.map, substOccList_eq_map, Functor.map]
 
 theorem substOccCP_eq_map (s : Ty) (m : Nat → Ty) :
     ∀ c : CtorsWithPayload Ty, substOccCP s m c = c.map (substOcc s m)
   | .here _ _ => by
-      simp only [substOccCP, CtorsWithPayload.map, substOccNE_eq_map, substOccCtors_eq_map]
+      simp only [substOccCP, CtorsWithPayload.map, substOccNE_eq_map, substOccCtors_eq_map,
+        Functor.map]
   | .skip c => by
       simp only [substOccCP, CtorsWithPayload.map, substOccCP_eq_map s m c]
 
@@ -145,9 +205,9 @@ theorem substOccTU_eq_map (s : Ty) (m : Nat → Ty) (l : LeanTaggedUnionSchema T
   cases l with
   | payloadFirst _ _ _ =>
       simp only [substOccTU, LeanTaggedUnionSchema.map, substOccNE_eq_map,
-        substOccList_eq_map, substOccCtors_eq_map]
+        substOccList_eq_map, substOccCtors_eq_map, Functor.map]
   | skip c =>
-      simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map]
+      simp only [substOccTU, LeanTaggedUnionSchema.map, substOccCP_eq_map, Functor.map]
 
 /-! ## The two scopes
 
@@ -171,10 +231,15 @@ namespace LeanMutualRecFamily
 
 variable {α : Type}
 
-/-- The same family, with member `i` selected — and the family unchanged when `i` is not
-    a member of it, which `LeanScript.Ty.WfIn` rules out. -/
+/-- The same family, with member `i` selected — and member `0` selected when `i` is not a
+    member of it, which `LeanScript.Ty.WfIn` rules out.  Falling back on member `0`, rather
+    than on the member `f` selects, makes the member selected depend on the members
+    alone, which is what lets a value of `Ty.familyMember i` be a node of the family's
+    W-type (`LeanScript.FamW`) without a proof that `i` is in range. -/
 def select (f : LeanMutualRecFamily α) (i : Nat) : LeanMutualRecFamily α :=
-  (ofMembers? f.members i).getD f
+  match ofMembers? f.members i with
+  | some g => g
+  | none => (ofMembers? f.members 0).getD f
 
 
 end LeanMutualRecFamily
@@ -249,12 +314,26 @@ def recBinders (r motive : Ty) : List Ty → List Ty
   | .self :: fs => r :: motive :: recBinders r motive fs
   | a :: fs => unfoldSelf r a :: recBinders r motive fs
 
+/-- The answers of a fold of motive `motive` at the occurrences of members **inside** a
+    field `a` (`Array (familyMember i)`, `Nat → familyMember i`, `Thunk (familyMember i)`):
+    the field's own shape with every occurrence replaced by `motive`. -/
+def famAnswerMap (motive : Ty) (a : Ty) : Ty := substOcc .self (fun _ => motive) a
+
+/-- What a branch of the fold of a family binds after a field `a` that is not literally an
+    occurrence of a member, in front of `rest`: the answers at the occurrences inside it
+    (`Ty.famAnswerMap`), when it holds any, and nothing otherwise. -/
+def famAnswerBinders (motive : Ty) (a : Ty) (rest : List Ty) : List Ty :=
+  cond (hasMemberOcc a) (famAnswerMap motive a :: rest) rest
+
 /-- `Ty.recBinders`, in the scope of a mutual family: a field that is an occurrence of
-    member `i` is followed by the value of the fold at that field. -/
+    member `i` is followed by the value of the fold at that field, and a field that holds
+    occurrences of members inside it (an array of them, a function into one, a delay of
+    one) by the answers at them, in the field's shape (`Ty.famAnswerBinders`). -/
 def famRecBinders (f : LeanMutualRecFamily Ty) (motive : Ty) : List Ty → List Ty
   | [] => []
   | .familyMember i :: fs => familyMemberTy f i :: motive :: famRecBinders f motive fs
-  | a :: fs => unfoldFamily f a :: famRecBinders f motive fs
+  | a :: fs => unfoldFamily f a ::
+      famAnswerBinders motive a (famRecBinders f motive fs)
 
 end Ty
 

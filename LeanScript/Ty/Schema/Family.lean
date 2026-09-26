@@ -27,26 +27,7 @@ inductive LeanFamMemberSchema (α : Type) where
   /-- A newtype member: it has no object of its own, and a value of it is a value of
       this, its single field. -/
   | alias (body : α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
-
-namespace LeanFamMemberSchema
-
-variable {α β : Type}
-
-/-- The constructors of a member, as a list of the field types of each: a `record`
-    member has one constructor and an `alias` member one constructor of one field. -/
-def toCtors : LeanFamMemberSchema α → List (List α)
-  | .ctors s => s.toList
-  | .record s => [s.toList]
-  | .alias b => [[b]]
-
-/-- Apply a function to every type the member mentions. -/
-def map (f : α → β) : LeanFamMemberSchema α → LeanFamMemberSchema β
-  | .ctors s => .ctors (s.map f)
-  | .record s => .record (s.map f)
-  | .alias b => .alias (f b)
-
-end LeanFamMemberSchema
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 /-- The payload of one member of a **mutual recursive family**: the bodies of *all* of
     its members, in declaration order, and which of them this type is.
@@ -62,7 +43,7 @@ inductive LeanMutualRecFamily (α : Type) where
   /-- The selected member is the last one, and at least one member precedes it. -/
   | selectedLast (first : LeanFamMemberSchema α) (before : List (LeanFamMemberSchema α))
       (current : LeanFamMemberSchema α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 namespace LeanMutualRecFamily
 
@@ -124,14 +105,6 @@ def ofMembers? (ms : List (LeanFamMemberSchema α)) (i : Nat) :
         match before with
         | first :: bs => some (.selectedLast first bs m)
         | [] => none
-
-/-- Apply a function to every type the family mentions. -/
-def map (f : α → β) : LeanMutualRecFamily α → LeanMutualRecFamily β
-  | .selectedThenMore before current next after =>
-      .selectedThenMore (before.map (·.map f)) (current.map f) (next.map f)
-        (after.map (·.map f))
-  | .selectedLast first before current =>
-      .selectedLast (first.map f) (before.map (·.map f)) (current.map f)
 
 end LeanMutualRecFamily
 

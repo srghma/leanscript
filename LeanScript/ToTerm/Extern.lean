@@ -18,16 +18,13 @@ catalogue that stands for it.  `LeanScript.Extern` is the catalogue applied to v
 a call is translated to that entry:
 
 * when every argument (and every proof) is a closed Lean value and the entry takes a
-  proof, to the entry applied to them — the proof is the program's own — which is then
-  computed, and the term is its value when that can be written (`TyWf.quotable`,
-  `LeanScript.ToTerm.mkExternNode`), and `Term.extern` of the entry otherwise;
+  proof, to `Term.extern` of the entry applied to them — the proof is the program's own;
 * otherwise to `Term.externCall` applied to the terms of the value arguments, with the
   function that builds the entry from their values; for an entry that takes a proof, to
   `Term.externCallChecked`, whose function *decides* each proposition on those values and
   hands the proof it gets to the entry, and whose fallback (for values that do not
   satisfy it, which a Lean program cannot give) is the translation of the `Inhabited`
-  default of the result type.  Should every argument term turn out to be a literal or a
-  closed value, `mkNode` computes the call instead (see `LeanScript.ToTerm.Build`).
+  default of the result type.
 
 The catalogue is in two levels (a family per section of `Init`, and `LeanInitPureExtern`
 with one constructor per family), so an entry is built through its shorthand
@@ -68,17 +65,9 @@ def externNameOf (s : String) : Name :=
     | some k => .num n k
     | none => .str n part
 
-/-- Lean functions implemented by the extern of an entry of the catalogue, and **equal** to
-    the Lean function that entry models, so that a call of one is that entry: `n % m` is
-    `lean_nat_mod`, which the catalogue models as `Nat.modCore`, and
-    `Nat.modCore n m = n % m` (`Nat.modCore_eq_mod`).  Without it, `Nat.mod` is unfolded to
-    its definition — a `match` on `n` and a test `m ≤ n` around the same extern. -/
-def externAliases : Array ExternEntry := #[
-  ⟨"Nat.mod", "lean_nat_mod__Nat_modCore", "vv"⟩]
-
 /-- The externs a term can call, by the Lean function they model. -/
 def externMap : Std.HashMap Name ExternEntry :=
-  (externTable ++ externAliases).foldl (init := {}) fun m e => m.insert (externNameOf e.leanFn) e
+  externTable.foldl (init := {}) fun m e => m.insert (externNameOf e.leanFn) e
 
 /-- Is `n` a Lean function the translation calls as an extern? -/
 def isKnownExtern (n : Name) : Bool := externMap.contains n
@@ -112,12 +101,6 @@ def externNextDomain (cur : Expr) : MetaM (Expr × BinderInfo) := do
     wrapped in a `Thunk`). -/
 def externConvert (x d : Expr) : MetaM Expr := do
   if ← isDefEq (← inferType x) d then return x
-  -- a list: its element type is named, since it cannot be read back off the tree
-  if let (``List, #[β]) := (← whnfR d).getAppFnArgs then
-    try
-      let y ← mkAppOptM ``LeanScript.TyWf.Den.toList #[some (← tyOfType β), some x]
-      if ← isDefEq (← inferType y) d then return y
-    catch _ => pure ()
   for f in [``LeanScript.TyWf.Den.toList, ``Thunk.pure] do
     try
       let y ← mkAppM f #[x]
@@ -152,11 +135,11 @@ def externUnfoldShorthand (entry : Expr) : MetaM Expr := do
   | none => return entry
 
 /-- The spine of the terms `ts`, of the types `σs`. -/
-def spineE (c : TCtx) (ts σs : Array Expr) : MetaM Expr := do
-  let mut acc := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
+def spineE (c : TCtx) (ts σs : Array Expr) : Expr := Id.run do
+  let mut acc := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   for j in (List.range ts.size).reverse do
-    acc := (← mkNode ``LeanScript.Spine.consT
-      #[c.sg, c.gamma, σs[j]!, tyListE (σs.extract (j + 1) σs.size), ts[j]!, acc])
+    acc := mkAppN (mkConst `LeanScript.Spine.cons)
+      #[c.sg, c.gamma, σs[j]!, tyListE (σs.extract (j + 1) σs.size), ts[j]!, acc]
   return acc
 
 /-- The entry `cur`, applied to the rest of its arguments, from the argument number `i` on
@@ -262,7 +245,8 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
   let entry? ← if checked && closed then externClosedEntry? kinds own ctor else pure none
   let t ← match entry? with
     | some entry =>
-        mkExternNode c.sg c.gamma (← externResultTy entry) entry
+        pure (mkAppN (mkConst `LeanScript.Term.extern)
+          #[c.sg, c.gamma, ← externResultTy entry, entry])
     | none => do
       -- the values: translated, and handed to the entry when the term runs
       let mut ts : Array Expr := #[]
@@ -290,7 +274,7 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
         if τ.containsFVar vs.fvarId! then
           throwError "`#leanscript_to_term`: internal: the type of `{n}` depends on a value"
         return (← mkLambdaFVars #[vs] body, τ)
-      let spine ← spineE c ts σs
+      let spine := spineE c ts σs
       if checked then
         -- the value where the proposition does not hold: a `default` of the result type
         let α ← inferType call
@@ -304,10 +288,10 @@ def transExternApp? (trans : TransFn) (c : TCtx) (e : Expr) (n : Name) (lvls : L
         let dflt ← if (← whnfR α).isConstOf ``Nat then pure (mkNatLit 0)
           else mkAppOptM ``Inhabited.default #[α, inst]
         let fb ← trans c dflt
-        pure ((← mkNode ``LeanScript.Term.externCallChecked
-          #[c.sg, c.gamma, σsE, τ, spine, mk, fb]))
+        pure (mkAppN (mkConst `LeanScript.Term.externCallChecked')
+          #[c.sg, c.gamma, σsE, τ, spine, mk, fb])
       else
-        pure ((← mkNode ``LeanScript.Term.externCall #[c.sg, c.gamma, σsE, τ, spine, mk]))
+        pure (mkAppN (mkConst `LeanScript.Term.externCall) #[c.sg, c.gamma, σsE, τ, spine, mk])
   -- the arguments past the extern's own, if it answers with a function
   return some (← applyArgs trans c t call (args.extract kinds.size args.size))
 

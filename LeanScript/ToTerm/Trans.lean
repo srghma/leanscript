@@ -1,7 +1,14 @@
 module
 
 public meta import LeanScript.ToTerm.TransBrec
+public meta import LeanScript.ToTerm.TransRecObject
+public meta import LeanScript.ToTerm.TransRecUnion
+public meta import LeanScript.ToTerm.TransRecFamily
+public meta import LeanScript.ToTerm.TransRecCases
 public meta import LeanScript.ToTerm.Extern
+public meta import LeanScript.ToTerm.Cache
+public meta import LeanScript.ToTerm.Existential
+public meta import LeanScript.ToTerm.ForIn
 
 @[expose] public section
 
@@ -22,6 +29,35 @@ open Lean Meta Elab Term
 namespace LeanScript.ToTerm
 
 /-! ## The translation -/
+
+/-- `@default α inst`, unfolded to the value of the instance (a `Nat.zero` written as the
+    literal the language has).  It stays `@default α inst` when the instance is not known
+    (a variable). -/
+def transDefaultValue (α inst : Expr) : MetaM Expr := do
+  let d := mkApp2 (mkConst ``Inhabited.default [← getLevel α]) α inst
+  let d' ← whnf d
+  return d'.replace fun t => if t.isConstOf ``Nat.zero then some (mkRawNatLit 0) else none
+
+/-- The functions `panic!` and the `!` accessors reach, each of which is, in Lean's logic,
+    the `default` of the `Inhabited` instance it takes second (after the type), with the
+    number of arguments each takes. -/
+def panicNames : List (Name × Nat) :=
+  [(``panicCore, 3), (``panic, 3), (``panicWithPos, 6), (``panicWithPosWithDecl, 7),
+    (``outOfBounds, 2)]
+
+/-- `l[i]` on a list, with its proof `i < l.length`, as `l.getD i d` for a default `d` of
+    the elements (`synthDefault?`).  The two are equal whenever the proof holds, and the
+    proof is what the language erases: Lean's own `List.get` is a recursion whose motive
+    mentions it, which the language has no eliminator for.  `none` when the collection is
+    not a list indexed by a `Nat`, or the elements have no default. -/
+def listGetElemAsGetD? (args : Array Expr) : MetaM (Option Expr) := do
+  unless args.size ≥ 8 do return none
+  let coll ← whnfR args[0]!
+  let .const ``List [u] := coll.getAppFn | return none
+  unless (← whnfR args[1]!).isConstOf ``Nat do return none
+  let some d ← synthDefault? args[2]! | return none
+  return some (mkAppN (mkConst ``List.getD [u])
+    (#[args[2]!, args[5]!, args[6]!, d] ++ args.extract 8 args.size))
 
 mutual
 
@@ -47,18 +83,21 @@ partial def transLam (c : TCtx) (e : Expr) : MetaM Expr := do
     | throwError "`#leanscript_to_term`: not a function: {e}"
   -- a binder the language erases (`Unit`) is dropped, as a `Unit` domain is
   if ← LeanScript.Deriving.erasedBinder d then
-    return ← trans c (← dropErasedBinder e)
+    return ← withErasedBinder e (trans c)
   let σ ← tyOfType d
   lambdaBoundedTelescope e 1 fun xs body => do
     let c' := c.push xs[0]!.fvarId! σ
     let b ← trans c' body
     let τ ← tyOfTermOr body b
-    return (← mkNode ``LeanScript.Term.lam #[c.sg, c.gamma, σ, τ, b])
+    return mkAppN (mkConst `LeanScript.Term.lam) #[c.sg, c.gamma, σ, τ, b]
 
-/-- `let x := v; b`. -/
+/-- `let x := v; b`, and `have h : p := proof; b` (the proof in place of `h`). -/
 partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
   let .letE n t v b _ := e
     | throwError "`#leanscript_to_term`: internal: not a `let`"
+  -- `have h : p := proof`: the language erases proofs, so the proof is put in place of
+  -- `h`, where it is erased as any proof is
+  if ← isProp t then return ← trans c (b.instantiate1 v)
   let v' ← trans c v
   let σ ← tyOfTermOr v v'
   withLetDecl n t v fun x => do
@@ -66,7 +105,7 @@ partial def transLet (c : TCtx) (e : Expr) : MetaM Expr := do
     let body := b.instantiate1 x
     let b' ← trans c' body
     let τ ← tyOfTermOr body b'
-    return (← mkNode ``LeanScript.Term.letT #[c.sg, c.gamma, σ, τ, v', b'])
+    return mkAppN (mkConst `LeanScript.Term.letE') #[c.sg, c.gamma, σ, τ, v', b']
 
 /-- A literal of a terminal type, carried into the term as it stands. -/
 partial def transLit? (c : TCtx) (e : Expr) : MetaM (Option Expr) := do
@@ -99,7 +138,15 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
   unless s.hasFVar do
     let e' ← whnf e
     unless e' == e do return ← trans c e'
-  let sty ← tyOfTerm s
+  let sty? ← try some <$> tyOfTerm s catch _ => pure none
+  let some sty := sty? | do
+    -- a field of a value of a datatype with existentials that is written out
+    -- (`(countFrom k).seed`) is that value's field
+    let e' ← whnf e
+    if e' == e then
+      let _ ← tyOfTerm s
+      throwError "`#leanscript_to_term`: cannot project out of {s}"
+    return ← trans c e'
   let scrut ← trans c s
   let ind ← getConstInfoInduct structName
   let [ctorName] := ind.ctors
@@ -129,8 +176,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
         | throwError "`#leanscript_to_term`: the field {idx} of {structName} is not a \
             field of its tree"
       let body ← c'.var fid
-      return (← mkNode ``LeanScript.Term.record_casesOn
-        #[c.sg, c.gamma, τ, fs, scrut, body])
+      return mkAppN (mkConst `LeanScript.Term.record_casesOn')
+        #[c.sg, c.gamma, τ, fs, scrut, body]
   | _ =>
       -- a one-field structure is its field: the wrapper is erased
       if k == 0 then return scrut
@@ -139,8 +186,8 @@ partial def transProj (c : TCtx) (e : Expr) : MetaM Expr := do
 
 /-- `do` in the identity monad is not an effect: `Id.run`, `pure`, `>>=` and `<$>` are
     the plumbing a `do` block leaves behind, and each of them is a `let` or an
-    application once the monad is `Id`.  A `for` over a range is the one that is not:
-    it is a fold, and `transForInRange?` builds it.  In any other monad this answers
+    application once the monad is `Id`.  A `for` is the one that is not: it is a fold,
+    built by `transForInList?` over a list and by `transForInRange?` over a range.  In any other monad this answers
     `none`, and the call is refused as any other undeclared call is. -/
 partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option Expr) := do
   let isId (m : Expr) : MetaM Bool := do return m.consumeMData.isConstOf ``Id
@@ -163,52 +210,103 @@ partial def transIdOp? (c : TCtx) (n : Name) (args : Array Expr) : MetaM (Option
   | ``ForIn.forIn =>
       unless args.size ≥ 8 do return none
       unless ← isId args[0]! do return none
+      if let some t ← transForInList? c args[1]! args[3]! args[args.size - 3]!
+          args[args.size - 2]! args[args.size - 1]! false then
+        return some t
       transForInRange? c args[1]! args[args.size - 3]! args[args.size - 2]! args[args.size - 1]!
+  | ``ForIn'.forIn' =>
+      unless args.size ≥ 9 do return none
+      unless ← isId args[0]! do return none
+      if let some t ← transForInList? c args[1]! args[4]! args[args.size - 3]!
+          args[args.size - 2]! args[args.size - 1]! true then
+        return some t
+      transForIn'Range? c args[1]! args[args.size - 3]! args[args.size - 2]!
+        args[args.size - 1]!
   | _ => return none
+
+/-- `for x in l do …` (and `for h : x in l do …`), in the identity monad, over a list with
+    the library's `ForIn'` instance: the loop is `List.foldl` of the body read as the next
+    state (`LeanScript.ToTerm.listForInAsFoldl`), and that fold is translated as any
+    other.  A body that can leave the loop (`break`, or `return` out of it) folds the
+    step `ForInStep β` instead of the state.  Answers `none` for any other
+    collection. -/
+partial def transForInList? (c : TCtx) (ρ inst coll init body : Expr) (withProof : Bool) :
+    MetaM (Option Expr) := do
+  let ρ ← whnfR ρ
+  unless ρ.isAppOfArity ``List 1 do return none
+  unless (inst.find? (·.isConstOf ``List.instForIn'InferInstanceMembershipOfMonad)).isSome do
+    return none
+  let β ← inferType init
+  let e ← listForInAsFoldl ρ.appArg! β coll init body withProof
+  return some (← trans c e)
 
 /-- `for i in [:n] do …`, in the identity monad: the loop is the fold of `n` whose value
     is the state, so it is `Term.nat_rec` — the branch binds the index (de Bruijn index
     `0`) and the state before the iteration (index `1`), and answers with the state
     after it.
 
-    The range must start at `0` and step by `1`, and the body must always `yield`: a
-    `break` or a `return` out of the loop would need a state the grammar's fold does not
-    carry, and is refused rather than silently ignored. -/
+    Any other range `[start:stop:step]` is first rewritten as the loop over `[:size]`,
+    `size = (stop - start + step - 1) / step`, whose body reads the index
+    `start + j * step` (`LeanScript.ToTerm.rangeForInReindex`).  A body that can leave the loop
+    (`break`, or `return` out of it) makes the state of the fold a `ForInStep β`, the
+    step after each iteration: once it is `done` the remaining iterations keep it
+    (`LeanScript.ToTerm.rangeForInBreakAsNatRec`). -/
 partial def transForInRange? (c : TCtx) (ρ coll init body : Expr) : MetaM (Option Expr) := do
   unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
   let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
     | throwError "`#leanscript_to_term`: the range of this `for` is not written out"
-  let some start ← evalNat (← whnf startE) | throwError
-    "`#leanscript_to_term`: the range of this `for` does not start at a known number"
-  let some step ← evalNat (← whnf stepE) | throwError
-    "`#leanscript_to_term`: the range of this `for` does not step by a known number"
-  unless start == 0 && step == 1 do
-    throwError "`#leanscript_to_term`: a `for` over a range is the fold of its bound, so \
-      the range has to start at `0` and step by `1`; this one starts at {start} and \
-      steps by {step}"
+  -- a start or step that is a known number is written as that literal
+  let start ← evalNat (← whnf startE)
+  let step ← evalNat (← whnf stepE)
+  let startE := match start with | some k => mkNatLit k | none => startE
+  let stepE := match step with | some k => mkNatLit k | none => stepE
+  -- any other range than `[:n]` is the loop over `[:size]` whose body reads the index
+  -- `start + j * step`
+  let (stopE, body) ← if start == some 0 && step == some 1 then pure (stopE, body)
+    else rangeForInReindex startE stopE stepE start step body
   let β ← inferType init
+  -- a body that can leave the loop: the recursion whose value is the step, as a Lean
+  -- expression, translated as any other `Nat.rec`
+  let breaking ← withLocalDeclD `i (mkConst ``Nat) fun i =>
+    withLocalDeclD `state β fun s => do
+      let (next, breaks) ← forInBody β (mkApp2 body i s)
+      unless breaks do return none
+      return some (← rangeForInBreakAsNatRec β stopE init i s next)
+  if let some e := breaking then return some (← trans c e)
   let τ ← tyOfType β
   let natTy ← tyOfType (mkConst ``Nat)
   let scrut ← trans c stopE
   let z ← trans c init
   let branch ← withLocalDeclD `i (mkConst ``Nat) fun i =>
     withLocalDeclD `state β fun s => do
-      let stepBody ← whnf (mkApp2 body i s).headBeta
-      let stepBody ← match stepBody.getAppFnArgs with
-        | (``Pure.pure, #[_, _, _, v]) => whnf v
-        | _ => pure stepBody
-      let next ← match stepBody.getAppFnArgs with
-        | (``ForInStep.yield, #[_, v]) => pure v
-        | (``ForInStep.done, #[_, _]) =>
-            throwError "`#leanscript_to_term`: this `for` leaves the loop early (`break` \
-              or `return`), which the fold a loop becomes cannot express"
-        | _ =>
-            throwError "`#leanscript_to_term`: the body of this `for` does not yield the \
-              state of the next iteration"
+      let next ← forInYieldValue β (mkApp2 body i s)
       let c' := c.pushFields #[(i.fvarId!, natTy), (s.fvarId!, τ)]
       trans c' next
-  return some <| (← mkNode ``LeanScript.Term.nat_rec
-    #[c.sg, c.gamma, τ, mkNatLit 0, scrut, ← mkNatRecBase c τ #[z], branch])
+  return some <| mkAppN (mkConst `LeanScript.Term.nat_rec')
+    #[c.sg, c.gamma, τ, mkNatLit 0, scrut, mkNatRecBase c τ #[z], branch]
+
+/-- `for h : i in r do …`, in the identity monad, over a range `r = [start:stop:step]`:
+    the loop that names the membership proof `h : i ∈ r`.  When the body does not read
+    `h`, it is the loop `for i in r` without it.  Otherwise it is the loop over
+    `[:size]` whose body, at `j`, is guarded by `if hj : j < size`, and reads the index
+    `start + j * step` with the proof `Std.Legacy.Range.mem_start_add_mul_step r hj`
+    (`LeanScript.ToTerm.rangeForIn'AsForIn`); that loop is translated by
+    `transForInRange?`.  The proof is erased, as any proof is. -/
+partial def transForIn'Range? (c : TCtx) (ρ coll init body : Expr) : MetaM (Option Expr) := do
+  unless ρ.consumeMData.isConstOf ``Std.Legacy.Range do return none
+  let (``Std.Legacy.Range.mk, #[startE, stopE, stepE, _]) := (← whnf coll).getAppFnArgs
+    | throwError "`#leanscript_to_term`: the range of this `for` is not written out"
+  let start ← evalNat (← whnf startE)
+  let step ← evalNat (← whnf stepE)
+  let startE := match start with | some k => mkNatLit k | none => startE
+  let stepE := match step with | some k => mkNatLit k | none => stepE
+  let β ← inferType init
+  match ← rangeForIn'AsForIn β coll startE stopE stepE start step body with
+  | (none, body') => transForInRange? c ρ coll init body'
+  | (some size, body') =>
+      let coll' := mkApp4 (mkConst ``Std.Legacy.Range.mk) (mkNatLit 0) size (mkNatLit 1)
+        (mkConst ``Nat.zero_lt_one)
+      transForInRange? c ρ coll' init body'
 
 /-- An application whose head is a constant. -/
 partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
@@ -221,56 +319,95 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
   -- is a declaration of the signature, whatever its definition is
   if externAsOrdinary.contains n then
     if let some g := c.global? n then
-      let gt := (← mkNode ``LeanScript.Term.global #[c.sg, c.gamma, g.ty, g.ref])
+      let gt := mkAppN (mkConst `LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
       return ← applyArgs trans c gt (mkConst n lvls) args
     throwError "`#leanscript_to_term`: `{n}` is translated as an ordinary function, and is \
       not declared in the signature, so a term cannot call it.  Add a `GlobalDecl` named \
       \"{n.getString!}\" (or \"{n}\") to the signature."
+  -- a structural recursion on a recursive record is the fold of the record
+  if n.getString! == "brecOn" || (n.isStr && n.getString!.startsWith "brecOn_") then
+    -- a structural recursion on a member of a mutual inductive block is the fold of
+    -- the family, at the depth it needs
+    if let some t ← transRecFamilyBrecOn? trans c e n lvls args then return t
+    if let some t ← transRecObjectBrecOn? trans c e n lvls args then return t
+    -- a structural recursion on a recursive tagged union other than a list is the fold
+    -- of the union, at the depth it needs
+    if n != ``List.brecOn then
+      if let some t ← transRecUnionBrecOn? trans c e n lvls args then return t
   checkConst n
   if let some t ← transIdOp? c n args then return t
-  -- `decide p` — which is also what `a == b` is at a type whose `BEq` comes from its
-  -- `DecidableEq` (`instBEqOfDecidableEq`), and what a `Bool` written as a proposition
-  -- (`(n < 3 : Bool)`) is — is the `Bool` the decision procedure answers with
-  if n == ``Decidable.decide && args.size == 2 then
-    return ← boolOfDecidable c args[0]! args[1]!
-  -- `if`/`cond` applied to more arguments than the test and the branches (a dispatch
-  -- that answers with a function, applied): the dispatch, then applied to the rest —
-  -- which `mkNode` moves into the branches (`LeanScript.Head.caseIntro`)
-  if (n == ``ite || n == ``dite) && args.size > 5 then
-    return ← applyArgs trans c (← trans c (mkAppN (mkConst n lvls) (args.extract 0 5)))
-      (mkAppN (mkConst n lvls) (args.extract 0 5)) (args.extract 5 args.size)
-  if n == ``cond && args.size > 4 then
-    return ← applyArgs trans c (← trans c (mkAppN (mkConst n lvls) (args.extract 0 4)))
-      (mkAppN (mkConst n lvls) (args.extract 0 4)) (args.extract 4 args.size)
+  -- `panic msg` (what `l[i]!`, `a.get!`, … reach on an index out of range) is, in Lean's
+  -- logic, the `default` of the `Inhabited` instance it is handed: the message is an
+  -- effect of the compiled code only
+  if let some (_, arity) := panicNames.find? (·.1 == n) then
+    if args.size ≥ arity then
+      let d ← transDefaultValue args[0]! args[1]!
+      return ← trans c (mkAppN d (args.extract arity args.size)).headBeta
+  -- `xs[i]!` is the `getElem!` of the collection's instance, a function of the
+  -- `Inhabited` instance of the elements: unfolded and applied to it here, so that the
+  -- instance stays a Lean value rather than a binder of the language
+  -- (`List.get!Internal`, `Array.get!Internal`, …)
+  if n == ``GetElem?.getElem! then
+    if let some e' ← unfoldProjInst? e then return ← trans c e'.headBeta
+  -- `l.attach` and `l.attachWith P h` pair each element with a proof, which the language
+  -- erases (a subtype has the tree of its values): they are `l` itself
+  if (n == ``List.attach && args.size ≥ 2) || (n == ``List.attachWith && args.size ≥ 4) then
+    let arity := if n == ``List.attach then 2 else 4
+    return ← trans c (mkAppN args[1]! (args.extract arity args.size))
+  if n == ``Inhabited.default && args.size == 2 then
+    let d ← transDefaultValue args[0]! args[1]!
+    unless d == e do return ← trans c d
   if n == ``ite then return ← transIte c args
   if n == ``dite then return ← transDite c args
+  -- `decide p`: the `Bool` the decision procedure gives, as the test of an `if` is read
+  if n == ``Decidable.decide && args.size == 2 then
+    return ← boolOfDecidable c args[0]! args[1]!
   -- `xs[i]` (with its proof) is the extern its instance unfolds to, `Array.getInternal`
   if n == ``GetElem.getElem then
     if let some x ← decidableExtern? e then return ← trans c x
-  -- `n % m` likewise (`Nat.mod`, which the catalogue models by `Nat.modCore`), rather than
-  -- the unfolding of `Nat.mod` around that extern
-  if n == ``HMod.hMod || n == ``Mod.mod then
-    if let some x ← decidableExtern? e then return ← trans c x
+    if let some x ← listGetElemAsGetD? args then return ← trans c x
   if n == ``cond then
     let some scrut := args[1]? | throwError "`#leanscript_to_term`: `cond` needs its test"
     return ← mkBoolCases c (← trans c scrut) args[2]! args[3]!
   if n == ``Thunk.get then
     let some t := args[1]? | throwError "`#leanscript_to_term`: `Thunk.get` needs a thunk"
     let τ ← tyOfTerm e
-    return (← mkNode ``LeanScript.Term.thunk_force #[c.sg, c.gamma, τ, ← trans c t])
+    return mkAppN (mkConst `LeanScript.Term.thunk_force) #[c.sg, c.gamma, τ, ← trans c t]
   if n == ``List.toArray || n == ``Array.mk then
     -- an array literal, written as the list of its elements
     return ← transListLit c e
-  if n == ``Nat.brecOn || n == ``List.brecOn then
+  if n == ``List.brecOn then
+    -- the one-step translation first (which also serves a recursion on the elements of
+    -- an array); a recursion that reads further down the list is the fold of the list
+    -- as a recursive tagged union, at the depth it needs
+    let onArray := match args[2]? with
+      | some major => (arrayOfToList? major).isSome
+      | none => false
+    try
+      return ← transBrecOn trans c e n lvls args
+    catch ex =>
+      let fallback? : Option Expr ←
+        if onArray = true then pure none else transRecUnionBrecOn? trans c e n lvls args
+      match fallback? with
+      | some t => return t
+      | none => throw ex
+  if n == ``Nat.brecOn then
     return ← transBrecOn trans c e n lvls args
   if isSparseCasesOn n then
     if let some t ← transSparseCasesOn? trans c e n lvls args then return t
-    -- a type whose tree has no partial dispatch: the exhaustive one, from the unfolding
+    -- a type whose tree has no partial dispatch: the exhaustive one
+    if let some e' ← sparseAsCasesOn? n args then return ← trans c e'
     if let some e' ← unfoldHere? e then return ← trans c e'
+  -- a dispatch on a value written out whose type has no tree (a datatype with
+  -- existentials): the branch of its constructor
+  if let some e' ← reduceDispatchOnNoTreeCtor? e n then return ← trans c e'
   match (← getEnv).find? n with
   | some (.ctorInfo ci) => return ← transCtorApp c e ci args
   | some (.recInfo ri) => return ← transRecApp trans c e ri lvls args
   | _ => pure ()
+  -- a one-level `match` on a value of a user-defined recursive type (a recursive union,
+  -- record or newtype, or a member of a mutual block): its `…_casesOn`, not its recursor
+  if let some t ← transRecKindCasesOn? trans c e n lvls args then return t
   if (← Meta.isMatcherApp e) || n.getString! == "casesOn" || n.getString! == "recOn" then
     if let some e' ← unfoldHere? e then
       return ← trans c e'
@@ -285,13 +422,31 @@ partial def transConstApp (c : TCtx) (e : Expr) (n : Name) (lvls : List Level)
           if (arrayOfToList? major).isSome then
             return ← trans c e'
   if let some g := c.global? n then
-    let gt := (← mkNode ``LeanScript.Term.global #[c.sg, c.gamma, g.ty, g.ref])
+    let gt := mkAppN (mkConst `LeanScript.Term.global) #[c.sg, c.gamma, g.ty, g.ref]
     return ← applyArgs trans c gt (mkConst n lvls) args
+  -- the projection function of a structure, applied to a value: that projection, which
+  -- is the record's case analysis rather than a function applied to the value
+  if let some pinfo ← getProjectionFnInfo? n then
+    if !pinfo.fromClass && args.size > pinfo.numParams then
+      let ci ← getConstInfoCtor pinfo.ctorName
+      let p := Expr.proj ci.induct pinfo.i args[pinfo.numParams]!
+      return ← trans c (mkAppN p (args.extract (pinfo.numParams + 1) args.size))
   if ← isInlinable n then
     return ← transInline trans c e n lvls args
+  -- a structural recursion defined on its own and called from here (or a wrapper of
+  -- one): the fold it compiles to, inlined at the call site
+  if ← callsStructuralRecursion n then
+    return ← transInline trans c e n lvls args
+  -- a call on a value of a datatype with existentials, or one that builds such a value:
+  -- that value has no tree, so the function cannot be declared in the signature; it is
+  -- inlined, and specialized to the value
+  if (← getEnv).find? n matches some (.defnInfo _) then
+    if (← args.anyM argHasNoTree) || (← argHasNoTree e) then
+      return ← transInline trans c e n lvls args
   throwError "`#leanscript_to_term`: `{n}` is not declared in the signature and is not \
     inlinable, so a term cannot call it.  Either add a `GlobalDecl` named \
-    \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`."
+    \"{n.getString!}\" (or \"{n}\") to the signature, or mark `{n}` `@[inline]`.  (A \
+    structural recursion is inlined without either.)"
 
 /-- Is this call one the translation builds itself, although its head is implemented by
     an extern?  A constructor (`Thunk.mk`, `Array.mk`) is built in place, an array literal
@@ -359,7 +514,7 @@ partial def mkNatZeroCases (c : TCtx) (n thenB elseB : Expr) (τ? : Option Expr)
   let (τ, z, s) ← match τ? with
     | some τ => pure (τ, ← transCheck c thenB τ, ← transCheck c' elseB τ)
     | none => transBranchPair c thenB c' elseB
-  return (← mkNode ``LeanScript.Term.nat_casesOn #[c.sg, c.gamma, τ, scrut, z, s])
+  return mkAppN (mkConst `LeanScript.Term.nat_casesOn') #[c.sg, c.gamma, τ, scrut, z, s]
 
 /-- Two branches of one dispatch, each in its own context: their common type and their
     translations.  When the Lean type of the branches has no tree (a datatype with
@@ -396,12 +551,12 @@ partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
   match e with
   | .lam _ d _ _ =>
       if ← LeanScript.Deriving.erasedBinder d then
-        return ← transCheck c (← dropErasedBinder e) τ
+        return ← withErasedBinder e fun b => transCheck c b τ
       match τ.getAppFnArgs with
       | (``LeanScript.TyWf.fn, #[σ, ρ]) =>
           lambdaBoundedTelescope e 1 fun xs body => do
             let b ← transCheck (c.push xs[0]!.fvarId! σ) body ρ
-            return (← mkNode ``LeanScript.Term.lam #[c.sg, c.gamma, σ, ρ, b])
+            return mkAppN (mkConst `LeanScript.Term.lam) #[c.sg, c.gamma, σ, ρ, b]
       | _ => coerceTo c (← trans c e) τ
   | _ =>
     if let .const n _ := e.getAppFn then
@@ -419,60 +574,30 @@ partial def transCheck (c : TCtx) (e0 τ0 : Expr) : MetaM Expr := do
 
 /-- The `Bool` a decidable proposition tests. -/
 partial def boolOfDecidable (c : TCtx) (cnd : Expr) (inst : Expr) : MetaM Expr := do
-  let boolLit (b : Bool) : MetaM Expr :=
-    mkNode ``LeanScript.Term.bool_mk #[c.sg, c.gamma, toExpr b]
-  let boolTy ← tyOfType (mkConst ``Bool)
-  -- the test of a proposition `p` that is part of this one, by its own decision procedure
-  let sub (p : Expr) : MetaM Expr := do
-    boolOfDecidable c p (← synthInstance (mkApp (mkConst ``Decidable) p))
   match cnd.getAppFnArgs with
-  -- the connectives, as the boolean connectives they are decided by: `¬ p` is `!p`,
-  -- `p ∧ q` is `p && q` and `p ∨ q` is `p || q` (the second test runs only when needed)
-  | (``Not, #[p]) =>
-      return ← mkBoolCases' c (← sub p) (← boolLit false) (← boolLit true) boolTy
-  | (``Ne, #[α, a, b]) =>
-      let p ← mkAppM ``Eq #[a, b]
-      let _ := α
-      return ← mkBoolCases' c (← sub p) (← boolLit false) (← boolLit true) boolTy
-  | (``And, #[p, q]) =>
-      return ← mkBoolCases' c (← sub p) (← sub q) (← boolLit false) boolTy
-  | (``Or, #[p, q]) =>
-      return ← mkBoolCases' c (← sub p) (← boolLit true) (← sub q) boolTy
   | (``Eq, #[α, lhs, rhs]) =>
       if α.isConstOf ``Bool && rhs.isConstOf ``Bool.true then
         return ← trans c lhs
       if α.isConstOf ``Bool && rhs.isConstOf ``Bool.false then
         let t ← trans c lhs
-        return ← mkBoolCases' c t ((← mkNode ``LeanScript.Term.bool_mk
-            #[c.sg, c.gamma, mkConst ``Bool.false]))
-          ((← mkNode ``LeanScript.Term.bool_mk #[c.sg, c.gamma, mkConst ``Bool.true]))
+        return ← mkBoolCases' c t (mkAppN (mkConst `LeanScript.Term.bool_mk)
+            #[c.sg, c.gamma, mkConst ``Bool.false])
+          (mkAppN (mkConst `LeanScript.Term.bool_mk) #[c.sg, c.gamma, mkConst ``Bool.true])
           (← tyOfType (mkConst ``Bool))
       -- a decision procedure that is an extern (`Nat.decEq`, say) is that extern
       if let some x ← decidableExtern? inst then return ← trans c x
       -- `a = b` at a type with a `BEq`: the test is `a == b`
       match ← trySynthInstance (← mkAppM ``BEq #[α]) with
-      | .some b =>
-          -- (not a `BEq` that is this very decision, which would come back here)
-          unless (← whnfR b).isAppOf ``instBEqOfDecidableEq do
-            return ← trans c (← mkAppM ``BEq.beq #[lhs, rhs])
+      | .some _ => return ← trans c (← mkAppM ``BEq.beq #[lhs, rhs])
       | _ => pure ()
-      -- two booleans are equal when they are both `true` or both `false`:
-      -- `if a then b else !b`
-      if α.isConstOf ``Bool then
-        let b ← trans c rhs
-        let notB ← mkBoolCases' c b (← boolLit false) (← boolLit true) boolTy
-        return ← mkBoolCases' c (← trans c lhs) b notB boolTy
-      -- otherwise the decision procedure, unfolded (`Char`'s is its code points')
-      let d ← whnf (mkApp2 (mkConst ``Decidable.decide) cnd inst)
-      if d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome then
-        throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`"
-      trans c d
+      throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`"
   | _ =>
       -- a decision procedure that is an extern (`Nat.decLt`, say) is that extern, whose
       -- value is the `Bool` it decides
       if let some x ← decidableExtern? inst then return ← trans c x
       let d ← whnf (mkApp2 (mkConst ``Decidable.decide) cnd inst)
-      if d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome then
+      if d.isAppOfArity ``Decidable.decide 2 ||
+          (d.find? (fun s => s.isConstOf ``Decidable.rec) |>.isSome) then
         throwError "`#leanscript_to_term`: the test {cnd} is not a `Bool`: write the \
           condition as a `Bool`, or declare the decision procedure in the signature"
       trans c d
@@ -484,7 +609,7 @@ partial def mkBoolCases (c : TCtx) (test : Expr) (thenB elseB : Expr) : MetaM Ex
 
 /-- `bool_casesOn`, from the two translated branches. -/
 partial def mkBoolCases' (c : TCtx) (test t e τ : Expr) : MetaM Expr := do
-  return (← mkNode ``LeanScript.Term.bool_casesOn #[c.sg, c.gamma, τ, test, t, e])
+  return mkAppN (mkConst `LeanScript.Term.bool_casesOn') #[c.sg, c.gamma, τ, test, t, e]
 
 /-- A list, or an array, written out: every element of it at once. -/
 partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do
@@ -503,24 +628,24 @@ partial def transListLit (c : TCtx) (e : Expr) : MetaM Expr := do
         throwError "`#leanscript_to_term`: the grammar builds an array from all of its \
           elements at once, so only a list written out can be translated; {cur} is not \
           one"
-  let mut ts := (← mkNode ``LeanScript.Terms.nil #[c.sg, c.gamma, σ])
+  let mut ts := mkAppN (mkConst `LeanScript.Terms.nil) #[c.sg, c.gamma, σ]
   for i in [0:elems.size] do
     let a := elems[elems.size - 1 - i]!
-    ts := (← mkNode ``LeanScript.Terms.consT #[c.sg, c.gamma, σ, ← trans c a, ts])
-  return (← mkNode ``LeanScript.Term.array_mk #[c.sg, c.gamma, σ, ts])
+    ts := mkAppN (mkConst `LeanScript.Terms.cons) #[c.sg, c.gamma, σ, ← trans c a, ts]
+  return mkAppN (mkConst `LeanScript.Term.array_mk) #[c.sg, c.gamma, σ, ts]
 
 /-- A spine of arguments at the given trees. -/
 partial def mkSpine (c : TCtx) (tys : List Expr) (vals : Array Expr) : MetaM Expr := do
   unless tys.length == vals.size do
     throwError "`#leanscript_to_term`: this constructor carries {vals.size} values but \
       its tree has {tys.length} fields"
-  let mut sp := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
+  let mut sp := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   let tysA := tys.toArray
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
     let t ← trans c vals[j]!
-    sp := (← mkNode ``LeanScript.Spine.consT
-      #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp])
+    sp := mkAppN (mkConst `LeanScript.Spine.cons)
+      #[c.sg, c.gamma, tysA[j]!, mkTyListE (tys.drop (j + 1)), t, sp]
   return sp
 
 /-- An application of a constructor: it is built in place. -/
@@ -540,17 +665,19 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
     let some body := fields[0]?
       | throwError "`#leanscript_to_term`: a thunk needs its body"
     let inner := (mkApp body (mkConst ``Unit.unit)).headBeta
-    return (← mkNode ``LeanScript.Term.thunk_mk
-      #[c.sg, c.gamma, σ, ← trans c inner])
-  -- a one-field wrapper is its field
+    return mkAppN (mkConst `LeanScript.Term.thunk_mk)
+      #[c.sg, c.gamma, σ, ← trans c inner]
+  -- a one-field wrapper is its field (a type with one constructor: a constructor of a
+  -- union whose one field is the union itself, `succ n`, is not a wrapper)
   if h : fields.size = 1 then
+    let indInfo ← getConstInfoInduct ci.induct
     let fty ← tyOfTerm fields[0]
-    if fty == ty then return ← trans c fields[0]
+    if indInfo.ctors.length == 1 && fty == ty then return ← trans c fields[0]
   match ← tyView ty with
   | .record fs =>
       let fieldTys ← recordFieldTys fs
       let spine ← mkSpine c fieldTys fields
-      return (← mkNode ``LeanScript.Term.record_mk #[c.sg, c.gamma, fs, spine])
+      return mkAppN (mkConst `LeanScript.Term.record_mk) #[c.sg, c.gamma, fs, spine]
   | .taggedUnion l =>
       let ctys ← taggedUnionCtorTys l
       let some fieldTys := ctys[ci.cidx]?
@@ -559,8 +686,8 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let spine ← mkSpine c fieldTys fields
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
-      return (← mkNode ``LeanScript.Term.taggedUnion_mk
-        #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine])
+      return mkAppN (mkConst `LeanScript.Term.taggedUnion_mk)
+        #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
   | .recTaggedUnion l hwf =>
       -- the fields of a value are the payload **unfolded**: a field that is an
       -- occurrence of the union is a value of the union again
@@ -572,24 +699,84 @@ partial def transCtorApp (c : TCtx) (e : Expr) (ci : ConstructorVal)
       let spine ← mkSpine c fieldTys fields
       let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE unfE
       let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
-      return (← mkNode ``LeanScript.Term.recTaggedUnion_mk
-        #[c.sg, c.gamma, l, hwf, mkNatLit ci.cidx, prf, spine])
+      return mkAppN (mkConst `LeanScript.Term.recTaggedUnion_mk)
+        #[c.sg, c.gamma, l, hwf, mkNatLit ci.cidx, prf, spine]
+  | .recObject fs hwf =>
+      -- the fields of a value are the record's fields **unfolded**: an occurrence of the
+      -- record inside a field is a value of the record again
+      let unfE := mkApp2 (mkConst ``LeanScript.TyWf.recObjectUnfold) fs hwf
+      let fieldTys ← recordFieldTys (← reduceTy unfE)
+      let spine ← mkSpine c fieldTys fields
+      return mkAppN (mkConst `LeanScript.Term.recObject_mk) #[c.sg, c.gamma, fs, hwf, spine]
+  | .recAlias b hwf =>
+      let indInfo ← getConstInfoInduct ci.induct
+      if indInfo.ctors.length > 1 then
+        -- a declaration of several constructors with an occurrence of itself inside
+        -- another type: its body is the union of its constructors, **unfolded**
+        let unfE ← reduceTy (mkApp2 (mkConst ``LeanScript.TyWf.recAliasUnfold) b hwf)
+        let .taggedUnion l ← tyView unfE
+          | throwError "`#leanscript_to_term`: internal: the body of {ci.induct} is not a \
+              tagged union"
+        let ctys ← taggedUnionCtorTys l
+        let some fieldTys := ctys[ci.cidx]?
+          | throwError "`#leanscript_to_term`: the tree of {ci.induct} has no constructor \
+              {ci.cidx}"
+        let spine ← mkSpine c fieldTys fields
+        let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+        let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
+        let body := mkAppN (mkConst `LeanScript.Term.taggedUnion_mk)
+          #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
+        return mkAppN (mkConst `LeanScript.Term.recAlias_mk) #[c.sg, c.gamma, b, hwf, body]
+      -- the one field of a value is the body **unfolded**: an occurrence of the newtype
+      -- inside it is a value of the newtype again
+      let some v := fields[0]?
+        | throwError "`#leanscript_to_term`: a value of the recursive newtype \
+            {ci.induct} needs its body"
+      unless fields.size == 1 do
+        throwError "`#leanscript_to_term`: the constructor of the recursive newtype \
+          {ci.induct} has {fields.size} fields"
+      return mkAppN (mkConst `LeanScript.Term.recAlias_mk)
+        #[c.sg, c.gamma, b, hwf, ← trans c v]
+  | .mutualRecursiveFamily nE f hwf =>
+      -- a value of the member the family selects, with its fields **unfolded** in the
+      -- scope of the whole family: an occurrence of a member is a value of that member
+      let curE := mkApp2 (mkConst ``LeanScript.LeanMutualRecFamily.current)
+        (tyWfInE ((← natOfExpr nE) + 2)) f
+      let unfE ← reduceTy (mkAppN (mkConst ``LeanScript.LeanFamMemberSchema.map)
+        #[tyWfInE ((← natOfExpr nE) + 2), tyE,
+          mkApp3 (mkConst ``LeanScript.TyWfIn.unfoldFam) nE f hwf, curE])
+      let value ← match unfE.getAppFnArgs with
+        | (``LeanScript.LeanFamMemberSchema.ctors, #[_, l]) =>
+            let ctys ← taggedUnionCtorTys l
+            let some fieldTys := ctys[ci.cidx]?
+              | throwError "`#leanscript_to_term`: the tree of {ci.induct} has no \
+                  constructor {ci.cidx}"
+            let spine ← mkSpine c fieldTys fields
+            let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyE l
+            let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit ci.cidx, lenE])
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.ctors)
+              #[c.sg, c.gamma, l, mkNatLit ci.cidx, prf, spine]
+        | (``LeanScript.LeanFamMemberSchema.record, #[_, fs]) =>
+            let spine ← mkSpine c (← recordFieldTys fs) fields
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.record)
+              #[c.sg, c.gamma, fs, spine]
+        | (``LeanScript.LeanFamMemberSchema.alias, #[_, b]) =>
+            let some v := fields[0]?
+              | throwError "`#leanscript_to_term`: a value of {ci.induct} needs its body"
+            pure <| mkAppN (mkConst `LeanScript.FamilyMemberValue.alias)
+              #[c.sg, c.gamma, b, ← trans c v]
+        | _ => throwError "`#leanscript_to_term`: internal: the member of the family \
+            {ci.induct} has no shape: {unfE}"
+      return mkAppN (mkConst `LeanScript.Term.mutualRecursiveFamily_mk)
+        #[c.sg, c.gamma, nE, f, hwf, value]
   | .enum s =>
       let nE := mkApp (mkConst ``LeanScript.LeanEnumSchema.nOfConstructors) s
-      return (← mkNode ``LeanScript.Term.enum_mk
-        #[c.sg, c.gamma, s, ← mkFinLit nE ci.cidx])
-  | .prim p =>
+      return mkAppN (mkConst `LeanScript.Term.enum_mk)
+        #[c.sg, c.gamma, s, ← mkFinLit nE ci.cidx]
+  | .prim _ =>
       if ← isBoolTy ty then
-        return (← mkNode ``LeanScript.Term.bool_mk
-          #[c.sg, c.gamma, toExpr (ci.cidx == 1)])
-      -- a value of a terminal type built from closed values (`String.Pos.Raw.mk 1`): it is
-      -- computed where the term is written, and written as its literal
-      let v := mkAppN e.getAppFn args
-      if !v.hasFVar && !v.hasMVar then
-        let q := mkApp2 (mkConst ``LeanScript.LeanPrimTy.quote) p v
-        if let some q ← evalQuoted (mkApp2 (mkConst ``Option.some [0])
-            (mkConst ``LeanScript.Quoted) q) then
-          return ← quotedTerm c.sg c.gamma ty q
+        return mkAppN (mkConst `LeanScript.Term.bool_mk)
+          #[c.sg, c.gamma, toExpr (ci.cidx == 1)]
       throwError "`#leanscript_to_term`: {ci.name} builds a value of a terminal type, \
         which has no constructor in the language; write it as a literal"
   | _ =>

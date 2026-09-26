@@ -7,6 +7,14 @@ public meta import LeanScript.Ty.WfTactic
 
 namespace LeanScript
 
+/-!
+# `LeanScriptTyWf`: the Lean types the language models
+
+The class that gives a Lean type its bundled tree, with the accessors `tyWfOf` (the
+bundle), `tyOf` (its tree) and `tyWf` (its proof).  The instances the language comes with
+are in `LeanScript.Ty.Instances`; `deriving LeanScriptTyWf` is in `LeanScript.Ty.Deriving`.
+-/
+
 /-- The Lean types the language models: `α` has a tree, and the tree is a type of the
     language.  Both are one field, the bundle `LeanScript.TyWf`. -/
 class LeanScriptTyWf (α : Type u) where

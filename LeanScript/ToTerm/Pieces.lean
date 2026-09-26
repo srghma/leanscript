@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Cache
+public meta import LeanScript.ToTerm.Ctx
 
 @[expose] public section
 
@@ -22,21 +22,21 @@ namespace LeanScript.ToTerm
 
 /-- The introduction form of a literal of this Lean type. -/
 def litCtorFor : Name → Option Name
-  | ``Bool => some ``LeanScript.Term.bool_mk
-  | ``Nat => some ``LeanScript.Term.nat_mk
-  | ``Int => some ``LeanScript.Term.int_mk
-  | ``String => some ``LeanScript.Term.string_mk
-  | ``Char => some ``LeanScript.Term.char_mk
-  | ``UInt8 => some ``LeanScript.Term.uint8_mk
-  | ``UInt16 => some ``LeanScript.Term.uint16_mk
-  | ``UInt32 => some ``LeanScript.Term.uint32_mk
-  | ``UInt64 => some ``LeanScript.Term.uint64_mk
-  | ``Int8 => some ``LeanScript.Term.int8_mk
-  | ``Int16 => some ``LeanScript.Term.int16_mk
-  | ``Int32 => some ``LeanScript.Term.int32_mk
-  | ``Int64 => some ``LeanScript.Term.int64_mk
-  | ``Float => some ``LeanScript.Term.float_mk
-  | ``Float32 => some ``LeanScript.Term.float32_mk
+  | ``Bool => some `LeanScript.Term.bool_mk
+  | ``Nat => some `LeanScript.Term.nat_mk
+  | ``Int => some `LeanScript.Term.int_mk
+  | ``String => some `LeanScript.Term.string_mk
+  | ``Char => some `LeanScript.Term.char_mk
+  | ``UInt8 => some `LeanScript.Term.uint8_mk
+  | ``UInt16 => some `LeanScript.Term.uint16_mk
+  | ``UInt32 => some `LeanScript.Term.uint32_mk
+  | ``UInt64 => some `LeanScript.Term.uint64_mk
+  | ``Int8 => some `LeanScript.Term.int8_mk
+  | ``Int16 => some `LeanScript.Term.int16_mk
+  | ``Int32 => some `LeanScript.Term.int32_mk
+  | ``Int64 => some `LeanScript.Term.int64_mk
+  | ``Float => some `LeanScript.Term.float_mk
+  | ``Float32 => some `LeanScript.Term.float32_mk
   | _ => none
 
 /-- Is this expression a literal — a numeral, a string, a character, a boolean, or a
@@ -59,6 +59,47 @@ partial def isLitLike (e : Expr) : Bool :=
     | _ => false
 
 /-! ## Small pieces of the object language -/
+
+/-- A list of trees, as an expression. -/
+def mkTyListE (ts : List Expr) : Expr := mkCtxE ts nilCtxE
+
+/-- The field trees of a record schema, in declaration order. -/
+def recordFieldTys (fs : Expr) : MetaM (List Expr) := do
+  match (← whnf fs).getAppFnArgs with
+  | (``LeanScript.LeanRecordSchema.mk, #[_, a, b, rest]) =>
+      return a :: b :: (← listOfExpr rest)
+  | _ => throwError "`#leanscript_to_term`: not a record schema: {fs}"
+
+/-- The fields of a non-empty list of trees. -/
+def nonEmptyTys (ne : Expr) : MetaM (List Expr) := do
+  match (← whnf ne).getAppFnArgs with
+  | (``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk, #[_, hd, tl]) =>
+      return hd :: (← listOfExpr tl)
+  | _ => throwError "`#leanscript_to_term`: not a non-empty list of types: {ne}"
+
+mutual
+
+/-- One entry per constructor of a tagged union, each the trees of its fields. -/
+partial def taggedUnionCtorTys (l : Expr) : MetaM (List (List Expr)) := do
+  match (← whnf l).getAppFnArgs with
+  | (``LeanScript.LeanTaggedUnionSchema.payloadFirst, #[_, fields, next, rest]) =>
+      let restL ← (← listOfExpr rest).mapM listOfExpr
+      return (← nonEmptyTys fields) :: (← listOfExpr next) :: restL
+  | (``LeanScript.LeanTaggedUnionSchema.skip, #[_, rest]) =>
+      return [] :: (← ctorsWithPayloadTys rest)
+  | _ => throwError "`#leanscript_to_term`: not a tagged-union schema: {l}"
+
+/-- One entry per constructor a `CtorsWithPayload` holds. -/
+partial def ctorsWithPayloadTys (cp : Expr) : MetaM (List (List Expr)) := do
+  match (← whnf cp).getAppFnArgs with
+  | (``LeanScript.CtorsWithPayload.here, #[_, fields, rest]) =>
+      let restL ← (← listOfExpr rest).mapM listOfExpr
+      return (← nonEmptyTys fields) :: restL
+  | (``LeanScript.CtorsWithPayload.skip, #[_, rest]) =>
+      return [] :: (← ctorsWithPayloadTys rest)
+  | _ => throwError "`#leanscript_to_term`: not a list of constructors: {cp}"
+
+end
 
 /-- The pieces of the schema of a list: the `CtorsWithPayload` after the field-less
     `nil`, the fields of `cons` and the constructors after it (there are none).  The
@@ -94,14 +135,14 @@ partial def ctorValueArgs (ci : ConstructorVal) (args : Array Expr) :
     return out
 
 /-- The base values of a fold, already translated, as a `Spine` at `k` copies of `τ` —
-    the type `LeanScript.Term.nat_rec` asks its base values at. -/
-partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : MetaM Expr := do
-  let mut sp := (← mkNode ``LeanScript.Spine.nil #[c.sg, c.gamma])
+    the type `LeanScript.Term.nat_rec'` asks its base values at. -/
+partial def mkNatRecBase (c : TCtx) (τ : Expr) (vals : Array Expr) : Expr := Id.run do
+  let mut sp := mkAppN (mkConst `LeanScript.Spine.nil) #[c.sg, c.gamma]
   let mut tys : List Expr := []
   for i in [0:vals.size] do
     let j := vals.size - 1 - i
-    sp := (← mkNode ``LeanScript.Spine.consT
-      #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp])
+    sp := mkAppN (mkConst `LeanScript.Spine.cons)
+      #[c.sg, c.gamma, τ, mkTyListE tys, vals[j]!, sp]
     tys := τ :: tys
   return sp
 

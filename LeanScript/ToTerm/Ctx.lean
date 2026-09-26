@@ -1,7 +1,6 @@
 module
 
 public meta import LeanScript.ToTerm.TyView
-public meta import LeanScript.ToTerm.Build
 
 @[expose] public section
 
@@ -42,6 +41,11 @@ structure TCtx where
   base : Expr
   /-- The binders entered since, **outermost first**, each with its tree. -/
   binders : Array (FVarId × Expr) := #[]
+  /-- The inductives whose fold the translation is inside the branches of.  A `match` on
+      a value of one of them is the fold's own look further down, never a `…_casesOn`
+      (`LeanScript.ToTerm.TransRecCases`), so that the depth of a fold is how far its
+      branches read and does not change with how Lean happened to compile them. -/
+  foldInds : Array Name := #[]
   deriving BEq, Repr
 
 /-- The context of the translation, as an expression: the binders entered, innermost
@@ -85,7 +89,7 @@ def TCtx.var (c : TCtx) (f : FVarId) : MetaM Expr := do
   let k := c.binders.size - 1 - i
   let τ := c.binders[i]!.2
   let idx ← mkIndexE c.binderTys c.base k
-  return mkAppN (mkConst ``LeanScript.Term.var) #[c.sg, c.gamma, τ, idx]
+  return mkAppN (mkConst `LeanScript.Term.var) #[c.sg, c.gamma, τ, idx]
 
 /-! ## The signature -/
 

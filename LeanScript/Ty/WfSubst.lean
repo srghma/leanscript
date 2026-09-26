@@ -37,32 +37,15 @@ The proof is one induction over the three mutually inductive families of
 
 namespace Ty
 
-/-! ## A list of types, split -/
-
-/-- The first part of a list that is all types is all types. -/
-theorem WfAllIn.of_append_left {n : Nat} {xs ys : List Ty}
-    (h : WfAllIn n (xs ++ ys)) : WfAllIn n xs := by
-  induction xs with
-  | nil => exact .nil
-  | cons _ _ ih => cases h with | cons ha hs => exact .cons ha (ih hs)
-
-/-- The rest of a list that is all types is all types. -/
-theorem WfAllIn.of_append_right {n : Nat} {xs ys : List Ty}
-    (h : WfAllIn n (xs ++ ys)) : WfAllIn n ys := by
-  induction xs with
-  | nil => exact h
-  | cons _ _ ih => cases h with | cons _ hs => exact ih hs
+/-! ## One constructor of a list of lists -/
 
 /-- One entry of a list of lists whose concatenation is all types is all types: this is
     how the fields of *one* constructor are read off the condition a schema states about
     all of them at once. -/
-theorem WfAllIn.of_flatten {n : Nat} : ∀ {xss : List (List Ty)} {i : Nat},
-    WfAllIn n xss.flatten → (hi : i < xss.length) → WfAllIn n xss[i]
-  | [], _, _, hi => absurd hi (by simp)
-  | xs :: _, 0, h, _ => WfAllIn.of_append_left (by simpa using h)
-  | _ :: rest, i + 1, h, hi =>
-      WfAllIn.of_flatten (n := n) (xss := rest) (i := i)
-        (WfAllIn.of_append_right (by simpa using h)) (by simpa using hi)
+theorem WfAllIn.of_flatten {n : Nat} {xss : List (List Ty)} {i : Nat}
+    (h : WfAllIn n xss.flatten) (hi : i < xss.length) : WfAllIn n xss[i] :=
+  WfAllIn.iff_forall.2 fun _ ht =>
+    WfAllIn.iff_forall.1 h _ (List.mem_flatten.2 ⟨_, List.getElem_mem hi, ht⟩)
 
 /-! ## Substitution -/
 
@@ -87,23 +70,20 @@ theorem wf_substOcc {S : Ty} (hS : Wf S) {m : Nat → Ty} :
   | recAlias hw ho hh => (try intro _); exact .recAlias hw ho hh
   | mutualRecursiveFamily hw ho hh =>
       (try intro _); exact .mutualRecursiveFamily hw ho hh
-  | prim => (try intro _); exact .prim
-  | enum => (try intro _); exact .enum
+  | prim => exact .prim
+  | enum => exact .enum
   | fn ha _ _ ihb =>
-      (try intro _); exact .fn ha (ihb (by assumption))
+      exact .fn ha (ihb (by assumption))
   | @primCovariant _ s _ ih =>
-      (try intro _)
       cases s with
       | array _ => exact .primCovariant (ih (by assumption))
       | thunk _ => exact .primCovariant (ih (by assumption))
       | lazy _ => exact .primCovariant (ih (by assumption))
   | @record _ fs _ ih =>
-      (try intro _)
       have h := ih (by assumption)
       cases fs with
       | mk a b rest => exact .record h
   | @taggedUnion _ l _ ih =>
-      (try intro _)
       have h := ih (by assumption)
       refine .taggedUnion ?_
       have hflat : (substOccTU S m l).toList.flatten =
@@ -112,9 +92,9 @@ theorem wf_substOcc {S : Ty} (hS : Wf S) {m : Nat → Ty} :
           substOccList_eq_map, List.map_flatten]
       rw [hflat]
       exact h
-  | nil => (try intro _); exact .nil
+  | nil => exact .nil
   | @cons _ _ _ _ _ ih1 ih2 =>
-      (try intro _); exact .cons (ih1 (by assumption)) (ih2 (by assumption))
+      exact .cons (ih1 (by assumption)) (ih2 (by assumption))
 
 /-- **The same, for a mutual family.**  A tree written in the scope of a family — where
     the occurrence leaves are `Ty.familyMember i` and `Ty.self` is illegal, which is why
@@ -135,23 +115,20 @@ theorem wf_substOccFam {S : Ty} {m : Nat → Ty} (hm : ∀ i, Wf (m i)) :
   | recAlias hw ho hh => (try intro _); exact .recAlias hw ho hh
   | mutualRecursiveFamily hw ho hh =>
       (try intro _); exact .mutualRecursiveFamily hw ho hh
-  | prim => (try intro _); exact .prim
-  | enum => (try intro _); exact .enum
+  | prim => exact .prim
+  | enum => exact .enum
   | fn ha _ _ ihb =>
-      (try intro _); exact .fn ha (ihb (by assumption))
+      exact .fn ha (ihb (by assumption))
   | @primCovariant _ s _ ih =>
-      (try intro _)
       cases s with
       | array _ => exact .primCovariant (ih (by assumption))
       | thunk _ => exact .primCovariant (ih (by assumption))
       | lazy _ => exact .primCovariant (ih (by assumption))
   | @record _ fs _ ih =>
-      (try intro _)
       have h := ih (by assumption)
       cases fs with
       | mk a b rest => exact .record h
   | @taggedUnion _ l _ ih =>
-      (try intro _)
       have h := ih (by assumption)
       refine .taggedUnion ?_
       have hflat : (substOccTU S m l).toList.flatten =
@@ -160,9 +137,9 @@ theorem wf_substOccFam {S : Ty} {m : Nat → Ty} (hm : ∀ i, Wf (m i)) :
           substOccList_eq_map, List.map_flatten]
       rw [hflat]
       exact h
-  | nil => (try intro _); exact .nil
+  | nil => exact .nil
   | @cons _ _ _ _ _ ih1 ih2 =>
-      (try intro _); exact .cons (ih1 (by assumption)) (ih2 (by assumption))
+      exact .cons (ih1 (by assumption)) (ih2 (by assumption))
 
 /-- Unfolding one field of a binder gives a type: the special case of `Ty.wf_substOcc`
     the recursive shapes use. -/
@@ -263,9 +240,12 @@ theorem _root_.LeanScript.LeanMutualRecFamily.members_ofMembers? {α : Type}
 theorem _root_.LeanScript.LeanMutualRecFamily.members_select {α : Type}
     (f : LeanMutualRecFamily α) (i : Nat) : (f.select i).members = f.members := by
   unfold LeanMutualRecFamily.select
-  cases h : LeanMutualRecFamily.ofMembers? f.members i with
-  | none => simp
-  | some g => simpa [h] using LeanMutualRecFamily.members_ofMembers? h
+  split
+  · rename_i g h
+    exact LeanMutualRecFamily.members_ofMembers? h
+  · cases h : LeanMutualRecFamily.ofMembers? f.members 0 with
+    | none => rfl
+    | some g => exact LeanMutualRecFamily.members_ofMembers? h
 
 /-- Every member of a family that is a type is a type. -/
 theorem wf_familyMemberTy {f : LeanMutualRecFamily Ty}

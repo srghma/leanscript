@@ -22,9 +22,7 @@ language, `LeanScript.TyWf`, with the evaluator's denotation `LeanScript.TyWf.De
 `LeanScript.Extern`, is an extern *applied to values*, with the proofs the Lean function
 takes: `Extern.lean_array_fget αt a i h`.  Its value is `LeanScript.Extern.eval`
 (`LeanScript.Eval.Extern`), which calls the Lean function itself, handing it those proofs.
-`LeanScript.Term.extern` holds one, when its result cannot be written back as a term
-(`LeanScript.TyWf.quotable`: its result holds a function; an extern on values whose result
-can be written is a redex).  The catalogue is in two levels (a family of entries per
+`LeanScript.Term.extern` holds one.  The catalogue is in two levels (a family of entries per
 section of `Init`, and one constructor of `LeanInitPureExtern` per family); an entry is
 written through its shorthand (`.lean_nat_add a b`, which is
 `.preludeExtern (.lean_nat_add a b)`; `LeanScript.LeanInitPureExternShorthands`).
@@ -69,12 +67,6 @@ instance instCoePrimCovariantTyWf : Coe (LeanPrimTyCovariant TyWf) TyWf :=
     and their values. -/
 def Extern : TyWf → Type :=
   LeanInitPureExtern TyWf.Den TyWf.option TyWf.list TyWf.prod TyWf.leanName TyWf.ordering
-
-/-- `m - n` on natural numbers, as the `call` of a `Term.externCall` on two arguments: the
-    countdown `#leanscript_to_term` writes when it turns an accumulator-passing recursion
-    into a loop over its accumulator (`LeanScript.ToTerm.accLoop?`). -/
-def natSubCall : TyWf.DenList [TyWf.prim .nat, TyWf.prim .nat] → Extern (TyWf.prim .nat) :=
-  fun vs => .preludeExtern (.lean_nat_sub vs.1 vs.2.1)
 
 /-! ## Values of the derived type formers
 
@@ -127,11 +119,10 @@ def TyWf.Den.ofName : Lean.Name → TyWf.leanName.Den
 
 /-- A value of `TyWf.leanName`, read back as a `Lean.Name`. -/
 def TyWf.Den.toName : TyWf.leanName.Den → Lean.Name :=
-  WType.fold fun node _ ih =>
-    match node, ih with
-    | ⟨⟨0, _⟩, _⟩, _ => .anonymous
-    | ⟨⟨1, _⟩, (_, s, _)⟩, ih => .str (ih (.inl PUnit.unit)) s
-    | ⟨⟨2, _⟩, (_, n, _)⟩, ih => .num (ih (.inl PUnit.unit)) n
+  WType.elim _ fun
+    | ⟨⟨⟨0, _⟩, _⟩, _⟩ => .anonymous
+    | ⟨⟨⟨1, _⟩, (_, s, _)⟩, ih⟩ => .str (ih (.inl PUnit.unit)) s
+    | ⟨⟨⟨2, _⟩, (_, n, _)⟩, ih⟩ => .num (ih (.inl PUnit.unit)) n
 
 /-- Reading back a name built from a `Lean.Name` gives that name. -/
 theorem TyWf.Den.toName_ofName (n : Lean.Name) : TyWf.Den.toName (TyWf.Den.ofName n) = n := by

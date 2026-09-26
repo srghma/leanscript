@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Den
 public import LeanScript.Expr.SelfField
+public import LeanScript.Ty.Traversable
 
 @[expose] public section
 
@@ -52,9 +53,9 @@ def roll : (a : Ty) → Ty.Den (substOcc R .familyMember a) → (Ty.toPFunctor a
   | .familyMember _, x => PEmpty.elim x
   | .shape s, x => rollShape s x
   | .recTaggedUnion _, x => ⟨x, fun p => PEmpty.elim p⟩
-  | .recObject _, x => PEmpty.elim x
-  | .recAlias _, x => PEmpty.elim x
-  | .mutualRecursiveFamily _, x => PEmpty.elim x
+  | .recObject _, x => ⟨x, fun p => PEmpty.elim p⟩
+  | .recAlias _, x => ⟨x, fun p => PEmpty.elim p⟩
+  | .mutualRecursiveFamily _, x => ⟨x, fun p => PEmpty.elim p⟩
 
 /-- `Ty.roll`, on a node. -/
 def rollShape : (s : TyShape Ty) → Ty.Den (.shape (substOccShape R .familyMember s)) →
@@ -118,9 +119,9 @@ def unroll : (a : Ty) → (Ty.toPFunctor a).Obj (Ty.Den R) → Ty.Den (substOcc 
   | .familyMember _, x => PEmpty.elim x.1
   | .shape s, x => unrollShape s x
   | .recTaggedUnion _, x => x.1
-  | .recObject _, x => PEmpty.elim x.1
-  | .recAlias _, x => PEmpty.elim x.1
-  | .mutualRecursiveFamily _, x => PEmpty.elim x.1
+  | .recObject _, x => x.1
+  | .recAlias _, x => x.1
+  | .mutualRecursiveFamily _, x => x.1
 
 /-- `Ty.unroll`, on a node. -/
 def unrollShape : (s : TyShape Ty) → (Ty.toPFunctorShape s).Obj (Ty.Den R) →
@@ -222,9 +223,9 @@ theorem unroll_roll : ∀ (a : Ty) (x : Ty.Den (substOcc R .familyMember a)),
   | .familyMember _, x => PEmpty.elim x
   | .shape s, x => unroll_rollShape s x
   | .recTaggedUnion _, _ => rfl
-  | .recObject _, x => PEmpty.elim x
-  | .recAlias _, x => PEmpty.elim x
-  | .mutualRecursiveFamily _, x => PEmpty.elim x
+  | .recObject _, _ => rfl
+  | .recAlias _, _ => rfl
+  | .mutualRecursiveFamily _, _ => rfl
 
 theorem unroll_rollShape : ∀ (s : TyShape Ty)
     (x : Ty.Den (.shape (substOccShape R .familyMember s))),
@@ -293,9 +294,9 @@ theorem roll_unroll : ∀ (a : Ty) (x : (Ty.toPFunctor a).Obj (Ty.Den R)), roll 
   | .familyMember _, x => PEmpty.elim x.1
   | .shape s, x => roll_unrollShape s x
   | .recTaggedUnion _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
-  | .recObject _, x => PEmpty.elim x.1
-  | .recAlias _, x => PEmpty.elim x.1
-  | .mutualRecursiveFamily _, x => PEmpty.elim x.1
+  | .recObject _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
+  | .recAlias _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
+  | .mutualRecursiveFamily _, ⟨s, f⟩ => PFunctor.Obj.const_eta s f
 
 theorem roll_unrollShape : ∀ (s : TyShape Ty) (x : (Ty.toPFunctorShape s).Obj (Ty.Den R)),
     rollShape R s (unrollShape R s x) = x
@@ -401,6 +402,15 @@ theorem DenRec.mk_unfold (L : LeanTaggedUnionSchema Ty) (v : Ty.Den (.recTaggedU
     rintro r rfl; rfl
   exact key _ (roll_unrollAt (.recTaggedUnion L) L t ⟨s, f⟩)
 
+/-- The values of a recursive tagged union **are** its unfolded constructors: the two
+    directions `Ty.DenRec.mk` and `Ty.DenRec.unfold`, as a Mathlib `Equiv`. -/
+def DenRec.equiv (L : LeanTaggedUnionSchema Ty) :
+    Ty.DenTU (recUnfoldTy L) ≃ Ty.Den (.recTaggedUnion L) where
+  toFun := DenRec.mk L
+  invFun := DenRec.unfold L
+  left_inv := DenRec.unfold_mk L
+  right_inv := DenRec.mk_unfold L
+
 end Ty
 
 /-! ## At the level of bundles
@@ -412,15 +422,6 @@ have the same values, and `TyWf.DenRec.mk` / `TyWf.DenRec.unfold` move along tha
 equation.  On a concrete union the equation is between two closed types that are
 definitionally equal, so the `cast` reduces and a concrete run still computes. -/
 
-/-- Mapping twice is mapping the composite. -/
-theorem LeanTaggedUnionSchema.map_map {α β γ : Type} (f : α → β) (g : β → γ)
-    (c : LeanTaggedUnionSchema α) : (c.map f).map g = c.map (g ∘ f) := by
-  have h : ((c.map f).map g).toList = (c.map (g ∘ f)).toList := by
-    simp [List.map_map, Function.comp_def]
-  have h' := congrArg LeanTaggedUnionSchema.ofList? h
-  rwa [LeanTaggedUnionSchema.ofList?_toList, LeanTaggedUnionSchema.ofList?_toList,
-    Option.some.injEq] at h'
-
 namespace TyWf
 
 /-- The trees of the unfolded constructors of a recursive union of bundles are the
@@ -428,8 +429,9 @@ namespace TyWf
 theorem recTaggedUnionUnfold_map_toTy (l : LeanTaggedUnionSchema (TyWfIn 1))
     (hwf : Ty.Wf (recTaggedUnionTy l)) :
     (recTaggedUnionUnfold l hwf).map TyWf.toTy = Ty.recUnfoldTy (l.map TyWfIn.toTy) := by
-  simp only [Ty.recUnfoldTy, Ty.substOccTU_eq_map, recTaggedUnionUnfold,
-    LeanTaggedUnionSchema.map_map]
+  simp only [Ty.recUnfoldTy, Ty.substOccTU_eq_map, recTaggedUnionUnfold]
+  show (_ <$> _ <$> l) = (_ <$> _ <$> l)
+  rw [Functor.map_map, Functor.map_map]
   rfl
 
 /-- The values of the unfolded constructors, as bundles and as trees, are the same. -/
@@ -459,6 +461,14 @@ theorem DenRec.mk_unfold (l : LeanTaggedUnionSchema (TyWfIn 1))
     DenRec.mk l hwf (DenRec.unfold l hwf v) = v := by
   simp only [DenRec.unfold, DenRec.mk, cast_cast, cast_eq]
   exact Ty.DenRec.mk_unfold _ v
+
+/-- `TyWf.DenRec.mk` and `TyWf.DenRec.unfold`, as a Mathlib `Equiv`. -/
+def DenRec.equiv (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (recTaggedUnionTy l)) :
+    TyWf.DenTU (recTaggedUnionUnfold l hwf) ≃ TyWf.Den (recTaggedUnion l hwf) where
+  toFun := DenRec.mk l hwf
+  invFun := DenRec.unfold l hwf
+  left_inv := DenRec.unfold_mk l hwf
+  right_inv := DenRec.mk_unfold l hwf
 
 end TyWf
 
@@ -501,8 +511,9 @@ def recBindEnv (l : LeanTaggedUnionSchema (TyWfIn 1)) (hwf : Ty.Wf (TyWf.recTagg
   | ⟨.self, _⟩ :: fs, e =>
       let m := e.prodFst.2 PUnit.unit
       (m.tree, m.answer, recBindEnv l hwf τ fs e.prodSnd)
-  | ⟨.familyMember i, h⟩ :: fs, e =>
-      (recBindField l hwf τ ⟨.familyMember i, h⟩ e.prodFst, recBindEnv l hwf τ fs e.prodSnd)
+  | ⟨.familyMember _, h⟩ :: _, _ =>
+      -- A lone binder's payload holds no member occurrence (`Ty.WfIn 1` needs `2 ≤ 1`).
+      absurd h Ty.not_wfIn_one_familyMember
   | ⟨.shape sh, h⟩ :: fs, e =>
       (recBindField l hwf τ ⟨.shape sh, h⟩ e.prodFst, recBindEnv l hwf τ fs e.prodSnd)
   | ⟨.recTaggedUnion l', h⟩ :: fs, e =>
@@ -524,6 +535,25 @@ def selfFieldMemo {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
   | a :: _, .here h, e => e.prodFst.2 (selfHole a.toTy h e.prodFst.1)
   | _ :: _, .there sf, e => selfFieldMemo sf e.prodSnd
 
+/-- The nodes a deeper look has dispatched on above the one it stands at, innermost
+    first: for each, its fields' shape with the memo of a subtree in each hole. -/
+def RecFrames (l : LeanTaggedUnionSchema (TyWfIn 1)) (τ : TyWf) :
+    List (List (TyWfIn 1)) → Type
+  | [] => PUnit
+  | fs :: outer => RecFields l τ fs × RecFrames l τ outer
+
+/-- No node above: the frames at the root of the fold. -/
+def RecFrames.nil {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} : RecFrames l τ [] :=
+  PUnit.unit
+
+/-- The memo of the subtree at an occurrence among the fields of a node above, which a
+    deeper look (`LeanScript.FoldKBranch.deepOuter`) descends into. -/
+def outerSelfFieldMemo {l : LeanTaggedUnionSchema (TyWfIn 1)} {τ : TyWf} :
+    {outer : List (List (TyWfIn 1))} → OuterSelfField outer → RecFrames l τ outer →
+      RecMemo l τ
+  | _ :: _, .here sf, fr => selfFieldMemo sf fr.1
+  | _ :: _, .there o, fr => outerSelfFieldMemo o fr.2
+
 /-! ## Reading a list back
 
 `List α` is the recursive tagged union `nil | cons α self` (its `LeanScriptTyWf`
@@ -532,12 +562,12 @@ list, so a test can compare the result of a program with a Lean list, and
 `Ty.DenRec.ofList` builds one from a Lean list, which is how an extern answering with a
 list (`Array.toList`, `String.toList`) gives its value. -/
 
-/-- A value of a list of `a`, as a Lean list. -/
+/-- A value of a list of `a`, as a Lean list: Mathlib's `WType.elim`, the plain fold of a
+    W-tree, since the answer at a node needs only the answer at its subtree. -/
 def Ty.DenRec.toList (a : Ty) : Ty.Den (.recTaggedUnion (Ty.listSchema a)) → List (Ty.Den a) :=
-  WType.fold fun node _ ih =>
-    match node, ih with
-    | ⟨⟨0, _⟩, _⟩, _ => []
-    | ⟨⟨1, _⟩, (x, _)⟩, ih => x :: ih (.inr (.inl PUnit.unit))
+  WType.elim _ fun
+    | ⟨⟨⟨0, _⟩, _⟩, _⟩ => []
+    | ⟨⟨⟨1, _⟩, (x, _)⟩, ih⟩ => x :: ih (.inr (.inl PUnit.unit))
 
 /-- A Lean list, as a value of a list of `a`: `[]` is the node `nil`, which has no
     subtree, and `x :: xs` is the node `cons` holding `x`, whose one subtree is `xs`. -/

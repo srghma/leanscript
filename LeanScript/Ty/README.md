@@ -3,7 +3,7 @@
 Everything about `Ty` lives here: the tree, the proposition that a tree is a type, the
 class that gives a Lean type its tree, and the `deriving` handler that writes one.
 Nothing else in `LeanScript/` defines any of it; `LeanScript/ExprCtx.lean` and
-`LeanScript/Expr.lean` are consumers — a context and the type of a term are `TyWf`, the
+`LeanScript/Expr/` are consumers — a context and the type of a term are `TyWf`, the
 bundle, so every type a term mentions is a type by construction — and
 `LeanScript/LeanPrimTy.lean` and `LeanScript/LeanPrimTyCovariant.lean` are the leaf types,
 which say nothing about recursion and are shared with the backends.
@@ -17,6 +17,7 @@ one.
 | :-- | :-- |
 | `LeanScript.Ty.Schema` | the shapes a source declaration can have, parametrised by a type language, with their counting invariants in their types |
 | `LeanScript.Ty.Shape` | `TyShape α` — one node of the language, with its children abstracted |
+| `LeanScript.Ty.Traversable` | the `LawfulTraversable` / `LawfulFunctor` instances of the schemas, `LeanPrimTyCovariant` and `TyShape`, derived together in one module |
 | `LeanScript.Ty.Ty` | `Ty`: one tree for a closed type and for a type inside a recursive declaration alike, its shapes as patterns, its children and its equality |
 | `LeanScript.Ty.TyBEq` | that `Ty.beq` *is* equality, and the `LawfulBEq` and `DecidableEq` instances that follow |
 | `LeanScript.Ty.Wf` | `Ty.Wf` — that a tree *is* a type — as an inductive proposition: scope, real recursion, positivity and inhabitation (`Ty.HabIn`) |
@@ -41,6 +42,14 @@ type ends in `Type` — hides a type from the language, and `deriving LeanScript
 refuses it: *existential typing is not yet supported*.  `TyTests/InductiveTypesTest/`
 pins that refusal for a stream `Unfold`, a client/server pair and a compiler engine, and
 shows the parameterised declarations (`ClientTwin`, `ServerTwin`) that *are* modelled.
+Values of such declarations, and functions of the non-recursive ones, are still translated
+to terms (`LeanScript/ToTerm/ExistentialArgs.lean`, `TermTests/StructRecTest/Existential.lean`,
+`TermTests/StructRecTest/ExistentialUnion.lean`).
+
+A type field that no value depends on is not an existential: in a family indexed by types
+(`TExpr : Type → Type`, with `pair {α β} (a : TExpr α) (b : TExpr β) : TExpr (α × β)`) the
+`α` and `β` appear only in indices, which are erased, so the declaration has one tree
+(`TermTests/StructRecTest/IndexedGADT.lean`).
 
 ## Tests
 

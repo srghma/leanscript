@@ -144,43 +144,40 @@ theorem natFoldK_base {k : Nat} (z : NatWin τ (k + 1))
 
 /-! ## The node, evaluated -/
 
-variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls) {u ub : Usage Γ}
-    {w : Usage (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ)} {kn kb : Head} {ks : List Head}
-    (nT : Atom Sg Γ u (.prim .nat) kn) (base : Spine Sg Γ ub (natRecCtx τ (k + 1) []) ks)
-    (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) w τ kb)
-    (hRec : 0 < Usage.sumN τ (k + 1) (Usage.tail w)) (hStep : k = 0 → Head.isVar kb = false)
-    (hClosed : Head.closedComp (Usage.arg kn u + ub + Usage.many (Usage.dropN τ (k + 1) (Usage.tail w))) τ .comp = false)
-    (env : Env Γ) (h : Comp.NoRecMk (Comp.nat_rec k nT base branch hRec hStep hClosed))
+variable {Sg : Sig} {Γ : Ctx} {k : Nat} (G : GlobalEnv Sg.decls)
+    (nT : Atom Γ (.prim .nat)) (base : Args Sg Γ (natRecCtx τ (k + 1) []))
+    (branch : Term Sg (TyWf.prim .nat :: natRecCtx τ (k + 1) Γ) τ)
+    (env : Env Γ)
 
-/-- The value of the node **is** the fold: its base values are the `Spine`, and its step
-    runs the branch with the window in front of the environment. -/
-theorem Comp.eval_nat_rec :
-    Comp.eval G (Comp.nat_rec k nT base branch hRec hStep hClosed) env h =
-      natFoldK (Spine.eval G base env h.2.1)
-        (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)
-        (show Nat from Atom.eval G nT env h.1) :=
+/-- The value of the node — here answering with the term's own value, `Dest.ret` — **is**
+    the fold: its base values are the atoms `base`, and its step runs the branch with the
+    window in front of the environment. -/
+theorem Term.eval_nat_rec :
+    Term.eval G (Term.nat_rec k nT base branch .ret) env =
+      natFoldK (Args.eval G base env)
+        (fun m w => Term.eval G branch (m, Env.ofWin w env))
+        (show Nat from Atom.eval nT env) :=
   rfl
 
 /-- Below the depth, the node answers with the base value written for the argument. -/
-theorem Comp.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
-    (hn : (show Nat from Atom.eval G nT env h.1) = j) :
-    Comp.eval G (Comp.nat_rec k nT base branch hRec hStep hClosed) env h =
-      NatWin.get (Spine.eval G base env h.2.1) (k - j) (by omega) := by
-  rw [Comp.eval_nat_rec, hn, natFoldK_base _ _ j hj]
+theorem Term.eval_nat_rec_base (j : Nat) (hj : j ≤ k)
+    (hn : (show Nat from Atom.eval nT env) = j) :
+    Term.eval G (Term.nat_rec k nT base branch .ret) env =
+      NatWin.get (Args.eval G base env) (k - j) (by omega) := by
+  rw [Term.eval_nat_rec, hn, natFoldK_base _ _ j hj]
 
 /-- At and above the depth, the node answers with its branch, given the predecessor and
     the window of the previous `k + 1` answers. -/
-theorem Comp.eval_nat_rec_step (n : Nat)
-    (hn : (show Nat from Atom.eval G nT env h.1) = n + k + 1) :
-    Comp.eval G (Comp.nat_rec k nT base branch hRec hStep hClosed) env h =
+theorem Term.eval_nat_rec_step (n : Nat)
+    (hn : (show Nat from Atom.eval nT env) = n + k + 1) :
+    Term.eval G (Term.nat_rec k nT base branch .ret) env =
       Term.eval G branch
         (n, Env.ofWin
           (NatWin.ofFun
-            (natFoldK (Spine.eval G base env h.2.1)
-              (fun m w => Term.eval G branch (m, Env.ofWin w env) h.2.2)) (k + 1) n)
-          env)
-        h.2.2 := by
-  rw [Comp.eval_nat_rec, hn, natFoldK_step]
+            (natFoldK (Args.eval G base env)
+              (fun m w => Term.eval G branch (m, Env.ofWin w env))) (k + 1) n)
+          env) := by
+  rw [Term.eval_nat_rec, hn, natFoldK_step]
 
 end LeanScript
 

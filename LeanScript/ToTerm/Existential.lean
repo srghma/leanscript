@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Cases
+public meta import LeanScript.ToTerm.Ctx
 public meta import LeanScript.CtorFn.Emit
 
 @[expose] public section
@@ -43,6 +43,13 @@ def tyWfTyE : Expr := mkConst ``LeanScript.TyWf
 def natTyWfE : Expr :=
   mkApp (mkConst ``LeanScript.TyWf.prim) (mkConst ``LeanScript.LeanPrimTy.nat)
 
+/-- The type of the language a translated term has: `τ` for `Term Sg Γ τ`. -/
+def termTyOf (t : Expr) : MetaM Expr := do
+  let ty ← whnfCore (← instantiateMVars (← inferType t))
+  match ty.getAppFnArgs with
+  | (`LeanScript.Term, #[_, _, τ, _]) => instantiateMVars τ
+  | _ => throwError "`#leanscript_to_term`: internal: not a term of the language: {t}"
+
 /-- The type of `e` as a tree, or — when the Lean type of `e` has no tree, as a value of a
     datatype with existentials has not — the type of its translation `t`. -/
 def tyOfTermOr (e t : Expr) : MetaM Expr := do
@@ -84,9 +91,9 @@ def injectOneOf (sg γ τ : Expr) (i : Nat) (alt t : Expr) : MetaM Expr := do
   let lenE := mkApp2 (mkConst ``LeanScript.LeanTaggedUnionSchema.length) tyWfTyE l
   let prf ← mkDecideProof (← mkAppM ``LT.lt #[mkNatLit i, lenE])
   let nilTys := mkApp (mkConst ``List.nil [Level.zero]) tyWfTyE
-  let spine := (← mkNode ``LeanScript.Spine.consT
-    #[sg, γ, alt, nilTys, t, ← mkNode ``LeanScript.Spine.nil #[sg, γ]])
-  return (← mkNode ``LeanScript.Term.taggedUnion_mk #[sg, γ, l, mkNatLit i, prf, spine])
+  let spine := mkAppN (mkConst `LeanScript.Spine.cons)
+    #[sg, γ, alt, nilTys, t, mkApp2 (mkConst `LeanScript.Spine.nil) sg γ]
+  return mkAppN (mkConst `LeanScript.Term.taggedUnion_mk) #[sg, γ, l, mkNatLit i, prf, spine]
 
 /-- The term `t` at the type `τ`: `t` itself when it has that type, and its injection when
     `τ` is a `TyWf.oneOf` one of whose alternatives is the type of `t`. -/
@@ -171,6 +178,24 @@ def dropErasedBinder (e : Expr) : MetaM Expr := do
   | _ => throwError "`#leanscript_to_term`: `{n}` has the type {d}, which the language \
       erases, and is used"
 
+/-- Translate `fun x => b` whose binder the language erases: `b` itself, by `k`.  A `Unit`
+    binder is read as `()` (`dropErasedBinder`); a **type** binder, or a proof, that the
+    body still mentions — the index `α` of an indexed family, `fun {α} (e : TExpr α) => …`,
+    or the index a `match` refines — is bound as a Lean variable that the language never
+    sees: it may occur in the *types* of the body (`TExpr α`), whose trees do not depend on
+    it, but the term the body translates to must not mention it. -/
+def withErasedBinder (e : Expr) (k : Expr → MetaM Expr) : MetaM Expr := do
+  let .lam n d b bi := e | throwError "`#leanscript_to_term`: internal: not a function"
+  unless b.hasLooseBVars do return ← k b
+  if let .const ``PUnit [u] := (← whnf d) then
+    return ← k (b.instantiate1 (mkConst ``PUnit.unit [u]))
+  withLocalDecl n bi d fun x => do
+    let t ← instantiateMVars (← k (b.instantiate1 x))
+    if t.containsFVar x.fvarId! then
+      throwError "`#leanscript_to_term`: `{n}` has the type {d}, which the language \
+        erases, and is used"
+    return t
+
 /-- The type of the language that models the Lean type `α`, written `TyWf.prim p` when it
     is a terminal type. -/
 def tyWfOfType (α : Expr) : MetaM Expr := do
@@ -183,7 +208,7 @@ def tyWfOfType (α : Expr) : MetaM Expr := do
     (`#leanscript_ctor`), generated or found in its cache.  `synth` translates a field,
     `check` translates it against a type; `expected?` is the type the value is checked
     against, if there is one, and fixes the trees of the holes. -/
-partial def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → Expr → MetaM Expr)
+def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → Expr → Expr → MetaM Expr)
     (c : TCtx) (ci : ConstructorVal) (args : Array Expr) (expected? : Option Expr) :
     MetaM Expr := do
   let vals ← LeanScript.CtorFn.tyVarValues ci args
@@ -213,45 +238,24 @@ partial def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → E
     ty := b.instantiate1 m
   -- the fields: each binder of the function is named after a field of the constructor
   let names ← forallTelescope ci.type fun xs _ => xs.mapM (·.fvarId!.getUserName)
-  let mut fields : Array (Expr × Expr × Expr) := #[]
-  let mut ts : Array Expr := #[]
-  let mut appArgs : Array (Option Expr) := #[]
-  let mut fty := ty
+  let mut fields : Array (Expr × Expr) := #[]
   repeat
-    let .forallE n d b bi := fty | break
-    -- the grade vector and the head of a field: found when the field is translated
-    if bi.isImplicit then
-      let m ← mkFreshExprMVar d
-      appArgs := appArgs.push (some m)
-      fty := b.instantiate1 m
-      continue
-    -- the proofs that the fields are atoms come last
-    if d.isAppOf ``autoParam then break
-    let (``LeanScript.Term, #[_, _, _, τ, _]) := d.getAppFnArgs
+    let .forallE n d b _ := ty | break
+    let (`LeanScript.Term, #[_, _, τ, _]) := d.getAppFnArgs
       | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument {n}"
     let some i := (names.extract ci.numParams names.size).findIdx? (· == n)
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` has no field `{n}`"
     let some a := args[ci.numParams + i]?
       | throwError "`#leanscript_to_term`: internal: `{ci.name}` lacks its field `{n}`"
-    fields := fields.push (a, τ, d)
-    appArgs := appArgs.push none
+    fields := fields.push (a, τ)
     if b.hasLooseBVars then
       throwError "`#leanscript_to_term`: internal: `{fnName}` has a dependent type"
-    fty := b
-  let resTy ← match fty.getAppFnArgs with
-    | (``LeanScript.Term, #[_, _, _, resTy, _]) => pure resTy
-    | _ => do
-        -- past the proofs that the fields are atoms
-        let mut t := fty
-        repeat
-          let .forallE _ _ b _ := t | break
-          t := b
-        let (``LeanScript.Term, #[_, _, _, resTy, _]) := t.getAppFnArgs
-          | throwError "`#leanscript_to_term`: internal: `{fnName}` does not build a term"
-        pure resTy
+    ty := b
+  let (`LeanScript.Term, #[_, _, resTy, _]) := ty.getAppFnArgs
+    | throwError "`#leanscript_to_term`: internal: `{fnName}` does not build a term"
   if let some τ := expected? then
     if (← oneOfAlts? τ).isNone then discard <| isDefEq resTy τ
-  for (a, τ, d) in fields do
+  for (a, τ) in fields do
     let τ ← instantiateMVars τ
     let t ← if τ.hasExprMVar then do
         let t ← synth c a
@@ -261,64 +265,11 @@ partial def ctorFnApp (synth : TCtx → Expr → MetaM Expr) (check : TCtx → E
             value of type{indentExpr τt}\nwhich is not of the form{indentExpr τ}"
         pure t
       else check c a τ
-    let (_, _, u, _, k) ← termParts t
-    let (``LeanScript.Term, #[_, _, du, _, dk]) := (← instantiateMVars d).getAppFnArgs
-      | throwError "`#leanscript_to_term`: internal: `{fnName}` has an unexpected argument"
-    unless (← isDefEq du u) && (← isDefEq dk k) do
-      throwError "`#leanscript_to_term`: internal: the field {a} of `{ci.name}` has an \
-        unexpected grade vector or head"
-    ts := ts.push t
+    cur := mkApp cur t
   -- a hole nothing determined (a field that is never built) is given `nat`
   for m in holes do
     if (← instantiateMVars m).isMVar then m.mvarId!.assign natTyWfE
-  let head ← instantiateMVars cur
-  -- the fields are operands of the constructor, so atoms (A-normal form): a field that is
-  -- not one is bound by a `let` first, and the function applied to its variable
-  let fnHead := head.getAppFn
-  let pre := head.getAppArgs
-  applyAnf fnHead pre (appArgs.size) c.sg c.gamma ts
-where
-  /-- The constructor function `fnHead`, applied to its arguments before the context
-      (`pre`, whose first two are replaced by the signature and `γ`), to the fields `ts`
-      (written in `γ`), and to the proofs that they are atoms — each field that is not one
-      bound by a `let` around it first. -/
-  applyAnf (fnHead : Expr) (pre : Array Expr) (nRest : Nat) (sg γ : Expr) (ts : Array Expr) :
-      MetaM Expr := do
-    let bad ← ts.findIdxM? fun t => return !isAtomHead (← headOf t)
-    match bad with
-    | some j =>
-        let σ ← termTyOf ts[j]!
-        let γ' := consCtxE σ γ
-        let mut ts' : Array Expr := #[]
-        for i in [0:ts.size] do
-          ts' := ts'.push (← if i == j then mkVarTerm sg γ' 0 else shiftBy ts[i]! γ' 1)
-        let body ← applyAnf fnHead pre nRest sg γ' ts'
-        mkNode ``LeanScript.Term.letT #[sg, γ, σ, ← termTyOf body, ts[j]!, body]
-    | none =>
-        let mut cur := mkAppN fnHead (#[sg, γ] ++ pre.extract 2 pre.size)
-        let mut ty ← inferType cur
-        let mut rest := ts.toList
-        for _ in [0:nRest] do
-          let .forallE _ d b bi := ← whnfCore ty
-            | throwError "`#leanscript_to_term`: internal: a constructor function has too few arguments"
-          if bi.isImplicit then
-            let m ← mkFreshExprMVar d
-            cur := mkApp cur m; ty := b.instantiate1 m
-          else
-            let t :: more := rest | throwError "`#leanscript_to_term`: internal: too few fields"
-            rest := more
-            let (_, _, u, _, k) ← termParts t
-            let (``LeanScript.Term, #[_, _, du, _, dk]) := d.getAppFnArgs
-              | throwError "`#leanscript_to_term`: internal: an unexpected argument"
-            discard <| isDefEq du u; discard <| isDefEq dk k
-            cur := mkApp cur t; ty := b.instantiate1 t
-        -- the proofs that the fields are atoms
-        repeat
-          let .forallE _ d b _ := ← whnfCore ty | break
-          unless d.isAppOf ``autoParam do break
-          let prf ← mkDecideProof (← instantiateMVars d.appFn!.appArg!)
-          cur := mkApp cur prf; ty := b.instantiate1 prf
-        instantiateMVars cur
+  instantiateMVars cur
 
 end LeanScript.ToTerm
 

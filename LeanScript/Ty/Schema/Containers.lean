@@ -5,12 +5,25 @@ public import NonEmpty.ListCorrectByConstruction.Basic
 public import NonEmpty.ListCorrectByConstruction.Ops
 public import NonEmpty.ListCorrectByConstruction.Instances
 public import NonEmpty.ListCorrectByConstruction.Notation
+public import Mathlib.Tactic.DeriveTraversable
+public import Mathlib.Control.Traversable.Instances
 
 @[expose] public section
 
 namespace LeanScript
 
 open NonEmpty.ListCorrectByConstruction (NonEmptyList)
+
+/-- Apply an effectful function to every element of a non-empty list, left to right. -/
+def _root_.NonEmpty.ListCorrectByConstruction.NonEmptyList.traverse {m : Type u → Type u}
+    [Applicative m] {α β : Type u} (f : α → m β) (xs : NonEmptyList α) : m (NonEmptyList β) :=
+  NonEmptyList.mk <$> f xs.head <*> Traversable.traverse f xs.tail
+
+/-- `NonEmptyList` is traversable, with its existing `Functor` instance: this is what the
+    schemas below need to derive theirs.  It lives here so that the `NonEmpty` library
+    itself needs no Mathlib. -/
+instance : Traversable NonEmptyList where
+  traverse := NonEmptyList.traverse
 
 /-!
 # The schemas: generic containers
@@ -26,7 +39,7 @@ structure LeanRecordSchema (α : Type) where
   snd : α
   /-- Everything after the second. -/
   rest : List α
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 namespace LeanRecordSchema
 
@@ -61,10 +74,6 @@ theorem toList_ofList? : ∀ {xs : List α} {s : LeanRecordSchema α},
 theorem toList_injective {xs ys : LeanRecordSchema α} (h : xs.toList = ys.toList) : xs = ys := by
   cases xs; cases ys; simp_all [toList]
 
-/-- Apply a function to every element. -/
-def map (f : α → β) (xs : LeanRecordSchema α) : LeanRecordSchema β :=
-  ⟨f xs.fst, f xs.snd, xs.rest.map f⟩
-
 @[simp] theorem toList_map (f : α → β) (xs : LeanRecordSchema α) :
     (xs.map f).toList = xs.toList.map f := rfl
 
@@ -77,32 +86,6 @@ def map (f : α → β) (xs : LeanRecordSchema α) : LeanRecordSchema β :=
 def get? (xs : LeanRecordSchema α) (i : Nat) : Option α := xs.toList[i]?
 
 end LeanRecordSchema
-
-namespace NonEmptyListSchema
-
-variable {α β : Type}
-
-/-- Apply a function to every element of a non-empty list. -/
-def map (f : α → β) (xs : NonEmptyList α) : NonEmptyList β :=
-  ⟨f xs.head, xs.tail.map f⟩
-
-@[simp] theorem toList_map (f : α → β) (xs : NonEmptyList α) :
-    (map f xs).toList = xs.toList.map f := rfl
-
-/-- The list, if it has an element. -/
-def ofList? : List α → Option (NonEmptyList α)
-  | a :: rest => some ⟨a, rest⟩
-  | [] => none
-
-@[simp] theorem ofList?_toList (xs : NonEmptyList α) : ofList? xs.toList = some xs := by
-  cases xs; rfl
-
-theorem toList_ofList? : ∀ {xs : List α} {s : NonEmptyList α},
-    ofList? xs = some s → s.toList = xs
-  | _ :: _, _, h => by injection h with h; subst h; rfl
-  | [], _, h => by simp [ofList?] at h
-
-end NonEmptyListSchema
 
 /-! ## The constructors of a sum type -/
 
@@ -119,7 +102,7 @@ inductive CtorsWithPayload (α : Type) where
   | here (fields : NonEmptyList α) (rest : List (List α))
   /-- This constructor carries no fields, and the one that does comes later. -/
   | skip (rest : CtorsWithPayload α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 namespace CtorsWithPayload
 
@@ -168,11 +151,6 @@ theorem exists_nonempty (c : CtorsWithPayload α) : ∃ fs ∈ c.toList, fs ≠ 
   | skip rest ih =>
       obtain ⟨fs, hmem, hne⟩ := ih
       exact ⟨fs, by simp [toList, hmem], hne⟩
-
-/-- Apply a function to the type of every field. -/
-def map (f : α → β) : CtorsWithPayload α → CtorsWithPayload β
-  | .here fields rest => .here (NonEmptyListSchema.map f fields) (rest.map (·.map f))
-  | .skip rest => .skip (map f rest)
 
 @[simp] theorem toList_map (f : α → β) (c : CtorsWithPayload α) :
     (c.map f).toList = c.toList.map (·.map f) := by

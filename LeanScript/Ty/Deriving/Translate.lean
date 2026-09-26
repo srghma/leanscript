@@ -1,5 +1,6 @@
 module
 
+public meta import Lean.Meta.Tactic.Delta
 public meta import LeanScript.Ty.Deriving.Build
 
 @[expose] public section
@@ -137,6 +138,36 @@ partial def hoistBinder (ctx : Ctx) (holes trees : Array Expr) (e : Expr) :
 
 end
 
+instance : Inhabited TransRes := ⟨.erased⟩
+
+/-- Run `k` on the model of `fn args` with the arguments at `idxs` replaced by fresh
+    stand-in types `hole0, hole1, …`, each with a `LeanScriptTyWf` instance in scope.  `k`
+    gets the stand-ins, the instantiated type `fn args'`, and its tree — with the list
+    schema (`Ty.listSchema`, which `List`'s model is written with) unfolded, so that a
+    binder's payload is visible — or `none` when that type has no `LeanScriptTyWf`
+    instance. -/
+def withStandInModel {α : Type} [Inhabited α] (fn : Expr) (args : Array Expr) (idxs : Array Nat)
+    (k : Array Expr → Expr → Option Expr → MetaM α) : MetaM α := do
+  let holeDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
+    idxs.mapIdx fun i _ =>
+      (Name.mkSimple s!"hole{i}", BinderInfo.default,
+        fun _ => pure (mkSort (Level.succ Level.zero)))
+  withLocalDecls holeDecls fun holes => do
+    let instDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
+      holes.mapIdx fun i h =>
+        (Name.mkSimple s!"holeInst{i}", BinderInfo.instImplicit,
+          fun _ => mkAppM ``LeanScript.LeanScriptTyWf #[h])
+    withLocalDecls instDecls fun _ => do
+      let mut args' := args
+      for i in [0:idxs.size] do
+        args' := args'.set! idxs[i]! holes[i]!
+      let e' := mkAppN fn args'
+      let .some inst ← trySynthInstance (← mkAppM ``LeanScript.LeanScriptTyWf #[e'])
+        | k holes e' none
+      let tree ← deltaExpand (← whnf (← mkAppOptM ``LeanScript.tyOf #[some e', some inst]))
+        (· == ``LeanScript.Ty.listSchema)
+      k holes e' (some tree)
+
 mutual
 
 /-- The tree that models the Lean type `e`.
@@ -155,6 +186,15 @@ partial def tyWfOfType (ctx : Ctx) (e : Expr) : MetaM TransRes := do
   -- refused, and named in the message.
   let mentionsMember :=
     e.getUsedConstants.any fun c => ctx.members.contains c
+  if mentionsMember && !ctx.auxTys.isEmpty then
+    -- every auxiliary type of the block is a member of the family: this one is
+    -- member `baseCount + j`
+    let mut j? : Option Nat := none
+    for h : j in [0:ctx.auxTys.size] do
+      if j?.isNone then
+        if ← withNewMCtxDepth (isDefEq e ctx.auxTys[j]) then j? := some j
+    if let some j := j? then
+      return ← hoistAux ctx e j
   if mentionsMember then
     if e.isForall then
       return ← forallTelescopeReducing e fun xs body => do
@@ -209,6 +249,94 @@ partial def tyWfOfType (ctx : Ctx) (e : Expr) : MetaM TransRes := do
       return .no (← addMessageContext
         m!"`{e}` has no `LeanScriptTyWf` instance; derive or write one for it first")
 
+/-- The auxiliary type `e` of the block, `ctx.auxTys[j]`, as member `baseCount + j` of the
+    family: the wrapper's own model at stand-in parameters, its own `Ty.self` (if it is a
+    binder) reading as that member and the stand-ins as the trees of what stands there.
+    The member is built once; later occurrences are occurrences of it. -/
+partial def hoistAux (ctx : Ctx) (e : Expr) (j : Nat) : MetaM TransRes := do
+  let idx := ctx.baseCount + j
+  let occ := familyMemberE idx
+  -- already built, or being built (an occurrence inside its own payload)
+  if !(((← ctx.extra.get)[j]?).getD (mkConst ``Unit)).isConstOf ``Unit then
+    return .ok occ
+  ctx.extra.modify (·.set! j (mkConst ``LeanScript.Ty.self))
+  let fail (r : MessageData) : MetaM TransRes := return .no (← addMessageContext
+    m!"`{e}`, an auxiliary type of the nested block, cannot be a member of its family: {r}")
+  let fn := e.getAppFn
+  let args := e.getAppArgs
+  let mut idxs : Array Nat := #[]
+  for i in [0:args.size] do
+    if args[i]!.getUsedConstants.any (ctx.members.contains ·) then idxs := idxs.push i
+  let mut trees : Array Expr := #[]
+  for i in idxs do
+    unless ← isTypeField (← inferType args[i]!) do return ← fail m!"an argument is not a type"
+    match ← tyWfOfType ctx args[i]! with
+    | .ok a => trees := trees.push (if ctx.members.size == 1 then selfToMember 0 a else a)
+    | .erased => return ← fail m!"it holds a type that carries no value"
+    | .no r => return .no r
+  withStandInModel fn args idxs fun holes e' tree? => do
+    let some tree := tree?
+      | return ← fail m!"`{e'}` has no `LeanScriptTyWf` instance"
+    -- the member's kind and payload, read off the wrapper's model
+    let shapeOf (t : Expr) : Option (Name × Expr) :=
+      match t.getAppFnArgs with
+      | (``LeanScript.Ty.recTaggedUnion, #[l]) => some (``LeanScript.LeanFamMemberSchema.ctors, l)
+      | (``LeanScript.Ty.recObject, #[fs]) => some (``LeanScript.LeanFamMemberSchema.record, fs)
+      | (``LeanScript.Ty.recAlias, #[b]) => some (``LeanScript.LeanFamMemberSchema.alias, b)
+      | (``LeanScript.Ty.shape, #[s]) =>
+          match s.getAppFnArgs with
+          | (``LeanScript.TyShape.taggedUnion, #[_, l]) =>
+              some (``LeanScript.LeanFamMemberSchema.ctors, l)
+          | (``LeanScript.TyShape.record, #[_, fs]) =>
+              some (``LeanScript.LeanFamMemberSchema.record, fs)
+          | _ => none
+      | _ => none
+    let some (kind, payload) := shapeOf tree
+      | return ← fail m!"its model is not a union, a record, a newtype or a recursive one"
+    -- the binder's own `Ty.self` is this member; the stand-ins are what stands there
+    let payload := selfToMember idx payload
+    -- a leaf that models another type built from a stand-in (`tyOf (List hole)`, in
+    -- the model of a structure with a field `List α`) is that type's own member
+    let back := fun (x : Expr) => x.replaceFVars holes (idxs.map (args[·]!))
+    let some payload ← expandHoleLeaves ctx holes back false payload
+      | return ← fail m!"a field of the wrapper's model has no tree"
+    let some p ← substHoles holes trees false payload
+      | return ← fail m!"an argument stands under a binder of the wrapper's own model"
+    if holes.any (fun h => p.containsFVar h.fvarId!) then
+      return ← fail m!"the wrapper's model does not hold an argument as one tree"
+    let member ← mkAppM kind #[p]
+    ctx.extra.modify (·.set! j member)
+    return .ok occ
+
+/-- In the model `e` of a type former asked for at stand-in parameters, replace each leaf
+    that is the model of a type which mentions a stand-in without being one (`tyOf (Option
+    hole)`) by the tree of that type at the real arguments (`back` puts them back).  Such a
+    leaf is only expanded outside the model's own binders, where an occurrence of the
+    declaration keeps its meaning; under one it is left, and refused later.  `none` when
+    the type has no tree. -/
+partial def expandHoleLeaves (ctx : Ctx) (holes : Array Expr) (back : Expr → Expr)
+    (underBinder : Bool) (e : Expr) : MetaM (Option Expr) := do
+  if let some α ← modelledType? e then
+    if holes.contains α then return some e
+    if mentionsHole holes α then
+      if underBinder then return some e
+      match ← tyWfOfType ctx (back α) with
+      | .ok t => return some t
+      | _ => return none
+    return some e
+  match e with
+  | .app .. =>
+      let under := underBinder || isBinderCtor e
+      let mut out := e.getAppFn
+      for a in e.getAppArgs do
+        let some a' ← expandHoleLeaves ctx holes back under a | return none
+        out := mkApp out a'
+      return some out
+  | .mdata d b => do
+      let some b' ← expandHoleLeaves ctx holes back underBinder b | return none
+      return some (.mdata d b')
+  | _ => return some e
+
 /-- The tree of a type former applied to the declaration being defined: the former's own
     instance, asked for at a stand-in parameter, with the stand-in's leaf replaced by the
     tree of what stands there.  `none` when the former has no instance, when one of the
@@ -231,37 +359,24 @@ partial def tyWfOfWrapper (ctx : Ctx) (e : Expr) : MetaM (Option TransRes) := do
     | .ok a => trees := trees.push a
     | .erased => return some (.no m!"`{e}` holds a type that carries no value")
     | .no r => return some (.no r)
-  let holeDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
-    idxs.mapIdx fun k _ =>
-      (Name.mkSimple s!"hole{k}", BinderInfo.default,
-        fun _ => pure (mkSort (Level.succ Level.zero)))
-  withLocalDecls holeDecls fun holes => do
-    let instDecls : Array (Name × BinderInfo × (Array Expr → MetaM Expr)) :=
-      holes.mapIdx fun k h =>
-        (Name.mkSimple s!"holeInst{k}", BinderInfo.instImplicit,
-          fun _ => mkAppM ``LeanScript.LeanScriptTyWf #[h])
-    withLocalDecls instDecls fun _ => do
-      let mut args' := args
-      for k in [0:idxs.size] do
-        args' := args'.set! idxs[k]! holes[k]!
-      let e' := mkAppN fn args'
-      let .some inst ← trySynthInstance (← mkAppM ``LeanScript.LeanScriptTyWf #[e'])
-        | return none
-      -- the schema of a list is a definition of its own (`Ty.listSchema`, which `List`'s
-      -- model is written with); it is unfolded so that the binder's payload is visible
-      let tree ← deltaExpand (← whnf (← mkAppOptM ``LeanScript.tyOf #[some e', some inst]))
-        (· == ``LeanScript.Ty.listSchema)
-      -- the occurrence goes where the stand-in is; if it would land inside a binder of
-      -- the former's own model, that binder is hoisted into a member of a family instead
-      let out? ←
-        match ← substHoles holes trees false tree with
-        | some out => pure (some out)
-        | none => hoistTree ctx holes trees none tree
-      let some out := out? | return none
-      -- nothing of the stand-ins may be left: an argument that the former's model does
-      -- not use as one tree is one this handler cannot put an occurrence into
-      if holes.any (fun h => out.containsFVar h.fvarId!) then return none
-      return some (.ok out)
+  withStandInModel fn args idxs fun holes _ tree? => do
+    let some tree := tree? | return none
+    -- the occurrence goes where the stand-in is; if it would land inside a binder of
+    -- the former's own model, that binder is hoisted into a member of a family instead
+    -- a leaf of the former's model that is the model of *another* type built from a
+    -- stand-in (`tyOf (Option hole)`, in the model of a structure `Cell α` with a field
+    -- `Option α`) is translated in its own right, at the argument that stands there
+    let back := fun (x : Expr) => x.replaceFVars holes (idxs.map (args[·]!))
+    let some tree ← expandHoleLeaves ctx holes back false tree | return none
+    let out? ←
+      match ← substHoles holes trees false tree with
+      | some out => pure (some out)
+      | none => hoistTree ctx holes trees none tree
+    let some out := out? | return none
+    -- nothing of the stand-ins may be left: an argument that the former's model does
+    -- not use as one tree is one this handler cannot put an occurrence into
+    if holes.any (fun h => out.containsFVar h.fvarId!) then return none
+    return some (.ok out)
 
 end
 
@@ -330,9 +445,31 @@ def treeOfDecl (n : Name) (ind : InductiveVal) (params : Array Expr) : MetaM Tra
         | .ok ds => edges := edges ++ [(m, ds)]
       let comp := blockComponent ind.all edges n
       pure (if comp.length ≤ 1 then #[n] else comp.toArray)
-  let extra ← IO.mkRef (#[] : Array Expr)
+  -- every auxiliary type of a nested block is hoisted into a member, in the order of the
+  -- recursor's motives, when the block is a family anyway and one of them is the type of
+  -- a non-recursive wrapper (`Option Q` inside `P`): otherwise that wrapper's occurrence
+  -- would stand inside its shape, with no member, and the family would not be the one
+  -- the recursor folds.  (`Array` and `Thunk` keep their own shapes.)
+  let auxs ← nestedAuxTypes ind params
+  let auxOk ← auxs.allM fun d => do
+    let .const h _ := d.getAppFn | return false
+    if h == ``Array || h == ``Thunk then return false
+    return ((← getEnv).find? h) matches some (.inductInfo _)
+  let auxRec ← auxs.anyM fun d => do
+    let .const h _ := d.getAppFn | return false
+    let some (.inductInfo hi) := (← getEnv).find? h | return false
+    return hi.isRec
+  let auxPlain := auxs.size > 0 && !(← auxs.allM fun d => do
+    let .const h _ := d.getAppFn | return false
+    let some (.inductInfo hi) := (← getEnv).find? h | return false
+    return hi.isRec)
+  let hoistAll := auxOk && auxPlain && members.size == ind.all.length &&
+    (members.size > 1 || auxRec)
+  let extra ← IO.mkRef (if hoistAll then Array.replicate auxs.size (Lean.mkConst ``Unit)
+    else (#[] : Array Expr))
   let ctx : Ctx :=
-    { members, params, baseCount := if members.size ≤ 1 then 1 else members.size, extra }
+    { members, params, baseCount := if members.size ≤ 1 then 1 else members.size, extra,
+      auxTys := if hoistAll then auxs else #[] }
   if members.size ≤ 1 then
     match ← translateCtors ctx ind with
     | .error r => return .no r

@@ -1,6 +1,6 @@
 module
 
-public meta import Lean
+public meta import Lean.Elab.Command
 public meta import LeanScript.Ty.Schema
 
 @[expose] public section
@@ -74,39 +74,5 @@ macro "ctor_lt" : tactic =>
          omega)
       | omega
       | decide)
-
-/-- Close a goal `0 < g`, where `g` is a grade computed from the grade vector of a term:
-    that a fold's branch reads at least one of its answers (`LeanScript.Usage.sumN`, the
-    `hRec` of `Term.nat_rec` and `Term.array_rec`).  For a term written out the grade is a
-    computation, so `decide` closes it; in a context with a variable part (`{Γ : Ctx}`),
-    which `decide` refuses, the grade still reduces — the variables a branch reads are in
-    the part of the context written out — and `Nat.succ_pos` closes it by that reduction.
-    When the grade is `0`, the last `decide` reports it. -/
-macro "usage_pos" : tactic =>
-  `(tactic| first | decide | exact Nat.succ_pos _ | decide)
-
-set_option hygiene false in
-/-- Close a goal `Head.closedComp u τ k = false`: that a computation is not a closed one
-    that must be written as its value (the `hClosed` of `LeanScript.Term`).  For a term
-    written out, `decide +kernel` computes it; in a context with a variable part (`{Γ : Ctx}`), which
-    `decide` refuses, it still reduces (`rfl`) when the uses it counts are written out; and
-    with a variable grade vector (`{u : Usage Γ}`), the number of uses of free names is
-    rewritten operation by operation (`LeanScript.Usage.free_add`, …) and seen not to be
-    `0` — a reference to a declaration or a variable counts one.  When the term is closed, the last `decide` reports it. -/
-macro "not_closed" : tactic =>
-  `(tactic| first
-    | decide +kernel
-    | rfl
-    | (simp [LeanScript.Head.closedComp, LeanScript.Usage.closed]; done)
-    | decide)
-
-/-- Close a goal about the **heads** of the subterms of a node (`LeanScript.Head`): that it
-    is not a redex (`Head.isKnown kx = false`, `Head.rescrutinizes kx w = false`, …).  For a
-    term written out, `decide` computes it; in a context with a variable part
-    (`{Γ : Ctx}`), which `decide` refuses — the head of a variable records its de Bruijn
-    index, `Var.index x`, which mentions the context — it still reduces (`rfl`, after
-    `intro` for an implication).  When the node is a redex, the last `decide` reports it. -/
-macro "head_ok" : tactic =>
-  `(tactic| first | decide | rfl | (intro _; rfl) | decide)
 
 end

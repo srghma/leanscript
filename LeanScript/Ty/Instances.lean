@@ -113,10 +113,38 @@ instance [LeanScriptTyWf α] : LeanScriptTyWf (Option α) := ⟨TyWf.option (tyW
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α × β) :=
   ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
 
+/-- A pair one component of which is `Unit` is the other component: the language erases
+    `Unit`, and a structure with one field the language keeps is that field (as for a
+    structure declared with `deriving LeanScriptTyWf`).  This is the state `do` gives a
+    `for` loop that can `return` from inside and has no `let mut` variable,
+    `Option ρ × Unit`. -/
+instance (priority := high) [LeanScriptTyWf α] : LeanScriptTyWf (α × Unit) := ⟨tyWfOf α⟩
+
+/-- See the instance for `α × Unit`. -/
+instance (priority := high) [LeanScriptTyWf β] : LeanScriptTyWf (Unit × β) := ⟨tyWfOf β⟩
+
+/-- `PProd` at `Type`, the pair Lean uses for the answers of the functions of a `mutual`
+    block that recurse on the same type: the same record as `α × β`. -/
+instance {α β : Type} [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (PProd α β) :=
+  ⟨TyWf.prod (tyWfOf α) (tyWfOf β)⟩
+
 instance [LeanScriptTyWf α] [LeanScriptTyWf β] : LeanScriptTyWf (α ⊕ β) :=
   ⟨TyWf.sum (tyWfOf α) (tyWfOf β)⟩
 
 instance [LeanScriptTyWf α] : LeanScriptTyWf (List α) := ⟨TyWf.list (tyWfOf α)⟩
+
+/-- `ForInStep α`, the answer of one iteration of a `for` loop: constructor `0` (`done`,
+    leave the loop) and constructor `1` (`yield`, go on), each carrying the state — the
+    same tagged union as `α ⊕ α`.  A loop that can `break` carries it as its state (see
+    `LeanScript.ToTerm.ForIn`). -/
+instance [LeanScriptTyWf α] : LeanScriptTyWf (ForInStep α) :=
+  ⟨TyWf.sum (tyWfOf α) (tyWfOf α)⟩
+
+/-- A subtype `{x // p x}` is modelled by the tree of `α`: its proof is erased, as every
+    proof is, and a structure with one field the language keeps is that field.  So
+    `List.attach l` has the tree of `l`. -/
+instance {α : Type u} {p : α → Prop} [LeanScriptTyWf α] : LeanScriptTyWf (Subtype p) :=
+  ⟨tyWfOf α⟩
 
 instance : LeanScriptTyWf Ordering := ⟨TyWf.ordering⟩
 

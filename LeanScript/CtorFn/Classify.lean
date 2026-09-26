@@ -17,7 +17,8 @@ open Lean Meta Elab Term
 
 namespace LeanScript.CtorFn
 
-open LeanScript.Deriving (erasedBinder isTypeField isExistentialField modelledType?)
+open LeanScript.Deriving (erasedBinder isTypeField isExistentialField modelledType? mkTyList
+  mkTaggedUnion?)
 
 /-- How a datatype is laid out: one type for all constructors, or one layout per
     constructor. -/
@@ -135,26 +136,8 @@ def singleShape (what : MessageData) (fs : Array Expr) : MetaM (Shape × Expr) :
       constructor function"
   | [a] => return (.newtype, a)
   | a :: b :: rest =>
-      let sch ← mkAppM ``LeanScript.LeanRecordSchema.mk #[a, b, ← mkListLit tyWfE rest]
+      let sch ← mkAppM ``LeanScript.LeanRecordSchema.mk #[a, b, ← mkTyList rest tyWfE]
       return (.record sch, mkApp (mkConst ``LeanScript.TyWf.record) sch)
-
-/-- A non-empty list of trees. -/
-def mkNE (a : Expr) (as : List Expr) : MetaM Expr := do
-  mkAppM ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk #[a, ← mkListLit tyWfE as]
-
-/-- A list of lists of trees. -/
-def mkLL (ess : List (List Expr)) : MetaM Expr := do
-  mkListLit (← mkAppM ``List #[tyWfE]) (← ess.mapM (mkListLit tyWfE))
-
-/-- The constructors of a tagged union from the first that carries a field. -/
-def mkCtorsWithPayload? : List (List Expr) → MetaM (Option Expr)
-  | [] => return none
-  | [] :: rest => do
-      match ← mkCtorsWithPayload? rest with
-      | some r => return some (← mkAppM ``LeanScript.CtorsWithPayload.skip #[r])
-      | none => return none
-  | (f :: fs) :: rest => do
-      return some (← mkAppM ``LeanScript.CtorsWithPayload.here #[← mkNE f fs, ← mkLL rest])
 
 /-- The layout of a datatype with these constructors. -/
 def wholeShape (name : Name) (enumOverride : Option Expr) (cls : Array (Array Expr)) :
@@ -168,16 +151,7 @@ def wholeShape (name : Name) (enumOverride : Option Expr) (cls : Array (Array Ex
       | some s => pure s
       | none => mkAppM ``LeanScript.LeanEnumSchema.mk #[mkNatLit (cls.size - 3), toExpr (0 : Int)]
     return (.enum s, mkApp (mkConst ``LeanScript.TyWf.enum) s)
-  let l? ← match (cls.toList.map (·.toList)) with
-    | (f :: fs) :: next :: rest =>
-        some <$> mkAppM ``LeanScript.LeanTaggedUnionSchema.payloadFirst
-          #[← mkNE f fs, ← mkListLit tyWfE next, ← mkLL rest]
-    | [] :: rest => do
-        match ← mkCtorsWithPayload? rest with
-        | some r => some <$> mkAppM ``LeanScript.LeanTaggedUnionSchema.skip #[r]
-        | none => pure none
-    | _ => pure none
-  let some l := l? | throwError "`#leanscript_ctor`: `{name}` has no tagged-union layout"
+  let some l ← mkTaggedUnion? (cls.toList.map (·.toList)) tyWfE | throwError "`#leanscript_ctor`: `{name}` has no tagged-union layout"
   return (.union l, mkApp (mkConst ``LeanScript.TyWf.taggedUnion) l)
 
 /-- Refuse a datatype whose model is a terminal type or a built-in type former, and read off

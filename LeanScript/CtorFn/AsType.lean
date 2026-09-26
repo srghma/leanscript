@@ -7,7 +7,8 @@ public import LeanScript.Ty.Class
 /-!
 # The type-level helpers of `#leanscript_ctor`
 
-`TyWf.AsType`, a Lean type standing for a bundled tree, and `TyWf.oneOf`, the tagged union
+`TyWf.AsType`, a Lean type standing for a bundled tree, `TyWf.Hidden`, a Lean type standing
+for a hidden type, and `TyWf.oneOf`, the tagged union
 `#leanscript_to_term` builds where values of different types meet.
 -/
 
@@ -22,6 +23,19 @@ namespace LeanScript
 def TyWf.AsType.{u} (_t : TyWf) : Type u := PUnit
 
 instance TyWf.instLeanScriptTyWfAsType.{u} (t : TyWf) : LeanScriptTyWf (TyWf.AsType.{u} t) := ⟨t⟩
+
+/-- A Lean type standing for a **hidden type** whose tree is `t`: the type field of a
+    structure with an existential (`Unfold.State`), in a function that is translated for every
+    choice of it (`LeanScript.ToTerm.ExistentialArgs`).  Its `LeanScriptTyWf` instance is `t`.
+
+    Unlike `TyWf.AsType`, it is not `PUnit`: a value of it is a value of the hidden type, which
+    the language keeps (a `PUnit` would be erased as a one-value type). -/
+structure TyWf.Hidden.{u} (_t : TyWf) : Type u where
+  /-- The only way to build one; a translated function never does. -/
+  private mk ::
+
+instance TyWf.instLeanScriptTyWfHidden.{u} (t : TyWf) : LeanScriptTyWf (TyWf.Hidden.{u} t) :=
+  ⟨t⟩
 
 /-- **One of** the types `a`, `b`, `cs…`: the tagged union with one constructor per type,
     whose one field is a value of that type.

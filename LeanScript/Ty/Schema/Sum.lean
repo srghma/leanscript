@@ -77,7 +77,7 @@ inductive LeanTaggedUnionSchema (α : Type) where
   /-- Constructor `0` carries no fields; the constructors after it are at least one,
       and one of them carries a field. -/
   | skip (rest : CtorsWithPayload α)
-  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr
+  deriving DecidableEq, BEq, ReflBEq, LawfulBEq, Repr, Traversable
 
 namespace LeanTaggedUnionSchema
 
@@ -152,22 +152,16 @@ theorem toList_ofList? : ∀ {l : List (List α)} {c : LeanTaggedUnionSchema α}
   | [], _, h => by simp [ofList?] at h
   | [_ :: _], _, h => by simp [ofList?] at h
 
-/-- Apply a function to the type of every field. -/
-def map (f : α → β) : LeanTaggedUnionSchema α → LeanTaggedUnionSchema β
-  | .payloadFirst fields next rest =>
-      .payloadFirst (NonEmptyListSchema.map f fields) (next.map f) (rest.map (·.map f))
-  | .skip rest => .skip (rest.map f)
-
 @[simp] theorem toList_map (f : α → β) (c : LeanTaggedUnionSchema α) :
     (c.map f).toList = c.toList.map (·.map f) := by
-  cases c <;> simp [toList, map]
+  cases c <;> simp [toList, map, Functor.map]
 
 /-- Mapping the field types keeps the constructors: a mapped union has as many of them,
     in the same order, so a number that is a constructor of one is a constructor of the
     other. -/
 @[simp] theorem length_map (f : α → β) (c : LeanTaggedUnionSchema α) :
     (c.map f).length = c.length := by
-  cases c <;> simp [map, length]
+  cases c <;> simp [map, length, Functor.map]
 
 /-- The fields of constructor `t` of a mapped union are the fields of constructor `t`,
     mapped. -/

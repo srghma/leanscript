@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Pieces
+public meta import LeanScript.ToTerm.Ctx
 
 @[expose] public section
 
@@ -22,8 +22,8 @@ namespace LeanScript.ToTerm
 A `match` whose last pattern is a wildcard is compiled into a dispatch that names *every*
 constructor, with the wildcard's body repeated in the branch of each constructor the
 earlier patterns did not name.  The grammar has a form for exactly that shape —
-`LeanScript.Term.enum_casesOnWithDefault` and
-`LeanScript.Term.taggedUnion_casesOnWithDefault`, which name some of the constructors and
+`LeanScript.Term.enum_casesOnWithDefault'` and
+`LeanScript.Term.taggedUnion_casesOnWithDefault'`, which name some of the constructors and
 send the rest to one default branch — so the repetition is detected here and the partial
 form is what is built.
 
@@ -81,9 +81,10 @@ rather than guessed, and it is exactly the shape of the grammar's
 def isSparseCasesOn (n : Name) : Bool := n.getString!.startsWith "_sparseCasesOn"
 
 /-- What a `_sparseCasesOn_` auxiliary dispatches on: how many arguments it takes, and
-    which constructors, by number, have a branch of their own.  The rest go to the
-    `else` branch, which is its last argument. -/
-def sparseCasesOnInfo? (n : Name) : MetaM (Option (Nat × List Nat)) := do
+    which constructors, by number, have a branch of their own, and how many parameters of
+    the type come before its motive.  The rest go to the `else` branch, which is its last
+    argument. -/
+def sparseCasesOnInfo? (n : Name) : MetaM (Option (Nat × List Nat × Nat)) := do
   let some ci := (← getEnv).find? n | return none
   forallTelescopeReducing ci.type fun xs _ => do
     if xs.size < 3 then return none
@@ -92,8 +93,9 @@ def sparseCasesOnInfo? (n : Name) : MetaM (Option (Nat × List Nat)) := do
     let (``Nat.hasNotBit, #[maskE, _]) := dom.getAppFnArgs | return none
     let some mask ← evalNat (← whnf maskE) | return none
     let named := (List.range 64).filter fun i => mask &&& (1 <<< i) != 0
-    if named.length != xs.size - 3 then return none
-    return some (xs.size, named)
+    -- the parameters of the type come first
+    if named.length + 3 > xs.size then return none
+    return some (xs.size, named, xs.size - 3 - named.length)
 
 end LeanScript.ToTerm
 

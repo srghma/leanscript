@@ -21,16 +21,17 @@ namespace LeanScript.Deriving
 
 /-- The type `LeanScript.Ty`, as an expression. -/
 def tyE : Expr := mkConst ``LeanScript.Ty
-/-- The type `List LeanScript.Ty`, as an expression. -/
-def listTyE : Expr := mkApp (mkConst ``List [0]) tyE
-/-- A list of trees, as an expression. -/
-def mkTyList (es : List Expr) : MetaM Expr := mkListLit tyE es
+/-- The type `List elt`, as an expression (`elt : Type`). -/
+def listOfE (elt : Expr) : Expr := mkApp (mkConst ``List [0]) elt
+/-- A list of trees, as an expression.  The trees are `LeanScript.Ty`s unless `elt` says
+    otherwise (`#leanscript_ctor` builds the same schemas over `LeanScript.TyWf`). -/
+def mkTyList (es : List Expr) (elt : Expr := tyE) : MetaM Expr := mkListLit elt es
 /-- A list of lists of trees — the fields of each constructor — as an expression. -/
-def mkTyListList (ess : List (List Expr)) : MetaM Expr := do
-  mkListLit listTyE (← ess.mapM mkTyList)
+def mkTyListList (ess : List (List Expr)) (elt : Expr := tyE) : MetaM Expr := do
+  mkListLit (listOfE elt) (← ess.mapM (mkTyList · elt))
 /-- A non-empty list of trees, as an expression. -/
-def mkNE (e : Expr) (es : List Expr) : MetaM Expr := do
-  mkAppM ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk #[e, ← mkTyList es]
+def mkNE (e : Expr) (es : List Expr) (elt : Expr := tyE) : MetaM Expr := do
+  mkAppM ``NonEmpty.ListCorrectByConstruction.NonEmptyList.mk #[e, ← mkTyList es elt]
 
 /-- Does this tree mention the declaration whose scope it is written in? -/
 def mentionsScope (e : Expr) : Bool :=
@@ -38,31 +39,34 @@ def mentionsScope (e : Expr) : Bool :=
     x.isConstOf ``LeanScript.Ty.self || x.isAppOf ``LeanScript.Ty.familyMember).isSome
 
 /-- The record schema of these fields, of which there must be at least two. -/
-def mkRecord? (fs : List Expr) : MetaM (Option Expr) := do
+def mkRecord? (fs : List Expr) (elt : Expr := tyE) : MetaM (Option Expr) := do
   match fs with
   | a :: b :: rest => return some (← mkAppM ``LeanScript.LeanRecordSchema.mk
-      #[a, b, ← mkTyList rest])
+      #[a, b, ← mkTyList rest elt])
   | _ => return none
 
 /-- The constructors of a tagged union from the first that carries a field. -/
-partial def mkCtorsWithPayload? : List (List Expr) → MetaM (Option Expr)
+def mkCtorsWithPayload? (ctors : List (List Expr)) (elt : Expr := tyE) :
+    MetaM (Option Expr) :=
+  match ctors with
   | [] => return none
   | [] :: rest => do
-      match ← mkCtorsWithPayload? rest with
+      match ← mkCtorsWithPayload? rest elt with
       | some r => return some (← mkAppM ``LeanScript.CtorsWithPayload.skip #[r])
       | none => return none
   | (f :: fs) :: rest => do
       return some (← mkAppM ``LeanScript.CtorsWithPayload.here
-        #[← mkNE f fs, ← mkTyListList rest])
+        #[← mkNE f fs elt, ← mkTyListList rest elt])
 
 /-- The tagged-union schema of these constructors: at least two of them, at least one
     with a field. -/
-def mkTaggedUnion? : List (List Expr) → MetaM (Option Expr)
+def mkTaggedUnion? (ctors : List (List Expr)) (elt : Expr := tyE) : MetaM (Option Expr) :=
+  match ctors with
   | (f :: fs) :: next :: rest => do
       return some (← mkAppM ``LeanScript.LeanTaggedUnionSchema.payloadFirst
-        #[← mkNE f fs, ← mkTyList next, ← mkTyListList rest])
+        #[← mkNE f fs elt, ← mkTyList next elt, ← mkTyListList rest elt])
   | [] :: rest => do
-      match ← mkCtorsWithPayload? rest with
+      match ← mkCtorsWithPayload? rest elt with
       | some r => return some (← mkAppM ``LeanScript.LeanTaggedUnionSchema.skip #[r])
       | none => return none
   | _ => return none
@@ -78,7 +82,10 @@ def mkEnumOrBool? (n : Nat) : MetaM (Option Expr) := do
 
 /-- The shape a declaration with these constructors has, as a tree.  `rec` says whether
     the declaration mentions itself, which is what tells `Ty.record` from
-    `Ty.recObject`. -/
+    `Ty.recObject`.  A recursive declaration of several constructors is a
+    `Ty.recTaggedUnion` when every occurrence of it is a field of its own, and otherwise
+    (`Array T`, `Option T`, `Nat → T` among the fields) a `Ty.recAlias` whose body is the
+    union of its constructors. -/
 def assembleShape (name : Name) (ctors : List (List Expr)) : MetaM TransRes := do
   let isRec := ctors.any (·.any mentionsScope)
   match ctors with
@@ -102,9 +109,21 @@ def assembleShape (name : Name) (ctors : List (List Expr)) : MetaM TransRes := d
         match ← mkTaggedUnion? ctors with
         | none => return .no m!"`{name}` is a tagged union the schema refuses"
         | some sch =>
+            if isRec && ctors.any (·.any nestedOcc) then
+              -- an occurrence inside another type (`Array T`, `Option T`, `Nat × T`): the
+              -- fold of a recursive tagged union hands over the answers only at the
+              -- fields that *are* the union, so the declaration is a recursive newtype
+              -- whose body is the union of its constructors, whose fold hands over the
+              -- answers wherever an occurrence sits
+              let u ← mkAppM ``LeanScript.Ty.taggedUnion #[sch]
+              return .ok (← mkAppM ``LeanScript.Ty.recAlias #[u])
             return .ok (← mkAppM
               (if isRec then ``LeanScript.Ty.recTaggedUnion else ``LeanScript.Ty.taggedUnion)
               #[sch])
+where
+  /-- A field that mentions the declaration without being an occurrence of it. -/
+  nestedOcc (f : Expr) : Bool :=
+    !f.isConstOf ``LeanScript.Ty.self && mentionsScope f
 
 /-- The shape of one member of a mutual family, from its constructors. -/
 def assembleFamMember (name : Name) (ctors : List (List Expr)) :
@@ -214,6 +233,23 @@ partial def substHoles (holes : Array Expr) (trees : Array Expr) (underBinder : 
       return some (.proj s i b')
   | _ => return some e
 
+/-- The auxiliary types Lean adds for a **nested** inductive block (`List T`, for a field
+    of type `List T`), in the order of the motives of its recursor, at the parameters
+    `params`.  Empty when the block is not nested. -/
+def nestedAuxTypes (ind : InductiveVal) (params : Array Expr) : MetaM (Array Expr) := do
+  let some (.recInfo ri) := (← getEnv).find? (ind.name ++ `rec) | return #[]
+  if ri.numMotives ≤ ind.all.length then return #[]
+  let indLvls := ind.levelParams.map Level.param
+  let lvls := if ri.levelParams.length == ind.levelParams.length + 1 then
+    Level.one :: indLvls else indLvls
+  let recTy ← instantiateForall (ri.type.instantiateLevelParams ri.levelParams lvls) params
+  forallBoundedTelescope recTy ri.numMotives fun ms _ => do
+    let mut out : Array Expr := #[]
+    for m in ms.extract ind.all.length ms.size do
+      let .forallE _ d _ _ ← whnf (← inferType m) | return #[]
+      out := out.push d
+    return out
+
 /-- What a declaration is translated in: the members of its family (itself alone, when it
     is not a family) and the type parameters it is being translated at. -/
 structure Ctx where
@@ -227,6 +263,12 @@ structure Ctx where
   /-- The members hoisted out of a recursive wrapper, in the order they were created; see
       the section on hoisting.  They follow the members above in the family. -/
   extra : IO.Ref (Array Expr)
+  /-- The auxiliary types Lean added for the block (`nestedAuxTypes`), when **every** one
+      of them is hoisted into a member of the family: member `baseCount + j` is
+      `auxTys[j]`, in the order of the motives of the recursor, so that the family is the
+      one the recursor folds.  Empty when wrappers are hoisted only where a binder would
+      capture the occurrence. -/
+  auxTys : Array Expr := #[]
 
 end LeanScript.Deriving
 

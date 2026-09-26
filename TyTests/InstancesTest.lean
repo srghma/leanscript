@@ -11,6 +11,7 @@ public import LeanScript.ExprCtx
 public meta import LeanScript.ExprCtx
 public import LeanScript.DeBruijn
 public import LeanScript.Expr.SelfField
+public import LeanScript.Ty.Traversable
 
 @[expose] public section
 

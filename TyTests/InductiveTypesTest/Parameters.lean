@@ -114,10 +114,14 @@ inductive LabelledTree where
   | node : Labelled LabelledTree → LabelledTree
   deriving LeanScriptTyWf
 
+/-- The occurrence sits inside the record, not directly in a field, and the declaration
+    has several constructors: its tree is a recursive newtype whose body is the union of
+    its constructors (the fold of a recursive tagged union hands over answers only at the
+    fields that *are* the union; that of a newtype, wherever an occurrence sits). -/
 example :
     tyOf LabelledTree
-      = .recTaggedUnion
-          (.skip (.here ⟨.record ⟨.prim .string, .self, []⟩, []⟩ [])) := by rfl
+      = .recAlias (.taggedUnion
+          (.skip (.here ⟨.record ⟨.prim .string, .self, []⟩, []⟩ []))) := by rfl
 
 /-- A recursive wrapper of one's own: its model is a binder, so an occurrence inside it
     would be an occurrence of *it*.  The binder is therefore hoisted into a member of a
@@ -166,7 +170,7 @@ structure NeedsInstance where
 
 /--
 error: the type `InductiveTypesTest.NeedsInstance` has no `Ty`: `Except String
-  Nat` has no `LeanScriptTyWf` instance; derive or write one for it first
+  ℕ` has no `LeanScriptTyWf` instance; derive or write one for it first
 -/
 #guard_msgs in
 deriving instance LeanScriptTyWf for NeedsInstance
