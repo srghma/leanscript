@@ -1,3 +1,31 @@
+# Summary of changes for run d1bced9f-452a-48e8-a454-2283b00da2c3
+The case you quoted is now supported in `#leanscript_to_term`. `Thunk` is the one exception: it is still refused, as it is everywhere in the language. The full `lake build` passes (63 jobs), with no warnings, no `sorry` and no new axioms. Everything is committed.
+
+**What was already there.** After the earlier redesign, the types and the language no longer had this limit. A field that holds a member of a `mutual` block inside an `Array` or a function (`node (qs : Array Q)`, `node (f : Nat → K)`) is accepted by `leanscript_signature`, `#leanscript_get_ctor` builds its values, and `Term.data_rec` folds the whole block. The old refusal message came from files that no longer exist. What was actually missing was in `#leanscript_to_term`: it refused recursion over a block with several members, and it did not handle members held inside arrays or functions.
+
+**What I added (`LeanScript/ToTerm.lean`)**
+- **`mutual` groups of functions.** A group with one function per member of the block (e.g. `G.sum`/`Q.sum`, `Even.toNat`/`Odd.toNat`, `Rose.sum`/`Rose.sumList`) becomes a single `Term.data_rec` over the whole block, with one branch per member.
+  - The group is the one you declared with `mutual`, whether Lean compiled it as structural or well-founded recursion.
+  - All functions must take the same parameters, except the one recursed on.
+- **Members inside a function field.** A recursive call on `f a` (e.g. `(f 0).sum`) uses the answer stored next to that subvalue. Using `f a` as a value gives the subvalue itself.
+- **Members inside an array field.** `qs.foldl (fun acc q => … q.sum …) 0` becomes `Term.array_foldl` over the pairs of subvalue and answer. This also works for nested shapes such as `Array (Array G)` and `Nat → Array Q`.
+- Every recursive call must still be on a subvalue; any other call is refused as before.
+
+**Tests (new `TermTests/MutualToTermTest.lean`)**
+- `G`/`Q` (array field), `H`/`K` (function field, including passing on an extra parameter), `Even`/`Odd`, `Rose`/`List Rose`, and `Grid` (array of arrays).
+- Each translated function is run on sample values and the result is checked by the kernel (`kernel_rfl`). I confirmed that a wrong expected value is rejected.
+- The Lean originals are evaluated on the same values with `#guard`.
+- The file also checks the declared block shapes, that each type has two different values, and one refusal.
+
+**Correctness.** As elsewhere in the project, correctness is only checked on sample inputs. There is no proof that a translated program equals its Lean function for every input.
+
+**Still not supported** (now listed in `NOT_IMPLEMENTED.md`; the `ToTerm.lean` header and `README.md` are updated too):
+- **`Thunk`:** a `Thunk` field is refused by `leanscript_signature` anywhere, not just in `mutual` blocks. This is an existing design decision and I didn't change it.
+- **Array/function fields:** they can only be folded with `Array.foldl` (from `0` to the size), applied, or passed to a recursive call. `qs.size`, `qs.map`, `qs[i]` and rebuilding a value from the field are refused, and so is course-of-values recursion (`data_brec`) through such a field.
+- **Two functions on one member:** a `mutual` group with two functions on the same member is refused.
+
+I didn't add rows to the Properties table: this is a translator feature, and it has no theorem to register.
+
 # Summary of changes for run 4e9169c9-efe3-4dac-8e73-734f036a6454
 I made five changes to the `Term` and `Ty` design. The full `lake build` passes (62 jobs) with no errors, no warnings and no `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). Everything is committed.
 

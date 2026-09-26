@@ -43,7 +43,7 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | `LeanScript/DeBruijn.lean`, `LeanScript/Term.lean`, `LeanScript/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`Term.lit p v`, `Term.bvar i`) and its evaluator |
 | `LeanScript/TermSubst.lean` | renaming, weakening and substitution of terms; `Term.eval_rename`, `Term.eval_subst`, β and `let` as substitution |
 | `LeanScript/Signature.lean`, `LeanScript/GetCtor.lean`, `LeanScript/Gen/` | `leanscript_signature`, `#leanscript_get_ty`/`_ctor`/`_cases`, and the generator they share (reading Lean types, SCCs and grounding order, printing, cache) |
-| `LeanScript/ToTerm.lean` | `#leanscript_to_term` |
+| `LeanScript/ToTerm.lean` | `#leanscript_to_term`, including `mutual` groups of recursive functions and members of a block held inside an `Array` or a function (`TermTests/MutualToTermTest.lean`) |
 | `LeanScript/LeanInitPureExterns.lean`, `LeanScript/LeanInitPureExterns/`, `LeanScript/LeanInitPureExternShorthands.lean`, `LeanScript/CatalogueShorthands.lean`, `LeanScript/LeanPrimTyCovariant.lean` | the catalogue of the pure externs of `Init` (not used by the language) |
 | `LeanScript/KernelRfl.lean` | `kernel_rfl`, an equation checked by the kernel only |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings |

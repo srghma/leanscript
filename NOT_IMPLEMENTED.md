@@ -37,8 +37,17 @@ The supported fragment and the refusals are listed in the header of
 
 - **Polymorphic definitions** (a parameter that is a type or an instance).
 - **Recursion on a parameter that is not matched at the top of the body**, recursion that
-  changes the other parameters (an accumulator), mutual recursion, recursion over a block of
-  several members (`Rose`/`List Rose`), and recursion through a helper.
+  changes the other parameters (an accumulator), and recursion through a helper.  (A
+  `mutual` group of functions, one per member of a block, is translated, also when members
+  are held inside an `Array` or a function: `TermTests/MutualToTermTest.lean`.)
+- **Two functions of a `mutual` group on the same member** of a block (one fold has one
+  answer per member).
+- **A field that holds members inside an `Array` or a function** can only be folded with
+  `Array.foldl` (from `0` to its size), applied, or passed to a recursive call: `qs.size`,
+  `qs.map`, `qs[i]` or rebuilding a value from it are refused.  A course-of-values recursion
+  (`data_brec`) through such a field is refused.
+- **`Thunk`** is not a type of the language at all (inside a block or not): a constructor
+  with a `Thunk` field is refused by `leanscript_signature`.
 - **Course-of-values recursion on `Nat`** (`fib (n + 2) = fib n + fib (n + 1)`): `Nat` is a
   leaf, so there is no `data_brec` for it; on a declared datatype, calls up to four levels
   down are translated to `data_brec`.
