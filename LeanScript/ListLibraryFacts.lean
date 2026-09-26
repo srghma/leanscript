@@ -119,21 +119,19 @@ theorem attachWith_unattach {α : Type u} (l : List α) (P : α → Prop)
 
 /-- A `map` over `l.attach` that reads only the values is a `map` over `l`. -/
 theorem map_attach_val {α : Type u} {β : Type v} (l : List α) (g : α → β) :
-    l.attach.map (fun x => g x.1) = l.map g := by
-  have h := congrArg (List.map g) (attach_unattach l)
-  rwa [List.map_map] at h
+    l.attach.map (fun x => g x.1) = l.map g :=
+  List.attach_map_val
 
 /-- The same over `l.attachWith P h`. -/
 theorem map_attachWith_val {α : Type u} {β : Type v} (l : List α) (P : α → Prop)
     (h : ∀ x ∈ l, P x) (g : α → β) :
-    (l.attachWith P h).map (fun x => g x.1) = l.map g := by
-  have h' := congrArg (List.map g) (attachWith_unattach l P h)
-  rwa [List.map_map] at h'
+    (l.attachWith P h).map (fun x => g x.1) = l.map g :=
+  List.attachWith_map_val h
 
 /-- A `foldl` over `l.attach` that reads only the values is a `foldl` over `l`. -/
 theorem foldl_attach_val {α : Type u} {β : Type v} (l : List α) (f : β → α → β) (b : β) :
-    l.attach.foldl (fun acc x => f acc x.1) b = l.foldl f b := by
-  rw [← List.foldl_map (f := Subtype.val) (g := f), attach_unattach]
+    l.attach.foldl (fun acc x => f acc x.1) b = l.foldl f b :=
+  List.foldl_attach
 
 /-- The same over `l.attachWith P h`. -/
 theorem foldl_attachWith_val {α : Type u} {β : Type v} (l : List α) (P : α → Prop)
