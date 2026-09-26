@@ -1,3 +1,33 @@
+# Summary of changes for run e5a9dc19-a633-4f66-9b7d-d6e18990e41a
+I wrote the proposal in `proposals/WTypeTyProposal.md`, with a small toy Lean file, `proposals/WTyToy.lean`, that checks the core claims at small scale. The toy has no imports and is not part of the Lake build; check it with `lean proposals/WTyToy.lean`. It compiles with no errors, warnings or `sorry`. Nothing in `LeanScript/`, `TyTests/` or `TermTests/` changed, and the Lean sketches in the markdown outside that file have not been compiled.
+
+**Proposal A: WType directly in `Ty`**
+- **One binder.** `recTaggedUnion`, `recObject`, `recAlias` and `mutualRecursiveFamily` merge into a single `Ty.mu k bodies sel`, an indexed W-type with `k+1` members. `self` and `familyMember` become `var i`, and `TyShape` merges into `Ty`.
+- **`TyWf` removed.** `Ty` is indexed by the number of recursive holes in scope, so being in scope is guaranteed by the type. Function domains must be closed (`Ty 0`), which enforces positivity.
+- **Two old checks dropped.** "Really recursive" moves into a computable function `Ty.fix` that puts every tree in one standard form, so the same Lean type always gets the same tree. Inhabitation is dropped: a type with no values is the correct meaning, as for Lean's `Bad`.
+- **A kernel limitation.** With the scope index, the kernel refuses the field containers written as `List (Ty n)`. They have to be restated as mutual inductives indexed by scope. With that change the kernel accepts the type and `DecidableEq` derives. A fallback without the index is described.
+- **Three term formers instead of twelve.**
+  - `mu_in` and `mu_out`: every `casesOn` becomes `mu_out` followed by the existing non-recursive eliminator.
+  - `mu_rec`: one fold with a possibly different answer type per member.
+  - Optional `mu_brec`: its branches get the full history as a `mu` type, which replaces the depth-`k` case trees.
+  - The meaning of each is plain structural recursion: no fuel and no casts.
+- **`LitExpr`.** At a closed index it becomes a plain non-recursive tree. A variant with a `swap` constructor, whose indices form a cycle, becomes one `mu` with two members. `eval` then answers a different type per member.
+- **`Unfold`** deliberately stays outside `Ty`. A `Ty` constructor for it would break structural recursion. Values get per-state layouts, and functions over it are Lean-level functions of the state type. New: loops over an `Unfold` can use a `nat_rec` bounded by `measure seed`, so they need no fuel.
+- **Migration plan**, file by file.
+
+**Proposal B: remove all recursive types**
+- **Flat `Ty`.** `Ty` keeps only the shapes, `TyShape` is merged in, and `TyWf` and `LeanScriptTyWf` are removed.
+- **Point counting as before:** 0 or 1 point is refused, 2 is `bool`, 3 or more is `enum` (`Ordering` has shift −1), and fields make a tagged union.
+- **The class is replaced by two cached elaborators:** `#leanscript_get_ty` and `#leanscript_get_ctor`. The latter takes one name such as `` `Option.some ``.
+- **What each example returns:** `Option.some`, `Option.none`, `Prod.mk`, `Bool.true`, `Ordering.lt`, `List.nil`, `List.cons`, `LitExpr.lit`, `LitExpr.pair`, and `Unfold.mk` (a record with 3 fields, as you expected).
+  - For `List` there are two options, and you need to pick one: map it to `array`, or build it one layer at a time.
+  - For `LitExpr`, the indices must be given as named arguments, because the layout depends on the Lean index.
+- **What B gives up:** no recursive user types at all.
+
+**Recommendation and decisions.** I recommend B's constructor-centric API with A's single `mu`. The document ends with six decisions I need from you.
+
+**Blocker in this environment:** `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it, so `lake` commands fail here with "dependency 'mathlib' not in manifest". That is why the toy file has no imports and is checked with bare `lean`.
+
 # Summary of changes for run 3ce22c9a-4ef3-4f7d-bd74-47c0cf6dd7c8
 I wrote the proposal in `proposals/IndexedExistentialFamilyProposal.md`. Alongside it is a small Lean file, `proposals/IndexedExistentialFamilyToy.lean`, that checks the type trees the proposal relies on. No code in `LeanScript/` changed.
 
