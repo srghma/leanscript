@@ -1,3 +1,31 @@
+# Summary of changes for run 6485226c-9700-454e-b39e-e3fb88c8c84f
+I wrote `DESIGN_ANALYSIS.md` at the project root. It covers the shortcomings of the current `Ty` design (section 1) and the current `Term` design (section 2), and ends with a summary table. It describes the code as it is in this tree. There is no `LeanScript/Ty/` directory, `TyWf` or `ty_wf` here: `Ty` is one file, with its well-formedness built into its constructors.
+
+Only one claim is checked in Lean: that different `Ty`s can have the same meaning. The checks are in the new `TyTests/DenNonInjectiveTest.lean`, which builds cleanly on its own with no `sorry`; I did not re-run the full `lake build` after adding it. Everything else in the document comes from reading the source and `NOT_IMPLEMENTED.md`, not from proofs.
+
+**`Ty`:**
+- **Cost of the "at least 2 values, and 2 values means `bool`" rule:** `Unit`, `Option Unit`, `Except ε Unit`, `HashSet` and functions returning `Unit` cannot be written. Proofs sit inside the data (`Ty.prim`'s proof, `UnionShape`, which forces `(h := h)` in every match on `.union`). How a Lean type is encoded depends on how many values it has, not on its shape. And the rule is not checked when subtypes or indices are erased.
+- **Different `Ty`s can mean the same Lean type (checked in Lean):** these pairs are different `Ty`s whose meanings are equal by `rfl`:
+  - a record of three fields and a record whose last field is a record;
+  - `Option a` with the empty constructor first or second;
+  - a union of three constructors and a union whose second constructor holds a sum;
+  - two enums that differ only in `shift`.
+- **No names:** types keep no constructor, field or datatype names, so `Point` and `Nat × Int` get the same `Ty`.
+- **The meaning is not the Lean type:** `Ty.Den` builds values from products, sums, `Fin` and W-type trees, not the user's inductive. There is no general conversion between the two, datatype values have no `BEq` or `Repr`, and `rfl` evaluation of them is slow.
+- **Recursive types:** they are names local to one program's signature, with no type parameters. The same block can be declared in several ways. `List` is a declared datatype but `Array` is built in.
+- **Erased features and gaps:** the Lean features that are erased instead of typed, plus missing effects and byte/float arrays.
+
+**`Term`:**
+- **`extern` holds a Lean function:** nothing ties its `name` to its function, and it blocks `DecidableEq` and `Repr` for terms. Only leaf-typed externs are usable in practice.
+- **Not first-order data:** `enum_casesOn` and the `data_rec`/`data_brec` branches are Lean functions.
+- **Typed over a concrete signature:** `Term` is indexed by the signature value, which makes elaboration slow. There is no untyped form, no checker from raw syntax, and no way to move a term into a larger signature.
+- **Folds only:** no general recursion, no early exit, `nat_rec` counts one step at a time, `data_rec` gives one answer per member for the whole block, and `data_brec` looks down a fixed depth.
+- **No polymorphism and no effects.**
+- **Hard to use by hand:** de Bruijn indices with no names, no projection, one-argument functions only, and no dependent `if`.
+- **Proof gaps:** no syntactic substitution laws, and no general proof that a translated definition computes what the Lean definition computes; correctness is proved one example at a time.
+
+Both files are committed.
+
 # Summary of changes for run 6a0cf9e3-494a-4f1b-b8eb-9953eca66227
 Your request just said "refactor", so I read it as: split `LeanScript/ToTerm.lean`, the translator worked on last time. At 1473 lines it was much longer than any other file. I only moved code between files and changed no definitions. The full `lake build` passes (76 jobs) with no errors or warnings, and the translator files contain no `sorry`.
 
