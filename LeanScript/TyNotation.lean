@@ -26,10 +26,14 @@ notation (`set_option pp.leanscript false` turns that off).
 | `⟪c₁ \| c₂ \| … \| cₙ⟫`          | `.union …`: `cᵢ` is `·` (no fields) or `τ, …, τ`   |
 | `Enum n`, `Enum n k`           | `.enum` of `n ≥ 3` constructors, numbered from `k` |
 | `Data b j`                     | `.data r`: member `j` of block `b` (`0` newest)    |
-| `‹t›`, or an identifier        | the Lean term `t : Ty ks`                          |
+| `‹t›`                          | the Lean term `t : Ty ks`                          |
 
 A chain `τ₁ × τ₂ × τ₃` is **one** record of three fields; parentheses make a field that is
 itself a record: `τ₁ × (τ₂ × τ₃)` is a record of two fields.
+
+The notation captures no Lean variable by name: an identifier is only ever a leaf (`Nat`, …) or
+a type former (`Array`, …, `Data`), and every Lean term, even a single name, is written `‹t›`
+(`Array ‹listNat›`).  Declared datatypes are referred to positionally, by `Data b j`.
 -/
 
 namespace LeanScript
@@ -39,7 +43,7 @@ declare_syntax_cat lsty
 /-- A constructor of a union type: `·` (no fields) or its fields. -/
 declare_syntax_cat lsctor
 
-/-- A leaf, or a Lean term of type `Ty ks`. -/
+/-- A leaf (`Nat`, `UInt8`, …). -/
 syntax:max ident : lsty
 /-- A number (an argument of `BitVec`, `Enum` or `Data`). -/
 syntax:max (name := lstyNum) num : lsty
@@ -163,7 +167,8 @@ partial def elabLsty : TSyntax `lsty → MacroM Term
         | ``LeanPrimTy.int => `(LeanScript.Ty.int)
         | ``LeanPrimTy.string => `(LeanScript.Ty.string)
         | _ => `(LeanScript.Ty.prim $(mkIdentFrom id p) rfl)
-      | none => pure id
+      | none => Macro.throwErrorAt id s!"unknown leaf `{id.getId}`: a Lean term is written \
+          `‹{id.getId}›`"
   | `(lsty| $id:ident $args*) => do
       let f := id.getId.eraseMacroScopes
       match f, args.toList with
@@ -239,14 +244,9 @@ def paren (req : Nat) : PSyn → DelabM (TSyntax `lsty)
 /-- A number, as a surface argument. -/
 def numArg (n : Nat) : TSyntax `lsty := ⟨Syntax.node .none ``LeanScript.lstyNum #[Syntax.mkNumLit (toString n)]⟩
 
-/-- A Lean term embedded in a surface type. -/
+/-- A Lean term embedded in a surface type: always `‹t›`. -/
 def embedTy : DelabM PSyn := do
-  let s ← delab
-  -- an identifier is printed as it is, unless it would be read as a leaf
-  if let `($id:ident) := s then
-    unless (primNames.lookup id.getId).isSome do
-      return (← `(lsty| $id:ident), atomPrec)
-  return (← `(lsty| ‹$s›), atomPrec)
+  return (← `(lsty| ‹$(← delab)›), atomPrec)
 
 /-- Member `j` of block `b`, if `e` is such a literal name. -/
 partial def refLit? (e : Expr) : Option (Nat × Nat) :=

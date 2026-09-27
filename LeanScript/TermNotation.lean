@@ -9,55 +9,59 @@ public meta import Lean.Meta.Match.MatcherInfo
 set_option autoImplicit false
 
 /-!
-# `[Term| …]`: a notation for terms with named variables, and its pretty-printer
+# `[Term| …]`: a thin notation for terms, with de Bruijn variables, and its pretty-printer
 
-`[Term| e]` elaborates the surface syntax `e`, whose variables are **names**, to a
-`LeanScript.Term Δ Γ τ` with de Bruijn variables (the signature, context and type are left to
-unification with the expected type).  Every `Term` built from its constructors is printed back
-in the same notation, with generated names `x₀`, `x₁`, … (`set_option pp.leanscript false`
-turns that off).
+`[Term| e]` elaborates the surface syntax `e` to a `LeanScript.Term Δ Γ τ` (the signature,
+context and type are left to unification with the expected type).  The notation follows the
+datatype closely: variables are **de Bruijn indices** `#i` (no names are bound or captured),
+binders are written `_`, and the forms without dedicated syntax are the constructors' own
+names with the constructors' own argument order.  Every `Term` built from its constructors is
+printed back in the same notation (`set_option pp.leanscript false` turns that off).
 
-| surface syntax                         | `Term`                                               |
-|----------------------------------------|------------------------------------------------------|
-| `x` (bound by the notation)            | `.bvar i`, the de Bruijn index of `x`                |
-| `#i`                                   | `.bvar i` (a variable of the enclosing context)      |
-| `fun x (y : τ) => e`                   | `.lam (.lam e)` (`τ` in the `[Ty| …]` syntax)        |
-| `f a b`                                | `.app (.app f a) b`                                  |
-| `let x := e; b`, `let x : τ := e; b`   | `.letE e b`                                          |
-| `3`, `"s"`, `true`, `false`            | `Term.ofNat 3`, `.lit .string "s"`, `.lit .bool true`, … |
-| `lit p v`                              | `.lit p v`                                           |
-| `if c then a else b`                   | `.ite c a b`                                         |
-| `(a, b, c)`                            | `.record_mk` of the fields `a`, `b`, `c`             |
-| `let (x, y, z) := e; b`                | `.record_casesOn e b`                                |
-| `inj i`, `inj i a`, `inj i (a, b)`     | constructor `i` of a union (no, one, two fields)     |
-| `match e with \| · => a \| x => b \| (y, z) => c` | `.union_casesOn`: one branch per constructor |
-| `enum i`                               | `.enum_mk _ i`                                       |
+| surface syntax                           | `Term`                                           |
+|------------------------------------------|--------------------------------------------------|
+| `#i`                                     | `.bvar i` (`.var` of de Bruijn index `i`)         |
+| `fun _ (_ : τ) => e`                     | `.lam (.lam e)` (`τ` in the `[Ty| …]` syntax)    |
+| `f a b`                                  | `.app (.app f a) b`                              |
+| `let _ := e; b`, `let _ : τ := e; b`     | `.letE e b`                                      |
+| `3`, `"s"`, `true`, `false`              | `Term.ofNat 3`, `.lit .string "s"`, `.lit .bool true`, … |
+| `lit p v`                                | `.lit p v`                                       |
+| `extern "name" f a b`                    | `.extern "name" f` of the arguments `a`, `b` (`Term.externOf`) |
+| `if c then a else b`                     | `.ite c a b`                                     |
+| `nat_rec n z s`                          | `.nat_rec n z s`                                 |
+| `enum_mk i`                              | `.enum_mk _ i`                                   |
 | `match e with \| 0 => a \| 1 => b \| _ => c` | `.enum_casesOn` (the last branch is the default) |
-| `#[a, b]`                              | `.array_mk` of the elements                          |
-| `foldl (fun acc x => s) init arr`      | `.array_foldl arr init s`                            |
-| `natRec n z (fun m ih => s)`           | `.nat_rec n z s`                                     |
-| `roll b j e`, `unroll b j e`           | `.data_in b j e`, `.data_out b j e`                  |
-| `fold b ρ j e (fun x => br₀) …`        | `.data_rec b ρ brs j e`, branch `i` of `brs` is `brᵢ` |
-| `brec b ρ k j e (fun x => br₀) …`      | `.data_brec b ρ k brs j e`                           |
-| `extern "name" f a b`                  | `.extern "name" f` of the arguments `a`, `b` (`Term.externOf`) |
-| `(e : τ)`                              | `e`, at the type `τ` (in the `[Ty| …]` syntax)       |
-| `‹t›`                                  | the Lean term `t : Term Δ Γ τ`                       |
-| `‹f›(a, b)`                            | the Lean term `f a b`: a Lean function of terms      |
+| `(a, b, c)`                              | `.record_mk` of the fields `a`, `b`, `c`         |
+| `let (_, _, _) := e; b`                  | `.record_casesOn e b`                            |
+| `union_mk i a b`                         | `.union_mk` of constructor `i` (by position) of the arguments `a`, `b` (`Term.inj`) |
+| `match e with \| · => a \| _ => b \| (_, _) => c` | `.union_casesOn e` of the branches `a`, `b`, `c` |
+| `#[a, b]`                                | `.array_mk` of the elements                      |
+| `array_foldl arr init s`                 | `.array_foldl arr init s`                        |
+| `data_in b j e`, `data_out b j e`        | `.data_in b j e`, `.data_out b j e`              |
+| `data_rec b ρ br₀ … brₖ j e`             | `.data_rec b ρ brs j e`, branch `i` of `brs` is `brᵢ` |
+| `data_brec b ρ k br₀ … brₖ j e`          | `.data_brec b ρ k brs j e`                       |
+| `(e : τ)`                                | `e`, at the type `τ` (in the `[Ty| …]` syntax)   |
+| `‹t›`                                    | the Lean term `t : Term Δ Γ τ`                   |
+| `‹f›(a, b)`                              | the Lean term `f a b`: a Lean function of terms  |
 
-An identifier that the notation does not bind is a Lean term (`sumT xs` applies the Lean
-term `sumT`).  In `roll`, `unroll`, `fold`, `brec`, `extern` and `lit`, the block, member,
-answer types, depth, name and function are Lean terms: a number, a string, an identifier or
-`‹t›`.  In `fold` and `brec` the branches can also be given as one Lean function `‹brs›`.
+**Variables and binders.**  A variable is only ever `#i`, the de Bruijn index of the
+constructors (`0` is the innermost binder); an identifier is never a variable, and never a
+Lean term either: every Lean term, even a single name, is written `‹t›`.  The binders follow
+the constructors: in `nat_rec n z s` the step `s` sees the answer as `#0` and the predecessor
+as `#1`; in `array_foldl arr init s` it sees the element as `#0` and the accumulator as `#1`;
+`let (_, _) := e; b` and the patterns of a union see the fields with the first field innermost
+(`#0`); a branch of `data_rec`/`data_brec` sees the member's body as `#0`.  The `_`s of a pattern only show how many
+variables it binds: the number is fixed by the type, and it is not checked against the
+pattern.
 
-The binders follow the constructors: `fun m ih => s` of `natRec` binds the predecessor `m`
-and the answer `ih` (index `0`), `fun acc x => s` of `foldl` binds the accumulator and the
-element `x` (index `0`); `let (x, y) := e; b` and the patterns of a union bind the fields,
-the first field `x` innermost (index `0`).
+**Lean arguments.**  In `lit`, `extern`, `enum_mk`, `union_mk`, `data_in`, `data_out`,
+`data_rec` and `data_brec` the leaf, value, name, function, constructor number, block,
+member, answer types and depth are Lean terms: a number, a string or `‹t›`.  The branches of
+`data_rec`/`data_brec` can also be given as one Lean function `‹brs›`.
 
 A numeral takes its leaf type from the expected type (`Term.ofNat`), so its type must be known
-from the context: `let x := 3; ‹addT›(x, x)` works (the use of `x` fixes it), a lone
-`let x := 3; x` needs `let x : Nat := 3; x`.  A Lean term that is not a number, a string or an
-identifier (`.int`, `-3`, `listB.there`) is written `‹t›`.
+from the context: `let _ := 3; ‹addT›(#0, #0)` works, a lone `let _ := 3; #0` needs
+`let _ : Nat := 3; #0`.
 -/
 
 namespace LeanScript
@@ -105,15 +109,17 @@ abbrev Term.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (T
 
 /-- The surface syntax of a term (`[Term| …]`). -/
 declare_syntax_cat lsterm
-/-- A binder of `fun`: a name, or a name with its type. -/
+/-- A binder of `fun`: `_`, or `(_ : τ)`. -/
 declare_syntax_cat lsbinder
+/-- A placeholder for a bound variable: `_`. -/
+declare_syntax_cat lshole
 /-- A pattern of `match`. -/
 declare_syntax_cat lspat
 
-/-- A variable bound by the notation, or a Lean term. -/
-syntax:max ident : lsterm
-/-- A variable of the enclosing context, by de Bruijn index. -/
+/-- A variable, by de Bruijn index. -/
 syntax:max (name := lstermBVar) "#" noWs num : lsterm
+/-- A constructor name (`nat_rec`, …), or `true`/`false`. -/
+syntax:max ident : lsterm
 /-- A literal. -/
 syntax:max num : lsterm
 /-- A literal. -/
@@ -132,17 +138,19 @@ syntax:max "#[" lsterm,* "]" : lsterm
 /-- Application. -/
 syntax:100 (name := lstermApp) lsterm:100 ppSpace lsterm:101 : lsterm
 
-syntax Lean.binderIdent : lsbinder
-syntax "(" Lean.binderIdent " : " lsty ")" : lsbinder
+syntax "_" : lshole
+
+syntax "_" : lsbinder
+syntax "(" "_" " : " lsty ")" : lsbinder
 
 syntax (name := lstermFun) "fun" (ppSpace lsbinder)+ " => " lsterm : lsterm
-syntax (name := lstermLet) "let " Lean.binderIdent (" : " lsty)? " := " lsterm "; " lsterm : lsterm
-syntax (name := lstermLetTuple) "let " "(" Lean.binderIdent ", " Lean.binderIdent,+ ")" " := " lsterm "; " lsterm : lsterm
+syntax (name := lstermLet) "let " "_" (" : " lsty)? " := " lsterm "; " lsterm : lsterm
+syntax (name := lstermLetTuple) "let " "(" lshole ", " lshole,+ ")" " := " lsterm "; " lsterm : lsterm
 syntax (name := lstermIf) "if " lsterm " then " lsterm " else " lsterm : lsterm
 
 syntax "·" : lspat
-syntax Lean.binderIdent : lspat
-syntax "(" Lean.binderIdent ", " Lean.binderIdent,+ ")" : lspat
+syntax "_" : lspat
+syntax "(" lshole ", " lshole,+ ")" : lspat
 syntax num : lspat
 syntax (name := lstermMatch) "match " lsterm " with" (ppDedent(ppLine) " | " lspat " => " lsterm)+ : lsterm
 
@@ -159,17 +167,10 @@ open Lean
 
 /-! ## Elaboration -/
 
-/-- The name a binder binds (`_` binds a name that cannot be referred to). -/
-def binderName : TSyntax ``Lean.binderIdent → Name
-  | `(binderIdent| $id:ident) => id.getId
-  | _ => .anonymous
-
-/-- The names in scope, innermost first. -/
-abbrev Scope := List Name
-
-/-- The special forms, written as an application of their name. -/
+/-- The constructors written as an application of their name. -/
 def specialForms : List Name :=
-  [`inj, `enum, `natRec, `foldl, `roll, `unroll, `fold, `brec, `extern, `lit]
+  [`lit, `extern, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
+   `data_brec]
 
 /-- The arguments of a constructor or an extern. -/
 def mkArgs : List Lean.Term → MacroM Lean.Term
@@ -188,19 +189,13 @@ partial def appSpine (e : TSyntax `lsterm) (args : List (TSyntax `lsterm) := [])
   | `(lsterm| $f $a) => appSpine f (a :: args)
   | _ => (e, args)
 
-/-- A Lean term given as an argument of a special form: a number, a string, an identifier
-    (not bound by the notation) or `‹t›`. -/
-partial def leanArg (sc : Scope) : TSyntax `lsterm → MacroM Lean.Term
+/-- A Lean term given as an argument of a constructor: a number, a string or `‹t›`. -/
+partial def leanArg : TSyntax `lsterm → MacroM Lean.Term
   | `(lsterm| $n:num) => pure n
   | `(lsterm| $s:str) => pure s
   | `(lsterm| ‹$t›) => pure t
-  | `(lsterm| ($t)) => leanArg sc t
-  | `(lsterm| $id:ident) =>
-      if sc.contains id.getId then
-        Macro.throwErrorAt id "expected a Lean term here, not a variable of the term"
-      else pure id
-  | t => Macro.throwErrorAt t "expected a Lean term here: a number, a string, an identifier \
-      or `‹term›`"
+  | `(lsterm| ($t)) => leanArg t
+  | t => Macro.throwErrorAt t "expected a Lean term here: a number, a string or `‹term›`"
 
 /-- The components of a record literal `(a, b, …)`, or `none`. -/
 def tupleElems? (e : TSyntax `lsterm) : Option (List (TSyntax `lsterm)) :=
@@ -210,106 +205,82 @@ def tupleElems? (e : TSyntax `lsterm) : Option (List (TSyntax `lsterm)) :=
 
 mutual
 
-/-- The `Term` a surface term denotes, in the scope `sc`. -/
-partial def elabLsterm (sc : Scope) : TSyntax `lsterm → MacroM Lean.Term
+/-- The `Term` a surface term denotes. -/
+partial def elabLsterm : TSyntax `lsterm → MacroM Lean.Term
   | `(lsterm| #$n:num) => `(LeanScript.Term.bvar $n)
   | `(lsterm| $n:num) => `(LeanScript.Term.ofNat $n)
   | `(lsterm| $s:str) => `(LeanScript.Term.lit LeanScript.LeanPrimTy.string $s rfl)
   | `(lsterm| ‹$t›) => pure t
   | `(lsterm| ‹$f›($as,*)) => do
-      let as ← as.getElems.mapM (elabLsterm sc)
+      let as ← as.getElems.mapM elabLsterm
       `($f $as*)
-  | `(lsterm| ($e)) => elabLsterm sc e
+  | `(lsterm| ($e)) => elabLsterm e
   | `(lsterm| ($e : $τ)) => do
-      `(($(← elabLsterm sc e) : LeanScript.Term _ _ [Ty| $τ]))
+      `(($(← elabLsterm e) : LeanScript.Term _ _ [Ty| $τ]))
   | `(lsterm| #[$es,*]) => do
-      `(LeanScript.Term.array_mk $(← mkElems (← es.getElems.toList.mapM (elabLsterm sc))))
-  | `(lsterm| fun $bs* => $b) => elabFun sc bs.toList b
-  | `(lsterm| let $x:binderIdent := $e; $b) => do
-      `(LeanScript.Term.letE $(← elabLsterm sc e) $(← elabLsterm (binderName x :: sc) b))
-  | `(lsterm| let $x:binderIdent : $τ := $e; $b) => do
-      `(LeanScript.Term.letE (σ := [Ty| $τ]) $(← elabLsterm sc e)
-          $(← elabLsterm (binderName x :: sc) b))
-  | `(lsterm| let ($x, $xs,*) := $e; $b) => do
-      let names := (x :: xs.getElems.toList).map binderName
-      `(LeanScript.Term.record_casesOn $(← elabLsterm sc e) $(← elabLsterm (names ++ sc) b))
+      `(LeanScript.Term.array_mk $(← mkElems (← es.getElems.toList.mapM elabLsterm)))
+  | `(lsterm| fun $bs* => $b) => elabFun bs.toList b
+  | `(lsterm| let _ := $e; $b) => do
+      `(LeanScript.Term.letE $(← elabLsterm e) $(← elabLsterm b))
+  | `(lsterm| let _ : $τ := $e; $b) => do
+      `(LeanScript.Term.letE (σ := [Ty| $τ]) $(← elabLsterm e) $(← elabLsterm b))
+  | `(lsterm| let ($_, $_,*) := $e; $b) => do
+      `(LeanScript.Term.record_casesOn $(← elabLsterm e) $(← elabLsterm b))
   | `(lsterm| if $c then $a else $b) => do
-      `(LeanScript.Term.ite $(← elabLsterm sc c) $(← elabLsterm sc a) $(← elabLsterm sc b))
-  | `(lsterm| match $e with $[| $ps => $bs]*) => elabMatch sc e ps.toList bs.toList
+      `(LeanScript.Term.ite $(← elabLsterm c) $(← elabLsterm a) $(← elabLsterm b))
+  | `(lsterm| match $e with $[| $ps => $bs]*) => elabMatch e ps.toList bs.toList
   | `(lsterm| $id:ident) =>
-      match sc.idxOf? id.getId with
-      | some i => `(LeanScript.Term.bvar $(quote i))
-      | none =>
-        match id.getId.eraseMacroScopes with
-        | `true => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool true rfl)
-        | `false => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool false rfl)
-        | _ =>
-          if specialForms.contains id.getId.eraseMacroScopes then elabSpecial sc id []
-          else pure id
+      match id.getId.eraseMacroScopes with
+      | `true => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool true rfl)
+      | `false => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool false rfl)
+      | _ => elabSpecial id []
   | e@`(lsterm| $_ $_) => do
       match tupleElems? e with
-      | some _ => elabTuple sc e
+      | some _ => elabTuple e
       | none =>
       let (f, args) := appSpine e
       if let `(lsterm| $id:ident) := f then
-        if !sc.contains id.getId && specialForms.contains id.getId.eraseMacroScopes then
-          return ← elabSpecial sc id args
-      let mut r ← elabLsterm sc f
+        if specialForms.contains id.getId.eraseMacroScopes then
+          return ← elabSpecial id args
+      let mut r ← elabLsterm f
       for a in args do
-        r ← `(LeanScript.Term.app $r $(← elabLsterm sc a))
+        r ← `(LeanScript.Term.app $r $(← elabLsterm a))
       return r
-  | e => if (tupleElems? e).isSome then elabTuple sc e
+  | e => if (tupleElems? e).isSome then elabTuple e
       else Macro.throwErrorAt e "unsupported term syntax"
 
 /-- A record literal. -/
-partial def elabTuple (sc : Scope) (e : TSyntax `lsterm) : MacroM Lean.Term := do
+partial def elabTuple (e : TSyntax `lsterm) : MacroM Lean.Term := do
   let some es := tupleElems? e | Macro.throwErrorAt e "expected a record"
-  `(LeanScript.Term.record_mk $(← mkArgs (← es.mapM (elabLsterm sc))))
+  `(LeanScript.Term.record_mk $(← mkArgs (← es.mapM elabLsterm)))
 
-/-- `fun x₁ … xₙ => b`. -/
-partial def elabFun (sc : Scope) : List (TSyntax `lsbinder) → TSyntax `lsterm → MacroM Lean.Term
-  | [], b => elabLsterm sc b
+/-- `fun _ … _ => b`. -/
+partial def elabFun : List (TSyntax `lsbinder) → TSyntax `lsterm → MacroM Lean.Term
+  | [], b => elabLsterm b
   | x :: xs, b => do
       match x with
-      | `(lsbinder| ($x:binderIdent : $τ)) =>
-          `(LeanScript.Term.lam (σ := [Ty| $τ]) $(← elabFun (binderName x :: sc) xs b))
-      | `(lsbinder| $x:binderIdent) =>
-          `(LeanScript.Term.lam $(← elabFun (binderName x :: sc) xs b))
+      | `(lsbinder| (_ : $τ)) => `(LeanScript.Term.lam (σ := [Ty| $τ]) $(← elabFun xs b))
+      | `(lsbinder| _) => `(LeanScript.Term.lam $(← elabFun xs b))
       | _ => Macro.throwErrorAt x "unsupported binder"
 
-/-- The body of a `fun x₁ … xₙ => b` given to a special form that binds `n` names. -/
-partial def elabBinderBody (sc : Scope) (n : Nat) (form : String) :
-    TSyntax `lsterm → MacroM Lean.Term
-  | `(lsterm| ($e)) => elabBinderBody sc n form e
-  | `(lsterm| fun $bs* => $b) => do
-      let bs : Array (TSyntax `lsbinder) := bs
-      let names ← bs.toList.mapM fun (x : TSyntax `lsbinder) => match x with
-        | `(lsbinder| $x:binderIdent) => pure (binderName x)
-        | x => Macro.throwErrorAt x s!"the binders of `{form}` take no type"
-      unless names.length == n do
-        Macro.throwErrorAt bs[0]! s!"`{form}` binds {n} name(s) here"
-      elabLsterm (names.reverse ++ sc) b
-  | e => Macro.throwErrorAt e s!"`{form}` expects `fun` binding {n} name(s) here"
-
-/-- The branches of a fold (`data_rec`/`data_brec`): one `fun x => b` per member, or one
-    Lean function `‹brs›`. -/
-partial def elabFoldBranches (sc : Scope) (form : String) :
-    List (TSyntax `lsterm) → MacroM Lean.Term
+/-- The branches of `data_rec`/`data_brec`: one term per member, or one Lean function
+    `‹brs›`. -/
+partial def elabRecBranches : List (TSyntax `lsterm) → MacroM Lean.Term
   | brs => do
       if let [t] := brs then
         if t.raw.isOfKind ``LeanScript.lstermEmbed then return ⟨t.raw[1]⟩
-      let rhss ← brs.toArray.mapM (elabBinderBody sc 1 form)
+      let rhss ← brs.toArray.mapM elabLsterm
       let pats ← (List.range brs.length).toArray.mapM fun i => `(⟨$(quote i), _⟩)
       `(fun $[| $pats => $rhss]*)
 
 /-- `match e with | p => b …`: an enum when the patterns are numbers, a union otherwise. -/
-partial def elabMatch (sc : Scope) (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
+partial def elabMatch (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
     (bs : List (TSyntax `lsterm)) : MacroM Lean.Term := do
-  let e' ← elabLsterm sc e
+  let e' ← elabLsterm e
   let isEnum := ps.any fun | `(lspat| $_:num) => true | _ => false
+  let rhss ← bs.toArray.mapM elabLsterm
   if isEnum then
     let n := ps.length
-    let rhss ← bs.toArray.mapM (elabLsterm sc)
     let pats ← ps.toArray.mapIdxM fun i p => do
       if i + 1 == n then `(_)
       else match p with
@@ -319,69 +290,66 @@ partial def elabMatch (sc : Scope) (e : TSyntax `lsterm) (ps : List (TSyntax `ls
     `(LeanScript.Term.enum_casesOn $e' (fun i => match i.val with $[| $pats => $rhss]*))
   else
     if ps.length < 2 then Macro.throwErrorAt e "a union has at least two constructors"
-    let brs ← (ps.zip bs).mapM fun (p, b) => do
-      let names ← match p with
-        | `(lspat| ·) => pure []
-        | `(lspat| $x:binderIdent) => pure [binderName x]
-        | `(lspat| ($x, $xs,*)) => pure ((x :: xs.getElems.toList).map binderName)
-        | _ => Macro.throwErrorAt p "expected `·`, a name or `(x, y, …)`"
-      elabLsterm (names ++ sc) b
+    for p in ps do
+      match p with
+      | `(lspat| ·) | `(lspat| _) | `(lspat| ($_, $_,*)) => pure ()
+      | _ => Macro.throwErrorAt p "expected `·`, `_` or `(_, _, …)`"
     let rec mk : List Lean.Term → MacroM Lean.Term
       | [a, b] => `(LeanScript.Branches.two $a $b)
       | a :: rest => do `(LeanScript.Branches.cons $a $(← mk rest))
       | [] => Macro.throwError "unreachable"
-    `(LeanScript.Term.union_casesOn $e' $(← mk brs))
+    `(LeanScript.Term.union_casesOn $e' $(← mk rhss.toList))
 
-/-- A special form, applied to `args`. -/
-partial def elabSpecial (sc : Scope) (id : Ident) (args : List (TSyntax `lsterm)) :
-    MacroM Lean.Term := do
+/-- A constructor, applied to `args`. -/
+partial def elabSpecial (id : Ident) (args : List (TSyntax `lsterm)) : MacroM Lean.Term := do
   let f := id.getId.eraseMacroScopes
   let bad {α : Type} (usage : String) : MacroM α :=
     Macro.throwErrorAt id s!"`{f}` is used as `{usage}`"
   match f, args with
-  | `inj, [i] => do `(LeanScript.Term.inj $(← leanArg sc i) (args := LeanScript.Args.nil))
-  | `inj, [i, a] => do
-      let as ← match tupleElems? a with
-        | some as => as.mapM (elabLsterm sc)
-        | none => pure [← elabLsterm sc a]
-      `(LeanScript.Term.inj $(← leanArg sc i) (args := $(← mkArgs as)))
-  | `inj, _ => bad "inj i`, `inj i a` or `inj i (a, b, …)"
-  | `enum, [i] => do `(LeanScript.Term.enum_mk _ $(← leanArg sc i))
-  | `enum, _ => bad "enum i"
-  | `natRec, [n, z, s] => do
-      `(LeanScript.Term.nat_rec $(← elabLsterm sc n) $(← elabLsterm sc z)
-          $(← elabBinderBody sc 2 "natRec" s))
-  | `natRec, _ => bad "natRec n z (fun m ih => s)"
-  | `foldl, [s, init, arr] => do
-      `(LeanScript.Term.array_foldl $(← elabLsterm sc arr) $(← elabLsterm sc init)
-          $(← elabBinderBody sc 2 "foldl" s))
-  | `foldl, _ => bad "foldl (fun acc x => s) init arr"
-  | `roll, [b, j, e] => do
-      `(LeanScript.Term.data_in $(← leanArg sc b) $(← leanArg sc j) $(← elabLsterm sc e))
-  | `roll, _ => bad "roll b j e"
-  | `unroll, [b, j, e] => do
-      `(LeanScript.Term.data_out $(← leanArg sc b) $(← leanArg sc j) $(← elabLsterm sc e))
-  | `unroll, _ => bad "unroll b j e"
-  | `fold, b :: ρ :: j :: e :: brs@(_ :: _) => do
-      `(LeanScript.Term.data_rec $(← leanArg sc b) $(← leanArg sc ρ)
-          $(← elabFoldBranches sc "fold" brs) $(← leanArg sc j) $(← elabLsterm sc e))
-  | `fold, _ => bad "fold b ρ j e (fun x => br₀) …"
-  | `brec, b :: ρ :: k :: j :: e :: brs@(_ :: _) => do
-      `(LeanScript.Term.data_brec $(← leanArg sc b) $(← leanArg sc ρ) $(← leanArg sc k)
-          $(← elabFoldBranches sc "brec" brs) $(← leanArg sc j) $(← elabLsterm sc e))
-  | `brec, _ => bad "brec b ρ k j e (fun x => br₀) …"
-  | `extern, name :: fn :: as => do
-      `(LeanScript.Term.externOf $(← leanArg sc name) $(← mkArgs (← as.mapM (elabLsterm sc)))
-          $(← leanArg sc fn))
-  | `extern, _ => bad "extern \"name\" f a₁ … aₙ"
-  | `lit, [p, v] => do `(LeanScript.Term.lit $(← leanArg sc p) $(← leanArg sc v) rfl)
+  | `lit, [p, v] => do `(LeanScript.Term.lit $(← leanArg p) $(← leanArg v) rfl)
   | `lit, _ => bad "lit p v"
-  | _, _ => Macro.throwErrorAt id "unknown special form"
+  | `extern, name :: fn :: as => do
+      `(LeanScript.Term.externOf $(← leanArg name) $(← mkArgs (← as.mapM elabLsterm))
+          $(← leanArg fn))
+  | `extern, _ => bad "extern \"name\" f a₁ … aₙ"
+  | `nat_rec, [n, z, s] => do
+      `(LeanScript.Term.nat_rec $(← elabLsterm n) $(← elabLsterm z) $(← elabLsterm s))
+  | `nat_rec, _ => bad "nat_rec n z s"
+  | `enum_mk, [i] => do `(LeanScript.Term.enum_mk _ $(← leanArg i))
+  | `enum_mk, _ => bad "enum_mk i"
+  | `union_mk, i :: as => do
+      `(LeanScript.Term.inj $(← leanArg i) (args := $(← mkArgs (← as.mapM elabLsterm))))
+  | `union_mk, _ => bad "union_mk i a₁ … aₙ"
+  | `array_foldl, [arr, init, s] => do
+      `(LeanScript.Term.array_foldl $(← elabLsterm arr) $(← elabLsterm init) $(← elabLsterm s))
+  | `array_foldl, _ => bad "array_foldl arr init s"
+  | `data_in, [b, j, e] => do
+      `(LeanScript.Term.data_in $(← leanArg b) $(← leanArg j) $(← elabLsterm e))
+  | `data_in, _ => bad "data_in b j e"
+  | `data_out, [b, j, e] => do
+      `(LeanScript.Term.data_out $(← leanArg b) $(← leanArg j) $(← elabLsterm e))
+  | `data_out, _ => bad "data_out b j e"
+  | `data_rec, b :: ρ :: rest@(_ :: _ :: _ :: _) => do
+      let brs := rest.take (rest.length - 2)
+      let j := rest[rest.length - 2]!
+      let e := rest[rest.length - 1]!
+      `(LeanScript.Term.data_rec $(← leanArg b) $(← leanArg ρ) $(← elabRecBranches brs)
+          $(← leanArg j) $(← elabLsterm e))
+  | `data_rec, _ => bad "data_rec b ρ br₀ … brₖ j e"
+  | `data_brec, b :: ρ :: k :: rest@(_ :: _ :: _ :: _) => do
+      let brs := rest.take (rest.length - 2)
+      let j := rest[rest.length - 2]!
+      let e := rest[rest.length - 1]!
+      `(LeanScript.Term.data_brec $(← leanArg b) $(← leanArg ρ) $(← leanArg k)
+          $(← elabRecBranches brs) $(← leanArg j) $(← elabLsterm e))
+  | `data_brec, _ => bad "data_brec b ρ k br₀ … brₖ j e"
+  | _, _ => Macro.throwErrorAt id s!"unknown constructor `{f}`: a variable is written `#i` \
+      and a Lean term `‹{f}›`"
 
 end
 
 macro_rules
-  | `([Term| $e]) => elabLsterm [] e
+  | `([Term| $e]) => elabLsterm e
 
 /-! ## Pretty-printing -/
 
@@ -396,17 +364,6 @@ def appPrec : Nat := 100
 /-- Parenthesize `s` when its precedence is below `req`. -/
 def tparen (req : Nat) : TSyn → DelabM (TSyntax `lsterm)
   | (s, p) => if p < req then `(lsterm| ($s)) else pure s
-
-/-- The name given to the variable bound at depth `d`: `x₀`, `x₁`, …. -/
-def varName (d : Nat) : Name :=
-  let sub := (toString d).toList.map fun c => Char.ofNat (c.toNat - '0'.toNat + 0x2080)
-  Name.mkSimple ("x" ++ String.ofList sub)
-
-/-- The names bound at depths `d`, `d + 1`, …, `d + n - 1`. -/
-def freshNames (d n : Nat) : List Name := (List.range n).map (varName <| d + ·)
-
-/-- A binder of the surface syntax. -/
-def binderOf (x : Name) : DelabM (TSyntax ``Lean.binderIdent) := `(binderIdent| $(mkIdent x):ident)
 
 /-- The de Bruijn index of a variable (`DeBruijn.head`/`tail`/`ofIndex`). -/
 partial def dbIndex? (e : Expr) : Option Nat :=
@@ -459,26 +416,28 @@ def termHeads : List (Name × Nat) :=
    (``Term.data_brec, 9), (``Term.bvar, 6), (``Term.ofNat, 7), (``Term.inj, 9),
    (``Term.externOf, 8)]
 
-/-- A pattern of `match` binding `names`. -/
-def patOf : List Name → DelabM (TSyntax `lspat)
-  | [] => `(lspat| ·)
-  | [x] => do `(lspat| $(← binderOf x):binderIdent)
-  | x :: xs => do
-      let xs ← xs.toArray.mapM binderOf
-      `(lspat| ($(← binderOf x), $xs,*))
+/-- The placeholders `_, …, _` of `n` bound variables. -/
+def holes (n : Nat) : DelabM (Array (TSyntax `lshole)) :=
+  (List.range n).toArray.mapM fun _ => `(lshole| _)
 
-/-- A Lean term, as an argument of a special form. -/
-def leanArgSyn (sc : List Name) : DelabM (TSyntax `lsterm) := do
+/-- The pattern of a constructor that binds `n` fields: `·`, `_` or `(_, …, _)`. -/
+def patOf (n : Nat) : DelabM (TSyntax `lspat) := do
+  match n with
+  | 0 => `(lspat| ·)
+  | 1 => `(lspat| _)
+  | n + 1 => do `(lspat| ($(← `(lshole| _)), $(← holes n),*))
+
+/-- A Lean term, as an argument of a constructor: a number, a string, or `‹t›`. -/
+def leanArgSyn : DelabM (TSyntax `lsterm) := do
   let s ← delab
   match s with
   | `($n:num) => `(lsterm| $n:num)
   | `($str:str) => `(lsterm| $str:str)
-  | `($id:ident) => if sc.contains id.getId then `(lsterm| ‹$s›) else `(lsterm| $id:ident)
   | _ => `(lsterm| ‹$s›)
 
-/-- The application of the special form `f` to `args` (already parenthesized). -/
-def mkAppSyn (f : Ident) (args : List (TSyntax `lsterm)) : DelabM (TSyntax `lsterm) := do
-  let mut r ← `(lsterm| $f:ident)
+/-- The application of the constructor `f` to `args` (already parenthesized). -/
+def mkAppSyn (f : Name) (args : List (TSyntax `lsterm)) : DelabM (TSyntax `lsterm) := do
+  let mut r ← `(lsterm| $(mkIdent f):ident)
   for a in args do
     r ← `(lsterm| $r $a)
   return r
@@ -491,7 +450,7 @@ mutual
 
 /-- A Lean function applied to terms, `‹f›(a, b)`: the current expression is a global
     constant applied to implicit arguments, then to explicit arguments that are `Term`s. -/
-partial def embedCall? (sc : List Name) : DelabM (Option (TSyntax `lsterm)) := do
+partial def embedCall? : DelabM (Option (TSyntax `lsterm)) := do
   let e := (← getExpr).consumeMData
   let some c := e.getAppFn.constName? | return none
   if (termHeads.lookup c).isSome then return none
@@ -509,31 +468,30 @@ partial def embedCall? (sc : List Name) : DelabM (Option (TSyntax `lsterm)) := d
     if explicit i then return none
   let f := mkIdent (← unresolveNameGlobal c)
   let as ← (List.range k).toArray.mapM fun j =>
-    withNaryArg (n - k + j) do return (← delabLsterm sc false).1
+    withNaryArg (n - k + j) do return (← delabLsterm false).1
   return some (← `(lsterm| ‹$f›($as,*)))
 
-/-- The current expression, a `Term`, as a surface term in the scope `sc` (innermost
-    first); `root` is whether it is the whole printed term (then an expression that is not
-    in the notation fails, instead of being embedded as `‹…›`). -/
-partial def delabLsterm (sc : List Name) (root : Bool) : DelabM TSyn := do
+/-- The current expression, a `Term`, as a surface term; `root` is whether it is the whole
+    printed term (then an expression that is not in the notation fails, instead of being
+    embedded as `‹…›`). -/
+partial def delabLsterm (root : Bool) : DelabM TSyn := do
   let e := (← getExpr).consumeMData
   let other : DelabM TSyn := do
     if root then failure
-    if let some s ← embedCall? sc then return (s, atomPrec)
-    return (← leanArgSyn sc, atomPrec)
+    if let some s ← embedCall? then return (s, atomPrec)
+    return (← leanArgSyn, atomPrec)
   let some c := e.getAppFn.constName? | other
   let some arity := termHeads.lookup c | other
   if e.getAppNumArgs != arity then return ← other
-  let d := sc.length
-  let sub (k : Nat) (sc' : List Name := sc) : DelabM TSyn := withArgFromEnd k (delabLsterm sc' false)
+  let sub (k : Nat) : DelabM TSyn := withArgFromEnd k (delabLsterm false)
+  -- an argument of an application
+  let arg (k : Nat) : DelabM (TSyntax `lsterm) := do tparen (appPrec + 1) (← sub k)
   let r : DelabM TSyn := do
     match c with
     | ``Term.var | ``Term.bvar =>
         let i ← if c == ``Term.var then (dbIndex? e.appArg!).getDM failure
           else (natLit? (e.getArg! 4)).getDM failure
-        match sc[i]? with
-        | some x => return (← `(lsterm| $(mkIdent x):ident), atomPrec)
-        | none => return (← `(lsterm| #$(Syntax.mkNumLit (toString i)):num), atomPrec)
+        return (← `(lsterm| #$(Syntax.mkNumLit (toString i)):num), atomPrec)
     | ``Term.ofNat =>
         let some n := natLit? (e.getArg! 5) | failure
         return (← `(lsterm| $(Syntax.mkNumLit (toString n)):num), atomPrec)
@@ -547,171 +505,137 @@ partial def delabLsterm (sc : List Name) (root : Bool) : DelabM TSyn := do
         if p.isConstOf ``LeanPrimTy.bool && (v.isConstOf ``Bool.true || v.isConstOf ``Bool.false) then
           return (← `(lsterm| $(mkIdent (if v.isConstOf ``Bool.true then `true else `false)):ident),
             atomPrec)
-        let p ← withArgFromEnd 3 (leanArgSyn sc)
-        let v ← withArgFromEnd 2 (leanArgSyn sc)
-        return (← `(lsterm| $(mkIdent `lit):ident $p $v), appPrec)
+        let p ← withArgFromEnd 3 leanArgSyn
+        let v ← withArgFromEnd 2 leanArgSyn
+        return (← mkAppSyn `lit [p, v], appPrec)
     | ``Term.lam =>
         -- merge the `fun`s
-        let rec go (sc : List Name) (bs : Array (TSyntax `lsbinder)) : DelabM TSyn := do
+        let rec go (bs : Array (TSyntax `lsbinder)) : DelabM TSyn := do
           let e := (← getExpr).consumeMData
           if e.isAppOfArity ``Term.lam 6 then
-            let x := varName sc.length
             let b ← if ← getPPOption getPPFunBinderTypes then do
                 let (τ, _) ← withArgFromEnd 3 (delabLsty false)
-                `(lsbinder| ($(← binderOf x) : $τ))
-              else `(lsbinder| $(← binderOf x):binderIdent)
-            withArgFromEnd 1 (go (x :: sc) (bs.push b))
+                `(lsbinder| (_ : $τ))
+              else `(lsbinder| _)
+            withArgFromEnd 1 (go (bs.push b))
           else
-            let (body, _) ← delabLsterm sc false
+            let (body, _) ← delabLsterm false
             return (← `(lsterm| fun $bs* => $body), 0)
-        go sc #[]
+        go #[]
     | ``Term.app =>
         let f ← tparen appPrec (← sub 2)
-        let a ← tparen (appPrec + 1) (← sub 1)
-        return (← `(lsterm| $f $a), appPrec)
+        return (← `(lsterm| $f $(← arg 1)), appPrec)
     | ``Term.letE =>
-        let x := varName d
         let (v, _) ← sub 2
-        let (b, _) ← sub 1 (x :: sc)
-        return (← `(lsterm| let $(← binderOf x):binderIdent := $v; $b), 0)
+        let (b, _) ← sub 1
+        return (← `(lsterm| let _ := $v; $b), 0)
     | ``Term.ite =>
         let (a, _) ← sub 3
         let (b, _) ← sub 2
         let (c, _) ← sub 1
         return (← `(lsterm| if $a then $b else $c), 0)
-    | ``Term.nat_rec =>
-        let n ← tparen (appPrec + 1) (← sub 3)
-        let z ← tparen (appPrec + 1) (← sub 2)
-        let m := varName d
-        let ih := varName (d + 1)
-        let (s, _) ← sub 1 (ih :: m :: sc)
-        let f ← `(lsterm| (fun $(← `(lsbinder| $(← binderOf m):binderIdent)) $(← `(lsbinder| $(← binderOf ih):binderIdent)) => $s))
-        return (← `(lsterm| $(mkIdent `natRec):ident $n $z $f), appPrec)
-    | ``Term.enum_mk =>
-        let i ← withArgFromEnd 1 (leanArgSyn sc)
-        return (← `(lsterm| $(mkIdent `enum):ident $i), appPrec)
+    | ``Term.nat_rec => return (← mkAppSyn `nat_rec [← arg 3, ← arg 2, ← arg 1], appPrec)
+    | ``Term.enum_mk => return (← mkAppSyn `enum_mk [← withArgFromEnd 1 leanArgSyn], appPrec)
     | ``Term.record_mk =>
-        let as ← withArgFromEnd 1 (delabArgs sc)
+        let as ← withArgFromEnd 1 delabArgs
         match as with
         | a :: bs@(_ :: _) => return (← mkTupleSyn a bs.toArray, atomPrec)
         | _ => failure
     | ``Term.record_casesOn =>
-        let n := 1 + (← fieldsLen (e.getArg! 4))
-        let xs := freshNames d n
+        let n := (← fieldsLen (e.getArg! 4))
         let (v, _) ← sub 2
-        let (b, _) ← sub 1 (xs ++ sc)
-        match ← xs.mapM binderOf with
-        | x :: ys@(_ :: _) => return (← `(lsterm| let ($x, $ys.toArray,*) := $v; $b), 0)
-        | _ => failure
+        let (b, _) ← sub 1
+        return (← `(lsterm| let ($(← `(lshole| _)), $(← holes n),*) := $v; $b), 0)
     | ``Term.union_mk | ``Term.inj =>
         let i ← if c == ``Term.inj then (natLit? (e.getArg! 6)).getDM failure
           else (ctorIxIndex? (e.getArg! 8)).getDM failure
-        let as ← withArgFromEnd 1 (delabArgs sc)
+        let as ← withArgFromEnd 1 delabArgs
+        let as ← as.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
         let i : TSyntax `lsterm ← `(lsterm| $(Syntax.mkNumLit (toString i)):num)
-        match as with
-        | [] => return (← `(lsterm| $(mkIdent `inj):ident $i), appPrec)
-        | [a] =>
-            let a ← if a.raw.isOfKind ``LeanScript.lstermTuple then `(lsterm| ($a))
-              else do tparen (appPrec + 1) (a, ← precOf a)
-            return (← `(lsterm| $(mkIdent `inj):ident $i $a), appPrec)
-        | a :: bs => return (← `(lsterm| $(mkIdent `inj):ident $i $(← mkTupleSyn a bs.toArray)), appPrec)
+        return (← mkAppSyn `union_mk (i :: as), appPrec)
     | ``Term.union_casesOn =>
         let (v, _) ← sub 2
-        let brs ← withArgFromEnd 1 (delabBranches sc)
+        let brs ← withArgFromEnd 1 delabBranches
         let ps := (brs.map (·.1)).toArray
         let bs := (brs.map (·.2)).toArray
         return (← `(lsterm| match $v with $[| $ps => $bs]*), 0)
     | ``Term.enum_casesOn =>
         let (v, _) ← sub 2
-        let bs ← withArgFromEnd 1 (underLams (delabMatchAlts sc))
+        let bs ← withArgFromEnd 1 (underLams delabMatchAlts)
         let n := bs.length
         let bs := bs.toArray
         let ps ← (List.range n).toArray.mapM fun i => do
-          if i + 1 == n then `(lspat| $(← `(binderIdent| _)):binderIdent)
+          if i + 1 == n then `(lspat| _)
           else `(lspat| $(Syntax.mkNumLit (toString i)):num)
         return (← `(lsterm| match $v with $[| $ps => $bs]*), 0)
     | ``Term.array_mk =>
-        let es ← withArgFromEnd 1 (delabElems sc)
+        let es ← withArgFromEnd 1 delabElems
         return (← `(lsterm| #[$es.toArray,*]), atomPrec)
-    | ``Term.array_foldl =>
-        let arr ← tparen (appPrec + 1) (← sub 3)
-        let init ← tparen (appPrec + 1) (← sub 2)
-        let acc := varName d
-        let x := varName (d + 1)
-        let (s, _) ← sub 1 (x :: acc :: sc)
-        let f ← `(lsterm| (fun $(← `(lsbinder| $(← binderOf acc):binderIdent)) $(← `(lsbinder| $(← binderOf x):binderIdent)) => $s))
-        return (← `(lsterm| $(mkIdent `foldl):ident $f $init $arr), appPrec)
+    | ``Term.array_foldl => return (← mkAppSyn `array_foldl [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Term.data_in | ``Term.data_out =>
-        let b ← withArgFromEnd 3 (leanArgSyn sc)
-        let j ← withArgFromEnd 2 (leanArgSyn sc)
-        let v ← tparen (appPrec + 1) (← sub 1)
-        let f := mkIdent (if c == ``Term.data_in then `roll else `unroll)
-        return (← `(lsterm| $f:ident $b $j $v), appPrec)
+        let b ← withArgFromEnd 3 leanArgSyn
+        let j ← withArgFromEnd 2 leanArgSyn
+        return (← mkAppSyn (if c == ``Term.data_in then `data_in else `data_out) [b, j, ← arg 1],
+          appPrec)
     | ``Term.data_rec | ``Term.data_brec =>
         let brec := c == ``Term.data_brec
-        let b ← withArgFromEnd (if brec then 6 else 5) (leanArgSyn sc)
-        let ρ ← withArgFromEnd (if brec then 5 else 4) (leanArgSyn sc)
-        let k ← if brec then some <$> withArgFromEnd 4 (leanArgSyn sc) else pure none
-        let j ← withArgFromEnd 2 (leanArgSyn sc)
-        let v ← tparen (appPrec + 1) (← sub 1)
-        let x := varName d
+        let b ← withArgFromEnd (if brec then 6 else 5) leanArgSyn
+        let ρ ← withArgFromEnd (if brec then 5 else 4) leanArgSyn
+        let k ← if brec then (fun k => [k]) <$> withArgFromEnd 4 leanArgSyn else pure []
         let brs ← withArgFromEnd 3 (do
-            let alts ← underLams (delabMatchAlts (x :: sc))
-            alts.toArray.mapM fun br => do
-              `(lsterm| (fun $(← `(lsbinder| $(← binderOf x):binderIdent)) => $br)))
-          <|> (do return #[← withArgFromEnd 3 (do `(lsterm| ‹$(← delab)›))])
-        match k with
-        | some k => return (← mkAppSyn (mkIdent `brec) ([b, ρ, k, j, v] ++ brs.toList), appPrec)
-        | none => return (← mkAppSyn (mkIdent `fold) ([b, ρ, j, v] ++ brs.toList), appPrec)
+            let alts ← underLams delabMatchAlts
+            alts.mapM fun br => do tparen (appPrec + 1) (br, ← precOf br))
+          <|> (do return [← withArgFromEnd 3 (do `(lsterm| ‹$(← delab)›))])
+        let j ← withArgFromEnd 2 leanArgSyn
+        return (← mkAppSyn (if brec then `data_brec else `data_rec)
+          ([b, ρ] ++ k ++ brs ++ [j, ← arg 1]), appPrec)
     | ``Term.extern | ``Term.externOf =>
         let ext := c == ``Term.extern
-        let name ← withArgFromEnd 3 (leanArgSyn sc)
-        let f ← withArgFromEnd (if ext then 2 else 1) (leanArgSyn sc)
-        let as ← withArgFromEnd (if ext then 1 else 2) (delabArgs sc)
-        let as ← as.toArray.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
-        return (← mkAppSyn (mkIdent `extern) ([name, f] ++ as.toList), appPrec)
+        let name ← withArgFromEnd 3 leanArgSyn
+        let f ← withArgFromEnd (if ext then 2 else 1) leanArgSyn
+        let as ← withArgFromEnd (if ext then 1 else 2) delabArgs
+        let as ← as.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
+        return (← mkAppSyn `extern ([name, f] ++ as), appPrec)
     | _ => failure
   r <|> other
 
 /-- The arguments of a constructor or an extern. -/
-partial def delabArgs (sc : List Name) : DelabM (List (TSyntax `lsterm)) := do
+partial def delabArgs : DelabM (List (TSyntax `lsterm)) := do
   let e := (← getExpr).consumeMData
   if e.isAppOfArity ``Args.nil 3 then return []
   else if e.isAppOfArity ``Args.cons 7 then
-    return (← withArgFromEnd 2 (delabLsterm sc false)).1 :: (← withArgFromEnd 1 (delabArgs sc))
+    return (← withArgFromEnd 2 (delabLsterm false)).1 :: (← withArgFromEnd 1 delabArgs)
   else failure
 
 /-- The elements of an array literal. -/
-partial def delabElems (sc : List Name) : DelabM (List (TSyntax `lsterm)) := do
+partial def delabElems : DelabM (List (TSyntax `lsterm)) := do
   let e := (← getExpr).consumeMData
   if e.isAppOfArity ``Elems.nil 4 then return []
   else if e.isAppOfArity ``Elems.cons 6 then
-    return (← withArgFromEnd 2 (delabLsterm sc false)).1 :: (← withArgFromEnd 1 (delabElems sc))
+    return (← withArgFromEnd 2 (delabLsterm false)).1 :: (← withArgFromEnd 1 delabElems)
   else failure
 
 /-- The branches of a union's case analysis, with their patterns. -/
-partial def delabBranches (sc : List Name) :
-    DelabM (List (TSyntax `lspat × TSyntax `lsterm)) := do
+partial def delabBranches : DelabM (List (TSyntax `lspat × TSyntax `lsterm)) := do
   let e := (← getExpr).consumeMData
   let branch (c : Expr) (k : Nat) : DelabM (TSyntax `lspat × TSyntax `lsterm) := do
-    let xs := freshNames sc.length (← ctorBinds c)
-    return (← patOf xs, (← withArgFromEnd k (delabLsterm (xs ++ sc) false)).1)
+    return (← patOf (← ctorBinds c), (← withArgFromEnd k (delabLsterm false)).1)
   if e.isAppOfArity ``Branches.two 10 then
     return [← branch (e.getArg! 5) 2, ← branch (e.getArg! 6) 1]
   else if e.isAppOfArity ``Branches.cons 10 then
-    return (← branch (e.getArg! 5) 2) :: (← withArgFromEnd 1 (delabBranches sc))
+    return (← branch (e.getArg! 5) 2) :: (← withArgFromEnd 1 delabBranches)
   else failure
 
 /-- The right-hand sides of the alternatives of a `match` (the current expression), each a
-    `Term` in the scope `sc`. -/
-partial def delabMatchAlts (sc : List Name) : DelabM (List (TSyntax `lsterm)) := do
+    `Term`. -/
+partial def delabMatchAlts : DelabM (List (TSyntax `lsterm)) := do
   let e := (← getExpr).consumeMData
   let some c := e.getAppFn.constName? | failure
   let some info ← getMatcherInfo? c | failure
   let first := info.numParams + 1 + info.numDiscrs
   unless e.getAppNumArgs == first + info.numAlts do failure
   (List.range info.numAlts).mapM fun i =>
-    withNaryArg (first + i) (underLams do return (← delabLsterm sc false).1)
+    withNaryArg (first + i) (underLams do return (← delabLsterm false).1)
 
 /-- The precedence of a surface term that was built by `delabLsterm`. -/
 partial def precOf (s : TSyntax `lsterm) : DelabM Nat := do
@@ -733,7 +657,7 @@ def lsterm.parenthesizer : CategoryParenthesizer | prec => do
 /-- Print a `Term` in the `[Term| …]` notation. -/
 def delabTerm : Delab := do
   unless ← ppNotation do failure
-  let (s, _) ← delabLsterm [] true
+  let (s, _) ← delabLsterm true
   `([Term| $s])
 
 @[delab app.LeanScript.Term.var] def delabTermVar : Delab := delabTerm

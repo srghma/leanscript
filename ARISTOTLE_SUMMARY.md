@@ -1,3 +1,28 @@
+# Summary of changes for run d20cc7bf-fa5b-42e3-ba50-37023a1fc418
+I reworked both notations as you described: they no longer capture any variable by name, and they follow the `Term`/`Ty` datatypes closely. The full `lake build` passes (81 jobs) with no errors or warnings, and the four notation and test files contain no `sorry`.
+
+**`[Term| …]` (`LeanScript/TermNotation.lean`)**
+- **Variables:** the only way to write a variable is `#i`, its de Bruijn index (`#0` is the innermost). An identifier is never a variable and never a Lean term: a Lean term, even a single name, is always written `‹t›`. An unknown identifier is an error that says so.
+- **Binders:** they are written `_` and follow the constructors: `fun _ (_ : τ) => e`, `let _ := e; b`, `let _ : τ := e; b`, `let (_, _, _) := e; b`. `match` patterns are `·` / `_` / `(_, _)`, or numbers for enums, where the last branch is the default.
+- **Other forms:** these use the constructor names in the constructor argument order: `lit p v`, `extern "name" f a b`, `nat_rec n z s`, `enum_mk i`, `union_mk i a b`, `array_foldl arr init s`, `data_in b j e`, `data_out b j e`, `data_rec b ρ br₀ … brₖ j e`, `data_brec b ρ k br₀ … brₖ j e`.
+  - Bodies under binders are plain terms, with no `fun` wrapper. In `nat_rec`, the answer is `#0` and the predecessor `#1`. In `array_foldl`, the element is `#0` and the accumulator `#1`. A `data_rec` branch sees the member's body as `#0`.
+  - Arguments that are Lean values (block, member, constructor number, name, function, answer types, depth) must be a number, a string or `‹t›`.
+- **Unchanged:** literals, `f a`, `if … then … else`, `(a, b)`, `#[…]`, `(e : τ)` and `‹f›(a, b)` for calling a Lean helper.
+- **Printing:** terms print back in exactly this form. For example, `roseSumC` now prints as `fun _ => data_rec ‹roseB› ‹fun x => [Ty| Nat]› (let (_, _) := #0; ‹addT›(‹sumT› #0, array_foldl #1 0 (let (_, _) := #0; ‹addT›(#3, #1)))) 0 #0`.
+- **Caveat:** the number of `_`s in a pattern is not checked. The type fixes how many variables a pattern binds, and the `_`s only show it.
+
+**`[Ty| …]` (`LeanScript/TyNotation.lean`)**
+- An identifier is now only a leaf (`Nat`, …) or a type former (`Array`, `Data`, …). Lean terms must be written `‹t›`, e.g. `Array ‹listNat›`, and a bare `listNat` is an error that says to write `‹listNat›`.
+- Embedded Lean terms always print as `‹t›`. Everything else is unchanged; declared datatypes were already referred to by position with `Data b j`.
+
+**Tests**
+- `TermTests/TermNotationTest.lean`: all the programs (`sumT`, `headT`, the rose-tree sum, the course-of-values Fibonacci and the smaller forms) are rewritten with `#i` and the constructor names, and each still runs to the expected value by `rfl`.
+  - The printed output is pinned with `#guard_msgs`, and the printed `roseSumC` reads back as the same term.
+  - The error messages for the rejected forms are checked.
+- `TyTests/TyNotationTest.lean`: updated to the `‹t›` rule, with a new check for the bare-identifier error.
+
+I also updated the Properties-table description of the helper `Term.inj`, which `union_mk` now elaborates to.
+
 # Summary of changes for run 040ca4b7-6639-4b8c-846f-5316c5687e34
 I added a notation for writing `Ty`s and `Term`s (the elaborators) and a pretty-printer that shows them in the same notation (the delaborators). The two notation files, their two test files and the full `lake build` all build with no errors, warnings or `sorry`. No existing file was changed, and existing files only get the new notation if they import it.
 

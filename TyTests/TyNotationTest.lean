@@ -54,11 +54,11 @@ example : ([Ty| Data 0 1] : Ty [2, 0]) = .data (.here 1) := rfl
 example : ([Ty| Data 1 0] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
 example : ([Ty| Data ‹.there (.here 0)›] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
 
-/-- An identifier that is not a leaf, or `‹t›`, is a Lean term. -/
+/-- A Lean term is always written `‹t›`, even a single name. -/
 abbrev listNat : Ty [0] := [Ty| Data 0 0]
-example : ([Ty| Array listNat] : Ty [0]) = .array (.data (.here 0)) := rfl
+example : ([Ty| Array ‹listNat›] : Ty [0]) = .array (.data (.here 0)) := rfl
 example : ([Ty| ‹Ty.option .nat› → Nat] : Ty []) = .fn (Ty.option .nat) .nat := rfl
-example (t : Ty []) : [Ty| t × t] = .record t (.one t) := rfl
+example (t : Ty []) : [Ty| ‹t› × ‹t›] = .record t (.one t) := rfl
 
 /-! ## Printing -/
 
@@ -74,8 +74,8 @@ example (t : Ty []) : [Ty| t × t] = .record t (.one t) := rfl
 /-- info: [Ty| (Nat × Int) × String] : Ty [] -/
 #guard_msgs in #check ([Ty| (Nat × Int) × String] : Ty [])
 
-/-- info: [Ty| ⟪· | Nat | · | Bool, listNat⟫] : Ty [0] -/
-#guard_msgs in #check ([Ty| ⟪· | Nat | · | Bool, listNat⟫] : Ty [0])
+/-- info: [Ty| ⟪· | Nat | · | Bool, ‹listNat›⟫] : Ty [0] -/
+#guard_msgs in #check ([Ty| ⟪· | Nat | · | Bool, ‹listNat›⟫] : Ty [0])
 
 /-- info: [Ty| Array (BitVec 8) ⊕ String.Pos "ab" ⊕ Enum 4 -1] : Ty [] -/
 #guard_msgs in #check ([Ty| Array (BitVec 8) ⊕ String.Pos "ab" ⊕ Enum 4 -1] : Ty [])
@@ -86,12 +86,12 @@ example (t : Ty []) : [Ty| t × t] = .record t (.one t) := rfl
 /-- info: [Ty| Data 1 2] : Ty [0, 3] -/
 #guard_msgs in #check (Ty.data (.there (.here 2)) : Ty [0, 3])
 
--- A subterm outside the notation is printed as `‹t›` (or as it is, if an identifier).
+-- A subterm outside the notation is printed as `‹t›`, even a single name.
 /-- info: [Ty| Option ‹Ty.map id listNat›] : Ty [0] -/
 #guard_msgs in #check Ty.option (Ty.map id listNat)
 
-/-- info: fun t => [Ty| t → Option t] : Ty [] → Ty [] -/
-#guard_msgs in #check fun (t : Ty []) => [Ty| t → Option t]
+/-- info: fun t => [Ty| ‹t› → Option ‹t›] : Ty [] → Ty [] -/
+#guard_msgs in #check fun (t : Ty []) => [Ty| ‹t› → Option ‹t›]
 
 -- The notation can be turned off.
 /-- info: Ty.nat.fn Ty.bool.option : Ty [] -/
@@ -106,6 +106,9 @@ example (t : Ty []) : [Ty| t × t] = .record t (.one t) := rfl
 error: unknown type former `List` with 1 argument(s): expected `Array τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, `Enum n k` or `Data b j`
 -/
 #guard_msgs in example : Ty [] := [Ty| List Nat]
+
+/-- error: unknown leaf `listNat`: a Lean term is written `‹listNat›` -/
+#guard_msgs in example : Ty [0] := [Ty| Array listNat]
 
 -- A union needs a constructor with fields (`UnionShape`).
 /--
