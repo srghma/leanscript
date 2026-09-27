@@ -1,3 +1,25 @@
+# Summary of changes for run 47efb8f5-ae35-4622-8e9a-7f818a4a8859
+I proved that `Term.eval` on a closed term, with every variable known, always returns a completely normalised value. The new file is `LeanScript/Term/NormalValue.lean`. It builds with no errors or warnings and contains no `sorry`. Both theorems use only the standard axioms `propext`, `Classical.choice` and `Quot.sound`.
+
+**How I made the claim precise.** `Term.eval` returns a Lean value (`Ty.Den Δ τ`), not a term. So I defined what a completely normalised value is, and a way to read one back as a Lean value:
+- `NVal` (with `NArgs`, `NElems` and `NEnv` for its parts) is built from constructors at every level:
+  - literals, enum constructors, records, union constructors, arrays, lists and datatype layers, whose parts are all completely normalised;
+  - delays (thunk or lazy) that already hold their completely normalised value;
+  - closures (`lam`): a closed body in the existing normal-form grammar, together with completely normalised values for every known value it can see.
+- `NVal.den` turns one into a Lean value, the same way `Term.eval` does.
+
+**Theorems (proved):**
+- `Term.eval_normal`: take a term with no unknown in scope, no open known value and no join point, whose known values are themselves completely normalised (`nκ`). Then there is an `n : NVal Δ τ` with `n.den = t.eval nκ.den PUnit.unit PUnit.unit`.
+- `Term.run_normal`: as a special case, the result of every whole program `t.run` is the Lean value of some `NVal`.
+
+The proof goes through each form of pure expression, value, body and term. The cases that could not be normalised (neutral expressions, computations, branches and jumps) cannot occur in a closed term, which the existing lemmas in `Closed.lean` already show.
+
+**What the statement does and does not say.** At a type with no function inside, every Lean value can be written as some `NVal`, so there the theorem adds nothing. What it adds is about functions, including functions inside records, unions, arrays and datatypes: every function `Term.eval` returns in this setting comes from a syntactic closure over completely normalised values. It does not normalise inside a closure's body. That body is kept as a term, but it is already in the normal-form grammar.
+
+`README.md` has a new row for this file. I added three entries to the Properties table.
+
+**Build problem you need to fix.** `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it, so `lake build` fails immediately with "dependency 'mathlib' not in manifest". I did not change your lakefile. To build here I removed the Mathlib requirement temporarily, then restored it before committing. Running `lake update mathlib`, or removing that requirement, would make the project build again. Because of this I am not listing any build targets as checked.
+
 # Summary of changes for run 49a7f4b1-69fb-4629-98c0-1b1ab067b6a7
 All requested items are done and committed. The full `lake build` passes with no errors or warnings. `lake test` passes 31/31. There is no `sorry`, `axiom` or `implemented_by`. `Term.optimize_eval` uses only `propext`, `Classical.choice` and `Quot.sound`.
 
