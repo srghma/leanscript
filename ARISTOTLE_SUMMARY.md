@@ -1,3 +1,20 @@
+# Summary of changes for run 1ff2e1b9-9fef-432f-86b4-e50a68f7d583
+I couldn't prove this because it isn't true. Instead I proved in Lean that it fails. The proof is in the new file `TermTests/ClosedEvalTest.lean`, which builds with no `sorry` and only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**Why it can't hold:** `Term.eval t ρ κ` returns a Lean value (`Ty.Den Δ τ`), not a `Term`, so "eval is the identity" can't be stated literally. The closest meaning is that a closed term *is* its value: you could get the term back from its value. That fails. The types rule out β-redexes and ι-redexes (a constructor taken apart right away), but a closed term can still compute:
+- an extern called on literals is a closed neutral, e.g. `PExpr.lean_nat_add 3 4`;
+- an `ite` can branch on such a call;
+- a `let` can name a computation;
+- folds like `nat_rec` can loop over literals.
+
+**What I proved:**
+- `addT_ne_sevenT` and `addT_run_eq_sevenT_run`: the closed statements `ret (3 + 4)` and `ret 7` are different terms with the same value (checked by `rfl`).
+- `closed_term_run_not_injective`: two different closed statements of type `.nat` can have the same value under `Term.run`.
+- `closed_term_eval_not_identity`: no function `quote` from values back to closed statements satisfies `quote t.run = t` for every closed `t`. This is the formal refutation of your statement.
+- `iteT_run`: the closed statement `if 1 < 2 then 10 else 20` evaluates to `10`, so evaluation really does take a branch.
+
+A version that could hold would need its own definition of a "value" term: `ret` of an expression built only from literals and constructors, with no neutral subterms. For that fragment you could prove that evaluation matches reading the value back. The grammar doesn't enforce that for closed terms today, and I haven't written that definition or theorem. Both theorems are in the Properties table, marked proved.
+
 # Summary of changes for run 091e7ed7-bb05-48d0-980a-895e3ff00613
 The extern change is done, and the full `lake build` passes with no errors, warnings or `sorry`. Most of the rework was already in the project when I picked it up. It builds, but the change isn't described in `ARISTOTLE_SUMMARY.md`. I checked that it does what you asked and added a few pieces.
 
