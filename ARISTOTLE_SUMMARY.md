@@ -1,3 +1,37 @@
+# Summary of changes for run 81050d2d-ee85-4a33-aa30-cafabf161749
+I wrote `proposals/NormalFormProposals.md`. It gives several ways to change the grammar so that a closed `Term` is its own value, with the normalisation done when Lean is elaborated to `Term`. They are ordered as you asked: structural first, then `Prop`-based (I read "Prob" as `Prop`), then `Bool`-based.
+
+I checked the main idea of the recommended proposal on a small separate language in `proposals/NormalFormToy.lean`. It is outside the Lake build; `lake env lean proposals/NormalFormToy.lean` gives no errors, warnings or `sorry`, and its theorems use only `propext` and `Quot.sound`. Everything the document says about the real `LeanScript.Term` comes from reading the sources and has not been built.
+
+**What "true" means.** `Term.eval` returns a Lean value, not a term, so the claim has to go through a read-back function `quote`. It comes at two levels:
+- **All types:** every closed statement is `ret v`, with `v` built only from literals, constructors and closures.
+- **First-order types:** `t = ret (quote t.run)`, so closed terms correspond exactly to values. This can't hold at function types: `fun x => x + 0` and `fun x => x` are different terms with the same value.
+
+**What breaks it today.** The document lists 9 ways a closed, well-typed term can still compute. The root cause is that "neutral" means "not a constructor" rather than "stuck on a variable", so `lean_nat_add 3 4` counts as neutral. The others are: a `let` that hides a value, calling a `let`-bound closure, folds over literals, delays, join points used only once, zero-argument externs, and `list` having no constructor form.
+
+**Groundwork every proposal needs:** a `list_mk` constructor, `Ty.FO` (first-order types) with `PExpr.quote`, running extern calls whose arguments are all values during elaboration and turning the result back into a term, and a smart constructor `mkExtern`. With this alone, `[Term| 3 + 4]` would elaborate to `ret 7`.
+
+**The proposals:**
+- **A (structural, recommended):** "neutral" means stuck on a variable.
+  - An extern call needs at least one neutral argument.
+  - `app`, `share`, the folds and the forces take neutral arguments.
+  - `lam`, `thunk_mk` and `lazy_mk` move into `PExpr`, so every variable in scope stands for an unknown.
+  - `join` is only allowed together with the branch that needs it.
+
+  With these changes both levels follow by short inductions. The toy proves:
+  - no closed neutral term or computation exists (`Neu.not_closed`, `Comp.not_closed`);
+  - a closed statement is `ret v` (`Term.closed_ret`);
+  - at first-order types it equals `ret (quote t.run)` (`Term.closed_eq_quote`), so `run` is injective (`Term.closed_run_injective`);
+  - `ret (3 + 4)` is rejected (`addT_rejected`).
+
+  The costs: every call of a known closure is inlined, loops over literals are computed or unrolled up to a limit, `PExpr` becomes mutual with `Term`, and substitution has to reduce as it goes.
+- **B (structural, keeps sharing):** a second context of `let`-bound known values, which can be passed around but never taken apart or called.
+- **A′ (structural, another encoding):** a single family indexed by its shape.
+- **C1 / C2 (`Prop`):** keep today's grammar and attach a proof of normality, either bundled or as `:= by term_nf` arguments in the style of `TyWf`. C1 states A's full normal form. C2 only requires that every closed subterm is a value: that is enough for both levels, keeps sharing, and avoids unrolling loops.
+- **D (`Bool`):** an `isNF` checker proved by `decide`. It is the weakest option and still needs C's predicate to prove anything.
+
+The document ends with a comparison table and the recommendation: do the groundwork first, then A; switch to B or C2 if inlining or unrolling turns out too costly; keep D only as a debugging check. I made no changes to the Lake-built sources.
+
 # Summary of changes for run de53c353-7549-44bd-90f3-7713b4df1223
 The 8 list and `Lean.Name` externs that were commented out are back in the catalogue, each with an evaluator. The full project builds (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) with no `sorry`.
 
