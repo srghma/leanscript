@@ -171,7 +171,7 @@ def roseT : PExpr Prog.Δ [] Prog.rose :=
 
 /--
 info: TyTests.GetCtorTest.Option.leanScriptCases {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α : Ty ks) {τ : Ty ks}
-  {js : JCtx ks} (scrut : PExpr Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α)))))
+  {js : JCtx ks} (scrut : Neu Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α)))))
   (on_none : Term Δ Γ τ js) (on_some : Term Δ (α :: Γ) τ js) : Term Δ Γ τ js
 -/
 #guard_msgs in

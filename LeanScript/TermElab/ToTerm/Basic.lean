@@ -523,7 +523,7 @@ def casesSrc (plan : TypePlan) (scrut : Src) (bs : Array Src) (ty? : Option Lean
     return Src.ite ty? scrut bs[1]! bs[0]!
   else if plan.enum?.isSome then
     let i := mkIdent `i
-    return .cases ty? scrut (bs.map (0, ·)) none fun c rhss => do
+    return .cases ty? scrut (bs.map (0, ·)) none (fun _ => none) fun c rhss => do
       let mut sel := rhss[m - 1]!
       for p in (List.range (m - 1)).reverse do
         sel ← `(if ($i).val = $(quote p) then $(rhss[p]!) else $sel)

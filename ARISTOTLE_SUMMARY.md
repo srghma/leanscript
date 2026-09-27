@@ -1,3 +1,35 @@
+# Summary of changes for run 260888c7-1b03-44fa-bef4-d9961e40d2ae
+The four ι-redexes you listed are now ill-typed, and so are `ite (lit .bool true) …` and `enum_casesOn (enum_mk …)`. This is done in the grammar itself, not with a Prop or Bool side condition. A full `lake build` passes with no warnings and no `sorry`, and the main theorem uses only the standard axioms.
+
+**Grammar (`LeanScript/Term/Term.lean`)**
+- There is a new type `Neu` for neutral pure expressions: a variable, `data_out` of a neutral value, `cond` on a neutral condition, or an extern.
+- `PExpr` is now `neu Neu` plus the introduction forms: `lit`, `enum_mk`, `record_mk`, `union_mk`, `array_mk`, `data_in`.
+- Everything that takes a value apart requires a `Neu`: the argument of `data_out`, the condition of `cond` and `ite`, and the scrutinee of `record_casesOn`, `enum_casesOn` and `union_casesOn`. A literal or constructor can't appear in any of these positions.
+- `PExpr.var`, `PExpr.data_out`, `PExpr.cond` and `PExpr.extern` still work, as abbreviations for `.neu (…)`, so most existing code needed no change.
+- **Not restricted:** the folds (`nat_rec`, `array_foldl`, `data_rec`, `data_brec`) still accept any pure expression. They are loops, and unrolling one over a literal isn't a one-step rewrite; this is documented in the file.
+
+**Substitution (`LeanScript/Term/Elim.lean`, `LeanScript/Term/TermSubst.lean`)**
+- Substituting a constructor or literal into a position that takes it apart would create an ι-redex, so substitution now reduces it on the spot. This uses the new "smart" eliminations `PExpr.mkDataOut`, `PExpr.mkCond`, `Term.mkIte`, `Term.mkEnumCases` and `Branches.substAt`.
+- `Term.eval_subst` (with its companions for the other layers) is proved: substitution still preserves evaluation.
+- The `data_out`/`data_in` case needed a new lemma, `DSig.Block.ref_inj`: two members with the same name are in the same block at the same position.
+- `PExpr.eval_data_out_data_in` was removed because its statement is now ill-typed.
+
+**A-normal form (`LeanScript/TermElab/Anf.lean`, `Notation.lean`, `ToTerm/`, `GenElab/GetCtor.lean`)**
+- The normaliser reduces ι-redexes in the source: `data_out` of `data_in`, `if`/`cond` on `true`/`false`, `let (…) :=` of a tuple, and `match` on `union_mk i …` or `enum_mk i` (in the notation, when `i` is written as a numeral) select the branch, with the fields bound as a `let` would bind them.
+- A value it can't see into (an embedded Lean term, or the result of a translator constructor function) is bound by a `let` first, and that variable is neutral. For example, `match (a, b) with …` in a Lean definition becomes a `let` followed by the case analysis, not a reduced branch.
+- The notation also accepts `Neu` as an expected type and embedded `Neu` terms, and the printer handles the new constructors.
+- The `#leanscript_get_cases` functions now take their scrutinee as a `Neu`.
+
+**Tests**
+- New `TermTests/NoIotaTest.lean`:
+  - Each redex is shown to be rejected with `fail_if_success`, next to a well-typed version that takes apart a variable instead.
+  - Substitution, the notation and `#leanscript_to_term` are shown to reduce the redexes (checked by `rfl`), and the translated programs still run correctly.
+- Changed existing tests:
+  - `TermTest` wrote `ite (lit .bool true) …`, which is now ill-typed; it now branches on a variable set to `true`.
+  - The expected output in four `#guard_msgs` checks changed because `scrut` is now a `Neu`: `GetCtorTest`, `NestTest`, `IndexedFamilyTest` and `QuotientTest`.
+
+`README.md` and the notation's documentation are updated. The Properties table has three new entries: `Neu`, `Term.eval_subst` (proved) and the no-ι-redex test file.
+
 # Summary of changes for run 7317e3d8-0b9a-4434-b027-8292913c3854
 I moved every Ty-related module into `LeanScript/Ty/` and every Term-related module into `LeanScript/Term/`. After the move, a full `lake build` passes (90 jobs, with no warnings and no `sorry`), and the change is committed.
 

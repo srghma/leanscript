@@ -77,7 +77,10 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
     if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
       if let .prim p ← cirOf L T false then
         let d ← instantiateMVars (← Term.elabTerm (← `(LeanPrimTy.denote $p)) none)
-        if ← isDefEq T d then return ← Src.lit p (← exprToSyntax e)
+        if ← isDefEq T d then
+          if e.isConstOf ``Bool.true then return Src.boolLit true
+          if e.isConstOf ``Bool.false then return Src.boolLit false
+          return ← Src.lit p (← exprToSyntax e)
         -- a closed value of a type read as a leaf without being one (a wrapper `⟨1, h⟩ : Pos`,
         -- a quotient `Quot.mk r 3`): its head normal form, whose value is the literal
         let e' ← whnf e
@@ -547,11 +550,11 @@ partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (
   let cheap ← pure (Extern.isCheap name) <&&> isScalarType resTy <&&>
     args.allM fun a => do isScalarType (← inferType a)
   if cheap then
-    return .pnode (fun xs => do
+    return .pneu (fun _ xs => do
         let mut as ← `(LeanScript.Args.nil)
         for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
-        `(LeanScript.PExpr.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (by exact fun $v => $call) $as))
-      argSrcs
+        `(LeanScript.Neu.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (by exact fun $v => $call) $as))
+      #[] argSrcs fun _ _ => none
   return .comp (fun xs _ => do
       let mut as ← `(LeanScript.Args.nil)
       for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
@@ -609,7 +612,7 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
   let T ← normType (← inferType (mkAppN fn args)) false
   if (← cirOf L T false).hasData then modify fun s => { s with usesData := true }
   let ctorFn ← `(#leanscript_get_ctor $(mkIdent (`_root_ ++ cinfo.name)) $named*)
-  return .pnode (fun xs => `(($ctorFn) $xs*)) fields
+  return .pnode .other (fun xs => `(($ctorFn) $xs*)) fields
 
 /-- A value `a : Fin m → T` of a field that the language reads as `Nat → Option T`
     (`finOptArrow`): `fun j => if h : j < m then some (a ⟨j, h⟩) else none`, translated (a
@@ -777,12 +780,13 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src
               than the one recursed on unchanged"
           ρs := ρs.push (← `(LeanScript.Ty.option $ρX))
           brs := brs.push (Src.unionCases none (.var 0)
-            #[(0, Src.unionMk (← `(LeanScript.CtorIx.two₁)) #[]),
-              (1, Src.recordCases (.var 0) 2 (Src.unionMk (← `(LeanScript.CtorIx.two₂)) #[.var 1]))])
+            #[(0, Src.unionMk (some 0) (← `(LeanScript.CtorIx.two₁)) #[]),
+              (1, Src.recordCases (.var 0) 2
+                (Src.unionMk (some 1) (← `(LeanScript.CtorIx.two₂)) #[.var 1]))])
           continue
         -- no function of the group recurses on this member: its answers are never read
         ρs := ρs.push (← `(LeanScript.Ty.bool))
-        brs := brs.push (← Src.lit (← `(LeanScript.LeanPrimTy.bool)) (← `(true)))
+        brs := brs.push (Src.boolLit true)
       | some g =>
         let some eqn ← getUnfoldEqnFor? g (nonRec := true)
           | fail m!"`{g}` is not a definition that can be unfolded"

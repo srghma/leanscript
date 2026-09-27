@@ -119,9 +119,18 @@ section Eval
 variable {ks : List Nat} {Δ : DSig ks}
 
 mutual
+/-- The value of a neutral expression in an environment. -/
+def Neu.eval {Γ : Ctx ks} : {τ : Ty ks} → Neu Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
+  | _, .var x, ρ => ρ.get x
+  | _, .data_out b j e, ρ => Δ.dataOut b j (e.eval ρ)
+  | _, .cond c a b, ρ => match (c.eval ρ : Bool) with
+      | true => a.eval ρ
+      | false => b.eval ρ
+  | _, .extern _ f args, ρ => f (args.eval ρ)
+  termination_by structural _ e _ => e
 /-- The value of a pure expression in an environment. -/
 def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
-  | _, .var x, ρ => ρ.get x
+  | _, .neu n, ρ => n.eval ρ
   | _, .lit _ v, _ => v
   | _, .enum_mk _ i, _ => i
   | _, .record_mk (fs := fs) args, ρ =>
@@ -130,11 +139,6 @@ def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ →
   | _, .union_mk ix args, ρ => ix.inject (args.eval ρ)
   | _, .array_mk es, ρ => (es.eval ρ).toArray
   | _, .data_in b j e, ρ => Δ.dataIn b j (e.eval ρ)
-  | _, .data_out b j e, ρ => Δ.dataOut b j (e.eval ρ)
-  | _, .cond c a b, ρ => match (c.eval ρ : Bool) with
-      | true => a.eval ρ
-      | false => b.eval ρ
-  | _, .extern _ f args, ρ => f (args.eval ρ)
   termination_by structural _ e _ => e
 /-- The values of the arguments. -/
 def Args.eval {Γ : Ctx ks} : {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →
@@ -200,14 +204,6 @@ def Branches.eval : {Γ : Ctx ks} → {bs : List Bool} → {cs : Ctors ks bs} �
 end
 
 end Eval
-
-/-- `data_out` undoes `data_in`: one layer out of a layer just put on is the value it was
-    built from. -/
-theorem PExpr.eval_data_out_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
-    (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
-    (PExpr.data_out b j (.data_in b j e)).eval ρ = e.eval ρ := by
-  simp only [PExpr.eval]
-  exact DSig.dataOut_dataIn Δ b j _
 
 /-- Course-of-values recursion on a value built by `data_in` runs the branch of its member on
     its body, every child replaced by its window (`DSig.dataBrec_dataIn`). -/

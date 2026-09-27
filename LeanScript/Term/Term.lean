@@ -16,14 +16,15 @@ translates Lean definitions to it.  It follows the three layers of the `PCL` gra
 (`proposals/AnfSplitProposals.md`, proposal 1), without its proof-carrying parts:
 
 ```
-PExpr ::= var | lit | enum_mk | record_mk Args | union_mk ix Args | array_mk Elems
-        | data_in b j PExpr | data_out b j PExpr | cond PExpr PExpr PExpr | extern f Args
+Neu   ::= var | data_out b j Neu | cond Neu PExpr PExpr | extern f Args
+PExpr ::= neu Neu | lit | enum_mk | record_mk Args | union_mk ix Args | array_mk Elems
+        | data_in b j PExpr
 Comp  ::= app PExpr PExpr | lam Term | share PExpr | extern f Args
         | nat_rec PExpr PExpr Term | array_foldl PExpr PExpr Term
         | data_rec b ρ Termᵢ j PExpr | data_brec b ρ k Termᵢ j PExpr
         | thunk_mk Term | thunk_force PExpr | lazy_mk Term | lazy_force PExpr
-Term  ::= ret PExpr | letE Comp Term | record_casesOn PExpr Term
-        | ite PExpr Term Term | enum_casesOn PExpr Termᵢ | union_casesOn PExpr Branches
+Term  ::= ret PExpr | letE Comp Term | record_casesOn Neu Term
+        | ite Neu Term Term | enum_casesOn Neu Termᵢ | union_casesOn Neu Branches
         | join σ Term Term | jump j PExpr
 ```
 
@@ -33,6 +34,11 @@ Term  ::= ret PExpr | letE Comp Term | record_casesOn PExpr Term
   nothing, make no call that costs more than a machine operation and never branch in the
   control flow.  `PExpr` is an ordinary inductive, not mutual with the two
   other layers.
+* `Neu Δ Γ τ` — the **neutral** pure expressions, those whose head is not an introduction
+  form: a variable, `data_out` or `cond` of a neutral expression, or an extern.  A pure
+  expression is a neutral one (`PExpr.neu`) or an introduction form (a literal, a
+  constructor, `data_in`).  `PExpr.var`, `PExpr.data_out`, `PExpr.cond` and `PExpr.extern`
+  are abbreviations of `PExpr.neu` of the neutral forms.
 * `Comp Δ Γ τ` — **computations**: one step whose value a `let` names: an application, a
   closure, a shared pure value, an extern, a fold, a delay.
 * `Term Δ Γ τ js` — **statements** (`PCL`'s `Expr`): `let`s of computations ending in a tail.
@@ -45,7 +51,16 @@ order it is evaluated.  It is **B-normal** (branching normal): a branch (`ite`,
 a computation is written with a **join point** for the rest of it
 (`join j x := rest; if c then …; jump j a else …; jump j b`).  There is no β-redex either:
 the function of an application is a pure expression and a closure is a computation, so
-`app (lam b) a` cannot be written.  All of this is enforced by the types; in addition the
+`app (lam b) a` cannot be written.  There is no **ι-redex** (the elimination of an explicitly
+constructed value) either: everything that takes a value apart — `data_out`, the condition of
+`cond` and `ite`, the scrutinee of `record_casesOn`, `enum_casesOn` and `union_casesOn` — takes
+a *neutral* expression (`Neu`), which is never a literal nor a constructor.  So
+`data_out b j (data_in b j e)`, `record_casesOn (record_mk args) body`,
+`union_casesOn (union_mk ix args) brs`, `enum_casesOn (enum_mk s i) brs` and
+`cond (lit .bool true) a b` are ill-typed.  (The folds `nat_rec`, `array_foldl`, `data_rec` and
+`data_brec` are loops, not one-step eliminations, and take any pure expression: unrolling a
+loop over a literal is not a local rewrite.  A value bound by a `let` is a variable, hence
+neutral: A-normal form never looks through a `let`.)  All of this is enforced by the types; in addition the
 translator and the notation never `share` (or bind) a trivial pure expression
 (`PExpr.isTrivial`: a variable or a literal), which is used in place.
 
@@ -134,13 +149,43 @@ abbrev JVar {ks : List Nat} (js : JCtx ks) (σ : Ty ks) : Type := DeBruijn js σ
 
 mutual
 
+/-- **Layer 1a, neutral pure expressions**: the pure expressions whose head is *not* an
+    introduction form — a variable, or an elimination (`data_out`, `cond`) whose principal
+    argument is itself neutral, or an extern (an opaque operation).  They are the only pure
+    expressions that may be taken apart: the argument of `data_out`, the condition of `cond`
+    and `Term.ite`, and the scrutinee of `Term.record_casesOn`, `Term.enum_casesOn` and
+    `Term.union_casesOn` are neutral.  So no ι-redex (the elimination of an explicitly
+    constructed value) can be written: `data_out b j (data_in b j e)`,
+    `record_casesOn (record_mk args) body`, `union_casesOn (union_mk ix args) brs`,
+    `enum_casesOn (enum_mk s i) brs` and `cond (lit .bool true) a b` are all ill-typed. -/
+inductive Neu {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type where
+  /-- A variable. -/
+  | var {τ : Ty ks} : Var Γ τ → Neu Δ Γ τ
+  /-- One layer out: the unfolded body of a value of member `j` of block `b`.  The value is
+      neutral, so it is never a `data_in` (`data_out b j (data_in b j e)` is ill-typed). -/
+  | data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) :
+      Neu Δ Γ (.data ((Δ.block b).ref j)) → Neu Δ Γ ((Δ.block b).unfold j)
+  /-- The pure conditional `cond c a b` (proposal 4d): `a` when `c` is `true`, else `b`.
+      Both branches are pure expressions, so an `if` whose branches make no call needs no
+      join point when it is an operand (`(if c then x + 1 else 0) * 2`).  In tail position a
+      branch is still written with `Term.ite`.  The condition is neutral, never a literal. -/
+  | cond {τ : Ty ks} : Neu Δ Γ .bool → PExpr Δ Γ τ → PExpr Δ Γ τ → Neu Δ Γ τ
+  /-- A **cheap** pure extern (proposal 4h): a named operation on the values of its
+      arguments, like `Comp.extern`, but so cheap (a machine operation on scalars: `+`, `<`,
+      `&&`, a conversion, …) that it may be duplicated or dropped freely, so it needs no
+      `let`.  Which externs are cheap is the translator's choice
+      (`LeanScript.Extern.isCheap`); every other extern is a named `Comp.extern`. -/
+  | extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
+      (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → Neu Δ Γ τ
+
 /-- **Layer 1, pure expressions** (`PCL`'s `PExpr`): the operands of every computation and
     statement.  A pure expression makes no call, binds nothing and never branches, so it may
-    be duplicated or dropped freely.  Its context `Γ` is a parameter: it is not mutual with
+    be duplicated or dropped freely.  It is a neutral expression (`Neu`) or an introduction
+    form: a literal or a constructor.  Its context `Γ` is a parameter: it is not mutual with
     the two other layers. -/
 inductive PExpr {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type where
-  /-- A variable. -/
-  | var {τ : Ty ks} : Var Γ τ → PExpr Δ Γ τ
+  /-- A neutral expression: a variable, an elimination of a neutral value or an extern. -/
+  | neu {τ : Ty ks} : Neu Δ Γ τ → PExpr Δ Γ τ
   /-- A literal of a leaf type: `.lit .nat 3`. -/
   | lit (p : LeanPrimTy) (v : p.denote) : PExpr Δ Γ (.prim p)
   /-- A constructor of an enum. -/
@@ -156,21 +201,6 @@ inductive PExpr {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type wh
   /-- One layer in: a value of member `j` of block `b` from its unfolded body. -/
   | data_in (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) :
       PExpr Δ Γ ((Δ.block b).unfold j) → PExpr Δ Γ (.data ((Δ.block b).ref j))
-  /-- One layer out: the unfolded body of a value of member `j` of block `b`. -/
-  | data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) :
-      PExpr Δ Γ (.data ((Δ.block b).ref j)) → PExpr Δ Γ ((Δ.block b).unfold j)
-  /-- The pure conditional `cond c a b` (proposal 4d): `a` when `c` is `true`, else `b`.
-      Both branches are pure expressions, so an `if` whose branches make no call needs no
-      join point when it is an operand (`(if c then x + 1 else 0) * 2`).  In tail position a
-      branch is still written with `Term.ite`. -/
-  | cond {τ : Ty ks} : PExpr Δ Γ .bool → PExpr Δ Γ τ → PExpr Δ Γ τ → PExpr Δ Γ τ
-  /-- A **cheap** pure extern (proposal 4h): a named operation on the values of its
-      arguments, like `Comp.extern`, but so cheap (a machine operation on scalars: `+`, `<`,
-      `&&`, a conversion, …) that it may be duplicated or dropped freely, so it needs no
-      `let`.  Which externs are cheap is the translator's choice
-      (`LeanScript.Extern.isCheap`); every other extern is a named `Comp.extern`. -/
-  | extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
-      (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → PExpr Δ Γ τ
 
 /-- The arguments of a constructor or an extern: pure expressions. -/
 inductive Args {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : List (Ty ks) → Type where
@@ -183,6 +213,28 @@ inductive Elems {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type wh
   | cons {t : Ty ks} : PExpr Δ Γ t → Elems Δ Γ t → Elems Δ Γ t
 
 end
+
+section NeuAbbrevs
+variable {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks}
+
+/-- A variable, as a pure expression (`.neu (.var x)`). -/
+abbrev PExpr.var {τ : Ty ks} (x : Var Γ τ) : PExpr Δ Γ τ := .neu (.var x)
+
+/-- One layer out of a neutral value, as a pure expression. -/
+abbrev PExpr.data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1))
+    (e : Neu Δ Γ (.data ((Δ.block b).ref j))) : PExpr Δ Γ ((Δ.block b).unfold j) :=
+  .neu (.data_out b j e)
+
+/-- The pure conditional on a neutral condition, as a pure expression. -/
+abbrev PExpr.cond {τ : Ty ks} (c : Neu Δ Γ .bool) (a b : PExpr Δ Γ τ) : PExpr Δ Γ τ :=
+  .neu (.cond c a b)
+
+/-- A cheap extern, as a pure expression. -/
+abbrev PExpr.extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
+    (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) (args : Args Δ Γ σs) : PExpr Δ Γ τ :=
+  .neu (.extern name f args)
+
+end NeuAbbrevs
 
 /-! ## Layers 2 and 3: computations and statements -/
 
@@ -250,18 +302,18 @@ inductive Term {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → JCtx ks →
   /-- Take a record apart: the body binds the fields, the first field innermost (index `0`).
       A record has one constructor, so this does not branch. -/
   | record_casesOn {Γ : Ctx ks} {t : Ty ks} {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} :
-      PExpr Δ Γ (.record t fs) → Term Δ ((t :: fs.toList) ++ Γ) τ js → Term Δ Γ τ js
+      Neu Δ Γ (.record t fs) → Term Δ ((t :: fs.toList) ++ Γ) τ js → Term Δ Γ τ js
   /-- `if c then t else e`, in tail position. -/
-  | ite {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} : PExpr Δ Γ .bool → Term Δ Γ τ js →
+  | ite {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} : Neu Δ Γ .bool → Term Δ Γ τ js →
       Term Δ Γ τ js → Term Δ Γ τ js
   /-- Case analysis of an enum, in tail position: one branch per constructor. -/
   | enum_casesOn {Γ : Ctx ks} {s : LeanEnumSchema} {τ : Ty ks} {js : JCtx ks} :
-      PExpr Δ Γ (.enum s) → (Fin s.nOfConstructors → Term Δ Γ τ js) → Term Δ Γ τ js
+      Neu Δ Γ (.enum s) → (Fin s.nOfConstructors → Term Δ Γ τ js) → Term Δ Γ τ js
   /-- Case analysis of a union, in tail position: each branch binds the fields of its
       constructor. -/
   | union_casesOn {Γ : Ctx ks} {bs : List Bool} {cs : Ctors ks bs} {h : UnionShape bs}
       {τ : Ty ks} {js : JCtx ks} :
-      PExpr Δ Γ (.union cs (h := h)) → Branches Δ Γ cs τ js → Term Δ Γ τ js
+      Neu Δ Γ (.union cs (h := h)) → Branches Δ Γ cs τ js → Term Δ Γ τ js
   /-- `join j (x : σ) := body; main`: the join point `j` (index `0` of the join points of
       `main`) finishes the statement from a value `x` of type `σ`.  This is how a branch that
       is not in tail position is written. -/
@@ -298,12 +350,18 @@ abbrev PExpr.bvar {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} (i :
     (h : Γ[i]? = some τ := by rfl) : PExpr Δ Γ τ :=
   .var (.ofIndex Γ i h)
 
+/-- The variable at de Bruijn position `i`, as a neutral expression (`Neu.bvar 0` is the
+    scrutinee of a `record_casesOn` of the innermost variable). -/
+abbrev Neu.bvar {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} (i : Nat)
+    (h : Γ[i]? = some τ := by rfl) : Neu Δ Γ τ :=
+  .var (.ofIndex Γ i h)
+
 /-- Whether a pure expression is *trivial*: a variable, a literal or a constructor of an enum.
     A trivial expression is used in place: the translator and the notation never `share` one,
     and never bind one by a `let`. -/
 def PExpr.isTrivial {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} :
     PExpr Δ Γ τ → Bool
-  | .var _ | .lit _ _ | .enum_mk _ _ => true
+  | .neu (.var _) | .lit _ _ | .enum_mk _ _ => true
   | _ => false
 
 /-! ## Cheap externs -/

@@ -22,6 +22,12 @@ de Bruijn indices of the source, and then normalise it here into the syntax of a
 The normaliser is the usual one, in continuation-passing style:
 
 * every operand is normalised to an `Atom`, a pure expression (`PExpr`);
+* a value that is taken apart (the argument of `data_out`, the condition of `cond` and `ite`,
+  a scrutinee) must be a *neutral* expression (`Neu`): when it is an introduction form the
+  normaliser reduces the ι-redex (`data_out` of `data_in`, a case analysis of a literal or a
+  constructor: the branch, with the fields bound as by a `let`); when it is of unknown shape (a
+  Lean term, the result of a constructor function) it is shared by a `let` first, whose
+  variable is neutral;
 * every computation (an application, a closure, an extern, a fold, a delay) is named by a
   `Term.letE`, in evaluation order;
 * a trivial pure expression (a variable, a literal, `PExpr.isTrivial`) bound by a source
@@ -53,19 +59,45 @@ def dbStx : Nat → MetaM Lean.Term
 /-- The variable of de Bruijn index `i`, as a pure expression. -/
 def pvarStx (i : Nat) : MetaM Lean.Term := do `(LeanScript.PExpr.var $(← dbStx i))
 
+/-- The variable of de Bruijn index `i`, as a neutral expression. -/
+def nvarStx (i : Nat) : MetaM Lean.Term := do `(LeanScript.Neu.var $(← dbStx i))
+
+/-- What an introduction form is made of, for the ι-reductions the normaliser performs. -/
+inductive Intro where
+  /-- An introduction form of unknown shape (or of no interest): never reduced. -/
+  | other
+  /-- `data_in b j e`, of one argument `e`. -/
+  | dataIn
+  /-- `record_mk` of its arguments, the fields. -/
+  | record
+  /-- `union_mk` of constructor `pos` (by position), of its arguments, the fields. -/
+  | union (pos : Nat)
+
 /-- A pure expression under construction. -/
 inductive Atom where
   /-- A variable bound by the output, at level `l` (`l` binders outside it). -/
   | lvl (l : Nat)
   /-- Variable `i` of the enclosing context. -/
   | free (i : Nat)
-  /-- A closed trivial pure expression (a literal, a constructor of an enum). -/
+  /-- A closed trivial introduction form (a literal, a constructor of an enum). -/
   | leaf (stx : Lean.Term)
+  /-- The literal `true` or `false`. -/
+  | bool (b : Bool)
+  /-- Constructor `i` of an enum, whose syntax is `stx`. -/
+  | enumLit (i : Nat) (stx : Lean.Term)
   /-- A Lean term of type `PExpr Δ Γ τ` in the enclosing context; `poly` when it is generic
-      in the context (then it is used as it is, at any depth). -/
+      in the context (then it is used as it is, at any depth).  Of unknown shape: never
+      neutral. -/
   | embed (stx : Lean.Term) (poly : Bool)
-  /-- A pure expression built from pure expressions. -/
-  | node (mk : Array Lean.Term → MetaM Lean.Term) (args : Array Atom)
+  /-- A Lean term of type `Neu Δ Γ τ` in the enclosing context (`poly` as for `embed`). -/
+  | embedNeu (stx : Lean.Term) (poly : Bool)
+  /-- An introduction form (or a pure expression of unknown shape) built from pure
+      expressions: `mk` gives its syntax (a `PExpr`) from theirs. -/
+  | node (tag : Intro) (mk : Array Lean.Term → MetaM Lean.Term) (args : Array Atom)
+  /-- A neutral expression built from the neutral expressions `neus` and the pure expressions
+      `args`: `mk` gives its syntax (a `Neu`) from theirs (`Neu` syntax for `neus`, `PExpr`
+      syntax for `args`).  Every atom of `neus` is neutral (`Atom.isNeutral`). -/
+  | neu (mk : Array Lean.Term → Array Lean.Term → MetaM Lean.Term) (neus args : Array Atom)
   /-- A pure expression at a given type. -/
   | ascribe (a : Atom) (ty : Lean.Term)
 
@@ -73,20 +105,52 @@ instance : Inhabited Atom := ⟨.free 0⟩
 
 /-- Is an atom trivial (used in place, never shared)? -/
 def Atom.trivial : Atom → Bool
-  | .lvl _ | .free _ | .leaf _ => true
+  | .lvl _ | .free _ | .leaf _ | .bool _ | .enumLit .. => true
   | .ascribe a _ => a.trivial
   | _ => false
 
-/-- The syntax of an atom at output depth `d` (the number of binders the output has added
-    around it). -/
+/-- Is an atom neutral (`Neu`): a variable or a neutral node?  Only a neutral atom may be taken
+    apart (the argument of `data_out`, the condition of `cond`, a scrutinee). -/
+def Atom.isNeutral : Atom → Bool
+  | .lvl _ | .free _ | .neu .. | .embedNeu .. => true
+  | .ascribe a _ => a.isNeutral
+  | _ => false
+
+/-- The atom without its type ascriptions. -/
+def Atom.strip : Atom → Atom
+  | .ascribe a _ => a.strip
+  | a => a
+
+mutual
+
+/-- The syntax of an atom as a pure expression (`PExpr`), at output depth `d` (the number of
+    binders the output has added around it). -/
 partial def Atom.render (a : Atom) (d : Nat) : MetaM Lean.Term :=
   match a with
   | .lvl l => pvarStx (d - 1 - l)
   | .free i => pvarStx (i + d)
   | .leaf stx => pure stx
+  | .bool true => `(LeanScript.PExpr.lit LeanScript.LeanPrimTy.bool true)
+  | .bool false => `(LeanScript.PExpr.lit LeanScript.LeanPrimTy.bool false)
+  | .enumLit _ stx => pure stx
   | .embed stx poly => if d == 0 || poly then pure stx else `(LeanScript.PExpr.shift $(quote d) $stx)
-  | .node mk args => do mk (← args.mapM (·.render d))
+  | .embedNeu .. => do `(LeanScript.PExpr.neu $(← a.renderNeu d))
+  | .node _ mk args => do mk (← args.mapM (·.render d))
+  | .neu mk ns args => do
+      `(LeanScript.PExpr.neu $(← mk (← ns.mapM (·.renderNeu d)) (← args.mapM (·.render d))))
   | .ascribe a ty => do `(($(← a.render d) : LeanScript.PExpr _ _ $ty))
+
+/-- The syntax of a neutral atom as a neutral expression (`Neu`), at output depth `d`. -/
+partial def Atom.renderNeu (a : Atom) (d : Nat) : MetaM Lean.Term :=
+  match a with
+  | .lvl l => nvarStx (d - 1 - l)
+  | .free i => nvarStx (i + d)
+  | .embedNeu stx poly => if d == 0 || poly then pure stx else `(LeanScript.Neu.shift $(quote d) $stx)
+  | .neu mk ns args => do mk (← ns.mapM (·.renderNeu d)) (← args.mapM (·.render d))
+  | .ascribe a ty => do `(($(← a.renderNeu d) : LeanScript.Neu _ _ $ty))
+  | _ => throwError "internal error of the A-normaliser: this pure expression is not neutral"
+
+end
 
 /-- A direct-style source tree.  Variables and join points are de Bruijn indices of the
     source. -/
@@ -95,8 +159,15 @@ inductive Src where
   | var (i : Nat)
   /-- An atom with no variable of the source (a literal, an embedded Lean term). -/
   | atom (a : Atom)
-  /-- A pure constructor applied to operands. -/
-  | pnode (mk : Array Lean.Term → MetaM Lean.Term) (args : Array Src)
+  /-- An introduction form (or a pure expression of unknown shape) applied to operands. -/
+  | pnode (tag : Intro) (mk : Array Lean.Term → MetaM Lean.Term) (args : Array Src)
+  /-- A neutral pure expression (`data_out`, `cond`, a cheap extern) applied to operands:
+      `neus` are the operands taken apart, which must be neutral, `args` the others.  `red`
+      reduces the ι-redex when an operand of `neus` is an introduction form
+      (`data_out b j (data_in b j e)` is `e`, `cond true a b` is `a`); an operand of `neus`
+      it does not reduce and that is not neutral is shared by a `let` first. -/
+  | pneu (mk : Array Lean.Term → Array Lean.Term → MetaM Lean.Term) (neus args : Array Src)
+      (red : Array Atom → Array Atom → Option Atom)
   /-- An operand at a given type. -/
   | ascribe (s : Src) (ty : Lean.Term)
   /-- A computation on operands, with bodies (each binding the given number of variables):
@@ -107,16 +178,20 @@ inductive Src where
   | embedComp (stx : Lean.Term) (poly : Bool)
   /-- `let x := v; b`. -/
   | letE (v b : Src)
-  /-- A non-branching destructuring of `scrut`, whose body binds `n` variables:
-      `mk scrut body` (`Term.record_casesOn`). -/
+  /-- A non-branching destructuring of a record `scrut`, whose body binds its `n` fields:
+      `mk scrut body` (`Term.record_casesOn`, of a neutral `scrut`).  When `scrut` is a record
+      literal the body is used with its fields bound (ι-reduction). -/
   | destruct (scrut : Src) (n : Nat) (body : Src) (mk : Lean.Term → Lean.Term → MetaM Lean.Term)
   /-- A branch on `scrut` (`ite`, `enum_casesOn`, `union_casesOn`), one branch per entry
       (binding the given number of variables), whose value has the type `ty?` (when known):
-      `mk scrut branches`.  `pure?` is its pure form (`PExpr.cond`), from the scrutinee and the
-      branches, when it has one: used when the branch is not in tail position and every branch
-      is a pure expression binding nothing. -/
+      `mk scrut branches`, of a neutral `scrut`.  `pure?` is its pure form (`Neu.cond`), from
+      the scrutinee (neutral) and the branches, when it has one: used when the branch is not in
+      tail position and every branch is a pure expression binding nothing.  `sel` recognises a
+      scrutinee that is an introduction form: the branch it selects and the atoms of the
+      fields that branch binds (ι-reduction). -/
   | cases (ty? : Option Lean.Term) (scrut : Src) (brs : Array (Nat × Src))
-      (pure? : Option (Array Lean.Term → MetaM Lean.Term))
+      (pure? : Option (Array Lean.Term → Array Lean.Term → MetaM Lean.Term))
+      (sel : Atom → Option (Nat × Array Atom))
       (mk : Lean.Term → Array Lean.Term → MetaM Lean.Term)
   /-- `join j (x : ty) := body; main`: `body` binds `x`, `main` sees the join point `j`. -/
   | join (ty? : Option Lean.Term) (body main : Src)
@@ -149,6 +224,9 @@ def Scope.var (sc : Scope) (i : Nat) : Atom :=
 /-- Bind one more source variable. -/
 def Scope.push (sc : Scope) (a : Atom) : Scope := { sc with vars := a :: sc.vars }
 
+/-- Bind source variables to the atoms `as`, the first one innermost (source index `0`). -/
+def Scope.pushAll (sc : Scope) (as : List Atom) : Scope := { sc with vars := as ++ sc.vars }
+
 /-- Bind `n` source variables to the output variables of levels `d`, …, `d + n - 1`, the
     last one innermost. -/
 def Scope.bindN (sc : Scope) (n : Nat) (d : Nat) : Scope :=
@@ -177,32 +255,71 @@ def bindAtom (a : Atom) (d jd : Nat) (k : Atom → Nat → Nat → MetaM Lean.Te
   if a.trivial then k a d jd
   else `(LeanScript.Term.letE (LeanScript.Comp.share $(← a.render d)) $(← k (.lvl d) (d + 1) jd))
 
+/-- Bind atoms in order (`bindAtom`), then continue with the atoms that stand for them. -/
+def bindAtoms (as : List Atom) (d jd : Nat) (k : List Atom → Nat → Nat → MetaM Lean.Term) :
+    MetaM Lean.Term :=
+  match as with
+  | [] => k [] d jd
+  | a :: as => bindAtom a d jd fun a d jd => bindAtoms as d jd fun as d jd => k (a :: as) d jd
+
+/-- Make an atom neutral, to take it apart: a neutral atom as it is, any other one (an
+    introduction form that no ι-reduction applies to, an embedded Lean term) shared by a
+    `let`, whose variable is neutral. -/
+def neutral (a : Atom) (d jd : Nat) (k : Atom → Nat → Nat → MetaM Lean.Term) :
+    MetaM Lean.Term := do
+  if a.isNeutral then k a d jd
+  else `(LeanScript.Term.letE (LeanScript.Comp.share $(← a.render d)) $(← k (.lvl d) (d + 1) jd))
+
+/-- `neutral` on each atom, in order. -/
+def neutrals (as : List Atom) (d jd : Nat) (k : List Atom → Nat → Nat → MetaM Lean.Term) :
+    MetaM Lean.Term :=
+  match as with
+  | [] => k [] d jd
+  | a :: as => neutral a d jd fun a d jd => neutrals as d jd fun as d jd => k (a :: as) d jd
+
+/-- The fields of a record literal (ι-reduction of `record_casesOn`), when the atom is one of
+    `n` fields. -/
+def Atom.recordFields? (a : Atom) (n : Nat) : Option (List Atom) :=
+  match a.strip with
+  | .node .record _ args => if args.size == n then some args.toList else none
+  | _ => none
+
 /-- The atom of a source tree that is a pure expression as it is: no computation, no binder,
-    and no branch but pure conditionals (`Src.cases` with a pure form whose branches are all
-    pure). -/
+    no `let` needed to take a value apart, and no branch but pure conditionals (`Src.cases`
+    with a pure form whose branches are all pure). -/
 partial def pureAtom? (s : Src) (sc : Scope) : Option Atom :=
   match s with
   | .var i => some (sc.var i)
   | .atom a => some a
-  | .pnode mk args => do return .node mk (← args.mapM (pureAtom? · sc))
+  | .pnode tag mk args => do return .node tag mk (← args.mapM (pureAtom? · sc))
+  | .pneu mk neus args red => do
+      let ns ← neus.mapM (pureAtom? · sc)
+      let as ← args.mapM (pureAtom? · sc)
+      match red ns as with
+      | some a => return a
+      | none =>
+          guard (ns.all (·.isNeutral))
+          return .neu mk ns as
   | .ascribe s ty => do return .ascribe (← pureAtom? s sc) ty
-  | .cases ty? scrut brs (some mkP) _ => do
+  | .cases ty? scrut brs (some mkP) sel _ => do
       guard (brs.all (·.1 == 0))
-      let a := Atom.node mkP (#[← pureAtom? scrut sc] ++ (← brs.mapM (pureAtom? ·.2 sc)))
+      let c ← pureAtom? scrut sc
+      let bs ← brs.mapM (pureAtom? ·.2 sc)
+      let a ← match sel c.strip with
+        | some (i, _) => bs[i]?
+        | none => do guard c.isNeutral; pure (Atom.neu mkP #[c] bs)
       return match ty? with | some ty => .ascribe a ty | none => a
   | _ => none
 
-/-- A branch that is not in tail position, as a pure conditional when it has a pure form and
-    all its branches are pure: the scrutinee is normalised, then the conditional is continued
-    with. -/
-def pureCases? (s : Src) (sc : Scope) : Option (Array Atom → Atom × Src) :=
+/-- The branches of a branch that is not in tail position, as pure atoms, when it has a pure
+    form and all its branches are pure expressions binding nothing. -/
+def pureBranches? (s : Src) (sc : Scope) :
+    Option ((Array Lean.Term → Array Lean.Term → MetaM Lean.Term) × Array Atom) :=
   match s with
-  | .cases ty? scrut brs (some mkP) _ =>
+  | .cases _ _ brs (some mkP) _ _ =>
       if !brs.all (·.1 == 0) then none else
       match brs.mapM (pureAtom? ·.2 sc) with
-      | some bs => some fun c =>
-          let a := Atom.node mkP (c ++ bs)
-          (match ty? with | some ty => .ascribe a ty | none => a, scrut)
+      | some bs => some (mkP, bs)
       | none => none
   | _ => none
 
@@ -221,7 +338,12 @@ partial def value (s : Src) (sc : Scope) (d jd : Nat) (k : Atom → Nat → Nat 
   match s with
   | .var i => k (sc.var i) d jd
   | .atom a => k a d jd
-  | .pnode mk args => values args.toList sc d jd fun as d jd => k (.node mk as.toArray) d jd
+  | .pnode tag mk args => values args.toList sc d jd fun as d jd => k (.node tag mk as.toArray) d jd
+  | .pneu mk neus args red => values neus.toList sc d jd fun ns d jd =>
+      values args.toList sc d jd fun as d jd =>
+        match red ns.toArray as.toArray with
+        | some a => k a d jd
+        | none => neutrals ns d jd fun ns d jd => k (.neu mk ns.toArray as.toArray) d jd
   | .ascribe s ty => value s sc d jd fun a d jd => k (.ascribe a ty) d jd
   | .comp mk args bodies => values args.toList sc d jd fun as d jd => do
       let ras ← as.toArray.mapM (·.render d)
@@ -231,12 +353,27 @@ partial def value (s : Src) (sc : Scope) (d jd : Nat) (k : Atom → Nat → Nat 
   | .embedComp stx poly => do
       `(LeanScript.Term.letE $(← shiftStx `Comp stx d poly) $(← k (.lvl d) (d + 1) jd))
   | .letE v b => value v sc d jd fun a d jd => bindAtom a d jd fun a d jd => value b (sc.push a) d jd k
-  | .destruct scrut n body mk => value scrut sc d jd fun a d jd => do
-      mk (← a.render d) (← value body (sc.bindN n d) (d + n) jd k)
-  | .cases ty? .. =>
-      match pureCases? s sc with
-      | some mkA => value (mkA #[]).2 sc d jd fun c d jd => k (mkA #[c]).1 d jd
-      | none => reify ty? s sc d jd k
+  | .destruct scrut n body mk => value scrut sc d jd fun a d jd =>
+      match a.recordFields? n with
+      | some fs => bindAtoms fs d jd fun fs d jd => value body (sc.pushAll fs) d jd k
+      | none => neutral a d jd fun a d jd => do
+          mk (← a.renderNeu d) (← value body (sc.bindN n d) (d + n) jd k)
+  | .cases ty? scrut brs _ sel mk =>
+      match pureBranches? s sc with
+      | some (mkP, bs) => value scrut sc d jd fun c d jd =>
+          match sel c.strip with
+          | some (i, _) => k bs[i]! d jd
+          | none => neutral c d jd fun c d jd =>
+              let a := Atom.neu mkP #[c] bs
+              k (match ty? with | some ty => .ascribe a ty | none => a) d jd
+      | none => value scrut sc d jd fun a d jd =>
+          match sel a.strip with
+          | some (i, fs) => bindAtoms fs.toList d jd fun fs d jd => value brs[i]!.2 (sc.pushAll fs) d jd k
+          | none => do
+              let body ← k (.lvl d) (d + 1) jd
+              let main ← casesAt a brs mk sc d (jd + 1) (.jump jd)
+              let ty ← match ty? with | some t => pure t | none => `(_)
+              `(LeanScript.Term.join $ty $body $main)
   | .join .. => reify none s sc d jd k
   | .embedTerm stx poly => do
       let body ← k (.lvl d) (d + 1) jd
@@ -252,17 +389,30 @@ partial def reify (ty? : Option Lean.Term) (s : Src) (sc : Scope) (d jd : Nat)
   let ty ← match ty? with | some t => pure t | none => `(_)
   `(LeanScript.Term.join $ty $body $main)
 
+/-- A branch on the atom `a` (not an introduction form its `sel` recognises), in tail position:
+    `a` is made neutral, and each branch goes to `K`. -/
+partial def casesAt (a : Atom) (brs : Array (Nat × Src))
+    (mk : Lean.Term → Array Lean.Term → MetaM Lean.Term) (sc : Scope) (d jd : Nat) (K : Kont) :
+    MetaM Lean.Term :=
+  neutral a d jd fun a d jd => do
+    mk (← a.renderNeu d) (← brs.mapM fun (n, b) => stmt b (sc.bindN n d) (d + n) jd K)
+
 /-- Normalise `s` to a statement whose value goes to `K`. -/
 partial def stmt (s : Src) (sc : Scope) (d jd : Nat) (K : Kont) : MetaM Lean.Term :=
   match s with
   | .letE v b => value v sc d jd fun a d jd => bindAtom a d jd fun a d jd => stmt b (sc.push a) d jd K
-  | .destruct scrut n body mk => value scrut sc d jd fun a d jd => do
-      mk (← a.render d) (← stmt body (sc.bindN n d) (d + n) jd K)
-  | .cases _ scrut brs _ mk =>
+  | .destruct scrut n body mk => value scrut sc d jd fun a d jd =>
+      match a.recordFields? n with
+      | some fs => bindAtoms fs d jd fun fs d jd => stmt body (sc.pushAll fs) d jd K
+      | none => neutral a d jd fun a d jd => do
+          mk (← a.renderNeu d) (← stmt body (sc.bindN n d) (d + n) jd K)
+  | .cases _ scrut brs _ sel mk =>
       match K with
       | .fn f => value s sc d jd f
-      | _ => value scrut sc d jd fun a d jd => do
-          mk (← a.render d) (← brs.mapM fun (n, b) => stmt b (sc.bindN n d) (d + n) jd K)
+      | _ => value scrut sc d jd fun a d jd =>
+          match sel a.strip with
+          | some (i, fs) => bindAtoms fs.toList d jd fun fs d jd => stmt brs[i]!.2 (sc.pushAll fs) d jd K
+          | none => casesAt a brs mk sc d jd K
   | .join ty? body main =>
       match K with
       | .fn f => reify none s sc d jd f
@@ -308,6 +458,15 @@ def Src.toPExpr (s : Src) : MetaM Lean.Term :=
       throwError "this term is not a pure expression: it makes a call, binds or branches"
     a.render 0
 
+/-- The syntax of the neutral expression (`Neu Δ Γ τ`) that a source tree denotes; fails when
+    it needs a computation or a branch, or is not neutral. -/
+def Src.toNeu (s : Src) : MetaM Lean.Term :=
+  value s {} 0 0 fun a d jd => do
+    unless d == 0 && jd == 0 && a.isNeutral do
+      throwError "this term is not a neutral pure expression: it makes a call, binds, \
+        branches, or is a literal or a constructor"
+    a.renderNeu 0
+
 /-- The syntax of the computation (`Comp Δ Γ τ`) that a source tree denotes: a computation on
     pure operands, or a pure expression (shared). -/
 def Src.toComp (s : Src) : MetaM Lean.Term := do
@@ -341,19 +500,42 @@ def lam (ty? : Option Lean.Term) (body : Src) : Src :=
 def lit (p v : Lean.Term) : MetaM Src := do
   return .atom (.leaf (← `(LeanScript.PExpr.lit $p $v)))
 
+/-- The literal `true` or `false`. -/
+def boolLit (b : Bool) : Src := .atom (.bool b)
+
 /-- One layer in. -/
 def dataIn (b j : Lean.Term) (e : Src) : Src :=
-  .pnode (fun xs => `(LeanScript.PExpr.data_in $b $j $(xs[0]!))) #[e]
+  .pnode .dataIn (fun xs => `(LeanScript.PExpr.data_in $b $j $(xs[0]!))) #[e]
 
-/-- One layer out. -/
+/-- One layer out: `data_out` of a neutral value; of `data_in b j e` it is `e` (ι-reduction),
+    of any other introduction form the value is shared first. -/
 def dataOut (b j : Lean.Term) (e : Src) : Src :=
-  .pnode (fun xs => `(LeanScript.PExpr.data_out $b $j $(xs[0]!))) #[e]
+  .pneu (fun ns _ => `(LeanScript.Neu.data_out $b $j $(ns[0]!))) #[e] #[]
+    fun ns _ => match ns[0]!.strip with
+      | .node .dataIn _ #[x] => some x
+      | _ => none
+
+/-- The branch a literal `true`/`false` selects (`true` the first). -/
+def boolSel : Atom → Option (Nat × Array Atom)
+  | .bool true => some (0, #[])
+  | .bool false => some (1, #[])
+  | _ => none
+
+/-- The pure conditional `cond c a b` (both branches pure): `Neu.cond` of a neutral `c`; of a
+    literal it is the branch (ι-reduction). -/
+def cond (c a b : Src) : Src :=
+  .pneu (fun ns as => `(LeanScript.Neu.cond $(ns[0]!) $(as[0]!) $(as[1]!))) #[c] #[a, b]
+    fun ns as => match boolSel ns[0]!.strip with
+      | some (i, _) => as[i]?
+      | none => none
 
 /-- `if c then a else b`, of type `ty?`: `Term.ite` in tail position, the pure conditional
-    `PExpr.cond` elsewhere when both branches are pure, else a join point. -/
+    `Neu.cond` elsewhere when both branches are pure, else a join point; the branch itself
+    when `c` is a literal. -/
 def ite (ty? : Option Lean.Term) (c a b : Src) : Src :=
   .cases ty? c #[(0, a), (0, b)]
-    (some fun xs => `(LeanScript.PExpr.cond $(xs[0]!) $(xs[1]!) $(xs[2]!)))
+    (some fun ns as => `(LeanScript.Neu.cond $(ns[0]!) $(as[0]!) $(as[1]!)))
+    boolSel
     fun c bs => `(LeanScript.Term.ite $c $(bs[0]!) $(bs[1]!))
 
 /-- The branches of a union's case analysis. -/
@@ -362,9 +544,15 @@ def branchesStx : List Lean.Term → MetaM Lean.Term
   | a :: rest => do `(LeanScript.Branches.cons $a $(← branchesStx rest))
   | [] => throwError "a union has at least two constructors"
 
+/-- The branch and the fields a constructor of a union selects, among branches binding
+    `brs`. -/
+def unionSel (brs : Array Nat) : Atom → Option (Nat × Array Atom)
+  | .node (.union pos) _ args => if brs[pos]? == some args.size then some (pos, args) else none
+  | _ => none
+
 /-- The case analysis of a union, one branch per constructor (binding its fields). -/
 def unionCases (ty? : Option Lean.Term) (scrut : Src) (brs : Array (Nat × Src)) : Src :=
-  .cases ty? scrut brs none fun c bs => do
+  .cases ty? scrut brs none (unionSel (brs.map (·.1))) fun c bs => do
     `(LeanScript.Term.union_casesOn $c $(← branchesStx bs.toList))
 
 /-- Take a record of `n` fields apart. -/
@@ -373,21 +561,22 @@ def recordCases (scrut : Src) (n : Nat) (body : Src) : Src :=
 
 /-- A record from its fields. -/
 def recordMk (args : Array Src) : Src :=
-  .pnode (fun xs => do
+  .pnode .record (fun xs => do
     let mut r ← `(LeanScript.Args.nil)
     for x in xs.reverse do r ← `(LeanScript.Args.cons $x $r)
     `(LeanScript.PExpr.record_mk $r)) args
 
-/-- A constructor of a union (`ix` a `CtorIx`) from its fields. -/
-def unionMk (ix : Lean.Term) (args : Array Src) : Src :=
-  .pnode (fun xs => do
+/-- A constructor of a union (`ix` a `CtorIx`, at position `pos` when known) from its
+    fields. -/
+def unionMk (pos? : Option Nat) (ix : Lean.Term) (args : Array Src) : Src :=
+  .pnode (match pos? with | some p => .union p | none => .other) (fun xs => do
     let mut r ← `(LeanScript.Args.nil)
     for x in xs.reverse do r ← `(LeanScript.Args.cons $x $r)
     `(LeanScript.PExpr.union_mk $ix $r)) args
 
 /-- An array literal. -/
 def arrayMk (es : Array Src) : Src :=
-  .pnode (fun xs => do
+  .pnode .other (fun xs => do
     let mut r ← `(LeanScript.Elems.nil)
     for x in xs.reverse do r ← `(LeanScript.Elems.cons $x $r)
     `(LeanScript.PExpr.array_mk $r)) es

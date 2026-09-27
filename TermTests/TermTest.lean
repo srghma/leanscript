@@ -163,10 +163,12 @@ example : (appT triT (natT 5)).run = (10 : Nat) := rfl
 example : (Term.letE (Δ := Δ) (Γ := []) (.share (.enum_mk {} 2))
     (.enum_casesOn (.bvar 0) (fun i => .ret (natT (i.val * 10))))).run = (20 : Nat) := rfl
 
-/-- A join point: `join j x := x + 1; if true then jump j 1 else jump j 2`. -/
-example : (Term.join (Δ := Δ) (Γ := []) .nat (.ofComp (addT (.bvar 0) (natT 1)))
-    (.ite (.lit .bool true) (.jump .head (natT 1)) (.jump .head (natT 2)))).run
-      = (2 : Nat) := rfl
+/-- A join point: `join j x := x + 1; if b then jump j 1 else jump j 2`, with `b := true`.
+    (The condition is a variable: `if true then …` is an ι-redex, which the grammar rules
+    out.) -/
+example : (Term.join (Δ := Δ) (Γ := [.bool]) .nat (.ofComp (addT (.bvar 0) (natT 1)))
+    (.ite (.bvar 0) (.jump .head (natT 1)) (.jump .head (natT 2))) : Term Δ [.bool] .nat []).eval (true : Bool)
+      PUnit.unit = (2 : Nat) := rfl
 
 end TermTest
 

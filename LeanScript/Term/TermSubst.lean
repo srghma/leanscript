@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Elim
 
 @[expose] public section
 
@@ -15,8 +15,13 @@ On each of the three layers (`PExpr`, `Comp`, `Term`):
   `weaken e` moves `e` under one more binder, `shift n e` under `n` more binders.
 * `subst σ e` replaces each variable `x : Var Γ τ` of `e` by the **pure expression** `σ x` in
   `Γ'`; `subst1 b a` fills the innermost variable of `b` with `a`.  Only pure expressions are
-  substituted: they are closed under their own operations, so a substitution instance of an
-  A-normal term is again A-normal.
+  substituted, so a substitution instance of an A-normal term is again A-normal.  Substitution
+  is **hereditary**: a variable in an eliminated position (`data_out`, the condition of `cond`
+  or `ite`, a scrutinee) may be replaced by an introduction form, and the ι-redex this would
+  create is reduced on the spot (`PExpr.mkDataOut`, `PExpr.mkCond`, `Term.mkIte`,
+  `Term.mkEnumCases`, and the substitution of the fields of a record or of a constructor into
+  the body of its case analysis).  So a substitution instance has no ι-redex either: it is
+  again a term of the grammar, where one cannot be written.
 
 Both commute with evaluation (`Term.eval_rename`, `Term.eval_subst`, and the same for the two
 other layers), so a `let` of a shared pure value and a β-redex mean what their substitution
@@ -33,18 +38,22 @@ section Rename
 variable {ks : List Nat} {Δ : DSig ks}
 
 mutual
+/-- Rename the variables of a neutral expression. -/
+def Neu.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {τ : Ty ks} → Neu Δ Γ τ → Neu Δ Γ' τ
+  | _, .var x => .var (r x)
+  | _, .data_out b j e => .data_out b j (e.rename r)
+  | _, .cond c a b => .cond (c.rename r) (a.rename r) (b.rename r)
+  | _, .extern name f as => .extern name f (as.rename r)
+  termination_by structural _ e => e
 /-- Rename the variables of a pure expression. -/
 def PExpr.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {τ : Ty ks} → PExpr Δ Γ τ → PExpr Δ Γ' τ
-  | _, .var x => .var (r x)
+  | _, .neu n => .neu (n.rename r)
   | _, .lit p v => .lit p v
   | _, .enum_mk s i => .enum_mk s i
   | _, .record_mk as => .record_mk (as.rename r)
   | _, .union_mk ix as => .union_mk ix (as.rename r)
   | _, .array_mk es => .array_mk (es.rename r)
   | _, .data_in b j e => .data_in b j (e.rename r)
-  | _, .data_out b j e => .data_out b j (e.rename r)
-  | _, .cond c a b => .cond (c.rename r) (a.rename r) (b.rename r)
-  | _, .extern name f as => .extern name f (as.rename r)
   termination_by structural _ e => e
 /-- `PExpr.rename` on arguments. -/
 def Args.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {σs : List (Ty ks)} → Args Δ Γ σs →
@@ -100,6 +109,15 @@ def Branches.rename : {Γ Γ' : Ctx ks} → {bs : List Bool} → {cs : Ctors ks 
   | _, _, _, _, _, _, r, .cons b bs => .cons (b.rename (Ren.liftN r _)) (bs.rename r)
   termination_by structural _ _ _ _ _ _ _ b => b
 end
+
+/-- A neutral expression under one more (innermost) binder. -/
+abbrev Neu.weaken {Γ : Ctx ks} {σ τ : Ty ks} (e : Neu Δ Γ τ) : Neu Δ (σ :: Γ) τ :=
+  e.rename Ren.weaken
+
+/-- A neutral expression under `n` more binders: the first `n` entries of `Γ'` are new. -/
+abbrev Neu.shift {Γ Γ' : Ctx ks} {τ : Ty ks} (n : Nat) (e : Neu Δ Γ τ)
+    (h : Γ'.drop n = Γ := by rfl) : Neu Δ Γ' τ :=
+  e.rename (Ren.dropN n h)
 
 /-- A pure expression under one more (innermost) binder. -/
 abbrev PExpr.weaken {Γ : Ctx ks} {σ τ : Ty ks} (e : PExpr Δ Γ τ) : PExpr Δ (σ :: Γ) τ :=
@@ -158,24 +176,39 @@ def single {Γ : Ctx ks} {σ : Ty ks} (a : PExpr Δ Γ σ) : Subst Δ (σ :: Γ)
   | _, .head => a
   | _, .tail x => .var x
 
+/-- Fill the innermost variables `zs` with the arguments `as` (the first one innermost), then
+    go on with `s`: how the fields of a record or of a constructor are substituted into the
+    body of its case analysis. -/
+def append {Γ Γ' : Ctx ks} : {zs : Ctx ks} → Args Δ Γ' zs → Subst Δ Γ Γ' →
+    Subst Δ (zs ++ Γ) Γ'
+  | [], .nil, s, _, x => s x
+  | _ :: _, .cons a _, _, _, .head => a
+  | _ :: _, .cons _ as, s, _, .tail x => append as s x
+
 end Subst
 
 section SubstDef
 variable {ks : List Nat} {Δ : DSig ks}
 
 mutual
+/-- Replace every variable `x` of a neutral expression by `s x`.  The result is a pure
+    expression, not always a neutral one: when a variable in an eliminated position becomes an
+    introduction form, the ι-redex is reduced (`PExpr.mkDataOut`, `PExpr.mkCond`). -/
+def Neu.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {τ : Ty ks} → Neu Δ Γ τ → PExpr Δ Γ' τ
+  | _, .var x => s x
+  | _, .data_out b j e => PExpr.mkDataOut b j (e.subst s)
+  | _, .cond c a b => PExpr.mkCond (c.subst s) (a.subst s) (b.subst s)
+  | _, .extern name f as => .neu (.extern name f (as.subst s))
+  termination_by structural _ e => e
 /-- Replace every variable `x` of a pure expression by `s x`. -/
 def PExpr.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {τ : Ty ks} → PExpr Δ Γ τ → PExpr Δ Γ' τ
-  | _, .var x => s x
+  | _, .neu n => n.subst s
   | _, .lit p v => .lit p v
   | _, .enum_mk sc i => .enum_mk sc i
   | _, .record_mk as => .record_mk (as.subst s)
   | _, .union_mk ix as => .union_mk ix (as.subst s)
   | _, .array_mk es => .array_mk (es.subst s)
   | _, .data_in b j e => .data_in b j (e.subst s)
-  | _, .data_out b j e => .data_out b j (e.subst s)
-  | _, .cond c a b => .cond (c.subst s) (a.subst s) (b.subst s)
-  | _, .extern name f as => .extern name f (as.subst s)
   termination_by structural _ e => e
 /-- `PExpr.subst` on arguments. -/
 def Args.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {σs : List (Ty ks)} → Args Δ Γ σs →
@@ -210,16 +243,24 @@ def Comp.subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Subst Δ Γ Γ' → Comp
   | _, _, _, s, .lazy_mk e => .lazy_mk (e.subst s)
   | _, _, _, s, .lazy_force e => .lazy_force (e.subst s)
   termination_by structural _ _ _ _ c => c
-/-- Replace every variable `x` of a statement by `s x`. -/
+/-- Replace every variable `x` of a statement by `s x`, reducing the ι-redexes this creates:
+    a case analysis whose scrutinee becomes a constructor is replaced by its branch, with the
+    fields substituted (`Subst.append`); `ite` and `enum_casesOn` by `Term.mkIte` and
+    `Term.mkEnumCases`. -/
 def Term.subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → {js : JCtx ks} → Subst Δ Γ Γ' →
     Term Δ Γ τ js → Term Δ Γ' τ js
   | _, _, _, _, s, .ret e => .ret (e.subst s)
   | _, _, _, _, s, .letE c b => .letE (c.subst s) (b.subst (Subst.lift s))
   | _, _, _, _, s, .record_casesOn e body =>
-      .record_casesOn (e.subst s) (body.subst (Subst.liftN s _))
-  | _, _, _, _, s, .ite c t e => .ite (c.subst s) (t.subst s) (e.subst s)
-  | _, _, _, _, s, .enum_casesOn e bs => .enum_casesOn (e.subst s) (fun i => (bs i).subst s)
-  | _, _, _, _, s, .union_casesOn e bs => .union_casesOn (e.subst s) (bs.subst s)
+      match e.subst s with
+      | .neu e' => .record_casesOn e' (body.subst (Subst.liftN s _))
+      | .record_mk as => body.subst (Subst.append as s)
+  | _, _, _, _, s, .ite c t e => Term.mkIte (c.subst s) (t.subst s) (e.subst s)
+  | _, _, _, _, s, .enum_casesOn e bs => Term.mkEnumCases (e.subst s) (fun i => (bs i).subst s)
+  | _, _, _, _, s, .union_casesOn e bs =>
+      match e.subst s with
+      | .neu e' => .union_casesOn e' (bs.subst s)
+      | .union_mk ix as => bs.substAt s ix as
   | _, _, _, _, s, .join σ body main => .join σ (body.subst (Subst.lift s)) (main.subst s)
   | _, _, _, _, s, .jump j e => .jump j (e.subst s)
   termination_by structural _ _ _ _ _ t => t
@@ -230,6 +271,16 @@ def Branches.subst : {Γ Γ' : Ctx ks} → {bs : List Bool} → {cs : Ctors ks b
       .two (bc.subst (Subst.liftN s _)) (bd.subst (Subst.liftN s _))
   | _, _, _, _, _, _, s, .cons b bs => .cons (b.subst (Subst.liftN s _)) (bs.subst s)
   termination_by structural _ _ _ _ _ _ _ b => b
+/-- The branch of constructor `ix`, with its fields filled by `as` and its other variables
+    substituted by `s`: what `union_casesOn (union_mk ix as) brs` reduces to. -/
+def Branches.substAt : {Γ Γ' : Ctx ks} → {bs : List Bool} → {cs : Ctors ks bs} → {τ : Ty ks} →
+    {js : JCtx ks} → {b : Bool} → {c : Ctor ks b} → Subst Δ Γ Γ' → Branches Δ Γ cs τ js →
+    CtorIx cs c → Args Δ Γ' c.binds → Term Δ Γ' τ js
+  | _, _, _, _, _, _, _, _, s, .two bc _, .two₁, as => bc.subst (Subst.append as s)
+  | _, _, _, _, _, _, _, _, s, .two _ bd, .two₂, as => bd.subst (Subst.append as s)
+  | _, _, _, _, _, _, _, _, s, .cons b _, .head, as => b.subst (Subst.append as s)
+  | _, _, _, _, _, _, _, _, s, .cons _ bs, .tail ix, as => bs.substAt s ix as
+  termination_by structural _ _ _ _ _ _ _ _ _ b => b
 end
 
 /-- Fill the innermost variable of a pure expression `b` with `a`. -/
@@ -284,11 +335,27 @@ theorem EnvRen.weaken {Γ : Ctx ks} {σ : Ty ks} (v : Ty.Den Δ σ) (ρ : Env Δ
   rw [Tuple.tail_cons]
 
 mutual
+/-- Evaluating a renamed neutral expression in an environment related by the renaming gives
+    the same value. -/
+theorem Neu.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
+    (h : EnvRen r ρ' ρ) : {τ : Ty ks} → (e : Neu Δ Γ τ) → (e.rename r).eval ρ' = e.eval ρ
+  | _, .var x => h x
+  | _, .data_out _ _ e => by
+      simp only [Neu.rename, Neu.eval]
+      rw [Neu.eval_rename r ρ' ρ h e]
+  | _, .cond c a b => by
+      simp only [Neu.rename, Neu.eval]
+      rw [Neu.eval_rename r ρ' ρ h c, PExpr.eval_rename r ρ' ρ h a,
+        PExpr.eval_rename r ρ' ρ h b]
+  | _, .extern _ _ as => by
+      simp only [Neu.rename, Neu.eval]
+      rw [Args.eval_rename r ρ' ρ h as]
+  termination_by structural _ e => e
 /-- Evaluating a renamed pure expression in an environment related by the renaming gives the
     same value. -/
 theorem PExpr.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvRen r ρ' ρ) : {τ : Ty ks} → (e : PExpr Δ Γ τ) → (e.rename r).eval ρ' = e.eval ρ
-  | _, .var x => h x
+  | _, .neu n => Neu.eval_rename r ρ' ρ h n
   | _, .lit _ _ => rfl
   | _, .enum_mk _ _ => rfl
   | _, .record_mk as => by
@@ -303,16 +370,6 @@ theorem PExpr.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') 
   | _, .data_in _ _ e => by
       simp only [PExpr.rename, PExpr.eval]
       rw [PExpr.eval_rename r ρ' ρ h e]
-  | _, .data_out _ _ e => by
-      simp only [PExpr.rename, PExpr.eval]
-      rw [PExpr.eval_rename r ρ' ρ h e]
-  | _, .cond c a b => by
-      simp only [PExpr.rename, PExpr.eval]
-      rw [PExpr.eval_rename r ρ' ρ h c, PExpr.eval_rename r ρ' ρ h a,
-        PExpr.eval_rename r ρ' ρ h b]
-  | _, .extern _ _ as => by
-      simp only [PExpr.rename, PExpr.eval]
-      rw [Args.eval_rename r ρ' ρ h as]
   termination_by structural _ e => e
 theorem Args.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvRen r ρ' ρ) : {σs : List (Ty ks)} → (as : Args Δ Γ σs) →
@@ -403,19 +460,19 @@ theorem Term.eval_rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → {js : JCtx ks}
       exact Term.eval_rename b _ _ _ (h.lift _) κ
   | _, _, _, _, .record_casesOn e body, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
-      rw [PExpr.eval_rename r ρ' ρ h e]
+      rw [Neu.eval_rename r ρ' ρ h e]
       exact Term.eval_rename body _ _ _ (h.liftN _ _) κ
   | _, _, _, _, .ite c t e, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
-      rw [PExpr.eval_rename r ρ' ρ h c, Term.eval_rename t r ρ' ρ h κ,
+      rw [Neu.eval_rename r ρ' ρ h c, Term.eval_rename t r ρ' ρ h κ,
         Term.eval_rename e r ρ' ρ h κ]
   | _, _, _, _, .enum_casesOn e bs, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
-      rw [PExpr.eval_rename r ρ' ρ h e]
+      rw [Neu.eval_rename r ρ' ρ h e]
       exact Term.eval_rename (bs _) r ρ' ρ h κ
   | _, _, _, _, .union_casesOn e bs, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
-      rw [PExpr.eval_rename r ρ' ρ h e]
+      rw [Neu.eval_rename r ρ' ρ h e]
       exact Branches.eval_rename bs r ρ' ρ h κ _
   | _, _, _, _, .join _ body main, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
@@ -498,12 +555,45 @@ theorem EnvSub.single {Γ : Ctx ks} {σ : Ty ks} (a : PExpr Δ Γ σ) (ρ : Env 
 
 theorem EnvSub.id {Γ : Ctx ks} (ρ : Env Δ Γ) : EnvSub (Subst.id (Δ := Δ)) ρ ρ := fun _ => rfl
 
+theorem EnvSub.append {Γ Γ' : Ctx ks} {s : Subst Δ Γ Γ'} {ρ' : Env Δ Γ'} {ρ : Env Δ Γ}
+    (h : EnvSub s ρ' ρ) : {zs : Ctx ks} → (as : Args Δ Γ' zs) →
+      EnvSub (Subst.append as s) ρ' (DenList.append (as.eval ρ') ρ)
+  | [], .nil => h
+  | _ :: _, .cons a as => fun x => by
+      cases x with
+      | head =>
+          show a.eval ρ' = (Tuple.append (Tuple.cons (a.eval ρ') (as.eval ρ')) ρ).head
+          rw [Tuple.append_cons, Tuple.head_cons, Tuple.head_cons]
+      | tail x =>
+          show (Subst.append as s x).eval ρ' =
+            (Tuple.append (Tuple.cons (a.eval ρ') (as.eval ρ')) ρ).tail.get x
+          rw [Tuple.append_cons, Tuple.tail_cons, Tuple.tail_cons]
+          exact EnvSub.append h as x
+
 mutual
+/-- Evaluating a substituted neutral expression in an environment related by the substitution
+    gives the same value (the ι-redexes it reduces mean what they reduce to). -/
+theorem Neu.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
+    (h : EnvSub s ρ' ρ) : {τ : Ty ks} → (e : Neu Δ Γ τ) → (e.subst s).eval ρ' = e.eval ρ
+  | _, .var x => h x
+  | _, .data_out _ _ e => by
+      simp only [Neu.subst, Neu.eval]
+      rw [PExpr.eval_mkDataOut, Neu.eval_subst s ρ' ρ h e]
+  | _, .cond c a b => by
+      simp only [Neu.subst, Neu.eval]
+      rw [PExpr.eval_mkCond, Neu.eval_subst s ρ' ρ h c, PExpr.eval_subst s ρ' ρ h a,
+        PExpr.eval_subst s ρ' ρ h b]
+      generalize c.eval ρ = v
+      cases v <;> rfl
+  | _, .extern _ _ as => by
+      simp only [Neu.subst, Neu.eval, PExpr.eval]
+      rw [Args.eval_subst s ρ' ρ h as]
+  termination_by structural _ e => e
 /-- Evaluating a substituted pure expression in an environment related by the substitution
     gives the same value. -/
 theorem PExpr.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvSub s ρ' ρ) : {τ : Ty ks} → (e : PExpr Δ Γ τ) → (e.subst s).eval ρ' = e.eval ρ
-  | _, .var x => h x
+  | _, .neu n => Neu.eval_subst s ρ' ρ h n
   | _, .lit _ _ => rfl
   | _, .enum_mk _ _ => rfl
   | _, .record_mk as => by
@@ -518,16 +608,6 @@ theorem PExpr.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ �
   | _, .data_in _ _ e => by
       simp only [PExpr.subst, PExpr.eval]
       rw [PExpr.eval_subst s ρ' ρ h e]
-  | _, .data_out _ _ e => by
-      simp only [PExpr.subst, PExpr.eval]
-      rw [PExpr.eval_subst s ρ' ρ h e]
-  | _, .cond c a b => by
-      simp only [PExpr.subst, PExpr.eval]
-      rw [PExpr.eval_subst s ρ' ρ h c, PExpr.eval_subst s ρ' ρ h a,
-        PExpr.eval_subst s ρ' ρ h b]
-  | _, .extern _ _ as => by
-      simp only [PExpr.subst, PExpr.eval]
-      rw [Args.eval_subst s ρ' ρ h as]
   termination_by structural _ e => e
 theorem Args.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvSub s ρ' ρ) : {σs : List (Ty ks)} → (as : Args Δ Γ σs) →
@@ -617,22 +697,47 @@ theorem Term.eval_subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → {js : JCtx ks} 
       simp only [Term.subst, Term.eval]
       rw [Comp.eval_subst c s ρ' ρ h]
       exact Term.eval_subst b _ _ _ (h.lift _) κ
-  | _, _, _, _, .record_casesOn e body, s, ρ', ρ, h, κ => by
-      simp only [Term.subst, Term.eval]
-      rw [PExpr.eval_subst s ρ' ρ h e]
-      exact Term.eval_subst body _ _ _ (h.liftN _ _) κ
+  | _, _, _, _, .record_casesOn (fs := fs) e body, s, ρ', ρ, h, κ => by
+      have he := Neu.eval_subst s ρ' ρ h e
+      simp only [Term.subst]
+      generalize e.subst s = p at he ⊢
+      cases p with
+      | neu e' =>
+          simp only [Term.eval]
+          simp only [PExpr.eval] at he
+          rw [he]
+          exact Term.eval_subst body _ _ _ (h.liftN _ _) κ
+      | record_mk as =>
+          simp only [Term.eval]
+          simp only [PExpr.eval] at he
+          rw [← he]
+          simp only [Fields.toDL_ofDL, Tuple.cons_head_tail]
+          exact Term.eval_subst body _ _ _ (h.append as) κ
   | _, _, _, _, .ite c t e, s, ρ', ρ, h, κ => by
       simp only [Term.subst, Term.eval]
-      rw [PExpr.eval_subst s ρ' ρ h c, Term.eval_subst t s ρ' ρ h κ,
+      rw [Term.eval_mkIte, Neu.eval_subst s ρ' ρ h c, Term.eval_subst t s ρ' ρ h κ,
         Term.eval_subst e s ρ' ρ h κ]
+      generalize c.eval ρ = v
+      cases v <;> rfl
   | _, _, _, _, .enum_casesOn e bs, s, ρ', ρ, h, κ => by
       simp only [Term.subst, Term.eval]
-      rw [PExpr.eval_subst s ρ' ρ h e]
+      rw [Term.eval_mkEnumCases, Neu.eval_subst s ρ' ρ h e]
       exact Term.eval_subst (bs _) s ρ' ρ h κ
   | _, _, _, _, .union_casesOn e bs, s, ρ', ρ, h, κ => by
-      simp only [Term.subst, Term.eval]
-      rw [PExpr.eval_subst s ρ' ρ h e]
-      exact Branches.eval_subst bs s ρ' ρ h κ _
+      have he := Neu.eval_subst s ρ' ρ h e
+      simp only [Term.subst]
+      generalize e.subst s = p at he ⊢
+      cases p with
+      | neu e' =>
+          simp only [Term.eval]
+          simp only [PExpr.eval] at he
+          rw [he]
+          exact Branches.eval_subst bs s ρ' ρ h κ _
+      | union_mk ix as =>
+          simp only [Term.eval]
+          simp only [PExpr.eval] at he
+          rw [← he, Branches.eval_inject]
+          exact Branches.eval_substAt bs s ρ' ρ h κ ix as
   | _, _, _, _, .join _ body main, s, ρ', ρ, h, κ => by
       simp only [Term.subst, Term.eval]
       have hb : (fun v => (body.subst (Subst.lift s)).eval (Tuple.cons v ρ') κ) =
@@ -659,6 +764,26 @@ theorem Branches.eval_subst : {Γ Γ' : Ctx ks} → {bs : List Bool} → {cs : C
       · funext v; exact Term.eval_subst b _ _ _ (h.liftN _ v) κ
       · funext y; exact Branches.eval_subst bs s ρ' ρ h κ y
   termination_by structural _ _ _ _ _ _ b => b
+/-- The branch `Branches.substAt` picks and substitutes means the branch of the constructor
+    run on the values of the fields. -/
+theorem Branches.eval_substAt : {Γ Γ' : Ctx ks} → {bs : List Bool} → {cs : Ctors ks bs} →
+    {τ : Ty ks} → {js : JCtx ks} → {b : Bool} → {c : Ctor ks b} →
+    (brs : Branches Δ Γ cs τ js) → (s : Subst Δ Γ Γ') → (ρ' : Env Δ Γ') → (ρ : Env Δ Γ) →
+    EnvSub s ρ' ρ → (κ : JEnv Δ τ js) → (ix : CtorIx cs c) → (as : Args Δ Γ' c.binds) →
+    (brs.substAt s ix as).eval ρ' κ = (brs.select ix).eval (DenList.append (as.eval ρ') ρ) κ
+  | _, _, _, _, _, _, _, _, .two bc _, s, ρ', ρ, h, κ, .two₁, as => by
+      simp only [Branches.substAt, Branches.select]
+      exact Term.eval_subst bc _ _ _ (h.append as) κ
+  | _, _, _, _, _, _, _, _, .two _ bd, s, ρ', ρ, h, κ, .two₂, as => by
+      simp only [Branches.substAt, Branches.select]
+      exact Term.eval_subst bd _ _ _ (h.append as) κ
+  | _, _, _, _, _, _, _, _, .cons b _, s, ρ', ρ, h, κ, .head, as => by
+      simp only [Branches.substAt, Branches.select]
+      exact Term.eval_subst b _ _ _ (h.append as) κ
+  | _, _, _, _, _, _, _, _, .cons _ bs, s, ρ', ρ, h, κ, .tail ix, as => by
+      simp only [Branches.substAt, Branches.select]
+      exact Branches.eval_substAt bs s ρ' ρ h κ ix as
+  termination_by structural _ _ _ _ _ _ _ _ b => b
 end
 
 /-- Filling the innermost variable of `b` with `a` means evaluating `b` with the value of `a`

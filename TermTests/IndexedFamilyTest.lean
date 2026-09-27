@@ -64,7 +64,7 @@ info: IndexedFamilyTest.Prog.Vec.cons {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ 
 
 /--
 info: IndexedFamilyTest.Prog.Vec.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} {js : JCtx Prog.ks}
-  (scrut : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)) (on_nil : Term Prog.Δ Γ τ js)
+  (scrut : Neu Prog.Δ Γ (Ty.data (Ref.here 0).there)) (on_nil : Term Prog.Δ Γ τ js)
   (on_cons : Term Prog.Δ (Ty.prim LeanPrimTy.nat :: Ty.data (Ref.here 0).there :: Γ) τ js) : Term Prog.Δ Γ τ js
 -/
 #guard_msgs in

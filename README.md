@@ -40,7 +40,8 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | `LeanScript/Ty/DenFacts.lean`, `LeanScript/Ty/DenBrec.lean` | `dataIn`/`dataOut` are inverse; course-of-values recursion `DSig.dataBrec` and its computation rule |
 | `LeanScript/Ty/Two.lean` | every type has two values that a Boolean test tells apart |
 | `LeanScript/Ty/Three.lean` | every type other than `bool` has three values that a test tells apart: two points are only ever `bool` |
-| `LeanScript/Term/DeBruijn.lean`, `LeanScript/Term/Term.lean`, `LeanScript/Term/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`PExpr.lit p v`, `PExpr.bvar i`) and its evaluator |
+| `LeanScript/Term/DeBruijn.lean`, `LeanScript/Term/Term.lean`, `LeanScript/Term/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`PExpr.lit p v`, `PExpr.bvar i`) and its evaluator; everything that takes a value apart takes a neutral expression (`Neu`), so no ι-redex can be written (`TermTests/NoIotaTest.lean`) |
+| `LeanScript/Term/Elim.lean`, `LeanScript/Term/TermSubst.lean` | the eliminations that reduce an ι-redex (`PExpr.mkDataOut`, `PExpr.mkCond`, `Term.mkIte`, `Term.mkEnumCases`), and renaming and hereditary substitution, with the facts that they commute with evaluation |
 | `LeanScript/Term/Tuple.lean` | `Tuple F [a, b] = F a × F b`: right-nested products with no trailing `PUnit`, for environments, extern arguments and join-point closures |
 | `LeanScript/Term/BoundedLoop.lean` | a loop of a fixed number of steps whose iterations shrink a measure has stopped after `μ init + 1` steps, and more steps change nothing (`boundedLoop_done`, `boundedLoop_stable`): why a translated `while` loop needs no fuel |
 | `LeanScript/Term/TermSubst.lean` | renaming, weakening and substitution of terms; `Term.eval_rename`, `Term.eval_subst`, β and `let` as substitution |

@@ -39,8 +39,8 @@ notation (`set_option pp.leanscript false` turns that off).
 | `lit p v`                                | `PExpr.lit p v`                                  |
 | `extern "name" f a b`                    | `Comp.extern "name" f` of the arguments `a`, `b` (`Comp.externOf`) |
 | `pextern "name" f a b`                   | the cheap extern `PExpr.extern "name" f` of the arguments `a`, `b` (`PExpr.externOf`), a pure expression |
-| `if c then a else b`                     | `Term.ite c a b` (with a join point when not in tail position) |
-| `cond c a b`                             | the pure conditional `PExpr.cond c a b` (`a`, `b` must be pure) |
+| `if c then a else b`                     | `Term.ite c a b` (with a join point when not in tail position); the branch when `c` is `true`/`false` |
+| `cond c a b`                             | the pure conditional `PExpr.cond c a b` (`a`, `b` must be pure); the branch when `c` is `true`/`false` |
 | `nat_rec n z s`                          | `Comp.nat_rec n z s`                             |
 | `enum_mk i`                              | `PExpr.enum_mk _ i`                              |
 | `match e with \| 0 => a \| 1 => b \| _ => c` | `Term.enum_casesOn` (the last branch is the default) |
@@ -50,7 +50,7 @@ notation (`set_option pp.leanscript false` turns that off).
 | `match e with \| · => a \| _ => b \| (_, _) => c` | `Term.union_casesOn e` of the branches `a`, `b`, `c` |
 | `#[a, b]`                                | `PExpr.array_mk` of the elements                 |
 | `array_foldl arr init s`                 | `Comp.array_foldl arr init s`                    |
-| `data_in b j e`, `data_out b j e`        | `PExpr.data_in b j e`, `PExpr.data_out b j e`    |
+| `data_in b j e`, `data_out b j e`        | `PExpr.data_in b j e`, `PExpr.data_out b j e` (`e` itself for `data_out b j (data_in b j e)`) |
 | `data_rec b ρ br₀ … brₖ j e`             | `Comp.data_rec b ρ brs j e`, branch `i` of `brs` is `brᵢ` |
 | `data_brec b ρ k br₀ … brₖ j e`          | `Comp.data_brec b ρ k brs j e`                   |
 | `thunk_mk e`, `thunk_force e`           | `Comp.thunk_mk e`, `Comp.thunk_force e` (a `Thunk τ`) |
@@ -82,6 +82,13 @@ member, answer types and depth are Lean terms: a number, a string or `‹t›`. 
 **Delays.**  The type of `thunk_force e` / `lazy_force e` does not fix the type of `e` (the
 contents `τ` of the delay are not recovered from the result type `τ.relax` by unification), so
 when nothing else does, `e` is written with its type: `thunk_force (#0 : Thunk Nat)`.
+
+**No ι-redexes.**  The grammar takes apart only neutral expressions (`Neu`), so a case
+analysis (`let (…) :=`, `match`, `if`, `cond`, `data_out`) of a literal or a constructor
+written in the notation is reduced while normalising: the branch it selects is used, with the
+fields bound as by `let`.  A value of unknown shape (a Lean term `‹t›`) is bound by a `let`
+before it is taken apart.  When the expected type is `Neu`, `[Term| e]` elaborates to a neutral
+expression.
 
 A numeral takes its leaf type from the expected type (`PExpr.ofNat`), so its type must be
 known from the context: `let _ := 3; ‹addT›(#0, #0)` works.
@@ -128,12 +135,19 @@ abbrev Comp.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (T
     Comp Δ Γ τ :=
   .extern name f args
 
+/-- `Neu.extern` (a cheap extern) with the arguments before the function, as
+    `Comp.externOf`. -/
+abbrev Neu.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
+    (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
+    Neu Δ Γ τ :=
+  .extern name f args
+
 /-- `PExpr.extern` (a cheap extern) with the arguments before the function, as
     `Comp.externOf`. -/
 abbrev PExpr.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
     (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
     PExpr Δ Γ τ :=
-  .extern name f args
+  .neu (.externOf name args f)
 
 /-! ## Syntax -/
 
@@ -256,6 +270,7 @@ def layerOf (t : Lean.Term) : TermElabM (Name × Bool) := do
   match c with
   | some ``LeanScript.Comp => return (``LeanScript.Comp, poly)
   | some ``LeanScript.Term => return (``LeanScript.Term, poly)
+  | some ``LeanScript.Neu => return (``LeanScript.Neu, poly)
   | _ => return (``LeanScript.PExpr, poly)
 
 /-- An application of a function value, as a computation. -/
@@ -291,6 +306,7 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
       match layer with
       | ``LeanScript.Comp => return .embedComp t poly
       | ``LeanScript.Term => return .embedTerm t poly
+      | ``LeanScript.Neu => return .atom (.embedNeu t poly)
       | _ => return .atom (.embed t poly)
   | `(lsterm| ‹$f›($as,*)) => do
       let as ← as.getElems.mapM toSrc
@@ -298,11 +314,12 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
       | ``LeanScript.Comp => return .comp (fun xs _ => `($f $xs*)) as #[]
       | ``LeanScript.Term => throwErrorAt f "a Lean function to `Term` cannot be applied in the \
           notation: embed its application `‹f a b›` instead"
-      | _ => return .pnode (fun xs => `($f $xs*)) as
+      | ``LeanScript.Neu => return .pneu (fun _ xs => `($f $xs*)) #[] as fun _ _ => none
+      | _ => return .pnode .other (fun xs => `($f $xs*)) as
   | `(lsterm| ($e)) => toSrc e
   | `(lsterm| ($e : $τ)) => do return .ascribe (← toSrc e) (← `([Ty| $τ]))
   | `(lsterm| #[$es,*]) => do
-      return .pnode (fun xs => do `(LeanScript.PExpr.array_mk $(← mkElems xs.toList)))
+      return .pnode .other (fun xs => do `(LeanScript.PExpr.array_mk $(← mkElems xs.toList)))
         (← es.getElems.mapM toSrc)
   | `(lsterm| fun $bs* => $b) => funSrc bs.toList b
   | `(lsterm| let _ := $e; $b) => do return .letE (← toSrc e) (← toSrc b)
@@ -312,7 +329,7 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
       return .destruct (← toSrc e) (hs.getElems.size + 1) (← toSrc b)
         fun p body => `(LeanScript.Term.record_casesOn $p $body)
   | `(lsterm| if $c then $a else $b) => do
-      return .cases none (← toSrc c) #[(0, ← toSrc a), (0, ← toSrc b)] none
+      return .cases none (← toSrc c) #[(0, ← toSrc a), (0, ← toSrc b)] none Anf.Src.boolSel
         fun c bs => `(LeanScript.Term.ite $c $(bs[0]!) $(bs[1]!))
   | `(lsterm| join _ $x := $body; $main) => do
       let ty? ← match x with
@@ -322,9 +339,8 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
   | `(lsterm| match $e with $[| $ps => $bs]*) => matchSrc e ps.toList bs.toList
   | `(lsterm| $id:ident) =>
       match id.getId.eraseMacroScopes with
-      | `true => do return .atom (.leaf (← `(LeanScript.PExpr.lit LeanScript.LeanPrimTy.bool true)))
-      | `false => do
-          return .atom (.leaf (← `(LeanScript.PExpr.lit LeanScript.LeanPrimTy.bool false)))
+      | `true => return Anf.Src.boolLit true
+      | `false => return Anf.Src.boolLit false
       | _ => specialSrc id []
   | e@`(lsterm| $_ $_) => do
       match tupleElems? e with
@@ -344,7 +360,7 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
 /-- A record literal. -/
 partial def tupleSrc (e : TSyntax `lsterm) : TermElabM Src := do
   let some es := tupleElems? e | throwErrorAt e "expected a record"
-  return .pnode (fun xs => do `(LeanScript.PExpr.record_mk $(← mkArgs xs.toList)))
+  return .pnode .record (fun xs => do `(LeanScript.PExpr.record_mk $(← mkArgs xs.toList)))
     (← es.toArray.mapM toSrc)
 
 /-- `fun _ … _ => b`. -/
@@ -384,7 +400,14 @@ partial def matchSrc (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
         | `(lspat| $k:num) => `($k:num)
         | _ => throwErrorAt p "expected a constructor number (only the last branch may be `_`)"
     let brs ← bs.toArray.mapM fun b => return (0, ← toSrc b)
-    return .cases none e' brs none fun c rhss =>
+    -- the branch of constructor `i`: the first pattern `i`, else the default (the last one)
+    let nums : Array (Option Nat) := ps.toArray.pop.map fun
+      | `(lspat| $k:num) => some k.getNat
+      | _ => none
+    let sel : Atom → Option (Nat × Array Atom) := fun
+      | .enumLit i _ => some ((nums.findIdx? (· == some i)).getD (n - 1), #[])
+      | _ => none
+    return .cases none e' brs none sel fun c rhss =>
       `(LeanScript.Term.enum_casesOn $c (fun i => match i.val with $[| $pats => $rhss]*))
   else
     if ps.length < 2 then throwErrorAt e "a union has at least two constructors"
@@ -393,7 +416,7 @@ partial def matchSrc (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
       | [a, b] => `(LeanScript.Branches.two $a $b)
       | a :: rest => do `(LeanScript.Branches.cons $a $(← mk rest))
       | [] => throwError "unreachable"
-    return .cases none e' brs none fun c rhss => do
+    return .cases none e' brs none (Anf.Src.unionSel (brs.map (·.1))) fun c rhss => do
       `(LeanScript.Term.union_casesOn $c $(← mk rhss.toList))
 
 /-- A constructor, applied to `args`. -/
@@ -413,22 +436,28 @@ partial def specialSrc (id : Ident) (args : List (TSyntax `lsterm)) : TermElabM 
   | `pextern, name :: fn :: as => do
       let name ← leanArg name
       let fn ← leanArg fn
-      return .pnode (fun xs => do `(LeanScript.PExpr.externOf $name $(← mkArgs xs.toList) $fn))
-        (← as.toArray.mapM toSrc)
+      return .pneu (fun _ xs => do `(LeanScript.Neu.externOf $name $(← mkArgs xs.toList) $fn))
+        #[] (← as.toArray.mapM toSrc) fun _ _ => none
   | `pextern, _ => bad "pextern \"name\" f a₁ … aₙ"
   | `cond, [c, a, b] => do
-      return .pnode (fun xs => `(LeanScript.PExpr.cond $(xs[0]!) $(xs[1]!) $(xs[2]!)))
-        #[← toSrc c, ← toSrc a, ← toSrc b]
+      return Anf.Src.cond (← toSrc c) (← toSrc a) (← toSrc b)
   | `cond, _ => bad "cond c a b"
   | `nat_rec, [n, z, s] => do
       return .comp (fun xs bs => `(LeanScript.Comp.nat_rec $(xs[0]!) $(xs[1]!) $(bs[0]!)))
         #[← toSrc n, ← toSrc z] #[(2, ← toSrc s)]
   | `nat_rec, _ => bad "nat_rec n z s"
-  | `enum_mk, [i] => do return .atom (.leaf (← `(LeanScript.PExpr.enum_mk _ $(← leanArg i))))
+  | `enum_mk, [i] => do
+      let stx ← `(LeanScript.PExpr.enum_mk _ $(← leanArg i))
+      match i with
+      | `(lsterm| $k:num) => return .atom (.enumLit k.getNat stx)
+      | _ => return .atom (.leaf stx)
   | `enum_mk, _ => bad "enum_mk i"
   | `union_mk, i :: as => do
+      let tag : Anf.Intro := match i with
+        | `(lsterm| $k:num) => .union k.getNat
+        | _ => .other
       let i ← leanArg i
-      return .pnode (fun xs => do `(LeanScript.PExpr.inj $i (args := $(← mkArgs xs.toList))))
+      return .pnode tag (fun xs => do `(LeanScript.PExpr.inj $i (args := $(← mkArgs xs.toList))))
         (← as.toArray.mapM toSrc)
   | `union_mk, _ => bad "union_mk i a₁ … aₙ"
   | `array_foldl, [arr, init, s] => do
@@ -438,12 +467,12 @@ partial def specialSrc (id : Ident) (args : List (TSyntax `lsterm)) : TermElabM 
   | `data_in, [b, j, e] => do
       let b ← leanArg b
       let j ← leanArg j
-      return .pnode (fun xs => `(LeanScript.PExpr.data_in $b $j $(xs[0]!))) #[← toSrc e]
+      return Anf.Src.dataIn b j (← toSrc e)
   | `data_in, _ => bad "data_in b j e"
   | `data_out, [b, j, e] => do
       let b ← leanArg b
       let j ← leanArg j
-      return .pnode (fun xs => `(LeanScript.PExpr.data_out $b $j $(xs[0]!))) #[← toSrc e]
+      return Anf.Src.dataOut b j (← toSrc e)
   | `data_out, _ => bad "data_out b j e"
   | `data_rec, b :: ρ :: rest@(_ :: _ :: _ :: _) => do
       let b ← leanArg b
@@ -500,6 +529,7 @@ def elabTermQuote : TermElab := fun stx expected? => do
     | none => pure none
   let out ← match layer with
     | some ``LeanScript.PExpr => s.toPExpr
+    | some ``LeanScript.Neu => s.toNeu
     | some ``LeanScript.Comp => s.toComp
     | _ => s.toTerm
   let e ← withRef stx <| elabTerm out expected?
@@ -564,7 +594,8 @@ partial def underLams {α : Type} (x : DelabM α) : DelabM α := do
 def termHeads : List Name :=
   [``PExpr.var, ``PExpr.bvar, ``PExpr.lit, ``PExpr.ofNat, ``PExpr.enum_mk, ``PExpr.record_mk,
    ``PExpr.union_mk, ``PExpr.inj, ``PExpr.array_mk, ``PExpr.data_in, ``PExpr.data_out,
-   ``PExpr.cond, ``PExpr.extern, ``PExpr.externOf,
+   ``PExpr.cond, ``PExpr.extern, ``PExpr.externOf, ``PExpr.neu,
+   ``Neu.var, ``Neu.bvar, ``Neu.data_out, ``Neu.cond, ``Neu.extern, ``Neu.externOf,
    ``Comp.app, ``Comp.lam, ``Comp.share, ``Comp.extern, ``Comp.externOf, ``Comp.nat_rec,
    ``Comp.array_foldl, ``Comp.data_rec, ``Comp.data_brec, ``Comp.thunk_mk, ``Comp.thunk_force,
    ``Comp.lazy_mk, ``Comp.lazy_force,
@@ -607,14 +638,18 @@ def mkTupleSyn (a : TSyntax `lsterm) (bs : Array (TSyntax `lsterm)) : DelabM (TS
 
 /-- Is `e` one of the three layers, `Args` or `Elems`? -/
 def isLayerType (ty : Expr) : Bool :=
-  ty.isAppOf ``LeanScript.PExpr || ty.isAppOf ``LeanScript.Comp || ty.isAppOf ``LeanScript.Term
+  ty.isAppOf ``LeanScript.PExpr || ty.isAppOf ``LeanScript.Neu || ty.isAppOf ``LeanScript.Comp ||
+    ty.isAppOf ``LeanScript.Term
 
 /-- Is `e` the statement `ret #0`? -/
 def isRetVar0 (e : Expr) : Bool :=
   let e := e.consumeMData
+  let isVar0 (v : Expr) : Bool :=
+    (v.isAppOfArity ``PExpr.var 5 || v.isAppOfArity ``Neu.var 5) &&
+      dbIndex? v.appArg!.consumeMData == some 0
+  let v := (e.getArg! 5).consumeMData
   e.isAppOfArity ``Term.ret 6 &&
-    ((e.getArg! 5).consumeMData.isAppOfArity ``PExpr.var 5 &&
-      dbIndex? (e.getArg! 5).consumeMData.appArg! == some 0)
+    (isVar0 v || (v.isAppOfArity ``PExpr.neu 5 && isVar0 v.appArg!.consumeMData))
 
 mutual
 
@@ -659,10 +694,11 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
   let arg (k : Nat) : DelabM (TSyntax `lsterm) := do tparen (appPrec + 1) (← sub k)
   let r : DelabM TSyn := do
     match c with
-    | ``PExpr.var =>
+    | ``PExpr.neu => sub 1
+    | ``PExpr.var | ``Neu.var =>
         let i ← (dbIndex? e.appArg!).getDM failure
         return (← `(lsterm| #$(Syntax.mkNumLit (toString i)):num), atomPrec)
-    | ``PExpr.bvar =>
+    | ``PExpr.bvar | ``Neu.bvar =>
         let i ← (natLit? (e.getArg! 4)).getDM failure
         return (← `(lsterm| #$(Syntax.mkNumLit (toString i)):num), atomPrec)
     | ``PExpr.ofNat =>
@@ -697,12 +733,12 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
     | ``PExpr.array_mk =>
         let es ← withArgFromEnd 1 delabElems
         return (← `(lsterm| #[$es.toArray,*]), atomPrec)
-    | ``PExpr.data_in | ``PExpr.data_out =>
+    | ``PExpr.data_in | ``PExpr.data_out | ``Neu.data_out =>
         let b ← withArgFromEnd 3 leanArgSyn
         let j ← withArgFromEnd 2 leanArgSyn
         return (← mkAppSyn (if c == ``PExpr.data_in then `data_in else `data_out) [b, j, ← arg 1],
           appPrec)
-    | ``PExpr.cond => return (← mkAppSyn `cond [← arg 3, ← arg 2, ← arg 1], appPrec)
+    | ``PExpr.cond | ``Neu.cond => return (← mkAppSyn `cond [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.app =>
         let f ← tparen appPrec (← sub 2)
         return (← `(lsterm| $f $(← arg 1)), appPrec)
@@ -727,13 +763,14 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
             return (← `(lsterm| fun $bs* => $b), 0)
         go #[]
     | ``Comp.share => sub 1
-    | ``Comp.extern | ``Comp.externOf | ``PExpr.extern | ``PExpr.externOf =>
-        let ext := c == ``Comp.extern || c == ``PExpr.extern
+    | ``Comp.extern | ``Comp.externOf | ``PExpr.extern | ``PExpr.externOf | ``Neu.extern
+    | ``Neu.externOf =>
+        let ext := c == ``Comp.extern || c == ``PExpr.extern || c == ``Neu.extern
         let name ← withArgFromEnd 3 leanArgSyn
         let f ← withArgFromEnd (if ext then 2 else 1) leanArgSyn
         let as ← withArgFromEnd (if ext then 1 else 2) delabArgs
         let as ← as.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
-        let kw := if c == ``PExpr.extern || c == ``PExpr.externOf then `pextern else `extern
+        let kw := if c == ``Comp.extern || c == ``Comp.externOf then `extern else `pextern
         return (← mkAppSyn kw ([name, f] ++ as), appPrec)
     | ``Comp.nat_rec => return (← mkAppSyn `nat_rec [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.array_foldl => return (← mkAppSyn `array_foldl [← arg 3, ← arg 2, ← arg 1], appPrec)
@@ -877,6 +914,13 @@ def delabTerm : Delab := do
 @[delab app.LeanScript.PExpr.cond] def delabPExprCond : Delab := delabTerm
 @[delab app.LeanScript.PExpr.extern] def delabPExprExtern : Delab := delabTerm
 @[delab app.LeanScript.PExpr.externOf] def delabPExprExternOf : Delab := delabTerm
+@[delab app.LeanScript.PExpr.neu] def delabPExprNeu : Delab := delabTerm
+@[delab app.LeanScript.Neu.var] def delabNeuVar : Delab := delabTerm
+@[delab app.LeanScript.Neu.bvar] def delabNeuBVar : Delab := delabTerm
+@[delab app.LeanScript.Neu.data_out] def delabNeuDataOut : Delab := delabTerm
+@[delab app.LeanScript.Neu.cond] def delabNeuCond : Delab := delabTerm
+@[delab app.LeanScript.Neu.extern] def delabNeuExtern : Delab := delabTerm
+@[delab app.LeanScript.Neu.externOf] def delabNeuExternOf : Delab := delabTerm
 @[delab app.LeanScript.Comp.app] def delabCompApp : Delab := delabTerm
 @[delab app.LeanScript.Comp.lam] def delabCompLam : Delab := delabTerm
 @[delab app.LeanScript.Comp.share] def delabCompShare : Delab := delabTerm

@@ -118,8 +118,9 @@ info: fun {ks} {Δ} =>
   Term.letE
     (Comp.lam
       (Term.ret
-        (PExpr.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
-          (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)))))
+        (PExpr.neu
+          (Neu.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
+            (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))))
     (Term.ret
       (PExpr.var
         DeBruijn.head)) : {ks : List Nat} →

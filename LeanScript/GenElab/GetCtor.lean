@@ -56,10 +56,11 @@ command, each shows what it generated.
 
 * `#leanscript_get_cases I (x := T)…` — the dual: the case analysis of the Lean inductive
   type `I` (a constructor name denotes its type).  Its arguments are the type variables, the
-  answer type `{τ}`, the scrutinee, and one branch per constructor, `on_c`, whose context
+  answer type `{τ}`, the scrutinee (a neutral expression, `Neu`: the grammar takes apart
+  only neutral values), and one branch per constructor, `on_c`, whose context
   binds the constructor's fields in front of `Γ` (the first field innermost).  The body is
   `Term.union_casesOn` / `Term.record_casesOn` / `Term.letE` (a single field) /
-  `Term.enum_casesOn` / `Term.ite` (`Bool`), preceded by `PExpr.data_out` for a recursive
+  `Term.enum_casesOn` / `Term.ite` (`Bool`), preceded by `Neu.data_out` for a recursive
   type, so the translator never builds `data_out` for a Lean `casesOn` itself.
 -/
 
@@ -380,7 +381,8 @@ def casesBodyStx (plan : TypePlan) (scrut : Lean.Term) (bs : Array Lean.Term) :
       sel ← `(if ($i).val = $(quote p) then $(bs[p]!) else $sel)
     `(LeanScript.Term.enum_casesOn $scrut (fun $i => $sel))
   else if m = 1 then
-    if plan.ctors[0]!.2.size = 1 then `(LeanScript.Term.letE (LeanScript.Comp.share $scrut) $(bs[0]!))
+    if plan.ctors[0]!.2.size = 1 then
+      `(LeanScript.Term.letE (LeanScript.Comp.share (LeanScript.PExpr.neu $scrut)) $(bs[0]!))
     else `(LeanScript.Term.record_casesOn $scrut $(bs[0]!))
   else
     let mut br ← `(LeanScript.Branches.two $(bs[m - 2]!) $(bs[m - 1]!))
@@ -406,7 +408,7 @@ def ensureCases (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Na
     let brIds : Array Ident := plan.ctors.map fun (c, _) =>
       mkIdent (.mkSimple ("on_" ++ c.getString!))
     let scrut ← match plan.data? with
-      | some (b, j) => `(LeanScript.PExpr.data_out $(← brefStx F.c b) $(quote j) $x)
+      | some (b, j) => `(LeanScript.Neu.data_out $(← brefStx F.c b) $(quote j) $x)
       | none => pure x
     let body ← casesBodyStx plan scrut (brIds.map fun b => ⟨b.raw⟩)
     let mut fty ← `(LeanScript.Term $(F.dT) $gam $tau $js)
@@ -417,7 +419,7 @@ def ensureCases (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Na
         ctx ← `($(← f.stx F.c F.varIds) :: $ctx)
       fty ← `(($(brIds[p]!) : LeanScript.Term $(F.dT) $ctx $tau $js) → $fty)
       fn ← `(fun $(brIds[p]!) => $fn)
-    fty ← `(($x : LeanScript.PExpr $(F.dT) $gam $(← plan.layout.stx F.c F.varIds)) → $fty)
+    fty ← `(($x : LeanScript.Neu $(F.dT) $gam $(← plan.layout.stx F.c F.varIds)) → $fty)
     fn ← `(fun $x => $fn)
     fty ← `(∀ {$tau : LeanScript.Ty $(F.ksT)} {$js : LeanScript.JCtx $(F.ksT)}, $fty)
     fn ← `(fun {$tau} {$js} => $fn)

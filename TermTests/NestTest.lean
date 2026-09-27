@@ -107,7 +107,7 @@ info: NestTest.Prog.Elem.node {Γ : Ctx Prog.ks} (x0 x1 : PExpr Prog.Δ Γ (Ty.d
 
 /--
 info: NestTest.Prog.Nest.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} {js : JCtx Prog.ks}
-  (scrut : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) (on_nil : Term Prog.Δ Γ τ js)
+  (scrut : Neu Prog.Δ Γ (Ty.data (Ref.here 0))) (on_nil : Term Prog.Δ Γ τ js)
   (on_cons : Term Prog.Δ (Ty.data (Ref.here 0).there :: Ty.data (Ref.here 0) :: Γ) τ js) : Term Prog.Δ Γ τ js
 -/
 #guard_msgs in
