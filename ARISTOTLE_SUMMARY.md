@@ -1,3 +1,32 @@
+# Summary of changes for run d08f13a1-a168-41ac-8d0c-96a9dd5aad46
+No, our grammar doesn't split. `LeanScript/Term.lean` is a single grammar in direct style: its module doc says so, and so does the translator's in `LeanScript/ToTerm.lean`. Any term can be an operand of any other, e.g. `app (ite c (nat_rec …) (lam …)) (extern … [data_out …])`. `Args`, `Branches` and `Elems` are only lists of subterms, not layers. The PCL docstring you quoted cites "`LeanScript.Term`, whose blocks are `letE`s of `Comp`s". That matches an older A-normal version of the project, according to its history notes, not the current code.
+
+Splitting does make sense for us. It makes evaluation order and sharing explicit. It turns code generation into a near-direct mapping: pure expressions become target expressions, statements become target statements, and join points become local functions. Substituting a pure expression for a variable stays inside the grammar. And fold bodies become small statements that can't jump out. The costs are larger terms, a translator that has to name every call, and one function per layer for the evaluator, renaming and notation.
+
+I wrote the proposals in `proposals/AnfSplitProposals.md`:
+1. **PCL's three layers, adapted to our language.** With no path conditions, a join point's scope is just a list of types and each join point is a closure. `joinrec` isn't needed yet, because every loop is a fold.
+2. **Strict A-normal form, where only variables are atoms.** This is what the project had before. I recommend against it.
+3. **Recommended: keep direct-style `Term` as the source language** and add the three-layer form as a second representation. A normaliser would convert `Term` into it, with a correctness theorem that both give the same value. The translator, the notation and all existing tests would stay unchanged.
+4. **How far to split beyond PCL.** Recommended:
+   - a lambda is a `let`-bound computation, not a pure expression;
+   - a non-branching `unpack` for records;
+   - a pure `if` inside expressions, so it needs no join point;
+   - a `cheap` flag deciding which externs count as pure expressions.
+
+   Not recommended as separate types: splitting computations into call/loop/closure, a separate layer of values, and separate block/tail types. Normal-form proofs checked by `decide` can come later.
+
+The document also classifies every current `Term` constructor into a layer and lists which files each proposal would change.
+
+A small companion file, `proposals/AnfSplitToy.lean`, checks proposal 1 on a cut-down type grammar:
+- pure expressions don't need to be mutual with statements;
+- join points need no predicates;
+- all three evaluators are total and structural, with no fuel;
+- example programs, including a non-tail `if` written with a join point, compute by `rfl`.
+
+It is outside the Lake build; check it with `lake env lean proposals/AnfSplitToy.lean`, which gives no errors, warnings or `sorry`. One pitfall came up while writing it and is noted in both files. Lean makes the context `Γ` a parameter of the inductive. Unless `Γ` is bound before the colon and `termination_by structural` is written, it quietly uses well-founded recursion instead, and every `rfl` test fails.
+
+Apart from what the toy checks, the document comes from reading the sources and is not a formal result. The statements about the project's earlier A-normal grammar come from the history notes only, since the git history has a single commit. Nothing in `LeanScript/` or the tests changed.
+
 # Summary of changes for run 12ef7284-cce0-4b76-9cd0-e24907cbef8f
 I added the delays `.thunk` and `.lazy` to `Ty`, following `proposals/CovariantTyAssessment.md`. The whole project builds (`lake build`, all four default libraries). The only `sorry` match in any `.lean` file is inside a comment that was already in the original `LeanInitPureExterns/Core.lean`.
 
