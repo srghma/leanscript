@@ -337,17 +337,17 @@ def ensureCtor (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Nam
     -- the body
     let args : List Lean.Term := argIds.toList.map fun a => ⟨a.raw⟩
     let payload ← if plan.isBool then
-        if pos == 1 then `(LeanScript.Term.lit LeanPrimTy.bool true)
-        else `(LeanScript.Term.lit LeanPrimTy.bool false)
+        if pos == 1 then `(LeanScript.PExpr.lit LeanPrimTy.bool true)
+        else `(LeanScript.PExpr.lit LeanPrimTy.bool false)
       else ctorBodyStx plan.ctors.size pos plan.enum? args
     let body ← match plan.data? with
-      | some (b, j) => `(LeanScript.Term.data_in $(← brefStx F.c b) $(quote j) $payload)
+      | some (b, j) => `(LeanScript.PExpr.data_in $(← brefStx F.c b) $(quote j) $payload)
       | none => pure payload
     -- the type and the function
-    let mut fty ← `(LeanScript.Term $(F.dT) $gam $(← plan.layout.stx F.c F.varIds))
+    let mut fty ← `(LeanScript.PExpr $(F.dT) $gam $(← plan.layout.stx F.c F.varIds))
     let mut fn := body
     for q in (List.range fields.size).reverse do
-      fty ← `(($(argIds[q]!) : LeanScript.Term $(F.dT) $gam
+      fty ← `(($(argIds[q]!) : LeanScript.PExpr $(F.dT) $gam
         $(← fields[q]!.stx F.c F.varIds)) → $fty)
       fn ← `(fun $(argIds[q]!) => $fn)
     let (fty', fn') ← F.close fty fn
@@ -380,7 +380,7 @@ def casesBodyStx (plan : TypePlan) (scrut : Lean.Term) (bs : Array Lean.Term) :
       sel ← `(if ($i).val = $(quote p) then $(bs[p]!) else $sel)
     `(LeanScript.Term.enum_casesOn $scrut (fun $i => $sel))
   else if m = 1 then
-    if plan.ctors[0]!.2.size = 1 then `(LeanScript.Term.letE $scrut $(bs[0]!))
+    if plan.ctors[0]!.2.size = 1 then `(LeanScript.Term.letE (LeanScript.Comp.share $scrut) $(bs[0]!))
     else `(LeanScript.Term.record_casesOn $scrut $(bs[0]!))
   else
     let mut br ← `(LeanScript.Branches.two $(bs[m - 2]!) $(bs[m - 1]!))
@@ -401,25 +401,26 @@ def ensureCases (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Na
     let decl ← F.declName ind (.mkSimple ind.getString!) (if F.prog?.isSome then `cases else `leanScriptCases)
     let gam := mkIdent `Γ
     let tau := mkIdent `τ
+    let js := mkIdent `js
     let x := mkIdent `scrut
     let brIds : Array Ident := plan.ctors.map fun (c, _) =>
       mkIdent (.mkSimple ("on_" ++ c.getString!))
     let scrut ← match plan.data? with
-      | some (b, j) => `(LeanScript.Term.data_out $(← brefStx F.c b) $(quote j) $x)
+      | some (b, j) => `(LeanScript.PExpr.data_out $(← brefStx F.c b) $(quote j) $x)
       | none => pure x
     let body ← casesBodyStx plan scrut (brIds.map fun b => ⟨b.raw⟩)
-    let mut fty ← `(LeanScript.Term $(F.dT) $gam $tau)
+    let mut fty ← `(LeanScript.Term $(F.dT) $gam $tau $js)
     let mut fn := body
     for p in (List.range plan.ctors.size).reverse do
       let mut ctx : Lean.Term := gam
       for f in plan.ctors[p]!.2.reverse do
         ctx ← `($(← f.stx F.c F.varIds) :: $ctx)
-      fty ← `(($(brIds[p]!) : LeanScript.Term $(F.dT) $ctx $tau) → $fty)
+      fty ← `(($(brIds[p]!) : LeanScript.Term $(F.dT) $ctx $tau $js) → $fty)
       fn ← `(fun $(brIds[p]!) => $fn)
-    fty ← `(($x : LeanScript.Term $(F.dT) $gam $(← plan.layout.stx F.c F.varIds)) → $fty)
+    fty ← `(($x : LeanScript.PExpr $(F.dT) $gam $(← plan.layout.stx F.c F.varIds)) → $fty)
     fn ← `(fun $x => $fn)
-    fty ← `(∀ {$tau : LeanScript.Ty $(F.ksT)}, $fty)
-    fn ← `(fun {$tau} => $fn)
+    fty ← `(∀ {$tau : LeanScript.Ty $(F.ksT)} {$js : LeanScript.JCtx $(F.ksT)}, $fty)
+    fn ← `(fun {$tau} {$js} => $fn)
     let (fty', fn') ← F.close fty fn
     emitDef decl fty' fn'
     addEntry (.gen gkey decl)

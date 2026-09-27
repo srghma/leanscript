@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.GetCtor
+public meta import LeanScript.Anf
 public meta import Lean.Elab.PreDefinition.Structural.Eqns
 public meta import Lean.Elab.PreDefinition.WF.Eqns
 
@@ -20,6 +21,7 @@ parameters a recursive call changes.  See `LeanScript.ToTerm` for the translatio
 -/
 
 open Lean Meta Elab Term
+open LeanScript.Anf (Src)
 
 namespace LeanScript.Gen
 
@@ -110,7 +112,8 @@ def dbStx : Nat → MetaM Lean.Term
   | 0 => `(DeBruijn.head)
   | n + 1 => do `(DeBruijn.tail $(← dbStx n))
 
-def varStx (i : Nat) : MetaM Lean.Term := do `(LeanScript.Term.var $(← dbStx i))
+/-- The source variable of de Bruijn index `i`. -/
+def varStx (i : Nat) : MetaM Src := pure (.var i)
 
 /-- The closed translation of a type.  With `check := false` (the inferred type of a
     subterm) an inductive family at closed indices is not checked for having few values
@@ -136,20 +139,20 @@ def CIR.delayKind : CIR → Nat
     its delays (`t.get : Unit → τ` of `t : Thunk (Unit → τ)`, both read as delays of `τ`): the
     delay of `src` is forced and the one of `dst` made.  Delays evaluate as the identity, so
     this only changes how the value is printed. -/
-def delayCoerce (L : Loc) (src dst : CIR) (t : Lean.Term) : TM Lean.Term := do
+def delayCoerce (L : Loc) (src dst : CIR) (t : Src) : TM Src := do
   if src.delayKind == dst.delayKind then return t
   let forced ← match src with
-    | .thunk a => do `(LeanScript.Term.thunk_force (τ := $(← a.stx L.c #[])) $t)
-    | .lazy a => do `(LeanScript.Term.lazy_force (τ := $(← a.stx L.c #[])) $t)
+    | .thunk a => do pure (Src.thunkForce (← a.stx L.c #[]) t)
+    | .lazy a => do pure (Src.lazyForce (← a.stx L.c #[]) t)
     | _ => pure t
   match dst with
-  | .thunk a => `(LeanScript.Term.thunk_mk (τ := $(← a.stx L.c #[])) $forced)
-  | .lazy a => `(LeanScript.Term.lazy_mk (τ := $(← a.stx L.c #[])) $forced)
+  | .thunk a => do pure (Src.thunkMk (← a.stx L.c #[]) forced)
+  | .lazy a => do pure (Src.lazyMk (← a.stx L.c #[]) forced)
   | _ => pure forced
 
 /-- A translation of Lean type `src` as a term of the reading of `dst`, a Lean type equal to
     `src` up to delays: `delayCoerce` between their readings. -/
-def delayCoerceTy (L : Loc) (src dst : Expr) (t : Lean.Term) : TM Lean.Term := do
+def delayCoerceTy (L : Loc) (src dst : Expr) (t : Src) : TM Src := do
   delayCoerce L (← cirOf L src false) (← cirOf L dst false) t
 
 /-- Is a type one whose values are Lean's own values (so an extern can take and return it)? -/
@@ -220,7 +223,7 @@ partial def nestShape (mems : Array Expr) (T : Expr) : MetaM (Option NShape) := 
     of depth `d - 1`.  A field that holds members inside an `Array` or a function holds the
     pairs of the subvalues and their answers (only at depth `0`). -/
 partial def openWindows (L : Loc) (mems : Array Expr) (xs : Array Expr) (erased : Array Bool)
-    (d : Nat) (kont : Loc → TM Lean.Term) : TM Lean.Term := do
+    (d : Nat) (kont : Loc → TM Src) : TM Src := do
   let kept := (xs.zip erased).filter (!·.2) |>.map (·.1)
   let holes ← kept.filterM fun x => do isMember mems (← inferType x)
   let mut L' := L
@@ -240,7 +243,7 @@ partial def openWindows (L : Loc) (mems : Array Expr) (xs : Array Expr) (erased 
             through it is supported"
         L' := { L' with nest := L'.nest.insert x.fvarId! s }
   let width := if d = 0 then 2 else 3
-  let rec go (L' : Loc) (done : Nat) (hs : List Expr) : TM Lean.Term := do
+  let rec go (L' : Loc) (done : Nat) (hs : List Expr) : TM Src := do
     match hs with
     | [] => kont L'
     | h :: rest =>
@@ -251,7 +254,7 @@ partial def openWindows (L : Loc) (mems : Array Expr) (xs : Array Expr) (erased 
       let L'' := { L'' with ans := L''.ans.insert h.fvarId! (L''.slots.size - 2) }
       let L'' := if d > 0 then { L'' with win := L''.win.insert h.fvarId! (L''.slots.size - 3, d - 1) }
         else L''
-      `(LeanScript.Term.record_casesOn $(← varStx idx) $(← go L'' (done + 1) rest))
+      return Src.recordCases (← varStx idx) width (← go L'' (done + 1) rest)
   go L' 0 holes.toList
 
 /-- The functions of the mutual group of `f` (as declared with `mutual`), `f` included. -/
@@ -451,15 +454,15 @@ where
 
 /-- In a branch of the fold of a recursion whose recursive calls change the parameters at the
     positions `L.vary`: bind a fresh local for each of them (the first outermost), put them for
-    the parameters in `body`, translate with `k`, and wrap the result in one `Term.lam` each. -/
-def withVaryLocals (L : Loc) (body : Expr) (k : Loc → Expr → TM Lean.Term) : TM Lean.Term := do
+    the parameters in `body`, translate with `k`, and wrap the result in one closure each. -/
+def withVaryLocals (L : Loc) (body : Expr) (k : Loc → Expr → TM Src) : TM Src := do
   let ps := L.vary.map (L.params[·]!)
-  let rec go (i : Nat) (L' : Loc) (xs : Array Expr) : TM Lean.Term := do
+  let rec go (i : Nat) (L' : Loc) (xs : Array Expr) : TM Src := do
     if h : i < ps.size then
       let p := ps[i]
       let d ← p.fvarId!.getDecl
       withLocalDeclD d.userName d.type fun x => do
-        `(LeanScript.Term.lam $(← go (i + 1) (L'.bind x.fvarId!) (xs.push x)))
+        return Src.lam none (← go (i + 1) (L'.bind x.fvarId!) (xs.push x))
     else
       k L' (body.replaceFVars ps xs)
   go 0 L #[]
@@ -493,11 +496,31 @@ def indexParams (xs : Array Expr) : MetaM (Array Nat) := do
 def isIdMonad (m : Expr) : MetaM Bool := do
   return (← whnfR (← instantiateMVars m)).isConstOf ``Id
 
-/-- `t a₁ … aₙ` in the language: `Term.app` of `t` to each of the terms `as`. -/
-def appStx (t : Lean.Term) (as : Array Lean.Term) : MetaM Lean.Term := do
-  let mut r := t
-  for a in as do r ← `(LeanScript.Term.app $r $a)
-  return r
+/-- `t a₁ … aₙ` in the language: `Comp.app` of `t` to each of the terms `as`. -/
+def appStx (t : Src) (as : Array Src) : MetaM Src := pure (Src.apps t as)
+
+/-- The case analysis of a value `scrut` of the type of `plan`, one branch per constructor
+    (binding its fields), of type `ty?` when known: the source of `casesBodyStx` (`ite`,
+    `enum_casesOn`, a `let` of the single field, `record_casesOn`, `union_casesOn`). -/
+def casesSrc (plan : TypePlan) (scrut : Src) (bs : Array Src) (ty? : Option Lean.Term) :
+    MetaM Src := do
+  let m := plan.ctors.size
+  if plan.isBool then
+    return Src.ite ty? scrut bs[1]! bs[0]!
+  else if plan.enum?.isSome then
+    let i := mkIdent `i
+    return .cases ty? scrut (bs.map (0, ·)) fun c rhss => do
+      let mut sel := rhss[m - 1]!
+      for p in (List.range (m - 1)).reverse do
+        sel ← `(if ($i).val = $(quote p) then $(rhss[p]!) else $sel)
+      `(LeanScript.Term.enum_casesOn $c (fun $i => $sel))
+  else if m = 1 then
+    let n := plan.ctors[0]!.2.size
+    if n = 1 then return .letE scrut bs[0]!
+    else return Src.recordCases scrut n bs[0]!
+  else
+    return Src.unionCases ty? scrut
+      ((List.range m).toArray.map fun p => (plan.ctors[p]!.2.size, bs[p]!))
 
 /-- Is `c` declared in Lean's own library (`Init`, `Std`, `Lean`)?  Such a function is an
     extern of the language, never a helper whose definition is translated. -/

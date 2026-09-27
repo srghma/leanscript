@@ -74,8 +74,8 @@ example : Prog.block0 = .cons (.union (.two₁ .nullary
     (.fields (.cons (.old .nat) (.one (.hole 0 (by decide))))))) .nil := rfl
 
 /--
-info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x1 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) : Term Prog.Δ Γ (Ty.data (Ref.here 0))
+info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
+  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in
 #leanscript_get_ctor QT.node
@@ -85,7 +85,7 @@ info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.pri
 def q3 : QT := .node (Quot.mk _ 3) (.node (Quot.mk _ 4) .leaf)
 def q3T := #leanscript_to_term q3
 
-example : q3T = Prog.QT.node (.lit .nat 3) (Prog.QT.node (.lit .nat 4) Prog.QT.leaf) := rfl
+example : q3T = .ret (Prog.QT.node (.lit .nat 3) (Prog.QT.node (.lit .nat 4) Prog.QT.leaf)) := rfl
 
 /-! ## Functions on quotients: applied to the representative -/
 
@@ -115,12 +115,16 @@ def parity (q : Quot Par) : Nat := Quot.lift (fun a => a % 2) (fun _ _ h => h) q
 
 /--
 info: fun {ks} {Δ} =>
-  ((Term.var DeBruijn.head).letE
-      (Term.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd.fst)
-        (Args.cons (Term.var DeBruijn.head)
-          (Args.cons (Term.lit LeanPrimTy.nat 2)
-            Args.nil)))).lam : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat))
+  Term.letE
+    (Comp.lam
+      (Term.letE
+        (Comp.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd.fst)
+          (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)))
+        (Term.ret (PExpr.var DeBruijn.head))))
+    (Term.ret
+      (PExpr.var
+        DeBruijn.head)) : {ks : List Nat} →
+  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) []
 -/
 #guard_msgs in
 #check #leanscript_to_term parity
@@ -165,11 +169,19 @@ def sameT := #leanscript_to_term same
 
 /--
 info: fun {ks} {Δ} =>
-  (Term.extern "decide Eq" (fun v => (fun x0 x1 => decide (Quot.mk Par x0 = Quot.mk Par x1)) v.fst v.snd.fst)
-        (Args.cons (Term.var DeBruijn.head.tail)
-          (Args.cons (Term.var DeBruijn.head)
-            Args.nil))).lam.lam : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.bool)))
+  Term.letE
+    (Comp.lam
+      (Term.letE
+        (Comp.lam
+          (Term.letE
+            (Comp.extern "decide Eq" (fun v => (fun x0 x1 => decide (Quot.mk Par x0 = Quot.mk Par x1)) v.fst v.snd.fst)
+              (Args.cons (PExpr.var DeBruijn.head.tail) (Args.cons (PExpr.var DeBruijn.head) Args.nil)))
+            (Term.ret (PExpr.var DeBruijn.head))))
+        (Term.ret (PExpr.var DeBruijn.head))))
+    (Term.ret
+      (PExpr.var
+        DeBruijn.head)) : {ks : List Nat} →
+  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.bool))) []
 -/
 #guard_msgs in
 #check #leanscript_to_term same
@@ -200,7 +212,7 @@ def Pos.succ (n : Nat) : Pos := ⟨n + 1, by omega⟩
 def predT := #leanscript_to_term Pos.pred
 def oneT := #leanscript_to_term Pos.one
 def succT := #leanscript_to_term Pos.succ
-example : oneT (Δ := DSig.nil) = .lit .nat 1 := rfl
+example : oneT (Δ := DSig.nil) = .ret (.lit .nat 1) := rfl
 example : (predT (Δ := DSig.nil)).run ((succT (Δ := DSig.nil)).run (4 : Nat)) = (4 : Nat) := rfl
 
 /-! ## Refusals -/

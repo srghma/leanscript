@@ -8,10 +8,12 @@ public import LeanScript.DenFacts
 set_option autoImplicit false
 
 /-!
-# The evaluator of `Term`
+# The evaluators of the three layers of `Term`
 
-`Term.eval e env : Ty.Den Δ τ` — total, structural, no fuel.  The datatype formers
-evaluate to `DSig.dataIn`, `DSig.dataOut`, `DSig.dataRec` and `DSig.dataBrec`, so a translated program
+`PExpr.eval e env`, `Comp.eval c env : Ty.Den Δ τ` and `Term.eval t env κ : Ty.Den Δ τ`, where
+`κ : JEnv Δ τ js` holds the closures of the join points in scope — total, structural, no
+fuel.  `PExpr.eval` is not mutual with the two others.  The datatype formers evaluate to
+`DSig.dataIn`, `DSig.dataOut`, `DSig.dataRec` and `DSig.dataBrec`, so a translated program
 computes by `rfl`.
 -/
 
@@ -102,107 +104,144 @@ def natIter {α : Type} (z : α) (s : Nat → α → α) : Nat → α
   | 0 => z
   | n + 1 => s n (natIter z s n)
 
+/-- The values of the join points in scope, for statements of type `τ`: each one is the
+    closure of its body over the environment it was defined in. -/
+def JEnv {ks : List Nat} (Δ : DSig ks) (τ : Ty ks) : JCtx ks → Type
+  | [] => PUnit
+  | σ :: js => (Ty.Den Δ σ → Ty.Den Δ τ) × JEnv Δ τ js
+
+/-- The closure of a join point. -/
+def JEnv.get {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} : {js : JCtx ks} → {σ : Ty ks} →
+    JEnv Δ τ js → JVar js σ → Ty.Den Δ σ → Ty.Den Δ τ
+  | _ :: _, _, k, .head => k.1
+  | _ :: _, _, k, .tail j => JEnv.get k.2 j
+
 section Eval
 variable {ks : List Nat} {Δ : DSig ks}
 
 mutual
-/-- The value of a term in an environment. -/
-def Term.eval : {Γ : Ctx ks} → {τ : Ty ks} → Term Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
-  | _, _, .var x, ρ => ρ.get x
-  | _, _, .letE e b, ρ => b.eval (e.eval ρ, ρ)
-  | _, _, .lam b, ρ => fun v => b.eval (v, ρ)
-  | _, _, .app f a, ρ => f.eval ρ (a.eval ρ)
-  | _, _, .lit _ v, _ => v
-  | _, _, .extern _ f args, ρ => f (args.eval ρ)
-  | _, _, .ite c t e, ρ => match (c.eval ρ : Bool) with
-      | true => t.eval ρ
-      | false => e.eval ρ
-  | _, _, .nat_rec n z s, ρ =>
-      natIter (z.eval ρ) (fun k acc => s.eval (acc, k, ρ)) (n.eval ρ)
-  | _, _, .enum_mk _ i, _ => i
-  | _, _, .enum_casesOn e bs, ρ => (bs (e.eval ρ)).eval ρ
-  | _, _, .record_mk (fs := fs) args, ρ =>
+/-- The value of a pure expression in an environment. -/
+def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
+  | _, .var x, ρ => ρ.get x
+  | _, .lit _ v, _ => v
+  | _, .enum_mk _ i, _ => i
+  | _, .record_mk (fs := fs) args, ρ =>
       let v := args.eval ρ
       (v.1, Fields.ofDL fs v.2)
-  | _, _, .record_casesOn (fs := fs) e body, ρ =>
-      let x := e.eval ρ
-      body.eval (DenList.append (x.1, Fields.toDL fs x.2) ρ)
-  | _, _, .union_mk ix args, ρ => ix.inject (args.eval ρ)
-  | _, _, .union_casesOn e bs, ρ => bs.eval ρ (e.eval ρ)
-  | _, _, .array_mk es, ρ => (es.eval ρ).toArray
-  | _, _, .array_foldl a z s, ρ =>
-      (a.eval ρ).foldl (fun acc x => s.eval (x, acc, ρ)) (z.eval ρ)
-  | _, _, .data_in b j e, ρ => Δ.dataIn b j (e.eval ρ)
-  | _, _, .data_out b j e, ρ => Δ.dataOut b j (e.eval ρ)
-  | _, _, .data_rec b ρt brs j e, ρ => Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ)) j (e.eval ρ)
-  | _, _, .data_brec b ρt k brs j e, ρ =>
-      Δ.dataBrec b ρt k (fun i x => (brs i).eval (x, ρ)) j (e.eval ρ)
-  | _, _, .thunk_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ)
-  | _, _, .thunk_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
-  | _, _, .lazy_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ)
-  | _, _, .lazy_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
-  termination_by structural _ _ e _ => e
+  | _, .union_mk ix args, ρ => ix.inject (args.eval ρ)
+  | _, .array_mk es, ρ => (es.eval ρ).toArray
+  | _, .data_in b j e, ρ => Δ.dataIn b j (e.eval ρ)
+  | _, .data_out b j e, ρ => Δ.dataOut b j (e.eval ρ)
+  termination_by structural _ e _ => e
 /-- The values of the arguments. -/
-def Args.eval : {Γ : Ctx ks} → {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →
+def Args.eval {Γ : Ctx ks} : {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →
     DenList (DSig.refDen Δ) σs
-  | _, _, .nil, _ => PUnit.unit
-  | _, _, .cons a as, ρ => (a.eval ρ, as.eval ρ)
-  termination_by structural _ _ a _ => a
-/-- Dispatch a value of a union to its branch. -/
-def Branches.eval : {Γ : Ctx ks} → {bs : List Bool} → {cs : Ctors ks bs} → {τ : Ty ks} → Branches Δ Γ cs τ →
-    Env Δ Γ → Ctors.den (DSig.refDen Δ) cs → Ty.Den Δ τ
-  | _, _, _, _, .two (c := c) (d := d) bc bd, ρ, x =>
-      Ctor.twoCase c d x (fun v => bc.eval (DenList.append v ρ)) (fun v => bd.eval (DenList.append v ρ))
-  | _, _, _, _, .cons (c := c) b bs, ρ, x =>
-      Ctor.consCase c x (fun v => b.eval (DenList.append v ρ)) (fun r => bs.eval ρ r)
-  termination_by structural _ _ _ _ b _ _ => b
+  | _, .nil, _ => PUnit.unit
+  | _, .cons a as, ρ => (a.eval ρ, as.eval ρ)
+  termination_by structural _ a _ => a
 /-- The values of the elements of an array literal. -/
-def Elems.eval : {Γ : Ctx ks} → {t : Ty ks} → Elems Δ Γ t → Env Δ Γ → List (Ty.Den Δ t)
-  | _, _, .nil, _ => []
-  | _, _, .cons e es, ρ => e.eval ρ :: es.eval ρ
-  termination_by structural _ _ e _ => e
+def Elems.eval {Γ : Ctx ks} : {t : Ty ks} → Elems Δ Γ t → Env Δ Γ → List (Ty.Den Δ t)
+  | _, .nil, _ => []
+  | _, .cons e es, ρ => e.eval ρ :: es.eval ρ
+  termination_by structural _ e _ => e
+end
+
+mutual
+/-- The value of a computation in an environment. -/
+def Comp.eval : {Γ : Ctx ks} → {τ : Ty ks} → Comp Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
+  | _, _, .app f a, ρ => f.eval ρ (a.eval ρ)
+  | _, _, .lam b, ρ => fun v => b.eval (v, ρ) PUnit.unit
+  | _, _, .share e, ρ => e.eval ρ
+  | _, _, .extern _ f args, ρ => f (args.eval ρ)
+  | _, _, .nat_rec n z s, ρ =>
+      natIter (z.eval ρ) (fun k acc => s.eval (acc, k, ρ) PUnit.unit) (n.eval ρ)
+  | _, _, .array_foldl a z s, ρ =>
+      (a.eval ρ).foldl (fun acc x => s.eval (x, acc, ρ) PUnit.unit) (z.eval ρ)
+  | _, _, .data_rec b ρt brs j e, ρ =>
+      Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ) PUnit.unit) j (e.eval ρ)
+  | _, _, .data_brec b ρt k brs j e, ρ =>
+      Δ.dataBrec b ρt k (fun i x => (brs i).eval (x, ρ) PUnit.unit) j (e.eval ρ)
+  | _, _, .thunk_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ PUnit.unit)
+  | _, _, .thunk_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
+  | _, _, .lazy_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ PUnit.unit)
+  | _, _, .lazy_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
+  termination_by structural _ _ c _ => c
+/-- The value of a statement in an environment, given the closures of its join points. -/
+def Term.eval : {Γ : Ctx ks} → {τ : Ty ks} → {js : JCtx ks} → Term Δ Γ τ js → Env Δ Γ →
+    JEnv Δ τ js → Ty.Den Δ τ
+  | _, _, _, .ret e, ρ, _ => e.eval ρ
+  | _, _, _, .letE c b, ρ, κ => b.eval (c.eval ρ, ρ) κ
+  | _, _, _, .record_casesOn (fs := fs) e body, ρ, κ =>
+      let x := e.eval ρ
+      body.eval (DenList.append (x.1, Fields.toDL fs x.2) ρ) κ
+  | _, _, _, .ite c t e, ρ, κ => match (c.eval ρ : Bool) with
+      | true => t.eval ρ κ
+      | false => e.eval ρ κ
+  | _, _, _, .enum_casesOn e bs, ρ, κ => (bs (e.eval ρ)).eval ρ κ
+  | _, _, _, .union_casesOn e bs, ρ, κ => bs.eval ρ κ (e.eval ρ)
+  | _, _, _, .join _ body main, ρ, κ => main.eval ρ (fun v => body.eval (v, ρ) κ, κ)
+  | _, _, _, .jump j e, ρ, κ => κ.get j (e.eval ρ)
+  termination_by structural _ _ _ t _ _ => t
+/-- Dispatch a value of a union to its branch. -/
+def Branches.eval : {Γ : Ctx ks} → {bs : List Bool} → {cs : Ctors ks bs} → {τ : Ty ks} →
+    {js : JCtx ks} → Branches Δ Γ cs τ js → Env Δ Γ → JEnv Δ τ js →
+    Ctors.den (DSig.refDen Δ) cs → Ty.Den Δ τ
+  | _, _, _, _, _, .two (c := c) (d := d) bc bd, ρ, κ, x =>
+      Ctor.twoCase c d x (fun v => bc.eval (DenList.append v ρ) κ)
+        (fun v => bd.eval (DenList.append v ρ) κ)
+  | _, _, _, _, _, .cons (c := c) b bs, ρ, κ, x =>
+      Ctor.consCase c x (fun v => b.eval (DenList.append v ρ) κ) (fun r => bs.eval ρ κ r)
+  termination_by structural _ _ _ _ _ b _ _ _ => b
 end
 
 end Eval
 
 /-- `data_out` undoes `data_in`: one layer out of a layer just put on is the value it was
     built from. -/
-theorem Term.eval_data_out_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
-    (j : Fin ((Δ.block b).k + 1)) (e : Term Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
-    (Term.data_out b j (.data_in b j e)).eval ρ = e.eval ρ := by
-  simp only [Term.eval]
+theorem PExpr.eval_data_out_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
+    (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
+    (PExpr.data_out b j (.data_in b j e)).eval ρ = e.eval ρ := by
+  simp only [PExpr.eval]
   exact DSig.dataOut_dataIn Δ b j _
 
 /-- Course-of-values recursion on a value built by `data_in` runs the branch of its member on
     its body, every child replaced by its window (`DSig.dataBrec_dataIn`). -/
-theorem Term.eval_data_brec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
+theorem Comp.eval_data_brec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
     (ρt : Fin ((Δ.block b).k + 1) → Ty ks) (k : Nat)
-    (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).brecBody ρt k i :: Γ) (ρt i))
-    (j : Fin ((Δ.block b).k + 1)) (e : Term Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
-    (Term.data_brec b ρt k brs j (.data_in b j e)).eval ρ =
+    (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).brecBody ρt k i :: Γ) (ρt i) [])
+    (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
+    (Comp.data_brec b ρt k brs j (.data_in b j e)).eval ρ =
       (brs j).eval ((Δ.block b).mapInst
-        (fun i c => Δ.dataWin b ρt k (fun i x => (brs i).eval (x, ρ)) i c) j (e.eval ρ), ρ) := by
-  simp only [Term.eval]
+        (fun i c => Δ.dataWin b ρt k (fun i x => (brs i).eval (x, ρ) PUnit.unit) i c) j
+          (e.eval ρ), ρ) PUnit.unit := by
+  simp only [Comp.eval, PExpr.eval]
   exact DSig.dataBrec_dataIn Δ b ρt k _ j _
 
 /-- The fold on a value built by `data_in` runs the branch of its member on its body, every
     child replaced by the pair of the child and the answer at it (`DSig.dataRec_dataIn`). -/
-theorem Term.eval_data_rec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
+theorem Comp.eval_data_rec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (b : BRef ks)
     (ρt : Fin ((Δ.block b).k + 1) → Ty ks)
-    (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).recBody ρt i :: Γ) (ρt i))
-    (j : Fin ((Δ.block b).k + 1)) (e : Term Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
-    (Term.data_rec b ρt brs j (.data_in b j e)).eval ρ =
+    (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).recBody ρt i :: Γ) (ρt i) [])
+    (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
+    (Comp.data_rec b ρt brs j (.data_in b j e)).eval ρ =
       (brs j).eval ((Δ.block b).mapInst
         (σ' := fun i => Ty.pair (.data ((Δ.block b).ref i)) (ρt i))
-        (fun i c => (c, Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ)) i c)) j (e.eval ρ), ρ) := by
-  simp only [Term.eval]
+        (fun i c => (c, Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ) PUnit.unit) i c)) j
+          (e.eval ρ), ρ) PUnit.unit := by
+  simp only [Comp.eval, PExpr.eval]
   exact DSig.dataRec_dataIn Δ b ρt _ j _
 
-/-- The value of a closed term. -/
-abbrev Term.run {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} (e : Term Δ [] τ) : Ty.Den Δ τ :=
+/-- The value of a closed statement with no join point in scope. -/
+abbrev Term.run {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} (e : Term Δ [] τ []) : Ty.Den Δ τ :=
+  e.eval PUnit.unit PUnit.unit
+
+/-- The value of a closed pure expression. -/
+abbrev PExpr.run {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} (e : PExpr Δ [] τ) : Ty.Den Δ τ :=
   e.eval PUnit.unit
 
-
+/-- The value of a closed computation. -/
+abbrev Comp.run {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} (c : Comp Δ [] τ) : Ty.Den Δ τ :=
+  c.eval PUnit.unit
 
 end LeanScript
 

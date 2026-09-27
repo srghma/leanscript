@@ -2,6 +2,7 @@ module
 
 public import TermTests.NestTest
 public meta import LeanScript.ToTerm
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -22,7 +23,7 @@ open LeanScript NestTest
 example : Nest.Elem Nat := .node (.leaf 1) (.leaf 2)
 
 -- the imported program is still the current one
-example : lengthT.run n3T.run = (3 : Nat) := rfl
+example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
 
 -- a new program reuses the imported element type, at another base
 leanscript_signature Prog2 where

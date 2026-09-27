@@ -81,6 +81,16 @@ instance {xs : List α} {x : α} : BEq (DeBruijn xs x) := instBEqOfDecidableEq
 
 example {xs : List α} {x : α} : LawfulBEq (DeBruijn xs x) := inferInstance
 
+/-- An index into `xs` as an index into `xs ++ ys`: the same position. -/
+def appendRight {ys : List α} : {xs : List α} → {x : α} → DeBruijn xs x → DeBruijn (xs ++ ys) x
+  | _, _, .head => .head
+  | _, _, .tail v => .tail v.appendRight
+
+/-- The position just past `xs` in `xs ++ y :: ys`. -/
+def atLength {y : α} {ys : List α} : (xs : List α) → DeBruijn (xs ++ y :: ys) y
+  | [] => .head
+  | _ :: xs => .tail (atLength xs)
+
 /-- A renaming from the positions of `xs` to those of `ys` that preserves the entries. -/
 abbrev Ren (xs ys : List α) : Type := ∀ {x : α}, DeBruijn xs x → DeBruijn ys x
 
@@ -104,6 +114,13 @@ def liftN {xs ys : List α} (r : Ren xs ys) : (zs : List α) → Ren (zs ++ xs) 
 def skip {xs : List α} : (zs : List α) → Ren xs (zs ++ xs)
   | [], _, v => v
   | _ :: zs, _, v => .tail (skip zs v)
+
+/-- The renaming into a list `ys` whose first `n` entries are new: `ys.drop n = xs`.  With
+    concrete lists (or a known prefix of `n` entries) the side condition is closed by `rfl`. -/
+def dropN : (n : Nat) → {xs ys : List α} → ys.drop n = xs → Ren xs ys
+  | 0, _, _, h, _, v => by subst h; exact v
+  | _ + 1, _, [], h, _, v => by cases h; exact nomatch v
+  | n + 1, _, _ :: _, h, _, v => .tail (dropN n h v)
 
 end Ren
 

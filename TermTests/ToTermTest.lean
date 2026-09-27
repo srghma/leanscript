@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Eval
 public meta import LeanScript.ToTerm
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -10,8 +11,9 @@ set_option autoImplicit false
 /-!
 # `#leanscript_to_term`
 
-Lean definitions translated to `LeanScript.Term`, and the translations run by `Term.eval`
-against the Lean definitions (by `rfl`).  Non-recursive definitions, `if`, `match` on
+Lean definitions translated to `LeanScript.Term` (in A-normal form), and the translations run
+by `Term.eval` against the Lean definitions (by `rfl`).  Values of the datatypes are built as
+pure expressions (`PExpr`) by the constructor functions of `#leanscript_get_ctor`.  Non-recursive definitions, `if`, `match` on
 `Option`, an enum, `Bool` and a structure, projections, `let`, structural recursion on `Nat`
 (`nat_rec`), on `List Nat` and on a binary tree (`data_rec`), a map that builds a list
 (`data_in` through `#leanscript_get_ctor`), and course-of-values recursion (`data_brec`).
@@ -114,20 +116,20 @@ def tsum : Tree → Nat
 
 def tsumT := #leanscript_to_term tsum
 
-def mkList : Term Prog.Δ [] Prog.listNat :=
+def mkList : PExpr Prog.Δ [] Prog.listNat :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
 example : lsumT.run mkList.run = (3 : Nat) := rfl
-example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := rfl
+example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := by kernel_rfl
 
-def leafT : Term Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
-def treeT : Term Prog.Δ [] Prog.tree :=
+def leafT : PExpr Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
+def treeT : PExpr Prog.Δ [] Prog.tree :=
   (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leafT (.lit .nat 1) leafT)
     (.lit .nat 2) leafT
 
-example : tsumT.run treeT.run = (3 : Nat) := rfl
+example : tsumT.run treeT.run = (3 : Nat) := by kernel_rfl
 
 /-- Course-of-values recursion: `fibL (y :: t)` and `fibL t` are one and two levels down, so
     the translation is `data_brec` of depth `1`. -/
@@ -138,7 +140,7 @@ def fibL : List Nat → Nat
 
 def fibLT := #leanscript_to_term fibL
 
-def mkList5 : Term Prog.Δ [] Prog.listNat :=
+def mkList5 : PExpr Prog.Δ [] Prog.listNat :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 3)
@@ -146,17 +148,17 @@ def mkList5 : Term Prog.Δ [] Prog.listNat :=
           ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 5)
             (#leanscript_get_ctor List.nil (α := Nat))))))
 
-example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := rfl
+example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := by kernel_rfl
 
 /-! ## The command shows the type of the translation -/
 
 /--
-info: lsum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat))
+info: lsum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat)) []
 -/
 #guard_msgs in
 #leanscript_to_term lsum
 /--
-info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat))
+info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) []
 -/
 #guard_msgs in
 #leanscript_to_term sumTo
@@ -196,7 +198,7 @@ def fib : Nat → Nat
   | n + 2 => fib n + fib (n + 1)
 /--
 error: LeanScript: the recursive call
-  fib (n✝ + 1)
+  fib n✝
 is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 -/
 #guard_msgs in

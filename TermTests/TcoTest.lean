@@ -75,9 +75,9 @@ def hyperWhileT := #leanscript_to_term hyperWhile
 def iterT := #leanscript_to_term iter
 
 example : (ackInnerT (Δ := DSig.nil)).run ((fun x => x + 2 : Nat → Nat)) (3 : Nat) = ackInner (fun x => x + 2) 3 := rfl
-example : (ack2T (Δ := DSig.nil)).run (2 : Nat) (3 : Nat) = ack2 2 3 := rfl
+example : (ack2T (Δ := DSig.nil)).run (2 : Nat) (3 : Nat) = ack2 2 3 := by kernel_rfl
 example : (hyperLoopT (Δ := DSig.nil)).run ((fun x => 2 * x : Nat → Nat)) (5 : Nat) (1 : Nat) = hyperLoop (fun x => 2 * x) 5 1 := rfl
-example : (hyperTCOT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 1 2 3 := rfl
+example : (hyperTCOT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 1 2 3 := by kernel_rfl
 example : (hyperWhileT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperWhile 1 2 3 := by
   rw [show hyperWhile 1 2 3 = 5 by native_decide]; kernel_rfl
 example : (hyperTCOT (Δ := DSig.nil)).run (3 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 3 2 3 := by kernel_rfl

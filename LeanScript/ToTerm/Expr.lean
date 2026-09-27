@@ -18,13 +18,19 @@ extern, a range `for` loop, a fold over a nested container, ...) to the syntax o
 -/
 
 open Lean Meta Elab Term
+open LeanScript.Anf (Src)
 
 namespace LeanScript.Gen
+
+/-- The syntax of the reading of the Lean type `T`, when it has one (the type of a branch, for
+    the join point of the rest of the computation). -/
+def tyOf? (L : Loc) (T : Expr) : TM (Option Lean.Term) := do
+  try return some (← (← cirOf L T false).stx L.c #[]) catch _ => return none
 
 mutual
 
 /-- The translation of an expression. -/
-partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
+partial def tr (L : Loc) (e : Expr) : TM Src := do
   let e := (← instantiateMVars e).headBeta
   match e with
   | .mdata _ e => tr L e
@@ -46,7 +52,7 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
     let tv ← tr L v
     withLocalDeclD n t fun x => do
       let body ← tr (L.bind x.fvarId!) (b.instantiate1 x)
-      `(LeanScript.Term.letE $tv $body)
+      return .letE tv body
   | .lam n t b _ =>
     -- `fun _ : Unit => b` is a lazy delay of `b` (`Unit` has one value: no variable is bound)
     if ← isUnitType t then
@@ -54,7 +60,7 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
       return ← delayCoerceTy L (← inferType b) (← inferType e) (← tr L b)
     discard <| cirOf L t
     withLocalDeclD n t fun x => do
-      `(LeanScript.Term.lam $(← tr (L.bind x.fvarId!) (b.instantiate1 x)))
+      return Src.lam none (← tr (L.bind x.fvarId!) (b.instantiate1 x))
   | .proj S i s =>
     -- a projection of a constructor application (`(⟨j, h⟩ : Fin m).val`) is that field
     if let some e' ← Meta.reduceProj? e then
@@ -70,7 +76,7 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
     if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
       if let .prim p ← cirOf L T false then
         let d ← instantiateMVars (← Term.elabTerm (← `(LeanPrimTy.denote $p)) none)
-        if ← isDefEq T d then return ← `(LeanScript.Term.lit $p $(← exprToSyntax e))
+        if ← isDefEq T d then return ← Src.lit p (← exprToSyntax e)
         -- a closed value of a type read as a leaf without being one (a wrapper `⟨1, h⟩ : Pos`,
         -- a quotient `Quot.mk r 3`): its head normal form, whose value is the literal
         let e' ← whnf e
@@ -78,7 +84,7 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
     trApp L e
 
 /-- A projection `s.i` of a structure. -/
-partial def trProj (L : Loc) (S : Name) (i : Nat) (s : Expr) : TM Lean.Term := do
+partial def trProj (L : Loc) (S : Name) (i : Nat) (s : Expr) : TM Src := do
   let T ← normType (← inferType s) false
   let plan ← lm (planType T L.prog?)
   if plan.data?.isSome then modify fun st => { st with usesData := true }
@@ -99,12 +105,12 @@ partial def trProj (L : Loc) (S : Name) (i : Nat) (s : Expr) : TM Lean.Term := d
   let n := plan.ctors[0]!.2.size
   let mut scrut ← tr L s
   if let some (b, j) := plan.data? then
-    scrut ← `(LeanScript.Term.data_out $(← brefStx L.c b) $(quote j) $scrut)
+    scrut := Src.dataOut (← brefStx L.c b) (quote j) scrut
   if n = 1 then return scrut
-  `(LeanScript.Term.record_casesOn $scrut $(← varStx q))
+  return Src.recordCases scrut n (← varStx q)
 
 /-- An application. -/
-partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
+partial def trApp (L : Loc) (e : Expr) : TM Src := do
   let fn := e.getAppFn
   let args := e.getAppArgs
   match fn with
@@ -115,22 +121,21 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
         fail m!"the value{indentExpr e}\nholds values of the datatype recursed on, paired with \
           the answers at them: it can only be folded (`Array.foldl`), applied, or passed to a \
           recursive call"
-      return ← `(LeanScript.Term.record_casesOn $t (LeanScript.Term.var DeBruijn.head))
+      return Src.recordCases t 2 (.var 0)
     -- a field `f : Fin m → T` read as `Nat → Option T`: `f i` is `some` below `m`, and the
     -- unreachable `none` gets the default of `T`
     if (← get).optFields.contains x && args.size ≥ 1 then
       let a := args[0]!
       let T ← inferType (mkApp fn a)
       let d ← defaultTerm L T m!"the application{indentExpr e}"
-      let mut scrut ← `(LeanScript.Term.app $(← tr L fn) $(← tr L a))
+      let mut scrut := Src.app (← tr L fn) (← tr L a)
       -- `Option T` is a member of the block of `T`: taken apart after `data_out`
       let plan ← lm (planType (← normType (← mkAppM ``Option #[T]) false) L.prog?)
       if let some (b, j) := plan.data? then
         modify fun st => { st with usesData := true }
-        scrut ← `(LeanScript.Term.data_out $(← brefStx L.c b) $(quote j) $scrut)
-      let mut r ← `(LeanScript.Term.union_casesOn $scrut
-        (LeanScript.Branches.two $d (LeanScript.Term.var DeBruijn.head)))
-      for a in args[1:] do r ← `(LeanScript.Term.app $r $(← tr L a))
+        scrut := Src.dataOut (← brefStx L.c b) (quote j) scrut
+      let mut r := Src.unionCases (← tyOf? L T) scrut #[(0, d), (1, .var 0)]
+      for a in args[1:] do r := Src.app r (← tr L a)
       return r
     appArgs L fn (← tr L fn) args
   | .const c _ =>
@@ -144,15 +149,16 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
       return ← appArgs L e₂ r args[2:].toArray
     if c == ``ite && args.size == 5 then
       let d := mkApp2 (mkConst ``Decidable.decide) args[1]! args[2]!
-      return ← `(LeanScript.Term.ite $(← tr L d) $(← tr L args[3]!) $(← tr L args[4]!))
+      return Src.ite (← tyOf? L (← inferType e)) (← tr L d) (← tr L args[3]!) (← tr L args[4]!)
     if c == ``cond && args.size == 4 then
-      return ← `(LeanScript.Term.ite $(← tr L args[1]!) $(← tr L args[2]!) $(← tr L args[3]!))
+      return Src.ite (← tyOf? L (← inferType e)) (← tr L args[1]!) (← tr L args[2]!)
+        (← tr L args[3]!)
     if c == ``dite && args.size == 5 then
       let d := mkApp2 (mkConst ``Decidable.decide) args[1]! args[2]!
-      let br (k : Expr) (h : Expr) : TM Lean.Term :=
+      let br (k : Expr) (h : Expr) : TM Src :=
         withLocalDeclD `h h fun x => tr L (mkApp k x)
-      return ← `(LeanScript.Term.ite $(← tr L d) $(← br args[3]! args[1]!)
-        $(← br args[4]! (mkNot args[1]!)))
+      return Src.ite (← tyOf? L (← inferType e)) (← tr L d) (← br args[3]! args[1]!)
+        (← br args[4]! (mkNot args[1]!))
     if c == ``Decidable.decide && args.size == 2 then
       -- `decide (b = true)` is `b`
       if let some (_, b, t) := args[0]!.eq? then
@@ -169,7 +175,7 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
         let tx ← tr L args[4]!
         return ← withLocalDeclD `y args[2]! fun y => do
           let body ← tr (L.bind y.fvarId!) (mkAppN (mkApp args[5]! y) args[6:].toArray)
-          `(LeanScript.Term.letE $tx $body)
+          return .letE tx body
     -- a `for` loop over a range `[a:b:s]` in `Id`
     if c == ``ForIn.forIn && args.size == 8 then
       if (← isIdMonad args[0]!) && (← whnfR args[1]!).isConstOf ``Std.Legacy.Range then
@@ -216,9 +222,7 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
       if let some xs ← listLit? args[1]! then
         let τ ← cirOf L (← inferType e) false
         unless τ.isLeaf do
-          let mut es ← `(LeanScript.Elems.nil)
-          for x in xs.reverse do es ← `(LeanScript.Elems.cons $(← tr L x) $es)
-          return ← `(LeanScript.Term.array_mk $es)
+          return Src.arrayMk (← xs.mapM (tr L))
     -- a fold over an array of members of the block recursed on
     if c == ``Array.foldl && args.size == 7 then
       if let some (arr, .array s) ← nestView? L args[4]! then
@@ -253,8 +257,8 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
 
 /-- The translation `r` of `fn` applied to the arguments `args`; an argument `()` forces the
     lazy delay `Unit → τ` it is applied to. -/
-partial def appArgs (L : Loc) (fn : Expr) (r : Lean.Term) (args : Array Expr) :
-    TM Lean.Term := do
+partial def appArgs (L : Loc) (fn : Expr) (r : Src) (args : Array Expr) :
+    TM Src := do
   let mut r := r
   for i in [0:args.size] do
     let a := args[i]!
@@ -262,7 +266,7 @@ partial def appArgs (L : Loc) (fn : Expr) (r : Lean.Term) (args : Array Expr) :
       r ← delayCoerceTy L (← inferType (mkAppN fn args[:i].toArray))
         (← inferType (mkAppN fn args[:i+1].toArray)) r
     else
-      r ← `(LeanScript.Term.app $r $(← tr L a))
+      r := Src.app r (← tr L a)
   return r
 
 /-- `for i in range do body` in `Id` (`forIn range init f`, whose step is `mkBody i r`):
@@ -271,7 +275,7 @@ partial def appArgs (L : Loc) (fn : Expr) (r : Lean.Term) (args : Array Expr) :
     the step at `k` is the body at `i` on the value of a `yield` and keeps a `done` (a `break`
     or a `return`), and the loop is the value in the final step. -/
 partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr → TM Expr) :
-    TM Lean.Term := do
+    TM Src := do
   let range ← instantiateMVars range
   let (a, b, s) ← if range.isAppOfArity ``Std.Legacy.Range.mk 4 then
       pure (range.getArg! 0, range.getArg! 1, range.getArg! 2)
@@ -300,7 +304,7 @@ partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr 
     let motive ← withLocalDeclD `t stepTy fun t => mkLambdaFVars #[t] β
     let cases ← mkAppOptM ``ForInStep.casesOn #[β, motive, r, idF, idF]
     tr (L.bind r.fvarId!) cases
-  `(LeanScript.Term.letE (LeanScript.Term.nat_rec (τ := $ρ) $tn $tz $ts) $fin)
+  return .letE (Src.natRec (some ρ) tn tz ts) fin
 
 /-- Would the call `e` of `fn` to `args` be refused as an extern: does it take or return a
     value that is not of a leaf type? -/
@@ -319,7 +323,7 @@ partial def externImpossible (L : Loc) (e fn : Expr) (args : Array Expr) : TM Bo
 
 /-- A call `c a₁ … aₙ` of a helper definition `c`: the translation of `c` (a closed term, so
     its syntax elaborates in any context), applied to the terms of the arguments. -/
-partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : TM Lean.Term := do
+partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : TM Src := do
   if (← get).inlining.contains c || L.fns.contains c then
     fail m!"the helper `{c}` calls itself back through another definition{indentExpr e}"
   let info ← getConstInfo c
@@ -350,9 +354,9 @@ partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : T
         if d > 0 && !recursive then break
         try
           let mut body ← tr { L0 with depth := d } rhs
-          for _ in xs do body ← `(LeanScript.Term.lam $body)
+          for _ in xs do body := Src.lam none body
           let ty ← tyStx L0 info.type
-          return ← `(($body : LeanScript.Term _ _ $ty))
+          return Src.ascribe body ty
         catch ex => if err?.isNone then err? := some ex
       throw err?.get!
     finally
@@ -361,7 +365,7 @@ partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : T
 
 /-- A term of the default value of the Lean type `T` (its `Inhabited` instance, in head normal
     form), for a branch that Lean proves unreachable but the language does not (`what`). -/
-partial def defaultTerm (L : Loc) (T : Expr) (what : MessageData) : TM Lean.Term := do
+partial def defaultTerm (L : Loc) (T : Expr) (what : MessageData) : TM Src := do
   let inst ← try synthInstance (← mkAppM ``Inhabited #[T])
     catch _ => fail m!"{what}\nis read through a field `Fin m → _` (as `Nat → Option _`): \
       below `m` it is `some`, but the language needs a value for `none`, and the type{indentExpr T}\n\
@@ -371,7 +375,7 @@ partial def defaultTerm (L : Loc) (T : Expr) (what : MessageData) : TM Lean.Term
 /-- `Fin.foldl n f z` (of type `α`): `Term.nat_rec n z s`, whose step `s` binds the index `k`
     and the accumulator `acc` and is the translation of `f acc ⟨k, h⟩` (the bound `h` is a
     proof, erased). -/
-partial def trFinFoldl (L : Loc) (α n f z : Expr) : TM Lean.Term := do
+partial def trFinFoldl (L : Loc) (α n f z : Expr) : TM Src := do
   discard <| cirOf L α
   let tn ← tr L n
   let tz ← tr L z
@@ -381,13 +385,13 @@ partial def trFinFoldl (L : Loc) (α n f z : Expr) : TM Lean.Term := do
       let i ← mkAppOptM ``Fin.mk #[n, k, h]
       let body := (mkApp2 f acc i).headBeta
       let L' := (L.bind k.fvarId!).bind acc.fvarId!
-      `(LeanScript.Term.nat_rec $tn $tz $(← tr L' body))
+      return Src.natRec none tn tz (← tr L' body)
 
 /-- `f q` for a function `f` on the carrier of a quotient and a value `q` of the quotient
     (`Quot.lift f h q`), then applied to `extra`.  The value of `q` is a representative: for
     `Quot.mk r a` it is `a`, so the translation is the one of `f a`; otherwise it is bound
     (`letE`) to a local of the carrier, to which `f` is applied. -/
-partial def trQuotApp (L : Loc) (f q : Expr) (extra : Array Expr) : TM Lean.Term := do
+partial def trQuotApp (L : Loc) (f q : Expr) (extra : Array Expr) : TM Src := do
   let q ← instantiateMVars q
   if q.isAppOfArity ``Quot.mk 3 then return ← tr L (mkAppN f (#[q.appArg!] ++ extra))
   let some α := quotCarrier? (← whnf (← inferType q))
@@ -395,7 +399,7 @@ partial def trQuotApp (L : Loc) (f q : Expr) (extra : Array Expr) : TM Lean.Term
   let tq ← tr L q
   withLocalDeclD `a α fun y => do
     let body ← tr (L.bind y.fvarId!) (mkAppN f (#[y] ++ extra))
-    `(LeanScript.Term.letE $tq $body)
+    return .letE tq body
 
 /-- The only relevant field of a fully applied constructor application, when its type has
     one constructor and that constructor one field besides proofs and instances. -/
@@ -415,7 +419,7 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
 
 /-- A call of a function on values of leaf types: `Term.extern`. -/
 partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :
-    TM Lean.Term := do
+    TM Src := do
   -- a value of a quotient is a representative: a call that computes to `Quot.mk r a` is `a`,
   -- any other call returning a quotient has no representative the language could compute
   if (quotCarrier? (← whnf (← inferType e))).isSome then
@@ -437,7 +441,7 @@ partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr)
   externStx L name g (vs.map (args[·]!)) τ
 
 /-- `decide p` of a relation `p` on values of leaf types: `Term.extern`. -/
-partial def trDecide (L : Loc) (p : Expr) : TM Lean.Term := do
+partial def trDecide (L : Loc) (p : Expr) : TM Src := do
   let p ← instantiateMVars p
   let fn := p.getAppFn
   let args := p.getAppArgs
@@ -455,7 +459,7 @@ partial def trDecide (L : Loc) (p : Expr) : TM Lean.Term := do
 
 /-- `Term.extern name (fun v => g v.1 v.2.1 …) args`. -/
 partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR) :
-    TM Lean.Term := do
+    TM Src := do
   let v := mkIdent `v
   let mut call ← exprToSyntax g
   let mut comps : Array Lean.Term := #[]
@@ -463,20 +467,23 @@ partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (
   call ← `($call $comps*)
   let mut σs : Array Lean.Term := #[]
   for a in args do σs := σs.push (← (← cirOf L (← inferType a) false).stx L.c #[])
-  let mut as ← `(LeanScript.Args.nil)
-  for a in args.reverse do as ← `(LeanScript.Args.cons $(← tr L a) $as)
-  `(LeanScript.Term.extern (σs := [$σs,*]) (τ := $(← τ.stx L.c #[])) $(quote name)
-      (fun $v => $call) $as)
+  let argSrcs ← args.mapM (tr L)
+  let τs ← τ.stx L.c #[]
+  return .comp (fun xs _ => do
+      let mut as ← `(LeanScript.Args.nil)
+      for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
+      `(LeanScript.Comp.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (fun $v => $call) $as))
+    argSrcs #[]
 
 /-- A constructor application: `#leanscript_get_ctor` of the constructor, every parameter
     given by name, applied to the terms of the fields kept. -/
 partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array Expr) :
-    TM Lean.Term := do
+    TM Src := do
   unless args.size == cinfo.numParams + cinfo.numFields do
     fail m!"the constructor `{cinfo.name}` is not fully applied"
   let mut ty ← inferType fn
   let mut named : Array (TSyntax ``leanscriptNamedArg) := #[]
-  let mut fields : Array Lean.Term := #[]
+  let mut fields : Array Src := #[]
   let mask ← ctorErasedMask cinfo.name fn.constLevels! args[:cinfo.numParams].toArray
   let optMask ← ctorOptMask cinfo.name fn.constLevels! args[:cinfo.numParams].toArray
   -- a constructor of a type-indexed family (`Nest.cons {α} a r`): it is generated at the index
@@ -518,12 +525,13 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
     ty := b.instantiate1 a
   let T ← normType (← inferType (mkAppN fn args)) false
   if (← cirOf L T false).hasData then modify fun s => { s with usesData := true }
-  `((#leanscript_get_ctor $(mkIdent (`_root_ ++ cinfo.name)) $named*) $fields*)
+  let ctorFn ← `(#leanscript_get_ctor $(mkIdent (`_root_ ++ cinfo.name)) $named*)
+  return .pnode (fun xs => `(($ctorFn) $xs*)) fields
 
 /-- A value `a : Fin m → T` of a field that the language reads as `Nat → Option T`
     (`finOptArrow`): `fun j => if h : j < m then some (a ⟨j, h⟩) else none`, translated (a
     field of an opened constructor is already such a function; `m = 0` is `fun _ => none`). -/
-partial def trOptField (L : Loc) (a : Expr) (aTy : Expr) : TM Lean.Term := do
+partial def trOptField (L : Loc) (a : Expr) (aTy : Expr) : TM Src := do
   if let .fvar x := a then
     if (← get).optFields.contains x then return ← tr L a
   let .forallE _ d T _ := aTy | fail m!"the value{indentExpr a}\nis not a function"
@@ -546,7 +554,7 @@ partial def trOptField (L : Loc) (a : Expr) (aTy : Expr) : TM Lean.Term := do
 
 /-- A recursive call `f … y …` on a subvalue `y` the recursion reached: the variable of its
     answer. -/
-partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
+partial def trRecCall (L : Loc) (e : Expr) : TM Src := do
   let args := e.getAppArgs
   let n := L.params.size
   -- a partial application may leave out trailing parameters that the recursion changes: the
@@ -554,8 +562,8 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
   for i in [args.size:n] do
     unless L.vary.contains i do
       fail m!"the recursive call{indentExpr e}\nis not fully applied"
-  let mut out? : Option Lean.Term := none
-  let mut varyArgs : Array Lean.Term := #[]
+  let mut out? : Option Src := none
+  let mut varyArgs : Array Src := #[]
   for i in [0:min args.size n] do
     let a := args[i]!
     if L.idxParams.contains i then continue
@@ -570,8 +578,7 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
           continue
       -- a member held inside a function field: the answer is next to the subvalue
       if let some (t, .hole) ← nestView? L a then
-        out? := some (← `(LeanScript.Term.record_casesOn $t
-          (LeanScript.Term.var (DeBruijn.tail DeBruijn.head))))
+        out? := some (Src.recordCases t 2 (.var 1))
         continue
       -- a member read through a field `Fin m → X` (as `Nat → Option X`): the answer at the
       -- `Option X` is `none` or `some` of the answer at `X`; below `m` it is `some`, and the
@@ -581,9 +588,8 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
           fail m!"the recursive call{indentExpr e}\non a value read through a field `Fin m → _` \
             must pass the other parameters unchanged"
         let d ← defaultTerm L (← inferType e) m!"the recursive call{indentExpr e}"
-        out? := some (← `(LeanScript.Term.union_casesOn (LeanScript.Term.record_casesOn $t
-            (LeanScript.Term.var (DeBruijn.tail DeBruijn.head)))
-          (LeanScript.Branches.two $d (LeanScript.Term.var DeBruijn.head))))
+        out? := some (Src.unionCases (← tyOf? L (← inferType e))
+          (Src.recordCases t 2 (.var 1)) #[(0, d), (1, .var 0)])
         continue
     fail m!"the recursive call{indentExpr e}\nis not structural: it must pass the parameters \
       unchanged except the one recursed on, which must be a direct subvalue of it"
@@ -594,7 +600,7 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Lean.Term := do
   appStx t (varyArgs ++ extra)
 
 /-- A case analysis `T.casesOn motive major minors…`. -/
-partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lean.Term := do
+partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src := do
   let ind ← getConstInfoInduct c.getPrefix
   -- the indices of a family are erased: they are skipped, and so are the fields that only
   -- name an index (`erasedFields`)
@@ -635,10 +641,10 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lea
         else L'
       withVaryLocals L' (subst 1 xs b) tr
     if vary.isEmpty then
-      return ← `(LeanScript.Term.nat_rec $(← tr L major) $z $s)
+      return Src.natRec none (← tr L major) z s
     let ps := vary.map (L.params[·]!)
     let ρ ← tyStx L (← mkForallFVars ps (← inferType e))
-    let r ← `(LeanScript.Term.nat_rec (τ := $ρ) $(← tr L major) $z $s)
+    let r := Src.natRec (some ρ) (← tr L major) z s
     return ← appStx r (← ps.mapM (tr L))
   let plan ← lm (planType T L.prog?)
   if plan.data?.isSome then modify fun st => { st with usesData := true }
@@ -651,7 +657,8 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lea
           ps) xs
         let body := body.replace fun s => if s == ctorApp then some major else none
         openWindows L L.mems xs erased d (tr · body)
-      return ← casesBodyStx plan (← varStx (L.slots.size - 1 - bodySlot)) brs
+      return ← casesSrc plan (← varStx (L.slots.size - 1 - bodySlot)) brs
+        (← tyOf? L (← inferType e))
   -- structural recursion on a declared datatype: one fold of its whole block, whose branch
   -- at each member is the body of the function of the group that recurses on that member
   if let (some p, some (b, j)) := (recPos?, plan.data?) then
@@ -675,7 +682,7 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lea
     let ps := vary.map (L.params[·]!)
     let L0 := { L with mems, vary }
     let mut ρs : Array Lean.Term := #[]
-    let mut brs : Array Lean.Term := #[]
+    let mut brs : Array Src := #[]
     for i in [0:mems.size] do
       match assign[i]! with
       | none =>
@@ -686,16 +693,13 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lea
             fail m!"a recursion through a field `Fin m → _` must pass the parameters other \
               than the one recursed on unchanged"
           ρs := ρs.push (← `(LeanScript.Ty.option $ρX))
-          brs := brs.push (← `(LeanScript.Term.union_casesOn (LeanScript.Term.var DeBruijn.head)
-            (LeanScript.Branches.two (LeanScript.Term.union_mk LeanScript.CtorIx.two₁ LeanScript.Args.nil)
-              (LeanScript.Term.record_casesOn (LeanScript.Term.var DeBruijn.head)
-                (LeanScript.Term.union_mk LeanScript.CtorIx.two₂
-                  (LeanScript.Args.cons (LeanScript.Term.var (DeBruijn.tail DeBruijn.head))
-                    LeanScript.Args.nil))))))
+          brs := brs.push (Src.unionCases none (.var 0)
+            #[(0, Src.unionMk (← `(LeanScript.CtorIx.two₁)) #[]),
+              (1, Src.recordCases (.var 0) 2 (Src.unionMk (← `(LeanScript.CtorIx.two₂)) #[.var 1]))])
           continue
         -- no function of the group recurses on this member: its answers are never read
         ρs := ρs.push (← `(LeanScript.Ty.bool))
-        brs := brs.push (← `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool true))
+        brs := brs.push (← Src.lit (← `(LeanScript.LeanPrimTy.bool)) (← `(true)))
       | some g =>
         let some eqn ← getUnfoldEqnFor? g (nonRec := true)
           | fail m!"`{g}` is not a definition that can be unfolded"
@@ -710,30 +714,33 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Lea
         ρs := ρs.push ρ
         brs := brs.push br
     let ρFun ← if ρs.size = 1 then `(fun _ => $(ρs[0]!)) else finFunStx ρs
-    let brFun ← finFunStx brs
     let Δ := mkIdent (prog.name ++ `Δ)
-    let r ← if L.depth = 0 then
-        `(LeanScript.Term.data_rec (Δ := $Δ) $(← brefStx L.c b) $ρFun $brFun $(quote j)
-          $(← tr L major))
-      else
-        `(LeanScript.Term.data_brec (Δ := $Δ) $(← brefStx L.c b) $ρFun $(quote L.depth)
-          $brFun $(quote j) $(← tr L major))
+    let bref ← brefStx L.c b
+    let depth := L.depth
+    let r : Src := .comp (fun xs bs => do
+        let brFun ← finFunStx bs
+        if depth = 0 then
+          `(LeanScript.Comp.data_rec (Δ := $Δ) $bref $ρFun $brFun $(quote j) $(xs[0]!))
+        else
+          `(LeanScript.Comp.data_brec (Δ := $Δ) $bref $ρFun $(quote depth) $brFun $(quote j)
+            $(xs[0]!)))
+      #[← tr L major] (brs.map (1, ·))
     return ← appStx r (← ps.mapM (tr L))
   -- an ordinary case analysis
   let mut scrut ← tr L major
   if let some (b, j) := plan.data? then
-    scrut ← `(LeanScript.Term.data_out $(← brefStx L.c b) $(quote j) $scrut)
+    scrut := Src.dataOut (← brefStx L.c b) (quote j) scrut
   let brs ← (List.range nM).toArray.mapM fun k => openMinor k minors[k]! fun xs erased body => do
     let kept := (xs.zip erased).filter (!·.2) |>.map (·.1)
     let mut L' := L
     for x in kept.reverse do L' := L'.bind x.fvarId!
     tr L' body
-  casesBodyStx plan scrut brs
+  casesSrc plan scrut brs (← tyOf? L (← inferType e))
 
 /-- The branch of the fold at one member: the case analysis `c args` of the parameter recursed
     on, at the top of the body of the member's function.  Its fields are opened as windows
     (`openWindows`), and the parameter is the constructor application in each branch. -/
-partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term := do
+partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Src := do
   let ind ← getConstInfoInduct c.getPrefix
   let nP := ind.numParams + ind.numIndices
   let nM := ind.ctors.length
@@ -757,7 +764,7 @@ partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Lean.Term :=
         let body := body.replaceFVar major
           (mkAppN (mkAppN (mkConst ci.name T.getAppFn.constLevels!) ps) xs)
         openWindows Lb L.mems xs erased L.depth (tr · (body.replaceFVars vps vs))
-    casesBodyStx plan (← varStx vps.size) brs
+    casesSrc plan (← varStx vps.size) brs none
 
 /-- The case analysis of `y` at the top of the body `e` of the function `g` (through the
     `match` it is compiled from). -/
@@ -780,7 +787,7 @@ partial def peelCases (g : Name) (y e : Expr) : TM (Name × Array Expr) := do
 
 /-- A view of `x a₁ … aₙ`, where `x` is a field that holds members of the block inside a
     function or an array (`Loc.nest`): its term and what it holds. -/
-partial def nestView? (L : Loc) (e : Expr) : TM (Option (Lean.Term × NShape)) := do
+partial def nestView? (L : Loc) (e : Expr) : TM (Option (Src × NShape)) := do
   let e := (← instantiateMVars e).headBeta
   let .fvar x := e.getAppFn | return none
   let some s := L.nest[x]? | return none
@@ -790,7 +797,7 @@ partial def nestView? (L : Loc) (e : Expr) : TM (Option (Lean.Term × NShape)) :
   for a in e.getAppArgs do
     match s with
     | .fn s' =>
-      t ← `(LeanScript.Term.app $t $(← tr L a))
+      t := Src.app t (← tr L a)
       s := s'
     | _ => fail m!"cannot translate the application{indentExpr e}"
   return some (t, s)
@@ -798,8 +805,8 @@ partial def nestView? (L : Loc) (e : Expr) : TM (Option (Lean.Term × NShape)) :
 /-- `Array.foldl f z xs` over an array `xs` that holds members of the block recursed on (with
     their answers): `Term.array_foldl`, whose step sees each element as the subvalue, with the
     answer at it for the recursive calls. -/
-partial def trNestFoldl (L : Loc) (arr : Lean.Term) (s : NShape) (args : Array Expr) :
-    TM Lean.Term := do
+partial def trNestFoldl (L : Loc) (arr : Src) (s : NShape) (args : Array Expr) :
+    TM Src := do
   let elemTy := args[0]!
   let accTy := args[1]!
   discard <| cirOf L accTy
@@ -811,12 +818,11 @@ partial def trNestFoldl (L : Loc) (arr : Lean.Term) (s : NShape) (args : Array E
     | .hole =>
       let L2 := ((L1.bind none).bind none).bind x.fvarId!
       let L2 := { L2 with ans := L2.ans.insert x.fvarId! (L2.slots.size - 2) }
-      `(LeanScript.Term.array_foldl $arr $z
-          (LeanScript.Term.record_casesOn (LeanScript.Term.var DeBruijn.head) $(← tr L2 body)))
+      return Src.arrayFoldl arr z (Src.recordCases (.var 0) 2 (← tr L2 body))
     | s' =>
       let L2 := L1.bind x.fvarId!
       let L2 := { L2 with nest := L2.nest.insert x.fvarId! s' }
-      `(LeanScript.Term.array_foldl $arr $z $(← tr L2 body))
+      return Src.arrayFoldl arr z (← tr L2 body)
 
 end
 

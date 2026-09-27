@@ -45,12 +45,12 @@ abbrev VB := Prog.Δ.block BRef.here.there
 
 /-- A fold over `Vec Nat` whose branch sees the value `W` of the enclosing `fun`. -/
 def foldVec {τ : Ty Prog.ks}
-    (brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => τ) i :: [Prog.vec]) τ)
+    (brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => τ) i :: [Prog.vec]) τ [])
     (W c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (fun i x => (brs i).eval (x, W, ())) 0 c
+  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
 
 /-- The translated `Vec.sum` is a fold, with one step per constructor. -/
-theorem sum_facts : ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => .nat) i :: [Prog.vec]) .nat,
+theorem sum_facts : ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => .nat) i :: [Prog.vec]) .nat [],
     (∀ c, vecSumT.run c = foldVec brs c c) ∧
     (∀ W (a : Nat) {n : Nat} (v : Vec Nat n),
       natOf (foldVec brs W (vecEnc (.cons a v))) = a + natOf (foldVec brs W (vecEnc v))) ∧
@@ -78,7 +78,7 @@ def consEnc (a : Nat) (c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ Prog.vec :=
 
 /-- The translated `Vec.double` is a fold, with one step per constructor. -/
 theorem double_facts :
-    ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => Prog.vec) i :: [Prog.vec]) Prog.vec,
+    ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => Prog.vec) i :: [Prog.vec]) Prog.vec [],
     (∀ c, vecDoubleT.run c = foldVec brs c c) ∧
     (∀ W (a : Nat) {n : Nat} (v : Vec Nat n),
       foldVec brs W (vecEnc (.cons a v)) = consEnc (2 * a) (foldVec brs W (vecEnc v))) ∧
@@ -179,9 +179,9 @@ abbrev RB := Prog.Δ.block BRef.here
 /-- A fold over the rows `Vec (Vec Nat)` whose branch sees the value `W` of the enclosing
     `fun`. -/
 def foldRows {τ : Ty Prog.ks}
-    (brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => τ) i :: [rowsTy]) τ)
+    (brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => τ) i :: [rowsTy]) τ [])
     (W c : Ty.Den Prog.Δ rowsTy) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ())) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
 
 /-- The first element of a vector, or `0`. -/
 def headOr0 {n : Nat} : Vec Nat n → Nat
@@ -190,7 +190,7 @@ def headOr0 {n : Nat} : Vec Nat n → Nat
 
 /-- The translated `Vec.sumRows` is a fold, with one step per constructor. -/
 theorem sumRows_facts :
-    ∃ brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => .nat) i :: [rowsTy]) .nat,
+    ∃ brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => .nat) i :: [rowsTy]) .nat [],
     (∀ c, sumRowsT.run c = foldRows brs c c) ∧
     (∀ W {c r : Nat} (row : Vec Nat c) (rest : Vec (Vec Nat c) r),
       natOf (foldRows brs W (rowsEnc (.cons row rest))) =

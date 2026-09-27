@@ -123,14 +123,15 @@ def ctorIxStx (m p : Nat) : MetaM Lean.Term := do
     r ← `(CtorIx.tail $r)
   return r
 
-/-- A list of terms as `Args`. -/
+/-- A list of pure expressions as `Args`. -/
 def argsStx (as : List Lean.Term) : MetaM Lean.Term := do
   let mut r ← `(Args.nil)
   for a in as.reverse do
     r ← `(Args.cons $a $r)
   return r
 
-/-- The value built by constructor `p` of `m` constructors, from the terms of its fields:
+/-- The value built by constructor `p` of `m` constructors, from the pure expressions of its
+    fields (a pure expression):
     the field itself (one constructor, one field), a record, an enum constructor (`enum`
     gives the number of constructors and the shift), or a union constructor. -/
 def ctorBodyStx (m p : Nat) (enum : Option (Nat × Int)) (args : List Lean.Term) :
@@ -138,11 +139,11 @@ def ctorBodyStx (m p : Nat) (enum : Option (Nat × Int)) (args : List Lean.Term)
   if m = 1 then
     match args with
     | [a] => return a
-    | _ => `(LeanScript.Term.record_mk $(← argsStx args))
+    | _ => `(LeanScript.PExpr.record_mk $(← argsStx args))
   else if let some (n, s) := enum then
-    `(LeanScript.Term.enum_mk ⟨$(quote (n - 3)), $(← intStx s)⟩ ⟨$(quote p), by decide⟩)
+    `(LeanScript.PExpr.enum_mk ⟨$(quote (n - 3)), $(← intStx s)⟩ ⟨$(quote p), by decide⟩)
   else
-    `(LeanScript.Term.union_mk $(← ctorIxStx m p) $(← argsStx args))
+    `(LeanScript.PExpr.union_mk $(← ctorIxStx m p) $(← argsStx args))
 
 end LeanScript.Gen
 

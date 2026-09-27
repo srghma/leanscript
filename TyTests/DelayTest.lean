@@ -106,16 +106,19 @@ example : ([Ty| Thunk (Option Nat)] : Ty []) = .thunk (.union (.two .nullary (.f
 example : Ty.den (fun _ => Empty) (Ty.thunk (.array .nat) : Ty []) = Array Nat := rfl
 example : Ty.den (fun _ => Empty) (Ty.lazy (.prim .nat) : Ty []) = Nat := rfl
 
-/-- `fun x => (lazy_mk x)` forced: the identity on `Nat`. -/
-def forceLazy {ks : List Nat} {Δ : DSig ks} : Term Δ [] (.fn .nat .nat) :=
-  .lam (.lazy_force (τ := .prim .nat) (.lazy_mk (.var .head)))
+/-- `fun x => (lazy_mk x)` forced: the identity on `Nat`.  In A-normal form the delay is
+    named by a `let` before it is forced. -/
+def forceLazy {ks : List Nat} {Δ : DSig ks} : Comp Δ [] (.fn .nat .nat) :=
+  .lam (.letE (.lazy_mk (.ret (.var .head)))
+    (.ofComp (.lazy_force (τ := .prim .nat) (.var .head))))
 
 /-- A thunk of an array, built from the array. -/
-def thunkArr {ks : List Nat} {Δ : DSig ks} : Term Δ [] (.thunk (.array .nat)) :=
-  .thunk_mk (.array_mk (.cons (.lit .nat 1) (.cons (.lit .nat 2) .nil)))
+def thunkArr {ks : List Nat} {Δ : DSig ks} : Comp Δ [] (.thunk (.array .nat)) :=
+  .thunk_mk (.ret (.array_mk (.cons (.lit .nat 1) (.cons (.lit .nat 2) .nil))))
 
 example : (forceLazy (Δ := .nil)).run (5 : Nat) = (5 : Nat) := rfl
 example : (thunkArr (Δ := .nil)).run = (#[1, 2] : Array Nat) := rfl
-example : (Term.thunk_force (thunkArr (Δ := .nil))).run = (#[1, 2] : Array Nat) := rfl
+example : (Term.letE thunkArr (.ofComp (.thunk_force (.var .head))) :
+    Term (DSig.nil) [] (.array .nat) []).run = (#[1, 2] : Array Nat) := rfl
 
 end DelayTest

@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Eval
 public meta import LeanScript.ToTerm
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -51,8 +52,9 @@ example : Prog.chunk = .record .nat (.one (.fn .nat .nat)) := rfl
 example : (#leanscript_get_ty Chunk : Ty []) = .record .nat (.one (.fn .nat .nat)) := rfl
 example : Ty.Den Prog.Δ Prog.chunk = (Nat × (Nat → Nat)) := rfl
 
-def chunkT : Term DSig.nil [] (#leanscript_get_ty Chunk) :=
-  (#leanscript_get_ctor Chunk.mk) (.lit .nat 3) (.lam (.bvar 0))
+/-- The closure is a computation: it is named by a `let` before it is stored in the record. -/
+def chunkT : Term DSig.nil [] (#leanscript_get_ty Chunk) [] :=
+  .letE (.lam (.ret (.bvar 0))) (.ret ((#leanscript_get_ctor Chunk.mk) (.lit .nat 3) (.bvar 0)))
 
 example : chunkT.run.1 = (3 : Nat) := rfl
 example : chunkT.run.2 (7 : Nat) = (7 : Nat) := rfl
@@ -73,13 +75,13 @@ example : (chunkFirstT (Δ := DSig.nil)).run ((0 : Nat), fun (i : Nat) => i + 10
 example : ∃ r, Prog.tele = .data r := ⟨_, rfl⟩
 
 /--
-info: DependentFieldTest.Prog.Tele.cons {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) : Term Prog.Δ Γ (Ty.data (Ref.here 0))
+info: DependentFieldTest.Prog.Tele.cons {Γ : Ctx Prog.ks} (x0 x1 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
+  (x2 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in
 #leanscript_get_ctor Tele.cons
 
-def teleT : Term Prog.Δ [] Prog.tele :=
+def teleT : PExpr Prog.Δ [] Prog.tele :=
   (#leanscript_get_ctor Tele.cons) (.lit .nat 1) (.lit .nat 2)
     ((#leanscript_get_ctor Tele.cons) (.lit .nat 0) (.lit .nat 1) (#leanscript_get_ctor Tele.nil))
 
@@ -88,14 +90,14 @@ def Tele.total : Tele → Nat
   | .cons n v r => n + v.val + r.total
 
 def teleTotalT := #leanscript_to_term Tele.total
-example : teleTotalT.run teleT.run = (4 : Nat) := rfl
+example : teleTotalT.run teleT.run = (4 : Nat) := by kernel_rfl
 #guard (Tele.cons 1 2 (.cons 0 1 .nil)).total == 4
 
 /-- The case analysis binds the two numbers and the rest. -/
-def teleHead : Term Prog.Δ [Prog.tele] .nat :=
-  (#leanscript_get_cases Tele) (.var .head) (.lit .nat 0) (.var (.tail .head))
+def teleHead : Term Prog.Δ [Prog.tele] .nat [] :=
+  (#leanscript_get_cases Tele) (.var .head) (.ret (.lit .nat 0)) (.ret (.var (.tail .head)))
 
-example : teleHead.eval (teleT.run, ()) = (2 : Nat) := rfl
+example : teleHead.eval (teleT.run, ()) () = (2 : Nat) := rfl
 
 /-! ## Other erasures -/
 

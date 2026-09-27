@@ -13,7 +13,9 @@ set_option autoImplicit false
 
 Structural types need no signature: their types and constructor functions are generic in it.
 Recursive types are members of the current program's signature (`leanscript_signature`),
-and their constructor functions are `data_in` of the payload.  Every generated definition is
+and their constructor functions are `data_in` of the payload.  A constructor function builds
+a pure expression (`PExpr`) from pure expressions; a case analysis takes a pure scrutinee and
+statements (`Term`) as its branches.  Every generated definition is
 cached: asking again gives the same constant.
 -/
 
@@ -45,42 +47,42 @@ inductive Rose where
 
 /--
 info: TyTests.GetCtorTest.Option.some.leanScriptCtor {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α : Ty ks)
-  (x0 : Term Δ Γ α) : Term Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
+  (x0 : PExpr Δ Γ α) : PExpr Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
 -/
 #guard_msgs in
 #leanscript_get_ctor Option.some
 
 /--
 info: TyTests.GetCtorTest.Option.none.leanScriptCtor {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α : Ty ks) :
-  Term Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
+  PExpr Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
 -/
 #guard_msgs in
 #leanscript_get_ctor Option.none
 
 /--
-info: TyTests.GetCtorTest.Prod.mk.leanScriptCtor {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α β : Ty ks) (x0 : Term Δ Γ α)
-  (x1 : Term Δ Γ β) : Term Δ Γ (α.record (Fields.one β))
+info: TyTests.GetCtorTest.Prod.mk.leanScriptCtor {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α β : Ty ks) (x0 : PExpr Δ Γ α)
+  (x1 : PExpr Δ Γ β) : PExpr Δ Γ (α.record (Fields.one β))
 -/
 #guard_msgs in
 #leanscript_get_ctor Prod.mk
 
 /-- A parameter given by name is fixed; the others stay arguments. -/
-example : Term .nil [] (.record .nat (.one .bool)) :=
+example : PExpr .nil [] (.record .nat (.one .bool)) :=
   (#leanscript_get_ctor Prod.mk (α := Nat)) _ (.lit .nat 1) (#leanscript_get_ctor Bool.true)
 
 /-- `Bool` is a leaf: its constructors are literals. -/
-example : (#leanscript_get_ctor Bool.false : Term DSig.nil [] .bool).run = false := rfl
+example : (#leanscript_get_ctor Bool.false : PExpr DSig.nil [] .bool).run = false := rfl
 
 /-- Three or more constructors without fields are an enum; `Ordering` numbers from `-1`. -/
 example : (#leanscript_get_ty Ordering : Ty []) = .enum ⟨0, -1⟩ := rfl
-example : (#leanscript_get_ctor Ordering.gt : Term DSig.nil [] (.enum ⟨0, -1⟩)).run = (2 : Fin 3) := rfl
-example : (#leanscript_get_ctor Color.green : Term DSig.nil [] (.enum ⟨0, 0⟩)).run = (1 : Fin 3) := rfl
+example : (#leanscript_get_ctor Ordering.gt : PExpr DSig.nil [] (.enum ⟨0, -1⟩)).run = (2 : Fin 3) := rfl
+example : (#leanscript_get_ctor Color.green : PExpr DSig.nil [] (.enum ⟨0, 0⟩)).run = (1 : Fin 3) := rfl
 
 /-- One constructor with two or more fields is a record; `#leanscript_get_ctor Point` names
     its only constructor. -/
 example : (#leanscript_get_ty Point : Ty []) = .record .nat (.one .int) := rfl
 example : ((#leanscript_get_ctor Point) (.lit .nat 1) (.lit .int (-2)) :
-    Term DSig.nil [] _).run = ((1 : Nat), (-2 : Int)) := rfl
+    PExpr DSig.nil [] _).run = ((1 : Nat), (-2 : Int)) := rfl
 
 /-- The proof field is erased. -/
 example : (#leanscript_get_ty Pos : Ty []) = .record .nat (.one .string) := rfl
@@ -88,7 +90,7 @@ example : (#leanscript_get_ty Pos : Ty []) = .record .nat (.one .string) := rfl
 -- The cache: the same request gives the same constant (no `_1` suffix)…
 /--
 info: TyTests.GetCtorTest.Option.some.leanScriptCtor {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α : Ty ks)
-  (x0 : Term Δ Γ α) : Term Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
+  (x0 : PExpr Δ Γ α) : PExpr Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))
 -/
 #guard_msgs in
 #leanscript_get_ctor Option.some
@@ -96,7 +98,7 @@ info: TyTests.GetCtorTest.Option.some.leanScriptCtor {ks : List Nat} {Δ : DSig 
 -- …and `#leanscript_get_ty` of a constructor's type is the type it builds.
 example : (#leanscript_get_ty (Option Nat) : Ty []) = Ty.option .nat := rfl
 
-def someT : Term DSig.nil [] (#leanscript_get_ty (Option Nat)) :=
+def someT : PExpr DSig.nil [] (#leanscript_get_ty (Option Nat)) :=
   (#leanscript_get_ctor Option.some) _ (.lit .nat 2)
 
 example : someT.run = some (2 : Nat) := rfl
@@ -109,9 +111,9 @@ leanscript_signature Prog where
   rose := Rose
 
 /--
-info: GetCtorTest.Prog.Tree.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat)) (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)) :
-  Term Prog.Δ Γ (Ty.data (Ref.here 0).there)
+info: GetCtorTest.Prog.Tree.node {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there))
+  (x1 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat)) (x2 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)) :
+  PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in
 #leanscript_get_ctor Tree.node
@@ -123,9 +125,9 @@ example : (#leanscript_get_ty (List Nat)) = Prog.listNat := rfl
 /-- A structural type around a recursive one is specialised to the program. -/
 example : (#leanscript_get_ty (Option Tree)) = Ty.option Prog.tree := rfl
 
-def leaf : Term Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
+def leaf : PExpr Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
 
-def treeT : Term Prog.Δ [] Prog.tree :=
+def treeT : PExpr Prog.Δ [] Prog.tree :=
   (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leaf (.lit .nat 1) leaf)
     (.lit .nat 2) leaf
 
@@ -142,7 +144,7 @@ def treeSum (t : Ty.Den Prog.Δ Prog.tree) : Nat :=
 example : treeSum treeT.run = 3 := rfl
 
 /-- The type parameter of a recursive type is fixed by name. -/
-def listT : Term Prog.Δ [] Prog.listNat :=
+def listT : PExpr Prog.Δ [] Prog.listNat :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 7)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 8)
       (#leanscript_get_ctor List.nil (α := Nat)))
@@ -159,7 +161,7 @@ def listSum (l : Ty.Den Prog.Δ Prog.listNat) : Nat :=
 example : listSum listT.run = 15 := rfl
 
 /-- `Rose`'s children are a `List Rose`: another member of `Rose`'s block. -/
-def roseT : Term Prog.Δ [] Prog.rose :=
+def roseT : PExpr Prog.Δ [] Prog.rose :=
   (#leanscript_get_ctor Rose.node) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Rose))
       ((#leanscript_get_ctor Rose.node) (.lit .nat 2) (#leanscript_get_ctor List.nil (α := Rose)))
@@ -169,52 +171,52 @@ def roseT : Term Prog.Δ [] Prog.rose :=
 
 /--
 info: TyTests.GetCtorTest.Option.leanScriptCases {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} (α : Ty ks) {τ : Ty ks}
-  (scrut : Term Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α))))) (on_none : Term Δ Γ τ)
-  (on_some : Term Δ (α :: Γ) τ) : Term Δ Γ τ
+  {js : JCtx ks} (scrut : PExpr Δ Γ (Ty.union (Ctors.two Ctor.nullary (Ctor.fields (Fields.one α)))))
+  (on_none : Term Δ Γ τ js) (on_some : Term Δ (α :: Γ) τ js) : Term Δ Γ τ js
 -/
 #guard_msgs in
 #leanscript_get_cases Option
 
 /-- `Option.getD x 0`: the `some` branch binds the field. -/
-def getD0 : Term DSig.nil [Ty.option .nat] .nat :=
-  (#leanscript_get_cases Option) _ (.var .head) (.lit .nat 0) (.var .head)
+def getD0 : Term DSig.nil [Ty.option .nat] .nat [] :=
+  (#leanscript_get_cases Option) _ (.var .head) (.ret (.lit .nat 0)) (.ret (.var .head))
 
-example : getD0.eval (some (5 : Nat), ()) = (5 : Nat) := rfl
-example : getD0.eval (none, ()) = (0 : Nat) := rfl
+example : getD0.eval (some (5 : Nat), ()) () = (5 : Nat) := rfl
+example : getD0.eval (none, ()) () = (0 : Nat) := rfl
 
 /-- A record binds all its fields, the first one innermost. -/
-def pointX : Term DSig.nil [#leanscript_get_ty Point] .nat :=
-  (#leanscript_get_cases Point) (.var .head) (.var .head)
+def pointX : Term DSig.nil [#leanscript_get_ty Point] .nat [] :=
+  (#leanscript_get_cases Point) (.var .head) (.ret (.var .head))
 
-example : pointX.eval (((3 : Nat), (-1 : Int)), ()) = (3 : Nat) := rfl
+example : pointX.eval (((3 : Nat), (-1 : Int)), ()) () = (3 : Nat) := rfl
 
 /-- `Bool` is `ite`, `Ordering` an enum case analysis. -/
-def notT : Term DSig.nil [.bool] .bool :=
-  (#leanscript_get_cases Bool) (.var .head) (#leanscript_get_ctor Bool.true)
-    (#leanscript_get_ctor Bool.false)
+def notT : Term DSig.nil [.bool] .bool [] :=
+  (#leanscript_get_cases Bool) (.var .head) (.ret (#leanscript_get_ctor Bool.true))
+    (.ret (#leanscript_get_ctor Bool.false))
 
-example : notT.eval (true, ()) = false := rfl
+example : notT.eval (true, ()) () = false := rfl
 
-def ordT : Term DSig.nil [#leanscript_get_ty Ordering] .nat :=
-  (#leanscript_get_cases Ordering) (.var .head) (.lit .nat 10) (.lit .nat 20)
-    (.lit .nat 30)
+def ordT : Term DSig.nil [#leanscript_get_ty Ordering] .nat [] :=
+  (#leanscript_get_cases Ordering) (.var .head) (.ret (.lit .nat 10)) (.ret (.lit .nat 20))
+    (.ret (.lit .nat 30))
 
-example : ordT.eval ((1 : Fin 3), ()) = (20 : Nat) := rfl
+example : ordT.eval ((1 : Fin 3), ()) () = (20 : Nat) := rfl
 
 /-- For a recursive type the case analysis is `data_out` followed by the case analysis of
     the unfolded body. -/
-def isLeaf : Term Prog.Δ [Prog.tree] .bool :=
-  (#leanscript_get_cases Tree) (.var .head) (#leanscript_get_ctor Bool.true)
-    (#leanscript_get_ctor Bool.false)
+def isLeaf : Term Prog.Δ [Prog.tree] .bool [] :=
+  (#leanscript_get_cases Tree) (.var .head) (.ret (#leanscript_get_ctor Bool.true))
+    (.ret (#leanscript_get_ctor Bool.false))
 
-example : isLeaf.eval (leaf.run, ()) = true := rfl
-example : isLeaf.eval (treeT.run, ()) = false := rfl
+example : isLeaf.eval (leaf.run, ()) () = true := rfl
+example : isLeaf.eval (treeT.run, ()) () = false := rfl
 
 /-- The root label of a tree: the `node` branch binds its three fields. -/
-def rootLabel : Term Prog.Δ [Prog.tree] .nat :=
-  (#leanscript_get_cases Tree) (.var .head) (.lit .nat 0) (.var (.tail .head))
+def rootLabel : Term Prog.Δ [Prog.tree] .nat [] :=
+  (#leanscript_get_cases Tree) (.var .head) (.ret (.lit .nat 0)) (.ret (.var (.tail .head)))
 
-example : rootLabel.eval (treeT.run, ()) = (2 : Nat) := rfl
+example : rootLabel.eval (treeT.run, ()) () = (2 : Nat) := rfl
 
 /-! ## Refusals -/
 
@@ -245,13 +247,13 @@ is not declared in the signature `GetCtorTest.Prog`; add it to `leanscript_signa
 leanscript_signature Prog₂ where
   other := Other
 
-example : Term Prog₂.Δ [] Prog₂.other :=
+example : PExpr Prog₂.Δ [] Prog₂.other :=
   (#leanscript_get_ctor Other.b) (#leanscript_get_ctor Other.a)
 
 -- …until the first one is chosen again.
 leanscript_use_signature Prog
 
-example : Term Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
+example : PExpr Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
 
 /--
 error: LeanScript: `Nat` is a leaf of the language: its values are literals, not constructor applications

@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Eval
 public meta import LeanScript.ToTerm
+public meta import LeanScript.KernelRfl
 
 @[expose] public section
 
@@ -51,22 +52,20 @@ example : ∃ r, Prog.vec = .data r := ⟨_, rfl⟩
 example : (#leanscript_get_ty (Vec Nat 3) : Ty Prog.ks) = Prog.vec := rfl
 
 /--
-info: IndexedFamilyTest.Prog.Vec.cons {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x1 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)) : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)
+info: IndexedFamilyTest.Prog.Vec.cons {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
+  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in
 #leanscript_get_ctor Vec.cons (α := Nat)
 
-/--
-info: IndexedFamilyTest.Prog.Vec.nil {Γ : Ctx Prog.ks} : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)
--/
+/-- info: IndexedFamilyTest.Prog.Vec.nil {Γ : Ctx Prog.ks} : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there) -/
 #guard_msgs in
 #leanscript_get_ctor Vec.nil (α := Nat)
 
 /--
-info: IndexedFamilyTest.Prog.Vec.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} (scrut : Term Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (on_nil : Term Prog.Δ Γ τ) (on_cons : Term Prog.Δ (Ty.prim LeanPrimTy.nat :: Ty.data (Ref.here 0).there :: Γ) τ) :
-  Term Prog.Δ Γ τ
+info: IndexedFamilyTest.Prog.Vec.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} {js : JCtx Prog.ks}
+  (scrut : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)) (on_nil : Term Prog.Δ Γ τ js)
+  (on_cons : Term Prog.Δ (Ty.prim LeanPrimTy.nat :: Ty.data (Ref.here 0).there :: Γ) τ js) : Term Prog.Δ Γ τ js
 -/
 #guard_msgs in
 #leanscript_get_cases Vec (α := Nat)
@@ -79,9 +78,7 @@ def Vec.sum {n : Nat} : Vec Nat n → Nat
   | .cons a v => a + v.sum
 
 -- The index `n` is erased: the translation takes the vector only.
-/--
-info: Vec.sum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat))
--/
+/-- info: Vec.sum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat)) [] -/
 #guard_msgs in
 #leanscript_to_term Vec.sum
 
@@ -94,7 +91,7 @@ def Vec.double {n : Nat} : Vec Nat n → Vec Nat n
   | .cons a v => .cons (2 * a) v.double
 
 def vecDoubleT := #leanscript_to_term Vec.double
-example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := rfl
+example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := by kernel_rfl
 #guard v2.double.sum == 6
 
 /-! ## `Matrix`: two numbers and a list of lists -/
@@ -102,9 +99,9 @@ example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := rfl
 example : ∃ r, Prog.mat = .record .nat (.cons .nat (.one (.data r))) := ⟨_, rfl⟩
 
 /--
-info: IndexedFamilyTest.Prog.Matrix.mk {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) :
-  Term Prog.Δ Γ
+info: IndexedFamilyTest.Prog.Matrix.mk {Γ : Ctx Prog.ks} (x0 x1 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
+  (x2 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) :
+  PExpr Prog.Δ Γ
     ((Ty.prim LeanPrimTy.nat).record (Fields.cons (Ty.prim LeanPrimTy.nat) (Fields.one (Ty.data (Ref.here 0)))))
 -/
 #guard_msgs in
@@ -112,8 +109,8 @@ info: IndexedFamilyTest.Prog.Matrix.mk {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ 
 
 -- The cells hold `Vec Nat`, the older datatype.
 /--
-info: IndexedFamilyTest.Prog.Vec.cons_1 {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (x1 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) : Term Prog.Δ Γ (Ty.data (Ref.here 0))
+info: IndexedFamilyTest.Prog.Vec.cons_1 {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there))
+  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in
 #leanscript_get_ctor Vec.cons (α := Vec Nat 2)
@@ -135,7 +132,7 @@ def Vec.sumRows {r c : Nat} : Vec (Vec Nat c) r → Nat
 
 def sumRowsT := #leanscript_to_term Vec.sumRows
 def Matrix.firstColumnSum (m : Matrix) : Nat := m.cells.sumRows
-example : sumRowsT.run (mT.run.2.2) = (4 : Nat) := rfl
+example : sumRowsT.run (mT.run.2.2) = (4 : Nat) := by kernel_rfl
 #guard m.firstColumnSum == 4
 
 /-! ## Lean's `Vector` stays an array -/
@@ -230,15 +227,15 @@ leanscript_signature Prog2 where
   idx := Idx 3
 
 /--
-info: IndexedFamilyTest.Prog2.Vec.cons {Γ : Ctx Prog2.ks} (x0 : Term Prog2.Δ Γ (Ty.prim LeanPrimTy.bool))
-  (x1 : Term Prog2.Δ Γ (Ty.data (Ref.here 0).there)) : Term Prog2.Δ Γ (Ty.data (Ref.here 0).there)
+info: IndexedFamilyTest.Prog2.Vec.cons {Γ : Ctx Prog2.ks} (x0 : PExpr Prog2.Δ Γ (Ty.prim LeanPrimTy.bool))
+  (x1 : PExpr Prog2.Δ Γ (Ty.data (Ref.here 0).there)) : PExpr Prog2.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in
 #leanscript_get_ctor Vec.cons (α := Bool)
 
 /--
-info: IndexedFamilyTest.Prog2.Idx.s {Γ : Ctx Prog2.ks} (x0 : Term Prog2.Δ Γ (Ty.data (Ref.here 0))) :
-  Term Prog2.Δ Γ (Ty.data (Ref.here 0))
+info: IndexedFamilyTest.Prog2.Idx.s {Γ : Ctx Prog2.ks} (x0 : PExpr Prog2.Δ Γ (Ty.data (Ref.here 0))) :
+  PExpr Prog2.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in
 #leanscript_get_ctor Idx.s

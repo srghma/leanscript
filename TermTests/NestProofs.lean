@@ -132,13 +132,13 @@ abbrev NB := Prog.Δ.block BRef.here
 
 /-- A fold over `Nest Nat` whose branch sees the value `W` of the enclosing `fun`. -/
 def foldNest {τ : Ty Prog.ks}
-    (brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => τ) i :: [Prog.nest]) τ)
+    (brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => τ) i :: [Prog.nest]) τ [])
     (W c : Ty.Den Prog.Δ Prog.nest) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ())) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
 
 /-- The translated `Nest.length` is a fold, with one step per constructor. -/
 theorem length_facts :
-    ∃ brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => .nat) i :: [Prog.nest]) .nat,
+    ∃ brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => .nat) i :: [Prog.nest]) .nat [],
     (∀ c, lengthT.run c = foldNest brs c c) ∧
     (∀ W x c, natOf (foldNest brs W (consEnc x c)) = 1 + natOf (foldNest brs W c)) ∧
     (∀ W, natOf (foldNest brs W nilEnc) = 0) := by

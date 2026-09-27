@@ -64,14 +64,14 @@ abbrev QB := Prog.Δ.block BRef.here
 
 /-- A fold over `QT` whose branch sees the value `W` of the enclosing `fun`. -/
 def foldQT {τ : Ty Prog.ks}
-    (brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => τ) i :: [Prog.qt]) τ)
+    (brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => τ) i :: [Prog.qt]) τ [])
     (W c : Ty.Den Prog.Δ Prog.qt) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ())) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
 
 /-- The translated `QT.odds` is a fold, with one step per constructor; the step of `node`
     adds the parity of the representative. -/
 theorem odds_facts :
-    ∃ brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => .nat) i :: [Prog.qt]) .nat,
+    ∃ brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => .nat) i :: [Prog.qt]) .nat [],
     (∀ c, oddsT.run c = foldQT brs c c) ∧
     (∀ W n c, natOf (foldQT brs W (nodeEnc n c)) = n % 2 + natOf (foldQT brs W c)) ∧
     (∀ W, natOf (foldQT brs W leafEnc) = 0) := by
