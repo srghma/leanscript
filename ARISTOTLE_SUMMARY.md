@@ -1,3 +1,16 @@
+# Summary of changes for run 0b958418-f0ab-40b2-99e1-0cd9f6b3550d
+I split `LeanScript/Term/Term.lean` into three files. A full `lake build` of all default targets passes with no warnings, errors or `sorry`.
+
+- **`LeanScript/Term/Common.lean`** holds the shared datatypes and functions: `Ctx`, `Var`, `DenList`, `Fields.toList`, `Ctor.binds`, `CtorIx` and its `BEq` instance, `JCtx`, `JVar`, and the cheap-extern tables (`Extern.cheapNames`, `Extern.cheapRelations`, `Extern.cheapNamespaces`, `Extern.isCheap`). It imports only `LeanScript.Ty.Den` and `LeanScript.Term.Tuple`.
+- **`LeanScript/Term/PExpr.lean`** holds the pure-expression mutual block (`Neu`, `PExpr`, `Args`, `Elems`) and what belongs with it: the abbreviations `PExpr.var`, `PExpr.data_out`, `PExpr.cond`, `PExpr.extern`, `PExpr.bvar`, `Neu.bvar`, and `PExpr.isTrivial`. It imports `Common`.
+- **`LeanScript/Term/Term.lean`** now contains only the second mutual block (`Comp`, `Term`, `Branches`) and `Term.ofComp`. It imports `PExpr` and keeps the full grammar documentation, which now says where each part lives.
+
+The split is purely a reorganisation: no definition changed. Because `Term.lean` still re-exports everything, no other file needed editing.
+
+**Decision for you:** the grammar you pasted has no `Neu` layer: `var`, `data_out`, `cond` and `extern` are direct `PExpr` constructors, and `record_casesOn`, `ite`, `enum_casesOn` and `union_casesOn` take a `PExpr`. The current code still has the `Neu` layer from the previous round, which is what rules out ι-redexes. I kept it, because your message asked only to move files and removing it would undo that earlier work. If you do want your grammar exactly as written, say so. That is a larger change: it touches substitution (`Elim.lean`, `TermSubst.lean`), the normaliser and notation (`Anf.lean`, `Notation.lean`), the translator, `GetCtor` and several tests.
+
+I split only `Term.lean`. `Eval.lean` and `TermSubst.lean` also keep their pure-expression functions in a separate mutual block and could be split the same way if you want.
+
 # Summary of changes for run 260888c7-1b03-44fa-bef4-d9961e40d2ae
 The four ι-redexes you listed are now ill-typed, and so are `ite (lit .bool true) …` and `enum_casesOn (enum_mk …)`. This is done in the grammar itself, not with a Prop or Bool side condition. A full `lake build` passes with no warnings and no `sorry`, and the main theorem uses only the standard axioms.
 
