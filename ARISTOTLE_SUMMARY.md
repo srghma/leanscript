@@ -1,3 +1,21 @@
+# Summary of changes for run b4f840b7-c6bc-4f88-aeb9-4304a2d62ece
+This was a refactoring task, so "formalizing" here meant doing in Lean the split of `LeanScript/TermElab/ToTerm/Expr.lean` that I had left out last time. There is no new theorem to state or prove. The full `lake build` passes (134 jobs, no errors or warnings), including all the `TermTests` that run `#leanscript_to_term`. A search finds no `sorry` in the new files.
+
+**What changed:** `Expr.lean` (943 lines) was one large block of mutually recursive functions. It could not be split as it was, because everything calls back into the translator `tr`. Now every function except `tr`, `trProj` and `trApp` takes `tr` as an ordinary argument, so it can live in its own file. The new files in `LeanScript/TermElab/ToTerm/Expr/` are:
+- `Loops.lean` (100 lines): `for`/`while` loops and applications (`trStepLoop`, `appArgs`, `trRangeFor`, `trWhile`).
+- `Calls.lean` (243 lines): `trHelperCall`, `defaultTerm`, `trFinFoldl`, `trQuotApp`, `wrapperField?`, `externCall`, `trExtern`, `trDecide`.
+- `Ctor.lean` (118 lines): `trOptField`, `trCtor`.
+- `Cases.lean` (312 lines): `tyOf?`, `nestView?`, `trFoldl`, `trNestFoldl`, `trRecCall`, `peelCases`, `recBranch`, `trCases`.
+
+`Expr.lean` (280 lines) keeps only the three core functions, which pass themselves to the helpers (for example `trCases tr L c args e`). `wrapperField?` and `peelCases` don't use `tr`, so they don't take it. Other than adding the `tr` argument, I only moved code. I checked this with a diff that ignores the added argument: it shows no other change to code or error messages. Functions outside these files still call only `tr`, so their imports are unchanged.
+
+**Earlier in this session, for reference:**
+- `TermElab/Anf.lean` is split into `Anf/{Src,Sem,Render,Emit}.lean`.
+- `Term/ExternEval/FixedWidth.lean` is replaced by `UInt.lean` and `SInt.lean`.
+- `GenElab/Read.lean` is split into `Read/{Base,Nest}.lean`.
+
+`README.md` and `NOT_IMPLEMENTED.md` point to the new file locations. No Lean file in the build is now longer than 540 lines. All work is committed.
+
 # Summary of changes for run 9c4cc405-0bc5-40f6-af3c-f338a43170b8
 The old `Term` is gone. The normal-form grammar (previously `NTerm`) is now `LeanScript.Term`, in `LeanScript/Term/*.lean`. As you asked, I did not write a verified normaliser: the elaborators build the new terms through the existing unverified normaliser in `Anf`. The full `lake build` passes (123 jobs), and a search finds no `sorry`, `axiom` or `implemented_by`.
 

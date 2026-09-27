@@ -33,7 +33,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
     `nil` branch is reachable after erasure) is refused.
 - **Families indexed by a type are erased through a generated element type, not typed.**
   `Nest : Type → Type 1` with `cons : α → Nest (α × α) → Nest α` has infinitely many
-  instances, so none of them is a block member. `Gen/Read.lean` (`typeFamilySteps`,
+  instances, so none of them is a block member. `GenElab/Read/Nest.lean` (`typeFamilySteps`,
   `ensureElem`, `canonIndex`) generates, once, the Lean inductive
   `Nest.Elem α := leaf α | node (Nest.Elem α) (Nest.Elem α)` (one `node` per recursive index;
   a structure index such as `α × α` is flattened into its fields), and reads `Nest τ` as the

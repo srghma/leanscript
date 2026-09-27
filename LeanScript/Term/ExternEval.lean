@@ -1,7 +1,8 @@
 module
 
 public import LeanScript.Term.ExternEval.Core
-public import LeanScript.Term.ExternEval.FixedWidth
+public import LeanScript.Term.ExternEval.UInt
+public import LeanScript.Term.ExternEval.SInt
 public import LeanScript.Term.ExternEval.String
 public import LeanScript.Term.ExternEval.Float
 
@@ -16,7 +17,7 @@ set_option autoImplicit false
 `LeanInitPureExtern` over the types of the language, `LeanScript.Extern`) on the values `v`
 of its arguments — the Lean function the entry stands for.  It takes the family of the
 entry apart and hands the entry to the evaluator of its family
-(`LeanScript.Term.ExternEval.Core`, `.FixedWidth`, `.String`, `.Float`).
+(`LeanScript.Term.ExternEval.Core`, `.UInt`, `.SInt`, `.String`, `.Float`).
 -/
 
 namespace LeanScript
