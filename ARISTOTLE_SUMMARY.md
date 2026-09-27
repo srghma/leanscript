@@ -1,3 +1,33 @@
+# Summary of changes for run 87949201-4522-467b-b735-28c81c558794
+I proved Church–Rosser for rewriting under `Term.eval`. Everything builds with no `sorry`, and the main theorems use only the axioms `propext`, `Classical.choice` and `Quot.sound`.
+
+**How I read the request.** `Term.eval` is a function, not a reduction relation. In a normal-form `Term` every elimination is stuck on an unknown, so there is no beta-reduction whose confluence could be proved. So I defined a rewrite relation, `Term.Step`, made of the optimiser's and dead-code elimination's rewrites, and proved Church–Rosser for that relation.
+
+**The rewrite relation** (`LeanScript/Term/Step.lean`). `Term.Step t t'` means one rewrite applied anywhere inside `t` (inside `let`s, closure bodies, delays, loops, branches and join points). The rules are:
+- drop a dead `val`, `let`, `record_casesOn` or `join`;
+- copy propagation: `let x := share y; b` becomes `b[x := y]`;
+- `let x := share n; ret x` becomes `ret n`, and the same for `jump`.
+
+`Term.Step.eval` proves that every step leaves `Term.eval` unchanged, in every environment.
+
+**Main results** (`LeanScript/Term/ChurchRosser.lean`):
+- `Term.Step.diamond` / `Term.Step.stronglyConfluent`: when two single steps diverge, each side reaches a common term in at most one step.
+- `Term.Step.confluent` and `Term.Step.churchRosser`.
+- `Term.eval_churchRosser`: two terms connected by rewrites in either direction both rewrite to a common term with the same `eval` value. `Term.eval_confluent` and `Term.run_churchRosser` (for whole programs) are variants.
+- `Term.Step.normal_unique`: normal forms are unique.
+
+**Link to the optimiser** (`LeanScript/Term/SimpStep.lean`). `Term.simp_star` shows that the optimiser's rewriting pass `Term.simp` is a sequence of `Term.Step`s. From that, `Term.simp_joinable` follows: its result can be joined with any other sequence of rewrites, at a term with the original value.
+
+**Supporting files:**
+- `LeanScript/Term/RenameComp.lean`: composing renamings.
+- `LeanScript/Term/StepRename.lean`: steps commute with renaming.
+- `LeanScript/Term/StepInv.lean`: case analysis on steps.
+- `LeanScript/Term/Rewriting.lean`: generic confluence theory, including "strongly confluent implies confluent".
+
+There are example checks in `Tests/TermTests/ChurchRosserTest.lean`, the README has a new row describing these files, and the Properties table lists the definition and the proved theorems.
+
+**Build problem.** `lakefile.toml` requires `mathlib`, but `lake-manifest.json` has no entry for it, so `lake` refuses to build ("dependency 'mathlib' not in manifest"). To build and check the work I removed that `require` block locally. I have put the lakefile back exactly as it was and did not commit that change. Because of this I can't list build targets as verified in the current configuration. To build, either remove the unused `mathlib` requirement or add it to the manifest (`lake update`).
+
 # Summary of changes for run 47efb8f5-ae35-4622-8e9a-7f818a4a8859
 I proved that `Term.eval` on a closed term, with every variable known, always returns a completely normalised value. The new file is `LeanScript/Term/NormalValue.lean`. It builds with no errors or warnings and contains no `sorry`. Both theorems use only the standard axioms `propext`, `Classical.choice` and `Quot.sound`.
 
