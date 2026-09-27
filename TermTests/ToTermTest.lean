@@ -36,8 +36,9 @@ def mx (a b : Nat) : Nat := if a < b then b else a
 def mxT := #leanscript_to_term mx
 example : (mxT (Δ := DSig.nil)).run (3 : Nat) (7 : Nat) = (7 : Nat) := rfl
 
-/-- An `if` that is not in tail position: the rest of the computation (`· + 1`) becomes a join
-    point, and each branch jumps to it. -/
+/-- An `if` that is not in tail position, whose branches are pure: `n * 2` and `+ 1` are
+    cheap externs (`PExpr.extern`), so the `if` is the pure conditional `PExpr.cond` and the
+    whole body is one pure expression, with no join point. -/
 def nonTailIf (b : Bool) (n : Nat) : Nat := (if b then n * 2 else 0) + 1
 def nonTailIfT := #leanscript_to_term nonTailIf
 example : (nonTailIfT (Δ := DSig.nil)).run true (4 : Nat) = (9 : Nat) := rfl
@@ -45,14 +46,34 @@ example : (nonTailIfT (Δ := DSig.nil)).run false (4 : Nat) = (1 : Nat) := rfl
 
 example {ks : List Nat} {Δ : DSig ks} : nonTailIfT (Δ := Δ) =
     .ofComp (.lam (.ofComp (.lam
+      (.ret (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HAdd.hAdd"
+          (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd)
+          (.cons
+            (.cond (.bvar 1)
+              (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HMul.hMul"
+                (fun v => (fun x0 x1 : Nat => x0 * x1) v.fst v.snd)
+                (.cons (.bvar 0) (.cons (.lit .nat 2) .nil)))
+              (.lit .nat 0))
+            (.cons (.lit .nat 1) .nil))))))) := rfl
+
+/-- An `if` that is not in tail position, one of whose branches makes a call that is not
+    cheap (`String.length`, on a string): the rest of the computation (`· + 1`) becomes a join
+    point, and each branch jumps to it. -/
+def nonTailIfCall (b : Bool) (s : String) : Nat := (if b then s.length else 0) + 1
+def nonTailIfCallT := #leanscript_to_term nonTailIfCall
+example : (nonTailIfCallT (Δ := DSig.nil)).run true "abc" = (4 : Nat) := rfl
+example : (nonTailIfCallT (Δ := DSig.nil)).run false "abc" = (1 : Nat) := rfl
+
+example {ks : List Nat} {Δ : DSig ks} : nonTailIfCallT (Δ := Δ) =
+    .ofComp (.lam (.ofComp (.lam
       (.join (.prim .nat)
-        (.ofComp (.extern (σs := [.prim .nat, .prim .nat]) "HAdd.hAdd"
+        (.ret (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HAdd.hAdd"
             (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd)
           (.cons (.bvar 0) (.cons (.lit .nat 1) .nil))))
         (.ite (.bvar 1)
-          (.letE (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HMul.hMul"
-              (fun v => (fun x0 x1 : Nat => x0 * x1) v.fst v.snd)
-              (.cons (.bvar 0) (.cons (.lit .nat 2) .nil)))
+          (.letE (.extern (σs := [.prim .string]) (τ := .prim .nat) "String.length"
+              (fun v => (fun x0 : String => x0.length) v)
+              (.cons (.bvar 0) .nil))
             (.jump .head (.bvar 0)))
           (.jump .head (.lit .nat 0))))))) := rfl
 

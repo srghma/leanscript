@@ -16,8 +16,9 @@ formal result.
 in their own context `js : JCtx`. The existing constructor names are kept, each in its
 layer; the new ones are `Comp.share`, `Term.ret`, `Term.join` and `Term.jump`. Of
 proposal 4, 4a (`lam` in `Comp`) and 4c (`record_casesOn` as the non-branching destructuring)
-are taken; 4d (`PExpr.cond`) and 4h (cheap externs in `PExpr`) are not, so every extern is a
-named `Comp`. The notation `[Term| …]` and `#leanscript_to_term` are still written in direct
+are taken, and so are 4d (`PExpr.cond`) and 4h (the cheap externs `PExpr.extern`, chosen by
+`LeanScript.Extern.isCheap` on the name of the extern and by the translator's check that its
+arguments and result are scalars; every other extern is a named `Comp.extern`). The notation `[Term| …]` and `#leanscript_to_term` are still written in direct
 style and A-normalised by `LeanScript/TermElab/Anf.lean`. Sections 0–3 below describe the grammar as it
 was *before* this change.
 

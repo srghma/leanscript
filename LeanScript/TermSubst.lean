@@ -43,6 +43,8 @@ def PExpr.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {τ : Ty ks} → PExpr Δ 
   | _, .array_mk es => .array_mk (es.rename r)
   | _, .data_in b j e => .data_in b j (e.rename r)
   | _, .data_out b j e => .data_out b j (e.rename r)
+  | _, .cond c a b => .cond (c.rename r) (a.rename r) (b.rename r)
+  | _, .extern name f as => .extern name f (as.rename r)
   termination_by structural _ e => e
 /-- `PExpr.rename` on arguments. -/
 def Args.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {σs : List (Ty ks)} → Args Δ Γ σs →
@@ -172,6 +174,8 @@ def PExpr.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {τ : Ty ks} → PExpr
   | _, .array_mk es => .array_mk (es.subst s)
   | _, .data_in b j e => .data_in b j (e.subst s)
   | _, .data_out b j e => .data_out b j (e.subst s)
+  | _, .cond c a b => .cond (c.subst s) (a.subst s) (b.subst s)
+  | _, .extern name f as => .extern name f (as.subst s)
   termination_by structural _ e => e
 /-- `PExpr.subst` on arguments. -/
 def Args.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {σs : List (Ty ks)} → Args Δ Γ σs →
@@ -302,6 +306,13 @@ theorem PExpr.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') 
   | _, .data_out _ _ e => by
       simp only [PExpr.rename, PExpr.eval]
       rw [PExpr.eval_rename r ρ' ρ h e]
+  | _, .cond c a b => by
+      simp only [PExpr.rename, PExpr.eval]
+      rw [PExpr.eval_rename r ρ' ρ h c, PExpr.eval_rename r ρ' ρ h a,
+        PExpr.eval_rename r ρ' ρ h b]
+  | _, .extern _ _ as => by
+      simp only [PExpr.rename, PExpr.eval]
+      rw [Args.eval_rename r ρ' ρ h as]
   termination_by structural _ e => e
 theorem Args.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvRen r ρ' ρ) : {σs : List (Ty ks)} → (as : Args Δ Γ σs) →
@@ -510,6 +521,13 @@ theorem PExpr.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ �
   | _, .data_out _ _ e => by
       simp only [PExpr.subst, PExpr.eval]
       rw [PExpr.eval_subst s ρ' ρ h e]
+  | _, .cond c a b => by
+      simp only [PExpr.subst, PExpr.eval]
+      rw [PExpr.eval_subst s ρ' ρ h c, PExpr.eval_subst s ρ' ρ h a,
+        PExpr.eval_subst s ρ' ρ h b]
+  | _, .extern _ _ as => by
+      simp only [PExpr.subst, PExpr.eval]
+      rw [Args.eval_subst s ρ' ρ h as]
   termination_by structural _ e => e
 theorem Args.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ)
     (h : EnvSub s ρ' ρ) : {σs : List (Ty ks)} → (as : Args Δ Γ σs) →

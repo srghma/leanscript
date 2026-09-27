@@ -166,9 +166,11 @@ def Loc.mentionsFn (L : Loc) (e : Expr) : Bool :=
   L.fns.any fun f => (e.find? (·.isConstOf f)).isSome
 
 /-- The value arguments of an application: explicit arguments whose type is a leaf type.
-    Every other argument must be closed (a type, an instance, a literal parameter). -/
-def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr) :
-    TM (Array Nat) := do
+    Every other argument must be closed (a type, an instance, a literal parameter), except,
+    when `proofs` is set, a proof: the caller decides its proposition when the term runs
+    (`trExtern`). -/
+def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr)
+    (proofs : Bool := false) : TM (Array Nat) := do
   let mut ty ← inferType fn
   let mut out := #[]
   for i in [0:args.size] do
@@ -179,11 +181,21 @@ def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr) :
         try pure (← cirOf L (← inferType a) false).isLeaf catch _ => pure false
       else pure false
     if isVal then out := out.push i
-    else if a.hasFVar then
+    else if a.hasFVar && !(proofs && (← isProp d)) then
       fail m!"the argument{indentExpr a}\nof {what} is not a value of a leaf type (an extern \
         takes and returns values of leaf types only)"
     ty := b.instantiate1 a
   return out
+
+/-- Is `T` a scalar type, whose values a machine operation handles in constant time (up to
+    the size of a number): `Bool`, `Nat`, `Int`, a fixed-width integer, `Char`, a float or a
+    bit vector?  A cheap extern (`LeanScript.Extern.isCheap`) takes and returns scalars only. -/
+def isScalarType (T : Expr) : MetaM Bool := do
+  let T ← whnfR T
+  if T.isAppOfArity ``BitVec 1 then return true
+  let some c := T.constName? | return false
+  return [``Bool, ``Nat, ``Int, ``UInt8, ``UInt16, ``UInt32, ``UInt64, ``USize, ``Int8,
+    ``Int16, ``Int32, ``Int64, ``ISize, ``Char, ``Float, ``Float32].contains c
 
 /-- The syntax of the `k`-th component of a `DenList` of `n` values: a right-nested product
     with no trailing `PUnit`, so the last component is not followed by `Prod.fst`. -/
@@ -511,7 +523,7 @@ def casesSrc (plan : TypePlan) (scrut : Src) (bs : Array Src) (ty? : Option Lean
     return Src.ite ty? scrut bs[1]! bs[0]!
   else if plan.enum?.isSome then
     let i := mkIdent `i
-    return .cases ty? scrut (bs.map (0, ·)) fun c rhss => do
+    return .cases ty? scrut (bs.map (0, ·)) none fun c rhss => do
       let mut sel := rhss[m - 1]!
       for p in (List.range (m - 1)).reverse do
         sel ← `(if ($i).val = $(quote p) then $(rhss[p]!) else $sel)

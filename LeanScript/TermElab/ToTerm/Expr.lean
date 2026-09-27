@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.TermElab.ToTerm.Basic
+public meta import LeanScript.TermElab.ToTerm.While
 
 @[expose] public section
 
@@ -13,7 +13,8 @@ set_option autoImplicit false
 
 `tr` and the functions it is mutually recursive with: the translation of a Lean expression
 (an application, a projection, a constructor, a recursive call, a `casesOn`/`match`, an
-extern, a range `for` loop, a fold over a nested container, ...) to the syntax of a
+extern, a range `for` loop, a structurally terminating `while` loop, a fold over a nested
+container, ...) to the syntax of a
 `LeanScript.Term`.  See `LeanScript.TermElab.ToTerm` for the definition translator.
 -/
 
@@ -180,6 +181,10 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if c == ``ForIn.forIn && args.size == 8 then
       if (← isIdMonad args[0]!) && (← whnfR args[1]!).isConstOf ``Std.Legacy.Range then
         return ← trRangeFor L args[4]! args[5]! args[6]! fun i r => pure (mkApp2 args[7]! i r)
+    -- a `while` loop in `Id`: only when it is structurally terminating
+    if c == ``ForIn.forIn && args.size == 8 then
+      if (← isIdMonad args[0]!) && (← whnfR args[1]!).isConstOf ``Lean.Loop then
+        return ← trWhile L e args[4]! args[6]! args[7]!
     if c == ``ForIn'.forIn' && args.size == 9 then
       if (← isIdMonad args[0]!) && (← whnfR args[1]!).isConstOf ``Std.Legacy.Range then
         return ← trRangeFor L args[5]! args[6]! args[7]! fun i r => do
@@ -271,9 +276,7 @@ partial def appArgs (L : Loc) (fn : Expr) (r : Src) (args : Array Expr) :
 
 /-- `for i in range do body` in `Id` (`forIn range init f`, whose step is `mkBody i r`):
     with `range = [a:b:s]`, the loop runs `n = (b - a + s - 1) / s` times, at `i = a + k * s`.
-    It is `Comp.nat_rec` on `n` whose answer is a `ForInStep β`: it starts at `yield init`,
-    the step at `k` is the body at `i` on the value of a `yield` and keeps a `done` (a `break`
-    or a `return`), and the loop is the value in the final step. -/
+    It is the loop of `trStepLoop` of `n` steps, whose step at `k` is the body at `i`. -/
 partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr → TM Expr) :
     TM Src := do
   let range ← instantiateMVars range
@@ -286,16 +289,26 @@ partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr 
   let len ← if a0 then pure b else mkAppM ``HSub.hSub #[b, a]
   let n ← if s1 then pure len else
     mkAppM ``HDiv.hDiv #[← mkAppM ``HSub.hSub #[← mkAppM ``HAdd.hAdd #[len, s], mkNatLit 1], s]
+  trStepLoop L β n init fun k v => do
+    let ks ← if s1 then pure k else mkAppM ``HMul.hMul #[k, s]
+    let i ← if a0 then pure ks else mkAppM ``HAdd.hAdd #[a, ks]
+    mkBody i v
+
+/-- A loop in `Id` of `n` steps with state `β`, from `init`, whose step at `k` on the state
+    `v` of a `yield` is `mkBody k v : ForInStep β`.  It is `Comp.nat_rec` on `n` whose answer
+    is a `ForInStep β`: it starts at `yield init`, the step at `k` is the body on the value of
+    a `yield` and keeps a `done` (a `break` or a `return`), and the loop is the value in the
+    final step. -/
+partial def trStepLoop (L : Loc) (β n init : Expr) (mkBody : Expr → Expr → TM Expr) :
+    TM Src := do
   let stepTy ← mkAppM ``ForInStep #[β]
   let ρ ← tyStx L stepTy
   let tn ← tr L n
   let tz ← tr L (← mkAppM ``ForInStep.yield #[init])
   let ts ← withLocalDeclD `k (mkConst ``Nat) fun k => withLocalDeclD `acc stepTy fun acc => do
-    let ks ← if s1 then pure k else mkAppM ``HMul.hMul #[k, s]
-    let i ← if a0 then pure ks else mkAppM ``HAdd.hAdd #[a, ks]
     let done ← withLocalDeclD `v β fun v => do
       mkLambdaFVars #[v] (← mkAppM ``ForInStep.done #[v])
-    let yield ← withLocalDeclD `v β fun v => do mkLambdaFVars #[v] (← mkBody i v)
+    let yield ← withLocalDeclD `v β fun v => do mkLambdaFVars #[v] (← mkBody k v)
     let motive ← withLocalDeclD `t stepTy fun t => mkLambdaFVars #[t] stepTy
     let cases ← mkAppOptM ``ForInStep.casesOn #[β, motive, acc, done, yield]
     tr ((L.bind k.fvarId!).bind acc.fvarId!) cases
@@ -305,6 +318,19 @@ partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr 
     let cases ← mkAppOptM ``ForInStep.casesOn #[β, motive, r, idF, idF]
     tr (L.bind r.fvarId!) cases
   return .letE (Src.natRec (some ρ) tn tz ts) fin
+
+/-- `while c do body` in `Id` (`forIn Loop.mk init f`, of state type `β`): accepted only when
+    it is structurally terminating (`whileBound?`, see `LeanScript.TermElab.ToTerm.While`), and
+    then the loop of `trStepLoop` whose number of steps bounds the number of iterations, with
+    the step `f () v`.  No fuel: when the bounded loop stops, the `while` loop has stopped. -/
+partial def trWhile (L : Loc) (e β init f : Expr) : TM Src := do
+  let some n ← whileBound? β init f
+    | fail m!"the `while` loop{indentExpr e}\nis not structurally terminating: the language has \
+        no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` \
+        variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the \
+        loop) and every iteration that goes on moves `x` towards the bound by a literal step \
+        (`x := x - k`, `x := x / k`, `x := x + k`)"
+  trStepLoop L β n init fun _ v => pure (mkApp2 f (mkConst ``Unit.unit) v).headBeta
 
 /-- Would the call `e` of `fn` to `args` be refused as an extern: does it take or return a
     value that is not of a leaf type? -/
@@ -432,13 +458,59 @@ partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr)
   unless τ.isLeaf do
     fail m!"the call{indentExpr e}\nreturns a value of a type that is not a leaf; it cannot \
       be an extern"
-  let vs ← valueArgs L m!"`{name}`" fn args
+  let vs ← valueArgs L m!"`{name}`" fn args (proofs := true)
   let tys ← vs.mapM fun i => do externLocal (← inferType args[i]!)
   let g ← withLocalDecls (vs.toList.zipIdx.map fun (_, k) =>
       ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!.1)).toArray fun ys => do
     let args' ← vs.zipIdx.foldlM (fun as (i, k) => do return as.set! i (← tys[k]!.2 ys[k]!)) args
-    mkLambdaFVars ys (mkAppN fn args')
-  externStx L name g (vs.map (args[·]!)) τ
+    mkLambdaFVars ys (← decideProofs name fn args' ys)
+  externStx L name g (vs.map (args[·]!)) τ (← inferType e)
+
+/-- `fn args`, where every proof among the arguments that mentions a local (`h` of `a[i]'h`,
+    of `UInt16.ofNatLT n h`) is replaced by the proof that a decision of its proposition
+    gives: `if h : P then fn … h … else default`.  The language erases proofs, so the proof is
+    not in hand when the term runs; the proposition `P` is the one the type of `fn` requires,
+    on the values `ys` of the arguments of the extern.  In a term translated from a Lean
+    program `P` always holds (the program had to prove it), so the `default` of the result
+    type is never the value. -/
+partial def decideProofs (name : String) (fn : Expr) (args ys : Array Expr) : TM Expr := do
+  let mut ty ← inferType fn
+  let mut props : Array Nat := #[]
+  for i in [0:args.size] do
+    ty ← whnf ty
+    let .forallE _ d b _ := ty | fail m!"`{name}` is applied to too many arguments"
+    if (← isProp d) && args[i]!.hasFVar then props := props.push i
+    ty := b.instantiate1 args[i]!
+  if props.isEmpty then return mkAppN fn args
+  let resTy ← inferType (mkAppN fn args)
+  let dflt ← try mkAppOptM ``Inhabited.default #[resTy, none]
+    catch _ => fail m!"`{name}` takes a proof, whose proposition is decided when the term \
+      runs, and its result type{indentExpr resTy}\nhas no `Inhabited` instance for the case \
+      where it does not hold"
+  decideProofsGo name fn ys props resTy dflt 0 args
+
+/-- The decisions of `decideProofs`, from the `k`-th proof on, the first outermost. -/
+partial def decideProofsGo (name : String) (fn : Expr) (ys : Array Expr) (props : Array Nat)
+    (resTy dflt : Expr) (k : Nat) (args : Array Expr) : TM Expr := do
+  let some i := props[k]? | return mkAppN fn args
+  -- the proposition, with the earlier arguments (and the proofs decided) in place
+  let mut ty ← inferType fn
+  for j in [0:i] do
+    ty ← whnf ty
+    let .forallE _ _ b _ := ty | fail m!"bad type of `{name}`"
+    ty := b.instantiate1 args[j]!
+  let .forallE _ P _ _ ← whnf ty | fail m!"bad type of `{name}`"
+  let P := (← instantiateMVars P).headBeta
+  if P.hasAnyFVar (fun x => !ys.any (·.fvarId! == x)) then
+    fail m!"`{name}` takes a proof of{indentExpr P}\nwhich speaks about a value that is not \
+      an argument of the call: the proposition cannot be decided on the arguments"
+  let inst ← try synthInstance (mkApp (mkConst ``Decidable) P)
+    catch _ => fail m!"`{name}` takes a proof of{indentExpr P}\nwhich is erased: the \
+      proposition is decided when the term runs, and it is not decidable"
+  let yes ← withLocalDeclD `h P fun h => do
+    mkLambdaFVars #[h] (← decideProofsGo name fn ys props resTy dflt (k + 1) (args.set! i h))
+  let no ← withLocalDeclD `h (mkNot P) fun h => mkLambdaFVars #[h] dflt
+  return mkApp5 (mkConst ``dite [← getLevel resTy]) resTy P inst yes no
 
 /-- `decide p` of a relation `p` on values of leaf types: `Comp.extern`. -/
 partial def trDecide (L : Loc) (p : Expr) : TM Src := do
@@ -456,10 +528,13 @@ partial def trDecide (L : Loc) (p : Expr) : TM Src := do
       catch _ => fail m!"the condition{indentExpr p}\nis not decidable"
     mkLambdaFVars ys (mkApp2 (mkConst ``Decidable.decide) p' inst)
   externStx L s!"decide {c}" g (vs.map (args[·]!)) (.prim (← `(LeanPrimTy.bool)))
+    (mkConst ``Bool)
 
-/-- `Comp.extern name (fun v => g v.1 v.2.1 … v.2.….2) args`. -/
-partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR) :
-    TM Src := do
+/-- `Comp.extern name (fun v => g v.1 v.2.1 … v.2.….2) args`, of Lean type `resTy`; the
+    pure expression `PExpr.extern name …` when the extern is cheap: `Extern.isCheap name`, and
+    its arguments and result are scalars (`isScalarType`). -/
+partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR)
+    (resTy : Expr) : TM Src := do
   let v := mkIdent `v
   let mut call ← exprToSyntax g
   let mut comps : Array Lean.Term := #[]
@@ -469,6 +544,14 @@ partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (
   for a in args do σs := σs.push (← (← cirOf L (← inferType a) false).stx L.c #[])
   let argSrcs ← args.mapM (tr L)
   let τs ← τ.stx L.c #[]
+  let cheap ← pure (Extern.isCheap name) <&&> isScalarType resTy <&&>
+    args.allM fun a => do isScalarType (← inferType a)
+  if cheap then
+    return .pnode (fun xs => do
+        let mut as ← `(LeanScript.Args.nil)
+        for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
+        `(LeanScript.PExpr.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (by exact fun $v => $call) $as))
+      argSrcs
   return .comp (fun xs _ => do
       let mut as ← `(LeanScript.Args.nil)
       for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)

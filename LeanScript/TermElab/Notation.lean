@@ -38,7 +38,9 @@ notation (`set_option pp.leanscript false` turns that off).
 | `3`, `"s"`, `true`, `false`              | `PExpr.ofNat 3`, `.lit .string "s"`, `.lit .bool true`, … |
 | `lit p v`                                | `PExpr.lit p v`                                  |
 | `extern "name" f a b`                    | `Comp.extern "name" f` of the arguments `a`, `b` (`Comp.externOf`) |
+| `pextern "name" f a b`                   | the cheap extern `PExpr.extern "name" f` of the arguments `a`, `b` (`PExpr.externOf`), a pure expression |
 | `if c then a else b`                     | `Term.ite c a b` (with a join point when not in tail position) |
+| `cond c a b`                             | the pure conditional `PExpr.cond c a b` (`a`, `b` must be pure) |
 | `nat_rec n z s`                          | `Comp.nat_rec n z s`                             |
 | `enum_mk i`                              | `PExpr.enum_mk _ i`                              |
 | `match e with \| 0 => a \| 1 => b \| _ => c` | `Term.enum_casesOn` (the last branch is the default) |
@@ -72,7 +74,7 @@ it adds.  A Lean term `‹t›` is in the enclosing context: it is shifted past 
 around it (`PExpr.shift`), unless it is generic in its context (`sumT : {Γ : Ctx ks} → …`),
 when it is used as it is.
 
-**Lean arguments.**  In `lit`, `extern`, `enum_mk`, `union_mk`, `data_in`, `data_out`,
+**Lean arguments.**  In `lit`, `extern`, `pextern`, `enum_mk`, `union_mk`, `data_in`, `data_out`,
 `data_rec` and `data_brec` the leaf, value, name, function, constructor number, block,
 member, answer types and depth are Lean terms: a number, a string or `‹t›`.  The branches of
 `data_rec`/`data_brec` can also be given as one Lean function `‹brs›`.
@@ -124,6 +126,13 @@ abbrev PExpr.ofNat {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {p : LeanPrimTy}
 abbrev Comp.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
     (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
     Comp Δ Γ τ :=
+  .extern name f args
+
+/-- `PExpr.extern` (a cheap extern) with the arguments before the function, as
+    `Comp.externOf`. -/
+abbrev PExpr.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
+    (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
+    PExpr Δ Γ τ :=
   .extern name f args
 
 /-! ## Syntax -/
@@ -195,7 +204,7 @@ open LeanScript.Anf (Src Atom)
 
 /-- The constructors written as an application of their name. -/
 def specialForms : List Name :=
-  [`lit, `extern, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
+  [`lit, `extern, `pextern, `cond, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
    `data_brec, `thunk_mk, `thunk_force, `lazy_mk, `lazy_force, `jump]
 
 /-- The arguments of a constructor or an extern. -/
@@ -303,7 +312,7 @@ partial def toSrc : TSyntax `lsterm → TermElabM Src
       return .destruct (← toSrc e) (hs.getElems.size + 1) (← toSrc b)
         fun p body => `(LeanScript.Term.record_casesOn $p $body)
   | `(lsterm| if $c then $a else $b) => do
-      return .cases none (← toSrc c) #[(0, ← toSrc a), (0, ← toSrc b)]
+      return .cases none (← toSrc c) #[(0, ← toSrc a), (0, ← toSrc b)] none
         fun c bs => `(LeanScript.Term.ite $c $(bs[0]!) $(bs[1]!))
   | `(lsterm| join _ $x := $body; $main) => do
       let ty? ← match x with
@@ -375,7 +384,7 @@ partial def matchSrc (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
         | `(lspat| $k:num) => `($k:num)
         | _ => throwErrorAt p "expected a constructor number (only the last branch may be `_`)"
     let brs ← bs.toArray.mapM fun b => return (0, ← toSrc b)
-    return .cases none e' brs fun c rhss =>
+    return .cases none e' brs none fun c rhss =>
       `(LeanScript.Term.enum_casesOn $c (fun i => match i.val with $[| $pats => $rhss]*))
   else
     if ps.length < 2 then throwErrorAt e "a union has at least two constructors"
@@ -384,7 +393,7 @@ partial def matchSrc (e : TSyntax `lsterm) (ps : List (TSyntax `lspat))
       | [a, b] => `(LeanScript.Branches.two $a $b)
       | a :: rest => do `(LeanScript.Branches.cons $a $(← mk rest))
       | [] => throwError "unreachable"
-    return .cases none e' brs fun c rhss => do
+    return .cases none e' brs none fun c rhss => do
       `(LeanScript.Term.union_casesOn $c $(← mk rhss.toList))
 
 /-- A constructor, applied to `args`. -/
@@ -401,6 +410,16 @@ partial def specialSrc (id : Ident) (args : List (TSyntax `lsterm)) : TermElabM 
       return .comp (fun xs _ => do `(LeanScript.Comp.externOf $name $(← mkArgs xs.toList) $fn))
         (← as.toArray.mapM toSrc) #[]
   | `extern, _ => bad "extern \"name\" f a₁ … aₙ"
+  | `pextern, name :: fn :: as => do
+      let name ← leanArg name
+      let fn ← leanArg fn
+      return .pnode (fun xs => do `(LeanScript.PExpr.externOf $name $(← mkArgs xs.toList) $fn))
+        (← as.toArray.mapM toSrc)
+  | `pextern, _ => bad "pextern \"name\" f a₁ … aₙ"
+  | `cond, [c, a, b] => do
+      return .pnode (fun xs => `(LeanScript.PExpr.cond $(xs[0]!) $(xs[1]!) $(xs[2]!)))
+        #[← toSrc c, ← toSrc a, ← toSrc b]
+  | `cond, _ => bad "cond c a b"
   | `nat_rec, [n, z, s] => do
       return .comp (fun xs bs => `(LeanScript.Comp.nat_rec $(xs[0]!) $(xs[1]!) $(bs[0]!)))
         #[← toSrc n, ← toSrc z] #[(2, ← toSrc s)]
@@ -545,6 +564,7 @@ partial def underLams {α : Type} (x : DelabM α) : DelabM α := do
 def termHeads : List Name :=
   [``PExpr.var, ``PExpr.bvar, ``PExpr.lit, ``PExpr.ofNat, ``PExpr.enum_mk, ``PExpr.record_mk,
    ``PExpr.union_mk, ``PExpr.inj, ``PExpr.array_mk, ``PExpr.data_in, ``PExpr.data_out,
+   ``PExpr.cond, ``PExpr.extern, ``PExpr.externOf,
    ``Comp.app, ``Comp.lam, ``Comp.share, ``Comp.extern, ``Comp.externOf, ``Comp.nat_rec,
    ``Comp.array_foldl, ``Comp.data_rec, ``Comp.data_brec, ``Comp.thunk_mk, ``Comp.thunk_force,
    ``Comp.lazy_mk, ``Comp.lazy_force,
@@ -682,6 +702,7 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
         let j ← withArgFromEnd 2 leanArgSyn
         return (← mkAppSyn (if c == ``PExpr.data_in then `data_in else `data_out) [b, j, ← arg 1],
           appPrec)
+    | ``PExpr.cond => return (← mkAppSyn `cond [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.app =>
         let f ← tparen appPrec (← sub 2)
         return (← `(lsterm| $f $(← arg 1)), appPrec)
@@ -706,13 +727,14 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
             return (← `(lsterm| fun $bs* => $b), 0)
         go #[]
     | ``Comp.share => sub 1
-    | ``Comp.extern | ``Comp.externOf =>
-        let ext := c == ``Comp.extern
+    | ``Comp.extern | ``Comp.externOf | ``PExpr.extern | ``PExpr.externOf =>
+        let ext := c == ``Comp.extern || c == ``PExpr.extern
         let name ← withArgFromEnd 3 leanArgSyn
         let f ← withArgFromEnd (if ext then 2 else 1) leanArgSyn
         let as ← withArgFromEnd (if ext then 1 else 2) delabArgs
         let as ← as.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
-        return (← mkAppSyn `extern ([name, f] ++ as), appPrec)
+        let kw := if c == ``PExpr.extern || c == ``PExpr.externOf then `pextern else `extern
+        return (← mkAppSyn kw ([name, f] ++ as), appPrec)
     | ``Comp.nat_rec => return (← mkAppSyn `nat_rec [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.array_foldl => return (← mkAppSyn `array_foldl [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.data_rec | ``Comp.data_brec =>
@@ -852,6 +874,9 @@ def delabTerm : Delab := do
 @[delab app.LeanScript.PExpr.array_mk] def delabPExprArrayMk : Delab := delabTerm
 @[delab app.LeanScript.PExpr.data_in] def delabPExprDataIn : Delab := delabTerm
 @[delab app.LeanScript.PExpr.data_out] def delabPExprDataOut : Delab := delabTerm
+@[delab app.LeanScript.PExpr.cond] def delabPExprCond : Delab := delabTerm
+@[delab app.LeanScript.PExpr.extern] def delabPExprExtern : Delab := delabTerm
+@[delab app.LeanScript.PExpr.externOf] def delabPExprExternOf : Delab := delabTerm
 @[delab app.LeanScript.Comp.app] def delabCompApp : Delab := delabTerm
 @[delab app.LeanScript.Comp.lam] def delabCompLam : Delab := delabTerm
 @[delab app.LeanScript.Comp.share] def delabCompShare : Delab := delabTerm

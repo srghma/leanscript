@@ -31,7 +31,9 @@ given with the constructor it becomes:
 | a parameter, a `let`, a `fun` | `PExpr.var` (de Bruijn), `Term.letE`, `Comp.lam` |
 | a closed value of a leaf type (a literal) | `PExpr.lit` |
 | `if c then t else e`, `cond`, `dite` (the proof unused) | `Term.ite` of `decide c` |
-| a call of any other function on values of leaf types (or `decide` of such a relation) | `Comp.extern`, named after the function, on the terms of its value arguments |
+| a call of any other function on values of leaf types (or `decide` of such a relation) | `Comp.extern`, named after the function, on the terms of its value arguments; the pure expression `PExpr.extern` when the extern is cheap (`Extern.isCheap` of its name, and scalar arguments and result: `n * 2`, `i < n`, `UInt16.ofNatLT`) |
+| a call that takes a proof mentioning a local (`a[i]'h`, `UInt16.ofNatLT n h` under `if h : …`) | the same extern, whose Lean function decides the proposition on the values of the arguments: `fun v => if h : v.2 < v.1.size then v.1[v.2]'h else default` (the proof is erased; the `default` is never reached from a program that had to prove the proposition) |
+| an `if` (or a `match` on `Bool`) that is an operand, whose branches are pure expressions | the pure conditional `PExpr.cond`, with no join point |
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
 | a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |
@@ -50,6 +52,7 @@ given with the constructor it becomes:
 | a call of a helper definition (not from `Init`/`Std`/`Lean`) that cannot be an extern, because it takes or returns a value that is not of a leaf type (`ackInner (ack2 m)`, `hyperLoop (hyperTCO n a) b x`) | the helper's own translation (a closed term), applied to the terms of the arguments; a helper calling back the function translated is refused |
 | `Id.run x`, `pure x`, `x >>= f` in `Id` (a `do` block) | `x`, `x`, `Term.letE` |
 | `for i in [a:b:s] do …` in `Id` (`forIn`/`forIn'` over a `Std.Legacy.Range`) | `Comp.nat_rec` on the number of iterations `(b - a + s - 1) / s`, at `i = a + k * s`, whose answer is a `ForInStep`: a `done` (`break`, `return`) is kept to the end, and the loop is the value in the final step |
+| `while c do …` in `Id` (`forIn` over `Lean.Loop`), when its termination is read off its syntax (`LeanScript.TermElab.ToTerm.While`: the condition bounds a `Nat` variable that every iteration that goes on moves towards the bound by a literal step) | the same loop of `x₀ + 1` (counting down) or `b₀ - x₀ + 1` (counting up to `b`) steps, with no fuel (`LeanScript.boundedLoop_stable`); any other `while` is refused |
 | structural recursion on a parameter of a declared datatype, by one function or by a `mutual` group of functions (one per member of the block: `Even.toNat`/`Odd.toNat`, `Rose.sum`/`Rose.sumList`) | `Comp.data_rec` of the whole block, one branch per member (a member no function recurses on gets a constant branch) |
 | a recursive call on a member held in a function field (`(f 0).sum` in the branch of `node f`) | the answer next to the subvalue (`record_casesOn` of the applied field) |
 | `Array.foldl step z qs` over a field `qs` that holds members in an `Array` (also `Array (Array Q)`, `Nat → Array Q`) | `Comp.array_foldl` over the pairs of the subvalues and their answers; in `step`, a recursive call on the element is its answer |

@@ -117,10 +117,9 @@ def parity (q : Quot Par) : Nat := Quot.lift (fun a => a % 2) (fun _ _ h => h) q
 info: fun {ks} {Δ} =>
   Term.letE
     (Comp.lam
-      (Term.letE
-        (Comp.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
-          (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)))
-        (Term.ret (PExpr.var DeBruijn.head))))
+      (Term.ret
+        (PExpr.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
+          (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)))))
     (Term.ret
       (PExpr.var
         DeBruijn.head)) : {ks : List Nat} →

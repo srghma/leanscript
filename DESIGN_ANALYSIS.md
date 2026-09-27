@@ -187,8 +187,10 @@ a code generator) has to handle functions, not syntax.
 Every loop is `nat_rec`, `array_foldl`, `data_rec` or `data_brec`. That makes `eval` total,
 but:
 
-- well-founded recursion, fuel-free loops (`while`), partial functions and coinductive data
-  cannot be written;
+- well-founded recursion, partial functions and coinductive data cannot be written; a
+  `while` loop is only translated when its termination is syntactic (a `Nat` variable moved
+  towards a bound by a literal step), as a `nat_rec` of a number of steps fixed before the
+  loop (`LeanScript/BoundedLoop.lean` proves that number is enough);
 - `nat_rec` is unary and non-dependent. It iterates `n` times with no early exit, and `for`
   loops pay for `break` by carrying a `ForInStep` to the end. Evaluating it by `rfl` in the
   kernel is only practical for small `n`;

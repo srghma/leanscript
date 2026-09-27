@@ -154,11 +154,17 @@ The supported fragment and the refusals are listed in the header of
   leaf, so there is no `data_brec` for it; on a declared datatype, calls up to four levels
   down are translated to `data_brec`.
 - **Patterns on numerals** other than `0` / `n + 1` (Lean compiles them to `dite` on
-  equalities), and `if h : c` whose proof `h` is used.
+  equalities), and `if h : c` whose proof `h` is used by anything but an extern (an extern
+  that takes a proof decides its proposition again when the term runs,
+  `TermTests/CondExternTest.lean`).  A proof whose proposition speaks about a value that is
+  not an argument of the extern, or is not decidable, is refused.
 - **Externs on non-leaf values**: a call of a Lean function is an extern only when its value
   arguments and its result are leaf types (or arrays of them); `List.length l` on a declared
   `List Nat` is refused (write the recursion instead).
-- **Loops** (`for`, `while`, `do` notation in `Id`).
+- **Loops**: a `for` over a range and a `while` in `Id` are translated; a `while` only when
+  its termination is read off its syntax (a `Nat` variable moved towards a bound by a
+  literal step, `TermTests/WhileTest.lean`); any other `while`, `repeat`, and loops in other
+  monads are refused.
 - **No proof that the translation is correct** in general: each test checks it on examples
   by `rfl`, and `ToTermTest.sumToT_run` proves it at every argument for one function.
 

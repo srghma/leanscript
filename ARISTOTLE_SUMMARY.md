@@ -1,3 +1,44 @@
+# Summary of changes for run e8d737d9-9846-4f07-ae38-14a8e196f186
+I added the pure conditional and cheap externs (4d and 4h), support for externs that take a proof, and `while` loops without fuel. The full `lake build` passes with no errors or warnings, there is no `sorry`, and the new theorems use only the standard axioms. All work is committed.
+
+**1. `PExpr.cond` and cheap externs**
+- **Grammar (`LeanScript/Term.lean`):** `PExpr` has two new constructors:
+  - `cond c a b`, a conditional whose branches are pure expressions;
+  - `extern name f args`, a cheap extern written as a pure expression.
+- **Which externs are cheap:** `LeanScript.Extern.isCheap` decides by the Lean function's name. That covers arithmetic, bitwise, Boolean and comparison operators, conversions to fixed-width types, and functions of `UInt*`/`Int*`/`Float`/`Char`. The translator also requires every argument and the result to be a scalar type, so `+` on strings or `==` on arrays stay a named `Comp.extern`.
+  - This is a list of names, not a proof of cost: `+` on `Nat` counts as cheap even though `Nat` has unlimited size.
+- **Evaluation and substitution:** `PExpr.eval`, renaming and substitution handle both constructors, and `eval_rename`/`eval_subst` are re-proved for them.
+- **Notation:** `cond c a b` and `pextern "name" f a b` are written and printed back.
+- **Translator:** an `if` that is an operand and has pure branches becomes `PExpr.cond` instead of a join point. So `(if b then n * 2 else 0) + 1` is now one pure expression.
+- **Tests changed:** I updated two expected outputs in `ToTermTest.lean` and `QuotientTest.lean`. I added `nonTailIfCall`, which still pins the join-point form, using `String.length` because that extern is not cheap.
+
+**2. Externs that take a proof: how it worked before, and now**
+- **Before:** `externCall`/`externCallChecked` no longer existed, since `Comp.extern` now holds the Lean function itself. A closed proof was built into that function. A proof that mentions a local, such as `h` in `if h : i < a.size then a[i] else 0` or `UInt16.ofNatLT n h`, was rejected.
+- **Now:** no new constructor is needed. The extern's own function decides the proposition on the argument values and falls back to `default`:
+  `fun v => if h : v.2 < v.1.size then v.1[v.2]'h else default`
+  - This is the old `externCallChecked` idea moved into the function. It re-checks a condition the program already proved.
+  - A proposition that is not decidable, or that mentions a value which is not an argument of the call, is rejected with a message.
+- **Proved for all inputs** (`TermTests/CondExternTest.lean`): `safeGetT_correct`, `toU16T_correct` and `clampAddT_correct` show the translation computes the Lean function, so the fallback is never used.
+- **Still not supported:** a function that takes a proof as a *parameter* (e.g. `(h : i < a.size)` in its signature).
+
+**3. `while` loops**
+- **Accepted loops (`LeanScript/TermElab/ToTerm/While.lean`):** the condition must bound a `Nat` variable of the loop, and every iteration that continues must move it towards the bound by a literal step. The accepted forms are:
+  - counting down: `x > e`, `x ≠ 0`, `x != 0` or `k ≤ x`, with `x := x - k`, `x / k` or `x.pred`;
+  - counting up: `x < b` or `x ≤ b`, with `x := x + k`, where the loop never changes `b`.
+
+  A conjunct of an `&&`/`∧` is enough. `break` is allowed.
+- **Rejected loops:** anything else, including `repeat`, Collatz-style steps, or a bound that moves with the variable.
+- **Translation:** an accepted loop becomes a `nat_rec` whose number of steps is fixed before the loop starts: `x₀ + 1` counting down, `b₀ - x₀ + 1` counting up.
+- **Why this is not fuel (`LeanScript/BoundedLoop.lean`):** `boundedLoop_done` proves the loop has stopped after that many steps, and `boundedLoop_stable` proves more steps change nothing.
+  - These theorems are not formally connected to Lean's own `while`, because `Lean.Loop.forIn` is `partial` and does not reduce.
+  - That the syntactic check always yields such a decreasing measure is argued in the file's doc, not proved.
+- **Tests (`TermTests/WhileTest.lean`):** six loops are run by the translation (checked by the kernel), and each result is compared with Lean's compiled `while` via `#guard`. Three rejected loops have their error messages pinned.
+
+**Other changes**
+- `trRangeFor` now shares a helper, `trStepLoop`, with the new `while` translation.
+- Documentation is updated in `README.md`, `NOT_IMPLEMENTED.md`, `DESIGN_ANALYSIS.md`, the status note in `proposals/AnfSplitProposals.md`, and the `ToTerm.lean` table.
+- The Properties table is updated.
+
 # Summary of changes for run e41dd7a1-c602-47fc-b98a-a629eec21319
 `JEnv`, environments and extern arguments are now plain products with no trailing `PUnit`. Two values are `A × B`, one value is `A`, and none is `PUnit`. The full `lake build` (all four default libraries plus the new test file) passes with no errors or warnings, and there is no `sorry`.
 

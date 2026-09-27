@@ -17,7 +17,7 @@ translates Lean definitions to it.  It follows the three layers of the `PCL` gra
 
 ```
 PExpr ::= var | lit | enum_mk | record_mk Args | union_mk ix Args | array_mk Elems
-        | data_in b j PExpr | data_out b j PExpr
+        | data_in b j PExpr | data_out b j PExpr | cond PExpr PExpr PExpr | extern f Args
 Comp  ::= app PExpr PExpr | lam Term | share PExpr | extern f Args
         | nat_rec PExpr PExpr Term | array_foldl PExpr PExpr Term
         | data_rec b ρ Termᵢ j PExpr | data_brec b ρ k Termᵢ j PExpr
@@ -28,8 +28,10 @@ Term  ::= ret PExpr | letE Comp Term | record_casesOn PExpr Term
 ```
 
 * `PExpr Δ Γ τ` (with the lists `Args` and `Elems`) — **pure expressions**: variables,
-  literals, constructors and one layer in or out of a recursive datatype.  They make no call,
-  bind nothing and never branch.  `PExpr` is an ordinary inductive, not mutual with the two
+  literals, constructors, one layer in or out of a recursive datatype, the pure conditional
+  `cond` and the *cheap* externs (`PExpr.extern`, a machine operation on scalars).  They bind
+  nothing, make no call that costs more than a machine operation and never branch in the
+  control flow.  `PExpr` is an ordinary inductive, not mutual with the two
   other layers.
 * `Comp Δ Γ τ` — **computations**: one step whose value a `let` names: an application, a
   closure, a shared pure value, an extern, a fold, a delay.
@@ -68,8 +70,16 @@ course-of-values form of the fold, available at every block of the signature:
 There is no fixpoint and no fuel: every loop is a fold (`data_rec`, `nat_rec`,
 `array_foldl`), so the evaluators (`LeanScript.Term.eval`) are total and structural.
 
-Leaf operations are `Comp.extern`, a named Lean function on the values of its arguments;
-because it holds a function, `Comp` and `Term` have no decidable equality.
+Leaf operations are externs, a named Lean function on the values of its arguments: a cheap
+one (`LeanScript.Extern.isCheap`) is the pure expression `PExpr.extern`, any other one the
+computation `Comp.extern`.  Because they hold a function, the three layers have no decidable
+equality.
+
+An extern that takes a proof (`a[i]'h`, `UInt16.ofNatLT n h`) is an ordinary extern whose
+function **decides** the proposition on the values of the arguments, since the language
+erases proofs: `fun v => if h : v.2 < v.1.size then v.1[v.2]'h else default`.  In a term
+translated from a Lean program the proposition always holds (the program had to prove it), so
+the `default` branch is never taken; see `LeanScript.TermElab.ToTerm`.
 
 Renaming, weakening and substitution of variables, with the facts that they commute with
 evaluation, are in `LeanScript.TermSubst`.
@@ -149,6 +159,18 @@ inductive PExpr {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type wh
   /-- One layer out: the unfolded body of a value of member `j` of block `b`. -/
   | data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) :
       PExpr Δ Γ (.data ((Δ.block b).ref j)) → PExpr Δ Γ ((Δ.block b).unfold j)
+  /-- The pure conditional `cond c a b` (proposal 4d): `a` when `c` is `true`, else `b`.
+      Both branches are pure expressions, so an `if` whose branches make no call needs no
+      join point when it is an operand (`(if c then x + 1 else 0) * 2`).  In tail position a
+      branch is still written with `Term.ite`. -/
+  | cond {τ : Ty ks} : PExpr Δ Γ .bool → PExpr Δ Γ τ → PExpr Δ Γ τ → PExpr Δ Γ τ
+  /-- A **cheap** pure extern (proposal 4h): a named operation on the values of its
+      arguments, like `Comp.extern`, but so cheap (a machine operation on scalars: `+`, `<`,
+      `&&`, a conversion, …) that it may be duplicated or dropped freely, so it needs no
+      `let`.  Which externs are cheap is the translator's choice
+      (`LeanScript.Extern.isCheap`); every other extern is a named `Comp.extern`. -/
+  | extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
+      (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → PExpr Δ Γ τ
 
 /-- The arguments of a constructor or an extern: pure expressions. -/
 inductive Args {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : List (Ty ks) → Type where
@@ -283,6 +305,43 @@ def PExpr.isTrivial {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} :
     PExpr Δ Γ τ → Bool
   | .var _ | .lit _ _ | .enum_mk _ _ => true
   | _ => false
+
+/-! ## Cheap externs -/
+
+/-- The operators and functions whose externs are cheap, by the name of the Lean function
+    (`Comp.extern`'s `name`). -/
+def Extern.cheapNames : List String :=
+  ["HAdd.hAdd", "HSub.hSub", "HMul.hMul", "HDiv.hDiv", "HMod.hMod", "Neg.neg",
+   "HAnd.hAnd", "HOr.hOr", "HXor.hXor", "HShiftLeft.hShiftLeft", "HShiftRight.hShiftRight",
+   "Complement.complement", "Min.min", "Max.max", "BEq.beq", "bne", "not", "and", "or",
+   "xor", "Bool.not", "Bool.and", "Bool.or", "Bool.xor", "Nat.succ", "Nat.pred", "Nat.add",
+   "Nat.sub", "Nat.mul", "Nat.div", "Nat.mod", "Nat.min", "Nat.max", "Nat.land", "Nat.lor",
+   "Nat.xor", "Nat.beq", "Nat.ble", "Nat.blt", "Nat.cast", "NatCast.natCast",
+   "IntCast.intCast", "Int.neg", "Int.toNat", "Int.ofNat", "Int.natAbs", "Char.ofNat",
+   "Char.toNat", "Char.val"]
+
+/-- The relations whose decision (`decide (a < b)`, extern `"decide LT.lt"`) is cheap. -/
+def Extern.cheapRelations : List String :=
+  ["LT.lt", "LE.le", "GT.gt", "GE.ge", "Eq", "Ne", "Nat.lt", "Nat.le"]
+
+/-- The namespaces of the fixed-width scalar types, all of whose functions on scalars are
+    machine operations. -/
+def Extern.cheapNamespaces : List String :=
+  ["UInt8", "UInt16", "UInt32", "UInt64", "USize", "Int8", "Int16", "Int32", "Int64",
+   "ISize", "Float", "Float32", "Char"]
+
+/-- Is the extern of this name **cheap** (proposal 4h), so that the translator writes it as the
+    pure expression `PExpr.extern` rather than the named computation `Comp.extern`: an
+    arithmetic, bitwise, Boolean or comparison operator (`Extern.cheapNames`,
+    `Extern.cheapRelations`), a conversion to a fixed-width type (`Nat.toUInt8`) or a
+    function of a fixed-width type (`UInt16.ofNatLT`, `Float.sqrt`).  The translator also
+    requires that every argument and the result are scalars (not a `String`, an `Array`, …),
+    so `HAdd.hAdd` on strings or `Eq` on arrays stay `Comp.extern`. -/
+def Extern.isCheap (name : String) : Bool :=
+  Extern.cheapNames.contains name ||
+    (name.startsWith "decide " && Extern.cheapRelations.contains (name.drop 7).toString) ||
+    name.startsWith "Nat.toUInt" || name.startsWith "Nat.toInt" || name.startsWith "Nat.toFloat" ||
+    Extern.cheapNamespaces.any fun ns => name.startsWith (ns ++ ".")
 
 end LeanScript
 

@@ -27,7 +27,9 @@ The normaliser is the usual one, in continuation-passing style:
 * a trivial pure expression (a variable, a literal, `PExpr.isTrivial`) bound by a source
   `let` is used in place; any other pure expression is `Comp.share`d;
 * a branch (`if`, `match`) in tail position gets the continuation in each branch; a branch
-  anywhere else gets a **join point** for the rest of the computation
+  anywhere else is the pure conditional `PExpr.cond c a b` when it is an `if` whose branches
+  are pure expressions (proposal 4d: `(if c then x + 1 else 0) * 2`, with `+` a cheap extern),
+  and otherwise gets a **join point** for the rest of the computation
   (`join j x := rest; …; jump j a`), so the continuation is never duplicated;
 * the bodies of closures, folds and delays are normalised on their own, with no join point in
   scope.
@@ -110,8 +112,11 @@ inductive Src where
   | destruct (scrut : Src) (n : Nat) (body : Src) (mk : Lean.Term → Lean.Term → MetaM Lean.Term)
   /-- A branch on `scrut` (`ite`, `enum_casesOn`, `union_casesOn`), one branch per entry
       (binding the given number of variables), whose value has the type `ty?` (when known):
-      `mk scrut branches`. -/
+      `mk scrut branches`.  `pure?` is its pure form (`PExpr.cond`), from the scrutinee and the
+      branches, when it has one: used when the branch is not in tail position and every branch
+      is a pure expression binding nothing. -/
   | cases (ty? : Option Lean.Term) (scrut : Src) (brs : Array (Nat × Src))
+      (pure? : Option (Array Lean.Term → MetaM Lean.Term))
       (mk : Lean.Term → Array Lean.Term → MetaM Lean.Term)
   /-- `join j (x : ty) := body; main`: `body` binds `x`, `main` sees the join point `j`. -/
   | join (ty? : Option Lean.Term) (body main : Src)
@@ -172,6 +177,35 @@ def bindAtom (a : Atom) (d jd : Nat) (k : Atom → Nat → Nat → MetaM Lean.Te
   if a.trivial then k a d jd
   else `(LeanScript.Term.letE (LeanScript.Comp.share $(← a.render d)) $(← k (.lvl d) (d + 1) jd))
 
+/-- The atom of a source tree that is a pure expression as it is: no computation, no binder,
+    and no branch but pure conditionals (`Src.cases` with a pure form whose branches are all
+    pure). -/
+partial def pureAtom? (s : Src) (sc : Scope) : Option Atom :=
+  match s with
+  | .var i => some (sc.var i)
+  | .atom a => some a
+  | .pnode mk args => do return .node mk (← args.mapM (pureAtom? · sc))
+  | .ascribe s ty => do return .ascribe (← pureAtom? s sc) ty
+  | .cases ty? scrut brs (some mkP) _ => do
+      guard (brs.all (·.1 == 0))
+      let a := Atom.node mkP (#[← pureAtom? scrut sc] ++ (← brs.mapM (pureAtom? ·.2 sc)))
+      return match ty? with | some ty => .ascribe a ty | none => a
+  | _ => none
+
+/-- A branch that is not in tail position, as a pure conditional when it has a pure form and
+    all its branches are pure: the scrutinee is normalised, then the conditional is continued
+    with. -/
+def pureCases? (s : Src) (sc : Scope) : Option (Array Atom → Atom × Src) :=
+  match s with
+  | .cases ty? scrut brs (some mkP) _ =>
+      if !brs.all (·.1 == 0) then none else
+      match brs.mapM (pureAtom? ·.2 sc) with
+      | some bs => some fun c =>
+          let a := Atom.node mkP (c ++ bs)
+          (match ty? with | some ty => .ascribe a ty | none => a, scrut)
+      | none => none
+  | _ => none
+
 mutual
 
 /-- Normalise the operands `ss` in order, then continue with their atoms. -/
@@ -199,7 +233,10 @@ partial def value (s : Src) (sc : Scope) (d jd : Nat) (k : Atom → Nat → Nat 
   | .letE v b => value v sc d jd fun a d jd => bindAtom a d jd fun a d jd => value b (sc.push a) d jd k
   | .destruct scrut n body mk => value scrut sc d jd fun a d jd => do
       mk (← a.render d) (← value body (sc.bindN n d) (d + n) jd k)
-  | .cases ty? .. => reify ty? s sc d jd k
+  | .cases ty? .. =>
+      match pureCases? s sc with
+      | some mkA => value (mkA #[]).2 sc d jd fun c d jd => k (mkA #[c]).1 d jd
+      | none => reify ty? s sc d jd k
   | .join .. => reify none s sc d jd k
   | .embedTerm stx poly => do
       let body ← k (.lvl d) (d + 1) jd
@@ -221,9 +258,9 @@ partial def stmt (s : Src) (sc : Scope) (d jd : Nat) (K : Kont) : MetaM Lean.Ter
   | .letE v b => value v sc d jd fun a d jd => bindAtom a d jd fun a d jd => stmt b (sc.push a) d jd K
   | .destruct scrut n body mk => value scrut sc d jd fun a d jd => do
       mk (← a.render d) (← stmt body (sc.bindN n d) (d + n) jd K)
-  | .cases ty? scrut brs mk =>
+  | .cases _ scrut brs _ mk =>
       match K with
-      | .fn f => reify ty? s sc d jd f
+      | .fn f => value s sc d jd f
       | _ => value scrut sc d jd fun a d jd => do
           mk (← a.render d) (← brs.mapM fun (n, b) => stmt b (sc.bindN n d) (d + n) jd K)
   | .join ty? body main =>
@@ -312,9 +349,12 @@ def dataIn (b j : Lean.Term) (e : Src) : Src :=
 def dataOut (b j : Lean.Term) (e : Src) : Src :=
   .pnode (fun xs => `(LeanScript.PExpr.data_out $b $j $(xs[0]!))) #[e]
 
-/-- `if c then a else b`, of type `ty?`. -/
+/-- `if c then a else b`, of type `ty?`: `Term.ite` in tail position, the pure conditional
+    `PExpr.cond` elsewhere when both branches are pure, else a join point. -/
 def ite (ty? : Option Lean.Term) (c a b : Src) : Src :=
-  .cases ty? c #[(0, a), (0, b)] fun c bs => `(LeanScript.Term.ite $c $(bs[0]!) $(bs[1]!))
+  .cases ty? c #[(0, a), (0, b)]
+    (some fun xs => `(LeanScript.PExpr.cond $(xs[0]!) $(xs[1]!) $(xs[2]!)))
+    fun c bs => `(LeanScript.Term.ite $c $(bs[0]!) $(bs[1]!))
 
 /-- The branches of a union's case analysis. -/
 def branchesStx : List Lean.Term → MetaM Lean.Term
@@ -324,7 +364,7 @@ def branchesStx : List Lean.Term → MetaM Lean.Term
 
 /-- The case analysis of a union, one branch per constructor (binding its fields). -/
 def unionCases (ty? : Option Lean.Term) (scrut : Src) (brs : Array (Nat × Src)) : Src :=
-  .cases ty? scrut brs fun c bs => do
+  .cases ty? scrut brs none fun c bs => do
     `(LeanScript.Term.union_casesOn $c $(← branchesStx bs.toList))
 
 /-- Take a record of `n` fields apart. -/

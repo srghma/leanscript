@@ -131,6 +131,10 @@ def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ →
   | _, .array_mk es, ρ => (es.eval ρ).toArray
   | _, .data_in b j e, ρ => Δ.dataIn b j (e.eval ρ)
   | _, .data_out b j e, ρ => Δ.dataOut b j (e.eval ρ)
+  | _, .cond c a b, ρ => match (c.eval ρ : Bool) with
+      | true => a.eval ρ
+      | false => b.eval ρ
+  | _, .extern _ f args, ρ => f (args.eval ρ)
   termination_by structural _ e _ => e
 /-- The values of the arguments. -/
 def Args.eval {Γ : Ctx ks} : {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →
