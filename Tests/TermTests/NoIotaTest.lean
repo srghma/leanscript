@@ -77,25 +77,25 @@ example : True := by
 example : PExpr Δ [] [] .bool none := .lit .bool true
 example : PExpr Δ [] [] (.enum {}) none := .enum_mk {} 0
 
--- [SKIPPED BY PROFILE_LAKE] /-- The same eliminations of an unknown are fine. -/
--- [SKIPPED BY PROFILE_LAKE] example : Term Δ 0 [] [⟨pairT, .one, 0⟩] .nat [] (some 0) :=
--- [SKIPPED BY PROFILE_LAKE]   .record_casesOn (t := .nat) (fs := .one .nat) [.zero, .one] (.var (.head (by decide)))
--- [SKIPPED BY PROFILE_LAKE]     (.ret (.neu (.var (.tail (.head (u := Usage01ω.one) (by decide))))))
--- [SKIPPED BY PROFILE_LAKE] example : Neu Δ [] [⟨.bool, .one, 0⟩] .nat 0 := .cond (.var (.head (by decide))) (natT 1) (natT 2)
--- [SKIPPED BY PROFILE_LAKE] example : Neu Δ [] [⟨listNat, .one, 0⟩] ((Δ.block listB).unfold 0) 0 :=
--- [SKIPPED BY PROFILE_LAKE]   .data_out listB 0 (.var (.head (by decide)))
+/-- The same eliminations of an unknown are fine. -/
+example : Term Δ 0 [] [⟨pairT, .one, 0⟩] .nat [] (some 0) :=
+  .record_casesOn (t := .nat) (fs := .one .nat) [.zero, .one] (.var (.head (by decide)))
+    (.ret (.neu (.var (.tail (.head (u := Usage01ω.one) (by decide))))))
+example : Neu Δ [] [⟨.bool, .one, 0⟩] .nat 0 := .cond (.var (.head (by decide))) (natT 1) (natT 2)
+example : Neu Δ [] [⟨listNat, .one, 0⟩] ((Δ.block listB).unfold 0) 0 :=
+  .data_out listB 0 (.var (.head (by decide)))
 
 /-! ## 2. The notation reduces the ι-redexes of the source -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| let (_, _) := (1, 2); #1] : Prog .nat) = .ret (natT 2) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| if true then 1 else 2] : Prog .nat) = .ret (natT 1) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| cond false 1 2] : Prog .nat) = .ret (natT 2) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| match enum_mk 2 with | 0 => 10 | 1 => 11 | _ => 12] : Prog .nat) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (natT 12) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| match union_mk 1 7 with | · => 0 | _ => #0] : Prog .nat) = .ret (natT 7) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| data_out ‹listB› 0 (data_in ‹listB› 0 #0)] :
--- [SKIPPED BY PROFILE_LAKE]     Term Δ 0 [] [⟨(Δ.block listB).unfold 0, .many, 0⟩] ((Δ.block listB).unfold 0) [] (some 0)) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (.neu (.var (.head (by decide)))) := rfl
+example : ([Term| let (_, _) := (1, 2); #1] : Prog .nat) = .ret (natT 2) := rfl
+example : ([Term| if true then 1 else 2] : Prog .nat) = .ret (natT 1) := rfl
+example : ([Term| cond false 1 2] : Prog .nat) = .ret (natT 2) := rfl
+example : ([Term| match enum_mk 2 with | 0 => 10 | 1 => 11 | _ => 12] : Prog .nat) =
+    .ret (natT 12) := rfl
+example : ([Term| match union_mk 1 7 with | · => 0 | _ => #0] : Prog .nat) = .ret (natT 7) := rfl
+example : ([Term| data_out ‹listB› 0 (data_in ‹listB› 0 #0)] :
+    Term Δ 0 [] [⟨(Δ.block listB).unfold 0, .many, 0⟩] ((Δ.block listB).unfold 0) [] (some 0)) =
+    .ret (.neu (.var (.head (by decide)))) := rfl
 
 -- A value of unknown shape (a Lean term) cannot be taken apart while normalising.
 /--
@@ -109,12 +109,12 @@ example : Prog .nat := [Term| let (_, _) := ‹pair12›; #1]
 /-- A `match` on a pair just built. -/
 def fstOfPair (a b : Nat) : Nat := match (a, b) with | (x, _) => x
 def fstOfPairT := #leanscript_to_term fstOfPair
--- [SKIPPED BY PROFILE_LAKE] example : (fstOfPairT (Δ := DSig.nil)).run (3 : Nat) (4 : Nat) = fstOfPair 3 4 := rfl
+example : (fstOfPairT (Δ := DSig.nil)).run (3 : Nat) (4 : Nat) = fstOfPair 3 4 := rfl
 
 /-- A `match` on a literal. -/
 def onTrue (n : Nat) : Nat := match true with | true => n | false => 0
 def onTrueT := #leanscript_to_term onTrue
--- [SKIPPED BY PROFILE_LAKE] example : (onTrueT (Δ := DSig.nil)).run (5 : Nat) = onTrue 5 := rfl
+example : (onTrueT (Δ := DSig.nil)).run (5 : Nat) = onTrue 5 := rfl
 
 end NoIotaTest
 

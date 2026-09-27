@@ -21,15 +21,15 @@ open LeanScript
 
 /-! ## Closed types without a signature -/
 
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den .nil .bool = Bool := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den .nil (Ty.option .nat) = Option Nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den .nil (.array (.prim .string)) = Array String := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den .nil (.enum {}) = Fin 3 := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den .nil (.prim (.stringPos "ab")) = String.Pos "ab" := rfl
+example : Ty.Den .nil .bool = Bool := rfl
+example : Ty.Den .nil (Ty.option .nat) = Option Nat := rfl
+example : Ty.Den .nil (.array (.prim .string)) = Array String := rfl
+example : Ty.Den .nil (.enum {}) = Fin 3 := rfl
+example : Ty.Den .nil (.prim (.stringPos "ab")) = String.Pos "ab" := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Equality of types is decided. -/
--- [SKIPPED BY PROFILE_LAKE] example : (Ty.option (.nat : Ty []) == Ty.option .nat) = true := by decide
--- [SKIPPED BY PROFILE_LAKE] example : (Ty.option (.nat : Ty []) == Ty.option .bool) = false := by decide
+/-- Equality of types is decided. -/
+example : (Ty.option (.nat : Ty []) == Ty.option .nat) = true := by decide
+example : (Ty.option (.nat : Ty []) == Ty.option .bool) = false := by decide
 
 /-! ## Block 1: `List Nat` -/
 
@@ -43,9 +43,9 @@ def Δ₁ : DSig [0] := .cons .nil 0 listBody
 /-- `List Nat` is a name. -/
 def listNat : Ty [0] := .data (.here 0)
 
--- [SKIPPED BY PROFILE_LAKE] example : (Δ₁.block .here).unfold 0 = .union (.two .nullary (.fields (.cons .nat (.one listNat)))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Δ₁ ((Δ₁.block .here).unfold 0) = Option (Nat × Ty.Den Δ₁ listNat) := rfl
+example : (Δ₁.block .here).unfold 0 = .union (.two .nullary (.fields (.cons .nat (.one listNat)))) :=
+  rfl
+example : Ty.Den Δ₁ ((Δ₁.block .here).unfold 0) = Option (Nat × Ty.Den Δ₁ listNat) := rfl
 
 def nil' : Ty.Den Δ₁ listNat := Δ₁.dataIn .here 0 none
 def cons' (x : Nat) (xs : Ty.Den Δ₁ listNat) : Ty.Den Δ₁ listNat := Δ₁.dataIn .here 0 (some (x, xs))
@@ -58,19 +58,19 @@ def sum' (v : Ty.Den Δ₁ listNat) : Nat :=
         | some (n, _, r) => Nat.add n r
       r) 0 v
 
--- [SKIPPED BY PROFILE_LAKE] example : sum' (cons' 1 (cons' 2 (cons' 3 nil'))) = 6 := rfl
+example : sum' (cons' 1 (cons' 2 (cons' 3 nil'))) = 6 := rfl
 
 def head? (v : Ty.Den Δ₁ listNat) : Option Nat :=
   match (Δ₁.dataOut .here 0 v : Option (Nat × Ty.Den Δ₁ listNat)) with
   | none => none
   | some (n, _) => some n
 
--- [SKIPPED BY PROFILE_LAKE] example : head? (cons' 7 nil') = some 7 := rfl
--- [SKIPPED BY PROFILE_LAKE] example : head? nil' = none := rfl
+example : head? (cons' 7 nil') = some 7 := rfl
+example : head? nil' = none := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The two values the structural proof picks for `List Nat`: `[]` and `[0]`. -/
--- [SKIPPED BY PROFILE_LAKE] example : head? (Ty.twoDen Δ₁ listNat).x = none := rfl
--- [SKIPPED BY PROFILE_LAKE] example : head? (Ty.twoDen Δ₁ listNat).y = some 0 := rfl
+/-- The two values the structural proof picks for `List Nat`: `[]` and `[0]`. -/
+example : head? (Ty.twoDen Δ₁ listNat).x = none := rfl
+example : head? (Ty.twoDen Δ₁ listNat).y = some 0 := rfl
 
 /-! ## Block 2: `LitExprS` with `swap`, and a rose tree that stores `List Nat`s
 
@@ -92,20 +92,20 @@ def litSBN : Ty [2, 0] := .data (.here 1)
 def rose : Ty [2, 0] := .data (.here 2)
 def listNat₂ : Ty [2, 0] := .data (.there (.here 0))
 
--- [SKIPPED BY PROFILE_LAKE] /-- **Canonical by name**: `List Nat` weakened into the bigger signature is literally the name
--- [SKIPPED BY PROFILE_LAKE]     `List Nat` there, and the rose tree's field has that type. -/
--- [SKIPPED BY PROFILE_LAKE] example : (Ty.weaken listNat : Ty [2, 0]) = listNat₂ := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (Δ₂.block .here).unfold 2 = .record listNat₂ (.one (.array rose)) := rfl
--- [SKIPPED BY PROFILE_LAKE] /-- …and old values are values in the bigger signature, with no conversion. -/
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Δ₂ listNat₂ = Ty.Den Δ₁ listNat := rfl
--- [SKIPPED BY PROFILE_LAKE] /-- The older block is found from the bigger signature, with its names renamed. -/
--- [SKIPPED BY PROFILE_LAKE] example : (Δ₂.block (.there .here)).unfold 0 =
--- [SKIPPED BY PROFILE_LAKE]     .union (.two .nullary (.fields (.cons .nat (.one listNat₂)))) := rfl
+/-- **Canonical by name**: `List Nat` weakened into the bigger signature is literally the name
+    `List Nat` there, and the rose tree's field has that type. -/
+example : (Ty.weaken listNat : Ty [2, 0]) = listNat₂ := rfl
+example : (Δ₂.block .here).unfold 2 = .record listNat₂ (.one (.array rose)) := rfl
+/-- …and old values are values in the bigger signature, with no conversion. -/
+example : Ty.Den Δ₂ listNat₂ = Ty.Den Δ₁ listNat := rfl
+/-- The older block is found from the bigger signature, with its names renamed. -/
+example : (Δ₂.block (.there .here)).unfold 0 =
+    .union (.two .nullary (.fields (.cons .nat (.one listNat₂)))) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Δ₂ ((Δ₂.block .here).unfold 0) =
--- [SKIPPED BY PROFILE_LAKE]     ((Nat × Bool) ⊕ ((Nat × Bool) ⊕ Ty.Den Δ₂ litSBN)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Δ₂ ((Δ₂.block .here).unfold 2) =
--- [SKIPPED BY PROFILE_LAKE]     (Ty.Den Δ₁ listNat × Array (Ty.Den Δ₂ rose)) := rfl
+example : Ty.Den Δ₂ ((Δ₂.block .here).unfold 0) =
+    ((Nat × Bool) ⊕ ((Nat × Bool) ⊕ Ty.Den Δ₂ litSBN)) := rfl
+example : Ty.Den Δ₂ ((Δ₂.block .here).unfold 2) =
+    (Ty.Den Δ₁ listNat × Array (Ty.Den Δ₂ rose)) := rfl
 
 /-- The answer type of each member (`eval : LitExprS α → α`; the rose tree's sum). -/
 def answer₂ : Fin 3 → Ty [2, 0]
@@ -142,10 +142,10 @@ def eval₂ (j : Fin 3) (v : Ty.Den Δ₂ (.data (.here j))) : Ty.Den Δ₂ (ans
         | (xs, cs) => Nat.add (sum' xs) (cs.foldl (fun acc c => Nat.add acc c.2) 0)
       r) j v
 
--- [SKIPPED BY PROFILE_LAKE] example : eval₂ 0 (litS_swap (litS_litBN true 3)) = ((3, true) : Nat × Bool) := rfl
--- [SKIPPED BY PROFILE_LAKE] example :
--- [SKIPPED BY PROFILE_LAKE]     eval₂ 2 (rose_node (cons' 1 nil')
--- [SKIPPED BY PROFILE_LAKE]       #[rose_node (cons' 10 (cons' 20 nil')) #[], rose_node nil' #[]]) = (31 : Nat) := rfl
+example : eval₂ 0 (litS_swap (litS_litBN true 3)) = ((3, true) : Nat × Bool) := rfl
+example :
+    eval₂ 2 (rose_node (cons' 1 nil')
+      #[rose_node (cons' 10 (cons' 20 nil')) #[], rose_node nil' #[]]) = (31 : Nat) := rfl
 
 /-- The older block, folded from the bigger signature, with an answer in the bigger one. -/
 def length₂ (v : Ty.Den Δ₂ listNat₂) : Nat :=
@@ -156,11 +156,11 @@ def length₂ (v : Ty.Den Δ₂ listNat₂) : Nat :=
         | some (_, _, r) => Nat.succ r
       r) 0 v
 
--- [SKIPPED BY PROFILE_LAKE] example : length₂ (cons' 5 (cons' 6 nil')) = 2 := rfl
+example : length₂ (cons' 5 (cons' 6 nil')) = 2 := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `Ty.twoDen` in the bigger signature: the rose tree's two values differ in their list. -/
--- [SKIPPED BY PROFILE_LAKE] example : head? (Δ₂.dataOut .here 2 (Ty.twoDen Δ₂ rose).x).1 = none := rfl
--- [SKIPPED BY PROFILE_LAKE] example : head? (Δ₂.dataOut .here 2 (Ty.twoDen Δ₂ rose).y).1 = some 0 := rfl
+/-- `Ty.twoDen` in the bigger signature: the rose tree's two values differ in their list. -/
+example : head? (Δ₂.dataOut .here 2 (Ty.twoDen Δ₂ rose).x).1 = none := rfl
+example : head? (Δ₂.dataOut .here 2 (Ty.twoDen Δ₂ rose).y).1 = some 0 := rfl
 
 /-! ## What can no longer be written -/
 
@@ -171,7 +171,7 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs in
--- [SKIPPED BY PROFILE_LAKE] example : Mems [] 1 0 := .cons (.wrap (.hole 0 (by decide))) .nil
+example : Mems [] 1 0 := .cons (.wrap (.hole 0 (by decide))) .nil
 
 -- `μX. Nat × X` (no base case): every field of a record is a grounded position.
 /--
@@ -180,7 +180,7 @@ error: Tactic `decide` proved that the proposition
 is false
 -/
 #guard_msgs in
--- [SKIPPED BY PROFILE_LAKE] example : Mems [] 1 0 := .cons (.record (.old .nat) (.one (.hole 0 (by decide)))) .nil
+example : Mems [] 1 0 := .cons (.record (.old .nat) (.one (.hole 0 (by decide)))) .nil
 
 -- A one-constructor union, closed or declared: there is no such form.
 /--

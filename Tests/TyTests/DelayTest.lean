@@ -24,28 +24,28 @@ open LeanScript
 /-! ## Reading Lean types -/
 
 -- `Unit → X` is `.lazy X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Unit → Nat) : Ty []) = .lazy (.prim .nat) := rfl
+example : (#leanscript_get_ty (Unit → Nat) : Ty []) = .lazy (.prim .nat) := rfl
 -- `Unit → Unit → X` is `.lazy X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Unit → Unit → Nat) : Ty []) = .lazy (.prim .nat) := rfl
+example : (#leanscript_get_ty (Unit → Unit → Nat) : Ty []) = .lazy (.prim .nat) := rfl
 -- `Unit → Thunk X` is `.thunk X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Unit → Thunk Nat) : Ty []) = .thunk (.prim .nat) := rfl
+example : (#leanscript_get_ty (Unit → Thunk Nat) : Ty []) = .thunk (.prim .nat) := rfl
 -- `Thunk X` is `.thunk X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Thunk Nat) : Ty []) = .thunk (.prim .nat) := rfl
+example : (#leanscript_get_ty (Thunk Nat) : Ty []) = .thunk (.prim .nat) := rfl
 -- `Thunk (Unit → X)` is `.thunk X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Thunk (Unit → Nat)) : Ty []) = .thunk (.prim .nat) := rfl
+example : (#leanscript_get_ty (Thunk (Unit → Nat)) : Ty []) = .thunk (.prim .nat) := rfl
 -- `Thunk (Unit → Array X)` is `.thunk (.array X)`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Thunk (Unit → Array Nat)) : Ty []) = .thunk (.array .nat) := rfl
+example : (#leanscript_get_ty (Thunk (Unit → Array Nat)) : Ty []) = .thunk (.array .nat) := rfl
 -- `Thunk (Unit → Unit → Array X)` is `.thunk (.array X)`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Thunk (Unit → Unit → Array Nat)) : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .thunk (.array .nat) := rfl
+example : (#leanscript_get_ty (Thunk (Unit → Unit → Array Nat)) : Ty []) =
+    .thunk (.array .nat) := rfl
 -- `Unit → Unit → Thunk (Unit → Unit → Array X)` is `.thunk (.array X)`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Unit → Unit → Thunk (Unit → Unit → Array Nat)) : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .thunk (.array .nat) := rfl
+example : (#leanscript_get_ty (Unit → Unit → Thunk (Unit → Unit → Array Nat)) : Ty []) =
+    .thunk (.array .nat) := rfl
 -- `Thunk (Thunk X)` is `.thunk X`
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Thunk (Thunk Nat)) : Ty []) = .thunk (.prim .nat) := rfl
+example : (#leanscript_get_ty (Thunk (Thunk Nat)) : Ty []) = .thunk (.prim .nat) := rfl
 -- a delay inside another type former is kept where it is
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Array (Unit → Nat) → Thunk Bool) : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .fn (.array (.lazy (.prim .nat))) (.thunk (.prim .bool)) := rfl
+example : (#leanscript_get_ty (Array (Unit → Nat) → Thunk Bool) : Ty []) =
+    .fn (.array (.lazy (.prim .nat))) (.thunk (.prim .bool)) := rfl
 -- `Unit` alone has one value: it is not a type
 /--
 error: LeanScript: the type
@@ -57,10 +57,10 @@ example : Ty [] := #leanscript_get_ty Unit
 
 /-! ## The same rules as functions on `Ty` (`Ty.mkLazy`, `Ty.mkThunk`) -/
 
--- [SKIPPED BY PROFILE_LAKE] example (X : Ty []) :
--- [SKIPPED BY PROFILE_LAKE]     Ty.mkLazy (Ty.mkLazy (Ty.mkThunk (Ty.mkLazy (Ty.mkLazy (.array X))))) = .thunk (.array X) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
--- [SKIPPED BY PROFILE_LAKE] example (X : Ty []) : Ty.mkThunk (Ty.mkLazy (Ty.mkLazy (.array X))) = .thunk (.array X) := rfl
+example (X : Ty []) :
+    Ty.mkLazy (Ty.mkLazy (Ty.mkThunk (Ty.mkLazy (Ty.mkLazy (.array X))))) = .thunk (.array X) :=
+  rfl
+example (X : Ty []) : Ty.mkThunk (Ty.mkLazy (Ty.mkLazy (.array X))) = .thunk (.array X) := rfl
 example (t : Ty []) : Ty.mkLazy (Ty.mkLazy t) = Ty.mkLazy t := Ty.mkLazy_mkLazy t
 
 /-! ## Delays never nest -/
@@ -84,10 +84,10 @@ example : Ty [] := .lazy (.lazy (.prim .nat))
 
 /-! ## The notation -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Unit → Nat] : Ty []) = .lazy (.prim .nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Unit → Unit → Thunk (Unit → Array Nat)] : Ty []) = .thunk (.array .nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Thunk (Option Nat)] : Ty []) = .thunk (.union (.two .nullary (.fields (.one .nat)))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
+example : ([Ty| Unit → Nat] : Ty []) = .lazy (.prim .nat) := rfl
+example : ([Ty| Unit → Unit → Thunk (Unit → Array Nat)] : Ty []) = .thunk (.array .nat) := rfl
+example : ([Ty| Thunk (Option Nat)] : Ty []) = .thunk (.union (.two .nullary (.fields (.one .nat)))) :=
+  rfl
 
 /-- info: [Ty| Unit → Nat] : Ty [] -/
 #guard_msgs in
@@ -103,8 +103,8 @@ example : Ty [] := .lazy (.lazy (.prim .nat))
 
 /-! ## Meaning and evaluation: a delay is the identity -/
 
--- [SKIPPED BY PROFILE_LAKE] example : Ty.den (fun _ => Empty) (Ty.thunk (.array .nat) : Ty []) = Array Nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.den (fun _ => Empty) (Ty.lazy (.prim .nat) : Ty []) = Nat := rfl
+example : Ty.den (fun _ => Empty) (Ty.thunk (.array .nat) : Ty []) = Array Nat := rfl
+example : Ty.den (fun _ => Empty) (Ty.lazy (.prim .nat) : Ty []) = Nat := rfl
 
 /-- `fun x => force (lazy_mk x)`: the identity on `Nat`.  The delay mentions `x`, so it is
     open: it is bound by `letV` and its force is kept as a computation. -/
@@ -120,15 +120,15 @@ def thunkArr {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} :
     Val Δ 0 Φ Γ (.thunk (.array .nat)) none :=
   .thunk_mk (.closed (Γ := Γ) (.ret (.array_mk (.cons (.lit .nat 1) (.cons (.lit .nat 2) .nil)))))
 
--- [SKIPPED BY PROFILE_LAKE] example : (forceLazy (Δ := .nil)).run (5 : Nat) = (5 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (Term.letV .one thunkArr (.ret (.kvar .head)) :
--- [SKIPPED BY PROFILE_LAKE]     Term DSig.nil 0 [] [] (.thunk (.array .nat)) [] none).run = (#[1, 2] : Array Nat) := rfl
+example : (forceLazy (Δ := .nil)).run (5 : Nat) = (5 : Nat) := rfl
+example : (Term.letV .one thunkArr (.ret (.kvar .head)) :
+    Term DSig.nil 0 [] [] (.thunk (.array .nat)) [] none).run = (#[1, 2] : Array Nat) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The force of a closed delay cannot be written: its body is already a value. -/
--- [SKIPPED BY PROFILE_LAKE] example : True := by
--- [SKIPPED BY PROFILE_LAKE]   fail_if_success
--- [SKIPPED BY PROFILE_LAKE]     have : Term DSig.nil 0 [] [] (.array .nat) [] (some 0) :=
--- [SKIPPED BY PROFILE_LAKE]       .letV .one thunkArr (.letE .one (.thunk_force (.kvar .head)) (.ret (.neu (.var (.head (by decide))))))
--- [SKIPPED BY PROFILE_LAKE]   trivial
+/-- The force of a closed delay cannot be written: its body is already a value. -/
+example : True := by
+  fail_if_success
+    have : Term DSig.nil 0 [] [] (.array .nat) [] (some 0) :=
+      .letV .one thunkArr (.letE .one (.thunk_force (.kvar .head)) (.ret (.neu (.var (.head (by decide))))))
+  trivial
 
 end DelayTest

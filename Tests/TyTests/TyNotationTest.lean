@@ -19,46 +19,46 @@ open LeanScript
 
 /-! ## Elaboration -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Nat] : Ty []) = .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| UInt8] : Ty []) = .prim .uint8 := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Float.Model] : Ty []) = .prim .floatModel := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| BitVec 32] : Ty []) = .prim (.bitvec 32) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| String.Pos "ab"] : Ty []) = .prim (.stringPos "ab") := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Nat → Bool → String] : Ty []) = .fn .nat (.fn .bool .string) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| (Nat → Bool) → String] : Ty []) = .fn (.fn .nat .bool) .string := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Array (Array Int)] : Ty []) = .array (.array .int) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Option Nat] : Ty []) = .union (.two .nullary (.fields (.one .nat))) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Nat ⊕ Bool] : Ty []) = .union (.two (.fields (.one .nat)) (.fields (.one .bool))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Enum 3] : Ty []) = .enum {} := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Enum 3 -1] : Ty []) = .enum { shift := -1 } := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Enum 5 2] : Ty []) = .enum { extraConstructors := 2, shift := 2 } := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Enum ‹{ extraConstructors := 1 }›] : Ty []) = .enum { extraConstructors := 1 } := rfl
+example : ([Ty| Nat] : Ty []) = .nat := rfl
+example : ([Ty| UInt8] : Ty []) = .prim .uint8 := rfl
+example : ([Ty| Float.Model] : Ty []) = .prim .floatModel := rfl
+example : ([Ty| BitVec 32] : Ty []) = .prim (.bitvec 32) := rfl
+example : ([Ty| String.Pos "ab"] : Ty []) = .prim (.stringPos "ab") := rfl
+example : ([Ty| Nat → Bool → String] : Ty []) = .fn .nat (.fn .bool .string) := rfl
+example : ([Ty| (Nat → Bool) → String] : Ty []) = .fn (.fn .nat .bool) .string := rfl
+example : ([Ty| Array (Array Int)] : Ty []) = .array (.array .int) := rfl
+example : ([Ty| Option Nat] : Ty []) = .union (.two .nullary (.fields (.one .nat))) := rfl
+example : ([Ty| Nat ⊕ Bool] : Ty []) = .union (.two (.fields (.one .nat)) (.fields (.one .bool))) :=
+  rfl
+example : ([Ty| Enum 3] : Ty []) = .enum {} := rfl
+example : ([Ty| Enum 3 -1] : Ty []) = .enum { shift := -1 } := rfl
+example : ([Ty| Enum 5 2] : Ty []) = .enum { extraConstructors := 2, shift := 2 } := rfl
+example : ([Ty| Enum ‹{ extraConstructors := 1 }›] : Ty []) = .enum { extraConstructors := 1 } := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A chain of `×` is one record; parentheses make a field that is a record. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Nat × Int × String] : Ty []) = .record .nat (.cons .int (.one .string)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Nat × (Int × String)] : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .record .nat (.one (.record .int (.one .string))) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| (Nat × Int) × String] : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .record (.record .nat (.one .int)) (.one .string) := rfl
+/-- A chain of `×` is one record; parentheses make a field that is a record. -/
+example : ([Ty| Nat × Int × String] : Ty []) = .record .nat (.cons .int (.one .string)) := rfl
+example : ([Ty| Nat × (Int × String)] : Ty []) =
+    .record .nat (.one (.record .int (.one .string))) := rfl
+example : ([Ty| (Nat × Int) × String] : Ty []) =
+    .record (.record .nat (.one .int)) (.one .string) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A union: `·` is a constructor without fields, commas separate the fields of one. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| ⟪· | Nat, Data 0 0⟫] : Ty [0]) =
--- [SKIPPED BY PROFILE_LAKE]     .union (.two .nullary (.fields (.cons .nat (.one (.data (.here 0)))))) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| ⟪Nat | · | Bool × Int, String⟫] : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .union (.cons (.fields (.one .nat)) (.two .nullary
--- [SKIPPED BY PROFILE_LAKE]       (.fields (.cons (.record .bool (.one .int)) (.one .string))))) := rfl
+/-- A union: `·` is a constructor without fields, commas separate the fields of one. -/
+example : ([Ty| ⟪· | Nat, Data 0 0⟫] : Ty [0]) =
+    .union (.two .nullary (.fields (.cons .nat (.one (.data (.here 0)))))) := rfl
+example : ([Ty| ⟪Nat | · | Bool × Int, String⟫] : Ty []) =
+    .union (.cons (.fields (.one .nat)) (.two .nullary
+      (.fields (.cons (.record .bool (.one .int)) (.one .string))))) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Declared datatypes: member `j` of block `b` (`0` is the newest block). -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Data 0 1] : Ty [2, 0]) = .data (.here 1) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Data 1 0] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Data ‹.there (.here 0)›] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
+/-- Declared datatypes: member `j` of block `b` (`0` is the newest block). -/
+example : ([Ty| Data 0 1] : Ty [2, 0]) = .data (.here 1) := rfl
+example : ([Ty| Data 1 0] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
+example : ([Ty| Data ‹.there (.here 0)›] : Ty [2, 0]) = .data (.there (.here 0)) := rfl
 
 /-- A Lean term is always written `‹t›`, even a single name. -/
 abbrev listNat : Ty [0] := [Ty| Data 0 0]
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Array ‹listNat›] : Ty [0]) = .array (.data (.here 0)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| ‹Ty.option .nat› → Nat] : Ty []) = .fn (Ty.option .nat) .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example (t : Ty []) : [Ty| ‹t› × ‹t›] = .record t (.one t) := rfl
+example : ([Ty| Array ‹listNat›] : Ty [0]) = .array (.data (.here 0)) := rfl
+example : ([Ty| ‹Ty.option .nat› → Nat] : Ty []) = .fn (Ty.option .nat) .nat := rfl
+example (t : Ty []) : [Ty| ‹t› × ‹t›] = .record t (.one t) := rfl
 
 /-! ## Printing -/
 

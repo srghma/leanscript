@@ -41,14 +41,14 @@ def addNY' : Term Δ 0 [] G2 .nat [] (some 0) :=
 /-- Drop the unused `b`. -/
 def dropB : URen G3 G2 := URen.lift URen.drop _
 
--- [SKIPPED BY PROFILE_LAKE] example : addNY.rename KRen.id dropB JRen.id = some addNY' := rfl
+example : addNY.rename KRen.id dropB JRen.id = some addNY' := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Dropping the used `n` fails. -/
--- [SKIPPED BY PROFILE_LAKE] example : addNY.rename KRen.id URen.drop JRen.id = none := rfl
+/-- Dropping the used `n` fails. -/
+example : addNY.rename KRen.id URen.drop JRen.id = none := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The meanings agree. -/
--- [SKIPPED BY PROFILE_LAKE] example : addNY'.eval PUnit.unit ((3 : Nat), (4 : Nat)) PUnit.unit =
--- [SKIPPED BY PROFILE_LAKE]     addNY.eval PUnit.unit ((3 : Nat), true, (4 : Nat)) PUnit.unit := rfl
+/-- The meanings agree. -/
+example : addNY'.eval PUnit.unit ((3 : Nat), (4 : Nat)) PUnit.unit =
+    addNY.eval PUnit.unit ((3 : Nat), true, (4 : Nat)) PUnit.unit := rfl
 
 /-- **Dropping an unused unknown preserves the meaning**, for every term that does not use it. -/
 theorem dropB_eval {τ : Ty [0, 0]} {o : Lvl} (t : Term Δ 0 [] G3 τ [] o)
@@ -61,8 +61,8 @@ theorem dropB_eval {τ : Ty [0, 0]} {o : Lvl} (t : Term Δ 0 [] G3 τ [] o)
         y PUnit.unit)) ⟨.nat, .many, 0⟩ n)
     (JRen.Agree.id _) t h
 
--- [SKIPPED BY PROFILE_LAKE] /-- A whole program mentions no unknown, so it renames along the empty renaming. -/
--- [SKIPPED BY PROFILE_LAKE] example : (sumT.rename (Γ' := []) KRen.id (URen.nil) JRen.id).isSome = true := rfl
+/-- A whole program mentions no unknown, so it renames along the empty renaming. -/
+example : (sumT.rename (Γ' := []) KRen.id (URen.nil) JRen.id).isSome = true := rfl
 
 end RenameTest
 

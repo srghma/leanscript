@@ -10,8 +10,8 @@ public import Init.Data.String.Basic
 public import Init.Data.String.Length
 public import Init.ShareCommon
 public import Init.LawfulBEqTactics
-public import LeanScript.HashableFloat.HashableFloat
-public import LeanScript.HashableFloat.HashableFloat32
+public import HashableFloat.HashableFloat
+public import HashableFloat.HashableFloat32
 
 @[expose] public section
 

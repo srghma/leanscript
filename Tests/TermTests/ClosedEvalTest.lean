@@ -52,8 +52,8 @@ def addT : T .nat := .ret (PExpr.externLit .lean_nat_add (.cons (.lit .nat 3) (.
 /-- `7`. -/
 def sevenT : T .nat := .ret (.lit .nat 7)
 
--- [SKIPPED BY PROFILE_LAKE] /-- They are the same term: the call was computed. -/
--- [SKIPPED BY PROFILE_LAKE] example : addT = sevenT := rfl
+/-- They are the same term: the call was computed. -/
+example : addT = sevenT := rfl
 
 /-- A pair shared by name. -/
 def pairShared : T (.record .nat (.one .nat)) :=

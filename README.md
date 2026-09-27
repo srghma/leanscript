@@ -26,8 +26,10 @@ terms:
   the constructors and the case analysis of a Lean type, and `#leanscript_to_term`
   translates a Lean definition into a `Term`.
 
-Build everything, tests included, with `lake build`.  The project depends on Lean core
-(and Batteries/Aesop in the manifest), not on Mathlib.
+Build everything, tests included, with `lake build`; run the compiled tests (the checks that
+are too slow for the kernel) with `lake test`.  The project depends on Mathlib (`v4.34.0`,
+with Batteries and Aesop); `LeanScript/Term/UsageAlgebra.lean` takes the algebra of usages
+(commutative monoid, linear order) from it.
 
 ## Layout
 
@@ -44,6 +46,7 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | `LeanScript/Term/Closed.lean` | a term with no unknown and no open known value is a value (`Term.closed_isValue`, `Term.run_isValue`) |
 | `LeanScript/Term/Rename.lean`, `LeanScript/Term/RenameEval.lean`, `LeanScript/Term/Weaken.lean` | renaming (partial: it fails on a dropped variable that is used) and weakening, and the fact that renaming commutes with evaluation (`Term.rename_eval`, `TermTests/RenameTest.lean`) |
 | `LeanScript/Term/Occ.lean`, `LeanScript/Term/Dce.lean` | occurrence counts (added along straight-line code, the maximum across the arms of a branch, `ω` inside a body that may run many times) and dead-code elimination with exact usages, which preserves the meaning (`Term.dce_eval`) |
+| `LeanScript/Term/Optimize.lean` | the optimiser `Term.optimize`: copy propagation (`let x := share y`), a shared answer returned directly (`let x := share n; ret x` is `ret n`), dead `record_casesOn` dropped, then dead-code elimination; it preserves the value (`Term.optimize_eval`, `Term.optimize_run`, `TermTests/OptimizeTest.lean`) |
 | `LeanScript/Term/Build.lean` | abbreviations the elaborators write (`PExpr.externLit`, `Branch.enumList`, `Comp.dataRecS`, …) |
 | `LeanScript/Term/Tuple.lean` | `Tuple F [a, b] = F a × F b`: right-nested products with no trailing `PUnit`, for environments, extern arguments and join-point closures |
 | `LeanScript/Term/BoundedLoop.lean` | a loop of a fixed number of steps whose iterations shrink a measure has stopped after `μ init + 1` steps, and more steps change nothing (`boundedLoop_done`, `boundedLoop_stable`): why a translated `while` loop needs no fuel |
@@ -54,8 +57,10 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 | `LeanScript/LeanInitPureExterns.lean`, `LeanScript/LeanInitPureExterns/`, `LeanScript/LeanInitPureExternShorthands.lean`, `LeanScript/ExternElab/CatalogueShorthands.lean` | the catalogue of the pure externs of `Init`, indexed by signature (`LeanInitPureExtern σs τ`): the language's only kind of extern |
 | `LeanScript/Term/Extern.lean`, `LeanScript/Term/ExternEval.lean`, `LeanScript/Term/ExternEval/`, `LeanScript/Term/ExternShorthands.lean`, `LeanScript/ExternElab/TermShorthands.lean` | the catalogue instantiated at the types of the language (`Extern ks σs τ`), the meaning of every entry (`Extern.eval`), and one term former per entry (`PExpr.lean_string_any s f`, `Neu.lean_nat_add a b`) |
 | `LeanScript/TacticElab/KernelRfl.lean` | `kernel_rfl`, an equation checked by the kernel only |
+| `HashableFloat/` | `HashableFloat`/`HashableFloat32`: floats with lawful `BEq`, `Hashable` and a linear `Ord` (away from `NaN`), the leaf types of the floats |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings (their literal notations and `ToExpr` instances are in `NonEmpty/*Elab/`) |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots, `rfl` runs) |
+| `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs |
 | `proposals/` | proposals, reviews and stand-alone sketches; nothing here is part of the build (`NominalTyProposal.md` is the design that is implemented) |
 | `scripts/` | benchmarking scripts |
 

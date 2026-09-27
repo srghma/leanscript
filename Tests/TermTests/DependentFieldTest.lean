@@ -48,32 +48,32 @@ leanscript_signature Prog where
 
 /-! ## `Chunk`: a `Nat` and a function `Nat → Nat` -/
 
--- [SKIPPED BY PROFILE_LAKE] example : Prog.chunk = .record .nat (.one (.fn .nat .nat)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Chunk : Ty []) = .record .nat (.one (.fn .nat .nat)) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Prog.Δ Prog.chunk = (Nat × (Nat → Nat)) := rfl
+example : Prog.chunk = .record .nat (.one (.fn .nat .nat)) := rfl
+example : (#leanscript_get_ty Chunk : Ty []) = .record .nat (.one (.fn .nat .nat)) := rfl
+example : Ty.Den Prog.Δ Prog.chunk = (Nat × (Nat → Nat)) := rfl
 
 /-- The closure is a known value: it is named by `letV` and stored in the record by name. -/
 def chunkT : Term DSig.nil 0 [] [] (#leanscript_get_ty Chunk) [] none :=
   .letV .one (.lam (u := .one) (.closed (.ret (.neu (.var (.head (by decide)))))))
     (.ret ((#leanscript_get_ctor Chunk.mk) (.lit .nat 3) (.kvar .head)))
 
--- [SKIPPED BY PROFILE_LAKE] example : chunkT.run.1 = (3 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : chunkT.run.2 (7 : Nat) = (7 : Nat) := rfl
+example : chunkT.run.1 = (3 : Nat) := rfl
+example : chunkT.run.2 (7 : Nat) = (7 : Nat) := rfl
 
 def Chunk.size (c : Chunk) : Nat := c.n
 def chunkSizeT := #leanscript_to_term Chunk.size
--- [SKIPPED BY PROFILE_LAKE] example : (chunkSizeT (Δ := DSig.nil)).run ((3 : Nat), fun (i : Nat) => i + 10) = (3 : Nat) := rfl
+example : (chunkSizeT (Δ := DSig.nil)).run ((3 : Nat), fun (i : Nat) => i + 10) = (3 : Nat) := rfl
 
 /-- `⟨0, h⟩ : Fin c.n` is the number `0`; the proof `h` is erased. -/
 def Chunk.first (c : Chunk) : Nat := if h : 0 < c.n then c.data ⟨0, h⟩ else 0
 def chunkFirstT := #leanscript_to_term Chunk.first
--- [SKIPPED BY PROFILE_LAKE] example : (chunkFirstT (Δ := DSig.nil)).run ((3 : Nat), fun (i : Nat) => i + 10) = (10 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (chunkFirstT (Δ := DSig.nil)).run ((0 : Nat), fun (i : Nat) => i + 10) = (0 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] #guard (Chunk.first ⟨3, fun i => i.val + 10⟩) == 10
+example : (chunkFirstT (Δ := DSig.nil)).run ((3 : Nat), fun (i : Nat) => i + 10) = (10 : Nat) := rfl
+example : (chunkFirstT (Δ := DSig.nil)).run ((0 : Nat), fun (i : Nat) => i + 10) = (0 : Nat) := rfl
+#guard (Chunk.first ⟨3, fun i => i.val + 10⟩) == 10
 
 /-! ## `Tele`: a declared datatype whose `cons` has two numbers -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.tele = .data r := ⟨_, rfl⟩
+example : ∃ r, Prog.tele = .data r := ⟨_, rfl⟩
 
 /--
 info: DependentFieldTest.Prog.Tele.cons {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 o2 : Lvl}
@@ -93,15 +93,15 @@ def Tele.total : Tele → Nat
   | .cons n v r => n + v.val + r.total
 
 def teleTotalT := #leanscript_to_term Tele.total
--- [SKIPPED BY PROFILE_LAKE] example : teleTotalT.run teleT.run = (4 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard (Tele.cons 1 2 (.cons 0 1 .nil)).total == 4
+example : teleTotalT.run teleT.run = (4 : Nat) := by kernel_rfl
+#guard (Tele.cons 1 2 (.cons 0 1 .nil)).total == 4
 
 /-- The case analysis binds the two numbers and the rest. -/
 def teleHead : Term Prog.Δ 0 [] [⟨Prog.tele, .many, 0⟩] .nat [] (some 0) :=
   (#leanscript_get_cases Tele) (.var (.head (by decide))) (.ret (.lit .nat 0))
     (.ret (.neu (.var (.tail (.head (by decide))))))
 
--- [SKIPPED BY PROFILE_LAKE] example : teleHead.eval PUnit.unit teleT.run PUnit.unit = (2 : Nat) := rfl
+example : teleHead.eval PUnit.unit teleT.run PUnit.unit = (2 : Nat) := rfl
 
 /-! ## Other erasures -/
 
@@ -112,12 +112,12 @@ structure V where
   s : {x : Nat // x < n}
   f : (i : Fin n) → Fin (i + 1)
 
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty V : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .record .nat (.cons (.array .nat) (.cons (Ty.option .nat) (.cons .nat (.one (.fn .nat .nat))))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
+example : (#leanscript_get_ty V : Ty []) =
+    .record .nat (.cons (.array .nat) (.cons (Ty.option .nat) (.cons .nat (.one (.fn .nat .nat))))) :=
+  rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A numeral bound of three or more is `nat`. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Fin 3) : Ty []) = .nat := rfl
+/-- A numeral bound of three or more is `nat`. -/
+example : (#leanscript_get_ty (Fin 3) : Ty []) = .nat := rfl
 
 /-! ## `WT Nat Fin`: `Fin`-indexed children on a recursive cycle -/
 
@@ -127,7 +127,7 @@ structure V where
 leanscript_signature OkW₁ where
   w := WT Nat Fin
 
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, OkW₁.w = .data r := ⟨_, rfl⟩
+example : ∃ r, OkW₁.w = .data r := ⟨_, rfl⟩
 
 /-! ## Refusals -/
 

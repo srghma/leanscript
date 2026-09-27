@@ -30,19 +30,19 @@ def add3 (a b c : Nat) : Nat := a + b + c
 
 def add3T := #leanscript_to_term add3
 
--- [SKIPPED BY PROFILE_LAKE] example : (add3T (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = add3 1 2 3 := rfl
+example : (add3T (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = add3 1 2 3 := rfl
 
 def mx (a b : Nat) : Nat := if a < b then b else a
 def mxT := #leanscript_to_term mx
--- [SKIPPED BY PROFILE_LAKE] example : (mxT (Δ := DSig.nil)).run (3 : Nat) (7 : Nat) = (7 : Nat) := rfl
+example : (mxT (Δ := DSig.nil)).run (3 : Nat) (7 : Nat) = (7 : Nat) := rfl
 
 /-- An `if` that is not in tail position, whose branches are pure: `n * 2` and `+ 1` are
     calls of externs (`PExpr.extern`, neutral pure expressions), so the `if` is the pure
     conditional `PExpr.cond` and the whole body is one pure expression, with no join point. -/
 def nonTailIf (b : Bool) (n : Nat) : Nat := (if b then n * 2 else 0) + 1
 def nonTailIfT := #leanscript_to_term nonTailIf
--- [SKIPPED BY PROFILE_LAKE] example : (nonTailIfT (Δ := DSig.nil)).run true (4 : Nat) = (9 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (nonTailIfT (Δ := DSig.nil)).run false (4 : Nat) = (1 : Nat) := rfl
+example : (nonTailIfT (Δ := DSig.nil)).run true (4 : Nat) = (9 : Nat) := rfl
+example : (nonTailIfT (Δ := DSig.nil)).run false (4 : Nat) = (1 : Nat) := rfl
 
 
 /-- Every call of an extern is a pure expression, whatever the extern (`String.length`, on a
@@ -51,8 +51,8 @@ def nonTailIfT := #leanscript_to_term nonTailIf
     named by a `let`, `Comp.share`.) -/
 def nonTailIfCall (b : Bool) (s : String) : Nat := (if b then s.length else 0) + 1
 def nonTailIfCallT := #leanscript_to_term nonTailIfCall
--- [SKIPPED BY PROFILE_LAKE] example : (nonTailIfCallT (Δ := DSig.nil)).run true "abc" = (4 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (nonTailIfCallT (Δ := DSig.nil)).run false "abc" = (1 : Nat) := rfl
+example : (nonTailIfCallT (Δ := DSig.nil)).run true "abc" = (4 : Nat) := rfl
+example : (nonTailIfCallT (Δ := DSig.nil)).run false "abc" = (1 : Nat) := rfl
 
 
 def sumTo : Nat → Nat
@@ -60,7 +60,7 @@ def sumTo : Nat → Nat
   | n + 1 => (n + 1) + sumTo n
 
 def sumToT := #leanscript_to_term sumTo
--- [SKIPPED BY PROFILE_LAKE] example : (sumToT (Δ := DSig.nil)).run (5 : Nat) = sumTo 5 := rfl
+example : (sumToT (Δ := DSig.nil)).run (5 : Nat) = sumTo 5 := rfl
 
 /-- The translation of `sumTo` computes `sumTo` at every argument. -/
 theorem sumToT_run (n : Nat) : (sumToT (Δ := DSig.nil)).run n = sumTo n := by
@@ -70,7 +70,7 @@ theorem sumToT_run (n : Nat) : (sumToT (Δ := DSig.nil)).run n = sumTo n := by
 
 def optGet (o : Option Nat) : Nat := match o with | none => 0 | some x => x
 def optGetT := #leanscript_to_term optGet
--- [SKIPPED BY PROFILE_LAKE] example : (optGetT (Δ := DSig.nil)).run (some (4 : Nat)) = (4 : Nat) := rfl
+example : (optGetT (Δ := DSig.nil)).run (some (4 : Nat)) = (4 : Nat) := rfl
 
 inductive Color where
   | red | green | blue
@@ -81,11 +81,11 @@ def colorNum : Color → Nat
   | .blue => 30
 
 def colorNumT := #leanscript_to_term colorNum
--- [SKIPPED BY PROFILE_LAKE] example : (colorNumT (Δ := DSig.nil)).run (1 : Fin 3) = (20 : Nat) := rfl
+example : (colorNumT (Δ := DSig.nil)).run (1 : Fin 3) = (20 : Nat) := rfl
 
 def notB (b : Bool) : Bool := match b with | true => false | false => true
 def notBT := #leanscript_to_term notB
--- [SKIPPED BY PROFILE_LAKE] example : (notBT (Δ := DSig.nil)).run true = false := rfl
+example : (notBT (Δ := DSig.nil)).run true = false := rfl
 
 structure Point where
   x : Nat
@@ -93,19 +93,19 @@ structure Point where
 
 def Point.sum (p : Point) : Nat := p.x + p.y
 def pointSumT := #leanscript_to_term Point.sum
--- [SKIPPED BY PROFILE_LAKE] example : (pointSumT (Δ := DSig.nil)).run ((3 : Nat), (4 : Nat)) = (7 : Nat) := rfl
+example : (pointSumT (Δ := DSig.nil)).run ((3 : Nat), (4 : Nat)) = (7 : Nat) := rfl
 
 def swapP (p : Point) : Point := { x := p.y, y := p.x }
 def swapPT := #leanscript_to_term swapP
--- [SKIPPED BY PROFILE_LAKE] example : (swapPT (Δ := DSig.nil)).run ((3 : Nat), (4 : Nat)) = ((4 : Nat), (3 : Nat)) := rfl
+example : (swapPT (Δ := DSig.nil)).run ((3 : Nat), (4 : Nat)) = ((4 : Nat), (3 : Nat)) := rfl
 
 def letTwice (n : Nat) : Nat := let m := n * 2; m + m
 def letTwiceT := #leanscript_to_term letTwice
--- [SKIPPED BY PROFILE_LAKE] example : (letTwiceT (Δ := DSig.nil)).run (5 : Nat) = (20 : Nat) := rfl
+example : (letTwiceT (Δ := DSig.nil)).run (5 : Nat) = (20 : Nat) := rfl
 
 def safeDiv (a b : Nat) : Nat := if _h : b = 0 then 0 else a / b
 def safeDivT := #leanscript_to_term safeDiv
--- [SKIPPED BY PROFILE_LAKE] example : (safeDivT (Δ := DSig.nil)).run (10 : Nat) (2 : Nat) = (5 : Nat) := rfl
+example : (safeDivT (Δ := DSig.nil)).run (10 : Nat) (2 : Nat) = (5 : Nat) := rfl
 
 /-! ## Recursive datatypes: over the current program -/
 
@@ -140,15 +140,15 @@ def mkList : PExpr Prog.Δ [] [] Prog.listNat none :=
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
--- [SKIPPED BY PROFILE_LAKE] example : lsumT.run mkList.run = (3 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := by kernel_rfl
+example : lsumT.run mkList.run = (3 : Nat) := by kernel_rfl
+example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := by kernel_rfl
 
 def leafT : PExpr Prog.Δ [] [] Prog.tree none := #leanscript_get_ctor Tree.leaf
 def treeT : PExpr Prog.Δ [] [] Prog.tree none :=
   (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leafT (.lit .nat 1) leafT)
     (.lit .nat 2) leafT
 
--- [SKIPPED BY PROFILE_LAKE] example : tsumT.run treeT.run = (3 : Nat) := by kernel_rfl
+example : tsumT.run treeT.run = (3 : Nat) := by kernel_rfl
 
 /-- Course-of-values recursion: `fibL (y :: t)` and `fibL t` are one and two levels down, so
     the translation is `data_brec` of depth `1`. -/
@@ -167,7 +167,7 @@ def mkList5 : PExpr Prog.Δ [] [] Prog.listNat none :=
           ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 5)
             (#leanscript_get_ctor List.nil (α := Nat))))))
 
--- [SKIPPED BY PROFILE_LAKE] example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := by kernel_rfl
+example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := by kernel_rfl
 
 /-! ## The command shows the type of the translation -/
 
@@ -238,34 +238,34 @@ error: LeanScript: the parameter `α` of `ToTermTest.idT` is a type
 
 def forceB (t : Thunk Bool) : Bool := t.get
 def forceBT := #leanscript_to_term forceB
--- [SKIPPED BY PROFILE_LAKE] example (b : Bool) : (forceBT (Δ := DSig.nil)).run b = forceB (Thunk.pure b) := by
--- [SKIPPED BY PROFILE_LAKE]   cases b <;> rfl
+example (b : Bool) : (forceBT (Δ := DSig.nil)).run b = forceB (Thunk.pure b) := by
+  cases b <;> rfl
 
 def delayN (n : Nat) : Thunk Nat := Thunk.pure (n + 1)
 def delayNT := #leanscript_to_term delayN
--- [SKIPPED BY PROFILE_LAKE] example : (delayNT (Δ := DSig.nil)).run (4 : Nat) = (5 : Nat) := rfl
+example : (delayNT (Δ := DSig.nil)).run (4 : Nat) = (5 : Nat) := rfl
 
 def lazyAdd (n : Nat) : Unit → Nat := fun _ => n + 2
 def lazyAddT := #leanscript_to_term lazyAdd
--- [SKIPPED BY PROFILE_LAKE] example : (lazyAddT (Δ := DSig.nil)).run (4 : Nat) = (6 : Nat) := rfl
+example : (lazyAddT (Δ := DSig.nil)).run (4 : Nat) = (6 : Nat) := rfl
 
 def withUnit (_u : Unit) (n : Nat) : Nat := n
 def withUnitT := #leanscript_to_term withUnit
--- [SKIPPED BY PROFILE_LAKE] example : (withUnitT (Δ := DSig.nil)).run (3 : Nat) = withUnit () 3 := rfl
+example : (withUnitT (Δ := DSig.nil)).run (3 : Nat) = withUnit () 3 := rfl
 
 def callLazy (f : Unit → Nat) : Nat := f () + 1
 def callLazyT := #leanscript_to_term callLazy
--- [SKIPPED BY PROFILE_LAKE] example : (callLazyT (Δ := DSig.nil)).run (4 : Nat) = callLazy (fun _ => 4) := rfl
+example : (callLazyT (Δ := DSig.nil)).run (4 : Nat) = callLazy (fun _ => 4) := rfl
 
 /-- `Thunk (Unit → Nat)` is `.thunk nat`: `t.get` (a lazy delay) is the thunk forced, then
     delayed again as a lazy delay, then forced by `()`. -/
 def forceTwice (t : Thunk (Unit → Nat)) : Nat := t.get ()
 def forceTwiceT := #leanscript_to_term forceTwice
--- [SKIPPED BY PROFILE_LAKE] example : (forceTwiceT (Δ := DSig.nil)).run (7 : Nat) = forceTwice (Thunk.pure fun _ => 7) := rfl
+example : (forceTwiceT (Δ := DSig.nil)).run (7 : Nat) = forceTwice (Thunk.pure fun _ => 7) := rfl
 
 def mkThunkFn (n : Nat) : Thunk Nat := Thunk.mk fun _ => n * 2
 def mkThunkFnT := #leanscript_to_term mkThunkFn
--- [SKIPPED BY PROFILE_LAKE] example : (mkThunkFnT (Δ := DSig.nil)).run (4 : Nat) = (8 : Nat) := rfl
+example : (mkThunkFnT (Δ := DSig.nil)).run (4 : Nat) = (8 : Nat) := rfl
 
 end ToTermTest
 

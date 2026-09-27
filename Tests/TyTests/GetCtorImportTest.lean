@@ -46,9 +46,9 @@ info: TyTests.GetCtorImportTest.Sum.inl.leanScriptCtor {ks : List Nat} {Δ : DSi
 #guard_msgs in
 #leanscript_get_ctor Sum.inl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The imported definitions compute. -/
--- [SKIPPED BY PROFILE_LAKE] example : treeSum ((#leanscript_get_ctor Tree.node) leaf (.lit .nat 5) leaf :
--- [SKIPPED BY PROFILE_LAKE]     PExpr Prog.Δ [] [] _ none).run = 5 := rfl
+/-- The imported definitions compute. -/
+example : treeSum ((#leanscript_get_ctor Tree.node) leaf (.lit .nat 5) leaf :
+    PExpr Prog.Δ [] [] _ none).run = 5 := rfl
 
 end GetCtorImportTest
 

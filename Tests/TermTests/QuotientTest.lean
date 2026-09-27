@@ -61,18 +61,18 @@ leanscript_signature Prog where
 /-! ## The types -/
 
 -- a proof is erased: `Pos` is its number
--- [SKIPPED BY PROFILE_LAKE] example : Prog.pos = .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Pos : Ty []) = .nat := rfl
+example : Prog.pos = .nat := rfl
+example : (#leanscript_get_ty Pos : Ty []) = .nat := rfl
 
 -- a quotient is its carrier
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Quot Par) : Ty []) = .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Quot Par → Array (Quot Par)) : Ty []) = .fn .nat (.array .nat) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
+example : (#leanscript_get_ty (Quot Par) : Ty []) = .nat := rfl
+example : (#leanscript_get_ty (Quot Par → Array (Quot Par)) : Ty []) = .fn .nat (.array .nat) :=
+  rfl
 
 -- `QT` is a declared datatype: `leaf`, or `node` of a number and a `QT`
--- [SKIPPED BY PROFILE_LAKE] example : Prog.qt = .data (.here 0) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block0 = .cons (.union (.two₁ .nullary
--- [SKIPPED BY PROFILE_LAKE]     (.fields (.cons (.old .nat) (.one (.hole 0 (by decide))))))) .nil := rfl
+example : Prog.qt = .data (.here 0) := rfl
+example : Prog.block0 = .cons (.union (.two₁ .nullary
+    (.fields (.cons (.old .nat) (.one (.hole 0 (by decide))))))) .nil := rfl
 
 /--
 info: QuotientTest.Prog.QT.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
@@ -87,7 +87,7 @@ info: QuotientTest.Prog.QT.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 :
 def q3 : QT := .node (Quot.mk _ 3) (.node (Quot.mk _ 4) .leaf)
 def q3T := #leanscript_to_term q3
 
--- [SKIPPED BY PROFILE_LAKE] example : q3T = .ret (Prog.QT.node (.lit .nat 3) (Prog.QT.node (.lit .nat 4) Prog.QT.leaf)) := rfl
+example : q3T = .ret (Prog.QT.node (.lit .nat 3) (Prog.QT.node (.lit .nat 4) Prog.QT.leaf)) := rfl
 
 /-! ## Functions on quotients: applied to the representative -/
 
@@ -97,8 +97,8 @@ def QT.odds : QT → Nat
   | .node q t => Quot.lift (fun a => a % 2) (fun _ _ h => h) q + t.odds
 
 def oddsT := #leanscript_to_term QT.odds
--- [SKIPPED BY PROFILE_LAKE] example : oddsT.run q3T.run = (1 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard q3.odds == 1
+example : oddsT.run q3T.run = (1 : Nat) := by kernel_rfl
+#guard q3.odds == 1
 
 -- the same with `Quot.liftOn`
 def QT.odds' : QT → Nat
@@ -106,11 +106,11 @@ def QT.odds' : QT → Nat
   | .node q t => q.liftOn (fun a => a % 2) (fun _ _ h => h) + t.odds'
 
 def odds'T := #leanscript_to_term QT.odds'
--- [SKIPPED BY PROFILE_LAKE] example : odds'T.run q3T.run = (1 : Nat) := by kernel_rfl
+example : odds'T.run q3T.run = (1 : Nat) := by kernel_rfl
 
 -- another representative of the same classes gives the same answer
--- [SKIPPED BY PROFILE_LAKE] example : oddsT.run (Prog.QT.node (.lit .nat 5) (Prog.QT.node (.lit .nat 0) Prog.QT.leaf)
--- [SKIPPED BY PROFILE_LAKE]     (Φ := []) (Γ := [])).run = (1 : Nat) := by kernel_rfl
+example : oddsT.run (Prog.QT.node (.lit .nat 5) (Prog.QT.node (.lit .nat 0) Prog.QT.leaf)
+    (Φ := []) (Γ := [])).run = (1 : Nat) := by kernel_rfl
 
 /-- `Quot.lift` on a parameter: the representative is bound, then `f` applied to it. -/
 def parity (q : Quot Par) : Nat := Quot.lift (fun a => a % 2) (fun _ _ h => h) q
@@ -137,7 +137,7 @@ info: fun {ks} {Δ} =>
 def parity' (q : Quot Par) : Nat :=
   Quot.hrecOn (motive := fun _ => Nat) q (fun a => a % 2) (fun _ _ h => heq_of_eq h)
 def parity'T := #leanscript_to_term parity'
--- [SKIPPED BY PROFILE_LAKE] example : (parity'T (Δ := DSig.nil)).run (7 : Nat) = (1 : Nat) := rfl
+example : (parity'T (Δ := DSig.nil)).run (7 : Nat) = (1 : Nat) := rfl
 
 /-! ## `Quotient` -/
 
@@ -157,8 +157,8 @@ def sum3 (p q : Quotient mod3) : Nat :=
 def rem3T := #leanscript_to_term rem3
 def succ3T := #leanscript_to_term succ3
 def sum3T := #leanscript_to_term sum3
--- [SKIPPED BY PROFILE_LAKE] example : (rem3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) = (2 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (sum3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) (5 : Nat) = (1 : Nat) := rfl
+example : (rem3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) = (2 : Nat) := rfl
+example : (sum3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) (5 : Nat) = (1 : Nat) := rfl
 
 /-! ## Externs on quotients: given the class of the representative -/
 
@@ -210,8 +210,8 @@ info: fun {ks} {Δ} =>
 #check #leanscript_to_term same
 
 -- `3` and `5` are representatives of the same class
--- [SKIPPED BY PROFILE_LAKE] example : (sameT (Δ := DSig.nil)).run (3 : Nat) (5 : Nat) = true := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (sameT (Δ := DSig.nil)).run (3 : Nat) (4 : Nat) = false := rfl
+example : (sameT (Δ := DSig.nil)).run (3 : Nat) (5 : Nat) = true := rfl
+example : (sameT (Δ := DSig.nil)).run (3 : Nat) (4 : Nat) = false := rfl
 
 /-- A structure with a quotient and an array of quotients: a record of `nat` and `nat` array. -/
 structure S where
@@ -222,9 +222,9 @@ def S.odds (s : S) : Nat :=
   s.xs.foldl (fun acc q => acc + Quot.lift (fun a => a % 2) (fun _ _ h => h) q) (parity s.q)
 
 def sOddsT := #leanscript_to_term S.odds
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty S : Ty []) = .pair .nat (.array .nat) := rfl
+example : (#leanscript_get_ty S : Ty []) = .pair .nat (.array .nat) := rfl
 -- the fold is `Comp.array_foldl` over the array of the representatives
--- [SKIPPED BY PROFILE_LAKE] example : (sOddsT (Δ := DSig.nil)).run ((3 : Nat), (#[1, 2, 5] : Array Nat)) = (3 : Nat) := rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
 /-! ## `Pos`: the proof is erased -/
 
@@ -235,8 +235,8 @@ def Pos.succ (n : Nat) : Pos := ⟨n + 1, by omega⟩
 def predT := #leanscript_to_term Pos.pred
 def oneT := #leanscript_to_term Pos.one
 def succT := #leanscript_to_term Pos.succ
--- [SKIPPED BY PROFILE_LAKE] example : oneT (Δ := DSig.nil) = .ret (.lit .nat 1) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (predT (Δ := DSig.nil)).run ((succT (Δ := DSig.nil)).run (4 : Nat)) = (4 : Nat) := rfl
+example : oneT (Δ := DSig.nil) = .ret (.lit .nat 1) := rfl
+example : (predT (Δ := DSig.nil)).run ((succT (Δ := DSig.nil)).run (4 : Nat)) = (4 : Nat) := rfl
 
 /-! ## Refusals -/
 
@@ -254,8 +254,8 @@ has one constructor and no field (it has one value)
 leanscript_signature ProgU where
   u := UQ
 
--- [SKIPPED BY PROFILE_LAKE] /-- A quotient of `Bool` is `bool` (two points are only `bool`), even when it has one value. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Quot (fun (_ _ : Bool) => True)) : Ty []) = .bool := rfl
+/-- A quotient of `Bool` is `bool` (two points are only `bool`), even when it has one value. -/
+example : (#leanscript_get_ty (Quot (fun (_ _ : Bool) => True)) : Ty []) = .bool := rfl
 
 /-- A call returning a class that is not built by `Quot.mk`: no representative to compute. -/
 opaque pick : Nat → Quot Par := fun n => Quot.mk _ n

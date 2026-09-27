@@ -40,12 +40,12 @@ abbrev S : UCtx [] := [⟨.prim .string, .many, 0⟩]
 /-- `s.contains '4'`, for an unknown string `s`. -/
 def containsT : P S .bool 0 := PExpr.lean_string_contains x0 (.lit .char '4')
 
--- [SKIPPED BY PROFILE_LAKE] /-- The term former is the call of the entry on its arguments. -/
--- [SKIPPED BY PROFILE_LAKE] example : containsT =
--- [SKIPPED BY PROFILE_LAKE]     .neu (.extern .lean_string_contains (.cons x0 (.cons (.lit .char '4') .nil)) rfl) := rfl
+/-- The term former is the call of the entry on its arguments. -/
+example : containsT =
+    .neu (.extern .lean_string_contains (.cons x0 (.cons (.lit .char '4') .nil)) rfl) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (containsT.eval PUnit.unit ("12345" : String)) == true
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (containsT.eval PUnit.unit ("12395" : String)) == false
+#guard id (α := Bool) (containsT.eval PUnit.unit ("12345" : String)) == true
+#guard id (α := Bool) (containsT.eval PUnit.unit ("12395" : String)) == false
 
 /-- The call on literals only cannot be written as a call… -/
 example : True := by
@@ -53,21 +53,21 @@ example : True := by
     have : P [] .bool 0 := PExpr.lean_string_contains (.lit .string "12345") (.lit .char '4')
   trivial
 
--- [SKIPPED BY PROFILE_LAKE] /-- …it is computed, and written as a literal. -/
--- [SKIPPED BY PROFILE_LAKE] example : (PExpr.externLit (Δ := .nil) (Φ := []) (Γ := []) .lean_nat_add
--- [SKIPPED BY PROFILE_LAKE]     (.cons (.lit .nat 3) (.cons (.lit .nat 4) .nil))) = .lit .nat 7 := rfl
+/-- …it is computed, and written as a literal. -/
+example : (PExpr.externLit (Δ := .nil) (Φ := []) (Γ := []) .lean_nat_add
+    (.cons (.lit .nat 3) (.cons (.lit .nat 4) .nil))) = .lit .nat 7 := rfl
 
 /-- `String.Internal.any s f` where the predicate `f : Char → Bool` is an unknown too (a
     function is a value of the language, so it is an argument like any other). -/
 def anyT : P [⟨.fn (.prim .char) .bool, .many, 0⟩] .bool 0 :=
   PExpr.lean_string_any (.lit .string "12345") x0
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (anyT.eval PUnit.unit (fun (c : Char) => c == '4')) == true
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (anyT.eval PUnit.unit (fun (c : Char) => c == 'x')) == false
+#guard id (α := Bool) (anyT.eval PUnit.unit (fun (c : Char) => c == '4')) == true
+#guard id (α := Bool) (anyT.eval PUnit.unit (fun (c : Char) => c == 'x')) == false
 
 /-- Numerals: `n + 4`. -/
 def addT : P [⟨.nat, .many, 0⟩] .nat 0 := PExpr.lean_nat_add x0 (.lit .nat 4)
--- [SKIPPED BY PROFILE_LAKE] example : id (α := Nat) (addT.eval PUnit.unit (3 : Nat)) = 7 := rfl
+example : id (α := Nat) (addT.eval PUnit.unit (3 : Nat)) = 7 := rfl
 
 /-- A value built by externs: `#[].push n |>.push 2`.  The type argument of the entry
     (`αt`) comes first. -/
@@ -76,7 +76,7 @@ def arrT : P [⟨.nat, .many, 0⟩] (.array .nat) 0 :=
     (PExpr.lean_array_push .nat
       (.array_mk .nil) x0) (.lit .nat 2)
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Array Nat) (arrT.eval PUnit.unit (1 : Nat)) == #[1, 2]
+#guard id (α := Array Nat) (arrT.eval PUnit.unit (1 : Nat)) == #[1, 2]
 
 end ExternCallTest
 

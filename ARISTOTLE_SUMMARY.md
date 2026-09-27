@@ -1,3 +1,42 @@
+# Summary of changes for run 49a7f4b1-69fb-4629-98c0-1b1ab067b6a7
+All requested items are done and committed. The full `lake build` passes with no errors or warnings. `lake test` passes 31/31. There is no `sorry`, `axiom` or `implemented_by`. `Term.optimize_eval` uses only `propext`, `Classical.choice` and `Quot.sound`.
+
+**HashableFloat and Mathlib**
+- The three files moved from `LeanScript/HashableFloat/` to `HashableFloat/`, which is now its own library (added to `lakefile.toml` and the default targets). Imports are updated.
+- The Mathlib `v4.34.0` requirement is back in `lakefile.toml`, and `lake-manifest.json` has matching entries.
+- Using Mathlib to remove duplication: `LeanScript/Term/UsageAlgebra.lean` gives usages Mathlib's `AddCommMonoid` and `LinearOrder` instances. The hand-proved `add_comm`, `add_assoc`, `max_comm`, `max_assoc` and `max_self` are now one-line uses of Mathlib's lemmas.
+- This module is deliberately not imported by the rest of the project. When I imported Mathlib into the core, many `#guard_msgs` snapshots broke (`Nat` prints as `ℕ`) and Mathlib's linters added 46 warnings.
+- I checked other candidates and left them: `Tuple` has no trailing `PUnit`, so it is not `List.TProd`; `IPF`/`IW` differ from `MvPFunctor`; Mathlib's `Finset` sums would slow down kernel evaluation.
+
+**Skipped tests**
+- I timed each skipped command separately. Anything at or above about 0.5 s moved to `Tests/Main.lean`; everything else is restored in place.
+- Moved:
+  - `WhileTest`: five `kernel_rfl` runs, including `bits 1000` at about 18 s;
+  - `QuotientTest`: one;
+  - `RoseVariantsTest`: four;
+  - `TcoTest`: all 11 value checks.
+- Each old location has a comment pointing to `Tests/Main.lean`.
+- `Tests/Main.lean` uses `Spec`. It checks each translation, compiled, against the expected value and against the compiled Lean function. Each check takes a few milliseconds.
+- Restoring fixed `BlocksTest`, which had failed because commenting out an `example` left its `#guard_msgs` applying to the wrong command. To make its definitions importable, `TcoTest` is now a public section and `ackInner` is no longer private.
+
+**Why `hyperTCOT_run` needed 4,000,000 heartbeats**
+- It was not the kernel. `refine key _ ?_ n b` made the elaborator find the helper's function by higher-order unification through `Term.eval`, which took about 30 s.
+- The new proof first has the kernel evaluate the term's shape with `kernel_rfl`, with the arguments left as variables. That shape is two nested `natIter`s over `hyperBaseT.run`. The rest is an induction on the Lean side only.
+- It now takes about 0.3 s with default heartbeats, and the whole file dropped from 60 s to about 9 s.
+- The value checks are slow in the kernel because it unfolds `Term.eval` through the recursors of the term families, and every `natIter` step. The evaluator itself was not changed; compiled, the same runs take microseconds.
+
+**Optimizer** (`LeanScript/Term/Optimize.lean`)
+- `Term.optimize` walks a term the way `Term.eval` does and applies three rewrites, then dead-code elimination (`Term.dce`):
+  - copy propagation: `let x := share y` where `y` is an unknown of the same level;
+  - `let x := share n; ret x` becomes `ret n` (the same for `jump`);
+  - a `record_casesOn` whose fields are never read is dropped.
+- A rewrite is skipped whenever it would change the term's level index.
+- **Proved:** `Term.optimize_eval` (same value in every environment), `Term.optimize_run` (same program result), and the same for `Term.optimizeN` (run `k` times).
+- `TermTests/OptimizeTest.lean` checks that each rewrite fires on a small term (by `rfl`), and that a term with none of the patterns is unchanged. `Tests/Main.lean` also checks the optimized translations on values.
+- The optimizer is modest: no common-subexpression elimination and no inlining (see `NOT_IMPLEMENTED.md`).
+
+`README.md` and `NOT_IMPLEMENTED.md` are updated.
+
 # Summary of changes for run b4f840b7-c6bc-4f88-aeb9-4304a2d62ece
 This was a refactoring task, so "formalizing" here meant doing in Lean the split of `LeanScript/TermElab/ToTerm/Expr.lean` that I had left out last time. There is no new theorem to state or prove. The full `lake build` passes (134 jobs, no errors or warnings), including all the `TermTests` that run `#leanscript_to_term`. A search finds no `sorry` in the new files.
 

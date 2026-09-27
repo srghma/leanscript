@@ -132,6 +132,13 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   (`many`) everywhere; `Term.dce` recomputes exact annotations and removes dead bindings, but
   nothing requires a term to carry exact ones (a binder annotated `0` cannot be referenced,
   which the types do enforce).
+- **The optimiser is small**: `Term.optimize` (`LeanScript/Term/Optimize.lean`, proved to
+  preserve the value) only does copy propagation of an unknown of the same level, returns a
+  shared neutral answer directly, drops a `record_casesOn` whose fields are unused, and runs
+  `Term.dce`.  Every rewrite is skipped when it would change the level index of the statement.
+  There is no common-subexpression elimination (for example of repeated `record_casesOn` on the
+  same neutral record), no inlining of a `share` used once into a neutral expression (that is a
+  substitution, see above), and it does not look inside pure expressions.
 - **No pretty printer for terms**: terms print as constructor applications.
 - **No `DecidableEq`/`Repr` for `Term`**: an extern is now an entry of the catalogue
   `LeanInitPureExtern σs τ` (data, no Lean function), but the catalogue itself has no derived

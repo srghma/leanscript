@@ -44,9 +44,9 @@ abbrev roseB : BRef [0, 0] := .here
 def listNat : Ty [0, 0] := .data (.there (.here 0))
 def rose : Ty [0, 0] := .data (.here 0)
 
--- [SKIPPED BY PROFILE_LAKE] example : (Δ.block listB).unfold 0 = .union (.two .nullary (.fields (.cons .nat (.one listNat)))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
--- [SKIPPED BY PROFILE_LAKE] example : (Δ.block roseB).unfold 0 = .record listNat (.one (.array rose)) := rfl
+example : (Δ.block listB).unfold 0 = .union (.two .nullary (.fields (.cons .nat (.one listNat)))) :=
+  rfl
+example : (Δ.block roseB).unfold 0 = .record listNat (.one (.array rose)) := rfl
 
 /-! ## Building values -/
 
@@ -114,16 +114,16 @@ def roseSumT : Prog (.fn rose .nat) :=
 def list123 : PExpr Δ [] [] listNat none :=
   consT (natT 1) (consT (natT 2) (consT (natT 3) nilT))
 
--- [SKIPPED BY PROFILE_LAKE] example : sumT.run list123.run = (6 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : headT.run list123.run = (some 1 : Option Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : headT.run nilT.run = (none : Option Nat) := by kernel_rfl
+example : sumT.run list123.run = (6 : Nat) := by kernel_rfl
+example : headT.run list123.run = (some 1 : Option Nat) := by kernel_rfl
+example : headT.run nilT.run = (none : Option Nat) := by kernel_rfl
 
 def tree : PExpr Δ [] [] rose none :=
   nodeT (consT (natT 1) nilT)
     (.cons (nodeT (consT (natT 10) (consT (natT 20) nilT)) .nil)
       (.cons (nodeT nilT .nil) .nil))
 
--- [SKIPPED BY PROFILE_LAKE] example : roseSumT.run tree.run = (31 : Nat) := by kernel_rfl
+example : roseSumT.run tree.run = (31 : Nat) := by kernel_rfl
 
 /-- Course-of-values recursion (`data_brec`, looking two levels down): the Fibonacci number of
     the length of a list, `f [] = 0`, `f [x] = 1`, `f (x :: y :: t) = f (y :: t) + f t`.  The
@@ -143,30 +143,30 @@ def fibLenT : Prog (.fn listNat .nat) :=
 def list5 : PExpr Δ [] [] listNat none :=
   consT (natT 1) (consT (natT 2) (consT (natT 3) (consT (natT 4) (consT (natT 5) nilT))))
 
--- [SKIPPED BY PROFILE_LAKE] example : fibLenT.run nilT.run = (0 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : fibLenT.run (consT (natT 7) nilT).run = (1 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : fibLenT.run list123.run = (2 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : fibLenT.run list5.run = (5 : Nat) := by kernel_rfl
+example : fibLenT.run nilT.run = (0 : Nat) := by kernel_rfl
+example : fibLenT.run (consT (natT 7) nilT).run = (1 : Nat) := by kernel_rfl
+example : fibLenT.run list123.run = (2 : Nat) := by kernel_rfl
+example : fibLenT.run list5.run = (5 : Nat) := by kernel_rfl
 
 /-- `nat_rec`: the triangular number `0 + 1 + … + (n - 1)`; the step sees the answer so far
     as `#0` and the predecessor as `#1`. -/
 def triT : Prog (.fn .nat .nat) :=
   [Term| fun _ => nat_rec #0 0 (extern ‹.lean_nat_add› #0 #1)]
 
--- [SKIPPED BY PROFILE_LAKE] example : triT.run (5 : Nat) = (10 : Nat) := rfl
+example : triT.run (5 : Nat) = (10 : Nat) := rfl
 
 /-- An enum case analysis. -/
 def enumT : Prog (.fn (.enum {}) .nat) :=
   [Term| fun _ => match #0 with | 0 => 0 | 1 => 10 | _ => 20]
 
--- [SKIPPED BY PROFILE_LAKE] example : enumT.run (2 : Fin _) = (20 : Nat) := rfl
+example : enumT.run (2 : Fin _) = (20 : Nat) := rfl
 
 /-- A join point: `join j x := x + 1; if b then jump j 1 else jump j 2`. -/
 def joinT : Prog (.fn .bool .nat) :=
   [Term| fun _ => join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if #0 then jump ^0 1 else jump ^0 2]
 
--- [SKIPPED BY PROFILE_LAKE] example : joinT.run true = (2 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : joinT.run false = (3 : Nat) := rfl
+example : joinT.run true = (2 : Nat) := rfl
+example : joinT.run false = (3 : Nat) := rfl
 
 end TermTest
 

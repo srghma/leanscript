@@ -61,38 +61,38 @@ leanscript_signature Prog where
 
 /-! ## The blocks -/
 
--- [SKIPPED BY PROFILE_LAKE] /-- Five blocks: `List Nat`, `Tree`, `Rose` with `List Rose`, `Even`/`Odd`, `RoseA`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.ks.length = 5 := rfl
+/-- Five blocks: `List Nat`, `Tree`, `Rose` with `List Rose`, `Even`/`Odd`, `RoseA`. -/
+example : Prog.ks.length = 5 := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Every recursive type is a name; the non-recursive ones are structural. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.color = .enum ⟨0, 0⟩ := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.point = .record .nat (.one .int) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.optNat = Ty.option .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.fn = .fn .nat .bool := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.pair = .record .nat (.one .string) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.listNat = .data r := ⟨_, rfl⟩
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.tree = .data r := ⟨_, rfl⟩
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.rose = .data r := ⟨_, rfl⟩
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.roseA = .data r := ⟨_, rfl⟩
+/-- Every recursive type is a name; the non-recursive ones are structural. -/
+example : Prog.color = .enum ⟨0, 0⟩ := rfl
+example : Prog.point = .record .nat (.one .int) := rfl
+example : Prog.optNat = Ty.option .nat := rfl
+example : Prog.fn = .fn .nat .bool := rfl
+example : Prog.pair = .record .nat (.one .string) := rfl
+example : ∃ r, Prog.listNat = .data r := ⟨_, rfl⟩
+example : ∃ r, Prog.tree = .data r := ⟨_, rfl⟩
+example : ∃ r, Prog.rose = .data r := ⟨_, rfl⟩
+example : ∃ r, Prog.roseA = .data r := ⟨_, rfl⟩
 
--- [SKIPPED BY PROFILE_LAKE] /-- The meaning of a structural type is the Lean type. -/
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Prog.Δ Prog.point = (Nat × Int) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den Prog.Δ Prog.optNat = Option Nat := rfl
+/-- The meaning of a structural type is the Lean type. -/
+example : Ty.Den Prog.Δ Prog.point = (Nat × Int) := rfl
+example : Ty.Den Prog.Δ Prog.optNat = Option Nat := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The block sizes, newest first: `RoseA`, `Even`/`Odd`, `List Rose`/`Rose`, `Tree`,
--- [SKIPPED BY PROFILE_LAKE]     `List Nat`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.ks = [0, 1, 1, 0, 0] := rfl
+/-- The block sizes, newest first: `RoseA`, `Even`/`Odd`, `List Rose`/`Rose`, `Tree`,
+    `List Nat`. -/
+example : Prog.ks = [0, 1, 1, 0, 0] := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `List Rose` is on `Rose`'s cycle, so it is a member of the block; it comes first in the
--- [SKIPPED BY PROFILE_LAKE]     grounding order (`nil` is its base), then `Rose`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.rose = .data (.there (.there (.here 1))) := rfl
+/-- `List Rose` is on `Rose`'s cycle, so it is a member of the block; it comes first in the
+    grounding order (`nil` is its base), then `Rose`. -/
+example : Prog.rose = .data (.there (.there (.here 1))) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Canonical forms: the `List Nat` field of `RoseA` is the name of the oldest block, the same
--- [SKIPPED BY PROFILE_LAKE]     datatype as the requested `List Nat`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block4 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.record (.old (.data (.there (.there (.there (.here 0))))))
--- [SKIPPED BY PROFILE_LAKE]       (.one (.array (.hole 0 (by decide))))) .nil := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.listNat = .data (.there (.there (.there (.there (.here 0))))) := rfl
+/-- Canonical forms: the `List Nat` field of `RoseA` is the name of the oldest block, the same
+    datatype as the requested `List Nat`. -/
+example : Prog.block4 =
+    .cons (.record (.old (.data (.there (.there (.there (.here 0))))))
+      (.one (.array (.hole 0 (by decide))))) .nil := rfl
+example : Prog.listNat = .data (.there (.there (.there (.there (.here 0))))) := rfl
 
 /-- Values of a declared type are built with `DSig.dataIn`, and folded with `DSig.dataRec`. -/
 def leaf : Ty.Den Prog.Δ Prog.tree := Prog.Δ.dataIn (.there (.there (.there .here))) 0 none
@@ -109,7 +109,7 @@ def treeSum (t : Ty.Den Prog.Δ Prog.tree) : Nat :=
         | some ((_, a), n, (_, b)) => Nat.add (Nat.add a n) b
       r) 0 t
 
--- [SKIPPED BY PROFILE_LAKE] example : treeSum (node (node leaf 1 leaf) 2 (node leaf 3 leaf)) = 6 := rfl
+example : treeSum (node (node leaf 1 leaf) 2 (node leaf 3 leaf)) = 6 := rfl
 
 /-- Every constructor of a declared type is reached through `#leanscript_get_ctor`, which is
     `data_in` of the constructor's fields. -/
@@ -119,8 +119,8 @@ def treeT : PExpr Prog.Δ [] [] Prog.tree none :=
       (#leanscript_get_ctor Tree.leaf))
     (.lit .nat 2) (#leanscript_get_ctor Tree.leaf)
 
--- [SKIPPED BY PROFILE_LAKE] example : treeT.run = node (node leaf 1 leaf) 2 leaf := rfl
--- [SKIPPED BY PROFILE_LAKE] example : treeSum treeT.run = 3 := rfl
+example : treeT.run = node (node leaf 1 leaf) 2 leaf := rfl
+example : treeSum treeT.run = 3 := rfl
 
 def listT : PExpr Prog.Δ [] [] Prog.listNat none :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 7)
@@ -181,7 +181,7 @@ inductive Switch where
 leanscript_signature Ok₂ where
   s := Option Switch
 
--- [SKIPPED BY PROFILE_LAKE] example : Ok₂.s = Ty.option .bool := rfl
+example : Ok₂.s = Ty.option .bool := rfl
 
 /--
 error: LeanScript: the type

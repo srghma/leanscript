@@ -39,61 +39,61 @@ abbrev x1 {τ : Ty []} {Γ : UCtx []} {b : UBinder []} :
     PExpr (ks := []) .nil [] (b :: ⟨τ, .many, 0⟩ :: Γ) τ (some 0) :=
   .neu (.var (.tail (.head (by decide))))
 
--- [SKIPPED BY PROFILE_LAKE] /-- The types denote Lean's own `List`, and a name is the list of its components. -/
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den DSig.nil (.list .nat) = List Nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Ty.Den DSig.nil .leanName = List (String ⊕ Nat) := rfl
+/-- The types denote Lean's own `List`, and a name is the list of its components. -/
+example : Ty.Den DSig.nil (.list .nat) = List Nat := rfl
+example : Ty.Den DSig.nil .leanName = List (String ⊕ Nat) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `Lean.Name` is not a leaf: it is built from `list` and `union`, like `Ty.ordering` from
--- [SKIPPED BY PROFILE_LAKE]     `enum`. -/
--- [SKIPPED BY PROFILE_LAKE] example : (Ty.leanName : Ty []) =
--- [SKIPPED BY PROFILE_LAKE]     .list (.union (.two (.fields (.one .string)) (.fields (.one .nat)))) := rfl
+/-- `Lean.Name` is not a leaf: it is built from `list` and `union`, like `Ty.ordering` from
+    `enum`. -/
+example : (Ty.leanName : Ty []) =
+    .list (.union (.two (.fields (.one .string)) (.fields (.one .nat)))) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A name's components, root first, and back. -/
--- [SKIPPED BY PROFILE_LAKE] example : nameToComponents `a.b = [.inl "a", .inl "b"] := rfl
--- [SKIPPED BY PROFILE_LAKE] example : nameToComponents (.num `a 3) = [.inl "a", .inr 3] := rfl
+/-- A name's components, root first, and back. -/
+example : nameToComponents `a.b = [.inl "a", .inl "b"] := rfl
+example : nameToComponents (.num `a 3) = [.inl "a", .inr 3] := rfl
 example (n : Lean.Name) : nameOfComponents (nameToComponents n) = n := by simp
 
--- [SKIPPED BY PROFILE_LAKE] /-- The notation. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| List Nat] : Ty []) = .list .nat := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Lean.Name] : Ty []) = .leanName := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Ty| Array (List Lean.Name)] : Ty []) = .array (.list .leanName) := rfl
+/-- The notation. -/
+example : ([Ty| List Nat] : Ty []) = .list .nat := rfl
+example : ([Ty| Lean.Name] : Ty []) = .leanName := rfl
+example : ([Ty| Array (List Lean.Name)] : Ty []) = .array (.list .leanName) := rfl
 
 /-- `#[n, 2].toList`, `n` an unknown. -/
 def toListT : P [⟨.nat, .many, 0⟩] (.list .nat) :=
   PExpr.lean_array_to_list .nat
     (PExpr.lean_array_push .nat (PExpr.lean_array_push .nat (.array_mk .nil) x0) (.lit .nat 2))
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := List Nat) (toListT.eval PUnit.unit (1 : Nat)) == [1, 2]
+#guard id (α := List Nat) (toListT.eval PUnit.unit (1 : Nat)) == [1, 2]
 
 /-- `Array.mk #[n, 2].toList`: back to the array. -/
 def mkT : P [⟨.nat, .many, 0⟩] (.array .nat) := PExpr.lean_array_mk .nat toListT
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Array Nat) (mkT.eval PUnit.unit (1 : Nat)) == #[1, 2]
+#guard id (α := Array Nat) (mkT.eval PUnit.unit (1 : Nat)) == #[1, 2]
 
 /-- `String.ofList s.toList`. -/
 def roundTripT : P [⟨.string, .many, 0⟩] .string :=
   PExpr.lean_string_mk__String_ofList (PExpr.lean_string_data__String_toList x0)
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := String) (roundTripT.eval PUnit.unit ("abc" : String)) == "abc"
+#guard id (α := String) (roundTripT.eval PUnit.unit ("abc" : String)) == "abc"
 
 -- `s.toList` (and the deprecated `String.data`, the same function).
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := List Char) ((PExpr.lean_string_data__String_toList (Δ := .nil) (Φ := [])
--- [SKIPPED BY PROFILE_LAKE]   (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := List Char) ((PExpr.lean_string_data__String_data (Δ := .nil) (Φ := [])
--- [SKIPPED BY PROFILE_LAKE]   (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
+#guard id (α := List Char) ((PExpr.lean_string_data__String_toList (Δ := .nil) (Φ := [])
+  (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
+#guard id (α := List Char) ((PExpr.lean_string_data__String_data (Δ := .nil) (Φ := [])
+  (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
 
 /-- `String.Internal.intercalate ", " xs`, the list an unknown. -/
 def intercalateT : P [⟨.list .string, .many, 0⟩] .string :=
   PExpr.lean_string_intercalate (.lit .string ", ") x0
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := String) (intercalateT.eval PUnit.unit ["a", "b", "c"]) == "a, b, c"
+#guard id (α := String) (intercalateT.eval PUnit.unit ["a", "b", "c"]) == "a, b, c"
 
 /-- `Lean.Name.beq x y`, the names unknowns. -/
 def nameEqT : P [⟨.leanName, .many, 0⟩, ⟨.leanName, .many, 0⟩] .bool :=
   PExpr.lean_name_eq x0 x1
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.b)) == true
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.c)) == false
+#guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.b)) == true
+#guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.c)) == false
 
 /-- A component of a name, as a constructor of the union `Ty.nameComponent`. -/
 def componentLit {Φ : KCtx []} {Γ : UCtx []} :
@@ -111,12 +111,12 @@ def componentElems {Φ : KCtx []} {Γ : UCtx []} :
 def nameLit {Φ : KCtx []} {Γ : UCtx []} (n : Lean.Name) : PExpr (ks := []) .nil Φ Γ .leanName none :=
   .list_mk (componentElems (nameToComponents n))
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := List (String ⊕ Nat)) ((nameLit (Φ := []) (Γ := []) (.num `a.b 3)).run) ==
--- [SKIPPED BY PROFILE_LAKE]   [.inl "a", .inl "b", .inr 3]
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
--- [SKIPPED BY PROFILE_LAKE]   x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x.y)) == true
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
--- [SKIPPED BY PROFILE_LAKE]   x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x)) == false
+#guard id (α := List (String ⊕ Nat)) ((nameLit (Φ := []) (Γ := []) (.num `a.b 3)).run) ==
+  [.inl "a", .inl "b", .inr 3]
+#guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
+  x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x.y)) == true
+#guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
+  x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x)) == false
 
 /-- info: [Ty| List Lean.Name] : Ty [] -/
 #guard_msgs in #check ([Ty| List Lean.Name] : Ty [])
@@ -136,16 +136,16 @@ info: ListNameExternTest.nameEqT' {ks : List Nat} {Δ : DSig ks} : Term Δ 0 [] 
 -/
 #guard_msgs in #check nameEqT'
 
--- [SKIPPED BY PROFILE_LAKE] example : (nameEqT' (Δ := DSig.nil)).run (nameToComponents `a.b) (nameToComponents `a.b) =
--- [SKIPPED BY PROFILE_LAKE]     nameEq `a.b `a.b := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (nameEqT' (Δ := DSig.nil)).run (nameToComponents `a.b) (nameToComponents `a) =
--- [SKIPPED BY PROFILE_LAKE]     nameEq `a.b `a := rfl
+example : (nameEqT' (Δ := DSig.nil)).run (nameToComponents `a.b) (nameToComponents `a.b) =
+    nameEq `a.b `a.b := rfl
+example : (nameEqT' (Δ := DSig.nil)).run (nameToComponents `a.b) (nameToComponents `a) =
+    nameEq `a.b `a := rfl
 
 /-- `String.ofList s.toList`: the intermediate list is a `Ty.list`. -/
 def roundTrip (s : String) : String := String.ofList s.toList
 def roundTripT' := #leanscript_to_term roundTrip
 
--- [SKIPPED BY PROFILE_LAKE] #guard id (α := String) ((roundTripT' (Δ := DSig.nil)).run "héllo") == roundTrip "héllo"
+#guard id (α := String) ((roundTripT' (Δ := DSig.nil)).run "héllo") == roundTrip "héllo"
 
 end ListNameExternTest
 

@@ -59,49 +59,49 @@ variable {Φ : KCtx [0, 0]} {Γ : UCtx [0, 0]}
 
 def nilT : PExpr Δ Φ Γ listNat none := [Term| data_in ‹listB› 0 (union_mk 0)]
 
--- [SKIPPED BY PROFILE_LAKE] /-- The notation builds the same closed values as the constructors. -/
--- [SKIPPED BY PROFILE_LAKE] example : (nilT : PExpr Δ Φ Γ listNat none) = .data_in listB 0 (.union_mk .two₁ .nil) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (3, true, "a")] : PExpr Δ Φ Γ [Ty| Nat × Bool × String] none) =
--- [SKIPPED BY PROFILE_LAKE]     .record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) (.cons (.lit .string "a") .nil))) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| data_in ‹listB› 0 (union_mk 1 7 ‹nilT›)] : PExpr Δ Φ Γ listNat none) =
--- [SKIPPED BY PROFILE_LAKE]     .data_in listB 0 (.union_mk .two₂ (.cons (.lit .nat 7) (.cons nilT .nil))) := rfl
+/-- The notation builds the same closed values as the constructors. -/
+example : (nilT : PExpr Δ Φ Γ listNat none) = .data_in listB 0 (.union_mk .two₁ .nil) := rfl
+example : ([Term| (3, true, "a")] : PExpr Δ Φ Γ [Ty| Nat × Bool × String] none) =
+    .record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) (.cons (.lit .string "a") .nil))) :=
+  rfl
+example : ([Term| data_in ‹listB› 0 (union_mk 1 7 ‹nilT›)] : PExpr Δ Φ Γ listNat none) =
+    .data_in listB 0 (.union_mk .two₂ (.cons (.lit .nat 7) (.cons nilT .nil))) := rfl
 
 end
 
--- [SKIPPED BY PROFILE_LAKE] /-- A pure expression in tail position is the answer of the statement. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (3, true)] : Prog [Ty| Nat × Bool]) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (.record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) .nil))) := rfl
+/-- A pure expression in tail position is the answer of the statement. -/
+example : ([Term| (3, true)] : Prog [Ty| Nat × Bool]) =
+    .ret (.record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) .nil))) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A closure is a known value, bound by `letV` and returned by name; the body of a curried
--- [SKIPPED BY PROFILE_LAKE]     function binds its inner closure, which is open (it mentions the outer parameter). -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| fun _ _ => #1] : Prog [Ty| Nat → Bool → Nat]) =
--- [SKIPPED BY PROFILE_LAKE]     .letV .many (.lam (u := .many) (.closed
--- [SKIPPED BY PROFILE_LAKE]       (.letV .many (.lam (u := .many) (.opened (.ret x1) (Nat.le_refl 1))) (.ret (.kvar .head)))))
--- [SKIPPED BY PROFILE_LAKE]       (.ret (.kvar .head)) := rfl
+/-- A closure is a known value, bound by `letV` and returned by name; the body of a curried
+    function binds its inner closure, which is open (it mentions the outer parameter). -/
+example : ([Term| fun _ _ => #1] : Prog [Ty| Nat → Bool → Nat]) =
+    .letV .many (.lam (u := .many) (.closed
+      (.letV .many (.lam (u := .many) (.opened (.ret x1) (Nat.le_refl 1))) (.ret (.kvar .head)))))
+      (.ret (.kvar .head)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A free `#i` is an unknown of the enclosing context: the closure is open. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| fun _ => extern ‹.lean_nat_add› #0 #1] : T1 .nat [Ty| Nat → Nat]) =
--- [SKIPPED BY PROFILE_LAKE]     .letV .many (.lam (u := .many) (.opened (.ret (PExpr.lean_nat_add x0 x1)) (Nat.le_refl 0)))
--- [SKIPPED BY PROFILE_LAKE]       (.ret (.kvar .head)) := rfl
+/-- A free `#i` is an unknown of the enclosing context: the closure is open. -/
+example : ([Term| fun _ => extern ‹.lean_nat_add› #0 #1] : T1 .nat [Ty| Nat → Nat]) =
+    .letV .many (.lam (u := .many) (.opened (.ret (PExpr.lean_nat_add x0 x1)) (Nat.le_refl 0)))
+      (.ret (.kvar .head)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A call of an extern with an open argument is a neutral expression: calls nest, with no
--- [SKIPPED BY PROFILE_LAKE]     `let`. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› #0 1) 2] : T1 .nat .nat) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (PExpr.lean_nat_add (PExpr.lean_nat_add x0 (.lit .nat 1)) (.lit .nat 2)) := rfl
+/-- A call of an extern with an open argument is a neutral expression: calls nest, with no
+    `let`. -/
+example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› #0 1) 2] : T1 .nat .nat) =
+    .ret (PExpr.lean_nat_add (PExpr.lean_nat_add x0 (.lit .nat 1)) (.lit .nat 2)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A call of an extern on closed arguments is computed. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› 3 1) 2] : Prog .nat) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (.lit .nat 6) := rfl
+/-- A call of an extern on closed arguments is computed. -/
+example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› 3 1) 2] : Prog .nat) =
+    .ret (.lit .nat 6) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- An `if` with pure branches in the middle of an expression is the pure conditional. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| extern ‹.lean_nat_add› (if #0 then 1 else 2) 10] : T1 .bool .nat) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (PExpr.lean_nat_add (.neu (.cond (.var (.head (by decide))) (.lit .nat 1) (.lit .nat 2)))
--- [SKIPPED BY PROFILE_LAKE]       (.lit .nat 10)) := rfl
+/-- An `if` with pure branches in the middle of an expression is the pure conditional. -/
+example : ([Term| extern ‹.lean_nat_add› (if #0 then 1 else 2) 10] : T1 .bool .nat) =
+    .ret (PExpr.lean_nat_add (.neu (.cond (.var (.head (by decide))) (.lit .nat 1) (.lit .nat 2)))
+      (.lit .nat 10)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- On a known condition, the branch is chosen. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| extern ‹.lean_nat_add› (if false then 1 else 2) 10] : Prog .nat) =
--- [SKIPPED BY PROFILE_LAKE]     .ret (.lit .nat 12) := rfl
+/-- On a known condition, the branch is chosen. -/
+example : ([Term| extern ‹.lean_nat_add› (if false then 1 else 2) 10] : Prog .nat) =
+    .ret (.lit .nat 12) := rfl
 
 /-! ## Folds -/
 
@@ -164,60 +164,60 @@ def tree : PExpr Δ Φ Γ rose none :=
 
 end
 
--- [SKIPPED BY PROFILE_LAKE] example : sumT.run (list123 (Φ := []) (Γ := [])).run = (6 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : headT.run (list123 (Φ := []) (Γ := [])).run = (some 1 : Option Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : headT.run (nilT (Φ := []) (Γ := [])).run = (none : Option Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : roseSumT.run (tree (Φ := []) (Γ := [])).run = (31 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : fibLenT.run (list5 (Φ := []) (Γ := [])).run = (5 : Nat) := by kernel_rfl
+example : sumT.run (list123 (Φ := []) (Γ := [])).run = (6 : Nat) := by kernel_rfl
+example : headT.run (list123 (Φ := []) (Γ := [])).run = (some 1 : Option Nat) := by kernel_rfl
+example : headT.run (nilT (Φ := []) (Γ := [])).run = (none : Option Nat) := by kernel_rfl
+example : roseSumT.run (tree (Φ := []) (Γ := [])).run = (31 : Nat) := by kernel_rfl
+example : fibLenT.run (list5 (Φ := []) (Γ := [])).run = (5 : Nat) := by kernel_rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A closed closure applied to a closed argument is β-reduced while normalising, and the case
--- [SKIPPED BY PROFILE_LAKE]     analysis of the literal list is computed: no call and no case analysis is left (the list
--- [SKIPPED BY PROFILE_LAKE]     literals are bound by `letV`, and are dead). -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (fun _ => match data_out ‹listB› 0 #0 with | · => union_mk 0 | (_, _) => union_mk 1 #0)
--- [SKIPPED BY PROFILE_LAKE]     (data_in ‹listB› 0 (union_mk 1 1 (data_in ‹listB› 0 (union_mk 0))))] : Prog (.option .nat)).run =
--- [SKIPPED BY PROFILE_LAKE]     (some 1 : Option Nat) := rfl
+/-- A closed closure applied to a closed argument is β-reduced while normalising, and the case
+    analysis of the literal list is computed: no call and no case analysis is left (the list
+    literals are bound by `letV`, and are dead). -/
+example : ([Term| (fun _ => match data_out ‹listB› 0 #0 with | · => union_mk 0 | (_, _) => union_mk 1 #0)
+    (data_in ‹listB› 0 (union_mk 1 1 (data_in ‹listB› 0 (union_mk 0))))] : Prog (.option .nat)).run =
+    (some 1 : Option Nat) := rfl
 
 /-! ## The other forms -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| let _ := 3; let _ := extern ‹.lean_nat_add› #0 #0; extern ‹.lean_nat_add› #1 #0] :
--- [SKIPPED BY PROFILE_LAKE]     Prog .nat) = .ret (.lit .nat 9) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| let _ : Nat → Nat := fun _ => extern ‹.lean_nat_add› #0 1; #0 (#0 1)] :
--- [SKIPPED BY PROFILE_LAKE]     Prog .nat).run = (3 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (fun (_ : Nat) => #0) 4] : Prog .nat) = .ret (.lit .nat 4) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (fun _ => if #0 then "yes" else "no") true] : Prog .string).run = "yes" := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| array_foldl #[1, 2, 3, 4] 0 (extern ‹.lean_nat_add› #1 #0)] : Prog .nat).run =
--- [SKIPPED BY PROFILE_LAKE]     (10 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| nat_rec 5 0 (extern ‹.lean_nat_add› #0 2)] : Prog .nat).run = (10 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| lit ‹.int› ‹-3›] : Prog .int).run = (-3 : Int) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| 3] : Prog [Ty| UInt8]).run = (3 : UInt8) := rfl
+example : ([Term| let _ := 3; let _ := extern ‹.lean_nat_add› #0 #0; extern ‹.lean_nat_add› #1 #0] :
+    Prog .nat) = .ret (.lit .nat 9) := rfl
+example : ([Term| let _ : Nat → Nat := fun _ => extern ‹.lean_nat_add› #0 1; #0 (#0 1)] :
+    Prog .nat).run = (3 : Nat) := rfl
+example : ([Term| (fun (_ : Nat) => #0) 4] : Prog .nat) = .ret (.lit .nat 4) := rfl
+example : ([Term| (fun _ => if #0 then "yes" else "no") true] : Prog .string).run = "yes" := rfl
+example : ([Term| array_foldl #[1, 2, 3, 4] 0 (extern ‹.lean_nat_add› #1 #0)] : Prog .nat).run =
+    (10 : Nat) := rfl
+example : ([Term| nat_rec 5 0 (extern ‹.lean_nat_add› #0 2)] : Prog .nat).run = (10 : Nat) := rfl
+example : ([Term| lit ‹.int› ‹-3›] : Prog .int).run = (-3 : Int) := rfl
+example : ([Term| 3] : Prog [Ty| UInt8]).run = (3 : UInt8) := rfl
 
 /-- A loop whose count is unknown is kept, as a computation bound by `letE`. -/
 def twiceT : T1 .nat .nat := [Term| nat_rec #0 0 (extern ‹.lean_nat_add› #0 2)]
 
--- [SKIPPED BY PROFILE_LAKE] example : twiceT = .letE .many
--- [SKIPPED BY PROFILE_LAKE]     (.nat_rec (u₁ := .many) (u₂ := .many) x0 (.lit .nat 0)
--- [SKIPPED BY PROFILE_LAKE]       (.closed (.ret (PExpr.lean_nat_add x0 (.lit .nat 2)))) rfl) (.ret x0) := rfl
+example : twiceT = .letE .many
+    (.nat_rec (u₁ := .many) (u₂ := .many) x0 (.lit .nat 0)
+      (.closed (.ret (PExpr.lean_nat_add x0 (.lit .nat 2)))) rfl) (.ret x0) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] example : twiceT.eval PUnit.unit (5 : Nat) PUnit.unit = (10 : Nat) := rfl
+example : twiceT.eval PUnit.unit (5 : Nat) PUnit.unit = (10 : Nat) := rfl
 
 /-- An explicit join point, on an unknown condition. -/
 def joinT : Prog [Ty| Bool → Nat] :=
   [Term| fun _ => join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if #0 then jump ^0 1 else jump ^0 2]
--- [SKIPPED BY PROFILE_LAKE] example : joinT.run true = (2 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : joinT.run false = (3 : Nat) := rfl
+example : joinT.run true = (2 : Nat) := rfl
+example : joinT.run false = (3 : Nat) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- On a known condition, the jump is inlined. -/
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if true then jump ^0 1 else jump ^0 2] :
--- [SKIPPED BY PROFILE_LAKE]     Prog .nat) = .ret (.lit .nat 2) := rfl
+/-- On a known condition, the jump is inlined. -/
+example : ([Term| join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if true then jump ^0 1 else jump ^0 2] :
+    Prog .nat) = .ret (.lit .nat 2) := rfl
 
 /-- Enums: `enum_mk i` builds constructor `i`, `match` with numeral patterns takes it apart
     (the last branch is the default). -/
 def enumT : Prog [Ty| Enum 4 → Nat] :=
   [Term| fun _ => match #0 with | 0 => 10 | 1 => 11 | _ => 12]
--- [SKIPPED BY PROFILE_LAKE] example : enumT.run (1 : Fin 4) = (11 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : enumT.run (3 : Fin 4) = (12 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| (fun (_ : Enum 4) => match #0 with | 0 => 10 | 1 => 11 | _ => 12) (enum_mk 1)] :
--- [SKIPPED BY PROFILE_LAKE]     Prog .nat) = .ret (.lit .nat 11) := rfl
+example : enumT.run (1 : Fin 4) = (11 : Nat) := rfl
+example : enumT.run (3 : Fin 4) = (12 : Nat) := rfl
+example : ([Term| (fun (_ : Enum 4) => match #0 with | 0 => 10 | 1 => 11 | _ => 12) (enum_mk 1)] :
+    Prog .nat) = .ret (.lit .nat 11) := rfl
 
 /-! ## Delays
 
@@ -225,10 +225,10 @@ def enumT : Prog [Ty| Enum 4 → Nat] :=
 the identity.  A delay is a known value; forcing an unknown one (or an open known one) is kept
 as a computation. -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ([Term| fun _ => thunk_force (#0 : Thunk Nat)] : Prog [Ty| Thunk Nat → Nat]) =
--- [SKIPPED BY PROFILE_LAKE]     .letV .many (.lam (u := .many) (.closed
--- [SKIPPED BY PROFILE_LAKE]       (.letE .many (.thunk_force (τ := .prim .nat) x0) (.ret x0))))
--- [SKIPPED BY PROFILE_LAKE]       (.ret (.kvar .head)) := rfl
+example : ([Term| fun _ => thunk_force (#0 : Thunk Nat)] : Prog [Ty| Thunk Nat → Nat]) =
+    .letV .many (.lam (u := .many) (.closed
+      (.letE .many (.thunk_force (τ := .prim .nat) x0) (.ret x0))))
+      (.ret (.kvar .head)) := rfl
 
 /-! ## Refused forms -/
 

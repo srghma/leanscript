@@ -38,9 +38,9 @@ def sumDown (n : Nat) : Nat := Id.run do
     i := i - 1
   return s
 def sumDownT := #leanscript_to_term sumDown
--- [SKIPPED BY PROFILE_LAKE] example : (sumDownT (Δ := DSig.nil)).run (10 : Nat) = (55 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (sumDownT (Δ := DSig.nil)).run (0 : Nat) = (0 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard sumDown 10 == 55
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+example : (sumDownT (Δ := DSig.nil)).run (0 : Nat) = (0 : Nat) := by kernel_rfl
+#guard sumDown 10 == 55
 
 /-- Halving, with `!=`: the number of binary digits. -/
 def bits (n : Nat) : Nat := Id.run do
@@ -51,8 +51,8 @@ def bits (n : Nat) : Nat := Id.run do
     c := c + 1
   return c
 def bitsT := #leanscript_to_term bits
--- [SKIPPED BY PROFILE_LAKE] example : (bitsT (Δ := DSig.nil)).run (1000 : Nat) = (10 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard bits 1000 == 10
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+#guard bits 1000 == 10
 
 /-- Counting up to a bound that the loop does not change. -/
 def pow2 (n : Nat) : Nat := Id.run do
@@ -63,8 +63,8 @@ def pow2 (n : Nat) : Nat := Id.run do
     i := i + 1
   return acc
 def pow2T := #leanscript_to_term pow2
--- [SKIPPED BY PROFILE_LAKE] example : (pow2T (Δ := DSig.nil)).run (10 : Nat) = (1024 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard pow2 10 == 1024
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+#guard pow2 10 == 1024
 
 /-- Counting up to a bound held in a variable of the loop that the loop passes unchanged,
     by steps of `3`. -/
@@ -77,8 +77,8 @@ def countBy3 (n : Nat) : Nat := Id.run do
     i := i + 3
   return c + hi
 def countBy3T := #leanscript_to_term countBy3
--- [SKIPPED BY PROFILE_LAKE] example : (countBy3T (Δ := DSig.nil)).run (10 : Nat) = (14 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard countBy3 10 == 14
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+#guard countBy3 10 == 14
 
 /-- `≤` and a `break`: the integer square root, rounded up past `n`. -/
 def isqrtUp (n : Nat) : Nat := Id.run do
@@ -88,8 +88,8 @@ def isqrtUp (n : Nat) : Nat := Id.run do
     i := i + 1
   return i
 def isqrtUpT := #leanscript_to_term isqrtUp
--- [SKIPPED BY PROFILE_LAKE] example : (isqrtUpT (Δ := DSig.nil)).run (50 : Nat) = (8 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard isqrtUp 50 == 8
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+#guard isqrtUp 50 == 8
 
 /-- A conjunction in the condition: one conjunct bounds the loop. -/
 def firstMultiple (n k : Nat) : Nat := Id.run do
@@ -98,9 +98,8 @@ def firstMultiple (n k : Nat) : Nat := Id.run do
     i := i - 1
   return i
 def firstMultipleT := #leanscript_to_term firstMultiple
--- [SKIPPED BY PROFILE_LAKE] example : (firstMultipleT (Δ := DSig.nil)).run (100 : Nat) (7 : Nat) = (98 : Nat) := by
--- [SKIPPED BY PROFILE_LAKE]   kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard firstMultiple 100 7 == 98
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+#guard firstMultiple 100 7 == 98
 
 /-! ## Refused loops -/
 

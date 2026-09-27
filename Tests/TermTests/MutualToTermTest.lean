@@ -77,15 +77,15 @@ leanscript_signature Prog where
 
 /-! ## The blocks -/
 
--- [SKIPPED BY PROFILE_LAKE] /-- `G`/`Q`: `G.node` holds an array of member `1` (`Q`), guarded; `Q.mk` holds member `0`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block0 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ (.fields (.one (.old .nat))) (.fields (.one (.array (.hole 1 (by decide)))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.hole 0 (by decide)) (.one (.old .nat))) .nil) := rfl
+/-- `G`/`Q`: `G.node` holds an array of member `1` (`Q`), guarded; `Q.mk` holds member `0`. -/
+example : Prog.block0 =
+    .cons (.union (.two₁ (.fields (.one (.old .nat))) (.fields (.one (.array (.hole 1 (by decide)))))))
+      (.cons (.record (.hole 0 (by decide)) (.one (.old .nat))) .nil) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `H`/`K`: `H.node` holds a function from `Nat` to member `1` (`K`). -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block1 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ (.fields (.one (.old .nat))) (.fields (.one (.fn .nat (.hole 1 (by decide)))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.hole 0 (by decide)) (.one (.old .string))) .nil) := rfl
+/-- `H`/`K`: `H.node` holds a function from `Nat` to member `1` (`K`). -/
+example : Prog.block1 =
+    .cons (.union (.two₁ (.fields (.one (.old .nat))) (.fields (.one (.fn .nat (.hole 1 (by decide)))))))
+      (.cons (.record (.hole 0 (by decide)) (.one (.old .string))) .nil) := rfl
 
 /-- Every type of these blocks has two different values. -/
 example : ∃ x y : Ty.Den Prog.Δ Prog.g, x ≠ y := Ty.den_exists_ne _ _
@@ -110,13 +110,13 @@ def Q.sum : Q → Nat
   | .mk g n => g.sum + n
 end
 
--- [SKIPPED BY PROFILE_LAKE] #guard G.sum (.node #[.mk (.leaf 3) 4, .mk (.node #[]) 5]) == 12
+#guard G.sum (.node #[.mk (.leaf 3) 4, .mk (.node #[]) 5]) == 12
 
 def gSumT := #leanscript_to_term G.sum
 def qSumT := #leanscript_to_term Q.sum
 
--- [SKIPPED BY PROFILE_LAKE] example : gSumT.run gT.run = (12 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : qSumT.run ((#leanscript_get_ctor Q.mk) gT (.lit .nat 1)).run = (13 : Nat) := by kernel_rfl
+example : gSumT.run gT.run = (12 : Nat) := by kernel_rfl
+example : qSumT.run ((#leanscript_get_ctor Q.mk) gT (.lit .nat 1)).run = (13 : Nat) := by kernel_rfl
 
 -- The answer depends on the fold's result at every element, not only its sum.
 mutual
@@ -128,7 +128,7 @@ def Q.depth : Q → Nat
 end
 
 def gDepthT := #leanscript_to_term G.depth
--- [SKIPPED BY PROFILE_LAKE] example : gDepthT.run gT.run = (1 : Nat) := by kernel_rfl
+example : gDepthT.run gT.run = (1 : Nat) := by kernel_rfl
 
 /-! ## A member inside a function field -/
 
@@ -146,10 +146,10 @@ def K.sum : K → Nat
   | .mk h s => h.sum + s.length
 end
 
--- [SKIPPED BY PROFILE_LAKE] #guard H.sum (.node fun n => .mk (.leaf n) "ab") == 5
+#guard H.sum (.node fun n => .mk (.leaf n) "ab") == 5
 
 def hSumT := #leanscript_to_term H.sum
--- [SKIPPED BY PROFILE_LAKE] example : hSumT.run hT.run = (5 : Nat) := by kernel_rfl
+example : hSumT.run hT.run = (5 : Nat) := by kernel_rfl
 
 -- A value of the member held in the function is its subvalue (here passed on).
 mutual
@@ -161,7 +161,7 @@ def K.first : K → Nat → Nat
 end
 
 def hFirstT := #leanscript_to_term H.first
--- [SKIPPED BY PROFILE_LAKE] example : hFirstT.run hT.run (7 : Nat) = (14 : Nat) := by kernel_rfl
+example : hFirstT.run hT.run (7 : Nat) = (14 : Nat) := by kernel_rfl
 
 /-! ## A `mutual` block with members used directly -/
 
@@ -179,8 +179,8 @@ def oddT := #leanscript_to_term Odd.toNat
 def two : PExpr Prog.Δ [] [] Prog.even none :=
   (#leanscript_get_ctor Even.succ) ((#leanscript_get_ctor Odd.succ) (#leanscript_get_ctor Even.zero))
 
--- [SKIPPED BY PROFILE_LAKE] example : evenT.run two.run = (2 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : oddT.run ((#leanscript_get_ctor Odd.succ) two).run = (3 : Nat) := by kernel_rfl
+example : evenT.run two.run = (2 : Nat) := by kernel_rfl
+example : oddT.run ((#leanscript_get_ctor Odd.succ) two).run = (3 : Nat) := by kernel_rfl
 
 /-! ## Nested recursion: `Rose` and `List Rose` -/
 
@@ -198,10 +198,10 @@ def roseT : PExpr Prog.Δ [] [] Prog.rose none :=
       ((#leanscript_get_ctor Rose.node) (.lit .nat 2) (#leanscript_get_ctor List.nil (α := Rose)))
       (#leanscript_get_ctor List.nil (α := Rose)))
 
--- [SKIPPED BY PROFILE_LAKE] #guard Rose.sum (.node 1 [.node 2 []]) == 3
+#guard Rose.sum (.node 1 [.node 2 []]) == 3
 
 def roseSumT := #leanscript_to_term Rose.sum
--- [SKIPPED BY PROFILE_LAKE] example : roseSumT.run roseT.run = (3 : Nat) := by kernel_rfl
+example : roseSumT.run roseT.run = (3 : Nat) := by kernel_rfl
 
 /-! ## A member inside an array of arrays -/
 
@@ -220,10 +220,10 @@ def gridT : PExpr Prog.Δ [] [] Prog.grid none :=
       (.cons ((#leanscript_get_ctor Grid.cell) (.lit .nat 2)) .nil)))
     (.cons (.array_mk (.cons ((#leanscript_get_ctor Grid.cell) (.lit .nat 4)) .nil)) .nil)))
 
--- [SKIPPED BY PROFILE_LAKE] #guard Grid.sum (.rows #[#[.cell 1, .cell 2], #[.cell 4]]) == 7
+#guard Grid.sum (.rows #[#[.cell 1, .cell 2], #[.cell 4]]) == 7
 
 def gridSumT := #leanscript_to_term Grid.sum
--- [SKIPPED BY PROFILE_LAKE] example : gridSumT.run gridT.run = (7 : Nat) := by kernel_rfl
+example : gridSumT.run gridT.run = (7 : Nat) := by kernel_rfl
 
 /-! ## Refusals -/
 

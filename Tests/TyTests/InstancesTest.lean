@@ -60,7 +60,7 @@ example : Inhabited NonEmpty.String.NonEmptyString := inferInstance
 
 end
 
--- [SKIPPED BY PROFILE_LAKE] example : (default : Ty []) = .prim .bool := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ((.head : Var (ks := []) [.nat, .bool] .nat) == .head) = true := by decide
--- [SKIPPED BY PROFILE_LAKE] example : ((.tail .head : Var (ks := []) [.bool, .nat, .nat] .nat) == .tail (.tail .head)) = false := by
--- [SKIPPED BY PROFILE_LAKE]   decide
+example : (default : Ty []) = .prim .bool := rfl
+example : ((.head : Var (ks := []) [.nat, .bool] .nat) == .head) = true := by decide
+example : ((.tail .head : Var (ks := []) [.bool, .nat, .nat] .nat) == .tail (.tail .head)) = false := by
+  decide

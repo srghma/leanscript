@@ -72,22 +72,22 @@ info: TyTests.GetCtorTest.Prod.mk.leanScriptCtor {ks : List Nat} {Δ : DSig ks} 
 example : PExpr .nil [] [] (.record .nat (.one .bool)) none :=
   (#leanscript_get_ctor Prod.mk (α := Nat)) _ (.lit .nat 1) (#leanscript_get_ctor Bool.true)
 
--- [SKIPPED BY PROFILE_LAKE] /-- `Bool` is a leaf: its constructors are literals. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ctor Bool.false : PExpr DSig.nil [] [] .bool none).run = false := rfl
+/-- `Bool` is a leaf: its constructors are literals. -/
+example : (#leanscript_get_ctor Bool.false : PExpr DSig.nil [] [] .bool none).run = false := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- Three or more constructors without fields are an enum; `Ordering` numbers from `-1`. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Ordering : Ty []) = .enum ⟨0, -1⟩ := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ctor Ordering.gt : PExpr DSig.nil [] [] (.enum ⟨0, -1⟩) none).run = (2 : Fin 3) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ctor Color.green : PExpr DSig.nil [] [] (.enum ⟨0, 0⟩) none).run = (1 : Fin 3) := rfl
+/-- Three or more constructors without fields are an enum; `Ordering` numbers from `-1`. -/
+example : (#leanscript_get_ty Ordering : Ty []) = .enum ⟨0, -1⟩ := rfl
+example : (#leanscript_get_ctor Ordering.gt : PExpr DSig.nil [] [] (.enum ⟨0, -1⟩) none).run = (2 : Fin 3) := rfl
+example : (#leanscript_get_ctor Color.green : PExpr DSig.nil [] [] (.enum ⟨0, 0⟩) none).run = (1 : Fin 3) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- One constructor with two or more fields is a record; `#leanscript_get_ctor Point` names
--- [SKIPPED BY PROFILE_LAKE]     its only constructor. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Point : Ty []) = .record .nat (.one .int) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : ((#leanscript_get_ctor Point) (.lit .nat 1) (.lit .int (-2)) :
--- [SKIPPED BY PROFILE_LAKE]     PExpr DSig.nil [] [] _ none).run = ((1 : Nat), (-2 : Int)) := rfl
+/-- One constructor with two or more fields is a record; `#leanscript_get_ctor Point` names
+    its only constructor. -/
+example : (#leanscript_get_ty Point : Ty []) = .record .nat (.one .int) := rfl
+example : ((#leanscript_get_ctor Point) (.lit .nat 1) (.lit .int (-2)) :
+    PExpr DSig.nil [] [] _ none).run = ((1 : Nat), (-2 : Int)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The proof field is erased. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Pos : Ty []) = .record .nat (.one .string) := rfl
+/-- The proof field is erased. -/
+example : (#leanscript_get_ty Pos : Ty []) = .record .nat (.one .string) := rfl
 
 -- The cache: the same request gives the same constant (no `_1` suffix)…
 /--
@@ -99,12 +99,12 @@ info: TyTests.GetCtorTest.Option.some.leanScriptCtor {ks : List Nat} {Δ : DSig 
 #leanscript_get_ctor Option.some
 
 -- …and `#leanscript_get_ty` of a constructor's type is the type it builds.
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Option Nat) : Ty []) = Ty.option .nat := rfl
+example : (#leanscript_get_ty (Option Nat) : Ty []) = Ty.option .nat := rfl
 
 def someT : PExpr DSig.nil [] [] (#leanscript_get_ty (Option Nat)) none :=
   (#leanscript_get_ctor Option.some) _ (.lit .nat 2)
 
--- [SKIPPED BY PROFILE_LAKE] example : someT.run = some (2 : Nat) := rfl
+example : someT.run = some (2 : Nat) := rfl
 
 /-! ## Recursive types: members of the current program -/
 
@@ -122,12 +122,12 @@ info: GetCtorTest.Prog.Tree.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 
 #guard_msgs in
 #leanscript_get_ctor Tree.node
 
--- [SKIPPED BY PROFILE_LAKE] /-- `#leanscript_get_ty` of a recursive type is its name in the program. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty Tree) = Prog.tree := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (List Nat)) = Prog.listNat := rfl
+/-- `#leanscript_get_ty` of a recursive type is its name in the program. -/
+example : (#leanscript_get_ty Tree) = Prog.tree := rfl
+example : (#leanscript_get_ty (List Nat)) = Prog.listNat := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- A structural type around a recursive one is specialised to the program. -/
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Option Tree)) = Ty.option Prog.tree := rfl
+/-- A structural type around a recursive one is specialised to the program. -/
+example : (#leanscript_get_ty (Option Tree)) = Ty.option Prog.tree := rfl
 
 def leaf : PExpr Prog.Δ [] [] Prog.tree none := #leanscript_get_ctor Tree.leaf
 
@@ -145,7 +145,7 @@ def treeSum (t : Ty.Den Prog.Δ Prog.tree) : Nat :=
         | some ((_, a), n, (_, b)) => Nat.add (Nat.add a n) b
       r) 0 t
 
--- [SKIPPED BY PROFILE_LAKE] example : treeSum treeT.run = 3 := rfl
+example : treeSum treeT.run = 3 := rfl
 
 /-- The type parameter of a recursive type is fixed by name. -/
 def listT : PExpr Prog.Δ [] [] Prog.listNat none :=
@@ -162,7 +162,7 @@ def listSum (l : Ty.Den Prog.Δ Prog.listNat) : Nat :=
         | some (a, _, s) => Nat.add a s
       r) 0 l
 
--- [SKIPPED BY PROFILE_LAKE] example : listSum listT.run = 15 := rfl
+example : listSum listT.run = 15 := rfl
 
 /-- `Rose`'s children are a `List Rose`: another member of `Rose`'s block. -/
 def roseT : PExpr Prog.Δ [] [] Prog.rose none :=
@@ -200,27 +200,27 @@ abbrev x1 {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
 def getD0 : T1 DSig.nil (Ty.option .nat) .nat :=
   (#leanscript_get_cases Option) _ x0 (.ret (.lit .nat 0)) (.ret (.neu x0))
 
--- [SKIPPED BY PROFILE_LAKE] example : getD0.eval PUnit.unit (some (5 : Nat)) PUnit.unit = (5 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : getD0.eval PUnit.unit none PUnit.unit = (0 : Nat) := rfl
+example : getD0.eval PUnit.unit (some (5 : Nat)) PUnit.unit = (5 : Nat) := rfl
+example : getD0.eval PUnit.unit none PUnit.unit = (0 : Nat) := rfl
 
 /-- A record binds all its fields, the first one innermost. -/
 def pointX : T1 DSig.nil (#leanscript_get_ty Point) .nat :=
   (#leanscript_get_cases Point) x0 (.ret (.neu x0))
 
--- [SKIPPED BY PROFILE_LAKE] example : pointX.eval PUnit.unit ((3 : Nat), (-1 : Int)) PUnit.unit = (3 : Nat) := rfl
+example : pointX.eval PUnit.unit ((3 : Nat), (-1 : Int)) PUnit.unit = (3 : Nat) := rfl
 
 /-- `Bool` is `ite`, `Ordering` an enum case analysis. -/
 def notT : T1 DSig.nil .bool .bool :=
   (#leanscript_get_cases Bool) x0 (.ret (#leanscript_get_ctor Bool.true))
     (.ret (#leanscript_get_ctor Bool.false))
 
--- [SKIPPED BY PROFILE_LAKE] example : notT.eval PUnit.unit true PUnit.unit = false := rfl
+example : notT.eval PUnit.unit true PUnit.unit = false := rfl
 
 def ordT : T1 DSig.nil (#leanscript_get_ty Ordering) .nat :=
   (#leanscript_get_cases Ordering) x0 (.ret (.lit .nat 10)) (.ret (.lit .nat 20))
     (.ret (.lit .nat 30))
 
--- [SKIPPED BY PROFILE_LAKE] example : ordT.eval PUnit.unit (1 : Fin 3) PUnit.unit = (20 : Nat) := rfl
+example : ordT.eval PUnit.unit (1 : Fin 3) PUnit.unit = (20 : Nat) := rfl
 
 /-- For a recursive type the case analysis is `data_out` followed by the case analysis of
     the unfolded body. -/
@@ -228,14 +228,14 @@ def isLeaf : T1 Prog.Δ Prog.tree .bool :=
   (#leanscript_get_cases Tree) x0 (.ret (#leanscript_get_ctor Bool.true))
     (.ret (#leanscript_get_ctor Bool.false))
 
--- [SKIPPED BY PROFILE_LAKE] example : isLeaf.eval PUnit.unit leaf.run PUnit.unit = true := rfl
--- [SKIPPED BY PROFILE_LAKE] example : isLeaf.eval PUnit.unit treeT.run PUnit.unit = false := rfl
+example : isLeaf.eval PUnit.unit leaf.run PUnit.unit = true := rfl
+example : isLeaf.eval PUnit.unit treeT.run PUnit.unit = false := rfl
 
 /-- The root label of a tree: the `node` branch binds its three fields. -/
 def rootLabel : T1 Prog.Δ Prog.tree .nat :=
   (#leanscript_get_cases Tree) x0 (.ret (.lit .nat 0)) (.ret (.neu x1))
 
--- [SKIPPED BY PROFILE_LAKE] example : rootLabel.eval PUnit.unit treeT.run PUnit.unit = (2 : Nat) := rfl
+example : rootLabel.eval PUnit.unit treeT.run PUnit.unit = (2 : Nat) := rfl
 
 /-! ## Refusals -/
 

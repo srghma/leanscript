@@ -91,56 +91,56 @@ leanscript_signature Prog where
 
 /-! ## The blocks -/
 
--- [SKIPPED BY PROFILE_LAKE] /-- Eight blocks, one per requested recursive type (newest first): `RoseS` (3 members),
--- [SKIPPED BY PROFILE_LAKE]     `RoseTreeF Nat` (2), `RoseTreeA Nat` (1), `RoseTreeL Nat` (2), `RoseF` (2), `RoseA` (1),
--- [SKIPPED BY PROFILE_LAKE]     `RoseL` (2), `T5` (3). -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.ks = [2, 1, 0, 1, 1, 0, 1, 2] := rfl
+/-- Eight blocks, one per requested recursive type (newest first): `RoseS` (3 members),
+    `RoseTreeF Nat` (2), `RoseTreeA Nat` (1), `RoseTreeL Nat` (2), `RoseF` (2), `RoseA` (1),
+    `RoseL` (2), `T5` (3). -/
+example : Prog.ks = [2, 1, 0, 1, 1, 0, 1, 2] := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `T5`: `T5 := [Option T5 × Nat]` (the array is the guard), `Option T5 := none | some T5`,
--- [SKIPPED BY PROFILE_LAKE]     `Option T5 × Nat := (Option T5, Nat)`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block0 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.wrap (.array (.hole 2 (by decide))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.union (.two₁ .nullary (.fields (.one (.hole 0 (by decide))))))
--- [SKIPPED BY PROFILE_LAKE]         (.cons (.record (.hole 1 (by decide)) (.one (.old .nat))) .nil)) := rfl
+/-- `T5`: `T5 := [Option T5 × Nat]` (the array is the guard), `Option T5 := none | some T5`,
+    `Option T5 × Nat := (Option T5, Nat)`. -/
+example : Prog.block0 =
+    .cons (.wrap (.array (.hole 2 (by decide))))
+      (.cons (.union (.two₁ .nullary (.fields (.one (.hole 0 (by decide))))))
+        (.cons (.record (.hole 1 (by decide)) (.one (.old .nat))) .nil)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseL`: the linked list `List RoseL := nil | cons RoseL (List RoseL)`, then `RoseL`, a
--- [SKIPPED BY PROFILE_LAKE]     wrapper of it. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block1 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ .nullary (.fields (.cons (.hole 1 (by decide)) (.one (.hole 0 (by decide)))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.wrap (.hole 0 (by decide))) .nil) := rfl
+/-- `RoseL`: the linked list `List RoseL := nil | cons RoseL (List RoseL)`, then `RoseL`, a
+    wrapper of it. -/
+example : Prog.block1 =
+    .cons (.union (.two₁ .nullary (.fields (.cons (.hole 1 (by decide)) (.one (.hole 0 (by decide)))))))
+      (.cons (.wrap (.hole 0 (by decide))) .nil) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseA`: a wrapper of a `Ty.array` of itself. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block2 = .cons (.wrap (.array (.hole 0 (by decide)))) .nil := rfl
+/-- `RoseA`: a wrapper of a `Ty.array` of itself. -/
+example : Prog.block2 = .cons (.wrap (.array (.hole 0 (by decide)))) .nil := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseF`: `Option RoseF := none | some RoseF`, then `RoseF := (Nat, Nat → Option RoseF)`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block3 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ .nullary (.fields (.one (.hole 1 (by decide))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.old .nat) (.one (.fn .nat (.hole 0 (by decide))))) .nil) := rfl
+/-- `RoseF`: `Option RoseF := none | some RoseF`, then `RoseF := (Nat, Nat → Option RoseF)`. -/
+example : Prog.block3 =
+    .cons (.union (.two₁ .nullary (.fields (.one (.hole 1 (by decide))))))
+      (.cons (.record (.old .nat) (.one (.fn .nat (.hole 0 (by decide))))) .nil) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseTreeL Nat`: `List (RoseTreeL Nat)`, then `(Nat, List (RoseTreeL Nat))`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block4 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ .nullary (.fields (.cons (.hole 1 (by decide)) (.one (.hole 0 (by decide)))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.old .nat) (.one (.hole 0 (by decide)))) .nil) := rfl
+/-- `RoseTreeL Nat`: `List (RoseTreeL Nat)`, then `(Nat, List (RoseTreeL Nat))`. -/
+example : Prog.block4 =
+    .cons (.union (.two₁ .nullary (.fields (.cons (.hole 1 (by decide)) (.one (.hole 0 (by decide)))))))
+      (.cons (.record (.old .nat) (.one (.hole 0 (by decide)))) .nil) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseTreeA Nat`: `(Nat, Array (RoseTreeA Nat))`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block5 = .cons (.record (.old .nat) (.one (.array (.hole 0 (by decide))))) .nil := rfl
+/-- `RoseTreeA Nat`: `(Nat, Array (RoseTreeA Nat))`. -/
+example : Prog.block5 = .cons (.record (.old .nat) (.one (.array (.hole 0 (by decide))))) .nil := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseTreeF Nat`: `Option (RoseTreeF Nat)`, then `(Nat, Nat, Nat → Option (RoseTreeF Nat))`. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block6 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ .nullary (.fields (.one (.hole 1 (by decide))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.old .nat) (.cons (.old .nat) (.one (.fn .nat (.hole 0 (by decide)))))) .nil) :=
--- [SKIPPED BY PROFILE_LAKE]   rfl
+/-- `RoseTreeF Nat`: `Option (RoseTreeF Nat)`, then `(Nat, Nat, Nat → Option (RoseTreeF Nat))`. -/
+example : Prog.block6 =
+    .cons (.union (.two₁ .nullary (.fields (.one (.hole 1 (by decide))))))
+      (.cons (.record (.old .nat) (.cons (.old .nat) (.one (.fn .nat (.hole 0 (by decide)))))) .nil) :=
+  rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- `RoseS`: `Option RoseS`, the `Σ` as the record `(Nat, Nat → Option RoseS)`, then `RoseS`, a
--- [SKIPPED BY PROFILE_LAKE]     wrapper of it. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block7 =
--- [SKIPPED BY PROFILE_LAKE]     .cons (.union (.two₁ .nullary (.fields (.one (.hole 2 (by decide))))))
--- [SKIPPED BY PROFILE_LAKE]       (.cons (.record (.old .nat) (.one (.fn .nat (.hole 0 (by decide)))))
--- [SKIPPED BY PROFILE_LAKE]         (.cons (.wrap (.hole 1 (by decide))) .nil)) := rfl
+/-- `RoseS`: `Option RoseS`, the `Σ` as the record `(Nat, Nat → Option RoseS)`, then `RoseS`, a
+    wrapper of it. -/
+example : Prog.block7 =
+    .cons (.union (.two₁ .nullary (.fields (.one (.hole 2 (by decide))))))
+      (.cons (.record (.old .nat) (.one (.fn .nat (.hole 0 (by decide)))))
+        (.cons (.wrap (.hole 1 (by decide))) .nil)) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The three rose trees are three different datatypes. -/
--- [SKIPPED BY PROFILE_LAKE] example : Prog.roseL ≠ Prog.roseA ∧ Prog.roseA ≠ Prog.roseF ∧ Prog.roseL ≠ Prog.roseF := by
--- [SKIPPED BY PROFILE_LAKE]   decide
+/-- The three rose trees are three different datatypes. -/
+example : Prog.roseL ≠ Prog.roseA ∧ Prog.roseA ≠ Prog.roseF ∧ Prog.roseL ≠ Prog.roseF := by
+  decide
 
 /-- Every type of the program has two different values. -/
 example : ∃ x y : Ty.Den Prog.Δ Prog.roseF, x ≠ y := Ty.den_exists_ne _ _
@@ -195,13 +195,13 @@ end
 
 def t5v : T5 := .node #[(some (.node #[(none, 3)]), 4), (none, 5)]
 
--- [SKIPPED BY PROFILE_LAKE] #guard t5v.sum == 12
+#guard t5v.sum == 12
 
 def t5SumT := #leanscript_to_term T5.sum
 /-- An array literal of values that are not leaves is `PExpr.array_mk`. -/
 def t5T : Term Prog.Δ 0 [] [] Prog.t5 [] none := #leanscript_to_term t5v
 
--- [SKIPPED BY PROFILE_LAKE] example : t5SumT.run t5T.run = (12 : Nat) := by kernel_rfl
+example : t5SumT.run t5T.run = (12 : Nat) := by kernel_rfl
 
 /-! ## `RoseL`: a linked list of children -/
 
@@ -215,12 +215,12 @@ end
 
 def roseLv : RoseL := .node [.node [], .node [.node []]]
 
--- [SKIPPED BY PROFILE_LAKE] #guard roseLv.size == 4
+#guard roseLv.size == 4
 
 def roseLSizeT := #leanscript_to_term RoseL.size
 def roseLT : Term Prog.Δ 0 [] [] Prog.roseL [] none := #leanscript_to_term roseLv
 
--- [SKIPPED BY PROFILE_LAKE] example : roseLSizeT.run roseLT.run = (4 : Nat) := by kernel_rfl
+example : roseLSizeT.run roseLT.run = (4 : Nat) := by kernel_rfl
 
 /-! ## `RoseA`: an array of children -/
 
@@ -229,12 +229,12 @@ def RoseA.size : RoseA → Nat
 
 def roseAv : RoseA := .node #[.node #[], .node #[.node #[]]]
 
--- [SKIPPED BY PROFILE_LAKE] #guard roseAv.size == 4
+#guard roseAv.size == 4
 
 def roseASizeT := #leanscript_to_term RoseA.size
 def roseAT : Term Prog.Δ 0 [] [] Prog.roseA [] none := #leanscript_to_term roseAv
 
--- [SKIPPED BY PROFILE_LAKE] example : roseASizeT.run roseAT.run = (4 : Nat) := by kernel_rfl
+example : roseASizeT.run roseAT.run = (4 : Nat) := by kernel_rfl
 
 /-! ## `RoseF`: children as a function on `Fin m` -/
 
@@ -249,8 +249,8 @@ def RoseF.arity : RoseF → Nat
 
 def roseFv : RoseF := .node 2 (fun _ => .node 3 (fun _ => .node 0 Fin.elim0))
 
--- [SKIPPED BY PROFILE_LAKE] #guard roseFv.size == 9
--- [SKIPPED BY PROFILE_LAKE] #guard roseFv.depth == 2
+#guard roseFv.size == 9
+#guard roseFv.depth == 2
 
 def roseFSizeT := #leanscript_to_term RoseF.size
 def roseFDepthT := #leanscript_to_term RoseF.depth
@@ -259,9 +259,8 @@ def roseFArityT := #leanscript_to_term RoseF.arity
     `Fin 0`) is `fun _ => none`. -/
 def roseFT : Term Prog.Δ 0 [] [] Prog.roseF [] none := #leanscript_to_term roseFv
 
--- [SKIPPED BY PROFILE_LAKE] example : roseFSizeT.run roseFT.run = (9 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : roseFDepthT.run roseFT.run = (2 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : roseFArityT.run roseFT.run = (2 : Nat) := by kernel_rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
+example : roseFArityT.run roseFT.run = (2 : Nat) := by kernel_rfl
 
 def RoseF.firstArity₀ : RoseF → Nat
   | .node m f => if h : 0 < m then match f ⟨0, h⟩ with | .node k _ => k else 0
@@ -284,21 +283,21 @@ def RoseF.firstArity : RoseF → Nat
   | .node m f => if h : 0 < m then match f ⟨0, h⟩ with | .node k _ => k else 0
 
 def roseFFirstT := #leanscript_to_term RoseF.firstArity
--- [SKIPPED BY PROFILE_LAKE] example : roseFFirstT.run roseFT.run = (3 : Nat) := by kernel_rfl
+example : roseFFirstT.run roseFT.run = (3 : Nat) := by kernel_rfl
 
 /-- Rebuilding a node from its children. -/
 def RoseF.mirror : RoseF → RoseF
   | .node m f => .node m (fun i => f ⟨m - 1 - i.val, by omega⟩)
 
 def roseFMirrorT := #leanscript_to_term RoseF.mirror
--- [SKIPPED BY PROFILE_LAKE] example : roseFArityT.run (roseFMirrorT.run roseFT.run) = (2 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : roseFSizeT.run (roseFMirrorT.run roseFT.run) = (9 : Nat) := by kernel_rfl
+example : roseFArityT.run (roseFMirrorT.run roseFT.run) = (2 : Nat) := by kernel_rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
 /-- A fan of `n` leaves, built from a parameter. -/
 def RoseF.fan (n : Nat) : RoseF := .node n (fun _ => .node 0 Fin.elim0)
 
 def roseFFanT := #leanscript_to_term RoseF.fan
--- [SKIPPED BY PROFILE_LAKE] example : roseFSizeT.run (roseFFanT.run (5 : Nat)) = (6 : Nat) := by kernel_rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
 /-! ## The parameterised rose trees -/
 
@@ -320,7 +319,7 @@ def treeLv : RoseTreeL Nat := .node 1 [.node 10 [], .node 11 []]
 def treeAv : RoseTreeA Nat := .node 1 #[.node 10 #[], .node 11 #[]]
 def treeFv : RoseTreeF Nat := .node 1 2 (fun i => .node (i.val + 10) 0 Fin.elim0)
 
--- [SKIPPED BY PROFILE_LAKE] #guard treeLv.sum == 22 && treeAv.sum == 22 && treeFv.sum == 22
+#guard treeLv.sum == 22 && treeAv.sum == 22 && treeFv.sum == 22
 
 def treeLSumT := #leanscript_to_term RoseTreeL.sum
 def treeASumT := #leanscript_to_term RoseTreeA.sum
@@ -329,9 +328,9 @@ def treeLT : Term Prog.Δ 0 [] [] Prog.treeL [] none := #leanscript_to_term tree
 def treeAT : Term Prog.Δ 0 [] [] Prog.treeA [] none := #leanscript_to_term treeAv
 def treeFT : Term Prog.Δ 0 [] [] Prog.treeF [] none := #leanscript_to_term treeFv
 
--- [SKIPPED BY PROFILE_LAKE] example : treeLSumT.run treeLT.run = (22 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : treeASumT.run treeAT.run = (22 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : treeFSumT.run treeFT.run = (22 : Nat) := by kernel_rfl
+example : treeLSumT.run treeLT.run = (22 : Nat) := by kernel_rfl
+example : treeASumT.run treeAT.run = (22 : Nat) := by kernel_rfl
+example : treeFSumT.run treeFT.run = (22 : Nat) := by kernel_rfl
 
 /-! ## The `Σ` form -/
 
@@ -340,12 +339,12 @@ def RoseS.size : RoseS → Nat
 
 def roseSv : RoseS := .node ⟨2, fun _ => .node ⟨0, Fin.elim0⟩⟩
 
--- [SKIPPED BY PROFILE_LAKE] #guard roseSv.size == 3
+#guard roseSv.size == 3
 
 def roseSSizeT := #leanscript_to_term RoseS.size
 def roseST : Term Prog.Δ 0 [] [] Prog.roseS [] none := #leanscript_to_term roseSv
 
--- [SKIPPED BY PROFILE_LAKE] example : roseSSizeT.run roseST.run = (3 : Nat) := by kernel_rfl
+example : roseSSizeT.run roseST.run = (3 : Nat) := by kernel_rfl
 
 /-! ## Refusals: no, one or two values -/
 

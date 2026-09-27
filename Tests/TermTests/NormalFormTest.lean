@@ -44,7 +44,7 @@ def mulTwice : T 0 [] [] (.fn .nat .nat) none :=
         (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (x0 (τ := .nat)) .nil)) rfl))))))
     (.ret (.kvar .head))
 
--- [SKIPPED BY PROFILE_LAKE] example : mulTwice.run (3 : Nat) = (42 : Nat) := rfl
+example : mulTwice.run (3 : Nat) = (42 : Nat) := rfl
 
 /-- A whole program is a value: here, a known closure and its name. -/
 example : mulTwice.IsValue := mulTwice.run_isValue
@@ -74,7 +74,7 @@ def shareTwice : T 0 [] [] (.fn (.fn (.fn .nat .nat) .nat) (.fn .nat .nat)) none
         (.ret (.kvar .head)))))
     (.ret (.kvar .head))
 
--- [SKIPPED BY PROFILE_LAKE] example : shareTwice.run (fun f => f (1 : Nat)) (10 : Nat) = (22 : Nat) := rfl
+example : shareTwice.run (fun f => f (1 : Nat)) (10 : Nat) = (22 : Nat) := rfl
 
 /-! ## 3. A known closure called on an unknown: the call is kept, not inlined -/
 
@@ -90,7 +90,7 @@ def callOpen : T 0 [] [] (.fn .nat .nat) none :=
           (.ret (x0 (τ := .nat)))))))
     (.ret (.kvar .head))
 
--- [SKIPPED BY PROFILE_LAKE] example : callOpen.run (9 : Nat) = (81 : Nat) := rfl
+example : callOpen.run (9 : Nat) = (81 : Nat) := rfl
 
 /-! ## 4. What the types reject -/
 
@@ -112,11 +112,11 @@ example {ℓ : Nat} (n : Neu DSig.nil [⟨.pair .nat .nat, .one, none, true⟩] 
 example {τ : Ty []} {ℓ : Nat} (c : Comp DSig.nil 0 [] [] τ ℓ) : False :=
   Comp.not_closed KCtx.Closed.nil c
 
--- [SKIPPED BY PROFILE_LAKE] /-- A pattern binder annotated `0` cannot be referenced. -/
--- [SKIPPED BY PROFILE_LAKE] example {Γ : UCtx []} {τ : Ty []} {ℓ : Nat} (x : UVar (⟨τ, .zero, ℓ⟩ :: Γ) τ ℓ) : x.index ≠ 0 := by
--- [SKIPPED BY PROFILE_LAKE]   cases x with
--- [SKIPPED BY PROFILE_LAKE]   | head h => exact absurd rfl h
--- [SKIPPED BY PROFILE_LAKE]   | tail _ => simp [UVar.index]
+/-- A pattern binder annotated `0` cannot be referenced. -/
+example {Γ : UCtx []} {τ : Ty []} {ℓ : Nat} (x : UVar (⟨τ, .zero, ℓ⟩ :: Γ) τ ℓ) : x.index ≠ 0 := by
+  cases x with
+  | head h => exact absurd rfl h
+  | tail _ => simp [UVar.index]
 
 /-- **An open body must mention something from outside**: a closure body at depth `0` whose
     parameter is its only unknown has level `1` (or is closed), so it cannot be marked open
@@ -145,16 +145,16 @@ def armsOnce : T 0 [] [] (.fn .bool (.fn .nat .nat)) none :=
         (.ret (.kvar .head)))))
     (.ret (.kvar .head))
 
--- [SKIPPED BY PROFILE_LAKE] example : armsOnce.run true (4 : Nat) = (5 : Nat) := rfl
--- [SKIPPED BY PROFILE_LAKE] example : armsOnce.run false (4 : Nat) = (8 : Nat) := rfl
+example : armsOnce.run true (4 : Nat) = (5 : Nat) := rfl
+example : armsOnce.run false (4 : Nat) = (8 : Nat) := rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The parameter `n` of the inner closure: once in each arm is once. -/
--- [SKIPPED BY PROFILE_LAKE] example : (Term.countU (Δ := DSig.nil) (d := 2) (Φ := [⟨.fn .nat .nat, .one, some 1, true⟩, ⟨.fn .bool (.fn .nat .nat), .one, none, true⟩])
--- [SKIPPED BY PROFILE_LAKE]     (Γ := [⟨.nat, .one, 2⟩, ⟨.bool, .one, 1⟩]) (τ := .nat) (js := [])
--- [SKIPPED BY PROFILE_LAKE]     0 (.branch (.ite (.var (.tail (.head (by decide))))
--- [SKIPPED BY PROFILE_LAKE]       (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (.lit .nat 1) .nil)) rfl)))
--- [SKIPPED BY PROFILE_LAKE]       (.ret (.neu (.extern .lean_nat_mul (.cons (x0 (τ := .nat)) (.cons (.lit .nat 2) .nil)) rfl)))))) =
--- [SKIPPED BY PROFILE_LAKE]     .one := rfl
+/-- The parameter `n` of the inner closure: once in each arm is once. -/
+example : (Term.countU (Δ := DSig.nil) (d := 2) (Φ := [⟨.fn .nat .nat, .one, some 1, true⟩, ⟨.fn .bool (.fn .nat .nat), .one, none, true⟩])
+    (Γ := [⟨.nat, .one, 2⟩, ⟨.bool, .one, 1⟩]) (τ := .nat) (js := [])
+    0 (.branch (.ite (.var (.tail (.head (by decide))))
+      (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (.lit .nat 1) .nil)) rfl)))
+      (.ret (.neu (.extern .lean_nat_mul (.cons (x0 (τ := .nat)) (.cons (.lit .nat 2) .nil)) rfl)))))) =
+    .one := rfl
 
 /-! ## 6. Dead-code elimination and usage annotation -/
 
@@ -175,13 +175,13 @@ def deadLetsDce : T 0 [] [] (.fn .nat .nat) none :=
       (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (.lit .nat 1) .nil)) rfl)))))
     (.ret (.kvar .head))
 
--- [SKIPPED BY PROFILE_LAKE] example : deadLets.dce = deadLetsDce := by rfl
+example : deadLets.dce = deadLetsDce := by rfl
 
--- [SKIPPED BY PROFILE_LAKE] example : deadLets.dce.run (4 : Nat) = (5 : Nat) := by rw [deadLets.dce_run]; rfl
+example : deadLets.dce.run (4 : Nat) = (5 : Nat) := by rw [deadLets.dce_run]; rfl
 
--- [SKIPPED BY PROFILE_LAKE] /-- The usage of the parameter of `mulTwice`'s closure is recounted to `one`; the shared call
--- [SKIPPED BY PROFILE_LAKE]     stays `ω`. -/
--- [SKIPPED BY PROFILE_LAKE] example : mulTwice.dce = mulTwice := by rfl
+/-- The usage of the parameter of `mulTwice`'s closure is recounted to `one`; the shared call
+    stays `ω`. -/
+example : mulTwice.dce = mulTwice := by rfl
 
 end NormalFormTest
 

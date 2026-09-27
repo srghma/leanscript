@@ -4,6 +4,8 @@ public import LeanScript.Term.Build
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TacticElab.KernelRfl
 
+@[expose] public section
+
 set_option autoImplicit false
 
 /-!
@@ -22,18 +24,20 @@ The definitions of `TcoAck.lean`, `TcoHyper.lean` and `TcoMc91.lean`, translated
 functions that are the Lean functions of entries of the catalogue are externs).
 
 For all inputs, the translations of `iter`, `hyperLoop`, `ackInner`, `ack2`, `hyperBase` and
-`hyperTCO` compute the Lean functions (`iterT_run`, …).  `hyperWhile` (and `stepSum`, a loop with a start,
-a step and a `break`) are checked on values: the Lean side is computed by `native_decide`
-(`Std.Legacy.Range.forIn'` is well-founded recursion, which the kernel does not unfold), the
-translation by the kernel (`kernel_rfl`).
+`hyperTCO` compute the Lean functions (`iterT_run`, …).  `hyperWhile` (and `stepSum`, a loop
+with a start, a step and a `break`) are checked on values.
 
-The file has no public section: `ackInner` is private, and a public `ack2` could not use it.
+The checks on values (`ack2T.run 2 3 = ack2 2 3`, `hyperWhileT.run 3 2 3 = hyperWhile 3 2 3`,
+…) are slow in the kernel: `Term.eval` unfolds through the structural recursors of the term
+families (`brecOn` and its `below` tuples), and a `nat_rec` over `n` through `n` steps of
+`natIter`.  They are run compiled, by `Tests/Main.lean` (`lake test`), which needs the
+definitions here: so everything here is public.
 -/
 
 namespace Tco
 open LeanScript
 
-private def ackInner (f : Nat → Nat) : Nat → Nat
+def ackInner (f : Nat → Nat) : Nat → Nat
   | 0     => f 1
   | n + 1 => f (ackInner f n)
 
@@ -75,16 +79,7 @@ def hyperTCOT := #leanscript_to_term hyperTCO
 def hyperWhileT := #leanscript_to_term hyperWhile
 def iterT := #leanscript_to_term iter
 
--- [SKIPPED BY PROFILE_LAKE] example : (ackInnerT (Δ := DSig.nil)).run ((fun x => x + 2 : Nat → Nat)) (3 : Nat) = ackInner (fun x => x + 2) 3 := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (ack2T (Δ := DSig.nil)).run (2 : Nat) (3 : Nat) = ack2 2 3 := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (hyperLoopT (Δ := DSig.nil)).run ((fun x => 2 * x : Nat → Nat)) (5 : Nat) (1 : Nat) = hyperLoop (fun x => 2 * x) 5 1 := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (hyperTCOT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 1 2 3 := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (hyperWhileT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperWhile 1 2 3 := by
--- [SKIPPED BY PROFILE_LAKE]   rw [show hyperWhile 1 2 3 = 5 by native_decide]; kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (hyperTCOT (Δ := DSig.nil)).run (3 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 3 2 3 := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (hyperWhileT (Δ := DSig.nil)).run (3 : Nat) (2 : Nat) (3 : Nat) = hyperWhile 3 2 3 := by
--- [SKIPPED BY PROFILE_LAKE]   rw [show hyperWhile 3 2 3 = 8 by native_decide]; kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (iterT (Δ := DSig.nil)).run ((fun x => x + 3 : Nat → Nat)) (4 : Nat) (1 : Nat) = iter (fun x => x + 3) 4 1 := by kernel_rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
 /-! ## A `for` loop over a range with a start, a step and a `break` -/
 
@@ -97,19 +92,14 @@ def stepSum (a b : Nat) : Nat := Id.run do
 
 def stepSumT := #leanscript_to_term stepSum
 
--- [SKIPPED BY PROFILE_LAKE] example : (stepSumT (Δ := DSig.nil)).run (2 : Nat) (30 : Nat) = stepSum 2 30 := by
--- [SKIPPED BY PROFILE_LAKE]   rw [show stepSum 2 30 = 26 by native_decide]; kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (stepSumT (Δ := DSig.nil)).run (5 : Nat) (12 : Nat) = stepSum 5 12 := by
--- [SKIPPED BY PROFILE_LAKE]   rw [show stepSum 5 12 = 24 by native_decide]; kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : (stepSumT (Δ := DSig.nil)).run (7 : Nat) (3 : Nat) = stepSum 7 3 := by
--- [SKIPPED BY PROFILE_LAKE]   rw [show stepSum 7 3 = 0 by native_decide]; kernel_rfl
+-- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
--- [SKIPPED BY PROFILE_LAKE] #eval stepSum 2 30
--- [SKIPPED BY PROFILE_LAKE] #eval stepSum 5 12
--- [SKIPPED BY PROFILE_LAKE] #eval ack2 2 3
--- [SKIPPED BY PROFILE_LAKE] #eval hyperWhile 1 2 3
--- [SKIPPED BY PROFILE_LAKE] #eval hyperTCO 3 2 3
--- [SKIPPED BY PROFILE_LAKE] #eval hyperWhile 3 2 3
+#eval stepSum 2 30
+#eval stepSum 5 12
+#eval ack2 2 3
+#eval hyperWhile 1 2 3
+#eval hyperTCO 3 2 3
+#eval hyperWhile 3 2 3
 
 end Tco
 
@@ -153,29 +143,28 @@ theorem ack2T_run (m n : Nat) : (ack2T (Δ := DSig.nil)).run m n = ack2 m n := b
 theorem hyperBaseT_run (k a : Nat) : (hyperBaseT (Δ := DSig.nil)).run k a = hyperBase k a := by
   rcases k with _ | _ | _ | k <;> rfl
 
-set_option maxHeartbeats 4000000 in
+/-- The translation of `hyperTCO` computes `hyperTCO`.
+
+    The translated term is first evaluated **by the kernel** (`kernel_rfl`), with the
+    arguments left as variables, to its shape: two nested `natIter`s, the inner one on the
+    translation of the helper `hyperBase`.  The elaborator's own check of this equation
+    (`refine`/`rfl`, which must also *find* the function of the helper by higher-order
+    unification) took ~30 s and 4 000 000 heartbeats; the kernel's takes a fraction of a
+    second.  The rest is an induction on the Lean side only. -/
 theorem hyperTCOT_run (n a b : Nat) :
     (hyperTCOT (Δ := DSig.nil)).run n a b = hyperTCO n a b := by
-  -- `hyperTCO` calls the helper `hyperBase`, whose translation is used (evaluated in the
-  -- environment of the step, `k`, `r`, `b`, which it does not read): any function `hb` with
-  -- `hb k r b = hyperBase (k + 1) a`
-  have key : ∀ (hb : Nat → (Nat → Nat) → Nat → Nat),
-      (∀ k r b, hb k r b = hyperBase (k + 1) a) → ∀ n b,
-      natIter (fun b => b + 1)
-        (fun k r b => natIter (fun x => x) (fun _ s x => s (r x)) b (hb k r b)) n b =
-      hyperTCO n a b := by
-    intro hb hhb n; induction n with
-    | zero => intro b; rfl
-    | succ n ih =>
-      intro b
-      have : (natIter (fun b => b + 1) (fun k r b =>
-          natIter (fun x => x) (fun _ s x => s (r x)) b (hb k r b)) n) = hyperTCO n a :=
-        funext ih
-      simp only [hyperLoop_natIter, hhb] at this
-      simp only [natIter, hyperLoop_natIter, this, hyperTCO, hhb]
-  refine key _ ?_ n b
-  intro k _ _
-  rcases k with _ | _ | k <;> rfl
+  have e : @Eq Nat ((hyperTCOT (Δ := DSig.nil)).run n a b) <| natIter (α := Nat → Nat)
+      (fun b => b + 1) (fun k r b => natIter (α := Nat → Nat) (fun x => x) (fun _ s x => s (r x))
+        b ((hyperBaseT (Δ := DSig.nil)).run (k + 1 : Nat) a)) n b := by kernel_rfl
+  have key : ∀ n, natIter (α := Nat → Nat) (fun b => b + 1)
+      (fun k r b => hyperLoop r b (hyperBase (k + 1) a)) n = hyperTCO n a := by
+    intro n; induction n with
+    | zero => funext b; rfl
+    | succ n ih => funext b; simp only [natIter, ih, hyperTCO]
+  rw [e]
+  simp only [hyperBaseT_run, hyperLoop_natIter]
+  exact congrFun (key n) b
 
 end Tco
 
+end

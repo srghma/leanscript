@@ -1,7 +1,12 @@
 name = "LeanScript"
 version = "0.1.0"
 testDriver = "tests"
-defaultTargets = ["LeanScript", "NonEmpty", "TyTests", "TermTests", "tests"]
+defaultTargets = ["HashableFloat", "LeanScript", "NonEmpty", "TyTests", "TermTests", "tests"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.0"
 
 [[require]]
 name = "batteries"
@@ -12,6 +17,10 @@ rev = "v4.34.0"
 name = "aesop"
 scope = "leanprover-community"
 rev = "v4.34.0"
+
+[[lean_lib]]
+name = "HashableFloat"
+globs = ["HashableFloat.+"]
 
 [[lean_lib]]
 name = "LeanScript"

@@ -48,8 +48,8 @@ leanscript_signature Prog where
 
 /-! ## `Vec Nat`: a linked list -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.vec = .data r := ⟨_, rfl⟩
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Vec Nat 3) : Ty Prog.ks) = Prog.vec := rfl
+example : ∃ r, Prog.vec = .data r := ⟨_, rfl⟩
+example : (#leanscript_get_ty (Vec Nat 3) : Ty Prog.ks) = Prog.vec := rfl
 
 /--
 info: IndexedFamilyTest.Prog.Vec.cons {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
@@ -91,20 +91,20 @@ info: Vec.sum : Term Prog.Δ 0 [] [] ((Ty.data (Ref.here 0).there).fn (Ty.prim L
 #leanscript_to_term Vec.sum
 
 def vecSumT := #leanscript_to_term Vec.sum
--- [SKIPPED BY PROFILE_LAKE] example : vecSumT.run v2T.run = (3 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard v2.sum == 3
+example : vecSumT.run v2T.run = (3 : Nat) := by kernel_rfl
+#guard v2.sum == 3
 
 def Vec.double {n : Nat} : Vec Nat n → Vec Nat n
   | .nil => .nil
   | .cons a v => .cons (2 * a) v.double
 
 def vecDoubleT := #leanscript_to_term Vec.double
--- [SKIPPED BY PROFILE_LAKE] example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard v2.double.sum == 6
+example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := by kernel_rfl
+#guard v2.double.sum == 6
 
 /-! ## `Matrix`: two numbers and a list of lists -/
 
--- [SKIPPED BY PROFILE_LAKE] example : ∃ r, Prog.mat = .record .nat (.cons .nat (.one (.data r))) := ⟨_, rfl⟩
+example : ∃ r, Prog.mat = .record .nat (.cons .nat (.one (.data r))) := ⟨_, rfl⟩
 
 /--
 info: IndexedFamilyTest.Prog.Matrix.mk {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 o2 : Lvl}
@@ -131,7 +131,7 @@ def mT := #leanscript_to_term m
 
 def Matrix.size (m : Matrix) : Nat := m.rows * m.cols
 def matSizeT := #leanscript_to_term Matrix.size
--- [SKIPPED BY PROFILE_LAKE] example : matSizeT.run mT.run = (4 : Nat) := rfl
+example : matSizeT.run mT.run = (4 : Nat) := rfl
 
 /-- The sum of every cell, by recursion on the rows (a list of lists). -/
 def Vec.sumRows {r c : Nat} : Vec (Vec Nat c) r → Nat
@@ -143,12 +143,12 @@ def Vec.sumRows {r c : Nat} : Vec (Vec Nat c) r → Nat
 
 def sumRowsT := #leanscript_to_term Vec.sumRows
 def Matrix.firstColumnSum (m : Matrix) : Nat := m.cells.sumRows
--- [SKIPPED BY PROFILE_LAKE] example : sumRowsT.run (mT.run.2.2) = (4 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard m.firstColumnSum == 4
+example : sumRowsT.run (mT.run.2.2) = (4 : Nat) := by kernel_rfl
+#guard m.firstColumnSum == 4
 
 /-! ## Lean's `Vector` stays an array -/
 
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Vector Nat 3) : Ty []) = .array .nat := rfl
+example : (#leanscript_get_ty (Vector Nat 3) : Ty []) = .array .nat := rfl
 
 /-! ## Refusals -/
 

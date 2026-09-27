@@ -23,19 +23,19 @@ open LeanScript NestTest
 example : Nest.Elem Nat := .node (.leaf 1) (.leaf 2)
 
 -- the imported program is still the current one
--- [SKIPPED BY PROFILE_LAKE] example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
+example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
 
 -- a new program reuses the imported element type, at another base
 leanscript_signature Prog2 where
   nestBool := Nest Bool
   nestNat := Nest Nat
 
--- [SKIPPED BY PROFILE_LAKE] example : Prog2.ks = [0, 0, 0, 0] := rfl
+example : Prog2.ks = [0, 0, 0, 0] := rfl
 
 def nb : Nest Bool := .cons true (.cons (false, true) .nil)
 def nbT := #leanscript_to_term nb
 def lengthBoolT := #leanscript_to_term Nest.length (α := Bool)
--- [SKIPPED BY PROFILE_LAKE] example : lengthBoolT.run nbT.run = (2 : Nat) := by kernel_rfl
+example : lengthBoolT.run nbT.run = (2 : Nat) := by kernel_rfl
 
 -- two instances of the family in the program: the index must be given
 /--

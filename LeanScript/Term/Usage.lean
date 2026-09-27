@@ -128,16 +128,13 @@ def toUsage1ω : (u : Usage01ω) → u ≠ .zero → Usage1ω
 
 @[simp] theorem zero_add (u : Usage01ω) : .zero + u = u := by cases u <;> rfl
 @[simp] theorem add_zero (u : Usage01ω) : u + .zero = u := by cases u <;> rfl
-theorem add_comm (u v : Usage01ω) : u + v = v + u := by cases u <;> cases v <;> rfl
-theorem add_assoc (u v w : Usage01ω) : u + v + w = u + (v + w) := by
-  cases u <;> cases v <;> cases w <;> rfl
 
 @[simp] theorem zero_max (u : Usage01ω) : max .zero u = u := by cases u <;> rfl
 @[simp] theorem max_zero (u : Usage01ω) : max u .zero = u := by cases u <;> rfl
-@[simp] theorem max_self (u : Usage01ω) : max u u = u := by cases u <;> rfl
-theorem max_comm (u v : Usage01ω) : max u v = max v u := by cases u <;> cases v <;> rfl
-theorem max_assoc (u v w : Usage01ω) : max (max u v) w = max u (max v w) := by
-  cases u <;> cases v <;> cases w <;> rfl
+
+/-! The algebraic laws of `add` and `max` (commutativity, associativity, idempotence of
+`max`, …) come from Mathlib, through the instances of `LeanScript/Term/UsageAlgebra.lean`
+(`AddCommMonoid`, `LinearOrder`). -/
 
 /-- One use in each arm of a branch is one use (with `add` it would be ω). -/
 example : max .one .one = .one := rfl

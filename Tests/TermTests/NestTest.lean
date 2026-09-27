@@ -61,18 +61,18 @@ NestTest.Nest.Elem.node : {α : Type} → Nest.Elem α → Nest.Elem α → Nest
 #print Nest.Elem
 
 -- two blocks: `Nest.Elem Nat` (older), then `Nest Nat`
--- [SKIPPED BY PROFILE_LAKE] example : Prog.ks = [0, 0] := rfl
--- [SKIPPED BY PROFILE_LAKE] example : Prog.nest = .data (.here 0) := rfl
+example : Prog.ks = [0, 0] := rfl
+example : Prog.nest = .data (.here 0) := rfl
 -- `Nest (Nat × Nat)` is the same datatype
--- [SKIPPED BY PROFILE_LAKE] example : Prog.nest2 = Prog.nest := rfl
--- [SKIPPED BY PROFILE_LAKE] example : (#leanscript_get_ty (Nest ((Nat × Nat) × (Nat × Nat))) : Ty Prog.ks) = Prog.nest := rfl
+example : Prog.nest2 = Prog.nest := rfl
+example : (#leanscript_get_ty (Nest ((Nat × Nat) × (Nat × Nat))) : Ty Prog.ks) = Prog.nest := rfl
 
 -- `Nest.Elem Nat`: `leaf Nat` (the base) or `node Elem Elem`
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block0 = .cons (.union (.two₁ (.fields (.one (.old .nat)))
--- [SKIPPED BY PROFILE_LAKE]     (.fields (.cons (.hole 0 (by decide)) (.one (.hole 0 (by decide))))))) .nil := rfl
+example : Prog.block0 = .cons (.union (.two₁ (.fields (.one (.old .nat)))
+    (.fields (.cons (.hole 0 (by decide)) (.one (.hole 0 (by decide))))))) .nil := rfl
 -- `Nest Nat`: `nil` (the base) or `cons (Nest.Elem Nat) Nest`
--- [SKIPPED BY PROFILE_LAKE] example : Prog.block1 = .cons (.union (.two₁ .nullary
--- [SKIPPED BY PROFILE_LAKE]     (.fields (.cons (.old (.data (.here 0))) (.one (.hole 0 (by decide))))))) .nil := rfl
+example : Prog.block1 = .cons (.union (.two₁ .nullary
+    (.fields (.cons (.old (.data (.here 0))) (.one (.hole 0 (by decide))))))) .nil := rfl
 
 /-! ## Constructors and case analysis
 
@@ -131,19 +131,19 @@ error: LeanScript: `NestTest.Nest` is indexed by a type: give the index as `(α 
 def n3 : Nest Nat := .cons 1 (.cons (2, 3) (.cons ((4, 5), (6, 7)) .nil))
 def n3T := #leanscript_to_term n3
 
--- [SKIPPED BY PROFILE_LAKE] /-- A value translates to a statement that answers a pure expression. -/
--- [SKIPPED BY PROFILE_LAKE] example : n3T = .ret (Prog.Nest.cons (Prog.Elem.leaf (.lit .nat 1))
--- [SKIPPED BY PROFILE_LAKE]     (Prog.Nest.cons (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 2)) (Prog.Elem.leaf (.lit .nat 3)))
--- [SKIPPED BY PROFILE_LAKE]       (Prog.Nest.cons
--- [SKIPPED BY PROFILE_LAKE]         (Prog.Elem.node (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 4)) (Prog.Elem.leaf (.lit .nat 5)))
--- [SKIPPED BY PROFILE_LAKE]           (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 6)) (Prog.Elem.leaf (.lit .nat 7))))
--- [SKIPPED BY PROFILE_LAKE]         Prog.Nest.nil))) := rfl
+/-- A value translates to a statement that answers a pure expression. -/
+example : n3T = .ret (Prog.Nest.cons (Prog.Elem.leaf (.lit .nat 1))
+    (Prog.Nest.cons (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 2)) (Prog.Elem.leaf (.lit .nat 3)))
+      (Prog.Nest.cons
+        (Prog.Elem.node (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 4)) (Prog.Elem.leaf (.lit .nat 5)))
+          (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 6)) (Prog.Elem.leaf (.lit .nat 7))))
+        Prog.Nest.nil))) := rfl
 
 -- a value of `Nest (Nat × Nat)`: its first element is already a pair
 def m2 : Nest (Nat × Nat) := .cons (1, 2) .nil
 def m2T := #leanscript_to_term m2
--- [SKIPPED BY PROFILE_LAKE] example : m2T = .ret (Prog.Nest.cons (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 1))
--- [SKIPPED BY PROFILE_LAKE]     (Prog.Elem.leaf (.lit .nat 2))) Prog.Nest.nil) := rfl
+example : m2T = .ret (Prog.Nest.cons (Prog.Elem.node (Prog.Elem.leaf (.lit .nat 1))
+    (Prog.Elem.leaf (.lit .nat 2))) Prog.Nest.nil) := rfl
 
 -- a pair that is not written out is taken apart by its projections
 def pairs (p : Nat × Nat) : Nest Nat := .cons p.1 (.cons p .nil)
@@ -163,20 +163,20 @@ info: Nest.length : Term Prog.Δ 0 [] [] ((Ty.data (Ref.here 0)).fn (Ty.prim Lea
 #leanscript_to_term Nest.length
 
 def lengthT := #leanscript_to_term Nest.length
--- [SKIPPED BY PROFILE_LAKE] example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : lengthT.run m2T.run = (1 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard n3.length == 3
+example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
+example : lengthT.run m2T.run = (1 : Nat) := by kernel_rfl
+#guard n3.length == 3
 
 def Nest.isNil : {α : Type} → Nest α → Bool
   | _, .nil => true
   | _, .cons _ _ => false
 
 def isNilT := #leanscript_to_term Nest.isNil (α := Nat)
--- [SKIPPED BY PROFILE_LAKE] example : isNilT.run n3T.run = false := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] example : isNilT.run (Prog.Nest.nil (Φ := []) (Γ := [])).run = true := by kernel_rfl
+example : isNilT.run n3T.run = false := by kernel_rfl
+example : isNilT.run (Prog.Nest.nil (Φ := []) (Γ := [])).run = true := by kernel_rfl
 
--- [SKIPPED BY PROFILE_LAKE] example : lengthT.run (pairsT.run (show Ty.Den Prog.Δ (.pair .nat .nat) from ((8 : Nat), (9 : Nat)))) =
--- [SKIPPED BY PROFILE_LAKE]     (2 : Nat) := by kernel_rfl
+example : lengthT.run (pairsT.run (show Ty.Den Prog.Δ (.pair .nat .nat) from ((8 : Nat), (9 : Nat)))) =
+    (2 : Nat) := by kernel_rfl
 
 /-- Course-of-values recursion: the number of pairs of consecutive levels. -/
 def Nest.pairsOfLevels : {α : Type} → Nest α → Nat
@@ -185,8 +185,8 @@ def Nest.pairsOfLevels : {α : Type} → Nest α → Nat
   | _, .cons _ (.cons _ r) => 1 + r.pairsOfLevels
 
 def pairsOfLevelsT := #leanscript_to_term Nest.pairsOfLevels
--- [SKIPPED BY PROFILE_LAKE] example : pairsOfLevelsT.run n3T.run = (1 : Nat) := by kernel_rfl
--- [SKIPPED BY PROFILE_LAKE] #guard n3.pairsOfLevels == 1
+example : pairsOfLevelsT.run n3T.run = (1 : Nat) := by kernel_rfl
+#guard n3.pairsOfLevels == 1
 
 /-! ## Refusals -/
 
