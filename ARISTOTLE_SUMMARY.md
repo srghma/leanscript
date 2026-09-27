@@ -1,3 +1,40 @@
+# Summary of changes for run 9665b58e-c651-4e7e-b8e2-b5d2eb8d85e3
+I wrote `proposals/NTermDesign.md`, a detailed explanation of proposal B (two contexts: known and unknown) as it is now built in `LeanScript/NTerm/`, with an assessment and answers to your four questions. The modules and `TermTests/NTermTest.lean` build cleanly with no `sorry`. The normaliser that turns the current `Term` into `NTerm` is not written yet.
+
+**What the note covers**
+- **The rule and how the types enforce it.** Every elimination needs an operand that mentions an unknown. So when every variable is known, no computation can be written at all. This is proved in Lean: `Term.closed_isValue` and `Term.run_isValue` say such a term is always a chain of `letV`s ending in `ret v`.
+- **Sharing when a redex is stuck.** Closures, delays and data literals are bound once and passed by name. A forced open delay stays a `letE` and its body is not copied in at the force, which is the correction you asked for. `share` only accepts a stuck expression.
+- A table matching each constructor of the current `Term` to its `NTerm` counterpart.
+- The results already proved: evaluation, renaming preserves meaning, occurrence counting, and dead-code elimination preserves meaning (`Term.dce_eval`).
+
+**Your four questions**
+1. **Usage 0|1|ω.** Pattern binders (case fields, closure, loop and join-point parameters) really do need `0`. Definition binders (`letV`, `letE`, join points) should be `1 | ω` after optimisation. But just changing their type to `1 | ω` would not stop dead variables, because nothing checks the annotation against how the variable is actually used. Two real fixes:
+   - Track usage counts in the type itself. This is heavy and I don't recommend it now.
+   - Add a checked predicate `Term.WellCounted`, plus a proof that dead-code elimination produces terms satisfying it. This is what I recommend.
+   A wrong `1` is the dangerous case, because it allows inlining that duplicates work. Two smaller fixes: counts across `ite`/`case` arms should take the maximum instead of adding (used once in each arm is `1`, not `ω`).
+2. **The open flag.** Something is open when it mentions an unknown, directly or through an open known value. The constructors compute the flag, so it can't be wrong. Known means known shape, not known value: in `fun n => ⟨n, 3⟩` the record is known but open. Without the flag you could call a closed known closure on a literal, which is a closed redex. Two imprecisions:
+   - An "open" body only requires some unknown to be in scope, not that the body uses one. So a closed loop can be kept instead of run. This errs towards keeping too much, never towards a wrong answer.
+   - Closed bodies hide open entries by setting their usage to 0, which looks the same as "dead".
+3. **Join points for loops.** The only loops are the folds; `for` and structural `while` become a `nat_rec` over `ForInStep` (see `LeanScript/Term/BoundedLoop.lean`). Loop bodies can't jump outward, and early exit is already the `.done` state. So bounded loops need no join points. Self-jumping join points (`joinrec`) only make sense once well-founded recursion is added.
+4. **Strict A-normal form.** Yes, and stricter than `Term`:
+   - closures and delays are values named by `letV`;
+   - known values are never taken apart, called or forced;
+   - `share` only takes stuck expressions;
+   - a join point immediately followed by a jump to it can't be written.
+   The pure conditional `cond` and pure extern calls inside expressions stay, as in `Term`.
+
+**Caveat:** because every closed redex must be evaluated, closed loops are run at compile time, even a closed `nat_rec` over a huge bound.
+
+**Remaining work, in the order the note recommends:**
+1. The normaliser (`Term` → `NTerm`) with a proof that it preserves meaning.
+2. `WellCounted` and its proof for dead-code elimination.
+3. Maximum instead of sum for branch counts.
+4. An exact open flag for bodies.
+5. Pretty printer and code generation.
+6. `joinrec`, only together with well-founded recursion.
+
+I added three entries to the Properties table: the `NTerm.Term` definition, and `Term.closed_isValue` and `Term.dce_eval`, both marked proved.
+
 # Summary of changes for run 469c4cfc-8e0a-477e-9f8d-247c0f44350f
 I expanded the Proposal B section of `proposals/NormalFormProposals.md` (§B.1–§B.7) and added two companion files. Neither file is part of the Lake build: `lake env lean` checks each one with no errors and no `sorry`. The Lake-built sources are unchanged.
 
