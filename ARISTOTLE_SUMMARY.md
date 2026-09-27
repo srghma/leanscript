@@ -1,3 +1,21 @@
+# Summary of changes for run 870d5d72-52d4-449d-b7a3-aa7206f98a78
+I removed `set_option checkBinderAnnotations false in` from `UnionShape` in `LeanScript/Ty/Ty.lean`. The full project builds.
+
+**Why the option was there:** the `there` constructor took `[UnionShape bs]` as an instance argument. `UnionShape` doesn't count as a class yet while it is being defined, so Lean rejects that binder unless the check is turned off.
+
+**The change:**
+- `there` now takes the proof as a normal argument: `| there {bs : List Bool} (h : UnionShape bs) : UnionShape (false :: bs)`.
+- `attribute [instance]` now lists only `UnionShape.here`.
+- `there` is made an instance separately, with the same behaviour as before:
+  ```lean
+  instance UnionShape.instThere {bs : List Bool} [h : UnionShape bs] : UnionShape (false :: bs) :=
+    .there h
+  ```
+
+Instance search works as before, so `[h : UnionShape bs]` arguments are still filled in automatically. Nothing else in the project applied or matched on `UnionShape.there`, so no other files needed changes.
+
+**Checks:** `lake build` finished successfully on all default targets (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`). There is no `sorry` or `checkBinderAnnotations` left in those directories. The change is committed.
+
 # Summary of changes for run 1ff2e1b9-9fef-432f-86b4-e50a68f7d583
 I couldn't prove this because it isn't true. Instead I proved in Lean that it fails. The proof is in the new file `TermTests/ClosedEvalTest.lean`, which builds with no `sorry` and only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
 
