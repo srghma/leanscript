@@ -280,7 +280,7 @@ above, none of which any *user* of the language ever sees.
 | :-- | :-- |
 | `LeanScript/Expr.lean` | `natRecCtx`; the `nat_recK` constructor; a line in the grammar's prose beside `nat_rec`; optionally the `nat_rec2` abbreviation of §4.5 |
 | `LeanScript/Eval.lean` | `Win`, `wget`, `wpush`, `winOfDenList`, `Env.ofWin`, `natFoldKAux`, `natFoldK`; one `Term.NoRecMk` clause (`.nat_recK _ n base branch => Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch`); one `Term.eval` clause (`evalNatRecK`) |
-| `LeanScript/ToTerm.lean` | `transBrecOn` reads the **depth** off the history instead of demanding depth one (§4.6); `transRecCore` gains the case; the refusal message is narrowed (§7) |
+| `LeanScript/TermElab/ToTerm.lean` | `transBrecOn` reads the **depth** off the history instead of demanding depth one (§4.6); `transRecCore` gains the case; the refusal message is narrowed (§7) |
 | the JavaScript backend | one node: a loop carrying `k + 1` rolling accumulators (§4.7) |
 | `TermTests/ToTermTest/`, `TermTests/EvalTest.lean`, `TermTests/TermTest.lean` | `fib` moves from the refusals to the value checks; a depth-three test (tribonacci) alongside it |
 | `docs/TermTypeSafety.md`, `LeanScript/Expr.lean`'s header | "the two folds" becomes "the three folds" |

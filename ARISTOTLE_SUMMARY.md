@@ -1,3 +1,31 @@
+# Summary of changes for run 234c9dcb-efa1-4e84-9a0e-60670757195b
+I moved every elaborator, notation, tactic and the meta-level code they depend on into `XxxElab/` directories. I only renamed modules and fixed imports. No Lean namespace or declaration name changed, so code that uses these declarations works as before. After the move, the full `lake build` (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) succeeds with no errors or warnings, and there is no `sorry` in those libraries. Before rebuilding I deleted the old build files of the moved modules, so no import can still be using a stale copy.
+
+**LeanScript**
+- `TyElab/Notation.lean` ← `TyNotation.lean` (`[Ty| …]`)
+- `TermElab/Anf.lean` ← `Anf.lean` (the A-normaliser used by both term front ends)
+- `TermElab/Notation.lean` ← `TermNotation.lean` (`[Term| …]`)
+- `TermElab/ToTerm.lean`, `TermElab/ToTerm/Basic.lean`, `TermElab/ToTerm/Expr.lean` ← `ToTerm.lean`, `ToTerm/*` (`#leanscript_to_term`)
+- `GenElab/` ← `Signature.lean`, `GetCtor.lean`, `Gen/{Read,Translate,Print,Cache}.lean`. These all share the namespace `LeanScript.Gen`.
+- `TacticElab/KernelRfl.lean` ← `KernelRfl.lean` (`kernel_rfl`)
+- `ExternElab/CatalogueShorthands.lean` ← `CatalogueShorthands.lean` (`derive_catalogue_shorthands`)
+
+`LeanInitPureExternShorthands.lean` stays where it is: it uses that command to create definitions but is not an elaborator itself.
+
+**NonEmpty**
+- `ArrayCorrectByConstructionElab/{Notation,ToExpr}.lean` and `ListCorrectByConstructionElab/{Notation,ToExpr}.lean` (the `#![…]` / `![…]` literals and `ToExpr`). The `CoeOut` coercions to the underlying array or list were not notation, so I moved them into the matching `Instances.lean`.
+- `StringElab/Notation.lean`: the `nes!"…"` macro and its `#guard` checks, split out of `String/Basic.lean`.
+- `StringElab/ToExpr.lean` ← `String/ToExpr.lean`
+- `UtilsElab/Decidable.lean` ← `Utils/Decidable.lean` (helper for building the `Expr` of a decidability proof)
+- The two `String/Intercalate/*` files no longer import the literal notation, which they never used.
+
+**Other changes**
+- I updated every import and module reference in the sources, the tests and the doc comments.
+- In `README.md`, the layout table lists the new paths and there is a paragraph on the `XxxElab/` convention. File paths in `NOT_IMPLEMENTED.md`, `DESIGN_ANALYSIS.md` and `proposals/*.md` are updated.
+- `Scratch.lean` is untouched. It was already broken before this change: it imports modules that no longer exist and Mathlib, and it is not part of any build target.
+
+Everything is committed.
+
 # Summary of changes for run 4c244d13-b818-4ecf-aee5-ce2a5bcf937b
 `LeanScript.Term` is now strictly A-normal and B-normal, with join points and the three `PCL` layers. Most of this was already in the tree from the earlier interrupted run. This session checked it, added a test and cleaned up the docs. The full `lake build` passes with no errors or warnings, and no `sorry` remains in `LeanScript`, `TermTests`, `TyTests` or `NonEmpty`.
 

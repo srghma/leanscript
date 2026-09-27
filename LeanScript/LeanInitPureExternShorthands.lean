@@ -1,7 +1,7 @@
 module
 prelude
 public import LeanScript.LeanInitPureExterns
-meta import LeanScript.CatalogueShorthands
+meta import LeanScript.ExternElab.CatalogueShorthands
 
 set_option autoImplicit false
 @[expose] public section
@@ -23,7 +23,7 @@ Every shorthand takes the parameters of `LeanInitPureExtern` first (implicitly, 
 order), whichever of them its family uses.
 
 The shorthands are computed from the constructors of the families by
-`derive_catalogue_shorthands` (`LeanScript.CatalogueShorthands`), so nothing here needs to
+`derive_catalogue_shorthands` (`LeanScript.ExternElab.CatalogueShorthands`), so nothing here needs to
 be regenerated when the catalogue changes.
 
 A coercion from each family to `LeanInitPureExtern` would not replace them: `.lean_nat_add`

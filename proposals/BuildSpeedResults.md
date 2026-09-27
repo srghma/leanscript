@@ -100,7 +100,7 @@ beside it. `LeanScript/ToTerm/Overview.lean` explains this rule.
 - In `TermTests`, 297 closed `example … := rfl` checks now use `:= by kernel_rfl`, and 31
   `:= by decide` checks now use `:= by decide +kernel`. They are still proofs, checked by
   the kernel. Only the error message on a failure changes (a kernel type mismatch).
-- Every test file that uses `kernel_rfl` imports `LeanScript.KernelRfl`.
+- Every test file that uses `kernel_rfl` imports `LeanScript.TacticElab.KernelRfl`.
 - I checked that a false `example : 2 + 2 = 5 := by kernel_rfl` is rejected.
 - Docs that said "checked by `rfl`" were updated.
 - Measured: `EvalTest` went from 43 s to 29 s, `FibWindowTest` from 42 s to 29 s and

@@ -2,7 +2,7 @@ module
 
 public import LeanScript.TermSubst
 public import TermTests.TermTest
-public meta import LeanScript.KernelRfl
+public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
 

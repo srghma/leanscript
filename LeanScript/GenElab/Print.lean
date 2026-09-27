@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.Gen.Translate
+public meta import LeanScript.GenElab.Translate
 
 @[expose] public section
 

@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Basic
+public meta import LeanScript.TermElab.ToTerm.Basic
 
 @[expose] public section
 
@@ -14,7 +14,7 @@ set_option autoImplicit false
 `tr` and the functions it is mutually recursive with: the translation of a Lean expression
 (an application, a projection, a constructor, a recursive call, a `casesOn`/`match`, an
 extern, a range `for` loop, a fold over a nested container, ...) to the syntax of a
-`LeanScript.Term`.  See `LeanScript.ToTerm` for the definition translator.
+`LeanScript.Term`.  See `LeanScript.TermElab.ToTerm` for the definition translator.
 -/
 
 open Lean Meta Elab Term

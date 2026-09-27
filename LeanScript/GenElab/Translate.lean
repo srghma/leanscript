@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.Gen.Read
+public meta import LeanScript.GenElab.Read
 public meta import Lean.Util.SCC
 
 @[expose] public section

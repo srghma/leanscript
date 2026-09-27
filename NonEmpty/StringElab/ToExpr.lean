@@ -1,7 +1,7 @@
 module
 public import Lean.ToExpr
 public import NonEmpty.String.Basic
-public import NonEmpty.Utils.Decidable
+public import NonEmpty.UtilsElab.Decidable
 
 open Lean Meta Elab
 

@@ -4,7 +4,6 @@ public import NonEmpty.String.Basic
 public import NonEmpty.ListCorrectByConstruction.Basic
 public import NonEmpty.ListCorrectByConstruction.Ops
 public import NonEmpty.ListCorrectByConstruction.Instances
-public import NonEmpty.ListCorrectByConstruction.Notation
 
 @[expose] public section
 

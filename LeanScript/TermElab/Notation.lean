@@ -1,8 +1,8 @@
 module
 
 public import LeanScript.TermSubst
-public import LeanScript.TyNotation
-public meta import LeanScript.Anf
+public import LeanScript.TyElab.Notation
+public meta import LeanScript.TermElab.Anf
 public meta import Lean.Meta.Match.MatcherInfo
 
 @[expose] public section
@@ -17,7 +17,7 @@ context, type and join points are left to unification with the expected type).  
 expected type is a `PExpr` or a `Comp`, it elaborates to one of those instead.
 
 The surface syntax is in **direct style**: any term can be an operand of any other.  It is
-normalised (`LeanScript.Anf`) into the strictly A-normal and B-normal grammar of `Term`: every
+normalised (`LeanScript.TermElab.Anf`) into the strictly A-normal and B-normal grammar of `Term`: every
 call, closure, fold and delay is named by a `let` in evaluation order, a pure value bound by a
 `let` is used in place when it is a variable or a literal and shared otherwise, and a branch in
 the middle of a computation gets a join point for the rest of it.  A term that is already

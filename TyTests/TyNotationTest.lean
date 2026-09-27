@@ -1,13 +1,13 @@
 module
 
-public import LeanScript.TyNotation
+public import LeanScript.TyElab.Notation
 
 @[expose] public section
 
 set_option autoImplicit false
 
 /-!
-# The `[Ty| …]` notation (`LeanScript.TyNotation`)
+# The `[Ty| …]` notation (`LeanScript.TyElab.Notation`)
 
 What each surface form elaborates to (checked by `rfl`), how types are printed back
 (`#guard_msgs`), and the forms that are refused.

@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.Signature
+public meta import LeanScript.GenElab.Signature
 
 @[expose] public section
 
@@ -13,7 +13,7 @@ set_option autoImplicit false
 
 The constructor API of the language (designed in §2.6 of
 `proposals/NominalTyProposal.md`).  All
-three are term elaborators backed by the cache (`LeanScript.Gen.Cache`): the definition is
+three are term elaborators backed by the cache (`LeanScript.GenElab.Cache`): the definition is
 generated the first time and reused afterwards, here and in importing modules.  Written as a
 command, each shows what it generated.
 

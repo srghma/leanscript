@@ -6,7 +6,7 @@ meta import NonEmpty.ListCorrectByConstruction.Basic
 @[expose] public section
 
 /-!
-The literal notation for `NonEmptyList` and its coercions to the underlying list.
+The literal notation for `NonEmptyList`.
 -/
 
 namespace NonEmpty.ListCorrectByConstruction
@@ -33,14 +33,5 @@ example : NonEmptyList Nat := ![10]
 #guard ![1, 2, 3][2] = 3
 
 end
-
--- ============================================================
--- Coercions (downgraders)
--- ============================================================
-
-/-- Automatically coerce `NonEmptyList` (CorrectByConstruction) to its underlying `List`. -/
-@[inline]
-instance : CoeOut (NonEmpty.ListCorrectByConstruction.NonEmptyList α) (List α) where
-  coe xs := xs.toList
 
 end NonEmpty.ListCorrectByConstruction

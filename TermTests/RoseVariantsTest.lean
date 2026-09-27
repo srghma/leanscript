@@ -2,8 +2,8 @@ module
 
 public import LeanScript.Two
 public import LeanScript.Eval
-public import LeanScript.KernelRfl
-public meta import LeanScript.ToTerm
+public import LeanScript.TacticElab.KernelRfl
+public meta import LeanScript.TermElab.ToTerm
 
 @[expose] public section
 

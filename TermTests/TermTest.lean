@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.Eval
-public meta import LeanScript.KernelRfl
+public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
 

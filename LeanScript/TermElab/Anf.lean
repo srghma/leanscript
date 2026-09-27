@@ -15,8 +15,8 @@ set_option autoImplicit false
 
 `LeanScript.Term` is strictly A-normal and B-normal (`LeanScript.Term`), but it is convenient
 to *write* a term in direct style: `f (if c then g x else 0) + 1`.  Both the notation
-`[Term| …]` (`LeanScript.TermNotation`) and the translator `#leanscript_to_term`
-(`LeanScript.ToTerm`) first build a direct-style source tree `Src`, whose variables are
+`[Term| …]` (`LeanScript.TermElab.Notation`) and the translator `#leanscript_to_term`
+(`LeanScript.TermElab.ToTerm`) first build a direct-style source tree `Src`, whose variables are
 de Bruijn indices of the source, and then normalise it here into the syntax of a `Term`.
 
 The normaliser is the usual one, in continuation-passing style:

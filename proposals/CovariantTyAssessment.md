@@ -26,8 +26,8 @@ It was a deliberate decision in the nominal redesign (`proposals/NominalTyPropos
 > there is no `thunk`/`lazy` wrapper (it would denote the value it wraps, so `thunk bool`
 > would be a second type of two values).
 
-The same reason is in the reader's error (`LeanScript/Gen/Read.lean`, the ``Thunk`` case of
-`classify`), in the module doc of `LeanScript/Signature.lean`, and in a test that checks the
+The same reason is in the reader's error (`LeanScript/GenElab/Read.lean`, the ``Thunk`` case of
+`classify`), in the module doc of `LeanScript/GenElab/Signature.lean`, and in a test that checks the
 error message (`TermTests/ToTermTest.lean`, `forceB`).
 
 In practice, the decision protects one proved theorem and one design rule.

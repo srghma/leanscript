@@ -6,7 +6,7 @@ meta import NonEmpty.ArrayCorrectByConstruction.Basic
 @[expose] public section
 
 /-!
-The literal notation for `NonEmptyArray` and its coercions to the underlying array.
+The literal notation for `NonEmptyArray`.
 -/
 
 namespace NonEmpty.ArrayCorrectByConstruction
@@ -33,14 +33,5 @@ example : NonEmptyArray Nat := #![10]
 #guard #![1, 2, 3][2] = 3
 
 end
-
--- ============================================================
--- Coercions (downgraders)
--- ============================================================
-
-/-- Automatically coerce `NonEmptyArray` (CorrectByConstruction) to its underlying `Array`. -/
-@[inline]
-instance : CoeOut (NonEmpty.ArrayCorrectByConstruction.NonEmptyArray α) (Array α) where
-  coe xs := xs.toArr
 
 end NonEmpty.ArrayCorrectByConstruction

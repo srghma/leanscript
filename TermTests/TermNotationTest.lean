@@ -1,15 +1,15 @@
 module
 
-public import LeanScript.TermNotation
+public import LeanScript.TermElab.Notation
 public import LeanScript.Eval
-public meta import LeanScript.KernelRfl
+public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
 
 set_option autoImplicit false
 
 /-!
-# The `[Term| …]` notation (`LeanScript.TermNotation`)
+# The `[Term| …]` notation (`LeanScript.TermElab.Notation`)
 
 The programs of `TermTests.TermTest`, written in the notation (de Bruijn variables `#i`,
 constructor names) in direct style and normalised to A-normal form, run by `Term.run` and

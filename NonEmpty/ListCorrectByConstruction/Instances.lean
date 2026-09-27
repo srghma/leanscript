@@ -5,7 +5,7 @@ public import NonEmpty.ListCorrectByConstruction.Ops
 @[expose] public section
 
 /-!
-Membership, `ForIn`, and the `Functor`/`Applicative`/`Monad` instances of `NonEmptyList`, with their lawfulness proofs.
+Membership, `ForIn`, and the `Functor`/`Applicative`/`Monad` instances of `NonEmptyList`, with their lawfulness proofs, and the coercion to the underlying list.
 -/
 
 namespace NonEmpty.ListCorrectByConstruction
@@ -314,5 +314,14 @@ instance : LawfulMonad NonEmptyList where
       simp_all only [List.append_cancel_left_eq]
       simp only [List.map_eq_flatMap, flatMap_flatMap_aux]
       simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil, List.cons_append]
+
+-- ============================================================
+-- Coercions (downgraders)
+-- ============================================================
+
+/-- Automatically coerce `NonEmptyList` (CorrectByConstruction) to its underlying `List`. -/
+@[inline]
+instance : CoeOut (NonEmpty.ListCorrectByConstruction.NonEmptyList α) (List α) where
+  coe xs := xs.toList
 
 end NonEmpty.ListCorrectByConstruction

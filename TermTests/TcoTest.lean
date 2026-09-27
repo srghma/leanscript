@@ -1,8 +1,8 @@
 module
 
 public import LeanScript.Eval
-public meta import LeanScript.ToTerm
-public meta import LeanScript.KernelRfl
+public meta import LeanScript.TermElab.ToTerm
+public meta import LeanScript.TacticElab.KernelRfl
 
 set_option autoImplicit false
 

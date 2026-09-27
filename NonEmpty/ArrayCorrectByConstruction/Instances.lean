@@ -5,7 +5,7 @@ public import NonEmpty.ArrayCorrectByConstruction.Ops
 @[expose] public section
 
 /-!
-Membership, `ForIn`, and the `Functor`/`Applicative`/`Monad` instances of `NonEmptyArray`, with their lawfulness proofs.
+Membership, `ForIn`, and the `Functor`/`Applicative`/`Monad` instances of `NonEmptyArray`, with their lawfulness proofs, and the coercion to the underlying array.
 -/
 
 namespace NonEmpty.ArrayCorrectByConstruction
@@ -358,5 +358,14 @@ instance : LawfulMonad NonEmptyArray where
           Array.toList_append, List.cons_append, List.nil_append, List.flatMap_map,
           List.flatMap_assoc, List.flatMap_cons, Array.toList_flatMap, implies_true, List.map_cons,
           List.map_append, List.flatMap_append, List.append_assoc]
+
+-- ============================================================
+-- Coercions (downgraders)
+-- ============================================================
+
+/-- Automatically coerce `NonEmptyArray` (CorrectByConstruction) to its underlying `Array`. -/
+@[inline]
+instance : CoeOut (NonEmpty.ArrayCorrectByConstruction.NonEmptyArray α) (Array α) where
+  coe xs := xs.toArr
 
 end NonEmpty.ArrayCorrectByConstruction

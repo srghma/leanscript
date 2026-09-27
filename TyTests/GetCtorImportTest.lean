@@ -1,7 +1,7 @@
 module
 
 public import TyTests.GetCtorTest
-public meta import LeanScript.GetCtor
+public meta import LeanScript.GenElab.GetCtor
 
 @[expose] public section
 

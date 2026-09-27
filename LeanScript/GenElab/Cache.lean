@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.Gen.Print
+public meta import LeanScript.GenElab.Print
 
 @[expose] public section
 

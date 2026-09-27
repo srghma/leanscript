@@ -1,7 +1,7 @@
 module
 
-public meta import LeanScript.GetCtor
-public meta import LeanScript.Anf
+public meta import LeanScript.GenElab.GetCtor
+public meta import LeanScript.TermElab.Anf
 public meta import Lean.Elab.PreDefinition.Structural.Eqns
 public meta import Lean.Elab.PreDefinition.WF.Eqns
 
@@ -15,9 +15,9 @@ set_option autoImplicit false
 # `#leanscript_to_term`: translation state and helpers
 
 The state of a translation (`TS`, `TM`), the context of the expression being translated
-(`Loc`), and the helpers of the expression translator in `LeanScript.ToTerm.Expr`: syntax
+(`Loc`), and the helpers of the expression translator in `LeanScript.TermElab.ToTerm.Expr`: syntax
 builders, the recognition of nested datatypes, mutual groups, constructor fields, and the
-parameters a recursive call changes.  See `LeanScript.ToTerm` for the translation itself.
+parameters a recursive call changes.  See `LeanScript.TermElab.ToTerm` for the translation itself.
 -/
 
 open Lean Meta Elab Term

@@ -3,8 +3,8 @@
 This reviews the code as it is now: `LeanScript/Ty.lean`, `LeanScript/Decl.lean`,
 `LeanScript/Den.lean` (types and what they mean), and `LeanScript/Term.lean`,
 `LeanScript/Eval.lean`, `LeanScript/TermSubst.lean` (terms and their evaluator). Where it
-helps, it says how the translator (`LeanScript/ToTerm*`) and the generators
-(`LeanScript/Gen/`) are affected.
+helps, it says how the translator (`LeanScript/TermElab/ToTerm*`) and the generators
+(`LeanScript/GenElab/`) are affected.
 
 Only the claims in §1.2 have Lean checks. They are in `TyTests/DenNonInjectiveTest.lean`,
 which is part of `lake build`. Everything else here is a reading of the source and of

@@ -1,8 +1,8 @@
 module
 
 public import LeanScript.Eval
-public import LeanScript.TyNotation
-public meta import LeanScript.GetCtor
+public import LeanScript.TyElab.Notation
+public meta import LeanScript.GenElab.GetCtor
 
 @[expose] public section
 

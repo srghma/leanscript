@@ -66,7 +66,7 @@ The raised `maxHeartbeats` were covering the elaborator's work, not the kernel's
 
 ## 3. What to do
 
-### Done now: `kernel_rfl` (`LeanScript/KernelRfl.lean`)
+### Done now: `kernel_rfl` (`LeanScript/TacticElab/KernelRfl.lean`)
 
 `kernel_rfl` closes `a = b` with `Eq.refl a` and skips the elaborator's check. The kernel
 still type-checks the whole declaration, so a wrong equation is still rejected (as a

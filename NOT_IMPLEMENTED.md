@@ -2,13 +2,13 @@
 
 This list describes the project as it stands now: one grammar of types (`LeanScript/Ty.lean`,
 `LeanScript/Decl.lean`), one grammar of terms (`LeanScript/Term.lean`), the generators
-(`LeanScript/Signature.lean`, `LeanScript/GetCtor.lean`, `LeanScript/Gen/`) and the translator
-`#leanscript_to_term` (`LeanScript/ToTerm.lean`). Each item names where to read more.
+(`LeanScript/GenElab/Signature.lean`, `LeanScript/GenElab/GetCtor.lean`, `LeanScript/GenElab/`) and the translator
+`#leanscript_to_term` (`LeanScript/TermElab/ToTerm.lean`). Each item names where to read more.
 
 ## 1. Types
 
 - **Existentially typed fields.** A constructor with a field whose value is a type
-  (`State : Type` in `Unfold`) is refused (`LeanScript/Gen/Read.lean`, `readCtors`). This
+  (`State : Type` in `Unfold`) is refused (`LeanScript/GenElab/Read.lean`, `readCtors`). This
   was deferred on purpose.
 - **Inductive families have their indices erased, not typed.** `Vec α n` is the datatype
   `Vec α` of every length (`Gen/Read.lean`, `normType`), and a constructor field that only
@@ -130,7 +130,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 ## 3. The translator `#leanscript_to_term`
 
 The supported fragment and the refusals are listed in the header of
-`LeanScript/ToTerm.lean`; the refusals are pinned by `#guard_msgs` in
+`LeanScript/TermElab/ToTerm.lean`; the refusals are pinned by `#guard_msgs` in
 `TermTests/ToTermTest.lean`. Not supported yet:
 
 - **Polymorphic definitions** (a parameter that is a type or an instance).

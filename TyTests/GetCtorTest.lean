@@ -2,7 +2,7 @@ module
 
 public import LeanScript.Two
 public import LeanScript.Eval
-public meta import LeanScript.GetCtor
+public meta import LeanScript.GenElab.GetCtor
 
 @[expose] public section
 

@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.ToTerm.Expr
+public meta import LeanScript.TermElab.ToTerm.Expr
 public meta import Lean.Meta.Eqns
 
 @[expose] public section

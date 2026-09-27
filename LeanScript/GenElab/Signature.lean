@@ -1,6 +1,6 @@
 module
 
-public meta import LeanScript.Gen.Cache
+public meta import LeanScript.GenElab.Cache
 
 @[expose] public section
 
@@ -30,7 +30,7 @@ of the signature, oldest first (`LeanScript.Gen.declareBlocks`).  It adds:
 | `Prog.listNat`, `Prog.rose`, … | the requested types (`Ty Prog.ks`) |
 
 and records the program in the cache as the *current* program: from then on,
-`#leanscript_get_ty` and `#leanscript_get_ctor` (`LeanScript.GetCtor`) translate
+`#leanscript_get_ty` and `#leanscript_get_ctor` (`LeanScript.GenElab.GetCtor`) translate
 Lean types and constructors against it.  `leanscript_use_signature Prog` makes an earlier
 program current again.
 

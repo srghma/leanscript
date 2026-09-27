@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.Eval
-public meta import LeanScript.ToTerm
+public meta import LeanScript.TermElab.ToTerm
 
 @[expose] public section
 

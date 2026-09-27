@@ -2,7 +2,7 @@
 
 This note looks at the `PCL` grammar ("well-founded recursion as a construct of the grammar")
 against what `LeanScript.Term` is today (`LeanScript/Expr/Term.lean`, `LeanScript/Eval.lean`,
-`LeanScript/ToTerm/`). It answers three questions:
+`LeanScript/TermElab/ToTerm/`). It answers three questions:
 
 1. Which ideas of `PCL` are worth taking, and which are not.
 2. Does well-founded recursion subsume the iteration forms `Term` already has?

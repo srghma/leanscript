@@ -10,7 +10,7 @@ set_option autoImplicit false
 /-!
 # `Term`: A-normal terms over a datatype signature, in three layers
 
-The one grammar of terms of the language.  `#leanscript_to_term` (`LeanScript.ToTerm`)
+The one grammar of terms of the language.  `#leanscript_to_term` (`LeanScript.TermElab.ToTerm`)
 translates Lean definitions to it.  It follows the three layers of the `PCL` grammar
 (`proposals/AnfSplitProposals.md`, proposal 1), without its proof-carrying parts:
 
@@ -261,7 +261,7 @@ inductive Branches {ks : List Nat} (Δ : DSig ks) :
 end
 
 /-- `let x := c; x`: the statement whose answer is the value of the computation `c`.  The
-    normaliser (`LeanScript.Anf`) writes a computation in tail position with it, so that the
+    normaliser (`LeanScript.TermElab.Anf`) writes a computation in tail position with it, so that the
     expected type of the statement reaches `c` when it is elaborated; the notation and the
     translator then unfold it, so it never remains in a term. -/
 abbrev Term.ofComp {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks}
