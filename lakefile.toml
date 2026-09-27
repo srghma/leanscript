@@ -1,14 +1,10 @@
 name = "LeanScript"
 version = "0.1.0"
-defaultTargets = ["LeanScript", "NonEmpty", "TyTests", "TermTests"]
+testDriver = "tests"
+defaultTargets = ["LeanScript", "NonEmpty", "TyTests", "TermTests", "tests"]
 
 [[require]]
 name = "batteries"
-scope = "leanprover-community"
-rev = "v4.34.0"
-
-[[require]]
-name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.34.0"
 
@@ -26,9 +22,23 @@ name = "NonEmpty"
 globs = ["NonEmpty.+"]
 
 [[lean_lib]]
+name = "Spec"
+globs = ["Spec.+"]
+
+[[lean_lib]]
 name = "TyTests"
+srcDir = "Tests"
 globs = ["TyTests.+"]
 
 [[lean_lib]]
 name = "TermTests"
+srcDir = "Tests"
 globs = ["TermTests.+"]
+
+# The expensive runs moved out of `TyTests`/`TermTests` (compiled, not elaborated):
+# `lake exe tests` (or `lake test`).
+[[lean_exe]]
+name = "tests"
+srcDir = "Tests"
+root = "Main"
+
