@@ -1,4 +1,4 @@
-import LeanScript.Eval
+import LeanScript.Term.Eval
 import LeanScript.Ty.Instances
 import LeanScript.Ty.Deriving
 import LeanScript.ToTerm.Elab

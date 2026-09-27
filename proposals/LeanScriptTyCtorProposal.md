@@ -159,7 +159,7 @@ inductive Ty where
 
 `Ty.named` args are ordinary children. `Ty.children`, `Ty.beq`, `TyBEq` (`LawfulBEq`,
 `DecidableEq`) and `ty_wf` each get one case per leaf. `Ty.Den (.named _ _) := PEmpty`,
-the same as every recursive shape today (see `LeanScript/Den.lean`). So a `named_mk` term
+the same as every recursive shape today (see `LeanScript/Ty/Den.lean`). So a `named_mk` term
 is outside the fragment `Term.eval` runs (`Term.NoRecMk`), and its type is checked but it
 is not evaluated, as with lists now.
 

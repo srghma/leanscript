@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Two
+public import LeanScript.Ty.Two
 
 @[expose] public section
 
@@ -18,7 +18,7 @@ the grammar has no other way to write a type of two values (`Option Unit`, `BitV
 `Bool × Unit`, a copy of `Bool` under a new name, a union of two field-less constructors, …
 cannot be written).
 
-As for `LeanScript.Two`, the proof is data computed by structural recursion:
+As for `LeanScript.Ty.Two`, the proof is data computed by structural recursion:
 
 * `LeanPrimTy.three`: every leaf other than `bool` (`LeanPrimTy.bitvec` and
   `LeanPrimTy.stringPos` carry the proofs that their leaves have three values);

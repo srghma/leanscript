@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.DeBruijn
+public import LeanScript.Term.DeBruijn
 
 @[expose] public section
 

@@ -11,7 +11,7 @@ The Lean-level claims about proposal 1 are checked in a small stand-alone toy,
 formal result.
 
 **Implementation status.** Proposal 1 is now implemented in `LeanScript.Term` itself
-(not as a second IR, proposal 3): `LeanScript/Term.lean` has the three layers `PExpr`
+(not as a second IR, proposal 3): `LeanScript/Term/Term.lean` has the three layers `PExpr`
 (with `Args`/`Elems`), `Comp` and `Term` (with `Branches`, `PCL`'s `Expr`), with join points
 in their own context `js : JCtx`. The existing constructor names are kept, each in its
 layer; the new ones are `Comp.share`, `Term.ret`, `Term.join` and `Term.jump`. Of
@@ -26,7 +26,7 @@ was *before* this change.
 
 ## 0. Where we were: we did not split
 
-`LeanScript/Term.lean` is **one syntactic category in direct style**, and its module doc says
+`LeanScript/Term/Term.lean` is **one syntactic category in direct style**, and its module doc says
 so ("The grammar is in direct style"). `LeanScript/TermElab/ToTerm.lean` says the same about the
 translator ("The translation is in direct style"). A `Term Δ Γ τ` can appear as an operand of
 any other term:

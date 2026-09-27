@@ -1,7 +1,7 @@
 module
 prelude
-public import LeanScript.LeanPrimTy
-public import LeanScript.LeanPrimTyCovariant
+public import LeanScript.Ty.LeanPrimTy
+public import LeanScript.Ty.LeanPrimTyCovariant
 set_option autoImplicit false
 @[expose] public section
 namespace LeanScript

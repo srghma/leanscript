@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.TermSubst
+public import LeanScript.Term.TermSubst
 public import LeanScript.TyElab.Notation
 public meta import LeanScript.TermElab.Anf
 public meta import Lean.Meta.Match.MatcherInfo

@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.TermSubst
+public import LeanScript.Term.TermSubst
 public import TermTests.TermTest
 public meta import LeanScript.TacticElab.KernelRfl
 

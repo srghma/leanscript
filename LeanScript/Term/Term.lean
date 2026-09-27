@@ -1,8 +1,8 @@
 module
 
-public import LeanScript.DenBrec
-public import LeanScript.DeBruijn
-public import LeanScript.Tuple
+public import LeanScript.Ty.DenBrec
+public import LeanScript.Term.DeBruijn
+public import LeanScript.Term.Tuple
 
 @[expose] public section
 
@@ -82,7 +82,7 @@ translated from a Lean program the proposition always holds (the program had to 
 the `default` branch is never taken; see `LeanScript.TermElab.ToTerm`.
 
 Renaming, weakening and substitution of variables, with the facts that they commute with
-evaluation, are in `LeanScript.TermSubst`.
+evaluation, are in `LeanScript.Term.TermSubst`.
 -/
 
 namespace LeanScript

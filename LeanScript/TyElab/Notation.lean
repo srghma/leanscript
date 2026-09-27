@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Ty
+public import LeanScript.Ty.Ty
 public meta import Lean.PrettyPrinter.Delaborator.Builtins
 
 @[expose] public section

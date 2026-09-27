@@ -1,7 +1,7 @@
 module
 
-public import LeanScript.Decl
-public import LeanScript.Container
+public import LeanScript.Ty.Decl
+public import LeanScript.Ty.Container
 
 @[expose] public section
 

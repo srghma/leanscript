@@ -1,7 +1,7 @@
 # What is not implemented yet
 
-This list describes the project as it stands now: one grammar of types (`LeanScript/Ty.lean`,
-`LeanScript/Decl.lean`), one grammar of terms (`LeanScript/Term.lean`), the generators
+This list describes the project as it stands now: one grammar of types (`LeanScript/Ty/Ty.lean`,
+`LeanScript/Ty/Decl.lean`), one grammar of terms (`LeanScript/Term/Term.lean`), the generators
 (`LeanScript/GenElab/Signature.lean`, `LeanScript/GenElab/GetCtor.lean`, `LeanScript/GenElab/`) and the translator
 `#leanscript_to_term` (`LeanScript/TermElab/ToTerm.lean`). Each item names where to read more.
 
@@ -113,7 +113,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   **types of two values other than `Bool`** (`Option Unit`, `BitVec 1`, `String.Pos` of a
   one-character string, `Thunk Bool`, …) have no type in the language, by design: they are
   refused, never erased. A type of two values is always `Ty.bool`: this is proved,
-  `Ty.eq_bool_of_two_points` (`LeanScript/Three.lean`).
+  `Ty.eq_bool_of_two_points` (`LeanScript/Ty/Three.lean`).
 - **A recursive occurrence in the domain of a function** is refused (`Gen/Translate.lean`,
   `toFIR`).
 - **Effects.** There is no type former for `IO`, tasks or promises.
@@ -122,7 +122,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 
 - **Partial fixpoints, well-founded recursion, coinductive types** cannot be written: every
   loop is a fold (`nat_rec`, `array_foldl`, `data_rec`, `data_brec`).
-- **Substitution theory is only semantic**: `LeanScript/TermSubst.lean` has renaming,
+- **Substitution theory is only semantic**: `LeanScript/Term/TermSubst.lean` has renaming,
   weakening and substitution and proves they commute with evaluation, but not the syntactic
   laws (substitution composition, `rename` as a special `subst`).
 - **No `DecidableEq`/`Repr` for `Term`**: `Comp.extern` holds a Lean function.

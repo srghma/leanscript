@@ -1,7 +1,7 @@
 module
 prelude
-public import LeanScript.LeanPrimTy
-public import LeanScript.LeanPrimTyCovariant
+public import LeanScript.Ty.LeanPrimTy
+public import LeanScript.Ty.LeanPrimTyCovariant
 public import LeanScript.LeanInitPureExterns.Core
 public import LeanScript.LeanInitPureExterns.FixedWidth
 public import LeanScript.LeanInitPureExterns.String

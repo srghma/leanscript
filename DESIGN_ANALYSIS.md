@@ -1,8 +1,8 @@
 # Design analysis: shortcomings of `Ty` and `Term`
 
-This reviews the code as it is now: `LeanScript/Ty.lean`, `LeanScript/Decl.lean`,
-`LeanScript/Den.lean` (types and what they mean), and `LeanScript/Term.lean`,
-`LeanScript/Eval.lean`, `LeanScript/TermSubst.lean` (terms and their evaluator). Where it
+This reviews the code as it is now: `LeanScript/Ty/Ty.lean`, `LeanScript/Ty/Decl.lean`,
+`LeanScript/Ty/Den.lean` (types and what they mean), and `LeanScript/Term/Term.lean`,
+`LeanScript/Term/Eval.lean`, `LeanScript/Term/TermSubst.lean` (terms and their evaluator). Where it
 helps, it says how the translator (`LeanScript/TermElab/ToTerm*`) and the generators
 (`LeanScript/GenElab/`) are affected.
 
@@ -190,7 +190,7 @@ but:
 - well-founded recursion, partial functions and coinductive data cannot be written; a
   `while` loop is only translated when its termination is syntactic (a `Nat` variable moved
   towards a bound by a literal step), as a `nat_rec` of a number of steps fixed before the
-  loop (`LeanScript/BoundedLoop.lean` proves that number is enough);
+  loop (`LeanScript/Term/BoundedLoop.lean` proves that number is enough);
 - `nat_rec` is unary and non-dependent. It iterates `n` times with no early exit, and `for`
   loops pay for `break` by carrying a `ForInStep` to the end. Evaluating it by `rfl` in the
   kernel is only practical for small `n`;

@@ -1,7 +1,7 @@
 module
 
-public import LeanScript.Term
-public import LeanScript.DenFacts
+public import LeanScript.Term.Term
+public import LeanScript.Ty.DenFacts
 
 @[expose] public section
 

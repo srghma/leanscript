@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.Ty.Unfold
-public import LeanScript.Den
+public import LeanScript.Ty.Den
 public import LeanScript.Ty.WfFacts
 
 @[expose] public section

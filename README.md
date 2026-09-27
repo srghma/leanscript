@@ -33,22 +33,22 @@ Build everything, tests included, with `lake build`.  The project depends on Lea
 
 | path | what it holds |
 | :-- | :-- |
-| `LeanScript/LeanPrimTy.lean`, `LeanScript/EnumSchema.lean` | the leaf types and the payload of an enum |
-| `LeanScript/Ty.lean` | `Ref`, `BRef`, the mutual `Ty`/`Fields`/`Ctor`/`Ctors`, `UnionShape`, with `DecidableEq`, `BEq`, `LawfulBEq`, `Repr`; renaming `Ty.map` and its laws `Ty.map_id`, `Ty.map_map` |
-| `LeanScript/Decl.lean` | declarations of blocks of datatypes (`Fld`, `Decl`, `Mems`, `DSig`) and `unfold` |
-| `LeanScript/Container.lean`, `LeanScript/Den.lean` | what a type denotes: indexed W-types for the declared blocks, `Ty.den`, `Ty.Den`, `DSig.dataIn`/`dataOut`/`dataRec` |
-| `LeanScript/DenFacts.lean`, `LeanScript/DenBrec.lean` | `dataIn`/`dataOut` are inverse; course-of-values recursion `DSig.dataBrec` and its computation rule |
-| `LeanScript/Two.lean` | every type has two values that a Boolean test tells apart |
-| `LeanScript/Three.lean` | every type other than `bool` has three values that a test tells apart: two points are only ever `bool` |
-| `LeanScript/DeBruijn.lean`, `LeanScript/Term.lean`, `LeanScript/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`PExpr.lit p v`, `PExpr.bvar i`) and its evaluator |
-| `LeanScript/Tuple.lean` | `Tuple F [a, b] = F a × F b`: right-nested products with no trailing `PUnit`, for environments, extern arguments and join-point closures |
-| `LeanScript/BoundedLoop.lean` | a loop of a fixed number of steps whose iterations shrink a measure has stopped after `μ init + 1` steps, and more steps change nothing (`boundedLoop_done`, `boundedLoop_stable`): why a translated `while` loop needs no fuel |
-| `LeanScript/TermSubst.lean` | renaming, weakening and substitution of terms; `Term.eval_rename`, `Term.eval_subst`, β and `let` as substitution |
+| `LeanScript/Ty/LeanPrimTy.lean`, `LeanScript/Ty/LeanPrimTyCovariant.lean`, `LeanScript/Ty/EnumSchema.lean` | the leaf types, the covariant leaf type formers (arrays, thunks, lazy values; used by the extern catalogue) and the payload of an enum |
+| `LeanScript/Ty/Ty.lean` | `Ref`, `BRef`, the mutual `Ty`/`Fields`/`Ctor`/`Ctors`, `UnionShape`, with `DecidableEq`, `BEq`, `LawfulBEq`, `Repr`; renaming `Ty.map` and its laws `Ty.map_id`, `Ty.map_map` |
+| `LeanScript/Ty/Decl.lean` | declarations of blocks of datatypes (`Fld`, `Decl`, `Mems`, `DSig`) and `unfold` |
+| `LeanScript/Ty/Container.lean`, `LeanScript/Ty/Den.lean` | what a type denotes: indexed W-types for the declared blocks, `Ty.den`, `Ty.Den`, `DSig.dataIn`/`dataOut`/`dataRec` |
+| `LeanScript/Ty/DenFacts.lean`, `LeanScript/Ty/DenBrec.lean` | `dataIn`/`dataOut` are inverse; course-of-values recursion `DSig.dataBrec` and its computation rule |
+| `LeanScript/Ty/Two.lean` | every type has two values that a Boolean test tells apart |
+| `LeanScript/Ty/Three.lean` | every type other than `bool` has three values that a test tells apart: two points are only ever `bool` |
+| `LeanScript/Term/DeBruijn.lean`, `LeanScript/Term/Term.lean`, `LeanScript/Term/Eval.lean` | typed de Bruijn indices and renamings, the grammar of terms (`PExpr.lit p v`, `PExpr.bvar i`) and its evaluator |
+| `LeanScript/Term/Tuple.lean` | `Tuple F [a, b] = F a × F b`: right-nested products with no trailing `PUnit`, for environments, extern arguments and join-point closures |
+| `LeanScript/Term/BoundedLoop.lean` | a loop of a fixed number of steps whose iterations shrink a measure has stopped after `μ init + 1` steps, and more steps change nothing (`boundedLoop_done`, `boundedLoop_stable`): why a translated `while` loop needs no fuel |
+| `LeanScript/Term/TermSubst.lean` | renaming, weakening and substitution of terms; `Term.eval_rename`, `Term.eval_subst`, β and `let` as substitution |
 | `LeanScript/GenElab/` (`Signature.lean`, `GetCtor.lean`, `Read.lean`, `Translate.lean`, `Print.lean`, `Cache.lean`) | `leanscript_signature`, `#leanscript_get_ty`/`_ctor`/`_cases`, and the generator they share (reading Lean types, erasing fields that depend on earlier fields — `Fin n → Nat` is `Nat → Nat`, `TermTests/DependentFieldTest.lean`; on a recursive cycle `Fin m → X` is `Nat → Option X`, so the rose tree `node : (m : Nat) → (Fin m → Rose) → Rose` is a record of a `nat` and a function to `Option Rose`, different from the `List` and `Array` rose trees, `TermTests/RoseVariantsTest.lean` — and the indices of inductive families — `Vec α n` is the linked list `Vec α`, `TermTests/IndexedFamilyTest.lean`; a type index recursed at other indices goes through a generated element type — `Nest α` is a list of `Nest.Elem α` trees, `TermTests/NestTest.lean` —; a quotient is read as its carrier and a proof field is dropped — `Quot (· % 2 = · % 2)` is `Nat`, `Pos` is `Nat`, `TermTests/QuotientTest.lean` —, SCCs and grounding order, printing, cache) |
 | `LeanScript/TyElab/Notation.lean` | the `[Ty| …]` notation |
 | `LeanScript/TermElab/Anf.lean`, `LeanScript/TermElab/Notation.lean` | the A-normaliser of direct-style source trees, and the `[Term| …]` notation built on it |
 | `LeanScript/TermElab/ToTerm.lean`, `LeanScript/TermElab/ToTerm/` | `#leanscript_to_term` (`ToTerm/Basic.lean`: translation state and helpers; `ToTerm/Expr.lean`: the expression translator `tr`, with cheap externs as `PExpr.extern`, pure `if`s as `PExpr.cond` and externs that take a proof, `TermTests/CondExternTest.lean`; `ToTerm/While.lean`: which `while` loops are structurally terminating, `TermTests/WhileTest.lean`; `ToTerm.lean`: the definition translator and the syntax), including `mutual` groups of recursive functions and members of a block held inside an `Array` or a function (`TermTests/MutualToTermTest.lean`) |
-| `LeanScript/LeanInitPureExterns.lean`, `LeanScript/LeanInitPureExterns/`, `LeanScript/LeanInitPureExternShorthands.lean`, `LeanScript/ExternElab/CatalogueShorthands.lean`, `LeanScript/LeanPrimTyCovariant.lean` | the catalogue of the pure externs of `Init` (not used by the language) |
+| `LeanScript/LeanInitPureExterns.lean`, `LeanScript/LeanInitPureExterns/`, `LeanScript/LeanInitPureExternShorthands.lean`, `LeanScript/ExternElab/CatalogueShorthands.lean` | the catalogue of the pure externs of `Init` (not used by the language) |
 | `LeanScript/TacticElab/KernelRfl.lean` | `kernel_rfl`, an equation checked by the kernel only |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings (their literal notations and `ToExpr` instances are in `NonEmpty/*Elab/`) |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots, `rfl` runs) |

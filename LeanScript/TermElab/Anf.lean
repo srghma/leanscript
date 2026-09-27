@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.TermSubst
+public import LeanScript.Term.TermSubst
 public meta import Lean.Elab.Term
 public meta import Lean.Meta.Tactic.Delta
 

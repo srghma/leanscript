@@ -290,7 +290,7 @@ Each step builds on its own and is checked by `lake build` together with an `rg 
    `Ty/Shape.lean` (`TyShape`).
 2. `LeanScript/Ty/Decl.lean` (new): `Fld`, `Flds`, `BCtor`, `BCtors`, `Alts`, `Decl`, `Mems`,
    `DSig`; `Ty.unfold`.
-3. `LeanScript/Den.lean`: `Ty.den`, `DSig.refDen`, `Ty.lift`/`Ty.lower`, roll/unroll. Port
+3. `LeanScript/Ty/Den.lean`: `Ty.den`, `DSig.refDen`, `Ty.lift`/`Ty.lower`, roll/unroll. Port
    `Two`, `Ty.pick`, `DSig.two`, `Ty.twoDen` and the corollaries from the toy. `Den/Rec.lean`,
    `Den/Family.lean` and `Den/PFunctor.lean` collapse into this file.
 4. Delete `Ty/Wf.lean`, `Ty/WfFacts.lean`, `Ty/WfTactic*`, `Ty/TyWf.lean`, `Ty/TyWfIn.lean`.

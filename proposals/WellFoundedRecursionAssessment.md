@@ -1,7 +1,7 @@
 # Assessment: the `PCL` grammar (proof-carrying calls), and well-founded recursion for `Term`
 
 This note looks at the `PCL` grammar ("well-founded recursion as a construct of the grammar")
-against what `LeanScript.Term` is today (`LeanScript/Expr/Term.lean`, `LeanScript/Eval.lean`,
+against what `LeanScript.Term` is today (`LeanScript/Expr/Term.lean`, `LeanScript/Term/Eval.lean`,
 `LeanScript/TermElab/ToTerm/`). It answers three questions:
 
 1. Which ideas of `PCL` are worth taking, and which are not.

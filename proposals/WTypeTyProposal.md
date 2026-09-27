@@ -113,7 +113,7 @@ convention of the front end. For recursive types the front end must find a groun
 | well-formedness | `Ty.Wf` (`LeanScript/Ty/Wf.lean`) checks scope, "really recursive", "every member mentioned", positivity and inhabitation. It is carried by `TyWf`, whose proof defaults to `by ty_wf` |
 | scoped trees | `TyWfIn n`, used by 42 files |
 | term formers for recursive types | `recTaggedUnion_{casesOn, casesOnWithDefault, rec, mk}`, `recObject_{casesOn, rec, mk}`, `recAlias_{casesOn, rec, mk}`, `mutualRecursiveFamily_{casesOn, casesOnWithDefault, rec, mk}`. Each fold has its own depth-`k` case tree (`TaggedUnionFoldKCases`, `FoldKBranch`, `FamilyFoldKCases`, `SelfField`, `OuterSelfField`, …) |
-| denotation | already a W-type: `PFunctor.mu` (Mathlib's `WType`) for the three lone binders, and the project's own indexed W-type `FamW` for families (`LeanScript/Den.lean`, `LeanScript/Den/IPFunctor.lean`) |
+| denotation | already a W-type: `PFunctor.mu` (Mathlib's `WType`) for the three lone binders, and the project's own indexed W-type `FamW` for families (`LeanScript/Ty/Den.lean`, `LeanScript/Den/IPFunctor.lean`) |
 | Lean type → tree | the class `LeanScriptTyWf` and `deriving LeanScriptTyWf` |
 | constructors | `#leanscript_ctor I c` / `#leanscript_layout I c` (`LeanScript/CtorFn.lean`), already cached in an environment extension |
 
@@ -626,7 +626,7 @@ Each step builds on its own and is checked by `lake build` together with an `rg 
    `Two`, `Ty.inh`, `Ty.two`, `Ty.twoDen` and its corollaries from the toy, next to `Ty.Den`.
 2. **`Ty.inst`, `Ty.unfold`, `Ty.fix`**: replace `Ty/Unfold.lean`, `Ty/WfSubst.lean` and
    `Ty/Traversable.lean`.
-3. **Denotation** `LeanScript/Den.lean`: `Ty.toIPF` over the new tree; `Den/Rec.lean` and
+3. **Denotation** `LeanScript/Ty/Den.lean`: `Ty.toIPF` over the new tree; `Den/Rec.lean` and
    `Den/Family.lean` become the single `rollMember`/`unrollMember` pair. `Den/PFunctor.lean`
    is only kept for the `k = 0` ↔ `WType` lemma.
 4. **Delete** `Ty/Wf.lean`, `Ty/WfFacts.lean`, `Ty/WfTactic*`, `Ty/TyWf.lean` and

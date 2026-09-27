@@ -1,7 +1,7 @@
 module
 
-public import LeanScript.LeanPrimTy
-public import LeanScript.EnumSchema
+public import LeanScript.Ty.LeanPrimTy
+public import LeanScript.Ty.EnumSchema
 
 @[expose] public section
 
@@ -14,7 +14,7 @@ The one grammar of types of the language (designed in `proposals/NominalTyPropos
 
 A closed type `Ty ks` has **no binder, no hole and no grounding index**.  A recursive type is
 not written inside the type: it is *declared once*, in a datatype signature
-(`LeanScript.DSig`, in `LeanScript.Decl`), and a type refers to it by its
+(`LeanScript.DSig`, in `LeanScript.Ty.Decl`), and a type refers to it by its
 name, `Ty.data r`, where `r : Ref ks` is a typed de Bruijn name.  `ks` lists the sizes of
 the declared blocks, newest first: a block of `k + 1` mutually recursive datatypes
 contributes `k` to `ks`.

@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.TermElab.Notation
-public import LeanScript.Eval
+public import LeanScript.Term.Eval
 public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section

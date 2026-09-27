@@ -111,7 +111,7 @@ To keep existing code and tests compiling, add
 `abbrev Term₀ Sg Γ τ := Term Sg Γ [] τ` and `Term.eval₀ … := Term.eval … ()`. Clients that
 don't care about hypotheses see the old signatures.
 
-### Evaluator changes (`LeanScript/Eval.lean`)
+### Evaluator changes (`LeanScript/Term/Eval.lean`)
 
 `Term.eval` gets one more argument, `henv : HEnv Δ`, which every case passes along. The new
 cases are:
