@@ -51,3 +51,25 @@ name = "tests"
 srcDir = "Tests"
 root = "Main"
 
+
+[[lean_lib]]
+name = "LanguageJavascriptCommon"
+globs = ["LanguageJavascriptCommon.+"]
+
+[[lean_lib]]
+name = "LanguageJavascriptMini"
+globs = ["LanguageJavascriptMini.+"]
+
+[[lean_lib]]
+name = "LeanScriptCli"
+globs = ["LeanScriptCli.+"]
+
+# `leanscript FILE.lean`: translate the public functions of a Lean file to JavaScript.
+[[lean_exe]]
+name = "leanscript"
+root = "LeanScriptCli.Main"
+supportInterpreter = true
+
+[[lean_lib]]
+name = "MoreJsTy"
+globs = ["MoreJsTy.+"]

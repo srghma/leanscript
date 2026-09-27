@@ -6,6 +6,7 @@ import TermTests.WhileTest
 import TermTests.QuotientTest
 import TermTests.RoseVariantsTest
 import LeanScript.Term.Optimize
+import MoreJsTy.FromTerm
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -119,12 +120,40 @@ def optimizeSpec : Spec := describe "Term.optimize" do
   checkNat "roseFv.size" 9
     ((RoseVariantsTest.roseFSizeT.optimizeN 3).run (RoseVariantsTest.roseFT.optimizeN 3).run)
 
+/-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the layouts
+    the configuration chooses, and the shape of the functions it produces.  (The generated
+    JavaScript itself is run against Lean by `scripts/leanscript-snapshots.sh`.) -/
+def moreJsSpec : Spec := describe "MoreJsTy" do
+  let faithful : MoreJs.JsConfig := {}
+  let pbo := MoreJs.JsConfig.presetPBO
+  it "Nat is a BigInt (faithful) or a checked UInt53 (pbo)" do
+    assertEq "faithful" "nat(bigint)" (MoreJs.lowerScalarPrim faithful .nat).pretty
+    assertEq "pbo" "uint53(number)" (MoreJs.lowerScalarPrim pbo .nat).pretty
+  let conv (cfg : MoreJs.JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
+      IO MoreJs.JsFun :=
+    match MoreJs.termToJs cfg name name ps ct with
+    | .ok (f, _) => pure f
+    | .error e => throw (IO.userError s!"{name}: {e}")
+  for (cfgName, cfg) in [("faithful", faithful), ("pbo", pbo)] do
+    it s!"ack2 converts ({cfgName})" do
+      let f ← conv cfg "ack2" ["m", "n"] ⟨[], .nil, _, _, Tco.ack2T⟩
+      -- `ack2` is `fun m => nat_rec …`: one parameter, returning a function of `n`
+      assertEq "parameters" ["m"] (f.params.map Prod.fst)
+      assertEq "exported" true ((f.pretty.splitOn "export function ack2(").length > 1)
+    it s!"hyperWhile converts to loops ({cfgName})" do
+      let f ← conv cfg "hyperWhile" ["n", "a", "b"] ⟨[], .nil, _, _, Tco.hyperWhileT⟩
+      assertEq "a for loop" true ((f.pretty.splitOn "for (").length > 1)
+    it s!"bits converts ({cfgName})" do
+      let f ← conv cfg "bits" ["n"] ⟨[], .nil, _, _, WhileTest.bitsT⟩
+      assertEq "result layout" (MoreJs.lowerScalarPrim cfg .nat).pretty f.ret.pretty
+
 def spec : Spec := do
   tcoSpec
   whileSpec
   quotientSpec
   roseSpec
   optimizeSpec
+  moreJsSpec
 
 public def main (args : List String) : IO UInt32 :=
   runSpecFromArgsAndReturnExitCode args spec

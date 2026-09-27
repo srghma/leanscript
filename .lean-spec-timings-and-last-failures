@@ -1,0 +1,41 @@
+MoreJsTy » Nat is a BigInt (faithful) or a checked UInt53 (pbo) 2 1.000000
+MoreJsTy » ack2 converts (faithful) 2 5.000000
+MoreJsTy » ack2 converts (pbo) 2 6.000000
+MoreJsTy » bits converts (faithful) 4 5.000000
+MoreJsTy » bits converts (pbo) 4 8.000000
+MoreJsTy » hyperWhile converts to loops (faithful) 4 7.000000
+MoreJsTy » hyperWhile converts to loops (pbo) 4 6.000000
+QuotientTest » S.odds (3, #[1, 2, 5]) 6 10.000000
+RoseVariantsTest » (RoseF.fan 5).size 6 5.000000
+RoseVariantsTest » roseFv.depth 6 6.000000
+RoseVariantsTest » roseFv.mirror.size 6 7.000000
+RoseVariantsTest » roseFv.size 6 7.000000
+TcoTest » ack2 2 3 6 2.000000
+TcoTest » ackInner (· + 2) 3 6 3.000000
+TcoTest » hyperLoop (2 * ·) 5 1 6 4.000000
+TcoTest » hyperTCO 1 2 3 6 4.000000
+TcoTest » hyperTCO 3 2 10 6 6.000000
+TcoTest » hyperTCO 3 2 3 6 4.000000
+TcoTest » hyperWhile 1 2 3 6 5.000000
+TcoTest » hyperWhile 3 2 3 6 5.000000
+TcoTest » iter (· + 3) 4 1 6 6.000000
+TcoTest » stepSum 2 30 6 5.000000
+TcoTest » stepSum 5 12 6 9.000000
+TcoTest » stepSum 7 3 6 5.000000
+Term.optimize » S.odds (3, #[1, 2, 5]) 6 8.000000
+Term.optimize » ack2 2 3 6 3.000000
+Term.optimize » bits 1000 6 5.000000
+Term.optimize » firstMultiple 100 7 6 7.000000
+Term.optimize » hyperTCO 3 2 3 6 9.000000
+Term.optimize » hyperWhile 3 2 3 6 12.000000
+Term.optimize » roseFv.size 6 10.000000
+Term.optimize » stepSum 2 30 6 6.000000
+WhileTest » bits 1000 6 5.000000
+WhileTest » countBy3 10 6 6.000000
+WhileTest » firstMultiple 100 7 6 1.000000
+WhileTest » isqrtUp 50 6 6.000000
+WhileTest » pow2 10 6 3.000000
+WhileTest » sumDown 10 6 6.000000
+---
+---
+total 6 41.000000

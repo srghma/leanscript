@@ -1,3 +1,44 @@
+# Summary of changes for run 7e4d2587-f0c8-4b3a-8042-c199d13f7ae9
+I implemented `MoreJsTy`, a configurable Term→MoreJsTy converter, a printer that goes through `LanguageJavascriptMini`, and the `leanscript` executable. I ran it on every `Tests/SnapshotsMy/*.lean`. Many functions in those files can't be translated yet (see below), so several files export nothing. For every function that was translated, the generated JavaScript gives the same answers as Lean on sample inputs.
+
+**What was built**
+- **`MoreJsTy/`**
+  - `Config.lean`: `JsConfig`, with a setting per type: `Nat`, `Int`, `UInt64`, `Int64` and wide `BitVec` become either a `number` or a `BigInt`; arrays can be typed or generic. There are two presets, `faithful` (the default) and `pbo`.
+  - `Ty.lean`: the `MoreJsTy` layouts. With `nat=num`, a `Nat` is a `uint53` that throws on overflow; with `bigint` it is a JS `BigInt`. The type conversion uses `lowerScalarPrim`, `lowerArrayPrim` and `lowerTy`.
+  - `Syntax.lean`: the JavaScript grammar and the `-MoreJsTy.txt` dump.
+  - `Extern.lean`: externs become inline JS or runtime helpers.
+  - `FromTerm.lean`: the converter `termToJs`.
+  - `PrintMini.lean`: the printer.
+- **`leanscript`**: set it up with `scripts/install-leanscript.sh`, which builds it and links `./.lake/bin/leanscript`. It takes a file path or a module name such as `SnapshotsMy.TcoAck`.
+  - It elaborates the file and keeps the public, structurally total, computable definitions. For each one it reads the `Expr`, translates it to a `Term`, optimises it with the proved-correct `Term.optimizeN`, converts it to `MoreJsTy` and prints it.
+  - It writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt` and `FILE.js` (runtime helpers, then `export function …`).
+  - Each output starts with the configuration and lists every definition it didn't translate, with the reason.
+  - With `--check` it also writes `FILE.check.mjs`, which calls each exported function on sample arguments and compares the result with Lean's own answer.
+  - `scripts/leanscript-snapshots.sh` runs everything on `Tests/SnapshotsMy` and runs the checks with node.
+
+**Results**
+- 21 of the 46 `Tests/SnapshotsMy` files export at least one function.
+- Every generated `.js` file passes `node --check`.
+- All differential checks pass, under both the `faithful` and the `pbo` preset (AppArity 129, PrimOpFloat 135, SafeGuards 51, …).
+- Under `pbo`, an overflowing multiplication throws as intended.
+- For `TcoAck`, only `pair` is translated. `ack`, `ack2` and `ack999` are refused as partial (`ack999` is a value that can't be computed at compile time). `ackWhile` needs `List` and is refused. The Cantor-pairing `while` loops are refused because the translator can't see that they terminate.
+- `lake build` succeeds, and `lake exe tests` passes 38/38, including 7 new `MoreJsTy` specs.
+
+**Fixes along the way**
+- `Float`/`Float32` are now leaf types in `LeanScript/GenElab/Read.lean`. Before this, every Float function failed to translate.
+- I added JS implementations for `String.Pos.Raw.set` and `extract`, and an array-index conversion that never throws.
+
+**Things to be aware of**
+- The old backend's snapshot files (`GcdEntry.js`, the `*.test.js` files, `Html-test*`, …) would have been overwritten or no longer matched the new output. They are kept unchanged in `Tests/SnapshotsMy/legacy-backend/`.
+- None of the converter, printer or CLI is formally proved; it is covered by tests only. The Properties table lists `MoreJsTy`, `JsConfig`, `termToJs` and `JsModule.toJs` as definitions.
+
+**Not done yet** (listed in `NOT_IMPLEMENTED.md` §4, with a new section in `README.md`)
+- Declared datatypes (`List`, user inductives) aren't converted to JavaScript. This is the most common reason a snapshot function isn't translated.
+- Some externs are emitted as helpers that throw when called.
+- String `<` compares UTF-16 code units, where Lean compares code points.
+- Functions whose body isn't a plain chain of lambdas are exported curried, e.g. `ack2(m)(n)`.
+- The translator reports "invalid scope" on `ScalarRepl.test6`; I didn't look into it.
+
 # Summary of changes for run 87949201-4522-467b-b735-28c81c558794
 I proved Church–Rosser for rewriting under `Term.eval`. Everything builds with no `sorry`, and the main theorems use only the axioms `propext`, `Classical.choice` and `Quot.sound`.
 

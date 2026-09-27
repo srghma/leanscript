@@ -31,6 +31,38 @@ are too slow for the kernel) with `lake test`.  The project depends on Mathlib (
 with Batteries and Aesop); `LeanScript/Term/UsageAlgebra.lean` takes the algebra of usages
 (commutative monoid, linear order) from it.
 
+## From Lean to JavaScript: `leanscript`
+
+```
+scripts/install-leanscript.sh                 # builds it, links ./.lake/bin/leanscript
+./.lake/bin/leanscript Tests/SnapshotsMy/TcoAck.lean     # or a module name: SnapshotsMy.TcoAck
+./.lake/bin/leanscript --preset=pbo --check FILE.lean    # numbers instead of BigInt; differential checks
+scripts/leanscript-snapshots.sh               # every Tests/SnapshotsMy/*.lean, checks run with node
+```
+
+For each public, structurally total function of the file, `leanscript` reads its `Expr`
+(not LCNF or IR, which have lost the types), translates it to a `Term`
+(`#leanscript_to_term`), optimises it (`Term.optimizeN`, which preserves `Term.eval`:
+`Term.optimizeN_eval`), converts it to the JavaScript grammar `MoreJsTy` at the chosen
+configuration (`MoreJs.termToJs`) and prints it with `LanguageJavascriptMini`.  Next to
+`FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
+`FILE-MoreJsTy.txt` and `FILE.js` (the runtime helpers the module needs, then one
+`export function` per function); with `--check` also `FILE.check.mjs`, which calls every
+exported function on sample arguments and compares the answers with the ones Lean computes.
+Every output starts with the configuration and lists the functions that were not translated,
+with the reason.  `leanscript --help` lists the configuration options (`--nat=num|bigint`,
+`--int=…`, `--array-bool=uint8|generic`, …; `MoreJsTy/Config.lean`).
+
+| path | what it holds |
+| :-- | :-- |
+| `MoreJsTy/Config.lean` | `MoreJs.JsConfig`: how each leaf type is represented (a `number` or a `BigInt`; typed or generic arrays), presets `faithful` (default) and `pbo`, command-line knobs |
+| `MoreJsTy/Ty.lean` | the layouts `MoreJsTy` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; tagged arrays; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
+| `MoreJsTy/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper`, `JsModule`, and the `-MoreJsTy.txt` dump |
+| `MoreJsTy/Extern.lean` | each extern of the catalogue as inline JavaScript or a runtime helper, per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
+| `MoreJsTy/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
+| `MoreJsTy/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
+| `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating), `Check.lean` (`--check`), `Main.lean` |
+
 ## Layout
 
 | path | what it holds |

@@ -186,9 +186,27 @@ The supported fragment and the refusals are listed in the header of
 - **No proof that the translation is correct** in general: each test checks it on examples
   by `rfl`, and `ToTermTest.sumToT_run` proves it at every argument for one function.
 
-## 4. Backend
+## 4. Backend (`MoreJsTy/`, `leanscript`)
 
-- **There is no JavaScript backend or printer.**
+- **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
+  `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
+  (`MoreJsTy/FromTerm.lean`), so every function over `List`, a user inductive, … is listed
+  under "not translated" in the outputs.  (The layouts exist in `MoreJsTy.lowerTy`: tagged
+  arrays, enums; only the recursors are missing.)
+- **Some externs have no JavaScript implementation**: they are emitted as a runtime helper
+  that throws (`MoreJs.stubHelper`, `MoreJsTy/Extern.lean`).  `leanscript --check` finds
+  them (a check answers "threw: … has no JavaScript implementation yet").
+- `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
+  units, not code points as Lean does: the two differ on strings mixing characters above
+  `U+FFFF` with characters in `U+E000`–`U+FFFF`.
+- A top-level function whose body is not a chain of lambdas (e.g. `fun m => nat_rec …`
+  returning a function) is exported curried: `ack2(m)(n)`.
+- `leanscript` only reads the definitions it can translate: `partial` definitions,
+  well-founded recursion, `IO`/`ST` actions, definitions with errors, `while` loops whose
+  termination the translator cannot see, and constants whose value is not computable at
+  compile time (`ack 999 1`) are listed with the reason in every output file.
+- The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
+  passed through a structural recursion); not investigated.
 
 ## 5. Housekeeping
 
