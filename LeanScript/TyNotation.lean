@@ -20,6 +20,8 @@ notation (`set_option pp.leanscript false` turns that off).
 | `BitVec 32`, `String.Pos "ab"` | `.prim (.bitvec 32)`, `.prim (.stringPos "ab")`    |
 | `σ → τ`                        | `.fn σ τ` (right associative)                      |
 | `Array τ`                      | `.array τ`                                         |
+| `Thunk τ`                      | `.thunk τ`                                         |
+| `Unit → τ`                     | `.lazy τ`                                          |
 | `Option τ`                     | `Ty.option τ` (`⟪· \| τ⟫`)                         |
 | `σ ⊕ τ`                        | `Ty.sum σ τ` (`⟪σ \| τ⟫`, right associative)       |
 | `τ₁ × τ₂ × … × τₙ`             | `.record τ₁ (.cons τ₂ … (.one τₙ))`                |
@@ -27,6 +29,10 @@ notation (`set_option pp.leanscript false` turns that off).
 | `Enum n`, `Enum n k`           | `.enum` of `n ≥ 3` constructors, numbered from `k` |
 | `Data b j`                     | `.data r`: member `j` of block `b` (`0` newest)    |
 | `‹t›`                          | the Lean term `t : Ty ks`                          |
+
+Delays never nest (`Ty.thunk` / `Ty.lazy` hold a `Ty ks false`): as when a Lean type is read,
+`Unit → Unit → τ` is `.lazy τ`, and `Unit → Thunk τ`, `Thunk (Unit → τ)`, `Thunk (Thunk τ)` are
+`.thunk τ`.
 
 A chain `τ₁ × τ₂ × τ₃` is **one** record of three fields; parentheses make a field that is
 itself a record: `τ₁ × (τ₂ × τ₃)` is a record of two fields.
@@ -144,14 +150,32 @@ def enumOf (n : TSyntax `lsty) (k : Term) : MacroM Term := do
       `(LeanScript.Ty.enum (LeanScript.LeanEnumSchema.mk $(quote (n.getNat - 3)) $k))
   | n => do `(LeanScript.Ty.enum (LeanScript.LeanEnumSchema.mk ($(← lstyArg n) - 3) $k))
 
+/-- Is the surface type `Unit` (the domain of a lazy delay `Unit → τ`)? -/
+partial def isUnit : TSyntax `lsty → Bool
+  | `(lsty| $id:ident) => id.getId.eraseMacroScopes == `Unit
+  | `(lsty| ($t)) => isUnit t
+  | _ => false
+
 mutual
 
-/-- The `Ty` a surface type denotes. -/
-partial def elabLsty : TSyntax `lsty → MacroM Term
+/-- The `Ty` a surface type denotes.  With `nd`, the term is built at `Ty ks false` (it is the
+    contents of a delay): the abbreviations fixed at `Ty ks` (`Ty.nat`, `Ty.option`, …) are
+    unfolded to their constructors. -/
+partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
   | `(lsty| ‹$t›) => pure t
-  | `(lsty| ($t)) => elabLsty t
-  | `(lsty| $a → $b) => do `(LeanScript.Ty.fn $(← elabLsty a) $(← elabLsty b))
-  | `(lsty| $a ⊕ $b) => do `(LeanScript.Ty.sum $(← elabLsty a) $(← elabLsty b))
+  | `(lsty| ($t)) => elabLstyAt nd t
+  | `(lsty| $a → $b) => do
+      if isUnit a then
+        let (thunk, c) ← elabUndelayed b
+        if nd then Macro.throwErrorAt a "internal error: a delay inside a delay"
+        if thunk then `(LeanScript.Ty.thunk $c) else `(LeanScript.Ty.lazy $c)
+      else `(LeanScript.Ty.fn $(← elabLsty a) $(← elabLsty b))
+  | `(lsty| $a ⊕ $b) => do
+      if nd then
+        `(LeanScript.Ty.union (LeanScript.Ctors.two
+          (LeanScript.Ctor.fields (LeanScript.Fields.one $(← elabLsty a)))
+          (LeanScript.Ctor.fields (LeanScript.Fields.one $(← elabLsty b)))))
+      else `(LeanScript.Ty.sum $(← elabLsty a) $(← elabLsty b))
   | `(lsty| $a × $b) => do
       let fs ← (recordFields b).mapM elabLsty
       `(LeanScript.Ty.record $(← elabLsty a) $(← mkFields fs))
@@ -161,19 +185,30 @@ partial def elabLsty : TSyntax `lsty → MacroM Term
   | `(lsty| $id:ident) => do
       match primNames.lookup id.getId.eraseMacroScopes with
       | some p =>
-        match p with
-        | ``LeanPrimTy.bool => `(LeanScript.Ty.bool)
-        | ``LeanPrimTy.nat => `(LeanScript.Ty.nat)
-        | ``LeanPrimTy.int => `(LeanScript.Ty.int)
-        | ``LeanPrimTy.string => `(LeanScript.Ty.string)
-        | _ => `(LeanScript.Ty.prim $(mkIdentFrom id p) rfl)
-      | none => Macro.throwErrorAt id s!"unknown leaf `{id.getId}`: a Lean term is written \
+        match nd, p with
+        | false, ``LeanPrimTy.bool => `(LeanScript.Ty.bool)
+        | false, ``LeanPrimTy.nat => `(LeanScript.Ty.nat)
+        | false, ``LeanPrimTy.int => `(LeanScript.Ty.int)
+        | false, ``LeanPrimTy.string => `(LeanScript.Ty.string)
+        | _, _ => `(LeanScript.Ty.prim $(mkIdentFrom id p) rfl)
+      | none =>
+        if id.getId.eraseMacroScopes == `Unit then
+          Macro.throwErrorAt id "`Unit` is only a type as the domain of a delay `Unit → τ`"
+        else Macro.throwErrorAt id s!"unknown leaf `{id.getId}`: a Lean term is written \
           `‹{id.getId}›`"
   | `(lsty| $id:ident $args*) => do
       let f := id.getId.eraseMacroScopes
       match f, args.toList with
       | `Array, [t] => do `(LeanScript.Ty.array $(← elabLsty t))
-      | `Option, [t] => do `(LeanScript.Ty.option $(← elabLsty t))
+      | `Thunk, [t] => do
+          if nd then Macro.throwErrorAt id "internal error: a delay inside a delay"
+          let (_, c) ← elabUndelayed t
+          `(LeanScript.Ty.thunk $c)
+      | `Option, [t] => do
+          if nd then
+            `(LeanScript.Ty.union (LeanScript.Ctors.two LeanScript.Ctor.nullary
+              (LeanScript.Ctor.fields (LeanScript.Fields.one $(← elabLsty t)))))
+          else `(LeanScript.Ty.option $(← elabLsty t))
       | `BitVec, [n] => do `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.bitvec $(← lstyArg n)) rfl)
       | `String.Pos, [s] => do
           `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.stringPos $(← lstyArg s)) rfl)
@@ -186,11 +221,28 @@ partial def elabLsty : TSyntax `lsty → MacroM Term
           let `(lsty| $b:num) := b | Macro.throwErrorAt b "expected a block number"
           `(LeanScript.Ty.data $(← mkRef b.getNat (← lstyArg j)))
       | _, _ => Macro.throwErrorAt id s!"unknown type former `{f}` with {args.size} \
-          argument(s): expected `Array τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, \
-          `Enum n k` or `Data b j`"
+          argument(s): expected `Array τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, \
+          `Enum n`, `Enum n k` or `Data b j`"
   | `(lsty| $n:num) => Macro.throwErrorAt n "a number is not a type"
   | `(lsty| $s:str) => Macro.throwErrorAt s "a string is not a type"
   | t => Macro.throwErrorAt t "unsupported type syntax"
+
+/-- The `Ty` a surface type denotes (at `Ty ks`). -/
+partial def elabLsty (t : TSyntax `lsty) : MacroM Term := elabLstyAt false t
+
+/-- The contents of the delays around a surface type, at `Ty ks false`, and whether one of
+    them is a `Thunk` (a `thunk` absorbs a `lazy`): `Unit → Thunk (Unit → τ)` is `(true, τ)`. -/
+partial def elabUndelayed : TSyntax `lsty → MacroM (Bool × Term)
+  | `(lsty| ($t)) => elabUndelayed t
+  | `(lsty| $a → $b) => do
+      if isUnit a then elabUndelayed b
+      else return (false, ← elabLstyAt true (← `(lsty| $a → $b)))
+  | `(lsty| $id:ident $args*) => do
+      if id.getId.eraseMacroScopes == `Thunk && args.size == 1 then
+        let (_, c) ← elabUndelayed args[0]!
+        return (true, c)
+      return (false, ← elabLstyAt true (← `(lsty| $id:ident $args*)))
+  | t => return (false, ← elabLstyAt true t)
 
 /-- A constructor of a union. -/
 partial def elabCtor : TSyntax `lsctor → MacroM Term
@@ -203,7 +255,7 @@ partial def elabCtor : TSyntax `lsctor → MacroM Term
 end
 
 macro_rules
-  | `([Ty| $t]) => elabLsty t
+  | `([Ty| $t]) => do `(($(← elabLsty t) : LeanScript.Ty _))
 
 /-! ## Pretty-printing -/
 
@@ -284,28 +336,34 @@ partial def delabLsty (root : Bool) : DelabM PSyn := do
   let n := e.getAppNumArgs
   let r : DelabM PSyn := do
     match c, n with
-    | ``Ty.prim, 3 => withNaryArg 1 delabPrim
+    | ``Ty.prim, 4 => withNaryArg 2 delabPrim
     | ``Ty.bool, 1 => return (← `(lsty| $(mkIdent `Bool):ident), atomPrec)
     | ``Ty.nat, 1 => return (← `(lsty| $(mkIdent `Nat):ident), atomPrec)
     | ``Ty.int, 1 => return (← `(lsty| $(mkIdent `Int):ident), atomPrec)
     | ``Ty.string, 1 => return (← `(lsty| $(mkIdent `String):ident), atomPrec)
-    | ``Ty.fn, 3 => do
-        let a ← paren 26 (← withNaryArg 1 (delabLsty false))
-        let b ← paren 25 (← withNaryArg 2 (delabLsty false))
+    | ``Ty.fn, 4 => do
+        let a ← paren 26 (← withNaryArg 2 (delabLsty false))
+        let b ← paren 25 (← withNaryArg 3 (delabLsty false))
         return (← `(lsty| $a → $b), 25)
-    | ``Ty.array, 2 => do
-        let t ← paren atomPrec (← withNaryArg 1 (delabLsty false))
+    | ``Ty.array, 3 => do
+        let t ← paren atomPrec (← withNaryArg 2 (delabLsty false))
         return (← `(lsty| $(mkIdent `Array):ident $t), 40)
+    | ``Ty.thunk, 2 => do
+        let t ← paren atomPrec (← withNaryArg 1 (delabLsty false))
+        return (← `(lsty| $(mkIdent `Thunk):ident $t), 40)
+    | ``Ty.lazy, 2 => do
+        let t ← paren 25 (← withNaryArg 1 (delabLsty false))
+        return (← `(lsty| $(mkIdent `Unit):ident → $t), 25)
     | ``Ty.option, 2 => do
         let t ← paren atomPrec (← withNaryArg 1 (delabLsty false))
         return (← `(lsty| $(mkIdent `Option):ident $t), 40)
     | ``Ty.sum, 3 => mkSum (← withNaryArg 1 (delabLsty false)) (← withNaryArg 2 (delabLsty false))
     | ``Ty.pair, 3 => mkRecord [← withNaryArg 1 (delabLsty false), ← withNaryArg 2 (delabLsty false)]
-    | ``Ty.record, 3 => do
-        let t ← withNaryArg 1 (delabLsty false)
-        mkRecord (t :: (← withNaryArg 2 delabFields))
-    | ``Ty.union, 4 => do
-        match ← withNaryArg 2 delabCtors with
+    | ``Ty.record, 4 => do
+        let t ← withNaryArg 2 (delabLsty false)
+        mkRecord (t :: (← withNaryArg 3 delabFields))
+    | ``Ty.union, 5 => do
+        match ← withNaryArg 3 delabCtors with
         | [none, some [t]] => return (← `(lsty| $(mkIdent `Option):ident $(← paren atomPrec t)), 40)
         | [some [a], some [b]] => mkSum a b
         | cs => do
@@ -316,7 +374,7 @@ partial def delabLsty (root : Bool) : DelabM PSyn := do
                   pure ⟨Syntax.node .none ``LeanScript.lsctorFields
                     #[Syntax.mkSep (fs.map (·.raw)) (mkAtom ",")]⟩
             return (← `(lsty| ⟪$cs|*⟫), atomPrec)
-    | ``Ty.enum, 2 => do
+    | ``Ty.enum, 3 => do
         let s := e.appArg!.consumeMData
         if s.isAppOfArity ``LeanEnumSchema.mk 2 then
           if let (some x, some k) := (natLit? (s.getArg! 0), intLit? (s.getArg! 1)) then
@@ -325,13 +383,13 @@ partial def delabLsty (root : Bool) : DelabM PSyn := do
             let k : TSyntax `lsty ← if k < 0
               then `(lsty| -$(Syntax.mkNumLit (toString k.natAbs)):num) else pure (numArg k.toNat)
             return (← `(lsty| $(mkIdent `Enum):ident $n $k), 40)
-        let s ← withNaryArg 1 delab
+        let s ← withNaryArg 2 delab
         return (← `(lsty| $(mkIdent `Enum):ident ‹$s›), 40)
-    | ``Ty.data, 2 => do
+    | ``Ty.data, 3 => do
         match refLit? e.appArg!.consumeMData with
         | some (b, j) => return (← `(lsty| $(mkIdent `Data):ident $(numArg b) $(numArg j)), 40)
         | none =>
-          let r ← withNaryArg 1 delab
+          let r ← withNaryArg 2 delab
           return (← `(lsty| $(mkIdent `Data):ident ‹$r›), 40)
     | _, _ => failure
   r <|> other
@@ -395,6 +453,8 @@ def delabTy : Delab := do
 @[delab app.LeanScript.Ty.record] def delabTyRecord : Delab := delabTy
 @[delab app.LeanScript.Ty.union] def delabTyUnion : Delab := delabTy
 @[delab app.LeanScript.Ty.data] def delabTyData : Delab := delabTy
+@[delab app.LeanScript.Ty.thunk] def delabTyThunk : Delab := delabTy
+@[delab app.LeanScript.Ty.lazy] def delabTyLazy : Delab := delabTy
 @[delab app.LeanScript.Ty.bool] def delabTyBool : Delab := delabTy
 @[delab app.LeanScript.Ty.nat] def delabTyNat : Delab := delabTy
 @[delab app.LeanScript.Ty.int] def delabTyInt : Delab := delabTy

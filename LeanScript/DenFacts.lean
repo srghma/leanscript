@@ -28,7 +28,7 @@ section Transport
 variable {ks ks' : List Nat} (f : Ref ks → Ref ks') (E : Ref ks' → Type)
 
 mutual
-theorem Ty.lift_lower : (t : Ty ks) → (x : Ty.den E (Ty.map f t)) →
+theorem Ty.lift_lower {d : Bool} : (t : Ty ks d) → (x : Ty.den E (Ty.map f t)) →
     Ty.lift f E t (Ty.lower f E t x) = x
   | .prim _ _, _ => rfl
   | .fn a b, x => by
@@ -50,7 +50,9 @@ theorem Ty.lift_lower : (t : Ty ks) → (x : Ty.den E (Ty.map f t)) →
       rw [Ty.lift_lower t, Fields.lift_lower fs]; exact rfl
   | .union cs (h := _), x => Ctors.lift_lower cs x
   | .data _, _ => rfl
-theorem Ty.lower_lift : (t : Ty ks) → (x : Ty.den (fun r => E (f r)) t) →
+  | .thunk t, x => Ty.lift_lower t x
+  | .lazy t, x => Ty.lift_lower t x
+theorem Ty.lower_lift {d : Bool} : (t : Ty ks d) → (x : Ty.den (fun r => E (f r)) t) →
     Ty.lower f E t (Ty.lift f E t x) = x
   | .prim _ _, _ => rfl
   | .fn a b, x => by
@@ -72,6 +74,8 @@ theorem Ty.lower_lift : (t : Ty ks) → (x : Ty.den (fun r => E (f r)) t) →
       rw [Ty.lower_lift t, Fields.lower_lift fs]; exact rfl
   | .union cs (h := _), x => Ctors.lower_lift cs x
   | .data _, _ => rfl
+  | .thunk t, x => Ty.lower_lift t x
+  | .lazy t, x => Ty.lower_lift t x
 theorem Fields.lift_lower : (fs : Fields ks) → (x : Fields.den E (Fields.map f fs)) →
     Fields.lift f E fs (Fields.lower f E fs x) = x
   | .one t, x => Ty.lift_lower t x

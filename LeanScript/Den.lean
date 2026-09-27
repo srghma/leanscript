@@ -44,8 +44,9 @@ def consT : Option Type → Type → Type
   | some A, R => A ⊕ R
 
 mutual
-/-- The meaning of a closed type, given the meaning `E` of the declared datatypes. -/
-def Ty.den {ks : List Nat} (E : Ref ks → Type) : Ty ks → Type
+/-- The meaning of a closed type, given the meaning `E` of the declared datatypes: a delay
+    (`thunk` / `lazy`) denotes the value it holds. -/
+def Ty.den {ks : List Nat} (E : Ref ks → Type) {d : Bool} : Ty ks d → Type
   | .prim p _ => p.denote
   | .fn a b => Ty.den E a → Ty.den E b
   | .array t => Array (Ty.den E t)
@@ -53,6 +54,8 @@ def Ty.den {ks : List Nat} (E : Ref ks → Type) : Ty ks → Type
   | .record t fs => Ty.den E t × Fields.den E fs
   | .union cs (h := _) => Ctors.den E cs
   | .data r => E r
+  | .thunk t => Ty.den E t
+  | .lazy t => Ty.den E t
 /-- The meaning of fields: a nested product. -/
 def Fields.den {ks : List Nat} (E : Ref ks → Type) : Fields ks → Type
   | .one t => Ty.den E t
@@ -67,6 +70,40 @@ def Ctors.den {ks : List Nat} {bs : List Bool} (E : Ref ks → Type) : Ctors ks 
   | .cons c cs => consT (Ctor.den E c) (Ctors.den E cs)
 end
 
+/-- A delay denotes what it holds. -/
+theorem Ty.den_relax {ks : List Nat} (E : Ref ks → Type) (t : Ty ks false) :
+    Ty.den E t.relax = Ty.den E t := by
+  cases t <;> rfl
+
+/-- A value of a type that is not a delay, read at the type (`Ty.relax`).  The identity: it
+    only reduces once the constructor of `t` is known, where it is `id`. -/
+def Ty.ofRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.den E t.relax → Ty.den E t
+  | .prim _ _, x => x
+  | .fn _ _, x => x
+  | .array _, x => x
+  | .enum _, x => x
+  | .record _ _, x => x
+  | .union _ (h := _), x => x
+  | .data _, x => x
+
+/-- The inverse of `Ty.ofRelax`, also the identity. -/
+def Ty.toRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.den E t → Ty.den E t.relax
+  | .prim _ _, x => x
+  | .fn _ _, x => x
+  | .array _, x => x
+  | .enum _, x => x
+  | .record _ _, x => x
+  | .union _ (h := _), x => x
+  | .data _, x => x
+
+@[simp] theorem Ty.ofRelax_toRelax {ks : List Nat} (E : Ref ks → Type) (t : Ty ks false)
+    (x : Ty.den E t) : Ty.ofRelax E t (Ty.toRelax E t x) = x := by
+  cases t <;> rfl
+
+@[simp] theorem Ty.toRelax_ofRelax {ks : List Nat} (E : Ref ks → Type) (t : Ty ks false)
+    (x : Ty.den E t.relax) : Ty.toRelax E t (Ty.ofRelax E t x) = x := by
+  cases t <;> rfl
+
 /-! ## Renaming and its transports -/
 
 section Transport
@@ -75,7 +112,7 @@ variable {ks ks' : List Nat} (f : Ref ks → Ref ks') (E : Ref ks' → Type)
 mutual
 /-- A value of `t` (datatypes read through `f`) is a value of the renamed type.  Structural,
     the identity on declared datatypes. -/
-def Ty.lift : (t : Ty ks) → Ty.den (fun r => E (f r)) t → Ty.den E (Ty.map f t)
+def Ty.lift {d : Bool} : (t : Ty ks d) → Ty.den (fun r => E (f r)) t → Ty.den E (Ty.map f t)
   | .prim _ _, x => x
   | .fn a b, x => fun y => Ty.lift b (x (Ty.lower a y))
   | .array t, x => x.map (Ty.lift t)
@@ -83,8 +120,10 @@ def Ty.lift : (t : Ty ks) → Ty.den (fun r => E (f r)) t → Ty.den E (Ty.map f
   | .record t fs, x => (Ty.lift t x.1, Fields.lift fs x.2)
   | .union cs (h := _), x => Ctors.lift cs x
   | .data _, x => x
+  | .thunk t, x => Ty.lift t x
+  | .lazy t, x => Ty.lift t x
 /-- The inverse of `Ty.lift`. -/
-def Ty.lower : (t : Ty ks) → Ty.den E (Ty.map f t) → Ty.den (fun r => E (f r)) t
+def Ty.lower {d : Bool} : (t : Ty ks d) → Ty.den E (Ty.map f t) → Ty.den (fun r => E (f r)) t
   | .prim _ _, x => x
   | .fn a b, x => fun y => Ty.lower b (x (Ty.lift a y))
   | .array t, x => x.map (Ty.lower t)
@@ -92,6 +131,8 @@ def Ty.lower : (t : Ty ks) → Ty.den E (Ty.map f t) → Ty.den (fun r => E (f r
   | .record t fs, x => (Ty.lower t x.1, Fields.lower fs x.2)
   | .union cs (h := _), x => Ctors.lower cs x
   | .data _, x => x
+  | .thunk t, x => Ty.lower t x
+  | .lazy t, x => Ty.lower t x
 def Fields.lift : (fs : Fields ks) → Fields.den (fun r => E (f r)) fs → Fields.den E (Fields.map f fs)
   | .one t, x => Ty.lift t x
   | .cons t fs, x => (Ty.lift t x.1, Fields.lift fs x.2)

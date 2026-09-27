@@ -103,7 +103,7 @@ example (t : Ty []) : [Ty| ‹t› × ‹t›] = .record t (.one t) := rfl
 #guard_msgs in example : Ty [] := [Ty| Enum 2]
 
 /--
-error: unknown type former `List` with 1 argument(s): expected `Array τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, `Enum n k` or `Data b j`
+error: unknown type former `List` with 1 argument(s): expected `Array τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, `Enum n k` or `Data b j`
 -/
 #guard_msgs in example : Ty [] := [Ty| List Nat]
 

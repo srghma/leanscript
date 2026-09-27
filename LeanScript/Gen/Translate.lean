@@ -41,6 +41,10 @@ inductive CIR where
   | prim (p : Lean.Term)
   | fn (a b : CIR)
   | array (a : CIR)
+  /-- A memoised delay; its contents are never a delay (`CIR.mkThunk`). -/
+  | thunk (a : CIR)
+  /-- A delay recomputed every time; its contents are never a delay (`CIR.mkLazy`). -/
+  | lazy (a : CIR)
   /-- An enum of `n ≥ 3` constructors, the first printed as `shift`. -/
   | enum (n : Nat) (shift : Int)
   | record (f : CIR) (fs : Array CIR)
@@ -51,12 +55,27 @@ inductive CIR where
   | var (i : Nat)
   deriving Inhabited
 
+/-- The contents of a delay, or the type itself. -/
+def CIR.undelay : CIR → CIR
+  | .thunk a | .lazy a => a
+  | c => c
+
+/-- `Thunk c`: one `thunk`, which absorbs the delays of `c` (`Thunk (Unit → τ)`, `Thunk (Thunk τ)`
+    are `Thunk τ`), as `Ty.mkThunk`. -/
+def CIR.mkThunk (c : CIR) : CIR := .thunk c.undelay
+
+/-- `Unit → c`: `c` itself if it already is a delay (`Unit → Unit → τ` is `Unit → τ`,
+    `Unit → Thunk τ` is `Thunk τ`), otherwise a `lazy` of it, as `Ty.mkLazy`. -/
+def CIR.mkLazy : CIR → CIR
+  | c@(.thunk _) | c@(.lazy _) => c
+  | c => .lazy c
+
 /-- Does a closed type name a declared datatype? -/
 partial def CIR.hasData : CIR → Bool
   | .prim _ | .enum .. | .var _ => false
   | .data .. => true
   | .fn a b => a.hasData || b.hasData
-  | .array a => a.hasData
+  | .array a | .thunk a | .lazy a => a.hasData
   | .record f fs => f.hasData || fs.any CIR.hasData
   | .union cs => cs.any (·.any CIR.hasData)
 
@@ -169,6 +188,8 @@ partial def toCIR (e : Expr) : M CIR := do
   | .prim p => return .prim p
   | .fn a b => return .fn (← toCIR a) (← toCIR b)
   | .array a => return .array (← toCIR a)
+  | .thunk a => return (← toCIR a).mkThunk
+  | .lazy a => return (← toCIR a).mkLazy
   | .var x =>
     let some i := (← get).vars.idxOf? x | fail m!"unknown type variable{indentExpr e}"
     return .var i
@@ -212,6 +233,8 @@ partial def toFIR (members : Array Nat) (e : Expr) : M FIR := do
       fail m!"a recursive occurrence in the domain of a function{indentExpr e}"
     return .fn (← toCIR a) (← toFIR members b)
   | .array a => return .array (← toFIR members a)
+  | .thunk _ | .lazy _ =>
+    fail m!"a delay (`Thunk` or `Unit → _`) around a recursive occurrence is not supported{indentExpr e}"
   | .prim _ | .var _ => unreachable!
 
 /-- Order the members of a recursive SCC so that each has a constructor using only earlier

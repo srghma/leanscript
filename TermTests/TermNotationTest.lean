@@ -222,6 +222,22 @@ example : roseSumC = roseSumT := rfl
 #guard_msgs in
 set_option pp.leanscript false in #check (Term.lam (.bvar 0) : Term Δ [] [Ty| Nat → Nat])
 
+/-! ## Delays
+
+`thunk_mk`/`lazy_mk` delay a value and `thunk_force`/`lazy_force` force it; all four run as
+the identity.  The contents of a forced delay are not known from the type of the result, so the
+argument of `thunk_force`/`lazy_force` is written with its type when nothing else fixes it. -/
+
+/-- info: [Term| fun _ => thunk_mk (lazy_force (lazy_mk #0))] : Term Δ [] [Ty| Nat → Thunk Nat] -/
+#guard_msgs in
+#check ([Term| fun _ => thunk_mk (lazy_force (lazy_mk #0))] : Term Δ [] [Ty| Nat → Thunk Nat])
+
+example : ([Term| fun _ => thunk_mk (lazy_force (lazy_mk #0))] :
+    Term DSig.nil [] [Ty| Nat → Thunk Nat]).run (3 : Nat) = (3 : Nat) := rfl
+
+example : ([Term| fun _ => thunk_force (#0 : Thunk Nat)] : Term Δ [] [Ty| Thunk Nat → Nat]) =
+    .lam (.thunk_force (τ := .prim .nat) (.var .head)) := rfl
+
 /-! ## Refused forms -/
 
 /-- error: `nat_rec` is used as `nat_rec n z s` -/

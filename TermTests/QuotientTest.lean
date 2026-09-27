@@ -149,8 +149,8 @@ def sum3 (p q : Quotient mod3) : Nat :=
 def rem3T := #leanscript_to_term rem3
 def succ3T := #leanscript_to_term succ3
 def sum3T := #leanscript_to_term sum3
-example : (rem3T (Δ := DSig.nil)).run (succ3T.run (7 : Nat)) = (2 : Nat) := rfl
-example : (sum3T (Δ := DSig.nil)).run (succ3T.run (7 : Nat)) (5 : Nat) = (1 : Nat) := rfl
+example : (rem3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) = (2 : Nat) := rfl
+example : (sum3T (Δ := DSig.nil)).run ((succ3T (Δ := DSig.nil)).run (7 : Nat)) (5 : Nat) = (1 : Nat) := rfl
 
 /-! ## Externs on quotients: given the class of the representative -/
 

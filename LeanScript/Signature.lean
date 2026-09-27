@@ -47,8 +47,8 @@ erased: `Vec α n` is `Vec α`; a type index recursed at other indices, as in `N
 through a generated element type `Nest.Elem`), a type-indexed family with a constructor at a
 fixed index or with several indices, a field whose type is a type or depends on an earlier field in a
 way that cannot be erased, a recursive
-occurrence in the domain of a function, a `Thunk` (a delay would give `Bool` a second
-type of two values), and a recursive SCC with no
+occurrence in the domain of a function or under a delay (`Thunk T`, `Unit → T`: `Fld` has no
+delay), and a recursive SCC with no
 grounding order (a type with no finite value).
 
 The whole program shares one signature (decision 2 of the proposal: *one signature per

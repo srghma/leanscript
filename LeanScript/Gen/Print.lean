@@ -47,6 +47,12 @@ partial def CIR.stx (c : Nat) (vars : Array Ident) : CIR → MetaM Lean.Term
   | .prim p => `(Ty.prim $p rfl)
   | .fn a b => do `(Ty.fn $(← a.stx c vars) $(← b.stx c vars))
   | .array a => do `(Ty.array $(← a.stx c vars))
+  -- the contents of a delay are never a delay; a type variable may be one, so it is delayed
+  -- with `Ty.mkThunk` / `Ty.mkLazy`, which collapse the delays once it is known
+  | .thunk (.var i) => `(Ty.mkThunk $(vars[i]!))
+  | .lazy (.var i) => `(Ty.mkLazy $(vars[i]!))
+  | .thunk a => do `(Ty.thunk $(← a.stx c vars))
+  | .lazy a => do `(Ty.lazy $(← a.stx c vars))
   | .enum n s => do `(Ty.enum ⟨$(quote (n - 3)), $(← intStx s)⟩)
   | .record f fs => do `(Ty.record $(← f.stx c vars) $(← fieldsStx c vars fs.toList))
   | .union cs => do `(Ty.union $(← ctorsStx c vars cs.toList))

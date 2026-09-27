@@ -1,3 +1,36 @@
+# Summary of changes for run 12ef7284-cce0-4b76-9cd0-e24907cbef8f
+I added the delays `.thunk` and `.lazy` to `Ty`, following `proposals/CovariantTyAssessment.md`. The whole project builds (`lake build`, all four default libraries). The only `sorry` match in any `.lean` file is inside a comment that was already in the original `LeanInitPureExterns/Core.lean`.
+
+**The type (`LeanScript/Ty.lean`)**
+- `Ty` now has a second index, `Ty : List Nat → optParam Bool true → Type`. Every constructor except the delays works at either index. `thunk` and `lazy` take a `Ty ks false`, and the index `false` rules out delays, so a delay can never contain another delay.
+- `Ty.mkThunk` and `Ty.mkLazy` merge nested delays into one. This gives your reading rules:
+  - `Unit → X` and `Unit → Unit → X` become `.lazy X`.
+  - `Unit → Thunk X` becomes `.thunk X`.
+  - `Thunk (Unit → X)` becomes `.thunk X`.
+  - `Thunk (Unit → Array X)`, `Thunk (Unit → Unit → Array X)` and `Unit → Unit → Thunk (Unit → Unit → Array X)` become `.thunk (.array X)`.
+- `Thunk (Thunk X)` also becomes `.thunk X`.
+- **The proofs you asked for:** `lazy_not_in_lazy`, `thunk_not_in_lazy` and `lazy_not_in_thunk` (plus `thunk_not_in_thunk`). The simplification lemmas `mkLazy_mkLazy`, `mkLazy_mkThunk`, `mkThunk_mkLazy` and `mkThunk_mkThunk` show that merging is stable.
+- Every rule is checked in `TyTests/DelayTest.lean`, through the `[Ty| …]` notation and on types read from Lean definitions.
+
+**Terms and evaluation**
+- `Term.thunk_mk` and `Term.lazy_mk` take the term for `X` itself, not `Thunk X` or `Unit → X`. `thunk_force` and `lazy_force` give it back.
+- A delay means the value it holds, so `Term.eval` and `run` treat all four as the identity.
+- The `[Term| …]` notation reads and prints `thunk_mk e`, `thunk_force e`, `lazy_mk e` and `lazy_force e` (tests in `TermTests/TermNotationTest.lean`).
+
+**Translating Lean definitions (`#leanscript_to_term`)**
+- It now translates `t.get`, `Thunk.pure a`, `Thunk.mk f`, `fun _ : Unit => e`, `f ()` and parameters of type `Unit`.
+- Where two Lean types differ only in their delays (for example `t.get : Unit → Nat` for `t : Thunk (Unit → Nat)`), it inserts the matching force/make pair.
+- `TermTests/ToTermTest.lean` has new tests where the translated program's `run` equals the Lean function, proved by `rfl`. `forceB` and `withUnit` used to be refused and now translate.
+
+**Other updates:** the meaning of types, the Two and Three proofs, the Lean-to-type reader and printer, and the module docs all handle the new cases.
+
+**Changes in behaviour and limits**
+- **Two-value types:** because a delay means the value it holds, `bool`, `Thunk Bool` and `Unit → Bool` all mean `Bool`. So `Ty.eq_bool_of_two_points` now ends in `t = .bool ∨ t = .thunk (.prim .bool) ∨ t = .lazy (.prim .bool)`, and `Ty.three` takes the assumption `t.isBool = false`.
+- **Recursive types:** a delay around a recursive occurrence inside a datatype declaration (for example a field of type `Thunk T` inside `T`) is still refused, as are recursive definitions with a `Unit` parameter.
+- **Annotations:** some constructor uses with no expected type now need an annotation like `(… : Ty ks)` or `(Δ := …)`. When nothing else fixes the argument's type, `thunk_force` or `lazy_force` needs it written, as in `thunk_force (#0 : Thunk Nat)`.
+
+The Properties table now lists the three delay-nesting theorems as proved, plus the four term formers. I did not check the table's older entries against the new statements. Some probably still show the previous `Ty.eq_bool_of_two_points` and `Ty.three` statements.
+
 # Summary of changes for run 10fef1fa-8fd0-49ef-9031-050ec6c4665b
 I wrote the assessment in `proposals/CovariantTyAssessment.md`. It comes with a small Lean file, `proposals/CovTyToy.lean`, that checks its Lean-level claims on a cut-down copy of `Ty`. That file is outside the Lake build; check it with `lake env lean proposals/CovTyToy.lean`. It compiles with no errors, warnings or `sorry`. Nothing in `LeanScript/` or the tests was changed.
 

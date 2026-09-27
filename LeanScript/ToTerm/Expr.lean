@@ -48,6 +48,10 @@ partial def tr (L : Loc) (e : Expr) : TM Lean.Term := do
       let body ← tr (L.bind x.fvarId!) (b.instantiate1 x)
       `(LeanScript.Term.letE $tv $body)
   | .lam n t b _ =>
+    -- `fun _ : Unit => b` is a lazy delay of `b` (`Unit` has one value: no variable is bound)
+    if ← isUnitType t then
+      let b := b.instantiate1 (mkConst ``Unit.unit)
+      return ← delayCoerceTy L (← inferType b) (← inferType e) (← tr L b)
     discard <| cirOf L t
     withLocalDeclD n t fun x => do
       `(LeanScript.Term.lam $(← tr (L.bind x.fvarId!) (b.instantiate1 x)))
@@ -128,12 +132,16 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
         (LeanScript.Branches.two $d (LeanScript.Term.var DeBruijn.head)))
       for a in args[1:] do r ← `(LeanScript.Term.app $r $(← tr L a))
       return r
-    let mut r ← tr L fn
-    for a in args do r ← `(LeanScript.Term.app $r $(← tr L a))
-    return r
+    appArgs L fn (← tr L fn) args
   | .const c _ =>
     let env ← getEnv
     if L.fns.contains c then return ← trRecCall L e
+    -- delays: `Thunk.pure a`, `Thunk.mk f` and `t.get` are their values up to the delays
+    if (c == ``Thunk.pure || c == ``Thunk.mk || c == ``Thunk.get) && args.size ≥ 2 then
+      let e₂ := mkAppN fn args[:2].toArray
+      let a := args[1]!
+      let r ← delayCoerceTy L (← inferType a) (← inferType e₂) (← tr L a)
+      return ← appArgs L e₂ r args[2:].toArray
     if c == ``ite && args.size == 5 then
       let d := mkApp2 (mkConst ``Decidable.decide) args[1]! args[2]!
       return ← `(LeanScript.Term.ite $(← tr L d) $(← tr L args[3]!) $(← tr L args[4]!))
@@ -240,10 +248,22 @@ partial def trApp (L : Loc) (e : Expr) : TM Lean.Term := do
     trExtern L (toString c) e fn args
   | .proj .. =>
     -- a projection applied to arguments (`c.data i` for a function field)
-    let mut r ← tr L fn
-    for a in args do r ← `(LeanScript.Term.app $r $(← tr L a))
-    return r
+    appArgs L fn (← tr L fn) args
   | _ => fail m!"cannot translate the application{indentExpr e}"
+
+/-- The translation `r` of `fn` applied to the arguments `args`; an argument `()` forces the
+    lazy delay `Unit → τ` it is applied to. -/
+partial def appArgs (L : Loc) (fn : Expr) (r : Lean.Term) (args : Array Expr) :
+    TM Lean.Term := do
+  let mut r := r
+  for i in [0:args.size] do
+    let a := args[i]!
+    if ← isUnitType (← inferType a) then
+      r ← delayCoerceTy L (← inferType (mkAppN fn args[:i].toArray))
+        (← inferType (mkAppN fn args[:i+1].toArray)) r
+    else
+      r ← `(LeanScript.Term.app $r $(← tr L a))
+  return r
 
 /-- `for i in range do body` in `Id` (`forIn range init f`, whose step is `mkBody i r`):
     with `range = [a:b:s]`, the loop runs `n = (b - a + s - 1) / s` times, at `i = a + k * s`.

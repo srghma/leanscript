@@ -15,7 +15,8 @@ set_option autoImplicit false
 
 The first stage shared by `leanscript_signature`, `#leanscript_get_ty` and
 `#leanscript_get_ctor`: a Lean type is normalised (`normType`), its head is classified
-(`classify`: a leaf, `→`, `Array`, `Thunk`, a type variable, or an inductive instance), and
+(`classify`: a leaf, `→`, `Array`, a delay `Thunk τ` / `Unit → τ`, a type variable, or an
+inductive instance), and
 the fields of an inductive instance's constructors are read (`readCtors`), with the fields
 the language erases (proofs and instances) dropped.  A field whose type depends on an earlier
 field is read through its erasure (`eraseDeps`): `Fin n → Nat` is `Nat → Nat`.  An inductive
@@ -49,6 +50,10 @@ inductive Head where
   | fn (a b : Expr)
   /-- `Array a`. -/
   | array (a : Expr)
+  /-- `Thunk a`: a memoised delay. -/
+  | thunk (a : Expr)
+  /-- `Unit → a`: a delay recomputed every time. -/
+  | lazy (a : Expr)
   /-- A type variable (a local `α : Type`). -/
   | var (x : FVarId)
   /-- An instance of an inductive type. -/
@@ -406,10 +411,17 @@ def natLit? (e : Expr) : MetaM (Option Nat) := do
   if let some n := e'.rawNatLit? then return some n
   evalNat e
 
+/-- Is the type `Unit` (or `PUnit`), the domain of a delay `Unit → τ`? -/
+def isUnitType (a : Expr) : MetaM Bool := do
+  let a ← whnfR a
+  return a.isConstOf ``Unit || a.isAppOfArity ``PUnit 0 || a.getAppFn.isConstOf ``PUnit
+
 /-- The head of a (normalised) type. -/
 def classify (e : Expr) : MetaM Head := do
   if let .forallE _ a b _ := e then
     if b.hasLooseBVars then fail m!"dependent function type{indentExpr e}"
+    -- `Unit → b` is a delay of `b` (`Unit` itself has one value, so it is no type)
+    if ← isUnitType a then return .lazy b
     return .fn a b
   if e.isFVar then
     if (← whnf (← inferType e)) == mkSort Level.one then return .var e.fvarId!
@@ -459,9 +471,7 @@ def classify (e : Expr) : MetaM Head := do
       if n = 2 then fail m!"`Fin 2` has two values: two points are only ever `Bool`"
     return .node e
   | ``Array, 1 => return .array args[0]!
-  | ``Thunk, 1 =>
-    fail m!"`Thunk` is not a type of the language: a delay denotes the value it stands for, \
-      so `Thunk Bool` would be a second type of two values{indentExpr e}"
+  | ``Thunk, 1 => return .thunk args[0]!
   | _, _ =>
     unless ((← getEnv).find? c).any (·.isInductive) do
       fail m!"`{c}` is not an inductive type{indentExpr e}"
@@ -611,7 +621,7 @@ partial def occurrences (e : Expr) : MetaM (Array Expr) := do
   match ← classify e with
   | .prim _ | .var _ => return #[]
   | .fn a b => return (← occurrences a) ++ (← occurrences b)
-  | .array a => occurrences a
+  | .array a | .thunk a | .lazy a => occurrences a
   | .node n => return #[n]
 
 end LeanScript.Gen

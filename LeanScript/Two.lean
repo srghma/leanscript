@@ -89,21 +89,23 @@ section ClosedTwo
 variable {ks : List Nat} (E : Ref ks → Type) (TE : (r : Ref ks) → Two (E r))
 
 /-- Two constructors: the tag tells them apart (payloads from `inh`). -/
-def twoTwo : (A B : Option Type) → (A.elim PUnit id) → (B.elim PUnit id) → Two (twoT A B)
-  | none, none, _, _ => ⟨true, false, id, rfl, rfl⟩
-  | none, some _, _, b => ⟨none, some b, Option.isNone, rfl, rfl⟩
-  | some _, none, a, _ => ⟨some a, none, Option.isSome, rfl, rfl⟩
-  | some _, some _, a, b => ⟨.inl a, .inr b, Sum.isLeft, rfl, rfl⟩
+def twoTwo {a b : Bool} : (c : Ctor ks a) → (d : Ctor ks b) → ((Ctor.den E c).elim PUnit id) →
+    ((Ctor.den E d).elim PUnit id) → Two (twoT (Ctor.den E c) (Ctor.den E d))
+  | .nullary, .nullary, _, _ => ⟨true, false, id, rfl, rfl⟩
+  | .nullary, .fields _, _, b => ⟨none, some b, Option.isNone, rfl, rfl⟩
+  | .fields _, .nullary, a, _ => ⟨some a, none, Option.isSome, rfl, rfl⟩
+  | .fields _, .fields _, a, b => ⟨.inl a, .inr b, Sum.isLeft, rfl, rfl⟩
 
 /-- A constructor in front of an inhabited rest: the tag tells them apart. -/
-def twoCons : (A : Option Type) → {R : Type} → (A.elim PUnit id) → R → Two (consT A R)
-  | none, _, _, r => ⟨none, some r, Option.isNone, rfl, rfl⟩
-  | some _, _, a, r => ⟨.inl a, .inr r, Sum.isLeft, rfl, rfl⟩
+def twoCons {a : Bool} : (c : Ctor ks a) → {R : Type} → ((Ctor.den E c).elim PUnit id) → R →
+    Two (consT (Ctor.den E c) R)
+  | .nullary, _, _, r => ⟨none, some r, Option.isNone, rfl, rfl⟩
+  | .fields _, _, a, r => ⟨.inl a, .inr r, Sum.isLeft, rfl, rfl⟩
 
 mutual
 /-- Two told-apart values of a closed type, given two of every declared datatype.
     Structural recursion on the type: closed types need no grounding. -/
-def Ty.pick : (t : Ty ks) → Two (Ty.den E t)
+def Ty.pick {d : Bool} : (t : Ty ks d) → Two (Ty.den E t)
   | .prim p h => LeanPrimTy.two p h
   | .fn a b =>
       let e := (Ty.pick a).x
@@ -121,6 +123,8 @@ def Ty.pick : (t : Ty ks) → Two (Ty.den E t)
       ⟨(T.x, v), (T.y, v), fun p => T.d p.1, T.dx, T.dy⟩
   | .union cs (h := _) => Ctors.pick cs
   | .data r => TE r
+  | .thunk t => Ty.pick t
+  | .lazy t => Ty.pick t
 def Fields.pick : (fs : Fields ks) → Two (Fields.den E fs)
   | .one t => Ty.pick t
   | .cons t fs =>
@@ -131,8 +135,8 @@ def Ctor.pick {b : Bool} : (c : Ctor ks b) → (Ctor.den E c).elim PUnit id
   | .nullary => PUnit.unit
   | .fields fs => (Fields.pick fs).x
 def Ctors.pick {bs : List Bool} : (cs : Ctors ks bs) → Two (Ctors.den E cs)
-  | .two c d => twoTwo _ _ (Ctor.pick c) (Ctor.pick d)
-  | .cons c cs => twoCons _ (Ctor.pick c) (Ctors.pick cs).x
+  | .two c d => twoTwo E c d (Ctor.pick c) (Ctor.pick d)
+  | .cons c cs => twoCons E c (Ctor.pick c) (Ctors.pick cs).x
 end
 end ClosedTwo
 

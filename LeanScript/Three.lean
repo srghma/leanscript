@@ -9,9 +9,11 @@ set_option autoImplicit false
 /-!
 # Two points are only ever `bool`
 
-Every closed type over every signature **other than `Ty.bool`** has three values that a test
+Every closed type over every signature **other than `Ty.bool`** (and `Ty.bool` under a delay,
+`Thunk Bool` / `Unit → Bool`, which denotes the value it holds) has three values that a test
 tells apart (`Ty.threeDen`), hence three pairwise different values (`Ty.den_exists_three`).
-So a type whose values are at most two points is `Ty.bool` (`Ty.eq_bool_of_two_points`):
+So a type whose values are at most two points is `Ty.bool`, possibly under one delay
+(`Ty.eq_bool_of_two_points`):
 the grammar has no other way to write a type of two values (`Option Unit`, `BitVec 1`,
 `Bool × Unit`, a copy of `Bool` under a new name, a union of two field-less constructors, …
 cannot be written).
@@ -211,10 +213,10 @@ def Ctors.three {bs : List Bool} (cs : Ctors ks bs) (h : UnionShape bs) : Three 
 
 variable (TE3 : (r : Ref ks) → Three (E r))
 
-/-- Three told-apart values of a closed type other than `bool`, given two and three
-    told-apart values of every declared datatype. -/
-def Ty.three : (t : Ty ks) → t ≠ .bool → Three (Ty.den E t)
-  | .prim p hp, h => LeanPrimTy.three p hp (fun e => h (by subst e; rfl))
+/-- Three told-apart values of a closed type other than `bool` (also under a delay), given two
+    and three told-apart values of every declared datatype. -/
+def Ty.three {d : Bool} : (t : Ty ks d) → t.isBool = false → Three (Ty.den E t)
+  | .prim p hp, h => LeanPrimTy.three p hp (fun e => by subst e; simp [Ty.isBool] at h)
   | .fn a b, _ => Three.fn (Ty.pick E TE a) (Ty.pick E TE b)
   | .array t, _ => Three.array (Ty.pick E TE t).x
   | .enum s, _ =>
@@ -223,6 +225,8 @@ def Ty.three : (t : Ty ks) → t ≠ .bool → Three (Ty.den E t)
   | .record t fs, _ => Three.prod (Ty.pick E TE t) (Fields.pick E TE fs)
   | .union cs (h := hu), _ => Ctors.three E TE cs hu
   | .data r, _ => TE3 r
+  | .thunk t, h => Ty.three t h
+  | .lazy t, h => Ty.three t h
 
 end ClosedThree
 
@@ -393,28 +397,33 @@ def DSig.three : {ks : List Nat} → (Δ : DSig ks) → (r : Ref ks) → Three (
           (fun i hi => acc i (Nat.lt_of_lt_of_eq hi (Nat.zero_add _))))) j
   | _, .cons Δ _ _, .there r => DSig.three Δ r
 
-/-- **Every closed type other than `bool` has three values that a test tells apart.** -/
-def Ty.threeDen {ks : List Nat} (Δ : DSig ks) (t : Ty ks) (h : t ≠ .bool) : Three (Ty.Den Δ t) :=
+/-- **Every closed type other than `bool` (under zero or one delay) has three values that a
+    test tells apart.** -/
+def Ty.threeDen {ks : List Nat} (Δ : DSig ks) (t : Ty ks) (h : t.isBool = false) :
+    Three (Ty.Den Δ t) :=
   Ty.three (DSig.refDen Δ) (DSig.two Δ) (DSig.three Δ) t h
 
-/-- Every closed type other than `bool` has three pairwise different values. -/
-theorem Ty.den_exists_three {ks : List Nat} (Δ : DSig ks) (t : Ty ks) (h : t ≠ .bool) :
+/-- Every closed type other than `bool` (under zero or one delay) has three pairwise different
+    values. -/
+theorem Ty.den_exists_three {ks : List Nat} (Δ : DSig ks) (t : Ty ks) (h : t.isBool = false) :
     ∃ x y z : Ty.Den Δ t, x ≠ y ∧ y ≠ z ∧ x ≠ z :=
   ⟨_, _, _, (Ty.threeDen Δ t h).distinct⟩
 
 /-- **Two points are only ever `bool`**: a closed type with at most two values (among any
-    three values two are equal) is `Ty.bool`. -/
+    three values two are equal) is `Ty.bool`, possibly under a delay (`Thunk Bool`,
+    `Unit → Bool`), which denotes the value it holds. -/
 theorem Ty.eq_bool_of_two_points {ks : List Nat} (Δ : DSig ks) (t : Ty ks)
-    (h : ∀ x y z : Ty.Den Δ t, x = y ∨ y = z ∨ x = z) : t = .bool := by
+    (h : ∀ x y z : Ty.Den Δ t, x = y ∨ y = z ∨ x = z) :
+    t = .bool ∨ t = .thunk (.prim .bool) ∨ t = .lazy (.prim .bool) := by
+  rw [← Ty.isBool_iff]
   apply Classical.byContradiction
   intro hb
-  let T := Ty.threeDen Δ t hb
+  let T := Ty.threeDen Δ t (by simpa using hb)
   have ⟨h1, h2, h3⟩ := T.distinct
   rcases h T.x T.y T.z with e | e | e
   · exact h1 e
   · exact h2 e
   · exact h3 e
-
 
 
 end LeanScript

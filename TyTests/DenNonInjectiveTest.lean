@@ -21,7 +21,7 @@ open LeanScript
 variable {ks : List Nat} (Δ : DSig ks) (a b c : Ty ks)
 
 /-- A record of three fields and a record of a field and a record of two fields. -/
-example : Ty.record a (.one (.record b (.one c))) ≠ Ty.record a (.cons b (.one c)) := by simp
+example : (Ty.record a (.one (.record b (.one c))) : Ty ks) ≠ Ty.record a (.cons b (.one c)) := by simp
 example : Ty.Den Δ (Ty.record a (.one (.record b (.one c)))) =
     Ty.Den Δ (Ty.record a (.cons b (.one c))) := rfl
 

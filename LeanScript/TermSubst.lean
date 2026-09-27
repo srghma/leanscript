@@ -53,6 +53,10 @@ def Term.rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Ren Γ Γ' → Term Δ 
       .data_rec b ρ (fun i => (brs i).rename (Ren.lift r)) j (e.rename r)
   | _, _, _, r, .data_brec b ρ k brs j e =>
       .data_brec b ρ k (fun i => (brs i).rename (Ren.lift r)) j (e.rename r)
+  | _, _, _, r, .thunk_mk e => .thunk_mk (e.rename r)
+  | _, _, _, r, .thunk_force e => .thunk_force (e.rename r)
+  | _, _, _, r, .lazy_mk e => .lazy_mk (e.rename r)
+  | _, _, _, r, .lazy_force e => .lazy_force (e.rename r)
   termination_by structural _ _ _ _ e => e
 /-- `Term.rename` on arguments. -/
 def Args.rename : {Γ Γ' : Ctx ks} → {σs : List (Ty ks)} → Ren Γ Γ' → Args Δ Γ σs → Args Δ Γ' σs
@@ -138,6 +142,10 @@ def Term.subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Subst Δ Γ Γ' → Term
       .data_rec b ρ (fun i => (brs i).subst (Subst.lift s)) j (e.subst s)
   | _, _, _, s, .data_brec b ρ k brs j e =>
       .data_brec b ρ k (fun i => (brs i).subst (Subst.lift s)) j (e.subst s)
+  | _, _, _, s, .thunk_mk e => .thunk_mk (e.subst s)
+  | _, _, _, s, .thunk_force e => .thunk_force (e.subst s)
+  | _, _, _, s, .lazy_mk e => .lazy_mk (e.subst s)
+  | _, _, _, s, .lazy_force e => .lazy_force (e.subst s)
   termination_by structural _ _ _ _ e => e
 /-- `Term.subst` on arguments. -/
 def Args.subst : {Γ Γ' : Ctx ks} → {σs : List (Ty ks)} → Subst Δ Γ Γ' → Args Δ Γ σs →
@@ -269,6 +277,18 @@ theorem Term.eval_rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (e : Term Δ �
       congr 1
       funext i x
       exact Term.eval_rename (brs i) _ _ _ (h.lift x)
+  | _, _, _, .thunk_mk e, r, ρ', ρ, h => by
+      simp only [Term.rename, Term.eval]
+      rw [Term.eval_rename e r ρ' ρ h]
+  | _, _, _, .thunk_force e, r, ρ', ρ, h => by
+      simp only [Term.rename, Term.eval]
+      rw [Term.eval_rename e r ρ' ρ h]
+  | _, _, _, .lazy_mk e, r, ρ', ρ, h => by
+      simp only [Term.rename, Term.eval]
+      rw [Term.eval_rename e r ρ' ρ h]
+  | _, _, _, .lazy_force e, r, ρ', ρ, h => by
+      simp only [Term.rename, Term.eval]
+      rw [Term.eval_rename e r ρ' ρ h]
   termination_by structural _ _ _ e => e
 theorem Args.eval_rename : {Γ Γ' : Ctx ks} → {σs : List (Ty ks)} → (as : Args Δ Γ σs) →
     (r : Ren Γ Γ') → (ρ' : Env Δ Γ') → (ρ : Env Δ Γ) → EnvRen r ρ' ρ →
@@ -415,6 +435,18 @@ theorem Term.eval_subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (e : Term Δ Γ
       congr 1
       funext i x
       exact Term.eval_subst (brs i) _ _ _ (h.lift x)
+  | _, _, _, .thunk_mk e, s, ρ', ρ, h => by
+      simp only [Term.subst, Term.eval]
+      rw [Term.eval_subst e s ρ' ρ h]
+  | _, _, _, .thunk_force e, s, ρ', ρ, h => by
+      simp only [Term.subst, Term.eval]
+      rw [Term.eval_subst e s ρ' ρ h]
+  | _, _, _, .lazy_mk e, s, ρ', ρ, h => by
+      simp only [Term.subst, Term.eval]
+      rw [Term.eval_subst e s ρ' ρ h]
+  | _, _, _, .lazy_force e, s, ρ', ρ, h => by
+      simp only [Term.subst, Term.eval]
+      rw [Term.eval_subst e s ρ' ρ h]
   termination_by structural _ _ _ e => e
 theorem Args.eval_subst : {Γ Γ' : Ctx ks} → {σs : List (Ty ks)} → (as : Args Δ Γ σs) →
     (s : Subst Δ Γ Γ') → (ρ' : Env Δ Γ') → (ρ : Env Δ Γ) → EnvSub s ρ' ρ →

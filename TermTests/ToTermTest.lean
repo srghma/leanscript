@@ -15,8 +15,9 @@ against the Lean definitions (by `rfl`).  Non-recursive definitions, `if`, `matc
 `Option`, an enum, `Bool` and a structure, projections, `let`, structural recursion on `Nat`
 (`nat_rec`), on `List Nat` and on a binary tree (`data_rec`), a map that builds a list
 (`data_in` through `#leanscript_get_ctor`), and course-of-values recursion (`data_brec`).
-Then the refusals: every unit-like type (`Unit` as a parameter, `Option Unit`, a `let` of
-`()`), `Thunk Bool` (a second type of two values), an extern on a non-leaf value, a non-structural recursive call, a type parameter.
+Then the refusals: every unit-like type (`Option Unit`, a `let` of `()`), an extern on a
+non-leaf value, a non-structural recursive call, a type parameter.  Last the delays `Thunk τ`
+and `Unit → τ`.
 -/
 
 namespace ToTermTest
@@ -162,15 +163,6 @@ info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPr
 
 /-! ## Refusals -/
 
-def withUnit (_u : Unit) (n : Nat) : Nat := n
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
-#guard_msgs in
-#leanscript_to_term withUnit
-
 def isSomeU (o : Option Unit) : Bool := o.isSome
 /--
 error: LeanScript: the type
@@ -217,13 +209,42 @@ error: LeanScript: the parameter `α` of `ToTermTest.idT` is a type
 #guard_msgs in
 #leanscript_to_term idT
 
+/-! ## Delays
+
+`Thunk τ` and `Unit → τ` are the delays `.thunk τ` and `.lazy τ`; `t.get`, `Thunk.pure a`,
+`Thunk.mk f`, `fun _ => a`, `f ()` and a parameter `_ : Unit` translate to `thunk_force`,
+`thunk_mk`, `lazy_mk` and `lazy_force`, which run as the identity. -/
+
 def forceB (t : Thunk Bool) : Bool := t.get
-/--
-error: LeanScript: `Thunk` is not a type of the language: a delay denotes the value it stands for, so `Thunk Bool` would be a second type of two values
-  Thunk Bool
--/
-#guard_msgs in
-#leanscript_to_term forceB
+def forceBT := #leanscript_to_term forceB
+example (b : Bool) : (forceBT (Δ := DSig.nil)).run b = forceB (Thunk.pure b) := by
+  cases b <;> rfl
+
+def delayN (n : Nat) : Thunk Nat := Thunk.pure (n + 1)
+def delayNT := #leanscript_to_term delayN
+example : (delayNT (Δ := DSig.nil)).run (4 : Nat) = (5 : Nat) := rfl
+
+def lazyAdd (n : Nat) : Unit → Nat := fun _ => n + 2
+def lazyAddT := #leanscript_to_term lazyAdd
+example : (lazyAddT (Δ := DSig.nil)).run (4 : Nat) = (6 : Nat) := rfl
+
+def withUnit (_u : Unit) (n : Nat) : Nat := n
+def withUnitT := #leanscript_to_term withUnit
+example : (withUnitT (Δ := DSig.nil)).run (3 : Nat) = withUnit () 3 := rfl
+
+def callLazy (f : Unit → Nat) : Nat := f () + 1
+def callLazyT := #leanscript_to_term callLazy
+example : (callLazyT (Δ := DSig.nil)).run (4 : Nat) = callLazy (fun _ => 4) := rfl
+
+/-- `Thunk (Unit → Nat)` is `.thunk nat`: `t.get` (a lazy delay) is the thunk forced, then
+    delayed again as a lazy delay, then forced by `()`. -/
+def forceTwice (t : Thunk (Unit → Nat)) : Nat := t.get ()
+def forceTwiceT := #leanscript_to_term forceTwice
+example : (forceTwiceT (Δ := DSig.nil)).run (7 : Nat) = forceTwice (Thunk.pure fun _ => 7) := rfl
+
+def mkThunkFn (n : Nat) : Thunk Nat := Thunk.mk fun _ => n * 2
+def mkThunkFnT := #leanscript_to_term mkThunkFn
+example : (mkThunkFnT (Δ := DSig.nil)).run (4 : Nat) = (8 : Nat) := rfl
 
 end ToTermTest
 

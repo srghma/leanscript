@@ -137,6 +137,10 @@ def Term.eval : {Γ : Ctx ks} → {τ : Ty ks} → Term Δ Γ τ → Env Δ Γ �
   | _, _, .data_rec b ρt brs j e, ρ => Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ)) j (e.eval ρ)
   | _, _, .data_brec b ρt k brs j e, ρ =>
       Δ.dataBrec b ρt k (fun i x => (brs i).eval (x, ρ)) j (e.eval ρ)
+  | _, _, .thunk_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ)
+  | _, _, .thunk_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
+  | _, _, .lazy_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ)
+  | _, _, .lazy_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
   termination_by structural _ _ e _ => e
 /-- The values of the arguments. -/
 def Args.eval : {Γ : Ctx ks} → {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →

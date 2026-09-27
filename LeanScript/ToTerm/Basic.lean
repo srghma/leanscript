@@ -126,6 +126,32 @@ def cirOf (L : Loc) (T : Expr) (check : Bool := true) : TM CIR := do
 
 def tyStx (L : Loc) (T : Expr) : TM Lean.Term := do (← cirOf L T).stx L.c #[]
 
+/-- The delay of a type: `0` none, `1` a thunk, `2` a lazy delay. -/
+def CIR.delayKind : CIR → Nat
+  | .thunk _ => 1
+  | .lazy _ => 2
+  | _ => 0
+
+/-- The term `t` of type `src` as a term of type `dst`, where the two types are one type up to
+    its delays (`t.get : Unit → τ` of `t : Thunk (Unit → τ)`, both read as delays of `τ`): the
+    delay of `src` is forced and the one of `dst` made.  Delays evaluate as the identity, so
+    this only changes how the value is printed. -/
+def delayCoerce (L : Loc) (src dst : CIR) (t : Lean.Term) : TM Lean.Term := do
+  if src.delayKind == dst.delayKind then return t
+  let forced ← match src with
+    | .thunk a => do `(LeanScript.Term.thunk_force (τ := $(← a.stx L.c #[])) $t)
+    | .lazy a => do `(LeanScript.Term.lazy_force (τ := $(← a.stx L.c #[])) $t)
+    | _ => pure t
+  match dst with
+  | .thunk a => `(LeanScript.Term.thunk_mk (τ := $(← a.stx L.c #[])) $forced)
+  | .lazy a => `(LeanScript.Term.lazy_mk (τ := $(← a.stx L.c #[])) $forced)
+  | _ => pure forced
+
+/-- A translation of Lean type `src` as a term of the reading of `dst`, a Lean type equal to
+    `src` up to delays: `delayCoerce` between their readings. -/
+def delayCoerceTy (L : Loc) (src dst : Expr) (t : Lean.Term) : TM Lean.Term := do
+  delayCoerce L (← cirOf L src false) (← cirOf L dst false) t
+
 /-- Is a type one whose values are Lean's own values (so an extern can take and return it)? -/
 partial def CIR.isLeaf : CIR → Bool
   | .prim _ => true

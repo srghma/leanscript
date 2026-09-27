@@ -187,7 +187,7 @@ example : Mems [] 1 0 := .cons (.record (.old .nat) (.one (.hole 0 (by decide)))
 error: Unknown constant `LeanScript.Ctors.one`
 
 Note: Inferred this name from the expected resulting type of `.one`:
-  Ctors [] ?m.3
+  Ctors [] ?m.4
 -/
 #guard_msgs in
 example : Ty [] := .union (.one .nullary) (h := .here)

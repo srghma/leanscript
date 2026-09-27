@@ -143,6 +143,17 @@ inductive Term {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
       (branches : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).brecBody ρ k i :: Γ) (ρ i))
       (j : Fin ((Δ.block b).k + 1)) :
       Term Δ Γ (.data ((Δ.block b).ref j)) → Term Δ Γ (ρ j)
+  /-- A memoised delay (`Thunk.mk`), from the value it holds.  A delay denotes its value, so
+      this evaluates to the value of the argument: it only matters for printing. -/
+  | thunk_mk {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ τ.relax → Term Δ Γ (.thunk τ)
+  /-- The value a memoised delay holds (`Thunk.get`); evaluates to the value of the
+      argument. -/
+  | thunk_force {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ (.thunk τ) → Term Δ Γ τ.relax
+  /-- A delay that is recomputed every time (`fun (_ : Unit) => e`), from the value it holds;
+      evaluates to the value of the argument: it only matters for printing. -/
+  | lazy_mk {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ τ.relax → Term Δ Γ (.lazy τ)
+  /-- The value a lazy delay holds (`f ()`); evaluates to the value of the argument. -/
+  | lazy_force {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ (.lazy τ) → Term Δ Γ τ.relax
 
 /-- The arguments of a constructor or an extern. -/
 inductive Args {ks : List Nat} (Δ : DSig ks) : Ctx ks → List (Ty ks) → Type where

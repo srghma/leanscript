@@ -81,7 +81,9 @@ def mkWin {ρ : Fin (B.k + 1) → Ty ks} : (k : Nat) → (i : Fin (B.k + 1)) →
   | 0, _, v, a, _ => (v, a)
   | d + 1, i, v, a, full =>
       (v, a, B.mapInst (σ := fun i' => Ty.pair (.data (B.ref i')) (B.win ρ (d + 1) i'))
-        (σ' := B.win ρ d) (fun i' p => winTrunc d i' p.2) i full)
+        (σ' := B.win ρ d)
+        (fun i' (p : Ty.Den Δ (Ty.pair (.data (B.ref i')) (B.win ρ (d + 1) i'))) => winTrunc d i' p.2)
+        i full)
 
 theorem winAnswer_mkWin {ρ : Fin (B.k + 1) → Ty ks} (k : Nat) (i : Fin (B.k + 1))
     (v : Ty.Den Δ (.data (B.ref i))) (a : Ty.Den Δ (ρ i))

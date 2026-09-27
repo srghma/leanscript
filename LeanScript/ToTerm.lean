@@ -164,16 +164,26 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
     let group ← mutualGroup f
     let recursive := group.any fun g => (rhs.find? (·.isConstOf g)).isSome
     let kept := (List.range params.size).toArray.filter (!idxParams.contains ·) |>.map (params[·]!)
-    let L : Loc := { slots := kept.map (some ·.fvarId!), fns := if recursive then group else #[],
+    -- a parameter `_ : Unit` is a lazy delay of the rest of the function: no variable
+    let units ← kept.mapM fun x => do isUnitType (← inferType x)
+    if recursive && units.any id then
+      fail m!"`{f}` is recursive and has a parameter of type `Unit`"
+    let slotted := (List.range kept.size).toArray.filter (!units[·]!) |>.map (kept[·]!)
+    let L : Loc := { slots := slotted.map (some ·.fvarId!), fns := if recursive then group else #[],
                      params, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Lean.Term × Lean.Term) := do
       for x in kept do
+        if ← isUnitType (← inferType x) then continue
         if ← isType x then fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is a type"
         if (← isClass? (← inferType x)).isSome then
           fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is an instance"
         discard <| cirOf L (← inferType x)
       let mut body ← tr L rhs
-      for _ in kept do body ← `(LeanScript.Term.lam $body)
+      for i in (List.range kept.size).reverse do
+        if units[i]! then
+          let rest ← mkForallFVars kept[i+1:].toArray (← inferType lhs)
+          body ← delayCoerceTy L rest (← mkForallFVars #[kept[i]!] rest) body
+        else body ← `(LeanScript.Term.lam $body)
       -- the type of the translation: the parameters kept, then the result (an index
       -- parameter only occurs in indices, which are erased)
       let ty ← if idxParams.isEmpty then pure info.type

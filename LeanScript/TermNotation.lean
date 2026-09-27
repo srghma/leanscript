@@ -40,6 +40,8 @@ printed back in the same notation (`set_option pp.leanscript false` turns that o
 | `data_in b j e`, `data_out b j e`        | `.data_in b j e`, `.data_out b j e`              |
 | `data_rec b ρ br₀ … brₖ j e`             | `.data_rec b ρ brs j e`, branch `i` of `brs` is `brᵢ` |
 | `data_brec b ρ k br₀ … brₖ j e`          | `.data_brec b ρ k brs j e`                       |
+| `thunk_mk e`, `thunk_force e`           | `.thunk_mk e`, `.thunk_force e` (a `Thunk τ`)    |
+| `lazy_mk e`, `lazy_force e`              | `.lazy_mk e`, `.lazy_force e` (a `Unit → τ`)     |
 | `(e : τ)`                                | `e`, at the type `τ` (in the `[Ty| …]` syntax)   |
 | `‹t›`                                    | the Lean term `t : Term Δ Γ τ`                   |
 | `‹f›(a, b)`                              | the Lean term `f a b`: a Lean function of terms  |
@@ -58,6 +60,10 @@ pattern.
 `data_rec` and `data_brec` the leaf, value, name, function, constructor number, block,
 member, answer types and depth are Lean terms: a number, a string or `‹t›`.  The branches of
 `data_rec`/`data_brec` can also be given as one Lean function `‹brs›`.
+
+**Delays.**  The type of `thunk_force e` / `lazy_force e` does not fix the type of `e` (the
+contents `τ` of the delay are not recovered from the result type `τ.relax` by unification), so
+when nothing else does, `e` is written with its type: `thunk_force (#0 : Thunk Nat)`.
 
 A numeral takes its leaf type from the expected type (`Term.ofNat`), so its type must be known
 from the context: `let _ := 3; ‹addT›(#0, #0)` works, a lone `let _ := 3; #0` needs
@@ -170,7 +176,7 @@ open Lean
 /-- The constructors written as an application of their name. -/
 def specialForms : List Name :=
   [`lit, `extern, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
-   `data_brec]
+   `data_brec, `thunk_mk, `thunk_force, `lazy_mk, `lazy_force]
 
 /-- The arguments of a constructor or an extern. -/
 def mkArgs : List Lean.Term → MacroM Lean.Term
@@ -343,6 +349,14 @@ partial def elabSpecial (id : Ident) (args : List (TSyntax `lsterm)) : MacroM Le
       `(LeanScript.Term.data_brec $(← leanArg b) $(← leanArg ρ) $(← leanArg k)
           $(← elabRecBranches brs) $(← leanArg j) $(← elabLsterm e))
   | `data_brec, _ => bad "data_brec b ρ k br₀ … brₖ j e"
+  | `thunk_mk, [e] => do `(LeanScript.Term.thunk_mk $(← elabLsterm e))
+  | `thunk_mk, _ => bad "thunk_mk e"
+  | `thunk_force, [e] => do `(LeanScript.Term.thunk_force $(← elabLsterm e))
+  | `thunk_force, _ => bad "thunk_force e"
+  | `lazy_mk, [e] => do `(LeanScript.Term.lazy_mk $(← elabLsterm e))
+  | `lazy_mk, _ => bad "lazy_mk e"
+  | `lazy_force, [e] => do `(LeanScript.Term.lazy_force $(← elabLsterm e))
+  | `lazy_force, _ => bad "lazy_force e"
   | _, _ => Macro.throwErrorAt id s!"unknown constructor `{f}`: a variable is written `#i` \
       and a Lean term `‹{f}›`"
 
@@ -414,7 +428,8 @@ def termHeads : List (Name × Nat) :=
    (``Term.union_mk, 10), (``Term.union_casesOn, 9), (``Term.array_mk, 5),
    (``Term.array_foldl, 8), (``Term.data_in, 6), (``Term.data_out, 6), (``Term.data_rec, 8),
    (``Term.data_brec, 9), (``Term.bvar, 6), (``Term.ofNat, 7), (``Term.inj, 9),
-   (``Term.externOf, 8)]
+   (``Term.externOf, 8), (``Term.thunk_mk, 5), (``Term.thunk_force, 5), (``Term.lazy_mk, 5),
+   (``Term.lazy_force, 5)]
 
 /-- The placeholders `_, …, _` of `n` bound variables. -/
 def holes (n : Nat) : DelabM (Array (TSyntax `lshole)) :=
@@ -571,6 +586,10 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
     | ``Term.array_mk =>
         let es ← withArgFromEnd 1 delabElems
         return (← `(lsterm| #[$es.toArray,*]), atomPrec)
+    | ``Term.thunk_mk => return (← mkAppSyn `thunk_mk [← arg 1], appPrec)
+    | ``Term.thunk_force => return (← mkAppSyn `thunk_force [← arg 1], appPrec)
+    | ``Term.lazy_mk => return (← mkAppSyn `lazy_mk [← arg 1], appPrec)
+    | ``Term.lazy_force => return (← mkAppSyn `lazy_force [← arg 1], appPrec)
     | ``Term.array_foldl => return (← mkAppSyn `array_foldl [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Term.data_in | ``Term.data_out =>
         let b ← withArgFromEnd 3 leanArgSyn
@@ -684,6 +703,10 @@ def delabTerm : Delab := do
 @[delab app.LeanScript.Term.ofNat] def delabTermOfNat : Delab := delabTerm
 @[delab app.LeanScript.Term.inj] def delabTermInj : Delab := delabTerm
 @[delab app.LeanScript.Term.externOf] def delabTermExternOf : Delab := delabTerm
+@[delab app.LeanScript.Term.thunk_mk] def delabTermThunkMk : Delab := delabTerm
+@[delab app.LeanScript.Term.thunk_force] def delabTermThunkForce : Delab := delabTerm
+@[delab app.LeanScript.Term.lazy_mk] def delabTermLazyMk : Delab := delabTerm
+@[delab app.LeanScript.Term.lazy_force] def delabTermLazyForce : Delab := delabTerm
 
 end LeanScript.Notation
 
