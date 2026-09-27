@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public import LeanScript.Term.ExternShorthands
 
 @[expose] public section
@@ -19,22 +19,26 @@ namespace TupleTest
 
 open LeanScript
 
-example : Env DSig.nil [] = PUnit := rfl
-example : Env DSig.nil [.nat] = Nat := rfl
-example : Env DSig.nil [.nat, .bool] = (Nat × Bool) := rfl
-example : Env DSig.nil [.nat, .bool, .nat] = (Nat × Bool × Nat) := rfl
+example : UEnv DSig.nil [] = PUnit := rfl
+example : UEnv DSig.nil [⟨.nat, .many, 0⟩] = Nat := rfl
+example : UEnv DSig.nil [⟨.nat, .many, 0⟩, ⟨.bool, .one, 0⟩] = (Nat × Bool) := rfl
+example : UEnv DSig.nil [⟨.nat, .many, 0⟩, ⟨.bool, .one, 0⟩, ⟨.nat, .zero, 1⟩] =
+    (Nat × Bool × Nat) := rfl
+
+example : KEnv DSig.nil [⟨.nat, .many, none, true⟩, ⟨.bool, .one, some 0, false⟩] =
+    (Nat × Bool) := rfl
 
 example : DenList (DSig.refDen DSig.nil) [.nat, .nat] = (Nat × Nat) := rfl
 
 example : JEnv DSig.nil .nat [] = PUnit := rfl
-example : JEnv DSig.nil .nat [.bool] = (Bool → Nat) := rfl
-example : JEnv DSig.nil .nat [.bool, .nat] = ((Bool → Nat) × (Nat → Nat)) := rfl
+example : JEnv DSig.nil .nat [⟨.bool, .one⟩] = (Bool → Nat) := rfl
+example : JEnv DSig.nil .nat [⟨.bool, .one⟩, ⟨.nat, .many⟩] = ((Bool → Nat) × (Nat → Nat)) := rfl
 
 /-- An extern of two arguments takes a pair. -/
-def addT : Comp DSig.nil [.nat, .nat] .nat :=
-  .share (PExpr.lean_nat_add (.neu (.var .head)) (.neu (.var (.tail .head))))
+def addT : Neu DSig.nil [] [⟨.nat, .many, 0⟩, ⟨.nat, .many, 0⟩] .nat 0 :=
+  Neu.lean_nat_add (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))
 
-example : addT.eval ((3 : Nat), (4 : Nat)) = (7 : Nat) := rfl
+example : addT.eval PUnit.unit ((3 : Nat), (4 : Nat)) = (7 : Nat) := rfl
 
 /-- `Tuple.cons` puts a value in front: on a non-empty tuple it is `Prod.mk`. -/
 example : (Tuple.cons (F := Ty.den (DSig.refDen DSig.nil)) (a := .nat) (as := [.bool])

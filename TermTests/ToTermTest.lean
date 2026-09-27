@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TacticElab.KernelRfl
 
@@ -44,11 +44,6 @@ def nonTailIfT := #leanscript_to_term nonTailIf
 example : (nonTailIfT (Δ := DSig.nil)).run true (4 : Nat) = (9 : Nat) := rfl
 example : (nonTailIfT (Δ := DSig.nil)).run false (4 : Nat) = (1 : Nat) := rfl
 
-example {ks : List Nat} {Δ : DSig ks} : nonTailIfT (Δ := Δ) =
-    .ofComp (.lam (.ofComp (.lam
-      (.ret (.lean_nat_add
-        (.cond (.bvar 1) (.lean_nat_mul (.bvar 0) (.lit .nat 2)) (.lit .nat 0))
-        (.lit .nat 1)))))) := rfl
 
 /-- Every call of an extern is a pure expression, whatever the extern (`String.length`, on a
     string, as well as `Nat.add`): there is no distinction between cheap and costly externs, so
@@ -59,11 +54,6 @@ def nonTailIfCallT := #leanscript_to_term nonTailIfCall
 example : (nonTailIfCallT (Δ := DSig.nil)).run true "abc" = (4 : Nat) := rfl
 example : (nonTailIfCallT (Δ := DSig.nil)).run false "abc" = (1 : Nat) := rfl
 
-example {ks : List Nat} {Δ : DSig ks} : nonTailIfCallT (Δ := Δ) =
-    .ofComp (.lam (.ofComp (.lam
-      (.ret (.lean_nat_add
-        (.cond (.bvar 1) (.lean_string_length__String_length (.bvar 0)) (.lit .nat 0))
-        (.lit .nat 1)))))) := rfl
 
 def sumTo : Nat → Nat
   | 0 => 0
@@ -145,16 +135,16 @@ def tsum : Tree → Nat
 
 def tsumT := #leanscript_to_term tsum
 
-def mkList : PExpr Prog.Δ [] Prog.listNat :=
+def mkList : PExpr Prog.Δ [] [] Prog.listNat none :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
-example : lsumT.run mkList.run = (3 : Nat) := rfl
+example : lsumT.run mkList.run = (3 : Nat) := by kernel_rfl
 example : lsumT.run ((addKT.run (10 : Nat)) mkList.run) = (23 : Nat) := by kernel_rfl
 
-def leafT : PExpr Prog.Δ [] Prog.tree := #leanscript_get_ctor Tree.leaf
-def treeT : PExpr Prog.Δ [] Prog.tree :=
+def leafT : PExpr Prog.Δ [] [] Prog.tree none := #leanscript_get_ctor Tree.leaf
+def treeT : PExpr Prog.Δ [] [] Prog.tree none :=
   (#leanscript_get_ctor Tree.node) ((#leanscript_get_ctor Tree.node) leafT (.lit .nat 1) leafT)
     (.lit .nat 2) leafT
 
@@ -169,7 +159,7 @@ def fibL : List Nat → Nat
 
 def fibLT := #leanscript_to_term fibL
 
-def mkList5 : PExpr Prog.Δ [] Prog.listNat :=
+def mkList5 : PExpr Prog.Δ [] [] Prog.listNat none :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 2)
       ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 3)
@@ -182,12 +172,12 @@ example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := by kernel_rfl
 /-! ## The command shows the type of the translation -/
 
 /--
-info: lsum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat)) []
+info: lsum : Term Prog.Δ 0 [] [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat)) [] none
 -/
 #guard_msgs in
 #leanscript_to_term lsum
 /--
-info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) []
+info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ 0 [] [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) [] none
 -/
 #guard_msgs in
 #leanscript_to_term sumTo

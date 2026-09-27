@@ -1,220 +1,326 @@
 module
 
+public import LeanScript.Term.Ctx
+public import LeanScript.Term.Extern
 public import LeanScript.Ty.DenBrec
-public import LeanScript.Term.PExpr
-public import LeanScript.Term.ExternShorthands
 
 @[expose] public section
 
 set_option autoImplicit false
 
 /-!
-# `Term`: A-normal terms over a datatype signature, in three layers
+# Normal-form terms (proposal B): two contexts, *known* and *unknown*
 
-The one grammar of terms of the language.  `#leanscript_to_term` (`LeanScript.TermElab.ToTerm`)
-translates Lean definitions to it.  It follows the three layers of the `PCL` grammar
-(`proposals/AnfSplitProposals.md`, proposal 1), without its proof-carrying parts:
+The grammar of `LeanScript.Term`: A-normal terms in which **every redex that could be
+evaluated has been**, by construction, while a redex that cannot be evaluated (because it is
+stuck on an unknown) is kept, and its operands are shared rather than duplicated.
 
 ```
-Neu   ::= var | data_out b j Neu | cond Neu PExpr PExpr | extern e Args
-PExpr ::= neu Neu | lit | enum_mk | record_mk Args | union_mk ix Args | array_mk Elems
-        | data_in b j PExpr
-Comp  ::= app PExpr PExpr | lam Term | share PExpr
-        | nat_rec PExpr PExpr Term | array_foldl PExpr PExpr Term
-        | data_rec b ρ Termᵢ j PExpr | data_brec b ρ k Termᵢ j PExpr
-        | thunk_mk Term | thunk_force PExpr | lazy_mk Term | lazy_force PExpr
-Term  ::= ret PExpr | letE Comp Term | record_casesOn Neu Term
-        | ite Neu Term Term | enum_casesOn Neu Termᵢ | union_casesOn Neu Branches
-        | join σ Term Term | jump j PExpr
+Neu     Φ Γ ℓ   ::= var x                        -- x : UVar Γ τ ℓ, an unknown
+                  | data_out b j Neu | cond Neu PExpr PExpr
+                  | extern e Args                -- at least one open argument
+PExpr   Φ Γ o   ::= neu Neu                      -- o = some ℓ
+                  | kvar k                       -- k : KVar Φ τ o, a known value by name
+                  | lit | enum_mk                -- o = none
+                  | record_mk Args | union_mk ix Args | array_mk Elems | list_mk Elems
+                  | data_in b j PExpr
+Val   d Φ Γ o   ::= lam Body | thunk_mk Body | lazy_mk Body
+                  | record_mk Args | union_mk ix Args | array_mk Elems | list_mk Elems
+                  | data_in b j PExpr
+Body  d Φ Γ bs o ::= closed (Term (d+1) Φ.closedOnly bs)   -- o = none: sees no unknown
+                   | opened (Term (d+1) Φ (bs ++ Γ) (some m)) (m ≤ d)
+                                                 -- o = some m: mentions something outside
+Comp  d Φ Γ ℓ   ::= app PExpr PExpr                -- at least one operand open
+                  | share Neu
+                  | nat_rec PExpr PExpr Body | array_foldl PExpr PExpr Body
+                  | data_rec … Body … PExpr | data_brec … Body … PExpr
+                                                 -- at least one operand or the body open
+                  | thunk_force (PExpr (some ℓ)) | lazy_force (PExpr (some ℓ))
+Term  d Φ Γ js o ::= ret PExpr
+                   | letV (u : 1|ω) Val Term      -- extends Φ
+                   | letE (u : 1|ω) Comp Term     -- extends Γ, at level d
+                   | record_casesOn us Neu Term   -- extends Γ with the fields (us : 0|1|ω)
+                   | branch Branch
+                   | jump j PExpr
+Branch d Φ Γ js ℓ ::= ite Neu Term Term | enum_casesOn Neu Termᵢ | union_casesOn Neu Branches
+                   | join σ (u : 1|ω) (uₓ : 0|1|ω) Term Branch
+                                                 -- a join point, only in front of a branch
 ```
 
-* `PExpr Δ Γ τ` (with the lists `Args` and `Elems`) — **pure expressions**: variables,
-  literals, constructors, one layer in or out of a recursive datatype, the pure conditional
-  `cond` and the calls of externs (`PExpr.extern e args`, `e` an entry of the catalogue
-  `LeanInitPureExtern`).  They bind nothing and never branch in the control flow of the term.  `PExpr` is an ordinary inductive, not mutual with the two other layers.
-* `Neu Δ Γ τ` — the **neutral** pure expressions, those whose head is not an introduction
-  form: a variable, `data_out` or `cond` of a neutral expression, or a call of an extern.  A pure
-  expression is a neutral one (`PExpr.neu`) or an introduction form (a literal, a
-  constructor, `data_in`).  `PExpr.var`, `PExpr.data_out`, `PExpr.cond` and `PExpr.extern`
-  are abbreviations of `PExpr.neu` of the neutral forms.
-* `Comp Δ Γ τ` — **computations**: one step whose value a `let` names: an application, a
-  closure, a shared pure value (a call of an extern computed once, say), a fold, a delay.
-* `Term Δ Γ τ js` — **statements** (`PCL`'s `Expr`): `let`s of computations ending in a tail.
-  `js` are the join points in scope (`JCtx`): the types of their parameters.
+**Known and unknown.**  A statement has two variable contexts (`LeanScript.Term.Ctx`):
+`Φ`, the *known* values, bound by `letV` to a value of known shape; and `Γ`, the *unknowns*,
+bound by `letE` (the result of a computation), by case analyses, and as parameters of
+closures, loops and join points.  Only an unknown is neutral (`Neu.var` takes a `UVar Γ`), so
+a known value is never taken apart, called or forced: the normaliser does that itself.  A
+known value can be passed on by name (`PExpr.kvar`), which is how a closure, a delay or a
+data literal is **shared** instead of copied.
 
-The grammar is **strictly A-normal**: every operand of a computation or a statement is a pure
-expression, so every application, closure, fold and delay is named by a `Term.letE`, in
-the order it is evaluated (a call of an extern is a pure expression, which `Comp.share` names
-when its value is to be computed once).  It is **B-normal** (branching normal): a branch (`ite`,
-`enum_casesOn`, `union_casesOn`) is always the tail of a statement; a branch in the middle of
-a computation is written with a **join point** for the rest of it
-(`join j x := rest; if c then …; jump j a else …; jump j b`).  There is no β-redex either:
-the function of an application is a pure expression and a closure is a computation, so
-`app (lam b) a` cannot be written.  There is no **ι-redex** (the elimination of an explicitly
-constructed value) either: everything that takes a value apart — `data_out`, the condition of
-`cond` and `ite`, the scrutinee of `record_casesOn`, `enum_casesOn` and `union_casesOn` — takes
-a *neutral* expression (`Neu`), which is never a literal nor a constructor.  So
-`data_out b j (data_in b j e)`, `record_casesOn (record_mk args) body`,
-`union_casesOn (union_mk ix args) brs`, `enum_casesOn (enum_mk s i) brs` and
-`cond (lit .bool true) a b` are ill-typed.  (The folds `nat_rec`, `array_foldl`, `data_rec` and
-`data_brec` are loops, not one-step eliminations, and take any pure expression: unrolling a
-loop over a literal is not a local rewrite.  A value bound by a `let` is a variable, hence
-neutral: A-normal form never looks through a `let`.)  All of this is enforced by the types; in addition the
-translator and the notation never `share` (or bind) a trivial pure expression
-(`PExpr.isTrivial`: a variable or a literal), which is used in place.
+**Open and closed: levels.**  Every syntactic class is indexed by the smallest *level* of
+the unknowns it mentions (`Lvl := Option Nat`; `none` means that it mentions no unknown: it
+is **closed**; `some ℓ` means that it is **open**).  The level of an unknown is the depth at
+which it is bound (`UBinder.lv`): a statement at depth `d` (`Term Δ d …`) binds its unknowns
+at level `d`, the parameters of a closure, delay or loop body inside it at level `d + 1`.  The
+level is computed by the constructors (`neu` has the level of the neutral expression, `lit`
+is closed, a constructor has the smallest level of its arguments, a known variable has the
+level recorded in `Φ`, a `let` has the smallest level of its two parts), so it cannot lie.
 
-A join point needs no predicate (there are no path conditions): its scope is only the list of
-the types of the join points, and its value is a closure over its definition environment.
-The bodies of closures, folds and delays are statements with no join point in scope (`[]`),
-so a loop never jumps out to the enclosing continuation.
+Neutral expressions, computations and branches are always open, so their level is a `Nat`.
 
-A statement is indexed by the program's datatype signature `Δ : DSig ks`, a context `Γ` of
-closed types, its type and its join points.  Recursive datatypes have three term formers and a
-course-of-values form of the fold, available at every block of the signature:
+**Bodies, exactly.**  The body of a closure, a delay or a loop, at depth `d`, is typed at depth
+`d + 1`, and is
 
-* `PExpr.data_in b j e` — one layer in: `e` is a value of member `j`'s unfolded body;
-* `PExpr.data_out b j e` — one layer out; the unfolded body is again a closed type, so it
-  is taken apart with the ordinary `Term.record_casesOn` / `Term.union_casesOn`;
-* `Comp.data_rec b ρ branches j e` — the fold of a whole block, with one answer type
-  `ρ i` per member and one branch per member.  Branch `i` binds member `i`'s body in which
-  every hole `i'` is the pair of the subvalue and the answer at it;
-* `Comp.data_brec b ρ k branches j e` — course-of-values recursion, the fold whose branches
-  see the answers `k + 1` levels down (`LeanScript.DSig.dataBrec`).
+* **closed** (`Body.closed`): it sees only the closed known values and its own parameters;
+* **open** (`Body.opened`): it sees everything, and its level `m` is `≤ d`: it *actually*
+  mentions something bound outside of it (an outer unknown, or an open known value).
 
-There is no fixpoint and no fuel: every loop is a fold (`data_rec`, `nat_rec`,
-`array_foldl`), so the evaluators (`LeanScript.Term.eval`) are total and structural.
+So the openness of a body is **exact**: a body that mentions nothing from outside cannot be
+marked open (its level would be `d + 1` or more, or `none`), and one that does cannot be marked
+closed (it cannot even be typed in the closed view).
 
-Leaf operations are **externs**: an entry `e : Extern ks σs τ` of the catalogue
-`LeanInitPureExtern` (`LeanScript.LeanInitPureExterns`), called on the pure expressions of its
-arguments by `Neu.extern e args` (`PExpr.extern`).  There is one kind of extern: every entry of
-the catalogue is a pure function of the values of its arguments, whether it is a machine
-operation (`lean_nat_add`), a function on strings or arrays, or builds a leaf value
-(`lean_mk_empty_array_with_capacity__Array_emptyWithCapacity`).  Every entry has a shorthand in
-the namespaces `PExpr` and `Neu` (`LeanScript.Term.ExternShorthands`):
-`PExpr.lean_string_any (.lit .string "12345") f` is
-`.neu (.extern .lean_string_any (.cons (.lit .string "12345") (.cons f .nil)))`.  Its value is
-the Lean function the entry stands for (`LeanScript.Extern.eval`).  The types of the
-arguments and of the result are types of the language: a proposition is `.bool`, and a proof
-that the Lean function takes is erased — the evaluator decides it on the values of the
-arguments (`if h : i < a.size then a.set i x h else a`); in a term translated from a Lean
-program it always holds (the program had to prove it).  Because a closure (a `Term`) and the
-branches of `enum_casesOn`/`data_rec` are functions, the layers `Comp` and `Term` have no
-decidable equality.
+**The rule.**  Every elimination needs an open operand:
 
-Renaming, weakening and substitution of variables, with the facts that they commute with
-evaluation, are in `LeanScript.Term.TermSubst`.
+* `extern e args h` needs `h : o = some ℓ` for `args : Args σs o`: at least one open argument;
+* `app f a` needs `f` or `a` open.  A closed known closure applied to a closed argument is
+  β-reduced by the normaliser; applied to an open argument, the call is kept and the closure
+  shared (it is not inlined);
+* the folds need an open operand or an open body.  A loop over a literal whose body is open
+  is kept, not unrolled;
+* the forces need an open delay (an unknown one, or an open known one): the body of a closed
+  delay is already a value;
+* `record_casesOn`, `ite`, `enum_casesOn`, `union_casesOn`, `data_out` and `cond` take a
+  `Neu`: a known value is never taken apart.
 
-The files: the contexts, variables and other definitions shared by the layers are in
-`LeanScript.Term.Common`; layer 1 (`Neu`, `PExpr`, `Args`, `Elems`, one mutual block) is in
-`LeanScript.Term.PExpr`; layers 2 and 3 (`Comp`, `Term`, `Branches`, the other mutual block)
-are here.
+So a term with no unknown (`Γ = []`) whose known values are closed contains no computation
+at all: it is a chain of `letV`s ending in `ret v` (`LeanScript.Term.closed_isValue`).
+
+**Join points.**  A join point is only allowed in front of a branch (`Branch.join`), so a
+join point whose continuation is a known jump (`join j x := b; jump j v`, a redex) cannot be
+written.
+
+**Usages.**  Definition binders (`letV`, `letE`, the join point of `join`) carry a `Usage1ω`
+(`1 | ω`); pattern binders (the fields of a case analysis, the parameters of closures, loop
+bodies and join points) carry a `Usage01ω` (`0 | 1 | ω`), and one annotated `0` cannot be
+referenced.
 -/
 
 namespace LeanScript
 
-/-! ## Layers 2 and 3: computations and statements -/
+/-! ## Layer 1: pure expressions -/
 
 mutual
 
-/-- **Layer 2, computations** (`PCL`'s `Comp`): one step whose value a `Term.letE` names.
-    Every operand is a pure expression; the bodies of a closure, a fold or a delay are
-    statements with no join point in scope (`[]`), so a body never jumps out of itself. -/
-inductive Comp {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
-  /-- Application of a function value to an argument. -/
-  | app {Γ : Ctx ks} {σ τ : Ty ks} : PExpr Δ Γ (.fn σ τ) → PExpr Δ Γ σ → Comp Δ Γ τ
-  /-- `fun x => body`: a `let`-bound closure. -/
-  | lam {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ (σ :: Γ) τ [] → Comp Δ Γ (.fn σ τ)
-  /-- A pure expression computed once and shared by name (never a trivial one, a variable or
-      a literal, `PExpr.isTrivial`: those are used in place).  This is how the value of a
-      call of an extern (`Neu.extern`) is computed once rather than wherever it is used. -/
-  | share {Γ : Ctx ks} {τ : Ty ks} : PExpr Δ Γ τ → Comp Δ Γ τ
-  /-- `Nat.rec` with a non-dependent motive: the successor branch binds the predecessor
-      (index `1`) and the answer at it (index `0`). -/
-  | nat_rec {Γ : Ctx ks} {τ : Ty ks} : PExpr Δ Γ .nat → PExpr Δ Γ τ →
-      Term Δ (τ :: .nat :: Γ) τ [] → Comp Δ Γ τ
-  /-- `Array.foldl`: the step binds the element (index `0`) and the accumulator (index `1`). -/
-  | array_foldl {Γ : Ctx ks} {t ρ : Ty ks} : PExpr Δ Γ (.array t) → PExpr Δ Γ ρ →
-      Term Δ (t :: ρ :: Γ) ρ [] → Comp Δ Γ ρ
-  /-- The fold of block `b`, answering `ρ i` at member `i`.  Branch `i` binds member `i`'s
-      body in which every hole `i'` is the pair of the subvalue and the answer at it. -/
-  | data_rec {Γ : Ctx ks} (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty ks)
-      (branches : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).recBody ρ i :: Γ) (ρ i) [])
-      (j : Fin ((Δ.block b).k + 1)) :
-      PExpr Δ Γ (.data ((Δ.block b).ref j)) → Comp Δ Γ (ρ j)
-  /-- Course-of-values recursion over block `b`, answering `ρ i` at member `i` and looking
-      `k + 1` levels down: branch `i` binds member `i`'s body in which every hole is the
-      window of depth `k` of the subvalue (`DSig.Block.win`: the subvalue, the answer at it
-      and, below depth `0`, its own body of windows one level shallower).  `k = 0` is
-      `data_rec`. -/
-  | data_brec {Γ : Ctx ks} (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty ks) (k : Nat)
-      (branches : (i : Fin ((Δ.block b).k + 1)) →
-        Term Δ ((Δ.block b).brecBody ρ k i :: Γ) (ρ i) [])
-      (j : Fin ((Δ.block b).k + 1)) :
-      PExpr Δ Γ (.data ((Δ.block b).ref j)) → Comp Δ Γ (ρ j)
-  /-- A memoised delay (`Thunk.mk`) of a computation.  A delay denotes its value, so this
-      evaluates to the value of the body: it only matters for printing. -/
-  | thunk_mk {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ τ.relax [] → Comp Δ Γ (.thunk τ)
-  /-- The value a memoised delay holds (`Thunk.get`); evaluates to the value of the
-      argument. -/
-  | thunk_force {Γ : Ctx ks} {τ : Ty ks false} : PExpr Δ Γ (.thunk τ) → Comp Δ Γ τ.relax
-  /-- A delay that is recomputed every time (`fun (_ : Unit) => e`) of a computation;
-      evaluates to the value of the body: it only matters for printing. -/
-  | lazy_mk {Γ : Ctx ks} {τ : Ty ks false} : Term Δ Γ τ.relax [] → Comp Δ Γ (.lazy τ)
-  /-- The value a lazy delay holds (`f ()`); evaluates to the value of the argument. -/
-  | lazy_force {Γ : Ctx ks} {τ : Ty ks false} : PExpr Δ Γ (.lazy τ) → Comp Δ Γ τ.relax
+/-- **Neutral expressions**: stuck on an unknown.  A variable of `Γ` (never of `Φ`), an
+    elimination of a neutral value, or a call of an extern with at least one open argument.
+    `ℓ` is the smallest level they mention. -/
+inductive Neu {ks : List Nat} (Δ : DSig ks) (Φ : KCtx ks) (Γ : UCtx ks) : Ty ks → Nat → Type where
+  /-- An unknown. -/
+  | var {τ : Ty ks} {ℓ : Nat} : UVar Γ τ ℓ → Neu Δ Φ Γ τ ℓ
+  /-- One layer out of a neutral value of member `j` of block `b`. -/
+  | data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) {ℓ : Nat} :
+      Neu Δ Φ Γ (.data ((Δ.block b).ref j)) ℓ → Neu Δ Φ Γ ((Δ.block b).unfold j) ℓ
+  /-- The pure conditional on a neutral condition. -/
+  | cond {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} : Neu Δ Φ Γ .bool ℓ → PExpr Δ Φ Γ τ o₁ →
+      PExpr Δ Φ Γ τ o₂ → Neu Δ Φ Γ τ (Lvl.meetL ℓ (Lvl.meet o₁ o₂))
+  /-- A call of an extern with at least one open argument. -/
+  | extern {σs : List (Ty ks)} {τ : Ty ks} {o : Lvl} {ℓ : Nat} (e : Extern ks σs τ) :
+      Args Δ Φ Γ σs o → o = some ℓ → Neu Δ Φ Γ τ ℓ
 
-/-- **Layer 3, statements** (`PCL`'s `Expr`): a term of type `τ` in context `Γ`, over the
-    datatype signature `Δ`, with the join points `js` in scope.  A statement is a chain of
-    `let`s of computations (and of record destructurings) ending in a tail: a pure answer,
-    a branch, a join point or a jump. -/
-inductive Term {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → JCtx ks → Type where
-  /-- The answer: a pure expression. -/
-  | ret {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} : PExpr Δ Γ τ → Term Δ Γ τ js
-  /-- `let x := c; body`: `x` is de Bruijn index `0` of `body`. -/
-  | letE {Γ : Ctx ks} {σ τ : Ty ks} {js : JCtx ks} : Comp Δ Γ σ → Term Δ (σ :: Γ) τ js →
-      Term Δ Γ τ js
-  /-- Take a record apart: the body binds the fields, the first field innermost (index `0`).
-      A record has one constructor, so this does not branch. -/
-  | record_casesOn {Γ : Ctx ks} {t : Ty ks} {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} :
-      Neu Δ Γ (.record t fs) → Term Δ ((t :: fs.toList) ++ Γ) τ js → Term Δ Γ τ js
-  /-- `if c then t else e`, in tail position. -/
-  | ite {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} : Neu Δ Γ .bool → Term Δ Γ τ js →
-      Term Δ Γ τ js → Term Δ Γ τ js
-  /-- Case analysis of an enum, in tail position: one branch per constructor. -/
-  | enum_casesOn {Γ : Ctx ks} {s : LeanEnumSchema} {τ : Ty ks} {js : JCtx ks} :
-      Neu Δ Γ (.enum s) → (Fin s.nOfConstructors → Term Δ Γ τ js) → Term Δ Γ τ js
-  /-- Case analysis of a union, in tail position: each branch binds the fields of its
-      constructor. -/
-  | union_casesOn {Γ : Ctx ks} {bs : List Bool} {cs : Ctors ks bs} {h : UnionShape bs}
-      {τ : Ty ks} {js : JCtx ks} :
-      Neu Δ Γ (.union cs (h := h)) → Branches Δ Γ cs τ js → Term Δ Γ τ js
-  /-- `join j (x : σ) := body; main`: the join point `j` (index `0` of the join points of
-      `main`) finishes the statement from a value `x` of type `σ`.  This is how a branch that
-      is not in tail position is written. -/
-  | join {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} (σ : Ty ks) : Term Δ (σ :: Γ) τ js →
-      Term Δ Γ τ (σ :: js) → Term Δ Γ τ js
-  /-- Jump to a join point with the value of its parameter. -/
-  | jump {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks} {σ : Ty ks} : JVar js σ → PExpr Δ Γ σ →
-      Term Δ Γ τ js
+/-- **Pure expressions** of type `τ` and level `o`. -/
+inductive PExpr {ks : List Nat} (Δ : DSig ks) (Φ : KCtx ks) (Γ : UCtx ks) :
+    Ty ks → Lvl → Type where
+  /-- A neutral expression. -/
+  | neu {τ : Ty ks} {ℓ : Nat} : Neu Δ Φ Γ τ ℓ → PExpr Δ Φ Γ τ (some ℓ)
+  /-- A known value, by name. -/
+  | kvar {τ : Ty ks} {o : Lvl} : KVar Φ τ o → PExpr Δ Φ Γ τ o
+  /-- A literal of a leaf type. -/
+  | lit (p : LeanPrimTy) (v : p.denote) : PExpr Δ Φ Γ (.prim p) none
+  /-- A constructor of an enum. -/
+  | enum_mk (s : LeanEnumSchema) : Fin s.nOfConstructors → PExpr Δ Φ Γ (.enum s) none
+  /-- A record, from its fields. -/
+  | record_mk {t : Ty ks} {fs : Fields ks} {o : Lvl} : Args Δ Φ Γ (t :: fs.toList) o →
+      PExpr Δ Φ Γ (.record t fs) o
+  /-- A constructor of a union, from its fields. -/
+  | union_mk {bs : List Bool} {b : Bool} {cs : Ctors ks bs} {h : UnionShape bs}
+      {c : Ctor ks b} {o : Lvl} : CtorIx cs c → Args Δ Φ Γ c.binds o →
+      PExpr Δ Φ Γ (.union cs (h := h)) o
+  /-- An array literal. -/
+  | array_mk {t : Ty ks} {o : Lvl} : Elems Δ Φ Γ t o → PExpr Δ Φ Γ (.array t) o
+  /-- A list literal. -/
+  | list_mk {t : Ty ks} {o : Lvl} : Elems Δ Φ Γ t o → PExpr Δ Φ Γ (.list t) o
+  /-- One layer in. -/
+  | data_in (b : BRef ks) (j : Fin ((Δ.block b).k + 1)) {o : Lvl} :
+      PExpr Δ Φ Γ ((Δ.block b).unfold j) o → PExpr Δ Φ Γ (.data ((Δ.block b).ref j)) o
 
-/-- The branches of a union's case analysis, following its constructors. -/
-inductive Branches {ks : List Nat} (Δ : DSig ks) :
-    Ctx ks → {bs : List Bool} → Ctors ks bs → Ty ks → JCtx ks → Type where
-  | two {Γ : Ctx ks} {a b : Bool} {c : Ctor ks a} {d : Ctor ks b} {τ : Ty ks} {js : JCtx ks} :
-      Term Δ (c.binds ++ Γ) τ js → Term Δ (d.binds ++ Γ) τ js → Branches Δ Γ (.two c d) τ js
-  | cons {Γ : Ctx ks} {a : Bool} {bs : List Bool} {c : Ctor ks a} {cs : Ctors ks bs}
-      {τ : Ty ks} {js : JCtx ks} :
-      Term Δ (c.binds ++ Γ) τ js → Branches Δ Γ cs τ js → Branches Δ Γ (.cons c cs) τ js
+/-- Arguments; their level is the smallest of their levels. -/
+inductive Args {ks : List Nat} (Δ : DSig ks) (Φ : KCtx ks) (Γ : UCtx ks) :
+    List (Ty ks) → Lvl → Type where
+  | nil : Args Δ Φ Γ [] none
+  | cons {σ : Ty ks} {σs : List (Ty ks)} {o₁ o₂ : Lvl} : PExpr Δ Φ Γ σ o₁ →
+      Args Δ Φ Γ σs o₂ → Args Δ Φ Γ (σ :: σs) (Lvl.meet o₁ o₂)
+
+/-- The elements of an array or list literal; their level is the smallest of their levels. -/
+inductive Elems {ks : List Nat} (Δ : DSig ks) (Φ : KCtx ks) (Γ : UCtx ks) :
+    Ty ks → Lvl → Type where
+  | nil {t : Ty ks} : Elems Δ Φ Γ t none
+  | cons {t : Ty ks} {o₁ o₂ : Lvl} : PExpr Δ Φ Γ t o₁ → Elems Δ Φ Γ t o₂ →
+      Elems Δ Φ Γ t (Lvl.meet o₁ o₂)
 
 end
 
-/-- `let x := c; x`: the statement whose answer is the value of the computation `c`.  The
-    normaliser (`LeanScript.TermElab.Anf`) writes a computation in tail position with it, so that the
-    expected type of the statement reaches `c` when it is elaborated; the notation and the
-    translator then unfold it, so it never remains in a term. -/
-abbrev Term.ofComp {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {τ : Ty ks} {js : JCtx ks}
-    (c : Comp Δ Γ τ) : Term Δ Γ τ js :=
-  .letE c (.ret (.var .head))
+/-! ## Layers 2 and 3: values, bodies, computations, statements -/
+
+mutual
+
+/-- **Values of known shape**, bound by `Term.letV` into the known context, at depth `d`. -/
+inductive Val {ks : List Nat} (Δ : DSig ks) : Nat → KCtx ks → UCtx ks → Ty ks → Lvl → Type where
+  /-- A closure; its parameter is an unknown of the body, at level `d + 1`. -/
+  | lam {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {u : Usage01ω} {o : Lvl} :
+      Body Δ d Φ Γ [⟨σ, u, d + 1⟩] τ o → Val Δ d Φ Γ (.fn σ τ) o
+  /-- A memoised delay. -/
+  | thunk_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks false} {o : Lvl} :
+      Body Δ d Φ Γ [] τ.relax o → Val Δ d Φ Γ (.thunk τ) o
+  /-- A delay that is recomputed every time. -/
+  | lazy_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks false} {o : Lvl} :
+      Body Δ d Φ Γ [] τ.relax o → Val Δ d Φ Γ (.lazy τ) o
+  /-- A record literal. -/
+  | record_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks} {o : Lvl} :
+      Args Δ Φ Γ (t :: fs.toList) o → Val Δ d Φ Γ (.record t fs) o
+  /-- A constructor of a union. -/
+  | union_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {b : Bool}
+      {cs : Ctors ks bs} {h : UnionShape bs} {c : Ctor ks b} {o : Lvl} : CtorIx cs c →
+      Args Δ Φ Γ c.binds o → Val Δ d Φ Γ (.union cs (h := h)) o
+  /-- An array literal. -/
+  | array_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {o : Lvl} :
+      Elems Δ Φ Γ t o → Val Δ d Φ Γ (.array t) o
+  /-- A list literal. -/
+  | list_mk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {o : Lvl} :
+      Elems Δ Φ Γ t o → Val Δ d Φ Γ (.list t) o
+  /-- One layer in. -/
+  | data_in {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} (b : BRef ks) (j : Fin ((Δ.block b).k + 1))
+      {o : Lvl} : PExpr Δ Φ Γ ((Δ.block b).unfold j) o →
+      Val Δ d Φ Γ (.data ((Δ.block b).ref j)) o
+
+/-- **The body of a closure, a delay or a loop** at depth `d`, binding `bs` (unknowns, at
+    level `d + 1`).  A closed body sees only the closed known values and `bs`; an open body
+    sees everything, and mentions something bound outside of it (its level `m` is `≤ d`). -/
+inductive Body {ks : List Nat} (Δ : DSig ks) :
+    Nat → KCtx ks → UCtx ks → UCtx ks → Ty ks → Lvl → Type where
+  | closed {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} :
+      Term Δ (d + 1) (KCtx.closedOnly Φ) bs τ [] o → Body Δ d Φ Γ bs τ none
+  | opened {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {m : Nat} :
+      Term Δ (d + 1) Φ (bs ++ Γ) τ [] (some m) → m ≤ d → Body Δ d Φ Γ bs τ (some m)
+
+/-- **Computations**: one step whose result is an unknown, named by `Term.letE`.  Each one has
+    an open operand (or an open body), so none can be computed by the normaliser; `ℓ` is the
+    smallest level they mention. -/
+inductive Comp {ks : List Nat} (Δ : DSig ks) : Nat → KCtx ks → UCtx ks → Ty ks → Nat → Type where
+  /-- A call; the function is an unknown or a known closure, and the function or the argument
+      is open. -/
+  | app {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {of oa : Lvl} {ℓ : Nat} :
+      PExpr Δ Φ Γ (.fn σ τ) of → PExpr Δ Φ Γ σ oa → Lvl.meet of oa = some ℓ → Comp Δ d Φ Γ τ ℓ
+  /-- A neutral expression computed once and shared by name. -/
+  | share {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
+      Neu Δ Φ Γ τ ℓ → Comp Δ d Φ Γ τ ℓ
+  /-- `Nat.rec` with a non-dependent motive: the step binds the answer so far (index `0`)
+      and the predecessor (index `1`). -/
+  | nat_rec {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {u₁ u₂ : Usage01ω}
+      {on oz os : Lvl} {ℓ : Nat} :
+      PExpr Δ Φ Γ .nat on → PExpr Δ Φ Γ τ oz →
+      Body Δ d Φ Γ [⟨τ, u₁, d + 1⟩, ⟨.nat, u₂, d + 1⟩] τ os →
+      Lvl.meet (Lvl.meet on oz) os = some ℓ → Comp Δ d Φ Γ τ ℓ
+  /-- `Array.foldl`: the step binds the element (index `0`) and the accumulator (index `1`). -/
+  | array_foldl {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t ρ : Ty ks} {u₁ u₂ : Usage01ω}
+      {oa oz os : Lvl} {ℓ : Nat} :
+      PExpr Δ Φ Γ (.array t) oa → PExpr Δ Φ Γ ρ oz →
+      Body Δ d Φ Γ [⟨t, u₁, d + 1⟩, ⟨ρ, u₂, d + 1⟩] ρ os →
+      Lvl.meet (Lvl.meet oa oz) os = some ℓ → Comp Δ d Φ Γ ρ ℓ
+  /-- The fold of block `b`, answering `ρ i` at member `i`. -/
+  | data_rec {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} (b : BRef ks)
+      (ρ : Fin ((Δ.block b).k + 1) → Ty ks) (us : Fin ((Δ.block b).k + 1) → Usage01ω)
+      {os : Fin ((Δ.block b).k + 1) → Lvl} {oe : Lvl} {ℓ : Nat}
+      (branches : (i : Fin ((Δ.block b).k + 1)) →
+        Body Δ d Φ Γ [⟨(Δ.block b).recBody ρ i, us i, d + 1⟩] (ρ i) (os i))
+      (j : Fin ((Δ.block b).k + 1)) :
+      PExpr Δ Φ Γ (.data ((Δ.block b).ref j)) oe →
+      Lvl.meet oe (Lvl.meetFin _ os) = some ℓ → Comp Δ d Φ Γ (ρ j) ℓ
+  /-- Course-of-values recursion over block `b`. -/
+  | data_brec {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} (b : BRef ks)
+      (ρ : Fin ((Δ.block b).k + 1) → Ty ks) (k : Nat) (us : Fin ((Δ.block b).k + 1) → Usage01ω)
+      {os : Fin ((Δ.block b).k + 1) → Lvl} {oe : Lvl} {ℓ : Nat}
+      (branches : (i : Fin ((Δ.block b).k + 1)) →
+        Body Δ d Φ Γ [⟨(Δ.block b).brecBody ρ k i, us i, d + 1⟩] (ρ i) (os i))
+      (j : Fin ((Δ.block b).k + 1)) :
+      PExpr Δ Φ Γ (.data ((Δ.block b).ref j)) oe →
+      Lvl.meet oe (Lvl.meetFin _ os) = some ℓ → Comp Δ d Φ Γ (ρ j) ℓ
+  /-- The value of an open memoised delay (an unknown one, or an open known one). -/
+  | thunk_force {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks false} {ℓ : Nat} :
+      PExpr Δ Φ Γ (.thunk τ) (some ℓ) → Comp Δ d Φ Γ τ.relax ℓ
+  /-- The value of an open lazy delay. -/
+  | lazy_force {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks false} {ℓ : Nat} :
+      PExpr Δ Φ Γ (.lazy τ) (some ℓ) → Comp Δ d Φ Γ τ.relax ℓ
+
+/-- **Statements** at depth `d`: `let`s ending in a tail. -/
+inductive Term {ks : List Nat} (Δ : DSig ks) :
+    Nat → KCtx ks → UCtx ks → Ty ks → JCtx ks → Lvl → Type where
+  /-- The answer. -/
+  | ret {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
+      PExpr Δ Φ Γ τ o → Term Δ d Φ Γ τ js o
+  /-- `val %k := v; body`: share a value of known shape by name, used `u` times. -/
+  | letV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {o o' : Lvl}
+      (u : Usage1ω) :
+      Val Δ d Φ Γ σ o → Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o' →
+      Term Δ d Φ Γ τ js (Lvl.meet o o')
+  /-- `let x := c; body`: name the result of a computation, used `u` times. -/
+  | letE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {o' : Lvl}
+      (u : Usage1ω) :
+      Comp Δ d Φ Γ σ ℓ → Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o' →
+      Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ o'))
+  /-- Take a neutral record apart; the fields are used `us` times. -/
+  | record_casesOn {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks}
+      {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {o' : Lvl} (us : List Usage01ω) :
+      Neu Δ Φ Γ (.record t fs) ℓ → Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o' →
+      Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ o'))
+  /-- A branch, in tail position. -/
+  | branch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} :
+      Branch Δ d Φ Γ τ js ℓ → Term Δ d Φ Γ τ js (some ℓ)
+  /-- Jump to a join point. -/
+  | jump {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {σ : Ty ks} {o : Lvl} :
+      JVar js σ → PExpr Δ Φ Γ σ o → Term Δ d Φ Γ τ js o
+
+/-- **Branches** on a neutral value, and the join points in front of them. -/
+inductive Branch {ks : List Nat} (Δ : DSig ks) :
+    Nat → KCtx ks → UCtx ks → Ty ks → JCtx ks → Nat → Type where
+  | ite {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} :
+      Neu Δ Φ Γ .bool ℓ → Term Δ d Φ Γ τ js o₁ → Term Δ d Φ Γ τ js o₂ →
+      Branch Δ d Φ Γ τ js (Lvl.meetL ℓ (Lvl.meet o₁ o₂))
+  | enum_casesOn {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema} {τ : Ty ks}
+      {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl} :
+      Neu Δ Φ Γ (.enum s) ℓ → ((i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i)) →
+      Branch Δ d Φ Γ τ js (Lvl.meetL ℓ (Lvl.meetFin _ os))
+  | union_casesOn {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+      {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {o : Lvl} :
+      Neu Δ Φ Γ (.union cs (h := h)) ℓ → Branches Δ d Φ Γ cs τ js o →
+      Branch Δ d Φ Γ τ js (Lvl.meetL ℓ o)
+  /-- `join j (x : σ) := body; main`: `j` is used `u` times, `x` is used `uₓ` times. -/
+  | join {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+      (σ : Ty ks) (u : Usage1ω) (uₓ : Usage01ω) :
+      Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o → Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ →
+      Branch Δ d Φ Γ τ js (Lvl.meetL ℓ o)
+
+/-- The branches of a union's case analysis; each binds the fields of its constructor. -/
+inductive Branches {ks : List Nat} (Δ : DSig ks) :
+    Nat → KCtx ks → UCtx ks → {bs : List Bool} → Ctors ks bs → Ty ks → JCtx ks → Lvl → Type where
+  | two {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a b : Bool} {c₁ : Ctor ks a} {c₂ : Ctor ks b}
+      {τ : Ty ks} {js : JCtx ks} {o₁ o₂ : Lvl} (us₁ us₂ : List Usage01ω) :
+      Term Δ d Φ (UCtx.annot d c₁.binds us₁ ++ Γ) τ js o₁ →
+      Term Δ d Φ (UCtx.annot d c₂.binds us₂ ++ Γ) τ js o₂ →
+      Branches Δ d Φ Γ (.two c₁ c₂) τ js (Lvl.meet o₁ o₂)
+  | cons {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {bs : List Bool} {c : Ctor ks a}
+      {cs : Ctors ks bs} {τ : Ty ks} {js : JCtx ks} {o₁ o₂ : Lvl} (us : List Usage01ω) :
+      Term Δ d Φ (UCtx.annot d c.binds us ++ Γ) τ js o₁ → Branches Δ d Φ Γ cs τ js o₂ →
+      Branches Δ d Φ Γ (.cons c cs) τ js (Lvl.meet o₁ o₂)
+
+end
 
 end LeanScript
 

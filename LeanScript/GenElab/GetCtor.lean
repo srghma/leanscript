@@ -307,9 +307,10 @@ def Frame.close (F : Frame) (fty fn : Lean.Term) : TermElabM (Lean.Term × Lean.
   for v in F.varIds.reverse do
     fty ← `(($v : LeanScript.Ty $(F.ksT)) → $fty)
     fn ← `(fun $v => $fn)
+  let phi := mkIdent `Φ
   let gam := mkIdent `Γ
-  fty ← `(∀ {$gam : LeanScript.Ctx $(F.ksT)}, $fty)
-  fn ← `(fun {$gam} => $fn)
+  fty ← `(∀ {$phi : LeanScript.KCtx $(F.ksT)} {$gam : LeanScript.UCtx $(F.ksT)}, $fty)
+  fn ← `(fun {$phi} {$gam} => $fn)
   if F.prog?.isNone then
     let ks := mkIdent `ks
     let d := mkIdent `Δ
@@ -349,13 +350,21 @@ def ensureCtor (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Nam
     let body ← match plan.data? with
       | some (b, j) => `(LeanScript.PExpr.data_in $(← brefStx F.c b) $(quote j) $payload)
       | none => pure payload
-    -- the type and the function
-    let mut fty ← `(LeanScript.PExpr $(F.dT) $gam $(← plan.layout.stx F.c F.varIds))
+    -- the type and the function: the level of the value is the smallest of its fields'
+    let phi := mkIdent `Φ
+    let lvIds : Array Ident := (Array.range fields.size).map fun q => mkIdent (.mkSimple s!"o{q}")
+    let level ← if plan.isBool || plan.enum?.isSome then `(none)
+      else if plan.ctors.size == 1 && fields.size == 1 then pure ⟨lvIds[0]!.raw⟩
+      else lvIds.foldrM (fun o r => `(LeanScript.Lvl.meet $o $r)) (← `(none))
+    let mut fty ← `(LeanScript.PExpr $(F.dT) $phi $gam $(← plan.layout.stx F.c F.varIds) $level)
     let mut fn := body
     for q in (List.range fields.size).reverse do
-      fty ← `(($(argIds[q]!) : LeanScript.PExpr $(F.dT) $gam
-        $(← fields[q]!.stx F.c F.varIds)) → $fty)
+      fty ← `(($(argIds[q]!) : LeanScript.PExpr $(F.dT) $phi $gam
+        $(← fields[q]!.stx F.c F.varIds) $(lvIds[q]!)) → $fty)
       fn ← `(fun $(argIds[q]!) => $fn)
+    if !lvIds.isEmpty then
+      fty ← `(∀ {$lvIds* : LeanScript.Lvl}, $fty)
+      fn ← `(fun {$lvIds*} => $fn)
     let (fty', fn') ← F.close fty fn
     emitDef decl fty' fn'
     addEntry (.gen gkey decl)
@@ -372,28 +381,34 @@ def resolveInductive (id : Ident) : TermElabM Name := do
   | some (.ctorInfo c) => return c.induct
   | _ => fail m!"`{n}` is not an inductive type"
 
-/-- The case analysis of a value of `layout`, whose (unfolded) type has the constructors
-    `ctors`: one branch per constructor, which binds the constructor's fields. -/
-def casesBodyStx (plan : TypePlan) (scrut : Lean.Term) (bs : Array Lean.Term) :
-    MetaM Lean.Term := do
+/-- The case analysis of a neutral value of `plan`, one branch per constructor (`bs`, each
+    binding the constructor's fields), and the level of the statement from the levels `os` of
+    the branches and `ℓ` of the scrutinee. -/
+def casesBodyStx (plan : TypePlan) (scrut : Lean.Term) (bs : Array Lean.Term) (ell : Lean.Term)
+    (os : Array Lean.Term) : MetaM (Lean.Term × Lean.Term) := do
   let m := plan.ctors.size
   if plan.isBool then
-    `(LeanScript.Term.ite $scrut $(bs[1]!) $(bs[0]!))
+    return (← `(LeanScript.Term.branch (LeanScript.Branch.ite $scrut $(bs[1]!) $(bs[0]!))),
+      ← `(some (LeanScript.Lvl.meetL $ell (LeanScript.Lvl.meet $(os[1]!) $(os[0]!)))))
   else if plan.enum?.isSome then
-    let i := mkIdent `i
-    let mut sel := bs[m - 1]!
-    for p in (List.range (m - 1)).reverse do
-      sel ← `(if ($i).val = $(quote p) then $(bs[p]!) else $sel)
-    `(LeanScript.Term.enum_casesOn $scrut (fun $i => $sel))
+    let listed ← (bs.extract 0 (m - 1)).mapM fun b => `(⟨_, $b⟩)
+    let lv ← os.foldrM (fun o r => `(LeanScript.Lvl.meet $o $r)) (← `(none))
+    return (← `(LeanScript.Term.branch
+        (LeanScript.Branch.enumList $scrut [$listed,*] ⟨_, $(bs[m - 1]!)⟩)),
+      ← `(some (LeanScript.Lvl.meetL $ell $lv)))
   else if m = 1 then
+    let lv ← `(some (LeanScript.Lvl.meetL $ell $(os[0]!)))
     if plan.ctors[0]!.2.size = 1 then
-      `(LeanScript.Term.letE (LeanScript.Comp.share (LeanScript.PExpr.neu $scrut)) $(bs[0]!))
-    else `(LeanScript.Term.record_casesOn $scrut $(bs[0]!))
+      return (← `(LeanScript.Term.letE .many (LeanScript.Comp.share $scrut) $(bs[0]!)), lv)
+    else return (← `(LeanScript.Term.record_casesOn [] $scrut $(bs[0]!)), lv)
   else
-    let mut br ← `(LeanScript.Branches.two $(bs[m - 2]!) $(bs[m - 1]!))
+    let mut br ← `(LeanScript.Branches.two [] [] $(bs[m - 2]!) $(bs[m - 1]!))
+    let mut lv ← `(LeanScript.Lvl.meet $(os[m - 2]!) $(os[m - 1]!))
     for p in (List.range (m - 2)).reverse do
-      br ← `(LeanScript.Branches.cons $(bs[p]!) $br)
-    `(LeanScript.Term.union_casesOn $scrut $br)
+      br ← `(LeanScript.Branches.cons [] $(bs[p]!) $br)
+      lv ← `(LeanScript.Lvl.meet $(os[p]!) $lv)
+    return (← `(LeanScript.Term.branch (LeanScript.Branch.union_casesOn $scrut $br)),
+      ← `(some (LeanScript.Lvl.meetL $ell $lv)))
 
 /-- The generated definition of `#leanscript_get_cases I (named…)`, generating it if
     needed. -/
@@ -406,28 +421,39 @@ def ensureCases (id : Ident) (named : Array (Ident × Lean.Term)) : TermElabM Na
     let gkey : GenKey := { kind := "cases", name := ind, args := key, prog := F.prog?.map ProgInfo.name }
     if let some d ← cached? gkey then return d
     let decl ← F.declName ind (.mkSimple ind.getString!) (if F.prog?.isSome then `cases else `leanScriptCases)
+    let phi := mkIdent `Φ
     let gam := mkIdent `Γ
     let tau := mkIdent `τ
     let js := mkIdent `js
+    let dd := mkIdent `d
+    let ell := mkIdent `ℓ
     let x := mkIdent `scrut
     let brIds : Array Ident := plan.ctors.map fun (c, _) =>
       mkIdent (.mkSimple ("on_" ++ c.getString!))
+    let lvIds : Array Ident := (Array.range plan.ctors.size).map fun p => mkIdent (.mkSimple s!"o{p}")
     let scrut ← match plan.data? with
       | some (b, j) => `(LeanScript.Neu.data_out $(← brefStx F.c b) $(quote j) $x)
       | none => pure x
-    let body ← casesBodyStx plan scrut (brIds.map fun b => ⟨b.raw⟩)
-    let mut fty ← `(LeanScript.Term $(F.dT) $gam $tau $js)
+    let (body, level) ← casesBodyStx plan scrut (brIds.map fun b => ⟨b.raw⟩) ell
+      (lvIds.map fun o => ⟨o.raw⟩)
+    let mut fty ← `(LeanScript.Term $(F.dT) $dd $phi $gam $tau $js $level)
     let mut fn := body
-    for p in (List.range plan.ctors.size).reverse do
-      let mut ctx : Lean.Term := gam
-      for f in plan.ctors[p]!.2.reverse do
-        ctx ← `($(← f.stx F.c F.varIds) :: $ctx)
-      fty ← `(($(brIds[p]!) : LeanScript.Term $(F.dT) $ctx $tau $js) → $fty)
+    let m := plan.ctors.size
+    for p in (List.range m).reverse do
+      let fs := plan.ctors[p]!.2
+      let ctx ← if plan.isBool || plan.enum?.isSome then pure ⟨gam.raw⟩
+        else if m = 1 && fs.size = 1 then
+          `(⟨$(← fs[0]!.stx F.c F.varIds), LeanScript.Usage01ω.many, $dd⟩ :: $gam)
+        else do
+          let tys ← fs.mapM (·.stx F.c F.varIds)
+          `(LeanScript.UCtx.annot $dd [$tys,*] [] ++ $gam)
+      fty ← `(($(brIds[p]!) : LeanScript.Term $(F.dT) $dd $phi $ctx $tau $js $(lvIds[p]!)) → $fty)
       fn ← `(fun $(brIds[p]!) => $fn)
-    fty ← `(($x : LeanScript.Neu $(F.dT) $gam $(← plan.layout.stx F.c F.varIds)) → $fty)
+    fty ← `(($x : LeanScript.Neu $(F.dT) $phi $gam $(← plan.layout.stx F.c F.varIds) $ell) → $fty)
     fn ← `(fun $x => $fn)
-    fty ← `(∀ {$tau : LeanScript.Ty $(F.ksT)} {$js : LeanScript.JCtx $(F.ksT)}, $fty)
-    fn ← `(fun {$tau} {$js} => $fn)
+    fty ← `(∀ {$dd : Nat} {$tau : LeanScript.Ty $(F.ksT)} {$js : LeanScript.JCtx $(F.ksT)}
+      {$ell : Nat} {$lvIds* : LeanScript.Lvl}, $fty)
+    fn ← `(fun {$dd} {$tau} {$js} {$ell} {$lvIds*} => $fn)
     let (fty', fn') ← F.close fty fn
     emitDef decl fty' fn'
     addEntry (.gen gkey decl)

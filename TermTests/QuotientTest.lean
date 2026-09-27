@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public meta import LeanScript.TermElab.ToTerm
 
 @[expose] public section

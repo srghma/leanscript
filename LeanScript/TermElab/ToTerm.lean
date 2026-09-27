@@ -193,7 +193,7 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
         if units[i]! then
           let rest ← mkForallFVars kept[i+1:].toArray (← inferType lhs)
           body ← delayCoerceTy L rest (← mkForallFVars #[kept[i]!] rest) body
-        else body := Anf.Src.lam none body
+        else body := Anf.Src.lam (some (← tyStx L (← inferType kept[i]!))) body
       -- the type of the translation: the parameters kept, then the result (an index
       -- parameter only occurs in indices, which are erased)
       let ty ← if idxParams.isEmpty then pure info.type
@@ -212,23 +212,23 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
     -- the direct-style source, normalised to an A-normal statement
     let body ← src.toTerm
     match prog?, s.usesData with
-    | some p, true => `(($body : LeanScript.Term $(mkIdent (p.name ++ `Δ)) [] $ty []))
+    | some p, true => `(($body : LeanScript.Term $(mkIdent (p.name ++ `Δ)) 0 [] [] $ty [] none))
     | _, _ =>
       let d? ← match expected? with
         | some t =>
           let t ← whnfR (← instantiateMVars t)
-          if t.isAppOfArity ``LeanScript.Term 5 then pure (some t.getAppArgs[1]!) else pure none
+          if t.isAppOfArity ``LeanScript.Term 8 then pure (some t.getAppArgs[1]!) else pure none
         | none => pure none
       match d? with
-      | some d => `(($body : LeanScript.Term $(← exprToSyntax d) [] $ty []))
+      | some d => `(($body : LeanScript.Term $(← exprToSyntax d) 0 [] [] $ty [] none))
       | none =>
         let ks := mkIdent `ks
         let d := mkIdent `Δ
         `(fun {$ks : List Nat} {$d : LeanScript.DSig $ks} =>
-            ($body : LeanScript.Term $d [] $ty []))
+            ($body : LeanScript.Term $d 0 [] [] $ty [] none))
   let v ← elabTerm stx expected?
   synthesizeSyntheticMVarsNoPostponing
-  Anf.unfoldOfComp (← instantiateMVars v)
+  instantiateMVars v
 
 /-- `#leanscript_to_term f`: the translation of the Lean definition `f` to a closed
     `LeanScript.Term`. -/

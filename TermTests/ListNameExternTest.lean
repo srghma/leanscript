@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public import LeanScript.Term.ExternShorthands
 public import LeanScript.TyElab.Notation
 public meta import LeanScript.Term.Eval

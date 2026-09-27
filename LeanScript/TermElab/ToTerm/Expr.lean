@@ -60,8 +60,9 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
       let b := b.instantiate1 (mkConst ``Unit.unit)
       return ← delayCoerceTy L (← inferType b) (← inferType e) (← tr L b)
     discard <| cirOf L t
+    let ty ← tyStx L t
     withLocalDeclD n t fun x => do
-      return Src.lam none (← tr (L.bind x.fvarId!) (b.instantiate1 x))
+      return Src.lam (some ty) (← tr (L.bind x.fvarId!) (b.instantiate1 x))
   | .proj S i s =>
     -- a projection of a constructor application (`(⟨j, h⟩ : Fin m).val`) is that field
     if let some e' ← Meta.reduceProj? e then
@@ -80,7 +81,10 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
         if ← isDefEq T d then
           if e.isConstOf ``Bool.true then return Src.boolLit true
           if e.isConstOf ``Bool.false then return Src.boolLit false
-          return ← Src.lit p (← exprToSyntax e)
+          let val : Anf.LitVal := match e.nat? <|> e.rawNatLit? with
+            | some n => .nat n
+            | none => .other
+          return ← Src.lit' p (← exprToSyntax e) val
         -- a closed value of a type read as a leaf without being one (a wrapper `⟨1, h⟩ : Pos`,
         -- a quotient `Quot.mk r 3`): its head normal form, whose value is the literal
         let e' ← whnf e
@@ -380,7 +384,7 @@ partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : T
         if d > 0 && !recursive then break
         try
           let mut body ← tr { L0 with depth := d } rhs
-          for _ in xs do body := Src.lam none body
+          for x in xs.reverse do body := Src.lam (some (← tyStx L0 (← inferType x))) body
           let ty ← tyStx L0 info.type
           return Src.ascribe body ty
         catch ex => if err?.isNone then err? := some ex
@@ -503,11 +507,7 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
   let holes ← (List.replicate nFields ()).toArray.mapM fun _ => `(_)
   let entryStx ← `($(mkIdent (`_root_ ++ sc)) $holes*)
   let argSrcs ← vals.mapM (tr L)
-  return .pneu (fun _ xs => do
-      let mut as ← `(LeanScript.Args.nil)
-      for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
-      `(LeanScript.Neu.extern $entryStx $as))
-    #[] argSrcs fun _ _ => none
+  return .extern entryStx argSrcs
 
 /-- `decide p` (of the instance `inst : Decidable p`): the call of the extern whose Lean
     function decides `p` (`Nat.decLt a b` for `a < b` on `Nat`: `lean_nat_dec_lt`, a `.bool`),
@@ -617,7 +617,21 @@ partial def trCtor (L : Loc) (cinfo : ConstructorVal) (fn : Expr) (args : Array 
   let T ← normType (← inferType (mkAppN fn args)) false
   if (← cirOf L T false).hasData then modify fun s => { s with usesData := true }
   let ctorFn ← `(#leanscript_get_ctor $(mkIdent (`_root_ ++ cinfo.name)) $named*)
-  return .pnode .other (fun xs => `(($ctorFn) $xs*)) fields
+  -- what the constructor function builds, for the case analyses of it the normaliser reduces
+  let plan ← lm (planType T L.prog?)
+  let shape? : Option Anf.CtorShape ← match plan.ctors.findIdx? (·.1 == cinfo.name) with
+    | none => pure none
+    | some pos => do
+      let kind : Anf.CtorKind :=
+        if plan.isBool then .bool (pos == 1)
+        else if plan.enum?.isSome then .enum pos
+        else if plan.ctors.size == 1 then (if fields.size == 1 then .wrap else .record)
+        else .union pos
+      let data? ← match plan.data? with
+        | some (b, j) => pure (some (← brefStx L.c b, quote j))
+        | none => pure none
+      pure (some { kind, data? })
+  return .ctor (← `(($ctorFn))) fields shape?
 
 /-- A value `a : Fin m → T` of a field that the language reads as `Nat → Option T`
     (`finOptArrow`): `fun j => if h : j < m then some (a ⟨j, h⟩) else none`, translated (a
@@ -809,14 +823,8 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src
     let Δ := mkIdent (prog.name ++ `Δ)
     let bref ← brefStx L.c b
     let depth := L.depth
-    let r : Src := .comp (fun xs bs => do
-        let brFun ← finFunStx bs
-        if depth = 0 then
-          `(LeanScript.Comp.data_rec (Δ := $Δ) $bref $ρFun $brFun $(quote j) $(xs[0]!))
-        else
-          `(LeanScript.Comp.data_brec (Δ := $Δ) $bref $ρFun $(quote depth) $brFun $(quote j)
-            $(xs[0]!)))
-      #[← tr L major] (brs.map (1, ·))
+    let r : Src := .dataRec (some Δ) bref ρFun (if depth = 0 then none else some (quote depth))
+      brs (quote j) (← tr L major)
     return ← appStx r (← ps.mapM (tr L))
   -- an ordinary case analysis
   let mut scrut ← tr L major

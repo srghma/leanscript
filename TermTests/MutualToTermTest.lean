@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.Ty.Two
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TacticElab.KernelRfl
 

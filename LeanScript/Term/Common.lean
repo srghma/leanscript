@@ -13,7 +13,7 @@ set_option autoImplicit false
 The contexts, variables and value lists shared by pure expressions (`LeanScript.Term.PExpr`),
 computations and statements (`LeanScript.Term.Term`): `Ctx`, `Var`, `DenList`, the types a
 constructor binds (`Fields.toList`, `Ctor.binds`), the index of a constructor in a union
-(`CtorIx`), and the join-point contexts (`JCtx`, `JVar`).
+(`CtorIx`).
 -/
 
 namespace LeanScript
@@ -55,14 +55,6 @@ instance {ks : List Nat} {a b : Bool} {c : Ctor ks a} {d : Ctor ks b} :
     Inhabited (CtorIx (.two c d) c) := ⟨.two₁⟩
 instance {ks : List Nat} {a : Bool} {bs : List Bool} {c : Ctor ks a} {cs : Ctors ks bs} :
     Inhabited (CtorIx (.cons c cs) c) := ⟨.head⟩
-
-/-- The join points in scope: the types of their parameters, innermost first.  A statement
-    `Term Δ Γ τ js` may jump to any of them; each one then finishes the statement with an
-    answer of type `τ`. -/
-abbrev JCtx (ks : List Nat) : Type := List (Ty ks)
-
-/-- A typed de Bruijn index of a join point. -/
-abbrev JVar {ks : List Nat} (js : JCtx ks) (σ : Ty ks) : Type := DeBruijn js σ
 
 end LeanScript
 

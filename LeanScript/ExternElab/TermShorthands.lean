@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Elab.Command
+public meta import Lean.Elab.Binders
 
 public section
 
@@ -12,9 +13,10 @@ entry of the catalogue (`LeanScript.LeanInitPureExternShorthands`), the definiti
 `PExpr.c`: the call of the extern `c` on pure expressions of the types of its arguments,
 
 ```
-@[match_pattern, reducible] def PExpr.c {ks} {Δ : DSig ks} {Γ : Ctx ks} (fields of c)
-    (a1 : PExpr Δ Γ σ₁) … (an : PExpr Δ Γ σₙ) : PExpr Δ Γ τ :=
-  .neu (.extern (.c fields) (.cons a1 (… (.cons an .nil))))
+@[match_pattern, reducible] def PExpr.c {ks} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks}
+    (fields of c) {o₁ … oₙ : Lvl} (a1 : PExpr Δ Φ Γ σ₁ o₁) … (an : PExpr Δ Φ Γ σₙ oₙ) {ℓ : Nat}
+    (h : Lvl.meet o₁ (… (Lvl.meet oₙ none)) = some ℓ := by rfl) : PExpr Δ Φ Γ τ (some ℓ) :=
+  .neu (.extern (.c fields) (.cons a1 (… (.cons an .nil))) h)
 ```
 
 so `PExpr.lean_string_any (.lit .string "12345") f` is a call of `String.Internal.any`.
@@ -48,14 +50,17 @@ meta partial def externListElems (e : Expr) : MetaM (Array Expr) := do
   throwError "`derive_extern_term_shorthands`: not a list literal{indentExpr e}"
 
 /-- Add the term former `target.c` (`target` is `PExpr` or `Neu`) of the shorthand `sc`
-    (`LeanInitPureExtern.c`). -/
-meta def addExternTermShorthand (target sc : Name) : MetaM Unit := do
+    (`LeanInitPureExtern.c`); `auto` is the constant of the syntax of the tactic `rfl`, the
+    default proof of the level equation. -/
+meta def addExternTermShorthand (target sc auto : Name) : MetaM Unit := do
   let info ← getConstInfo sc
   let name := target ++ Name.mkSimple sc.getString!
   let names := binderNamesOf info.type
+  let lvlTy := mkApp (mkConst ``Option [0]) (mkConst ``Nat)
   withLocalDecl `ks .implicit (mkApp (mkConst ``List [0]) (mkConst ``Nat)) fun ks => do
   withLocalDecl `Δ .implicit (mkApp (mkConst `LeanScript.DSig) ks) fun Δ => do
-  withLocalDecl `Γ .implicit (mkApp (mkConst `LeanScript.Ctx) ks) fun Γ => do
+  withLocalDecl `Φ .implicit (mkApp (mkConst `LeanScript.KCtx) ks) fun Φ => do
+  withLocalDecl `Γ .implicit (mkApp (mkConst `LeanScript.UCtx) ks) fun Γ => do
     let (xs, _, ty) ← forallMetaTelescope info.type
     let tyTy := mkApp2 (mkConst `LeanScript.Ty) ks (mkConst ``Bool.true)
     let σs ← mkFreshExprMVar (mkApp (mkConst ``List [0]) tyTy)
@@ -80,22 +85,32 @@ meta def addExternTermShorthand (target sc : Name) : MetaM Unit := do
         let τ ← normExternTy (← instantiateMVars τ)
         let e ← instantiateMVars (mkAppN (mkConst sc) xs)
         let elems ← externListElems σs
-        let argTys ← elems.mapM fun σ => do
-          return mkApp4 (mkConst `LeanScript.PExpr) ks Δ Γ (← normExternTy σ)
-        let argDecls := argTys.mapIdx fun i t => (Name.mkSimple s!"a{i + 1}", t)
+        let lvlDecls := elems.mapIdx fun i _ =>
+          (Name.mkSimple s!"o{i + 1}", BinderInfo.implicit, fun (_ : Array Expr) => pure lvlTy)
+        withLocalDecls lvlDecls fun os => do
+        let argDecls ← elems.mapIdxM fun i σ => do
+          return (Name.mkSimple s!"a{i + 1}",
+            mkApp5 (mkConst `LeanScript.PExpr) ks Δ Φ Γ (← normExternTy σ) |>.app os[i]!)
         withLocalDeclsDND argDecls fun as => do
-          -- `.cons a1 (… (.cons an .nil))`, at the types of the entry
-          let mut args := mkApp3 (mkConst `LeanScript.Args.nil) ks Δ Γ
+        withLocalDecl `ℓ .implicit (mkConst ``Nat) fun ℓ => do
+          -- `.cons a1 (… (.cons an .nil))`, at the types of the entry, and its level
+          let mut args := mkApp4 (mkConst `LeanScript.Args.nil) ks Δ Φ Γ
           let mut tail : Expr := mkApp (mkConst ``List.nil [0]) tyTy
+          let mut lvl : Expr := mkApp (mkConst ``Option.none [0]) (mkConst ``Nat)
           for i in (List.range as.size).reverse do
-            args := mkAppN (mkConst `LeanScript.Args.cons) #[ks, Δ, Γ, elems[i]!, tail, as[i]!, args]
+            args := mkAppN (mkConst `LeanScript.Args.cons)
+              #[ks, Δ, Φ, Γ, elems[i]!, tail, os[i]!, lvl, as[i]!, args]
             tail := mkApp3 (mkConst ``List.cons [0]) tyTy elems[i]! tail
-          let neu := mkAppN (mkConst `LeanScript.Neu.extern) #[ks, Δ, Γ, σs, τ, e, args]
+            lvl := mkApp2 (mkConst `LeanScript.Lvl.meet) os[i]! lvl
+          let someℓ := mkApp2 (mkConst ``Option.some [0]) (mkConst ``Nat) ℓ
+          let eqTy := mkApp3 (mkConst ``Eq [1]) lvlTy lvl someℓ
+          withLocalDeclD `h (mkApp2 (mkConst ``autoParam [0]) eqTy (mkConst auto)) fun h => do
+          let neu := mkAppN (mkConst `LeanScript.Neu.extern) #[ks, Δ, Φ, Γ, σs, τ, lvl, ℓ, e, args, h]
           let (body, resTy) :=
-            if target == `LeanScript.Neu then (neu, mkApp4 (mkConst `LeanScript.Neu) ks Δ Γ τ)
-            else (mkApp5 (mkConst `LeanScript.PExpr.neu) ks Δ Γ τ neu,
-              mkApp4 (mkConst `LeanScript.PExpr) ks Δ Γ τ)
-          let bs := #[ks, Δ, Γ] ++ fvs ++ as
+            if target == `LeanScript.Neu then (neu, mkApp6 (mkConst `LeanScript.Neu) ks Δ Φ Γ τ ℓ)
+            else (mkAppN (mkConst `LeanScript.PExpr.neu) #[ks, Δ, Φ, Γ, τ, ℓ, neu],
+              mkApp6 (mkConst `LeanScript.PExpr) ks Δ Φ Γ τ someℓ)
+          let bs := #[ks, Δ, Φ, Γ] ++ fvs ++ os ++ as ++ #[ℓ, h]
           let value ← mkLambdaFVars bs body
           let type ← mkForallFVars bs resTy
           let decl := Declaration.defnDecl
@@ -106,7 +121,8 @@ meta def addExternTermShorthand (target sc : Name) : MetaM Unit := do
             matchPatternAttr.setTag name
             addDocStringCore name s!"A call of the extern `{sc.getString!}` \
               (`{sc}`), as a {if target == `LeanScript.Neu then "neutral" else "pure"} \
-              expression."
+              expression.  The last argument, the equation of the level of the arguments \
+              (at least one of them is open), is proved by `rfl` by default."
           compileDecl decl
     go 0 #[]
 where
@@ -123,6 +139,7 @@ syntax (name := deriveExternTermShorthands) "derive_extern_term_shorthands " ide
 meta def elabDeriveExternTermShorthands : CommandElab
   | `(derive_extern_term_shorthands $id) => liftTermElabM do
       let target ← realizeGlobalConstNoOverloadWithInfo id
+      let auto ← withExporting <| Lean.Elab.Term.declareTacticSyntax (← `(tactic| rfl))
       let outer := `LeanScript.LeanInitPureExtern
       let outerInfo ← getConstInfoInduct outer
       for wrap in outerInfo.ctors do
@@ -133,7 +150,7 @@ meta def elabDeriveExternTermShorthands : CommandElab
             throwError "not an inductive"
           pure fam
         for c in (← getConstInfoInduct fam).ctors do
-          addExternTermShorthand target (outer ++ Name.mkSimple c.getString!)
+          addExternTermShorthand target (outer ++ Name.mkSimple c.getString!) auto
   | _ => throwUnsupportedSyntax
 
 end LeanScript

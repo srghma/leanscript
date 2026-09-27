@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public import LeanScript.TermElab.Notation
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TacticElab.KernelRfl

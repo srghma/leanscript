@@ -445,7 +445,7 @@ def withVaryLocals (L : Loc) (body : Expr) (k : Loc → Expr → TM Src) : TM Sr
       let p := ps[i]
       let d ← p.fvarId!.getDecl
       withLocalDeclD d.userName d.type fun x => do
-        return Src.lam none (← go (i + 1) (L'.bind x.fvarId!) (xs.push x))
+        return Src.lam (some (← tyStx L' d.type)) (← go (i + 1) (L'.bind x.fvarId!) (xs.push x))
     else
       k L' (body.replaceFVars ps xs)
   go 0 L #[]
@@ -491,12 +491,7 @@ def casesSrc (plan : TypePlan) (scrut : Src) (bs : Array Src) (ty? : Option Lean
   if plan.isBool then
     return Src.ite ty? scrut bs[1]! bs[0]!
   else if plan.enum?.isSome then
-    let i := mkIdent `i
-    return .cases ty? scrut (bs.map (0, ·)) none (fun _ => none) fun c rhss => do
-      let mut sel := rhss[m - 1]!
-      for p in (List.range (m - 1)).reverse do
-        sel ← `(if ($i).val = $(quote p) then $(rhss[p]!) else $sel)
-      `(LeanScript.Term.enum_casesOn $c (fun $i => $sel))
+    return .enumCases ty? scrut ((List.range m).toArray.map some) bs
   else if m = 1 then
     let n := plan.ctors[0]!.2.size
     if n = 1 then return .letE scrut bs[0]!

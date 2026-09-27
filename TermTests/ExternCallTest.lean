@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Build
 public import LeanScript.Term.ExternShorthands
 public meta import LeanScript.Term.Eval
 public meta import LeanScript.Term.ExternShorthands

@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.PExpr
+public import LeanScript.Term.Term
 public meta import LeanScript.ExternElab.TermShorthands
 
 @[expose] public section
@@ -16,13 +16,14 @@ For every entry `c` of the catalogue of externs (`LeanInitPureExtern`), the term
 
 ```
 PExpr.lean_string_any (.lit .string "12345") f
-  = .neu (.extern .lean_string_any (.cons (.lit .string "12345") (.cons f .nil)))
+  = .neu (.extern .lean_string_any (.cons (.lit .string "12345") (.cons f .nil)) rfl)
 PExpr.lean_array_push .nat a x
-  = .neu (.extern (.lean_array_push .nat) (.cons a (.cons x .nil)))
+  = .neu (.extern (.lean_array_push .nat) (.cons a (.cons x .nil)) rfl)
 ```
 
-An entry with type arguments (`lean_array_push`) takes them first, explicitly.  The term
-formers are reducible and usable in patterns.
+An entry with type arguments (`lean_array_push`) takes them first, explicitly.  The last
+argument is the equation of the level of the arguments (a call of an extern needs an open
+argument), proved by `rfl` by default.  The term formers are reducible and usable in patterns.
 -/
 
 namespace LeanScript
