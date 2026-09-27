@@ -1,3 +1,33 @@
+# Summary of changes for run 10fef1fa-8fd0-49ef-9031-050ec6c4665b
+I wrote the assessment in `proposals/CovariantTyAssessment.md`. It comes with a small Lean file, `proposals/CovTyToy.lean`, that checks its Lean-level claims on a cut-down copy of `Ty`. That file is outside the Lake build; check it with `lake env lean proposals/CovTyToy.lean`. It compiles with no errors, warnings or `sorry`. Nothing in `LeanScript/` or the tests was changed.
+
+**Why there is no thunk.** It was a deliberate choice in the nominal redesign: "a delay denotes the value it stands for, so `thunk bool` would be a second type of two values." It protects one proved theorem, `Ty.eq_bool_of_two_points` in `LeanScript/Three.lean`, which says any type with at most two values is `bool`. The toy proves that `thunk bool` has exactly two values and is not `bool`, so adding delays makes that theorem false as stated. The translator's checks compare with the Lean function up to definitional equality, so the meaning has to be `Thunk (den t)` and `Unit → den t`, not `den t`. Under that meaning, `Thunk Bool` and `Bool` really are two different Lean types, each with two values.
+
+**What used to be expressible and isn't now.** This comes from the project's history notes, since the old code is not in the repository history, so I could not re-check it:
+- `thunk` and `lazy` types, and their term formers
+- `Thunk T` fields in recursive and `mutual` families
+- `Unit` arguments, which used to be dropped (`Unit → τ` was read as `τ`) and are now refused
+- `Unit` fields, which used to be erased and are now refused
+- existentially typed datatypes, which you removed earlier
+
+`task`, `promise`, `IO`, `list` and `finFn` were never in `Ty`.
+
+**Three ways to write it:**
+- **A, nested, as you suggested:** `cov : LeanPrimTyCovariant (Ty ks) → Ty ks`. The toy shows the kernel accepts it and `Repr` derives, but **`DecidableEq` does not derive** (the handler refuses nesting through `LeanPrimTyCovariant`), so it has to be written by hand. `map`, `map_id` and `den` still recurse structurally and compute by `rfl`. Making `Ty.array`, `Ty.thunk` and `Ty.lazy` into `@[match_pattern]` abbreviations keeps the existing `.array t` uses compiling unchanged (about 110 in 29 files).
+- **B, tag plus child:** `cov : LeanPrimTyCovariant Unit → Ty ks → Ty ks`. Checked: `DecidableEq` derives.
+- **C:** three plain constructors.
+
+**What adding it breaks.** The document has a file-by-file table; the main points are:
+- `Three.lean`: the theorem has to be weakened to "at most two values means `bool` under some delays".
+- `Decl.lean`: an array element needs no value (`#[]` always exists), but a delay only has a value if its contents do. So recursive fields need separate `Fld.thunk`/`Fld.lazy`; they can't simply reuse `LeanPrimTyCovariant` the way `Ty` would.
+- `Gen/Read.lean`: an arrow whose domain is `Unit` becomes `.lazy`, and `Thunk` needs its own rule. Otherwise, since `Thunk` is a one-field structure, it would be read as `lazy` and get the wrong Lean type.
+- New term formers `lazy_mk`/`lazy_force` (and thunk ones), with cases in `Eval` and `TermSubst`.
+- The largest part is in `ToTerm`: `fun (_ : Unit) => …`, `f ()`, `Thunk.get` and a top-level `Unit` parameter.
+- Notation and delaborators need the new cases.
+- Tests whose expectations change: `forceB` and `withUnit` in `ToTermTest`, and `ThreeTest`.
+
+The document ends with six decisions for you. The first is which encoding: I suggest B if you want equality derived automatically, otherwise A.
+
 # Summary of changes for run d20cc7bf-fa5b-42e3-ba50-37023a1fc418
 I reworked both notations as you described: they no longer capture any variable by name, and they follow the `Term`/`Ty` datatypes closely. The full `lake build` passes (81 jobs) with no errors or warnings, and the four notation and test files contain no `sorry`.
 
