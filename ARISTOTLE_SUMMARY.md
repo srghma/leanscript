@@ -1,3 +1,51 @@
+# Summary of changes for run 040ca4b7-6639-4b8c-846f-5316c5687e34
+I added a notation for writing `Ty`s and `Term`s (the elaborators) and a pretty-printer that shows them in the same notation (the delaborators). The two notation files, their two test files and the full `lake build` all build with no errors, warnings or `sorry`. No existing file was changed, and existing files only get the new notation if they import it.
+
+**`LeanScript/TyNotation.lean`: `[Ty| …]`**
+- **What you can write:**
+  - leaves by name: `Nat`, `UInt8`, `Float.Model`, `BitVec 32`, `String.Pos "ab"`, …
+  - `σ → τ`, `Array τ`, `Option τ`, `σ ⊕ τ`
+  - records: `a × b × c` is one record of three fields, while `a × (b × c)` is a record of two fields whose second field is a record
+  - unions: `⟪· | Nat, Data 0 0⟫`, where `·` is a constructor with no fields and commas separate one constructor's fields
+  - enums: `Enum n` and `Enum n k` (numbered from `k`)
+  - declared datatypes: `Data b j` is member `j` of block `b`, with block `0` the newest
+  - Lean terms: `‹t›`, or just an identifier such as `listNat`
+- **Errors:** you get a clear message for `Enum 2` or an unknown type former. A union with no constructor that has fields is still rejected by the existing `UnionShape` check.
+- **Printing:** every `Ty` built from its constructors (or `Ty.nat`, `Ty.option`, …) prints back in this notation, with parentheses only where needed, e.g. `[Ty| (Nat → Nat) → Array (Nat × Int) → Nat]`. `set_option pp.leanscript false` turns printing in the notation off.
+
+**`LeanScript/TermNotation.lean`: `[Term| …]` with named variables**
+- **Variables are names:** you write names and they are turned into de Bruijn indices. `#i` means index `i` of the surrounding context.
+- **Forms:**
+  - `fun x (y : τ) => e`, application `f a b`, `let x := e; b`
+  - literals: numbers, strings, `true`/`false`, and `lit p v`
+  - `if … then … else`
+  - records: `(a, b, c)` builds one, `let (x, y, z) := e; b` takes one apart
+  - unions: `inj i (a, b)` builds constructor `i` by position, and `match e with | · => … | x => … | (y, z) => …` takes one apart
+  - enums: `enum i`, and `match` with number patterns, where the last branch is the default
+  - arrays: `#[…]` and `foldl (fun acc x => s) init arr`
+  - `natRec n z (fun m ih => s)`
+  - declared datatypes: `roll`/`unroll b j e`, `fold b ρ j e (fun x => br₀) …` and `brec b ρ k j e …`
+  - `extern "name" f a b`, and type ascription `(e : τ)`
+  - Lean terms: `‹t›`, and `‹f›(a, b)` to apply a Lean helper such as `addT` to notation terms
+- **New helper definitions** (these are what the notation expands to):
+  - `Term.inj`: a union constructor chosen by position, using `Ctors.nth`/`Ctors.ix`
+  - `Term.ofNat`: a number whose leaf type comes from the expected type
+  - `Term.externOf`: an extern whose arguments come first, so `fun v => Nat.add v.1 v.2.1` needs no type annotation
+- **Printing:** terms print back with generated names `x₀, x₁, …`. This covers fold branches (read back from their `match`), enum branches and calls to Lean helpers. For example, `sumT` prints as `fun x₀ => fold listB ‹fun x => [Ty| Nat]› 0 x₀ (fun x₁ => match x₁ with | · => 0 | (x₂, x₃) => let (x₄, x₅) := x₃; ‹addT›(x₂, x₅))`.
+
+**Tests**
+- `TyTests/TyNotationTest.lean`: each form checked against the constructors by `rfl`, the printed output pinned with `#guard_msgs`, and the rejected forms.
+- `TermTests/TermNotationTest.lean`: the programs from `TermTest` rewritten with named variables (`sumT`, `headT`, the rose-tree sum, the course-of-values Fibonacci) and run by `rfl`. It also checks that the notation builds the same terms as the constructors, pins the printed output, and checks that one printed term (`roseSumC`) reads back as the same term.
+
+**Limitations**
+- A number's type must be known from context. `let x := 3; ‹addT›(x, x)` works, but a lone `let x := 3; x` needs `let x : Nat := 3`.
+- A Lean term that isn't a number, string or identifier, such as `.int` or `-3`, has to be written `‹…›`.
+- Terms that only exist inside the pretty-printer (e.g. a fold whose branches aren't a `match`) print as `‹…›`.
+- Generated names can repeat inside a `let` value (e.g. `let x₀ := fun x₀ => x₀; …`). This is still correct, because each binder only covers its own body.
+- In the round-trip check, the printed `‹fun x => [Ty| Nat]›` had to be rewritten with `_` for the test, to avoid an unused-variable warning.
+
+I added the three helper definitions to the Properties table.
+
 # Summary of changes for run 6485226c-9700-454e-b39e-e3fb88c8c84f
 I wrote `DESIGN_ANALYSIS.md` at the project root. It covers the shortcomings of the current `Ty` design (section 1) and the current `Term` design (section 2), and ends with a summary table. It describes the code as it is in this tree. There is no `LeanScript/Ty/` directory, `TyWf` or `ty_wf` here: `Ty` is one file, with its well-formedness built into its constructors.
 
