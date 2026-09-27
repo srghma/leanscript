@@ -1,3 +1,29 @@
+# Summary of changes for run 78779fa7-31b1-492a-a2f9-9e3c19384e41
+Yes, all of this is still true in the current tree. I didn't change any files. I rebuilt the whole project with `lake build` (90 jobs, no errors) and checked the axioms of the theorems cited below: each uses only `propext`, `Classical.choice` and `Quot.sound`.
+
+**No Unit-like or Empty-like types (proved)**
+- `LeanPrimTy` (`LeanScript/LeanPrimTy.lean`) has no `unit` and no `void`. Its constructors also reject leaves with fewer than three values: `bitvec n` needs `2 ≤ n`, and `stringPos s` needs `2 ≤ s.length`.
+- `Ty` (`LeanScript/Ty.lean`) cannot build one either:
+  - a record needs at least 2 fields;
+  - a union needs at least 2 constructors, at least one with fields (`UnionShape`);
+  - a constructor without fields is `Ctor.nullary`, never an explicit `PUnit` payload.
+- `LeanScript/Two.lean` proves this for every closed type `t` over every signature `Δ`:
+  - `Ty.den_nonempty`: `Nonempty (Ty.Den Δ t)` (nothing is Empty-like);
+  - `Ty.den_not_subsingleton` and `Ty.den_exists_ne`: every type has two different values (nothing is Unit-like).
+- `PExpr`, `Comp` and `Term` in `LeanScript/Term.lean` are all indexed by a `Ty`, so no term can have a Unit-like or Empty-like type.
+
+**Two-value types are always `bool` (proved, with one exception)**
+- `Ty.eq_bool_of_two_points` (`LeanScript/Three.lean`): if a type has at most two values, then `t = .bool ∨ t = .thunk (.prim .bool) ∨ t = .lazy (.prim .bool)`.
+- The exception is the delays: `Thunk Bool` and `Unit → Bool` are separate `Ty`s from `bool`, but their meaning is exactly `Bool` (checked by `rfl`). Delays only change how the value is printed.
+- `Ty.den_exists_three` says every other type has three different values.
+
+**Caveats**
+- **Argument lists:** `DenList E []` (an empty environment, or the arguments of an extern with no arguments) is `PUnit`. This is a product of zero types, not a `Ty`, so no value or term has this type.
+- **Erased information:** the rule applies to the language's own types, not to the Lean types the translator reads.
+  - Lean `Unit`, `Empty`, `Option Unit` and similar are refused, and so is a type that would need a `Unit` or `Empty` field.
+  - Erasing proof fields, indices or quotients can map a Lean type to a `Ty` with a different number of values. For example, a type that is empty in Lean because of a proof field such as `h : m > 0` gets values once the field is dropped, and `Quot (fun _ _ : Bool => True)` has one class but becomes `.bool`.
+  - A Lean type with two values can also map to a larger `Ty`: parity classes of `Nat` become `.nat`.
+
 # Summary of changes for run e8d737d9-9846-4f07-ae38-14a8e196f186
 I added the pure conditional and cheap externs (4d and 4h), support for externs that take a proof, and `while` loops without fuel. The full `lake build` passes with no errors or warnings, there is no `sorry`, and the new theorems use only the standard axioms. All work is committed.
 
