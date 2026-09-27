@@ -186,9 +186,6 @@ def LeanPrimTy.three : (p : LeanPrimTy) → p ≠ .bool → Three p.denote
   | .float32Model, _ =>
       Three.ofNe Float32.Model.nan Float32.Model.inf (-Float32.Model.inf) (by decide)
         (by decide) (by decide)
-  | .leanName, _ =>
-      ⟨.anonymous, .str .anonymous "a", .num .anonymous 0,
-        fun | .anonymous => 0 | .str _ _ => 1 | .num _ _ => 2, rfl, rfl, rfl⟩
 
 /-! ## Closed types -/
 

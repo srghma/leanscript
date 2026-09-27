@@ -39,6 +39,8 @@ namespace LeanScript.Gen
 /-- A closed type, before it is printed. -/
 inductive CIR where
   | prim (p : Lean.Term)
+  /-- `Lean.Name`: the list of its components (`Ty.leanName`). -/
+  | leanName
   | fn (a b : CIR)
   | array (a : CIR)
   /-- A memoised delay; its contents are never a delay (`CIR.mkThunk`). -/
@@ -72,7 +74,7 @@ def CIR.mkLazy : CIR → CIR
 
 /-- Does a closed type name a declared datatype? -/
 partial def CIR.hasData : CIR → Bool
-  | .prim _ | .enum .. | .var _ => false
+  | .prim _ | .leanName | .enum .. | .var _ => false
   | .data .. => true
   | .fn a b => a.hasData || b.hasData
   | .array a | .thunk a | .lazy a => a.hasData
@@ -187,6 +189,7 @@ def successors (i : Nat) : M (Array Nat) := do
 partial def toCIR (e : Expr) : M CIR := do
   match ← classify e with
   | .prim p => return .prim p
+  | .leanName => return .leanName
   | .fn a b => return .fn (← toCIR a) (← toCIR b)
   | .array a => return .array (← toCIR a)
   | .thunk a => return (← toCIR a).mkThunk
@@ -236,7 +239,7 @@ partial def toFIR (members : Array Nat) (e : Expr) : M FIR := do
   | .array a => return .array (← toFIR members a)
   | .thunk _ | .lazy _ =>
     fail m!"a delay (`Thunk` or `Unit → _`) around a recursive occurrence is not supported{indentExpr e}"
-  | .prim _ | .var _ => unreachable!
+  | .prim _ | .leanName | .var _ => unreachable!
 
 /-- Order the members of a recursive SCC so that each has a constructor using only earlier
     members outside guards; return the order and the base constructor of each member. -/

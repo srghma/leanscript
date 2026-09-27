@@ -26,6 +26,7 @@ variable {MyTy : Type}
   (fn2 : MyTy → MyTy → MyTy → MyTy)
   (prod : MyTy → MyTy → MyTy)
   (ordering : MyTy)
+  (leanName : MyTy)
 
 ----------------------------------
 -- Init/Data/String/Bootstrap.lean

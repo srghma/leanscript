@@ -16,11 +16,12 @@ notation (`set_option pp.leanscript false` turns that off).
 
 | surface syntax                 | `Ty`                                               |
 |--------------------------------|----------------------------------------------------|
-| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `HashableFloat`, `HashableFloat32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice`, `Lean.Name` | `.prim p` |
+| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `HashableFloat`, `HashableFloat32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice` | `.prim p` |
 | `BitVec 32`, `String.Pos "ab"` | `.prim (.bitvec 32)`, `.prim (.stringPos "ab")`    |
 | `σ → τ`                        | `.fn σ τ` (right associative)                      |
 | `Array τ`                      | `.array τ`                                         |
 | `List τ`                       | `.list τ`                                          |
+| `Lean.Name`                    | `Ty.leanName` (`.list Ty.nameComponent`)           |
 | `Thunk τ`                      | `.thunk τ`                                         |
 | `Unit → τ`                     | `.lazy τ`                                          |
 | `Option τ`                     | `Ty.option τ` (`⟪· \| τ⟫`)                         |
@@ -105,7 +106,7 @@ def primNames : List (Name × Name) :=
    (`String.Pos.Raw, ``LeanPrimTy.stringPosRaw), (`Substring.Raw, ``LeanPrimTy.substringRaw),
    (`String.Slice, ``LeanPrimTy.stringSlice), (`HashableFloat, ``LeanPrimTy.float),
    (`HashableFloat32, ``LeanPrimTy.float32), (`Float.Model, ``LeanPrimTy.floatModel),
-   (`Float32.Model, ``LeanPrimTy.float32Model), (`Lean.Name, ``LeanPrimTy.leanName)]
+   (`Float32.Model, ``LeanPrimTy.float32Model)]
 
 /-- A Lean term given as an argument of a type former: a number, a string or `‹t›`. -/
 partial def lstyArg : TSyntax `lsty → MacroM Term
@@ -193,7 +194,11 @@ partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
         | false, ``LeanPrimTy.string => `(LeanScript.Ty.string)
         | _, _ => `(LeanScript.Ty.prim $(mkIdentFrom id p))
       | none =>
-        if id.getId.eraseMacroScopes == `Unit then
+        -- `Lean.Name` is not a leaf: it is the list of its components (`Ty.leanName`)
+        if id.getId.eraseMacroScopes == `Lean.Name then
+          if nd then `(LeanScript.Ty.list LeanScript.Ty.nameComponent)
+          else `(LeanScript.Ty.leanName)
+        else if id.getId.eraseMacroScopes == `Unit then
           Macro.throwErrorAt id "`Unit` is only a type as the domain of a delay `Unit → τ`"
         else Macro.throwErrorAt id s!"unknown leaf `{id.getId}`: a Lean term is written \
           `‹{id.getId}›`"

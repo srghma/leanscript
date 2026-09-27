@@ -40,9 +40,11 @@ variable {MyTy : Type}
   -- (shareCommon_object : MyTy)
   -- (shareCommon_stateFactory : Type)
   -- (shareCommon_state : shareCommon_stateFactory -> MyTy)
-  -- a list is the covariant former `LeanPrimTyCovariant.list` (like `array`), and a
-  -- `Lean.Name` is the leaf `LeanPrimTy.leanName`
+  -- a list is the covariant former `LeanPrimTyCovariant.list` (like `array`)
   (ordering : MyTy)
+  -- a `Lean.Name` is not a leaf: it is a recursive union, which the language writes as the
+  -- list of its components (`Ty.leanName`), so, like `ordering`, it is a parameter
+  (leanName : MyTy)
   -- A byte array is `Array UInt8` and a float array is `Array Float`, so neither is a
   -- type former of its own here; the entries that speak about one are commented out
   -- below, and will be supported either through the ordinary array entries or through a
@@ -169,7 +171,7 @@ there too.
     two entries. -/
 inductive LeanInitPureExtern : List MyTy → MyTy → Type where
   /-- An entry of `PreludeExtern` (`Init/Prelude.lean`). -/
-  | preludeExtern {σs : List MyTy} {τ : MyTy} : PreludeExtern σs τ → LeanInitPureExtern σs τ
+  | preludeExtern {σs : List MyTy} {τ : MyTy} : PreludeExtern leanName σs τ → LeanInitPureExtern σs τ
   /-- An entry of `CoreExtern` (`Init/Core.lean`). -/
   | coreExtern {σs : List MyTy} {τ : MyTy} : CoreExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `IntBasicExtern` (`Init/Data/Int/Basic.lean`). -/

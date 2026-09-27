@@ -45,6 +45,7 @@ def intStx (i : Int) : MetaM Lean.Term :=
 /-- A closed type, seen from `c` visible blocks; type variable `i` is `vars[i]`. -/
 partial def CIR.stx (c : Nat) (vars : Array Ident) : CIR → MetaM Lean.Term
   | .prim p => `(Ty.prim $p)
+  | .leanName => `(Ty.leanName)
   | .fn a b => do `(Ty.fn $(← a.stx c vars) $(← b.stx c vars))
   | .array a => do `(Ty.array $(← a.stx c vars))
   -- the contents of a delay are never a delay; a type variable may be one, so it is delayed

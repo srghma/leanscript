@@ -46,6 +46,8 @@ def fail {α : Type} (msg : MessageData) : MetaM α :=
 inductive Head where
   /-- A leaf, given by the `LeanPrimTy` that names it. -/
   | prim (p : Lean.Term)
+  /-- `Lean.Name`: not a leaf, but the list of its components (`Ty.leanName`). -/
+  | leanName
   /-- A non-dependent function type. -/
   | fn (a b : Expr)
   /-- `Array a`. -/
@@ -451,7 +453,7 @@ def classify (e : Expr) : MetaM Head := do
   | ``HashableFloat32, 0 => p (← `(LeanPrimTy.float32))
   | ``Float.Model, 0 => p (← `(LeanPrimTy.floatModel))
   | ``Float32.Model, 0 => p (← `(LeanPrimTy.float32Model))
-  | ``Lean.Name, 0 => p (← `(LeanPrimTy.leanName))
+  | ``Lean.Name, 0 => return .leanName
   | ``BitVec, 1 =>
     let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
     if n = 0 then fail m!"`BitVec 0` has one value"
@@ -621,7 +623,7 @@ end
 /-- The inductive instances a type mentions directly. -/
 partial def occurrences (e : Expr) : MetaM (Array Expr) := do
   match ← classify e with
-  | .prim _ | .var _ => return #[]
+  | .prim _ | .leanName | .var _ => return #[]
   | .fn a b => return (← occurrences a) ++ (← occurrences b)
   | .array a | .thunk a | .lazy a => occurrences a
   | .node n => return #[n]

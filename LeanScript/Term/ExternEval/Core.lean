@@ -26,7 +26,7 @@ namespace LeanScript
 
 /-- The value of an entry of `PreludeExtern` on the values of its arguments. -/
 def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty ks)} → {τ : Ty ks} →
-    PreludeExtern (MyTy := Ty ks) σs τ → DenList E σs → Ty.den E τ
+    PreludeExtern (MyTy := Ty ks) Ty.leanName σs τ → DenList E σs → Ty.den E τ
   | _, _, .lean_uint32_of_nat_mk, x1 =>
     let x1 : BitVec 32 := x1
     (UInt32.ofBitVec x1 : UInt32)
@@ -174,8 +174,8 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
     let n : Nat := n
     if h : n < UInt16.size then (UInt16.ofNatLT n h : UInt16) else (default : UInt16)
   | _, _, .lean_name_eq, (x1, x2) =>
-    let x1 : Lean.Name := x1
-    let x2 : Lean.Name := x2
+    let x1 : Lean.Name := nameOfComponents x1
+    let x2 : Lean.Name := nameOfComponents x2
     (Lean.Name.beq x1 x2 : Bool)
   | _, _, .lean_uint8_of_nat_mk, x1 =>
     let x1 : BitVec 8 := x1

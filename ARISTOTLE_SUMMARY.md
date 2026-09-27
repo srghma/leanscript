@@ -1,3 +1,29 @@
+# Summary of changes for run 8212a7ba-0314-4faa-ad3a-ec656f9cf030
+Yes, this works. `.leanName` is no longer a constructor of `LeanPrimTy`. `Ty.leanName` is now an abbreviation built the same way as `Ty.ordering`. The full project builds (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) with no `sorry`, and the change is committed.
+
+**Why it works despite the recursion:** you're right that a closed `Ty` can't write recursion itself; only a declared datatype (`Ty.data`) can. But `Lean.Name` (`anonymous | str p s | num p n`) is the same as a list of components, and `Ty.list` already provides the recursion. So, in `LeanScript/Ty/Ty.lean`:
+```lean
+abbrev nameComponent {ks : List Nat} : Ty ks :=
+  .union (.two (.fields (.one .string)) (.fields (.one .nat)))
+abbrev leanName {ks : List Nat} : Ty ks := .list nameComponent
+```
+It follows the `ordering` pattern closely. `Ordering`'s values are `Fin 3`, converted by `orderingToFin`. Likewise, `Ty.leanName`'s values are `List (String ⊕ Nat)`, root first (`` `a.b.3 `` becomes `[a, b, 3]`), no longer `Lean.Name` itself.
+
+**Conversions** (in `LeanScript/Term/Extern.lean`, next to `orderingToFin`): `nameToComponents` and `nameOfComponents`. Two proved `@[simp]` theorems show they are inverse in both directions.
+
+**Other changes:**
+- `LeanPrimTy.leanName` is commented out with a note explaining why, and its cases are removed from `pretty`, `denote`, `Two.lean` and `Three.lean`. I also removed the `-- TODO: name should be constructed as recTaggedUnion` comment.
+- **Catalogue:** it now takes a parameter `(leanName : MyTy)`, just as it takes `ordering`. `PreludeExtern` uses it for `lean_name_eq`, and `Extern` passes `Ty.leanName`. The `lean_name_eq` evaluator converts both arguments with `nameOfComponents` and then calls `Lean.Name.beq`.
+- **Notation:** `[Ty| Lean.Name]` elaborates to `Ty.leanName` and prints back the same way. Inside a delay, it expands to `.list Ty.nameComponent`.
+- **Reading Lean types** (`#leanscript_get_ty` / `#leanscript_to_term`): `Lean.Name` is read as `Ty.leanName`. A dedicated case in the reader emits it.
+
+**What behaves differently now:**
+- Values of type `Ty.leanName` are component lists. For example, the translated `nameEq` now runs as `nameEqT'.run (nameToComponents `a.b) (nameToComponents `a.b)`.
+- `PExpr.lit` can no longer hold a name. In `TermTests/ListNameExternTest.lean` I build a name literal as `lean_array_to_list` over an array of `union_mk` components (`nameLit`) and test it with `#guard`s.
+- In a program being translated, a name literal or a constructor application of `Lean.Name` now gives an explicit error instead of translating.
+
+`TermTests/ListNameExternTest.lean` is updated for all of this: the new denotation, the unfolding of `Ty.leanName` by `rfl`, the round trip, `lean_name_eq` on name literals, and the translated `nameEq` and its printed type.
+
 # Summary of changes for run 81050d2d-ee85-4a33-aa30-cafabf161749
 I wrote `proposals/NormalFormProposals.md`. It gives several ways to change the grammar so that a closed `Term` is its own value, with the normalisation done when Lean is elaborated to `Term`. They are ordered as you asked: structural first, then `Prop`-based (I read "Prob" as `Prop`), then `Bool`-based.
 

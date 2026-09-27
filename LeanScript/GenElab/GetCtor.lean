@@ -218,6 +218,9 @@ def planType (T : Expr) (prog? : Option ProgInfo) : M TypePlan := do
       -- two field-less constructors are the leaf `bool`: the first is `false`
       let isBool := ctors.size = 2 && ctors.all (·.2.isEmpty)
       return { ctors, layout, data? := none, enum?, isBool }
+  | .leanName =>
+    fail m!"`Lean.Name` is read as the list of its components (`Ty.leanName`), not as a \
+      datatype: its constructors (and name literals) have no term in the language"
   | _ => fail m!"`{T}` is a built-in type former, which has no constructors of its own"
 
 /-- The last two components of a constructor's name (`Tree.node`), which name its

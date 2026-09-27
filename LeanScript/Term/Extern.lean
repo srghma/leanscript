@@ -22,8 +22,9 @@ The type formers the catalogue asks for are the ones of `Ty`:
   `Ty.lazy t`
   (`Ty.ofCovariant`); a delay around a delay is one delay, as in `Ty.mkThunk`;
 * an option is `Ty.option`, a pair `Ty.pair`, a function `Ty.fn` (`Ty.fn2` for two
-  arguments), and `Ordering` is the enum `Ty.ordering` (three constructors printed as
-  `-1 | 0 | 1`).
+  arguments), `Ordering` is the enum `Ty.ordering` (three constructors printed as
+  `-1 | 0 | 1`), and `Lean.Name` is `Ty.leanName`, the list of its components
+  (`nameToComponents`, `nameOfComponents`).
 
 The evaluator of the entries is `LeanScript.Extern.eval` (`LeanScript.Term.ExternEval`).
 -/
@@ -97,7 +98,7 @@ end Ty
     language, whose arguments have the types `σs` and whose result has the type `τ`. -/
 abbrev Extern (ks : List Nat) (σs : List (Ty ks)) (τ : Ty ks) : Type :=
   LeanInitPureExtern (MyTy := Ty ks) (fun t => Ty.option t) (fun a b => Ty.fn a b) Ty.fn2
-    Ty.pair Ty.ordering σs τ
+    Ty.pair Ty.ordering Ty.leanName σs τ
 
 /-- The Boolean answer of an extern: a `Bool`, or the decision of a proposition (an extern
     whose Lean function returns `Decidable p` answers `decide p`). -/
@@ -113,6 +114,59 @@ def orderingToFin : Ordering → Fin 3
   | .lt => 0
   | .eq => 1
   | .gt => 2
+
+/-- A component of a `Lean.Name`, as a value of `Ty.nameComponent`. -/
+abbrev NameComponent : Type := String ⊕ Nat
+
+/-- The values of `Ty.leanName` are the lists of components. -/
+theorem Ty.den_leanName {ks : List Nat} (E : Ref ks → Type) : Ty.den E Ty.leanName = List NameComponent := rfl
+
+/-- The components of a name, root first, in front of `acc`. -/
+def nameToComponentsAux : Lean.Name → List NameComponent → List NameComponent
+  | .anonymous, acc => acc
+  | .str p s, acc => nameToComponentsAux p (.inl s :: acc)
+  | .num p n, acc => nameToComponentsAux p (.inr n :: acc)
+
+/-- A `Lean.Name`, as a value of `Ty.leanName`: its components, root first
+    (`` `a.b `` is `[.inl "a", .inl "b"]`). -/
+def nameToComponents (n : Lean.Name) : List NameComponent := nameToComponentsAux n []
+
+/-- One more component at the end of a name. -/
+def nameAppendComponent : Lean.Name → NameComponent → Lean.Name
+  | p, .inl s => .str p s
+  | p, .inr n => .num p n
+
+/-- A value of `Ty.leanName`, as a `Lean.Name`. -/
+def nameOfComponents (cs : List NameComponent) : Lean.Name :=
+  cs.foldl nameAppendComponent .anonymous
+
+theorem nameOfComponents_aux (n : Lean.Name) (acc : List NameComponent) :
+    (nameToComponentsAux n acc).foldl nameAppendComponent .anonymous =
+      acc.foldl nameAppendComponent n := by
+  induction n generalizing acc with
+  | anonymous => rfl
+  | str p s ih => rw [nameToComponentsAux, ih]; rfl
+  | num p k ih => rw [nameToComponentsAux, ih]; rfl
+
+theorem nameToComponents_aux (cs : List NameComponent) (m : Lean.Name)
+    (acc : List NameComponent) :
+    nameToComponentsAux (cs.foldl nameAppendComponent m) acc =
+      nameToComponentsAux m (cs ++ acc) := by
+  induction cs generalizing m with
+  | nil => rfl
+  | cons c cs ih =>
+    rw [List.foldl_cons, ih]
+    cases c <;> rfl
+
+/-- Reading a name back from its components gives the name. -/
+@[simp] theorem nameOfComponents_nameToComponents (n : Lean.Name) :
+    nameOfComponents (nameToComponents n) = n :=
+  nameOfComponents_aux n []
+
+/-- The components of the name read from components are the components. -/
+@[simp] theorem nameToComponents_nameOfComponents (cs : List NameComponent) :
+    nameToComponents (nameOfComponents cs) = cs := by
+  simp [nameToComponents, nameOfComponents, nameToComponents_aux, nameToComponentsAux]
 
 end LeanScript
 

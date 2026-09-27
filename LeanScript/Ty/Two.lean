@@ -84,7 +84,6 @@ def LeanPrimTy.two : (p : LeanPrimTy) → Two p.denote
   | .float32Model =>
       ⟨Float32.Model.nan, Float32.Model.inf, fun f => f.toBits == Float32.Model.nan.toBits,
         by simp, by decide⟩
-  | .leanName => ⟨.anonymous, .str .anonymous "a", fun | .anonymous => true | _ => false, rfl, rfl⟩
 
 section ClosedTwo
 variable {ks : List Nat} (E : Ref ks → Type) (TE : (r : Ref ks) → Two (E r))

@@ -193,8 +193,22 @@ abbrev nat {ks : List Nat} : Ty ks := .prim .nat
 abbrev int {ks : List Nat} : Ty ks := .prim .int
 /-- `String`. -/
 abbrev string {ks : List Nat} : Ty ks := .prim .string
-/-- `Lean.Name`: a leaf (`LeanPrimTy.leanName`), like `nat` or `string`. -/
-abbrev leanName {ks : List Nat} : Ty ks := .prim .leanName
+/-- One component of a `Lean.Name`: a union of a string (`Name.str`) and a number
+    (`Name.num`).  It denotes `String ⊕ Nat`. -/
+abbrev nameComponent {ks : List Nat} : Ty ks :=
+  .union (.two (.fields (.one .string)) (.fields (.one .nat)))
+
+/-- `Lean.Name`: the list of its components, root first (`` `a.b.3 `` is `[a, b, 3]`).
+
+    `Lean.Name` is the recursive union
+    `anonymous | str (pre : Name) (s : String) | num (pre : Name) (i : Nat)`.  A closed `Ty`
+    cannot write that recursion itself (a recursive type is a declared datatype, `Ty.data`,
+    which only exists in a signature that declares it), but it is the built-in recursion of
+    `Ty.list`: a name is a list of components.  So, like `Ty.ordering` (an `Ordering` is the
+    enum `Fin 3`), it is an abbreviation of the other constructors and not a leaf of its own;
+    its values are `List (String ⊕ Nat)`, converted from and to `Lean.Name` by
+    `LeanScript.nameToComponents` / `LeanScript.nameOfComponents` (`LeanScript.Term.Extern`). -/
+abbrev leanName {ks : List Nat} : Ty ks := .list nameComponent
 
 /-- `Option t`: a union of a constructor without fields and one with the field `t`. -/
 abbrev option {ks : List Nat} (t : Ty ks) : Ty ks :=

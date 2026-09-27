@@ -121,9 +121,11 @@ inductive LeanPrimTy where
   | float32   : LeanPrimTy
   | floatModel   : LeanPrimTy
   | float32Model   : LeanPrimTy
-  /-- A Lean name (`Lean.Name`): a closed leaf, whose values are the names
-      `anonymous`, `str p s` and `num p n`. -/
-  | leanName  : LeanPrimTy
+  -- A Lean name (`Lean.Name`) is not a leaf: it is the recursive union
+  -- `anonymous | str (pre : Name) (s : String) | num (pre : Name) (i : Nat)`, isomorphic to
+  -- the list of its components, so it is the type `Ty.leanName := .list Ty.nameComponent`
+  -- (`LeanScript.Ty.Ty`), built like `Ty.ordering`, and not a constructor here.
+  -- | leanName  : LeanPrimTy
   -- /-- In JS: `Float64Array`. -/
   -- | floatArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array Float`. Then in `MoreJsTy` as `Float64Array`
   -- /-- In JS (node only): a `ChildProcess` handle. -/
@@ -148,8 +150,6 @@ namespace LeanPrimTy
 instance : LawfulHashable LeanPrimTy where
   hash_eq _ _ h := by rw [eq_of_beq h]
 
--- TODO: name should be constructed as recTaggedUnion
-
 /-- A rendering for debugging and error messages, as a plain `String` (a `Format` does
     not reduce in the kernel, so an `example` settled by `decide` needs a `String`). -/
 def pretty : LeanPrimTy → String
@@ -163,7 +163,6 @@ def pretty : LeanPrimTy → String
   | .float => "float" | .float32 => "float32"
   | .floatModel => "floatModel"
   | .float32Model => "float32Model"
-  | .leanName => "leanName"
   -- | .shareCommonObject => "shareCommonObject"
   -- | .shareCommonState _ => "shareCommonState"
 
@@ -209,7 +208,6 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .float32 => HashableFloat32
   | .floatModel => Float.Model
   | .float32Model => Float32.Model
-  | .leanName => Lean.Name
   -- | .shareCommonObject => ShareCommon.Object
   -- | .shareCommonState σ => ShareCommon.State σ
   -- `.childProcess`, `.shareCommonObject` and `.shareCommonState` are commented out of
