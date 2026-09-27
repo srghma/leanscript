@@ -1,3 +1,46 @@
+# Summary of changes for run 469c4cfc-8e0a-477e-9f8d-247c0f44350f
+I expanded the Proposal B section of `proposals/NormalFormProposals.md` (§B.1–§B.7) and added two companion files. Neither file is part of the Lake build: `lake env lean` checks each one with no errors and no `sorry`. The Lake-built sources are unchanged.
+
+**What the section now covers**
+- **Grammar before (§B.1) and after (§B.2):** today's one-context grammar next to B's two contexts, known (`Φ`) and unknown (`Γ`).
+  - B adds `kvar`, a new `Val` family and `letV`. `Val` holds closures, delays and data literals.
+  - `Neu.var` only takes unknowns, so a known value can be passed on but never called, forced or taken apart.
+  - Both are written in BNF and as Lean signatures.
+- **Closed-term theorems (§B.3):** a closed statement is a chain of `val`s ending in `ret v`.
+  - If `Φ` holds only closures and delays, `v` is the quotation of the value.
+  - If `Φ` also holds data literals, that only holds after inlining `Φ`.
+  - Unused `val`s are allowed by the types, so the normaliser must never produce one.
+- **Examples (§B.5):** 8 examples: lets used 0/1/2 times (extern calls and function calls), closed values, Ackermann, a loop that rebuilds a record every step (`fibLoop`/`fib`), a record used twice with a condition known at compile time, a closure called twice vs passed on twice, and a `Thunk` forced twice.
+  - Each has the Lean input, today's output, the same with named variables, and B's output.
+  - Today's outputs are copied from what the project prints for `proposals/NormalFormBExamples.lean`.
+  - **B's outputs are worked out by hand, since B is not implemented.**
+- **Elaborator changes (§B.6) and costs (§B.7).**
+
+**Your three questions (§B.4)**
+
+*Today* (read from the source and confirmed by the printed outputs), the normaliser never counts uses; what happens depends only on what the `let` binds:
+- **0 uses:** not eliminated. `let _ := share (n * 7)` and `let _ := f n` stay. The exception is a trivial atom: a variable, a literal, or a closed Lean term of a leaf type such as `10 * 10`.
+- **1 use:** not inlined. A closure called once is still bound and then called. Trivial atoms are the exception again.
+- **2+ uses:** shared, except trivial atoms, which are copied (`lit ‹2 + 3›` appears twice).
+- A related waste: every projection `s.f` takes the whole record apart again. In `fibLoop` that is 4 destructurings per step, with 12 binders of which 4 are used.
+
+*Under B*, some of this is forced by the types and the rest is a counting pass after normalisation:
+- **0 uses:** eliminated, for every kind of let. This is safe because the language is pure and total.
+- **1 use:** inlined when the bound thing is pure (a `share` of a neutral expression, a data literal, or the body of a closure or delay at its only call or force). There are two exceptions:
+  - Nothing is inlined into a closure, loop or delay body, because that body runs repeatedly.
+  - A computation (a call of an unknown function, a fold) cannot be inlined, because operands must be pure.
+- **2+ uses:** shared, with two exceptions:
+  - Every call of a known closure is inlined (the types require it), which copies the closure's body.
+  - A `Thunk` forced twice has its body computed once, which keeps the memoisation.
+
+**Two things I noticed**
+- The translator already turns a closed leaf-typed Lean term into a literal holding the Lean expression: `seven` becomes `lit ‹3 + 4›` and `ack 2 3` becomes `lit ‹ack 2 3›`. The value isn't computed at that point, though, and an extern call on two such literals is still produced.
+- A test file without `@[expose] public section` fails on record constructors with "invalid scope". Separately, calling a record-building helper inside a structural loop (`loopP n (stepP s)`) gives type-mismatch errors. I didn't investigate either; the examples use forms that work.
+
+**Files**
+- `proposals/NormalFormBToy.lean`: B on the same small language as the earlier toy, with closures as the only known values. It proves that nothing neutral is closed whatever is known, that a closed statement is a `val` chain ending in `ret`, the quotation result at first-order types, and that calling a known closure is ill-typed. Its theorems use only `propext` and `Quot.sound`.
+- `proposals/NormalFormBExamples.lean`: the examples, translated by today's `#leanscript_to_term` and printed.
+
 # Summary of changes for run 8212a7ba-0314-4faa-ad3a-ec656f9cf030
 Yes, this works. `.leanName` is no longer a constructor of `LeanPrimTy`. `Ty.leanName` is now an abbreviation built the same way as `Ty.ordering`. The full project builds (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) with no `sorry`, and the change is committed.
 
