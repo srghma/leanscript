@@ -195,7 +195,8 @@ def isScalarType (T : Expr) : MetaM Bool := do
   if T.isAppOfArity ``BitVec 1 then return true
   let some c := T.constName? | return false
   return [``Bool, ``Nat, ``Int, ``UInt8, ``UInt16, ``UInt32, ``UInt64, ``USize, ``Int8,
-    ``Int16, ``Int32, ``Int64, ``ISize, ``Char, ``Float, ``Float32].contains c
+    ``Int16, ``Int32, ``Int64, ``ISize, ``Char, ``Float, ``Float32, ``HashableFloat,
+    ``HashableFloat32].contains c
 
 /-- The syntax of the `k`-th component of a `DenList` of `n` values: a right-nested product
     with no trailing `PUnit`, so the last component is not followed by `Prod.fst`. -/

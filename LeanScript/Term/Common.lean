@@ -82,7 +82,7 @@ def Extern.cheapRelations : List String :=
     machine operations. -/
 def Extern.cheapNamespaces : List String :=
   ["UInt8", "UInt16", "UInt32", "UInt64", "USize", "Int8", "Int16", "Int32", "Int64",
-   "ISize", "Float", "Float32", "Char"]
+   "ISize", "Float", "Float32", "HashableFloat", "HashableFloat32", "Char"]
 
 /-- Is the extern of this name **cheap** (proposal 4h), so that the translator writes it as the
     pure expression `PExpr.extern` rather than the named computation `Comp.extern`: an

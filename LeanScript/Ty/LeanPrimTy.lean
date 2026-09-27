@@ -10,6 +10,8 @@ public import Init.Data.String.Basic
 public import Init.Data.String.Length
 public import Init.ShareCommon
 public import Init.LawfulBEqTactics
+public import LeanScript.HashableFloat.HashableFloat
+public import LeanScript.HashableFloat.HashableFloat32
 
 @[expose] public section
 
@@ -111,9 +113,11 @@ inductive LeanPrimTy where
   | substringRaw : LeanPrimTy
   /-- `.substringRaw` or `.string`? -/
   | stringSlice : LeanPrimTy
-  /-- In JS: `number` (IEEE 754 64-bit). -/
+  /-- In JS: `number` (IEEE 754 64-bit).  Its values are `HashableFloat`s: a `Float` that is
+      neither `NaN` nor `-0.0`, so that equality is lawful and the values can be hashed. -/
   | float     : LeanPrimTy
-  /-- In JS: `number` (IEEE 754 32-bit, `Math.fround`). -/
+  /-- In JS: `number` (IEEE 754 32-bit, `Math.fround`).  Its values are `HashableFloat32`s:
+      a `Float32` that is neither `NaN` nor `-0.0`. -/
   | float32   : LeanPrimTy
   | floatModel   : LeanPrimTy
   | float32Model   : LeanPrimTy
@@ -133,9 +137,13 @@ inductive LeanPrimTy where
   -- the four externs that speak about them, `lean_sharecommon_quick` is kept — it is the
   -- identity on values, which is what `Expr.Step.quick` runs — and the three that read a
   -- handle are commented out with the handles: the interning table is erased.
-  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq
+  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq, Hashable
 
 namespace LeanPrimTy
+
+/-- The derived `Hashable` respects the derived (lawful) `BEq`. -/
+instance : LawfulHashable LeanPrimTy where
+  hash_eq _ _ h := by rw [eq_of_beq h]
 
 -- TODO: name should be constructed as recTaggedUnion
 
@@ -193,8 +201,8 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .stringPosRaw => String.Pos.Raw
   | .substringRaw => Substring.Raw
   | .stringSlice => String.Slice
-  | .float => Float
-  | .float32 => Float32
+  | .float => HashableFloat
+  | .float32 => HashableFloat32
   | .floatModel => Float.Model
   | .float32Model => Float32.Model
   -- | .shareCommonObject => ShareCommon.Object

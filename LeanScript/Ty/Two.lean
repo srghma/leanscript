@@ -22,7 +22,7 @@ The proof is data computed by structural recursion, in two layers:
   values of every datatype.  It needs no grounding: every closed type has values.
 
 The leaves (`LeanPrimTy.two`) are settled one by one, each by `decide` on two literals (the
-float types included: `Float` and `Float32` have a decidable equality through their model).
+float types included: `HashableFloat` and `HashableFloat32` have a decidable equality).
 -/
 
 namespace LeanScript
@@ -76,8 +76,8 @@ def LeanPrimTy.two : (p : LeanPrimTy) → Two p.denote
       ⟨⟨"", ⟨0⟩, ⟨0⟩⟩, ⟨"", ⟨0⟩, ⟨1⟩⟩, fun s => s.stopPos.byteIdx == 0, rfl, rfl⟩
   | .stringSlice =>
       ⟨"".toSlice, "a".toSlice, fun s => s.str == "", by decide, by decide⟩
-  | .float => Two.ofNe (0.0 : Float) 1.0 (by decide)
-  | .float32 => Two.ofNe (0.0 : Float32) 1.0 (by decide)
+  | .float => Two.ofNe (0.0 : HashableFloat) 1.0 (by decide)
+  | .float32 => Two.ofNe (0.0 : HashableFloat32) 1.0 (by decide)
   | .floatModel =>
       ⟨Float.Model.nan, Float.Model.inf, fun f => f.toBits == Float.Model.nan.toBits,
         by simp, by decide⟩

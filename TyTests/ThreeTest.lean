@@ -6,7 +6,7 @@ import LeanScript.Ty.Three
 # Tests: two points are only ever `bool`
 
 `Ty.eq_bool_of_two_points` and `Ty.den_exists_three` use no axiom beyond the standard ones
-(the float leaves are settled by `decide`: `Float`/`Float32` have a decidable equality).
+(the float leaves are settled by `decide`: `HashableFloat`/`HashableFloat32` have a decidable equality).
 The three values that `Ty.threeDen` picks are computed and checked by `rfl`.
 -/
 

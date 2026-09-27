@@ -16,7 +16,7 @@ notation (`set_option pp.leanscript false` turns that off).
 
 | surface syntax                 | `Ty`                                               |
 |--------------------------------|----------------------------------------------------|
-| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `Float`, `Float32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice` | `.prim p` |
+| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `HashableFloat`, `HashableFloat32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice` | `.prim p` |
 | `BitVec 32`, `String.Pos "ab"` | `.prim (.bitvec 32)`, `.prim (.stringPos "ab")`    |
 | `σ → τ`                        | `.fn σ τ` (right associative)                      |
 | `Array τ`                      | `.array τ`                                         |
@@ -102,8 +102,8 @@ def primNames : List (Name × Name) :=
    (`Int32, ``LeanPrimTy.int32), (`Int64, ``LeanPrimTy.int64),
    (`Char, ``LeanPrimTy.char), (`String, ``LeanPrimTy.string),
    (`String.Pos.Raw, ``LeanPrimTy.stringPosRaw), (`Substring.Raw, ``LeanPrimTy.substringRaw),
-   (`String.Slice, ``LeanPrimTy.stringSlice), (`Float, ``LeanPrimTy.float),
-   (`Float32, ``LeanPrimTy.float32), (`Float.Model, ``LeanPrimTy.floatModel),
+   (`String.Slice, ``LeanPrimTy.stringSlice), (`HashableFloat, ``LeanPrimTy.float),
+   (`HashableFloat32, ``LeanPrimTy.float32), (`Float.Model, ``LeanPrimTy.floatModel),
    (`Float32.Model, ``LeanPrimTy.float32Model)]
 
 /-- A Lean term given as an argument of a type former: a number, a string or `‹t›`. -/

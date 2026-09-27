@@ -174,8 +174,8 @@ def LeanPrimTy.three : (p : LeanPrimTy) → p ≠ .bool → Three p.denote
   | .stringSlice, _ =>
       ⟨"".toSlice, "a".toSlice, "ab".toSlice, fun s => s.str.length, by decide, by decide,
         by decide⟩
-  | .float, _ => Three.ofNe (0.0 : Float) 1.0 2.0 (by decide) (by decide) (by decide)
-  | .float32, _ => Three.ofNe (0.0 : Float32) 1.0 2.0 (by decide) (by decide) (by decide)
+  | .float, _ => Three.ofNe (0.0 : HashableFloat) 1.0 2.0 (by decide) (by decide) (by decide)
+  | .float32, _ => Three.ofNe (0.0 : HashableFloat32) 1.0 2.0 (by decide) (by decide) (by decide)
   | .floatModel, _ =>
       Three.ofNe Float.Model.nan Float.Model.inf (-Float.Model.inf) (by decide) (by decide)
         (by decide)

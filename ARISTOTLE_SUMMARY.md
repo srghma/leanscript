@@ -1,3 +1,34 @@
+# Summary of changes for run 66ff8cd0-0fa6-4406-a05b-f596407835b4
+`HashableFloat` and `HashableFloat32` are implemented, and `LeanPrimTy` now uses them for its float leaves and is `Hashable` and `LawfulHashable`. The full `lake build` passes with no errors, warnings or `sorry`, and the key results use only the standard axioms.
+
+**The two structures** (`LeanScript/HashableFloat/HashableFloat.lean` and `HashableFloat32.lean`) follow your draft. Each is a float that is neither `NaN` nor `-0.0`. The `split_ifs` in your draft is a Mathlib tactic, which this project doesn't have, so the proofs use other tactics.
+- **Equality and hashing:** `DecidableEq`, `BEq` (IEEE `==`), `ReflBEq`, `LawfulBEq`, `Hashable` (hash of `toBits`) and `LawfulHashable`, all proved. The key fact is `beq_iff_eq`: without `NaN` and `-0.0`, IEEE `==` is exactly equality.
+- **Order:** `LT`/`LE` (decidable), your `Ord` definition, `Min` and `Max`. You asked whether there are standard classes for proving an `Ord` correct: there are, and these are proved:
+  - the three theorems `compare_eq_iff_eq`, `compare_lt_iff_lt` and `compare_gt_iff_gt` (the one you left as a TODO);
+  - `Std.OrientedOrd`, `Std.TransOrd`, `Std.LawfulEqOrd`, `Std.LawfulBEqOrd`, `Std.LawfulOrderOrd` and `Std.IsLinearOrder`;
+  - `Std.LawfulOrderLT`, `Std.LawfulOrderBEq`, `Std.LawfulOrderLeftLeaningMin` and `Std.LawfulOrderLeftLeaningMax`.
+- **Where the order proofs come from:** they rest on two facts proved in `LeanScript/HashableFloat/Compare.lean`: the float model's comparison is symmetric under swapping, and its `≤` is transitive.
+- **Other classes:** `Inhabited` (`0.0`), `OfScientific`, `OfNat`, `Repr`, `ToString`, `Coe` to the raw float, and `Neg`/`Add`/`Sub`/`Mul`/`Div`. Helpers `ofFloat?`, `ofFloat!` and `normalize` are included.
+- **One behaviour to be aware of:** literals and arithmetic results go through `normalize`, which turns `NaN` and `-0.0` into `0.0`. So `0.0 / 0.0` and `inf - inf` both give `0.0`.
+
+**`LeanPrimTy`:** `.float` now denotes `HashableFloat` and `.float32` denotes `HashableFloat32`. `LeanPrimTy` derives `Hashable` and has a `LawfulHashable` instance. Other files changed to match:
+- `Two.lean` and `Three.lean` use the new literals.
+- The translator (`GenElab/Read.lean`) and the `[Ty| …]` notation now recognise `HashableFloat`/`HashableFloat32` as the float leaves. **Raw `Float`/`Float32` are no longer accepted as leaves**, so a program written with raw floats is now rejected until it switches to the hashable types.
+- The cheap-extern lists include the new types.
+- `floatModel`/`float32Model` are unchanged.
+
+**Tests:** `TyTests/HashableFloatTest.lean` checks literals in the kernel (for example, `-0.0 = 0.0` and `0.0 / 0.0 = 0.0`), order, instance availability, and a `Std.HashMap` keyed by `HashableFloat`.
+
+**Assessment:** `TERM_HASHABLE_ASSESSMENT.md` covers what else stops `Term` from being hashable. It is based on trying the deriving handlers against the current code. The main points:
+- The type side (`Ty`, `Fields`, `Ctor`, `Ctors`, `Ref`, `BRef`, `DeBruijn`, `CtorIx`, `LeanEnumSchema`) derives `Hashable` without trouble.
+- The extern nodes (`Neu.extern`, `Comp.extern`) hold a Lean function, so no lawful `BEq` is possible. They need an extern code or a separate set of extern names instead.
+- Literals need `Hashable p.denote` for every leaf. It is missing for `substringRaw`, `floatModel` and `float32Model`. `stringSlice` and `substringRaw` also lack `DecidableEq`, and their `BEq` (like the IEEE `BEq` of the float models) isn't lawful.
+- `enum_casesOn`, `data_rec` and `data_brec` take functions out of `Fin n`. These need hand-written instances or a list-style representation.
+- The `LeanInitPureExtern` catalogue holds functions and raw `Float` arguments.
+- Constructors whose implicit arguments aren't fixed by the result type make a derived `DecidableEq` harder.
+
+It ends with a suggested order for the work.
+
 # Summary of changes for run 0b958418-f0ab-40b2-99e1-0cd9f6b3550d
 I split `LeanScript/Term/Term.lean` into three files. A full `lake build` of all default targets passes with no warnings, errors or `sorry`.
 
