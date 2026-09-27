@@ -222,7 +222,7 @@ theorem Alts.unroll_roll {g : Nat} {bs : List Bool} : (u : Alts ks n g bs) → (
 
 theorem Decl.unroll_roll {g : Nat} : (d : Decl ks n g) → (x : Ty.den E' (Decl.inst w σ d)) →
     Decl.unroll w E' σ d (Decl.roll w E' σ d x) = x
-  | .wrap f _, x => Fld.unroll_roll w E' σ f x
+  | .wrap f (h := _), x => Fld.unroll_roll w E' σ f x
   | .record f fs, x => by
       show (Fld.unroll w E' σ f (Fld.roll w E' σ f x.1), Flds.unroll w E' σ fs (Flds.roll w E' σ fs x.2)) = x
       rw [Fld.unroll_roll, Flds.unroll_roll]; exact rfl
@@ -413,7 +413,7 @@ theorem Alts.roll_unroll {g : Nat} {bs : List Bool} : (u : Alts ks n g bs) →
 theorem Decl.roll_unroll {g : Nat} : (d : Decl ks n g) →
     (x : (Decl.toIPF (fun r => E' (w r)) d).Obj (fun i => Ty.den E' (σ i))) →
     Decl.roll w E' σ d (Decl.unroll w E' σ d x) = x
-  | .wrap f _, x => Fld.roll_unroll w E' σ f x
+  | .wrap f (h := _), x => Fld.roll_unroll w E' σ f x
   | .record f fs, x => by
       exact (congr (congrArg IPF.Obj.pair (Fld.roll_unroll w E' σ f x.fst))
         (Flds.roll_unroll w E' σ fs x.snd)).trans (IPF.Obj.pair_fst_snd x)

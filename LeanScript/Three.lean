@@ -192,7 +192,7 @@ variable {ks : List Nat} (E : Ref ks → Type) (TE : (r : Ref ks) → Two (E r))
 def Ctor.threeTwo {a b : Bool} (c : Ctor ks a) (d : Ctor ks b) (h : UnionShape [a, b]) :
     Three (twoT (Ctor.den E c) (Ctor.den E d)) :=
   match a, b, c, d, h with
-  | _, _, .nullary, .nullary, h => absurd h.some_fields (by decide)
+  | _, _, .nullary, .nullary, h => nomatch h
   | _, _, .nullary, .fields fd, _ => Three.opt (Fields.pick E TE fd)
   | _, _, .fields fc, .nullary, _ => Three.opt (Fields.pick E TE fc)
   | _, _, .fields fc, .fields fd, _ => Three.sumL (Fields.pick E TE fc) (Fields.pick E TE fd).x
@@ -317,7 +317,7 @@ def BCtors.twoOf {bs : List Bool} : (cs : BCtors ks n bs) → Two ((BCtors.toIPF
 def BCtor.threeTwo {g g' : Nat} {a b : Bool} (c : BCtor ks n g a) (d : BCtor ks n g' b)
     (h : UnionShape [a, b]) : Three ((IPF.twoC (BCtor.toIPF E c) (BCtor.toIPF E d)).Obj X) :=
   match a, b, c, d, h with
-  | _, _, .nullary, .nullary, h => absurd h.some_fields (by decide)
+  | _, _, .nullary, .nullary, h => nomatch h
   | _, _, .nullary, .fields fd, _ => Three.optObj (Flds.two E TE X (fun i => (tw i).x) (fun i _ => tw i) fd)
   | _, _, .fields fc, .nullary, _ => Three.optObj (Flds.two E TE X (fun i => (tw i).x) (fun i _ => tw i) fc)
   | _, _, .fields fc, .fields fd, _ =>
@@ -343,16 +343,16 @@ def Alts.three {g : Nat} {bs : List Bool} (u : Alts ks n g bs) (h : UnionShape b
 /-- A field that is not an older type as it is: three told-apart layers, given three
     told-apart values of every grounded member. -/
 def Fld.three {g : Nat} (tw3 : (i : Fin n) → i.val < g → Three (X i)) :
-    (f : Fld ks n g) → f.isOld = false → Three ((Fld.toIPF E f).Obj X)
+    (f : Fld ks n g) → f.NotOld → Three ((Fld.toIPF E f).Obj X)
   | .hole i hi, _ => Three.hole (tw3 i hi)
-  | .old _, h => absurd h (by simp [Fld.isOld])
+  | .old _, h => nomatch h
   | .array f, _ => Three.arrayObj (Fld.inh E TE X (fun i _ => (tw i).x) f)
   | .fn a f, _ => Three.fnObj (Ty.pick E TE a) (Fld.two E TE X (fun i => (tw i).x) (fun i _ => tw i) f)
 
 /-- A member of a block: three told-apart layers. -/
 def Decl.three {g : Nat} (tw3 : (i : Fin n) → i.val < g → Three (X i)) :
     (d : Decl ks n g) → Three ((Decl.toIPF E d).Obj X)
-  | .wrap f h => Fld.three E TE X tw tw3 f h
+  | @Decl.wrap _ _ _ f hw => Fld.three E TE X tw tw3 f hw
   | .record f fs => Three.prodObj (Fld.two E TE X (fun i => (tw i).x) (fun i _ => tw i) f)
       (Flds.two E TE X (fun i => (tw i).x) (fun i _ => tw i) fs)
   | .union u (h := hu) => Alts.three E TE X tw u hu

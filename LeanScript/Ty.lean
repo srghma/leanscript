@@ -79,17 +79,18 @@ def BRef.ref : {ks : List Nat} → (b : BRef ks) → Fin (b.size + 1) → Ref ks
 
 /-! ## Closed types -/
 
+set_option checkBinderAnnotations false in
 /-- The shape of a union: which of its constructors have fields.  A union must have at least
     one constructor with fields: a sum of field-less constructors is `bool` (two values) or an
     `enum` (three or more), never a union, so each finite set of points has exactly one type
     (up to the delays `thunk` / `lazy`, which denote their contents). -/
-class UnionShape (bs : List Bool) : Prop where
-  /-- Some constructor has fields. -/
-  some_fields : bs.any id = true
+class inductive UnionShape : List Bool → Prop where
+  /-- The first constructor has fields. -/
+  | here {bs : List Bool} : UnionShape (true :: bs)
+  /-- The first constructor has no fields; one of the others has. -/
+  | there {bs : List Bool} [UnionShape bs] : UnionShape (false :: bs)
 
-instance UnionShape.here {bs : List Bool} : UnionShape (true :: bs) := ⟨rfl⟩
-instance UnionShape.there {bs : List Bool} [h : UnionShape bs] : UnionShape (false :: bs) :=
-  ⟨by simpa using h.some_fields⟩
+attribute [instance] UnionShape.here UnionShape.there
 
 mutual
 /-- A closed type over a signature with block sizes `ks`.

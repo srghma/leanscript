@@ -187,7 +187,7 @@ def Alts.toIPF {n g : Nat} {bs : List Bool} : Alts ks n g bs → IPF n
   | .here c cs => .consC (BCtor.toIPF E c) (BCtors.toIPF E cs)
   | .there c u => .consC (BCtor.toIPF E c) (Alts.toIPF u)
 def Decl.toIPF {n g : Nat} : Decl ks n g → IPF n
-  | .wrap f _ => Fld.toIPF E f
+  | .wrap f (h := _) => Fld.toIPF E f
   | .record f fs => .prod (Fld.toIPF E f) (Flds.toIPF E fs)
   | .union u (h := _) => Alts.toIPF E u
 /-- The container of member `g + i` of a block. -/
@@ -310,13 +310,13 @@ def Alts.unroll {g : Nat} {bs : List Bool} : (u : Alts ks n g bs) → (Alts.toIP
 
 def Decl.roll {g : Nat} : (d : Decl ks n g) → Ty.den E' (Decl.inst w σ d) →
     (Decl.toIPF (fun r => E' (w r)) d).Obj (fun i => Ty.den E' (σ i))
-  | .wrap f _, x => Fld.roll w E' σ f x
+  | .wrap f (h := _), x => Fld.roll w E' σ f x
   | .record f fs, x => .pair (Fld.roll w E' σ f x.1) (Flds.roll w E' σ fs x.2)
   | .union u (h := _), x => Alts.roll w E' σ u x
 
 def Decl.unroll {g : Nat} : (d : Decl ks n g) → (Decl.toIPF (fun r => E' (w r)) d).Obj (fun i => Ty.den E' (σ i)) →
     Ty.den E' (Decl.inst w σ d)
-  | .wrap f _, x => Fld.unroll w E' σ f x
+  | .wrap f (h := _), x => Fld.unroll w E' σ f x
   | .record f fs, x => (Fld.unroll w E' σ f x.fst, Flds.unroll w E' σ fs x.snd)
   | .union u (h := _), x => Alts.unroll w E' σ u x
 

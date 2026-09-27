@@ -1,3 +1,29 @@
+# Summary of changes for run 17b3b919-e752-4cf6-94c5-24dd3c2e8846
+I replaced both Boolean checks with Prop-valued `class inductive`s. The full `lake build` passes (all 90 jobs, all four default libraries), there is no `sorry`, and the work is committed.
+
+**`UnionShape` (`LeanScript/Ty.lean`)**
+- It is now your inductive, with constructors `here` and `there`. `bs.any id = true` and the old `simpa` instance are gone.
+- **Your snippet doesn't compile as written, for two reasons:**
+  - Lean refuses the binder `[UnionShape bs]` inside the class's own constructor ("type is not a class instance"). I turned off `checkBinderAnnotations` for this one declaration only.
+  - The constructors of a `class inductive` are not instances automatically. I added `attribute [instance] UnionShape.here UnionShape.there`, so shapes like `[false, true, false]` are still found by instance search.
+- In `LeanScript/Three.lean`, the "two field-less constructors" case used to call `absurd h.some_fields (by decide)`. It is now `nomatch h`, a structural case split on the proof with no Boolean computation.
+
+**`Decl.wrap` (`LeanScript/Decl.lean`)**
+- I removed `Fld.isOld : Fld → Bool` and added a Prop class `Fld.NotOld f`. Its constructors are `hole`, `array` and `fn`, i.e. every field former except `old`, and they are registered as instances.
+- `Decl.wrap` now takes `(f : Fld ks n g) [h : f.NotOld]` instead of `(h : f.isOld = false := by decide)`.
+- In `Fld.three`, the impossible `.old` case is now `nomatch h` instead of `absurd h (by simp [Fld.isOld])`.
+
+**Other changes you'll see**
+- Matches on `.wrap` now read `.wrap f (h := _)` (in `Decl.lean`, `Den.lean`, `DenFacts.lean` and `Two.lean`). A pattern cannot leave out an instance argument; `.union` already needed the same `(h := h)`.
+- In `Decl.three` I had to write `@Decl.wrap _ _ _ f hw`, because naming the argument with `(h := hw)` did not elaborate there.
+- In `TyTests/BlocksTest.lean`, the expected error for `.wrap (.old .bool)` is now "failed to synthesize instance … `(Fld.old Ty.bool).NotOld`" instead of the `decide` failure.
+- `DESIGN_ANALYSIS.md` now mentions `Fld.NotOld` instead of `isOld = false`.
+- Both new definitions are in the Properties table.
+
+**Two choices you may want to revisit**
+- **A fully structural `Decl.wrap`:** your stated preference would go further. A separate wrap-field type, or splitting `Decl.wrap` into one constructor per former, would need no proof argument at all. I kept the Prop class because it matches the form you proposed and keeps the changes small.
+- **Remaining Boolean-style statement:** `Ty.threeDen` and `Ty.den_exists_three` in `LeanScript/Three.lean` still assume `t.isBool = false`. That is a theorem assumption, not a field of a datatype, so I didn't change it.
+
 # Summary of changes for run 78779fa7-31b1-492a-a2f9-9e3c19384e41
 Yes, all of this is still true in the current tree. I didn't change any files. I rebuilt the whole project with `lake build` (90 jobs, no errors) and checked the axioms of the theorems cited below: each uses only `propext`, `Classical.choice` and `Quot.sound`.
 

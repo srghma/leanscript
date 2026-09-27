@@ -237,13 +237,13 @@ def Alts.two {n g : Nat} {bs : List Bool} (X : Fin n → Type) (all : (i : Fin n
 
 def Decl.inh {n g : Nat} (X : Fin n → Type) (w : (i : Fin n) → i.val < g → X i) :
     (d : Decl ks n g) → (Decl.toIPF E d).Obj X
-  | .wrap f _ => Fld.inh E TE X w f
+  | .wrap f (h := _) => Fld.inh E TE X w f
   | .record f fs => .pair (Fld.inh E TE X w f) (Flds.inh E TE X w fs)
   | .union u (h := _) => Alts.inh E TE X w u
 
 def Decl.two {n g : Nat} (X : Fin n → Type) (all : (i : Fin n) → X i)
     (tw : (i : Fin n) → i.val < g → Two (X i)) : (d : Decl ks n g) → Two ((Decl.toIPF E d).Obj X)
-  | .wrap f _ => Fld.two E TE X all tw f
+  | .wrap f (h := _) => Fld.two E TE X all tw f
   | .record f fs =>
       let T := Fld.two E TE X all tw f
       let os := Flds.inh E TE X (fun i _ => all i) fs

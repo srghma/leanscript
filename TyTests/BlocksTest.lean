@@ -224,11 +224,10 @@ example : Mems [] 1 0 := .cons (.union (.two₁ .nullary .nullary)) .nil
 -- A member that wraps an older type as it is would be a copy of it under a new name (a copy
 -- of `bool` would be a second type of two points).
 /--
-error: could not synthesize default value for parameter 'h' using tactics
----
-error: Tactic `decide` proved that the proposition
-  (Fld.old Ty.bool).isOld = false
-is false
+error: failed to synthesize instance of type class
+  (Fld.old Ty.bool).NotOld
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
 -/
 #guard_msgs in
 example : Mems [] 1 0 := .cons (.wrap (.old .bool)) .nil

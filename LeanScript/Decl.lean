@@ -82,17 +82,20 @@ inductive Alts : List Nat → Nat → Nat → List Bool → Type where
       Alts ks n g bs → Alts ks n g (a :: bs)
   deriving DecidableEq, Repr
 
-/-- Is a field an older closed type, used as it is? -/
-def Fld.isOld {ks : List Nat} {n g : Nat} : Fld ks n g → Bool
-  | .old _ => true
-  | _ => false
+/-- A field that is not an older closed type used as it is (every former but `Fld.old`). -/
+class inductive Fld.NotOld {ks : List Nat} {n g : Nat} : Fld ks n g → Prop where
+  | hole (i : Fin n) (h : i.val < g) : Fld.NotOld (.hole i h)
+  | array (f : Fld ks n n) : Fld.NotOld (.array f)
+  | fn (a : Ty ks) (f : Fld ks n g) : Fld.NotOld (.fn a f)
+
+attribute [instance] Fld.NotOld.hole Fld.NotOld.array Fld.NotOld.fn
 
 /-- One member of a block. -/
 inductive Decl : List Nat → Nat → Nat → Type where
   /-- One constructor with one field (e.g. `Rose.node : Array Rose → Rose`).  The field is not
       an older closed type as it is: such a member would be a copy of that type under a new
       name (a copy of `bool` would be a second type of two points). -/
-  | wrap {ks : List Nat} {n g : Nat} (f : Fld ks n g) (h : f.isOld = false := by decide) :
+  | wrap {ks : List Nat} {n g : Nat} (f : Fld ks n g) [h : f.NotOld] :
       Decl ks n g
   /-- One constructor with at least two fields, all grounded. -/
   | record {ks : List Nat} {n g : Nat} : Fld ks n g → Flds ks n g → Decl ks n g
@@ -163,7 +166,7 @@ def Alts.inst {n g : Nat} {bs : List Bool} (σ : Fin n → Ty K) : Alts ks n g b
   | .there c u => .cons (BCtor.inst w σ c) (Alts.inst σ u)
 /-- A member, as a closed type. -/
 def Decl.inst {n g : Nat} (σ : Fin n → Ty K) : Decl ks n g → Ty K
-  | .wrap f _ => Fld.inst w σ f
+  | .wrap f (h := _) => Fld.inst w σ f
   | .record f fs => .record (Fld.inst w σ f) (Flds.inst w σ fs)
   | .union u (h := h) => .union (Alts.inst w σ u) (h := h)
 /-- Member `g + i` of a block, as a closed type. -/

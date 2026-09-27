@@ -32,10 +32,10 @@ but it costs a lot:
 - **Rules that never end.** Because of the invariant, the grammar needs the proofs in `LeanPrimTy.bitvec` / `LeanPrimTy.stringPos`,
   `UnionShape`, a separate `Ty.enum` for field-less sums of ≥ 3 constructors,
   `LeanEnumSchema.extraConstructors` (counting from 3), `Ctor.nullary` vs `Ctor.fields`,
-  records of ≥ 2 fields, `Decl.wrap`'s `isOld = false`, and the grounding index `g` and the
+  records of ≥ 2 fields, `Decl.wrap`'s `Fld.NotOld` instance, and the grounding index `g` and the
   base constructor of `Alts`. Every new type former has to be checked against the invariant.
 - **Proofs inside data.** `LeanPrimTy.bitvec n h` and `LeanPrimTy.stringPos s h` carry a size proof, and
-  `Ty.union` carries a `UnionShape` instance. You have to write `(h := h)` in every match on
+  `Ty.union` carries a `UnionShape` instance (and `Decl.wrap` a `Fld.NotOld` one). You have to write `(h := h)` in every match on
   `.union`, and a non-literal `p` (such as `.stringPos s` for a variable `s`) needs a proof
   by hand.
 - **Encoding depends on context.** A one-field structure is its field, a one-constructor
