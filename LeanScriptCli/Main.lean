@@ -192,12 +192,12 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   let mut funs : Array JsFun := #[]
   let mut helpers : Array JsHelper := #[]
   let mut jsRefused : Array (Name × String) := #[]
-  let mut exported : Array (Name × String) := #[]
+  let mut exported : Array (Name × String × Nat) := #[]
   for t in done do
     match termToJs o.cfg (jsFunName t.name) t.name.toString t.params t.optimized with
     | .ok (f, hs) =>
       funs := funs.push f
-      exported := exported.push (t.name, jsFunName t.name)
+      exported := exported.push (t.name, jsFunName t.name, f.params.length)
       helpers := hs.foldl addHelper helpers
     | .error e => jsRefused := jsRefused.push (t.name, e)
   let m : JsModule := { config := o.cfg, helpers := helpers.toList, funs := funs.toList }
@@ -225,8 +225,8 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     let jsFile := (outPath o file ".js").fileName.getD "out.js"
     let cases ← runTermElab el (do
       let mut acc : Array CheckCase := #[]
-      for (n, jsName) in exported do
-        match ← checksOf o.cfg n jsName with
+      for (n, jsName, arity) in exported do
+        match ← checksOf o.cfg n jsName arity with
         | some cs => acc := acc ++ cs.toArray
         | none => pure ()
       return acc)
@@ -255,4 +255,5 @@ unsafe def main (args : List String) : IO UInt32 := do
       catch e =>
         IO.eprintln s!"leanscript: {i}: {e}"
         ok := false
-    return (if ok then 0 else 1)
+    -- stops the checks still running after their time budget (see `evalWithTimeout`)
+    IO.Process.exit (if ok then 0 else 1)

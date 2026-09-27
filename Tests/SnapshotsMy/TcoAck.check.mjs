@@ -30,17 +30,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("ack2(0n)(0n)", () => M.ack2(0n)(0n), "1", false);
+check("ack2(0n)(2n)", () => M.ack2(0n)(2n), "3", false);
+check("ack2(1n)(1n)", () => M.ack2(1n)(1n), "3", false);
+check("ack2(2n)(0n)", () => M.ack2(2n)(0n), "3", false);
+check("ack2(0n)(13n)", () => M.ack2(0n)(13n), "14", false);
+check("ack2(1n)(5n)", () => M.ack2(1n)(5n), "7", false);
+check("ack2(2n)(2n)", () => M.ack2(2n)(2n), "7", false);
 check("AckWithoutStackButUsingCantorPairing_pair(0n, 0n)", () => M.AckWithoutStackButUsingCantorPairing_pair(0n, 0n), "0", false);
 check("AckWithoutStackButUsingCantorPairing_pair(0n, 2n)", () => M.AckWithoutStackButUsingCantorPairing_pair(0n, 2n), "5", false);
-check("AckWithoutStackButUsingCantorPairing_pair(0n, 13n)", () => M.AckWithoutStackButUsingCantorPairing_pair(0n, 13n), "104", false);
 check("AckWithoutStackButUsingCantorPairing_pair(1n, 1n)", () => M.AckWithoutStackButUsingCantorPairing_pair(1n, 1n), "4", false);
-check("AckWithoutStackButUsingCantorPairing_pair(1n, 5n)", () => M.AckWithoutStackButUsingCantorPairing_pair(1n, 5n), "26", false);
 check("AckWithoutStackButUsingCantorPairing_pair(2n, 0n)", () => M.AckWithoutStackButUsingCantorPairing_pair(2n, 0n), "3", false);
+check("AckWithoutStackButUsingCantorPairing_pair(0n, 13n)", () => M.AckWithoutStackButUsingCantorPairing_pair(0n, 13n), "104", false);
+check("AckWithoutStackButUsingCantorPairing_pair(1n, 5n)", () => M.AckWithoutStackButUsingCantorPairing_pair(1n, 5n), "26", false);
 check("AckWithoutStackButUsingCantorPairing_pair(2n, 2n)", () => M.AckWithoutStackButUsingCantorPairing_pair(2n, 2n), "12", false);
-check("AckWithoutStackButUsingCantorPairing_pair(2n, 13n)", () => M.AckWithoutStackButUsingCantorPairing_pair(2n, 13n), "133", false);
 check("AckWithoutStackButUsingCantorPairing_pair(5n, 1n)", () => M.AckWithoutStackButUsingCantorPairing_pair(5n, 1n), "22", false);
-check("AckWithoutStackButUsingCantorPairing_pair(5n, 5n)", () => M.AckWithoutStackButUsingCantorPairing_pair(5n, 5n), "60", false);
 check("AckWithoutStackButUsingCantorPairing_pair(13n, 0n)", () => M.AckWithoutStackButUsingCantorPairing_pair(13n, 0n), "91", false);
+check("AckWithoutStackButUsingCantorPairing_pair(2n, 13n)", () => M.AckWithoutStackButUsingCantorPairing_pair(2n, 13n), "133", false);
+check("AckWithoutStackButUsingCantorPairing_pair(5n, 5n)", () => M.AckWithoutStackButUsingCantorPairing_pair(5n, 5n), "60", false);
 check("AckWithoutStackButUsingCantorPairing_pair(13n, 2n)", () => M.AckWithoutStackButUsingCantorPairing_pair(13n, 2n), "122", false);
 check("AckWithoutStackButUsingCantorPairing_pair(13n, 13n)", () => M.AckWithoutStackButUsingCantorPairing_pair(13n, 13n), "364", false);
 

@@ -91,15 +91,18 @@ def samplesOf (cfg : JsConfig) : SType → List Sample
 
 /-- All combinations of samples of the parameter types, at most `cap` of them, spread over
     the space (each list is walked with a stride so that not only the first samples of the
-    first parameter are used). -/
+    first parameter are used), then ordered from the smallest up (by the sum of the
+    positions of the samples in their lists, which list the small samples first). -/
 def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) : List (List Sample) :=
-  let all := ts.foldr (fun t acc =>
-    (samplesOf cfg t).flatMap fun s => acc.map (s :: ·)) [[]]
-  if all.length ≤ cap then all
-  else
-    let stride := all.length / cap + 1
-    (List.range all.length).filterMap fun i =>
-      if i % stride == 0 then all[i]? else none
+  let all : List (Nat × List Sample) := ts.foldr (fun t acc =>
+    ((samplesOf cfg t).zipIdx).flatMap fun (s, i) => acc.map fun (k, ss) => (i + k, s :: ss))
+    [(0, [])]
+  let picked := if all.length ≤ cap then all
+    else
+      let stride := all.length / cap + 1
+      (List.range all.length).filterMap fun i =>
+        if i % stride == 0 then all[i]? else none
+  (picked.mergeSort fun a b => a.1 ≤ b.1).map (·.2)
 
 /-- A check: the JavaScript call and the answer Lean gives, printed. -/
 structure CheckCase where
@@ -107,8 +110,35 @@ structure CheckCase where
   expected : String
   isFloat : Bool
 
-/-- The checks of one function: `none` when its type is not one of sample types. -/
-unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) : MetaM (Option (List CheckCase)) := do
+/-- Run `f ()` on a thread of its own, waiting at most `ms` milliseconds for it: `none` when
+    it has not finished by then (it may not terminate, or its answer may be astronomically
+    large, as for `ack 13 13`).  A call that timed out keeps running in the background: the
+    tool ends with `IO.Process.exit`, which stops it. -/
+def evalWithTimeout (f : Unit → String) (ms : UInt32) : IO (Option String) := do
+  let go ← IO.mkRef ()
+  let work ← IO.asTask (prio := .dedicated) (do
+    let u ← go.get
+    return some (f u))
+  let timer ← IO.asTask (do IO.sleep ms; return (none : Option String))
+  let r ← IO.waitAny [work, timer]
+  match r with
+  | .ok v => return v
+  | .error _ => return none
+
+/-- The JavaScript spelling of a call of a function exported with `arity` parameters: the
+    first `arity` arguments in one call, the others one at a time (the exported function
+    returns a curried function then). -/
+def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
+  let first := args.take arity
+  let rest := args.drop arity
+  s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
+
+/-- The checks of one function: `none` when its type is not one of sample types.  Each
+    expected answer is computed by Lean with a time budget of `timeoutMs` milliseconds; the
+    samples are tried from the smallest up, and the first call over budget ends the checks of
+    the function (a larger sample would not be faster). -/
+unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
+    (timeoutMs : UInt32 := 2000) : MetaM (Option (List CheckCase)) := do
   let ci ← getConstInfo n
   let some (ps, res) ← forallTelescope ci.type (fun xs r => do
       let mut ps : Array SType := #[]
@@ -125,12 +155,17 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) : MetaM (Optio
     let shown ← match res with
       | .float => mkAppM ``toString #[mkApp (mkConst ``Float.toBits) app]
       | _ => mkAppM ``toString #[app]
-    let expected ← try
-        some <$> evalExpr String (mkConst ``String) shown
+    let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)
+    let thunk := mkLambda `u .default (mkConst ``Unit) shown
+    let f? ← try
+        some <$> evalExpr (Unit → String) thunkTy thunk
       catch _ => pure none
-    if let some e := expected then
-      out := out.push { call := s!"{jsName}({", ".intercalate (args.map (·.js))})",
+    let some f := f? | continue
+    match ← evalWithTimeout f timeoutMs with
+    | some e =>
+      out := out.push { call := jsCall jsName arity (args.map (·.js)),
                         expected := e, isFloat := res == .float }
+    | none => break
   return some out.toList
 
 /-- The JavaScript prelude of a check module: printing values as Lean's `toString` does. -/

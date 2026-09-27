@@ -1,3 +1,30 @@
+# Summary of changes for run 6a7fd921-c33c-4de8-9586-13adfdf09762
+The four output files (`-Term-unoptimized.txt`, `-Term-optimized.txt`, `-MoreJsTy.txt`, `.js`) and a `.check.mjs` now exist for `TcoBoom`, `TcoDiagonal`, `TcoHyper` and `TcoMc91`, next to each `.lean` file in `Tests/SnapshotsMy/`. I regenerated `TcoAck` too. Every generated `.js` file passes `node --check`, and every `.check.mjs` reports 0 failures.
+
+**The old files already existed.** The previous run had generated files for every `Tests/SnapshotsMy/*.lean`, and re-running the tool reproduced them unchanged. But they were wrong in one way: every recursive function was refused as "a `partial` definition", including structurally recursive ones like `ack2`, `hyperLoop`, `hyperTCO`, `hyperWhile` and `iter`. The tool assumed that a function with an `_unsafe_rec` helper is `partial`, but Lean 4.34 creates that helper for every recursive definition.
+
+**Changes to the tool (`LeanScriptCli/`)**
+- `Frontend.lean`: only a real `partial def` is refused as partial. Functions that use well-founded recursion are now refused as "defined by well-founded recursion, not structurally". Structurally recursive functions are now translated.
+- `Check.lean`: each Lean answer used by the checks now has a 2-second limit, and small sample inputs are tried first. Without this, computing `ack2 13 13` or `hyperTCO 13 13 13` in Lean ran forever. When a function is exported curried (e.g. `ack2(m)(n)`), the check now calls it that way.
+- `Main.lean`: passes the number of parameters to the checks, and exits explicitly so that computations that ran out of time are stopped.
+
+**Results per file**
+
+| File | Translated | Not translated (reason) | Checks |
+|---|---|---|---|
+| `TcoBoom` | nothing | `boom` (well-founded) | none |
+| `TcoDiagonal` | nothing | `diagonal`, `diagonal_tr` (well-founded); `diagonalWhile` (the translator can't tell that its `while` loop terminates) | none |
+| `TcoHyper` | `hyperBase`, `hyperLoop`, `hyperTCO`, `hyperWhile` | `hyper` (well-founded) | 53 passed |
+| `TcoMc91` | `mc91`, `iter` | `mc91Loop` (well-founded); `mc91TR` (calls `mc91Loop`); `mc91While` (same `while` limitation) | 5 passed |
+| `TcoAck` | `pair`, and now `ack2` | `ack` (well-founded); the others as before | 20 passed |
+
+`hyperLoop` and `iter` take a function as an argument, so the tool writes no automatic checks for them. I tested them by hand in node (`hyperLoop(x=>2x, 5, 3) = 96`, `iter(x=>x+3, 4, 1) = 13`, `hyperTCO(3,2,4) = 16`), but that test is not saved in the project.
+
+**Things to be aware of**
+- The other `Tests/SnapshotsMy` outputs were not regenerated, so any structurally recursive functions in them are still wrongly shown as refused. To refresh them, run `scripts/leanscript-snapshots.sh`.
+- The build problem from earlier runs is still there: `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it, so `lake` stops immediately. To build the tool I removed that requirement locally and put it back before committing, so your lakefile is unchanged.
+- Nothing here involves Lean proofs, so no build targets are claimed. All changes are committed.
+
 # Summary of changes for run 7e4d2587-f0c8-4b3a-8042-c199d13f7ae9
 I implemented `MoreJsTy`, a configurable Term→MoreJsTy converter, a printer that goes through `LanguageJavascriptMini`, and the `leanscript` executable. I ran it on every `Tests/SnapshotsMy/*.lean`. Many functions in those files can't be translated yet (see below), so several files export nothing. For every function that was translated, the generated JavaScript gives the same answers as Lean on sample inputs.
 

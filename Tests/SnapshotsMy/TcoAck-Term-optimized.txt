@@ -2,14 +2,31 @@
 -- configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 -- imports not found (left out): LeanScript.Term.Elab, LeanScript.Term.Compile
 -- not translated:
---   ack: a `partial` definition
---   ack2: a `partial` definition
+--   ack: defined by well-founded recursion, not structurally
 --   ack999: the closed value `ack 999 1` could not be computed at compile time (it normalises to `ack 999 1`)
 --   ackWhile: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
 --   AckWithoutStackButUsingCantorPairing.isqrt: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 --   AckWithoutStackButUsingCantorPairing.unpairLeft: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 --   AckWithoutStackButUsingCantorPairing.unpairRight: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 --   AckWithoutStackButUsingCantorPairing.ackNoDataStructure: LeanScript: the `while` loop forIn { } (s, curN) fun x __s => have s := __s.fst; have curN := __s.snd; if (s != 0) = true then have code := s - 1; have top := AckWithoutStackButUsingCantorPairing.unpairLeft code; have s := AckWithoutStackButUsingCantorPairing.unpairRight code; if (top == 0) = true then have curN := curN + 1; pure (ForInStep.yield (s, curN)) else if (curN == 0) = true then have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have curN := 1; pure (ForInStep.yield (s, curN)) else have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have s := AckWithoutStackButUsingCantorPairing.pair top s + 1; have curN := curN - 1; pure (ForInStep.yield (s, curN)) else pure (ForInStep.done (s, curN)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
+
+-- ack2 : Nat → Nat → Nat
+val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [1] : Nat => (closed)
+  val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (closed)
+    ret lean_nat_add(x4, 1)
+  let x17 [1] : (Nat → Nat) := nat_rec x2 k3 fun acc5 i6 => (closed)
+    val k7 [1] : ((Nat → Nat) → (Nat → Nat)) := fun x8 [ω] : (Nat → Nat) => (closed)
+      val k9 [1] : (Nat → Nat) := fun x10 [1] : Nat => (open)
+        let x11 [1] : Nat := x8 1
+        let x15 [1] : Nat := nat_rec x10 x11 fun acc12 i13 => (open)
+          let x14 [1] : Nat := x8 acc12
+          ret x14
+        ret x15
+      ret k9
+    let x16 [1] : (Nat → Nat) := k7 acc5
+    ret x16
+  ret x17
+ret k1
 
 -- AckWithoutStackButUsingCantorPairing.pair : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)

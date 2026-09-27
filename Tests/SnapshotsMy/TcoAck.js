@@ -2,8 +2,7 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.Term.Elab, LeanScript.Term.Compile
 // not translated:
-//   ack: a `partial` definition
-//   ack2: a `partial` definition
+//   ack: defined by well-founded recursion, not structurally
 //   ack999: the closed value `ack 999 1` could not be computed at compile time (it normalises to `ack 999 1`)
 //   ackWhile: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
 //   AckWithoutStackButUsingCantorPairing.isqrt: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
@@ -18,6 +17,31 @@ function lean_nat_div$bbb(a, b) {
 }
 
 // ---- exported functions ----
+
+/**
+ * `ack2`
+ * @param {nat(bigint)} a
+ * @returns {(nat(bigint) => nat(bigint))}
+ */
+export function ack2(a) {
+  const k$1 = (x$2) => x$2 + 1n;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => (x$9) => {
+      const x$10 = x$7(1n);
+      let acc$11 = x$10;
+      for (let i$12 = 0n; i$12 < x$9; i$12++) {
+        const x$14 = x$7(acc$11);
+        acc$11 = x$14;
+      }
+      return acc$11;
+    };
+    const x$15 = k$6(a$5);
+    acc$3 = x$15;
+  }
+  return acc$3;
+}
 
 /**
  * `AckWithoutStackButUsingCantorPairing.pair`

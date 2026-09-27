@@ -2,8 +2,7 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.Term.Elab, LeanScript.Term.Compile
 // not translated:
-//   mc91Loop: a `partial` definition
-//   iter: a `partial` definition
+//   mc91Loop: defined by well-founded recursion, not structurally
 //   mc91TR: LeanScript: the recursive call mc91Loop (n✝ + 1 + 1) (x✝ + 11) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 //   mc91While: LeanScript: the `while` loop forIn { } (c, cur) fun x __s => have c := __s.fst; have cur := __s.snd; if (c != 0) = true then if cur > 100 then have cur := cur - 10; have c := c - 1; pure (ForInStep.yield (c, cur)) else have cur := cur + 11; have c := c + 1; pure (ForInStep.yield (c, cur)) else pure (ForInStep.done (c, cur)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 
@@ -26,4 +25,25 @@ export function mc91(n) {
   } else {
     return 91n;
   }
+}
+
+/**
+ * `iter`
+ * @param {(nat(bigint) => nat(bigint))} f
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @returns {nat(bigint)}
+ */
+export function iter(f, a, a1) {
+  const k$1 = (x$2) => x$2;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => {
+      const x$8 = f(x$7);
+      return a$5(x$8);
+    };
+    acc$3 = k$6;
+  }
+  return acc$3(a1);
 }

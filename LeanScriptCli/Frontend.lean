@@ -112,8 +112,13 @@ def mentions (e : Expr) (p : Name → Bool) : Bool :=
 /-- Is `n` a definition of the file the tool should try to translate? -/
 def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
   let env ← getEnv
-  let .defnInfo d := ci | return some .silent
   if isPrivateName n || n.isInternalDetail || n.hasMacroScopes then return some .silent
+  -- a `partial def f` is an opaque constant implemented by `f._unsafe_rec`.  (A definition
+  -- by structural or well-founded recursion has an `_unsafe_rec` companion too, used by the
+  -- compiler, but is a `defnInfo`: it is not partial.)
+  if let .opaqueInfo _ := ci then
+    if env.contains (n ++ `_unsafe_rec) then return some (.refused "a `partial` definition")
+  let .defnInfo d := ci | return some .silent
   if isAuxRecursor env n || isNoConfusion env n || isMatcherCore env n then return some .silent
   if (← isInstance n) then return some .silent
   if (env.getProjectionFnInfo? n).isSome then return some .silent
@@ -137,9 +142,11 @@ def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
   if mentions d.type (fun c => [``IO.RealWorld, ``EStateM, ``ST, ``EST, ``EIO, ``BaseIO,
       ``IO].contains c) then
     return some (.refused "an `IO`/`ST` action: the language has no side effects")
-  if env.contains (n ++ `_unsafe_rec) then return some (.refused "a `partial` definition")
   if isNoncomputable env n then return some (.refused "a `noncomputable` definition")
-  if mentions d.value (fun c => c == ``WellFounded.fix || c == ``WellFounded.Nat.fix) then
+  -- well-founded recursion: `WellFounded.fix` directly, or through the `f._unary` (several
+  -- parameters) or `f._mutual` (mutual block) definition Lean packs the recursion in
+  if mentions d.value (fun c => c == ``WellFounded.fix || c == ``WellFounded.Nat.fix ||
+      c == n ++ `_unary || c == n ++ `_mutual) then
     return some (.refused "defined by well-founded recursion, not structurally")
   return none
 

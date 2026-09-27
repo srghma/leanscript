@@ -2,10 +2,7 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.Term.Elab, LeanScript.Term.Compile
 // not translated:
-//   hyper: a `partial` definition
-//   hyperLoop: a `partial` definition
-//   hyperTCO: a `partial` definition
-//   hyperWhile: a `partial` definition
+//   hyper: defined by well-founded recursion, not structurally
 
 
 /**
@@ -28,4 +25,132 @@ export function hyperBase(a, a1) {
     acc$1 = acc$4;
   }
   return acc$1;
+}
+
+/**
+ * `hyperLoop`
+ * @param {(nat(bigint) => nat(bigint))} f
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @returns {nat(bigint)}
+ */
+export function hyperLoop(f, a, a1) {
+  const k$1 = (x$2) => x$2;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => {
+      const x$8 = f(x$7);
+      return a$5(x$8);
+    };
+    acc$3 = k$6;
+  }
+  return acc$3(a1);
+}
+
+/**
+ * `hyperTCO`
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @param {nat(bigint)} a2
+ * @returns {nat(bigint)}
+ */
+export function hyperTCO(a, a1, a2) {
+  const k$1 = (x$2) => x$2 + 1n;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => {
+      const k$8 = (x$9) => (x$11) => (x$13) => {
+        const k$14 = (x$15) => x$15;
+        let acc$16 = k$14;
+        for (let i$17 = 0n; i$17 < x$11; i$17++) {
+          const a$18 = acc$16;
+          const k$19 = (x$20) => {
+            const x$21 = x$9(x$20);
+            return a$18(x$21);
+          };
+          acc$16 = k$19;
+        }
+        return acc$16(x$13);
+      };
+      const x$24 = k$8(a$5);
+      const x$25 = x$24(x$7);
+      const k$26 = (x$27) => (x$29) => {
+        let acc$30 = 1n;
+        for (let i$31 = 0n; i$31 < x$27; i$31++) {
+          let acc$33 = x$29;
+          for (let i$34 = 0n; i$34 < i$31; i$34++) {
+            let acc$36 = 0n;
+            for (let i$37 = 0n; i$37 < i$34; i$37++) {
+              acc$36 = 1n;
+            }
+            acc$33 = acc$36;
+          }
+          acc$30 = acc$33;
+        }
+        return acc$30;
+      };
+      const x$39 = k$26(i$4 + 1n);
+      const x$40 = x$39(a1);
+      return x$25(x$40);
+    };
+    acc$3 = k$6;
+  }
+  return acc$3(a2);
+}
+
+/**
+ * `hyperWhile`
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @param {nat(bigint)} a2
+ * @returns {nat(bigint)}
+ */
+export function hyperWhile(a, a1, a2) {
+  const k$1 = (x$2) => x$2 + 1n;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => {
+      const k$8 = (x$9) => (x$11) => {
+        let acc$12 = 1n;
+        for (let i$13 = 0n; i$13 < x$9; i$13++) {
+          let acc$15 = x$11;
+          for (let i$16 = 0n; i$16 < i$13; i$16++) {
+            let acc$18 = 0n;
+            for (let i$19 = 0n; i$19 < i$16; i$19++) {
+              acc$18 = 1n;
+            }
+            acc$15 = acc$18;
+          }
+          acc$12 = acc$15;
+        }
+        return acc$12;
+      };
+      const x$21 = k$8(i$4 + 1n);
+      const x$22 = x$21(a1);
+      let acc$23 = [1, x$22];
+      for (let i$24 = 0n; i$24 < x$7; i$24++) {
+        if (acc$23[0] === 0) {
+          const [, f$26] = acc$23;
+          acc$23 = [0, f$26];
+        } else {
+          const [, f$27] = acc$23;
+          const x$28 = a$5(f$27);
+          acc$23 = [1, x$28];
+        }
+      }
+      const j$29 = (x$30) => x$30;
+      if (acc$23[0] === 0) {
+        const [, f$31] = acc$23;
+        return j$29(f$31);
+      } else {
+        const [, f$32] = acc$23;
+        return j$29(f$32);
+      }
+    };
+    acc$3 = k$6;
+  }
+  return acc$3(a2);
 }
