@@ -16,10 +16,11 @@ notation (`set_option pp.leanscript false` turns that off).
 
 | surface syntax                 | `Ty`                                               |
 |--------------------------------|----------------------------------------------------|
-| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `HashableFloat`, `HashableFloat32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice` | `.prim p` |
+| `Bool`, `Nat`, `Int`, `String`, `Char`, `UInt8` … `UInt64`, `Int8` … `Int64`, `HashableFloat`, `HashableFloat32`, `Float.Model`, `Float32.Model`, `String.Pos.Raw`, `Substring.Raw`, `String.Slice`, `Lean.Name` | `.prim p` |
 | `BitVec 32`, `String.Pos "ab"` | `.prim (.bitvec 32)`, `.prim (.stringPos "ab")`    |
 | `σ → τ`                        | `.fn σ τ` (right associative)                      |
 | `Array τ`                      | `.array τ`                                         |
+| `List τ`                       | `.list τ`                                          |
 | `Thunk τ`                      | `.thunk τ`                                         |
 | `Unit → τ`                     | `.lazy τ`                                          |
 | `Option τ`                     | `Ty.option τ` (`⟪· \| τ⟫`)                         |
@@ -60,7 +61,7 @@ syntax:max "-" num : lsty
 /-- A Lean term. -/
 syntax (name := lstyAntiquot) "‹" term "›" : lsty
 syntax "(" lsty ")" : lsty
-/-- A type former applied: `Array τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`,
+/-- A type former applied: `Array τ`, `List τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`,
     `Data b j`. -/
 syntax:40 ident (ppSpace lsty:max)+ : lsty
 /-- A record. -/
@@ -104,7 +105,7 @@ def primNames : List (Name × Name) :=
    (`String.Pos.Raw, ``LeanPrimTy.stringPosRaw), (`Substring.Raw, ``LeanPrimTy.substringRaw),
    (`String.Slice, ``LeanPrimTy.stringSlice), (`HashableFloat, ``LeanPrimTy.float),
    (`HashableFloat32, ``LeanPrimTy.float32), (`Float.Model, ``LeanPrimTy.floatModel),
-   (`Float32.Model, ``LeanPrimTy.float32Model)]
+   (`Float32.Model, ``LeanPrimTy.float32Model), (`Lean.Name, ``LeanPrimTy.leanName)]
 
 /-- A Lean term given as an argument of a type former: a number, a string or `‹t›`. -/
 partial def lstyArg : TSyntax `lsty → MacroM Term
@@ -200,6 +201,7 @@ partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
       let f := id.getId.eraseMacroScopes
       match f, args.toList with
       | `Array, [t] => do `(LeanScript.Ty.array $(← elabLsty t))
+      | `List, [t] => do `(LeanScript.Ty.list $(← elabLsty t))
       | `Thunk, [t] => do
           if nd then Macro.throwErrorAt id "internal error: a delay inside a delay"
           let (_, c) ← elabUndelayed t
@@ -221,7 +223,7 @@ partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
           let `(lsty| $b:num) := b | Macro.throwErrorAt b "expected a block number"
           `(LeanScript.Ty.data $(← mkRef b.getNat (← lstyArg j)))
       | _, _ => Macro.throwErrorAt id s!"unknown type former `{f}` with {args.size} \
-          argument(s): expected `Array τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, \
+          argument(s): expected `Array τ`, `List τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, \
           `Enum n`, `Enum n k` or `Data b j`"
   | `(lsty| $n:num) => Macro.throwErrorAt n "a number is not a type"
   | `(lsty| $s:str) => Macro.throwErrorAt s "a string is not a type"
@@ -348,6 +350,10 @@ partial def delabLsty (root : Bool) : DelabM PSyn := do
     | ``Ty.array, 3 => do
         let t ← paren atomPrec (← withNaryArg 2 (delabLsty false))
         return (← `(lsty| $(mkIdent `Array):ident $t), 40)
+    | ``Ty.list, 3 => do
+        let t ← paren atomPrec (← withNaryArg 2 (delabLsty false))
+        return (← `(lsty| $(mkIdent `List):ident $t), 40)
+    | ``Ty.leanName, 1 => return (← `(lsty| $(mkIdent `Lean.Name):ident), atomPrec)
     | ``Ty.thunk, 2 => do
         let t ← paren atomPrec (← withNaryArg 1 (delabLsty false))
         return (← `(lsty| $(mkIdent `Thunk):ident $t), 40)
@@ -449,6 +455,8 @@ def delabTy : Delab := do
 @[delab app.LeanScript.Ty.prim] def delabTyPrim : Delab := delabTy
 @[delab app.LeanScript.Ty.fn] def delabTyFn : Delab := delabTy
 @[delab app.LeanScript.Ty.array] def delabTyArray : Delab := delabTy
+@[delab app.LeanScript.Ty.list] def delabTyList : Delab := delabTy
+@[delab app.LeanScript.Ty.leanName] def delabTyLeanName : Delab := delabTy
 @[delab app.LeanScript.Ty.enum] def delabTyEnum : Delab := delabTy
 @[delab app.LeanScript.Ty.record] def delabTyRecord : Delab := delabTy
 @[delab app.LeanScript.Ty.union] def delabTyUnion : Delab := delabTy

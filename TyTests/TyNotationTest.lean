@@ -103,9 +103,9 @@ example (t : Ty []) : [Ty| ‹t› × ‹t›] = .record t (.one t) := rfl
 #guard_msgs in example : Ty [] := [Ty| Enum 2]
 
 /--
-error: unknown type former `List` with 1 argument(s): expected `Array τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, `Enum n k` or `Data b j`
+error: unknown type former `Set` with 1 argument(s): expected `Array τ`, `List τ`, `Thunk τ`, `Option τ`, `BitVec n`, `String.Pos s`, `Enum n`, `Enum n k` or `Data b j`
 -/
-#guard_msgs in example : Ty [] := [Ty| List Nat]
+#guard_msgs in example : Ty [] := [Ty| Set Nat]
 
 /-- error: unknown leaf `listNat`: a Lean term is written `‹listNat›` -/
 #guard_msgs in example : Ty [0] := [Ty| Array listNat]

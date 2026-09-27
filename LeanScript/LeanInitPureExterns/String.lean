@@ -53,14 +53,14 @@ inductive StringBootstrapExtern : List MyTy → MyTy → Type where
   | lean_string_front : StringBootstrapExtern [string] char -- String.Internal.front
   | lean_string_posof : StringBootstrapExtern [string, char] stringPosRaw -- String.Internal.posOf
   | lean_substring_all : StringBootstrapExtern [substringRaw, (fn1 char LeanPrimTy.bool)] LeanPrimTy.bool -- Substring.Raw.Internal.all
-  -- | lean_string_intercalate : String → List String → StringBootstrapExtern string -- String.Internal.intercalate -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_string_intercalate : StringBootstrapExtern [string, (list string)] string -- String.Internal.intercalate
   | lean_string_drop : StringBootstrapExtern [string, nat] string -- String.Internal.drop
   | lean_string_length__String_Internal_length : StringBootstrapExtern [string] nat -- String.Internal.length
   | lean_string_utf8_at_end__String_Internal_atEnd : StringBootstrapExtern [string, stringPosRaw] LeanPrimTy.bool -- String.Internal.atEnd
   | lean_substring_beq : StringBootstrapExtern [substringRaw, substringRaw] LeanPrimTy.bool -- Substring.Raw.Internal.beq
   | lean_string_nextwhile : StringBootstrapExtern [string, (fn1 char LeanPrimTy.bool), stringPosRaw] stringPosRaw -- String.Internal.nextWhile
   | lean_string_utf8_next__String_Internal_next : StringBootstrapExtern [string, stringPosRaw] stringPosRaw -- String.Internal.next
-  -- | lean_string_mk__String_mk : List Char → StringBootstrapExtern string -- String.mk -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_string_mk__String_mk : StringBootstrapExtern [(list char)] string -- String.mk
   | lean_string_any : StringBootstrapExtern [string, (fn1 char LeanPrimTy.bool)] LeanPrimTy.bool -- String.Internal.any
   | lean_string_pushn : StringBootstrapExtern [string, char, nat] string -- String.Internal.pushn
   | lean_string_capitalize : StringBootstrapExtern [string] string -- String.Internal.capitalize
@@ -104,8 +104,8 @@ inductive StringBasicExtern : List MyTy → MyTy → Type where
   -- the same function as `lean_string_utf8_next_fast__String_next'`; a call of `String.Pos.Raw.next'` is that entry
   -- | lean_string_utf8_next_fast__String_Pos_Raw_next' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → StringBasicExtern stringPosRaw -- String.Pos.Raw.next'
   | lean_string_utf8_next_fast__String_Pos_next : (s : String) → (h_len : 2 ≤ s.length) → StringBasicExtern [(LeanPrimTy.stringPos s h_len)] (LeanPrimTy.stringPos s h_len) -- String.Pos.next (decides `pos ≠ s.endPos`)
-  -- | lean_string_data__String_data : String → StringBasicExtern (list char) -- String.data -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
-  -- | lean_string_data__String_toList : String → StringBasicExtern (list char) -- String.toList -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_string_data__String_data : StringBasicExtern [string] (list char) -- String.data
+  | lean_string_data__String_toList : StringBasicExtern [string] (list char) -- String.toList
   | lean_string_utf8_extract_fast : (s : String) → (h_len : 2 ≤ s.length) → StringBasicExtern [(LeanPrimTy.stringPos s h_len), (LeanPrimTy.stringPos s h_len)] string -- String.extract
   | lean_string_utf8_at_end__String_atEnd : StringBasicExtern [string, stringPosRaw] LeanPrimTy.bool -- String.atEnd
   | lean_string_utf8_at_end__String_Pos_Raw_atEnd : StringBasicExtern [string, stringPosRaw] LeanPrimTy.bool -- String.Pos.Raw.atEnd

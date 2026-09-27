@@ -101,6 +101,10 @@ def StringBootstrapExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : Li
     let x1 : Substring.Raw := x1
     let x2 : Char → Bool := x2
     ExternBool.toBool (Substring.Raw.Internal.all x1 x2)
+  | _, _, .lean_string_intercalate, (x1, x2) =>
+    let x1 : String := x1
+    let x2 : List String := x2
+    (String.Internal.intercalate x1 x2 : String)
   | _, _, .lean_string_drop, (x1, x2) =>
     let x1 : String := x1
     let x2 : Nat := x2
@@ -125,6 +129,9 @@ def StringBootstrapExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : Li
     let x1 : String := x1
     let x2 : String.Pos.Raw := x2
     (String.Internal.next x1 x2 : String.Pos.Raw)
+  | _, _, .lean_string_mk__String_mk, x1 =>
+    let x1 : List Char := x1
+    (String.ofList x1 : String) -- `String.mk` is deprecated: `String.ofList` is the same function
   | _, _, .lean_string_any, (x1, x2) =>
     let x1 : String := x1
     let x2 : Char → Bool := x2
@@ -223,6 +230,12 @@ def StringBasicExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (
   | _, _, (.lean_string_utf8_next_fast__String_Pos_next s _), pos =>
     let pos : String.Pos s := pos
     if h : pos ≠ s.endPos then (String.Pos.next pos h : String.Pos s) else (default : String.Pos s)
+  | _, _, .lean_string_data__String_data, x1 =>
+    let x1 : String := x1
+    (String.toList x1 : List Char) -- `String.data` is deprecated: `String.toList` is the same function
+  | _, _, .lean_string_data__String_toList, x1 =>
+    let x1 : String := x1
+    (String.toList x1 : List Char)
   | _, _, (.lean_string_utf8_extract_fast s _), (x1, x2) =>
     let x1 : String.Pos s := x1
     let x2 : String.Pos s := x2

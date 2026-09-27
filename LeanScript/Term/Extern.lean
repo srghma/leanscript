@@ -18,7 +18,8 @@ arguments have the types `σs` and whose result has the type `τ`.  An extern ca
 The type formers the catalogue asks for are the ones of `Ty`:
 
 * a leaf type `p : LeanPrimTy` is `Ty.prim p` (the coercion `Ty.instCoeLeanPrimTy`);
-* an array, a thunk or a lazy value of `t` is `Ty.array t`, `Ty.thunk t`, `Ty.lazy t`
+* an array, a list, a thunk or a lazy value of `t` is `Ty.array t`, `Ty.list t`, `Ty.thunk t`,
+  `Ty.lazy t`
   (`Ty.ofCovariant`); a delay around a delay is one delay, as in `Ty.mkThunk`;
 * an option is `Ty.option`, a pair `Ty.pair`, a function `Ty.fn` (`Ty.fn2` for two
   arguments), and `Ordering` is the enum `Ty.ordering` (three constructors printed as
@@ -38,6 +39,7 @@ def strictOf : Ty ks → Ty ks false
   | .prim p => .prim p
   | .fn a b => .fn a b
   | .array t => .array t
+  | .list t => .list t
   | .enum s => .enum s
   | .record t fs => .record t fs
   | .union cs (h := h) => .union cs (h := h)
@@ -50,6 +52,7 @@ def toStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E t → Ty.den E (
   | .prim _, x => x
   | .fn _ _, x => x
   | .array _, x => x
+  | .list _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -62,6 +65,7 @@ def ofStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E (Ty.relax t.stri
   | .prim _, x => x
   | .fn _ _, x => x
   | .array _, x => x
+  | .list _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -69,9 +73,10 @@ def ofStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E (Ty.relax t.stri
   | .thunk t, x => Ty.ofRelax E t x
   | .lazy t, x => Ty.ofRelax E t x
 
-/-- The covariant type formers of the catalogue (`array`, `thunk`, `lazy`), as types. -/
+/-- The covariant type formers of the catalogue (`array`, `list`, `thunk`, `lazy`), as types. -/
 def ofCovariant : LeanPrimTyCovariant (Ty ks) → Ty ks
   | .array t => .array t
+  | .list t => .list t
   | .thunk t => .thunk t.strictOf
   | .lazy t => .lazy t.strictOf
 

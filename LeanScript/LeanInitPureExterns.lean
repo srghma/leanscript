@@ -40,7 +40,8 @@ variable {MyTy : Type}
   -- (shareCommon_object : MyTy)
   -- (shareCommon_stateFactory : Type)
   -- (shareCommon_state : shareCommon_stateFactory -> MyTy)
-  -- `Lean.Name` is an ordinary inductive type; no entry of the catalogue answers with one
+  -- a list is the covariant former `LeanPrimTyCovariant.list` (like `array`), and a
+  -- `Lean.Name` is the leaf `LeanPrimTy.leanName`
   (ordering : MyTy)
   -- A byte array is `Array UInt8` and a float array is `Array Float`, so neither is a
   -- type former of its own here; the entries that speak about one are commented out

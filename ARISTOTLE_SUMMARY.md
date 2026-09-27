@@ -1,3 +1,28 @@
+# Summary of changes for run de53c353-7549-44bd-90f3-7713b4df1223
+The 8 list and `Lean.Name` externs that were commented out are back in the catalogue, each with an evaluator. The full project builds (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) with no `sorry`.
+
+**One change from what you suggested:** `list` couldn't be an abbreviation in `LeanScript/Ty/Ty.lean` the way `option` is. `option` is a non-recursive union, but a list is recursive, and a closed `Ty` has no way to express recursion except by naming a declared datatype. So:
+
+- **`Ty.list : Ty ks → Ty ks d`** is a new constructor, built in like `array`. It means Lean's own `List`. I added its case to every function on `Ty`, including the proofs `Ty.map_id`, `Ty.map_map`, `Ty.lift_lower` and `Ty.lower_lift`. The catalogue also gets a matching former, `LeanPrimTyCovariant.list`, so an entry writes `(list αt)` just as it writes `(array αt)`.
+- **`Lean.Name`** has no parameters, so it is a new leaf, `LeanPrimTy.leanName`, meaning `Lean.Name`. `Ty.leanName := .prim .leanName` is an abbreviation in `Ty.lean`, next to `Ty.nat` and `Ty.string`.
+- **Notation:** you can now write `[Ty| List τ]` and `[Ty| Lean.Name]`, and both print back the same way. I updated the one test in `TyTests/TyNotationTest.lean` that expected `List` to be rejected; it now checks the same error with `Set`.
+
+**Restored externs:**
+- In `Core.lean`: `lean_array_to_list`, `lean_array_mk`, `lean_string_mk__String_ofList`, and `lean_name_eq` (now `[leanName, leanName] → bool`).
+- In `String.lean`: `lean_string_intercalate`, `lean_string_mk__String_mk`, `lean_string_data__String_data`, and `lean_string_data__String_toList`.
+
+`String.mk` and `String.data` are deprecated, so their evaluators call `String.ofList` and `String.toList`, which are the same functions. I regenerated `ExternTable.lean` with `scripts/gen_extern_table.py`; the only change is the 8 new rows.
+
+**Tests:** the new `TermTests/ListNameExternTest.lean` checks:
+- that `.list .nat` means `List Nat` and `.leanName` means `Lean.Name` (by `rfl`);
+- the notation and how it prints;
+- each restored extern, evaluated with `#guard`;
+- two functions translated with `#leanscript_to_term` and run: `Lean.Name.beq`, and `String.ofList s.toList`.
+
+**Two things still missing:**
+- **Reading Lean types:** `Lean.Name` is now read as the new leaf. A Lean `List` in a program's own types (arguments, results, fields) is still read as a declared datatype, as before. I left that alone because existing tests depend on it (`SignatureTest`, `GetCtorTest`, and translated programs that match on lists), and the term language has no eliminator for `Ty.list` yet. So a list that only appears in the middle of a computation works, but one in a function's signature won't line up with `Ty.list`.
+- **`a.toList` on an array:** Lean treats this as reading a structure field, not a function call, so `#leanscript_to_term` doesn't turn it into the extern.
+
 # Summary of changes for run 870d5d72-52d4-449d-b7a3-aa7206f98a78
 I removed `set_option checkBinderAnnotations false in` from `UnionShape` in `LeanScript/Ty/Ty.lean`. The full project builds.
 

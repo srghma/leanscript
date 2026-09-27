@@ -110,6 +110,11 @@ inductive Ty : List Nat → optParam Bool true → Type where
   | fn {ks : List Nat} {d : Bool} : Ty ks → Ty ks → Ty ks d
   /-- A Lean `Array`. -/
   | array {ks : List Nat} {d : Bool} : Ty ks → Ty ks d
+  /-- A Lean `List`.  A built-in type former, like `array`: a list is recursive, so it could
+      not be an abbreviation of the other constructors (as `option` is); it denotes Lean's
+      own `List`, the type the externs over lists (`Array.toList`, `String.toList`, …) take
+      and answer. -/
+  | list {ks : List Nat} {d : Bool} : Ty ks → Ty ks d
   /-- A field-less sum of at least three constructors. -/
   | enum {ks : List Nat} {d : Bool} : LeanEnumSchema → Ty ks d
   /-- A record: a first field and at least one more. -/
@@ -188,6 +193,8 @@ abbrev nat {ks : List Nat} : Ty ks := .prim .nat
 abbrev int {ks : List Nat} : Ty ks := .prim .int
 /-- `String`. -/
 abbrev string {ks : List Nat} : Ty ks := .prim .string
+/-- `Lean.Name`: a leaf (`LeanPrimTy.leanName`), like `nat` or `string`. -/
+abbrev leanName {ks : List Nat} : Ty ks := .prim .leanName
 
 /-- `Option t`: a union of a constructor without fields and one with the field `t`. -/
 abbrev option {ks : List Nat} (t : Ty ks) : Ty ks :=
@@ -214,6 +221,7 @@ def relax : Ty ks false → Ty ks
   | .prim p => .prim p
   | .fn a b => .fn a b
   | .array t => .array t
+  | .list t => .list t
   | .enum s => .enum s
   | .record t fs => .record t fs
   | .union cs (h := h) => .union cs (h := h)
@@ -230,6 +238,7 @@ def undelay : Ty ks → Ty ks false
   | .prim p => .prim p
   | .fn a b => .fn a b
   | .array t => .array t
+  | .list t => .list t
   | .enum s => .enum s
   | .record t fs => .record t fs
   | .union cs (h := h) => .union cs (h := h)
@@ -338,6 +347,7 @@ def Ty.map {ks ks' : List Nat} (f : Ref ks → Ref ks') {d : Bool} : Ty ks d →
   | .prim p => .prim p
   | .fn a b => .fn (Ty.map f a) (Ty.map f b)
   | .array t => .array (Ty.map f t)
+  | .list t => .list (Ty.map f t)
   | .enum s => .enum s
   | .record t fs => .record (Ty.map f t) (Fields.map f fs)
   | .union cs (h := h) => .union (Ctors.map f cs) (h := h)
@@ -374,6 +384,7 @@ theorem Ty.map_id {ks : List Nat} {d : Bool} : (t : Ty ks d) → Ty.map (fun r =
   | .prim _ => rfl
   | .fn a b => by simp only [Ty.map, Ty.map_id a, Ty.map_id b]
   | .array t => by simp only [Ty.map, Ty.map_id t]
+  | .list t => by simp only [Ty.map, Ty.map_id t]
   | .enum _ => rfl
   | .record t fs => by simp only [Ty.map, Ty.map_id t, Fields.map_id fs]
   | .union cs (h := _) => by simp only [Ty.map, Ctors.map_id cs]
@@ -400,6 +411,7 @@ theorem Ty.map_map {ks ks' ks'' : List Nat} {d : Bool} (f : Ref ks → Ref ks')
   | .prim _ => rfl
   | .fn a b => by simp only [Ty.map, Ty.map_map f g a, Ty.map_map f g b]
   | .array t => by simp only [Ty.map, Ty.map_map f g t]
+  | .list t => by simp only [Ty.map, Ty.map_map f g t]
   | .enum _ => rfl
   | .record t fs => by simp only [Ty.map, Ty.map_map f g t, Fields.map_map f g fs]
   | .union cs (h := _) => by simp only [Ty.map, Ctors.map_map f g cs]

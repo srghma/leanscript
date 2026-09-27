@@ -44,6 +44,13 @@ theorem Ty.lift_lower {d : Bool} : (t : Ty ks d) → (x : Ty.den E (Ty.map f t))
         funext z
         exact Ty.lift_lower t z
       exact key x
+  | .list t, x => by
+      have key : ∀ y : List _, (y.map (Ty.lower f E t)).map (Ty.lift f E t) = y := by
+        intro y
+        induction y with
+        | nil => rfl
+        | cons z y ih => simp only [List.map_cons, Ty.lift_lower t z, ih]
+      exact key x
   | .enum _, _ => rfl
   | .record t fs, x => by
       show (Ty.lift f E t (Ty.lower f E t x.1), Fields.lift f E fs (Fields.lower f E fs x.2)) = x
@@ -67,6 +74,13 @@ theorem Ty.lower_lift {d : Bool} : (t : Ty ks d) → (x : Ty.den (fun r => E (f 
         congr 1
         funext z
         exact Ty.lower_lift t z
+      exact key x
+  | .list t, x => by
+      have key : ∀ y : List _, (y.map (Ty.lift f E t)).map (Ty.lower f E t) = y := by
+        intro y
+        induction y with
+        | nil => rfl
+        | cons z y ih => simp only [List.map_cons, Ty.lower_lift t z, ih]
       exact key x
   | .enum _, _ => rfl
   | .record t fs, x => by

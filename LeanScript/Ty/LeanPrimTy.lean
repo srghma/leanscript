@@ -121,6 +121,9 @@ inductive LeanPrimTy where
   | float32   : LeanPrimTy
   | floatModel   : LeanPrimTy
   | float32Model   : LeanPrimTy
+  /-- A Lean name (`Lean.Name`): a closed leaf, whose values are the names
+      `anonymous`, `str p s` and `num p n`. -/
+  | leanName  : LeanPrimTy
   -- /-- In JS: `Float64Array`. -/
   -- | floatArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array Float`. Then in `MoreJsTy` as `Float64Array`
   -- /-- In JS (node only): a `ChildProcess` handle. -/
@@ -160,6 +163,7 @@ def pretty : LeanPrimTy → String
   | .float => "float" | .float32 => "float32"
   | .floatModel => "floatModel"
   | .float32Model => "float32Model"
+  | .leanName => "leanName"
   -- | .shareCommonObject => "shareCommonObject"
   -- | .shareCommonState _ => "shareCommonState"
 
@@ -205,6 +209,7 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .float32 => HashableFloat32
   | .floatModel => Float.Model
   | .float32Model => Float32.Model
+  | .leanName => Lean.Name
   -- | .shareCommonObject => ShareCommon.Object
   -- | .shareCommonState σ => ShareCommon.State σ
   -- `.childProcess`, `.shareCommonObject` and `.shareCommonState` are commented out of

@@ -55,7 +55,7 @@ inductive PreludeExtern : List MyTy → MyTy → Type where
   -- | lean_system_platform_nbits : PreludeExtern (lazy nat) -- System.Platform.getNumBits
   | lean_uint32_dec_le : PreludeExtern [uint32, uint32] LeanPrimTy.bool -- UInt32.decLe
   | lean_array_get_size : (αt : MyTy) → PreludeExtern [(array αt)] nat -- Array.size
-  -- | lean_array_to_list : (αt : MyTy) → Array (denote αt) → PreludeExtern (list αt) -- Array.toList -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_array_to_list : (αt : MyTy) → PreludeExtern [(array αt)] (list αt) -- Array.toList
   | lean_nat_dec_eq__Nat_decEq : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.decEq
   | lean_nat_dec_eq__Nat_beq : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.beq
   -- | lean_array_fget_borrowed : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → PreludeExtern αt -- Array.getInternalBorrowed -- (takes a proof, and answers a value of an arbitrary type: when the erased proof does not hold there is no value to answer; `a[i]` is `lean_array_get` with the `Inhabited` default)
@@ -76,7 +76,7 @@ inductive PreludeExtern : List MyTy → MyTy → Type where
   | lean_string_dec_eq : PreludeExtern [string, string] LeanPrimTy.bool -- String.decEq
   | lean_nat_pred : PreludeExtern [nat] nat -- Nat.pred
   -- | lean_usize_of_nat__USize_ofNatLT : (n : Nat) → (h : n < LeanScript.USize_size) → PreludeExtern LeanPrimTy.usize -- USize.ofNatLT
-  -- | lean_string_mk__String_ofList : List Char → PreludeExtern string -- String.ofList -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_string_mk__String_ofList : PreludeExtern [(list char)] string -- String.ofList
   | lean_string_hash : PreludeExtern [string] uint64 -- String.hash
   | lean_uint64_to_nat__UInt64_toBitVec : PreludeExtern [uint64] (bitvec 64) -- UInt64.toBitVec
   | lean_uint64_of_nat_mk : PreludeExtern [(bitvec 64)] uint64 -- UInt64.ofBitVec
@@ -84,7 +84,7 @@ inductive PreludeExtern : List MyTy → MyTy → Type where
   | lean_uint32_to_nat__UInt32_toBitVec : PreludeExtern [uint32] (bitvec 32) -- UInt32.toBitVec
   | lean_uint64_dec_eq : PreludeExtern [uint64, uint64] LeanPrimTy.bool -- UInt64.decEq
   | lean_uint16_of_nat__UInt16_ofNatLT : PreludeExtern [nat] uint16 -- UInt16.ofNatLT (decides `n < UInt16.size`)
-  -- | lean_name_eq : denote leanName → denote leanName → PreludeExtern LeanPrimTy.bool -- Lean.Name.beq -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_name_eq : PreludeExtern [leanName, leanName] LeanPrimTy.bool -- Lean.Name.beq
   | lean_uint8_of_nat_mk : PreludeExtern [(bitvec 8)] uint8 -- UInt8.ofBitVec
   -- | lean_mk_empty_byte_array : Nat → PreludeExtern byteArray -- ByteArray.emptyWithCapacity -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   | lean_uint8_dec_eq : PreludeExtern [uint8, uint8] LeanPrimTy.bool -- UInt8.decEq
@@ -96,7 +96,7 @@ inductive PreludeExtern : List MyTy → MyTy → Type where
   -- | lean_usize_to_nat__USize_toBitVec : denote LeanPrimTy.usize → PreludeExtern (bitvec 64) -- USize.toBitVec
   | lean_string_utf8_byte_size : PreludeExtern [string] nat -- String.utf8ByteSize
   -- | lean_byte_array_push : ByteArray → UInt8 → PreludeExtern byteArray -- ByteArray.push -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  -- | lean_array_mk : (αt : MyTy) → List (denote αt) → PreludeExtern (array αt) -- Array.mk -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_array_mk : (αt : MyTy) → PreludeExtern [(list αt)] (array αt) -- Array.mk
   | lean_uint64_mix_hash : PreludeExtern [uint64, uint64] uint64 -- mixHash
   | lean_uint64_of_nat__UInt64_ofNatLT : PreludeExtern [nat] uint64 -- UInt64.ofNatLT (decides `n < UInt64.size`)
 

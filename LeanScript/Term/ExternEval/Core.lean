@@ -87,6 +87,9 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
   | _, _, (.lean_array_get_size αt), x1 =>
     let x1 : Array (Ty.den E αt) := x1
     (Array.size x1 : Nat)
+  | _, _, (.lean_array_to_list αt), x1 =>
+    let x1 : Array (Ty.den E αt) := x1
+    (Array.toList x1 : List (Ty.den E αt))
   | _, _, .lean_nat_dec_eq__Nat_decEq, (x1, x2) =>
     let x1 : Nat := x1
     let x2 : Nat := x2
@@ -145,6 +148,9 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
   | _, _, .lean_nat_pred, x1 =>
     let x1 : Nat := x1
     (Nat.pred x1 : Nat)
+  | _, _, .lean_string_mk__String_ofList, x1 =>
+    let x1 : List Char := x1
+    (String.ofList x1 : String)
   | _, _, .lean_string_hash, x1 =>
     let x1 : String := x1
     (String.hash x1 : UInt64)
@@ -167,6 +173,10 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
   | _, _, .lean_uint16_of_nat__UInt16_ofNatLT, n =>
     let n : Nat := n
     if h : n < UInt16.size then (UInt16.ofNatLT n h : UInt16) else (default : UInt16)
+  | _, _, .lean_name_eq, (x1, x2) =>
+    let x1 : Lean.Name := x1
+    let x2 : Lean.Name := x2
+    (Lean.Name.beq x1 x2 : Bool)
   | _, _, .lean_uint8_of_nat_mk, x1 =>
     let x1 : BitVec 8 := x1
     (UInt8.ofBitVec x1 : UInt8)
@@ -185,6 +195,9 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
   | _, _, .lean_string_utf8_byte_size, x1 =>
     let x1 : String := x1
     (String.utf8ByteSize x1 : Nat)
+  | _, _, (.lean_array_mk αt), x1 =>
+    let x1 : List (Ty.den E αt) := x1
+    (Array.mk x1 : Array (Ty.den E αt))
   | _, _, .lean_uint64_mix_hash, (x1, x2) =>
     let x1 : UInt64 := x1
     let x2 : UInt64 := x2

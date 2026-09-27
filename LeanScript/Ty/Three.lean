@@ -80,6 +80,10 @@ def Three.fn {α β : Type} (A : Two α) (B : Two β) : Three (α → β) where
 def Three.array {α : Type} (v : α) : Three (Array α) :=
   ⟨#[], #[v], #[v, v], Array.size, rfl, rfl, rfl⟩
 
+/-- Three lists: of length `0`, `1` and `2`. -/
+def Three.list {α : Type} (v : α) : Three (List α) :=
+  ⟨[], [v], [v, v], List.length, rfl, rfl, rfl⟩
+
 /-- Three values of an `Option`: `none` and two told-apart `some`s. -/
 def Three.opt {α : Type} (A : Two α) : Three (Option α) where
   x := none
@@ -182,6 +186,9 @@ def LeanPrimTy.three : (p : LeanPrimTy) → p ≠ .bool → Three p.denote
   | .float32Model, _ =>
       Three.ofNe Float32.Model.nan Float32.Model.inf (-Float32.Model.inf) (by decide)
         (by decide) (by decide)
+  | .leanName, _ =>
+      ⟨.anonymous, .str .anonymous "a", .num .anonymous 0,
+        fun | .anonymous => 0 | .str _ _ => 1 | .num _ _ => 2, rfl, rfl, rfl⟩
 
 /-! ## Closed types -/
 
@@ -218,6 +225,7 @@ def Ty.three {d : Bool} : (t : Ty ks d) → t.isBool = false → Three (Ty.den E
   | .prim p, h => LeanPrimTy.three p (fun e => by subst e; simp [Ty.isBool] at h)
   | .fn a b, _ => Three.fn (Ty.pick E TE a) (Ty.pick E TE b)
   | .array t, _ => Three.array (Ty.pick E TE t).x
+  | .list t, _ => Three.list (Ty.pick E TE t).x
   | .enum s, _ =>
       ⟨⟨0, by simp [LeanEnumSchema.nOfConstructors]⟩, ⟨1, by simp [LeanEnumSchema.nOfConstructors]⟩,
         ⟨2, by simp [LeanEnumSchema.nOfConstructors]⟩, Fin.val, rfl, rfl, rfl⟩

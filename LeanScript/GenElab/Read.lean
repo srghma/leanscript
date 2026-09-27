@@ -451,6 +451,7 @@ def classify (e : Expr) : MetaM Head := do
   | ``HashableFloat32, 0 => p (← `(LeanPrimTy.float32))
   | ``Float.Model, 0 => p (← `(LeanPrimTy.floatModel))
   | ``Float32.Model, 0 => p (← `(LeanPrimTy.float32Model))
+  | ``Lean.Name, 0 => p (← `(LeanPrimTy.leanName))
   | ``BitVec, 1 =>
     let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
     if n = 0 then fail m!"`BitVec 0` has one value"
