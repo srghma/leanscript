@@ -1,3 +1,31 @@
+# Summary of changes for run 4c244d13-b818-4ecf-aee5-ce2a5bcf937b
+`LeanScript.Term` is now strictly A-normal and B-normal, with join points and the three `PCL` layers. Most of this was already in the tree from the earlier interrupted run. This session checked it, added a test and cleaned up the docs. The full `lake build` passes with no errors or warnings, and no `sorry` remains in `LeanScript`, `TermTests`, `TyTests` or `NonEmpty`.
+
+**How the grammar is laid out (`LeanScript/Term.lean`)**
+- **Pure expressions, `PExpr`** (with `Args` and `Elems`): `var`, `lit`, `enum_mk`, `record_mk`, `union_mk`, `array_mk`, `data_in`, `data_out`. This layer is not mutual with the other two.
+- **Computations, `Comp`:** `app`, `lam`, `share`, `extern`, `nat_rec`, `array_foldl`, `data_rec`, `data_brec` and the four `thunk_*`/`lazy_*` constructors. The bodies of closures, folds and delays have no join points in scope, so a loop can never jump out of its body.
+- **Statements, `Term Δ Γ τ js`** (with `Branches`): `ret`, `letE`, `record_casesOn`, `ite`, `enum_casesOn`, `union_casesOn`, `join`, `jump`. `js` is the list of join points in scope.
+- **Normal forms, enforced by the types:**
+  - A-normal: every operand is a `PExpr`, so every call, closure, fold, delay and extern gets a name from a `letE`.
+  - B-normal: branches only appear in tail position. Elsewhere they are written with `join`/`jump`.
+  - No β-redex can be written.
+- **Constructor names:** all the old names are kept, each moved to its layer. The only new constructors are `Comp.share`, `Term.ret`, `Term.join` and `Term.jump`.
+- **What else was already in place:** the evaluator (`Eval.lean`) and renaming/substitution with their evaluation facts (`TermSubst.lean`) cover all three layers and recurse structurally. The `[Term| …]` notation and `#leanscript_to_term` are still written in direct style, and `LeanScript/Anf.lean` turns them into A-normal form.
+
+**Not taken from the proposal:** the pure conditional `PExpr.cond` and "cheap" externs inside `PExpr` (4d and 4h). Every extern is a named `Comp`.
+
+**Changes this session**
+- **New test in `TermTests/ToTermTest.lean`:** `nonTailIf b n = (if b then n * 2 else 0) + 1`. It runs by `rfl` for both values of `b`, and a second `rfl` pins the exact translation: the `+ 1` becomes a join point and both branches jump to it.
+- **Unused variable:** fixed the warning in `LeanScript/Anf.lean`.
+- **Docs:** old names like `Term.lit`, `Term.extern` and `Term.nat_rec` are now `PExpr.lit`, `Comp.extern`, `Comp.nat_rec` in:
+  - `ToTerm.lean`, `ToTerm/Expr.lean`, `GetCtor.lean`, `LeanInitPureExterns.lean`;
+  - two test module docs;
+  - `README.md`, `DESIGN_ANALYSIS.md`, `NOT_IMPLEMENTED.md`.
+- **`ToTerm.lean` module doc:** the paragraph that said the translation is "in direct style" now explains that it is normalised to A-/B-normal form with join points.
+- **`proposals/AnfSplitProposals.md`:** added an implementation-status note at the top; the sections below it now describe the grammar as it was before.
+
+I added one entry for the three-layer `Term` definition to the Properties table. All work is committed.
+
 # Summary of changes for run 641d9030-ebce-4838-be89-df125ed5b0bd
 I removed `LeanPrimTy.Nondeg` and moved its check into the constructors of `LeanPrimTy`, as in your diff. The whole project builds with `lake build` (all four default libraries), and no `.lean` file under `LeanScript`, `TyTests`, `TermTests` or `NonEmpty` contains `sorry`.
 

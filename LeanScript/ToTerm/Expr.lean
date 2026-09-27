@@ -214,7 +214,7 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
       return ← tr L (mkAppN args[3]! args[6:].toArray)
     if (c == ``cast || c == ``Eq.mpr || c == ``Eq.mp) && args.size ≥ 4 then
       return ← tr L (mkAppN args[3]! args[4:].toArray)
-    -- `Fin.foldl n f z`: `Term.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩`
+    -- `Fin.foldl n f z`: `Comp.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩`
     if c == ``Fin.foldl && args.size == 4 then
       return ← trFinFoldl L args[0]! args[1]! args[2]! args[3]!
     -- an array literal `#[a, b, …]` (`List.toArray [a, b, …]`) of values that are not leaves
@@ -271,7 +271,7 @@ partial def appArgs (L : Loc) (fn : Expr) (r : Src) (args : Array Expr) :
 
 /-- `for i in range do body` in `Id` (`forIn range init f`, whose step is `mkBody i r`):
     with `range = [a:b:s]`, the loop runs `n = (b - a + s - 1) / s` times, at `i = a + k * s`.
-    It is `Term.nat_rec` on `n` whose answer is a `ForInStep β`: it starts at `yield init`,
+    It is `Comp.nat_rec` on `n` whose answer is a `ForInStep β`: it starts at `yield init`,
     the step at `k` is the body at `i` on the value of a `yield` and keeps a `done` (a `break`
     or a `return`), and the loop is the value in the final step. -/
 partial def trRangeFor (L : Loc) (β range init : Expr) (mkBody : Expr → Expr → TM Expr) :
@@ -372,7 +372,7 @@ partial def defaultTerm (L : Loc) (T : Expr) (what : MessageData) : TM Src := do
       has no `Inhabited` instance"
   tr L (← whnf (← mkAppOptM ``Inhabited.default #[T, inst]))
 
-/-- `Fin.foldl n f z` (of type `α`): `Term.nat_rec n z s`, whose step `s` binds the index `k`
+/-- `Fin.foldl n f z` (of type `α`): `Comp.nat_rec n z s`, whose step `s` binds the index `k`
     and the accumulator `acc` and is the translation of `f acc ⟨k, h⟩` (the bound `h` is a
     proof, erased). -/
 partial def trFinFoldl (L : Loc) (α n f z : Expr) : TM Src := do
@@ -417,7 +417,7 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
     ty := b.instantiate1 a
   return if kept.size == 1 then some kept[0]! else none
 
-/-- A call of a function on values of leaf types: `Term.extern`. -/
+/-- A call of a function on values of leaf types: `Comp.extern`. -/
 partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :
     TM Src := do
   -- a value of a quotient is a representative: a call that computes to `Quot.mk r a` is `a`,
@@ -440,7 +440,7 @@ partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr)
     mkLambdaFVars ys (mkAppN fn args')
   externStx L name g (vs.map (args[·]!)) τ
 
-/-- `decide p` of a relation `p` on values of leaf types: `Term.extern`. -/
+/-- `decide p` of a relation `p` on values of leaf types: `Comp.extern`. -/
 partial def trDecide (L : Loc) (p : Expr) : TM Src := do
   let p ← instantiateMVars p
   let fn := p.getAppFn
@@ -457,7 +457,7 @@ partial def trDecide (L : Loc) (p : Expr) : TM Src := do
     mkLambdaFVars ys (mkApp2 (mkConst ``Decidable.decide) p' inst)
   externStx L s!"decide {c}" g (vs.map (args[·]!)) (.prim (← `(LeanPrimTy.bool)))
 
-/-- `Term.extern name (fun v => g v.1 v.2.1 …) args`. -/
+/-- `Comp.extern name (fun v => g v.1 v.2.1 …) args`. -/
 partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR) :
     TM Src := do
   let v := mkIdent `v
@@ -803,7 +803,7 @@ partial def nestView? (L : Loc) (e : Expr) : TM (Option (Src × NShape)) := do
   return some (t, s)
 
 /-- `Array.foldl f z xs` over an array `xs` that holds members of the block recursed on (with
-    their answers): `Term.array_foldl`, whose step sees each element as the subvalue, with the
+    their answers): `Comp.array_foldl`, whose step sees each element as the subvalue, with the
     answer at it for the recursive calls. -/
 partial def trNestFoldl (L : Loc) (arr : Src) (s : NShape) (args : Array Expr) :
     TM Src := do

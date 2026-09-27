@@ -36,8 +36,8 @@ set_option autoImplicit false
   in a `Σ` (`node : ((m : Nat) × (Fin m → RoseS)) → RoseS`) and for Lean's W-type `WT Nat Fin`
   (`TermTests/DependentFieldTest.lean`).
 * `#leanscript_to_term` translates values and functions of all of them: an array literal
-  `#[a, b]` of values that are not leaves is `Term.array_mk`; `Fin.foldl m step z` is
-  `Term.nat_rec` on `m`; a recursive call on `f i` for a field `f : Fin m → RoseF` reads the
+  `#[a, b]` of values that are not leaves is `PExpr.array_mk`; `Fin.foldl m step z` is
+  `Comp.nat_rec` on `m`; a recursive call on `f i` for a field `f : Fin m → RoseF` reads the
   answer at `f i` (the fold's answer at the member `Option RoseF` is `none` or `some` of the
   answer at the `RoseF` inside); `f i` itself is taken apart after `data_out`, and its
   unreachable `none` branch is the `Inhabited` default of the type (refused when there is

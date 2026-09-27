@@ -17,7 +17,7 @@ A member of a `mutual` block may be held inside an `Array` or a function
 
 * `leanscript_signature` declares such a block (`Fld.array`, `Fld.fn` of a hole);
 * `#leanscript_get_ctor` builds its values;
-* `Term.data_rec` folds the whole block at once: in the branch of a member, every member
+* `Comp.data_rec` folds the whole block at once: in the branch of a member, every member
   held inside an array or a function is the pair of the subvalue and the answer at it;
 * `#leanscript_to_term` translates a `mutual` group of recursive functions, one per member,
   to one `data_rec`: a call on a member held in a function field (`(f 0).sum`) is the answer

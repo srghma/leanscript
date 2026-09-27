@@ -20,17 +20,21 @@ term over the current program (`leanscript_signature`).
 
 The definition is read through its unfolding equation (`f.eq_def`), so a definition by
 structural recursion is read with its recursive calls in place, and `match` is read through
-the `casesOn` it is compiled to.  The translation is in direct style:
+the `casesOn` it is compiled to.  The translation is written in direct style: it builds a
+source tree (`LeanScript.Anf.Src`) that `LeanScript.Anf` then A-normalises into a strictly
+A-normal, B-normal `Term` (every call named by a `Term.letE`, a branch that is not in tail
+position written with a join point, `Term.join`/`Term.jump`).  In the table, each construct is
+given with the constructor it becomes:
 
 | Lean | `Term` |
 | :-- | :-- |
-| a parameter, a `let`, a `fun` | `Term.var` (de Bruijn), `Term.letE`, `Term.lam` |
-| a closed value of a leaf type (a literal) | `Term.lit` |
+| a parameter, a `let`, a `fun` | `PExpr.var` (de Bruijn), `Term.letE`, `Comp.lam` |
+| a closed value of a leaf type (a literal) | `PExpr.lit` |
 | `if c then t else e`, `cond`, `dite` (the proof unused) | `Term.ite` of `decide c` |
-| a call of any other function on values of leaf types (or `decide` of such a relation) | `Term.extern`, named after the function, on the terms of its value arguments |
+| a call of any other function on values of leaf types (or `decide` of such a relation) | `Comp.extern`, named after the function, on the terms of its value arguments |
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
-| a projection applied to arguments (`c.data i` for a function field) | `Term.app` |
+| a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
@@ -40,21 +44,21 @@ the `casesOn` it is compiled to.  The translation is in direct style:
 | a cast along an equation (`Eq.ndrec`, `cast`, …, from the `match` of an inductive family) | the value cast |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
-| structural recursion on a `Nat` parameter | `Term.nat_rec` |
+| structural recursion on a `Nat` parameter | `Comp.nat_rec` |
 | a recursion whose recursive calls change other parameters (an accumulator: `loop f (b + 1) acc = loop f b (f acc)`), or leave out trailing ones (`hyperTCO n a`, partially applied) | the fold answers a function of those parameters (`nat_rec`/`data_rec` applied to their current values); a recursive call applies the answer to its arguments there |
-| a recursive call applied to more arguments than the parameters (`ack2 m n` for `ack2 : Nat → (Nat → Nat)`) | `Term.app` of the answer |
+| a recursive call applied to more arguments than the parameters (`ack2 m n` for `ack2 : Nat → (Nat → Nat)`) | `Comp.app` of the answer |
 | a call of a helper definition (not from `Init`/`Std`/`Lean`) that cannot be an extern, because it takes or returns a value that is not of a leaf type (`ackInner (ack2 m)`, `hyperLoop (hyperTCO n a) b x`) | the helper's own translation (a closed term), applied to the terms of the arguments; a helper calling back the function translated is refused |
 | `Id.run x`, `pure x`, `x >>= f` in `Id` (a `do` block) | `x`, `x`, `Term.letE` |
-| `for i in [a:b:s] do …` in `Id` (`forIn`/`forIn'` over a `Std.Legacy.Range`) | `Term.nat_rec` on the number of iterations `(b - a + s - 1) / s`, at `i = a + k * s`, whose answer is a `ForInStep`: a `done` (`break`, `return`) is kept to the end, and the loop is the value in the final step |
-| structural recursion on a parameter of a declared datatype, by one function or by a `mutual` group of functions (one per member of the block: `Even.toNat`/`Odd.toNat`, `Rose.sum`/`Rose.sumList`) | `Term.data_rec` of the whole block, one branch per member (a member no function recurses on gets a constant branch) |
+| `for i in [a:b:s] do …` in `Id` (`forIn`/`forIn'` over a `Std.Legacy.Range`) | `Comp.nat_rec` on the number of iterations `(b - a + s - 1) / s`, at `i = a + k * s`, whose answer is a `ForInStep`: a `done` (`break`, `return`) is kept to the end, and the loop is the value in the final step |
+| structural recursion on a parameter of a declared datatype, by one function or by a `mutual` group of functions (one per member of the block: `Even.toNat`/`Odd.toNat`, `Rose.sum`/`Rose.sumList`) | `Comp.data_rec` of the whole block, one branch per member (a member no function recurses on gets a constant branch) |
 | a recursive call on a member held in a function field (`(f 0).sum` in the branch of `node f`) | the answer next to the subvalue (`record_casesOn` of the applied field) |
-| `Array.foldl step z qs` over a field `qs` that holds members in an `Array` (also `Array (Array Q)`, `Nat → Array Q`) | `Term.array_foldl` over the pairs of the subvalues and their answers; in `step`, a recursive call on the element is its answer |
-| an array literal `#[a, b, …]` of values that are not leaves (`#[(none, 3)] : Array (Option T5 × Nat)`) | `Term.array_mk` |
-| `Fin.foldl n f z` | `Term.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩` |
+| `Array.foldl step z qs` over a field `qs` that holds members in an `Array` (also `Array (Array Q)`, `Nat → Array Q`) | `Comp.array_foldl` over the pairs of the subvalues and their answers; in `step`, a recursive call on the element is its answer |
+| an array literal `#[a, b, …]` of values that are not leaves (`#[(none, 3)] : Array (Option T5 × Nat)`) | `PExpr.array_mk` |
+| `Fin.foldl n f z` | `Comp.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩` |
 | a value `a : Fin m → T` of a field read as `Nat → Option T` (`finOptArrow`: `RoseF.node m a`) | `fun j => if j < m then some (a ⟨j, _⟩) else none` (`fun _ => none` for `m = 0`) |
 | `f i` for such a field `f` of an opened constructor | `f i` taken apart after `data_out`: `some x` is `x`, the unreachable `none` is the `Inhabited` default of `T` |
 | a recursive call on `f i` for such a field | the answer at the member `Option T`: `some` of the answer at `f i` (the fold's branch at `Option T` is generated), `none` the `Inhabited` default of the answer type |
-| the same, with recursive calls on subvalues up to four levels down (`f (y :: t)`, `f t` in the branch of `_ :: y :: t`) | `Term.data_brec` of the smallest depth that reaches them (for members used directly only) |
+| the same, with recursive calls on subvalues up to four levels down (`f (y :: t)`, `f t` in the branch of `_ :: y :: t`) | `Comp.data_brec` of the smallest depth that reaches them (for members used directly only) |
 
 A recursive definition must recurse directly on one of its parameters, at the top of its
 body (`f x = match x with …`); the other parameters may change (the answer of the fold is

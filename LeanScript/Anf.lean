@@ -242,7 +242,7 @@ partial def stmt (s : Src) (sc : Scope) (d jd : Nat) (K : Kont) : MetaM Lean.Ter
       | _ => value s sc d jd K.apply
   | .comp mk args bodies =>
       match K with
-      | .ret => values args.toList sc d jd fun as d jd => do
+      | .ret => values args.toList sc d jd fun as d _ => do
           let ras ← as.toArray.mapM (·.render d)
           let rbs ← bodies.mapM fun (n, b) =>
             stmt b ({ sc with joins := [] }.bindN n d) (d + n) 0 .ret

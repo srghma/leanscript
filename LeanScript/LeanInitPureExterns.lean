@@ -56,7 +56,7 @@ variable {MyTy : Type}
 ## The catalogue, in two levels
 
 The catalogue records which functions of `Init` are pure externs, with their types over any
-grammar of types `MyTy`.  The language does not depend on it: `LeanScript.Term.extern` holds
+grammar of types `MyTy`.  The language does not depend on it: `LeanScript.Comp.extern` holds
 the Lean function itself, and `#leanscript_to_term` names an extern after the function it
 calls.
 

@@ -37,13 +37,13 @@ command, each shows what it generated.
   The result is a `Term Δ Γ τ` where `τ` is `#leanscript_get_ty` of the constructor's type:
 
   * one constructor with one field: the field itself (the wrapper is erased);
-  * one constructor with two or more fields: `Term.record_mk`;
+  * one constructor with two or more fields: `PExpr.record_mk`;
   * two field-less constructors: a literal of the leaf `bool`, `false` for the first and
     `true` for the second (`Bool.false`/`Bool.true` themselves, and every other type of two
     points: two points are only ever `bool`);
-  * three or more field-less constructors: `Term.enum_mk` (`Ordering` numbers from `-1`);
-  * otherwise `Term.union_mk` at the constructor's position;
-  * for a **recursive** type (a member of a block of the current program), `Term.data_in` of
+  * three or more field-less constructors: `PExpr.enum_mk` (`Ordering` numbers from `-1`);
+  * otherwise `PExpr.union_mk` at the constructor's position;
+  * for a **recursive** type (a member of a block of the current program), `PExpr.data_in` of
     the above: the translator never builds `data_in` for a Lean constructor itself.
 
   Like `#leanscript_get_ty`, the function is generic in the signature
@@ -59,7 +59,7 @@ command, each shows what it generated.
   answer type `{τ}`, the scrutinee, and one branch per constructor, `on_c`, whose context
   binds the constructor's fields in front of `Γ` (the first field innermost).  The body is
   `Term.union_casesOn` / `Term.record_casesOn` / `Term.letE` (a single field) /
-  `Term.enum_casesOn` / `Term.ite` (`Bool`), preceded by `Term.data_out` for a recursive
+  `Term.enum_casesOn` / `Term.ite` (`Bool`), preceded by `PExpr.data_out` for a recursive
   type, so the translator never builds `data_out` for a Lean `casesOn` itself.
 -/
 

@@ -143,7 +143,7 @@ values than the Lean type, and nothing relates the two:
 
 ## 2. Shortcomings of the current `Term` design
 
-### 2.1 `Term.extern` holds a Lean function
+### 2.1 `Comp.extern` holds a Lean function
 
 `extern name f args` holds `f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ` next to a
 `name : String`.
@@ -243,7 +243,7 @@ but:
 | `Ty` invariant (≥ 2 values, two is `bool`) | `Unit` and friends cannot be written; proofs inside data | common Lean code is refused; more rules to keep |
 | `Ty.den` | not injective, not the Lean type, no names | no generic encoding or decoding, no printing, per-example proofs |
 | declared datatypes | nominal per `DSig`, no type parameters, several encodings of one block | no sharing between programs, copies per instance |
-| `Term.extern` | holds a function whose link to its name is unchecked | no `DecidableEq`/`Repr`, name and meaning can differ |
+| `Comp.extern` | holds a function whose link to its name is unchecked | no `DecidableEq`/`Repr`, name and meaning can differ |
 | `Term` indexing | over a concrete `Δ`, higher-order children | slow elaboration, no first-order IR for later stages |
 | control flow | folds only, one answer per member, fixed `brec` depth | many Lean definitions refused or rewritten into heavy terms |
 | usability | de Bruijn, no projections, unary functions | hand-written terms are hard to read and write |

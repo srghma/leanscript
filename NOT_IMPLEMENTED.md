@@ -125,7 +125,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **Substitution theory is only semantic**: `LeanScript/TermSubst.lean` has renaming,
   weakening and substitution and proves they commute with evaluation, but not the syntactic
   laws (substitution composition, `rename` as a special `subst`).
-- **No `DecidableEq`/`Repr` for `Term`**: `Term.extern` holds a Lean function.
+- **No `DecidableEq`/`Repr` for `Term`**: `Comp.extern` holds a Lean function.
 
 ## 3. The translator `#leanscript_to_term`
 
