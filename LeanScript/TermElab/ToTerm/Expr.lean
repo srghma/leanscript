@@ -457,13 +457,13 @@ partial def trDecide (L : Loc) (p : Expr) : TM Src := do
     mkLambdaFVars ys (mkApp2 (mkConst ``Decidable.decide) p' inst)
   externStx L s!"decide {c}" g (vs.map (args[·]!)) (.prim (← `(LeanPrimTy.bool)))
 
-/-- `Comp.extern name (fun v => g v.1 v.2.1 …) args`. -/
+/-- `Comp.extern name (fun v => g v.1 v.2.1 … v.2.….2) args`. -/
 partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR) :
     TM Src := do
   let v := mkIdent `v
   let mut call ← exprToSyntax g
   let mut comps : Array Lean.Term := #[]
-  for k in [0:args.size] do comps := comps.push (← compStx v k)
+  for k in [0:args.size] do comps := comps.push (← compStx v k args.size)
   call ← `($call $comps*)
   let mut σs : Array Lean.Term := #[]
   for a in args do σs := σs.push (← (← cirOf L (← inferType a) false).stx L.c #[])

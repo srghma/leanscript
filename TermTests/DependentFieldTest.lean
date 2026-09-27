@@ -97,7 +97,7 @@ example : teleTotalT.run teleT.run = (4 : Nat) := by kernel_rfl
 def teleHead : Term Prog.Δ [Prog.tele] .nat [] :=
   (#leanscript_get_cases Tele) (.var .head) (.ret (.lit .nat 0)) (.ret (.var (.tail .head)))
 
-example : teleHead.eval (teleT.run, ()) () = (2 : Nat) := rfl
+example : teleHead.eval teleT.run () = (2 : Nat) := rfl
 
 /-! ## Other erasures -/
 

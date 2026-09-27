@@ -255,12 +255,15 @@ def EnvRen {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (ρ : Env Δ Γ
   ∀ {τ : Ty ks} (x : Var Γ τ), ρ'.get (r x) = ρ.get x
 
 theorem EnvRen.lift {Γ Γ' : Ctx ks} {σ : Ty ks} {r : Ren Γ Γ'} {ρ' : Env Δ Γ'} {ρ : Env Δ Γ}
-    (h : EnvRen r ρ' ρ) (v : Ty.Den Δ σ) : EnvRen (Ren.lift r) ((v, ρ') : Env Δ (σ :: Γ'))
-      ((v, ρ) : Env Δ (σ :: Γ)) := by
+    (h : EnvRen r ρ' ρ) (v : Ty.Den Δ σ) : EnvRen (Ren.lift r) (Tuple.cons v ρ' : Env Δ (σ :: Γ'))
+      (Tuple.cons v ρ : Env Δ (σ :: Γ)) := by
   intro τ x
   cases x with
-  | head => rfl
-  | tail x => exact h x
+  | head => exact (Tuple.head_cons _ _).trans (Tuple.head_cons _ _).symm
+  | tail x =>
+      show (Tuple.cons v ρ').tail.get (r x) = (Tuple.cons v ρ).tail.get x
+      rw [Tuple.tail_cons, Tuple.tail_cons]
+      exact h x
 
 theorem EnvRen.liftN {Γ Γ' : Ctx ks} {r : Ren Γ Γ'} {ρ' : Env Δ Γ'} {ρ : Env Δ Γ}
     (h : EnvRen r ρ' ρ) : (zs : Ctx ks) → (vs : DenList (DSig.refDen Δ) zs) →
@@ -268,11 +271,13 @@ theorem EnvRen.liftN {Γ Γ' : Ctx ks} {r : Ren Γ Γ'} {ρ' : Env Δ Γ'} {ρ :
   | [], _ => h
   | _ :: zs, vs => fun x => by
       cases x with
-      | head => rfl
-      | tail x => exact EnvRen.liftN h zs vs.2 x
+      | head => exact EnvRen.lift (EnvRen.liftN h zs vs.tail) vs.head .head
+      | tail x => exact EnvRen.lift (EnvRen.liftN h zs vs.tail) vs.head (.tail x)
 
 theorem EnvRen.weaken {Γ : Ctx ks} {σ : Ty ks} (v : Ty.Den Δ σ) (ρ : Env Δ Γ) :
-    EnvRen (Ren.weaken (y := σ)) ((v, ρ) : Env Δ (σ :: Γ)) ρ := fun _ => rfl
+    EnvRen (Ren.weaken (y := σ)) (Tuple.cons v ρ : Env Δ (σ :: Γ)) ρ := fun x => by
+  show (Tuple.cons v ρ).tail.get x = ρ.get x
+  rw [Tuple.tail_cons]
 
 mutual
 /-- Evaluating a renamed pure expression in an environment related by the renaming gives the
@@ -403,8 +408,8 @@ theorem Term.eval_rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → {js : JCtx ks}
       exact Branches.eval_rename bs r ρ' ρ h κ _
   | _, _, _, _, .join _ body main, r, ρ', ρ, h, κ => by
       simp only [Term.rename, Term.eval]
-      have hb : (fun v => (body.rename (Ren.lift r)).eval (v, ρ') κ) =
-          (fun v => body.eval (v, ρ) κ) := by
+      have hb : (fun v => (body.rename (Ren.lift r)).eval (Tuple.cons v ρ') κ) =
+          (fun v => body.eval (Tuple.cons v ρ) κ) := by
         funext v; exact Term.eval_rename body _ _ _ (h.lift v) κ
       rw [hb]
       exact Term.eval_rename main r ρ' ρ h _
@@ -431,18 +436,18 @@ end
 
 /-- A weakened pure expression ignores the value of the new variable. -/
 theorem PExpr.eval_weaken {Γ : Ctx ks} {σ τ : Ty ks} (e : PExpr Δ Γ τ) (v : Ty.Den Δ σ)
-    (ρ : Env Δ Γ) : (e.weaken (σ := σ)).eval ((v, ρ) : Env Δ (σ :: Γ)) = e.eval ρ :=
+    (ρ : Env Δ Γ) : (e.weaken (σ := σ)).eval (Tuple.cons v ρ : Env Δ (σ :: Γ)) = e.eval ρ :=
   PExpr.eval_rename _ _ _ (EnvRen.weaken v ρ) e
 
 /-- A weakened computation ignores the value of the new variable. -/
 theorem Comp.eval_weaken {Γ : Ctx ks} {σ τ : Ty ks} (c : Comp Δ Γ τ) (v : Ty.Den Δ σ)
-    (ρ : Env Δ Γ) : (c.weaken (σ := σ)).eval ((v, ρ) : Env Δ (σ :: Γ)) = c.eval ρ :=
+    (ρ : Env Δ Γ) : (c.weaken (σ := σ)).eval (Tuple.cons v ρ : Env Δ (σ :: Γ)) = c.eval ρ :=
   Comp.eval_rename c _ _ _ (EnvRen.weaken v ρ)
 
 /-- A weakened statement ignores the value of the new variable. -/
 theorem Term.eval_weaken {Γ : Ctx ks} {σ τ : Ty ks} {js : JCtx ks} (t : Term Δ Γ τ js)
     (v : Ty.Den Δ σ) (ρ : Env Δ Γ) (κ : JEnv Δ τ js) :
-    (t.weaken (σ := σ)).eval ((v, ρ) : Env Δ (σ :: Γ)) κ = t.eval ρ κ :=
+    (t.weaken (σ := σ)).eval (Tuple.cons v ρ : Env Δ (σ :: Γ)) κ = t.eval ρ κ :=
   Term.eval_rename t _ _ _ (EnvRen.weaken v ρ) κ
 
 end EvalRename
@@ -458,22 +463,27 @@ def EnvSub {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ') (ρ : Env 
 
 theorem EnvSub.lift {Γ Γ' : Ctx ks} {σ : Ty ks} {s : Subst Δ Γ Γ'} {ρ' : Env Δ Γ'}
     {ρ : Env Δ Γ} (h : EnvSub s ρ' ρ) (v : Ty.Den Δ σ) :
-    EnvSub (Subst.lift s) ((v, ρ') : Env Δ (σ :: Γ')) ((v, ρ) : Env Δ (σ :: Γ)) := fun x => by
+    EnvSub (Subst.lift s) (Tuple.cons v ρ' : Env Δ (σ :: Γ')) (Tuple.cons v ρ : Env Δ (σ :: Γ)) := fun x => by
   cases x with
-  | head => rfl
-  | tail x => exact (PExpr.eval_weaken _ _ _).trans (h x)
+  | head => exact (Tuple.head_cons _ _).trans (Tuple.head_cons _ _).symm
+  | tail x =>
+      show (s x).weaken.eval (Tuple.cons v ρ') = (Tuple.cons v ρ).tail.get x
+      rw [Tuple.tail_cons]
+      exact (PExpr.eval_weaken _ _ _).trans (h x)
 
 theorem EnvSub.liftN {Γ Γ' : Ctx ks} {s : Subst Δ Γ Γ'} {ρ' : Env Δ Γ'} {ρ : Env Δ Γ}
     (h : EnvSub s ρ' ρ) : (zs : Ctx ks) → (vs : DenList (DSig.refDen Δ) zs) →
       EnvSub (Subst.liftN s zs) (DenList.append vs ρ') (DenList.append vs ρ)
   | [], _ => h
-  | _ :: zs, vs => EnvSub.lift (EnvSub.liftN h zs vs.2) vs.1
+  | _ :: zs, vs => EnvSub.lift (EnvSub.liftN h zs vs.tail) vs.head
 
 theorem EnvSub.single {Γ : Ctx ks} {σ : Ty ks} (a : PExpr Δ Γ σ) (ρ : Env Δ Γ) :
-    EnvSub (Subst.single a) ρ ((a.eval ρ, ρ) : Env Δ (σ :: Γ)) := fun x => by
+    EnvSub (Subst.single a) ρ (Tuple.cons (a.eval ρ) ρ : Env Δ (σ :: Γ)) := fun x => by
   cases x with
-  | head => rfl
-  | tail x => rfl
+  | head => exact (Tuple.head_cons _ _).symm
+  | tail x =>
+      show ρ.get x = (Tuple.cons (a.eval ρ) ρ).tail.get x
+      rw [Tuple.tail_cons]
 
 theorem EnvSub.id {Γ : Ctx ks} (ρ : Env Δ Γ) : EnvSub (Subst.id (Δ := Δ)) ρ ρ := fun _ => rfl
 
@@ -607,8 +617,8 @@ theorem Term.eval_subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → {js : JCtx ks} 
       exact Branches.eval_subst bs s ρ' ρ h κ _
   | _, _, _, _, .join _ body main, s, ρ', ρ, h, κ => by
       simp only [Term.subst, Term.eval]
-      have hb : (fun v => (body.subst (Subst.lift s)).eval (v, ρ') κ) =
-          (fun v => body.eval (v, ρ) κ) := by
+      have hb : (fun v => (body.subst (Subst.lift s)).eval (Tuple.cons v ρ') κ) =
+          (fun v => body.eval (Tuple.cons v ρ) κ) := by
         funext v; exact Term.eval_subst body _ _ _ (h.lift v) κ
       rw [hb]
       exact Term.eval_subst main s ρ' ρ h _
@@ -637,7 +647,7 @@ end
     bound to it. -/
 theorem Term.eval_subst1 {Γ : Ctx ks} {σ τ : Ty ks} {js : JCtx ks} (b : Term Δ (σ :: Γ) τ js)
     (a : PExpr Δ Γ σ) (ρ : Env Δ Γ) (κ : JEnv Δ τ js) :
-    (b.subst1 a).eval ρ κ = b.eval ((a.eval ρ, ρ) : Env Δ (σ :: Γ)) κ :=
+    (b.subst1 a).eval ρ κ = b.eval (Tuple.cons (a.eval ρ) ρ : Env Δ (σ :: Γ)) κ :=
   Term.eval_subst b _ _ _ (EnvSub.single a ρ) κ
 
 /-- A `let` of a shared pure value means its substitution instance. -/
@@ -725,11 +735,17 @@ theorem Term.eval_retJump {τ : Ty ks} {js : JCtx ks} : {Γ : Ctx ks} → {σ : 
       exact Branches.eval_retJump brs ρ k κ' κ h _
   | _, _, _, .join s b m, ρ, k, κ', κ, h => by
       simp only [Term.retJump, Term.eval]
-      refine Term.eval_retJump m ρ k _ _ ⟨h.1, ?_⟩
+      refine Term.eval_retJump m ρ k _ _ ⟨?_, ?_⟩
+      · simp only [JEnv.get, DeBruijn.atLength, Tuple.get_cons_tail]
+        exact h.1
       intro s' j v
       cases j with
-      | head => exact Term.eval_retJump b _ k κ' κ h
-      | tail j => exact h.2 j v
+      | head =>
+          simp only [JEnv.get, DeBruijn.appendRight, Tuple.get_cons_head]
+          exact Term.eval_retJump b _ k κ' κ h
+      | tail j =>
+          simp only [JEnv.get, DeBruijn.appendRight, Tuple.get_cons_tail]
+          exact h.2 j v
   | _, _, _, .jump j p, ρ, k, κ', κ, h => by
       simp only [Term.retJump, Term.eval]
       exact h.2 j _
@@ -764,10 +780,10 @@ end
     means evaluating `k` with the value of `t` bound. -/
 theorem Term.eval_join_retJump {Γ : Ctx ks} {σ τ : Ty ks} {js : JCtx ks} (t : Term Δ Γ σ [])
     (k : Term Δ (σ :: Γ) τ js) (ρ : Env Δ Γ) (κ : JEnv Δ τ js) :
-    (Term.join σ k t.retJump).eval ρ κ = k.eval (t.eval ρ PUnit.unit, ρ) κ := by
+    (Term.join σ k t.retJump).eval ρ κ = k.eval (Tuple.cons (t.eval ρ PUnit.unit) ρ) κ := by
   simp only [Term.eval]
-  exact Term.eval_retJump (js' := []) t ρ (fun v => k.eval (v, ρ) κ) PUnit.unit _
-    ⟨rfl, fun j => nomatch j⟩
+  exact Term.eval_retJump (js' := []) t ρ (fun v => k.eval (Tuple.cons v ρ) κ) PUnit.unit _
+    ⟨by simp only [JEnv.get, DeBruijn.atLength, Tuple.get_cons_head], fun j => nomatch j⟩
 
 end RetJump
 

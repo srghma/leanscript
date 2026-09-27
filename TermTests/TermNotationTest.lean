@@ -37,7 +37,7 @@ abbrev rose : Ty [0, 0] := [Ty| Data 0 0]
 
 /-- `Nat.add`, as an extern: a computation of two pure expressions. -/
 def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : Comp Δ Γ .nat :=
-  [Term| extern "Nat.add" ‹fun v => Nat.add v.1 v.2.1› ‹a› ‹b›]
+  [Term| extern "Nat.add" ‹fun v => Nat.add v.1 v.2› ‹a› ‹b›]
 
 /-! ## Building values -/
 

@@ -30,7 +30,7 @@ abbrev OptTy : Ty Prog.ks := .data (.there (.there (.there (.there (.here 0)))))
 /-- `some x` in the member `Option RoseF`. -/
 def someEnc (x : Ty.Den Prog.Δ Prog.roseF) : Ty.Den Prog.Δ OptTy :=
   ((#leanscript_get_ctor Option.some (α := RoseF)) (.var .head) :
-    PExpr Prog.Δ [Prog.roseF] OptTy).eval (x, ())
+    PExpr Prog.Δ [Prog.roseF] OptTy).eval (x)
 
 /-- `none` in the member `Option RoseF`. -/
 def noneEnc : Ty.Den Prog.Δ OptTy :=
@@ -39,7 +39,7 @@ def noneEnc : Ty.Den Prog.Δ OptTy :=
 /-- `RoseF.node m g` in the language, for a number of children `m` and children `g`. -/
 def nodeEnc (m : Nat) (g : Nat → Ty.Den Prog.Δ OptTy) : Ty.Den Prog.Δ Prog.roseF :=
   ((#leanscript_get_ctor RoseF.node) (.var .head) (.var (.tail .head)) :
-    PExpr Prog.Δ [.nat, .fn .nat OptTy] Prog.roseF).eval (m, g, ())
+    PExpr Prog.Δ [.nat, .fn .nat OptTy] Prog.roseF).eval (m, g)
 
 /-- The value of the language a Lean `RoseF` translates to: the child at `j` is `some` of the
     encoding of `f ⟨j, _⟩` below `m`, and `none` from `m` on. -/
@@ -120,7 +120,7 @@ noncomputable def foldF (brs : (i : Fin ((Prog.Δ.block FR).k + 1)) →
       Term Prog.Δ ((Prog.Δ.block FR).recBody ρF i :: [Prog.roseF]) (ρF i) [])
     (W : Ty.Den Prog.Δ Prog.roseF) (j : Fin ((Prog.Δ.block FR).k + 1))
     (c : Ty.Den Prog.Δ (.data ((Prog.Δ.block FR).ref j))) : Ty.Den Prog.Δ (ρF j) :=
-  Prog.Δ.dataRec FR ρF (fun i x => (brs i).eval (x, W, ()) ()) j c
+  Prog.Δ.dataRec FR ρF (fun i x => (brs i).eval (x, W) ()) j c
 
 /-- The translated `RoseF.size` is a fold, with one step per member: at `RoseF`, a
     `nat_rec` on the number of children adding the answers at them (the addition is the join

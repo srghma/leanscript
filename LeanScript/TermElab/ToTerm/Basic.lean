@@ -185,10 +185,12 @@ def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr) :
     ty := b.instantiate1 a
   return out
 
-/-- The syntax of the `k`-th component of a `DenList`. -/
-def compStx (v : Lean.Term) (k : Nat) : MetaM Lean.Term := do
+/-- The syntax of the `k`-th component of a `DenList` of `n` values: a right-nested product
+    with no trailing `PUnit`, so the last component is not followed by `Prod.fst`. -/
+def compStx (v : Lean.Term) (k n : Nat) : MetaM Lean.Term := do
   let mut r := v
   for _ in [0:k] do r ← `(Prod.snd $r)
+  if k + 1 == n then return r
   `(Prod.fst $r)
 
 /-- Is `e` a structural-recursion target: the case analysis of parameter `x` whose branches

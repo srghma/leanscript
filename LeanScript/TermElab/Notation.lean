@@ -120,7 +120,7 @@ abbrev PExpr.ofNat {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {p : LeanPrimTy}
   .lit p (OfNat.ofNat n)
 
 /-- `Comp.extern` with the arguments before the function: the types of the arguments are
-    known when the function is elaborated, so `fun v => Nat.add v.1 v.2.1` needs no annotation. -/
+    known when the function is elaborated, so `fun v => Nat.add v.1 v.2` needs no annotation. -/
 abbrev Comp.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
     (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
     Comp Δ Γ τ :=

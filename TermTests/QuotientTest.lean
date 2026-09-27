@@ -118,7 +118,7 @@ info: fun {ks} {Δ} =>
   Term.letE
     (Comp.lam
       (Term.letE
-        (Comp.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd.fst)
+        (Comp.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
           (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)))
         (Term.ret (PExpr.var DeBruijn.head))))
     (Term.ret
@@ -174,7 +174,7 @@ info: fun {ks} {Δ} =>
       (Term.letE
         (Comp.lam
           (Term.letE
-            (Comp.extern "decide Eq" (fun v => (fun x0 x1 => decide (Quot.mk Par x0 = Quot.mk Par x1)) v.fst v.snd.fst)
+            (Comp.extern "decide Eq" (fun v => (fun x0 x1 => decide (Quot.mk Par x0 = Quot.mk Par x1)) v.fst v.snd)
               (Args.cons (PExpr.var DeBruijn.head.tail) (Args.cons (PExpr.var DeBruijn.head) Args.nil)))
             (Term.ret (PExpr.var DeBruijn.head))))
         (Term.ret (PExpr.var DeBruijn.head))))

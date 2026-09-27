@@ -28,7 +28,7 @@ def addY : Comp Δ [.nat] (.fn .nat .nat) := .lam (.ofComp (addT (.bvar 0) (.bva
 
 /-- Weakening moves `addY` under a binder it does not use. -/
 example : (Term.letE (.share (natT 100)) (.letE addY.weaken (.ofComp (.app (.bvar 0) (natT 1)))) :
-    Term Δ [.nat] .nat []).eval ((5 : Nat), PUnit.unit) PUnit.unit = (6 : Nat) := rfl
+    Term Δ [.nat] .nat []).eval (5 : Nat) PUnit.unit = (6 : Nat) := rfl
 
 /-- Filling `y` with `41` closes `addY`. -/
 def add41 : Comp Δ [] (.fn .nat .nat) := addY.subst1 (natT 41)

@@ -30,15 +30,15 @@ abbrev ElemTy : Ty Prog.ks := .data (.there (.here 0))
 
 /-- `Nest.Elem.leaf a` in the language. -/
 def leafEnc (a : Nat) : Ty.Den Prog.Δ ElemTy :=
-  (Prog.Elem.leaf (Γ := [.nat]) (.var .head)).eval (a, ())
+  (Prog.Elem.leaf (Γ := [.nat]) (.var .head)).eval (a)
 
 /-- `Nest.Elem.node x y` in the language. -/
 def nodeEnc (x y : Ty.Den Prog.Δ ElemTy) : Ty.Den Prog.Δ ElemTy :=
-  (Prog.Elem.node (Γ := [ElemTy, ElemTy]) (.var .head) (.var (.tail .head))).eval (x, y, ())
+  (Prog.Elem.node (Γ := [ElemTy, ElemTy]) (.var .head) (.var (.tail .head))).eval (x, y)
 
 /-- `Nest.cons x c` in the language. -/
 def consEnc (x : Ty.Den Prog.Δ ElemTy) (c : Ty.Den Prog.Δ Prog.nest) : Ty.Den Prog.Δ Prog.nest :=
-  (Prog.Nest.cons (Γ := [ElemTy, Prog.nest]) (.var .head) (.var (.tail .head))).eval (x, c, ())
+  (Prog.Nest.cons (Γ := [ElemTy, Prog.nest]) (.var .head) (.var (.tail .head))).eval (x, c)
 
 /-- `Nest.nil` in the language. -/
 def nilEnc : Ty.Den Prog.Δ Prog.nest := (Prog.Nest.nil (Γ := [])).run
@@ -134,7 +134,7 @@ abbrev NB := Prog.Δ.block BRef.here
 def foldNest {τ : Ty Prog.ks}
     (brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => τ) i :: [Prog.nest]) τ [])
     (W c : Ty.Den Prog.Δ Prog.nest) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
 
 /-- The translated `Nest.length` is a fold, with one step per constructor. -/
 theorem length_facts :

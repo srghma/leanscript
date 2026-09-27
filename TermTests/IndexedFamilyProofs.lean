@@ -35,7 +35,7 @@ open LeanScript
 def vecEnc : {n : Nat} → Vec Nat n → Ty.Den Prog.Δ Prog.vec
   | _, .nil => (Prog.Vec.nil (Γ := [])).run
   | _, .cons a v =>
-    (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, vecEnc v, ())
+    (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, vecEnc v)
 
 /-- A value of `nat` is a `Nat`. -/
 def natOf {ks : List Nat} {Δ : DSig ks} (x : Ty.Den Δ .nat) : Nat := x
@@ -47,7 +47,7 @@ abbrev VB := Prog.Δ.block BRef.here.there
 def foldVec {τ : Ty Prog.ks}
     (brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => τ) i :: [Prog.vec]) τ [])
     (W c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
+  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
 
 /-- The translated `Vec.sum` is a fold, with one step per constructor. -/
 theorem sum_facts : ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => .nat) i :: [Prog.vec]) .nat [],
@@ -74,7 +74,7 @@ theorem vecSumT_correct {n : Nat} (v : Vec Nat n) : natOf (vecSumT.run (vecEnc v
 
 /-- The value `Vec.cons a c` of the language, for an element `a` and a tail `c`. -/
 def consEnc (a : Nat) (c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ Prog.vec :=
-  (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, c, ())
+  (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, c)
 
 /-- The translated `Vec.double` is a fold, with one step per constructor. -/
 theorem double_facts :
@@ -160,7 +160,7 @@ def rowsEnc {c : Nat} : {r : Nat} → Vec (Vec Nat c) r → Ty.Den Prog.Δ rowsT
   | _, .nil => (Prog.Vec.nil_1 (Γ := [])).run
   | _, .cons row rest =>
     (Prog.Vec.cons_1 (Γ := [Prog.vec, rowsTy]) (.var .head) (.var (.tail .head))).eval
-      (vecEnc row, rowsEnc rest, ())
+      (vecEnc row, rowsEnc rest)
 
 /-- The value a matrix translates to: two numbers and its rows. -/
 def matEnc (m : Matrix) : Ty.Den Prog.Δ Prog.mat := (m.rows, m.cols, rowsEnc m.cells)
@@ -181,7 +181,7 @@ abbrev RB := Prog.Δ.block BRef.here
 def foldRows {τ : Ty Prog.ks}
     (brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => τ) i :: [rowsTy]) τ [])
     (W c : Ty.Den Prog.Δ rowsTy) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
 
 /-- The first element of a vector, or `0`. -/
 def headOr0 {n : Nat} : Vec Nat n → Nat

@@ -37,7 +37,7 @@ def leafEnc : Ty.Den Prog.Δ Prog.qt := (Prog.QT.leaf (Γ := [])).run
 
 /-- `QT.node` in the language, with the representative `n` of the class of its first field. -/
 def nodeEnc (n : Nat) (c : Ty.Den Prog.Δ Prog.qt) : Ty.Den Prog.Δ Prog.qt :=
-  (Prog.QT.node (Γ := [.nat, Prog.qt]) (.var .head) (.var (.tail .head))).eval (n, c, ())
+  (Prog.QT.node (Γ := [.nat, Prog.qt]) (.var .head) (.var (.tail .head))).eval (n, c)
 
 /-- `Represents c t`: the value `c` of the language is `t` with each class given by one of
     its representatives. -/
@@ -66,7 +66,7 @@ abbrev QB := Prog.Δ.block BRef.here
 def foldQT {τ : Ty Prog.ks}
     (brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => τ) i :: [Prog.qt]) τ [])
     (W c : Ty.Den Prog.Δ Prog.qt) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W, ()) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
 
 /-- The translated `QT.odds` is a fold, with one step per constructor; the step of `node`
     adds the parity of the representative. -/

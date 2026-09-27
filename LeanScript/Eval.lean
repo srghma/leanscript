@@ -12,7 +12,8 @@ set_option autoImplicit false
 
 `PExpr.eval e env`, `Comp.eval c env : Ty.Den Δ τ` and `Term.eval t env κ : Ty.Den Δ τ`, where
 `κ : JEnv Δ τ js` holds the closures of the join points in scope — total, structural, no
-fuel.  `PExpr.eval` is not mutual with the two others.  The datatype formers evaluate to
+fuel.  Environments and `JEnv`s are `Tuple`s, so they have no trailing `PUnit`: a value is
+bound in front with `Tuple.cons` and read with `Tuple.get`.  `PExpr.eval` is not mutual with the two others.  The datatype formers evaluate to
 `DSig.dataIn`, `DSig.dataOut`, `DSig.dataRec` and `DSig.dataBrec`, so a translated program
 computes by `rfl`.
 -/
@@ -28,25 +29,23 @@ section Values
 variable {ks : List Nat} {E : Ref ks → Type}
 
 /-- The value of a variable. -/
-def DenList.get : {Γ : List (Ty ks)} → {τ : Ty ks} → DenList E Γ → Var Γ τ → Ty.den E τ
-  | _ :: _, _, v, .head => v.1
-  | _ :: _, _, v, .tail x => DenList.get v.2 x
+abbrev DenList.get {Γ : List (Ty ks)} {τ : Ty ks} (v : DenList E Γ) (x : Var Γ τ) : Ty.den E τ :=
+  Tuple.get v x
 
 /-- Bind a list of values in front of an environment. -/
-def DenList.append : {xs : List (Ty ks)} → {Γ : List (Ty ks)} → DenList E xs → DenList E Γ →
-    DenList E (xs ++ Γ)
-  | [], _, _, e => e
-  | _ :: _, _, v, e => (v.1, DenList.append v.2 e)
+abbrev DenList.append {xs : List (Ty ks)} {Γ : List (Ty ks)} (v : DenList E xs)
+    (e : DenList E Γ) : DenList E (xs ++ Γ) :=
+  Tuple.append v e
 
 /-- The fields of a record, as a list of values. -/
 def Fields.toDL : (fs : Fields ks) → Fields.den E fs → DenList E fs.toList
-  | .one _, x => (x, PUnit.unit)
-  | .cons _ fs, x => (x.1, Fields.toDL fs x.2)
+  | .one _, x => x
+  | .cons _ fs, x => Tuple.cons x.1 (Fields.toDL fs x.2)
 
 /-- A record's fields from a list of values. -/
 def Fields.ofDL : (fs : Fields ks) → DenList E fs.toList → Fields.den E fs
-  | .one _, v => v.1
-  | .cons _ fs, v => (v.1, Fields.ofDL fs v.2)
+  | .one _, v => v
+  | .cons _ fs, v => (v.head, Fields.ofDL fs v.tail)
 
 /-- The first of two constructors. -/
 def Ctor.inTwo₁ {a b : Bool} : (c : Ctor ks a) → (d : Ctor ks b) → DenList E c.binds → twoT (Ctor.den E c) (Ctor.den E d)
@@ -105,16 +104,16 @@ def natIter {α : Type} (z : α) (s : Nat → α → α) : Nat → α
   | n + 1 => s n (natIter z s n)
 
 /-- The values of the join points in scope, for statements of type `τ`: each one is the
-    closure of its body over the environment it was defined in. -/
-def JEnv {ks : List Nat} (Δ : DSig ks) (τ : Ty ks) : JCtx ks → Type
-  | [] => PUnit
-  | σ :: js => (Ty.Den Δ σ → Ty.Den Δ τ) × JEnv Δ τ js
+    closure of its body over the environment it was defined in.  A `Tuple`, so there is no
+    trailing `PUnit`: `JEnv Δ τ [σ₁, σ₂] = (Ty.Den Δ σ₁ → Ty.Den Δ τ) × (Ty.Den Δ σ₂ → Ty.Den Δ τ)`,
+    `JEnv Δ τ [σ] = (Ty.Den Δ σ → Ty.Den Δ τ)` and `JEnv Δ τ [] = PUnit`. -/
+abbrev JEnv {ks : List Nat} (Δ : DSig ks) (τ : Ty ks) : JCtx ks → Type :=
+  Tuple (fun σ => Ty.Den Δ σ → Ty.Den Δ τ)
 
 /-- The closure of a join point. -/
-def JEnv.get {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} : {js : JCtx ks} → {σ : Ty ks} →
-    JEnv Δ τ js → JVar js σ → Ty.Den Δ σ → Ty.Den Δ τ
-  | _ :: _, _, k, .head => k.1
-  | _ :: _, _, k, .tail j => JEnv.get k.2 j
+abbrev JEnv.get {ks : List Nat} {Δ : DSig ks} {τ : Ty ks} {js : JCtx ks} {σ : Ty ks}
+    (κ : JEnv Δ τ js) (j : JVar js σ) : Ty.Den Δ σ → Ty.Den Δ τ :=
+  Tuple.get κ j
 
 section Eval
 variable {ks : List Nat} {Δ : DSig ks}
@@ -127,7 +126,7 @@ def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ →
   | _, .enum_mk _ i, _ => i
   | _, .record_mk (fs := fs) args, ρ =>
       let v := args.eval ρ
-      (v.1, Fields.ofDL fs v.2)
+      (v.head, Fields.ofDL fs v.tail)
   | _, .union_mk ix args, ρ => ix.inject (args.eval ρ)
   | _, .array_mk es, ρ => (es.eval ρ).toArray
   | _, .data_in b j e, ρ => Δ.dataIn b j (e.eval ρ)
@@ -137,7 +136,7 @@ def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ →
 def Args.eval {Γ : Ctx ks} : {σs : List (Ty ks)} → Args Δ Γ σs → Env Δ Γ →
     DenList (DSig.refDen Δ) σs
   | _, .nil, _ => PUnit.unit
-  | _, .cons a as, ρ => (a.eval ρ, as.eval ρ)
+  | _, .cons a as, ρ => Tuple.cons (a.eval ρ) (as.eval ρ)
   termination_by structural _ a _ => a
 /-- The values of the elements of an array literal. -/
 def Elems.eval {Γ : Ctx ks} : {t : Ty ks} → Elems Δ Γ t → Env Δ Γ → List (Ty.Den Δ t)
@@ -150,17 +149,19 @@ mutual
 /-- The value of a computation in an environment. -/
 def Comp.eval : {Γ : Ctx ks} → {τ : Ty ks} → Comp Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
   | _, _, .app f a, ρ => f.eval ρ (a.eval ρ)
-  | _, _, .lam b, ρ => fun v => b.eval (v, ρ) PUnit.unit
+  | _, _, .lam b, ρ => fun v => b.eval (Tuple.cons v ρ) PUnit.unit
   | _, _, .share e, ρ => e.eval ρ
   | _, _, .extern _ f args, ρ => f (args.eval ρ)
   | _, _, .nat_rec n z s, ρ =>
-      natIter (z.eval ρ) (fun k acc => s.eval (acc, k, ρ) PUnit.unit) (n.eval ρ)
+      natIter (z.eval ρ) (fun k acc => s.eval (Tuple.cons acc (Tuple.cons k ρ)) PUnit.unit)
+        (n.eval ρ)
   | _, _, .array_foldl a z s, ρ =>
-      (a.eval ρ).foldl (fun acc x => s.eval (x, acc, ρ) PUnit.unit) (z.eval ρ)
+      (a.eval ρ).foldl (fun acc x => s.eval (Tuple.cons x (Tuple.cons acc ρ)) PUnit.unit)
+        (z.eval ρ)
   | _, _, .data_rec b ρt brs j e, ρ =>
-      Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ) PUnit.unit) j (e.eval ρ)
+      Δ.dataRec b ρt (fun i x => (brs i).eval (Tuple.cons x ρ) PUnit.unit) j (e.eval ρ)
   | _, _, .data_brec b ρt k brs j e, ρ =>
-      Δ.dataBrec b ρt k (fun i x => (brs i).eval (x, ρ) PUnit.unit) j (e.eval ρ)
+      Δ.dataBrec b ρt k (fun i x => (brs i).eval (Tuple.cons x ρ) PUnit.unit) j (e.eval ρ)
   | _, _, .thunk_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ PUnit.unit)
   | _, _, .thunk_force (τ := τ) e, ρ => Ty.toRelax _ τ (e.eval ρ)
   | _, _, .lazy_mk (τ := τ) e, ρ => Ty.ofRelax _ τ (e.eval ρ PUnit.unit)
@@ -170,16 +171,16 @@ def Comp.eval : {Γ : Ctx ks} → {τ : Ty ks} → Comp Δ Γ τ → Env Δ Γ �
 def Term.eval : {Γ : Ctx ks} → {τ : Ty ks} → {js : JCtx ks} → Term Δ Γ τ js → Env Δ Γ →
     JEnv Δ τ js → Ty.Den Δ τ
   | _, _, _, .ret e, ρ, _ => e.eval ρ
-  | _, _, _, .letE c b, ρ, κ => b.eval (c.eval ρ, ρ) κ
+  | _, _, _, .letE c b, ρ, κ => b.eval (Tuple.cons (c.eval ρ) ρ) κ
   | _, _, _, .record_casesOn (fs := fs) e body, ρ, κ =>
       let x := e.eval ρ
-      body.eval (DenList.append (x.1, Fields.toDL fs x.2) ρ) κ
+      body.eval (DenList.append (Tuple.cons x.1 (Fields.toDL fs x.2)) ρ) κ
   | _, _, _, .ite c t e, ρ, κ => match (c.eval ρ : Bool) with
       | true => t.eval ρ κ
       | false => e.eval ρ κ
   | _, _, _, .enum_casesOn e bs, ρ, κ => (bs (e.eval ρ)).eval ρ κ
   | _, _, _, .union_casesOn e bs, ρ, κ => bs.eval ρ κ (e.eval ρ)
-  | _, _, _, .join _ body main, ρ, κ => main.eval ρ (fun v => body.eval (v, ρ) κ, κ)
+  | _, _, _, .join _ body main, ρ, κ => main.eval ρ (Tuple.cons (fun v => body.eval (Tuple.cons v ρ) κ) κ)
   | _, _, _, .jump j e, ρ, κ => κ.get j (e.eval ρ)
   termination_by structural _ _ _ t _ _ => t
 /-- Dispatch a value of a union to its branch. -/
@@ -211,9 +212,9 @@ theorem Comp.eval_data_brec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks}
     (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).brecBody ρt k i :: Γ) (ρt i) [])
     (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
     (Comp.data_brec b ρt k brs j (.data_in b j e)).eval ρ =
-      (brs j).eval ((Δ.block b).mapInst
-        (fun i c => Δ.dataWin b ρt k (fun i x => (brs i).eval (x, ρ) PUnit.unit) i c) j
-          (e.eval ρ), ρ) PUnit.unit := by
+      (brs j).eval (Tuple.cons ((Δ.block b).mapInst
+        (fun i c => Δ.dataWin b ρt k (fun i x => (brs i).eval (Tuple.cons x ρ) PUnit.unit) i c) j
+          (e.eval ρ)) ρ) PUnit.unit := by
   simp only [Comp.eval, PExpr.eval]
   exact DSig.dataBrec_dataIn Δ b ρt k _ j _
 
@@ -224,10 +225,10 @@ theorem Comp.eval_data_rec_data_in {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} 
     (brs : (i : Fin ((Δ.block b).k + 1)) → Term Δ ((Δ.block b).recBody ρt i :: Γ) (ρt i) [])
     (j : Fin ((Δ.block b).k + 1)) (e : PExpr Δ Γ ((Δ.block b).unfold j)) (ρ : Env Δ Γ) :
     (Comp.data_rec b ρt brs j (.data_in b j e)).eval ρ =
-      (brs j).eval ((Δ.block b).mapInst
+      (brs j).eval (Tuple.cons ((Δ.block b).mapInst
         (σ' := fun i => Ty.pair (.data ((Δ.block b).ref i)) (ρt i))
-        (fun i c => (c, Δ.dataRec b ρt (fun i x => (brs i).eval (x, ρ) PUnit.unit) i c)) j
-          (e.eval ρ), ρ) PUnit.unit := by
+        (fun i c => (c, Δ.dataRec b ρt (fun i x => (brs i).eval (Tuple.cons x ρ) PUnit.unit) i c)) j
+          (e.eval ρ)) ρ) PUnit.unit := by
   simp only [Comp.eval, PExpr.eval]
   exact DSig.dataRec_dataIn Δ b ρt _ j _
 

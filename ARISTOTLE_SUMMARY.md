@@ -1,3 +1,29 @@
+# Summary of changes for run e41dd7a1-c602-47fc-b98a-a629eec21319
+`JEnv`, environments and extern arguments are now plain products with no trailing `PUnit`. Two values are `A × B`, one value is `A`, and none is `PUnit`. The full `lake build` (all four default libraries plus the new test file) passes with no errors or warnings, and there is no `sorry`.
+
+**The design**
+- **New file `LeanScript/Tuple.lean`:** it adds one type used by every list-indexed product in the project:
+  ```lean
+  def Tuple (F : α → Type) : List α → Type
+    | [] => PUnit
+    | [a] => F a
+    | a :: b :: as => F a × Tuple F (b :: as)
+  ```
+  - The shape of a tuple depends on whether the rest of the list is empty. So when the list isn't concrete, you build one with `Tuple.cons` and read it with `Tuple.head`, `Tuple.tail` and `Tuple.get`, not `Prod.mk`/`.1`/`.2`.
+  - The file also has `Tuple.append` and the lemmas `head_cons`, `tail_cons`, `cons_head_tail`, `ext`, `get_cons_head` and `get_cons_tail`, all proved.
+- **`DenList E := Tuple (Ty.den E)`** (in `Term.lean`). This covers `Env` and the argument type of `Comp.extern`: an extern of two `Nat`s now takes a `Nat × Nat`, written `fun v => Nat.add v.1 v.2`.
+- **`JEnv Δ τ := Tuple (fun σ => Ty.Den Δ σ → Ty.Den Δ τ)`** (in `Eval.lean`). For example, `JEnv Δ τ [σ₁, σ₂]` is `(Den σ₁ → Den τ) × (Den σ₂ → Den τ)`.
+
+**Knock-on changes**
+- **`Eval.lean`:** `DenList.get`/`append` and `JEnv.get` are now defined through `Tuple`. `Fields.toDL`/`ofDL`, `Args.eval`, `record_mk`, and every place that binds a variable or a join point now use `Tuple.cons`.
+- **`TermSubst.lean`:** the renaming, substitution and `retJump` proofs are updated to the new lemmas. The theorem statements are unchanged apart from writing `Tuple.cons v ρ` in place of `(v, ρ)`.
+- **`#leanscript_to_term`:** `compStx` now knows how many arguments there are. The last argument of an extern is `v.snd…snd`, with no `.fst` after it.
+- **Tests:** in the existing tests, `(x, ())` became `x`, `(a, b, ())` became `(a, b)`, and `v.2.1` became `v.2`. The expected `#guard_msgs` output in `QuotientTest.lean` is updated. The runs checked with `rfl`/`kernel_rfl`, including the correctness proofs in the `*Proofs.lean` files, still pass.
+- **New test `TermTests/TupleTest.lean`:** it checks by `rfl` that `Env DSig.nil [.nat, .bool] = (Nat × Bool)`, `Env … [.nat] = Nat`, `Env … [] = PUnit`, and that the `JEnv` cases work the same way. It also runs a two-argument extern on the pair `(3, 4)`.
+- **Docs:** `README.md` (layout table), `DESIGN_ANALYSIS.md` (§2.1) and the doc comments in `Eval.lean`/`Term.lean` describe the new shape.
+
+I added `LeanScript.Tuple` to the Properties table. All work is committed.
+
 # Summary of changes for run 234c9dcb-efa1-4e84-9a0e-60670757195b
 I moved every elaborator, notation, tactic and the meta-level code they depend on into `XxxElab/` directories. I only renamed modules and fixed imports. No Lean namespace or declaration name changed, so code that uses these declarations works as before. After the move, the full `lake build` (`LeanScript`, `NonEmpty`, `TyTests`, `TermTests`) succeeds with no errors or warnings, and there is no `sorry` in those libraries. Before rebuilding I deleted the old build files of the moved modules, so no import can still be using a stale copy.
 

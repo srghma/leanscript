@@ -181,27 +181,27 @@ info: TyTests.GetCtorTest.Option.leanScriptCases {ks : List Nat} {Δ : DSig ks} 
 def getD0 : Term DSig.nil [Ty.option .nat] .nat [] :=
   (#leanscript_get_cases Option) _ (.var .head) (.ret (.lit .nat 0)) (.ret (.var .head))
 
-example : getD0.eval (some (5 : Nat), ()) () = (5 : Nat) := rfl
-example : getD0.eval (none, ()) () = (0 : Nat) := rfl
+example : getD0.eval (some (5 : Nat)) () = (5 : Nat) := rfl
+example : getD0.eval none () = (0 : Nat) := rfl
 
 /-- A record binds all its fields, the first one innermost. -/
 def pointX : Term DSig.nil [#leanscript_get_ty Point] .nat [] :=
   (#leanscript_get_cases Point) (.var .head) (.ret (.var .head))
 
-example : pointX.eval (((3 : Nat), (-1 : Int)), ()) () = (3 : Nat) := rfl
+example : pointX.eval ((3 : Nat), (-1 : Int)) () = (3 : Nat) := rfl
 
 /-- `Bool` is `ite`, `Ordering` an enum case analysis. -/
 def notT : Term DSig.nil [.bool] .bool [] :=
   (#leanscript_get_cases Bool) (.var .head) (.ret (#leanscript_get_ctor Bool.true))
     (.ret (#leanscript_get_ctor Bool.false))
 
-example : notT.eval (true, ()) () = false := rfl
+example : notT.eval true () = false := rfl
 
 def ordT : Term DSig.nil [#leanscript_get_ty Ordering] .nat [] :=
   (#leanscript_get_cases Ordering) (.var .head) (.ret (.lit .nat 10)) (.ret (.lit .nat 20))
     (.ret (.lit .nat 30))
 
-example : ordT.eval ((1 : Fin 3), ()) () = (20 : Nat) := rfl
+example : ordT.eval (1 : Fin 3) () = (20 : Nat) := rfl
 
 /-- For a recursive type the case analysis is `data_out` followed by the case analysis of
     the unfolded body. -/
@@ -209,14 +209,14 @@ def isLeaf : Term Prog.Δ [Prog.tree] .bool [] :=
   (#leanscript_get_cases Tree) (.var .head) (.ret (#leanscript_get_ctor Bool.true))
     (.ret (#leanscript_get_ctor Bool.false))
 
-example : isLeaf.eval (leaf.run, ()) () = true := rfl
-example : isLeaf.eval (treeT.run, ()) () = false := rfl
+example : isLeaf.eval (leaf.run) () = true := rfl
+example : isLeaf.eval treeT.run () = false := rfl
 
 /-- The root label of a tree: the `node` branch binds its three fields. -/
 def rootLabel : Term Prog.Δ [Prog.tree] .nat [] :=
   (#leanscript_get_cases Tree) (.var .head) (.ret (.lit .nat 0)) (.ret (.var (.tail .head)))
 
-example : rootLabel.eval (treeT.run, ()) () = (2 : Nat) := rfl
+example : rootLabel.eval treeT.run () = (2 : Nat) := rfl
 
 /-! ## Refusals -/
 

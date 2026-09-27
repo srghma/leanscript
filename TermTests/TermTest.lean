@@ -59,7 +59,7 @@ def natT {Γ : Ctx [0, 0]} (n : Nat) : PExpr Δ Γ .nat := .lit .nat n
 
 /-- `Nat.add`, as an extern: a computation. -/
 def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : Comp Δ Γ .nat :=
-  .extern (σs := [.nat, .nat]) "Nat.add" (fun v => Nat.add v.1 v.2.1) (.cons a (.cons b .nil))
+  .extern (σs := [.nat, .nat]) "Nat.add" (fun v => Nat.add v.1 v.2) (.cons a (.cons b .nil))
 
 /-- A node of a rose tree. -/
 def nodeT {Γ : Ctx [0, 0]} (xs : PExpr Δ Γ listNat) (cs : Elems Δ Γ rose) : PExpr Δ Γ rose :=

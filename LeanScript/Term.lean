@@ -2,6 +2,7 @@ module
 
 public import LeanScript.DenBrec
 public import LeanScript.DeBruijn
+public import LeanScript.Tuple
 
 @[expose] public section
 
@@ -84,11 +85,10 @@ abbrev Ctx (ks : List Nat) : Type := List (Ty ks)
 /-- A typed de Bruijn variable. -/
 abbrev Var {ks : List Nat} (Γ : Ctx ks) (τ : Ty ks) : Type := DeBruijn Γ τ
 
-/-- The values of a list of types: a nested product ending in `PUnit`.  An environment is
-    the `DenList` of a context. -/
-def DenList {ks : List Nat} (E : Ref ks → Type) : List (Ty ks) → Type
-  | [] => PUnit
-  | t :: ts => Ty.den E t × DenList E ts
+/-- The values of a list of types: a right-nested product with no trailing `PUnit`
+    (`DenList E [a, b] = Ty.den E a × Ty.den E b`, `DenList E [a] = Ty.den E a`,
+    `DenList E [] = PUnit`; see `Tuple`).  An environment is the `DenList` of a context. -/
+abbrev DenList {ks : List Nat} (E : Ref ks → Type) : List (Ty ks) → Type := Tuple (Ty.den E)
 
 /-- The types of the fields, in order. -/
 def Fields.toList {ks : List Nat} : Fields ks → List (Ty ks)

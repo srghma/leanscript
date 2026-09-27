@@ -146,7 +146,8 @@ values than the Lean type, and nothing relates the two:
 ### 2.1 `Comp.extern` holds a Lean function
 
 `extern name f args` holds `f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ` next to a
-`name : String`.
+`name : String`.  The arguments come as a tuple with no trailing `PUnit` (`LeanScript.Tuple`):
+`Nat × Nat` for two arguments, `Nat` for one, `PUnit` for none.
 
 - **Nothing links `name` and `f`.** A term can be named `"Nat.add"` and compute `Nat.mul`.
   The evaluator uses `f` and a JavaScript backend would use `name`, so the two meanings can

@@ -47,11 +47,11 @@ example {ks : List Nat} {Δ : DSig ks} : nonTailIfT (Δ := Δ) =
     .ofComp (.lam (.ofComp (.lam
       (.join (.prim .nat)
         (.ofComp (.extern (σs := [.prim .nat, .prim .nat]) "HAdd.hAdd"
-            (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd.fst)
+            (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd)
           (.cons (.bvar 0) (.cons (.lit .nat 1) .nil))))
         (.ite (.bvar 1)
           (.letE (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HMul.hMul"
-              (fun v => (fun x0 x1 : Nat => x0 * x1) v.fst v.snd.fst)
+              (fun v => (fun x0 x1 : Nat => x0 * x1) v.fst v.snd)
               (.cons (.bvar 0) (.cons (.lit .nat 2) .nil)))
             (.jump .head (.bvar 0)))
           (.jump .head (.lit .nat 0))))))) := rfl
