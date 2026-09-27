@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Term
+public import LeanScript.Term.ExternEval
 public import LeanScript.Ty.DenFacts
 
 @[expose] public section
@@ -126,7 +127,7 @@ def Neu.eval {Γ : Ctx ks} : {τ : Ty ks} → Neu Δ Γ τ → Env Δ Γ → Ty.
   | _, .cond c a b, ρ => match (c.eval ρ : Bool) with
       | true => a.eval ρ
       | false => b.eval ρ
-  | _, .extern _ f args, ρ => f (args.eval ρ)
+  | _, .extern e args, ρ => Extern.eval (DSig.refDen Δ) e (args.eval ρ)
   termination_by structural _ e _ => e
 /-- The value of a pure expression in an environment. -/
 def PExpr.eval {Γ : Ctx ks} : {τ : Ty ks} → PExpr Δ Γ τ → Env Δ Γ → Ty.Den Δ τ
@@ -159,7 +160,6 @@ def Comp.eval : {Γ : Ctx ks} → {τ : Ty ks} → Comp Δ Γ τ → Env Δ Γ �
   | _, _, .app f a, ρ => f.eval ρ (a.eval ρ)
   | _, _, .lam b, ρ => fun v => b.eval (Tuple.cons v ρ) PUnit.unit
   | _, _, .share e, ρ => e.eval ρ
-  | _, _, .extern _ f args, ρ => f (args.eval ρ)
   | _, _, .nat_rec n z s, ρ =>
       natIter (z.eval ρ) (fun k acc => s.eval (Tuple.cons acc (Tuple.cons k ρ)) PUnit.unit)
         (n.eval ρ)

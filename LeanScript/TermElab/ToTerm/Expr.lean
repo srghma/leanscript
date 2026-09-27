@@ -42,7 +42,7 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
         index, where the field is an element of{indentExpr canon}\nso it can only be used by a \
         function generic in the index"
     if L.nest.contains x then
-      fail m!"the field `{← x.getUserName}` holds values of the datatype recursed on, paired \
+      fail m!"the field `{(← x.getUserName).eraseMacroScopes}` holds values of the datatype recursed on, paired \
         with the answers at them: it can only be folded (`Array.foldl`), applied, or passed \
         to a recursive call"
     if let some i := L.index? x then return ← varStx i
@@ -157,6 +157,11 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if c == ``cond && args.size == 4 then
       return Src.ite (← tyOf? L (← inferType e)) (← tr L args[1]!) (← tr L args[2]!)
         (← tr L args[3]!)
+    -- a case analysis of a `Bool` (`Bool.rec f t b`, `Bool.casesOn b f t`) is an `if`
+    if (c == ``Bool.rec || c == ``Bool.casesOn) && args.size == 4 then
+      let (f, t, b) := if c == ``Bool.rec then (args[1]!, args[2]!, args[3]!)
+        else (args[2]!, args[3]!, args[1]!)
+      return Src.ite (← tyOf? L (← inferType e)) (← tr L b) (← tr L t) (← tr L f)
     if c == ``dite && args.size == 5 then
       let d := mkApp2 (mkConst ``Decidable.decide) args[1]! args[2]!
       let br (k : Expr) (h : Expr) : TM Src :=
@@ -168,7 +173,7 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
       if let some (_, b, t) := args[0]!.eq? then
         if t.isConstOf ``Bool.true && (← isDefEq (← inferType b) (mkConst ``Bool)) then
           return ← tr L b
-      return ← trDecide L args[0]!
+      return ← trDecide L args[0]! args[1]!
     -- the monad `Id`: `Id.run x` is `x`, `pure x` is `x`, and `x >>= f` is `let y := x; f y`
     if c == ``Id.run && args.size ≥ 2 then return ← tr L (mkAppN args[1]! args[2:].toArray)
     if c == ``Pure.pure && args.size ≥ 4 then
@@ -238,11 +243,18 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
             (← isDefEq args[6]! (← mkAppM ``Array.size #[args[4]!])) do
           fail m!"`Array.foldl` with bounds{indentExpr e}\nis not supported"
         return ← trNestFoldl L arr s args
+      -- a fold over any other array, from `0` to its size: `Comp.array_foldl`
+      if (← natLit? args[5]!) == some 0 &&
+          (← isDefEq args[6]! (← mkAppM ``Array.size #[args[4]!])) then
+        return ← trFoldl L args
     if ← isMatcher c then
       let info ← getConstInfo c
       let v := info.value!.instantiateLevelParams info.levelParams fn.constLevels!
       return ← tr L (← Core.betaReduce (v.beta args))
     if let some (.ctorInfo cinfo) := env.find? c then
+      -- a constructor of a type of two values without fields (`Decidable.isTrue h`, the proof
+      -- erased) is a `.bool`: the second constructor is `true`
+      if let some b ← twoPointCtor? cinfo then return Src.boolLit b
       -- a wrapper of one value (`Fin.mk n v h`, `Subtype.mk v h`, `Vector.mk a h`) is erased
       -- to that value, also when its parameters mention locals (`⟨0, h⟩ : Fin c.n`)
       if let some a ← wrapperField? cinfo args then
@@ -252,12 +264,12 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if let some pinfo ← getProjectionFnInfo? c then
       if !pinfo.fromClass then
         if let some e' ← unfoldDefinition? e then return ← tr L e'
-    -- a call of a helper definition that cannot be an extern (it takes or returns a value
-    -- that is not a leaf, e.g. a function): its own translation, applied
-    if !(← isLibraryDecl c) && (← externImpossible L e fn args) then
+    -- a call of a helper definition (not from the library): its own translation, applied
+    if !(← isLibraryDecl c) then
       if let some (.defnInfo _) := env.find? c then
-        return ← trHelperCall L c e args
-    trExtern L (toString c) e fn args
+        return ← (try trHelperCall L c e args
+          catch ex => try trExtern L e fn args catch _ => throw ex)
+    trExtern L e fn args
   | .proj .. =>
     -- a projection applied to arguments (`c.data i` for a function field)
     appArgs L fn (← tr L fn) args
@@ -334,21 +346,6 @@ partial def trWhile (L : Loc) (e β init f : Expr) : TM Src := do
         loop) and every iteration that goes on moves `x` towards the bound by a literal step \
         (`x := x - k`, `x := x / k`, `x := x + k`)"
   trStepLoop L β n init fun _ v => pure (mkApp2 f (mkConst ``Unit.unit) v).headBeta
-
-/-- Would the call `e` of `fn` to `args` be refused as an extern: does it take or return a
-    value that is not of a leaf type? -/
-partial def externImpossible (L : Loc) (e fn : Expr) (args : Array Expr) : TM Bool := do
-  let leaf (T : Expr) : TM Bool := do
-    try pure (← cirOf L T false).isLeaf catch _ => pure false
-  unless ← leaf (← inferType e) do return true
-  let mut ty ← inferType fn
-  for a in args do
-    ty ← whnf ty
-    let .forallE _ d b bi := ty | return true
-    if bi.isExplicit && !(← isProp d) && !(← isType a) && a.hasFVar then
-      unless ← leaf (← inferType a) do return true
-    ty := b.instantiate1 a
-  return false
 
 /-- A call `c a₁ … aₙ` of a helper definition `c`: the translation of `c` (a closed term, so
     its syntax elaborates in any context), applied to the terms of the arguments. -/
@@ -446,120 +443,128 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
     ty := b.instantiate1 a
   return if kept.size == 1 then some kept[0]! else none
 
-/-- A call of a function on values of leaf types: `Comp.extern`. -/
-partial def trExtern (L : Loc) (name : String) (e fn : Expr) (args : Array Expr) :
-    TM Src := do
+/-- A call `c a₁ … aₙ` of a library function.  When `c` is the Lean function of an entry of
+    the catalogue of externs (`externTable`), it is a call of that extern (`externCall`).
+    Otherwise the call is unfolded (`unfoldCall?`) — an instance method (`a + b` on `Nat` is
+    `HAdd.hAdd … a b`, which unfolds to `Nat.add a b`) or a definition in terms of other
+    functions (`Nat.min a b` is `if a ≤ b then a else b`) — and translated. -/
+partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
   -- a value of a quotient is a representative: a call that computes to `Quot.mk r a` is `a`,
   -- any other call returning a quotient has no representative the language could compute
   if (quotCarrier? (← whnf (← inferType e))).isSome then
     let e' ← whnf e
     if e'.isAppOf ``Quot.mk then return ← tr L e'
-    fail m!"the call{indentExpr e}\nreturns a value of a quotient, read as its carrier: it \
-      cannot be an extern, since the language would need a representative of the class \
-      (`Quot.out` is not computable)"
-  let τ ← cirOf L (← inferType e) false
-  unless τ.isLeaf do
-    fail m!"the call{indentExpr e}\nreturns a value of a type that is not a leaf; it cannot \
-      be an extern"
-  let vs ← valueArgs L m!"`{name}`" fn args (proofs := true)
-  let tys ← vs.mapM fun i => do externLocal (← inferType args[i]!)
-  let g ← withLocalDecls (vs.toList.zipIdx.map fun (_, k) =>
-      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!.1)).toArray fun ys => do
-    let args' ← vs.zipIdx.foldlM (fun as (i, k) => do return as.set! i (← tys[k]!.2 ys[k]!)) args
-    mkLambdaFVars ys (← decideProofs name fn args' ys)
-  externStx L name g (vs.map (args[·]!)) τ (← inferType e)
+    fail m!"the call{indentExpr e}\nreturns a value of a quotient, read as its carrier: the \
+      language would need a representative of the class (`Quot.out` is not computable)"
+  let .const c _ := fn | fail m!"cannot translate the application{indentExpr e}"
+  if let some entry := externTable.find? c then
+    return ← externCall L entry fn args
+  -- `n.succ` is `n + 1`
+  if c == ``Nat.succ && args.size == 1 then
+    return ← tr L (mkApp2 (mkConst ``Nat.add) args[0]! (mkRawNatLit 1))
+  -- `a[i]'h`: the language erases the proof `h`, so the element is read with the default of
+  -- the element type when `i` is out of bounds (which it never is, the program proved it)
+  if c == ``Array.getInternal && args.size == 4 then
+    let inst ← try synthInstance (← mkAppM ``Inhabited #[args[0]!])
+      catch _ => fail m!"the access{indentExpr e}\nerases its proof of bounds, and reads the \
+        default of the element type when out of bounds: the element type{indentExpr args[0]!}\n\
+        has no `Inhabited` instance"
+    return ← tr L (← mkAppOptM ``Array.get!Internal #[args[0]!, inst, args[1]!, args[2]!])
+  if let some e' ← unfoldCall? e then return ← tr L e'
+  fail m!"the call{indentExpr e}\nis not a call of an extern: `{c}` is not the Lean function \
+    of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot \
+    be unfolded"
 
-/-- `fn args`, where every proof among the arguments that mentions a local (`h` of `a[i]'h`,
-    of `UInt16.ofNatLT n h`) is replaced by the proof that a decision of its proposition
-    gives: `if h : P then fn … h … else default`.  The language erases proofs, so the proof is
-    not in hand when the term runs; the proposition `P` is the one the type of `fn` requires,
-    on the values `ys` of the arguments of the extern.  In a term translated from a Lean
-    program `P` always holds (the program had to prove it), so the `default` of the result
-    type is never the value. -/
-partial def decideProofs (name : String) (fn : Expr) (args ys : Array Expr) : TM Expr := do
+/-- A call of the extern `entry` (an entry of the catalogue, `LeanInitPureExtern.entry`)
+    whose Lean function is `fn`, applied to `args`: `Neu.extern (.entry _ …) args'`.  The
+    arguments of the extern are the explicit arguments of `fn` that are values (not types,
+    proofs or `()`), and the default value of an `[Inhabited α]` argument (`Array.get!Internal`
+    takes the default as an argument of the extern); the proofs are erased (the evaluator of the
+    extern decides them).  The type arguments of the entry (`αt` of `lean_array_push αt`) are
+    found by unification with the types of the arguments. -/
+partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) : TM Src := do
   let mut ty ← inferType fn
-  let mut props : Array Nat := #[]
-  for i in [0:args.size] do
+  let mut vals : Array Expr := #[]
+  for a in args do
     ty ← whnf ty
-    let .forallE _ d b _ := ty | fail m!"`{name}` is applied to too many arguments"
-    if (← isProp d) && args[i]!.hasFVar then props := props.push i
-    ty := b.instantiate1 args[i]!
-  if props.isEmpty then return mkAppN fn args
-  let resTy ← inferType (mkAppN fn args)
-  let dflt ← try mkAppOptM ``Inhabited.default #[resTy, none]
-    catch _ => fail m!"`{name}` takes a proof, whose proposition is decided when the term \
-      runs, and its result type{indentExpr resTy}\nhas no `Inhabited` instance for the case \
-      where it does not hold"
-  decideProofsGo name fn ys props resTy dflt 0 args
-
-/-- The decisions of `decideProofs`, from the `k`-th proof on, the first outermost. -/
-partial def decideProofsGo (name : String) (fn : Expr) (ys : Array Expr) (props : Array Nat)
-    (resTy dflt : Expr) (k : Nat) (args : Array Expr) : TM Expr := do
-  let some i := props[k]? | return mkAppN fn args
-  -- the proposition, with the earlier arguments (and the proofs decided) in place
-  let mut ty ← inferType fn
-  for j in [0:i] do
-    ty ← whnf ty
-    let .forallE _ _ b _ := ty | fail m!"bad type of `{name}`"
-    ty := b.instantiate1 args[j]!
-  let .forallE _ P _ _ ← whnf ty | fail m!"bad type of `{name}`"
-  let P := (← instantiateMVars P).headBeta
-  if P.hasAnyFVar (fun x => !ys.any (·.fvarId! == x)) then
-    fail m!"`{name}` takes a proof of{indentExpr P}\nwhich speaks about a value that is not \
-      an argument of the call: the proposition cannot be decided on the arguments"
-  let inst ← try synthInstance (mkApp (mkConst ``Decidable) P)
-    catch _ => fail m!"`{name}` takes a proof of{indentExpr P}\nwhich is erased: the \
-      proposition is decided when the term runs, and it is not decidable"
-  let yes ← withLocalDeclD `h P fun h => do
-    mkLambdaFVars #[h] (← decideProofsGo name fn ys props resTy dflt (k + 1) (args.set! i h))
-  let no ← withLocalDeclD `h (mkNot P) fun h => mkLambdaFVars #[h] dflt
-  return mkApp5 (mkConst ``dite [← getLevel resTy]) resTy P inst yes no
-
-/-- `decide p` of a relation `p` on values of leaf types: `Comp.extern`. -/
-partial def trDecide (L : Loc) (p : Expr) : TM Src := do
-  let p ← instantiateMVars p
-  let fn := p.getAppFn
-  let args := p.getAppArgs
-  let .const c _ := fn | fail m!"cannot translate the condition{indentExpr p}"
-  let vs ← valueArgs L m!"`{c}`" fn args
-  let tys ← vs.mapM fun i => do externLocal (← inferType args[i]!)
-  let g ← withLocalDecls (vs.toList.zipIdx.map fun (_, k) =>
-      ((Name.mkSimple s!"x{k}"), .default, fun _ => pure tys[k]!.1)).toArray fun ys => do
-    let args' ← vs.zipIdx.foldlM (fun as (i, k) => do return as.set! i (← tys[k]!.2 ys[k]!)) args
-    let p' := mkAppN fn args'
-    let inst ← try synthInstance (mkApp (mkConst ``Decidable) p')
-      catch _ => fail m!"the condition{indentExpr p}\nis not decidable"
-    mkLambdaFVars ys (mkApp2 (mkConst ``Decidable.decide) p' inst)
-  externStx L s!"decide {c}" g (vs.map (args[·]!)) (.prim (← `(LeanPrimTy.bool)))
-    (mkConst ``Bool)
-
-/-- `Comp.extern name (fun v => g v.1 v.2.1 … v.2.….2) args`, of Lean type `resTy`; the
-    pure expression `PExpr.extern name …` when the extern is cheap: `Extern.isCheap name`, and
-    its arguments and result are scalars (`isScalarType`). -/
-partial def externStx (L : Loc) (name : String) (g : Expr) (args : Array Expr) (τ : CIR)
-    (resTy : Expr) : TM Src := do
-  let v := mkIdent `v
-  let mut call ← exprToSyntax g
-  let mut comps : Array Lean.Term := #[]
-  for k in [0:args.size] do comps := comps.push (← compStx v k args.size)
-  call ← `($call $comps*)
-  let mut σs : Array Lean.Term := #[]
-  for a in args do σs := σs.push (← (← cirOf L (← inferType a) false).stx L.c #[])
-  let argSrcs ← args.mapM (tr L)
-  let τs ← τ.stx L.c #[]
-  let cheap ← pure (Extern.isCheap name) <&&> isScalarType resTy <&&>
-    args.allM fun a => do isScalarType (← inferType a)
-  if cheap then
-    return .pneu (fun _ xs => do
-        let mut as ← `(LeanScript.Args.nil)
-        for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
-        `(LeanScript.Neu.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (by exact fun $v => $call) $as))
-      #[] argSrcs fun _ _ => none
-  return .comp (fun xs _ => do
+    let .forallE _ d b bi := ty | fail m!"`{fn}` is applied to too many arguments"
+    -- (a binder type may carry annotations: `(a : @& Array α)` is borrowed)
+    let d := d.consumeMData
+    if bi.isInstImplicit && d.isAppOfArity ``Inhabited 1 then
+      let v ← whnf (← mkAppOptM ``Inhabited.default #[d.appArg!, a])
+      vals := vals.push (if v.isConstOf ``Nat.zero then mkNatLit 0 else v)
+    else if bi.isExplicit && !(← isProp d) && !(← isType a) && !(← isUnitType d) then
+      vals := vals.push a
+    ty := b.instantiate1 a
+  let sc := `LeanScript.LeanInitPureExtern ++ entry
+  let some info := (← getEnv).find? sc
+    | fail m!"the entry `{entry}` of the catalogue of externs has no shorthand `{sc}`"
+  let nFields := explicitBinderCount info.type
+  let holes ← (List.replicate nFields ()).toArray.mapM fun _ => `(_)
+  let entryStx ← `($(mkIdent (`_root_ ++ sc)) $holes*)
+  let argSrcs ← vals.mapM (tr L)
+  return .pneu (fun _ xs => do
       let mut as ← `(LeanScript.Args.nil)
       for x in xs.reverse do as ← `(LeanScript.Args.cons $x $as)
-      `(LeanScript.Comp.extern (σs := [$σs,*]) (τ := $τs) $(quote name) (fun $v => $call) $as))
-    argSrcs #[]
+      `(LeanScript.Neu.extern $entryStx $as))
+    #[] argSrcs fun _ _ => none
+
+/-- `decide p` (of the instance `inst : Decidable p`): the call of the extern whose Lean
+    function decides `p` (`Nat.decLt a b` for `a < b` on `Nat`: `lean_nat_dec_lt`, a `.bool`),
+    `&&`, `||`, `!` of the decisions for `∧`, `∨`, `¬`, or else the instance unfolded
+    (`instDecidableEqNat a b` is `Nat.decEq a b`). -/
+partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
+  let inst ← instantiateMVars inst
+  let dec (q d : Expr) := mkApp2 (mkConst ``Decidable.decide) q d
+  let lamBody (e : Expr) : Expr := match e with
+    | .lam _ _ b _ => b
+    | e => e
+  if let .const c' _ := inst.getAppFn then
+    if let some entry := externTable.find? c' then
+      return ← externCall L entry inst.getAppFn inst.getAppArgs
+    match c', inst.getAppArgs with
+    | ``instDecidableAnd, #[q, r, dq, dr] =>
+        return ← tr L (mkApp2 (mkConst ``and) (dec q dq) (dec r dr))
+    | ``instDecidableOr, #[q, r, dq, dr] =>
+        return ← tr L (mkApp2 (mkConst ``or) (dec q dq) (dec r dr))
+    | ``instDecidableNot, #[q, dq] =>
+        return ← tr L (mkApp (mkConst ``not) (dec q dq))
+    | ``instDecidableTrue, _ => return ← tr L (mkConst ``Bool.true)
+    | ``instDecidableFalse, _ => return ← tr L (mkConst ``Bool.false)
+    | ``Decidable.isTrue, _ => return ← tr L (mkConst ``Bool.true)
+    | ``Decidable.isFalse, _ => return ← tr L (mkConst ``Bool.false)
+    -- a decision by cases: the decision in each branch (`if c then isTrue _ else isFalse _`
+    -- is the decision of `c`)
+    | ``ite, #[_, c, dc, t, f] | ``dite, #[_, c, dc, t, f] =>
+        if (lamBody t).isAppOf ``Decidable.isTrue && (lamBody f).isAppOf ``Decidable.isFalse then
+          return ← tr L (dec c dc)
+        if (lamBody t).isAppOf ``Decidable.isFalse && (lamBody f).isAppOf ``Decidable.isTrue then
+          return ← tr L (mkApp (mkConst ``not) (dec c dc))
+        if c' == ``dite then
+          let br (k : Expr) (h : Expr) : TM Expr :=
+            withLocalDeclD `h h fun x => do mkLambdaFVars #[x] (dec p (mkApp k x).headBeta)
+          return ← tr L (← mkAppOptM ``dite
+            #[mkConst ``Bool, c, dc, ← br t c, ← br f (mkNot c)])
+        return ← tr L (← mkAppOptM ``ite #[mkConst ``Bool, c, dc, dec p t, dec p f])
+    -- a decision on a value of a quotient, by its representative `a` (`Quot.recOnSubsingleton q
+    -- f` decides with `f a`)
+    | ``Quot.recOnSubsingleton, #[α, r, motive, _, q, f] =>
+        let g ← withLocalDeclD `a α fun a => do
+          let pa := (mkApp motive (← mkAppOptM ``Quot.mk #[α, r, a])).headBeta
+          mkLambdaFVars #[a] (dec pa (mkApp f a).headBeta)
+        return ← trQuotApp L g q #[]
+    | _, _ => pure ()
+  if let some inst' ← unfoldCall? inst then return ← trDecide L p inst'
+  -- any other decision: `decide` itself unfolded, a case analysis of the instance (a
+  -- `Decidable p` is read as a `.bool`: `isTrue _` is `true`, `isFalse _` is `false`)
+  if !inst.getAppFn.isConst || (← isMatcher inst.getAppFn.constName!) ||
+      [``Eq.mpr, ``Eq.mp, ``Eq.rec, ``Eq.ndrec, ``cast, ``Quot.lift, ``Quot.rec,
+        ``Quot.recOn].contains inst.getAppFn.constName! then
+    if let some d ← unfoldDefinition? (mkApp2 (mkConst ``Decidable.decide) p inst) then
+      return ← tr L d.headBeta
+  fail m!"the condition{indentExpr p}\nis decided by{indentExpr inst}\nwhich is not the Lean \
+    function of an entry of the catalogue of externs (`LeanInitPureExtern`), and cannot be \
+    unfolded"
 
 /-- A constructor application: `#leanscript_get_ctor` of the constructor, every parameter
     given by name, applied to the terms of the fields kept. -/
@@ -888,6 +893,18 @@ partial def nestView? (L : Loc) (e : Expr) : TM (Option (Src × NShape)) := do
       s := s'
     | _ => fail m!"cannot translate the application{indentExpr e}"
   return some (t, s)
+
+/-- `Array.foldl f z xs 0 xs.size`: `Comp.array_foldl`, whose step binds the element (`#0`) and
+    the accumulator (`#1`) and is the translation of `f acc x`. -/
+partial def trFoldl (L : Loc) (args : Array Expr) : TM Src := do
+  let elemTy := args[0]!
+  let accTy := args[1]!
+  discard <| cirOf L accTy
+  let arr ← tr L args[4]!
+  let z ← tr L args[3]!
+  withLocalDeclD `acc accTy fun acc => withLocalDeclD `x elemTy fun x => do
+    let body := (mkApp2 args[2]! acc x).headBeta
+    return Src.arrayFoldl arr z (← tr ((L.bind acc.fvarId!).bind x.fvarId!) body)
 
 /-- `Array.foldl f z xs` over an array `xs` that holds members of the block recursed on (with
     their answers): `Comp.array_foldl`, whose step sees each element as the subvalue, with the

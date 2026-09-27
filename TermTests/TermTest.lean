@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Eval
+public import LeanScript.Term.ExternShorthands
 public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
@@ -57,9 +58,9 @@ def nilT {Γ : Ctx [0, 0]} : PExpr Δ Γ listNat := .data_in listB 0 (.union_mk 
 /-- A numeral. -/
 def natT {Γ : Ctx [0, 0]} (n : Nat) : PExpr Δ Γ .nat := .lit .nat n
 
-/-- `Nat.add`, as an extern: a computation. -/
-def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : Comp Δ Γ .nat :=
-  .extern (σs := [.nat, .nat]) "Nat.add" (fun v => Nat.add v.1 v.2) (.cons a (.cons b .nil))
+/-- `Nat.add`, the call of the extern `lean_nat_add`: a pure (neutral) expression. -/
+def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : PExpr Δ Γ .nat :=
+  PExpr.lean_nat_add a b
 
 /-- A node of a rose tree. -/
 def nodeT {Γ : Ctx [0, 0]} (xs : PExpr Δ Γ listNat) (cs : Elems Δ Γ rose) : PExpr Δ Γ rose :=
@@ -81,7 +82,7 @@ def sumT {Γ : Ctx [0, 0]} : Comp Δ Γ (.fn listNat .nat) :=
         -- the fields of `cons`: `n` (index 0), `(tail, s)` (index 1)
         (.record_casesOn (.bvar 1)
           -- `tail` (index 0), `s` (index 1), `n` (index 2)
-          (.ofComp (addT (.bvar 2) (.bvar 1))))))
+          (.ret (addT (.bvar 2) (.bvar 1))))))
     0 (.bvar 0)))
 
 /-- `List.head?`, by one layer out. -/
@@ -104,9 +105,9 @@ def roseSumT : Comp Δ [] (.fn rose .nat) :=
               -- the child (index 0), the accumulator (index 1)
               (.record_casesOn (.bvar 0)
                 -- the subtree (index 0), its answer (index 1), …, the accumulator (index 3)
-                (.ofComp (addT (.bvar 3) (.bvar 1)))))
+                (.ret (addT (.bvar 3) (.bvar 1)))))
             -- the sum of the children (index 0), `s` (index 1)
-            (.ofComp (addT (.bvar 1) (.bvar 0)))))))
+            (.ret (addT (.bvar 1) (.bvar 0)))))))
     0 (.bvar 0)))
 
 /-! ## Running them -/
@@ -142,7 +143,7 @@ def fibLenT : Comp Δ [] (.fn listNat .nat) :=
               -- `t = y :: t'`: `y` (index 0), the window of `t'` (index 1)
               (.record_casesOn (.bvar 1)
                 -- `t'` (index 0), `f t'` (index 1), …, `f t` (index 5)
-                (.ofComp (addT (.bvar 5) (.bvar 1)))))))))
+                (.ret (addT (.bvar 5) (.bvar 1)))))))))
     0 (.bvar 0)))
 
 def list5 {Γ : Ctx [0, 0]} : PExpr Δ Γ listNat :=
@@ -155,7 +156,7 @@ example : (appT fibLenT list5).run = (5 : Nat) := by kernel_rfl
 
 /-- `nat_rec`: the triangular number `0 + 1 + … + (n - 1)`. -/
 def triT : Comp Δ [] (.fn .nat .nat) :=
-  .lam (.ofComp (.nat_rec (.bvar 0) (natT 0) (.ofComp (addT (.bvar 0) (.bvar 1)))))
+  .lam (.ofComp (.nat_rec (.bvar 0) (natT 0) (.ret (addT (.bvar 0) (.bvar 1)))))
 
 example : (appT triT (natT 5)).run = (10 : Nat) := rfl
 
@@ -166,7 +167,7 @@ example : (Term.letE (Δ := Δ) (Γ := []) (.share (.enum_mk {} 2))
 /-- A join point: `join j x := x + 1; if b then jump j 1 else jump j 2`, with `b := true`.
     (The condition is a variable: `if true then …` is an ι-redex, which the grammar rules
     out.) -/
-example : (Term.join (Δ := Δ) (Γ := [.bool]) .nat (.ofComp (addT (.bvar 0) (natT 1)))
+example : (Term.join (Δ := Δ) (Γ := [.bool]) .nat (.ret (addT (.bvar 0) (natT 1)))
     (.ite (.bvar 0) (.jump .head (natT 1)) (.jump .head (natT 2))) : Term Δ [.bool] .nat []).eval (true : Bool)
       PUnit.unit = (2 : Nat) := rfl
 

@@ -24,7 +24,7 @@ def appT' {Γ : Ctx [0, 0]} (a : PExpr Δ Γ listNat) : Term Δ Γ .nat [] :=
   .letE sumT (.ofComp (.app (.bvar 0) a.weaken))
 
 /-- `fun x => x + y`, with `y` free (index `0` of the outer context). -/
-def addY : Comp Δ [.nat] (.fn .nat .nat) := .lam (.ofComp (addT (.bvar 0) (.bvar 1)))
+def addY : Comp Δ [.nat] (.fn .nat .nat) := .lam (.ret (addT (.bvar 0) (.bvar 1)))
 
 /-- Weakening moves `addY` under a binder it does not use. -/
 example : (Term.letE (.share (natT 100)) (.letE addY.weaken (.ofComp (.app (.bvar 0) (natT 1)))) :
@@ -41,8 +41,8 @@ example : (Term.subst1 (appT' (.bvar 0)) list123 : Term Δ [] .nat []).run = (6 
 
 /-- `let` of a shared value and β, by the general theorems, for any argument. -/
 example (a : PExpr Δ [] .nat) :
-    (Comp.lam (Γ := []) (σ := .nat) (Term.ofComp (addT (.bvar 0) (.bvar 0)))).run a.run =
-      (Term.subst1 (Term.ofComp (addT (.bvar 0) (.bvar 0))) a).run :=
+    (Comp.lam (Γ := []) (σ := .nat) (Term.ret (addT (.bvar 0) (.bvar 0)))).run a.run =
+      (Term.subst1 (Term.ret (addT (.bvar 0) (.bvar 0))) a).run :=
   Comp.eval_app_lam_eq_subst1 _ _ _
 
 example (a : PExpr Δ [] listNat) (b : Term Δ [listNat] .nat []) :

@@ -26,12 +26,10 @@ open LeanPrimTyCovariant
 -- protected abbrev LeanPrimTy.floatArray : LeanPrimTyCovariant LeanPrimTy := Array Float
 
 variable {MyTy : Type}
-  (denote : MyTy → Type)
   [Coe LeanPrimTy MyTy]
   [Coe (LeanPrimTyCovariant LeanPrimTy) MyTy]
   [Coe (LeanPrimTyCovariant MyTy) MyTy]
   (option : MyTy → MyTy)
-  (list : MyTy → MyTy)
   (fn1 : MyTy → MyTy → MyTy)
   (fn2 : MyTy → MyTy → MyTy → MyTy)
   (prod : MyTy → MyTy → MyTy)
@@ -43,7 +41,6 @@ variable {MyTy : Type}
   -- (shareCommon_stateFactory : Type)
   -- (shareCommon_state : shareCommon_stateFactory -> MyTy)
   -- `Lean.Name` is an ordinary inductive type; no entry of the catalogue answers with one
-  (leanName : MyTy)
   (ordering : MyTy)
   -- A byte array is `Array UInt8` and a float array is `Array Float`, so neither is a
   -- type former of its own here; the entries that speak about one are commented out
@@ -56,9 +53,13 @@ variable {MyTy : Type}
 ## The catalogue, in two levels
 
 The catalogue records which functions of `Init` are pure externs, with their types over any
-grammar of types `MyTy`.  The language does not depend on it: `LeanScript.Comp.extern` holds
-the Lean function itself, and `#leanscript_to_term` names an extern after the function it
-calls.
+grammar of types `MyTy`, indexed by its signature (`LeanInitPureExtern σs τ`: the types of the
+arguments, then the type of the result).  It is the language's one kind of extern:
+`LeanScript.Neu.extern e args` (`LeanScript.Term.PExpr`) is the call of the entry `e`,
+instantiated at the types of the language (`LeanScript.Extern`), on pure expressions `args` of
+the types `σs`, and `LeanScript.Extern.eval` gives the meaning of each entry (the Lean function
+named in its comment).  `#leanscript_to_term` translates a call of such a Lean function to the
+call of its entry (`LeanScript.TermElab.ToTerm.ExternTable`).
 
 The families are in four modules, by theme: `LeanScript.LeanInitPureExterns.Core`
 (`Prelude`, `Core`, `Nat`, `Int`, `Array`, …), `.FixedWidth` (`UInt8` … `Int64`),
@@ -153,91 +154,89 @@ there too.
 -- | lean_sharecommon_eq : denote shareCommon_object → denote shareCommon_object → LeanInitPureExtern LeanPrimTy.bool -- ShareCommon.Object.eq
 -- | lean_sharecommon_hash : denote shareCommon_object → LeanInitPureExtern uint64 -- ShareCommon.Object.hash
 
-/-- A pure extern of `Init`, applied to all of its arguments (and to the proofs it takes):
-    an entry of one of the families above.
+/-- A pure extern of `Init`, of signature `σs → τ`: an entry of one of the families above.
+    An entry holds no value: its arguments (the types `σs`, in order) are given where it is
+    called (`LeanScript.Neu.extern e args`, on pure expressions), so creating a value with an
+    extern and computing with one are the same thing, a call.  The fields an entry does have
+    are the type arguments of its Lean function (`αt` of `lean_array_push αt`) and, rarely, a
+    literal that fixes a proposition of the function (`lean_float_of_scientific`); the proofs
+    the Lean function takes are dropped (the meaning of the entry decides them).
 
-    **No `DecidableEq`/`BEq`.**  `Float`, `Float32` and their models have `DecidableEq`
-    (structural equality of the bits), so the `Float` fields are not what prevents it.
-    What does:
-    * some entries hold **functions** — `lean_string_foldl` holds a
-      `String → Char → String`, and `lean_string_any`, `lean_string_nextwhile`,
-      `lean_substring_all` and `lean_substring_takewhile` a `Char → Bool` — and equality
-      of functions like `String → Char → String` cannot be decided;
-    * other fields are values `denote αt` of an arbitrary type of the language, which can
-      itself be a function type;
-    * and the index of an entry is computed through the abstract coercions and type
-      formers above, so `deriving DecidableEq` cannot unify the indices of two entries. -/
-inductive LeanInitPureExtern : MyTy → Type where
+    **No `DecidableEq`/`BEq`.**  The fields are types of the grammar and literals, so nothing
+    in them prevents it, but the indices of an entry are computed through the abstract
+    coercions and type formers above, so `deriving DecidableEq` cannot unify the indices of
+    two entries. -/
+inductive LeanInitPureExtern : List MyTy → MyTy → Type where
   /-- An entry of `PreludeExtern` (`Init/Prelude.lean`). -/
-  | preludeExtern {τ : MyTy} : PreludeExtern denote list leanName τ → LeanInitPureExtern τ
+  | preludeExtern {σs : List MyTy} {τ : MyTy} : PreludeExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `CoreExtern` (`Init/Core.lean`). -/
-  | coreExtern {τ : MyTy} : CoreExtern denote τ → LeanInitPureExtern τ
+  | coreExtern {σs : List MyTy} {τ : MyTy} : CoreExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `IntBasicExtern` (`Init/Data/Int/Basic.lean`). -/
-  | intBasicExtern {τ : MyTy} : IntBasicExtern τ → LeanInitPureExtern τ
+  | intBasicExtern {σs : List MyTy} {τ : MyTy} : IntBasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `NatDivExtern` (`Init/Data/Nat/Div/Basic.lean`). -/
-  | natDivExtern {τ : MyTy} : NatDivExtern τ → LeanInitPureExtern τ
+  | natDivExtern {σs : List MyTy} {τ : MyTy} : NatDivExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `NatBitwiseExtern` (`Init/Data/Nat/Bitwise/Basic.lean`). -/
-  | natBitwiseExtern {τ : MyTy} : NatBitwiseExtern τ → LeanInitPureExtern τ
+  | natBitwiseExtern {σs : List MyTy} {τ : MyTy} : NatBitwiseExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UIntBasicAuxExtern` (`Init/Data/UInt/BasicAux.lean`). -/
-  | uintBasicAuxExtern {τ : MyTy} : UIntBasicAuxExtern τ → LeanInitPureExtern τ
+  | uintBasicAuxExtern {σs : List MyTy} {τ : MyTy} : UIntBasicAuxExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringBootstrapExtern` (`Init/Data/String/Bootstrap.lean`). -/
-  | stringBootstrapExtern {τ : MyTy} : StringBootstrapExtern τ → LeanInitPureExtern τ
+  | stringBootstrapExtern {σs : List MyTy} {τ : MyTy} : StringBootstrapExtern fn1 fn2 σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UtilExtern` (`Init/Util.lean`). -/
-  | utilExtern {τ : MyTy} : UtilExtern denote τ → LeanInitPureExtern τ
+  | utilExtern {σs : List MyTy} {τ : MyTy} : UtilExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `ArraySetExtern` (`Init/Data/Array/Set.lean`). -/
-  | arraySetExtern {τ : MyTy} : ArraySetExtern denote τ → LeanInitPureExtern τ
+  | arraySetExtern {σs : List MyTy} {τ : MyTy} : ArraySetExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `ArrayBasicExtern` (`Init/Data/Array/Basic.lean`). -/
-  | arrayBasicExtern {τ : MyTy} : ArrayBasicExtern denote τ → LeanInitPureExtern τ
+  | arrayBasicExtern {σs : List MyTy} {τ : MyTy} : ArrayBasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `MetaDefsExtern` (`Init/Meta/Defs.lean`). -/
-  | metaDefsExtern {τ : MyTy} : MetaDefsExtern τ → LeanInitPureExtern τ
+  | metaDefsExtern {σs : List MyTy} {τ : MyTy} : MetaDefsExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `NatLog2Extern` (`Init/Data/Nat/Log2.lean`). -/
-  | natLog2Extern {τ : MyTy} : NatLog2Extern τ → LeanInitPureExtern τ
+  | natLog2Extern {σs : List MyTy} {τ : MyTy} : NatLog2Extern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `IntDivModExtern` (`Init/Data/Int/DivMod/Basic.lean`). -/
-  | intDivModExtern {τ : MyTy} : IntDivModExtern τ → LeanInitPureExtern τ
+  | intDivModExtern {σs : List MyTy} {τ : MyTy} : IntDivModExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UInt8BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt8` entries). -/
-  | uint8BasicExtern {τ : MyTy} : UInt8BasicExtern τ → LeanInitPureExtern τ
+  | uint8BasicExtern {σs : List MyTy} {τ : MyTy} : UInt8BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UInt16BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt16` entries). -/
-  | uint16BasicExtern {τ : MyTy} : UInt16BasicExtern τ → LeanInitPureExtern τ
+  | uint16BasicExtern {σs : List MyTy} {τ : MyTy} : UInt16BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UInt32BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt32` entries). -/
-  | uint32BasicExtern {τ : MyTy} : UInt32BasicExtern τ → LeanInitPureExtern τ
+  | uint32BasicExtern {σs : List MyTy} {τ : MyTy} : UInt32BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UInt64BasicExtern` (`Init/Data/UInt/Basic.lean`, the `UInt64` entries). -/
-  | uint64BasicExtern {τ : MyTy} : UInt64BasicExtern τ → LeanInitPureExtern τ
+  | uint64BasicExtern {σs : List MyTy} {τ : MyTy} : UInt64BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringPosRawExtern` (`Init/Data/String/PosRaw.lean`). -/
-  | stringPosRawExtern {τ : MyTy} : StringPosRawExtern τ → LeanInitPureExtern τ
+  | stringPosRawExtern {σs : List MyTy} {τ : MyTy} : StringPosRawExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringDefsExtern` (`Init/Data/String/Defs.lean`). -/
-  | stringDefsExtern {τ : MyTy} : StringDefsExtern τ → LeanInitPureExtern τ
+  | stringDefsExtern {σs : List MyTy} {τ : MyTy} : StringDefsExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `PlatformExtern` (`Init/System/Platform.lean`). -/
-  | platformExtern {τ : MyTy} : PlatformExtern τ → LeanInitPureExtern τ
+  | platformExtern {σs : List MyTy} {τ : MyTy} : PlatformExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringBasicExtern` (`Init/Data/String/Basic.lean`). -/
-  | stringBasicExtern {τ : MyTy} : StringBasicExtern option list τ → LeanInitPureExtern τ
+  | stringBasicExtern {σs : List MyTy} {τ : MyTy} : StringBasicExtern option σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringLengthExtern` (`Init/Data/String/Length.lean`). -/
-  | stringLengthExtern {τ : MyTy} : StringLengthExtern τ → LeanInitPureExtern τ
+  | stringLengthExtern {σs : List MyTy} {τ : MyTy} : StringLengthExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `Int8BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int8` entries). -/
-  | int8BasicExtern {τ : MyTy} : Int8BasicExtern τ → LeanInitPureExtern τ
+  | int8BasicExtern {σs : List MyTy} {τ : MyTy} : Int8BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `Int16BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int16` entries). -/
-  | int16BasicExtern {τ : MyTy} : Int16BasicExtern τ → LeanInitPureExtern τ
+  | int16BasicExtern {σs : List MyTy} {τ : MyTy} : Int16BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `Int32BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int32` entries). -/
-  | int32BasicExtern {τ : MyTy} : Int32BasicExtern τ → LeanInitPureExtern τ
+  | int32BasicExtern {σs : List MyTy} {τ : MyTy} : Int32BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `Int64BasicExtern` (`Init/Data/SInt/Basic.lean`, the `Int64` entries). -/
-  | int64BasicExtern {τ : MyTy} : Int64BasicExtern τ → LeanInitPureExtern τ
+  | int64BasicExtern {σs : List MyTy} {τ : MyTy} : Int64BasicExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringPatternExtern` (`Init/Data/String/Pattern/Basic.lean`). -/
-  | stringPatternExtern {τ : MyTy} : StringPatternExtern τ → LeanInitPureExtern τ
+  | stringPatternExtern {σs : List MyTy} {τ : MyTy} : StringPatternExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringSliceExtern` (`Init/Data/String/Slice.lean`). -/
-  | stringSliceExtern {τ : MyTy} : StringSliceExtern τ → LeanInitPureExtern τ
+  | stringSliceExtern {σs : List MyTy} {τ : MyTy} : StringSliceExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `StringModifyExtern` (`Init/Data/String/Modify.lean`). -/
-  | stringModifyExtern {τ : MyTy} : StringModifyExtern τ → LeanInitPureExtern τ
+  | stringModifyExtern {σs : List MyTy} {τ : MyTy} : StringModifyExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `FloatExtern` (`Init/Data/Float/Float.lean`). -/
-  | floatExtern {τ : MyTy} : FloatExtern prod τ → LeanInitPureExtern τ
+  | floatExtern {σs : List MyTy} {τ : MyTy} : FloatExtern prod σs τ → LeanInitPureExtern σs τ
   /-- An entry of `UIntLog2Extern` (`Init/Data/UInt/Log2.lean`). -/
-  | uintLog2Extern {τ : MyTy} : UIntLog2Extern τ → LeanInitPureExtern τ
+  | uintLog2Extern {σs : List MyTy} {τ : MyTy} : UIntLog2Extern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `SIntFloatExtern` (`Init/Data/SInt/Float.lean`). -/
-  | sIntFloatExtern {τ : MyTy} : SIntFloatExtern τ → LeanInitPureExtern τ
+  | sIntFloatExtern {σs : List MyTy} {τ : MyTy} : SIntFloatExtern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `Float32Extern` (`Init/Data/Float/Float32.lean`). -/
-  | float32Extern {τ : MyTy} : Float32Extern prod τ → LeanInitPureExtern τ
+  | float32Extern {σs : List MyTy} {τ : MyTy} : Float32Extern prod σs τ → LeanInitPureExtern σs τ
   /-- An entry of `SIntFloat32Extern` (`Init/Data/SInt/Float32.lean`). -/
-  | sIntFloat32Extern {τ : MyTy} : SIntFloat32Extern τ → LeanInitPureExtern τ
+  | sIntFloat32Extern {σs : List MyTy} {τ : MyTy} : SIntFloat32Extern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `OrdStringExtern` (`Init/Data/Ord/String.lean`). -/
-  | ordStringExtern {τ : MyTy} : OrdStringExtern ordering τ → LeanInitPureExtern τ
+  | ordStringExtern {σs : List MyTy} {τ : MyTy} : OrdStringExtern ordering σs τ → LeanInitPureExtern σs τ
 
 end LeanScript
 

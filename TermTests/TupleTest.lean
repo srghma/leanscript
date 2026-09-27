@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Eval
+public import LeanScript.Term.ExternShorthands
 
 @[expose] public section
 
@@ -31,8 +32,7 @@ example : JEnv DSig.nil .nat [.bool, .nat] = ((Bool → Nat) × (Nat → Nat)) :
 
 /-- An extern of two arguments takes a pair. -/
 def addT : Comp DSig.nil [.nat, .nat] .nat :=
-  .extern (σs := [.nat, .nat]) "Nat.add" (fun v => Nat.add v.1 v.2)
-    (.cons (.var .head) (.cons (.var (.tail .head)) .nil))
+  .share (PExpr.lean_nat_add (.neu (.var .head)) (.neu (.var (.tail .head))))
 
 example : addT.eval ((3 : Nat), (4 : Nat)) = (7 : Nat) := rfl
 

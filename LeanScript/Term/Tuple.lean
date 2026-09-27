@@ -16,7 +16,7 @@ set_option autoImplicit false
 * `Tuple F [a, b] = F a × F b`, `Tuple F [a, b, c] = F a × F b × F c`, …
 
 It is what environments (`LeanScript.Env`), the arguments of an extern
-(`LeanScript.Comp.extern`) and the closures of the join points in scope (`LeanScript.JEnv`)
+(`LeanScript.Neu.extern`) and the closures of the join points in scope (`LeanScript.JEnv`)
 are made of.  Because the shape of a tuple depends on whether the tail of the list is empty,
 a tuple is taken apart with `Tuple.head`/`Tuple.tail` and built with `Tuple.cons` rather than
 with `Prod.fst`/`Prod.snd`/`Prod.mk` whenever the list is not known.

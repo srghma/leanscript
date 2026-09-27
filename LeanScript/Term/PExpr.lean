@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Common
+public import LeanScript.Term.Extern
 
 @[expose] public section
 
@@ -22,7 +22,7 @@ mutual
 
 /-- **Layer 1a, neutral pure expressions**: the pure expressions whose head is *not* an
     introduction form — a variable, or an elimination (`data_out`, `cond`) whose principal
-    argument is itself neutral, or an extern (an opaque operation).  They are the only pure
+    argument is itself neutral, or a call of an extern (an opaque operation).  They are the only pure
     expressions that may be taken apart: the argument of `data_out`, the condition of `cond`
     and `Term.ite`, and the scrutinee of `Term.record_casesOn`, `Term.enum_casesOn` and
     `Term.union_casesOn` are neutral.  So no ι-redex (the elimination of an explicitly
@@ -41,13 +41,17 @@ inductive Neu {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type wher
       join point when it is an operand (`(if c then x + 1 else 0) * 2`).  In tail position a
       branch is still written with `Term.ite`.  The condition is neutral, never a literal. -/
   | cond {τ : Ty ks} : Neu Δ Γ .bool → PExpr Δ Γ τ → PExpr Δ Γ τ → Neu Δ Γ τ
-  /-- A **cheap** pure extern (proposal 4h): a named operation on the values of its
-      arguments, like `Comp.extern`, but so cheap (a machine operation on scalars: `+`, `<`,
-      `&&`, a conversion, …) that it may be duplicated or dropped freely, so it needs no
-      `let`.  Which externs are cheap is the translator's choice
-      (`LeanScript.Extern.isCheap`); every other extern is a named `Comp.extern`. -/
-  | extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
-      (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → Neu Δ Γ τ
+  /-- **A call of an extern**: the entry `e` of the catalogue of externs
+      (`LeanInitPureExtern`, over the types of the language: `Extern`) applied to the pure
+      expressions of its arguments.  Every extern is called this way — a machine operation
+      (`lean_nat_add`), a function on strings (`lean_string_any`), a constructor of a leaf
+      value (`lean_mk_empty_array_with_capacity`, `lean_thunk_pure`) or a constant
+      (`lean_system_platform_target`): the language has one kind of extern, a pure function
+      of the values of its arguments.  Its result is neutral (an extern is not an
+      introduction form of the language), so it may be taken apart: `ite` and `cond` decide
+      the answer of `lean_nat_dec_lt`.  A pure expression may be duplicated or dropped, so
+      an extern whose value should be computed once is named by `Comp.share`. -/
+  | extern {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) : Args Δ Γ σs → Neu Δ Γ τ
 
 /-- **Layer 1, pure expressions** (`PCL`'s `PExpr`): the operands of every computation and
     statement.  A pure expression makes no call, binds nothing and never branches, so it may
@@ -55,7 +59,8 @@ inductive Neu {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type wher
     form: a literal or a constructor.  Its context `Γ` is a parameter: it is not mutual with
     the two other layers. -/
 inductive PExpr {ks : List Nat} (Δ : DSig ks) (Γ : Ctx ks) : Ty ks → Type where
-  /-- A neutral expression: a variable, an elimination of a neutral value or an extern. -/
+  /-- A neutral expression: a variable, an elimination of a neutral value or a call of an
+      extern. -/
   | neu {τ : Ty ks} : Neu Δ Γ τ → PExpr Δ Γ τ
   /-- A literal of a leaf type: `.lit .nat 3`. -/
   | lit (p : LeanPrimTy) (v : p.denote) : PExpr Δ Γ (.prim p)
@@ -100,10 +105,10 @@ abbrev PExpr.data_out (b : BRef ks) (j : Fin ((Δ.block b).k + 1))
 abbrev PExpr.cond {τ : Ty ks} (c : Neu Δ Γ .bool) (a b : PExpr Δ Γ τ) : PExpr Δ Γ τ :=
   .neu (.cond c a b)
 
-/-- A cheap extern, as a pure expression. -/
-abbrev PExpr.extern {σs : List (Ty ks)} {τ : Ty ks} (name : String)
-    (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) (args : Args Δ Γ σs) : PExpr Δ Γ τ :=
-  .neu (.extern name f args)
+/-- A call of an extern, as a pure expression. -/
+abbrev PExpr.extern {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) (args : Args Δ Γ σs) :
+    PExpr Δ Γ τ :=
+  .neu (.extern e args)
 
 end NeuAbbrevs
 

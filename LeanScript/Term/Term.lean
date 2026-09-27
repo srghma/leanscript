@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Ty.DenBrec
 public import LeanScript.Term.PExpr
+public import LeanScript.Term.ExternShorthands
 
 @[expose] public section
 
@@ -15,10 +16,10 @@ translates Lean definitions to it.  It follows the three layers of the `PCL` gra
 (`proposals/AnfSplitProposals.md`, proposal 1), without its proof-carrying parts:
 
 ```
-Neu   ::= var | data_out b j Neu | cond Neu PExpr PExpr | extern f Args
+Neu   ::= var | data_out b j Neu | cond Neu PExpr PExpr | extern e Args
 PExpr ::= neu Neu | lit | enum_mk | record_mk Args | union_mk ix Args | array_mk Elems
         | data_in b j PExpr
-Comp  ::= app PExpr PExpr | lam Term | share PExpr | extern f Args
+Comp  ::= app PExpr PExpr | lam Term | share PExpr
         | nat_rec PExpr PExpr Term | array_foldl PExpr PExpr Term
         | data_rec b ρ Termᵢ j PExpr | data_brec b ρ k Termᵢ j PExpr
         | thunk_mk Term | thunk_force PExpr | lazy_mk Term | lazy_force PExpr
@@ -29,23 +30,22 @@ Term  ::= ret PExpr | letE Comp Term | record_casesOn Neu Term
 
 * `PExpr Δ Γ τ` (with the lists `Args` and `Elems`) — **pure expressions**: variables,
   literals, constructors, one layer in or out of a recursive datatype, the pure conditional
-  `cond` and the *cheap* externs (`PExpr.extern`, a machine operation on scalars).  They bind
-  nothing, make no call that costs more than a machine operation and never branch in the
-  control flow.  `PExpr` is an ordinary inductive, not mutual with the two
-  other layers.
+  `cond` and the calls of externs (`PExpr.extern e args`, `e` an entry of the catalogue
+  `LeanInitPureExtern`).  They bind nothing and never branch in the control flow of the term.  `PExpr` is an ordinary inductive, not mutual with the two other layers.
 * `Neu Δ Γ τ` — the **neutral** pure expressions, those whose head is not an introduction
-  form: a variable, `data_out` or `cond` of a neutral expression, or an extern.  A pure
+  form: a variable, `data_out` or `cond` of a neutral expression, or a call of an extern.  A pure
   expression is a neutral one (`PExpr.neu`) or an introduction form (a literal, a
   constructor, `data_in`).  `PExpr.var`, `PExpr.data_out`, `PExpr.cond` and `PExpr.extern`
   are abbreviations of `PExpr.neu` of the neutral forms.
 * `Comp Δ Γ τ` — **computations**: one step whose value a `let` names: an application, a
-  closure, a shared pure value, an extern, a fold, a delay.
+  closure, a shared pure value (a call of an extern computed once, say), a fold, a delay.
 * `Term Δ Γ τ js` — **statements** (`PCL`'s `Expr`): `let`s of computations ending in a tail.
   `js` are the join points in scope (`JCtx`): the types of their parameters.
 
 The grammar is **strictly A-normal**: every operand of a computation or a statement is a pure
-expression, so every call, closure, fold, delay and extern is named by a `Term.letE`, in the
-order it is evaluated.  It is **B-normal** (branching normal): a branch (`ite`,
+expression, so every application, closure, fold and delay is named by a `Term.letE`, in
+the order it is evaluated (a call of an extern is a pure expression, which `Comp.share` names
+when its value is to be computed once).  It is **B-normal** (branching normal): a branch (`ite`,
 `enum_casesOn`, `union_casesOn`) is always the tail of a statement; a branch in the middle of
 a computation is written with a **join point** for the rest of it
 (`join j x := rest; if c then …; jump j a else …; jump j b`).  There is no β-redex either:
@@ -84,16 +84,22 @@ course-of-values form of the fold, available at every block of the signature:
 There is no fixpoint and no fuel: every loop is a fold (`data_rec`, `nat_rec`,
 `array_foldl`), so the evaluators (`LeanScript.Term.eval`) are total and structural.
 
-Leaf operations are externs, a named Lean function on the values of its arguments: a cheap
-one (`LeanScript.Extern.isCheap`) is the pure expression `PExpr.extern`, any other one the
-computation `Comp.extern`.  Because they hold a function, the three layers have no decidable
-equality.
-
-An extern that takes a proof (`a[i]'h`, `UInt16.ofNatLT n h`) is an ordinary extern whose
-function **decides** the proposition on the values of the arguments, since the language
-erases proofs: `fun v => if h : v.2 < v.1.size then v.1[v.2]'h else default`.  In a term
-translated from a Lean program the proposition always holds (the program had to prove it), so
-the `default` branch is never taken; see `LeanScript.TermElab.ToTerm`.
+Leaf operations are **externs**: an entry `e : Extern ks σs τ` of the catalogue
+`LeanInitPureExtern` (`LeanScript.LeanInitPureExterns`), called on the pure expressions of its
+arguments by `Neu.extern e args` (`PExpr.extern`).  There is one kind of extern: every entry of
+the catalogue is a pure function of the values of its arguments, whether it is a machine
+operation (`lean_nat_add`), a function on strings or arrays, or builds a leaf value
+(`lean_mk_empty_array_with_capacity__Array_emptyWithCapacity`).  Every entry has a shorthand in
+the namespaces `PExpr` and `Neu` (`LeanScript.Term.ExternShorthands`):
+`PExpr.lean_string_any (.lit .string "12345") f` is
+`.neu (.extern .lean_string_any (.cons (.lit .string "12345") (.cons f .nil)))`.  Its value is
+the Lean function the entry stands for (`LeanScript.Extern.eval`).  The types of the
+arguments and of the result are types of the language: a proposition is `.bool`, and a proof
+that the Lean function takes is erased — the evaluator decides it on the values of the
+arguments (`if h : i < a.size then a.set i x h else a`); in a term translated from a Lean
+program it always holds (the program had to prove it).  Because a closure (a `Term`) and the
+branches of `enum_casesOn`/`data_rec` are functions, the layers `Comp` and `Term` have no
+decidable equality.
 
 Renaming, weakening and substitution of variables, with the facts that they commute with
 evaluation, are in `LeanScript.Term.TermSubst`.
@@ -119,11 +125,9 @@ inductive Comp {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
   /-- `fun x => body`: a `let`-bound closure. -/
   | lam {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ (σ :: Γ) τ [] → Comp Δ Γ (.fn σ τ)
   /-- A pure expression computed once and shared by name (never a trivial one, a variable or
-      a literal, `PExpr.isTrivial`: those are used in place). -/
+      a literal, `PExpr.isTrivial`: those are used in place).  This is how the value of a
+      call of an extern (`Neu.extern`) is computed once rather than wherever it is used. -/
   | share {Γ : Ctx ks} {τ : Ty ks} : PExpr Δ Γ τ → Comp Δ Γ τ
-  /-- A named operation on the values of its arguments (a pure extern). -/
-  | extern {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks} (name : String)
-      (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → Comp Δ Γ τ
   /-- `Nat.rec` with a non-dependent motive: the successor branch binds the predecessor
       (index `1`) and the answer at it (index `0`). -/
   | nat_rec {Γ : Ctx ks} {τ : Ty ks} : PExpr Δ Γ .nat → PExpr Δ Γ τ →

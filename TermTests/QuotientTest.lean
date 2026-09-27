@@ -22,8 +22,8 @@ The language has no quotients and no proofs.  Both are read through their **eras
   - a function on the quotient, `Quot.lift f h q` (`Quot.liftOn`, `Quotient.lift`,
     `Quotient.lift₂`, `Quot.rec`, `Quot.recOn`, `Quot.hrecOn`, `Quot.recOnSubsingleton`, …),
     is `f` applied to the representative;
-  - an extern taking a quotient (`decide (p = q)`) is given the class `Quot.mk r a` of the
-    representative, so it computes what Lean computes;
+  - a decision on a quotient (`decide (p = q)`, by `Quot.recOnSubsingleton`) is the
+    decision of its instance at the representative;
   - a function *returning* a quotient that is not a `Quot.mk` (after unfolding) is refused:
     the language would need a representative (`Quot.out` is not computable).
 
@@ -119,7 +119,7 @@ info: fun {ks} {Δ} =>
     (Comp.lam
       (Term.ret
         (PExpr.neu
-          (Neu.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd)
+          (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
             (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))))
     (Term.ret
       (PExpr.var
@@ -173,10 +173,18 @@ info: fun {ks} {Δ} =>
     (Comp.lam
       (Term.letE
         (Comp.lam
-          (Term.letE
-            (Comp.extern "decide Eq" (fun v => (fun x0 x1 => decide (Quot.mk Par x0 = Quot.mk Par x1)) v.fst v.snd)
-              (Args.cons (PExpr.var DeBruijn.head.tail) (Args.cons (PExpr.var DeBruijn.head) Args.nil)))
-            (Term.ret (PExpr.var DeBruijn.head))))
+          (Term.ret
+            (PExpr.neu
+              (Neu.extern LeanInitPureExtern.lean_nat_dec_eq__Nat_decEq
+                (Args.cons
+                  (PExpr.neu
+                    (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
+                      (Args.cons (PExpr.var DeBruijn.head.tail) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))
+                  (Args.cons
+                    (PExpr.neu
+                      (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
+                        (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))
+                    Args.nil))))))
         (Term.ret (PExpr.var DeBruijn.head))))
     (Term.ret
       (PExpr.var
@@ -200,8 +208,8 @@ def S.odds (s : S) : Nat :=
 
 def sOddsT := #leanscript_to_term S.odds
 example : (#leanscript_get_ty S : Ty []) = .pair .nat (.array .nat) := rfl
--- the array is passed to the extern `Array.foldl` as the array of the classes,
--- `Array.map (Quot.mk Par) xs` (which the kernel does not evaluate by `rfl`)
+-- the fold is `Comp.array_foldl` over the array of the representatives
+example : (sOddsT (Δ := DSig.nil)).run ((3 : Nat), (#[1, 2, 5] : Array Nat)) = (3 : Nat) := rfl
 
 /-! ## `Pos`: the proof is erased -/
 
@@ -241,7 +249,7 @@ def usePick (n : Nat) : Quot Par := pick n
 /--
 error: LeanScript: the call
   pick n
-returns a value of a quotient, read as its carrier: it cannot be an extern, since the language would need a representative of the class (`Quot.out` is not computable)
+returns a value of a quotient, read as its carrier: the language would need a representative of the class (`Quot.out` is not computable)
 -/
 #guard_msgs in
 #check #leanscript_to_term usePick

@@ -17,9 +17,9 @@ pure expressions (`PExpr`) by the constructor functions of `#leanscript_get_ctor
 `Option`, an enum, `Bool` and a structure, projections, `let`, structural recursion on `Nat`
 (`nat_rec`), on `List Nat` and on a binary tree (`data_rec`), a map that builds a list
 (`data_in` through `#leanscript_get_ctor`), and course-of-values recursion (`data_brec`).
-Then the refusals: every unit-like type (`Option Unit`, a `let` of `()`), an extern on a
-non-leaf value, a non-structural recursive call, a type parameter.  Last the delays `Thunk τ`
-and `Unit → τ`.
+Then the refusals: every unit-like type (`Option Unit`, a `let` of `()`), a library function
+that is not the Lean function of an extern (`List.length`), a non-structural recursive call, a
+type parameter.  Last the delays `Thunk τ` and `Unit → τ`.
 -/
 
 namespace ToTermTest
@@ -37,8 +37,8 @@ def mxT := #leanscript_to_term mx
 example : (mxT (Δ := DSig.nil)).run (3 : Nat) (7 : Nat) = (7 : Nat) := rfl
 
 /-- An `if` that is not in tail position, whose branches are pure: `n * 2` and `+ 1` are
-    cheap externs (`PExpr.extern`), so the `if` is the pure conditional `PExpr.cond` and the
-    whole body is one pure expression, with no join point. -/
+    calls of externs (`PExpr.extern`, neutral pure expressions), so the `if` is the pure
+    conditional `PExpr.cond` and the whole body is one pure expression, with no join point. -/
 def nonTailIf (b : Bool) (n : Nat) : Nat := (if b then n * 2 else 0) + 1
 def nonTailIfT := #leanscript_to_term nonTailIf
 example : (nonTailIfT (Δ := DSig.nil)).run true (4 : Nat) = (9 : Nat) := rfl
@@ -46,19 +46,14 @@ example : (nonTailIfT (Δ := DSig.nil)).run false (4 : Nat) = (1 : Nat) := rfl
 
 example {ks : List Nat} {Δ : DSig ks} : nonTailIfT (Δ := Δ) =
     .ofComp (.lam (.ofComp (.lam
-      (.ret (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HAdd.hAdd"
-          (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd)
-          (.cons
-            (.cond (.bvar 1)
-              (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HMul.hMul"
-                (fun v => (fun x0 x1 : Nat => x0 * x1) v.fst v.snd)
-                (.cons (.bvar 0) (.cons (.lit .nat 2) .nil)))
-              (.lit .nat 0))
-            (.cons (.lit .nat 1) .nil))))))) := rfl
+      (.ret (.lean_nat_add
+        (.cond (.bvar 1) (.lean_nat_mul (.bvar 0) (.lit .nat 2)) (.lit .nat 0))
+        (.lit .nat 1)))))) := rfl
 
-/-- An `if` that is not in tail position, one of whose branches makes a call that is not
-    cheap (`String.length`, on a string): the rest of the computation (`· + 1`) becomes a join
-    point, and each branch jumps to it. -/
+/-- Every call of an extern is a pure expression, whatever the extern (`String.length`, on a
+    string, as well as `Nat.add`): there is no distinction between cheap and costly externs, so
+    this `if` is a `PExpr.cond` too.  (An extern call whose value should be computed once is
+    named by a `let`, `Comp.share`.) -/
 def nonTailIfCall (b : Bool) (s : String) : Nat := (if b then s.length else 0) + 1
 def nonTailIfCallT := #leanscript_to_term nonTailIfCall
 example : (nonTailIfCallT (Δ := DSig.nil)).run true "abc" = (4 : Nat) := rfl
@@ -66,16 +61,9 @@ example : (nonTailIfCallT (Δ := DSig.nil)).run false "abc" = (1 : Nat) := rfl
 
 example {ks : List Nat} {Δ : DSig ks} : nonTailIfCallT (Δ := Δ) =
     .ofComp (.lam (.ofComp (.lam
-      (.join (.prim .nat)
-        (.ret (.extern (σs := [.prim .nat, .prim .nat]) (τ := .prim .nat) "HAdd.hAdd"
-            (fun v => (fun x0 x1 : Nat => x0 + x1) v.fst v.snd)
-          (.cons (.bvar 0) (.cons (.lit .nat 1) .nil))))
-        (.ite (.bvar 1)
-          (.letE (.extern (σs := [.prim .string]) (τ := .prim .nat) "String.length"
-              (fun v => (fun x0 : String => x0.length) v)
-              (.cons (.bvar 0) .nil))
-            (.jump .head (.bvar 0)))
-          (.jump .head (.lit .nat 0))))))) := rfl
+      (.ret (.lean_nat_add
+        (.cond (.bvar 1) (.lean_string_length__String_length (.bvar 0)) (.lit .nat 0))
+        (.lit .nat 1)))))) := rfl
 
 def sumTo : Nat → Nat
   | 0 => 0
@@ -226,9 +214,9 @@ has one constructor and no field (it has one value)
 
 def lenL (l : List Nat) : Nat := l.length
 /--
-error: LeanScript: the argument
-  l
-of `List.length` is not a value of a leaf type (an extern takes and returns values of leaf types only)
+error: LeanScript: the call
+  l.length
+is not a call of an extern: `List.length` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 -/
 #guard_msgs in
 #leanscript_to_term lenL

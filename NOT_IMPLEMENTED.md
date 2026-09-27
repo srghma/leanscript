@@ -125,7 +125,10 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **Substitution theory is only semantic**: `LeanScript/Term/TermSubst.lean` has renaming,
   weakening and substitution and proves they commute with evaluation, but not the syntactic
   laws (substitution composition, `rename` as a special `subst`).
-- **No `DecidableEq`/`Repr` for `Term`**: `Comp.extern` holds a Lean function.
+- **No `DecidableEq`/`Repr` for `Term`**: an extern is now an entry of the catalogue
+  `LeanInitPureExtern σs τ` (data, no Lean function), but the catalogue itself has no derived
+  `DecidableEq`: its signature indices are written over an abstract grammar of types (`MyTy`
+  with `Coe`/`CoeOut` instances), which the deriving handler does not support.
 
 ## 3. The translator `#leanscript_to_term`
 

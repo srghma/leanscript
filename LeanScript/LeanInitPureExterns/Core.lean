@@ -18,151 +18,148 @@ open LeanPrimTy
 open LeanPrimTyCovariant
 
 variable {MyTy : Type}
-  (denote : MyTy → Type)
   [Coe LeanPrimTy MyTy]
   [Coe (LeanPrimTyCovariant LeanPrimTy) MyTy]
   [Coe (LeanPrimTyCovariant MyTy) MyTy]
   (option : MyTy → MyTy)
-  (list : MyTy → MyTy)
   (fn1 : MyTy → MyTy → MyTy)
   (fn2 : MyTy → MyTy → MyTy → MyTy)
   (prod : MyTy → MyTy → MyTy)
-  (leanName : MyTy)
   (ordering : MyTy)
 
 --------------------
 -- Init/Prelude.lean
 --------------------
 /-- The pure externs of `Init/Prelude.lean`. -/
-inductive PreludeExtern : MyTy → Type where
-  | lean_uint32_of_nat_mk : BitVec 32 → PreludeExtern uint32 -- UInt32.ofBitVec
-  | lean_uint32_dec_eq : UInt32 → UInt32 → PreludeExtern LeanPrimTy.bool -- UInt32.decEq
+inductive PreludeExtern : List MyTy → MyTy → Type where
+  | lean_uint32_of_nat_mk : PreludeExtern [(bitvec 32)] uint32 -- UInt32.ofBitVec
+  | lean_uint32_dec_eq : PreludeExtern [uint32, uint32] LeanPrimTy.bool -- UInt32.decEq
   -- | lean_byte_array_size : ByteArray → PreludeExtern nat -- ByteArray.size -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   -- | lean_string_to_utf8__String_toByteArray : String → PreludeExtern byteArray -- String.toByteArray -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  | lean_uint32_dec_lt : UInt32 → UInt32 → PreludeExtern LeanPrimTy.bool -- UInt32.decLt
-  | lean_nat_div : Nat → Nat → PreludeExtern nat -- Nat.div
+  | lean_uint32_dec_lt : PreludeExtern [uint32, uint32] LeanPrimTy.bool -- UInt32.decLt
+  | lean_nat_div : PreludeExtern [nat, nat] nat -- Nat.div
   -- | lean_sorry : (αt : MyTy) → Bool → PreludeExtern αt -- sorryAx -- XXX: DONT IMPLEMENT
-  | lean_uint32_of_nat__UInt32_ofNatLT : (n : Nat) → (h : n < UInt32.size) → PreludeExtern uint32 -- UInt32.ofNatLT
-  | lean_uint32_of_nat__Char_ofNatAux : (n : Nat) → (h : n.isValidChar) → PreludeExtern char -- Char.ofNatAux
-  | lean_array_get_borrowed : (αt : MyTy) → (inhabited_default : denote αt) → Array (denote αt) → Nat → PreludeExtern αt -- Array.get!InternalBorrowed
-  | lean_uint8_to_nat__UInt8_toBitVec : UInt8 → PreludeExtern (bitvec 8) -- UInt8.toBitVec
-  | lean_nat_dec_lt : Nat → Nat → PreludeExtern LeanPrimTy.bool -- Nat.decLt
+  | lean_uint32_of_nat__UInt32_ofNatLT : PreludeExtern [nat] uint32 -- UInt32.ofNatLT (decides `n < UInt32.size`)
+  | lean_uint32_of_nat__Char_ofNatAux : PreludeExtern [nat] char -- Char.ofNatAux (decides `n.isValidChar`)
+  | lean_array_get_borrowed : (αt : MyTy) → PreludeExtern [αt, (array αt), nat] αt -- Array.get!InternalBorrowed
+  | lean_uint8_to_nat__UInt8_toBitVec : PreludeExtern [uint8] (bitvec 8) -- UInt8.toBitVec
+  | lean_nat_dec_lt : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.decLt
   -- | lean_string_from_utf8_unchecked : (toByteArray : ByteArray) → toByteArray.IsValidUTF8 → PreludeExtern string -- String.ofByteArray -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  | lean_nat_mod__Nat_modCore : Nat → Nat → PreludeExtern nat -- Nat.modCore
-  | lean_nat_mod__Nat_mod : Nat → Nat → PreludeExtern nat -- Nat.mod
-  | lean_array_push : (αt : MyTy) → Array (denote αt) → denote αt → PreludeExtern (array αt) -- Array.push
+  | lean_nat_mod__Nat_modCore : PreludeExtern [nat, nat] nat -- Nat.modCore
+  | lean_nat_mod__Nat_mod : PreludeExtern [nat, nat] nat -- Nat.mod
+  | lean_array_push : (αt : MyTy) → PreludeExtern [(array αt), αt] (array αt) -- Array.push
   -- | lean_byte_array_mk : Array UInt8 → PreludeExtern byteArray -- ByteArray.mk -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  | lean_nat_sub : Nat → Nat → PreludeExtern nat -- Nat.sub
-  | lean_uint8_dec_lt : UInt8 → UInt8 → PreludeExtern LeanPrimTy.bool -- UInt8.decLt
+  | lean_nat_sub : PreludeExtern [nat, nat] nat -- Nat.sub
+  | lean_uint8_dec_lt : PreludeExtern [uint8, uint8] LeanPrimTy.bool -- UInt8.decLt
   -- | lean_byte_array_data : ByteArray → PreludeExtern (array uint8) -- ByteArray.data -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
   -- | lean_system_platform_nbits : PreludeExtern (lazy nat) -- System.Platform.getNumBits
-  | lean_uint32_dec_le : UInt32 → UInt32 → PreludeExtern LeanPrimTy.bool -- UInt32.decLe
-  | lean_array_get_size : (αt : MyTy) → Array (denote αt) → PreludeExtern nat -- Array.size
-  | lean_array_to_list : (αt : MyTy) → Array (denote αt) → PreludeExtern (list αt) -- Array.toList
-  | lean_nat_dec_eq__Nat_decEq : Nat → Nat → PreludeExtern LeanPrimTy.bool -- Nat.decEq
-  | lean_nat_dec_eq__Nat_beq : Nat → Nat → PreludeExtern LeanPrimTy.bool -- Nat.beq
-  | lean_array_fget_borrowed : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → PreludeExtern αt -- Array.getInternalBorrowed
-  | lean_mk_empty_array_with_capacity__Array_emptyWithCapacity : (αt : MyTy) → Nat → PreludeExtern (array αt) -- Array.emptyWithCapacity
-  | lean_mk_empty_array_with_capacity__Array_mkEmpty : (αt : MyTy) → Nat → PreludeExtern (array αt) -- Array.mkEmpty
-  | lean_uint8_of_nat__UInt8_ofNat : Nat → PreludeExtern uint8 -- UInt8.ofNat
-  | lean_uint8_of_nat__UInt8_ofNatLT : (n : Nat) → (h : n < UInt8.size) → PreludeExtern uint8 -- UInt8.ofNatLT
+  | lean_uint32_dec_le : PreludeExtern [uint32, uint32] LeanPrimTy.bool -- UInt32.decLe
+  | lean_array_get_size : (αt : MyTy) → PreludeExtern [(array αt)] nat -- Array.size
+  -- | lean_array_to_list : (αt : MyTy) → Array (denote αt) → PreludeExtern (list αt) -- Array.toList -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_nat_dec_eq__Nat_decEq : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.decEq
+  | lean_nat_dec_eq__Nat_beq : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.beq
+  -- | lean_array_fget_borrowed : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → PreludeExtern αt -- Array.getInternalBorrowed -- (takes a proof, and answers a value of an arbitrary type: when the erased proof does not hold there is no value to answer; `a[i]` is `lean_array_get` with the `Inhabited` default)
+  | lean_mk_empty_array_with_capacity__Array_emptyWithCapacity : (αt : MyTy) → PreludeExtern [nat] (array αt) -- Array.emptyWithCapacity
+  | lean_mk_empty_array_with_capacity__Array_mkEmpty : (αt : MyTy) → PreludeExtern [nat] (array αt) -- Array.mkEmpty
+  | lean_uint8_of_nat__UInt8_ofNat : PreludeExtern [nat] uint8 -- UInt8.ofNat
+  | lean_uint8_of_nat__UInt8_ofNatLT : PreludeExtern [nat] uint8 -- UInt8.ofNatLT (decides `n < UInt8.size`)
   -- | lean_is_scalar : (αt : MyTy) → denote αt → PreludeExtern LeanPrimTy.bool -- isScalarObj
-  | lean_uint8_dec_le : UInt8 → UInt8 → PreludeExtern LeanPrimTy.bool -- UInt8.decLe
-  | lean_nat_dec_le__Nat_ble : Nat → Nat → PreludeExtern LeanPrimTy.bool -- Nat.ble
-  | lean_nat_dec_le__Nat_decLe : Nat → Nat → PreludeExtern LeanPrimTy.bool -- Nat.decLe
-  | lean_array_get : (αt : MyTy) → (inhabited_default : denote αt) → Array (denote αt) → Nat → PreludeExtern αt -- Array.get!Internal
-  | lean_nat_add : Nat → Nat → PreludeExtern nat -- Nat.add
+  | lean_uint8_dec_le : PreludeExtern [uint8, uint8] LeanPrimTy.bool -- UInt8.decLe
+  | lean_nat_dec_le__Nat_ble : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.ble
+  | lean_nat_dec_le__Nat_decLe : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.decLe
+  | lean_array_get : (αt : MyTy) → PreludeExtern [αt, (array αt), nat] αt -- Array.get!Internal
+  | lean_nat_add : PreludeExtern [nat, nat] nat -- Nat.add
   -- | lean_panic_fn_borrowed : (αt : MyTy) → String → PreludeExtern αt -- panicCore
-  | lean_uint16_to_nat__UInt16_toBitVec : UInt16 → PreludeExtern (bitvec 16) -- UInt16.toBitVec
-  | lean_uint16_of_nat_mk : BitVec 16 → PreludeExtern uint16 -- UInt16.ofBitVec
-  | lean_uint16_dec_eq : UInt16 → UInt16 → PreludeExtern LeanPrimTy.bool -- UInt16.decEq
-  | lean_string_dec_eq : String → String → PreludeExtern LeanPrimTy.bool -- String.decEq
-  | lean_nat_pred : Nat → PreludeExtern nat -- Nat.pred
+  | lean_uint16_to_nat__UInt16_toBitVec : PreludeExtern [uint16] (bitvec 16) -- UInt16.toBitVec
+  | lean_uint16_of_nat_mk : PreludeExtern [(bitvec 16)] uint16 -- UInt16.ofBitVec
+  | lean_uint16_dec_eq : PreludeExtern [uint16, uint16] LeanPrimTy.bool -- UInt16.decEq
+  | lean_string_dec_eq : PreludeExtern [string, string] LeanPrimTy.bool -- String.decEq
+  | lean_nat_pred : PreludeExtern [nat] nat -- Nat.pred
   -- | lean_usize_of_nat__USize_ofNatLT : (n : Nat) → (h : n < LeanScript.USize_size) → PreludeExtern LeanPrimTy.usize -- USize.ofNatLT
-  | lean_string_mk__String_ofList : List Char → PreludeExtern string -- String.ofList
-  | lean_string_hash : String → PreludeExtern uint64 -- String.hash
-  | lean_uint64_to_nat__UInt64_toBitVec : UInt64 → PreludeExtern (bitvec 64) -- UInt64.toBitVec
-  | lean_uint64_of_nat_mk : BitVec 64 → PreludeExtern uint64 -- UInt64.ofBitVec
-  | lean_uint32_to_nat__UInt32_toNat : UInt32 → PreludeExtern nat -- UInt32.toNat
-  | lean_uint32_to_nat__UInt32_toBitVec : UInt32 → PreludeExtern (bitvec 32) -- UInt32.toBitVec
-  | lean_uint64_dec_eq : UInt64 → UInt64 → PreludeExtern LeanPrimTy.bool -- UInt64.decEq
-  | lean_uint16_of_nat__UInt16_ofNatLT : (n : Nat) → (h : n < UInt16.size) → PreludeExtern uint16 -- UInt16.ofNatLT
-  | lean_name_eq : denote leanName → denote leanName → PreludeExtern LeanPrimTy.bool -- Lean.Name.beq
-  | lean_uint8_of_nat_mk : BitVec 8 → PreludeExtern uint8 -- UInt8.ofBitVec
+  -- | lean_string_mk__String_ofList : List Char → PreludeExtern string -- String.ofList -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_string_hash : PreludeExtern [string] uint64 -- String.hash
+  | lean_uint64_to_nat__UInt64_toBitVec : PreludeExtern [uint64] (bitvec 64) -- UInt64.toBitVec
+  | lean_uint64_of_nat_mk : PreludeExtern [(bitvec 64)] uint64 -- UInt64.ofBitVec
+  | lean_uint32_to_nat__UInt32_toNat : PreludeExtern [uint32] nat -- UInt32.toNat
+  | lean_uint32_to_nat__UInt32_toBitVec : PreludeExtern [uint32] (bitvec 32) -- UInt32.toBitVec
+  | lean_uint64_dec_eq : PreludeExtern [uint64, uint64] LeanPrimTy.bool -- UInt64.decEq
+  | lean_uint16_of_nat__UInt16_ofNatLT : PreludeExtern [nat] uint16 -- UInt16.ofNatLT (decides `n < UInt16.size`)
+  -- | lean_name_eq : denote leanName → denote leanName → PreludeExtern LeanPrimTy.bool -- Lean.Name.beq -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_uint8_of_nat_mk : PreludeExtern [(bitvec 8)] uint8 -- UInt8.ofBitVec
   -- | lean_mk_empty_byte_array : Nat → PreludeExtern byteArray -- ByteArray.emptyWithCapacity -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  | lean_uint8_dec_eq : UInt8 → UInt8 → PreludeExtern LeanPrimTy.bool -- UInt8.decEq
-  | lean_nat_pow : Nat → Nat → PreludeExtern nat -- Nat.pow
+  | lean_uint8_dec_eq : PreludeExtern [uint8, uint8] LeanPrimTy.bool -- UInt8.decEq
+  | lean_nat_pow : PreludeExtern [nat, nat] nat -- Nat.pow
   -- | lean_usize_dec_eq : denote LeanPrimTy.usize → denote LeanPrimTy.usize → PreludeExtern LeanPrimTy.bool -- USize.decEq
   -- | lean_usize_of_nat_mk : BitVec 64 → PreludeExtern LeanPrimTy.usize -- USize.ofBitVec
-  | lean_array_fget : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → PreludeExtern αt -- Array.getInternal
-  | lean_nat_mul : Nat → Nat → PreludeExtern nat -- Nat.mul
+  -- | lean_array_fget : (αt : MyTy) → (a : Array (denote αt)) → (i : Nat) → (h : i < a.size) → PreludeExtern αt -- Array.getInternal -- (takes a proof, and answers a value of an arbitrary type: when the erased proof does not hold there is no value to answer; `a[i]` is `lean_array_get` with the `Inhabited` default)
+  | lean_nat_mul : PreludeExtern [nat, nat] nat -- Nat.mul
   -- | lean_usize_to_nat__USize_toBitVec : denote LeanPrimTy.usize → PreludeExtern (bitvec 64) -- USize.toBitVec
-  | lean_string_utf8_byte_size : String → PreludeExtern nat -- String.utf8ByteSize
+  | lean_string_utf8_byte_size : PreludeExtern [string] nat -- String.utf8ByteSize
   -- | lean_byte_array_push : ByteArray → UInt8 → PreludeExtern byteArray -- ByteArray.push -- (byte/float arrays: supported through the ordinary array entries, or through a separate API, later)
-  | lean_array_mk : (αt : MyTy) → List (denote αt) → PreludeExtern (array αt) -- Array.mk
-  | lean_uint64_mix_hash : UInt64 → UInt64 → PreludeExtern uint64 -- mixHash
-  | lean_uint64_of_nat__UInt64_ofNatLT : (n : Nat) → (h : n < UInt64.size) → PreludeExtern uint64 -- UInt64.ofNatLT
+  -- | lean_array_mk : (αt : MyTy) → List (denote αt) → PreludeExtern (array αt) -- Array.mk -- (lists and names are not types of the grammar: a Lean `List`/`Lean.Name` is a declared datatype)
+  | lean_uint64_mix_hash : PreludeExtern [uint64, uint64] uint64 -- mixHash
+  | lean_uint64_of_nat__UInt64_ofNatLT : PreludeExtern [nat] uint64 -- UInt64.ofNatLT (decides `n < UInt64.size`)
 
 -----------------
 -- Init/Core.lean
 -----------------
 /-- The pure externs of `Init/Core.lean`. -/
-inductive CoreExtern : MyTy → Type where
+inductive CoreExtern : List MyTy → MyTy → Type where
   -- | lean_task_map : (αt : MyTy) → (βt : MyTy) → (denote αt → denote βt) → denote (task αt) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → CoreExtern (task βt) -- Task.map
   -- | lean_task_spawn : (αt : MyTy) → (denote (lazy αt)) → (prio : Task.Priority := Task.Priority.default) → CoreExtern (task αt) -- Task.spawn
-  | lean_strict_or : Bool → Bool → CoreExtern LeanPrimTy.bool -- strictOr
-  | lean_thunk_pure : (αt : MyTy) → denote αt → CoreExtern (thunk αt) -- Thunk.pure
-  | lean_mk_thunk : (αt : MyTy) → (denote (lazy αt)) → CoreExtern (thunk αt) -- Thunk.mk
+  | lean_strict_or : CoreExtern [LeanPrimTy.bool, LeanPrimTy.bool] LeanPrimTy.bool -- strictOr
+  | lean_thunk_pure : (αt : MyTy) → CoreExtern [αt] (thunk αt) -- Thunk.pure
+  | lean_mk_thunk : (αt : MyTy) → CoreExtern [(lazy αt)] (thunk αt) -- Thunk.mk
   -- | lean_task_get_own : (αt : MyTy) → denote (task αt) → CoreExtern αt -- Task.get
   -- | lean_task_pure : (αt : MyTy) → denote αt → CoreExtern (task αt) -- Task.pure
-  | lean_thunk_get_own : (αt : MyTy) → Thunk (denote αt) → CoreExtern αt -- Thunk.get
-  | lean_strict_and : Bool → Bool → CoreExtern LeanPrimTy.bool -- strictAnd
+  | lean_thunk_get_own : (αt : MyTy) → CoreExtern [(thunk αt)] αt -- Thunk.get
+  | lean_strict_and : CoreExtern [LeanPrimTy.bool, LeanPrimTy.bool] LeanPrimTy.bool -- strictAnd
   -- | lean_task_bind : (αt : MyTy) → (βt : MyTy) → denote (task αt) → (denote αt → denote (task βt)) → (prio : Task.Priority := Task.Priority.default) → (sync : Bool := false) → CoreExtern (task βt) -- Task.bind
 
 ---------------------------
 -- Init/Data/Int/Basic.lean
 ---------------------------
 /-- The pure externs of `Init/Data/Int/Basic.lean`. -/
-inductive IntBasicExtern : MyTy → Type where
-  | lean_nat_to_int : Nat → IntBasicExtern int -- Int.ofNat
-  | lean_int_dec_le : Int → Int → IntBasicExtern LeanPrimTy.bool -- Int.decLe
-  | lean_int_dec_lt : Int → Int → IntBasicExtern LeanPrimTy.bool -- Int.decLt
-  | lean_int_dec_eq : Int → Int → IntBasicExtern LeanPrimTy.bool -- Int.decEq
-  | lean_int_mul : Int → Int → IntBasicExtern int -- Int.mul
-  | lean_int_dec_nonneg : Int → IntBasicExtern LeanPrimTy.bool -- Int.decNonneg
-  | lean_int_neg_succ_of_nat : Nat → IntBasicExtern int -- Int.negSucc
-  | lean_int_add : Int → Int → IntBasicExtern int -- Int.add
-  | lean_int_neg : Int → IntBasicExtern int -- Int.neg
-  | lean_int_sub : Int → Int → IntBasicExtern int -- Int.sub
-  | lean_nat_abs : Int → IntBasicExtern nat -- Int.natAbs
+inductive IntBasicExtern : List MyTy → MyTy → Type where
+  | lean_nat_to_int : IntBasicExtern [nat] int -- Int.ofNat
+  | lean_int_dec_le : IntBasicExtern [int, int] LeanPrimTy.bool -- Int.decLe
+  | lean_int_dec_lt : IntBasicExtern [int, int] LeanPrimTy.bool -- Int.decLt
+  | lean_int_dec_eq : IntBasicExtern [int, int] LeanPrimTy.bool -- Int.decEq
+  | lean_int_mul : IntBasicExtern [int, int] int -- Int.mul
+  | lean_int_dec_nonneg : IntBasicExtern [int] LeanPrimTy.bool -- Int.decNonneg
+  | lean_int_neg_succ_of_nat : IntBasicExtern [nat] int -- Int.negSucc
+  | lean_int_add : IntBasicExtern [int, int] int -- Int.add
+  | lean_int_neg : IntBasicExtern [int] int -- Int.neg
+  | lean_int_sub : IntBasicExtern [int, int] int -- Int.sub
+  | lean_nat_abs : IntBasicExtern [int] nat -- Int.natAbs
 
 -------------------------------
 -- Init/Data/Nat/Div/Basic.lean
 -------------------------------
 /-- The pure externs of `Init/Data/Nat/Div/Basic.lean`. -/
-inductive NatDivExtern : MyTy → Type where
-  | lean_nat_div_exact : (x : Nat) → (y : Nat) → (h : y ∣ x) → NatDivExtern nat -- Nat.divExact
+inductive NatDivExtern : List MyTy → MyTy → Type where
+  | lean_nat_div_exact : NatDivExtern [nat, nat] nat -- Nat.divExact (decides `y ∣ x`)
 
 -----------------------------------
 -- Init/Data/Nat/Bitwise/Basic.lean
 -----------------------------------
 /-- The pure externs of `Init/Data/Nat/Bitwise/Basic.lean`. -/
-inductive NatBitwiseExtern : MyTy → Type where
-  | lean_nat_lxor : Nat → Nat → NatBitwiseExtern nat -- Nat.xor
-  | lean_nat_shiftl : Nat → Nat → NatBitwiseExtern nat -- Nat.shiftLeft
-  | lean_nat_shiftr : Nat → Nat → NatBitwiseExtern nat -- Nat.shiftRight
-  | lean_nat_land : Nat → Nat → NatBitwiseExtern nat -- Nat.land
-  | lean_nat_lor : Nat → Nat → NatBitwiseExtern nat -- Nat.lor
+inductive NatBitwiseExtern : List MyTy → MyTy → Type where
+  | lean_nat_lxor : NatBitwiseExtern [nat, nat] nat -- Nat.xor
+  | lean_nat_shiftl : NatBitwiseExtern [nat, nat] nat -- Nat.shiftLeft
+  | lean_nat_shiftr : NatBitwiseExtern [nat, nat] nat -- Nat.shiftRight
+  | lean_nat_land : NatBitwiseExtern [nat, nat] nat -- Nat.land
+  | lean_nat_lor : NatBitwiseExtern [nat, nat] nat -- Nat.lor
 
 -----------------
 -- Init/Util.lean
 -----------------
 /-- The pure externs of `Init/Util.lean`. -/
-inductive UtilExtern : MyTy → Type where
+inductive UtilExtern : List MyTy → MyTy → Type where
   -- | lean_dbg_sleep : (αt : MyTy) → UInt32 → (denote (lazy αt)) → UtilExtern αt -- dbgSleep
   -- | lean_ptr_addr : (αt : MyTy) → denote αt → UtilExtern LeanPrimTy.usize -- ptrAddrUnsafe
   -- | lean_dbg_trace : (αt : MyTy) → String → (denote (lazy αt)) → UtilExtern αt -- dbgTrace
-  | lean_dbg_trace_if_shared : (αt : MyTy) → String → denote αt → UtilExtern αt -- dbgTraceIfShared
+  | lean_dbg_trace_if_shared : (αt : MyTy) → UtilExtern [string, αt] αt -- dbgTraceIfShared
   -- | lean_dbg_stack_trace : (αt : MyTy) → (denote (lazy αt)) → UtilExtern αt -- dbgStackTrace
   -- | lean_is_exclusive_obj : (αt : MyTy) → denote αt → UtilExtern LeanPrimTy.bool -- isExclusiveUnsafe
 
@@ -170,22 +167,22 @@ inductive UtilExtern : MyTy → Type where
 -- Init/Data/Array/Set.lean
 ---------------------------
 /-- The pure externs of `Init/Data/Array/Set.lean`. -/
-inductive ArraySetExtern : MyTy → Type where
-  | lean_array_set : (αt : MyTy) → Array (denote αt) → Nat → denote αt → ArraySetExtern (array αt) -- Array.set!
-  | lean_array_fset : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → denote αt → (h : i < xs.size := by get_elem_tactic) → ArraySetExtern (array αt) -- Array.set
+inductive ArraySetExtern : List MyTy → MyTy → Type where
+  | lean_array_set : (αt : MyTy) → ArraySetExtern [(array αt), nat, αt] (array αt) -- Array.set!
+  | lean_array_fset : (αt : MyTy) → ArraySetExtern [(array αt), nat, αt] (array αt) -- Array.set (decides `i < xs.size`)
 
 -----------------------------
 -- Init/Data/Array/Basic.lean
 -----------------------------
 /-- The pure externs of `Init/Data/Array/Basic.lean`. -/
-inductive ArrayBasicExtern : MyTy → Type where
-  | lean_array_fswap : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (j : Nat) → (h : i < xs.size := by get_elem_tactic) → (h : j < xs.size := by get_elem_tactic) → ArrayBasicExtern (array αt) -- Array.swap
+inductive ArrayBasicExtern : List MyTy → MyTy → Type where
+  | lean_array_fswap : (αt : MyTy) → ArrayBasicExtern [(array αt), nat, nat] (array αt) -- Array.swap (decides `i < xs.size`, `j < xs.size`)
   -- `USize` is `Nat` here, so this is `lean_array_fget`; a call of `Array.uget` is that entry
   -- | lean_array_uget : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (h : i < xs.size) → ArrayBasicExtern αt -- Array.uget
-  | lean_mk_array : (αt : MyTy) → Nat → denote αt → ArrayBasicExtern (array αt) -- Array.replicate
-  | lean_array_swap : (αt : MyTy) → Array (denote αt) → Nat → Nat → ArrayBasicExtern (array αt) -- Array.swapIfInBounds
+  | lean_mk_array : (αt : MyTy) → ArrayBasicExtern [nat, αt] (array αt) -- Array.replicate
+  | lean_array_swap : (αt : MyTy) → ArrayBasicExtern [(array αt), nat, nat] (array αt) -- Array.swapIfInBounds
   -- | lean_array_uget_borrowed : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → (h : i < xs.size) → ArrayBasicExtern αt -- Array.ugetBorrowed
-  | lean_array_pop : (αt : MyTy) → Array (denote αt) → ArrayBasicExtern (array αt) -- Array.pop
+  | lean_array_pop : (αt : MyTy) → ArrayBasicExtern [(array αt)] (array αt) -- Array.pop
   -- `USize` is `Nat` here, so this is `lean_array_fset`; a call of `Array.uset` is that entry
   -- | lean_array_uset : (αt : MyTy) → (xs : Array (denote αt)) → (i : Nat) → denote αt → (h : i < xs.size) → ArrayBasicExtern (array αt) -- Array.uset
   -- | lean_array_size : (αt : MyTy) → Array (denote αt) → ArrayBasicExtern LeanPrimTy.usize -- Array.usize
@@ -194,43 +191,43 @@ inductive ArrayBasicExtern : MyTy → Type where
 -- Init/Meta/Defs.lean
 ----------------------
 /-- The pure externs of `Init/Meta/Defs.lean`. -/
-inductive MetaDefsExtern : MyTy → Type where
-  | lean_version_get_special_desc : MetaDefsExtern (lazy string) -- Lean.version.getSpecialDesc
-  | lean_version_get_is_release : MetaDefsExtern (lazy LeanPrimTy.bool) -- Lean.version.getIsRelease
-  | lean_version_get_major : MetaDefsExtern (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getMajor
-  | lean_version_get_patch : MetaDefsExtern (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getPatch
-  | lean_internal_is_stage0 : MetaDefsExtern (lazy LeanPrimTy.bool) -- Lean.Internal.isStage0
-  | lean_version_get_minor : MetaDefsExtern (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getMinor
-  | lean_get_githash : MetaDefsExtern (lazy string) -- Lean.getGithash
-  | lean_internal_has_llvm_backend : MetaDefsExtern (lazy LeanPrimTy.bool) -- Lean.Internal.hasLLVMBackend
+inductive MetaDefsExtern : List MyTy → MyTy → Type where
+  | lean_version_get_special_desc : MetaDefsExtern [] (lazy string) -- Lean.version.getSpecialDesc
+  | lean_version_get_is_release : MetaDefsExtern [] (lazy LeanPrimTy.bool) -- Lean.version.getIsRelease
+  | lean_version_get_major : MetaDefsExtern [] (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getMajor
+  | lean_version_get_patch : MetaDefsExtern [] (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getPatch
+  | lean_internal_is_stage0 : MetaDefsExtern [] (lazy LeanPrimTy.bool) -- Lean.Internal.isStage0
+  | lean_version_get_minor : MetaDefsExtern [] (lazy nat) -- _private.Init.Meta.Defs.0.Lean.version.getMinor
+  | lean_get_githash : MetaDefsExtern [] (lazy string) -- Lean.getGithash
+  | lean_internal_has_llvm_backend : MetaDefsExtern [] (lazy LeanPrimTy.bool) -- Lean.Internal.hasLLVMBackend
 
 --------------------------
 -- Init/Data/Nat/Log2.lean
 --------------------------
 /-- The pure externs of `Init/Data/Nat/Log2.lean`. -/
-inductive NatLog2Extern : MyTy → Type where
-  | lean_nat_log2 : Nat → NatLog2Extern nat -- Nat.log2
+inductive NatLog2Extern : List MyTy → MyTy → Type where
+  | lean_nat_log2 : NatLog2Extern [nat] nat -- Nat.log2
 
 ----------------------------------
 -- Init/Data/Int/DivMod/Basic.lean
 ----------------------------------
 /-- The pure externs of `Init/Data/Int/DivMod/Basic.lean`. -/
-inductive IntDivModExtern : MyTy → Type where
-  | lean_int_emod : Int → Int → IntDivModExtern int -- Int.emod
-  | lean_int_div_exact : (x : Int) → (y : Int) → (h : y ∣ x) → IntDivModExtern int -- Int.divExact
-  | lean_int_mod : Int → Int → IntDivModExtern int -- Int.tmod
-  | lean_int_ediv : Int → Int → IntDivModExtern int -- Int.ediv
-  | lean_int_div : Int → Int → IntDivModExtern int -- Int.tdiv
+inductive IntDivModExtern : List MyTy → MyTy → Type where
+  | lean_int_emod : IntDivModExtern [int, int] int -- Int.emod
+  | lean_int_div_exact : IntDivModExtern [int, int] int -- Int.divExact (decides `y ∣ x`)
+  | lean_int_mod : IntDivModExtern [int, int] int -- Int.tmod
+  | lean_int_ediv : IntDivModExtern [int, int] int -- Int.ediv
+  | lean_int_div : IntDivModExtern [int, int] int -- Int.tdiv
 
 ----------------------------
 -- Init/System/Platform.lean
 ----------------------------
 /-- The pure externs of `Init/System/Platform.lean`. -/
-inductive PlatformExtern : MyTy → Type where
+inductive PlatformExtern : List MyTy → MyTy → Type where
   -- | lean_internal_get_hardware_concurrency : PlatformExtern (lazy uint32) -- System.Platform.Internal.getHardwareConcurrency
   -- | lean_system_platform_linux : PlatformExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsLinux
-  | lean_system_platform_emscripten : PlatformExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsEmscripten
-  | lean_system_platform_target : PlatformExtern (lazy string) -- System.Platform.getTarget
+  | lean_system_platform_emscripten : PlatformExtern [] (lazy LeanPrimTy.bool) -- System.Platform.getIsEmscripten
+  | lean_system_platform_target : PlatformExtern [] (lazy string) -- System.Platform.getTarget
   -- | lean_system_platform_windows : PlatformExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsWindows
   -- | lean_system_platform_osx : PlatformExtern (lazy LeanPrimTy.bool) -- System.Platform.getIsOSX
 

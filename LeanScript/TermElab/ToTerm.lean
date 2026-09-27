@@ -31,8 +31,9 @@ given with the constructor it becomes:
 | a parameter, a `let`, a `fun` | `PExpr.var` (de Bruijn), `Term.letE`, `Comp.lam` |
 | a closed value of a leaf type (a literal) | `PExpr.lit` |
 | `if c then t else e`, `cond`, `dite` (the proof unused) | `Term.ite` of `decide c` |
-| a call of any other function on values of leaf types (or `decide` of such a relation) | `Comp.extern`, named after the function, on the terms of its value arguments; the pure expression `PExpr.extern` when the extern is cheap (`Extern.isCheap` of its name, and scalar arguments and result: `n * 2`, `i < n`, `UInt16.ofNatLT`) |
-| a call that takes a proof mentioning a local (`a[i]'h`, `UInt16.ofNatLT n h` under `if h : …`) | the same extern, whose Lean function decides the proposition on the values of the arguments: `fun v => if h : v.2 < v.1.size then v.1[v.2]'h else default` (the proof is erased; the `default` is never reached from a program that had to prove the proposition) |
+| a call of a library function that is the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`, looked up in `ToTerm.ExternTable`), or `decide` of a relation decided by one (`Nat.decLt`) | the call of that extern, `PExpr.extern` (a neutral pure expression: `n * 2` is `lean_nat_mul n 2`), on the terms of its value arguments (not types, proofs or `()`; an `[Inhabited α]` argument is passed as its default value); the type arguments of the entry are found by unification |
+| a call of any other library function | its definition unfolded (an instance method, `a + b` to `Nat.add a b`; a definition in terms of other functions), then translated; refused if it cannot be unfolded |
+| a call that takes a proof mentioning a local (`a[i]'h`, `UInt16.ofNatLT n h` under `if h : …`) | the same extern, the proof erased: the evaluator of the extern decides the proposition on the values of the arguments (`if h : n < UInt16.size then UInt16.ofNatLT n h else default`), and `a[i]'h` is read as `Array.get!Internal` (`lean_array_get`, which takes the default of the element type); the `default` is never reached from a program that had to prove the proposition |
 | an `if` (or a `match` on `Bool`) that is an operand, whose branches are pure expressions | the pure conditional `PExpr.cond`, with no join point |
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
@@ -42,19 +43,20 @@ given with the constructor it becomes:
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
 | a value of a quotient `Quot r` / `Quotient s` (read as its carrier): `Quot.mk r a`, `⟦a⟧` | the representative `a` |
 | `Quot.lift f h q`, `Quot.liftOn`, `Quot.rec`, `Quot.recOn`, `Quot.hrecOn`, `Quot.recOnSubsingleton`, `Quotient.lift`, `Quotient.lift₂`, … | `f` of the representative (`Term.letE` of `q` unless it is a `Quot.mk`) |
-| an extern argument of a quotient type (or an `Array` of them) | the class `Quot.mk r a` of the representative `a` is passed to the Lean function |
+| a decision on a quotient (`decide (p = q)` by an instance built with `Quot.recOnSubsingleton`) | the decision of the instance at the representatives; a decision by cases (`if c then isTrue _ else isFalse _`) is the decision of `c` |
 | a cast along an equation (`Eq.ndrec`, `cast`, …, from the `match` of an inductive family) | the value cast |
 | a case analysis (`match`, `casesOn`) | `#leanscript_get_cases`' shape: `ite`, `enum_casesOn`, `letE`, `record_casesOn`, `union_casesOn`; after `data_out` for a recursive type; `nat_rec` for `Nat` |
 | a projection of a structure | `record_casesOn` (or the value itself, for one field) |
 | structural recursion on a `Nat` parameter | `Comp.nat_rec` |
 | a recursion whose recursive calls change other parameters (an accumulator: `loop f (b + 1) acc = loop f b (f acc)`), or leave out trailing ones (`hyperTCO n a`, partially applied) | the fold answers a function of those parameters (`nat_rec`/`data_rec` applied to their current values); a recursive call applies the answer to its arguments there |
 | a recursive call applied to more arguments than the parameters (`ack2 m n` for `ack2 : Nat → (Nat → Nat)`) | `Comp.app` of the answer |
-| a call of a helper definition (not from `Init`/`Std`/`Lean`) that cannot be an extern, because it takes or returns a value that is not of a leaf type (`ackInner (ack2 m)`, `hyperLoop (hyperTCO n a) b x`) | the helper's own translation (a closed term), applied to the terms of the arguments; a helper calling back the function translated is refused |
+| a call of a helper definition (not from `Init`/`Std`/`Lean`: `ackInner (ack2 m)`, `hyperLoop (hyperTCO n a) b x`, `hyperBase n a`) | the helper's own translation (a closed term), applied to the terms of the arguments; a helper calling back the function translated is refused |
 | `Id.run x`, `pure x`, `x >>= f` in `Id` (a `do` block) | `x`, `x`, `Term.letE` |
 | `for i in [a:b:s] do …` in `Id` (`forIn`/`forIn'` over a `Std.Legacy.Range`) | `Comp.nat_rec` on the number of iterations `(b - a + s - 1) / s`, at `i = a + k * s`, whose answer is a `ForInStep`: a `done` (`break`, `return`) is kept to the end, and the loop is the value in the final step |
 | `while c do …` in `Id` (`forIn` over `Lean.Loop`), when its termination is read off its syntax (`LeanScript.TermElab.ToTerm.While`: the condition bounds a `Nat` variable that every iteration that goes on moves towards the bound by a literal step) | the same loop of `x₀ + 1` (counting down) or `b₀ - x₀ + 1` (counting up to `b`) steps, with no fuel (`LeanScript.boundedLoop_stable`); any other `while` is refused |
 | structural recursion on a parameter of a declared datatype, by one function or by a `mutual` group of functions (one per member of the block: `Even.toNat`/`Odd.toNat`, `Rose.sum`/`Rose.sumList`) | `Comp.data_rec` of the whole block, one branch per member (a member no function recurses on gets a constant branch) |
 | a recursive call on a member held in a function field (`(f 0).sum` in the branch of `node f`) | the answer next to the subvalue (`record_casesOn` of the applied field) |
+| `Array.foldl step z xs` (from `0` to `xs.size`) over any other array | `Comp.array_foldl`, the step binding the element and the accumulator |
 | `Array.foldl step z qs` over a field `qs` that holds members in an `Array` (also `Array (Array Q)`, `Nat → Array Q`) | `Comp.array_foldl` over the pairs of the subvalues and their answers; in `step`, a recursive call on the element is its answer |
 | an array literal `#[a, b, …]` of values that are not leaves (`#[(none, 3)] : Array (Option T5 × Nat)`) | `PExpr.array_mk` |
 | `Fin.foldl n f z` | `Comp.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩` |
@@ -79,7 +81,8 @@ Everything else is refused with an error, in particular a type with one value or
 (`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a type of two values
 other than `Bool` (such a type *is* `bool`), a parameter that is a type or an instance,
 mutual recursion through a helper, a recursive call that is not on a subvalue, a pattern on a numeral other than
-`0`/`n + 1`, an extern whose argument or result is not a leaf type, and a call returning a quotient that does
+`0`/`n + 1`, a call of a library function that is not the Lean function of an extern and cannot be
+unfolded (`List.length`), and a call returning a quotient that does
 not compute to `Quot.mk` (the language would need a representative).
 -/
 

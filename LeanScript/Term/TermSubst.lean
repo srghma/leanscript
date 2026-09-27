@@ -43,7 +43,7 @@ def Neu.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {τ : Ty ks} → Neu Δ Γ �
   | _, .var x => .var (r x)
   | _, .data_out b j e => .data_out b j (e.rename r)
   | _, .cond c a b => .cond (c.rename r) (a.rename r) (b.rename r)
-  | _, .extern name f as => .extern name f (as.rename r)
+  | _, .extern e as => .extern e (as.rename r)
   termination_by structural _ e => e
 /-- Rename the variables of a pure expression. -/
 def PExpr.rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') : {τ : Ty ks} → PExpr Δ Γ τ → PExpr Δ Γ' τ
@@ -74,7 +74,6 @@ def Comp.rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Ren Γ Γ' → Comp Δ 
   | _, _, _, r, .app f a => .app (f.rename r) (a.rename r)
   | _, _, _, r, .lam b => .lam (b.rename (Ren.lift r))
   | _, _, _, r, .share e => .share (e.rename r)
-  | _, _, _, r, .extern n f as => .extern n f (as.rename r)
   | _, _, _, r, .nat_rec n z s =>
       .nat_rec (n.rename r) (z.rename r) (s.rename (Ren.lift (Ren.lift r)))
   | _, _, _, r, .array_foldl a z s =>
@@ -198,7 +197,7 @@ def Neu.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {τ : Ty ks} → Neu Δ 
   | _, .var x => s x
   | _, .data_out b j e => PExpr.mkDataOut b j (e.subst s)
   | _, .cond c a b => PExpr.mkCond (c.subst s) (a.subst s) (b.subst s)
-  | _, .extern name f as => .neu (.extern name f (as.subst s))
+  | _, .extern e as => .neu (.extern e (as.subst s))
   termination_by structural _ e => e
 /-- Replace every variable `x` of a pure expression by `s x`. -/
 def PExpr.subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') : {τ : Ty ks} → PExpr Δ Γ τ → PExpr Δ Γ' τ
@@ -229,7 +228,6 @@ def Comp.subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Subst Δ Γ Γ' → Comp
   | _, _, _, s, .app f a => .app (f.subst s) (a.subst s)
   | _, _, _, s, .lam b => .lam (b.subst (Subst.lift s))
   | _, _, _, s, .share e => .share (e.subst s)
-  | _, _, _, s, .extern n f as => .extern n f (as.subst s)
   | _, _, _, s, .nat_rec n z st =>
       .nat_rec (n.subst s) (z.subst s) (st.subst (Subst.lift (Subst.lift s)))
   | _, _, _, s, .array_foldl a z st =>
@@ -347,7 +345,7 @@ theorem Neu.eval_rename {Γ Γ' : Ctx ks} (r : Ren Γ Γ') (ρ' : Env Δ Γ') (�
       simp only [Neu.rename, Neu.eval]
       rw [Neu.eval_rename r ρ' ρ h c, PExpr.eval_rename r ρ' ρ h a,
         PExpr.eval_rename r ρ' ρ h b]
-  | _, .extern _ _ as => by
+  | _, .extern _ as => by
       simp only [Neu.rename, Neu.eval]
       rw [Args.eval_rename r ρ' ρ h as]
   termination_by structural _ e => e
@@ -404,9 +402,6 @@ theorem Comp.eval_rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (c : Comp Δ �
   | _, _, _, .share e, r, ρ', ρ, h => by
       simp only [Comp.rename, Comp.eval]
       exact PExpr.eval_rename r ρ' ρ h e
-  | _, _, _, .extern _ _ as, r, ρ', ρ, h => by
-      simp only [Comp.rename, Comp.eval]
-      rw [Args.eval_rename r ρ' ρ h as]
   | _, _, _, .nat_rec n z st, r, ρ', ρ, h => by
       simp only [Comp.rename, Comp.eval]
       rw [PExpr.eval_rename r ρ' ρ h n, PExpr.eval_rename r ρ' ρ h z]
@@ -585,7 +580,7 @@ theorem Neu.eval_subst {Γ Γ' : Ctx ks} (s : Subst Δ Γ Γ') (ρ' : Env Δ Γ'
         PExpr.eval_subst s ρ' ρ h b]
       generalize c.eval ρ = v
       cases v <;> rfl
-  | _, .extern _ _ as => by
+  | _, .extern _ as => by
       simp only [Neu.subst, Neu.eval, PExpr.eval]
       rw [Args.eval_subst s ρ' ρ h as]
   termination_by structural _ e => e
@@ -643,9 +638,6 @@ theorem Comp.eval_subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (c : Comp Δ Γ
   | _, _, _, .share e, s, ρ', ρ, h => by
       simp only [Comp.subst, Comp.eval]
       exact PExpr.eval_subst s ρ' ρ h e
-  | _, _, _, .extern _ _ as, s, ρ', ρ, h => by
-      simp only [Comp.subst, Comp.eval]
-      rw [Args.eval_subst s ρ' ρ h as]
   | _, _, _, .nat_rec n z st, s, ρ', ρ, h => by
       simp only [Comp.subst, Comp.eval]
       rw [PExpr.eval_subst s ρ' ρ h n, PExpr.eval_subst s ρ' ρ h z]

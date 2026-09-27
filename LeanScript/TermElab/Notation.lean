@@ -37,8 +37,7 @@ notation (`set_option pp.leanscript false` turns that off).
 | `let _ := e; b`, `let _ : τ := e; b`     | `Term.letE e b`; `Comp.share e` for a compound pure `e`; `b` with `e` in place for a variable or a literal |
 | `3`, `"s"`, `true`, `false`              | `PExpr.ofNat 3`, `.lit .string "s"`, `.lit .bool true`, … |
 | `lit p v`                                | `PExpr.lit p v`                                  |
-| `extern "name" f a b`                    | `Comp.extern "name" f` of the arguments `a`, `b` (`Comp.externOf`) |
-| `pextern "name" f a b`                   | the cheap extern `PExpr.extern "name" f` of the arguments `a`, `b` (`PExpr.externOf`), a pure expression |
+| `extern ‹e› a b`                         | the call `PExpr.extern e` of the extern `e` (an entry of the catalogue, `‹.lean_nat_add›`) on the arguments `a`, `b`, a pure expression |
 | `if c then a else b`                     | `Term.ite c a b` (with a join point when not in tail position); the branch when `c` is `true`/`false` |
 | `cond c a b`                             | the pure conditional `PExpr.cond c a b` (`a`, `b` must be pure); the branch when `c` is `true`/`false` |
 | `nat_rec n z s`                          | `Comp.nat_rec n z s`                             |
@@ -74,8 +73,8 @@ it adds.  A Lean term `‹t›` is in the enclosing context: it is shifted past 
 around it (`PExpr.shift`), unless it is generic in its context (`sumT : {Γ : Ctx ks} → …`),
 when it is used as it is.
 
-**Lean arguments.**  In `lit`, `extern`, `pextern`, `enum_mk`, `union_mk`, `data_in`, `data_out`,
-`data_rec` and `data_brec` the leaf, value, name, function, constructor number, block,
+**Lean arguments.**  In `lit`, `extern`, `enum_mk`, `union_mk`, `data_in`, `data_out`,
+`data_rec` and `data_brec` the leaf, value, extern, constructor number, block,
 member, answer types and depth are Lean terms: a number, a string or `‹t›`.  The branches of
 `data_rec`/`data_brec` can also be given as one Lean function `‹brs›`.
 
@@ -127,27 +126,6 @@ abbrev PExpr.inj {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {bs : List Bool} {
 abbrev PExpr.ofNat {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {p : LeanPrimTy}
     (n : Nat) [OfNat p.denote n] : PExpr Δ Γ (.prim p) :=
   .lit p (OfNat.ofNat n)
-
-/-- `Comp.extern` with the arguments before the function: the types of the arguments are
-    known when the function is elaborated, so `fun v => Nat.add v.1 v.2` needs no annotation. -/
-abbrev Comp.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
-    (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
-    Comp Δ Γ τ :=
-  .extern name f args
-
-/-- `Neu.extern` (a cheap extern) with the arguments before the function, as
-    `Comp.externOf`. -/
-abbrev Neu.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
-    (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
-    Neu Δ Γ τ :=
-  .extern name f args
-
-/-- `PExpr.extern` (a cheap extern) with the arguments before the function, as
-    `Comp.externOf`. -/
-abbrev PExpr.externOf {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks}
-    (name : String) (args : Args Δ Γ σs) (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) :
-    PExpr Δ Γ τ :=
-  .neu (.externOf name args f)
 
 /-! ## Syntax -/
 
@@ -218,7 +196,7 @@ open LeanScript.Anf (Src Atom)
 
 /-- The constructors written as an application of their name. -/
 def specialForms : List Name :=
-  [`lit, `extern, `pextern, `cond, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
+  [`lit, `extern, `cond, `nat_rec, `enum_mk, `union_mk, `array_foldl, `data_in, `data_out, `data_rec,
    `data_brec, `thunk_mk, `thunk_force, `lazy_mk, `lazy_force, `jump]
 
 /-- The arguments of a constructor or an extern. -/
@@ -427,18 +405,11 @@ partial def specialSrc (id : Ident) (args : List (TSyntax `lsterm)) : TermElabM 
   match f, args with
   | `lit, [p, v] => do return .atom (.leaf (← `(LeanScript.PExpr.lit $(← leanArg p) $(← leanArg v))))
   | `lit, _ => bad "lit p v"
-  | `extern, name :: fn :: as => do
-      let name ← leanArg name
-      let fn ← leanArg fn
-      return .comp (fun xs _ => do `(LeanScript.Comp.externOf $name $(← mkArgs xs.toList) $fn))
-        (← as.toArray.mapM toSrc) #[]
-  | `extern, _ => bad "extern \"name\" f a₁ … aₙ"
-  | `pextern, name :: fn :: as => do
-      let name ← leanArg name
-      let fn ← leanArg fn
-      return .pneu (fun _ xs => do `(LeanScript.Neu.externOf $name $(← mkArgs xs.toList) $fn))
+  | `extern, e :: as => do
+      let e ← leanArg e
+      return .pneu (fun _ xs => do `(LeanScript.Neu.extern $e $(← mkArgs xs.toList)))
         #[] (← as.toArray.mapM toSrc) fun _ _ => none
-  | `pextern, _ => bad "pextern \"name\" f a₁ … aₙ"
+  | `extern, _ => bad "extern ‹e› a₁ … aₙ"
   | `cond, [c, a, b] => do
       return Anf.Src.cond (← toSrc c) (← toSrc a) (← toSrc b)
   | `cond, _ => bad "cond c a b"
@@ -594,9 +565,9 @@ partial def underLams {α : Type} (x : DelabM α) : DelabM α := do
 def termHeads : List Name :=
   [``PExpr.var, ``PExpr.bvar, ``PExpr.lit, ``PExpr.ofNat, ``PExpr.enum_mk, ``PExpr.record_mk,
    ``PExpr.union_mk, ``PExpr.inj, ``PExpr.array_mk, ``PExpr.data_in, ``PExpr.data_out,
-   ``PExpr.cond, ``PExpr.extern, ``PExpr.externOf, ``PExpr.neu,
-   ``Neu.var, ``Neu.bvar, ``Neu.data_out, ``Neu.cond, ``Neu.extern, ``Neu.externOf,
-   ``Comp.app, ``Comp.lam, ``Comp.share, ``Comp.extern, ``Comp.externOf, ``Comp.nat_rec,
+   ``PExpr.cond, ``PExpr.extern, ``PExpr.neu,
+   ``Neu.var, ``Neu.bvar, ``Neu.data_out, ``Neu.cond, ``Neu.extern,
+   ``Comp.app, ``Comp.lam, ``Comp.share, ``Comp.nat_rec,
    ``Comp.array_foldl, ``Comp.data_rec, ``Comp.data_brec, ``Comp.thunk_mk, ``Comp.thunk_force,
    ``Comp.lazy_mk, ``Comp.lazy_force,
    ``Term.ret, ``Term.letE, ``Term.record_casesOn, ``Term.ite, ``Term.enum_casesOn,
@@ -624,6 +595,22 @@ def leanArgSyn : DelabM (TSyntax `lsterm) := do
   | `($n:num) => `(lsterm| $n:num)
   | `($str:str) => `(lsterm| $str:str)
   | _ => `(lsterm| ‹$s›)
+
+/-- The extern of a call (`PExpr.extern e args`), as a Lean argument: an entry of the catalogue
+    (`LeanInitPureExtern.lean_nat_add`) is printed with dot notation, `‹.lean_nat_add›`, as
+    it is written. -/
+def externArgSyn : DelabM (TSyntax `lsterm) := do
+  let e := (← getExpr).consumeMData
+  let some c := e.getAppFn.constName? | leanArgSyn
+  unless c.getPrefix == `LeanScript.LeanInitPureExtern do return ← leanArgSyn
+  let entry := mkIdent (Name.mkSimple c.getString!)
+  let n := e.getAppNumArgs
+  let info ← getFunInfoNArgs e.getAppFn n
+  let explicit := (List.range n).filter fun i =>
+    (info.paramInfo[i]?.map (·.binderInfo.isExplicit)).getD false
+  if explicit.isEmpty then return ← `(lsterm| ‹.$entry:ident›)
+  let as ← explicit.toArray.mapM fun i => withNaryArg i delab
+  `(lsterm| ‹.$entry:ident $as*›)
 
 /-- The application of the constructor `f` to `args` (already parenthesized). -/
 def mkAppSyn (f : Name) (args : List (TSyntax `lsterm)) : DelabM (TSyntax `lsterm) := do
@@ -763,15 +750,11 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
             return (← `(lsterm| fun $bs* => $b), 0)
         go #[]
     | ``Comp.share => sub 1
-    | ``Comp.extern | ``Comp.externOf | ``PExpr.extern | ``PExpr.externOf | ``Neu.extern
-    | ``Neu.externOf =>
-        let ext := c == ``Comp.extern || c == ``PExpr.extern || c == ``Neu.extern
-        let name ← withArgFromEnd 3 leanArgSyn
-        let f ← withArgFromEnd (if ext then 2 else 1) leanArgSyn
-        let as ← withArgFromEnd (if ext then 1 else 2) delabArgs
+    | ``PExpr.extern | ``Neu.extern =>
+        let ext ← withArgFromEnd 2 externArgSyn
+        let as ← withArgFromEnd 1 delabArgs
         let as ← as.mapM fun a => do tparen (appPrec + 1) (a, ← precOf a)
-        let kw := if c == ``Comp.extern || c == ``Comp.externOf then `extern else `pextern
-        return (← mkAppSyn kw ([name, f] ++ as), appPrec)
+        return (← mkAppSyn `extern ([ext] ++ as), appPrec)
     | ``Comp.nat_rec => return (← mkAppSyn `nat_rec [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.array_foldl => return (← mkAppSyn `array_foldl [← arg 3, ← arg 2, ← arg 1], appPrec)
     | ``Comp.data_rec | ``Comp.data_brec =>
@@ -913,19 +896,15 @@ def delabTerm : Delab := do
 @[delab app.LeanScript.PExpr.data_out] def delabPExprDataOut : Delab := delabTerm
 @[delab app.LeanScript.PExpr.cond] def delabPExprCond : Delab := delabTerm
 @[delab app.LeanScript.PExpr.extern] def delabPExprExtern : Delab := delabTerm
-@[delab app.LeanScript.PExpr.externOf] def delabPExprExternOf : Delab := delabTerm
 @[delab app.LeanScript.PExpr.neu] def delabPExprNeu : Delab := delabTerm
 @[delab app.LeanScript.Neu.var] def delabNeuVar : Delab := delabTerm
 @[delab app.LeanScript.Neu.bvar] def delabNeuBVar : Delab := delabTerm
 @[delab app.LeanScript.Neu.data_out] def delabNeuDataOut : Delab := delabTerm
 @[delab app.LeanScript.Neu.cond] def delabNeuCond : Delab := delabTerm
 @[delab app.LeanScript.Neu.extern] def delabNeuExtern : Delab := delabTerm
-@[delab app.LeanScript.Neu.externOf] def delabNeuExternOf : Delab := delabTerm
 @[delab app.LeanScript.Comp.app] def delabCompApp : Delab := delabTerm
 @[delab app.LeanScript.Comp.lam] def delabCompLam : Delab := delabTerm
 @[delab app.LeanScript.Comp.share] def delabCompShare : Delab := delabTerm
-@[delab app.LeanScript.Comp.extern] def delabCompExtern : Delab := delabTerm
-@[delab app.LeanScript.Comp.externOf] def delabCompExternOf : Delab := delabTerm
 @[delab app.LeanScript.Comp.nat_rec] def delabCompNatRec : Delab := delabTerm
 @[delab app.LeanScript.Comp.array_foldl] def delabCompArrayFoldl : Delab := delabTerm
 @[delab app.LeanScript.Comp.data_rec] def delabCompDataRec : Delab := delabTerm

@@ -2,6 +2,7 @@ module
 
 public meta import LeanScript.GenElab.GetCtor
 public meta import LeanScript.TermElab.Anf
+public meta import LeanScript.TermElab.ToTerm.ExternTable
 public meta import Lean.Elab.PreDefinition.Structural.Eqns
 public meta import Lean.Elab.PreDefinition.WF.Eqns
 
@@ -167,46 +168,30 @@ partial def CIR.isLeaf : CIR → Bool
 def Loc.mentionsFn (L : Loc) (e : Expr) : Bool :=
   L.fns.any fun f => (e.find? (·.isConstOf f)).isSome
 
-/-- The value arguments of an application: explicit arguments whose type is a leaf type.
-    Every other argument must be closed (a type, an instance, a literal parameter), except,
-    when `proofs` is set, a proof: the caller decides its proposition when the term runs
-    (`trExtern`). -/
-def valueArgs (L : Loc) (what : MessageData) (fn : Expr) (args : Array Expr)
-    (proofs : Bool := false) : TM (Array Nat) := do
-  let mut ty ← inferType fn
-  let mut out := #[]
-  for i in [0:args.size] do
-    ty ← whnf ty
-    let .forallE _ d b bi := ty | fail m!"{what} is applied to too many arguments"
-    let a := args[i]!
-    let isVal ← if bi.isExplicit && !(← isProp d) && !(← isType a) then
-        try pure (← cirOf L (← inferType a) false).isLeaf catch _ => pure false
-      else pure false
-    if isVal then out := out.push i
-    else if a.hasFVar && !(proofs && (← isProp d)) then
-      fail m!"the argument{indentExpr a}\nof {what} is not a value of a leaf type (an extern \
-        takes and returns values of leaf types only)"
-    ty := b.instantiate1 a
-  return out
+/-- For a constructor of an inductive type of two constructors whose fields are all proofs
+    (`Decidable`, `Bool`): the `Bool` it is read as (the second constructor is `true`). -/
+def twoPointCtor? (cinfo : ConstructorVal) : MetaM (Option Bool) := do
+  let ind ← getConstInfoInduct cinfo.induct
+  unless ind.ctors.length == 2 && ind.numIndices == 0 do return none
+  for ctor in ind.ctors do
+    let ci ← getConstInfoCtor ctor
+    let allProofs ← forallTelescope ci.type fun xs _ => do
+      xs[ci.numParams:].toArray.allM fun x => do isProp (← inferType x)
+    unless allProofs do return none
+  return some (cinfo.cidx == 1)
 
-/-- Is `T` a scalar type, whose values a machine operation handles in constant time (up to
-    the size of a number): `Bool`, `Nat`, `Int`, a fixed-width integer, `Char`, a float or a
-    bit vector?  A cheap extern (`LeanScript.Extern.isCheap`) takes and returns scalars only. -/
-def isScalarType (T : Expr) : MetaM Bool := do
-  let T ← whnfR T
-  if T.isAppOfArity ``BitVec 1 then return true
-  let some c := T.constName? | return false
-  return [``Bool, ``Nat, ``Int, ``UInt8, ``UInt16, ``UInt32, ``UInt64, ``USize, ``Int8,
-    ``Int16, ``Int32, ``Int64, ``ISize, ``Char, ``Float, ``Float32, ``HashableFloat,
-    ``HashableFloat32].contains c
+/-- The number of explicit leading binders of a type. -/
+def explicitBinderCount : Expr → Nat
+  | .forallE _ _ b bi => (if bi.isExplicit then 1 else 0) + explicitBinderCount b
+  | _ => 0
 
-/-- The syntax of the `k`-th component of a `DenList` of `n` values: a right-nested product
-    with no trailing `PUnit`, so the last component is not followed by `Prod.fst`. -/
-def compStx (v : Lean.Term) (k n : Nat) : MetaM Lean.Term := do
-  let mut r := v
-  for _ in [0:k] do r ← `(Prod.snd $r)
-  if k + 1 == n then return r
-  `(Prod.fst $r)
+/-- The call `e` with its head unfolded: an instance method reduced to the function of the
+    instance (`HAdd.hAdd Nat Nat Nat instHAdd a b` is `Nat.add a b`), or else the definition of
+    its head unfolded once (`Nat.min a b` is `if a ≤ b then a else b`). -/
+def unfoldCall? (e : Expr) : MetaM (Option Expr) := do
+  if let some e₁ ← unfoldProjInst? e then return some e₁
+  let some e₂ ← unfoldDefinition? e | return none
+  return some e₂.headBeta
 
 /-- Is `e` a structural-recursion target: the case analysis of parameter `x` whose branches
     call the function? -/
@@ -405,25 +390,6 @@ def quotDefs : List Name :=
   [``Quot.liftOn, ``Quotient.mk, ``Quotient.mk', ``Quotient.lift, ``Quotient.liftOn,
     ``Quotient.lift₂, ``Quotient.liftOn₂, ``Quotient.rec, ``Quotient.recOn,
     ``Quotient.hrecOn, ``Quotient.recOnSubsingleton]
-
-/-- A Lean local standing for a value of type `t` passed to an extern: its type is the one of
-    the translation's value, and the value passed to the Lean function is rebuilt from it.  A
-    quotient is read as its carrier, so a representative `y` of `Quot r` is passed as
-    `Quot.mk r y`: the extern computes on the class, as the Lean function does. -/
-partial def externLocal (t : Expr) : MetaM (Expr × (Expr → MetaM Expr)) := do
-  let t' ← whnf t
-  if let some α := quotCarrier? t' then
-    let (β, g) ← externLocal α
-    return (β, fun y => do
-      return mkApp3 (.const ``Quot.mk t'.getAppFn.constLevels!) α t'.appArg! (← g y))
-  if t'.isAppOfArity ``Array 1 then
-    let (β, g) ← externLocal t'.appArg!
-    if β == t'.appArg! then return (t, pure)
-    -- an array of values of quotients: the array of their classes
-    return (mkApp (.const ``Array t'.getAppFn.constLevels!) β, fun y => do
-      let f ← withLocalDeclD `z β fun z => do mkLambdaFVars #[z] (← g z)
-      mkAppM ``Array.map #[f, y])
-  return (t, pure)
 
 /-- `fun | ⟨0, _⟩ => x₀ | ⟨1, _⟩ => x₁ | …`: a (dependent) function on `Fin n`. -/
 def finFunStx (xs : Array Lean.Term) : MetaM Lean.Term := do

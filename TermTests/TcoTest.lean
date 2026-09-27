@@ -18,10 +18,11 @@ The definitions of `TcoAck.lean`, `TcoHyper.lean` and `TcoMc91.lean`, translated
 * `ack2`: returns a function; the helper `ackInner` is translated and applied;
 * `hyperWhile`: a `for` loop over `[0:b]` in `Id`, a `nat_rec` over the steps of the loop.
 
-`hyperBase` takes and returns numbers only, so a call of it is an extern.
+`hyperBase` is a helper too: a call of it is a call of its own translation (only library
+functions that are the Lean functions of entries of the catalogue are externs).
 
-For all inputs, the translations of `iter`, `hyperLoop`, `ackInner`, `ack2` and `hyperTCO`
-compute the Lean functions (`iterT_run`, …).  `hyperWhile` (and `stepSum`, a loop with a start,
+For all inputs, the translations of `iter`, `hyperLoop`, `ackInner`, `ack2`, `hyperBase` and
+`hyperTCO` compute the Lean functions (`iterT_run`, …).  `hyperWhile` (and `stepSum`, a loop with a start,
 a step and a `break`) are checked on values: the Lean side is computed by `native_decide`
 (`Std.Legacy.Range.forIn'` is well-founded recursion, which the kernel does not unfold), the
 translation by the kernel (`kernel_rfl`).
@@ -147,21 +148,34 @@ theorem ack2T_run (m n : Nat) : (ack2T (Δ := DSig.nil)).run m n = ack2 m n := b
       funext n; simp only [natIter, ackInner_natIter, ih, ack2]
   exact congrFun (key m) n
 
+/-- The translation of `hyperBase` (a helper: its match on `0`, `1`, `2`, `_ + 3` is a nest of
+    `nat_rec`s) computes `hyperBase`. -/
+theorem hyperBaseT_run (k a : Nat) : (hyperBaseT (Δ := DSig.nil)).run k a = hyperBase k a := by
+  rcases k with _ | _ | _ | k <;> rfl
+
+set_option maxHeartbeats 1000000 in
 theorem hyperTCOT_run (n a b : Nat) :
     (hyperTCOT (Δ := DSig.nil)).run n a b = hyperTCO n a b := by
-  have key : ∀ n b, natIter (fun b => b + 1)
-      (fun k r b => natIter (fun x => x) (fun _ s x => s (r x)) b (hyperBase (k + 1) a)) n b =
+  -- `hyperTCO` calls the helper `hyperBase`, whose translation is used (evaluated in the
+  -- environment of the step, `k`, `r`, `b`, which it does not read): any function `hb` with
+  -- `hb k r b = hyperBase (k + 1) a`
+  have key : ∀ (hb : Nat → (Nat → Nat) → Nat → Nat),
+      (∀ k r b, hb k r b = hyperBase (k + 1) a) → ∀ n b,
+      natIter (fun b => b + 1)
+        (fun k r b => natIter (fun x => x) (fun _ s x => s (r x)) b (hb k r b)) n b =
       hyperTCO n a b := by
-    intro n; induction n with
+    intro hb hhb n; induction n with
     | zero => intro b; rfl
     | succ n ih =>
       intro b
       have : (natIter (fun b => b + 1) (fun k r b =>
-          natIter (fun x => x) (fun _ s x => s (r x)) b (hyperBase (k + 1) a)) n) = hyperTCO n a :=
+          natIter (fun x => x) (fun _ s x => s (r x)) b (hb k r b)) n) = hyperTCO n a :=
         funext ih
-      simp only [hyperLoop_natIter] at this
-      simp only [natIter, hyperLoop_natIter, this, hyperTCO]
-  exact key n b
+      simp only [hyperLoop_natIter, hhb] at this
+      simp only [natIter, hyperLoop_natIter, this, hyperTCO, hhb]
+  refine key _ ?_ n b
+  intro k _ _
+  rcases k with _ | _ | k <;> rfl
 
 end Tco
 

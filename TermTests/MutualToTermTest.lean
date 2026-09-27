@@ -237,9 +237,7 @@ def Q.count : Q → Nat
 end
 
 /--
-error: LeanScript: the argument
-  a✝
-of `Array.size` is not a value of a leaf type (an extern takes and returns values of leaf types only)
+error: LeanScript: the field `a` holds values of the datatype recursed on, paired with the answers at them: it can only be folded (`Array.foldl`), applied, or passed to a recursive call
 -/
 #guard_msgs in
 example := #leanscript_to_term G.count

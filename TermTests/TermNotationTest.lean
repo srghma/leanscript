@@ -35,9 +35,10 @@ abbrev roseB : BRef [0, 0] := .here
 abbrev listNat : Ty [0, 0] := [Ty| Data 1 0]
 abbrev rose : Ty [0, 0] := [Ty| Data 0 0]
 
-/-- `Nat.add`, as an extern: a computation of two pure expressions. -/
-def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : Comp Δ Γ .nat :=
-  [Term| extern "Nat.add" ‹fun v => Nat.add v.1 v.2› ‹a› ‹b›]
+/-- `Nat.add`: the call of the extern `lean_nat_add` (an entry of the catalogue of externs) on
+    two pure expressions, a pure (neutral) expression. -/
+def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : PExpr Δ Γ .nat :=
+  [Term| extern ‹.lean_nat_add› ‹a› ‹b›]
 
 /-! ## Building values -/
 
@@ -63,13 +64,13 @@ example : ([Term| fun _ _ => #1] : Comp Δ [] [Ty| Nat → Bool → Nat]) =
     .lam (.ofComp (.lam (.ret (.var (.tail .head))))) := rfl
 /-- A free `#i` is a variable of the enclosing context. -/
 example : ([Term| fun _ => ‹addT›(#0, #1)] : Comp Δ [.nat] [Ty| Nat → Nat]) =
-    .lam (.ofComp (addT (.bvar 0) (.bvar 1))) := rfl
-/-- Direct style is A-normalised: the inner call is named by a `let`, in evaluation order. -/
+    .lam (.ret (addT (.bvar 0) (.bvar 1))) := rfl
+/-- A call of an extern is a pure expression: calls of externs nest, with no `let`. -/
 example : ([Term| ‹addT›(‹addT›(#0, 1), 2)] : Term Δ [.nat] .nat []) =
-    .letE (addT (.bvar 0) (.lit .nat 1)) (.ofComp (addT (.bvar 0) (.lit .nat 2))) := rfl
+    .ret (addT (addT (.bvar 0) (.lit .nat 1)) (.lit .nat 2)) := rfl
 /-- A branch that is not in tail position gets a join point for the rest of the statement. -/
 example : ([Term| ‹addT›(if #0 then 1 else 2, 10)] : Term Δ [.bool] .nat []) =
-    .join .nat (.ofComp (addT (.bvar 0) (.lit .nat 10)))
+    .join .nat (.ret (addT (.bvar 0) (.lit .nat 10)))
       (.ite (.bvar 0) (.jump .head (.lit .nat 1)) (.jump .head (.lit .nat 2))) := rfl
 
 /-! ## Folds -/
@@ -105,6 +106,11 @@ def fibLenT : Comp Δ [] [Ty| ‹listNat› → Nat] :=
         | · => 1
         | (_, _) => let (_, _) := #1; ‹addT›(#5, #1))
     0 #0]
+
+/-- Direct style is A-normalised: a computation inside an expression (the closure `sumT` and
+    its application) is named by a `let`, in evaluation order. -/
+example : ([Term| ‹addT›(‹sumT› ‹nilT›, 2)] : Term Δ [] .nat []) =
+    .letE sumT (.letE (.app (.bvar 0) nilT) (.ret (addT (.bvar 0) (.lit .nat 2)))) := rfl
 
 /-! ## Running them -/
 
@@ -215,8 +221,8 @@ def roseSumC : Comp Δ [] (.fn rose .nat) :=
       (.letE sumT
         (.letE (.app (.bvar 0) (.bvar 1))
           (.letE (.array_foldl (.bvar 3) (.lit .nat 0)
-              (.record_casesOn (.bvar 0) (.ofComp (addT (.bvar 3) (.bvar 1)))))
-            (.ofComp (addT (.bvar 1) (.bvar 0)))))))
+              (.record_casesOn (.bvar 0) (.ret (addT (.bvar 3) (.bvar 1)))))
+            (.ret (addT (.bvar 1) (.bvar 0)))))))
     0 (.bvar 0)))
 
 /--

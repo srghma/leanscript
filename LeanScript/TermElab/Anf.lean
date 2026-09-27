@@ -28,13 +28,13 @@ The normaliser is the usual one, in continuation-passing style:
   constructor: the branch, with the fields bound as by a `let`); when it is of unknown shape (a
   Lean term, the result of a constructor function) it is shared by a `let` first, whose
   variable is neutral;
-* every computation (an application, a closure, an extern, a fold, a delay) is named by a
+* every computation (an application, a closure, a fold, a delay) is named by a
   `Term.letE`, in evaluation order;
 * a trivial pure expression (a variable, a literal, `PExpr.isTrivial`) bound by a source
   `let` is used in place; any other pure expression is `Comp.share`d;
 * a branch (`if`, `match`) in tail position gets the continuation in each branch; a branch
   anywhere else is the pure conditional `PExpr.cond c a b` when it is an `if` whose branches
-  are pure expressions (proposal 4d: `(if c then x + 1 else 0) * 2`, with `+` a cheap extern),
+  are pure expressions (proposal 4d: `(if c then x + 1 else 0) * 2`, with `+` a call of an extern),
   and otherwise gets a **join point** for the rest of the computation
   (`join j x := rest; …; jump j a`), so the continuation is never duplicated;
 * the bodies of closures, folds and delays are normalised on their own, with no join point in
@@ -162,7 +162,7 @@ inductive Src where
   | atom (a : Atom)
   /-- An introduction form (or a pure expression of unknown shape) applied to operands. -/
   | pnode (tag : Intro) (mk : Array Lean.Term → MetaM Lean.Term) (args : Array Src)
-  /-- A neutral pure expression (`data_out`, `cond`, a cheap extern) applied to operands:
+  /-- A neutral pure expression (`data_out`, `cond`, a call of an extern) applied to operands:
       `neus` are the operands taken apart, which must be neutral, `args` the others.  `red`
       reduces the ι-redex when an operand of `neus` is an introduction form
       (`data_out b j (data_in b j e)` is `e`, `cond true a b` is `a`); an operand of `neus`

@@ -11,23 +11,25 @@ A *two-level catalogue* is an inductive `Outer` each of whose constructors wraps
 of a *family*, another inductive:
 
 ```
-inductive Outer : MyTy → Type where
-  | fooExtern {τ : MyTy} : FooExtern … τ → Outer τ
-  | barExtern {τ : MyTy} : BarExtern … τ → Outer τ
+inductive Outer : List MyTy → MyTy → Type where
+  | fooExtern {σs : List MyTy} {τ : MyTy} : FooExtern … σs τ → Outer σs τ
+  | barExtern {σs : List MyTy} {τ : MyTy} : BarExtern … σs τ → Outer σs τ
 ```
+
+(the indices are the signature of the entry: the types of its arguments, then of its result)
 
 (`LeanScript.LeanInitPureExtern` is one.)  `derive_catalogue_shorthands Outer` adds, for
 every constructor `FooExtern.c` of every family, the definition `Outer.c`, which builds the
 entry and wraps it in the constructor of its family:
 
 ```
-@[match_pattern, reducible] def Outer.c : <the arguments of FooExtern.c> → Outer … τ :=
+@[match_pattern, reducible] def Outer.c : <the arguments of FooExtern.c> → Outer … σs τ :=
   fun x₁ … xₙ => .fooExtern (.c x₁ … xₙ)
 ```
 
 So an entry is written `.c x₁ … xₙ` wherever an `Outer` is expected (and matched on as
 well, since the shorthand is `@[match_pattern]`).  Each shorthand takes all the parameters
-of `Outer` but its index first, implicitly and in their order, whichever of them its family
+of `Outer` but its indices first, implicitly and in their order, whichever of them its family
 uses, so a shorthand can be applied to the parameters of `Outer` like a constructor of
 `Outer`; its explicit arguments are the ones of `FooExtern.c`.
 
@@ -45,8 +47,20 @@ meta def dropBinderAnnotations : Expr → Expr
   | .lam n d b bi => .lam n d.cleanupAnnotations (dropBinderAnnotations b) bi
   | e => e
 
+/-- The names of the leading binders of a type. -/
+meta def binderNames : Expr → Array Name
+  | .forallE n _ b _ => #[n] ++ binderNames b
+  | _ => #[]
+
 /-- Add the shorthand `outer.c` of the entry `c` of the family that the constructor `wrap`
-    of `outer` wraps. -/
+    of `outer` wraps.
+
+    The entry `c` is applied to fresh metavariables for the parameters of its family and to
+    its own arguments; `wrap` is applied to fresh metavariables for its parameters, its
+    indices and its entry, and its entry is unified with `c …`.  What is left undetermined
+    becomes a binder of the shorthand: first the parameters of `outer` (implicitly, in their
+    order), then the parameters of the family that Lean promoted from an index of the entry
+    (explicitly), then the arguments of `c`. -/
 meta def addCatalogueShorthand (outer wrap c : Name) : MetaM Unit := do
   let wrapInfo ← getConstInfoCtor wrap
   let cInfo ← getConstInfoCtor c
@@ -54,52 +68,48 @@ meta def addCatalogueShorthand (outer wrap c : Name) : MetaM Unit := do
     throwError "`derive_catalogue_shorthands`: `{.ofConstName wrap}` or `{.ofConstName c}` \
       is universe polymorphic, which is not supported"
   let name := outer ++ Name.mkSimple c.getString!
-  forallTelescope wrapInfo.type fun xs _ => do
-    -- `xs` are the parameters of `outer` and the entry of the family
-    let params := xs.extract 0 wrapInfo.numParams
-    let some entry := xs.back? | throwError "`derive_catalogue_shorthands`: \
-      the constructor `{.ofConstName wrap}` holds no entry"
-    -- the family, applied to (some of) the parameters of `outer` and to the index of
-    -- `outer` (which Lean promotes to a parameter, since it is the same in the type of
-    -- every constructor of `outer`)
-    let famArgs := (← whnf (← inferType entry)).getAppArgs
-    let some outerIdx := famArgs.back? | throwError "`derive_catalogue_shorthands`: \
-      the family of `{.ofConstName wrap}` has no index"
-    let famParams := famArgs.extract 0 cInfo.numParams
-    -- if Lean promoted the index of the family to a parameter too (every entry of the
-    -- family binds it the same way), the entry takes it as its first argument
-    let idxArgs := if famParams.contains outerIdx then #[outerIdx] else #[]
-    forallTelescope (← instantiateForall cInfo.type famParams) fun args _ => do
-      let e := mkAppN (mkConst c) (famParams ++ args)
-      -- `wrap` applied to `e`: its parameters are the ones of the entry, and those the
-      -- family does not use are the shorthand's own; the index is fixed by the entry
-      let (ms, _, _) ← forallMetaTelescope wrapInfo.type
-      unless ← isDefEq (← inferType ms.back!) (← inferType e) do
-        throwError "`derive_catalogue_shorthands`: `{.ofConstName wrap}` cannot hold{indentExpr e}"
-      let mut own := #[]
-      for i in [0:wrapInfo.numParams] do
-        let p := params[i]!
-        let m ← instantiateMVars ms[i]!
-        if m.isMVar then
-          m.mvarId!.assign p
-        if (m.isMVar || m == p) && p != outerIdx then
-          own := own.push p
-      let body ← instantiateMVars (mkAppN (mkConst wrap) ((ms.extract 0 wrapInfo.numParams).push e))
-      if body.hasMVar then
-        throwError "`derive_catalogue_shorthands`: internal: {body} is not determined"
-      let xs := own ++ idxArgs ++ args
-      let (value, type) ← withNewBinderInfos (idxArgs.map (·.fvarId!, .default)) do
-        return (dropBinderAnnotations (← mkLambdaFVars xs body),
-          ← mkForallFVars xs (← inferType body))
-      let decl := Declaration.defnDecl
-        { name, levelParams := [], type, value, hints := .abbrev, safety := .safe }
-      withExporting do
-        addDecl decl
-        setReducibleAttribute name
-        matchPatternAttr.setTag name
-        addDocStringCore name s!"`{c.getPrefix.getString!}.{c.getString!}`, \
-          as an entry of the catalogue `{outer}`."
-      compileDecl decl
+  let wrapNames := binderNames wrapInfo.type
+  let cNames := binderNames cInfo.type
+  let (pms, _, rest) ← forallMetaBoundedTelescope cInfo.type cInfo.numParams
+  forallTelescope rest fun args _ => do
+    let (ms, _, _) ← forallMetaTelescope wrapInfo.type
+    let e := mkAppN (mkConst c) (pms ++ args)
+    unless ← isDefEq ms.back! e do
+      throwError "`derive_catalogue_shorthands`: `{.ofConstName wrap}` cannot hold{indentExpr e}"
+    -- the metavariables left, in the order of the binders of the shorthand
+    let mut pending : Array (Name × BinderInfo × MVarId) := #[]
+    for i in [0:wrapInfo.numParams] do
+      if let .mvar m ← instantiateMVars ms[i]! then
+        unless pending.any (·.2.2 == m) do
+          pending := pending.push (wrapNames[i]!, .implicit, m)
+    for i in [0:pms.size] do
+      if let .mvar m ← instantiateMVars pms[i]! then
+        unless pending.any (·.2.2 == m) do
+          pending := pending.push (cNames[i]!, .default, m)
+    let rec go (k : Nat) (fvs : Array Expr) : MetaM Unit := do
+      if h : k < pending.size then
+        let (n, bi, m) := pending[k]
+        let ty ← instantiateMVars (← m.getType)
+        withLocalDecl n bi ty fun x => do
+          m.assign x
+          go (k + 1) (fvs.push x)
+      else
+        let body ← instantiateMVars (mkAppN (mkConst wrap) ms)
+        if body.hasMVar then
+          throwError "`derive_catalogue_shorthands`: internal: {body} is not determined"
+        let xs := fvs ++ args
+        let value := dropBinderAnnotations (← mkLambdaFVars xs body)
+        let type ← mkForallFVars xs (← inferType body)
+        let decl := Declaration.defnDecl
+          { name, levelParams := [], type, value, hints := .abbrev, safety := .safe }
+        withExporting do
+          addDecl decl
+          setReducibleAttribute name
+          matchPatternAttr.setTag name
+          addDocStringCore name s!"`{c.getPrefix.getString!}.{c.getString!}`, \
+            as an entry of the catalogue `{outer}`."
+        compileDecl decl
+    go 0 #[]
 
 /-- `derive_catalogue_shorthands Outer`: for every entry `FooExtern.c` of every family
     wrapped by a constructor `Outer.fooExtern` of `Outer`, the shorthand
