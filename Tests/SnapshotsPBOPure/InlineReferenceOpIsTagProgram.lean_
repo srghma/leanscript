@@ -1,0 +1,170 @@
+-- SnapshotsPBOPure.InlineReferenceOpIsTag: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction: the one way it
+-- repeats work is `Term.fixAcc`, which carries a well-founded relation, a proof that
+-- it is well founded, and the measure of its arguments the translation read off
+-- Lean's own termination proof.
+-- What became of the declarations of the module:
+--   6 are programs below
+--   6 are compiled where they are used, or have no instantiation of their own
+--   4 are gaps the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `MyList.Cons.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `MyList.Nil.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `MyList.ctorElim`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `MyList.ctorIdx`
+-- outside the fragment: `fn_prime`: the parameter `x.1` of `fn_prime` has type `PUnit`, which the front end does not translate — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `instReprMyList`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `instReprMyList.repr`
+-- outside the fragment: `test1`: the parameter `fn` of `test1` has type `PUnit →
+--   MyList
+--     Int`, which the front end does not translate — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+-- outside the fragment: `test2`: the parameter `fn` of `test2` has type `PUnit →
+--   MyList
+--     Int`, which the front end does not translate — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+-- outside the fragment: `test3`: the parameter `fn` of `test3` has type `PUnit →
+--   MyList
+--     Int`, which the front end does not translate — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+--
+-- ════ 🎯 extern1 : (recTaggedUnion (int self#0)|())
+-- let ♯ := 1#;
+-- let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+-- let ♯ := ctor1()();
+-- let ♯ := ctor0(int (recTaggedUnion (int self#0)|()))(♯1, ♯0);
+-- ♯0
+--
+-- ════ 🎯 extern2 : (recTaggedUnion (int self#0)|())
+-- let ♯ := 1#;
+-- let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+-- let ♯ := ctor1()();
+-- let ♯ := ctor0(int (recTaggedUnion (int self#0)|()))(♯1, ♯0);
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- ♯0
+--
+-- ════ 🎯 extern3 : (record (recTaggedUnion (int self#0)|()) (recTaggedUnion (int self#0)|()))
+-- let ♯ := @extern2;
+-- let ♯ := ctor1()();
+-- let ♯ := ctor0((recTaggedUnion (int self#0)|()) (recTaggedUnion (int self#0)|()))(♯1, ♯0);
+-- ♯0
+--
+-- ════ 🎯 test4 : (recTaggedUnion (int self#0)|())
+-- let ♯ := @extern1;
+-- case ♯0 of
+--   | 0(int (recTaggedUnion (int self#0)|())) => let ♯ := 0#;
+--     let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--     let ♯ := ctor0(int (recTaggedUnion (int self#0)|()))(♯0, ♯4);
+--     ♯0
+--   | _ => let ♯ := ctor1()();
+--     ♯0
+--
+--
+-- ════ 🎯 test5 : (recTaggedUnion (int self#0)|())
+-- let ♯ := @extern2;
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- case ♯0 of
+--   | 0(int (recTaggedUnion (int self#0)|())) => let ♯ := 0#;
+--     let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--     let ♯ := ctor0(int (recTaggedUnion (int self#0)|()))(♯0, ♯4);
+--     ♯0
+--   | _ => let ♯ := ctor1()();
+--     ♯0
+--
+--
+-- ════ 🎯 test6 : (recTaggedUnion (int self#0)|())
+-- let ♯ := @extern3;
+-- let ♯ := proj0.0(♯0);
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- let ♯ := ♯0;
+-- case ♯0 of
+--   | 0(int (recTaggedUnion (int self#0)|())) => let ♯ := 0#;
+--     let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--     let ♯ := ctor0(int (recTaggedUnion (int self#0)|()))(♯0, ♯4);
+--     ♯0
+--   | _ => let ♯ := ctor1()();
+--     ♯0
+--
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureInlineReferenceOpIsTag
+
+/-- `extern1`, as a declaration of the module. -/
+def d_extern1 : GlobalDecl := ⟨"extern1", (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)⟩
+
+/-- The signature `extern1` is written against. -/
+def sig_extern1 : Sig := ⟨[], by decide⟩
+
+/-- The body of `extern1`. -/
+def tm_extern1 : Term sig_extern1 [] [] (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl) :=
+  (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0)))))
+
+/-- `extern2`, as a declaration of the module. -/
+def d_extern2 : GlobalDecl := ⟨"extern2", (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)⟩
+
+/-- The signature `extern2` is written against. -/
+def sig_extern2 : Sig := ⟨[d_extern1], by decide⟩
+
+/-- The body of `extern2`. -/
+def tm_extern2 : Term sig_extern2 [] [] (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl) :=
+  (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (Term.letE (♯0) (Term.letE (♯0) (Term.letE (♯0) (♯0))))))))
+
+/-- `extern3`, as a declaration of the module. -/
+def d_extern3 : GlobalDecl := ⟨"extern3", (Ty.record ⟨(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), []⟩)⟩
+
+/-- The signature `extern3` is written against. -/
+def sig_extern3 : Sig := ⟨[d_extern2, d_extern1], by decide⟩
+
+/-- The body of `extern3`. -/
+def tm_extern3 : Term sig_extern3 [] [] (Ty.record ⟨(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), []⟩) :=
+  (Term.letE (Term.global .here) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (Term.letE (Term.ctor (τ := (Ty.record ⟨(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), []⟩)) 0 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0))))
+
+/-- `test4`, as a declaration of the module. -/
+def d_test4 : GlobalDecl := ⟨"test4", (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)⟩
+
+/-- The signature `test4` is written against. -/
+def sig_test4 : Sig := ⟨[d_extern3, d_extern2, d_extern1], by decide⟩
+
+/-- The body of `test4`. -/
+def tm_test4 : Term sig_test4 [] [] (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl) :=
+  (Term.letE (Term.global (.there (.there .here))) (Term.caseTag (♯0) (Alts.cons 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (Term.letE (Term.natL 0) (Term.letE (natToInt (♯0)) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯0) (.cons (♯4) .nil))) (♯0)))) (Alts.deflt (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (♯0)))) (by rfl)))
+
+/-- `test5`, as a declaration of the module. -/
+def d_test5 : GlobalDecl := ⟨"test5", (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)⟩
+
+/-- The signature `test5` is written against. -/
+def sig_test5 : Sig := ⟨[d_test4, d_extern3, d_extern2, d_extern1], by decide⟩
+
+/-- The body of `test5`. -/
+def tm_test5 : Term sig_test5 [] [] (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl) :=
+  (Term.letE (Term.global (.there (.there .here))) (Term.letE (♯0) (Term.letE (♯0) (Term.letE (♯0) (Term.caseTag (♯0) (Alts.cons 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (Term.letE (Term.natL 0) (Term.letE (natToInt (♯0)) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯0) (.cons (♯4) .nil))) (♯0)))) (Alts.deflt (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (♯0)))) (by rfl))))))
+
+/-- `test6`, as a declaration of the module. -/
+def d_test6 : GlobalDecl := ⟨"test6", (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)⟩
+
+/-- The signature `test6` is written against. -/
+def sig_test6 : Sig := ⟨[d_test5, d_test4, d_extern3, d_extern2, d_extern1], by decide⟩
+
+/-- The body of `test6`. -/
+def tm_test6 : Term sig_test6 [] [] (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl) :=
+  (Term.letE (Term.global (.there (.there .here))) (Term.letE (Term.proj (♯0) 0 0 (by rfl) (by rfl)) (Term.letE (♯0) (Term.letE (♯0) (Term.letE (♯0) (Term.caseTag (♯0) (Alts.cons 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (Term.letE (Term.natL 0) (Term.letE (natToInt (♯0)) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 0 [Ty.int, (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)] (by rfl) (.cons (♯0) (.cons (♯4) .nil))) (♯0)))) (Alts.deflt (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), [(RTy.self 0)]⟩ [] []) rfl)) 1 [] (by rfl) .nil) (♯0)))) (by rfl)))))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test6, d_test5, d_test4, d_extern3, d_extern2, d_extern1], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test6 (by decide) tm_test6 (.cons d_test5 (by decide) tm_test5 (.cons d_test4 (by decide) tm_test4 (.cons d_extern3 (by decide) tm_extern3 (.cons d_extern2 (by decide) tm_extern2 (.cons d_extern1 (by decide) tm_extern1 .nil))))))
+
+end ProgramSnapshotsPBOPureInlineReferenceOpIsTag

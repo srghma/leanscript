@@ -1,0 +1,50 @@
+-- SnapshotsPBOPure.Tco01: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   1 is a program below
+-- Nothing is left out.
+--
+-- ════ 🎯 test : (fn nat nat)
+-- fixStructTail (nat) subject { arg0 } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then ♯0 else let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ 1#));
+--   ♯0
+-- }
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureTco01
+
+/-- `test`, as a declaration of the module. -/
+def d_test : GlobalDecl := ⟨"test", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `test` is written against. -/
+def sig_test : Sig := ⟨[], by decide⟩
+
+/-- The body of `test`. -/
+def tm_test : Term sig_test [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.fixStructTail [Ty.nat] (v♯0) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (♯0) (Term.letE (Term.selfCall .head (.cons (natSub (♯0) (Term.natL 1)) .nil)) (♯0))) (by sorry) (by decide))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test (by decide) tm_test .nil)
+
+end ProgramSnapshotsPBOPureTco01

@@ -1,0 +1,48 @@
+-- SnapshotsPBOPure.Fusion02: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   8 are compiled where they are used, or have no instantiation of their own
+--   1 has no type in the grammar, and can have none
+--   1 is a gap the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- outside the fragment: `dropPrefix1`: a byte position built from a byte index that is not a literal; the front end has no conversion from `Nat` to a position
+-- polymorphic, and every call of it in this module is inside a declaration that has no program of its own (`test`), so no call is left to say what type to compile it at: `filterMapStep`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `filterMapU`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `filterU`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `fromArray`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `mapU`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `overArray`
+-- no type of the grammar describes it, and none can: `test`: the result type of the local function `_f.4`, `Option
+--   (lcAny ×
+--     String)`, is not one the front end translates — part of it was erased by the compiler to `lcAny`, which is what happens to a value whose type is not known statically — the state of an existential type, say — and no `Ty` denotes such a value
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `toArray`
+-- polymorphic, and every call of it in this module is inside a declaration that has no program of its own (`test`), so no call is left to say what type to compile it at: `toArrayLoop`
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureFusion02
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  .nil
+
+end ProgramSnapshotsPBOPureFusion02

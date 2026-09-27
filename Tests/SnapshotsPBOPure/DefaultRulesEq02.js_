@@ -1,0 +1,7 @@
+const test1 = (x, y) => x !== y;
+const test2 = (a, b) => a !== b;
+const test3 = (a) => 12 !== a;
+const test4 = (a) => a !== 12;
+const test5 = (y) => 12 !== y;
+const test6 = (y) => !("hello" === y.bar && !y.baz && 42 === y.foo);
+export { test1, test2, test3, test4, test5, test6 };

@@ -1,0 +1,55 @@
+-- SnapshotsMy.Tco07: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   1 is a program below
+-- Nothing is left out.
+--
+-- ════ 🎯 boom : (fn nat nat)
+-- fixStructTail (nat) subject { arg0 } body {
+--   let ♯ := 1#;
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ ♯0);
+--   if ♯0 then let ♯ := 0#;
+--   ♯0 else let ♯ := 3#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ ♯3);
+--   let ♯ := self0⟨↓⟩(♯0);
+--   ♯0
+-- }
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyTco07
+
+/-- `boom`, as a declaration of the module. -/
+def d_boom : GlobalDecl := ⟨"boom", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `boom` is written against. -/
+def sig_boom : Sig := ⟨[], by decide⟩
+
+/-- The body of `boom`. -/
+def tm_boom : Term sig_boom [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.fixStructTail [Ty.nat] (v♯0) (fun _ => True) (Term.letE (Term.natL 1) (Term.letE (natEq (♯1) (♯0)) (Term.ite (♯0) (Term.letE (Term.natL 0) (♯0)) (Term.letE (Term.natL 3) (Term.letE (natMul (♯0) (♯3)) (Term.letE (Term.selfCall .head (.cons (♯0) .nil)) (♯0))))))) (by sorry) (by decide))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_boom], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_boom (by decide) tm_boom .nil)
+
+end ProgramSnapshotsMyTco07

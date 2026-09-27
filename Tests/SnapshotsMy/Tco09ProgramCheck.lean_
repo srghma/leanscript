@@ -1,0 +1,62 @@
+/-
+The terms `SnapshotsMy/Tco09Program.lean` was generated with, run against the Lean
+functions of `SnapshotsMy/Tco09.lean` they were translated from.
+
+`Term` has no fuel argument: `Term.fix` carries the rank it was translated with, so
+running one of these terms is an ordinary total Lean computation.  What these checks add
+is that the rank the front end chose is *enough* — the recursion is not cut short — and
+that the term computes the same function as the Lean declaration it came from.
+-/
+
+import SnapshotsMy.Tco09Program
+import SnapshotsMy.Tco09
+
+open LeanScript LeanScript.Expr ProgramSnapshotsMyTco09
+
+namespace SnapshotsMy.Tco09Check
+
+/-- The declarations `diagonal` is written against, as a program. -/
+def pDiagonal : Program sig_diagonal.decls := .cons d_ackRev (by decide) tm_ackRev .nil
+
+/-- The declarations `hyper` is written against, as a program. -/
+def pHyper : Program sig_hyper.decls :=
+  .cons d_diagonal (by decide) tm_diagonal pDiagonal
+
+/-- The declarations `Mc91.M` is written against, as a program. -/
+def pMc91M : Program sig_Mc91_M.decls := .cons d_hyper (by decide) tm_hyper pHyper
+
+/-- The declarations `Mc91` is written against, as a program. -/
+def pMc91 : Program sig_Mc91.decls := .cons d_Mc91_M (by decide) tm_Mc91_M pMc91M
+
+/-- `ackRev`, as the emitted term computes it. -/
+def runAckRev (n m : Nat) : Nat := Term.run tm_ackRev n m
+
+/-- `diagonal`, as the emitted term computes it. -/
+def runDiagonal (m n : Nat) : Nat := Program.run pDiagonal tm_diagonal m n
+
+/-- `hyper`, as the emitted term computes it. -/
+def runHyper (n a b : Nat) : Nat := Program.run pHyper tm_hyper n a b
+
+/-- `Mc91`, as the emitted term computes it. -/
+def runMc91 (n : Nat) : Nat := Program.run pMc91 tm_Mc91 n
+
+/-- The emitted term and the Lean function agree on a square of inputs. -/
+def agrees2 (bound : Nat) (f g : Nat → Nat → Nat) : Bool :=
+  (List.range bound).all fun i => (List.range bound).all fun j => f i j == g i j
+
+theorem ackRev_agrees : agrees2 4 runAckRev ackRev = true := by native_decide
+
+theorem diagonal_agrees : agrees2 8 runDiagonal diagonal = true := by native_decide
+
+theorem hyper_agrees :
+    ((List.range 4).all fun n => (List.range 3).all fun a => (List.range 3).all fun b =>
+      runHyper n a b == hyper n a b) = true := by native_decide
+
+theorem Mc91_agrees :
+    ((List.range 130).all fun n => runMc91 n == Mc91 n) = true := by native_decide
+
+/-- McCarthy's 91 function is 91 below 101, which the emitted term reproduces. -/
+theorem Mc91_is_91 : ((List.range 101).all fun n => runMc91 n == 91) = true := by
+  native_decide
+
+end SnapshotsMy.Tco09Check

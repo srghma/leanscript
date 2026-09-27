@@ -1,0 +1,192 @@
+-- SnapshotsPBOPure.RecursionSchemes01: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   7 are programs below
+--   8 are compiled where they are used, or have no instantiation of their own
+--   1 has no type in the grammar, and can have none
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `ExprF.Add.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `ExprF.Lit.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `ExprF.Mul.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `ExprF.ctorElim`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `ExprF.ctorIdx`
+-- polymorphic, so it is compiled once per instantiation: `cata` → `cata@int`
+-- polymorphic, so it is compiled once per instantiation: `cataMap` → `cataMap@int`
+-- no type of the grammar describes it, and none can: `instFunctorExprF`: the result type of `instFunctorExprF`, `Functor
+--   ExprF`, is not one the front end translates — `Functor` is applied to a *family* of types (`ExprF : Type -> Type`) rather than to a type, and the front end has no higher-kinded types
+-- polymorphic, and every call of it in this module is inside a declaration that has no program of its own (`instFunctorExprF`), so no call is left to say what type to compile it at: `mapExprF`
+--
+-- ════ 🎯 bump : (fn (taggedUnion (int)|(int int)|(int int)) (taggedUnion (int)|(int int)|(int int)))
+-- ƛ case ♯0 of
+--   | 0(int) => let ♯ := 1#;
+--     let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--     let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯2) ⬝ ♯0);
+--     let ♯ := ctor0(int)(♯0);
+--     ♯0
+--   | _ => ♯0
+--
+--
+-- ════ 🎯 eval : (fn (taggedUnion (int)|(int int)|(int int)) int)
+-- ƛ case ♯0 of
+--   | 0(int) => ♯0
+--   | 1(int int) => let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+--     ♯0
+--   | 2(int int) => let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+--     ♯0
+--
+--
+-- ════ 📦 cata & cataMap (clique)@int : (fn nat (fn (fn (taggedUnion (int)|(int int)|(int int)) int) (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (fn (fn (taggedUnion (int)|(int int)|(int int)) int) (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (taggedUnion (int)|((taggedUnion (int)|(int int)|(int int)))))))))
+-- fixWfDeep (nat (fn (taggedUnion (int)|(int int)|(int int)) int) (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (fn (taggedUnion (int)|(int int)|(int int)) int) (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0))) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then ctor0(int)(let ♯ := case self0⟨↓⟩(1#, ƛ 0i, ctor0(int)(0i), ♯1, ♯2) of
+--     | 1((taggedUnion (int)|(int int)|(int int))) => ♯0
+--     | _ => ctor0(int)(0i)
+-- ;
+--   let ♯ := (♯2 ⬝ ♯0);
+--   ♯0) else ctor1((taggedUnion (int)|(int int)|(int int)))(case ♯4 of
+--     | 0(int) => let ♯ := ctor0(int)(♯0);
+--       ♯0
+--     | 1((recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0))) => let ♯ := case self0⟨↓⟩(0#, ♯5, ♯0, ƛ 0i, ctor0(int)(0i)) of
+--         | 0(int) => ♯0
+--         | _ => 0i
+-- ;
+--       let ♯ := case self0⟨↓⟩(0#, ♯6, ♯2, ƛ 0i, ctor0(int)(0i)) of
+--         | 0(int) => ♯0
+--         | _ => 0i
+-- ;
+--       let ♯ := ctor1(int int)(♯1, ♯0);
+--       ♯0
+--     | 2((recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0))) => let ♯ := case self0⟨↓⟩(0#, ♯5, ♯0, ƛ 0i, ctor0(int)(0i)) of
+--         | 0(int) => ♯0
+--         | _ => 0i
+-- ;
+--       let ♯ := case self0⟨↓⟩(0#, ♯6, ♯2, ƛ 0i, ctor0(int)(0i)) of
+--         | 0(int) => ♯0
+--         | _ => 0i
+-- ;
+--       let ♯ := ctor2(int int)(♯1, ♯0);
+--       ♯0
+-- )
+-- }
+--
+-- ════ 🎯 cata@int : (fn (fn (taggedUnion (int)|(int int)|(int int)) int) (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) int))
+-- ƛ ƛ case (((((@cata & cataMap (clique)@int ⬝ 0#) ⬝ ♯1) ⬝ ♯0) ⬝ ƛ 0i) ⬝ ctor0(int)(0i)) of
+--   | 0(int) => ♯0
+--   | _ => 0i
+--
+--
+-- ════ 🎯 cataMap@int : (fn (fn (taggedUnion (int)|(int int)|(int int)) int) (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) (taggedUnion (int)|(int int)|(int int))))
+-- ƛ ƛ case (((((@cata & cataMap (clique)@int ⬝ 1#) ⬝ ƛ 0i) ⬝ ctor0(int)(0i)) ⬝ ♯1) ⬝ ♯0) of
+--   | 1((taggedUnion (int)|(int int)|(int int))) => ♯0
+--   | _ => ctor0(int)(0i)
+--
+--
+-- ════ 🎯 test1 : (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) int)
+-- ƛ let ♯ := @eval;
+-- let ♯ := ((@cata@int ⬝ ♯0) ⬝ ♯1);
+-- ♯0
+--
+-- ════ 🎯 test2 : (fn (recTaggedUnion (int)|(self#0 self#0)|(self#0 self#0)) int)
+-- ƛ let ♯ := ƛ let ♯ := (@bump ⬝ ♯0);
+-- let ♯ := (@eval ⬝ ♯0);
+-- ♯0;
+-- let ♯ := ((@cata@int ⬝ ♯0) ⬝ ♯1);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureRecursionSchemes01
+
+/-- `bump`, as a declaration of the module. -/
+def d_bump : GlobalDecl := ⟨"bump", (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])))⟩
+
+/-- The signature `bump` is written against. -/
+def sig_bump : Sig := ⟨[], by decide⟩
+
+/-- The body of `bump`. -/
+def tm_bump : Term sig_bump [] [] (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) :=
+  (Term.lam (Term.caseTag (♯0) (Alts.cons 0 [Ty.int] (by rfl) (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯2) (♯0)) (Term.letE (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 0 [Ty.int] (by rfl) (.cons (♯0) .nil)) (♯0))))) (Alts.deflt (♯0))) (by rfl)))
+
+/-- `eval`, as a declaration of the module. -/
+def d_eval : GlobalDecl := ⟨"eval", (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int)⟩
+
+/-- The signature `eval` is written against. -/
+def sig_eval : Sig := ⟨[d_bump], by decide⟩
+
+/-- The body of `eval`. -/
+def tm_eval : Term sig_eval [] [] (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) :=
+  (Term.lam (Term.caseTag (♯0) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.cons 1 [Ty.int, Ty.int] (by rfl) (Term.letE (intAdd (♯0) (♯1)) (♯0)) (Alts.cons 2 [Ty.int, Ty.int] (by rfl) (Term.letE (intMul (♯0) (♯1)) (♯0)) Alts.nilFull))) (by rfl)))
+
+/-- `cata & cataMap (clique)@int`, as a declaration of the module. -/
+def d_cata___cataMap__clique__int : GlobalDecl := ⟨"cata & cataMap (clique)@int", (Ty.fn Ty.nat (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] [])))))))⟩
+
+/-- The signature `cata & cataMap (clique)@int` is written against. -/
+def sig_cata___cataMap__clique__int : Sig := ⟨[d_eval, d_bump], by decide⟩
+
+/-- The body of `cata & cataMap (clique)@int`. -/
+def tm_cata___cataMap__clique__int : Term sig_cata___cataMap__clique__int [] [] (Ty.fn Ty.nat (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] []))))))) :=
+  (Term.fixWfDeep [Ty.nat, (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl), (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)] (fun as => (if ((as.get (v♯0)) == 0) then (Env.structMeasure (v♯2) as) else (Env.structMeasure (v♯4) as))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] []))) 0 [Ty.int] (by rfl) (.cons (Term.letE (Term.caseTag (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.lam (Term.intL (0))) (.cons (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)) (.cons (♯1) (.cons (♯2) .nil)))))) (Alts.cons 1 [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] (by rfl) (♯0) (Alts.deflt (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)))) (by rfl)) (Term.letE (Term.ap (♯2) (♯0)) (♯0))) .nil)) (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] []))) 1 [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] (by rfl) (.cons (Term.caseTag (♯4) (Alts.cons 0 [Ty.int] (by rfl) (Term.letE (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 0 [Ty.int] (by rfl) (.cons (♯0) .nil)) (♯0)) (Alts.cons 1 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)] (by rfl) (Term.letE (Term.caseTag (Term.selfCall .head (.cons (Term.natL 0) (.cons (♯5) (.cons (♯0) (.cons (Term.lam (Term.intL (0))) (.cons (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)) .nil)))))) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.deflt (Term.intL (0)))) (by rfl)) (Term.letE (Term.caseTag (Term.selfCall .head (.cons (Term.natL 0) (.cons (♯6) (.cons (♯2) (.cons (Term.lam (Term.intL (0))) (.cons (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)) .nil)))))) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.deflt (Term.intL (0)))) (by rfl)) (Term.letE (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 1 [Ty.int, Ty.int] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0)))) (Alts.cons 2 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)] (by rfl) (Term.letE (Term.caseTag (Term.selfCall .head (.cons (Term.natL 0) (.cons (♯5) (.cons (♯0) (.cons (Term.lam (Term.intL (0))) (.cons (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)) .nil)))))) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.deflt (Term.intL (0)))) (by rfl)) (Term.letE (Term.caseTag (Term.selfCall .head (.cons (Term.natL 0) (.cons (♯6) (.cons (♯2) (.cons (Term.lam (Term.intL (0))) (.cons (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)) .nil)))))) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.deflt (Term.intL (0)))) (by rfl)) (Term.letE (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 2 [Ty.int, Ty.int] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0)))) Alts.nilFull))) (by rfl)) .nil))) (by sorry))
+
+/-- `cata@int`, as a declaration of the module. -/
+def d_cata_int : GlobalDecl := ⟨"cata@int", (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int))⟩
+
+/-- The signature `cata@int` is written against. -/
+def sig_cata_int : Sig := ⟨[d_cata___cataMap__clique__int, d_eval, d_bump], by decide⟩
+
+/-- The body of `cata@int`. -/
+def tm_cata_int : Term sig_cata_int [] [] (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int)) :=
+  (Term.lam (Term.lam (Term.caseTag (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global .here) (Term.natL 0)) (♯1)) (♯0)) (Term.lam (Term.intL (0)))) (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil))) (Alts.cons 0 [Ty.int] (by rfl) (♯0) (Alts.deflt (Term.intL (0)))) (by rfl))))
+
+/-- `cataMap@int`, as a declaration of the module. -/
+def d_cataMap_int : GlobalDecl := ⟨"cataMap@int", (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))))⟩
+
+/-- The signature `cataMap@int` is written against. -/
+def sig_cataMap_int : Sig := ⟨[d_cata_int, d_cata___cataMap__clique__int, d_eval, d_bump], by decide⟩
+
+/-- The body of `cataMap@int`. -/
+def tm_cataMap_int : Term sig_cataMap_int [] [] (Ty.fn (Ty.fn (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])) Ty.int) (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]])))) :=
+  (Term.lam (Term.lam (Term.caseTag (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there .here)) (Term.natL 1)) (Term.lam (Term.intL (0)))) (Term.ctor (τ := (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl)) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil))) (♯1)) (♯0)) (Alts.cons 1 [(Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))] (by rfl) (♯0) (Alts.deflt (Term.ctor (τ := (Ty.taggedUnion (.payloadFirst ⟨Ty.int, []⟩ [Ty.int, Ty.int] [[Ty.int, Ty.int]]))) 0 [Ty.int] (by rfl) (.cons (Term.intL (0)) .nil)))) (by rfl))))
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int)⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[d_cataMap_int, d_cata_int, d_cata___cataMap__clique__int, d_eval, d_bump], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int) :=
+  (Term.lam (Term.letE (Term.global (.there (.there (.there .here)))) (Term.letE (Term.ap (Term.ap (Term.global (.there .here)) (♯0)) (♯1)) (♯0))))
+
+/-- `test2`, as a declaration of the module. -/
+def d_test2 : GlobalDecl := ⟨"test2", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int)⟩
+
+/-- The signature `test2` is written against. -/
+def sig_test2 : Sig := ⟨[d_test1, d_cataMap_int, d_cata_int, d_cata___cataMap__clique__int, d_eval, d_bump], by decide⟩
+
+/-- The body of `test2`. -/
+def tm_test2 : Term sig_test2 [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.prim .int), []⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0), (RTy.self 0)]]) rfl) Ty.int) :=
+  (Term.lam (Term.letE (Term.lam (Term.letE (Term.ap (Term.global (.there (.there (.there (.there (.there .here)))))) (♯0)) (Term.letE (Term.ap (Term.global (.there (.there (.there (.there .here))))) (♯0)) (♯0)))) (Term.letE (Term.ap (Term.ap (Term.global (.there (.there .here))) (♯0)) (♯1)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test2, d_test1, d_cataMap_int, d_cata_int, d_cata___cataMap__clique__int, d_eval, d_bump], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test2 (by decide) tm_test2 (.cons d_test1 (by decide) tm_test1 (.cons d_cataMap_int (by decide) tm_cataMap_int (.cons d_cata_int (by decide) tm_cata_int (.cons d_cata___cataMap__clique__int (by decide) tm_cata___cataMap__clique__int (.cons d_eval (by decide) tm_eval (.cons d_bump (by decide) tm_bump .nil)))))))
+
+end ProgramSnapshotsPBOPureRecursionSchemes01

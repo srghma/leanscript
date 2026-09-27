@@ -1,0 +1,130 @@
+/-
+The terms `SnapshotsPBOPure/Tco03Program.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsPBOPure/Tco03.lean` they were translated from.
+
+`go` and `k` are a *well-founded* mutual clique — `termination_by n` and `termination_by
+m` — and `k` carries an erased proof `h : m ≥ 100`.  The compiled code has no such
+argument, so the emitted term can be run at an `m` Lean's `k` cannot; what is proved here
+is faithfulness **on the domain** the erased proof cuts out, which is exactly what
+`Term.fixNat_implements_on` asks for: the precondition is preserved by every call the body
+makes, and every such call decreases the measure the term carries.
+-/
+
+import SnapshotsPBOPure.Tco03Program
+import SnapshotsPBOPure.Tco03
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsPBOPureTco03
+
+namespace SnapshotsPBOPure.Tco03ProgramCheck
+
+/-- `k` made total: outside its precondition it answers `0`. -/
+def kTotal (m : Nat) : Nat := if h : 100 ≤ m then k m h else 0
+
+@[simp] theorem kTotal_of_le {m : Nat} (h : 100 ≤ m) : kTotal m = k m h := dif_pos h
+
+/-- The merged clique, read as a function of its argument list: the tag selects the
+    member. -/
+def cliqueFun (as : Env [Ty.nat, Ty.nat, Ty.nat]) : Ty.nat.den :=
+  if (as.get (v♯0) : Nat) == 0 then go (as.get (v♯1)) else kTotal (as.get (v♯2))
+
+/-- The domain: at the `k` tag, the erased precondition `m ≥ 100`. -/
+def Dom (as : Env [Ty.nat, Ty.nat, Ty.nat]) : Prop :=
+  (as.get (v♯0) : Nat) ≠ 0 → 100 ≤ (as.get (v♯2) : Nat)
+
+/-- **The emitted merged loop is `go` and `k`, on the domain of `k`'s precondition.** -/
+theorem tm_clique_implements_on (δ : GEnv sig_go___k__clique_.decls)
+    (args : Env [Ty.nat, Ty.nat, Ty.nat]) (h : Dom args) :
+    Env.apply (tm_go___k__clique_.evalClosed δ) args = cliqueFun args := by
+  refine Term.fixNat_implements_on _ _ _ δ Dom cliqueFun ?_ args h
+  intro g as hD hg
+  simp only [Dom, cliqueFun] at hD hg ⊢
+  match as with
+  | .cons t (.cons n (.cons m .nil)) =>
+    cases (t : Nat) with
+    | zero =>
+      simp only [Term.eval, Ops.eval_natEq, Ops.eval_natLe, Ops.eval_natSub,
+        Env.get_cons_head, Env.get_cons_tail, Env.get_head_cons_append,
+        Env.get_tail_cons_append, REnv.get_cons_head,
+        Spine.eval_cons, Spine.eval_nil, cond_true_false_self, decide_eq_true_eq,
+        LeanPrimLit.val_nat]
+      rw [if_pos trivial]
+      have hRHS : (if (Nat.zero == 0) = true then go n else kTotal m) = go (n : Nat) := by simp
+      rw [hRHS]
+      by_cases h1 : (n : Nat) = 0
+      · subst h1
+        simp [go]
+      · rw [if_neg h1]
+        by_cases h2 : (n : Nat) ≤ 100
+        · rw [if_pos h2,
+            hg (.cons (0 : Nat) (.cons ((n : Nat) - 1) (.cons (0 : Nat) .nil)))
+              (by simp) (by simp; exact Nat.sub_lt (Nat.pos_of_ne_zero h1) Nat.one_pos)]
+          simp only [Env.get_cons_head, Env.get_cons_tail]
+          simp only [beq_self_eq_true, if_true]
+          conv => rhs; rw [go]
+          simp [h1, h2]
+        · rw [if_neg h2,
+            hg (.cons (1 : Nat) (.cons (0 : Nat) (.cons ((n : Nat) - 1) .nil)))
+              (by simp; exact Nat.le_sub_one_of_lt (Nat.lt_of_not_le h2))
+              (by simp; exact Nat.sub_lt (Nat.pos_of_ne_zero h1) Nat.one_pos)]
+          simp only [Env.get_cons_head, Env.get_cons_tail]
+          simp only [Nat.one_ne_zero, beq_iff_eq, if_false]
+          conv => rhs; rw [go]
+          simp [h1, h2]
+          exact kTotal_of_le (m := (n : Nat) - 1) (Nat.le_sub_one_of_lt (Nat.lt_of_not_le h2))
+    | succ j =>
+      simp only [Term.eval, Ops.eval_natEq, Ops.eval_natLe, Ops.eval_natSub,
+        Env.get_cons_head, Env.get_cons_tail, Env.get_head_cons_append,
+        Env.get_tail_cons_append, REnv.get_cons_head,
+        Spine.eval_cons, Spine.eval_nil, cond_true_false_self, decide_eq_true_eq,
+        LeanPrimLit.val_nat]
+      have hm : 100 ≤ (m : Nat) := hD (by simp)
+      have hmpos : 0 < (m : Nat) := Nat.lt_of_lt_of_le (by decide) hm
+      have hRHS : (if (Nat.succ j == 0) = true then go n else kTotal m) = kTotal (m : Nat) := by
+        simp
+      rw [hRHS, kTotal_of_le hm]
+      by_cases h1 : (m : Nat) = 100
+      · rw [if_pos h1,
+          hg (.cons (0 : Nat) (.cons ((m : Nat) - 1) (.cons (0 : Nat) .nil)))
+            (by simp) (by simp; exact Nat.sub_lt hmpos Nat.one_pos)]
+        simp only [Env.get_cons_head, Env.get_cons_tail, beq_self_eq_true, if_true]
+        conv => rhs; rw [k]
+        simp [h1]
+      · rw [if_neg h1]
+        by_cases h2 : (m : Nat) = 900
+        · rw [if_pos h2]
+          conv => rhs; rw [k]
+          simp [h2]
+        · rw [if_neg h2,
+            hg (.cons (1 : Nat) (.cons (0 : Nat) (.cons ((m : Nat) - 1) .nil)))
+              (by simp; exact Nat.le_sub_one_of_lt (Nat.lt_of_le_of_ne hm (Ne.symm h1)))
+              (by simp; exact Nat.sub_lt hmpos Nat.one_pos)]
+          simp only [Env.get_cons_head, Env.get_cons_tail]
+          simp only [Nat.one_ne_zero, beq_iff_eq, if_false]
+          conv => rhs; rw [k]
+          simp [h1, h2]
+          exact kTotal_of_le (m := (m : Nat) - 1)
+            (Nat.le_sub_one_of_lt (Nat.lt_of_le_of_ne hm (Ne.symm h1)))
+
+/-- The declarations `go` is written against, as a program. -/
+def pGo : Program sig_go.decls := .cons d_go___k__clique_ (by decide) tm_go___k__clique_ .nil
+
+/-- **The emitted entry point is `go`**: it enters the merged loop at tag `0`, where the
+    domain condition is vacuous, so this holds at *every* argument. -/
+theorem tm_go_implements (n : Nat) :
+    Env.apply (tm_go.evalClosed pGo.env) (.cons n .nil) = go n := by
+  have h := tm_clique_implements_on .nil
+    (.cons (0 : Nat) (.cons n (.cons (0 : Nat) .nil))) (by simp [Dom])
+  simpa [cliqueFun] using h
+
+/-- The declarations `k` is written against, as a program. -/
+def pK : Program sig_k.decls := .cons d_go (by decide) tm_go pGo
+
+/-- **The emitted entry point is `k`**, at every argument its erased precondition
+    admits. -/
+theorem tm_k_implements (m : Nat) (hm : 100 ≤ m) :
+    Env.apply (tm_k.evalClosed pK.env) (.cons m .nil) = k m hm := by
+  have h := tm_clique_implements_on .nil
+    (.cons (1 : Nat) (.cons (0 : Nat) (.cons m .nil))) (by simpa [Dom] using hm)
+  simpa [cliqueFun, kTotal_of_le hm] using h
+
+end SnapshotsPBOPure.Tco03ProgramCheck

@@ -1,0 +1,176 @@
+-- ════════════════════════════════════════════════════════════════════════
+-- SUPERSEDED.  This file was produced by the *driver*, which reads the compiled
+-- `.olean` of `SnapshotsMy/Tco09.lean` and writes the program beside it.  The module now
+-- generates its own program **in the file itself**, with
+-- `#leanjs_generate_program_from_all_public_defs_in_current_file` (see
+-- `LeanScript/GenerateProgram.lean`), so `ProgramSnapshotsMyTco09` is part of
+-- `SnapshotsMy.Tco09` and is elaborated by the same Lean process as the definitions it
+-- translates.
+--
+-- The text below is kept for comparison and is *out of date* in one respect: the four
+-- recursion schemes are now constructors of `Term` (`LeanScript/Expr.lean`) and carry only
+-- the scheme, the subject, the invariant and the body.  They take no proof arguments, so
+-- the `(by sorry)` and `(by decide)` arguments below are gone and what the command
+-- generates contains no `sorry` at all.
+-- ════════════════════════════════════════════════════════════════════════
+
+-- SnapshotsMy.Tco09: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   5 are programs below
+-- Nothing is left out.
+--
+-- ════ 🎯 ackRev : (fn nat (fn nat nat))
+-- fixStructDeep (nat nat) subject { arg1 } body {
+--   ((fixStructDeep (nat nat) subject { arg0 } body {
+--     if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ ♯0);
+--     ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then let ♯ := 1#;
+--     let ♯ := self1⟨↓⟩(♯0, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#));
+--     ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#)) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#), ♯0);
+--     let ♯ := self1⟨↓⟩(♯0, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ 1#));
+--     ♯0
+--   } ⬝ ♯0) ⬝ ♯1)
+-- }
+--
+-- ════ 🎯 diagonal : (fn nat (fn nat nat))
+-- fixWfDeep (nat nat) subject { ⟨Lean function⟩ } body {
+--   ((fixStructDeep (nat nat) subject { arg0 } body {
+--     if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := 0#;
+--     ♯0 else let ♯ := 0#;
+--     let ♯ := self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#), ♯0);
+--     let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ ♯0);
+--     ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#), ♯0);
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ ♯2);
+--     ♯0
+--   } ⬝ ♯0) ⬝ ♯1)
+-- }
+--
+-- ════ 🎯 hyper : (fn nat (fn nat (fn nat nat)))
+-- fixStructDeep (nat) subject { arg0 } body {
+--   fixStructDeep (nat nat) subject { arg1 } body {
+--     if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯2) ⬝ 0#) then let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ ♯0);
+--     ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#)) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#)) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(♯2, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#));
+--     let ♯ := ((self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯5) ⬝ 1#)) ⬝ ♯3) ⬝ ♯0);
+--     ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#)) ⬝ 1#)) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := 0#;
+--     ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#)) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(♯2, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#));
+--     let ♯ := ((self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯5) ⬝ 1#)) ⬝ ♯3) ⬝ ♯0);
+--     ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := 1#;
+--     ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#)) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(♯2, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#));
+--     let ♯ := ((self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯5) ⬝ 1#)) ⬝ ♯3) ⬝ ♯0);
+--     ♯0
+--   }
+-- }
+--
+-- ════ 🎯 Mc91.M : (fn nat nat)
+-- fixWfDeep (nat) subject { ⟨Lean function⟩ } body {
+--   let ♯ := 100#;
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ ♯1);
+--   if ♯0 then let ♯ := 10#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ ♯0);
+--   let ♯ := ♯0;
+--   ♯0 else let ♯ := 11#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(♯0);
+--   let ♯ := ♯0;
+--   let ♯ := self0⟨↓⟩(♯0);
+--   let ♯ := ♯0;
+--   let ♯ := ♯0;
+--   ♯0
+-- }
+--
+-- ════ 🎯 Mc91 : (fn nat nat)
+-- ƛ let ♯ := (@Mc91.M ⬝ ♯0);
+-- let ♯ := ♯0;
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyTco09
+
+/-- `ackRev`, as a declaration of the module. -/
+def d_ackRev : GlobalDecl := ⟨"ackRev", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `ackRev` is written against. -/
+def sig_ackRev : Sig := ⟨[], by decide⟩
+
+/-- The body of `ackRev`. -/
+def tm_ackRev : Term sig_ackRev [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.fixStructDeep [Ty.nat, Ty.nat] (v♯1) (fun _ => True) (Term.ap (Term.ap (Term.fixStructDeep [Ty.nat, Ty.nat] (v♯0) (fun _ => True) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯1) (♯0)) (♯0))) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.letE (Term.natL 1) (Term.letE (Term.selfCall (.tail .head) (.cons (♯0) (.cons (natSub (♯2) (Term.natL 1)) .nil))) (♯0))) (Term.letE (Term.natL 1) (Term.letE (natAdd (natSub (♯2) (Term.natL 1)) (♯0)) (Term.letE (Term.selfCall .head (.cons (natSub (♯2) (Term.natL 1)) (.cons (♯0) .nil))) (Term.letE (Term.selfCall (.tail .head) (.cons (♯0) (.cons (natSub (♯4) (Term.natL 1)) .nil))) (♯0))))))) (by sorry)) (♯0)) (♯1)) (by sorry))
+
+/-- `diagonal`, as a declaration of the module. -/
+def d_diagonal : GlobalDecl := ⟨"diagonal", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `diagonal` is written against. -/
+def sig_diagonal : Sig := ⟨[d_ackRev], by decide⟩
+
+/-- The body of `diagonal`. -/
+def tm_diagonal : Term sig_diagonal [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.fixWfDeep [Ty.nat, Ty.nat] (fun as => ((as.get (v♯0)) + (as.get (v♯1)))) (fun _ => True) (Term.ap (Term.ap (Term.fixStructDeep [Ty.nat, Ty.nat] (v♯0) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.natL 0) (♯0)) (Term.letE (Term.natL 0) (Term.letE (Term.selfCall (.tail .head) (.cons (natSub (♯2) (Term.natL 1)) (.cons (♯0) .nil))) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯1) (♯0)) (♯0)))))) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯2) (♯0)) (Term.letE (Term.selfCall .head (.cons (natSub (♯2) (Term.natL 1)) (.cons (♯0) .nil))) (Term.letE (natAdd (♯0) (♯2)) (♯0)))))) (by sorry)) (♯0)) (♯1)) (by sorry))
+
+/-- `hyper`, as a declaration of the module. -/
+def d_hyper : GlobalDecl := ⟨"hyper", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)))⟩
+
+/-- The signature `hyper` is written against. -/
+def sig_hyper : Sig := ⟨[d_diagonal, d_ackRev], by decide⟩
+
+/-- The body of `hyper`. -/
+def tm_hyper : Term sig_hyper [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))) :=
+  (Term.fixStructDeep [Ty.nat] (v♯0) (fun _ => True) (Term.fixStructDeep [Ty.nat, Ty.nat] (v♯1) (fun _ => True) (Term.ite (natEq (♯2) (Term.natL 0)) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯2) (♯0)) (♯0))) (Term.ite (natEq (natSub (♯2) (Term.natL 1)) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (♯0) (Term.letE (Term.natL 1) (Term.letE (natAdd (natSub (♯3) (Term.natL 1)) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯2) (.cons (natSub (♯3) (Term.natL 1)) .nil))) (Term.letE (Term.ap (Term.ap (Term.selfCall (.tail .head) (.cons (natSub (♯5) (Term.natL 1)) .nil)) (♯3)) (♯0)) (♯0)))))) (Term.ite (natEq (natSub (natSub (♯2) (Term.natL 1)) (Term.natL 1)) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.natL 0) (♯0)) (Term.letE (Term.natL 1) (Term.letE (natAdd (natSub (♯3) (Term.natL 1)) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯2) (.cons (natSub (♯3) (Term.natL 1)) .nil))) (Term.letE (Term.ap (Term.ap (Term.selfCall (.tail .head) (.cons (natSub (♯5) (Term.natL 1)) .nil)) (♯3)) (♯0)) (♯0)))))) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.natL 1) (♯0)) (Term.letE (Term.natL 1) (Term.letE (natAdd (natSub (♯3) (Term.natL 1)) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯2) (.cons (natSub (♯3) (Term.natL 1)) .nil))) (Term.letE (Term.ap (Term.ap (Term.selfCall (.tail .head) (.cons (natSub (♯5) (Term.natL 1)) .nil)) (♯3)) (♯0)) (♯0))))))))) (by sorry)) (by sorry))
+
+/-- `Mc91.M`, as a declaration of the module. -/
+def d_Mc91_M : GlobalDecl := ⟨"Mc91.M", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `Mc91.M` is written against. -/
+def sig_Mc91_M : Sig := ⟨[d_hyper, d_diagonal, d_ackRev], by decide⟩
+
+/-- The body of `Mc91.M`. -/
+def tm_Mc91_M : Term sig_Mc91_M [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.fixWfDeep [Ty.nat] (fun as => (101 - (as.get (v♯0)))) (fun _ => True) (Term.letE (Term.natL 100) (Term.letE (natLt (♯0) (♯1)) (Term.ite (♯0) (Term.letE (Term.natL 10) (Term.letE (natSub (♯3) (♯0)) (Term.letE (♯0) (♯0)))) (Term.letE (Term.natL 11) (Term.letE (natAdd (♯3) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯0) .nil)) (Term.letE (♯0) (Term.letE (Term.selfCall .head (.cons (♯0) .nil)) (Term.letE (♯0) (Term.letE (♯0) (♯0))))))))))) (by sorry))
+
+/-- `Mc91`, as a declaration of the module. -/
+def d_Mc91 : GlobalDecl := ⟨"Mc91", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `Mc91` is written against. -/
+def sig_Mc91 : Sig := ⟨[d_Mc91_M, d_hyper, d_diagonal, d_ackRev], by decide⟩
+
+/-- The body of `Mc91`. -/
+def tm_Mc91 : Term sig_Mc91 [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.lam (Term.letE (Term.ap (Term.global .here) (♯0)) (Term.letE (♯0) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_Mc91, d_Mc91_M, d_hyper, d_diagonal, d_ackRev], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_Mc91 (by decide) tm_Mc91 (.cons d_Mc91_M (by decide) tm_Mc91_M (.cons d_hyper (by decide) tm_hyper (.cons d_diagonal (by decide) tm_diagonal (.cons d_ackRev (by decide) tm_ackRev .nil)))))
+
+end ProgramSnapshotsMyTco09

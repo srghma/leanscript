@@ -1,0 +1,75 @@
+-- SnapshotsMy.Tco08: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   2 are programs below
+-- Nothing is left out.
+--
+-- ════ 🎯 ack : (fn nat (fn nat nat))
+-- fixStructDeep (nat) subject { arg0 } body {
+--   fixStructDeep (nat) subject { arg0 } body {
+--     if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ ♯0);
+--     ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then let ♯ := 1#;
+--     let ♯ := (self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#)) ⬝ ♯0);
+--     ♯0 else let ♯ := 1#;
+--     let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#)) ⬝ ♯0);
+--     let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#));
+--     let ♯ := (self1⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ 1#)) ⬝ ♯0);
+--     ♯0
+--   }
+-- }
+--
+-- ════ 🎯 ack999 : nat
+-- let ♯ := 999#;
+-- let ♯ := 1#;
+-- let ♯ := ((@ack ⬝ ♯1) ⬝ ♯0);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyTco08
+
+/-- `ack`, as a declaration of the module. -/
+def d_ack : GlobalDecl := ⟨"ack", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `ack` is written against. -/
+def sig_ack : Sig := ⟨[], by decide⟩
+
+/-- The body of `ack`. -/
+def tm_ack : Term sig_ack [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.fixStructDeep [Ty.nat] (v♯0) (fun _ => True) (Term.fixStructDeep [Ty.nat] (v♯0) (fun _ => True) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯1) (♯0)) (♯0))) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.letE (Term.natL 1) (Term.letE (Term.ap (Term.selfCall (.tail .head) (.cons (natSub (♯2) (Term.natL 1)) .nil)) (♯0)) (♯0))) (Term.letE (Term.natL 1) (Term.letE (natAdd (natSub (♯2) (Term.natL 1)) (♯0)) (Term.letE (Term.selfCall .head (.cons (natSub (♯2) (Term.natL 1)) .nil)) (Term.letE (Term.ap (Term.selfCall (.tail .head) (.cons (natSub (♯4) (Term.natL 1)) .nil)) (♯0)) (♯0))))))) (by sorry)) (by sorry))
+
+/-- `ack999`, as a declaration of the module. -/
+def d_ack999 : GlobalDecl := ⟨"ack999", Ty.nat⟩
+
+/-- The signature `ack999` is written against. -/
+def sig_ack999 : Sig := ⟨[d_ack], by decide⟩
+
+/-- The body of `ack999`. -/
+def tm_ack999 : Term sig_ack999 [] [] Ty.nat :=
+  (Term.letE (Term.natL 999) (Term.letE (Term.natL 1) (Term.letE (Term.ap (Term.ap (Term.global .here) (♯1)) (♯0)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_ack999, d_ack], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_ack999 (by decide) tm_ack999 (.cons d_ack (by decide) tm_ack .nil))
+
+end ProgramSnapshotsMyTco08

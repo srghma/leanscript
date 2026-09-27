@@ -1,0 +1,94 @@
+/-
+The terms `SnapshotsMy/MutualSlotsProgram.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsMy/MutualSlots.lean` they were translated from — at *every*
+argument.
+
+`walkStr` and `walkNat` are a mutual clique, and the front end merges a clique into *one*
+recursion: it takes a tag and the parameters of every member, and its measure is the
+measure of the member the tag selects.  So what is proved here is that the one merged
+loop computes both Lean functions, and that the two emitted entry points call it with the
+right tag.
+-/
+
+import SnapshotsMy.MutualSlotsProgram
+import SnapshotsMy.MutualSlots
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsMyMutualSlots
+
+namespace SnapshotsMy.MutualSlotsProgramCheck
+
+/-- The merged clique, read as a function of its argument list: the tag selects the
+    member, and each member reads its own parameters out of the shared slots. -/
+def cliqueFun (as : Env [Ty.nat, Ty.nat, Ty.string, Ty.nat, Ty.nat]) : Ty.nat.den :=
+  if (as.get (v♯0) : Nat) == 0 then walkStr (as.get (v♯1)) (as.get (v♯2))
+  else walkNat (as.get (v♯3)) (as.get (v♯4))
+
+/-- **The emitted merged loop is `walkStr` and `walkNat`.** -/
+theorem tm_clique_implements (δ : GEnv sig_walkStr___walkNat__clique_.decls) :
+    tm_walkStr___walkNat__clique_.Implements δ cliqueFun := by
+  refine Term.fixNat_implements_closed _ _ _ δ cliqueFun ?_
+  intro g as hg
+  match as with
+  | .cons t (.cons n (.cons s (.cons m (.cons k .nil)))) =>
+    cases (t : Nat) with
+    | zero =>
+      cases (n : Nat) with
+      | zero => rfl
+      | succ j =>
+        show g (.cons (1 : Nat) (.cons (0 : Nat) (.cons "" (.cons (j : Nat)
+          (.cons ((s : String).length + 1) .nil))))) = _
+        rw [hg _ (by simp [Env.get])]
+        show walkNat j ((s : String).length + 1) = walkStr (j + 1) s
+        rfl
+    | succ _ =>
+      cases (m : Nat) with
+      | zero => rfl
+      | succ j =>
+        cases (k : Nat) with
+        | zero =>
+          show g (.cons (0 : Nat) (.cons (j : Nat) (.cons "" (.cons (0 : Nat)
+            (.cons (0 : Nat) .nil))))) = _
+          rw [hg _ (by simp [Env.get])]
+          show walkStr j "" = walkNat (j + 1) 0
+          rfl
+        | succ c =>
+          show g (.cons (0 : Nat) (.cons (j : Nat) (.cons "xy" (.cons (0 : Nat)
+            (.cons (0 : Nat) .nil))))) = _
+          rw [hg _ (by simp [Env.get])]
+          show walkStr j "xy" = walkNat (j + 1) (c + 1)
+          rfl
+
+/-- The declarations `walkStr` is written against, as a program. -/
+def pWalkStr : Program sig_walkStr.decls :=
+  .cons d_walkStr___walkNat__clique_ (by decide) tm_walkStr___walkNat__clique_ .nil
+
+/-- `walkStr`, read as a function of the emitted term's argument list. -/
+def walkStrFun (as : Env [Ty.nat, Ty.string]) : Ty.nat.den :=
+  walkStr (as.get (v♯0)) (as.get (v♯1))
+
+/-- **The emitted entry point is `walkStr`**: it enters the merged loop at tag `0`. -/
+theorem tm_walkStr_implements : tm_walkStr.Implements pWalkStr.env walkStrFun := by
+  intro args
+  match args with
+  | .cons n (.cons s .nil) =>
+    exact tm_clique_implements .nil
+      (.cons (0 : Nat) (.cons (n : Nat) (.cons (s : String)
+        (.cons (0 : Nat) (.cons (0 : Nat) .nil)))))
+
+/-- The declarations `walkNat` is written against, as a program. -/
+def pWalkNat : Program sig_walkNat.decls := .cons d_walkStr (by decide) tm_walkStr pWalkStr
+
+/-- `walkNat`, read as a function of the emitted term's argument list. -/
+def walkNatFun (as : Env [Ty.nat, Ty.nat]) : Ty.nat.den :=
+  walkNat (as.get (v♯0)) (as.get (v♯1))
+
+/-- **The emitted entry point is `walkNat`**: it enters the merged loop at tag `1`. -/
+theorem tm_walkNat_implements : tm_walkNat.Implements pWalkNat.env walkNatFun := by
+  intro args
+  match args with
+  | .cons n (.cons k .nil) =>
+    exact tm_clique_implements .nil
+      (.cons (1 : Nat) (.cons (0 : Nat) (.cons ""
+        (.cons (n : Nat) (.cons (k : Nat) .nil)))))
+
+end SnapshotsMy.MutualSlotsProgramCheck

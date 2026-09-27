@@ -1,0 +1,58 @@
+-- SnapshotsPBOPure.CaseRedBlackTree: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction: the one way it
+-- repeats work is `Term.fixAcc`, which carries a well-founded relation, a proof that
+-- it is well founded, and the measure of its arguments the translation read off
+-- Lean's own termination proof.
+-- What became of the declarations of the module:
+--   1 is a program below
+--   7 are compiled where they are used, or have no instantiation of their own
+--   3 are gaps the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Color.Black.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Color.Red.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Color.ctorElim`
+-- outside the fragment: `Color.ctorIdx`: a dispatch on `Color`, which has no layout: the front end handles `Nat`, `Bool`, `Decidable`, `Option`, a product and a type with a layout as scrutinees
+-- outside the fragment: `Color.toCtorIdx`: it calls `Color.ctorIdx`, which has no program of its own
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `RedBlackTree.Leaf.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `RedBlackTree.Node.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `RedBlackTree.ctorElim`
+-- polymorphic, and no call in this module says what type it is at, so there is no instantiation of it to compile: `RedBlackTree.ctorIdx`
+-- outside the fragment: `test1`: a dispatch on `Color`, which has no layout: the front end handles `Nat`, `Bool`, `Decidable`, `Option`, a product and a type with a layout as scrutinees
+--
+-- ════ 🎯 instInhabitedResult : (record nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)))
+-- let ♯ := 0#;
+-- let ♯ := ctor0()();
+-- let ♯ := ctor0(nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)) nat (recTaggedUnion ()|(bool self#0 nat self#0)))(♯1, ♯0, ♯1, ♯0, ♯1, ♯0, ♯1, ♯0);
+-- let ♯ := ♯0;
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureCaseRedBlackTree
+
+/-- `instInhabitedResult`, as a declaration of the module. -/
+def d_instInhabitedResult : GlobalDecl := ⟨"instInhabitedResult", (Ty.record ⟨Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl)]⟩)⟩
+
+/-- The signature `instInhabitedResult` is written against. -/
+def sig_instInhabitedResult : Sig := ⟨[], by decide⟩
+
+/-- The body of `instInhabitedResult`. -/
+def tm_instInhabitedResult : Term sig_instInhabitedResult [] [] (Ty.record ⟨Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl)]⟩) :=
+  (Term.letE (Term.natL 0) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl)) 0 [] (by rfl) .nil) (Term.letE (Term.ctor (τ := (Ty.record ⟨Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl)]⟩)) 0 [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl), Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .bool), [(RTy.self 0), (RTy.prim .nat), (RTy.self 0)]⟩ [])) rfl)] (by rfl) (.cons (♯1) (.cons (♯0) (.cons (♯1) (.cons (♯0) (.cons (♯1) (.cons (♯0) (.cons (♯1) (.cons (♯0) .nil))))))))) (Term.letE (♯0) (♯0)))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_instInhabitedResult], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_instInhabitedResult (by decide) tm_instInhabitedResult .nil)
+
+end ProgramSnapshotsPBOPureCaseRedBlackTree

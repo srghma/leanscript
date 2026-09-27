@@ -1,0 +1,182 @@
+-- SnapshotsPBOPure.CaptureDerefRegression01: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   8 are programs below
+-- Nothing is left out.
+--
+-- ════ 🎯 test1 : (fn (record int int) (fn int int))
+-- ƛ ƛ let ♯ := proj0.0(♯1);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0
+--
+-- ════ 🎯 test2 : (fn (record int int) (fn int int))
+-- ƛ ƛ let ♯ := proj0.0(♯1);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0
+--
+-- ════ 🎯 test3 : (fn (record int int) (fn int int))
+-- ƛ let ♯ := ƛ let ♯ := proj0.0(♯1);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0;
+-- let ♯ := ♯0;
+-- ♯0
+--
+-- ════ 🎯 test4 : (fn (record int int) (record (fn int int) (fn int int)))
+-- ƛ let ♯ := ƛ let ♯ := proj0.0(♯1);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0;
+-- let ♯ := ƛ let ♯ := proj0.1(♯2);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0;
+-- let ♯ := ctor0((fn int int) (fn int int))(♯1, ♯0);
+-- ♯0
+--
+-- ════ 🎯 test5 : (fn (record int int) (record (fn int int) (fn int int)))
+-- ƛ let ♯ := ƛ let ♯ := proj0.0(♯1);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0;
+-- let ♯ := ƛ let ♯ := proj0.1(♯2);
+-- let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯0) ⬝ ♯1);
+-- ♯0;
+-- let ♯ := ctor0((fn int int) (fn int int))(♯1, ♯0);
+-- ♯0
+--
+-- ════ 📦 testEven & testOdd (clique) : (fn nat (fn nat (fn (record int int) (fn nat (fn (record int int) (record int int))))))
+-- fixWfTail (nat nat (record int int) nat (record int int)) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then ♯2 else case ♯2 of
+--     | 0(int int) => let ♯ := 1#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯3) ⬝ ♯0);
+--       let ♯ := 2#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯5) ⬝ ♯0);
+--       let ♯ := ctor0(int int)(♯3, ♯0);
+--       let ♯ := self0⟨↓⟩(1#, 0#, ctor0(int int)(0i, 0i), ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯10) ⬝ 1#), ♯0);
+--       ♯0
+--  else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ 0#) then ♯4 else case ♯4 of
+--     | 0(int int) => let ♯ := 3#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯3) ⬝ ♯0);
+--       let ♯ := 4#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯5) ⬝ ♯0);
+--       let ♯ := ctor0(int int)(♯3, ♯0);
+--       let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯12) ⬝ 1#), ♯0, 0#, ctor0(int int)(0i, 0i));
+--       ♯0
+--
+-- }
+--
+-- ════ 🎯 testEven : (fn nat (fn (record int int) (record int int)))
+-- ƛ ƛ (((((@testEven & testOdd (clique) ⬝ 0#) ⬝ ♯1) ⬝ ♯0) ⬝ 0#) ⬝ ctor0(int int)(0i, 0i))
+--
+-- ════ 🎯 testOdd : (fn nat (fn (record int int) (record int int)))
+-- ƛ ƛ (((((@testEven & testOdd (clique) ⬝ 1#) ⬝ 0#) ⬝ ctor0(int int)(0i, 0i)) ⬝ ♯1) ⬝ ♯0)
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureCaptureDerefRegression01
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int))⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int)) :=
+  (Term.lam (Term.lam (Term.letE (Term.proj (♯1) 0 0 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))))
+
+/-- `test2`, as a declaration of the module. -/
+def d_test2 : GlobalDecl := ⟨"test2", (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int))⟩
+
+/-- The signature `test2` is written against. -/
+def sig_test2 : Sig := ⟨[d_test1], by decide⟩
+
+/-- The body of `test2`. -/
+def tm_test2 : Term sig_test2 [] [] (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int)) :=
+  (Term.lam (Term.lam (Term.letE (Term.proj (♯1) 0 0 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))))
+
+/-- `test3`, as a declaration of the module. -/
+def d_test3 : GlobalDecl := ⟨"test3", (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int))⟩
+
+/-- The signature `test3` is written against. -/
+def sig_test3 : Sig := ⟨[d_test2, d_test1], by decide⟩
+
+/-- The body of `test3`. -/
+def tm_test3 : Term sig_test3 [] [] (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.fn Ty.int Ty.int)) :=
+  (Term.lam (Term.letE (Term.lam (Term.letE (Term.proj (♯1) 0 0 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))) (Term.letE (♯0) (♯0))))
+
+/-- `test4`, as a declaration of the module. -/
+def d_test4 : GlobalDecl := ⟨"test4", (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩))⟩
+
+/-- The signature `test4` is written against. -/
+def sig_test4 : Sig := ⟨[d_test3, d_test2, d_test1], by decide⟩
+
+/-- The body of `test4`. -/
+def tm_test4 : Term sig_test4 [] [] (Ty.fn (Ty.prod Ty.int Ty.int) (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩)) :=
+  (Term.lam (Term.letE (Term.lam (Term.letE (Term.proj (♯1) 0 0 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))) (Term.letE (Term.lam (Term.letE (Term.proj (♯2) 0 1 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))) (Term.letE (Term.ctor (τ := (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩)) 0 [(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0)))))
+
+/-- `test5`, as a declaration of the module. -/
+def d_test5 : GlobalDecl := ⟨"test5", (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩))⟩
+
+/-- The signature `test5` is written against. -/
+def sig_test5 : Sig := ⟨[d_test4, d_test3, d_test2, d_test1], by decide⟩
+
+/-- The body of `test5`. -/
+def tm_test5 : Term sig_test5 [] [] (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩)) :=
+  (Term.lam (Term.letE (Term.lam (Term.letE (Term.proj (♯1) 0 0 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))) (Term.letE (Term.lam (Term.letE (Term.proj (♯2) 0 1 (by rfl) (by rfl)) (Term.letE (intAdd (♯0) (♯1)) (♯0)))) (Term.letE (Term.ctor (τ := (Ty.record ⟨(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int), []⟩)) 0 [(Ty.fn Ty.int Ty.int), (Ty.fn Ty.int Ty.int)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (♯0)))))
+
+/-- `testEven & testOdd (clique)`, as a declaration of the module. -/
+def d_testEven___testOdd__clique_ : GlobalDecl := ⟨"testEven & testOdd (clique)", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩))))))⟩
+
+/-- The signature `testEven & testOdd (clique)` is written against. -/
+def sig_testEven___testOdd__clique_ : Sig := ⟨[d_test5, d_test4, d_test3, d_test2, d_test1], by decide⟩
+
+/-- The body of `testEven & testOdd (clique)`. -/
+def tm_testEven___testOdd__clique_ : Term sig_testEven___testOdd__clique_ [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩)))))) :=
+  (Term.fixWfTail [Ty.nat, Ty.nat, (Ty.record ⟨Ty.int, Ty.int, []⟩), Ty.nat, (Ty.record ⟨Ty.int, Ty.int, []⟩)] (fun as => (if ((as.get (v♯0)) == 0) then (as.get (v♯1)) else (as.get (v♯3)))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (♯2) (Term.caseTag (♯2) (Alts.cons 0 [Ty.int, Ty.int] (by rfl) (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯3) (♯0)) (Term.letE (Term.natL 2) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯5) (♯0)) (Term.letE (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (♯3) (.cons (♯0) .nil))) (Term.letE (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.natL 0) (.cons (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (Term.intL (0)) (.cons (Term.intL (0)) .nil))) (.cons (natSub (♯10) (Term.natL 1)) (.cons (♯0) .nil)))))) (♯0))))))))) Alts.nilFull) (by rfl))) (Term.ite (natEq (♯3) (Term.natL 0)) (♯4) (Term.caseTag (♯4) (Alts.cons 0 [Ty.int, Ty.int] (by rfl) (Term.letE (Term.natL 3) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯3) (♯0)) (Term.letE (Term.natL 4) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯5) (♯0)) (Term.letE (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (♯3) (.cons (♯0) .nil))) (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯12) (Term.natL 1)) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (Term.intL (0)) (.cons (Term.intL (0)) .nil))) .nil)))))) (♯0))))))))) Alts.nilFull) (by rfl)))) (by sorry) (by decide))
+
+/-- `testEven`, as a declaration of the module. -/
+def d_testEven : GlobalDecl := ⟨"testEven", (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩)))⟩
+
+/-- The signature `testEven` is written against. -/
+def sig_testEven : Sig := ⟨[d_testEven___testOdd__clique_, d_test5, d_test4, d_test3, d_test2, d_test1], by decide⟩
+
+/-- The body of `testEven`. -/
+def tm_testEven : Term sig_testEven [] [] (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩))) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global .here) (Term.natL 0)) (♯1)) (♯0)) (Term.natL 0)) (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (Term.intL (0)) (.cons (Term.intL (0)) .nil))))))
+
+/-- `testOdd`, as a declaration of the module. -/
+def d_testOdd : GlobalDecl := ⟨"testOdd", (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩)))⟩
+
+/-- The signature `testOdd` is written against. -/
+def sig_testOdd : Sig := ⟨[d_testEven, d_testEven___testOdd__clique_, d_test5, d_test4, d_test3, d_test2, d_test1], by decide⟩
+
+/-- The body of `testOdd`. -/
+def tm_testOdd : Term sig_testOdd [] [] (Ty.fn Ty.nat (Ty.fn (Ty.record ⟨Ty.int, Ty.int, []⟩) (Ty.record ⟨Ty.int, Ty.int, []⟩))) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there .here)) (Term.natL 1)) (Term.natL 0)) (Term.ctor (τ := (Ty.record ⟨Ty.int, Ty.int, []⟩)) 0 [Ty.int, Ty.int] (by rfl) (.cons (Term.intL (0)) (.cons (Term.intL (0)) .nil)))) (♯1)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_testOdd, d_testEven, d_testEven___testOdd__clique_, d_test5, d_test4, d_test3, d_test2, d_test1], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_testOdd (by decide) tm_testOdd (.cons d_testEven (by decide) tm_testEven (.cons d_testEven___testOdd__clique_ (by decide) tm_testEven___testOdd__clique_ (.cons d_test5 (by decide) tm_test5 (.cons d_test4 (by decide) tm_test4 (.cons d_test3 (by decide) tm_test3 (.cons d_test2 (by decide) tm_test2 (.cons d_test1 (by decide) tm_test1 .nil))))))))
+
+end ProgramSnapshotsPBOPureCaptureDerefRegression01

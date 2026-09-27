@@ -1,0 +1,47 @@
+import LeanScript
+import SnapshotsPBOPure.VanLaarhovenTraversals01
+
+/-!
+# Why `VanLaarhovenTraversals01` has no program
+
+`SnapshotsPBOPure/VanLaarhovenTraversals01Program.lean` leaves out `Fun.size`,
+`rewriteBottomUp` and the instances derived for `Fun`.  That is not a gap in the front
+end: it is a property of `Fun`, and this file proves it.
+
+* `Fun` has **no values** (`Fun.elim_false`): every constructor of `Fun` takes a `Fun`,
+  so there is no way to build the first one.
+* Every type of the grammar **has** a value (`LeanScript.Ty.dflt`, restated here as
+  `ty_den_nonempty`).  That is not incidental: `Term.fixAcc` answers with a value of its
+  result type when the recursion is exhausted, and `Ty.dflt` is that value.
+* So no type of the grammar models `Fun` (`no_ty_models_Fun`): a model would have to
+  decode the values of some `τ : LeanScript.Ty` into `Fun`s, and there is a value to decode
+  but nothing to decode it to.
+
+A declaration whose parameter or result type is `Fun` therefore has no type in the
+grammar, and hence no term — however the front end grows.
+-/
+
+open LeanScript
+
+/-- `Fun` has no values: every constructor takes a `Fun`, so a value of it would have to
+    contain a strictly smaller one, forever. -/
+theorem Fun.elim_false : Fun → False
+  | .Abs _ a => Fun.elim_false a
+  | .App a _ => Fun.elim_false a
+
+/-- Every type of the grammar has a value: `Ty.dflt` is one.  This is what the exhausted
+    branch of `Term.fixAcc` answers with. -/
+theorem ty_den_nonempty (τ : Ty) : Nonempty τ.den := ⟨τ.dflt⟩
+
+/-- No type of the grammar models `Fun`.  A model of a Lean type `A` by a type `τ` of the
+    grammar reads a value of `τ` as a value of `A`; here there is a value of `τ` to read
+    and no value of `Fun` for it to be. -/
+theorem no_ty_models_Fun (τ : Ty) (decode : τ.den → Fun) : False :=
+  Fun.elim_false (decode τ.dflt)
+
+/-- The same statement for a function *of* `Fun`, which is the shape the refused
+    declarations of the module have: `Fun.size : Fun → Nat` would be translated at a type
+    `Ty.fn σ Ty.nat` with `σ` a model of `Fun`, and there is no such `σ`. -/
+theorem no_ty_models_Fun_domain (σ : Ty) (encode : Fun → σ.den) (decode : σ.den → Fun)
+    (_h : ∀ t, decode (encode t) = t) : False :=
+  no_ty_models_Fun σ decode

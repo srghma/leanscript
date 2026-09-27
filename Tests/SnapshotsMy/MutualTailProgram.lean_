@@ -1,0 +1,142 @@
+-- SnapshotsMy.MutualTail: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   7 are programs below
+-- Nothing is left out.
+--
+-- ════ 📦 test1 & test2 (clique) : (fn nat (fn nat (fn nat bool)))
+-- fixWfTail (nat nat nat) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := true;
+--   ♯0 else let ♯ := self0⟨↓⟩(1#, 0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ 1#));
+--   ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯2) ⬝ 0#) then let ♯ := false;
+--   ♯0 else let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#), 0#);
+--   ♯0
+-- }
+--
+-- ════ 📦 test3 & test4 & test5 (clique) : (fn nat (fn nat (fn nat (fn nat (fn nat (fn nat (fn nat (fn nat nat))))))))
+-- fixWfTail (nat nat nat nat nat nat nat nat) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then ♯2 else let ♯ := 1#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ ♯0);
+--   let ♯ := 2#;
+--   let ♯ := self0⟨↓⟩(1#, 0#, 0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ 1#), ♯1, ♯0, 0#, 0#);
+--   ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 1#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ 0#) then ♯4 else let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ ♯5);
+--   let ♯ := self0⟨↓⟩(2#, 0#, 0#, 0#, 0#, 0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ 1#), ♯0);
+--   ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯6) ⬝ 0#) then ♯7 else let ♯ := 3#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯8) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯8) ⬝ 1#), ♯0, 0#, 0#, 0#, 0#, 0#);
+--   ♯0
+-- }
+--
+-- ════ 🎯 test1 : (fn nat bool)
+-- ƛ (((@test1 & test2 (clique) ⬝ 0#) ⬝ ♯0) ⬝ 0#)
+--
+-- ════ 🎯 test2 : (fn nat bool)
+-- ƛ (((@test1 & test2 (clique) ⬝ 1#) ⬝ 0#) ⬝ ♯0)
+--
+-- ════ 🎯 test3 : (fn nat (fn nat nat))
+-- ƛ ƛ ((((((((@test3 & test4 & test5 (clique) ⬝ 0#) ⬝ ♯1) ⬝ ♯0) ⬝ 0#) ⬝ 0#) ⬝ 0#) ⬝ 0#) ⬝ 0#)
+--
+-- ════ 🎯 test4 : (fn nat (fn nat (fn nat nat)))
+-- ƛ ƛ ƛ ((((((((@test3 & test4 & test5 (clique) ⬝ 1#) ⬝ 0#) ⬝ 0#) ⬝ ♯2) ⬝ ♯1) ⬝ ♯0) ⬝ 0#) ⬝ 0#)
+--
+-- ════ 🎯 test5 : (fn nat (fn nat nat))
+-- ƛ ƛ ((((((((@test3 & test4 & test5 (clique) ⬝ 2#) ⬝ 0#) ⬝ 0#) ⬝ 0#) ⬝ 0#) ⬝ 0#) ⬝ ♯1) ⬝ ♯0)
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyMutualTail
+
+/-- `test1 & test2 (clique)`, as a declaration of the module. -/
+def d_test1___test2__clique_ : GlobalDecl := ⟨"test1 & test2 (clique)", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.bool)))⟩
+
+/-- The signature `test1 & test2 (clique)` is written against. -/
+def sig_test1___test2__clique_ : Sig := ⟨[], by decide⟩
+
+/-- The body of `test1 & test2 (clique)`. -/
+def tm_test1___test2__clique_ : Term sig_test1___test2__clique_ [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.bool))) :=
+  (Term.fixWfTail [Ty.nat, Ty.nat, Ty.nat] (fun as => (if ((as.get (v♯0)) == 0) then (as.get (v♯1)) else (as.get (v♯2)))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (Term.boolL true) (♯0)) (Term.letE (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.natL 0) (.cons (natSub (♯1) (Term.natL 1)) .nil)))) (♯0))) (Term.ite (natEq (♯2) (Term.natL 0)) (Term.letE (Term.boolL false) (♯0)) (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯2) (Term.natL 1)) (.cons (Term.natL 0) .nil)))) (♯0)))) (by sorry) (by decide))
+
+/-- `test3 & test4 & test5 (clique)`, as a declaration of the module. -/
+def d_test3___test4___test5__clique_ : GlobalDecl := ⟨"test3 & test4 & test5 (clique)", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))))))))⟩
+
+/-- The signature `test3 & test4 & test5 (clique)` is written against. -/
+def sig_test3___test4___test5__clique_ : Sig := ⟨[d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test3 & test4 & test5 (clique)`. -/
+def tm_test3___test4___test5__clique_ : Term sig_test3___test4___test5__clique_ [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)))))))) :=
+  (Term.fixWfTail [Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat] (fun as => (if ((as.get (v♯0)) == 0) then (as.get (v♯1)) else (if ((as.get (v♯0)) == 1) then (as.get (v♯3)) else (as.get (v♯6))))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (♯2) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯3) (♯0)) (Term.letE (Term.natL 2) (Term.letE (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (natSub (♯4) (Term.natL 1)) (.cons (♯1) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.natL 0) .nil))))))))) (♯0)))))) (Term.ite (natEq (♯0) (Term.natL 1)) (Term.ite (natEq (♯3) (Term.natL 0)) (♯4) (Term.letE (natAdd (♯4) (♯5)) (Term.letE (Term.selfCall .head (.cons (Term.natL 2) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (natSub (♯4) (Term.natL 1)) (.cons (♯0) .nil))))))))) (♯0)))) (Term.ite (natEq (♯6) (Term.natL 0)) (♯7) (Term.letE (Term.natL 3) (Term.letE (natAdd (♯8) (♯0)) (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯8) (Term.natL 1)) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) (.cons (Term.natL 0) .nil))))))))) (♯0))))))) (by sorry) (by decide))
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.fn Ty.nat Ty.bool)⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.fn Ty.nat Ty.bool) :=
+  (Term.lam (Term.ap (Term.ap (Term.ap (Term.global (.there .here)) (Term.natL 0)) (♯0)) (Term.natL 0)))
+
+/-- `test2`, as a declaration of the module. -/
+def d_test2 : GlobalDecl := ⟨"test2", (Ty.fn Ty.nat Ty.bool)⟩
+
+/-- The signature `test2` is written against. -/
+def sig_test2 : Sig := ⟨[d_test1, d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test2`. -/
+def tm_test2 : Term sig_test2 [] [] (Ty.fn Ty.nat Ty.bool) :=
+  (Term.lam (Term.ap (Term.ap (Term.ap (Term.global (.there (.there .here))) (Term.natL 1)) (Term.natL 0)) (♯0)))
+
+/-- `test3`, as a declaration of the module. -/
+def d_test3 : GlobalDecl := ⟨"test3", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `test3` is written against. -/
+def sig_test3 : Sig := ⟨[d_test2, d_test1, d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test3`. -/
+def tm_test3 : Term sig_test3 [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there (.there .here))) (Term.natL 0)) (♯1)) (♯0)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0))))
+
+/-- `test4`, as a declaration of the module. -/
+def d_test4 : GlobalDecl := ⟨"test4", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)))⟩
+
+/-- The signature `test4` is written against. -/
+def sig_test4 : Sig := ⟨[d_test3, d_test2, d_test1, d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test4`. -/
+def tm_test4 : Term sig_test4 [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))) :=
+  (Term.lam (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there (.there (.there .here)))) (Term.natL 1)) (Term.natL 0)) (Term.natL 0)) (♯2)) (♯1)) (♯0)) (Term.natL 0)) (Term.natL 0)))))
+
+/-- `test5`, as a declaration of the module. -/
+def d_test5 : GlobalDecl := ⟨"test5", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `test5` is written against. -/
+def sig_test5 : Sig := ⟨[d_test4, d_test3, d_test2, d_test1, d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The body of `test5`. -/
+def tm_test5 : Term sig_test5 [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there (.there (.there (.there .here))))) (Term.natL 2)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0)) (Term.natL 0)) (♯1)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test5, d_test4, d_test3, d_test2, d_test1, d_test3___test4___test5__clique_, d_test1___test2__clique_], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test5 (by decide) tm_test5 (.cons d_test4 (by decide) tm_test4 (.cons d_test3 (by decide) tm_test3 (.cons d_test2 (by decide) tm_test2 (.cons d_test1 (by decide) tm_test1 (.cons d_test3___test4___test5__clique_ (by decide) tm_test3___test4___test5__clique_ (.cons d_test1___test2__clique_ (by decide) tm_test1___test2__clique_ .nil)))))))
+
+end ProgramSnapshotsMyMutualTail

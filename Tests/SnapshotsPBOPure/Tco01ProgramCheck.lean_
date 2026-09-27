@@ -1,0 +1,30 @@
+/-
+The term `SnapshotsPBOPure/Tco01Program.lean` was generated with, proved to compute the
+Lean function of `SnapshotsPBOPure/Tco01.lean` it was translated from — at *every*
+argument, not only at the ones an evaluation test tries.
+
+`tm_test` is the generated artefact itself (this file imports it, it is not a copy), so
+what is proved here is a statement about what the driver emitted.
+-/
+
+import SnapshotsPBOPure.Tco01Program
+import SnapshotsPBOPure.Tco01
+
+open LeanScript LeanScript.Expr ProgramSnapshotsPBOPureTco01
+
+namespace SnapshotsPBOPure.Tco01ProgramCheck
+
+/-- The Lean function `test`, read as a function of the emitted term's argument list. -/
+def testFun (as : Env [Ty.nat]) : Ty.nat.den := test (as.get .head)
+
+/-- **The emitted term is `test`.** -/
+theorem tm_test_implements (δ : GEnv sig_test.decls) : tm_test.Implements δ testFun := by
+  refine Term.fixNat_implements_closed _ _ _ δ testFun ?_
+  intro g as hg
+  match as with
+  | .cons n .nil =>
+    cases (n : Nat) with
+    | zero => rfl
+    | succ k => exact hg (.cons k .nil) (Nat.lt_succ_self k)
+
+end SnapshotsPBOPure.Tco01ProgramCheck

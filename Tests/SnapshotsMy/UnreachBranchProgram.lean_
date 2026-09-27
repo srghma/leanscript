@@ -1,0 +1,79 @@
+-- SnapshotsMy.UnreachBranch: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction: the one way it
+-- repeats work is `Term.fixAcc`, which carries a well-founded relation, a proof that
+-- it is well founded, and the measure of its arguments the translation read off
+-- Lean's own termination proof.
+-- What became of the declarations of the module:
+--   3 are programs below
+-- Nothing is left out.
+--
+-- ════ 🎯 headOf : (fn (recTaggedUnion ()|(nat self#0)) nat)
+-- ƛ case ♯0 of
+--   | 0() => 0#
+--   | 1(nat (recTaggedUnion ()|(nat self#0))) => ♯0
+--
+--
+-- ════ 🎯 small : (fn nat nat)
+-- ƛ if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then let ♯ := 10#;
+-- ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ 1#)) ⬝ 0#) then let ♯ := 20#;
+-- ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ 1#)) ⬝ 1#)) ⬝ 0#) then let ♯ := 30#;
+-- ♯0 else 0#
+--
+-- ════ 🎯 test : (fn nat nat)
+-- ƛ let ♯ := 3#;
+-- let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ ♯0);
+-- if ♯0 then let ♯ := (@small ⬝ ♯2);
+-- let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯0) ⬝ ♯3);
+-- ♯0 else let ♯ := 0#;
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyUnreachBranch
+
+/-- `headOf`, as a declaration of the module. -/
+def d_headOf : GlobalDecl := ⟨"headOf", (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) Ty.nat)⟩
+
+/-- The signature `headOf` is written against. -/
+def sig_headOf : Sig := ⟨[], by decide⟩
+
+/-- The body of `headOf`. -/
+def tm_headOf : Term sig_headOf [] [] (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) Ty.nat) :=
+  (Term.lam (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (Term.natL 0) (Alts.cons 1 [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl)] (by rfl) (♯0) Alts.nilFull)) (by rfl)))
+
+/-- `small`, as a declaration of the module. -/
+def d_small : GlobalDecl := ⟨"small", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `small` is written against. -/
+def sig_small : Sig := ⟨[d_headOf], by decide⟩
+
+/-- The body of `small`. -/
+def tm_small : Term sig_small [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.lam (Term.ite (natEq (♯0) (Term.natL 0)) (Term.letE (Term.natL 10) (♯0)) (Term.ite (natEq (natSub (♯0) (Term.natL 1)) (Term.natL 0)) (Term.letE (Term.natL 20) (♯0)) (Term.ite (natEq (natSub (natSub (♯0) (Term.natL 1)) (Term.natL 1)) (Term.natL 0)) (Term.letE (Term.natL 30) (♯0)) (Term.natL 0)))))
+
+/-- `test`, as a declaration of the module. -/
+def d_test : GlobalDecl := ⟨"test", (Ty.fn Ty.nat Ty.nat)⟩
+
+/-- The signature `test` is written against. -/
+def sig_test : Sig := ⟨[d_small, d_headOf], by decide⟩
+
+/-- The body of `test`. -/
+def tm_test : Term sig_test [] [] (Ty.fn Ty.nat Ty.nat) :=
+  (Term.lam (Term.letE (Term.natL 3) (Term.letE (natLt (♯1) (♯0)) (Term.ite (♯0) (Term.letE (Term.ap (Term.global .here) (♯2)) (Term.letE (natAdd (♯0) (♯3)) (♯0))) (Term.letE (Term.natL 0) (♯0))))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test, d_small, d_headOf], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test (by decide) tm_test (.cons d_small (by decide) tm_small (.cons d_headOf (by decide) tm_headOf .nil)))
+
+end ProgramSnapshotsMyUnreachBranch

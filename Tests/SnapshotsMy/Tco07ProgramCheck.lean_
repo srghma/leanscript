@@ -1,0 +1,44 @@
+/-
+The term `SnapshotsMy/Tco07Program.lean` was generated with, run against the Lean function
+of `SnapshotsMy/Tco07.lean` it was translated from.
+
+`boom` is the interesting case: it terminates *only* because of the erased proof
+`h : Safe n`, which forces `n = 1`.  The compiled code Lean emits has no such argument, so
+the emitted term is a recursion whose one self call, at `3 * n`, does not decrease the
+measure the translation carried over (`n`).  What is proved here is therefore two things:
+at `1`, the one argument at which Lean's `boom` can be called, the term gives Lean's
+answer; and at every other argument — where the erased function would run for ever — the
+term still *answers*, by taking the exhausted branch, rather than looping.
+-/
+
+import SnapshotsMy.Tco07Program
+import SnapshotsMy.Tco07
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsMyTco07
+
+namespace SnapshotsMy.Tco07ProgramCheck
+
+/-- **Inside the domain.** At `n = 1`, where `Safe n` holds, the emitted term answers what
+    Lean's `boom` answers. -/
+theorem tm_boom_at_one : Term.runNat1 tm_boom 1 = boom 1 (by simp [Safe]) := by
+  simp [boom]
+  rfl
+
+/-- **Outside the domain the term answers.** At every argument the term terminates with
+    `0`: the self call is at `3 * n`, which never decreases the measure, so the exhausted
+    branch is taken instead of a further iteration. -/
+theorem tm_boom_answers (n : Nat) : Term.runNat1 tm_boom n = 0 := by
+  rw [show Term.runNat1 tm_boom n
+        = Env.apply (tm_boom.eval .nil .nil .nil) (.cons (n : Nat) .nil) from rfl]
+  rw [tm_boom, Term.apply_eval_fixAcc, Term.fixLoop_eq]
+  match n with
+  | 0 => rfl
+  | 1 => rfl
+  | (k + 2) =>
+    -- the self call is at `3 * (k + 2)`, which is not smaller than `k + 2`, so the
+    -- exhausted branch answers
+    refine dif_neg ?_
+    show ¬ (3 * (k + 2) < k + 2)
+    omega
+
+end SnapshotsMy.Tco07ProgramCheck

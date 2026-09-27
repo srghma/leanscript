@@ -1,0 +1,54 @@
+/-
+The program `SnapshotsMy/StringWalkProgram.lean` was generated with, run against the Lean
+functions of `SnapshotsMy/StringWalk.lean` it was translated from.
+
+`test3` is the interesting one here.  It is a `for` loop over a `Std.Legacy.Range` whose
+body pushes the character literal `'x'`, so it needs two things of the front end: a
+character literal, which LCNF hands over as a fixed-width `UInt32`, and a measure for the
+*specialisation* of `Std.Legacy.Range.forIn'.loop` that Lean compiles the loop into — a
+copy that carries no termination evidence of its own, so the measure is read off the
+declaration it is a copy of, `range.stop - i`.
+-/
+
+import SnapshotsMy.StringWalk
+import SnapshotsMy.StringWalkProgram
+
+open LeanScript LeanScript.Expr ProgramSnapshotsMyStringWalk
+
+namespace SnapshotsMy.StringWalkProgramCheck
+
+/-- `test1`, as the emitted program computes it: counting the occurrences of a character
+    by the byte-position walk. -/
+def runTest1 (s : String) (c : Char) : Nat :=
+  program.run (Sg := moduleSig) (τ := Ty.fn Ty.string (Ty.fn Ty.char Ty.nat))
+    (.global (.there (.there (.there .here)))) s c
+
+/-- `test3`, as the emitted program computes it: the `for` loop that grows the string it
+    measures. -/
+def runTest3 (s : String) (n : Nat) : Nat :=
+  program.run (Sg := moduleSig) (τ := Ty.fn Ty.string (Ty.fn Ty.nat Ty.nat))
+    (.global (.there .here)) s n
+
+/-- `test4`, as the emitted program computes it. -/
+def runTest4 (s : String) : Nat :=
+  program.run (Sg := moduleSig) (τ := Ty.fn Ty.string Ty.nat) (.global .here) s
+
+/-- A handful of strings to run the walks on. -/
+def samples : List String := ["", "a", "banana", "hello, world", "αβγ"]
+
+theorem test1_agrees :
+    (samples.all fun s => ['a', 'x', 'β'].all fun c => runTest1 s c == test1 s c) = true := by
+  native_decide
+
+theorem test3_agrees :
+    (samples.all fun s => (List.range 6).all fun n => runTest3 s n == test3 s n) = true := by
+  native_decide
+
+theorem test4_agrees : (samples.all fun s => runTest4 s == test4 s) = true := by
+  native_decide
+
+/-- The loop really runs: `test3 "ab" 3` adds the byte size of `"ab"`, `"abx"` and
+    `"abxx"`, which is `2 + 3 + 4`. -/
+theorem test3_ab_three : runTest3 "ab" 3 = 9 := by native_decide
+
+end SnapshotsMy.StringWalkProgramCheck

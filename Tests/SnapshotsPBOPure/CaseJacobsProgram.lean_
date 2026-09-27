@@ -1,0 +1,201 @@
+-- SnapshotsPBOPure.CaseJacobs: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   4 are programs below
+--   5 are compiled where they are used, or have no instantiation of their own
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Expr.add.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Expr.ctorElim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Expr.mul.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Expr.succ.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Expr.zero.elim`
+--
+-- ════ 🎯 renderExpr : (fn (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) string)
+-- fixStructDeep ((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) subject { arg0 } body {
+--   case ♯0 of
+--     | 0((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := "Add(";
+--       let ♯ := self0⟨↓⟩(♯1);
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := " ";
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := self0⟨↓⟩(♯6);
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := ")";
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       ♯0
+--     | 1((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := "Mul(";
+--       let ♯ := self0⟨↓⟩(♯1);
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := " ";
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := self0⟨↓⟩(♯6);
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := ")";
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       ♯0
+--     | 2((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := "Succ(";
+--       let ♯ := self0⟨↓⟩(♯1);
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       let ♯ := ")";
+--       let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--       ♯0
+--     | 3() => let ♯ := "Zero";
+--       ♯0
+--
+-- }
+--
+-- ════ 🎯 Expr.ctorIdx : (fn (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) nat)
+-- ƛ case ♯0 of
+--   | 0((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := 0#;
+--     ♯0
+--   | 1((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := 1#;
+--     ♯0
+--   | 2((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := 2#;
+--     ♯0
+--   | 3() => let ♯ := 3#;
+--     ♯0
+--
+--
+-- ════ 🎯 instToStringExpr : (fn (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) string)
+-- let ♯ := ƛ let ♯ := (@renderExpr ⬝ ♯0);
+-- ♯0;
+-- let ♯ := ♯0;
+-- ♯0
+--
+-- ════ 🎯 test1 : (fn (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) string)
+-- ƛ case ♯0 of
+--   | 0((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => case ♯0 of
+--       | 3() => case ♯1 of
+--           | 3() => let ♯ := "e1";
+--             ♯0
+--           | _ => let ♯ := "e7: ";
+--             let ♯ := (@renderExpr ⬝ ♯3);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--
+--       | 2((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => let ♯ := "e3: ";
+--         let ♯ := (@renderExpr ⬝ ♯1);
+--         let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--         let ♯ := " ";
+--         let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--         let ♯ := (@renderExpr ⬝ ♯7);
+--         let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--         ♯0
+--       | _ => case ♯1 of
+--           | 3() => let ♯ := "e6: ";
+--             let ♯ := (@renderExpr ⬝ ♯1);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--           | _ => let ♯ := "e7: ";
+--             let ♯ := (@renderExpr ⬝ ♯3);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--
+--
+--   | 1((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => case ♯0 of
+--       | 3() => let ♯ := "e2: ";
+--         let ♯ := (@renderExpr ⬝ ♯2);
+--         let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--         ♯0
+--       | 0((recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|()) (recTaggedUnion (self#0 self#0)|(self#0 self#0)|(self#0)|())) => case ♯3 of
+--           | 3() => let ♯ := "e4: ";
+--             let ♯ := (@renderExpr ⬝ ♯3);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--           | _ => let ♯ := "e5: ";
+--             let ♯ := (@renderExpr ⬝ ♯1);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             let ♯ := " ";
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             let ♯ := (@renderExpr ⬝ ♯6);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯0) ⬝ ♯3);
+--             let ♯ := (@renderExpr ⬝ ♯11);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--
+--       | _ => case ♯1 of
+--           | 3() => let ♯ := "e4: ";
+--             let ♯ := (@renderExpr ⬝ ♯1);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--           | _ => let ♯ := "e7: ";
+--             let ♯ := (@renderExpr ⬝ ♯3);
+--             let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--             ♯0
+--
+--
+--   | _ => let ♯ := "e7: ";
+--     let ♯ := (@renderExpr ⬝ ♯1);
+--     let ♯ := ((extern⟨string string ⇒ string⟩ ⬝ ♯1) ⬝ ♯0);
+--     ♯0
+--
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureCaseJacobs
+
+/-- `renderExpr`, as a declaration of the module. -/
+def d_renderExpr : GlobalDecl := ⟨"renderExpr", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string)⟩
+
+/-- The signature `renderExpr` is written against. -/
+def sig_renderExpr : Sig := ⟨[], by decide⟩
+
+/-- The body of `renderExpr`. -/
+def tm_renderExpr : Term sig_renderExpr [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string) :=
+  (Term.fixStructDeep [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (v♯0) (fun _ => True) (Term.caseTag (♯0) (Alts.cons 0 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.strL "Add(") (Term.letE (Term.selfCall .head (.cons (♯1) .nil)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL " ") (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯6) .nil)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL ")") (Term.letE (strAppend (♯1) (♯0)) (♯0)))))))))) (Alts.cons 1 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.strL "Mul(") (Term.letE (Term.selfCall .head (.cons (♯1) .nil)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL " ") (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯6) .nil)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL ")") (Term.letE (strAppend (♯1) (♯0)) (♯0)))))))))) (Alts.cons 2 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.strL "Succ(") (Term.letE (Term.selfCall .head (.cons (♯1) .nil)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL ")") (Term.letE (strAppend (♯1) (♯0)) (♯0)))))) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "Zero") (♯0)) Alts.nilFull)))) (by rfl)) (by sorry))
+
+/-- `Expr.ctorIdx`, as a declaration of the module. -/
+def d_Expr_ctorIdx : GlobalDecl := ⟨"Expr.ctorIdx", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.nat)⟩
+
+/-- The signature `Expr.ctorIdx` is written against. -/
+def sig_Expr_ctorIdx : Sig := ⟨[d_renderExpr], by decide⟩
+
+/-- The body of `Expr.ctorIdx`. -/
+def tm_Expr_ctorIdx : Term sig_Expr_ctorIdx [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.nat) :=
+  (Term.lam (Term.caseTag (♯0) (Alts.cons 0 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.natL 0) (♯0)) (Alts.cons 1 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.natL 1) (♯0)) (Alts.cons 2 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.natL 2) (♯0)) (Alts.cons 3 [] (by rfl) (Term.letE (Term.natL 3) (♯0)) Alts.nilFull)))) (by rfl)))
+
+/-- `instToStringExpr`, as a declaration of the module. -/
+def d_instToStringExpr : GlobalDecl := ⟨"instToStringExpr", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string)⟩
+
+/-- The signature `instToStringExpr` is written against. -/
+def sig_instToStringExpr : Sig := ⟨[d_Expr_ctorIdx, d_renderExpr], by decide⟩
+
+/-- The body of `instToStringExpr`. -/
+def tm_instToStringExpr : Term sig_instToStringExpr [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string) :=
+  (Term.letE (Term.lam (Term.letE (Term.ap (Term.global (.there .here)) (♯0)) (♯0))) (Term.letE (♯0) (♯0)))
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string)⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[d_instToStringExpr, d_Expr_ctorIdx, d_renderExpr], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.fn (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl) Ty.string) :=
+  (Term.lam (Term.caseTag (♯0) (Alts.cons 0 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.caseTag (♯0) (Alts.cons 3 [] (by rfl) (Term.caseTag (♯1) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "e1") (♯0)) (Alts.deflt (Term.letE (Term.strL "e7: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯3)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))))) (by rfl)) (Alts.cons 2 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.letE (Term.strL "e3: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯1)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL " ") (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯7)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))))))) (Alts.deflt (Term.caseTag (♯1) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "e6: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯1)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))) (Alts.deflt (Term.letE (Term.strL "e7: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯3)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))))) (by rfl))))) (by rfl)) (Alts.cons 1 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.caseTag (♯0) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "e2: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯2)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))) (Alts.cons 0 [(Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl), (Ty.recTaggedUnion (.payloadFirst ⟨(RTy.self 0), [(RTy.self 0)]⟩ [(RTy.self 0), (RTy.self 0)] [[(RTy.self 0)], []]) rfl)] (by rfl) (Term.caseTag (♯3) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "e4: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯3)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))) (Alts.deflt (Term.letE (Term.strL "e5: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯1)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.strL " ") (Term.letE (strAppend (♯1) (♯0)) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯6)) (Term.letE (strAppend (♯1) (♯0)) (Term.letE (strAppend (♯0) (♯3)) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯11)) (Term.letE (strAppend (♯1) (♯0)) (♯0))))))))))))) (by rfl)) (Alts.deflt (Term.caseTag (♯1) (Alts.cons 3 [] (by rfl) (Term.letE (Term.strL "e4: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯1)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))) (Alts.deflt (Term.letE (Term.strL "e7: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯3)) (Term.letE (strAppend (♯1) (♯0)) (♯0)))))) (by rfl))))) (by rfl)) (Alts.deflt (Term.letE (Term.strL "e7: ") (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯1)) (Term.letE (strAppend (♯1) (♯0)) (♯0))))))) (by rfl)))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test1, d_instToStringExpr, d_Expr_ctorIdx, d_renderExpr], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test1 (by decide) tm_test1 (.cons d_instToStringExpr (by decide) tm_instToStringExpr (.cons d_Expr_ctorIdx (by decide) tm_Expr_ctorIdx (.cons d_renderExpr (by decide) tm_renderExpr .nil))))
+
+end ProgramSnapshotsPBOPureCaseJacobs

@@ -1,0 +1,82 @@
+-- SnapshotsPBOPure.Tco06: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   3 are programs below
+-- Nothing is left out.
+--
+-- ════ 📦 f & g (clique) : (fn nat (fn nat (fn int (fn int (fn nat (fn int int))))))
+-- fixWfTail (nat nat int int nat int) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯2) ⬝ ♯3);
+--   ♯0 else let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯2) ⬝ ♯3);
+--   let ♯ := self0⟨↓⟩(1#, 0#, 0i, 0i, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯2) ⬝ 1#), ♯0);
+--   ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯4) ⬝ 0#) then ♯5 else let ♯ := 1#;
+--   let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--   let ♯ := ((extern⟨int int ⇒ int⟩ ⬝ ♯7) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯7) ⬝ 1#), ♯8, ♯0, 0#, 0i);
+--   ♯0
+-- }
+--
+-- ════ 🎯 f : (fn nat (fn int (fn int int)))
+-- ƛ ƛ ƛ ((((((@f & g (clique) ⬝ 0#) ⬝ ♯2) ⬝ ♯1) ⬝ ♯0) ⬝ 0#) ⬝ 0i)
+--
+-- ════ 🎯 g : (fn nat (fn int int))
+-- ƛ ƛ ((((((@f & g (clique) ⬝ 1#) ⬝ 0#) ⬝ 0i) ⬝ 0i) ⬝ ♯1) ⬝ ♯0)
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureTco06
+
+/-- `f & g (clique)`, as a declaration of the module. -/
+def d_f___g__clique_ : GlobalDecl := ⟨"f & g (clique)", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.int (Ty.fn Ty.int (Ty.fn Ty.nat (Ty.fn Ty.int Ty.int))))))⟩
+
+/-- The signature `f & g (clique)` is written against. -/
+def sig_f___g__clique_ : Sig := ⟨[], by decide⟩
+
+/-- The body of `f & g (clique)`. -/
+def tm_f___g__clique_ : Term sig_f___g__clique_ [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.int (Ty.fn Ty.int (Ty.fn Ty.nat (Ty.fn Ty.int Ty.int)))))) :=
+  (Term.fixWfTail [Ty.nat, Ty.nat, Ty.int, Ty.int, Ty.nat, Ty.int] (fun as => (if ((as.get (v♯0)) == 0) then (as.get (v♯1)) else (as.get (v♯4)))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (intAdd (♯2) (♯3)) (♯0)) (Term.letE (intAdd (♯2) (♯3)) (Term.letE (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.natL 0) (.cons (Term.intL (0)) (.cons (Term.intL (0)) (.cons (natSub (♯2) (Term.natL 1)) (.cons (♯0) .nil))))))) (♯0)))) (Term.ite (natEq (♯4) (Term.natL 0)) (♯5) (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (intAdd (♯7) (♯0)) (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯7) (Term.natL 1)) (.cons (♯8) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.intL (0)) .nil))))))) (♯0))))))) (by sorry) (by decide))
+
+/-- `f`, as a declaration of the module. -/
+def d_f : GlobalDecl := ⟨"f", (Ty.fn Ty.nat (Ty.fn Ty.int (Ty.fn Ty.int Ty.int)))⟩
+
+/-- The signature `f` is written against. -/
+def sig_f : Sig := ⟨[d_f___g__clique_], by decide⟩
+
+/-- The body of `f`. -/
+def tm_f : Term sig_f [] [] (Ty.fn Ty.nat (Ty.fn Ty.int (Ty.fn Ty.int Ty.int))) :=
+  (Term.lam (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global .here) (Term.natL 0)) (♯2)) (♯1)) (♯0)) (Term.natL 0)) (Term.intL (0))))))
+
+/-- `g`, as a declaration of the module. -/
+def d_g : GlobalDecl := ⟨"g", (Ty.fn Ty.nat (Ty.fn Ty.int Ty.int))⟩
+
+/-- The signature `g` is written against. -/
+def sig_g : Sig := ⟨[d_f, d_f___g__clique_], by decide⟩
+
+/-- The body of `g`. -/
+def tm_g : Term sig_g [] [] (Ty.fn Ty.nat (Ty.fn Ty.int Ty.int)) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there .here)) (Term.natL 1)) (Term.natL 0)) (Term.intL (0))) (Term.intL (0))) (♯1)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_g, d_f, d_f___g__clique_], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_g (by decide) tm_g (.cons d_f (by decide) tm_f (.cons d_f___g__clique_ (by decide) tm_f___g__clique_ .nil)))
+
+end ProgramSnapshotsPBOPureTco06

@@ -1,0 +1,98 @@
+/-
+The term `SnapshotsMy/Tco08Program.lean` was generated with, proved to compute Ackermann's
+function of `SnapshotsMy/Tco08.lean` — at *every* pair of arguments.
+
+`ack`'s `termination_by m n => (m, n)` is lexicographic, and the translation splits it
+into two measured recursions, one per component: an outer recursion measured by `m` whose
+answer is a function, and an inner recursion measured by `n`.  A call that drops the first
+component is a call of the *outer* self-reference, which re-enters the inner loop at its
+own measure; so nothing has to bound the number of iterations, which for `ack` no
+primitive recursive function could.
+-/
+
+import SnapshotsMy.Tco08Program
+import SnapshotsMy.Tco08
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops ProgramSnapshotsMyTco08
+
+namespace SnapshotsMy.Tco08ProgramCheck
+
+/-- The signature of the outer recursion: it takes `m` and answers with a function. -/
+abbrev outerSig : RSig := ⟨[Ty.nat], Ty.nat ⇒ Ty.nat⟩
+
+/-- The inner recursion of the emitted term, on its own: everything the outer recursion's
+    body is. -/
+def ackInner : Term sig_ack [Ty.nat] [outerSig] (Ty.nat ⇒ Ty.nat) :=
+  (Term.fixNat [Ty.nat] (fun as => (as.get (v♯0)))
+    (Term.ite (natEq (♯1) (Term.natL 0))
+      (Term.letE (Term.natL 1) (Term.letE (natAdd (♯1) (♯0)) (♯0)))
+      (Term.ite (natEq (♯0) (Term.natL 0))
+        (Term.letE (Term.natL 1)
+          (Term.letE (Term.ap (Term.selfCall (.tail .head)
+            (.cons (natSub (♯2) (Term.natL 1)) .nil)) (♯0)) (♯0)))
+        (Term.letE (Term.natL 1)
+          (Term.letE (natAdd (natSub (♯2) (Term.natL 1)) (♯0))
+            (Term.letE (Term.selfCall .head (.cons (natSub (♯2) (Term.natL 1)) .nil))
+              (Term.letE (Term.ap (Term.selfCall (.tail .head)
+                (.cons (natSub (♯4) (Term.natL 1)) .nil)) (♯0)) (♯0)))))))
+    (Term.natL 0))
+
+/-- The emitted term really is the outer recursion around that inner one. -/
+theorem tm_ack_eq :
+    tm_ack = Term.fixNat [Ty.nat] (fun as => (as.get (v♯0))) ackInner
+      (Term.lam (Term.natL 0)) := rfl
+
+/-- `ack`, read as a function of the outer recursion's argument list. -/
+def ackFun (as : Env [Ty.nat]) : (Ty.nat ⇒ Ty.nat).den := ack (as.get (v♯0))
+
+theorem ack_zero (n : Nat) : ack 0 n = n + 1 := by simp [ack]
+
+theorem ack_succ_zero (k : Nat) : ack (k + 1) 0 = ack k 1 := by simp [ack]
+
+theorem ack_succ_succ (k i : Nat) : ack (k + 1) (i + 1) = ack k (ack (k + 1) i) := by
+  simp [ack]
+
+/-- **The inner recursion is `ack m`**, given an outer self-reference that is already
+    `ack` at every argument below `m`. -/
+theorem ackInner_implements (δ : GEnv sig_ack.decls)
+    (g : Env [Ty.nat] → (Ty.nat ⇒ Ty.nat).den) (m : Nat)
+    (hg : ∀ bs : Env [Ty.nat], (bs.get (v♯0) : Nat) < m → g bs = ackFun bs) (n : Nat) :
+    Env.apply (ackInner.eval δ (.cons m .nil) (.cons g .nil)) (.cons n .nil) = ack m n := by
+  refine Term.fixNat_implements_measure (fun as => as.get (v♯0)) _ (Term.natL 0) δ
+    (.cons (m : Nat) .nil) (.cons g .nil) (fun as => ack m (as.get (v♯0)))
+    (fun gi as hgi => ?_) (.cons n .nil)
+  match as with
+  | .cons j .nil =>
+    cases (m : Nat) with
+    | zero =>
+      show (j : Nat) + 1 = ack 0 j
+      rw [ack_zero]
+    | succ k =>
+      have hgk : g (.cons (k : Nat) .nil) = ack k := hg (.cons (k : Nat) .nil) (by simp)
+      cases (j : Nat) with
+      | zero =>
+        show g (.cons (k : Nat) .nil) 1 = ack (k + 1) 0
+        rw [hgk, ack_succ_zero]
+      | succ i =>
+        show g (.cons (k : Nat) .nil) (gi (.cons (i : Nat) .nil)) = ack (k + 1) (i + 1)
+        rw [hgk, hgi (.cons (i : Nat) .nil) (by simp), ack_succ_succ]
+        rfl
+
+/-- **The emitted term is `ack`.** -/
+theorem tm_ack_implements (δ : GEnv sig_ack.decls) : tm_ack.Implements δ ackFun := by
+  rw [tm_ack_eq]
+  refine Term.fixNat_implements_closed _ _ _ δ ackFun ?_
+  intro g as hg
+  match as with
+  | .cons m .nil =>
+    funext n
+    exact ackInner_implements δ g m (fun bs hbs => hg bs (by simpa using hbs)) n
+
+/-- The declarations `ack999` is written against, as a program. -/
+def pAck : Program sig_ack999.decls := .cons d_ack (by decide) tm_ack .nil
+
+/-- **The emitted `ack999` is `ack999`.** -/
+theorem tm_ack999_value : Program.run pAck tm_ack999 = ack999 :=
+  congrFun (tm_ack_implements pAck.env (.cons (999 : Nat) .nil)) 1
+
+end SnapshotsMy.Tco08ProgramCheck

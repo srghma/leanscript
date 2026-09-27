@@ -1,0 +1,49 @@
+-- SnapshotsPBOPure.STObject01: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction: the one way it
+-- repeats work is `Term.fixAcc`, which carries a well-founded relation, a proof that
+-- it is well founded, and the measure of its arguments the translation read off
+-- Lean's own termination proof.
+-- What became of the declarations of the module:
+--   1 is a program below
+--   5 are gaps the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- outside the fragment: `List.filterTR.loop._at_._private.SnapshotsPBOPure.STObject01.0.poke.spec_0`: `List.reverse` is polymorphic, and the call says nothing about what type it is called at; the front end translates one instantiation at a time
+-- outside the fragment: `_private.SnapshotsPBOPure.STObject01.0.deleteKey`: it calls `List.filterTR.loop._at_._private.SnapshotsPBOPure.STObject01.0.poke.spec_0`, which has no program of its own
+-- outside the fragment: `_private.SnapshotsPBOPure.STObject01.0.poke`: it calls `List.filterTR.loop._at_._private.SnapshotsPBOPure.STObject01.0.poke.spec_0`, which has no program of its own
+-- outside the fragment: `test3`: it calls `_private.SnapshotsPBOPure.STObject01.0.poke`, which has no program of its own
+-- outside the fragment: `test5`: it calls `_private.SnapshotsPBOPure.STObject01.0.poke`, which has no program of its own
+--
+-- ════ 🎯 test1 : (recTaggedUnion ()|((record string int) self#0))
+-- let ♯ := ctor0()();
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureSTObject01
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.recTaggedUnion (.skip (.here ⟨(RTy.record ⟨(RTy.prim .string), (RTy.prim .int), []⟩), [(RTy.self 0)]⟩ [])) rfl)⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.recTaggedUnion (.skip (.here ⟨(RTy.record ⟨(RTy.prim .string), (RTy.prim .int), []⟩), [(RTy.self 0)]⟩ [])) rfl) :=
+  (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.record ⟨(RTy.prim .string), (RTy.prim .int), []⟩), [(RTy.self 0)]⟩ [])) rfl)) 0 [] (by rfl) .nil) (♯0))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test1], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test1 (by decide) tm_test1 .nil)
+
+end ProgramSnapshotsPBOPureSTObject01

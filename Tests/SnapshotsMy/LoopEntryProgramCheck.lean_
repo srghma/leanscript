@@ -1,0 +1,34 @@
+/-
+The term `SnapshotsMy/LoopEntryProgram.lean` was generated with, proved to compute the
+Lean function of `SnapshotsMy/LoopEntry.lean` it was translated from — at *every*
+argument, not only at the ones an evaluation test tries.
+
+`countUp` is a tail recursion with one parameter nothing reads (`unused`), one that never
+changes (`step`), the one it recurses on (`n`) and an accumulator; the emitted term
+measures it by `n`, which is the argument Lean's own structural recursion is on.
+-/
+
+import SnapshotsMy.LoopEntryProgram
+import SnapshotsMy.LoopEntry
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsMyLoopEntry
+
+namespace SnapshotsMy.LoopEntryProgramCheck
+
+/-- The Lean function `countUp`, read as a function of the emitted term's argument list. -/
+def countUpFun (as : Env [Ty.string, Ty.nat, Ty.nat, Ty.nat]) : Ty.nat.den :=
+  countUp (as.get (v♯0)) (as.get (v♯1)) (as.get (v♯2)) (as.get (v♯3))
+
+/-- **The emitted term is `countUp`.** -/
+theorem tm_countUp_implements (δ : GEnv sig_countUp.decls) :
+    tm_countUp.Implements δ countUpFun := by
+  refine Term.fixNat_implements_closed _ _ _ δ countUpFun ?_
+  intro g as hg
+  match as with
+  | .cons u (.cons s (.cons n (.cons a .nil))) =>
+    cases (n : Nat) with
+    | zero => rfl
+    | succ k =>
+      exact hg (.cons u (.cons s (.cons k (.cons (a + s) .nil)))) (Nat.lt_succ_self k)
+
+end SnapshotsMy.LoopEntryProgramCheck

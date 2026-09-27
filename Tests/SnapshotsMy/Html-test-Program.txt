@@ -1,0 +1,314 @@
+-- the program of `test`  [nat=num int=num usize=num uint64=num int64=num isize=num bitvec=num]
+-- Its declarations are the ones it calls, and the ones they call, down to the
+-- functions the runtime implements; the terms are as the translation produced
+-- them, before the optimiser ran.
+
+-- the types it mentions, and how the backend models them
+HtmlM                   : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+Html                    : (recTaggedUnion (string (array self#0))|(string))
+Array Html              : (array (recTaggedUnion (string (array self#0))|(string)))
+Prod PUnit (Array Html) : (array (recTaggedUnion (string (array self#0))|(string)))
+
+-- 7 declarations, callees before callers
+
+-- from `mkElem`
+_private_SnapshotsMy_Html_0_mkElem : (fn [string (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [string (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : nat
+    (lit 0)
+    (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+      (apN
+        (extern lean_empty_array_with_capacity)
+        (var 0 : nat)
+      )
+      (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+        (apN
+          (var 2 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+          (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+        )
+        (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+          (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+          (letE : (recTaggedUnion (string (array self#0))|(string))
+            (ctor 0 : (recTaggedUnion (string (array self#0))|(string))
+              (var 5 : string)
+              (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+            )
+            (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+          )
+        )
+      )
+    )
+  )
+)
+
+-- from `h1`
+_private_SnapshotsMy_Html_0_h1 : (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : string
+    (lit "h1")
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (global _private_SnapshotsMy_Html_0_mkElem)
+        (var 0 : string)
+        (var 1 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+
+-- from `section_`
+_private_SnapshotsMy_Html_0_section_ : (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : string
+    (lit "section")
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (global _private_SnapshotsMy_Html_0_mkElem)
+        (var 0 : string)
+        (var 1 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+
+-- from `article`
+_private_SnapshotsMy_Html_0_article : (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : string
+    (lit "article")
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (global _private_SnapshotsMy_Html_0_mkElem)
+        (var 0 : string)
+        (var 1 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+
+-- from `h2`
+_private_SnapshotsMy_Html_0_h2 : (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : string
+    (lit "h2")
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (global _private_SnapshotsMy_Html_0_mkElem)
+        (var 0 : string)
+        (var 1 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+
+-- from `p`
+_private_SnapshotsMy_Html_0_p : (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))]
+  (letE : string
+    (lit "p")
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (global _private_SnapshotsMy_Html_0_mkElem)
+        (var 0 : string)
+        (var 1 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+
+-- from `test`
+test : (fn [string] (recTaggedUnion (string (array self#0))|(string)))
+(lamN [string]
+  (letE : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+    (lamN [(array (recTaggedUnion (string (array self#0))|(string)))]
+      (letE : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+        (lamN [(array (recTaggedUnion (string (array self#0))|(string)))]
+          (letE : string
+            (lit "Posts for ")
+            (letE : string
+              (apN
+                (extern lean_string_append)
+                (var 0 : string)
+                (var 3 : string)
+              )
+              (letE : (recTaggedUnion (string (array self#0))|(string))
+                (ctor 1 : (recTaggedUnion (string (array self#0))|(string))
+                  (var 0 : string)
+                )
+                (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                  (apN
+                    (extern lean_array_push)
+                    (var 3 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                  )
+                  (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                    (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    (jsOp cast (array (recTaggedUnion (string (array self#0))|(string))) → (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+                      (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        (letE : (recTaggedUnion (string (array self#0))|(string))
+          (apN
+            (jsOp cast (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string))) → (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))] (recTaggedUnion (string (array self#0))|(string)))
+              (global _private_SnapshotsMy_Html_0_h1)
+            )
+            (var 0 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))))
+          )
+          (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+            (apN
+              (extern lean_array_push)
+              (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+              (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+            )
+            (letE : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+              (lamN [(array (recTaggedUnion (string (array self#0))|(string)))]
+                (letE : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+                  (lamN [(array (recTaggedUnion (string (array self#0))|(string)))]
+                    (letE : string
+                      (lit "The first post")
+                      (letE : (recTaggedUnion (string (array self#0))|(string))
+                        (ctor 1 : (recTaggedUnion (string (array self#0))|(string))
+                          (var 0 : string)
+                        )
+                        (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                          (apN
+                            (extern lean_array_push)
+                            (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                            (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                          )
+                          (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                            (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                            (jsOp cast (array (recTaggedUnion (string (array self#0))|(string))) → (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+                              (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (letE : (recTaggedUnion (string (array self#0))|(string))
+                    (apN
+                      (jsOp cast (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string))) → (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))] (recTaggedUnion (string (array self#0))|(string)))
+                        (global _private_SnapshotsMy_Html_0_h2)
+                      )
+                      (var 0 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))))
+                    )
+                    (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                      (apN
+                        (extern lean_array_push)
+                        (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                        (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                      )
+                      (letE : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))
+                        (lamN [(array (recTaggedUnion (string (array self#0))|(string)))]
+                          (letE : string
+                            (lit "This is the first post.")
+                            (letE : (recTaggedUnion (string (array self#0))|(string))
+                              (ctor 1 : (recTaggedUnion (string (array self#0))|(string))
+                                (var 0 : string)
+                              )
+                              (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                                (apN
+                                  (extern lean_array_push)
+                                  (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                                  (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                                )
+                                (letE : string
+                                  (lit "Not much else to say.")
+                                  (letE : (recTaggedUnion (string (array self#0))|(string))
+                                    (ctor 1 : (recTaggedUnion (string (array self#0))|(string))
+                                      (var 0 : string)
+                                    )
+                                    (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                                      (apN
+                                        (extern lean_array_push)
+                                        (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                                        (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                                      )
+                                      (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                                        (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                                        (jsOp cast (array (recTaggedUnion (string (array self#0))|(string))) → (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+                                          (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                        (letE : (recTaggedUnion (string (array self#0))|(string))
+                          (apN
+                            (jsOp cast (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string))) → (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))] (recTaggedUnion (string (array self#0))|(string)))
+                              (global _private_SnapshotsMy_Html_0_p)
+                            )
+                            (var 0 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))))
+                          )
+                          (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                            (apN
+                              (extern lean_array_push)
+                              (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                              (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                            )
+                            (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                              (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                              (jsOp cast (array (recTaggedUnion (string (array self#0))|(string))) → (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+                                (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (letE : (recTaggedUnion (string (array self#0))|(string))
+                (apN
+                  (jsOp cast (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string))) → (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))] (recTaggedUnion (string (array self#0))|(string)))
+                    (global _private_SnapshotsMy_Html_0_article)
+                  )
+                  (var 0 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))))
+                )
+                (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                  (apN
+                    (extern lean_array_push)
+                    (var 2 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+                  )
+                  (letE : (array (recTaggedUnion (string (array self#0))|(string)))
+                    (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    (jsOp cast (array (recTaggedUnion (string (array self#0))|(string))) → (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))
+                      (var 0 : (array (recTaggedUnion (string (array self#0))|(string))))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (letE : (recTaggedUnion (string (array self#0))|(string))
+      (apN
+        (jsOp cast (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))] (recTaggedUnion (string (array self#0))|(string))) → (fn [(fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string)))))] (recTaggedUnion (string (array self#0))|(string)))
+          (global _private_SnapshotsMy_Html_0_section_)
+        )
+        (var 0 : (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (fn [(array (recTaggedUnion (string (array self#0))|(string)))] (array (recTaggedUnion (string (array self#0))|(string))))))
+      )
+      (var 0 : (recTaggedUnion (string (array self#0))|(string)))
+    )
+  )
+)
+

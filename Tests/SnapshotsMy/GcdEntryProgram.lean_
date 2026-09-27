@@ -1,0 +1,83 @@
+-- SnapshotsMy.GcdEntry: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   3 are programs below
+-- Nothing is left out.
+--
+-- ════ 📦 Nat.gcd : (fn nat (fn nat nat))
+-- fixStructTail (nat nat) subject { arg0 } body {
+--   let ♯ := 0#;
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ ♯0);
+--   if ♯0 then ♯3 else let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ ♯2);
+--   let ♯ := self0⟨↓⟩(♯0, ♯3);
+--   ♯0
+-- }
+--
+-- ════ 🎯 gcd2 : (fn nat (fn nat nat))
+-- ƛ ƛ let ♯ := ((@Nat.gcd ⬝ ♯1) ⬝ ♯0);
+-- ♯0
+--
+-- ════ 🎯 run : nat
+-- let ♯ := 48#;
+-- let ♯ := 18#;
+-- let ♯ := ((@Nat.gcd ⬝ ♯1) ⬝ ♯0);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyGcdEntry
+
+/-- `Nat.gcd`, as a declaration of the module. -/
+def d_Nat_gcd : GlobalDecl := ⟨"Nat.gcd", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `Nat.gcd` is written against. -/
+def sig_Nat_gcd : Sig := ⟨[], by decide⟩
+
+/-- The body of `Nat.gcd`. -/
+def tm_Nat_gcd : Term sig_Nat_gcd [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.fixStructTail [Ty.nat, Ty.nat] (v♯0) (fun _ => True) (Term.letE (Term.natL 0) (Term.letE (natEq (♯1) (♯0)) (Term.ite (♯0) (♯3) (Term.letE (natMod (♯3) (♯2)) (Term.letE (Term.selfCall .head (.cons (♯0) (.cons (♯3) .nil))) (♯0)))))) (by sorry) (by decide))
+
+/-- `gcd2`, as a declaration of the module. -/
+def d_gcd2 : GlobalDecl := ⟨"gcd2", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `gcd2` is written against. -/
+def sig_gcd2 : Sig := ⟨[d_Nat_gcd], by decide⟩
+
+/-- The body of `gcd2`. -/
+def tm_gcd2 : Term sig_gcd2 [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.letE (Term.ap (Term.ap (Term.global .here) (♯1)) (♯0)) (♯0))))
+
+/-- `run`, as a declaration of the module. -/
+def d_run : GlobalDecl := ⟨"run", Ty.nat⟩
+
+/-- The signature `run` is written against. -/
+def sig_run : Sig := ⟨[d_gcd2, d_Nat_gcd], by decide⟩
+
+/-- The body of `run`. -/
+def tm_run : Term sig_run [] [] Ty.nat :=
+  (Term.letE (Term.natL 48) (Term.letE (Term.natL 18) (Term.letE (Term.ap (Term.ap (Term.global (.there .here)) (♯1)) (♯0)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_run, d_gcd2, d_Nat_gcd], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_run (by decide) tm_run (.cons d_gcd2 (by decide) tm_gcd2 (.cons d_Nat_gcd (by decide) tm_Nat_gcd .nil)))
+
+end ProgramSnapshotsMyGcdEntry

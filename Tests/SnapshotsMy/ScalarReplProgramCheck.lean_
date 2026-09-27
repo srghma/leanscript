@@ -1,0 +1,44 @@
+/-
+The program `SnapshotsMy/ScalarReplProgram.lean` was generated with, run against the Lean
+functions of `SnapshotsMy/ScalarRepl.lean` it was translated from.
+
+`test1` and `test2` are `for` loops over a `Std.Legacy.Range`.  Lean compiles each of them
+into a *specialisation* of the loop of `Std.Legacy.Range.forIn'`: a copy of it with the
+body of the loop inlined, which carries no termination evidence of its own.  The front end
+reads the measure of such a copy off the declaration it is a copy of — here `range.stop -
+i` — and gives it to the copy's `Term.fixAcc`.
+
+The measure is what decides whether the recursion runs or falls into the `exhausted`
+branch of `Term.fixAcc`, so these are the checks that matter: they evaluate the emitted
+program — no fuel, no `Option` — and compare its answers with the Lean functions.
+-/
+
+import SnapshotsMy.ScalarRepl
+import SnapshotsMy.ScalarReplProgram
+
+open LeanScript LeanScript.Expr ProgramSnapshotsMyScalarRepl
+
+namespace SnapshotsMy.ScalarReplCheck
+
+/-- `test1`, as the emitted program computes it: the counted loop `for i in [0:n]`. -/
+def runTest1 (n : Nat) : Nat :=
+  program.run (Sg := moduleSig) (τ := Ty.fn Ty.nat Ty.nat)
+    (.global (.there (.there (.there (.there (.there (.there .here))))))) n
+
+/-- `test2`, as the emitted program computes it: a loop inside a loop. -/
+def runTest2 (n : Nat) : Nat :=
+  program.run (Sg := moduleSig) (τ := Ty.fn Ty.nat Ty.nat) (.global .here) n
+
+/-- The emitted program and the Lean function agree on an interval of inputs. -/
+def agrees1 (bound : Nat) (f g : Nat → Nat) : Bool :=
+  (List.range bound).all fun i => f i == g i
+
+theorem test1_agrees : agrees1 20 runTest1 test1 = true := by native_decide
+
+theorem test2_agrees : agrees1 12 runTest2 test2 = true := by native_decide
+
+/-- The loop really runs: `test1 9` is `0 + 1 + ⋯ + 8`, not the `0` that the exhausted
+    branch of a recursion whose measure did not decrease would give. -/
+theorem test1_nine : runTest1 9 = 36 := by native_decide
+
+end SnapshotsMy.ScalarReplCheck

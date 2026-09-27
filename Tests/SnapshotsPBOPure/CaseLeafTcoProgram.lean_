@@ -1,0 +1,243 @@
+-- SnapshotsPBOPure.CaseLeafTco: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   5 are programs below
+-- Nothing is left out.
+--
+-- ════ 📦 Array.back?@int : (fn (array int) (taggedUnion ()|(int)))
+-- ƛ let ♯ := (extern⟨(array int) ⇒ nat⟩ ⬝ ♯0);
+-- let ♯ := 1#;
+-- let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ ♯0);
+-- let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ ♯2);
+-- if ♯0 then let ♯ := ((extern⟨(array int) nat ⇒ int⟩ ⬝ ♯4) ⬝ ♯1);
+-- let ♯ := ctor1(int)(♯0);
+-- ♯0 else let ♯ := ctor0()();
+-- ♯0
+--
+-- ════ 📦 Array.appendCore.loop@int : (fn (array int) (fn nat (fn nat (fn (array int) (array int)))))
+-- fixStructTail ((array int) nat nat (array int)) subject { arg1 } body {
+--   let ♯ := (extern⟨(array int) ⇒ nat⟩ ⬝ ♯0);
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ ♯0);
+--   if ♯0 then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ 0#) then ♯5 else let ♯ := 1#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯5) ⬝ ♯0);
+--   let ♯ := ((extern⟨(array int) nat ⇒ int⟩ ⬝ ♯4) ⬝ ♯6);
+--   let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯8) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(♯6, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯7) ⬝ 1#), ♯2, ♯0);
+--   ♯0 else ♯5
+-- }
+--
+-- ════ 📦 Array.append@int : (fn (array int) (fn (array int) (array int)))
+-- ƛ ƛ let ♯ := (extern⟨(array int) ⇒ nat⟩ ⬝ ♯0);
+-- let ♯ := 0#;
+-- let ♯ := ((((@Array.appendCore.loop@int ⬝ ♯2) ⬝ ♯1) ⬝ ♯0) ⬝ ♯3);
+-- ♯0
+--
+-- ════ 🎯 test1Fuel : (fn nat (fn bool (fn (array int) (array int))))
+-- fixStructTail (nat bool (array int)) subject { arg0 } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then ♯2 else let ♯ := 0#;
+--   let ♯ := (extern⟨(array int) ⇒ nat⟩ ⬝ ♯3);
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ ♯0);
+--   if ♯0 then let ♯ := ((extern⟨(array int) nat ⇒ int⟩ ⬝ ♯5) ⬝ ♯2);
+--   let ♯ := 1#;
+--   let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--   let ♯ := ((extern⟨int int ⇒ bool⟩ ⬝ ♯2) ⬝ ♯0);
+--   if ♯0 then let ♯ := (@Array.back?@int ⬝ ♯9);
+--   case ♯0 of
+--     | 0() => let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯10) ⬝ ♯2);
+--       ♯0
+--     | 1(int) => let ♯ := 2#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := ((extern⟨int int ⇒ bool⟩ ⬝ ♯2) ⬝ ♯0);
+--       if ♯0 then ♯14 else if ♯13 then let ♯ := 0#;
+--       let ♯ := (extern⟨nat ⇒ (array int)⟩ ⬝ ♯0);
+--       ♯0 else let ♯ := 3#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 5#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 6#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 7#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 8#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 9#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 10#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 12#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 13#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 14#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 15#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 16#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 17#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := (extern⟨nat ⇒ (array int)⟩ ⬝ ♯1);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯30);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯34);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯27);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯33);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯27);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯26);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯25);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯24);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯23);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯22);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯43);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯22);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯21);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯20);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯19);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯18);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯17);
+--       let ♯ := ((@Array.append@int ⬝ ♯0) ⬝ ♯58);
+--       let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯57) ⬝ 1#), ♯58, ♯0);
+--       ♯0
+--  else let ♯ := (@Array.back?@int ⬝ ♯9);
+--   case ♯0 of
+--     | 0() => let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯10) ⬝ ♯4);
+--       ♯0
+--     | 1(int) => if ♯10 then let ♯ := 0#;
+--       let ♯ := (extern⟨nat ⇒ (array int)⟩ ⬝ ♯0);
+--       ♯0 else let ♯ := 3#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 5#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 6#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 7#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 8#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 9#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 10#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 12#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 13#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 14#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 15#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 16#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := 17#;
+--       let ♯ := (extern⟨nat ⇒ int⟩ ⬝ ♯0);
+--       let ♯ := (extern⟨nat ⇒ (array int)⟩ ⬝ ♯1);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯27);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯33);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯27);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯30);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯27);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯26);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯25);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯24);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯23);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯22);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯42);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯22);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯21);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯20);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯19);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯18);
+--       let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯0) ⬝ ♯17);
+--       let ♯ := ((@Array.append@int ⬝ ♯0) ⬝ ♯55);
+--       let ♯ := self0⟨↓⟩(((extern⟨nat nat ⇒ nat⟩ ⬝ ♯54) ⬝ 1#), ♯55, ♯0);
+--       ♯0
+--  else let ♯ := (@Array.back?@int ⬝ ♯5);
+--   case ♯0 of
+--     | 0() => ♯6
+--     | 1(int) => let ♯ := ((extern⟨(array int) int ⇒ (array int)⟩ ⬝ ♯7) ⬝ ♯0);
+--       ♯0
+--
+-- }
+--
+-- ════ 🎯 test1FuelCalled : (fn bool (fn (array int) (array int)))
+-- ƛ ƛ let ♯ := 1000000#;
+-- let ♯ := (((@test1Fuel ⬝ ♯0) ⬝ ♯2) ⬝ ♯1);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureCaseLeafTco
+
+/-- `Array.back?@int`, as a declaration of the module. -/
+def d_Array_back__int : GlobalDecl := ⟨"Array.back?@int", (Ty.fn (Ty.array Ty.int) (Ty.option Ty.int))⟩
+
+/-- The signature `Array.back?@int` is written against. -/
+def sig_Array_back__int : Sig := ⟨[], by decide⟩
+
+/-- The body of `Array.back?@int`. -/
+def tm_Array_back__int : Term sig_Array_back__int [] [] (Ty.fn (Ty.array Ty.int) (Ty.option Ty.int)) :=
+  (Term.lam (Term.letE (arrLen (♯0)) (Term.letE (Term.natL 1) (Term.letE (natSub (♯1) (♯0)) (Term.letE (natLt (♯0) (♯2)) (Term.ite (♯0) (Term.letE (arrGet (♯4) (♯1)) (Term.letE (Term.ctor (τ := (Ty.option Ty.int)) 1 [Ty.int] (by rfl) (.cons (♯0) .nil)) (♯0))) (Term.letE (Term.ctor (τ := (Ty.option Ty.int)) 0 [] (by rfl) .nil) (♯0))))))))
+
+/-- `Array.appendCore.loop@int`, as a declaration of the module. -/
+def d_Array_appendCore_loop_int : GlobalDecl := ⟨"Array.appendCore.loop@int", (Ty.fn (Ty.array Ty.int) (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int)))))⟩
+
+/-- The signature `Array.appendCore.loop@int` is written against. -/
+def sig_Array_appendCore_loop_int : Sig := ⟨[d_Array_back__int], by decide⟩
+
+/-- The body of `Array.appendCore.loop@int`. -/
+def tm_Array_appendCore_loop_int : Term sig_Array_appendCore_loop_int [] [] (Ty.fn (Ty.array Ty.int) (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int))))) :=
+  (Term.fixStructTail [(Ty.array Ty.int), Ty.nat, Ty.nat, (Ty.array Ty.int)] (v♯1) (fun _ => True) (Term.letE (arrLen (♯0)) (Term.letE (natLt (♯3) (♯0)) (Term.ite (♯0) (Term.ite (natEq (♯3) (Term.natL 0)) (♯5) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯5) (♯0)) (Term.letE (arrGet (♯4) (♯6)) (Term.letE (arrPush (♯8) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯6) (.cons (natSub (♯7) (Term.natL 1)) (.cons (♯2) (.cons (♯0) .nil))))) (♯0))))))) (♯5)))) (by sorry) (by decide))
+
+/-- `Array.append@int`, as a declaration of the module. -/
+def d_Array_append_int : GlobalDecl := ⟨"Array.append@int", (Ty.fn (Ty.array Ty.int) (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int)))⟩
+
+/-- The signature `Array.append@int` is written against. -/
+def sig_Array_append_int : Sig := ⟨[d_Array_appendCore_loop_int, d_Array_back__int], by decide⟩
+
+/-- The body of `Array.append@int`. -/
+def tm_Array_append_int : Term sig_Array_append_int [] [] (Ty.fn (Ty.array Ty.int) (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int))) :=
+  (Term.lam (Term.lam (Term.letE (arrLen (♯0)) (Term.letE (Term.natL 0) (Term.letE (Term.ap (Term.ap (Term.ap (Term.ap (Term.global .here) (♯2)) (♯1)) (♯0)) (♯3)) (♯0))))))
+
+/-- `test1Fuel`, as a declaration of the module. -/
+def d_test1Fuel : GlobalDecl := ⟨"test1Fuel", (Ty.fn Ty.nat (Ty.fn Ty.bool (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int))))⟩
+
+/-- The signature `test1Fuel` is written against. -/
+def sig_test1Fuel : Sig := ⟨[d_Array_append_int, d_Array_appendCore_loop_int, d_Array_back__int], by decide⟩
+
+/-- The body of `test1Fuel`. -/
+def tm_test1Fuel : Term sig_test1Fuel [] [] (Ty.fn Ty.nat (Ty.fn Ty.bool (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int)))) :=
+  (Term.fixStructTail [Ty.nat, Ty.bool, (Ty.array Ty.int)] (v♯0) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (♯2) (Term.letE (Term.natL 0) (Term.letE (arrLen (♯3)) (Term.letE (natLt (♯1) (♯0)) (Term.ite (♯0) (Term.letE (arrGet (♯5) (♯2)) (Term.letE (Term.natL 1) (Term.letE (natToInt (♯0)) (Term.letE (intEq (♯2) (♯0)) (Term.ite (♯0) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯9)) (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (Term.letE (arrPush (♯10) (♯2)) (♯0)) (Alts.cons 1 [Ty.int] (by rfl) (Term.letE (Term.natL 2) (Term.letE (natToInt (♯0)) (Term.letE (intEq (♯2) (♯0)) (Term.ite (♯0) (♯14) (Term.ite (♯13) (Term.letE (Term.natL 0) (Term.letE ((arrEmpty (α := Ty.int)) (♯0)) (♯0))) (Term.letE (Term.natL 3) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 5) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 6) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 7) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 8) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 9) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 10) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 12) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 13) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 14) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 15) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 16) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 17) (Term.letE (natToInt (♯0)) (Term.letE ((arrEmpty (α := Ty.int)) (♯1)) (Term.letE (arrPush (♯0) (♯30)) (Term.letE (arrPush (♯0) (♯34)) (Term.letE (arrPush (♯0) (♯27)) (Term.letE (arrPush (♯0) (♯33)) (Term.letE (arrPush (♯0) (♯27)) (Term.letE (arrPush (♯0) (♯26)) (Term.letE (arrPush (♯0) (♯25)) (Term.letE (arrPush (♯0) (♯24)) (Term.letE (arrPush (♯0) (♯23)) (Term.letE (arrPush (♯0) (♯22)) (Term.letE (arrPush (♯0) (♯43)) (Term.letE (arrPush (♯0) (♯22)) (Term.letE (arrPush (♯0) (♯21)) (Term.letE (arrPush (♯0) (♯20)) (Term.letE (arrPush (♯0) (♯19)) (Term.letE (arrPush (♯0) (♯18)) (Term.letE (arrPush (♯0) (♯17)) (Term.letE (Term.ap (Term.ap (Term.global .here) (♯0)) (♯58)) (Term.letE (Term.selfCall .head (.cons (natSub (♯57) (Term.natL 1)) (.cons (♯58) (.cons (♯0) .nil)))) (♯0)))))))))))))))))))))))))))))))))))))))))))))))))))) Alts.nilFull)) (by rfl))) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯9)) (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (Term.letE (arrPush (♯10) (♯4)) (♯0)) (Alts.cons 1 [Ty.int] (by rfl) (Term.ite (♯10) (Term.letE (Term.natL 0) (Term.letE ((arrEmpty (α := Ty.int)) (♯0)) (♯0))) (Term.letE (Term.natL 3) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 5) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 6) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 7) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 8) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 9) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 10) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 12) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 13) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 14) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 15) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 16) (Term.letE (natToInt (♯0)) (Term.letE (Term.natL 17) (Term.letE (natToInt (♯0)) (Term.letE ((arrEmpty (α := Ty.int)) (♯1)) (Term.letE (arrPush (♯0) (♯27)) (Term.letE (arrPush (♯0) (♯33)) (Term.letE (arrPush (♯0) (♯27)) (Term.letE (arrPush (♯0) (♯30)) (Term.letE (arrPush (♯0) (♯27)) (Term.letE (arrPush (♯0) (♯26)) (Term.letE (arrPush (♯0) (♯25)) (Term.letE (arrPush (♯0) (♯24)) (Term.letE (arrPush (♯0) (♯23)) (Term.letE (arrPush (♯0) (♯22)) (Term.letE (arrPush (♯0) (♯42)) (Term.letE (arrPush (♯0) (♯22)) (Term.letE (arrPush (♯0) (♯21)) (Term.letE (arrPush (♯0) (♯20)) (Term.letE (arrPush (♯0) (♯19)) (Term.letE (arrPush (♯0) (♯18)) (Term.letE (arrPush (♯0) (♯17)) (Term.letE (Term.ap (Term.ap (Term.global .here) (♯0)) (♯55)) (Term.letE (Term.selfCall .head (.cons (natSub (♯54) (Term.natL 1)) (.cons (♯55) (.cons (♯0) .nil)))) (♯0)))))))))))))))))))))))))))))))))))))))))))))))) Alts.nilFull)) (by rfl)))))))) (Term.letE (Term.ap (Term.global (.there (.there .here))) (♯5)) (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (♯6) (Alts.cons 1 [Ty.int] (by rfl) (Term.letE (arrPush (♯7) (♯0)) (♯0)) Alts.nilFull)) (by rfl)))))))) (by sorry) (by decide))
+
+/-- `test1FuelCalled`, as a declaration of the module. -/
+def d_test1FuelCalled : GlobalDecl := ⟨"test1FuelCalled", (Ty.fn Ty.bool (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int)))⟩
+
+/-- The signature `test1FuelCalled` is written against. -/
+def sig_test1FuelCalled : Sig := ⟨[d_test1Fuel, d_Array_append_int, d_Array_appendCore_loop_int, d_Array_back__int], by decide⟩
+
+/-- The body of `test1FuelCalled`. -/
+def tm_test1FuelCalled : Term sig_test1FuelCalled [] [] (Ty.fn Ty.bool (Ty.fn (Ty.array Ty.int) (Ty.array Ty.int))) :=
+  (Term.lam (Term.lam (Term.letE (Term.natL 1000000) (Term.letE (Term.ap (Term.ap (Term.ap (Term.global .here) (♯0)) (♯2)) (♯1)) (♯0)))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test1FuelCalled, d_test1Fuel, d_Array_append_int, d_Array_appendCore_loop_int, d_Array_back__int], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test1FuelCalled (by decide) tm_test1FuelCalled (.cons d_test1Fuel (by decide) tm_test1Fuel (.cons d_Array_append_int (by decide) tm_Array_append_int (.cons d_Array_appendCore_loop_int (by decide) tm_Array_appendCore_loop_int (.cons d_Array_back__int (by decide) tm_Array_back__int .nil)))))
+
+end ProgramSnapshotsPBOPureCaseLeafTco

@@ -1,0 +1,38 @@
+-- Universe-polymorphic CPS State
+def State (s : Type u) (a : Type v) : Type (max (u + 1) (v + 1) (w + 1)) :=
+  {r : Type w} → (s → a → r) → s → r
+
+namespace State
+
+variable {s : Type u} {a b : Type v}
+
+def pure (val : a) : State s a :=
+  fun next s1 => next s1 val
+
+def bind (m : State s a) (f : a → State s b) : State s b :=
+  fun next1 s1 =>
+    m (fun s2 a => f a next1 s2) s1
+
+instance : Monad (State s) where
+  pure := pure
+  bind := bind
+
+def get : State s s :=
+  fun next s => next s s
+
+def put (newState : s) : State s Unit :=
+  fun next _ => next newState ()
+
+def runState (init : s) (m : State s a) : s × a :=
+  m (fun s' val => (s', val)) init
+
+end State
+
+-- Using do-notation:
+def test4 : State Int Unit := do
+  let res1 ← State.get
+  State.put (res1 + 1)
+  let res2 ← State.get
+  State.put (res2 + 1)
+
+#eval State.runState 0 test4  -- (2, ())

@@ -1,0 +1,134 @@
+-- SnapshotsMy.OptionUnbox: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction: the one way it
+-- repeats work is `Term.fixAcc`, which carries a well-founded relation, a proof that
+-- it is well founded, and the measure of its arguments the translation read off
+-- Lean's own termination proof.
+-- What became of the declarations of the module:
+--   5 are programs below
+--   1 has no type in the grammar, and can have none
+--   3 are gaps the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- outside the fragment: `Nat.reprFast`: `Nat.pow` is implemented in C (`@[extern]`), and the table of runtime functions the front end translates — the entries of `LeanScript.Externs` it has a `Ty` for — has no entry for it
+-- outside the fragment: `test2`: it calls `Nat.reprFast`, which has no program of its own
+-- no type of the grammar describes it, and none can: `test3`: the parameter `m` of `Std.DHashMap.Internal.Raw₀.Const.get?._at_.test3.spec_0` has type `Subtype
+--   lcErased`, which the front end does not translate — part of it was erased by the compiler to `lcAny`, which is what happens to a value whose type is not known statically — the state of an existential type, say — and no `Ty` denotes such a value
+-- outside the fragment: `test4`: it calls `Nat.reprFast`, which has no program of its own
+--
+-- ════ 🎯 test5 : (fn nat (array (taggedUnion ()|(nat))))
+-- ƛ let ♯ := ctor1(nat)(♯0);
+-- let ♯ := ctor0()();
+-- let ♯ := 2#;
+-- let ♯ := (extern⟨nat ⇒ (array (taggedUnion ()|(nat)))⟩ ⬝ ♯0);
+-- let ♯ := ((extern⟨(array (taggedUnion ()|(nat))) (taggedUnion ()|(nat)) ⇒ (array (taggedUnion ()|(nat)))⟩ ⬝ ♯0) ⬝ ♯3);
+-- let ♯ := ((extern⟨(array (taggedUnion ()|(nat))) (taggedUnion ()|(nat)) ⇒ (array (taggedUnion ()|(nat)))⟩ ⬝ ♯0) ⬝ ♯3);
+-- ♯0
+--
+-- ════ 📦 List.find?@nat : (fn (fn nat bool) (fn (recTaggedUnion ()|(nat self#0)) (taggedUnion ()|(nat))))
+-- fix ((fn nat bool) (recTaggedUnion ()|(nat self#0))) measure { ⟨Lean function⟩ } body {
+--   case ♯1 of
+--     | 0() => let ♯ := ctor0()();
+--       ♯0
+--     | 1(nat (recTaggedUnion ()|(nat self#0))) => let ♯ := (♯2 ⬝ ♯0);
+--       if ♯0 then let ♯ := ctor1(nat)(♯1);
+--       ♯0 else let ♯ := self0⟨↓⟩(♯3, ♯2);
+--       ♯0
+--
+-- }
+--
+-- ════ 🎯 test6 : (fn nat (fn nat nat))
+-- ƛ ƛ let ♯ := (@test5 ⬝ ♯1);
+-- let ♯ := (extern⟨(array (taggedUnion ()|(nat))) ⇒ nat⟩ ⬝ ♯0);
+-- let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯2) ⬝ ♯0);
+-- if ♯0 then let ♯ := ((extern⟨(array (taggedUnion ()|(nat))) nat ⇒ (taggedUnion ()|(nat))⟩ ⬝ ♯2) ⬝ ♯3);
+-- case ♯0 of
+--   | 0() => let ♯ := 1#;
+--     ♯0
+--   | 1(nat) => ♯0
+--  else let ♯ := 2#;
+-- ♯0
+--
+-- ════ 📦 _private.SnapshotsMy.OptionUnbox.0.firstBig : (fn (recTaggedUnion ()|(nat self#0)) (fn nat (taggedUnion ()|(nat))))
+-- ƛ ƛ let ♯ := ƛ let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ ♯0);
+-- let ♯ := ♯0;
+-- ♯0;
+-- let ♯ := ((@List.find?@nat ⬝ ♯0) ⬝ ♯2);
+-- ♯0
+--
+-- ════ 🎯 test1 : (fn (recTaggedUnion ()|(nat self#0)) (fn nat nat))
+-- ƛ ƛ let ♯ := ((@_private.SnapshotsMy.OptionUnbox.0.firstBig ⬝ ♯1) ⬝ ♯0);
+-- case ♯0 of
+--   | 0() => let ♯ := 0#;
+--     ♯0
+--   | 1(nat) => ♯0
+--
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyOptionUnbox
+
+/-- `test5`, as a declaration of the module. -/
+def d_test5 : GlobalDecl := ⟨"test5", (Ty.fn Ty.nat (Ty.array (Ty.option Ty.nat)))⟩
+
+/-- The signature `test5` is written against. -/
+def sig_test5 : Sig := ⟨[], by decide⟩
+
+/-- The body of `test5`. -/
+def tm_test5 : Term sig_test5 [] [] (Ty.fn Ty.nat (Ty.array (Ty.option Ty.nat))) :=
+  (Term.lam (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 1 [Ty.nat] (by rfl) (.cons (♯0) .nil)) (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 0 [] (by rfl) .nil) (Term.letE (Term.natL 2) (Term.letE ((arrEmpty (α := (Ty.option Ty.nat))) (♯0)) (Term.letE (arrPush (♯0) (♯3)) (Term.letE (arrPush (♯0) (♯3)) (♯0))))))))
+
+/-- `List.find?@nat`, as a declaration of the module. -/
+def d_List_find__nat : GlobalDecl := ⟨"List.find?@nat", (Ty.fn (Ty.fn Ty.nat Ty.bool) (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.option Ty.nat)))⟩
+
+/-- The signature `List.find?@nat` is written against. -/
+def sig_List_find__nat : Sig := ⟨[d_test5], by decide⟩
+
+/-- The body of `List.find?@nat`. -/
+def tm_List_find__nat : Term sig_List_find__nat [] [] (Ty.fn (Ty.fn Ty.nat Ty.bool) (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.option Ty.nat))) :=
+  (Term.fixNat [(Ty.fn Ty.nat Ty.bool), (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl)] (fun as => (Env.structMeasure (v♯1) as)) (Term.caseTag (♯1) (Alts.cons 0 [] (by rfl) (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 0 [] (by rfl) .nil) (♯0)) (Alts.cons 1 [Ty.nat, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl)] (by rfl) (Term.letE (Term.ap (♯2) (♯0)) (Term.ite (♯0) (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 1 [Ty.nat] (by rfl) (.cons (♯1) .nil)) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯3) (.cons (♯2) .nil))) (♯0)))) Alts.nilFull)) (by rfl)))
+
+/-- `test6`, as a declaration of the module. -/
+def d_test6 : GlobalDecl := ⟨"test6", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `test6` is written against. -/
+def sig_test6 : Sig := ⟨[d_List_find__nat, d_test5], by decide⟩
+
+/-- The body of `test6`. -/
+def tm_test6 : Term sig_test6 [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.letE (Term.ap (Term.global (.there .here)) (♯1)) (Term.letE (arrLen (♯0)) (Term.letE (natLt (♯2) (♯0)) (Term.ite (♯0) (Term.letE (arrGet (♯2) (♯3)) (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (Term.letE (Term.natL 1) (♯0)) (Alts.cons 1 [Ty.nat] (by rfl) (♯0) Alts.nilFull)) (by rfl))) (Term.letE (Term.natL 2) (♯0))))))))
+
+/-- `_private.SnapshotsMy.OptionUnbox.0.firstBig`, as a declaration of the module. -/
+def d__private_SnapshotsMy_OptionUnbox_0_firstBig : GlobalDecl := ⟨"_private.SnapshotsMy.OptionUnbox.0.firstBig", (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.fn Ty.nat (Ty.option Ty.nat)))⟩
+
+/-- The signature `_private.SnapshotsMy.OptionUnbox.0.firstBig` is written against. -/
+def sig__private_SnapshotsMy_OptionUnbox_0_firstBig : Sig := ⟨[d_test6, d_List_find__nat, d_test5], by decide⟩
+
+/-- The body of `_private.SnapshotsMy.OptionUnbox.0.firstBig`. -/
+def tm__private_SnapshotsMy_OptionUnbox_0_firstBig : Term sig__private_SnapshotsMy_OptionUnbox_0_firstBig [] [] (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.fn Ty.nat (Ty.option Ty.nat))) :=
+  (Term.lam (Term.lam (Term.letE (Term.lam (Term.letE (natLt (♯1) (♯0)) (Term.letE (♯0) (♯0)))) (Term.letE (Term.ap (Term.ap (Term.global (.there .here)) (♯0)) (♯2)) (♯0)))))
+
+/-- `test1`, as a declaration of the module. -/
+def d_test1 : GlobalDecl := ⟨"test1", (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `test1` is written against. -/
+def sig_test1 : Sig := ⟨[d__private_SnapshotsMy_OptionUnbox_0_firstBig, d_test6, d_List_find__nat, d_test5], by decide⟩
+
+/-- The body of `test1`. -/
+def tm_test1 : Term sig_test1 [] [] (Ty.fn (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .nat), [(RTy.self 0)]⟩ [])) rfl) (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.letE (Term.ap (Term.ap (Term.global .here) (♯1)) (♯0)) (Term.caseTag (♯0) (Alts.cons 0 [] (by rfl) (Term.letE (Term.natL 0) (♯0)) (Alts.cons 1 [Ty.nat] (by rfl) (♯0) Alts.nilFull)) (by rfl)))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_test1, d__private_SnapshotsMy_OptionUnbox_0_firstBig, d_test6, d_List_find__nat, d_test5], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_test1 (by decide) tm_test1 (.cons d__private_SnapshotsMy_OptionUnbox_0_firstBig (by decide) tm__private_SnapshotsMy_OptionUnbox_0_firstBig (.cons d_test6 (by decide) tm_test6 (.cons d_List_find__nat (by decide) tm_List_find__nat (.cons d_test5 (by decide) tm_test5 .nil)))))
+
+end ProgramSnapshotsMyOptionUnbox

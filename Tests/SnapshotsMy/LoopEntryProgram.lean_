@@ -1,0 +1,74 @@
+-- SnapshotsMy.LoopEntry: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   2 are programs below
+--   2 are refused by the totality gate
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- refused by the totality gate: `main`: its type is an IO type; the backend compiles pure functions only
+-- refused by the totality gate: `printAll`: its type is an IO type; the backend compiles pure functions only
+--
+-- ════ 🎯 countUp : (fn string (fn nat (fn nat (fn nat nat))))
+-- fixStructTail (string nat nat nat) subject { arg2 } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯2) ⬝ 0#) then ♯3 else let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ ♯1);
+--   let ♯ := self0⟨↓⟩(♯1, ♯2, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯3) ⬝ 1#), ♯0);
+--   ♯0
+-- }
+--
+-- ════ 🎯 messages : (recTaggedUnion ()|(string self#0))
+-- let ♯ := "one";
+-- let ♯ := "two";
+-- let ♯ := "three";
+-- let ♯ := ctor0()();
+-- let ♯ := ctor1(string (recTaggedUnion ()|(string self#0)))(♯1, ♯0);
+-- let ♯ := ctor1(string (recTaggedUnion ()|(string self#0)))(♯3, ♯0);
+-- let ♯ := ctor1(string (recTaggedUnion ()|(string self#0)))(♯5, ♯0);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyLoopEntry
+
+/-- `countUp`, as a declaration of the module. -/
+def d_countUp : GlobalDecl := ⟨"countUp", (Ty.fn Ty.string (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))))⟩
+
+/-- The signature `countUp` is written against. -/
+def sig_countUp : Sig := ⟨[], by decide⟩
+
+/-- The body of `countUp`. -/
+def tm_countUp : Term sig_countUp [] [] (Ty.fn Ty.string (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)))) :=
+  (Term.fixStructTail [Ty.string, Ty.nat, Ty.nat, Ty.nat] (v♯2) (fun _ => True) (Term.ite (natEq (♯2) (Term.natL 0)) (♯3) (Term.letE (natAdd (♯3) (♯1)) (Term.letE (Term.selfCall .head (.cons (♯1) (.cons (♯2) (.cons (natSub (♯3) (Term.natL 1)) (.cons (♯0) .nil))))) (♯0)))) (by sorry) (by decide))
+
+/-- `messages`, as a declaration of the module. -/
+def d_messages : GlobalDecl := ⟨"messages", (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)⟩
+
+/-- The signature `messages` is written against. -/
+def sig_messages : Sig := ⟨[d_countUp], by decide⟩
+
+/-- The body of `messages`. -/
+def tm_messages : Term sig_messages [] [] (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl) :=
+  (Term.letE (Term.strL "one") (Term.letE (Term.strL "two") (Term.letE (Term.strL "three") (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)) 0 [] (by rfl) .nil) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)) 1 [Ty.string, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)] (by rfl) (.cons (♯1) (.cons (♯0) .nil))) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)) 1 [Ty.string, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)] (by rfl) (.cons (♯3) (.cons (♯0) .nil))) (Term.letE (Term.ctor (τ := (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)) 1 [Ty.string, (Ty.recTaggedUnion (.skip (.here ⟨(RTy.prim .string), [(RTy.self 0)]⟩ [])) rfl)] (by rfl) (.cons (♯5) (.cons (♯0) .nil))) (♯0))))))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_messages, d_countUp], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_messages (by decide) tm_messages (.cons d_countUp (by decide) tm_countUp .nil))
+
+end ProgramSnapshotsMyLoopEntry

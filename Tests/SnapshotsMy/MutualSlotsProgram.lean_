@@ -1,0 +1,87 @@
+-- SnapshotsMy.MutualSlots: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   3 are programs below
+-- Nothing is left out.
+--
+-- ════ 📦 walkStr & walkNat (clique) : (fn nat (fn nat (fn string (fn nat (fn nat nat)))))
+-- fixWfTail (nat nat string nat nat) subject { ⟨Lean function⟩ } body {
+--   if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯0) ⬝ 0#) then if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯1) ⬝ 0#) then let ♯ := (extern⟨string ⇒ nat⟩ ⬝ ♯2);
+--   ♯0 else let ♯ := (extern⟨string ⇒ nat⟩ ⬝ ♯2);
+--   let ♯ := 1#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯1) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(1#, 0#, "", ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯4) ⬝ 1#), ♯0);
+--   ♯0 else if ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ 0#) then ♯4 else let ♯ := 0#;
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯5) ⬝ ♯0);
+--   let ♯ := ♯0;
+--   if ♯0 then let ♯ := "";
+--   let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯7) ⬝ 1#), ♯0, 0#, 0#);
+--   ♯0 else let ♯ := "xy";
+--   let ♯ := self0⟨↓⟩(0#, ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯7) ⬝ 1#), ♯0, 0#, 0#);
+--   ♯0
+-- }
+--
+-- ════ 🎯 walkStr : (fn nat (fn string nat))
+-- ƛ ƛ (((((@walkStr & walkNat (clique) ⬝ 0#) ⬝ ♯1) ⬝ ♯0) ⬝ 0#) ⬝ 0#)
+--
+-- ════ 🎯 walkNat : (fn nat (fn nat nat))
+-- ƛ ƛ (((((@walkStr & walkNat (clique) ⬝ 1#) ⬝ 0#) ⬝ "") ⬝ ♯1) ⬝ ♯0)
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyMutualSlots
+
+/-- `walkStr & walkNat (clique)`, as a declaration of the module. -/
+def d_walkStr___walkNat__clique_ : GlobalDecl := ⟨"walkStr & walkNat (clique)", (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.string (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)))))⟩
+
+/-- The signature `walkStr & walkNat (clique)` is written against. -/
+def sig_walkStr___walkNat__clique_ : Sig := ⟨[], by decide⟩
+
+/-- The body of `walkStr & walkNat (clique)`. -/
+def tm_walkStr___walkNat__clique_ : Term sig_walkStr___walkNat__clique_ [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat (Ty.fn Ty.string (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))))) :=
+  (Term.fixWfTail [Ty.nat, Ty.nat, Ty.string, Ty.nat, Ty.nat] (fun as => (if ((as.get (v♯0)) == 0) then (as.get (v♯1)) else (as.get (v♯3)))) (fun _ => True) (Term.ite (natEq (♯0) (Term.natL 0)) (Term.ite (natEq (♯1) (Term.natL 0)) (Term.letE (strLength (♯2)) (♯0)) (Term.letE (strLength (♯2)) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯1) (♯0)) (Term.letE (Term.selfCall .head (.cons (Term.natL 1) (.cons (Term.natL 0) (.cons (Term.strL "") (.cons (natSub (♯4) (Term.natL 1)) (.cons (♯0) .nil)))))) (♯0)))))) (Term.ite (natEq (♯3) (Term.natL 0)) (♯4) (Term.letE (Term.natL 0) (Term.letE (natEq (♯5) (♯0)) (Term.letE (♯0) (Term.ite (♯0) (Term.letE (Term.strL "") (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯7) (Term.natL 1)) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.natL 0) .nil)))))) (♯0))) (Term.letE (Term.strL "xy") (Term.letE (Term.selfCall .head (.cons (Term.natL 0) (.cons (natSub (♯7) (Term.natL 1)) (.cons (♯0) (.cons (Term.natL 0) (.cons (Term.natL 0) .nil)))))) (♯0))))))))) (by sorry) (by decide))
+
+/-- `walkStr`, as a declaration of the module. -/
+def d_walkStr : GlobalDecl := ⟨"walkStr", (Ty.fn Ty.nat (Ty.fn Ty.string Ty.nat))⟩
+
+/-- The signature `walkStr` is written against. -/
+def sig_walkStr : Sig := ⟨[d_walkStr___walkNat__clique_], by decide⟩
+
+/-- The body of `walkStr`. -/
+def tm_walkStr : Term sig_walkStr [] [] (Ty.fn Ty.nat (Ty.fn Ty.string Ty.nat)) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global .here) (Term.natL 0)) (♯1)) (♯0)) (Term.natL 0)) (Term.natL 0))))
+
+/-- `walkNat`, as a declaration of the module. -/
+def d_walkNat : GlobalDecl := ⟨"walkNat", (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat))⟩
+
+/-- The signature `walkNat` is written against. -/
+def sig_walkNat : Sig := ⟨[d_walkStr, d_walkStr___walkNat__clique_], by decide⟩
+
+/-- The body of `walkNat`. -/
+def tm_walkNat : Term sig_walkNat [] [] (Ty.fn Ty.nat (Ty.fn Ty.nat Ty.nat)) :=
+  (Term.lam (Term.lam (Term.ap (Term.ap (Term.ap (Term.ap (Term.ap (Term.global (.there .here)) (Term.natL 1)) (Term.natL 0)) (Term.strL "")) (♯1)) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_walkNat, d_walkStr, d_walkStr___walkNat__clique_], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_walkNat (by decide) tm_walkNat (.cons d_walkStr (by decide) tm_walkStr (.cons d_walkStr___walkNat__clique_ (by decide) tm_walkStr___walkNat__clique_ .nil)))
+
+end ProgramSnapshotsMyMutualSlots

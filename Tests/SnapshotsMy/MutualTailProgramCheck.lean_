@@ -1,0 +1,107 @@
+/-
+The terms `SnapshotsMy/MutualTailProgram.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsMy/MutualTail.lean` they were translated from — at *every*
+argument.
+
+There are two mutual cliques here: `test1`/`test2` of one argument each, and
+`test3`/`test4`/`test5` of *different* arities.  Each becomes one measured recursion with
+a tag, taking the parameters of every member, and each Lean function becomes an entry
+point that enters that recursion at its own tag.
+-/
+
+import SnapshotsMy.MutualTailProgram
+import SnapshotsMy.MutualTail
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsMyMutualTail
+
+namespace SnapshotsMy.MutualTailProgramCheck
+
+/-! ## `test1` and `test2` -/
+
+/-- The two-member clique, read as a function of its argument list. -/
+def clique12Fun (as : Env [Ty.nat, Ty.nat, Ty.nat]) : Ty.bool.den :=
+  if (as.get (v♯0) : Nat) == 0 then test1 (as.get (v♯1)) else test2 (as.get (v♯2))
+
+/-- **The emitted merged loop is `test1` and `test2`.** -/
+theorem tm_clique12_implements (δ : GEnv sig_test1___test2__clique_.decls) :
+    tm_test1___test2__clique_.Implements δ clique12Fun := by
+  refine Term.fixNat_implements_closed _ _ _ δ clique12Fun ?_
+  intro g as hg
+  match as with
+  | .cons t (.cons a (.cons b .nil)) =>
+    cases (t : Nat) with
+    | zero =>
+      cases (a : Nat) with
+      | zero => rfl
+      | succ j =>
+        show g (.cons (1 : Nat) (.cons (0 : Nat) (.cons (j : Nat) .nil))) = _
+        rw [hg _ (by simp)]
+        show test2 j = test1 (j + 1)
+        rfl
+    | succ _ =>
+      cases (b : Nat) with
+      | zero => rfl
+      | succ j =>
+        show g (.cons (0 : Nat) (.cons (j : Nat) (.cons (0 : Nat) .nil))) = _
+        rw [hg _ (by simp)]
+        show test1 j = test2 (j + 1)
+        rfl
+
+/-! ## `test3`, `test4` and `test5` -/
+
+/-- The three-member clique, read as a function of its argument list. -/
+def clique345Fun
+    (as : Env [Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat, Ty.nat]) :
+    Ty.nat.den :=
+  if (as.get (v♯0) : Nat) == 0 then test3 (as.get (v♯1)) (as.get (v♯2))
+  else if (as.get (v♯0) : Nat) == 1 then test4 (as.get (v♯3)) (as.get (v♯4)) (as.get (v♯5))
+  else test5 (as.get (v♯6)) (as.get (v♯7))
+
+/-- **The emitted merged loop is `test3`, `test4` and `test5`.** -/
+theorem tm_clique345_implements (δ : GEnv sig_test3___test4___test5__clique_.decls) :
+    tm_test3___test4___test5__clique_.Implements δ clique345Fun := by
+  refine Term.fixNat_implements_closed _ _ _ δ clique345Fun ?_
+  intro g as hg
+  match as with
+  | .cons t (.cons n3 (.cons a3 (.cons n4 (.cons a4 (.cons k4 (.cons n5 (.cons a5 .nil))))))) =>
+    cases (t : Nat) with
+    | zero =>
+      cases (n3 : Nat) with
+      | zero =>
+        show (a3 : Nat) = _
+        simp [clique345Fun, test3]
+      | succ j =>
+        show g (.cons (1 : Nat) (.cons (0 : Nat) (.cons (0 : Nat) (.cons (j : Nat)
+          (.cons ((a3 : Nat) + 1) (.cons (2 : Nat) (.cons (0 : Nat)
+            (.cons (0 : Nat) .nil)))))))) = _
+        rw [hg _ (by simp)]
+        show test4 j ((a3 : Nat) + 1) 2 = test3 (j + 1) a3
+        simp [test3]
+    | succ i =>
+      cases (i : Nat) with
+      | zero =>
+        cases (n4 : Nat) with
+        | zero =>
+          show (a4 : Nat) = _
+          simp [clique345Fun, test4]
+        | succ j =>
+          show g (.cons (2 : Nat) (.cons (0 : Nat) (.cons (0 : Nat) (.cons (0 : Nat)
+            (.cons (0 : Nat) (.cons (0 : Nat) (.cons (j : Nat)
+              (.cons ((a4 : Nat) + k4) .nil)))))))) = _
+          rw [hg _ (by simp)]
+          show test5 j ((a4 : Nat) + k4) = test4 (j + 1) a4 k4
+          simp [test4]
+      | succ _ =>
+        cases (n5 : Nat) with
+        | zero =>
+          show (a5 : Nat) = _
+          simp [clique345Fun, test5]
+        | succ j =>
+          show g (.cons (0 : Nat) (.cons (j : Nat) (.cons ((a5 : Nat) + 3) (.cons (0 : Nat)
+            (.cons (0 : Nat) (.cons (0 : Nat) (.cons (0 : Nat)
+              (.cons (0 : Nat) .nil)))))))) = _
+          rw [hg _ (by simp)]
+          show test3 j ((a5 : Nat) + 3) = test5 (j + 1) a5
+          simp [test5]
+
+end SnapshotsMy.MutualTailProgramCheck

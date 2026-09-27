@@ -1,0 +1,73 @@
+-- SnapshotsPBOPure.Tco05: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   2 are programs below
+-- Nothing is left out.
+--
+-- ════ 🎯 span.go : (fn (fn int bool) (fn (array int) (fn nat (taggedUnion ()|(nat)))))
+-- fixWfTail ((fn int bool) (array int) nat) subject { ⟨Lean function⟩ } body {
+--   let ♯ := (extern⟨(array int) ⇒ nat⟩ ⬝ ♯1);
+--   let ♯ := ((extern⟨nat nat ⇒ bool⟩ ⬝ ♯3) ⬝ ♯0);
+--   if ♯0 then let ♯ := ((extern⟨(array int) nat ⇒ int⟩ ⬝ ♯3) ⬝ ♯4);
+--   let ♯ := (♯3 ⬝ ♯0);
+--   if ♯0 then let ♯ := 1#;
+--   let ♯ := ((extern⟨nat nat ⇒ nat⟩ ⬝ ♯7) ⬝ ♯0);
+--   let ♯ := self0⟨↓⟩(♯6, ♯7, ♯0);
+--   ♯0 else let ♯ := ctor1(nat)(♯6);
+--   ♯0 else let ♯ := ctor0()();
+--   ♯0
+-- }
+--
+-- ════ 🎯 span : (fn (fn int bool) (fn (array int) (taggedUnion ()|(nat))))
+-- ƛ ƛ let ♯ := 0#;
+-- let ♯ := (((@span.go ⬝ ♯2) ⬝ ♯1) ⬝ ♯0);
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureTco05
+
+/-- `span.go`, as a declaration of the module. -/
+def d_span_go : GlobalDecl := ⟨"span.go", (Ty.fn (Ty.fn Ty.int Ty.bool) (Ty.fn (Ty.array Ty.int) (Ty.fn Ty.nat (Ty.option Ty.nat))))⟩
+
+/-- The signature `span.go` is written against. -/
+def sig_span_go : Sig := ⟨[], by decide⟩
+
+/-- The body of `span.go`. -/
+def tm_span_go : Term sig_span_go [] [] (Ty.fn (Ty.fn Ty.int Ty.bool) (Ty.fn (Ty.array Ty.int) (Ty.fn Ty.nat (Ty.option Ty.nat)))) :=
+  (Term.fixWfTail [(Ty.fn Ty.int Ty.bool), (Ty.array Ty.int), Ty.nat] (fun as => ((List.length (as.get (v♯1))) - (as.get (v♯2)))) (fun _ => True) (Term.letE (arrLen (♯1)) (Term.letE (natLt (♯3) (♯0)) (Term.ite (♯0) (Term.letE (arrGet (♯3) (♯4)) (Term.letE (Term.ap (♯3) (♯0)) (Term.ite (♯0) (Term.letE (Term.natL 1) (Term.letE (natAdd (♯7) (♯0)) (Term.letE (Term.selfCall .head (.cons (♯6) (.cons (♯7) (.cons (♯0) .nil)))) (♯0)))) (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 1 [Ty.nat] (by rfl) (.cons (♯6) .nil)) (♯0))))) (Term.letE (Term.ctor (τ := (Ty.option Ty.nat)) 0 [] (by rfl) .nil) (♯0))))) (by sorry) (by decide))
+
+/-- `span`, as a declaration of the module. -/
+def d_span : GlobalDecl := ⟨"span", (Ty.fn (Ty.fn Ty.int Ty.bool) (Ty.fn (Ty.array Ty.int) (Ty.option Ty.nat)))⟩
+
+/-- The signature `span` is written against. -/
+def sig_span : Sig := ⟨[d_span_go], by decide⟩
+
+/-- The body of `span`. -/
+def tm_span : Term sig_span [] [] (Ty.fn (Ty.fn Ty.int Ty.bool) (Ty.fn (Ty.array Ty.int) (Ty.option Ty.nat))) :=
+  (Term.lam (Term.lam (Term.letE (Term.natL 0) (Term.letE (Term.ap (Term.ap (Term.ap (Term.global .here) (♯2)) (♯1)) (♯0)) (♯0)))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_span, d_span_go], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_span (by decide) tm_span (.cons d_span_go (by decide) tm_span_go .nil))
+
+end ProgramSnapshotsPBOPureTco05

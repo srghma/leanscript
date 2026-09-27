@@ -1,0 +1,55 @@
+namespace TestUInt64
+
+def test1 : UInt64 := 10000000000000000000 + 10000000000000000000
+def test2 : UInt64 := 1000000000000000000 - 10000000000000000000
+def test3 : UInt64 := 5000000000 * 5000000000
+def test4 (a : UInt64) : UInt64 := 10000000000000000000 + a + 10000000000000000000
+
+end TestUInt64
+
+namespace TestUSize
+
+def test1 : USize := 10000000000000000000 + 10000000000000000000
+def test2 : USize := 1000000000000000000 - 10000000000000000000
+def test3 : USize := 5000000000 * 5000000000
+def test4 (a : USize) : USize := 10000000000000000000 + a + 10000000000000000000
+
+end TestUSize
+
+namespace TestNat
+
+def test1 : Nat := 2000000000 + 2000000000
+def test2 : Nat := 1000000000 - 2000000000
+def test3 : Nat := 2000000000 * 2000000000
+def test4 (a : Nat) : Nat := 2000000000 + a + 2000000000
+
+end TestNat
+
+-------------------------------------------
+
+namespace TestInt64
+
+def test1 : Int64 := 5000000000000000000 + 5000000000000000000
+def test2 : Int64 := -5000000000000000000 - 5000000000000000000
+def test3 : Int64 := 5000000000 * 5000000000
+def test4 (a : Int64) : Int64 := 5000000000000000000 + a + 5000000000000000000
+
+end TestInt64
+
+namespace TestISize
+
+def test1 : ISize := 5000000000000000000 + 5000000000000000000
+def test2 : ISize := -5000000000000000000 - 5000000000000000000
+def test3 : ISize := 5000000000 * 5000000000
+def test4 (a : ISize) : ISize := 5000000000000000000 + a + 5000000000000000000
+
+end TestISize
+
+namespace TestInt
+
+def test1 : Int := 2000000000 + 2000000000
+def test2 : Int := -2000000000 - 2000000000
+def test3 : Int := 2000000000 * 2000000000
+def test4 (a : Int) : Int := 2000000000 + a + 2000000000
+
+end TestInt

@@ -1,0 +1,124 @@
+/-
+The terms `SnapshotsPBOPure/Tco04Program.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsPBOPure/Tco04.lean` they were translated from.
+
+`test1` and `test2` are a well-founded mutual clique over `Int`, measured by `n.toNat` and
+`m.toNat`, and each carries an erased proof — `Valid1 n`, `Valid2 m` — without which the
+recursion does not terminate.  The compiled code has no such argument, so faithfulness is
+proved **on the domain** those proofs cut out, with `Term.fixNat_implements_on`: the
+domain is preserved by every call the body makes (that is exactly what `test1_step` and
+`test2_step` say), and every call decreases the measure the term carries.
+-/
+
+import SnapshotsPBOPure.Tco04Program
+import SnapshotsPBOPure.Tco04
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsPBOPureTco04
+
+namespace SnapshotsPBOPure.Tco04ProgramCheck
+
+open Classical in
+/-- `test1` made total: outside its precondition it answers `0`. -/
+noncomputable def test1Total (n : Int) : Int := if h : Valid1 n then test1 n h else 0
+
+open Classical in
+/-- `test2` made total: outside its precondition it answers `0`. -/
+noncomputable def test2Total (m : Int) : Int := if h : Valid2 m then test2 m h else 0
+
+theorem test1Total_of {n : Int} (h : Valid1 n) : test1Total n = test1 n h := dif_pos h
+
+theorem test2Total_of {m : Int} (h : Valid2 m) : test2Total m = test2 m h := dif_pos h
+
+/-- The merged clique, read as a function of its argument list. -/
+noncomputable def cliqueFun (as : Env [Ty.nat, Ty.int, Ty.int]) : Ty.int.den :=
+  if (as.get (v♯0) : Nat) == 0 then test1Total (as.get (v♯1)) else test2Total (as.get (v♯2))
+
+/-- The domain: the erased precondition of whichever member the tag selects. -/
+def Dom (as : Env [Ty.nat, Ty.int, Ty.int]) : Prop :=
+  ((as.get (v♯0) : Nat) = 0 → Valid1 (as.get (v♯1))) ∧
+    ((as.get (v♯0) : Nat) ≠ 0 → Valid2 (as.get (v♯2)))
+
+/-- **The emitted merged loop is `test1` and `test2`, on the domain of their
+    preconditions.** -/
+theorem tm_clique_implements_on (δ : GEnv sig_test1___test2__clique_.decls)
+    (args : Env [Ty.nat, Ty.int, Ty.int]) (h : Dom args) :
+    Env.apply (tm_test1___test2__clique_.evalClosed δ) args = cliqueFun args := by
+  refine Term.fixNat_implements_on _ _ _ δ Dom cliqueFun ?_ args h
+  intro g as hD hg
+  simp only [Dom, cliqueFun] at hD hg ⊢
+  match as with
+  | .cons t (.cons n (.cons m .nil)) =>
+    cases (t : Nat) with
+    | zero =>
+      simp only [Term.eval, Ops.eval_natEq, Ops.eval_intEq, Ops.eval_intSub, Ops.eval_natToInt,
+        Env.get_cons_head, Env.get_cons_tail, Env.get_head_cons_append,
+        Env.get_tail_cons_append, REnv.get_cons_head,
+        Spine.eval_cons, Spine.eval_nil, cond_true_false_self, decide_eq_true_eq,
+        LeanPrimLit.val_nat, LeanPrimLit.val_int]
+      rw [if_pos trivial, show (Int.ofNat 1 : Int) = 1 from rfl]
+      have hv : Valid1 (n : Int) := hD.1 rfl
+      have hRHS : (if (Nat.zero == 0) = true then test1Total n else test2Total m)
+          = test1Total (n : Int) := by simp
+      rw [hRHS, test1Total_of hv]
+      by_cases h1 : (n : Int) = 1
+      · rw [if_pos h1]
+        conv => rhs; rw [test1]
+        simp [h1]
+      · rw [if_neg h1,
+          hg (.cons (1 : Nat) (.cons (0 : Int) (.cons ((n : Int) - 1) .nil)))
+            (by refine ⟨by simp, fun _ => test1_step hv h1⟩)
+            (by simp; unfold Valid1 at hv; omega)]
+        simp only [Env.get_cons_head, Env.get_cons_tail]
+        simp only [Nat.one_ne_zero, beq_iff_eq, if_false]
+        conv => rhs; rw [test1]
+        simp only [h1]
+        exact test2Total_of (test1_step hv h1)
+    | succ j =>
+      simp only [Term.eval, Ops.eval_natEq, Ops.eval_intEq, Ops.eval_intSub, Ops.eval_natToInt,
+        Env.get_cons_head, Env.get_cons_tail, Env.get_head_cons_append,
+        Env.get_tail_cons_append, REnv.get_cons_head,
+        Spine.eval_cons, Spine.eval_nil, cond_true_false_self, decide_eq_true_eq,
+        LeanPrimLit.val_nat, LeanPrimLit.val_int]
+      rw [if_neg (by simp), show (Int.ofNat 2 : Int) = 2 from rfl]
+      have hv : Valid2 (m : Int) := hD.2 (by simp)
+      have hRHS : (if (Nat.succ j == 0) = true then test1Total n else test2Total m)
+          = test2Total (m : Int) := by simp
+      rw [hRHS, test2Total_of hv]
+      by_cases h1 : (m : Int) = 2
+      · rw [if_pos h1]
+        conv => rhs; rw [test2]
+        simp [h1]
+      · rw [if_neg h1,
+          hg (.cons (0 : Nat) (.cons ((m : Int) - 2) (.cons (0 : Int) .nil)))
+            (by refine ⟨fun _ => test2_step hv h1, by simp⟩)
+            (by simp; unfold Valid2 at hv; omega)]
+        simp only [Env.get_cons_head, Env.get_cons_tail]
+        simp only [beq_self_eq_true, if_true]
+        conv => rhs; rw [test2]
+        simp only [h1]
+        exact test1Total_of (test2_step hv h1)
+
+/-- The declarations `test1` is written against, as a program. -/
+def pTest1 : Program sig_test1.decls :=
+  .cons d_test1___test2__clique_ (by decide) tm_test1___test2__clique_ .nil
+
+/-- **The emitted entry point is `test1`**, at every argument its erased precondition
+    admits. -/
+theorem tm_test1_implements (n : Int) (hn : Valid1 n) :
+    Env.apply (tm_test1.evalClosed pTest1.env) (.cons n .nil) = test1 n hn := by
+  have h := tm_clique_implements_on .nil
+    (.cons (0 : Nat) (.cons n (.cons (0 : Int) .nil))) (by exact ⟨fun _ => hn, by simp⟩)
+  simpa [cliqueFun, test1Total_of hn] using h
+
+/-- The declarations `test2` is written against, as a program. -/
+def pTest2 : Program sig_test2.decls := .cons d_test1 (by decide) tm_test1 pTest1
+
+/-- **The emitted entry point is `test2`**, at every argument its erased precondition
+    admits. -/
+theorem tm_test2_implements (m : Int) (hm : Valid2 m) :
+    Env.apply (tm_test2.evalClosed pTest2.env) (.cons m .nil) = test2 m hm := by
+  have h := tm_clique_implements_on .nil
+    (.cons (1 : Nat) (.cons (0 : Int) (.cons m .nil))) (by exact ⟨by simp, fun _ => hm⟩)
+  simpa [cliqueFun, test2Total_of hm] using h
+
+end SnapshotsPBOPure.Tco04ProgramCheck

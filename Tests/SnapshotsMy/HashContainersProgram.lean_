@@ -1,0 +1,87 @@
+-- SnapshotsMy.HashContainers: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   2 are programs below
+--   1 is refused by the totality gate
+--   5 have no type in the grammar, and can have none
+--   3 are gaps the front end would have to grow to cover (`TERM_REMAINING_REFUSALS.md`)
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- no type of the grammar describes it, and none can: `List.forIn'.loop._at_.test1.spec_2`: the parameter `m` of `Std.DHashMap.Internal.Raw₀.Const.getD._at_.test1.spec_0` has type `Subtype
+--   lcErased`, which the front end does not translate — part of it was erased by the compiler to `lcAny`, which is what happens to a value whose type is not known statically — the state of an existential type, say — and no `Ty` denotes such a value
+-- no type of the grammar describes it, and none can: `List.forIn'.loop._at_.test4.spec_0`: the parameter `β` of `Std.DHashMap.Internal.Raw₀.insert._at_.test1.spec_1` has type `String →
+--   Type`, which the front end does not translate — it answers with a `Sort`, so it is a type constructor or the motive of a dependent eliminator rather than a type of values, and the front end has no higher-kinded types
+-- outside the fragment: `List.mapTR.loop._at_.test6.spec_0`: `List.reverse` is polymorphic, and the call says nothing about what type it is called at; the front end translates one instantiation at a time
+-- refused by the totality gate: `_private.Init.Data.Array.Basic.0.Array.foldrMUnsafe.fold._at_.test6.spec_2`: it is a specialisation of `_private.Init.Data.Array.Basic.0.Array.foldrMUnsafe.fold`, which is an `unsafe def`, so Lean did not prove it terminating; the backend cannot turn it into a loop
+-- left out with what it calls: `test1`: it calls `List.forIn'.loop._at_.test1.spec_2`, whose own line above says why that one has no program
+-- no type of the grammar describes it, and none can: `test2`: the parameter `m` of `Std.DHashMap.Internal.Raw₀.Const.get?._at_.test2.spec_2` has type `Subtype
+--   lcErased`, which the front end does not translate — part of it was erased by the compiler to `lcAny`, which is what happens to a value whose type is not known statically — the state of an existential type, say — and no `Ty` denotes such a value
+-- outside the fragment: `test3`: `Std.DHashMap.Internal.AssocList.nil` builds a value of `Std.DHashMap.Internal.AssocList String fun x =>
+--   PUnit`, and the front end has no `Ty` for that type — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+-- outside the fragment: `test4`: `Std.DHashMap.Internal.AssocList.nil` builds a value of `Std.DHashMap.Internal.AssocList String fun x =>
+--   PUnit`, and the front end has no `Ty` for that type — `PUnit` has one value, which carries no information: such a type is erased before a `Ty` is built, and the front end does not drop a field of one yet
+-- no type of the grammar describes it, and none can: `test5`: the parameter `β` of `Std.DHashMap.Internal.Raw₀.erase._at_.test5.spec_0` has type `String →
+--   Type`, which the front end does not translate — it answers with a `Sort`, so it is a type constructor or the motive of a dependent eliminator rather than a type of values, and the front end has no higher-kinded types
+-- left out with what it calls: `test6`: it calls `List.forIn'.loop._at_.test4.spec_0`, whose own line above says why that one has no program
+-- no type of the grammar describes it, and none can: `test7`: the parameter `m` of `Std.DHashMap.Internal.Raw₀.Const.getD._at_.test1.spec_0` has type `Subtype
+--   lcErased`, which the front end does not translate — part of it was erased by the compiler to `lcAny`, which is what happens to a value whose type is not known statically — the state of an existential type, say — and no `Ty` denotes such a value
+--
+-- ════ 📦 instHashableString : (fn string uint64)
+-- let ♯ := ƛ (extern⟨string ⇒ uint64⟩ ⬝ ♯0);
+-- let ♯ := ♯0;
+-- ♯0
+--
+-- ════ 📦 instBEqOfDecidableEq@string : (fn (fn string (fn string bool)) (fn string (fn string bool)))
+-- ƛ let ♯ := ƛ ƛ let ♯ := ((♯2 ⬝ ♯1) ⬝ ♯0);
+-- let ♯ := ♯0;
+-- ♯0;
+-- let ♯ := ♯0;
+-- ♯0
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsMyHashContainers
+
+/-- `instHashableString`, as a declaration of the module. -/
+def d_instHashableString : GlobalDecl := ⟨"instHashableString", (Ty.fn Ty.string Ty.uint64)⟩
+
+/-- The signature `instHashableString` is written against. -/
+def sig_instHashableString : Sig := ⟨[], by decide⟩
+
+/-- The body of `instHashableString`. -/
+def tm_instHashableString : Term sig_instHashableString [] [] (Ty.fn Ty.string Ty.uint64) :=
+  (Term.letE (Term.lam (strHash (♯0))) (Term.letE (♯0) (♯0)))
+
+/-- `instBEqOfDecidableEq@string`, as a declaration of the module. -/
+def d_instBEqOfDecidableEq_string : GlobalDecl := ⟨"instBEqOfDecidableEq@string", (Ty.fn (Ty.fn Ty.string (Ty.fn Ty.string Ty.bool)) (Ty.fn Ty.string (Ty.fn Ty.string Ty.bool)))⟩
+
+/-- The signature `instBEqOfDecidableEq@string` is written against. -/
+def sig_instBEqOfDecidableEq_string : Sig := ⟨[d_instHashableString], by decide⟩
+
+/-- The body of `instBEqOfDecidableEq@string`. -/
+def tm_instBEqOfDecidableEq_string : Term sig_instBEqOfDecidableEq_string [] [] (Ty.fn (Ty.fn Ty.string (Ty.fn Ty.string Ty.bool)) (Ty.fn Ty.string (Ty.fn Ty.string Ty.bool))) :=
+  (Term.lam (Term.letE (Term.lam (Term.lam (Term.letE (Term.ap (Term.ap (♯2) (♯1)) (♯0)) (Term.letE (♯0) (♯0))))) (Term.letE (♯0) (♯0))))
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[d_instBEqOfDecidableEq_string, d_instHashableString], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  (.cons d_instBEqOfDecidableEq_string (by decide) tm_instBEqOfDecidableEq_string (.cons d_instHashableString (by decide) tm_instHashableString .nil))
+
+end ProgramSnapshotsMyHashContainers

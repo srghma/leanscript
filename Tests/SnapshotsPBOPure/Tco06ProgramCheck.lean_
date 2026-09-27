@@ -1,0 +1,82 @@
+/-
+The terms `SnapshotsPBOPure/Tco06Program.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsPBOPure/Tco06.lean` they were translated from — at *every*
+argument.
+
+`f` and `g` are a mutual structural recursion on `fuel + 1` whose members disagree on
+their parameters; the front end merges them into one measured recursion with a tag, and
+the two emitted entry points enter it at their own tag.
+-/
+
+import SnapshotsPBOPure.Tco06Program
+import SnapshotsPBOPure.Tco06
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsPBOPureTco06
+
+namespace SnapshotsPBOPure.Tco06ProgramCheck
+
+/-- The merged clique, read as a function of its argument list. -/
+def cliqueFun (as : Env [Ty.nat, Ty.nat, Ty.int, Ty.int, Ty.nat, Ty.int]) : Ty.int.den :=
+  if (as.get (v♯0) : Nat) == 0 then f (as.get (v♯1)) (as.get (v♯2)) (as.get (v♯3))
+  else g (as.get (v♯4)) (as.get (v♯5))
+
+/-- **The emitted merged loop is `f` and `g`.** -/
+theorem tm_clique_implements (δ : GEnv sig_f___g__clique_.decls) :
+    tm_f___g__clique_.Implements δ cliqueFun := by
+  refine Term.fixNat_implements_closed _ _ _ δ cliqueFun ?_
+  intro gr as hg
+  match as with
+  | .cons t (.cons nf (.cons a (.cons b (.cons ng (.cons ag .nil))))) =>
+    cases (t : Nat) with
+    | zero =>
+      cases (nf : Nat) with
+      | zero => rfl
+      | succ j =>
+        show gr (.cons (1 : Nat) (.cons (0 : Nat) (.cons (0 : Int) (.cons (0 : Int)
+          (.cons (j : Nat) (.cons ((a : Int) + b) .nil)))))) = _
+        rw [hg _ (by simp [Env.get])]
+        show g j ((a : Int) + b) = f (j + 1) a b
+        rfl
+    | succ _ =>
+      cases (ng : Nat) with
+      | zero => rfl
+      | succ j =>
+        show gr (.cons (0 : Nat) (.cons (j : Nat) (.cons (ag : Int) (.cons ((ag : Int) + 1)
+          (.cons (0 : Nat) (.cons (0 : Int) .nil)))))) = _
+        rw [hg _ (by simp [Env.get])]
+        show f j ag ((ag : Int) + 1) = g (j + 1) ag
+        rfl
+
+/-- The declarations `f` is written against, as a program. -/
+def pF : Program sig_f.decls := .cons d_f___g__clique_ (by decide) tm_f___g__clique_ .nil
+
+/-- `f`, read as a function of the emitted term's argument list. -/
+def fFun (as : Env [Ty.nat, Ty.int, Ty.int]) : Ty.int.den :=
+  f (as.get (v♯0)) (as.get (v♯1)) (as.get (v♯2))
+
+/-- **The emitted entry point is `f`**: it enters the merged loop at tag `0`. -/
+theorem tm_f_implements : tm_f.Implements pF.env fFun := by
+  intro args
+  match args with
+  | .cons n (.cons a (.cons b .nil)) =>
+    exact tm_clique_implements .nil
+      (.cons (0 : Nat) (.cons (n : Nat) (.cons (a : Int) (.cons (b : Int)
+        (.cons (0 : Nat) (.cons (0 : Int) .nil))))))
+
+/-- The declarations `g` is written against, as a program. -/
+def pG : Program sig_g.decls := .cons d_f (by decide) tm_f pF
+
+/-- `g`, read as a function of the emitted term's argument list. -/
+def gFun (as : Env [Ty.nat, Ty.int]) : Ty.int.den :=
+  g (as.get (v♯0)) (as.get (v♯1))
+
+/-- **The emitted entry point is `g`**: it enters the merged loop at tag `1`. -/
+theorem tm_g_implements : tm_g.Implements pG.env gFun := by
+  intro args
+  match args with
+  | .cons n (.cons a .nil) =>
+    exact tm_clique_implements .nil
+      (.cons (1 : Nat) (.cons (0 : Nat) (.cons (0 : Int) (.cons (0 : Int)
+        (.cons (n : Nat) (.cons (a : Int) .nil))))))
+
+end SnapshotsPBOPure.Tco06ProgramCheck

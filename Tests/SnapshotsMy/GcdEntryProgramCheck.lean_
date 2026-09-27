@@ -1,0 +1,64 @@
+/-
+The terms `SnapshotsMy/GcdEntryProgram.lean` was generated with, proved to compute the
+Lean functions of `SnapshotsMy/GcdEntry.lean` they were translated from — at *every*
+argument.
+
+`Nat.gcd` is the well-founded case: Lean proves it terminating by recursion on its first
+argument, and the emitted term carries exactly that measure.  The `@[extern
+"lean_nat_gcd"]` implementation is ignored, as the task asks: what is translated is the
+Lean body.
+-/
+
+import SnapshotsMy.GcdEntryProgram
+import SnapshotsMy.GcdEntry
+
+open LeanScript LeanScript.Ty LeanScript.Expr ProgramSnapshotsMyGcdEntry
+
+namespace SnapshotsMy.GcdEntryProgramCheck
+
+/-- `Nat.gcd`, read as a function of the emitted term's argument list. -/
+def gcdFun (as : Env [Ty.nat, Ty.nat]) : Ty.nat.den :=
+  Nat.gcd (as.get (v♯0)) (as.get (v♯1))
+
+/-- **The emitted term is `Nat.gcd`.** -/
+theorem tm_Nat_gcd_implements (δ : GEnv sig_Nat_gcd.decls) :
+    tm_Nat_gcd.Implements δ gcdFun := by
+  refine Term.fixNat_implements_closed _ _ _ δ gcdFun ?_
+  intro g as hg
+  match as with
+  | .cons x (.cons y .nil) =>
+    cases (x : Nat) with
+    | zero =>
+      show (y : Nat) = gcdFun (.cons (0 : Nat) (.cons y .nil))
+      simp [gcdFun, Env.get]
+    | succ k =>
+      show g (.cons ((y : Nat) % (k + 1)) (.cons (k + 1 : Nat) .nil))
+          = gcdFun (.cons (k + 1 : Nat) (.cons y .nil))
+      rw [hg (.cons ((y : Nat) % (k + 1)) (.cons (k + 1 : Nat) .nil))
+        (by exact Nat.mod_lt _ (Nat.succ_pos k))]
+      show Nat.gcd ((y : Nat) % (k + 1)) (k + 1) = Nat.gcd (k + 1) y
+      exact (Nat.gcd_rec (k + 1) y).symm
+
+/-- The declarations `gcd2` is written against, as a program. -/
+def pGcd2 : Program sig_gcd2.decls := .cons d_Nat_gcd (by decide) tm_Nat_gcd .nil
+
+/-- `gcd2`, read as a function of the emitted term's argument list. -/
+def gcd2Fun (as : Env [Ty.nat, Ty.nat]) : Ty.nat.den :=
+  gcd2 (as.get (v♯0)) (as.get (v♯1))
+
+/-- **The emitted term is `gcd2`** — it calls the emitted `Nat.gcd`, and that call is the
+    Lean call. -/
+theorem tm_gcd2_implements : tm_gcd2.Implements pGcd2.env gcd2Fun := by
+  intro args
+  match args with
+  | .cons a (.cons b .nil) =>
+    exact tm_Nat_gcd_implements .nil (.cons a (.cons b .nil))
+
+/-- The declarations `run` is written against, as a program. -/
+def pRun : Program sig_run.decls := .cons d_gcd2 (by decide) tm_gcd2 pGcd2
+
+/-- **The emitted term is `run`.** -/
+theorem tm_run_value : Program.run pRun tm_run = run :=
+  tm_gcd2_implements (.cons 48 (.cons 18 .nil))
+
+end SnapshotsMy.GcdEntryProgramCheck

@@ -1,0 +1,50 @@
+-- SnapshotsPBOPure.VanLaarhovenTraversals01: the module as a Program of the one grammar of `LeanScript.Expr`.
+-- 🎯 a public entry point of the module; 📦 a declaration the translation pulled in.
+-- Every term below is a `Term`, so it is terminating by construction.  A recursion is
+-- one of the four schemes of `LeanScript.FixSplit` — `fixStructTail`, `fixStructDeep`,
+-- `fixWfTail`, `fixWfDeep` — the product of *how it descends* (structurally, on one
+-- named argument, in the order the language fixes; or well-foundedly, on the subject
+-- Lean's `termination_by` names) by *where the self call stands* (tail: a `while`
+-- loop, no frame; deep: native recursion).  No scheme carries a measure the front end
+-- had to invent.  A `Tail` scheme's `by decide` is the check that every self call is
+-- in tail position; the descent field is Lean's own `decreasing_by` proof, and it is
+-- rendered as `sorry` because the front end does not transcribe proof terms yet.
+-- What became of the declarations of the module:
+--   3 are compiled where they are used, or have no instantiation of their own
+--   10 have no type in the grammar, and can have none
+-- Every declaration with no program of its own is a line below, with the reason it has none.
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Fun.Abs.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Fun.App.elim`
+-- a dependent eliminator (it takes a `motive`), so it is compiled where the `match` that uses it occurs: `Fun.ctorElim`
+-- no type of the grammar describes it, and none can: `Fun.ctorIdx`: the parameter `x` of `Fun.ctorIdx` has type `Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `Fun.size`: the parameter `x.1` of `Fun.size` has type `Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `instDecidableEqFun`: the parameter `x.1` of `instDecidableEqFun` has type `Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `instDecidableEqFun.decEq`: the parameter `x.1` of `instDecidableEqFun.decEq` has type `Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `instReprFun`: the result type of `instReprFun`, `Repr
+--   Fun`, is not one the front end translates — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `instReprFun.repr`: the parameter `x.1` of `instReprFun.repr` has type `Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `rewriteBottomUp`: the parameter `k` of `rewriteBottomUp` has type `Fun →
+--   Fun`, which the front end does not translate — every constructor of `Fun` takes a `Fun`, so the type has no values, and no `Ty` denotes an empty type
+-- no type of the grammar describes it, and none can: `rewriteBottomUpM`: its parameter `m` is a family of types (a type constructor, such as the `f` of an `Applicative f`), and the front end has no higher-kinded types: a declaration is modelled at its instantiation, and a type constructor has none
+-- no type of the grammar describes it, and none can: `traverseFun1`: its parameter `f` is a family of types (a type constructor, such as the `f` of an `Applicative f`), and the front end has no higher-kinded types: a declaration is modelled at its instantiation, and a type constructor has none
+-- no type of the grammar describes it, and none can: `traverseFun1D`: its parameter `f` is a family of types (a type constructor, such as the `f` of an `Applicative f`), and the front end has no higher-kinded types: a declaration is modelled at its instantiation, and a type constructor has none
+--
+--
+-- ── the same program as Lean source ────────────────────────────────────
+-- The trees above are this program printed in the notation of `LeanScript.ExprPretty`;
+-- copy one into a `[LEAN|...]` elaboration if you want to read it there.
+
+import LeanScript
+
+open LeanScript LeanScript.Ty LeanScript.Expr LeanScript.Expr.Ops
+
+namespace ProgramSnapshotsPBOPureVanLaarhovenTraversals01
+
+/-- The signature of the whole module. -/
+def moduleSig : Sig := ⟨[], by decide⟩
+
+/-- The module as a telescope: every body is written against the declarations before it, so the call graph is acyclic by construction. -/
+def program : Program moduleSig.decls :=
+  .nil
+
+end ProgramSnapshotsPBOPureVanLaarhovenTraversals01
