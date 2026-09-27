@@ -1,3 +1,18 @@
+# Summary of changes for run 6a0cf9e3-494a-4f1b-b8eb-9953eca66227
+Your request just said "refactor", so I read it as: split `LeanScript/ToTerm.lean`, the translator worked on last time. At 1473 lines it was much longer than any other file. I only moved code between files and changed no definitions. The full `lake build` passes (76 jobs) with no errors or warnings, and the translator files contain no `sorry`.
+
+**New layout:**
+- **`LeanScript/ToTerm/Basic.lean` (~490 lines):** the translation state (`TS`, `TM`, `lm`), the expression context (`Loc`, `NShape`), and the helpers the expression translator uses:
+  - syntax builders
+  - detecting nested datatypes
+  - mutual groups
+  - constructor fields and `Option`-masked fields
+  - the parameters a recursive call changes (`varyingParams`), index parameters and library-declaration checks
+- **`LeanScript/ToTerm/Expr.lean` (~800 lines):** the `mutual` block with `tr` and all the functions it recurses with (`trApp`, `trCtor`, `trCases`, `trRecCall`, `trRangeFor`, `trHelperCall`, `trNestFoldl`, …). These have to stay together in one file because they are mutually recursive.
+- **`LeanScript/ToTerm.lean` (~235 lines):** the original header documenting what is supported and refused, `typeIndexValues`, `instBinders`, `translateDef`, the `#leanscript_to_term` syntax and its term and command elaborators.
+
+Each file imports only its direct parent, using the project's `public meta import` convention. Each import sits in the file that needs it: `Lean.Meta.Eqns` is in `ToTerm.lean`, and the Structural and WF equation modules are in `ToTerm/Basic.lean`. Every existing importer still uses `LeanScript.ToTerm`, so no tests or other files had to change. I added the new files to the file table in `README.md`. The change is committed.
+
 # Summary of changes for run 514aa57c-45fe-4dd1-af10-8dd27d5b857b
 **No, it didn't.** On the original translator, four of your seven definitions were refused. A fifth (`ack2`) failed only because the test file used a `public section`, where a public `ack2` cannot use the private `ackInner`. Only `ackInner` and `hyperBase` translated. I extended `#leanscript_to_term` in `LeanScript/ToTerm.lean` without changing `Term`, and all seven now translate. The full `lake build` passes with no `sorry`.
 
