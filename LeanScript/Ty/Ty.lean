@@ -57,7 +57,7 @@ inductive Ref : List Nat → Type where
   | here {k : Nat} {ks : List Nat} (j : Fin (k + 1)) : Ref (k :: ks)
   /-- A datatype of an older block. -/
   | there {k : Nat} {ks : List Nat} : Ref ks → Ref (k :: ks)
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- A reference to a whole block of a signature (without choosing a member). -/
 inductive BRef : List Nat → Type where
@@ -65,7 +65,7 @@ inductive BRef : List Nat → Type where
   | here {k : Nat} {ks : List Nat} : BRef (k :: ks)
   /-- An older block. -/
   | there {k : Nat} {ks : List Nat} : BRef ks → BRef (k :: ks)
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- The size `k` of a block (it has `k + 1` members). -/
 def BRef.size : {ks : List Nat} → BRef ks → Nat
@@ -139,6 +139,7 @@ end
 
 deriving instance DecidableEq for Ty, Fields, Ctor, Ctors
 deriving instance Repr for Ty, Fields, Ctor, Ctors
+deriving instance Hashable for Ty, Fields, Ctor, Ctors
 
 section Instances
 variable {ks : List Nat}
@@ -150,8 +151,24 @@ instance {bs : List Bool} : BEq (Ctors ks bs) := instBEqOfDecidableEq
 instance : BEq (Ref ks) := instBEqOfDecidableEq
 instance : BEq (BRef ks) := instBEqOfDecidableEq
 
+/-! `ReflBEq`, `LawfulBEq` and `LawfulHashable` follow from the `BEq` instances above, which
+    are `decide (a = b)` (`instLawfulBEqInstBEqOfDecidableEq`,
+    `instLawfulHashableOfLawfulBEq`). -/
+
+instance {d : Bool} : Inhabited (Ty ks d) := ⟨.prim .bool⟩
+instance : Inhabited (Fields ks) := ⟨.one default⟩
+instance : Inhabited (Ctor ks false) := ⟨.nullary⟩
+instance : Inhabited (Ctor ks true) := ⟨.fields default⟩
+instance {a b : Bool} [Inhabited (Ctor ks a)] [Inhabited (Ctor ks b)] :
+    Inhabited (Ctors ks [a, b]) := ⟨.two default default⟩
+instance {a : Bool} {bs : List Bool} [Inhabited (Ctor ks a)] [Inhabited (Ctors ks bs)] :
+    Inhabited (Ctors ks (a :: bs)) := ⟨.cons default default⟩
+instance {k : Nat} : Inhabited (Ref (k :: ks)) := ⟨.here 0⟩
+instance {k : Nat} : Inhabited (BRef (k :: ks)) := ⟨.here⟩
+
 example : LawfulBEq (Ty ks) := inferInstance
 example {bs : List Bool} : ReflBEq (Ctors ks bs) := inferInstance
+example : LawfulHashable (Ty ks) := inferInstance
 
 end Instances
 

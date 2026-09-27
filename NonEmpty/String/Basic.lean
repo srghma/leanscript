@@ -11,6 +11,9 @@ structure NonEmptyString where
   isNonEmpty : toString ≠ "" := by decide
   deriving BEq, Hashable, Ord, Repr, DecidableEq, ReflBEq, LawfulBEq
 
+/-- The default non-empty string is `"a"`. -/
+instance : Inhabited NonEmptyString := ⟨⟨"a", by decide⟩⟩
+
 -- TODO: if uncomment then HAppend ++ will stop working (macro called binop% which aggressively attempts to unify the operands to a single, homogeneous type before considering heterogeneous HAppend instances)
 -- instance : CoeOut NonEmptyString String where
 --   coe s := s.toString

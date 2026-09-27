@@ -36,7 +36,7 @@ structure GenKey where
   args : Array (Option Expr)
   /-- The program the definition is specialised to, if it names a declared datatype. -/
   prog : Option Name
-  deriving Inhabited, BEq
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- One entry of the cache. -/
 inductive Entry where
@@ -46,14 +46,14 @@ inductive Entry where
   | use (n : Name)
   /-- A definition was generated. -/
   | gen (key : GenKey) (decl : Name)
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- What the cache knows. -/
 structure CacheState where
   progs : Array ProgInfo := #[]
   current : Option Name := none
   gens : Array (GenKey × Name) := #[]
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- Record one entry. -/
 def CacheState.add (s : CacheState) : Entry → CacheState

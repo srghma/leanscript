@@ -44,26 +44,26 @@ inductive Fld : List Nat → Nat → Nat → Type where
   | array {ks : List Nat} {n g : Nat} : Fld ks n n → Fld ks n g
   /-- The domain is an older closed type (strict positivity, by typing). -/
   | fn {ks : List Nat} {n g : Nat} : Ty ks → Fld ks n g → Fld ks n g
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- One or more fields. -/
 inductive Flds : List Nat → Nat → Nat → Type where
   | one {ks : List Nat} {n g : Nat} : Fld ks n g → Flds ks n g
   | cons {ks : List Nat} {n g : Nat} : Fld ks n g → Flds ks n g → Flds ks n g
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- A constructor: no fields (index `false`), or one or more fields (index `true`). -/
 inductive BCtor : List Nat → Nat → Nat → Bool → Type where
   | nullary {ks : List Nat} {n g : Nat} : BCtor ks n g false
   | fields {ks : List Nat} {n g : Nat} : Flds ks n g → BCtor ks n g true
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- Two or more guarded constructors; the index lists which of them have fields. -/
 inductive BCtors : List Nat → Nat → List Bool → Type where
   | two {ks : List Nat} {n : Nat} {a b : Bool} : BCtor ks n n a → BCtor ks n n b → BCtors ks n [a, b]
   | cons {ks : List Nat} {n : Nat} {a : Bool} {bs : List Bool} :
       BCtor ks n n a → BCtors ks n bs → BCtors ks n (a :: bs)
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- Two or more constructors, exactly one of which (the base) is grounded; the index lists
     which of them have fields. -/
@@ -80,7 +80,7 @@ inductive Alts : List Nat → Nat → Nat → List Bool → Type where
   /-- A guarded constructor, then the others (among which the base). -/
   | there {ks : List Nat} {n g : Nat} {a : Bool} {bs : List Bool} : BCtor ks n n a →
       Alts ks n g bs → Alts ks n g (a :: bs)
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- A field that is not an older closed type used as it is (every former but `Fld.old`). -/
 class inductive Fld.NotOld {ks : List Nat} {n g : Nat} : Fld ks n g → Prop where
@@ -103,20 +103,20 @@ inductive Decl : List Nat → Nat → Nat → Type where
       `Ty.union`: field-less constructors only are `bool` or an `enum`). -/
   | union {ks : List Nat} {n g : Nat} {bs : List Bool} (u : Alts ks n g bs) [h : UnionShape bs] :
       Decl ks n g
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- The members `g, g+1, …, n-1` of a block; member `g` may use members `< g` directly. -/
 inductive Mems : List Nat → Nat → Nat → Type where
   | nil {ks : List Nat} {n : Nat} : Mems ks n n
   | cons {ks : List Nat} {n g : Nat} : Decl ks n g → Mems ks n (g + 1) → Mems ks n g
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 /-- A datatype signature: blocks of mutually recursive datatypes, newest first.  Each block
     may use the older blocks as closed types. -/
 inductive DSig : List Nat → Type where
   | nil : DSig []
   | cons {ks : List Nat} (Δ : DSig ks) (k : Nat) (bs : Mems ks (k + 1) 0) : DSig (k :: ks)
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 section Instances
 variable {ks : List Nat} {n g : Nat}
@@ -128,6 +128,23 @@ instance {bs : List Bool} : BEq (Alts ks n g bs) := instBEqOfDecidableEq
 instance : BEq (Decl ks n g) := instBEqOfDecidableEq
 instance : BEq (Mems ks n g) := instBEqOfDecidableEq
 instance : BEq (DSig ks) := instBEqOfDecidableEq
+
+instance : Inhabited (Fld ks n g) := ⟨.old default⟩
+instance : Inhabited (Flds ks n g) := ⟨.one default⟩
+instance : Inhabited (BCtor ks n g false) := ⟨.nullary⟩
+instance : Inhabited (BCtor ks n g true) := ⟨.fields default⟩
+instance {a b : Bool} [Inhabited (BCtor ks n n a)] [Inhabited (BCtor ks n n b)] :
+    Inhabited (BCtors ks n [a, b]) := ⟨.two default default⟩
+instance {a : Bool} {bs : List Bool} [Inhabited (BCtor ks n n a)] [Inhabited (BCtors ks n bs)] :
+    Inhabited (BCtors ks n (a :: bs)) := ⟨.cons default default⟩
+instance {a b : Bool} [Inhabited (BCtor ks n g a)] [Inhabited (BCtor ks n n b)] :
+    Inhabited (Alts ks n g [a, b]) := ⟨.two₁ default default⟩
+instance : Inhabited (Decl ks n g) := ⟨.record default default⟩
+instance : Inhabited (Mems ks n n) := ⟨.nil⟩
+instance : Inhabited (DSig []) := ⟨.nil⟩
+
+example : LawfulBEq (DSig ks) := inferInstance
+example : LawfulHashable (Mems ks n g) := inferInstance
 end Instances
 
 theorem Fin.zero_add_lt' {k : Nat} (j : Fin k) : 0 + j.val < k := by

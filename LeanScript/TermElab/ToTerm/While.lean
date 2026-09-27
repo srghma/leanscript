@@ -45,6 +45,7 @@ namespace LeanScript.Gen
 inductive WGuard where
   | pos (x : Expr)
   | lt (x b : Expr) (le : Bool)
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- Replace every `let`/`have` by its value, everywhere. -/
 def zetaAll (e : Expr) : MetaM Expr :=

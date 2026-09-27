@@ -53,7 +53,7 @@ inductive CIR where
   | data (b j : Nat)
   /-- Type variable number `i`. -/
   | var (i : Nat)
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq
 
 /-- The contents of a delay, or the type itself. -/
 def CIR.undelay : CIR → CIR
@@ -85,7 +85,7 @@ inductive FIR where
   | old (t : CIR)
   | array (f : FIR)
   | fn (a : CIR) (f : FIR)
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq
 
 /-- The holes a field uses outside a guard. -/
 def FIR.unguarded : FIR → List Nat
@@ -101,7 +101,7 @@ structure ProgInfo where
   name : Name
   /-- The members of each block. -/
   members : Array (Array Expr)
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- The block sizes of a program's signature, newest first. -/
 def ProgInfo.ks (p : ProgInfo) : List Nat :=
@@ -113,13 +113,13 @@ structure Node where
   /-- The constructors (names and relevant fields); empty for a node of a declared block of
       the program, which is never unfolded. -/
   ctors : Array (Name × Array Expr) := #[]
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq, Hashable
 
 /-- How a node is translated. -/
 inductive Kind where
   | structural
   | recursive (b j : Nat)
-  deriving Inhabited
+  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq, Hashable
 
 /-- One block: its member nodes in grounding order, the base constructor of each, and the
     fields of each member's constructors. -/
@@ -127,7 +127,7 @@ structure Block where
   members : Array Nat
   bases : Array Nat
   fields : Array (Array (Array FIR))
-  deriving Inhabited
+  deriving Inhabited, Repr, BEq
 
 /-- The state of one translation. -/
 structure St where
@@ -140,6 +140,7 @@ structure St where
   memo : Std.HashMap Nat CIR := {}
   /-- The number of blocks declared before this translation (those of the program). -/
   oldBlocks : Nat := 0
+  deriving Inhabited
 
 abbrev M := StateT St MetaM
 

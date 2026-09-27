@@ -30,8 +30,9 @@ as easy. `UnionShape` is a `class inductive` used as an instance argument; it ne
 `Hashable` as well, or it has to be skipped when hashing (it is a subsingleton for each
 `bs`).
 
-**To do:** add `Hashable` to the `deriving` clauses, and `LawfulHashable` wherever
-`LawfulBEq` already exists.
+**Done:** all of these now have `Hashable` (derived; `DeBruijn` by hand, hashing the position,
+so that it does not need a `Hashable` of the entries), and `LawfulHashable` follows from their
+`LawfulBEq` (core's `instLawfulHashableOfLawfulBEq`).  `TyTests/InstancesTest.lean` checks it.
 
 ## 2. Blocker A: extern nodes hold a Lean function
 

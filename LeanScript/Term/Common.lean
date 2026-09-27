@@ -47,10 +47,15 @@ inductive CtorIx {ks : List Nat} : {bs : List Bool} → {b : Bool} → Ctors ks 
   | head {a : Bool} {bs : List Bool} {c : Ctor ks a} {cs : Ctors ks bs} : CtorIx (.cons c cs) c
   | tail {a b : Bool} {bs : List Bool} {c : Ctor ks a} {c' : Ctor ks b} {cs : Ctors ks bs} :
       CtorIx cs c' → CtorIx (.cons c cs) c'
-  deriving DecidableEq, Repr
+  deriving DecidableEq, Repr, Hashable
 
 instance {ks : List Nat} {bs : List Bool} {b : Bool} {cs : Ctors ks bs} {c : Ctor ks b} :
     BEq (CtorIx cs c) := instBEqOfDecidableEq
+
+instance {ks : List Nat} {a b : Bool} {c : Ctor ks a} {d : Ctor ks b} :
+    Inhabited (CtorIx (.two c d) c) := ⟨.two₁⟩
+instance {ks : List Nat} {a : Bool} {bs : List Bool} {c : Ctor ks a} {cs : Ctors ks bs} :
+    Inhabited (CtorIx (.cons c cs) c) := ⟨.head⟩
 
 /-- The join points in scope: the types of their parameters, innermost first.  A statement
     `Term Δ Γ τ js` may jump to any of them; each one then finishes the statement with an

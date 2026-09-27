@@ -1,3 +1,38 @@
+# Summary of changes for run df7e562d-e7a8-4df1-8db6-69a4e65c9440
+I added the requested instances to every type that can support them. Where the full set isn't possible, I added the largest subset that is. The full `lake build` passes with no errors, warnings or `sorry`. A new test file, `TyTests/InstancesTest.lean`, checks the instances.
+
+**Types with the full set.** These now have `Repr`, `DecidableEq`, `BEq`, `ReflBEq`, `LawfulBEq`, `Hashable`, and also `LawfulHashable`. They get `LawfulHashable` automatically: Lean's core library provides it for any type with a lawful `BEq` and a `Hashable`.
+- `LeanEnumSchema` and `LeanPrimTyCovariant`: `Hashable` added to their `deriving` clauses.
+- `Ref`, `BRef`, and `Fld`, `Flds`, `BCtor`, `BCtors`, `Alts`, `Decl`, `Mems`, `DSig`: `Hashable` added to their `deriving` clauses.
+- `Ty`, `Fields`, `Ctor`, `Ctors`: `deriving instance Hashable for Ty, Fields, Ctor, Ctors`.
+- `CtorIx`: `Hashable` derived.
+- `DeBruijn` (so also `Var` and `JVar`): `DecidableEq`, `BEq` and `Hashable` are written by hand rather than derived. They compare and hash the position, using the existing lemma `eq_of_index_eq`. The derived versions would have required `DecidableEq α` or `Hashable α` for the list entries, which isn't needed.
+- `LeanPrimTy`, `HashableFloat`, `HashableFloat32` and the `NonEmpty` types already had the full set.
+
+**`Inhabited`.**
+- Added wherever the type is non-empty:
+  - `Ty` (default `.prim .bool`), `Fields`, `Ctor` at both indices, `Fld`, `Flds`, `BCtor`, `Decl`.
+  - `Ctors` / `BCtors` for lists of at least two entries, and `Alts` for two-entry lists.
+  - `Ref (k :: ks)`, `BRef (k :: ks)`, `Mems ks n n`, `DSig []`.
+  - `DeBruijn (x :: xs) x`, and `CtorIx` at its first constructor.
+  - `NonEmptyString` (default `"a"`).
+- Not added at indices where the type has no values (e.g. `Ref []`).
+
+**Elaborator types (partial set).** Types that contain Lean syntax get `Inhabited, Repr, BEq` but not `Hashable`, since Lean syntax has no `Hashable` instance. Types that contain Lean expressions or names also get `Hashable`. None of these can get a lawful `BEq` or `DecidableEq`.
+- `Inhabited, Repr, BEq`: `CIR`, `FIR`, `Block`, `Head`, `TypePlan`, `Frame`.
+- `Inhabited, Repr, BEq, Hashable`: `ProgInfo`, `Node`, `WGuard`, `GenKey`, `Entry`, `CacheState`.
+- The full set: `Kind`, `Intro`, `NShape`.
+- Only `Inhabited`: `St`, `TS`, `Loc`, `Scope`, `Kont`. They contain hash maps or functions.
+
+**Left unchanged, because they hold functions or proofs.** Functions can't be compared for equality, so these types can't have a lawful `DecidableEq` or `BEq`:
+- `Two`, `Three`, `DSig.Block`, `IPF`, `IW`;
+- the term types `Neu`, `PExpr`, `Args`, `Elems`, `Comp`, `Term`, `Branches` (the extern nodes hold a function);
+- the extern catalogues, as their own docstring explains;
+- `Atom` and `Src`, which already had `Inhabited`;
+- `Prop`-valued classes such as `UnionShape` and `Fld.NotOld`.
+
+I also updated the "To do" in section 1 of `TERM_HASHABLE_ASSESSMENT.md` to say this is done.
+
 # Summary of changes for run 66ff8cd0-0fa6-4406-a05b-f596407835b4
 `HashableFloat` and `HashableFloat32` are implemented, and `LeanPrimTy` now uses them for its float leaves and is `Hashable` and `LawfulHashable`. The full `lake build` passes with no errors, warnings or `sorry`, and the key results use only the standard axioms.
 

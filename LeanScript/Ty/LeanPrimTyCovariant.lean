@@ -36,7 +36,7 @@ inductive LeanPrimTyCovariant (α : Type) where
   /-- In JS: `() => { return ... }`. -/
   | lazy : α → LeanPrimTyCovariant α
   -- | shareCommonState : α → LeanPrimTyCovariant α
-  deriving Repr, DecidableEq, Inhabited, BEq, ReflBEq, LawfulBEq
+  deriving Repr, DecidableEq, Inhabited, BEq, ReflBEq, LawfulBEq, Hashable
 
 namespace LeanPrimTyCovariant
 

@@ -27,7 +27,7 @@ structure LeanEnumSchema where
   extraConstructors : Nat := 0
   /-- The number the first constructor prints as. -/
   shift : Int := 0
-  deriving DecidableEq, Repr, Inhabited, BEq, ReflBEq, LawfulBEq
+  deriving DecidableEq, Repr, Inhabited, BEq, ReflBEq, LawfulBEq, Hashable
 
 namespace LeanEnumSchema
 

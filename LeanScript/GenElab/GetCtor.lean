@@ -185,6 +185,7 @@ structure TypePlan where
   /-- Is it `Bool` (or another type of two field-less constructors), the leaf whose
       constructors are the literals `false` and `true`? -/
   isBool : Bool := false
+  deriving Inhabited, Repr, BEq
 
 /-- Does a plan name a declared datatype anywhere (then it is specialised to the program)? -/
 def TypePlan.concrete (p : TypePlan) : Bool :=
@@ -284,6 +285,7 @@ structure Frame where
   /-- `ks` and `Δ`: the program's, or the function's own implicit arguments. -/
   ksT : Lean.Term
   dT : Lean.Term
+  deriving Inhabited, Repr, BEq
 
 /-- The frame of a function generated from a plan. -/
 def mkFrame (plan : TypePlan) (prog? : Option ProgInfo) (vars : Array Expr) : TermElabM Frame := do

@@ -72,6 +72,7 @@ inductive Intro where
   | record
   /-- `union_mk` of constructor `pos` (by position), of its arguments, the fields. -/
   | union (pos : Nat)
+  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq, Hashable
 
 /-- A pure expression under construction. -/
 inductive Atom where
@@ -210,12 +211,14 @@ inductive Kont where
   | ret
   | jump (l : Nat)
   | fn (f : Atom → Nat → Nat → MetaM Lean.Term)
+  deriving Inhabited
 
 /-- The source variables and join points introduced so far, innermost first: the atom each
     variable stands for, the output level of each join point. -/
 structure Scope where
   vars : List Atom := []
   joins : List Nat := []
+  deriving Inhabited
 
 /-- The atom of source variable `i`. -/
 def Scope.var (sc : Scope) (i : Nat) : Atom :=

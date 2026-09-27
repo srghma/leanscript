@@ -28,6 +28,8 @@ inductive DeBruijn {α : Type} : List α → α → Type where
 namespace DeBruijn
 variable {α : Type}
 
+instance {xs : List α} {x : α} : Inhabited (DeBruijn (x :: xs) x) := ⟨.head⟩
+
 /-- How many binders out an index is. -/
 def index : {xs : List α} → {x : α} → DeBruijn xs x → Nat
   | _, _, .head => 0
@@ -57,6 +59,21 @@ theorem eq_of_index_eq : {xs : List α} → {x : α} → (v w : DeBruijn xs x) �
       rw [eq_of_index_eq v w (by simpa [index] using h)]
   | _, _, .head, .tail _, h => by simp [index] at h
   | _, _, .tail _, .head, h => by simp [index] at h
+
+/-- Decidable equality, by position (`eq_of_index_eq`).  Written by hand: the derived instance
+    would ask for a `DecidableEq α`, which is not needed. -/
+instance {xs : List α} {x : α} : DecidableEq (DeBruijn xs x) := fun v w =>
+  if h : v.index = w.index then isTrue (eq_of_index_eq v w h)
+  else isFalse (fun e => h (e ▸ rfl))
+
+/-- `==` is `decide (· = ·)`, so it is lawful (`ReflBEq`, `LawfulBEq`). -/
+instance {xs : List α} {x : α} : BEq (DeBruijn xs x) := instBEqOfDecidableEq
+
+/-- The hash of the position.  Written by hand: the derived instance would ask for a
+    `Hashable α`.  It is lawful (`LawfulHashable`), `==` being equality. -/
+instance {xs : List α} {x : α} : Hashable (DeBruijn xs x) := ⟨fun v => hash v.index⟩
+
+example {xs : List α} {x : α} : LawfulHashable (DeBruijn xs x) := inferInstance
 
 /-- The index at position `i`, given that the entry there is `x`.  With a concrete position
     the side condition is closed by `rfl`: `DeBruijn.ofIndex [a, b, c] 2 rfl : DeBruijn _ c`. -/

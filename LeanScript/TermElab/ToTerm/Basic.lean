@@ -40,6 +40,7 @@ structure TS where
   /-- The helper definitions whose translation is being inlined (`trHelper`), innermost last:
       a helper that calls itself back through another is refused. -/
   inlining : Array Name := #[]
+  deriving Inhabited
 
 abbrev TM := StateT TS TermElabM
 
@@ -63,7 +64,7 @@ inductive NShape where
   | array (s : NShape)
   /-- A function whose results are such. -/
   | fn (s : NShape)
-  deriving Inhabited, BEq
+  deriving Inhabited, Repr, DecidableEq, BEq, ReflBEq, LawfulBEq, Hashable
 
 /-- The variables in scope and what the translation knows about them. -/
 structure Loc where
@@ -101,6 +102,7 @@ structure Loc where
       recursed on.  The answer of the fold is then a function of them, and a recursive call
       applies the answer to its arguments at these positions. -/
   vary : Array Nat := #[]
+  deriving Inhabited
 
 def Loc.bind (L : Loc) (x : Option FVarId) : Loc := { L with slots := L.slots.push x }
 

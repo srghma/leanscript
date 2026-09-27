@@ -58,6 +58,7 @@ inductive Head where
   | var (x : FVarId)
   /-- An instance of an inductive type. -/
   | node (e : Expr)
+  deriving Inhabited, Repr, BEq
 
 /-- Is a field of this type erased: a proof or an instance?  (A `Unit` field is **not**
     erased: `Unit` has one value, so it has no type in the language, and a constructor with
