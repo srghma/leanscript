@@ -1,3 +1,30 @@
+# Summary of changes for run 091e7ed7-bb05-48d0-980a-895e3ff00613
+The extern change is done, and the full `lake build` passes with no errors, warnings or `sorry`. Most of the rework was already in the project when I picked it up. It builds, but the change isn't described in `ARISTOTLE_SUMMARY.md`. I checked that it does what you asked and added a few pieces.
+
+**What the project now does (checked):**
+- **No more string names.** An extern call is `Neu.extern e args`. Here `e : Extern ks σs τ` is an entry of the catalogue `LeanScript.LeanInitPureExtern` (in `LeanScript/Term/Extern.lean` and `LeanScript/Term/PExpr.lean`). No extern refers to a `String` name any more.
+- **Arguments are `PExpr`s.** `σs` lists the argument types and `τ` is the result type. The call is neutral (a `Neu`), so it fits the A-normal, ι-normalised grammar.
+- **Only `.bool` for two-valued results.** Decision procedures are entries that return `.bool` (e.g. `lean_string_dec_lt`), and no active entry returns a Unit- or Empty-like type.
+- **One kind of extern.** The pure/impure split is gone: the impure catalogue is disabled (`LeanInitImpureExterns.lean_`), so the language has one kind of extern, a pure function of its arguments.
+- **Creating a value is also a call.** Entries hold no values, only type arguments (like `αt` in `lean_array_push αt`) and, rarely, a literal. So building a value with an extern (`Array.emptyWithCapacity`, or a constant like `Lean.version.getMajor` with no arguments) is written the same way as any other call.
+- **One term former per entry.** `LeanScript/Term/ExternShorthands.lean` creates `PExpr.c` and `Neu.c` for every entry `c`, e.g. `PExpr.lean_string_any (.lit .string "12345") f`.
+- **The translator matches.** `#leanscript_to_term` translates a call of a catalogue function into a call of its entry.
+
+**What I added this session:**
+- **Literal coercions** in `LeanScript/Term/PExpr.lean`: `String`, `Char` and `Bool` coerce to `.lit`, and number literals work at `.nat`. Your example can now be written as `PExpr.lean_string_contains "12345" '4'`.
+  - I used `lean_string_contains` rather than `lean_string_any`: `lean_string_any` takes a `Char → Bool` predicate, not a `Char`, so `'4'` doesn't fit its second argument.
+- **New test file `TermTests/ExternCallTest.lean`.**
+  - Proved by `rfl`: the literal form equals the explicit `.lit` form, which equals `.neu (.extern .lean_string_contains (.cons … (.cons … .nil)))`; and `lean_nat_add 3 4` evaluates to `7`.
+  - Checked only by running the code with `#guard`, not proved:
+    - `String.contains`, with a true and a false case;
+    - `lean_string_any` with the predicate given as a variable;
+    - an array built only from externs (`emptyWithCapacity` and two `push`es), giving `#[1, 2]`;
+    - the no-argument extern `lean_version_get_major`.
+
+I added one entry for this to the Properties table.
+
+**Limitation:** `Extern` still has no `DecidableEq`/`BEq`. The entries hold nothing that rules it out, but their indices are computed through abstract type formers, so Lean's automatic deriving can't handle them.
+
 # Summary of changes for run df7e562d-e7a8-4df1-8db6-69a4e65c9440
 I added the requested instances to every type that can support them. Where the full set isn't possible, I added the largest subset that is. The full `lake build` passes with no errors, warnings or `sorry`. A new test file, `TyTests/InstancesTest.lean`, checks the instances.
 

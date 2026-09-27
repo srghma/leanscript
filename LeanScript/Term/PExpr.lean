@@ -112,6 +112,20 @@ abbrev PExpr.extern {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) (ar
 
 end NeuAbbrevs
 
+section Literals
+variable {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks}
+
+/-! Lean literals as literals of the language, so the arguments of an extern call may be
+written as Lean literals: `PExpr.lean_string_contains "12345" '4'` is
+`PExpr.lean_string_contains (.lit .string "12345") (.lit .char '4')`. -/
+
+instance : Coe String (PExpr Δ Γ (.prim .string)) := ⟨.lit .string⟩
+instance : Coe Char (PExpr Δ Γ (.prim .char)) := ⟨.lit .char⟩
+instance : Coe Bool (PExpr Δ Γ (.prim .bool)) := ⟨.lit .bool⟩
+instance {n : Nat} : OfNat (PExpr Δ Γ (.prim .nat)) n := ⟨.lit .nat n⟩
+
+end Literals
+
 /-- The variable at de Bruijn position `i` (`0` is the innermost), as a pure expression:
     `PExpr.bvar 2` instead of `.var (.tail (.tail .head))`.  The side condition that position
     `i` of the context has the expected type is closed by `rfl` when the context is known that
