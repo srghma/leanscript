@@ -96,7 +96,7 @@ example : ∃ x y : Ty.Den Prog.Δ Prog.grid, x ≠ y := Ty.den_exists_ne _ _
 /-! ## A member inside an `Array` of the other member -/
 
 /-- `G.node #[Q.mk (G.leaf 3) 4, Q.mk (G.node #[]) 5]`. -/
-def gT : PExpr Prog.Δ [] Prog.g :=
+def gT : PExpr Prog.Δ [] [] Prog.g none :=
   (#leanscript_get_ctor G.node) (.array_mk
     (.cons ((#leanscript_get_ctor Q.mk) ((#leanscript_get_ctor G.leaf) (.lit .nat 3)) (.lit .nat 4))
     (.cons ((#leanscript_get_ctor Q.mk) ((#leanscript_get_ctor G.node) (.array_mk .nil)) (.lit .nat 5))
@@ -133,10 +133,10 @@ example : gDepthT.run gT.run = (1 : Nat) := by kernel_rfl
 /-! ## A member inside a function field -/
 
 /-- `H.node (fun n => K.mk (H.leaf n) "ab")`. -/
-def hT : Term Prog.Δ [] Prog.h [] :=
-  .letE (.lam (.ret ((#leanscript_get_ctor K.mk) ((#leanscript_get_ctor H.leaf) (.bvar 0))
-      (.lit .string "ab"))))
-    (.ret ((#leanscript_get_ctor H.node) (.bvar 0)))
+def hT : Term Prog.Δ 0 [] [] Prog.h [] none :=
+  .letV .one (.lam (u := .one) (.closed (.ret ((#leanscript_get_ctor K.mk)
+      ((#leanscript_get_ctor H.leaf) (.neu (.var (.head (by decide))))) (.lit .string "ab")))))
+    (.ret ((#leanscript_get_ctor H.node) (.kvar .head)))
 
 mutual
 def H.sum : H → Nat
@@ -176,7 +176,7 @@ end
 def evenT := #leanscript_to_term Even.toNat
 def oddT := #leanscript_to_term Odd.toNat
 
-def two : PExpr Prog.Δ [] Prog.even :=
+def two : PExpr Prog.Δ [] [] Prog.even none :=
   (#leanscript_get_ctor Even.succ) ((#leanscript_get_ctor Odd.succ) (#leanscript_get_ctor Even.zero))
 
 example : evenT.run two.run = (2 : Nat) := by kernel_rfl
@@ -192,7 +192,7 @@ def Rose.sumList : List Rose → Nat
   | r :: rs => r.sum + Rose.sumList rs
 end
 
-def roseT : PExpr Prog.Δ [] Prog.rose :=
+def roseT : PExpr Prog.Δ [] [] Prog.rose none :=
   (#leanscript_get_ctor Rose.node) (.lit .nat 1)
     ((#leanscript_get_ctor List.cons (α := Rose))
       ((#leanscript_get_ctor Rose.node) (.lit .nat 2) (#leanscript_get_ctor List.nil (α := Rose)))
@@ -214,7 +214,7 @@ decreasing_by
   simp only [Grid.rows.sizeOf_spec]
   omega
 
-def gridT : PExpr Prog.Δ [] Prog.grid :=
+def gridT : PExpr Prog.Δ [] [] Prog.grid none :=
   (#leanscript_get_ctor Grid.rows) (.array_mk
     (.cons (.array_mk (.cons ((#leanscript_get_ctor Grid.cell) (.lit .nat 1))
       (.cons ((#leanscript_get_ctor Grid.cell) (.lit .nat 2)) .nil)))

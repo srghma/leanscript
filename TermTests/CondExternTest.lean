@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Build
 public import LeanScript.TermElab.Notation
+public import LeanScript.Term.ExternShorthands
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TacticElab.KernelRfl
 
@@ -12,11 +13,11 @@ set_option autoImplicit false
 /-!
 # The pure conditional, calls of externs, and externs that take a proof
 
-* `PExpr.cond` (proposal 4d) and the calls of externs `PExpr.extern` (every extern is an entry
+* The pure conditional `Neu.cond` and the calls of externs `Neu.extern` (every extern is an entry
   of the catalogue `LeanInitPureExtern`, called on pure expressions), written in the notation
   (`cond c a b`, `extern ‹.lean_nat_sub› a b`) and produced by `#leanscript_to_term`: an `if`
-  that is an operand and whose branches are pure is a `PExpr.cond`, and a call of a library
-  function that is the Lean function of an entry is a `PExpr.extern`, so
+  that is an operand and whose branches are pure is a `Neu.cond`, and a call of a library
+  function that is the Lean function of an entry is a `Neu.extern`, so
   `(if b then n * 2 else 0) + 1` is one pure expression (see also `TermTests/ToTermTest.lean`).
 * Externs that take a proof (`a[i]'h`, `UInt16.ofNatLT n h`): the language erases proofs, so
   the evaluator of the extern decides the proposition on the values of the arguments
@@ -30,33 +31,44 @@ namespace CondExternTest
 
 open LeanScript
 
+/-- The innermost unknown. -/
+abbrev x0 {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
+    PExpr Δ Φ (⟨τ, .many, ℓ⟩ :: Γ) τ (some ℓ) :=
+  .neu (.var (.head (by decide)))
+
+/-- The unknown one binder further out. -/
+abbrev x1 {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
+    {b : UBinder ks} : PExpr Δ Φ (b :: ⟨τ, .many, ℓ⟩ :: Γ) τ (some ℓ) :=
+  .neu (.var (.tail (.head (by decide))))
+
+/-- The unknown two binders further out. -/
+abbrev x2 {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
+    {b b' : UBinder ks} : PExpr Δ Φ (b :: b' :: ⟨τ, .many, ℓ⟩ :: Γ) τ (some ℓ) :=
+  .neu (.var (.tail (.tail (.head (by decide)))))
+
 /-! ## The notation -/
 
-/-- `cond` is a pure expression. -/
-def pick : PExpr DSig.nil [.bool] .nat := [Term| cond #0 1 2]
-example : pick.eval true = (1 : Nat) := rfl
-example : pick.eval false = (2 : Nat) := rfl
+/-- `cond` is a pure expression (a neutral one: its condition is an unknown). -/
+def pick : PExpr DSig.nil [] [⟨.bool, .many, 0⟩] .nat (some 0) := [Term| cond #0 1 2]
+example : pick.eval PUnit.unit true = (1 : Nat) := rfl
+example : pick.eval PUnit.unit false = (2 : Nat) := rfl
 
-/-- A call of an extern is a pure expression too. -/
-def addOne : PExpr DSig.nil [.nat] .nat := [Term| extern ‹.lean_nat_add› #0 1]
-example : addOne.eval (41 : Nat) = (42 : Nat) := rfl
+/-- A call of an extern with an open argument is a pure expression too. -/
+def addOne : PExpr DSig.nil [] [⟨.nat, .many, 0⟩] .nat (some 0) := [Term| extern ‹.lean_nat_add› #0 1]
+example : addOne.eval PUnit.unit (41 : Nat) = (42 : Nat) := rfl
 
 /-- Both in operand position, with no `let` and no join point. -/
-def absDiff : Term DSig.nil [.nat, .nat] .nat [] :=
+def absDiff : Term DSig.nil 0 [] [⟨.nat, .many, 0⟩, ⟨.nat, .many, 0⟩] .nat [] (some 0) :=
   [Term| cond (extern ‹.lean_nat_dec_lt› #0 #1) (extern ‹.lean_nat_sub› #1 #0)
     (extern ‹.lean_nat_sub› #0 #1)]
-example : absDiff = .ret (.cond (.lean_nat_dec_lt (.bvar 0) (.bvar 1))
-    (.lean_nat_sub (.bvar 1) (.bvar 0)) (.lean_nat_sub (.bvar 0) (.bvar 1))) :=
+example : absDiff = .ret (.neu (.cond (Neu.lean_nat_dec_lt x0 x1)
+    (PExpr.lean_nat_sub x1 x0) (PExpr.lean_nat_sub x0 x1))) :=
   rfl
-example : absDiff.eval ((3 : Nat), (10 : Nat)) PUnit.unit = (7 : Nat) := rfl
+example : absDiff.eval PUnit.unit ((3 : Nat), (10 : Nat)) PUnit.unit = (7 : Nat) := rfl
 
--- The notation prints them back.
-/--
-info: @[expose] def CondExternTest.absDiff : Term DSig.nil [[Ty| Nat], [Ty| Nat]] [Ty| Nat] [] :=
-[Term| cond (extern ‹.lean_nat_dec_lt› #0 #1) (extern ‹.lean_nat_sub› #1 #0) (extern ‹.lean_nat_sub› #0 #1)]
--/
-#guard_msgs in
-#print absDiff
+/-- On known values the condition and the calls are computed. -/
+example : ([Term| cond (extern ‹.lean_nat_dec_lt› 3 10) (extern ‹.lean_nat_sub› 10 3)
+    (extern ‹.lean_nat_sub› 3 10)] : Term DSig.nil 0 [] [] .nat [] none) = .ret (.lit .nat 7) := rfl
 
 /-! ## Calls of externs and `cond` from the translator -/
 
@@ -67,10 +79,22 @@ example : (clampAddT (Δ := DSig.nil)).run (2 : Nat) (5 : Nat) (0 : Nat) = (3 : 
 example : (clampAddT (Δ := DSig.nil)).run (2 : Nat) (5 : Nat) (9 : Nat) = (6 : Nat) := rfl
 example : (clampAddT (Δ := DSig.nil)).run (2 : Nat) (5 : Nat) (4 : Nat) = (5 : Nat) := rfl
 
-/-- The body of `clampAdd` is one pure expression: no `let`, no join point. -/
-theorem clampAddT_pure {ks : List Nat} {Δ : DSig ks} :
-    ∃ e, clampAddT (Δ := Δ) = .ofComp (.lam (.ofComp (.lam (.ofComp (.lam (.ret e)))))) :=
-  ⟨_, rfl⟩
+/-- The body of `clampAdd` is one pure expression: no `let`, no join point.  The three
+    curried closures are known values; the two inner ones are open (they mention the outer
+    parameters). -/
+example {ks : List Nat} {Δ : DSig ks} : clampAddT (Δ := Δ) =
+    .letV .many (.lam (u := .many) (.closed
+      (.letV .many (.lam (u := .many) (.opened
+        (.letV .many (.lam (u := .many) (.opened
+          (.ret (PExpr.lean_nat_add
+            (.neu (.cond (Neu.lean_nat_dec_lt x0 x2) x2
+              (.neu (.cond (Neu.lean_nat_dec_lt x1 x0) x1 x0))))
+            (.lit .nat 1)))
+          (show 1 ≤ 2 by decide)))
+          (.ret (.kvar .head)))
+        (Nat.le_refl 1)))
+        (.ret (.kvar .head)))))
+      (.ret (.kvar .head)) := rfl
 
 /-- **The translation of `clampAdd` computes `clampAdd`**, on every input. -/
 theorem clampAddT_correct (lo hi n : Nat) :
@@ -93,21 +117,14 @@ example : (safeGetT (Δ := DSig.nil)).run (#[5, 6, 7] : Array Nat) (5 : Nat) = (
     are the default of the element type, the array and the index: out of bounds it is the
     default. -/
 example {ks : List Nat} {Δ : DSig ks} : safeGetT (Δ := Δ) =
-    .ofComp (.lam (.ofComp (.lam
-      (.ite (.lean_nat_dec_lt (.bvar 0) (.lean_array_get_size .nat (.bvar 1)))
-        (.ret (.lean_array_get .nat (.lit .nat 0) (.bvar 1) (.bvar 0)))
-        (.ret (.lit .nat 0)))))) := rfl
-
-/--
-info: @[expose] def CondExternTest.safeGetT : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] [Ty| Array Nat → Nat → Nat] [] :=
-fun {ks} {Δ} =>
-  [Term|
-    fun _ _ =>
-      if extern ‹.lean_nat_dec_lt› #0 (extern ‹.lean_array_get_size [Ty| Nat]› #1) then
-        extern ‹.lean_array_get [Ty| Nat]› 0 #1 #0 else 0]
--/
-#guard_msgs in
-#print safeGetT
+    .letV .many (.lam (u := .many) (.closed
+      (.letV .many (.lam (u := .many) (.opened
+        (.branch (.ite (Neu.lean_nat_dec_lt x0 (PExpr.lean_array_get_size .nat x1))
+          (.ret (PExpr.lean_array_get .nat (.lit .nat 0) x1 x0))
+          (.ret (.lit .nat 0))))
+        (Nat.le_refl 1)))
+        (.ret (.kvar .head)))))
+      (.ret (.kvar .head)) := rfl
 
 /-- **The translation of `safeGet` computes `safeGet`**, on every input: where the program
     reads `a[i]`, the extern's own decision of `i < a.size` holds, so its `default` is never
@@ -128,21 +145,11 @@ example : (toU16T (Δ := DSig.nil)).run (300 : Nat) = (300 : UInt16) := rfl
 example : (toU16T (Δ := DSig.nil)).run (70000 : Nat) = (0 : UInt16) := rfl
 
 example {ks : List Nat} {Δ : DSig ks} : toU16T (Δ := Δ) =
-    .ofComp (.lam
-      (.ite (.lean_nat_dec_lt (.bvar 0) (.lit .nat UInt16.size))
-        (.ret (.lean_uint16_of_nat__UInt16_ofNatLT (.bvar 0)))
-        (.ret (.lit .uint16 0)))) := rfl
-
-/--
-info: @[expose] def CondExternTest.clampAddT : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] [Ty| Nat → Nat → Nat → Nat] [] :=
-fun {ks} {Δ} =>
-  [Term|
-    fun _ _ _ =>
-      extern ‹.lean_nat_add› (cond (extern ‹.lean_nat_dec_lt› #0 #2) #2 (cond (extern ‹.lean_nat_dec_lt› #1 #0) #1 #0))
-        1]
--/
-#guard_msgs in
-#print clampAddT
+    .letV .many (.lam (u := .many) (.closed
+      (.branch (.ite (Neu.lean_nat_dec_lt x0 (.lit .nat UInt16.size))
+        (.ret (PExpr.lean_uint16_of_nat__UInt16_ofNatLT x0))
+        (.ret (.lit .uint16 0))))))
+      (.ret (.kvar .head)) := rfl
 
 /-- **The translation of `toU16` computes `toU16`**, on every input. -/
 theorem toU16T_correct (n : Nat) : (toU16T (Δ := DSig.nil)).run n = toU16 n := by

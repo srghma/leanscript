@@ -30,18 +30,18 @@ abbrev ElemTy : Ty Prog.ks := .data (.there (.here 0))
 
 /-- `Nest.Elem.leaf a` in the language. -/
 def leafEnc (a : Nat) : Ty.Den Prog.Δ ElemTy :=
-  (Prog.Elem.leaf (Γ := [.nat]) (.var .head)).eval (a)
+  (Prog.Elem.leaf (Φ := []) (Γ := [⟨.nat, .many, 0⟩]) (.neu (.var (.head (by decide))))).eval PUnit.unit (a)
 
 /-- `Nest.Elem.node x y` in the language. -/
 def nodeEnc (x y : Ty.Den Prog.Δ ElemTy) : Ty.Den Prog.Δ ElemTy :=
-  (Prog.Elem.node (Γ := [ElemTy, ElemTy]) (.var .head) (.var (.tail .head))).eval (x, y)
+  (Prog.Elem.node (Φ := []) (Γ := [⟨ElemTy, .many, 0⟩, ⟨ElemTy, .many, 0⟩]) (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit (x, y)
 
 /-- `Nest.cons x c` in the language. -/
 def consEnc (x : Ty.Den Prog.Δ ElemTy) (c : Ty.Den Prog.Δ Prog.nest) : Ty.Den Prog.Δ Prog.nest :=
-  (Prog.Nest.cons (Γ := [ElemTy, Prog.nest]) (.var .head) (.var (.tail .head))).eval (x, c)
+  (Prog.Nest.cons (Φ := []) (Γ := [⟨ElemTy, .many, 0⟩, ⟨Prog.nest, .many, 0⟩]) (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit (x, c)
 
 /-- `Nest.nil` in the language. -/
-def nilEnc : Ty.Den Prog.Δ Prog.nest := (Prog.Nest.nil (Γ := [])).run
+def nilEnc : Ty.Den Prog.Δ Prog.nest := (Prog.Nest.nil (Φ := []) (Γ := [])).run
 
 /-- The value of the datatype `Nest Nat` a Lean `Nest α` translates to, when its elements (of
     the index `α`) are put in `Nest.Elem Nat` by `f`: the elements one level down, pairs, are
@@ -130,19 +130,24 @@ def natOf {ks : List Nat} {Δ : DSig ks} (x : Ty.Den Δ .nat) : Nat := x
 /-- The block of `Nest Nat` in `Prog`. -/
 abbrev NB := Prog.Δ.block BRef.here
 
-/-- A fold over `Nest Nat` whose branch sees the value `W` of the enclosing `fun`. -/
+/-- A fold over `Nest Nat` whose branch sees the value `W` of the enclosing `fun` (the
+    environment of the branch; a closed branch does not read it). -/
 def foldNest {τ : Ty Prog.ks}
-    (brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => τ) i :: [Prog.nest]) τ [])
+    (brs : Ty.Den Prog.Δ Prog.nest → (i : Fin (NB.k + 1)) →
+      Ty.Den Prog.Δ (NB.recBody (fun _ => τ) i) → Ty.Den Prog.Δ τ)
     (W c : Ty.Den Prog.Δ Prog.nest) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (brs W) 0 c
 
 /-- The translated `Nest.length` is a fold, with one step per constructor. -/
 theorem length_facts :
-    ∃ brs : (i : Fin (NB.k + 1)) → Term Prog.Δ (NB.recBody (fun _ => .nat) i :: [Prog.nest]) .nat [],
+    ∃ brs : Ty.Den Prog.Δ Prog.nest → (i : Fin (NB.k + 1)) →
+      Ty.Den Prog.Δ (NB.recBody (fun _ => .nat) i) → Ty.Den Prog.Δ .nat,
     (∀ c, lengthT.run c = foldNest brs c c) ∧
     (∀ W x c, natOf (foldNest brs W (consEnc x c)) = 1 + natOf (foldNest brs W c)) ∧
     (∀ W, natOf (foldNest brs W nilEnc) = 0) := by
-  refine ⟨_, fun c => rfl, ?_, fun W => rfl⟩
+  refine ⟨?brs, fun c => ?run, ?_, fun W => ?nil⟩
+  case run => exact rfl
+  case nil => exact rfl
   intro W x c
   unfold natOf foldNest
   refine (DSig.dataRec_dataIn _ _ _ _ _ _).trans ?_

@@ -21,20 +21,21 @@ term over the current program (`leanscript_signature`).
 The definition is read through its unfolding equation (`f.eq_def`), so a definition by
 structural recursion is read with its recursive calls in place, and `match` is read through
 the `casesOn` it is compiled to.  The translation is written in direct style: it builds a
-source tree (`LeanScript.Anf.Src`) that `LeanScript.Anf` then A-normalises into a strictly
-A-normal, B-normal `Term` (every call named by a `Term.letE`, a branch that is not in tail
-position written with a join point, `Term.join`/`Term.jump`).  In the table, each construct is
+source tree (`LeanScript.Anf.Src`) that `LeanScript.Anf` then normalises into a normal-form
+`Term` (closures and data literals named by `Term.letV`, every call with an open operand named
+by a `Term.letE`, redexes on known values computed, a branch that is not in tail position
+written with a join point, `Branch.join`/`Term.jump`).  In the table, each construct is
 given with the constructor it becomes:
 
 | Lean | `Term` |
 | :-- | :-- |
-| a parameter, a `let`, a `fun` | `PExpr.var` (de Bruijn), `Term.letE`, `Comp.lam` |
+| a parameter, a `let`, a `fun` | `Neu.var` (de Bruijn), `Term.letE`/`Term.letV`, `Val.lam` |
 | a closed value of a leaf type (a literal) | `PExpr.lit` |
-| `if c then t else e`, `cond`, `dite` (the proof unused) | `Term.ite` of `decide c` |
-| a call of a library function that is the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`, looked up in `ToTerm.ExternTable`), or `decide` of a relation decided by one (`Nat.decLt`) | the call of that extern, `PExpr.extern` (a neutral pure expression: `n * 2` is `lean_nat_mul n 2`), on the terms of its value arguments (not types, proofs or `()`; an `[Inhabited α]` argument is passed as its default value); the type arguments of the entry are found by unification |
+| `if c then t else e`, `cond`, `dite` (the proof unused) | `Branch.ite` of `decide c` |
+| a call of a library function that is the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`, looked up in `ToTerm.ExternTable`), or `decide` of a relation decided by one (`Nat.decLt`) | the call of that extern, `Neu.extern` (a neutral pure expression: `n * 2` is `lean_nat_mul n 2`), on the terms of its value arguments (not types, proofs or `()`; an `[Inhabited α]` argument is passed as its default value); the type arguments of the entry are found by unification |
 | a call of any other library function | its definition unfolded (an instance method, `a + b` to `Nat.add a b`; a definition in terms of other functions), then translated; refused if it cannot be unfolded |
 | a call that takes a proof mentioning a local (`a[i]'h`, `UInt16.ofNatLT n h` under `if h : …`) | the same extern, the proof erased: the evaluator of the extern decides the proposition on the values of the arguments (`if h : n < UInt16.size then UInt16.ofNatLT n h else default`), and `a[i]'h` is read as `Array.get!Internal` (`lean_array_get`, which takes the default of the element type); the `default` is never reached from a program that had to prove the proposition |
-| an `if` (or a `match` on `Bool`) that is an operand, whose branches are pure expressions | the pure conditional `PExpr.cond`, with no join point |
+| an `if` (or a `match` on `Bool`) that is an operand, whose branches are pure expressions | the pure conditional `Neu.cond`, with no join point |
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
 | a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |

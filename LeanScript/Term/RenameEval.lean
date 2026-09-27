@@ -70,7 +70,7 @@ theorem KVar.mask_unmask : {Φ : KCtx ks} → {τ : Ty ks} → {o : Lvl} → (y 
       cases hm : y.mask with
       | none => simp only [KVar.mask, hm] at h; cases h
       | some z =>
-          simp only [KVar.mask, hm, Option.map_some] at h
+          simp only [KVar.mask, hm] at h
           cases h
           simp [KVar.unmask, KVar.mask_unmask y hm]
   | ⟨_, _, none, _⟩ :: _, _, _, .head, _, h => by
@@ -79,7 +79,7 @@ theorem KVar.mask_unmask : {Φ : KCtx ks} → {τ : Ty ks} → {o : Lvl} → (y 
       cases hm : y.mask with
       | none => simp only [KVar.mask, hm] at h; cases h
       | some z =>
-          simp only [KVar.mask, hm, Option.map_some] at h
+          simp only [KVar.mask, hm] at h
           cases h
           simp [KVar.unmask, KVar.mask_unmask y hm]
 

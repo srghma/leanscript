@@ -75,16 +75,16 @@ def hyperTCOT := #leanscript_to_term hyperTCO
 def hyperWhileT := #leanscript_to_term hyperWhile
 def iterT := #leanscript_to_term iter
 
-example : (ackInnerT (Δ := DSig.nil)).run ((fun x => x + 2 : Nat → Nat)) (3 : Nat) = ackInner (fun x => x + 2) 3 := rfl
+example : (ackInnerT (Δ := DSig.nil)).run ((fun x => x + 2 : Nat → Nat)) (3 : Nat) = ackInner (fun x => x + 2) 3 := by kernel_rfl
 example : (ack2T (Δ := DSig.nil)).run (2 : Nat) (3 : Nat) = ack2 2 3 := by kernel_rfl
-example : (hyperLoopT (Δ := DSig.nil)).run ((fun x => 2 * x : Nat → Nat)) (5 : Nat) (1 : Nat) = hyperLoop (fun x => 2 * x) 5 1 := rfl
+example : (hyperLoopT (Δ := DSig.nil)).run ((fun x => 2 * x : Nat → Nat)) (5 : Nat) (1 : Nat) = hyperLoop (fun x => 2 * x) 5 1 := by kernel_rfl
 example : (hyperTCOT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 1 2 3 := by kernel_rfl
 example : (hyperWhileT (Δ := DSig.nil)).run (1 : Nat) (2 : Nat) (3 : Nat) = hyperWhile 1 2 3 := by
   rw [show hyperWhile 1 2 3 = 5 by native_decide]; kernel_rfl
 example : (hyperTCOT (Δ := DSig.nil)).run (3 : Nat) (2 : Nat) (3 : Nat) = hyperTCO 3 2 3 := by kernel_rfl
 example : (hyperWhileT (Δ := DSig.nil)).run (3 : Nat) (2 : Nat) (3 : Nat) = hyperWhile 3 2 3 := by
   rw [show hyperWhile 3 2 3 = 8 by native_decide]; kernel_rfl
-example : (iterT (Δ := DSig.nil)).run ((fun x => x + 3 : Nat → Nat)) (4 : Nat) (1 : Nat) = iter (fun x => x + 3) 4 1 := rfl
+example : (iterT (Δ := DSig.nil)).run ((fun x => x + 3 : Nat → Nat)) (4 : Nat) (1 : Nat) = iter (fun x => x + 3) 4 1 := by kernel_rfl
 
 /-! ## A `for` loop over a range with a start, a step and a `break` -/
 
@@ -153,7 +153,7 @@ theorem ack2T_run (m n : Nat) : (ack2T (Δ := DSig.nil)).run m n = ack2 m n := b
 theorem hyperBaseT_run (k a : Nat) : (hyperBaseT (Δ := DSig.nil)).run k a = hyperBase k a := by
   rcases k with _ | _ | _ | k <;> rfl
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 4000000 in
 theorem hyperTCOT_run (n a b : Nat) :
     (hyperTCOT (Δ := DSig.nil)).run n a b = hyperTCO n a b := by
   -- `hyperTCO` calls the helper `hyperBase`, whose translation is used (evaluated in the

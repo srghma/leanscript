@@ -113,7 +113,7 @@ example : treeSum (node (node leaf 1 leaf) 2 (node leaf 3 leaf)) = 6 := rfl
 
 /-- Every constructor of a declared type is reached through `#leanscript_get_ctor`, which is
     `data_in` of the constructor's fields. -/
-def treeT : PExpr Prog.Δ [] Prog.tree :=
+def treeT : PExpr Prog.Δ [] [] Prog.tree none :=
   (#leanscript_get_ctor Tree.node)
     ((#leanscript_get_ctor Tree.node) (#leanscript_get_ctor Tree.leaf) (.lit .nat 1)
       (#leanscript_get_ctor Tree.leaf))
@@ -122,18 +122,18 @@ def treeT : PExpr Prog.Δ [] Prog.tree :=
 example : treeT.run = node (node leaf 1 leaf) 2 leaf := rfl
 example : treeSum treeT.run = 3 := rfl
 
-def listT : PExpr Prog.Δ [] Prog.listNat :=
+def listT : PExpr Prog.Δ [] [] Prog.listNat none :=
   (#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 7)
     ((#leanscript_get_ctor List.cons (α := Nat)) (.lit .nat 8)
       (#leanscript_get_ctor List.nil (α := Nat)))
 
 /-- `Even`/`Odd` are one block. -/
-example : PExpr Prog.Δ [] Prog.even := #leanscript_get_ctor Even.zero
-example : PExpr Prog.Δ [] Prog.even :=
+example : PExpr Prog.Δ [] [] Prog.even none := #leanscript_get_ctor Even.zero
+example : PExpr Prog.Δ [] [] Prog.even none :=
   (#leanscript_get_ctor Even.succ) ((#leanscript_get_ctor Odd.succ) (#leanscript_get_ctor Even.zero))
 
 /-- `Rose`'s children are a `List Rose`, the other member of its block. -/
-example : PExpr Prog.Δ [] Prog.rose :=
+example : PExpr Prog.Δ [] [] Prog.rose none :=
   (#leanscript_get_ctor Rose.node) (.lit .nat 1) (#leanscript_get_ctor List.nil (α := Rose))
 
 /-- Every type of the program has two different values. -/

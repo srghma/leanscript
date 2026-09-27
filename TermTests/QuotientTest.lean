@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Build
 public meta import LeanScript.TermElab.ToTerm
+public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
 
@@ -74,8 +75,9 @@ example : Prog.block0 = .cons (.union (.two₁ .nullary
     (.fields (.cons (.old .nat) (.one (.hole 0 (by decide))))))) .nil := rfl
 
 /--
-info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
+info: QuotientTest.Prog.QT.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.prim LeanPrimTy.nat) o0) (x1 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) o1) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) (o0.meet (o1.meet none))
 -/
 #guard_msgs in
 #leanscript_get_ctor QT.node
@@ -95,7 +97,7 @@ def QT.odds : QT → Nat
   | .node q t => Quot.lift (fun a => a % 2) (fun _ _ h => h) q + t.odds
 
 def oddsT := #leanscript_to_term QT.odds
-example : oddsT.run q3T.run = (1 : Nat) := rfl
+example : oddsT.run q3T.run = (1 : Nat) := by kernel_rfl
 #guard q3.odds == 1
 
 -- the same with `Quot.liftOn`
@@ -104,27 +106,29 @@ def QT.odds' : QT → Nat
   | .node q t => q.liftOn (fun a => a % 2) (fun _ _ h => h) + t.odds'
 
 def odds'T := #leanscript_to_term QT.odds'
-example : odds'T.run q3T.run = (1 : Nat) := rfl
+example : odds'T.run q3T.run = (1 : Nat) := by kernel_rfl
 
 -- another representative of the same classes gives the same answer
 example : oddsT.run (Prog.QT.node (.lit .nat 5) (Prog.QT.node (.lit .nat 0) Prog.QT.leaf)
-    (Γ := [])).run = (1 : Nat) := rfl
+    (Φ := []) (Γ := [])).run = (1 : Nat) := by kernel_rfl
 
 /-- `Quot.lift` on a parameter: the representative is bound, then `f` applied to it. -/
 def parity (q : Quot Par) : Nat := Quot.lift (fun a => a % 2) (fun _ _ h => h) q
 
 /--
 info: fun {ks} {Δ} =>
-  Term.letE
-    (Comp.lam
+  id
+    (Term.letV Usage1ω.many
+      (Val.lam
+        (Body.closed
+          (Term.ret
+            (PExpr.neu
+              (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
+                (Args.cons (PExpr.neu (Neu.var (UVar.head ⋯))) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil)) ⋯)))))
       (Term.ret
-        (PExpr.neu
-          (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
-            (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))))
-    (Term.ret
-      (PExpr.var
-        DeBruijn.head)) : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) []
+        (PExpr.kvar
+          KVar.head))) : {ks : List Nat} →
+  {Δ : DSig ks} → Term Δ 0 [] [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat)) [] none
 -/
 #guard_msgs in
 #check #leanscript_to_term parity
@@ -169,27 +173,38 @@ def sameT := #leanscript_to_term same
 
 /--
 info: fun {ks} {Δ} =>
-  Term.letE
-    (Comp.lam
-      (Term.letE
-        (Comp.lam
-          (Term.ret
-            (PExpr.neu
-              (Neu.extern LeanInitPureExtern.lean_nat_dec_eq__Nat_decEq
-                (Args.cons
-                  (PExpr.neu
-                    (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
-                      (Args.cons (PExpr.var DeBruijn.head.tail) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))
-                  (Args.cons
+  id
+    (Term.letV Usage1ω.many
+      (Val.lam
+        (Body.closed
+          (Term.letV Usage1ω.many
+            (Val.lam
+              (Body.opened
+                (id
+                  (Term.ret
                     (PExpr.neu
-                      (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
-                        (Args.cons (PExpr.var DeBruijn.head) (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))))
-                    Args.nil))))))
-        (Term.ret (PExpr.var DeBruijn.head))))
-    (Term.ret
-      (PExpr.var
-        DeBruijn.head)) : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.bool))) []
+                      (Neu.extern LeanInitPureExtern.lean_nat_dec_eq__Nat_decEq
+                        (Args.cons
+                          (PExpr.neu
+                            (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
+                              (Args.cons (PExpr.neu (Neu.var (UVar.head ⋯).tail))
+                                (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))
+                              ⋯))
+                          (Args.cons
+                            (PExpr.neu
+                              (Neu.extern LeanInitPureExtern.lean_nat_mod__Nat_mod
+                                (Args.cons (PExpr.neu (Neu.var (UVar.head ⋯)))
+                                  (Args.cons (PExpr.lit LeanPrimTy.nat 2) Args.nil))
+                                ⋯))
+                            Args.nil))
+                        ⋯))))
+                ⋯))
+            (Term.ret (PExpr.kvar KVar.head)))))
+      (Term.ret
+        (PExpr.kvar
+          KVar.head))) : {ks : List Nat} →
+  {Δ : DSig ks} →
+    Term Δ 0 [] [] ((Ty.prim LeanPrimTy.nat).fn ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.bool))) [] none
 -/
 #guard_msgs in
 #check #leanscript_to_term same

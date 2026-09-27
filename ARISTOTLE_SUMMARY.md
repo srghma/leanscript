@@ -1,3 +1,26 @@
+# Summary of changes for run 9c4cc405-0bc5-40f6-af3c-f338a43170b8
+The old `Term` is gone. The normal-form grammar (previously `NTerm`) is now `LeanScript.Term`, in `LeanScript/Term/*.lean`. As you asked, I did not write a verified normaliser: the elaborators build the new terms through the existing unverified normaliser in `Anf`. The full `lake build` passes (123 jobs), and a search finds no `sorry`, `axiom` or `implemented_by`.
+
+**What is in place:**
+- **Two usage types:** `Usage1ω` for definition binders (`letV`, `letE`, join points) and `Usage01ω` for pattern binders (case fields and closure, loop and join-point parameters). Both are enforced in the constructor types. Nothing checks an annotation against how the variable is actually used; per your note, that is left to a later optimiser.
+- **Counts across arms:** `ite`/`case` arms take the maximum, not the sum, so a variable used once in each arm counts as 1 (`LeanScript/Term/Occ.lean`).
+- **Exact open flag:** each body carries an exact open level `o : Lvl`, and every elimination needs an open operand.
+- **Two theorems, proved:** `LeanScript.Term.closed_isValue` (a closed statement is a value, so no closed redex can be written) and `LeanScript.Term.dce_eval` (dead-code elimination preserves evaluation).
+
+**Fixes this session:**
+- `ExternElab/TermShorthands.lean`: the auto-parameter tactic now has a public name, which fixes the "Unknown constant `_private…_auto`" error.
+- `GenElab/GetCtor.lean`: `Branch.enumList` is now referenced by its full name, which fixes the "imported privately" error.
+- I removed one unused simp argument in `RenameEval`.
+
+**Test changes you should know about:** I rewrote the broken tests for the new `Term`. Some checks were dropped or weakened:
+- **Printing checks removed:** the `#print`/printing checks in `TermNotationTest` are gone, because there is no pretty printer for the new terms.
+- **Substitution tests removed:** the substitution section of `NoIotaTest` is gone, and `TermSubstTest` was renamed to `TermTests/RenameTest.lean`.
+- **`ClosedEvalTest`** now checks that closed terms are values.
+- **`TcoTest`:** `hyperTCOT_run` needs a higher `maxHeartbeats` (4000000), and several `rfl` proofs became `kernel_rfl`.
+- **`Quotient`/`Nest`/`IndexedFamily`/`RoseVariants` proofs** were updated to the new shape of the fold's branch argument.
+
+I also updated `README.md`, `NOT_IMPLEMENTED.md` (normaliser unverified, usage annotations not checked against actual use, no pretty printer) and the table in `TermElab/ToTerm.lean`. All changes are committed.
+
 # Summary of changes for run 9665b58e-c651-4e7e-b8e2-b5d2eb8d85e3
 I wrote `proposals/NTermDesign.md`, a detailed explanation of proposal B (two contexts: known and unknown) as it is now built in `LeanScript/NTerm/`, with an assessment and answers to your four questions. The modules and `TermTests/NTermTest.lean` build cleanly with no `sorry`. The normaliser that turns the current `Term` into `NTerm` is not written yet.
 

@@ -80,35 +80,42 @@ The index of a type-indexed family is given by name; any index with the same bas
 same function. -/
 
 /--
-info: NestTest.Prog.Nest.cons {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
+info: NestTest.Prog.Nest.cons {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there) o0) (x1 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) o1) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) (o0.meet (o1.meet none))
 -/
 #guard_msgs in
 #leanscript_get_ctor Nest.cons (α := Nat)
 
 -- the same (cached) function
 /--
-info: NestTest.Prog.Nest.cons {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))) : PExpr Prog.Δ Γ (Ty.data (Ref.here 0))
+info: NestTest.Prog.Nest.cons {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there) o0) (x1 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) o1) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) (o0.meet (o1.meet none))
 -/
 #guard_msgs in
 #leanscript_get_ctor Nest.cons (α := Nat × Nat)
 
-/-- info: NestTest.Prog.Nest.nil {Γ : Ctx Prog.ks} : PExpr Prog.Δ Γ (Ty.data (Ref.here 0)) -/
+/--
+info: NestTest.Prog.Nest.nil {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0)) none
+-/
 #guard_msgs in
 #leanscript_get_ctor Nest.nil (α := Nat)
 
 /--
-info: NestTest.Prog.Elem.node {Γ : Ctx Prog.ks} (x0 x1 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)) :
-  PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there)
+info: NestTest.Prog.Elem.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there) o0) (x1 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there) o1) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there) (o0.meet (o1.meet none))
 -/
 #guard_msgs in
 #leanscript_get_ctor Nest.Elem.node (α := Nat)
 
 /--
-info: NestTest.Prog.Nest.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} {js : JCtx Prog.ks}
-  (scrut : Neu Prog.Δ Γ (Ty.data (Ref.here 0))) (on_nil : Term Prog.Δ Γ τ js)
-  (on_cons : Term Prog.Δ (Ty.data (Ref.here 0).there :: Ty.data (Ref.here 0) :: Γ) τ js) : Term Prog.Δ Γ τ js
+info: NestTest.Prog.Nest.cases {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {d : Nat} {τ : Ty Prog.ks} {js : JCtx Prog.ks} {ℓ : Nat}
+  {o0 o1 : Lvl} (scrut : Neu Prog.Δ Φ Γ (Ty.data (Ref.here 0)) ℓ)
+  (on_nil : Term Prog.Δ d Φ (UCtx.annot d [] [] ++ Γ) τ js o0)
+  (on_cons : Term Prog.Δ d Φ (UCtx.annot d [Ty.data (Ref.here 0).there, Ty.data (Ref.here 0)] [] ++ Γ) τ js o1) :
+  Term Prog.Δ d Φ Γ τ js (some (Lvl.meetL ℓ (o0.meet o1)))
 -/
 #guard_msgs in
 #leanscript_get_cases Nest (α := Nat)
@@ -149,13 +156,15 @@ def Nest.length : {α : Type} → Nest α → Nat
   | _, .cons _ r => 1 + r.length
 
 -- the index is erased: the translation takes the `Nest` only
-/-- info: Nest.length : Term Prog.Δ [] ((Ty.data (Ref.here 0)).fn (Ty.prim LeanPrimTy.nat)) [] -/
+/--
+info: Nest.length : Term Prog.Δ 0 [] [] ((Ty.data (Ref.here 0)).fn (Ty.prim LeanPrimTy.nat)) [] none
+-/
 #guard_msgs in
 #leanscript_to_term Nest.length
 
 def lengthT := #leanscript_to_term Nest.length
 example : lengthT.run n3T.run = (3 : Nat) := by kernel_rfl
-example : lengthT.run m2T.run = (1 : Nat) := rfl
+example : lengthT.run m2T.run = (1 : Nat) := by kernel_rfl
 #guard n3.length == 3
 
 def Nest.isNil : {α : Type} → Nest α → Bool
@@ -163,11 +172,11 @@ def Nest.isNil : {α : Type} → Nest α → Bool
   | _, .cons _ _ => false
 
 def isNilT := #leanscript_to_term Nest.isNil (α := Nat)
-example : isNilT.run n3T.run = false := rfl
-example : isNilT.run (Prog.Nest.nil (Γ := [])).run = true := rfl
+example : isNilT.run n3T.run = false := by kernel_rfl
+example : isNilT.run (Prog.Nest.nil (Φ := []) (Γ := [])).run = true := by kernel_rfl
 
 example : lengthT.run (pairsT.run (show Ty.Den Prog.Δ (.pair .nat .nat) from ((8 : Nat), (9 : Nat)))) =
-    (2 : Nat) := rfl
+    (2 : Nat) := by kernel_rfl
 
 /-- Course-of-values recursion: the number of pairs of consecutive levels. -/
 def Nest.pairsOfLevels : {α : Type} → Nest α → Nat

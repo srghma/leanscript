@@ -149,33 +149,34 @@ example : ∃ x y : Ty.Den Prog.Δ Prog.t5, x ≠ y := Ty.den_exists_ne _ _
 /-! ## The constructors: what the children are -/
 
 /--
-info: RoseVariantsTest.Prog.RoseL.node {Γ : Ctx Prog.ks}
-  (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there.there.there.there.there.there)) :
-  PExpr Prog.Δ Γ (Ty.data (Ref.here 1).there.there.there.there.there.there)
+info: RoseVariantsTest.Prog.RoseL.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there.there.there.there.there.there) o0) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 1).there.there.there.there.there.there) o0
 -/
 #guard_msgs in
 #leanscript_get_ctor RoseL.node
 
 /--
-info: RoseVariantsTest.Prog.RoseA.node {Γ : Ctx Prog.ks}
-  (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there.there.there.there.there).array) :
-  PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there.there.there.there.there)
+info: RoseVariantsTest.Prog.RoseA.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there.there.there.there.there).array o0) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there.there.there.there.there) o0
 -/
 #guard_msgs in
 #leanscript_get_ctor RoseA.node
 
 /--
-info: RoseVariantsTest.Prog.RoseF.node {Γ : Ctx Prog.ks} (x0 : PExpr Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
-  (x1 : PExpr Prog.Δ Γ ((Ty.prim LeanPrimTy.nat).fn (Ty.data (Ref.here 0).there.there.there.there))) :
-  PExpr Prog.Δ Γ (Ty.data (Ref.here 1).there.there.there.there)
+info: RoseVariantsTest.Prog.RoseF.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 o1 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.prim LeanPrimTy.nat) o0)
+  (x1 : PExpr Prog.Δ Φ Γ ((Ty.prim LeanPrimTy.nat).fn (Ty.data (Ref.here 0).there.there.there.there)) o1) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 1).there.there.there.there) (o0.meet (o1.meet none))
 -/
 #guard_msgs in
 #leanscript_get_ctor RoseF.node
 
 /--
-info: RoseVariantsTest.Prog.T5.node {Γ : Ctx Prog.ks}
-  (x0 : PExpr Prog.Δ Γ (Ty.data (Ref.here 2).there.there.there.there.there.there.there).array) :
-  PExpr Prog.Δ Γ (Ty.data (Ref.here 0).there.there.there.there.there.there.there)
+info: RoseVariantsTest.Prog.T5.node {Φ : KCtx Prog.ks} {Γ : UCtx Prog.ks} {o0 : Lvl}
+  (x0 : PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 2).there.there.there.there.there.there.there).array o0) :
+  PExpr Prog.Δ Φ Γ (Ty.data (Ref.here 0).there.there.there.there.there.there.there) o0
 -/
 #guard_msgs in
 #leanscript_get_ctor T5.node
@@ -198,7 +199,7 @@ def t5v : T5 := .node #[(some (.node #[(none, 3)]), 4), (none, 5)]
 
 def t5SumT := #leanscript_to_term T5.sum
 /-- An array literal of values that are not leaves is `PExpr.array_mk`. -/
-def t5T : Term Prog.Δ [] Prog.t5 [] := #leanscript_to_term t5v
+def t5T : Term Prog.Δ 0 [] [] Prog.t5 [] none := #leanscript_to_term t5v
 
 example : t5SumT.run t5T.run = (12 : Nat) := by kernel_rfl
 
@@ -217,7 +218,7 @@ def roseLv : RoseL := .node [.node [], .node [.node []]]
 #guard roseLv.size == 4
 
 def roseLSizeT := #leanscript_to_term RoseL.size
-def roseLT : Term Prog.Δ [] Prog.roseL [] := #leanscript_to_term roseLv
+def roseLT : Term Prog.Δ 0 [] [] Prog.roseL [] none := #leanscript_to_term roseLv
 
 example : roseLSizeT.run roseLT.run = (4 : Nat) := by kernel_rfl
 
@@ -231,7 +232,7 @@ def roseAv : RoseA := .node #[.node #[], .node #[.node #[]]]
 #guard roseAv.size == 4
 
 def roseASizeT := #leanscript_to_term RoseA.size
-def roseAT : Term Prog.Δ [] Prog.roseA [] := #leanscript_to_term roseAv
+def roseAT : Term Prog.Δ 0 [] [] Prog.roseA [] none := #leanscript_to_term roseAv
 
 example : roseASizeT.run roseAT.run = (4 : Nat) := by kernel_rfl
 
@@ -256,7 +257,7 @@ def roseFDepthT := #leanscript_to_term RoseF.depth
 def roseFArityT := #leanscript_to_term RoseF.arity
 /-- `fun _ => …` on `Fin 2` is `fun j => if j < 2 then some … else none`; `Fin.elim0` (on
     `Fin 0`) is `fun _ => none`. -/
-def roseFT : Term Prog.Δ [] Prog.roseF [] := #leanscript_to_term roseFv
+def roseFT : Term Prog.Δ 0 [] [] Prog.roseF [] none := #leanscript_to_term roseFv
 
 example : roseFSizeT.run roseFT.run = (9 : Nat) := by kernel_rfl
 example : roseFDepthT.run roseFT.run = (2 : Nat) := by kernel_rfl
@@ -324,9 +325,9 @@ def treeFv : RoseTreeF Nat := .node 1 2 (fun i => .node (i.val + 10) 0 Fin.elim0
 def treeLSumT := #leanscript_to_term RoseTreeL.sum
 def treeASumT := #leanscript_to_term RoseTreeA.sum
 def treeFSumT := #leanscript_to_term RoseTreeF.sum
-def treeLT : Term Prog.Δ [] Prog.treeL [] := #leanscript_to_term treeLv
-def treeAT : Term Prog.Δ [] Prog.treeA [] := #leanscript_to_term treeAv
-def treeFT : Term Prog.Δ [] Prog.treeF [] := #leanscript_to_term treeFv
+def treeLT : Term Prog.Δ 0 [] [] Prog.treeL [] none := #leanscript_to_term treeLv
+def treeAT : Term Prog.Δ 0 [] [] Prog.treeA [] none := #leanscript_to_term treeAv
+def treeFT : Term Prog.Δ 0 [] [] Prog.treeF [] none := #leanscript_to_term treeFv
 
 example : treeLSumT.run treeLT.run = (22 : Nat) := by kernel_rfl
 example : treeASumT.run treeAT.run = (22 : Nat) := by kernel_rfl
@@ -342,7 +343,7 @@ def roseSv : RoseS := .node ⟨2, fun _ => .node ⟨0, Fin.elim0⟩⟩
 #guard roseSv.size == 3
 
 def roseSSizeT := #leanscript_to_term RoseS.size
-def roseST : Term Prog.Δ [] Prog.roseS [] := #leanscript_to_term roseSv
+def roseST : Term Prog.Δ 0 [] [] Prog.roseS [] none := #leanscript_to_term roseSv
 
 example : roseSSizeT.run roseST.run = (3 : Nat) := by kernel_rfl
 

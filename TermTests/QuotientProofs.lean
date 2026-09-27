@@ -33,11 +33,12 @@ open LeanScript
 def natOf {ks : List Nat} {Δ : DSig ks} (x : Ty.Den Δ .nat) : Nat := x
 
 /-- `QT.leaf` in the language. -/
-def leafEnc : Ty.Den Prog.Δ Prog.qt := (Prog.QT.leaf (Γ := [])).run
+def leafEnc : Ty.Den Prog.Δ Prog.qt := (Prog.QT.leaf (Φ := []) (Γ := [])).run
 
 /-- `QT.node` in the language, with the representative `n` of the class of its first field. -/
 def nodeEnc (n : Nat) (c : Ty.Den Prog.Δ Prog.qt) : Ty.Den Prog.Δ Prog.qt :=
-  (Prog.QT.node (Γ := [.nat, Prog.qt]) (.var .head) (.var (.tail .head))).eval (n, c)
+  (Prog.QT.node (Φ := []) (Γ := [⟨.nat, .many, 0⟩, ⟨Prog.qt, .many, 0⟩])
+    (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit (n, c)
 
 /-- `Represents c t`: the value `c` of the language is `t` with each class given by one of
     its representatives. -/
@@ -62,20 +63,24 @@ theorem exists_represents (t : QT) : ∃ c, Represents c t := by
 /-- The block of `QT` in `Prog`. -/
 abbrev QB := Prog.Δ.block BRef.here
 
-/-- A fold over `QT` whose branch sees the value `W` of the enclosing `fun`. -/
+/-- A fold over `QT` whose branch sees the value `W` of the enclosing `fun` (the environment
+    of the branch; a closed branch does not read it). -/
 def foldQT {τ : Ty Prog.ks}
-    (brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => τ) i :: [Prog.qt]) τ [])
+    (brs : Ty.Den Prog.Δ Prog.qt → (i : Fin (QB.k + 1)) →
+      Ty.Den Prog.Δ (QB.recBody (fun _ => τ) i) → Ty.Den Prog.Δ τ)
     (W c : Ty.Den Prog.Δ Prog.qt) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (brs W) 0 c
 
 /-- The translated `QT.odds` is a fold, with one step per constructor; the step of `node`
     adds the parity of the representative. -/
 theorem odds_facts :
-    ∃ brs : (i : Fin (QB.k + 1)) → Term Prog.Δ (QB.recBody (fun _ => .nat) i :: [Prog.qt]) .nat [],
+    ∃ brs : Ty.Den Prog.Δ Prog.qt → (i : Fin (QB.k + 1)) →
+      Ty.Den Prog.Δ (QB.recBody (fun _ => .nat) i) → Ty.Den Prog.Δ .nat,
     (∀ c, oddsT.run c = foldQT brs c c) ∧
     (∀ W n c, natOf (foldQT brs W (nodeEnc n c)) = n % 2 + natOf (foldQT brs W c)) ∧
     (∀ W, natOf (foldQT brs W leafEnc) = 0) := by
-  refine ⟨_, fun c => rfl, ?_, fun W => ?_⟩
+  refine ⟨?brs, fun c => ?run, ?_, fun W => ?_⟩
+  case run => exact rfl
   · intro W n c
     unfold natOf foldQT
     refine (DSig.dataRec_dataIn _ _ _ _ _ _).trans ?_

@@ -394,7 +394,7 @@ def casesBodyStx (plan : TypePlan) (scrut : Lean.Term) (bs : Array Lean.Term) (e
     let listed ← (bs.extract 0 (m - 1)).mapM fun b => `(⟨_, $b⟩)
     let lv ← os.foldrM (fun o r => `(LeanScript.Lvl.meet $o $r)) (← `(none))
     return (← `(LeanScript.Term.branch
-        (LeanScript.Branch.enumList $scrut [$listed,*] ⟨_, $(bs[m - 1]!)⟩)),
+        ($(mkIdent `LeanScript.Branch.enumList) $scrut [$listed,*] ⟨_, $(bs[m - 1]!)⟩)),
       ← `(some (LeanScript.Lvl.meetL $ell $lv)))
   else if m = 1 then
     let lv ← `(some (LeanScript.Lvl.meetL $ell $(os[0]!)))

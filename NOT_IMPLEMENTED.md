@@ -122,9 +122,17 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 
 - **Partial fixpoints, well-founded recursion, coinductive types** cannot be written: every
   loop is a fold (`nat_rec`, `array_foldl`, `data_rec`, `data_brec`).
-- **Substitution theory is only semantic**: `LeanScript/Term/TermSubst.lean` has renaming,
-  weakening and substitution and proves they commute with evaluation, but not the syntactic
-  laws (substitution composition, `rename` as a special `subst`).
+- **No substitution**: the grammar of normal forms has renaming and weakening
+  (`LeanScript/Term/Rename.lean`, `LeanScript/Term/Weaken.lean`, with `Term.rename_eval`), but
+  no substitution: substituting a value can create a redex, which only the normaliser computes.
+- **The normaliser is not verified**: `LeanScript/TermElab/Anf.lean` normalises at elaboration
+  time; there is no proof that it preserves meaning (the translated programs are checked by
+  their own `rfl` runs and proofs in `TermTests/`).
+- **Usage annotations are sound, not checked against the uses**: the elaborators write `ω`
+  (`many`) everywhere; `Term.dce` recomputes exact annotations and removes dead bindings, but
+  nothing requires a term to carry exact ones (a binder annotated `0` cannot be referenced,
+  which the types do enforce).
+- **No pretty printer for terms**: terms print as constructor applications.
 - **No `DecidableEq`/`Repr` for `Term`**: an extern is now an entry of the catalogue
   `LeanInitPureExtern σs τ` (data, no Lean function), but the catalogue itself has no derived
   `DecidableEq`: its signature indices are written over an abstract grammar of types (`MyTy`

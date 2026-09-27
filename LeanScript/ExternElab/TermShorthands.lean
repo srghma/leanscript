@@ -140,6 +140,7 @@ meta def elabDeriveExternTermShorthands : CommandElab
   | `(derive_extern_term_shorthands $id) => liftTermElabM do
       let target ← realizeGlobalConstNoOverloadWithInfo id
       let auto ← withExporting <| Lean.Elab.Term.declareTacticSyntax (← `(tactic| rfl))
+        (name? := some (target ++ `externLvlAuto))
       let outer := `LeanScript.LeanInitPureExtern
       let outerInfo ← getConstInfoInduct outer
       for wrap in outerInfo.ctors do

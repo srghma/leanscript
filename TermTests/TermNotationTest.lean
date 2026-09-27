@@ -2,6 +2,7 @@ module
 
 public import LeanScript.TermElab.Notation
 public import LeanScript.Term.Build
+public import LeanScript.Term.ExternShorthands
 public meta import LeanScript.TacticElab.KernelRfl
 
 @[expose] public section
@@ -11,11 +12,11 @@ set_option autoImplicit false
 /-!
 # The `[Term| …]` notation (`LeanScript.TermElab.Notation`)
 
-The programs of `TermTests.TermTest`, written in the notation (de Bruijn variables `#i`,
-constructor names) in direct style and normalised to A-normal form, run by `Term.run` and
-checked by `rfl` (`kernel_rfl` for the longer runs); checks that the notation builds the same
-terms as the constructors of the three layers (`PExpr`, `Comp`, `Term`); how terms are printed back (`#guard_msgs`), and that the
-printed form reads back as the same term.
+Programs written in the notation (de Bruijn variables `#i`, constructor names) in direct style
+and normalised to the grammar of normal forms, run by `Term.run` and checked by `rfl`
+(`kernel_rfl` for the longer runs); checks that the notation builds the expected normal forms
+(closures bound by `letV`, redexes on known values computed, calls with an open operand kept),
+and the forms it refuses.
 -/
 
 namespace TermNotationTest
@@ -35,68 +36,102 @@ abbrev roseB : BRef [0, 0] := .here
 abbrev listNat : Ty [0, 0] := [Ty| Data 1 0]
 abbrev rose : Ty [0, 0] := [Ty| Data 0 0]
 
-/-- `Nat.add`: the call of the extern `lean_nat_add` (an entry of the catalogue of externs) on
-    two pure expressions, a pure (neutral) expression. -/
-def addT {Γ : Ctx [0, 0]} (a b : PExpr Δ Γ .nat) : PExpr Δ Γ .nat :=
-  [Term| extern ‹.lean_nat_add› ‹a› ‹b›]
+/-- Closed programs of type `τ`. -/
+abbrev Prog (τ : Ty [0, 0]) : Type := Term Δ 0 [] [] τ [] none
+
+/-- Statements with one unknown of type `σ`, at level `0`. -/
+abbrev T1 (σ τ : Ty [0, 0]) : Type := Term Δ 0 [] [⟨σ, .many, 0⟩] τ [] (some 0)
+
+/-- The innermost unknown. -/
+abbrev x0 {Φ : KCtx [0, 0]} {Γ : UCtx [0, 0]} {τ : Ty [0, 0]} {ℓ : Nat} :
+    PExpr Δ Φ (⟨τ, .many, ℓ⟩ :: Γ) τ (some ℓ) :=
+  .neu (.var (.head (by decide)))
+
+/-- The unknown one binder further out. -/
+abbrev x1 {Φ : KCtx [0, 0]} {Γ : UCtx [0, 0]} {τ : Ty [0, 0]} {ℓ : Nat} {b : UBinder [0, 0]} :
+    PExpr Δ Φ (b :: ⟨τ, .many, ℓ⟩ :: Γ) τ (some ℓ) :=
+  .neu (.var (.tail (.head (by decide))))
 
 /-! ## Building values -/
 
-def consT {Γ : Ctx [0, 0]} (x : PExpr Δ Γ .nat) (xs : PExpr Δ Γ listNat) : PExpr Δ Γ listNat :=
-  [Term| data_in ‹listB› 0 (union_mk 1 ‹x› ‹xs›)]
-def nilT {Γ : Ctx [0, 0]} : PExpr Δ Γ listNat := [Term| data_in ‹listB› 0 (union_mk 0)]
-def nodeT {Γ : Ctx [0, 0]} (xs : PExpr Δ Γ listNat) (cs : Elems Δ Γ rose) : PExpr Δ Γ rose :=
-  [Term| data_in ‹roseB› 0 (‹xs›, ‹.array_mk cs›)]
+section
+variable {Φ : KCtx [0, 0]} {Γ : UCtx [0, 0]}
 
-/-- The notation builds the same terms as the constructors. -/
-example {Γ : Ctx [0, 0]} (x : PExpr Δ Γ .nat) (xs : PExpr Δ Γ listNat) :
-    consT x xs = .data_in listB 0 (.union_mk .two₂ (.cons x (.cons xs .nil))) := rfl
-example {Γ : Ctx [0, 0]} : (nilT : PExpr Δ Γ listNat) = .data_in listB 0 (.union_mk .two₁ .nil) :=
-  rfl
-example : ([Term| (3, true, "a")] : PExpr Δ [] [Ty| Nat × Bool × String]) =
+def nilT : PExpr Δ Φ Γ listNat none := [Term| data_in ‹listB› 0 (union_mk 0)]
+
+/-- The notation builds the same closed values as the constructors. -/
+example : (nilT : PExpr Δ Φ Γ listNat none) = .data_in listB 0 (.union_mk .two₁ .nil) := rfl
+example : ([Term| (3, true, "a")] : PExpr Δ Φ Γ [Ty| Nat × Bool × String] none) =
     .record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) (.cons (.lit .string "a") .nil))) :=
   rfl
+example : ([Term| data_in ‹listB› 0 (union_mk 1 7 ‹nilT›)] : PExpr Δ Φ Γ listNat none) =
+    .data_in listB 0 (.union_mk .two₂ (.cons (.lit .nat 7) (.cons nilT .nil))) := rfl
+
+end
+
 /-- A pure expression in tail position is the answer of the statement. -/
-example : ([Term| (3, true)] : Term Δ [] [Ty| Nat × Bool] []) =
+example : ([Term| (3, true)] : Prog [Ty| Nat × Bool]) =
     .ret (.record_mk (.cons (.lit .nat 3) (.cons (.lit .bool true) .nil))) := rfl
-/-- A closure is a computation; the body of a curried function names its inner closure. -/
-example : ([Term| fun _ _ => #1] : Comp Δ [] [Ty| Nat → Bool → Nat]) =
-    .lam (.ofComp (.lam (.ret (.var (.tail .head))))) := rfl
-/-- A free `#i` is a variable of the enclosing context. -/
-example : ([Term| fun _ => ‹addT›(#0, #1)] : Comp Δ [.nat] [Ty| Nat → Nat]) =
-    .lam (.ret (addT (.bvar 0) (.bvar 1))) := rfl
-/-- A call of an extern is a pure expression: calls of externs nest, with no `let`. -/
-example : ([Term| ‹addT›(‹addT›(#0, 1), 2)] : Term Δ [.nat] .nat []) =
-    .ret (addT (addT (.bvar 0) (.lit .nat 1)) (.lit .nat 2)) := rfl
-/-- A branch that is not in tail position gets a join point for the rest of the statement. -/
-example : ([Term| ‹addT›(if #0 then 1 else 2, 10)] : Term Δ [.bool] .nat []) =
-    .join .nat (.ret (addT (.bvar 0) (.lit .nat 10)))
-      (.ite (.bvar 0) (.jump .head (.lit .nat 1)) (.jump .head (.lit .nat 2))) := rfl
+
+/-- A closure is a known value, bound by `letV` and returned by name; the body of a curried
+    function binds its inner closure, which is open (it mentions the outer parameter). -/
+example : ([Term| fun _ _ => #1] : Prog [Ty| Nat → Bool → Nat]) =
+    .letV .many (.lam (u := .many) (.closed
+      (.letV .many (.lam (u := .many) (.opened (.ret x1) (Nat.le_refl 1))) (.ret (.kvar .head)))))
+      (.ret (.kvar .head)) := rfl
+
+/-- A free `#i` is an unknown of the enclosing context: the closure is open. -/
+example : ([Term| fun _ => extern ‹.lean_nat_add› #0 #1] : T1 .nat [Ty| Nat → Nat]) =
+    .letV .many (.lam (u := .many) (.opened (.ret (PExpr.lean_nat_add x0 x1)) (Nat.le_refl 0)))
+      (.ret (.kvar .head)) := rfl
+
+/-- A call of an extern with an open argument is a neutral expression: calls nest, with no
+    `let`. -/
+example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› #0 1) 2] : T1 .nat .nat) =
+    .ret (PExpr.lean_nat_add (PExpr.lean_nat_add x0 (.lit .nat 1)) (.lit .nat 2)) := rfl
+
+/-- A call of an extern on closed arguments is computed. -/
+example : ([Term| extern ‹.lean_nat_add› (extern ‹.lean_nat_add› 3 1) 2] : Prog .nat) =
+    .ret (.lit .nat 6) := rfl
+
+/-- An `if` with pure branches in the middle of an expression is the pure conditional. -/
+example : ([Term| extern ‹.lean_nat_add› (if #0 then 1 else 2) 10] : T1 .bool .nat) =
+    .ret (PExpr.lean_nat_add (.neu (.cond (.var (.head (by decide))) (.lit .nat 1) (.lit .nat 2)))
+      (.lit .nat 10)) := rfl
+
+/-- On a known condition, the branch is chosen. -/
+example : ([Term| extern ‹.lean_nat_add› (if false then 1 else 2) 10] : Prog .nat) =
+    .ret (.lit .nat 12) := rfl
 
 /-! ## Folds -/
 
 /-- `List.sum`: the branch of the fold receives (`#0`) the body of `List Nat` whose hole is
     the pair `(tail, sum of the tail)`. -/
-def sumT {Γ : Ctx [0, 0]} : Comp Δ Γ [Ty| ‹listNat› → Nat] :=
+def sumT : Prog [Ty| ‹listNat› → Nat] :=
   [Term| fun _ => data_rec ‹listB› ‹fun _ => .nat›
     (match #0 with
       | · => 0
-      | (_, _) => let (_, _) := #1; ‹addT›(#2, #1))
+      | (_, _) => let (_, _) := #1; extern ‹.lean_nat_add› #2 #1)
     0 #0]
 
 /-- `List.head?`, by one layer out. -/
-def headT : Comp Δ [] [Ty| ‹listNat› → Option Nat] :=
+def headT : Prog [Ty| ‹listNat› → Option Nat] :=
   [Term| fun _ => match data_out ‹listB› 0 #0 with | · => union_mk 0 | (_, _) => union_mk 1 #0]
 
-/-- The sum of every number in a rose tree: the branch calls the fold of the older block. -/
-def roseSumT : Comp Δ [] [Ty| ‹rose› → Nat] :=
+/-- The sum of every number in a rose tree: the branch calls the fold of the older block (a
+    closure, shared by name). -/
+def roseSumT : Prog [Ty| ‹rose› → Nat] :=
   [Term| fun _ => data_rec ‹roseB› ‹fun _ => .nat›
     (let (_, _) := #0;
-      ‹addT›(‹sumT› #0, array_foldl #1 0 (let (_, _) := #0; ‹addT›(#3, #1))))
+     let _ := (fun (_ : ‹listNat›) => data_rec ‹listB› ‹fun _ => .nat›
+       (match #0 with
+         | · => 0
+         | (_, _) => let (_, _) := #1; extern ‹.lean_nat_add› #2 #1) 0 #0);
+     extern ‹.lean_nat_add› (#0 #1) (array_foldl #2 0 (let (_, _) := #0; extern ‹.lean_nat_add› #3 #1)))
     0 #0]
 
 /-- Course-of-values recursion: the Fibonacci number of the length of a list. -/
-def fibLenT : Comp Δ [] [Ty| ‹listNat› → Nat] :=
+def fibLenT : Prog [Ty| ‹listNat› → Nat] :=
   [Term| fun _ => data_brec ‹listB› ‹fun _ => .nat› 1
     (match #0 with
       | · => 0
@@ -104,193 +139,111 @@ def fibLenT : Comp Δ [] [Ty| ‹listNat› → Nat] :=
         let (_, _, _) := #1;
         match #2 with
         | · => 1
-        | (_, _) => let (_, _) := #1; ‹addT›(#5, #1))
+        | (_, _) => let (_, _) := #1; extern ‹.lean_nat_add› #5 #1)
     0 #0]
-
-/-- Direct style is A-normalised: a computation inside an expression (the closure `sumT` and
-    its application) is named by a `let`, in evaluation order. -/
-example : ([Term| ‹addT›(‹sumT› ‹nilT›, 2)] : Term Δ [] .nat []) =
-    .letE sumT (.letE (.app (.bvar 0) nilT) (.ret (addT (.bvar 0) (.lit .nat 2)))) := rfl
 
 /-! ## Running them -/
 
-def list123 {Γ : Ctx [0, 0]} : PExpr Δ Γ listNat :=
+section
+variable {Φ : KCtx [0, 0]} {Γ : UCtx [0, 0]}
+
+def consT {o₁ o₂ : Lvl} (x : PExpr Δ Φ Γ .nat o₁) (xs : PExpr Δ Φ Γ listNat o₂) :
+    PExpr Δ Φ Γ listNat (Lvl.meet o₁ (Lvl.meet o₂ none)) :=
+  .data_in listB 0 (.union_mk .two₂ (.cons x (.cons xs .nil)))
+def nodeT {o₁ o₂ : Lvl} (xs : PExpr Δ Φ Γ listNat o₁) (cs : Elems Δ Φ Γ rose o₂) :
+    PExpr Δ Φ Γ rose (Lvl.meet o₁ (Lvl.meet o₂ none)) :=
+  .data_in roseB 0 (.record_mk (.cons xs (.cons (.array_mk cs) .nil)))
+
+def list123 : PExpr Δ Φ Γ listNat none :=
   consT [Term| 1] (consT [Term| 2] (consT [Term| 3] nilT))
-def list5 {Γ : Ctx [0, 0]} : PExpr Δ Γ listNat :=
+def list5 : PExpr Δ Φ Γ listNat none :=
   consT [Term| 1] (consT [Term| 2] (consT [Term| 3] (consT [Term| 4] (consT [Term| 5] nilT))))
-def tree {Γ : Ctx [0, 0]} : PExpr Δ Γ rose :=
+def tree : PExpr Δ Φ Γ rose none :=
   nodeT (consT [Term| 1] nilT)
     (.cons (nodeT (consT [Term| 10] (consT [Term| 20] nilT)) .nil) (.cons (nodeT nilT .nil) .nil))
 
-example : ([Term| ‹sumT› ‹list123›] : Term Δ [] .nat []).run = (6 : Nat) := by kernel_rfl
-example : ([Term| ‹headT› ‹list123›] : Term Δ [] (.option .nat) []).run =
+end
+
+example : sumT.run (list123 (Φ := []) (Γ := [])).run = (6 : Nat) := by kernel_rfl
+example : headT.run (list123 (Φ := []) (Γ := [])).run = (some 1 : Option Nat) := by kernel_rfl
+example : headT.run (nilT (Φ := []) (Γ := [])).run = (none : Option Nat) := by kernel_rfl
+example : roseSumT.run (tree (Φ := []) (Γ := [])).run = (31 : Nat) := by kernel_rfl
+example : fibLenT.run (list5 (Φ := []) (Γ := [])).run = (5 : Nat) := by kernel_rfl
+
+/-- A closed closure applied to a closed argument is β-reduced while normalising, and the case
+    analysis of the literal list is computed: no call and no case analysis is left (the list
+    literals are bound by `letV`, and are dead). -/
+example : ([Term| (fun _ => match data_out ‹listB› 0 #0 with | · => union_mk 0 | (_, _) => union_mk 1 #0)
+    (data_in ‹listB› 0 (union_mk 1 1 (data_in ‹listB› 0 (union_mk 0))))] : Prog (.option .nat)).run =
     (some 1 : Option Nat) := rfl
-example : ([Term| ‹headT› ‹nilT›] : Term Δ [] (.option .nat) []).run = (none : Option Nat) := rfl
-example : ([Term| ‹roseSumT› ‹tree›] : Term Δ [] .nat []).run = (31 : Nat) := by kernel_rfl
-example : ([Term| ‹fibLenT› ‹list5›] : Term Δ [] .nat []).run = (5 : Nat) := by kernel_rfl
 
 /-! ## The other forms -/
 
-example : ([Term| let _ := 3; let _ := ‹addT›(#0, #0); ‹addT›(#1, #0)] : Term Δ [] .nat []).run =
-    (9 : Nat) := rfl
-example : ([Term| let _ : Nat → Nat := fun _ => ‹addT›(#0, 1); #0 (#0 1)] :
-    Term Δ [] .nat []).run = (3 : Nat) := rfl
-example : ([Term| (fun (_ : Nat) => #0) 4] : Term Δ [] .nat []).run = (4 : Nat) := rfl
-example : ([Term| let _ := (fun _ => #0 : Nat → Nat); #0 4] : Term Δ [] .nat []).run =
-    (4 : Nat) := rfl
-example : ([Term| (fun _ => if #0 then "yes" else "no") true] : Term Δ [] .string []).run =
-    "yes" := rfl
-example : ([Term| array_foldl #[1, 2, 3, 4] 0 ‹addT›(#1, #0)] : Term Δ [] .nat []).run =
+example : ([Term| let _ := 3; let _ := extern ‹.lean_nat_add› #0 #0; extern ‹.lean_nat_add› #1 #0] :
+    Prog .nat) = .ret (.lit .nat 9) := rfl
+example : ([Term| let _ : Nat → Nat := fun _ => extern ‹.lean_nat_add› #0 1; #0 (#0 1)] :
+    Prog .nat).run = (3 : Nat) := rfl
+example : ([Term| (fun (_ : Nat) => #0) 4] : Prog .nat) = .ret (.lit .nat 4) := rfl
+example : ([Term| (fun _ => if #0 then "yes" else "no") true] : Prog .string).run = "yes" := rfl
+example : ([Term| array_foldl #[1, 2, 3, 4] 0 (extern ‹.lean_nat_add› #1 #0)] : Prog .nat).run =
     (10 : Nat) := rfl
-example : ([Term| nat_rec 5 0 ‹addT›(#0, 2)] : Term Δ [] .nat []).run = (10 : Nat) := rfl
-example : ([Term| lit ‹.int› ‹-3›] : Term Δ [] .int []).run = (-3 : Int) := rfl
-example : ([Term| 3] : Term Δ [] [Ty| UInt8] []).run = (3 : UInt8) := rfl
-/-- A branch in the middle of a computation, and an explicit join point. -/
-example : ([Term| ‹addT›(if false then 1 else 2, 10)] : Term Δ [] .nat []).run = (12 : Nat) := rfl
-example : ([Term| join _ (_ : Nat) := ‹addT›(#0, 1); if true then jump ^0 1 else jump ^0 2] :
-    Term Δ [] .nat []).run = (2 : Nat) := rfl
+example : ([Term| nat_rec 5 0 (extern ‹.lean_nat_add› #0 2)] : Prog .nat).run = (10 : Nat) := rfl
+example : ([Term| lit ‹.int› ‹-3›] : Prog .int).run = (-3 : Int) := rfl
+example : ([Term| 3] : Prog [Ty| UInt8]).run = (3 : UInt8) := rfl
+
+/-- A loop whose count is unknown is kept, as a computation bound by `letE`. -/
+def twiceT : T1 .nat .nat := [Term| nat_rec #0 0 (extern ‹.lean_nat_add› #0 2)]
+
+example : twiceT = .letE .many
+    (.nat_rec (u₁ := .many) (u₂ := .many) x0 (.lit .nat 0)
+      (.closed (.ret (PExpr.lean_nat_add x0 (.lit .nat 2)))) rfl) (.ret x0) := rfl
+
+example : twiceT.eval PUnit.unit (5 : Nat) PUnit.unit = (10 : Nat) := rfl
+
+/-- An explicit join point, on an unknown condition. -/
+def joinT : Prog [Ty| Bool → Nat] :=
+  [Term| fun _ => join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if #0 then jump ^0 1 else jump ^0 2]
+example : joinT.run true = (2 : Nat) := rfl
+example : joinT.run false = (3 : Nat) := rfl
+
+/-- On a known condition, the jump is inlined. -/
+example : ([Term| join _ (_ : Nat) := extern ‹.lean_nat_add› #0 1; if true then jump ^0 1 else jump ^0 2] :
+    Prog .nat) = .ret (.lit .nat 2) := rfl
 
 /-- Enums: `enum_mk i` builds constructor `i`, `match` with numeral patterns takes it apart
     (the last branch is the default). -/
-def enumT : Comp Δ [] [Ty| Enum 4 → Nat] :=
+def enumT : Prog [Ty| Enum 4 → Nat] :=
   [Term| fun _ => match #0 with | 0 => 10 | 1 => 11 | _ => 12]
-example : ([Term| ‹enumT› (enum_mk 1)] : Term Δ [] .nat []).run = (11 : Nat) := rfl
-example : ([Term| ‹enumT› (enum_mk 3)] : Term Δ [] .nat []).run = (12 : Nat) := rfl
-
-/-! ## Printing -/
-
-/-- info: [Term| fun _ _ => #1] : Comp Δ [] [Ty| Nat → Bool → Nat] -/
-#guard_msgs in #check (Comp.lam (.ofComp (.lam (.ret (.bvar 1)))) : Comp Δ [] [Ty| Nat → Bool → Nat])
-
-/--
-info: @[expose] def TermNotationTest.sumT : {Γ : Ctx [0, 0]} → Comp Δ Γ [Ty| ‹listNat› → Nat] :=
-fun {Γ} =>
-  [Term|
-    fun _ =>
-      data_rec ‹listB› ‹fun x => [Ty| Nat]›
-            (match #0 with
-               | · => 0
-               | (_, _) => let (_, _) := #1; ‹addT›(#2, #1))
-          0
-        #0]
--/
-#guard_msgs in #print sumT
-
-/--
-info: @[expose] def TermNotationTest.headT : Comp Δ [] [Ty| ‹listNat› → Option Nat] :=
-[Term|
-  fun _ =>
-    match data_out ‹listB› 0 #0 with
-     | · => union_mk 0
-     | (_, _) => union_mk 1 #0]
--/
-#guard_msgs in #print headT
-
-/--
-info: @[expose] def TermNotationTest.enumT : Comp Δ [] [Ty| Enum 4 → Nat] :=
-[Term|
-  fun _ =>
-    match #0 with
-     | 0 => 10
-     | 1 => 11
-     | _ => 12]
--/
-#guard_msgs in #print enumT
-
-/--
-info: @[expose] def TermNotationTest.fibLenT : Comp Δ [] [Ty| ‹listNat› → Nat] :=
-[Term|
-  fun _ =>
-    data_brec ‹listB› ‹fun x => [Ty| Nat]› 1
-          (match #0 with
-             | · => 0
-             | (_, _) =>
-              let (_, _, _) := #1;
-                match #2 with
-                 | · => 1
-                 | (_, _) => let (_, _) := #1; ‹addT›(#5, #1))
-        0
-      #0]
--/
-#guard_msgs in #print fibLenT
-
-/-- The terms written with the constructors are printed in the notation too. -/
-def roseSumC : Comp Δ [] (.fn rose .nat) :=
-  .lam (.ofComp (.data_rec roseB (fun _ => .nat) (fun ⟨0, _⟩ =>
-    .record_casesOn (.bvar 0)
-      (.letE sumT
-        (.letE (.app (.bvar 0) (.bvar 1))
-          (.letE (.array_foldl (.bvar 3) (.lit .nat 0)
-              (.record_casesOn (.bvar 0) (.ret (addT (.bvar 3) (.bvar 1)))))
-            (.ret (addT (.bvar 1) (.bvar 0)))))))
-    0 (.bvar 0)))
-
-/--
-info: @[expose] def TermNotationTest.roseSumC : Comp Δ [] [Ty| ‹rose› → Nat] :=
-[Term|
-  fun _ =>
-    data_rec ‹roseB› ‹fun x => [Ty| Nat]›
-          (let (_, _) := #0;
-              let _ := ‹sumT›;
-                let _ := #0 #1; let _ := array_foldl #3 0 (let (_, _) := #0; ‹addT›(#3, #1)); ‹addT›(#1, #0))
-        0
-      #0]
--/
-#guard_msgs in #print roseSumC
-
-/-- The printed form reads back as the same term (the Lean binder `x` renamed `_`). -/
-example : roseSumC = [Term|
-  fun _ =>
-    data_rec ‹roseB› ‹fun _ => [Ty| Nat]›
-          (let (_, _) := #0;
-              let _ := ‹sumT›;
-                let _ := #0 #1; let _ := array_foldl #3 0 (let (_, _) := #0; ‹addT›(#3, #1)); ‹addT›(#1, #0))
-        0
-      #0] := rfl
-example : roseSumC = roseSumT := rfl
-
-/-- A join point is printed as one. -/
-def joinT : Term Δ [.bool] .nat [] := [Term| ‹addT›(if #0 then 1 else 2, 10)]
-/--
-info: @[expose] def TermNotationTest.joinT : Term Δ [[Ty| Bool]] [Ty| Nat] [] :=
-[Term| join _ _ := ‹addT›(#0, 10); if #0 then jump ^0 1 else jump ^0 2]
--/
-#guard_msgs in #print joinT
-
--- The notation can be turned off.
-/-- info: Comp.lam (Term.ret (PExpr.bvar 0 ⋯)) : Comp Δ [] (Ty.nat.fn Ty.nat) -/
-#guard_msgs in
-set_option pp.leanscript false in #check (Comp.lam (.ret (.bvar 0)) : Comp Δ [] [Ty| Nat → Nat])
+example : enumT.run (1 : Fin 4) = (11 : Nat) := rfl
+example : enumT.run (3 : Fin 4) = (12 : Nat) := rfl
+example : ([Term| (fun (_ : Enum 4) => match #0 with | 0 => 10 | 1 => 11 | _ => 12) (enum_mk 1)] :
+    Prog .nat) = .ret (.lit .nat 11) := rfl
 
 /-! ## Delays
 
 `thunk_mk`/`lazy_mk` delay a value and `thunk_force`/`lazy_force` force it; all four run as
-the identity.  The contents of a forced delay are not known from the type of the result, so the
-argument of `thunk_force`/`lazy_force` is written with its type when nothing else fixes it. -/
+the identity.  A delay is a known value; forcing an unknown one (or an open known one) is kept
+as a computation. -/
 
-/-- info: [Term| fun _ => thunk_mk (let _ := lazy_mk #0; lazy_force #0)] : Comp Δ [] [Ty| Nat → Thunk Nat] -/
-#guard_msgs in #check ([Term| fun _ => thunk_mk (lazy_force (lazy_mk #0))] : Comp Δ [] [Ty| Nat → Thunk Nat])
-
-example : ([Term| fun _ => thunk_mk (lazy_force (lazy_mk #0))] :
-    Term DSig.nil [] [Ty| Nat → Thunk Nat] []).run (3 : Nat) = (3 : Nat) := rfl
-
-example : ([Term| fun _ => thunk_force (#0 : Thunk Nat)] : Comp Δ [] [Ty| Thunk Nat → Nat]) =
-    .lam (.ofComp (.thunk_force (τ := .prim .nat) (.var .head))) := rfl
+example : ([Term| fun _ => thunk_force (#0 : Thunk Nat)] : Prog [Ty| Thunk Nat → Nat]) =
+    .letV .many (.lam (u := .many) (.closed
+      (.letE .many (.thunk_force (τ := .prim .nat) x0) (.ret x0))))
+      (.ret (.kvar .head)) := rfl
 
 /-! ## Refused forms -/
 
 /-- error: `nat_rec` is used as `nat_rec n z s` -/
-#guard_msgs in example : Term Δ [] .nat [] := [Term| nat_rec 5 0]
+#guard_msgs in example : Prog .nat := [Term| nat_rec 5 0]
 
 /-- error: `union_mk` is used as `union_mk i a₁ … aₙ` -/
-#guard_msgs in example : PExpr Δ [] (.option .nat) := [Term| union_mk]
+#guard_msgs in example : PExpr Δ [] [] (.option .nat) none := [Term| union_mk]
 
 -- An identifier is never a variable, nor a Lean term.
 /-- error: unknown constructor `x`: a variable is written `#i` and a Lean term `‹x›` -/
-#guard_msgs in example : Comp Δ [] [Ty| Nat → Nat] := [Term| fun _ => x]
+#guard_msgs in example : Prog [Ty| Nat → Nat] := [Term| fun _ => x]
 
 /-- error: expected a Lean term here: a number, a string or `‹term›` -/
-#guard_msgs in example : PExpr Δ [] listNat := [Term| data_in listB 0 (union_mk 0)]
+#guard_msgs in example : PExpr Δ [] [] listNat none := [Term| data_in listB 0 (union_mk 0)]
 
 end TermNotationTest
 

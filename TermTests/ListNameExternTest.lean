@@ -26,8 +26,18 @@ namespace ListNameExternTest
 
 open LeanScript
 
-/-- The closed programs over no datatypes. -/
-abbrev P (τ : Ty []) : Type := PExpr (ks := []) .nil [] τ
+/-- Pure expressions over no datatypes, with the unknowns `Γ` (a call of an extern has an
+    open argument). -/
+abbrev P (Γ : UCtx []) (τ : Ty []) : Type := PExpr (ks := []) .nil [] Γ τ (some 0)
+
+/-- The innermost unknown. -/
+abbrev x0 {τ : Ty []} {Γ : UCtx []} : PExpr (ks := []) .nil [] (⟨τ, .many, 0⟩ :: Γ) τ (some 0) :=
+  .neu (.var (.head (by decide)))
+
+/-- The unknown one binder further out. -/
+abbrev x1 {τ : Ty []} {Γ : UCtx []} {b : UBinder []} :
+    PExpr (ks := []) .nil [] (b :: ⟨τ, .many, 0⟩ :: Γ) τ (some 0) :=
+  .neu (.var (.tail (.head (by decide))))
 
 /-- The types denote Lean's own `List`, and a name is the list of its components. -/
 example : Ty.Den DSig.nil (.list .nat) = List Nat := rfl
@@ -48,61 +58,65 @@ example : ([Ty| List Nat] : Ty []) = .list .nat := rfl
 example : ([Ty| Lean.Name] : Ty []) = .leanName := rfl
 example : ([Ty| Array (List Lean.Name)] : Ty []) = .array (.list .leanName) := rfl
 
-/-- `#[1, 2].toList`. -/
-def toListT : P (.list .nat) :=
+/-- `#[n, 2].toList`, `n` an unknown. -/
+def toListT : P [⟨.nat, .many, 0⟩] (.list .nat) :=
   PExpr.lean_array_to_list .nat
-    (PExpr.lean_array_push .nat
-      (PExpr.lean_array_push .nat
-        (PExpr.lean_mk_empty_array_with_capacity__Array_emptyWithCapacity .nat 2) 1) 2)
+    (PExpr.lean_array_push .nat (PExpr.lean_array_push .nat (.array_mk .nil) x0) (.lit .nat 2))
 
-#guard id (α := List Nat) (toListT.eval ()) == [1, 2]
+#guard id (α := List Nat) (toListT.eval PUnit.unit (1 : Nat)) == [1, 2]
 
-/-- `Array.mk #[1, 2].toList`: back to the array. -/
-def mkT : P (.array .nat) := PExpr.lean_array_mk .nat toListT
+/-- `Array.mk #[n, 2].toList`: back to the array. -/
+def mkT : P [⟨.nat, .many, 0⟩] (.array .nat) := PExpr.lean_array_mk .nat toListT
 
-#guard id (α := Array Nat) (mkT.eval ()) == #[1, 2]
+#guard id (α := Array Nat) (mkT.eval PUnit.unit (1 : Nat)) == #[1, 2]
 
-/-- `String.ofList "abc".toList`. -/
-def roundTripT : P .string :=
-  PExpr.lean_string_mk__String_ofList (PExpr.lean_string_data__String_toList "abc")
+/-- `String.ofList s.toList`. -/
+def roundTripT : P [⟨.string, .many, 0⟩] .string :=
+  PExpr.lean_string_mk__String_ofList (PExpr.lean_string_data__String_toList x0)
 
-#guard id (α := String) (roundTripT.eval ()) == "abc"
+#guard id (α := String) (roundTripT.eval PUnit.unit ("abc" : String)) == "abc"
 
--- `"abc".toList` (and the deprecated `String.data`, the same function).
-#guard id (α := List Char) ((PExpr.lean_string_data__String_toList (Δ := .nil) (Γ := []) "abc").eval ()) ==
-  ['a', 'b', 'c']
-#guard id (α := List Char) ((PExpr.lean_string_data__String_data (Δ := .nil) (Γ := []) "abc").eval ()) ==
-  ['a', 'b', 'c']
+-- `s.toList` (and the deprecated `String.data`, the same function).
+#guard id (α := List Char) ((PExpr.lean_string_data__String_toList (Δ := .nil) (Φ := [])
+  (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
+#guard id (α := List Char) ((PExpr.lean_string_data__String_data (Δ := .nil) (Φ := [])
+  (Γ := [⟨.string, .many, 0⟩]) x0).eval PUnit.unit ("abc" : String)) == ['a', 'b', 'c']
 
-/-- `String.Internal.intercalate ", " xs`, the list a variable. -/
-def intercalateT : PExpr (ks := []) .nil [.list .string] .string :=
-  PExpr.lean_string_intercalate ", " (.bvar 0)
+/-- `String.Internal.intercalate ", " xs`, the list an unknown. -/
+def intercalateT : P [⟨.list .string, .many, 0⟩] .string :=
+  PExpr.lean_string_intercalate (.lit .string ", ") x0
 
-#guard id (α := String) (intercalateT.eval ["a", "b", "c"]) == "a, b, c"
+#guard id (α := String) (intercalateT.eval PUnit.unit ["a", "b", "c"]) == "a, b, c"
 
-/-- `Lean.Name.beq x y`, the names variables. -/
-def nameEqT : PExpr (ks := []) .nil [.leanName, .leanName] .bool :=
-  PExpr.lean_name_eq (.bvar 0) (.bvar 1)
+/-- `Lean.Name.beq x y`, the names unknowns. -/
+def nameEqT : P [⟨.leanName, .many, 0⟩, ⟨.leanName, .many, 0⟩] .bool :=
+  PExpr.lean_name_eq x0 x1
 
-#guard id (α := Bool) (nameEqT.eval (nameToComponents `a.b, nameToComponents `a.b)) == true
-#guard id (α := Bool) (nameEqT.eval (nameToComponents `a.b, nameToComponents `a.c)) == false
+#guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.b)) == true
+#guard id (α := Bool) (nameEqT.eval PUnit.unit (nameToComponents `a.b, nameToComponents `a.c)) == false
 
 /-- A component of a name, as a constructor of the union `Ty.nameComponent`. -/
-def componentLit {Γ : Ctx []} : NameComponent → PExpr (ks := []) .nil Γ Ty.nameComponent
+def componentLit {Φ : KCtx []} {Γ : UCtx []} :
+    NameComponent → PExpr (ks := []) .nil Φ Γ Ty.nameComponent none
   | .inl s => .union_mk .two₁ (.cons (.lit .string s) .nil)
   | .inr n => .union_mk .two₂ (.cons (.lit .nat n) .nil)
 
-/-- A name literal: the list of its components, from an array literal (`Array.toList`). -/
-def nameLit {Γ : Ctx []} (n : Lean.Name) : PExpr (ks := []) .nil Γ .leanName :=
-  PExpr.lean_array_to_list Ty.nameComponent
-    (.array_mk ((nameToComponents n).foldr (fun c es => .cons (componentLit c) es) .nil))
+/-- The components of a name, as elements of a literal. -/
+def componentElems {Φ : KCtx []} {Γ : UCtx []} :
+    List NameComponent → Elems (ks := []) .nil Φ Γ Ty.nameComponent none
+  | [] => .nil
+  | c :: cs => .cons (componentLit c) (componentElems cs)
 
-#guard id (α := List (String ⊕ Nat)) ((nameLit (Γ := []) (.num `a.b 3)).eval ()) ==
+/-- A name literal: the list literal of its components. -/
+def nameLit {Φ : KCtx []} {Γ : UCtx []} (n : Lean.Name) : PExpr (ks := []) .nil Φ Γ .leanName none :=
+  .list_mk (componentElems (nameToComponents n))
+
+#guard id (α := List (String ⊕ Nat)) ((nameLit (Φ := []) (Γ := []) (.num `a.b 3)).run) ==
   [.inl "a", .inl "b", .inr 3]
-#guard id (α := Bool)
-  ((PExpr.lean_name_eq (Δ := .nil) (Γ := []) (nameLit `x.y) (nameLit `x.y)).eval ()) == true
-#guard id (α := Bool)
-  ((PExpr.lean_name_eq (Δ := .nil) (Γ := []) (nameLit `x.y) (nameLit `x)).eval ()) == false
+#guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
+  x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x.y)) == true
+#guard id (α := Bool) ((PExpr.lean_name_eq (Δ := .nil) (Φ := []) (Γ := [⟨.leanName, .many, 0⟩])
+  x0 (nameLit `x.y)).eval PUnit.unit (nameToComponents `x)) == false
 
 /-- info: [Ty| List Lean.Name] : Ty [] -/
 #guard_msgs in #check ([Ty| List Lean.Name] : Ty [])
@@ -117,7 +131,9 @@ def nameLit {Γ : Ctx []} (n : Lean.Name) : PExpr (ks := []) .nil Γ .leanName :
 def nameEq (a b : Lean.Name) : Bool := Lean.Name.beq a b
 def nameEqT' := #leanscript_to_term nameEq
 
-/-- info: ListNameExternTest.nameEqT' {ks : List Nat} {Δ : DSig ks} : Term Δ [] [Ty| Lean.Name → Lean.Name → Bool] [] -/
+/--
+info: ListNameExternTest.nameEqT' {ks : List Nat} {Δ : DSig ks} : Term Δ 0 [] [] [Ty| Lean.Name → Lean.Name → Bool] [] none
+-/
 #guard_msgs in #check nameEqT'
 
 example : (nameEqT' (Δ := DSig.nil)).run (nameToComponents `a.b) (nameToComponents `a.b) =

@@ -106,19 +106,29 @@ example : ([Ty| Thunk (Option Nat)] : Ty []) = .thunk (.union (.two .nullary (.f
 example : Ty.den (fun _ => Empty) (Ty.thunk (.array .nat) : Ty []) = Array Nat := rfl
 example : Ty.den (fun _ => Empty) (Ty.lazy (.prim .nat) : Ty []) = Nat := rfl
 
-/-- `fun x => (lazy_mk x)` forced: the identity on `Nat`.  In A-normal form the delay is
-    named by a `let` before it is forced. -/
-def forceLazy {ks : List Nat} {Δ : DSig ks} : Comp Δ [] (.fn .nat .nat) :=
-  .lam (.letE (.lazy_mk (.ret (.var .head)))
-    (.ofComp (.lazy_force (τ := .prim .nat) (.var .head))))
+/-- `fun x => force (lazy_mk x)`: the identity on `Nat`.  The delay mentions `x`, so it is
+    open: it is bound by `letV` and its force is kept as a computation. -/
+def forceLazy {ks : List Nat} {Δ : DSig ks} : Term Δ 0 [] [] (.fn .nat .nat) [] none :=
+  .letV .one
+    (.lam (u := .many) (.closed
+      (.letV .one (.lazy_mk (τ := .prim .nat) (.opened (.ret (.neu (.var (.head (by decide))))) (by decide)))
+        (.letE .one (.lazy_force (.kvar .head)) (.ret (.neu (.var (.head (by decide)))))))))
+    (.ret (.kvar .head))
 
-/-- A thunk of an array, built from the array. -/
-def thunkArr {ks : List Nat} {Δ : DSig ks} : Comp Δ [] (.thunk (.array .nat)) :=
-  .thunk_mk (.ret (.array_mk (.cons (.lit .nat 1) (.cons (.lit .nat 2) .nil))))
+/-- A thunk of an array, built from the array: a closed value. -/
+def thunkArr {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} :
+    Val Δ 0 Φ Γ (.thunk (.array .nat)) none :=
+  .thunk_mk (.closed (Γ := Γ) (.ret (.array_mk (.cons (.lit .nat 1) (.cons (.lit .nat 2) .nil)))))
 
 example : (forceLazy (Δ := .nil)).run (5 : Nat) = (5 : Nat) := rfl
-example : (thunkArr (Δ := .nil)).run = (#[1, 2] : Array Nat) := rfl
-example : (Term.letE thunkArr (.ofComp (.thunk_force (.var .head))) :
-    Term (DSig.nil) [] (.array .nat) []).run = (#[1, 2] : Array Nat) := rfl
+example : (Term.letV .one thunkArr (.ret (.kvar .head)) :
+    Term DSig.nil 0 [] [] (.thunk (.array .nat)) [] none).run = (#[1, 2] : Array Nat) := rfl
+
+/-- The force of a closed delay cannot be written: its body is already a value. -/
+example : True := by
+  fail_if_success
+    have : Term DSig.nil 0 [] [] (.array .nat) [] (some 0) :=
+      .letV .one thunkArr (.letE .one (.thunk_force (.kvar .head)) (.ret (.neu (.var (.head (by decide))))))
+  trivial
 
 end DelayTest

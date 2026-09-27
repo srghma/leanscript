@@ -33,9 +33,9 @@ open LeanScript
 /-- The value of `Vec Nat` a Lean vector translates to, built with the generated
     constructors. -/
 def vecEnc : {n : Nat} → Vec Nat n → Ty.Den Prog.Δ Prog.vec
-  | _, .nil => (Prog.Vec.nil (Γ := [])).run
+  | _, .nil => (Prog.Vec.nil (Φ := []) (Γ := [])).run
   | _, .cons a v =>
-    (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, vecEnc v)
+    (Prog.Vec.cons (Φ := []) (Γ := [⟨.nat, .many, 0⟩, ⟨Prog.vec, .many, 0⟩]) (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit (a, vecEnc v)
 
 /-- A value of `nat` is a `Nat`. -/
 def natOf {ks : List Nat} {Δ : DSig ks} (x : Ty.Den Δ .nat) : Nat := x
@@ -45,17 +45,21 @@ abbrev VB := Prog.Δ.block BRef.here.there
 
 /-- A fold over `Vec Nat` whose branch sees the value `W` of the enclosing `fun`. -/
 def foldVec {τ : Ty Prog.ks}
-    (brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => τ) i :: [Prog.vec]) τ [])
+    (brs : Ty.Den Prog.Δ Prog.vec → (i : Fin (VB.k + 1)) →
+      Ty.Den Prog.Δ (VB.recBody (fun _ => τ) i) → Ty.Den Prog.Δ τ)
     (W c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
+  Prog.Δ.dataRec BRef.here.there (fun _ => τ) (brs W) 0 c
 
 /-- The translated `Vec.sum` is a fold, with one step per constructor. -/
-theorem sum_facts : ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => .nat) i :: [Prog.vec]) .nat [],
+theorem sum_facts : ∃ brs : Ty.Den Prog.Δ Prog.vec → (i : Fin (VB.k + 1)) →
+      Ty.Den Prog.Δ (VB.recBody (fun _ => .nat) i) → Ty.Den Prog.Δ .nat,
     (∀ c, vecSumT.run c = foldVec brs c c) ∧
     (∀ W (a : Nat) {n : Nat} (v : Vec Nat n),
       natOf (foldVec brs W (vecEnc (.cons a v))) = a + natOf (foldVec brs W (vecEnc v))) ∧
     (∀ W, natOf (foldVec brs W (vecEnc (Vec.nil (α := Nat)))) = 0) := by
-  refine ⟨_, fun c => rfl, ?_, fun W => rfl⟩
+  refine ⟨?brs, fun c => ?run, ?_, fun W => ?nil⟩
+  case run => exact rfl
+  case nil => exact rfl
   intro W a n v
   unfold natOf foldVec
   refine (DSig.dataRec_dataIn _ _ _ _ _ _).trans ?_
@@ -74,16 +78,19 @@ theorem vecSumT_correct {n : Nat} (v : Vec Nat n) : natOf (vecSumT.run (vecEnc v
 
 /-- The value `Vec.cons a c` of the language, for an element `a` and a tail `c`. -/
 def consEnc (a : Nat) (c : Ty.Den Prog.Δ Prog.vec) : Ty.Den Prog.Δ Prog.vec :=
-  (Prog.Vec.cons (Γ := [.nat, Prog.vec]) (.var .head) (.var (.tail .head))).eval (a, c)
+  (Prog.Vec.cons (Φ := []) (Γ := [⟨.nat, .many, 0⟩, ⟨Prog.vec, .many, 0⟩]) (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit (a, c)
 
 /-- The translated `Vec.double` is a fold, with one step per constructor. -/
 theorem double_facts :
-    ∃ brs : (i : Fin (VB.k + 1)) → Term Prog.Δ (VB.recBody (fun _ => Prog.vec) i :: [Prog.vec]) Prog.vec [],
+    ∃ brs : Ty.Den Prog.Δ Prog.vec → (i : Fin (VB.k + 1)) →
+      Ty.Den Prog.Δ (VB.recBody (fun _ => Prog.vec) i) → Ty.Den Prog.Δ Prog.vec,
     (∀ c, vecDoubleT.run c = foldVec brs c c) ∧
     (∀ W (a : Nat) {n : Nat} (v : Vec Nat n),
       foldVec brs W (vecEnc (.cons a v)) = consEnc (2 * a) (foldVec brs W (vecEnc v))) ∧
     (∀ W, foldVec brs W (vecEnc (Vec.nil (α := Nat))) = vecEnc (Vec.nil (α := Nat))) := by
-  refine ⟨_, fun c => rfl, ?_, fun W => rfl⟩
+  refine ⟨?brs, fun c => ?run, ?_, fun W => ?nil⟩
+  case run => exact rfl
+  case nil => exact rfl
   intro W a n v
   unfold foldVec
   refine (DSig.dataRec_dataIn _ _ _ _ _ _).trans ?_
@@ -157,9 +164,9 @@ abbrev rowsTy : Ty Prog.ks := .data (.here 0)
 
 /-- The value of `Vec (Vec Nat)` the rows of a matrix translate to. -/
 def rowsEnc {c : Nat} : {r : Nat} → Vec (Vec Nat c) r → Ty.Den Prog.Δ rowsTy
-  | _, .nil => (Prog.Vec.nil_1 (Γ := [])).run
+  | _, .nil => (Prog.Vec.nil_1 (Φ := []) (Γ := [])).run
   | _, .cons row rest =>
-    (Prog.Vec.cons_1 (Γ := [Prog.vec, rowsTy]) (.var .head) (.var (.tail .head))).eval
+    (Prog.Vec.cons_1 (Φ := []) (Γ := [⟨Prog.vec, .many, 0⟩, ⟨rowsTy, .many, 0⟩]) (.neu (.var (.head (by decide)))) (.neu (.var (.tail (.head (by decide)))))).eval PUnit.unit
       (vecEnc row, rowsEnc rest)
 
 /-- The value a matrix translates to: two numbers and its rows. -/
@@ -179,9 +186,10 @@ abbrev RB := Prog.Δ.block BRef.here
 /-- A fold over the rows `Vec (Vec Nat)` whose branch sees the value `W` of the enclosing
     `fun`. -/
 def foldRows {τ : Ty Prog.ks}
-    (brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => τ) i :: [rowsTy]) τ [])
+    (brs : Ty.Den Prog.Δ rowsTy → (i : Fin (RB.k + 1)) →
+      Ty.Den Prog.Δ (RB.recBody (fun _ => τ) i) → Ty.Den Prog.Δ τ)
     (W c : Ty.Den Prog.Δ rowsTy) : Ty.Den Prog.Δ τ :=
-  Prog.Δ.dataRec BRef.here (fun _ => τ) (fun i x => (brs i).eval (x, W) ()) 0 c
+  Prog.Δ.dataRec BRef.here (fun _ => τ) (brs W) 0 c
 
 /-- The first element of a vector, or `0`. -/
 def headOr0 {n : Nat} : Vec Nat n → Nat
@@ -190,13 +198,16 @@ def headOr0 {n : Nat} : Vec Nat n → Nat
 
 /-- The translated `Vec.sumRows` is a fold, with one step per constructor. -/
 theorem sumRows_facts :
-    ∃ brs : (i : Fin (RB.k + 1)) → Term Prog.Δ (RB.recBody (fun _ => .nat) i :: [rowsTy]) .nat [],
+    ∃ brs : Ty.Den Prog.Δ rowsTy → (i : Fin (RB.k + 1)) →
+      Ty.Den Prog.Δ (RB.recBody (fun _ => .nat) i) → Ty.Den Prog.Δ .nat,
     (∀ c, sumRowsT.run c = foldRows brs c c) ∧
     (∀ W {c r : Nat} (row : Vec Nat c) (rest : Vec (Vec Nat c) r),
       natOf (foldRows brs W (rowsEnc (.cons row rest))) =
         headOr0 row + natOf (foldRows brs W (rowsEnc rest))) ∧
     (∀ W {c : Nat}, natOf (foldRows brs W (rowsEnc (Vec.nil (α := Vec Nat c)))) = 0) := by
-  refine ⟨_, fun c => rfl, ?_, fun W => rfl⟩
+  refine ⟨?brs, fun c => ?run, ?_, fun W => ?nil⟩
+  case run => exact rfl
+  case nil => exact rfl
   intro W c r row rest
   unfold natOf foldRows
   refine (DSig.dataRec_dataIn _ _ _ _ _ _).trans ?_

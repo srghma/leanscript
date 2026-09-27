@@ -35,7 +35,7 @@ example : Prog2.ks = [0, 0, 0, 0] := rfl
 def nb : Nest Bool := .cons true (.cons (false, true) .nil)
 def nbT := #leanscript_to_term nb
 def lengthBoolT := #leanscript_to_term Nest.length (α := Bool)
-example : lengthBoolT.run nbT.run = (2 : Nat) := rfl
+example : lengthBoolT.run nbT.run = (2 : Nat) := by kernel_rfl
 
 -- two instances of the family in the program: the index must be given
 /--
