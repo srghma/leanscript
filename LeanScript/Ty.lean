@@ -30,10 +30,10 @@ What cannot be written:
 * a record of fewer than two fields (`Ty.record` takes a first field and at least one more);
 * a constructor with an explicit `PUnit` payload (a constructor without fields is
   `Ctor.nullary`, and a union with one denotes `Option`/`Bool`, never `PUnit ⊕ _`);
-* a leaf with fewer than two values: there is no `unit`, `BitVec 0` has no `LeanPrimTy`,
-  and `String.Pos s` is only a leaf for a literal `s` of at least two characters
-  (`LeanPrimTy.Nondeg`);
-* a leaf with two values other than `bool` (`BitVec 1`, `String.Pos` of one character);
+* a leaf with fewer than three values other than `bool`: there is no `unit`, and the
+  constructors of `LeanPrimTy` themselves refuse `BitVec 0`, `BitVec 1` (`LeanPrimTy.bitvec`
+  takes a proof of `2 ≤ n`) and `String.Pos s` for `s` of fewer than two characters
+  (`LeanPrimTy.stringPos` takes a proof of `2 ≤ s.length`);
 * a delay inside a delay: `Ty.thunk` / `Ty.lazy` (a `Thunk τ` / `Unit → τ`, which print as a
   JavaScript thunk / `() => …`) take a `Ty ks false`, the index `false` excluding the two
   delays, so `Unit → Unit → τ`, `Unit → Thunk τ`, `Thunk (Unit → τ)` and `Thunk (Thunk τ)` are
@@ -46,20 +46,6 @@ one exception to *one type per set of points*: `bool`, `Thunk Bool` and `Unit �
 -/
 
 namespace LeanScript
-
-namespace LeanPrimTy
-
-/-- `bool`, or a leaf with at least **three** values: two points are only ever `bool`, so the
-    other leaves of two values are refused as well as the leaf of one value.  Every leaf other
-    than `bool` has three or more, except `BitVec 1` (two values), `String.Pos ""` (one: the start of the empty string is its
-    end) and `String.Pos s` for a one-character `s` (two: its start and its end). -/
-def Nondeg : LeanPrimTy → Bool
-  | .bitvec n _ => n != 1
-  | .stringPos s => 2 ≤ s.length
-  | _ => true
-
-end LeanPrimTy
-
 
 
 /-! ## Names of declared datatypes -/
@@ -114,8 +100,8 @@ mutual
     written (`Ty.lazy_not_in_lazy`, `Ty.thunk_not_in_lazy`, `Ty.lazy_not_in_thunk`).  Every
     other constructor builds a type at either index, and its children are any type. -/
 inductive Ty : List Nat → optParam Bool true → Type where
-  /-- A leaf with at least two values. -/
-  | prim {ks : List Nat} {d : Bool} (p : LeanPrimTy) (h : p.Nondeg = true := by decide) : Ty ks d
+  /-- A leaf (`bool`, or a leaf with at least three values: `LeanPrimTy` has no other). -/
+  | prim {ks : List Nat} {d : Bool} (p : LeanPrimTy) : Ty ks d
   /-- A function type. -/
   | fn {ks : List Nat} {d : Bool} : Ty ks → Ty ks → Ty ks d
   /-- A Lean `Array`. -/
@@ -204,7 +190,7 @@ variable {ks : List Nat}
 
 /-- A type that is not a delay, as a type (the same constructor, at the index `true`). -/
 def relax : Ty ks false → Ty ks
-  | .prim p h => .prim p h
+  | .prim p => .prim p
   | .fn a b => .fn a b
   | .array t => .array t
   | .enum s => .enum s
@@ -220,7 +206,7 @@ def isDelay : Ty ks → Bool
 /-- The type with its delay removed: the contents of a `thunk` / `lazy`, otherwise the type
     itself (at the index `false`). -/
 def undelay : Ty ks → Ty ks false
-  | .prim p h => .prim p h
+  | .prim p => .prim p
   | .fn a b => .fn a b
   | .array t => .array t
   | .enum s => .enum s
@@ -304,7 +290,7 @@ theorem isDelay_mkThunk (t : Ty ks) : (mkThunk t).isDelay = true := rfl
 /-- Is the type `bool`, possibly under a delay (`Bool`, `Thunk Bool`, `Unit → Bool`)?  These
     are the closed types with two values (`Ty.eq_bool_of_two_points`). -/
 def isBool {d : Bool} : Ty ks d → Bool
-  | .prim .bool _ => true
+  | .prim .bool => true
   | .thunk t => t.isBool
   | .lazy t => t.isBool
   | _ => false
@@ -312,12 +298,12 @@ def isBool {d : Bool} : Ty ks d → Bool
 theorem isBool_iff (t : Ty ks) :
     t.isBool = true ↔ t = .bool ∨ t = .thunk (.prim .bool) ∨ t = .lazy (.prim .bool) := by
   cases t with
-  | prim p h => cases p <;> simp_all [isBool]
+  | prim p => cases p <;> simp_all [isBool]
   | thunk s => cases s with
-    | prim p h => cases p <;> simp_all [isBool]
+    | prim p => cases p <;> simp_all [isBool]
     | _ => simp [isBool]
   | lazy s => cases s with
-    | prim p h => cases p <;> simp_all [isBool]
+    | prim p => cases p <;> simp_all [isBool]
     | _ => simp [isBool]
   | _ => simp [isBool]
 
@@ -328,7 +314,7 @@ end Ty
 mutual
 /-- Rename the declared datatypes a type mentions. -/
 def Ty.map {ks ks' : List Nat} (f : Ref ks → Ref ks') {d : Bool} : Ty ks d → Ty ks' d
-  | .prim p h => .prim p h
+  | .prim p => .prim p
   | .fn a b => .fn (Ty.map f a) (Ty.map f b)
   | .array t => .array (Ty.map f t)
   | .enum s => .enum s
@@ -364,7 +350,7 @@ theorem Ty.map_relax {ks ks' : List Nat} (f : Ref ks → Ref ks') (t : Ty ks fal
 mutual
 /-- Renaming by the identity is the identity. -/
 theorem Ty.map_id {ks : List Nat} {d : Bool} : (t : Ty ks d) → Ty.map (fun r => r) t = t
-  | .prim _ _ => rfl
+  | .prim _ => rfl
   | .fn a b => by simp only [Ty.map, Ty.map_id a, Ty.map_id b]
   | .array t => by simp only [Ty.map, Ty.map_id t]
   | .enum _ => rfl
@@ -390,7 +376,7 @@ mutual
 theorem Ty.map_map {ks ks' ks'' : List Nat} {d : Bool} (f : Ref ks → Ref ks')
     (g : Ref ks' → Ref ks'') :
     (t : Ty ks d) → Ty.map g (Ty.map f t) = Ty.map (fun r => g (f r)) t
-  | .prim _ _ => rfl
+  | .prim _ => rfl
   | .fn a b => by simp only [Ty.map, Ty.map_map f g a, Ty.map_map f g b]
   | .array t => by simp only [Ty.map, Ty.map_map f g t]
   | .enum _ => rfl

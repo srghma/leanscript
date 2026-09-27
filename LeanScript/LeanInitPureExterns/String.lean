@@ -106,7 +106,7 @@ inductive StringBasicExtern : MyTy → Type where
   | lean_string_utf8_next_fast__String_next' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → StringBasicExtern stringPosRaw -- String.next'
   -- the same function as `lean_string_utf8_next_fast__String_next'`; a call of `String.Pos.Raw.next'` is that entry
   -- | lean_string_utf8_next_fast__String_Pos_Raw_next' : (s : String) → (p : String.Pos.Raw) → (h : ¬String.Pos.Raw.atEnd s p = Bool.true) → StringBasicExtern stringPosRaw -- String.Pos.Raw.next'
-  | lean_string_utf8_next_fast__String_Pos_next : {s : String} → (pos : s.Pos) → (h : pos ≠ s.endPos) → StringBasicExtern (LeanPrimTy.stringPos s) -- String.Pos.next
+  | lean_string_utf8_next_fast__String_Pos_next : {s : String} → (pos : s.Pos) → (h : pos ≠ s.endPos) → (h_len : 2 ≤ s.length) → StringBasicExtern (LeanPrimTy.stringPos s h_len) -- String.Pos.next
   | lean_string_data__String_data : String → StringBasicExtern (list char) -- String.data
   | lean_string_data__String_toList : String → StringBasicExtern (list char) -- String.toList
   | lean_string_utf8_extract_fast : {s : String} → s.Pos → s.Pos → StringBasicExtern string -- String.extract

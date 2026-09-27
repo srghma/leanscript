@@ -100,9 +100,9 @@ abbrev Term.inj {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {bs : List Bool} {c
 /-- A numeral of a leaf type: `Term.ofNat 3 : Term Δ Γ .nat`.  Unlike `Term.lit`, the leaf and
     its side condition are found by unification with the expected type, so the numeral can be
     written before its type is known. -/
-abbrev Term.ofNat {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {p : LeanPrimTy} {h : p.Nondeg = true}
-    (n : Nat) [OfNat p.denote n] : Term Δ Γ (.prim p h) :=
-  .lit p (OfNat.ofNat n) h
+abbrev Term.ofNat {ks : List Nat} {Δ : DSig ks} {Γ : Ctx ks} {p : LeanPrimTy}
+    (n : Nat) [OfNat p.denote n] : Term Δ Γ (.prim p) :=
+  .lit p (OfNat.ofNat n)
 
 /-- `Term.extern` with the arguments before the function: the types of the arguments are
     known when the function is elaborated, so `fun v => Nat.add v.1 v.2.1` needs no annotation. -/
@@ -215,7 +215,7 @@ mutual
 partial def elabLsterm : TSyntax `lsterm → MacroM Lean.Term
   | `(lsterm| #$n:num) => `(LeanScript.Term.bvar $n)
   | `(lsterm| $n:num) => `(LeanScript.Term.ofNat $n)
-  | `(lsterm| $s:str) => `(LeanScript.Term.lit LeanScript.LeanPrimTy.string $s rfl)
+  | `(lsterm| $s:str) => `(LeanScript.Term.lit LeanScript.LeanPrimTy.string $s)
   | `(lsterm| ‹$t›) => pure t
   | `(lsterm| ‹$f›($as,*)) => do
       let as ← as.getElems.mapM elabLsterm
@@ -237,8 +237,8 @@ partial def elabLsterm : TSyntax `lsterm → MacroM Lean.Term
   | `(lsterm| match $e with $[| $ps => $bs]*) => elabMatch e ps.toList bs.toList
   | `(lsterm| $id:ident) =>
       match id.getId.eraseMacroScopes with
-      | `true => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool true rfl)
-      | `false => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool false rfl)
+      | `true => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool true)
+      | `false => `(LeanScript.Term.lit LeanScript.LeanPrimTy.bool false)
       | _ => elabSpecial id []
   | e@`(lsterm| $_ $_) => do
       match tupleElems? e with
@@ -312,7 +312,7 @@ partial def elabSpecial (id : Ident) (args : List (TSyntax `lsterm)) : MacroM Le
   let bad {α : Type} (usage : String) : MacroM α :=
     Macro.throwErrorAt id s!"`{f}` is used as `{usage}`"
   match f, args with
-  | `lit, [p, v] => do `(LeanScript.Term.lit $(← leanArg p) $(← leanArg v) rfl)
+  | `lit, [p, v] => do `(LeanScript.Term.lit $(← leanArg p) $(← leanArg v))
   | `lit, _ => bad "lit p v"
   | `extern, name :: fn :: as => do
       `(LeanScript.Term.externOf $(← leanArg name) $(← mkArgs (← as.mapM elabLsterm))
@@ -422,12 +422,12 @@ partial def underLams {α : Type} (x : DelabM α) : DelabM α := do
 
 /-- The heads the notation prints, with their arity. -/
 def termHeads : List (Name × Nat) :=
-  [(``Term.var, 5), (``Term.letE, 7), (``Term.lam, 6), (``Term.app, 7), (``Term.lit, 6),
+  [(``Term.var, 5), (``Term.letE, 7), (``Term.lam, 6), (``Term.app, 7), (``Term.lit, 5),
    (``Term.extern, 8), (``Term.ite, 7), (``Term.nat_rec, 7), (``Term.enum_mk, 5),
    (``Term.enum_casesOn, 7), (``Term.record_mk, 6), (``Term.record_casesOn, 8),
    (``Term.union_mk, 10), (``Term.union_casesOn, 9), (``Term.array_mk, 5),
    (``Term.array_foldl, 8), (``Term.data_in, 6), (``Term.data_out, 6), (``Term.data_rec, 8),
-   (``Term.data_brec, 9), (``Term.bvar, 6), (``Term.ofNat, 7), (``Term.inj, 9),
+   (``Term.data_brec, 9), (``Term.bvar, 6), (``Term.ofNat, 6), (``Term.inj, 9),
    (``Term.externOf, 8), (``Term.thunk_mk, 5), (``Term.thunk_force, 5), (``Term.lazy_mk, 5),
    (``Term.lazy_force, 5)]
 
@@ -508,7 +508,7 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
           else (natLit? (e.getArg! 4)).getDM failure
         return (← `(lsterm| #$(Syntax.mkNumLit (toString i)):num), atomPrec)
     | ``Term.ofNat =>
-        let some n := natLit? (e.getArg! 5) | failure
+        let some n := natLit? (e.getArg! 4) | failure
         return (← `(lsterm| $(Syntax.mkNumLit (toString n)):num), atomPrec)
     | ``Term.lit =>
         let p := (e.getArg! 3).consumeMData
@@ -520,8 +520,8 @@ partial def delabLsterm (root : Bool) : DelabM TSyn := do
         if p.isConstOf ``LeanPrimTy.bool && (v.isConstOf ``Bool.true || v.isConstOf ``Bool.false) then
           return (← `(lsterm| $(mkIdent (if v.isConstOf ``Bool.true then `true else `false)):ident),
             atomPrec)
-        let p ← withArgFromEnd 3 leanArgSyn
-        let v ← withArgFromEnd 2 leanArgSyn
+        let p ← withArgFromEnd 2 leanArgSyn
+        let v ← withArgFromEnd 1 leanArgSyn
         return (← mkAppSyn `lit [p, v], appPrec)
     | ``Term.lam =>
         -- merge the `fun`s

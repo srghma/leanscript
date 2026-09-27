@@ -30,7 +30,7 @@ variable {ks ks' : List Nat} (f : Ref ks → Ref ks') (E : Ref ks' → Type)
 mutual
 theorem Ty.lift_lower {d : Bool} : (t : Ty ks d) → (x : Ty.den E (Ty.map f t)) →
     Ty.lift f E t (Ty.lower f E t x) = x
-  | .prim _ _, _ => rfl
+  | .prim _, _ => rfl
   | .fn a b, x => by
       funext y
       show Ty.lift f E b (Ty.lower f E b (x (Ty.lift f E a (Ty.lower f E a y)))) = x y
@@ -54,7 +54,7 @@ theorem Ty.lift_lower {d : Bool} : (t : Ty ks d) → (x : Ty.den E (Ty.map f t))
   | .lazy t, x => Ty.lift_lower t x
 theorem Ty.lower_lift {d : Bool} : (t : Ty ks d) → (x : Ty.den (fun r => E (f r)) t) →
     Ty.lower f E t (Ty.lift f E t x) = x
-  | .prim _ _, _ => rfl
+  | .prim _, _ => rfl
   | .fn a b, x => by
       funext y
       show Ty.lower f E b (Ty.lift f E b (x (Ty.lower f E a (Ty.lift f E a y)))) = x y

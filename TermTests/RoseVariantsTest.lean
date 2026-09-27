@@ -165,8 +165,8 @@ info: RoseVariantsTest.Prog.RoseA.node {Γ : Ctx Prog.ks}
 #leanscript_get_ctor RoseA.node
 
 /--
-info: RoseVariantsTest.Prog.RoseF.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯))
-  (x1 : Term Prog.Δ Γ ((Ty.prim LeanPrimTy.nat ⋯).fn (Ty.data (Ref.here 0).there.there.there.there))) :
+info: RoseVariantsTest.Prog.RoseF.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
+  (x1 : Term Prog.Δ Γ ((Ty.prim LeanPrimTy.nat).fn (Ty.data (Ref.here 0).there.there.there.there))) :
   Term Prog.Δ Γ (Ty.data (Ref.here 1).there.there.there.there)
 -/
 #guard_msgs in

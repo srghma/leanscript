@@ -33,7 +33,7 @@ def Term.rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Ren Γ Γ' → Term Δ 
   | _, _, _, r, .letE e b => .letE (e.rename r) (b.rename (Ren.lift r))
   | _, _, _, r, .lam b => .lam (b.rename (Ren.lift r))
   | _, _, _, r, .app f a => .app (f.rename r) (a.rename r)
-  | _, _, _, _, .lit p v h => .lit p v h
+  | _, _, _, _, .lit p v => .lit p v
   | _, _, _, r, .extern n f as => .extern n f (as.rename r)
   | _, _, _, r, .ite c t e => .ite (c.rename r) (t.rename r) (e.rename r)
   | _, _, _, r, .nat_rec n z s =>
@@ -121,7 +121,7 @@ def Term.subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → Subst Δ Γ Γ' → Term
   | _, _, _, s, .letE e b => .letE (e.subst s) (b.subst (Subst.lift s))
   | _, _, _, s, .lam b => .lam (b.subst (Subst.lift s))
   | _, _, _, s, .app f a => .app (f.subst s) (a.subst s)
-  | _, _, _, _, .lit p v h => .lit p v h
+  | _, _, _, _, .lit p v => .lit p v
   | _, _, _, s, .extern n f as => .extern n f (as.subst s)
   | _, _, _, s, .ite c t e => .ite (c.subst s) (t.subst s) (e.subst s)
   | _, _, _, s, .nat_rec n z st =>
@@ -218,7 +218,7 @@ theorem Term.eval_rename : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (e : Term Δ �
   | _, _, _, .app f a, r, ρ', ρ, h => by
       simp only [Term.rename, Term.eval]
       rw [Term.eval_rename f r ρ' ρ h, Term.eval_rename a r ρ' ρ h]
-  | _, _, _, .lit p v hp, r, ρ', ρ, h => rfl
+  | _, _, _, .lit p v, r, ρ', ρ, h => rfl
   | _, _, _, .extern n f as, r, ρ', ρ, h => by
       simp only [Term.rename, Term.eval]
       rw [Args.eval_rename as r ρ' ρ h]
@@ -376,7 +376,7 @@ theorem Term.eval_subst : {Γ Γ' : Ctx ks} → {τ : Ty ks} → (e : Term Δ Γ
   | _, _, _, .app f a, s, ρ', ρ, h => by
       simp only [Term.subst, Term.eval]
       rw [Term.eval_subst f s ρ' ρ h, Term.eval_subst a s ρ' ρ h]
-  | _, _, _, .lit p v hp, s, ρ', ρ, h => rfl
+  | _, _, _, .lit p v, s, ρ', ρ, h => rfl
   | _, _, _, .extern n f as, s, ρ', ρ, h => by
       simp only [Term.subst, Term.eval]
       rw [Args.eval_subst as s ρ' ρ h]

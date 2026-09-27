@@ -7,6 +7,7 @@ public import Init.Data.Format.Basic
 public import Init.Data.Format.Instances
 public import Init.Data.ToString.Basic
 public import Init.Data.String.Basic
+public import Init.Data.String.Length
 public import Init.ShareCommon
 public import Init.LawfulBEqTactics
 
@@ -43,8 +44,11 @@ existing code that writes `.nat`, `.uint32`, `.bitvec 32`, … is unaffected.
 
 Note that there is **no** `unit` and **no** `void`: a type with one value carries no
 information and is erased before it reaches `LeanPrimTy`, and a type with no values has no
-runtime representation at all.  This is also why `bitvec n` requires `0 < n`:
-`BitVec 0` is a unit type.
+runtime representation at all.  Moreover two points are only ever `bool`, so a leaf of two
+values other than `bool` is refused as well.  This is why `bitvec n` requires `2 ≤ n`
+(`BitVec 0` is a unit type, `BitVec 1` has two values) and `stringPos s` requires
+`2 ≤ s.length` (`String.Pos ""` has one value, and `String.Pos s` for a one-character `s` has
+two: its start and its end).  Every other leaf has at least three values.
 -/
 
 /-- A terminal type: a leaf of a `Ty`, with a built-in LEAN TYPE!!! representation
@@ -77,7 +81,7 @@ inductive LeanPrimTy where
         if `number` then (unless already overflown during `LeanTy` optimization phase) in `MoreJsTy` modeled by `UInt53` then printed as js `number`.
         if `bigint` then in `MoreJsTy` modeled by `bitvec_big : (n : Nat) → (h_g_53 : 53 < n := by decide)` then printed as js `bigint`.
   -/
-  | bitvec    : (n : Nat) → (h_positive : 0 < n := by decide /- bc Unit-like types should be erased -/) → LeanPrimTy
+  | bitvec    : (n : Nat) → (h_nondeg : 2 ≤ n := by decide /- bc Unit-like (0) and Bool-like (1) types should be erased -/) → LeanPrimTy
   /-- In JS: `number`. -/
   | uint8     : LeanPrimTy
   /-- In JS: `number`. -/
@@ -102,7 +106,7 @@ inductive LeanPrimTy where
   -- | byteArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array UInt8`. Then in `MoreJsTy` as `Uint8Array`
   /-- A position in a string — like `.uint32`, but strictly non-negative. -/
   | stringPosRaw : LeanPrimTy
-  | stringPos (s : String) : LeanPrimTy -- for `structure Pos (s : String) where`
+  | stringPos (s : String) (h_len : 2 ≤ s.length := by decide) : LeanPrimTy -- for `structure Pos (s : String) where`
   /-- In JS: `{ str: string, startPos: number, stopPos: number }`. -/
   | substringRaw : LeanPrimTy
   /-- `.substringRaw` or `.string`? -/
@@ -143,7 +147,7 @@ def pretty : LeanPrimTy → String
   | .uint8 => "uint8" | .uint16 => "uint16" | .uint32 => "uint32" | .uint64 => "uint64"
   | .int8 => "int8" | .int16 => "int16" | .int32 => "int32" | .int64 => "int64"
   | .char => "char" | .string => "string"
-  | .stringPos _s => "stringPos"
+  | .stringPos _s _ => "stringPos"
   | .stringPosRaw => "stringPosRaw" | .substringRaw => "substringRaw" | .stringSlice => "stringSlice"
   | .float => "float" | .float32 => "float32"
   | .floatModel => "floatModel"
@@ -185,7 +189,7 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .int64 => Int64
   | .char => Char
   | .string => String
-  | .stringPos s => String.Pos s
+  | .stringPos s _ => String.Pos s
   | .stringPosRaw => String.Pos.Raw
   | .substringRaw => Substring.Raw
   | .stringSlice => String.Slice

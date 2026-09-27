@@ -51,7 +51,7 @@ example : ∃ r, Prog.vec = .data r := ⟨_, rfl⟩
 example : (#leanscript_get_ty (Vec Nat 3) : Ty Prog.ks) = Prog.vec := rfl
 
 /--
-info: IndexedFamilyTest.Prog.Vec.cons {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯))
+info: IndexedFamilyTest.Prog.Vec.cons {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
   (x1 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)) : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in
@@ -65,7 +65,7 @@ info: IndexedFamilyTest.Prog.Vec.nil {Γ : Ctx Prog.ks} : Term Prog.Δ Γ (Ty.da
 
 /--
 info: IndexedFamilyTest.Prog.Vec.cases {Γ : Ctx Prog.ks} {τ : Ty Prog.ks} (scrut : Term Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (on_nil : Term Prog.Δ Γ τ) (on_cons : Term Prog.Δ (Ty.prim LeanPrimTy.nat ⋯ :: Ty.data (Ref.here 0).there :: Γ) τ) :
+  (on_nil : Term Prog.Δ Γ τ) (on_cons : Term Prog.Δ (Ty.prim LeanPrimTy.nat :: Ty.data (Ref.here 0).there :: Γ) τ) :
   Term Prog.Δ Γ τ
 -/
 #guard_msgs in
@@ -80,7 +80,7 @@ def Vec.sum {n : Nat} : Vec Nat n → Nat
 
 -- The index `n` is erased: the translation takes the vector only.
 /--
-info: Vec.sum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat ⋯))
+info: Vec.sum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat))
 -/
 #guard_msgs in
 #leanscript_to_term Vec.sum
@@ -102,10 +102,10 @@ example : vecSumT.run (vecDoubleT.run v2T.run) = (6 : Nat) := rfl
 example : ∃ r, Prog.mat = .record .nat (.cons .nat (.one (.data r))) := ⟨_, rfl⟩
 
 /--
-info: IndexedFamilyTest.Prog.Matrix.mk {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯))
+info: IndexedFamilyTest.Prog.Matrix.mk {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
   (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) :
   Term Prog.Δ Γ
-    ((Ty.prim LeanPrimTy.nat ⋯).record (Fields.cons (Ty.prim LeanPrimTy.nat ⋯) (Fields.one (Ty.data (Ref.here 0)))))
+    ((Ty.prim LeanPrimTy.nat).record (Fields.cons (Ty.prim LeanPrimTy.nat) (Fields.one (Ty.data (Ref.here 0)))))
 -/
 #guard_msgs in
 #leanscript_get_ctor Matrix.mk
@@ -230,7 +230,7 @@ leanscript_signature Prog2 where
   idx := Idx 3
 
 /--
-info: IndexedFamilyTest.Prog2.Vec.cons {Γ : Ctx Prog2.ks} (x0 : Term Prog2.Δ Γ (Ty.prim LeanPrimTy.bool ⋯))
+info: IndexedFamilyTest.Prog2.Vec.cons {Γ : Ctx Prog2.ks} (x0 : Term Prog2.Δ Γ (Ty.prim LeanPrimTy.bool))
   (x1 : Term Prog2.Δ Γ (Ty.data (Ref.here 0).there)) : Term Prog2.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in

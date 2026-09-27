@@ -1,3 +1,21 @@
+# Summary of changes for run 641d9030-ebce-4838-be89-df125ed5b0bd
+I removed `LeanPrimTy.Nondeg` and moved its check into the constructors of `LeanPrimTy`, as in your diff. The whole project builds with `lake build` (all four default libraries), and no `.lean` file under `LeanScript`, `TyTests`, `TermTests` or `NonEmpty` contains `sorry`.
+
+**`LeanScript/LeanPrimTy.lean`**
+- `bitvec` now takes `(h_nondeg : 2 ≤ n := by decide)` and `stringPos` takes `(s : String) (h_len : 2 ≤ s.length := by decide)`, exactly as in your diff.
+- The file had to import `Init.Data.String.Length`, because `String.length` is not in scope in this `prelude` file without it.
+- The module doc now says why: `BitVec 0`/`BitVec 1` and `String.Pos` of fewer than two characters have fewer than three values.
+
+**Knock-on changes**
+- **`Ty.prim` and `Term.lit`** no longer carry a proof: they are now `Ty.prim p` and `Term.lit p v`. `Term.ofNat` changed the same way. All matches on them in `Ty`, `Den`, `DenFacts`, `Eval` and `TermSubst` are updated.
+- **Two and three values:** `LeanPrimTy.two` has no proof argument any more, and `LeanPrimTy.three` keeps only `p ≠ .bool`. Both use the proofs stored in `bitvec` and `stringPos` directly.
+- **Notation and code generation:** the `[Ty| …]` and `[Term| …]` notations, their printers (argument counts shifted by one) and the generated types in `Gen/Print.lean` no longer pass `rfl`.
+- **One extern needed a new argument.** The `String.Pos.next` extern (`lean_string_utf8_next_fast__String_Pos_next`) returns `stringPos s` for a variable `s`, so `by decide` can't fill in the length proof. It now takes `(h_len : 2 ≤ s.length)` as an explicit argument.
+- **Tests:** the expected messages in the `#guard_msgs` tests are updated. Types now print as `Ty.prim LeanPrimTy.nat` without `⋯`. The rejection tests in `TyTests/BlocksTest.lean` for `BitVec 1`, `String.Pos "a"` and `String.Pos ""` now fail on `h_nondeg` / `h_len`, with ``Tactic `decide` proved that the proposition 2 ≤ 1 is false`` and similar messages.
+- **Docs:** the doc comments in `Ty.lean`, `Two.lean` and `Three.lean`, and the three mentions in `DESIGN_ANALYSIS.md`, now describe the new placement.
+
+I added an entry for the new `LeanPrimTy` constructors to the Properties table. The table is long and I did not recheck its older entries, so some may still show `Nondeg` or the old `Ty.prim p h` in their code.
+
 # Summary of changes for run d08f13a1-a168-41ac-8d0c-96a9dd5aad46
 No, our grammar doesn't split. `LeanScript/Term.lean` is a single grammar in direct style: its module doc says so, and so does the translator's in `LeanScript/ToTerm.lean`. Any term can be an operand of any other, e.g. `app (ite c (nat_rec …) (lam …)) (extern … [data_out …])`. `Args`, `Branches` and `Elems` are only lists of subterms, not layers. The PCL docstring you quoted cites "`LeanScript.Term`, whose blocks are `letE`s of `Comp`s". That matches an older A-normal version of the project, according to its history notes, not the current code.
 

@@ -86,10 +86,8 @@ inductive Term {ks : List Nat} (Δ : DSig ks) : Ctx ks → Ty ks → Type where
   | lam {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ (σ :: Γ) τ → Term Δ Γ (.fn σ τ)
   /-- Application. -/
   | app {Γ : Ctx ks} {σ τ : Ty ks} : Term Δ Γ (.fn σ τ) → Term Δ Γ σ → Term Δ Γ τ
-  /-- A literal of a leaf type: `.lit .nat 3`.  The side condition that the leaf has at least
-      two values is discharged by `decide`, as for `Ty.prim`. -/
-  | lit {Γ : Ctx ks} (p : LeanPrimTy) (v : p.denote) (h : p.Nondeg = true := by decide) :
-      Term Δ Γ (.prim p h)
+  /-- A literal of a leaf type: `.lit .nat 3`. -/
+  | lit {Γ : Ctx ks} (p : LeanPrimTy) (v : p.denote) : Term Δ Γ (.prim p)
   /-- A named operation on the values of its arguments (a pure extern). -/
   | extern {Γ : Ctx ks} {σs : List (Ty ks)} {τ : Ty ks} (name : String)
       (f : DenList (DSig.refDen Δ) σs → Ty.Den Δ τ) : Args Δ Γ σs → Term Δ Γ τ

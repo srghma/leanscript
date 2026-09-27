@@ -73,7 +73,7 @@ example : (chunkFirstT (Δ := DSig.nil)).run ((0 : Nat), fun (i : Nat) => i + 10
 example : ∃ r, Prog.tele = .data r := ⟨_, rfl⟩
 
 /--
-info: DependentFieldTest.Prog.Tele.cons {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯))
+info: DependentFieldTest.Prog.Tele.cons {Γ : Ctx Prog.ks} (x0 x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
   (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) : Term Prog.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in

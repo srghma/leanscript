@@ -20,7 +20,8 @@ cannot be written).
 
 As for `LeanScript.Two`, the proof is data computed by structural recursion:
 
-* `LeanPrimTy.three`: every leaf other than `bool` allowed by `LeanPrimTy.Nondeg`;
+* `LeanPrimTy.three`: every leaf other than `bool` (`LeanPrimTy.bitvec` and
+  `LeanPrimTy.stringPos` carry the proofs that their leaves have three values);
 * `Ty.three E TE TE3`: a closed type other than `bool`, given two told-apart values
   (`TE`) and three told-apart values (`TE3`) of every declared datatype;
 * `DSig.three Δ`: every declared datatype, block by block and, inside a block, member by
@@ -144,43 +145,41 @@ theorem String.startPos_ne_next (s : String) (h0 : s.startPos ≠ s.endPos) :
   simp at this
 
 /-- Three told-apart values of every leaf other than `bool` (the leaves of two values other
-    than `bool` are refused by `LeanPrimTy.Nondeg`). -/
-def LeanPrimTy.three : (p : LeanPrimTy) → p.Nondeg = true → p ≠ .bool → Three p.denote
-  | .bool, _, h => absurd rfl h
-  | .nat, _, _ => ⟨(0 : Nat), (1 : Nat), (2 : Nat), id, rfl, rfl, rfl⟩
-  | .int, _, _ => Three.ofNe (0 : Int) 1 2 (by decide) (by decide) (by decide)
-  | .bitvec n hn, h, _ =>
-      have h2 : 2 ≤ n := by simp [LeanPrimTy.Nondeg] at h; omega
+    than `bool` are refused by the constructors of `LeanPrimTy` themselves). -/
+def LeanPrimTy.three : (p : LeanPrimTy) → p ≠ .bool → Three p.denote
+  | .bool, h => absurd rfl h
+  | .nat, _ => ⟨(0 : Nat), (1 : Nat), (2 : Nat), id, rfl, rfl, rfl⟩
+  | .int, _ => Three.ofNe (0 : Int) 1 2 (by decide) (by decide) (by decide)
+  | .bitvec n h2, _ =>
       ⟨0#n, 1#n, 2#n, BitVec.toNat, bitVec_toNat_small n 0 h2 (by decide),
         bitVec_toNat_small n 1 h2 (by decide), bitVec_toNat_small n 2 h2 (by decide)⟩
-  | .uint8, _, _ => Three.ofNe (0 : UInt8) 1 2 (by decide) (by decide) (by decide)
-  | .uint16, _, _ => Three.ofNe (0 : UInt16) 1 2 (by decide) (by decide) (by decide)
-  | .uint32, _, _ => Three.ofNe (0 : UInt32) 1 2 (by decide) (by decide) (by decide)
-  | .uint64, _, _ => Three.ofNe (0 : UInt64) 1 2 (by decide) (by decide) (by decide)
-  | .int8, _, _ => Three.ofNe (0 : Int8) 1 2 (by decide) (by decide) (by decide)
-  | .int16, _, _ => Three.ofNe (0 : Int16) 1 2 (by decide) (by decide) (by decide)
-  | .int32, _, _ => Three.ofNe (0 : Int32) 1 2 (by decide) (by decide) (by decide)
-  | .int64, _, _ => Three.ofNe (0 : Int64) 1 2 (by decide) (by decide) (by decide)
-  | .char, _, _ => Three.ofNe 'a' 'b' 'c' (by decide) (by decide) (by decide)
-  | .string, _, _ => Three.ofNe "" "a" "b" (by decide) (by decide) (by decide)
-  | .stringPos s, h, _ =>
-      have h2 : 2 ≤ s.length := by simpa [LeanPrimTy.Nondeg] using h
+  | .uint8, _ => Three.ofNe (0 : UInt8) 1 2 (by decide) (by decide) (by decide)
+  | .uint16, _ => Three.ofNe (0 : UInt16) 1 2 (by decide) (by decide) (by decide)
+  | .uint32, _ => Three.ofNe (0 : UInt32) 1 2 (by decide) (by decide) (by decide)
+  | .uint64, _ => Three.ofNe (0 : UInt64) 1 2 (by decide) (by decide) (by decide)
+  | .int8, _ => Three.ofNe (0 : Int8) 1 2 (by decide) (by decide) (by decide)
+  | .int16, _ => Three.ofNe (0 : Int16) 1 2 (by decide) (by decide) (by decide)
+  | .int32, _ => Three.ofNe (0 : Int32) 1 2 (by decide) (by decide) (by decide)
+  | .int64, _ => Three.ofNe (0 : Int64) 1 2 (by decide) (by decide) (by decide)
+  | .char, _ => Three.ofNe 'a' 'b' 'c' (by decide) (by decide) (by decide)
+  | .string, _ => Three.ofNe "" "a" "b" (by decide) (by decide) (by decide)
+  | .stringPos s h2, _ =>
       have h0 := String.startPos_ne_endPos_of_two_le s h2
       Three.ofNe s.startPos (s.startPos.next h0) s.endPos (String.startPos_ne_next s h0)
         (String.next_startPos_ne_endPos s h2 h0) h0
-  | .stringPosRaw, _, _ =>
+  | .stringPosRaw, _ =>
       ⟨⟨0⟩, ⟨1⟩, ⟨2⟩, String.Pos.Raw.byteIdx, rfl, rfl, rfl⟩
-  | .substringRaw, _, _ =>
+  | .substringRaw, _ =>
       ⟨⟨"", ⟨0⟩, ⟨0⟩⟩, ⟨"", ⟨0⟩, ⟨1⟩⟩, ⟨"", ⟨0⟩, ⟨2⟩⟩, fun s => s.stopPos.byteIdx, rfl, rfl, rfl⟩
-  | .stringSlice, _, _ =>
+  | .stringSlice, _ =>
       ⟨"".toSlice, "a".toSlice, "ab".toSlice, fun s => s.str.length, by decide, by decide,
         by decide⟩
-  | .float, _, _ => Three.ofNe (0.0 : Float) 1.0 2.0 (by decide) (by decide) (by decide)
-  | .float32, _, _ => Three.ofNe (0.0 : Float32) 1.0 2.0 (by decide) (by decide) (by decide)
-  | .floatModel, _, _ =>
+  | .float, _ => Three.ofNe (0.0 : Float) 1.0 2.0 (by decide) (by decide) (by decide)
+  | .float32, _ => Three.ofNe (0.0 : Float32) 1.0 2.0 (by decide) (by decide) (by decide)
+  | .floatModel, _ =>
       Three.ofNe Float.Model.nan Float.Model.inf (-Float.Model.inf) (by decide) (by decide)
         (by decide)
-  | .float32Model, _, _ =>
+  | .float32Model, _ =>
       Three.ofNe Float32.Model.nan Float32.Model.inf (-Float32.Model.inf) (by decide)
         (by decide) (by decide)
 
@@ -216,7 +215,7 @@ variable (TE3 : (r : Ref ks) → Three (E r))
 /-- Three told-apart values of a closed type other than `bool` (also under a delay), given two
     and three told-apart values of every declared datatype. -/
 def Ty.three {d : Bool} : (t : Ty ks d) → t.isBool = false → Three (Ty.den E t)
-  | .prim p hp, h => LeanPrimTy.three p hp (fun e => by subst e; simp [Ty.isBool] at h)
+  | .prim p, h => LeanPrimTy.three p (fun e => by subst e; simp [Ty.isBool] at h)
   | .fn a b, _ => Three.fn (Ty.pick E TE a) (Ty.pick E TE b)
   | .array t, _ => Three.array (Ty.pick E TE t).x
   | .enum s, _ =>

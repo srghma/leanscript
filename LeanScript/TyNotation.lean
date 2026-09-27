@@ -190,7 +190,7 @@ partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
         | false, ``LeanPrimTy.nat => `(LeanScript.Ty.nat)
         | false, ``LeanPrimTy.int => `(LeanScript.Ty.int)
         | false, ``LeanPrimTy.string => `(LeanScript.Ty.string)
-        | _, _ => `(LeanScript.Ty.prim $(mkIdentFrom id p) rfl)
+        | _, _ => `(LeanScript.Ty.prim $(mkIdentFrom id p))
       | none =>
         if id.getId.eraseMacroScopes == `Unit then
           Macro.throwErrorAt id "`Unit` is only a type as the domain of a delay `Unit → τ`"
@@ -209,9 +209,9 @@ partial def elabLstyAt (nd : Bool) : TSyntax `lsty → MacroM Term
             `(LeanScript.Ty.union (LeanScript.Ctors.two LeanScript.Ctor.nullary
               (LeanScript.Ctor.fields (LeanScript.Fields.one $(← elabLsty t)))))
           else `(LeanScript.Ty.option $(← elabLsty t))
-      | `BitVec, [n] => do `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.bitvec $(← lstyArg n)) rfl)
+      | `BitVec, [n] => do `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.bitvec $(← lstyArg n)))
       | `String.Pos, [s] => do
-          `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.stringPos $(← lstyArg s)) rfl)
+          `(LeanScript.Ty.prim (LeanScript.LeanPrimTy.stringPos $(← lstyArg s)))
       | `Enum, [n] =>
           if n.raw.isOfKind ``lstyAntiquot then do `(LeanScript.Ty.enum $(← lstyArg n))
           else enumOf n (← `(0))
@@ -317,8 +317,8 @@ def delabPrim : DelabM PSyn := do
       | some n => pure (numArg n)
       | none => withNaryArg 0 do `(lsty| ‹$(← delab)›)
     return (← `(lsty| $(mkIdent `BitVec):ident $n), 40)
-  if p.isAppOfArity ``LeanPrimTy.stringPos 1 then
-    let s ← match p.appArg!.consumeMData with
+  if p.isAppOfArity ``LeanPrimTy.stringPos 2 then
+    let s ← match (p.getArg! 0).consumeMData with
       | .lit (.strVal s) => `(lsty| $(Syntax.mkStrLit s):str)
       | _ => withNaryArg 0 do `(lsty| ‹$(← delab)›)
     return (← `(lsty| $(mkIdent `String.Pos):ident $s), 40)
@@ -336,7 +336,7 @@ partial def delabLsty (root : Bool) : DelabM PSyn := do
   let n := e.getAppNumArgs
   let r : DelabM PSyn := do
     match c, n with
-    | ``Ty.prim, 4 => withNaryArg 2 delabPrim
+    | ``Ty.prim, 3 => withNaryArg 2 delabPrim
     | ``Ty.bool, 1 => return (← `(lsty| $(mkIdent `Bool):ident), atomPrec)
     | ``Ty.nat, 1 => return (← `(lsty| $(mkIdent `Nat):ident), atomPrec)
     | ``Ty.int, 1 => return (← `(lsty| $(mkIdent `Int):ident), atomPrec)

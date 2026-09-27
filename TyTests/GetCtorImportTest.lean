@@ -22,7 +22,7 @@ open LeanScript GetCtorTest
 
 /--
 info: GetCtorTest.Prog.Tree.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there))
-  (x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯)) (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)) :
+  (x1 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat)) (x2 : Term Prog.Δ Γ (Ty.data (Ref.here 0).there)) :
   Term Prog.Δ Γ (Ty.data (Ref.here 0).there)
 -/
 #guard_msgs in

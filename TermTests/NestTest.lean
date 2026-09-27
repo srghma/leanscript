@@ -150,7 +150,7 @@ def Nest.length : {α : Type} → Nest α → Nat
 
 -- the index is erased: the translation takes the `Nest` only
 /--
-info: Nest.length : Term Prog.Δ [] ((Ty.data (Ref.here 0)).fn (Ty.prim LeanPrimTy.nat ⋯))
+info: Nest.length : Term Prog.Δ [] ((Ty.data (Ref.here 0)).fn (Ty.prim LeanPrimTy.nat))
 -/
 #guard_msgs in
 #leanscript_to_term Nest.length

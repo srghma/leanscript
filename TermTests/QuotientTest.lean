@@ -74,7 +74,7 @@ example : Prog.block0 = .cons (.union (.two₁ .nullary
     (.fields (.cons (.old .nat) (.one (.hole 0 (by decide))))))) .nil := rfl
 
 /--
-info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat ⋯))
+info: QuotientTest.Prog.QT.node {Γ : Ctx Prog.ks} (x0 : Term Prog.Δ Γ (Ty.prim LeanPrimTy.nat))
   (x1 : Term Prog.Δ Γ (Ty.data (Ref.here 0))) : Term Prog.Δ Γ (Ty.data (Ref.here 0))
 -/
 #guard_msgs in
@@ -118,9 +118,9 @@ info: fun {ks} {Δ} =>
   ((Term.var DeBruijn.head).letE
       (Term.extern "HMod.hMod" (fun v => (fun x0 x1 => x0 % x1) v.fst v.snd.fst)
         (Args.cons (Term.var DeBruijn.head)
-          (Args.cons (Term.lit LeanPrimTy.nat 2 ⋯)
+          (Args.cons (Term.lit LeanPrimTy.nat 2)
             Args.nil)))).lam : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat ⋯).fn (Ty.prim LeanPrimTy.nat ⋯))
+  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat))
 -/
 #guard_msgs in
 #check #leanscript_to_term parity
@@ -169,7 +169,7 @@ info: fun {ks} {Δ} =>
         (Args.cons (Term.var DeBruijn.head.tail)
           (Args.cons (Term.var DeBruijn.head)
             Args.nil))).lam.lam : {ks : List Nat} →
-  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat ⋯).fn ((Ty.prim LeanPrimTy.nat ⋯).fn (Ty.prim LeanPrimTy.bool ⋯)))
+  {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.bool)))
 -/
 #guard_msgs in
 #check #leanscript_to_term same

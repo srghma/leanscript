@@ -47,7 +47,7 @@ mutual
 /-- The meaning of a closed type, given the meaning `E` of the declared datatypes: a delay
     (`thunk` / `lazy`) denotes the value it holds. -/
 def Ty.den {ks : List Nat} (E : Ref ks → Type) {d : Bool} : Ty ks d → Type
-  | .prim p _ => p.denote
+  | .prim p => p.denote
   | .fn a b => Ty.den E a → Ty.den E b
   | .array t => Array (Ty.den E t)
   | .enum s => Fin s.nOfConstructors
@@ -78,7 +78,7 @@ theorem Ty.den_relax {ks : List Nat} (E : Ref ks → Type) (t : Ty ks false) :
 /-- A value of a type that is not a delay, read at the type (`Ty.relax`).  The identity: it
     only reduces once the constructor of `t` is known, where it is `id`. -/
 def Ty.ofRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.den E t.relax → Ty.den E t
-  | .prim _ _, x => x
+  | .prim _, x => x
   | .fn _ _, x => x
   | .array _, x => x
   | .enum _, x => x
@@ -88,7 +88,7 @@ def Ty.ofRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.
 
 /-- The inverse of `Ty.ofRelax`, also the identity. -/
 def Ty.toRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.den E t → Ty.den E t.relax
-  | .prim _ _, x => x
+  | .prim _, x => x
   | .fn _ _, x => x
   | .array _, x => x
   | .enum _, x => x
@@ -113,7 +113,7 @@ mutual
 /-- A value of `t` (datatypes read through `f`) is a value of the renamed type.  Structural,
     the identity on declared datatypes. -/
 def Ty.lift {d : Bool} : (t : Ty ks d) → Ty.den (fun r => E (f r)) t → Ty.den E (Ty.map f t)
-  | .prim _ _, x => x
+  | .prim _, x => x
   | .fn a b, x => fun y => Ty.lift b (x (Ty.lower a y))
   | .array t, x => x.map (Ty.lift t)
   | .enum _, x => x
@@ -124,7 +124,7 @@ def Ty.lift {d : Bool} : (t : Ty ks d) → Ty.den (fun r => E (f r)) t → Ty.de
   | .lazy t, x => Ty.lift t x
 /-- The inverse of `Ty.lift`. -/
 def Ty.lower {d : Bool} : (t : Ty ks d) → Ty.den E (Ty.map f t) → Ty.den (fun r => E (f r)) t
-  | .prim _ _, x => x
+  | .prim _, x => x
   | .fn a b, x => fun y => Ty.lower b (x (Ty.lift a y))
   | .array t, x => x.map (Ty.lower t)
   | .enum _, x => x

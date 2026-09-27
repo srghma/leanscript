@@ -151,12 +151,12 @@ example : fibLT.run mkList5.run = fibL [1, 2, 3, 4, 5] := rfl
 /-! ## The command shows the type of the translation -/
 
 /--
-info: lsum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat ⋯))
+info: lsum : Term Prog.Δ [] ((Ty.data (Ref.here 0).there).fn (Ty.prim LeanPrimTy.nat))
 -/
 #guard_msgs in
 #leanscript_to_term lsum
 /--
-info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat ⋯).fn (Ty.prim LeanPrimTy.nat ⋯))
+info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ [] ((Ty.prim LeanPrimTy.nat).fn (Ty.prim LeanPrimTy.nat))
 -/
 #guard_msgs in
 #leanscript_to_term sumTo

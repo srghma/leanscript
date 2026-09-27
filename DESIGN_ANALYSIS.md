@@ -12,7 +12,7 @@ which is part of `lake build`. Everything else here is a reading of the source a
 
 Note: this tree has no `LeanScript/Ty/` directory, no `TyWf`, no `ty_wf` tactic and no
 `CoeOut Ty TyWf`. `Ty` is one file, and its well-formedness is built into the constructors
-(`Ty.prim`'s `Nondeg` proof, `UnionShape`, `Ctors` having at least two constructors).
+(the `2 ≤ n` / `2 ≤ s.length` proofs of `LeanPrimTy.bitvec` / `LeanPrimTy.stringPos`, `UnionShape`, `Ctors` having at least two constructors).
 This analysis covers that design.
 
 ---
@@ -29,12 +29,12 @@ but it costs a lot:
   `Option Unit`, `Except ε Unit`, `StateM σ Unit`, `Std.HashSet α` (= `HashMap α Unit`), and
   every function returning `Unit` are refused. Ordinary Lean code uses these all the time,
   so the translator has to refuse them instead of erasing them.
-- **Rules that never end.** Because of the invariant, the grammar needs `LeanPrimTy.Nondeg`,
+- **Rules that never end.** Because of the invariant, the grammar needs the proofs in `LeanPrimTy.bitvec` / `LeanPrimTy.stringPos`,
   `UnionShape`, a separate `Ty.enum` for field-less sums of ≥ 3 constructors,
   `LeanEnumSchema.extraConstructors` (counting from 3), `Ctor.nullary` vs `Ctor.fields`,
   records of ≥ 2 fields, `Decl.wrap`'s `isOld = false`, and the grounding index `g` and the
   base constructor of `Alts`. Every new type former has to be checked against the invariant.
-- **Proofs inside data.** `Ty.prim p h` and `Term.lit p v h` carry a `Nondeg` proof, and
+- **Proofs inside data.** `LeanPrimTy.bitvec n h` and `LeanPrimTy.stringPos s h` carry a size proof, and
   `Ty.union` carries a `UnionShape` instance. You have to write `(h := h)` in every match on
   `.union`, and a non-literal `p` (such as `.stringPos s` for a variable `s`) needs a proof
   by hand.

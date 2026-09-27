@@ -249,20 +249,20 @@ example : Mems [] 1 0 := .cons (.wrap (.array (.old listNat))) .nil
 
 -- The other leaves of two values are refused: two points are only ever `bool`.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'h_nondeg' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (LeanPrimTy.bitvec 1 ⋯).Nondeg = true
+  2 ≤ 1
 is false
 -/
 #guard_msgs in
 example : Ty [] := .prim (.bitvec 1)
 
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'h_len' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (LeanPrimTy.stringPos "a").Nondeg = true
+  2 ≤ "a".length
 is false
 -/
 #guard_msgs in
@@ -270,10 +270,10 @@ example : Ty [] := .prim (.stringPos "a")
 
 -- `String.Pos ""` has one value: it is not a leaf.
 /--
-error: could not synthesize default value for parameter 'h' using tactics
+error: could not synthesize default value for parameter 'h_len' using tactics
 ---
 error: Tactic `decide` proved that the proposition
-  (LeanPrimTy.stringPos "").Nondeg = true
+  2 ≤ "".length
 is false
 -/
 #guard_msgs in

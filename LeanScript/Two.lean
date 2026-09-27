@@ -50,38 +50,38 @@ theorem bitVec_zero_ne_one (n : Nat) (h : 0 < n) : (0#n) ≠ 1#n := by
   simp [BitVec.toNat_ofNat] at this
   omega
 
-/-- Two told-apart values of every leaf with at least two values. -/
-def LeanPrimTy.two : (p : LeanPrimTy) → p.Nondeg = true → Two p.denote
-  | .bool, _ => ⟨true, false, id, rfl, rfl⟩
-  | .nat, _ => ⟨(0 : Nat), (1 : Nat), fun n => Nat.beq n 0, rfl, rfl⟩
-  | .int, _ => Two.ofNe (0 : Int) 1 (by decide)
-  | .bitvec n h, _ => Two.ofNe (0#n) (1#n) (bitVec_zero_ne_one n h)
-  | .uint8, _ => Two.ofNe (0 : UInt8) 1 (by decide)
-  | .uint16, _ => Two.ofNe (0 : UInt16) 1 (by decide)
-  | .uint32, _ => Two.ofNe (0 : UInt32) 1 (by decide)
-  | .uint64, _ => Two.ofNe (0 : UInt64) 1 (by decide)
-  | .int8, _ => Two.ofNe (0 : Int8) 1 (by decide)
-  | .int16, _ => Two.ofNe (0 : Int16) 1 (by decide)
-  | .int32, _ => Two.ofNe (0 : Int32) 1 (by decide)
-  | .int64, _ => Two.ofNe (0 : Int64) 1 (by decide)
-  | .char, _ => Two.ofNe 'a' 'b' (by decide)
-  | .string, _ => Two.ofNe "" "a" (by decide)
-  | .stringPos s, h =>
+/-- Two told-apart values of every leaf. -/
+def LeanPrimTy.two : (p : LeanPrimTy) → Two p.denote
+  | .bool => ⟨true, false, id, rfl, rfl⟩
+  | .nat => ⟨(0 : Nat), (1 : Nat), fun n => Nat.beq n 0, rfl, rfl⟩
+  | .int => Two.ofNe (0 : Int) 1 (by decide)
+  | .bitvec n h => Two.ofNe (0#n) (1#n) (bitVec_zero_ne_one n (by omega))
+  | .uint8 => Two.ofNe (0 : UInt8) 1 (by decide)
+  | .uint16 => Two.ofNe (0 : UInt16) 1 (by decide)
+  | .uint32 => Two.ofNe (0 : UInt32) 1 (by decide)
+  | .uint64 => Two.ofNe (0 : UInt64) 1 (by decide)
+  | .int8 => Two.ofNe (0 : Int8) 1 (by decide)
+  | .int16 => Two.ofNe (0 : Int16) 1 (by decide)
+  | .int32 => Two.ofNe (0 : Int32) 1 (by decide)
+  | .int64 => Two.ofNe (0 : Int64) 1 (by decide)
+  | .char => Two.ofNe 'a' 'b' (by decide)
+  | .string => Two.ofNe "" "a" (by decide)
+  | .stringPos s h =>
       ⟨s.startPos, s.endPos, fun q => q.offset.byteIdx == 0, rfl, by
-        have hs : s ≠ "" := fun e => by subst e; simp [LeanPrimTy.Nondeg] at h
+        have hs : s ≠ "" := fun e => by subst e; simp at h
         have : s.utf8ByteSize ≠ 0 := fun e => hs (String.utf8ByteSize_eq_zero_iff.mp e)
         simpa [String.endPos, String.rawEndPos] using this⟩
-  | .stringPosRaw, _ => Two.ofNe (⟨0⟩ : String.Pos.Raw) ⟨1⟩ (by decide)
-  | .substringRaw, _ =>
+  | .stringPosRaw => Two.ofNe (⟨0⟩ : String.Pos.Raw) ⟨1⟩ (by decide)
+  | .substringRaw =>
       ⟨⟨"", ⟨0⟩, ⟨0⟩⟩, ⟨"", ⟨0⟩, ⟨1⟩⟩, fun s => s.stopPos.byteIdx == 0, rfl, rfl⟩
-  | .stringSlice, _ =>
+  | .stringSlice =>
       ⟨"".toSlice, "a".toSlice, fun s => s.str == "", by decide, by decide⟩
-  | .float, _ => Two.ofNe (0.0 : Float) 1.0 (by decide)
-  | .float32, _ => Two.ofNe (0.0 : Float32) 1.0 (by decide)
-  | .floatModel, _ =>
+  | .float => Two.ofNe (0.0 : Float) 1.0 (by decide)
+  | .float32 => Two.ofNe (0.0 : Float32) 1.0 (by decide)
+  | .floatModel =>
       ⟨Float.Model.nan, Float.Model.inf, fun f => f.toBits == Float.Model.nan.toBits,
         by simp, by decide⟩
-  | .float32Model, _ =>
+  | .float32Model =>
       ⟨Float32.Model.nan, Float32.Model.inf, fun f => f.toBits == Float32.Model.nan.toBits,
         by simp, by decide⟩
 
@@ -106,7 +106,7 @@ mutual
 /-- Two told-apart values of a closed type, given two of every declared datatype.
     Structural recursion on the type: closed types need no grounding. -/
 def Ty.pick {d : Bool} : (t : Ty ks d) → Two (Ty.den E t)
-  | .prim p h => LeanPrimTy.two p h
+  | .prim p => LeanPrimTy.two p
   | .fn a b =>
       let e := (Ty.pick a).x
       let T := Ty.pick b
