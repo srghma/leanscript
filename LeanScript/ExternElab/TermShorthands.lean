@@ -9,7 +9,7 @@ public section
 # `derive_extern_term_shorthands`: one term former per entry of the extern catalogue
 
 `derive_extern_term_shorthands PExpr` adds, for every shorthand `LeanInitPureExtern.c` of an
-entry of the catalogue (`LeanScript.LeanInitPureExternShorthands`), the definition
+entry of the catalogue (`LeanScript.LeanInitPureExterns.Shorthands`), the definition
 `PExpr.c`: the call of the extern `c` on pure expressions of the types of its arguments,
 
 ```

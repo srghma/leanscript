@@ -1,6 +1,6 @@
 # Making "a closed `Term` is its own value" true: normal forms by construction
 
-`TermTests/ClosedEvalTest.lean` proves that, with the grammar as it is today, evaluating a
+`TermTests/Semantics/ClosedEvalTest.lean` proves that, with the grammar as it is today, evaluating a
 closed `Term` is **not** the identity: `ret (3 + 4)` and `ret 7` are different closed terms
 with the same value. This document proposes ways to change the grammar so that the statement
 becomes true, with the normalisation done when Lean is elaborated to `Term`
@@ -574,7 +574,7 @@ def ack : Nat → Nat → Nat
 def ack23 : Nat := ack 2 3
 ```
 (`ack` is written in this higher-order form so that it is structurally recursive, as in
-`TermTests/TcoTest.lean`.)
+`TermTests/ToTerm/TcoTest.lean`.)
 
 Before:
 ```

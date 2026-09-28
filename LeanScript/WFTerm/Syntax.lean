@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Semantics.Eval
 
 @[expose] public section
 

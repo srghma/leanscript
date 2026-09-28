@@ -63,7 +63,7 @@ beside it. `LeanScript/ToTerm/Overview.lean` explains this rule.
   and of their constructors are now written with a single backquote
   (`` `LeanScript.Term.lam ``). All other names keep the checked double backquote.
 - To keep the check on those names, there is a new test,
-  `TermTests/ToTermTest/TermNames.lean`. It reads the translator's source files and fails
+  `TermTests/ToTerm/ToTermTest/TermNames.lean`. It reads the translator's source files and fails
   if any such name is not a declaration of `Expr.Term`. It imports `LeanScript.ToTerm.Elab`,
   so it is rebuilt whenever the translator changes. I tested it by misspelling a name: it
   reported the file and the name.
@@ -86,7 +86,7 @@ beside it. `LeanScript/ToTerm/Overview.lean` explains this rule.
   - `Ty/Deriving/Translate.lean` gains `Lean.Meta.Tactic.Delta` (for `deltaExpand`), and
     `Ty/Deriving.lean` gains `Lean.Elab.Deriving.Basic` (for `registerDerivingHandler`).
 - **Measured, loading only the imports:**
-  - `import LeanScript.Ty.Ty`: about 3 s and 771 modules, instead of pulling in Aesop.
+  - `import LeanScript.Ty.Syntax.Ty`: about 3 s and 771 modules, instead of pulling in Aesop.
   - `LeanScript.Ty.Instances`: 932 modules. `LeanScript.Ty.Deriving`: 1 030 modules.
   - Before, every one of these loaded more than all of `Lean` (2 356 modules, about 7 s).
   - The effect is on the `NonEmpty.*`/`Ty.*` part of the chain, where the modules now take

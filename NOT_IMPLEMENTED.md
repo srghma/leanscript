@@ -1,7 +1,7 @@
 # What is not implemented yet
 
-This list describes the project as it stands now: one grammar of types (`LeanScript/Ty/Ty.lean`,
-`LeanScript/Ty/Decl.lean`), one grammar of terms (`LeanScript/Term/Term.lean`), the generators
+This list describes the project as it stands now: one grammar of types (`LeanScript/Ty/Syntax/Ty.lean`,
+`LeanScript/Ty/Syntax/Decl.lean`), one grammar of terms (`LeanScript/Term/Syntax/Term.lean`), the generators
 (`LeanScript/GenElab/Signature.lean`, `LeanScript/GenElab/GetCtor.lean`, `LeanScript/GenElab/`) and the translator
 `#leanscript_to_term` (`LeanScript/TermElab/ToTerm.lean`). Each item names where to read more.
 
@@ -14,12 +14,12 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   `Vec α` of every length (`Gen/Read.lean`, `normType`), and a constructor field that only
   names an index (`n` in `Vec.cons {n} a v`) is dropped (`erasedFields`): `Vec α` is a linked
   list, and `Matrix` (`rows`, `cols`, `cells : Vec (Vec Nat cols) rows`) a record of two
-  numbers and a list of lists. `TermTests/IndexedFamilyProofs.lean` proves, for every input,
+  numbers and a list of lists. `TermTests/Datatypes/IndexedFamilyProofs.lean` proves, for every input,
   that the translations of `Vec.sum`, `Vec.double`, `Vec.sumRows` and `Matrix.size` compute
   what the Lean functions compute, that the encoding of vectors is injective (the length is
   recovered), and the value counts behind the refusals and caveats below; other translated
   functions over families are only checked on samples. Caveats
-  (`TermTests/IndexedFamilyTest.lean`):
+  (`TermTests/Datatypes/IndexedFamilyTest.lean`):
   - the erased type has more values than the Lean one (a `Vec Nat 3` is any list);
   - at *closed* indices only the constructors that can build a value are checked, one level
     deep: `Vec Nat 0` (one value), a family with no or two field-less constructors at the
@@ -41,9 +41,9 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   (`Nest (Nat × Nat)` and `Nest Nat` are the same datatype). A value at depth `k` is put in
   `Nest.Elem B` (`injectElem`: `(2, 3)` is `node (leaf 2) (leaf 3)`). A function generic in
   the index (`Nest.length`) is translated at the index the program declares the family at,
-  or at `#leanscript_to_term f (α := T)`. `TermTests/NestProofs.lean` proves that the encoding
+  or at `#leanscript_to_term f (α := T)`. `TermTests/Datatypes/NestProofs.lean` proves that the encoding
   is injective at every index and that the translated `Nest.length` is correct on every
-  value. Caveats (`TermTests/NestTest.lean`):
+  value. Caveats (`TermTests/Datatypes/NestTest.lean`):
   - the erased type has more values than the Lean one (an element may be a tree of any shape,
     not a perfect tree of the depth of its level);
   - an element read at its Lean type (`headNat : Nest Nat → Option Nat`, `| .cons a _ => some
@@ -64,7 +64,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   is `Array α`, a dependent arrow `(i : Fin n) → Fin (i + 1)` inside a field is `Nat → Nat`.
   A type computed from a value (`cond b Nat String`) is refused. The erased type has more
   values than the Lean one (every `Nat`, not only those below `n`); nothing relates the two.
-  (`TermTests/DependentFieldTest.lean`.)
+  (`TermTests/ToTerm/DependentFieldTest.lean`.)
 - **`Fin m → X` on a recursive cycle is `Nat → Option X`, not typed.** When the bound `m` is
   an earlier field and `X` is on a recursive cycle through the constructor's type
   (`RoseF.node : (m : Nat) → (Fin m → RoseF) → RoseF`, `WT Nat Fin`, the `Σ` form
@@ -86,7 +86,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
     its answer type; only `Fin.foldl` iterates over the children (`Fin.foldr`, `List.finRange`,
     … are not translated);
   - `RoseF.size` and `RoseF.fan` are proved correct for every input
-    (`TermTests/RoseVariantsProofs.lean`); other functions are only checked on examples.
+    (`TermTests/Datatypes/RoseVariantsProofs.lean`); other functions are only checked on examples.
 - **Generic W-types** (`WT α β` with `β` not given) are refused (`β` is not a type);
   `WT Nat (fun _ => Nat)` has no value and is refused.
 - **Proofs are erased, so a subtype is its carrier**: `Fin k` for a numeral `k ≥ 3` and
@@ -98,9 +98,9 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   QT → QT` has a `nat` field. In `#leanscript_to_term`, `Quot.mk r a` is `a`, `Quot.lift f h q`
   (and `Quot.liftOn`, `Quot.rec`, `Quot.recOn`, `Quot.hrecOn`, `Quot.recOnSubsingleton`, the
   `Quotient` versions, `Quotient.lift₂`) is `f` on the representative, and an extern taking a
-  quotient (or an `Array` of them) is given `Quot.mk r a`. `TermTests/QuotientProofs.lean`
+  quotient (or an `Array` of them) is given `Quot.mk r a`. `TermTests/Datatypes/QuotientProofs.lean`
   proves that every `QT` has a value in the language and that the translated `QT.odds` is
-  correct on every representative. Caveats (`TermTests/QuotientTest.lean`):
+  correct on every representative. Caveats (`TermTests/Datatypes/QuotientTest.lean`):
   - the erased type has more values than the quotient (parity classes of `Nat` are `Nat`), and
     a quotient that leaves 0, 1 or 2 classes is not detected (`Quot (fun _ _ : Bool => True)`,
     one class, is `bool`); a carrier of no, one or two values is refused / `bool` as usual;
@@ -113,7 +113,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   **types of two values other than `Bool`** (`Option Unit`, `BitVec 1`, `String.Pos` of a
   one-character string, `Thunk Bool`, …) have no type in the language, by design: they are
   refused, never erased. A type of two values is always `Ty.bool`: this is proved,
-  `Ty.eq_bool_of_two_points` (`LeanScript/Ty/Three.lean`).
+  `Ty.eq_bool_of_two_points` (`LeanScript/Ty/Den/Three.lean`).
 - **A recursive occurrence in the domain of a function** is refused (`Gen/Translate.lean`,
   `toFIR`).
 - **Effects.** There is no type former for `IO`, tasks or promises.
@@ -123,7 +123,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **Partial fixpoints, well-founded recursion, coinductive types** cannot be written: every
   loop is a fold (`nat_rec`, `array_foldl`, `data_rec`, `data_brec`).
 - **No substitution**: the grammar of normal forms has renaming and weakening
-  (`LeanScript/Term/Rename.lean`, `LeanScript/Term/Weaken.lean`, with `Term.rename_eval`), but
+  (`LeanScript/Term/Rename/Basic.lean`, `LeanScript/Term/Rename/Weaken.lean`, with `Term.rename_eval`), but
   no substitution: substituting a value can create a redex, which only the normaliser computes.
 - **The normaliser is not verified**: `LeanScript/TermElab/Anf.lean` normalises at elaboration
   time; there is no proof that it preserves meaning (the translated programs are checked by
@@ -132,7 +132,7 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   (`many`) everywhere; `Term.dce` recomputes exact annotations and removes dead bindings, but
   nothing requires a term to carry exact ones (a binder annotated `0` cannot be referenced,
   which the types do enforce).
-- **The optimiser is small**: `Term.optimize` (`LeanScript/Term/Optimize.lean`, proved to
+- **The optimiser is small**: `Term.optimize` (`LeanScript/Term/Optimize/Basic.lean`, proved to
   preserve the value) only does copy propagation of an unknown of the same level, returns a
   shared neutral answer directly, drops a `record_casesOn` whose fields are unused, and runs
   `Term.dce`.  Every rewrite is skipped when it would change the level index of the statement.
@@ -149,17 +149,17 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 
 The supported fragment and the refusals are listed in the header of
 `LeanScript/TermElab/ToTerm.lean`; the refusals are pinned by `#guard_msgs` in
-`TermTests/ToTermTest.lean`. Not supported yet:
+`TermTests/ToTerm/ToTermTest.lean`. Not supported yet:
 
 - **Polymorphic definitions** (a parameter that is a type or an instance).
 - **Recursion on a parameter that is not matched at the top of the body**, and mutual
   recursion through a helper (a helper that calls back the function being translated).
   (Recursion that changes the other parameters, an accumulator, and calls of non-recursive
-  or recursive helpers are translated: `TermTests/TcoTest.lean`.)
+  or recursive helpers are translated: `TermTests/ToTerm/TcoTest.lean`.)
 - **`for` loops** only over a `Std.Legacy.Range` (`[a:b]`, `[a:b:s]`) in `Id`; other
   collections and other monads are refused.  (A
   `mutual` group of functions, one per member of a block, is translated, also when members
-  are held inside an `Array` or a function: `TermTests/MutualToTermTest.lean`.)
+  are held inside an `Array` or a function: `TermTests/ToTerm/MutualToTermTest.lean`.)
 - **Two functions of a `mutual` group on the same member** of a block (one fold has one
   answer per member).
 - **A field that holds members inside an `Array` or a function** can only be folded with
@@ -174,14 +174,14 @@ The supported fragment and the refusals are listed in the header of
 - **Patterns on numerals** other than `0` / `n + 1` (Lean compiles them to `dite` on
   equalities), and `if h : c` whose proof `h` is used by anything but an extern (an extern
   that takes a proof decides its proposition again when the term runs,
-  `TermTests/CondExternTest.lean`).  A proof whose proposition speaks about a value that is
+  `TermTests/Extern/CondExternTest.lean`).  A proof whose proposition speaks about a value that is
   not an argument of the extern, or is not decidable, is refused.
 - **Externs on non-leaf values**: a call of a Lean function is an extern only when its value
   arguments and its result are leaf types (or arrays of them); `List.length l` on a declared
   `List Nat` is refused (write the recursion instead).
 - **Loops**: a `for` over a range and a `while` in `Id` are translated; a `while` only when
   its termination is read off its syntax (a `Nat` variable moved towards a bound by a
-  literal step, `TermTests/WhileTest.lean`); any other `while`, `repeat`, and loops in other
+  literal step, `TermTests/ToTerm/WhileTest.lean`); any other `while`, `repeat`, and loops in other
   monads are refused.
 - **No proof that the translation is correct** in general: each test checks it on examples
   by `rfl`, and `ToTermTest.sumToT_run` proves it at every argument for one function.

@@ -142,7 +142,7 @@ generated.
   `variable` context work), so each constructor of `LeanInitPureExtern` applies its family
   to those parameters. If an entry using another parameter (for example `option`) is added to a
   family, that constructor must be updated too. Lean reports it if you forget.
-- `LeanScript/LeanInitPureExternShorthands.lean` (generated): for every entry, a
+- `LeanScript/LeanInitPureExterns/Shorthands.lean` (generated): for every entry, a
   `@[match_pattern, reducible] def LeanInitPureExtern.<entry>`, e.g.
   `LeanInitPureExtern.lean_nat_add a b = .preludeExtern (.lean_nat_add a b)`. Every shorthand
   takes all parameters of `LeanInitPureExtern`, in its order. So `.lean_nat_add a b` still
@@ -151,7 +151,7 @@ generated.
 - `LeanScript/Eval/Extern.lean`: one `eval` per family (`PreludeExtern.eval`, …) with the
   alternatives of the old `match`, unchanged, and `Extern.eval` as a 35-way dispatch.
 - `scripts/gen_externs.py` reads the families and the constructor of each, and writes both
-  `LeanScript/LeanInitPureExternShorthands.lean` and `LeanScript/ToTerm/ExternTable.lean`.
+  `LeanScript/LeanInitPureExterns/Shorthands.lean` and `LeanScript/ToTerm/ExternTable.lean`.
   The table still names the entry. That name is both the shorthand in
   `LeanInitPureExtern` and the constructor in its family.
 - `LeanScript/ToTerm/Extern.lean` builds an entry by applying its shorthand to the

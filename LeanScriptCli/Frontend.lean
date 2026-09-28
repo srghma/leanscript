@@ -1,6 +1,6 @@
 import Lean
 import LeanScript.TermElab.ToTerm
-import LeanScript.Term.Packed
+import LeanScript.Term.Syntax.Packed
 
 /-!
 # The front end of the `leanscript` tool: from a Lean file to closed `Term`s
@@ -36,7 +36,7 @@ namespace LeanScript.Cli
 /-- The modules the translator needs in the environment of the file. -/
 def extraImports : Array Import :=
   #[{ module := `LeanScript.TermElab.ToTerm, isMeta := true },
-    { module := `LeanScript.Term.Packed, isMeta := true },
+    { module := `LeanScript.Term.Syntax.Packed, isMeta := true },
     { module := `LeanScript.Term.Build, isMeta := true }]
 
 /-- Set up the search path: `LEAN_PATH` (as set by `lake env`) if present, and the build

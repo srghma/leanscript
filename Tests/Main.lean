@@ -1,12 +1,12 @@
 module
 
 import Spec.RunSpec
-import TermTests.TcoTest
-import TermTests.WhileTest
-import TermTests.QuotientTest
-import TermTests.RoseVariantsTest
-import TermTests.WFTermTest
-import LeanScript.Term.Optimize
+import TermTests.ToTerm.TcoTest
+import TermTests.ToTerm.WhileTest
+import TermTests.Datatypes.QuotientTest
+import TermTests.Datatypes.RoseVariantsTest
+import TermTests.Optimize.WFTermTest
+import LeanScript.Term.Optimize.Basic
 import MoreJsTy.FromTerm
 
 /-!
@@ -39,7 +39,7 @@ def checkNat₂ (name : String) (expected lean actual : Nat) : SpecM Unit Unit :
 section Tco
 open Tco
 
-/-- `Tests/TermTests/TcoTest.lean`: higher-order and tail-recursive functions. -/
+/-- `Tests/TermTests/ToTerm/TcoTest.lean`: higher-order and tail-recursive functions. -/
 def tcoSpec : Spec := describe "TcoTest" do
   checkNat₂ "ackInner (· + 2) 3" 9 (ackInner (fun x => x + 2) 3)
     ((ackInnerT (Δ := DSig.nil)).run (fun x => x + 2 : Nat → Nat) (3 : Nat))
@@ -68,7 +68,7 @@ end Tco
 section While
 open WhileTest
 
-/-- `Tests/TermTests/WhileTest.lean`: `while` loops with a bound. -/
+/-- `Tests/TermTests/ToTerm/WhileTest.lean`: `while` loops with a bound. -/
 def whileSpec : Spec := describe "WhileTest" do
   checkNat₂ "sumDown 10" 55 (sumDown 10) ((sumDownT (Δ := DSig.nil)).run (10 : Nat))
   checkNat₂ "bits 1000" 10 (bits 1000) ((bitsT (Δ := DSig.nil)).run (1000 : Nat))
@@ -83,7 +83,7 @@ end While
 section Quotient
 open QuotientTest
 
-/-- `Tests/TermTests/QuotientTest.lean`: quotients are their representatives. -/
+/-- `Tests/TermTests/Datatypes/QuotientTest.lean`: quotients are their representatives. -/
 def quotientSpec : Spec := describe "QuotientTest" do
   -- the fold is `Comp.array_foldl` over the array of the representatives
   checkNat "S.odds (3, #[1, 2, 5])" 3
@@ -94,7 +94,7 @@ end Quotient
 section Rose
 open RoseVariantsTest
 
-/-- `Tests/TermTests/RoseVariantsTest.lean`: `RoseF`, children as a function on `Fin n`. -/
+/-- `Tests/TermTests/Datatypes/RoseVariantsTest.lean`: `RoseF`, children as a function on `Fin n`. -/
 def roseSpec : Spec := describe "RoseVariantsTest" do
   checkNat₂ "roseFv.size" 9 roseFv.size (roseFSizeT.run roseFT.run)
   checkNat₂ "roseFv.depth" 2 roseFv.depth (roseFDepthT.run roseFT.run)
@@ -157,7 +157,7 @@ def checkNatOpt (name : String) (expected run optimized : Nat) : SpecM Unit Unit
     assertEq s!"{name} (run)" expected run
     assertEq s!"{name} (optimized)" expected optimized
 
-/-- `Tests/TermTests/WFTermTest.lean`: programs with well-founded recursion (`WFTerm`), run by
+/-- `Tests/TermTests/Optimize/WFTermTest.lean`: programs with well-founded recursion (`WFTerm`), run by
 the total evaluator `WFProgram.run` (no fuel), before and after `WFProgram.optimize`. -/
 def wfTermSpec : Spec := describe "WFTerm" do
   checkNatOpt "gcd 48 18" 6 (natOf (gcdProg 48 18).run.1) (natOf (gcdProg 48 18).optimize.run.1)

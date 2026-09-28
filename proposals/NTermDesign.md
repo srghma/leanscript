@@ -274,7 +274,7 @@ meaning is preserved — but no theorem yet says the annotations are *exact*. Th
 `nat_rec`, `array_foldl`, `data_rec`, `data_brec`. The surface `for` loop over a range and a
 structurally terminating `while` loop are translated by
 `LeanScript/TermElab/ToTerm/While.lean` into a `nat_rec` of a fixed number of steps over a
-`ForInStep β` state (`LeanScript/Term/BoundedLoop.lean` proves the bound is enough, so it is
+`ForInStep β` state (`LeanScript/Term/Semantics/BoundedLoop.lean` proves the bound is enough, so it is
 not fuel: `boundedLoop_done`, `boundedLoop_stable`). `break`/`return` become `.done v`, which
 the next steps keep.
 

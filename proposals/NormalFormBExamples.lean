@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Eval
+public import LeanScript.Term.Semantics.Eval
 public meta import LeanScript.TermElab.ToTerm
 public meta import LeanScript.TermElab.Notation
 

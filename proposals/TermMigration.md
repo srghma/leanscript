@@ -5,7 +5,7 @@ Status notes for the replacement of the old A-normal `Term` by the normal-form g
 
 ## Decisions
 
-* The old grammar (`LeanScript/Term/Term.lean`, `LeanScript/Term/PExpr.lean`, its evaluator,
+* The old grammar (`LeanScript/Term/Syntax/Term.lean`, `LeanScript/Term/PExpr.lean`, its evaluator,
   `TermSubst`, `Elim`) is deleted. The normal-form grammar lives in `LeanScript/Term/` under
   the namespace `LeanScript` (`LeanScript.Term`, `LeanScript.PExpr`, `LeanScript.Neu`, …).
 * Usages: `Usage01ω` for pattern binders, `Usage1ω` for definition binders (`letV`, `letE`,

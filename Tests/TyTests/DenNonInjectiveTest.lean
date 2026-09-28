@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Ty.Den
+public import LeanScript.Ty.Den.Basic
 
 @[expose] public section
 

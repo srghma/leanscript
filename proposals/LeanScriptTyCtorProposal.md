@@ -135,7 +135,7 @@ Layout follows your "one child file per import" rule. Nothing imports an aggrega
 
 | file | contents |
 | :-- | :-- |
-| `LeanScript/Ty/Ty.lean` | two new leaves: `Ty.named`, `Ty.tyVar` (+ the `beq` cases) |
+| `LeanScript/Ty/Syntax/Ty.lean` | two new leaves: `Ty.named`, `Ty.tyVar` (+ the `beq` cases) |
 | `LeanScript/Ty/Wf.lean` | `Wf` for `.named` (all args `Wf`); `.tyVar` is **never** `Wf` in a closed scope |
 | `LeanScript/Ty/TyVars.lean` (new) | `Ty.WfTv k` (well-formed with type variables `< k`), `Ty.instTyVars`, and the lemma `WfTv k t → (∀ a ∈ as, Wf a) → as.length = k → Wf (t.instTyVars as)`. It is the analogue of `Ty.wf_substOcc` in `WfSubst.lean`. |
 | `LeanScript/Ty/TyDecl.lean` (new) | `CtorSig`, `TyDecl`, `TyDecl.selfTy`, `CtorSig.fieldTys` |
@@ -159,7 +159,7 @@ inductive Ty where
 
 `Ty.named` args are ordinary children. `Ty.children`, `Ty.beq`, `TyBEq` (`LawfulBEq`,
 `DecidableEq`) and `ty_wf` each get one case per leaf. `Ty.Den (.named _ _) := PEmpty`,
-the same as every recursive shape today (see `LeanScript/Ty/Den.lean`). So a `named_mk` term
+the same as every recursive shape today (see `LeanScript/Ty/Den/Basic.lean`). So a `named_mk` term
 is outside the fragment `Term.eval` runs (`Term.NoRecMk`), and its type is checked but it
 is not evaluated, as with lists now.
 

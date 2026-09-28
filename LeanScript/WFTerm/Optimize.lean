@@ -1,7 +1,7 @@
 module
 
 public import LeanScript.WFTerm.Eval
-public import LeanScript.Term.Optimize
+public import LeanScript.Term.Optimize.Basic
 
 @[expose] public section
 

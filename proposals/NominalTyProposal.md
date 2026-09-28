@@ -285,12 +285,12 @@ shared signature.
 
 Each step builds on its own and is checked by `lake build` together with an `rg sorry` sweep.
 
-1. `LeanScript/Ty/Ty.lean`: the mutual `Ty`/`Fields`/`Ctor`/`Ctors` over `ks`, `Ref`, with
+1. `LeanScript/Ty/Syntax/Ty.lean`: the mutual `Ty`/`Fields`/`Ctor`/`Ctors` over `ks`, `Ref`, with
    `DecidableEq`, `BEq`, `ReflBEq`, `LawfulBEq`, `Repr`; `Ty.map`/`Ty.weaken`. Delete
    `Ty/Shape.lean` (`TyShape`).
-2. `LeanScript/Ty/Decl.lean` (new): `Fld`, `Flds`, `BCtor`, `BCtors`, `Alts`, `Decl`, `Mems`,
+2. `LeanScript/Ty/Syntax/Decl.lean` (new): `Fld`, `Flds`, `BCtor`, `BCtors`, `Alts`, `Decl`, `Mems`,
    `DSig`; `Ty.unfold`.
-3. `LeanScript/Ty/Den.lean`: `Ty.den`, `DSig.refDen`, `Ty.lift`/`Ty.lower`, roll/unroll. Port
+3. `LeanScript/Ty/Den/Basic.lean`: `Ty.den`, `DSig.refDen`, `Ty.lift`/`Ty.lower`, roll/unroll. Port
    `Two`, `Ty.pick`, `DSig.two`, `Ty.twoDen` and the corollaries from the toy. `Den/Rec.lean`,
    `Den/Family.lean` and `Den/PFunctor.lean` collapse into this file.
 4. Delete `Ty/Wf.lean`, `Ty/WfFacts.lean`, `Ty/WfTactic*`, `Ty/TyWf.lean`, `Ty/TyWfIn.lean`.

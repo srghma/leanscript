@@ -1,8 +1,8 @@
 module
 
-import LeanScript.Ty.Decl
-import LeanScript.Term.Common
-import LeanScript.Ty.LeanPrimTyCovariant
+import LeanScript.Ty.Syntax.Decl
+import LeanScript.Term.Syntax.Common
+import LeanScript.Ty.Syntax.LeanPrimTyCovariant
 import NonEmpty.String.Basic
 import NonEmpty.ListCorrectByConstruction.Basic
 import NonEmpty.ArrayCorrectByConstruction.Basic

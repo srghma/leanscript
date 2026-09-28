@@ -1,7 +1,7 @@
 module
 prelude
-public import LeanScript.Ty.LeanPrimTy
-public import LeanScript.Ty.LeanPrimTyCovariant
+public import LeanScript.Ty.Syntax.LeanPrimTy
+public import LeanScript.Ty.Syntax.LeanPrimTyCovariant
 public import LeanScript.LeanInitPureExterns.Core
 public import LeanScript.LeanInitPureExterns.FixedWidth
 public import LeanScript.LeanInitPureExterns.String
@@ -73,7 +73,7 @@ Each `-- Init/…` section of the catalogue is an inductive of its own (a *famil
 `PreludeExtern`, `StringBasicExtern`, …; the long `UInt`/`SInt` sections are split by
 width), and `LeanInitPureExtern` has one constructor per family, holding an entry of it.
 The constructors of the entries are the families' (`PreludeExtern.lean_nat_add`); the
-module `LeanScript.LeanInitPureExternShorthands` derives for each one a shorthand
+module `LeanScript.LeanInitPureExterns.Shorthands` derives for each one a shorthand
 in `LeanInitPureExtern`'s own namespace (`LeanInitPureExtern.lean_nat_add a b` is
 `.preludeExtern (.lean_nat_add a b)`), usable in patterns as well, so an entry is still written
 `.lean_nat_add a b` wherever a `LeanInitPureExtern` is expected.

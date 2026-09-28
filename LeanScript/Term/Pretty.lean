@@ -1,7 +1,7 @@
 module
 
-public import LeanScript.Term.Term
-public import LeanScript.Term.ExternName
+public import LeanScript.Term.Syntax.Term
+public import LeanScript.Term.Extern.Name
 
 @[expose] public section
 

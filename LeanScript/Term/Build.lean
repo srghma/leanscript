@@ -1,7 +1,7 @@
 module
 
-public import LeanScript.Term.Eval
-public import LeanScript.Term.ExternEval
+public import LeanScript.Term.Semantics.Eval
+public import LeanScript.Term.Extern.Eval
 
 @[expose] public section
 

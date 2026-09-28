@@ -1,10 +1,10 @@
 # Proposal: let `Term.eval` run recursive tagged unions
 
 > **Status: implemented.**  The construction below is now in the library:
-> `LeanScript/Den/Cont.lean` (containers, W-trees, `WTree.memo`), `LeanScript/Ty/Den.lean`
+> `LeanScript/Den/Cont.lean` (containers, W-trees, `WTree.memo`), `LeanScript/Ty/Den/Basic.lean`
 > (`Ty.Cont`, and `Ty.Den` as its shapes), `LeanScript/Den/Rec.lean` (`roll`/`unroll`,
 > `Ty.DenRec.mk`/`unfold`, the `TyWf` bridge, `recBindEnv`, `Ty.DenRec.toList`),
-> `LeanScript/Eval/NoRecMk.lean` and `LeanScript/Term/Eval.lean` (the four clauses and the four
+> `LeanScript/Eval/NoRecMk.lean` and `LeanScript/Term/Semantics/Eval.lean` (the four clauses and the four
 > `FoldK` evaluators), and `LeanScript/RecUnionEvalFacts.lean` (the theorems of §5).  The
 > text below is kept as the design record; its "not added" wording describes the state
 > before the implementation.
@@ -34,16 +34,16 @@ how the same construction would extend to them.
 
 ## 1. Where things stand
 
-* `LeanScript/Ty/Den.lean`: `Ty.Den` maps each of the four binders, and `Ty.self` /
+* `LeanScript/Ty/Den/Basic.lean`: `Ty.Den` maps each of the four binders, and `Ty.self` /
   `Ty.familyMember`, to `PEmpty`.
 * `LeanScript/Eval/NoRecMk.lean`: `Term.NoRecMk` is `False` at the four `_mk`
   constructors. At the eliminators it only asks about the scrutinee, because the branches
   are never reached.
-* `LeanScript/Term/Eval.lean`: the eliminators evaluate to `PEmpty.elim (Term.eval G v env h)`.
+* `LeanScript/Term/Semantics/Eval.lean`: the eliminators evaluate to `PEmpty.elim (Term.eval G v env h)`.
 * `TermTests/EvalCoverageTest.lean` proves that this restriction is forced by the model:
   `natListTy` denotes an empty type, so no evaluator can be total.
 
-So a translated `List Nat` program (`TermTests/ToTermTest/Basic.lean`, "Lists") can be
+So a translated `List Nat` program (`TermTests/ToTerm/ToTermTest/Basic.lean`, "Lists") can be
 type-checked but not run.
 
 ## 2. Why this is hard in Lean
@@ -248,7 +248,7 @@ branch-family predicates. The `no_rec_mk` macro (`trivial` / `And.intro`) needs 
 The branches now appear in the conjunction. That is required: once the scrutinee has
 values, a branch that builds a `recObject` value really is evaluated.
 
-### 4.2 The four clauses of `Term.eval` (`LeanScript/Term/Eval.lean`)
+### 4.2 The four clauses of `Term.eval` (`LeanScript/Term/Semantics/Eval.lean`)
 
 ```lean
   | _, _, .recTaggedUnion_mk l hwf t ht fields, env, h =>
@@ -358,14 +358,14 @@ of the `rfl` facts at the end of `Eval.lean`:
   something to run. For example, `fib`/`hexa`/`fibTR`/`fibPair`/`cont` on Peano numbers
   and lists, checked by `decide`/`rfl` against their Lean versions (as `NatRecDepthTest`
   does for `nat_rec`).
-* `TermTests/ToTermTest/Basic.lean` "Lists": `digitList_term`, `prepend_term`,
+* `TermTests/ToTerm/ToTermTest/Basic.lean` "Lists": `digitList_term`, `prepend_term`,
   `firstOrZero`, … can now be run, e.g. `run firstOrZero_term digitList_term = 1`. Their
   results are W-trees, so a result of list type should be compared after a small
   `toList` read-back (§7).
-* Update the prose in `LeanScript/Ty/Den.lean` (header table), `LeanScript/Term/Eval.lean`
+* Update the prose in `LeanScript/Ty/Den/Basic.lean` (header table), `LeanScript/Term/Semantics/Eval.lean`
   (header), `LeanScript/Eval/NoRecMk.lean` (section header),
   `LeanScript/ToTerm/Overview.lean` (the "Lists" paragraph) and
-  `TermTests/ToTermTest/Basic.lean`, all of which say that a recursive tree has no values.
+  `TermTests/ToTerm/ToTermTest/Basic.lean`, all of which say that a recursive tree has no values.
 
 ## 7. Nice to have
 

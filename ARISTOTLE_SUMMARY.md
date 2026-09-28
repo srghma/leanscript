@@ -1,3 +1,43 @@
+# Summary of changes for run 67f85bf7-a16b-4270-b0b9-0b56d38d291b
+I reorganised `LeanScript/Term` into subdirectories grouped by what each module is for, and did the same for `LeanScript/Ty` and `Tests/TermTests`. No declarations, namespaces or proofs changed. Only file locations, module names in `import` lines, and references to modules and paths in docs and comments changed. Everything is committed.
+
+**Why `build_targets` is empty:** `lake build` can't run in this checkout. The lakefile requires `mathlib`, but `lake-manifest.json` has no entry for it. So I checked everything in a copy of the tree with the Mathlib requirement removed. That also meant leaving out `LeanScript/Term/Syntax/UsageAlgebra.lean`, the only file that imports Mathlib. Its only change is its import line, but it has not been compiled.
+
+**New layout of `LeanScript/Term`** (also described in the new `LeanScript/Term/README.md`)
+- `Syntax/`: `DeBruijn`, `Tuple`, `Usage`, `UsageAlgebra`, `Common`, `Ctx`, `Term`, `Packed`
+- `Extern/`:
+  - `Catalogue` (was `Extern`), `Name`, `NameElab`, `Shorthands`
+  - `Eval` (was `ExternEval`), with `Eval/{Core,UInt,SInt,String,Float}`
+- `Semantics/`: `Den`, `Eval`, `Closed`, `NormalValue`, `BoundedLoop`
+- `Rename/`: `Basic` (was `Rename`), `Eval`, `Comp`, `Weaken`
+- `Optimize/`: `Occ`, `Dce`, `Basic` (was `Optimize`), `OpenRec`
+- `Rewrite/`: `Abstract` (was `Rewriting`), `Step`, `StepRename`, `StepInv`, `ChurchRosser`, `SimpStep`
+- These stay at the top level as entry points: `Build.lean` (used by the elaborators and tests) and `Pretty.lean` (used by the command-line tool).
+
+**Other moves**
+- `LeanScript/Ty/`:
+  - `Syntax/` holds `LeanPrimTy`, `LeanPrimTyCovariant`, `EnumSchema`, `Ty`, `Decl`.
+  - `Den/` holds `Container`, `Basic` (was `Den`), `Facts`, `Brec`, `Two`, `Three`.
+- `LeanScript/LeanInitPureExternShorthands.lean` is now `LeanScript/LeanInitPureExterns/Shorthands.lean`.
+- `Tests/TermTests/` now follows the source layout: `Syntax/`, `Semantics/`, `Extern/`, `Optimize/`, `ToTerm/`, and `Datatypes/` for the indexed-family, nested, quotient and rose-tree tests together with their proof files.
+- `Tests/TyTests` is unchanged. Its expected outputs contain names built from the module name (for example `TyTests.GetCtorTest.…`), so moving it would change those outputs.
+
+**References updated to match**
+- All importers (`GenElab`, `TermElab`, `WFTerm`, `MoreJsTy`, `LeanScriptCli`, `Tests/Main.lean`, the tests, `proposals/*.lean`).
+- The module name that the command-line tool imports at run time (`LeanScriptCli/Frontend.lean`).
+- Module and path references in `README.md`, `NOT_IMPLEMENTED.md`, `proposals/*.md` and doc comments. `ARISTOTLE_SUMMARY.md` and the snapshot outputs were not touched.
+
+**Checks run in that copy**
+- `lake build` of the default targets passed, both after the `LeanScript` move and after the `TermTests` move.
+- `MoreJsTy`, `LeanScriptCli`, the `leanscript` executable, `Spec` and the `LanguageJavascript*` libraries also built.
+- `lake exe tests` passed 45 of 45.
+- I built the original commit the same way and ran `leanscript --check` on six snapshot files in both trees, one file per run: `TcoAck`, `StringWalk`, `AppArity` and three from `Tests/SnapshotsPBOPure`. The outputs were byte-for-byte identical.
+- No `sorry` was found in `LeanScript/Term`.
+
+**One oddity you may hit:** when `StringWalk.lean` and `AppArity.lean` were passed to a single `leanscript` call, the second file's functions were reported as `noncomputable`. Run on its own, `AppArity.lean` gives the committed output. I only saw this on the reorganised tree and did not test the original tree in that mode, so I can't say whether it predates this change. The snapshot script runs one file per call and is not affected.
+
+The Properties table now points each result at its new file; their statuses are unchanged.
+
 # Summary of changes for run b17cc614-820d-4167-a580-8242bc29d1e6
 The four outputs (`FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt`, `FILE.js`, plus `FILE.check.mjs`) now also cover well-founded functions in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`. The tool already handled most of this before this session. I rebuilt it and reran it on every file, and it reproduced the committed outputs exactly. That rerun showed which well-founded functions were still refused, and I fixed the one blocker that could be fixed without a larger redesign.
 

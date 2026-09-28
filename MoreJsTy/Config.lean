@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Ty.LeanPrimTy
+public import LeanScript.Ty.Syntax.LeanPrimTy
 
 @[expose] public section
 

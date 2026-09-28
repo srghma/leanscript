@@ -50,7 +50,7 @@ structure Matrix where
 /-! ## 3. Non-regular (polymorphic) recursion: infinitely many members
 
 (Now read with its type index erased through a generated element type, `Nest.Elem`: see
-`TermTests/NestTest.lean`.) -/
+`TermTests/Datatypes/NestTest.lean`.) -/
 
 inductive Nest : Type → Type 1 where
   | nil {α : Type} : Nest α
@@ -69,7 +69,7 @@ inductive Tree where
 /-! ## 5. Structure inside a container element (`WTyToy`: direct; `NomTyToy`: extra member)
 
 (Supported with extra members: `T5`'s block is `T5`, `Option T5`, `Option T5 × Nat`, and the
-array holds the third; see `TermTests/RoseVariantsTest.lean`.) -/
+array holds the third; see `TermTests/Datatypes/RoseVariantsTest.lean`.) -/
 
 inductive T5 where
   | leaf : Nat → T5
@@ -77,7 +77,7 @@ inductive T5 where
 
 /-! ## 6. Quotients and proof-carrying data
 
-Supported through erasure (`TermTests/QuotientTest.lean`): a quotient is read as its carrier
+Supported through erasure (`TermTests/Datatypes/QuotientTest.lean`): a quotient is read as its carrier
 (`QT` is `leaf | node Nat QT`, a class is given by a representative, `Quot.lift f h q` is `f`
 of the representative), and a proof field is dropped (`Pos` is `Nat`). -/
 
@@ -93,7 +93,7 @@ structure Pos where
 
 (Each instance is its own datatype: `RoseTree Nat` with `List`, `Array` or `Fin m →` children
 are three different datatypes — a linked-list member, a `Ty.array`, and a record of a `nat`
-and a function to `Option`; see `TermTests/RoseVariantsTest.lean`.) -/
+and a function to `Option`; see `TermTests/Datatypes/RoseVariantsTest.lean`.) -/
 
 inductive RoseTree (α : Type u) where
   | node : α → List (RoseTree α) → RoseTree α

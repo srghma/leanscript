@@ -1,7 +1,7 @@
 module
 
 public import MoreJsTy.Syntax
-public import LeanScript.Term.ExternName
+public import LeanScript.Term.Extern.Name
 
 @[expose] public section
 

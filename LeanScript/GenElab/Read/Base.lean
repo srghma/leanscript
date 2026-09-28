@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Term
+public import LeanScript.Term.Syntax.Term
 public meta import Lean.Elab.Command
 public meta import Lean.Meta.Constructions.CasesOn
 

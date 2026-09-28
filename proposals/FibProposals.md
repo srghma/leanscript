@@ -17,7 +17,7 @@ def fib : Nat → Nat
   | n + 2 => fib n + fib (n + 1)
 ```
 
-This was the definition `TermTests/ToTermTest/` pinned as **refused**, with
+This was the definition `TermTests/ToTerm/ToTermTest/` pinned as **refused**, with
 
 > `#leanscript_to_term`: this recursion reads the value of the function at an argument
 > that is not the immediate predecessor, and the grammar's folds descend one step at a
@@ -81,7 +81,7 @@ Two places decide this, and they agree:
   that predecessor** (index `1`).  There is no index that holds the value two steps
   down, and that is on purpose: a branch is *given* values, it never makes a call, which
   is exactly why a term is terminating by construction and why `Term.eval`
-  (`LeanScript/Term/Eval.lean`) is a total Lean function with no fuel.
+  (`LeanScript/Term/Semantics/Eval.lean`) is a total Lean function with no fuel.
 
 * **The translation** (`LeanScript.ToTerm.transBrecOn`).  Lean compiles a structural
   recursion to `Nat.brecOn`, whose branch receives the whole *history* — the value of
@@ -279,10 +279,10 @@ above, none of which any *user* of the language ever sees.
 | file | change |
 | :-- | :-- |
 | `LeanScript/Expr.lean` | `natRecCtx`; the `nat_recK` constructor; a line in the grammar's prose beside `nat_rec`; optionally the `nat_rec2` abbreviation of §4.5 |
-| `LeanScript/Term/Eval.lean` | `Win`, `wget`, `wpush`, `winOfDenList`, `Env.ofWin`, `natFoldKAux`, `natFoldK`; one `Term.NoRecMk` clause (`.nat_recK _ n base branch => Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch`); one `Term.eval` clause (`evalNatRecK`) |
+| `LeanScript/Term/Semantics/Eval.lean` | `Win`, `wget`, `wpush`, `winOfDenList`, `Env.ofWin`, `natFoldKAux`, `natFoldK`; one `Term.NoRecMk` clause (`.nat_recK _ n base branch => Term.NoRecMk n ∧ Spine.NoRecMk base ∧ Term.NoRecMk branch`); one `Term.eval` clause (`evalNatRecK`) |
 | `LeanScript/TermElab/ToTerm.lean` | `transBrecOn` reads the **depth** off the history instead of demanding depth one (§4.6); `transRecCore` gains the case; the refusal message is narrowed (§7) |
 | the JavaScript backend | one node: a loop carrying `k + 1` rolling accumulators (§4.7) |
-| `TermTests/ToTermTest/`, `TermTests/EvalTest.lean`, `TermTests/TermTest.lean` | `fib` moves from the refusals to the value checks; a depth-three test (tribonacci) alongside it |
+| `TermTests/ToTerm/ToTermTest/`, `TermTests/EvalTest.lean`, `TermTests/Syntax/TermTest.lean` | `fib` moves from the refusals to the value checks; a depth-three test (tribonacci) alongside it |
 | `docs/TermTypeSafety.md`, `LeanScript/Expr.lean`'s header | "the two folds" becomes "the three folds" |
 
 Nothing else.  `Term.NoRecMk` is a plain structural predicate, and the two theorems

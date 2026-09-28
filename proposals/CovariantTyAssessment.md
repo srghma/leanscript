@@ -28,16 +28,16 @@ It was a deliberate decision in the nominal redesign (`proposals/NominalTyPropos
 
 The same reason is in the reader's error (`LeanScript/GenElab/Read.lean`, the ``Thunk`` case of
 `classify`), in the module doc of `LeanScript/GenElab/Signature.lean`, and in a test that checks the
-error message (`TermTests/ToTermTest.lean`, `forceB`).
+error message (`TermTests/ToTerm/ToTermTest.lean`, `forceB`).
 
 In practice, the decision protects one proved theorem and one design rule.
 
-* **Theorem `Ty.eq_bool_of_two_points`** (`LeanScript/Ty/Three.lean`): every closed type whose
+* **Theorem `Ty.eq_bool_of_two_points`** (`LeanScript/Ty/Den/Three.lean`): every closed type whose
   meaning has at most two points *is* `Ty.bool`. With a delay, `Ty.den (thunk bool)` is
   `Thunk Bool` (or `Unit → Bool` for `lazy`), which has exactly two values. So the theorem
   becomes **false**. The toy proves this (`thunk_bool_two_points`, `thunk_bool_ne_bool`).
 * **Rule "each finite set of points has exactly one type"** (module doc of
-  `LeanScript/Ty/Ty.lean`, `UnionShape`, `LeanPrimTy.Nondeg`). With delays, `t`, `thunk t`,
+  `LeanScript/Ty/Syntax/Ty.lean`, `UnionShape`, `LeanPrimTy.Nondeg`). With delays, `t`, `thunk t`,
   `lazy t`, `thunk (lazy t)`, … all have isomorphic meanings.
 
 The reason given ("a delay denotes the value it stands for") assumes a delay would *mean* its
@@ -60,8 +60,8 @@ history does not contain it, so these items were not re-checked against old code
 | `Thunk τ` as a type | `TyShape` held a `LeanPrimTyCovariant` (`array` / `thunk` / `lazy`) | refused (`Gen/Read.lean`) |
 | `lazy τ` (a JS `() => …`) | same former, used by many catalogue entries (`Lean.version.getMajor : lazy nat`, `System.Platform.getTarget : lazy string`, `Thunk.mk : lazy α → thunk α`, …) | no `Ty` for it, so the catalogue in `LeanInitPureExterns/` is not instantiated at `Ty` (it still takes an abstract `MyTy` with `Coe (LeanPrimTyCovariant MyTy) MyTy`) |
 | term formers for delays | "lazy/thunk forcing" in the old evaluator (`thunk_mk`, `thunk_force`, …) | none |
-| `Thunk T` fields in recursive / `mutual` families | the `TA`/`TB` tests of the old `NestedFamily.lean`; the fold passed `thunk_mk (thunk_force w).1` at such a field | refused: `Fld` (`LeanScript/Ty/Decl.lean`) has only `hole` / `old` / `array` / `fn` |
-| a `Unit` **argument** | dropped: "Functions become `⇒` (a `Unit`, proof or instance argument is dropped)", so `Unit → τ` was read as `τ` | refused: `Unit` has one value, so it has no type, and `withUnit (_u : Unit) (n : Nat)` is pinned as refused in `TermTests/ToTermTest.lean` |
+| `Thunk T` fields in recursive / `mutual` families | the `TA`/`TB` tests of the old `NestedFamily.lean`; the fold passed `thunk_mk (thunk_force w).1` at such a field | refused: `Fld` (`LeanScript/Ty/Syntax/Decl.lean`) has only `hole` / `old` / `array` / `fn` |
+| a `Unit` **argument** | dropped: "Functions become `⇒` (a `Unit`, proof or instance argument is dropped)", so `Unit → τ` was read as `τ` | refused: `Unit` has one value, so it has no type, and `withUnit (_u : Unit) (n : Nat)` is pinned as refused in `TermTests/ToTerm/ToTermTest.lean` |
 | a `Unit` **field** | erased | refused ("a `Unit` field is refused, not erased"); `Option Unit` is refused rather than read as `Bool` |
 | existentially typed datatypes (`Process`, `Client`/`Server`, `Unfold`) | `Twin`/`Seal`, with one layout per constructor | removed at your request, earlier |
 
@@ -173,7 +173,7 @@ definition; **design** means a decision is needed; **proof** means a theorem cha
 
 ### Tests whose expectations change
 
-* `TermTests/ToTermTest.lean`: `forceB (t : Thunk Bool) : Bool := t.get` goes from refused
+* `TermTests/ToTerm/ToTermTest.lean`: `forceB (t : Thunk Bool) : Bool := t.get` goes from refused
   to translated. `withUnit (_u : Unit) (n : Nat)` goes from refused to translated, as
   `lazy (Nat → Nat)`. The module doc lists both as refusals.
 * `TyTests/ThreeTest.lean`: the statement of `eq_bool_of_two_points`.

@@ -1,6 +1,6 @@
 module
 
-import LeanScript.Ty.Three
+import LeanScript.Ty.Den.Three
 
 /-!
 # Tests: two points are only ever `bool`

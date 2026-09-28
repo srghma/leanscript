@@ -1,6 +1,6 @@
 module
 
-import LeanScript.Ty.LeanPrimTy
+import LeanScript.Ty.Syntax.LeanPrimTy
 meta import HashableFloat.HashableFloat
 meta import Std.Data.HashMap.Basic
 

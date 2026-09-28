@@ -1,8 +1,8 @@
 module
 
-public import LeanScript.Ty.LeanPrimTy
-public import LeanScript.Ty.LeanPrimTyCovariant
-public import LeanScript.Ty.EnumSchema
+public import LeanScript.Ty.Syntax.LeanPrimTy
+public import LeanScript.Ty.Syntax.LeanPrimTyCovariant
+public import LeanScript.Ty.Syntax.EnumSchema
 
 /-!
 # Toy: `Ty.array` replaced by `Ty.cov (LeanPrimTyCovariant (Ty ks))`
@@ -16,7 +16,7 @@ lake env lean proposals/CovTyToy.lean
 (after `lake build LeanScript.LeanPrimTy LeanScript.LeanPrimTyCovariant LeanScript.EnumSchema`).
 
 It checks the kernel/elaborator-level claims of the assessment on a trimmed copy of
-`LeanScript/Ty/Ty.lean` (`prim`, `fn`, `cov`, `record`/`Fields`; no `union`, `enum`, `data`):
+`LeanScript/Ty/Syntax/Ty.lean` (`prim`, `fn`, `cov`, `record`/`Fields`; no `union`, `enum`, `data`):
 
 1. the nested occurrence `LeanPrimTyCovariant (Ty ks)` inside the `mutual` block is accepted;
 2. `DecidableEq` and `Repr` still derive;
@@ -25,7 +25,7 @@ It checks the kernel/elaborator-level claims of the assessment on a trimmed copy
 4. `Ty.map` / `Ty.map_id` stay structural;
 5. `Ty.den` with `thunk ↦ Thunk`, `lazy ↦ Unit → _`;
 6. the precise thing that breaks: `Ty.den (.cov (.thunk .bool))` has exactly two values,
-   so `Ty.eq_bool_of_two_points` (in `LeanScript/Ty/Three.lean`) would become false.
+   so `Ty.eq_bool_of_two_points` (in `LeanScript/Ty/Den/Three.lean`) would become false.
 -/
 
 @[expose] public section

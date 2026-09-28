@@ -38,7 +38,7 @@ one real casualty, and the proposal has been corrected (§3.3, §10).
 
 ## 2. "`Ty.Den .self : PUnit` was checked by `rg`, not by argument": fair, and now checked by building
 
-The same patch changes `| .self => PEmpty` to `| .self => PUnit` in `LeanScript/Ty/Den.lean`.
+The same patch changes `| .self => PEmpty` to `| .self => PUnit` in `LeanScript/Ty/Den/Basic.lean`.
 The full build passes. That includes `EvalCoverageTest` (whose emptiness arguments are
 about `recTaggedUnion`, not `self`) and anything that found `Subsingleton`, `IsEmpty` or
 `decide` instances for a type. So no proof depended on `Ty.Den .self` being empty, either

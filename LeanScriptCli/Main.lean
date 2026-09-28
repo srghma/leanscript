@@ -2,7 +2,7 @@ import LeanScriptCli.Frontend
 import LeanScriptCli.Check
 import LeanScriptCli.RecCalls
 import LeanScript.Term.Pretty
-import LeanScript.Term.Optimize
+import LeanScript.Term.Optimize.Basic
 import MoreJsTy.FromTerm
 import MoreJsTy.PrintMini
 

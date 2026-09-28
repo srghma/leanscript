@@ -12,7 +12,7 @@ by area and ordered roughly by how much they would help compared with what they 
 ### A1. Prove that `#leanscript_to_term` is correct
 **Today.** `#leanscript_to_term` (in `LeanScript/ToTerm/*`) is a meta-program. What it
 produces has the right type, because `Term` is intrinsically typed. Nothing states that
-it has the right *value*. `TermTests/ToTermTest/` checks individual outputs with
+it has the right *value*. `TermTests/ToTerm/ToTermTest/` checks individual outputs with
 `example : run foo_term 7 = 7 := rfl`.
 
 **Proposal.** Make the translator also produce a proof that `Term.run G t = f`, where `f` is
@@ -40,7 +40,7 @@ to state correctness for inputs and outputs of user-defined types.
 
 ### A3. Syntactic metatheory for `Term`
 **Today.** `Term` has no renaming, weakening or substitution. `Term.eval_beta`
-(`LeanScript/Term/Eval.lean`) states β-reduction semantically.
+(`LeanScript/Term/Semantics/Eval.lean`) states β-reduction semantically.
 
 **Proposal.** Define `Term.rename` (for context inclusions) and `Term.subst`, and prove
 `eval (rename ρ t) env = eval t (env ∘ ρ)` and the same for substitution. This lets you
@@ -100,7 +100,7 @@ everything in `Type`. Note the `Unfold` example you gave only erases a `Prop` fi
 repeat a pass over `Ty`/`TyShape`/`List Ty`/schemas. A single `Ty.foldM` (or a
 `TyShape.map` with a `LawfulFunctor` proof) would remove most of that repetition. The catch:
 `Ty.Den` depends on these equations holding *definitionally*
-(`LeanScript/Ty/Den.lean`, line 40 onward), so that one should stay hand-written. The
+(`LeanScript/Ty/Den/Basic.lean`, line 40 onward), so that one should stay hand-written. The
 proof-level traversals are the candidates.
 
 ### B5. Syntax for trees
@@ -162,7 +162,7 @@ them, or be parametrised the way `ToTerm/Cases.lean` now takes a `BranchFn`.
 ### D3. A test that the import graph has no cycles or umbrella modules
 You want every file to import its children one by one. A small script or a `#guard`
 over `Lean.Environment.importGraph` could check two things: that no
-`LeanScript/Ty/Ty.lean`-style file re-exporting other modules comes back, and that
+`LeanScript/Ty/Syntax/Ty.lean`-style file re-exporting other modules comes back, and that
 `Ty/Class.lean` does not become circular again.
 
 ### D4. Put the loose markdown files in one place
@@ -172,7 +172,7 @@ find, and stale sections could then be removed. For example, `proposals/FibPropo
 five proposals, one of which is now implemented.
 
 ### D5. Refusal-message tests for every `throwError`
-`LeanScript/ToTerm` has about 90 `throwError` sites. `TermTests/ToTermTest/` and
+`LeanScript/ToTerm` has about 90 `throwError` sites. `TermTests/ToTerm/ToTermTest/` and
 `TyTests/DocumentedMistakesTest.lean` cover some of them with `#guard_msgs`. A
 `#guard_msgs` test for each user-facing refusal would keep the messages from drifting
 unnoticed. Messages marked `internal:` should be unreachable, and a comment or a proof
