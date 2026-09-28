@@ -37,7 +37,7 @@ with Batteries and Aesop); `LeanScript/Term/UsageAlgebra.lean` takes the algebra
 scripts/install-leanscript.sh                 # builds it, links ./.lake/bin/leanscript
 ./.lake/bin/leanscript Tests/SnapshotsMy/TcoAck.lean     # or a module name: SnapshotsMy.TcoAck
 ./.lake/bin/leanscript --preset=pbo --check FILE.lean    # numbers instead of BigInt; differential checks
-scripts/leanscript-snapshots.sh               # every Tests/SnapshotsMy/*.lean, checks run with node
+scripts/leanscript-snapshots.sh               # Tests/SnapshotsMy + Tests/SnapshotsPBOPure (files with a public structurally total function), checks run with node
 ```
 
 For each public, structurally total function of the file, `leanscript` reads its `Expr`

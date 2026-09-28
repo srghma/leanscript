@@ -2,7 +2,24 @@
 -- configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 -- not translated:
 --   printAll: an `IO`/`ST` action: the language has no side effects
---   countUp: a `partial` definition
 --   main: an `IO`/`ST` action: the language has no side effects
 --   messages: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
 
+-- countUp : String → Nat → Nat → Nat → Nat
+val k1 [ω] : (String → (Nat → (Nat → (Nat → Nat)))) := fun x2 [ω] : String => (closed)
+  val k3 [ω] : (Nat → (Nat → (Nat → Nat))) := fun x4 [ω] : Nat => (closed)
+    val k5 [ω] : (Nat → (Nat → Nat)) := fun x6 [ω] : Nat => (open)
+      val k7 [ω] : (Nat → Nat) := fun x8 [ω] : Nat => (open)
+        val k9 [ω] : (Nat → Nat) := fun x10 [ω] : Nat => (closed)
+          ret x10
+        let x16 [ω] : (Nat → Nat) := nat_rec x6 k9 fun acc11 i12 => (open)
+          val k13 [ω] : (Nat → Nat) := fun x14 [ω] : Nat => (open)
+            let x15 [ω] : Nat := acc11 lean_nat_add(x14, x4)
+            ret x15
+          ret k13
+        let x17 [ω] : Nat := x16 x8
+        ret x17
+      ret k7
+    ret k5
+  ret k3
+ret k1

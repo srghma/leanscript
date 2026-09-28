@@ -32,18 +32,18 @@ function check(label, thunk, expected, isFloat) {
 
 check("test2([], [])", () => M.test2([], []), "#[]", false);
 check("test2([], [0n])", () => M.test2([], [0n]), "#[0]", false);
-check("test2([], [0n, 1n, 2n])", () => M.test2([], [0n, 1n, 2n]), "#[0, 1, 2]", false);
-check("test2([], [13n, 5n, 2n, 1n])", () => M.test2([], [13n, 5n, 2n, 1n]), "#[13, 5, 2, 1]", false);
 check("test2([0n], [])", () => M.test2([0n], []), "#[0]", false);
+check("test2([], [0n, 1n, 2n])", () => M.test2([], [0n, 1n, 2n]), "#[0, 1, 2]", false);
 check("test2([0n], [0n])", () => M.test2([0n], [0n]), "#[0, 0]", false);
-check("test2([0n], [0n, 1n, 2n])", () => M.test2([0n], [0n, 1n, 2n]), "#[0, 0, 1, 2]", false);
-check("test2([0n], [13n, 5n, 2n, 1n])", () => M.test2([0n], [13n, 5n, 2n, 1n]), "#[0, 13, 5, 2, 1]", false);
 check("test2([0n, 1n, 2n], [])", () => M.test2([0n, 1n, 2n], []), "#[0, 1, 2]", false);
+check("test2([], [13n, 5n, 2n, 1n])", () => M.test2([], [13n, 5n, 2n, 1n]), "#[13, 5, 2, 1]", false);
+check("test2([0n], [0n, 1n, 2n])", () => M.test2([0n], [0n, 1n, 2n]), "#[0, 0, 1, 2]", false);
 check("test2([0n, 1n, 2n], [0n])", () => M.test2([0n, 1n, 2n], [0n]), "#[0, 1, 2, 0]", false);
-check("test2([0n, 1n, 2n], [0n, 1n, 2n])", () => M.test2([0n, 1n, 2n], [0n, 1n, 2n]), "#[0, 1, 2, 0, 1, 2]", false);
-check("test2([0n, 1n, 2n], [13n, 5n, 2n, 1n])", () => M.test2([0n, 1n, 2n], [13n, 5n, 2n, 1n]), "#[0, 1, 2, 13, 5, 2, 1]", false);
 check("test2([13n, 5n, 2n, 1n], [])", () => M.test2([13n, 5n, 2n, 1n], []), "#[13, 5, 2, 1]", false);
+check("test2([0n], [13n, 5n, 2n, 1n])", () => M.test2([0n], [13n, 5n, 2n, 1n]), "#[0, 13, 5, 2, 1]", false);
+check("test2([0n, 1n, 2n], [0n, 1n, 2n])", () => M.test2([0n, 1n, 2n], [0n, 1n, 2n]), "#[0, 1, 2, 0, 1, 2]", false);
 check("test2([13n, 5n, 2n, 1n], [0n])", () => M.test2([13n, 5n, 2n, 1n], [0n]), "#[13, 5, 2, 1, 0]", false);
+check("test2([0n, 1n, 2n], [13n, 5n, 2n, 1n])", () => M.test2([0n, 1n, 2n], [13n, 5n, 2n, 1n]), "#[0, 1, 2, 13, 5, 2, 1]", false);
 check("test2([13n, 5n, 2n, 1n], [0n, 1n, 2n])", () => M.test2([13n, 5n, 2n, 1n], [0n, 1n, 2n]), "#[13, 5, 2, 1, 0, 1, 2]", false);
 check("test2([13n, 5n, 2n, 1n], [13n, 5n, 2n, 1n])", () => M.test2([13n, 5n, 2n, 1n], [13n, 5n, 2n, 1n]), "#[13, 5, 2, 1, 13, 5, 2, 1]", false);
 

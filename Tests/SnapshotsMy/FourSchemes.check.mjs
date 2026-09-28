@@ -30,6 +30,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("sumAcc(0n, 0n)", () => M.sumAcc(0n, 0n), "0", false);
+check("sumAcc(0n, 2n)", () => M.sumAcc(0n, 2n), "2", false);
+check("sumAcc(1n, 1n)", () => M.sumAcc(1n, 1n), "2", false);
+check("sumAcc(2n, 0n)", () => M.sumAcc(2n, 0n), "3", false);
+check("sumAcc(0n, 13n)", () => M.sumAcc(0n, 13n), "13", false);
+check("sumAcc(1n, 5n)", () => M.sumAcc(1n, 5n), "6", false);
+check("sumAcc(2n, 2n)", () => M.sumAcc(2n, 2n), "5", false);
+check("sumAcc(5n, 1n)", () => M.sumAcc(5n, 1n), "16", false);
+check("sumAcc(13n, 0n)", () => M.sumAcc(13n, 0n), "91", false);
+check("sumAcc(2n, 13n)", () => M.sumAcc(2n, 13n), "16", false);
+check("sumAcc(5n, 5n)", () => M.sumAcc(5n, 5n), "20", false);
+check("sumAcc(13n, 2n)", () => M.sumAcc(13n, 2n), "93", false);
+check("sumAcc(13n, 13n)", () => M.sumAcc(13n, 13n), "104", false);
+check("factD(0n)", () => M.factD(0n), "1", false);
+check("factD(1n)", () => M.factD(1n), "1", false);
+check("factD(2n)", () => M.factD(2n), "2", false);
+check("factD(5n)", () => M.factD(5n), "120", false);
+check("factD(13n)", () => M.factD(13n), "6227020800", false);
 
 console.log(`FourSchemes.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

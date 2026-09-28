@@ -2,10 +2,8 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.GenerateProgram
 // not translated:
-//   sumAcc: a `partial` definition
-//   factD: a `partial` definition
-//   gcdT: a `partial` definition
-//   stepsDown: a `partial` definition
+//   gcdT: defined by well-founded recursion, not structurally
+//   stepsDown: defined by well-founded recursion, not structurally
 //   SnapshotsMy.FourSchemesCheck.runFactD: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.FourSchemesCheck.pGcdT: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.FourSchemesCheck.runGcdT: the definition does not elaborate (it contains errors or `sorry`)
@@ -15,3 +13,32 @@
 //   SnapshotsMy.FourSchemesCheck.runSumAcc: the definition does not elaborate (it contains errors or `sorry`)
 
 
+/**
+ * `sumAcc`
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @returns {nat(bigint)}
+ */
+export function sumAcc(a, a1) {
+  const k$1 = (x$2) => x$2;
+  let acc$3 = k$1;
+  for (let i$4 = 0n; i$4 < a; i$4++) {
+    const a$5 = acc$3;
+    const k$6 = (x$7) => a$5(x$7 + i$4 + 1n);
+    acc$3 = k$6;
+  }
+  return acc$3(a1);
+}
+
+/**
+ * `factD`
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
+ */
+export function factD(a) {
+  let acc$1 = 1n;
+  for (let i$2 = 0n; i$2 < a; i$2++) {
+    acc$1 = (i$2 + 1n) * acc$1;
+  }
+  return acc$1;
+}

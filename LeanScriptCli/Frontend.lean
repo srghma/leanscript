@@ -150,6 +150,16 @@ def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
     return some (.refused "defined by well-founded recursion, not structurally")
   return none
 
+/-- Why a candidate cannot be translated although it is structurally total: the translator
+    reads each member of a `mutual` block on its own, and would take a call to another member
+    for a recursive call to this one, so such a member is refused rather than miscompiled. -/
+def untranslatableReason? (n : Name) : MetaM (Option String) := do
+  let .defnInfo d ← getConstInfo n | return none
+  if d.all.length > 1 then
+    return some s!"part of a `mutual` block ({", ".intercalate (d.all.map toString)}): \
+      mutual recursion is not translated yet"
+  return none
+
 /-- The candidates of the file, in the order of the file, and the refused ones with the
     reason. -/
 def candidates (el : Elaborated) : IO (Array Name × Array (Name × String)) := runTermElab el do

@@ -1,227 +1,220 @@
-import {
-  $lean_int16_div,
-  $lean_int16_neg,
-  $lean_int16_of_nat,
-  $lean_int32_div,
-  $lean_int32_neg,
-  $lean_int32_of_nat,
-  $lean_int8_div,
-  $lean_int8_neg,
-  $lean_int8_of_nat,
-  $lean_uint16_div,
-  $lean_uint16_neg,
-  $lean_uint32_div,
-  $lean_uint32_neg,
-  $lean_uint8_div,
-  $lean_uint8_neg,
-  instDecidableEqInt16,
-  instDecidableEqInt32,
-  instDecidableEqInt8,
-  instDecidableEqUInt16,
-  instDecidableEqUInt32,
-  instDecidableEqUInt8,
-} from "../runtime/lean_runtime_non_configurable.mjs";
-const _private_SnapshotsPBOPure_PrimOpIntDivNonConfigurable_0_TestUInt8_divNoInline = (
-  v0,
-  v1,
-) => $lean_uint8_div(v0, v1);
-export const TestUInt8_test3m2__shouldBeTrue = (() => {
-  const v0 = $lean_uint8_neg(2);
-  const v1 = $lean_uint8_div(3, v0);
-  const v2 = instDecidableEqUInt8(
-    v1,
-    _private_SnapshotsPBOPure_PrimOpIntDivNonConfigurable_0_TestUInt8_divNoInline(
-      3,
-      v0,
-    ),
-  );
-  if (v2) {
-    return instDecidableEqUInt8(v1, 0);
-  } else {
-    return v2;
-  }
-})();
-export const TestUInt8_test3_2__shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt8(
-    1,
-    _private_SnapshotsPBOPure_PrimOpIntDivNonConfigurable_0_TestUInt8_divNoInline(
-      3,
-      2,
-    ),
-  );
-  if (v0) {
-    return instDecidableEqUInt8(1, 1);
-  } else {
-    return v0;
-  }
-})();
-export const TestUInt8_test1_0__shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt8(
-    0,
-    _private_SnapshotsPBOPure_PrimOpIntDivNonConfigurable_0_TestUInt8_divNoInline(
-      1,
-      0,
-    ),
-  );
-  if (v0) {
-    return instDecidableEqUInt8(0, 0);
-  } else {
-    return v0;
-  }
-})();
-export const TestUInt32_divNoInline = (v0, v1) => $lean_uint32_div(v0, v1);
-export const TestUInt32_test3m2_shouldBeTrue = (() => {
-  const v0 = $lean_uint32_neg(2);
-  const v1 = $lean_uint32_div(3, v0);
-  const v2 = instDecidableEqUInt32(v1, TestUInt32_divNoInline(3, v0));
-  if (v2) {
-    return instDecidableEqUInt32(v1, 0);
-  } else {
-    return v2;
-  }
-})();
-export const TestUInt32_test3_2_shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt32(1, TestUInt32_divNoInline(3, 2));
-  if (v0) {
-    return instDecidableEqUInt32(1, 1);
-  } else {
-    return v0;
-  }
-})();
-export const TestUInt32_test1_0_shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt32(0, TestUInt32_divNoInline(1, 0));
-  if (v0) {
-    return instDecidableEqUInt32(0, 0);
-  } else {
-    return v0;
-  }
-})();
-export const TestUInt16_divNoInline = (v0, v1) => $lean_uint16_div(v0, v1);
-export const TestUInt16_test3m2__shouldBeTrue = (() => {
-  const v0 = $lean_uint16_neg(2);
-  const v1 = $lean_uint16_div(3, v0);
-  const v2 = instDecidableEqUInt16(v1, TestUInt16_divNoInline(3, v0));
-  if (v2) {
-    return instDecidableEqUInt16(v1, 0);
-  } else {
-    return v2;
-  }
-})();
-export const TestUInt16_test3_2__shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt16(1, TestUInt16_divNoInline(3, 2));
-  if (v0) {
-    return instDecidableEqUInt16(1, 1);
-  } else {
-    return v0;
-  }
-})();
-export const TestUInt16_test1_0__shouldBeTrue = (() => {
-  const v0 = instDecidableEqUInt16(0, TestUInt16_divNoInline(1, 0));
-  if (v0) {
-    return instDecidableEqUInt16(0, 0);
-  } else {
-    return v0;
-  }
-})();
-export const TestInt8_divNoInline = (v0, v1) => $lean_int8_div(v0, v1);
-export const TestInt8_test3m2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = $lean_int8_neg(2);
-  const v2 = $lean_int8_div(v0, v1);
-  const v3 = instDecidableEqInt8(v2, TestInt8_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt8(v2, $lean_int8_neg(1));
-  } else {
-    return v3;
-  }
-})();
-export const TestInt8_test3_2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = 2;
-  const v2 = $lean_int8_div(v0, v1);
-  const v3 = instDecidableEqInt8(v2, TestInt8_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt8(v2, 1);
-  } else {
-    return v3;
-  }
-})();
-export const TestInt8_test1_0_shouldBeTrue = (() => {
-  const v0 = 1;
-  const v1 = 0;
-  const v2 = $lean_int8_div(v0, v1);
-  const v3 = instDecidableEqInt8(v2, TestInt8_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt8(v2, v1);
-  } else {
-    return v3;
-  }
-})();
-export const TestInt32_divNoInline = (v0, v1) => $lean_int32_div(v0, v1);
-export const TestInt32_test3m2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = $lean_int32_neg(2);
-  const v2 = $lean_int32_div(v0, v1);
-  const v3 = instDecidableEqInt32(v2, TestInt32_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt32(v2, $lean_int32_neg(1));
-  } else {
-    return v3;
-  }
-})();
-export const TestInt32_test3_2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = 2;
-  const v2 = $lean_int32_div(v0, v1);
-  const v3 = instDecidableEqInt32(v2, TestInt32_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt32(v2, 1);
-  } else {
-    return v3;
-  }
-})();
-export const TestInt32_test1_0_shouldBeTrue = (() => {
-  const v0 = 1;
-  const v1 = 0;
-  const v2 = $lean_int32_div(v0, v1);
-  const v3 = instDecidableEqInt32(v2, TestInt32_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt32(v2, v1);
-  } else {
-    return v3;
-  }
-})();
-export const TestInt16_divNoInline = (v0, v1) => $lean_int16_div(v0, v1);
-export const TestInt16_test3m2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = $lean_int16_neg(2);
-  const v2 = $lean_int16_div(v0, v1);
-  const v3 = instDecidableEqInt16(v2, TestInt16_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt16(v2, $lean_int16_neg(1));
-  } else {
-    return v3;
-  }
-})();
-export const TestInt16_test3_2_shouldBeTrue = (() => {
-  const v0 = 3;
-  const v1 = 2;
-  const v2 = $lean_int16_div(v0, v1);
-  const v3 = instDecidableEqInt16(v2, TestInt16_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt16(v2, 1);
-  } else {
-    return v3;
-  }
-})();
-export const TestInt16_test1_0_shouldBeTrue = (() => {
-  const v0 = 1;
-  const v1 = 0;
-  const v2 = $lean_int16_div(v0, v1);
-  const v3 = instDecidableEqInt16(v2, TestInt16_divNoInline(v0, v1));
-  if (v3) {
-    return instDecidableEqInt16(v2, v1);
-  } else {
-    return v3;
-  }
-})();
+// JavaScript of Tests/SnapshotsPBOPure/PrimOpIntDivNonConfigurable.lean, generated by leanscript
+// configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
+
+// ---- runtime helpers ----
+
+function lean_uint16_div(a, b) {
+  return (b === 0 ? 0 : Math.floor(a / b));
+}
+
+function lean_uint32_div(a, b) {
+  return (b === 0 ? 0 : Math.floor(a / b));
+}
+
+function lean_int8_div(a, b) {
+  return (b === 0 ? 0 : (((Math.trunc(a / b)) << 24) >> 24));
+}
+
+function lean_int16_div(a, b) {
+  return (b === 0 ? 0 : (((Math.trunc(a / b)) << 16) >> 16));
+}
+
+function lean_int32_div(a, b) {
+  return (b === 0 ? 0 : ((Math.trunc(a / b)) | 0));
+}
+
+// ---- exported functions ----
+
+/**
+ * `TestUInt8.test1_0__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt8_test1_0__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt8.test3_2__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt8_test3_2__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt8.test3m2__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt8_test3m2__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt16.divNoInline`
+ * @param {uint16} a
+ * @param {uint16} b
+ * @returns {uint16}
+ */
+export function TestUInt16_divNoInline(a, b) {
+  return lean_uint16_div(a, b);
+}
+
+/**
+ * `TestUInt16.test1_0__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt16_test1_0__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt16.test3_2__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt16_test3_2__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt16.test3m2__shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt16_test3m2__shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt32.divNoInline`
+ * @param {uint32} a
+ * @param {uint32} b
+ * @returns {uint32}
+ */
+export function TestUInt32_divNoInline(a, b) {
+  return lean_uint32_div(a, b);
+}
+
+/**
+ * `TestUInt32.test1_0_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt32_test1_0_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt32.test3_2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt32_test3_2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestUInt32.test3m2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestUInt32_test3m2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt8.divNoInline`
+ * @param {int8} a
+ * @param {int8} b
+ * @returns {int8}
+ */
+export function TestInt8_divNoInline(a, b) {
+  return lean_int8_div(a, b);
+}
+
+/**
+ * `TestInt8.test1_0_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt8_test1_0_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt8.test3_2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt8_test3_2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt8.test3m2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt8_test3m2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt16.divNoInline`
+ * @param {int16} a
+ * @param {int16} b
+ * @returns {int16}
+ */
+export function TestInt16_divNoInline(a, b) {
+  return lean_int16_div(a, b);
+}
+
+/**
+ * `TestInt16.test1_0_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt16_test1_0_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt16.test3_2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt16_test3_2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt16.test3m2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt16_test3m2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt32.divNoInline`
+ * @param {int32} a
+ * @param {int32} b
+ * @returns {int32}
+ */
+export function TestInt32_divNoInline(a, b) {
+  return lean_int32_div(a, b);
+}
+
+/**
+ * `TestInt32.test1_0_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt32_test1_0_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt32.test3_2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt32_test3_2_shouldBeTrue() {
+  return true;
+}
+
+/**
+ * `TestInt32.test3m2_shouldBeTrue`
+ * @returns {boolean}
+ */
+export function TestInt32_test3m2_shouldBeTrue() {
+  return true;
+}

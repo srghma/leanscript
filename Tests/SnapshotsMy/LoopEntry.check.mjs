@@ -30,6 +30,30 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("countUp(\"\", 0n, 0n, 0n)", () => M.countUp("", 0n, 0n, 0n), "0", false);
+check("countUp(\"\", 1n, 0n, 2n)", () => M.countUp("", 1n, 0n, 2n), "2", false);
+check("countUp(\"a\", 0n, 2n, 0n)", () => M.countUp("a", 0n, 2n, 0n), "0", false);
+check("countUp(\"\", 5n, 1n, 1n)", () => M.countUp("", 5n, 1n, 1n), "6", false);
+check("countUp(\"héllo, wörld\", 1n, 1n, 0n)", () => M.countUp("héllo, wörld", 1n, 1n, 0n), "1", false);
+check("countUp(\"\", 2n, 0n, 13n)", () => M.countUp("", 2n, 0n, 13n), "13", false);
+check("countUp(\"a\", 1n, 2n, 2n)", () => M.countUp("a", 1n, 2n, 2n), "4", false);
+check("countUp(\"hello world\", 0n, 13n, 0n)", () => M.countUp("hello world", 0n, 13n, 0n), "0", false);
+check("countUp(\"héllo, wörld\", 0n, 0n, 5n)", () => M.countUp("héllo, wörld", 0n, 0n, 5n), "5", false);
+check("countUp(\"hello world\", 13n, 0n, 1n)", () => M.countUp("hello world", 13n, 0n, 1n), "1", false);
+check("countUp(\"\", 13n, 1n, 5n)", () => M.countUp("", 13n, 1n, 5n), "18", false);
+check("countUp(\"a\", 5n, 5n, 1n)", () => M.countUp("a", 5n, 5n, 1n), "26", false);
+check("countUp(\"héllo, wörld\", 2n, 1n, 2n)", () => M.countUp("héllo, wörld", 2n, 1n, 2n), "4", false);
+check("countUp(\"abcabc\", 1n, 5n, 0n)", () => M.countUp("abcabc", 1n, 5n, 0n), "5", false);
+check("countUp(\"a\", 2n, 2n, 13n)", () => M.countUp("a", 2n, 2n, 13n), "17", false);
+check("countUp(\"hello world\", 1n, 13n, 2n)", () => M.countUp("hello world", 1n, 13n, 2n), "15", false);
+check("countUp(\"abcabc\", 0n, 2n, 5n)", () => M.countUp("abcabc", 0n, 2n, 5n), "5", false);
+check("countUp(\"héllo, wörld\", 13n, 2n, 1n)", () => M.countUp("héllo, wörld", 13n, 2n, 1n), "27", false);
+check("countUp(\"a\", 13n, 5n, 5n)", () => M.countUp("a", 13n, 5n, 5n), "70", false);
+check("countUp(\"héllo, wörld\", 5n, 1n, 13n)", () => M.countUp("héllo, wörld", 5n, 1n, 13n), "18", false);
+check("countUp(\"abcabc\", 2n, 5n, 2n)", () => M.countUp("abcabc", 2n, 5n, 2n), "12", false);
+check("countUp(\"hello world\", 2n, 13n, 13n)", () => M.countUp("hello world", 2n, 13n, 13n), "39", false);
+check("countUp(\"abcabc\", 13n, 13n, 1n)", () => M.countUp("abcabc", 13n, 13n, 1n), "170", false);
+check("countUp(\"abcabc\", 5n, 5n, 13n)", () => M.countUp("abcabc", 5n, 5n, 13n), "38", false);
 
 console.log(`LoopEntry.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

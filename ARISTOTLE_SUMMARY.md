@@ -1,3 +1,24 @@
+# Summary of changes for run e419aa3b-6302-46e1-978c-79ad2a564399
+I generated `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt` and `FILE.js` next to every `.lean` file in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` that has at least one public, structurally total function. Each of those files also got a `FILE.check.mjs`, which runs the exported functions on sample inputs and compares the results with Lean's answers. Every generated `.js` passes `node --check`, and every check passes: 694 in `SnapshotsMy` and 1006 in `SnapshotsPBOPure`, with 0 failures. Everything is committed.
+
+**Which files got outputs**
+- **`SnapshotsMy`:** 35 of the 46 files. 24 of them export at least one function, 72 functions in total.
+- **`SnapshotsPBOPure`:** 106 of the 119 files. 59 of them export at least one function, 430 functions in total.
+- In the other files, a file with outputs lists each function it didn't translate, with the reason (e.g. user-defined datatypes aren't converted to JavaScript yet).
+- **Files with no outputs** (they contain only constants, types, `IO`/`ST` code, or functions using well-founded recursion):
+  - `SnapshotsMy`: `ArgsArrayEntry`, `CompiledTerms`, `ComputedFields`, `InductiveTypesTest`, `IoEntry`, `StdinEntry`, `Tco07`, `Tco08`, `TcoBoom`, `ThrowEntry`, `WriteEntry`. **Their old generated outputs have been deleted.**
+  - `SnapshotsPBOPure`: `BackendSemantics01`, `BackendSemantics02`, `EscapeIdentifiers`, `InlineArrayIndex`, `InlineNever`, `KnownConstructors01`, `PrimOpIntBit02Configurable`, `PrimOpIntBit02NonConfigurable`, `STArray01`, `STObject01`, `STRun01`, `Show`, `StringLiteral01`.
+
+**Changes to the `leanscript` tool (`LeanScriptCli/`)**
+- **New `--functions-only` option.** It writes nothing for a file with no public, structurally total function, meaning a definition with at least one value parameter. It also deletes outputs from an earlier run for that file, but only files the tool itself wrote. `scripts/leanscript-snapshots.sh` now uses this option and covers both folders; `README.md` is updated to match.
+- **Bug fixed: mutual recursion was compiled wrongly.** Members of a `mutual` block (e.g. `test1`/`test2` in `MutualTail`) came out wrong: a call to the other member was treated as a call to the function itself, and 14 checks failed. These members are now refused with the reason "part of a `mutual` block … mutual recursion is not translated yet". Their files still get outputs (`MutualSlots`, `MutualTail`, `MutualUnreachMarker`, `Tco03`, `Tco04`, `Tco06`, …). Actually translating mutual recursion is still to do.
+
+**Old JavaScript in `SnapshotsPBOPure`**
+- Each file that got a new `FILE.js` already had a `FILE.js` from the earlier backend. Those old `FILE.js` files, with their `FILE.test.js` and `FILE.expected.js`, were moved unchanged to `Tests/SnapshotsPBOPure/legacy-backend/`, which has a README. This is the same arrangement already used in `SnapshotsMy`.
+- Old files belonging to snapshots without outputs were left where they were.
+
+**Build problem (as in earlier runs):** `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it, so `lake` stops immediately. To build the tool I removed that requirement locally and put it back before committing, so your lakefile is unchanged. None of this work is formally proved, so no Lean build targets are claimed.
+
 # Summary of changes for run 6a7fd921-c33c-4de8-9586-13adfdf09762
 The four output files (`-Term-unoptimized.txt`, `-Term-optimized.txt`, `-MoreJsTy.txt`, `.js`) and a `.check.mjs` now exist for `TcoBoom`, `TcoDiagonal`, `TcoHyper` and `TcoMc91`, next to each `.lean` file in `Tests/SnapshotsMy/`. I regenerated `TcoAck` too. Every generated `.js` file passes `node --check`, and every `.check.mjs` reports 0 failures.
 

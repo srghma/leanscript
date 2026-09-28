@@ -1,0 +1,39 @@
+// @inline Data.Lens.Lens.lens arity=2
+// @inline Data.Lens.Record.prop arity=4
+// @inline Data.Profunctor.Strong.strongFn.first arity=1
+
+const test1 = (x) => x.foo;
+const test2 = (a) => a.foo;
+const test3 = (x) => ({
+  ...x,
+  bar: (1 + x.bar) | 0,
+});
+const test4 = (a) => ({
+  ...a,
+  bar: (1 + a.bar) | 0,
+});
+const test5 = (x) => ({
+  ...x,
+  bar: {
+    ...x.bar,
+    baz: (1 + x.bar.baz) | 0,
+  },
+});
+const test6 = (a) => ({
+  ...a,
+  bar: {
+    ...a.bar,
+    baz: (1 + a.bar.baz) | 0,
+  },
+});
+const test7 = (x) => ({
+  ...x,
+  bar: (42 + x.bar) | 0,
+  foo: (1 + x.foo) | 0,
+});
+const test8 = (a) => ({
+  ...a,
+  bar: (42 + a.bar) | 0,
+  foo: (1 + a.foo) | 0,
+});
+export { test1, test2, test3, test4, test5, test6, test7, test8 };

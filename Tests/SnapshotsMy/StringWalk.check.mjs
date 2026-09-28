@@ -32,15 +32,15 @@ function check(label, thunk, expected, isFloat) {
 
 check("test3(\"\", 0n)", () => M.test3("", 0n), "0", false);
 check("test3(\"\", 2n)", () => M.test3("", 2n), "1", false);
-check("test3(\"\", 13n)", () => M.test3("", 13n), "78", false);
 check("test3(\"a\", 1n)", () => M.test3("a", 1n), "1", false);
-check("test3(\"a\", 5n)", () => M.test3("a", 5n), "15", false);
 check("test3(\"hello world\", 0n)", () => M.test3("hello world", 0n), "0", false);
+check("test3(\"\", 13n)", () => M.test3("", 13n), "78", false);
+check("test3(\"a\", 5n)", () => M.test3("a", 5n), "15", false);
 check("test3(\"hello world\", 2n)", () => M.test3("hello world", 2n), "23", false);
-check("test3(\"hello world\", 13n)", () => M.test3("hello world", 13n), "221", false);
 check("test3(\"héllo, wörld\", 1n)", () => M.test3("héllo, wörld", 1n), "14", false);
-check("test3(\"héllo, wörld\", 5n)", () => M.test3("héllo, wörld", 5n), "80", false);
 check("test3(\"abcabc\", 0n)", () => M.test3("abcabc", 0n), "0", false);
+check("test3(\"hello world\", 13n)", () => M.test3("hello world", 13n), "221", false);
+check("test3(\"héllo, wörld\", 5n)", () => M.test3("héllo, wörld", 5n), "80", false);
 check("test3(\"abcabc\", 2n)", () => M.test3("abcabc", 2n), "13", false);
 check("test3(\"abcabc\", 13n)", () => M.test3("abcabc", 13n), "156", false);
 

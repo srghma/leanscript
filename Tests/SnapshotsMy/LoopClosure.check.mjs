@@ -32,15 +32,15 @@ function check(label, thunk, expected, isFloat) {
 
 check("test1(0n, 0n)", () => M.test1(0n, 0n), "0", false);
 check("test1(0n, 2n)", () => M.test1(0n, 2n), "12", false);
-check("test1(0n, 13n)", () => M.test1(0n, 13n), "78", false);
 check("test1(1n, 1n)", () => M.test1(1n, 1n), "9", false);
-check("test1(1n, 5n)", () => M.test1(1n, 5n), "45", false);
 check("test1(2n, 0n)", () => M.test1(2n, 0n), "0", false);
+check("test1(0n, 13n)", () => M.test1(0n, 13n), "78", false);
+check("test1(1n, 5n)", () => M.test1(1n, 5n), "45", false);
 check("test1(2n, 2n)", () => M.test1(2n, 2n), "24", false);
-check("test1(2n, 13n)", () => M.test1(2n, 13n), "156", false);
 check("test1(5n, 1n)", () => M.test1(5n, 1n), "21", false);
-check("test1(5n, 5n)", () => M.test1(5n, 5n), "105", false);
 check("test1(13n, 0n)", () => M.test1(13n, 0n), "0", false);
+check("test1(2n, 13n)", () => M.test1(2n, 13n), "156", false);
+check("test1(5n, 5n)", () => M.test1(5n, 5n), "105", false);
 check("test1(13n, 2n)", () => M.test1(13n, 2n), "90", false);
 check("test1(13n, 13n)", () => M.test1(13n, 13n), "585", false);
 

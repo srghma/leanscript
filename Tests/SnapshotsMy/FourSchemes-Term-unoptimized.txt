@@ -2,10 +2,8 @@
 -- configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 -- imports not found (left out): LeanScript.GenerateProgram
 -- not translated:
---   sumAcc: a `partial` definition
---   factD: a `partial` definition
---   gcdT: a `partial` definition
---   stepsDown: a `partial` definition
+--   gcdT: defined by well-founded recursion, not structurally
+--   stepsDown: defined by well-founded recursion, not structurally
 --   SnapshotsMy.FourSchemesCheck.runFactD: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.FourSchemesCheck.pGcdT: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.FourSchemesCheck.runGcdT: the definition does not elaborate (it contains errors or `sorry`)
@@ -14,3 +12,24 @@
 --   SnapshotsMy.FourSchemesCheck.pSumAcc: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.FourSchemesCheck.runSumAcc: the definition does not elaborate (it contains errors or `sorry`)
 
+-- sumAcc : Nat → Nat → Nat
+val k1 [ω] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
+  val k3 [ω] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
+    val k5 [ω] : (Nat → Nat) := fun x6 [ω] : Nat => (closed)
+      ret x6
+    let x12 [ω] : (Nat → Nat) := nat_rec x2 k5 fun acc7 i8 => (closed)
+      val k9 [ω] : (Nat → Nat) := fun x10 [ω] : Nat => (open)
+        let x11 [ω] : Nat := acc7 lean_nat_add(lean_nat_add(x10, i8), 1)
+        ret x11
+      ret k9
+    let x13 [ω] : Nat := x12 x4
+    ret x13
+  ret k3
+ret k1
+
+-- factD : Nat → Nat
+val k1 [ω] : (Nat → Nat) := fun x2 [ω] : Nat => (closed)
+  let x5 [ω] : Nat := nat_rec x2 1 fun acc3 i4 => (closed)
+    ret lean_nat_mul(lean_nat_add(i4, 1), acc3)
+  ret x5
+ret k1
