@@ -2,8 +2,6 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.GenerateProgram
 // not translated:
-//   gcdT: defined by well-founded recursion, not structurally
-//   stepsDown: defined by well-founded recursion, not structurally
 //   SnapshotsMy.FourSchemesCheck.runFactD: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.FourSchemesCheck.pGcdT: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.FourSchemesCheck.runGcdT: the definition does not elaborate (it contains errors or `sorry`)
@@ -12,6 +10,17 @@
 //   SnapshotsMy.FourSchemesCheck.pSumAcc: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.FourSchemesCheck.runSumAcc: the definition does not elaborate (it contains errors or `sorry`)
 
+// ---- runtime helpers ----
+
+function lean_nat_mod__Nat_mod$bbb(a, b) {
+  return (b === 0n ? a : a % b);
+}
+
+function lean_nat_sub$bbb(a, b) {
+  return (a > b ? a - b : 0n);
+}
+
+// ---- exported functions ----
 
 /**
  * `sumAcc`
@@ -41,4 +50,34 @@ export function factD(a) {
     acc$1 = (i$2 + 1n) * acc$1;
   }
   return acc$1;
+}
+
+/**
+ * `gcdT`
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @returns {nat(bigint)}
+ */
+export function gcdT(a, a1) {
+  let acc$1 = a1;
+  if (0n < a) {
+    const i$2 = a - 1n;
+    const x$5 = gcdT(lean_nat_mod__Nat_mod$bbb(a1, i$2 + 1n), i$2 + 1n);
+    acc$1 = x$5;
+  }
+  return acc$1;
+}
+
+/**
+ * `stepsDown`
+ * @param {nat(bigint)} n
+ * @returns {nat(bigint)}
+ */
+export function stepsDown(n) {
+  if (n <= 1n) {
+    return 1n;
+  } else {
+    const x$1 = stepsDown(lean_nat_sub$bbb(n, 2n));
+    return 1n + x$1;
+  }
 }

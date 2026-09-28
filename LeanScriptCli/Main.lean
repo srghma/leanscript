@@ -1,5 +1,6 @@
 import LeanScriptCli.Frontend
 import LeanScriptCli.Check
+import LeanScriptCli.RecCalls
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize
 import MoreJsTy.FromTerm
@@ -13,15 +14,21 @@ leanscript [options] FILE.lean|Module.Name ...
 ```
 
 For each file (or module, looked up as `Module/Name.lean` in the project root and in
-`Tests/`), the tool elaborates the file, and for each public, structurally total function
-of it:
+`Tests/`), the tool elaborates the file, and for each public total function of it
+(structurally recursive, or defined by well-founded recursion):
 
 1. reads its definition (`Expr`) and translates it to a closed `LeanScript.Term`
-   (`#leanscript_to_term`), evaluated to a value;
+   (`#leanscript_to_term`), evaluated to a value.  A function defined by well-founded
+   recursion whose recursive calls are not all on subvalues, a member of a `mutual` block,
+   and a function calling such functions are translated through their *open definition*
+   (`LeanScript.Cli.openDef`): the `Term` is a function of the recursive functions called
+   (`g_rec`), and the function is its fixed point;
 2. optimises it (`Term.optimizeN`, proved to preserve `Term.eval`: `Term.optimizeN_eval`);
 3. converts it to the JavaScript grammar `MoreJsTy` at the chosen configuration
    (`MoreJs.termToJs`);
-4. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).
+4. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).  For an open
+   definition, the exported function binds each `g_rec` to the exported function `g`
+   itself, and calls through it are made direct (`LeanScript.Cli.bindRecCalls`).
 
 It writes, next to the file (or in `--out-dir`), where `FILE` is the path without `.lean`:
 
@@ -45,7 +52,7 @@ structure CliOptions where
   only : List String := []
   quiet : Bool := false
   check : Bool := false
-  /-- Write nothing for a file without a public, structurally total *function* (a candidate
+  /-- Write nothing for a file without a public total *function* (a candidate
       with at least one value parameter), and remove the outputs an earlier run of the tool
       wrote for it. -/
   functionsOnly : Bool := false
@@ -54,7 +61,8 @@ structure CliOptions where
 /-- The usage text. -/
 def usage : String := "usage: leanscript [options] FILE.lean|Module.Name ...
 
-Translates the public, structurally total functions of each Lean file to JavaScript, and
+Translates the public total functions of each Lean file (structurally recursive or defined by
+well-founded recursion) to JavaScript, and
 writes next to the file (FILE is its path without `.lean`):
   FILE-Term-unoptimized.txt   the translations to LeanScript.Term
   FILE-Term-optimized.txt     the same, optimised (Term.optimizeN)
@@ -73,7 +81,7 @@ options:
   --only=f,g                  translate only these definitions
   --check                     also write FILE.check.mjs: calls of the exported functions on
                               sample arguments, compared with Lean's answers (run it with node)
-  --functions-only            skip a file that has no public, structurally total function
+  --functions-only            skip a file that has no public total function
                               (a definition with at least one value parameter), removing
                               the outputs an earlier run wrote for it
   --quiet                     do not print the progress
@@ -156,6 +164,10 @@ def dedupNames (ps : List String) : List String := Id.run do
 def jsFunName (n : Name) : String :=
   jsIdent ("_".intercalate (n.components.map fun c => c.toString (escape := false)))
 
+/-- The JavaScript name of the parameter of an open definition that stands for the recursive
+    function `g`. -/
+def recJsName (g : Name) : String := jsFunName g ++ "$rec"
+
 /-- The path of an output file: the input path without `.lean`, then `suffix`. -/
 def outPath (o : CliOptions) (file : System.FilePath) (suffix : String) : System.FilePath :=
   let base := file.withExtension ""
@@ -171,15 +183,22 @@ structure Translated where
   params : List String
   term : ClosedTerm
   optimized : ClosedTerm
+  /-- Empty for a function translated directly.  For a function translated through its open
+      definition (`LeanScript.Cli.openDef`: well-founded recursion, a `mutual` block, calls of
+      such functions), the recursive functions it is abstracted over: `term` is the
+      translation of the open definition, a function of one argument per function here
+      (then of the parameters), and the function is its fixed point. -/
+  recRefs : Array Name := #[]
 
 /-- Process one file. -/
 unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   let file ← resolveInput input
   unless o.quiet do IO.eprintln s!"leanscript: elaborating {file}"
   let el ← elabFile file
-  let (cands, refused0) ← candidates el
+  let (cands0, refused0) ← candidates el
+  let cands := cands0
   if o.functionsOnly then
-    let fns ← runTermElab el (cands.filterM fun n => return !(← paramNames n).isEmpty)
+    let fns ← runTermElab el (cands0.filterM fun n => return !(← paramNames n).isEmpty)
     if fns.isEmpty then
       -- remove the outputs of an earlier run (only files this tool wrote)
       for suffix in ["-Term-unoptimized.txt", "-Term-optimized.txt", "-MoreJsTy.txt", ".js",
@@ -189,41 +208,89 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
           let txt ← IO.FS.readFile p
           if (txt.splitOn "generated by leanscript").length > 1 then IO.FS.removeFile p
       unless o.quiet do
-        IO.eprintln s!"leanscript: {file}: skipped (no public structurally total function)"
+        IO.eprintln s!"leanscript: {file}: skipped (no public total function)"
       return false
   let cands := if o.only.isEmpty then cands
     else cands.filter fun n => o.only.contains n.toString
   let mut refused : Array (Name × String) := refused0
   let mut done : Array Translated := #[]
+  -- the functions whose calls are read through open definitions: those defined by
+  -- well-founded recursion and the members of `mutual` blocks
+  let recSet ← runTermElab el (cands0.filterM fun n => do
+    if ← isWellFounded n then return true
+    return (← recGroup n).size > 1)
   for n in cands do
     unless o.quiet do IO.eprintln s!"leanscript:   {n}"
-    if let some why ← runTermElab el (untranslatableReason? n) then
-      refused := refused.push (n, why)
-      continue
     let r ← runTermElab el (do
         tryCatchRuntimeEx (do
-          let ct ← translate n
           let ty ← typeString n
           let ps ← paramNames n
-          return Except.ok (ct, ty, ps))
+          let group ← recGroup n
+          -- the recursive functions it calls: itself first, then the others
+          let among := #[n] ++ (recSet ++ group).foldl
+            (fun acc g => if g == n || acc.contains g then acc else acc.push g) #[]
+          let refs ← unfoldRefs n among
+          let refsRec := refs.filter fun g => recSet.contains g || (group.contains g && group.size > 1)
+          let direct : Elab.TermElabM ClosedTerm := translate n
+          let viaOpen : Elab.TermElabM (ClosedTerm × Array Name) := do
+            let ct ← translate (← openDef n refs)
+            return (ct, refs)
+          let (ct, rs) ← if refsRec.isEmpty then pure ((← direct), #[])
+            else if refs == #[n] && group.size == 1 then
+              -- well-founded, calling only itself: its recursion may still be read as a
+              -- structural one on a subvalue; if not, as a fixed point
+              tryCatchRuntimeEx (return ((← direct), #[])) (fun _ => viaOpen)
+            else viaOpen
+          return Except.ok (ct, ty, ps, rs))
           (fun e => return Except.error (← e.toMessageData.toString)))
     match r with
-    | .ok (ct, ty, ps) =>
+    | .ok (ct, ty, ps, rs) =>
       let opt : ClosedTerm := { ct with term := ct.term.optimizeN o.rounds }
-      done := done.push { name := n, ty, params := dedupNames (ps.map jsIdent), term := ct, optimized := opt }
+      done := done.push { name := n, ty, params := dedupNames (ps.map jsIdent), term := ct,
+                          optimized := opt, recRefs := rs }
     | .error e => refused := refused.push (n, e)
   -- the JavaScript
   let mut funs : Array JsFun := #[]
   let mut helpers : Array JsHelper := #[]
   let mut jsRefused : Array (Name × String) := #[]
   let mut exported : Array (Name × String × Nat) := #[]
+  let mut conv : Array (Translated × JsFun × List JsHelper) := #[]
   for t in done do
-    match termToJs o.cfg (jsFunName t.name) t.name.toString t.params t.optimized with
-    | .ok (f, hs) =>
-      funs := funs.push f
-      exported := exported.push (t.name, jsFunName t.name, f.params.length)
-      helpers := hs.foldl addHelper helpers
+    let names := t.recRefs.toList.map (recJsName ·) ++ t.params
+    match termToJs o.cfg (jsFunName t.name) t.name.toString names t.optimized with
+    | .ok (f, hs) => conv := conv.push (t, f, hs)
     | .error e => jsRefused := jsRefused.push (t.name, e)
+  -- an open definition needs every function it is abstracted over exported, with at least
+  -- one parameter (a refusal can make another one refused: repeat until none is)
+  let arityOf (cs : Array (Translated × JsFun × List JsHelper)) (g : Name) : Option Nat :=
+    (cs.find? (·.1.name == g)).map fun (t, f, _) => f.params.length - t.recRefs.size
+  let mut changed := true
+  while changed do
+    changed := false
+    let mut kept := #[]
+    for c@(t, f, _) in conv do
+      let why? : Option String :=
+        if t.recRefs.isEmpty then none
+        else if f.params.length ≤ t.recRefs.size then
+          some "its JavaScript takes no parameter of its own, so it cannot be called recursively"
+        else match t.recRefs.find? (fun g => (arityOf conv g).all (· == 0)) with
+          | some g => some s!"it calls `{g}`, which is not translated to JavaScript"
+          | none => none
+      match why? with
+      | some why =>
+        jsRefused := jsRefused.push (t.name, why)
+        changed := true
+      | none => kept := kept.push c
+    conv := kept
+  for (t, f, hs) in conv do
+    let k := t.recRefs.size
+    let f := if k == 0 then f else
+      let recs := (f.params.take k).zip t.recRefs.toList |>.map fun ((x, ty), g) =>
+        (x, ty, jsFunName g, (arityOf conv g).getD 1)
+      { f with params := f.params.drop k, body := bindRecCalls recs f.body }
+    funs := funs.push f
+    exported := exported.push (t.name, jsFunName t.name, f.params.length)
+    helpers := hs.foldl addHelper helpers
   let m : JsModule := { config := o.cfg, helpers := helpers.toList, funs := funs.toList }
   -- the header of every output
   let oneLine (s : String) : String := " ".intercalate (s.splitOn "\n" |>.map fun l => l.trimAscii.toString)
@@ -238,7 +305,11 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     comment (header (if opt then "The optimised translations" else "The translations") #[]) ++
     "\n" ++ "\n".intercalate (done.toList.map fun t =>
       let ct := if opt then t.optimized else t.term
-      s!"-- {t.name} : {oneLine t.ty}\n{ct.term.pretty}\n")
+      let recNote := if t.recRefs.isEmpty then "" else
+        let args := ", ".intercalate (t.recRefs.toList.map fun g => s!"`{g}`")
+        s!"-- recursive ({t.name}.leanscript_open): `{t.name}` is the function below applied to \
+          {args} (its first {t.recRefs.size} parameter(s))\n"
+      s!"-- {t.name} : {oneLine t.ty}\n{recNote}{ct.term.pretty}\n")
   IO.FS.writeFile (outPath o file "-Term-unoptimized.txt") (termFile false)
   IO.FS.writeFile (outPath o file "-Term-optimized.txt") (termFile true)
   IO.FS.writeFile (outPath o file "-MoreJsTy.txt")

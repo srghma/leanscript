@@ -30,6 +30,40 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("diagonal(0n, 0n)", () => M.diagonal(0n, 0n), "0", false);
+check("diagonal(0n, 2n)", () => M.diagonal(0n, 2n), "3", false);
+check("diagonal(1n, 1n)", () => M.diagonal(1n, 1n), "4", false);
+check("diagonal(2n, 0n)", () => M.diagonal(2n, 0n), "5", false);
+check("diagonal(0n, 13n)", () => M.diagonal(0n, 13n), "91", false);
+check("diagonal(1n, 5n)", () => M.diagonal(1n, 5n), "22", false);
+check("diagonal(2n, 2n)", () => M.diagonal(2n, 2n), "12", false);
+check("diagonal(5n, 1n)", () => M.diagonal(5n, 1n), "26", false);
+check("diagonal(13n, 0n)", () => M.diagonal(13n, 0n), "104", false);
+check("diagonal(2n, 13n)", () => M.diagonal(2n, 13n), "122", false);
+check("diagonal(5n, 5n)", () => M.diagonal(5n, 5n), "60", false);
+check("diagonal(13n, 2n)", () => M.diagonal(13n, 2n), "133", false);
+check("diagonal(13n, 13n)", () => M.diagonal(13n, 13n), "364", false);
+check("diagonal_tr(0n, 0n, 0n)", () => M.diagonal_tr(0n, 0n, 0n), "0", false);
+check("diagonal_tr(0n, 1n, 1n)", () => M.diagonal_tr(0n, 1n, 1n), "2", false);
+check("diagonal_tr(1n, 1n, 0n)", () => M.diagonal_tr(1n, 1n, 0n), "4", false);
+check("diagonal_tr(0n, 2n, 2n)", () => M.diagonal_tr(0n, 2n, 2n), "5", false);
+check("diagonal_tr(1n, 2n, 1n)", () => M.diagonal_tr(1n, 2n, 1n), "8", false);
+check("diagonal_tr(2n, 2n, 0n)", () => M.diagonal_tr(2n, 2n, 0n), "12", false);
+check("diagonal_tr(0n, 5n, 5n)", () => M.diagonal_tr(0n, 5n, 5n), "20", false);
+check("diagonal_tr(1n, 5n, 2n)", () => M.diagonal_tr(1n, 5n, 2n), "24", false);
+check("diagonal_tr(2n, 0n, 13n)", () => M.diagonal_tr(2n, 0n, 13n), "18", false);
+check("diagonal_tr(2n, 5n, 1n)", () => M.diagonal_tr(2n, 5n, 1n), "31", false);
+check("diagonal_tr(5n, 0n, 5n)", () => M.diagonal_tr(5n, 0n, 5n), "25", false);
+check("diagonal_tr(5n, 5n, 0n)", () => M.diagonal_tr(5n, 5n, 0n), "60", false);
+check("diagonal_tr(13n, 0n, 2n)", () => M.diagonal_tr(13n, 0n, 2n), "106", false);
+check("diagonal_tr(0n, 13n, 13n)", () => M.diagonal_tr(0n, 13n, 13n), "104", false);
+check("diagonal_tr(1n, 13n, 5n)", () => M.diagonal_tr(1n, 13n, 5n), "111", false);
+check("diagonal_tr(2n, 13n, 2n)", () => M.diagonal_tr(2n, 13n, 2n), "124", false);
+check("diagonal_tr(5n, 1n, 13n)", () => M.diagonal_tr(5n, 1n, 13n), "39", false);
+check("diagonal_tr(5n, 13n, 1n)", () => M.diagonal_tr(5n, 13n, 1n), "177", false);
+check("diagonal_tr(13n, 1n, 5n)", () => M.diagonal_tr(13n, 1n, 5n), "123", false);
+check("diagonal_tr(13n, 13n, 0n)", () => M.diagonal_tr(13n, 13n, 0n), "364", false);
+check("diagonal_tr(13n, 2n, 13n)", () => M.diagonal_tr(13n, 2n, 13n), "146", false);
 
 console.log(`TcoDiagonal.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

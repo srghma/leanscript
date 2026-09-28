@@ -2,10 +2,6 @@
 -- configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 -- imports not found (left out): LeanScript.GenerateProgram
 -- not translated:
---   diagonal: defined by well-founded recursion, not structurally
---   hyper: defined by well-founded recursion, not structurally
---   ackRev: defined by well-founded recursion, not structurally
---   Mc91.M: defined by well-founded recursion, not structurally
 --   SnapshotsMy.Tco09Check.pDiagonal: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Check.pHyper: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Check.pMc91M: the definition does not elaborate (it contains errors or `sorry`)
@@ -17,6 +13,86 @@
 --   SnapshotsMy.Tco09Agree.mFun: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Agree.ackFun: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Agree.diagFun: the definition does not elaborate (it contains errors or `sorry`)
---   Mc91: LeanScript: the proof or type Mc91.M._proof_10 n has no value in the language
+--   Mc91: LeanScript: dependent function type (n : Nat) → { m // m ≥ n - 10 }
+--   Mc91.M: (kernel) let-declaration type mismatch 'this'
 --   SnapshotsMy.Tco09Check.agrees2: LeanScript: the call (List.range bound).all fun i => (List.range bound).all fun j => f i j == g i j is not a call of an extern: `List.all` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
+-- diagonal : Nat → Nat → Nat
+-- recursive (diagonal.leanscript_open): `diagonal` is the function below applied to `diagonal` (its first 1 parameter(s))
+val k1 [1] : ((Nat → (Nat → Nat)) → (Nat → (Nat → Nat))) := fun x2 [ω] : (Nat → (Nat → Nat)) => (closed)
+  val k3 [1] : (Nat → (Nat → Nat)) := fun x4 [ω] : Nat => (open)
+    val k5 [1] : (Nat → Nat) := fun x6 [ω] : Nat => (open)
+      let x11 [1] : Nat := nat_rec x6 0 fun acc7 i8 => (open)
+        let x9 [1] : (Nat → Nat) := x2 i8
+        let x10 [1] : Nat := x9 0
+        ret lean_nat_add(x10, 1)
+      let x16 [1] : Nat := nat_rec x4 x11 fun acc12 i13 => (open)
+        let x14 [1] : (Nat → Nat) := x2 i13
+        let x15 [1] : Nat := x14 lean_nat_add(x6, 1)
+        ret lean_nat_add(x15, 1)
+      ret x16
+    ret k5
+  ret k3
+ret k1
+
+-- hyper : Nat → Nat → Nat → Nat
+-- recursive (hyper.leanscript_open): `hyper` is the function below applied to `hyper` (its first 1 parameter(s))
+val k1 [1] : ((Nat → (Nat → (Nat → Nat))) → (Nat → (Nat → (Nat → Nat)))) := fun x2 [ω] : (Nat → (Nat → (Nat → Nat))) => (closed)
+  val k3 [1] : (Nat → (Nat → (Nat → Nat))) := fun x4 [ω] : Nat => (open)
+    val k5 [1] : (Nat → (Nat → Nat)) := fun x6 [ω] : Nat => (open)
+      val k7 [1] : (Nat → Nat) := fun x8 [ω] : Nat => (open)
+        let x44 [1] : Nat := nat_rec x4 lean_nat_add(x8, 1) fun acc9 i10 => (open)
+          let x19 [1] : Nat := nat_rec x8 x6 fun acc11 i12 => (open)
+            let x13 [1] : (Nat → (Nat → Nat)) := x2 0
+            let x14 [1] : (Nat → Nat) := x13 x6
+            let x15 [1] : (Nat → (Nat → Nat)) := x2 1
+            let x16 [1] : (Nat → Nat) := x15 x6
+            let x17 [1] : Nat := x16 i12
+            let x18 [1] : Nat := x14 x17
+            ret x18
+          let x43 [1] : Nat := nat_rec i10 x19 fun acc20 i21 => (open)
+            let x30 [1] : Nat := nat_rec x8 0 fun acc22 i23 => (open)
+              let x24 [1] : (Nat → (Nat → Nat)) := x2 1
+              let x25 [1] : (Nat → Nat) := x24 x6
+              let x26 [1] : (Nat → (Nat → Nat)) := x2 2
+              let x27 [1] : (Nat → Nat) := x26 x6
+              let x28 [1] : Nat := x27 i23
+              let x29 [1] : Nat := x25 x28
+              ret x29
+            let x42 [1] : Nat := nat_rec i21 x30 fun acc31 i32 => (open)
+              let x41 [1] : Nat := nat_rec x8 1 fun acc33 i34 => (open)
+                let x35 [1] : (Nat → (Nat → Nat)) := x2 lean_nat_add(lean_nat_add(i32, 1), 1)
+                let x36 [1] : (Nat → Nat) := x35 x6
+                let x37 [1] : (Nat → (Nat → Nat)) := x2 lean_nat_add(lean_nat_add(lean_nat_add(i32, 1), 1), 1)
+                let x38 [1] : (Nat → Nat) := x37 x6
+                let x39 [1] : Nat := x38 i34
+                let x40 [1] : Nat := x36 x39
+                ret x40
+              ret x41
+            ret x42
+          ret x43
+        ret x44
+      ret k7
+    ret k5
+  ret k3
+ret k1
+
+-- ackRev : Nat → Nat → Nat
+-- recursive (ackRev.leanscript_open): `ackRev` is the function below applied to `ackRev` (its first 1 parameter(s))
+val k1 [1] : ((Nat → (Nat → Nat)) → (Nat → (Nat → Nat))) := fun x2 [ω] : (Nat → (Nat → Nat)) => (closed)
+  val k3 [1] : (Nat → (Nat → Nat)) := fun x4 [ω] : Nat => (open)
+    val k5 [1] : (Nat → Nat) := fun x6 [1] : Nat => (open)
+      let x18 [1] : Nat := nat_rec x6 lean_nat_add(x4, 1) fun acc7 i8 => (open)
+        let x9 [1] : (Nat → Nat) := x2 1
+        let x10 [1] : Nat := x9 i8
+        let x17 [1] : Nat := nat_rec x4 x10 fun acc11 i12 => (open)
+          let x13 [1] : (Nat → Nat) := x2 i12
+          let x14 [1] : Nat := x13 lean_nat_add(i8, 1)
+          let x15 [1] : (Nat → Nat) := x2 x14
+          let x16 [1] : Nat := x15 i8
+          ret x16
+        ret x17
+      ret x18
+    ret k5
+  ret k3
+ret k1

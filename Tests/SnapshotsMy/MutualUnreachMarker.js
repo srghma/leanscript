@@ -6,7 +6,38 @@
 //   SnapshotsMy.MutualUnreachMarkerCheck.runF1: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.MutualUnreachMarkerCheck.pF2: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.MutualUnreachMarkerCheck.runF2: the definition does not elaborate (it contains errors or `sorry`)
-//   f1: part of a `mutual` block (f1, f2): mutual recursion is not translated yet
-//   f2: part of a `mutual` block (f1, f2): mutual recursion is not translated yet
 
 
+/**
+ * `f1`
+ * @param {nat(bigint)} a
+ * @returns {boolean}
+ */
+export function f1(a) {
+  let acc$1 = true;
+  if (0n < a) {
+    const i$2 = a - 1n;
+    const x$4 = f2(i$2);
+    acc$1 = x$4 === 0n;
+  }
+  return acc$1;
+}
+
+/**
+ * `f2`
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
+ */
+export function f2(a) {
+  let acc$1 = 7n;
+  if (0n < a) {
+    const i$2 = a - 1n;
+    const x$4 = f1(i$2);
+    if (x$4) {
+      acc$1 = 0n;
+    } else {
+      acc$1 = 1n;
+    }
+  }
+  return acc$1;
+}

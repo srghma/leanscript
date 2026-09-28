@@ -3,8 +3,8 @@
 // not translated:
 //   test4: invalid scope
 //   test5: invalid scope
-//   testEven: part of a `mutual` block (testEven, testOdd): mutual recursion is not translated yet
-//   testOdd: part of a `mutual` block (testEven, testOdd): mutual recursion is not translated yet
+//   testEven: Application type mismatch: The argument rfl has type ?m.415 = ?m.415 but is expected to have type LeanScript.Lvl.meet (some 4) ?m.537 = some ?m.531 in the application LeanScript.Comp.app (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (sorry (Function.const Lean.Name () `_sorry._@._hyg.303)) ⋯
+//   testOdd: Application type mismatch: The argument rfl has type ?m.415 = ?m.415 but is expected to have type LeanScript.Lvl.meet (some 4) ?m.537 = some ?m.531 in the application LeanScript.Comp.app (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (sorry (Function.const Lean.Name () `_sorry._@._hyg.303)) ⋯
 
 
 /**

@@ -30,6 +30,16 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("f1(0n)", () => M.f1(0n), "true", false);
+check("f1(1n)", () => M.f1(1n), "false", false);
+check("f1(2n)", () => M.f1(2n), "true", false);
+check("f1(5n)", () => M.f1(5n), "false", false);
+check("f1(13n)", () => M.f1(13n), "false", false);
+check("f2(0n)", () => M.f2(0n), "7", false);
+check("f2(1n)", () => M.f2(1n), "0", false);
+check("f2(2n)", () => M.f2(2n), "1", false);
+check("f2(5n)", () => M.f2(5n), "0", false);
+check("f2(13n)", () => M.f2(13n), "0", false);
 
 console.log(`MutualUnreachMarker.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

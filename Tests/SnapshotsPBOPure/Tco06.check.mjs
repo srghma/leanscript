@@ -30,6 +30,40 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("f(0n, -7n, -7n)", () => M.f(0n, -7n, -7n), "-14", false);
+check("f(0n, -1n, -1n)", () => M.f(0n, -1n, -1n), "-2", false);
+check("f(1n, -1n, -7n)", () => M.f(1n, -1n, -7n), "-8", false);
+check("f(0n, 0n, 0n)", () => M.f(0n, 0n, 0n), "0", false);
+check("f(1n, 0n, -1n)", () => M.f(1n, 0n, -1n), "-1", false);
+check("f(2n, 0n, -7n)", () => M.f(2n, 0n, -7n), "-13", false);
+check("f(0n, 3n, 3n)", () => M.f(0n, 3n, 3n), "6", false);
+check("f(1n, 3n, 0n)", () => M.f(1n, 3n, 0n), "3", false);
+check("f(2n, -7n, 12n)", () => M.f(2n, -7n, 12n), "11", false);
+check("f(2n, 3n, -1n)", () => M.f(2n, 3n, -1n), "5", false);
+check("f(5n, -7n, 3n)", () => M.f(5n, -7n, 3n), "-13", false);
+check("f(5n, 3n, -7n)", () => M.f(5n, 3n, -7n), "-13", false);
+check("f(13n, -7n, 0n)", () => M.f(13n, -7n, 0n), "-385", false);
+check("f(0n, 12n, 12n)", () => M.f(0n, 12n, 12n), "24", false);
+check("f(1n, 12n, 3n)", () => M.f(1n, 12n, 3n), "15", false);
+check("f(2n, 12n, 0n)", () => M.f(2n, 12n, 0n), "25", false);
+check("f(5n, -1n, 12n)", () => M.f(5n, -1n, 12n), "47", false);
+check("f(5n, 12n, -1n)", () => M.f(5n, 12n, -1n), "47", false);
+check("f(13n, -1n, 3n)", () => M.f(13n, -1n, 3n), "191", false);
+check("f(13n, 12n, -7n)", () => M.f(13n, 12n, -7n), "383", false);
+check("f(13n, 0n, 12n)", () => M.f(13n, 0n, 12n), "831", false);
+check("g(0n, -7n)", () => M.g(0n, -7n), "-7", false);
+check("g(0n, 0n)", () => M.g(0n, 0n), "0", false);
+check("g(1n, -1n)", () => M.g(1n, -1n), "-1", false);
+check("g(2n, -7n)", () => M.g(2n, -7n), "-13", false);
+check("g(0n, 12n)", () => M.g(0n, 12n), "12", false);
+check("g(1n, 3n)", () => M.g(1n, 3n), "7", false);
+check("g(2n, 0n)", () => M.g(2n, 0n), "1", false);
+check("g(5n, -1n)", () => M.g(5n, -1n), "-1", false);
+check("g(13n, -7n)", () => M.g(13n, -7n), "-769", false);
+check("g(2n, 12n)", () => M.g(2n, 12n), "25", false);
+check("g(5n, 3n)", () => M.g(5n, 3n), "31", false);
+check("g(13n, 0n)", () => M.g(13n, 0n), "127", false);
+check("g(13n, 12n)", () => M.g(13n, 12n), "1663", false);
 
 console.log(`Tco06.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

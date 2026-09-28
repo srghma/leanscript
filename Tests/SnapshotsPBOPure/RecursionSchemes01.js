@@ -2,11 +2,11 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // not translated:
 //   mapExprF: LeanScript: the parameter `α` of `mapExprF` is a type
-//   cata: part of a `mutual` block (cata, cataMap): mutual recursion is not translated yet
-//   cataMap: part of a `mutual` block (cata, cataMap): mutual recursion is not translated yet
+//   cata: LeanScript: dependent function type {α : Type} → (ExprF α → α) → ExprF FixExpr → ExprF α
+//   cataMap: LeanScript: dependent function type {α : Type} → (ExprF α → α) → FixExpr → α
 //   bump: LeanScript: the helper `bump._sparseCasesOn_1` is universe polymorphic
-//   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
-//   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
+//   test1: LeanScript: dependent function type {α : Type} → (ExprF α → α) → FixExpr → α
+//   test2: LeanScript: dependent function type {α : Type} → (ExprF α → α) → FixExpr → α
 
 
 /**

@@ -30,6 +30,32 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("walkStr(0n, \"\")", () => M.walkStr(0n, ""), "0", false);
+check("walkStr(0n, \"hello world\")", () => M.walkStr(0n, "hello world"), "11", false);
+check("walkStr(1n, \"a\")", () => M.walkStr(1n, "a"), "2", false);
+check("walkStr(2n, \"\")", () => M.walkStr(2n, ""), "2", false);
+check("walkStr(0n, \"abcabc\")", () => M.walkStr(0n, "abcabc"), "6", false);
+check("walkStr(1n, \"héllo, wörld\")", () => M.walkStr(1n, "héllo, wörld"), "13", false);
+check("walkStr(2n, \"hello world\")", () => M.walkStr(2n, "hello world"), "2", false);
+check("walkStr(5n, \"a\")", () => M.walkStr(5n, "a"), "3", false);
+check("walkStr(13n, \"\")", () => M.walkStr(13n, ""), "3", false);
+check("walkStr(2n, \"abcabc\")", () => M.walkStr(2n, "abcabc"), "2", false);
+check("walkStr(5n, \"héllo, wörld\")", () => M.walkStr(5n, "héllo, wörld"), "3", false);
+check("walkStr(13n, \"hello world\")", () => M.walkStr(13n, "hello world"), "3", false);
+check("walkStr(13n, \"abcabc\")", () => M.walkStr(13n, "abcabc"), "3", false);
+check("walkNat(0n, 0n)", () => M.walkNat(0n, 0n), "0", false);
+check("walkNat(0n, 2n)", () => M.walkNat(0n, 2n), "2", false);
+check("walkNat(1n, 1n)", () => M.walkNat(1n, 1n), "2", false);
+check("walkNat(2n, 0n)", () => M.walkNat(2n, 0n), "1", false);
+check("walkNat(0n, 13n)", () => M.walkNat(0n, 13n), "13", false);
+check("walkNat(1n, 5n)", () => M.walkNat(1n, 5n), "2", false);
+check("walkNat(2n, 2n)", () => M.walkNat(2n, 2n), "3", false);
+check("walkNat(5n, 1n)", () => M.walkNat(5n, 1n), "2", false);
+check("walkNat(13n, 0n)", () => M.walkNat(13n, 0n), "2", false);
+check("walkNat(2n, 13n)", () => M.walkNat(2n, 13n), "3", false);
+check("walkNat(5n, 5n)", () => M.walkNat(5n, 5n), "2", false);
+check("walkNat(13n, 2n)", () => M.walkNat(13n, 2n), "2", false);
+check("walkNat(13n, 13n)", () => M.walkNat(13n, 13n), "2", false);
 
 console.log(`MutualSlots.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -30,6 +30,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("go(0n)", () => M.go(0n), "0", false);
+check("go(1n)", () => M.go(1n), "0", false);
+check("go(2n)", () => M.go(2n), "0", false);
+check("go(5n)", () => M.go(5n), "0", false);
+check("go(13n)", () => M.go(13n), "0", false);
 
 console.log(`Tco03.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

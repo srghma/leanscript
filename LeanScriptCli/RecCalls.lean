@@ -1,0 +1,244 @@
+import MoreJsTy.Syntax
+
+/-!
+# Calls of recursive functions in the JavaScript of an open definition
+
+A function defined by well-founded recursion (or a member of a `mutual` block) is translated
+through its *open definition* (`LeanScript.Cli.openDef`): its body, in which every call of a
+recursive function `g` is a call of a parameter `g_rec`.  The JavaScript of `f` binds each
+`g_rec` to the exported function `g` itself, seen as a curried value (the translation of a
+Lean function value takes one argument at a time):
+
+```
+export function f(n) {
+  const g$rec = (a$1) => (a$2) => g(a$1, a$2);
+  …
+}
+```
+
+`bindRecCalls` puts these bindings in front of the body and then turns every call that
+applies `g$rec` to all the parameters of `g` (possibly through the constants the A-normal
+form names the partial applications by, `const x$3 = g$rec(m); … x$3(n)`) into a direct call
+`g(m, n)`, and removes the bindings and partial applications that are no longer used.  A use
+of `g$rec` as a value (passed to another function, stored) keeps the binding.
+
+A partial application is only followed through a constant whose arguments are literals or
+names that are never reassigned (the parameters, constants, loop variables), so the direct
+call sees the same arguments.
+-/
+
+namespace LeanScript.Cli
+
+open MoreJs
+
+/-- A partial application of the curried view of an exported function: the function, its
+    number of parameters, and the arguments given so far (fewer than that number). -/
+structure PApp where
+  fn : String
+  arity : Nat
+  args : List JsExpr
+
+/-- The names of the partial applications known, innermost first. -/
+abbrev PApps := List (String × PApp)
+
+mutual
+/-- The names a statement declares mutable (`let`) or assigns. -/
+partial def stmtMutables : JsStmt → List String
+  | .letMut x _ e => x :: exprMutables e
+  | .assign x e => x :: exprMutables e
+  | .const _ _ e | .destructure _ e | .ret e => exprMutables e
+  | .ite c t e => exprMutables c ++ t.flatMap stmtMutables ++ e.flatMap stmtMutables
+  | .forRange _ _ n b => exprMutables n ++ b.flatMap stmtMutables
+  | .forOf _ xs b => exprMutables xs ++ b.flatMap stmtMutables
+  | .throw _ => []
+/-- The names the closures of an expression declare mutable or assign. -/
+partial def exprMutables : JsExpr → List String
+  | .arrow _ b => b.flatMap stmtMutables
+  | .bin _ a b => exprMutables a ++ exprMutables b
+  | .un _ a => exprMutables a
+  | .call f as => exprMutables f ++ as.flatMap exprMutables
+  | .helper _ as | .array as | .typedArray _ as => as.flatMap exprMutables
+  | .index e _ | .member e _ => exprMutables e
+  | .cond c a b => exprMutables c ++ exprMutables a ++ exprMutables b
+  | _ => []
+end
+
+mutual
+/-- How many times a statement mentions the variable `x`. -/
+partial def stmtUses (x : String) : JsStmt → Nat
+  | .const _ _ e | .letMut _ _ e | .destructure _ e | .ret e => exprUses x e
+  | .assign y e => (if y == x then 1 else 0) + exprUses x e
+  | .ite c t e => exprUses x c + stmtsUses x t + stmtsUses x e
+  | .forRange _ _ n b => exprUses x n + stmtsUses x b
+  | .forOf _ xs b => exprUses x xs + stmtsUses x b
+  | .throw _ => 0
+/-- How many times statements mention the variable `x`. -/
+partial def stmtsUses (x : String) (ss : List JsStmt) : Nat :=
+  ss.foldl (fun acc s => acc + stmtUses x s) 0
+/-- How many times an expression mentions the variable `x`. -/
+partial def exprUses (x : String) : JsExpr → Nat
+  | .var y => if y == x then 1 else 0
+  | .arrow _ b => stmtsUses x b
+  | .bin _ a b => exprUses x a + exprUses x b
+  | .un _ a => exprUses x a
+  | .call f as => exprUses x f + as.foldl (fun acc a => acc + exprUses x a) 0
+  | .helper _ as | .array as | .typedArray _ as => as.foldl (fun acc a => acc + exprUses x a) 0
+  | .index e _ | .member e _ => exprUses x e
+  | .cond c a b => exprUses x c + exprUses x a + exprUses x b
+  | .lit _ => 0
+end
+
+/-- The partial application an expression is, if it is one: a known name, or a known partial
+    application applied to one more argument that still leaves one out. -/
+partial def papp? (m : PApps) : JsExpr → Option PApp
+  | .var s => m.lookup s
+  | .call f [a] => do
+    let p ← papp? m f
+    if p.args.length + 1 < p.arity then some { p with args := p.args ++ [a] } else none
+  | _ => none
+
+/-- Can an argument of a partial application be evaluated at the later saturated call
+    instead: a literal or a name never reassigned (not in `mvs`); or, when `once` (the
+    partial application is used once), an operation on such (no call, no closure). -/
+partial def movable (mvs : List String) (once : Bool) : JsExpr → Bool
+  | .lit _ => true
+  | .var y => !mvs.contains y
+  | .bin _ a b => once && movable mvs once a && movable mvs once b
+  | .un _ a => once && movable mvs once a
+  | .helper _ as => once && as.all (movable mvs once)
+  | _ => false
+
+mutual
+/-- Rewrite the saturated calls of the known partial applications into direct calls. -/
+partial def rwExpr (mvs : List String) (uses : String → Nat) (m : PApps) : JsExpr → JsExpr
+  | .call f [a] =>
+    let f' := rwExpr mvs uses m f
+    let a' := rwExpr mvs uses m a
+    match papp? m f' with
+    | some p => if p.args.length + 1 == p.arity then .call (.var p.fn) (p.args ++ [a'])
+                else .call f' [a']
+    | none => .call f' [a']
+  | .call f as => .call (rwExpr mvs uses m f) (as.map (rwExpr mvs uses m))
+  | .arrow ps b => .arrow ps (rwStmts mvs uses m b).1
+  | .bin op a b => .bin op (rwExpr mvs uses m a) (rwExpr mvs uses m b)
+  | .un op a => .un op (rwExpr mvs uses m a)
+  | .helper n as => .helper n (as.map (rwExpr mvs uses m))
+  | .array es => .array (es.map (rwExpr mvs uses m))
+  | .typedArray c es => .typedArray c (es.map (rwExpr mvs uses m))
+  | .index e i => .index (rwExpr mvs uses m e) i
+  | .member e n => .member (rwExpr mvs uses m e) n
+  | .cond c a b => .cond (rwExpr mvs uses m c) (rwExpr mvs uses m a) (rwExpr mvs uses m b)
+  | e => e
+
+/-- Rewrite statements, following the constants that name partial applications; also
+    returns the names of those constants (which are pure, and can be dropped if unused). -/
+partial def rwStmts (mvs : List String) (uses : String → Nat) (m : PApps) : List JsStmt → List JsStmt × List String
+  | [] => ([], [])
+  | s :: ss =>
+    match s with
+    | .const x ty e =>
+      let e' := rwExpr mvs uses m e
+      -- an argument can be moved to the use: a literal or a name never reassigned; or, when
+      -- the constant is used once, an operation on such (no call, no closure)
+      let (m', named) := match papp? m e' with
+        | some p => if p.args.all (movable mvs (uses x == 1)) then ((x, p) :: m, [x]) else (m, [])
+        | none => (m, [])
+      let (rest, ns) := rwStmts mvs uses m' ss
+      (.const x ty e' :: rest, named ++ ns)
+    | _ =>
+      let s' : JsStmt × List String := match s with
+        | .letMut x ty e => (.letMut x ty (rwExpr mvs uses m e), [])
+        | .assign x e => (.assign x (rwExpr mvs uses m e), [])
+        | .destructure xs e => (.destructure xs (rwExpr mvs uses m e), [])
+        | .ret e => (.ret (rwExpr mvs uses m e), [])
+        | .ite c t e =>
+          let (t', n₁) := rwStmts mvs uses m t
+          let (e', n₂) := rwStmts mvs uses m e
+          (.ite (rwExpr mvs uses m c) t' e', n₁ ++ n₂)
+        | .forRange i big n b =>
+          let (b', n₁) := rwStmts mvs uses m b
+          (.forRange i big (rwExpr mvs uses m n) b', n₁)
+        | .forOf x xs b =>
+          let (b', n₁) := rwStmts mvs uses m b
+          (.forOf x (rwExpr mvs uses m xs) b', n₁)
+        | s => (s, [])
+      let (rest, ns) := rwStmts mvs uses m ss
+      (s'.1 :: rest, s'.2 ++ ns)
+end
+
+mutual
+/-- One pass removing the constants among `pure` that `all` (the whole body) does not use. -/
+partial def dropPass (pure : List String) (all : List JsStmt) (ss : List JsStmt) : List JsStmt :=
+  ss.filterMap fun s => match s with
+    | .const x ty e =>
+      if pure.contains x && stmtsUses x all == 0 then none
+      else some (.const x ty (dropPassE pure all e))
+    | .letMut x ty e => some (.letMut x ty (dropPassE pure all e))
+    | .assign x e => some (.assign x (dropPassE pure all e))
+    | .destructure xs e => some (.destructure xs (dropPassE pure all e))
+    | .ret e => some (.ret (dropPassE pure all e))
+    | .ite c t e => some (.ite (dropPassE pure all c) (dropPass pure all t) (dropPass pure all e))
+    | .forRange i big n b => some (.forRange i big (dropPassE pure all n) (dropPass pure all b))
+    | .forOf x xs b => some (.forOf x (dropPassE pure all xs) (dropPass pure all b))
+    | s => some s
+/-- `dropPass` inside the closures of an expression. -/
+partial def dropPassE (pure : List String) (all : List JsStmt) : JsExpr → JsExpr
+  | .arrow ps b => .arrow ps (dropPass pure all b)
+  | .bin op a b => .bin op (dropPassE pure all a) (dropPassE pure all b)
+  | .un op a => .un op (dropPassE pure all a)
+  | .call f as => .call (dropPassE pure all f) (as.map (dropPassE pure all))
+  | .helper n as => .helper n (as.map (dropPassE pure all))
+  | .array es => .array (es.map (dropPassE pure all))
+  | .typedArray c es => .typedArray c (es.map (dropPassE pure all))
+  | .index e i => .index (dropPassE pure all e) i
+  | .member e n => .member (dropPassE pure all e) n
+  | .cond c a b => .cond (dropPassE pure all c) (dropPassE pure all a) (dropPassE pure all b)
+  | e => e
+end
+
+mutual
+/-- The number of `const` declarations of statements (closures included). -/
+partial def countConsts (ss : List JsStmt) : Nat :=
+  ss.foldl (fun acc s => acc + match s with
+    | .const _ _ e => 1 + countConstsE e
+    | .letMut _ _ e | .assign _ e | .destructure _ e | .ret e => countConstsE e
+    | .ite c t e => countConstsE c + countConsts t + countConsts e
+    | .forRange _ _ n b | .forOf _ n b => countConstsE n + countConsts b
+    | .throw _ => 0) 0
+/-- The number of `const` declarations in the closures of an expression. -/
+partial def countConstsE : JsExpr → Nat
+  | .arrow _ b => countConsts b
+  | .bin _ a b => countConstsE a + countConstsE b
+  | .un _ a => countConstsE a
+  | .call f as => countConstsE f + as.foldl (fun acc a => acc + countConstsE a) 0
+  | .helper _ as | .array as | .typedArray _ as => as.foldl (fun acc a => acc + countConstsE a) 0
+  | .index e _ | .member e _ => countConstsE e
+  | .cond c a b => countConstsE c + countConstsE a + countConstsE b
+  | _ => 0
+end
+
+/-- Remove the constants among `pure` that are not used (until none is left to remove). -/
+partial def dropUnused (pure : List String) (ss : List JsStmt) : List JsStmt :=
+  let ss' := dropPass pure ss ss
+  if countConsts ss' == countConsts ss then ss' else dropUnused pure ss'
+
+/-- The curried view of the exported function `g` of `arity ≥ 1` parameters:
+    `(a$1) => (a$2) => g(a$1, a$2)`. -/
+def curriedView (g : String) (arity : Nat) : JsExpr :=
+  let ps := (List.range arity).map fun i => s!"{g}$a{i + 1}"
+  ps.foldr (fun p body => .arrow [p] [.ret body]) (.call (.var g) (ps.map .var))
+
+/-- The body of the exported function of an open definition: `recs` are the parameters of
+    the open definition that stand for recursive functions (`g$rec`, its layout, the exported
+    function `g` and its number of parameters), bound to the curried views of those
+    functions, and every saturated call through them made direct. -/
+def bindRecCalls (recs : List (String × MoreJsTy × String × Nat)) (body : List JsStmt) :
+    List JsStmt :=
+  let binds := recs.map fun (x, ty, g, ar) => JsStmt.const x ty (curriedView g ar)
+  let all := binds ++ body
+  let mvs := all.flatMap stmtMutables
+  let m : PApps := recs.map fun (x, _, g, ar) => (x, { fn := g, arity := ar, args := [] })
+  let (body', named) := rwStmts mvs (fun x => stmtsUses x body) m body
+  dropUnused (recs.map (·.1) ++ named) (binds ++ body')
+
+end LeanScript.Cli

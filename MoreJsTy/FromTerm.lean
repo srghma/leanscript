@@ -30,7 +30,7 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | `Branch.ite`, `enum_casesOn`, `union_casesOn` | `if`/`else if` chains |
 | `Branch.join` | `const j = (x) => { … };` in front of the branch |
 | `Comp.app f a`, `Comp.share n` | `f(a)`, `n` |
-| `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }` |
+| `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }`; when the step ignores the accumulator (a case analysis `0` / `k + 1`), `let acc = z; if (0n < n) { const i = n - 1n; …; acc = …; }` |
 | `Comp.array_foldl a z s` | `let acc = z; for (const e of a) { …; acc = …; }` |
 | `Comp.thunk_force`, `Comp.lazy_force` | `$force(t)`, `t()` |
 
@@ -215,6 +215,28 @@ def loopBody (acc accIn : String) (ty : MoreJsTy) (body : List JsStmt) : List Js
   else
     retToAssign acc (renameStmts accIn acc body)
 
+mutual
+/-- Does a statement mention the variable `x`? -/
+partial def JsStmt.mentions (x : String) : JsStmt → Bool
+  | .const _ _ e | .letMut _ _ e | .destructure _ e | .ret e => e.mentions x
+  | .assign y e => y == x || e.mentions x
+  | .ite c t e => c.mentions x || t.any (·.mentions x) || e.any (·.mentions x)
+  | .forRange _ _ n b => n.mentions x || b.any (·.mentions x)
+  | .forOf _ xs b => xs.mentions x || b.any (·.mentions x)
+  | .throw _ => false
+/-- Does an expression mention the variable `x`? -/
+partial def JsExpr.mentions (x : String) : JsExpr → Bool
+  | .var y => y == x
+  | .arrow _ b => b.any (·.mentions x)
+  | .bin _ a b => a.mentions x || b.mentions x
+  | .un _ a => a.mentions x
+  | .call f as => f.mentions x || as.any (·.mentions x)
+  | .helper _ as | .array as | .typedArray _ as => as.any (·.mentions x)
+  | .index e _ | .member e _ => e.mentions x
+  | .cond c a b => c.mentions x || a.mentions x || b.mentions x
+  | .lit _ => false
+end
+
 /-- An expression that can be repeated without recomputing anything. -/
 def JsExpr.isAtom : JsExpr → Bool
   | .var _ | .lit _ => true
@@ -341,8 +363,17 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     let accIn ← fresh "a"
     let body ← cBody s n [accIn, i]
     let big := (lowerTy cfg (Ty.nat : Ty ks)).isBigInt
-    return (pre ++ [.letMut acc (lowerTy cfg τ) zE,
-      .forRange i big cntE (loopBody acc accIn (lowerTy cfg τ) body)], acc)
+    if body.any (·.mentions accIn) then
+      return (pre ++ [.letMut acc (lowerTy cfg τ) zE,
+        .forRange i big cntE (loopBody acc accIn (lowerTy cfg τ) body)], acc)
+    else
+      -- a step that ignores the accumulator (a case analysis `0` / `k + 1` read as a
+      -- recursion): only the last iteration counts, `i = n - 1`, so no loop
+      let lit (k : Nat) : JsExpr := .lit (if big then .bigint k else .int k)
+      return (pre ++ [.letMut acc (lowerTy cfg τ) zE,
+        .ite (.bin .lt (lit 0) cntE)
+          (.const i (lowerTy cfg (Ty.nat : Ty ks)) (.bin .sub cntE (lit 1)) :: retToAssign acc body)
+          []], acc)
   | .array_foldl arr z s _, n => do
     let acc ← fresh "acc"
     let e ← fresh "e"

@@ -6,6 +6,28 @@
 --   SnapshotsMy.MutualUnreachMarkerCheck.runF1: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.MutualUnreachMarkerCheck.pF2: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.MutualUnreachMarkerCheck.runF2: the definition does not elaborate (it contains errors or `sorry`)
---   f1: part of a `mutual` block (f1, f2): mutual recursion is not translated yet
---   f2: part of a `mutual` block (f1, f2): mutual recursion is not translated yet
 
+-- f1 : Nat → Bool
+-- recursive (f1.leanscript_open): `f1` is the function below applied to `f2` (its first 1 parameter(s))
+val k1 [1] : ((Nat → Nat) → (Nat → Bool)) := fun x2 [ω] : (Nat → Nat) => (closed)
+  val k3 [1] : (Nat → Bool) := fun x4 [1] : Nat => (open)
+    let x8 [1] : Bool := nat_rec x4 true fun acc5 i6 => (open)
+      let x7 [1] : Nat := x2 i6
+      ret lean_nat_dec_eq__Nat_decEq(x7, 0)
+    ret x8
+  ret k3
+ret k1
+
+-- f2 : Nat → Nat
+-- recursive (f2.leanscript_open): `f2` is the function below applied to `f1` (its first 1 parameter(s))
+val k1 [1] : ((Nat → Bool) → (Nat → Nat)) := fun x2 [ω] : (Nat → Bool) => (closed)
+  val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)
+    let x8 [1] : Nat := nat_rec x4 7 fun acc5 i6 => (open)
+      let x7 [1] : Bool := x2 i6
+      if x7 then
+        ret 0
+      else
+        ret 1
+    ret x8
+  ret k3
+ret k1

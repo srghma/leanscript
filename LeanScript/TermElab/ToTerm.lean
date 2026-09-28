@@ -39,6 +39,7 @@ given with the constructor it becomes:
 | a constructor | `#leanscript_get_ctor` of it (and so `data_in` for a recursive type) |
 | a constructor of a wrapper of one value besides proofs (`⟨i, h⟩ : Fin c.n`, `Subtype.mk`), also when its parameters mention locals | that value |
 | a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |
+| a proof parameter of a function that is not recursive (`(h : Safe n)`; in particular of the open definitions `leanscript` builds for well-founded recursion) | nothing: it is erased, like the proofs of the body that mention it |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
@@ -179,26 +180,33 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
     let units ← kept.mapM fun x => do isUnitType (← inferType x)
     if recursive && units.any id then
       fail m!"`{f}` is recursive and has a parameter of type `Unit`"
-    let slotted := (List.range kept.size).toArray.filter (!units[·]!) |>.map (kept[·]!)
+    -- a proof parameter of a function that is not recursive is erased (the proofs of its
+    -- body, which alone can mention it, are erased too)
+    let proofs ← if recursive then pure (kept.map fun _ => false) else kept.mapM fun x => isProof x
+    let slotted := (List.range kept.size).toArray.filter (fun i => !units[i]! && !proofs[i]!)
+      |>.map (kept[·]!)
+    let dataKept := (List.range kept.size).toArray.filter (!proofs[·]!) |>.map (kept[·]!)
     let L : Loc := { slots := slotted.map (some ·.fvarId!), fns := if recursive then group else #[],
                      params, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Anf.Src × Lean.Term) := do
       for x in kept do
         if ← isUnitType (← inferType x) then continue
+        if !recursive && (← isProof x) then continue
         if ← isType x then fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is a type"
         if (← isClass? (← inferType x)).isSome then
           fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is an instance"
         discard <| cirOf L (← inferType x)
       let mut body ← tr L rhs
       for i in (List.range kept.size).reverse do
+        if proofs[i]! then continue
         if units[i]! then
-          let rest ← mkForallFVars kept[i+1:].toArray (← inferType lhs)
+          let rest ← mkForallFVars (kept[i+1:].toArray.filter (dataKept.contains ·)) (← inferType lhs)
           body ← delayCoerceTy L rest (← mkForallFVars #[kept[i]!] rest) body
         else body := Anf.Src.lam (some (← tyStx L (← inferType kept[i]!))) body
       -- the type of the translation: the parameters kept, then the result (an index
       -- parameter only occurs in indices, which are erased)
-      let ty ← if idxParams.isEmpty then pure info.type
-        else mkForallFVars kept (← inferType lhs)
+      let ty ← if idxParams.isEmpty && !proofs.any id then pure info.type
+        else mkForallFVars dataKept (← inferType lhs)
       return (body, ← tyStx L ty)
     -- the depth of the course-of-values recursion: the first that works
     let mut res? := none

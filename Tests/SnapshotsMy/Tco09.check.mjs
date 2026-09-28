@@ -30,6 +30,43 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("diagonal(0n, 0n)", () => M.diagonal(0n, 0n), "0", false);
+check("diagonal(0n, 2n)", () => M.diagonal(0n, 2n), "3", false);
+check("diagonal(1n, 1n)", () => M.diagonal(1n, 1n), "4", false);
+check("diagonal(2n, 0n)", () => M.diagonal(2n, 0n), "5", false);
+check("diagonal(0n, 13n)", () => M.diagonal(0n, 13n), "91", false);
+check("diagonal(1n, 5n)", () => M.diagonal(1n, 5n), "22", false);
+check("diagonal(2n, 2n)", () => M.diagonal(2n, 2n), "12", false);
+check("diagonal(5n, 1n)", () => M.diagonal(5n, 1n), "26", false);
+check("diagonal(13n, 0n)", () => M.diagonal(13n, 0n), "104", false);
+check("diagonal(2n, 13n)", () => M.diagonal(2n, 13n), "122", false);
+check("diagonal(5n, 5n)", () => M.diagonal(5n, 5n), "60", false);
+check("diagonal(13n, 2n)", () => M.diagonal(13n, 2n), "133", false);
+check("diagonal(13n, 13n)", () => M.diagonal(13n, 13n), "364", false);
+check("hyper(0n, 0n, 0n)", () => M.hyper(0n, 0n, 0n), "1", false);
+check("hyper(0n, 1n, 1n)", () => M.hyper(0n, 1n, 1n), "2", false);
+check("hyper(1n, 1n, 0n)", () => M.hyper(1n, 1n, 0n), "1", false);
+check("hyper(0n, 2n, 2n)", () => M.hyper(0n, 2n, 2n), "3", false);
+check("hyper(1n, 2n, 1n)", () => M.hyper(1n, 2n, 1n), "3", false);
+check("hyper(2n, 2n, 0n)", () => M.hyper(2n, 2n, 0n), "0", false);
+check("hyper(0n, 5n, 5n)", () => M.hyper(0n, 5n, 5n), "6", false);
+check("hyper(1n, 5n, 2n)", () => M.hyper(1n, 5n, 2n), "7", false);
+check("hyper(2n, 0n, 13n)", () => M.hyper(2n, 0n, 13n), "0", false);
+check("hyper(2n, 5n, 1n)", () => M.hyper(2n, 5n, 1n), "5", false);
+check("hyper(5n, 0n, 5n)", () => M.hyper(5n, 0n, 5n), "0", false);
+check("hyper(5n, 5n, 0n)", () => M.hyper(5n, 5n, 0n), "1", false);
+check("hyper(13n, 0n, 2n)", () => M.hyper(13n, 0n, 2n), "1", false);
+check("hyper(0n, 13n, 13n)", () => M.hyper(0n, 13n, 13n), "14", false);
+check("hyper(1n, 13n, 5n)", () => M.hyper(1n, 13n, 5n), "18", false);
+check("hyper(2n, 13n, 2n)", () => M.hyper(2n, 13n, 2n), "26", false);
+check("hyper(5n, 1n, 13n)", () => M.hyper(5n, 1n, 13n), "1", false);
+check("hyper(5n, 13n, 1n)", () => M.hyper(5n, 13n, 1n), "13", false);
+check("hyper(13n, 1n, 5n)", () => M.hyper(13n, 1n, 5n), "1", false);
+check("hyper(13n, 13n, 0n)", () => M.hyper(13n, 13n, 0n), "1", false);
+check("ackRev(0n, 0n)", () => M.ackRev(0n, 0n), "1", false);
+check("ackRev(0n, 2n)", () => M.ackRev(0n, 2n), "3", false);
+check("ackRev(1n, 1n)", () => M.ackRev(1n, 1n), "3", false);
+check("ackRev(2n, 0n)", () => M.ackRev(2n, 0n), "3", false);
 
 console.log(`Tco09.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

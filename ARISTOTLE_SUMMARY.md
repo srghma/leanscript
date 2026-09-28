@@ -1,3 +1,27 @@
+# Summary of changes for run df763831-9200-4bda-bc91-868d7bc2aed2
+I formalized in Lean why translating a well-founded function through its "open definition" gives the right function. The proofs contain no `sorry` and use only the standard axioms `propext`, `Classical.choice` and `Quot.sound` (checked with `#print axioms`). Everything is committed.
+
+What is still unverified: the tool code that builds the open definition from a Lean function, and the JavaScript printing of recursive calls. For `mc91Loop` and `ack` I wrote the open definition by hand in the shape the tool builds.
+
+**General theorems (`LeanScript/Term/OpenRec.lean`)**
+
+Setup: an open definition is a functional `F : (α → β) → α → β`, and the original function `f` is its fixed point, `f = F f`. `OpenRec.Respects r F` means `F` only calls its recursive parameter on arguments smaller for `r`, which is what Lean's termination proof establishes.
+
+- **At most one fixed point (`OpenRec.fix_unique`).** If `r` is well-founded and `F` respects it, two fixed points of `F` are equal. So any function that satisfies the unfolding equation is the original function, and the translation cannot compute a different one.
+- **A fixed point exists (`OpenRec.fix_isFix`, `OpenRec.fix_exists`, `OpenRec.eq_fix_of_isFix`).** It is built with `WellFounded.fix`, and every fixed point equals it.
+- **The optimiser keeps the fixed points (`Term.optimizeN_isFix_iff`, `Term.optimizeN_fix_eq`).** These follow from the existing `Term.optimizeN_run`. The translated open term, optimised any number of times, has the same fixed points as before, and so still denotes the original function.
+- **Loop-to-`if` rewrite (`natIter_of_ignoresAcc'`).** A `nat_rec` whose step ignores the accumulator equals `if 0 < n then s (n-1) z else z`. This is the `if` the JavaScript printer now emits instead of a loop, which is the change that stopped the exponential blow-up in `mc91Loop`.
+
+**Examples from the snapshots (`Tests/TermTests/OpenRecTest.lean`)**
+
+- **`mc91Loop`:** it satisfies its open definition's equation, the recursive calls decrease the termination measure `2*(111-n)+21*c`, and every solution of the equation is `mc91Loop` (`mc91Loop_unique`).
+- **`ack`:** the same, under the lexicographic order (`ack_unique`).
+- **End to end (`mc91LoopOpenT_optimizeN_fix`):** I translated `mc91Loop`'s open definition with `#leanscript_to_term`, as the tool does. The resulting `Term` computes the open definition; this step uses the existing `kernel_rfl` tactic, so the kernel checks it. Every fixed point of that translated term, optimised any number of times, is `mc91Loop`.
+
+`README.md` has a new row for these two files, and the Properties table lists the five main results as proved.
+
+**Build:** as in earlier runs, `lakefile.toml` requires Mathlib but `lake-manifest.json` has no entry for it, so `lake` stops immediately. I removed that requirement locally to build `LeanScript.Term.OpenRec` and `TermTests.OpenRecTest` (both built successfully) and restored it before committing, so your lakefile is unchanged. For that reason no build targets are claimed.
+
 # Summary of changes for run 347f97b8-4503-4de7-9a88-e37029d3fafe
 I implemented `WFTerm`, a layer wrapped around `Term` that adds well-founded recursion, along with its evaluator and an optimiser. The optimiser is proved not to change results. The proofs contain no `sorry` and use only the axioms `propext`, `Classical.choice` and `Quot.sound`. All 45 tests pass, including 7 new ones for `WFTerm`. Everything is committed.
 

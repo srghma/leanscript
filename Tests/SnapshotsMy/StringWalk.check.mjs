@@ -30,6 +30,32 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test4(\"\")", () => M.test4(""), "0", false);
+check("test4(\"a\")", () => M.test4("a"), "0", false);
+check("test4(\"hello world\")", () => M.test4("hello world"), "55", false);
+check("test4(\"héllo, wörld\")", () => M.test4("héllo, wörld"), "66", false);
+check("test4(\"abcabc\")", () => M.test4("abcabc"), "15", false);
+check("test4_go(\"\", 0n, 0n)", () => M.test4_go("", 0n, 0n), "0", false);
+check("test4_go(\"\", 1n, 1n)", () => M.test4_go("", 1n, 1n), "1", false);
+check("test4_go(\"a\", 1n, 0n)", () => M.test4_go("a", 1n, 0n), "0", false);
+check("test4_go(\"\", 2n, 2n)", () => M.test4_go("", 2n, 2n), "2", false);
+check("test4_go(\"a\", 2n, 1n)", () => M.test4_go("a", 2n, 1n), "1", false);
+check("test4_go(\"hello world\", 2n, 0n)", () => M.test4_go("hello world", 2n, 0n), "54", false);
+check("test4_go(\"\", 5n, 5n)", () => M.test4_go("", 5n, 5n), "5", false);
+check("test4_go(\"a\", 5n, 2n)", () => M.test4_go("a", 5n, 2n), "2", false);
+check("test4_go(\"hello world\", 0n, 13n)", () => M.test4_go("hello world", 0n, 13n), "68", false);
+check("test4_go(\"hello world\", 5n, 1n)", () => M.test4_go("hello world", 5n, 1n), "46", false);
+check("test4_go(\"héllo, wörld\", 0n, 5n)", () => M.test4_go("héllo, wörld", 0n, 5n), "71", false);
+check("test4_go(\"héllo, wörld\", 5n, 0n)", () => M.test4_go("héllo, wörld", 5n, 0n), "56", false);
+check("test4_go(\"abcabc\", 0n, 2n)", () => M.test4_go("abcabc", 0n, 2n), "17", false);
+check("test4_go(\"\", 13n, 13n)", () => M.test4_go("", 13n, 13n), "13", false);
+check("test4_go(\"a\", 13n, 5n)", () => M.test4_go("a", 13n, 5n), "5", false);
+check("test4_go(\"hello world\", 13n, 2n)", () => M.test4_go("hello world", 13n, 2n), "2", false);
+check("test4_go(\"héllo, wörld\", 1n, 13n)", () => M.test4_go("héllo, wörld", 1n, 13n), "79", false);
+check("test4_go(\"héllo, wörld\", 13n, 1n)", () => M.test4_go("héllo, wörld", 13n, 1n), "1", false);
+check("test4_go(\"abcabc\", 1n, 5n)", () => M.test4_go("abcabc", 1n, 5n), "20", false);
+check("test4_go(\"abcabc\", 13n, 0n)", () => M.test4_go("abcabc", 13n, 0n), "0", false);
+check("test4_go(\"abcabc\", 2n, 13n)", () => M.test4_go("abcabc", 2n, 13n), "27", false);
 check("test3(\"\", 0n)", () => M.test3("", 0n), "0", false);
 check("test3(\"\", 2n)", () => M.test3("", 2n), "1", false);
 check("test3(\"a\", 1n)", () => M.test3("a", 1n), "1", false);

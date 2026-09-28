@@ -30,6 +30,26 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("hyper(0n, 0n, 0n)", () => M.hyper(0n, 0n, 0n), "1", false);
+check("hyper(0n, 1n, 1n)", () => M.hyper(0n, 1n, 1n), "2", false);
+check("hyper(1n, 1n, 0n)", () => M.hyper(1n, 1n, 0n), "1", false);
+check("hyper(0n, 2n, 2n)", () => M.hyper(0n, 2n, 2n), "3", false);
+check("hyper(1n, 2n, 1n)", () => M.hyper(1n, 2n, 1n), "3", false);
+check("hyper(2n, 2n, 0n)", () => M.hyper(2n, 2n, 0n), "0", false);
+check("hyper(0n, 5n, 5n)", () => M.hyper(0n, 5n, 5n), "6", false);
+check("hyper(1n, 5n, 2n)", () => M.hyper(1n, 5n, 2n), "7", false);
+check("hyper(2n, 0n, 13n)", () => M.hyper(2n, 0n, 13n), "0", false);
+check("hyper(2n, 5n, 1n)", () => M.hyper(2n, 5n, 1n), "5", false);
+check("hyper(5n, 0n, 5n)", () => M.hyper(5n, 0n, 5n), "0", false);
+check("hyper(5n, 5n, 0n)", () => M.hyper(5n, 5n, 0n), "1", false);
+check("hyper(13n, 0n, 2n)", () => M.hyper(13n, 0n, 2n), "1", false);
+check("hyper(0n, 13n, 13n)", () => M.hyper(0n, 13n, 13n), "14", false);
+check("hyper(1n, 13n, 5n)", () => M.hyper(1n, 13n, 5n), "18", false);
+check("hyper(2n, 13n, 2n)", () => M.hyper(2n, 13n, 2n), "26", false);
+check("hyper(5n, 1n, 13n)", () => M.hyper(5n, 1n, 13n), "1", false);
+check("hyper(5n, 13n, 1n)", () => M.hyper(5n, 13n, 1n), "13", false);
+check("hyper(13n, 1n, 5n)", () => M.hyper(13n, 1n, 5n), "1", false);
+check("hyper(13n, 13n, 0n)", () => M.hyper(13n, 13n, 0n), "1", false);
 check("hyperBase(0n, 0n)", () => M.hyperBase(0n, 0n), "1", false);
 check("hyperBase(0n, 2n)", () => M.hyperBase(0n, 2n), "1", false);
 check("hyperBase(1n, 1n)", () => M.hyperBase(1n, 1n), "1", false);

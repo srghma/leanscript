@@ -2,10 +2,6 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // imports not found (left out): LeanScript.GenerateProgram
 // not translated:
-//   diagonal: defined by well-founded recursion, not structurally
-//   hyper: defined by well-founded recursion, not structurally
-//   ackRev: defined by well-founded recursion, not structurally
-//   Mc91.M: defined by well-founded recursion, not structurally
 //   SnapshotsMy.Tco09Check.pDiagonal: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Check.pHyper: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Check.pMc91M: the definition does not elaborate (it contains errors or `sorry`)
@@ -17,9 +13,85 @@
 //   SnapshotsMy.Tco09Agree.mFun: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Agree.ackFun: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Agree.diagFun: the definition does not elaborate (it contains errors or `sorry`)
-//   Mc91: LeanScript: the proof or type Mc91.M._proof_10 n has no value in the language
+//   Mc91: LeanScript: dependent function type (n : Nat) → { m // m ≥ n - 10 }
+//   Mc91.M: (kernel) let-declaration type mismatch 'this'
 //   SnapshotsMy.Tco09Check.agrees2: LeanScript: the call (List.range bound).all fun i => (List.range bound).all fun j => f i j == g i j is not a call of an extern: `List.all` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up array-bool=generic array-char=generic
 // runtime helpers: 
 
+// diagonal
+export function diagonal(a : nat(bigint), a1 : nat(bigint)) : nat(bigint) {
+  let acc$1 : nat(bigint) = 0n;
+  if ((0n < a1)) {
+    const i$2 : nat(bigint) = (a1 - 1n);
+    const x$5 : nat(bigint) = diagonal(i$2, 0n);
+    acc$1 = (x$5 + 1n);
+  }
+  let acc$6 : nat(bigint) = acc$1;
+  if ((0n < a)) {
+    const i$7 : nat(bigint) = (a - 1n);
+    const x$10 : nat(bigint) = diagonal(i$7, (a1 + 1n));
+    acc$6 = (x$10 + 1n);
+  }
+  return acc$6;
+}
+
+// hyper
+export function hyper(a : nat(bigint), a1 : nat(bigint), a2 : nat(bigint)) : nat(bigint) {
+  let acc$1 : nat(bigint) = (a2 + 1n);
+  if ((0n < a)) {
+    const i$2 : nat(bigint) = (a - 1n);
+    let acc$4 : nat(bigint) = a1;
+    if ((0n < a2)) {
+      const i$5 : nat(bigint) = (a2 - 1n);
+      const x$11 : nat(bigint) = hyper(1n, a1, i$5);
+      const x$12 : nat(bigint) = hyper(0n, a1, x$11);
+      acc$4 = x$12;
+    }
+    let acc$13 : nat(bigint) = acc$4;
+    if ((0n < i$2)) {
+      const i$14 : nat(bigint) = (i$2 - 1n);
+      let acc$16 : nat(bigint) = 0n;
+      if ((0n < a2)) {
+        const i$17 : nat(bigint) = (a2 - 1n);
+        const x$23 : nat(bigint) = hyper(2n, a1, i$17);
+        const x$24 : nat(bigint) = hyper(1n, a1, x$23);
+        acc$16 = x$24;
+      }
+      let acc$25 : nat(bigint) = acc$16;
+      if ((0n < i$14)) {
+        const i$26 : nat(bigint) = (i$14 - 1n);
+        let acc$28 : nat(bigint) = 1n;
+        if ((0n < a2)) {
+          const i$29 : nat(bigint) = (a2 - 1n);
+          const x$35 : nat(bigint) = hyper((((i$26 + 1n) + 1n) + 1n), a1, i$29);
+          const x$36 : nat(bigint) = hyper(((i$26 + 1n) + 1n), a1, x$35);
+          acc$28 = x$36;
+        }
+        acc$25 = acc$28;
+      }
+      acc$13 = acc$25;
+    }
+    acc$1 = acc$13;
+  }
+  return acc$1;
+}
+
+// ackRev
+export function ackRev(a : nat(bigint), a1 : nat(bigint)) : nat(bigint) {
+  let acc$1 : nat(bigint) = (a + 1n);
+  if ((0n < a1)) {
+    const i$2 : nat(bigint) = (a1 - 1n);
+    const x$5 : nat(bigint) = ackRev(1n, i$2);
+    let acc$6 : nat(bigint) = x$5;
+    if ((0n < a)) {
+      const i$7 : nat(bigint) = (a - 1n);
+      const x$10 : nat(bigint) = ackRev(i$7, (i$2 + 1n));
+      const x$12 : nat(bigint) = ackRev(x$10, i$2);
+      acc$6 = x$12;
+    }
+    acc$1 = acc$6;
+  }
+  return acc$1;
+}

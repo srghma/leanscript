@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run `leanscript --functions-only --check` on every `Tests/SnapshotsMy/*.lean` and
-# `Tests/SnapshotsPBOPure/*.lean` that has at least one public, structurally total function
+# `Tests/SnapshotsPBOPure/*.lean` that has at least one public total function (structurally
+# recursive or defined by well-founded recursion)
 # (writing FILE-Term-unoptimized.txt, FILE-Term-optimized.txt, FILE-MoreJsTy.txt, FILE.js and
 # FILE.check.mjs next to each such file; a file without one gets no outputs),
 # then run every check module with node.  Extra arguments are passed to leanscript

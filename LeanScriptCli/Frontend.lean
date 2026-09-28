@@ -12,8 +12,15 @@ longer exist still elaborates as far as it can.
 
 `candidates` lists the definitions of the file the tool tries to translate: the public,
 non-auxiliary, non-`partial`, computable definitions of values (not of types or
-propositions), in the order of the file.  A definition by well-founded recursion is
-refused: the tool only translates *structurally* total functions.
+propositions), in the order of the file: structurally recursive ones and ones defined by
+well-founded recursion alike.
+
+A function defined by well-founded recursion (or a member of a `mutual` block, or a function
+calling such functions) is translated through its **open definition** (`openDef`): the
+right-hand side of its unfolding equation with every call of such a function `g` made a
+call of a new parameter `g_rec`.  That definition is not recursive, so the translator reads it
+like any other; the function is its fixed point (its unfolding equation), which is how the
+JavaScript runs it (`LeanScriptCli.RecCalls`).
 
 `translate` runs the translator (`LeanScript.Gen.translateDef`, the elaborator behind
 `#leanscript_to_term`) on a definition, which reads its `Expr` (its unfolding equation, not
@@ -143,22 +150,125 @@ def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
       ``IO].contains c) then
     return some (.refused "an `IO`/`ST` action: the language has no side effects")
   if isNoncomputable env n then return some (.refused "a `noncomputable` definition")
-  -- well-founded recursion: `WellFounded.fix` directly, or through the `f._unary` (several
-  -- parameters) or `f._mutual` (mutual block) definition Lean packs the recursion in
-  if mentions d.value (fun c => c == ``WellFounded.fix || c == ``WellFounded.Nat.fix ||
-      c == n ++ `_unary || c == n ++ `_mutual) then
-    return some (.refused "defined by well-founded recursion, not structurally")
+  -- a definition by well-founded recursion is a candidate too: it is translated as the fixed
+  -- point of its body (`openDef`)
   return none
 
-/-- Why a candidate cannot be translated although it is structurally total: the translator
-    reads each member of a `mutual` block on its own, and would take a call to another member
-    for a recursive call to this one, so such a member is refused rather than miscompiled. -/
-def untranslatableReason? (n : Name) : MetaM (Option String) := do
-  let .defnInfo d ← getConstInfo n | return none
-  if d.all.length > 1 then
-    return some s!"part of a `mutual` block ({", ".intercalate (d.all.map toString)}): \
-      mutual recursion is not translated yet"
-  return none
+/-- Is `n` defined by well-founded recursion (`WellFounded.fix`, directly or through the
+    `f._unary` / `f._mutual` definition Lean packs the recursion in)? -/
+def isWellFounded (n : Name) : MetaM Bool := do
+  let env ← getEnv
+  if (Elab.WF.eqnInfoExt.find? env n).isSome then return true
+  let .defnInfo d ← getConstInfo n | return false
+  return mentions d.value (fun c => c == ``WellFounded.fix || c == ``WellFounded.Nat.fix ||
+      c == n ++ `_unary || c == n ++ `_mutual)
+
+/-- The functions of the recursive group `n` belongs to (itself alone if it is not part of
+    a `mutual` block). -/
+def recGroup (n : Name) : MetaM (Array Name) := do
+  let env ← getEnv
+  if let some i := Elab.Structural.eqnInfoExt.find? env n then return i.declNames
+  if let some i := Elab.WF.eqnInfoExt.find? env n then return i.declNames
+  return #[n]
+
+/-- The right-hand side of the unfolding equation of `n` (`n.eq_def`), under its parameters. -/
+def withUnfoldRhs {α : Type} (n : Name) (k : Array Expr → Expr → Expr → MetaM α) : MetaM α := do
+  let some eqn ← getUnfoldEqnFor? n (nonRec := true)
+    | throwError "`{n}` is not a definition that can be unfolded"
+  let lvls := (← getConstInfo n).levelParams.map mkLevelParam
+  forallTelescope (← inferType (mkConst eqn lvls)) fun xs eq => do
+    let some (_, lhs, rhs) := eq.eq? | throwError "unexpected unfolding equation of `{n}`"
+    k xs lhs rhs
+
+/-- The constants of `among` the unfolding equation of `n` calls, in the order of `among`. -/
+def unfoldRefs (n : Name) (among : Array Name) : MetaM (Array Name) :=
+  withUnfoldRhs n fun _ _ rhs => return among.filter fun g => mentions rhs (· == g)
+
+/-- The name of the parameter that stands for the function `g` in an open definition. -/
+def recParamName (g : Name) : Name :=
+  .mkSimple ("_".intercalate (g.components.map fun c => c.toString (escape := false)) ++ "_rec")
+
+/-- Replace the calls of the functions `refs` by calls of the parameters standing for them
+    (`selfs`, each with the positions of the proof parameters it drops): `g a h b` becomes
+    `g_rec a b` when `h` is a proof. -/
+partial def replaceRecCalls (refs : Array Name) (selfs : Array (Expr × Array Bool)) (e : Expr) :
+    MetaM Expr := do
+  let find? (c : Name) := (refs.findIdx? (· == c)).map (selfs[·]!)
+  match e with
+  | .app .. =>
+    let f := e.getAppFn
+    let args ← e.getAppArgs.mapM (replaceRecCalls refs selfs)
+    match f with
+    | .const c _ =>
+      match find? c with
+      | some (x, isPf) =>
+        if isPf.isEmpty then return mkAppN x args
+        if args.size < isPf.size then
+          throwError "`{c}` is applied to fewer arguments than its parameters, whose proofs \
+            cannot be erased"
+        let kept := (List.range args.size).toArray.filter (fun i => !(isPf[i]?.getD false)) |>.map (args[·]!)
+        return mkAppN x kept
+      | none => return mkAppN f args
+    | _ => return mkAppN (← replaceRecCalls refs selfs f) args
+  | .const c _ =>
+    match find? c with
+    | some (x, isPf) =>
+      if isPf.isEmpty then return x
+      throwError "`{c}` is used as a value, but it takes proofs, which cannot be erased"
+    | none => return e
+  | .lam _ t b _ => return e.updateLambdaE! (← replaceRecCalls refs selfs t) (← replaceRecCalls refs selfs b)
+  | .forallE _ t b _ => return e.updateForallE! (← replaceRecCalls refs selfs t) (← replaceRecCalls refs selfs b)
+  | .letE n t v b nd =>
+    return .letE n (← replaceRecCalls refs selfs t) (← replaceRecCalls refs selfs v)
+      (← replaceRecCalls refs selfs b) nd
+  | .mdata _ b => return e.updateMData! (← replaceRecCalls refs selfs b)
+  | .proj _ _ b => return e.updateProj! (← replaceRecCalls refs selfs b)
+  | _ => return e
+
+/-- The name of the open definition of `n`. -/
+def openDefName (n : Name) : Name := n ++ `leanscript_open
+
+/-- **The open definition** of `n`, abstracted over the recursive functions `refs`: the
+    right-hand side of the unfolding equation of `n` (`n x = body`), in which every call of a
+    function `g` of `refs` (`n` itself, the other members of its `mutual` block, other
+    functions of the file defined by well-founded recursion) is a call of a new first
+    parameter `g_rec`:
+
+    `n.leanscript_open g₁_rec … gₖ_rec x = body[gᵢ := gᵢ_rec]`
+
+    It is not recursive, so the translator reads it like any other definition; `n` is its
+    fixed point, `n = n.leanscript_open g₁ … gₖ` (the unfolding equation), which is how the
+    JavaScript runs it: the exported function `n` passes the exported functions `gᵢ`
+    themselves for the `gᵢ_rec`.  Nothing about termination is needed at run time: the
+    calls are exactly those Lean makes. -/
+def openDef (n : Name) (refs : Array Name) : MetaM Name := do
+  let info ← getConstInfo n
+  unless info.levelParams.isEmpty do throwError "`{n}` is universe polymorphic"
+  -- the type of `g_rec`: the type of `g` without its proof parameters, when no later type
+  -- depends on them (the translation erases proofs, and a function value cannot take one)
+  let recTys ← refs.mapM fun g => do
+    let gi ← getConstInfo g
+    unless gi.levelParams.isEmpty do throwError "`{g}` is universe polymorphic"
+    forallTelescope gi.type fun ys r => do
+      let isPf ← ys.mapM fun y => do isProp (← inferType y)
+      let kept := (List.range ys.size).toArray.filter (!isPf[·]!) |>.map (ys[·]!)
+      let t ← mkForallFVars kept r
+      if isPf.any id && !t.hasFVar then return (t, isPf) else return (gi.type, #[])
+  let (ty, val) ← withUnfoldRhs n fun xs lhs rhs => do
+    let decls := (refs.zip recTys).map fun (g, t, _) =>
+      (recParamName g, fun (_ : Array Expr) => pure t)
+    withLocalDeclsD decls fun selfs => do
+      let rhs' ← replaceRecCalls refs (selfs.zip (recTys.map (·.2))) rhs
+      return (← mkForallFVars (selfs ++ xs) (← inferType lhs), ← mkLambdaFVars (selfs ++ xs) rhs')
+  let name := openDefName n
+  let decl := Declaration.defnDecl { name, levelParams := [], type := ty, value := val,
+                                     hints := .regular 0, safety := .safe }
+  -- (the kernel checks it: a proof of the body that relies on the definition of a function it
+  -- now calls through `g_rec` makes the open definition, and the function, refused)
+  addDecl decl
+  -- its unfolding equation is generated on demand
+  enableRealizationsForConst name
+  return name
 
 /-- The candidates of the file, in the order of the file, and the refused ones with the
     reason. -/
