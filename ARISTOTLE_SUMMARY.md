@@ -1,3 +1,14 @@
+# Summary of changes for run 2bf2eaaf-a730-4ca2-94bf-7bbb38e11512
+I merged the runtime files into one `runtime.js` with a Python script and deleted the originals. Nothing else in the project was changed, and nothing was built or tested.
+
+- **Files merged:** `runtime/` had no `*.js` files, only 15 `*.mjs` files, so I merged those. They are `lean_runtime_{bitvec,int64,int,isize,nat,uint64,usize}_{bigint,num}.mjs` plus `lean_runtime_non_configurable.mjs`.
+- **Format:** the files are joined in alphabetical order. Each one starts with a `==== FILE: runtime/<name> ====` header line, the same format the old `runtime.js` used. The new file is 2169 lines.
+- **Old `runtime.js` replaced:** there was already a `runtime.js` from an earlier merge, and it has been overwritten. It contained a `runtime/lean_values.mjs` section. That file was no longer in `runtime/`, so its contents are not in the new `runtime.js`. The earlier version is still in git history if you need it.
+- **Cleanup:** the 15 `.mjs` files were removed, and so was the empty `runtime/` directory.
+- **Not updated:** Lean sources and docs that refer to paths under `runtime/` were left as they are, as you asked.
+
+The change is committed.
+
 # Summary of changes for run afce7a8a-c865-4879-b362-458391a89761
 All three changes are in, and every regenerated snapshot passes: 3806 checks against Lean with 0 failures, and all generated `.js` files pass `node --check`. The unit tests pass too (`lake exe tests`: 52/52). These are tests only; none of the three changes is formally proved.
 
