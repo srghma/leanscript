@@ -13,8 +13,6 @@
 --   SnapshotsMy.Tco09Agree.mFun: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Agree.ackFun: the definition does not elaborate (it contains errors or `sorry`)
 --   SnapshotsMy.Tco09Agree.diagFun: the definition does not elaborate (it contains errors or `sorry`)
---   Mc91: LeanScript: dependent function type (n : Nat) → { m // m ≥ n - 10 }
---   Mc91.M: (kernel) let-declaration type mismatch 'this'
 --   SnapshotsMy.Tco09Check.agrees2: LeanScript: the call (List.range bound).all fun i => (List.range bound).all fun j => f i j == g i j is not a call of an extern: `List.all` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 -- diagonal : Nat → Nat → Nat
@@ -94,5 +92,27 @@ val k1 [ω] : ((Nat → (Nat → Nat)) → (Nat → (Nat → Nat))) := fun x2 [�
         ret x17
       ret x18
     ret k5
+  ret k3
+ret k1
+
+-- Mc91 : Nat → Nat
+-- recursive (Mc91.leanscript_open): `Mc91` is the function below applied to `Mc91.M` (its first 1 parameter(s))
+val k1 [ω] : ((Nat → Nat) → (Nat → Nat)) := fun x2 [ω] : (Nat → Nat) => (closed)
+  val k3 [ω] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
+    let x5 [ω] : Nat := x2 x4
+    ret x5
+  ret k3
+ret k1
+
+-- Mc91.M : (n : Nat) → { m // m ≥ n - 10 }
+-- recursive (Mc91.M.leanscript_open): `Mc91.M` is the function below applied to `Mc91.M` (its first 1 parameter(s))
+val k1 [ω] : ((Nat → Nat) → (Nat → Nat)) := fun x2 [ω] : (Nat → Nat) => (closed)
+  val k3 [ω] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
+    if lean_nat_dec_lt(100, x4) then
+      ret lean_nat_sub(x4, 10)
+    else
+      let x5 [ω] : Nat := x2 lean_nat_add(x4, 11)
+      let x6 [ω] : Nat := x2 x5
+      ret x6
   ret k3
 ret k1

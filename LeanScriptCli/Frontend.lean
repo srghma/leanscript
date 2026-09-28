@@ -188,15 +188,29 @@ def unfoldRefs (n : Name) (among : Array Name) : MetaM (Array Name) :=
 def recParamName (g : Name) : Name :=
   .mkSimple ("_".intercalate (g.components.map fun c => c.toString (escape := false)) ++ "_rec")
 
+/-- The value of `c` at the universe levels `us`, when `c` is a theorem whose statement
+    mentions one of the functions `refs`: an auxiliary proof Lean abstracted out of a
+    definition (`f._proof_3 : … f (n + 1) …`), which the open definition must inline to see
+    the calls of `f` in it (otherwise the statement of the proof, still about `f`, no longer
+    matches the place it is used at, now about `f_rec`). -/
+def inlinableProof? (refs : Array Name) (c : Name) (us : List Level) : MetaM (Option Expr) := do
+  let some (.thmInfo t) := (← getEnv).find? c | return none
+  unless mentions t.type (refs.contains ·) do return none
+  return some (t.value.instantiateLevelParams t.levelParams us)
+
 /-- Replace the calls of the functions `refs` by calls of the parameters standing for them
     (`selfs`, each with the positions of the proof parameters it drops): `g a h b` becomes
-    `g_rec a b` when `h` is a proof. -/
+    `g_rec a b` when `h` is a proof.  An auxiliary proof about the functions `refs` is inlined
+    first (`inlinableProof?`). -/
 partial def replaceRecCalls (refs : Array Name) (selfs : Array (Expr × Array Bool)) (e : Expr) :
     MetaM Expr := do
   let find? (c : Name) := (refs.findIdx? (· == c)).map (selfs[·]!)
   match e with
   | .app .. =>
     let f := e.getAppFn
+    if let .const c us := f then
+      if let some v ← inlinableProof? refs c us then
+        return ← replaceRecCalls refs selfs (mkAppN v e.getAppArgs).headBeta
     let args ← e.getAppArgs.mapM (replaceRecCalls refs selfs)
     match f with
     | .const c _ =>
@@ -210,7 +224,9 @@ partial def replaceRecCalls (refs : Array Name) (selfs : Array (Expr × Array Bo
         return mkAppN x kept
       | none => return mkAppN f args
     | _ => return mkAppN (← replaceRecCalls refs selfs f) args
-  | .const c _ =>
+  | .const c us =>
+    if let some v ← inlinableProof? refs c us then
+      return ← replaceRecCalls refs selfs v
     match find? c with
     | some (x, isPf) =>
       if isPf.isEmpty then return x

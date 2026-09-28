@@ -43,6 +43,9 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
     fail m!"the local `{← x.getUserName}` has no value in the language (a proof, an \
       instance or an erased field)"
   | .letE n t v b _ =>
+    -- a local proof (`have h : p := …`) has no value: it is substituted into the body, where
+    -- it is only ever used by other proofs (erased) or in types
+    if ← isProp t then return ← tr L (b.instantiate1 v)
     discard <| cirOf L t
     let tv ← tr L v
     withLocalDeclD n t fun x => do

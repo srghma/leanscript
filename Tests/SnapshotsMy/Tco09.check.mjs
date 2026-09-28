@@ -67,6 +67,11 @@ check("ackRev(0n, 0n)", () => M.ackRev(0n, 0n), "1", false);
 check("ackRev(0n, 2n)", () => M.ackRev(0n, 2n), "3", false);
 check("ackRev(1n, 1n)", () => M.ackRev(1n, 1n), "3", false);
 check("ackRev(2n, 0n)", () => M.ackRev(2n, 0n), "3", false);
+check("Mc91(0n)", () => M.Mc91(0n), "91", false);
+check("Mc91(1n)", () => M.Mc91(1n), "91", false);
+check("Mc91(2n)", () => M.Mc91(2n), "91", false);
+check("Mc91(5n)", () => M.Mc91(5n), "91", false);
+check("Mc91(13n)", () => M.Mc91(13n), "91", false);
 
 console.log(`Tco09.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

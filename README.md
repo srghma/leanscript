@@ -61,7 +61,13 @@ each call of such a function `g` made a call of a new first parameter `g_rec`.  
 files show that open term, under a line `-- recursive (f.leanscript_open): …` naming the
 functions it takes; `f` is its fixed point.  In `FILE.js` the exported `f` binds `g_rec` to
 the exported `g` itself, and a call that gives `g_rec` all of `g`'s parameters becomes a direct
-call `g(a, b)` (`LeanScriptCli/RecCalls.lean`).  A case analysis `0` / `k + 1` that the
+call `g(a, b)` (`LeanScriptCli/RecCalls.lean`).  An auxiliary proof Lean abstracted out of
+the body (`f._proof_3`, whose statement mentions `f`) is inlined into the open definition, so
+that its calls of `f` become calls of `f_rec` too; a constant calling such functions
+(`def ack999 := ack 999 1`) is exported as a function of no parameter.  A function type whose
+result depends on the argument only through what the translation erases (the predicate of a
+subtype: `(n : Nat) → {m // m ≥ n - 10}`, as in `Tco09`'s `Mc91.M`) is read as the
+non-dependent `Nat → Nat`, and a local proof `have h : p := …` is substituted into the body.  A case analysis `0` / `k + 1` that the
 translation reads as a recursion whose step ignores the accumulator is printed as an `if`,
 not a loop.  `leanscript --help` lists the configuration options (`--nat=num|bigint`,
 `--int=…`, `--array-bool=uint8|generic`, …; `MoreJsTy/Config.lean`).

@@ -271,7 +271,9 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     for c@(t, f, _) in conv do
       let why? : Option String :=
         if t.recRefs.isEmpty then none
-        else if f.params.length ≤ t.recRefs.size then
+        -- (a function calling itself needs a parameter of its own; a constant calling other
+        -- recursive functions, `def c := g 3`, is exported as a function of no parameter)
+        else if f.params.length ≤ t.recRefs.size && t.recRefs.contains t.name then
           some "its JavaScript takes no parameter of its own, so it cannot be called recursively"
         else match t.recRefs.find? (fun g => (arityOf conv g).all (· == 0)) with
           | some g => some s!"it calls `{g}`, which is not translated to JavaScript"

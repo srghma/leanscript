@@ -30,6 +30,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1([])", () => M.test1([]), "0", false);
+check("test1([0n])", () => M.test1([0n]), "any1", false);
+check("test1([0n, 1n, 2n])", () => M.test1([0n, 1n, 2n]), "3", false);
+check("test1([13n, 5n, 2n, 1n])", () => M.test1([13n, 5n, 2n, 1n]), "catch", false);
 
 console.log(`CaseArray.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -202,9 +202,13 @@ The supported fragment and the refusals are listed in the header of
 - A top-level function whose body is not a chain of lambdas (e.g. `fun m => nat_rec …`
   returning a function) is exported curried: `ack2(m)(n)`.
 - `leanscript` only reads the definitions it can translate: `partial` definitions,
-  well-founded recursion, `IO`/`ST` actions, definitions with errors, `while` loops whose
-  termination the translator cannot see, and constants whose value is not computable at
-  compile time (`ack 999 1`) are listed with the reason in every output file.
+  `IO`/`ST` actions, definitions with errors, `while` loops whose termination the translator
+  cannot see, and constants whose value is not computable at compile time are listed with the
+  reason in every output file.  Well-founded recursion is translated (through open
+  definitions), but a well-founded function is still refused when its body uses something
+  the translator does not support in general: e.g. `StringWalk`'s `test1.go`/`test2.go`
+  compare `Char`s with `==`, and `Char` equality unfolds to a projection of the leaf type
+  `Char`, which has no extern yet.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

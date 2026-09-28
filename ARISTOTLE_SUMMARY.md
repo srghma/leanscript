@@ -1,3 +1,30 @@
+# Summary of changes for run f15c3bd1-7932-4195-9d74-37f950b4def1
+The four output files (`FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt`, `FILE.js`) now cover well-founded functions in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`, not only structurally recursive ones. Each file still also gets its `FILE.check.mjs`.
+
+**What was already there.** The tool could already translate well-founded functions. It writes each one as its "open definition", with recursive calls turned into a parameter, and the function is the fixed point of that. `--functions-only` already counts well-founded functions, so files like `TcoBoom`, `Tco07` and `Tco08` already had outputs. I rebuilt the tool and reran `scripts/leanscript-snapshots.sh`, and it reproduced the committed files exactly. That meant the remaining work was the well-founded functions that were still refused.
+
+**Changes**
+- **Proof helpers Lean splits out** (`LeanScriptCli/Frontend.lean`). Lean moves some proofs inside a definition into separate helpers, and their statements still mention the function. Once the recursive calls were replaced, those proofs no longer type-checked, so `Tco09`'s `Mc91.M` failed with a kernel error. The open definition now copies those proofs inline.
+- **Constants that call well-founded functions** (`LeanScriptCli/Main.lean`). A definition like `def ack999 := ack 999 1` used to be refused. It is now exported as `export function ack999() { return ack(999n, 1n); }`.
+- **Types that depend only on a proof** (`LeanScript/GenElab/Read.lean`). A function type like `(n : Nat) → {m // m ≥ n - 10}` used to be refused as dependent. The dependency is only in the part that gets erased, so it is now read as `Nat → Nat`.
+- **Local proofs** (`LeanScript/TermElab/ToTerm/Expr.lean`). A local proof such as `have h : p := …` has no runtime value, so it is now substituted into the body instead of being translated.
+
+**Results**
+- `Mc91` and `Mc91.M` in `Tco09` and `ack999` in `Tco08`/`TcoAck` are now translated. `Mc91.M` comes out as the expected nested recursion `Mc91_M(Mc91_M(n + 11n))`.
+- As a side effect, `CaseArray.test1` in `SnapshotsPBOPure` is now translated too.
+- Functions now going through the open-definition path include `boom`, `ack`, `diagonal`, `diagonal_tr`, `hyper`, `ackRev`, `mc91Loop`, `mc91TR`, `Mc91`, `Mc91.M`, `gcdT`, `stepsDown`, `StringWalk.test4`/`test4.go`, `Tco05.span`, and the `mutual` examples.
+- In a full rerun of the script, every check passed: 2008 passed, 0 failed.
+
+**Still not translated**
+- `StringWalk`'s `test1.go`/`test2.go` compare `Char`s with `==`, and the translator has no support for `Char` equality yet. This is a general gap, now noted in `NOT_IMPLEMENTED.md`.
+- Some well-founded functions in `Fusion02` and `VanLaarhovenTraversals01` are refused because they are polymorphic or monadic, which the translator doesn't handle in general.
+
+Because the translator core changed, I rebuilt the `LeanScript`, `TyTests` and `TermTests` libraries and the `tests` executable, and ran `tests`; it passed. The only module that failed to build was `LeanScript/Term/UsageAlgebra.lean`, which imports Mathlib; that was already the case before this change.
+
+**Build setup:** as in earlier runs, `lakefile.toml` requires Mathlib but `lake-manifest.json` has no entry for it, so `lake` stops immediately. I removed that requirement locally to build, then restored it, so your lakefile is unchanged. For that reason I'm not claiming any build targets. None of this is new proof work.
+
+`README.md` and `NOT_IMPLEMENTED.md` are updated, and everything is committed.
+
 # Summary of changes for run df763831-9200-4bda-bc91-868d7bc2aed2
 I formalized in Lean why translating a well-founded function through its "open definition" gives the right function. The proofs contain no `sorry` and use only the standard axioms `propext`, `Classical.choice` and `Quot.sound` (checked with `#print axioms`). Everything is committed.
 

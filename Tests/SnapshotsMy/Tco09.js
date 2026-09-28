@@ -13,10 +13,15 @@
 //   SnapshotsMy.Tco09Agree.mFun: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Agree.ackFun: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.Tco09Agree.diagFun: the definition does not elaborate (it contains errors or `sorry`)
-//   Mc91: LeanScript: dependent function type (n : Nat) → { m // m ≥ n - 10 }
-//   Mc91.M: (kernel) let-declaration type mismatch 'this'
 //   SnapshotsMy.Tco09Check.agrees2: LeanScript: the call (List.range bound).all fun i => (List.range bound).all fun j => f i j == g i j is not a call of an extern: `List.all` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
+// ---- runtime helpers ----
+
+function lean_nat_sub$bbb(a, b) {
+  return (a > b ? a - b : 0n);
+}
+
+// ---- exported functions ----
 
 /**
  * `diagonal`
@@ -108,4 +113,27 @@ export function ackRev(a, a1) {
     acc$1 = acc$6;
   }
   return acc$1;
+}
+
+/**
+ * `Mc91`
+ * @param {nat(bigint)} n
+ * @returns {nat(bigint)}
+ */
+export function Mc91(n) {
+  return Mc91_M(n);
+}
+
+/**
+ * `Mc91.M`
+ * @param {nat(bigint)} n
+ * @returns {nat(bigint)}
+ */
+export function Mc91_M(n) {
+  if (100n < n) {
+    return lean_nat_sub$bbb(n, 10n);
+  } else {
+    const x$1 = Mc91_M(n + 11n);
+    return Mc91_M(x$1);
+  }
 }

@@ -159,70 +159,6 @@ def isUnitType (a : Expr) : MetaM Bool := do
   let a ← whnfR a
   return a.isConstOf ``Unit || a.isAppOfArity ``PUnit 0 || a.getAppFn.isConstOf ``PUnit
 
-/-- The head of a (normalised) type. -/
-def classify (e : Expr) : MetaM Head := do
-  if let .forallE _ a b _ := e then
-    if b.hasLooseBVars then fail m!"dependent function type{indentExpr e}"
-    -- `Unit → b` is a delay of `b` (`Unit` itself has one value, so it is no type)
-    if ← isUnitType a then return .lazy b
-    return .fn a b
-  if e.isFVar then
-    if (← whnf (← inferType e)) == mkSort Level.one then return .var e.fvarId!
-    fail m!"the type{indentExpr e}\nis a local that is not a type variable"
-  let some (c, _) := e.getAppFn.const? | fail m!"not a type former application{indentExpr e}"
-  let args := e.getAppArgs
-  let p (s : Lean.Term) : MetaM Head := return .prim s
-  match c, args.size with
-  | ``Bool, 0 => p (← `(LeanPrimTy.bool))
-  | ``Nat, 0 => p (← `(LeanPrimTy.nat))
-  | ``Int, 0 => p (← `(LeanPrimTy.int))
-  | ``UInt8, 0 => p (← `(LeanPrimTy.uint8))
-  | ``UInt16, 0 => p (← `(LeanPrimTy.uint16))
-  | ``UInt32, 0 => p (← `(LeanPrimTy.uint32))
-  | ``UInt64, 0 => p (← `(LeanPrimTy.uint64))
-  | ``Int8, 0 => p (← `(LeanPrimTy.int8))
-  | ``Int16, 0 => p (← `(LeanPrimTy.int16))
-  | ``Int32, 0 => p (← `(LeanPrimTy.int32))
-  | ``Int64, 0 => p (← `(LeanPrimTy.int64))
-  | ``Char, 0 => p (← `(LeanPrimTy.char))
-  | ``String, 0 => p (← `(LeanPrimTy.string))
-  | ``String.Pos.Raw, 0 => p (← `(LeanPrimTy.stringPosRaw))
-  | ``Substring.Raw, 0 => p (← `(LeanPrimTy.substringRaw))
-  | ``String.Slice, 0 => p (← `(LeanPrimTy.stringSlice))
-  | ``Float, 0 => p (← `(LeanPrimTy.float))
-  | ``Float32, 0 => p (← `(LeanPrimTy.float32))
-  | ``HashableFloat, 0 => p (← `(LeanPrimTy.float))
-  | ``HashableFloat32, 0 => p (← `(LeanPrimTy.float32))
-  | ``Float.Model, 0 => p (← `(LeanPrimTy.floatModel))
-  | ``Float32.Model, 0 => p (← `(LeanPrimTy.float32Model))
-  | ``Lean.Name, 0 => return .leanName
-  | ``BitVec, 1 =>
-    let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
-    if n = 0 then fail m!"`BitVec 0` has one value"
-    if n = 1 then fail m!"`BitVec 1` has two values: two points are only ever `Bool`"
-    p (← `(LeanPrimTy.bitvec $(quote n)))
-  | ``String.Pos, 1 =>
-    let some s := (match (← whnf args[0]!) with | .lit (.strVal s) => some s | _ => none)
-      | fail m!"the string of{indentExpr e}\nis not a literal"
-    if s = "" then fail m!"`String.Pos \"\"` has one value"
-    if s.length = 1 then
-      fail m!"`String.Pos {repr s}` has two values: two points are only ever `Bool`"
-    p (← `(LeanPrimTy.stringPos $(quote s)))
-  | ``Fin, 1 =>
-    -- `Fin n` is a wrapper of its `Nat` value (the bound is a proof, erased), so it is `nat`;
-    -- but a *numeral* bound of `0`, `1` or `2` makes it a type of no, one or two values
-    if let some n ← natLit? args[0]! then
-      if n = 0 then fail m!"`Fin 0` has no value"
-      if n = 1 then fail m!"`Fin 1` has one value"
-      if n = 2 then fail m!"`Fin 2` has two values: two points are only ever `Bool`"
-    return .node e
-  | ``Array, 1 => return .array args[0]!
-  | ``Thunk, 1 => return .thunk args[0]!
-  | _, _ =>
-    unless ((← getEnv).find? c).any (·.isInductive) do
-      fail m!"`{c}` is not an inductive type{indentExpr e}"
-    return .node e
-
 /-- The built-in table of enum numberings: the number the first constructor prints as.
     `Ordering` prints as `-1, 0, 1`. -/
 def enumShift (c : Name) : Int :=
@@ -361,6 +297,78 @@ partial def readCtors (e : Expr) : MetaM (Array (Name × Array Expr)) := do
       return (ctor, fields)
 
 end
+
+/-- The head of a (normalised) type. -/
+partial def classify (e : Expr) : MetaM Head := do
+  if let .forallE _ a b _ := e then
+    if b.hasLooseBVars then
+      -- a dependency that only goes through what the translation erases (the predicate of a
+      -- subtype, the bound of a `Fin`, a type argument: `(n : Nat) → {m // m ≥ n - 10}` is
+      -- `Nat → Nat`) is erased (`eraseDeps`); any other one is refused
+      let e' ← try eraseDeps .anonymous #[] e
+        catch _ => fail m!"dependent function type{indentExpr e}"
+      if let .forallE _ _ b' _ := e' then
+        unless b'.hasLooseBVars do return ← classify e'
+      fail m!"dependent function type{indentExpr e}"
+    -- `Unit → b` is a delay of `b` (`Unit` itself has one value, so it is no type)
+    if ← isUnitType a then return .lazy b
+    return .fn a b
+  if e.isFVar then
+    if (← whnf (← inferType e)) == mkSort Level.one then return .var e.fvarId!
+    fail m!"the type{indentExpr e}\nis a local that is not a type variable"
+  let some (c, _) := e.getAppFn.const? | fail m!"not a type former application{indentExpr e}"
+  let args := e.getAppArgs
+  let p (s : Lean.Term) : MetaM Head := return .prim s
+  match c, args.size with
+  | ``Bool, 0 => p (← `(LeanPrimTy.bool))
+  | ``Nat, 0 => p (← `(LeanPrimTy.nat))
+  | ``Int, 0 => p (← `(LeanPrimTy.int))
+  | ``UInt8, 0 => p (← `(LeanPrimTy.uint8))
+  | ``UInt16, 0 => p (← `(LeanPrimTy.uint16))
+  | ``UInt32, 0 => p (← `(LeanPrimTy.uint32))
+  | ``UInt64, 0 => p (← `(LeanPrimTy.uint64))
+  | ``Int8, 0 => p (← `(LeanPrimTy.int8))
+  | ``Int16, 0 => p (← `(LeanPrimTy.int16))
+  | ``Int32, 0 => p (← `(LeanPrimTy.int32))
+  | ``Int64, 0 => p (← `(LeanPrimTy.int64))
+  | ``Char, 0 => p (← `(LeanPrimTy.char))
+  | ``String, 0 => p (← `(LeanPrimTy.string))
+  | ``String.Pos.Raw, 0 => p (← `(LeanPrimTy.stringPosRaw))
+  | ``Substring.Raw, 0 => p (← `(LeanPrimTy.substringRaw))
+  | ``String.Slice, 0 => p (← `(LeanPrimTy.stringSlice))
+  | ``Float, 0 => p (← `(LeanPrimTy.float))
+  | ``Float32, 0 => p (← `(LeanPrimTy.float32))
+  | ``HashableFloat, 0 => p (← `(LeanPrimTy.float))
+  | ``HashableFloat32, 0 => p (← `(LeanPrimTy.float32))
+  | ``Float.Model, 0 => p (← `(LeanPrimTy.floatModel))
+  | ``Float32.Model, 0 => p (← `(LeanPrimTy.float32Model))
+  | ``Lean.Name, 0 => return .leanName
+  | ``BitVec, 1 =>
+    let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
+    if n = 0 then fail m!"`BitVec 0` has one value"
+    if n = 1 then fail m!"`BitVec 1` has two values: two points are only ever `Bool`"
+    p (← `(LeanPrimTy.bitvec $(quote n)))
+  | ``String.Pos, 1 =>
+    let some s := (match (← whnf args[0]!) with | .lit (.strVal s) => some s | _ => none)
+      | fail m!"the string of{indentExpr e}\nis not a literal"
+    if s = "" then fail m!"`String.Pos \"\"` has one value"
+    if s.length = 1 then
+      fail m!"`String.Pos {repr s}` has two values: two points are only ever `Bool`"
+    p (← `(LeanPrimTy.stringPos $(quote s)))
+  | ``Fin, 1 =>
+    -- `Fin n` is a wrapper of its `Nat` value (the bound is a proof, erased), so it is `nat`;
+    -- but a *numeral* bound of `0`, `1` or `2` makes it a type of no, one or two values
+    if let some n ← natLit? args[0]! then
+      if n = 0 then fail m!"`Fin 0` has no value"
+      if n = 1 then fail m!"`Fin 1` has one value"
+      if n = 2 then fail m!"`Fin 2` has two values: two points are only ever `Bool`"
+    return .node e
+  | ``Array, 1 => return .array args[0]!
+  | ``Thunk, 1 => return .thunk args[0]!
+  | _, _ =>
+    unless ((← getEnv).find? c).any (·.isInductive) do
+      fail m!"`{c}` is not an inductive type{indentExpr e}"
+    return .node e
 
 /-- The inductive instances a type mentions directly. -/
 partial def occurrences (e : Expr) : MetaM (Array Expr) := do

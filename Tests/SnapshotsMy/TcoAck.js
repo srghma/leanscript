@@ -7,7 +7,6 @@
 //   AckWithoutStackButUsingCantorPairing.unpairLeft: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 //   AckWithoutStackButUsingCantorPairing.unpairRight: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 //   AckWithoutStackButUsingCantorPairing.ackNoDataStructure: LeanScript: the `while` loop forIn { } (s, curN) fun x __s => have s := __s.fst; have curN := __s.snd; if (s != 0) = true then have code := s - 1; have top := AckWithoutStackButUsingCantorPairing.unpairLeft code; have s := AckWithoutStackButUsingCantorPairing.unpairRight code; if (top == 0) = true then have curN := curN + 1; pure (ForInStep.yield (s, curN)) else if (curN == 0) = true then have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have curN := 1; pure (ForInStep.yield (s, curN)) else have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have s := AckWithoutStackButUsingCantorPairing.pair top s + 1; have curN := curN - 1; pure (ForInStep.yield (s, curN)) else pure (ForInStep.done (s, curN)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
-//   ack999: its JavaScript takes no parameter of its own, so it cannot be called recursively
 
 // ---- runtime helpers ----
 
@@ -38,6 +37,14 @@ export function ack(a, a1) {
     acc$1 = acc$6;
   }
   return acc$1;
+}
+
+/**
+ * `ack999`
+ * @returns {nat(bigint)}
+ */
+export function ack999() {
+  return ack(999n, 1n);
 }
 
 /**
