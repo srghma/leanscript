@@ -4,5 +4,3 @@
 //   main: an `IO`/`ST` action: the language has no side effects
 //   describeArgs: LeanScript: the call args.length is not a call of an extern: `List.length` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-// runtime helpers: 
-

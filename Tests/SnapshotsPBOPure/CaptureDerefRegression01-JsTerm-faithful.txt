@@ -6,8 +6,6 @@
 //   test4: invalid scope
 //   test5: invalid scope
 
-// runtime helpers: 
-
 // test1
 export const test1 = (v, b) => {
   const { _1: f$1, _2: f$2 } = v;

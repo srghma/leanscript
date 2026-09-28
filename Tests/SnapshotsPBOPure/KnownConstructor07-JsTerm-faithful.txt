@@ -3,8 +3,6 @@
 // not translated:
 //   instReprPairBox.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-// runtime helpers: 
-
 // test
 export const test = (f, y) => {
   const x$1 = f(y);

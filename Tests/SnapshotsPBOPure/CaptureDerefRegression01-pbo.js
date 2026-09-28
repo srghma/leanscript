@@ -6,22 +6,7 @@
 //   test4: invalid scope
 //   test5: invalid scope
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
 
 /**
  * `test1`
@@ -31,7 +16,7 @@ function lean_int_add$nnn(a, b) {
  */
 export const test1 = (v, b) => {
   const { _1: f$1, _2: f$2 } = v;
-  return lean_int_add$nnn(f$1, b);
+  return $lean_int_add(f$1, b);
 };
 
 /**
@@ -42,7 +27,7 @@ export const test1 = (v, b) => {
  */
 export const test2 = (v, a) => {
   const { _1: f$1, _2: f$2 } = v;
-  return lean_int_add$nnn(f$1, a);
+  return $lean_int_add(f$1, a);
 };
 
 /**
@@ -53,5 +38,5 @@ export const test2 = (v, a) => {
  */
 export const test3 = (v, p$1) => {
   const { _1: f$2, _2: f$3 } = v;
-  return lean_int_add$nnn(f$2, p$1);
+  return $lean_int_add(f$2, p$1);
 };

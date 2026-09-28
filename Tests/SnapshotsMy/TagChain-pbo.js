@@ -6,7 +6,6 @@
 //   test3: LeanScript: the helper `test3._sparseCasesOn_1` is universe polymorphic
 //   test4: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 
-
 /**
  * `instInhabitedColour.default`
  * @returns {enum3@0}

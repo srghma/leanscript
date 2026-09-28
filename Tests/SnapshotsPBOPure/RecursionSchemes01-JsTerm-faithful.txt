@@ -8,8 +8,6 @@
 //   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 //   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
-// runtime helpers: 
-
 // eval
 export const eval_ = (a) => {
   if ((a.tag === 0)) {

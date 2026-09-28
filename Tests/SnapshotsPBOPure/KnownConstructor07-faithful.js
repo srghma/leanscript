@@ -3,7 +3,6 @@
 // not translated:
 //   instReprPairBox.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-
 /**
  * `test`
  * @param {(int(bigint) => int(bigint))} f

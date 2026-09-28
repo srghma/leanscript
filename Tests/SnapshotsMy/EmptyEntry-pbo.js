@@ -3,26 +3,11 @@
 // not translated:
 //   fromNoValues: LeanScript: the type NoValues has no constructor (it has no value)
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
 
 /**
  * `bump`
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const bump = (n) => lean_nat_add$nnn(n, 1);
+export const bump = (n) => $lean_nat_add(n, 1);

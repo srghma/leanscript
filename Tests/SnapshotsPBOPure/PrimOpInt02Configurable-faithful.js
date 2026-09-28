@@ -30,7 +30,6 @@
 //   TestISize.test11: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestInt.intValues: LeanScript: the parameter `α` of `TestInt.intValues` is a type
 
-
 /**
  * `TestUInt64.test1`
  * @returns {BigUint64Array}

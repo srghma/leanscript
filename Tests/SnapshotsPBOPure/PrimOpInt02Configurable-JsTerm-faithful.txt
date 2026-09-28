@@ -30,8 +30,6 @@
 //   TestISize.test11: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestInt.intValues: LeanScript: the parameter `α` of `TestInt.intValues` is a type
 
-// runtime helpers: 
-
 // TestUInt64.test1
 export const TestUInt64$test1 = () => {
   return BigUint64Array.of(2n, 3n, 3n, 18446744073709551615n, 1n, 18446744073709551614n);

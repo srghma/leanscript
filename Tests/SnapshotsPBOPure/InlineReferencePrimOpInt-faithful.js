@@ -3,6 +3,7 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
+const $k1 = { _1: 99n, _2: 0n, _3: 11n };
 
 /**
  * `localTest`
@@ -10,7 +11,7 @@
  * @returns {int(bigint)}
  */
 export const localTest = (f) => {
-  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
+  const x$1 = f($k1);
   if (x$1 === -2147483648n ? false : true) {
     return x$1;
   } else {
@@ -46,7 +47,7 @@ export const test4 = () => 9n;
  * `extern`
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern = () => ({ _1: 99n, _2: 0n, _3: 11n });
+export const extern = () => $k1;
 
 /**
  * `externTest`
@@ -54,7 +55,7 @@ export const extern = () => ({ _1: 99n, _2: 0n, _3: 11n });
  * @returns {int(bigint)}
  */
 export const externTest = (f) => {
-  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
+  const x$1 = f($k1);
   if (x$1 === -2147483648n ? false : true) {
     return x$1;
   } else {

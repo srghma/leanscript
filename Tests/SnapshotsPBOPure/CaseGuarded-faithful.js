@@ -6,7 +6,6 @@
 //   instReprRec2.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
-
 /**
  * `test2`
  * @param {int(bigint)} a

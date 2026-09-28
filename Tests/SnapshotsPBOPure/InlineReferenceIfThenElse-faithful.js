@@ -3,6 +3,7 @@
 // not translated:
 //   fn: LeanScript: `fn` is universe polymorphic
 
+const $k1 = { _1: true, _2: 0n };
 
 /**
  * `test1`
@@ -14,7 +15,7 @@ export const test1 = () => 42n;
  * `extern1`
  * @returns {{ _1: boolean, _2: int(bigint) }}
  */
-export const extern1 = () => ({ _1: true, _2: 0n });
+export const extern1 = () => $k1;
 
 /**
  * `test2`

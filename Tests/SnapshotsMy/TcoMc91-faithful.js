@@ -6,13 +6,9 @@
 //   mc91TR: LeanScript: the recursive call mc91Loop (n✝ + 1 + 1) (x✝ + 11) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 //   mc91While: LeanScript: the `while` loop forIn { } (c, cur) fun x __s => have c := __s.fst; have cur := __s.snd; if (c != 0) = true then if cur > 100 then have cur := cur - 10; have c := c - 1; pure (ForInStep.yield (c, cur)) else have cur := cur + 11; have c := c + 1; pure (ForInStep.yield (c, cur)) else pure (ForInStep.done (c, cur)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 
-// ---- runtime helpers ----
+import { $lean_nat_sub } from "../../runtime/lean_runtime_nat_bigint.mjs";
 
-function lean_nat_sub$bbb(a, b) {
-  return a > b ? a - b : 0n;
-}
-
-// ---- exported functions ----
+const $k1 = (x$2) => x$2;
 
 /**
  * `mc91`
@@ -21,7 +17,7 @@ function lean_nat_sub$bbb(a, b) {
  */
 export const mc91 = (n) => {
   if (100n < n) {
-    return lean_nat_sub$bbb(n, 10n);
+    return $lean_nat_sub(n, 10n);
   } else {
     return 91n;
   }
@@ -35,7 +31,7 @@ export const mc91 = (n) => {
  * @returns {nat(bigint)}
  */
 export const iter = (f, a, a1) => {
-  const k$1 = (x$2) => x$2;
+  const k$1 = $k1;
   let acc$3 = k$1;
   for (let i$4 = 0n; i$4 < a; i$4++) {
     const a$5 = acc$3;

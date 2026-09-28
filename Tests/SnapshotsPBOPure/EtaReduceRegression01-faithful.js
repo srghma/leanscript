@@ -4,7 +4,6 @@
 //   identity: LeanScript: `identity` is universe polymorphic
 //   fold: LeanScript: `fold` is universe polymorphic
 
-
 /**
  * `test`
  * @param {({ tag: 0 } | { tag: 1, _1: string })} a

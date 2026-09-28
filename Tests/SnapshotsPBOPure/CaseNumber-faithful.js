@@ -3,4 +3,3 @@
 // not translated:
 //   test1: Application type mismatch: The argument rfl has type ?m.318 = ?m.318 but is expected to have type LeanScript.Lvl.meet (some (0 + 1)) (LeanScript.Lvl.meet ?m.374 none) = some ?m.365 in the application LeanScript.Neu.extern LeanScript.LeanInitPureExtern.lean_float_beq (LeanScript.Args.cons (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (LeanScript.Args.cons ?m.312 LeanScript.Args.nil)) ⋯
 
-

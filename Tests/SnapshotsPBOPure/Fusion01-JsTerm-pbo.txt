@@ -10,5 +10,3 @@
 //   dropPrefix1: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 //   test: LeanScript: the parameter `α` of `overArray` is a type
 
-// runtime helpers: 
-

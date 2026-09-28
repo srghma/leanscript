@@ -3,4 +3,3 @@
 // not translated:
 //   test: Expected type must not contain metavariables ?m.144 ≠ LeanScript.Usage01ω.zero
 
-

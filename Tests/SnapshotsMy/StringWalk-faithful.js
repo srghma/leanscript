@@ -8,17 +8,7 @@
 //   test2: LeanScript: the recursive call test2.go s c (String.Pos.Raw.next s p) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 //   test4: LeanScript: the recursive call test4.go s (i + 1) (acc + i) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 
-// ---- runtime helpers ----
-
-function $utf8(s) {
-  return new TextEncoder().encode(s);
-}
-
-function lean_string_utf8_byte_size$_b(a) {
-  return BigInt($utf8(a).length);
-}
-
-// ---- exported functions ----
+import { $lean_string_utf8_byte_size } from "../../runtime/lean_runtime_nat_bigint.mjs";
 
 /**
  * `test3`
@@ -36,7 +26,7 @@ export const test3 = (s, n) => {
       const { _1: f$5 } = acc$1;
       const { _1: f$6, _2: f$7 } = f$5;
       const { _1: f$8, _2: f$9 } = f$5;
-      const x$10 = f$9 + lean_string_utf8_byte_size$_b(f$6);
+      const x$10 = f$9 + $lean_string_utf8_byte_size(f$6);
       const x$11 = f$6 + "x";
       acc$1 = { tag: 1, _1: { _1: x$11, _2: x$10 } };
     }

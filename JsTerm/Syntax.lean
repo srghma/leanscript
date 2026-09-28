@@ -12,7 +12,7 @@ set_option autoImplicit false
 `LeanScript.Term` models Lean code: intrinsically typed, de Bruijn indexed, every redex that
 could be computed computed.  The grammar here models the **JavaScript** the backend prints:
 an *untyped* subset of JavaScript, split into expressions and statements, with named
-variables, `return`, loops with a mutable accumulator, calls of the runtime prelude, and join
+variables, `return`, loops with a mutable accumulator, calls of the runtime, and join
 points.
 
 The grammar is deliberately small; `JsTerm.PrintMini` maps it onto the full JavaScript
@@ -24,7 +24,7 @@ syntax tree of `LanguageJavascriptMini`, whose printer writes the `.js` file.
   `JsBigIntBinOp` on `BigInt`s, `JsBoolBinOp` on booleans, `JsStrBinOp` on strings), except
   `===` / `!==`, which compare values of any type.
 * **Expressions** (`JsExpr`): variables, literals, operators, calls of values and of runtime
-  helpers (`helper`, a function of the prelude the program is printed with), arrow functions
+  functions (`helper`, a function the module imports from `runtime/`), arrow functions
   of zero or more parameters, object literals (records `{ _1: …, _2: … }` and unions
   `{ tag: i, _1: … }`), arrays (lists, generic arrays), typed arrays, indexing, member
   access, `new`, spreads, conditionals.
@@ -38,8 +38,9 @@ syntax tree of `LanguageJavascriptMini`, whose printer writes the `.js` file.
   `jump 1 e` the one around it, and so on (an arrow function starts afresh: a jump never leaves
   a function).
 
-The runtime helpers a program calls (`JsHelper`) are written in this grammar too: the prelude
-of a module is printed from it, like the exported functions.
+A module (`JsModule`) imports the runtime functions it calls (`RtFn`) from the hand-written
+JavaScript modules of `runtime/` (`RtFile`), defines the constants its functions share, and
+exports its functions.
 
 A function body is a list of statements every path of which ends in a `return` (or a
 `throw`), or, inside a `join` block, in a `jump`.
@@ -209,7 +210,7 @@ inductive JsExpr where
   | bin (op : JsBinOp) (a b : JsExpr)
   /-- `op a`. -/
   | un (op : JsUnOp) (a : JsExpr)
-  /-- A call of a function of the runtime prelude, by name. -/
+  /-- A call of a function of the runtime (imported by the module), by name. -/
   | helper (name : String) (args : List JsExpr)
   /-- `f(args)`. -/
   | call (f : JsExpr) (args : List JsExpr)
@@ -295,23 +296,57 @@ structure JsFun where
   ret : JsTerm
   deriving Inhabited
 
-/-- A function of the runtime prelude, `function name(params) { body }`, written in the
-    grammar itself. -/
-structure JsHelper where
-  /-- The name the program calls it by. -/
-  name : String
-  /-- Its parameters. -/
-  params : List String
-  /-- Its body; every path ends in a `return` (or a `throw`). -/
-  body : List JsStmt
-  deriving Inhabited
+/-! ## The runtime modules -/
 
-/-- A whole module: the runtime helpers it needs, and its exported functions. -/
+/-- A knob of the configuration that changes how a type is represented. -/
+inductive RtKnob where
+  | nat | int | uint64 | int64 | bitvec
+  deriving Inhabited, Repr, BEq, DecidableEq
+
+/-- The knob of a name, as `JsConfig.knobOfPrim?` spells it. -/
+def RtKnob.ofName? : String → Option RtKnob
+  | "nat" => some .nat | "int" => some .int | "uint64" => some .uint64
+  | "int64" => some .int64 | "bitvec" => some .bitvec
+  | _ => none
+
+/-- The name of a knob, as the runtime modules spell it. -/
+def RtKnob.name : RtKnob → String
+  | .nat => "nat" | .int => "int" | .uint64 => "uint64" | .int64 => "int64"
+  | .bitvec => "bitvec"
+
+/-- A module of the runtime. -/
+inductive RtFile where
+  /-- `lean_runtime_non_configurable.mjs`. -/
+  | nonConfigurable
+  /-- `lean_runtime_<knob>_bigint.mjs` (`big`) or `lean_runtime_<knob>_num.mjs`. -/
+  | knob (k : RtKnob) (big : Bool)
+  deriving Inhabited, Repr, BEq, DecidableEq
+
+/-- The file name of a runtime module. -/
+def RtFile.fileName : RtFile → String
+  | .nonConfigurable => "lean_runtime_non_configurable.mjs"
+  | .knob k big => s!"lean_runtime_{k.name}_{if big then "bigint" else "num"}.mjs"
+
+/-- Every runtime module the backend can import from. -/
+def RtFile.all : List RtFile :=
+  .nonConfigurable :: [RtKnob.nat, .int, .uint64, .int64, .bitvec].flatMap fun k =>
+    [.knob k true, .knob k false]
+
+/-- A function of the runtime: its module and its name. -/
+structure RtFn where
+  file : RtFile
+  name : String
+  deriving Inhabited, Repr, BEq, DecidableEq
+
+/-- A whole module: the runtime functions it imports, the constants it computes once (at the
+    top of the module, `const name = e;`), and its exported functions. -/
 structure JsModule where
   /-- The configuration it was generated with. -/
   config : JsConfig
-  /-- The helpers of the runtime prelude it calls, each once, in order of first use. -/
-  helpers : List JsHelper
+  /-- The runtime functions it calls, each once, in order of first use. -/
+  imports : List RtFn
+  /-- The constants shared by its functions, each defined before it is used. -/
+  consts : List (String × JsExpr) := []
   /-- The exported functions. -/
   funs : List JsFun
   deriving Inhabited
@@ -426,14 +461,15 @@ def JsFun.pretty (f : JsFun) : String :=
   s!"// {f.leanName}\nexport const {f.name} = ({", ".intercalate f.params}) => \{\n" ++
     JsStmt.prettyBlock "  " f.body ++ "};\n"
 
-/-- A helper of the runtime prelude, for the dump. -/
-def JsHelper.pretty (h : JsHelper) : String :=
-  s!"function {h.name}({", ".intercalate h.params}) \{\n" ++ JsStmt.prettyBlock "  " h.body ++ "}\n"
-
 /-- A module, for the dump. -/
 def JsModule.pretty (m : JsModule) : String :=
-  s!"// runtime helpers: {", ".intercalate (m.helpers.map (·.name))}\n\n" ++
-  String.join (m.helpers.map fun h => h.pretty ++ "\n") ++
+  String.join (RtFile.all.filterMap fun f =>
+    let ns := (m.imports.filter (·.file == f)).map (·.name)
+    if ns.isEmpty then none
+    else some s!"import \{ {", ".intercalate ns} } from \"{f.fileName}\";\n") ++
+  (if m.imports.isEmpty then "" else "\n") ++
+  String.join (m.consts.map fun (x, e) => s!"const {x} = {e.pretty ""};\n") ++
+  (if m.consts.isEmpty then "" else "\n") ++
   "\n".intercalate (m.funs.map JsFun.pretty)
 
 end MoreJs

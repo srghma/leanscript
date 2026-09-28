@@ -2,6 +2,8 @@
 // (`usizeRepr = bigint`): exact at all 64 bits.  `lean_runtime_usize_num.mjs` is the
 // same catalogue over JavaScript numbers.
 
+/* -------------------------------------- not imported by the current backend */
+
 /** `x` taken modulo `2^64`. */
 const U64 = (x) => BigInt.asUintN(64, BigInt(x));
 

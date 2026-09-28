@@ -6,37 +6,34 @@
 //   test3: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Nat is not declared in any signature; declare it with `leanscript_signature`
 //   test4: LeanScript: the call Nat.toDigitsCore 10 val✝ n' [d] is not a call of an extern: `Nat.toDigitsCore` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-// runtime helpers: lean_array_get_size$_n, lean_array_get$__n_
+import { $lean_array_get } from "lean_runtime_non_configurable.mjs";
+import { $lean_array_get_size } from "lean_runtime_nat_num.mjs";
 
-function lean_array_get_size$_n(a) {
-  return a.length;
-}
-
-function lean_array_get$__n_(a, b, c) {
-  return ((c < b.length) ? b[c] : a);
-}
+const $tag0 = { tag: 0 };
+const $k2 = (x$2) => {
+  return [{ tag: 1, _1: x$2 }, $tag0];
+};
+const $k3 = (x$6) => {
+  return [{ tag: 1, _1: x$6 }, $tag0];
+};
 
 // test5
 export const test5 = (n) => {
-  return [{ tag: 1, _1: n }, { tag: 0 }];
+  return [{ tag: 1, _1: n }, $tag0];
 };
 
 // test6
 export const test6 = (n, i) => {
-  const k$1 = (x$2) => {
-    return [{ tag: 1, _1: x$2 }, { tag: 0 }];
-  };
+  const k$1 = $k2;
   const x$3 = k$1(n);
   let x$4;
   join x$4 {
-    if ((i < lean_array_get_size$_n(x$3))) {
-      const k$5 = (x$6) => {
-        return [{ tag: 1, _1: x$6 }, { tag: 0 }];
-      };
+    if ((i < $lean_array_get_size(x$3))) {
+      const k$5 = $k3;
       const x$7 = k$5(n);
-      jump 0 { tag: 1, _1: lean_array_get$__n_({ tag: 0 }, x$7, i) };
+      jump 0 { tag: 1, _1: $lean_array_get($tag0, x$7, i) };
     } else {
-      jump 0 { tag: 0 };
+      jump 0 $tag0;
     }
   }
   if ((x$4.tag === 0)) {

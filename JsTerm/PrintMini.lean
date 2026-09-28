@@ -5,8 +5,9 @@ import LanguageJavascriptMini.Printer
 # Printing the JavaScript grammar with `LanguageJavascriptMini`
 
 `MoreJs.JsModule.toJs m` is the text of the `.js` file of a module: a header comment, the
-runtime helpers the module calls (`MoreJs.JsHelper`, written in the same grammar), and the
-exported functions, all converted to the JavaScript syntax tree of
+imports of the runtime functions the module calls (`import { … } from "…/runtime/….mjs";`),
+the constants its functions share (`const $c1 = { tag: 0 };`), and the exported functions,
+all converted to the JavaScript syntax tree of
 `LanguageJavascriptMini` (`MiniAST`) and printed by its printer (prettier's style: two
 space indentation, double quotes, semicolons, 80 columns).
 
@@ -20,7 +21,7 @@ is printed `else if`.  A join point `join x block` is the **labelled block** `j$
 (`k` counting the join points of the function from the outside in, so nested blocks have
 different labels) and a jump of de Bruijn index `i` is `x = e; break j$k;` for the variable
 and the label of the `i`-th enclosing block.  An exported function is
-`export const f = (x, y) => { … };`, a helper `function h(a, b) { … }`, a record
+`export const f = (x, y) => { … };`, a shared constant `const $c1 = e;`, a record
 `{ _1: a, _2: b }`, a union `{ tag: 1, _1: a }`, and taking one apart
 `const { _1: x, _3: z } = r;`.  Numbers are printed as integers when they are small
 integers, otherwise as the shortest decimal that reads back as the same double.
@@ -203,11 +204,16 @@ def JsFun.toMini (f : JsFun) : MiniModuleItem :=
     | _ => .block (stmtsToMini {} f.body)
   .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (.arrow false params body)⟩, []⟩))
 
-/-- A helper of the runtime prelude as a function declaration:
-    `function name(params) { body }`. -/
-def JsHelper.toMini (h : JsHelper) : MiniModuleItem :=
-  let params := h.params.map fun x => MiniParam.plain (.ident (nes x))
-  .stmt (.funcDecl false false (nes h.name) params (stmtsToMini {} h.body))
+/-- The import of the functions `names` of the runtime module `path`:
+    `import { a, b } from "path";`. -/
+def importToMini (path : String) (names : List String) : MiniModuleItem :=
+  if names.isEmpty then .stmt .empty else
+  .importDecl (.clause (MiniImportClause.mk none none
+    (some (names.map fun n => Specifier.mk (nes n) none)) (nes path) [] (Or.inr (Or.inr rfl))))
+
+/-- A constant shared by the functions of a module: `const name = e;`. -/
+def constToMini (name : String) (e : JsExpr) : MiniModuleItem :=
+  .stmt (.decl .const ⟨⟨.ident (nes name), some (exprToMini {} e)⟩, []⟩)
 
 /-- The comment above an exported function: its Lean name, and the layouts of its
     parameters and result. -/
@@ -215,14 +221,19 @@ def JsFun.docComment (f : JsFun) : String :=
   let ps := (f.params.zip f.paramTys).map fun (x, ty) => s!" * @param \{{ty}} {x}"
   "\n".intercalate (["/**", s!" * `{f.leanName}`"] ++ ps ++ [s!" * @returns \{{f.ret}}", " */"])
 
-/-- The text of the `.js` file of a module.  `header` are comment lines put first. -/
-def JsModule.toJs (m : JsModule) (header : List String) : String :=
+/-- The text of the `.js` file of a module.  `header` are comment lines put first;
+    `runtimeDir` is how the module refers to the directory of the runtime modules (a path
+    relative to the module, `../../runtime`). -/
+def JsModule.toJs (m : JsModule) (header : List String) (runtimeDir : String) : String :=
   let head := String.join (header.map fun l => s!"// {l}\n")
-  let helpers := if m.helpers.isEmpty then "" else
-    "// ---- runtime helpers ----\n\n" ++ "\n".intercalate (m.helpers.map fun h => printProgram ⟨[h.toMini]⟩) ++ "\n" ++
-    "// ---- exported functions ----\n"
+  let imports := RtFile.all.filterMap fun f =>
+    let ns := (m.imports.filter (·.file == f)).map (·.name)
+    if ns.isEmpty then none else some (importToMini s!"{runtimeDir}/{f.fileName}" ns)
+  let importsTxt := if imports.isEmpty then "" else printProgram ⟨imports⟩ ++ "\n"
+  let constsTxt := if m.consts.isEmpty then "" else
+    printProgram ⟨m.consts.map fun (x, e) => constToMini x e⟩ ++ "\n"
   let funs := m.funs.map fun f =>
     f.docComment ++ "\n" ++ printProgram ⟨[f.toMini]⟩
-  head ++ "\n" ++ helpers ++ "\n" ++ "\n".intercalate funs
+  head ++ "\n" ++ importsTxt ++ constsTxt ++ "\n".intercalate funs
 
 end MoreJs

@@ -8,6 +8,13 @@
 // depending on `natRepr`; every function reads it through `W` and so accepts both.
 // `lean_runtime_bitvec_num.mjs` is the same catalogue where every width is a number.
 
+/* ----------------------------------------------------- imported by the backend */
+
+/** `UInt64.toBitVec`. */
+export const UInt64_toBitVec = (a) => BigInt(a);
+
+/* -------------------------------------- not imported by the current backend */
+
 /** The width, as a JavaScript number, whichever representation a `Nat` has. */
 const W = (w) => Number(w);
 

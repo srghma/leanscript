@@ -1,3 +1,36 @@
+# Summary of changes for run afce7a8a-c865-4879-b362-458391a89761
+All three changes are in, and every regenerated snapshot passes: 3806 checks against Lean with 0 failures, and all generated `.js` files pass `node --check`. The unit tests pass too (`lake exe tests`: 52/52). These are tests only; none of the three changes is formally proved.
+
+**1. Runtime imports instead of injected helpers**
+- Generated modules no longer define runtime functions. Each one starts with `import { … } from "<relative path>/runtime/lean_runtime_….mjs"`, then the shared constants, then `export const f = …`.
+- An extern becomes an operator, a short expression, or a call of `$` + its C symbol (e.g. `$lean_nat_sub`).
+- That function is imported from the module for the knob of its result type. For `nat`, `int`, `uint64`, `int64` and `bitvec` this is `lean_runtime_<knob>_bigint.mjs` or `lean_runtime_<knob>_num.mjs`, depending on the configuration. Everything else comes from `lean_runtime_non_configurable.mjs`.
+- Import paths are relative to each output file. `--runtime-dir` changes the directory; the default is `runtime/`.
+- The `runtime/*.mjs` files were rewritten so each `_bigint`/`_num` pair exports the same names. They include in-place array functions and `$lean_extern_unimplemented`.
+- `runtime/lean_values.mjs` is deleted. Its list/array helpers are now `$lean_array_to_list` / `$lean_array_mk` in the non-configurable module, and the Option constructors are gone.
+- The file headers of the `uint64`, `int64` and `bitvec` `_num` modules now say what the functions actually do: a result that doesn't fit in a safe integer throws a `RangeError` instead of being rounded.
+- An extern with no runtime function becomes a call that throws when evaluated.
+- The code is in `JsTerm/Extern.lean`, `JsTerm/Syntax.lean`, `JsTerm/PrintMini.lean` and `LeanScriptCli/Main.lean`.
+
+**2. Arrays are mutated when safe** (`JsTerm/InPlace.lean`)
+- If a local variable is the only owner of its array, `$lean_array_push/set/swap/pop` on it become the mutating `_inplace` versions. Owning means the function built the array, reads it at most once per path, never reads it inside a closure, and nothing else refers to it.
+- Parameters and shared arrays are still copied.
+- **Limitation:** an array that starts as a parameter is copied by its first update, and a loop pushing onto a parameter copies on every iteration. This is listed in `NOT_IMPLEMENTED.md`.
+
+**3. Constants are computed once, at the top of the file** (`JsTerm/Hoist.lean`)
+- Expressions that depend on no variable are moved to the top of the module and shared by every function. This covers constructors without fields, records/unions built from constants, closures that capture nothing, and literal arithmetic that can't throw.
+- Arrays and runtime calls are never moved.
+- **Naming differs from your example:** constants are named by shape (`const $tag0 = { tag: 0 };`, then `$k1`, `$k2`, …), not `Option$none`. The intermediate typed terms don't carry Lean constructor names, so the Lean name isn't available.
+
+**Tests**
+- `Tests/Main.lean` is updated to the new API, with new tests for runtime imports, in-place updates (owned, parameter, shared and closure cases) and constant hoisting.
+- A new test reads the real `runtime/` files. It checks that each `_bigint`/`_num` pair exports the same names, and that every extern marked implemented in the new `Tests/ExternCatalogue.lean` resolves to a function the runtime exports. That catalogue is 646 of 894 rows over both presets and is built as the `ExternCatalogue` library in `lakefile.toml`.
+- `README.md` and `NOT_IMPLEMENTED.md` are updated.
+
+**Build:** `JsTerm`, `TermTests`, `TyTests`, `ExternCatalogue`, `tests` and `leanscript` all build. A plain `lake build` still fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`: it imports Mathlib, which this project doesn't depend on. I haven't changed that file.
+
+All work is committed.
+
 # Summary of changes for run 77a31dac-95e7-48b1-8dbc-f0387399589c
 Both changes are done. `JsTerm` no longer has an `opaque` type, and all six functions in `Tests/SnapshotsPBOPure/AssocArrayAppend.lean` now compile to single spread array literals. This is covered by tests, not formally proved.
 

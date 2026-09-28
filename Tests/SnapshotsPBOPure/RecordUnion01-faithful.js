@@ -3,7 +3,6 @@
 // not translated:
 //   instReprOutput.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-
 /**
  * `test`
  * @param {string} a

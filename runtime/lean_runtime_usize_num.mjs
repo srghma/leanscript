@@ -6,6 +6,8 @@
 // exact modulo `2^64` and then rounded, which is the trade-off this representation
 // makes.  `lean_runtime_usize_bigint.mjs` makes the other one.
 
+/* -------------------------------------- not imported by the current backend */
+
 /** `x` taken modulo `2^64`, exactly, and then back to a number. */
 const wrapU64 = (x) => Number(BigInt.asUintN(64, BigInt(x)));
 

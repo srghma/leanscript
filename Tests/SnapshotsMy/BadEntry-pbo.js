@@ -4,7 +4,6 @@
 //   main: a `noncomputable` definition
 //   gcd2: LeanScript: the call a.gcd b is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-
 /**
  * `run`
  * @returns {uint53(number)}

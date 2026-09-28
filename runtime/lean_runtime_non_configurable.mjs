@@ -22,23 +22,655 @@
 // Every function here is pure: it never mutates an argument, which is what lets the
 // compiler treat a `Term` as a value.
 
-/* ------------------------------------------------------------------------ arrays */
+const $utf8At = (s, p) => {
+  let off = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    const n = cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4;
+    if (off === p) {
+      return [ch, n];
+    }
+    if (off > p) {
+      return undefined;
+    }
+    off = off + n;
+  }
+  return undefined;
+};
 
-/** `Array.replicate`. */
-export const $lean_mk_array = (n, v) => new Array(Number(n)).fill(v);
+const $utf8 = (s) => {
+  return new TextEncoder().encode(s);
+};
+
+const $toNum53 = (x) => {
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
+  return Number(x);
+};
+
+const $utf8Extract = (s, b, e) => {
+  if (b >= e) {
+    return "";
+  }
+  let off = 0;
+  let out = "";
+  let started = false;
+  for (const ch of s) {
+    if (!started && off === b) {
+      started = true;
+    }
+    if (started) {
+      if (off === e) {
+        return out;
+      }
+      out = out + ch;
+    }
+    const cp = ch.codePointAt(0);
+    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
+  }
+  return out;
+};
+
+const $utf8Set = (s, p, c) => {
+  let off = 0;
+  let i = 0;
+  for (const ch of s) {
+    if (off === p) {
+      return s.slice(0, i) + c + s.slice(i + ch.length);
+    }
+    const cp = ch.codePointAt(0);
+    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
+    i = i + ch.length;
+  }
+  return s;
+};
+
+/* ----------------------------------------------------- imported by the backend */
+
+/** `Char.ofNatAux`. */
+export const Char_ofNatAux = (a) => String.fromCodePoint(Number(a));
+
+/** `Bool.toInt16`. */
+export const $lean_bool_to_int16 = (a) => a ? 1 : 0;
+
+/** `Bool.toInt32`. */
+export const $lean_bool_to_int32 = (a) => a ? 1 : 0;
+
+/** `Bool.toInt8`. */
+export const $lean_bool_to_int8 = (a) => a ? 1 : 0;
+
+/** `Bool.toUInt16`. */
+export const $lean_bool_to_uint16 = (a) => a ? 1 : 0;
+
+/** `Bool.toUInt32`. */
+export const $lean_bool_to_uint32 = (a) => a ? 1 : 0;
+
+/** `Bool.toUInt8`. */
+export const $lean_bool_to_uint8 = (a) => a ? 1 : 0;
+
+/** `Float32.add`. */
+export const $lean_float32_add = (a, b) => Math.fround(a + b);
+
+/** `Float32.beq`. */
+export const $lean_float32_beq = (a, b) => a === b;
+
+/** `Float32.le`, `Float32.decLe`. */
+export const $lean_float32_decLe = (a, b) => a <= b;
+
+/** `Float32.lt`, `Float32.decLt`. */
+export const $lean_float32_decLt = (a, b) => a < b;
+
+/** `Float32.div`. */
+export const $lean_float32_div = (a, b) => Math.fround(a / b);
+
+/** `Float32.isFinite`. */
+export const $lean_float32_isfinite = (a) => Number.isFinite(a);
+
+/** `Float32.isInf`. */
+export const $lean_float32_isinf = (a) => a === Infinity || a === -Infinity;
+
+/** `Float32.isNaN`. */
+export const $lean_float32_isnan = (a) => Number.isNaN(a);
+
+/** `Float32.mul`. */
+export const $lean_float32_mul = (a, b) => Math.fround(a * b);
+
+/** `Float32.neg`. */
+export const $lean_float32_negate = (a) => -a;
+
+/** `Float32.sub`. */
+export const $lean_float32_sub = (a, b) => Math.fround(a - b);
+
+/** `Float.isFinite`. */
+export const $lean_float_isfinite = (a) => Number.isFinite(a);
+
+/** `Float.isInf`. */
+export const $lean_float_isinf = (a) => a === Infinity || a === -Infinity;
+
+/** `Float.isNaN`. */
+export const $lean_float_isnan = (a) => Number.isNaN(a);
+
+/** `Float.neg`. */
+export const $lean_float_negate = (a) => -a;
+
+/** `Float.toFloat32`. */
+export const $lean_float_to_float32 = (a) => Math.fround(a);
+
+/** `Int16.abs`. */
+export const $lean_int16_abs = (a) => (Math.abs(a) << 16) >> 16;
+
+/** `Int16.add`. */
+export const $lean_int16_add = (a, b) => ((a + b) << 16) >> 16;
+
+/** `Int16.complement`. */
+export const $lean_int16_complement = (a) => (~a << 16) >> 16;
+
+/** `Int16.div`. */
+export const $lean_int16_div = (a, b) => b === 0 ? 0 : (Math.trunc(a / b) << 16) >> 16;
+
+/** `Int16.land`. */
+export const $lean_int16_land = (a, b) => ((a & b) << 16) >> 16;
+
+/** `Int16.lor`. */
+export const $lean_int16_lor = (a, b) => ((a | b) << 16) >> 16;
+
+/** `Int16.mod`. */
+export const $lean_int16_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `Int16.mul`. */
+export const $lean_int16_mul = (a, b) => ((a * b) << 16) >> 16;
+
+/** `Int16.neg`. */
+export const $lean_int16_neg = (a) => (-a << 16) >> 16;
+
+/** `Int16.ofInt`: the argument may be a `BigInt` or a number. */
+export const $lean_int16_of_int = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(16, a)) : (a << 16) >> 16;
+
+/** `Int16.ofNat`: the argument may be a `BigInt` or a number. */
+export const $lean_int16_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(16, a)) : (a << 16) >> 16;
+
+/** `Int16.shiftLeft`. */
+export const $lean_int16_shift_left = (a, b) => ((a << (((b % 16) + 16) % 16)) << 16) >> 16;
+
+/** `Int16.shiftRight`. */
+export const $lean_int16_shift_right = (a, b) => a >> (((b % 16) + 16) % 16);
+
+/** `Int16.sub`. */
+export const $lean_int16_sub = (a, b) => ((a - b) << 16) >> 16;
+
+/** `Int16.toInt8`. */
+export const $lean_int16_to_int8 = (a) => (a << 24) >> 24;
+
+/** `Int16.xor`. */
+export const $lean_int16_xor = (a, b) => ((a ^ b) << 16) >> 16;
+
+/** `Int32.abs`. */
+export const $lean_int32_abs = (a) => Math.abs(a) | 0;
+
+/** `Int32.add`. */
+export const $lean_int32_add = (a, b) => (a + b) | 0;
+
+/** `Int32.complement`. */
+export const $lean_int32_complement = (a) => ~a | 0;
+
+/** `Int32.div`. */
+export const $lean_int32_div = (a, b) => b === 0 ? 0 : Math.trunc(a / b) | 0;
+
+/** `Int32.land`. */
+export const $lean_int32_land = (a, b) => (a & b) | 0;
+
+/** `Int32.lor`. */
+export const $lean_int32_lor = (a, b) => a | b | 0;
+
+/** `Int32.mod`. */
+export const $lean_int32_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `Int32.mul`. */
+export const $lean_int32_mul = (a, b) => Math.imul(a, b) | 0;
+
+/** `Int32.neg`. */
+export const $lean_int32_neg = (a) => -a | 0;
+
+/** `Int32.ofInt`: the argument may be a `BigInt` or a number. */
+export const $lean_int32_of_int = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(32, a)) : a | 0;
+
+/** `Int32.ofNat`: the argument may be a `BigInt` or a number. */
+export const $lean_int32_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(32, a)) : a | 0;
+
+/** `Int32.shiftLeft`. */
+export const $lean_int32_shift_left = (a, b) => (a << (((b % 32) + 32) % 32)) | 0;
+
+/** `Int32.shiftRight`. */
+export const $lean_int32_shift_right = (a, b) => a >> (((b % 32) + 32) % 32);
+
+/** `Int32.sub`. */
+export const $lean_int32_sub = (a, b) => (a - b) | 0;
+
+/** `Int32.toInt16`. */
+export const $lean_int32_to_int16 = (a) => (a << 16) >> 16;
+
+/** `Int32.toInt8`. */
+export const $lean_int32_to_int8 = (a) => (a << 24) >> 24;
+
+/** `Int32.xor`. */
+export const $lean_int32_xor = (a, b) => (a ^ b) | 0;
+
+/** `Int64.toFloat`. */
+export const $lean_int64_to_float = (a) => Number(a);
+
+/** `Int64.toFloat32`. */
+export const $lean_int64_to_float32 = (a) => Number(a);
+
+/** `Int64.toInt16`. */
+export const $lean_int64_to_int16 = (a) => Number(BigInt.asIntN(16, BigInt(a)));
+
+/** `Int64.toInt32`. */
+export const $lean_int64_to_int32 = (a) => Number(BigInt.asIntN(32, BigInt(a)));
+
+/** `Int64.toInt8`. */
+export const $lean_int64_to_int8 = (a) => Number(BigInt.asIntN(8, BigInt(a)));
+
+/** `Int8.abs`. */
+export const $lean_int8_abs = (a) => (Math.abs(a) << 24) >> 24;
+
+/** `Int8.add`. */
+export const $lean_int8_add = (a, b) => ((a + b) << 24) >> 24;
+
+/** `Int8.complement`. */
+export const $lean_int8_complement = (a) => (~a << 24) >> 24;
+
+/** `Int8.div`. */
+export const $lean_int8_div = (a, b) => b === 0 ? 0 : (Math.trunc(a / b) << 24) >> 24;
+
+/** `Int8.land`. */
+export const $lean_int8_land = (a, b) => ((a & b) << 24) >> 24;
+
+/** `Int8.lor`. */
+export const $lean_int8_lor = (a, b) => ((a | b) << 24) >> 24;
+
+/** `Int8.mod`. */
+export const $lean_int8_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `Int8.mul`. */
+export const $lean_int8_mul = (a, b) => ((a * b) << 24) >> 24;
+
+/** `Int8.neg`. */
+export const $lean_int8_neg = (a) => (-a << 24) >> 24;
+
+/** `Int8.ofInt`: the argument may be a `BigInt` or a number. */
+export const $lean_int8_of_int = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(8, a)) : (a << 24) >> 24;
+
+/** `Int8.ofNat`: the argument may be a `BigInt` or a number. */
+export const $lean_int8_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asIntN(8, a)) : (a << 24) >> 24;
+
+/** `Int8.shiftLeft`. */
+export const $lean_int8_shift_left = (a, b) => ((a << (((b % 8) + 8) % 8)) << 24) >> 24;
+
+/** `Int8.shiftRight`. */
+export const $lean_int8_shift_right = (a, b) => a >> (((b % 8) + 8) % 8);
+
+/** `Int8.sub`. */
+export const $lean_int8_sub = (a, b) => ((a - b) << 24) >> 24;
+
+/** `Int8.xor`. */
+export const $lean_int8_xor = (a, b) => ((a ^ b) << 24) >> 24;
+
+/** `Int.decNonneg`: the argument may be a `BigInt` or a number. */
+export const $lean_int_dec_nonneg = (a) => a >= 0;
+
+/** `String.compare`. */
+export const $lean_string_compare = (a, b) => a < b ? -1 : a === b ? 0 : 1;
+
+/** `String.data`, `String.toList`. */
+export const $lean_string_data = (a) => [...a];
+
+/** `String.decidableLT`. */
+export const $lean_string_dec_lt = (a, b) => a < b;
+
+/** `String.Internal.isEmpty`. */
+export const $lean_string_isempty = (a) => a.length === 0;
+
+/** `String.ofList`, `String.mk`. */
+export const $lean_string_mk = (a) => a.join("");
+
+/** `String.Internal.pushn`: the count may be a `BigInt` or a number. */
+export const $lean_string_pushn = (a, b, c) =>
+  a + b.repeat(typeof c === "bigint" ? $toNum53(c) : c);
+
+/** `String.Internal.atEnd`, `String.atEnd`, `String.Pos.Raw.atEnd`. */
+export const $lean_string_utf8_at_end = (a, b) => b >= $utf8(a).length;
+
+/** `String.Internal.extract`, `String.Pos.Raw.extract`. */
+export const $lean_string_utf8_extract = (a, b, c) => $utf8Extract(a, b, c);
+
+/** `String.Internal.get`, `String.Pos.Raw.get`, `String.get`. */
+export const $lean_string_utf8_get = (a, b) => {
+  const r = $utf8At(a, b);
+  return r === undefined ? "A" : r[0];
+};
+
+/** `String.Internal.next`, `String.next`, `String.Pos.Raw.next`. */
+export const $lean_string_utf8_next = (a, b) => {
+  const r = $utf8At(a, b);
+  return r === undefined ? b + 1 : b + r[1];
+};
+
+/** `String.Pos.Raw.set`, `String.set`. */
+export const $lean_string_utf8_set = (a, b, c) => $utf8Set(a, b, c);
+
+/** `UInt16.add`. */
+export const $lean_uint16_add = (a, b) => (a + b) & 65535;
+
+/** `UInt16.complement`. */
+export const $lean_uint16_complement = (a) => ~a & 65535;
+
+/** `UInt16.div`. */
+export const $lean_uint16_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
+
+/** `UInt16.land`. */
+export const $lean_uint16_land = (a, b) => a & b & 65535;
+
+/** `UInt16.log2`. */
+export const $lean_uint16_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
+
+/** `UInt16.lor`. */
+export const $lean_uint16_lor = (a, b) => (a | b) & 65535;
+
+/** `UInt16.mod`. */
+export const $lean_uint16_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `UInt16.mul`. */
+export const $lean_uint16_mul = (a, b) => (a * b) & 65535;
+
+/** `UInt16.neg`. */
+export const $lean_uint16_neg = (a) => -a & 65535;
+
+/** `UInt16.ofNat`, `UInt16.ofNatLT`: the argument may be a `BigInt` or a number. */
+export const $lean_uint16_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asUintN(16, a)) : ((a % 65536) + 65536) % 65536;
+
+/** `UInt16.shiftLeft`. */
+export const $lean_uint16_shift_left = (a, b) => (a << (((b % 16) + 16) % 16)) & 65535;
+
+/** `UInt16.shiftRight`. */
+export const $lean_uint16_shift_right = (a, b) => a >>> (b % 16);
+
+/** `UInt16.sub`. */
+export const $lean_uint16_sub = (a, b) => (a - b) & 65535;
+
+/** `UInt16.toUInt8`. */
+export const $lean_uint16_to_uint8 = (a) => a & 255;
+
+/** `UInt16.xor`. */
+export const $lean_uint16_xor = (a, b) => (a ^ b) & 65535;
+
+/** `UInt32.add`. */
+export const $lean_uint32_add = (a, b) => (a + b) >>> 0;
+
+/** `UInt32.complement`. */
+export const $lean_uint32_complement = (a) => ~a >>> 0;
+
+/** `UInt32.div`. */
+export const $lean_uint32_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
+
+/** `UInt32.land`. */
+export const $lean_uint32_land = (a, b) => (a & b) >>> 0;
+
+/** `UInt32.log2`. */
+export const $lean_uint32_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
+
+/** `UInt32.lor`. */
+export const $lean_uint32_lor = (a, b) => (a | b) >>> 0;
+
+/** `UInt32.mod`. */
+export const $lean_uint32_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `UInt32.mul`. */
+export const $lean_uint32_mul = (a, b) => Math.imul(a, b) >>> 0;
+
+/** `UInt32.neg`. */
+export const $lean_uint32_neg = (a) => -a >>> 0;
+
+/** `UInt32.ofNat`, `UInt32.ofNatLT`: the argument may be a `BigInt` or a number. */
+export const $lean_uint32_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asUintN(32, a)) : ((a % 4294967296) + 4294967296) % 4294967296;
+
+/** `UInt32.shiftLeft`. */
+export const $lean_uint32_shift_left = (a, b) => (a << (((b % 32) + 32) % 32)) >>> 0;
+
+/** `UInt32.shiftRight`. */
+export const $lean_uint32_shift_right = (a, b) => a >>> (b % 32);
+
+/** `UInt32.sub`. */
+export const $lean_uint32_sub = (a, b) => (a - b) >>> 0;
+
+/** `UInt32.toUInt16`. */
+export const $lean_uint32_to_uint16 = (a) => a & 65535;
+
+/** `UInt32.toUInt8`. */
+export const $lean_uint32_to_uint8 = (a) => a & 255;
+
+/** `UInt32.xor`. */
+export const $lean_uint32_xor = (a, b) => (a ^ b) >>> 0;
+
+/** `UInt64.toFloat`. */
+export const $lean_uint64_to_float = (a) => Number(a);
+
+/** `UInt64.toFloat32`. */
+export const $lean_uint64_to_float32 = (a) => Number(a);
+
+/** `UInt64.toUInt16`. */
+export const $lean_uint64_to_uint16 = (a) => Number(BigInt.asUintN(16, BigInt(a)));
+
+/** `UInt64.toUInt32`. */
+export const $lean_uint64_to_uint32 = (a) => Number(BigInt.asUintN(32, BigInt(a)));
+
+/** `UInt64.toUInt8`. */
+export const $lean_uint64_to_uint8 = (a) => Number(BigInt.asUintN(8, BigInt(a)));
+
+/** `UInt8.add`. */
+export const $lean_uint8_add = (a, b) => (a + b) & 255;
+
+/** `UInt8.complement`. */
+export const $lean_uint8_complement = (a) => ~a & 255;
+
+/** `UInt8.div`. */
+export const $lean_uint8_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
+
+/** `UInt8.land`. */
+export const $lean_uint8_land = (a, b) => a & b & 255;
+
+/** `UInt8.log2`. */
+export const $lean_uint8_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
+
+/** `UInt8.lor`. */
+export const $lean_uint8_lor = (a, b) => (a | b) & 255;
+
+/** `UInt8.mod`. */
+export const $lean_uint8_mod = (a, b) => b === 0 ? a : a % b;
+
+/** `UInt8.mul`. */
+export const $lean_uint8_mul = (a, b) => (a * b) & 255;
+
+/** `UInt8.neg`. */
+export const $lean_uint8_neg = (a) => -a & 255;
+
+/** `UInt8.ofNat`, `UInt8.ofNatLT`: the argument may be a `BigInt` or a number. */
+export const $lean_uint8_of_nat = (a) =>
+  typeof a === "bigint" ? Number(BigInt.asUintN(8, a)) : ((a % 256) + 256) % 256;
+
+/** `UInt8.shiftLeft`. */
+export const $lean_uint8_shift_left = (a, b) => (a << (((b % 8) + 8) % 8)) & 255;
+
+/** `UInt8.shiftRight`. */
+export const $lean_uint8_shift_right = (a, b) => a >>> (b % 8);
+
+/** `UInt8.sub`. */
+export const $lean_uint8_sub = (a, b) => (a - b) & 255;
+
+/** `UInt8.xor`. */
+export const $lean_uint8_xor = (a, b) => (a ^ b) & 255;
+
+/* ------------------------------------------------------------------------ arrays
+ *
+ * An array is a generic JavaScript `Array` or, where the configuration says so, a typed
+ * array (`Uint8Array`, `Float64Array`, `BigUint64Array`, …).  An index or a count is a
+ * `Nat`, so it is a `BigInt` or a number depending on `natRepr`: every function here
+ * takes either.
+ *
+ * The functions without a suffix never mutate their argument: they answer with a copy.
+ * The `_inplace` ones mutate it and answer with it; the backend calls them only on an
+ * array nothing else refers to (one it has just built, and does not read again), where
+ * the copy would be wasted work.
+ */
+
+/**
+ * An index held as a `Nat`, as a number: a `BigInt` too large for a number becomes
+ * `Infinity`, which is out of bounds of every array.
+ */
+const $idx = (i) =>
+  typeof i === "bigint" ? (i > 9007199254740991n ? Infinity : Number(i)) : i;
+
+/** A count held as a `Nat`, as a number (one too large for a number throws). */
+const $count = (n) => (typeof n === "bigint" ? $toNum53(n) : n);
+
+/** `Array.replicate`, on a generic array. */
+export const $lean_mk_array = (n, v) => new Array($count(n)).fill(v);
+
+/** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …). */
+export const $lean_mk_typed_array = (C, n, v) => new C($count(n)).fill(v);
+
+/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds. */
+export const $lean_array_get = (d, a, i) => {
+  const k = $idx(i);
+  return k < a.length ? a[k] : d;
+};
+
+/** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
+export const $lean_array_get_borrowed = $lean_array_get;
+
+/** `Array.push`: a copy with one more element. */
+export const $lean_array_push = (a, x) => {
+  if (Array.isArray(a)) return [...a, x];
+  const r = new a.constructor(a.length + 1);
+  r.set(a);
+  r[a.length] = x;
+  return r;
+};
+
+/** `Array.push`, in place (a typed array cannot grow, so it is copied). */
+export const $lean_array_push_inplace = (a, x) => {
+  if (!Array.isArray(a)) return $lean_array_push(a, x);
+  a.push(x);
+  return a;
+};
+
+/** `Array.set!`: a copy with one element replaced (the array itself out of bounds). */
+export const $lean_array_set = (a, i, x) => {
+  const k = $idx(i);
+  if (k >= a.length) return a;
+  const r = a.slice();
+  r[k] = x;
+  return r;
+};
+
+/** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
+export const $lean_array_fset = $lean_array_set;
+
+/** `Array.set!`, in place. */
+export const $lean_array_set_inplace = (a, i, x) => {
+  const k = $idx(i);
+  if (k < a.length) a[k] = x;
+  return a;
+};
+
+/** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds). */
+export const $lean_array_swap = (a, i, j) => {
+  const k = $idx(i);
+  const l = $idx(j);
+  if (k >= a.length || l >= a.length) return a;
+  const r = a.slice();
+  const t = r[k];
+  r[k] = r[l];
+  r[l] = t;
+  return r;
+};
+
+/** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
+export const $lean_array_fswap = $lean_array_swap;
+
+/** `Array.swapIfInBounds`, in place. */
+export const $lean_array_swap_inplace = (a, i, j) => {
+  const k = $idx(i);
+  const l = $idx(j);
+  if (k < a.length && l < a.length) {
+    const t = a[k];
+    a[k] = a[l];
+    a[l] = t;
+  }
+  return a;
+};
+
+/** `Array.pop`: a copy without the last element. */
+export const $lean_array_pop = (a) => a.slice(0, Math.max(a.length - 1, 0));
+
+/** `Array.pop`, in place (a typed array cannot shrink, so it is copied). */
+export const $lean_array_pop_inplace = (a) => {
+  if (!Array.isArray(a)) return $lean_array_pop(a);
+  a.pop();
+  return a;
+};
+
+/**
+ * `Array.mk`: the array of a `List`.  A list is a JavaScript array too, so this is a
+ * copy (arrays and lists are never shared, so the backend may mutate the array).
+ */
+export const $lean_array_mk = (xs) => xs.slice();
+
+/** `Array.toList`: the list of an array, generic or typed (a list is a generic array). */
+export const $lean_array_to_list = (a) => Array.from(a);
+
+/* ------------------------------------------------------------------------ thunks */
+
+/** `Thunk.pure`: a memoised delay whose value is already known. */
+export const $lean_thunk_pure = (v) => ({ f: undefined, v, done: true });
+
+/** `Thunk.mk`: a memoised delay of the function `f`. */
+export const $lean_mk_thunk = (f) => ({ f, v: undefined, done: false });
+
+/** `Thunk.get`: the value of a memoised delay, computed the first time. */
+export const $lean_thunk_get_own = (t) => {
+  if (!t.done) {
+    t.v = t.f();
+    t.done = true;
+    t.f = undefined;
+  }
+  return t.v;
+};
+
+/* ------------------------------------------------------------ missing externs */
+
+/** Called in place of an extern that has no JavaScript implementation yet. */
+export const $lean_extern_unimplemented = (name) => {
+  throw new Error(`LeanScript: the extern ${name} has no JavaScript implementation yet`);
+};
+
+/* -------------------------------------- not imported by the current backend */
 
 /** `Array.uget`. */
 export const $lean_array_uget = (a, i) => a[Number(i)];
 
 /** `Array.uset`: persistent, so it answers with a copy. */
 export const $lean_array_uset = (a, i, v) => {
-  const out = a.slice();
-  out[Number(i)] = v;
-  return out;
-};
-
-/** `Array.set`: persistent, so it answers with a copy. */
-export const $lean_array_fset = (a, i, v) => {
   const out = a.slice();
   out[Number(i)] = v;
   return out;
@@ -53,27 +685,6 @@ export const Array_append = (a, b) => a.concat(b);
 /** `Array.back?`. */
 export const Array_back_ = (a) =>
   a.length === 0 ? { tag: 0 } : { tag: 1, _1: a[a.length - 1] };
-
-/**
- * `Array.mk`: a JavaScript array out of a `List`, which is `{ tag: 0 }` /
- * `{ tag: 1, _1: head, _2: tail }`.
- */
-export const $lean_array_mk = (xs) => {
-  const out = [];
-  let cur = xs;
-  while (cur.tag === 1) {
-    out.push(cur._1);
-    cur = cur._2;
-  }
-  return out;
-};
-
-/** `Array.toList`. */
-export const $lean_array_to_list = (a) => {
-  let out = { tag: 0 };
-  for (let i = a.length - 1; i >= 0; i--) out = { tag: 1, _1: a[i], _2: out };
-  return out;
-};
 
 /* ----------------------------------------------------------------------- strings */
 
@@ -140,9 +751,6 @@ export const $lean_string_memcmp = (lhs, rhs, lstart, rstart, len) => {
   return true;
 };
 
-/** `String.mk`: a string out of a `List Char`. */
-export const $lean_string_mk = (chars) => $lean_array_mk(chars).join("");
-
 /** `String.push`: a `Char` is a one-character string here. */
 export const $lean_string_push = (s, c) => s + c;
 
@@ -206,111 +814,6 @@ export const String_Slice_toString = (slice) => {
  * ================================================================================== */
 
 /** `x` taken modulo `2^w`, for `w ≤ 32`. */
-const wrapU = (w, x) => {
-  const m = 2 ** w;
-  const r = Number(x) % m;
-  return r < 0 ? r + m : r;
-};
-
-/** `x` taken modulo `2^w` and read as a signed `w`-bit value, for `w ≤ 32`. */
-const wrapS = (w, x) => {
-  const m = 2 ** w;
-  const r = wrapU(w, x);
-  return r >= m / 2 ? r - m : r;
-};
-
-/** Unsigned division at `w ≤ 32` bits: rounds down, and `a / 0` is `0`. */
-const udiv = (a, b) => (Number(b) === 0 ? 0 : Math.floor(Number(a) / Number(b)));
-
-/** Signed division at `w ≤ 32` bits: truncates towards zero, wraps, `a / 0` is `0`. */
-const sdiv = (w, a, b) =>
-  Number(b) === 0 ? 0 : wrapS(w, Math.trunc(Number(a) / Number(b)));
-
-/** `UInt8.div`. */
-export const $lean_uint8_div = (a, b) => udiv(a, b);
-/** `UInt16.div`. */
-export const $lean_uint16_div = (a, b) => udiv(a, b);
-/** `UInt32.div`. */
-export const $lean_uint32_div = (a, b) => udiv(a, b);
-
-/** `Int8.div`. */
-export const $lean_int8_div = (a, b) => sdiv(8, a, b);
-/** `Int16.div`. */
-export const $lean_int16_div = (a, b) => sdiv(16, a, b);
-/** `Int32.div`. */
-export const $lean_int32_div = (a, b) => sdiv(32, a, b);
-
-/** `UInt8.neg`. */
-export const $lean_uint8_neg = (a) => wrapU(8, -Number(a));
-/** `UInt16.neg`. */
-export const $lean_uint16_neg = (a) => wrapU(16, -Number(a));
-/** `UInt32.neg`. */
-export const $lean_uint32_neg = (a) => wrapU(32, -Number(a));
-
-/** `Int8.neg`. */
-export const $lean_int8_neg = (a) => wrapS(8, -Number(a));
-/** `Int16.neg`. */
-export const $lean_int16_neg = (a) => wrapS(16, -Number(a));
-/** `Int32.neg`. */
-export const $lean_int32_neg = (a) => wrapS(32, -Number(a));
-
-/** `Int8.ofNat`: the `Nat` may be a number or a `BigInt`, the answer is a number. */
-export const $lean_int8_of_nat = (n) => wrapS(8, n);
-/** `Int16.ofNat`. */
-export const $lean_int16_of_nat = (n) => wrapS(16, n);
-/** `Int32.ofNat`. */
-export const $lean_int32_of_nat = (n) => wrapS(32, n);
-
-/** `UInt8.add`. */
-export const $lean_uint8_add = (a, b) => wrapU(8, Number(a) + Number(b));
-/** `UInt16.add`. */
-export const $lean_uint16_add = (a, b) => wrapU(16, Number(a) + Number(b));
-/** `UInt32.add`. */
-export const $lean_uint32_add = (a, b) => wrapU(32, Number(a) + Number(b));
-
-/** `UInt8.sub`. */
-export const $lean_uint8_sub = (a, b) => wrapU(8, Number(a) - Number(b));
-/** `UInt16.sub`. */
-export const $lean_uint16_sub = (a, b) => wrapU(16, Number(a) - Number(b));
-/** `UInt32.sub`. */
-export const $lean_uint32_sub = (a, b) => wrapU(32, Number(a) - Number(b));
-
-/** `UInt8.mul`. */
-export const $lean_uint8_mul = (a, b) => wrapU(8, Number(a) * Number(b));
-/** `UInt16.mul`. */
-export const $lean_uint16_mul = (a, b) => wrapU(16, Number(a) * Number(b));
-/** `UInt32.mul`: the product of two 32-bit numbers exceeds the exact range of a
- * double, so the 32-bit machine multiplication is used and read back unsigned. */
-export const $lean_uint32_mul = (a, b) => Math.imul(Number(a), Number(b)) >>> 0;
-
-/* ----------------------------------------- the narrow signed wrapping arithmetic
- *
- * Addition, subtraction and multiplication of `Int8/16/32` wrap, which the JavaScript
- * operator does not, so the printer never writes these as operators: they are calls of
- * the functions below.  `UInt8/16/32` have theirs above.
- */
-
-/** `Int8.add`. */
-export const $lean_int8_add = (a, b) => wrapS(8, Number(a) + Number(b));
-/** `Int16.add`. */
-export const $lean_int16_add = (a, b) => wrapS(16, Number(a) + Number(b));
-/** `Int32.add`. */
-export const $lean_int32_add = (a, b) => wrapS(32, Number(a) + Number(b));
-
-/** `Int8.sub`. */
-export const $lean_int8_sub = (a, b) => wrapS(8, Number(a) - Number(b));
-/** `Int16.sub`. */
-export const $lean_int16_sub = (a, b) => wrapS(16, Number(a) - Number(b));
-/** `Int32.sub`. */
-export const $lean_int32_sub = (a, b) => wrapS(32, Number(a) - Number(b));
-
-/** `Int8.mul`. */
-export const $lean_int8_mul = (a, b) => wrapS(8, Number(a) * Number(b));
-/** `Int16.mul`. */
-export const $lean_int16_mul = (a, b) => wrapS(16, Number(a) * Number(b));
-/** `Int32.mul`: as `UInt32.mul`, through the 32-bit machine multiplication, whose
- * answer is already the signed 32-bit pattern. */
-export const $lean_int32_mul = (a, b) => Math.imul(Number(a), Number(b));
 
 /* ------------------------------------------ the narrow bitwise operations
  *
@@ -321,106 +824,10 @@ export const $lean_int32_mul = (a, b) => Math.imul(Number(a), Number(b));
  */
 
 /** The shift distance Lean uses at `w` bits: the argument taken modulo `w`. */
-const shiftW = (w, b) => {
-  const m = BigInt(w);
-  return ((BigInt(b) % m) + m) % m;
-};
 
 /** An unsigned `w`-bit answer, out of the `BigInt` that computed it. */
-const outU = (w, x) => Number(BigInt.asUintN(w, x));
 
 /** A signed `w`-bit answer, out of the `BigInt` that computed it. */
-const outS = (w, x) => Number(BigInt.asIntN(w, x));
-
-/** `UInt8.land`. */
-export const $lean_uint8_land = (a, b) => outU(8, BigInt(a) & BigInt(b));
-/** `UInt16.land`. */
-export const $lean_uint16_land = (a, b) => outU(16, BigInt(a) & BigInt(b));
-/** `UInt32.land`. */
-export const $lean_uint32_land = (a, b) => outU(32, BigInt(a) & BigInt(b));
-
-/** `UInt8.lor`. */
-export const $lean_uint8_lor = (a, b) => outU(8, BigInt(a) | BigInt(b));
-/** `UInt16.lor`. */
-export const $lean_uint16_lor = (a, b) => outU(16, BigInt(a) | BigInt(b));
-/** `UInt32.lor`. */
-export const $lean_uint32_lor = (a, b) => outU(32, BigInt(a) | BigInt(b));
-
-/** `UInt8.xor`. */
-export const $lean_uint8_xor = (a, b) => outU(8, BigInt(a) ^ BigInt(b));
-/** `UInt16.xor`. */
-export const $lean_uint16_xor = (a, b) => outU(16, BigInt(a) ^ BigInt(b));
-/** `UInt32.xor`. */
-export const $lean_uint32_xor = (a, b) => outU(32, BigInt(a) ^ BigInt(b));
-
-/** `UInt8.complement`. */
-export const $lean_uint8_complement = (a) => outU(8, ~BigInt(a));
-/** `UInt16.complement`. */
-export const $lean_uint16_complement = (a) => outU(16, ~BigInt(a));
-/** `UInt32.complement`. */
-export const $lean_uint32_complement = (a) => outU(32, ~BigInt(a));
-
-/** `UInt8.shiftLeft`. */
-export const $lean_uint8_shift_left = (a, b) => outU(8, BigInt(a) << shiftW(8, b));
-/** `UInt16.shiftLeft`. */
-export const $lean_uint16_shift_left = (a, b) => outU(16, BigInt(a) << shiftW(16, b));
-/** `UInt32.shiftLeft`. */
-export const $lean_uint32_shift_left = (a, b) => outU(32, BigInt(a) << shiftW(32, b));
-
-/** `UInt8.shiftRight`; the value is unsigned, so the shift brings in zeros. */
-export const $lean_uint8_shift_right = (a, b) =>
-  outU(8, BigInt.asUintN(8, BigInt(a)) >> shiftW(8, b));
-/** `UInt16.shiftRight`. */
-export const $lean_uint16_shift_right = (a, b) =>
-  outU(16, BigInt.asUintN(16, BigInt(a)) >> shiftW(16, b));
-/** `UInt32.shiftRight`. */
-export const $lean_uint32_shift_right = (a, b) =>
-  outU(32, BigInt.asUintN(32, BigInt(a)) >> shiftW(32, b));
-
-/** `Int8.land`, on the two's complement. */
-export const $lean_int8_land = (a, b) => outS(8, BigInt(a) & BigInt(b));
-/** `Int16.land`. */
-export const $lean_int16_land = (a, b) => outS(16, BigInt(a) & BigInt(b));
-/** `Int32.land`. */
-export const $lean_int32_land = (a, b) => outS(32, BigInt(a) & BigInt(b));
-
-/** `Int8.lor`. */
-export const $lean_int8_lor = (a, b) => outS(8, BigInt(a) | BigInt(b));
-/** `Int16.lor`. */
-export const $lean_int16_lor = (a, b) => outS(16, BigInt(a) | BigInt(b));
-/** `Int32.lor`. */
-export const $lean_int32_lor = (a, b) => outS(32, BigInt(a) | BigInt(b));
-
-/** `Int8.xor`. */
-export const $lean_int8_xor = (a, b) => outS(8, BigInt(a) ^ BigInt(b));
-/** `Int16.xor`. */
-export const $lean_int16_xor = (a, b) => outS(16, BigInt(a) ^ BigInt(b));
-/** `Int32.xor`. */
-export const $lean_int32_xor = (a, b) => outS(32, BigInt(a) ^ BigInt(b));
-
-/** `Int8.complement`. */
-export const $lean_int8_complement = (a) => outS(8, ~BigInt(a));
-/** `Int16.complement`. */
-export const $lean_int16_complement = (a) => outS(16, ~BigInt(a));
-/** `Int32.complement`. */
-export const $lean_int32_complement = (a) => outS(32, ~BigInt(a));
-
-/** `Int8.shiftLeft`. */
-export const $lean_int8_shift_left = (a, b) => outS(8, BigInt(a) << shiftW(8, b));
-/** `Int16.shiftLeft`. */
-export const $lean_int16_shift_left = (a, b) => outS(16, BigInt(a) << shiftW(16, b));
-/** `Int32.shiftLeft`. */
-export const $lean_int32_shift_left = (a, b) => outS(32, BigInt(a) << shiftW(32, b));
-
-/** `Int8.shiftRight`, which is arithmetic: the sign bit is carried in. */
-export const $lean_int8_shift_right = (a, b) =>
-  outS(8, BigInt.asIntN(8, BigInt(a)) >> shiftW(8, b));
-/** `Int16.shiftRight`, arithmetic. */
-export const $lean_int16_shift_right = (a, b) =>
-  outS(16, BigInt.asIntN(16, BigInt(a)) >> shiftW(16, b));
-/** `Int32.shiftRight`, arithmetic. */
-export const $lean_int32_shift_right = (a, b) =>
-  outS(32, BigInt.asIntN(32, BigInt(a)) >> shiftW(32, b));
 
 /* ------------------------------------------------------------------- equalities
  *

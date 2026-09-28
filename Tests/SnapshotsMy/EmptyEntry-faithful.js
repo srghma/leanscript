@@ -3,7 +3,6 @@
 // not translated:
 //   fromNoValues: LeanScript: the type NoValues has no constructor (it has no value)
 
-
 /**
  * `bump`
  * @param {nat(bigint)} n

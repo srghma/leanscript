@@ -24,127 +24,33 @@
 //   TestISize.div: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.neg: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
-// ---- runtime helpers ----
-
-function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return Number(x);
-}
-
-function lean_uint64_add$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a + b));
-}
-
-function lean_uint64_sub$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a - b));
-}
-
-function lean_uint64_mul$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a * b));
-}
-
-function lean_uint64_div$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? 0n : BigInt.asUintN(64, a / b));
-}
-
-function lean_uint64_neg$nn(a) {
-  a = BigInt(a);
-  return $toNum53(BigInt.asUintN(64, -a));
-}
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_nat_sub$nnn(a, b) {
-  return a > b ? a - b : 0;
-}
-
-function lean_nat_mul$nnn(a, b) {
-  return $chk53(a * b);
-}
-
-function lean_nat_div$nnn(a, b) {
-  return b === 0 ? 0 : Math.floor(a / b);
-}
-
-function lean_int64_add$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a + b));
-}
-
-function lean_int64_sub$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a - b));
-}
-
-function lean_int64_mul$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a * b));
-}
-
-function lean_int64_div$nnn(a, b) {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? 0n : BigInt.asIntN(64, a / b));
-}
-
-function lean_int64_neg$nn(a) {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, -a));
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_int_sub$nnn(a, b) {
-  return $chk53(a - b);
-}
-
-function lean_int_mul$nnn(a, b) {
-  return $chk53(a * b);
-}
-
-function lean_int_ediv$nnn(a, b) {
-  return b === 0
-    ? 0
-    : a % b < 0
-      ? b > 0
-        ? Math.trunc(a / b) - 1
-        : Math.trunc(a / b) + 1
-      : Math.trunc(a / b);
-}
-
-function lean_int_neg$nn(a) {
-  return 0 - a;
-}
-
-// ---- exported functions ----
+import {
+  $lean_nat_add,
+  $lean_nat_sub,
+  $lean_nat_mul,
+  $lean_nat_div,
+} from "../../runtime/lean_runtime_nat_num.mjs";
+import {
+  $lean_int_add,
+  $lean_int_sub,
+  $lean_int_mul,
+  $lean_int_ediv,
+  $lean_int_neg,
+} from "../../runtime/lean_runtime_int_num.mjs";
+import {
+  $lean_uint64_add,
+  $lean_uint64_sub,
+  $lean_uint64_mul,
+  $lean_uint64_div,
+  $lean_uint64_neg,
+} from "../../runtime/lean_runtime_uint64_num.mjs";
+import {
+  $lean_int64_add,
+  $lean_int64_sub,
+  $lean_int64_mul,
+  $lean_int64_div,
+  $lean_int64_neg,
+} from "../../runtime/lean_runtime_int64_num.mjs";
 
 /**
  * `TestUInt64.add`
@@ -152,7 +58,7 @@ function lean_int_neg$nn(a) {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$add = (a, b) => lean_uint64_add$nnn(a, b);
+export const TestUInt64$add = (a, b) => $lean_uint64_add(a, b);
 
 /**
  * `TestUInt64.sub`
@@ -160,7 +66,7 @@ export const TestUInt64$add = (a, b) => lean_uint64_add$nnn(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$sub = (a, b) => lean_uint64_sub$nnn(a, b);
+export const TestUInt64$sub = (a, b) => $lean_uint64_sub(a, b);
 
 /**
  * `TestUInt64.eq`
@@ -222,7 +128,7 @@ export const TestUInt64$ge = (a, b) => b <= a;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$mul = (a, b) => lean_uint64_mul$nnn(a, b);
+export const TestUInt64$mul = (a, b) => $lean_uint64_mul(a, b);
 
 /**
  * `TestUInt64.div`
@@ -230,14 +136,14 @@ export const TestUInt64$mul = (a, b) => lean_uint64_mul$nnn(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$div = (a, b) => lean_uint64_div$nnn(a, b);
+export const TestUInt64$div = (a, b) => $lean_uint64_div(a, b);
 
 /**
  * `TestUInt64.neg`
  * @param {uint53(number)} a
  * @returns {uint53(number)}
  */
-export const TestUInt64$neg = (a) => lean_uint64_neg$nn(a);
+export const TestUInt64$neg = (a) => $lean_uint64_neg(a);
 
 /**
  * `TestNat.add`
@@ -245,7 +151,7 @@ export const TestUInt64$neg = (a) => lean_uint64_neg$nn(a);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$add = (a, b) => lean_nat_add$nnn(a, b);
+export const TestNat$add = (a, b) => $lean_nat_add(a, b);
 
 /**
  * `TestNat.sub`
@@ -253,7 +159,7 @@ export const TestNat$add = (a, b) => lean_nat_add$nnn(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$sub = (a, b) => lean_nat_sub$nnn(a, b);
+export const TestNat$sub = (a, b) => $lean_nat_sub(a, b);
 
 /**
  * `TestNat.eq`
@@ -315,7 +221,7 @@ export const TestNat$ge = (a, b) => b <= a;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$mul = (a, b) => lean_nat_mul$nnn(a, b);
+export const TestNat$mul = (a, b) => $lean_nat_mul(a, b);
 
 /**
  * `TestNat.div`
@@ -323,7 +229,7 @@ export const TestNat$mul = (a, b) => lean_nat_mul$nnn(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$div = (a, b) => lean_nat_div$nnn(a, b);
+export const TestNat$div = (a, b) => $lean_nat_div(a, b);
 
 /**
  * `TestInt64.add`
@@ -331,7 +237,7 @@ export const TestNat$div = (a, b) => lean_nat_div$nnn(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$add = (a, b) => lean_int64_add$nnn(a, b);
+export const TestInt64$add = (a, b) => $lean_int64_add(a, b);
 
 /**
  * `TestInt64.sub`
@@ -339,7 +245,7 @@ export const TestInt64$add = (a, b) => lean_int64_add$nnn(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$sub = (a, b) => lean_int64_sub$nnn(a, b);
+export const TestInt64$sub = (a, b) => $lean_int64_sub(a, b);
 
 /**
  * `TestInt64.eq`
@@ -401,7 +307,7 @@ export const TestInt64$ge = (a, b) => b <= a;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$mul = (a, b) => lean_int64_mul$nnn(a, b);
+export const TestInt64$mul = (a, b) => $lean_int64_mul(a, b);
 
 /**
  * `TestInt64.div`
@@ -409,14 +315,14 @@ export const TestInt64$mul = (a, b) => lean_int64_mul$nnn(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$div = (a, b) => lean_int64_div$nnn(a, b);
+export const TestInt64$div = (a, b) => $lean_int64_div(a, b);
 
 /**
  * `TestInt64.neg`
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const TestInt64$neg = (a) => lean_int64_neg$nn(a);
+export const TestInt64$neg = (a) => $lean_int64_neg(a);
 
 /**
  * `TestInt.add`
@@ -424,7 +330,7 @@ export const TestInt64$neg = (a) => lean_int64_neg$nn(a);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt$add = (a, b) => lean_int_add$nnn(a, b);
+export const TestInt$add = (a, b) => $lean_int_add(a, b);
 
 /**
  * `TestInt.sub`
@@ -432,7 +338,7 @@ export const TestInt$add = (a, b) => lean_int_add$nnn(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt$sub = (a, b) => lean_int_sub$nnn(a, b);
+export const TestInt$sub = (a, b) => $lean_int_sub(a, b);
 
 /**
  * `TestInt.eq`
@@ -494,7 +400,7 @@ export const TestInt$ge = (a, b) => b <= a;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt$mul = (a, b) => lean_int_mul$nnn(a, b);
+export const TestInt$mul = (a, b) => $lean_int_mul(a, b);
 
 /**
  * `TestInt.div`
@@ -502,11 +408,11 @@ export const TestInt$mul = (a, b) => lean_int_mul$nnn(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt$div = (a, b) => lean_int_ediv$nnn(a, b);
+export const TestInt$div = (a, b) => $lean_int_ediv(a, b);
 
 /**
  * `TestInt.neg`
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const TestInt$neg = (a) => lean_int_neg$nn(a);
+export const TestInt$neg = (a) => $lean_int_neg(a);

@@ -13,4 +13,3 @@
 //   test5: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
 //   test6: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
 
-

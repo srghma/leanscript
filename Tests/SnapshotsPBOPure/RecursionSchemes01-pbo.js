@@ -8,26 +8,10 @@
 //   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 //   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_int_mul$nnn(a, b) {
-  return $chk53(a * b);
-}
-
-// ---- exported functions ----
+import {
+  $lean_int_add,
+  $lean_int_mul,
+} from "../../runtime/lean_runtime_int_num.mjs";
 
 /**
  * `eval`
@@ -40,9 +24,9 @@ export const eval_ = (a) => {
     return f$1;
   } else if (a.tag === 1) {
     const { _1: f$2, _2: f$3 } = a;
-    return lean_int_add$nnn(f$2, f$3);
+    return $lean_int_add(f$2, f$3);
   } else {
     const { _1: f$4, _2: f$5 } = a;
-    return lean_int_mul$nnn(f$4, f$5);
+    return $lean_int_mul(f$4, f$5);
   }
 };

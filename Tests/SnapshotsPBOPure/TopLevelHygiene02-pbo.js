@@ -4,7 +4,6 @@
 //   test1: LeanScript: the parameter `α` of `test1` is a type
 //   test2: LeanScript: the parameter `α` of `test2` is a type
 
-
 /**
  * `wat`
  * @returns {int53(number)}

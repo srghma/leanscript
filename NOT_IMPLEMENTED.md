@@ -193,9 +193,16 @@ The supported fragment and the refusals are listed in the header of
   (`JsTerm/FromTerm.lean`), so every function over a user inductive, … is listed
   under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
   and unions as objects, enums; only the recursors are missing.)
-- **Some externs have no JavaScript implementation**: they are emitted as a runtime helper
-  that throws (`MoreJs.stubHelper`, `JsTerm/Extern.lean`).  `leanscript --check` finds
-  them (a check answers "threw: … has no JavaScript implementation yet").
+- **Some externs have no JavaScript implementation**: the runtime modules (`runtime/`) have no
+  function for them, and their calls become calls of `$lean_extern_unimplemented`
+  (imported from `lean_runtime_non_configurable.mjs`), which throws when it is evaluated
+  (`MoreJs.lowerExtern`, `JsTerm/Extern.lean`).  `Tests/ExternCatalogue.lean` lists, per
+  preset, which externs are implemented (646 of the 894 rows over both presets);
+  `leanscript --check` finds the others (a check answers "threw: …").
+- **Arrays that start as a parameter are always copied** by the first update: the in-place
+  pass (`JsTerm/InPlace.lean`) only mutates arrays the function itself built, since the caller
+  may still refer to a parameter.  (A loop that pushes onto a parameter copies it once per
+  iteration; copying it once before the loop is not done yet.)
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
   units, not code points as Lean does: the two differ on strings mixing characters above
   `U+FFFF` with characters in `U+E000`–`U+FFFF`.

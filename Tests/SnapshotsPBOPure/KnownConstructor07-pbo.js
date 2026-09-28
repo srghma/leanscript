@@ -3,26 +3,10 @@
 // not translated:
 //   instReprPairBox.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_int_sub$nnn(a, b) {
-  return $chk53(a - b);
-}
-
-// ---- exported functions ----
+import {
+  $lean_int_add,
+  $lean_int_sub,
+} from "../../runtime/lean_runtime_int_num.mjs";
 
 /**
  * `test`
@@ -32,6 +16,6 @@ function lean_int_sub$nnn(a, b) {
  */
 export const test = (f, y) => {
   const x$1 = f(y);
-  const x$2 = lean_int_add$nnn(x$1, 1);
-  return { _1: x$2, _2: lean_int_sub$nnn(x$1, 2) };
+  const x$2 = $lean_int_add(x$1, 1);
+  return { _1: x$2, _2: $lean_int_sub(x$1, 2) };
 };

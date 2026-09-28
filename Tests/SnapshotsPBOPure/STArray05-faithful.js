@@ -3,4 +3,3 @@
 // not translated:
 //   test: Application type mismatch: The argument LeanScript.KVar.head has type LeanScript.KVar ({ ty := ?m.455, use := ?m.456, lv := ?m.457, vis := true } :: ?m.458) ?m.455 ?m.457 but is expected to have type LeanScript.KVar [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.bool).fn (LeanScript.Ty.prim ?m.460), use := LeanScript.Usage1ω.many, lv := none, vis := true }] ((LeanScript.Ty.prim LeanScript.LeanPrimTy.bool).fn (LeanScript.Ty.prim LeanScript.LeanPrimTy.int).array) none in the application LeanScript.PExpr.kvar LeanScript.KVar.head
 
-

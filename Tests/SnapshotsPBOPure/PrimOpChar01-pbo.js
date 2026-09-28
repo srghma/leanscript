@@ -6,7 +6,6 @@
 //   test5: LeanScript: `Char` is a leaf of the language: its values are literals, not constructor applications
 //   test6: LeanScript: `Char` is a leaf of the language: its values are literals, not constructor applications
 
-
 /**
  * `test1`
  * @param {string} a

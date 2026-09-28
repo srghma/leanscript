@@ -3,5 +3,3 @@
 // not translated:
 //   test1: LeanScript: the helper `test1._sparseCasesOn_1` is universe polymorphic
 
-// runtime helpers: 
-

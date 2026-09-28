@@ -8,7 +8,6 @@
 //   TestInt16.intValues: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
 //   TestInt32.intValues: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
 
-
 /**
  * `TestUInt8.test1`
  * @returns {Uint8Array}

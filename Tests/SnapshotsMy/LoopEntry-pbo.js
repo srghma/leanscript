@@ -4,22 +4,9 @@
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
 
-// ---- runtime helpers ----
+import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
 
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+const $k1 = (x$2) => x$2;
 
 /**
  * `messages`
@@ -36,11 +23,11 @@ export const messages = () => ["one", "two", "three"];
  * @returns {uint53(number)}
  */
 export const countUp = (unused, step, n, acc) => {
-  const k$1 = (x$2) => x$2;
+  const k$1 = $k1;
   let acc$3 = k$1;
   for (let i$4 = 0; i$4 < n; i$4++) {
     const a$5 = acc$3;
-    const k$6 = (x$7) => a$5(lean_nat_add$nnn(x$7, step));
+    const k$6 = (x$7) => a$5($lean_nat_add(x$7, step));
     acc$3 = k$6;
   }
   return acc$3(acc);

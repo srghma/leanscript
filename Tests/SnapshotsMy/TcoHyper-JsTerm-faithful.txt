@@ -4,7 +4,72 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-// runtime helpers: 
+const $k1 = (x$2) => {
+  return x$2;
+};
+const $k2 = (x$2) => {
+  return (x$2 + 1n);
+};
+const $k3 = (x$15) => {
+  return x$15;
+};
+const $k4 = (x$9) => {
+  return (x$11) => {
+    return (x$13) => {
+      const k$14 = $k3;
+      let acc$16 = k$14;
+      for (let i$17 = 0n; i$17 < x$11; i$17++) {
+        const a$18 = acc$16;
+        const k$19 = (x$20) => {
+          const x$21 = x$9(x$20);
+          return a$18(x$21);
+        };
+        acc$16 = k$19;
+      }
+      return acc$16(x$13);
+    };
+  };
+};
+const $k5 = (x$27) => {
+  return (x$29) => {
+    let acc$30 = 1n;
+    if ((0n < x$27)) {
+      const i$31 = (x$27 - 1n);
+      let acc$33 = x$29;
+      if ((0n < i$31)) {
+        const i$34 = (i$31 - 1n);
+        let acc$36 = 0n;
+        if ((0n < i$34)) {
+          const i$37 = (i$34 - 1n);
+          acc$36 = 1n;
+        }
+        acc$33 = acc$36;
+      }
+      acc$30 = acc$33;
+    }
+    return acc$30;
+  };
+};
+const $k6 = (x$9) => {
+  return (x$11) => {
+    let acc$12 = 1n;
+    if ((0n < x$9)) {
+      const i$13 = (x$9 - 1n);
+      let acc$15 = x$11;
+      if ((0n < i$13)) {
+        const i$16 = (i$13 - 1n);
+        let acc$18 = 0n;
+        if ((0n < i$16)) {
+          const i$19 = (i$16 - 1n);
+          acc$18 = 1n;
+        }
+        acc$15 = acc$18;
+      }
+      acc$12 = acc$15;
+    }
+    return acc$12;
+  };
+};
 
 // hyperBase
 export const hyperBase = (a, a1) => {
@@ -28,9 +93,7 @@ export const hyperBase = (a, a1) => {
 
 // hyperLoop
 export const hyperLoop = (f, a, a1) => {
-  const k$1 = (x$2) => {
-    return x$2;
-  };
+  const k$1 = $k1;
   let acc$3 = k$1;
   for (let i$4 = 0n; i$4 < a; i$4++) {
     const a$5 = acc$3;
@@ -45,54 +108,15 @@ export const hyperLoop = (f, a, a1) => {
 
 // hyperTCO
 export const hyperTCO = (a, a1, a2) => {
-  const k$1 = (x$2) => {
-    return (x$2 + 1n);
-  };
+  const k$1 = $k2;
   let acc$3 = k$1;
   for (let i$4 = 0n; i$4 < a; i$4++) {
     const a$5 = acc$3;
     const k$6 = (x$7) => {
-      const k$8 = (x$9) => {
-        return (x$11) => {
-          return (x$13) => {
-            const k$14 = (x$15) => {
-              return x$15;
-            };
-            let acc$16 = k$14;
-            for (let i$17 = 0n; i$17 < x$11; i$17++) {
-              const a$18 = acc$16;
-              const k$19 = (x$20) => {
-                const x$21 = x$9(x$20);
-                return a$18(x$21);
-              };
-              acc$16 = k$19;
-            }
-            return acc$16(x$13);
-          };
-        };
-      };
+      const k$8 = $k4;
       const x$24 = k$8(a$5);
       const x$25 = x$24(x$7);
-      const k$26 = (x$27) => {
-        return (x$29) => {
-          let acc$30 = 1n;
-          if ((0n < x$27)) {
-            const i$31 = (x$27 - 1n);
-            let acc$33 = x$29;
-            if ((0n < i$31)) {
-              const i$34 = (i$31 - 1n);
-              let acc$36 = 0n;
-              if ((0n < i$34)) {
-                const i$37 = (i$34 - 1n);
-                acc$36 = 1n;
-              }
-              acc$33 = acc$36;
-            }
-            acc$30 = acc$33;
-          }
-          return acc$30;
-        };
-      };
+      const k$26 = $k5;
       const x$39 = k$26((i$4 + 1n));
       const x$40 = x$39(a1);
       return x$25(x$40);
@@ -104,33 +128,12 @@ export const hyperTCO = (a, a1, a2) => {
 
 // hyperWhile
 export const hyperWhile = (a, a1, a2) => {
-  const k$1 = (x$2) => {
-    return (x$2 + 1n);
-  };
+  const k$1 = $k2;
   let acc$3 = k$1;
   for (let i$4 = 0n; i$4 < a; i$4++) {
     const a$5 = acc$3;
     const k$6 = (x$7) => {
-      const k$8 = (x$9) => {
-        return (x$11) => {
-          let acc$12 = 1n;
-          if ((0n < x$9)) {
-            const i$13 = (x$9 - 1n);
-            let acc$15 = x$11;
-            if ((0n < i$13)) {
-              const i$16 = (i$13 - 1n);
-              let acc$18 = 0n;
-              if ((0n < i$16)) {
-                const i$19 = (i$16 - 1n);
-                acc$18 = 1n;
-              }
-              acc$15 = acc$18;
-            }
-            acc$12 = acc$15;
-          }
-          return acc$12;
-        };
-      };
+      const k$8 = $k6;
       const x$21 = k$8((i$4 + 1n));
       const x$22 = x$21(a1);
       let acc$23 = { tag: 1, _1: x$22 };

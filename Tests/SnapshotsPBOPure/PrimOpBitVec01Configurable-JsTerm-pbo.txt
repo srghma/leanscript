@@ -24,5 +24,3 @@
 //   TestBitVec64.div: LeanScript: `BitVec 64` is a leaf of the language: its values are literals, not constructor applications
 //   TestBitVec64.neg: LeanScript: `BitVec 64` is a leaf of the language: its values are literals, not constructor applications
 
-// runtime helpers: 
-

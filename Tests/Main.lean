@@ -8,6 +8,8 @@ import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import LeanScript.Term.Optimize.Basic
 import JsTerm.FromTerm
+import JsTerm.Hoist
+import ExternCatalogue
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -138,20 +140,30 @@ def moreJsSpec : Spec := describe "JsTerm" do
       (MoreJs.JsTerm.record [.nat, .bool]).pretty
     assertEq "union layout" "({ tag: 0 } | { tag: 1, _1: nat(bigint) })"
       (MoreJs.JsTerm.union [[], [.nat]]).pretty
-  it "extern helpers are written in the grammar" do
-    let (e, hs) := MoreJs.lowerExtern "lean_nat_pow" [.nat, .nat] .nat [.var "x", .var "y"]
-    assertEq "call" "lean_nat_pow$bbb(x, y)" (e.pretty "")
-    assertEq "helpers" ["$bigPow", "lean_nat_pow$bbb"] (hs.map MoreJs.JsHelper.name)
-    assertEq "helper" "function lean_nat_pow$bbb(a, b) {\n  return $bigPow(a, b);\n}\n"
-      (hs.getLast!.pretty)
+  it "externs call the functions of the runtime modules" do
+    let (e, fs) := MoreJs.lowerExtern .trusting "lean_nat_pow" [.nat, .nat] .nat (some .nat)
+      [.var "x", .var "y"]
+    assertEq "call" "$lean_nat_pow(x, y)" (e.pretty "")
+    assertEq "functions" [("lean_runtime_nat_bigint.mjs", "$lean_nat_pow")]
+      (fs.map fun (f : MoreJs.RtFn) => (f.file.fileName, f.name))
+    let (e, fs) := MoreJs.lowerExtern .trusting "lean_nat_pow" [.uint53, .uint53] .uint53
+      (some .nat) [.var "x", .var "y"]
+    assertEq "call (number)" "$lean_nat_pow(x, y)" (e.pretty "")
+    assertEq "functions (number)" [("lean_runtime_nat_num.mjs", "$lean_nat_pow")]
+      (fs.map fun (f : MoreJs.RtFn) => (f.file.fileName, f.name))
+    -- a runtime without the function: the call throws when it is evaluated
+    let (e, fs) := MoreJs.lowerExtern ⟨fun _ _ => false⟩ "lean_nat_pow" [.nat, .nat] .nat
+      (some .nat) [.var "x", .var "y"]
+    assertEq "unimplemented" true (((e.pretty "").splitOn "$lean_extern_unimplemented").length > 1)
+    assertEq "unimplemented functions" ["$lean_extern_unimplemented"] (fs.map (·.name : MoreJs.RtFn → String))
   it "a Float.Model is the number of the Float it models" do
     assertEq "Float.Model" "float" (MoreJs.lowerScalarPrim faithful .floatModel).pretty
     assertEq "Float32.Model" "float32" (MoreJs.lowerScalarPrim pbo .float32Model).pretty
     match MoreJs.primLit pbo .floatModel (Float.toModel 2.5) with
     | .ok e => assertEq "literal" "25e-1" (e.pretty "")
     | .error err => throw (IO.userError err)
-    let (e, hs) := MoreJs.lowerExtern "lean_float_to_bits__Float_toModel" [.float] .float
-      [.var "x"]
+    let (e, hs) := MoreJs.lowerExtern .trusting "lean_float_to_bits__Float_toModel" [.float]
+      .float none [.var "x"]
     assertEq "toModel" "x" (e.pretty "")
     assertEq "toModel helpers" 0 hs.length
   it "appends of arrays become one array literal" do
@@ -168,9 +180,65 @@ def moreJsSpec : Spec := describe "JsTerm" do
       [.const "k" (.array [.lit (.str "a")]),
        .forOf "e" (.var "xs") [.expr (.array [.spread (.var "k")])]]
     assertEq "loop" 2 (MoreJs.inlineArrays loop).length
+  it "an array only one variable refers to is updated in place" do
+    let push (a : String) (v : Nat) : MoreJs.JsExpr := .helper "$lean_array_push" [.var a, .lit (.int v)]
+    -- `a` is a fresh array read once: the push mutates it
+    let body : List MoreJs.JsStmt :=
+      [.const "a" (.array []), .const "b" (push "a" 1), .const "c" (push "b" 2), .ret (.var "c")]
+    assertEq "owned" ["$lean_array_push_inplace"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts body))
+    -- a parameter may be referred to by the caller: it is copied
+    let param : List MoreJs.JsStmt := [.const "b" (push "p" 1), .ret (.var "b")]
+    assertEq "parameter" ["$lean_array_push"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts param))
+    -- `a` is read twice: the first push must copy it, the second may mutate its own result
+    let shared : List MoreJs.JsStmt :=
+      [.const "a" (.array []), .const "b" (push "a" 1), .const "c" (push "b" 2),
+       .ret (.array [.var "a", .var "c"])]
+    match MoreJs.inPlaceStmts shared with
+    | [_, .const _ e1, .const _ e2, _] =>
+      assertEq "shared (copy)" ["$lean_array_push"] e1.calls
+      assertEq "shared (own result)" ["$lean_array_push_inplace"] e2.calls
+    | _ => throw (IO.userError "shared: unexpected statements")
+    -- an array read in a closure is copied
+    let closure : List MoreJs.JsStmt :=
+      [.const "a" (.array []), .const "f" (.arrow [] [.ret (.var "a")]),
+       .const "b" (push "a" 1), .ret (.array [.var "b", .var "f"])]
+    assertEq "closure" ["$lean_array_push"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts closure))
+  it "constants are computed once, at the top of the module" do
+    let f : MoreJs.JsFun :=
+      { name := "f", leanName := "f", params := ["x"], ret := .bool,
+        body := [.ret (.cond (.var "x") (MoreJs.unionObj 0 [])
+          (.array [MoreJs.unionObj 1 [.var "x"], MoreJs.unionObj 0 [],
+                   MoreJs.unionObj 1 [.lit (.bigint 3)], .array []]))] }
+    let (consts, funs) := MoreJs.hoistConsts [] [f]
+    assertEq "constants" [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 3n }")]
+      (consts.map fun ((n, e) : String × MoreJs.JsExpr) => (n, e.pretty ""))
+    let body : String := match funs with
+      | [g] => match g.body with
+        | [.ret e] => e.pretty ""
+        | _ => "?"
+      | _ => "?"
+    assertEq "body" "(x ? $tag0 : [{ tag: 1, _1: x }, $tag0, $k2, []])" body
+  it "the runtime modules export the functions of every implemented extern" do
+    let srcs ← MoreJs.RtFile.all.mapM fun (f : MoreJs.RtFile) => do
+      return (f.fileName, ← IO.FS.readFile (System.FilePath.mk "runtime" / f.fileName))
+    let rt := MoreJs.Runtime.ofSources srcs
+    -- the two modules of a knob export the same functions
+    for k in [MoreJs.RtKnob.nat, .int, .uint64, .int64, .bitvec] do
+      let names (big : Bool) : List String :=
+        MoreJs.exportedNames ((srcs.lookup (MoreJs.RtFile.knob k big).fileName).getD "")
+      assertEq s!"{k.name}: bigint and num export the same functions" (names true) (names false)
+    for (preset, table) in [("faithful", ExternCatalogue.faithful), ("pbo", ExternCatalogue.pbo)] do
+      let mut missing : List String := []
+      for (name, argTys, resTy, knob, implemented) in table do
+        if implemented then
+          let args := (List.range argTys.length).map fun i => MoreJs.JsExpr.var s!"a{i}"
+          let (_, fs) := MoreJs.lowerExtern rt name argTys resTy knob args
+          if fs.any (fun (f : MoreJs.RtFn) => f.name == "$lean_extern_unimplemented" || !rt.has f.file f.name) then
+            missing := name :: missing
+      assertEq s!"{preset}: implemented externs without a runtime function" [] missing.reverse
   let conv (cfg : MoreJs.JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
       IO MoreJs.JsFun :=
-    match MoreJs.termToJs cfg name name ps ct with
+    match MoreJs.termToJs cfg .trusting name name ps ct with
     | .ok (f, _) => pure f
     | .error e => throw (IO.userError s!"{name}: {e}")
   for (cfgName, cfg) in [("faithful", faithful), ("pbo", pbo)] do

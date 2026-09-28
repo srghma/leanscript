@@ -14,4 +14,3 @@
 //   TestBitVec64.shiftRight: LeanScript: `BitVec 64` is a leaf of the language: its values are literals, not constructor applications
 //   TestBitVec64.complement: LeanScript: `BitVec 64` is a leaf of the language: its values are literals, not constructor applications
 
-

@@ -4,5 +4,3 @@
 //   instReprHtml.repr: a `partial` definition
 //   test: LeanScript: the recursive type Html is not declared in any signature; declare it with `leanscript_signature`
 
-// runtime helpers: 
-

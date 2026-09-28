@@ -3,13 +3,11 @@
 // not translated:
 //   test3: LeanScript: the call b.gcd (a + 7) is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-// ---- runtime helpers ----
+import { $lean_nat_mod } from "../../runtime/lean_runtime_nat_bigint.mjs";
 
-function lean_nat_mod__Nat_mod$bbb(a, b) {
-  return b === 0n ? a : a % b;
-}
-
-// ---- exported functions ----
+const $k1 = (x$2) => (x$4) => x$2;
+const $k2 = (x$2) => (x$4) => (x$6) => x$2 * 100n + x$4 * 10n + x$6;
+const $k3 = (x$2) => (x$4) => x$2 + x$4;
 
 /**
  * `test1`
@@ -19,7 +17,7 @@ function lean_nat_mod__Nat_mod$bbb(a, b) {
  * @returns {nat(bigint)}
  */
 export const test1 = (fuel, a, b) => {
-  const k$1 = (x$2) => (x$4) => x$2;
+  const k$1 = $k1;
   let acc$5 = k$1;
   for (let i$6 = 0n; i$6 < fuel; i$6++) {
     const a$7 = acc$5;
@@ -28,7 +26,7 @@ export const test1 = (fuel, a, b) => {
         return x$9;
       } else {
         const x$12 = a$7(x$11);
-        return x$12(lean_nat_mod__Nat_mod$bbb(x$9, x$11));
+        return x$12($lean_nat_mod(x$9, x$11));
       }
     };
     acc$5 = k$8;
@@ -46,7 +44,7 @@ export const test1 = (fuel, a, b) => {
  * @returns {nat(bigint)}
  */
 export const test2 = (fuel, a, b, c) => {
-  const k$1 = (x$2) => (x$4) => (x$6) => x$2 * 100n + x$4 * 10n + x$6;
+  const k$1 = $k2;
   let acc$7 = k$1;
   for (let i$8 = 0n; i$8 < fuel; i$8++) {
     const a$9 = acc$7;
@@ -70,7 +68,7 @@ export const test2 = (fuel, a, b, c) => {
  * @returns {nat(bigint)}
  */
 export const test4 = (fuel, a, b) => {
-  const k$1 = (x$2) => (x$4) => x$2 + x$4;
+  const k$1 = $k3;
   let acc$5 = k$1;
   for (let i$6 = 0n; i$6 < fuel; i$6++) {
     const a$7 = acc$5;

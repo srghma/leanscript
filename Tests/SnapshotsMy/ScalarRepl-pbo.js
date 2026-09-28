@@ -3,26 +3,58 @@
 // not translated:
 //   test6: invalid scope
 
-// ---- runtime helpers ----
+import {
+  $lean_nat_add,
+  $lean_nat_sub,
+} from "../../runtime/lean_runtime_nat_num.mjs";
 
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
+const $k1 = { tag: 1, _1: 0 };
+const $k2 = (x$2) => {
+  const { _1: f$3, _2: f$4 } = x$2;
+  const { _1: f$5, _2: f$6 } = x$2;
+  if (f$3 < f$6) {
+    const { _1: f$7, _2: f$8 } = x$2;
+    const { _1: f$9, _2: f$10 } = x$2;
+    return $lean_nat_sub(f$8, f$9);
+  } else {
+    const { _1: f$11, _2: f$12 } = x$2;
+    const { _1: f$13, _2: f$14 } = x$2;
+    return $lean_nat_sub(f$11, f$14);
   }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_nat_sub$nnn(a, b) {
-  return a > b ? a - b : 0;
-}
-
-// ---- exported functions ----
+};
+const $k3 = (x$17) => {
+  const { _1: f$18, _2: f$19 } = x$17;
+  const { _1: f$20, _2: f$21 } = x$17;
+  if (f$18 < f$21) {
+    const { _1: f$22, _2: f$23 } = x$17;
+    const { _1: f$24, _2: f$25 } = x$17;
+    return $lean_nat_sub(f$23, f$24);
+  } else {
+    const { _1: f$26, _2: f$27 } = x$17;
+    const { _1: f$28, _2: f$29 } = x$17;
+    return $lean_nat_sub(f$26, f$29);
+  }
+};
+const $k4 = (x$2) => {
+  const { _1: f$3, _2: f$4 } = x$2;
+  const { _1: f$5, _2: f$6 } = x$2;
+  if (f$3 < f$6) {
+    return x$2;
+  } else {
+    const { _1: f$7, _2: f$8 } = x$2;
+    const { _1: f$9, _2: f$10 } = x$2;
+    return { _1: f$8, _2: f$9 };
+  }
+};
+const $k5 = (x$2) => {
+  if (x$2.tag === 0) {
+    return 0;
+  } else {
+    const { _1: f$3 } = x$2;
+    const { _1: f$4, _2: f$5 } = f$3;
+    return $lean_nat_add(f$4, f$5);
+  }
+};
 
 /**
  * `test1`
@@ -30,14 +62,14 @@ function lean_nat_sub$nnn(a, b) {
  * @returns {uint53(number)}
  */
 export const test1 = (n) => {
-  let acc$1 = { tag: 1, _1: 0 };
+  let acc$1 = $k1;
   for (let i$2 = 0; i$2 < n; i$2++) {
     if (acc$1.tag === 0) {
       const { _1: f$4 } = acc$1;
       acc$1 = { tag: 0, _1: f$4 };
     } else {
       const { _1: f$5 } = acc$1;
-      const x$6 = lean_nat_add$nnn(f$5, i$2);
+      const x$6 = $lean_nat_add(f$5, i$2);
       acc$1 = { tag: 1, _1: x$6 };
     }
   }
@@ -56,7 +88,7 @@ export const test1 = (n) => {
  * @returns {uint53(number)}
  */
 export const test2 = (n) => {
-  let acc$1 = { tag: 1, _1: 0 };
+  let acc$1 = $k1;
   for (let i$2 = 0; i$2 < n; i$2++) {
     j$1: {
       if (acc$1.tag === 0) {
@@ -72,7 +104,7 @@ export const test2 = (n) => {
             acc$6 = { tag: 0, _1: f$9 };
           } else {
             const { _1: f$10 } = acc$6;
-            const x$11 = lean_nat_add$nnn(f$10, i$7);
+            const x$11 = $lean_nat_add(f$10, i$7);
             acc$6 = { tag: 1, _1: x$11 };
           }
         }
@@ -109,35 +141,11 @@ export const test2 = (n) => {
  * @returns {uint53(number)}
  */
 export const test3 = (a, b) => {
-  const k$1 = (x$2) => {
-    const { _1: f$3, _2: f$4 } = x$2;
-    const { _1: f$5, _2: f$6 } = x$2;
-    if (f$3 < f$6) {
-      const { _1: f$7, _2: f$8 } = x$2;
-      const { _1: f$9, _2: f$10 } = x$2;
-      return lean_nat_sub$nnn(f$8, f$9);
-    } else {
-      const { _1: f$11, _2: f$12 } = x$2;
-      const { _1: f$13, _2: f$14 } = x$2;
-      return lean_nat_sub$nnn(f$11, f$14);
-    }
-  };
+  const k$1 = $k2;
   const x$15 = k$1({ _1: a, _2: b });
-  const k$16 = (x$17) => {
-    const { _1: f$18, _2: f$19 } = x$17;
-    const { _1: f$20, _2: f$21 } = x$17;
-    if (f$18 < f$21) {
-      const { _1: f$22, _2: f$23 } = x$17;
-      const { _1: f$24, _2: f$25 } = x$17;
-      return lean_nat_sub$nnn(f$23, f$24);
-    } else {
-      const { _1: f$26, _2: f$27 } = x$17;
-      const { _1: f$28, _2: f$29 } = x$17;
-      return lean_nat_sub$nnn(f$26, f$29);
-    }
-  };
-  const x$30 = k$16({ _1: b, _2: lean_nat_add$nnn(a, 1) });
-  return lean_nat_add$nnn(x$15, x$30);
+  const k$16 = $k3;
+  const x$30 = k$16({ _1: b, _2: $lean_nat_add(a, 1) });
+  return $lean_nat_add(x$15, x$30);
 };
 
 /**
@@ -147,17 +155,7 @@ export const test3 = (a, b) => {
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
 export const test4 = (a, b) => {
-  const k$1 = (x$2) => {
-    const { _1: f$3, _2: f$4 } = x$2;
-    const { _1: f$5, _2: f$6 } = x$2;
-    if (f$3 < f$6) {
-      return x$2;
-    } else {
-      const { _1: f$7, _2: f$8 } = x$2;
-      const { _1: f$9, _2: f$10 } = x$2;
-      return { _1: f$8, _2: f$9 };
-    }
-  };
+  const k$1 = $k4;
   return k$1({ _1: a, _2: b });
 };
 
@@ -168,15 +166,7 @@ export const test4 = (a, b) => {
  * @returns {uint53(number)}
  */
 export const test5 = (a, b) => {
-  const k$1 = (x$2) => {
-    if (x$2.tag === 0) {
-      return 0;
-    } else {
-      const { _1: f$3 } = x$2;
-      const { _1: f$4, _2: f$5 } = f$3;
-      return lean_nat_add$nnn(f$4, f$5);
-    }
-  };
+  const k$1 = $k5;
   const x$6 = k$1({ tag: 1, _1: { _1: a, _2: b } });
-  return lean_nat_add$nnn(x$6, 0);
+  return $lean_nat_add(x$6, 0);
 };

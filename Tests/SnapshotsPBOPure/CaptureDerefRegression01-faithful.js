@@ -6,7 +6,6 @@
 //   test4: invalid scope
 //   test5: invalid scope
 
-
 /**
  * `test1`
  * @param {{ _1: int(bigint), _2: int(bigint) }} v

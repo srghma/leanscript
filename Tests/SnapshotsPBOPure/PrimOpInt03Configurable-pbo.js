@@ -20,26 +20,8 @@
 //   TestInt64.test4: the Int64 literal 5000000000000000000 does not fit in a JavaScript number (use the bigint representation)
 //   TestInt.test3: the Int literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
+import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
 
 /**
  * `TestNat.test1`
@@ -59,7 +41,7 @@ export const TestNat$test2 = () => 0;
  * @returns {uint53(number)}
  */
 export const TestNat$test4 = (a) =>
-  lean_nat_add$nnn(lean_nat_add$nnn(2000000000, a), 2000000000);
+  $lean_nat_add($lean_nat_add(2000000000, a), 2000000000);
 
 /**
  * `TestInt.test1`
@@ -79,4 +61,4 @@ export const TestInt$test2 = () => -4000000000;
  * @returns {int53(number)}
  */
 export const TestInt$test4 = (a) =>
-  lean_int_add$nnn(lean_int_add$nnn(2000000000, a), 2000000000);
+  $lean_int_add($lean_int_add(2000000000, a), 2000000000);

@@ -2,6 +2,8 @@
 // (`isizeRepr = bigint`): exact at all 64 bits.  `lean_runtime_isize_num.mjs` is the
 // same catalogue over JavaScript numbers, which hold only 53 bits exactly.
 
+/* -------------------------------------- not imported by the current backend */
+
 /** `x` taken modulo `2^64` and read as a signed 64-bit value. */
 const S64 = (x) => BigInt.asIntN(64, BigInt(x));
 

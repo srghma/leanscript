@@ -4,4 +4,3 @@
 //   test1: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.156 (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.nat 0) LeanScript.Args.nil) has type LeanScript.PExpr ?m.170 ?m.141 ?m.142 (LeanScript.Ty.prim ?m.144) none but is expected to have type LeanScript.PExpr Δ (LeanScript.KCtx.closedOnly []) [{ ty := LeanScript.Ty.prim LeanScript.LeanPrimTy.bool, use := LeanScript.Usage01ω.many, lv := 0 + 1 }] (LeanScript.Ty.prim LeanScript.LeanPrimTy.int).array ?m.193 in the application LeanScript.Term.ret (LeanScript.PExpr.externLit ?m.156 (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.nat 0) LeanScript.Args.nil))
 //   test2: LeanScript: dependent function type {α : Type} → α → α
 
-

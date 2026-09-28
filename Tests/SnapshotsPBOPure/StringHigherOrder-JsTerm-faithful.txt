@@ -3,8 +3,6 @@
 // not translated:
 //   stringValues: LeanScript: `stringValues` is universe polymorphic
 
-// runtime helpers: 
-
 // test1
 export const test1 = () => {
   return [true, false, false];

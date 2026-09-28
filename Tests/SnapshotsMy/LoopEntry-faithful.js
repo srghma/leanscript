@@ -4,6 +4,7 @@
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
 
+const $k1 = (x$2) => x$2;
 
 /**
  * `messages`
@@ -20,7 +21,7 @@ export const messages = () => ["one", "two", "three"];
  * @returns {nat(bigint)}
  */
 export const countUp = (unused, step, n, acc) => {
-  const k$1 = (x$2) => x$2;
+  const k$1 = $k1;
   let acc$3 = k$1;
   for (let i$4 = 0n; i$4 < n; i$4++) {
     const a$5 = acc$3;

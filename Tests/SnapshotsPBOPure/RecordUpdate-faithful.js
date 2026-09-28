@@ -3,7 +3,6 @@
 // not translated:
 //   instReprRec.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-
 /**
  * `test1`
  * @param {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })} fn

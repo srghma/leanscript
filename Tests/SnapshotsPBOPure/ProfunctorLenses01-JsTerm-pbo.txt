@@ -11,8 +11,6 @@
 //   test7: invalid scope
 //   test8: invalid scope
 
-// runtime helpers: 
-
 // test1
 export const test1 = (a) => {
   const { _1: f$1, _2: f$2 } = a;

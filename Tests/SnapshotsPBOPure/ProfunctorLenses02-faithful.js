@@ -6,6 +6,7 @@
 //   test3: LeanScript: the parameter `α` of `preview_left_right` is a type
 //   test4: LeanScript: the parameter `α` of `preview_left_right` is a type
 
+const $tag0 = { tag: 0 };
 
 /**
  * `test1`
@@ -18,7 +19,7 @@ export const test1 = (a) => {
     return { tag: 1, _1: f$1 };
   } else {
     const { _1: f$2 } = a;
-    return { tag: 0 };
+    return $tag0;
   }
 };
 
@@ -33,6 +34,6 @@ export const test2 = (a) => {
     return { tag: 1, _1: f$1 };
   } else {
     const { _1: f$2 } = a;
-    return { tag: 0 };
+    return $tag0;
   }
 };

@@ -4,26 +4,7 @@
 //   test1: LeanScript: the call List.forIn'.loop xss (fun a x => (fun xs __s => have acc := __s; have acc := acc ++ xs; pure (ForInStep.yield acc)) a) xss acc ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test3: Application type mismatch: The argument LeanScript.UVar.head ⋯ has type LeanScript.UVar ({ ty := ?m.359, use := ?m.360, lv := ?m.361 } :: ?m.362) ?m.359 ?m.361 but is expected to have type LeanScript.UVar [{ ty := LeanScript.Ty.prim ?m.283, use := LeanScript.Usage1ω.many.toUsage01ω, lv := 1 }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array, use := LeanScript.Usage01ω.many, lv := 0 + 1 }] (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array ?m.351 in the application LeanScript.Neu.var (LeanScript.UVar.head ⋯)
 
-// ---- runtime helpers ----
-
-function lean_mk_empty_array_with_capacity__Array_emptyWithCapacity$n_(a) {
-  return [];
-}
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_mul$nnn(a, b) {
-  return $chk53(a * b);
-}
-
-// ---- exported functions ----
+import { $lean_nat_mul } from "../../runtime/lean_runtime_nat_num.mjs";
 
 /**
  * `test2`
@@ -46,15 +27,14 @@ export const test4 = (b) => [1, 2, ...b];
  * @returns {Array<uint53(number)>}
  */
 export const test5 = (n) => {
-  const x$1 = lean_mk_empty_array_with_capacity__Array_emptyWithCapacity$n_(n);
-  let acc$2 = { tag: 1, _1: x$1 };
+  let acc$2 = { tag: 1, _1: [] };
   for (let i$3 = 0; i$3 < n; i$3++) {
     if (acc$2.tag === 0) {
       const { _1: f$5 } = acc$2;
       acc$2 = { tag: 0, _1: f$5 };
     } else {
       const { _1: f$6 } = acc$2;
-      const x$10 = [...f$6, i$3, lean_nat_mul$nnn(i$3, i$3)];
+      const x$10 = [...f$6, i$3, $lean_nat_mul(i$3, i$3)];
       acc$2 = { tag: 1, _1: x$10 };
     }
   }

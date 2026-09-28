@@ -4,22 +4,60 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-// ---- runtime helpers ----
+import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
 
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
+const $k1 = (x$2) => x$2;
+const $k2 = (x$2) => $lean_nat_add(x$2, 1);
+const $k3 = (x$15) => x$15;
+const $k4 = (x$9) => (x$11) => (x$13) => {
+  const k$14 = $k3;
+  let acc$16 = k$14;
+  for (let i$17 = 0; i$17 < x$11; i$17++) {
+    const a$18 = acc$16;
+    const k$19 = (x$20) => {
+      const x$21 = x$9(x$20);
+      return a$18(x$21);
+    };
+    acc$16 = k$19;
   }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+  return acc$16(x$13);
+};
+const $k5 = (x$27) => (x$29) => {
+  let acc$30 = 1;
+  if (0 < x$27) {
+    const i$31 = x$27 - 1;
+    let acc$33 = x$29;
+    if (0 < i$31) {
+      const i$34 = i$31 - 1;
+      let acc$36 = 0;
+      if (0 < i$34) {
+        const i$37 = i$34 - 1;
+        acc$36 = 1;
+      }
+      acc$33 = acc$36;
+    }
+    acc$30 = acc$33;
+  }
+  return acc$30;
+};
+const $k6 = (x$9) => (x$11) => {
+  let acc$12 = 1;
+  if (0 < x$9) {
+    const i$13 = x$9 - 1;
+    let acc$15 = x$11;
+    if (0 < i$13) {
+      const i$16 = i$13 - 1;
+      let acc$18 = 0;
+      if (0 < i$16) {
+        const i$19 = i$16 - 1;
+        acc$18 = 1;
+      }
+      acc$15 = acc$18;
+    }
+    acc$12 = acc$15;
+  }
+  return acc$12;
+};
 
 /**
  * `hyperBase`
@@ -54,7 +92,7 @@ export const hyperBase = (a, a1) => {
  * @returns {uint53(number)}
  */
 export const hyperLoop = (f, a, a1) => {
-  const k$1 = (x$2) => x$2;
+  const k$1 = $k1;
   let acc$3 = k$1;
   for (let i$4 = 0; i$4 < a; i$4++) {
     const a$5 = acc$3;
@@ -75,45 +113,16 @@ export const hyperLoop = (f, a, a1) => {
  * @returns {uint53(number)}
  */
 export const hyperTCO = (a, a1, a2) => {
-  const k$1 = (x$2) => lean_nat_add$nnn(x$2, 1);
+  const k$1 = $k2;
   let acc$3 = k$1;
   for (let i$4 = 0; i$4 < a; i$4++) {
     const a$5 = acc$3;
     const k$6 = (x$7) => {
-      const k$8 = (x$9) => (x$11) => (x$13) => {
-        const k$14 = (x$15) => x$15;
-        let acc$16 = k$14;
-        for (let i$17 = 0; i$17 < x$11; i$17++) {
-          const a$18 = acc$16;
-          const k$19 = (x$20) => {
-            const x$21 = x$9(x$20);
-            return a$18(x$21);
-          };
-          acc$16 = k$19;
-        }
-        return acc$16(x$13);
-      };
+      const k$8 = $k4;
       const x$24 = k$8(a$5);
       const x$25 = x$24(x$7);
-      const k$26 = (x$27) => (x$29) => {
-        let acc$30 = 1;
-        if (0 < x$27) {
-          const i$31 = x$27 - 1;
-          let acc$33 = x$29;
-          if (0 < i$31) {
-            const i$34 = i$31 - 1;
-            let acc$36 = 0;
-            if (0 < i$34) {
-              const i$37 = i$34 - 1;
-              acc$36 = 1;
-            }
-            acc$33 = acc$36;
-          }
-          acc$30 = acc$33;
-        }
-        return acc$30;
-      };
-      const x$39 = k$26(lean_nat_add$nnn(i$4, 1));
+      const k$26 = $k5;
+      const x$39 = k$26($lean_nat_add(i$4, 1));
       const x$40 = x$39(a1);
       return x$25(x$40);
     };
@@ -130,30 +139,13 @@ export const hyperTCO = (a, a1, a2) => {
  * @returns {uint53(number)}
  */
 export const hyperWhile = (a, a1, a2) => {
-  const k$1 = (x$2) => lean_nat_add$nnn(x$2, 1);
+  const k$1 = $k2;
   let acc$3 = k$1;
   for (let i$4 = 0; i$4 < a; i$4++) {
     const a$5 = acc$3;
     const k$6 = (x$7) => {
-      const k$8 = (x$9) => (x$11) => {
-        let acc$12 = 1;
-        if (0 < x$9) {
-          const i$13 = x$9 - 1;
-          let acc$15 = x$11;
-          if (0 < i$13) {
-            const i$16 = i$13 - 1;
-            let acc$18 = 0;
-            if (0 < i$16) {
-              const i$19 = i$16 - 1;
-              acc$18 = 1;
-            }
-            acc$15 = acc$18;
-          }
-          acc$12 = acc$15;
-        }
-        return acc$12;
-      };
-      const x$21 = k$8(lean_nat_add$nnn(i$4, 1));
+      const k$8 = $k6;
+      const x$21 = k$8($lean_nat_add(i$4, 1));
       const x$22 = x$21(a1);
       let acc$23 = { tag: 1, _1: x$22 };
       for (let i$24 = 0; i$24 < x$7; i$24++) {

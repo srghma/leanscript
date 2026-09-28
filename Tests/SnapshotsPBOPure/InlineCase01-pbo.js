@@ -5,22 +5,7 @@
 //   test4: LeanScript: the parameter `α` of `test4` is a type
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
-// ---- runtime helpers ----
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
 
 /**
  * `test1`
@@ -33,7 +18,7 @@ export const test1 = (f, a) => {
     return f();
   } else {
     const { _1: f$2 } = a;
-    return lean_int_add$nnn(f$2, 1);
+    return $lean_int_add(f$2, 1);
   }
 };
 
@@ -48,6 +33,6 @@ export const test3 = (f, a) => {
     return f();
   } else {
     const { _1: f$2 } = a;
-    return lean_int_add$nnn(f$2, 1);
+    return $lean_int_add(f$2, 1);
   }
 };

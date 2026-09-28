@@ -48,14 +48,32 @@ preserves `Term.eval`: `Term.optimizeN_eval`), converts it to the untyped JavaSc
 `JsTerm` twice, once per preset (`MoreJs.termToJs`: `pbo` uses `number` for the integer
 types, `faithful` uses `BigInt`), and prints it with `LanguageJavascriptMini`.  Next to
 `FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
-`FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`, `FILE-pbo.js` and `FILE-faithful.js` (the
-runtime helpers the module needs, then one `export const f = (x, y) => …` per function: a
+`FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`, `FILE-pbo.js` and `FILE-faithful.js` (one
+`import { … } from "<relative path>/runtime/lean_runtime_….mjs"` per runtime module the code
+calls, then the constants of the module, then one `export const f = (x, y) => …` per function: a
 chain of lambdas becomes one arrow with several parameters, and the components of the Lean
 name are joined by `$`, `ArrayTest.test1` is `ArrayTest$test1`); with `--check` also
 `FILE-pbo.check.mjs` and `FILE-faithful.check.mjs`, which call every exported function on
 sample arguments and compare the answers with the ones Lean computes.  Every output lists
 the definitions that were not translated, with the reason; the JavaScript outputs also start
-with their configuration.  Join points are de Bruijn indexed in `JsTerm` (`JsStmt.join`,
+with their configuration.
+
+The generated code contains no runtime definitions: each extern is an operator, a short
+expression, or a call of a function of `runtime/` (`$` and its C symbol, `$lean_nat_sub`),
+imported from the module of the knob of its result — `lean_runtime_<knob>_bigint.mjs` or
+`lean_runtime_<knob>_num.mjs` for `nat`, `int`, `uint64`, `int64`, `bitvec` as the
+configuration represents that type, `lean_runtime_non_configurable.mjs` for everything else
+(arrays, strings, floats, the small fixed-width integers, …).  `--runtime-dir DIR` says where
+the modules are (default `runtime/`; the import path is relative to the output file).  An
+extern the runtime has no function for becomes a call of `$lean_extern_unimplemented`, which
+throws when it is evaluated.  Two optimisations run on the `JsTerm` of every function:
+an array only one variable refers to, and that is not read afterwards, is updated in place
+(`$lean_array_push_inplace`, `$lean_array_set_inplace`, `$lean_array_swap_inplace`, `$lean_array_pop_inplace` instead of the copying versions;
+`JsTerm/InPlace.lean`), and every expression that depends on no variable (a constructor
+without fields, a record of literals, a closure that captures nothing) is computed once at the
+top of the module and shared by every function (`const $tag0 = { tag: 0 };`, `$k1`, …;
+`JsTerm/Hoist.lean`; arrays and runtime calls are never shared).  The constants are named by
+their shape, since the types of `Term` do not carry the Lean names of the constructors.  Join points are de Bruijn indexed in `JsTerm` (`JsStmt.join`,
 `JsStmt.jump`) and printed as labelled blocks (`j$1: { …; break j$1; }`).  In the `Term`
 files a lazy value `Unit → τ` is printed `(Lazy τ)`.
 
@@ -79,8 +97,11 @@ options.
 | :-- | :-- |
 | `JsTerm/Config.lean` | `MoreJs.JsConfig`: how each leaf type is represented (a `number` or a `BigInt`; typed or generic arrays), presets `faithful` (default) and `pbo`, command-line knobs |
 | `JsTerm/Ty.lean` | the layouts `JsTerm` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; records `{ _1: …, _2: … }`; unions `{ tag: i, _1: … }`; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
-| `JsTerm/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper` (a runtime helper, written in the grammar), `JsModule`, and the `-JsTerm.txt` dump |
-| `JsTerm/Extern.lean` | each extern of the catalogue as an operator or a runtime helper written in the `JsTerm` grammar (`JsHelper`, no JavaScript text), per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
+| `JsTerm/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, the runtime modules (`RtKnob`, `RtFile`, `RtFn`), `JsModule` (imports, constants, functions), and the `-JsTerm.txt` dump |
+| `JsTerm/Extern.lean` | each extern of the catalogue as an operator, a short expression or a call of a function of `runtime/` (`lowerExtern`), per layout; `Runtime` (which functions each runtime module exports, read from the `.mjs` sources) |
+| `JsTerm/InPlace.lean` | updating in place the arrays nothing else refers to (`inPlaceStmts`) |
+| `JsTerm/Hoist.lean` | moving the constant expressions of a module to its top, once (`hoistConsts`) |
+| `runtime/` | the runtime modules the generated code imports: `lean_runtime_non_configurable.mjs` and, per knob, `lean_runtime_<knob>_bigint.mjs` / `_num.mjs` (the two export the same names) |
 | `JsTerm/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
 | `JsTerm/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
 | `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating, open definitions of recursive functions), `RecCalls.lean` (binding the recursive functions of an open definition in its JavaScript, direct calls), `Check.lean` (`--check`), `Main.lean` |
@@ -119,7 +140,7 @@ options.
 | `HashableFloat/` | `HashableFloat`/`HashableFloat32`: floats with lawful `BEq`, `Hashable` and a linear `Ord` (away from `NaN`), the leaf types of the floats |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings (their literal notations and `ToExpr` instances are in `NonEmpty/*Elab/`) |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots, `rfl` runs) |
-| `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs |
+| `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs; unit tests of the JavaScript conversion (runtime imports, in-place arrays, shared constants; every extern of `Tests/ExternCatalogue.lean` the backend implements has its function in `runtime/`) |
 | `proposals/` | proposals, reviews and stand-alone sketches; nothing here is part of the build (`NominalTyProposal.md` is the design that is implemented) |
 | `scripts/` | benchmarking scripts |
 

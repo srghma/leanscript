@@ -5,8 +5,6 @@
 //   testPBA: LeanScript: the helper `testPB._sparseCasesOn_1` is universe polymorphic
 //   testPBAN: LeanScript: the helper `testPB._sparseCasesOn_1` is universe polymorphic
 
-// runtime helpers: 
-
 // testP
 export const testP = (a, a1, a2) => {
   if ((a === 1)) {

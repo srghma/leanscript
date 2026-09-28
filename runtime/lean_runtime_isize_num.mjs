@@ -6,6 +6,8 @@
 // a number.  `lean_runtime_isize_bigint.mjs` is the same catalogue over `BigInt`s, where
 // nothing is cut.
 
+/* -------------------------------------- not imported by the current backend */
+
 /** `x` taken modulo `2^64`, read as a signed 64-bit value, and then back to a number. */
 const wrapS64 = (x) => Number(BigInt.asIntN(64, BigInt(x)));
 

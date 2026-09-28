@@ -4,4 +4,3 @@
 //   test1Fuel: Expected type must not contain metavariables ?m.462 ≠ LeanScript.Usage01ω.zero
 //   test1FuelCalled: Expected type must not contain metavariables ?m.518 ≠ LeanScript.Usage01ω.zero
 
-

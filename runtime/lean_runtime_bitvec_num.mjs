@@ -1,12 +1,29 @@
 // The runtime functions that answer with a `BitVec w`, where a bit vector is a
 // JavaScript number (`bitvecRepr = num`).
 //
-// A number holds an integer exactly only below `2^53`, so the wrap is computed over
-// `BigInt` and the answer is read back as a number: the arithmetic is exact modulo
-// `2^w` and then rounded, which is the trade-off this representation makes.  The width
-// itself is a `Nat`, so it arrives as a number or as a `BigInt` depending on `natRepr`;
-// every function reads it through `W` and so accepts both.
-// `lean_runtime_bitvec_bigint.mjs` makes the other trade-off.
+// The functions the backend imports (section "imported by the backend") compute exactly
+// (over `BigInt` where needed) and answer with a number only when the answer is a safe
+// integer (below `2^53` in magnitude); otherwise they throw a `RangeError` (`$toNum53`),
+// as the checked `uint53` arithmetic of the backend does, instead of rounding silently.
+// The width itself is a `Nat`, so it arrives as a number or as a `BigInt` depending on
+// `natRepr`; every function reads it through `W` and so accepts both.
+// `lean_runtime_bitvec_bigint.mjs` is the same catalogue over `BigInt`s, exact at every size.
+
+const $toNum53 = (x) => {
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
+  return Number(x);
+};
+
+/* ----------------------------------------------------- imported by the backend */
+
+/** `UInt64.toBitVec`: the argument may be a `BigInt` or a number. */
+export const UInt64_toBitVec = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+
+/* -------------------------------------- not imported by the current backend */
 
 /** The width, as a JavaScript number, whichever representation a `Nat` has. */
 const W = (w) => Number(w);

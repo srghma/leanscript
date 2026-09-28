@@ -6,7 +6,6 @@
 //   test6: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   test7: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-
 /**
  * `test1`
  * @returns {string}

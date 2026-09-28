@@ -6,8 +6,6 @@
 //   test3: LeanScript: the call Nat.toDigitsCore 10 n n' [d] is not a call of an extern: `Nat.toDigitsCore` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test6: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 
-// runtime helpers: 
-
 // test4
 export const test4 = () => {
   return "total (3, ok)";

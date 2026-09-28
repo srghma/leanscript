@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Extern
+public import JsTerm.InPlace
 public import LeanScript.Term.Syntax.Packed
 
 @[expose] public section
@@ -21,9 +22,9 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` |
 | `enum_mk i` | the number `shift + i` |
 | `Neu.cond` | `c ? a : b` |
-| `Neu.extern` | an operator or a runtime helper (`MoreJs.lowerExtern`) |
+| `Neu.extern` | an operator or a call of a runtime function (`MoreJs.lowerExtern`) |
 | `Val.lam` | `(x) => { … }` |
-| `Val.thunk_mk`, `Val.lazy_mk` | `$thunk(() => { … })`, `() => { … }` |
+| `Val.thunk_mk`, `Val.lazy_mk` | `$lean_mk_thunk(() => { … })`, `() => { … }` |
 | `Term.ret`, `Term.jump j v` | `return e;`, `jump j e` (`x = e; break L;`, `L` and `x` the label and the variable of the join point) |
 | `Term.letV`, `Term.letE` | `const k = v;`, `const x = c;` |
 | `Term.record_casesOn` | `const { _1: f₁, _3: f₃ } = r;` (unused fields skipped) |
@@ -32,7 +33,7 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | `Comp.app f a`, `Comp.share n` | `f(a)`, `n` |
 | `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }`; when the step ignores the accumulator (a case analysis `0` / `k + 1`), `let acc = z; if (0n < n) { const i = n - 1n; …; acc = …; }` |
 | `Comp.array_foldl a z s` | `let acc = z; for (const e of a) { …; acc = …; }`; a fold pushing every element (`Array.append z a`) on generic arrays is `[...z, ...a]` |
-| `Comp.thunk_force`, `Comp.lazy_force` | `$force(t)`, `t()` |
+| `Comp.thunk_force`, `Comp.lazy_force` | `$lean_thunk_get_own(t)`, `t()` |
 
 A top-level term of the shape `val k := fun x => …; ret k` (a curried function, as every
 translation of a Lean function is) is *uncurried*: its parameters become the parameters of
@@ -94,12 +95,13 @@ def primLit (cfg : JsConfig) : (p : LeanPrimTy) → p.denote → Except String J
 
 /-! ## The conversion -/
 
-/-- The state of the conversion: the counter of fresh names and the helpers used so far. -/
+/-- The state of the conversion: the counter of fresh names and the runtime functions used
+    so far. -/
 structure ConvState where
   /-- The next fresh name. -/
   next : Nat := 1
-  /-- The runtime helpers the program calls, each once, in order of first use. -/
-  helpers : Array JsHelper := #[]
+  /-- The runtime functions the program calls, each once, in order of first use. -/
+  imports : Array RtFn := #[]
 
 /-- The conversion monad. -/
 abbrev ConvM := StateT ConvState (Except String)
@@ -116,13 +118,19 @@ structure Names where
 def fresh (pfx : String) : ConvM String :=
   modifyGet fun s => (s!"{pfx}${s.next}", { s with next := s.next + 1 })
 
-/-- Record helpers the program calls (each once). -/
-def addHelper (acc : Array JsHelper) (h : JsHelper) : Array JsHelper :=
-  if acc.any (fun x => x.name == h.name) then acc else acc.push h
+/-- Record a runtime function the program calls (each once). -/
+def addImport (acc : Array RtFn) (f : RtFn) : Array RtFn :=
+  if acc.contains f then acc else acc.push f
 
-/-- Record helpers the program calls (each once). -/
-def useHelpers (hs : List JsHelper) : ConvM Unit :=
-  modify fun s => { s with helpers := hs.foldl addHelper s.helpers }
+/-- Record runtime functions the program calls (each once). -/
+def useRt (fs : List RtFn) : ConvM Unit :=
+  modify fun s => { s with imports := fs.foldl addImport s.imports }
+
+/-- `Thunk.mk`, in the runtime. -/
+def mkThunkFn : RtFn := { file := .nonConfigurable, name := "$lean_mk_thunk" }
+
+/-- `Thunk.get`, in the runtime. -/
+def thunkGetFn : RtFn := { file := .nonConfigurable, name := "$lean_thunk_get_own" }
 
 /-- Lift an error. -/
 def liftExcept {α : Type} (x : Except String α) : ConvM α :=
@@ -283,7 +291,7 @@ def JsExpr.isAtom : JsExpr → Bool
 /-- Is the body of an array fold, whose element is `e` and accumulator `acc`, the push of the
     element onto the accumulator (`return lean_array_push(acc, e);`)? -/
 def isPushStep (acc e : String) : List JsStmt → Bool
-  | [.ret (.helper h [.var a, .var x])] => h.startsWith "lean_array_push" && a == acc && x == e
+  | [.ret (.helper h [.var a, .var x])] => h == "$lean_array_push" && a == acc && x == e
   | _ => false
 
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
@@ -316,7 +324,13 @@ def ctorIxIndex {ks : List Nat} : {bs : List Bool} → {b : Bool} → {cs : Ctor
   | _, _, _, _, .tail ix => ctorIxIndex ix + 1
 
 section
-variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
+variable (cfg : JsConfig) (rt : Runtime) {ks : List Nat} {Δ : DSig ks}
+
+/-- The knob of the configuration that decides how a value of this type is represented, if
+    one does. -/
+def knobOfTy {ks : List Nat} {d : Bool} : Ty ks d → Option RtKnob
+  | .prim p => (JsConfig.knobOfPrim? p).bind RtKnob.ofName?
+  | _ => none
 
 /-- Names for the fields a pattern binds, `none` for the ones annotated unused. -/
 def fieldBinders (tys : List (Ty ks)) (us : List Usage01ω) :
@@ -342,8 +356,9 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
   | .cond c a b, n => do return .cond (← cNeu c n) (← cPExpr a n) (← cPExpr b n)
   | Neu.extern (σs := σs) e args _, n => do
     let as ← cArgs args n
-    let (ex, hs) := lowerExtern (externName e) (σs.map (lowerTy cfg)) (lowerTy cfg τ) as
-    useHelpers hs
+    let (ex, fs) := lowerExtern rt (externName e) (σs.map (lowerTy cfg)) (lowerTy cfg τ)
+      (knobOfTy τ) as
+    useRt fs
     return ex
 
 /-- A pure expression. -/
@@ -382,8 +397,8 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} 
     let x ← fresh "x"
     return .arrow [x] (← cBody b n [x])
   | .thunk_mk b, n => do
-    useHelpers [thunkHelper]
-    return .helper "$thunk" [.arrow [] (← cBody b n [])]
+    useRt [mkThunkFn]
+    return .helper mkThunkFn.name [.arrow [] (← cBody b n [])]
   | .lazy_mk b, n => return .arrow [] (← cBody b n [])
   | .record_mk args, n => return recordObj (← cArgs args n)
   | .union_mk ix args, n => return unionObj (ctorIxIndex ix) (← cArgs args n)
@@ -453,8 +468,8 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
   | .data_brec _ _ _ _ _ _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
   | .thunk_force p, n => do
     let x ← fresh "x"
-    useHelpers [forceHelper]
-    return ([.const x (.helper "$force" [← cPExpr p n])], x)
+    useRt [thunkGetFn]
+    return ([.const x (.helper thunkGetFn.name [← cPExpr p n])], x)
   | .lazy_force p, n => do
     let x ← fresh "x"
     return ([.const x (.call (← cPExpr p n) [])], x)
@@ -751,7 +766,7 @@ where
 /-! ## Whole functions -/
 
 section
-variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
+variable (cfg : JsConfig) (rt : Runtime) {ks : List Nat} {Δ : DSig ks}
 
 mutual
 /-- Convert a top-level statement, uncurrying the chain of lambdas at its head: `val k := fun
@@ -762,7 +777,7 @@ mutual
 partial def peelFun {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
     Term Δ d Φ Γ τ js o → Names → List String → ConvM (List (String × JsTerm) × List JsStmt)
   | t@(.letV _ v (.ret (.kvar k))), n, names =>
-    if k.index != 0 then do return ([], ← cTerm cfg t n) else
+    if k.index != 0 then do return ([], ← cTerm cfg rt t n) else
     match v with
     | Val.lam (σ := σ) b => do
       let x ← match names with
@@ -771,8 +786,8 @@ partial def peelFun {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
       let rest := names.drop 1
       let (ps, body) ← peelBody b x n rest
       return ((x, lowerTy cfg σ) :: ps, body)
-    | _ => do return ([], ← cTerm cfg t n)
-  | t, n, _ => do return ([], ← cTerm cfg t n)
+    | _ => do return ([], ← cTerm cfg rt t n)
+  | t, n, _ => do return ([], ← cTerm cfg rt t n)
 
 /-- `peelFun` inside the body of a lambda whose parameter is named `x`. -/
 partial def peelBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} :
@@ -790,14 +805,24 @@ def peelTy : Nat → JsTerm → JsTerm
 end
 
 /-- Convert a closed program into an exported JavaScript function named `name`
-    (`export const name = (params) => …`), with the runtime helpers it needs.  `paramNames`
-    are the preferred names of its parameters. -/
-def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String)
-    (ct : ClosedTerm) : Except String (JsFun × List JsHelper) := do
-  let ((ps, body), st) ← (peelFun cfg ct.term {} paramNames).run {}
+    (`export const name = (params) => …`), with the runtime functions it calls (those `rt`
+    exports).  `paramNames` are the preferred names of its parameters.  The arrays nothing
+    else refers to are updated in place (`inPlaceStmts`), when the runtime has the functions
+    that do it. -/
+def termToJs (cfg : JsConfig) (rt : Runtime) (name leanName : String) (paramNames : List String)
+    (ct : ClosedTerm) : Except String (JsFun × List RtFn) := do
+  let ((ps, body), st) ← (peelFun cfg rt ct.term {} paramNames).run {}
   let ret := peelTy ps.length (lowerTy cfg ct.τ)
-  return ({ name, leanName, params := ps.map (·.1), paramTys := ps.map (·.2), ret,
-            body := peepholeStmts (inlineArrays (peepholeStmts body)) }, st.helpers.toList)
+  let body := peepholeStmts (inlineArrays (peepholeStmts body))
+  let inPlaceOk := ["$lean_array_push_inplace", "$lean_array_set_inplace",
+    "$lean_array_swap_inplace", "$lean_array_pop_inplace"].all (rt.has .nonConfigurable)
+  let body := if inPlaceOk then inPlaceStmts body else body
+  -- the runtime functions the body calls now (an in-place version instead of a copying one)
+  let called := calledHelpers body
+  let imports := st.imports.toList.filter (called.contains ·.name) ++
+    (called.filter (·.endsWith "_inplace")).map fun n => { file := .nonConfigurable, name := n }
+  return ({ name, leanName, params := ps.map (·.1), paramTys := ps.map (·.2), ret, body },
+    imports)
 
 end MoreJs
 

@@ -4,8 +4,6 @@
 //   identity: LeanScript: `identity` is universe polymorphic
 //   fold: LeanScript: `fold` is universe polymorphic
 
-// runtime helpers: 
-
 // test
 export const test = (a) => {
   if ((a.tag === 0)) {

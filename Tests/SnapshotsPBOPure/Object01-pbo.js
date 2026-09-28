@@ -7,4 +7,3 @@
 //   test4: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Int is not declared in any signature; declare it with `leanscript_signature`
 //   test5: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Int is not declared in any signature; declare it with `leanscript_signature`
 
-

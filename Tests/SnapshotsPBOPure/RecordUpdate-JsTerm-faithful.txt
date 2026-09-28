@@ -3,8 +3,6 @@
 // not translated:
 //   instReprRec.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-// runtime helpers: 
-
 // test1
 export const test1 = (fn, val) => {
   const x$1 = fn();

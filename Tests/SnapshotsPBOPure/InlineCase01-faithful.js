@@ -5,7 +5,6 @@
 //   test4: LeanScript: the parameter `α` of `test4` is a type
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
-
 /**
  * `test1`
  * @param {(() => int(bigint))} f

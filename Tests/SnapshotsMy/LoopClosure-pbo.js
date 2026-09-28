@@ -3,22 +3,15 @@
 // not translated:
 //   test2: LeanScript: the call List.map (fun xs => List.map (fun x => x + k) xs) xss is not a call of an extern: `List.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-// ---- runtime helpers ----
+import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
 
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-}
-
-function lean_nat_add$nnn(a, b) {
-  return $chk53(a + b);
-}
-
-// ---- exported functions ----
+const $k1 = { tag: 1, _1: 0 };
+const $k2 = (x$7) => {
+  const x$8 = x$7(1);
+  const x$9 = x$7(2);
+  const x$10 = x$7(3);
+  return $lean_nat_add($lean_nat_add(x$8, x$9), x$10);
+};
 
 /**
  * `test1`
@@ -27,7 +20,7 @@ function lean_nat_add$nnn(a, b) {
  * @returns {uint53(number)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = { tag: 1, _1: 0 };
+  let acc$1 = $k1;
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
@@ -35,15 +28,10 @@ export const test1 = (k, n) => {
       acc$1 = { tag: 0, _1: f$4 };
     } else {
       const { _1: f$5 } = a$3;
-      const k$6 = (x$7) => {
-        const x$8 = x$7(1);
-        const x$9 = x$7(2);
-        const x$10 = x$7(3);
-        return lean_nat_add$nnn(lean_nat_add$nnn(x$8, x$9), x$10);
-      };
-      const k$11 = (x$12) => lean_nat_add$nnn(x$12, k);
+      const k$6 = $k2;
+      const k$11 = (x$12) => $lean_nat_add(x$12, k);
       const x$13 = k$6(k$11);
-      const x$14 = lean_nat_add$nnn(f$5, x$13);
+      const x$14 = $lean_nat_add(f$5, x$13);
       acc$1 = { tag: 1, _1: x$14 };
     }
   }

@@ -6,18 +6,7 @@
 //   instReprRec2.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
-// runtime helpers: $chk53, lean_int_add$nnn
-
-function $chk53(x) {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
-  }
-  return x;
-}
-
-function lean_int_add$nnn(a, b) {
-  return $chk53((a + b));
-}
+import { $lean_int_add } from "lean_runtime_int_num.mjs";
 
 // test2
 export const test2 = (a) => {
@@ -74,7 +63,7 @@ export const test4 = (a, a1) => {
             if ((f$4 === 5)) {
               return 5;
             } else {
-              return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$6);
+              return $lean_int_add($lean_int_add(11, f$3), f$6);
             }
           }
         }
@@ -103,7 +92,7 @@ export const test4 = (a, a1) => {
                 }
               }
             } else {
-              return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$9);
+              return $lean_int_add($lean_int_add(11, f$3), f$9);
             }
           }
         }
@@ -132,13 +121,13 @@ export const test4 = (a, a1) => {
                 if ((f$2 === 2)) {
                   return 10;
                 } else {
-                  return lean_int_add$nnn(lean_int_add$nnn(11, f$3), 10);
+                  return $lean_int_add($lean_int_add(11, f$3), 10);
                 }
               } else {
-                return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$12);
+                return $lean_int_add($lean_int_add(11, f$3), f$12);
               }
             } else {
-              return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$12);
+              return $lean_int_add($lean_int_add(11, f$3), f$12);
             }
           }
         }

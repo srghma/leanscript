@@ -3,4 +3,3 @@
 // not translated:
 //   test1: LeanScript: the recursive type RedBlackTree Nat is not declared in any signature; declare it with `leanscript_signature`
 
-

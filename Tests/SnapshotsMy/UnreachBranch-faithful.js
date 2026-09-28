@@ -5,4 +5,3 @@
 //   headOf: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 //   test: LeanScript: a branch that Lean proves unreachable ⋯.elim is not supported: the language has no term for it (and once the indices of an inductive family are erased, as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)
 
-

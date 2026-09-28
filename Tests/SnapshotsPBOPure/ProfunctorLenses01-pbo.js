@@ -11,7 +11,6 @@
 //   test7: invalid scope
 //   test8: invalid scope
 
-
 /**
  * `test1`
  * @param {{ _1: int53(number), _2: int53(number) }} a

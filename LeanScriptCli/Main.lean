@@ -4,6 +4,7 @@ import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.FromTerm
 import JsTerm.PrintMini
+import JsTerm.Hoist
 
 /-!
 # `leanscript`: Lean to JavaScript
@@ -21,7 +22,9 @@ For each file (or module, looked up as `Module/Name.lean` in the project root an
 2. optimises it (`Term.optimizeN`, proved to preserve `Term.eval`: `Term.optimizeN_eval`);
 3. converts it to the JavaScript grammar `JsTerm` at each of the two presets
    (`MoreJs.JsConfig.presetPBO`, `MoreJs.JsConfig.presetFaithful`; `MoreJs.termToJs`);
-4. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).
+4. shares the constants of the functions of a module (`MoreJs.hoistConsts`: a constructor
+   without fields, a closure that captures nothing, … is built once, at the top of the module);
+5. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).
 
 A definition by well-founded recursion, and a member of a `mutual` block, is not translated
 for now (it is listed with the reason): `Term` has no general recursion.  (The translation of
@@ -33,8 +36,10 @@ It writes, next to the file (or in `--out-dir`), where `FILE` is the path withou
 * `FILE-Term-unoptimized.txt`: the translations, as translated;
 * `FILE-Term-optimized.txt`: the translations, optimised;
 * `FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`: the JavaScript grammar at each preset;
-* `FILE-pbo.js`, `FILE-faithful.js`: the JavaScript modules: the runtime helpers they need,
-  then one `export const f = (…) => …` per translated function.
+* `FILE-pbo.js`, `FILE-faithful.js`: the JavaScript modules: the imports of the runtime
+  functions they call, from the modules of the `runtime/` directory of the project (or
+  `--runtime-dir`), by a path relative to the output file; the constants they share; then one
+  `export const f = (…) => …` per translated function.
 
 Every file lists the functions that were not translated, with the reason; the JavaScript
 files start with their configuration.
@@ -53,6 +58,8 @@ structure CliOptions where
       with at least one value parameter), and remove the outputs an earlier run of the tool
       wrote for it. -/
   functionsOnly : Bool := false
+  /-- The directory of the runtime modules (default: `runtime/` in the project). -/
+  runtimeDir : Option System.FilePath := none
   inputs : List String := []
 
 /-- The presets every file is converted at, with the name of their outputs. -/
@@ -74,6 +81,9 @@ file (FILE is its path without `.lean`):
 
 options:
   --out-dir=DIR               write the outputs to DIR instead of next to the file
+  --runtime-dir=DIR           the directory of the runtime modules the JavaScript imports
+                              (default: runtime/ in the project); the imports refer to it
+                              by a path relative to each output file
   --optimize-rounds=N         how many times to run the optimiser (default 3)
   --only=f,g                  translate only these definitions
   --check                     also write FILE-pbo.check.mjs and FILE-faithful.check.mjs:
@@ -97,6 +107,7 @@ def parseArgs : List String → CliOptions → Except String CliOptions
       match (a.drop 2).toString.splitOn "=" with
       | [k, v] =>
         if k == "out-dir" then parseArgs rest { o with outDir := some v }
+        else if k == "runtime-dir" then parseArgs rest { o with runtimeDir := some v }
         else if k == "optimize-rounds" then
           match v.toNat? with
           | some n => parseArgs rest { o with rounds := n }
@@ -188,6 +199,43 @@ def unsupportedRecursion? (n : Name) : MetaM (Option String) := do
       recursive definitions are translated (to `Term`)"
   return none
 
+/-- The components of an absolute, normalised path (`.` and `..` resolved). -/
+def pathComponents (p : System.FilePath) : List String :=
+  (p.toString.splitOn "/").foldl (fun acc c =>
+    if c.isEmpty || c == "." then acc
+    else if c == ".." then acc.dropLast
+    else acc ++ [c]) []
+
+/-- The path of `target` relative to the directory `fromDir` (both absolute), as an import
+    specifier: `./x`, `../../runtime`. -/
+def relativePath (fromDir target : System.FilePath) : String :=
+  let a := pathComponents fromDir
+  let b := pathComponents target
+  let common := (a.zip b).takeWhile (fun (x, y) => x == y) |>.length
+  let ups := (a.drop common).map fun _ => ".."
+  let rel := ups ++ b.drop common
+  match rel with
+  | [] => "."
+  | ".." :: _ => "/".intercalate rel
+  | _ => "./" ++ "/".intercalate rel
+
+/-- The directory of the runtime modules, as an absolute path. -/
+def runtimeDirOf (o : CliOptions) : IO System.FilePath := do
+  let d ← match o.runtimeDir with
+    | some d => pure d
+    | none => return (← IO.FS.realPath (← projectRoot)) / "runtime"
+  if ← d.pathExists then IO.FS.realPath d else
+    throw (IO.userError s!"the runtime directory {d} does not exist")
+
+/-- The functions each runtime module of the directory exports (a missing module exports
+    none). -/
+def loadRuntime (dir : System.FilePath) : IO Runtime := do
+  let mut srcs : List (String × String) := []
+  for f in RtFile.all do
+    let p := dir / f.fileName
+    if ← p.pathExists then srcs := (f.fileName, ← IO.FS.readFile p) :: srcs
+  return Runtime.ofSources srcs
+
 /-- Process one file. -/
 unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   let file ← resolveInput input
@@ -252,27 +300,32 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   -- the JavaScript, at each preset
   let mut nExported := 0
   let mut nJsRefused := 0
+  let rtDir ← runtimeDirOf o
+  let rt ← loadRuntime rtDir
   for (preset, cfg) in presets do
     let mut funs : Array JsFun := #[]
-    let mut helpers : Array JsHelper := #[]
+    let mut imports : Array RtFn := #[]
     let mut jsRefused : Array (Name × String) := #[]
     let mut exported : Array (Name × String × Nat) := #[]
     for t in done do
-      match termToJs cfg (jsFunName t.name) t.name.toString t.params t.optimized with
-      | .ok (f, hs) =>
+      match termToJs cfg rt (jsFunName t.name) t.name.toString t.params t.optimized with
+      | .ok (f, fs) =>
         funs := funs.push f
         exported := exported.push (t.name, jsFunName t.name, f.params.length)
-        helpers := hs.foldl addHelper helpers
+        imports := fs.foldl addImport imports
       | .error e => jsRefused := jsRefused.push (t.name, e)
-    let m : JsModule := { config := cfg, helpers := helpers.toList, funs := funs.toList }
+    let (consts, funs') := hoistConsts (imports.toList.map (·.name)) funs.toList
+    let m : JsModule := { config := cfg, imports := imports.toList, consts, funs := funs' }
     let header (what : String) : List String :=
       [s!"{what} of {file} (preset {preset}), generated by leanscript",
         s!"configuration: {cfg.describe}"] ++ missing ++ notTranslated jsRefused
     let jsPath := outPath o file s!"-{preset}.js"
+    let jsDir ← IO.FS.realPath ((jsPath.parent.getD ".").toString |> fun s =>
+      if s.isEmpty then "." else s)
     IO.FS.writeFile (outPath o file s!"-JsTerm-{preset}.txt")
       (String.join ((header "The JavaScript grammar").map fun l => s!"// {l}\n") ++ "\n" ++
         m.pretty)
-    IO.FS.writeFile jsPath (m.toJs (header "JavaScript"))
+    IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtDir))
     if o.check then
       let jsFile := jsPath.fileName.getD "out.js"
       let cases ← runTermElab el (do

@@ -8,7 +8,6 @@
 //   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 //   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
-
 /**
  * `eval`
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint), _2: int(bigint) } | { tag: 2, _1: int(bigint), _2: int(bigint) })} a

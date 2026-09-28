@@ -8,8 +8,6 @@
 //   TestInt16.intValues: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
 //   TestInt32.intValues: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
 
-// runtime helpers: 
-
 // TestUInt8.test1
 export const TestUInt8$test1 = () => {
   return [2, 3, 3, 255, 1, 254];

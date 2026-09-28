@@ -35,7 +35,6 @@
 //   TestUInt64.test10: the UInt64 literal 9223372036854775807 does not fit in a JavaScript number (use the bigint representation)
 //   TestUInt64.test11: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
 
-
 /**
  * `TestUInt64.test3`
  * @returns {Array<boolean>}

@@ -4,5 +4,3 @@
 //   span.go: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   span: LeanScript: the recursive call span.go p arr (i + 1) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 
-// runtime helpers: 
-

@@ -3,7 +3,7 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
-// runtime helpers: 
+const $k1 = { _1: true, _2: 0n, _3: true, _4: false };
 
 // test1
 export const test1 = () => {
@@ -22,7 +22,7 @@ export const test3 = () => {
 
 // extern1
 export const extern1 = () => {
-  return { _1: true, _2: 0n, _3: true, _4: false };
+  return $k1;
 };
 
 // test4

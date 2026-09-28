@@ -3,7 +3,6 @@
 // not translated:
 //   stringValues: LeanScript: the parameter `α` of `stringValues` is a type
 
-
 /**
  * `test1`
  * @returns {Array<boolean>}

@@ -24,71 +24,28 @@
 //   TestISize.div: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.neg: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
-// ---- runtime helpers ----
-
-function lean_uint64_add$bbb(a, b) {
-  return BigInt.asUintN(64, a + b);
-}
-
-function lean_uint64_sub$bbb(a, b) {
-  return BigInt.asUintN(64, a - b);
-}
-
-function lean_uint64_mul$bbb(a, b) {
-  return BigInt.asUintN(64, a * b);
-}
-
-function lean_uint64_div$bbb(a, b) {
-  return b === 0n ? 0n : BigInt.asUintN(64, a / b);
-}
-
-function lean_uint64_neg$bb(a) {
-  return BigInt.asUintN(64, -a);
-}
-
-function lean_nat_sub$bbb(a, b) {
-  return a > b ? a - b : 0n;
-}
-
-function lean_nat_div$bbb(a, b) {
-  return b === 0n ? 0n : a / b;
-}
-
-function lean_int64_add$bbb(a, b) {
-  return BigInt.asIntN(64, a + b);
-}
-
-function lean_int64_sub$bbb(a, b) {
-  return BigInt.asIntN(64, a - b);
-}
-
-function lean_int64_mul$bbb(a, b) {
-  return BigInt.asIntN(64, a * b);
-}
-
-function lean_int64_div$bbb(a, b) {
-  return b === 0n ? 0n : BigInt.asIntN(64, a / b);
-}
-
-function lean_int64_neg$bb(a) {
-  return BigInt.asIntN(64, -a);
-}
-
-function lean_int_ediv$bbb(a, b) {
-  return b === 0n
-    ? 0n
-    : a % b < 0n
-      ? b > 0n
-        ? a / b - 1n
-        : a / b + 1n
-      : a / b;
-}
-
-function lean_int_neg$bb(a) {
-  return -a;
-}
-
-// ---- exported functions ----
+import {
+  $lean_nat_sub,
+  $lean_nat_div,
+} from "../../runtime/lean_runtime_nat_bigint.mjs";
+import {
+  $lean_int_ediv,
+  $lean_int_neg,
+} from "../../runtime/lean_runtime_int_bigint.mjs";
+import {
+  $lean_uint64_add,
+  $lean_uint64_sub,
+  $lean_uint64_mul,
+  $lean_uint64_div,
+  $lean_uint64_neg,
+} from "../../runtime/lean_runtime_uint64_bigint.mjs";
+import {
+  $lean_int64_add,
+  $lean_int64_sub,
+  $lean_int64_mul,
+  $lean_int64_div,
+  $lean_int64_neg,
+} from "../../runtime/lean_runtime_int64_bigint.mjs";
 
 /**
  * `TestUInt64.add`
@@ -96,7 +53,7 @@ function lean_int_neg$bb(a) {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$add = (a, b) => lean_uint64_add$bbb(a, b);
+export const TestUInt64$add = (a, b) => $lean_uint64_add(a, b);
 
 /**
  * `TestUInt64.sub`
@@ -104,7 +61,7 @@ export const TestUInt64$add = (a, b) => lean_uint64_add$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$sub = (a, b) => lean_uint64_sub$bbb(a, b);
+export const TestUInt64$sub = (a, b) => $lean_uint64_sub(a, b);
 
 /**
  * `TestUInt64.eq`
@@ -166,7 +123,7 @@ export const TestUInt64$ge = (a, b) => b <= a;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$mul = (a, b) => lean_uint64_mul$bbb(a, b);
+export const TestUInt64$mul = (a, b) => $lean_uint64_mul(a, b);
 
 /**
  * `TestUInt64.div`
@@ -174,14 +131,14 @@ export const TestUInt64$mul = (a, b) => lean_uint64_mul$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$div = (a, b) => lean_uint64_div$bbb(a, b);
+export const TestUInt64$div = (a, b) => $lean_uint64_div(a, b);
 
 /**
  * `TestUInt64.neg`
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestUInt64$neg = (a) => lean_uint64_neg$bb(a);
+export const TestUInt64$neg = (a) => $lean_uint64_neg(a);
 
 /**
  * `TestNat.add`
@@ -197,7 +154,7 @@ export const TestNat$add = (a, b) => a + b;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat$sub = (a, b) => lean_nat_sub$bbb(a, b);
+export const TestNat$sub = (a, b) => $lean_nat_sub(a, b);
 
 /**
  * `TestNat.eq`
@@ -267,7 +224,7 @@ export const TestNat$mul = (a, b) => a * b;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat$div = (a, b) => lean_nat_div$bbb(a, b);
+export const TestNat$div = (a, b) => $lean_nat_div(a, b);
 
 /**
  * `TestInt64.add`
@@ -275,7 +232,7 @@ export const TestNat$div = (a, b) => lean_nat_div$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$add = (a, b) => lean_int64_add$bbb(a, b);
+export const TestInt64$add = (a, b) => $lean_int64_add(a, b);
 
 /**
  * `TestInt64.sub`
@@ -283,7 +240,7 @@ export const TestInt64$add = (a, b) => lean_int64_add$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$sub = (a, b) => lean_int64_sub$bbb(a, b);
+export const TestInt64$sub = (a, b) => $lean_int64_sub(a, b);
 
 /**
  * `TestInt64.eq`
@@ -345,7 +302,7 @@ export const TestInt64$ge = (a, b) => b <= a;
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$mul = (a, b) => lean_int64_mul$bbb(a, b);
+export const TestInt64$mul = (a, b) => $lean_int64_mul(a, b);
 
 /**
  * `TestInt64.div`
@@ -353,14 +310,14 @@ export const TestInt64$mul = (a, b) => lean_int64_mul$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$div = (a, b) => lean_int64_div$bbb(a, b);
+export const TestInt64$div = (a, b) => $lean_int64_div(a, b);
 
 /**
  * `TestInt64.neg`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt64$neg = (a) => lean_int64_neg$bb(a);
+export const TestInt64$neg = (a) => $lean_int64_neg(a);
 
 /**
  * `TestInt.add`
@@ -446,11 +403,11 @@ export const TestInt$mul = (a, b) => a * b;
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt$div = (a, b) => lean_int_ediv$bbb(a, b);
+export const TestInt$div = (a, b) => $lean_int_ediv(a, b);
 
 /**
  * `TestInt.neg`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt$neg = (a) => lean_int_neg$bb(a);
+export const TestInt$neg = (a) => $lean_int_neg(a);

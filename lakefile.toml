@@ -48,6 +48,12 @@ name = "TermTests"
 srcDir = "Tests"
 globs = ["TermTests.+"]
 
+# Test data used by `Tests/Main.lean` (the catalogue of externs at both presets).
+[[lean_lib]]
+name = "ExternCatalogue"
+srcDir = "Tests"
+roots = ["ExternCatalogue"]
+
 # The expensive runs moved out of `TyTests`/`TermTests` (compiled, not elaborated):
 # `lake exe tests` (or `lake test`).
 [[lean_exe]]

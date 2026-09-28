@@ -6,5 +6,3 @@
 //   test3: LeanScript: the parameter `α` of `test3` is a type
 //   test4: LeanScript: the parameter `α` of `test4` is a type
 
-// runtime helpers: 
-

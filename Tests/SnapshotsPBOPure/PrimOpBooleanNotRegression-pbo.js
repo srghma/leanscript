@@ -3,4 +3,3 @@
 // not translated:
 //   test: LeanScript: the parameter `α` of `test` is a type
 
-

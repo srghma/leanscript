@@ -3,7 +3,6 @@
 // not translated:
 //   stringValues: LeanScript: `stringValues` is universe polymorphic
 
-
 /**
  * `test1`
  * @returns {List<boolean>}

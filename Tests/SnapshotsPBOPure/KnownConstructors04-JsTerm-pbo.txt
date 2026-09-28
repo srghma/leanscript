@@ -5,5 +5,3 @@
 //   test2: Expected type must not contain metavariables ?m.195 ≠ LeanScript.Usage01ω.zero
 //   test3: Expected type must not contain metavariables ?m.143 ≠ LeanScript.Usage01ω.zero
 
-// runtime helpers: 
-

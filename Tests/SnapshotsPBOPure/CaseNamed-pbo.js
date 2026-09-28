@@ -4,4 +4,3 @@
 //   test1: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 //   test2: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 
-

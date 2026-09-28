@@ -3,4 +3,3 @@
 // not translated:
 //   test: LeanScript: the call Array.mapM.map✝ (fun x => pure ((fun x => x ++ "1") x)) (Array.filter (fun x => x != "wat") (Array.map (fun x => "2" ++ x) (Array.filterMap (fun s => if s.startsWith "1" = true then some (s.drop 1).toString else none) (Array.map toString (Array.map (fun x => x + 1) arr))))) 0 (Array.emptyWithCapacity (Array.filter (fun x => x != "wat") (Array.map (fun x => "2" ++ x) (Array.filterMap (fun s => if s.startsWith "1" = true then some (s.drop 1).toString else none) (Array.map toString (Array.map (fun x => x + 1) arr))))).size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-

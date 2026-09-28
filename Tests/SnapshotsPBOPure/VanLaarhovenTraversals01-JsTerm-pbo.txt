@@ -9,5 +9,3 @@
 //   traverseFun1D: LeanScript: not a type former application Type
 //   rewriteBottomUp: LeanScript: the recursive type Fun is not declared in any signature; declare it with `leanscript_signature`
 
-// runtime helpers: 
-

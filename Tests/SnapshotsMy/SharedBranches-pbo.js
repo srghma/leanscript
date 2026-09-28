@@ -4,63 +4,18 @@
 //   test1: LeanScript: the call Nat.toDigitsCore 10 code n' [d] is not a call of an extern: `Nat.toDigitsCore` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test2: LeanScript: `List String` is a built-in type former, which has no constructors of its own
 
-// ---- runtime helpers ----
-
-function $utf8At(s, p) {
-  let off = 0;
-  for (const ch of s) {
-    const cp = ch.codePointAt(0);
-    const n = cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4;
-    if (off === p) {
-      return [ch, n];
-    }
-    if (off > p) {
-      return undefined;
-    }
-    off = off + n;
-  }
-  return undefined;
-}
-
-function lean_string_utf8_get__String_Pos_Raw_get$_n_(a, b) {
-  const r = $utf8At(a, b);
-  return r === undefined ? "A" : r[0];
-}
-
-function $utf8Set(s, p, c) {
-  let off = 0;
-  let i = 0;
-  for (const ch of s) {
-    if (off === p) {
-      return s.slice(0, i) + c + s.slice(i + ch.length);
-    }
-    const cp = ch.codePointAt(0);
-    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
-    i = i + ch.length;
-  }
-  return s;
-}
-
-function lean_string_utf8_set__String_Pos_Raw_set$_n__(a, b, c) {
-  return $utf8Set(a, b, c);
-}
-
-function $utf8(s) {
-  return new TextEncoder().encode(s);
-}
-
-function lean_string_utf8_at_end__String_Pos_Raw_atEnd$_n_(a, b) {
-  return b >= $utf8(a).length;
-}
-
-// ---- exported functions ----
+import {
+  $lean_string_utf8_get,
+  $lean_string_utf8_set,
+  $lean_string_utf8_at_end,
+} from "../../runtime/lean_runtime_non_configurable.mjs";
 
 /**
  * `test3`
  * @param {string} s
  * @returns {string}
  */
-export const test3 = (s) => lean_string_utf8_get__String_Pos_Raw_get$_n_(s, 0);
+export const test3 = (s) => $lean_string_utf8_get(s, 0);
 
 /**
  * `test4`
@@ -68,13 +23,11 @@ export const test3 = (s) => lean_string_utf8_get__String_Pos_Raw_get$_n_(s, 0);
  * @param {string} c
  * @returns {string}
  */
-export const test4 = (s, c) =>
-  lean_string_utf8_set__String_Pos_Raw_set$_n__(s, 0, c);
+export const test4 = (s, c) => $lean_string_utf8_set(s, 0, c);
 
 /**
  * `test5`
  * @param {string} s
  * @returns {boolean}
  */
-export const test5 = (s) =>
-  lean_string_utf8_at_end__String_Pos_Raw_atEnd$_n_(s, 0);
+export const test5 = (s) => $lean_string_utf8_at_end(s, 0);
