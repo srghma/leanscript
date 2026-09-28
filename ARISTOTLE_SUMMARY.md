@@ -1,3 +1,34 @@
+# Summary of changes for run 18d7c91e-0eaf-4d42-8118-3eae1c32fdf1
+I wrote the plan and assessment to `proposals/JsTermReviewPlan.md`. No code has changed yet, and nothing was built or tested. It goes through your seven points one by one: whether each concern holds, a Lean sketch of the fix, and which files it affects. It ends with a phased plan and four questions for you.
+
+1. **`typedArray kind elem`:** you're right. Today `typedArray .uint8Array .string` is a valid type. In every pair the code actually produces, the array kind follows from the element, so I propose one `JsTypedElem` type listing only the valid elements, with the kind computed from it.
+2. **Empty records and unions:** you're right, and the real limits are stricter. The source types already guarantee a record has at least 2 fields and a union has at least 2 constructors, one of them with fields. I propose keeping the lists but adding these rules as proof fields that fill themselves in with `by decide`, so existing code and tests still read the same.
+3. **`data`:** this names a user-declared recursive datatype, as the string `D<block>_<member>`. The string carries no layout, so the backend can't build, match or take apart such values. As a result, every program that uses a recursive datatype currently fails to convert. I propose indexing `JsTy` by the datatype declarations and reusing the source's `Ref`, with the module carrying each datatype's layout. This is the largest change in the plan.
+4. **Uncurried functions:** I propose `fn (doms : List JsTy) cod` with multi-argument `lam`/`app`, and `lazy t` becomes `fn [] t`. Each function type is fully uncurried, and partial applications are wrapped in a closure. One trade-off: work between two curried arguments is redone on every call instead of shared.
+5. **`FloatParts`:** it should move into a new `JsTerm/NumberLit.lean`. Lean's core library already has a replacement, `Float.Model.UnpackedFloat`, reached via `f.toModel.unpack`. It is stricter than `FloatParts` (zero has its own case, and a finite value's mantissa is provably positive). I checked with a quick `#eval` that it runs, but not with a test. Batteries' `Float.toRatParts` loses the sign of zero and can't tell NaN from infinity, and the project doesn't depend on Batteries, so it isn't a better fit.
+6. **Missing operations:** 149 operations still throw at run time:
+   - 50 float math functions (`sin`, `pow`, …);
+   - 36 float conversions;
+   - 48 string/substring operations;
+   - 12 version/platform constants;
+   - 3 hashes.
+   Two need care: JavaScript's `Math.round` rounds `-2.5` to `-2` where Lean gives `-3`, and float-to-integer casts must saturate as Lean's do. Once all are done, a missing operation would become a conversion error instead of a throw.
+7. **One `Ops.lean`:** a few corrections to the sketch:
+   - `import` is a reserved word in Lean, so the constructors should be `imported`/`inlined`.
+   - The type name should be spelled `Inlinability`.
+   - Constructors are written without the leading dot.
+   - The existing `JsOp` in `OpsLookup.lean` gets replaced.
+   On mutable variants: push, pop, set and swap already have in-place versions, which would be renamed `_immutable`/`_mutable`. `fset` and `fswap` gain new `_mutable` variants. String operations can't have one, because JavaScript strings are immutable. For purity in `JsTerm`, I propose tagging each expression with the most effect it may have, and requiring shared top-level constants to be pure. The plan lists what this enables: dead-code removal, common-subexpression sharing, moving code out of loops, and a checked basis for the in-place updates.
+   There is a risk: one inductive of about 500 operations may be slow to compile. The plan describes a fallback that keeps a single type.
+
+The phases, in order: float printing → type fixes → merged ops with purity → purity in expressions → uncurried functions → datatypes. The missing operations can be done alongside.
+
+Questions for you (also listed at the end of the file):
+- Two purity levels as you sketched, or three (`pure | throws | mutates`)? With two, all overflow-checked `uint53` arithmetic counts as impure.
+- Is the lost sharing from uncurrying acceptable?
+- Should the version/platform constants report the Lean toolchain that ran `leanscript`?
+- May float math differ from Lean's results in the last bit, or must it match exactly?
+
 # Summary of changes for run d620c7e3-de18-4f5d-b280-8d306c175814
 `JsTerm` is now a simply typed language with de Bruijn indices, and constants, mutable variables and join points live in separate contexts. The `JsNum…/JsBigInt…/JsBool…/JsStr…/JsBinOp/Js*UnOp` operators are gone. Every extern is now one operation per representation of its types, named `type__externname`. `lake build JsTerm leanscript tests` succeeds with no warnings and no `sorry`, and all 51 tests in `lake test` pass. I regenerated the snapshots: node ran 3806 checks and all passed. `scripts/leanscript-snapshots.sh` still exits with 1, but only because of the intended literal-too-big errors in two files (see below).
 
