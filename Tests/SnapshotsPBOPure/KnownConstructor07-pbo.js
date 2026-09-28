@@ -6,7 +6,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -24,10 +28,10 @@ function lean_int_sub$nnn(a, b) {
  * `test`
  * @param {(int53(number) => int53(number))} f
  * @param {int53(number)} y
- * @returns {[int53(number), int53(number)]}
+ * @returns {{ _1: int53(number), _2: int53(number) }}
  */
 export const test = (f, y) => {
   const x$1 = f(y);
   const x$2 = lean_int_add$nnn(x$1, 1);
-  return [x$2, lean_int_sub$nnn(x$1, 2)];
+  return { _1: x$2, _2: lean_int_sub$nnn(x$1, 2) };
 };

@@ -7,14 +7,14 @@
 
 /**
  * `test`
- * @param {([0] | [1, string])} a
+ * @param {({ tag: 0 } | { tag: 1, _1: string })} a
  * @returns {string}
  */
 export const test = (a) => {
-  if (a[0] === 0) {
+  if (a.tag === 0) {
     return "";
   } else {
-    const [, f$1] = a;
+    const { _1: f$1 } = a;
     return f$1;
   }
 };

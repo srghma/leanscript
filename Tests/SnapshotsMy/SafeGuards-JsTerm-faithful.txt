@@ -3,6 +3,30 @@
 
 // runtime helpers: lean_array_get_size$_b, lean_nat_div$bbb, lean_nat_shiftr$bbb, lean_string_length__String_length$_b, lean_nat_land$bbb, lean_nat_sub$bbb
 
+function lean_array_get_size$_b(a) {
+  return BigInt(a.length);
+}
+
+function lean_nat_div$bbb(a, b) {
+  return ((b === 0n) ? 0n : (a / b));
+}
+
+function lean_nat_shiftr$bbb(a, b) {
+  return (a >> b);
+}
+
+function lean_string_length__String_length$_b(a) {
+  return BigInt([...a].length);
+}
+
+function lean_nat_land$bbb(a, b) {
+  return (a & b);
+}
+
+function lean_nat_sub$bbb(a, b) {
+  return ((a > b) ? (a - b) : 0n);
+}
+
 // test1
 export const test1 = (a) => {
   return lean_nat_div$bbb(lean_array_get_size$_b(a), 2n);

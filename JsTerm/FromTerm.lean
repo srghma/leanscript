@@ -18,7 +18,7 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | --- | --- |
 | an unknown, a known value (de Bruijn) | a named `const` (`x$1`, `k$2`, …); join points stay de Bruijn indexed |
 | `PExpr.lit` | a literal at the configured layout (`12n` or `12`); a literal that does not fit in a `number` is refused |
-| `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `[f₀, …]`, `[tag, f₀, …]`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` |
+| `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` |
 | `enum_mk i` | the number `shift + i` |
 | `Neu.cond` | `c ? a : b` |
 | `Neu.extern` | an operator or a runtime helper (`MoreJs.lowerExtern`) |
@@ -26,8 +26,8 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | `Val.thunk_mk`, `Val.lazy_mk` | `$thunk(() => { … })`, `() => { … }` |
 | `Term.ret`, `Term.jump j v` | `return e;`, `jump j e` (`x = e; break L;`, `L` and `x` the label and the variable of the join point) |
 | `Term.letV`, `Term.letE` | `const k = v;`, `const x = c;` |
-| `Term.record_casesOn` | `const [f₀, , f₂] = r;` (unused fields skipped) |
-| `Branch.ite`, `enum_casesOn`, `union_casesOn` | `if`/`else if` chains |
+| `Term.record_casesOn` | `const { _1: f₁, _3: f₃ } = r;` (unused fields skipped) |
+| `Branch.ite`, `enum_casesOn`, `union_casesOn` | `if`/`else if` chains (on `s.tag` for a union) |
 | `Branch.join` | `let x; join x { branch }` (the labelled block `L: { … }`) followed by the body of the join point |
 | `Comp.app f a`, `Comp.share n` | `f(a)`, `n` |
 | `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }`; when the step ignores the accumulator (a case analysis `0` / `k + 1`), `let acc = z; if (0n < n) { const i = n - 1n; …; acc = …; }` |
@@ -168,13 +168,16 @@ def retToAcc (acc : String) (body : List JsStmt) : List JsStmt :=
 mutual
 /-- Does a statement build a closure (which could capture a variable the loop reassigns)? -/
 partial def JsStmt.hasArrow : JsStmt → Bool
-  | .const _ e | .assign _ e | .destructure _ e | .ret e | .jump _ e => e.hasArrow
+  | .const _ e | .assign _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e
+  | .expr e => e.hasArrow
+  | .setMember o _ e => o.hasArrow || e.hasArrow
+  | .setAt o i e => o.hasArrow || i.hasArrow || e.hasArrow
   | .letMut _ e => e.any JsExpr.hasArrow
   | .ite c t e => c.hasArrow || t.any JsStmt.hasArrow || e.any JsStmt.hasArrow
   | .forRange _ _ n b => n.hasArrow || b.any JsStmt.hasArrow
-  | .forOf _ xs b => xs.hasArrow || b.any JsStmt.hasArrow
+  | .forOf _ xs b | .while xs b => xs.hasArrow || b.any JsStmt.hasArrow
   | .join _ b => b.any JsStmt.hasArrow
-  | .throw _ => false
+  | .throw _ _ => false
 /-- Does an expression build a closure? -/
 partial def JsExpr.hasArrow : JsExpr → Bool
   | .arrow .. => true
@@ -182,8 +185,11 @@ partial def JsExpr.hasArrow : JsExpr → Bool
   | .un _ a => a.hasArrow
   | .call f as => f.hasArrow || as.any JsExpr.hasArrow
   | .helper _ as | .array as | .typedArray _ as => as.any JsExpr.hasArrow
-  | .index e _ | .member e _ => e.hasArrow
+  | .index e _ | .member e _ | .spread e => e.hasArrow
   | .cond c a b => c.hasArrow || a.hasArrow || b.hasArrow
+  | .object fs => fs.any (·.2.hasArrow)
+  | .at e i => e.hasArrow || i.hasArrow
+  | .new c as => c.hasArrow || as.any JsExpr.hasArrow
   | _ => false
 end
 
@@ -204,17 +210,26 @@ where
     | .index e i => .index (goE e) i
     | .member e m => .member (goE e) m
     | .cond c a b => .cond (goE c) (goE a) (goE b)
+    | .object fs => .object (fs.map fun (k, e) => (k, goE e))
+    | .at e i => .at (goE e) (goE i)
+    | .new c as => .new (goE c) (as.map goE)
+    | .spread e => .spread (goE e)
     | e => e
   go : JsStmt → JsStmt
     | .const z e => .const z (goE e)
     | .letMut z e => .letMut z (e.map goE)
     | .assign z e => .assign (if z == x then y else z) (goE e)
     | .destructure zs e => .destructure zs (goE e)
+    | .destructureObj zs e => .destructureObj zs (goE e)
+    | .setMember o m e => .setMember (goE o) m (goE e)
+    | .setAt o i e => .setAt (goE o) (goE i) (goE e)
+    | .expr e => .expr (goE e)
+    | .while c b => .while (goE c) (b.map go)
     | .ret e => .ret (goE e)
     | .ite c t e => .ite (goE c) (t.map go) (e.map go)
     | .forRange i big n b => .forRange i big (goE n) (b.map go)
     | .forOf z xs b => .forOf z (goE xs) (b.map go)
-    | .throw m => .throw m
+    | .throw k m => .throw k m
     | .join z b => .join (if z == x then y else z) (b.map go)
     | .jump j e => .jump j (goE e)
 
@@ -232,14 +247,18 @@ def loopBody (acc accIn : String) (body : List JsStmt) : List JsStmt :=
 mutual
 /-- Does a statement mention the variable `x`? -/
 partial def JsStmt.mentions (x : String) : JsStmt → Bool
-  | .const _ e | .destructure _ e | .ret e | .jump _ e => e.mentions x
+  | .const _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e | .expr e =>
+    e.mentions x
+  | .setMember o _ e => o.mentions x || e.mentions x
+  | .setAt o i e => o.mentions x || i.mentions x || e.mentions x
+  | .while c b => c.mentions x || b.any (·.mentions x)
   | .letMut _ e => e.any (·.mentions x)
   | .assign y e => y == x || e.mentions x
   | .join y b => y == x || b.any (·.mentions x)
   | .ite c t e => c.mentions x || t.any (·.mentions x) || e.any (·.mentions x)
   | .forRange _ _ n b => n.mentions x || b.any (·.mentions x)
   | .forOf _ xs b => xs.mentions x || b.any (·.mentions x)
-  | .throw _ => false
+  | .throw _ _ => false
 /-- Does an expression mention the variable `x`? -/
 partial def JsExpr.mentions (x : String) : JsExpr → Bool
   | .var y => y == x
@@ -248,8 +267,11 @@ partial def JsExpr.mentions (x : String) : JsExpr → Bool
   | .un _ a => a.mentions x
   | .call f as => f.mentions x || as.any (·.mentions x)
   | .helper _ as | .array as | .typedArray _ as => as.any (·.mentions x)
-  | .index e _ | .member e _ => e.mentions x
+  | .index e _ | .member e _ | .spread e => e.mentions x
   | .cond c a b => c.mentions x || a.mentions x || b.mentions x
+  | .object fs => fs.any (·.2.mentions x)
+  | .at e i => e.mentions x || i.mentions x
+  | .new c as => c.mentions x || as.any (·.mentions x)
   | .lit _ => false
 end
 
@@ -257,6 +279,22 @@ end
 def JsExpr.isAtom : JsExpr → Bool
   | .var _ | .lit _ => true
   | _ => false
+
+/-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
+def fieldKey (i : Nat) : String := s!"_{i + 1}"
+
+/-- A record: `{ _1: e₁, _2: e₂, … }`. -/
+def recordObj (es : List JsExpr) : JsExpr :=
+  .object (es.zipIdx.map fun (e, i) => (fieldKey i, e))
+
+/-- The constructor of position `tag` (from `0`) of a union: `{ tag, _1: e₁, … }`. -/
+def unionObj (tag : Nat) (es : List JsExpr) : JsExpr :=
+  .object (("tag", .lit (.int tag)) :: es.zipIdx.map fun (e, i) => (fieldKey i, e))
+
+/-- The properties an object pattern takes out, for the binders of a record's (or a
+    constructor's) fields, `none` for a field not used. -/
+def fieldBinds (bs : List (Option String)) : List (String × String) :=
+  bs.zipIdx.filterMap fun (b, i) => b.map fun x => (fieldKey i, x)
 
 /-- The type of member `j` of a union's constructor list, as a list of field types. -/
 def ctorsBinds {ks : List Nat} : {bs : List Bool} → Ctors ks bs → List (List (Ty ks))
@@ -309,8 +347,8 @@ partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} :
   | .kvar k, n => pure (.var (n.k.getD k.index "undefined$"))
   | .lit p v, _ => liftExcept (primLit cfg p v)
   | .enum_mk s i, _ => pure (.lit (.int (s.shift + i.val)))
-  | .record_mk args, n => return .array (← cArgs args n)
-  | .union_mk ix args, n => return .array (.lit (.int (ctorIxIndex ix)) :: (← cArgs args n))
+  | .record_mk args, n => return recordObj (← cArgs args n)
+  | .union_mk ix args, n => return unionObj (ctorIxIndex ix) (← cArgs args n)
   | PExpr.array_mk (t := t) es, n => do
     let es ← cElems es n
     match typedCtor? (lowerTy cfg (Ty.array t : Ty ks)) with
@@ -341,8 +379,8 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} 
     useHelpers [thunkHelper]
     return .helper "$thunk" [.arrow [] (← cBody b n [])]
   | .lazy_mk b, n => return .arrow [] (← cBody b n [])
-  | .record_mk args, n => return .array (← cArgs args n)
-  | .union_mk ix args, n => return .array (.lit (.int (ctorIxIndex ix)) :: (← cArgs args n))
+  | .record_mk args, n => return recordObj (← cArgs args n)
+  | .union_mk ix args, n => return unionObj (ctorIxIndex ix) (← cArgs args n)
   | Val.array_mk (t := t) es, n => do
     let es ← cElems es n
     match typedCtor? (lowerTy cfg (Ty.array t : Ty ks)) with
@@ -422,7 +460,9 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
   | Term.record_casesOn (t := tt) (fs := fs) us e t, n => do
     let (bs, xs) ← fieldBinders (tt :: fs.toList) us
     let ee ← cNeu e n
-    return .destructure bs ee :: (← cTerm t { n with u := xs ++ n.u })
+    let rest ← cTerm t { n with u := xs ++ n.u }
+    let binds := fieldBinds bs
+    return if binds.isEmpty then rest else .destructureObj binds ee :: rest
   | .branch b, n => cBranch b n
   | .jump j p, n => return [.jump j.index (← cPExpr p n)]
 
@@ -454,7 +494,7 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let mut out : List JsStmt := []
     for (i, body) in ((List.range k).zip arms).reverse do
       if i == k - 1 then out := body
-      else out := [.ite (.bin .strictEq (.index ee 0) (.lit (.int i))) body out]
+      else out := [.ite (.bin .strictEq (.member ee "tag") (.lit (.int i))) body out]
     let _ := ctorsBinds cs
     return pre ++ out
   | Branch.join _ _ _ body br, n => do
@@ -464,7 +504,7 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     return [.letMut x none, .join x block] ++ bodyS
 
 /-- The arms of a union's case analysis on `scrut`: each takes the fields apart
-    (`const [, f₀, f₁] = scrut;`) and continues. -/
+    (`const { _1: f₁, _2: f₂ } = scrut;`) and continues. -/
 partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
     Branches Δ d Φ Γ cs τ js o → Names → JsExpr → ConvM (List (List JsStmt))
@@ -476,14 +516,15 @@ partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {
     let a ← arm c.binds us (fun n' => cTerm b n') n scrut
     return a :: (← cBranches rest n scrut)
 where
-  /-- One arm: bind the fields, then the body. -/
+  /-- One arm: bind the fields (`const { _1: f, _3: h } = scrut;`), then the body. -/
   arm (tys : List (Ty ks)) (us : List Usage01ω) (k : Names → ConvM (List JsStmt)) (n : Names)
       (scrut : JsExpr) : ConvM (List JsStmt) := do
     if tys.isEmpty then return ← k n
     let (bs, xs) ← fieldBinders tys us
     let body ← k { n with u := xs ++ n.u }
-    if bs.all Option.isNone then return body
-    return .destructure (none :: bs) scrut :: body
+    let binds := fieldBinds bs
+    if binds.isEmpty then return body
+    return .destructureObj binds scrut :: body
 
 end
 
@@ -519,11 +560,16 @@ partial def peepholeStmt : JsStmt → JsStmt
   | .letMut x e => .letMut x (e.map peepholeExpr)
   | .assign x e => .assign x (peepholeExpr e)
   | .destructure xs e => .destructure xs (peepholeExpr e)
+  | .destructureObj xs e => .destructureObj xs (peepholeExpr e)
+  | .setMember o m e => .setMember (peepholeExpr o) m (peepholeExpr e)
+  | .setAt o i e => .setAt (peepholeExpr o) (peepholeExpr i) (peepholeExpr e)
+  | .expr e => .expr (peepholeExpr e)
+  | .while c body => .while (peepholeExpr c) (peepholeStmts body)
   | .ret e => .ret (peepholeExpr e)
   | .ite c t e => .ite (peepholeExpr c) (peepholeStmts t) (peepholeStmts e)
   | .forRange i big n body => .forRange i big (peepholeExpr n) (peepholeStmts body)
   | .forOf x xs body => .forOf x (peepholeExpr xs) (peepholeStmts body)
-  | .throw m => .throw m
+  | .throw k m => .throw k m
   | .join x block => .join x (peepholeStmts block)
   | .jump j e => .jump j (peepholeExpr e)
 
@@ -539,6 +585,10 @@ partial def peepholeExpr : JsExpr → JsExpr
   | .index e i => .index (peepholeExpr e) i
   | .member e m => .member (peepholeExpr e) m
   | .cond c a b => .cond (peepholeExpr c) (peepholeExpr a) (peepholeExpr b)
+  | .object fs => .object (fs.map fun (k, e) => (k, peepholeExpr e))
+  | .at e i => .at (peepholeExpr e) (peepholeExpr i)
+  | .new c as => .new (peepholeExpr c) (as.map peepholeExpr)
+  | .spread e => .spread (peepholeExpr e)
   | e => e
 end
 

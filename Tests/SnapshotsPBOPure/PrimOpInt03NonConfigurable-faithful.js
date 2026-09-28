@@ -4,27 +4,27 @@
 // ---- runtime helpers ----
 
 function lean_uint8_add(a, b) {
-  return ((a + b) & 255);
+  return (a + b) & 255;
 }
 
 function lean_uint16_add(a, b) {
-  return ((a + b) & 65535);
+  return (a + b) & 65535;
 }
 
 function lean_uint32_add(a, b) {
-  return ((a + b) >>> 0);
+  return (a + b) >>> 0;
 }
 
 function lean_int8_add(a, b) {
-  return (((a + b) << 24) >> 24);
+  return ((a + b) << 24) >> 24;
 }
 
 function lean_int16_add(a, b) {
-  return (((a + b) << 16) >> 16);
+  return ((a + b) << 16) >> 16;
 }
 
 function lean_int32_add(a, b) {
-  return ((a + b) | 0);
+  return (a + b) | 0;
 }
 
 // ---- exported functions ----

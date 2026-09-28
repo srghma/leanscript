@@ -12,7 +12,7 @@ function $idx(x) {
 }
 
 function lean_array_get$b_bb(a, b, c) {
-  return ($idx(c) < b.length ? b[$idx(c)] : a);
+  return $idx(c) < b.length ? b[$idx(c)] : a;
 }
 
 // ---- exported functions ----

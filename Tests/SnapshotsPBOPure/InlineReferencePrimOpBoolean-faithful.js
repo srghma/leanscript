@@ -24,9 +24,9 @@ export const test3 = () => 42n;
 
 /**
  * `extern1`
- * @returns {[boolean, int(bigint), boolean, boolean]}
+ * @returns {{ _1: boolean, _2: int(bigint), _3: boolean, _4: boolean }}
  */
-export const extern1 = () => [true, 0n, true, false];
+export const extern1 = () => ({ _1: true, _2: 0n, _3: true, _4: false });
 
 /**
  * `test4`

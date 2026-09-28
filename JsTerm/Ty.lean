@@ -20,8 +20,8 @@ The compound shapes have one layout each:
 
 | `Ty` | `JsTerm` | JavaScript |
 | --- | --- | --- |
-| `record t fs` | `tuple [t, …]` | an array `[f₀, f₁, …]` |
-| `union cs` | `tagged [[fields₀], [fields₁], …]` | an array `[tag, f₀, f₁, …]` |
+| `record t fs` | `record [t, …]` | an object `{ _1: f₁, _2: f₂, … }` |
+| `union cs` | `union [[fields₀], [fields₁], …]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` |
 | `enum s` | `enum n shift` | the number `shift + i` |
 | `list t` | `list t` | an (immutable) JavaScript array |
 | `fn a b` | `fn a b` | a one-argument function (curried) |
@@ -76,10 +76,11 @@ inductive JsTerm where
   | list (elem : JsTerm)
   /-- A one-argument function. -/
   | fn (dom cod : JsTerm)
-  /-- A record: an array of its fields. -/
-  | tuple (fields : List JsTerm)
-  /-- A union: an array of the tag and the fields of the constructor. -/
-  | tagged (ctors : List (List JsTerm))
+  /-- A record: an object `{ _1: f₁, _2: f₂, … }` of its fields (numbered from `1`). -/
+  | record (fields : List JsTerm)
+  /-- A union: an object `{ tag: i, _1: f₁, … }` of the position `i` (from `0`) of the
+      constructor and its fields (numbered from `1`). -/
+  | union (ctors : List (List JsTerm))
   /-- An enum: a number, `shift` for the first constructor. -/
   | enum (n : Nat) (shift : Int)
   /-- A declared datatype, by name (`D<block>_<member>`). -/
@@ -119,10 +120,12 @@ partial def pretty : JsTerm → String
   | .bigInt64Array => "BigInt64Array"
   | .list t => s!"List<{t.pretty}>"
   | .fn a b => s!"({a.pretty} => {b.pretty})"
-  | .tuple ts => "[" ++ ", ".intercalate (ts.map pretty) ++ "]"
-  | .tagged cs => "(" ++ " | ".intercalate
+  | .record ts => "{ " ++ ", ".intercalate
+      ((List.range ts.length).zip ts |>.map fun (i, t) => s!"_{i + 1}: {t.pretty}") ++ " }"
+  | .union cs => "(" ++ " | ".intercalate
       ((List.range cs.length).zip cs |>.map fun (i, fs) =>
-        "[" ++ ", ".intercalate (toString i :: fs.map pretty) ++ "]") ++ ")"
+        "{ " ++ ", ".intercalate (s!"tag: {i}" ::
+          ((List.range fs.length).zip fs |>.map fun (j, t) => s!"_{j + 1}: {t.pretty}")) ++ " }") ++ ")"
   | .enum n shift => s!"enum{n}@{shift}"
   | .data n => n
   | .thunk t => s!"Thunk<{t.pretty}>"
@@ -250,8 +253,8 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTerm
   | .array t => .genericArray (lowerTy cfg t)
   | .list t => .list (lowerTy cfg t)
   | .enum s => .enum s.nOfConstructors s.shift
-  | .record t fs => .tuple (lowerTy cfg t :: lowerFields cfg fs)
-  | .union cs (h := _) => .tagged (lowerCtors cfg cs)
+  | .record t fs => .record (lowerTy cfg t :: lowerFields cfg fs)
+  | .union cs (h := _) => .union (lowerCtors cfg cs)
   | .data r => .data (refName r)
   | .thunk t => .thunk (lowerTy cfg t)
   | .lazy t => .lazy (lowerTy cfg t)

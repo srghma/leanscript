@@ -5,6 +5,25 @@
 
 // runtime helpers: lean_nat_mod__Nat_mod$nnn, $chk53, lean_nat_mul$nnn, lean_nat_add$nnn
 
+function lean_nat_mod__Nat_mod$nnn(a, b) {
+  return ((b === 0) ? a : (a % b));
+}
+
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_nat_mul$nnn(a, b) {
+  return $chk53((a * b));
+}
+
+function lean_nat_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
 // test1
 export const test1 = (fuel, a, b) => {
   const k$1 = (x$2) => {

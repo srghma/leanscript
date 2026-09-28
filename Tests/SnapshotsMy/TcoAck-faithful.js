@@ -13,7 +13,7 @@
 // ---- runtime helpers ----
 
 function lean_nat_div$bbb(a, b) {
-  return (b === 0n ? 0n : a / b);
+  return b === 0n ? 0n : a / b;
 }
 
 // ---- exported functions ----

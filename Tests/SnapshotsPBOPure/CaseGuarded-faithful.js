@@ -26,11 +26,11 @@ export const test2 = (a) => {
 
 /**
  * `test3`
- * @param {[int(bigint), int(bigint), int(bigint)]} a
+ * @param {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }} a
  * @returns {int(bigint)}
  */
 export const test3 = (a) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === f$2) {
     return f$1;
   } else if (f$3 === f$2) {
@@ -44,14 +44,14 @@ export const test3 = (a) => {
 
 /**
  * `test4`
- * @param {[int(bigint), int(bigint), int(bigint)]} a
- * @param {[int(bigint), int(bigint), int(bigint)]} a1
+ * @param {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }} a
+ * @param {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }} a1
  * @returns {int(bigint)}
  */
 export const test4 = (a, a1) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1n) {
-    const [f$4, f$5, f$6] = a1;
+    const { _1: f$4, _2: f$5, _3: f$6 } = a1;
     if (f$4 === 1n) {
       return 1n;
     } else if (f$4 === 2n) {
@@ -66,7 +66,7 @@ export const test4 = (a, a1) => {
       return 11n + f$3 + f$6;
     }
   } else if (f$1 === 2n) {
-    const [f$7, f$8, f$9] = a1;
+    const { _1: f$7, _2: f$8, _3: f$9 } = a1;
     if (f$7 === 2n) {
       return 2n;
     } else if (f$7 === 3n) {
@@ -85,7 +85,7 @@ export const test4 = (a, a1) => {
       return 11n + f$3 + f$9;
     }
   } else {
-    const [f$10, f$11, f$12] = a1;
+    const { _1: f$10, _2: f$11, _3: f$12 } = a1;
     if (f$10 === 2n) {
       return 2n;
     } else if (f$10 === 3n) {

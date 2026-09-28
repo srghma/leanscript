@@ -10,7 +10,9 @@ function lean_mk_empty_array_with_capacity__Array_emptyWithCapacity$b_(a) {
 }
 
 function $arrayPush(a, x) {
-  if (Array.isArray(a)) return [...a, x];
+  if (Array.isArray(a)) {
+    return [...a, x];
+  }
   const r = new a.constructor(a.length + 1);
   r.set(a);
   r[a.length] = x;
@@ -30,11 +32,13 @@ function $idx(x) {
 }
 
 function lean_array_get$b_bb(a, b, c) {
-  return ($idx(c) < b.length ? b[$idx(c)] : a);
+  return $idx(c) < b.length ? b[$idx(c)] : a;
 }
 
 function $arraySet(a, i, x) {
-  if (i >= a.length) return a;
+  if (i >= a.length) {
+    return a;
+  }
   const r = a.slice();
   r[i] = x;
   return r;
@@ -45,7 +49,11 @@ function lean_array_set$_bb_(a, b, c) {
 }
 
 function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return Number(x);
 }
 
@@ -54,15 +62,17 @@ function lean_mk_array$bb_(a, b) {
 }
 
 function lean_nat_div$bbb(a, b) {
-  return (b === 0n ? 0n : a / b);
+  return b === 0n ? 0n : a / b;
 }
 
 function lean_nat_sub$bbb(a, b) {
-  return (a > b ? a - b : 0n);
+  return a > b ? a - b : 0n;
 }
 
 function $arraySwap(a, i, j) {
-  if (i >= a.length || j >= a.length) return a;
+  if (i >= a.length || j >= a.length) {
+    return a;
+  }
   const r = a.slice();
   const t = r[i];
   r[i] = r[j];
@@ -87,22 +97,22 @@ function lean_array_pop(a) {
  */
 export const test1 = (n) => {
   const x$1 = lean_mk_empty_array_with_capacity__Array_emptyWithCapacity$b_(n);
-  let acc$2 = [1, x$1];
+  let acc$2 = { tag: 1, _1: x$1 };
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2[0] === 0) {
-      const [, f$5] = acc$2;
-      acc$2 = [0, f$5];
+    if (acc$2.tag === 0) {
+      const { _1: f$5 } = acc$2;
+      acc$2 = { tag: 0, _1: f$5 };
     } else {
-      const [, f$6] = acc$2;
+      const { _1: f$6 } = acc$2;
       const x$7 = lean_array_push$_b_(f$6, i$3 * i$3);
-      acc$2 = [1, x$7];
+      acc$2 = { tag: 1, _1: x$7 };
     }
   }
-  if (acc$2[0] === 0) {
-    const [, f$8] = acc$2;
+  if (acc$2.tag === 0) {
+    const { _1: f$8 } = acc$2;
     return f$8;
   } else {
-    const [, f$9] = acc$2;
+    const { _1: f$9 } = acc$2;
     return f$9;
   }
 };
@@ -114,26 +124,26 @@ export const test1 = (n) => {
  */
 export const test3 = (a0) => {
   const n$3 = lean_array_get_size$_b(a0);
-  let acc$1 = [1, a0];
+  let acc$1 = { tag: 1, _1: a0 };
   for (let i$2 = 0n; i$2 < n$3; i$2++) {
-    if (acc$1[0] === 0) {
-      const [, f$5] = acc$1;
-      acc$1 = [0, f$5];
+    if (acc$1.tag === 0) {
+      const { _1: f$5 } = acc$1;
+      acc$1 = { tag: 0, _1: f$5 };
     } else {
-      const [, f$6] = acc$1;
+      const { _1: f$6 } = acc$1;
       const x$7 = lean_array_set$_bb_(
         f$6,
         i$2,
         2n * lean_array_get$b_bb(0n, f$6, i$2),
       );
-      acc$1 = [1, x$7];
+      acc$1 = { tag: 1, _1: x$7 };
     }
   }
-  if (acc$1[0] === 0) {
-    const [, f$8] = acc$1;
+  if (acc$1.tag === 0) {
+    const { _1: f$8 } = acc$1;
     return f$8;
   } else {
-    const [, f$9] = acc$1;
+    const { _1: f$9 } = acc$1;
     return f$9;
   }
 };
@@ -141,11 +151,11 @@ export const test3 = (a0) => {
 /**
  * `test4`
  * @param {nat(bigint)} n
- * @returns {[Array<nat(bigint)>, Array<nat(bigint)>]}
+ * @returns {{ _1: Array<nat(bigint)>, _2: Array<nat(bigint)> }}
  */
 export const test4 = (n) => {
   const x$1 = lean_mk_array$bb_(3n, n);
-  return [x$1, lean_array_set$_bb_(x$1, 0n, 7n)];
+  return { _1: x$1, _2: lean_array_set$_bb_(x$1, 0n, 7n) };
 };
 
 /**
@@ -155,53 +165,53 @@ export const test4 = (n) => {
  */
 export const test5 = (n) => {
   const x$1 = lean_mk_empty_array_with_capacity__Array_emptyWithCapacity$b_(n);
-  let acc$2 = [1, x$1];
+  let acc$2 = { tag: 1, _1: x$1 };
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2[0] === 0) {
-      const [, f$5] = acc$2;
-      acc$2 = [0, f$5];
+    if (acc$2.tag === 0) {
+      const { _1: f$5 } = acc$2;
+      acc$2 = { tag: 0, _1: f$5 };
     } else {
-      const [, f$6] = acc$2;
+      const { _1: f$6 } = acc$2;
       const x$7 = lean_array_push$_b_(f$6, i$3);
-      acc$2 = [1, x$7];
+      acc$2 = { tag: 1, _1: x$7 };
     }
   }
   let x$8;
   j$1: {
-    if (acc$2[0] === 0) {
-      const [, f$9] = acc$2;
+    if (acc$2.tag === 0) {
+      const { _1: f$9 } = acc$2;
       x$8 = f$9;
       break j$1;
     } else {
-      const [, f$10] = acc$2;
+      const { _1: f$10 } = acc$2;
       x$8 = f$10;
       break j$1;
     }
   }
   const n$13 = lean_nat_div$bbb(n, 2n);
-  let acc$11 = [1, x$8];
+  let acc$11 = { tag: 1, _1: x$8 };
   for (let i$12 = 0n; i$12 < n$13; i$12++) {
-    if (acc$11[0] === 0) {
-      const [, f$15] = acc$11;
-      acc$11 = [0, f$15];
+    if (acc$11.tag === 0) {
+      const { _1: f$15 } = acc$11;
+      acc$11 = { tag: 0, _1: f$15 };
     } else {
-      const [, f$16] = acc$11;
+      const { _1: f$16 } = acc$11;
       const x$17 = lean_array_swap$_bb_(
         f$16,
         i$12,
         lean_nat_sub$bbb(lean_nat_sub$bbb(n, i$12), 1n),
       );
-      acc$11 = [1, x$17];
+      acc$11 = { tag: 1, _1: x$17 };
     }
   }
   let x$18;
   j$2: {
-    if (acc$11[0] === 0) {
-      const [, f$19] = acc$11;
+    if (acc$11.tag === 0) {
+      const { _1: f$19 } = acc$11;
       x$18 = f$19;
       break j$2;
     } else {
-      const [, f$20] = acc$11;
+      const { _1: f$20 } = acc$11;
       x$18 = f$20;
       break j$2;
     }

@@ -6,11 +6,11 @@
 
 /**
  * `localTest`
- * @param {([int(bigint), int(bigint), int(bigint)] => int(bigint))} f
+ * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) } => int(bigint))} f
  * @returns {int(bigint)}
  */
 export const localTest = (f) => {
-  const x$1 = f([99n, 0n, 11n]);
+  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
   if (x$1 === -2147483648n ? false : true) {
     return x$1;
   } else {
@@ -44,17 +44,17 @@ export const test4 = () => 9n;
 
 /**
  * `extern`
- * @returns {[int(bigint), int(bigint), int(bigint)]}
+ * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern = () => [99n, 0n, 11n];
+export const extern = () => ({ _1: 99n, _2: 0n, _3: 11n });
 
 /**
  * `externTest`
- * @param {([int(bigint), int(bigint), int(bigint)] => int(bigint))} f
+ * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) } => int(bigint))} f
  * @returns {int(bigint)}
  */
 export const externTest = (f) => {
-  const x$1 = f([99n, 0n, 11n]);
+  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
   if (x$1 === -2147483648n ? false : true) {
     return x$1;
   } else {

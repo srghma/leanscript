@@ -4,26 +4,26 @@
 
 /**
  * `test1`
- * @param {(() => [int(bigint), int(bigint), int(bigint)])} fn
+ * @param {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })} fn
  * @returns {int(bigint)}
  */
 export const test1 = (fn) => {
   const x$1 = fn();
-  const [f$2, f$3, f$4] = x$1;
+  const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
   return f$4;
 };
 
 /**
  * `fn_prime`
- * @returns {(() => [int(bigint), int(bigint), int(bigint)])}
+ * @returns {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })}
  */
-export const fn_prime = () => () => [1n, 2n, 3n];
+export const fn_prime = () => () => ({ _1: 1n, _2: 2n, _3: 3n });
 
 /**
  * `extern1`
- * @returns {[int(bigint), int(bigint), int(bigint)]}
+ * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern1 = () => [42n, 2n, 3n];
+export const extern1 = () => ({ _1: 42n, _2: 2n, _3: 3n });
 
 /**
  * `test2`

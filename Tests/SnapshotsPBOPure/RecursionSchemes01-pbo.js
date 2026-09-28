@@ -11,7 +11,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -27,18 +31,18 @@ function lean_int_mul$nnn(a, b) {
 
 /**
  * `eval`
- * @param {([0, int53(number)] | [1, int53(number), int53(number)] | [2, int53(number), int53(number)])} a
+ * @param {({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number), _2: int53(number) } | { tag: 2, _1: int53(number), _2: int53(number) })} a
  * @returns {int53(number)}
  */
 export const eval_ = (a) => {
-  if (a[0] === 0) {
-    const [, f$1] = a;
+  if (a.tag === 0) {
+    const { _1: f$1 } = a;
     return f$1;
-  } else if (a[0] === 1) {
-    const [, f$2, f$3] = a;
+  } else if (a.tag === 1) {
+    const { _1: f$2, _2: f$3 } = a;
     return lean_int_add$nnn(f$2, f$3);
   } else {
-    const [, f$4, f$5] = a;
+    const { _1: f$4, _2: f$5 } = a;
     return lean_int_mul$nnn(f$4, f$5);
   }
 };

@@ -13,7 +13,7 @@ function lean_array_get_size$_n(a) {
 }
 
 function lean_array_get$__n_(a, b, c) {
-  return (c < b.length ? b[c] : a);
+  return c < b.length ? b[c] : a;
 }
 
 // ---- exported functions ----
@@ -21,9 +21,9 @@ function lean_array_get$__n_(a, b, c) {
 /**
  * `test5`
  * @param {uint53(number)} n
- * @returns {Array<([0] | [1, uint53(number)])>}
+ * @returns {Array<({ tag: 0 } | { tag: 1, _1: uint53(number) })>}
  */
-export const test5 = (n) => [[1, n], [0]];
+export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
 
 /**
  * `test6`
@@ -32,28 +32,28 @@ export const test5 = (n) => [[1, n], [0]];
  * @returns {uint53(number)}
  */
 export const test6 = (n, i) => {
-  const k$1 = (x$2) => [[1, x$2], [0]];
+  const k$1 = (x$2) => [{ tag: 1, _1: x$2 }, { tag: 0 }];
   const x$3 = k$1(n);
   let x$4;
   j$1: {
     if (i < lean_array_get_size$_n(x$3)) {
-      const k$5 = (x$6) => [[1, x$6], [0]];
+      const k$5 = (x$6) => [{ tag: 1, _1: x$6 }, { tag: 0 }];
       const x$7 = k$5(n);
-      x$4 = [1, lean_array_get$__n_([0], x$7, i)];
+      x$4 = { tag: 1, _1: lean_array_get$__n_({ tag: 0 }, x$7, i) };
       break j$1;
     } else {
-      x$4 = [0];
+      x$4 = { tag: 0 };
       break j$1;
     }
   }
-  if (x$4[0] === 0) {
+  if (x$4.tag === 0) {
     return 2;
   } else {
-    const [, f$8] = x$4;
-    if (f$8[0] === 0) {
+    const { _1: f$8 } = x$4;
+    if (f$8.tag === 0) {
       return 1;
     } else {
-      const [, f$9] = f$8;
+      const { _1: f$9 } = f$8;
       return f$9;
     }
   }

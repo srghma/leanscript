@@ -7,7 +7,7 @@
 
 // localTest
 export const localTest = (f) => {
-  const x$1 = f([99, 0, 11]);
+  const x$1 = f({ _1: 99, _2: 0, _3: 11 });
   if (((x$1 === -2147483648) ? false : true)) {
     return x$1;
   } else {
@@ -37,12 +37,12 @@ export const test4 = () => {
 
 // extern
 export const extern = () => {
-  return [99, 0, 11];
+  return { _1: 99, _2: 0, _3: 11 };
 };
 
 // externTest
 export const externTest = (f) => {
-  const x$1 = f([99, 0, 11]);
+  const x$1 = f({ _1: 99, _2: 0, _3: 11 });
   if (((x$1 === -2147483648) ? false : true)) {
     return x$1;
   } else {

@@ -5,11 +5,11 @@
 /**
  * `test`
  * @param {(int53(number) => int53(number))} f
- * @returns {[int53(number), int53(number), int53(number)]}
+ * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const test = (f) => {
   const x$1 = f(1);
   const x$2 = f(2);
   const x$3 = f(2);
-  return [x$1, x$2, x$3];
+  return { _1: x$1, _2: x$2, _3: x$3 };
 };

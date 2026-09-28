@@ -4,7 +4,7 @@
 // ---- runtime helpers ----
 
 function lean_uint32_shift_right(a, b) {
-  return (a >>> (b % 32));
+  return a >>> (b % 32);
 }
 
 // ---- exported functions ----

@@ -10,9 +10,8 @@
 
 // ---- runtime helpers ----
 
-const $utf8Enc = new TextEncoder();
 function $utf8(s) {
-  return $utf8Enc.encode(s);
+  return new TextEncoder().encode(s);
 }
 
 function lean_string_utf8_byte_size$_n(a) {
@@ -20,7 +19,11 @@ function lean_string_utf8_byte_size$_n(a) {
 }
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -37,32 +40,32 @@ function lean_nat_add$nnn(a, b) {
  * @returns {uint53(number)}
  */
 export const test3 = (s, n) => {
-  let acc$1 = [1, [s, 0]];
+  let acc$1 = { tag: 1, _1: { _1: s, _2: 0 } };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1[0] === 0) {
-      const [, f$4] = acc$1;
-      acc$1 = [0, f$4];
+    if (acc$1.tag === 0) {
+      const { _1: f$4 } = acc$1;
+      acc$1 = { tag: 0, _1: f$4 };
     } else {
-      const [, f$5] = acc$1;
-      const [f$6, f$7] = f$5;
-      const [f$8, f$9] = f$5;
+      const { _1: f$5 } = acc$1;
+      const { _1: f$6, _2: f$7 } = f$5;
+      const { _1: f$8, _2: f$9 } = f$5;
       const x$10 = lean_nat_add$nnn(f$9, lean_string_utf8_byte_size$_n(f$6));
       const x$11 = f$6 + "x";
-      acc$1 = [1, [x$11, x$10]];
+      acc$1 = { tag: 1, _1: { _1: x$11, _2: x$10 } };
     }
   }
   let x$12;
   j$1: {
-    if (acc$1[0] === 0) {
-      const [, f$13] = acc$1;
+    if (acc$1.tag === 0) {
+      const { _1: f$13 } = acc$1;
       x$12 = f$13;
       break j$1;
     } else {
-      const [, f$14] = acc$1;
+      const { _1: f$14 } = acc$1;
       x$12 = f$14;
       break j$1;
     }
   }
-  const [f$15, f$16] = x$12;
+  const { _1: f$15, _2: f$16 } = x$12;
   return f$16;
 };

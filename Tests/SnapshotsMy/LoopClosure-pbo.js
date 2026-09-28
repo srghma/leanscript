@@ -6,7 +6,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -23,14 +27,14 @@ function lean_nat_add$nnn(a, b) {
  * @returns {uint53(number)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = [1, 0];
+  let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
-    if (a$3[0] === 0) {
-      const [, f$4] = a$3;
-      acc$1 = [0, f$4];
+    if (a$3.tag === 0) {
+      const { _1: f$4 } = a$3;
+      acc$1 = { tag: 0, _1: f$4 };
     } else {
-      const [, f$5] = a$3;
+      const { _1: f$5 } = a$3;
       const k$6 = (x$7) => {
         const x$8 = x$7(1);
         const x$9 = x$7(2);
@@ -40,14 +44,14 @@ export const test1 = (k, n) => {
       const k$11 = (x$12) => lean_nat_add$nnn(x$12, k);
       const x$13 = k$6(k$11);
       const x$14 = lean_nat_add$nnn(f$5, x$13);
-      acc$1 = [1, x$14];
+      acc$1 = { tag: 1, _1: x$14 };
     }
   }
-  if (acc$1[0] === 0) {
-    const [, f$15] = acc$1;
+  if (acc$1.tag === 0) {
+    const { _1: f$15 } = acc$1;
     return f$15;
   } else {
-    const [, f$16] = acc$1;
+    const { _1: f$16 } = acc$1;
     return f$16;
   }
 };

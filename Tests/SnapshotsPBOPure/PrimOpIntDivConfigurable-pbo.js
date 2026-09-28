@@ -14,24 +14,38 @@
 // ---- runtime helpers ----
 
 function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return Number(x);
 }
 
 function lean_uint64_div$nnn(a, b) {
-  return $toNum53(((a, b) => (b === 0n ? 0n : BigInt.asUintN(64, a / b)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(b === 0n ? 0n : BigInt.asUintN(64, a / b));
 }
 
 function lean_nat_div$nnn(a, b) {
-  return (b === 0 ? 0 : Math.floor(a / b));
+  return b === 0 ? 0 : Math.floor(a / b);
 }
 
 function lean_int64_div$nnn(a, b) {
-  return $toNum53(((a, b) => (b === 0n ? 0n : BigInt.asIntN(64, a / b)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(b === 0n ? 0n : BigInt.asIntN(64, a / b));
 }
 
 function lean_int_ediv$nnn(a, b) {
-  return (b === 0 ? 0 : (a % b < 0 ? (b > 0 ? Math.trunc(a / b) - 1 : Math.trunc(a / b) + 1) : Math.trunc(a / b)));
+  return b === 0
+    ? 0
+    : a % b < 0
+      ? b > 0
+        ? Math.trunc(a / b) - 1
+        : Math.trunc(a / b) + 1
+      : Math.trunc(a / b);
 }
 
 // ---- exported functions ----

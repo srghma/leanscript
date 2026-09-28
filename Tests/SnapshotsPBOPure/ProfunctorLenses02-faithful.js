@@ -9,30 +9,30 @@
 
 /**
  * `test1`
- * @param {([0, int(bigint)] | [1, int(bigint)])} a
- * @returns {([0] | [1, int(bigint)])}
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
 export const test1 = (a) => {
-  if (a[0] === 0) {
-    const [, f$1] = a;
-    return [1, f$1];
+  if (a.tag === 0) {
+    const { _1: f$1 } = a;
+    return { tag: 1, _1: f$1 };
   } else {
-    const [, f$2] = a;
-    return [0];
+    const { _1: f$2 } = a;
+    return { tag: 0 };
   }
 };
 
 /**
  * `test2`
- * @param {([0, int(bigint)] | [1, int(bigint)])} a
- * @returns {([0] | [1, int(bigint)])}
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
 export const test2 = (a) => {
-  if (a[0] === 0) {
-    const [, f$1] = a;
-    return [1, f$1];
+  if (a.tag === 0) {
+    const { _1: f$1 } = a;
+    return { tag: 1, _1: f$1 };
   } else {
-    const [, f$2] = a;
-    return [0];
+    const { _1: f$2 } = a;
+    return { tag: 0 };
   }
 };

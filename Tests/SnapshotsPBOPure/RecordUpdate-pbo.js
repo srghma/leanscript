@@ -6,7 +6,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -22,7 +26,7 @@ function lean_int_sub$nnn(a, b) {
 
 /**
  * `test1`
- * @param {(() => [int53(number), int53(number), int53(number)])} fn
+ * @param {(() => { _1: int53(number), _2: int53(number), _3: int53(number) })} fn
  * @param {int53(number)} val
  * @returns {int53(number)}
  */
@@ -31,7 +35,7 @@ export const test1 = (fn, val) => {
   if (val === 42) {
     return lean_int_add$nnn(val, 1);
   } else {
-    const [f$2, f$3, f$4] = x$1;
+    const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
     return f$4;
   }
 };
@@ -40,10 +44,10 @@ export const test1 = (fn, val) => {
  * `test7`
  * @param {(int53(number) => int53(number))} f
  * @param {int53(number)} y
- * @returns {[int53(number), int53(number), int53(number)]}
+ * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
   const x$2 = lean_int_add$nnn(x$1, 1);
-  return [x$2, lean_int_sub$nnn(x$1, 2), x$1];
+  return { _1: x$2, _2: lean_int_sub$nnn(x$1, 2), _3: x$1 };
 };

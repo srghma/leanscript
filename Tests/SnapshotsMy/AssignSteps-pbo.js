@@ -6,11 +6,15 @@
 // ---- runtime helpers ----
 
 function lean_nat_mod__Nat_mod$nnn(a, b) {
-  return (b === 0 ? a : a % b);
+  return b === 0 ? a : a % b;
 }
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 

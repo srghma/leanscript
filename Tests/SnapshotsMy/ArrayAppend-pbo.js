@@ -9,7 +9,9 @@
 // ---- runtime helpers ----
 
 function $arrayPush(a, x) {
-  if (Array.isArray(a)) return [...a, x];
+  if (Array.isArray(a)) {
+    return [...a, x];
+  }
   const r = new a.constructor(a.length + 1);
   r.set(a);
   r[a.length] = x;

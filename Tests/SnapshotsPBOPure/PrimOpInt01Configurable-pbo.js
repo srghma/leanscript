@@ -27,32 +27,49 @@
 // ---- runtime helpers ----
 
 function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return Number(x);
 }
 
 function lean_uint64_add$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a + b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a + b));
 }
 
 function lean_uint64_sub$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a - b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a - b));
 }
 
 function lean_uint64_mul$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a * b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a * b));
 }
 
 function lean_uint64_div$nnn(a, b) {
-  return $toNum53(((a, b) => (b === 0n ? 0n : BigInt.asUintN(64, a / b)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(b === 0n ? 0n : BigInt.asUintN(64, a / b));
 }
 
 function lean_uint64_neg$nn(a) {
-  return $toNum53(((a) => BigInt.asUintN(64, -a))(BigInt(a)));
+  a = BigInt(a);
+  return $toNum53(BigInt.asUintN(64, -a));
 }
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -61,7 +78,7 @@ function lean_nat_add$nnn(a, b) {
 }
 
 function lean_nat_sub$nnn(a, b) {
-  return (a > b ? a - b : 0);
+  return a > b ? a - b : 0;
 }
 
 function lean_nat_mul$nnn(a, b) {
@@ -69,27 +86,36 @@ function lean_nat_mul$nnn(a, b) {
 }
 
 function lean_nat_div$nnn(a, b) {
-  return (b === 0 ? 0 : Math.floor(a / b));
+  return b === 0 ? 0 : Math.floor(a / b);
 }
 
 function lean_int64_add$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a + b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a + b));
 }
 
 function lean_int64_sub$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a - b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a - b));
 }
 
 function lean_int64_mul$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a * b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a * b));
 }
 
 function lean_int64_div$nnn(a, b) {
-  return $toNum53(((a, b) => (b === 0n ? 0n : BigInt.asIntN(64, a / b)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(b === 0n ? 0n : BigInt.asIntN(64, a / b));
 }
 
 function lean_int64_neg$nn(a) {
-  return $toNum53(((a) => BigInt.asIntN(64, -a))(BigInt(a)));
+  a = BigInt(a);
+  return $toNum53(BigInt.asIntN(64, -a));
 }
 
 function lean_int_add$nnn(a, b) {
@@ -105,7 +131,13 @@ function lean_int_mul$nnn(a, b) {
 }
 
 function lean_int_ediv$nnn(a, b) {
-  return (b === 0 ? 0 : (a % b < 0 ? (b > 0 ? Math.trunc(a / b) - 1 : Math.trunc(a / b) + 1) : Math.trunc(a / b)));
+  return b === 0
+    ? 0
+    : a % b < 0
+      ? b > 0
+        ? Math.trunc(a / b) - 1
+        : Math.trunc(a / b) + 1
+      : Math.trunc(a / b);
 }
 
 function lean_int_neg$nn(a) {

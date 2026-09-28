@@ -30,7 +30,7 @@ function lean_uint64_shift_left$bbb(a, b) {
 }
 
 function lean_uint64_shift_right$bbb(a, b) {
-  return (a >> (((b % 64n) + 64n) % 64n));
+  return a >> (((b % 64n) + 64n) % 64n);
 }
 
 function lean_uint64_xor$bbb(a, b) {
@@ -74,7 +74,7 @@ function lean_int64_shift_left$bbb(a, b) {
 }
 
 function lean_int64_shift_right$bbb(a, b) {
-  return (a >> (((b % 64n) + 64n) % 64n));
+  return a >> (((b % 64n) + 64n) % 64n);
 }
 
 function lean_int64_xor$bbb(a, b) {

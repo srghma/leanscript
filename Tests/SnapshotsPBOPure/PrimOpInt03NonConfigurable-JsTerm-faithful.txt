@@ -3,6 +3,30 @@
 
 // runtime helpers: lean_uint8_add, lean_uint16_add, lean_uint32_add, lean_int8_add, lean_int16_add, lean_int32_add
 
+function lean_uint8_add(a, b) {
+  return ((a + b) & 255);
+}
+
+function lean_uint16_add(a, b) {
+  return ((a + b) & 65535);
+}
+
+function lean_uint32_add(a, b) {
+  return ((a + b) >>> 0);
+}
+
+function lean_int8_add(a, b) {
+  return (((a + b) << 24) >> 24);
+}
+
+function lean_int16_add(a, b) {
+  return (((a + b) << 16) >> 16);
+}
+
+function lean_int32_add(a, b) {
+  return ((a + b) | 0);
+}
+
 // TestUInt8.test1
 export const TestUInt8_test1 = () => {
   return 144;

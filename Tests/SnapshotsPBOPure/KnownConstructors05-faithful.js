@@ -5,19 +5,19 @@
 /**
  * `fromString`
  * @param {string} a
- * @returns {([0] | [1, enum4@0])}
+ * @returns {({ tag: 0 } | { tag: 1, _1: enum4@0 })}
  */
 export const fromString = (a) => {
   if (a === "foo") {
-    return [1, 0];
+    return { tag: 1, _1: 0 };
   } else if (a === "bar") {
-    return [1, 1];
+    return { tag: 1, _1: 1 };
   } else if (a === "baz") {
-    return [1, 2];
+    return { tag: 1, _1: 2 };
   } else if (a === "qux") {
-    return [1, 3];
+    return { tag: 1, _1: 3 };
   } else {
-    return [0];
+    return { tag: 0 };
   }
 };
 
@@ -29,22 +29,22 @@ export const fromString = (a) => {
 export const test = (a) => {
   const k$1 = (x$2) => {
     if (x$2 === "foo") {
-      return [1, 0];
+      return { tag: 1, _1: 0 };
     } else if (x$2 === "bar") {
-      return [1, 1];
+      return { tag: 1, _1: 1 };
     } else if (x$2 === "baz") {
-      return [1, 2];
+      return { tag: 1, _1: 2 };
     } else if (x$2 === "qux") {
-      return [1, 3];
+      return { tag: 1, _1: 3 };
     } else {
-      return [0];
+      return { tag: 0 };
     }
   };
   const x$3 = k$1(a);
-  if (x$3[0] === 0) {
+  if (x$3.tag === 0) {
     return 0n;
   } else {
-    const [, f$4] = x$3;
+    const { _1: f$4 } = x$3;
     if (f$4 === 0) {
       return 1n;
     } else if (f$4 === 1) {

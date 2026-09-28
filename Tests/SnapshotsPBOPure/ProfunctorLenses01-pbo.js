@@ -14,20 +14,20 @@
 
 /**
  * `test1`
- * @param {[int53(number), int53(number)]} a
+ * @param {{ _1: int53(number), _2: int53(number) }} a
  * @returns {int53(number)}
  */
 export const test1 = (a) => {
-  const [f$1, f$2] = a;
+  const { _1: f$1, _2: f$2 } = a;
   return f$1;
 };
 
 /**
  * `test2`
- * @param {[int53(number), int53(number)]} a
+ * @param {{ _1: int53(number), _2: int53(number) }} a
  * @returns {int53(number)}
  */
 export const test2 = (a) => {
-  const [f$1, f$2] = a;
+  const { _1: f$1, _2: f$2 } = a;
   return f$1;
 };

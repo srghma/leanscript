@@ -6,20 +6,20 @@
 // test1
 export const test1 = (fn) => {
   const x$1 = fn();
-  const [f$2, f$3, f$4] = x$1;
+  const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
   return f$4;
 };
 
 // fn_prime
 export const fn_prime = () => {
   return () => {
-    return [1n, 2n, 3n];
+    return { _1: 1n, _2: 2n, _3: 3n };
   };
 };
 
 // extern1
 export const extern1 = () => {
-  return [42n, 2n, 3n];
+  return { _1: 42n, _2: 2n, _3: 3n };
 };
 
 // test2

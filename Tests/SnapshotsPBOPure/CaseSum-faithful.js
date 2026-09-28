@@ -4,12 +4,12 @@
 
 /**
  * `test1`
- * @param {([0, nat(bigint)] | [1, nat(bigint)])} v
+ * @param {({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) })} v
  * @returns {string}
  */
 export const test1 = (v) => {
-  if (v[0] === 0) {
-    const [, f$1] = v;
+  if (v.tag === 0) {
+    const { _1: f$1 } = v;
     if (f$1 === 1n) {
       return "1";
     } else if (f$1 === 2n) {
@@ -18,7 +18,7 @@ export const test1 = (v) => {
       return "3";
     }
   } else {
-    const [, f$2] = v;
+    const { _1: f$2 } = v;
     return "4";
   }
 };

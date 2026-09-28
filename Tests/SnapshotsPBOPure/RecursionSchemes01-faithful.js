@@ -11,18 +11,18 @@
 
 /**
  * `eval`
- * @param {([0, int(bigint)] | [1, int(bigint), int(bigint)] | [2, int(bigint), int(bigint)])} a
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint), _2: int(bigint) } | { tag: 2, _1: int(bigint), _2: int(bigint) })} a
  * @returns {int(bigint)}
  */
 export const eval_ = (a) => {
-  if (a[0] === 0) {
-    const [, f$1] = a;
+  if (a.tag === 0) {
+    const { _1: f$1 } = a;
     return f$1;
-  } else if (a[0] === 1) {
-    const [, f$2, f$3] = a;
+  } else if (a.tag === 1) {
+    const { _1: f$2, _2: f$3 } = a;
     return f$2 + f$3;
   } else {
-    const [, f$4, f$5] = a;
+    const { _1: f$4, _2: f$5 } = a;
     return f$4 * f$5;
   }
 };

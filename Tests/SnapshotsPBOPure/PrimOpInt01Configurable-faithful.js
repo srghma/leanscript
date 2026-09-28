@@ -39,7 +39,7 @@ function lean_uint64_mul$bbb(a, b) {
 }
 
 function lean_uint64_div$bbb(a, b) {
-  return (b === 0n ? 0n : BigInt.asUintN(64, a / b));
+  return b === 0n ? 0n : BigInt.asUintN(64, a / b);
 }
 
 function lean_uint64_neg$bb(a) {
@@ -47,11 +47,11 @@ function lean_uint64_neg$bb(a) {
 }
 
 function lean_nat_sub$bbb(a, b) {
-  return (a > b ? a - b : 0n);
+  return a > b ? a - b : 0n;
 }
 
 function lean_nat_div$bbb(a, b) {
-  return (b === 0n ? 0n : a / b);
+  return b === 0n ? 0n : a / b;
 }
 
 function lean_int64_add$bbb(a, b) {
@@ -67,7 +67,7 @@ function lean_int64_mul$bbb(a, b) {
 }
 
 function lean_int64_div$bbb(a, b) {
-  return (b === 0n ? 0n : BigInt.asIntN(64, a / b));
+  return b === 0n ? 0n : BigInt.asIntN(64, a / b);
 }
 
 function lean_int64_neg$bb(a) {
@@ -75,7 +75,13 @@ function lean_int64_neg$bb(a) {
 }
 
 function lean_int_ediv$bbb(a, b) {
-  return (b === 0n ? 0n : (a % b < 0n ? (b > 0n ? a / b - 1n : a / b + 1n) : a / b));
+  return b === 0n
+    ? 0n
+    : a % b < 0n
+      ? b > 0n
+        ? a / b - 1n
+        : a / b + 1n
+      : a / b;
 }
 
 function lean_int_neg$bb(a) {

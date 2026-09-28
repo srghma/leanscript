@@ -12,6 +12,14 @@
 
 // runtime helpers: lean_uint64_add$bbb, lean_int64_add$bbb
 
+function lean_uint64_add$bbb(a, b) {
+  return BigInt.asUintN(64, (a + b));
+}
+
+function lean_int64_add$bbb(a, b) {
+  return BigInt.asIntN(64, (a + b));
+}
+
 // TestUInt64.test1
 export const TestUInt64_test1 = () => {
   return 1553255926290448384n;

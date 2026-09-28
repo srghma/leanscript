@@ -8,10 +8,10 @@
  * `test`
  * @param {(int(bigint) => int(bigint))} f
  * @param {int(bigint)} y
- * @returns {[int(bigint), int(bigint)]}
+ * @returns {{ _1: int(bigint), _2: int(bigint) }}
  */
 export const test = (f, y) => {
   const x$1 = f(y);
   const x$2 = x$1 + 1n;
-  return [x$2, x$1 - 2n];
+  return { _1: x$2, _2: x$1 - 2n };
 };

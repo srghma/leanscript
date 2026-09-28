@@ -8,7 +8,7 @@ function lean_array_get_size$_b(a) {
 }
 
 function lean_nat_div$bbb(a, b) {
-  return (b === 0n ? 0n : a / b);
+  return b === 0n ? 0n : a / b;
 }
 
 function lean_nat_shiftr$bbb(a, b) {
@@ -24,7 +24,7 @@ function lean_nat_land$bbb(a, b) {
 }
 
 function lean_nat_sub$bbb(a, b) {
-  return (a > b ? a - b : 0n);
+  return a > b ? a - b : 0n;
 }
 
 // ---- exported functions ----

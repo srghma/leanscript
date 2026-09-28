@@ -4,23 +4,23 @@
 // ---- runtime helpers ----
 
 function lean_uint16_div(a, b) {
-  return (b === 0 ? 0 : Math.floor(a / b));
+  return b === 0 ? 0 : Math.floor(a / b);
 }
 
 function lean_uint32_div(a, b) {
-  return (b === 0 ? 0 : Math.floor(a / b));
+  return b === 0 ? 0 : Math.floor(a / b);
 }
 
 function lean_int8_div(a, b) {
-  return (b === 0 ? 0 : (((Math.trunc(a / b)) << 24) >> 24));
+  return b === 0 ? 0 : (Math.trunc(a / b) << 24) >> 24;
 }
 
 function lean_int16_div(a, b) {
-  return (b === 0 ? 0 : (((Math.trunc(a / b)) << 16) >> 16));
+  return b === 0 ? 0 : (Math.trunc(a / b) << 16) >> 16;
 }
 
 function lean_int32_div(a, b) {
-  return (b === 0 ? 0 : ((Math.trunc(a / b)) | 0));
+  return b === 0 ? 0 : Math.trunc(a / b) | 0;
 }
 
 // ---- exported functions ----

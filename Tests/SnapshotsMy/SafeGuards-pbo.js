@@ -8,11 +8,15 @@ function lean_array_get_size$_n(a) {
 }
 
 function lean_nat_div$nnn(a, b) {
-  return (b === 0 ? 0 : Math.floor(a / b));
+  return b === 0 ? 0 : Math.floor(a / b);
 }
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -25,7 +29,7 @@ function lean_nat_mul$nnn(a, b) {
 }
 
 function lean_nat_shiftr$nnn(a, b) {
-  return Math.floor(a / 2 ** b);
+  return Math.floor(a / Math.pow(2, b));
 }
 
 function lean_string_length__String_length$_n(a) {
@@ -37,7 +41,7 @@ function lean_nat_land$nnn(a, b) {
 }
 
 function lean_nat_sub$nnn(a, b) {
-  return (a > b ? a - b : 0);
+  return a > b ? a - b : 0;
 }
 
 // ---- exported functions ----

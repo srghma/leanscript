@@ -6,7 +6,7 @@
 // ---- runtime helpers ----
 
 function lean_nat_mod__Nat_mod$bbb(a, b) {
-  return (b === 0n ? a : a % b);
+  return b === 0n ? a : a % b;
 }
 
 // ---- exported functions ----

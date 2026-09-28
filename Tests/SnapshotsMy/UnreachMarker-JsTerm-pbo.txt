@@ -11,6 +11,17 @@
 
 // runtime helpers: $chk53, lean_nat_add$nnn
 
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_nat_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
 // total
 export const total = (n) => {
   return lean_nat_add$nnn(n, 1);

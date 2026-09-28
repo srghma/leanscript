@@ -10,25 +10,33 @@ function $utf8At(s, p) {
   let off = 0;
   for (const ch of s) {
     const cp = ch.codePointAt(0);
-    const n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
-    if (off === p) return [ch, n];
-    if (off > p) return undefined;
-    off += n;
+    const n = cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4;
+    if (off === p) {
+      return [ch, n];
+    }
+    if (off > p) {
+      return undefined;
+    }
+    off = off + n;
   }
   return undefined;
 }
 
 function lean_string_utf8_get__String_Pos_Raw_get$_n_(a, b) {
-  return ($utf8At(a, b) ?? ["A"])[0];
+  const r = $utf8At(a, b);
+  return r === undefined ? "A" : r[0];
 }
 
 function $utf8Set(s, p, c) {
-  let off = 0, i = 0;
+  let off = 0;
+  let i = 0;
   for (const ch of s) {
-    if (off === p) return s.slice(0, i) + c + s.slice(i + ch.length);
+    if (off === p) {
+      return s.slice(0, i) + c + s.slice(i + ch.length);
+    }
     const cp = ch.codePointAt(0);
-    off += cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
-    i += ch.length;
+    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
+    i = i + ch.length;
   }
   return s;
 }
@@ -37,9 +45,8 @@ function lean_string_utf8_set__String_Pos_Raw_set$_n__(a, b, c) {
   return $utf8Set(a, b, c);
 }
 
-const $utf8Enc = new TextEncoder();
 function $utf8(s) {
-  return $utf8Enc.encode(s);
+  return new TextEncoder().encode(s);
 }
 
 function lean_string_utf8_at_end__String_Pos_Raw_atEnd$_n_(a, b) {

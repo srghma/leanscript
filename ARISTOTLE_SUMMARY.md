@@ -1,3 +1,32 @@
+# Summary of changes for run b3ce68ff-dda5-440d-ad8d-3d2c330f83d8
+Both changes are done. The runtime helpers in `JsTerm/Extern.lean` are now written in the JsTerm grammar instead of as JavaScript text, and records and unions come out as the objects you asked for. The project builds, `lake exe tests` passes 47/47, and I regenerated all the snapshots: 3478 checks against Lean, 0 failures. None of this is formally proved; it is covered by tests only.
+
+**1. Extern helpers written in JsTerm**
+- **Helper type:** `JsHelper` (`JsTerm/Syntax.lean`) no longer holds a string of JavaScript. It holds a name, parameters and a body of JsTerm statements, which the existing printer turns into `function name(a, b) { … }`.
+- **New syntax:** writing the helpers needed a few new pieces of syntax:
+  - expressions: object literals `{ k: e }`, indexing by an expression `e[i]`, `new C(args)` and spread `...e`;
+  - statements: object destructuring `const { k: x } = e`, `o.k = e`, `o[i] = e`, expression statements, `while` loops, and `throw new C(msg)` for any error class (so `RangeError` works).
+- **`Extern.lean`:** every extern implementation is now built as a JsTerm term, and no JavaScript text is left in the file. A handful of short builders at the top (`Js.v`, `Js.op`, `Js.meth`, …) keep the code readable.
+- **Differences in the output:**
+  - `Nat` to the power of `Nat` on `BigInt`s now uses a new helper, `$bigPow`, which squares repeatedly. The printer has no `**` operator, so the old text could not be expressed as a term.
+  - `$utf8` now creates a new `TextEncoder` each time it is called, instead of sharing one.
+  - The 64-bit-as-`number` helpers convert their parameters with `a = BigInt(a)` instead of wrapping the body in a function that is called immediately.
+- **Dump files:** `-JsTerm-*.txt` now shows the full helper functions, not just their names.
+
+**2. Records and unions as objects**
+- A record is `{ _1: …, _2: … }`.
+- A union constructor is `{ tag: i, _1: …, … }`, where `i` is the constructor's position counting from 0. A constructor with no fields is `{ tag: 0 }`.
+- Taking a record or constructor apart is `const { _1: f$8 } = x;`, and a case analysis tests `x.tag === 0`.
+- In `JsTerm/Ty.lean` the layout constructors `tuple`/`tagged` are renamed to `record`/`union`, and the layout text and doc table use the new shapes.
+- The `Substring`/`String.Slice` values (`[str, start, stop]`) are still arrays. They aren't records, so I left them alone.
+
+**Testing**
+- All 211 generated snapshot files under `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` were regenerated with `scripts/leanscript-snapshots.sh`. Every `.js` file passes `node --check`.
+- `Tests/Main.lean` has two new unit tests: one for the record and union shapes, and one showing that a helper is built as a JsTerm term.
+- Helpers the snapshots never call (for example `$force`, `$bigPow`, `$utf8Set`/`$utf8Extract`, `Int` division that rounds down, `Int8` division, 64-bit values stored as `number`s) I checked in a one-off Node script against hand-worked expected values. Those 27 checks all passed, but the script is not part of the project.
+
+`README.md` and `NOT_IMPLEMENTED.md` now describe the new layouts, and everything is committed.
+
 # Summary of changes for run bdbea385-e2ff-4c39-bf36-b4e37ca3d699
 I've proved in Lean the two claims that weren't formal yet: that the optimizer never adds calls, and that it reduces `EsPrecedence01.test1` from five calls to one. The files below build with no `sorry`, `#print axioms` shows only the standard axioms, and `lake exe tests` still passes 45/45. The existing proof that the optimizer doesn't change `Term.eval` (`Term.optimize_eval`, `Term.optimizeN_eval`) is unchanged.
 

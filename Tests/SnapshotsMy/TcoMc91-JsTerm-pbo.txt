@@ -8,6 +8,10 @@
 
 // runtime helpers: lean_nat_sub$nnn
 
+function lean_nat_sub$nnn(a, b) {
+  return ((a > b) ? (a - b) : 0);
+}
+
 // mc91
 export const mc91 = (n) => {
   if ((100 < n)) {

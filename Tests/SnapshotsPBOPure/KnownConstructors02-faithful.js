@@ -4,15 +4,15 @@
 
 /**
  * `test`
- * @param {([0, int(bigint)] | [1, int(bigint)])} a
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */
 export const test = (a) => {
-  if (a[0] === 0) {
-    const [, f$1] = a;
+  if (a.tag === 0) {
+    const { _1: f$1 } = a;
     return f$1;
   } else {
-    const [, f$2] = a;
+    const { _1: f$2 } = a;
     return f$2;
   }
 };

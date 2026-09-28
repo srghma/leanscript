@@ -10,17 +10,32 @@
 
 // runtime helpers: $chk53, lean_int_add$nnn, lean_int_mul$nnn
 
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_int_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
+function lean_int_mul$nnn(a, b) {
+  return $chk53((a * b));
+}
+
 // eval
 export const eval_ = (a) => {
-  if ((a[0] === 0)) {
-    const [, f$1] = a;
+  if ((a.tag === 0)) {
+    const { _1: f$1 } = a;
     return f$1;
   } else {
-    if ((a[0] === 1)) {
-      const [, f$2, f$3] = a;
+    if ((a.tag === 1)) {
+      const { _1: f$2, _2: f$3 } = a;
       return lean_int_add$nnn(f$2, f$3);
     } else {
-      const [, f$4, f$5] = a;
+      const { _1: f$4, _2: f$5 } = a;
       return lean_int_mul$nnn(f$4, f$5);
     }
   }

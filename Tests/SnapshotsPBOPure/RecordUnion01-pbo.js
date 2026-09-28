@@ -7,6 +7,6 @@
 /**
  * `test`
  * @param {string} a
- * @returns {[int53(number), string]}
+ * @returns {{ _1: int53(number), _2: string }}
  */
-export const test = (a) => [42, a];
+export const test = (a) => ({ _1: 42, _2: a });

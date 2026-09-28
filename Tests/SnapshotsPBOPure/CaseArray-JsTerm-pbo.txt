@@ -3,6 +3,14 @@
 
 // runtime helpers: lean_array_get_size$_n, lean_array_get$n_nn
 
+function lean_array_get_size$_n(a) {
+  return a.length;
+}
+
+function lean_array_get$n_nn(a, b, c) {
+  return ((c < b.length) ? b[c] : a);
+}
+
 // test1
 export const test1 = (a) => {
   if ((lean_array_get_size$_n(a) === 0)) {

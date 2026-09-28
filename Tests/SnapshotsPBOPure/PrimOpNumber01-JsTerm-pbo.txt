@@ -3,6 +3,42 @@
 
 // runtime helpers: lean_float_negate, lean_float32_add, lean_float32_sub, lean_float32_beq, lean_float32_decLt__Float32_decLt, lean_float32_decLe__Float32_decLe, lean_float32_mul, lean_float32_div, lean_float32_negate
 
+function lean_float_negate(a) {
+  return -a;
+}
+
+function lean_float32_add(a, b) {
+  return Math.fround((a + b));
+}
+
+function lean_float32_sub(a, b) {
+  return Math.fround((a - b));
+}
+
+function lean_float32_beq(a, b) {
+  return (a === b);
+}
+
+function lean_float32_decLt__Float32_decLt(a, b) {
+  return (a < b);
+}
+
+function lean_float32_decLe__Float32_decLe(a, b) {
+  return (a <= b);
+}
+
+function lean_float32_mul(a, b) {
+  return Math.fround((a * b));
+}
+
+function lean_float32_div(a, b) {
+  return Math.fround((a / b));
+}
+
+function lean_float32_negate(a) {
+  return -a;
+}
+
 // TestFloat.test1
 export const TestFloat_test1 = (a, b) => {
   return (a + b);

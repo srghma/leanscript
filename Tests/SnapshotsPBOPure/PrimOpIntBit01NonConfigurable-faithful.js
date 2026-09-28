@@ -4,147 +4,147 @@
 // ---- runtime helpers ----
 
 function lean_uint8_land(a, b) {
-  return ((a & b) & 255);
+  return a & b & 255;
 }
 
 function lean_uint8_lor(a, b) {
-  return ((a | b) & 255);
+  return (a | b) & 255;
 }
 
 function lean_uint8_shift_left(a, b) {
-  return ((a << (((b % 8) + 8) % 8)) & 255);
+  return (a << (((b % 8) + 8) % 8)) & 255;
 }
 
 function lean_uint8_shift_right(a, b) {
-  return (a >>> (b % 8));
+  return a >>> (b % 8);
 }
 
 function lean_uint8_xor(a, b) {
-  return ((a ^ b) & 255);
+  return (a ^ b) & 255;
 }
 
 function lean_uint8_complement(a) {
-  return ((~a) & 255);
+  return ~a & 255;
 }
 
 function lean_uint16_land(a, b) {
-  return ((a & b) & 65535);
+  return a & b & 65535;
 }
 
 function lean_uint16_lor(a, b) {
-  return ((a | b) & 65535);
+  return (a | b) & 65535;
 }
 
 function lean_uint16_shift_left(a, b) {
-  return ((a << (((b % 16) + 16) % 16)) & 65535);
+  return (a << (((b % 16) + 16) % 16)) & 65535;
 }
 
 function lean_uint16_shift_right(a, b) {
-  return (a >>> (b % 16));
+  return a >>> (b % 16);
 }
 
 function lean_uint16_xor(a, b) {
-  return ((a ^ b) & 65535);
+  return (a ^ b) & 65535;
 }
 
 function lean_uint16_complement(a) {
-  return ((~a) & 65535);
+  return ~a & 65535;
 }
 
 function lean_uint32_land(a, b) {
-  return ((a & b) >>> 0);
+  return (a & b) >>> 0;
 }
 
 function lean_uint32_lor(a, b) {
-  return ((a | b) >>> 0);
+  return (a | b) >>> 0;
 }
 
 function lean_uint32_shift_left(a, b) {
-  return ((a << (((b % 32) + 32) % 32)) >>> 0);
+  return (a << (((b % 32) + 32) % 32)) >>> 0;
 }
 
 function lean_uint32_shift_right(a, b) {
-  return (a >>> (b % 32));
+  return a >>> (b % 32);
 }
 
 function lean_uint32_xor(a, b) {
-  return ((a ^ b) >>> 0);
+  return (a ^ b) >>> 0;
 }
 
 function lean_uint32_complement(a) {
-  return ((~a) >>> 0);
+  return ~a >>> 0;
 }
 
 function lean_int8_land(a, b) {
-  return (((a & b) << 24) >> 24);
+  return ((a & b) << 24) >> 24;
 }
 
 function lean_int8_lor(a, b) {
-  return (((a | b) << 24) >> 24);
+  return ((a | b) << 24) >> 24;
 }
 
 function lean_int8_shift_left(a, b) {
-  return (((a << (((b % 8) + 8) % 8)) << 24) >> 24);
+  return ((a << (((b % 8) + 8) % 8)) << 24) >> 24;
 }
 
 function lean_int8_shift_right(a, b) {
-  return (a >> (((b % 8) + 8) % 8));
+  return a >> (((b % 8) + 8) % 8);
 }
 
 function lean_int8_xor(a, b) {
-  return (((a ^ b) << 24) >> 24);
+  return ((a ^ b) << 24) >> 24;
 }
 
 function lean_int8_complement(a) {
-  return (((~a) << 24) >> 24);
+  return (~a << 24) >> 24;
 }
 
 function lean_int16_land(a, b) {
-  return (((a & b) << 16) >> 16);
+  return ((a & b) << 16) >> 16;
 }
 
 function lean_int16_lor(a, b) {
-  return (((a | b) << 16) >> 16);
+  return ((a | b) << 16) >> 16;
 }
 
 function lean_int16_shift_left(a, b) {
-  return (((a << (((b % 16) + 16) % 16)) << 16) >> 16);
+  return ((a << (((b % 16) + 16) % 16)) << 16) >> 16;
 }
 
 function lean_int16_shift_right(a, b) {
-  return (a >> (((b % 16) + 16) % 16));
+  return a >> (((b % 16) + 16) % 16);
 }
 
 function lean_int16_xor(a, b) {
-  return (((a ^ b) << 16) >> 16);
+  return ((a ^ b) << 16) >> 16;
 }
 
 function lean_int16_complement(a) {
-  return (((~a) << 16) >> 16);
+  return (~a << 16) >> 16;
 }
 
 function lean_int32_land(a, b) {
-  return ((a & b) | 0);
+  return (a & b) | 0;
 }
 
 function lean_int32_lor(a, b) {
-  return ((a | b) | 0);
+  return a | b | 0;
 }
 
 function lean_int32_shift_left(a, b) {
-  return ((a << (((b % 32) + 32) % 32)) | 0);
+  return (a << (((b % 32) + 32) % 32)) | 0;
 }
 
 function lean_int32_shift_right(a, b) {
-  return (a >> (((b % 32) + 32) % 32));
+  return a >> (((b % 32) + 32) % 32);
 }
 
 function lean_int32_xor(a, b) {
-  return ((a ^ b) | 0);
+  return (a ^ b) | 0;
 }
 
 function lean_int32_complement(a) {
-  return ((~a) | 0);
+  return ~a | 0;
 }
 
 // ---- exported functions ----

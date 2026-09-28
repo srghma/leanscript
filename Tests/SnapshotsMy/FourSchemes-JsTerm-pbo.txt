@@ -14,6 +14,21 @@
 
 // runtime helpers: $chk53, lean_nat_add$nnn, lean_nat_mul$nnn
 
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_nat_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
+function lean_nat_mul$nnn(a, b) {
+  return $chk53((a * b));
+}
+
 // sumAcc
 export const sumAcc = (a, a1) => {
   const k$1 = (x$2) => {

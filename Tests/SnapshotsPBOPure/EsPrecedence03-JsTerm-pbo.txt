@@ -3,6 +3,10 @@
 
 // runtime helpers: lean_uint32_shift_right
 
+function lean_uint32_shift_right(a, b) {
+  return (a >>> (b % 32));
+}
+
 // test1
 export const test1 = (a, b) => {
   return lean_uint32_shift_right(lean_uint32_shift_right(a, b), b);

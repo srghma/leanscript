@@ -5,6 +5,10 @@
 
 // runtime helpers: lean_nat_mod__Nat_mod$bbb
 
+function lean_nat_mod__Nat_mod$bbb(a, b) {
+  return ((b === 0n) ? a : (a % b));
+}
+
 // test1
 export const test1 = (fuel, a, b) => {
   const k$1 = (x$2) => {

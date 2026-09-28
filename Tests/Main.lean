@@ -130,6 +130,20 @@ def moreJsSpec : Spec := describe "JsTerm" do
   it "Nat is a BigInt (faithful) or a checked UInt53 (pbo)" do
     assertEq "faithful" "nat(bigint)" (MoreJs.lowerScalarPrim faithful .nat).pretty
     assertEq "pbo" "uint53(number)" (MoreJs.lowerScalarPrim pbo .nat).pretty
+  it "records and unions are objects" do
+    assertEq "record" "{ _1: a, _2: b }" ((MoreJs.recordObj [.var "a", .var "b"]).pretty "")
+    assertEq "nullary constructor" "{ tag: 0 }" ((MoreJs.unionObj 0 []).pretty "")
+    assertEq "constructor" "{ tag: 2, _1: a }" ((MoreJs.unionObj 2 [.var "a"]).pretty "")
+    assertEq "record layout" "{ _1: nat(bigint), _2: boolean }"
+      (MoreJs.JsTerm.record [.nat, .bool]).pretty
+    assertEq "union layout" "({ tag: 0 } | { tag: 1, _1: nat(bigint) })"
+      (MoreJs.JsTerm.union [[], [.nat]]).pretty
+  it "extern helpers are written in the grammar" do
+    let (e, hs) := MoreJs.lowerExtern "lean_nat_pow" [.nat, .nat] .nat [.var "x", .var "y"]
+    assertEq "call" "lean_nat_pow$bbb(x, y)" (e.pretty "")
+    assertEq "helpers" ["$bigPow", "lean_nat_pow$bbb"] (hs.map MoreJs.JsHelper.name)
+    assertEq "helper" "function lean_nat_pow$bbb(a, b) {\n  return $bigPow(a, b);\n}\n"
+      (hs.getLast!.pretty)
   let conv (cfg : MoreJs.JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
       IO MoreJs.JsFun :=
     match MoreJs.termToJs cfg name name ps ct with

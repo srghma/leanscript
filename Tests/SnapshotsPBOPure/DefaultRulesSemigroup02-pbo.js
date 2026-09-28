@@ -14,7 +14,9 @@
 // ---- runtime helpers ----
 
 function $arrayPush(a, x) {
-  if (Array.isArray(a)) return [...a, x];
+  if (Array.isArray(a)) {
+    return [...a, x];
+  }
   const r = new a.constructor(a.length + 1);
   r.set(a);
   r[a.length] = x;
@@ -29,57 +31,57 @@ function lean_array_push(a, b) {
 
 /**
  * `Inline.appendR`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline_appendR = (a, b) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = b;
-  const [f$5, f$6] = b;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = b;
+  const { _1: f$5, _2: f$6 } = b;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `Inline.test1`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} a1
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} a1
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline_test1 = (a, a1) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = a1;
-  const [f$5, f$6] = a1;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = a1;
+  const { _1: f$5, _2: f$6 } = a1;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `Inline.test2`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline_test2 = (a, b) => {
   const k$1 = (x$2) => (x$4) => {
-    const [f$5, f$6] = x$2;
-    const [f$7, f$8] = x$4;
-    const [f$9, f$10] = x$4;
-    const [f$11, f$12] = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
+    const { _1: f$7, _2: f$8 } = x$4;
+    const { _1: f$9, _2: f$10 } = x$4;
+    const { _1: f$11, _2: f$12 } = x$2;
     let acc$13 = f$12;
     for (const e$14 of f$10) {
       acc$13 = lean_array_push(acc$13, e$14);
     }
-    return [f$5 + f$7, acc$13];
+    return { _1: f$5 + f$7, _2: acc$13 };
   };
   const x$16 = k$1(a);
   return x$16(b);
@@ -87,57 +89,57 @@ export const Inline_test2 = (a, b) => {
 
 /**
  * `Noinline.appendR`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline_appendR = (a, b) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = b;
-  const [f$5, f$6] = b;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = b;
+  const { _1: f$5, _2: f$6 } = b;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `Noinline.test1`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} a1
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} a1
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline_test1 = (a, a1) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = a1;
-  const [f$5, f$6] = a1;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = a1;
+  const { _1: f$5, _2: f$6 } = a1;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `Noinline.test2`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline_test2 = (a, b) => {
   const k$1 = (x$2) => (x$4) => {
-    const [f$5, f$6] = x$2;
-    const [f$7, f$8] = x$4;
-    const [f$9, f$10] = x$4;
-    const [f$11, f$12] = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
+    const { _1: f$7, _2: f$8 } = x$4;
+    const { _1: f$9, _2: f$10 } = x$4;
+    const { _1: f$11, _2: f$12 } = x$2;
     let acc$13 = f$12;
     for (const e$14 of f$10) {
       acc$13 = lean_array_push(acc$13, e$14);
     }
-    return [f$5 + f$7, acc$13];
+    return { _1: f$5 + f$7, _2: acc$13 };
   };
   const x$16 = k$1(a);
   return x$16(b);
@@ -145,57 +147,57 @@ export const Noinline_test2 = (a, b) => {
 
 /**
  * `AlwaysInline.appendR`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline_appendR = (a, b) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = b;
-  const [f$5, f$6] = b;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = b;
+  const { _1: f$5, _2: f$6 } = b;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `AlwaysInline.test1`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} a1
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} a1
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline_test1 = (a, a1) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = a1;
-  const [f$5, f$6] = a1;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = a1;
+  const { _1: f$5, _2: f$6 } = a1;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `AlwaysInline.test2`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline_test2 = (a, b) => {
   const k$1 = (x$2) => (x$4) => {
-    const [f$5, f$6] = x$2;
-    const [f$7, f$8] = x$4;
-    const [f$9, f$10] = x$4;
-    const [f$11, f$12] = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
+    const { _1: f$7, _2: f$8 } = x$4;
+    const { _1: f$9, _2: f$10 } = x$4;
+    const { _1: f$11, _2: f$12 } = x$2;
     let acc$13 = f$12;
     for (const e$14 of f$10) {
       acc$13 = lean_array_push(acc$13, e$14);
     }
-    return [f$5 + f$7, acc$13];
+    return { _1: f$5 + f$7, _2: acc$13 };
   };
   const x$16 = k$1(a);
   return x$16(b);
@@ -203,57 +205,57 @@ export const AlwaysInline_test2 = (a, b) => {
 
 /**
  * `InlineIfReduceInline.appendR`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline_appendR = (a, b) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = b;
-  const [f$5, f$6] = b;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = b;
+  const { _1: f$5, _2: f$6 } = b;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `InlineIfReduceInline.test1`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} a1
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} a1
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline_test1 = (a, a1) => {
-  const [f$1, f$2] = a;
-  const [f$3, f$4] = a1;
-  const [f$5, f$6] = a1;
-  const [f$7, f$8] = a;
+  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$3, _2: f$4 } = a1;
+  const { _1: f$5, _2: f$6 } = a1;
+  const { _1: f$7, _2: f$8 } = a;
   let acc$9 = f$8;
   for (const e$10 of f$6) {
     acc$9 = lean_array_push(acc$9, e$10);
   }
-  return [f$1 + f$3, acc$9];
+  return { _1: f$1 + f$3, _2: acc$9 };
 };
 
 /**
  * `InlineIfReduceInline.test2`
- * @param {[string, Array<string>]} a
- * @param {[string, Array<string>]} b
- * @returns {[string, Array<string>]}
+ * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
+ * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline_test2 = (a, b) => {
   const k$1 = (x$2) => (x$4) => {
-    const [f$5, f$6] = x$2;
-    const [f$7, f$8] = x$4;
-    const [f$9, f$10] = x$4;
-    const [f$11, f$12] = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
+    const { _1: f$7, _2: f$8 } = x$4;
+    const { _1: f$9, _2: f$10 } = x$4;
+    const { _1: f$11, _2: f$12 } = x$2;
     let acc$13 = f$12;
     for (const e$14 of f$10) {
       acc$13 = lean_array_push(acc$13, e$14);
     }
-    return [f$5 + f$7, acc$13];
+    return { _1: f$5 + f$7, _2: acc$13 };
   };
   const x$16 = k$1(a);
   return x$16(b);

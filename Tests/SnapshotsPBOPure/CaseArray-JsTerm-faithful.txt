@@ -3,6 +3,18 @@
 
 // runtime helpers: lean_array_get_size$_b, $idx, lean_array_get$b_bb
 
+function lean_array_get_size$_b(a) {
+  return BigInt(a.length);
+}
+
+function $idx(x) {
+  return ((x > 9007199254740991n) ? Infinity : Number(x));
+}
+
+function lean_array_get$b_bb(a, b, c) {
+  return (($idx(c) < b.length) ? b[$idx(c)] : a);
+}
+
 // test1
 export const test1 = (a) => {
   if ((lean_array_get_size$_b(a) === 0n)) {

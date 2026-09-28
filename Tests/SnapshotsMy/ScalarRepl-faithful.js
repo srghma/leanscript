@@ -6,7 +6,7 @@
 // ---- runtime helpers ----
 
 function lean_nat_sub$bbb(a, b) {
-  return (a > b ? a - b : 0n);
+  return a > b ? a - b : 0n;
 }
 
 // ---- exported functions ----
@@ -17,22 +17,22 @@ function lean_nat_sub$bbb(a, b) {
  * @returns {nat(bigint)}
  */
 export const test1 = (n) => {
-  let acc$1 = [1, 0n];
+  let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1[0] === 0) {
-      const [, f$4] = acc$1;
-      acc$1 = [0, f$4];
+    if (acc$1.tag === 0) {
+      const { _1: f$4 } = acc$1;
+      acc$1 = { tag: 0, _1: f$4 };
     } else {
-      const [, f$5] = acc$1;
+      const { _1: f$5 } = acc$1;
       const x$6 = f$5 + i$2;
-      acc$1 = [1, x$6];
+      acc$1 = { tag: 1, _1: x$6 };
     }
   }
-  if (acc$1[0] === 0) {
-    const [, f$7] = acc$1;
+  if (acc$1.tag === 0) {
+    const { _1: f$7 } = acc$1;
     return f$7;
   } else {
-    const [, f$8] = acc$1;
+    const { _1: f$8 } = acc$1;
     return f$8;
   }
 };
@@ -43,48 +43,48 @@ export const test1 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test2 = (n) => {
-  let acc$1 = [1, 0n];
+  let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
     j$1: {
-      if (acc$1[0] === 0) {
-        const [, f$4] = acc$1;
-        acc$1 = [0, f$4];
+      if (acc$1.tag === 0) {
+        const { _1: f$4 } = acc$1;
+        acc$1 = { tag: 0, _1: f$4 };
         break j$1;
       } else {
-        const [, f$5] = acc$1;
-        let acc$6 = [1, f$5];
+        const { _1: f$5 } = acc$1;
+        let acc$6 = { tag: 1, _1: f$5 };
         for (let i$7 = 0n; i$7 < i$2; i$7++) {
-          if (acc$6[0] === 0) {
-            const [, f$9] = acc$6;
-            acc$6 = [0, f$9];
+          if (acc$6.tag === 0) {
+            const { _1: f$9 } = acc$6;
+            acc$6 = { tag: 0, _1: f$9 };
           } else {
-            const [, f$10] = acc$6;
+            const { _1: f$10 } = acc$6;
             const x$11 = f$10 + i$7;
-            acc$6 = [1, x$11];
+            acc$6 = { tag: 1, _1: x$11 };
           }
         }
         let x$12;
         j$2: {
-          if (acc$6[0] === 0) {
-            const [, f$13] = acc$6;
+          if (acc$6.tag === 0) {
+            const { _1: f$13 } = acc$6;
             x$12 = f$13;
             break j$2;
           } else {
-            const [, f$14] = acc$6;
+            const { _1: f$14 } = acc$6;
             x$12 = f$14;
             break j$2;
           }
         }
-        acc$1 = [1, x$12];
+        acc$1 = { tag: 1, _1: x$12 };
         break j$1;
       }
     }
   }
-  if (acc$1[0] === 0) {
-    const [, f$15] = acc$1;
+  if (acc$1.tag === 0) {
+    const { _1: f$15 } = acc$1;
     return f$15;
   } else {
-    const [, f$16] = acc$1;
+    const { _1: f$16 } = acc$1;
     return f$16;
   }
 };
@@ -97,33 +97,33 @@ export const test2 = (n) => {
  */
 export const test3 = (a, b) => {
   const k$1 = (x$2) => {
-    const [f$3, f$4] = x$2;
-    const [f$5, f$6] = x$2;
+    const { _1: f$3, _2: f$4 } = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
     if (f$3 < f$6) {
-      const [f$7, f$8] = x$2;
-      const [f$9, f$10] = x$2;
+      const { _1: f$7, _2: f$8 } = x$2;
+      const { _1: f$9, _2: f$10 } = x$2;
       return lean_nat_sub$bbb(f$8, f$9);
     } else {
-      const [f$11, f$12] = x$2;
-      const [f$13, f$14] = x$2;
+      const { _1: f$11, _2: f$12 } = x$2;
+      const { _1: f$13, _2: f$14 } = x$2;
       return lean_nat_sub$bbb(f$11, f$14);
     }
   };
-  const x$15 = k$1([a, b]);
+  const x$15 = k$1({ _1: a, _2: b });
   const k$16 = (x$17) => {
-    const [f$18, f$19] = x$17;
-    const [f$20, f$21] = x$17;
+    const { _1: f$18, _2: f$19 } = x$17;
+    const { _1: f$20, _2: f$21 } = x$17;
     if (f$18 < f$21) {
-      const [f$22, f$23] = x$17;
-      const [f$24, f$25] = x$17;
+      const { _1: f$22, _2: f$23 } = x$17;
+      const { _1: f$24, _2: f$25 } = x$17;
       return lean_nat_sub$bbb(f$23, f$24);
     } else {
-      const [f$26, f$27] = x$17;
-      const [f$28, f$29] = x$17;
+      const { _1: f$26, _2: f$27 } = x$17;
+      const { _1: f$28, _2: f$29 } = x$17;
       return lean_nat_sub$bbb(f$26, f$29);
     }
   };
-  const x$30 = k$16([b, a + 1n]);
+  const x$30 = k$16({ _1: b, _2: a + 1n });
   return x$15 + x$30;
 };
 
@@ -131,21 +131,21 @@ export const test3 = (a, b) => {
  * `test4`
  * @param {nat(bigint)} a
  * @param {nat(bigint)} b
- * @returns {[nat(bigint), nat(bigint)]}
+ * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
 export const test4 = (a, b) => {
   const k$1 = (x$2) => {
-    const [f$3, f$4] = x$2;
-    const [f$5, f$6] = x$2;
+    const { _1: f$3, _2: f$4 } = x$2;
+    const { _1: f$5, _2: f$6 } = x$2;
     if (f$3 < f$6) {
       return x$2;
     } else {
-      const [f$7, f$8] = x$2;
-      const [f$9, f$10] = x$2;
-      return [f$8, f$9];
+      const { _1: f$7, _2: f$8 } = x$2;
+      const { _1: f$9, _2: f$10 } = x$2;
+      return { _1: f$8, _2: f$9 };
     }
   };
-  return k$1([a, b]);
+  return k$1({ _1: a, _2: b });
 };
 
 /**
@@ -156,14 +156,14 @@ export const test4 = (a, b) => {
  */
 export const test5 = (a, b) => {
   const k$1 = (x$2) => {
-    if (x$2[0] === 0) {
+    if (x$2.tag === 0) {
       return 0n;
     } else {
-      const [, f$3] = x$2;
-      const [f$4, f$5] = f$3;
+      const { _1: f$3 } = x$2;
+      const { _1: f$4, _2: f$5 } = f$3;
       return f$4 + f$5;
     }
   };
-  const x$6 = k$1([1, [a, b]]);
+  const x$6 = k$1({ tag: 1, _1: { _1: a, _2: b } });
   return x$6 + 0n;
 };

@@ -25,16 +25,21 @@ syntax tree of `LanguageJavascriptMini`, whose printer writes the `.js` file.
   `===` / `!==`, which compare values of any type.
 * **Expressions** (`JsExpr`): variables, literals, operators, calls of values and of runtime
   helpers (`helper`, a function of the prelude the program is printed with), arrow functions
-  of zero or more parameters, arrays (records, unions, lists, generic arrays), typed arrays,
-  indexing, conditionals.
-* **Statements** (`JsStmt`): `const`, `let`, assignment, array destructuring, `return`,
-  `if`/`else`, counting `for` loops, `for … of` loops, `throw`, and **join points**:
+  of zero or more parameters, object literals (records `{ _1: …, _2: … }` and unions
+  `{ tag: i, _1: … }`), arrays (lists, generic arrays), typed arrays, indexing, member
+  access, `new`, spreads, conditionals.
+* **Statements** (`JsStmt`): `const`, `let`, assignment (to a variable, a member or an
+  element), array and object destructuring, expression statements, `return`, `if`/`else`,
+  counting `for` loops, `for … of` loops, `while` loops, `throw`, and **join points**:
   `join x block` is a labelled block (`L: { block }`) the statements of which may `jump` to
   it, which assigns the join point's variable `x` and leaves the block (`x = e; break L;`);
   the statements after the `join` statement are the body of the join point.  A jump names its
   join point by a **de Bruijn index**: `jump 0 e` leaves the innermost enclosing `join` block,
   `jump 1 e` the one around it, and so on (an arrow function starts afresh: a jump never leaves
   a function).
+
+The runtime helpers a program calls (`JsHelper`) are written in this grammar too: the prelude
+of a module is printed from it, like the exported functions.
 
 A function body is a list of statements every path of which ends in a `return` (or a
 `throw`), or, inside a `join` block, in a `jump`.
@@ -210,7 +215,7 @@ inductive JsExpr where
   | call (f : JsExpr) (args : List JsExpr)
   /-- `(params) => { body }`: a function of zero or more parameters. -/
   | arrow (params : List String) (body : List JsStmt)
-  /-- `[e₀, e₁, …]`: a record, a union (tag first), a list or a generic array. -/
+  /-- `[e₀, e₁, …]`: a list or a generic array. -/
   | array (elems : List JsExpr)
   /-- `Ctor.of(e₀, …)`: a typed array literal (`Uint8Array.of(1, 2)`). -/
   | typedArray (ctor : String) (elems : List JsExpr)
@@ -220,6 +225,15 @@ inductive JsExpr where
   | member (e : JsExpr) (name : String)
   /-- `c ? a : b`. -/
   | cond (c a b : JsExpr)
+  /-- `{ k₀: e₀, k₁: e₁, … }`: an object literal (a record `{ _1: …, _2: … }`, a union
+      `{ tag: 0, _1: … }`, a memoised delay). -/
+  | object (fields : List (String × JsExpr))
+  /-- `e[i]`, indexed by an expression. -/
+  | at (e i : JsExpr)
+  /-- `new C(args)`. -/
+  | new (ctor : JsExpr) (args : List JsExpr)
+  /-- `...e`, inside an array literal or the arguments of a call. -/
+  | spread (e : JsExpr)
 
 /-- Statements. -/
 inductive JsStmt where
@@ -231,6 +245,16 @@ inductive JsStmt where
   | assign (x : String) (e : JsExpr)
   /-- `const [x₀, , x₂] = e;` (`none` skips a position). -/
   | destructure (xs : List (Option String)) (e : JsExpr)
+  /-- `const { k₀: x₀, k₁: x₁ } = e;`: the properties `kᵢ` of the object `e`, named `xᵢ`. -/
+  | destructureObj (binds : List (String × String)) (e : JsExpr)
+  /-- `o.name = e;` -/
+  | setMember (o : JsExpr) (name : String) (e : JsExpr)
+  /-- `o[i] = e;` -/
+  | setAt (o i e : JsExpr)
+  /-- `e;`, an expression evaluated for its effect. -/
+  | expr (e : JsExpr)
+  /-- `while (c) { body }`. -/
+  | while (c : JsExpr) (body : List JsStmt)
   /-- `return e;` -/
   | ret (e : JsExpr)
   /-- `if (c) { t } else { e }` (no `else` when `e` is empty). -/
@@ -239,8 +263,8 @@ inductive JsStmt where
   | forRange (i : String) (big : Bool) (n : JsExpr) (body : List JsStmt)
   /-- `for (const x of xs) { body }`. -/
   | forOf (x : String) (xs : JsExpr) (body : List JsStmt)
-  /-- `throw new Error(msg);` -/
-  | throw (msg : String)
+  /-- `throw new C(msg);` (`C` an error class: `Error`, `RangeError`, …). -/
+  | throw (ctor : String) (msg : String)
   /-- A join point: the labelled block `L: { block }`, whose statements may `jump` to it
       (de Bruijn index `0` inside `block`), assigning `x` (declared before, `let x;`).  The
       statements after it are the body of the join point. -/
@@ -251,7 +275,7 @@ inductive JsStmt where
 end
 
 instance : Inhabited JsExpr := ⟨.lit (.bool false)⟩
-instance : Inhabited JsStmt := ⟨.throw "unreachable"⟩
+instance : Inhabited JsStmt := ⟨.throw "Error" "unreachable"⟩
 
 /-- A top-level function: `export const name = (params) => { body };`.  The layouts of its
     parameters and of its result are not part of the (untyped) grammar: they are only
@@ -271,12 +295,15 @@ structure JsFun where
   ret : JsTerm := .opaque "?"
   deriving Inhabited
 
-/-- A function of the runtime prelude: its name and its JavaScript source. -/
+/-- A function of the runtime prelude, `function name(params) { body }`, written in the
+    grammar itself. -/
 structure JsHelper where
   /-- The name the program calls it by. -/
   name : String
-  /-- Its declaration, in JavaScript. -/
-  source : String
+  /-- Its parameters. -/
+  params : List String
+  /-- Its body; every path ends in a `return` (or a `throw`). -/
+  body : List JsStmt
   deriving Inhabited
 
 /-- A whole module: the runtime helpers it needs, and its exported functions. -/
@@ -346,6 +373,12 @@ partial def JsExpr.pretty (ind : String) : JsExpr → String
   | .index e i => s!"{e.pretty ind}[{i}]"
   | .member e n => s!"{e.pretty ind}.{n}"
   | .cond c a b => s!"({c.pretty ind} ? {a.pretty ind} : {b.pretty ind})"
+  | .object fs =>
+    if fs.isEmpty then "{}" else
+    "{ " ++ ", ".intercalate (fs.map fun (k, e) => s!"{k}: {e.pretty ind}") ++ " }"
+  | .at e i => s!"{e.pretty ind}[{i.pretty ind}]"
+  | .new c args => "new " ++ c.pretty ind ++ "(" ++ ", ".intercalate (args.map (·.pretty ind)) ++ ")"
+  | .spread e => "..." ++ e.pretty ind
 
 /-- A statement, indented by `ind`, ending in a new line. -/
 partial def JsStmt.pretty (ind : String) : JsStmt → String
@@ -358,6 +391,14 @@ partial def JsStmt.pretty (ind : String) : JsStmt → String
       | some x => x
       | none => ""
     s!"{ind}const [{", ".intercalate b}] = {e.pretty ind};\n"
+  | .destructureObj bs e =>
+    let b := bs.map fun (k, x) => if k == x then k else s!"{k}: {x}"
+    s!"{ind}const \{ {", ".intercalate b} } = {e.pretty ind};\n"
+  | .setMember o n e => s!"{ind}{o.pretty ind}.{n} = {e.pretty ind};\n"
+  | .setAt o i e => s!"{ind}{o.pretty ind}[{i.pretty ind}] = {e.pretty ind};\n"
+  | .expr e => s!"{ind}{e.pretty ind};\n"
+  | .while c body =>
+    s!"{ind}while ({c.pretty ind}) \{\n" ++ JsStmt.prettyBlock (ind ++ "  ") body ++ ind ++ "}\n"
   | .ret e => s!"{ind}return {e.pretty ind};\n"
   | .ite c t e =>
     let head := s!"{ind}if ({c.pretty ind}) \{\n{JsStmt.prettyBlock (ind ++ "  ") t}{ind}}"
@@ -370,7 +411,7 @@ partial def JsStmt.pretty (ind : String) : JsStmt → String
   | .forOf x xs body =>
     s!"{ind}for (const {x} of {xs.pretty ind}) \{\n" ++ JsStmt.prettyBlock (ind ++ "  ") body ++
       ind ++ "}\n"
-  | .throw msg => s!"{ind}throw new Error({msg.quote});\n"
+  | .throw c msg => s!"{ind}throw new {c}({msg.quote});\n"
   | .join x block =>
     s!"{ind}join {x} \{\n" ++ JsStmt.prettyBlock (ind ++ "  ") block ++ ind ++ "}\n"
   | .jump j e => s!"{ind}jump {j} {e.pretty ind};\n"
@@ -385,9 +426,14 @@ def JsFun.pretty (f : JsFun) : String :=
   s!"// {f.leanName}\nexport const {f.name} = ({", ".intercalate f.params}) => \{\n" ++
     JsStmt.prettyBlock "  " f.body ++ "};\n"
 
+/-- A helper of the runtime prelude, for the dump. -/
+def JsHelper.pretty (h : JsHelper) : String :=
+  s!"function {h.name}({", ".intercalate h.params}) \{\n" ++ JsStmt.prettyBlock "  " h.body ++ "}\n"
+
 /-- A module, for the dump. -/
 def JsModule.pretty (m : JsModule) : String :=
   s!"// runtime helpers: {", ".intercalate (m.helpers.map (·.name))}\n\n" ++
+  String.join (m.helpers.map fun h => h.pretty ++ "\n") ++
   "\n".intercalate (m.funs.map JsFun.pretty)
 
 end MoreJs

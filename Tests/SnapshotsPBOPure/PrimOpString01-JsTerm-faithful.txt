@@ -3,6 +3,10 @@
 
 // runtime helpers: lean_string_dec_lt
 
+function lean_string_dec_lt(a, b) {
+  return (a < b);
+}
+
 // test1
 export const test1 = (a, b) => {
   return (a === b);

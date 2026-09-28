@@ -3,6 +3,10 @@
 
 // runtime helpers: lean_float_negate
 
+function lean_float_negate(a) {
+  return -a;
+}
+
 // test1
 export const test1 = (a, b) => {
   return (a + b);

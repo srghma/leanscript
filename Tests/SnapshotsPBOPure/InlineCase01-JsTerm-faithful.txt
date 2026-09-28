@@ -9,20 +9,20 @@
 
 // test1
 export const test1 = (f, a) => {
-  if ((a[0] === 0)) {
+  if ((a.tag === 0)) {
     return f();
   } else {
-    const [, f$2] = a;
+    const { _1: f$2 } = a;
     return (f$2 + 1n);
   }
 };
 
 // test3
 export const test3 = (f, a) => {
-  if ((a[0] === 0)) {
+  if ((a.tag === 0)) {
     return f();
   } else {
-    const [, f$2] = a;
+    const { _1: f$2 } = a;
     return (f$2 + 1n);
   }
 };

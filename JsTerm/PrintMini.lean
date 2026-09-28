@@ -5,8 +5,8 @@ import LanguageJavascriptMini.Printer
 # Printing the JavaScript grammar with `LanguageJavascriptMini`
 
 `MoreJs.JsModule.toJs m` is the text of the `.js` file of a module: a header comment, the
-runtime helpers the module calls (their JavaScript source, `MoreJs.JsHelper`), and the
-exported functions, each converted to the JavaScript syntax tree of
+runtime helpers the module calls (`MoreJs.JsHelper`, written in the same grammar), and the
+exported functions, all converted to the JavaScript syntax tree of
 `LanguageJavascriptMini` (`MiniAST`) and printed by its printer (prettier's style: two
 space indentation, double quotes, semicolons, 80 columns).
 
@@ -20,7 +20,9 @@ is printed `else if`.  A join point `join x block` is the **labelled block** `j$
 (`k` counting the join points of the function from the outside in, so nested blocks have
 different labels) and a jump of de Bruijn index `i` is `x = e; break j$k;` for the variable
 and the label of the `i`-th enclosing block.  An exported function is
-`export const f = (x, y) => { … };`.  Numbers are printed as integers when they are small
+`export const f = (x, y) => { … };`, a helper `function h(a, b) { … }`, a record
+`{ _1: a, _2: b }`, a union `{ tag: 1, _1: a }`, and taking one apart
+`const { _1: x, _3: z } = r;`.  Numbers are printed as integers when they are small
 integers, otherwise as the shortest decimal that reads back as the same double.
 -/
 
@@ -124,6 +126,10 @@ partial def exprToMini (c : JoinCtx) : JsExpr → MiniExpr
   | .index e i => .index (exprToMini c e) (natNum i)
   | .member e n => .dot (exprToMini c e) (nes n)
   | .cond k a b => .ternary (exprToMini c k) (exprToMini c a) (exprToMini c b)
+  | .object fs => .object (fs.map fun (k, e) => .keyValue (.ident (nes k)) (exprToMini c e))
+  | .at e i => .index (exprToMini c e) (exprToMini c i)
+  | .new k args => .new (exprToMini c k) (args.map (exprToMini c))
+  | .spread e => .spread (exprToMini c e)
 
 /-- A statement as `MiniAST` statements (a jump is two: the assignment and the `break`). -/
 partial def stmtToMini (c : JoinCtx) : JsStmt → List MiniStatement
@@ -137,6 +143,14 @@ partial def stmtToMini (c : JoinCtx) : JsStmt → List MiniStatement
     -- trailing holes are dropped (`[a, ,]` is `[a]`)
     let elems := (elems.reverse.dropWhile fun | .hole => true | _ => false).reverse
     [.decl .const ⟨⟨.array elems, some (exprToMini c e)⟩, []⟩]
+  | .destructureObj bs e =>
+    let props := bs.map fun (k, x) => MiniObjectPatternProp.mk (.ident (nes k)) (.ident (nes x))
+    [.decl .const ⟨⟨.object props none, some (exprToMini c e)⟩, []⟩]
+  | .setMember o n e => [.expr (.assign (.dot (exprToMini c o) (nes n)) .assign (exprToMini c e))]
+  | .setAt o i e =>
+    [.expr (.assign (.index (exprToMini c o) (exprToMini c i)) .assign (exprToMini c e))]
+  | .expr e => [.expr (exprToMini c e)]
+  | .while k body => [.while_ (exprToMini c k) (.block (stmtsToMini c body))]
   | .ret e => [.return_ (some (exprToMini c e))]
   | .ite k t e =>
     let els : Option MiniStatement := match e with
@@ -153,7 +167,7 @@ partial def stmtToMini (c : JoinCtx) : JsStmt → List MiniStatement
       (some (.postfix (ident i) .incr)) (.block (stmtsToMini c body))]
   | .forOf x xs body =>
     [.forOf false (.decl .const (.ident (nes x))) (exprToMini c xs) (.block (stmtsToMini c body))]
-  | .throw msg => [.throw (.new (ident "Error") [.string msg])]
+  | .throw k msg => [.throw (.new (ident k) [.string msg])]
   | .join x block =>
     let label := s!"j${c.next}"
     let c' : JoinCtx := { joins := (label, x) :: c.joins, next := c.next + 1 }
@@ -177,7 +191,7 @@ partial def stmtsToMini (c : JoinCtx) (ss : List JsStmt) : List MiniStatement :=
 partial def joinCount : JsStmt → Nat
   | .join _ b => 1 + (b.map joinCount).sum
   | .ite _ t e => (t.map joinCount).sum + (e.map joinCount).sum
-  | .forRange _ _ _ b | .forOf _ _ b => (b.map joinCount).sum
+  | .forRange _ _ _ b | .forOf _ _ b | .while _ b => (b.map joinCount).sum
   | _ => 0
 end
 
@@ -189,6 +203,12 @@ def JsFun.toMini (f : JsFun) : MiniModuleItem :=
     | _ => .block (stmtsToMini {} f.body)
   .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (.arrow false params body)⟩, []⟩))
 
+/-- A helper of the runtime prelude as a function declaration:
+    `function name(params) { body }`. -/
+def JsHelper.toMini (h : JsHelper) : MiniModuleItem :=
+  let params := h.params.map fun x => MiniParam.plain (.ident (nes x))
+  .stmt (.funcDecl false false (nes h.name) params (stmtsToMini {} h.body))
+
 /-- The comment above an exported function: its Lean name, and the layouts of its
     parameters and result. -/
 def JsFun.docComment (f : JsFun) : String :=
@@ -199,7 +219,7 @@ def JsFun.docComment (f : JsFun) : String :=
 def JsModule.toJs (m : JsModule) (header : List String) : String :=
   let head := String.join (header.map fun l => s!"// {l}\n")
   let helpers := if m.helpers.isEmpty then "" else
-    "// ---- runtime helpers ----\n\n" ++ "\n\n".intercalate (m.helpers.map (·.source)) ++ "\n\n" ++
+    "// ---- runtime helpers ----\n\n" ++ "\n".intercalate (m.helpers.map fun h => printProgram ⟨[h.toMini]⟩) ++ "\n" ++
     "// ---- exported functions ----\n"
   let funs := m.funs.map fun f =>
     f.docComment ++ "\n" ++ printProgram ⟨[f.toMini]⟩

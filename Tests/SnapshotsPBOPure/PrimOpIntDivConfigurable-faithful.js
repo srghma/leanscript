@@ -14,19 +14,25 @@
 // ---- runtime helpers ----
 
 function lean_uint64_div$bbb(a, b) {
-  return (b === 0n ? 0n : BigInt.asUintN(64, a / b));
+  return b === 0n ? 0n : BigInt.asUintN(64, a / b);
 }
 
 function lean_nat_div$bbb(a, b) {
-  return (b === 0n ? 0n : a / b);
+  return b === 0n ? 0n : a / b;
 }
 
 function lean_int64_div$bbb(a, b) {
-  return (b === 0n ? 0n : BigInt.asIntN(64, a / b));
+  return b === 0n ? 0n : BigInt.asIntN(64, a / b);
 }
 
 function lean_int_ediv$bbb(a, b) {
-  return (b === 0n ? 0n : (a % b < 0n ? (b > 0n ? a / b - 1n : a / b + 1n) : a / b));
+  return b === 0n
+    ? 0n
+    : a % b < 0n
+      ? b > 0n
+        ? a / b - 1n
+        : a / b + 1n
+      : a / b;
 }
 
 // ---- exported functions ----

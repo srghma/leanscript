@@ -18,32 +18,47 @@
 // ---- runtime helpers ----
 
 function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return Number(x);
 }
 
 function lean_uint64_land$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a & b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a & b));
 }
 
 function lean_uint64_lor$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a | b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a | b));
 }
 
 function lean_uint64_shift_left$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a << (((b % 64n) + 64n) % 64n)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a << (((b % 64n) + 64n) % 64n)));
 }
 
 function lean_uint64_shift_right$nnn(a, b) {
-  return $toNum53(((a, b) => (a >> (((b % 64n) + 64n) % 64n)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(a >> (((b % 64n) + 64n) % 64n));
 }
 
 function lean_uint64_xor$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asUintN(64, a ^ b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asUintN(64, a ^ b));
 }
 
 function lean_uint64_complement$nn(a) {
-  return $toNum53(((a) => BigInt.asUintN(64, ~a))(BigInt(a)));
+  a = BigInt(a);
+  return $toNum53(BigInt.asUintN(64, ~a));
 }
 
 function lean_nat_land$nnn(a, b) {
@@ -55,16 +70,20 @@ function lean_nat_lor$nnn(a, b) {
 }
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
 function lean_nat_shiftl$nnn(a, b) {
-  return $chk53(a * 2 ** b);
+  return $chk53(a * Math.pow(2, b));
 }
 
 function lean_nat_shiftr$nnn(a, b) {
-  return Math.floor(a / 2 ** b);
+  return Math.floor(a / Math.pow(2, b));
 }
 
 function lean_nat_lxor$nnn(a, b) {
@@ -72,27 +91,38 @@ function lean_nat_lxor$nnn(a, b) {
 }
 
 function lean_int64_land$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a & b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a & b));
 }
 
 function lean_int64_lor$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a | b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a | b));
 }
 
 function lean_int64_shift_left$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a << (((b % 64n) + 64n) % 64n)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a << (((b % 64n) + 64n) % 64n)));
 }
 
 function lean_int64_shift_right$nnn(a, b) {
-  return $toNum53(((a, b) => (a >> (((b % 64n) + 64n) % 64n)))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(a >> (((b % 64n) + 64n) % 64n));
 }
 
 function lean_int64_xor$nnn(a, b) {
-  return $toNum53(((a, b) => BigInt.asIntN(64, a ^ b))(BigInt(a), BigInt(b)));
+  a = BigInt(a);
+  b = BigInt(b);
+  return $toNum53(BigInt.asIntN(64, a ^ b));
 }
 
 function lean_int64_complement$nn(a) {
-  return $toNum53(((a) => BigInt.asIntN(64, ~a))(BigInt(a)));
+  a = BigInt(a);
+  return $toNum53(BigInt.asIntN(64, ~a));
 }
 
 // ---- exported functions ----

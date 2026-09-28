@@ -5,11 +5,11 @@
 /**
  * `test`
  * @param {(int(bigint) => int(bigint))} f
- * @returns {[int(bigint), int(bigint), int(bigint)]}
+ * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
 export const test = (f) => {
   const x$1 = f(1n);
   const x$2 = f(2n);
   const x$3 = f(2n);
-  return [x$1, x$2, x$3];
+  return { _1: x$1, _2: x$2, _3: x$3 };
 };

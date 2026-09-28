@@ -9,7 +9,7 @@
 // ---- runtime helpers ----
 
 function lean_nat_sub$nnn(a, b) {
-  return (a > b ? a - b : 0);
+  return a > b ? a - b : 0;
 }
 
 // ---- exported functions ----

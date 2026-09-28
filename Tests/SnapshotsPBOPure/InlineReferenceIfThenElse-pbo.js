@@ -12,9 +12,9 @@ export const test1 = () => 42;
 
 /**
  * `extern1`
- * @returns {[boolean, int53(number)]}
+ * @returns {{ _1: boolean, _2: int53(number) }}
  */
-export const extern1 = () => [true, 0];
+export const extern1 = () => ({ _1: true, _2: 0 });
 
 /**
  * `test2`

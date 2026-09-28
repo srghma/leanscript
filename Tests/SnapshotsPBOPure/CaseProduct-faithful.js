@@ -4,11 +4,11 @@
 
 /**
  * `test1`
- * @param {[nat(bigint), nat(bigint), nat(bigint)]} a
+ * @param {{ _1: nat(bigint), _2: nat(bigint), _3: nat(bigint) }} a
  * @returns {string}
  */
 export const test1 = (a) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1n) {
     if (f$2 === 2n) {
       if (f$3 === 3n) {

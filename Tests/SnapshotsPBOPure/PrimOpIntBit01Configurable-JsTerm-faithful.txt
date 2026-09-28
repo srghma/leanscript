@@ -17,6 +17,74 @@
 
 // runtime helpers: lean_uint64_land$bbb, lean_uint64_lor$bbb, lean_uint64_shift_left$bbb, lean_uint64_shift_right$bbb, lean_uint64_xor$bbb, lean_uint64_complement$bb, lean_nat_land$bbb, lean_nat_lor$bbb, lean_nat_shiftl$bbb, lean_nat_shiftr$bbb, lean_nat_lxor$bbb, lean_int64_land$bbb, lean_int64_lor$bbb, lean_int64_shift_left$bbb, lean_int64_shift_right$bbb, lean_int64_xor$bbb, lean_int64_complement$bb
 
+function lean_uint64_land$bbb(a, b) {
+  return BigInt.asUintN(64, (a & b));
+}
+
+function lean_uint64_lor$bbb(a, b) {
+  return BigInt.asUintN(64, (a | b));
+}
+
+function lean_uint64_shift_left$bbb(a, b) {
+  return BigInt.asUintN(64, (a << (((b % 64n) + 64n) % 64n)));
+}
+
+function lean_uint64_shift_right$bbb(a, b) {
+  return (a >> (((b % 64n) + 64n) % 64n));
+}
+
+function lean_uint64_xor$bbb(a, b) {
+  return BigInt.asUintN(64, (a ^ b));
+}
+
+function lean_uint64_complement$bb(a) {
+  return BigInt.asUintN(64, ~a);
+}
+
+function lean_nat_land$bbb(a, b) {
+  return (a & b);
+}
+
+function lean_nat_lor$bbb(a, b) {
+  return (a | b);
+}
+
+function lean_nat_shiftl$bbb(a, b) {
+  return (a << b);
+}
+
+function lean_nat_shiftr$bbb(a, b) {
+  return (a >> b);
+}
+
+function lean_nat_lxor$bbb(a, b) {
+  return (a ^ b);
+}
+
+function lean_int64_land$bbb(a, b) {
+  return BigInt.asIntN(64, (a & b));
+}
+
+function lean_int64_lor$bbb(a, b) {
+  return BigInt.asIntN(64, (a | b));
+}
+
+function lean_int64_shift_left$bbb(a, b) {
+  return BigInt.asIntN(64, (a << (((b % 64n) + 64n) % 64n)));
+}
+
+function lean_int64_shift_right$bbb(a, b) {
+  return (a >> (((b % 64n) + 64n) % 64n));
+}
+
+function lean_int64_xor$bbb(a, b) {
+  return BigInt.asIntN(64, (a ^ b));
+}
+
+function lean_int64_complement$bb(a) {
+  return BigInt.asIntN(64, ~a);
+}
+
 // TestUInt64.land
 export const TestUInt64_land = (a, b) => {
   return lean_uint64_land$bbb(a, b);

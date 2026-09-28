@@ -7,7 +7,11 @@
 // ---- runtime helpers ----
 
 function $toNum53(x) {
-  if (x > 9007199254740991n || x < -9007199254740991n) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (x > 9007199254740991n || x < -9007199254740991n) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return Number(x);
 }
 
@@ -20,11 +24,13 @@ function $idx(x) {
 }
 
 function lean_array_get$b_bb(a, b, c) {
-  return ($idx(c) < b.length ? b[$idx(c)] : a);
+  return $idx(c) < b.length ? b[$idx(c)] : a;
 }
 
 function $arraySet(a, i, x) {
-  if (i >= a.length) return a;
+  if (i >= a.length) {
+    return a;
+  }
   const r = a.slice();
   r[i] = x;
   return r;
@@ -51,13 +57,13 @@ export const test1 = (n) => {
 /**
  * `test4`
  * @param {nat(bigint)} n
- * @returns {[Array<nat(bigint)>, nat(bigint)]}
+ * @returns {{ _1: Array<nat(bigint)>, _2: nat(bigint) }}
  */
 export const test4 = (n) => {
   const x$1 = lean_mk_array$bb_(3n, n + 7n);
   const x$2 = lean_array_get$b_bb(0n, x$1, 0n);
   const x$3 = lean_array_set$_bb_(x$1, 0n, 99n);
-  return [x$3, x$2];
+  return { _1: x$3, _2: x$2 };
 };
 
 /**
@@ -67,33 +73,33 @@ export const test4 = (n) => {
  */
 export const test5 = (n) => {
   const x$1 = lean_mk_array$bb_(4n, n);
-  let acc$2 = [1, [x$1, 0n]];
+  let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0n } };
   for (let i$3 = 0n; i$3 < 4n; i$3++) {
-    if (acc$2[0] === 0) {
-      const [, f$5] = acc$2;
-      acc$2 = [0, f$5];
+    if (acc$2.tag === 0) {
+      const { _1: f$5 } = acc$2;
+      acc$2 = { tag: 0, _1: f$5 };
     } else {
-      const [, f$6] = acc$2;
-      const [f$7, f$8] = f$6;
-      const [f$9, f$10] = f$6;
+      const { _1: f$6 } = acc$2;
+      const { _1: f$7, _2: f$8 } = f$6;
+      const { _1: f$9, _2: f$10 } = f$6;
       const x$11 = lean_array_get$b_bb(0n, f$7, i$3);
       const x$12 = lean_array_set$_bb_(f$7, i$3, i$3 + 1n);
       const x$13 = f$10 + x$11;
-      acc$2 = [1, [x$12, x$13]];
+      acc$2 = { tag: 1, _1: { _1: x$12, _2: x$13 } };
     }
   }
   let x$14;
   j$1: {
-    if (acc$2[0] === 0) {
-      const [, f$15] = acc$2;
+    if (acc$2.tag === 0) {
+      const { _1: f$15 } = acc$2;
       x$14 = f$15;
       break j$1;
     } else {
-      const [, f$16] = acc$2;
+      const { _1: f$16 } = acc$2;
       x$14 = f$16;
       break j$1;
     }
   }
-  const [f$17, f$18] = x$14;
+  const { _1: f$17, _2: f$18 } = x$14;
   return f$18;
 };

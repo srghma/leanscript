@@ -4,26 +4,26 @@
 
 /**
  * `test1`
- * @param {(() => [int53(number), int53(number), int53(number)])} fn
+ * @param {(() => { _1: int53(number), _2: int53(number), _3: int53(number) })} fn
  * @returns {int53(number)}
  */
 export const test1 = (fn) => {
   const x$1 = fn();
-  const [f$2, f$3, f$4] = x$1;
+  const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
   return f$4;
 };
 
 /**
  * `fn_prime`
- * @returns {(() => [int53(number), int53(number), int53(number)])}
+ * @returns {(() => { _1: int53(number), _2: int53(number), _3: int53(number) })}
  */
-export const fn_prime = () => () => [1, 2, 3];
+export const fn_prime = () => () => ({ _1: 1, _2: 2, _3: 3 });
 
 /**
  * `extern1`
- * @returns {[int53(number), int53(number), int53(number)]}
+ * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const extern1 = () => [42, 2, 3];
+export const extern1 = () => ({ _1: 42, _2: 2, _3: 3 });
 
 /**
  * `test2`

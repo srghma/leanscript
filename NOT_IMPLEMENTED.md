@@ -191,8 +191,8 @@ The supported fragment and the refusals are listed in the header of
 - **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
   `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
   (`JsTerm/FromTerm.lean`), so every function over `List`, a user inductive, … is listed
-  under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: tagged
-  arrays, enums; only the recursors are missing.)
+  under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
+  and unions as objects, enums; only the recursors are missing.)
 - **Some externs have no JavaScript implementation**: they are emitted as a runtime helper
   that throws (`MoreJs.stubHelper`, `JsTerm/Extern.lean`).  `leanscript --check` finds
   them (a check answers "threw: … has no JavaScript implementation yet").

@@ -12,6 +12,10 @@
 
 // runtime helpers: lean_nat_div$bbb
 
+function lean_nat_div$bbb(a, b) {
+  return ((b === 0n) ? 0n : (a / b));
+}
+
 // ack2
 export const ack2 = (a) => {
   const k$1 = (x$2) => {

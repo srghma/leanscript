@@ -7,7 +7,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -151,22 +155,22 @@ export const hyperWhile = (a, a1, a2) => {
       };
       const x$21 = k$8(lean_nat_add$nnn(i$4, 1));
       const x$22 = x$21(a1);
-      let acc$23 = [1, x$22];
+      let acc$23 = { tag: 1, _1: x$22 };
       for (let i$24 = 0; i$24 < x$7; i$24++) {
-        if (acc$23[0] === 0) {
-          const [, f$26] = acc$23;
-          acc$23 = [0, f$26];
+        if (acc$23.tag === 0) {
+          const { _1: f$26 } = acc$23;
+          acc$23 = { tag: 0, _1: f$26 };
         } else {
-          const [, f$27] = acc$23;
+          const { _1: f$27 } = acc$23;
           const x$28 = a$5(f$27);
-          acc$23 = [1, x$28];
+          acc$23 = { tag: 1, _1: x$28 };
         }
       }
-      if (acc$23[0] === 0) {
-        const [, f$29] = acc$23;
+      if (acc$23.tag === 0) {
+        const { _1: f$29 } = acc$23;
         return f$29;
       } else {
-        const [, f$30] = acc$23;
+        const { _1: f$30 } = acc$23;
         return f$30;
       }
     };

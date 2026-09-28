@@ -3,6 +3,26 @@
 
 // runtime helpers: lean_uint16_div, lean_uint32_div, lean_int8_div, lean_int16_div, lean_int32_div
 
+function lean_uint16_div(a, b) {
+  return ((b === 0) ? 0 : Math.floor((a / b)));
+}
+
+function lean_uint32_div(a, b) {
+  return ((b === 0) ? 0 : Math.floor((a / b)));
+}
+
+function lean_int8_div(a, b) {
+  return ((b === 0) ? 0 : ((Math.trunc((a / b)) << 24) >> 24));
+}
+
+function lean_int16_div(a, b) {
+  return ((b === 0) ? 0 : ((Math.trunc((a / b)) << 16) >> 16));
+}
+
+function lean_int32_div(a, b) {
+  return ((b === 0) ? 0 : (Math.trunc((a / b)) | 0));
+}
+
 // TestUInt8.test1_0__shouldBeTrue
 export const TestUInt8_test1_0__shouldBeTrue = () => {
   return true;

@@ -7,6 +7,6 @@
 /**
  * `test`
  * @param {string} a
- * @returns {[int(bigint), string]}
+ * @returns {{ _1: int(bigint), _2: string }}
  */
-export const test = (a) => [42n, a];
+export const test = (a) => ({ _1: 42n, _2: a });

@@ -5,9 +5,24 @@
 
 // runtime helpers: $chk53, lean_int_add$nnn, lean_int_sub$nnn
 
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_int_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
+function lean_int_sub$nnn(a, b) {
+  return $chk53((a - b));
+}
+
 // test
 export const test = (f, y) => {
   const x$1 = f(y);
   const x$2 = lean_int_add$nnn(x$1, 1);
-  return [x$2, lean_int_sub$nnn(x$1, 2)];
+  return { _1: x$2, _2: lean_int_sub$nnn(x$1, 2) };
 };

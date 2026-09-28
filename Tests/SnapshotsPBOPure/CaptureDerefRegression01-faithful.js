@@ -9,33 +9,33 @@
 
 /**
  * `test1`
- * @param {[int(bigint), int(bigint)]} v
+ * @param {{ _1: int(bigint), _2: int(bigint) }} v
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
 export const test1 = (v, b) => {
-  const [f$1, f$2] = v;
+  const { _1: f$1, _2: f$2 } = v;
   return f$1 + b;
 };
 
 /**
  * `test2`
- * @param {[int(bigint), int(bigint)]} v
+ * @param {{ _1: int(bigint), _2: int(bigint) }} v
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
 export const test2 = (v, a) => {
-  const [f$1, f$2] = v;
+  const { _1: f$1, _2: f$2 } = v;
   return f$1 + a;
 };
 
 /**
  * `test3`
- * @param {[int(bigint), int(bigint)]} v
+ * @param {{ _1: int(bigint), _2: int(bigint) }} v
  * @param {int(bigint)} p$1
  * @returns {int(bigint)}
  */
 export const test3 = (v, p$1) => {
-  const [f$2, f$3] = v;
+  const { _1: f$2, _2: f$3 } = v;
   return f$2 + p$1;
 };

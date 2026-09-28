@@ -6,6 +6,38 @@
 
 // runtime helpers: $chk53, lean_nat_add$nnn, lean_mk_array$nn_, lean_array_get$n_nn, $arraySet, lean_array_set$_nn_
 
+function $chk53(x) {
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  }
+  return x;
+}
+
+function lean_nat_add$nnn(a, b) {
+  return $chk53((a + b));
+}
+
+function lean_mk_array$nn_(a, b) {
+  return new Array(a).fill(b);
+}
+
+function lean_array_get$n_nn(a, b, c) {
+  return ((c < b.length) ? b[c] : a);
+}
+
+function $arraySet(a, i, x) {
+  if ((i >= a.length)) {
+    return a;
+  }
+  const r = a.slice();
+  r[i] = x;
+  return r;
+}
+
+function lean_array_set$_nn_(a, b, c) {
+  return $arraySet(a, b, c);
+}
+
 // test1
 export const test1 = (n) => {
   const x$1 = lean_mk_array$nn_(3, lean_nat_add$nnn(n, 7));
@@ -19,37 +51,37 @@ export const test4 = (n) => {
   const x$1 = lean_mk_array$nn_(3, lean_nat_add$nnn(n, 7));
   const x$2 = lean_array_get$n_nn(0, x$1, 0);
   const x$3 = lean_array_set$_nn_(x$1, 0, 99);
-  return [x$3, x$2];
+  return { _1: x$3, _2: x$2 };
 };
 
 // test5
 export const test5 = (n) => {
   const x$1 = lean_mk_array$nn_(4, n);
-  let acc$2 = [1, [x$1, 0]];
+  let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0 } };
   for (let i$3 = 0; i$3 < 4; i$3++) {
-    if ((acc$2[0] === 0)) {
-      const [, f$5] = acc$2;
-      acc$2 = [0, f$5];
+    if ((acc$2.tag === 0)) {
+      const { _1: f$5 } = acc$2;
+      acc$2 = { tag: 0, _1: f$5 };
     } else {
-      const [, f$6] = acc$2;
-      const [f$7, f$8] = f$6;
-      const [f$9, f$10] = f$6;
+      const { _1: f$6 } = acc$2;
+      const { _1: f$7, _2: f$8 } = f$6;
+      const { _1: f$9, _2: f$10 } = f$6;
       const x$11 = lean_array_get$n_nn(0, f$7, i$3);
       const x$12 = lean_array_set$_nn_(f$7, i$3, lean_nat_add$nnn(i$3, 1));
       const x$13 = lean_nat_add$nnn(f$10, x$11);
-      acc$2 = [1, [x$12, x$13]];
+      acc$2 = { tag: 1, _1: { _1: x$12, _2: x$13 } };
     }
   }
   let x$14;
   join x$14 {
-    if ((acc$2[0] === 0)) {
-      const [, f$15] = acc$2;
+    if ((acc$2.tag === 0)) {
+      const { _1: f$15 } = acc$2;
       jump 0 f$15;
     } else {
-      const [, f$16] = acc$2;
+      const { _1: f$16 } = acc$2;
       jump 0 f$16;
     }
   }
-  const [f$17, f$18] = x$14;
+  const { _1: f$17, _2: f$18 } = x$14;
   return f$18;
 };

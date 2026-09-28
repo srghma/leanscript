@@ -9,7 +9,11 @@
 // ---- runtime helpers ----
 
 function $chk53(x) {
-  if (!Number.isSafeInteger(x)) throw new RangeError("LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)");
+  if (!Number.isSafeInteger(x)) {
+    throw new RangeError(
+      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+    );
+  }
   return x;
 }
 
@@ -38,11 +42,11 @@ export const test2 = (a) => {
 
 /**
  * `test3`
- * @param {[int53(number), int53(number), int53(number)]} a
+ * @param {{ _1: int53(number), _2: int53(number), _3: int53(number) }} a
  * @returns {int53(number)}
  */
 export const test3 = (a) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === f$2) {
     return f$1;
   } else if (f$3 === f$2) {
@@ -56,14 +60,14 @@ export const test3 = (a) => {
 
 /**
  * `test4`
- * @param {[int53(number), int53(number), int53(number)]} a
- * @param {[int53(number), int53(number), int53(number)]} a1
+ * @param {{ _1: int53(number), _2: int53(number), _3: int53(number) }} a
+ * @param {{ _1: int53(number), _2: int53(number), _3: int53(number) }} a1
  * @returns {int53(number)}
  */
 export const test4 = (a, a1) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1) {
-    const [f$4, f$5, f$6] = a1;
+    const { _1: f$4, _2: f$5, _3: f$6 } = a1;
     if (f$4 === 1) {
       return 1;
     } else if (f$4 === 2) {
@@ -78,7 +82,7 @@ export const test4 = (a, a1) => {
       return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$6);
     }
   } else if (f$1 === 2) {
-    const [f$7, f$8, f$9] = a1;
+    const { _1: f$7, _2: f$8, _3: f$9 } = a1;
     if (f$7 === 2) {
       return 2;
     } else if (f$7 === 3) {
@@ -97,7 +101,7 @@ export const test4 = (a, a1) => {
       return lean_int_add$nnn(lean_int_add$nnn(11, f$3), f$9);
     }
   } else {
-    const [f$10, f$11, f$12] = a1;
+    const { _1: f$10, _2: f$11, _3: f$12 } = a1;
     if (f$10 === 2) {
       return 2;
     } else if (f$10 === 3) {

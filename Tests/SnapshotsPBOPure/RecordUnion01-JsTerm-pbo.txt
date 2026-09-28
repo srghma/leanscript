@@ -7,5 +7,5 @@
 
 // test
 export const test = (a) => {
-  return [42, a];
+  return { _1: 42, _2: a };
 };

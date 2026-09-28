@@ -68,9 +68,9 @@ options.
 | path | what it holds |
 | :-- | :-- |
 | `JsTerm/Config.lean` | `MoreJs.JsConfig`: how each leaf type is represented (a `number` or a `BigInt`; typed or generic arrays), presets `faithful` (default) and `pbo`, command-line knobs |
-| `JsTerm/Ty.lean` | the layouts `JsTerm` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; tagged arrays; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
-| `JsTerm/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper`, `JsModule`, and the `-JsTerm.txt` dump |
-| `JsTerm/Extern.lean` | each extern of the catalogue as inline JavaScript or a runtime helper, per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
+| `JsTerm/Ty.lean` | the layouts `JsTerm` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; records `{ _1: …, _2: … }`; unions `{ tag: i, _1: … }`; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
+| `JsTerm/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper` (a runtime helper, written in the grammar), `JsModule`, and the `-JsTerm.txt` dump |
+| `JsTerm/Extern.lean` | each extern of the catalogue as an operator or a runtime helper written in the `JsTerm` grammar (`JsHelper`, no JavaScript text), per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
 | `JsTerm/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
 | `JsTerm/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
 | `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating, open definitions of recursive functions), `RecCalls.lean` (binding the recursive functions of an open definition in its JavaScript, direct calls), `Check.lean` (`--check`), `Main.lean` |

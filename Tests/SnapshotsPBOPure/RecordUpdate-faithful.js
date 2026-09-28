@@ -6,7 +6,7 @@
 
 /**
  * `test1`
- * @param {(() => [int(bigint), int(bigint), int(bigint)])} fn
+ * @param {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })} fn
  * @param {int(bigint)} val
  * @returns {int(bigint)}
  */
@@ -15,7 +15,7 @@ export const test1 = (fn, val) => {
   if (val === 42n) {
     return val + 1n;
   } else {
-    const [f$2, f$3, f$4] = x$1;
+    const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
     return f$4;
   }
 };
@@ -24,10 +24,10 @@ export const test1 = (fn, val) => {
  * `test7`
  * @param {(int(bigint) => int(bigint))} f
  * @param {int(bigint)} y
- * @returns {[int(bigint), int(bigint), int(bigint)]}
+ * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
   const x$2 = x$1 + 1n;
-  return [x$2, x$1 - 2n, x$1];
+  return { _1: x$2, _2: x$1 - 2n, _3: x$1 };
 };

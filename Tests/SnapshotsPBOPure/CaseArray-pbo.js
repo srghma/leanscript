@@ -8,7 +8,7 @@ function lean_array_get_size$_n(a) {
 }
 
 function lean_array_get$n_nn(a, b, c) {
-  return (c < b.length ? b[c] : a);
+  return c < b.length ? b[c] : a;
 }
 
 // ---- exported functions ----

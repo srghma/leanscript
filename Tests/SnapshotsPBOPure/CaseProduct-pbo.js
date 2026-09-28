@@ -4,11 +4,11 @@
 
 /**
  * `test1`
- * @param {[uint53(number), uint53(number), uint53(number)]} a
+ * @param {{ _1: uint53(number), _2: uint53(number), _3: uint53(number) }} a
  * @returns {string}
  */
 export const test1 = (a) => {
-  const [f$1, f$2, f$3] = a;
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1) {
     if (f$2 === 2) {
       if (f$3 === 3) {

@@ -8,37 +8,49 @@
 
 // runtime helpers: lean_array_get_size$_b, $idx, lean_array_get$__b_
 
+function lean_array_get_size$_b(a) {
+  return BigInt(a.length);
+}
+
+function $idx(x) {
+  return ((x > 9007199254740991n) ? Infinity : Number(x));
+}
+
+function lean_array_get$__b_(a, b, c) {
+  return (($idx(c) < b.length) ? b[$idx(c)] : a);
+}
+
 // test5
 export const test5 = (n) => {
-  return [[1, n], [0]];
+  return [{ tag: 1, _1: n }, { tag: 0 }];
 };
 
 // test6
 export const test6 = (n, i) => {
   const k$1 = (x$2) => {
-    return [[1, x$2], [0]];
+    return [{ tag: 1, _1: x$2 }, { tag: 0 }];
   };
   const x$3 = k$1(n);
   let x$4;
   join x$4 {
     if ((i < lean_array_get_size$_b(x$3))) {
       const k$5 = (x$6) => {
-        return [[1, x$6], [0]];
+        return [{ tag: 1, _1: x$6 }, { tag: 0 }];
       };
       const x$7 = k$5(n);
-      jump 0 [1, lean_array_get$__b_([0], x$7, i)];
+      jump 0 { tag: 1, _1: lean_array_get$__b_({ tag: 0 }, x$7, i) };
     } else {
-      jump 0 [0];
+      jump 0 { tag: 0 };
     }
   }
-  if ((x$4[0] === 0)) {
+  if ((x$4.tag === 0)) {
     return 2n;
   } else {
-    const [, f$8] = x$4;
-    if ((f$8[0] === 0)) {
+    const { _1: f$8 } = x$4;
+    if ((f$8.tag === 0)) {
       return 1n;
     } else {
-      const [, f$9] = f$8;
+      const { _1: f$9 } = f$8;
       return f$9;
     }
   }
