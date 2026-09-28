@@ -9,7 +9,7 @@
 import { uint53__lean_array_get } from "runtime.js";
 
 const $tag0 : ({ tag: 0 } | { tag: 1, _1: uint53(number) }) = { tag: 0 };
-const $k2 : (uint53(number) => Array<({ tag: 0 } | { tag: 1, _1: uint53(number) })>) = (x) => {
+const $k2 : (uint53(number)) => Array<({ tag: 0 } | { tag: 1, _1: uint53(number) })> = (x) => {
   return [{ tag: 1, _1: c0 }, $tag0];
 };
 

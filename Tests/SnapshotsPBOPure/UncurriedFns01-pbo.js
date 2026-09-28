@@ -3,56 +3,52 @@
 
 /**
  * `test1`
- * @param {(int53(number) => (int53(number) => (int53(number) => int53(number))))} f
- * @param {(int53(number) => int53(number))} g
+ * @param {(int53(number), int53(number), int53(number)) => int53(number)} f
+ * @param {(int53(number)) => int53(number)} g
  * @returns {int53(number)}
  */
 export const test1 = (f, g) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2);
-  return x$3(3);
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  const x$3 = 2;
+  const x$4 = 3;
+  return f(x$2, x$3, x$4);
 };
 
 /**
  * `test2`
- * @param {(int53(number) => (int53(number) => (int53(number) => int53(number))))} f
- * @param {(int53(number) => int53(number))} g
+ * @param {(int53(number), int53(number), int53(number)) => int53(number)} f
+ * @param {(int53(number)) => int53(number)} g
  * @param {int53(number)} i
  * @returns {int53(number)}
  */
 export const test2 = (f, g, i) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2);
-  return x$3(i);
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  const x$3 = 2;
+  return f(x$2, x$3, i);
 };
 
 /**
  * `test3`
- * @param {(int53(number) => (int53(number) => (int53(number) => int53(number))))} f
- * @param {(int53(number) => int53(number))} g
+ * @param {(int53(number), int53(number), int53(number)) => int53(number)} f
+ * @param {(int53(number)) => int53(number)} g
  * @param {int53(number)} i
  * @param {int53(number)} j
  * @returns {int53(number)}
  */
 export const test3 = (f, g, i, j) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(i);
-  return x$3(j);
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  return f(x$2, i, j);
 };
 
 /**
  * `test4`
- * @param {(int53(number) => (int53(number) => (int53(number) => int53(number))))} f
+ * @param {(int53(number), int53(number), int53(number)) => int53(number)} f
  * @param {int53(number)} i
  * @param {int53(number)} j
  * @param {int53(number)} k
  * @returns {int53(number)}
  */
-export const test4 = (f, i, j, k) => {
-  const x$1 = f(i);
-  const x$2 = x$1(j);
-  return x$2(k);
-};
+export const test4 = (f, i, j, k) => f(i, j, k);

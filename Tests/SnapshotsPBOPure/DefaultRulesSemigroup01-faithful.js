@@ -3,8 +3,8 @@
 
 /**
  * `test1`
- * @param {(int(bigint) => string)} f
- * @param {(int(bigint) => string)} g
+ * @param {(int(bigint)) => string} f
+ * @param {(int(bigint)) => string} g
  * @param {int(bigint)} a
  * @returns {string}
  */
@@ -16,8 +16,8 @@ export const test1 = (f, g, a) => {
 
 /**
  * `test2`
- * @param {(int(bigint) => string)} f
- * @param {(int(bigint) => string)} g
+ * @param {(int(bigint)) => string} f
+ * @param {(int(bigint)) => string} g
  * @param {int(bigint)} a
  * @returns {string}
  */

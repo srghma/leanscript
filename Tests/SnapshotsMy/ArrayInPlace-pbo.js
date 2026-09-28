@@ -4,28 +4,32 @@
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 import {
-  array__lean_array_push,
-  array__lean_array_push_inplace,
+  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
   uint53__lean_nat_mul,
-  uint53__lean_array_set,
+  uint53__lean_array_set_immutable,
   uint53__lean_array_get,
   uint53__lean_mk_array,
   uint53__lean_nat_div,
-  uint53__lean_array_swap_inplace,
+  uint53__lean_array_swap_mutable,
   uint53__lean_nat_sub,
-  array__lean_array_pop_inplace,
+  array__lean_array_pop_mutable,
 } from "../../runtime.js";
 
 const $k1 = (x$1) => x$1;
-const $k2 = (x$1) => (x$2) => {
+const $k2 = (x$1, x$2) => {
   const k$3 = $k1;
   let acc$4 = k$3;
   for (let i$5 = 0; i$5 < x$1; i$5++) {
     const a$6 = acc$4;
-    const k$8 = (x$7) => a$6(array__lean_array_push(x$7, i$5));
-    acc$4 = k$8;
+    const k$9 = (x$7) => {
+      const x$8 = array__lean_array_push_immutable(x$7, i$5);
+      return a$6(x$8);
+    };
+    acc$4 = k$9;
   }
-  return acc$4(x$2);
+  const x$10 = acc$4;
+  return x$10(x$2);
 };
 
 /**
@@ -41,7 +45,7 @@ export const test1 = (n) => {
       acc$1 = { tag: 0, _1: f$3 };
     } else {
       const { _1: f$4 } = acc$1;
-      const x$5 = array__lean_array_push_inplace(
+      const x$5 = array__lean_array_push_mutable(
         f$4,
         uint53__lean_nat_mul(i$2, i$2),
       );
@@ -71,7 +75,7 @@ export const test3 = (a0) => {
       acc$1 = { tag: 0, _1: f$4 };
     } else {
       const { _1: f$5 } = acc$1;
-      const x$6 = uint53__lean_array_set(
+      const x$6 = uint53__lean_array_set_immutable(
         f$5,
         i$3,
         uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
@@ -95,7 +99,7 @@ export const test3 = (a0) => {
  */
 export const test4 = (n) => {
   const x$1 = uint53__lean_mk_array(3, n);
-  return { _1: x$1, _2: uint53__lean_array_set(x$1, 0, 7) };
+  return { _1: x$1, _2: uint53__lean_array_set_immutable(x$1, 0, 7) };
 };
 
 /**
@@ -111,7 +115,7 @@ export const test5 = (n) => {
       acc$1 = { tag: 0, _1: f$3 };
     } else {
       const { _1: f$4 } = acc$1;
-      const x$5 = array__lean_array_push_inplace(f$4, i$2);
+      const x$5 = array__lean_array_push_mutable(f$4, i$2);
       acc$1 = { tag: 1, _1: x$5 };
     }
   }
@@ -131,7 +135,7 @@ export const test5 = (n) => {
       acc$9 = { tag: 0, _1: f$12 };
     } else {
       const { _1: f$13 } = acc$9;
-      const x$14 = uint53__lean_array_swap_inplace(
+      const x$14 = uint53__lean_array_swap_mutable(
         f$13,
         i$11,
         uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$11), 1),
@@ -147,7 +151,7 @@ export const test5 = (n) => {
     const { _1: f$17 } = acc$9;
     x$15 = f$17;
   }
-  return array__lean_array_pop_inplace(x$15);
+  return array__lean_array_pop_mutable(x$15);
 };
 
 /**
@@ -157,6 +161,5 @@ export const test5 = (n) => {
  */
 export const test6 = (n) => {
   const k$1 = $k2;
-  const x$2 = k$1(n);
-  return x$2([]);
+  return k$1(n, []);
 };

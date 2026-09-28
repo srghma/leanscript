@@ -15,6 +15,8 @@ Rewrites of `JsTerm` that make the printed JavaScript shorter, all type-preservi
 * **the end of a loop body** (`JsBlock.retToNext`): the body of a loop is converted from a
   statement that returns the new accumulator; each `return e` becomes `acc = e;` and the end
   of the iteration;
+* **returns as jumps** (`JsBlock.retToJump`): each `return e` becomes a jump to a new join
+  point (how a block computing a function is applied to more arguments, `FromTerm`);
 * **peephole** (`peephole`): `const x = e; return x;` is `return e;`, `const x = e; jump j x;`
   is `jump j e;`, and a join point whose block only jumps to it, `let x; L: { x = e; break L; }`,
   is `const x = e;` (one whose block is `if (c) { jump a } else { jump b }` is
@@ -64,6 +66,50 @@ partial def JsUnionArms.retToNext {C M J : List JsTy} {α : JsTy} {cs : List (Li
   | .cons sel b rest => .cons sel (b.retToNext acc) (rest.retToNext acc)
 end
 
+/-! ## Returns as jumps -/
+
+/-- A position in `J`, in `J ++ K`. -/
+def JsMem.appendR {α : Type} {J : List α} {x : α} (K : List α) : JsMem J x → JsMem (J ++ K) x
+  | .zero => .zero
+  | .succ m => .succ (m.appendR K)
+
+/-- The position of `x` in `J ++ [x]`. -/
+def JsMem.last {α : Type} {x : α} : (J : List α) → JsMem (J ++ [x]) x
+  | [] => .zero
+  | _ :: J => .succ (JsMem.last J)
+
+mutual
+/-- Every `return e` of a block becomes a jump passing `e` to a new join point, outside the
+    ones of the block (`join x (b.retToJump) rest` computes what `b` returns into `x`, then
+    runs `rest`). -/
+partial def JsBlock.retToJump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} :
+    JsBlock C M J (.ret τ) → JsBlock C M (J ++ [τ]) k
+  | .ret e => .jump (JsMem.last J) e
+  | .jump j e => .jump (j.appendR [τ]) e
+  | .throw msg => .throw msg
+  | .const x e rest => .const x e rest.retToJump
+  | .letMut x e rest => .letMut x e rest.retToJump
+  | .assign x e rest => .assign x e rest.retToJump
+  | .destructure e sel rest => .destructure e sel rest.retToJump
+  | .ite c t e => .ite c t.retToJump e.retToJump
+  | .enumCases e arms => .enumCases e arms.retToJump
+  | .unionCases e arms => .unionCases e arms.retToJump
+  | .join x b rest => .join x b.retToJump rest.retToJump
+  | .forRange x nt n b rest => .forRange x nt n b rest.retToJump
+  | .lastIter x nt n b rest => .lastIter x nt n b rest.retToJump
+  | .forOf x l xs b rest => .forOf x l xs b rest.retToJump
+/-- `retToJump` in the arms of a case analysis on an enum. -/
+partial def JsEnumArms.retToJump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} {n : Nat} :
+    JsEnumArms C M J (.ret τ) n → JsEnumArms C M (J ++ [τ]) k n
+  | .nil => .nil
+  | .cons b rest => .cons b.retToJump rest.retToJump
+/-- `retToJump` in the arms of a case analysis on a union. -/
+partial def JsUnionArms.retToJump {C M J : List JsTy} {τ : JsTy} {k : JsEnd}
+    {cs : List (List JsTy)} : JsUnionArms C M J (.ret τ) cs → JsUnionArms C M (J ++ [τ]) k cs
+  | .nil => .nil
+  | .cons sel b rest => .cons sel b.retToJump rest.retToJump
+end
+
 /-! ## A bottom-up traversal -/
 
 /-- A rewrite of the expressions of every context. -/
@@ -85,11 +131,9 @@ def JsExpr.mapBU (fe : JsExprRewrite) (fb : JsBlockRewrite) {C M : List JsTy} {�
   | .lit l => fe.run _ _ _ (.lit l)
   | .imported op as => fe.run _ _ _ (.imported op (as.mapBU fe fb))
   | .inlined op as => fe.run _ _ _ (.inlined op (as.mapBU fe fb))
-  | .unimplemented n t => fe.run _ _ _ (.unimplemented n t)
-  | .app f a => fe.run _ _ _ (.app (f.mapBU fe fb) (a.mapBU fe fb))
-  | .lam x b => fe.run _ _ _ (.lam x (b.mapBU fe fb))
-  | .lazy_mk b => fe.run _ _ _ (.lazy_mk (b.mapBU fe fb))
-  | .lazy_force e => fe.run _ _ _ (.lazy_force (e.mapBU fe fb))
+  | .unreachable t => fe.run _ _ _ (.unreachable t)
+  | .app f as => fe.run _ _ _ (.app (f.mapBU fe fb) (as.mapBU fe fb))
+  | .lam xs b => fe.run _ _ _ (.lam xs (b.mapBU fe fb))
   | .record_mk fs => fe.run _ _ _ (.record_mk (fs.mapBU fe fb))
   | .union_mk ix as => fe.run _ _ _ (.union_mk ix (as.mapBU fe fb))
   | .enum_mk n s i => fe.run _ _ _ (.enum_mk n s i)

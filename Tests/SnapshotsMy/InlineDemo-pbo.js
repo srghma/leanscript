@@ -30,8 +30,9 @@ export const useScale = (n) => {
   const k$1 = $k1;
   const x$2 = k$1(n);
   const k$3 = $k1;
-  const x$4 = k$3(uint53__lean_nat_add(n, 1));
-  return uint53__lean_nat_add(x$2, x$4);
+  const x$4 = uint53__lean_nat_add(n, 1);
+  const x$5 = k$3(x$4);
+  return uint53__lean_nat_add(x$2, x$5);
 };
 
 /**
@@ -50,6 +51,7 @@ export const useTriple = (n) => {
   const k$1 = $k2;
   const x$2 = k$1(n);
   const k$3 = $k2;
-  const x$4 = k$3(uint53__lean_nat_add(n, 1));
-  return uint53__lean_nat_add(x$2, x$4);
+  const x$4 = uint53__lean_nat_add(n, 1);
+  const x$5 = k$3(x$4);
+  return uint53__lean_nat_add(x$2, x$5);
 };

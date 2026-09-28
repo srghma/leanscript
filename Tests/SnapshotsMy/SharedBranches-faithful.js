@@ -5,9 +5,9 @@
 //   test2: LeanScript: `List String` is a built-in type former, which has no constructors of its own
 
 import {
-  string__lean_string_utf8_get__String_Pos_Raw_get,
+  string__lean_string_utf8_get__String_Internal_get,
   string__lean_string_utf8_set__String_Pos_Raw_set,
-  string__lean_string_utf8_at_end__String_Pos_Raw_atEnd,
+  string__lean_string_utf8_at_end__String_Internal_atEnd,
 } from "../../runtime.js";
 
 /**
@@ -16,7 +16,7 @@ import {
  * @returns {string}
  */
 export const test3 = (s) =>
-  string__lean_string_utf8_get__String_Pos_Raw_get(s, 0);
+  string__lean_string_utf8_get__String_Internal_get(s, 0);
 
 /**
  * `test4`
@@ -33,4 +33,4 @@ export const test4 = (s, c) =>
  * @returns {boolean}
  */
 export const test5 = (s) =>
-  string__lean_string_utf8_at_end__String_Pos_Raw_atEnd(s, 0);
+  string__lean_string_utf8_at_end__String_Internal_atEnd(s, 0);

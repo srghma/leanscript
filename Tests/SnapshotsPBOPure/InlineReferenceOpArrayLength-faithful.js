@@ -3,9 +3,11 @@
 // not translated:
 //   test2: Application type mismatch: The argument rfl has type ?m.1028 = ?m.1028 but is expected to have type LeanScript.Lvl.meet ?m.948 (LeanScript.Lvl.meet ?m.1009 (LeanScript.Lvl.meet none none)) = some ?m.930 in the application LeanScript.Neu.extern (LeanScript.LeanInitPureExtern.lean_array_get (LeanScript.Ty.prim LeanScript.LeanPrimTy.int).array) (LeanScript.Args.cons ?m.991 (LeanScript.Args.cons (LeanScript.PExpr.kvar LeanScript.KVar.head) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.nat 0) LeanScript.Args.nil))) ⋯
 
+const $k1 = () => 0n;
+
 /**
  * `test1`
- * @param {(() => int(bigint))} fn
+ * @param {() => int(bigint)} fn
  * @returns {Array<int(bigint)>}
  */
 export const test1 = (fn) => {
@@ -20,9 +22,12 @@ export const test1 = (fn) => {
 
 /**
  * `fn'`
- * @returns {(() => int(bigint))}
+ * @returns {int(bigint)}
  */
-export const fn_ = () => () => 0n;
+export const fn_ = () => {
+  const f$1 = $k1;
+  return f$1();
+};
 
 /**
  * `extern1`

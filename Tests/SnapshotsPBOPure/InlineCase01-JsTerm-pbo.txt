@@ -8,7 +8,7 @@
 import { int53__lean_int_add } from "runtime.js";
 
 // test1
-export const test1 = (f : (() => int53(number)), a : ({ tag: 0 } | { tag: 1, _1: int53(number) })) : int53(number) => {
+export const test1 = (f : () => int53(number), a : ({ tag: 0 } | { tag: 1, _1: int53(number) })) : int53(number) => {
   switch (c0.tag) {
   case 0 {  }:
     return c1();
@@ -18,7 +18,7 @@ export const test1 = (f : (() => int53(number)), a : ({ tag: 0 } | { tag: 1, _1:
 };
 
 // test3
-export const test3 = (f : (() => int53(number)), a : ({ tag: 0 } | { tag: 1, _1: int53(number) })) : int53(number) => {
+export const test3 = (f : () => int53(number), a : ({ tag: 0 } | { tag: 1, _1: int53(number) })) : int53(number) => {
   switch (c0.tag) {
   case 0 {  }:
     return c1();

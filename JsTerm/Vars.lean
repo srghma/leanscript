@@ -58,11 +58,9 @@ def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
   | .lit l => pure (.lit l)
   | .imported op as => .imported op <$> as.renameM rc rm
   | .inlined op as => .inlined op <$> as.renameM rc rm
-  | .unimplemented n t => pure (.unimplemented n t)
-  | .app f a => return .app (← f.renameM rc rm) (← a.renameM rc rm)
-  | .lam x b => .lam x <$> b.renameM (JsRenM.lift rc) rm
-  | .lazy_mk b => .lazy_mk <$> b.renameM rc rm
-  | .lazy_force e => .lazy_force <$> e.renameM rc rm
+  | .unreachable t => pure (.unreachable t)
+  | .app f as => return .app (← f.renameM rc rm) (← as.renameM rc rm)
+  | .lam (σs := σs) xs b => .lam xs <$> b.renameM (JsRenM.liftAll σs rc) rm
   | .record_mk fs => .record_mk <$> fs.renameM rc rm
   | .union_mk ix as => .union_mk ix <$> as.renameM rc rm
   | .enum_mk n s i => pure (.enum_mk n s i)
@@ -201,11 +199,9 @@ def JsExpr.subst {C M C' M' : List JsTy} (s : JsSubst C M C' M') {τ : JsTy} :
   | .lit l => .lit l
   | .imported op as => .imported op (as.subst s)
   | .inlined op as => .inlined op (as.subst s)
-  | .unimplemented n t => .unimplemented n t
-  | .app f a => .app (f.subst s) (a.subst s)
-  | .lam x b => .lam x (b.subst s.liftC)
-  | .lazy_mk b => .lazy_mk (b.subst s)
-  | .lazy_force e => .lazy_force (e.subst s)
+  | .unreachable t => .unreachable t
+  | .app f as => .app (f.subst s) (as.subst s)
+  | .lam (σs := σs) xs b => .lam xs (b.subst (s.liftCAll σs))
   | .record_mk fs => .record_mk (fs.subst s)
   | .union_mk ix as => .union_mk ix (as.subst s)
   | .enum_mk n sh i => .enum_mk n sh i
@@ -321,12 +317,10 @@ mutual
 def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr C M τ → Array JsOcc
   | .cvar x => o.cOcc x.index
   | .mvar x => o.mOcc x.index
-  | .global .. | .lit _ | .unimplemented .. | .enum_mk .. => #[]
+  | .global .. | .lit _ | .unreachable _ | .enum_mk .. => #[]
   | .imported _ as | .inlined _ as => as.occsAt o
-  | .app f a => f.occsAt o ++ a.occsAt o
-  | .lam _ b => b.occsAt (o.closure 1)
-  | .lazy_mk b => b.occsAt (o.closure 0)
-  | .lazy_force e => e.occsAt o
+  | .app f as => f.occsAt o ++ as.occsAt o
+  | .lam (σs := σs) _ b => b.occsAt (o.closure σs.length)
   | .record_mk fs => fs.occsAt o
   | .union_mk _ as => as.occsAt o
   | .array_mk _ ps => ps.occsAt o

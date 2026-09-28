@@ -3,19 +3,23 @@
 
 /**
  * `boolValues`
- * @param {(boolean => (boolean => boolean))} op
+ * @param {(boolean, boolean) => boolean} op
  * @returns {Array<boolean>}
  */
 export const boolValues = (op) => {
-  const x$1 = op(true);
-  const x$2 = x$1(true);
-  const x$3 = op(true);
-  const x$4 = x$3(false);
-  const x$5 = op(false);
-  const x$6 = x$5(true);
-  const x$7 = op(false);
-  const x$8 = x$7(false);
-  return [x$2, x$4, x$6, x$8];
+  const x$1 = true;
+  const x$2 = true;
+  const x$3 = op(x$1, x$2);
+  const x$4 = true;
+  const x$5 = false;
+  const x$6 = op(x$4, x$5);
+  const x$7 = false;
+  const x$8 = true;
+  const x$9 = op(x$7, x$8);
+  const x$10 = false;
+  const x$11 = false;
+  const x$12 = op(x$10, x$11);
+  return [x$3, x$6, x$9, x$12];
 };
 
 /**

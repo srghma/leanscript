@@ -12,33 +12,37 @@
 
 import { bigint_nat__lean_nat_div } from "runtime.js";
 
-const $k1 : (nat(bigint) => nat(bigint)) = (x) => {
+const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
   return inline:bigint_nat__lean_nat_add(c0, 1n);
 };
-const $k2 : ((nat(bigint) => nat(bigint)) => (nat(bigint) => nat(bigint))) = (x) => {
-  return (x) => {
-    const x = c1(1n);
-    let acc = c0;
-    for (i < c1) {
-      const x = c3(m0);
-      m0 = c0;
-      next;
-    }
-    return m0;
-  };
-};
-
-// ack2
-export const ack2 = (a : nat(bigint)) : (nat(bigint) => nat(bigint)) => {
-  const k = $k1;
+const $k2 : ((nat(bigint)) => nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
+  const x = 1n;
+  const x = c2(c0);
   let acc = c0;
-  for (i < c1) {
-    const k = $k2;
-    const x = c0(m0);
+  for (i < c2) {
+    const x = c4(m0);
     m0 = c0;
     next;
   }
   return m0;
+};
+
+// ack2
+export const ack2 = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
+  join f {
+    const k = $k1;
+    let acc = c0;
+    for (i < c2) {
+      const a = m0;
+      const k = $k2;
+      m0 = (y) => {
+        return c1(c2, c0);
+      };
+      next;
+    }
+    jump 0 m0;
+  }
+  return c0(c1);
 };
 
 // AckWithoutStackButUsingCantorPairing.pair

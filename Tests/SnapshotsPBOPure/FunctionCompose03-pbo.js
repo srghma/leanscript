@@ -3,8 +3,8 @@
 
 /**
  * `test1`
- * @param {(() => (int53(number) => int53(number)))} f
- * @param {(() => (int53(number) => int53(number)))} g
+ * @param {() => (int53(number)) => int53(number)} f
+ * @param {() => (int53(number)) => int53(number)} g
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
@@ -17,8 +17,8 @@ export const test1 = (f, g, a) => {
 
 /**
  * `test2`
- * @param {(() => (int53(number) => int53(number)))} f
- * @param {(() => (int53(number) => int53(number)))} g
+ * @param {() => (int53(number)) => int53(number)} f
+ * @param {() => (int53(number)) => int53(number)} g
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
@@ -32,8 +32,8 @@ export const test2 = (f, g, a) => {
 
 /**
  * `test3`
- * @param {(() => (int53(number) => int53(number)))} f
- * @param {(() => (int53(number) => int53(number)))} g
+ * @param {() => (int53(number)) => int53(number)} f
+ * @param {() => (int53(number)) => int53(number)} g
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
@@ -48,8 +48,8 @@ export const test3 = (f, g, a) => {
 
 /**
  * `test4`
- * @param {(() => (int53(number) => int53(number)))} f
- * @param {(() => (int53(number) => int53(number)))} g
+ * @param {() => (int53(number)) => int53(number)} f
+ * @param {() => (int53(number)) => int53(number)} g
  * @param {int53(number)} a
  * @returns {int53(number)}
  */

@@ -6,7 +6,7 @@
 
 const $k1 = (x$1) => x$1;
 const $k2 = (x$1) => x$1 + 1n;
-const $k3 = (x$1) => (x$2) => (x$3) => {
+const $k3 = (x$1, x$2, x$3) => {
   const k$4 = $k1;
   let acc$5 = k$4;
   for (let i$6 = 0n; i$6 < x$2; i$6++) {
@@ -17,9 +17,10 @@ const $k3 = (x$1) => (x$2) => (x$3) => {
     };
     acc$5 = k$10;
   }
-  return acc$5(x$3);
+  const x$11 = acc$5;
+  return x$11(x$3);
 };
-const $k4 = (x$1) => (x$2) => {
+const $k4 = (x$1, x$2) => {
   let acc$3 = 1n;
   if (0n < x$1) {
     const i$4 = x$1 - 1n;
@@ -65,7 +66,7 @@ export const hyperBase = (a, a1) => {
 
 /**
  * `hyperLoop`
- * @param {(nat(bigint) => nat(bigint))} f
+ * @param {(nat(bigint)) => nat(bigint)} f
  * @param {nat(bigint)} a
  * @param {nat(bigint)} a1
  * @returns {nat(bigint)}
@@ -81,7 +82,8 @@ export const hyperLoop = (f, a, a1) => {
     };
     acc$2 = k$7;
   }
-  return acc$2(a1);
+  const x$8 = acc$2;
+  return x$8(a1);
 };
 
 /**
@@ -96,18 +98,17 @@ export const hyperTCO = (a, a1, a2) => {
   let acc$2 = k$1;
   for (let i$3 = 0n; i$3 < a; i$3++) {
     const a$4 = acc$2;
-    const k$12 = (x$5) => {
+    const k$10 = (x$5) => {
       const k$6 = $k3;
-      const x$7 = k$6(a$4);
-      const x$8 = x$7(x$5);
-      const k$9 = $k4;
-      const x$10 = k$9(i$3 + 1n);
-      const x$11 = x$10(a1);
-      return x$8(x$11);
+      const k$7 = $k4;
+      const x$8 = i$3 + 1n;
+      const x$9 = k$7(x$8, a1);
+      return k$6(a$4, x$5, x$9);
     };
-    acc$2 = k$12;
+    acc$2 = k$10;
   }
-  return acc$2(a2);
+  const x$11 = acc$2;
+  return x$11(a2);
 };
 
 /**
@@ -124,8 +125,8 @@ export const hyperWhile = (a, a1, a2) => {
     const a$4 = acc$2;
     const k$16 = (x$5) => {
       const k$6 = $k4;
-      const x$7 = k$6(i$3 + 1n);
-      const x$8 = x$7(a1);
+      const x$7 = i$3 + 1n;
+      const x$8 = k$6(x$7, a1);
       let acc$9 = { tag: 1, _1: x$8 };
       for (let i$10 = 0n; i$10 < x$5; i$10++) {
         if (acc$9.tag === 0) {
@@ -147,5 +148,6 @@ export const hyperWhile = (a, a1, a2) => {
     };
     acc$2 = k$16;
   }
-  return acc$2(a2);
+  const x$17 = acc$2;
+  return x$17(a2);
 };

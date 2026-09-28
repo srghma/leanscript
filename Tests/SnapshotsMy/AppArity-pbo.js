@@ -3,23 +3,17 @@
 
 import { uint53__lean_nat_add, uint53__lean_nat_mul } from "../../runtime.js";
 
-const $k1 = (x$1) => (x$2) => (x$3) => {
-  const x$4 = x$1(x$2);
-  const x$5 = x$4(x$3);
-  const x$6 = x$1(x$3);
-  const x$7 = x$6(x$2);
-  return uint53__lean_nat_add(x$5, x$7);
+const $k1 = (x$1, x$2, x$3) => {
+  const x$4 = x$1(x$2, x$3);
+  const x$5 = x$1(x$3, x$2);
+  return uint53__lean_nat_add(x$4, x$5);
 };
-const $k2 = (x$1) => (x$2) => (x$3) =>
+const $k2 = (x$1, x$2, x$3) =>
   uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$1);
-const $k3 = (x$1) => (x$2) => (x$3) =>
+const $k3 = (x$1, x$2, x$3) =>
   uint53__lean_nat_mul(uint53__lean_nat_mul(x$2, x$3), x$1);
-const $k4 = (x$1) => (x$2) => (x$3) => {
-  const x$4 = x$1(x$2);
-  const x$5 = x$4(x$3);
-  return x$5(x$2);
-};
-const $k5 = (x$1) => (x$2) => (x$3) => (x$4) =>
+const $k4 = (x$1, x$2, x$3) => x$1(x$2, x$3, x$2);
+const $k5 = (x$1, x$2, x$3, x$4) =>
   uint53__lean_nat_add(
     uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$4),
     x$1,
@@ -45,10 +39,8 @@ export const mkAdd = (n, a, a1) =>
 export const test1 = (n, x, y) => {
   const k$1 = $k1;
   const k$2 = $k2;
-  const x$3 = k$2(n);
-  const x$4 = k$1(x$3);
-  const x$5 = x$4(x);
-  return x$5(y);
+  const x$5 = (y$3, y$4) => k$2(n, y$3, y$4);
+  return k$1(x$5, x, y);
 };
 
 /**
@@ -71,10 +63,8 @@ export const mkMul = (n, a, a1) =>
 export const test2 = (n, x, y) => {
   const k$1 = $k1;
   const k$2 = $k3;
-  const x$3 = k$2(n);
-  const x$4 = k$1(x$3);
-  const x$5 = x$4(x);
-  return x$5(y);
+  const x$5 = (y$3, y$4) => k$2(n, y$3, y$4);
+  return k$1(x$5, x, y);
 };
 
 /**
@@ -101,23 +91,19 @@ export const mkSum3 = (n, a, a1, a2) =>
 export const test3 = (n, x, y) => {
   const k$1 = $k4;
   const k$2 = $k5;
-  const x$3 = k$2(n);
-  const x$4 = k$1(x$3);
-  const x$5 = x$4(x);
-  return x$5(y);
+  const x$6 = (y$3, y$4, y$5) => k$2(n, y$3, y$4, y$5);
+  return k$1(x$6, x, y);
 };
 
 /**
  * `test4`
- * @param {(uint53(number) => (uint53(number) => uint53(number)))} f
+ * @param {(uint53(number), uint53(number)) => uint53(number)} f
  * @param {uint53(number)} x
  * @param {uint53(number)} y
  * @returns {uint53(number)}
  */
 export const test4 = (f, x, y) => {
-  const x$1 = f(x);
-  const x$2 = x$1(y);
-  const x$3 = f(y);
-  const x$4 = x$3(x);
-  return uint53__lean_nat_add(x$2, x$4);
+  const x$1 = f(x, y);
+  const x$2 = f(y, x);
+  return uint53__lean_nat_add(x$1, x$2);
 };

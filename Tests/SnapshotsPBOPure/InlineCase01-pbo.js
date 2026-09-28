@@ -9,7 +9,7 @@ import { int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `test1`
- * @param {(() => int53(number))} f
+ * @param {() => int53(number)} f
  * @param {({ tag: 0 } | { tag: 1, _1: int53(number) })} a
  * @returns {int53(number)}
  */
@@ -24,7 +24,7 @@ export const test1 = (f, a) => {
 
 /**
  * `test3`
- * @param {(() => int53(number))} f
+ * @param {() => int53(number)} f
  * @param {({ tag: 0 } | { tag: 1, _1: int53(number) })} a
  * @returns {int53(number)}
  */

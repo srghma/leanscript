@@ -3,8 +3,8 @@
 
 /**
  * `test1`
- * @param {(int53(number) => string)} f
- * @param {(int53(number) => string)} g
+ * @param {(int53(number)) => string} f
+ * @param {(int53(number)) => string} g
  * @param {int53(number)} a
  * @returns {string}
  */
@@ -16,8 +16,8 @@ export const test1 = (f, g, a) => {
 
 /**
  * `test2`
- * @param {(int53(number) => string)} f
- * @param {(int53(number) => string)} g
+ * @param {(int53(number)) => string} f
+ * @param {(int53(number)) => string} g
  * @param {int53(number)} a
  * @returns {string}
  */

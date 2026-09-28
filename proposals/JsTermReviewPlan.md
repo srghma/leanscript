@@ -9,9 +9,26 @@ This file answers the seven review points on `JsTerm/Ty.lean`, `JsTerm/Syntax.le
 
 A phased plan comes at the end.
 
-Nothing in this file is implemented yet. The facts about the current code come from reading
-the sources and from `python3 scripts/gen_js_ops.py --report`. The one fact about the Lean
-core library comes from a quick `#eval`, not a test. It is marked where it is used (§5).
+## Status (implemented)
+
+The plan below was reviewed and implemented as follows:
+
+| § | Decision | State |
+| --- | --- | --- |
+| 1 | `typedArray (elem : JsTypedElem)`, the kind computed from the element | done (`JsTerm/Ty.lean`) |
+| 2 | the **fully structural** alternative: `record (f₁ f₂ : JsTy) (fs : List JsTy)`, `union (c₀ c₁ : List JsTy) (cs : List (List JsTy))`; the `{}` case is gone | done |
+| 3 | put aside; replaced by a proposal for fast recursive datatypes | `proposals/RecursiveDatatypesProposal.md` |
+| 4 | uncurried functions: `fn (doms : List JsTy) cod`, n-ary `lam`/`app`, `lazy t` is `fn [] t`, maximal uncurrying by type, partial application as a closure, exported functions take every parameter of their type | done (`JsTerm/FromTerm.lean`) |
+| 5 | `JsTerm/NumberLit.lean`, from `Float.Model.UnpackedFloat` | done |
+| 6 | every extern implemented (`runtime.js`), `lean_extern_unimplemented` deleted; a missing operation is a conversion error and the generator refuses to run | done |
+| 7 | one `JsTerm/Ops.lean`: `JsOpImported` and `JsOpInlinable`, indexed by `Effectfulness` (`pure`/`effectful`) and `MayThrow` (`doesntThrow`/`mayThrow`); the runtime name is the constructor name (`ctor_names%`, `JsOpImported.runtimeName`); the array updates are `…_immutable` / `…_mutable`; aliases at the same signature are merged (`lean_array_fset` is `…_set_immutable`) | done |
+| 7.3 | effect-directed optimisations in `JsTerm` | not done, by decision: every optimisation belongs to `Term.optimize` |
+
+`JsOpImported` has 388 constructors and `JsTerm/Ops.lean` elaborates in about 12 s, so it was
+not split into groups.
+
+The rest of this file is the plan as it was written, before the implementation. The facts about
+the code it gives are those of that time.
 
 ---
 

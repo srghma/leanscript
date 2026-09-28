@@ -3,8 +3,12 @@
 // not translated:
 //   test2: Application type mismatch: The argument rfl has type ?m.1028 = ?m.1028 but is expected to have type LeanScript.Lvl.meet ?m.948 (LeanScript.Lvl.meet ?m.1009 (LeanScript.Lvl.meet none none)) = some ?m.930 in the application LeanScript.Neu.extern (LeanScript.LeanInitPureExtern.lean_array_get (LeanScript.Ty.prim LeanScript.LeanPrimTy.int).array) (LeanScript.Args.cons ?m.991 (LeanScript.Args.cons (LeanScript.PExpr.kvar LeanScript.KVar.head) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.nat 0) LeanScript.Args.nil))) ⋯
 
+const $k1 : () => int53(number) = () => {
+  return 0;
+};
+
 // test1
-export const test1 = (fn : (() => int53(number))) : Array<int53(number)> => {
+export const test1 = (fn : () => int53(number)) : Array<int53(number)> => {
   const x = c0();
   const k = [1, 2, c0];
   if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3)) {
@@ -15,10 +19,9 @@ export const test1 = (fn : (() => int53(number))) : Array<int53(number)> => {
 };
 
 // fn'
-export const fn_ = () : (() => int53(number)) => {
-  return () => {
-    return 0;
-  };
+export const fn_ = () : int53(number) => {
+  const f = $k1;
+  return c0();
 };
 
 // extern1

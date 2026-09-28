@@ -5,7 +5,7 @@
 
 /**
  * `test1`
- * @param {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })} fn
+ * @param {() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) }} fn
  * @param {int(bigint)} val
  * @returns {int(bigint)}
  */
@@ -21,7 +21,7 @@ export const test1 = (fn, val) => {
 
 /**
  * `test7`
- * @param {(int(bigint) => int(bigint))} f
+ * @param {(int(bigint)) => int(bigint)} f
  * @param {int(bigint)} y
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */

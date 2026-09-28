@@ -31,7 +31,7 @@ are numbered (`$k1`, `$k2`, …).  The printer names the local variables `x$1`, 
 the exported functions are named without a leading `$`, so the names cannot collide.
 
 `JsModule.collectImports` lists the functions of the runtime a module calls: the imported
-operations, and `lean_extern_unimplemented` when an extern has no operation.
+operations (by `JsOpImported.runtimeName`).
 -/
 
 namespace MoreJs
@@ -90,10 +90,8 @@ mutual
 partial def hoistE {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → HoistM (JsExpr C M τ)
   | .imported op as => do return .imported op (← hoistA as)
   | .inlined op as => do return .inlined op (← hoistA as)
-  | .app f a => do return .app (← hoistE f) (← hoistE a)
-  | .lam x b => do hoistNode (.lam x (← hoistB b))
-  | .lazy_mk b => do return .lazy_mk (← hoistB b)
-  | .lazy_force e => do return .lazy_force (← hoistE e)
+  | .app f as => do return .app (← hoistE f) (← hoistA as)
+  | .lam xs b => do hoistNode (.lam xs (← hoistB b))
   | .record_mk fs => do hoistNode (.record_mk (← hoistA fs))
   | .union_mk ix as => do hoistNode (.union_mk ix (← hoistA as))
   | .array_mk l ps => do return .array_mk l (← hoistP ps)
@@ -158,12 +156,10 @@ mutual
 /-- The functions of the runtime an expression calls, added to `acc`. -/
 partial def JsExpr.runtimeNames {C M : List JsTy} {τ : JsTy} (acc : Array String) :
     JsExpr C M τ → Array String
-  | .imported op as => as.runtimeNames (addName acc op.name)
+  | .imported op as => as.runtimeNames (addName acc op.runtimeName)
   | .inlined _ as => as.runtimeNames acc
-  | .unimplemented .. => addName acc unimplementedFnName
-  | .app f a => a.runtimeNames (f.runtimeNames acc)
-  | .lam _ b | .lazy_mk b => b.runtimeNames acc
-  | .lazy_force e => e.runtimeNames acc
+  | .app f as => as.runtimeNames (f.runtimeNames acc)
+  | .lam _ b => b.runtimeNames acc
   | .record_mk fs => fs.runtimeNames acc
   | .union_mk _ as => as.runtimeNames acc
   | .array_mk _ ps | .list_mk ps => ps.runtimeNames acc

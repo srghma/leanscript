@@ -25,7 +25,7 @@ export const mc91 = (n) => {
 
 /**
  * `iter`
- * @param {(nat(bigint) => nat(bigint))} f
+ * @param {(nat(bigint)) => nat(bigint)} f
  * @param {nat(bigint)} a
  * @param {nat(bigint)} a1
  * @returns {nat(bigint)}
@@ -41,5 +41,6 @@ export const iter = (f, a, a1) => {
     };
     acc$2 = k$7;
   }
-  return acc$2(a1);
+  const x$8 = acc$2;
+  return x$8(a1);
 };

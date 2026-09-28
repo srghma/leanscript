@@ -5,9 +5,9 @@
 
 import { bigint_nat__lean_nat_mod__Nat_mod } from "../../runtime.js";
 
-const $k1 = (x$1) => (x$2) => x$1;
-const $k2 = (x$1) => (x$2) => (x$3) => x$1 * 100n + x$2 * 10n + x$3;
-const $k3 = (x$1) => (x$2) => x$1 + x$2;
+const $k1 = (x$1, x$2) => x$1;
+const $k2 = (x$1, x$2, x$3) => x$1 * 100n + x$2 * 10n + x$3;
+const $k3 = (x$1, x$2) => x$1 + x$2;
 
 /**
  * `test1`
@@ -21,18 +21,18 @@ export const test1 = (fuel, a, b) => {
   let acc$2 = k$1;
   for (let i$3 = 0n; i$3 < fuel; i$3++) {
     const a$4 = acc$2;
-    const k$8 = (x$5) => (x$6) => {
+    const k$8 = (x$5, x$6) => {
       if (x$6 === 0n) {
         return x$5;
       } else {
-        const x$7 = a$4(x$6);
-        return x$7(bigint_nat__lean_nat_mod__Nat_mod(x$5, x$6));
+        const x$7 = bigint_nat__lean_nat_mod__Nat_mod(x$5, x$6);
+        return a$4(x$6, x$7);
       }
     };
     acc$2 = k$8;
   }
-  const x$9 = acc$2(a);
-  return x$9(b);
+  const x$9 = acc$2;
+  return x$9(a, b);
 };
 
 /**
@@ -48,16 +48,14 @@ export const test2 = (fuel, a, b, c) => {
   let acc$2 = k$1;
   for (let i$3 = 0n; i$3 < fuel; i$3++) {
     const a$4 = acc$2;
-    const k$10 = (x$5) => (x$6) => (x$7) => {
-      const x$8 = a$4(x$6);
-      const x$9 = x$8(x$7);
-      return x$9(x$5 + 1n);
+    const k$9 = (x$5, x$6, x$7) => {
+      const x$8 = x$5 + 1n;
+      return a$4(x$6, x$7, x$8);
     };
-    acc$2 = k$10;
+    acc$2 = k$9;
   }
-  const x$11 = acc$2(a);
-  const x$12 = x$11(b);
-  return x$12(c);
+  const x$10 = acc$2;
+  return x$10(a, b, c);
 };
 
 /**
@@ -72,12 +70,13 @@ export const test4 = (fuel, a, b) => {
   let acc$2 = k$1;
   for (let i$3 = 0n; i$3 < fuel; i$3++) {
     const a$4 = acc$2;
-    const k$8 = (x$5) => (x$6) => {
-      const x$7 = a$4(x$5 + 1n);
-      return x$7(x$6 + 2n);
+    const k$9 = (x$5, x$6) => {
+      const x$7 = x$5 + 1n;
+      const x$8 = x$6 + 2n;
+      return a$4(x$7, x$8);
     };
-    acc$2 = k$8;
+    acc$2 = k$9;
   }
-  const x$9 = acc$2(a);
-  return x$9(b);
+  const x$10 = acc$2;
+  return x$10(a, b);
 };

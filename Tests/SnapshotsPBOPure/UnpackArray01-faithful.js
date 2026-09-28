@@ -5,13 +5,14 @@ import { bigint_nat__lean_array_get } from "../../runtime.js";
 
 /**
  * `test`
- * @param {(string => (string => string))} fn1
- * @param {(() => string)} fn2
+ * @param {(string, string) => string} fn1
+ * @param {() => string} fn2
  * @returns {string}
  */
 export const test = (fn1, fn2) => {
   const x$1 = fn2();
   const k$2 = ["foo", "bar", "baz", x$1];
-  const x$3 = fn1(bigint_nat__lean_array_get("", k$2, 0n));
-  return x$3(bigint_nat__lean_array_get("", k$2, 2n));
+  const x$3 = bigint_nat__lean_array_get("", k$2, 0n);
+  const x$4 = bigint_nat__lean_array_get("", k$2, 2n);
+  return fn1(x$3, x$4);
 };

@@ -2,16 +2,20 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // boolValues
-export const boolValues = (op : (boolean => (boolean => boolean))) : Array<boolean> => {
-  const x = c0(true);
-  const x = c0(true);
-  const x = c2(true);
-  const x = c0(false);
-  const x = c4(false);
-  const x = c0(true);
-  const x = c6(false);
-  const x = c0(false);
-  return [c6, c4, c2, c0];
+export const boolValues = (op : (boolean, boolean) => boolean) : Array<boolean> => {
+  const x = true;
+  const x = true;
+  const x = c2(c1, c0);
+  const x = true;
+  const x = false;
+  const x = c5(c1, c0);
+  const x = false;
+  const x = true;
+  const x = c8(c1, c0);
+  const x = false;
+  const x = false;
+  const x = c11(c1, c0);
+  return [c9, c6, c3, c0];
 };
 
 // test1

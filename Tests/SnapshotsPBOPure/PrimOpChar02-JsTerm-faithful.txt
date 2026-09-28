@@ -2,14 +2,17 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // charValues
-export const charValues = (op : (string => (string => boolean))) : Array<boolean> => {
-  const x = c0("a");
-  const x = c0("a");
-  const x = c2("a");
-  const x = c0("b");
-  const x = c4("b");
-  const x = c0("a");
-  return [c4, c2, c0];
+export const charValues = (op : (string, string) => boolean) : Array<boolean> => {
+  const x = "a";
+  const x = "a";
+  const x = c2(c1, c0);
+  const x = "a";
+  const x = "b";
+  const x = c5(c1, c0);
+  const x = "b";
+  const x = "a";
+  const x = c8(c1, c0);
+  return [c6, c3, c0];
 };
 
 // test1

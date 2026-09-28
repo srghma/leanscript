@@ -4,49 +4,44 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-const $k1 : (nat(bigint) => nat(bigint)) = (x) => {
+const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
   return c0;
 };
-const $k2 : (nat(bigint) => nat(bigint)) = (x) => {
+const $k2 : (nat(bigint)) => nat(bigint) = (x) => {
   return inline:bigint_nat__lean_nat_add(c0, 1n);
 };
-const $k3 : ((nat(bigint) => nat(bigint)) => (nat(bigint) => (nat(bigint) => nat(bigint)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      const k = $k1;
-      let acc = c0;
-      for (i < c2) {
-        const a = m0;
-        const k = (x) => {
-          const x = c6(c0);
-          return c2(c0);
-        };
-        m0 = c0;
-        next;
-      }
-      return m0(c1);
+const $k3 : ((nat(bigint)) => nat(bigint), nat(bigint), nat(bigint)) => nat(bigint) = (x, x, x) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c2) {
+    const a = m0;
+    const k = (x) => {
+      const x = c6(c0);
+      return c2(c0);
     };
-  };
+    m0 = c0;
+    next;
+  }
+  const x = m0;
+  return c0(c2);
 };
-const $k4 : (nat(bigint) => (nat(bigint) => nat(bigint))) = (x) => {
-  return (x) => {
-    let acc = 1n;
-    last (i < c1) {
-      let acc = c1;
+const $k4 : (nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
+  let acc = 1n;
+  last (i < c1) {
+    let acc = c1;
+    last (i < c0) {
+      let acc = 0n;
       last (i < c0) {
-        let acc = 0n;
-        last (i < c0) {
-          m0 = 1n;
-          next;
-        }
-        m1 = m0;
+        m0 = 1n;
         next;
       }
       m1 = m0;
       next;
     }
-    return m0;
-  };
+    m1 = m0;
+    next;
+  }
+  return m0;
 };
 
 // hyperBase
@@ -70,7 +65,7 @@ export const hyperBase = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
 };
 
 // hyperLoop
-export const hyperLoop = (f : (nat(bigint) => nat(bigint)), a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
+export const hyperLoop = (f : (nat(bigint)) => nat(bigint), a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
   const k = $k1;
   let acc = c0;
   for (i < c2) {
@@ -82,7 +77,8 @@ export const hyperLoop = (f : (nat(bigint) => nat(bigint)), a : nat(bigint), a1 
     m0 = c0;
     next;
   }
-  return m0(c1);
+  const x = m0;
+  return c0(c2);
 };
 
 // hyperTCO
@@ -93,17 +89,16 @@ export const hyperTCO = (a : nat(bigint), a1 : nat(bigint), a2 : nat(bigint)) : 
     const a = m0;
     const k = (x) => {
       const k = $k3;
-      const x = c0(c2);
-      const x = c0(c2);
       const k = $k4;
-      const x = c0(inline:bigint_nat__lean_nat_add(c6, 1n));
-      const x = c0(c10);
-      return c3(c0);
+      const x = inline:bigint_nat__lean_nat_add(c4, 1n);
+      const x = c1(c0, c8);
+      return c3(c5, c4, c0);
     };
     m0 = c0;
     next;
   }
-  return m0(c1);
+  const x = m0;
+  return c0(c2);
 };
 
 // hyperWhile
@@ -114,8 +109,8 @@ export const hyperWhile = (a : nat(bigint), a1 : nat(bigint), a2 : nat(bigint)) 
     const a = m0;
     const k = (x) => {
       const k = $k4;
-      const x = c0(inline:bigint_nat__lean_nat_add(c3, 1n));
-      const x = c0(c7);
+      const x = inline:bigint_nat__lean_nat_add(c3, 1n);
+      const x = c1(c0, c7);
       let acc = { tag: 1, _1: c0 };
       for (i < c3) {
         switch (m0.tag) {
@@ -138,5 +133,6 @@ export const hyperWhile = (a : nat(bigint), a1 : nat(bigint), a2 : nat(bigint)) 
     m0 = c0;
     next;
   }
-  return m0(c1);
+  const x = m0;
+  return c0(c2);
 };

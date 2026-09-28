@@ -5,10 +5,13 @@
 
 const $k1 = { tag: 1, _1: 0n };
 const $k2 = (x$1) => {
-  const x$2 = x$1(1n);
-  const x$3 = x$1(2n);
-  const x$4 = x$1(3n);
-  return x$2 + x$3 + x$4;
+  const x$2 = 1n;
+  const x$3 = x$1(x$2);
+  const x$4 = 2n;
+  const x$5 = x$1(x$4);
+  const x$6 = 3n;
+  const x$7 = x$1(x$6);
+  return x$3 + x$5 + x$7;
 };
 
 /**

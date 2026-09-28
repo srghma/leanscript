@@ -27,8 +27,9 @@ export const useScale = (n) => {
   const k$1 = $k1;
   const x$2 = k$1(n);
   const k$3 = $k1;
-  const x$4 = k$3(n + 1n);
-  return x$2 + x$4;
+  const x$4 = n + 1n;
+  const x$5 = k$3(x$4);
+  return x$2 + x$5;
 };
 
 /**
@@ -47,6 +48,7 @@ export const useTriple = (n) => {
   const k$1 = $k2;
   const x$2 = k$1(n);
   const k$3 = $k2;
-  const x$4 = k$3(n + 1n);
-  return x$2 + x$4;
+  const x$4 = n + 1n;
+  const x$5 = k$3(x$4);
+  return x$2 + x$5;
 };

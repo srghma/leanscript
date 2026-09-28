@@ -3,8 +3,8 @@
 
 /**
  * `test1`
- * @param {(() => (int(bigint) => int(bigint)))} f
- * @param {(() => (int(bigint) => int(bigint)))} g
+ * @param {() => (int(bigint)) => int(bigint)} f
+ * @param {() => (int(bigint)) => int(bigint)} g
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
@@ -17,8 +17,8 @@ export const test1 = (f, g, a) => {
 
 /**
  * `test2`
- * @param {(() => (int(bigint) => int(bigint)))} f
- * @param {(() => (int(bigint) => int(bigint)))} g
+ * @param {() => (int(bigint)) => int(bigint)} f
+ * @param {() => (int(bigint)) => int(bigint)} g
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
@@ -32,8 +32,8 @@ export const test2 = (f, g, a) => {
 
 /**
  * `test3`
- * @param {(() => (int(bigint) => int(bigint)))} f
- * @param {(() => (int(bigint) => int(bigint)))} g
+ * @param {() => (int(bigint)) => int(bigint)} f
+ * @param {() => (int(bigint)) => int(bigint)} g
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
@@ -48,8 +48,8 @@ export const test3 = (f, g, a) => {
 
 /**
  * `test4`
- * @param {(() => (int(bigint) => int(bigint)))} f
- * @param {(() => (int(bigint) => int(bigint)))} g
+ * @param {() => (int(bigint)) => int(bigint)} f
+ * @param {() => (int(bigint)) => int(bigint)} g
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */

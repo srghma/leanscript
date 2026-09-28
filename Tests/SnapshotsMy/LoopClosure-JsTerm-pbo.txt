@@ -6,11 +6,14 @@
 import { uint53__lean_nat_add } from "runtime.js";
 
 const $k1 : ({ tag: 0, _1: uint53(number) } | { tag: 1, _1: uint53(number) }) = { tag: 1, _1: 0 };
-const $k2 : ((uint53(number) => uint53(number)) => uint53(number)) = (x) => {
-  const x = c0(1);
-  const x = c1(2);
-  const x = c2(3);
-  return uint53__lean_nat_add(uint53__lean_nat_add(c2, c1), c0);
+const $k2 : ((uint53(number)) => uint53(number)) => uint53(number) = (x) => {
+  const x = 1;
+  const x = c1(c0);
+  const x = 2;
+  const x = c3(c0);
+  const x = 3;
+  const x = c5(c0);
+  return uint53__lean_nat_add(uint53__lean_nat_add(c4, c2), c0);
 };
 
 // test1

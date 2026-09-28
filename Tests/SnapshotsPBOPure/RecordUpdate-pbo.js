@@ -7,7 +7,7 @@ import { int53__lean_int_add, int53__lean_int_sub } from "../../runtime.js";
 
 /**
  * `test1`
- * @param {(() => { _1: int53(number), _2: int53(number), _3: int53(number) })} fn
+ * @param {() => { _1: int53(number), _2: int53(number), _3: int53(number) }} fn
  * @param {int53(number)} val
  * @returns {int53(number)}
  */
@@ -23,7 +23,7 @@ export const test1 = (fn, val) => {
 
 /**
  * `test7`
- * @param {(int53(number) => int53(number))} f
+ * @param {(int53(number)) => int53(number)} f
  * @param {int53(number)} y
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */

@@ -5,19 +5,15 @@ import { int53__lean_int_add } from "runtime.js";
 
 // test
 export const test = (x : int53(number), y : int53(number)) : int53(number) => {
-  const k = (x) => {
-    return (x) => {
-      let acc = 0;
-      for (e of [c3, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0]) {
-        m0 = int53__lean_int_add(m0, c0);
-        next;
-      }
-      return m0;
-    };
+  const k = (x, x) => {
+    let acc = 0;
+    for (e of [c3, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0]) {
+      m0 = int53__lean_int_add(m0, c0);
+      next;
+    }
+    return m0;
   };
-  const x = c0(c2);
-  const x = c0(c2);
-  const x = c2(c3);
-  const x = c0(c5);
-  return int53__lean_int_add(c2, c0);
+  const x = c0(c2, c1);
+  const x = c1(c2, c3);
+  return int53__lean_int_add(c1, c0);
 };

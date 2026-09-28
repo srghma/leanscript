@@ -2,32 +2,30 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint))) : int(bigint) => {
-  const x = c0(1n);
-  const x = c2(c0);
-  const x = c0(2n);
-  return c0(3n);
+export const test1 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint)) : int(bigint) => {
+  const x = 1n;
+  const x = c1(c0);
+  const x = 2n;
+  const x = 3n;
+  return c5(c2, c1, c0);
 };
 
 // test2
-export const test2 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint)), i : int(bigint)) : int(bigint) => {
-  const x = c1(1n);
-  const x = c3(c0);
-  const x = c0(2n);
-  return c0(c3);
+export const test2 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), i : int(bigint)) : int(bigint) => {
+  const x = 1n;
+  const x = c2(c0);
+  const x = 2n;
+  return c5(c1, c0, c3);
 };
 
 // test3
-export const test3 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint)), i : int(bigint), j : int(bigint)) : int(bigint) => {
-  const x = c2(1n);
-  const x = c4(c0);
-  const x = c0(c3);
-  return c0(c3);
+export const test3 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), i : int(bigint), j : int(bigint)) : int(bigint) => {
+  const x = 1n;
+  const x = c3(c0);
+  return c5(c0, c3, c2);
 };
 
 // test4
-export const test4 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), i : int(bigint), j : int(bigint), k : int(bigint)) : int(bigint) => {
-  const x = c3(c2);
-  const x = c0(c2);
-  return c0(c2);
+export const test4 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), i : int(bigint), j : int(bigint), k : int(bigint)) : int(bigint) => {
+  return c3(c2, c1, c0);
 };

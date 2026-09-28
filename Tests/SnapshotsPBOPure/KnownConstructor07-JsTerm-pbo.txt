@@ -6,7 +6,7 @@
 import { int53__lean_int_add, int53__lean_int_sub } from "runtime.js";
 
 // test
-export const test = (f : (int53(number) => int53(number)), y : int53(number)) : { _1: int53(number), _2: int53(number) } => {
+export const test = (f : (int53(number)) => int53(number), y : int53(number)) : { _1: int53(number), _2: int53(number) } => {
   const x = c1(c0);
   const x = int53__lean_int_add(c0, 1);
   return { _1: c0, _2: int53__lean_int_sub(c1, 2) };

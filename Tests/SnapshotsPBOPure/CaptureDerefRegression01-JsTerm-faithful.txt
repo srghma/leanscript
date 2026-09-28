@@ -19,7 +19,7 @@ export const test2 = (v : { _1: int(bigint), _2: int(bigint) }, a : int(bigint))
 };
 
 // test3
-export const test3 = (v : { _1: int(bigint), _2: int(bigint) }, p : int(bigint)) : int(bigint) => {
+export const test3 = (v : { _1: int(bigint), _2: int(bigint) }, p1 : int(bigint)) : int(bigint) => {
   const { _1: f, _2: f } = c1;
   return inline:bigint_int__lean_int_add(c1, c2);
 };

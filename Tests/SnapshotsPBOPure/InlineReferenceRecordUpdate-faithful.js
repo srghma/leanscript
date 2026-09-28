@@ -2,11 +2,12 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 const $k1 = { _1: 1n, _2: 2n, _3: 3n };
-const $k2 = { _1: 42n, _2: 2n, _3: 3n };
+const $k2 = () => $k1;
+const $k3 = { _1: 42n, _2: 2n, _3: 3n };
 
 /**
  * `test1`
- * @param {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })} fn
+ * @param {() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) }} fn
  * @returns {int(bigint)}
  */
 export const test1 = (fn) => {
@@ -17,15 +18,18 @@ export const test1 = (fn) => {
 
 /**
  * `fn_prime`
- * @returns {(() => { _1: int(bigint), _2: int(bigint), _3: int(bigint) })}
+ * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const fn_prime = () => () => $k1;
+export const fn_prime = () => {
+  const f$1 = $k2;
+  return f$1();
+};
 
 /**
  * `extern1`
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern1 = () => $k2;
+export const extern1 = () => $k3;
 
 /**
  * `test2`

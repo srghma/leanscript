@@ -10,7 +10,7 @@ import { int53__lean_int_add } from "../../runtime.js";
  * @returns {int53(number)}
  */
 export const test = (x, y) => {
-  const k$5 = (x$1) => (x$2) => {
+  const k$5 = (x$1, x$2) => {
     let acc$3 = 0;
     for (const e$4 of [
       x,
@@ -37,9 +37,7 @@ export const test = (x, y) => {
     }
     return acc$3;
   };
-  const x$6 = k$5(x);
-  const x$7 = x$6(y);
-  const x$8 = k$5(y);
-  const x$9 = x$8(x);
-  return int53__lean_int_add(x$7, x$9);
+  const x$6 = k$5(x, y);
+  const x$7 = k$5(y, x);
+  return int53__lean_int_add(x$6, x$7);
 };

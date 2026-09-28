@@ -7,7 +7,7 @@ import { int53__lean_int_add, int53__lean_int_sub } from "../../runtime.js";
 
 /**
  * `test`
- * @param {(int53(number) => int53(number))} f
+ * @param {(int53(number)) => int53(number)} f
  * @param {int53(number)} y
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */

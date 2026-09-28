@@ -18,18 +18,24 @@ inline as `a & b`.  The operations are typed, so a representation is never conve
 does not need to be (an index held as a `uint53` is passed as it is; one held as a
 `bigint_nat` is converted by the operation that takes it).
 
-An extern that has no operation at these types is `JsExpr.unimplemented`: a call of
-`lean_extern_unimplemented` that throws when it is evaluated, so the rest of the module still
-loads and runs.
+Every extern of the catalogue has an operation at every representation (`scripts/gen_js_ops.py`
+refuses to generate the operations otherwise), so an extern with no operation at the types of a
+call is an error of the conversion (a type the catalogue does not foresee), never a call that
+fails when it runs.
+
+A `String.Pos s` is a byte offset into the string `s`, a parameter of the extern known when the
+program is converted: the operations of the externs on such positions take `s` as their first
+argument (`FromTerm` passes it, as a literal).
 -/
 
 namespace MoreJs
 
 open LeanScript
 
-/-- The call of the extern `name` on the arguments `args`, answering a value of type `τ`. -/
+/-- The call of the extern `name` on the arguments `args`, answering a value of type `τ`; an
+    error if the extern has no operation at these types. -/
 def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs C M σs) :
-    JsExpr C M τ :=
+    Except String (JsExpr C M τ) :=
   -- `"".push c` is the one-character string `c` itself (a `Char` is a string of one code
   -- point), how `a = b` on `Char` is translated
   let pushEmpty? : Option (JsExpr C M τ) :=
@@ -39,12 +45,12 @@ def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs
       if s.isEmpty then (if h : σ = τ then some (h ▸ c) else none) else none
     | _ => none
   match pushEmpty? with
-  | some e => e
+  | some e => pure e
   | none =>
     match JsOp.lookup name σs τ with
-    | some (.imported op) => .imported op args
-    | some (.inlined op) => .inlined op args
-    | none => .unimplemented name τ
+    | some ⟨_, _, .imported op⟩ => pure (.imported op args)
+    | some ⟨_, _, .inlined op⟩ => pure (.inlined op args)
+    | none => throw s!"the extern {name} has no operation at the types {σs} → {τ}"
 
 end MoreJs
 

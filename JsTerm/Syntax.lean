@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.OpsLookup
+public import JsTerm.NumberLit
 
 @[expose] public section
 
@@ -36,7 +37,7 @@ invent a fresh name or worry about capture (the printer chooses the names):
 
 Index `0` is the innermost variable of its context.  A binder binds its variables for the
 statements that follow it in its block; the variables of a pattern are bound in order, the
-last one innermost (`pushAll`).  An arrow function binds its parameter as a constant on top of
+last one innermost (`pushAll`).  An arrow function binds its parameters as constants on top of
 the constants around it, keeps the mutable variables around it, and starts with no join point
 (a jump never leaves a function); so does the body of a loop.  Every binder keeps a *hint*,
 the name the printer starts from (`x`, `acc`, a parameter's Lean name); hints carry no
@@ -47,10 +48,18 @@ meaning.
 There are no generic operators: every operation is typed, and is named by the JavaScript
 representation of its signature and the extern it implements (`bigint_nat__lean_nat_div :
 [bigint_nat, bigint_nat] → bigint_nat`, `uint53__lean_nat_land : [uint53, uint53] →
-uint53`).  An operation either calls a function of the runtime of the same name
-(`JsOpImported`, `JsTerm.OpsImported`) or is written inline as a JavaScript operator or
-conversion (`JsOpInlined`, `JsTerm.OpsInlined`).  An extern without an operation at the
-representation of its arguments is `JsExpr.unimplemented`, a call that throws.
+uint53`).  An operation either calls a function of the runtime named as it
+(`JsOpImported`, `JsTerm.Ops`) or is written inline as a JavaScript operator or
+conversion (`JsOpInlinable`, `JsTerm.Ops`); both are indexed by their effects
+(`Effectfulness`, `MayThrow`).  Every extern has an operation at every representation, so the
+conversion never needs a placeholder for a missing one.
+
+## Functions
+
+Functions are **uncurried**: a function type is `JsTy.fn doms cod`, of any number of
+parameters (none for a delayed computation, `Thunk`'s argument, `() => …`), and the lowering of
+a Lean arrow `A → B → C` is the function of two parameters `(a, b) => …`.  A call passes all
+the parameters at once (`JsExpr.app`).
 
 ## Blocks
 
@@ -154,80 +163,11 @@ inductive JsLit : JsTerminalTy → Type where
   /-- `[str, startPos, stopPos]`. -/
   | stringSlice (s : String) (start stop : Nat) : JsLit .stringSlice
 
-/-- The shape of a double: `NaN`, an infinity, or `± m * 2 ^ e` exactly. -/
-inductive FloatParts where
-  | nan
-  | inf (neg : Bool)
-  /-- `(neg ? -1 : 1) * m * 2 ^ e` (`m = 0` for the zeros). -/
-  | finite (neg : Bool) (m : Nat) (e : Int)
-  deriving Inhabited, Repr, BEq
-
-/-- The shape of a double, read off its IEEE bits. -/
-def floatParts (f : Float) : FloatParts :=
-  let bits : Nat := f.toBits.toNat
-  let neg : Bool := (bits / 2 ^ 63) % 2 == 1
-  let ex : Nat := (bits / 2 ^ 52) % 2 ^ 11
-  let frac : Nat := bits % 2 ^ 52
-  if ex == 2047 then
-    if frac != 0 then .nan else .inf neg
-  else if ex == 0 then .finite neg frac (-1074)
-  else .finite neg (frac + 2 ^ 52) ((ex : Int) - 1075)
-
-/-- The integer a finite double stands for, when it is one of absolute value `≤ 2^53`. -/
-def floatSmallInt? (f : Float) : Option Int :=
-  match floatParts f with
-  | .finite neg m e =>
-    let v? : Option Nat :=
-      if e ≥ 0 then some (m * 2 ^ e.toNat)
-      else if m % 2 ^ e.natAbs == 0 then some (m / 2 ^ e.natAbs) else none
-    match v? with
-    | some v => if v ≤ 2 ^ 53 then some (if neg then -(v : Int) else v) else none
-    | none => none
-  | _ => none
-
-/-- The number of decimal digits of `n` (`1` for `0`). -/
-def decDigits (n : Nat) : Nat := (toString n).length
-
-/-- The shortest decimal `(digits, exponent)` with `digits * 10 ^ exponent` reading back as
-    the double `m * 2 ^ e` (`m > 0`). -/
-def shortestDecimal (m : Nat) (e : Int) : Nat × Int :=
-  -- the exact value as `D * 10 ^ (-K)`
-  let (D, K) : Nat × Nat := if e ≥ 0 then (m * 2 ^ e.toNat, 0) else (m * 5 ^ e.natAbs, e.natAbs)
-  let exact : Float := Float.ofScientific D true K
-  let L := decDigits D
-  let rec go (fuel k : Nat) : Nat × Int :=
-    match fuel with
-    | 0 => (D, -(K : Int))
-    | fuel + 1 =>
-      if k ≥ L then (D, -(K : Int)) else
-      let drop := L - k
-      let q := D / 10 ^ drop
-      let r := D % 10 ^ drop
-      let q := if 2 * r ≥ 10 ^ drop then q + 1 else q
-      let ex : Int := (drop : Int) - K
-      let f : Float := if ex ≥ 0 then Float.ofScientific q false ex.toNat
-        else Float.ofScientific q true ex.natAbs
-      if f.toBits == exact.toBits then (q, ex) else go fuel (k + 1)
-  go 20 1
-
-/-- A `number`, as JavaScript source: an integer when it is a small one, otherwise the
-    shortest decimal that reads back as the same double (`NaN`, `Infinity`, `-Infinity`,
-    `-0` for the special values). -/
-def numberSource (f : Float) : String :=
-  match floatSmallInt? f, floatParts f with
-  | some 0, .finite true _ _ => "-0"
-  | some n, _ => toString n
-  | none, .nan => "NaN"
-  | none, .inf neg => if neg then "-Infinity" else "Infinity"
-  | none, .finite neg m e =>
-    let (d, ex) := shortestDecimal m e
-    (if neg then "-" else "") ++ toString d ++ (if ex == 0 then "" else s!"e{ex}")
-
 /-- How a literal is written in JavaScript: a boolean, a `number`, a `BigInt`, a string, or
     an array of those (`[str, start, stop]`). -/
 inductive JsLitShape where
   | bool (b : Bool)
-  | number (f : Float)
+  | number (f : NumberForm)
   | bigint (n : Int)
   | str (s : String)
   | array (es : List JsLitShape)
@@ -238,30 +178,30 @@ namespace JsLit
 def shape {t : JsTerminalTy} : JsLit t → JsLitShape
   | .bool b => .bool b
   | .bigint_nat n => .bigint n
-  | .uint53 n _ => .number (Float.ofNat n)
+  | .uint53 n _ => .number (.int n)
   | .bigint_int n => .bigint n
-  | .int53 n _ => .number (Float.ofInt n)
-  | .bitvec_small v => .number (Float.ofNat v)
+  | .int53 n _ => .number (.int n)
+  | .bitvec_small v => .number (.int v)
   | .bigint_bitvec_big v => .bigint v
-  | .int53_bitvec_big v _ => .number (Float.ofNat v)
-  | .uint8 v => .number (Float.ofNat v.toNat)
-  | .uint16 v => .number (Float.ofNat v.toNat)
-  | .uint32 v => .number (Float.ofNat v.toNat)
-  | .int8 v => .number (Float.ofInt v.toInt)
-  | .int16 v => .number (Float.ofInt v.toInt)
-  | .int32 v => .number (Float.ofInt v.toInt)
-  | .float f => .number f
-  | .float32 f => .number f.toFloat
+  | .int53_bitvec_big v _ => .number (.int v)
+  | .uint8 v => .number (.int v.toNat)
+  | .uint16 v => .number (.int v.toNat)
+  | .uint32 v => .number (.int v.toNat)
+  | .int8 v => .number (.int v.toInt)
+  | .int16 v => .number (.int v.toInt)
+  | .int32 v => .number (.int v.toInt)
+  | .float f => .number (.ofFloat f)
+  | .float32 f => .number (.ofFloat32 f)
   | .string s => .str s
-  | .substring s a b => .array [.str s, .number (Float.ofNat a), .number (Float.ofNat b)]
-  | .stringSlice s a b => .array [.str s, .number (Float.ofNat a), .number (Float.ofNat b)]
+  | .substring s a b => .array [.str s, .number (.int a), .number (.int b)]
+  | .stringSlice s a b => .array [.str s, .number (.int a), .number (.int b)]
 
 end JsLit
 
 /-- The literal, as JavaScript source. -/
 partial def JsLitShape.pretty : JsLitShape → String
   | .bool b => toString b
-  | .number f => numberSource f
+  | .number f => f.source
   | .bigint n => toString n ++ "n"
   | .str s => s.quote
   | .array es => "[" ++ ", ".intercalate (es.map JsLitShape.pretty) ++ "]"
@@ -280,29 +220,27 @@ inductive JsExpr : List JsTy → List JsTy → JsTy → Type where
   /-- A literal. -/
   | lit {C M : List JsTy} {t : JsTerminalTy} (l : JsLit t) : JsExpr C M (.terminal t)
   /-- A call of an operation of the runtime, `name(args)`. -/
-  | imported {C M σs : List JsTy} {τ : JsTy} (op : JsOpImported σs τ) (args : JsArgs C M σs) :
-      JsExpr C M τ
+  | imported {C M σs : List JsTy} {τ : JsTy} {e : Effectfulness} {t : MayThrow}
+      (op : JsOpImported e t σs τ) (args : JsArgs C M σs) : JsExpr C M τ
   /-- An operation written inline (`a & b`, `BigInt(a)`, …). -/
-  | inlined {C M σs : List JsTy} {τ : JsTy} (op : JsOpInlined σs τ) (args : JsArgs C M σs) :
+  | inlined {C M σs : List JsTy} {τ : JsTy} {e : Effectfulness} {t : MayThrow}
+      (op : JsOpInlinable e t σs τ) (args : JsArgs C M σs) : JsExpr C M τ
+  /-- A value that is never read (a field annotated unused, the default of a traversal):
+      `undefined`. -/
+  | unreachable {C M : List JsTy} (τ : JsTy) : JsExpr C M τ
+  /-- `f(a₁, …, aₙ)`: a call passing all the parameters. -/
+  | app {C M σs : List JsTy} {τ : JsTy} (f : JsExpr C M (.fn σs τ)) (args : JsArgs C M σs) :
       JsExpr C M τ
-  /-- A call of an extern that has no operation at this representation: it throws when it is
-      evaluated (`lean_extern_unimplemented("name")`). -/
-  | unimplemented {C M : List JsTy} (name : String) (τ : JsTy) : JsExpr C M τ
-  /-- `f(a)`. -/
-  | app {C M : List JsTy} {σ τ : JsTy} (f : JsExpr C M (.fn σ τ)) (a : JsExpr C M σ) :
-      JsExpr C M τ
-  /-- `(x) => { body }`: the parameter is the innermost constant of the body. -/
-  | lam {C M : List JsTy} {σ τ : JsTy} (hint : String) (body : JsBlock (σ :: C) M [] (.ret τ)) :
-      JsExpr C M (.fn σ τ)
-  /-- `() => { body }`. -/
-  | lazy_mk {C M : List JsTy} {τ : JsTy} (body : JsBlock C M [] (.ret τ)) : JsExpr C M (.lazy τ)
-  /-- `e()`. -/
-  | lazy_force {C M : List JsTy} {τ : JsTy} (e : JsExpr C M (.lazy τ)) : JsExpr C M τ
-  /-- `{ _1: f₁, _2: f₂, … }`. -/
-  | record_mk {C M ts : List JsTy} (fs : JsArgs C M ts) : JsExpr C M (.record ts)
+  /-- `(x₁, …, xₙ) => { body }`: the parameters are the innermost constants of the body (the
+      last one innermost); `hints` are their preferred names. -/
+  | lam {C M σs : List JsTy} {τ : JsTy} (hints : List String)
+      (body : JsBlock (pushAll σs C) M [] (.ret τ)) : JsExpr C M (.fn σs τ)
+  /-- `{ _1: f₁, _2: f₂, … }` (two fields or more). -/
+  | record_mk {C M : List JsTy} {f₁ f₂ : JsTy} {fs : List JsTy} (args : JsArgs C M (f₁ :: f₂ :: fs)) :
+      JsExpr C M (.record f₁ f₂ fs)
   /-- `{ tag: i, _1: f₁, … }`, `i` the position of the constructor `ix`. -/
-  | union_mk {C M : List JsTy} {cs : List (List JsTy)} {fs : List JsTy} (ix : JsMem cs fs)
-      (args : JsArgs C M fs) : JsExpr C M (.union cs)
+  | union_mk {C M : List JsTy} {c₀ c₁ : List JsTy} {cs : List (List JsTy)} {fs : List JsTy}
+      (ix : JsMem (c₀ :: c₁ :: cs) fs) (args : JsArgs C M fs) : JsExpr C M (.union c₀ c₁ cs)
   /-- The number `shift + i`. -/
   | enum_mk {C M : List JsTy} (n : Nat) (shift : Int) (i : Fin n) : JsExpr C M (.enum n shift)
   /-- `[e₀, ...a, e₂]` (a generic array) or `Uint8Array.of(e₀, ...a)` (a typed array). -/
@@ -353,8 +291,9 @@ inductive JsBlock : List JsTy → List JsTy → List JsTy → JsEnd → Type whe
       (rest : JsBlock C M J k) : JsBlock C M J k
   /-- `const { _1: f₁, _3: f₃ } = e;` and the rest, which reads the fields `sel` keeps as
       constants (the last one innermost). -/
-  | destructure {C M J ts us : List JsTy} {k : JsEnd} (e : JsExpr C M (.record ts))
-      (sel : JsSel ts us) (rest : JsBlock (pushAll us C) M J k) : JsBlock C M J k
+  | destructure {C M J : List JsTy} {f₁ f₂ : JsTy} {fs us : List JsTy} {k : JsEnd}
+      (e : JsExpr C M (.record f₁ f₂ fs)) (sel : JsSel (f₁ :: f₂ :: fs) us)
+      (rest : JsBlock (pushAll us C) M J k) : JsBlock C M J k
   /-- `if (c) { t } else { e }`. -/
   | ite {C M J : List JsTy} {k : JsEnd} (c : JsExpr C M (.terminal .bool)) (t e : JsBlock C M J k) :
       JsBlock C M J k
@@ -362,8 +301,9 @@ inductive JsBlock : List JsTy → List JsTy → List JsTy → JsEnd → Type whe
   | enumCases {C M J : List JsTy} {k : JsEnd} {n : Nat} {shift : Int} (e : JsExpr C M (.enum n shift))
       (arms : JsEnumArms C M J k n) : JsBlock C M J k
   /-- A case analysis on a union: `if (e.tag === 0) { const { _1: f } = e; … } else …`. -/
-  | unionCases {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (e : JsExpr C M (.union cs))
-      (arms : JsUnionArms C M J k cs) : JsBlock C M J k
+  | unionCases {C M J : List JsTy} {k : JsEnd} {c₀ c₁ : List JsTy} {cs : List (List JsTy)}
+      (e : JsExpr C M (.union c₀ c₁ cs)) (arms : JsUnionArms C M J k (c₀ :: c₁ :: cs)) :
+      JsBlock C M J k
   /-- A join point: `let x; L: { block }` and the rest, which reads the value the jumps of
       `block` to it (join point `0`) pass as its innermost constant `x`. -/
   | join {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (block : JsBlock C M (τ :: J) k)
@@ -399,14 +339,14 @@ inductive JsUnionArms : List JsTy → List JsTy → List JsTy → JsEnd → List
       JsUnionArms C M J k (fs :: cs)
 end
 
-instance {C M : List JsTy} {τ : JsTy} : Inhabited (JsExpr C M τ) := ⟨.unimplemented "unreachable" τ⟩
+instance {C M : List JsTy} {τ : JsTy} : Inhabited (JsExpr C M τ) := ⟨.unreachable τ⟩
 instance {C M J : List JsTy} {k : JsEnd} : Inhabited (JsBlock C M J k) := ⟨.throw "unreachable"⟩
 instance {C M : List JsTy} {A E : JsTy} : Inhabited (JsParts C M A E) := ⟨.nil⟩
 
 /-- Arguments that throw (the default of a traversal). -/
 def JsArgs.default {C M : List JsTy} : (σs : List JsTy) → JsArgs C M σs
   | [] => .nil
-  | σ :: σs => .cons (.unimplemented "unreachable" σ) (JsArgs.default σs)
+  | σ :: σs => .cons (.unreachable σ) (JsArgs.default σs)
 
 instance {C M σs : List JsTy} : Inhabited (JsArgs C M σs) := ⟨JsArgs.default σs⟩
 
@@ -467,9 +407,6 @@ structure JsModule where
   /-- The exported functions. -/
   funs : List JsFun
 
-/-- The name of the runtime function a call of an extern without an operation calls. -/
-def unimplementedFnName : String := "lean_extern_unimplemented"
-
 /-! ## The dump (`-JsTerm-*.txt`) -/
 
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
@@ -486,21 +423,17 @@ partial def JsExpr.pretty {C M : List JsTy} {τ : JsTy} (ind : String) : JsExpr 
   | .lit l => l.shape.pretty
   | .imported op args => op.name ++ "(" ++ ", ".intercalate (args.pretty ind) ++ ")"
   | .inlined op args => "inline:" ++ op.name ++ "(" ++ ", ".intercalate (args.pretty ind) ++ ")"
-  | .unimplemented n _ => s!"{unimplementedFnName}({n.quote})"
-  | .app f a => s!"{f.pretty ind}({a.pretty ind})"
-  | .lam x body => s!"({x}) => \{\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}"
-  | .lazy_mk body => "() => {\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}"
-  | .lazy_force e => s!"{e.pretty ind}()"
+  | .unreachable _ => "undefined"
+  | .app f as => s!"{f.pretty ind}(" ++ ", ".intercalate (as.pretty ind) ++ ")"
+  | .lam xs body => "(" ++ ", ".intercalate xs ++ ") => {\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}"
   | .record_mk fs =>
-    let es := fs.pretty ind
-    if es.isEmpty then "{}" else
-    "{ " ++ ", ".intercalate (es.zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}") ++ " }"
+    "{ " ++ ", ".intercalate ((fs.pretty ind).zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}") ++ " }"
   | .union_mk ix args =>
     "{ " ++ ", ".intercalate (s!"tag: {ix.index}" ::
       ((args.pretty ind).zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}")) ++ " }"
   | .enum_mk _ shift i => toString (shift + i.val)
   | .array_mk (.generic _) ps => "[" ++ ", ".intercalate (ps.pretty ind) ++ "]"
-  | .array_mk (.typed k _) ps => k.ctorName ++ ".of(" ++ ", ".intercalate (ps.pretty ind) ++ ")"
+  | .array_mk (.typed t) ps => t.kind.ctorName ++ ".of(" ++ ", ".intercalate (ps.pretty ind) ++ ")"
   | .list_mk ps => "list[" ++ ", ".intercalate (ps.pretty ind) ++ "]"
   | .cond c a b => s!"({c.pretty ind} ? {a.pretty ind} : {b.pretty ind})"
 

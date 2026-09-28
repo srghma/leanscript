@@ -30,13 +30,13 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("ack2(0)(0)", () => M.ack2(0)(0), "1", false);
-check("ack2(0)(2)", () => M.ack2(0)(2), "3", false);
-check("ack2(1)(1)", () => M.ack2(1)(1), "3", false);
-check("ack2(2)(0)", () => M.ack2(2)(0), "3", false);
-check("ack2(0)(13)", () => M.ack2(0)(13), "14", false);
-check("ack2(1)(5)", () => M.ack2(1)(5), "7", false);
-check("ack2(2)(2)", () => M.ack2(2)(2), "7", false);
+check("ack2(0, 0)", () => M.ack2(0, 0), "1", false);
+check("ack2(0, 2)", () => M.ack2(0, 2), "3", false);
+check("ack2(1, 1)", () => M.ack2(1, 1), "3", false);
+check("ack2(2, 0)", () => M.ack2(2, 0), "3", false);
+check("ack2(0, 13)", () => M.ack2(0, 13), "14", false);
+check("ack2(1, 5)", () => M.ack2(1, 5), "7", false);
+check("ack2(2, 2)", () => M.ack2(2, 2), "7", false);
 check("AckWithoutStackButUsingCantorPairing$pair(0, 0)", () => M.AckWithoutStackButUsingCantorPairing$pair(0, 0), "0", false);
 check("AckWithoutStackButUsingCantorPairing$pair(0, 2)", () => M.AckWithoutStackButUsingCantorPairing$pair(0, 2), "5", false);
 check("AckWithoutStackButUsingCantorPairing$pair(1, 1)", () => M.AckWithoutStackButUsingCantorPairing$pair(1, 1), "4", false);

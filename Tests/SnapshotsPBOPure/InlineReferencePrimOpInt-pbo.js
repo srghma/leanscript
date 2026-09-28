@@ -7,13 +7,14 @@ const $k1 = { _1: 99, _2: 0, _3: 11 };
 
 /**
  * `localTest`
- * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) } => int53(number))} f
+ * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)} f
  * @returns {int53(number)}
  */
 export const localTest = (f) => {
-  const x$1 = f($k1);
-  if (x$1 === -2147483648 ? false : true) {
-    return x$1;
+  const x$1 = $k1;
+  const x$2 = f(x$1);
+  if (x$2 === -2147483648 ? false : true) {
+    return x$2;
   } else {
     return 0;
   }
@@ -51,13 +52,14 @@ export const extern = () => $k1;
 
 /**
  * `externTest`
- * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) } => int53(number))} f
+ * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)} f
  * @returns {int53(number)}
  */
 export const externTest = (f) => {
-  const x$1 = f($k1);
-  if (x$1 === -2147483648 ? false : true) {
-    return x$1;
+  const x$1 = $k1;
+  const x$2 = f(x$1);
+  if (x$2 === -2147483648 ? false : true) {
+    return x$2;
   } else {
     return -2147483648;
   }

@@ -9,7 +9,7 @@
 import { bigint_nat__lean_array_get } from "runtime.js";
 
 const $tag0 : ({ tag: 0 } | { tag: 1, _1: nat(bigint) }) = { tag: 0 };
-const $k2 : (nat(bigint) => Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })>) = (x) => {
+const $k2 : (nat(bigint)) => Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })> = (x) => {
   return [{ tag: 1, _1: c0 }, $tag0];
 };
 

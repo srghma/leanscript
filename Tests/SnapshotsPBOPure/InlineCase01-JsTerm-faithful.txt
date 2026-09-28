@@ -6,7 +6,7 @@
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
 // test1
-export const test1 = (f : (() => int(bigint)), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
+export const test1 = (f : () => int(bigint), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
   switch (c0.tag) {
   case 0 {  }:
     return c1();
@@ -16,7 +16,7 @@ export const test1 = (f : (() => int(bigint)), a : ({ tag: 0 } | { tag: 1, _1: i
 };
 
 // test3
-export const test3 = (f : (() => int(bigint)), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
+export const test3 = (f : () => int(bigint), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
   switch (c0.tag) {
   case 0 {  }:
     return c1();

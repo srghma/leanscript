@@ -193,13 +193,12 @@ The supported fragment and the refusals are listed in the header of
   (`JsTerm/FromTerm.lean`), so every function over a user inductive, … is listed
   under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
   and unions as objects, enums; only the recursors are missing.)
-- **Some externs have no JavaScript implementation**: at some representation of their types
-  they have neither a function in `runtime.js` nor an inline form, and their calls become
-  calls of `lean_extern_unimplemented`, which throws when it is evaluated
-  (`MoreJs.lowerExtern`, `JsTerm/Extern.lean`).  `python3 scripts/gen_js_ops.py --report` lists
-  them (149 operations: most `Float`/`Float32` functions, several `String`/`Substring`
-  functions, the `Lean.version` constants, …); `leanscript --check` finds them too (a check
-  answers "threw: …").
+- **Every extern of the catalogue has a JavaScript implementation** at every representation
+  of its types (`scripts/gen_js_ops.py` refuses to generate the operations otherwise, and
+  `python3 scripts/gen_js_ops.py --report` lists none).  Known approximations of the
+  runtime: `dbgTraceIfShared` never traces (JavaScript does not tell whether a value is
+  shared); the `Lean.version`, `Lean.githash` and `System.Platform.target` constants are the
+  ones of the Lean that built the project (`lake exe tests` checks them).
 - **A literal too big for a `number`** (a `Nat`, `UInt64`, `Int` or `Int64` literal beyond
   `2^53 - 1` in absolute value at the preset `pbo`) is refused: `leanscript` reports it and
   exits with a failure, instead of computing with a rounded value.

@@ -9,14 +9,15 @@ set_option autoImplicit false
 /-!
 # Updating arrays in place
 
-The runtime functions of the array externs (`array__lean_array_push`,
-`uint53__lean_array_set`, `bigint_nat__lean_array_swap`, `array__lean_array_pop`, …) never
-mutate their argument: they answer with a copy, since the argument may be referred to
-elsewhere.  When nothing else refers to it, and nothing reads it afterwards, the copy is wasted
-work (a loop pushing `n` elements copies `O(n²)` of them), and the backend calls the in-place
-operation instead (`array__lean_array_push_inplace`, `uint53__lean_array_set_inplace`, …: a
-constructor of the same type, `JsOpImported.inPlace?`), which mutates the array and answers
-with it.
+The runtime functions of the array externs (`array__lean_array_push_immutable`,
+`uint53__lean_array_set_immutable`, `bigint_nat__lean_array_swap_immutable`,
+`array__lean_array_pop_immutable`, …) never mutate their argument: they answer with a copy,
+since the argument may be referred to elsewhere.  When nothing else refers to it, and nothing
+reads it afterwards, the copy is wasted work (a loop pushing `n` elements copies `O(n²)` of
+them), and the backend calls the mutable operation instead (`array__lean_array_push_mutable`,
+`uint53__lean_array_set_mutable`, …: an `effectful` constructor of the same signature,
+`JsOpImported.toMutable?`), which mutates the array and answers with it.  (`push` and `pop`
+have a mutable version on generic arrays only: a typed array cannot grow or shrink.)
 
 The pass (`inPlace`) works on the body of one function.  It tells the variables apart by
 numbering their binders in the order it meets them, and computes the variables that **own**
@@ -49,44 +50,30 @@ shared (`MoreJs.hoistConsts`), which never shares an array.
 
 namespace MoreJs
 
-/-! ## The in-place operations -/
-
-/-- The in-place version of an operation that copies an array, if it has one. -/
-def JsOpImported.inPlace? {σs : List JsTy} {τ : JsTy} : JsOpImported σs τ → Option (JsOpImported σs τ)
-  | .array__lean_array_push l => some (.array__lean_array_push_inplace l)
-  | .array__lean_array_pop l => some (.array__lean_array_pop_inplace l)
-  | .bigint_nat__lean_array_set l | .bigint_nat__lean_array_fset l =>
-    some (.bigint_nat__lean_array_set_inplace l)
-  | .uint53__lean_array_set l | .uint53__lean_array_fset l =>
-    some (.uint53__lean_array_set_inplace l)
-  | .bigint_nat__lean_array_swap l | .bigint_nat__lean_array_fswap l =>
-    some (.bigint_nat__lean_array_swap_inplace l)
-  | .uint53__lean_array_swap l | .uint53__lean_array_fswap l =>
-    some (.uint53__lean_array_swap_inplace l)
-  | _ => none
+/-! ## The array operations -/
 
 /-- Does the name of an operation contain `part`? -/
 def nameHas (name part : String) : Bool := (name.splitOn part).length > 1
 
 /-- Does the imported operation answer with an array it has just built, whatever its
     arguments? -/
-def JsOpImported.buildsArray {σs : List JsTy} {τ : JsTy} (op : JsOpImported σs τ) : Bool :=
+def JsOpImported.buildsArray {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpImported e t σs τ) : Bool :=
   ["lean_array_push", "lean_array_pop", "lean_mk_array", "lean_array_to_list",
    "lean_string_data"].any (nameHas op.name)
 
 /-- Does the imported operation answer with a copy of the array it is given (or that array
     itself, when an index is out of bounds)? -/
-def JsOpImported.updatesArray {σs : List JsTy} {τ : JsTy} (op : JsOpImported σs τ) : Bool :=
-  !nameHas op.name "_inplace" &&
-    ["lean_array_set", "lean_array_fset", "lean_array_swap", "lean_array_fswap"].any
-      (nameHas op.name)
+def JsOpImported.updatesArray {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpImported e t σs τ) : Bool :=
+  ["lean_array_set_immutable", "lean_array_swap_immutable"].any (nameHas op.name)
 
 /-- Is every value of the type free of arrays (so that no two values of it can share a mutable
     part)?  Numbers, strings, booleans, enums, and records and unions of those. -/
 partial def JsTy.shareFree : JsTy → Bool
   | .terminal _ | .enum .. => true
-  | .record ts => ts.all JsTy.shareFree
-  | .union cs => cs.all (·.all JsTy.shareFree)
+  | .record f₁ f₂ fs => (f₁ :: f₂ :: fs).all JsTy.shareFree
+  | .union c₀ c₁ cs => (c₀ :: c₁ :: cs).all (·.all JsTy.shareFree)
   | _ => false
 
 /-! ## Reads -/
@@ -336,26 +323,22 @@ partial def collectE {C M : List JsTy} {τ : JsTy} (env : InEnv) :
     let y? := env.firstArgUid args
     return fun own =>
       let as := fa own
-      match op.inPlace?, y? with
-      | some op', some y => if own.contains y then .imported op' as else .imported op as
+      match op.toMutable?, y? with
+      | some ⟨_, op'⟩, some y => if own.contains y then .imported op' as else .imported op as
       | _, _ => .imported op as
   | .inlined op args => do
     let fa ← collectA env args
     return fun own => .inlined op (fa own)
-  | .app f a => do
+  | .app f as => do
     let ff ← collectE env f
-    let fa ← collectE env a
+    let fa ← collectA env as
     return fun own => .app (ff own) (fa own)
-  | .lam x b => do
-    let u ← otherUid
-    let fb ← collectB { c := some u :: env.c, m := env.m } b
-    return fun own => .lam x (fb own)
-  | .lazy_mk b => do
-    let fb ← collectB { c := env.c, m := env.m } b
-    return fun own => .lazy_mk (fb own)
-  | .lazy_force e => do
-    let fe ← collectE env e
-    return fun own => .lazy_force (fe own)
+  | .lam (σs := σs) xs b => do
+    let mut c := env.c
+    for _ in σs do
+      c := some (← otherUid) :: c
+    let fb ← collectB { c, m := env.m } b
+    return fun own => .lam xs (fb own)
   | .record_mk fs => do
     let fa ← collectA env fs
     return fun own => .record_mk (fa own)

@@ -5,22 +5,14 @@
 
 import { bigint_nat__lean_nat_mod__Nat_mod } from "runtime.js";
 
-const $k1 : (nat(bigint) => (nat(bigint) => nat(bigint))) = (x) => {
-  return (x) => {
-    return c1;
-  };
+const $k1 : (nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
+  return c1;
 };
-const $k2 : (nat(bigint) => (nat(bigint) => (nat(bigint) => nat(bigint)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_mul(c2, 100n), inline:bigint_nat__lean_nat_mul(c1, 10n)), c0);
-    };
-  };
+const $k2 : (nat(bigint), nat(bigint), nat(bigint)) => nat(bigint) = (x, x, x) => {
+  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_mul(c2, 100n), inline:bigint_nat__lean_nat_mul(c1, 10n)), c0);
 };
-const $k3 : (nat(bigint) => (nat(bigint) => nat(bigint))) = (x) => {
-  return (x) => {
-    return inline:bigint_nat__lean_nat_add(c1, c0);
-  };
+const $k3 : (nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
+  return inline:bigint_nat__lean_nat_add(c1, c0);
 };
 
 // test1
@@ -29,21 +21,19 @@ export const test1 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint)) : na
   let acc = c0;
   for (i < c3) {
     const a = m0;
-    const k = (x) => {
-      return (x) => {
-        if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 0n)) {
-          return c1;
-        } else {
-          const x = c2(c0);
-          return c0(bigint_nat__lean_nat_mod__Nat_mod(c2, c1));
-        }
-      };
+    const k = (x, x) => {
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 0n)) {
+        return c1;
+      } else {
+        const x = bigint_nat__lean_nat_mod__Nat_mod(c1, c0);
+        return c3(c1, c0);
+      }
     };
     m0 = c0;
     next;
   }
-  const x = m0(c2);
-  return c0(c2);
+  const x = m0;
+  return c0(c3, c2);
 };
 
 // test2
@@ -52,21 +42,15 @@ export const test2 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint), c : 
   let acc = c0;
   for (i < c4) {
     const a = m0;
-    const k = (x) => {
-      return (x) => {
-        return (x) => {
-          const x = c3(c1);
-          const x = c0(c1);
-          return c0(inline:bigint_nat__lean_nat_add(c4, 1n));
-        };
-      };
+    const k = (x, x, x) => {
+      const x = inline:bigint_nat__lean_nat_add(c2, 1n);
+      return c4(c2, c1, c0);
     };
     m0 = c0;
     next;
   }
-  const x = m0(c3);
-  const x = c0(c3);
-  return c0(c3);
+  const x = m0;
+  return c0(c4, c3, c2);
 };
 
 // test4
@@ -75,15 +59,14 @@ export const test4 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint)) : na
   let acc = c0;
   for (i < c3) {
     const a = m0;
-    const k = (x) => {
-      return (x) => {
-        const x = c2(inline:bigint_nat__lean_nat_add(c1, 1n));
-        return c0(inline:bigint_nat__lean_nat_add(c1, 2n));
-      };
+    const k = (x, x) => {
+      const x = inline:bigint_nat__lean_nat_add(c1, 1n);
+      const x = inline:bigint_nat__lean_nat_add(c1, 2n);
+      return c4(c1, c0);
     };
     m0 = c0;
     next;
   }
-  const x = m0(c2);
-  return c0(c2);
+  const x = m0;
+  return c0(c3, c2);
 };

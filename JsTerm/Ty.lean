@@ -11,27 +11,37 @@ set_option autoImplicit false
 # The types of `JsTerm`
 
 `JsTerm` is a **simply typed** language: every expression has a type `JsTy`, every variable
-is typed by its context, and every operation (`JsTerm.OpsImported`, `JsTerm.OpsInlined`)
-has a fixed signature.  `LeanScript.Ty` describes *Lean* values; `JsTy` describes how such a
+is typed by its context, and every operation (`JsTerm.Ops`) has a fixed
+signature.  `LeanScript.Ty` describes *Lean* values; `JsTy` describes how such a
 value is laid out in JavaScript, once the configuration (`MoreJs.JsConfig`) has chosen a
 representation for every configurable type: a `Nat` is a `bigint_nat` (a non-negative
 `BigInt`) or a `uint53` (a non-negative integer `number` below `2^53`), an `Array UInt8` is
-an `array uint8` or a `typedArray uint8Array uint8`, and so on.
+an `array uint8` or a `typedArray uint8`, and so on.
 
 The leaves are `JsTerminalTy`; the compound shapes have one layout each:
 
 | `Ty` | `JsTy` | JavaScript |
 | --- | --- | --- |
 | a leaf | `terminal t` | a boolean, a number, a `BigInt` or a string (`JsTerminalTy`) |
-| `array t` | `array t` or `typedArray k e` | a JavaScript `Array`, or a typed array (`Uint8Array`, …) |
-| `record t fs` | `record [t, …]` | an object `{ _1: f₁, _2: f₂, … }` |
-| `union cs` | `union [[fields₀], [fields₁], …]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` |
+| `array t` | `array t` or `typedArray e` | a JavaScript `Array`, or a typed array (`Uint8Array`, …) of the element `e` |
+| `record t fs` | `record f₁ f₂ [f₃, …]` | an object `{ _1: f₁, _2: f₂, … }` (two fields or more) |
+| `union cs` | `union c₀ c₁ [c₂, …]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more, each the list of its fields) |
 | `enum s` | `enum n shift` | the number `shift + i` |
 | `list t` | `list t` | an (immutable) JavaScript array |
-| `fn a b` | `fn a b` | a one-argument function (curried) |
+| `fn a (fn b c)` | `fn [a, b] c` | a function of all its arguments (uncurried) |
 | `thunk t` | `thunk t` | a memoising thunk object |
-| `lazy t` | `lazy t` | a function of no argument |
+| `lazy t` | `fn [] t` | a function of no argument |
 | `data r` | `data name` | a declared datatype (not converted yet) |
+
+A Lean function type is uncurried **maximally**: `Nat → Nat → Nat` is `fn [nat, nat] nat`, a
+JavaScript function of two arguments, wherever the value goes (a parameter, a field, the
+result of a function).  A delay (`lazy t`) is a function of no argument, so `Nat → Lazy
+Nat` stays `fn [nat] (fn [] nat)`: only the arrows of `Ty.fn` are merged.
+
+Records and unions are structural: a record has two fields or more and a union two
+constructors or more (the source types guarantee both: a structure of one field is unboxed,
+a type of one constructor is a record, before this stage), so the type of an empty record
+or a union of one constructor cannot be written.
 
 `lowerScalarPrim` and `lowerArrayPrim` are the configuration-dependent part: how a leaf, and
 an array of leaves, is represented.
@@ -80,32 +90,73 @@ inductive JsTypedArray where
   | float32Array | float64Array | bigUint64Array | bigInt64Array
   deriving Inhabited, Repr, DecidableEq
 
+/-- The element types a JavaScript typed array holds.  The typed array follows from the
+    element (`JsTypedElem.kind`), and so does the leaf an element is read as
+    (`JsTypedElem.leaf`): only the pairs that are JavaScript values can be written. -/
+inductive JsTypedElem where
+  /-- A `UInt8`, in a `Uint8Array` (and so on for the other fixed-width integers). -/
+  | uint8 | uint16 | uint32 | int8 | int16 | int32
+  /-- A `Float32`, in a `Float32Array`. -/
+  | float32
+  /-- A `Float`, in a `Float64Array`. -/
+  | float64
+  /-- A `UInt64` at the `BigInt` representation, in a `BigUint64Array`. -/
+  | uint64
+  /-- An `Int64` at the `BigInt` representation, in a `BigInt64Array`. -/
+  | int64
+  /-- A `BitVec n` of at most 32 bits, in the smallest unsigned typed array that holds it. -/
+  | bitvec (n : Nat) (h₂ : 2 ≤ n) (h₃₂ : n ≤ 32)
+  /-- A `BitVec n` of 54 to 64 bits at the `BigInt` representation, in a `BigUint64Array`. -/
+  | bitvecBig (n : Nat) (h₅₃ : 53 < n) (h₆₄ : n ≤ 64)
+  deriving Inhabited, Repr, DecidableEq
+
+namespace JsTypedElem
+
+/-- The typed array that holds the element. -/
+def kind : JsTypedElem → JsTypedArray
+  | .uint8 => .uint8Array | .uint16 => .uint16Array | .uint32 => .uint32Array
+  | .int8 => .int8Array | .int16 => .int16Array | .int32 => .int32Array
+  | .float32 => .float32Array | .float64 => .float64Array
+  | .uint64 => .bigUint64Array | .int64 => .bigInt64Array
+  | .bitvec n _ _ => if n ≤ 8 then .uint8Array else if n ≤ 16 then .uint16Array else .uint32Array
+  | .bitvecBig .. => .bigUint64Array
+
+/-- The leaf an element is read as. -/
+def leaf : JsTypedElem → JsTerminalTy
+  | .uint8 => .uint8 | .uint16 => .uint16 | .uint32 => .uint32
+  | .int8 => .int8 | .int16 => .int16 | .int32 => .int32
+  | .float32 => .float32 | .float64 => .float
+  | .uint64 => .bigint_nat | .int64 => .bigint_int
+  | .bitvec n h₂ h₃₂ => .bitvec_small n (by omega) h₂
+  | .bitvecBig n h _ => .bigint_bitvec_big n h
+
+end JsTypedElem
+
 /-- The types of `JsTerm`: how a Lean value is laid out in JavaScript. -/
 inductive JsTy where
   /-- A leaf. -/
   | terminal (t : JsTerminalTy)
   /-- A generic JavaScript `Array`. -/
   | array (elem : JsTy)
-  /-- A typed array (`Uint8Array`, …) whose elements are read as the leaf `elem` (a
-      `BitVec 5` in a `Uint8Array`, …). -/
-  | typedArray (kind : JsTypedArray) (elem : JsTerminalTy)
+  /-- A typed array (`Uint8Array`, …) of the elements `elem` (a `BitVec 5` in a
+      `Uint8Array`, …). -/
+  | typedArray (elem : JsTypedElem)
   /-- A Lean `List`, as an immutable JavaScript array. -/
   | list (elem : JsTy)
-  /-- A one-argument function. -/
-  | fn (dom cod : JsTy)
-  /-- A record: an object `{ _1: f₁, _2: f₂, … }` of its fields (numbered from `1`). -/
-  | record (fields : List JsTy)
-  /-- A union: an object `{ tag: i, _1: f₁, … }` of the position `i` (from `0`) of the
-      constructor and its fields (numbered from `1`). -/
-  | union (ctors : List (List JsTy))
+  /-- A function of the arguments `doms` (none for a delay): `(x₁, …, xₙ) => …`. -/
+  | fn (doms : List JsTy) (cod : JsTy)
+  /-- A record of two fields or more: an object `{ _1: f₁, _2: f₂, … }` (numbered from `1`). -/
+  | record (f₁ f₂ : JsTy) (fs : List JsTy)
+  /-- A union of two constructors or more, each the list of its fields: an object
+      `{ tag: i, _1: f₁, … }` of the position `i` (from `0`) of the constructor and its fields
+      (numbered from `1`). -/
+  | union (c₀ c₁ : List JsTy) (cs : List (List JsTy))
   /-- An enum: a number, `shift` for the first of its `n` constructors. -/
   | enum (n : Nat) (shift : Int)
   /-- A declared datatype, by name (`D<block>_<member>`). -/
   | data (name : String)
   /-- A memoised delay. -/
   | thunk (t : JsTy)
-  /-- A delay recomputed each time: a function of no argument. -/
-  | lazy (t : JsTy)
   deriving Inhabited, Repr
 
 namespace JsTy
@@ -113,163 +164,143 @@ namespace JsTy
 mutual
 /-- Decidable equality of types. -/
 def decEqTy : (a b : JsTy) → Decidable (a = b)
-  | .terminal t₁, .terminal t₂ =>
-    match decEq t₁ t₂ with
-    | isTrue h => isTrue (h ▸ rfl)
+  | .terminal x0, .terminal y0 =>
+    match decEq x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
     | isFalse h => isFalse (fun e => by cases e; exact h rfl)
   | .terminal _, .array _ => isFalse (fun h => by cases h)
-  | .terminal _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .terminal _, .typedArray _ => isFalse (fun h => by cases h)
   | .terminal _, .list _ => isFalse (fun h => by cases h)
   | .terminal _, .fn _ _ => isFalse (fun h => by cases h)
-  | .terminal _, .record _ => isFalse (fun h => by cases h)
-  | .terminal _, .union _ => isFalse (fun h => by cases h)
+  | .terminal _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .terminal _, .union _ _ _ => isFalse (fun h => by cases h)
   | .terminal _, .enum _ _ => isFalse (fun h => by cases h)
   | .terminal _, .data _ => isFalse (fun h => by cases h)
   | .terminal _, .thunk _ => isFalse (fun h => by cases h)
-  | .terminal _, .lazy _ => isFalse (fun h => by cases h)
   | .array _, .terminal _ => isFalse (fun h => by cases h)
-  | .array e₁, .array e₂ =>
-    match decEqTy e₁ e₂ with
-    | isTrue h => isTrue (h ▸ rfl)
+  | .array x0, .array y0 =>
+    match decEqTy x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
     | isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .array _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .array _, .typedArray _ => isFalse (fun h => by cases h)
   | .array _, .list _ => isFalse (fun h => by cases h)
   | .array _, .fn _ _ => isFalse (fun h => by cases h)
-  | .array _, .record _ => isFalse (fun h => by cases h)
-  | .array _, .union _ => isFalse (fun h => by cases h)
+  | .array _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .array _, .union _ _ _ => isFalse (fun h => by cases h)
   | .array _, .enum _ _ => isFalse (fun h => by cases h)
   | .array _, .data _ => isFalse (fun h => by cases h)
   | .array _, .thunk _ => isFalse (fun h => by cases h)
-  | .array _, .lazy _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .terminal _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .array _ => isFalse (fun h => by cases h)
-  | .typedArray k₁ e₁, .typedArray k₂ e₂ =>
-    match decEq k₁ k₂, decEq e₁ e₂ with
-    | isTrue h₁, isTrue h₂ => isTrue (h₁ ▸ h₂ ▸ rfl)
-    | isFalse h, _ => isFalse (fun e => by cases e; exact h rfl)
-    | _, isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .typedArray _ _, .list _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .fn _ _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .record _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .union _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .enum _ _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .data _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .thunk _ => isFalse (fun h => by cases h)
-  | .typedArray _ _, .lazy _ => isFalse (fun h => by cases h)
+  | .typedArray _, .terminal _ => isFalse (fun h => by cases h)
+  | .typedArray _, .array _ => isFalse (fun h => by cases h)
+  | .typedArray x0, .typedArray y0 =>
+    match decEq x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
+    | isFalse h => isFalse (fun e => by cases e; exact h rfl)
+  | .typedArray _, .list _ => isFalse (fun h => by cases h)
+  | .typedArray _, .fn _ _ => isFalse (fun h => by cases h)
+  | .typedArray _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .typedArray _, .union _ _ _ => isFalse (fun h => by cases h)
+  | .typedArray _, .enum _ _ => isFalse (fun h => by cases h)
+  | .typedArray _, .data _ => isFalse (fun h => by cases h)
+  | .typedArray _, .thunk _ => isFalse (fun h => by cases h)
   | .list _, .terminal _ => isFalse (fun h => by cases h)
   | .list _, .array _ => isFalse (fun h => by cases h)
-  | .list _, .typedArray _ _ => isFalse (fun h => by cases h)
-  | .list e₁, .list e₂ =>
-    match decEqTy e₁ e₂ with
-    | isTrue h => isTrue (h ▸ rfl)
+  | .list _, .typedArray _ => isFalse (fun h => by cases h)
+  | .list x0, .list y0 =>
+    match decEqTy x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
     | isFalse h => isFalse (fun e => by cases e; exact h rfl)
   | .list _, .fn _ _ => isFalse (fun h => by cases h)
-  | .list _, .record _ => isFalse (fun h => by cases h)
-  | .list _, .union _ => isFalse (fun h => by cases h)
+  | .list _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .list _, .union _ _ _ => isFalse (fun h => by cases h)
   | .list _, .enum _ _ => isFalse (fun h => by cases h)
   | .list _, .data _ => isFalse (fun h => by cases h)
   | .list _, .thunk _ => isFalse (fun h => by cases h)
-  | .list _, .lazy _ => isFalse (fun h => by cases h)
   | .fn _ _, .terminal _ => isFalse (fun h => by cases h)
   | .fn _ _, .array _ => isFalse (fun h => by cases h)
-  | .fn _ _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .fn _ _, .typedArray _ => isFalse (fun h => by cases h)
   | .fn _ _, .list _ => isFalse (fun h => by cases h)
-  | .fn a₁ b₁, .fn a₂ b₂ =>
-    match decEqTy a₁ a₂, decEqTy b₁ b₂ with
-    | isTrue h₁, isTrue h₂ => isTrue (h₁ ▸ h₂ ▸ rfl)
+  | .fn x0 x1, .fn y0 y1 =>
+    match decEqTys x0 y0, decEqTy x1 y1 with
+    | isTrue h0, isTrue h1 => isTrue (h0 ▸ h1 ▸ rfl)
     | isFalse h, _ => isFalse (fun e => by cases e; exact h rfl)
     | _, isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .fn _ _, .record _ => isFalse (fun h => by cases h)
-  | .fn _ _, .union _ => isFalse (fun h => by cases h)
+  | .fn _ _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .fn _ _, .union _ _ _ => isFalse (fun h => by cases h)
   | .fn _ _, .enum _ _ => isFalse (fun h => by cases h)
   | .fn _ _, .data _ => isFalse (fun h => by cases h)
   | .fn _ _, .thunk _ => isFalse (fun h => by cases h)
-  | .fn _ _, .lazy _ => isFalse (fun h => by cases h)
-  | .record _, .terminal _ => isFalse (fun h => by cases h)
-  | .record _, .array _ => isFalse (fun h => by cases h)
-  | .record _, .typedArray _ _ => isFalse (fun h => by cases h)
-  | .record _, .list _ => isFalse (fun h => by cases h)
-  | .record _, .fn _ _ => isFalse (fun h => by cases h)
-  | .record fs₁, .record fs₂ =>
-    match decEqTys fs₁ fs₂ with
-    | isTrue h => isTrue (h ▸ rfl)
-    | isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .record _, .union _ => isFalse (fun h => by cases h)
-  | .record _, .enum _ _ => isFalse (fun h => by cases h)
-  | .record _, .data _ => isFalse (fun h => by cases h)
-  | .record _, .thunk _ => isFalse (fun h => by cases h)
-  | .record _, .lazy _ => isFalse (fun h => by cases h)
-  | .union _, .terminal _ => isFalse (fun h => by cases h)
-  | .union _, .array _ => isFalse (fun h => by cases h)
-  | .union _, .typedArray _ _ => isFalse (fun h => by cases h)
-  | .union _, .list _ => isFalse (fun h => by cases h)
-  | .union _, .fn _ _ => isFalse (fun h => by cases h)
-  | .union _, .record _ => isFalse (fun h => by cases h)
-  | .union cs₁, .union cs₂ =>
-    match decEqTyss cs₁ cs₂ with
-    | isTrue h => isTrue (h ▸ rfl)
-    | isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .union _, .enum _ _ => isFalse (fun h => by cases h)
-  | .union _, .data _ => isFalse (fun h => by cases h)
-  | .union _, .thunk _ => isFalse (fun h => by cases h)
-  | .union _, .lazy _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .terminal _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .array _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .typedArray _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .list _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .fn _ _ => isFalse (fun h => by cases h)
+  | .record x0 x1 x2, .record y0 y1 y2 =>
+    match decEqTy x0 y0, decEqTy x1 y1, decEqTys x2 y2 with
+    | isTrue h0, isTrue h1, isTrue h2 => isTrue (h0 ▸ h1 ▸ h2 ▸ rfl)
+    | isFalse h, _, _ => isFalse (fun e => by cases e; exact h rfl)
+    | _, isFalse h, _ => isFalse (fun e => by cases e; exact h rfl)
+    | _, _, isFalse h => isFalse (fun e => by cases e; exact h rfl)
+  | .record _ _ _, .union _ _ _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .enum _ _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .data _ => isFalse (fun h => by cases h)
+  | .record _ _ _, .thunk _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .terminal _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .array _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .typedArray _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .list _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .fn _ _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .union x0 x1 x2, .union y0 y1 y2 =>
+    match decEqTys x0 y0, decEqTys x1 y1, decEqTyss x2 y2 with
+    | isTrue h0, isTrue h1, isTrue h2 => isTrue (h0 ▸ h1 ▸ h2 ▸ rfl)
+    | isFalse h, _, _ => isFalse (fun e => by cases e; exact h rfl)
+    | _, isFalse h, _ => isFalse (fun e => by cases e; exact h rfl)
+    | _, _, isFalse h => isFalse (fun e => by cases e; exact h rfl)
+  | .union _ _ _, .enum _ _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .data _ => isFalse (fun h => by cases h)
+  | .union _ _ _, .thunk _ => isFalse (fun h => by cases h)
   | .enum _ _, .terminal _ => isFalse (fun h => by cases h)
   | .enum _ _, .array _ => isFalse (fun h => by cases h)
-  | .enum _ _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .enum _ _, .typedArray _ => isFalse (fun h => by cases h)
   | .enum _ _, .list _ => isFalse (fun h => by cases h)
   | .enum _ _, .fn _ _ => isFalse (fun h => by cases h)
-  | .enum _ _, .record _ => isFalse (fun h => by cases h)
-  | .enum _ _, .union _ => isFalse (fun h => by cases h)
-  | .enum n₁ s₁, .enum n₂ s₂ =>
-    match decEq n₁ n₂, decEq s₁ s₂ with
-    | isTrue h₁, isTrue h₂ => isTrue (h₁ ▸ h₂ ▸ rfl)
+  | .enum _ _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .enum _ _, .union _ _ _ => isFalse (fun h => by cases h)
+  | .enum x0 x1, .enum y0 y1 =>
+    match decEq x0 y0, decEq x1 y1 with
+    | isTrue h0, isTrue h1 => isTrue (h0 ▸ h1 ▸ rfl)
     | isFalse h, _ => isFalse (fun e => by cases e; exact h rfl)
     | _, isFalse h => isFalse (fun e => by cases e; exact h rfl)
   | .enum _ _, .data _ => isFalse (fun h => by cases h)
   | .enum _ _, .thunk _ => isFalse (fun h => by cases h)
-  | .enum _ _, .lazy _ => isFalse (fun h => by cases h)
   | .data _, .terminal _ => isFalse (fun h => by cases h)
   | .data _, .array _ => isFalse (fun h => by cases h)
-  | .data _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .data _, .typedArray _ => isFalse (fun h => by cases h)
   | .data _, .list _ => isFalse (fun h => by cases h)
   | .data _, .fn _ _ => isFalse (fun h => by cases h)
-  | .data _, .record _ => isFalse (fun h => by cases h)
-  | .data _, .union _ => isFalse (fun h => by cases h)
+  | .data _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .data _, .union _ _ _ => isFalse (fun h => by cases h)
   | .data _, .enum _ _ => isFalse (fun h => by cases h)
-  | .data n₁, .data n₂ =>
-    match decEq n₁ n₂ with
-    | isTrue h => isTrue (h ▸ rfl)
+  | .data x0, .data y0 =>
+    match decEq x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
     | isFalse h => isFalse (fun e => by cases e; exact h rfl)
   | .data _, .thunk _ => isFalse (fun h => by cases h)
-  | .data _, .lazy _ => isFalse (fun h => by cases h)
   | .thunk _, .terminal _ => isFalse (fun h => by cases h)
   | .thunk _, .array _ => isFalse (fun h => by cases h)
-  | .thunk _, .typedArray _ _ => isFalse (fun h => by cases h)
+  | .thunk _, .typedArray _ => isFalse (fun h => by cases h)
   | .thunk _, .list _ => isFalse (fun h => by cases h)
   | .thunk _, .fn _ _ => isFalse (fun h => by cases h)
-  | .thunk _, .record _ => isFalse (fun h => by cases h)
-  | .thunk _, .union _ => isFalse (fun h => by cases h)
+  | .thunk _, .record _ _ _ => isFalse (fun h => by cases h)
+  | .thunk _, .union _ _ _ => isFalse (fun h => by cases h)
   | .thunk _, .enum _ _ => isFalse (fun h => by cases h)
   | .thunk _, .data _ => isFalse (fun h => by cases h)
-  | .thunk t₁, .thunk t₂ =>
-    match decEqTy t₁ t₂ with
-    | isTrue h => isTrue (h ▸ rfl)
+  | .thunk x0, .thunk y0 =>
+    match decEqTy x0 y0 with
+    | isTrue h0 => isTrue (h0 ▸ rfl)
     | isFalse h => isFalse (fun e => by cases e; exact h rfl)
-  | .thunk _, .lazy _ => isFalse (fun h => by cases h)
-  | .lazy _, .terminal _ => isFalse (fun h => by cases h)
-  | .lazy _, .array _ => isFalse (fun h => by cases h)
-  | .lazy _, .typedArray _ _ => isFalse (fun h => by cases h)
-  | .lazy _, .list _ => isFalse (fun h => by cases h)
-  | .lazy _, .fn _ _ => isFalse (fun h => by cases h)
-  | .lazy _, .record _ => isFalse (fun h => by cases h)
-  | .lazy _, .union _ => isFalse (fun h => by cases h)
-  | .lazy _, .enum _ _ => isFalse (fun h => by cases h)
-  | .lazy _, .data _ => isFalse (fun h => by cases h)
-  | .lazy _, .thunk _ => isFalse (fun h => by cases h)
-  | .lazy t₁, .lazy t₂ =>
-    match decEqTy t₁ t₂ with
-    | isTrue h => isTrue (h ▸ rfl)
-    | isFalse h => isFalse (fun e => by cases e; exact h rfl)
+
 /-- Decidable equality of lists of types. -/
 def decEqTys : (a b : List JsTy) → Decidable (a = b)
   | [], [] => isTrue rfl
@@ -357,23 +388,23 @@ def JsNatTy.of? : (t : JsTy) → Option (JsNatTy t)
   | _ => none
 
 /-- How an array type is laid out: a generic array of elements `α`, or a typed array whose
-    elements are read as the leaf `e`. -/
+    elements are read as the leaf of `t`. -/
 inductive JsArrayLayout : JsTy → JsTy → Type where
   | generic (α : JsTy) : JsArrayLayout (.array α) α
-  | typed (k : JsTypedArray) (e : JsTerminalTy) : JsArrayLayout (.typedArray k e) (.terminal e)
+  | typed (t : JsTypedElem) : JsArrayLayout (.typedArray t) (.terminal t.leaf)
   deriving Repr
 
 /-- The layout of an array type, if it is one. -/
 def JsArrayLayout.of? : (a : JsTy) → Option (Σ e, JsArrayLayout a e)
   | .array α => some ⟨α, .generic α⟩
-  | .typedArray k e => some ⟨.terminal e, .typed k e⟩
+  | .typedArray t => some ⟨.terminal t.leaf, .typed t⟩
   | _ => none
 
 /-- The element type of an array layout is determined by the array type. -/
 theorem JsArrayLayout.elem_unique {a e₁ e₂ : JsTy} :
     JsArrayLayout a e₁ → JsArrayLayout a e₂ → e₁ = e₂
   | .generic _, .generic _ => rfl
-  | .typed _ _, .typed _ _ => rfl
+  | .typed _, .typed _ => rfl
 
 namespace JsTy
 
@@ -382,23 +413,32 @@ def isBigInt : JsTy → Bool
   | .terminal t => t.isBigInt
   | _ => false
 
+/-- The fields of a record type, in order. -/
+def recordFields : JsTy → Option (List JsTy)
+  | .record f₁ f₂ fs => some (f₁ :: f₂ :: fs)
+  | _ => none
+
+/-- The constructors of a union type, in order. -/
+def unionCtors : JsTy → Option (List (List JsTy))
+  | .union c₀ c₁ cs => some (c₀ :: c₁ :: cs)
+  | _ => none
+
 /-- A rendering for the `-JsTerm.txt` dump. -/
 partial def pretty : JsTy → String
   | .terminal t => t.pretty
   | .array t => s!"Array<{t.pretty}>"
-  | .typedArray k e => s!"{k.ctorName}<{e.pretty}>"
+  | .typedArray t => s!"{t.kind.ctorName}<{t.leaf.pretty}>"
   | .list t => s!"List<{t.pretty}>"
-  | .fn a b => s!"({a.pretty} => {b.pretty})"
-  | .record ts => "{ " ++ ", ".intercalate
+  | .fn ds c => "(" ++ ", ".intercalate (ds.map pretty) ++ s!") => {c.pretty}"
+  | .record f₁ f₂ fs => let ts := f₁ :: f₂ :: fs; "{ " ++ ", ".intercalate
       ((List.range ts.length).zip ts |>.map fun (i, t) => s!"_{i + 1}: {t.pretty}") ++ " }"
-  | .union cs => "(" ++ " | ".intercalate
+  | .union c₀ c₁ cs => let cs := c₀ :: c₁ :: cs; "(" ++ " | ".intercalate
       ((List.range cs.length).zip cs |>.map fun (i, fs) =>
         "{ " ++ ", ".intercalate (s!"tag: {i}" ::
           ((List.range fs.length).zip fs |>.map fun (j, t) => s!"_{j + 1}: {t.pretty}")) ++ " }") ++ ")"
   | .enum n shift => s!"enum{n}@{shift}"
   | .data n => n
   | .thunk t => s!"Thunk<{t.pretty}>"
-  | .lazy t => s!"(() => {t.pretty})"
 
 instance : ToString JsTy := ⟨pretty⟩
 
@@ -444,66 +484,51 @@ def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerminalTy :=
   | .floatModel => .float
   | .float32Model => .float32
 
+/-- The element of the typed array an array of `BitVec n` is stored in, if any: `exact` says
+    whether only the widths of a typed array (`8`, `16`, `32`, `64`) are.  A bit vector of
+    33 to 53 bits is a `number`, which no typed array of more than 32 bits holds. -/
+def bitvecTypedElem (cfg : JsConfig) (n : Nat) (h₂ : 2 ≤ n) (exact : Bool) : Option JsTypedElem :=
+  if h : n ≤ 32 then
+    if !exact || n == 8 || n == 16 || n == 32 then some (.bitvec n h₂ h) else none
+  else if h' : 53 < n ∧ n ≤ 64 then
+    if !exact || n == 64 then
+      match cfg.bitvecRepr with
+      | .bigint => some (.bitvecBig n h'.1 h'.2)
+      | .num => none
+    else none
+  else none
+
 /-- Lowers an array of a leaf type. -/
 def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTy :=
-  let e := lowerScalarPrim cfg prim
-  let generic : JsTy := .array (.terminal e)
-  let typed (k : JsTypedArray) : JsTy := .typedArray k e
+  let generic : JsTy := .array (.terminal (lowerScalarPrim cfg prim))
+  let typedIf (typed : Bool) (t : JsTypedElem) : JsTy := if typed then .typedArray t else generic
+  let fixed := cfg.arrayFixedIntRepr == .typedArray
+  let floats := cfg.arrayFloatRepr == .typedArray
   match prim with
-  | .bool => generic
-  | .bitvec n _ =>
-    match cfg.arrayBitVecRepr with
-    | .genericArray => generic
-    | .exactTypedArrayOnly =>
-      if n == 8 then typed .uint8Array
-      else if n == 16 then typed .uint16Array
-      else if n == 32 then typed .uint32Array
-      else if n == 64 then
-        match cfg.bitvecRepr with
-        | .bigint => typed .bigUint64Array
-        | .num => generic
-      else generic
-    | .roundUpToSmallestTypedArray =>
-      if n ≤ 8 then typed .uint8Array
-      else if n ≤ 16 then typed .uint16Array
-      else if n ≤ 32 then typed .uint32Array
-      else if n ≤ 64 then
-        match cfg.bitvecRepr with
-        | .bigint => typed .bigUint64Array
-        | .num => generic
-      else generic
-  | .uint8 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .uint8Array
-    | .genericArray => generic
-  | .uint16 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .uint16Array
-    | .genericArray => generic
-  | .uint32 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .uint32Array
-    | .genericArray => generic
-  | .int8 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .int8Array
-    | .genericArray => generic
-  | .int16 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .int16Array
-    | .genericArray => generic
-  | .int32 => match cfg.arrayFixedIntRepr with
-    | .typedArray => typed .int32Array
-    | .genericArray => generic
+  | .bitvec n h₂ =>
+    let elem? := match cfg.arrayBitVecRepr with
+      | .genericArray => none
+      | .exactTypedArrayOnly => bitvecTypedElem cfg n h₂ true
+      | .roundUpToSmallestTypedArray => bitvecTypedElem cfg n h₂ false
+    match elem? with
+    | some t => .typedArray t
+    | none => generic
+  | .uint8 => typedIf fixed .uint8
+  | .uint16 => typedIf fixed .uint16
+  | .uint32 => typedIf fixed .uint32
+  | .int8 => typedIf fixed .int8
+  | .int16 => typedIf fixed .int16
+  | .int32 => typedIf fixed .int32
   | .uint64 =>
     match cfg.arrayUint64Repr, cfg.uint64Repr with
-    | .bigUint64Array, .bigint => typed .bigUint64Array
+    | .bigUint64Array, .bigint => .typedArray .uint64
     | _, _ => generic
   | .int64 =>
     match cfg.arrayInt64Repr, cfg.int64Repr with
-    | .bigInt64Array, .bigint => typed .bigInt64Array
+    | .bigInt64Array, .bigint => .typedArray .int64
     | _, _ => generic
-  | .float => match cfg.arrayFloatRepr with
-    | .typedArray => typed .float64Array
-    | .genericArray => generic
-  | .float32 => match cfg.arrayFloatRepr with
-    | .typedArray => typed .float32Array
-    | .genericArray => generic
+  | .float => typedIf floats .float64
+  | .float32 => typedIf floats .float32
   | _ => generic
 
 /-- The name of member `j` of a block of a signature, as a JavaScript type name. -/
@@ -514,24 +539,42 @@ where
     | .here j => s!"D{depth}_{j.val}"
     | .there r => go (depth + 1) r
 
+/-- Is the type an arrow (`Ty.fn`)? -/
+def _root_.LeanScript.Ty.isFn {ks : List Nat} {d : Bool} : Ty ks d → Bool
+  | .fn .. => true
+  | _ => false
+
+/-- The layout of the function type `σ → τ`, from the layouts `a` of `σ` and `b` of `τ`: when `τ`
+    is an arrow too (`fnRes`), its arguments are the arguments after `a` (the function is
+    uncurried). -/
+def JsTy.arrow (a : JsTy) (fnRes : Bool) (b : JsTy) : JsTy :=
+  match fnRes, b with
+  | true, .fn ds c => .fn (a :: ds) c
+  | _, b => .fn [a] b
+
 mutual
 /-- The layout of a Lean type in JavaScript. -/
 def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
   | .prim p => .terminal (lowerScalarPrim cfg p)
-  | .fn a b => .fn (lowerTy cfg a) (lowerTy cfg b)
+  | .fn a b => JsTy.arrow (lowerTy cfg a) b.isFn (lowerTy cfg b)
   | .array (.prim p) => lowerArrayPrim cfg p
   | .array t => .array (lowerTy cfg t)
   | .list t => .list (lowerTy cfg t)
   | .enum s => .enum s.nOfConstructors s.shift
-  | .record t fs => .record (lowerTy cfg t :: lowerFields cfg fs)
-  | .union cs (h := _) => .union (lowerCtors cfg cs)
+  | .record t fs => .record (lowerTy cfg t) (lowerFields1 cfg fs).1 (lowerFields1 cfg fs).2
+  | .union cs (h := _) =>
+    .union (lowerCtors2 cfg cs).1 (lowerCtors2 cfg cs).2.1 (lowerCtors2 cfg cs).2.2
   | .data r => .data (refName r)
   | .thunk t => .thunk (lowerTy cfg t)
-  | .lazy t => .lazy (lowerTy cfg t)
+  | .lazy t => .fn [] (lowerTy cfg t)
 /-- The layouts of the fields of a record or a constructor. -/
 def lowerFields (cfg : JsConfig) {ks : List Nat} : Fields ks → List JsTy
   | .one t => [lowerTy cfg t]
   | .cons t fs => lowerTy cfg t :: lowerFields cfg fs
+/-- The layouts of one field or more: the first one and the others. -/
+def lowerFields1 (cfg : JsConfig) {ks : List Nat} : Fields ks → JsTy × List JsTy
+  | .one t => (lowerTy cfg t, [])
+  | .cons t fs => (lowerTy cfg t, lowerFields cfg fs)
 /-- The layouts of the fields of a constructor. -/
 def lowerCtor (cfg : JsConfig) {ks : List Nat} {b : Bool} : Ctor ks b → List JsTy
   | .nullary => []
@@ -541,12 +584,22 @@ def lowerCtors (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs �
     List (List JsTy)
   | .two a b => [lowerCtor cfg a, lowerCtor cfg b]
   | .cons c cs => lowerCtor cfg c :: lowerCtors cfg cs
+/-- The layouts of two constructors or more: the first two and the others. -/
+def lowerCtors2 (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs →
+    List JsTy × List JsTy × List (List JsTy)
+  | .two a b => (lowerCtor cfg a, lowerCtor cfg b, [])
+  | .cons c cs => (lowerCtor cfg c, lowerCtors1 cfg cs)
+/-- The layouts of two constructors or more: the first one and the others. -/
+def lowerCtors1 (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs →
+    List JsTy × List (List JsTy)
+  | .two a b => (lowerCtor cfg a, [lowerCtor cfg b])
+  | .cons c cs => (lowerCtor cfg c, lowerCtors cfg cs)
 end
 
 example : lowerTy JsConfig.default (Ty.nat : Ty []) = .terminal .bigint_nat := rfl
 example : lowerTy JsConfig.presetPBO (Ty.nat : Ty []) = .terminal .uint53 := rfl
 example : lowerTy JsConfig.default (.array (.prim .uint8) : Ty []) =
-    .typedArray .uint8Array .uint8 := rfl
+    .typedArray .uint8 := rfl
 example : lowerTy JsConfig.presetPBO (.array (.prim .uint8) : Ty []) =
     .array (.terminal .uint8) := rfl
 

@@ -17,7 +17,7 @@ const $k2 = (x$1) => {
   const x$3 = k$2(x$1);
   return 2 === x$3;
 };
-const $k3 = (x$1) => (x$2) => {
+const $k3 = (x$1, x$2) => {
   const k$3 = $k1;
   const x$4 = k$3(x$1);
   const k$5 = $k1;
@@ -56,6 +56,6 @@ export const test1 = (a) => {
  */
 export const test2 = (a) => {
   const k$1 = $k3;
-  const x$2 = k$1(a);
-  return x$2(2);
+  const x$2 = 2;
+  return k$1(a, x$2);
 };

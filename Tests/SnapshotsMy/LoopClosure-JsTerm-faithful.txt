@@ -4,11 +4,14 @@
 //   test2: LeanScript: the call List.map (fun xs => List.map (fun x => x + k) xs) xss is not a call of an extern: `List.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 const $k1 : ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) }) = { tag: 1, _1: 0n };
-const $k2 : ((nat(bigint) => nat(bigint)) => nat(bigint)) = (x) => {
-  const x = c0(1n);
-  const x = c1(2n);
-  const x = c2(3n);
-  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c2, c1), c0);
+const $k2 : ((nat(bigint)) => nat(bigint)) => nat(bigint) = (x) => {
+  const x = 1n;
+  const x = c1(c0);
+  const x = 2n;
+  const x = c3(c0);
+  const x = 3n;
+  const x = c5(c0);
+  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c4, c2), c0);
 };
 
 // test1

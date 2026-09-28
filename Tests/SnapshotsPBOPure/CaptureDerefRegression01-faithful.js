@@ -31,10 +31,10 @@ export const test2 = (v, a) => {
 /**
  * `test3`
  * @param {{ _1: int(bigint), _2: int(bigint) }} v
- * @param {int(bigint)} p
+ * @param {int(bigint)} p1
  * @returns {int(bigint)}
  */
-export const test3 = (v, p) => {
+export const test3 = (v, p1) => {
   const { _1: f$1, _2: f$2 } = v;
-  return f$1 + p;
+  return f$1 + p1;
 };

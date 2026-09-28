@@ -3,7 +3,7 @@
 
 /**
  * `test1`
- * @param {(() => boolean)} f
- * @returns {(() => boolean)}
+ * @param {() => boolean} f
+ * @returns {() => boolean}
  */
 export const test1 = (f) => () => f();

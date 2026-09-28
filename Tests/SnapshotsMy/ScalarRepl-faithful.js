@@ -118,10 +118,12 @@ export const test2 = (n) => {
  */
 export const test3 = (a, b) => {
   const k$1 = $k2;
-  const x$2 = k$1({ _1: a, _2: b });
-  const k$3 = $k2;
-  const x$4 = k$3({ _1: b, _2: a + 1n });
-  return x$2 + x$4;
+  const x$2 = { _1: a, _2: b };
+  const x$3 = k$1(x$2);
+  const k$4 = $k2;
+  const x$5 = { _1: b, _2: a + 1n };
+  const x$6 = k$4(x$5);
+  return x$3 + x$6;
 };
 
 /**
@@ -132,7 +134,8 @@ export const test3 = (a, b) => {
  */
 export const test4 = (a, b) => {
   const k$1 = $k3;
-  return k$1({ _1: a, _2: b });
+  const x$2 = { _1: a, _2: b };
+  return k$1(x$2);
 };
 
 /**
@@ -143,6 +146,7 @@ export const test4 = (a, b) => {
  */
 export const test5 = (a, b) => {
   const k$1 = $k4;
-  const x$2 = k$1({ tag: 1, _1: { _1: a, _2: b } });
-  return x$2 + 0n;
+  const x$2 = { tag: 1, _1: { _1: a, _2: b } };
+  const x$3 = k$1(x$2);
+  return x$3 + 0n;
 };

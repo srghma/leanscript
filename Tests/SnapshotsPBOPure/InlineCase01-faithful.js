@@ -7,7 +7,7 @@
 
 /**
  * `test1`
- * @param {(() => int(bigint))} f
+ * @param {() => int(bigint)} f
  * @param {({ tag: 0 } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */
@@ -22,7 +22,7 @@ export const test1 = (f, a) => {
 
 /**
  * `test3`
- * @param {(() => int(bigint))} f
+ * @param {() => int(bigint)} f
  * @param {({ tag: 0 } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */

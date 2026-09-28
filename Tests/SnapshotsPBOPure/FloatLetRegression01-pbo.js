@@ -3,12 +3,15 @@
 
 /**
  * `test`
- * @param {(int53(number) => int53(number))} f
+ * @param {(int53(number)) => int53(number)} f
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const test = (f) => {
-  const x$1 = f(1);
-  const x$2 = f(2);
-  const x$3 = f(2);
-  return { _1: x$1, _2: x$2, _3: x$3 };
+  const x$1 = 1;
+  const x$2 = f(x$1);
+  const x$3 = 2;
+  const x$4 = f(x$3);
+  const x$5 = 2;
+  const x$6 = f(x$5);
+  return { _1: x$2, _2: x$4, _3: x$6 };
 };

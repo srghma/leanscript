@@ -3,7 +3,7 @@
 
 import {
   bigint_nat__lean_nat_div,
-  bigint_nat__lean_string_length__String_length,
+  bigint_nat__lean_string_length__String_Internal_length,
   bigint_nat__lean_nat_sub,
 } from "../../runtime.js";
 
@@ -39,7 +39,7 @@ export const test3 = (a) => {
  */
 export const test4 = (s) =>
   bigint_nat__lean_nat_div(
-    bigint_nat__lean_string_length__String_length(s),
+    bigint_nat__lean_string_length__String_Internal_length(s),
     3n,
   );
 
@@ -66,7 +66,7 @@ export const test6 = (a) => BigInt(a.length) & 7n;
 export const test7 = (s, i) =>
   bigint_nat__lean_nat_div(
     bigint_nat__lean_nat_sub(
-      bigint_nat__lean_string_length__String_length(s),
+      bigint_nat__lean_string_length__String_Internal_length(s),
       i,
     ),
     2n,

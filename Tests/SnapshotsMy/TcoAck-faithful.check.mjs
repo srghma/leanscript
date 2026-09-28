@@ -30,13 +30,13 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("ack2(0n)(0n)", () => M.ack2(0n)(0n), "1", false);
-check("ack2(0n)(2n)", () => M.ack2(0n)(2n), "3", false);
-check("ack2(1n)(1n)", () => M.ack2(1n)(1n), "3", false);
-check("ack2(2n)(0n)", () => M.ack2(2n)(0n), "3", false);
-check("ack2(0n)(13n)", () => M.ack2(0n)(13n), "14", false);
-check("ack2(1n)(5n)", () => M.ack2(1n)(5n), "7", false);
-check("ack2(2n)(2n)", () => M.ack2(2n)(2n), "7", false);
+check("ack2(0n, 0n)", () => M.ack2(0n, 0n), "1", false);
+check("ack2(0n, 2n)", () => M.ack2(0n, 2n), "3", false);
+check("ack2(1n, 1n)", () => M.ack2(1n, 1n), "3", false);
+check("ack2(2n, 0n)", () => M.ack2(2n, 0n), "3", false);
+check("ack2(0n, 13n)", () => M.ack2(0n, 13n), "14", false);
+check("ack2(1n, 5n)", () => M.ack2(1n, 5n), "7", false);
+check("ack2(2n, 2n)", () => M.ack2(2n, 2n), "7", false);
 check("AckWithoutStackButUsingCantorPairing$pair(0n, 0n)", () => M.AckWithoutStackButUsingCantorPairing$pair(0n, 0n), "0", false);
 check("AckWithoutStackButUsingCantorPairing$pair(0n, 2n)", () => M.AckWithoutStackButUsingCantorPairing$pair(0n, 2n), "5", false);
 check("AckWithoutStackButUsingCantorPairing$pair(1n, 1n)", () => M.AckWithoutStackButUsingCantorPairing$pair(1n, 1n), "4", false);

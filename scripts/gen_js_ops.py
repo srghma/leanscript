@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the typed operations of `JsTerm` from the catalogue of externs.
 
-    python3 scripts/gen_js_ops.py                       # regenerate the Lean files
-    python3 scripts/gen_js_ops.py --migrate-runtime OLD # (once) also rewrite runtime.js
+    python3 scripts/gen_js_ops.py            # regenerate JsTerm/Ops.lean and JsTerm/OpsLookup.lean
+    python3 scripts/gen_js_ops.py --report   # list the operations with no implementation
 
 Every extern of the catalogue (`LeanScript/LeanInitPureExterns/*.lean`) is split by the
 JavaScript representation of its arguments and its result: `lean_nat_div : [nat, nat] -> nat`
@@ -12,25 +12,31 @@ prefix* and the name of the extern, joined by `__`; the prefix is the list of th
 representations of the configurable Lean types of the signature (`Nat`, `Int`, `UInt64`,
 `Int64`, `BitVec n` with `n > 53`), in order of first appearance and without repetitions, or,
 when the signature has none, the first leaf of the signature (`uint32__lean_uint32_add`), or
-the family of the polymorphic ones (`array__lean_array_push`, `thunk__lean_mk_thunk`).
+the family of the polymorphic ones (`array__lean_array_push_immutable`, `thunk__lean_mk_thunk`).
 
 An operation is either
 
-* **inlined** (`JsTerm/OpsInlined.lean`): a single JavaScript operator, conversion or literal
-  over its arguments (`bigint_nat__lean_nat_land` is `a & b`), written by `JsInline`; or
-* **imported** (`JsTerm/OpsImported.lean`): a function of the same name exported by
-  `runtime.js`, which the generated module imports.
+* **inlined** (`JsOpInlinable`): a single JavaScript operator, conversion or call of a global
+  (`bigint_nat__lean_nat_land` is `a & b`, `float__sin` is `Math.sin(a)`), written by
+  `JsInline`; or
+* **imported** (`JsOpImported`): a function of the same name exported by `runtime.js`, which
+  the generated module imports.
 
-An extern that is neither for some representation has no operation there: a call of it is
-converted to a call that throws (`JsExpr.unimplemented`).  `JsTerm/OpsLookup.lean` finds the
-operation of an extern call from the name of the extern and the types of its arguments and
-result.
+Every operation carries its effects: `effectful` for the `_mutable` array updates (the only
+ones that change an argument), `pure` otherwise; `mayThrow` when its function in `runtime.js`
+contains a `throw` or refers to a function that may throw (found by a fixpoint over the
+declarations of `runtime.js`), `doesntThrow` otherwise.  An alias in `runtime.js`
+(`export const a = b;`) of an operation at the same signature is not an operation of its own:
+its extern is looked up to `b` (`lean_array_fset` is `lean_array_set_immutable`).
+
+Every extern must have an operation at every representation: the script fails (listing them)
+when one has neither an inline form nor a function in `runtime.js`.
 """
-import os, re, sys, itertools, subprocess
+import os, re, sys, itertools, json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT = os.path.join(ROOT, 'LeanScript', 'LeanInitPureExterns')
-RUNTIME = os.environ.get('LEANSCRIPT_RUNTIME_OUT', os.path.join(ROOT, 'runtime.js'))
+RUNTIME = os.path.join(ROOT, 'runtime.js')
 
 # --------------------------------------------------------------------------- catalogue
 
@@ -98,7 +104,11 @@ def catalogue():
             poly = '(αt : MyTy)' in rest
             sig = re.sub(r'^.*?Extern ', '', rest)
             args, res = parse_sig(sig)
-            out.append(dict(name=name, args=args, res=res, poly=poly, lean=(lean or '').strip()))
+            if 'LeanPrimTy.stringPos ' in sig:
+                # a `String.Pos s` is a byte offset into the string `s`, a parameter of the
+                # extern known at compile time: the operation takes `s` as its first argument
+                args = [('prim', 'string')] + args
+            out.append(dict(name=name, args=args, res=res, poly=poly, lean=(lean or '').strip(), group=th))
     return out
 
 # ---------------------------------------------------------------------- representations
@@ -181,16 +191,18 @@ def js_ty(ty, cfg):
         return ('array', args[0])
     if k == 'list':
         return ('list', args[0])
-    if k in ('thunk', 'lazy'):
-        return (k, args[0])
+    if k == 'thunk':
+        return ('thunk', args[0])
+    if k == 'lazy':
+        return ('fn', [], args[0])
     if k == 'option':
         return ('union', [[], [args[0]]])
     if k == 'prod':
         return ('record', args)
     if k == 'fn1':
-        return ('fn', args[0], args[1])
+        return ('fn', [args[0]], args[1])
     if k == 'fn2':
-        return ('fn', args[0], ('fn', args[1], args[2]))
+        return ('fn', [args[0], args[1]], args[2])
     raise ValueError(ty)
 
 def lean_of(t, var='α'):
@@ -202,20 +214,23 @@ def lean_of(t, var='α'):
         return var
     if k == 'enum':
         return f'(.enum {t[1]} ({t[2]}))'
-    if k in ('array', 'list', 'thunk', 'lazy'):
+    if k in ('array', 'list', 'thunk'):
         return f'(.{k} {lean_of(t[1], var)})'
+    lst = lambda ts: '[' + ', '.join(lean_of(a, var) for a in ts) + ']'
     if k == 'union':
-        return '(.union [' + ', '.join('[' + ', '.join(lean_of(a, var) for a in c) + ']' for c in t[1]) + '])'
+        cs = t[1]
+        return f'(.union {lst(cs[0])} {lst(cs[1])} [' + ', '.join(lst(c) for c in cs[2:]) + '])'
     if k == 'record':
-        return '(.record [' + ', '.join(lean_of(a, var) for a in t[1]) + '])'
+        fs = t[1]
+        return f'(.record {lean_of(fs[0], var)} {lean_of(fs[1], var)} {lst(fs[2:])})'
     if k == 'fn':
-        return f'(.fn {lean_of(t[1], var)} {lean_of(t[2], var)})'
+        return f'(.fn {lst(t[1])} {lean_of(t[2], var)})'
     raise ValueError(t)
 
 def leaves(t, acc):
     if t[0] == 'leaf':
         acc.append(t[1])
-    elif t[0] in ('array', 'list', 'thunk', 'lazy'):
+    elif t[0] in ('array', 'list', 'thunk'):
         leaves(t[1], acc)
     elif t[0] == 'union':
         for c in t[1]:
@@ -225,7 +240,8 @@ def leaves(t, acc):
         for a in t[1]:
             leaves(a, acc)
     elif t[0] == 'fn':
-        leaves(t[1], acc)
+        for a in t[1]:
+            leaves(a, acc)
         leaves(t[2], acc)
     return acc
 
@@ -259,23 +275,6 @@ def prefix(e, cfg):
             return f
     return 'any'
 
-# ------------------------------------------------------------ the old runtime, parsed
-
-def split_sections(src):
-    """The sections of the merged runtime: `(file name, text)`."""
-    out = []
-    cur, lines = None, []
-    for line in src.split('\n'):
-        m = re.match(r'^==== FILE: runtime/(\S+) ====$', line)
-        if m:
-            if cur:
-                out.append((cur, '\n'.join(lines)))
-            cur, lines = m.group(1), []
-        else:
-            lines.append(line)
-    if cur:
-        out.append((cur, '\n'.join(lines)))
-    return out
 
 DECL_RE = re.compile(r'^(export )?(const|let|function) ([A-Za-z_$][\w$]*)')
 
@@ -328,7 +327,13 @@ def parse_decls(text):
 def ident_re(name):
     return re.compile(r'(?<![\w$])' + re.escape(name) + r'(?![\w$])')
 
-# ------------------------------------------------------------------ old lowering rules
+# The characters of a Lean identifier that a JavaScript one cannot have, and how the name of a
+# function of `runtime.js` writes them (`jsSafeName` in `JsTerm/Ops.lean`).
+JS_ESCAPES = {'?': '$3F', '!': '$21', "'": '$27'}
+
+def js_name(name):
+    return ''.join(JS_ESCAPES.get(c, c) for c in name)
+
 
 VALUE_CONVERSIONS = set("""lean_float32_to_float lean_int16_to_float lean_int16_to_float32 lean_int16_to_int
 lean_int16_to_int32 lean_int16_to_int64 lean_int32_to_float lean_int32_to_float32
@@ -427,269 +432,6 @@ def old_inline(name, arg_tys, res_ty):
         return bin2('<=')
     return None
 
-def rt_name(name):
-    if name == 'lean_uint32_of_nat__Char_ofNatAux':
-        return 'Char_ofNatAux'
-    if name == 'lean_uint64_to_nat__UInt64_toBitVec':
-        return 'UInt64_toBitVec'
-    return '$' + name.split('__')[0]
-
-def rt_section(e, res_ty, cfg):
-    sym = e['name'].split('__')[0]
-    if sym in POLY_RESULT:
-        return 'lean_runtime_non_configurable.mjs'
-    k = knob_of(e['res']) if e['res'][0] in ('prim', 'bitvec') else None
-    if k is None:
-        return 'lean_runtime_non_configurable.mjs'
-    l = leaf_of(res_ty)
-    big = l is not None and is_big(l)
-    return f"lean_runtime_{k}_{'bigint' if big else 'num'}.mjs"
-
-# Simple bodies of old runtime functions that become inline operations.
-SIMPLE_BIN = ['===', '!==', '<=', '>=', '<<', '>>>', '>>', '&&', '||', '+', '-', '*', '/', '%',
-              '&', '|', '^', '<', '>']
-
-def simple_template(code):
-    """The template of a runtime function whose body is one operator on its parameters."""
-    m = re.match(r'^export const [\w$]+ = \(([\w, ]*)\) => (.*);$', code.strip())
-    if not m or '\n' in code.strip():
-        return None
-    params = [p.strip() for p in m.group(1).split(',') if p.strip()]
-    body = m.group(2).strip()
-    idx = {p: i for i, p in enumerate(params)}
-    if body in idx:
-        return A(idx[body])
-    mm = re.match(r'^(BigInt|Number)\((\w+)\)$', body)
-    if mm and mm.group(2) in idx:
-        return ('call', mm.group(1), [A(idx[mm.group(2)])])
-    mm = re.match(r'^([-~!])(\w+)$', body)
-    if mm and mm.group(2) in idx:
-        return ('un', mm.group(1), A(idx[mm.group(2)]))
-    for op in SIMPLE_BIN:
-        parts = body.split(' ' + op + ' ')
-        if len(parts) == 2 and parts[0] in idx and parts[1] in idx:
-            return B(op, A(idx[parts[0]]), A(idx[parts[1]]))
-    return None
-
-# ---------------------------------------------------------------------------- the ops
-
-def all_cfgs(knobs):
-    for vals in itertools.product(['big', 'num'], repeat=len(knobs)):
-        cfg = {k: 'big' for k in KNOBS}
-        cfg.update(dict(zip(knobs, vals)))
-        yield cfg
-
-# The polymorphic array/thunk externs, by hand.  Each entry:
-#   kind: 'layout' (one op over every array layout), 'split' (a generic and a typed op),
-#   impl for generic / typed: ('import', runtime function) / ('inline', template).
-POLY = {
-    'lean_array_get_borrowed': 'layout', 'lean_array_get': 'layout', 'lean_array_push': 'layout',
-    'lean_array_get_size': 'layout', 'lean_array_set': 'layout', 'lean_array_fset': 'layout',
-    'lean_array_fswap': 'layout', 'lean_array_swap': 'layout', 'lean_array_pop': 'layout',
-    'lean_array_to_list': 'split', 'lean_mk_array': 'split',
-    'lean_mk_empty_array_with_capacity__Array_emptyWithCapacity': 'split',
-    'lean_mk_empty_array_with_capacity__Array_mkEmpty': 'split',
-    'lean_array_mk': 'split',
-    'lean_thunk_pure': 'thunk', 'lean_mk_thunk': 'thunk', 'lean_thunk_get_own': 'thunk',
-    'lean_dbg_trace_if_shared': 'any',
-}
-
-# The runtime functions of the in-place array updates (not externs).
-INPLACE = [('lean_array_push_inplace', 'lean_array_push'),
-           ('lean_array_set_inplace', 'lean_array_set'),
-           ('lean_array_swap_inplace', 'lean_array_swap'),
-           ('lean_array_pop_inplace', 'lean_array_pop')]
-
-def build_ops(runtime_exports, old_sections=None):
-    """The ops: a list of dicts (name, extern, cfg-independent signature strings, impl)."""
-    cat = catalogue()
-    ops = []
-    seen = set()
-    migrate = []  # (op name, section, function name, specialisation) for the runtime
-    for e in cat:
-        name = e['name']
-        knobs = []
-        for a in e['args'] + [e['res']]:
-            knobs_in(a, knobs)
-        for cfg in all_cfgs(knobs):
-            arg_tys = [js_ty(a, cfg) for a in e['args']]
-            res_ty = js_ty(e['res'], cfg)
-            if any(t[0] == 'leanName' for t in arg_tys + [res_ty]):
-                continue
-            pre = prefix(e, cfg)
-            if e['poly'] or name in POLY:
-                ops.extend(poly_ops(e, cfg, pre, arg_tys, res_ty, seen, runtime_exports,
-                                    old_sections, migrate))
-                continue
-            opname = f'{pre}__{name}'
-            if opname in seen:
-                continue
-            seen.add(opname)
-            tmpl = old_inline(name, arg_tys, res_ty)
-            impl = None
-            if tmpl is not None:
-                impl = ('inline', tmpl)
-            else:
-                fn = rt_name(name)
-                sec = rt_section(e, res_ty, cfg)
-                if old_sections is not None:
-                    d = old_sections.get(sec, {}).get(fn)
-                    if d is not None and d['exported']:
-                        st = simple_template(d['code'])
-                        if st is not None and opname != 'uint53__lean_nat_land':
-                            impl = ('inline', st)
-                            INLINE_TABLE[opname] = st
-                        else:
-                            impl = ('import', None)
-                            migrate.append((opname, sec, fn, pre))
-                elif opname in INLINE_TABLE:
-                    impl = ('inline', INLINE_TABLE[opname])
-                elif opname in runtime_exports:
-                    impl = ('import', None)
-            if impl is None:
-                if REPORT is not None:
-                    REPORT.append(opname)
-                continue
-            ops.append(dict(name=opname, extern=name, lean=e['lean'], params='',
-                            args=[lean_of(t) for t in arg_tys], res=lean_of(res_ty), impl=impl,
-                            poly=None))
-    # the in-place updates
-    for (ip, base) in INPLACE:
-        for pre in (['bigint_nat', 'uint53'] if base in ('lean_array_set', 'lean_array_swap') else ['array']):
-            opname = f'{pre}__{ip}'
-            nat = f'(.terminal .{pre})'
-            if base == 'lean_array_push':
-                args, res = ['A', 'E'], 'A'
-            elif base == 'lean_array_set':
-                args, res = ['A', nat, 'E'], 'A'
-            elif base == 'lean_array_swap':
-                args, res = ['A', nat, nat], 'A'
-            else:
-                args, res = ['A'], 'A'
-            if old_sections is not None:
-                migrate.append((opname, 'lean_runtime_non_configurable.mjs', '$' + ip, pre))
-            elif opname not in runtime_exports:
-                continue
-            ops.append(dict(name=opname, extern=None, lean=f'(in place: `{base}` on an array nothing else refers to)',
-                            params='{A E : JsTy} (l : JsArrayLayout A E)', args=args, res=res,
-                            impl=('import', None), poly='layout'))
-    return ops, migrate
-
-def poly_ops(e, cfg, pre, arg_tys, res_ty, seen, runtime_exports, old_sections, migrate):
-    name = e['name']
-    kind = POLY.get(name)
-    out = []
-    fn = rt_name(name)
-    def has(opname):
-        if old_sections is not None:
-            d = old_sections['lean_runtime_non_configurable.mjs'].get(fn)
-            return d is not None and d['exported']
-        return opname in runtime_exports
-    def sig(var_arr, var_elem):
-        def sub(t):
-            k = t[0]
-            if k == 'var':
-                return var_elem
-            if k == 'array' and t[1][0] == 'var':
-                return var_arr
-            return lean_of(t)
-        return [sub(t) for t in arg_tys], sub(res_ty)
-    if kind == 'layout':
-        opname = f'{pre}__{name}'
-        if name == 'lean_array_get_size' and opname not in seen:
-            # `a.length`, a `number` (converted to a `BigInt` for a `bigint_nat`)
-            seen.add(opname)
-            length = ('member', A(0), 'length')
-            tmpl = length if pre == 'uint53' else ('call', 'BigInt', [length])
-            args, res = sig('A', 'E')
-            return [dict(name=opname, extern=name, lean=e['lean'],
-                         params='{A E : JsTy} (l : JsArrayLayout A E)',
-                         args=args, res=res, impl=('inline', tmpl), poly='layout')]
-        if opname in seen or not has(opname):
-            return []
-        seen.add(opname)
-        args, res = sig('A', 'E')
-        if old_sections is not None:
-            migrate.append((opname, 'lean_runtime_non_configurable.mjs', fn, pre))
-        return [dict(name=opname, extern=name, lean=e['lean'], params='{A E : JsTy} (l : JsArrayLayout A E)',
-                     args=args, res=res, impl=('import', None), poly='layout')]
-    if kind == 'thunk' or kind == 'any':
-        opname = f'{pre}__{name}'
-        if opname in seen or not has(opname):
-            return []
-        seen.add(opname)
-        args, res = [lean_of(t, 'α') for t in arg_tys], lean_of(res_ty, 'α')
-        if old_sections is not None:
-            migrate.append((opname, 'lean_runtime_non_configurable.mjs', fn, pre))
-        return [dict(name=opname, extern=name, lean=e['lean'], params='(α : JsTy)', args=args, res=res,
-                     impl=('import', None), poly='elem')]
-    # split: a generic and a typed op
-    gname = f'{pre}__{name}'
-    tname = f'typedArray__{pre}__{name}' if pre != 'array' else f'typedArray__{name}'
-    if gname in seen:
-        return []
-    seen.add(gname)
-    sym = name.split('__')[0]
-    gargs, gres = sig('(.array α)', 'α')
-    targs, tres = sig('(.typedArray k e)', '(.terminal e)')
-    res = []
-    if sym == 'lean_array_to_list':
-        # a list and a generic array are both JavaScript arrays
-        res.append(dict(name=gname, extern=name, lean=e['lean'], params='(α : JsTy)', args=gargs, res=gres,
-                        impl=('inline', A(0)), poly='generic'))
-        tres = '(.list (.terminal e))'
-        if has(tname):
-            if old_sections is not None:
-                migrate.append((tname, 'lean_runtime_non_configurable.mjs', fn, pre))
-            res.append(dict(name=tname, extern=name, lean=e['lean'], params='(k : JsTypedArray) (e : JsTerminalTy)',
-                            args=targs, res=tres, impl=('import', None), poly='typed'))
-    elif sym == 'lean_mk_array':
-        if has(gname):
-            if old_sections is not None:
-                migrate.append((gname, 'lean_runtime_non_configurable.mjs', fn, pre))
-                migrate.append((tname, 'lean_runtime_non_configurable.mjs', '$lean_mk_typed_array', pre))
-            res.append(dict(name=gname, extern=name, lean=e['lean'], params='(α : JsTy)', args=gargs, res=gres,
-                            impl=('import', None), poly='generic'))
-            res.append(dict(name=tname, extern=name, lean=e['lean'], params='(k : JsTypedArray) (e : JsTerminalTy)',
-                            args=targs, res=tres, impl=('import', None), poly='typed', ctorArg=True))
-    elif sym == 'lean_mk_empty_array_with_capacity':
-        res.append(dict(name=gname, extern=name, lean=e['lean'], params='(α : JsTy)', args=gargs, res=gres,
-                        impl=('inline', ('emptyArray',)), poly='generic'))
-        res.append(dict(name=tname, extern=name, lean=e['lean'], params='(k : JsTypedArray) (e : JsTerminalTy)',
-                        args=targs, res=tres, impl=('inline', ('newTyped', [('num', 0)])), poly='typed'))
-    elif sym == 'lean_array_mk':
-        res.append(dict(name=gname, extern=name, lean=e['lean'], params='(α : JsTy)', args=gargs, res=gres,
-                        impl=('inline', A(0)), poly='generic'))
-        targs = ['(.list (.terminal e))']
-        res.append(dict(name=tname, extern=name, lean=e['lean'], params='(k : JsTypedArray) (e : JsTerminalTy)',
-                        args=targs, res=tres, impl=('inline', ('typedFrom', [A(0)])), poly='typed'))
-    return res
-
-# ------------------------------------------------------------------------ Lean output
-
-def tmpl_lean(t):
-    k = t[0]
-    if k == 'arg':
-        return f'.arg {t[1]}'
-    if k == 'bin':
-        return f'.bin "{t[1]}" ({tmpl_lean(t[2])}) ({tmpl_lean(t[3])})'
-    if k == 'un':
-        return f'.un "{t[1]}" ({tmpl_lean(t[2])})'
-    if k == 'call':
-        return f'.call "{t[1]}" [' + ', '.join(tmpl_lean(a) for a in t[2]) + ']'
-    if k == 'num':
-        return f'.num {t[1]}'
-    if k == 'big':
-        return f'.big {t[1]}'
-    if k == 'emptyArray':
-        return '.emptyArray'
-    if k == 'member':
-        return f'.member ({tmpl_lean(t[1])}) "{t[2]}"'
-    if k == 'newTyped':
-        return '.new k.ctorName [' + ', '.join(tmpl_lean(a) for a in t[1]) + ']'
-    if k == 'typedFrom':
-        return '.call (k.ctorName ++ ".from") [' + ', '.join(tmpl_lean(a) for a in t[1]) + ']'
-    raise ValueError(t)
 
 def tmpl_js(t, names='abcdefg'):
     k = t[0]
@@ -715,76 +457,367 @@ def tmpl_js(t, names='abcdefg'):
         return 'C.from(' + ', '.join(tmpl_js(a) for a in t[1]) + ')'
     raise ValueError(t)
 
+
+# ------------------------------------------------------------- inline float math
+
+# `Math` functions that are the C function of a float extern (`float__sin` is `Math.sin(a)`);
+# the `Float32` ones round the double result with `Math.fround`.
+MATH_1 = {'sin': 'sin', 'cos': 'cos', 'tan': 'tan', 'asin': 'asin', 'acos': 'acos', 'atan': 'atan',
+          'sinh': 'sinh', 'cosh': 'cosh', 'tanh': 'tanh', 'asinh': 'asinh', 'acosh': 'acosh',
+          'atanh': 'atanh', 'exp': 'exp', 'log': 'log', 'log2': 'log2', 'log10': 'log10',
+          'sqrt': 'sqrt', 'cbrt': 'cbrt', 'ceil': 'ceil', 'floor': 'floor', 'fabs': 'abs'}
+MATH_2 = {'atan2': 'atan2', 'pow': 'pow'}
+# exact in double precision, so no `Math.fround` is needed for `Float32`
+MATH_EXACT = {'ceil', 'floor', 'fabs'}
+
+def math_template(name):
+    """The template of a float math extern (`sin`, `sinf`, …), if it is one."""
+    f32 = name.endswith('f') and name[:-1] in list(MATH_1) + list(MATH_2) + ['exp2']
+    base = name[:-1] if f32 else name
+    if base in MATH_1:
+        t = ('call', 'Math.' + MATH_1[base], [A(0)])
+    elif base in MATH_2:
+        t = ('call', 'Math.' + MATH_2[base], [A(0), A(1)])
+    elif base == 'exp2':
+        t = ('call', 'Math.pow', [('num', 2), A(0)])
+    else:
+        return None
+    if f32 and base not in MATH_EXACT:
+        t = ('call', 'Math.fround', [t])
+    return t
+
+# ---------------------------------------------------------------------- the runtime
+
+def runtime_decls():
+    """The top-level declarations of `runtime.js`."""
+    try:
+        return parse_decls(open(RUNTIME).read())
+    except FileNotFoundError:
+        return []
+
+ALIAS_RE = re.compile(r'^export const ([\w$]+) = ([\w$]+);$')
+
+def runtime_info():
+    """The exported names of the runtime, its aliases (`export const a = b;`: `a -> b`), and
+    the names whose evaluation may throw (a `throw`, or a reference to a name that may)."""
+    decls = runtime_decls()
+    exports = {d['name'] for d in decls if d['exported']}
+    aliases = {}
+    for d in decls:
+        m = ALIAS_RE.match(d['code'].strip())
+        if m and d['exported']:
+            aliases[m.group(1)] = m.group(2)
+    names = [d['name'] for d in decls]
+    body = {}
+    for d in decls:
+        code = d['code']
+        code = re.sub(r'//.*$', '', code, flags=re.M)
+        code = re.sub(r'/\*.*?\*/', '', code, flags=re.S)
+        body[d['name']] = code.split('=', 1)[1] if '=' in code else code
+    throws = {n for n in names if re.search(r'\bthrow\b', body[n])}
+    changed = True
+    while changed:
+        changed = False
+        for n in names:
+            if n in throws:
+                continue
+            if any(ident_re(t).search(body[n]) for t in throws):
+                throws.add(n)
+                changed = True
+    # back to the names of the operations (`…get$3F` is the operation `…get?`)
+    def lean(n):
+        for c, e in JS_ESCAPES.items():
+            n = n.replace(e, c)
+        return n
+    return ({lean(n) for n in exports}, {lean(a): lean(b) for a, b in aliases.items()},
+            {lean(n) for n in throws})
+
+def ident_re(name):
+    return re.compile(r'(?<![\w$])' + re.escape(name) + r'(?![\w$])')
+
+# ---------------------------------------------------------------------------- the ops
+
+def all_cfgs(knobs):
+    for vals in itertools.product(['big', 'num'], repeat=len(knobs)):
+        cfg = {k: 'big' for k in KNOBS}
+        cfg.update(dict(zip(knobs, vals)))
+        yield cfg
+
+# The polymorphic array/thunk externs, by hand: 'layout' (one op over every array layout),
+# 'split' (a generic and a typed op), 'thunk' / 'any' (over the delayed type).
+POLY = {
+    'lean_array_get_borrowed': 'layout', 'lean_array_get': 'layout', 'lean_array_push': 'layout',
+    'lean_array_get_size': 'layout', 'lean_array_set': 'layout', 'lean_array_fset': 'layout',
+    'lean_array_fswap': 'layout', 'lean_array_swap': 'layout', 'lean_array_pop': 'layout',
+    'lean_array_to_list': 'split', 'lean_mk_array': 'split',
+    'lean_mk_empty_array_with_capacity__Array_emptyWithCapacity': 'split',
+    'lean_mk_empty_array_with_capacity__Array_mkEmpty': 'split',
+    'lean_array_mk': 'split',
+    'lean_thunk_pure': 'thunk', 'lean_mk_thunk': 'thunk', 'lean_thunk_get_own': 'thunk',
+    'lean_dbg_trace_if_shared': 'any',
+}
+
+# The array updates that return a copy of their array argument: an `_immutable` operation
+# (the extern) and a `_mutable` one (which updates the array in place, when nothing else
+# refers to it).  `push` and `pop` change the length, so their `_mutable` versions exist on
+# generic arrays only (a typed array cannot grow or shrink).
+UPDATES = {'lean_array_push': 'generic', 'lean_array_pop': 'generic',
+           'lean_array_set': 'layout', 'lean_array_swap': 'layout'}
+
+LAYOUT_PARAMS = '{A E : JsTy} (l : JsArrayLayout A E)'
+
+def op_name(pre, name):
+    base = f'{pre}__{name}'
+    return base + '_immutable' if name in UPDATES else base
+
+def mk_op(name, extern, e, args, res, impl, params='', poly=None, group=None, **kw):
+    return dict(name=name, extern=extern, lean=e['lean'] if e else '', params=params, args=args,
+                res=res, impl=impl, poly=poly, group=group or (e['group'] if e else 'Core'), **kw)
+
+def build_ops(rt):
+    """The operations: a list of dicts; and the operations missing from the runtime."""
+    exports, aliases, throws = rt
+    cat = catalogue()
+    ops, missing, seen = [], [], set()
+    for e in cat:
+        name = e['name']
+        knobs = []
+        for a in e['args'] + [e['res']]:
+            knobs_in(a, knobs)
+        for cfg in all_cfgs(knobs):
+            arg_tys = [js_ty(a, cfg) for a in e['args']]
+            res_ty = js_ty(e['res'], cfg)
+            if any(t[0] == 'leanName' for t in arg_tys + [res_ty]):
+                continue
+            pre = prefix(e, cfg)
+            if e['poly'] or name in POLY:
+                ops.extend(poly_ops(e, pre, arg_tys, res_ty, seen, exports, missing))
+                continue
+            opname = op_name(pre, name)
+            if opname in seen:
+                continue
+            seen.add(opname)
+            tmpl = old_inline(name, arg_tys, res_ty)
+            if tmpl is None:
+                tmpl = math_template(name)
+            if tmpl is None and opname in INLINE_TABLE:
+                tmpl = INLINE_TABLE[opname]
+            if tmpl is not None:
+                impl = ('inline', tmpl)
+            elif opname in exports:
+                impl = ('import',)
+            else:
+                missing.append(opname)
+                continue
+            ops.append(mk_op(opname, name, e, [lean_of(t) for t in arg_tys], lean_of(res_ty), impl))
+    # the mutable updates
+    for base, kind in UPDATES.items():
+        e = next(x for x in cat if x['name'] == base)
+        for o in [o for o in ops if o['extern'] == base]:
+            mname = o['name'].replace('_immutable', '_mutable')
+            if mname not in exports:
+                continue
+            if kind == 'generic':
+                args = [a.replace('A', '(.array α)').replace('E', 'α') for a in o['args']]
+                res = o['res'].replace('A', '(.array α)')
+                ops.append(mk_op(mname, None, e, args, res, ('import',), params='(α : JsTy)',
+                                 poly='generic', mutableOf=o['name']))
+            else:
+                ops.append(mk_op(mname, None, e, o['args'], o['res'], ('import',),
+                                 params=LAYOUT_PARAMS, poly='layout', mutableOf=o['name']))
+    # effects and throws
+    for o in ops:
+        o['eff'] = 'effectful' if o['name'].endswith('_mutable') else 'pure'
+        o['throw'] = 'mayThrow' if o['impl'][0] == 'import' and o['name'] in throws else 'doesntThrow'
+    # an alias of the runtime at the same signature is the same operation
+    byname = {o['name']: o for o in ops}
+    merged = {}
+    for a, b in aliases.items():
+        if a in byname and b in byname:
+            oa, ob = byname[a], byname[b]
+            if (oa['args'], oa['res'], oa['params'], oa['poly']) == (ob['args'], ob['res'], ob['params'], ob['poly']):
+                merged[a] = b
+    for o in ops:
+        o['sameAs'] = merged.get(o['name'])
+    return ops, missing
+
+def poly_ops(e, pre, arg_tys, res_ty, seen, exports, missing):
+    name = e['name']
+    kind = POLY.get(name)
+    def has(opname):
+        if opname in exports:
+            return True
+        missing.append(opname)
+        return False
+    def sig(var_arr, var_elem):
+        def sub(t):
+            k = t[0]
+            if k == 'var':
+                return var_elem
+            if k == 'array' and t[1][0] == 'var':
+                return var_arr
+            return lean_of(t)
+        return [sub(t) for t in arg_tys], sub(res_ty)
+    if kind == 'layout':
+        opname = op_name(pre, name)
+        if opname in seen:
+            return []
+        seen.add(opname)
+        args, res = sig('A', 'E')
+        if name == 'lean_array_get_size':
+            # `a.length`, a `number` (converted to a `BigInt` for a `bigint_nat`)
+            length = ('member', A(0), 'length')
+            tmpl = length if pre == 'uint53' else ('call', 'BigInt', [length])
+            return [mk_op(opname, name, e, args, res, ('inline', tmpl), LAYOUT_PARAMS, 'layout')]
+        if not has(opname):
+            return []
+        return [mk_op(opname, name, e, args, res, ('import',), LAYOUT_PARAMS, 'layout')]
+    if kind in ('thunk', 'any'):
+        opname = f'{pre}__{name}'
+        if opname in seen or not has(opname):
+            return []
+        seen.add(opname)
+        args, res = [lean_of(t, 'α') for t in arg_tys], lean_of(res_ty, 'α')
+        return [mk_op(opname, name, e, args, res, ('import',), '(α : JsTy)', 'elem')]
+    # split: a generic and a typed op
+    gname = f'{pre}__{name}'
+    tname = f'typedArray__{pre}__{name}' if pre != 'array' else f'typedArray__{name}'
+    if gname in seen:
+        return []
+    seen.add(gname)
+    sym = name.split('__')[0]
+    gargs, gres = sig('(.array α)', 'α')
+    targs, tres = sig('(.typedArray t)', '(.terminal t.leaf)')
+    TP = '(t : JsTypedElem)'
+    res = []
+    if sym == 'lean_array_to_list':
+        # a list and a generic array are both JavaScript arrays
+        res.append(mk_op(gname, name, e, gargs, gres, ('inline', A(0)), '(α : JsTy)', 'generic'))
+        if has(tname):
+            res.append(mk_op(tname, name, e, targs, '(.list (.terminal t.leaf))', ('import',), TP, 'typed'))
+    elif sym == 'lean_mk_array':
+        if has(gname):
+            res.append(mk_op(gname, name, e, gargs, gres, ('import',), '(α : JsTy)', 'generic'))
+            res.append(mk_op(tname, name, e, targs, tres, ('import',), TP, 'typed', ctorArg=True))
+    elif sym == 'lean_mk_empty_array_with_capacity':
+        res.append(mk_op(gname, name, e, gargs, gres, ('inline', ('emptyArray',)), '(α : JsTy)', 'generic'))
+        res.append(mk_op(tname, name, e, targs, tres, ('inline', ('newTyped', [('num', 0)])), TP, 'typed'))
+    elif sym == 'lean_array_mk':
+        res.append(mk_op(gname, name, e, gargs, gres, ('inline', A(0)), '(α : JsTy)', 'generic'))
+        res.append(mk_op(tname, name, e, ['(.list (.terminal t.leaf))'], tres,
+                         ('inline', ('typedFrom', [A(0)])), TP, 'typed'))
+    return res
+
+# ------------------------------------------------------------------------ Lean output
+
+def tmpl_lean(t):
+    k = t[0]
+    if k == 'arg':
+        return f'.arg {t[1]}'
+    if k == 'bin':
+        return f'.bin "{t[1]}" ({tmpl_lean(t[2])}) ({tmpl_lean(t[3])})'
+    if k == 'un':
+        return f'.un "{t[1]}" ({tmpl_lean(t[2])})'
+    if k == 'call':
+        return f'.call "{t[1]}" [' + ', '.join(tmpl_lean(a) for a in t[2]) + ']'
+    if k == 'num':
+        return f'.num {t[1]}'
+    if k == 'big':
+        return f'.big {t[1]}'
+    if k == 'emptyArray':
+        return '.emptyArray'
+    if k == 'member':
+        return f'.member ({tmpl_lean(t[1])}) "{t[2]}"'
+    if k == 'newTyped':
+        return '.new t.kind.ctorName [' + ', '.join(tmpl_lean(a) for a in t[1]) + ']'
+    if k == 'typedFrom':
+        return '.call (t.kind.ctorName ++ ".from") [' + ', '.join(tmpl_lean(a) for a in t[1]) + ']'
+    raise ValueError(t)
+
+def param_names(o):
+    """The explicit parameters of a constructor."""
+    return {'layout': ['l'], 'generic': ['α'], 'elem': ['α'], 'typed': ['t']}.get(o['poly'], [])
+
 def ctor_line(op, fam):
     params = op['params'] + ' → ' if op['params'] else ''
     params = params.replace(') (', ') → (').replace('} (', '} → (')
-    sig = '[' + ', '.join(op['args']) + '] ' + op['res']
-    doc = ''
+    sig = f".{op['eff']} .{op['throw']} [" + ', '.join(op['args']) + '] ' + op['res']
     if op['impl'][0] == 'inline':
         doc = f'  /-- `{tmpl_js(op["impl"][1])}` ({op["lean"]}) -/\n'
+    elif op.get('mutableOf'):
+        doc = f'  /-- `{op["mutableOf"]}`, updating the array in place ({op["lean"]}) -/\n'
     else:
         doc = f'  /-- {op["lean"]} -/\n' if op['lean'] else ''
     return f'{doc}  | {op["name"]} : {params}{fam} {sig}\n'
 
-HEADER_IMPORTED = '''module
+HEADER = '''module
 
 public import JsTerm.Ty
+public import LeanScript.Term.Extern.NameElab
 
 @[expose] public section
 
 set_option autoImplicit false
 
 /-!
-# The operations of `JsTerm` that call the runtime
+# The operations of `JsTerm`
 
 **Generated** by `scripts/gen_js_ops.py` from the catalogue of externs
-(`LeanScript/LeanInitPureExterns/*.lean`) and the exports of `runtime.js`; do not edit.
+(`LeanScript/LeanInitPureExterns/*.lean`) and `runtime.js`; do not edit.
 
 Every extern of the catalogue is split by the JavaScript representation of its arguments and
 its result (`lean_nat_div : [nat, nat] → nat` is `bigint_nat__lean_nat_div : [bigint_nat,
-bigint_nat] → bigint_nat` and `uint53__lean_nat_div : [uint53, uint53] → uint53`).  The
-operations here are the ones implemented by a function of `runtime.js` of the **same name**,
-which the generated module imports; the ones written as a JavaScript operator or conversion
-are in `JsTerm.OpsInlined`.
+bigint_nat] → bigint_nat` and `uint53__lean_nat_div : [uint53, uint53] → uint53`).  An
+operation is either
+
+* **imported** (`JsOpImported`): a call of the function of `runtime.js` named as its
+  constructor (`JsOpImported.runtimeName`, read off the constructors by `ctor_names%`), which
+  the generated module imports; or
+* **inlined** (`JsOpInlinable`): written in place of its call as a JavaScript operator,
+  conversion or literal over its arguments (`JsOpInlinable.template`).
 
 The name of an operation is its *type prefix* and the name of the extern, joined by `__`: the
 representations of the configurable Lean types of the signature (`Nat`, `Int`, `UInt64`,
 `Int64`, `BitVec n` for `n > 53`) in order of first appearance and without repetitions, or,
 when there is none, the first leaf of the signature (`uint32__lean_uint32_add`), or the family
-of a polymorphic operation (`array__lean_array_push`, `thunk__lean_mk_thunk`).  A polymorphic
-array operation works on every layout of an array (`JsArrayLayout`: a generic array or a typed
-array).
+of a polymorphic operation (`array__lean_array_push_immutable`, `thunk__lean_mk_thunk`).  A
+polymorphic array operation works on every layout of an array (`JsArrayLayout`: a generic
+array or a typed array).
+
+Both families are indexed by what an operation may do besides answering (`Effectfulness`,
+`MayThrow`), by the types of its arguments and by the type of its result:
+
+* an operation is **effectful** when it changes something outside of it: the `_mutable` array
+  updates, which update their array argument in place (the backend calls them only on an array
+  nothing else refers to), are the only ones; every other operation is **pure**;
+* an operation **may throw** when its function in `runtime.js` may (a `throw`, directly or in a
+  function it calls): the operations on a `number` representation of an unbounded type, which
+  throw a `RangeError` when the result does not fit in a safe integer (so that no result is
+  ever silently wrong).  The inlined operations never throw.
+
+The array updates come in two versions: `…_immutable` (the extern: a copy of the array) and
+`…_mutable` (the same update in place); `JsOpImported.toMutable?` pairs them.  An extern whose
+function in `runtime.js` is an alias of another at the same signature (`lean_array_fset` of
+`lean_array_set`) has that operation.
 -/
 
 namespace MoreJs
 
-/-- The operations implemented by a function of `runtime.js` of the same name, indexed by
-    the types of their arguments and of their result. -/
-inductive JsOpImported : List JsTy → JsTy → Type where
-'''
+/-- Whether an operation changes something outside of it. -/
+inductive Effectfulness where
+  /-- It only computes its result. -/
+  | pure
+  /-- It changes something outside of it (it updates an argument in place). -/
+  | effectful
+  deriving DecidableEq, Repr, Inhabited
 
-HEADER_INLINED = '''module
-
-public import JsTerm.Ty
-
-@[expose] public section
-
-set_option autoImplicit false
-
-/-!
-# The operations of `JsTerm` written inline
-
-**Generated** by `scripts/gen_js_ops.py` from the catalogue of externs
-(`LeanScript/LeanInitPureExterns/*.lean`); do not edit.
-
-The operations whose JavaScript is one operator, conversion or literal over their arguments
-(`bigint_nat__lean_nat_land` is `a & b`, `uint8__lean_uint8_to_nat__UInt8_toNat` at
-`bigint_nat` is `BigInt(a)`): each is printed in place of its call, as its template
-(`JsOpInlined.template`, a `JsInline` over the arguments).  The naming is the one of
-`JsTerm.OpsImported`.
--/
-
-namespace MoreJs
+/-- Whether an operation may throw. -/
+inductive MayThrow where
+  /-- It never throws. -/
+  | doesntThrow
+  /-- It may throw (a `RangeError` when a result does not fit in its representation). -/
+  | mayThrow
+  deriving DecidableEq, Repr, Inhabited
 
 /-- How an inlined operation is written in JavaScript, over its arguments. -/
 inductive JsInline where
@@ -794,7 +827,7 @@ inductive JsInline where
   | bin (op : String) (a b : JsInline)
   /-- `op a`, for the JavaScript prefix operator `op` (`-`, `~`, `!`). -/
   | un (op : String) (a : JsInline)
-  /-- `f(args)`, `f` a global function (`BigInt`, `Number`, `Uint8Array.from`). -/
+  /-- `f(args)`, `f` a global function (`BigInt`, `Number`, `Math.sin`, `Uint8Array.from`). -/
   | call (f : String) (args : List JsInline)
   /-- `new C(args)`. -/
   | new (ctor : String) (args : List JsInline)
@@ -808,74 +841,113 @@ inductive JsInline where
   | member (a : JsInline) (field : String)
   deriving Inhabited, Repr
 
-/-- The operations written inline, indexed by the types of their arguments and of their
-    result. -/
-inductive JsOpInlined : List JsTy → JsTy → Type where
+/-- The name of a function of `runtime.js` for the name of an operation: the characters a
+    JavaScript identifier cannot have are written `$` and their code in hexadecimal (`get?` is
+    `get$3F`, `get!` is `get$21`, `next'` is `next$27`). -/
+def jsSafeName (s : String) : String :=
+  s.foldl (fun acc c => match c with
+    | '?' => acc ++ "$3F"
+    | '!' => acc ++ "$21"
+    | '\\'' => acc ++ "$27"
+    | c => acc.push c) ""
+
 '''
 
 def write_lean(ops):
     # the constructors with parameters first: the compiled code represents a constructor with
     # fields as an object whose tag must stay small (at most 244), the others as scalars
-    by_params = lambda o: 0 if o['params'] else 1
-    imp = sorted([o for o in ops if o['impl'][0] == 'import'], key=by_params)
-    inl = sorted([o for o in ops if o['impl'][0] == 'inline'], key=by_params)
-    # --- imported
-    s = HEADER_IMPORTED
+    by_params = lambda o: (0 if o['params'] else 1)
+    live = [o for o in ops if not o['sameAs']]
+    imp = sorted([o for o in live if o['impl'][0] == 'import'], key=by_params)
+    inl = sorted([o for o in live if o['impl'][0] == 'inline'], key=by_params)
+    s = HEADER
+    s += '/-- The operations implemented by the function of `runtime.js` named as the constructor,\n'
+    s += '    indexed by their effects, the types of their arguments and the type of their result. -/\n'
+    s += 'inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → Type where\n'
     for o in imp:
         s += ctor_line(o, 'JsOpImported')
-    s += '\nnamespace JsOpImported\n\n'
-    s += '/-- The name of the operation: the name of its function in `runtime.js`. -/\n'
-    s += 'def name {σs : List JsTy} {τ : JsTy} : JsOpImported σs τ → String\n'
-    for o in imp:
-        s += f'  | .{o["name"]} {" ".join("_" for _ in param_names(o))} => "{o["name"]}"\n'.replace('  _ =>', ' =>').replace('  =>', ' =>')
-    s += '\n/-- The globals passed before the arguments (the constructor of a typed array). -/\n'
-    s += 'def extraArgs {σs : List JsTy} {τ : JsTy} : JsOpImported σs τ → List String\n'
+    s += '''
+/-- The names of the constructors of `JsOpImported`, in order. -/
+def JsOpImported.names : Array String := ctor_names% JsOpImported
+
+/-- The name of the operation (the name of its constructor). -/
+def JsOpImported.name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpImported e t σs τ) : String :=
+  JsOpImported.names[op.ctorIdx]!
+
+/-- The name of the function of `runtime.js` that implements the operation: the name of its
+    constructor, made a JavaScript identifier (`jsSafeName`). -/
+def JsOpImported.runtimeName {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpImported e t σs τ) : String :=
+  jsSafeName op.name
+
+'''
+    s += '/-- The operations written inline, indexed by their effects, the types of their arguments\n'
+    s += '    and the type of their result. -/\n'
+    s += 'inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → Type where\n'
+    for o in inl:
+        s += ctor_line(o, 'JsOpInlinable')
+    s += '''
+/-- The names of the constructors of `JsOpInlinable`, in order. -/
+def JsOpInlinable.names : Array String := ctor_names% JsOpInlinable
+
+/-- The name of the operation (the name of its constructor). -/
+def JsOpInlinable.name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpInlinable e t σs τ) : String :=
+  JsOpInlinable.names[op.ctorIdx]!
+
+'''
+    s += 'namespace JsOpImported\n\n'
+    s += '/-- The globals passed before the arguments (the constructor of a typed array). -/\n'
+    s += 'def extraArgs {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += '    JsOpImported e t σs τ → List String\n'
     for o in imp:
         if o.get('ctorArg'):
-            s += f'  | .{o["name"]} k _ => [k.ctorName]\n'
-    s += '  | _ => []\n'
-    s += '\n/-- The name of every operation (for the tests: `runtime.js` exports each). -/\n'
-    s += 'def allNames : List String := [\n' + ',\n'.join(f'  "{o["name"]}"' for o in imp) + ']\n'
-    s += '\nend JsOpImported\n\nend MoreJs\n\nend\n'
-    open(os.path.join(ROOT, 'JsTerm', 'OpsImported.lean'), 'w').write(s)
-    # --- inlined
-    s = HEADER_INLINED
-    for o in inl:
-        s += ctor_line(o, 'JsOpInlined')
-    s += '\nnamespace JsOpInlined\n\n'
-    s += '/-- The name of the operation. -/\n'
-    s += 'def name {σs : List JsTy} {τ : JsTy} : JsOpInlined σs τ → String\n'
-    for o in inl:
-        s += f'  | .{o["name"]}{"".join(" _" for _ in param_names(o))} => "{o["name"]}"\n'
-    s += '\n/-- The JavaScript of the operation, over its arguments. -/\n'
-    s += 'def template {σs : List JsTy} {τ : JsTy} : JsOpInlined σs τ → JsInline\n'
+            s += f'  | .{o["name"]} t => [t.kind.ctorName]\n'
+    s += '  | _ => []\n\n'
+    s += '/-- The version of an array update that updates the array in place, if it has one. -/\n'
+    s += 'def toMutable? {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += '    JsOpImported e t σs τ → Option (Σ t\' : MayThrow, JsOpImported .effectful t\' σs τ)\n'
+    for o in imp:
+        m = o.get('mutableOf')
+        if not m:
+            continue
+        if o['poly'] == 'generic':
+            s += f'  | .{m} (.generic α) => some ⟨_, .{o["name"]} α⟩\n'
+        else:
+            s += f'  | .{m} l => some ⟨_, .{o["name"]} l⟩\n'
+    s += '  | _ => none\n\n'
+    s += 'end JsOpImported\n\n'
+    s += '/-- The JavaScript of an inlined operation, over its arguments. -/\n'
+    s += 'def JsOpInlinable.template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += '    JsOpInlinable e t σs τ → JsInline\n'
     for o in inl:
         ps = param_names(o)
-        pat = ''.join(' ' + (p if p == 'k' else '_') for p in ps)
+        pat = ''.join(' ' + (p if p == 't' else '_') for p in ps)
         s += f'  | .{o["name"]}{pat} => {tmpl_lean(o["impl"][1])}\n'
-    s += '\nend JsOpInlined\n\nend MoreJs\n\nend\n'
-    open(os.path.join(ROOT, 'JsTerm', 'OpsInlined.lean'), 'w').write(s)
+    s += '\nend MoreJs\n\nend\n'
+    open(os.path.join(ROOT, 'JsTerm', 'Ops.lean'), 'w').write(s)
     write_lookup(ops)
 
-def param_names(o):
-    """The explicit parameters of a constructor."""
+def cand(o):
+    """The candidate expression of an operation, in the lookup."""
+    wrap = 'imported' if o['impl'][0] == 'import' else 'inlined'
+    n = o['name']
+    if o['poly'] is None:
+        return f'⟨_, _, _, _, .{wrap} .{n}⟩'
     if o['poly'] == 'layout':
-        return ['l']
-    if o['poly'] in ('generic', 'elem'):
-        return ['α']
+        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .{wrap} (.{n} l)⟩] | none => [])'
+    if o['poly'] == 'elem':
+        return f'[⟨_, _, _, _, .{wrap} (.{n} (elemOf? (σs ++ [τ])))⟩]'
+    if o['poly'] == 'generic':
+        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .{wrap} (.{n} α)⟩] | _ => [])'
     if o['poly'] == 'typed':
-        return ['k', 'e']
-    return []
+        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .{wrap} (.{n} t)⟩] | _ => [])'
+    raise ValueError(o)
 
-def write_lookup(ops):
-    by_ext = {}
-    for o in ops:
-        if o['extern']:
-            by_ext.setdefault(o['extern'], []).append(o)
-    s = '''module
+LOOKUP_HEADER = '''module
 
-public import JsTerm.OpsImported
-public import JsTerm.OpsInlined
+public import JsTerm.Ops
 
 @[expose] public section
 
@@ -888,33 +960,44 @@ set_option autoImplicit false
 
 `JsOp.lookup name σs τ` is the operation of the extern `name` (as the catalogue spells it,
 `lean_nat_div`) at the argument types `σs` and the result type `τ`, if there is one: the
-constructor of `JsOpImported` or `JsOpInlined` whose signature is exactly `σs → τ` (a
-polymorphic one instantiated from the types).
+constructor of `JsOpImported` or `JsOpInlinable` whose signature is exactly `σs → τ` (a
+polymorphic one instantiated from the types), with its effects.
 -/
 
 namespace MoreJs
 
 /-- An operation: one that calls the runtime, or one written inline. -/
-inductive JsOp : List JsTy → JsTy → Type where
-  | imported {σs : List JsTy} {τ : JsTy} (op : JsOpImported σs τ) : JsOp σs τ
-  | inlined {σs : List JsTy} {τ : JsTy} (op : JsOpInlined σs τ) : JsOp σs τ
+inductive JsOp : Effectfulness → MayThrow → List JsTy → JsTy → Type where
+  | imported {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+      (op : JsOpImported e t σs τ) : JsOp e t σs τ
+  | inlined {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+      (op : JsOpInlinable e t σs τ) : JsOp e t σs τ
+
+/-- An operation of some effects. -/
+abbrev JsSomeOp (σs : List JsTy) (τ : JsTy) : Type := Σ e t, JsOp e t σs τ
 
 namespace JsOp
 
 /-- The name of the operation. -/
-def name {σs : List JsTy} {τ : JsTy} : JsOp σs τ → String
+def name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} : JsOp e t σs τ → String
   | .imported op => op.name
   | .inlined op => op.name
 
-/-- The operation at the signature `σs → τ`, if it is its own. -/
-def ofSig {σs' : List JsTy} {τ' : JsTy} (op : JsOp σs' τ') (σs : List JsTy) (τ : JsTy) :
-    Option (JsOp σs τ) :=
-  if h : σs' = σs ∧ τ' = τ then some (h.1 ▸ h.2 ▸ op) else none
+/-- A candidate: an operation at some signature. -/
+abbrev Cand : Type := Σ (σs : List JsTy) (τ : JsTy) (e : Effectfulness) (t : MayThrow), JsOp e t σs τ
 
-/-- The first operation of a list of candidates that has the signature `σs → τ`. -/
-def firstOf (σs : List JsTy) (τ : JsTy) : List (Σ σs' τ', JsOp σs' τ') → Option (JsOp σs τ)
+/-- The first candidate that has the signature `σs → τ`. -/
+def firstOf (σs : List JsTy) (τ : JsTy) : List Cand → Option (JsSomeOp σs τ)
   | [] => none
-  | ⟨_, _, op⟩ :: rest => (op.ofSig σs τ).orElse fun _ => firstOf σs τ rest
+  | ⟨σs', τ', e, t, op⟩ :: rest =>
+    if h : σs' = σs ∧ τ' = τ then some ⟨e, t, h.1 ▸ h.2 ▸ op⟩ else firstOf σs τ rest
+
+/-- The type a thunk operation delays (the first delay among the types). -/
+def elemOf? : List JsTy → JsTy
+  | [] => .terminal .bool
+  | .thunk t :: _ => t
+  | .fn [] t :: _ => t
+  | _ :: ts => elemOf? ts
 
 /-- The layout of the array among the argument types (the first one that is an array). -/
 def layoutOf? : List JsTy → Option (Σ a e, JsArrayLayout a e)
@@ -924,34 +1007,31 @@ def layoutOf? : List JsTy → Option (Σ a e, JsArrayLayout a e)
     | none => layoutOf? ts
 
 '''
+
+def write_lookup(ops):
+    byname = {o['name']: o for o in ops}
+    by_ext = {}
+    for o in ops:
+        if o['extern']:
+            target = byname[o['sameAs']] if o['sameAs'] else o
+            by_ext.setdefault(o['extern'], []).append(target)
+    s = LOOKUP_HEADER
     names = sorted(by_ext)
     uses_sig = {}
     for ext in names:
-        s += f'/-- The operations of `{ext}`. -/\n'
-        items = []
-        for o in by_ext[ext]:
-            wrap = 'imported' if o['impl'][0] == 'import' else 'inlined'
-            if o['poly'] is None:
-                items.append(f'⟨_, _, .{wrap} .{o["name"]}⟩')
-            elif o['poly'] == 'layout':
-                items.append(f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, .{wrap} (.{o["name"]} l)⟩] | none => [])')
-            elif o['poly'] == 'elem':
-                items.append(f'[⟨_, _, .{wrap} (.{o["name"]} (elemOf? (σs ++ [τ])))⟩]')
-            elif o['poly'] == 'generic':
-                items.append(f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, .{wrap} (.{o["name"]} α)⟩] | _ => [])')
-            elif o['poly'] == 'typed':
-                items.append(f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed k e⟩ => [⟨_, _, .{wrap} (.{o["name"]} k e)⟩] | _ => [])')
+        items = [cand(o) for o in by_ext[ext]]
         mono = [x for x in items if x.startswith('⟨')]
         rest = [x for x in items if not x.startswith('⟨')]
         uses_sig[ext] = bool(rest)
         expr = ' ++ '.join((['[' + ', '.join(mono) + ']'] if mono else []) + rest)
+        s += f'/-- The operations of `{ext}`. -/\n'
         if rest:
-            s += f'def «cands_{ext}» (σs : List JsTy) (τ : JsTy) : List (Σ σs\' τ\', JsOp σs\' τ\') :=\n'
+            s += f'def «cands_{ext}» (σs : List JsTy) (τ : JsTy) : List Cand :=\n'
         else:
-            s += f'def «cands_{ext}» : List (Σ σs\' τ\', JsOp σs\' τ\') :=\n'
+            s += f'def «cands_{ext}» : List Cand :=\n'
         s += '  ' + expr + '\n\n'
     s += '''/-- The operation of the extern `name` at the signature `σs → τ`, if there is one. -/
-def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsOp σs τ) :=
+def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsSomeOp σs τ) :=
   firstOf σs τ (match name with
 '''
     for ext in names:
@@ -964,201 +1044,13 @@ end MoreJs
 
 end
 '''
-    # the element type of a thunk operation
-    s = s.replace("def layoutOf?", '''def elemOf? : List JsTy → JsTy
-  | [] => .terminal .bool
-  | .thunk t :: _ => t
-  | .lazy t :: _ => t
-  | _ :: ts => elemOf? ts
-
-/-- The layout of the array among the argument types (the first one that is an array). -/
-def layoutOf?''', 1).replace("/-- The layout of the array among the argument types (the first one that is an array). -/\ndef elemOf?", "/-- The type a thunk operation delays (the first delay among the types). -/\ndef elemOf?", 1)
     open(os.path.join(ROOT, 'JsTerm', 'OpsLookup.lean'), 'w').write(s)
 
-# --------------------------------------------------------------------- runtime output
+# ------------------------------------------------------------------------------ main
 
-def migrate_runtime(old_src, migrate):
-    """Rewrite the merged runtime as one module exporting the imported operations."""
-    sections = split_sections(old_src)
-    parsed = {f: parse_decls(t) for f, t in sections}
-    # which (section, function) each op uses
-    wanted = {}
-    for (opname, sec, fn, pre) in migrate:
-        wanted.setdefault((sec, fn, spec_of(sec, pre)), []).append(opname)
-    out = [RUNTIME_HEADER]
-    helper_defs = {}   # name -> code (deduplicated)
-    order = ['lean_runtime_non_configurable.mjs',
-             'lean_runtime_nat_bigint.mjs', 'lean_runtime_nat_num.mjs',
-             'lean_runtime_int_bigint.mjs', 'lean_runtime_int_num.mjs',
-             'lean_runtime_uint64_bigint.mjs', 'lean_runtime_uint64_num.mjs',
-             'lean_runtime_int64_bigint.mjs', 'lean_runtime_int64_num.mjs',
-             'lean_runtime_bitvec_bigint.mjs', 'lean_runtime_bitvec_num.mjs']
-    tag = lambda sec: sec.replace('lean_runtime_', '').replace('.mjs', '')
-    body_parts = []
-    for sec in order:
-        decls = parsed[sec]
-        byname = {}
-        for d in decls:
-            byname.setdefault(d['name'], d)
-        # the renaming of this section: helpers keep their names unless another section
-        # defines them differently; exported functions become the ops that use them
-        rename = {}
-        for d in decls:
-            if not d['exported']:
-                code = d['code']
-                nm = d['name']
-                if nm in helper_defs and helper_defs[nm] != code:
-                    rename[nm] = f'{nm}_{tag(sec)}'
-                    helper_defs[rename[nm]] = code
-                else:
-                    helper_defs[nm] = code
-        emitted = []
-        needed_private = set()
-        for (s2, fn, spec), opnames in wanted.items():
-            if s2 != sec:
-                continue
-            emitted.append((fn, spec, opnames))
-        # exported functions referenced by emitted functions but not emitted themselves
-        emitted_fns = {(fn, spec) for fn, spec, _ in emitted}
-        def refs(code):
-            return {d2['name'] for d2 in decls if d2['exported'] and ident_re(d2['name']).search(code.split('=', 1)[1] if '=' in code else code)}
-        # the name each exported function is emitted under (the first op, unspecialised)
-        main_name = {}
-        for fn, spec, opnames in emitted:
-            main_name.setdefault(fn, sorted(opnames)[0] if spec == 'plain' else None)
-        private = {}
-        todo = []
-        for fn, spec, opnames in emitted:
-            d = byname[fn]
-            todo.extend(refs(d['code']) - {fn})
-        while todo:
-            r = todo.pop()
-            if r in private or (main_name.get(r)):
-                continue
-            private[r] = f'{tag(sec)}{r}' if not r.startswith('$') else f'{tag(sec)}_{r[1:]}'
-            todo.extend(refs(byname[r]['code']) - {r})
-        def rewrite(code, own_name):
-            # rename the declaration and the references in it
-            for nm, new in list(rename.items()):
-                code = ident_re(nm).sub(new, code)
-            head, _, rest = code.partition('=')
-            for fn2, new in list(private.items()):
-                rest = ident_re(fn2).sub(new, rest)
-            for fn2, new in main_name.items():
-                if new:
-                    rest = ident_re(fn2).sub(new, rest)
-            m = DECL_RE.match(head)
-            head = f'export const {own_name} ' if own_name else head
-            return head + '=' + rest
-        part = [f'/* {"-" * 60} {tag(sec)} */', '']
-        for r, new in sorted(private.items()):
-            d = byname[r]
-            code = rewrite(d['code'], None)
-            code = re.sub(r'^export const [\w$]+ ', f'const {new} ', code)
-            if d['doc']:
-                part.append(d['doc'])
-            part.append(code)
-            part.append('')
-        for fn, spec, opnames in sorted(emitted, key=lambda x: sorted(x[2])[0]):
-            d = byname[fn]
-            opnames = sorted(opnames)
-            first = opnames[0]
-            code = rewrite(d['code'], first)
-            code = specialise(code, spec)
-            if d['doc']:
-                part.append(d['doc'])
-            part.append(code)
-            for other in opnames[1:]:
-                part.append(f'export const {other} = {first};')
-            part.append('')
-        body_parts.append((sec, part))
-    # helpers used anywhere
-    all_text = '\n'.join('\n'.join(p) for _, p in body_parts)
-    helpers = []
-    for nm, code in helper_defs.items():
-        pass
-    # emit only the helpers referenced (transitively)
-    used = set()
-    changed = True
-    texts = all_text
-    while changed:
-        changed = False
-        for nm, code in helper_defs.items():
-            if nm not in used and ident_re(nm).search(texts):
-                used.add(nm)
-                texts += '\n' + code
-                changed = True
-    for sec in order:
-        for d in parsed[sec]:
-            if not d['exported']:
-                nm = d['name']
-                code = d['code']
-                # the helper, under its (possibly renamed) name
-                for key, c in helper_defs.items():
-                    if c == code and key in used and key not in [h[0] for h in helpers]:
-                        c2 = re.sub(r'^const [\w$]+ ', f'const {key} ', c)
-                        helpers.append((key, (d['doc'] + '\n' if d['doc'] else '') + c2))
-    out.append('/* ' + '-' * 60 + ' private helpers */\n')
-    for _, c in helpers:
-        out.append(c + '\n')
-    for sec, part in body_parts:
-        out.append('\n'.join(part))
-    out.append(EXTRA_RUNTIME)
-    return '\n'.join(out)
-
-def spec_of(sec, pre):
-    """How a function of the non-configurable module is specialised to the representation of
-    the index or count it takes: `uint53` reads it as it is, `bigint_nat` converts it."""
-    if sec == 'lean_runtime_non_configurable.mjs' and pre in ('uint53', 'bigint_nat'):
-        return pre
-    return 'plain'
-
-def specialise(code, spec):
-    if spec == 'uint53':
-        code = re.sub(r'\$idx\((\w+)\)', r'\1', code)
-        code = re.sub(r'\$count\((\w+)\)', r'\1', code)
-    return code
-
-RUNTIME_HEADER = '''// The runtime of the JavaScript that LeanScript generates: one module.
-//
-// Every function exported here is an operation of `JsTerm/OpsImported.lean`, of the same
-// name: the name of the extern it implements, behind the JavaScript representation of its
-// arguments and result (`bigint_nat__lean_nat_div` on `BigInt`s, `uint53__lean_nat_div`
-// on numbers below 2^53; see `scripts/gen_js_ops.py` for the naming).  A generated module
-// imports the operations it calls.  The operations that are one JavaScript operator are
-// not here: they are written inline (`JsTerm/OpsInlined.lean`).
-//
-// Every function is pure (it never mutates an argument), except the `_inplace` array
-// updates, which the backend calls only on an array nothing else refers to.
-'''
-
-EXTRA_RUNTIME = '''
-/* ------------------------------------------------------------ missing externs */
-
-/** Called in place of an extern that has no JavaScript implementation yet. */
-export const lean_extern_unimplemented = (name) => {
-  throw new Error(`LeanScript: the extern ${name} has no JavaScript implementation yet`);
-};
-'''
-
-# The operations whose old runtime function was one operator (found when the runtime was
-# migrated, `--migrate-runtime`), kept in `scripts/js_ops_inline.json`.
+# The operations whose runtime function was one operator, kept as templates.
 INLINE_JSON = os.path.join(ROOT, 'scripts', 'js_ops_inline.json')
 INLINE_TABLE = {}
-REPORT = None
-
-def load_inline():
-    import json
-    if os.path.exists(INLINE_JSON):
-        for k, v in json.load(open(INLINE_JSON)).items():
-            INLINE_TABLE[k] = decode(v)
-
-def encode(t):
-    if isinstance(t, tuple):
-        return [encode(x) for x in t]
-    if isinstance(t, list):
-        return ['__list__'] + [encode(x) for x in t]
-    return t
 
 def decode(v):
     if isinstance(v, list):
@@ -1167,35 +1059,33 @@ def decode(v):
         return tuple(decode(x) for x in v)
     return v
 
-def runtime_exports():
-    try:
-        src = open(RUNTIME).read()
-    except FileNotFoundError:
-        return set()
-    return set(re.findall(r'^export const ([\w$]+)', src, re.M))
+def load_inline():
+    if os.path.exists(INLINE_JSON):
+        for k, v in json.load(open(INLINE_JSON)).items():
+            INLINE_TABLE[k] = decode(v)
 
 def main():
-    if len(sys.argv) >= 3 and sys.argv[1] == '--migrate-runtime':
-        old = open(sys.argv[2]).read()
-        sections = {f: {d['name']: d for d in reversed(parse_decls(t))} for f, t in split_sections(old)}
-        ops, migrate = build_ops(set(), sections)
-        new = migrate_runtime(old, migrate)
-        open(RUNTIME, 'w').write(new)
-        import json
-        json.dump({k: encode(v) for k, v in sorted(INLINE_TABLE.items())}, open(INLINE_JSON, 'w'), indent=0)
-        return
     load_inline()
+    rt = runtime_info()
+    ops, missing = build_ops(rt)
     if len(sys.argv) >= 2 and sys.argv[1] == '--report':
-        global REPORT
-        REPORT = []
-        build_ops(runtime_exports())
-        for r in REPORT:
+        for r in missing:
             print(r)
+        used = {o['name'] for o in ops if o['impl'][0] == 'import'}
+        unused = sorted(n for n in rt[0] if n not in used and n not in rt[1])
+        if unused:
+            print('# exported by runtime.js but not an operation:', ' '.join(unused))
         return
-    ops, _ = build_ops(runtime_exports())
+    if missing:
+        print('error: no implementation (in runtime.js or inline) for:', file=sys.stderr)
+        for r in missing:
+            print('  ' + r, file=sys.stderr)
+        sys.exit(1)
     write_lean(ops)
-    print(f'{len([o for o in ops if o["impl"][0] == "import"])} imported, '
-          f'{len([o for o in ops if o["impl"][0] == "inline"])} inlined')
+    live = [o for o in ops if not o['sameAs']]
+    print(f'{len([o for o in live if o["impl"][0] == "import"])} imported, '
+          f'{len([o for o in live if o["impl"][0] == "inline"])} inlined, '
+          f'{len([o for o in ops if o["sameAs"]])} merged into the operation they alias')
 
 if __name__ == '__main__':
     main()

@@ -25,7 +25,7 @@ export const mc91 = (n) => {
 
 /**
  * `iter`
- * @param {(uint53(number) => uint53(number))} f
+ * @param {(uint53(number)) => uint53(number)} f
  * @param {uint53(number)} a
  * @param {uint53(number)} a1
  * @returns {uint53(number)}
@@ -41,5 +41,6 @@ export const iter = (f, a, a1) => {
     };
     acc$2 = k$7;
   }
-  return acc$2(a1);
+  const x$8 = acc$2;
+  return x$8(a1);
 };

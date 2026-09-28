@@ -2,20 +2,20 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (f : (int(bigint) => int(bigint)), g : (int(bigint) => int(bigint)), p : int(bigint)) : int(bigint) => {
+export const test1 = (f : (int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), p2 : int(bigint)) : int(bigint) => {
   const x = c1(c0);
   return c3(c0);
 };
 
 // test2
-export const test2 = (f : (int(bigint) => int(bigint)), g : (int(bigint) => int(bigint)), p : int(bigint)) : int(bigint) => {
+export const test2 = (f : (int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), p2 : int(bigint)) : int(bigint) => {
   const x = c1(c0);
   const x = c3(c0);
   return c3(c0);
 };
 
 // test3
-export const test3 = (f : (int(bigint) => int(bigint)), g : (int(bigint) => int(bigint)), p : int(bigint)) : int(bigint) => {
+export const test3 = (f : (int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), p2 : int(bigint)) : int(bigint) => {
   const x = c1(c0);
   const x = c3(c0);
   const x = c3(c0);
@@ -23,7 +23,7 @@ export const test3 = (f : (int(bigint) => int(bigint)), g : (int(bigint) => int(
 };
 
 // test4
-export const test4 = (f : (int(bigint) => int(bigint)), g : (int(bigint) => int(bigint)), p : int(bigint)) : int(bigint) => {
+export const test4 = (f : (int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), p2 : int(bigint)) : int(bigint) => {
   const x = c1(c0);
   const x = c3(c0);
   const x = c3(c0);

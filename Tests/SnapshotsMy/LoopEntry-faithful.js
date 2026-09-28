@@ -25,8 +25,12 @@ export const countUp = (unused, step, n, acc) => {
   let acc$2 = k$1;
   for (let i$3 = 0n; i$3 < n; i$3++) {
     const a$4 = acc$2;
-    const k$6 = (x$5) => a$4(x$5 + step);
-    acc$2 = k$6;
+    const k$7 = (x$5) => {
+      const x$6 = x$5 + step;
+      return a$4(x$6);
+    };
+    acc$2 = k$7;
   }
-  return acc$2(acc);
+  const x$8 = acc$2;
+  return x$8(acc);
 };

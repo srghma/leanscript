@@ -3,48 +3,22 @@
 
 import { uint53__lean_nat_add, uint53__lean_nat_mul } from "runtime.js";
 
-const $k1 : ((uint53(number) => (uint53(number) => uint53(number))) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      const x = c2(c1);
-      const x = c0(c1);
-      const x = c4(c2);
-      const x = c0(c4);
-      return uint53__lean_nat_add(c2, c0);
-    };
-  };
+const $k1 : ((uint53(number), uint53(number)) => uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
+  const x = c2(c1, c0);
+  const x = c3(c1, c2);
+  return uint53__lean_nat_add(c1, c0);
 };
-const $k2 : (uint53(number) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      return uint53__lean_nat_add(uint53__lean_nat_add(c1, c0), c2);
-    };
-  };
+const $k2 : (uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
+  return uint53__lean_nat_add(uint53__lean_nat_add(c1, c0), c2);
 };
-const $k3 : (uint53(number) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      return uint53__lean_nat_mul(uint53__lean_nat_mul(c1, c0), c2);
-    };
-  };
+const $k3 : (uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
+  return uint53__lean_nat_mul(uint53__lean_nat_mul(c1, c0), c2);
 };
-const $k4 : ((uint53(number) => (uint53(number) => (uint53(number) => uint53(number)))) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
-  return (x) => {
-    return (x) => {
-      const x = c2(c1);
-      const x = c0(c1);
-      return c0(c3);
-    };
-  };
+const $k4 : ((uint53(number), uint53(number), uint53(number)) => uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
+  return c2(c1, c0, c1);
 };
-const $k5 : (uint53(number) => (uint53(number) => (uint53(number) => (uint53(number) => uint53(number))))) = (x) => {
-  return (x) => {
-    return (x) => {
-      return (x) => {
-        return uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_add(c2, c1), c0), c3);
-      };
-    };
-  };
+const $k5 : (uint53(number), uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x, x) => {
+  return uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_add(c2, c1), c0), c3);
 };
 
 // mkAdd
@@ -56,10 +30,10 @@ export const mkAdd = (n : uint53(number), a : uint53(number), a1 : uint53(number
 export const test1 = (n : uint53(number), x : uint53(number), y : uint53(number)) : uint53(number) => {
   const k = $k1;
   const k = $k2;
-  const x = c0(c4);
-  const x = c2(c0);
-  const x = c0(c5);
-  return c0(c5);
+  const x = (y, y) => {
+    return c2(c6, c1, c0);
+  };
+  return c2(c0, c4, c3);
 };
 
 // mkMul
@@ -71,10 +45,10 @@ export const mkMul = (n : uint53(number), a : uint53(number), a1 : uint53(number
 export const test2 = (n : uint53(number), x : uint53(number), y : uint53(number)) : uint53(number) => {
   const k = $k1;
   const k = $k3;
-  const x = c0(c4);
-  const x = c2(c0);
-  const x = c0(c5);
-  return c0(c5);
+  const x = (y, y) => {
+    return c2(c6, c1, c0);
+  };
+  return c2(c0, c4, c3);
 };
 
 // mkSum3
@@ -86,17 +60,15 @@ export const mkSum3 = (n : uint53(number), a : uint53(number), a1 : uint53(numbe
 export const test3 = (n : uint53(number), x : uint53(number), y : uint53(number)) : uint53(number) => {
   const k = $k4;
   const k = $k5;
-  const x = c0(c4);
-  const x = c2(c0);
-  const x = c0(c5);
-  return c0(c5);
+  const x = (y, y, y) => {
+    return c3(c7, c2, c1, c0);
+  };
+  return c2(c0, c4, c3);
 };
 
 // test4
-export const test4 = (f : (uint53(number) => (uint53(number) => uint53(number))), x : uint53(number), y : uint53(number)) : uint53(number) => {
-  const x = c2(c1);
-  const x = c0(c1);
-  const x = c4(c2);
-  const x = c0(c4);
-  return uint53__lean_nat_add(c2, c0);
+export const test4 = (f : (uint53(number), uint53(number)) => uint53(number), x : uint53(number), y : uint53(number)) : uint53(number) => {
+  const x = c2(c1, c0);
+  const x = c3(c1, c2);
+  return uint53__lean_nat_add(c1, c0);
 };

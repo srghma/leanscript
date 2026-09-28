@@ -33,10 +33,10 @@ export const test2 = (v, a) => {
 /**
  * `test3`
  * @param {{ _1: int53(number), _2: int53(number) }} v
- * @param {int53(number)} p
+ * @param {int53(number)} p1
  * @returns {int53(number)}
  */
-export const test3 = (v, p) => {
+export const test3 = (v, p1) => {
   const { _1: f$1, _2: f$2 } = v;
-  return int53__lean_int_add(f$1, p);
+  return int53__lean_int_add(f$1, p1);
 };

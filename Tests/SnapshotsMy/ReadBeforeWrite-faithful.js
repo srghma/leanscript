@@ -4,9 +4,9 @@
 import {
   bigint_nat__lean_mk_array,
   bigint_nat__lean_array_get,
-  bigint_nat__lean_array_set,
-  bigint_nat__lean_array_swap,
-  array__lean_array_push,
+  bigint_nat__lean_array_set_immutable,
+  bigint_nat__lean_array_swap_immutable,
+  array__lean_array_push_immutable,
 } from "../../runtime.js";
 
 /**
@@ -17,7 +17,7 @@ import {
 export const test1 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
   const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
-  const x$3 = bigint_nat__lean_array_set(x$1, 0n, 99n);
+  const x$3 = bigint_nat__lean_array_set_immutable(x$1, 0n, 99n);
   return x$2 + bigint_nat__lean_array_get(0n, x$3, 1n);
 };
 
@@ -29,7 +29,7 @@ export const test1 = (n) => {
 export const test2 = (n) => {
   const k$1 = [n + 1n, n + 2n, n + 3n];
   const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
-  const x$3 = bigint_nat__lean_array_swap(k$1, 0n, 2n);
+  const x$3 = bigint_nat__lean_array_swap_immutable(k$1, 0n, 2n);
   return x$2 * 10n + bigint_nat__lean_array_get(0n, x$3, 0n);
 };
 
@@ -41,7 +41,7 @@ export const test2 = (n) => {
 export const test3 = (n) => {
   const k$1 = [n + 1n];
   const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
-  const x$3 = array__lean_array_push(k$1, 5n);
+  const x$3 = array__lean_array_push_immutable(k$1, 5n);
   return x$2 + BigInt(x$3.length);
 };
 
@@ -53,7 +53,7 @@ export const test3 = (n) => {
 export const test4 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
   const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
-  const x$3 = bigint_nat__lean_array_set(x$1, 0n, 99n);
+  const x$3 = bigint_nat__lean_array_set_immutable(x$1, 0n, 99n);
   return { _1: x$3, _2: x$2 };
 };
 
@@ -74,7 +74,7 @@ export const test5 = (n) => {
       const { _1: f$6, _2: f$7 } = f$5;
       const { _1: f$8, _2: f$9 } = f$5;
       const x$10 = bigint_nat__lean_array_get(0n, f$6, i$3);
-      const x$11 = bigint_nat__lean_array_set(f$6, i$3, i$3 + 1n);
+      const x$11 = bigint_nat__lean_array_set_immutable(f$6, i$3, i$3 + 1n);
       const x$12 = f$9 + x$10;
       acc$2 = { tag: 1, _1: { _1: x$11, _2: x$12 } };
     }

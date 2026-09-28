@@ -3,56 +3,52 @@
 
 /**
  * `test1`
- * @param {(int(bigint) => (int(bigint) => (int(bigint) => int(bigint))))} f
- * @param {(int(bigint) => int(bigint))} g
+ * @param {(int(bigint), int(bigint), int(bigint)) => int(bigint)} f
+ * @param {(int(bigint)) => int(bigint)} g
  * @returns {int(bigint)}
  */
 export const test1 = (f, g) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2n);
-  return x$3(3n);
+  const x$1 = 1n;
+  const x$2 = g(x$1);
+  const x$3 = 2n;
+  const x$4 = 3n;
+  return f(x$2, x$3, x$4);
 };
 
 /**
  * `test2`
- * @param {(int(bigint) => (int(bigint) => (int(bigint) => int(bigint))))} f
- * @param {(int(bigint) => int(bigint))} g
+ * @param {(int(bigint), int(bigint), int(bigint)) => int(bigint)} f
+ * @param {(int(bigint)) => int(bigint)} g
  * @param {int(bigint)} i
  * @returns {int(bigint)}
  */
 export const test2 = (f, g, i) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2n);
-  return x$3(i);
+  const x$1 = 1n;
+  const x$2 = g(x$1);
+  const x$3 = 2n;
+  return f(x$2, x$3, i);
 };
 
 /**
  * `test3`
- * @param {(int(bigint) => (int(bigint) => (int(bigint) => int(bigint))))} f
- * @param {(int(bigint) => int(bigint))} g
+ * @param {(int(bigint), int(bigint), int(bigint)) => int(bigint)} f
+ * @param {(int(bigint)) => int(bigint)} g
  * @param {int(bigint)} i
  * @param {int(bigint)} j
  * @returns {int(bigint)}
  */
 export const test3 = (f, g, i, j) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(i);
-  return x$3(j);
+  const x$1 = 1n;
+  const x$2 = g(x$1);
+  return f(x$2, i, j);
 };
 
 /**
  * `test4`
- * @param {(int(bigint) => (int(bigint) => (int(bigint) => int(bigint))))} f
+ * @param {(int(bigint), int(bigint), int(bigint)) => int(bigint)} f
  * @param {int(bigint)} i
  * @param {int(bigint)} j
  * @param {int(bigint)} k
  * @returns {int(bigint)}
  */
-export const test4 = (f, i, j, k) => {
-  const x$1 = f(i);
-  const x$2 = x$1(j);
-  return x$2(k);
-};
+export const test4 = (f, i, j, k) => f(i, j, k);

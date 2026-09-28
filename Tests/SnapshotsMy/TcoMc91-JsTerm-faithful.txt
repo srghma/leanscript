@@ -8,7 +8,7 @@
 
 import { bigint_nat__lean_nat_sub } from "runtime.js";
 
-const $k1 : (nat(bigint) => nat(bigint)) = (x) => {
+const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
   return c0;
 };
 
@@ -22,7 +22,7 @@ export const mc91 = (n : nat(bigint)) : nat(bigint) => {
 };
 
 // iter
-export const iter = (f : (nat(bigint) => nat(bigint)), a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
+export const iter = (f : (nat(bigint)) => nat(bigint), a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
   const k = $k1;
   let acc = c0;
   for (i < c2) {
@@ -34,5 +34,6 @@ export const iter = (f : (nat(bigint) => nat(bigint)), a : nat(bigint), a1 : nat
     m0 = c0;
     next;
   }
-  return m0(c1);
+  const x = m0;
+  return c0(c2);
 };

@@ -7,7 +7,7 @@
 //   AlwaysInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 //   InlineIfReduceInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 
-const $k1 = (x$1) => (x$2) => {
+const $k1 = (x$1, x$2) => {
   const { _1: f$3, _2: f$4 } = x$1;
   const { _1: f$5, _2: f$6 } = x$2;
   const { _1: f$7, _2: f$8 } = x$2;
@@ -51,8 +51,7 @@ export const Inline$test1 = (a, a1) => {
  */
 export const Inline$test2 = (a, b) => {
   const k$1 = $k1;
-  const x$2 = k$1(a);
-  return x$2(b);
+  return k$1(a, b);
 };
 
 /**
@@ -102,8 +101,7 @@ export const Noinline$test1 = (a, a1) => {
  */
 export const Noinline$test2 = (a, b) => {
   const k$1 = $k1;
-  const x$2 = k$1(a);
-  return x$2(b);
+  return k$1(a, b);
 };
 
 /**
@@ -153,8 +151,7 @@ export const AlwaysInline$test1 = (a, a1) => {
  */
 export const AlwaysInline$test2 = (a, b) => {
   const k$1 = $k1;
-  const x$2 = k$1(a);
-  return x$2(b);
+  return k$1(a, b);
 };
 
 /**
@@ -204,8 +201,7 @@ export const InlineIfReduceInline$test1 = (a, a1) => {
  */
 export const InlineIfReduceInline$test2 = (a, b) => {
   const k$1 = $k1;
-  const x$2 = k$1(a);
-  return x$2(b);
+  return k$1(a, b);
 };
 
 /**

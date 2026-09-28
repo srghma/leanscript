@@ -27,11 +27,14 @@ export const sumAcc = (a, a1) => {
   let acc$2 = k$1;
   for (let i$3 = 0; i$3 < a; i$3++) {
     const a$4 = acc$2;
-    const k$6 = (x$5) =>
-      a$4(uint53__lean_nat_add(uint53__lean_nat_add(x$5, i$3), 1));
-    acc$2 = k$6;
+    const k$7 = (x$5) => {
+      const x$6 = uint53__lean_nat_add(uint53__lean_nat_add(x$5, i$3), 1);
+      return a$4(x$6);
+    };
+    acc$2 = k$7;
   }
-  return acc$2(a1);
+  const x$8 = acc$2;
+  return x$8(a1);
 };
 
 /**

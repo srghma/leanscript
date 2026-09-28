@@ -6,7 +6,7 @@ const $k2 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 1 };
 const $k3 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 2 };
 const $k4 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 3 };
 const $tag0 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 0 };
-const $k6 : (string => ({ tag: 0 } | { tag: 1, _1: enum4@0 })) = (x) => {
+const $k6 : (string) => ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = (x) => {
   if (inline:string__lean_string_dec_eq(c0, "foo")) {
     return $k1;
   } else {

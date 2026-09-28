@@ -7,10 +7,13 @@ import { uint53__lean_nat_add } from "../../runtime.js";
 
 const $k1 = { tag: 1, _1: 0 };
 const $k2 = (x$1) => {
-  const x$2 = x$1(1);
-  const x$3 = x$1(2);
-  const x$4 = x$1(3);
-  return uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$4);
+  const x$2 = 1;
+  const x$3 = x$1(x$2);
+  const x$4 = 2;
+  const x$5 = x$1(x$4);
+  const x$6 = 3;
+  const x$7 = x$1(x$6);
+  return uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$5), x$7);
 };
 
 /**

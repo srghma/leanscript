@@ -1,3 +1,43 @@
+# Summary of changes for run 383399f1-023c-4a93-a519-3a78e7f3d9e1
+I implemented `proposals/JsTermReviewPlan.md` with your decisions and wrote the new proposal for recursive datatypes.
+
+**What changed, by plan section**
+- **§1, typed arrays:** the type is now `JsTy.typedArray (elem : JsTypedElem)`. The typed-array kind is computed from the element (`t.kind`, `t.leaf`), so a pair like "`Uint8Array` of strings" can no longer be written. The polymorphic operations quantify over one `t`.
+- **§2, records and unions:** I used the fully structural version, `record (f₁ f₂ : JsTy) (fs : List JsTy)` and `union (c₀ c₁ : List JsTy) (cs : List (List JsTy))`. `record_mk`, `union_mk`, `destructure` and `unionCases` follow it, and the `{}` case is gone.
+- **§3, `data`:** set aside as agreed. The new proposal is `proposals/RecursiveDatatypesProposal.md`. It covers:
+  - the constructor-object layout, with `List` as a linked list `{tag:0}` / `{tag:1,_1,_2}`;
+  - loops instead of recursion for linear types (left folds as a `while` loop with a cursor, like your `ofList`; right folds with a stack on the heap; `map`-like rebuilding that fills in fresh cells);
+  - local recursive functions for trees, and what `Term` and `JsTerm` would need;
+  - a phased plan and open questions. To follow your "all optimizations in `Term.optimize`" rule, the loop shapes are proposed as new `Term` constructs introduced by proved rewrites.
+- **§4, uncurried functions:**
+  - `JsTy.fn (doms : List JsTy) cod`, with n-ary `lam` and `app`. `lazy t` is `fn [] t`, and `lazy_mk`/`lazy_force` are removed.
+  - `A → B → C` becomes a two-parameter function everywhere. A lambda takes every parameter of its type; if its body isn't the next lambda, it computes the function and then calls it on the remaining parameters.
+  - A call is emitted only once all arguments are known. A partial application becomes a closure only when it is used as a value.
+  - Exported functions take every parameter of their type, so `ack2` now takes `m, n`. The snapshots show code like `f(x, y)` where it used to be `f(x)(y)`.
+- **§5, number literals:** `JsTerm/NumberLit.lean`, built on `UnpackedFloat` (committed earlier in this task).
+- **§6, all externs implemented:** every extern now has an implementation in `runtime.js` at every representation, and `lean_extern_unimplemented` is deleted. A missing operation is now a conversion error, and `scripts/gen_js_ops.py` refuses to generate if one is missing (`--report` lists none).
+  - Operations on a `String.Pos s` take `s` as a first argument, which the converter passes as a literal.
+  - Runtime names escape `?`, `!` and `'` as `$3F`, `$21` and `$27`.
+- **§7, one operations file:** `JsTerm/Ops.lean` contains `JsOpImported` (388 operations) and `JsOpInlinable` (219), indexed as `Effectfulness → MayThrow → List JsTy → JsTy`.
+  - `runtimeName` comes from the constructor names via the existing `ctor_names%`; the name-deriving elaborator I had started was deleted.
+  - `uint53` operations that throw past `2^53` are marked `mayThrow` and do throw.
+  - Array updates are renamed `_immutable`/`_mutable`. 34 aliases with the same signature are merged, so `fset` is `set_immutable` and `fswap` is `swap_immutable`.
+  - `JsTerm/Ops.lean` builds in about 12 s, so I didn't split it into groups.
+  - **§7.3 (optimizations in `JsExpr`) was deliberately not done**, since you want all optimizations in `Term.optimize`.
+
+**Checks**
+- The project builds with `lake build JsTerm leanscript tests TyTests TermTests`.
+- `lake exe tests`: 55/55 pass. New tests cover:
+  - the effects of operations, and the merged aliases;
+  - an unknown extern being a conversion error;
+  - every imported operation being exported by `runtime.js`;
+  - the version, githash and target constants in `runtime.js` matching this Lean;
+  - a node-vs-Lean comparison of new runtime functions: string hash, `mixHash`, `Float.toString`, `frExp`, `scaleB`, `toUInt8`, `toBits`, `String.Pos.Raw.prev`/`get?`, and the `uint53` `RangeError`. This test passes silently if `node` is not installed.
+- `bash scripts/leanscript-snapshots.sh`: 3806 checks passed, 0 failed, the same as before. The snapshots were regenerated. The script still exits 1, but only because of the intentional "literal too big" inputs, as before.
+- A plain `lake build` of the default targets still fails, in `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib. That file hasn't changed since the initial commit.
+
+`README.md`, `NOT_IMPLEMENTED.md` and a status table at the top of `proposals/JsTermReviewPlan.md` are updated. Everything is committed.
+
 # Summary of changes for run 18d7c91e-0eaf-4d42-8118-3eae1c32fdf1
 I wrote the plan and assessment to `proposals/JsTermReviewPlan.md`. No code has changed yet, and nothing was built or tested. It goes through your seven points one by one: whether each concern holds, a Lean sketch of the fix, and which files it affects. It ends with a phased plan and four questions for you.
 

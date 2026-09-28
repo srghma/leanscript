@@ -2,32 +2,30 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test1
-export const test1 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number))) : int53(number) => {
-  const x = c0(1);
-  const x = c2(c0);
-  const x = c0(2);
-  return c0(3);
+export const test1 = (f : (int53(number), int53(number), int53(number)) => int53(number), g : (int53(number)) => int53(number)) : int53(number) => {
+  const x = 1;
+  const x = c1(c0);
+  const x = 2;
+  const x = 3;
+  return c5(c2, c1, c0);
 };
 
 // test2
-export const test2 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number)), i : int53(number)) : int53(number) => {
-  const x = c1(1);
-  const x = c3(c0);
-  const x = c0(2);
-  return c0(c3);
+export const test2 = (f : (int53(number), int53(number), int53(number)) => int53(number), g : (int53(number)) => int53(number), i : int53(number)) : int53(number) => {
+  const x = 1;
+  const x = c2(c0);
+  const x = 2;
+  return c5(c1, c0, c3);
 };
 
 // test3
-export const test3 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number)), i : int53(number), j : int53(number)) : int53(number) => {
-  const x = c2(1);
-  const x = c4(c0);
-  const x = c0(c3);
-  return c0(c3);
+export const test3 = (f : (int53(number), int53(number), int53(number)) => int53(number), g : (int53(number)) => int53(number), i : int53(number), j : int53(number)) : int53(number) => {
+  const x = 1;
+  const x = c3(c0);
+  return c5(c0, c3, c2);
 };
 
 // test4
-export const test4 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), i : int53(number), j : int53(number), k : int53(number)) : int53(number) => {
-  const x = c3(c2);
-  const x = c0(c2);
-  return c0(c2);
+export const test4 = (f : (int53(number), int53(number), int53(number)) => int53(number), i : int53(number), j : int53(number), k : int53(number)) : int53(number) => {
+  return c3(c2, c1, c0);
 };

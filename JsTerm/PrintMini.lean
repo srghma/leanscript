@@ -21,8 +21,10 @@ exported function keep their names.
 The mapping is direct:
 
 * an imported operation is a call of the runtime function of its name
-  (`bigint_nat__lean_nat_div(a, b)`), an inlined one its template (`a & b`, `BigInt(a)`), an
-  extern without an operation `lean_extern_unimplemented("name")`;
+  (`bigint_nat__lean_nat_div(a, b)`, `JsOpImported.runtimeName`), an inlined one its template
+  (`a & b`, `BigInt(a)`);
+* a function is an arrow of all its parameters (`(a, b) => …`), and a call passes them all
+  (`f(a, b)`);
 * `const`/`let`/assignment are the statements of the same name, a destructuring
   `const { _1: a, _3: c } = r;`;
 * a case analysis on an enum or a union is a chain of `if (s === 0) … else if (s === 1) …
@@ -35,7 +37,8 @@ The mapping is direct:
   the end of the body, `continue;` elsewhere; the last iteration of a counting loop only is
   `if (0n < n) { const i = n - 1n; … }` (labelled, `break j$k;`, when an iteration ends
   before its end);
-* an arrow whose body is a single `return e` is printed `(x) => e`.
+* an arrow whose body is a single `return e` is printed `(x) => e`; a value never read is
+  `undefined`.
 -/
 
 namespace MoreJs
@@ -68,14 +71,12 @@ def bigintNum (n : Int) : MiniExpr :=
   if n < 0 then .unary .minus b else b
 
 /-- A `number` literal. -/
-def numberExpr (f : Float) : MiniExpr :=
-  match floatSmallInt? f, floatParts f with
-  | some 0, .finite true _ _ => .unary .minus (natNum 0)
-  | some n, _ => intNum n
-  | none, .nan => ident "NaN"
-  | none, .inf neg => if neg then .unary .minus (ident "Infinity") else ident "Infinity"
-  | none, .finite neg m e =>
-    let (d, ex) := shortestDecimal m e
+def numberExpr : NumberForm → MiniExpr
+  | .nan => ident "NaN"
+  | .infinity neg => if neg then .unary .minus (ident "Infinity") else ident "Infinity"
+  | .negZero => .unary .minus (natNum 0)
+  | .int n => intNum n
+  | .decimal neg d ex =>
     let num : MiniExpr := .number (.decimal d ex)
     if neg then .unary .minus num else num
 
@@ -254,16 +255,14 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M �
   | .global n _ => pure (ident n)
   | .lit l => pure (shapeExpr l.shape)
   | .imported op args => do
-    return .call (ident op.name) (op.extraArgs.map dotted ++ (← argsToMini sc args))
+    return .call (ident op.runtimeName) (op.extraArgs.map dotted ++ (← argsToMini sc args))
   | .inlined op args => do return inlineToMini (← argsToMini sc args).toArray op.template
-  | .unimplemented n _ => pure (.call (ident unimplementedFnName) [.string n])
-  | .app f a => do return .call (← exprToMini sc f) [← exprToMini sc a]
-  | .lam hint body => do
-    let x ← freshName hint
+  | .unreachable _ => pure (ident "undefined")
+  | .app f as => do return .call (← exprToMini sc f) (← argsToMini sc as)
+  | .lam (σs := σs) hints body => do
+    let xs ← (List.range σs.length).mapM fun i => freshName (hints.getD i "x")
     -- a function starts afresh: no jump leaves it, and it is no iteration of a loop
-    arrowToMini { c := x :: sc.c, m := sc.m } [x] body
-  | .lazy_mk body => arrowToMini { c := sc.c, m := sc.m } [] body
-  | .lazy_force e => do return .call (← exprToMini sc e) []
+    arrowToMini { c := xs.reverse ++ sc.c, m := sc.m } xs body
   | .record_mk fs => do
     let es ← argsToMini sc fs
     return .object (es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
@@ -273,8 +272,8 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M �
       es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
   | .enum_mk _ shift i => pure (intNum (shift + i.val))
   | .array_mk (.generic _) ps => do return .array ((← partsToMini sc ps).map .elem)
-  | .array_mk (.typed k _) ps => do
-    return .call (.dot (ident k.ctorName) (nes "of")) (← partsToMini sc ps)
+  | .array_mk (.typed t) ps => do
+    return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)
   | .list_mk ps => do return .array ((← partsToMini sc ps).map .elem)
   | .cond c a b => do
     return .ternary (← exprToMini sc c) (← exprToMini sc a) (← exprToMini sc b)

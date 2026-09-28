@@ -3,25 +3,25 @@
 // not translated:
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { array__lean_array_push, array__lean_array_push_inplace, bigint_nat__lean_array_set, bigint_nat__lean_array_get, bigint_nat__lean_mk_array, bigint_nat__lean_nat_div, bigint_nat__lean_array_swap_inplace, bigint_nat__lean_nat_sub, array__lean_array_pop_inplace } from "runtime.js";
+import { array__lean_array_push_immutable, array__lean_array_push_mutable, bigint_nat__lean_array_set_immutable, bigint_nat__lean_array_get, bigint_nat__lean_mk_array, bigint_nat__lean_nat_div, bigint_nat__lean_array_swap_mutable, bigint_nat__lean_nat_sub, array__lean_array_pop_mutable } from "runtime.js";
 
-const $k1 : (Array<nat(bigint)> => Array<nat(bigint)>) = (x) => {
+const $k1 : (Array<nat(bigint)>) => Array<nat(bigint)> = (x) => {
   return c0;
 };
-const $k2 : (nat(bigint) => (Array<nat(bigint)> => Array<nat(bigint)>)) = (x) => {
-  return (x) => {
-    const k = $k1;
-    let acc = c0;
-    for (i < c2) {
-      const a = m0;
-      const k = (x) => {
-        return c1(array__lean_array_push(c0, c2));
-      };
-      m0 = c0;
-      next;
-    }
-    return m0(c1);
-  };
+const $k2 : (nat(bigint), Array<nat(bigint)>) => Array<nat(bigint)> = (x, x) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c2) {
+    const a = m0;
+    const k = (x) => {
+      const x = array__lean_array_push_immutable(c0, c2);
+      return c2(c0);
+    };
+    m0 = c0;
+    next;
+  }
+  const x = m0;
+  return c0(c2);
 };
 
 // test1
@@ -33,7 +33,7 @@ export const test1 = (n : nat(bigint)) : Array<nat(bigint)> => {
       m0 = { tag: 0, _1: c0 };
       next;
     case 1 { _1: f }:
-      const x = array__lean_array_push_inplace(c0, inline:bigint_nat__lean_nat_mul(c1, c1));
+      const x = array__lean_array_push_mutable(c0, inline:bigint_nat__lean_nat_mul(c1, c1));
       m0 = { tag: 1, _1: c0 };
       next;
     }
@@ -55,7 +55,7 @@ export const test3 = (a0 : Array<nat(bigint)>) : Array<nat(bigint)> => {
       m0 = { tag: 0, _1: c0 };
       next;
     case 1 { _1: f }:
-      const x = bigint_nat__lean_array_set(c0, c1, inline:bigint_nat__lean_nat_mul(2n, bigint_nat__lean_array_get(0n, c0, c1)));
+      const x = bigint_nat__lean_array_set_immutable(c0, c1, inline:bigint_nat__lean_nat_mul(2n, bigint_nat__lean_array_get(0n, c0, c1)));
       m0 = { tag: 1, _1: c0 };
       next;
     }
@@ -71,7 +71,7 @@ export const test3 = (a0 : Array<nat(bigint)>) : Array<nat(bigint)> => {
 // test4
 export const test4 = (n : nat(bigint)) : { _1: Array<nat(bigint)>, _2: Array<nat(bigint)> } => {
   const x = bigint_nat__lean_mk_array(3n, c0);
-  return { _1: c0, _2: bigint_nat__lean_array_set(c0, 0n, 7n) };
+  return { _1: c0, _2: bigint_nat__lean_array_set_immutable(c0, 0n, 7n) };
 };
 
 // test5
@@ -83,7 +83,7 @@ export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
       m0 = { tag: 0, _1: c0 };
       next;
     case 1 { _1: f }:
-      const x = array__lean_array_push_inplace(c0, c1);
+      const x = array__lean_array_push_mutable(c0, c1);
       m0 = { tag: 1, _1: c0 };
       next;
     }
@@ -103,7 +103,7 @@ export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
       m0 = { tag: 0, _1: c0 };
       next;
     case 1 { _1: f }:
-      const x = bigint_nat__lean_array_swap_inplace(c0, c1, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c3, c1), 1n));
+      const x = bigint_nat__lean_array_swap_mutable(c0, c1, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c3, c1), 1n));
       m0 = { tag: 1, _1: c0 };
       next;
     }
@@ -116,12 +116,11 @@ export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
       jump 0 c0;
     }
   }
-  return array__lean_array_pop_inplace(c0);
+  return array__lean_array_pop_mutable(c0);
 };
 
 // test6
 export const test6 = (n : nat(bigint)) : Array<nat(bigint)> => {
   const k = $k2;
-  const x = c0(c1);
-  return c0(inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c2));
+  return c0(c1, inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c1));
 };

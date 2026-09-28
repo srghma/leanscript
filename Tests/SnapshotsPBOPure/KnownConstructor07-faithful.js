@@ -5,7 +5,7 @@
 
 /**
  * `test`
- * @param {(int(bigint) => int(bigint))} f
+ * @param {(int(bigint)) => int(bigint)} f
  * @param {int(bigint)} y
  * @returns {{ _1: int(bigint), _2: int(bigint) }}
  */

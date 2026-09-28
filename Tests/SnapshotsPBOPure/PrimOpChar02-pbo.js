@@ -3,17 +3,20 @@
 
 /**
  * `charValues`
- * @param {(string => (string => boolean))} op
+ * @param {(string, string) => boolean} op
  * @returns {Array<boolean>}
  */
 export const charValues = (op) => {
-  const x$1 = op("a");
-  const x$2 = x$1("a");
-  const x$3 = op("a");
-  const x$4 = x$3("b");
-  const x$5 = op("b");
-  const x$6 = x$5("a");
-  return [x$2, x$4, x$6];
+  const x$1 = "a";
+  const x$2 = "a";
+  const x$3 = op(x$1, x$2);
+  const x$4 = "a";
+  const x$5 = "b";
+  const x$6 = op(x$4, x$5);
+  const x$7 = "b";
+  const x$8 = "a";
+  const x$9 = op(x$7, x$8);
+  return [x$3, x$6, x$9];
 };
 
 /**

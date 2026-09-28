@@ -3,19 +3,15 @@
 
 // test
 export const test = (x : int(bigint), y : int(bigint)) : int(bigint) => {
-  const k = (x) => {
-    return (x) => {
-      let acc = 0n;
-      for (e of [c3, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0]) {
-        m0 = inline:bigint_int__lean_int_add(m0, c0);
-        next;
-      }
-      return m0;
-    };
+  const k = (x, x) => {
+    let acc = 0n;
+    for (e of [c3, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0, c1, c0]) {
+      m0 = inline:bigint_int__lean_int_add(m0, c0);
+      next;
+    }
+    return m0;
   };
-  const x = c0(c2);
-  const x = c0(c2);
-  const x = c2(c3);
-  const x = c0(c5);
-  return inline:bigint_int__lean_int_add(c2, c0);
+  const x = c0(c2, c1);
+  const x = c1(c2, c3);
+  return inline:bigint_int__lean_int_add(c1, c0);
 };

@@ -5,10 +5,10 @@ import {
   uint53__lean_mk_array,
   uint53__lean_nat_add,
   uint53__lean_array_get,
-  uint53__lean_array_set,
-  uint53__lean_array_swap,
+  uint53__lean_array_set_immutable,
+  uint53__lean_array_swap_immutable,
   uint53__lean_nat_mul,
-  array__lean_array_push,
+  array__lean_array_push_immutable,
 } from "../../runtime.js";
 
 /**
@@ -19,7 +19,7 @@ import {
 export const test1 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
   const x$2 = uint53__lean_array_get(0, x$1, 0);
-  const x$3 = uint53__lean_array_set(x$1, 0, 99);
+  const x$3 = uint53__lean_array_set_immutable(x$1, 0, 99);
   return uint53__lean_nat_add(x$2, uint53__lean_array_get(0, x$3, 1));
 };
 
@@ -35,7 +35,7 @@ export const test2 = (n) => {
     uint53__lean_nat_add(n, 3),
   ];
   const x$2 = uint53__lean_array_get(0, k$1, 0);
-  const x$3 = uint53__lean_array_swap(k$1, 0, 2);
+  const x$3 = uint53__lean_array_swap_immutable(k$1, 0, 2);
   return uint53__lean_nat_add(
     uint53__lean_nat_mul(x$2, 10),
     uint53__lean_array_get(0, x$3, 0),
@@ -50,7 +50,7 @@ export const test2 = (n) => {
 export const test3 = (n) => {
   const k$1 = [uint53__lean_nat_add(n, 1)];
   const x$2 = uint53__lean_array_get(0, k$1, 0);
-  const x$3 = array__lean_array_push(k$1, 5);
+  const x$3 = array__lean_array_push_immutable(k$1, 5);
   return uint53__lean_nat_add(x$2, x$3.length);
 };
 
@@ -62,7 +62,7 @@ export const test3 = (n) => {
 export const test4 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
   const x$2 = uint53__lean_array_get(0, x$1, 0);
-  const x$3 = uint53__lean_array_set(x$1, 0, 99);
+  const x$3 = uint53__lean_array_set_immutable(x$1, 0, 99);
   return { _1: x$3, _2: x$2 };
 };
 
@@ -83,7 +83,7 @@ export const test5 = (n) => {
       const { _1: f$6, _2: f$7 } = f$5;
       const { _1: f$8, _2: f$9 } = f$5;
       const x$10 = uint53__lean_array_get(0, f$6, i$3);
-      const x$11 = uint53__lean_array_set(
+      const x$11 = uint53__lean_array_set_immutable(
         f$6,
         i$3,
         uint53__lean_nat_add(i$3, 1),
