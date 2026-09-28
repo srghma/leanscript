@@ -162,6 +162,7 @@ options.
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings (their literal notations and `ToExpr` instances are in `NonEmpty/*Elab/`) |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots, `rfl` runs) |
 | `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs; unit tests of the JavaScript conversion (typed operations, in-place arrays, shared constants, literals too big for a `number`; `runtime.js` exports every imported operation) |
+| `RuntimeSpec/` (`Model.lean`, `Runtime.lean`, `Correct.lean`) | the integer functions of `runtime.js` whose code was simplified, transcribed into a model of the JavaScript they use (`BigInt`s and safe-integer `number`s as `Int`, the 32-bit operators exactly, an overflow `RangeError` as `none`), with the old versions beside them; proofs that each computes Lean's operation on its representation (a function that may throw returns Lean's result checked to be a safe integer), that the `BigInt`/`number` split agrees with the old `typeof` tests, and that every removed throw could never fire (`lake build RuntimeSpec`) |
 | `proposals/` | proposals, reviews and stand-alone sketches; nothing here is part of the build (`NominalTyProposal.md` is the design that is implemented) |
 | `scripts/` | benchmarking scripts |
 

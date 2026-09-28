@@ -123,9 +123,9 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Array.set! -/
   | uint53__lean_array_set_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), E] A
   /-- Array.replicate -/
-  | bigint_nat__lean_mk_array : (α : JsTy) → JsOpImported .pure .mayThrow [(.terminal .bigint_nat), α] (.array α)
+  | bigint_nat__lean_mk_array : (α : JsTy) → JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), α] (.array α)
   /-- Array.replicate -/
-  | typedArray__bigint_nat__lean_mk_array : (t : JsTypedElem) → JsOpImported .pure .mayThrow [(.terminal .bigint_nat), (.terminal t.leaf)] (.typedArray t)
+  | typedArray__bigint_nat__lean_mk_array : (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal t.leaf)] (.typedArray t)
   /-- Array.replicate -/
   | uint53__lean_mk_array : (α : JsTy) → JsOpImported .pure .doesntThrow [(.terminal .uint53), α] (.array α)
   /-- Array.replicate -/
@@ -199,7 +199,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.ofNatLT (decides `n < UInt64.size`) -/
   | uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .bigint_nat)
   /-- UInt64.ofNatLT (decides `n < UInt64.size`) -/
-  | uint53__lean_uint64_of_nat__UInt64_ofNatLT : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_of_nat__UInt64_ofNatLT : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .uint53)
   /-- Int.ofNat -/
   | bigint_nat__int53__lean_nat_to_int : JsOpImported .pure .mayThrow [(.terminal .bigint_nat)] (.terminal .int53)
   /-- Int.mul -/
@@ -211,7 +211,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int.negSucc -/
   | uint53__bigint_int__lean_int_neg_succ_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .bigint_int)
   /-- Int.negSucc -/
-  | uint53__int53__lean_int_neg_succ_of_nat : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .int53)
+  | uint53__int53__lean_int_neg_succ_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .int53)
   /-- Int.add -/
   | int53__lean_int_add : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
   /-- Int.neg -/
@@ -225,7 +225,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int.natAbs -/
   | int53__bigint_nat__lean_nat_abs : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .bigint_nat)
   /-- Int.natAbs -/
-  | int53__uint53__lean_nat_abs : JsOpImported .pure .mayThrow [(.terminal .int53)] (.terminal .uint53)
+  | int53__uint53__lean_nat_abs : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .uint53)
   /-- Nat.divExact (decides `y ∣ x`) -/
   | bigint_nat__lean_nat_div_exact : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- Nat.divExact (decides `y ∣ x`) -/
@@ -317,7 +317,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.ofNat -/
   | uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .bigint_nat)
   /-- UInt64.ofNat -/
-  | uint53__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .uint53)
   /-- UInt16.ofNat -/
   | bigint_nat__lean_uint16_of_nat__UInt16_ofNat : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .uint16)
   /-- UInt16.ofNat -/
@@ -411,7 +411,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.shiftRight -/
   | bigint_nat__lean_uint64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.shiftRight -/
-  | uint53__lean_uint64_shift_right : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.complement -/
   | bigint_nat__lean_uint64_complement : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.complement -/
@@ -423,15 +423,15 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.lor -/
   | bigint_nat__lean_uint64_lor : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.lor -/
-  | uint53__lean_uint64_lor : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_lor : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.mod -/
   | bigint_nat__lean_uint64_mod : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.mod -/
-  | uint53__lean_uint64_mod : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_mod : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.div -/
   | bigint_nat__lean_uint64_div : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.div -/
-  | uint53__lean_uint64_div : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_div : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.mul -/
   | bigint_nat__lean_uint64_mul : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.mul -/
@@ -439,7 +439,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.land -/
   | bigint_nat__lean_uint64_land : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.land -/
-  | uint53__lean_uint64_land : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_land : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Bool.toUInt64 -/
   | bigint_nat__lean_bool_to_uint64 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .bigint_nat)
   /-- Bool.toUInt64 -/
@@ -455,7 +455,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.xor -/
   | bigint_nat__lean_uint64_xor : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.xor -/
-  | uint53__lean_uint64_xor : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_xor : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Int8.add -/
   | int8__lean_int8_add : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int8.div -/
@@ -593,7 +593,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.ofInt -/
   | int53__bigint_int__lean_int64_of_int : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .bigint_int)
   /-- Int64.ofInt -/
-  | int53__lean_int64_of_int : JsOpImported .pure .mayThrow [(.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_of_int : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
   /-- Int64.land -/
   | bigint_int__lean_int64_land : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.land -/
@@ -605,7 +605,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.mod -/
   | bigint_int__lean_int64_mod : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.mod -/
-  | int53__lean_int64_mod : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_mod : JsOpImported .pure .doesntThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
   /-- Int64.shiftLeft -/
   | bigint_int__lean_int64_shift_left : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.shiftLeft -/
@@ -621,7 +621,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.abs -/
   | bigint_int__lean_int64_abs : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.abs -/
-  | int53__lean_int64_abs : JsOpImported .pure .mayThrow [(.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_abs : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
   /-- Bool.toInt64 -/
   | bigint_int__lean_bool_to_int64 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .bigint_int)
   /-- Bool.toInt64 -/
@@ -633,13 +633,13 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.ofNat -/
   | uint53__bigint_int__lean_int64_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .bigint_int)
   /-- Int64.ofNat -/
-  | uint53__int53__lean_int64_of_nat : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .int53)
+  | uint53__int53__lean_int64_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .int53)
   /-- Int64.toInt -/
   | bigint_int__int53__lean_int64_to_int_sint : JsOpImported .pure .mayThrow [(.terminal .bigint_int)] (.terminal .int53)
   /-- Int64.neg -/
   | bigint_int__lean_int64_neg : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.neg -/
-  | int53__lean_int64_neg : JsOpImported .pure .mayThrow [(.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_neg : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
   /-- Int64.add -/
   | bigint_int__lean_int64_add : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.add -/
@@ -647,7 +647,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.div -/
   | bigint_int__lean_int64_div : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.div -/
-  | int53__lean_int64_div : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_div : JsOpImported .pure .doesntThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
   /-- Int64.toInt16 -/
   | bigint_int__lean_int64_to_int16 : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .int16)
   /-- Int64.toInt16 -/
@@ -655,13 +655,13 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Int64.shiftRight -/
   | bigint_int__lean_int64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- Int64.shiftRight -/
-  | int53__lean_int64_shift_right : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
+  | int53__lean_int64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
   /-- UInt16.log2 -/
   | uint16__lean_uint16_log2 : JsOpImported .pure .doesntThrow [(.terminal .uint16)] (.terminal .uint16)
   /-- UInt64.log2 -/
   | bigint_nat__lean_uint64_log2 : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.log2 -/
-  | uint53__lean_uint64_log2 : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .uint53)
+  | uint53__lean_uint64_log2 : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .uint53)
   /-- UInt8.log2 -/
   | uint8__lean_uint8_log2 : JsOpImported .pure .doesntThrow [(.terminal .uint8)] (.terminal .uint8)
   /-- UInt32.log2 -/
@@ -729,9 +729,9 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- String.Internal.any -/
   | string__lean_string_any : JsOpImported .pure .doesntThrow [(.terminal .string), (.fn [(.terminal .string)] (.terminal .bool))] (.terminal .bool)
   /-- String.Internal.pushn -/
-  | bigint_nat__lean_string_pushn : JsOpImported .pure .mayThrow [(.terminal .string), (.terminal .string), (.terminal .bigint_nat)] (.terminal .string)
+  | bigint_nat__lean_string_pushn : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .string), (.terminal .bigint_nat)] (.terminal .string)
   /-- String.Internal.pushn -/
-  | uint53__lean_string_pushn : JsOpImported .pure .mayThrow [(.terminal .string), (.terminal .string), (.terminal .uint53)] (.terminal .string)
+  | uint53__lean_string_pushn : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .string), (.terminal .uint53)] (.terminal .string)
   /-- String.Internal.capitalize -/
   | string__lean_string_capitalize : JsOpImported .pure .doesntThrow [(.terminal .string)] (.terminal .string)
   /-- String.Internal.extract -/

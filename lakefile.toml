@@ -76,3 +76,9 @@ supportInterpreter = true
 [[lean_lib]]
 name = "JsTerm"
 globs = ["JsTerm.+"]
+
+# A model of the integer functions of `runtime.js`, with proofs that they compute Lean's
+# operations and agree with the old runtime.
+[[lean_lib]]
+name = "RuntimeSpec"
+globs = ["RuntimeSpec.+"]

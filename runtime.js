@@ -14,14 +14,26 @@
 // updates, which the backend calls only on an array nothing else refers to (their
 // `_immutable` versions return an updated copy).  A function that may throw is one that
 // contains a `throw` or calls one that may: the generator reads that off this file.
+//
+// Every function gets exactly the representations its name says (a `bigint_nat` argument is
+// always a `BigInt`, a `uint53` one always a safe non-negative number, …), so no function
+// tests the type of an argument or converts one it does not need to.  The only throws are the
+// results of a `uint53` / `int53` operation that are not safe integers; a function whose
+// result always is one (`uint53__lean_uint64_div`, `int53__lean_int64_abs`, …) does not
+// check, and so does not throw.  A count too large for memory (`Array.replicate`,
+// `String.pushn`) fails in JavaScript's own allocation, as it runs out of memory in Lean.
 
 /* ------------------------------------------------------------ private helpers */
+
+const encoder = new TextEncoder();
+
+/** The UTF-8 size of the character of code point `cp`. */
+const $cpSize = (cp) => (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
 
 const $utf8At = (s, p) => {
   let off = 0;
   for (const ch of s) {
-    const cp = ch.codePointAt(0);
-    const n = cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4;
+    const n = $cpSize(ch.codePointAt(0));
     if (off === p) {
       return [ch, n];
     }
@@ -33,18 +45,20 @@ const $utf8At = (s, p) => {
   return undefined;
 };
 
-const $utf8 = (s) => {
-  return new TextEncoder().encode(s);
+const $utf8 = (s) => encoder.encode(s);
+
+/** The error of a `uint53` / `int53` result that is not a safe integer. */
+const $overflow = () => {
+  throw new RangeError(
+    "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
+  );
 };
 
-const $toNum53 = (x) => {
-  if (x > 9007199254740991n || x < -9007199254740991n) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return Number(x);
-};
+/** A `BigInt` result as a safe integer (one that is not throws). */
+const $toNum53 = (x) => (x > 9007199254740991n || x < -9007199254740991n ? $overflow() : Number(x));
+
+/** A number result that must be a safe integer (one that is not throws). */
+const $chk53 = (x) => (Number.isSafeInteger(x) ? x : $overflow());
 
 const $utf8Extract = (s, b, e) => {
   if (b >= e) {
@@ -63,8 +77,7 @@ const $utf8Extract = (s, b, e) => {
       }
       out = out + ch;
     }
-    const cp = ch.codePointAt(0);
-    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
+    off = off + $cpSize(ch.codePointAt(0));
   }
   return out;
 };
@@ -76,24 +89,11 @@ const $utf8Set = (s, p, c) => {
     if (off === p) {
       return s.slice(0, i) + c + s.slice(i + ch.length);
     }
-    const cp = ch.codePointAt(0);
-    off = off + (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
+    off = off + $cpSize(ch.codePointAt(0));
     i = i + ch.length;
   }
   return s;
 };
-
-/**
- * An index held as a `Nat`, as a number: a `BigInt` too large for a number becomes
- * `Infinity`, which is out of bounds of every array.
- */
-const $idx = (i) =>
-  typeof i === "bigint" ? (i > 9007199254740991n ? Infinity : Number(i)) : i;
-
-/** A count held as a `Nat`, as a number (one too large for a number throws). */
-const $count = (n) => (typeof n === "bigint" ? $toNum53(n) : n);
-
-const encoder = new TextEncoder();
 
 const $bigPow = (a, b) => {
   let r = 1n;
@@ -111,20 +111,20 @@ const $bigPow = (a, b) => {
   return r;
 };
 
-const $chk53 = (x) => {
-  if (!Number.isSafeInteger(x)) {
-    throw new RangeError(
-      "LeanScript: integer overflow: the result does not fit in a number (use the bigint representation)",
-    );
-  }
-  return x;
-};
+/** `Nat.land` below `2^53`: on the high 21 bits and the low 32 bits apart. */
+const $land53 = (a, b) => (((a / 0x100000000) | 0) & ((b / 0x100000000) | 0)) * 0x100000000 + ((a & b) >>> 0);
 
-/** `x` taken modulo `2^64`. */
-const U64 = (x) => BigInt.asUintN(64, BigInt(x));
+/** `Nat.lor` below `2^53`. */
+const $lor53 = (a, b) => (((a / 0x100000000) | 0) | ((b / 0x100000000) | 0)) * 0x100000000 + ((a | b) >>> 0);
 
-/** `x` cut to the 53 bits a JavaScript number holds exactly, keeping the low ones. */
-const low53 = (x) => Number(BigInt.asUintN(64, BigInt(x)) & 0x1fffffffffffffn);
+/** `Nat.xor` below `2^53`. */
+const $xor53 = (a, b) => (((a / 0x100000000) | 0) ^ ((b / 0x100000000) | 0)) * 0x100000000 + ((a ^ b) >>> 0);
+
+/** `Nat.log2` below `2^53`. */
+const $log2_53 = (a) => (a < 0x100000000 ? (a === 0 ? 0 : 31 - Math.clz32(a)) : 63 - Math.clz32(a / 0x100000000));
+
+/** The `BigInt` `x` taken modulo `2^64`. */
+const U64 = (x) => BigInt.asUintN(64, x);
 
 /** Lean's hash of a sequence of bytes (`hash_str` of the Lean runtime: MurmurHash64A). */
 const $hashBytes = (bytes, seed = 11n) => {
@@ -160,9 +160,6 @@ const $mixHash = (h, k) => {
   h ^= k;
   return U64(h * m);
 };
-
-/** The UTF-8 size of the character of code point `cp`. */
-const $cpSize = (cp) => (cp < 128 ? 1 : cp < 2048 ? 2 : cp < 65536 ? 3 : 4);
 
 /** The byte positions at which the characters of `s` start, and the end position. */
 const $starts = (s) => {
@@ -228,10 +225,6 @@ const $cmpStr = (a, b) => {
   return a.length < b.length ? -1 : a.length === b.length ? 0 : 1;
 };
 
-/** A count or index held as a `Nat` (a `BigInt` or a number), as a number, capped at `2^53`
- *  (no string or array is that long, so the cap never changes a result). */
-const $capNat = (n) => (typeof n === "bigint" ? (n > 9007199254740992n ? 9007199254740992 : Number(n)) : n);
-
 /** Whitespace, as Lean's `Char.isWhitespace`. */
 const $isWs = (c) => c === " " || c === "\t" || c === "\r" || c === "\n";
 
@@ -291,12 +284,9 @@ const $frexp = (x) => {
   return [dv.getFloat64(0), ex - 1022];
 };
 
-/** An exponent held as an `Int` (a `BigInt` or a number), as a number clamped to `±5000`
- *  (beyond that every scaling overflows or underflows alike). */
-const $clampExp = (n) => {
-  if (typeof n === "bigint") return n > 5000n ? 5000 : n < -5000n ? -5000 : Number(n);
-  return n > 5000 ? 5000 : n < -5000 ? -5000 : n;
-};
+/** An exponent held as a `BigInt`, as a number clamped to `±5000` (beyond that every scaling
+ *  overflows or underflows alike). */
+const $clampExp = (n) => (n > 5000n ? 5000 : n < -5000n ? -5000 : Number(n));
 
 /** `scalbn`: `x * 2^n`, rounded once (musl's algorithm). */
 const $scalbn = (x, n) => {
@@ -355,7 +345,7 @@ const $toBits = (x) => {
 /** The double of the given bits (a `BigInt`). */
 const $ofBits = (b) => {
   const dv = new DataView(new ArrayBuffer(8));
-  dv.setBigUint64(0, BigInt(b));
+  dv.setBigUint64(0, b);
   return dv.getFloat64(0);
 };
 
@@ -371,7 +361,7 @@ const $subNext = (ss, p) => {
 /* ------------------------------------------------------------ non_configurable */
 
 /** `Array.pop`: a copy without the last element. */
-export const array__lean_array_pop_immutable = (a) => a.slice(0, Math.max(a.length - 1, 0));
+export const array__lean_array_pop_immutable = (a) => a.slice(0, -1);
 
 /** `Array.pop`, in place (on a generic array only: a typed array cannot shrink). */
 export const array__lean_array_pop_mutable = (a) => {
@@ -394,26 +384,41 @@ export const array__lean_array_push_mutable = (a, x) => {
   return a;
 };
 
-/** `Int16.ofInt`: the argument may be a `BigInt` or a number. */
-export const bigint_int__lean_int16_of_int = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(16, a)) : (a << 16) >> 16;
+/** `Int16.ofInt`. */
+export const bigint_int__lean_int16_of_int = (a) => Number(BigInt.asIntN(16, a));
 
-/** `Int32.ofInt`: the argument may be a `BigInt` or a number. */
-export const bigint_int__lean_int32_of_int = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(32, a)) : a | 0;
+/** `Int32.ofInt`. */
+export const bigint_int__lean_int32_of_int = (a) => Number(BigInt.asIntN(32, a));
+
+/** `Int8.ofInt`. */
+export const bigint_int__lean_int8_of_int = (a) => Number(BigInt.asIntN(8, a));
 
 /** `Int64.toInt16`. */
-export const bigint_int__lean_int64_to_int16 = (a) => Number(BigInt.asIntN(16, BigInt(a)));
+export const bigint_int__lean_int64_to_int16 = (a) => Number(BigInt.asIntN(16, a));
 
 /** `Int64.toInt32`. */
-export const bigint_int__lean_int64_to_int32 = (a) => Number(BigInt.asIntN(32, BigInt(a)));
+export const bigint_int__lean_int64_to_int32 = (a) => Number(BigInt.asIntN(32, a));
 
 /** `Int64.toInt8`. */
-export const bigint_int__lean_int64_to_int8 = (a) => Number(BigInt.asIntN(8, BigInt(a)));
+export const bigint_int__lean_int64_to_int8 = (a) => Number(BigInt.asIntN(8, a));
 
-/** `Int8.ofInt`: the argument may be a `BigInt` or a number. */
-export const bigint_int__lean_int8_of_int = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(8, a)) : (a << 24) >> 24;
+/** `Int16.ofInt` (`ToInt32` takes a safe integer modulo `2^32`). */
+export const int53__lean_int16_of_int = (a) => (a << 16) >> 16;
+
+/** `Int32.ofInt`. */
+export const int53__lean_int32_of_int = (a) => a | 0;
+
+/** `Int8.ofInt`. */
+export const int53__lean_int8_of_int = (a) => (a << 24) >> 24;
+
+/** `Int64.toInt16`. */
+export const int53__lean_int64_to_int16 = (a) => (a << 16) >> 16;
+
+/** `Int64.toInt32`. */
+export const int53__lean_int64_to_int32 = (a) => a | 0;
+
+/** `Int64.toInt8`. */
+export const int53__lean_int64_to_int8 = (a) => (a << 24) >> 24;
 
 /** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
 
@@ -421,7 +426,7 @@ export const bigint_int__lean_int8_of_int = (a) =>
 
 /** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds. */
 export const bigint_nat__lean_array_get = (d, a, i) => {
-  const k = $idx(i);
+  const k = Number(i);
   return k < a.length ? a[k] : d;
 };
 
@@ -429,7 +434,7 @@ export const bigint_nat__lean_array_get = (d, a, i) => {
 
 /** `Array.set!`: a copy with one element replaced (the array itself out of bounds). */
 export const bigint_nat__lean_array_set_immutable = (a, i, x) => {
-  const k = $idx(i);
+  const k = Number(i);
   if (k >= a.length) return a;
   const r = a.slice();
   r[k] = x;
@@ -438,15 +443,15 @@ export const bigint_nat__lean_array_set_immutable = (a, i, x) => {
 
 /** `Array.set!`, in place. */
 export const bigint_nat__lean_array_set_mutable = (a, i, x) => {
-  const k = $idx(i);
+  const k = Number(i);
   if (k < a.length) a[k] = x;
   return a;
 };
 
 /** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds). */
 export const bigint_nat__lean_array_swap_immutable = (a, i, j) => {
-  const k = $idx(i);
-  const l = $idx(j);
+  const k = Number(i);
+  const l = Number(j);
   if (k >= a.length || l >= a.length) return a;
   const r = a.slice();
   const t = r[k];
@@ -457,8 +462,8 @@ export const bigint_nat__lean_array_swap_immutable = (a, i, j) => {
 
 /** `Array.swapIfInBounds`, in place. */
 export const bigint_nat__lean_array_swap_mutable = (a, i, j) => {
-  const k = $idx(i);
-  const l = $idx(j);
+  const k = Number(i);
+  const l = Number(j);
   if (k < a.length && l < a.length) {
     const t = a[k];
     a[k] = a[l];
@@ -467,48 +472,41 @@ export const bigint_nat__lean_array_swap_mutable = (a, i, j) => {
   return a;
 };
 
-/** `Int16.ofNat`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_int16_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(16, a)) : (a << 16) >> 16;
+/** `Int16.ofNat`. */
+export const bigint_nat__lean_int16_of_nat = bigint_int__lean_int16_of_int;
 
-/** `Int32.ofNat`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_int32_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(32, a)) : a | 0;
+/** `Int32.ofNat`. */
+export const bigint_nat__lean_int32_of_nat = bigint_int__lean_int32_of_int;
 
-/** `Int8.ofNat`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_int8_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(8, a)) : (a << 24) >> 24;
+/** `Int8.ofNat`. */
+export const bigint_nat__lean_int8_of_nat = bigint_int__lean_int8_of_int;
 
 /** `Array.replicate`, on a generic array. */
-export const bigint_nat__lean_mk_array = (n, v) => new Array($count(n)).fill(v);
+export const bigint_nat__lean_mk_array = (n, v) => new Array(Number(n)).fill(v);
 
-/** `String.Internal.pushn`: the count may be a `BigInt` or a number. */
-export const bigint_nat__lean_string_pushn = (a, b, c) =>
-  a + b.repeat(typeof c === "bigint" ? $toNum53(c) : c);
+/** `String.Internal.pushn`. */
+export const bigint_nat__lean_string_pushn = (a, b, c) => a + b.repeat(Number(c));
 
-/** `UInt16.ofNat`, `UInt16.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_uint16_of_nat__UInt16_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(16, a)) : ((a % 65536) + 65536) % 65536;
+/** `UInt16.ofNat`, `UInt16.ofNatLT`. */
+export const bigint_nat__lean_uint16_of_nat__UInt16_ofNat = (a) => Number(BigInt.asUintN(16, a));
 
 /** `Char.ofNatAux`. */
 export const bigint_nat__lean_uint32_of_nat__Char_ofNatAux = (a) => String.fromCodePoint(Number(a));
 
-/** `UInt32.ofNat`, `UInt32.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_uint32_of_nat__UInt32_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(32, a)) : ((a % 4294967296) + 4294967296) % 4294967296;
+/** `UInt32.ofNat`, `UInt32.ofNatLT`. */
+export const bigint_nat__lean_uint32_of_nat__UInt32_ofNat = (a) => Number(BigInt.asUintN(32, a));
 
 /** `UInt64.toUInt16`. */
-export const bigint_nat__lean_uint64_to_uint16 = (a) => Number(BigInt.asUintN(16, BigInt(a)));
+export const bigint_nat__lean_uint64_to_uint16 = (a) => Number(BigInt.asUintN(16, a));
 
 /** `UInt64.toUInt32`. */
-export const bigint_nat__lean_uint64_to_uint32 = (a) => Number(BigInt.asUintN(32, BigInt(a)));
+export const bigint_nat__lean_uint64_to_uint32 = (a) => Number(BigInt.asUintN(32, a));
 
 /** `UInt64.toUInt8`. */
-export const bigint_nat__lean_uint64_to_uint8 = (a) => Number(BigInt.asUintN(8, BigInt(a)));
+export const bigint_nat__lean_uint64_to_uint8 = (a) => Number(BigInt.asUintN(8, a));
 
-/** `UInt8.ofNat`, `UInt8.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__lean_uint8_of_nat__UInt8_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(8, a)) : ((a % 256) + 256) % 256;
+/** `UInt8.ofNat`, `UInt8.ofNatLT`. */
+export const bigint_nat__lean_uint8_of_nat__UInt8_ofNat = (a) => Number(BigInt.asUintN(8, a));
 
 /** `Bool.toInt16`. */
 export const bool__lean_bool_to_int16 = (a) => a ? 1 : 0;
@@ -703,11 +701,8 @@ export const string__lean_string_isempty = (a) => a.length === 0;
 export const string__lean_string_memcmp = (lhs, rhs, lstart, rstart, len) => {
   const l = encoder.encode(lhs);
   const r = encoder.encode(rhs);
-  const ls = Number(lstart);
-  const rs = Number(rstart);
-  const n = Number(len);
-  for (let i = 0; i < n; i++) {
-    if (l[ls + i] !== r[rs + i]) return false;
+  for (let i = 0; i < len; i++) {
+    if (l[lstart + i] !== r[rstart + i]) return false;
   }
   return true;
 };
@@ -722,16 +717,10 @@ export const string__lean_string_utf8_at_end__String_Internal_atEnd = (a, b) => 
 export const string__lean_string_utf8_extract__String_Internal_extract = (a, b, c) => $utf8Extract(a, b, c);
 
 /** `String.Internal.get`, `String.Pos.Raw.get`, `String.get`. */
-export const string__lean_string_utf8_get__String_Internal_get = (a, b) => {
-  const r = $utf8At(a, b);
-  return r === undefined ? "A" : r[0];
-};
+export const string__lean_string_utf8_get__String_Internal_get = (a, b) => $get(a, b);
 
 /** `String.Internal.next`, `String.next`, `String.Pos.Raw.next`. */
-export const string__lean_string_utf8_next__String_Internal_next = (a, b) => {
-  const r = $utf8At(a, b);
-  return r === undefined ? b + 1 : b + r[1];
-};
+export const string__lean_string_utf8_next__String_Internal_next = (a, b) => $next(a, b);
 
 /** `String.Pos.Raw.set`, `String.set`. */
 export const string__lean_string_utf8_set__String_Pos_Raw_set = (a, b, c) => $utf8Set(a, b, c);
@@ -753,7 +742,7 @@ export const thunk__lean_thunk_get_own = (t) => {
 export const thunk__lean_thunk_pure = (v) => ({ f: undefined, v, done: true });
 
 /** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …). */
-export const typedArray__bigint_nat__lean_mk_array = (C, n, v) => new C($count(n)).fill(v);
+export const typedArray__bigint_nat__lean_mk_array = (C, n, v) => new C(Number(n)).fill(v);
 
 /** `Array.toList`: the list of an array, generic or typed (a list is a generic array). */
 export const typedArray__lean_array_to_list = (a) => Array.from(a);
@@ -853,98 +842,82 @@ export const uint32__lean_uint32_xor = (a, b) => (a ^ b) >>> 0;
 /** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
 
 /** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds. */
-export const uint53__lean_array_get = (d, a, i) => {
-  const k = i;
-  return k < a.length ? a[k] : d;
-};
+export const uint53__lean_array_get = (d, a, i) => (i < a.length ? a[i] : d);
 
 /** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
 
 /** `Array.set!`: a copy with one element replaced (the array itself out of bounds). */
 export const uint53__lean_array_set_immutable = (a, i, x) => {
-  const k = i;
-  if (k >= a.length) return a;
+  if (i >= a.length) return a;
   const r = a.slice();
-  r[k] = x;
+  r[i] = x;
   return r;
 };
 
 /** `Array.set!`, in place. */
 export const uint53__lean_array_set_mutable = (a, i, x) => {
-  const k = i;
-  if (k < a.length) a[k] = x;
+  if (i < a.length) a[i] = x;
   return a;
 };
 
 /** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds). */
 export const uint53__lean_array_swap_immutable = (a, i, j) => {
-  const k = i;
-  const l = j;
-  if (k >= a.length || l >= a.length) return a;
+  if (i >= a.length || j >= a.length) return a;
   const r = a.slice();
-  const t = r[k];
-  r[k] = r[l];
-  r[l] = t;
+  const t = r[i];
+  r[i] = r[j];
+  r[j] = t;
   return r;
 };
 
 /** `Array.swapIfInBounds`, in place. */
 export const uint53__lean_array_swap_mutable = (a, i, j) => {
-  const k = i;
-  const l = j;
-  if (k < a.length && l < a.length) {
-    const t = a[k];
-    a[k] = a[l];
-    a[l] = t;
+  if (i < a.length && j < a.length) {
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
   }
   return a;
 };
 
-/** `Int16.ofNat`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_int16_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(16, a)) : (a << 16) >> 16;
+/** `Int16.ofNat`. */
+export const uint53__lean_int16_of_nat = int53__lean_int16_of_int;
 
-/** `Int32.ofNat`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_int32_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(32, a)) : a | 0;
+/** `Int32.ofNat`. */
+export const uint53__lean_int32_of_nat = int53__lean_int32_of_int;
 
-/** `Int8.ofNat`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_int8_of_nat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asIntN(8, a)) : (a << 24) >> 24;
+/** `Int8.ofNat`. */
+export const uint53__lean_int8_of_nat = int53__lean_int8_of_int;
 
 /** `Array.replicate`, on a generic array. */
 export const uint53__lean_mk_array = (n, v) => new Array(n).fill(v);
 
-/** `String.Internal.pushn`: the count may be a `BigInt` or a number. */
-export const uint53__lean_string_pushn = (a, b, c) =>
-  a + b.repeat(typeof c === "bigint" ? $toNum53(c) : c);
+/** `String.Internal.pushn`. */
+export const uint53__lean_string_pushn = (a, b, c) => a + b.repeat(c);
 
 /** `String.Pos.Raw.set`, `String.set`. */
 export const string__lean_string_utf8_set__String_Pos_set = (a, b, c) => $utf8Set(a, b, c);
 
-/** `UInt16.ofNat`, `UInt16.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_uint16_of_nat__UInt16_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(16, a)) : ((a % 65536) + 65536) % 65536;
+/** `UInt16.ofNat`, `UInt16.ofNatLT` (`ToInt32` takes a safe integer modulo `2^32`). */
+export const uint53__lean_uint16_of_nat__UInt16_ofNat = (a) => a & 65535;
 
 /** `Char.ofNatAux`. */
-export const uint53__lean_uint32_of_nat__Char_ofNatAux = (a) => String.fromCodePoint(Number(a));
+export const uint53__lean_uint32_of_nat__Char_ofNatAux = (a) => String.fromCodePoint(a);
 
-/** `UInt32.ofNat`, `UInt32.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_uint32_of_nat__UInt32_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(32, a)) : ((a % 4294967296) + 4294967296) % 4294967296;
+/** `UInt32.ofNat`, `UInt32.ofNatLT`. */
+export const uint53__lean_uint32_of_nat__UInt32_ofNat = (a) => a >>> 0;
 
 /** `UInt64.toUInt16`. */
-export const uint53__lean_uint64_to_uint16 = (a) => Number(BigInt.asUintN(16, BigInt(a)));
+export const uint53__lean_uint64_to_uint16 = (a) => a & 65535;
 
 /** `UInt64.toUInt32`. */
-export const uint53__lean_uint64_to_uint32 = (a) => Number(BigInt.asUintN(32, BigInt(a)));
+export const uint53__lean_uint64_to_uint32 = (a) => a >>> 0;
 
 /** `UInt64.toUInt8`. */
-export const uint53__lean_uint64_to_uint8 = (a) => Number(BigInt.asUintN(8, BigInt(a)));
+export const uint53__lean_uint64_to_uint8 = (a) => a & 255;
 
-/** `UInt8.ofNat`, `UInt8.ofNatLT`: the argument may be a `BigInt` or a number. */
-export const uint53__lean_uint8_of_nat__UInt8_ofNat = (a) =>
-  typeof a === "bigint" ? Number(BigInt.asUintN(8, a)) : ((a % 256) + 256) % 256;
+/** `UInt8.ofNat`, `UInt8.ofNatLT`. */
+export const uint53__lean_uint8_of_nat__UInt8_ofNat = (a) => a & 255;
 
 /** `UInt8.add`. */
 export const uint8__lean_uint8_add = (a, b) => (a + b) & 255;
@@ -988,10 +961,7 @@ export const uint8__lean_uint8_xor = (a, b) => (a ^ b) & 255;
 /* ------------------------------------------------------------ nat_bigint */
 
 /** `Int.natAbs`. */
-export const bigint_int__bigint_nat__lean_nat_abs = (a) => {
-  a = BigInt(a);
-  return a < 0n ? -a : a;
-};
+export const bigint_int__bigint_nat__lean_nat_abs = (a) => (a < 0n ? -a : a);
 
 /** `Nat.div`. */
 export const bigint_nat__lean_nat_div = (a, b) => b === 0n ? 0n : a / b;
@@ -1023,11 +993,16 @@ export const bigint_nat__lean_string_utf8_byte_size = (a) => BigInt($utf8(a).len
 /* ------------------------------------------------------------ nat_num */
 
 /** `Int.natAbs`. */
-export const bigint_int__uint53__lean_nat_abs = (a) =>
-  typeof a === "bigint" ? $toNum53(a < 0n ? -a : a) : a < 0 ? -a : a;
+export const bigint_int__uint53__lean_nat_abs = (a) => $toNum53(a < 0n ? -a : a);
 
-/** `UInt64.toNat`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__uint53__lean_uint64_to_nat__UInt64_toNat = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+/** `Int.natAbs`. */
+export const int53__bigint_nat__lean_nat_abs = (a) => BigInt(Math.abs(a));
+
+/** `Int.natAbs` (the absolute value of a safe integer is one). */
+export const int53__uint53__lean_nat_abs = (a) => Math.abs(a);
+
+/** `UInt64.toNat`. */
+export const bigint_nat__uint53__lean_uint64_to_nat__UInt64_toNat = (a) => $toNum53(a);
 
 /** `Nat.add`. */
 export const uint53__lean_nat_add = (a, b) => $chk53(a + b);
@@ -1039,25 +1014,16 @@ export const uint53__lean_nat_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 export const uint53__lean_nat_div_exact = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
 /** `Nat.land`. */
-export const uint53__lean_nat_land = (a, b) => {
-  // Fast path: both numbers fit in 32 bits (most common case in practice)
-  if (a < 0x100000000 && b < 0x100000000) {
-    return (a & b) >>> 0;
-  }
-  // 53-bit safe path: split into high 21 bits and low 32 bits
-  const lo = (a & b) >>> 0;
-  const hi = ((a / 0x100000000) | 0) & ((b / 0x100000000) | 0);
-  return hi * 0x100000000 + lo;
-};
+export const uint53__lean_nat_land = (a, b) => $land53(a, b);
 
 /** `Nat.log2`. */
 export const uint53__lean_nat_log2 = (a) => a === 0 ? 0 : a.toString(2).length - 1;
 
 /** `Nat.lor`. */
-export const uint53__lean_nat_lor = (a, b) => Number(BigInt(a) | BigInt(b));
+export const uint53__lean_nat_lor = (a, b) => $lor53(a, b);
 
 /** `Nat.xor`. */
-export const uint53__lean_nat_lxor = (a, b) => Number(BigInt(a) ^ BigInt(b));
+export const uint53__lean_nat_lxor = (a, b) => $xor53(a, b);
 
 /** `Nat.modCore`, `Nat.mod`. */
 export const uint53__lean_nat_mod__Nat_mod = (a, b) => b === 0 ? a : a % b;
@@ -1118,19 +1084,24 @@ export const bigint_int__lean_int_emod = (a, b) => b === 0n ? a : ((a % b) + (b 
 export const bigint_int__lean_int_mod = (a, b) => b === 0n ? a : a % b;
 
 /** `Int.negSucc`. */
-export const bigint_nat__bigint_int__lean_int_neg_succ_of_nat = (a) => -BigInt(a) - 1n;
+export const bigint_nat__bigint_int__lean_int_neg_succ_of_nat = (a) => -a - 1n;
+
+/** `Int.negSucc`. */
+export const uint53__bigint_int__lean_int_neg_succ_of_nat = (a) => -BigInt(a) - 1n;
 
 /* ------------------------------------------------------------ int_num */
 
-/** `Int64.toInt`: the argument may be a `BigInt` or a number. */
-export const bigint_int__int53__lean_int64_to_int_sint = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+/** `Int64.toInt`. */
+export const bigint_int__int53__lean_int64_to_int_sint = (a) => $toNum53(a);
 
 /** `Int.negSucc`. */
-export const bigint_nat__int53__lean_int_neg_succ_of_nat = (a) =>
-  typeof a === "bigint" ? $toNum53(-a - 1n) : -a - 1;
+export const bigint_nat__int53__lean_int_neg_succ_of_nat = (a) => $toNum53(-a - 1n);
 
-/** `Int.ofNat`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__int53__lean_nat_to_int = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+/** `Int.negSucc`. */
+export const uint53__int53__lean_int_neg_succ_of_nat = (a) => -a - 1;
+
+/** `Int.ofNat`. */
+export const bigint_nat__int53__lean_nat_to_int = (a) => $toNum53(a);
 
 /** `Int.add`. */
 export const int53__lean_int_add = (a, b) => $chk53(a + b);
@@ -1209,7 +1180,10 @@ export const bigint_nat__lean_uint64_mul = (a, b) => BigInt.asUintN(64, a * b);
 export const bigint_nat__lean_uint64_neg = (a) => BigInt.asUintN(64, -a);
 
 /** `UInt64.ofNat`, `UInt64.ofNatLT`. */
-export const bigint_nat__lean_uint64_of_nat__UInt64_ofNat = (a) => BigInt.asUintN(64, BigInt(a));
+export const bigint_nat__lean_uint64_of_nat__UInt64_ofNat = (a) => BigInt.asUintN(64, a);
+
+/** `UInt64.ofNat`, `UInt64.ofNatLT` (a safe integer is below `2^64`). */
+export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat = (a) => BigInt(a);
 
 /** `UInt64.shiftLeft`. */
 export const bigint_nat__lean_uint64_shift_left = (a, b) => BigInt.asUintN(64, a << (((b % 64n) + 64n) % 64n));
@@ -1224,15 +1198,16 @@ export const bigint_nat__lean_uint64_sub = (a, b) => BigInt.asUintN(64, a - b);
 export const bigint_nat__lean_uint64_xor = (a, b) => BigInt.asUintN(64, a ^ b);
 
 /* ------------------------------------------------------------ uint64_num */
+// A `UInt64` below `2^53`: a result that is not throws.
 
-/** `UInt64.ofBitVec`: the argument may be a `BigInt` or a number. */
-export const bigint_bitvec64__uint53__lean_uint64_of_nat_mk = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+/** `UInt64.ofBitVec`. */
+export const bigint_bitvec64__uint53__lean_uint64_of_nat_mk = (a) => $toNum53(a);
 
 /** `UInt64.ofNatLT`, `UInt64.ofNat`. */
-export const bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asUintN(64, a));
-};
+export const bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat = (a) => $toNum53(BigInt.asUintN(64, a));
+
+/** `UInt64.ofNat`, `UInt64.ofNatLT`: a safe integer is below `2^64`. */
+export const uint53__lean_uint64_of_nat__UInt64_ofNat = (a) => a;
 
 /** `Bool.toUInt64`. */
 export const uint53__lean_bool_to_uint64 = (a) => a ? 1 : 0;
@@ -1240,93 +1215,44 @@ export const uint53__lean_bool_to_uint64 = (a) => a ? 1 : 0;
 /** `String.hash`: Lean's hash of the UTF-8 bytes (MurmurHash64A, seed 11). */
 export const uint53__lean_string_hash = (s) => $toNum53($hashBytes(encoder.encode(s)));
 
-/** `UInt64.add`. */
-export const uint53__lean_uint64_add = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a + b));
-};
+/** `UInt64.add` (the sum of two safe integers is below `2^64`). */
+export const uint53__lean_uint64_add = (a, b) => $chk53(a + b);
 
-/** `UInt64.complement`. */
-export const uint53__lean_uint64_complement = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asUintN(64, ~a));
-};
+/** `UInt64.complement` (it is at least `2^64 - 2^53`: it always throws). */
+export const uint53__lean_uint64_complement = (a) => $toNum53(BigInt.asUintN(64, ~BigInt(a)));
 
 /** `UInt64.div`. */
-export const uint53__lean_uint64_div = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? 0n : BigInt.asUintN(64, a / b));
-};
+export const uint53__lean_uint64_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
 /** `UInt64.land`. */
-export const uint53__lean_uint64_land = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a & b));
-};
+export const uint53__lean_uint64_land = (a, b) => $land53(a, b);
 
 /** `UInt64.log2`. */
-export const uint53__lean_uint64_log2 = (a) => {
-  a = BigInt(a);
-  return $toNum53(a === 0n ? 0n : BigInt(a.toString(2).length - 1));
-};
+export const uint53__lean_uint64_log2 = (a) => $log2_53(a);
 
 /** `UInt64.lor`. */
-export const uint53__lean_uint64_lor = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a | b));
-};
+export const uint53__lean_uint64_lor = (a, b) => $lor53(a, b);
 
 /** `UInt64.mod`. */
-export const uint53__lean_uint64_mod = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? a : a % b);
-};
+export const uint53__lean_uint64_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `UInt64.mul`. */
-export const uint53__lean_uint64_mul = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a * b));
-};
+/** `UInt64.mul` (modulo `2^64`, which may bring it back below `2^53`). */
+export const uint53__lean_uint64_mul = (a, b) => $toNum53(BigInt.asUintN(64, BigInt(a) * BigInt(b)));
 
-/** `UInt64.neg`. */
-export const uint53__lean_uint64_neg = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asUintN(64, -a));
-};
+/** `UInt64.neg` (only `0` has a negation below `2^53`). */
+export const uint53__lean_uint64_neg = (a) => (a === 0 ? 0 : $toNum53(18446744073709551616n - BigInt(a)));
 
-/** `UInt64.shiftLeft`. */
-export const uint53__lean_uint64_shift_left = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a << (((b % 64n) + 64n) % 64n)));
-};
+/** `UInt64.shiftLeft` (modulo `2^64`). */
+export const uint53__lean_uint64_shift_left = (a, b) => $toNum53(BigInt.asUintN(64, BigInt(a) << BigInt(b % 64)));
 
 /** `UInt64.shiftRight`. */
-export const uint53__lean_uint64_shift_right = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(a >> (((b % 64n) + 64n) % 64n));
-};
+export const uint53__lean_uint64_shift_right = (a, b) => Math.floor(a / 2 ** (b % 64));
 
-/** `UInt64.sub`. */
-export const uint53__lean_uint64_sub = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a - b));
-};
+/** `UInt64.sub` (a negative difference wraps to `2^64 - 2^53` or more). */
+export const uint53__lean_uint64_sub = (a, b) => (a >= b ? a - b : $toNum53(BigInt.asUintN(64, BigInt(a - b))));
 
 /** `UInt64.xor`. */
-export const uint53__lean_uint64_xor = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asUintN(64, a ^ b));
-};
+export const uint53__lean_uint64_xor = (a, b) => $xor53(a, b);
 
 /* ------------------------------------------------------------ int64_bigint */
 
@@ -1361,7 +1287,10 @@ export const bigint_int__lean_int64_mul = (a, b) => BigInt.asIntN(64, a * b);
 export const bigint_int__lean_int64_neg = (a) => BigInt.asIntN(64, -a);
 
 /** `Int64.ofInt`. */
-export const bigint_int__lean_int64_of_int = (a) => BigInt.asIntN(64, BigInt(a));
+export const bigint_int__lean_int64_of_int = (a) => BigInt.asIntN(64, a);
+
+/** `Int64.ofInt` (a safe integer is an `Int64`). */
+export const int53__bigint_int__lean_int64_of_int = (a) => BigInt(a);
 
 /** `Int64.shiftLeft`. */
 export const bigint_int__lean_int64_shift_left = (a, b) => BigInt.asIntN(64, a << (((b % 64n) + 64n) % 64n));
@@ -1376,119 +1305,75 @@ export const bigint_int__lean_int64_sub = (a, b) => BigInt.asIntN(64, a - b);
 export const bigint_int__lean_int64_xor = (a, b) => BigInt.asIntN(64, a ^ b);
 
 /** `Int64.ofNat`. */
-export const bigint_nat__bigint_int__lean_int64_of_nat = (a) => BigInt.asIntN(64, BigInt(a));
-
-/* ------------------------------------------------------------ int64_num */
-
-/** `Int64.ofInt`. */
-export const bigint_int__int53__lean_int64_of_int = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, a));
-};
+export const bigint_nat__bigint_int__lean_int64_of_nat = bigint_int__lean_int64_of_int;
 
 /** `Int64.ofNat`. */
-export const bigint_nat__int53__lean_int64_of_nat = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, a));
-};
+export const uint53__bigint_int__lean_int64_of_nat = int53__bigint_int__lean_int64_of_int;
+
+/* ------------------------------------------------------------ int64_num */
+// An `Int64` of absolute value below `2^53`: a result that is not throws.
+
+/** `Int64.ofInt`. */
+export const bigint_int__int53__lean_int64_of_int = (a) => $toNum53(BigInt.asIntN(64, a));
+
+/** `Int64.ofNat`. */
+export const bigint_nat__int53__lean_int64_of_nat = bigint_int__int53__lean_int64_of_int;
+
+/** `Int64.ofInt` (a safe integer is an `Int64`). */
+export const int53__lean_int64_of_int = (a) => a;
+
+/** `Int64.ofNat`. */
+export const uint53__int53__lean_int64_of_nat = int53__lean_int64_of_int;
 
 /** `Bool.toInt64`. */
 export const int53__lean_bool_to_int64 = (a) => a ? 1 : 0;
 
 /** `Int64.abs`. */
-export const int53__lean_int64_abs = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, a < 0n ? -a : a));
-};
+export const int53__lean_int64_abs = (a) => Math.abs(a);
 
-/** `Int64.add`. */
-export const int53__lean_int64_add = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a + b));
-};
+/** `Int64.add` (the sum of two safe integers is an `Int64`). */
+export const int53__lean_int64_add = (a, b) => $chk53(a + b);
 
 /** `Int64.complement`. */
-export const int53__lean_int64_complement = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, ~a));
-};
+export const int53__lean_int64_complement = (a) => $chk53(-a - 1);
 
-/** `Int64.div`. */
-export const int53__lean_int64_div = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? 0n : BigInt.asIntN(64, a / b));
-};
+/** `Int64.div` (truncated). */
+export const int53__lean_int64_div = (a, b) => b === 0 ? 0 : Math.trunc(a / b);
 
 /** `Int64.land`. */
-export const int53__lean_int64_land = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a & b));
-};
+export const int53__lean_int64_land = (a, b) => $toNum53(BigInt(a) & BigInt(b));
 
 /** `Int64.lor`. */
-export const int53__lean_int64_lor = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a | b));
-};
+export const int53__lean_int64_lor = (a, b) => $toNum53(BigInt(a) | BigInt(b));
 
-/** `Int64.mod`. */
-export const int53__lean_int64_mod = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(b === 0n ? a : a % b);
-};
+/** `Int64.mod` (the sign of `a`). */
+export const int53__lean_int64_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int64.mul`. */
-export const int53__lean_int64_mul = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a * b));
-};
+/** `Int64.mul` (modulo `2^64`, which may bring it back to a safe integer). */
+export const int53__lean_int64_mul = (a, b) => $toNum53(BigInt.asIntN(64, BigInt(a) * BigInt(b)));
 
 /** `Int64.neg`. */
-export const int53__lean_int64_neg = (a) => {
-  a = BigInt(a);
-  return $toNum53(BigInt.asIntN(64, -a));
-};
+export const int53__lean_int64_neg = (a) => 0 - a;
 
-/** `Int64.shiftLeft`. */
-export const int53__lean_int64_shift_left = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a << (((b % 64n) + 64n) % 64n)));
-};
+/** `Int64.shiftLeft` (modulo `2^64`). */
+export const int53__lean_int64_shift_left = (a, b) =>
+  $toNum53(BigInt.asIntN(64, BigInt(a) << BigInt(((b % 64) + 64) % 64)));
 
-/** `Int64.shiftRight`. */
-export const int53__lean_int64_shift_right = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(a >> (((b % 64n) + 64n) % 64n));
-};
+/** `Int64.shiftRight` (arithmetic). */
+export const int53__lean_int64_shift_right = (a, b) => Math.floor(a / 2 ** (((b % 64) + 64) % 64));
 
 /** `Int64.sub`. */
-export const int53__lean_int64_sub = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a - b));
-};
+export const int53__lean_int64_sub = (a, b) => $chk53(a - b);
 
 /** `Int64.xor`. */
-export const int53__lean_int64_xor = (a, b) => {
-  a = BigInt(a);
-  b = BigInt(b);
-  return $toNum53(BigInt.asIntN(64, a ^ b));
-};
+export const int53__lean_int64_xor = (a, b) => $toNum53(BigInt(a) ^ BigInt(b));
 
 /* ------------------------------------------------------------ bitvec_bigint */
 
 /* ------------------------------------------------------------ bitvec_num */
 
-/** `UInt64.toBitVec`: the argument may be a `BigInt` or a number. */
-export const bigint_nat__int53_bitvec64__lean_uint64_to_nat__UInt64_toBitVec = (a) => (typeof a === "bigint" ? $toNum53(a) : a);
+/** `UInt64.toBitVec`. */
+export const bigint_nat__int53_bitvec64__lean_uint64_to_nat__UInt64_toBitVec = (a) => $toNum53(a);
 
 
 /* ------------------------------------------------------------ floats */
@@ -1580,7 +1465,7 @@ export const uint53__lean_float_to_bits__Float_toBits = (a) => $toNum53($toBits(
 export const bigint_nat__lean_float_of_bits__Float_ofBits = (a) => $ofBits(a);
 
 /** `Float.ofBits`. */
-export const uint53__lean_float_of_bits__Float_ofBits = (a) => $ofBits(a);
+export const uint53__lean_float_of_bits__Float_ofBits = (a) => $ofBits(BigInt(a));
 
 /** `Float32.toBits`. */
 export const float32__lean_float32_to_bits__Float32_toBits = (a) => {
@@ -1623,31 +1508,31 @@ export const int53__lean_float32_frexp = (a) => {
 /** `Float.scaleB`. */
 export const bigint_int__lean_float_scaleb = (a, n) => $scalbn(a, $clampExp(n));
 
-/** `Float.scaleB`. */
-export const int53__lean_float_scaleb = (a, n) => $scalbn(a, $clampExp(n));
+/** `Float.scaleB` (`$scalbn` clamps the exponent itself). */
+export const int53__lean_float_scaleb = (a, n) => $scalbn(a, n);
 
 /** `Float32.scaleB`. */
 export const bigint_int__lean_float32_scaleb = (a, n) => $scalbnf(a, $clampExp(n));
 
-/** `Float32.scaleB`. */
-export const int53__lean_float32_scaleb = (a, n) => $scalbnf(a, $clampExp(n));
+/** `Float32.scaleB` (`$scalbnf` clamps the exponent itself). */
+export const int53__lean_float32_scaleb = (a, n) => $scalbnf(a, n);
 
 /* ------------------------------------------------------------ strings */
 
 /** `String.Internal.drop`: without its first `n` characters. */
-export const bigint_nat__lean_string_drop = (s, n) => [...s].slice($capNat(n)).join("");
+export const uint53__lean_string_drop = (s, n) => [...s].slice(n).join("");
 
-/** `String.Internal.drop`: without its first `n` characters. */
-export const uint53__lean_string_drop = bigint_nat__lean_string_drop;
+/** `String.Internal.drop` (`Number` keeps a count too large for a string too large). */
+export const bigint_nat__lean_string_drop = (s, n) => uint53__lean_string_drop(s, Number(n));
 
 /** `String.Internal.dropRight`: without its last `n` characters. */
-export const bigint_nat__lean_string_dropright = (s, n) => {
+export const uint53__lean_string_dropright = (s, n) => {
   const cs = [...s];
-  return cs.slice(0, Math.max(cs.length - $capNat(n), 0)).join("");
+  return cs.slice(0, Math.max(cs.length - n, 0)).join("");
 };
 
-/** `String.Internal.dropRight`: without its last `n` characters. */
-export const uint53__lean_string_dropright = bigint_nat__lean_string_dropright;
+/** `String.Internal.dropRight`. */
+export const bigint_nat__lean_string_dropright = (s, n) => uint53__lean_string_dropright(s, Number(n));
 
 /** `String.Internal.trim`: without the whitespace (`Char.isWhitespace`) at both ends. */
 export const string__lean_string_trim = (s) => {
@@ -1800,8 +1685,8 @@ export const substring__lean_substring_prev = (ss, p) => {
 };
 
 /** `Substring.Raw.Internal.drop`: without its first `n` characters. */
-export const bigint_nat__lean_substring_drop = (ss, n) => {
-  let k = $capNat(n);
+export const uint53__lean_substring_drop = (ss, n) => {
+  let k = n;
   let p = 0;
   while (k > 0) {
     const q = $subNext(ss, p);
@@ -1812,8 +1697,8 @@ export const bigint_nat__lean_substring_drop = (ss, n) => {
   return [ss[0], ss[1] + p, ss[2]];
 };
 
-/** `Substring.Raw.Internal.drop`: without its first `n` characters. */
-export const uint53__lean_substring_drop = bigint_nat__lean_substring_drop;
+/** `Substring.Raw.Internal.drop`. */
+export const bigint_nat__lean_substring_drop = (ss, n) => uint53__lean_substring_drop(ss, Number(n));
 
 /** `Substring.Raw.Internal.extract`. */
 export const substring__lean_substring_extract = (ss, b, e) =>
@@ -1910,12 +1795,6 @@ export const bool__lean_internal_has_llvm_backend = () => () => false;
 
 /* ------------------------------------------------------------ operations that share a function */
 
-export const int53__lean_int16_of_int = bigint_int__lean_int16_of_int;
-export const int53__lean_int32_of_int = bigint_int__lean_int32_of_int;
-export const int53__lean_int64_to_int16 = bigint_int__lean_int64_to_int16;
-export const int53__lean_int64_to_int32 = bigint_int__lean_int64_to_int32;
-export const int53__lean_int64_to_int8 = bigint_int__lean_int64_to_int8;
-export const int53__lean_int8_of_int = bigint_int__lean_int8_of_int;
 export const bigint_nat__lean_array_fset = bigint_nat__lean_array_set_immutable;
 export const bigint_nat__lean_array_fswap = bigint_nat__lean_array_swap_immutable;
 export const bigint_nat__lean_array_get_borrowed = bigint_nat__lean_array_get;
@@ -1938,21 +1817,11 @@ export const uint53__lean_array_get_borrowed = uint53__lean_array_get;
 export const uint53__lean_uint16_of_nat__UInt16_ofNatLT = uint53__lean_uint16_of_nat__UInt16_ofNat;
 export const uint53__lean_uint32_of_nat__UInt32_ofNatLT = uint53__lean_uint32_of_nat__UInt32_ofNat;
 export const uint53__lean_uint8_of_nat__UInt8_ofNatLT = uint53__lean_uint8_of_nat__UInt8_ofNat;
-export const int53__bigint_nat__lean_nat_abs = bigint_int__bigint_nat__lean_nat_abs;
 export const bigint_nat__lean_nat_mod__Nat_modCore = bigint_nat__lean_nat_mod__Nat_mod;
 export const bigint_nat__lean_string_length__String_length = bigint_nat__lean_string_length__String_Internal_length;
-export const int53__uint53__lean_nat_abs = bigint_int__uint53__lean_nat_abs;
 export const uint53__lean_nat_mod__Nat_modCore = uint53__lean_nat_mod__Nat_mod;
 export const uint53__lean_string_length__String_length = uint53__lean_string_length__String_Internal_length;
-export const uint53__bigint_int__lean_int_neg_succ_of_nat = bigint_nat__bigint_int__lean_int_neg_succ_of_nat;
-export const uint53__int53__lean_int_neg_succ_of_nat = bigint_nat__int53__lean_int_neg_succ_of_nat;
 export const bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__lean_uint64_of_nat__UInt64_ofNat;
-export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat = bigint_nat__lean_uint64_of_nat__UInt64_ofNat;
-export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__lean_uint64_of_nat__UInt64_ofNat;
 export const bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat;
-export const uint53__lean_uint64_of_nat__UInt64_ofNat = bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat;
-export const uint53__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat;
-export const int53__bigint_int__lean_int64_of_int = bigint_int__lean_int64_of_int;
-export const uint53__bigint_int__lean_int64_of_nat = bigint_nat__bigint_int__lean_int64_of_nat;
-export const int53__lean_int64_of_int = bigint_int__int53__lean_int64_of_int;
-export const uint53__int53__lean_int64_of_nat = bigint_nat__int53__lean_int64_of_nat;
+export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = (a) => BigInt(a);
+export const uint53__lean_uint64_of_nat__UInt64_ofNatLT = (a) => a;

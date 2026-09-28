@@ -1,3 +1,30 @@
+# Summary of changes for run 062e2ff6-504b-4c8d-b37c-06125785d425
+I refactored `runtime.js` and formalized the refactor in Lean. Everything builds with no `sorry`.
+
+**Runtime refactor.** Each function in `runtime.js` now handles one representation and has no `typeof` tests or `BigInt()` coercions. For example, `bigint_nat__lean_array_set` now works on the `BigInt` index directly. I removed the helpers `$idx`, `$count`, `$capNat` and `low53` and added a few small private ones for 53-bit bitwise operations, `log2` and overflow. 22 operations can no longer throw, so I regenerated `JsTerm/Ops.lean`; the set of operations is otherwise unchanged.
+
+Checks that passed:
+- `lake build JsTerm leanscript tests`
+- `lake exe tests`: 55/55
+- `scripts/leanscript-snapshots.sh`: 3806 passed, 0 failed, snapshot files unchanged
+- a one-off node script comparing old and new on all 388 operations; that script is not in the repo.
+
+**Formalization.** This is a new library, `RuntimeSpec` (`lake build RuntimeSpec`), with three files:
+- `RuntimeSpec/Model.lean`: a Lean model of the JavaScript semantics the runtime relies on (`BigInt`, safe-integer numbers, 32-bit operators).
+- `RuntimeSpec/Runtime.lean`: the new functions written out in Lean, plus the old versions of those whose shape changed.
+- `RuntimeSpec/Correct.lean`: 42 theorems, all proved. They show:
+  - the new functions compute the matching Lean operations: `UInt64` and `Int64` arithmetic, bitwise operations, shifts and `log2` on safe integers; `UInt8/16/32` and `Int8/16/32` conversions; `natAbs` and `negSucc`; and array access (`List.getD`);
+  - the old versions give the same results as the new ones;
+  - the throws I removed could never have fired.
+
+`#print axioms` shows only `propext`, `Classical.choice` and `Quot.sound`. The `README.md` layout table has a new row for `RuntimeSpec/`, and the result is in the Properties table.
+
+**Assumptions and limits.** The theorems depend on the model, not on the real JavaScript engine:
+- Arithmetic on safe-integer numbers is assumed exact, and floor/trunc division is assumed to give the exact quotient.
+- 32-bit operators are modeled with `BitVec 32`.
+- For the array theorem, `Number()` of a `BigInt` is assumed monotone and exact on safe integers; these are explicit hypotheses of that theorem.
+- String and floating-point functions, and the throws on failed memory allocation, are not formalized.
+
 # Summary of changes for run 383399f1-023c-4a93-a519-3a78e7f3d9e1
 I implemented `proposals/JsTermReviewPlan.md` with your decisions and wrote the new proposal for recursive datatypes.
 
