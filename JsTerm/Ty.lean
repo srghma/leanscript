@@ -1,6 +1,6 @@
 module
 
-public import MoreJsTy.Config
+public import JsTerm.Config
 public import LeanScript.Term.Syntax.Common
 
 @[expose] public section
@@ -8,9 +8,9 @@ public import LeanScript.Term.Syntax.Common
 set_option autoImplicit false
 
 /-!
-# `MoreJsTy`: the types of the JavaScript grammar
+# `JsTerm`: the types of the JavaScript grammar
 
-`LeanScript.Ty` describes *Lean* values.  `MoreJsTy` describes how such a value is laid out
+`LeanScript.Ty` describes *Lean* values.  `JsTerm` describes how such a value is laid out
 in JavaScript, once the configuration (`MoreJs.JsConfig`) has chosen a representation for
 every configurable type: a `Nat` is a `nat` (a non-negative `BigInt`) or a `uint53` (a
 non-negative integer `number` below `2^53`), an `Array UInt8` is a `genericArray uint8` or a
@@ -18,7 +18,7 @@ non-negative integer `number` below `2^53`), an `Array UInt8` is a `genericArray
 
 The compound shapes have one layout each:
 
-| `Ty` | `MoreJsTy` | JavaScript |
+| `Ty` | `JsTerm` | JavaScript |
 | --- | --- | --- |
 | `record t fs` | `tuple [t, …]` | an array `[f₀, f₁, …]` |
 | `union cs` | `tagged [[fields₀], [fields₁], …]` | an array `[tag, f₀, f₁, …]` |
@@ -38,7 +38,7 @@ namespace MoreJs
 open LeanScript
 
 /-- The types of the JavaScript grammar: how a Lean value is laid out in JavaScript. -/
-inductive MoreJsTy where
+inductive JsTerm where
   /-- A JavaScript `boolean`. -/
   | bool
   /-- A non-negative `BigInt` (an unbounded natural number). -/
@@ -68,37 +68,37 @@ inductive MoreJsTy where
   /-- A value the JavaScript runtime only passes around (`Float.Model`, …). -/
   | opaque (name : String)
   /-- A generic JavaScript `Array`. -/
-  | genericArray (elem : MoreJsTy)
+  | genericArray (elem : JsTerm)
   /-- The typed arrays. -/
   | uint8Array | uint16Array | uint32Array | int8Array | int16Array | int32Array
   | float32Array | float64Array | bigUint64Array | bigInt64Array
   /-- A Lean `List`, as an immutable JavaScript array. -/
-  | list (elem : MoreJsTy)
+  | list (elem : JsTerm)
   /-- A one-argument function. -/
-  | fn (dom cod : MoreJsTy)
+  | fn (dom cod : JsTerm)
   /-- A record: an array of its fields. -/
-  | tuple (fields : List MoreJsTy)
+  | tuple (fields : List JsTerm)
   /-- A union: an array of the tag and the fields of the constructor. -/
-  | tagged (ctors : List (List MoreJsTy))
+  | tagged (ctors : List (List JsTerm))
   /-- An enum: a number, `shift` for the first constructor. -/
   | enum (n : Nat) (shift : Int)
   /-- A declared datatype, by name (`D<block>_<member>`). -/
   | data (name : String)
   /-- A memoised delay. -/
-  | thunk (t : MoreJsTy)
+  | thunk (t : JsTerm)
   /-- A delay recomputed each time: a function of no argument. -/
-  | lazy (t : MoreJsTy)
+  | lazy (t : JsTerm)
   deriving Inhabited, Repr, BEq
 
-namespace MoreJsTy
+namespace JsTerm
 
 /-- Is a value of this type a `BigInt` at run time? -/
-def isBigInt : MoreJsTy → Bool
+def isBigInt : JsTerm → Bool
   | .nat | .int | .bitvec_big .. => true
   | _ => false
 
-/-- A rendering for the `-MoreJsTy.txt` dump. -/
-partial def pretty : MoreJsTy → String
+/-- A rendering for the `-JsTerm.txt` dump. -/
+partial def pretty : JsTerm → String
   | .bool => "boolean"
   | .nat => "nat(bigint)"
   | .uint53 => "uint53(number)"
@@ -128,12 +128,12 @@ partial def pretty : MoreJsTy → String
   | .thunk t => s!"Thunk<{t.pretty}>"
   | .lazy t => s!"(() => {t.pretty})"
 
-instance : ToString MoreJsTy := ⟨pretty⟩
+instance : ToString JsTerm := ⟨pretty⟩
 
-end MoreJsTy
+end JsTerm
 
-/-- Lower a scalar `LeanPrimTy` to `MoreJsTy` based on the configuration. -/
-def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : MoreJsTy :=
+/-- Lower a scalar `LeanPrimTy` to `JsTerm` based on the configuration. -/
+def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
   match prim with
   | .bool => .bool
   | .nat => match cfg.natRepr with
@@ -172,15 +172,15 @@ def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : MoreJsTy :=
   | .floatModel => .opaque "Float.Model"
   | .float32Model => .opaque "Float32.Model"
 
-/-- Lowers an array of a leaf type into the optimized `MoreJsTy`. -/
-def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : MoreJsTy :=
+/-- Lowers an array of a leaf type into the optimized `JsTerm`. -/
+def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
   match prim with
   | .bool =>
     match cfg.arrayBoolRepr with
     | .genericArray => .genericArray .bool
     | .uint8Array => .uint8Array
   | .bitvec n _ =>
-    let generic : MoreJsTy := .genericArray (lowerScalarPrim cfg prim)
+    let generic : JsTerm := .genericArray (lowerScalarPrim cfg prim)
     match cfg.arrayBitVecRepr with
     | .genericArray => generic
     | .exactTypedArrayOnly =>
@@ -248,7 +248,7 @@ where
 
 mutual
 /-- The layout of a Lean type in JavaScript. -/
-def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → MoreJsTy
+def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTerm
   | .prim p => lowerScalarPrim cfg p
   | .fn a b => .fn (lowerTy cfg a) (lowerTy cfg b)
   | .array (.prim p) => lowerArrayPrim cfg p
@@ -261,16 +261,16 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → MoreJsTy
   | .thunk t => .thunk (lowerTy cfg t)
   | .lazy t => .lazy (lowerTy cfg t)
 /-- The layouts of the fields of a record or a constructor. -/
-def lowerFields (cfg : JsConfig) {ks : List Nat} : Fields ks → List MoreJsTy
+def lowerFields (cfg : JsConfig) {ks : List Nat} : Fields ks → List JsTerm
   | .one t => [lowerTy cfg t]
   | .cons t fs => lowerTy cfg t :: lowerFields cfg fs
 /-- The layouts of the fields of a constructor. -/
-def lowerCtor (cfg : JsConfig) {ks : List Nat} {b : Bool} : Ctor ks b → List MoreJsTy
+def lowerCtor (cfg : JsConfig) {ks : List Nat} {b : Bool} : Ctor ks b → List JsTerm
   | .nullary => []
   | .fields fs => lowerFields cfg fs
 /-- The layouts of the constructors of a union. -/
 def lowerCtors (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs →
-    List (List MoreJsTy)
+    List (List JsTerm)
   | .two a b => [lowerCtor cfg a, lowerCtor cfg b]
   | .cons c cs => lowerCtor cfg c :: lowerCtors cfg cs
 end

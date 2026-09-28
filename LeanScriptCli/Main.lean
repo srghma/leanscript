@@ -3,8 +3,8 @@ import LeanScriptCli.Check
 import LeanScriptCli.RecCalls
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
-import MoreJsTy.FromTerm
-import MoreJsTy.PrintMini
+import JsTerm.FromTerm
+import JsTerm.PrintMini
 
 /-!
 # `leanscript`: Lean to JavaScript
@@ -24,7 +24,7 @@ For each file (or module, looked up as `Module/Name.lean` in the project root an
    (`LeanScript.Cli.openDef`): the `Term` is a function of the recursive functions called
    (`g_rec`), and the function is its fixed point;
 2. optimises it (`Term.optimizeN`, proved to preserve `Term.eval`: `Term.optimizeN_eval`);
-3. converts it to the JavaScript grammar `MoreJsTy` at the chosen configuration
+3. converts it to the JavaScript grammar `JsTerm` at the chosen configuration
    (`MoreJs.termToJs`);
 4. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).  For an open
    definition, the exported function binds each `g_rec` to the exported function `g`
@@ -34,7 +34,7 @@ It writes, next to the file (or in `--out-dir`), where `FILE` is the path withou
 
 * `FILE-Term-unoptimized.txt`: the translations, as translated;
 * `FILE-Term-optimized.txt`: the translations, optimised;
-* `FILE-MoreJsTy.txt`: the JavaScript grammar, with the layout of every binder;
+* `FILE-JsTerm.txt`: the JavaScript grammar, with the layout of every binder;
 * `FILE.js`: the JavaScript module: the runtime helpers it needs, then one
   `export function` per translated function.
 
@@ -66,7 +66,7 @@ well-founded recursion) to JavaScript, and
 writes next to the file (FILE is its path without `.lean`):
   FILE-Term-unoptimized.txt   the translations to LeanScript.Term
   FILE-Term-optimized.txt     the same, optimised (Term.optimizeN)
-  FILE-MoreJsTy.txt           the JavaScript grammar, with the layout of every binder
+  FILE-JsTerm.txt           the JavaScript grammar, with the layout of every binder
   FILE.js                     the JavaScript module
 
 options:
@@ -201,7 +201,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     let fns ← runTermElab el (cands0.filterM fun n => return !(← paramNames n).isEmpty)
     if fns.isEmpty then
       -- remove the outputs of an earlier run (only files this tool wrote)
-      for suffix in ["-Term-unoptimized.txt", "-Term-optimized.txt", "-MoreJsTy.txt", ".js",
+      for suffix in ["-Term-unoptimized.txt", "-Term-optimized.txt", "-JsTerm.txt", ".js",
           ".check.mjs"] do
         let p := outPath o file suffix
         if ← p.pathExists then
@@ -317,7 +317,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
       s!"-- {t.name} : {oneLine t.ty}\n{recNote}{ct.term.pretty}\n")
   IO.FS.writeFile (outPath o file "-Term-unoptimized.txt") (termFile false)
   IO.FS.writeFile (outPath o file "-Term-optimized.txt") (termFile true)
-  IO.FS.writeFile (outPath o file "-MoreJsTy.txt")
+  IO.FS.writeFile (outPath o file "-JsTerm.txt")
     (String.join ((header "The JavaScript grammar" jsRefused).map fun l => s!"// {l}\n") ++
       "\n" ++ m.pretty)
   IO.FS.writeFile (outPath o file ".js") (m.toJs (header "JavaScript" jsRefused))

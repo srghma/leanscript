@@ -1,6 +1,6 @@
 module
 
-public import MoreJsTy.Ty
+public import JsTerm.Ty
 
 @[expose] public section
 
@@ -12,10 +12,10 @@ set_option autoImplicit false
 `LeanScript.Term` models Lean code: intrinsically typed, de Bruijn indexed, every redex that
 could be computed computed.  The grammar here models the **JavaScript** the backend prints:
 named variables, statements, `return`, loops with a mutable accumulator, and calls of the
-runtime prelude.  Every binder records the `MoreJsTy` of what it binds, so a dump of a
-program (`JsModule.pretty`, the `-MoreJsTy.txt` file) shows how each value is laid out.
+runtime prelude.  Every binder records the `JsTerm` of what it binds, so a dump of a
+program (`JsModule.pretty`, the `-JsTerm.txt` file) shows how each value is laid out.
 
-The grammar is deliberately small; `MoreJsTy.PrintMini` maps it onto the full JavaScript
+The grammar is deliberately small; `JsTerm.PrintMini` maps it onto the full JavaScript
 syntax tree of `LanguageJavascriptMini`, whose printer writes the `.js` file.
 
 * **Expressions** (`JsExpr`): variables, literals, operators, calls of values and of runtime
@@ -90,13 +90,13 @@ inductive JsExpr where
 /-- Statements. -/
 inductive JsStmt where
   /-- `const x = e;` -/
-  | const (x : String) (ty : MoreJsTy) (e : JsExpr)
+  | const (x : String) (ty : JsTerm) (e : JsExpr)
   /-- `let x = e;` -/
-  | letMut (x : String) (ty : MoreJsTy) (e : JsExpr)
+  | letMut (x : String) (ty : JsTerm) (e : JsExpr)
   /-- `x = e;` -/
   | assign (x : String) (e : JsExpr)
   /-- `const [x₀, , x₂] = e;` (`none` skips a position). -/
-  | destructure (xs : List (Option (String × MoreJsTy))) (e : JsExpr)
+  | destructure (xs : List (Option (String × JsTerm))) (e : JsExpr)
   /-- `return e;` -/
   | ret (e : JsExpr)
   /-- `if (c) { t } else { e }` (no `else` when `e` is empty). -/
@@ -119,9 +119,9 @@ structure JsFun where
   /-- The Lean definition it was translated from. -/
   leanName : String
   /-- The parameters and their layouts. -/
-  params : List (String × MoreJsTy)
+  params : List (String × JsTerm)
   /-- The layout of the result. -/
-  ret : MoreJsTy
+  ret : JsTerm
   /-- The body; every path ends in a `return`. -/
   body : List JsStmt
   deriving Inhabited
@@ -144,7 +144,7 @@ structure JsModule where
   funs : List JsFun
   deriving Inhabited
 
-/-! ## The dump (`-MoreJsTy.txt`) -/
+/-! ## The dump (`-JsTerm.txt`) -/
 
 namespace JsLit
 

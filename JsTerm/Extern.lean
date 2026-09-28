@@ -1,6 +1,6 @@
 module
 
-public import MoreJsTy.Syntax
+public import JsTerm.Syntax
 public import LeanScript.Term.Extern.Name
 
 @[expose] public section
@@ -36,7 +36,7 @@ open LeanScript
 
 /-- The code of a layout in the name of a helper: `b` for a `BigInt`, `n` for a `number`
     standing for an unbounded or 64-bit integer, `_` otherwise. -/
-def sigCode (t : MoreJsTy) : Char :=
+def sigCode (t : JsTerm) : Char :=
   if t.isBigInt then 'b'
   else match t with
     | .uint53 | .int53 => 'n'
@@ -44,7 +44,7 @@ def sigCode (t : MoreJsTy) : Char :=
 
 /-- The suffix of a helper's name: the codes of its arguments and result, when one of them is
     configurable. -/
-def sigSuffix (tys : List MoreJsTy) : String :=
+def sigSuffix (tys : List JsTerm) : String :=
   let cs := tys.map sigCode
   if cs.any (· != '_') then "$" ++ String.ofList cs else ""
 
@@ -113,11 +113,11 @@ def stubHelper (name : String) : JsHelper :=
 /-! ## Numeric conversions -/
 
 /-- The source of the integer literal `n` at layout `t`. -/
-def numLit (t : MoreJsTy) (n : Int) : String :=
+def numLit (t : JsTerm) (n : Int) : String :=
   if t.isBigInt then s!"{n}n" else toString n
 
 /-- Convert the integer `e` from the layout `src` to the layout `dst` (both integers). -/
-def convInt (e : String) (src dst : MoreJsTy) : String × List JsHelper :=
+def convInt (e : String) (src dst : JsTerm) : String × List JsHelper :=
   if src.isBigInt == dst.isBigInt then (e, [])
   else if src.isBigInt then (s!"$toNum53({e})", [toNum53])
   else (s!"BigInt({e})", [])
@@ -129,18 +129,18 @@ def idxHelper : JsHelper :=
   ⟨"$idx", "function $idx(x) {\n  return x > 9007199254740991n ? Infinity : Number(x);\n}"⟩
 
 /-- Convert the index `e` from the integer layout `src` to a `number`. -/
-def convIdx (e : String) (src : MoreJsTy) : String × List JsHelper :=
+def convIdx (e : String) (src : JsTerm) : String × List JsHelper :=
   if src.isBigInt then (s!"$idx({e})", [idxHelper]) else (e, [])
 
 /-- Check that an integer result at layout `t` is exact (a safe integer when it is a
     `number` standing for an unbounded integer). -/
-def chkInt (e : String) (t : MoreJsTy) : String × List JsHelper :=
+def chkInt (e : String) (t : JsTerm) : String × List JsHelper :=
   match t with
   | .uint53 | .int53 => (s!"$chk53({e})", [chk53])
   | _ => (e, [])
 
 /-- A JavaScript typed array constructor for a layout, if it is a typed array. -/
-def typedCtor? : MoreJsTy → Option String
+def typedCtor? : JsTerm → Option String
   | .uint8Array => some "Uint8Array" | .uint16Array => some "Uint16Array"
   | .uint32Array => some "Uint32Array" | .int8Array => some "Int8Array"
   | .int16Array => some "Int16Array" | .int32Array => some "Int32Array"
@@ -161,8 +161,8 @@ def wrapS (bits : Nat) (e : String) : String :=
 
 /-- The implementation of an operation `op` of `UIntN`/`IntN` for `N ≤ 32` (a `number`),
     as the source of the returned expression over the parameters `a`, `b`. -/
-def smallFixedImpl (signed : Bool) (bits : Nat) (op : String) (argTys : List MoreJsTy)
-    (resTy : MoreJsTy) : Option (String × List JsHelper) :=
+def smallFixedImpl (signed : Bool) (bits : Nat) (op : String) (argTys : List JsTerm)
+    (resTy : JsTerm) : Option (String × List JsHelper) :=
   let w := if signed then wrapS bits else wrapU bits
   let arg0 := argTys.headD .bool
   match op with
@@ -199,7 +199,7 @@ def smallFixedImpl (signed : Bool) (bits : Nat) (op : String) (argTys : List Mor
   | _ => none
 
 /-- The implementation of an operation of `UInt64`/`Int64` on `BigInt`s. -/
-def bigFixedImpl (signed : Bool) (op : String) (argTys : List MoreJsTy) (resTy : MoreJsTy) :
+def bigFixedImpl (signed : Bool) (op : String) (argTys : List JsTerm) (resTy : JsTerm) :
     Option (String × List JsHelper) :=
   let w (e : String) := s!"BigInt.as{if signed then "Int" else "Uint"}N(64, {e})"
   let arg0 := argTys.headD .bool
@@ -245,7 +245,7 @@ def parseFixed? (sym : String) : Option (Bool × Nat × String) := do
   return (signed, bits, op)
 
 /-- Conversions between fixed widths: `lean_uint32_to_uint8`, `lean_int8_to_int64`. -/
-def fixedConvImpl (signed : Bool) (fromBits : Nat) (op : String) (resTy : MoreJsTy) :
+def fixedConvImpl (signed : Bool) (fromBits : Nat) (op : String) (resTy : JsTerm) :
     Option (String × List JsHelper) := do
   let pre := if signed then "to_int" else "to_uint"
   let toBits ← (op.dropPrefix? pre).bind (·.toString.toNat?)
@@ -265,7 +265,7 @@ def fixedConvImpl (signed : Bool) (fromBits : Nat) (op : String) (resTy : MoreJs
 
 /-- The source of the expression a helper returns, over its parameters `a`, `b`, `c`, …, and
     the helpers it calls; `none` when the extern has no implementation yet. -/
-def externImpl? (name : String) (argTys : List MoreJsTy) (resTy : MoreJsTy) :
+def externImpl? (name : String) (argTys : List JsTerm) (resTy : JsTerm) :
     Option (String × List JsHelper) :=
   let sym := externSymbol name
   let t0 := argTys.headD .bool
@@ -412,15 +412,15 @@ def externImpl? (name : String) (argTys : List MoreJsTy) (resTy : MoreJsTy) :
       else if op == "to_float" then
         some (if t0.isBigInt then "Number(a)" else "a", [])
       else if bits < 64 then smallFixedImpl signed bits op argTys resTy
-      else if t0.isBigInt || resTy.isBigInt || argTys.any MoreJsTy.isBigInt then
+      else if t0.isBigInt || resTy.isBigInt || argTys.any JsTerm.isBigInt then
         bigFixedImpl signed op argTys resTy
       else
         -- a 64-bit type represented by a `number`: computed on `BigInt`s, and the result
         -- checked to be a safe integer
         let bigArgs := argTys.map fun t => match t with
-          | .uint53 => MoreJsTy.nat | .int53 => MoreJsTy.int | t => t
+          | .uint53 => JsTerm.nat | .int53 => JsTerm.int | t => t
         let bigRes := match resTy with
-          | .uint53 => MoreJsTy.nat | .int53 => MoreJsTy.int | t => t
+          | .uint53 => JsTerm.nat | .int53 => JsTerm.int | t => t
         match bigFixedImpl signed op bigArgs bigRes with
         | some (e, hs) =>
           let ps := helperParams argTys.length
@@ -436,7 +436,7 @@ def externImpl? (name : String) (argTys : List MoreJsTy) (resTy : MoreJsTy) :
 /-- The call of an extern: an operator when its meaning is one at this representation,
     otherwise a call of its helper; with the helpers the call needs (each after the helpers
     it calls). -/
-def lowerExtern (name : String) (argTys : List MoreJsTy) (resTy : MoreJsTy)
+def lowerExtern (name : String) (argTys : List JsTerm) (resTy : JsTerm)
     (args : List JsExpr) : JsExpr × List JsHelper :=
   let sym := externSymbol name
   let t0 := argTys.headD .bool

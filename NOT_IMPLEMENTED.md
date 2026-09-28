@@ -186,15 +186,15 @@ The supported fragment and the refusals are listed in the header of
 - **No proof that the translation is correct** in general: each test checks it on examples
   by `rfl`, and `ToTermTest.sumToT_run` proves it at every argument for one function.
 
-## 4. Backend (`MoreJsTy/`, `leanscript`)
+## 4. Backend (`JsTerm/`, `leanscript`)
 
 - **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
   `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
-  (`MoreJsTy/FromTerm.lean`), so every function over `List`, a user inductive, … is listed
-  under "not translated" in the outputs.  (The layouts exist in `MoreJsTy.lowerTy`: tagged
+  (`JsTerm/FromTerm.lean`), so every function over `List`, a user inductive, … is listed
+  under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: tagged
   arrays, enums; only the recursors are missing.)
 - **Some externs have no JavaScript implementation**: they are emitted as a runtime helper
-  that throws (`MoreJs.stubHelper`, `MoreJsTy/Extern.lean`).  `leanscript --check` finds
+  that throws (`MoreJs.stubHelper`, `JsTerm/Extern.lean`).  `leanscript --check` finds
   them (a check answers "threw: … has no JavaScript implementation yet").
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
   units, not code points as Lean does: the two differ on strings mixing characters above

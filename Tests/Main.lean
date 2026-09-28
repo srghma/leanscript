@@ -7,7 +7,7 @@ import TermTests.Datatypes.QuotientTest
 import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import LeanScript.Term.Optimize.Basic
-import MoreJsTy.FromTerm
+import JsTerm.FromTerm
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -124,7 +124,7 @@ def optimizeSpec : Spec := describe "Term.optimize" do
 /-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the layouts
     the configuration chooses, and the shape of the functions it produces.  (The generated
     JavaScript itself is run against Lean by `scripts/leanscript-snapshots.sh`.) -/
-def moreJsSpec : Spec := describe "MoreJsTy" do
+def moreJsSpec : Spec := describe "JsTerm" do
   let faithful : MoreJs.JsConfig := {}
   let pbo := MoreJs.JsConfig.presetPBO
   it "Nat is a BigInt (faithful) or a checked UInt53 (pbo)" do

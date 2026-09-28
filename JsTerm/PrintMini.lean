@@ -1,4 +1,4 @@
-import MoreJsTy.Syntax
+import JsTerm.Syntax
 import LanguageJavascriptMini.Printer
 
 /-!

@@ -1,3 +1,33 @@
+# Summary of changes for run 71e123da-7a39-4478-ba2e-5e1a63f2f9d4
+`MoreJsTy` is now `JsTerm` everywhere in the project except `ARISTOTLE_SUMMARY.md`, which you asked me not to edit. The code builds and all 45 tests pass, but only with a temporary lakefile change (see below), so I'm not listing any build targets.
+
+**How:** one Python script walked every file tracked by git and replaced the exact string `MoreJsTy` with `JsTerm`. It then used `git mv` to rename every path containing that string. I ran it from outside the project, so the old name doesn't survive in the script itself.
+- **Contents:** 18 files changed, including:
+  - the Lean sources: module names, imports, namespaces and identifiers
+  - the `lean_lib` entry in `lakefile.toml`, now `name = "JsTerm"`, `globs = ["JsTerm.+"]`
+  - the `-JsTerm.txt` output suffix used by the `leanscript` tool in `LeanScriptCli/Main.lean` and in `scripts/leanscript-snapshots.sh`
+  - `README.md`, `NOT_IMPLEMENTED.md`, `Tests/Main.lean` and `.lean-spec-timings-and-last-failures`.
+- **Paths:** 150 renamed. The `MoreJsTy/` directory is now `JsTerm/`, and every `*-MoreJsTy.txt` snapshot under `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` is now `*-JsTerm.txt`.
+- **Name clash:** `JsTerm` didn't appear anywhere in the project before, so nothing collides.
+- **Search:** afterwards, a search for `MoreJsTy` in file contents and names (outside the build cache) found it only in `ARISTOTLE_SUMMARY.md`.
+
+**Build:** as in earlier runs, `lakefile.toml` requires `mathlib` but `lake-manifest.json` has no entry for it, so `lake` stops straight away. To check the rename I removed that requirement locally and put it back before committing, so the only lakefile change in the commit is the library rename. With it removed:
+- `lake build JsTerm leanscript LeanScriptCli tests TyTests TermTests` succeeded (353 jobs).
+- `lake exe tests` passed 45/45.
+
+To build it yourself, either delete the unused `mathlib` requirement or run `lake update`.
+
+Everything is in one commit.
+
+# Summary of changes for run 9211ea27-8f57-4883-a285-96d0c333b2d1
+I created the `runtime/` directory by splitting the bundled `runtime.js` at its `==== FILE: runtime/… ====` markers. Each section's contents were copied exactly as they were, with only trailing blank lines trimmed to a single newline. That gives 16 files:
+
+- `lean_values.mjs`
+- `lean_runtime_non_configurable.mjs`
+- `lean_runtime_{int,nat,isize,usize,int64,uint64,bitvec}_{num,bigint}.mjs`
+
+All 16 files pass `node --check`, which only checks syntax. I didn't run any of the JavaScript tests that import from `runtime/`. Nothing else was changed: `runtime.js` is still there, and no Lean, test or docs files were touched. The new directory is committed. No Lean build was involved, so no build targets are listed.
+
 # Summary of changes for run 67f85bf7-a16b-4270-b0b9-0b56d38d291b
 I reorganised `LeanScript/Term` into subdirectories grouped by what each module is for, and did the same for `LeanScript/Ty` and `Tests/TermTests`. No declarations, namespaces or proofs changed. Only file locations, module names in `import` lines, and references to modules and paths in docs and comments changed. Everything is committed.
 

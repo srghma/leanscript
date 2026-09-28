@@ -44,10 +44,10 @@ For each public total function of the file (structurally recursive or defined by
 well-founded recursion), `leanscript` reads its `Expr`
 (not LCNF or IR, which have lost the types), translates it to a `Term`
 (`#leanscript_to_term`), optimises it (`Term.optimizeN`, which preserves `Term.eval`:
-`Term.optimizeN_eval`), converts it to the JavaScript grammar `MoreJsTy` at the chosen
+`Term.optimizeN_eval`), converts it to the JavaScript grammar `JsTerm` at the chosen
 configuration (`MoreJs.termToJs`) and prints it with `LanguageJavascriptMini`.  Next to
 `FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
-`FILE-MoreJsTy.txt` and `FILE.js` (the runtime helpers the module needs, then one
+`FILE-JsTerm.txt` and `FILE.js` (the runtime helpers the module needs, then one
 `export function` per function); with `--check` also `FILE.check.mjs`, which calls every
 exported function on sample arguments and compares the answers with the ones Lean computes.
 Every output starts with the configuration and lists the functions that were not translated,
@@ -70,16 +70,16 @@ subtype: `(n : Nat) → {m // m ≥ n - 10}`, as in `Tco09`'s `Mc91.M`) is read 
 non-dependent `Nat → Nat`, and a local proof `have h : p := …` is substituted into the body.  `a == b` on `Char` (whose instance projects the leaf `Char`) is translated as the comparison of the one-character strings `"".push a` and `"".push b` (`LeanScript/TermElab/ToTerm/CharEq.lean` proves the two decisions equal), which is `a === b` in JavaScript.  A case analysis `0` / `k + 1` that the
 translation reads as a recursion whose step ignores the accumulator is printed as an `if`,
 not a loop.  `leanscript --help` lists the configuration options (`--nat=num|bigint`,
-`--int=…`, `--array-bool=uint8|generic`, …; `MoreJsTy/Config.lean`).
+`--int=…`, `--array-bool=uint8|generic`, …; `JsTerm/Config.lean`).
 
 | path | what it holds |
 | :-- | :-- |
-| `MoreJsTy/Config.lean` | `MoreJs.JsConfig`: how each leaf type is represented (a `number` or a `BigInt`; typed or generic arrays), presets `faithful` (default) and `pbo`, command-line knobs |
-| `MoreJsTy/Ty.lean` | the layouts `MoreJsTy` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; tagged arrays; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
-| `MoreJsTy/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper`, `JsModule`, and the `-MoreJsTy.txt` dump |
-| `MoreJsTy/Extern.lean` | each extern of the catalogue as inline JavaScript or a runtime helper, per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
-| `MoreJsTy/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
-| `MoreJsTy/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
+| `JsTerm/Config.lean` | `MoreJs.JsConfig`: how each leaf type is represented (a `number` or a `BigInt`; typed or generic arrays), presets `faithful` (default) and `pbo`, command-line knobs |
+| `JsTerm/Ty.lean` | the layouts `JsTerm` (`uint53`: a `number` standing for a `Nat`, checked on overflow; `nat`: a `BigInt`; typed arrays; tagged arrays; …) and `lowerScalarPrim`/`lowerArrayPrim`/`lowerTy` |
+| `JsTerm/Syntax.lean` | the JavaScript grammar: `JsExpr`, `JsStmt`, `JsFun`, `JsHelper`, `JsModule`, and the `-JsTerm.txt` dump |
+| `JsTerm/Extern.lean` | each extern of the catalogue as inline JavaScript or a runtime helper, per layout (overflow checks for `uint53`, Lean's `x / 0 = 0`, …) |
+| `JsTerm/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
+| `JsTerm/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
 | `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating, open definitions of recursive functions), `RecCalls.lean` (binding the recursive functions of an open definition in its JavaScript, direct calls), `Check.lean` (`--check`), `Main.lean` |
 
 ## Layout

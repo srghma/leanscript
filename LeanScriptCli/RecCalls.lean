@@ -1,4 +1,4 @@
-import MoreJsTy.Syntax
+import JsTerm.Syntax
 
 /-!
 # Calls of recursive functions in the JavaScript of an open definition
@@ -232,7 +232,7 @@ def curriedView (g : String) (arity : Nat) : JsExpr :=
     the open definition that stand for recursive functions (`g$rec`, its layout, the exported
     function `g` and its number of parameters), bound to the curried views of those
     functions, and every saturated call through them made direct. -/
-def bindRecCalls (recs : List (String × MoreJsTy × String × Nat)) (body : List JsStmt) :
+def bindRecCalls (recs : List (String × JsTerm × String × Nat)) (body : List JsStmt) :
     List JsStmt :=
   let binds := recs.map fun (x, ty, g, ar) => JsStmt.const x ty (curriedView g ar)
   let all := binds ++ body

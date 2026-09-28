@@ -10,7 +10,7 @@ set_option autoImplicit false
 # The configuration: how each Lean type is represented in JavaScript
 
 `LeanScript.Term` models *Lean* code: its leaves are `LeanPrimTy`s, whose values are Lean
-values (`Nat`, `UInt64`, …).  `MoreJsTy` models *JavaScript* code, and a Lean type can be
+values (`Nat`, `UInt64`, …).  `JsTerm` models *JavaScript* code, and a Lean type can be
 represented in more than one way there.  The choice is this configuration:
 
 | Lean | JavaScript | knob |
@@ -31,7 +31,7 @@ represented in more than one way there.  The choice is this configuration:
 
 A number representation of an unbounded type (`Nat` as `UInt53`) is only faithful below
 `2^53`: a literal that does not fit is refused when the term is converted
-(`MoreJsTy.FromTerm`), and the arithmetic of the generated runtime throws a `RangeError`
+(`JsTerm.FromTerm`), and the arithmetic of the generated runtime throws a `RangeError`
 instead of silently losing precision.
 
 `JsConfig.reprOfPrim` answers the question for *every* constructor of `LeanPrimTy`, with no

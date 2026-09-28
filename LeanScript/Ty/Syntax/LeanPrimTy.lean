@@ -63,25 +63,25 @@ inductive LeanPrimTy where
   /-- In JS: `boolean`. -/
   | bool      : LeanPrimTy
   /-- In JS: configurable:
-    - if `number` then in `MoreJsTy` will be modeled by `UInt53` (if overflow already happened during `LeanTy` phase - throw and dont attempt to convert to `MoreJsTy`)
+    - if `number` then in `JsTerm` will be modeled by `UInt53` (if overflow already happened during `LeanTy` phase - throw and dont attempt to convert to `JsTerm`)
       a. `+,-,*,** : UInt53 -> UInt53 -> UInt53` are throwing if overflow during optimization
-      b. `/,% : UInt53 -> UInt53 -> UInt53` are throwing if the divisor is 0 during optimization (TODO: unless required by algorithm? should there be optimization at `MoreJsTy` stage at all?)
+      b. `/,% : UInt53 -> UInt53 -> UInt53` are throwing if the divisor is 0 during optimization (TODO: unless required by algorithm? should there be optimization at `JsTerm` stage at all?)
       then printed as js `number`
-    - if `bigint` then in `MoreJsTy` will be modeled by `Nat` then printed as js `bigint`.
+    - if `bigint` then in `JsTerm` will be modeled by `Nat` then printed as js `bigint`.
   -/
   | nat       : LeanPrimTy
   /-- In JS: configurable:
-    - if `number` then in `MoreJsTy` will be modeled by `Int53` then printed as js `number`.
-    - if `bigint` then in `MoreJsTy` will be modeled by `Int` then printed as js `bigint`.
+    - if `number` then in `JsTerm` will be modeled by `Int53` then printed as js `number`.
+    - if `bigint` then in `JsTerm` will be modeled by `Int` then printed as js `bigint`.
   -/
   | int       : LeanPrimTy
-  /-- IF `n ≤ 53` then nonconfigurable then in `MoreJsTy` modeled by
-    `bitvec_small : (n : Nat) → (h_le_53 : n ≤ 53 := by decide) → (h_positive : 0 < n := by decide) → MoreJsTy`
+  /-- IF `n ≤ 53` then nonconfigurable then in `JsTerm` modeled by
+    `bitvec_small : (n : Nat) → (h_le_53 : n ≤ 53 := by decide) → (h_positive : 0 < n := by decide) → JsTerm`
     then printed as js number
 
       ELSE IF `n > 53` then configurable:
-        if `number` then (unless already overflown during `LeanTy` optimization phase) in `MoreJsTy` modeled by `UInt53` then printed as js `number`.
-        if `bigint` then in `MoreJsTy` modeled by `bitvec_big : (n : Nat) → (h_g_53 : 53 < n := by decide)` then printed as js `bigint`.
+        if `number` then (unless already overflown during `LeanTy` optimization phase) in `JsTerm` modeled by `UInt53` then printed as js `number`.
+        if `bigint` then in `JsTerm` modeled by `bitvec_big : (n : Nat) → (h_g_53 : 53 < n := by decide)` then printed as js `bigint`.
   -/
   | bitvec    : (n : Nat) → (h_nondeg : 2 ≤ n := by decide /- bc Unit-like (0) and Bool-like (1) types should be erased -/) → LeanPrimTy
   /-- In JS: `number`. -/
@@ -105,7 +105,7 @@ inductive LeanPrimTy where
   /-- In JS: `string`. -/
   | string    : LeanPrimTy
   -- /-- In JS: `Uint8Array` / `ArrayBuffer`. -/
-  -- | byteArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array UInt8`. Then in `MoreJsTy` as `Uint8Array`
+  -- | byteArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array UInt8`. Then in `JsTerm` as `Uint8Array`
   /-- A position in a string — like `.uint32`, but strictly non-negative. -/
   | stringPosRaw : LeanPrimTy
   | stringPos (s : String) (h_len : 2 ≤ s.length := by decide) : LeanPrimTy -- for `structure Pos (s : String) where`
@@ -127,7 +127,7 @@ inductive LeanPrimTy where
   -- (`LeanScript.Ty.Syntax.Ty`), built like `Ty.ordering`, and not a constructor here.
   -- | leanName  : LeanPrimTy
   -- /-- In JS: `Float64Array`. -/
-  -- | floatArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array Float`. Then in `MoreJsTy` as `Float64Array`
+  -- | floatArray : LeanPrimTy -- in this `LeanPrimTy` mapped to `Array Float`. Then in `JsTerm` as `Float64Array`
   -- /-- In JS (node only): a `ChildProcess` handle. -/
   -- | childProcess : LeanPrimTy
   -- Commented out: a `ChildProcess` is a live operating-system process, so it has no

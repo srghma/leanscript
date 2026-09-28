@@ -1,6 +1,6 @@
 module
 
-public import MoreJsTy.Extern
+public import JsTerm.Extern
 public import LeanScript.Term.Syntax.Packed
 
 @[expose] public section
@@ -53,13 +53,13 @@ open LeanScript
 def maxSafe : Nat := 2 ^ 53 - 1
 
 /-- An unbounded natural number at the layout `t`: a `BigInt`, or a `number` if it fits. -/
-def natLit (what : String) (t : MoreJsTy) (n : Nat) : Except String JsExpr :=
+def natLit (what : String) (t : JsTerm) (n : Nat) : Except String JsExpr :=
   if t.isBigInt then pure (.lit (.bigint n))
   else if n ≤ maxSafe then pure (.lit (.int n))
   else throw s!"the {what} literal {n} does not fit in a JavaScript number (use the bigint representation)"
 
 /-- An unbounded integer at the layout `t`. -/
-def intLit (what : String) (t : MoreJsTy) (n : Int) : Except String JsExpr :=
+def intLit (what : String) (t : JsTerm) (n : Int) : Except String JsExpr :=
   if t.isBigInt then pure (.lit (.bigint n))
   else if n.natAbs ≤ maxSafe then pure (.lit (.int n))
   else throw s!"the {what} literal {n} does not fit in a JavaScript number (use the bigint representation)"
@@ -209,7 +209,7 @@ where
     a `const` copy of `acc` made at the start of the iteration (a closure must capture the
     value of this iteration, not the variable the loop reassigns); otherwise the body reads
     `acc` itself. -/
-def loopBody (acc accIn : String) (ty : MoreJsTy) (body : List JsStmt) : List JsStmt :=
+def loopBody (acc accIn : String) (ty : JsTerm) (body : List JsStmt) : List JsStmt :=
   if body.any JsStmt.hasArrow then
     .const accIn ty (.var acc) :: retToAssign acc body
   else
@@ -260,7 +260,7 @@ variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
 
 /-- Names for the fields a pattern binds, `none` for the ones annotated unused. -/
 def fieldBinders (tys : List (Ty ks)) (us : List Usage01ω) :
-    ConvM (List (Option (String × MoreJsTy)) × List String) := do
+    ConvM (List (Option (String × JsTerm)) × List String) := do
   let mut bs := #[]
   let mut names := #[]
   for i in [0:tys.length] do
@@ -522,7 +522,7 @@ mutual
     ret k` becomes a parameter `x` and the body `b`, as long as the shape repeats.  `names`
     are the preferred names of the parameters (the Lean binder names). -/
 partial def peelFun {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
-    Term Δ d Φ Γ τ js o → Names → List String → ConvM (List (String × MoreJsTy) × List JsStmt)
+    Term Δ d Φ Γ τ js o → Names → List String → ConvM (List (String × JsTerm) × List JsStmt)
   | t@(.letV _ v (.ret (.kvar k))), n, names =>
     if k.index != 0 then do return ([], ← cTerm cfg t n) else
     match v with
@@ -539,13 +539,13 @@ partial def peelFun {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
 /-- `peelFun` inside the body of a lambda whose parameter is named `x`. -/
 partial def peelBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} :
     Body Δ d Φ Γ bs τ o → String → Names → List String →
-      ConvM (List (String × MoreJsTy) × List JsStmt)
+      ConvM (List (String × JsTerm) × List JsStmt)
   | .closed t', x, n, rest => peelFun t' { u := [x], k := n.k, j := [] } rest
   | .opened t' _, x, n, rest => peelFun t' { u := [x] ++ n.u, k := n.k, j := [] } rest
 end
 
 /-- The result type after peeling `k` arrows. -/
-def peelTy : Nat → MoreJsTy → MoreJsTy
+def peelTy : Nat → JsTerm → JsTerm
   | k + 1, .fn _ b => peelTy k b
   | _, t => t
 
