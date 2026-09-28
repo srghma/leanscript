@@ -1,6 +1,6 @@
 module
 
-public import JsTerm.Syntax
+public import JsTerm.Vars
 public import LeanScript.Term.Extern.Name
 
 @[expose] public section
@@ -57,8 +57,8 @@ def JsBigIntBinOp.toNum : JsBigIntBinOp → JsNumBinOp
 
 namespace Js
 
-/-- A variable. -/
-def v (x : String) : JsExpr := .var x
+/-- A global of JavaScript (`Math`, `BigInt`, …). -/
+def g (x : String) : JsExpr := .global x
 /-- A `number` literal of an integer. -/
 def num (n : Int) : JsExpr := .lit (.int n)
 /-- A `BigInt` literal. -/
@@ -68,7 +68,7 @@ def intAt (t : JsTerm) (n : Int) : JsExpr := if t.isBigInt then big n else num n
 /-- A string literal. -/
 def str (s : String) : JsExpr := .lit (.str s)
 /-- `f(args)`, for a global function `f` (`BigInt`, `Number`, …). -/
-def call (f : String) (args : List JsExpr) : JsExpr := .call (.var f) args
+def call (f : String) (args : List JsExpr) : JsExpr := .call (.global f) args
 /-- `o.m(args)`. -/
 def meth (o : JsExpr) (m : String) (args : List JsExpr) : JsExpr := .call (.member o m) args
 
@@ -196,7 +196,7 @@ def lowerExtern (rt : Runtime) (name : String) (argTys : List JsTerm) (resTy : J
   -- an arithmetic operator on the representation of the first argument
   let arith (nop : JsNumBinOp) (bop : JsBigIntBinOp) : Option JsExpr :=
     bin (if isBig then .bigint bop else .num nop)
-  let arg0 := args.headD (.var "undefined")
+  let arg0 := args.headD (.global "undefined")
   let inline? : Option JsExpr :=
     -- a `Float.Model` (`Float32.Model`) is laid out as the `Float` (`Float32`) it models
     if name ∈ ["lean_float_to_bits__Float_toModel", "lean_float_of_bits__Float_ofModel",
@@ -223,13 +223,13 @@ def lowerExtern (rt : Runtime) (name : String) (argTys : List JsTerm) (resTy : J
     | "lean_string_append" => bin (.str .concat)
     -- a list and a generic array are both JavaScript arrays
     | "lean_array_mk" => match typedCtor? resTy with
-      | some k => some (meth (.var k) "from" [arg0])
+      | some k => some (meth (.global k) "from" [arg0])
       | none => some arg0
     | "lean_array_to_list" => match t0 with
       | .genericArray _ => some arg0
       | _ => none
     | "lean_mk_empty_array_with_capacity" => match typedCtor? resTy with
-      | some k => some (.new (.var k) [num 0])
+      | some k => some (.new (.global k) [num 0])
       | none => some (.array [])
     | "lean_float_add" => bin (.num .add)
     | "lean_float_sub" => bin (.num .sub)
@@ -246,7 +246,7 @@ def lowerExtern (rt : Runtime) (name : String) (argTys : List JsTerm) (resTy : J
   | none =>
     -- `Array.replicate` on a typed array takes the constructor of the typed array
     let (fname, args) := match sym, typedCtor? resTy with
-      | "lean_mk_array", some k => ("$lean_mk_typed_array", .var k :: args)
+      | "lean_mk_array", some k => ("$lean_mk_typed_array", .global k :: args)
       | _, _ => (rtName name, args)
     let f : RtFn := { file := RtFile.ofResult sym resKnob resTy, name := fname }
     if rt.has f.file f.name then (.helper f.name args, [f])

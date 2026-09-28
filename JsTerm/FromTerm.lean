@@ -17,7 +17,7 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 
 | `Term` | JavaScript |
 | --- | --- |
-| an unknown, a known value (de Bruijn) | a named `const` (`x$1`, `k$2`, …); join points stay de Bruijn indexed |
+| an unknown, a known value (de Bruijn) | a constant (`const`, a parameter, a field) or a mutable variable (the accumulator of a loop, the variable of a join point), by its de Bruijn index in its own context; join points stay de Bruijn indexed |
 | `PExpr.lit` | a literal at the configured layout (`12n` or `12`); a literal that does not fit in a `number` is refused |
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` |
 | `enum_mk i` | the number `shift + i` |
@@ -95,28 +95,53 @@ def primLit (cfg : JsConfig) : (p : LeanPrimTy) → p.denote → Except String J
 
 /-! ## The conversion -/
 
-/-- The state of the conversion: the counter of fresh names and the runtime functions used
-    so far. -/
+/-- The state of the conversion: the runtime functions used so far. -/
 structure ConvState where
-  /-- The next fresh name. -/
-  next : Nat := 1
   /-- The runtime functions the program calls, each once, in order of first use. -/
   imports : Array RtFn := #[]
 
 /-- The conversion monad. -/
 abbrev ConvM := StateT ConvState (Except String)
 
-/-- The JavaScript names of the three contexts of a statement, innermost first. -/
-structure Names where
-  /-- The unknowns (`Γ`). -/
-  u : List String := []
-  /-- The known values (`Φ`). -/
-  k : List String := []
+/-- Where a variable of `Term` lives in JavaScript: a constant or a mutable variable, by its de
+    Bruijn *level* (its position counting from the outside of the function), or nowhere (a
+    field annotated unused, which is never read). -/
+inductive Ref where
+  | c (lvl : Nat)
+  | m (lvl : Nat)
+  | none
   deriving Inhabited
 
-/-- A fresh JavaScript name. -/
-def fresh (pfx : String) : ConvM String :=
-  modifyGet fun s => (s!"{pfx}${s.next}", { s with next := s.next + 1 })
+/-- The JavaScript variables of the two contexts of variables of a statement (the unknowns `Γ`
+    and the known values `Φ`, innermost first), and how many constants and mutable variables
+    are in scope where the JavaScript is being generated (which turns a level into a de Bruijn
+    index). -/
+structure Names where
+  /-- The unknowns (`Γ`). -/
+  u : List Ref := []
+  /-- The known values (`Φ`). -/
+  k : List Ref := []
+  /-- The number of constants in scope. -/
+  cd : Nat := 0
+  /-- The number of mutable variables in scope. -/
+  md : Nat := 0
+  deriving Inhabited
+
+namespace Names
+
+/-- The JavaScript variable of a `Ref`, here. -/
+def get (n : Names) : Ref → JsExpr
+  | .c l => .cvar (n.cd - 1 - l)
+  | .m l => .mvar (n.md - 1 - l)
+  | .none => .global "undefined"
+
+/-- A new constant, bound here (for what follows), and the names after it. -/
+def bindC (n : Names) : Ref × Names := (.c n.cd, { n with cd := n.cd + 1 })
+
+/-- A new mutable variable, bound here (for what follows), and the names after it. -/
+def bindM (n : Names) : Ref × Names := (.m n.md, { n with md := n.md + 1 })
+
+end Names
 
 /-- Record a runtime function the program calls (each once). -/
 def addImport (acc : Array RtFn) (f : RtFn) : Array RtFn :=
@@ -138,15 +163,17 @@ def liftExcept {α : Type} (x : Except String α) : ConvM α :=
   | .ok a => pure a
   | .error e => throw e
 
-/-- Turn the tail `return e` of every path into `acc = e` (the body of a loop). -/
-partial def retToAssign (acc : String) : List JsStmt → List JsStmt
+/-- Turn the tail `return e` of every path into `acc = e` (the body of a loop), where `acc` is
+    the mutable variable of level `acc` and `md` mutable variables are in scope at the start
+    of the statements. -/
+partial def retToAssign (acc md : Nat) : List JsStmt → List JsStmt
   | [] => []
   | s :: ss =>
     let s' := match s with
-      | .ret e => .assign acc e
-      | .ite c t e => .ite c (retToAssign acc t) (retToAssign acc e)
+      | .ret e => .assign (md - 1 - acc) e
+      | .ite c t e => .ite c (retToAssign acc md t) (retToAssign acc md e)
       | s => s
-    s' :: retToAssign acc ss
+    s' :: retToAssign acc (md + s.bindsM) ss
 
 /-- Does a statement contain a join point (outside of the arrows)? -/
 partial def JsStmt.hasJoin : JsStmt → Bool
@@ -166,12 +193,14 @@ partial def retToJump (d : Nat) : List JsStmt → List JsStmt
       | s => s
     s' :: retToJump d ss
 
-/-- The body of a loop iteration assigning the accumulator `acc` instead of returning: each
-    `return e` becomes `acc = e`.  When the body has join points (whose blocks are followed by
-    more statements), it becomes the block of a join point of variable `acc` instead, and each
-    `return e` a jump out of it (`acc = e; break L;`). -/
-def retToAcc (acc : String) (body : List JsStmt) : List JsStmt :=
-  if body.any JsStmt.hasJoin then [.join acc (retToJump 0 body)] else retToAssign acc body
+/-- The body of a loop iteration assigning the accumulator (the mutable variable of level
+    `acc`, `md` mutable variables in scope) instead of returning: each `return e` becomes
+    `acc = e`.  When the body has join points (whose blocks are followed by more statements),
+    it becomes the block of a join point of variable `acc` instead, and each `return e` a jump
+    out of it (`acc = e; break L;`). -/
+def retToAcc (acc md : Nat) (body : List JsStmt) : List JsStmt :=
+  if body.any JsStmt.hasJoin then [.join (md - 1 - acc) (retToJump 0 body)]
+  else retToAssign acc md body
 
 mutual
 /-- Does a statement build a closure (which could capture a variable the loop reassigns)? -/
@@ -201,97 +230,28 @@ partial def JsExpr.hasArrow : JsExpr → Bool
   | _ => false
 end
 
-/-- Rename a variable in statements that do not rebind it (the names of the conversion are
-    all distinct). -/
-partial def renameStmts (x y : String) (ss : List JsStmt) : List JsStmt :=
-  ss.map go
-where
-  goE : JsExpr → JsExpr
-    | .var z => .var (if z == x then y else z)
-    | .bin op a b => .bin op (goE a) (goE b)
-    | .un op a => .un op (goE a)
-    | .helper n as => .helper n (as.map goE)
-    | .call f as => .call (goE f) (as.map goE)
-    | .arrow ps b => .arrow ps (b.map go)
-    | .array es => .array (es.map goE)
-    | .typedArray c es => .typedArray c (es.map goE)
-    | .index e i => .index (goE e) i
-    | .member e m => .member (goE e) m
-    | .cond c a b => .cond (goE c) (goE a) (goE b)
-    | .object fs => .object (fs.map fun (k, e) => (k, goE e))
-    | .at e i => .at (goE e) (goE i)
-    | .new c as => .new (goE c) (as.map goE)
-    | .spread e => .spread (goE e)
-    | e => e
-  go : JsStmt → JsStmt
-    | .const z e => .const z (goE e)
-    | .letMut z e => .letMut z (e.map goE)
-    | .assign z e => .assign (if z == x then y else z) (goE e)
-    | .destructure zs e => .destructure zs (goE e)
-    | .destructureObj zs e => .destructureObj zs (goE e)
-    | .setMember o m e => .setMember (goE o) m (goE e)
-    | .setAt o i e => .setAt (goE o) (goE i) (goE e)
-    | .expr e => .expr (goE e)
-    | .while c b => .while (goE c) (b.map go)
-    | .ret e => .ret (goE e)
-    | .ite c t e => .ite (goE c) (t.map go) (e.map go)
-    | .forRange i big n b => .forRange i big (goE n) (b.map go)
-    | .forOf z xs b => .forOf z (goE xs) (b.map go)
-    | .throw k m => .throw k m
-    | .join z b => .join (if z == x then y else z) (b.map go)
-    | .jump j e => .jump j (goE e)
-
-/-- The body of a loop whose accumulator is the mutable `acc`, the body reading it as
-    `accIn`: every `return e` becomes `acc = e`.  When the body builds a closure, `accIn` is
-    a `const` copy of `acc` made at the start of the iteration (a closure must capture the
-    value of this iteration, not the variable the loop reassigns); otherwise the body reads
-    `acc` itself. -/
-def loopBody (acc accIn : String) (body : List JsStmt) : List JsStmt :=
+/-- The body of a loop whose accumulator is the mutable variable of level `acc` (`md` mutable
+    variables in scope in the body), the body reading the accumulator as its innermost constant
+    (`accIn`, bound just before it): every `return e` becomes `acc = e`.  When the body builds
+    a closure, `accIn` is a `const` copy of `acc` made at the start of the iteration (a closure
+    must capture the value of this iteration, not the variable the loop reassigns); otherwise
+    the body reads `acc` itself (`accIn` is substituted by it). -/
+def loopBody (acc md : Nat) (body : List JsStmt) : List JsStmt :=
   if body.any JsStmt.hasArrow then
-    .const accIn (.var acc) :: retToAcc acc body
+    .const "a" (.mvar (md - 1 - acc)) :: retToAcc acc md body
   else
-    retToAcc acc (renameStmts accIn acc body)
-
-mutual
-/-- Does a statement mention the variable `x`? -/
-partial def JsStmt.mentions (x : String) : JsStmt → Bool
-  | .const _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e | .expr e =>
-    e.mentions x
-  | .setMember o _ e => o.mentions x || e.mentions x
-  | .setAt o i e => o.mentions x || i.mentions x || e.mentions x
-  | .while c b => c.mentions x || b.any (·.mentions x)
-  | .letMut _ e => e.any (·.mentions x)
-  | .assign y e => y == x || e.mentions x
-  | .join y b => y == x || b.any (·.mentions x)
-  | .ite c t e => c.mentions x || t.any (·.mentions x) || e.any (·.mentions x)
-  | .forRange _ _ n b => n.mentions x || b.any (·.mentions x)
-  | .forOf _ xs b => xs.mentions x || b.any (·.mentions x)
-  | .throw _ _ => false
-/-- Does an expression mention the variable `x`? -/
-partial def JsExpr.mentions (x : String) : JsExpr → Bool
-  | .var y => y == x
-  | .arrow _ b => b.any (·.mentions x)
-  | .bin _ a b => a.mentions x || b.mentions x
-  | .un _ a => a.mentions x
-  | .call f as => f.mentions x || as.any (·.mentions x)
-  | .helper _ as | .array as | .typedArray _ as => as.any (·.mentions x)
-  | .index e _ | .member e _ | .spread e => e.mentions x
-  | .cond c a b => c.mentions x || a.mentions x || b.mentions x
-  | .object fs => fs.any (·.2.mentions x)
-  | .at e i => e.mentions x || i.mentions x
-  | .new c as => c.mentions x || as.any (·.mentions x)
-  | .lit _ => false
-end
+    retToAcc acc md (substStmts (.instC (.mvar (md - 1 - acc))) body)
 
 /-- An expression that can be repeated without recomputing anything. -/
 def JsExpr.isAtom : JsExpr → Bool
-  | .var _ | .lit _ => true
+  | .cvar _ | .mvar _ | .global _ | .lit _ => true
   | _ => false
 
-/-- Is the body of an array fold, whose element is `e` and accumulator `acc`, the push of the
-    element onto the accumulator (`return lean_array_push(acc, e);`)? -/
-def isPushStep (acc e : String) : List JsStmt → Bool
-  | [.ret (.helper h [.var a, .var x])] => h == "$lean_array_push" && a == acc && x == e
+/-- Is the body of an array fold, whose accumulator is its innermost constant and element the
+    one around it, the push of the element onto the accumulator
+    (`return lean_array_push(acc, e);`)? -/
+def isPushStep : List JsStmt → Bool
+  | [.ret (.helper h [.cvar 0, .cvar 1])] => h == "$lean_array_push"
   | _ => false
 
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
@@ -306,9 +266,17 @@ def unionObj (tag : Nat) (es : List JsExpr) : JsExpr :=
   .object (("tag", .lit (.int tag)) :: es.zipIdx.map fun (e, i) => (fieldKey i, e))
 
 /-- The properties an object pattern takes out, for the binders of a record's (or a
-    constructor's) fields, `none` for a field not used. -/
+    constructor's) fields (their hints), `none` for a field not used. -/
 def fieldBinds (bs : List (Option String)) : List (String × String) :=
   bs.zipIdx.filterMap fun (b, i) => b.map fun x => (fieldKey i, x)
+
+/-- Bind the used fields of a record or a constructor as constants, in order (as the object
+    pattern of `fieldBinds` does): where each field lives, and the names after the pattern. -/
+def bindFields (n : Names) (bs : List (Option String)) : List Ref × Names :=
+  let (rs, n) := bs.foldl (fun (acc : Array Ref × Names) b => match b with
+    | some _ => let (r, n') := acc.2.bindC; (acc.1.push r, n')
+    | none => (acc.1.push .none, acc.2)) (#[], n)
+  (rs.toList, n)
 
 /-- The type of member `j` of a union's constructor list, as a list of field types. -/
 def ctorsBinds {ks : List Nat} : {bs : List Bool} → Ctors ks bs → List (List (Ty ks))
@@ -332,26 +300,18 @@ def knobOfTy {ks : List Nat} {d : Bool} : Ty ks d → Option RtKnob
   | .prim p => (JsConfig.knobOfPrim? p).bind RtKnob.ofName?
   | _ => none
 
-/-- Names for the fields a pattern binds, `none` for the ones annotated unused. -/
-def fieldBinders (tys : List (Ty ks)) (us : List Usage01ω) :
-    ConvM (List (Option String) × List String) := do
-  let mut bs := #[]
-  let mut names := #[]
-  for i in [0:tys.length] do
-    let x ← fresh "f"
-    names := names.push x
-    let used := match us[i]? with
-      | some .zero => false
-      | _ => true
-    bs := bs.push (if used then some x else none)
-  return (bs.toList, names.toList)
+/-- The hints of the fields a pattern binds, `none` for the ones annotated unused. -/
+def fieldBinders (tys : List (Ty ks)) (us : List Usage01ω) : List (Option String) :=
+  (List.range tys.length).map fun i => match us[i]? with
+    | some .zero => none
+    | _ => some "f"
 
 mutual
 
 /-- A neutral expression. -/
 partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
     Neu Δ Φ Γ τ ℓ → Names → ConvM JsExpr
-  | .var x, n => pure (.var (n.u.getD x.index "undefined$"))
+  | .var x, n => pure (n.get (n.u.getD x.index .none))
   | .data_out _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
   | .cond c a b, n => do return .cond (← cNeu c n) (← cPExpr a n) (← cPExpr b n)
   | Neu.extern (σs := σs) e args _, n => do
@@ -365,7 +325,7 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
 partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} :
     PExpr Δ Φ Γ τ o → Names → ConvM JsExpr
   | .neu e, n => cNeu e n
-  | .kvar k, n => pure (.var (n.k.getD k.index "undefined$"))
+  | .kvar k, n => pure (n.get (n.k.getD k.index .none))
   | .lit p v, _ => liftExcept (primLit cfg p v)
   | .enum_mk s i, _ => pure (.lit (.int (s.shift + i.val)))
   | .record_mk args, n => return recordObj (← cArgs args n)
@@ -394,8 +354,8 @@ partial def cElems {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {o : Lvl} :
 partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} :
     Val Δ d Φ Γ τ o → Names → ConvM JsExpr
   | .lam b, n => do
-    let x ← fresh "x"
-    return .arrow [x] (← cBody b n [x])
+    let (x, n') := n.bindC
+    return .arrow ["x"] (← cBody b n' [x])
   | .thunk_mk b, n => do
     useRt [mkThunkFn]
     return .helper mkThunkFn.name [.arrow [] (← cBody b n [])]
@@ -410,86 +370,97 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} 
   | .list_mk es, n => return .array (← cElems es n)
   | .data_in _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
 
-/-- The body of a closure, a delay or a loop, whose parameters are named `bs` (innermost
-    first): statements ending in `return`. -/
+/-- The body of a closure, a delay or a loop, whose parameters live at `xs` (innermost first;
+    `n` already counts them): statements ending in `return`. -/
 partial def cBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} :
-    Body Δ d Φ Γ bs τ o → Names → List String → ConvM (List JsStmt)
-  | .closed t, n, xs => cTerm t { u := xs, k := n.k }
-  | .opened t _, n, xs => cTerm t { u := xs ++ n.u, k := n.k }
+    Body Δ d Φ Γ bs τ o → Names → List Ref → ConvM (List JsStmt)
+  | .closed t, n, xs => cTerm t { n with u := xs }
+  | .opened t _, n, xs => cTerm t { n with u := xs ++ n.u }
 
-/-- A computation whose result is named `x`: the statements that compute it, and the name
-    it can be referred to by. -/
+/-- A computation: the statements that compute it, where its result lives, and the names
+    after the statements. -/
 partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
-    Comp Δ d Φ Γ τ ℓ → Names → ConvM (List JsStmt × String)
+    Comp Δ d Φ Γ τ ℓ → Names → ConvM (List JsStmt × Ref × Names)
   | .app f a _, n => do
-    let x ← fresh "x"
-    return ([.const x (.call (← cPExpr f n) [← cPExpr a n])], x)
+    let e := JsExpr.call (← cPExpr f n) [← cPExpr a n]
+    let (x, n') := n.bindC
+    return ([.const "x" e], x, n')
   | .share e, n => do
-    let x ← fresh "x"
-    return ([.const x (← cNeu e n)], x)
+    let ee ← cNeu e n
+    let (x, n') := n.bindC
+    return ([.const "x" ee], x, n')
   | .nat_rec cnt z s _, n => do
-    let acc ← fresh "acc"
-    let i ← fresh "i"
     let cntE ← cPExpr cnt n
-    let (pre, cntE) ← if cntE.isAtom then pure ([], cntE) else do
-      let c ← fresh "n"
-      pure ([JsStmt.const c cntE], JsExpr.var c)
-    let zE ← cPExpr z n
-    let accIn ← fresh "a"
-    let body ← cBody s n [accIn, i]
+    -- the count, computed once
+    let (pre, cntE, n1) := if cntE.isAtom then ([], cntE, n)
+      else ([JsStmt.const "n" cntE], JsExpr.cvar 0, n.bindC.2)
+    let zE ← cPExpr z n1
+    let (acc, n2) := n1.bindM
+    let accLvl := n2.md - 1
+    let cntE := cntE.shift 0 1
+    -- the body: the counter, then the accumulator it reads
+    let (i, nb) := n2.bindC
+    let (accIn, nb) := nb.bindC
+    let body ← cBody s nb [accIn, i]
     let big := (lowerTy cfg (Ty.nat : Ty ks)).isBigInt
-    if body.any (·.mentions accIn) then
-      return (pre ++ [.letMut acc (some zE), .forRange i big cntE (loopBody acc accIn body)], acc)
+    if mentionsIn ⟨false, 0⟩ body then
+      return (pre ++ [.letMut "acc" (some zE),
+        .forRange "i" big cntE (loopBody accLvl n2.md body)], acc, n2)
     else
       -- a step that ignores the accumulator (a case analysis `0` / `k + 1` read as a
       -- recursion): only the last iteration counts, `i = n - 1`, so no loop
       let lit (k : Nat) : JsExpr := .lit (if big then .bigint k else .int k)
       let lt : JsBinOp := if big then .bigint .lt else .num .lt
       let sub : JsBinOp := if big then .bigint .sub else .num .sub
-      return (pre ++ [.letMut acc (some zE),
-        .ite (.bin lt (lit 0) cntE) (.const i (.bin sub cntE (lit 1)) :: retToAcc acc body) []],
-        acc)
+      let body := substStmts (.instC (.global "undefined")) body
+      return (pre ++ [.letMut "acc" (some zE),
+        .ite (.bin lt (lit 0) cntE)
+          (.const "i" (.bin sub cntE (lit 1)) :: retToAcc accLvl n2.md body) []],
+        acc, n2)
   | Comp.array_foldl (ρ := ρ) arr z s _, n => do
-    let acc ← fresh "acc"
-    let e ← fresh "e"
     let arrE ← cPExpr arr n
     let zE ← cPExpr z n
-    let accIn ← fresh "a"
-    let saved ← get
-    let body ← cBody s n [e, accIn]
+    let (acc, n2) := n.bindM
+    -- the body: the element, then the accumulator it reads
+    let (e, nb) := n2.bindC
+    let (accIn, nb) := nb.bindC
+    let body ← cBody s nb [e, accIn]
     -- `Array.append z arr` (a fold pushing every element onto the accumulator) on generic
     -- arrays is the array literal `[...z, ...arr]`
-    if isPushStep accIn e body && (lowerTy cfg ρ matches .genericArray _) then
-      set saved
-      let x ← fresh "x"
-      return ([.const x (.array [.spread zE, .spread arrE])], x)
-    return ([.letMut acc (some zE), .forOf e arrE (loopBody acc accIn body)], acc)
+    if isPushStep body && (lowerTy cfg ρ matches .genericArray _) then
+      let (x, n') := n.bindC
+      return ([.const "x" (.array [.spread zE, .spread arrE])], x, n')
+    return ([.letMut "acc" (some zE), .forOf "e" (arrE.shift 0 1) (loopBody (n2.md - 1) n2.md body)],
+      acc, n2)
   | .data_rec _ _ _ _ _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
   | .data_brec _ _ _ _ _ _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
   | .thunk_force p, n => do
-    let x ← fresh "x"
     useRt [thunkGetFn]
-    return ([.const x (.helper thunkGetFn.name [← cPExpr p n])], x)
+    let e := JsExpr.helper thunkGetFn.name [← cPExpr p n]
+    let (x, n') := n.bindC
+    return ([.const "x" e], x, n')
   | .lazy_force p, n => do
-    let x ← fresh "x"
-    return ([.const x (.call (← cPExpr p n) [])], x)
+    let e := JsExpr.call (← cPExpr p n) []
+    let (x, n') := n.bindC
+    return ([.const "x" e], x, n')
 
 /-- A statement: JavaScript statements every path of which ends in a `return`. -/
 partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
     Term Δ d Φ Γ τ js o → Names → ConvM (List JsStmt)
   | .ret p, n => return [.ret (← cPExpr p n)]
   | Term.letV _ v t, n => do
-    let k ← fresh "k"
     let ve ← cVal v n
-    return .const k ve :: (← cTerm t { n with k := k :: n.k })
+    let (k, n') := n.bindC
+    return .const "k" ve :: (← cTerm t { n' with k := k :: n.k })
   | .letE _ c t, n => do
-    let (ss, x) ← cComp c n
-    return ss ++ (← cTerm t { n with u := x :: n.u })
+    let (ss, x, n') ← cComp c n
+    return ss ++ (← cTerm t { n' with u := x :: n.u })
   | Term.record_casesOn (t := tt) (fs := fs) us e t, n => do
-    let (bs, xs) ← fieldBinders (tt :: fs.toList) us
+    let bs := fieldBinders (tt :: fs.toList) us
     let ee ← cNeu e n
-    let rest ← cTerm t { n with u := xs ++ n.u }
     let binds := fieldBinds bs
+    let (refs, n') := bindFields n bs
+    let rest ← cTerm t { n' with u := refs ++ n.u }
     return if binds.isEmpty then rest else .destructureObj binds ee :: rest
   | .branch b, n => cBranch b n
   | .jump j p, n => return [.jump j.index (← cPExpr p n)]
@@ -500,9 +471,8 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
   | .ite c t e, n => return [.ite (← cNeu c n) (← cTerm t n) (← cTerm e n)]
   | Branch.enum_casesOn (s := s) c bs, n => do
     let ce ← cNeu c n
-    let (pre, ce) ← if ce.isAtom then pure ([], ce) else do
-      let x ← fresh "s"
-      pure ([JsStmt.const x ce], JsExpr.var x)
+    let (pre, ce, n) := if ce.isAtom then ([], ce, n)
+      else ([JsStmt.const "s" ce], JsExpr.cvar 0, n.bindC.2)
     let k := s.nOfConstructors
     let mut out : List JsStmt := []
     for i' in [0:k] do
@@ -514,9 +484,8 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     return pre ++ out
   | Branch.union_casesOn (cs := cs) e brs, n => do
     let ee ← cNeu e n
-    let (pre, ee) ← if ee.isAtom then pure ([], ee) else do
-      let x ← fresh "s"
-      pure ([JsStmt.const x ee], JsExpr.var x)
+    let (pre, ee, n) := if ee.isAtom then ([], ee, n)
+      else ([JsStmt.const "s" ee], JsExpr.cvar 0, n.bindC.2)
     let arms ← cBranches brs n ee
     let k := arms.length
     let mut out : List JsStmt := []
@@ -526,10 +495,10 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let _ := ctorsBinds cs
     return pre ++ out
   | Branch.join _ _ _ body br, n => do
-    let x ← fresh "x"
-    let block ← cBranch br n
-    let bodyS ← cTerm body { n with u := x :: n.u }
-    return [.letMut x none, .join x block] ++ bodyS
+    let (x, n1) := n.bindM
+    let block ← cBranch br n1
+    let bodyS ← cTerm body { n1 with u := x :: n.u }
+    return [.letMut "x" none, .join 0 block] ++ bodyS
 
 /-- The arms of a union's case analysis on `scrut`: each takes the fields apart
     (`const { _1: f₁, _2: f₂ } = scrut;`) and continues. -/
@@ -548,9 +517,10 @@ where
   arm (tys : List (Ty ks)) (us : List Usage01ω) (k : Names → ConvM (List JsStmt)) (n : Names)
       (scrut : JsExpr) : ConvM (List JsStmt) := do
     if tys.isEmpty then return ← k n
-    let (bs, xs) ← fieldBinders tys us
-    let body ← k { n with u := xs ++ n.u }
+    let bs := fieldBinders tys us
     let binds := fieldBinds bs
+    let (refs, n') := bindFields n bs
+    let body ← k { n' with u := refs ++ n.u }
     if binds.isEmpty then return body
     return .destructureObj binds scrut :: body
 
@@ -559,6 +529,21 @@ end
 end
 
 /-! ## Peephole clean-up -/
+
+/-- An expression of the scope after `let x;`, moved to before it (it must not mention `x`). -/
+def dropMut0 : JsSubst := ⟨.cvar, fun i => .mvar (i - 1)⟩
+
+/-- The statements after `let x;`, once `x` is the constant `const x = …;` instead. -/
+def mut0ToConst : JsSubst :=
+  ⟨fun i => .cvar (i + 1), fun i => if i == 0 then .cvar 0 else .mvar (i - 1)⟩
+
+/-- A join point of variable `x` (`let x;`, the innermost mutable variable), whose block
+    computes the expression `e` (seen from inside the block), followed by `rest`: `const x = e;`
+    and `rest`, if `e` does not read `x` and `rest` never assigns it. -/
+def joinToConst? (x : String) (e : JsExpr) (rest : List JsStmt) : Option (List JsStmt) :=
+  let x0 : JsVar := ⟨true, 0⟩
+  if e.mentions x0 || (occsStmts rest).any (fun o => o.is x0 && o.write) then none
+  else some (.const x (e.subst dropMut0) :: substStmts mut0ToConst rest)
 
 mutual
 /-- Clean up a block:
@@ -569,17 +554,17 @@ mutual
   is `const x = c ? a : b;` (the jumps of index `0` are the jumps to it). -/
 partial def peepholeStmts : List JsStmt → List JsStmt
   | [] => []
-  | [.const x e, .ret (.var y)] => if x == y then [.ret (peepholeExpr e)]
-      else [.const x (peepholeExpr e), .ret (.var y)]
-  | [.const x e, .jump j (.var y)] => if x == y then [.jump j (peepholeExpr e)]
-      else [.const x (peepholeExpr e), .jump j (.var y)]
-  | .letMut x none :: .join x' block :: rest =>
-    if x == x' then
-      match peepholeStmts block with
-      | [.jump 0 e] => peepholeStmts (.const x e :: rest)
-      | [.ite c [.jump 0 a] [.jump 0 b]] => peepholeStmts (.const x (.cond c a b) :: rest)
-      | block' => .letMut x none :: .join x block' :: peepholeStmts rest
-    else .letMut x none :: peepholeStmt (.join x' block) :: peepholeStmts rest
+  | [.const _ e, .ret (.cvar 0)] => [.ret (peepholeExpr e)]
+  | [.const _ e, .jump j (.cvar 0)] => [.jump j (peepholeExpr e)]
+  | .letMut x none :: .join 0 block :: rest =>
+    let block' := peepholeStmts block
+    let asConst : Option JsExpr := match block' with
+      | [.jump 0 e] => some e
+      | [.ite c [.jump 0 a] [.jump 0 b]] => some (.cond c a b)
+      | _ => none
+    match asConst.bind (joinToConst? x · rest) with
+    | some ss => peepholeStmts ss
+    | none => .letMut x none :: .join 0 block' :: peepholeStmts rest
   | s :: ss => peepholeStmt s :: peepholeStmts ss
 
 /-- Clean up the blocks of a statement. -/
@@ -629,26 +614,20 @@ appends is nested literals.  Two rewrites turn it into one literal:
 * `const x = [ … ];` used exactly once afterwards, not inside a loop or a closure (where it
   would be evaluated more than once), is inlined into that use.  The elements of such a
   literal (literals, variables, spreads of those) have no effect and cannot fail, so moving
-  it is safe as long as none of its variables is reassigned in between.
+  it is safe as long as none of its mutable variables is reassigned in between.
 -/
 
 /-- A literal, a variable, or an array literal of such (spread or not): an expression that
     has no effect, cannot fail and is cheap. -/
 partial def JsExpr.isMovable : JsExpr → Bool
-  | .var _ | .lit _ => true
+  | .cvar _ | .mvar _ | .global _ | .lit _ => true
   | .array es => es.all JsExpr.isMovable
   | .spread e => e.isMovable
   | _ => false
 
-/-- The variables of a movable expression. -/
-partial def JsExpr.movableVars : JsExpr → List String
-  | .var x => [x]
-  | .array es => es.flatMap JsExpr.movableVars
-  | .spread e => e.movableVars
-  | _ => []
-
 mutual
-/-- Rewrite every expression of a statement bottom-up with `f`. -/
+/-- Rewrite every expression of a statement bottom-up with `f` (which must leave the
+    variables alone). -/
 partial def JsStmt.mapE (f : JsExpr → JsExpr) : JsStmt → JsStmt
   | .const x e => .const x (e.mapE f)
   | .letMut x e => .letMut x (e.map (·.mapE f))
@@ -693,64 +672,19 @@ def flattenStep : JsExpr → JsExpr
       | e => [e])
   | e => e
 
-/-- The sum of two counts of mentions (`JsStmt.uses`). -/
-def usesAdd (a b : Nat × Nat) : Nat × Nat := (a.1 + b.1, a.2 + b.2)
-
-/-- The count of mentions inside a loop or a closure: every one is evaluated again. -/
-def usesAgain (a : Nat × Nat) : Nat × Nat := (a.1, a.1)
-
-mutual
-/-- How often a statement mentions the variable `x`: all the mentions, and the mentions that
-    are evaluated more than once (in the body of a loop, or of a closure). -/
-partial def JsStmt.uses (x : String) : JsStmt → Nat × Nat
-  | .const _ e | .assign _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e
-  | .expr e => e.uses x
-  | .letMut _ e => (e.map (·.uses x)).getD (0, 0)
-  | .setMember o _ e => usesAdd (o.uses x) (e.uses x)
-  | .setAt o i e => usesAdd (usesAdd (o.uses x) (i.uses x)) (e.uses x)
-  | .while c b => usesAgain (usesAdd (c.uses x) (usesAll x b))
-  | .ite c t e => usesAdd (c.uses x) (usesAdd (usesAll x t) (usesAll x e))
-  | .forRange _ _ n b => usesAdd (n.uses x) (usesAgain (usesAll x b))
-  | .forOf _ xs b => usesAdd (xs.uses x) (usesAgain (usesAll x b))
-  | .throw _ _ => (0, 0)
-  | .join _ b => usesAll x b
-/-- How often an expression mentions the variable `x` (see `JsStmt.uses`). -/
-partial def JsExpr.uses (x : String) : JsExpr → Nat × Nat
-  | .var y => if y == x then (1, 0) else (0, 0)
-  | .lit _ => (0, 0)
-  | .arrow _ b => usesAgain (usesAll x b)
-  | .bin _ a b | .at a b => usesAdd (a.uses x) (b.uses x)
-  | .un _ a | .index a _ | .member a _ | .spread a => a.uses x
-  | .call f as => as.foldl (fun acc a => usesAdd acc (a.uses x)) (f.uses x)
-  | .helper _ as | .array as | .typedArray _ as =>
-    as.foldl (fun acc a => usesAdd acc (a.uses x)) (0, 0)
-  | .new c as => as.foldl (fun acc a => usesAdd acc (a.uses x)) (c.uses x)
-  | .cond c a b => usesAdd (c.uses x) (usesAdd (a.uses x) (b.uses x))
-  | .object fs => fs.foldl (fun acc (_, e) => usesAdd acc (e.uses x)) (0, 0)
-/-- `JsStmt.uses` of a block. -/
-partial def usesAll (x : String) (ss : List JsStmt) : Nat × Nat :=
-  ss.foldl (fun acc s => usesAdd acc (s.uses x)) (0, 0)
-end
-
-/-- Does a statement (re)assign the variable `x`? -/
-partial def JsStmt.assigns (x : String) : JsStmt → Bool
-  | .assign y _ | .letMut y _ => y == x
-  | .join y b => y == x || b.any (·.assigns x)
-  | .while _ b | .forRange _ _ _ b | .forOf _ _ b => b.any (·.assigns x)
-  | .ite _ t e => t.any (·.assigns x) || e.any (·.assigns x)
-  | _ => false
-
 /-- Inline the array literals of a block used once (see above), and flatten. -/
 partial def inlineArrays : List JsStmt → List JsStmt
   | [] => []
   | .const x e :: rest =>
     let e := e.mapE flattenStep
-    let (all, again) := usesAll x rest
-    if (e matches .array _) && e.isMovable && all == 1 && again == 0 &&
-        e.movableVars.all (fun y => !rest.any (·.assigns y)) then
-      inlineArrays (rest.map (JsStmt.mapE (fun
-        | .var y => if y == x then e else .var y
-        | e' => flattenStep e')))
+    let occs := occsStmts rest
+    let uses := occs.filter (·.is ⟨false, 0⟩)
+    -- the mutable variables of `e` are not reassigned in `rest` (its constants never are)
+    let stable := e.occs.all fun o =>
+      !o.isMut || !occs.any fun r => r.write && r.is ⟨true, o.idx⟩
+    if (e matches .array _) && e.isMovable && uses.size == 1 && !uses.any (·.again) &&
+        stable then
+      inlineArrays ((substStmts (.instC e) rest).map (JsStmt.mapE flattenStep))
     else .const x e :: inlineArrays rest
   | s :: rest => inner s :: inlineArrays rest
 where
@@ -780,21 +714,21 @@ partial def peelFun {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     if k.index != 0 then do return ([], ← cTerm cfg rt t n) else
     match v with
     | Val.lam (σ := σ) b => do
-      let x ← match names with
-        | nm :: _ => pure nm
-        | [] => fresh "p"
-      let rest := names.drop 1
-      let (ps, body) ← peelBody b x n rest
-      return ((x, lowerTy cfg σ) :: ps, body)
+      let (ps, body) ← peelBody b n (names.drop 1)
+      return ((names.headD "p", lowerTy cfg σ) :: ps, body)
     | _ => do return ([], ← cTerm cfg rt t n)
   | t, n, _ => do return ([], ← cTerm cfg rt t n)
 
-/-- `peelFun` inside the body of a lambda whose parameter is named `x`. -/
+/-- `peelFun` inside the body of a lambda (whose parameter is bound here, as a constant). -/
 partial def peelBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} :
-    Body Δ d Φ Γ bs τ o → String → Names → List String →
+    Body Δ d Φ Γ bs τ o → Names → List String →
       ConvM (List (String × JsTerm) × List JsStmt)
-  | .closed t', x, n, rest => peelFun t' { u := [x], k := n.k } rest
-  | .opened t' _, x, n, rest => peelFun t' { u := [x] ++ n.u, k := n.k } rest
+  | .closed t', n, rest =>
+    let (x, n') := n.bindC
+    peelFun t' { n' with u := [x] } rest
+  | .opened t' _, n, rest =>
+    let (x, n') := n.bindC
+    peelFun t' { n' with u := x :: n.u } rest
 end
 
 /-- The result type after peeling `k` arrows. -/

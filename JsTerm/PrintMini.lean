@@ -14,13 +14,17 @@ space indentation, double quotes, semicolons, 80 columns).
 (This file is not a `module`: `LanguageJavascriptMini` is not written in the module
 system, and a module cannot import a file that is not one.)
 
+The variables of the grammar are de Bruijn indices; the printer names them, from the hints
+of their binders: `x$1`, `acc$2`, … (a counter per function, so that no name hides another),
+and the parameters of an exported function keep their names.
+
 The mapping is direct: a `const`/`let` is a declaration, a destructuring `const [a, , b] = e`
 an array pattern, a counting loop a `for (let i = 0n; i < n; i++)`, an arrow whose body is a
 single `return e` is printed `(x) => e`, and an `if` whose `else` branch is a single `if`
-is printed `else if`.  A join point `join x block` is the **labelled block** `j$k: { … }`
-(`k` counting the join points of the function from the outside in, so nested blocks have
-different labels) and a jump of de Bruijn index `i` is `x = e; break j$k;` for the variable
-and the label of the `i`-th enclosing block.  An exported function is
+is printed `else if`.  A join point `join m block` is the **labelled block** `j$k: { … }`
+(`k` counting the join points of the function, so nested blocks have different labels) and a
+jump of de Bruijn index `i` is `x = e; break j$k;` for the variable (the mutable variable `m`
+of the join point) and the label of the `i`-th enclosing block.  An exported function is
 `export const f = (x, y) => { … };`, a shared constant `const $c1 = e;`, a record
 `{ _1: a, _2: b }`, a union `{ tag: 1, _1: a }`, and taking one apart
 `const { _1: x, _3: z } = r;`.  Numbers are printed as integers when they are small
@@ -97,112 +101,172 @@ def unOp : JsUnOp → UnaryOp
   | .num .neg | .bigint .neg => .minus
   | .num .bitNot | .bigint .bitNot => .tilde
 
-/-- Where the statements are printed: the join points around them (innermost first, each as
-    its label and variable) and how many join points the function has so far (for fresh
-    labels). -/
-structure JoinCtx where
+/-- The names of the variables in scope where the statements are printed: the constants and
+    the mutable variables (innermost first, as the de Bruijn indices count), and the join
+    points around them (innermost first, each as its label and the name of its variable). -/
+structure Scope where
+  c : List String := []
+  m : List String := []
   joins : List (String × String) := []
-  next : Nat := 1
+
+/-- The printer's counters: of the names of the local variables and of the labels, which it
+    chooses (`x$1`, `acc$2`, …, from the hints of the binders; `j$1`, `j$2`, … for the labels
+    of the join points).  A name of a function's variables is never met twice, so no name
+    ever hides another. -/
+structure PrintSt where
+  names : Nat := 1
+  labels : Nat := 1
+
+/-- The printer. -/
+abbrev PM := StateM PrintSt
+
+/-- A new name, from the hint of a binder: `hint$k`. -/
+def freshName (hint : String) : PM String :=
+  modifyGet fun s => (s!"{hint}${s.names}", { s with names := s.names + 1 })
+
+/-- A new label, `j$k`. -/
+def freshLabel : PM String :=
+  modifyGet fun s => (s!"j${s.labels}", { s with labels := s.labels + 1 })
+
+/-- The name of a variable (`undefined` for an index out of scope, which a well-formed body
+    never has). -/
+def nameAt (names : List String) (i : Nat) : MiniExpr := ident (names.getD i "undefined")
 
 mutual
 /-- An expression as a `MiniAST` expression. -/
-partial def exprToMini (c : JoinCtx) : JsExpr → MiniExpr
-  | .var x => ident x
-  | .lit l => litExpr l
-  | .bin op a b => match binOp op with
-    | some o => .binary (exprToMini c a) o (exprToMini c b)
-    | none => .call (.dot (ident "Math") (nes "pow")) [exprToMini c a, exprToMini c b]
-  | .un op a => .unary (unOp op) (exprToMini c a)
-  | .helper n args => .call (ident n) (args.map (exprToMini c))
-  | .call f args => .call (exprToMini c f) (args.map (exprToMini c))
-  | .arrow ps body =>
-    let params := ps.map fun p => MiniParam.plain (.ident (nes p))
-    -- a function starts afresh: no jump leaves it (the labels stay distinct all the same)
-    let c' : JoinCtx := { joins := [], next := c.next }
+partial def exprToMini (sc : Scope) : JsExpr → PM MiniExpr
+  | .cvar i => pure (nameAt sc.c i)
+  | .mvar i => pure (nameAt sc.m i)
+  | .global x => pure (ident x)
+  | .lit l => pure (litExpr l)
+  | .bin op a b => do
+    let a ← exprToMini sc a
+    let b ← exprToMini sc b
+    return match binOp op with
+      | some o => .binary a o b
+      | none => .call (.dot (ident "Math") (nes "pow")) [a, b]
+  | .un op a => return .unary (unOp op) (← exprToMini sc a)
+  | .helper n args => return .call (ident n) (← args.mapM (exprToMini sc))
+  | .call f args => return .call (← exprToMini sc f) (← args.mapM (exprToMini sc))
+  | .arrow ps body => do
+    let names ← ps.mapM freshName
+    let params := names.map fun p => MiniParam.plain (.ident (nes p))
+    -- a function starts afresh: no jump leaves it
+    let sc' : Scope := { c := names.reverse ++ sc.c, m := sc.m, joins := [] }
     match body with
-    | [.ret e] => .arrow false params (.expr (exprToMini c' e))
-    | _ => .arrow false params (.block (stmtsToMini c' body))
-  | .array es => .array (es.map fun e => .elem (exprToMini c e))
-  | .typedArray k es => .call (.dot (ident k) (nes "of")) (es.map (exprToMini c))
-  | .index e i => .index (exprToMini c e) (natNum i)
-  | .member e n => .dot (exprToMini c e) (nes n)
-  | .cond k a b => .ternary (exprToMini c k) (exprToMini c a) (exprToMini c b)
-  | .object fs => .object (fs.map fun (k, e) => .keyValue (.ident (nes k)) (exprToMini c e))
-  | .at e i => .index (exprToMini c e) (exprToMini c i)
-  | .new k args => .new (exprToMini c k) (args.map (exprToMini c))
-  | .spread e => .spread (exprToMini c e)
+    | [.ret e] => return .arrow false params (.expr (← exprToMini sc' e))
+    | _ => return .arrow false params (.block (← stmtsToMini sc' body))
+  | .array es => return .array ((← es.mapM (exprToMini sc)).map .elem)
+  | .typedArray k es => return .call (.dot (ident k) (nes "of")) (← es.mapM (exprToMini sc))
+  | .index e i => return .index (← exprToMini sc e) (natNum i)
+  | .member e n => return .dot (← exprToMini sc e) (nes n)
+  | .cond k a b => return .ternary (← exprToMini sc k) (← exprToMini sc a) (← exprToMini sc b)
+  | .object fs => return .object (← fs.mapM fun (k, e) => do
+      return .keyValue (.ident (nes k)) (← exprToMini sc e))
+  | .at e i => return .index (← exprToMini sc e) (← exprToMini sc i)
+  | .new k args => return .new (← exprToMini sc k) (← args.mapM (exprToMini sc))
+  | .spread e => return .spread (← exprToMini sc e)
 
-/-- A statement as `MiniAST` statements (a jump is two: the assignment and the `break`). -/
-partial def stmtToMini (c : JoinCtx) : JsStmt → List MiniStatement
-  | .const x e => [.decl .const ⟨⟨.ident (nes x), some (exprToMini c e)⟩, []⟩]
-  | .letMut x e => [.decl .let_ ⟨⟨.ident (nes x), e.map (exprToMini c)⟩, []⟩]
-  | .assign x e => [.expr (.assign (ident x) .assign (exprToMini c e))]
-  | .destructure xs e =>
-    let elems := xs.map fun
+/-- A statement as `MiniAST` statements (a jump is two: the assignment and the `break`), and
+    the scope of the statements after it. -/
+partial def stmtToMini (sc : Scope) : JsStmt → PM (List MiniStatement × Scope)
+  | .const x e => do
+    let e ← exprToMini sc e
+    let n ← freshName x
+    return ([.decl .const ⟨⟨.ident (nes n), some e⟩, []⟩], { sc with c := n :: sc.c })
+  | .letMut x e => do
+    let e ← e.mapM (exprToMini sc)
+    let n ← freshName x
+    return ([.decl .let_ ⟨⟨.ident (nes n), e⟩, []⟩], { sc with m := n :: sc.m })
+  | .assign x e => do
+    return ([.expr (.assign (nameAt sc.m x) .assign (← exprToMini sc e))], sc)
+  | .destructure xs e => do
+    let e ← exprToMini sc e
+    let names ← xs.mapM fun x => x.mapM freshName
+    let elems := names.map fun
       | some x => MiniArrayPatternElem.elem (.ident (nes x))
       | none => .hole
     -- trailing holes are dropped (`[a, ,]` is `[a]`)
     let elems := (elems.reverse.dropWhile fun | .hole => true | _ => false).reverse
-    [.decl .const ⟨⟨.array elems, some (exprToMini c e)⟩, []⟩]
-  | .destructureObj bs e =>
-    let props := bs.map fun (k, x) => MiniObjectPatternProp.mk (.ident (nes k)) (.ident (nes x))
-    [.decl .const ⟨⟨.object props none, some (exprToMini c e)⟩, []⟩]
-  | .setMember o n e => [.expr (.assign (.dot (exprToMini c o) (nes n)) .assign (exprToMini c e))]
-  | .setAt o i e =>
-    [.expr (.assign (.index (exprToMini c o) (exprToMini c i)) .assign (exprToMini c e))]
-  | .expr e => [.expr (exprToMini c e)]
-  | .while k body => [.while_ (exprToMini c k) (.block (stmtsToMini c body))]
-  | .ret e => [.return_ (some (exprToMini c e))]
-  | .ite k t e =>
-    let els : Option MiniStatement := match e with
-      | [] => none
-      | [s@(.ite ..)] => match stmtToMini c s with
-        | [m] => some m
-        | ms => some (.block ms)
-      | ss => some (.block (stmtsToMini c ss))
-    [.if_ (exprToMini c k) (.block (stmtsToMini c t)) els]
-  | .forRange i big n body =>
+    return ([.decl .const ⟨⟨.array elems, some e⟩, []⟩],
+      { sc with c := (names.filterMap id).reverse ++ sc.c })
+  | .destructureObj bs e => do
+    let e ← exprToMini sc e
+    let names ← bs.mapM fun (_, x) => freshName x
+    let props := (bs.zip names).map fun ((k, _), x) =>
+      MiniObjectPatternProp.mk (.ident (nes k)) (.ident (nes x))
+    return ([.decl .const ⟨⟨.object props none, some e⟩, []⟩],
+      { sc with c := names.reverse ++ sc.c })
+  | .setMember o n e => do
+    return ([.expr (.assign (.dot (← exprToMini sc o) (nes n)) .assign (← exprToMini sc e))], sc)
+  | .setAt o i e => do
+    let o ← exprToMini sc o
+    let i ← exprToMini sc i
+    return ([.expr (.assign (.index o i) .assign (← exprToMini sc e))], sc)
+  | .expr e => do return ([.expr (← exprToMini sc e)], sc)
+  | .while k body => do
+    return ([.while_ (← exprToMini sc k) (.block (← stmtsToMini sc body))], sc)
+  | .ret e => do return ([.return_ (some (← exprToMini sc e))], sc)
+  | .ite k t e => do
+    let k ← exprToMini sc k
+    let t ← stmtsToMini sc t
+    let els : Option MiniStatement ← match e with
+      | [] => pure none
+      | [s@(.ite ..)] => do
+        match (← stmtToMini sc s).1 with
+        | [m] => pure (some m)
+        | ms => pure (some (.block ms))
+      | ss => do pure (some (.block (← stmtsToMini sc ss)))
+    return ([.if_ k (.block t) els], sc)
+  | .forRange i big n body => do
+    let n ← exprToMini sc n
+    let x ← freshName i
     let zero : MiniExpr := if big then .number (.bigint .decimal 0) else natNum 0
-    [.for_ (.decl .let_ ⟨⟨.ident (nes i), some zero⟩, []⟩)
-      (some (.binary (ident i) .lt (exprToMini c n)))
-      (some (.postfix (ident i) .incr)) (.block (stmtsToMini c body))]
-  | .forOf x xs body =>
-    [.forOf false (.decl .const (.ident (nes x))) (exprToMini c xs) (.block (stmtsToMini c body))]
-  | .throw k msg => [.throw (.new (ident k) [.string msg])]
-  | .join x block =>
-    let label := s!"j${c.next}"
-    let c' : JoinCtx := { joins := (label, x) :: c.joins, next := c.next + 1 }
-    [.labelled (nes label) (.block (stmtsToMini c' block))]
-  | .jump j e =>
-    match c.joins[j]? with
+    let body ← stmtsToMini { sc with c := x :: sc.c } body
+    return ([.for_ (.decl .let_ ⟨⟨.ident (nes x), some zero⟩, []⟩)
+      (some (.binary (ident x) .lt n))
+      (some (.postfix (ident x) .incr)) (.block body)], sc)
+  | .forOf x xs body => do
+    let xs ← exprToMini sc xs
+    let n ← freshName x
+    let body ← stmtsToMini { sc with c := n :: sc.c } body
+    return ([.forOf false (.decl .const (.ident (nes n))) xs (.block body)], sc)
+  | .throw k msg => return ([.throw (.new (ident k) [.string msg])], sc)
+  | .join x block => do
+    let label ← freshLabel
+    let v := sc.m.getD x "undefined"
+    let block ← stmtsToMini { sc with joins := (label, v) :: sc.joins } block
+    return ([.labelled (nes label) (.block block)], sc)
+  | .jump j e => do
+    let e ← exprToMini sc e
+    match sc.joins[j]? with
     | some (label, x) =>
-      [.expr (.assign (ident x) .assign (exprToMini c e)), .break_ (some (nes label))]
-    | none => [.throw (.new (ident "Error") [.string s!"LeanScript: jump to an unknown join point {j}"])]
+      return ([.expr (.assign (ident x) .assign e), .break_ (some (nes label))], sc)
+    | none =>
+      return ([.throw (.new (ident "Error")
+        [.string s!"LeanScript: jump to an unknown join point {j}"])], sc)
 
-/-- Statements.  (The labels of sibling join points are distinct too: each `join` takes the
-    next number, whatever its depth.) -/
-partial def stmtsToMini (c : JoinCtx) (ss : List JsStmt) : List MiniStatement :=
-  (ss.foldl (fun (acc : Array MiniStatement × Nat) s =>
-    let (ms, next) := acc
-    let out := stmtToMini { c with next } s
-    (ms ++ out, next + joinCount s)) (#[], c.next)).1.toList
-
-/-- The number of join points a statement declares (outside of its arrows are counted too:
-    they only need to differ, not to be dense). -/
-partial def joinCount : JsStmt → Nat
-  | .join _ b => 1 + (b.map joinCount).sum
-  | .ite _ t e => (t.map joinCount).sum + (e.map joinCount).sum
-  | .forRange _ _ _ b | .forOf _ _ b | .while _ b => (b.map joinCount).sum
-  | _ => 0
+/-- Statements, each in the scope the ones before it leave. -/
+partial def stmtsToMini (sc : Scope) : List JsStmt → PM (List MiniStatement)
+  | [] => pure []
+  | s :: ss => do
+    let (ms, sc') ← stmtToMini sc s
+    return ms ++ (← stmtsToMini sc' ss)
 end
 
 /-- A function as an exported declaration: `export const name = (params) => { body };`. -/
 def JsFun.toMini (f : JsFun) : MiniModuleItem :=
-  let params := f.params.map fun x => MiniParam.plain (.ident (nes x))
-  let body : MiniArrowBody := match f.body with
-    | [.ret e] => .expr (exprToMini {} e)
-    | _ => .block (stmtsToMini {} f.body)
-  .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (.arrow false params body)⟩, []⟩))
+  let go : PM MiniModuleItem := do
+    -- the parameters keep their names (a name met twice gets a fresh one)
+    let params ← f.params.foldlM (fun (acc : Array String) p =>
+      if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
+    let sc : Scope := { c := params.toList.reverse }
+    let ps := params.toList.map fun x => MiniParam.plain (.ident (nes x))
+    let body : MiniArrowBody ← match f.body with
+      | [.ret e] => do pure (.expr (← exprToMini sc e))
+      | _ => do pure (.block (← stmtsToMini sc f.body))
+    return .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (.arrow false ps body)⟩, []⟩))
+  go.run' {}
 
 /-- The import of the functions `names` of the runtime module `path`:
     `import { a, b } from "path";`. -/
@@ -213,7 +277,7 @@ def importToMini (path : String) (names : List String) : MiniModuleItem :=
 
 /-- A constant shared by the functions of a module: `const name = e;`. -/
 def constToMini (name : String) (e : JsExpr) : MiniModuleItem :=
-  .stmt (.decl .const ⟨⟨.ident (nes name), some (exprToMini {} e)⟩, []⟩)
+  .stmt (.decl .const ⟨⟨.ident (nes name), some ((exprToMini {} e).run' {})⟩, []⟩)
 
 /-- The comment above an exported function: its Lean name, and the layouts of its
     parameters and result. -/

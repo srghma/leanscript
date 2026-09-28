@@ -11,32 +11,57 @@ set_option autoImplicit false
 
 `LeanScript.Term` models Lean code: intrinsically typed, de Bruijn indexed, every redex that
 could be computed computed.  The grammar here models the **JavaScript** the backend prints:
-an *untyped* subset of JavaScript, split into expressions and statements, with named
-variables, `return`, loops with a mutable accumulator, calls of the runtime, and join
-points.
+an *untyped* subset of JavaScript, split into expressions and statements, with `return`,
+loops with a mutable accumulator, calls of the runtime, and join points.
 
 The grammar is deliberately small; `JsTerm.PrintMini` maps it onto the full JavaScript
 syntax tree of `LanguageJavascriptMini`, whose printer writes the `.js` file.
+
+## Variables: three de Bruijn contexts
+
+A local variable is not named: it is a **de Bruijn index**, into one of three separate
+contexts, so that no pass of the backend ever has to invent a fresh name or worry about
+capture (the printer chooses the names, `JsTerm.PrintMini`):
+
+* the **constants** (`JsExpr.cvar i`): the variables that are never reassigned — the
+  parameters of the functions, `const x = e;`, the variables of a destructuring, the element
+  of a `for … of` loop and the counter of a counting loop (which the body only reads);
+* the **mutable variables** (`JsExpr.mvar i`): the variables declared by `let x = e;` (or
+  `let x;`), which `x = e;` (`JsStmt.assign i e`) and the jumps to a join point assign;
+* the **join points** (`JsStmt.jump j e`): the enclosing `join` blocks.
+
+Index `0` is the innermost variable of its context.  A binding statement (`const`, `letMut`,
+`destructure`, `destructureObj`) binds its variables for the statements that follow it in
+its block (`JsStmt.bindsC`, `JsStmt.bindsM`); the variables of a destructuring are bound in
+order, the last one innermost.  An arrow function binds its parameters as constants (the last
+one innermost) on top of the constants around it, keeps the mutable variables around it, and
+starts with no join point (a jump never leaves a function).  A counting loop and a `for … of`
+loop bind one constant in their body; a `join` block binds one join point in its block.
+Every binder keeps a *hint*, the name the printer starts from (`x`, `acc`, a parameter's Lean
+name); hints carry no meaning.
+
+Names that are not local — the globals of JavaScript (`Math`, `BigInt`, `Uint8Array`, …) and
+the constants a module shares (`$tag0`, `$k1`) — are `JsExpr.global`.
+
+## The constructs
 
 * **Literals** (`JsLit`): booleans, numbers (a `Float`, JavaScript's `number`), `BigInt`s
   and strings.
 * **Operators** are split by the type of their operands (`JsNumBinOp` on numbers,
   `JsBigIntBinOp` on `BigInt`s, `JsBoolBinOp` on booleans, `JsStrBinOp` on strings), except
   `===` / `!==`, which compare values of any type.
-* **Expressions** (`JsExpr`): variables, literals, operators, calls of values and of runtime
-  functions (`helper`, a function the module imports from `runtime/`), arrow functions
-  of zero or more parameters, object literals (records `{ _1: …, _2: … }` and unions
+* **Expressions** (`JsExpr`): variables, globals, literals, operators, calls of values and of
+  runtime functions (`helper`, a function the module imports from `runtime/`), arrow
+  functions of zero or more parameters, object literals (records `{ _1: …, _2: … }` and unions
   `{ tag: i, _1: … }`), arrays (lists, generic arrays), typed arrays, indexing, member
   access, `new`, spreads, conditionals.
-* **Statements** (`JsStmt`): `const`, `let`, assignment (to a variable, a member or an
-  element), array and object destructuring, expression statements, `return`, `if`/`else`,
+* **Statements** (`JsStmt`): `const`, `let`, assignment (to a mutable variable, a member or
+  an element), array and object destructuring, expression statements, `return`, `if`/`else`,
   counting `for` loops, `for … of` loops, `while` loops, `throw`, and **join points**:
-  `join x block` is a labelled block (`L: { block }`) the statements of which may `jump` to
-  it, which assigns the join point's variable `x` and leaves the block (`x = e; break L;`);
-  the statements after the `join` statement are the body of the join point.  A jump names its
-  join point by a **de Bruijn index**: `jump 0 e` leaves the innermost enclosing `join` block,
-  `jump 1 e` the one around it, and so on (an arrow function starts afresh: a jump never leaves
-  a function).
+  `join m block` is a labelled block (`L: { block }`) the statements of which may `jump` to
+  it, which assigns the mutable variable `m` (an index into the mutable variables around the
+  `join`) and leaves the block (`x = e; break L;`); the statements after the `join` statement
+  are the body of the join point.
 
 A module (`JsModule`) imports the runtime functions it calls (`RtFn`) from the hand-written
 JavaScript modules of `runtime/` (`RtFile`), defines the constants its functions share, and
@@ -202,8 +227,13 @@ inductive JsUnOp where
 mutual
 /-- Expressions. -/
 inductive JsExpr where
-  /-- A variable. -/
-  | var (x : String)
+  /-- A constant (a parameter, a `const`, …), by its de Bruijn index among the constants. -/
+  | cvar (i : Nat)
+  /-- A mutable variable (a `let`), by its de Bruijn index among the mutable variables. -/
+  | mvar (i : Nat)
+  /-- A name that is not local: a global of JavaScript (`Math`, `BigInt`, …) or a constant the
+      module shares (`$tag0`). -/
+  | global (name : String)
   /-- A literal. -/
   | lit (l : JsLit)
   /-- `a op b`. -/
@@ -214,7 +244,8 @@ inductive JsExpr where
   | helper (name : String) (args : List JsExpr)
   /-- `f(args)`. -/
   | call (f : JsExpr) (args : List JsExpr)
-  /-- `(params) => { body }`: a function of zero or more parameters. -/
+  /-- `(params) => { body }`: a function of zero or more parameters (their hints), bound as
+      constants in `body`, the last one innermost. -/
   | arrow (params : List String) (body : List JsStmt)
   /-- `[e₀, e₁, …]`: a list or a generic array. -/
   | array (elems : List JsExpr)
@@ -238,15 +269,18 @@ inductive JsExpr where
 
 /-- Statements. -/
 inductive JsStmt where
-  /-- `const x = e;` -/
+  /-- `const x = e;`: binds a constant (of hint `x`) for the statements after it. -/
   | const (x : String) (e : JsExpr)
-  /-- `let x = e;`, or `let x;` -/
+  /-- `let x = e;`, or `let x;`: binds a mutable variable (of hint `x`) for the statements
+      after it. -/
   | letMut (x : String) (e : Option JsExpr)
-  /-- `x = e;` -/
-  | assign (x : String) (e : JsExpr)
-  /-- `const [x₀, , x₂] = e;` (`none` skips a position). -/
+  /-- `x = e;`, `x` the mutable variable of de Bruijn index `m`. -/
+  | assign (m : Nat) (e : JsExpr)
+  /-- `const [x₀, , x₂] = e;` (`none` skips a position): binds a constant for each `some`
+      (of that hint), in order. -/
   | destructure (xs : List (Option String)) (e : JsExpr)
-  /-- `const { k₀: x₀, k₁: x₁ } = e;`: the properties `kᵢ` of the object `e`, named `xᵢ`. -/
+  /-- `const { k₀: x₀, k₁: x₁ } = e;`: the properties `kᵢ` of the object `e`, bound as
+      constants (of hints `xᵢ`), in order. -/
   | destructureObj (binds : List (String × String)) (e : JsExpr)
   /-- `o.name = e;` -/
   | setMember (o : JsExpr) (name : String) (e : JsExpr)
@@ -260,16 +294,19 @@ inductive JsStmt where
   | ret (e : JsExpr)
   /-- `if (c) { t } else { e }` (no `else` when `e` is empty). -/
   | ite (c : JsExpr) (t e : List JsStmt)
-  /-- `for (let i = 0; i < n; i++) { body }`, the counter a `BigInt` when `big`. -/
+  /-- `for (let i = 0; i < n; i++) { body }`, the counter a `BigInt` when `big`; the body
+      reads the counter as a constant (of hint `i`), its innermost one. -/
   | forRange (i : String) (big : Bool) (n : JsExpr) (body : List JsStmt)
-  /-- `for (const x of xs) { body }`. -/
+  /-- `for (const x of xs) { body }`: the element is a constant (of hint `x`) of the body,
+      its innermost one. -/
   | forOf (x : String) (xs : JsExpr) (body : List JsStmt)
   /-- `throw new C(msg);` (`C` an error class: `Error`, `RangeError`, …). -/
   | throw (ctor : String) (msg : String)
   /-- A join point: the labelled block `L: { block }`, whose statements may `jump` to it
-      (de Bruijn index `0` inside `block`), assigning `x` (declared before, `let x;`).  The
-      statements after it are the body of the join point. -/
-  | join (x : String) (block : List JsStmt)
+      (join point `0` inside `block`), assigning the mutable variable of de Bruijn index `m`
+      (declared before, `let x;`).  The statements after it are the body of the join
+      point. -/
+  | join (m : Nat) (block : List JsStmt)
   /-- `x = e; break L;`, where `L` and `x` are the label and the variable of the enclosing
       `join` block of de Bruijn index `j`. -/
   | jump (j : Nat) (e : JsExpr)
@@ -286,7 +323,8 @@ structure JsFun where
   name : String
   /-- The Lean definition it was translated from. -/
   leanName : String
-  /-- The parameters (zero or more). -/
+  /-- The parameters (zero or more), as the names they are printed with; the body reads
+      them as its outermost constants (the last one innermost). -/
   params : List String
   /-- The body; every path ends in a `return`. -/
   body : List JsStmt
@@ -393,9 +431,13 @@ def JsUnOp.pretty : JsUnOp → String
   | .bool .not => "!"
 
 mutual
-/-- An expression, on one line (arrows break lines). -/
+/-- An expression, on one line (arrows break lines).  The variables are shown as their de
+    Bruijn indices: `c0` the innermost constant, `m0` the innermost mutable variable (the
+    binders show their hints). -/
 partial def JsExpr.pretty (ind : String) : JsExpr → String
-  | .var x => x
+  | .cvar i => s!"c{i}"
+  | .mvar i => s!"m{i}"
+  | .global x => x
   | .lit l => l.pretty
   | .bin op a b => s!"({a.pretty ind} {op.pretty} {b.pretty ind})"
   | .un op a => s!"{op.pretty}{a.pretty ind}"
@@ -420,7 +462,7 @@ partial def JsStmt.pretty (ind : String) : JsStmt → String
   | .const x e => s!"{ind}const {x} = {e.pretty ind};\n"
   | .letMut x (some e) => s!"{ind}let {x} = {e.pretty ind};\n"
   | .letMut x none => s!"{ind}let {x};\n"
-  | .assign x e => s!"{ind}{x} = {e.pretty ind};\n"
+  | .assign x e => s!"{ind}m{x} = {e.pretty ind};\n"
   | .destructure xs e =>
     let b := xs.map fun
       | some x => x
@@ -448,7 +490,7 @@ partial def JsStmt.pretty (ind : String) : JsStmt → String
       ind ++ "}\n"
   | .throw c msg => s!"{ind}throw new {c}({msg.quote});\n"
   | .join x block =>
-    s!"{ind}join {x} \{\n" ++ JsStmt.prettyBlock (ind ++ "  ") block ++ ind ++ "}\n"
+    s!"{ind}join m{x} \{\n" ++ JsStmt.prettyBlock (ind ++ "  ") block ++ ind ++ "}\n"
   | .jump j e => s!"{ind}jump {j} {e.pretty ind};\n"
 
 /-- Statements, each indented by `ind`. -/
@@ -456,7 +498,7 @@ partial def JsStmt.prettyBlock (ind : String) (ss : List JsStmt) : String :=
   String.join (ss.map (JsStmt.pretty ind))
 end
 
-/-- A function, for the dump. -/
+/-- A function, for the dump (its parameters are its outermost constants). -/
 def JsFun.pretty (f : JsFun) : String :=
   s!"// {f.leanName}\nexport const {f.name} = ({", ".intercalate f.params}) => \{\n" ++
     JsStmt.prettyBlock "  " f.body ++ "};\n"

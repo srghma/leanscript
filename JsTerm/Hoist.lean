@@ -1,6 +1,6 @@
 module
 
-public import JsTerm.Syntax
+public import JsTerm.Vars
 
 @[expose] public section
 
@@ -14,20 +14,23 @@ without fields (`{ tag: 0 }`), a record or union of constants (`{ tag: 1, _1: 3n
 closure that captures nothing, an arithmetic expression of literals — has the same value
 every time it is evaluated.  `hoistConsts` moves each such expression to the top of the
 module, once (`const $tag0 = { tag: 0 };`, `const $k1 = (x$3) => x$3 + 1n;`), and every
-occurrence of it, in every function of the module, refers to that constant: the value is built
-once instead of at every evaluation, and equal constants are shared.
+occurrence of it, in every function of the module, refers to that constant (a
+`JsExpr.global`): the value is built once instead of at every evaluation, and equal constants
+are shared (the variables being de Bruijn indices, two closures that differ only in the names
+of their variables are the same constant).
 
 Only values that are never mutated are shared: records, unions and closures.  An array
 (literal, typed or `new`) is never moved, since the backend updates arrays in place
 (`MoreJs.inPlaceStmts`); a call of a runtime function is not moved either (it could throw,
-and must only do so when the code that calls it runs).  A closure may refer to the imports,
-the other constants and the exported functions of the module (it only reads them when it is
-called); any other constant only to the imports, the globals of JavaScript and the constants
-defined before it (it is evaluated when the module is loaded).
+and must only do so when the code that calls it runs).  A constant refers to no local
+variable.  A closure may refer to the imports, the other constants and the exported functions
+of the module (it only reads them when it is called); any other constant only to the imports,
+the globals of JavaScript and the constants defined before it (it is evaluated when the module
+is loaded).
 
 The constants of a constructor without fields are named after their tag (`$tag0`); the others
-are numbered (`$k1`, `$k2`, …).  The names of the conversion are `x$1`, `k$2`, …, and the
-exported functions are named without a leading `$`, so the names cannot collide.
+are numbered (`$k1`, `$k2`, …).  The printer names the local variables `x$1`, `k$2`, …, and
+the exported functions are named without a leading `$`, so the names cannot collide.
 -/
 
 namespace MoreJs
@@ -46,45 +49,29 @@ def JsBinOp.mayThrow : JsBinOp → Bool
   | _ => false
 
 mutual
-/-- The variables an expression reads that it does not bind itself (the free variables of
-    its closures included). -/
-partial def JsExpr.freeVars : JsExpr → List String
-  | .var y => [y]
-  | .lit _ => []
-  | .arrow ps b => (b.flatMap JsStmt.freeVars).filter fun y =>
-      !ps.contains y && !(b.flatMap JsStmt.boundVars).contains y
-  | .bin _ a b | .at a b => a.freeVars ++ b.freeVars
-  | .un _ a | .index a _ | .member a _ | .spread a => a.freeVars
-  | .call f as | .new f as => f.freeVars ++ as.flatMap JsExpr.freeVars
-  | .helper h as => h :: as.flatMap JsExpr.freeVars
-  | .array as | .typedArray _ as => as.flatMap JsExpr.freeVars
-  | .cond c a b => c.freeVars ++ a.freeVars ++ b.freeVars
-  | .object fs => fs.flatMap (·.2.freeVars)
-/-- The variables a statement reads or assigns (inside its blocks too). -/
-partial def JsStmt.freeVars : JsStmt → List String
-  | .const _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e | .expr e =>
-    e.freeVars
-  | .letMut _ e => (e.map JsExpr.freeVars).getD []
-  | .assign y e => y :: e.freeVars
-  | .setMember o _ e => o.freeVars ++ e.freeVars
-  | .setAt o i e => o.freeVars ++ i.freeVars ++ e.freeVars
-  | .while c b => c.freeVars ++ b.flatMap JsStmt.freeVars
-  | .ite c t e => c.freeVars ++ t.flatMap JsStmt.freeVars ++ e.flatMap JsStmt.freeVars
-  | .forRange _ _ n b => n.freeVars ++ b.flatMap JsStmt.freeVars
-  | .forOf _ xs b => xs.freeVars ++ b.flatMap JsStmt.freeVars
+/-- The globals an expression refers to (inside its closures too). -/
+partial def JsExpr.globals : JsExpr → List String
+  | .global y => [y]
+  | .cvar _ | .mvar _ | .lit _ => []
+  | .arrow _ b => b.flatMap JsStmt.globals
+  | .bin _ a b | .at a b => a.globals ++ b.globals
+  | .un _ a | .index a _ | .member a _ | .spread a => a.globals
+  | .call f as | .new f as => f.globals ++ as.flatMap JsExpr.globals
+  | .helper _ as | .array as | .typedArray _ as => as.flatMap JsExpr.globals
+  | .cond c a b => c.globals ++ a.globals ++ b.globals
+  | .object fs => fs.flatMap (·.2.globals)
+/-- The globals a statement refers to (inside its blocks and closures too). -/
+partial def JsStmt.globals : JsStmt → List String
+  | .const _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e | .expr e
+  | .assign _ e => e.globals
+  | .letMut _ e => (e.map JsExpr.globals).getD []
+  | .setMember o _ e => o.globals ++ e.globals
+  | .setAt o i e => o.globals ++ i.globals ++ e.globals
+  | .while c b | .forRange _ _ c b | .forOf _ c b =>
+    c.globals ++ b.flatMap JsStmt.globals
+  | .ite c t e => c.globals ++ t.flatMap JsStmt.globals ++ e.flatMap JsStmt.globals
   | .throw _ _ => []
-  | .join y b => y :: b.flatMap JsStmt.freeVars
-/-- The variables a statement binds (inside its blocks too, not inside its closures). -/
-partial def JsStmt.boundVars : JsStmt → List String
-  | .const x _ | .letMut x _ => [x]
-  | .destructure xs _ => xs.filterMap id
-  | .destructureObj bs _ => bs.map (·.2)
-  | .while _ b => b.flatMap JsStmt.boundVars
-  | .ite _ t e => t.flatMap JsStmt.boundVars ++ e.flatMap JsStmt.boundVars
-  | .forRange i _ _ b => i :: b.flatMap JsStmt.boundVars
-  | .forOf x _ b => x :: b.flatMap JsStmt.boundVars
-  | .join x b => x :: b.flatMap JsStmt.boundVars
-  | _ => []
+  | .join _ b => b.flatMap JsStmt.globals
 end
 
 /-- The state of the pass: the constants so far, and the rendering of each (to share equal
@@ -102,12 +89,13 @@ def constKind (imports exports hoisted : List String) (e : JsExpr) : Option Bool
   let eager (y : String) := imports.contains y || hoisted.contains y || jsGlobals.contains y
   let isConst : JsExpr → Bool
     | .lit _ => true
-    | .var y => eager y
+    | .global y => eager y
     | _ => false
   match e with
   | .object fs => if fs.all (isConst ·.2) then some true else none
   | .arrow _ _ =>
-    if e.freeVars.all fun y => eager y || exports.contains y then some true else none
+    if e.isClosed && e.globals.all fun y => eager y || exports.contains y then some true
+    else none
   | .bin op a b => if !op.mayThrow && isConst a && isConst b then some false else none
   | .cond c a b => if isConst c && isConst a && isConst b then some false else none
   | _ => none
@@ -131,14 +119,14 @@ def hoistNode (e : JsExpr) : HoistM JsExpr := do
   | some _ =>
     let key := e.pretty ""
     match st.keys.idxOf? key with
-    | some i => return .var st.consts[i]!.1
+    | some i => return .global st.consts[i]!.1
     | none =>
       let name := constName e st.next
       -- two different constants cannot get the same name (`$tag{i}` is only ever the
       -- constant `{ tag: i }`)
       set ({ consts := st.consts.push (name, e), keys := st.keys.push key, next := st.next + 1 } :
         HoistState)
-      return .var name
+      return .global name
 
 mutual
 /-- Share the constants of an expression, bottom-up. -/
