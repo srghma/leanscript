@@ -45,38 +45,38 @@ function lean_int_add$nnn(a, b) {
  * `TestNat.test1`
  * @returns {uint53(number)}
  */
-export const TestNat_test1 = () => 4000000000;
+export const TestNat$test1 = () => 4000000000;
 
 /**
  * `TestNat.test2`
  * @returns {uint53(number)}
  */
-export const TestNat_test2 = () => 0;
+export const TestNat$test2 = () => 0;
 
 /**
  * `TestNat.test4`
  * @param {uint53(number)} a
  * @returns {uint53(number)}
  */
-export const TestNat_test4 = (a) =>
+export const TestNat$test4 = (a) =>
   lean_nat_add$nnn(lean_nat_add$nnn(2000000000, a), 2000000000);
 
 /**
  * `TestInt.test1`
  * @returns {int53(number)}
  */
-export const TestInt_test1 = () => 4000000000;
+export const TestInt$test1 = () => 4000000000;
 
 /**
  * `TestInt.test2`
  * @returns {int53(number)}
  */
-export const TestInt_test2 = () => -4000000000;
+export const TestInt$test2 = () => -4000000000;
 
 /**
  * `TestInt.test4`
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const TestInt_test4 = (a) =>
+export const TestInt$test4 = (a) =>
   lean_int_add$nnn(lean_int_add$nnn(2000000000, a), 2000000000);

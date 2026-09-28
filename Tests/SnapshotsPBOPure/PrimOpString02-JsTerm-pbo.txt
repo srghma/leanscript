@@ -2,13 +2,40 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 // not translated:
 //   stringValues: LeanScript: the parameter `α` of `stringValues` is a type
-//   test1: LeanScript: the parameter `α` of `stringValues` is a type
-//   test2: LeanScript: the parameter `α` of `stringValues` is a type
-//   test3: LeanScript: the parameter `α` of `stringValues` is a type
-//   test4: LeanScript: the parameter `α` of `stringValues` is a type
-//   test5: LeanScript: the parameter `α` of `stringValues` is a type
-//   test6: LeanScript: the parameter `α` of `stringValues` is a type
-//   test7: LeanScript: the parameter `α` of `stringValues` is a type
 
 // runtime helpers: 
 
+// test1
+export const test1 = () => {
+  return [true, false, false];
+};
+
+// test2
+export const test2 = () => {
+  return [false, true, true];
+};
+
+// test3
+export const test3 = () => {
+  return [false, true, false];
+};
+
+// test4
+export const test4 = () => {
+  return [false, false, true];
+};
+
+// test5
+export const test5 = () => {
+  return [true, true, false];
+};
+
+// test6
+export const test6 = () => {
+  return [true, false, true];
+};
+
+// test7
+export const test7 = () => {
+  return ["aa", "ab", "ba"];
+};

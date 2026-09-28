@@ -30,6 +30,19 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test(-7, -7)", () => M.test(-7, -7), "-266", false);
+check("test(-7, 0)", () => M.test(-7, 0), "-140", false);
+check("test(-1, -1)", () => M.test(-1, -1), "-38", false);
+check("test(0, -7)", () => M.test(0, -7), "-126", false);
+check("test(-7, 12)", () => M.test(-7, 12), "76", false);
+check("test(-1, 3)", () => M.test(-1, 3), "34", false);
+check("test(0, 0)", () => M.test(0, 0), "0", false);
+check("test(3, -1)", () => M.test(3, -1), "42", false);
+check("test(12, -7)", () => M.test(12, -7), "114", false);
+check("test(0, 12)", () => M.test(0, 12), "216", false);
+check("test(3, 3)", () => M.test(3, 3), "114", false);
+check("test(12, 0)", () => M.test(12, 0), "240", false);
+check("test(12, 12)", () => M.test(12, 12), "456", false);
 
 console.log(`UncurriedLocalAbs01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

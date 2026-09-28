@@ -2,12 +2,46 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 // not translated:
 //   stringValues: LeanScript: the parameter `α` of `stringValues` is a type
-//   test1: LeanScript: the parameter `α` of `stringValues` is a type
-//   test2: LeanScript: the parameter `α` of `stringValues` is a type
-//   test3: LeanScript: the parameter `α` of `stringValues` is a type
-//   test4: LeanScript: the parameter `α` of `stringValues` is a type
-//   test5: LeanScript: the parameter `α` of `stringValues` is a type
-//   test6: LeanScript: the parameter `α` of `stringValues` is a type
-//   test7: LeanScript: the parameter `α` of `stringValues` is a type
 
 
+/**
+ * `test1`
+ * @returns {Array<boolean>}
+ */
+export const test1 = () => [true, false, false];
+
+/**
+ * `test2`
+ * @returns {Array<boolean>}
+ */
+export const test2 = () => [false, true, true];
+
+/**
+ * `test3`
+ * @returns {Array<boolean>}
+ */
+export const test3 = () => [false, true, false];
+
+/**
+ * `test4`
+ * @returns {Array<boolean>}
+ */
+export const test4 = () => [false, false, true];
+
+/**
+ * `test5`
+ * @returns {Array<boolean>}
+ */
+export const test5 = () => [true, true, false];
+
+/**
+ * `test6`
+ * @returns {Array<boolean>}
+ */
+export const test6 = () => [true, false, true];
+
+/**
+ * `test7`
+ * @returns {Array<string>}
+ */
+export const test7 = () => ["aa", "ab", "ba"];

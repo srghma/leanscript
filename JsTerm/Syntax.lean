@@ -292,7 +292,7 @@ structure JsFun where
   /-- The layouts of the parameters (for the comment). -/
   paramTys : List JsTerm := []
   /-- The layout of the result (for the comment). -/
-  ret : JsTerm := .opaque "?"
+  ret : JsTerm
   deriving Inhabited
 
 /-- A function of the runtime prelude, `function name(params) { body }`, written in the

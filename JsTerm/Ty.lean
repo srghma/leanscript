@@ -55,9 +55,9 @@ inductive JsTerm where
   | bitvec_big (n : Nat) (h_gt_53 : 53 < n)
   /-- Fixed-width integers that always fit in a `number`. -/
   | uint8 | uint16 | uint32 | int8 | int16 | int32
-  /-- A 64-bit IEEE float, a `number`. -/
+  /-- A 64-bit IEEE float, a `number` (also a `Float.Model`, the same value). -/
   | float
-  /-- A 32-bit IEEE float, a `number` (rounded by `Math.fround`). -/
+  /-- A 32-bit IEEE float, a `number` rounded by `Math.fround` (also a `Float32.Model`). -/
   | float32
   /-- A JavaScript `string` (also a `Char`, as a string of one code point). -/
   | string
@@ -65,8 +65,6 @@ inductive JsTerm where
   | substring
   /-- A `String.Slice`: `[str, startPos, stopPos]`. -/
   | stringSlice
-  /-- A value the JavaScript runtime only passes around (`Float.Model`, …). -/
-  | opaque (name : String)
   /-- A generic JavaScript `Array`. -/
   | genericArray (elem : JsTerm)
   /-- The typed arrays. -/
@@ -111,7 +109,6 @@ partial def pretty : JsTerm → String
   | .int8 => "int8" | .int16 => "int16" | .int32 => "int32"
   | .float => "float" | .float32 => "float32"
   | .string => "string" | .substring => "substring" | .stringSlice => "stringSlice"
-  | .opaque n => s!"opaque({n})"
   | .genericArray t => s!"Array<{t.pretty}>"
   | .uint8Array => "Uint8Array" | .uint16Array => "Uint16Array"
   | .uint32Array => "Uint32Array" | .int8Array => "Int8Array" | .int16Array => "Int16Array"
@@ -172,8 +169,8 @@ def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
   | .stringPosRaw => .uint53
   | .substringRaw => .substring
   | .stringSlice => .stringSlice
-  | .floatModel => .opaque "Float.Model"
-  | .float32Model => .opaque "Float32.Model"
+  | .floatModel => .float
+  | .float32Model => .float32
 
 /-- Lowers an array of a leaf type into the optimized `JsTerm`. -/
 def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=

@@ -2,6 +2,6 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 // not translated:
 //   main: an `IO`/`ST` action: the language has no side effects
-//   describeArgs: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
+//   describeArgs: LeanScript: the call args.length is not a call of an extern: `List.length` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 

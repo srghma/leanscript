@@ -40,22 +40,22 @@ function lean_float32_negate(a) {
 }
 
 // TestFloat.test1
-export const TestFloat_test1 = (a, b) => {
+export const TestFloat$test1 = (a, b) => {
   return (a + b);
 };
 
 // TestFloat.test2
-export const TestFloat_test2 = (a, b) => {
+export const TestFloat$test2 = (a, b) => {
   return (a - b);
 };
 
 // TestFloat.test3
-export const TestFloat_test3 = (a, b) => {
+export const TestFloat$test3 = (a, b) => {
   return (a === b);
 };
 
 // TestFloat.test4
-export const TestFloat_test4 = (a, b) => {
+export const TestFloat$test4 = (a, b) => {
   if ((a === b)) {
     return false;
   } else {
@@ -64,67 +64,67 @@ export const TestFloat_test4 = (a, b) => {
 };
 
 // TestFloat.test5
-export const TestFloat_test5 = (a, b) => {
+export const TestFloat$test5 = (a, b) => {
   return (a < b);
 };
 
 // TestFloat.test6
-export const TestFloat_test6 = (a, b) => {
+export const TestFloat$test6 = (a, b) => {
   return (b < a);
 };
 
 // TestFloat.test7
-export const TestFloat_test7 = (a, b) => {
+export const TestFloat$test7 = (a, b) => {
   return (a <= b);
 };
 
 // TestFloat.test8
-export const TestFloat_test8 = (a, b) => {
+export const TestFloat$test8 = (a, b) => {
   return (b <= a);
 };
 
 // TestFloat.test9
-export const TestFloat_test9 = (a, b) => {
+export const TestFloat$test9 = (a, b) => {
   return (a * b);
 };
 
 // TestFloat.test10
-export const TestFloat_test10 = (a, b) => {
+export const TestFloat$test10 = (a, b) => {
   return (a / b);
 };
 
 // TestFloat.test11
-export const TestFloat_test11 = (a) => {
+export const TestFloat$test11 = (a) => {
   return lean_float_negate(a);
 };
 
 // TestFloat.test12
-export const TestFloat_test12 = (a, b, c) => {
+export const TestFloat$test12 = (a, b, c) => {
   return (a - (b - c));
 };
 
 // TestFloat.test13
-export const TestFloat_test13 = (a, b, c) => {
+export const TestFloat$test13 = (a, b, c) => {
   return (a / (b / c));
 };
 
 // TestFloat32.test1
-export const TestFloat32_test1 = (a, b) => {
+export const TestFloat32$test1 = (a, b) => {
   return lean_float32_add(a, b);
 };
 
 // TestFloat32.test2
-export const TestFloat32_test2 = (a, b) => {
+export const TestFloat32$test2 = (a, b) => {
   return lean_float32_sub(a, b);
 };
 
 // TestFloat32.test3
-export const TestFloat32_test3 = (a, b) => {
+export const TestFloat32$test3 = (a, b) => {
   return lean_float32_beq(a, b);
 };
 
 // TestFloat32.test4
-export const TestFloat32_test4 = (a, b) => {
+export const TestFloat32$test4 = (a, b) => {
   if (lean_float32_beq(a, b)) {
     return false;
   } else {
@@ -133,46 +133,46 @@ export const TestFloat32_test4 = (a, b) => {
 };
 
 // TestFloat32.test5
-export const TestFloat32_test5 = (a, b) => {
+export const TestFloat32$test5 = (a, b) => {
   return lean_float32_decLt__Float32_decLt(a, b);
 };
 
 // TestFloat32.test6
-export const TestFloat32_test6 = (a, b) => {
+export const TestFloat32$test6 = (a, b) => {
   return lean_float32_decLt__Float32_decLt(b, a);
 };
 
 // TestFloat32.test7
-export const TestFloat32_test7 = (a, b) => {
+export const TestFloat32$test7 = (a, b) => {
   return lean_float32_decLe__Float32_decLe(a, b);
 };
 
 // TestFloat32.test8
-export const TestFloat32_test8 = (a, b) => {
+export const TestFloat32$test8 = (a, b) => {
   return lean_float32_decLe__Float32_decLe(b, a);
 };
 
 // TestFloat32.test9
-export const TestFloat32_test9 = (a, b) => {
+export const TestFloat32$test9 = (a, b) => {
   return lean_float32_mul(a, b);
 };
 
 // TestFloat32.test10
-export const TestFloat32_test10 = (a, b) => {
+export const TestFloat32$test10 = (a, b) => {
   return lean_float32_div(a, b);
 };
 
 // TestFloat32.test11
-export const TestFloat32_test11 = (a) => {
+export const TestFloat32$test11 = (a) => {
   return lean_float32_negate(a);
 };
 
 // TestFloat32.test12
-export const TestFloat32_test12 = (a, b, c) => {
+export const TestFloat32$test12 = (a, b, c) => {
   return lean_float32_sub(a, lean_float32_sub(b, c));
 };
 
 // TestFloat32.test13
-export const TestFloat32_test13 = (a, b, c) => {
+export const TestFloat32$test13 = (a, b, c) => {
   return lean_float32_div(a, lean_float32_div(b, c));
 };

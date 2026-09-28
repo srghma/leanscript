@@ -93,7 +93,7 @@ function lean_int64_complement$bb(a) {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64_land = (a, b) => lean_uint64_land$bbb(a, b);
+export const TestUInt64$land = (a, b) => lean_uint64_land$bbb(a, b);
 
 /**
  * `TestUInt64.lor`
@@ -101,7 +101,7 @@ export const TestUInt64_land = (a, b) => lean_uint64_land$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64_lor = (a, b) => lean_uint64_lor$bbb(a, b);
+export const TestUInt64$lor = (a, b) => lean_uint64_lor$bbb(a, b);
 
 /**
  * `TestUInt64.shiftLeft`
@@ -109,7 +109,7 @@ export const TestUInt64_lor = (a, b) => lean_uint64_lor$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64_shiftLeft = (a, b) => lean_uint64_shift_left$bbb(a, b);
+export const TestUInt64$shiftLeft = (a, b) => lean_uint64_shift_left$bbb(a, b);
 
 /**
  * `TestUInt64.shiftRight`
@@ -117,7 +117,7 @@ export const TestUInt64_shiftLeft = (a, b) => lean_uint64_shift_left$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64_shiftRight = (a, b) =>
+export const TestUInt64$shiftRight = (a, b) =>
   lean_uint64_shift_right$bbb(a, b);
 
 /**
@@ -126,14 +126,14 @@ export const TestUInt64_shiftRight = (a, b) =>
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64_xor = (a, b) => lean_uint64_xor$bbb(a, b);
+export const TestUInt64$xor = (a, b) => lean_uint64_xor$bbb(a, b);
 
 /**
  * `TestUInt64.complement`
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestUInt64_complement = (a) => lean_uint64_complement$bb(a);
+export const TestUInt64$complement = (a) => lean_uint64_complement$bb(a);
 
 /**
  * `TestNat.land`
@@ -141,7 +141,7 @@ export const TestUInt64_complement = (a) => lean_uint64_complement$bb(a);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat_land = (a, b) => lean_nat_land$bbb(a, b);
+export const TestNat$land = (a, b) => lean_nat_land$bbb(a, b);
 
 /**
  * `TestNat.lor`
@@ -149,7 +149,7 @@ export const TestNat_land = (a, b) => lean_nat_land$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat_lor = (a, b) => lean_nat_lor$bbb(a, b);
+export const TestNat$lor = (a, b) => lean_nat_lor$bbb(a, b);
 
 /**
  * `TestNat.shiftLeft`
@@ -157,7 +157,7 @@ export const TestNat_lor = (a, b) => lean_nat_lor$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat_shiftLeft = (a, b) => lean_nat_shiftl$bbb(a, b);
+export const TestNat$shiftLeft = (a, b) => lean_nat_shiftl$bbb(a, b);
 
 /**
  * `TestNat.shiftRight`
@@ -165,7 +165,7 @@ export const TestNat_shiftLeft = (a, b) => lean_nat_shiftl$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat_shiftRight = (a, b) => lean_nat_shiftr$bbb(a, b);
+export const TestNat$shiftRight = (a, b) => lean_nat_shiftr$bbb(a, b);
 
 /**
  * `TestNat.xor`
@@ -173,7 +173,7 @@ export const TestNat_shiftRight = (a, b) => lean_nat_shiftr$bbb(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat_xor = (a, b) => lean_nat_lxor$bbb(a, b);
+export const TestNat$xor = (a, b) => lean_nat_lxor$bbb(a, b);
 
 /**
  * `TestInt64.land`
@@ -181,7 +181,7 @@ export const TestNat_xor = (a, b) => lean_nat_lxor$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64_land = (a, b) => lean_int64_land$bbb(a, b);
+export const TestInt64$land = (a, b) => lean_int64_land$bbb(a, b);
 
 /**
  * `TestInt64.lor`
@@ -189,7 +189,7 @@ export const TestInt64_land = (a, b) => lean_int64_land$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64_lor = (a, b) => lean_int64_lor$bbb(a, b);
+export const TestInt64$lor = (a, b) => lean_int64_lor$bbb(a, b);
 
 /**
  * `TestInt64.shiftLeft`
@@ -197,7 +197,7 @@ export const TestInt64_lor = (a, b) => lean_int64_lor$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64_shiftLeft = (a, b) => lean_int64_shift_left$bbb(a, b);
+export const TestInt64$shiftLeft = (a, b) => lean_int64_shift_left$bbb(a, b);
 
 /**
  * `TestInt64.shiftRight`
@@ -205,7 +205,7 @@ export const TestInt64_shiftLeft = (a, b) => lean_int64_shift_left$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64_shiftRight = (a, b) => lean_int64_shift_right$bbb(a, b);
+export const TestInt64$shiftRight = (a, b) => lean_int64_shift_right$bbb(a, b);
 
 /**
  * `TestInt64.xor`
@@ -213,11 +213,11 @@ export const TestInt64_shiftRight = (a, b) => lean_int64_shift_right$bbb(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64_xor = (a, b) => lean_int64_xor$bbb(a, b);
+export const TestInt64$xor = (a, b) => lean_int64_xor$bbb(a, b);
 
 /**
  * `TestInt64.complement`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt64_complement = (a) => lean_int64_complement$bb(a);
+export const TestInt64$complement = (a) => lean_int64_complement$bb(a);

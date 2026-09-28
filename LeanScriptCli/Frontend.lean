@@ -372,7 +372,10 @@ def reduceLits (e : Expr) : MetaM Expr :=
 /-- Translate a definition to a closed `Term` value. -/
 unsafe def translate (n : Name) : TermElabM ClosedTerm := do
   modifyThe Core.State fun st => { st with messages := {} }
-  let v ← LeanScript.Gen.translateDef n none
+  -- a `List` is the built-in list (an immutable JavaScript array): the tool has no signature
+  -- that could declare it as a datatype
+  let v ← withOptions (·.setBool LeanScript.Gen.builtinListOption true) do
+    LeanScript.Gen.translateDef n none
   Term.synthesizeSyntheticMVarsNoPostponing
   let v ← instantiateMVars v
   -- the translator reports some failures as logged errors rather than exceptions

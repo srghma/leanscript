@@ -435,6 +435,12 @@ def fixedConvImpl (signed : Bool) (fromBits : Nat) (op : String) (resTy : JsTerm
 
 /-! ## The implementations -/
 
+/-- The conversions between a float and its model (`Float.toModel`, `Float.ofModel`, and the
+    same for `Float32`): a model is laid out as the float it models, so they are the identity. -/
+def floatModelIds : List String :=
+  ["lean_float_to_bits__Float_toModel", "lean_float_of_bits__Float_ofModel",
+   "lean_float32_to_bits__Float32_toModel", "lean_float32_of_bits__Float32_ofModel"]
+
 /-- The expression a helper returns, over its parameters `a`, `b`, `c`, …, and the helpers
     it calls; `none` when the extern has no implementation yet (or its helper needs more than
     a `return`, `externImpl?`). -/
@@ -649,6 +655,8 @@ def lowerExtern (name : String) (argTys : List JsTerm) (resTy : JsTerm)
   let arith (nop : JsNumBinOp) (bop : JsBigIntBinOp) : JsExpr :=
     bin (if isBig then .bigint bop else .num nop)
   let inline? : Option JsExpr :=
+    -- a `Float.Model` (`Float32.Model`) is laid out as the `Float` (`Float32`) it models
+    if floatModelIds.contains name then args.head? else
     match sym with
     | "lean_nat_add" | "lean_int_add" => if isBig then some (bin (.bigint .add)) else none
     | "lean_nat_mul" | "lean_int_mul" => if isBig then some (bin (.bigint .mul)) else none
@@ -665,6 +673,13 @@ def lowerExtern (name : String) (argTys : List JsTerm) (resTy : JsTerm)
       | [.lit (.str ""), ch] => some ch
       | _ => some (bin (.str .concat))
     | "lean_string_append" => some (bin (.str .concat))
+    -- a list and a generic array are both JavaScript arrays
+    | "lean_array_mk" => match typedCtor? resTy, args with
+      | none, [a] => some a
+      | _, _ => none
+    | "lean_array_to_list" => match t0, args with
+      | .genericArray _, [a] => some a
+      | _, _ => none
     | "lean_float_add" => some (bin (.num .add))
     | "lean_float_sub" => some (bin (.num .sub))
     | "lean_float_mul" => some (bin (.num .mul))

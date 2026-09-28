@@ -30,6 +30,39 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("TestUInt64$test3()", () => M.TestUInt64$test3(), "#[true, false, false, false, false, true]", false);
+check("TestUInt64$test4()", () => M.TestUInt64$test4(), "#[false, true, true, true, true, false]", false);
+check("TestUInt64$test5()", () => M.TestUInt64$test5(), "#[false, true, false, true, false, false]", false);
+check("TestUInt64$test6()", () => M.TestUInt64$test6(), "#[false, false, true, false, true, false]", false);
+check("TestUInt64$test7()", () => M.TestUInt64$test7(), "#[true, true, false, true, false, true]", false);
+check("TestUInt64$test8()", () => M.TestUInt64$test8(), "#[true, false, true, false, true, true]", false);
+check("TestNat$test1()", () => M.TestNat$test1(), "#[2, 3, 3, 1, 2, 0]", false);
+check("TestNat$test2()", () => M.TestNat$test2(), "#[0, 0, 1, 1, 0, 0]", false);
+check("TestNat$test3()", () => M.TestNat$test3(), "#[true, false, false, false, false, true]", false);
+check("TestNat$test4()", () => M.TestNat$test4(), "#[false, true, true, true, true, false]", false);
+check("TestNat$test5()", () => M.TestNat$test5(), "#[false, true, false, false, true, false]", false);
+check("TestNat$test6()", () => M.TestNat$test6(), "#[false, false, true, true, false, false]", false);
+check("TestNat$test7()", () => M.TestNat$test7(), "#[true, true, false, false, true, true]", false);
+check("TestNat$test8()", () => M.TestNat$test8(), "#[true, false, true, true, false, true]", false);
+check("TestNat$test9()", () => M.TestNat$test9(), "#[1, 2, 2, 0, 0, 0]", false);
+check("TestNat$test10()", () => M.TestNat$test10(), "#[1, 0, 2, 0, 0, 0]", false);
+check("TestInt64$test3()", () => M.TestInt64$test3(), "#[true, false, false, false, false, true]", false);
+check("TestInt64$test4()", () => M.TestInt64$test4(), "#[false, true, true, true, true, false]", false);
+check("TestInt64$test5()", () => M.TestInt64$test5(), "#[false, true, false, false, true, false]", false);
+check("TestInt64$test6()", () => M.TestInt64$test6(), "#[false, false, true, true, false, false]", false);
+check("TestInt64$test7()", () => M.TestInt64$test7(), "#[true, true, false, false, true, true]", false);
+check("TestInt64$test8()", () => M.TestInt64$test8(), "#[true, false, true, true, false, true]", false);
+check("TestInt$test1()", () => M.TestInt$test1(), "#[2, 3, 3, -1, 1, -2]", false);
+check("TestInt$test2()", () => M.TestInt$test2(), "#[0, -1, 1, 3, -3, 0]", false);
+check("TestInt$test3()", () => M.TestInt$test3(), "#[true, false, false, false, false, true]", false);
+check("TestInt$test4()", () => M.TestInt$test4(), "#[false, true, true, true, true, false]", false);
+check("TestInt$test5()", () => M.TestInt$test5(), "#[false, true, false, false, true, false]", false);
+check("TestInt$test6()", () => M.TestInt$test6(), "#[false, false, true, true, false, false]", false);
+check("TestInt$test7()", () => M.TestInt$test7(), "#[true, true, false, false, true, true]", false);
+check("TestInt$test8()", () => M.TestInt$test8(), "#[true, false, true, true, false, true]", false);
+check("TestInt$test9()", () => M.TestInt$test9(), "#[1, 2, 2, -2, -2, 1]", false);
+check("TestInt$test10()", () => M.TestInt$test10(), "#[1, 0, 2, 0, -1, 1]", false);
+check("TestInt$test11()", () => M.TestInt$test11(), "#[-1, 1]", false);
 
 console.log(`PrimOpInt02Configurable-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -135,22 +135,22 @@ function lean_int_neg$nn(a) {
 }
 
 // TestUInt64.add
-export const TestUInt64_add = (a, b) => {
+export const TestUInt64$add = (a, b) => {
   return lean_uint64_add$nnn(a, b);
 };
 
 // TestUInt64.sub
-export const TestUInt64_sub = (a, b) => {
+export const TestUInt64$sub = (a, b) => {
   return lean_uint64_sub$nnn(a, b);
 };
 
 // TestUInt64.eq
-export const TestUInt64_eq = (a, b) => {
+export const TestUInt64$eq = (a, b) => {
   return (a === b);
 };
 
 // TestUInt64.ne
-export const TestUInt64_ne = (a, b) => {
+export const TestUInt64$ne = (a, b) => {
   if ((a === b)) {
     return false;
   } else {
@@ -159,57 +159,57 @@ export const TestUInt64_ne = (a, b) => {
 };
 
 // TestUInt64.lt
-export const TestUInt64_lt = (a, b) => {
+export const TestUInt64$lt = (a, b) => {
   return (a < b);
 };
 
 // TestUInt64.gt
-export const TestUInt64_gt = (a, b) => {
+export const TestUInt64$gt = (a, b) => {
   return (b < a);
 };
 
 // TestUInt64.le
-export const TestUInt64_le = (a, b) => {
+export const TestUInt64$le = (a, b) => {
   return (a <= b);
 };
 
 // TestUInt64.ge
-export const TestUInt64_ge = (a, b) => {
+export const TestUInt64$ge = (a, b) => {
   return (b <= a);
 };
 
 // TestUInt64.mul
-export const TestUInt64_mul = (a, b) => {
+export const TestUInt64$mul = (a, b) => {
   return lean_uint64_mul$nnn(a, b);
 };
 
 // TestUInt64.div
-export const TestUInt64_div = (a, b) => {
+export const TestUInt64$div = (a, b) => {
   return lean_uint64_div$nnn(a, b);
 };
 
 // TestUInt64.neg
-export const TestUInt64_neg = (a) => {
+export const TestUInt64$neg = (a) => {
   return lean_uint64_neg$nn(a);
 };
 
 // TestNat.add
-export const TestNat_add = (a, b) => {
+export const TestNat$add = (a, b) => {
   return lean_nat_add$nnn(a, b);
 };
 
 // TestNat.sub
-export const TestNat_sub = (a, b) => {
+export const TestNat$sub = (a, b) => {
   return lean_nat_sub$nnn(a, b);
 };
 
 // TestNat.eq
-export const TestNat_eq = (a, b) => {
+export const TestNat$eq = (a, b) => {
   return (a === b);
 };
 
 // TestNat.ne
-export const TestNat_ne = (a, b) => {
+export const TestNat$ne = (a, b) => {
   if ((a === b)) {
     return false;
   } else {
@@ -218,52 +218,52 @@ export const TestNat_ne = (a, b) => {
 };
 
 // TestNat.lt
-export const TestNat_lt = (a, b) => {
+export const TestNat$lt = (a, b) => {
   return (a < b);
 };
 
 // TestNat.gt
-export const TestNat_gt = (a, b) => {
+export const TestNat$gt = (a, b) => {
   return (b < a);
 };
 
 // TestNat.le
-export const TestNat_le = (a, b) => {
+export const TestNat$le = (a, b) => {
   return (a <= b);
 };
 
 // TestNat.ge
-export const TestNat_ge = (a, b) => {
+export const TestNat$ge = (a, b) => {
   return (b <= a);
 };
 
 // TestNat.mul
-export const TestNat_mul = (a, b) => {
+export const TestNat$mul = (a, b) => {
   return lean_nat_mul$nnn(a, b);
 };
 
 // TestNat.div
-export const TestNat_div = (a, b) => {
+export const TestNat$div = (a, b) => {
   return lean_nat_div$nnn(a, b);
 };
 
 // TestInt64.add
-export const TestInt64_add = (a, b) => {
+export const TestInt64$add = (a, b) => {
   return lean_int64_add$nnn(a, b);
 };
 
 // TestInt64.sub
-export const TestInt64_sub = (a, b) => {
+export const TestInt64$sub = (a, b) => {
   return lean_int64_sub$nnn(a, b);
 };
 
 // TestInt64.eq
-export const TestInt64_eq = (a, b) => {
+export const TestInt64$eq = (a, b) => {
   return (a === b);
 };
 
 // TestInt64.ne
-export const TestInt64_ne = (a, b) => {
+export const TestInt64$ne = (a, b) => {
   if ((a === b)) {
     return false;
   } else {
@@ -272,57 +272,57 @@ export const TestInt64_ne = (a, b) => {
 };
 
 // TestInt64.lt
-export const TestInt64_lt = (a, b) => {
+export const TestInt64$lt = (a, b) => {
   return (a < b);
 };
 
 // TestInt64.gt
-export const TestInt64_gt = (a, b) => {
+export const TestInt64$gt = (a, b) => {
   return (b < a);
 };
 
 // TestInt64.le
-export const TestInt64_le = (a, b) => {
+export const TestInt64$le = (a, b) => {
   return (a <= b);
 };
 
 // TestInt64.ge
-export const TestInt64_ge = (a, b) => {
+export const TestInt64$ge = (a, b) => {
   return (b <= a);
 };
 
 // TestInt64.mul
-export const TestInt64_mul = (a, b) => {
+export const TestInt64$mul = (a, b) => {
   return lean_int64_mul$nnn(a, b);
 };
 
 // TestInt64.div
-export const TestInt64_div = (a, b) => {
+export const TestInt64$div = (a, b) => {
   return lean_int64_div$nnn(a, b);
 };
 
 // TestInt64.neg
-export const TestInt64_neg = (a) => {
+export const TestInt64$neg = (a) => {
   return lean_int64_neg$nn(a);
 };
 
 // TestInt.add
-export const TestInt_add = (a, b) => {
+export const TestInt$add = (a, b) => {
   return lean_int_add$nnn(a, b);
 };
 
 // TestInt.sub
-export const TestInt_sub = (a, b) => {
+export const TestInt$sub = (a, b) => {
   return lean_int_sub$nnn(a, b);
 };
 
 // TestInt.eq
-export const TestInt_eq = (a, b) => {
+export const TestInt$eq = (a, b) => {
   return (a === b);
 };
 
 // TestInt.ne
-export const TestInt_ne = (a, b) => {
+export const TestInt$ne = (a, b) => {
   if ((a === b)) {
     return false;
   } else {
@@ -331,36 +331,36 @@ export const TestInt_ne = (a, b) => {
 };
 
 // TestInt.lt
-export const TestInt_lt = (a, b) => {
+export const TestInt$lt = (a, b) => {
   return (a < b);
 };
 
 // TestInt.gt
-export const TestInt_gt = (a, b) => {
+export const TestInt$gt = (a, b) => {
   return (b < a);
 };
 
 // TestInt.le
-export const TestInt_le = (a, b) => {
+export const TestInt$le = (a, b) => {
   return (a <= b);
 };
 
 // TestInt.ge
-export const TestInt_ge = (a, b) => {
+export const TestInt$ge = (a, b) => {
   return (b <= a);
 };
 
 // TestInt.mul
-export const TestInt_mul = (a, b) => {
+export const TestInt$mul = (a, b) => {
   return lean_int_mul$nnn(a, b);
 };
 
 // TestInt.div
-export const TestInt_div = (a, b) => {
+export const TestInt$div = (a, b) => {
   return lean_int_ediv$nnn(a, b);
 };
 
 // TestInt.neg
-export const TestInt_neg = (a) => {
+export const TestInt$neg = (a) => {
   return lean_int_neg$nn(a);
 };

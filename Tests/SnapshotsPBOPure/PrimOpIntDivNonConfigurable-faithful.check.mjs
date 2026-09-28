@@ -30,24 +30,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("TestUInt8_test1_0__shouldBeTrue()", () => M.TestUInt8_test1_0__shouldBeTrue(), "true", false);
-check("TestUInt8_test3_2__shouldBeTrue()", () => M.TestUInt8_test3_2__shouldBeTrue(), "true", false);
-check("TestUInt8_test3m2__shouldBeTrue()", () => M.TestUInt8_test3m2__shouldBeTrue(), "true", false);
-check("TestUInt16_test1_0__shouldBeTrue()", () => M.TestUInt16_test1_0__shouldBeTrue(), "true", false);
-check("TestUInt16_test3_2__shouldBeTrue()", () => M.TestUInt16_test3_2__shouldBeTrue(), "true", false);
-check("TestUInt16_test3m2__shouldBeTrue()", () => M.TestUInt16_test3m2__shouldBeTrue(), "true", false);
-check("TestUInt32_test1_0_shouldBeTrue()", () => M.TestUInt32_test1_0_shouldBeTrue(), "true", false);
-check("TestUInt32_test3_2_shouldBeTrue()", () => M.TestUInt32_test3_2_shouldBeTrue(), "true", false);
-check("TestUInt32_test3m2_shouldBeTrue()", () => M.TestUInt32_test3m2_shouldBeTrue(), "true", false);
-check("TestInt8_test1_0_shouldBeTrue()", () => M.TestInt8_test1_0_shouldBeTrue(), "true", false);
-check("TestInt8_test3_2_shouldBeTrue()", () => M.TestInt8_test3_2_shouldBeTrue(), "true", false);
-check("TestInt8_test3m2_shouldBeTrue()", () => M.TestInt8_test3m2_shouldBeTrue(), "true", false);
-check("TestInt16_test1_0_shouldBeTrue()", () => M.TestInt16_test1_0_shouldBeTrue(), "true", false);
-check("TestInt16_test3_2_shouldBeTrue()", () => M.TestInt16_test3_2_shouldBeTrue(), "true", false);
-check("TestInt16_test3m2_shouldBeTrue()", () => M.TestInt16_test3m2_shouldBeTrue(), "true", false);
-check("TestInt32_test1_0_shouldBeTrue()", () => M.TestInt32_test1_0_shouldBeTrue(), "true", false);
-check("TestInt32_test3_2_shouldBeTrue()", () => M.TestInt32_test3_2_shouldBeTrue(), "true", false);
-check("TestInt32_test3m2_shouldBeTrue()", () => M.TestInt32_test3m2_shouldBeTrue(), "true", false);
+check("TestUInt8$test1_0__shouldBeTrue()", () => M.TestUInt8$test1_0__shouldBeTrue(), "true", false);
+check("TestUInt8$test3_2__shouldBeTrue()", () => M.TestUInt8$test3_2__shouldBeTrue(), "true", false);
+check("TestUInt8$test3m2__shouldBeTrue()", () => M.TestUInt8$test3m2__shouldBeTrue(), "true", false);
+check("TestUInt16$test1_0__shouldBeTrue()", () => M.TestUInt16$test1_0__shouldBeTrue(), "true", false);
+check("TestUInt16$test3_2__shouldBeTrue()", () => M.TestUInt16$test3_2__shouldBeTrue(), "true", false);
+check("TestUInt16$test3m2__shouldBeTrue()", () => M.TestUInt16$test3m2__shouldBeTrue(), "true", false);
+check("TestUInt32$test1_0_shouldBeTrue()", () => M.TestUInt32$test1_0_shouldBeTrue(), "true", false);
+check("TestUInt32$test3_2_shouldBeTrue()", () => M.TestUInt32$test3_2_shouldBeTrue(), "true", false);
+check("TestUInt32$test3m2_shouldBeTrue()", () => M.TestUInt32$test3m2_shouldBeTrue(), "true", false);
+check("TestInt8$test1_0_shouldBeTrue()", () => M.TestInt8$test1_0_shouldBeTrue(), "true", false);
+check("TestInt8$test3_2_shouldBeTrue()", () => M.TestInt8$test3_2_shouldBeTrue(), "true", false);
+check("TestInt8$test3m2_shouldBeTrue()", () => M.TestInt8$test3m2_shouldBeTrue(), "true", false);
+check("TestInt16$test1_0_shouldBeTrue()", () => M.TestInt16$test1_0_shouldBeTrue(), "true", false);
+check("TestInt16$test3_2_shouldBeTrue()", () => M.TestInt16$test3_2_shouldBeTrue(), "true", false);
+check("TestInt16$test3m2_shouldBeTrue()", () => M.TestInt16$test3m2_shouldBeTrue(), "true", false);
+check("TestInt32$test1_0_shouldBeTrue()", () => M.TestInt32$test1_0_shouldBeTrue(), "true", false);
+check("TestInt32$test3_2_shouldBeTrue()", () => M.TestInt32$test3_2_shouldBeTrue(), "true", false);
+check("TestInt32$test3m2_shouldBeTrue()", () => M.TestInt32$test3m2_shouldBeTrue(), "true", false);
 
 console.log(`PrimOpIntDivNonConfigurable-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

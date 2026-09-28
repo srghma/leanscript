@@ -4,5 +4,13 @@
 --   test2: LeanScript: the call Array.mapM.map✝ (fun x => pure (f x)) a 0 (Array.emptyWithCapacity a.size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 --   test3: LeanScript: the call Array.mapM.map✝ (fun x => pure ((fun x => x * 2) x)) a 0 (Array.emptyWithCapacity a.size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 --   test4: LeanScript: the call Array.mapM.map✝ (fun x => pure ((fun x => x + 1) x)) a 0 (Array.emptyWithCapacity a.size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
---   test5: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
 
+-- test5 : Array Nat → Array Nat
+val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [1] : (Array Nat) => (closed)
+  let x5 [1] : (Array Nat) := array_foldl x2 #[] fun e3 acc4 => (closed)
+    if lean_nat_dec_lt(4, e3) then
+      ret lean_array_push(acc4, e3)
+    else
+      ret acc4
+  ret x5
+ret k1

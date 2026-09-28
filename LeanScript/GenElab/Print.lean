@@ -48,6 +48,7 @@ partial def CIR.stx (c : Nat) (vars : Array Ident) : CIR → MetaM Lean.Term
   | .leanName => `(Ty.leanName)
   | .fn a b => do `(Ty.fn $(← a.stx c vars) $(← b.stx c vars))
   | .array a => do `(Ty.array $(← a.stx c vars))
+  | .list a => do `(Ty.list $(← a.stx c vars))
   -- the contents of a delay are never a delay; a type variable may be one, so it is delayed
   -- with `Ty.mkThunk` / `Ty.mkLazy`, which collapse the delays once it is known
   | .thunk (.var i) => `(Ty.mkThunk $(vars[i]!))

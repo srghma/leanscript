@@ -144,6 +144,30 @@ def moreJsSpec : Spec := describe "JsTerm" do
     assertEq "helpers" ["$bigPow", "lean_nat_pow$bbb"] (hs.map MoreJs.JsHelper.name)
     assertEq "helper" "function lean_nat_pow$bbb(a, b) {\n  return $bigPow(a, b);\n}\n"
       (hs.getLast!.pretty)
+  it "a Float.Model is the number of the Float it models" do
+    assertEq "Float.Model" "float" (MoreJs.lowerScalarPrim faithful .floatModel).pretty
+    assertEq "Float32.Model" "float32" (MoreJs.lowerScalarPrim pbo .float32Model).pretty
+    match MoreJs.primLit pbo .floatModel (Float.toModel 2.5) with
+    | .ok e => assertEq "literal" "25e-1" (e.pretty "")
+    | .error err => throw (IO.userError err)
+    let (e, hs) := MoreJs.lowerExtern "lean_float_to_bits__Float_toModel" [.float] .float
+      [.var "x"]
+    assertEq "toModel" "x" (e.pretty "")
+    assertEq "toModel helpers" 0 hs.length
+  it "appends of arrays become one array literal" do
+    let body : List MoreJs.JsStmt :=
+      [.const "k" (.array [.lit (.str "a")]),
+       .const "x" (.array [.spread (.var "arr"), .spread (.array [.lit (.str "c")])]),
+       .const "y" (.array [.spread (.var "k"), .spread (.var "x")]),
+       .ret (.var "y")]
+    match MoreJs.inlineArrays body with
+    | [.ret e] => assertEq "literal" "[\"a\", ...arr, \"c\"]" (e.pretty "")
+    | ss => throw (IO.userError s!"not one return: {ss.length} statements")
+    -- a literal used inside a loop is not moved into it
+    let loop : List MoreJs.JsStmt :=
+      [.const "k" (.array [.lit (.str "a")]),
+       .forOf "e" (.var "xs") [.expr (.array [.spread (.var "k")])]]
+    assertEq "loop" 2 (MoreJs.inlineArrays loop).length
   let conv (cfg : MoreJs.JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
       IO MoreJs.JsFun :=
     match MoreJs.termToJs cfg name name ps ct with

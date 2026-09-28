@@ -2,7 +2,7 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 // not translated:
 //   test2: Expected type must not contain metavariables ?m.144 ≠ LeanScript.Usage01ω.zero
-//   test3: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
+//   test3: Expected type must not contain metavariables ?m.147 ≠ LeanScript.Usage01ω.zero
 //   test4: Expected type must not contain metavariables ?m.195 ≠ LeanScript.Usage01ω.zero
 //   test5: Expected type must not contain metavariables ?m.141 ≠ LeanScript.Usage01ω.zero
 

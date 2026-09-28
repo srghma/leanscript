@@ -190,7 +190,7 @@ The supported fragment and the refusals are listed in the header of
 
 - **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
   `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
-  (`JsTerm/FromTerm.lean`), so every function over `List`, a user inductive, … is listed
+  (`JsTerm/FromTerm.lean`), so every function over a user inductive, … is listed
   under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
   and unions as objects, enums; only the recursors are missing.)
 - **Some externs have no JavaScript implementation**: they are emitted as a runtime helper
@@ -207,6 +207,10 @@ The supported fragment and the refusals are listed in the header of
   `LeanScriptCli/RecCalls.lean_` is set aside), as are `partial` definitions, `IO`/`ST`
   actions, definitions with errors and constants whose value is not computable; each is
   listed with the reason in every output file.
+- A `List` is the built-in list only in the `leanscript` tool (`#leanscript_to_term` still
+  reads it as a datatype a signature declares), and only its literals and `++` are
+  translated: `x :: xs` with `xs` not a literal, a `match` on a list and the other `List`
+  functions are refused.
 - `Array Bool` and `Array Char` are always generic JavaScript arrays (the `Uint8Array` /
   `Uint32Array` representations are commented out in `JsTerm/Config.lean`).
 - The optimiser does not inline a join point jumped to only once when its body is not

@@ -42,7 +42,7 @@ export const test1 = (x) => {
 };
 
 // Test2.test2
-export const Test2_test2 = (x) => {
+export const Test2$test2 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
   const { _1: f$3, _2: f$4 } = f$1;
   if ((f$3 === 1)) {

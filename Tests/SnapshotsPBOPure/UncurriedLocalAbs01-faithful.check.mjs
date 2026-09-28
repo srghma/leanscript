@@ -30,6 +30,19 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test(-7n, -7n)", () => M.test(-7n, -7n), "-266", false);
+check("test(-7n, 0n)", () => M.test(-7n, 0n), "-140", false);
+check("test(-1n, -1n)", () => M.test(-1n, -1n), "-38", false);
+check("test(0n, -7n)", () => M.test(0n, -7n), "-126", false);
+check("test(-7n, 12n)", () => M.test(-7n, 12n), "76", false);
+check("test(-1n, 3n)", () => M.test(-1n, 3n), "34", false);
+check("test(0n, 0n)", () => M.test(0n, 0n), "0", false);
+check("test(3n, -1n)", () => M.test(3n, -1n), "42", false);
+check("test(12n, -7n)", () => M.test(12n, -7n), "114", false);
+check("test(0n, 12n)", () => M.test(0n, 12n), "216", false);
+check("test(3n, 3n)", () => M.test(3n, 3n), "114", false);
+check("test(12n, 0n)", () => M.test(12n, 0n), "240", false);
+check("test(12n, 12n)", () => M.test(12n, 12n), "456", false);
 
 console.log(`UncurriedLocalAbs01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

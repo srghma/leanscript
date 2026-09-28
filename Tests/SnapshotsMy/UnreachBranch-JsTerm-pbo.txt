@@ -2,7 +2,7 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 // not translated:
 //   small: LeanScript: a branch that Lean proves unreachable ⋯.elim is not supported: the language has no term for it (and once the indices of an inductive family are erased, as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)
-//   headOf: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
+//   headOf: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 //   test: LeanScript: a branch that Lean proves unreachable ⋯.elim is not supported: the language has no term for it (and once the indices of an inductive family are erased, as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)
 
 // runtime helpers: 

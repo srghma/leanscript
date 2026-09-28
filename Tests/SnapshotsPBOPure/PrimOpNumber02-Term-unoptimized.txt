@@ -13,40 +13,40 @@
 --   testNeg: LeanScript: `testNeg` is universe polymorphic
 --   TestFloat.nan: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 0.0 / Float.toModel 0.0) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 0.0 / Float.toModel 0.0))
 --   TestFloat.numValues: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test1: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test2: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test3: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test4: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test5: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test6: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test7: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test8: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test9: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test10: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
---   TestFloat.test11: LeanScript: the recursive type List Float is not declared in any signature; declare it with `leanscript_signature`
+--   TestFloat.test1: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 + TestFloat.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 + TestFloat.nan.toModel))
+--   TestFloat.test2: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 - TestFloat.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 - TestFloat.nan.toModel))
+--   TestFloat.test3: the closed value `1.5 == 1.0` could not be computed at compile time
+--   TestFloat.test4: the closed value `1.5 != 1.0` could not be computed at compile time
+--   TestFloat.test5: the closed value `decide (1.5 < 1.0)` could not be computed at compile time
+--   TestFloat.test6: the closed value `decide (1.5 > 1.0)` could not be computed at compile time
+--   TestFloat.test7: the closed value `decide (1.5 ≤ 1.0)` could not be computed at compile time
+--   TestFloat.test8: the closed value `decide (1.5 ≥ 1.0)` could not be computed at compile time
+--   TestFloat.test9: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 * TestFloat.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 * TestFloat.nan.toModel))
+--   TestFloat.test10: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 / TestFloat.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (Float.toModel 1.0 / TestFloat.nan.toModel))
+--   TestFloat.test11: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (-(-1.5).toModel) has type LeanScript.PExpr ?m.49 ?m.50 ?m.51 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.46 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (-(-1.5).toModel))
 --   TestFloat32.nan: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 0.0 / Float32.toModel 0.0) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 0.0 / Float32.toModel 0.0))
 --   TestFloat32.numValues: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test1: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test2: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test3: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test4: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test5: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test6: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test7: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test8: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test9: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test10: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test11: LeanScript: the recursive type List Float32 is not declared in any signature; declare it with `leanscript_signature`
+--   TestFloat32.test1: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 + TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 + TestFloat32.nan.toModel))
+--   TestFloat32.test2: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 - TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 - TestFloat32.nan.toModel))
+--   TestFloat32.test3: the closed value `1.5 == 1.0` could not be computed at compile time
+--   TestFloat32.test4: the closed value `1.5 != 1.0` could not be computed at compile time
+--   TestFloat32.test5: the closed value `decide (1.5 < 1.0)` could not be computed at compile time
+--   TestFloat32.test6: the closed value `decide (1.5 > 1.0)` could not be computed at compile time
+--   TestFloat32.test7: the closed value `decide (1.5 ≤ 1.0)` could not be computed at compile time
+--   TestFloat32.test8: the closed value `decide (1.5 ≥ 1.0)` could not be computed at compile time
+--   TestFloat32.test9: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 * TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 * TestFloat32.nan.toModel))
+--   TestFloat32.test10: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.114 ?m.115 ?m.116 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.111 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel))
+--   TestFloat32.test11: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (-(-1.5).toModel) has type LeanScript.PExpr ?m.49 ?m.50 ?m.51 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.46 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (-(-1.5).toModel))
 --   TestFloat32.test1__shouldBeTrue: the closed value `TestFloat32.test1 == TestFloat32.numValues TestFloat32.addNoInline` could not be computed at compile time
 --   TestFloat32.test2__shouldBeTrue: the closed value `TestFloat32.test2 == TestFloat32.numValues TestFloat32.subNoInline` could not be computed at compile time
---   TestFloat32.test3__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test4__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test5__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test6__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test7__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test8__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test9__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
---   TestFloat32.test10__shouldBeTrue: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
+--   TestFloat32.test3__shouldBeTrue: the closed value `1.5 == 1.0` could not be computed at compile time
+--   TestFloat32.test4__shouldBeTrue: the closed value `1.5 != 1.0` could not be computed at compile time
+--   TestFloat32.test5__shouldBeTrue: the closed value `decide (1.5 < 1.0)` could not be computed at compile time
+--   TestFloat32.test6__shouldBeTrue: the closed value `decide (1.5 > 1.0)` could not be computed at compile time
+--   TestFloat32.test7__shouldBeTrue: the closed value `decide (1.5 ≤ 1.0)` could not be computed at compile time
+--   TestFloat32.test8__shouldBeTrue: the closed value `decide (1.5 ≥ 1.0)` could not be computed at compile time
+--   TestFloat32.test9__shouldBeTrue: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 * TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.123 ?m.124 ?m.125 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.120 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 * TestFloat32.nan.toModel))
+--   TestFloat32.test10__shouldBeTrue: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.123 ?m.124 ?m.125 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.120 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel))
 
 -- TestFloat32.addNoInline : Float32 → Float32 → Float32
 val k1 [ω] : (Float32 → (Float32 → Float32)) := fun x2 [ω] : Float32 => (closed)

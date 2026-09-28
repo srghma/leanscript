@@ -43,6 +43,8 @@ inductive CIR where
   | leanName
   | fn (a b : CIR)
   | array (a : CIR)
+  /-- The built-in list (`Ty.list`, `useBuiltinList`). -/
+  | list (a : CIR)
   /-- A memoised delay; its contents are never a delay (`CIR.mkThunk`). -/
   | thunk (a : CIR)
   /-- A delay recomputed every time; its contents are never a delay (`CIR.mkLazy`). -/
@@ -77,7 +79,7 @@ partial def CIR.hasData : CIR → Bool
   | .prim _ | .leanName | .enum .. | .var _ => false
   | .data .. => true
   | .fn a b => a.hasData || b.hasData
-  | .array a | .thunk a | .lazy a => a.hasData
+  | .array a | .list a | .thunk a | .lazy a => a.hasData
   | .record f fs => f.hasData || fs.any CIR.hasData
   | .union cs => cs.any (·.any CIR.hasData)
 
@@ -192,6 +194,7 @@ partial def toCIR (e : Expr) : M CIR := do
   | .leanName => return .leanName
   | .fn a b => return .fn (← toCIR a) (← toCIR b)
   | .array a => return .array (← toCIR a)
+  | .list a => return .list (← toCIR a)
   | .thunk a => return (← toCIR a).mkThunk
   | .lazy a => return (← toCIR a).mkLazy
   | .var x =>
@@ -237,6 +240,8 @@ partial def toFIR (members : Array Nat) (e : Expr) : M FIR := do
       fail m!"a recursive occurrence in the domain of a function{indentExpr e}"
     return .fn (← toCIR a) (← toFIR members b)
   | .array a => return .array (← toFIR members a)
+  | .list _ =>
+    fail m!"a recursive occurrence inside a built-in `List` is not supported{indentExpr e}"
   | .thunk _ | .lazy _ =>
     fail m!"a delay (`Thunk` or `Unit → _`) around a recursive occurrence is not supported{indentExpr e}"
   | .prim _ | .leanName | .var _ => unreachable!

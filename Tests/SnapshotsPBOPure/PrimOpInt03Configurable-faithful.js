@@ -26,26 +26,26 @@ function lean_int64_add$bbb(a, b) {
  * `TestUInt64.test1`
  * @returns {nat(bigint)}
  */
-export const TestUInt64_test1 = () => 1553255926290448384n;
+export const TestUInt64$test1 = () => 1553255926290448384n;
 
 /**
  * `TestUInt64.test2`
  * @returns {nat(bigint)}
  */
-export const TestUInt64_test2 = () => 9446744073709551616n;
+export const TestUInt64$test2 = () => 9446744073709551616n;
 
 /**
  * `TestUInt64.test3`
  * @returns {nat(bigint)}
  */
-export const TestUInt64_test3 = () => 6553255926290448384n;
+export const TestUInt64$test3 = () => 6553255926290448384n;
 
 /**
  * `TestUInt64.test4`
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestUInt64_test4 = (a) =>
+export const TestUInt64$test4 = (a) =>
   lean_uint64_add$bbb(
     lean_uint64_add$bbb(10000000000000000000n, a),
     10000000000000000000n,
@@ -55,51 +55,51 @@ export const TestUInt64_test4 = (a) =>
  * `TestNat.test1`
  * @returns {nat(bigint)}
  */
-export const TestNat_test1 = () => 4000000000n;
+export const TestNat$test1 = () => 4000000000n;
 
 /**
  * `TestNat.test2`
  * @returns {nat(bigint)}
  */
-export const TestNat_test2 = () => 0n;
+export const TestNat$test2 = () => 0n;
 
 /**
  * `TestNat.test3`
  * @returns {nat(bigint)}
  */
-export const TestNat_test3 = () => 4000000000000000000n;
+export const TestNat$test3 = () => 4000000000000000000n;
 
 /**
  * `TestNat.test4`
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestNat_test4 = (a) => 2000000000n + a + 2000000000n;
+export const TestNat$test4 = (a) => 2000000000n + a + 2000000000n;
 
 /**
  * `TestInt64.test1`
  * @returns {int(bigint)}
  */
-export const TestInt64_test1 = () => -8446744073709551616n;
+export const TestInt64$test1 = () => -8446744073709551616n;
 
 /**
  * `TestInt64.test2`
  * @returns {int(bigint)}
  */
-export const TestInt64_test2 = () => 8446744073709551616n;
+export const TestInt64$test2 = () => 8446744073709551616n;
 
 /**
  * `TestInt64.test3`
  * @returns {int(bigint)}
  */
-export const TestInt64_test3 = () => 6553255926290448384n;
+export const TestInt64$test3 = () => 6553255926290448384n;
 
 /**
  * `TestInt64.test4`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt64_test4 = (a) =>
+export const TestInt64$test4 = (a) =>
   lean_int64_add$bbb(
     lean_int64_add$bbb(5000000000000000000n, a),
     5000000000000000000n,
@@ -109,23 +109,23 @@ export const TestInt64_test4 = (a) =>
  * `TestInt.test1`
  * @returns {int(bigint)}
  */
-export const TestInt_test1 = () => 4000000000n;
+export const TestInt$test1 = () => 4000000000n;
 
 /**
  * `TestInt.test2`
  * @returns {int(bigint)}
  */
-export const TestInt_test2 = () => -4000000000n;
+export const TestInt$test2 = () => -4000000000n;
 
 /**
  * `TestInt.test3`
  * @returns {int(bigint)}
  */
-export const TestInt_test3 = () => 4000000000000000000n;
+export const TestInt$test3 = () => 4000000000000000000n;
 
 /**
  * `TestInt.test4`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt_test4 = (a) => 2000000000n + a + 2000000000n;
+export const TestInt$test4 = (a) => 2000000000n + a + 2000000000n;

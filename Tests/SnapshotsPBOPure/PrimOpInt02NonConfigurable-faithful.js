@@ -2,76 +2,409 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 // not translated:
 //   TestUInt8.intValues: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test1: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test2: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test3: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test4: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test5: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test6: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test7: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test8: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test9: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test10: LeanScript: the parameter `α` of `TestUInt8.intValues` is a type
-//   TestUInt8.test11: LeanScript: the recursive type List UInt8 is not declared in any signature; declare it with `leanscript_signature`
 //   TestUInt16.intValues: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test1: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test2: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test3: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test4: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test5: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test6: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test7: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test8: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test9: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test10: LeanScript: the parameter `α` of `TestUInt16.intValues` is a type
-//   TestUInt16.test11: LeanScript: the recursive type List UInt16 is not declared in any signature; declare it with `leanscript_signature`
 //   TestUInt32.intValues: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test1: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test2: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test3: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test4: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test5: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test6: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test7: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test8: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test9: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test10: LeanScript: the parameter `α` of `TestUInt32.intValues` is a type
-//   TestUInt32.test11: LeanScript: the recursive type List UInt32 is not declared in any signature; declare it with `leanscript_signature`
 //   TestInt8.intValues: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test1: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test2: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test3: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test4: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test5: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test6: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test7: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test8: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test9: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test10: LeanScript: the parameter `α` of `TestInt8.intValues` is a type
-//   TestInt8.test11: LeanScript: the recursive type List Int8 is not declared in any signature; declare it with `leanscript_signature`
 //   TestInt16.intValues: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test1: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test2: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test3: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test4: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test5: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test6: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test7: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test8: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test9: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test10: LeanScript: the parameter `α` of `TestInt16.intValues` is a type
-//   TestInt16.test11: LeanScript: the recursive type List Int16 is not declared in any signature; declare it with `leanscript_signature`
 //   TestInt32.intValues: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test1: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test2: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test3: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test4: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test5: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test6: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test7: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test8: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test9: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test10: LeanScript: the parameter `α` of `TestInt32.intValues` is a type
-//   TestInt32.test11: LeanScript: the recursive type List Int32 is not declared in any signature; declare it with `leanscript_signature`
 
 
+/**
+ * `TestUInt8.test1`
+ * @returns {Uint8Array}
+ */
+export const TestUInt8$test1 = () => Uint8Array.of(2, 3, 3, 255, 1, 254);
+
+/**
+ * `TestUInt8.test2`
+ * @returns {Uint8Array}
+ */
+export const TestUInt8$test2 = () => Uint8Array.of(0, 255, 1, 3, 253, 0);
+
+/**
+ * `TestUInt8.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestUInt8.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestUInt8.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test5 = () => [false, true, false, true, false, false];
+
+/**
+ * `TestUInt8.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test6 = () => [false, false, true, false, true, false];
+
+/**
+ * `TestUInt8.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test7 = () => [true, true, false, true, false, true];
+
+/**
+ * `TestUInt8.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt8$test8 = () => [true, false, true, false, true, true];
+
+/**
+ * `TestUInt8.test9`
+ * @returns {Uint8Array}
+ */
+export const TestUInt8$test9 = () => Uint8Array.of(1, 2, 2, 254, 254, 1);
+
+/**
+ * `TestUInt8.test10`
+ * @returns {Uint8Array}
+ */
+export const TestUInt8$test10 = () => Uint8Array.of(1, 0, 2, 0, 127, 1);
+
+/**
+ * `TestUInt8.test11`
+ * @returns {Uint8Array}
+ */
+export const TestUInt8$test11 = () => Uint8Array.of(255, 1);
+
+/**
+ * `TestUInt16.test1`
+ * @returns {Uint16Array}
+ */
+export const TestUInt16$test1 = () => Uint16Array.of(2, 3, 3, 65535, 1, 65534);
+
+/**
+ * `TestUInt16.test2`
+ * @returns {Uint16Array}
+ */
+export const TestUInt16$test2 = () => Uint16Array.of(0, 65535, 1, 3, 65533, 0);
+
+/**
+ * `TestUInt16.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestUInt16.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestUInt16.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test5 = () => [false, true, false, true, false, false];
+
+/**
+ * `TestUInt16.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test6 = () => [false, false, true, false, true, false];
+
+/**
+ * `TestUInt16.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test7 = () => [true, true, false, true, false, true];
+
+/**
+ * `TestUInt16.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt16$test8 = () => [true, false, true, false, true, true];
+
+/**
+ * `TestUInt16.test9`
+ * @returns {Uint16Array}
+ */
+export const TestUInt16$test9 = () => Uint16Array.of(1, 2, 2, 65534, 65534, 1);
+
+/**
+ * `TestUInt16.test10`
+ * @returns {Uint16Array}
+ */
+export const TestUInt16$test10 = () => Uint16Array.of(1, 0, 2, 0, 32767, 1);
+
+/**
+ * `TestUInt16.test11`
+ * @returns {Uint16Array}
+ */
+export const TestUInt16$test11 = () => Uint16Array.of(65535, 1);
+
+/**
+ * `TestUInt32.test1`
+ * @returns {Uint32Array}
+ */
+export const TestUInt32$test1 = () =>
+  Uint32Array.of(2, 3, 3, 4294967295, 1, 4294967294);
+
+/**
+ * `TestUInt32.test2`
+ * @returns {Uint32Array}
+ */
+export const TestUInt32$test2 = () =>
+  Uint32Array.of(0, 4294967295, 1, 3, 4294967293, 0);
+
+/**
+ * `TestUInt32.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestUInt32.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestUInt32.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test5 = () => [false, true, false, true, false, false];
+
+/**
+ * `TestUInt32.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test6 = () => [false, false, true, false, true, false];
+
+/**
+ * `TestUInt32.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test7 = () => [true, true, false, true, false, true];
+
+/**
+ * `TestUInt32.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestUInt32$test8 = () => [true, false, true, false, true, true];
+
+/**
+ * `TestUInt32.test9`
+ * @returns {Uint32Array}
+ */
+export const TestUInt32$test9 = () =>
+  Uint32Array.of(1, 2, 2, 4294967294, 4294967294, 1);
+
+/**
+ * `TestUInt32.test10`
+ * @returns {Uint32Array}
+ */
+export const TestUInt32$test10 = () =>
+  Uint32Array.of(1, 0, 2, 0, 2147483647, 1);
+
+/**
+ * `TestUInt32.test11`
+ * @returns {Uint32Array}
+ */
+export const TestUInt32$test11 = () => Uint32Array.of(4294967295, 1);
+
+/**
+ * `TestInt8.test1`
+ * @returns {Int8Array}
+ */
+export const TestInt8$test1 = () => Int8Array.of(2, 3, 3, -1, 1, -2);
+
+/**
+ * `TestInt8.test2`
+ * @returns {Int8Array}
+ */
+export const TestInt8$test2 = () => Int8Array.of(0, -1, 1, 3, -3, 0);
+
+/**
+ * `TestInt8.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestInt8.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestInt8.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test5 = () => [false, true, false, false, true, false];
+
+/**
+ * `TestInt8.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test6 = () => [false, false, true, true, false, false];
+
+/**
+ * `TestInt8.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test7 = () => [true, true, false, false, true, true];
+
+/**
+ * `TestInt8.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestInt8$test8 = () => [true, false, true, true, false, true];
+
+/**
+ * `TestInt8.test9`
+ * @returns {Int8Array}
+ */
+export const TestInt8$test9 = () => Int8Array.of(1, 2, 2, -2, -2, 1);
+
+/**
+ * `TestInt8.test10`
+ * @returns {Int8Array}
+ */
+export const TestInt8$test10 = () => Int8Array.of(1, 0, 2, 0, 0, 1);
+
+/**
+ * `TestInt8.test11`
+ * @returns {Int8Array}
+ */
+export const TestInt8$test11 = () => Int8Array.of(-1, 1);
+
+/**
+ * `TestInt16.test1`
+ * @returns {Int16Array}
+ */
+export const TestInt16$test1 = () => Int16Array.of(2, 3, 3, -1, 1, -2);
+
+/**
+ * `TestInt16.test2`
+ * @returns {Int16Array}
+ */
+export const TestInt16$test2 = () => Int16Array.of(0, -1, 1, 3, -3, 0);
+
+/**
+ * `TestInt16.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestInt16.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestInt16.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test5 = () => [false, true, false, false, true, false];
+
+/**
+ * `TestInt16.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test6 = () => [false, false, true, true, false, false];
+
+/**
+ * `TestInt16.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test7 = () => [true, true, false, false, true, true];
+
+/**
+ * `TestInt16.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestInt16$test8 = () => [true, false, true, true, false, true];
+
+/**
+ * `TestInt16.test9`
+ * @returns {Int16Array}
+ */
+export const TestInt16$test9 = () => Int16Array.of(1, 2, 2, -2, -2, 1);
+
+/**
+ * `TestInt16.test10`
+ * @returns {Int16Array}
+ */
+export const TestInt16$test10 = () => Int16Array.of(1, 0, 2, 0, 0, 1);
+
+/**
+ * `TestInt16.test11`
+ * @returns {Int16Array}
+ */
+export const TestInt16$test11 = () => Int16Array.of(-1, 1);
+
+/**
+ * `TestInt32.test1`
+ * @returns {Int32Array}
+ */
+export const TestInt32$test1 = () => Int32Array.of(2, 3, 3, -1, 1, -2);
+
+/**
+ * `TestInt32.test2`
+ * @returns {Int32Array}
+ */
+export const TestInt32$test2 = () => Int32Array.of(0, -1, 1, 3, -3, 0);
+
+/**
+ * `TestInt32.test3`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test3 = () => [true, false, false, false, false, true];
+
+/**
+ * `TestInt32.test4`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test4 = () => [false, true, true, true, true, false];
+
+/**
+ * `TestInt32.test5`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test5 = () => [false, true, false, false, true, false];
+
+/**
+ * `TestInt32.test6`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test6 = () => [false, false, true, true, false, false];
+
+/**
+ * `TestInt32.test7`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test7 = () => [true, true, false, false, true, true];
+
+/**
+ * `TestInt32.test8`
+ * @returns {Array<boolean>}
+ */
+export const TestInt32$test8 = () => [true, false, true, true, false, true];
+
+/**
+ * `TestInt32.test9`
+ * @returns {Int32Array}
+ */
+export const TestInt32$test9 = () => Int32Array.of(1, 2, 2, -2, -2, 1);
+
+/**
+ * `TestInt32.test10`
+ * @returns {Int32Array}
+ */
+export const TestInt32$test10 = () => Int32Array.of(1, 0, 2, 0, 0, 1);
+
+/**
+ * `TestInt32.test11`
+ * @returns {Int32Array}
+ */
+export const TestInt32$test11 = () => Int32Array.of(-1, 1);

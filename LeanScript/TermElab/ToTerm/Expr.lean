@@ -22,6 +22,22 @@ open Lean Meta Elab Term
 open LeanScript.Anf (Src)
 
 namespace LeanScript.Gen
+/-- A list built by appends (`xs ++ ys`, `List.append xs ys`) as the array of its elements:
+    the appends of the arrays of its parts, so a chain of appends is one chain of array appends
+    (`(xs ++ ys).toArray` is `xs.toArray ++ ys.toArray`). -/
+partial def listAppendAsArray (l : Expr) : MetaM Expr := do
+  let l ← instantiateMVars l
+  let parts? : MetaM (Option (Expr × Expr)) := do
+    if l.isAppOfArity ``List.append 3 then return some (l.appFn!.appArg!, l.appArg!)
+    if l.isAppOfArity ``HAppend.hAppend 6 then
+      let a := l.appFn!.appArg!
+      let b := l.appArg!
+      if ← isDefEq l (← mkAppM ``List.append #[a, b]) then return some (a, b)
+    return none
+  match ← parts? with
+  | some (a, b) => mkAppM ``Array.append #[← listAppendAsArray a, ← listAppendAsArray b]
+  | none => mkAppM ``List.toArray #[l]
+
 mutual
 
 /-- The translation of an expression. -/
@@ -46,6 +62,10 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
     -- a local proof (`have h : p := …`) has no value: it is substituted into the body, where
     -- it is only ever used by other proofs (erased) or in types
     if ← isProp t then return ← tr L (b.instantiate1 v)
+    -- a literal of the built-in list is substituted: its conversion to an array
+    -- (`List.toArray`, in an append) is then an array literal
+    if (← cirOf L t false) matches .list _ then
+      if (← listLit? v).isSome then return ← tr L (b.instantiate1 v)
     discard <| cirOf L t
     let tv ← tr L v
     withLocalDeclD n t fun x => do
@@ -231,12 +251,24 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     -- `Fin.foldl n f z`: `Comp.nat_rec` on `n`, whose step at `k` is `f acc ⟨k, _⟩`
     if c == ``Fin.foldl && args.size == 4 then
       return ← trFinFoldl tr L args[0]! args[1]! args[2]! args[3]!
-    -- an array literal `#[a, b, …]` (`List.toArray [a, b, …]`) of values that are not leaves
+    -- an array literal `#[a, b, …]` (`List.toArray [a, b, …]`)
     if c == ``List.toArray && args.size == 2 then
       if let some xs ← listLit? args[1]! then
-        let τ ← cirOf L (← inferType e) false
-        unless τ.isLeaf do
-          return Src.arrayMk (← xs.mapM (tr L))
+        discard <| cirOf L (← inferType e) false
+        return Src.arrayMk (← xs.mapM (tr L))
+    -- the built-in list (`useBuiltinList`): a literal `[a, b, …]` is `PExpr.list_mk`, and
+    -- `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`, an append of arrays
+    if c == ``List.nil || c == ``List.cons then
+      if (← cirOf L (← inferType e) false) matches .list _ then
+        if let some xs ← listLit? e then return .list (← xs.mapM (tr L))
+        fail m!"the list{indentExpr e}\nis not a literal: the built-in list has no `cons` yet"
+    if c == ``List.append && args.size == 3 then
+      if (← cirOf L (← inferType e) false) matches .list _ then
+        return ← tr L (← mkAppM ``Array.toList #[← listAppendAsArray e])
+    -- the conversions between a list and an array are their externs (`lean_array_mk`,
+    -- `lean_array_to_list`), not the constructor and the projection of the structure `Array`
+    if (c == ``Array.mk || c == ``Array.toList) && args.size == 2 then
+      return ← trExtern tr L e fn args
     -- a fold over an array of members of the block recursed on
     if c == ``Array.foldl && args.size == 7 then
       if let some (arr, .array s) ← nestView? tr L args[4]! then

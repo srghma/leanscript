@@ -2,7 +2,9 @@
 -- not translated:
 --   printAll: an `IO`/`ST` action: the language has no side effects
 --   main: an `IO`/`ST` action: the language has no side effects
---   messages: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
+
+-- messages : List String
+ret ["one", "two", "three"]
 
 -- countUp : String → Nat → Nat → Nat → Nat
 val k1 [1] : (String → (Nat → (Nat → (Nat → Nat)))) := fun x2 [0] : String => (closed)

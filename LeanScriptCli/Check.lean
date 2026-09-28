@@ -11,7 +11,8 @@ of the elaborated file).  `node FILE.check.mjs` prints the checks and exits with
 status when one fails.
 
 Only functions whose parameters and result are all of a *sample type* are checked: `Nat`,
-`Int`, `Bool`, `String`, `Char`, `Float`, and `Array` of `Nat`, `Int`, `Bool` or `String`.
+`Int`, `Bool`, `String`, `Char`, `Float`, and `Array` and `List` of `Nat`, `Int`, `Bool` or
+`String` (a list is a JavaScript array, and is printed as its array, `#[…]`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
 -/
@@ -24,6 +25,7 @@ namespace LeanScript.Cli
 inductive SType where
   | nat | int | bool | string | char | float
   | arr (t : SType)
+  | list (t : SType)
   deriving Inhabited, BEq
 
 /-- The sample type of a Lean type, if it is one. -/
@@ -39,6 +41,11 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     match ← stypeOf? e.appArg! with
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
       return some (.arr t)
+    | _ => return none
+  if e.isAppOfArity ``List 1 then
+    match ← stypeOf? e.appArg! with
+    | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
+      return some (.list t)
     | _ => return none
   return none
 
@@ -63,7 +70,7 @@ structure Sample where
   js : String
 
 /-- The samples of a type (few and small: the functions are called on every combination). -/
-def samplesOf (cfg : JsConfig) : SType → List Sample
+partial def samplesOf (cfg : JsConfig) : SType → List Sample
   | .nat => [0, 1, 2, 5, 13].map fun n => ⟨mkNatLit n, intLit (cfg.natRepr == .bigint) n⟩
   | .int => [(-7 : Int), -1, 0, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
   | .bool => [⟨toExpr false, "false"⟩, ⟨toExpr true, "true"⟩]
@@ -77,17 +84,20 @@ def samplesOf (cfg : JsConfig) : SType → List Sample
     [f 0 false 0 "0", f 5 true 1 "0.5", f 225 true 2 "2.25", f 3 false 1 "30",
       ⟨mkApp (mkConst ``Float.neg) (mkApp3 (mkConst ``Float.ofScientific) (mkNatLit 15)
         (toExpr true) (mkNatLit 1)), "-1.5"⟩]
-  | .arr t =>
+  | .arr t => (samplesOf cfg (.list t)).map fun l =>
+      ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
+  | .list t =>
     let elems := samplesOf cfg t
     let mk (xs : List Sample) : Sample :=
-      let elemTy : Expr := match t with
-        | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
-        | _ => mkConst ``String
-      ⟨mkApp2 (mkConst ``List.toArray [.zero]) elemTy
-        (xs.foldr (fun x acc => mkApp3 (mkConst ``List.cons [.zero]) elemTy x.lean acc)
-          (mkApp (mkConst ``List.nil [.zero]) elemTy)),
+      ⟨xs.foldr (fun x acc => mkApp3 (mkConst ``List.cons [.zero]) (elemTy t) x.lean acc)
+          (mkApp (mkConst ``List.nil [.zero]) (elemTy t)),
        "[" ++ ", ".intercalate (xs.map (·.js)) ++ "]"⟩
     [mk [], mk (elems.take 1), mk (elems.take 3), mk (elems.reverse.take 4)]
+where
+  /-- The Lean type of the elements of an array or a list sample. -/
+  elemTy : SType → Expr
+    | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
+    | _ => mkConst ``String
 
 /-- All combinations of samples of the parameter types, at most `cap` of them, spread over
     the space (each list is walked with a stride so that not only the first samples of the
@@ -154,6 +164,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
     let shown ← match res with
       | .float => mkAppM ``toString #[mkApp (mkConst ``Float.toBits) app]
+      | .list _ => do mkAppM ``toString #[← mkAppM ``List.toArray #[app]]
       | _ => mkAppM ``toString #[app]
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)
     let thunk := mkLambda `u .default (mkConst ``Unit) shown

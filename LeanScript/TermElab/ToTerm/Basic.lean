@@ -158,12 +158,6 @@ def delayCoerce (L : Loc) (src dst : CIR) (t : Src) : TM Src := do
 def delayCoerceTy (L : Loc) (src dst : Expr) (t : Src) : TM Src := do
   delayCoerce L (← cirOf L src false) (← cirOf L dst false) t
 
-/-- Is a type one whose values are Lean's own values (so an extern can take and return it)? -/
-partial def CIR.isLeaf : CIR → Bool
-  | .prim _ => true
-  | .array a => a.isLeaf
-  | _ => false
-
 /-- Does the expression mention the function translated? -/
 def Loc.mentionsFn (L : Loc) (e : Expr) : Bool :=
   L.fns.any fun f => (e.find? (·.isConstOf f)).isSome

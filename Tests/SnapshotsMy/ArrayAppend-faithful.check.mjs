@@ -46,6 +46,15 @@ check("test2([13n, 5n, 2n, 1n], [0n])", () => M.test2([13n, 5n, 2n, 1n], [0n]), 
 check("test2([0n, 1n, 2n], [13n, 5n, 2n, 1n])", () => M.test2([0n, 1n, 2n], [13n, 5n, 2n, 1n]), "#[0, 1, 2, 13, 5, 2, 1]", false);
 check("test2([13n, 5n, 2n, 1n], [0n, 1n, 2n])", () => M.test2([13n, 5n, 2n, 1n], [0n, 1n, 2n]), "#[13, 5, 2, 1, 0, 1, 2]", false);
 check("test2([13n, 5n, 2n, 1n], [13n, 5n, 2n, 1n])", () => M.test2([13n, 5n, 2n, 1n], [13n, 5n, 2n, 1n]), "#[13, 5, 2, 1, 13, 5, 2, 1]", false);
+check("test4([])", () => M.test4([]), "#[1, 2]", false);
+check("test4([0n])", () => M.test4([0n]), "#[1, 2, 0]", false);
+check("test4([0n, 1n, 2n])", () => M.test4([0n, 1n, 2n]), "#[1, 2, 0, 1, 2]", false);
+check("test4([13n, 5n, 2n, 1n])", () => M.test4([13n, 5n, 2n, 1n]), "#[1, 2, 13, 5, 2, 1]", false);
+check("test5(0n)", () => M.test5(0n), "#[]", false);
+check("test5(1n)", () => M.test5(1n), "#[0, 0]", false);
+check("test5(2n)", () => M.test5(2n), "#[0, 0, 1, 1]", false);
+check("test5(5n)", () => M.test5(5n), "#[0, 0, 1, 1, 2, 4, 3, 9, 4, 16]", false);
+check("test5(13n)", () => M.test5(13n), "#[0, 0, 1, 1, 2, 4, 3, 9, 4, 16, 5, 25, 6, 36, 7, 49, 8, 64, 9, 81, 10, 100, 11, 121, 12, 144]", false);
 
 console.log(`ArrayAppend-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

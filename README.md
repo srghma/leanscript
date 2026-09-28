@@ -50,13 +50,23 @@ types, `faithful` uses `BigInt`), and prints it with `LanguageJavascriptMini`.  
 `FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
 `FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`, `FILE-pbo.js` and `FILE-faithful.js` (the
 runtime helpers the module needs, then one `export const f = (x, y) => …` per function: a
-chain of lambdas becomes one arrow with several parameters); with `--check` also
+chain of lambdas becomes one arrow with several parameters, and the components of the Lean
+name are joined by `$`, `ArrayTest.test1` is `ArrayTest$test1`); with `--check` also
 `FILE-pbo.check.mjs` and `FILE-faithful.check.mjs`, which call every exported function on
 sample arguments and compare the answers with the ones Lean computes.  Every output lists
 the definitions that were not translated, with the reason; the JavaScript outputs also start
 with their configuration.  Join points are de Bruijn indexed in `JsTerm` (`JsStmt.join`,
 `JsStmt.jump`) and printed as labelled blocks (`j$1: { …; break j$1; }`).  In the `Term`
 files a lazy value `Unit → τ` is printed `(Lazy τ)`.
+
+In the tool a `List α` is the built-in list `Ty.list α` (an immutable JavaScript array), not a
+datatype (the tool has no signature to declare it in): a literal `[a, b]` is a list literal,
+and `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`.  An append of arrays is a fold pushing
+every element, which the JavaScript conversion writes `[...xs, ...ys]` on generic arrays; an
+array literal used once is inlined and the spreads of literals are flattened, so
+`#["a"] ++ (arr ++ #["b"])` (or the same on lists) is `["a", ...arr, "b"]`
+(`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).  A `Float.Model` (`Float32.Model`) is the
+`number` of the float it models.
 
 The optimiser (`LeanScript/Term/Optimize/Basic.lean`, `Cse.lean`, `Atom.lean`) does constant
 folding, copy propagation, dead-code elimination, common subexpression elimination of pure

@@ -3,8 +3,13 @@
 // not translated:
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
-//   messages: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
 
+
+/**
+ * `messages`
+ * @returns {List<string>}
+ */
+export const messages = () => ["one", "two", "three"];
 
 /**
  * `countUp`

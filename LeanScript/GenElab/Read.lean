@@ -364,6 +364,9 @@ partial def classify (e : Expr) : MetaM Head := do
       if n = 2 then fail m!"`Fin 2` has two values: two points are only ever `Bool`"
     return .node e
   | ``Array, 1 => return .array args[0]!
+  | ``List, 1 =>
+    if ← useBuiltinList then return .list args[0]!
+    return .node e
   | ``Thunk, 1 => return .thunk args[0]!
   | _, _ =>
     unless ((← getEnv).find? c).any (·.isInductive) do
@@ -375,7 +378,7 @@ partial def occurrences (e : Expr) : MetaM (Array Expr) := do
   match ← classify e with
   | .prim _ | .leanName | .var _ => return #[]
   | .fn a b => return (← occurrences a) ++ (← occurrences b)
-  | .array a | .thunk a | .lazy a => occurrences a
+  | .array a | .list a | .thunk a | .lazy a => occurrences a
   | .node n => return #[n]
 
 end LeanScript.Gen

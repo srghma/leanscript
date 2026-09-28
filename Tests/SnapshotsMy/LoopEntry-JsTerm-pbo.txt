@@ -3,7 +3,6 @@
 // not translated:
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
-//   messages: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
 
 // runtime helpers: $chk53, lean_nat_add$nnn
 
@@ -17,6 +16,11 @@ function $chk53(x) {
 function lean_nat_add$nnn(a, b) {
   return $chk53((a + b));
 }
+
+// messages
+export const messages = () => {
+  return ["one", "two", "three"];
+};
 
 // countUp
 export const countUp = (unused, step, n, acc) => {

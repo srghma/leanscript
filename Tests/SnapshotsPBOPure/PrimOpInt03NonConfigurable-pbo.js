@@ -33,153 +33,153 @@ function lean_int32_add(a, b) {
  * `TestUInt8.test1`
  * @returns {uint8}
  */
-export const TestUInt8_test1 = () => 144;
+export const TestUInt8$test1 = () => 144;
 
 /**
  * `TestUInt8.test2`
  * @returns {uint8}
  */
-export const TestUInt8_test2 = () => 106;
+export const TestUInt8$test2 = () => 106;
 
 /**
  * `TestUInt8.test3`
  * @returns {uint8}
  */
-export const TestUInt8_test3 = () => 144;
+export const TestUInt8$test3 = () => 144;
 
 /**
  * `TestUInt8.test4`
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8_test4 = (a) =>
+export const TestUInt8$test4 = (a) =>
   lean_uint8_add(lean_uint8_add(200, a), 200);
 
 /**
  * `TestUInt16.test1`
  * @returns {uint16}
  */
-export const TestUInt16_test1 = () => 34464;
+export const TestUInt16$test1 = () => 34464;
 
 /**
  * `TestUInt16.test2`
  * @returns {uint16}
  */
-export const TestUInt16_test2 = () => 25536;
+export const TestUInt16$test2 = () => 25536;
 
 /**
  * `TestUInt16.test3`
  * @returns {uint16}
  */
-export const TestUInt16_test3 = () => 16960;
+export const TestUInt16$test3 = () => 16960;
 
 /**
  * `TestUInt16.test4`
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16_test4 = (a) =>
+export const TestUInt16$test4 = (a) =>
   lean_uint16_add(lean_uint16_add(50000, a), 50000);
 
 /**
  * `TestUInt32.test1`
  * @returns {uint32}
  */
-export const TestUInt32_test1 = () => 1705032704;
+export const TestUInt32$test1 = () => 1705032704;
 
 /**
  * `TestUInt32.test2`
  * @returns {uint32}
  */
-export const TestUInt32_test2 = () => 2294967296;
+export const TestUInt32$test2 = () => 2294967296;
 
 /**
  * `TestUInt32.test3`
  * @returns {uint32}
  */
-export const TestUInt32_test3 = () => 2643460096;
+export const TestUInt32$test3 = () => 2643460096;
 
 /**
  * `TestUInt32.test4`
  * @param {uint32} a
  * @returns {uint32}
  */
-export const TestUInt32_test4 = (a) =>
+export const TestUInt32$test4 = (a) =>
   lean_uint32_add(lean_uint32_add(3000000000, a), 3000000000);
 
 /**
  * `TestInt8.test1`
  * @returns {int8}
  */
-export const TestInt8_test1 = () => -56;
+export const TestInt8$test1 = () => -56;
 
 /**
  * `TestInt8.test2`
  * @returns {int8}
  */
-export const TestInt8_test2 = () => 56;
+export const TestInt8$test2 = () => 56;
 
 /**
  * `TestInt8.test3`
  * @returns {int8}
  */
-export const TestInt8_test3 = () => -112;
+export const TestInt8$test3 = () => -112;
 
 /**
  * `TestInt8.test4`
  * @param {int8} a
  * @returns {int8}
  */
-export const TestInt8_test4 = (a) => lean_int8_add(lean_int8_add(100, a), 100);
+export const TestInt8$test4 = (a) => lean_int8_add(lean_int8_add(100, a), 100);
 
 /**
  * `TestInt16.test1`
  * @returns {int16}
  */
-export const TestInt16_test1 = () => -25536;
+export const TestInt16$test1 = () => -25536;
 
 /**
  * `TestInt16.test2`
  * @returns {int16}
  */
-export const TestInt16_test2 = () => 25536;
+export const TestInt16$test2 = () => 25536;
 
 /**
  * `TestInt16.test3`
  * @returns {int16}
  */
-export const TestInt16_test3 = () => 16960;
+export const TestInt16$test3 = () => 16960;
 
 /**
  * `TestInt16.test4`
  * @param {int16} a
  * @returns {int16}
  */
-export const TestInt16_test4 = (a) =>
+export const TestInt16$test4 = (a) =>
   lean_int16_add(lean_int16_add(20000, a), 20000);
 
 /**
  * `TestInt32.test1`
  * @returns {int32}
  */
-export const TestInt32_test1 = () => -294967296;
+export const TestInt32$test1 = () => -294967296;
 
 /**
  * `TestInt32.test2`
  * @returns {int32}
  */
-export const TestInt32_test2 = () => 294967296;
+export const TestInt32$test2 = () => 294967296;
 
 /**
  * `TestInt32.test3`
  * @returns {int32}
  */
-export const TestInt32_test3 = () => -1946474495;
+export const TestInt32$test3 = () => -1946474495;
 
 /**
  * `TestInt32.test4`
  * @param {int32} a
  * @returns {int32}
  */
-export const TestInt32_test4 = (a) =>
+export const TestInt32$test4 = (a) =>
   lean_int32_add(lean_int32_add(2000000000, a), 2000000000);

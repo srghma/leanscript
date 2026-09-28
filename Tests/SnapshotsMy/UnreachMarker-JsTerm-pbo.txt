@@ -7,7 +7,7 @@
 //   SnapshotsMy.UnreachMarkerCheck.pTotal: the definition does not elaborate (it contains errors or `sorry`)
 //   SnapshotsMy.UnreachMarkerCheck.runTotal: the definition does not elaborate (it contains errors or `sorry`)
 //   small: LeanScript: a branch that Lean proves unreachable ⋯.elim is not supported: the language has no term for it (and once the indices of an inductive family are erased, as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)
-//   headOf: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
+//   headOf: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 
 // runtime helpers: $chk53, lean_nat_add$nnn
 

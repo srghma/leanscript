@@ -30,6 +30,15 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1()", () => M.test1(), "#[true, false, false, false]", false);
+check("test2()", () => M.test2(), "#[true, true, true, false]", false);
+check("test3()", () => M.test3(), "#[true, false, false, true]", false);
+check("test4()", () => M.test4(), "#[false, true, true, false]", false);
+check("test5()", () => M.test5(), "#[false, false, true, false]", false);
+check("test6()", () => M.test6(), "#[false, true, false, false]", false);
+check("test7()", () => M.test7(), "#[true, false, true, true]", false);
+check("test8()", () => M.test8(), "#[true, true, false, true]", false);
+check("test9()", () => M.test9(), "#[false, true]", false);
 
 console.log(`PrimOpBoolean02-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -31,7 +31,7 @@ syntax-directed; each construct of `Term` has one JavaScript shape:
 | `Branch.join` | `let x; join x { branch }` (the labelled block `L: { … }`) followed by the body of the join point |
 | `Comp.app f a`, `Comp.share n` | `f(a)`, `n` |
 | `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }`; when the step ignores the accumulator (a case analysis `0` / `k + 1`), `let acc = z; if (0n < n) { const i = n - 1n; …; acc = …; }` |
-| `Comp.array_foldl a z s` | `let acc = z; for (const e of a) { …; acc = …; }` |
+| `Comp.array_foldl a z s` | `let acc = z; for (const e of a) { …; acc = …; }`; a fold pushing every element (`Array.append z a`) on generic arrays is `[...z, ...a]` |
 | `Comp.thunk_force`, `Comp.lazy_force` | `$force(t)`, `t()` |
 
 A top-level term of the shape `val k := fun x => …; ret k` (a curried function, as every
@@ -89,8 +89,8 @@ def primLit (cfg : JsConfig) : (p : LeanPrimTy) → p.denote → Except String J
       .lit (.int s.endExclusive.offset.byteIdx)])
   | .float, f => pure (.lit (.number f.toFloat))
   | .float32, f => pure (.lit (.number f.toFloat32.toFloat))
-  | .floatModel, _ => throw "a `Float.Model` literal has no JavaScript representation"
-  | .float32Model, _ => throw "a `Float32.Model` literal has no JavaScript representation"
+  | .floatModel, m => pure (.lit (.number (Float.ofModel m)))
+  | .float32Model, m => pure (.lit (.number (Float32.ofModel m).toFloat))
 
 /-! ## The conversion -/
 
@@ -280,6 +280,12 @@ def JsExpr.isAtom : JsExpr → Bool
   | .var _ | .lit _ => true
   | _ => false
 
+/-- Is the body of an array fold, whose element is `e` and accumulator `acc`, the push of the
+    element onto the accumulator (`return lean_array_push(acc, e);`)? -/
+def isPushStep (acc e : String) : List JsStmt → Bool
+  | [.ret (.helper h [.var a, .var x])] => h.startsWith "lean_array_push" && a == acc && x == e
+  | _ => false
+
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
 def fieldKey (i : Nat) : String := s!"_{i + 1}"
 
@@ -428,13 +434,20 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
       return (pre ++ [.letMut acc (some zE),
         .ite (.bin lt (lit 0) cntE) (.const i (.bin sub cntE (lit 1)) :: retToAcc acc body) []],
         acc)
-  | .array_foldl arr z s _, n => do
+  | Comp.array_foldl (ρ := ρ) arr z s _, n => do
     let acc ← fresh "acc"
     let e ← fresh "e"
     let arrE ← cPExpr arr n
     let zE ← cPExpr z n
     let accIn ← fresh "a"
+    let saved ← get
     let body ← cBody s n [e, accIn]
+    -- `Array.append z arr` (a fold pushing every element onto the accumulator) on generic
+    -- arrays is the array literal `[...z, ...arr]`
+    if isPushStep accIn e body && (lowerTy cfg ρ matches .genericArray _) then
+      set saved
+      let x ← fresh "x"
+      return ([.const x (.array [.spread zE, .spread arrE])], x)
     return ([.letMut acc (some zE), .forOf e arrE (loopBody acc accIn body)], acc)
   | .data_rec _ _ _ _ _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
   | .data_brec _ _ _ _ _ _ _ _, _ => throw "the recursors of declared datatypes are not converted to JavaScript yet"
@@ -592,6 +605,149 @@ partial def peepholeExpr : JsExpr → JsExpr
   | e => e
 end
 
+/-! ## Array literals: flattening and inlining
+
+The appends of generic arrays are array literals of spreads (`[...a, ...b]`), so a chain of
+appends is nested literals.  Two rewrites turn it into one literal:
+
+* a spread of an array literal is its elements: `[x, ...[y, ...z]]` is `[x, y, ...z]`;
+* `const x = [ … ];` used exactly once afterwards, not inside a loop or a closure (where it
+  would be evaluated more than once), is inlined into that use.  The elements of such a
+  literal (literals, variables, spreads of those) have no effect and cannot fail, so moving
+  it is safe as long as none of its variables is reassigned in between.
+-/
+
+/-- A literal, a variable, or an array literal of such (spread or not): an expression that
+    has no effect, cannot fail and is cheap. -/
+partial def JsExpr.isMovable : JsExpr → Bool
+  | .var _ | .lit _ => true
+  | .array es => es.all JsExpr.isMovable
+  | .spread e => e.isMovable
+  | _ => false
+
+/-- The variables of a movable expression. -/
+partial def JsExpr.movableVars : JsExpr → List String
+  | .var x => [x]
+  | .array es => es.flatMap JsExpr.movableVars
+  | .spread e => e.movableVars
+  | _ => []
+
+mutual
+/-- Rewrite every expression of a statement bottom-up with `f`. -/
+partial def JsStmt.mapE (f : JsExpr → JsExpr) : JsStmt → JsStmt
+  | .const x e => .const x (e.mapE f)
+  | .letMut x e => .letMut x (e.map (·.mapE f))
+  | .assign x e => .assign x (e.mapE f)
+  | .destructure xs e => .destructure xs (e.mapE f)
+  | .destructureObj xs e => .destructureObj xs (e.mapE f)
+  | .setMember o m e => .setMember (o.mapE f) m (e.mapE f)
+  | .setAt o i e => .setAt (o.mapE f) (i.mapE f) (e.mapE f)
+  | .expr e => .expr (e.mapE f)
+  | .while c b => .while (c.mapE f) (b.map (·.mapE f))
+  | .ret e => .ret (e.mapE f)
+  | .ite c t e => .ite (c.mapE f) (t.map (·.mapE f)) (e.map (·.mapE f))
+  | .forRange i big n b => .forRange i big (n.mapE f) (b.map (·.mapE f))
+  | .forOf x xs b => .forOf x (xs.mapE f) (b.map (·.mapE f))
+  | .throw k m => .throw k m
+  | .join x b => .join x (b.map (·.mapE f))
+  | .jump j e => .jump j (e.mapE f)
+/-- Rewrite an expression bottom-up with `f`. -/
+partial def JsExpr.mapE (f : JsExpr → JsExpr) : JsExpr → JsExpr
+  | .bin op a b => f (.bin op (a.mapE f) (b.mapE f))
+  | .un op a => f (.un op (a.mapE f))
+  | .helper n as => f (.helper n (as.map (·.mapE f)))
+  | .call g as => f (.call (g.mapE f) (as.map (·.mapE f)))
+  | .arrow ps b => f (.arrow ps (b.map (·.mapE f)))
+  | .array es => f (.array (es.map (·.mapE f)))
+  | .typedArray c es => f (.typedArray c (es.map (·.mapE f)))
+  | .index e i => f (.index (e.mapE f) i)
+  | .member e m => f (.member (e.mapE f) m)
+  | .cond c a b => f (.cond (c.mapE f) (a.mapE f) (b.mapE f))
+  | .object fs => f (.object (fs.map fun (k, e) => (k, e.mapE f)))
+  | .at e i => f (.at (e.mapE f) (i.mapE f))
+  | .new c as => f (.new (c.mapE f) (as.map (·.mapE f)))
+  | .spread e => f (.spread (e.mapE f))
+  | e => f e
+end
+
+/-- One step of flattening: the spreads of array literals inside an array literal are
+    replaced by their elements. -/
+def flattenStep : JsExpr → JsExpr
+  | .array es => .array (es.flatMap fun
+      | .spread (.array es') => es'
+      | e => [e])
+  | e => e
+
+/-- The sum of two counts of mentions (`JsStmt.uses`). -/
+def usesAdd (a b : Nat × Nat) : Nat × Nat := (a.1 + b.1, a.2 + b.2)
+
+/-- The count of mentions inside a loop or a closure: every one is evaluated again. -/
+def usesAgain (a : Nat × Nat) : Nat × Nat := (a.1, a.1)
+
+mutual
+/-- How often a statement mentions the variable `x`: all the mentions, and the mentions that
+    are evaluated more than once (in the body of a loop, or of a closure). -/
+partial def JsStmt.uses (x : String) : JsStmt → Nat × Nat
+  | .const _ e | .assign _ e | .destructure _ e | .destructureObj _ e | .ret e | .jump _ e
+  | .expr e => e.uses x
+  | .letMut _ e => (e.map (·.uses x)).getD (0, 0)
+  | .setMember o _ e => usesAdd (o.uses x) (e.uses x)
+  | .setAt o i e => usesAdd (usesAdd (o.uses x) (i.uses x)) (e.uses x)
+  | .while c b => usesAgain (usesAdd (c.uses x) (usesAll x b))
+  | .ite c t e => usesAdd (c.uses x) (usesAdd (usesAll x t) (usesAll x e))
+  | .forRange _ _ n b => usesAdd (n.uses x) (usesAgain (usesAll x b))
+  | .forOf _ xs b => usesAdd (xs.uses x) (usesAgain (usesAll x b))
+  | .throw _ _ => (0, 0)
+  | .join _ b => usesAll x b
+/-- How often an expression mentions the variable `x` (see `JsStmt.uses`). -/
+partial def JsExpr.uses (x : String) : JsExpr → Nat × Nat
+  | .var y => if y == x then (1, 0) else (0, 0)
+  | .lit _ => (0, 0)
+  | .arrow _ b => usesAgain (usesAll x b)
+  | .bin _ a b | .at a b => usesAdd (a.uses x) (b.uses x)
+  | .un _ a | .index a _ | .member a _ | .spread a => a.uses x
+  | .call f as => as.foldl (fun acc a => usesAdd acc (a.uses x)) (f.uses x)
+  | .helper _ as | .array as | .typedArray _ as =>
+    as.foldl (fun acc a => usesAdd acc (a.uses x)) (0, 0)
+  | .new c as => as.foldl (fun acc a => usesAdd acc (a.uses x)) (c.uses x)
+  | .cond c a b => usesAdd (c.uses x) (usesAdd (a.uses x) (b.uses x))
+  | .object fs => fs.foldl (fun acc (_, e) => usesAdd acc (e.uses x)) (0, 0)
+/-- `JsStmt.uses` of a block. -/
+partial def usesAll (x : String) (ss : List JsStmt) : Nat × Nat :=
+  ss.foldl (fun acc s => usesAdd acc (s.uses x)) (0, 0)
+end
+
+/-- Does a statement (re)assign the variable `x`? -/
+partial def JsStmt.assigns (x : String) : JsStmt → Bool
+  | .assign y _ | .letMut y _ => y == x
+  | .join y b => y == x || b.any (·.assigns x)
+  | .while _ b | .forRange _ _ _ b | .forOf _ _ b => b.any (·.assigns x)
+  | .ite _ t e => t.any (·.assigns x) || e.any (·.assigns x)
+  | _ => false
+
+/-- Inline the array literals of a block used once (see above), and flatten. -/
+partial def inlineArrays : List JsStmt → List JsStmt
+  | [] => []
+  | .const x e :: rest =>
+    let e := e.mapE flattenStep
+    let (all, again) := usesAll x rest
+    if (e matches .array _) && e.isMovable && all == 1 && again == 0 &&
+        e.movableVars.all (fun y => !rest.any (·.assigns y)) then
+      inlineArrays (rest.map (JsStmt.mapE (fun
+        | .var y => if y == x then e else .var y
+        | e' => flattenStep e')))
+    else .const x e :: inlineArrays rest
+  | s :: rest => inner s :: inlineArrays rest
+where
+  /-- Inline inside the blocks of a statement. -/
+  inner : JsStmt → JsStmt
+    | .while c b => .while c (inlineArrays b)
+    | .ite c t e => .ite c (inlineArrays t) (inlineArrays e)
+    | .forRange i big n b => .forRange i big n (inlineArrays b)
+    | .forOf x xs b => .forOf x xs (inlineArrays b)
+    | .join x b => .join x (inlineArrays b)
+    | s => s.mapE flattenStep
+
 /-! ## Whole functions -/
 
 section
@@ -641,7 +797,7 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
   let ((ps, body), st) ← (peelFun cfg ct.term {} paramNames).run {}
   let ret := peelTy ps.length (lowerTy cfg ct.τ)
   return ({ name, leanName, params := ps.map (·.1), paramTys := ps.map (·.2), ret,
-            body := peepholeStmts body }, st.helpers.toList)
+            body := peepholeStmts (inlineArrays (peepholeStmts body)) }, st.helpers.toList)
 
 end MoreJs
 

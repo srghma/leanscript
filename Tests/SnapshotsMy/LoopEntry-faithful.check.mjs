@@ -30,6 +30,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("messages()", () => M.messages(), "#[one, two, three]", false);
 check("countUp(\"\", 0n, 0n, 0n)", () => M.countUp("", 0n, 0n, 0n), "0", false);
 check("countUp(\"\", 1n, 0n, 2n)", () => M.countUp("", 1n, 0n, 2n), "2", false);
 check("countUp(\"a\", 0n, 2n, 0n)", () => M.countUp("a", 0n, 2n, 0n), "0", false);

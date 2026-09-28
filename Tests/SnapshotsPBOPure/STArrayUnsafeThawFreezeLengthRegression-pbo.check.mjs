@@ -30,6 +30,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test(-7)", () => M.test(-7), "#[-7, 12, 2]", false);
+check("test(-1)", () => M.test(-1), "#[-1, 12, 2]", false);
+check("test(0)", () => M.test(0), "#[0, 12, 2]", false);
+check("test(3)", () => M.test(3), "#[3, 12, 2]", false);
+check("test(12)", () => M.test(12), "#[12, 12, 2]", false);
 
 console.log(`STArrayUnsafeThawFreezeLengthRegression-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

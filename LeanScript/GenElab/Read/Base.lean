@@ -38,6 +38,8 @@ inductive Head where
   | fn (a b : Expr)
   /-- `Array a`. -/
   | array (a : Expr)
+  /-- `List a`, read as the built-in list (`Ty.list`) when `builtinListOption` is set. -/
+  | list (a : Expr)
   /-- `Thunk a`: a memoised delay. -/
   | thunk (a : Expr)
   /-- `Unit → a`: a delay recomputed every time. -/
@@ -47,6 +49,15 @@ inductive Head where
   /-- An instance of an inductive type. -/
   | node (e : Expr)
   deriving Inhabited, Repr, BEq
+
+/-- The option (not registered, set by the `leanscript` tool) under which `List α` is read as
+    the built-in list `Ty.list α` (an immutable JavaScript array) instead of as a datatype
+    that a signature must declare. -/
+def builtinListOption : Name := `leanscript.builtinList
+
+/-- Is `List α` read as the built-in list (`builtinListOption`)? -/
+def useBuiltinList : MetaM Bool :=
+  return (← getOptions).getBool builtinListOption false
 
 /-- Is a field of this type erased: a proof or an instance?  (A `Unit` field is **not**
     erased: `Unit` has one value, so it has no type in the language, and a constructor with

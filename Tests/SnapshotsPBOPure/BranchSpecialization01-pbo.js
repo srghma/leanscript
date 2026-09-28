@@ -8,7 +8,7 @@
  * @param {enum4@0} y
  * @returns {boolean}
  */
-export const instBEqTestEnum_beq = (x, y) => {
+export const instBEqTestEnum$beq = (x, y) => {
   const k$1 = (x$2) => {
     if (x$2 === 0) {
       return 0;

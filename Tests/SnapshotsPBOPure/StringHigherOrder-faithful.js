@@ -2,10 +2,34 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 // not translated:
 //   stringValues: LeanScript: `stringValues` is universe polymorphic
-//   test1: LeanScript: the recursive type List Bool is not declared in any signature; declare it with `leanscript_signature`
-//   test2: LeanScript: the recursive type List Bool is not declared in any signature; declare it with `leanscript_signature`
-//   test3: LeanScript: the recursive type List Bool is not declared in any signature; declare it with `leanscript_signature`
-//   test4: LeanScript: the recursive type List Bool is not declared in any signature; declare it with `leanscript_signature`
-//   test7: LeanScript: the recursive type List String is not declared in any signature; declare it with `leanscript_signature`
 
 
+/**
+ * `test1`
+ * @returns {List<boolean>}
+ */
+export const test1 = () => [true, false, false];
+
+/**
+ * `test2`
+ * @returns {List<boolean>}
+ */
+export const test2 = () => [false, true, true];
+
+/**
+ * `test3`
+ * @returns {List<boolean>}
+ */
+export const test3 = () => [false, true, false];
+
+/**
+ * `test4`
+ * @returns {List<boolean>}
+ */
+export const test4 = () => [false, false, true];
+
+/**
+ * `test7`
+ * @returns {List<string>}
+ */
+export const test7 = () => ["aa", "ab", "ba"];

@@ -47,7 +47,7 @@ function lean_float32_negate(a) {
  * @param {float} b
  * @returns {float}
  */
-export const TestFloat_test1 = (a, b) => a + b;
+export const TestFloat$test1 = (a, b) => a + b;
 
 /**
  * `TestFloat.test2`
@@ -55,7 +55,7 @@ export const TestFloat_test1 = (a, b) => a + b;
  * @param {float} b
  * @returns {float}
  */
-export const TestFloat_test2 = (a, b) => a - b;
+export const TestFloat$test2 = (a, b) => a - b;
 
 /**
  * `TestFloat.test3`
@@ -63,7 +63,7 @@ export const TestFloat_test2 = (a, b) => a - b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test3 = (a, b) => a === b;
+export const TestFloat$test3 = (a, b) => a === b;
 
 /**
  * `TestFloat.test4`
@@ -71,7 +71,7 @@ export const TestFloat_test3 = (a, b) => a === b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test4 = (a, b) => {
+export const TestFloat$test4 = (a, b) => {
   if (a === b) {
     return false;
   } else {
@@ -85,7 +85,7 @@ export const TestFloat_test4 = (a, b) => {
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test5 = (a, b) => a < b;
+export const TestFloat$test5 = (a, b) => a < b;
 
 /**
  * `TestFloat.test6`
@@ -93,7 +93,7 @@ export const TestFloat_test5 = (a, b) => a < b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test6 = (a, b) => b < a;
+export const TestFloat$test6 = (a, b) => b < a;
 
 /**
  * `TestFloat.test7`
@@ -101,7 +101,7 @@ export const TestFloat_test6 = (a, b) => b < a;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test7 = (a, b) => a <= b;
+export const TestFloat$test7 = (a, b) => a <= b;
 
 /**
  * `TestFloat.test8`
@@ -109,7 +109,7 @@ export const TestFloat_test7 = (a, b) => a <= b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat_test8 = (a, b) => b <= a;
+export const TestFloat$test8 = (a, b) => b <= a;
 
 /**
  * `TestFloat.test9`
@@ -117,7 +117,7 @@ export const TestFloat_test8 = (a, b) => b <= a;
  * @param {float} b
  * @returns {float}
  */
-export const TestFloat_test9 = (a, b) => a * b;
+export const TestFloat$test9 = (a, b) => a * b;
 
 /**
  * `TestFloat.test10`
@@ -125,14 +125,14 @@ export const TestFloat_test9 = (a, b) => a * b;
  * @param {float} b
  * @returns {float}
  */
-export const TestFloat_test10 = (a, b) => a / b;
+export const TestFloat$test10 = (a, b) => a / b;
 
 /**
  * `TestFloat.test11`
  * @param {float} a
  * @returns {float}
  */
-export const TestFloat_test11 = (a) => lean_float_negate(a);
+export const TestFloat$test11 = (a) => lean_float_negate(a);
 
 /**
  * `TestFloat.test12`
@@ -141,7 +141,7 @@ export const TestFloat_test11 = (a) => lean_float_negate(a);
  * @param {float} c
  * @returns {float}
  */
-export const TestFloat_test12 = (a, b, c) => a - (b - c);
+export const TestFloat$test12 = (a, b, c) => a - (b - c);
 
 /**
  * `TestFloat.test13`
@@ -150,7 +150,7 @@ export const TestFloat_test12 = (a, b, c) => a - (b - c);
  * @param {float} c
  * @returns {float}
  */
-export const TestFloat_test13 = (a, b, c) => a / (b / c);
+export const TestFloat$test13 = (a, b, c) => a / (b / c);
 
 /**
  * `TestFloat32.test1`
@@ -158,7 +158,7 @@ export const TestFloat_test13 = (a, b, c) => a / (b / c);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32_test1 = (a, b) => lean_float32_add(a, b);
+export const TestFloat32$test1 = (a, b) => lean_float32_add(a, b);
 
 /**
  * `TestFloat32.test2`
@@ -166,7 +166,7 @@ export const TestFloat32_test1 = (a, b) => lean_float32_add(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32_test2 = (a, b) => lean_float32_sub(a, b);
+export const TestFloat32$test2 = (a, b) => lean_float32_sub(a, b);
 
 /**
  * `TestFloat32.test3`
@@ -174,7 +174,7 @@ export const TestFloat32_test2 = (a, b) => lean_float32_sub(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test3 = (a, b) => lean_float32_beq(a, b);
+export const TestFloat32$test3 = (a, b) => lean_float32_beq(a, b);
 
 /**
  * `TestFloat32.test4`
@@ -182,7 +182,7 @@ export const TestFloat32_test3 = (a, b) => lean_float32_beq(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test4 = (a, b) => {
+export const TestFloat32$test4 = (a, b) => {
   if (lean_float32_beq(a, b)) {
     return false;
   } else {
@@ -196,7 +196,7 @@ export const TestFloat32_test4 = (a, b) => {
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test5 = (a, b) =>
+export const TestFloat32$test5 = (a, b) =>
   lean_float32_decLt__Float32_decLt(a, b);
 
 /**
@@ -205,7 +205,7 @@ export const TestFloat32_test5 = (a, b) =>
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test6 = (a, b) =>
+export const TestFloat32$test6 = (a, b) =>
   lean_float32_decLt__Float32_decLt(b, a);
 
 /**
@@ -214,7 +214,7 @@ export const TestFloat32_test6 = (a, b) =>
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test7 = (a, b) =>
+export const TestFloat32$test7 = (a, b) =>
   lean_float32_decLe__Float32_decLe(a, b);
 
 /**
@@ -223,7 +223,7 @@ export const TestFloat32_test7 = (a, b) =>
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32_test8 = (a, b) =>
+export const TestFloat32$test8 = (a, b) =>
   lean_float32_decLe__Float32_decLe(b, a);
 
 /**
@@ -232,7 +232,7 @@ export const TestFloat32_test8 = (a, b) =>
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32_test9 = (a, b) => lean_float32_mul(a, b);
+export const TestFloat32$test9 = (a, b) => lean_float32_mul(a, b);
 
 /**
  * `TestFloat32.test10`
@@ -240,14 +240,14 @@ export const TestFloat32_test9 = (a, b) => lean_float32_mul(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32_test10 = (a, b) => lean_float32_div(a, b);
+export const TestFloat32$test10 = (a, b) => lean_float32_div(a, b);
 
 /**
  * `TestFloat32.test11`
  * @param {float32} a
  * @returns {float32}
  */
-export const TestFloat32_test11 = (a) => lean_float32_negate(a);
+export const TestFloat32$test11 = (a) => lean_float32_negate(a);
 
 /**
  * `TestFloat32.test12`
@@ -256,7 +256,7 @@ export const TestFloat32_test11 = (a) => lean_float32_negate(a);
  * @param {float32} c
  * @returns {float32}
  */
-export const TestFloat32_test12 = (a, b, c) =>
+export const TestFloat32$test12 = (a, b, c) =>
   lean_float32_sub(a, lean_float32_sub(b, c));
 
 /**
@@ -266,5 +266,5 @@ export const TestFloat32_test12 = (a, b, c) =>
  * @param {float32} c
  * @returns {float32}
  */
-export const TestFloat32_test13 = (a, b, c) =>
+export const TestFloat32$test13 = (a, b, c) =>
   lean_float32_div(a, lean_float32_div(b, c));

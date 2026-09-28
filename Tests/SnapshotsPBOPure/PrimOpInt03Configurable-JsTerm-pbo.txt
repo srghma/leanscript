@@ -38,31 +38,31 @@ function lean_int_add$nnn(a, b) {
 }
 
 // TestNat.test1
-export const TestNat_test1 = () => {
+export const TestNat$test1 = () => {
   return 4000000000;
 };
 
 // TestNat.test2
-export const TestNat_test2 = () => {
+export const TestNat$test2 = () => {
   return 0;
 };
 
 // TestNat.test4
-export const TestNat_test4 = (a) => {
+export const TestNat$test4 = (a) => {
   return lean_nat_add$nnn(lean_nat_add$nnn(2000000000, a), 2000000000);
 };
 
 // TestInt.test1
-export const TestInt_test1 = () => {
+export const TestInt$test1 = () => {
   return 4000000000;
 };
 
 // TestInt.test2
-export const TestInt_test2 = () => {
+export const TestInt$test2 = () => {
   return -4000000000;
 };
 
 // TestInt.test4
-export const TestInt_test4 = (a) => {
+export const TestInt$test4 = (a) => {
   return lean_int_add$nnn(lean_int_add$nnn(2000000000, a), 2000000000);
 };

@@ -30,6 +30,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test5([])", () => M.test5([]), "#[]", false);
+check("test5([0n])", () => M.test5([0n]), "#[]", false);
+check("test5([0n, 1n, 2n])", () => M.test5([0n, 1n, 2n]), "#[]", false);
+check("test5([13n, 5n, 2n, 1n])", () => M.test5([13n, 5n, 2n, 1n]), "#[13, 5]", false);
 
 console.log(`MapFilter-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

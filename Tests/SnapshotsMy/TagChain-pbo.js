@@ -4,11 +4,11 @@
 //   test1: LeanScript: the helper `test1._sparseCasesOn_2` is universe polymorphic
 //   test2: LeanScript: the helper `test2._sparseCasesOn_2` is universe polymorphic
 //   test3: LeanScript: the helper `test3._sparseCasesOn_1` is universe polymorphic
-//   test4: LeanScript: the recursive type List Nat is not declared in any signature; declare it with `leanscript_signature`
+//   test4: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 
 
 /**
  * `instInhabitedColour.default`
  * @returns {enum3@0}
  */
-export const instInhabitedColour_default = () => 0;
+export const instInhabitedColour$default_ = () => 0;

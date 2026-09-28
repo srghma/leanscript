@@ -39,7 +39,7 @@ export const test1 = (x) => {
  * @param {{ _1: { _1: int53(number), _2: int53(number) }, _2: { _1: int53(number), _2: int53(number) } }} x
  * @returns {int53(number)}
  */
-export const Test2_test2 = (x) => {
+export const Test2$test2 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
   const { _1: f$3, _2: f$4 } = f$1;
   if (f$3 === 1) {

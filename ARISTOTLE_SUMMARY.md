@@ -1,3 +1,47 @@
+# Summary of changes for run 77a31dac-95e7-48b1-8dbc-f0387399589c
+Both changes are done. `JsTerm` no longer has an `opaque` type, and all six functions in `Tests/SnapshotsPBOPure/AssocArrayAppend.lean` now compile to single spread array literals. This is covered by tests, not formally proved.
+
+**1. No `opaque` in `JsTerm`**
+- **What was opaque:** `JsTerm.opaque` was used in exactly two places:
+  - for `Float.Model` and `Float32.Model`;
+  - as the default result type of an exported function, `JsFun.ret := .opaque "?"`.
+- **The change:** I removed the constructor. A `Float.Model` is now `float` and a `Float32.Model` is `float32`, i.e. a plain JavaScript number.
+  - A model literal is emitted as the number `Float.ofModel m` (previously it was refused).
+  - `Float.toModel`/`ofModel` and the `Float32` versions compile to the identity.
+  - `JsFun.ret` now has to be given explicitly (the translator always sets it).
+- Nothing else in the type grammar is opaque.
+
+**2. `AssocArrayAppend`**
+The `.lean` file now contains exactly the code you gave. The generated JavaScript (both presets) is:
+```js
+export const ArrayTest$test1 = (arr) => ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"];
+```
+`ArrayTest$test2` gives the same array. `ArrayTest$test3` is `["a","b",...arr ×4,"c","d","e",...arr ×4,"f","g"]`. The three `ListTest` functions give the same outputs.
+
+Two differences from your example:
+- The printer breaks the literal across lines.
+- The parameter keeps its Lean name, `arr`, rather than `x`.
+
+What changed to get there:
+- **Exported names:** namespaces are now joined with `$` instead of `_`, so `ArrayTest.test1` becomes `ArrayTest$test1` (`LeanScriptCli/Main.lean`).
+- **Array literals:** `#[…]` of simple values such as strings used to be refused. They are now translated as array literals.
+- **Appends to spreads:** `a ++ b` on arrays was a loop pushing each element. On generic arrays it is now written `[...a, ...b]`. A follow-up pass in `JsTerm/FromTerm.lean` (`inlineArrays`) then:
+  - inlines an array literal that is used exactly once and not inside a loop or closure;
+  - flattens a spread of a literal into its elements.
+- **Lists:** in the `leanscript` tool, `List α` is now read as the built-in list type, which is a JavaScript array. Before, every `List` was refused.
+  - Supported: list literals, and `xs ++ ys`, which is translated as `(xs.toArray ++ ys.toArray).toList` and so produces the same spreads.
+  - Not supported yet: `x :: xs` on a non-literal list, `match` on a list, and other `List` functions.
+  - Inside Lean, `#leanscript_to_term` still treats `List` as a datatype that a signature declares, so the existing tests are unaffected.
+- **Checks:** `--check` now also generates list arguments and results. `AssocArrayAppend` passes 24/24 checks against Lean for each preset.
+
+**Testing**
+- `JsTerm`, `TyTests`, `TermTests`, `tests` and `leanscript` build.
+- `lake exe tests` passes 49/49, including new unit tests for the `Float.Model` layout and the array flattening.
+- I regenerated all snapshots with `scripts/leanscript-snapshots.sh`: 3806 checks against Lean, 0 failures, up from 3478 because more functions are now translated. Every `.js` passes `node --check`.
+- A plain `lake build` still fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib. That failure predates this change and I didn't touch the file.
+
+`README.md` and `NOT_IMPLEMENTED.md` describe the new behaviour.
+
 # Summary of changes for run b3ce68ff-dda5-440d-ad8d-3d2c330f83d8
 Both changes are done. The runtime helpers in `JsTerm/Extern.lean` are now written in the JsTerm grammar instead of as JavaScript text, and records and unions come out as the objects you asked for. The project builds, `lake exe tests` passes 47/47, and I regenerated all the snapshots: 3478 checks against Lean, 0 failures. None of this is formally proved; it is covered by tests only.
 

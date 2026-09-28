@@ -148,10 +148,11 @@ def dedupNames (ps : List String) : List String := Id.run do
     out := out.push q
   return out.toList
 
-/-- The JavaScript name of an exported function: the components of its Lean name joined by
-    `_`. -/
+/-- The JavaScript name of an exported function: the components of its Lean name, each made
+    an identifier, joined by `$` (`ArrayTest.test1` is `ArrayTest$test1`; `jsIdent` never
+    writes a `$`, so the separator cannot be confused with a part of a component). -/
 def jsFunName (n : Name) : String :=
-  jsIdent ("_".intercalate (n.components.map fun c => c.toString (escape := false)))
+  "$".intercalate (n.components.map fun c => jsIdent (c.toString (escape := false)))
 
 /-- The path of an output file: the input path without `.lean`, then `suffix`. -/
 def outPath (o : CliOptions) (file : System.FilePath) (suffix : String) : System.FilePath :=
