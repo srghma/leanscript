@@ -5,6 +5,7 @@ import TermTests.TcoTest
 import TermTests.WhileTest
 import TermTests.QuotientTest
 import TermTests.RoseVariantsTest
+import TermTests.WFTermTest
 import LeanScript.Term.Optimize
 import MoreJsTy.FromTerm
 
@@ -147,6 +148,33 @@ def moreJsSpec : Spec := describe "MoreJsTy" do
       let f ← conv cfg "bits" ["n"] ⟨[], .nil, _, _, WhileTest.bitsT⟩
       assertEq "result layout" (MoreJs.lowerScalarPrim cfg .nat).pretty f.ret.pretty
 
+section WFTerm
+open WFTermTest
+
+/-- `name`: the program computes `expected`, before and after optimisation. -/
+def checkNatOpt (name : String) (expected run optimized : Nat) : SpecM Unit Unit :=
+  it name do
+    assertEq s!"{name} (run)" expected run
+    assertEq s!"{name} (optimized)" expected optimized
+
+/-- `Tests/TermTests/WFTermTest.lean`: programs with well-founded recursion (`WFTerm`), run by
+the total evaluator `WFProgram.run` (no fuel), before and after `WFProgram.optimize`. -/
+def wfTermSpec : Spec := describe "WFTerm" do
+  checkNatOpt "gcd 48 18" 6 (natOf (gcdProg 48 18).run.1) (natOf (gcdProg 48 18).optimize.run.1)
+  checkNatOpt "gcd 1071 462" (Nat.gcd 1071 462) (natOf (gcdProg 1071 462).run.1)
+    (natOf (gcdProg 1071 462).optimize.run.1)
+  checkNatOpt "gcd (fib 90) (fib 89)" 1 (natOf (gcdProg 2880067194370816120 1779979416004714189).run.1)
+    (natOf (gcdProg 2880067194370816120 1779979416004714189).optimize.run.1)
+  checkNatOpt "ack 2 3" 9 (natOf (ackProg 2 3).run.1) (natOf (ackProg 2 3).optimize.run.1)
+  checkNatOpt "ack 3 3" 61 (natOf (ackProg 3 3).run.1) (natOf (ackProg 3 3).optimize.run.1)
+  checkNatOpt "countdown 100000 (joinrec)" 7 (natOf (countdown 100000).run.1)
+    (natOf (countdown 100000).optimize.run.1)
+  it "map (gcd · 12) [8, 9, 10]" do
+    assertEq "run" [4, 3, 2] ((gcdMap.run.1 : List (Ty.Den D .nat)).map natOf)
+    assertEq "optimized" [4, 3, 2] ((gcdMap.optimize.run.1 : List (Ty.Den D .nat)).map natOf)
+
+end WFTerm
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -154,6 +182,7 @@ def spec : Spec := do
   roseSpec
   optimizeSpec
   moreJsSpec
+  wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
   runSpecFromArgsAndReturnExitCode args spec

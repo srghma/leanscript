@@ -1,3 +1,44 @@
+# Summary of changes for run 347f97b8-4503-4de7-9a88-e37029d3fafe
+I implemented `WFTerm`, a layer wrapped around `Term` that adds well-founded recursion, along with its evaluator and an optimiser. The optimiser is proved not to change results. The proofs contain no `sorry` and use only the axioms `propext`, `Classical.choice` and `Quot.sound`. All 45 tests pass, including 7 new ones for `WFTerm`. Everything is committed.
+
+**The grammar** (`LeanScript/WFTerm/Syntax.lean`) follows your PCL design:
+- **Call-free layer:** this is `Term` itself. An atom (`WFAtom`) is a normal-form `Term` whose unknowns are the `WFTerm` variables, and it is evaluated by `Term.eval`. Path conditions and decrease proofs can mention it without induction–recursion.
+- **Computations** (`WFComp`):
+  - `self`: a recursive call carrying its decrease proof under the path condition.
+  - `call`: a call of an earlier global function, with its precondition.
+  - `share`.
+  - `map` and `foldl`, whose body knows `x ∈ l`.
+- **Statements** (`WFTerm`): `ret`, `ite`, `letE` (the only binder), `join`, `joinrec` and `jump`. In `joinrec`, back edges must prove `P e v ∧ R e v x`.
+- **Supporting pieces:** global functions with pre/postconditions and a well-founded relation (`WFFn`, `WFGlobals`), `WFProgram`, and shorthand forms (`fixSelfCall`, `gCall`, `plet`).
+- **One design change from PCL:** each computation declares only the new fact it establishes, and the continuation runs under `G ∧ fact`. This is what lets the optimiser strengthen path conditions.
+- **Omitted:** `mu_rec`/`mu_brec` are not separate computations, because `Term`'s `data_rec`/`data_brec` are already available inside atoms. I also left out the `isNF` proofs, since `Term` is already a normal-form grammar.
+
+**The evaluator** (`LeanScript/WFTerm/Eval.lean`): `WFTerm.eval` is structural on the syntax and returns the answer together with a proof of its postcondition. Global functions (`WFFn.fix`) and `joinrec` loops run through `WellFounded.fix`, which compiles to ordinary code. There is no fuel, measure, default value or `Acc` data; only proofs are involved. `WFFn.fix_eq` (the unfolding equation of a global function) is proved.
+
+**The optimiser** (`LeanScript/WFTerm/Optimize.lean`) keeps each statement's type, so every decrease proof carries over. It:
+- optimises each atom with `Term.optimize`;
+- resolves an `if` whose test is the literal `true`/`false`;
+- turns `join j v := body in jump j a` into `let v := a in body`;
+- replaces `map f []` with `[]` and `foldl f init []` with `init`.
+
+Two theorems state that the result is unchanged:
+- `WFTerm.optimize_eval`: in every environment.
+- `WFProgram.optimize_run`: for whole programs.
+
+**Tests**
+- **`Tests/TermTests/WFTermTest.lean`:** example programs with their decrease proofs:
+  - `gcd`;
+  - Ackermann with a lexicographic order;
+  - a `joinrec` loop whose postcondition "the answer is 7" is carried to the result (`countdown_run`);
+  - a `map` whose body calls `gcd`.
+
+  It also checks two optimiser rewrites with `rfl`.
+- **`Tests/Main.lean`:** a new `WFTerm` spec runs these programs compiled, before and after optimisation: `gcd` on large numbers, `ack 3 3`, a 100,000-step loop, and the `map`. Each takes a few milliseconds.
+
+`README.md` has a new row for these files.
+
+**Build issue (unchanged from earlier runs):** `lakefile.toml` requires Mathlib, but `lake-manifest.json` has no entry for it, so `lake` stops at once. To build and test I removed that requirement locally and restored it before committing, so your lakefile is unchanged. For that reason I'm not listing any build targets as checked here. The modules `LeanScript.WFTerm.Syntax`, `.Eval` and `.Optimize`, `TermTests.WFTermTest` and the `tests` executable all built successfully with the requirement removed. To build it yourself, either delete that requirement or run `lake update`.
+
 # Summary of changes for run e419aa3b-6302-46e1-978c-79ad2a564399
 I generated `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt` and `FILE.js` next to every `.lean` file in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` that has at least one public, structurally total function. Each of those files also got a `FILE.check.mjs`, which runs the exported functions on sample inputs and compares the results with Lean's answers. Every generated `.js` passes `node --check`, and every check passes: 694 in `SnapshotsMy` and 1006 in `SnapshotsPBOPure`, with 0 failures. Everything is committed.
 
