@@ -3,129 +3,125 @@
 // not translated:
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_array_push_inplace, $lean_array_get, $lean_array_set, $lean_mk_array, $lean_array_swap_inplace, $lean_array_pop_inplace, $lean_array_push } from "lean_runtime_non_configurable.mjs";
-import { $lean_array_get_size, $lean_nat_div, $lean_nat_sub } from "lean_runtime_nat_bigint.mjs";
+import { array__lean_array_push, array__lean_array_push_inplace, bigint_nat__lean_array_set, bigint_nat__lean_array_get, bigint_nat__lean_mk_array, bigint_nat__lean_nat_div, bigint_nat__lean_array_swap_inplace, bigint_nat__lean_nat_sub, array__lean_array_pop_inplace } from "runtime.js";
 
-const $k1 = (x$6) => {
-  return x$6;
+const $k1 : (Array<nat(bigint)> => Array<nat(bigint)>) = (x) => {
+  return c0;
 };
-const $k2 = (x$2) => {
-  return (x$4) => {
-    const k$5 = $k1;
-    let acc$7 = k$5;
-    for (let i$8 = 0n; i$8 < x$2; i$8++) {
-      const a$9 = acc$7;
-      const k$10 = (x$11) => {
-        return a$9($lean_array_push(x$11, i$8));
+const $k2 : (nat(bigint) => (Array<nat(bigint)> => Array<nat(bigint)>)) = (x) => {
+  return (x) => {
+    const k = $k1;
+    let acc = c0;
+    for (i < c2) {
+      const a = m0;
+      const k = (x) => {
+        return c1(array__lean_array_push(c0, c2));
       };
-      acc$7 = k$10;
+      m0 = c0;
+      next;
     }
-    return acc$7(x$4);
+    return m0(c1);
   };
 };
 
 // test1
-export const test1 = (n) => {
-  let acc$2 = { tag: 1, _1: [] };
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    if ((acc$2.tag === 0)) {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
-    } else {
-      const { _1: f$6 } = acc$2;
-      const x$7 = $lean_array_push_inplace(f$6, (i$3 * i$3));
-      acc$2 = { tag: 1, _1: x$7 };
+export const test1 = (n : nat(bigint)) : Array<nat(bigint)> => {
+  let acc = { tag: 1, _1: inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  for (i < c0) {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const x = array__lean_array_push_inplace(c0, inline:bigint_nat__lean_nat_mul(c1, c1));
+      m0 = { tag: 1, _1: c0 };
+      next;
     }
   }
-  if ((acc$2.tag === 0)) {
-    const { _1: f$8 } = acc$2;
-    return f$8;
-  } else {
-    const { _1: f$9 } = acc$2;
-    return f$9;
+  switch (m0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };
 
 // test3
-export const test3 = (a0) => {
-  const n$3 = $lean_array_get_size(a0);
-  let acc$1 = { tag: 1, _1: a0 };
-  for (let i$2 = 0n; i$2 < n$3; i$2++) {
-    if ((acc$1.tag === 0)) {
-      const { _1: f$5 } = acc$1;
-      acc$1 = { tag: 0, _1: f$5 };
-    } else {
-      const { _1: f$6 } = acc$1;
-      const x$7 = $lean_array_set(f$6, i$2, (2n * $lean_array_get(0n, f$6, i$2)));
-      acc$1 = { tag: 1, _1: x$7 };
+export const test3 = (a0 : Array<nat(bigint)>) : Array<nat(bigint)> => {
+  let acc = { tag: 1, _1: c0 };
+  for (i < inline:bigint_nat__lean_array_get_size(c0)) {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const x = bigint_nat__lean_array_set(c0, c1, inline:bigint_nat__lean_nat_mul(2n, bigint_nat__lean_array_get(0n, c0, c1)));
+      m0 = { tag: 1, _1: c0 };
+      next;
     }
   }
-  if ((acc$1.tag === 0)) {
-    const { _1: f$8 } = acc$1;
-    return f$8;
-  } else {
-    const { _1: f$9 } = acc$1;
-    return f$9;
+  switch (m0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };
 
 // test4
-export const test4 = (n) => {
-  const x$1 = $lean_mk_array(3n, n);
-  return { _1: x$1, _2: $lean_array_set(x$1, 0n, 7n) };
+export const test4 = (n : nat(bigint)) : { _1: Array<nat(bigint)>, _2: Array<nat(bigint)> } => {
+  const x = bigint_nat__lean_mk_array(3n, c0);
+  return { _1: c0, _2: bigint_nat__lean_array_set(c0, 0n, 7n) };
 };
 
 // test5
-export const test5 = (n) => {
-  let acc$2 = { tag: 1, _1: [] };
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    if ((acc$2.tag === 0)) {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
-    } else {
-      const { _1: f$6 } = acc$2;
-      const x$7 = $lean_array_push_inplace(f$6, i$3);
-      acc$2 = { tag: 1, _1: x$7 };
+export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
+  let acc = { tag: 1, _1: inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  for (i < c0) {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const x = array__lean_array_push_inplace(c0, c1);
+      m0 = { tag: 1, _1: c0 };
+      next;
     }
   }
-  let x$8;
-  join x$8 {
-    if ((acc$2.tag === 0)) {
-      const { _1: f$9 } = acc$2;
-      jump 0 f$9;
-    } else {
-      const { _1: f$10 } = acc$2;
-      jump 0 f$10;
+  join x {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      jump 0 c0;
+    case 1 { _1: f }:
+      jump 0 c0;
     }
   }
-  const n$13 = $lean_nat_div(n, 2n);
-  let acc$11 = { tag: 1, _1: x$8 };
-  for (let i$12 = 0n; i$12 < n$13; i$12++) {
-    if ((acc$11.tag === 0)) {
-      const { _1: f$15 } = acc$11;
-      acc$11 = { tag: 0, _1: f$15 };
-    } else {
-      const { _1: f$16 } = acc$11;
-      const x$17 = $lean_array_swap_inplace(f$16, i$12, $lean_nat_sub($lean_nat_sub(n, i$12), 1n));
-      acc$11 = { tag: 1, _1: x$17 };
+  let acc = { tag: 1, _1: c0 };
+  for (i < bigint_nat__lean_nat_div(c1, 2n)) {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const x = bigint_nat__lean_array_swap_inplace(c0, c1, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c3, c1), 1n));
+      m0 = { tag: 1, _1: c0 };
+      next;
     }
   }
-  let x$18;
-  join x$18 {
-    if ((acc$11.tag === 0)) {
-      const { _1: f$19 } = acc$11;
-      jump 0 f$19;
-    } else {
-      const { _1: f$20 } = acc$11;
-      jump 0 f$20;
+  join x {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      jump 0 c0;
+    case 1 { _1: f }:
+      jump 0 c0;
     }
   }
-  return $lean_array_pop_inplace(x$18);
+  return array__lean_array_pop_inplace(c0);
 };
 
 // test6
-export const test6 = (n) => {
-  const k$1 = $k2;
-  const x$14 = k$1(n);
-  return x$14([]);
+export const test6 = (n : nat(bigint)) : Array<nat(bigint)> => {
+  const k = $k2;
+  const x = c0(c1);
+  return c0(inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c2));
 };

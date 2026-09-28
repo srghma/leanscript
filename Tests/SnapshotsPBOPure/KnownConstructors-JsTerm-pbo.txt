@@ -6,22 +6,22 @@
 //   test4: Expected type must not contain metavariables ?m.195 ≠ LeanScript.Usage01ω.zero
 //   test5: Expected type must not contain metavariables ?m.141 ≠ LeanScript.Usage01ω.zero
 
-const $k1 = { tag: 1, _1: 0 };
-const $k2 = { tag: 1, _1: 1 };
-const $k3 = { tag: 1, _1: 2 };
-const $k4 = { tag: 1, _1: 3 };
-const $tag0 = { tag: 0 };
-const $k6 = (x$2) => {
-  if ((x$2 === "foo")) {
+const $k1 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 0 };
+const $k2 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 1 };
+const $k3 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 2 };
+const $k4 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 3 };
+const $tag0 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 0 };
+const $k6 : (string => ({ tag: 0 } | { tag: 1, _1: enum4@0 })) = (x) => {
+  if (inline:string__lean_string_dec_eq(c0, "foo")) {
     return $k1;
   } else {
-    if ((x$2 === "bar")) {
+    if (inline:string__lean_string_dec_eq(c0, "bar")) {
       return $k2;
     } else {
-      if ((x$2 === "baz")) {
+      if (inline:string__lean_string_dec_eq(c0, "baz")) {
         return $k3;
       } else {
-        if ((x$2 === "qux")) {
+        if (inline:string__lean_string_dec_eq(c0, "qux")) {
           return $k4;
         } else {
           return $tag0;
@@ -32,33 +32,32 @@ const $k6 = (x$2) => {
 };
 
 // known1
-export const known1 = () => {
+export const known1 = () : string => {
   return "b";
 };
 
 // test1
-export const test1 = (a) => {
-  if ((a.tag === 0)) {
-    const { _1: f$1 } = a;
-    return f$1;
-  } else {
-    const { _1: f$2 } = a;
-    return f$2;
+export const test1 = (a : ({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number) })) : int53(number) => {
+  switch (c0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };
 
 // fromString
-export const fromString = (s) => {
-  if ((s === "foo")) {
+export const fromString = (s : string) : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) => {
+  if (inline:string__lean_string_dec_eq(c0, "foo")) {
     return $k1;
   } else {
-    if ((s === "bar")) {
+    if (inline:string__lean_string_dec_eq(c0, "bar")) {
       return $k2;
     } else {
-      if ((s === "baz")) {
+      if (inline:string__lean_string_dec_eq(c0, "baz")) {
         return $k3;
       } else {
-        if ((s === "qux")) {
+        if (inline:string__lean_string_dec_eq(c0, "qux")) {
           return $k4;
         } else {
           return $tag0;
@@ -69,25 +68,22 @@ export const fromString = (s) => {
 };
 
 // test6
-export const test6 = (a) => {
-  const k$1 = $k6;
-  const x$3 = k$1(a);
-  if ((x$3.tag === 0)) {
+export const test6 = (a : string) : int53(number) => {
+  const k = $k6;
+  const x = c0(c1);
+  switch (c0.tag) {
+  case 0 {  }:
     return 0;
-  } else {
-    const { _1: f$4 } = x$3;
-    if ((f$4 === 0)) {
+  case 1 { _1: f }:
+    switch (c0) {
+    case 0:
       return 1;
-    } else {
-      if ((f$4 === 1)) {
-        return 2;
-      } else {
-        if ((f$4 === 2)) {
-          return 3;
-        } else {
-          return 4;
-        }
-      }
+    case 1:
+      return 2;
+    case 2:
+      return 3;
+    case 3:
+      return 4;
     }
   }
 };

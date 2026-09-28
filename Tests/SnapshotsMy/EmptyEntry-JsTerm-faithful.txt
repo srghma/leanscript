@@ -4,6 +4,6 @@
 //   fromNoValues: LeanScript: the type NoValues has no constructor (it has no value)
 
 // bump
-export const bump = (n) => {
-  return (n + 1n);
+export const bump = (n : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_add(c0, 1n);
 };

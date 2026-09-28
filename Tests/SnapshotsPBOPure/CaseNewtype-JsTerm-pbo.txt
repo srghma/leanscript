@@ -2,14 +2,14 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test1
-export const test1 = (v) => {
-  if ((v === 1)) {
+export const test1 = (v : int53(number)) : string => {
+  if (inline:int53__lean_int_dec_eq(c0, 1)) {
     return "1";
   } else {
-    if ((v === 2)) {
+    if (inline:int53__lean_int_dec_eq(c0, 2)) {
       return "2";
     } else {
-      if ((v === 3)) {
+      if (inline:int53__lean_int_dec_eq(c0, 3)) {
         return "3";
       } else {
         return "catch";
@@ -19,14 +19,14 @@ export const test1 = (v) => {
 };
 
 // test2
-export const test2 = (a) => {
-  if ((a === 1)) {
+export const test2 = (a : int53(number)) : string => {
+  if (inline:int53__lean_int_dec_eq(c0, 1)) {
     return "1";
   } else {
-    if ((a === 2)) {
+    if (inline:int53__lean_int_dec_eq(c0, 2)) {
       return "2";
     } else {
-      if ((a === 3)) {
+      if (inline:int53__lean_int_dec_eq(c0, 3)) {
         return "3";
       } else {
         return "catch";

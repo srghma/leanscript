@@ -2,9 +2,9 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test
-export const test = (f) => {
-  const x$1 = f(1n);
-  const x$2 = f(2n);
-  const x$3 = f(2n);
-  return { _1: x$1, _2: x$2, _3: x$3 };
+export const test = (f : (int(bigint) => int(bigint))) : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } => {
+  const x = c0(1n);
+  const x = c1(2n);
+  const x = c2(2n);
+  return { _1: c2, _2: c1, _3: c0 };
 };

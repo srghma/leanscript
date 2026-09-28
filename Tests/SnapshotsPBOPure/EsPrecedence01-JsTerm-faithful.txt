@@ -2,8 +2,8 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (f) => {
+export const test1 = (f : (() => boolean)) : (() => boolean) => {
   return () => {
-    return f();
+    return c0();
   };
 };

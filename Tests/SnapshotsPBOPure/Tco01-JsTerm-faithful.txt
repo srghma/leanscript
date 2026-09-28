@@ -2,10 +2,11 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test
-export const test = (n) => {
-  let acc$1 = 0n;
-  for (let i$2 = 0n; i$2 < n; i$2++) {
-    acc$1 = acc$1;
+export const test = (n : nat(bigint)) : nat(bigint) => {
+  let acc = 0n;
+  for (i < c0) {
+    m0 = m0;
+    next;
   }
-  return acc$1;
+  return m0;
 };

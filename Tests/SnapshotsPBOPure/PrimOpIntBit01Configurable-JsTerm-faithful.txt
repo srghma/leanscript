@@ -15,91 +15,89 @@
 //   TestISize.complement: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestInt.complement: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 
-import { $lean_nat_land, $lean_nat_lor, $lean_nat_shiftl, $lean_nat_shiftr, $lean_nat_lxor } from "lean_runtime_nat_bigint.mjs";
-import { $lean_uint64_land, $lean_uint64_lor, $lean_uint64_shift_left, $lean_uint64_shift_right, $lean_uint64_xor, $lean_uint64_complement } from "lean_runtime_uint64_bigint.mjs";
-import { $lean_int64_land, $lean_int64_lor, $lean_int64_shift_left, $lean_int64_shift_right, $lean_int64_xor, $lean_int64_complement } from "lean_runtime_int64_bigint.mjs";
+import { bigint_nat__lean_uint64_land, bigint_nat__lean_uint64_lor, bigint_nat__lean_uint64_shift_left, bigint_nat__lean_uint64_shift_right, bigint_nat__lean_uint64_xor, bigint_nat__lean_uint64_complement, bigint_int__lean_int64_land, bigint_int__lean_int64_lor, bigint_int__lean_int64_shift_left, bigint_int__lean_int64_shift_right, bigint_int__lean_int64_xor, bigint_int__lean_int64_complement } from "runtime.js";
 
 // TestUInt64.land
-export const TestUInt64$land = (a, b) => {
-  return $lean_uint64_land(a, b);
+export const TestUInt64$land = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_land(c1, c0);
 };
 
 // TestUInt64.lor
-export const TestUInt64$lor = (a, b) => {
-  return $lean_uint64_lor(a, b);
+export const TestUInt64$lor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_lor(c1, c0);
 };
 
 // TestUInt64.shiftLeft
-export const TestUInt64$shiftLeft = (a, b) => {
-  return $lean_uint64_shift_left(a, b);
+export const TestUInt64$shiftLeft = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_shift_left(c1, c0);
 };
 
 // TestUInt64.shiftRight
-export const TestUInt64$shiftRight = (a, b) => {
-  return $lean_uint64_shift_right(a, b);
+export const TestUInt64$shiftRight = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_shift_right(c1, c0);
 };
 
 // TestUInt64.xor
-export const TestUInt64$xor = (a, b) => {
-  return $lean_uint64_xor(a, b);
+export const TestUInt64$xor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_xor(c1, c0);
 };
 
 // TestUInt64.complement
-export const TestUInt64$complement = (a) => {
-  return $lean_uint64_complement(a);
+export const TestUInt64$complement = (a : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_complement(c0);
 };
 
 // TestNat.land
-export const TestNat$land = (a, b) => {
-  return $lean_nat_land(a, b);
+export const TestNat$land = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_land(c1, c0);
 };
 
 // TestNat.lor
-export const TestNat$lor = (a, b) => {
-  return $lean_nat_lor(a, b);
+export const TestNat$lor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_lor(c1, c0);
 };
 
 // TestNat.shiftLeft
-export const TestNat$shiftLeft = (a, b) => {
-  return $lean_nat_shiftl(a, b);
+export const TestNat$shiftLeft = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_shiftl(c1, c0);
 };
 
 // TestNat.shiftRight
-export const TestNat$shiftRight = (a, b) => {
-  return $lean_nat_shiftr(a, b);
+export const TestNat$shiftRight = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_shiftr(c1, c0);
 };
 
 // TestNat.xor
-export const TestNat$xor = (a, b) => {
-  return $lean_nat_lxor(a, b);
+export const TestNat$xor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_lxor(c1, c0);
 };
 
 // TestInt64.land
-export const TestInt64$land = (a, b) => {
-  return $lean_int64_land(a, b);
+export const TestInt64$land = (a : int(bigint), b : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_land(c1, c0);
 };
 
 // TestInt64.lor
-export const TestInt64$lor = (a, b) => {
-  return $lean_int64_lor(a, b);
+export const TestInt64$lor = (a : int(bigint), b : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_lor(c1, c0);
 };
 
 // TestInt64.shiftLeft
-export const TestInt64$shiftLeft = (a, b) => {
-  return $lean_int64_shift_left(a, b);
+export const TestInt64$shiftLeft = (a : int(bigint), b : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_shift_left(c1, c0);
 };
 
 // TestInt64.shiftRight
-export const TestInt64$shiftRight = (a, b) => {
-  return $lean_int64_shift_right(a, b);
+export const TestInt64$shiftRight = (a : int(bigint), b : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_shift_right(c1, c0);
 };
 
 // TestInt64.xor
-export const TestInt64$xor = (a, b) => {
-  return $lean_int64_xor(a, b);
+export const TestInt64$xor = (a : int(bigint), b : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_xor(c1, c0);
 };
 
 // TestInt64.complement
-export const TestInt64$complement = (a) => {
-  return $lean_int64_complement(a);
+export const TestInt64$complement = (a : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_complement(c0);
 };

@@ -2,16 +2,11 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 import {
-  $lean_float_negate,
-  $lean_float32_add,
-  $lean_float32_sub,
-  $lean_float32_beq,
-  $lean_float32_decLt,
-  $lean_float32_decLe,
-  $lean_float32_mul,
-  $lean_float32_div,
-  $lean_float32_negate,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  float32__lean_float32_add,
+  float32__lean_float32_sub,
+  float32__lean_float32_mul,
+  float32__lean_float32_div,
+} from "../../runtime.js";
 
 /**
  * `TestFloat.test1`
@@ -104,7 +99,7 @@ export const TestFloat$test10 = (a, b) => a / b;
  * @param {float} a
  * @returns {float}
  */
-export const TestFloat$test11 = (a) => $lean_float_negate(a);
+export const TestFloat$test11 = (a) => -a;
 
 /**
  * `TestFloat.test12`
@@ -130,7 +125,7 @@ export const TestFloat$test13 = (a, b, c) => a / (b / c);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$test1 = (a, b) => $lean_float32_add(a, b);
+export const TestFloat32$test1 = (a, b) => float32__lean_float32_add(a, b);
 
 /**
  * `TestFloat32.test2`
@@ -138,7 +133,7 @@ export const TestFloat32$test1 = (a, b) => $lean_float32_add(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$test2 = (a, b) => $lean_float32_sub(a, b);
+export const TestFloat32$test2 = (a, b) => float32__lean_float32_sub(a, b);
 
 /**
  * `TestFloat32.test3`
@@ -146,7 +141,7 @@ export const TestFloat32$test2 = (a, b) => $lean_float32_sub(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test3 = (a, b) => $lean_float32_beq(a, b);
+export const TestFloat32$test3 = (a, b) => a === b;
 
 /**
  * `TestFloat32.test4`
@@ -155,7 +150,7 @@ export const TestFloat32$test3 = (a, b) => $lean_float32_beq(a, b);
  * @returns {boolean}
  */
 export const TestFloat32$test4 = (a, b) => {
-  if ($lean_float32_beq(a, b)) {
+  if (a === b) {
     return false;
   } else {
     return true;
@@ -168,7 +163,7 @@ export const TestFloat32$test4 = (a, b) => {
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test5 = (a, b) => $lean_float32_decLt(a, b);
+export const TestFloat32$test5 = (a, b) => a < b;
 
 /**
  * `TestFloat32.test6`
@@ -176,7 +171,7 @@ export const TestFloat32$test5 = (a, b) => $lean_float32_decLt(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test6 = (a, b) => $lean_float32_decLt(b, a);
+export const TestFloat32$test6 = (a, b) => b < a;
 
 /**
  * `TestFloat32.test7`
@@ -184,7 +179,7 @@ export const TestFloat32$test6 = (a, b) => $lean_float32_decLt(b, a);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test7 = (a, b) => $lean_float32_decLe(a, b);
+export const TestFloat32$test7 = (a, b) => a <= b;
 
 /**
  * `TestFloat32.test8`
@@ -192,7 +187,7 @@ export const TestFloat32$test7 = (a, b) => $lean_float32_decLe(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test8 = (a, b) => $lean_float32_decLe(b, a);
+export const TestFloat32$test8 = (a, b) => b <= a;
 
 /**
  * `TestFloat32.test9`
@@ -200,7 +195,7 @@ export const TestFloat32$test8 = (a, b) => $lean_float32_decLe(b, a);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$test9 = (a, b) => $lean_float32_mul(a, b);
+export const TestFloat32$test9 = (a, b) => float32__lean_float32_mul(a, b);
 
 /**
  * `TestFloat32.test10`
@@ -208,14 +203,14 @@ export const TestFloat32$test9 = (a, b) => $lean_float32_mul(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$test10 = (a, b) => $lean_float32_div(a, b);
+export const TestFloat32$test10 = (a, b) => float32__lean_float32_div(a, b);
 
 /**
  * `TestFloat32.test11`
  * @param {float32} a
  * @returns {float32}
  */
-export const TestFloat32$test11 = (a) => $lean_float32_negate(a);
+export const TestFloat32$test11 = (a) => -a;
 
 /**
  * `TestFloat32.test12`
@@ -225,7 +220,7 @@ export const TestFloat32$test11 = (a) => $lean_float32_negate(a);
  * @returns {float32}
  */
 export const TestFloat32$test12 = (a, b, c) =>
-  $lean_float32_sub(a, $lean_float32_sub(b, c));
+  float32__lean_float32_sub(a, float32__lean_float32_sub(b, c));
 
 /**
  * `TestFloat32.test13`
@@ -235,4 +230,4 @@ export const TestFloat32$test12 = (a, b, c) =>
  * @returns {float32}
  */
 export const TestFloat32$test13 = (a, b, c) =>
-  $lean_float32_div(a, $lean_float32_div(b, c));
+  float32__lean_float32_div(a, float32__lean_float32_div(b, c));

@@ -4,8 +4,8 @@
 //   instReprPairBox.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
 // test
-export const test = (f, y) => {
-  const x$1 = f(y);
-  const x$2 = (x$1 + 1n);
-  return { _1: x$2, _2: (x$1 - 2n) };
+export const test = (f : (int(bigint) => int(bigint)), y : int(bigint)) : { _1: int(bigint), _2: int(bigint) } => {
+  const x = c1(c0);
+  const x = inline:bigint_int__lean_int_add(c0, 1n);
+  return { _1: c0, _2: inline:bigint_int__lean_int_sub(c1, 2n) };
 };

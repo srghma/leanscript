@@ -32,7 +32,7 @@
 
 /**
  * `TestUInt64.test1`
- * @returns {BigUint64Array}
+ * @returns {BigUint64Array<nat(bigint)>}
  */
 export const TestUInt64$test1 = () =>
   BigUint64Array.of(
@@ -46,7 +46,7 @@ export const TestUInt64$test1 = () =>
 
 /**
  * `TestUInt64.test2`
- * @returns {BigUint64Array}
+ * @returns {BigUint64Array<nat(bigint)>}
  */
 export const TestUInt64$test2 = () =>
   BigUint64Array.of(
@@ -96,7 +96,7 @@ export const TestUInt64$test8 = () => [true, false, true, false, true, true];
 
 /**
  * `TestUInt64.test9`
- * @returns {BigUint64Array}
+ * @returns {BigUint64Array<nat(bigint)>}
  */
 export const TestUInt64$test9 = () =>
   BigUint64Array.of(
@@ -110,14 +110,14 @@ export const TestUInt64$test9 = () =>
 
 /**
  * `TestUInt64.test10`
- * @returns {BigUint64Array}
+ * @returns {BigUint64Array<nat(bigint)>}
  */
 export const TestUInt64$test10 = () =>
   BigUint64Array.of(1n, 0n, 2n, 0n, 9223372036854775807n, 1n);
 
 /**
  * `TestUInt64.test11`
- * @returns {BigUint64Array}
+ * @returns {BigUint64Array<nat(bigint)>}
  */
 export const TestUInt64$test11 = () =>
   BigUint64Array.of(18446744073709551615n, 1n);
@@ -184,13 +184,13 @@ export const TestNat$test10 = () => [1n, 0n, 2n, 0n, 0n, 0n];
 
 /**
  * `TestInt64.test1`
- * @returns {BigInt64Array}
+ * @returns {BigInt64Array<int(bigint)>}
  */
 export const TestInt64$test1 = () => BigInt64Array.of(2n, 3n, 3n, -1n, 1n, -2n);
 
 /**
  * `TestInt64.test2`
- * @returns {BigInt64Array}
+ * @returns {BigInt64Array<int(bigint)>}
  */
 export const TestInt64$test2 = () => BigInt64Array.of(0n, -1n, 1n, 3n, -3n, 0n);
 
@@ -232,19 +232,19 @@ export const TestInt64$test8 = () => [true, false, true, true, false, true];
 
 /**
  * `TestInt64.test9`
- * @returns {BigInt64Array}
+ * @returns {BigInt64Array<int(bigint)>}
  */
 export const TestInt64$test9 = () => BigInt64Array.of(1n, 2n, 2n, -2n, -2n, 1n);
 
 /**
  * `TestInt64.test10`
- * @returns {BigInt64Array}
+ * @returns {BigInt64Array<int(bigint)>}
  */
 export const TestInt64$test10 = () => BigInt64Array.of(1n, 0n, 2n, 0n, 0n, 1n);
 
 /**
  * `TestInt64.test11`
- * @returns {BigInt64Array}
+ * @returns {BigInt64Array<int(bigint)>}
  */
 export const TestInt64$test11 = () => BigInt64Array.of(-1n, 1n);
 

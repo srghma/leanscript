@@ -2,22 +2,21 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 import {
-  $lean_array_get_size,
-  $lean_nat_div,
-  $lean_nat_add,
-  $lean_nat_mul,
-  $lean_nat_shiftr,
-  $lean_string_length,
-  $lean_nat_land,
-  $lean_nat_sub,
-} from "../../runtime/lean_runtime_nat_num.mjs";
+  uint53__lean_nat_div,
+  uint53__lean_nat_mul,
+  uint53__lean_nat_add,
+  uint53__lean_nat_shiftr,
+  uint53__lean_string_length__String_length,
+  uint53__lean_nat_land,
+  uint53__lean_nat_sub,
+} from "../../runtime.js";
 
 /**
  * `test1`
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const test1 = (a) => $lean_nat_div($lean_array_get_size(a), 2);
+export const test1 = (a) => uint53__lean_nat_div(a.length, 2);
 
 /**
  * `test2`
@@ -26,10 +25,7 @@ export const test1 = (a) => $lean_nat_div($lean_array_get_size(a), 2);
  * @returns {uint53(number)}
  */
 export const test2 = (a, b) =>
-  $lean_nat_mul(
-    $lean_nat_add($lean_array_get_size(a), $lean_array_get_size(b)),
-    3,
-  );
+  uint53__lean_nat_mul(uint53__lean_nat_add(a.length, b.length), 3);
 
 /**
  * `test3`
@@ -37,8 +33,8 @@ export const test2 = (a, b) =>
  * @returns {uint53(number)}
  */
 export const test3 = (a) => {
-  const x$1 = $lean_array_get_size(a);
-  return $lean_nat_shiftr(x$1, 1);
+  const x$1 = a.length;
+  return uint53__lean_nat_shiftr(x$1, 1);
 };
 
 /**
@@ -46,21 +42,22 @@ export const test3 = (a) => {
  * @param {string} s
  * @returns {uint53(number)}
  */
-export const test4 = (s) => $lean_nat_div($lean_string_length(s), 3);
+export const test4 = (s) =>
+  uint53__lean_nat_div(uint53__lean_string_length__String_length(s), 3);
 
 /**
  * `test5`
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const test5 = (n) => $lean_nat_div(n, 2);
+export const test5 = (n) => uint53__lean_nat_div(n, 2);
 
 /**
  * `test6`
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const test6 = (a) => $lean_nat_land($lean_array_get_size(a), 7);
+export const test6 = (a) => uint53__lean_nat_land(a.length, 7);
 
 /**
  * `test7`
@@ -69,4 +66,7 @@ export const test6 = (a) => $lean_nat_land($lean_array_get_size(a), 7);
  * @returns {uint53(number)}
  */
 export const test7 = (s, i) =>
-  $lean_nat_div($lean_nat_sub($lean_string_length(s), i), 2);
+  uint53__lean_nat_div(
+    uint53__lean_nat_sub(uint53__lean_string_length__String_length(s), i),
+    2,
+  );

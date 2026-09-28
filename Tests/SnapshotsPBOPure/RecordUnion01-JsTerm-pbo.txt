@@ -4,6 +4,6 @@
 //   instReprOutput.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
 // test
-export const test = (a) => {
-  return { _1: 42, _2: a };
+export const test = (a : string) : { _1: int53(number), _2: string } => {
+  return { _1: 42, _2: c0 };
 };

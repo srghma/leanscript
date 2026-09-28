@@ -2,26 +2,26 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (a, b) => {
-  if (a) {
-    return b;
+export const test1 = (a : boolean, b : boolean) : boolean => {
+  if (c1) {
+    return c0;
   } else {
     return false;
   }
 };
 
 // test2
-export const test2 = (a, b) => {
-  if (a) {
+export const test2 = (a : boolean, b : boolean) : boolean => {
+  if (c1) {
     return true;
   } else {
-    return b;
+    return c0;
   }
 };
 
 // test3
-export const test3 = (a, b) => {
-  if ((a ? (b ? true : false) : (b ? false : true))) {
+export const test3 = (a : boolean, b : boolean) : boolean => {
+  if ((c1 ? (c0 ? true : false) : (c0 ? false : true))) {
     return true;
   } else {
     return false;
@@ -29,8 +29,8 @@ export const test3 = (a, b) => {
 };
 
 // test4
-export const test4 = (a, b) => {
-  if (((a ? (b ? true : false) : (b ? false : true)) ? true : false)) {
+export const test4 = (a : boolean, b : boolean) : boolean => {
+  if (((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? true : false)) {
     return false;
   } else {
     return true;
@@ -38,8 +38,8 @@ export const test4 = (a, b) => {
 };
 
 // test5
-export const test5 = (a, b) => {
-  if ((((a ? false : true) ? b : false) ? true : false)) {
+export const test5 = (a : boolean, b : boolean) : boolean => {
+  if ((((c1 ? false : true) ? c0 : false) ? true : false)) {
     return true;
   } else {
     return false;
@@ -47,8 +47,8 @@ export const test5 = (a, b) => {
 };
 
 // test6
-export const test6 = (a, b) => {
-  if ((((b ? false : true) ? a : false) ? true : false)) {
+export const test6 = (a : boolean, b : boolean) : boolean => {
+  if ((((c0 ? false : true) ? c1 : false) ? true : false)) {
     return true;
   } else {
     return false;
@@ -56,26 +56,26 @@ export const test6 = (a, b) => {
 };
 
 // test7
-export const test7 = (a, b) => {
-  if (a) {
-    return b;
+export const test7 = (a : boolean, b : boolean) : boolean => {
+  if (c1) {
+    return c0;
   } else {
     return true;
   }
 };
 
 // test8
-export const test8 = (a, b) => {
-  if (b) {
-    return a;
+export const test8 = (a : boolean, b : boolean) : boolean => {
+  if (c0) {
+    return c1;
   } else {
     return true;
   }
 };
 
 // test9
-export const test9 = (a) => {
-  if (a) {
+export const test9 = (a : boolean) : boolean => {
+  if (c0) {
     return false;
   } else {
     return true;

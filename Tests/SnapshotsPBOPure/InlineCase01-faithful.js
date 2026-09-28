@@ -15,8 +15,8 @@ export const test1 = (f, a) => {
   if (a.tag === 0) {
     return f();
   } else {
-    const { _1: f$2 } = a;
-    return f$2 + 1n;
+    const { _1: f$1 } = a;
+    return f$1 + 1n;
   }
 };
 
@@ -30,7 +30,7 @@ export const test3 = (f, a) => {
   if (a.tag === 0) {
     return f();
   } else {
-    const { _1: f$2 } = a;
-    return f$2 + 1n;
+    const { _1: f$1 } = a;
+    return f$1 + 1n;
   }
 };

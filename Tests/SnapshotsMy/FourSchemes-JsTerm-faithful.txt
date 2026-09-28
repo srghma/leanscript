@@ -12,29 +12,31 @@
 //   gcdT: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   stepsDown: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-const $k1 = (x$2) => {
-  return x$2;
+const $k1 : (nat(bigint) => nat(bigint)) = (x) => {
+  return c0;
 };
 
 // sumAcc
-export const sumAcc = (a, a1) => {
-  const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      return a$5(((x$7 + i$4) + 1n));
+export const sumAcc = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c2) {
+    const a = m0;
+    const k = (x) => {
+      return c1(inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c0, c2), 1n));
     };
-    acc$3 = k$6;
+    m0 = c0;
+    next;
   }
-  return acc$3(a1);
+  return m0(c1);
 };
 
 // factD
-export const factD = (a) => {
-  let acc$1 = 1n;
-  for (let i$2 = 0n; i$2 < a; i$2++) {
-    acc$1 = ((i$2 + 1n) * acc$1);
+export const factD = (a : nat(bigint)) : nat(bigint) => {
+  let acc = 1n;
+  for (i < c0) {
+    m0 = inline:bigint_nat__lean_nat_mul(inline:bigint_nat__lean_nat_add(c0, 1n), m0);
+    next;
   }
-  return acc$1;
+  return m0;
 };

@@ -11,14 +11,14 @@ const $k2 = { tag: 1, _1: 1 };
 const $k3 = { tag: 1, _1: 2 };
 const $k4 = { tag: 1, _1: 3 };
 const $tag0 = { tag: 0 };
-const $k6 = (x$2) => {
-  if (x$2 === "foo") {
+const $k6 = (x$1) => {
+  if (x$1 === "foo") {
     return $k1;
-  } else if (x$2 === "bar") {
+  } else if (x$1 === "bar") {
     return $k2;
-  } else if (x$2 === "baz") {
+  } else if (x$1 === "baz") {
     return $k3;
-  } else if (x$2 === "qux") {
+  } else if (x$1 === "qux") {
     return $k4;
   } else {
     return $tag0;
@@ -72,16 +72,16 @@ export const fromString = (s) => {
  */
 export const test6 = (a) => {
   const k$1 = $k6;
-  const x$3 = k$1(a);
-  if (x$3.tag === 0) {
+  const x$2 = k$1(a);
+  if (x$2.tag === 0) {
     return 0;
   } else {
-    const { _1: f$4 } = x$3;
-    if (f$4 === 0) {
+    const { _1: f$3 } = x$2;
+    if (f$3 === 0) {
       return 1;
-    } else if (f$4 === 1) {
+    } else if (f$3 === 1) {
       return 2;
-    } else if (f$4 === 2) {
+    } else if (f$3 === 2) {
       return 3;
     } else {
       return 4;

@@ -2,31 +2,47 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // ArrayTest.test1
-export const ArrayTest$test1 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"];
+export const ArrayTest$test1 = (arr : Array<string>) : Array<string> => {
+  return ["a", "b", ...c0, ...c0, ...c0, ...c0, "c", "d"];
 };
 
 // ArrayTest.test2
-export const ArrayTest$test2 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"];
+export const ArrayTest$test2 = (arr : Array<string>) : Array<string> => {
+  return ["a", "b", ...c0, ...c0, ...c0, ...c0, "c", "d"];
 };
 
 // ArrayTest.test3
-export const ArrayTest$test3 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d", "e", ...arr, ...arr, ...arr, ...arr, "f", "g"];
+export const ArrayTest$test3 = (arr : Array<string>) : Array<string> => {
+  return ["a", "b", ...c0, ...c0, ...c0, ...c0, "c", "d", "e", ...c0, ...c0, ...c0, ...c0, "f", "g"];
 };
 
 // ListTest.test1
-export const ListTest$test1 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"];
+export const ListTest$test1 = (arr : List<string>) : List<string> => {
+  const x = [...inline:array__lean_array_mk(c0), "c"];
+  const x = [...inline:array__lean_array_mk(c1), ...c0];
+  const x = [...inline:array__lean_array_mk(c2), ...c0];
+  const x = [...inline:array__lean_array_mk(c3), ...c0];
+  return inline:array__lean_array_to_list(["a", "b", ...c0, "d"]);
 };
 
 // ListTest.test2
-export const ListTest$test2 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"];
+export const ListTest$test2 = (arr : List<string>) : List<string> => {
+  const x = ["b", ...inline:array__lean_array_mk(c0)];
+  const x = [...c0, ...inline:array__lean_array_mk(c1)];
+  const x = [...c0, ...inline:array__lean_array_mk(c2)];
+  const x = [...c0, ...inline:array__lean_array_mk(c3)];
+  return inline:array__lean_array_to_list(["a", ...c0, "c", "d"]);
 };
 
 // ListTest.test3
-export const ListTest$test3 = (arr) => {
-  return ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d", "e", ...arr, ...arr, ...arr, ...arr, "f", "g"];
+export const ListTest$test3 = (arr : List<string>) : List<string> => {
+  const x = ["e", ...inline:array__lean_array_mk(c0)];
+  const x = [...c0, ...inline:array__lean_array_mk(c1)];
+  const x = [...c0, ...inline:array__lean_array_mk(c2)];
+  const x = [...c0, ...inline:array__lean_array_mk(c3)];
+  const x = [...inline:array__lean_array_mk(c4), "c"];
+  const x = [...inline:array__lean_array_mk(c5), ...c0];
+  const x = [...inline:array__lean_array_mk(c6), ...c0];
+  const x = [...inline:array__lean_array_mk(c7), ...c0];
+  return inline:array__lean_array_to_list(["a", "b", ...c0, "d", ...c4, "f", "g"]);
 };

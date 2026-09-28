@@ -3,40 +3,40 @@
 // not translated:
 //   test2: LeanScript: the call List.map (fun xs => List.map (fun x => x + k) xs) xss is not a call of an extern: `List.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_nat_add } from "lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add } from "runtime.js";
 
-const $k1 = { tag: 1, _1: 0 };
-const $k2 = (x$7) => {
-  const x$8 = x$7(1);
-  const x$9 = x$7(2);
-  const x$10 = x$7(3);
-  return $lean_nat_add($lean_nat_add(x$8, x$9), x$10);
+const $k1 : ({ tag: 0, _1: uint53(number) } | { tag: 1, _1: uint53(number) }) = { tag: 1, _1: 0 };
+const $k2 : ((uint53(number) => uint53(number)) => uint53(number)) = (x) => {
+  const x = c0(1);
+  const x = c1(2);
+  const x = c2(3);
+  return uint53__lean_nat_add(uint53__lean_nat_add(c2, c1), c0);
 };
 
 // test1
-export const test1 = (k, n) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if ((a$3.tag === 0)) {
-      const { _1: f$4 } = a$3;
-      acc$1 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = a$3;
-      const k$6 = $k2;
-      const k$11 = (x$12) => {
-        return $lean_nat_add(x$12, k);
+export const test1 = (k : uint53(number), n : uint53(number)) : uint53(number) => {
+  let acc = $k1;
+  for (i < c0) {
+    const a = m0;
+    switch (c0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const k = $k2;
+      const k = (x) => {
+        return uint53__lean_nat_add(c0, c6);
       };
-      const x$13 = k$6(k$11);
-      const x$14 = $lean_nat_add(f$5, x$13);
-      acc$1 = { tag: 1, _1: x$14 };
+      const x = c1(c0);
+      const x = uint53__lean_nat_add(c3, c0);
+      m0 = { tag: 1, _1: c0 };
+      next;
     }
   }
-  if ((acc$1.tag === 0)) {
-    const { _1: f$15 } = acc$1;
-    return f$15;
-  } else {
-    const { _1: f$16 } = acc$1;
-    return f$16;
+  switch (m0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };

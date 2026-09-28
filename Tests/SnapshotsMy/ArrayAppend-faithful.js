@@ -25,22 +25,22 @@ export const test4 = (b) => [1n, 2n, ...b];
  * @returns {Array<nat(bigint)>}
  */
 export const test5 = (n) => {
-  let acc$2 = { tag: 1, _1: [] };
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
+  let acc$1 = { tag: 1, _1: [] };
+  for (let i$2 = 0n; i$2 < n; i$2++) {
+    if (acc$1.tag === 0) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 0, _1: f$3 };
     } else {
-      const { _1: f$6 } = acc$2;
-      const x$10 = [...f$6, i$3, i$3 * i$3];
-      acc$2 = { tag: 1, _1: x$10 };
+      const { _1: f$4 } = acc$1;
+      const x$5 = [...f$4, i$2, i$2 * i$2];
+      acc$1 = { tag: 1, _1: x$5 };
     }
   }
-  if (acc$2.tag === 0) {
-    const { _1: f$11 } = acc$2;
-    return f$11;
+  if (acc$1.tag === 0) {
+    const { _1: f$6 } = acc$1;
+    return f$6;
   } else {
-    const { _1: f$12 } = acc$2;
-    return f$12;
+    const { _1: f$7 } = acc$1;
+    return f$7;
   }
 };

@@ -3,10 +3,6 @@
 // not translated:
 //   test2: Application type mismatch: The argument rfl has type ?m.1028 = ?m.1028 but is expected to have type LeanScript.Lvl.meet ?m.948 (LeanScript.Lvl.meet ?m.1009 (LeanScript.Lvl.meet none none)) = some ?m.930 in the application LeanScript.Neu.extern (LeanScript.LeanInitPureExtern.lean_array_get (LeanScript.Ty.prim LeanScript.LeanPrimTy.int).array) (LeanScript.Args.cons ?m.991 (LeanScript.Args.cons (LeanScript.PExpr.kvar LeanScript.KVar.head) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.nat 0) LeanScript.Args.nil))) ⋯
 
-import { $lean_array_get_size } from "../../runtime/lean_runtime_nat_bigint.mjs";
-
-const $k1 = () => 0n;
-
 /**
  * `test1`
  * @param {(() => int(bigint))} fn
@@ -15,7 +11,7 @@ const $k1 = () => 0n;
 export const test1 = (fn) => {
   const x$1 = fn();
   const k$2 = [1n, 2n, x$1];
-  if ($lean_array_get_size(k$2) === 3n) {
+  if (BigInt(k$2.length) === 3n) {
     return k$2;
   } else {
     return [];
@@ -26,7 +22,7 @@ export const test1 = (fn) => {
  * `fn'`
  * @returns {(() => int(bigint))}
  */
-export const fn_ = () => $k1;
+export const fn_ = () => () => 0n;
 
 /**
  * `extern1`

@@ -8,36 +8,36 @@
  * @returns {int(bigint)}
  */
 export const test = (x, y) => {
-  const k$1 = (x$2) => (x$4) => {
-    let acc$5 = 0n;
-    for (const e$6 of [
+  const k$5 = (x$1) => (x$2) => {
+    let acc$3 = 0n;
+    for (const e$4 of [
       x,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
+      x$1,
       x$2,
-      x$4,
     ]) {
-      acc$5 = acc$5 + e$6;
+      acc$3 = acc$3 + e$4;
     }
-    return acc$5;
+    return acc$3;
   };
-  const x$8 = k$1(x);
-  const x$9 = x$8(y);
-  const x$10 = k$1(y);
-  const x$11 = x$10(x);
-  return x$9 + x$11;
+  const x$6 = k$5(x);
+  const x$7 = x$6(y);
+  const x$8 = k$5(y);
+  const x$9 = x$8(x);
+  return x$7 + x$9;
 };

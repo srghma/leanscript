@@ -6,7 +6,7 @@
 //   test4: invalid scope
 //   test5: invalid scope
 
-import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
+import { int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `test1`
@@ -16,7 +16,7 @@ import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
  */
 export const test1 = (v, b) => {
   const { _1: f$1, _2: f$2 } = v;
-  return $lean_int_add(f$1, b);
+  return int53__lean_int_add(f$1, b);
 };
 
 /**
@@ -27,16 +27,16 @@ export const test1 = (v, b) => {
  */
 export const test2 = (v, a) => {
   const { _1: f$1, _2: f$2 } = v;
-  return $lean_int_add(f$1, a);
+  return int53__lean_int_add(f$1, a);
 };
 
 /**
  * `test3`
  * @param {{ _1: int53(number), _2: int53(number) }} v
- * @param {int53(number)} p$1
+ * @param {int53(number)} p
  * @returns {int53(number)}
  */
-export const test3 = (v, p$1) => {
-  const { _1: f$2, _2: f$3 } = v;
-  return $lean_int_add(f$2, p$1);
+export const test3 = (v, p) => {
+  const { _1: f$1, _2: f$2 } = v;
+  return int53__lean_int_add(f$1, p);
 };

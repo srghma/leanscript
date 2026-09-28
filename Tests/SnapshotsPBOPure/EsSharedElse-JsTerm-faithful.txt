@@ -2,19 +2,19 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (a, b, c) => {
-  if (a) {
-    if (b) {
+export const test1 = (a : boolean, b : boolean, c : boolean) : int(bigint) => {
+  if (c2) {
+    if (c1) {
       return 1n;
     } else {
-      if (c) {
+      if (c0) {
         return 2n;
       } else {
         return 3n;
       }
     }
   } else {
-    if (c) {
+    if (c0) {
       return 2n;
     } else {
       return 3n;

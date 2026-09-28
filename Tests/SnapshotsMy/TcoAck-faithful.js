@@ -10,17 +10,17 @@
 //   AckWithoutStackButUsingCantorPairing.unpairRight: LeanScript: the `while` loop forIn { } (x, y) fun x __s => have x := __s.fst; have y := __s.snd; if y < x then have x := y; have y := (x + n / x) / 2; pure (ForInStep.yield (x, y)) else pure (ForInStep.done (x, y)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 //   AckWithoutStackButUsingCantorPairing.ackNoDataStructure: LeanScript: the `while` loop forIn { } (s, curN) fun x __s => have s := __s.fst; have curN := __s.snd; if (s != 0) = true then have code := s - 1; have top := AckWithoutStackButUsingCantorPairing.unpairLeft code; have s := AckWithoutStackButUsingCantorPairing.unpairRight code; if (top == 0) = true then have curN := curN + 1; pure (ForInStep.yield (s, curN)) else if (curN == 0) = true then have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have curN := 1; pure (ForInStep.yield (s, curN)) else have s := AckWithoutStackButUsingCantorPairing.pair (top - 1) s + 1; have s := AckWithoutStackButUsingCantorPairing.pair top s + 1; have curN := curN - 1; pure (ForInStep.yield (s, curN)) else pure (ForInStep.done (s, curN)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 
-import { $lean_nat_div } from "../../runtime/lean_runtime_nat_bigint.mjs";
+import { bigint_nat__lean_nat_div } from "../../runtime.js";
 
-const $k1 = (x$2) => x$2 + 1n;
-const $k2 = (x$7) => (x$9) => {
-  const x$10 = x$7(1n);
-  let acc$11 = x$10;
-  for (let i$12 = 0n; i$12 < x$9; i$12++) {
-    const x$14 = x$7(acc$11);
-    acc$11 = x$14;
+const $k1 = (x$1) => x$1 + 1n;
+const $k2 = (x$1) => (x$2) => {
+  const x$3 = x$1(1n);
+  let acc$4 = x$3;
+  for (let i$5 = 0n; i$5 < x$2; i$5++) {
+    const x$6 = x$1(acc$4);
+    acc$4 = x$6;
   }
-  return acc$11;
+  return acc$4;
 };
 
 /**
@@ -30,14 +30,13 @@ const $k2 = (x$7) => (x$9) => {
  */
 export const ack2 = (a) => {
   const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = $k2;
-    const x$15 = k$6(a$5);
-    acc$3 = x$15;
+  let acc$2 = k$1;
+  for (let i$3 = 0n; i$3 < a; i$3++) {
+    const k$4 = $k2;
+    const x$5 = k$4(acc$2);
+    acc$2 = x$5;
   }
-  return acc$3;
+  return acc$2;
 };
 
 /**
@@ -47,4 +46,4 @@ export const ack2 = (a) => {
  * @returns {nat(bigint)}
  */
 export const AckWithoutStackButUsingCantorPairing$pair = (x, y) =>
-  $lean_nat_div((x + y) * (x + y + 1n), 2n) + y;
+  bigint_nat__lean_nat_div((x + y) * (x + y + 1n), 2n) + y;

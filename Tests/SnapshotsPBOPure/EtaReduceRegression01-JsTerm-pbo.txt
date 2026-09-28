@@ -5,11 +5,11 @@
 //   fold: LeanScript: `fold` is universe polymorphic
 
 // test
-export const test = (a) => {
-  if ((a.tag === 0)) {
+export const test = (a : ({ tag: 0 } | { tag: 1, _1: string })) : string => {
+  switch (c0.tag) {
+  case 0 {  }:
     return "";
-  } else {
-    const { _1: f$1 } = a;
-    return f$1;
+  case 1 { _1: f }:
+    return c0;
   }
 };

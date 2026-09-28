@@ -7,21 +7,21 @@
 //   test7: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
 // test1
-export const test1 = () => {
+export const test1 = () : string => {
   return "42";
 };
 
 // test3
-export const test3 = () => {
+export const test3 = () : string => {
   return "true";
 };
 
 // test4
-export const test4 = () => {
+export const test4 = () : string => {
   return "wat";
 };
 
 // test5
-export const test5 = () => {
+export const test5 = () : string => {
   return "w";
 };

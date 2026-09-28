@@ -12,7 +12,7 @@
 //   gcdT: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   stepsDown: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-const $k1 = (x$2) => x$2;
+const $k1 = (x$1) => x$1;
 
 /**
  * `sumAcc`
@@ -22,13 +22,13 @@ const $k1 = (x$2) => x$2;
  */
 export const sumAcc = (a, a1) => {
   const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => a$5(x$7 + i$4 + 1n);
-    acc$3 = k$6;
+  let acc$2 = k$1;
+  for (let i$3 = 0n; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    const k$6 = (x$5) => a$4(x$5 + i$3 + 1n);
+    acc$2 = k$6;
   }
-  return acc$3(a1);
+  return acc$2(a1);
 };
 
 /**

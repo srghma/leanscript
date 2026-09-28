@@ -193,12 +193,16 @@ The supported fragment and the refusals are listed in the header of
   (`JsTerm/FromTerm.lean`), so every function over a user inductive, … is listed
   under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
   and unions as objects, enums; only the recursors are missing.)
-- **Some externs have no JavaScript implementation**: the runtime modules (`runtime/`) have no
-  function for them, and their calls become calls of `$lean_extern_unimplemented`
-  (imported from `lean_runtime_non_configurable.mjs`), which throws when it is evaluated
-  (`MoreJs.lowerExtern`, `JsTerm/Extern.lean`).  `Tests/ExternCatalogue.lean` lists, per
-  preset, which externs are implemented (646 of the 894 rows over both presets);
-  `leanscript --check` finds the others (a check answers "threw: …").
+- **Some externs have no JavaScript implementation**: at some representation of their types
+  they have neither a function in `runtime.js` nor an inline form, and their calls become
+  calls of `lean_extern_unimplemented`, which throws when it is evaluated
+  (`MoreJs.lowerExtern`, `JsTerm/Extern.lean`).  `python3 scripts/gen_js_ops.py --report` lists
+  them (149 operations: most `Float`/`Float32` functions, several `String`/`Substring`
+  functions, the `Lean.version` constants, …); `leanscript --check` finds them too (a check
+  answers "threw: …").
+- **A literal too big for a `number`** (a `Nat`, `UInt64`, `Int` or `Int64` literal beyond
+  `2^53 - 1` in absolute value at the preset `pbo`) is refused: `leanscript` reports it and
+  exits with a failure, instead of computing with a rounded value.
 - **Arrays that start as a parameter are always copied** by the first update: the in-place
   pass (`JsTerm/InPlace.lean`) only mutates arrays the function itself built, since the caller
   may still refer to a parameter.  (A loop that pushes onto a parameter copies it once per

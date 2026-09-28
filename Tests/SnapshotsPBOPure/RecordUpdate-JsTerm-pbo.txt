@@ -3,22 +3,22 @@
 // not translated:
 //   instReprRec.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-import { $lean_int_add, $lean_int_sub } from "lean_runtime_int_num.mjs";
+import { int53__lean_int_add, int53__lean_int_sub } from "runtime.js";
 
 // test1
-export const test1 = (fn, val) => {
-  const x$1 = fn();
-  if ((val === 42)) {
-    return $lean_int_add(val, 1);
+export const test1 = (fn : (() => { _1: int53(number), _2: int53(number), _3: int53(number) }), val : int53(number)) : int53(number) => {
+  const x = c1();
+  if (inline:int53__lean_int_dec_eq(c1, 42)) {
+    return int53__lean_int_add(c1, 1);
   } else {
-    const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
-    return f$4;
+    const { _1: f, _2: f, _3: f } = c0;
+    return c0;
   }
 };
 
 // test7
-export const test7 = (f, y) => {
-  const x$1 = f(y);
-  const x$2 = $lean_int_add(x$1, 1);
-  return { _1: x$2, _2: $lean_int_sub(x$1, 2), _3: x$1 };
+export const test7 = (f : (int53(number) => int53(number)), y : int53(number)) : { _1: int53(number), _2: int53(number), _3: int53(number) } => {
+  const x = c1(c0);
+  const x = int53__lean_int_add(c0, 1);
+  return { _1: c0, _2: int53__lean_int_sub(c1, 2), _3: c1 };
 };

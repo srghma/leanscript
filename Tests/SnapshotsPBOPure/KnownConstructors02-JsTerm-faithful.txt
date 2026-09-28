@@ -2,12 +2,11 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test
-export const test = (a) => {
-  if ((a.tag === 0)) {
-    const { _1: f$1 } = a;
-    return f$1;
-  } else {
-    const { _1: f$2 } = a;
-    return f$2;
+export const test = (a : ({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
+  switch (c0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };

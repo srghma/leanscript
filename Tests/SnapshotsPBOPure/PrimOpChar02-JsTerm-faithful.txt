@@ -2,42 +2,42 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // charValues
-export const charValues = (op) => {
-  const x$1 = op("a");
-  const x$2 = x$1("a");
-  const x$3 = op("a");
-  const x$4 = x$3("b");
-  const x$5 = op("b");
-  const x$6 = x$5("a");
-  return [x$2, x$4, x$6];
+export const charValues = (op : (string => (string => boolean))) : Array<boolean> => {
+  const x = c0("a");
+  const x = c0("a");
+  const x = c2("a");
+  const x = c0("b");
+  const x = c4("b");
+  const x = c0("a");
+  return [c4, c2, c0];
 };
 
 // test1
-export const test1 = () => {
+export const test1 = () : Array<boolean> => {
   return [true, false, false];
 };
 
 // test2
-export const test2 = () => {
+export const test2 = () : Array<boolean> => {
   return [false, true, true];
 };
 
 // test3
-export const test3 = () => {
+export const test3 = () : Array<boolean> => {
   return [false, true, false];
 };
 
 // test4
-export const test4 = () => {
+export const test4 = () : Array<boolean> => {
   return [false, false, true];
 };
 
 // test5
-export const test5 = () => {
+export const test5 = () : Array<boolean> => {
   return [true, true, false];
 };
 
 // test6
-export const test6 = () => {
+export const test6 = () : Array<boolean> => {
   return [true, false, true];
 };

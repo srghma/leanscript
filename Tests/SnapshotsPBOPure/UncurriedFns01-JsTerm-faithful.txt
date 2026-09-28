@@ -2,32 +2,32 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (f, g) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2n);
-  return x$3(3n);
+export const test1 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint))) : int(bigint) => {
+  const x = c0(1n);
+  const x = c2(c0);
+  const x = c0(2n);
+  return c0(3n);
 };
 
 // test2
-export const test2 = (f, g, i) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2n);
-  return x$3(i);
+export const test2 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint)), i : int(bigint)) : int(bigint) => {
+  const x = c1(1n);
+  const x = c3(c0);
+  const x = c0(2n);
+  return c0(c3);
 };
 
 // test3
-export const test3 = (f, g, i, j) => {
-  const x$1 = g(1n);
-  const x$2 = f(x$1);
-  const x$3 = x$2(i);
-  return x$3(j);
+export const test3 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), g : (int(bigint) => int(bigint)), i : int(bigint), j : int(bigint)) : int(bigint) => {
+  const x = c2(1n);
+  const x = c4(c0);
+  const x = c0(c3);
+  return c0(c3);
 };
 
 // test4
-export const test4 = (f, i, j, k) => {
-  const x$1 = f(i);
-  const x$2 = x$1(j);
-  return x$2(k);
+export const test4 = (f : (int(bigint) => (int(bigint) => (int(bigint) => int(bigint)))), i : int(bigint), j : int(bigint), k : int(bigint)) : int(bigint) => {
+  const x = c3(c2);
+  const x = c0(c2);
+  return c0(c2);
 };

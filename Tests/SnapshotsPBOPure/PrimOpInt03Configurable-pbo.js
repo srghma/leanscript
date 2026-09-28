@@ -9,19 +9,18 @@
 //   TestISize.test2: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.test3: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.test4: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
-//   TestUInt64.test1: the UInt64 literal 1553255926290448384 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test2: the UInt64 literal 9446744073709551616 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test3: the UInt64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test4: the UInt64 literal 10000000000000000000 does not fit in a JavaScript number (use the bigint representation)
-//   TestNat.test3: the Nat literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt64.test1: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt64.test2: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt64.test3: the Int64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt64.test4: the Int64 literal 5000000000000000000 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt.test3: the Int literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test1: literal too big: the UInt64 literal 1553255926290448384 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test2: literal too big: the UInt64 literal 9446744073709551616 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test3: literal too big: the UInt64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test4: literal too big: the UInt64 literal 10000000000000000000 does not fit in a JavaScript number (use the bigint representation)
+//   TestNat.test3: literal too big: the Nat literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt64.test1: literal too big: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt64.test2: literal too big: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt64.test3: literal too big: the Int64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt64.test4: literal too big: the Int64 literal 5000000000000000000 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt.test3: literal too big: the Int literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
 
-import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
-import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
+import { uint53__lean_nat_add, int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `TestNat.test1`
@@ -41,7 +40,7 @@ export const TestNat$test2 = () => 0;
  * @returns {uint53(number)}
  */
 export const TestNat$test4 = (a) =>
-  $lean_nat_add($lean_nat_add(2000000000, a), 2000000000);
+  uint53__lean_nat_add(uint53__lean_nat_add(2000000000, a), 2000000000);
 
 /**
  * `TestInt.test1`
@@ -61,4 +60,4 @@ export const TestInt$test2 = () => -4000000000;
  * @returns {int53(number)}
  */
 export const TestInt$test4 = (a) =>
-  $lean_int_add($lean_int_add(2000000000, a), 2000000000);
+  int53__lean_int_add(int53__lean_int_add(2000000000, a), 2000000000);

@@ -6,45 +6,40 @@
 //   test3: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Nat is not declared in any signature; declare it with `leanscript_signature`
 //   test4: LeanScript: the call Nat.toDigitsCore 10 val✝ n' [d] is not a call of an extern: `Nat.toDigitsCore` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_array_get } from "lean_runtime_non_configurable.mjs";
-import { $lean_array_get_size } from "lean_runtime_nat_bigint.mjs";
+import { bigint_nat__lean_array_get } from "runtime.js";
 
-const $tag0 = { tag: 0 };
-const $k2 = (x$2) => {
-  return [{ tag: 1, _1: x$2 }, $tag0];
-};
-const $k3 = (x$6) => {
-  return [{ tag: 1, _1: x$6 }, $tag0];
+const $tag0 : ({ tag: 0 } | { tag: 1, _1: nat(bigint) }) = { tag: 0 };
+const $k2 : (nat(bigint) => Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })>) = (x) => {
+  return [{ tag: 1, _1: c0 }, $tag0];
 };
 
 // test5
-export const test5 = (n) => {
-  return [{ tag: 1, _1: n }, $tag0];
+export const test5 = (n : nat(bigint)) : Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })> => {
+  return [{ tag: 1, _1: c0 }, $tag0];
 };
 
 // test6
-export const test6 = (n, i) => {
-  const k$1 = $k2;
-  const x$3 = k$1(n);
-  let x$4;
-  join x$4 {
-    if ((i < $lean_array_get_size(x$3))) {
-      const k$5 = $k3;
-      const x$7 = k$5(n);
-      jump 0 { tag: 1, _1: $lean_array_get($tag0, x$7, i) };
+export const test6 = (n : nat(bigint), i : nat(bigint)) : nat(bigint) => {
+  const k = $k2;
+  const x = c0(c2);
+  join x {
+    if (inline:bigint_nat__lean_nat_dec_lt(c2, inline:bigint_nat__lean_array_get_size(c0))) {
+      const k = $k2;
+      const x = c0(c4);
+      jump 0 { tag: 1, _1: bigint_nat__lean_array_get($tag0, c0, c4) };
     } else {
       jump 0 $tag0;
     }
   }
-  if ((x$4.tag === 0)) {
+  switch (c0.tag) {
+  case 0 {  }:
     return 2n;
-  } else {
-    const { _1: f$8 } = x$4;
-    if ((f$8.tag === 0)) {
+  case 1 { _1: f }:
+    switch (c0.tag) {
+    case 0 {  }:
       return 1n;
-    } else {
-      const { _1: f$9 } = f$8;
-      return f$9;
+    case 1 { _1: f }:
+      return c0;
     }
   }
 };

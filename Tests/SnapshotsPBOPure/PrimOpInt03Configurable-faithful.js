@@ -10,8 +10,10 @@
 //   TestISize.test3: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.test4: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
-import { $lean_uint64_add } from "../../runtime/lean_runtime_uint64_bigint.mjs";
-import { $lean_int64_add } from "../../runtime/lean_runtime_int64_bigint.mjs";
+import {
+  bigint_nat__lean_uint64_add,
+  bigint_int__lean_int64_add,
+} from "../../runtime.js";
 
 /**
  * `TestUInt64.test1`
@@ -37,8 +39,8 @@ export const TestUInt64$test3 = () => 6553255926290448384n;
  * @returns {nat(bigint)}
  */
 export const TestUInt64$test4 = (a) =>
-  $lean_uint64_add(
-    $lean_uint64_add(10000000000000000000n, a),
+  bigint_nat__lean_uint64_add(
+    bigint_nat__lean_uint64_add(10000000000000000000n, a),
     10000000000000000000n,
   );
 
@@ -91,8 +93,8 @@ export const TestInt64$test3 = () => 6553255926290448384n;
  * @returns {int(bigint)}
  */
 export const TestInt64$test4 = (a) =>
-  $lean_int64_add(
-    $lean_int64_add(5000000000000000000n, a),
+  bigint_int__lean_int64_add(
+    bigint_int__lean_int64_add(5000000000000000000n, a),
     5000000000000000000n,
   );
 

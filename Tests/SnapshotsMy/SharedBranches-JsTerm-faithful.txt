@@ -4,19 +4,19 @@
 //   test1: LeanScript: the call Nat.toDigitsCore 10 code n' [d] is not a call of an extern: `Nat.toDigitsCore` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test2: LeanScript: `List String` is a built-in type former, which has no constructors of its own
 
-import { $lean_string_utf8_get, $lean_string_utf8_set, $lean_string_utf8_at_end } from "lean_runtime_non_configurable.mjs";
+import { string__lean_string_utf8_get__String_Pos_Raw_get, string__lean_string_utf8_set__String_Pos_Raw_set, string__lean_string_utf8_at_end__String_Pos_Raw_atEnd } from "runtime.js";
 
 // test3
-export const test3 = (s) => {
-  return $lean_string_utf8_get(s, 0);
+export const test3 = (s : string) : string => {
+  return string__lean_string_utf8_get__String_Pos_Raw_get(c0, 0);
 };
 
 // test4
-export const test4 = (s, c) => {
-  return $lean_string_utf8_set(s, 0, c);
+export const test4 = (s : string, c : string) : string => {
+  return string__lean_string_utf8_set__String_Pos_Raw_set(c1, 0, c0);
 };
 
 // test5
-export const test5 = (s) => {
-  return $lean_string_utf8_at_end(s, 0);
+export const test5 = (s : string) : boolean => {
+  return string__lean_string_utf8_at_end__String_Pos_Raw_atEnd(c0, 0);
 };

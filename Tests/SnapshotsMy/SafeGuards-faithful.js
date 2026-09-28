@@ -2,20 +2,17 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 import {
-  $lean_array_get_size,
-  $lean_nat_div,
-  $lean_nat_shiftr,
-  $lean_string_length,
-  $lean_nat_land,
-  $lean_nat_sub,
-} from "../../runtime/lean_runtime_nat_bigint.mjs";
+  bigint_nat__lean_nat_div,
+  bigint_nat__lean_string_length__String_length,
+  bigint_nat__lean_nat_sub,
+} from "../../runtime.js";
 
 /**
  * `test1`
  * @param {Array<nat(bigint)>} a
  * @returns {nat(bigint)}
  */
-export const test1 = (a) => $lean_nat_div($lean_array_get_size(a), 2n);
+export const test1 = (a) => bigint_nat__lean_nat_div(BigInt(a.length), 2n);
 
 /**
  * `test2`
@@ -23,8 +20,7 @@ export const test1 = (a) => $lean_nat_div($lean_array_get_size(a), 2n);
  * @param {Array<nat(bigint)>} b
  * @returns {nat(bigint)}
  */
-export const test2 = (a, b) =>
-  ($lean_array_get_size(a) + $lean_array_get_size(b)) * 3n;
+export const test2 = (a, b) => (BigInt(a.length) + BigInt(b.length)) * 3n;
 
 /**
  * `test3`
@@ -32,8 +28,8 @@ export const test2 = (a, b) =>
  * @returns {nat(bigint)}
  */
 export const test3 = (a) => {
-  const x$1 = $lean_array_get_size(a);
-  return $lean_nat_shiftr(x$1, 1n);
+  const x$1 = BigInt(a.length);
+  return x$1 >> 1n;
 };
 
 /**
@@ -41,21 +37,25 @@ export const test3 = (a) => {
  * @param {string} s
  * @returns {nat(bigint)}
  */
-export const test4 = (s) => $lean_nat_div($lean_string_length(s), 3n);
+export const test4 = (s) =>
+  bigint_nat__lean_nat_div(
+    bigint_nat__lean_string_length__String_length(s),
+    3n,
+  );
 
 /**
  * `test5`
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const test5 = (n) => $lean_nat_div(n, 2n);
+export const test5 = (n) => bigint_nat__lean_nat_div(n, 2n);
 
 /**
  * `test6`
  * @param {Array<nat(bigint)>} a
  * @returns {nat(bigint)}
  */
-export const test6 = (a) => $lean_nat_land($lean_array_get_size(a), 7n);
+export const test6 = (a) => BigInt(a.length) & 7n;
 
 /**
  * `test7`
@@ -64,4 +64,10 @@ export const test6 = (a) => $lean_nat_land($lean_array_get_size(a), 7n);
  * @returns {nat(bigint)}
  */
 export const test7 = (s, i) =>
-  $lean_nat_div($lean_nat_sub($lean_string_length(s), i), 2n);
+  bigint_nat__lean_nat_div(
+    bigint_nat__lean_nat_sub(
+      bigint_nat__lean_string_length__String_length(s),
+      i,
+    ),
+    2n,
+  );

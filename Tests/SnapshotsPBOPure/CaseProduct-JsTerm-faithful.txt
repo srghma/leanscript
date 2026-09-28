@@ -2,29 +2,29 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (a) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = a;
-  if ((f$1 === 1n)) {
-    if ((f$2 === 2n)) {
-      if ((f$3 === 3n)) {
+export const test1 = (a : { _1: nat(bigint), _2: nat(bigint), _3: nat(bigint) }) : string => {
+  const { _1: f, _2: f, _3: f } = c0;
+  if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, 1n)) {
+    if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 2n)) {
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 3n)) {
         return "1";
       } else {
         return "catch";
       }
     } else {
-      if ((f$2 === 4n)) {
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n)) {
         return "2";
       } else {
         return "catch";
       }
     }
   } else {
-    if ((f$1 === 4n)) {
-      if ((f$2 === 4n)) {
+    if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, 4n)) {
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n)) {
         return "2";
       } else {
-        if ((f$2 === 5n)) {
-          if ((f$3 === 6n)) {
+        if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 5n)) {
+          if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 6n)) {
             return "3";
           } else {
             return "catch";
@@ -34,7 +34,7 @@ export const test1 = (a) => {
         }
       }
     } else {
-      if ((f$2 === 4n)) {
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n)) {
         return "2";
       } else {
         return "catch";

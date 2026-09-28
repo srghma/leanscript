@@ -8,10 +8,7 @@
 //   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 //   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
-import {
-  $lean_int_add,
-  $lean_int_mul,
-} from "../../runtime/lean_runtime_int_num.mjs";
+import { int53__lean_int_add, int53__lean_int_mul } from "../../runtime.js";
 
 /**
  * `eval`
@@ -24,9 +21,9 @@ export const eval_ = (a) => {
     return f$1;
   } else if (a.tag === 1) {
     const { _1: f$2, _2: f$3 } = a;
-    return $lean_int_add(f$2, f$3);
+    return int53__lean_int_add(f$2, f$3);
   } else {
     const { _1: f$4, _2: f$5 } = a;
-    return $lean_int_mul(f$4, f$5);
+    return int53__lean_int_mul(f$4, f$5);
   }
 };

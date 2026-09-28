@@ -16,28 +16,24 @@
 //   TestInt.complement: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 
 import {
-  $lean_nat_land,
-  $lean_nat_lor,
-  $lean_nat_shiftl,
-  $lean_nat_shiftr,
-  $lean_nat_lxor,
-} from "../../runtime/lean_runtime_nat_num.mjs";
-import {
-  $lean_uint64_land,
-  $lean_uint64_lor,
-  $lean_uint64_shift_left,
-  $lean_uint64_shift_right,
-  $lean_uint64_xor,
-  $lean_uint64_complement,
-} from "../../runtime/lean_runtime_uint64_num.mjs";
-import {
-  $lean_int64_land,
-  $lean_int64_lor,
-  $lean_int64_shift_left,
-  $lean_int64_shift_right,
-  $lean_int64_xor,
-  $lean_int64_complement,
-} from "../../runtime/lean_runtime_int64_num.mjs";
+  uint53__lean_uint64_land,
+  uint53__lean_uint64_lor,
+  uint53__lean_uint64_shift_left,
+  uint53__lean_uint64_shift_right,
+  uint53__lean_uint64_xor,
+  uint53__lean_uint64_complement,
+  uint53__lean_nat_land,
+  uint53__lean_nat_lor,
+  uint53__lean_nat_shiftl,
+  uint53__lean_nat_shiftr,
+  uint53__lean_nat_lxor,
+  int53__lean_int64_land,
+  int53__lean_int64_lor,
+  int53__lean_int64_shift_left,
+  int53__lean_int64_shift_right,
+  int53__lean_int64_xor,
+  int53__lean_int64_complement,
+} from "../../runtime.js";
 
 /**
  * `TestUInt64.land`
@@ -45,7 +41,7 @@ import {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$land = (a, b) => $lean_uint64_land(a, b);
+export const TestUInt64$land = (a, b) => uint53__lean_uint64_land(a, b);
 
 /**
  * `TestUInt64.lor`
@@ -53,7 +49,7 @@ export const TestUInt64$land = (a, b) => $lean_uint64_land(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$lor = (a, b) => $lean_uint64_lor(a, b);
+export const TestUInt64$lor = (a, b) => uint53__lean_uint64_lor(a, b);
 
 /**
  * `TestUInt64.shiftLeft`
@@ -61,7 +57,8 @@ export const TestUInt64$lor = (a, b) => $lean_uint64_lor(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$shiftLeft = (a, b) => $lean_uint64_shift_left(a, b);
+export const TestUInt64$shiftLeft = (a, b) =>
+  uint53__lean_uint64_shift_left(a, b);
 
 /**
  * `TestUInt64.shiftRight`
@@ -69,7 +66,8 @@ export const TestUInt64$shiftLeft = (a, b) => $lean_uint64_shift_left(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$shiftRight = (a, b) => $lean_uint64_shift_right(a, b);
+export const TestUInt64$shiftRight = (a, b) =>
+  uint53__lean_uint64_shift_right(a, b);
 
 /**
  * `TestUInt64.xor`
@@ -77,14 +75,14 @@ export const TestUInt64$shiftRight = (a, b) => $lean_uint64_shift_right(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$xor = (a, b) => $lean_uint64_xor(a, b);
+export const TestUInt64$xor = (a, b) => uint53__lean_uint64_xor(a, b);
 
 /**
  * `TestUInt64.complement`
  * @param {uint53(number)} a
  * @returns {uint53(number)}
  */
-export const TestUInt64$complement = (a) => $lean_uint64_complement(a);
+export const TestUInt64$complement = (a) => uint53__lean_uint64_complement(a);
 
 /**
  * `TestNat.land`
@@ -92,7 +90,7 @@ export const TestUInt64$complement = (a) => $lean_uint64_complement(a);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$land = (a, b) => $lean_nat_land(a, b);
+export const TestNat$land = (a, b) => uint53__lean_nat_land(a, b);
 
 /**
  * `TestNat.lor`
@@ -100,7 +98,7 @@ export const TestNat$land = (a, b) => $lean_nat_land(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$lor = (a, b) => $lean_nat_lor(a, b);
+export const TestNat$lor = (a, b) => uint53__lean_nat_lor(a, b);
 
 /**
  * `TestNat.shiftLeft`
@@ -108,7 +106,7 @@ export const TestNat$lor = (a, b) => $lean_nat_lor(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$shiftLeft = (a, b) => $lean_nat_shiftl(a, b);
+export const TestNat$shiftLeft = (a, b) => uint53__lean_nat_shiftl(a, b);
 
 /**
  * `TestNat.shiftRight`
@@ -116,7 +114,7 @@ export const TestNat$shiftLeft = (a, b) => $lean_nat_shiftl(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$shiftRight = (a, b) => $lean_nat_shiftr(a, b);
+export const TestNat$shiftRight = (a, b) => uint53__lean_nat_shiftr(a, b);
 
 /**
  * `TestNat.xor`
@@ -124,7 +122,7 @@ export const TestNat$shiftRight = (a, b) => $lean_nat_shiftr(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$xor = (a, b) => $lean_nat_lxor(a, b);
+export const TestNat$xor = (a, b) => uint53__lean_nat_lxor(a, b);
 
 /**
  * `TestInt64.land`
@@ -132,7 +130,7 @@ export const TestNat$xor = (a, b) => $lean_nat_lxor(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$land = (a, b) => $lean_int64_land(a, b);
+export const TestInt64$land = (a, b) => int53__lean_int64_land(a, b);
 
 /**
  * `TestInt64.lor`
@@ -140,7 +138,7 @@ export const TestInt64$land = (a, b) => $lean_int64_land(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$lor = (a, b) => $lean_int64_lor(a, b);
+export const TestInt64$lor = (a, b) => int53__lean_int64_lor(a, b);
 
 /**
  * `TestInt64.shiftLeft`
@@ -148,7 +146,7 @@ export const TestInt64$lor = (a, b) => $lean_int64_lor(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$shiftLeft = (a, b) => $lean_int64_shift_left(a, b);
+export const TestInt64$shiftLeft = (a, b) => int53__lean_int64_shift_left(a, b);
 
 /**
  * `TestInt64.shiftRight`
@@ -156,7 +154,8 @@ export const TestInt64$shiftLeft = (a, b) => $lean_int64_shift_left(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$shiftRight = (a, b) => $lean_int64_shift_right(a, b);
+export const TestInt64$shiftRight = (a, b) =>
+  int53__lean_int64_shift_right(a, b);
 
 /**
  * `TestInt64.xor`
@@ -164,11 +163,11 @@ export const TestInt64$shiftRight = (a, b) => $lean_int64_shift_right(a, b);
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$xor = (a, b) => $lean_int64_xor(a, b);
+export const TestInt64$xor = (a, b) => int53__lean_int64_xor(a, b);
 
 /**
  * `TestInt64.complement`
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const TestInt64$complement = (a) => $lean_int64_complement(a);
+export const TestInt64$complement = (a) => int53__lean_int64_complement(a);

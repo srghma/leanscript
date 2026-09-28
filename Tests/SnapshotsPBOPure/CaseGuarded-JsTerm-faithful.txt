@@ -7,14 +7,14 @@
 //   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
 // test2
-export const test2 = (a) => {
-  if ((a < 1n)) {
-    return a;
+export const test2 = (a : int(bigint)) : int(bigint) => {
+  if (inline:bigint_int__lean_int_dec_lt(c0, 1n)) {
+    return c0;
   } else {
-    if ((1n < a)) {
-      return a;
+    if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
+      return c0;
     } else {
-      if ((a === 1n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
         return 1n;
       } else {
         return 0n;
@@ -24,108 +24,108 @@ export const test2 = (a) => {
 };
 
 // test3
-export const test3 = (a) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = a;
-  if ((f$1 === f$2)) {
-    return f$1;
+export const test3 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f, _3: f } = c0;
+  if (inline:bigint_int__lean_int_dec_eq(c2, c1)) {
+    return c2;
   } else {
-    if ((f$3 === f$2)) {
-      return f$1;
+    if (inline:bigint_int__lean_int_dec_eq(c0, c1)) {
+      return c2;
     } else {
-      if ((f$1 === f$3)) {
-        return f$3;
+      if (inline:bigint_int__lean_int_dec_eq(c2, c0)) {
+        return c0;
       } else {
-        return f$2;
+        return c1;
       }
     }
   }
 };
 
 // test4
-export const test4 = (a, a1) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = a;
-  if ((f$1 === 1n)) {
-    const { _1: f$4, _2: f$5, _3: f$6 } = a1;
-    if ((f$4 === 1n)) {
+export const test4 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }, a1 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f, _3: f } = c1;
+  if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
+    const { _1: f, _2: f, _3: f } = c3;
+    if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
       return 1n;
     } else {
-      if ((f$4 === 2n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
         return 2n;
       } else {
-        if ((f$4 === 3n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c2, 3n)) {
           return 3n;
         } else {
-          if ((f$4 === 4n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c2, 4n)) {
             return 4n;
           } else {
-            if ((f$4 === 5n)) {
+            if (inline:bigint_int__lean_int_dec_eq(c2, 5n)) {
               return 5n;
             } else {
-              return ((11n + f$3) + f$6);
+              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
             }
           }
         }
       }
     }
   } else {
-    if ((f$1 === 2n)) {
-      const { _1: f$7, _2: f$8, _3: f$9 } = a1;
-      if ((f$7 === 2n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
+      const { _1: f, _2: f, _3: f } = c3;
+      if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
         return 2n;
       } else {
-        if ((f$7 === 3n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c2, 3n)) {
           return 3n;
         } else {
-          if ((f$7 === 1n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
             return 6n;
           } else {
-            if ((f$7 === 4n)) {
-              if ((f$3 === f$8)) {
+            if (inline:bigint_int__lean_int_dec_eq(c2, 4n)) {
+              if (inline:bigint_int__lean_int_dec_eq(c3, c1)) {
                 return 7n;
               } else {
-                if ((f$3 < f$8)) {
+                if (inline:bigint_int__lean_int_dec_lt(c3, c1)) {
                   return 8n;
                 } else {
                   return 9n;
                 }
               }
             } else {
-              return ((11n + f$3) + f$9);
+              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
             }
           }
         }
       }
     } else {
-      const { _1: f$10, _2: f$11, _3: f$12 } = a1;
-      if ((f$10 === 2n)) {
+      const { _1: f, _2: f, _3: f } = c3;
+      if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
         return 2n;
       } else {
-        if ((f$10 === 3n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c2, 3n)) {
           return 3n;
         } else {
-          if ((f$10 === 4n)) {
-            if ((f$3 === f$11)) {
+          if (inline:bigint_int__lean_int_dec_eq(c2, 4n)) {
+            if (inline:bigint_int__lean_int_dec_eq(c3, c1)) {
               return 7n;
             } else {
-              if ((f$3 < f$11)) {
+              if (inline:bigint_int__lean_int_dec_lt(c3, c1)) {
                 return 8n;
               } else {
                 return 9n;
               }
             }
           } else {
-            if ((f$10 === 1n)) {
-              if ((f$12 === 10n)) {
-                if ((f$2 === 2n)) {
+            if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
+              if (inline:bigint_int__lean_int_dec_eq(c0, 10n)) {
+                if (inline:bigint_int__lean_int_dec_eq(c4, 2n)) {
                   return 10n;
                 } else {
-                  return ((11n + f$3) + 10n);
+                  return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), 10n);
                 }
               } else {
-                return ((11n + f$3) + f$12);
+                return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
               }
             } else {
-              return ((11n + f$3) + f$12);
+              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
             }
           }
         }

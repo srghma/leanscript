@@ -2,12 +2,12 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 import {
-  $lean_uint16_div,
-  $lean_uint32_div,
-  $lean_int8_div,
-  $lean_int16_div,
-  $lean_int32_div,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  uint16__lean_uint16_div,
+  uint32__lean_uint32_div,
+  int8__lean_int8_div,
+  int16__lean_int16_div,
+  int32__lean_int32_div,
+} from "../../runtime.js";
 
 /**
  * `TestUInt8.test1_0__shouldBeTrue`
@@ -33,7 +33,7 @@ export const TestUInt8$test3m2__shouldBeTrue = () => true;
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$divNoInline = (a, b) => $lean_uint16_div(a, b);
+export const TestUInt16$divNoInline = (a, b) => uint16__lean_uint16_div(a, b);
 
 /**
  * `TestUInt16.test1_0__shouldBeTrue`
@@ -59,7 +59,7 @@ export const TestUInt16$test3m2__shouldBeTrue = () => true;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$divNoInline = (a, b) => $lean_uint32_div(a, b);
+export const TestUInt32$divNoInline = (a, b) => uint32__lean_uint32_div(a, b);
 
 /**
  * `TestUInt32.test1_0_shouldBeTrue`
@@ -85,7 +85,7 @@ export const TestUInt32$test3m2_shouldBeTrue = () => true;
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$divNoInline = (a, b) => $lean_int8_div(a, b);
+export const TestInt8$divNoInline = (a, b) => int8__lean_int8_div(a, b);
 
 /**
  * `TestInt8.test1_0_shouldBeTrue`
@@ -111,7 +111,7 @@ export const TestInt8$test3m2_shouldBeTrue = () => true;
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$divNoInline = (a, b) => $lean_int16_div(a, b);
+export const TestInt16$divNoInline = (a, b) => int16__lean_int16_div(a, b);
 
 /**
  * `TestInt16.test1_0_shouldBeTrue`
@@ -137,7 +137,7 @@ export const TestInt16$test3m2_shouldBeTrue = () => true;
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$divNoInline = (a, b) => $lean_int32_div(a, b);
+export const TestInt32$divNoInline = (a, b) => int32__lean_int32_div(a, b);
 
 /**
  * `TestInt32.test1_0_shouldBeTrue`

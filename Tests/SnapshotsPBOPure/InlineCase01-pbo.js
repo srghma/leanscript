@@ -5,7 +5,7 @@
 //   test4: LeanScript: the parameter `α` of `test4` is a type
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
-import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
+import { int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `test1`
@@ -17,8 +17,8 @@ export const test1 = (f, a) => {
   if (a.tag === 0) {
     return f();
   } else {
-    const { _1: f$2 } = a;
-    return $lean_int_add(f$2, 1);
+    const { _1: f$1 } = a;
+    return int53__lean_int_add(f$1, 1);
   }
 };
 
@@ -32,7 +32,7 @@ export const test3 = (f, a) => {
   if (a.tag === 0) {
     return f();
   } else {
-    const { _1: f$2 } = a;
-    return $lean_int_add(f$2, 1);
+    const { _1: f$1 } = a;
+    return int53__lean_int_add(f$1, 1);
   }
 };

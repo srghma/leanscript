@@ -3,11 +3,11 @@
 // not translated:
 //   test3: LeanScript: the call b.gcd (a + 7) is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_nat_mod } from "../../runtime/lean_runtime_nat_bigint.mjs";
+import { bigint_nat__lean_nat_mod__Nat_mod } from "../../runtime.js";
 
-const $k1 = (x$2) => (x$4) => x$2;
-const $k2 = (x$2) => (x$4) => (x$6) => x$2 * 100n + x$4 * 10n + x$6;
-const $k3 = (x$2) => (x$4) => x$2 + x$4;
+const $k1 = (x$1) => (x$2) => x$1;
+const $k2 = (x$1) => (x$2) => (x$3) => x$1 * 100n + x$2 * 10n + x$3;
+const $k3 = (x$1) => (x$2) => x$1 + x$2;
 
 /**
  * `test1`
@@ -18,21 +18,21 @@ const $k3 = (x$2) => (x$4) => x$2 + x$4;
  */
 export const test1 = (fuel, a, b) => {
   const k$1 = $k1;
-  let acc$5 = k$1;
-  for (let i$6 = 0n; i$6 < fuel; i$6++) {
-    const a$7 = acc$5;
-    const k$8 = (x$9) => (x$11) => {
-      if (x$11 === 0n) {
-        return x$9;
+  let acc$2 = k$1;
+  for (let i$3 = 0n; i$3 < fuel; i$3++) {
+    const a$4 = acc$2;
+    const k$8 = (x$5) => (x$6) => {
+      if (x$6 === 0n) {
+        return x$5;
       } else {
-        const x$12 = a$7(x$11);
-        return x$12($lean_nat_mod(x$9, x$11));
+        const x$7 = a$4(x$6);
+        return x$7(bigint_nat__lean_nat_mod__Nat_mod(x$5, x$6));
       }
     };
-    acc$5 = k$8;
+    acc$2 = k$8;
   }
-  const x$14 = acc$5(a);
-  return x$14(b);
+  const x$9 = acc$2(a);
+  return x$9(b);
 };
 
 /**
@@ -45,19 +45,19 @@ export const test1 = (fuel, a, b) => {
  */
 export const test2 = (fuel, a, b, c) => {
   const k$1 = $k2;
-  let acc$7 = k$1;
-  for (let i$8 = 0n; i$8 < fuel; i$8++) {
-    const a$9 = acc$7;
-    const k$10 = (x$11) => (x$13) => (x$15) => {
-      const x$16 = a$9(x$13);
-      const x$17 = x$16(x$15);
-      return x$17(x$11 + 1n);
+  let acc$2 = k$1;
+  for (let i$3 = 0n; i$3 < fuel; i$3++) {
+    const a$4 = acc$2;
+    const k$10 = (x$5) => (x$6) => (x$7) => {
+      const x$8 = a$4(x$6);
+      const x$9 = x$8(x$7);
+      return x$9(x$5 + 1n);
     };
-    acc$7 = k$10;
+    acc$2 = k$10;
   }
-  const x$19 = acc$7(a);
-  const x$20 = x$19(b);
-  return x$20(c);
+  const x$11 = acc$2(a);
+  const x$12 = x$11(b);
+  return x$12(c);
 };
 
 /**
@@ -69,15 +69,15 @@ export const test2 = (fuel, a, b, c) => {
  */
 export const test4 = (fuel, a, b) => {
   const k$1 = $k3;
-  let acc$5 = k$1;
-  for (let i$6 = 0n; i$6 < fuel; i$6++) {
-    const a$7 = acc$5;
-    const k$8 = (x$9) => (x$11) => {
-      const x$12 = a$7(x$9 + 1n);
-      return x$12(x$11 + 2n);
+  let acc$2 = k$1;
+  for (let i$3 = 0n; i$3 < fuel; i$3++) {
+    const a$4 = acc$2;
+    const k$8 = (x$5) => (x$6) => {
+      const x$7 = a$4(x$5 + 1n);
+      return x$7(x$6 + 2n);
     };
-    acc$5 = k$8;
+    acc$2 = k$8;
   }
-  const x$14 = acc$5(a);
-  return x$14(b);
+  const x$9 = acc$2(a);
+  return x$9(b);
 };

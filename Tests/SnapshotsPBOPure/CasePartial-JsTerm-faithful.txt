@@ -2,14 +2,14 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (a) => {
-  if ((a === 1n)) {
+export const test1 = (a : int(bigint)) : int(bigint) => {
+  if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
     return 1n;
   } else {
-    if ((a === 2n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
       return 2n;
     } else {
-      if ((a === 3n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
         return 3n;
       } else {
         return 0n;

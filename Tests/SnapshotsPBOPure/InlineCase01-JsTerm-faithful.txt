@@ -6,21 +6,21 @@
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
 // test1
-export const test1 = (f, a) => {
-  if ((a.tag === 0)) {
-    return f();
-  } else {
-    const { _1: f$2 } = a;
-    return (f$2 + 1n);
+export const test1 = (f : (() => int(bigint)), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
+  switch (c0.tag) {
+  case 0 {  }:
+    return c1();
+  case 1 { _1: f }:
+    return inline:bigint_int__lean_int_add(c0, 1n);
   }
 };
 
 // test3
-export const test3 = (f, a) => {
-  if ((a.tag === 0)) {
-    return f();
-  } else {
-    const { _1: f$2 } = a;
-    return (f$2 + 1n);
+export const test3 = (f : (() => int(bigint)), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
+  switch (c0.tag) {
+  case 0 {  }:
+    return c1();
+  case 1 { _1: f }:
+    return inline:bigint_int__lean_int_add(c0, 1n);
   }
 };

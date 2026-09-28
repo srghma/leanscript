@@ -6,7 +6,7 @@
 //   test3: LeanScript: the call Array.mapM.map✝ (fun x => pure ((fun x => x * 2) x)) a 0 (Array.emptyWithCapacity a.size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test4: LeanScript: the call Array.mapM.map✝ (fun x => pure ((fun x => x + 1) x)) a 0 (Array.emptyWithCapacity a.size) is not a call of an extern: `_private.Init.Data.Array.Basic.0.Array.mapM.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_array_push_inplace } from "../../runtime/lean_runtime_non_configurable.mjs";
+import { array__lean_array_push_inplace } from "../../runtime.js";
 
 /**
  * `test5`
@@ -17,7 +17,7 @@ export const test5 = (a) => {
   let acc$1 = [];
   for (const e$2 of a) {
     if (4 < e$2) {
-      acc$1 = $lean_array_push_inplace(acc$1, e$2);
+      acc$1 = array__lean_array_push_inplace(acc$1, e$2);
     } else {
       acc$1 = acc$1;
     }

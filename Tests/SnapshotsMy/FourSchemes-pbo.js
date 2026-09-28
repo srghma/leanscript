@@ -12,12 +12,9 @@
 //   gcdT: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   stepsDown: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-import {
-  $lean_nat_add,
-  $lean_nat_mul,
-} from "../../runtime/lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add, uint53__lean_nat_mul } from "../../runtime.js";
 
-const $k1 = (x$2) => x$2;
+const $k1 = (x$1) => x$1;
 
 /**
  * `sumAcc`
@@ -27,13 +24,14 @@ const $k1 = (x$2) => x$2;
  */
 export const sumAcc = (a, a1) => {
   const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => a$5($lean_nat_add($lean_nat_add(x$7, i$4), 1));
-    acc$3 = k$6;
+  let acc$2 = k$1;
+  for (let i$3 = 0; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    const k$6 = (x$5) =>
+      a$4(uint53__lean_nat_add(uint53__lean_nat_add(x$5, i$3), 1));
+    acc$2 = k$6;
   }
-  return acc$3(a1);
+  return acc$2(a1);
 };
 
 /**
@@ -44,7 +42,7 @@ export const sumAcc = (a, a1) => {
 export const factD = (a) => {
   let acc$1 = 1;
   for (let i$2 = 0; i$2 < a; i$2++) {
-    acc$1 = $lean_nat_mul($lean_nat_add(i$2, 1), acc$1);
+    acc$1 = uint53__lean_nat_mul(uint53__lean_nat_add(i$2, 1), acc$1);
   }
   return acc$1;
 };

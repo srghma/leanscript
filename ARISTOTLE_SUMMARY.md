@@ -1,3 +1,50 @@
+# Summary of changes for run d620c7e3-de18-4f5d-b280-8d306c175814
+`JsTerm` is now a simply typed language with de Bruijn indices, and constants, mutable variables and join points live in separate contexts. The `JsNum…/JsBigInt…/JsBool…/JsStr…/JsBinOp/Js*UnOp` operators are gone. Every extern is now one operation per representation of its types, named `type__externname`. `lake build JsTerm leanscript tests` succeeds with no warnings and no `sorry`, and all 51 tests in `lake test` pass. I regenerated the snapshots: node ran 3806 checks and all passed. `scripts/leanscript-snapshots.sh` still exits with 1, but only because of the intended literal-too-big errors in two files (see below).
+
+**Types (`JsTerm/Ty.lean`)**
+- `JsTerminalTy` holds the leaf types from your sketch. How a Lean type maps onto it depends on the configuration: `Nat` becomes `bigint_nat` or `uint53`, and `UInt64`/`Int64` go the same way.
+- `JsTy` wraps a leaf and adds generic arrays, typed arrays (`typedArray kind elem`), lists, functions, records, unions, enums, `data`, thunks and lazy values.
+- Two changes from your sketch:
+  - `bitvec_small` requires `2 ≤ n`, not `2 < n`, because Lean's `BitVec` type here allows width 2.
+  - Arrays and lists are in `JsTy`, not in the leaf type.
+
+**Grammar (`JsTerm/Syntax.lean`, `JsTerm/Vars.lean`)**
+- Expressions have type `JsExpr C M τ` and blocks have type `JsBlock C M J k`. `C` holds the constants, `M` the mutable variables (`let`, reassigned by `assign`) and `J` the join points (`join`/`jump`).
+- `JsTerm/Vars.lean` has renaming, weakening, substitution and occurrence tracking.
+- Every pass keeps terms well-typed, so the printer never sees an ill-typed term and picks the variable names itself.
+
+**Operations**
+- `scripts/gen_js_ops.py` reads the extern catalogue and generates three files:
+  - `JsTerm/OpsImported.lean`: 320 operations, each a function of the same name in `runtime.js`.
+  - `JsTerm/OpsInlined.lean`: 171 operations printed as a single operator or conversion.
+  - `JsTerm/OpsLookup.lean`: finds the operation for an extern at given types.
+- Your examples work as described:
+  - `bigint_nat__lean_nat_div` and `uint53__lean_nat_div` are imported.
+  - `bigint_nat__lean_nat_land` is inlined as `a & b`.
+  - `uint53__lean_nat_land` is imported and uses your fast implementation.
+- `lean_array_get_size` is inlined as `a.length`, or `BigInt(a.length)` for `bigint_nat`.
+- Because conversions follow from the types, no unneeded `Number(i)`/`BigInt(i)` is written.
+- 149 operations still have no implementation and throw via `lean_extern_unimplemented`; `python3 scripts/gen_js_ops.py --report` lists them. None of them was implemented before either.
+
+**Passes rewritten for the typed version**
+- Conversion from `Term` (`JsTerm/FromTerm.lean`).
+- Clean-ups (`JsTerm/Simplify.lean`).
+- In-place array updates (`JsTerm/InPlace.lean`).
+- Hoisting constants and collecting imports (`JsTerm/Hoist.lean`).
+- Printing (`JsTerm/PrintMini.lean`): a join point only gets a labelled block when a jump leaves it early.
+
+**`leanscript`**
+- Generated modules now import from a single `runtime.js` (option `--runtime=FILE`).
+- It exits with a failure if the runtime does not export a function a module imports.
+- As you asked, a literal too big for its representation (a `Nat` above `2^53 - 1` where `Nat` is `uint53`) is a conversion error and `leanscript` exits with a failure. At the `pbo` preset this now happens for `PrimOpInt02Configurable` and `PrimOpInt03Configurable`.
+
+**Tests and docs**
+- `Tests/Main.lean` has new tests for the types, the operation naming, the in-place updates, the hoisting, the literal-too-big error, and a check that `runtime.js` exports every imported operation.
+- I deleted `Tests/ExternCatalogue.lean` and its entry in `lakefile.toml`.
+- `README.md` and `NOT_IMPLEMENTED.md` are updated.
+
+Plain `lake build` still fails on an existing Mathlib import in `UsageAlgebra.lean`, which is not part of this change.
+
 # Summary of changes for run 2bf2eaaf-a730-4ca2-94bf-7bbb38e11512
 I merged the runtime files into one `runtime.js` with a Python script and deleted the originals. Nothing else in the project was changed, and nothing was built or tested.
 

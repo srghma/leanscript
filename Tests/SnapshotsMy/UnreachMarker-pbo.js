@@ -9,11 +9,11 @@
 //   small: LeanScript: a branch that Lean proves unreachable ⋯.elim is not supported: the language has no term for it (and once the indices of an inductive family are erased, as `Vec α (n + 1)` is `Vec α`, a list, such a branch is reachable)
 //   headOf: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 
-import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add } from "../../runtime.js";
 
 /**
  * `total`
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const total = (n) => $lean_nat_add(n, 1);
+export const total = (n) => uint53__lean_nat_add(n, 1);

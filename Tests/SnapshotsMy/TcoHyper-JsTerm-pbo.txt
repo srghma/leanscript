@@ -4,160 +4,141 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-import { $lean_nat_add } from "lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add } from "runtime.js";
 
-const $k1 = (x$2) => {
-  return x$2;
+const $k1 : (uint53(number) => uint53(number)) = (x) => {
+  return c0;
 };
-const $k2 = (x$2) => {
-  return $lean_nat_add(x$2, 1);
+const $k2 : (uint53(number) => uint53(number)) = (x) => {
+  return uint53__lean_nat_add(c0, 1);
 };
-const $k3 = (x$15) => {
-  return x$15;
-};
-const $k4 = (x$9) => {
-  return (x$11) => {
-    return (x$13) => {
-      const k$14 = $k3;
-      let acc$16 = k$14;
-      for (let i$17 = 0; i$17 < x$11; i$17++) {
-        const a$18 = acc$16;
-        const k$19 = (x$20) => {
-          const x$21 = x$9(x$20);
-          return a$18(x$21);
+const $k3 : ((uint53(number) => uint53(number)) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
+  return (x) => {
+    return (x) => {
+      const k = $k1;
+      let acc = c0;
+      for (i < c2) {
+        const a = m0;
+        const k = (x) => {
+          const x = c6(c0);
+          return c2(c0);
         };
-        acc$16 = k$19;
+        m0 = c0;
+        next;
       }
-      return acc$16(x$13);
+      return m0(c1);
     };
   };
 };
-const $k5 = (x$27) => {
-  return (x$29) => {
-    let acc$30 = 1;
-    if ((0 < x$27)) {
-      const i$31 = (x$27 - 1);
-      let acc$33 = x$29;
-      if ((0 < i$31)) {
-        const i$34 = (i$31 - 1);
-        let acc$36 = 0;
-        if ((0 < i$34)) {
-          const i$37 = (i$34 - 1);
-          acc$36 = 1;
+const $k4 : (uint53(number) => (uint53(number) => uint53(number))) = (x) => {
+  return (x) => {
+    let acc = 1;
+    last (i < c1) {
+      let acc = c1;
+      last (i < c0) {
+        let acc = 0;
+        last (i < c0) {
+          m0 = 1;
+          next;
         }
-        acc$33 = acc$36;
+        m1 = m0;
+        next;
       }
-      acc$30 = acc$33;
+      m1 = m0;
+      next;
     }
-    return acc$30;
-  };
-};
-const $k6 = (x$9) => {
-  return (x$11) => {
-    let acc$12 = 1;
-    if ((0 < x$9)) {
-      const i$13 = (x$9 - 1);
-      let acc$15 = x$11;
-      if ((0 < i$13)) {
-        const i$16 = (i$13 - 1);
-        let acc$18 = 0;
-        if ((0 < i$16)) {
-          const i$19 = (i$16 - 1);
-          acc$18 = 1;
-        }
-        acc$15 = acc$18;
-      }
-      acc$12 = acc$15;
-    }
-    return acc$12;
+    return m0;
   };
 };
 
 // hyperBase
-export const hyperBase = (a, a1) => {
-  let acc$1 = 1;
-  if ((0 < a)) {
-    const i$2 = (a - 1);
-    let acc$4 = a1;
-    if ((0 < i$2)) {
-      const i$5 = (i$2 - 1);
-      let acc$7 = 0;
-      if ((0 < i$5)) {
-        const i$8 = (i$5 - 1);
-        acc$7 = 1;
+export const hyperBase = (a : uint53(number), a1 : uint53(number)) : uint53(number) => {
+  let acc = 1;
+  last (i < c1) {
+    let acc = c1;
+    last (i < c0) {
+      let acc = 0;
+      last (i < c0) {
+        m0 = 1;
+        next;
       }
-      acc$4 = acc$7;
+      m1 = m0;
+      next;
     }
-    acc$1 = acc$4;
+    m1 = m0;
+    next;
   }
-  return acc$1;
+  return m0;
 };
 
 // hyperLoop
-export const hyperLoop = (f, a, a1) => {
-  const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const x$8 = f(x$7);
-      return a$5(x$8);
+export const hyperLoop = (f : (uint53(number) => uint53(number)), a : uint53(number), a1 : uint53(number)) : uint53(number) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c2) {
+    const a = m0;
+    const k = (x) => {
+      const x = c6(c0);
+      return c2(c0);
     };
-    acc$3 = k$6;
+    m0 = c0;
+    next;
   }
-  return acc$3(a1);
+  return m0(c1);
 };
 
 // hyperTCO
-export const hyperTCO = (a, a1, a2) => {
-  const k$1 = $k2;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const k$8 = $k4;
-      const x$24 = k$8(a$5);
-      const x$25 = x$24(x$7);
-      const k$26 = $k5;
-      const x$39 = k$26($lean_nat_add(i$4, 1));
-      const x$40 = x$39(a1);
-      return x$25(x$40);
+export const hyperTCO = (a : uint53(number), a1 : uint53(number), a2 : uint53(number)) : uint53(number) => {
+  const k = $k2;
+  let acc = c0;
+  for (i < c3) {
+    const a = m0;
+    const k = (x) => {
+      const k = $k3;
+      const x = c0(c2);
+      const x = c0(c2);
+      const k = $k4;
+      const x = c0(uint53__lean_nat_add(c6, 1));
+      const x = c0(c10);
+      return c3(c0);
     };
-    acc$3 = k$6;
+    m0 = c0;
+    next;
   }
-  return acc$3(a2);
+  return m0(c1);
 };
 
 // hyperWhile
-export const hyperWhile = (a, a1, a2) => {
-  const k$1 = $k2;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const k$8 = $k6;
-      const x$21 = k$8($lean_nat_add(i$4, 1));
-      const x$22 = x$21(a1);
-      let acc$23 = { tag: 1, _1: x$22 };
-      for (let i$24 = 0; i$24 < x$7; i$24++) {
-        if ((acc$23.tag === 0)) {
-          const { _1: f$26 } = acc$23;
-          acc$23 = { tag: 0, _1: f$26 };
-        } else {
-          const { _1: f$27 } = acc$23;
-          const x$28 = a$5(f$27);
-          acc$23 = { tag: 1, _1: x$28 };
+export const hyperWhile = (a : uint53(number), a1 : uint53(number), a2 : uint53(number)) : uint53(number) => {
+  const k = $k2;
+  let acc = c0;
+  for (i < c3) {
+    const a = m0;
+    const k = (x) => {
+      const k = $k4;
+      const x = c0(uint53__lean_nat_add(c3, 1));
+      const x = c0(c7);
+      let acc = { tag: 1, _1: c0 };
+      for (i < c3) {
+        switch (m0.tag) {
+        case 0 { _1: f }:
+          m0 = { tag: 0, _1: c0 };
+          next;
+        case 1 { _1: f }:
+          const x = c6(c0);
+          m0 = { tag: 1, _1: c0 };
+          next;
         }
       }
-      if ((acc$23.tag === 0)) {
-        const { _1: f$29 } = acc$23;
-        return f$29;
-      } else {
-        const { _1: f$30 } = acc$23;
-        return f$30;
+      switch (m0.tag) {
+      case 0 { _1: f }:
+        return c0;
+      case 1 { _1: f }:
+        return c0;
       }
     };
-    acc$3 = k$6;
+    m0 = c0;
+    next;
   }
-  return acc$3(a2);
+  return m0(c1);
 };

@@ -3,69 +3,69 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
-const $k1 = { _1: 99, _2: 0, _3: 11 };
+const $k1 : { _1: int53(number), _2: int53(number), _3: int53(number) } = { _1: 99, _2: 0, _3: 11 };
 
 // localTest
-export const localTest = (f) => {
-  const x$1 = f($k1);
-  if (((x$1 === -2147483648) ? false : true)) {
-    return x$1;
+export const localTest = (f : ({ _1: int53(number), _2: int53(number), _3: int53(number) } => int53(number))) : int53(number) => {
+  const x = c0($k1);
+  if ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true)) {
+    return c0;
   } else {
     return 0;
   }
 };
 
 // test1
-export const test1 = () => {
+export const test1 = () : int53(number) => {
   return 110;
 };
 
 // test2
-export const test2 = () => {
+export const test2 = () : int53(number) => {
   return 88;
 };
 
 // test3
-export const test3 = () => {
+export const test3 = () : int53(number) => {
   return 1089;
 };
 
 // test4
-export const test4 = () => {
+export const test4 = () : int53(number) => {
   return 9;
 };
 
 // extern
-export const extern = () => {
+export const extern = () : { _1: int53(number), _2: int53(number), _3: int53(number) } => {
   return $k1;
 };
 
 // externTest
-export const externTest = (f) => {
-  const x$1 = f($k1);
-  if (((x$1 === -2147483648) ? false : true)) {
-    return x$1;
+export const externTest = (f : ({ _1: int53(number), _2: int53(number), _3: int53(number) } => int53(number))) : int53(number) => {
+  const x = c0($k1);
+  if ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true)) {
+    return c0;
   } else {
     return -2147483648;
   }
 };
 
 // test5
-export const test5 = () => {
+export const test5 = () : int53(number) => {
   return 110;
 };
 
 // test6
-export const test6 = () => {
+export const test6 = () : int53(number) => {
   return 88;
 };
 
 // test7
-export const test7 = () => {
+export const test7 = () : int53(number) => {
   return 1089;
 };
 
 // test8
-export const test8 = () => {
+export const test8 = () : int53(number) => {
   return 9;
 };

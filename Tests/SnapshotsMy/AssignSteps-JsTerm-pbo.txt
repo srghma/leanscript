@@ -3,84 +3,87 @@
 // not translated:
 //   test3: LeanScript: the call b.gcd (a + 7) is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { $lean_nat_mod, $lean_nat_mul, $lean_nat_add } from "lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add, uint53__lean_nat_mul, uint53__lean_nat_mod__Nat_mod } from "runtime.js";
 
-const $k1 = (x$2) => {
-  return (x$4) => {
-    return x$2;
+const $k1 : (uint53(number) => (uint53(number) => uint53(number))) = (x) => {
+  return (x) => {
+    return c1;
   };
 };
-const $k2 = (x$2) => {
-  return (x$4) => {
-    return (x$6) => {
-      return $lean_nat_add($lean_nat_add($lean_nat_mul(x$2, 100), $lean_nat_mul(x$4, 10)), x$6);
+const $k2 : (uint53(number) => (uint53(number) => (uint53(number) => uint53(number)))) = (x) => {
+  return (x) => {
+    return (x) => {
+      return uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_mul(c2, 100), uint53__lean_nat_mul(c1, 10)), c0);
     };
   };
 };
-const $k3 = (x$2) => {
-  return (x$4) => {
-    return $lean_nat_add(x$2, x$4);
+const $k3 : (uint53(number) => (uint53(number) => uint53(number))) = (x) => {
+  return (x) => {
+    return uint53__lean_nat_add(c1, c0);
   };
 };
 
 // test1
-export const test1 = (fuel, a, b) => {
-  const k$1 = $k1;
-  let acc$5 = k$1;
-  for (let i$6 = 0; i$6 < fuel; i$6++) {
-    const a$7 = acc$5;
-    const k$8 = (x$9) => {
-      return (x$11) => {
-        if ((x$11 === 0)) {
-          return x$9;
+export const test1 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c3) {
+    const a = m0;
+    const k = (x) => {
+      return (x) => {
+        if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 0)) {
+          return c1;
         } else {
-          const x$12 = a$7(x$11);
-          return x$12($lean_nat_mod(x$9, x$11));
+          const x = c2(c0);
+          return c0(uint53__lean_nat_mod__Nat_mod(c2, c1));
         }
       };
     };
-    acc$5 = k$8;
+    m0 = c0;
+    next;
   }
-  const x$14 = acc$5(a);
-  return x$14(b);
+  const x = m0(c2);
+  return c0(c2);
 };
 
 // test2
-export const test2 = (fuel, a, b, c) => {
-  const k$1 = $k2;
-  let acc$7 = k$1;
-  for (let i$8 = 0; i$8 < fuel; i$8++) {
-    const a$9 = acc$7;
-    const k$10 = (x$11) => {
-      return (x$13) => {
-        return (x$15) => {
-          const x$16 = a$9(x$13);
-          const x$17 = x$16(x$15);
-          return x$17($lean_nat_add(x$11, 1));
+export const test2 = (fuel : uint53(number), a : uint53(number), b : uint53(number), c : uint53(number)) : uint53(number) => {
+  const k = $k2;
+  let acc = c0;
+  for (i < c4) {
+    const a = m0;
+    const k = (x) => {
+      return (x) => {
+        return (x) => {
+          const x = c3(c1);
+          const x = c0(c1);
+          return c0(uint53__lean_nat_add(c4, 1));
         };
       };
     };
-    acc$7 = k$10;
+    m0 = c0;
+    next;
   }
-  const x$19 = acc$7(a);
-  const x$20 = x$19(b);
-  return x$20(c);
+  const x = m0(c3);
+  const x = c0(c3);
+  return c0(c3);
 };
 
 // test4
-export const test4 = (fuel, a, b) => {
-  const k$1 = $k3;
-  let acc$5 = k$1;
-  for (let i$6 = 0; i$6 < fuel; i$6++) {
-    const a$7 = acc$5;
-    const k$8 = (x$9) => {
-      return (x$11) => {
-        const x$12 = a$7($lean_nat_add(x$9, 1));
-        return x$12($lean_nat_add(x$11, 2));
+export const test4 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
+  const k = $k3;
+  let acc = c0;
+  for (i < c3) {
+    const a = m0;
+    const k = (x) => {
+      return (x) => {
+        const x = c2(uint53__lean_nat_add(c1, 1));
+        return c0(uint53__lean_nat_add(c1, 2));
       };
     };
-    acc$5 = k$8;
+    m0 = c0;
+    next;
   }
-  const x$14 = acc$5(a);
-  return x$14(b);
+  const x = m0(c2);
+  return c0(c2);
 };

@@ -7,141 +7,140 @@
 //   AlwaysInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 //   InlineIfReduceInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 
-const $k1 = (x$2) => {
-  return (x$4) => {
-    const { _1: f$5, _2: f$6 } = x$2;
-    const { _1: f$7, _2: f$8 } = x$4;
-    const { _1: f$9, _2: f$10 } = x$4;
-    const { _1: f$11, _2: f$12 } = x$2;
-    const x$16 = [...f$12, ...f$10];
-    return { _1: (f$5 + f$7), _2: x$16 };
+const $k1 : ({ _1: string, _2: Array<string> } => ({ _1: string, _2: Array<string> } => { _1: string, _2: Array<string> })) = (x) => {
+  return (x) => {
+    const { _1: f, _2: f } = c1;
+    const { _1: f, _2: f } = c2;
+    const { _1: f, _2: f } = c4;
+    const { _1: f, _2: f } = c7;
+    return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
   };
 };
 
 // Inline.appendR
-export const Inline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  const { _1: f$5, _2: f$6 } = b;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const Inline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // Inline.test1
-export const Inline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  const { _1: f$5, _2: f$6 } = a1;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const Inline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // Inline.test2
-export const Inline$test2 = (a, b) => {
-  const k$1 = $k1;
-  const x$17 = k$1(a);
-  return x$17(b);
+export const Inline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const k = $k1;
+  const x = c0(c2);
+  return c0(c2);
 };
 
 // Inline.test3
-export const Inline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a;
-  return { _1: ("hello" + f$1), _2: ["hello", ...f$4] };
+export const Inline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c0;
+  const { _1: f, _2: f } = c2;
+  return { _1: inline:string__lean_string_append__String_append("hello", c3), _2: ["hello", ...c0] };
 };
 
 // Noinline.appendR
-export const Noinline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  const { _1: f$5, _2: f$6 } = b;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const Noinline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // Noinline.test1
-export const Noinline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  const { _1: f$5, _2: f$6 } = a1;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const Noinline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // Noinline.test2
-export const Noinline$test2 = (a, b) => {
-  const k$1 = $k1;
-  const x$17 = k$1(a);
-  return x$17(b);
+export const Noinline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const k = $k1;
+  const x = c0(c2);
+  return c0(c2);
 };
 
 // Noinline.test3
-export const Noinline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a;
-  return { _1: ("hello" + f$1), _2: ["hello", ...f$4] };
+export const Noinline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c0;
+  const { _1: f, _2: f } = c2;
+  return { _1: inline:string__lean_string_append__String_append("hello", c3), _2: ["hello", ...c0] };
 };
 
 // AlwaysInline.appendR
-export const AlwaysInline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  const { _1: f$5, _2: f$6 } = b;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const AlwaysInline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // AlwaysInline.test1
-export const AlwaysInline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  const { _1: f$5, _2: f$6 } = a1;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const AlwaysInline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // AlwaysInline.test2
-export const AlwaysInline$test2 = (a, b) => {
-  const k$1 = $k1;
-  const x$17 = k$1(a);
-  return x$17(b);
+export const AlwaysInline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const k = $k1;
+  const x = c0(c2);
+  return c0(c2);
 };
 
 // AlwaysInline.test3
-export const AlwaysInline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a;
-  return { _1: ("hello" + f$1), _2: ["hello", ...f$4] };
+export const AlwaysInline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c0;
+  const { _1: f, _2: f } = c2;
+  return { _1: inline:string__lean_string_append__String_append("hello", c3), _2: ["hello", ...c0] };
 };
 
 // InlineIfReduceInline.appendR
-export const InlineIfReduceInline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  const { _1: f$5, _2: f$6 } = b;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const InlineIfReduceInline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // InlineIfReduceInline.test1
-export const InlineIfReduceInline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  const { _1: f$5, _2: f$6 } = a1;
-  const { _1: f$7, _2: f$8 } = a;
-  return { _1: (f$1 + f$3), _2: [...f$8, ...f$6] };
+export const InlineIfReduceInline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c1;
+  const { _1: f, _2: f } = c2;
+  const { _1: f, _2: f } = c4;
+  const { _1: f, _2: f } = c7;
+  return { _1: inline:string__lean_string_append__String_append(c7, c5), _2: [...c0, ...c2] };
 };
 
 // InlineIfReduceInline.test2
-export const InlineIfReduceInline$test2 = (a, b) => {
-  const k$1 = $k1;
-  const x$17 = k$1(a);
-  return x$17(b);
+export const InlineIfReduceInline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const k = $k1;
+  const x = c0(c2);
+  return c0(c2);
 };
 
 // InlineIfReduceInline.test3
-export const InlineIfReduceInline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a;
-  return { _1: ("hello" + f$1), _2: ["hello", ...f$4] };
+export const InlineIfReduceInline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
+  const { _1: f, _2: f } = c0;
+  const { _1: f, _2: f } = c2;
+  return { _1: inline:string__lean_string_append__String_append("hello", c3), _2: ["hello", ...c0] };
 };

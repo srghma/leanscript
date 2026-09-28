@@ -3,10 +3,7 @@
 // not translated:
 //   instReprRec.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 
-import {
-  $lean_int_add,
-  $lean_int_sub,
-} from "../../runtime/lean_runtime_int_num.mjs";
+import { int53__lean_int_add, int53__lean_int_sub } from "../../runtime.js";
 
 /**
  * `test1`
@@ -17,7 +14,7 @@ import {
 export const test1 = (fn, val) => {
   const x$1 = fn();
   if (val === 42) {
-    return $lean_int_add(val, 1);
+    return int53__lean_int_add(val, 1);
   } else {
     const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
     return f$4;
@@ -32,6 +29,6 @@ export const test1 = (fn, val) => {
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
-  const x$2 = $lean_int_add(x$1, 1);
-  return { _1: x$2, _2: $lean_int_sub(x$1, 2), _3: x$1 };
+  const x$2 = int53__lean_int_add(x$1, 1);
+  return { _1: x$2, _2: int53__lean_int_sub(x$1, 2), _3: x$1 };
 };

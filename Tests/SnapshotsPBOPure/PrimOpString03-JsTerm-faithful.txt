@@ -2,16 +2,16 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (a) => {
-  return ((("ab" + a) + "c") + "d");
+export const test1 = (a : string) : string => {
+  return inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append("ab", c0), "c"), "d");
 };
 
 // test2
-export const test2 = (a) => {
-  return (("a" + (("b" + a) + "c")) + "d");
+export const test2 = (a : string) : string => {
+  return inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append("a", inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append("b", c0), "c")), "d");
 };
 
 // test3
-export const test3 = (a) => {
-  return (("a" + ("b" + (a + "c"))) + "d");
+export const test3 = (a : string) : string => {
+  return inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append("a", inline:string__lean_string_append__String_append("b", inline:string__lean_string_append__String_append(c0, "c"))), "d");
 };

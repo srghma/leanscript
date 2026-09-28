@@ -15,91 +15,89 @@
 //   TestISize.complement: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestInt.complement: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 
-import { $lean_nat_land, $lean_nat_lor, $lean_nat_shiftl, $lean_nat_shiftr, $lean_nat_lxor } from "lean_runtime_nat_num.mjs";
-import { $lean_uint64_land, $lean_uint64_lor, $lean_uint64_shift_left, $lean_uint64_shift_right, $lean_uint64_xor, $lean_uint64_complement } from "lean_runtime_uint64_num.mjs";
-import { $lean_int64_land, $lean_int64_lor, $lean_int64_shift_left, $lean_int64_shift_right, $lean_int64_xor, $lean_int64_complement } from "lean_runtime_int64_num.mjs";
+import { uint53__lean_uint64_land, uint53__lean_uint64_lor, uint53__lean_uint64_shift_left, uint53__lean_uint64_shift_right, uint53__lean_uint64_xor, uint53__lean_uint64_complement, uint53__lean_nat_land, uint53__lean_nat_lor, uint53__lean_nat_shiftl, uint53__lean_nat_shiftr, uint53__lean_nat_lxor, int53__lean_int64_land, int53__lean_int64_lor, int53__lean_int64_shift_left, int53__lean_int64_shift_right, int53__lean_int64_xor, int53__lean_int64_complement } from "runtime.js";
 
 // TestUInt64.land
-export const TestUInt64$land = (a, b) => {
-  return $lean_uint64_land(a, b);
+export const TestUInt64$land = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_land(c1, c0);
 };
 
 // TestUInt64.lor
-export const TestUInt64$lor = (a, b) => {
-  return $lean_uint64_lor(a, b);
+export const TestUInt64$lor = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_lor(c1, c0);
 };
 
 // TestUInt64.shiftLeft
-export const TestUInt64$shiftLeft = (a, b) => {
-  return $lean_uint64_shift_left(a, b);
+export const TestUInt64$shiftLeft = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_shift_left(c1, c0);
 };
 
 // TestUInt64.shiftRight
-export const TestUInt64$shiftRight = (a, b) => {
-  return $lean_uint64_shift_right(a, b);
+export const TestUInt64$shiftRight = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_shift_right(c1, c0);
 };
 
 // TestUInt64.xor
-export const TestUInt64$xor = (a, b) => {
-  return $lean_uint64_xor(a, b);
+export const TestUInt64$xor = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_xor(c1, c0);
 };
 
 // TestUInt64.complement
-export const TestUInt64$complement = (a) => {
-  return $lean_uint64_complement(a);
+export const TestUInt64$complement = (a : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_complement(c0);
 };
 
 // TestNat.land
-export const TestNat$land = (a, b) => {
-  return $lean_nat_land(a, b);
+export const TestNat$land = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_land(c1, c0);
 };
 
 // TestNat.lor
-export const TestNat$lor = (a, b) => {
-  return $lean_nat_lor(a, b);
+export const TestNat$lor = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_lor(c1, c0);
 };
 
 // TestNat.shiftLeft
-export const TestNat$shiftLeft = (a, b) => {
-  return $lean_nat_shiftl(a, b);
+export const TestNat$shiftLeft = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_shiftl(c1, c0);
 };
 
 // TestNat.shiftRight
-export const TestNat$shiftRight = (a, b) => {
-  return $lean_nat_shiftr(a, b);
+export const TestNat$shiftRight = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_shiftr(c1, c0);
 };
 
 // TestNat.xor
-export const TestNat$xor = (a, b) => {
-  return $lean_nat_lxor(a, b);
+export const TestNat$xor = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_lxor(c1, c0);
 };
 
 // TestInt64.land
-export const TestInt64$land = (a, b) => {
-  return $lean_int64_land(a, b);
+export const TestInt64$land = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_land(c1, c0);
 };
 
 // TestInt64.lor
-export const TestInt64$lor = (a, b) => {
-  return $lean_int64_lor(a, b);
+export const TestInt64$lor = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_lor(c1, c0);
 };
 
 // TestInt64.shiftLeft
-export const TestInt64$shiftLeft = (a, b) => {
-  return $lean_int64_shift_left(a, b);
+export const TestInt64$shiftLeft = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_shift_left(c1, c0);
 };
 
 // TestInt64.shiftRight
-export const TestInt64$shiftRight = (a, b) => {
-  return $lean_int64_shift_right(a, b);
+export const TestInt64$shiftRight = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_shift_right(c1, c0);
 };
 
 // TestInt64.xor
-export const TestInt64$xor = (a, b) => {
-  return $lean_int64_xor(a, b);
+export const TestInt64$xor = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_xor(c1, c0);
 };
 
 // TestInt64.complement
-export const TestInt64$complement = (a) => {
-  return $lean_int64_complement(a);
+export const TestInt64$complement = (a : int53(number)) : int53(number) => {
+  return int53__lean_int64_complement(c0);
 };

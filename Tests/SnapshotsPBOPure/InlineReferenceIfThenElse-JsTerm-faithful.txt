@@ -3,19 +3,19 @@
 // not translated:
 //   fn: LeanScript: `fn` is universe polymorphic
 
-const $k1 = { _1: true, _2: 0n };
+const $k1 : { _1: boolean, _2: int(bigint) } = { _1: true, _2: 0n };
 
 // test1
-export const test1 = () => {
+export const test1 = () : int(bigint) => {
   return 42n;
 };
 
 // extern1
-export const extern1 = () => {
+export const extern1 = () : { _1: boolean, _2: int(bigint) } => {
   return $k1;
 };
 
 // test2
-export const test2 = () => {
+export const test2 = () : int(bigint) => {
   return 42n;
 };

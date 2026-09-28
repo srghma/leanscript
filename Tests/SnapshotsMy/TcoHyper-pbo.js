@@ -4,59 +4,40 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add } from "../../runtime.js";
 
-const $k1 = (x$2) => x$2;
-const $k2 = (x$2) => $lean_nat_add(x$2, 1);
-const $k3 = (x$15) => x$15;
-const $k4 = (x$9) => (x$11) => (x$13) => {
-  const k$14 = $k3;
-  let acc$16 = k$14;
-  for (let i$17 = 0; i$17 < x$11; i$17++) {
-    const a$18 = acc$16;
-    const k$19 = (x$20) => {
-      const x$21 = x$9(x$20);
-      return a$18(x$21);
+const $k1 = (x$1) => x$1;
+const $k2 = (x$1) => uint53__lean_nat_add(x$1, 1);
+const $k3 = (x$1) => (x$2) => (x$3) => {
+  const k$4 = $k1;
+  let acc$5 = k$4;
+  for (let i$6 = 0; i$6 < x$2; i$6++) {
+    const a$7 = acc$5;
+    const k$10 = (x$8) => {
+      const x$9 = x$1(x$8);
+      return a$7(x$9);
     };
-    acc$16 = k$19;
+    acc$5 = k$10;
   }
-  return acc$16(x$13);
+  return acc$5(x$3);
 };
-const $k5 = (x$27) => (x$29) => {
-  let acc$30 = 1;
-  if (0 < x$27) {
-    const i$31 = x$27 - 1;
-    let acc$33 = x$29;
-    if (0 < i$31) {
-      const i$34 = i$31 - 1;
-      let acc$36 = 0;
-      if (0 < i$34) {
-        const i$37 = i$34 - 1;
-        acc$36 = 1;
+const $k4 = (x$1) => (x$2) => {
+  let acc$3 = 1;
+  if (0 < x$1) {
+    const i$4 = x$1 - 1;
+    let acc$5 = x$2;
+    if (0 < i$4) {
+      const i$6 = i$4 - 1;
+      let acc$7 = 0;
+      if (0 < i$6) {
+        const i$8 = i$6 - 1;
+        acc$7 = 1;
       }
-      acc$33 = acc$36;
+      acc$5 = acc$7;
     }
-    acc$30 = acc$33;
+    acc$3 = acc$5;
   }
-  return acc$30;
-};
-const $k6 = (x$9) => (x$11) => {
-  let acc$12 = 1;
-  if (0 < x$9) {
-    const i$13 = x$9 - 1;
-    let acc$15 = x$11;
-    if (0 < i$13) {
-      const i$16 = i$13 - 1;
-      let acc$18 = 0;
-      if (0 < i$16) {
-        const i$19 = i$16 - 1;
-        acc$18 = 1;
-      }
-      acc$15 = acc$18;
-    }
-    acc$12 = acc$15;
-  }
-  return acc$12;
+  return acc$3;
 };
 
 /**
@@ -69,17 +50,17 @@ export const hyperBase = (a, a1) => {
   let acc$1 = 1;
   if (0 < a) {
     const i$2 = a - 1;
-    let acc$4 = a1;
+    let acc$3 = a1;
     if (0 < i$2) {
-      const i$5 = i$2 - 1;
-      let acc$7 = 0;
-      if (0 < i$5) {
-        const i$8 = i$5 - 1;
-        acc$7 = 1;
+      const i$4 = i$2 - 1;
+      let acc$5 = 0;
+      if (0 < i$4) {
+        const i$6 = i$4 - 1;
+        acc$5 = 1;
       }
-      acc$4 = acc$7;
+      acc$3 = acc$5;
     }
-    acc$1 = acc$4;
+    acc$1 = acc$3;
   }
   return acc$1;
 };
@@ -93,16 +74,16 @@ export const hyperBase = (a, a1) => {
  */
 export const hyperLoop = (f, a, a1) => {
   const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const x$8 = f(x$7);
-      return a$5(x$8);
+  let acc$2 = k$1;
+  for (let i$3 = 0; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    const k$7 = (x$5) => {
+      const x$6 = f(x$5);
+      return a$4(x$6);
     };
-    acc$3 = k$6;
+    acc$2 = k$7;
   }
-  return acc$3(a1);
+  return acc$2(a1);
 };
 
 /**
@@ -114,21 +95,21 @@ export const hyperLoop = (f, a, a1) => {
  */
 export const hyperTCO = (a, a1, a2) => {
   const k$1 = $k2;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const k$8 = $k4;
-      const x$24 = k$8(a$5);
-      const x$25 = x$24(x$7);
-      const k$26 = $k5;
-      const x$39 = k$26($lean_nat_add(i$4, 1));
-      const x$40 = x$39(a1);
-      return x$25(x$40);
+  let acc$2 = k$1;
+  for (let i$3 = 0; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    const k$12 = (x$5) => {
+      const k$6 = $k3;
+      const x$7 = k$6(a$4);
+      const x$8 = x$7(x$5);
+      const k$9 = $k4;
+      const x$10 = k$9(uint53__lean_nat_add(i$3, 1));
+      const x$11 = x$10(a1);
+      return x$8(x$11);
     };
-    acc$3 = k$6;
+    acc$2 = k$12;
   }
-  return acc$3(a2);
+  return acc$2(a2);
 };
 
 /**
@@ -140,33 +121,33 @@ export const hyperTCO = (a, a1, a2) => {
  */
 export const hyperWhile = (a, a1, a2) => {
   const k$1 = $k2;
-  let acc$3 = k$1;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      const k$8 = $k6;
-      const x$21 = k$8($lean_nat_add(i$4, 1));
-      const x$22 = x$21(a1);
-      let acc$23 = { tag: 1, _1: x$22 };
-      for (let i$24 = 0; i$24 < x$7; i$24++) {
-        if (acc$23.tag === 0) {
-          const { _1: f$26 } = acc$23;
-          acc$23 = { tag: 0, _1: f$26 };
+  let acc$2 = k$1;
+  for (let i$3 = 0; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    const k$16 = (x$5) => {
+      const k$6 = $k4;
+      const x$7 = k$6(uint53__lean_nat_add(i$3, 1));
+      const x$8 = x$7(a1);
+      let acc$9 = { tag: 1, _1: x$8 };
+      for (let i$10 = 0; i$10 < x$5; i$10++) {
+        if (acc$9.tag === 0) {
+          const { _1: f$11 } = acc$9;
+          acc$9 = { tag: 0, _1: f$11 };
         } else {
-          const { _1: f$27 } = acc$23;
-          const x$28 = a$5(f$27);
-          acc$23 = { tag: 1, _1: x$28 };
+          const { _1: f$12 } = acc$9;
+          const x$13 = a$4(f$12);
+          acc$9 = { tag: 1, _1: x$13 };
         }
       }
-      if (acc$23.tag === 0) {
-        const { _1: f$29 } = acc$23;
-        return f$29;
+      if (acc$9.tag === 0) {
+        const { _1: f$14 } = acc$9;
+        return f$14;
       } else {
-        const { _1: f$30 } = acc$23;
-        return f$30;
+        const { _1: f$15 } = acc$9;
+        return f$15;
       }
     };
-    acc$3 = k$6;
+    acc$2 = k$16;
   }
-  return acc$3(a2);
+  return acc$2(a2);
 };

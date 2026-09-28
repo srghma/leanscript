@@ -6,7 +6,7 @@
 //   instReprRec2.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
-import { $lean_int_add } from "../../runtime/lean_runtime_int_num.mjs";
+import { int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `test2`
@@ -64,7 +64,7 @@ export const test4 = (a, a1) => {
     } else if (f$4 === 5) {
       return 5;
     } else {
-      return $lean_int_add($lean_int_add(11, f$3), f$6);
+      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$6);
     }
   } else if (f$1 === 2) {
     const { _1: f$7, _2: f$8, _3: f$9 } = a1;
@@ -83,7 +83,7 @@ export const test4 = (a, a1) => {
         return 9;
       }
     } else {
-      return $lean_int_add($lean_int_add(11, f$3), f$9);
+      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$9);
     }
   } else {
     const { _1: f$10, _2: f$11, _3: f$12 } = a1;
@@ -104,13 +104,13 @@ export const test4 = (a, a1) => {
         if (f$2 === 2) {
           return 10;
         } else {
-          return $lean_int_add($lean_int_add(11, f$3), 10);
+          return int53__lean_int_add(int53__lean_int_add(11, f$3), 10);
         }
       } else {
-        return $lean_int_add($lean_int_add(11, f$3), f$12);
+        return int53__lean_int_add(int53__lean_int_add(11, f$3), f$12);
       }
     } else {
-      return $lean_int_add($lean_int_add(11, f$3), f$12);
+      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$12);
     }
   }
 };

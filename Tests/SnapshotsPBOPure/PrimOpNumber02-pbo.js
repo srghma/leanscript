@@ -50,15 +50,11 @@
 //   TestFloat32.test10__shouldBeTrue: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel) has type LeanScript.PExpr ?m.123 ?m.124 ?m.125 (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32Model) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float32) ?m.120 in the application LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.float32Model (Float32.toModel 1.0 / TestFloat32.nan.toModel))
 
 import {
-  $lean_float32_add,
-  $lean_float32_sub,
-  $lean_float32_beq,
-  $lean_float32_decLt,
-  $lean_float32_decLe,
-  $lean_float32_mul,
-  $lean_float32_div,
-  $lean_float32_negate,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  float32__lean_float32_add,
+  float32__lean_float32_sub,
+  float32__lean_float32_mul,
+  float32__lean_float32_div,
+} from "../../runtime.js";
 
 /**
  * `TestFloat32.addNoInline`
@@ -66,7 +62,8 @@ import {
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$addNoInline = (a, b) => $lean_float32_add(a, b);
+export const TestFloat32$addNoInline = (a, b) =>
+  float32__lean_float32_add(a, b);
 
 /**
  * `TestFloat32.subNoInline`
@@ -74,7 +71,8 @@ export const TestFloat32$addNoInline = (a, b) => $lean_float32_add(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$subNoInline = (a, b) => $lean_float32_sub(a, b);
+export const TestFloat32$subNoInline = (a, b) =>
+  float32__lean_float32_sub(a, b);
 
 /**
  * `TestFloat32.eqNoInline`
@@ -82,7 +80,7 @@ export const TestFloat32$subNoInline = (a, b) => $lean_float32_sub(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$eqNoInline = (a, b) => $lean_float32_beq(a, b);
+export const TestFloat32$eqNoInline = (a, b) => a === b;
 
 /**
  * `TestFloat32.neNoInline`
@@ -91,7 +89,7 @@ export const TestFloat32$eqNoInline = (a, b) => $lean_float32_beq(a, b);
  * @returns {boolean}
  */
 export const TestFloat32$neNoInline = (a, b) => {
-  if ($lean_float32_beq(a, b)) {
+  if (a === b) {
     return false;
   } else {
     return true;
@@ -104,7 +102,7 @@ export const TestFloat32$neNoInline = (a, b) => {
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$ltNoInline = (a, b) => $lean_float32_decLt(a, b);
+export const TestFloat32$ltNoInline = (a, b) => a < b;
 
 /**
  * `TestFloat32.gtNoInline`
@@ -112,7 +110,7 @@ export const TestFloat32$ltNoInline = (a, b) => $lean_float32_decLt(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$gtNoInline = (a, b) => $lean_float32_decLt(b, a);
+export const TestFloat32$gtNoInline = (a, b) => b < a;
 
 /**
  * `TestFloat32.leNoInline`
@@ -120,7 +118,7 @@ export const TestFloat32$gtNoInline = (a, b) => $lean_float32_decLt(b, a);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$leNoInline = (a, b) => $lean_float32_decLe(a, b);
+export const TestFloat32$leNoInline = (a, b) => a <= b;
 
 /**
  * `TestFloat32.geNoInline`
@@ -128,7 +126,7 @@ export const TestFloat32$leNoInline = (a, b) => $lean_float32_decLe(a, b);
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$geNoInline = (a, b) => $lean_float32_decLe(b, a);
+export const TestFloat32$geNoInline = (a, b) => b <= a;
 
 /**
  * `TestFloat32.mulNoInline`
@@ -136,7 +134,8 @@ export const TestFloat32$geNoInline = (a, b) => $lean_float32_decLe(b, a);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$mulNoInline = (a, b) => $lean_float32_mul(a, b);
+export const TestFloat32$mulNoInline = (a, b) =>
+  float32__lean_float32_mul(a, b);
 
 /**
  * `TestFloat32.divNoInline`
@@ -144,11 +143,12 @@ export const TestFloat32$mulNoInline = (a, b) => $lean_float32_mul(a, b);
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$divNoInline = (a, b) => $lean_float32_div(a, b);
+export const TestFloat32$divNoInline = (a, b) =>
+  float32__lean_float32_div(a, b);
 
 /**
  * `TestFloat32.negNoInline`
  * @param {float32} a
  * @returns {float32}
  */
-export const TestFloat32$negNoInline = (a) => $lean_float32_negate(a);
+export const TestFloat32$negNoInline = (a) => -a;

@@ -8,34 +8,33 @@
 //   test2: LeanScript: the recursive call test2.go s c (String.Pos.Raw.next s p) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 //   test4: LeanScript: the recursive call test4.go s (i + 1) (acc + i) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 
-import { $lean_string_utf8_byte_size, $lean_nat_add } from "lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add, uint53__lean_string_utf8_byte_size } from "runtime.js";
 
 // test3
-export const test3 = (s, n) => {
-  let acc$1 = { tag: 1, _1: { _1: s, _2: 0 } };
-  for (let i$2 = 0; i$2 < n; i$2++) {
-    if ((acc$1.tag === 0)) {
-      const { _1: f$4 } = acc$1;
-      acc$1 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$1;
-      const { _1: f$6, _2: f$7 } = f$5;
-      const { _1: f$8, _2: f$9 } = f$5;
-      const x$10 = $lean_nat_add(f$9, $lean_string_utf8_byte_size(f$6));
-      const x$11 = (f$6 + "x");
-      acc$1 = { tag: 1, _1: { _1: x$11, _2: x$10 } };
+export const test3 = (s : string, n : uint53(number)) : uint53(number) => {
+  let acc = { tag: 1, _1: { _1: c1, _2: 0 } };
+  for (i < c0) {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      m0 = { tag: 0, _1: c0 };
+      next;
+    case 1 { _1: f }:
+      const { _1: f, _2: f } = c0;
+      const { _1: f, _2: f } = c2;
+      const x = uint53__lean_nat_add(c0, uint53__lean_string_utf8_byte_size(c3));
+      const x = inline:string__lean_string_push(c4, "x");
+      m0 = { tag: 1, _1: { _1: c0, _2: c1 } };
+      next;
     }
   }
-  let x$12;
-  join x$12 {
-    if ((acc$1.tag === 0)) {
-      const { _1: f$13 } = acc$1;
-      jump 0 f$13;
-    } else {
-      const { _1: f$14 } = acc$1;
-      jump 0 f$14;
+  join x {
+    switch (m0.tag) {
+    case 0 { _1: f }:
+      jump 0 c0;
+    case 1 { _1: f }:
+      jump 0 c0;
     }
   }
-  const { _1: f$15, _2: f$16 } = x$12;
-  return f$16;
+  const { _1: f, _2: f } = c0;
+  return c0;
 };

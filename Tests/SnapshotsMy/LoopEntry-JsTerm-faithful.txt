@@ -4,25 +4,26 @@
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
 
-const $k1 = (x$2) => {
-  return x$2;
+const $k1 : (nat(bigint) => nat(bigint)) = (x) => {
+  return c0;
 };
 
 // messages
-export const messages = () => {
-  return ["one", "two", "three"];
+export const messages = () : List<string> => {
+  return list["one", "two", "three"];
 };
 
 // countUp
-export const countUp = (unused, step, n, acc) => {
-  const k$1 = $k1;
-  let acc$3 = k$1;
-  for (let i$4 = 0n; i$4 < n; i$4++) {
-    const a$5 = acc$3;
-    const k$6 = (x$7) => {
-      return a$5((x$7 + step));
+export const countUp = (unused : string, step : nat(bigint), n : nat(bigint), acc : nat(bigint)) : nat(bigint) => {
+  const k = $k1;
+  let acc = c0;
+  for (i < c2) {
+    const a = m0;
+    const k = (x) => {
+      return c1(inline:bigint_nat__lean_nat_add(c0, c6));
     };
-    acc$3 = k$6;
+    m0 = c0;
+    next;
   }
-  return acc$3(acc);
+  return m0(c1);
 };

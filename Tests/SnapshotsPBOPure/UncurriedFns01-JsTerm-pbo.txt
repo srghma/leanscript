@@ -2,32 +2,32 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test1
-export const test1 = (f, g) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2);
-  return x$3(3);
+export const test1 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number))) : int53(number) => {
+  const x = c0(1);
+  const x = c2(c0);
+  const x = c0(2);
+  return c0(3);
 };
 
 // test2
-export const test2 = (f, g, i) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(2);
-  return x$3(i);
+export const test2 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number)), i : int53(number)) : int53(number) => {
+  const x = c1(1);
+  const x = c3(c0);
+  const x = c0(2);
+  return c0(c3);
 };
 
 // test3
-export const test3 = (f, g, i, j) => {
-  const x$1 = g(1);
-  const x$2 = f(x$1);
-  const x$3 = x$2(i);
-  return x$3(j);
+export const test3 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), g : (int53(number) => int53(number)), i : int53(number), j : int53(number)) : int53(number) => {
+  const x = c2(1);
+  const x = c4(c0);
+  const x = c0(c3);
+  return c0(c3);
 };
 
 // test4
-export const test4 = (f, i, j, k) => {
-  const x$1 = f(i);
-  const x$2 = x$1(j);
-  return x$2(k);
+export const test4 = (f : (int53(number) => (int53(number) => (int53(number) => int53(number)))), i : int53(number), j : int53(number), k : int53(number)) : int53(number) => {
+  const x = c3(c2);
+  const x = c0(c2);
+  return c0(c2);
 };

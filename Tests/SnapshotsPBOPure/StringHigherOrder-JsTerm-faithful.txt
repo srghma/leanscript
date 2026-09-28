@@ -4,26 +4,26 @@
 //   stringValues: LeanScript: `stringValues` is universe polymorphic
 
 // test1
-export const test1 = () => {
-  return [true, false, false];
+export const test1 = () : List<boolean> => {
+  return list[true, false, false];
 };
 
 // test2
-export const test2 = () => {
-  return [false, true, true];
+export const test2 = () : List<boolean> => {
+  return list[false, true, true];
 };
 
 // test3
-export const test3 = () => {
-  return [false, true, false];
+export const test3 = () : List<boolean> => {
+  return list[false, true, false];
 };
 
 // test4
-export const test4 = () => {
-  return [false, false, true];
+export const test4 = () : List<boolean> => {
+  return list[false, false, true];
 };
 
 // test7
-export const test7 = () => {
-  return ["aa", "ab", "ba"];
+export const test7 = () : List<string> => {
+  return list["aa", "ab", "ba"];
 };

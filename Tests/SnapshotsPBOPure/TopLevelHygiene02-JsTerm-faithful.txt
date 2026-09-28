@@ -5,6 +5,6 @@
 //   test2: LeanScript: the parameter `α` of `test2` is a type
 
 // wat
-export const wat = () => {
+export const wat = () : int(bigint) => {
   return 42n;
 };

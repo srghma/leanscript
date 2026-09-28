@@ -2,23 +2,23 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 // test1
-export const test1 = (x) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = x;
-  if ((f$1 === 1n)) {
+export const test1 = (x : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : string => {
+  const { _1: f, _2: f, _3: f } = c0;
+  if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
     return "0";
   } else {
-    if ((f$1 === 2n)) {
-      if ((f$2 === 1n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
         return "1";
       } else {
-        if ((f$2 === 2n)) {
-          if ((f$3 === 1n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c1, 2n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
             return "2";
           } else {
             return "3";
           }
         } else {
-          if ((f$3 === 1n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
             return "2";
           } else {
             return "catch";
@@ -26,10 +26,10 @@ export const test1 = (x) => {
         }
       }
     } else {
-      if ((f$2 === 1n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
         return "1";
       } else {
-        if ((f$3 === 1n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
           return "2";
         } else {
           return "catch";
@@ -40,14 +40,14 @@ export const test1 = (x) => {
 };
 
 // Test2.test2
-export const Test2$test2 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  const { _1: f$3, _2: f$4 } = f$1;
-  if ((f$3 === 1n)) {
-    if ((f$4 === 2n)) {
-      const { _1: f$5, _2: f$6 } = f$2;
-      if ((f$5 === 1n)) {
-        if ((f$6 === 2n)) {
+export const Test2$test2 = (x : { _1: { _1: int(bigint), _2: int(bigint) }, _2: { _1: int(bigint), _2: int(bigint) } }) : int(bigint) => {
+  const { _1: f, _2: f } = c0;
+  const { _1: f, _2: f } = c1;
+  if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
+      const { _1: f, _2: f } = c2;
+      if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
           return 1n;
         } else {
           return 3n;
@@ -59,10 +59,10 @@ export const Test2$test2 = (x) => {
       return 4n;
     }
   } else {
-    if ((f$4 === 2n)) {
-      const { _1: f$7, _2: f$8 } = f$2;
-      if ((f$7 === 1n)) {
-        if ((f$8 === 2n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
+      const { _1: f, _2: f } = c2;
+      if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
           return 2n;
         } else {
           return 4n;
@@ -77,14 +77,14 @@ export const Test2$test2 = (x) => {
 };
 
 // test3
-export const test3 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if ((0n < f$1)) {
-    return f$1;
+export const test3 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f } = c0;
+  if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
+    return c1;
   } else {
-    const { _1: f$3, _2: f$4 } = x;
-    if ((1n < f$4)) {
-      return f$4;
+    const { _1: f, _2: f } = c2;
+    if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
+      return c0;
     } else {
       return 3n;
     }
@@ -92,14 +92,14 @@ export const test3 = (x) => {
 };
 
 // test4
-export const test4 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if ((0n < f$1)) {
-    return f$1;
+export const test4 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f } = c0;
+  if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
+    return c1;
   } else {
-    const { _1: f$3, _2: f$4 } = x;
-    if ((1n < f$4)) {
-      return f$4;
+    const { _1: f, _2: f } = c2;
+    if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
+      return c0;
     } else {
       return 3n;
     }
@@ -107,14 +107,14 @@ export const test4 = (x) => {
 };
 
 // test5
-export const test5 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if ((0n < f$1)) {
-    return f$1;
+export const test5 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f } = c0;
+  if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
+    return c1;
   } else {
-    const { _1: f$3, _2: f$4 } = x;
-    if ((0n < f$4)) {
-      return f$4;
+    const { _1: f, _2: f } = c2;
+    if (inline:bigint_int__lean_int_dec_lt(0n, c0)) {
+      return c0;
     } else {
       return 0n;
     }
@@ -122,13 +122,13 @@ export const test5 = (x) => {
 };
 
 // test6
-export const test6 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if ((0n < f$1)) {
-    return f$1;
+export const test6 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
+  const { _1: f, _2: f } = c0;
+  if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
+    return c1;
   } else {
-    if ((0n < f$2)) {
-      return f$2;
+    if (inline:bigint_int__lean_int_dec_lt(0n, c0)) {
+      return c0;
     } else {
       return 0n;
     }

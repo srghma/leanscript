@@ -24,29 +24,26 @@
 //   TestISize.div: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.neg: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
-import { $lean_nat_add, $lean_nat_sub, $lean_nat_mul, $lean_nat_div } from "lean_runtime_nat_num.mjs";
-import { $lean_int_add, $lean_int_sub, $lean_int_mul, $lean_int_ediv, $lean_int_neg } from "lean_runtime_int_num.mjs";
-import { $lean_uint64_add, $lean_uint64_sub, $lean_uint64_mul, $lean_uint64_div, $lean_uint64_neg } from "lean_runtime_uint64_num.mjs";
-import { $lean_int64_add, $lean_int64_sub, $lean_int64_mul, $lean_int64_div, $lean_int64_neg } from "lean_runtime_int64_num.mjs";
+import { uint53__lean_uint64_add, uint53__lean_uint64_sub, uint53__lean_uint64_mul, uint53__lean_uint64_div, uint53__lean_uint64_neg, uint53__lean_nat_add, uint53__lean_nat_sub, uint53__lean_nat_mul, uint53__lean_nat_div, int53__lean_int64_add, int53__lean_int64_sub, int53__lean_int64_mul, int53__lean_int64_div, int53__lean_int64_neg, int53__lean_int_add, int53__lean_int_sub, int53__lean_int_mul, int53__lean_int_ediv, int53__lean_int_neg } from "runtime.js";
 
 // TestUInt64.add
-export const TestUInt64$add = (a, b) => {
-  return $lean_uint64_add(a, b);
+export const TestUInt64$add = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_add(c1, c0);
 };
 
 // TestUInt64.sub
-export const TestUInt64$sub = (a, b) => {
-  return $lean_uint64_sub(a, b);
+export const TestUInt64$sub = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_sub(c1, c0);
 };
 
 // TestUInt64.eq
-export const TestUInt64$eq = (a, b) => {
-  return (a === b);
+export const TestUInt64$eq = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_uint64_dec_eq(c1, c0);
 };
 
 // TestUInt64.ne
-export const TestUInt64$ne = (a, b) => {
-  if ((a === b)) {
+export const TestUInt64$ne = (a : uint53(number), b : uint53(number)) : boolean => {
+  if (inline:uint53__lean_uint64_dec_eq(c1, c0)) {
     return false;
   } else {
     return true;
@@ -54,58 +51,58 @@ export const TestUInt64$ne = (a, b) => {
 };
 
 // TestUInt64.lt
-export const TestUInt64$lt = (a, b) => {
-  return (a < b);
+export const TestUInt64$lt = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_uint64_dec_lt(c1, c0);
 };
 
 // TestUInt64.gt
-export const TestUInt64$gt = (a, b) => {
-  return (b < a);
+export const TestUInt64$gt = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_uint64_dec_lt(c0, c1);
 };
 
 // TestUInt64.le
-export const TestUInt64$le = (a, b) => {
-  return (a <= b);
+export const TestUInt64$le = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_uint64_dec_le(c1, c0);
 };
 
 // TestUInt64.ge
-export const TestUInt64$ge = (a, b) => {
-  return (b <= a);
+export const TestUInt64$ge = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_uint64_dec_le(c0, c1);
 };
 
 // TestUInt64.mul
-export const TestUInt64$mul = (a, b) => {
-  return $lean_uint64_mul(a, b);
+export const TestUInt64$mul = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_mul(c1, c0);
 };
 
 // TestUInt64.div
-export const TestUInt64$div = (a, b) => {
-  return $lean_uint64_div(a, b);
+export const TestUInt64$div = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_div(c1, c0);
 };
 
 // TestUInt64.neg
-export const TestUInt64$neg = (a) => {
-  return $lean_uint64_neg(a);
+export const TestUInt64$neg = (a : uint53(number)) : uint53(number) => {
+  return uint53__lean_uint64_neg(c0);
 };
 
 // TestNat.add
-export const TestNat$add = (a, b) => {
-  return $lean_nat_add(a, b);
+export const TestNat$add = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_add(c1, c0);
 };
 
 // TestNat.sub
-export const TestNat$sub = (a, b) => {
-  return $lean_nat_sub(a, b);
+export const TestNat$sub = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_sub(c1, c0);
 };
 
 // TestNat.eq
-export const TestNat$eq = (a, b) => {
-  return (a === b);
+export const TestNat$eq = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_nat_dec_eq__Nat_decEq(c1, c0);
 };
 
 // TestNat.ne
-export const TestNat$ne = (a, b) => {
-  if ((a === b)) {
+export const TestNat$ne = (a : uint53(number), b : uint53(number)) : boolean => {
+  if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c1, c0)) {
     return false;
   } else {
     return true;
@@ -113,53 +110,53 @@ export const TestNat$ne = (a, b) => {
 };
 
 // TestNat.lt
-export const TestNat$lt = (a, b) => {
-  return (a < b);
+export const TestNat$lt = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_nat_dec_lt(c1, c0);
 };
 
 // TestNat.gt
-export const TestNat$gt = (a, b) => {
-  return (b < a);
+export const TestNat$gt = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_nat_dec_lt(c0, c1);
 };
 
 // TestNat.le
-export const TestNat$le = (a, b) => {
-  return (a <= b);
+export const TestNat$le = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_nat_dec_le__Nat_decLe(c1, c0);
 };
 
 // TestNat.ge
-export const TestNat$ge = (a, b) => {
-  return (b <= a);
+export const TestNat$ge = (a : uint53(number), b : uint53(number)) : boolean => {
+  return inline:uint53__lean_nat_dec_le__Nat_decLe(c0, c1);
 };
 
 // TestNat.mul
-export const TestNat$mul = (a, b) => {
-  return $lean_nat_mul(a, b);
+export const TestNat$mul = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_mul(c1, c0);
 };
 
 // TestNat.div
-export const TestNat$div = (a, b) => {
-  return $lean_nat_div(a, b);
+export const TestNat$div = (a : uint53(number), b : uint53(number)) : uint53(number) => {
+  return uint53__lean_nat_div(c1, c0);
 };
 
 // TestInt64.add
-export const TestInt64$add = (a, b) => {
-  return $lean_int64_add(a, b);
+export const TestInt64$add = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_add(c1, c0);
 };
 
 // TestInt64.sub
-export const TestInt64$sub = (a, b) => {
-  return $lean_int64_sub(a, b);
+export const TestInt64$sub = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_sub(c1, c0);
 };
 
 // TestInt64.eq
-export const TestInt64$eq = (a, b) => {
-  return (a === b);
+export const TestInt64$eq = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int64_dec_eq(c1, c0);
 };
 
 // TestInt64.ne
-export const TestInt64$ne = (a, b) => {
-  if ((a === b)) {
+export const TestInt64$ne = (a : int53(number), b : int53(number)) : boolean => {
+  if (inline:int53__lean_int64_dec_eq(c1, c0)) {
     return false;
   } else {
     return true;
@@ -167,58 +164,58 @@ export const TestInt64$ne = (a, b) => {
 };
 
 // TestInt64.lt
-export const TestInt64$lt = (a, b) => {
-  return (a < b);
+export const TestInt64$lt = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int64_dec_lt(c1, c0);
 };
 
 // TestInt64.gt
-export const TestInt64$gt = (a, b) => {
-  return (b < a);
+export const TestInt64$gt = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int64_dec_lt(c0, c1);
 };
 
 // TestInt64.le
-export const TestInt64$le = (a, b) => {
-  return (a <= b);
+export const TestInt64$le = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int64_dec_le(c1, c0);
 };
 
 // TestInt64.ge
-export const TestInt64$ge = (a, b) => {
-  return (b <= a);
+export const TestInt64$ge = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int64_dec_le(c0, c1);
 };
 
 // TestInt64.mul
-export const TestInt64$mul = (a, b) => {
-  return $lean_int64_mul(a, b);
+export const TestInt64$mul = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_mul(c1, c0);
 };
 
 // TestInt64.div
-export const TestInt64$div = (a, b) => {
-  return $lean_int64_div(a, b);
+export const TestInt64$div = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int64_div(c1, c0);
 };
 
 // TestInt64.neg
-export const TestInt64$neg = (a) => {
-  return $lean_int64_neg(a);
+export const TestInt64$neg = (a : int53(number)) : int53(number) => {
+  return int53__lean_int64_neg(c0);
 };
 
 // TestInt.add
-export const TestInt$add = (a, b) => {
-  return $lean_int_add(a, b);
+export const TestInt$add = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int_add(c1, c0);
 };
 
 // TestInt.sub
-export const TestInt$sub = (a, b) => {
-  return $lean_int_sub(a, b);
+export const TestInt$sub = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int_sub(c1, c0);
 };
 
 // TestInt.eq
-export const TestInt$eq = (a, b) => {
-  return (a === b);
+export const TestInt$eq = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int_dec_eq(c1, c0);
 };
 
 // TestInt.ne
-export const TestInt$ne = (a, b) => {
-  if ((a === b)) {
+export const TestInt$ne = (a : int53(number), b : int53(number)) : boolean => {
+  if (inline:int53__lean_int_dec_eq(c1, c0)) {
     return false;
   } else {
     return true;
@@ -226,36 +223,36 @@ export const TestInt$ne = (a, b) => {
 };
 
 // TestInt.lt
-export const TestInt$lt = (a, b) => {
-  return (a < b);
+export const TestInt$lt = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int_dec_lt(c1, c0);
 };
 
 // TestInt.gt
-export const TestInt$gt = (a, b) => {
-  return (b < a);
+export const TestInt$gt = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int_dec_lt(c0, c1);
 };
 
 // TestInt.le
-export const TestInt$le = (a, b) => {
-  return (a <= b);
+export const TestInt$le = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int_dec_le(c1, c0);
 };
 
 // TestInt.ge
-export const TestInt$ge = (a, b) => {
-  return (b <= a);
+export const TestInt$ge = (a : int53(number), b : int53(number)) : boolean => {
+  return inline:int53__lean_int_dec_le(c0, c1);
 };
 
 // TestInt.mul
-export const TestInt$mul = (a, b) => {
-  return $lean_int_mul(a, b);
+export const TestInt$mul = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int_mul(c1, c0);
 };
 
 // TestInt.div
-export const TestInt$div = (a, b) => {
-  return $lean_int_ediv(a, b);
+export const TestInt$div = (a : int53(number), b : int53(number)) : int53(number) => {
+  return int53__lean_int_ediv(c1, c0);
 };
 
 // TestInt.neg
-export const TestInt$neg = (a) => {
-  return $lean_int_neg(a);
+export const TestInt$neg = (a : int53(number)) : int53(number) => {
+  return int53__lean_int_neg(c0);
 };

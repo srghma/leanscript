@@ -23,7 +23,8 @@ For each file (or module, looked up as `Module/Name.lean` in the project root an
 3. converts it to the JavaScript grammar `JsTerm` at each of the two presets
    (`MoreJs.JsConfig.presetPBO`, `MoreJs.JsConfig.presetFaithful`; `MoreJs.termToJs`);
 4. shares the constants of the functions of a module (`MoreJs.hoistConsts`: a constructor
-   without fields, a closure that captures nothing, … is built once, at the top of the module);
+   without fields, a closure that captures nothing, … is built once, at the top of the module)
+   and lists the operations of the runtime it calls (`MoreJs.mkModule`);
 5. prints it with `LanguageJavascriptMini` (`MoreJs.JsModule.toJs`).
 
 A definition by well-founded recursion, and a member of a `mutual` block, is not translated
@@ -36,10 +37,14 @@ It writes, next to the file (or in `--out-dir`), where `FILE` is the path withou
 * `FILE-Term-unoptimized.txt`: the translations, as translated;
 * `FILE-Term-optimized.txt`: the translations, optimised;
 * `FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`: the JavaScript grammar at each preset;
-* `FILE-pbo.js`, `FILE-faithful.js`: the JavaScript modules: the imports of the runtime
-  functions they call, from the modules of the `runtime/` directory of the project (or
-  `--runtime-dir`), by a path relative to the output file; the constants they share; then one
-  `export const f = (…) => …` per translated function.
+* `FILE-pbo.js`, `FILE-faithful.js`: the JavaScript modules: the import of the runtime
+  functions they call, from `runtime.js` of the project (or `--runtime`), by a path relative
+  to the output file; the constants they share; then one `export const f = (…) => …` per
+  translated function.
+
+A literal that does not fit in the representation the preset gives its type (a `Nat` above
+`2^53 - 1` where `Nat` is a `number`) is an error: the tool reports it and exits with a
+failure.
 
 Every file lists the functions that were not translated, with the reason; the JavaScript
 files start with their configuration.
@@ -58,8 +63,8 @@ structure CliOptions where
       with at least one value parameter), and remove the outputs an earlier run of the tool
       wrote for it. -/
   functionsOnly : Bool := false
-  /-- The directory of the runtime modules (default: `runtime/` in the project). -/
-  runtimeDir : Option System.FilePath := none
+  /-- The runtime the JavaScript imports (default: `runtime.js` in the project). -/
+  runtime : Option System.FilePath := none
   inputs : List String := []
 
 /-- The presets every file is converted at, with the name of their outputs. -/
@@ -81,9 +86,9 @@ file (FILE is its path without `.lean`):
 
 options:
   --out-dir=DIR               write the outputs to DIR instead of next to the file
-  --runtime-dir=DIR           the directory of the runtime modules the JavaScript imports
-                              (default: runtime/ in the project); the imports refer to it
-                              by a path relative to each output file
+  --runtime=FILE              the runtime the JavaScript imports (default: runtime.js in
+                              the project); the imports refer to it by a path relative to
+                              each output file
   --optimize-rounds=N         how many times to run the optimiser (default 3)
   --only=f,g                  translate only these definitions
   --check                     also write FILE-pbo.check.mjs and FILE-faithful.check.mjs:
@@ -107,7 +112,7 @@ def parseArgs : List String → CliOptions → Except String CliOptions
       match (a.drop 2).toString.splitOn "=" with
       | [k, v] =>
         if k == "out-dir" then parseArgs rest { o with outDir := some v }
-        else if k == "runtime-dir" then parseArgs rest { o with runtimeDir := some v }
+        else if k == "runtime" then parseArgs rest { o with runtime := some v }
         else if k == "optimize-rounds" then
           match v.toNat? with
           | some n => parseArgs rest { o with rounds := n }
@@ -219,22 +224,17 @@ def relativePath (fromDir target : System.FilePath) : String :=
   | ".." :: _ => "/".intercalate rel
   | _ => "./" ++ "/".intercalate rel
 
-/-- The directory of the runtime modules, as an absolute path. -/
-def runtimeDirOf (o : CliOptions) : IO System.FilePath := do
-  let d ← match o.runtimeDir with
-    | some d => pure d
-    | none => return (← IO.FS.realPath (← projectRoot)) / "runtime"
-  if ← d.pathExists then IO.FS.realPath d else
-    throw (IO.userError s!"the runtime directory {d} does not exist")
+/-- The runtime, as an absolute path. -/
+def runtimeOf (o : CliOptions) : IO System.FilePath := do
+  let f ← match o.runtime with
+    | some f => pure f
+    | none => return (← IO.FS.realPath (← projectRoot)) / "runtime.js"
+  if ← f.pathExists then IO.FS.realPath f else
+    throw (IO.userError s!"the runtime {f} does not exist")
 
-/-- The functions each runtime module of the directory exports (a missing module exports
-    none). -/
-def loadRuntime (dir : System.FilePath) : IO Runtime := do
-  let mut srcs : List (String × String) := []
-  for f in RtFile.all do
-    let p := dir / f.fileName
-    if ← p.pathExists then srcs := (f.fileName, ← IO.FS.readFile p) :: srcs
-  return Runtime.ofSources srcs
+/-- The imports of a module that the runtime (its source `src`) does not export. -/
+def missingExports (src : String) (imports : List String) : List String :=
+  imports.filter fun n => (src.splitOn s!"export const {n} =").length < 2
 
 /-- Process one file. -/
 unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
@@ -300,22 +300,24 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   -- the JavaScript, at each preset
   let mut nExported := 0
   let mut nJsRefused := 0
-  let rtDir ← runtimeDirOf o
-  let rt ← loadRuntime rtDir
+  let rtFile ← runtimeOf o
+  let rtSrc ← IO.FS.readFile rtFile
+  let mut fatal : Array String := #[]
   for (preset, cfg) in presets do
     let mut funs : Array JsFun := #[]
-    let mut imports : Array RtFn := #[]
     let mut jsRefused : Array (Name × String) := #[]
     let mut exported : Array (Name × String × Nat) := #[]
     for t in done do
-      match termToJs cfg rt (jsFunName t.name) t.name.toString t.params t.optimized with
-      | .ok (f, fs) =>
+      match termToJs cfg (jsFunName t.name) t.name.toString t.params t.optimized with
+      | .ok f =>
         funs := funs.push f
         exported := exported.push (t.name, jsFunName t.name, f.params.length)
-        imports := fs.foldl addImport imports
-      | .error e => jsRefused := jsRefused.push (t.name, e)
-    let (consts, funs') := hoistConsts (imports.toList.map (·.name)) funs.toList
-    let m : JsModule := { config := cfg, imports := imports.toList, consts, funs := funs' }
+      | .error e =>
+        if isLiteralTooBig e then fatal := fatal.push s!"{t.name} (preset {preset}): {e}"
+        jsRefused := jsRefused.push (t.name, e)
+    let m := mkModule cfg funs.toList
+    for n in missingExports rtSrc m.imports do
+      fatal := fatal.push s!"preset {preset}: the runtime {rtFile} does not export {n}"
     let header (what : String) : List String :=
       [s!"{what} of {file} (preset {preset}), generated by leanscript",
         s!"configuration: {cfg.describe}"] ++ missing ++ notTranslated jsRefused
@@ -325,7 +327,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     IO.FS.writeFile (outPath o file s!"-JsTerm-{preset}.txt")
       (String.join ((header "The JavaScript grammar").map fun l => s!"// {l}\n") ++ "\n" ++
         m.pretty)
-    IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtDir))
+    IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtFile))
     if o.check then
       let jsFile := jsPath.fileName.getD "out.js"
       let cases ← runTermElab el (do
@@ -342,6 +344,8 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     nJsRefused := max nJsRefused jsRefused.size
   unless o.quiet do
     IO.eprintln s!"leanscript: {file}: {nExported} exported, {refused.size + nJsRefused} not translated"
+  unless fatal.isEmpty do
+    throw (IO.userError ("\n".intercalate fatal.toList))
   return true
 
 unsafe def main (args : List String) : IO UInt32 := do

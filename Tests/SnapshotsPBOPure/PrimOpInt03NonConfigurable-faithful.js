@@ -2,13 +2,13 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 import {
-  $lean_uint8_add,
-  $lean_uint16_add,
-  $lean_uint32_add,
-  $lean_int8_add,
-  $lean_int16_add,
-  $lean_int32_add,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  uint8__lean_uint8_add,
+  uint16__lean_uint16_add,
+  uint32__lean_uint32_add,
+  int8__lean_int8_add,
+  int16__lean_int16_add,
+  int32__lean_int32_add,
+} from "../../runtime.js";
 
 /**
  * `TestUInt8.test1`
@@ -34,7 +34,7 @@ export const TestUInt8$test3 = () => 144;
  * @returns {uint8}
  */
 export const TestUInt8$test4 = (a) =>
-  $lean_uint8_add($lean_uint8_add(200, a), 200);
+  uint8__lean_uint8_add(uint8__lean_uint8_add(200, a), 200);
 
 /**
  * `TestUInt16.test1`
@@ -60,7 +60,7 @@ export const TestUInt16$test3 = () => 16960;
  * @returns {uint16}
  */
 export const TestUInt16$test4 = (a) =>
-  $lean_uint16_add($lean_uint16_add(50000, a), 50000);
+  uint16__lean_uint16_add(uint16__lean_uint16_add(50000, a), 50000);
 
 /**
  * `TestUInt32.test1`
@@ -86,7 +86,7 @@ export const TestUInt32$test3 = () => 2643460096;
  * @returns {uint32}
  */
 export const TestUInt32$test4 = (a) =>
-  $lean_uint32_add($lean_uint32_add(3000000000, a), 3000000000);
+  uint32__lean_uint32_add(uint32__lean_uint32_add(3000000000, a), 3000000000);
 
 /**
  * `TestInt8.test1`
@@ -112,7 +112,7 @@ export const TestInt8$test3 = () => -112;
  * @returns {int8}
  */
 export const TestInt8$test4 = (a) =>
-  $lean_int8_add($lean_int8_add(100, a), 100);
+  int8__lean_int8_add(int8__lean_int8_add(100, a), 100);
 
 /**
  * `TestInt16.test1`
@@ -138,7 +138,7 @@ export const TestInt16$test3 = () => 16960;
  * @returns {int16}
  */
 export const TestInt16$test4 = (a) =>
-  $lean_int16_add($lean_int16_add(20000, a), 20000);
+  int16__lean_int16_add(int16__lean_int16_add(20000, a), 20000);
 
 /**
  * `TestInt32.test1`
@@ -164,4 +164,4 @@ export const TestInt32$test3 = () => -1946474495;
  * @returns {int32}
  */
 export const TestInt32$test4 = (a) =>
-  $lean_int32_add($lean_int32_add(2000000000, a), 2000000000);
+  int32__lean_int32_add(int32__lean_int32_add(2000000000, a), 2000000000);

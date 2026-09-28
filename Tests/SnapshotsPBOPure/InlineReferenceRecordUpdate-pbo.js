@@ -2,8 +2,7 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 const $k1 = { _1: 1, _2: 2, _3: 3 };
-const $k2 = () => $k1;
-const $k3 = { _1: 42, _2: 2, _3: 3 };
+const $k2 = { _1: 42, _2: 2, _3: 3 };
 
 /**
  * `test1`
@@ -20,13 +19,13 @@ export const test1 = (fn) => {
  * `fn_prime`
  * @returns {(() => { _1: int53(number), _2: int53(number), _3: int53(number) })}
  */
-export const fn_prime = () => $k2;
+export const fn_prime = () => () => $k1;
 
 /**
  * `extern1`
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const extern1 = () => $k3;
+export const extern1 = () => $k2;
 
 /**
  * `test2`

@@ -2,43 +2,43 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 import {
-  $lean_uint8_land,
-  $lean_uint8_lor,
-  $lean_uint8_shift_left,
-  $lean_uint8_shift_right,
-  $lean_uint8_xor,
-  $lean_uint8_complement,
-  $lean_uint16_land,
-  $lean_uint16_lor,
-  $lean_uint16_shift_left,
-  $lean_uint16_shift_right,
-  $lean_uint16_xor,
-  $lean_uint16_complement,
-  $lean_uint32_land,
-  $lean_uint32_lor,
-  $lean_uint32_shift_left,
-  $lean_uint32_shift_right,
-  $lean_uint32_xor,
-  $lean_uint32_complement,
-  $lean_int8_land,
-  $lean_int8_lor,
-  $lean_int8_shift_left,
-  $lean_int8_shift_right,
-  $lean_int8_xor,
-  $lean_int8_complement,
-  $lean_int16_land,
-  $lean_int16_lor,
-  $lean_int16_shift_left,
-  $lean_int16_shift_right,
-  $lean_int16_xor,
-  $lean_int16_complement,
-  $lean_int32_land,
-  $lean_int32_lor,
-  $lean_int32_shift_left,
-  $lean_int32_shift_right,
-  $lean_int32_xor,
-  $lean_int32_complement,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  uint8__lean_uint8_land,
+  uint8__lean_uint8_lor,
+  uint8__lean_uint8_shift_left,
+  uint8__lean_uint8_shift_right,
+  uint8__lean_uint8_xor,
+  uint8__lean_uint8_complement,
+  uint16__lean_uint16_land,
+  uint16__lean_uint16_lor,
+  uint16__lean_uint16_shift_left,
+  uint16__lean_uint16_shift_right,
+  uint16__lean_uint16_xor,
+  uint16__lean_uint16_complement,
+  uint32__lean_uint32_land,
+  uint32__lean_uint32_lor,
+  uint32__lean_uint32_shift_left,
+  uint32__lean_uint32_shift_right,
+  uint32__lean_uint32_xor,
+  uint32__lean_uint32_complement,
+  int8__lean_int8_land,
+  int8__lean_int8_lor,
+  int8__lean_int8_shift_left,
+  int8__lean_int8_shift_right,
+  int8__lean_int8_xor,
+  int8__lean_int8_complement,
+  int16__lean_int16_land,
+  int16__lean_int16_lor,
+  int16__lean_int16_shift_left,
+  int16__lean_int16_shift_right,
+  int16__lean_int16_xor,
+  int16__lean_int16_complement,
+  int32__lean_int32_land,
+  int32__lean_int32_lor,
+  int32__lean_int32_shift_left,
+  int32__lean_int32_shift_right,
+  int32__lean_int32_xor,
+  int32__lean_int32_complement,
+} from "../../runtime.js";
 
 /**
  * `TestUInt8.land`
@@ -46,7 +46,7 @@ import {
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$land = (a, b) => $lean_uint8_land(a, b);
+export const TestUInt8$land = (a, b) => uint8__lean_uint8_land(a, b);
 
 /**
  * `TestUInt8.lor`
@@ -54,7 +54,7 @@ export const TestUInt8$land = (a, b) => $lean_uint8_land(a, b);
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$lor = (a, b) => $lean_uint8_lor(a, b);
+export const TestUInt8$lor = (a, b) => uint8__lean_uint8_lor(a, b);
 
 /**
  * `TestUInt8.shiftLeft`
@@ -62,7 +62,7 @@ export const TestUInt8$lor = (a, b) => $lean_uint8_lor(a, b);
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$shiftLeft = (a, b) => $lean_uint8_shift_left(a, b);
+export const TestUInt8$shiftLeft = (a, b) => uint8__lean_uint8_shift_left(a, b);
 
 /**
  * `TestUInt8.shiftRight`
@@ -70,7 +70,8 @@ export const TestUInt8$shiftLeft = (a, b) => $lean_uint8_shift_left(a, b);
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$shiftRight = (a, b) => $lean_uint8_shift_right(a, b);
+export const TestUInt8$shiftRight = (a, b) =>
+  uint8__lean_uint8_shift_right(a, b);
 
 /**
  * `TestUInt8.xor`
@@ -78,14 +79,14 @@ export const TestUInt8$shiftRight = (a, b) => $lean_uint8_shift_right(a, b);
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$xor = (a, b) => $lean_uint8_xor(a, b);
+export const TestUInt8$xor = (a, b) => uint8__lean_uint8_xor(a, b);
 
 /**
  * `TestUInt8.complement`
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8$complement = (a) => $lean_uint8_complement(a);
+export const TestUInt8$complement = (a) => uint8__lean_uint8_complement(a);
 
 /**
  * `TestUInt16.land`
@@ -93,7 +94,7 @@ export const TestUInt8$complement = (a) => $lean_uint8_complement(a);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$land = (a, b) => $lean_uint16_land(a, b);
+export const TestUInt16$land = (a, b) => uint16__lean_uint16_land(a, b);
 
 /**
  * `TestUInt16.lor`
@@ -101,7 +102,7 @@ export const TestUInt16$land = (a, b) => $lean_uint16_land(a, b);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$lor = (a, b) => $lean_uint16_lor(a, b);
+export const TestUInt16$lor = (a, b) => uint16__lean_uint16_lor(a, b);
 
 /**
  * `TestUInt16.shiftLeft`
@@ -109,7 +110,8 @@ export const TestUInt16$lor = (a, b) => $lean_uint16_lor(a, b);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$shiftLeft = (a, b) => $lean_uint16_shift_left(a, b);
+export const TestUInt16$shiftLeft = (a, b) =>
+  uint16__lean_uint16_shift_left(a, b);
 
 /**
  * `TestUInt16.shiftRight`
@@ -117,7 +119,8 @@ export const TestUInt16$shiftLeft = (a, b) => $lean_uint16_shift_left(a, b);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$shiftRight = (a, b) => $lean_uint16_shift_right(a, b);
+export const TestUInt16$shiftRight = (a, b) =>
+  uint16__lean_uint16_shift_right(a, b);
 
 /**
  * `TestUInt16.xor`
@@ -125,14 +128,14 @@ export const TestUInt16$shiftRight = (a, b) => $lean_uint16_shift_right(a, b);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$xor = (a, b) => $lean_uint16_xor(a, b);
+export const TestUInt16$xor = (a, b) => uint16__lean_uint16_xor(a, b);
 
 /**
  * `TestUInt16.complement`
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16$complement = (a) => $lean_uint16_complement(a);
+export const TestUInt16$complement = (a) => uint16__lean_uint16_complement(a);
 
 /**
  * `TestUInt32.land`
@@ -140,7 +143,7 @@ export const TestUInt16$complement = (a) => $lean_uint16_complement(a);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$land = (a, b) => $lean_uint32_land(a, b);
+export const TestUInt32$land = (a, b) => uint32__lean_uint32_land(a, b);
 
 /**
  * `TestUInt32.lor`
@@ -148,7 +151,7 @@ export const TestUInt32$land = (a, b) => $lean_uint32_land(a, b);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$lor = (a, b) => $lean_uint32_lor(a, b);
+export const TestUInt32$lor = (a, b) => uint32__lean_uint32_lor(a, b);
 
 /**
  * `TestUInt32.shiftLeft`
@@ -156,7 +159,8 @@ export const TestUInt32$lor = (a, b) => $lean_uint32_lor(a, b);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$shiftLeft = (a, b) => $lean_uint32_shift_left(a, b);
+export const TestUInt32$shiftLeft = (a, b) =>
+  uint32__lean_uint32_shift_left(a, b);
 
 /**
  * `TestUInt32.shiftRight`
@@ -164,7 +168,8 @@ export const TestUInt32$shiftLeft = (a, b) => $lean_uint32_shift_left(a, b);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$shiftRight = (a, b) => $lean_uint32_shift_right(a, b);
+export const TestUInt32$shiftRight = (a, b) =>
+  uint32__lean_uint32_shift_right(a, b);
 
 /**
  * `TestUInt32.xor`
@@ -172,14 +177,14 @@ export const TestUInt32$shiftRight = (a, b) => $lean_uint32_shift_right(a, b);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$xor = (a, b) => $lean_uint32_xor(a, b);
+export const TestUInt32$xor = (a, b) => uint32__lean_uint32_xor(a, b);
 
 /**
  * `TestUInt32.complement`
  * @param {uint32} a
  * @returns {uint32}
  */
-export const TestUInt32$complement = (a) => $lean_uint32_complement(a);
+export const TestUInt32$complement = (a) => uint32__lean_uint32_complement(a);
 
 /**
  * `TestInt8.land`
@@ -187,7 +192,7 @@ export const TestUInt32$complement = (a) => $lean_uint32_complement(a);
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$land = (a, b) => $lean_int8_land(a, b);
+export const TestInt8$land = (a, b) => int8__lean_int8_land(a, b);
 
 /**
  * `TestInt8.lor`
@@ -195,7 +200,7 @@ export const TestInt8$land = (a, b) => $lean_int8_land(a, b);
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$lor = (a, b) => $lean_int8_lor(a, b);
+export const TestInt8$lor = (a, b) => int8__lean_int8_lor(a, b);
 
 /**
  * `TestInt8.shiftLeft`
@@ -203,7 +208,7 @@ export const TestInt8$lor = (a, b) => $lean_int8_lor(a, b);
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$shiftLeft = (a, b) => $lean_int8_shift_left(a, b);
+export const TestInt8$shiftLeft = (a, b) => int8__lean_int8_shift_left(a, b);
 
 /**
  * `TestInt8.shiftRight`
@@ -211,7 +216,7 @@ export const TestInt8$shiftLeft = (a, b) => $lean_int8_shift_left(a, b);
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$shiftRight = (a, b) => $lean_int8_shift_right(a, b);
+export const TestInt8$shiftRight = (a, b) => int8__lean_int8_shift_right(a, b);
 
 /**
  * `TestInt8.xor`
@@ -219,14 +224,14 @@ export const TestInt8$shiftRight = (a, b) => $lean_int8_shift_right(a, b);
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$xor = (a, b) => $lean_int8_xor(a, b);
+export const TestInt8$xor = (a, b) => int8__lean_int8_xor(a, b);
 
 /**
  * `TestInt8.complement`
  * @param {int8} a
  * @returns {int8}
  */
-export const TestInt8$complement = (a) => $lean_int8_complement(a);
+export const TestInt8$complement = (a) => int8__lean_int8_complement(a);
 
 /**
  * `TestInt16.land`
@@ -234,7 +239,7 @@ export const TestInt8$complement = (a) => $lean_int8_complement(a);
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$land = (a, b) => $lean_int16_land(a, b);
+export const TestInt16$land = (a, b) => int16__lean_int16_land(a, b);
 
 /**
  * `TestInt16.lor`
@@ -242,7 +247,7 @@ export const TestInt16$land = (a, b) => $lean_int16_land(a, b);
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$lor = (a, b) => $lean_int16_lor(a, b);
+export const TestInt16$lor = (a, b) => int16__lean_int16_lor(a, b);
 
 /**
  * `TestInt16.shiftLeft`
@@ -250,7 +255,7 @@ export const TestInt16$lor = (a, b) => $lean_int16_lor(a, b);
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$shiftLeft = (a, b) => $lean_int16_shift_left(a, b);
+export const TestInt16$shiftLeft = (a, b) => int16__lean_int16_shift_left(a, b);
 
 /**
  * `TestInt16.shiftRight`
@@ -258,7 +263,8 @@ export const TestInt16$shiftLeft = (a, b) => $lean_int16_shift_left(a, b);
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$shiftRight = (a, b) => $lean_int16_shift_right(a, b);
+export const TestInt16$shiftRight = (a, b) =>
+  int16__lean_int16_shift_right(a, b);
 
 /**
  * `TestInt16.xor`
@@ -266,14 +272,14 @@ export const TestInt16$shiftRight = (a, b) => $lean_int16_shift_right(a, b);
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$xor = (a, b) => $lean_int16_xor(a, b);
+export const TestInt16$xor = (a, b) => int16__lean_int16_xor(a, b);
 
 /**
  * `TestInt16.complement`
  * @param {int16} a
  * @returns {int16}
  */
-export const TestInt16$complement = (a) => $lean_int16_complement(a);
+export const TestInt16$complement = (a) => int16__lean_int16_complement(a);
 
 /**
  * `TestInt32.land`
@@ -281,7 +287,7 @@ export const TestInt16$complement = (a) => $lean_int16_complement(a);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$land = (a, b) => $lean_int32_land(a, b);
+export const TestInt32$land = (a, b) => int32__lean_int32_land(a, b);
 
 /**
  * `TestInt32.lor`
@@ -289,7 +295,7 @@ export const TestInt32$land = (a, b) => $lean_int32_land(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$lor = (a, b) => $lean_int32_lor(a, b);
+export const TestInt32$lor = (a, b) => int32__lean_int32_lor(a, b);
 
 /**
  * `TestInt32.shiftLeft`
@@ -297,7 +303,7 @@ export const TestInt32$lor = (a, b) => $lean_int32_lor(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$shiftLeft = (a, b) => $lean_int32_shift_left(a, b);
+export const TestInt32$shiftLeft = (a, b) => int32__lean_int32_shift_left(a, b);
 
 /**
  * `TestInt32.shiftRight`
@@ -305,7 +311,8 @@ export const TestInt32$shiftLeft = (a, b) => $lean_int32_shift_left(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$shiftRight = (a, b) => $lean_int32_shift_right(a, b);
+export const TestInt32$shiftRight = (a, b) =>
+  int32__lean_int32_shift_right(a, b);
 
 /**
  * `TestInt32.xor`
@@ -313,11 +320,11 @@ export const TestInt32$shiftRight = (a, b) => $lean_int32_shift_right(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$xor = (a, b) => $lean_int32_xor(a, b);
+export const TestInt32$xor = (a, b) => int32__lean_int32_xor(a, b);
 
 /**
  * `TestInt32.complement`
  * @param {int32} a
  * @returns {int32}
  */
-export const TestInt32$complement = (a) => $lean_int32_complement(a);
+export const TestInt32$complement = (a) => int32__lean_int32_complement(a);

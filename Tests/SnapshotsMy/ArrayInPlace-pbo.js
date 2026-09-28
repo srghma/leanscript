@@ -4,31 +4,28 @@
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 import {
-  $lean_array_push_inplace,
-  $lean_array_get,
-  $lean_array_set,
-  $lean_mk_array,
-  $lean_array_swap_inplace,
-  $lean_array_pop_inplace,
-  $lean_array_push,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
-import {
-  $lean_nat_mul,
-  $lean_array_get_size,
-  $lean_nat_div,
-  $lean_nat_sub,
-} from "../../runtime/lean_runtime_nat_num.mjs";
+  array__lean_array_push,
+  array__lean_array_push_inplace,
+  uint53__lean_nat_mul,
+  uint53__lean_array_set,
+  uint53__lean_array_get,
+  uint53__lean_mk_array,
+  uint53__lean_nat_div,
+  uint53__lean_array_swap_inplace,
+  uint53__lean_nat_sub,
+  array__lean_array_pop_inplace,
+} from "../../runtime.js";
 
-const $k1 = (x$6) => x$6;
-const $k2 = (x$2) => (x$4) => {
-  const k$5 = $k1;
-  let acc$7 = k$5;
-  for (let i$8 = 0; i$8 < x$2; i$8++) {
-    const a$9 = acc$7;
-    const k$10 = (x$11) => a$9($lean_array_push(x$11, i$8));
-    acc$7 = k$10;
+const $k1 = (x$1) => x$1;
+const $k2 = (x$1) => (x$2) => {
+  const k$3 = $k1;
+  let acc$4 = k$3;
+  for (let i$5 = 0; i$5 < x$1; i$5++) {
+    const a$6 = acc$4;
+    const k$8 = (x$7) => a$6(array__lean_array_push(x$7, i$5));
+    acc$4 = k$8;
   }
-  return acc$7(x$4);
+  return acc$4(x$2);
 };
 
 /**
@@ -37,23 +34,26 @@ const $k2 = (x$2) => (x$4) => {
  * @returns {Array<uint53(number)>}
  */
 export const test1 = (n) => {
-  let acc$2 = { tag: 1, _1: [] };
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
+  let acc$1 = { tag: 1, _1: [] };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    if (acc$1.tag === 0) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 0, _1: f$3 };
     } else {
-      const { _1: f$6 } = acc$2;
-      const x$7 = $lean_array_push_inplace(f$6, $lean_nat_mul(i$3, i$3));
-      acc$2 = { tag: 1, _1: x$7 };
+      const { _1: f$4 } = acc$1;
+      const x$5 = array__lean_array_push_inplace(
+        f$4,
+        uint53__lean_nat_mul(i$2, i$2),
+      );
+      acc$1 = { tag: 1, _1: x$5 };
     }
   }
-  if (acc$2.tag === 0) {
-    const { _1: f$8 } = acc$2;
-    return f$8;
+  if (acc$1.tag === 0) {
+    const { _1: f$6 } = acc$1;
+    return f$6;
   } else {
-    const { _1: f$9 } = acc$2;
-    return f$9;
+    const { _1: f$7 } = acc$1;
+    return f$7;
   }
 };
 
@@ -63,28 +63,28 @@ export const test1 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const test3 = (a0) => {
-  const n$3 = $lean_array_get_size(a0);
   let acc$1 = { tag: 1, _1: a0 };
-  for (let i$2 = 0; i$2 < n$3; i$2++) {
+  const n$2 = a0.length;
+  for (let i$3 = 0; i$3 < n$2; i$3++) {
     if (acc$1.tag === 0) {
-      const { _1: f$5 } = acc$1;
-      acc$1 = { tag: 0, _1: f$5 };
+      const { _1: f$4 } = acc$1;
+      acc$1 = { tag: 0, _1: f$4 };
     } else {
-      const { _1: f$6 } = acc$1;
-      const x$7 = $lean_array_set(
-        f$6,
-        i$2,
-        $lean_nat_mul(2, $lean_array_get(0, f$6, i$2)),
+      const { _1: f$5 } = acc$1;
+      const x$6 = uint53__lean_array_set(
+        f$5,
+        i$3,
+        uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
       );
-      acc$1 = { tag: 1, _1: x$7 };
+      acc$1 = { tag: 1, _1: x$6 };
     }
   }
   if (acc$1.tag === 0) {
+    const { _1: f$7 } = acc$1;
+    return f$7;
+  } else {
     const { _1: f$8 } = acc$1;
     return f$8;
-  } else {
-    const { _1: f$9 } = acc$1;
-    return f$9;
   }
 };
 
@@ -94,8 +94,8 @@ export const test3 = (a0) => {
  * @returns {{ _1: Array<uint53(number)>, _2: Array<uint53(number)> }}
  */
 export const test4 = (n) => {
-  const x$1 = $lean_mk_array(3, n);
-  return { _1: x$1, _2: $lean_array_set(x$1, 0, 7) };
+  const x$1 = uint53__lean_mk_array(3, n);
+  return { _1: x$1, _2: uint53__lean_array_set(x$1, 0, 7) };
 };
 
 /**
@@ -104,58 +104,50 @@ export const test4 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const test5 = (n) => {
-  let acc$2 = { tag: 1, _1: [] };
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
+  let acc$1 = { tag: 1, _1: [] };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    if (acc$1.tag === 0) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 0, _1: f$3 };
     } else {
-      const { _1: f$6 } = acc$2;
-      const x$7 = $lean_array_push_inplace(f$6, i$3);
-      acc$2 = { tag: 1, _1: x$7 };
+      const { _1: f$4 } = acc$1;
+      const x$5 = array__lean_array_push_inplace(f$4, i$2);
+      acc$1 = { tag: 1, _1: x$5 };
     }
   }
-  let x$8;
-  j$1: {
-    if (acc$2.tag === 0) {
-      const { _1: f$9 } = acc$2;
-      x$8 = f$9;
-      break j$1;
-    } else {
-      const { _1: f$10 } = acc$2;
-      x$8 = f$10;
-      break j$1;
-    }
+  let x$6;
+  if (acc$1.tag === 0) {
+    const { _1: f$7 } = acc$1;
+    x$6 = f$7;
+  } else {
+    const { _1: f$8 } = acc$1;
+    x$6 = f$8;
   }
-  const n$13 = $lean_nat_div(n, 2);
-  let acc$11 = { tag: 1, _1: x$8 };
-  for (let i$12 = 0; i$12 < n$13; i$12++) {
-    if (acc$11.tag === 0) {
-      const { _1: f$15 } = acc$11;
-      acc$11 = { tag: 0, _1: f$15 };
+  let acc$9 = { tag: 1, _1: x$6 };
+  const n$10 = uint53__lean_nat_div(n, 2);
+  for (let i$11 = 0; i$11 < n$10; i$11++) {
+    if (acc$9.tag === 0) {
+      const { _1: f$12 } = acc$9;
+      acc$9 = { tag: 0, _1: f$12 };
     } else {
-      const { _1: f$16 } = acc$11;
-      const x$17 = $lean_array_swap_inplace(
-        f$16,
-        i$12,
-        $lean_nat_sub($lean_nat_sub(n, i$12), 1),
+      const { _1: f$13 } = acc$9;
+      const x$14 = uint53__lean_array_swap_inplace(
+        f$13,
+        i$11,
+        uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$11), 1),
       );
-      acc$11 = { tag: 1, _1: x$17 };
+      acc$9 = { tag: 1, _1: x$14 };
     }
   }
-  let x$18;
-  j$2: {
-    if (acc$11.tag === 0) {
-      const { _1: f$19 } = acc$11;
-      x$18 = f$19;
-      break j$2;
-    } else {
-      const { _1: f$20 } = acc$11;
-      x$18 = f$20;
-      break j$2;
-    }
+  let x$15;
+  if (acc$9.tag === 0) {
+    const { _1: f$16 } = acc$9;
+    x$15 = f$16;
+  } else {
+    const { _1: f$17 } = acc$9;
+    x$15 = f$17;
   }
-  return $lean_array_pop_inplace(x$18);
+  return array__lean_array_pop_inplace(x$15);
 };
 
 /**
@@ -165,6 +157,6 @@ export const test5 = (n) => {
  */
 export const test6 = (n) => {
   const k$1 = $k2;
-  const x$14 = k$1(n);
-  return x$14([]);
+  const x$2 = k$1(n);
+  return x$2([]);
 };

@@ -2,15 +2,15 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test1
-export const test1 = (f, g, a) => {
-  const x$1 = f(a);
-  const x$2 = g(a);
-  return (x$1 + x$2);
+export const test1 = (f : (int53(number) => string), g : (int53(number) => string), a : int53(number)) : string => {
+  const x = c2(c0);
+  const x = c2(c1);
+  return inline:string__lean_string_append__String_append(c1, c0);
 };
 
 // test2
-export const test2 = (f, g, a) => {
-  const x$1 = f(a);
-  const x$2 = g(a);
-  return (((x$1 + x$2) + x$1) + x$2);
+export const test2 = (f : (int53(number) => string), g : (int53(number) => string), a : int53(number)) : string => {
+  const x = c2(c0);
+  const x = c2(c1);
+  return inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append(inline:string__lean_string_append__String_append(c1, c0), c1), c0);
 };

@@ -3,11 +3,11 @@
 // not translated:
 //   fromNoValues: LeanScript: the type NoValues has no constructor (it has no value)
 
-import { $lean_nat_add } from "../../runtime/lean_runtime_nat_num.mjs";
+import { uint53__lean_nat_add } from "../../runtime.js";
 
 /**
  * `bump`
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const bump = (n) => $lean_nat_add(n, 1);
+export const bump = (n) => uint53__lean_nat_add(n, 1);

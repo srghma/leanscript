@@ -2,14 +2,14 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test1
-export const test1 = (a) => {
-  if ((a === "a")) {
+export const test1 = (a : string) : string => {
+  if (inline:string__lean_string_dec_eq(c0, "a")) {
     return "1";
   } else {
-    if ((a === "b")) {
+    if (inline:string__lean_string_dec_eq(c0, "b")) {
       return "2";
     } else {
-      if ((a === "c")) {
+      if (inline:string__lean_string_dec_eq(c0, "c")) {
         return "3";
       } else {
         return "catch";

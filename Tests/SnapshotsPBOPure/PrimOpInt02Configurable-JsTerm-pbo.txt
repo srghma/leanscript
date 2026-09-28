@@ -29,198 +29,198 @@
 //   TestISize.test10: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.test11: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestInt.intValues: LeanScript: the parameter `α` of `TestInt.intValues` is a type
-//   TestUInt64.test1: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test2: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test9: the UInt64 literal 18446744073709551614 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test10: the UInt64 literal 9223372036854775807 does not fit in a JavaScript number (use the bigint representation)
-//   TestUInt64.test11: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test1: literal too big: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test2: literal too big: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test9: literal too big: the UInt64 literal 18446744073709551614 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test10: literal too big: the UInt64 literal 9223372036854775807 does not fit in a JavaScript number (use the bigint representation)
+//   TestUInt64.test11: literal too big: the UInt64 literal 18446744073709551615 does not fit in a JavaScript number (use the bigint representation)
 
 // TestUInt64.test3
-export const TestUInt64$test3 = () => {
+export const TestUInt64$test3 = () : Array<boolean> => {
   return [true, false, false, false, false, true];
 };
 
 // TestUInt64.test4
-export const TestUInt64$test4 = () => {
+export const TestUInt64$test4 = () : Array<boolean> => {
   return [false, true, true, true, true, false];
 };
 
 // TestUInt64.test5
-export const TestUInt64$test5 = () => {
+export const TestUInt64$test5 = () : Array<boolean> => {
   return [false, true, false, true, false, false];
 };
 
 // TestUInt64.test6
-export const TestUInt64$test6 = () => {
+export const TestUInt64$test6 = () : Array<boolean> => {
   return [false, false, true, false, true, false];
 };
 
 // TestUInt64.test7
-export const TestUInt64$test7 = () => {
+export const TestUInt64$test7 = () : Array<boolean> => {
   return [true, true, false, true, false, true];
 };
 
 // TestUInt64.test8
-export const TestUInt64$test8 = () => {
+export const TestUInt64$test8 = () : Array<boolean> => {
   return [true, false, true, false, true, true];
 };
 
 // TestNat.test1
-export const TestNat$test1 = () => {
+export const TestNat$test1 = () : Array<uint53(number)> => {
   return [2, 3, 3, 1, 2, 0];
 };
 
 // TestNat.test2
-export const TestNat$test2 = () => {
+export const TestNat$test2 = () : Array<uint53(number)> => {
   return [0, 0, 1, 1, 0, 0];
 };
 
 // TestNat.test3
-export const TestNat$test3 = () => {
+export const TestNat$test3 = () : Array<boolean> => {
   return [true, false, false, false, false, true];
 };
 
 // TestNat.test4
-export const TestNat$test4 = () => {
+export const TestNat$test4 = () : Array<boolean> => {
   return [false, true, true, true, true, false];
 };
 
 // TestNat.test5
-export const TestNat$test5 = () => {
+export const TestNat$test5 = () : Array<boolean> => {
   return [false, true, false, false, true, false];
 };
 
 // TestNat.test6
-export const TestNat$test6 = () => {
+export const TestNat$test6 = () : Array<boolean> => {
   return [false, false, true, true, false, false];
 };
 
 // TestNat.test7
-export const TestNat$test7 = () => {
+export const TestNat$test7 = () : Array<boolean> => {
   return [true, true, false, false, true, true];
 };
 
 // TestNat.test8
-export const TestNat$test8 = () => {
+export const TestNat$test8 = () : Array<boolean> => {
   return [true, false, true, true, false, true];
 };
 
 // TestNat.test9
-export const TestNat$test9 = () => {
+export const TestNat$test9 = () : Array<uint53(number)> => {
   return [1, 2, 2, 0, 0, 0];
 };
 
 // TestNat.test10
-export const TestNat$test10 = () => {
+export const TestNat$test10 = () : Array<uint53(number)> => {
   return [1, 0, 2, 0, 0, 0];
 };
 
 // TestInt64.test1
-export const TestInt64$test1 = () => {
+export const TestInt64$test1 = () : Array<int53(number)> => {
   return [2, 3, 3, -1, 1, -2];
 };
 
 // TestInt64.test2
-export const TestInt64$test2 = () => {
+export const TestInt64$test2 = () : Array<int53(number)> => {
   return [0, -1, 1, 3, -3, 0];
 };
 
 // TestInt64.test3
-export const TestInt64$test3 = () => {
+export const TestInt64$test3 = () : Array<boolean> => {
   return [true, false, false, false, false, true];
 };
 
 // TestInt64.test4
-export const TestInt64$test4 = () => {
+export const TestInt64$test4 = () : Array<boolean> => {
   return [false, true, true, true, true, false];
 };
 
 // TestInt64.test5
-export const TestInt64$test5 = () => {
+export const TestInt64$test5 = () : Array<boolean> => {
   return [false, true, false, false, true, false];
 };
 
 // TestInt64.test6
-export const TestInt64$test6 = () => {
+export const TestInt64$test6 = () : Array<boolean> => {
   return [false, false, true, true, false, false];
 };
 
 // TestInt64.test7
-export const TestInt64$test7 = () => {
+export const TestInt64$test7 = () : Array<boolean> => {
   return [true, true, false, false, true, true];
 };
 
 // TestInt64.test8
-export const TestInt64$test8 = () => {
+export const TestInt64$test8 = () : Array<boolean> => {
   return [true, false, true, true, false, true];
 };
 
 // TestInt64.test9
-export const TestInt64$test9 = () => {
+export const TestInt64$test9 = () : Array<int53(number)> => {
   return [1, 2, 2, -2, -2, 1];
 };
 
 // TestInt64.test10
-export const TestInt64$test10 = () => {
+export const TestInt64$test10 = () : Array<int53(number)> => {
   return [1, 0, 2, 0, 0, 1];
 };
 
 // TestInt64.test11
-export const TestInt64$test11 = () => {
+export const TestInt64$test11 = () : Array<int53(number)> => {
   return [-1, 1];
 };
 
 // TestInt.test1
-export const TestInt$test1 = () => {
+export const TestInt$test1 = () : Array<int53(number)> => {
   return [2, 3, 3, -1, 1, -2];
 };
 
 // TestInt.test2
-export const TestInt$test2 = () => {
+export const TestInt$test2 = () : Array<int53(number)> => {
   return [0, -1, 1, 3, -3, 0];
 };
 
 // TestInt.test3
-export const TestInt$test3 = () => {
+export const TestInt$test3 = () : Array<boolean> => {
   return [true, false, false, false, false, true];
 };
 
 // TestInt.test4
-export const TestInt$test4 = () => {
+export const TestInt$test4 = () : Array<boolean> => {
   return [false, true, true, true, true, false];
 };
 
 // TestInt.test5
-export const TestInt$test5 = () => {
+export const TestInt$test5 = () : Array<boolean> => {
   return [false, true, false, false, true, false];
 };
 
 // TestInt.test6
-export const TestInt$test6 = () => {
+export const TestInt$test6 = () : Array<boolean> => {
   return [false, false, true, true, false, false];
 };
 
 // TestInt.test7
-export const TestInt$test7 = () => {
+export const TestInt$test7 = () : Array<boolean> => {
   return [true, true, false, false, true, true];
 };
 
 // TestInt.test8
-export const TestInt$test8 = () => {
+export const TestInt$test8 = () : Array<boolean> => {
   return [true, false, true, true, false, true];
 };
 
 // TestInt.test9
-export const TestInt$test9 = () => {
+export const TestInt$test9 = () : Array<int53(number)> => {
   return [1, 2, 2, -2, -2, 1];
 };
 
 // TestInt.test10
-export const TestInt$test10 = () => {
+export const TestInt$test10 = () : Array<int53(number)> => {
   return [1, 0, 2, 0, -1, 1];
 };
 
 // TestInt.test11
-export const TestInt$test11 = () => {
+export const TestInt$test11 = () : Array<int53(number)> => {
   return [-1, 1];
 };

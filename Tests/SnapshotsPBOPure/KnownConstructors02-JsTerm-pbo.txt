@@ -2,12 +2,11 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic
 
 // test
-export const test = (a) => {
-  if ((a.tag === 0)) {
-    const { _1: f$1 } = a;
-    return f$1;
-  } else {
-    const { _1: f$2 } = a;
-    return f$2;
+export const test = (a : ({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number) })) : int53(number) => {
+  switch (c0.tag) {
+  case 0 { _1: f }:
+    return c0;
+  case 1 { _1: f }:
+    return c0;
   }
 };

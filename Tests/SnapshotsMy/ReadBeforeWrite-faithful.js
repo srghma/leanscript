@@ -2,13 +2,12 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 import {
-  $lean_mk_array,
-  $lean_array_get,
-  $lean_array_set,
-  $lean_array_swap,
-  $lean_array_push,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
-import { $lean_array_get_size } from "../../runtime/lean_runtime_nat_bigint.mjs";
+  bigint_nat__lean_mk_array,
+  bigint_nat__lean_array_get,
+  bigint_nat__lean_array_set,
+  bigint_nat__lean_array_swap,
+  array__lean_array_push,
+} from "../../runtime.js";
 
 /**
  * `test1`
@@ -16,10 +15,10 @@ import { $lean_array_get_size } from "../../runtime/lean_runtime_nat_bigint.mjs"
  * @returns {nat(bigint)}
  */
 export const test1 = (n) => {
-  const x$1 = $lean_mk_array(3n, n + 7n);
-  const x$2 = $lean_array_get(0n, x$1, 0n);
-  const x$3 = $lean_array_set(x$1, 0n, 99n);
-  return x$2 + $lean_array_get(0n, x$3, 1n);
+  const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
+  const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
+  const x$3 = bigint_nat__lean_array_set(x$1, 0n, 99n);
+  return x$2 + bigint_nat__lean_array_get(0n, x$3, 1n);
 };
 
 /**
@@ -29,9 +28,9 @@ export const test1 = (n) => {
  */
 export const test2 = (n) => {
   const k$1 = [n + 1n, n + 2n, n + 3n];
-  const x$2 = $lean_array_get(0n, k$1, 0n);
-  const x$3 = $lean_array_swap(k$1, 0n, 2n);
-  return x$2 * 10n + $lean_array_get(0n, x$3, 0n);
+  const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
+  const x$3 = bigint_nat__lean_array_swap(k$1, 0n, 2n);
+  return x$2 * 10n + bigint_nat__lean_array_get(0n, x$3, 0n);
 };
 
 /**
@@ -41,9 +40,9 @@ export const test2 = (n) => {
  */
 export const test3 = (n) => {
   const k$1 = [n + 1n];
-  const x$2 = $lean_array_get(0n, k$1, 0n);
-  const x$3 = $lean_array_push(k$1, 5n);
-  return x$2 + $lean_array_get_size(x$3);
+  const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
+  const x$3 = array__lean_array_push(k$1, 5n);
+  return x$2 + BigInt(x$3.length);
 };
 
 /**
@@ -52,9 +51,9 @@ export const test3 = (n) => {
  * @returns {{ _1: Array<nat(bigint)>, _2: nat(bigint) }}
  */
 export const test4 = (n) => {
-  const x$1 = $lean_mk_array(3n, n + 7n);
-  const x$2 = $lean_array_get(0n, x$1, 0n);
-  const x$3 = $lean_array_set(x$1, 0n, 99n);
+  const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
+  const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
+  const x$3 = bigint_nat__lean_array_set(x$1, 0n, 99n);
   return { _1: x$3, _2: x$2 };
 };
 
@@ -64,34 +63,30 @@ export const test4 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test5 = (n) => {
-  const x$1 = $lean_mk_array(4n, n);
+  const x$1 = bigint_nat__lean_mk_array(4n, n);
   let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0n } };
   for (let i$3 = 0n; i$3 < 4n; i$3++) {
     if (acc$2.tag === 0) {
+      const { _1: f$4 } = acc$2;
+      acc$2 = { tag: 0, _1: f$4 };
+    } else {
       const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 0, _1: f$5 };
-    } else {
-      const { _1: f$6 } = acc$2;
-      const { _1: f$7, _2: f$8 } = f$6;
-      const { _1: f$9, _2: f$10 } = f$6;
-      const x$11 = $lean_array_get(0n, f$7, i$3);
-      const x$12 = $lean_array_set(f$7, i$3, i$3 + 1n);
-      const x$13 = f$10 + x$11;
-      acc$2 = { tag: 1, _1: { _1: x$12, _2: x$13 } };
+      const { _1: f$6, _2: f$7 } = f$5;
+      const { _1: f$8, _2: f$9 } = f$5;
+      const x$10 = bigint_nat__lean_array_get(0n, f$6, i$3);
+      const x$11 = bigint_nat__lean_array_set(f$6, i$3, i$3 + 1n);
+      const x$12 = f$9 + x$10;
+      acc$2 = { tag: 1, _1: { _1: x$11, _2: x$12 } };
     }
   }
-  let x$14;
-  j$1: {
-    if (acc$2.tag === 0) {
-      const { _1: f$15 } = acc$2;
-      x$14 = f$15;
-      break j$1;
-    } else {
-      const { _1: f$16 } = acc$2;
-      x$14 = f$16;
-      break j$1;
-    }
+  let x$13;
+  if (acc$2.tag === 0) {
+    const { _1: f$14 } = acc$2;
+    x$13 = f$14;
+  } else {
+    const { _1: f$15 } = acc$2;
+    x$13 = f$15;
   }
-  const { _1: f$17, _2: f$18 } = x$14;
-  return f$18;
+  const { _1: f$16, _2: f$17 } = x$13;
+  return f$17;
 };

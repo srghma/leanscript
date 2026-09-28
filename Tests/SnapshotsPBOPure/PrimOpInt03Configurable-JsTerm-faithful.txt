@@ -10,85 +10,84 @@
 //   TestISize.test3: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 //   TestISize.test4: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
-import { $lean_uint64_add } from "lean_runtime_uint64_bigint.mjs";
-import { $lean_int64_add } from "lean_runtime_int64_bigint.mjs";
+import { bigint_nat__lean_uint64_add, bigint_int__lean_int64_add } from "runtime.js";
 
 // TestUInt64.test1
-export const TestUInt64$test1 = () => {
+export const TestUInt64$test1 = () : nat(bigint) => {
   return 1553255926290448384n;
 };
 
 // TestUInt64.test2
-export const TestUInt64$test2 = () => {
+export const TestUInt64$test2 = () : nat(bigint) => {
   return 9446744073709551616n;
 };
 
 // TestUInt64.test3
-export const TestUInt64$test3 = () => {
+export const TestUInt64$test3 = () : nat(bigint) => {
   return 6553255926290448384n;
 };
 
 // TestUInt64.test4
-export const TestUInt64$test4 = (a) => {
-  return $lean_uint64_add($lean_uint64_add(10000000000000000000n, a), 10000000000000000000n);
+export const TestUInt64$test4 = (a : nat(bigint)) : nat(bigint) => {
+  return bigint_nat__lean_uint64_add(bigint_nat__lean_uint64_add(10000000000000000000n, c0), 10000000000000000000n);
 };
 
 // TestNat.test1
-export const TestNat$test1 = () => {
+export const TestNat$test1 = () : nat(bigint) => {
   return 4000000000n;
 };
 
 // TestNat.test2
-export const TestNat$test2 = () => {
+export const TestNat$test2 = () : nat(bigint) => {
   return 0n;
 };
 
 // TestNat.test3
-export const TestNat$test3 = () => {
+export const TestNat$test3 = () : nat(bigint) => {
   return 4000000000000000000n;
 };
 
 // TestNat.test4
-export const TestNat$test4 = (a) => {
-  return ((2000000000n + a) + 2000000000n);
+export const TestNat$test4 = (a : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(2000000000n, c0), 2000000000n);
 };
 
 // TestInt64.test1
-export const TestInt64$test1 = () => {
+export const TestInt64$test1 = () : int(bigint) => {
   return -8446744073709551616n;
 };
 
 // TestInt64.test2
-export const TestInt64$test2 = () => {
+export const TestInt64$test2 = () : int(bigint) => {
   return 8446744073709551616n;
 };
 
 // TestInt64.test3
-export const TestInt64$test3 = () => {
+export const TestInt64$test3 = () : int(bigint) => {
   return 6553255926290448384n;
 };
 
 // TestInt64.test4
-export const TestInt64$test4 = (a) => {
-  return $lean_int64_add($lean_int64_add(5000000000000000000n, a), 5000000000000000000n);
+export const TestInt64$test4 = (a : int(bigint)) : int(bigint) => {
+  return bigint_int__lean_int64_add(bigint_int__lean_int64_add(5000000000000000000n, c0), 5000000000000000000n);
 };
 
 // TestInt.test1
-export const TestInt$test1 = () => {
+export const TestInt$test1 = () : int(bigint) => {
   return 4000000000n;
 };
 
 // TestInt.test2
-export const TestInt$test2 = () => {
+export const TestInt$test2 = () : int(bigint) => {
   return -4000000000n;
 };
 
 // TestInt.test3
-export const TestInt$test3 = () => {
+export const TestInt$test3 = () : int(bigint) => {
   return 4000000000000000000n;
 };
 
 // TestInt.test4
-export const TestInt$test4 = (a) => {
-  return ((2000000000n + a) + 2000000000n);
+export const TestInt$test4 = (a : int(bigint)) : int(bigint) => {
+  return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(2000000000n, c0), 2000000000n);
 };

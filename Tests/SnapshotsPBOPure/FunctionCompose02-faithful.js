@@ -5,52 +5,52 @@
  * `test1`
  * @param {(int(bigint) => int(bigint))} f
  * @param {(int(bigint) => int(bigint))} g
- * @param {int(bigint)} p$1
+ * @param {int(bigint)} p
  * @returns {int(bigint)}
  */
-export const test1 = (f, g, p$1) => {
-  const x$2 = g(p$1);
-  return f(x$2);
+export const test1 = (f, g, p) => {
+  const x$1 = g(p);
+  return f(x$1);
 };
 
 /**
  * `test2`
  * @param {(int(bigint) => int(bigint))} f
  * @param {(int(bigint) => int(bigint))} g
- * @param {int(bigint)} p$1
+ * @param {int(bigint)} p
  * @returns {int(bigint)}
  */
-export const test2 = (f, g, p$1) => {
-  const x$2 = g(p$1);
-  const x$3 = f(x$2);
-  return g(x$3);
+export const test2 = (f, g, p) => {
+  const x$1 = g(p);
+  const x$2 = f(x$1);
+  return g(x$2);
 };
 
 /**
  * `test3`
  * @param {(int(bigint) => int(bigint))} f
  * @param {(int(bigint) => int(bigint))} g
- * @param {int(bigint)} p$1
+ * @param {int(bigint)} p
  * @returns {int(bigint)}
  */
-export const test3 = (f, g, p$1) => {
-  const x$2 = g(p$1);
-  const x$3 = f(x$2);
-  const x$4 = g(x$3);
-  return f(x$4);
+export const test3 = (f, g, p) => {
+  const x$1 = g(p);
+  const x$2 = f(x$1);
+  const x$3 = g(x$2);
+  return f(x$3);
 };
 
 /**
  * `test4`
  * @param {(int(bigint) => int(bigint))} f
  * @param {(int(bigint) => int(bigint))} g
- * @param {int(bigint)} p$1
+ * @param {int(bigint)} p
  * @returns {int(bigint)}
  */
-export const test4 = (f, g, p$1) => {
-  const x$2 = g(p$1);
-  const x$3 = f(x$2);
-  const x$4 = g(x$3);
-  const x$5 = f(x$4);
-  return g(x$5);
+export const test4 = (f, g, p) => {
+  const x$1 = g(p);
+  const x$2 = f(x$1);
+  const x$3 = g(x$2);
+  const x$4 = f(x$3);
+  return g(x$4);
 };

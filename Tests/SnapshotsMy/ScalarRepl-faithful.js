@@ -3,53 +3,40 @@
 // not translated:
 //   test6: invalid scope
 
-import { $lean_nat_sub } from "../../runtime/lean_runtime_nat_bigint.mjs";
+import { bigint_nat__lean_nat_sub } from "../../runtime.js";
 
 const $k1 = { tag: 1, _1: 0n };
-const $k2 = (x$2) => {
-  const { _1: f$3, _2: f$4 } = x$2;
-  const { _1: f$5, _2: f$6 } = x$2;
-  if (f$3 < f$6) {
-    const { _1: f$7, _2: f$8 } = x$2;
-    const { _1: f$9, _2: f$10 } = x$2;
-    return $lean_nat_sub(f$8, f$9);
+const $k2 = (x$1) => {
+  const { _1: f$2, _2: f$3 } = x$1;
+  const { _1: f$4, _2: f$5 } = x$1;
+  if (f$2 < f$5) {
+    const { _1: f$6, _2: f$7 } = x$1;
+    const { _1: f$8, _2: f$9 } = x$1;
+    return bigint_nat__lean_nat_sub(f$7, f$8);
   } else {
-    const { _1: f$11, _2: f$12 } = x$2;
-    const { _1: f$13, _2: f$14 } = x$2;
-    return $lean_nat_sub(f$11, f$14);
+    const { _1: f$10, _2: f$11 } = x$1;
+    const { _1: f$12, _2: f$13 } = x$1;
+    return bigint_nat__lean_nat_sub(f$10, f$13);
   }
 };
-const $k3 = (x$17) => {
-  const { _1: f$18, _2: f$19 } = x$17;
-  const { _1: f$20, _2: f$21 } = x$17;
-  if (f$18 < f$21) {
-    const { _1: f$22, _2: f$23 } = x$17;
-    const { _1: f$24, _2: f$25 } = x$17;
-    return $lean_nat_sub(f$23, f$24);
+const $k3 = (x$1) => {
+  const { _1: f$2, _2: f$3 } = x$1;
+  const { _1: f$4, _2: f$5 } = x$1;
+  if (f$2 < f$5) {
+    return x$1;
   } else {
-    const { _1: f$26, _2: f$27 } = x$17;
-    const { _1: f$28, _2: f$29 } = x$17;
-    return $lean_nat_sub(f$26, f$29);
+    const { _1: f$6, _2: f$7 } = x$1;
+    const { _1: f$8, _2: f$9 } = x$1;
+    return { _1: f$7, _2: f$8 };
   }
 };
-const $k4 = (x$2) => {
-  const { _1: f$3, _2: f$4 } = x$2;
-  const { _1: f$5, _2: f$6 } = x$2;
-  if (f$3 < f$6) {
-    return x$2;
-  } else {
-    const { _1: f$7, _2: f$8 } = x$2;
-    const { _1: f$9, _2: f$10 } = x$2;
-    return { _1: f$8, _2: f$9 };
-  }
-};
-const $k5 = (x$2) => {
-  if (x$2.tag === 0) {
+const $k4 = (x$1) => {
+  if (x$1.tag === 0) {
     return 0n;
   } else {
-    const { _1: f$3 } = x$2;
-    const { _1: f$4, _2: f$5 } = f$3;
-    return f$4 + f$5;
+    const { _1: f$2 } = x$1;
+    const { _1: f$3, _2: f$4 } = f$2;
+    return f$3 + f$4;
   }
 };
 
@@ -62,20 +49,20 @@ export const test1 = (n) => {
   let acc$1 = $k1;
   for (let i$2 = 0n; i$2 < n; i$2++) {
     if (acc$1.tag === 0) {
-      const { _1: f$4 } = acc$1;
-      acc$1 = { tag: 0, _1: f$4 };
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 0, _1: f$3 };
     } else {
-      const { _1: f$5 } = acc$1;
-      const x$6 = f$5 + i$2;
-      acc$1 = { tag: 1, _1: x$6 };
+      const { _1: f$4 } = acc$1;
+      const x$5 = f$4 + i$2;
+      acc$1 = { tag: 1, _1: x$5 };
     }
   }
   if (acc$1.tag === 0) {
+    const { _1: f$6 } = acc$1;
+    return f$6;
+  } else {
     const { _1: f$7 } = acc$1;
     return f$7;
-  } else {
-    const { _1: f$8 } = acc$1;
-    return f$8;
   }
 };
 
@@ -87,47 +74,39 @@ export const test1 = (n) => {
 export const test2 = (n) => {
   let acc$1 = $k1;
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    j$1: {
-      if (acc$1.tag === 0) {
-        const { _1: f$4 } = acc$1;
-        acc$1 = { tag: 0, _1: f$4 };
-        break j$1;
-      } else {
-        const { _1: f$5 } = acc$1;
-        let acc$6 = { tag: 1, _1: f$5 };
-        for (let i$7 = 0n; i$7 < i$2; i$7++) {
-          if (acc$6.tag === 0) {
-            const { _1: f$9 } = acc$6;
-            acc$6 = { tag: 0, _1: f$9 };
-          } else {
-            const { _1: f$10 } = acc$6;
-            const x$11 = f$10 + i$7;
-            acc$6 = { tag: 1, _1: x$11 };
-          }
+    if (acc$1.tag === 0) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 0, _1: f$3 };
+    } else {
+      const { _1: f$4 } = acc$1;
+      let acc$5 = { tag: 1, _1: f$4 };
+      for (let i$6 = 0n; i$6 < i$2; i$6++) {
+        if (acc$5.tag === 0) {
+          const { _1: f$7 } = acc$5;
+          acc$5 = { tag: 0, _1: f$7 };
+        } else {
+          const { _1: f$8 } = acc$5;
+          const x$9 = f$8 + i$6;
+          acc$5 = { tag: 1, _1: x$9 };
         }
-        let x$12;
-        j$2: {
-          if (acc$6.tag === 0) {
-            const { _1: f$13 } = acc$6;
-            x$12 = f$13;
-            break j$2;
-          } else {
-            const { _1: f$14 } = acc$6;
-            x$12 = f$14;
-            break j$2;
-          }
-        }
-        acc$1 = { tag: 1, _1: x$12 };
-        break j$1;
       }
+      let x$10;
+      if (acc$5.tag === 0) {
+        const { _1: f$11 } = acc$5;
+        x$10 = f$11;
+      } else {
+        const { _1: f$12 } = acc$5;
+        x$10 = f$12;
+      }
+      acc$1 = { tag: 1, _1: x$10 };
     }
   }
   if (acc$1.tag === 0) {
-    const { _1: f$15 } = acc$1;
-    return f$15;
+    const { _1: f$13 } = acc$1;
+    return f$13;
   } else {
-    const { _1: f$16 } = acc$1;
-    return f$16;
+    const { _1: f$14 } = acc$1;
+    return f$14;
   }
 };
 
@@ -139,10 +118,10 @@ export const test2 = (n) => {
  */
 export const test3 = (a, b) => {
   const k$1 = $k2;
-  const x$15 = k$1({ _1: a, _2: b });
-  const k$16 = $k3;
-  const x$30 = k$16({ _1: b, _2: a + 1n });
-  return x$15 + x$30;
+  const x$2 = k$1({ _1: a, _2: b });
+  const k$3 = $k2;
+  const x$4 = k$3({ _1: b, _2: a + 1n });
+  return x$2 + x$4;
 };
 
 /**
@@ -152,7 +131,7 @@ export const test3 = (a, b) => {
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
 export const test4 = (a, b) => {
-  const k$1 = $k4;
+  const k$1 = $k3;
   return k$1({ _1: a, _2: b });
 };
 
@@ -163,7 +142,7 @@ export const test4 = (a, b) => {
  * @returns {nat(bigint)}
  */
 export const test5 = (a, b) => {
-  const k$1 = $k5;
-  const x$6 = k$1({ tag: 1, _1: { _1: a, _2: b } });
-  return x$6 + 0n;
+  const k$1 = $k4;
+  const x$2 = k$1({ tag: 1, _1: { _1: a, _2: b } });
+  return x$2 + 0n;
 };

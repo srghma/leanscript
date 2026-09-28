@@ -5,17 +5,18 @@
 //   test2: LeanScript: `List String` is a built-in type former, which has no constructors of its own
 
 import {
-  $lean_string_utf8_get,
-  $lean_string_utf8_set,
-  $lean_string_utf8_at_end,
-} from "../../runtime/lean_runtime_non_configurable.mjs";
+  string__lean_string_utf8_get__String_Pos_Raw_get,
+  string__lean_string_utf8_set__String_Pos_Raw_set,
+  string__lean_string_utf8_at_end__String_Pos_Raw_atEnd,
+} from "../../runtime.js";
 
 /**
  * `test3`
  * @param {string} s
  * @returns {string}
  */
-export const test3 = (s) => $lean_string_utf8_get(s, 0);
+export const test3 = (s) =>
+  string__lean_string_utf8_get__String_Pos_Raw_get(s, 0);
 
 /**
  * `test4`
@@ -23,11 +24,13 @@ export const test3 = (s) => $lean_string_utf8_get(s, 0);
  * @param {string} c
  * @returns {string}
  */
-export const test4 = (s, c) => $lean_string_utf8_set(s, 0, c);
+export const test4 = (s, c) =>
+  string__lean_string_utf8_set__String_Pos_Raw_set(s, 0, c);
 
 /**
  * `test5`
  * @param {string} s
  * @returns {boolean}
  */
-export const test5 = (s) => $lean_string_utf8_at_end(s, 0);
+export const test5 = (s) =>
+  string__lean_string_utf8_at_end__String_Pos_Raw_atEnd(s, 0);

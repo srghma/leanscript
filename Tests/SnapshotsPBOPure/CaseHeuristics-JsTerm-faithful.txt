@@ -6,19 +6,19 @@
 //   testPBAN: LeanScript: the helper `testPB._sparseCasesOn_1` is universe polymorphic
 
 // testP
-export const testP = (a, a1, a2) => {
-  if ((a === 1n)) {
-    if ((a1 === 2n)) {
-      if ((a2 === 1n)) {
+export const testP = (a : int(bigint), a1 : int(bigint), a2 : int(bigint)) : int(bigint) => {
+  if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c1, 2n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
         return 1n;
       } else {
-        if ((a2 === 2n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
           return 2n;
         } else {
-          if ((a2 === 3n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
             return 3n;
           } else {
-            if ((a2 === 4n)) {
+            if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
               return 4n;
             } else {
               return 5n;
@@ -27,15 +27,15 @@ export const testP = (a, a1, a2) => {
         }
       }
     } else {
-      if ((a2 === 4n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
         return 4n;
       } else {
         return 5n;
       }
     }
   } else {
-    if ((a1 === 2n)) {
-      if ((a2 === 3n)) {
+    if (inline:bigint_int__lean_int_dec_eq(c1, 2n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
         return 3n;
       } else {
         return 5n;

@@ -7,19 +7,19 @@
 //   test5: invalid scope
 
 // test1
-export const test1 = (v, b) => {
-  const { _1: f$1, _2: f$2 } = v;
-  return (f$1 + b);
+export const test1 = (v : { _1: int(bigint), _2: int(bigint) }, b : int(bigint)) : int(bigint) => {
+  const { _1: f, _2: f } = c1;
+  return inline:bigint_int__lean_int_add(c1, c2);
 };
 
 // test2
-export const test2 = (v, a) => {
-  const { _1: f$1, _2: f$2 } = v;
-  return (f$1 + a);
+export const test2 = (v : { _1: int(bigint), _2: int(bigint) }, a : int(bigint)) : int(bigint) => {
+  const { _1: f, _2: f } = c1;
+  return inline:bigint_int__lean_int_add(c1, c2);
 };
 
 // test3
-export const test3 = (v, p$1) => {
-  const { _1: f$2, _2: f$3 } = v;
-  return (f$2 + p$1);
+export const test3 = (v : { _1: int(bigint), _2: int(bigint) }, p : int(bigint)) : int(bigint) => {
+  const { _1: f, _2: f } = c1;
+  return inline:bigint_int__lean_int_add(c1, c2);
 };

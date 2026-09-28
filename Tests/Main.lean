@@ -9,7 +9,6 @@ import TermTests.Optimize.WFTermTest
 import LeanScript.Term.Optimize.Basic
 import JsTerm.FromTerm
 import JsTerm.Hoist
-import ExternCatalogue
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -123,136 +122,135 @@ def optimizeSpec : Spec := describe "Term.optimize" do
   checkNat "roseFv.size" 9
     ((RoseVariantsTest.roseFSizeT.optimizeN 3).run (RoseVariantsTest.roseFT.optimizeN 3).run)
 
-/-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the layouts
-    the configuration chooses, and the shape of the functions it produces.  (The generated
-    JavaScript itself is run against Lean by `scripts/leanscript-snapshots.sh`.) -/
+section MoreJsTests
+open MoreJs
+
+/-- `uint53` numbers and generic arrays of them, for the hand-written blocks below. -/
+abbrev tN : JsTy := .terminal .uint53
+abbrev tA : JsTy := .array tN
+
+/-- `array__lean_array_push(a, x)`. -/
+def pushE {C M : List JsTy} (a : JsExpr C M tA) (x : JsExpr C M tN) : JsExpr C M tA :=
+  .imported (.array__lean_array_push (.generic tN)) (.cons a (.cons x .nil))
+
+/-- The literal `1`. -/
+def one {C M : List JsTy} : JsExpr C M tN := .lit (.uint53 1 (by decide))
+
+/-- `[]`. -/
+def emptyA {C M : List JsTy} : JsExpr C M tA := .array_mk (.generic tN) .nil
+
+/-- `(x) => x ? { tag: 0 } : { tag: 1, _1: 1 }`. -/
+def hoistFun : JsFun where
+  name := "f"
+  leanName := "f"
+  params := [("x", .terminal .bool)]
+  ret := .union [[], [tN]]
+  body := .ret (.cond (.cvar .zero) (.union_mk .zero .nil) (.union_mk (.succ .zero) (.cons one .nil)))
+
+/-- The runtime functions a block calls. -/
+def callsOf {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : List String :=
+  (b.runtimeNames #[]).toList
+
+/-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the types
+    the configuration chooses, the typed operations of the externs, the in-place updates, the
+    shared constants, and the shape of the functions it produces.  (The generated JavaScript
+    itself is run against Lean by `scripts/leanscript-snapshots.sh`.) -/
 def moreJsSpec : Spec := describe "JsTerm" do
-  let faithful : MoreJs.JsConfig := {}
-  let pbo := MoreJs.JsConfig.presetPBO
+  let faithful : JsConfig := {}
+  let pbo := JsConfig.presetPBO
   it "Nat is a BigInt (faithful) or a checked UInt53 (pbo)" do
-    assertEq "faithful" "nat(bigint)" (MoreJs.lowerScalarPrim faithful .nat).pretty
-    assertEq "pbo" "uint53(number)" (MoreJs.lowerScalarPrim pbo .nat).pretty
+    assertEq "faithful" "nat(bigint)" (lowerScalarPrim faithful .nat).pretty
+    assertEq "pbo" "uint53(number)" (lowerScalarPrim pbo .nat).pretty
+    assertEq "Float.Model" "float" (lowerScalarPrim faithful .floatModel).pretty
+    assertEq "Float32.Model" "float32" (lowerScalarPrim pbo .float32Model).pretty
   it "records and unions are objects" do
-    assertEq "record" "{ _1: a, _2: b }" ((MoreJs.recordObj [.var "a", .var "b"]).pretty "")
-    assertEq "nullary constructor" "{ tag: 0 }" ((MoreJs.unionObj 0 []).pretty "")
-    assertEq "constructor" "{ tag: 2, _1: a }" ((MoreJs.unionObj 2 [.var "a"]).pretty "")
-    assertEq "record layout" "{ _1: nat(bigint), _2: boolean }"
-      (MoreJs.JsTerm.record [.nat, .bool]).pretty
-    assertEq "union layout" "({ tag: 0 } | { tag: 1, _1: nat(bigint) })"
-      (MoreJs.JsTerm.union [[], [.nat]]).pretty
-  it "externs call the functions of the runtime modules" do
-    let (e, fs) := MoreJs.lowerExtern .trusting "lean_nat_pow" [.nat, .nat] .nat (some .nat)
-      [.var "x", .var "y"]
-    assertEq "call" "$lean_nat_pow(x, y)" (e.pretty "")
-    assertEq "functions" [("lean_runtime_nat_bigint.mjs", "$lean_nat_pow")]
-      (fs.map fun (f : MoreJs.RtFn) => (f.file.fileName, f.name))
-    let (e, fs) := MoreJs.lowerExtern .trusting "lean_nat_pow" [.uint53, .uint53] .uint53
-      (some .nat) [.var "x", .var "y"]
-    assertEq "call (number)" "$lean_nat_pow(x, y)" (e.pretty "")
-    assertEq "functions (number)" [("lean_runtime_nat_num.mjs", "$lean_nat_pow")]
-      (fs.map fun (f : MoreJs.RtFn) => (f.file.fileName, f.name))
-    -- a runtime without the function: the call throws when it is evaluated
-    let (e, fs) := MoreJs.lowerExtern ⟨fun _ _ => false⟩ "lean_nat_pow" [.nat, .nat] .nat
-      (some .nat) [.var "x", .var "y"]
-    assertEq "unimplemented" true (((e.pretty "").splitOn "$lean_extern_unimplemented").length > 1)
-    assertEq "unimplemented functions" ["$lean_extern_unimplemented"] (fs.map (·.name : MoreJs.RtFn → String))
-  it "a Float.Model is the number of the Float it models" do
-    assertEq "Float.Model" "float" (MoreJs.lowerScalarPrim faithful .floatModel).pretty
-    assertEq "Float32.Model" "float32" (MoreJs.lowerScalarPrim pbo .float32Model).pretty
-    match MoreJs.primLit pbo .floatModel (Float.toModel 2.5) with
-    | .ok e => assertEq "literal" "25e-1" (e.pretty "")
-    | .error err => throw (IO.userError err)
-    let (e, hs) := MoreJs.lowerExtern .trusting "lean_float_to_bits__Float_toModel" [.float]
-      .float none [.var "x"]
-    assertEq "toModel" "x" (e.pretty "")
-    assertEq "toModel helpers" 0 hs.length
-  it "appends of arrays become one array literal" do
-    let body : List MoreJs.JsStmt :=
-      [.const "k" (.array [.lit (.str "a")]),
-       .const "x" (.array [.spread (.var "arr"), .spread (.array [.lit (.str "c")])]),
-       .const "y" (.array [.spread (.var "k"), .spread (.var "x")]),
-       .ret (.var "y")]
-    match MoreJs.inlineArrays body with
-    | [.ret e] => assertEq "literal" "[\"a\", ...arr, \"c\"]" (e.pretty "")
-    | ss => throw (IO.userError s!"not one return: {ss.length} statements")
-    -- a literal used inside a loop is not moved into it
-    let loop : List MoreJs.JsStmt :=
-      [.const "k" (.array [.lit (.str "a")]),
-       .forOf "e" (.var "xs") [.expr (.array [.spread (.var "k")])]]
-    assertEq "loop" 2 (MoreJs.inlineArrays loop).length
-  it "an array only one variable refers to is updated in place" do
-    let push (a : String) (v : Nat) : MoreJs.JsExpr := .helper "$lean_array_push" [.var a, .lit (.int v)]
-    -- `a` is a fresh array read once: the push mutates it
-    let body : List MoreJs.JsStmt :=
-      [.const "a" (.array []), .const "b" (push "a" 1), .const "c" (push "b" 2), .ret (.var "c")]
-    assertEq "owned" ["$lean_array_push_inplace"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts body))
-    -- a parameter may be referred to by the caller: it is copied
-    let param : List MoreJs.JsStmt := [.const "b" (push "p" 1), .ret (.var "b")]
-    assertEq "parameter" ["$lean_array_push"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts param))
-    -- `a` is read twice: the first push must copy it, the second may mutate its own result
-    let shared : List MoreJs.JsStmt :=
-      [.const "a" (.array []), .const "b" (push "a" 1), .const "c" (push "b" 2),
-       .ret (.array [.var "a", .var "c"])]
-    match MoreJs.inPlaceStmts shared with
-    | [_, .const _ e1, .const _ e2, _] =>
-      assertEq "shared (copy)" ["$lean_array_push"] e1.calls
-      assertEq "shared (own result)" ["$lean_array_push_inplace"] e2.calls
-    | _ => throw (IO.userError "shared: unexpected statements")
-    -- an array read in a closure is copied
-    let closure : List MoreJs.JsStmt :=
-      [.const "a" (.array []), .const "f" (.arrow [] [.ret (.var "a")]),
-       .const "b" (push "a" 1), .ret (.array [.var "b", .var "f"])]
-    assertEq "closure" ["$lean_array_push"] (MoreJs.calledHelpers (MoreJs.inPlaceStmts closure))
-  it "constants are computed once, at the top of the module" do
-    let f : MoreJs.JsFun :=
-      { name := "f", leanName := "f", params := ["x"], ret := .bool,
-        body := [.ret (.cond (.var "x") (MoreJs.unionObj 0 [])
-          (.array [MoreJs.unionObj 1 [.var "x"], MoreJs.unionObj 0 [],
-                   MoreJs.unionObj 1 [.lit (.bigint 3)], .array []]))] }
-    let (consts, funs) := MoreJs.hoistConsts [] [f]
-    assertEq "constants" [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 3n }")]
-      (consts.map fun ((n, e) : String × MoreJs.JsExpr) => (n, e.pretty ""))
-    let body : String := match funs with
+    let r : JsExpr [] [] (.record [tN, .terminal .bool]) :=
+      .record_mk (.cons one (.cons (.lit (.bool true)) .nil))
+    assertEq "record" "{ _1: 1, _2: true }" (r.pretty "")
+    let u0 : JsExpr [] [] (.union [[], [tN]]) := .union_mk .zero .nil
+    let u1 : JsExpr [] [] (.union [[], [tN]]) := .union_mk (.succ .zero) (.cons one .nil)
+    assertEq "nullary constructor" "{ tag: 0 }" (u0.pretty "")
+    assertEq "constructor" "{ tag: 1, _1: 1 }" (u1.pretty "")
+    assertEq "record type" "{ _1: nat(bigint), _2: boolean }"
+      (JsTy.record [.terminal .bigint_nat, .terminal .bool]).pretty
+  it "an extern is an operation named after its types" do
+    let big : JsTy := .terminal .bigint_nat
+    let args {σ : JsTy} : JsArgs [σ, σ] [] [σ, σ] := .cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)
+    assertEq "Nat.div (bigint)" "bigint_nat__lean_nat_div(c1, c0)"
+      ((lowerExtern "lean_nat_div" args : JsExpr [big, big] [] big).pretty "")
+    assertEq "Nat.div (uint53)" "uint53__lean_nat_div(c1, c0)"
+      ((lowerExtern "lean_nat_div" args : JsExpr [tN, tN] [] tN).pretty "")
+    assertEq "Nat.land (bigint): inlined" "inline:bigint_nat__lean_nat_land(c1, c0)"
+      ((lowerExtern "lean_nat_land" args : JsExpr [big, big] [] big).pretty "")
+    assertEq "Nat.land (uint53): the runtime" "uint53__lean_nat_land(c1, c0)"
+      ((lowerExtern "lean_nat_land" args : JsExpr [tN, tN] [] tN).pretty "")
+    assertEq "no operation" "lean_extern_unimplemented(\"lean_no_such_extern\")"
+      ((lowerExtern "lean_no_such_extern" args : JsExpr [tN, tN] [] tN).pretty "")
+  it "a literal too big for a number is an error of the conversion" do
+    match primLit pbo .nat (2 ^ 60) with
+    | .error e => assertEq "too big" true (isLiteralTooBig e)
+    | .ok _ => assertEq "too big" "an error" "a literal"
+    match primLit faithful .nat (2 ^ 60) with
+    | .ok ⟨t, l⟩ => assertEq "a BigInt" "1152921504606846976n" (l.shape.pretty ++ "" ++
+        (if t == JsTerminalTy.bigint_nat then "" else "?"))
+    | .error e => assertEq "a BigInt" "a literal" e
+  it "runtime.js exports every imported operation" do
+    let src ← IO.FS.readFile "runtime.js"
+    let missing := (unimplementedFnName :: JsOpImported.allNames).filter fun n =>
+      (src.splitOn s!"export const {n} =").length < 2
+    assertEq "missing" ([] : List String) missing
+  it "an array nothing else refers to is updated in place" do
+    -- const a = []; const b = push(a, 1); return b;
+    let owned : JsBlock [] [] [] (.ret tA) :=
+      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one) (.ret (.cvar .zero)))
+    assertEq "owned" ["array__lean_array_push_inplace"] (callsOf (inPlace owned))
+    -- a parameter may be referred to by the caller
+    let param : JsBlock [tA] [] [] (.ret tA) := .const "b" (pushE (.cvar .zero) one) (.ret (.cvar .zero))
+    assertEq "parameter" ["array__lean_array_push"] (callsOf (inPlace param))
+    -- read twice
+    let shared : JsBlock [] [] [] (.ret (.record [tA, tA])) :=
+      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one)
+        (.ret (.record_mk (.cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)))))
+    assertEq "shared" ["array__lean_array_push"] (callsOf (inPlace shared))
+    -- captured by a closure
+    let closure : JsBlock [] [] [] (.ret (.fn tN tA)) :=
+      .const "a" emptyA (.ret (.lam "x" (.ret (pushE (.cvar (.succ .zero)) (.cvar .zero)))))
+    assertEq "closure" ["array__lean_array_push"] (callsOf (inPlace closure))
+    -- let acc = []; for (let i = 0; i < n; i++) { acc = push(acc, i); } return acc;
+    let loop : JsBlock [tN] [] [] (.ret tA) :=
+      .letMut "acc" emptyA (.forRange "i" .uint53 (.cvar .zero)
+        (.assign .zero (pushE (.mvar .zero) (.cvar .zero)) .next) (.ret (.mvar .zero)))
+    assertEq "accumulator" ["array__lean_array_push_inplace"] (callsOf (inPlace loop))
+  it "closed constructors are shared constants" do
+    let m := mkModule faithful [hoistFun]
+    assertEq "constants" [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 1 }")]
+      (m.consts.map fun (c : JsConst) => (c.name, c.e.pretty ""))
+    let body : String := match m.funs with
       | [g] => match g.body with
-        | [.ret e] => e.pretty ""
+        | .ret e => e.pretty ""
         | _ => "?"
       | _ => "?"
-    assertEq "body" "(x ? $tag0 : [{ tag: 1, _1: x }, $tag0, $k2, []])" body
-  it "the runtime modules export the functions of every implemented extern" do
-    let srcs ← MoreJs.RtFile.all.mapM fun (f : MoreJs.RtFile) => do
-      return (f.fileName, ← IO.FS.readFile (System.FilePath.mk "runtime" / f.fileName))
-    let rt := MoreJs.Runtime.ofSources srcs
-    -- the two modules of a knob export the same functions
-    for k in [MoreJs.RtKnob.nat, .int, .uint64, .int64, .bitvec] do
-      let names (big : Bool) : List String :=
-        MoreJs.exportedNames ((srcs.lookup (MoreJs.RtFile.knob k big).fileName).getD "")
-      assertEq s!"{k.name}: bigint and num export the same functions" (names true) (names false)
-    for (preset, table) in [("faithful", ExternCatalogue.faithful), ("pbo", ExternCatalogue.pbo)] do
-      let mut missing : List String := []
-      for (name, argTys, resTy, knob, implemented) in table do
-        if implemented then
-          let args := (List.range argTys.length).map fun i => MoreJs.JsExpr.var s!"a{i}"
-          let (_, fs) := MoreJs.lowerExtern rt name argTys resTy knob args
-          if fs.any (fun (f : MoreJs.RtFn) => f.name == "$lean_extern_unimplemented" || !rt.has f.file f.name) then
-            missing := name :: missing
-      assertEq s!"{preset}: implemented externs without a runtime function" [] missing.reverse
-  let conv (cfg : MoreJs.JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
-      IO MoreJs.JsFun :=
-    match MoreJs.termToJs cfg .trusting name name ps ct with
-    | .ok (f, _) => pure f
+    assertEq "body" "(c0 ? $tag0 : $k2)" body
+    assertEq "imports" ([] : List String) m.imports
+  let conv (cfg : JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
+      IO JsFun :=
+    match termToJs cfg name name ps ct with
+    | .ok f => pure f
     | .error e => throw (IO.userError s!"{name}: {e}")
   for (cfgName, cfg) in [("faithful", faithful), ("pbo", pbo)] do
     it s!"ack2 converts ({cfgName})" do
       let f ← conv cfg "ack2" ["m", "n"] ⟨[], .nil, _, _, Tco.ack2T⟩
       -- `ack2` is `fun m => nat_rec …`: one parameter, returning a function of `n`
-      assertEq "parameters" ["m"] f.params
-      assertEq "exported" true ((f.pretty.splitOn "export const ack2 = (m) =>").length > 1)
+      assertEq "parameters" ["m"] (f.params.map (fun (p : String × JsTy) => p.1))
+      assertEq "exported" true ((f.pretty.splitOn "export const ack2 = (m : ").length > 1)
     it s!"hyperWhile converts to loops ({cfgName})" do
       let f ← conv cfg "hyperWhile" ["n", "a", "b"] ⟨[], .nil, _, _, Tco.hyperWhileT⟩
       assertEq "a for loop" true ((f.pretty.splitOn "for (").length > 1)
     it s!"bits converts ({cfgName})" do
       let f ← conv cfg "bits" ["n"] ⟨[], .nil, _, _, WhileTest.bitsT⟩
-      assertEq "result layout" (MoreJs.lowerScalarPrim cfg .nat).pretty f.ret.pretty
+      assertEq "result type" (lowerScalarPrim cfg .nat).pretty f.ret.pretty
+
+end MoreJsTests
 
 section WFTerm
 open WFTermTest

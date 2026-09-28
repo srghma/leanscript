@@ -10,6 +10,6 @@
 //   headOf: LeanScript: `List Nat` is a built-in type former, which has no constructors of its own
 
 // total
-export const total = (n) => {
-  return (n + 1n);
+export const total = (n : nat(bigint)) : nat(bigint) => {
+  return inline:bigint_nat__lean_nat_add(c0, 1n);
 };
