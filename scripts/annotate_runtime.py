@@ -168,7 +168,7 @@ def js(t):
     raise ValueError(t)
 
 def rep(t, top=True):
-    """A `JsTy` in the notation of `JsTerm/Ty/Basic.lean`, without the dots (`array bigint_nat`)."""
+    """A `JsTy` in the notation of `JsTerm/Ty/Defs.lean`, without the dots (`array bigint_nat`)."""
     k = t[0]
     if k in ('leaf', 'var'):
         return t[1]

@@ -15,7 +15,8 @@ The operations are **generated** by `scripts/gen_js_ops.py` from the catalogue o
 | --- | --- |
 | `JsTerm.Ops.Basic` | `Effectfulness`, `MayThrow`, `JsInline`, `jsSafeName` |
 | `JsTerm.Ops.Imported` | *generated*: `JsOpImported`, `extraArgs`, `toMutable?` |
-| `JsTerm.Ops.Inlinable` | *generated*: `JsOpInlinable`, `template` |
+| `JsTerm.Ops.Inlinable` | *generated*: `JsOpInlinable` |
+| `JsTerm.Ops.Template` | *generated*: `JsOpInlinable.template`, the JavaScript of each inlined operation |
 | `JsTerm.Ops.Op` | `JsOp` (either of them) and the helpers of the lookup |
 | `JsTerm.Ops.Cands.*` | *generated*: the operations of each extern, by group of externs |
 | `JsTerm.Ops.Lookup` | *generated*: `JsOp.lookup`, the operation of an extern at given types |

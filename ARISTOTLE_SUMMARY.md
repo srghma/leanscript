@@ -1,3 +1,36 @@
+# Summary of changes for run 696172ff-3b3e-4f05-a9f9-e308b76e4c21
+`JsTerm/` had already been split into groups (`Ty/`, `Ops/`, `Syntax/`, `Passes/`, `Lower/`, `Print/`) before this session. I split the remaining large hand-written files further and grouped the new pieces into subdirectories. The sets of definitions, theorems and instances before and after are identical (I diffed them), so no definition changed; they only moved.
+
+**Checks, all passing**
+- `JsTerm`, `leanscript`, `tests` and `LeanScriptCli` build with no warnings.
+- `lake exe tests` passes 55/55.
+- `scripts/leanscript-snapshots.sh` reports 3806 passed and 0 failed, and no snapshot file changed.
+- Running `scripts/gen_js_ops.py` a second time changes nothing.
+- `scripts/annotate_runtime.py --check` reports the `runtime.js` comments are still up to date.
+
+**What was split**
+- **`Ty/Basic.lean`** (447 lines) became three files:
+  - `Ty/Defs.lean`: `JsTerminalTy`, `JsTy` and the typed arrays.
+  - `Ty/DecEq.lean`: the hand-written decidable equality.
+  - `Ty/Basic.lean`: names, renderings, `JsNatTy` and `JsArrayLayout`. It imports the other two, so files that import it still work.
+- **`Syntax/Vars.lean`** (392 lines) is now a short summary module importing `Syntax/Vars/Rename.lean`, `Subst.lean` and `Occs.lean`.
+- **`Passes/InPlace.lean`** (494 lines) was split as follows:
+  - `Passes/InPlace/Linear.lean`: the array operations and linear variables.
+  - `Passes/InPlace/Collect.lean`: the definitions of the variables and the rebuilt body.
+  - `Passes/InPlace.lean`: keeps the explanation of the pass plus `greatestFix` and `inPlace`.
+- **`Print/Mini.lean`** (473 lines) was split as follows:
+  - `Print/Mini/Basic.lean`: helpers, the printer's state and where an iteration ends early.
+  - `Print/Mini/Block.lean`: expressions and blocks.
+  - `Print/Mini.lean`: functions and modules.
+  - A new `JsTerm/Print.lean` summary module imports the group, like the other groups have.
+- **`Ops/Inlinable.lean`** (702 lines, generated): `scripts/gen_js_ops.py` now writes `JsOpInlinable.template` to a separate generated file, `Ops/Template.lean`, leaving `Ops/Inlinable.lean` at 480 lines. All other generated files are unchanged. `Syntax/Basic.lean` and `Ops.lean` import the new module.
+
+**Docs:** I updated the `README.md` layout table and the module table in `Ops/Basic.lean`. One path reference in `scripts/annotate_runtime.py` now points to `Ty/Defs.lean`.
+
+**Still large:** the only hand-written file over 420 lines is `Syntax/Basic.lean` at 419. The largest file is still the generated `Ops/Imported.lean` at 844 lines, almost all of it the single `JsOpImported` inductive, which can't be split across files. The generated `Ops/Cands/*` files are at most 571 lines.
+
+All work is committed.
+
 # Summary of changes for run 4f9140d4-5dc9-4bc9-8472-0c0cbc1c3532
 I reorganized `JsTerm/` into subdirectories by group and split its large files. The refactor changes no definitions: the same declarations are just in new places. Builds pass for `JsTerm`, `leanscript`, `tests`, `TyTests`, `TermTests` and `LeanScriptCli` with no warnings. `lake exe tests` passes 55/55. `scripts/leanscript-snapshots.sh` reports 3806 passed and 0 failed, and no snapshot file changed.
 

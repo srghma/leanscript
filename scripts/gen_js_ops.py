@@ -853,6 +853,18 @@ def name {SIG_ARGS}
   JsOpInlinable.names[op.ctorIdx]!
 
 '''
+    s += 'end JsOpInlinable\n'
+    write_ops_file('Inlinable.lean', lean_file(
+        ['JsTerm.Ty.Basic', 'JsTerm.Ops.Basic', 'LeanScript.Term.Extern.NameElab'],
+        'The operations of `JsTerm` written inline',
+        '''`JsOpInlinable`: the operations written in place of their call as a JavaScript operator,
+conversion or literal over their arguments (`JsOpInlinable.template`, in `JsTerm.Ops.Template`);
+they never throw.  The families, their names and their effects are explained in
+`JsTerm.Ops.Basic`.
+''', s))
+
+    # JsTerm/Ops/Template.lean
+    s = 'namespace JsOpInlinable\n\n'
     s += '/-- The JavaScript of an inlined operation, over its arguments. -/\n'
     s += f'def template {SIG_ARGS} :\n'
     s += '    JsOpInlinable e t σs τ → JsInline\n'
@@ -861,12 +873,12 @@ def name {SIG_ARGS}
         pat = ''.join(' ' + (p if p == 't' else '_') for p in ps)
         s += f'  | .{o["name"]}{pat} => {tmpl_lean(o["impl"][1])}\n'
     s += '\nend JsOpInlinable\n'
-    write_ops_file('Inlinable.lean', lean_file(
-        ['JsTerm.Ty.Basic', 'JsTerm.Ops.Basic', 'LeanScript.Term.Extern.NameElab'],
-        'The operations of `JsTerm` written inline',
-        '''`JsOpInlinable`: the operations written in place of their call as a JavaScript operator,
-conversion or literal over their arguments (`JsOpInlinable.template`, a `JsInline`); they never
-throw.  The families, their names and their effects are explained in `JsTerm.Ops.Basic`.
+    write_ops_file('Template.lean', lean_file(
+        ['JsTerm.Ops.Inlinable'],
+        'The JavaScript of the operations of `JsTerm` written inline',
+        '''`JsOpInlinable.template`: the JavaScript operator, conversion or literal (a `JsInline`, in
+`JsTerm.Ops.Basic`) written in place of a call of each operation of `JsOpInlinable`
+(`JsTerm.Ops.Inlinable`), over its arguments.
 ''', s))
     write_lookup(ops)
 

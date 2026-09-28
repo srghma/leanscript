@@ -1,0 +1,213 @@
+import JsTerm.Syntax.Vars
+import LanguageJavascriptMini.Printer
+
+/-!
+# Printing the JavaScript grammar: helpers, the printer's state, early ends of iterations
+
+The pieces of `MoreJs.JsModule.toJs` (`JsTerm.Print.Mini`) that do not walk the grammar:
+building `MiniAST` names, numbers, literals and inlined templates; the names in scope
+(`Scope`) and the printer's counters (`PM`); and whether an iteration of a loop ends before
+the end of its body (`JsBlock.earlyNext`), which decides how `next` is written.
+
+(Not a `module`: `LanguageJavascriptMini` is not written in the module system.)
+-/
+
+namespace MoreJs
+
+open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
+
+/-- A non-empty string (the grammar never produces an empty name). -/
+def nes (s : String) : NonEmptyString :=
+  (NonEmptyString.fromString? s).getD ⟨"_", by decide⟩
+
+/-- An identifier. -/
+def ident (s : String) : MiniExpr := .ident (nes s)
+
+/-- A dotted global name as an expression: `Uint8Array.from`. -/
+def dotted (s : String) : MiniExpr :=
+  match s.splitOn "." with
+  | [] => ident s
+  | x :: xs => xs.foldl (fun e m => .dot e (nes m)) (ident x)
+
+/-- A non-negative integer as a numeric literal. -/
+def natNum (n : Nat) : MiniExpr := .number (.decimal n 0)
+
+/-- An integer, with a unary minus when it is negative. -/
+def intNum (n : Int) : MiniExpr :=
+  if n < 0 then .unary .minus (natNum n.natAbs) else natNum n.natAbs
+
+/-- A `BigInt` literal. -/
+def bigintNum (n : Int) : MiniExpr :=
+  let b : MiniExpr := .number (.bigint .decimal n.natAbs)
+  if n < 0 then .unary .minus b else b
+
+/-- A `number` literal. -/
+def numberExpr : NumberForm → MiniExpr
+  | .nan => ident "NaN"
+  | .infinity neg => if neg then .unary .minus (ident "Infinity") else ident "Infinity"
+  | .negZero => .unary .minus (natNum 0)
+  | .int n => intNum n
+  | .decimal neg d ex =>
+    let num : MiniExpr := .number (.decimal d ex)
+    if neg then .unary .minus num else num
+
+/-- A literal, by its shape. -/
+partial def shapeExpr : JsLitShape → MiniExpr
+  | .bool true => .true_
+  | .bool false => .false_
+  | .number f => numberExpr f
+  | .bigint n => bigintNum n
+  | .str s => .string s
+  | .array es => .array (es.map fun e => .elem (shapeExpr e))
+
+/-- The binary operator of the syntax tree written `op`. -/
+def binOpOf? : String → Option BinOp
+  | "+" => some .plus | "-" => some .minus | "*" => some .times | "/" => some .divide
+  | "%" => some .mod | "<" => some .lt | "<=" => some .le | ">" => some .gt | ">=" => some .ge
+  | "===" => some .strictEq | "!==" => some .strictNeq | "&" => some .bitAnd
+  | "|" => some .bitOr | "^" => some .bitXor | "<<" => some .lsh | ">>" => some .rsh
+  | ">>>" => some .ursh | "&&" => some .and | "||" => some .or
+  | _ => none
+
+/-- The prefix operator of the syntax tree written `op`. -/
+def unOpOf : String → UnaryOp
+  | "~" => .tilde | "!" => .not | "+" => .plus
+  | _ => .minus
+
+/-- The template of an inlined operation, over its (printed) arguments. -/
+partial def inlineToMini (args : Array MiniExpr) : JsInline → MiniExpr
+  | .arg i => args.getD i (ident "undefined")
+  | .bin op a b =>
+    let a := inlineToMini args a
+    let b := inlineToMini args b
+    match binOpOf? op with
+    | some o => .binary a o b
+    | none => .call (ident "undefined") [a, b]
+  | .un op a => .unary (unOpOf op) (inlineToMini args a)
+  | .call f as => .call (dotted f) (as.map (inlineToMini args))
+  | .new c as => .new (dotted c) (as.map (inlineToMini args))
+  | .num n => intNum n
+  | .big n => bigintNum n
+  | .emptyArray => .array []
+  | .member a f => .dot (inlineToMini args a) (nes f)
+
+/-- How the end of an iteration (`next`) is written where it is not the end of the body. -/
+inductive LoopExit where
+  /-- Not in the body of a loop. -/
+  | none
+  /-- `continue;`. -/
+  | cont
+  /-- `break label;` (the last iteration only, a labelled `if`). -/
+  | brk (label : String)
+
+/-- The names of the variables in scope where the statements are printed: the constants and
+    the mutable variables (innermost first, as the de Bruijn indices count), the join points
+    around them (innermost first, each as its label and the name of its variable), and how an
+    iteration of the enclosing loop ends. -/
+structure Scope where
+  c : List String := []
+  m : List String := []
+  joins : List (String × String) := []
+  loop : LoopExit := .none
+
+/-- Where a block ends: at the end of the body of a loop (a `next` there is nothing), at the
+    end of the labelled block of the innermost join point (a jump to it needs no `break`). -/
+structure Tail where
+  loop : Bool := false
+  join : Bool := false
+
+/-- The printer's counters: of the names of the local variables and of the labels, which it
+    chooses (`x$1`, `acc$2`, … from the hints of the binders; `j$1`, `j$2`, … for the labels).
+    A name is never met twice in a function, so no name ever hides another. -/
+structure PrintSt where
+  names : Nat := 1
+  labels : Nat := 1
+
+/-- The printer. -/
+abbrev PM := StateM PrintSt
+
+/-- A new name, from the hint of a binder: `hint$k`. -/
+def freshName (hint : String) : PM String :=
+  modifyGet fun s => (s!"{hint}${s.names}", { s with names := s.names + 1 })
+
+/-- A new label, `j$k`. -/
+def freshLabel : PM String :=
+  modifyGet fun s => (s!"j${s.labels}", { s with labels := s.labels + 1 })
+
+/-- The name of a variable (`undefined` for an index out of scope, which a well-typed body
+    never has). -/
+def nameAt (names : List String) (i : Nat) : MiniExpr := ident (names.getD i "undefined")
+
+/-- `const x = e;`. -/
+def constDecl (x : String) (e : MiniExpr) : MiniStatement :=
+  .decl .const ⟨⟨.ident (nes x), some e⟩, []⟩
+
+/-- A statement from a list of them. -/
+def asStmt : List MiniStatement → MiniStatement
+  | [s] => s
+  | ss => .block ss
+
+/-- The chain `if (t₀) { b₀ } else if (t₁) { b₁ } … else { bₙ }` of the arms of a case
+    analysis (the last arm needs no test). -/
+def ifChain : List (MiniExpr × List MiniStatement) → List MiniStatement
+  | [] => [.throw (.new (ident "Error") [.string "LeanScript: an empty case analysis"])]
+  | [(_, b)] => b
+  | (t, b) :: rest =>
+    let els := match ifChain rest with
+      | [s@(.if_ ..)] => s
+      | ss => .block ss
+    [.if_ t (.block b) (some els)]
+
+/-! ## Where an iteration ends early -/
+
+mutual
+/-- Does an iteration of the block end (`next`) somewhere other than at its end (`tail`
+    says whether the end of the block is the end of the iteration)? -/
+partial def JsBlock.earlyNext {C M J : List JsTy} {k : JsEnd} (tail : Bool) :
+    JsBlock C M J k → Bool
+  | .next => !tail
+  | .const _ _ r | .letMut _ _ r | .assign _ _ r | .destructure _ _ r => r.earlyNext tail
+  | .ite _ t e => t.earlyNext tail || e.earlyNext tail
+  | .enumCases _ arms => arms.earlyNext tail
+  | .unionCases _ arms => arms.earlyNext tail
+  | .join _ b r => b.earlyNext false || r.earlyNext tail
+  | .forRange _ _ _ _ r | .lastIter _ _ _ _ r | .forOf _ _ _ _ r => r.earlyNext tail
+  | .ret _ | .jump _ _ | .throw _ => false
+/-- `earlyNext` of the arms of an enum's case analysis. -/
+partial def JsEnumArms.earlyNext {C M J : List JsTy} {k : JsEnd} {n : Nat} (tail : Bool) :
+    JsEnumArms C M J k n → Bool
+  | .nil => false
+  | .cons b rest => b.earlyNext tail || rest.earlyNext tail
+/-- `earlyNext` of the arms of a union's case analysis. -/
+partial def JsUnionArms.earlyNext {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
+    (tail : Bool) : JsUnionArms C M J k cs → Bool
+  | .nil => false
+  | .cons _ b rest => b.earlyNext tail || rest.earlyNext tail
+end
+
+mutual
+/-- Does the block jump to the join point of index `i` somewhere other than at its end (`tail`
+    says whether the end of the block is the end of the labelled block of that join point)? -/
+partial def JsBlock.earlyJump {C M J : List JsTy} {k : JsEnd} (i : Nat) (tail : Bool) :
+    JsBlock C M J k → Bool
+  | .jump j _ => j.index == i && !tail
+  | .const _ _ r | .letMut _ _ r | .assign _ _ r | .destructure _ _ r => r.earlyJump i tail
+  | .ite _ t e => t.earlyJump i tail || e.earlyJump i tail
+  | .enumCases _ arms => arms.earlyJump i tail
+  | .unionCases _ arms => arms.earlyJump i tail
+  | .join _ b r => b.earlyJump (i + 1) false || r.earlyJump i tail
+  | .forRange _ _ _ _ r | .lastIter _ _ _ _ r | .forOf _ _ _ _ r => r.earlyJump i tail
+  | .ret _ | .next | .throw _ => false
+/-- `earlyJump` of the arms of an enum's case analysis. -/
+partial def JsEnumArms.earlyJump {C M J : List JsTy} {k : JsEnd} {n : Nat} (i : Nat)
+    (tail : Bool) : JsEnumArms C M J k n → Bool
+  | .nil => false
+  | .cons b rest => b.earlyJump i tail || rest.earlyJump i tail
+/-- `earlyJump` of the arms of a union's case analysis. -/
+partial def JsUnionArms.earlyJump {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
+    (i : Nat) (tail : Bool) : JsUnionArms C M J k cs → Bool
+  | .nil => false
+  | .cons _ b rest => b.earlyJump i tail || rest.earlyJump i tail
+end
+
+end MoreJs

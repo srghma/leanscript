@@ -2,7 +2,7 @@ module
 
 public import JsTerm.Ty.Config
 public import JsTerm.Ops.Imported
-public import JsTerm.Ops.Inlinable
+public import JsTerm.Ops.Template
 public import JsTerm.Syntax.NumberLit
 
 @[expose] public section

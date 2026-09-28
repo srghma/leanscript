@@ -1,6 +1,8 @@
 module
 
 public import JsTerm.Ty.Config
+public import JsTerm.Ty.Defs
+public import JsTerm.Ty.DecEq
 public import JsTerm.Ty.Basic
 public import JsTerm.Ty.Lower
 
