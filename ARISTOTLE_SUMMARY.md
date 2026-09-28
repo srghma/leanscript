@@ -1,3 +1,27 @@
+# Summary of changes for run b17cc614-820d-4167-a580-8242bc29d1e6
+The four outputs (`FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt`, `FILE.js`, plus `FILE.check.mjs`) now also cover well-founded functions in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`. The tool already handled most of this before this session. I rebuilt it and reran it on every file, and it reproduced the committed outputs exactly. That rerun showed which well-founded functions were still refused, and I fixed the one blocker that could be fixed without a larger redesign.
+
+**Changes**
+- **`==` on `Char`** (`LeanScript/TermElab/ToTerm/Expr/Calls.lean`). This was what kept the well-founded loops `StringWalk.test1.go` and `test2.go` out. Lean compares characters by looking inside the `Char` value, which the translator can't do. It now translates `a == b` as a comparison of the two one-character strings `"".push a` and `"".push b`, using the existing string operations.
+- **JavaScript for that comparison** (`MoreJsTy/Extern.lean`). A character is already a one-character string in the JavaScript output, so `"".push c` is printed as just `c`. The comparison comes out as `get(s, p) === c`.
+- **Proof that the rewrite is correct** (`LeanScript/TermElab/ToTerm/CharEq.lean`). `decide_char_eq_push` shows that deciding `a = b` and deciding `"".push a = "".push b` always give the same answer; `char_beq_eq_push` does the same for `==`. There is no `sorry`, and the proof uses only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+- **Progress output** (`LeanScriptCli/Main.lean`). When run without `--quiet`, the tool now prints a line for each refused well-founded or `mutual` function, with the reason.
+
+**Results**
+- `StringWalk`'s `test1`, `test1.go`, `test2` and `test2.go` are now translated; `StringWalk` has 7 functions exported and none refused, with 59 checks.
+- As a side effect, `CaseChar.test1` and `PrimOpChar01`'s `test1` and `test2` are now translated too.
+- On a full rerun over both directories, all 2064 checks passed and none failed. `lake exe tests` passed 45 of 45.
+
+**Still refused**
+- These well-founded functions are polymorphic or monadic, which the translator doesn't support in general: `Fusion02`'s `toArrayLoop` and `filterMapStep`, `RecursionSchemes01`'s `cata` and `cataMap`, and `VanLaarhovenTraversals01`'s `rewriteBottomUpM`.
+- `CaptureDerefRegression01`'s `testEven` and `testOdd` also fail, with a type-mismatch error. They are a `mutual` pair recursing on a subvalue, not well-founded functions, so they are outside this request. `NOT_IMPLEMENTED.md` lists the polymorphic/monadic ones.
+
+**Not verified:** the translator code that performs the `Char` rewrite is only tested by the generated checks, not proved.
+
+**Build setup:** as in earlier runs, `lakefile.toml` requires Mathlib but `lake-manifest.json` has no entry for it, so `lake` stops immediately. I removed that requirement locally to build, then restored it, so your lakefile is unchanged. For that reason I'm not listing any build targets. The only module that failed was `LeanScript/Term/UsageAlgebra.lean`, which imports Mathlib; it failed before this change too.
+
+`README.md` and `NOT_IMPLEMENTED.md` are updated, the regenerated outputs are included, and everything is committed.
+
 # Summary of changes for run f15c3bd1-7932-4195-9d74-37f950b4def1
 The four output files (`FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`, `FILE-MoreJsTy.txt`, `FILE.js`) now cover well-founded functions in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`, not only structurally recursive ones. Each file still also gets its `FILE.check.mjs`.
 

@@ -30,6 +30,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(\"a\")", () => M.test1("a"), "1", false);
+check("test1(\"z\")", () => M.test1("z"), "catch", false);
+check("test1(\" \")", () => M.test1(" "), "catch", false);
+check("test1(\"é\")", () => M.test1("é"), "catch", false);
 
 console.log(`CaseChar.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -67,7 +67,7 @@ that its calls of `f` become calls of `f_rec` too; a constant calling such funct
 (`def ack999 := ack 999 1`) is exported as a function of no parameter.  A function type whose
 result depends on the argument only through what the translation erases (the predicate of a
 subtype: `(n : Nat) → {m // m ≥ n - 10}`, as in `Tco09`'s `Mc91.M`) is read as the
-non-dependent `Nat → Nat`, and a local proof `have h : p := …` is substituted into the body.  A case analysis `0` / `k + 1` that the
+non-dependent `Nat → Nat`, and a local proof `have h : p := …` is substituted into the body.  `a == b` on `Char` (whose instance projects the leaf `Char`) is translated as the comparison of the one-character strings `"".push a` and `"".push b` (`LeanScript/TermElab/ToTerm/CharEq.lean` proves the two decisions equal), which is `a === b` in JavaScript.  A case analysis `0` / `k + 1` that the
 translation reads as a recursion whose step ignores the accumulator is printed as an `if`,
 not a loop.  `leanscript --help` lists the configuration options (`--nat=num|bigint`,
 `--int=…`, `--array-bool=uint8|generic`, …; `MoreJsTy/Config.lean`).

@@ -454,7 +454,12 @@ def lowerExtern (name : String) (argTys : List MoreJsTy) (resTy : MoreJsTy)
     | "lean_nat_dec_le" | "lean_int_dec_le" | "lean_float_decLe" => some (bin .le)
     | "lean_strict_and" => some (bin .and)
     | "lean_strict_or" => some (bin .or)
-    | "lean_string_append" | "lean_string_push" => some (bin .add)
+    -- `"".push c` is the one-character string `c` itself (a `Char` is a string of one
+    -- code point), how `a = b` on `Char` is translated
+    | "lean_string_push" => match args with
+      | [.lit (.str ""), c] => some c
+      | _ => some (bin .add)
+    | "lean_string_append" => some (bin .add)
     | "lean_float_add" => some (bin .add)
     | "lean_float_sub" => some (bin .sub)
     | "lean_float_mul" => some (bin .mul)

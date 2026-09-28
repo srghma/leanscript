@@ -201,6 +201,14 @@ partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
         return ← tr L (mkApp2 (mkConst ``or) (dec q dq) (dec r dr))
     | ``instDecidableNot, #[q, dq] =>
         return ← tr L (mkApp (mkConst ``not) (dec q dq))
+    -- `a = b` on `Char`: `Char` is a leaf, so the instance's `decEq a.val b.val` (a
+    -- projection of the leaf) has no translation; the language compares the one-character
+    -- strings `"".push a` and `"".push b` instead (`String.push` and `String.decEq` are
+    -- externs), which are equal exactly when `a = b`
+    | ``instDecidableEqChar, #[a, b] =>
+        let one (c : Expr) : Expr := mkApp2 (mkConst ``String.push) (mkStrLit "") c
+        let (x, y) := (one a, one b)
+        return ← tr L (dec (← mkEq x y) (mkApp2 (mkConst ``String.decEq) x y))
     | ``instDecidableTrue, _ => return ← tr L (mkConst ``Bool.true)
     | ``instDecidableFalse, _ => return ← tr L (mkConst ``Bool.false)
     | ``Decidable.isTrue, _ => return ← tr L (mkConst ``Bool.true)

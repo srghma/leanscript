@@ -206,9 +206,12 @@ The supported fragment and the refusals are listed in the header of
   cannot see, and constants whose value is not computable at compile time are listed with the
   reason in every output file.  Well-founded recursion is translated (through open
   definitions), but a well-founded function is still refused when its body uses something
-  the translator does not support in general: e.g. `StringWalk`'s `test1.go`/`test2.go`
-  compare `Char`s with `==`, and `Char` equality unfolds to a projection of the leaf type
-  `Char`, which has no extern yet.
+  the translator does not support in general: the ones left in `Tests/SnapshotsMy` and
+  `Tests/SnapshotsPBOPure` are polymorphic or monadic (`Fusion02`'s `toArrayLoop` and
+  `filterMapStep`, `RecursionSchemes01`'s `cata`/`cataMap`, `VanLaarhovenTraversals01`'s
+  `rewriteBottomUpM`).  (`Char` equality, which kept `StringWalk`'s `test1.go`/`test2.go`
+  out, is now translated: `LeanScript/TermElab/ToTerm/CharEq.lean`.)  Run `leanscript`
+  without `--quiet` to see each refused open definition reported on its own line.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

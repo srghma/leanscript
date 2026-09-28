@@ -248,7 +248,10 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
       let opt : ClosedTerm := { ct with term := ct.term.optimizeN o.rounds }
       done := done.push { name := n, ty, params := dedupNames (ps.map jsIdent), term := ct,
                           optimized := opt, recRefs := rs }
-    | .error e => refused := refused.push (n, e)
+    | .error e =>
+      unless o.quiet do
+        if recSet.contains n then IO.eprintln s!"leanscript:   {n}: not translated (open definition): {e}"
+      refused := refused.push (n, e)
   -- the JavaScript
   let mut funs : Array JsFun := #[]
   let mut helpers : Array JsHelper := #[]

@@ -30,6 +30,38 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(\"a\", \"a\")", () => M.test1("a", "a"), "true", false);
+check("test1(\"a\", \"z\")", () => M.test1("a", "z"), "false", false);
+check("test1(\"z\", \"a\")", () => M.test1("z", "a"), "false", false);
+check("test1(\"a\", \" \")", () => M.test1("a", " "), "false", false);
+check("test1(\"z\", \"z\")", () => M.test1("z", "z"), "true", false);
+check("test1(\" \", \"a\")", () => M.test1(" ", "a"), "false", false);
+check("test1(\"a\", \"é\")", () => M.test1("a", "é"), "false", false);
+check("test1(\"z\", \" \")", () => M.test1("z", " "), "false", false);
+check("test1(\" \", \"z\")", () => M.test1(" ", "z"), "false", false);
+check("test1(\"é\", \"a\")", () => M.test1("é", "a"), "false", false);
+check("test1(\"z\", \"é\")", () => M.test1("z", "é"), "false", false);
+check("test1(\" \", \" \")", () => M.test1(" ", " "), "true", false);
+check("test1(\"é\", \"z\")", () => M.test1("é", "z"), "false", false);
+check("test1(\" \", \"é\")", () => M.test1(" ", "é"), "false", false);
+check("test1(\"é\", \" \")", () => M.test1("é", " "), "false", false);
+check("test1(\"é\", \"é\")", () => M.test1("é", "é"), "true", false);
+check("test2(\"a\", \"a\")", () => M.test2("a", "a"), "false", false);
+check("test2(\"a\", \"z\")", () => M.test2("a", "z"), "true", false);
+check("test2(\"z\", \"a\")", () => M.test2("z", "a"), "true", false);
+check("test2(\"a\", \" \")", () => M.test2("a", " "), "true", false);
+check("test2(\"z\", \"z\")", () => M.test2("z", "z"), "false", false);
+check("test2(\" \", \"a\")", () => M.test2(" ", "a"), "true", false);
+check("test2(\"a\", \"é\")", () => M.test2("a", "é"), "true", false);
+check("test2(\"z\", \" \")", () => M.test2("z", " "), "true", false);
+check("test2(\" \", \"z\")", () => M.test2(" ", "z"), "true", false);
+check("test2(\"é\", \"a\")", () => M.test2("é", "a"), "true", false);
+check("test2(\"z\", \"é\")", () => M.test2("z", "é"), "true", false);
+check("test2(\" \", \" \")", () => M.test2(" ", " "), "false", false);
+check("test2(\"é\", \"z\")", () => M.test2("é", "z"), "true", false);
+check("test2(\" \", \"é\")", () => M.test2(" ", "é"), "true", false);
+check("test2(\"é\", \" \")", () => M.test2("é", " "), "true", false);
+check("test2(\"é\", \"é\")", () => M.test2("é", "é"), "false", false);
 
 console.log(`PrimOpChar01.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

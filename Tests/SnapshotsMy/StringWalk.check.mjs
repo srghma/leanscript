@@ -30,6 +30,26 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(\"\", \"a\")", () => M.test1("", "a"), "0", false);
+check("test1(\"\", \"z\")", () => M.test1("", "z"), "0", false);
+check("test1(\"a\", \"a\")", () => M.test1("a", "a"), "1", false);
+check("test1(\"\", \" \")", () => M.test1("", " "), "0", false);
+check("test1(\"a\", \"z\")", () => M.test1("a", "z"), "0", false);
+check("test1(\"hello world\", \"a\")", () => M.test1("hello world", "a"), "0", false);
+check("test1(\"\", \"é\")", () => M.test1("", "é"), "0", false);
+check("test1(\"a\", \" \")", () => M.test1("a", " "), "0", false);
+check("test1(\"hello world\", \"z\")", () => M.test1("hello world", "z"), "0", false);
+check("test1(\"héllo, wörld\", \"a\")", () => M.test1("héllo, wörld", "a"), "0", false);
+check("test1(\"a\", \"é\")", () => M.test1("a", "é"), "0", false);
+check("test1(\"hello world\", \" \")", () => M.test1("hello world", " "), "1", false);
+check("test1(\"héllo, wörld\", \"z\")", () => M.test1("héllo, wörld", "z"), "0", false);
+check("test1(\"abcabc\", \"a\")", () => M.test1("abcabc", "a"), "2", false);
+check("test1(\"hello world\", \"é\")", () => M.test1("hello world", "é"), "0", false);
+check("test1(\"héllo, wörld\", \" \")", () => M.test1("héllo, wörld", " "), "1", false);
+check("test1(\"abcabc\", \"z\")", () => M.test1("abcabc", "z"), "0", false);
+check("test1(\"héllo, wörld\", \"é\")", () => M.test1("héllo, wörld", "é"), "1", false);
+check("test1(\"abcabc\", \" \")", () => M.test1("abcabc", " "), "0", false);
+check("test1(\"abcabc\", \"é\")", () => M.test1("abcabc", "é"), "0", false);
 check("test4(\"\")", () => M.test4(""), "0", false);
 check("test4(\"a\")", () => M.test4("a"), "0", false);
 check("test4(\"hello world\")", () => M.test4("hello world"), "55", false);
