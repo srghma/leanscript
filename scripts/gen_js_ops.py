@@ -27,7 +27,10 @@ ones that change an argument), `pure` otherwise; `mayThrow` when its function in
 contains a `throw` or refers to a function that may throw (found by a fixpoint over the
 declarations of `runtime.js`), `doesntThrow` otherwise.  An alias in `runtime.js`
 (`export const a = b;`) of an operation at the same signature is not an operation of its own:
-its extern is looked up to `b` (`lean_array_fset` is `lean_array_set_immutable`).
+its extern is looked up to `b` (`lean_array_get_borrowed` is `lean_array_get`).  The array
+updates (`UPDATES`) come as an `_immutable` and a `_mutable` operation, both functions of
+`runtime.js` at the same signature, which `JsOpImported.toMutable?` pairs; the script fails when
+the `_mutable` function of one is missing.
 
 Every extern must have an operation at every representation: the script fails (listing them)
 when one has neither an inline form nor a function in `runtime.js`.
@@ -546,9 +549,9 @@ def all_cfgs(knobs):
 # The polymorphic array/thunk externs, by hand: 'layout' (one op over every array layout),
 # 'split' (a generic and a typed op), 'thunk' / 'any' (over the delayed type).
 POLY = {
-    'lean_array_get_borrowed': 'layout', 'lean_array_get': 'layout', 'lean_array_push': 'layout',
+    'lean_array_get_borrowed': 'layout', 'lean_array_get': 'layout', 'lean_array_push': 'split',
     'lean_array_get_size': 'layout', 'lean_array_set': 'layout', 'lean_array_fset': 'layout',
-    'lean_array_fswap': 'layout', 'lean_array_swap': 'layout', 'lean_array_pop': 'layout',
+    'lean_array_fswap': 'layout', 'lean_array_swap': 'layout', 'lean_array_pop': 'split',
     'lean_array_to_list': 'split', 'lean_mk_array': 'split',
     'lean_mk_empty_array_with_capacity__Array_emptyWithCapacity': 'split',
     'lean_mk_empty_array_with_capacity__Array_mkEmpty': 'split',
@@ -559,10 +562,13 @@ POLY = {
 
 # The array updates that return a copy of their array argument: an `_immutable` operation
 # (the extern) and a `_mutable` one (which updates the array in place, when nothing else
-# refers to it).  `push` and `pop` change the length, so their `_mutable` versions exist on
-# generic arrays only (a typed array cannot grow or shrink).
+# refers to it), at the same signature.  `push` and `pop` change the length, so they are split
+# into a generic and a typed operation, and only the generic one has a `_mutable` version (a
+# typed array cannot grow or shrink).  `fset` / `fswap` are `set` / `swap` with the bounds
+# proved (so their functions do not check them).
 UPDATES = {'lean_array_push': 'generic', 'lean_array_pop': 'generic',
-           'lean_array_set': 'layout', 'lean_array_swap': 'layout'}
+           'lean_array_set': 'layout', 'lean_array_swap': 'layout',
+           'lean_array_fset': 'layout', 'lean_array_fswap': 'layout'}
 
 LAYOUT_PARAMS = '{A E : JsTy} (l : JsArrayLayout A E)'
 
@@ -613,14 +619,13 @@ def build_ops(rt):
     # the mutable updates
     for base, kind in UPDATES.items():
         e = next(x for x in cat if x['name'] == base)
-        for o in [o for o in ops if o['extern'] == base]:
+        for o in [o for o in ops if o['extern'] == base and o['poly'] == kind]:
             mname = o['name'].replace('_immutable', '_mutable')
             if mname not in exports:
+                missing.append(mname)
                 continue
             if kind == 'generic':
-                args = [a.replace('A', '(.array α)').replace('E', 'α') for a in o['args']]
-                res = o['res'].replace('A', '(.array α)')
-                ops.append(mk_op(mname, None, e, args, res, ('import',), params='(α : JsTy)',
+                ops.append(mk_op(mname, None, e, o['args'], o['res'], ('import',), params='(α : JsTy)',
                                  poly='generic', mutableOf=o['name']))
             else:
                 ops.append(mk_op(mname, None, e, o['args'], o['res'], ('import',),
@@ -680,8 +685,8 @@ def poly_ops(e, pre, arg_tys, res_ty, seen, exports, missing):
         args, res = [lean_of(t, 'α') for t in arg_tys], lean_of(res_ty, 'α')
         return [mk_op(opname, name, e, args, res, ('import',), '(α : JsTy)', 'elem')]
     # split: a generic and a typed op
-    gname = f'{pre}__{name}'
-    tname = f'typedArray__{pre}__{name}' if pre != 'array' else f'typedArray__{name}'
+    gname = op_name(pre, name)
+    tname = 'typedArray__' + (gname if pre != 'array' else gname[len('array__'):])
     if gname in seen:
         return []
     seen.add(gname)
@@ -695,6 +700,11 @@ def poly_ops(e, pre, arg_tys, res_ty, seen, exports, missing):
         res.append(mk_op(gname, name, e, gargs, gres, ('inline', A(0)), '(α : JsTy)', 'generic'))
         if has(tname):
             res.append(mk_op(tname, name, e, targs, '(.list (.terminal t.leaf))', ('import',), TP, 'typed'))
+    elif sym in ('lean_array_push', 'lean_array_pop'):
+        if has(gname):
+            res.append(mk_op(gname, name, e, gargs, gres, ('import',), '(α : JsTy)', 'generic'))
+        if has(tname):
+            res.append(mk_op(tname, name, e, targs, tres, ('import',), TP, 'typed'))
     elif sym == 'lean_mk_array':
         if has(gname):
             res.append(mk_op(gname, name, e, gargs, gres, ('import',), '(α : JsTy)', 'generic'))
@@ -819,7 +829,7 @@ def runtimeName {SIG_ARGS}
         if not m:
             continue
         if o['poly'] == 'generic':
-            s += f'  | .{m} (.generic α) => some ⟨_, .{o["name"]} α⟩\n'
+            s += f'  | .{m} α => some ⟨_, .{o["name"]} α⟩\n'
         else:
             s += f'  | .{m} l => some ⟨_, .{o["name"]} l⟩\n'
     s += '  | _ => none\n\n'

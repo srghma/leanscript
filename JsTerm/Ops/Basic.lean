@@ -51,10 +51,13 @@ Both families are indexed by what an operation may do besides answering (`Effect
   throw a `RangeError` when the result does not fit in a safe integer (so that no result is
   ever silently wrong).  The inlined operations never throw.
 
-The array updates come in two versions: `…_immutable` (the extern: a copy of the array) and
-`…_mutable` (the same update in place); `JsOpImported.toMutable?` pairs them.  An extern whose
-function in `runtime.js` is an alias of another at the same signature (`lean_array_fset` of
-`lean_array_set`) has that operation.
+The array updates (`push`, `pop`, `set`, `swap`, `fset`, `fswap`) come in two versions, both
+functions of `runtime.js` at the same signature: `…_immutable` (the extern: a copy of the
+array) and `…_mutable` (the same update in place); `JsOpImported.toMutable?` pairs them.
+`push` and `pop` on a typed array (`typedArray__lean_array_push_immutable`, …) have only the
+immutable version, since a typed array cannot grow or shrink.  An extern whose function in
+`runtime.js` is an alias of another at the same signature (`lean_array_get_borrowed` of
+`lean_array_get`) has that operation.
 -/
 
 namespace MoreJs

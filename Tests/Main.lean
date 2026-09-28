@@ -131,7 +131,11 @@ abbrev tA : JsTy := .array tN
 
 /-- `array__lean_array_push_immutable(a, x)`. -/
 def pushE {C M : List JsTy} (a : JsExpr C M tA) (x : JsExpr C M tN) : JsExpr C M tA :=
-  .imported (.array__lean_array_push_immutable (.generic tN)) (.cons a (.cons x .nil))
+  .imported (.array__lean_array_push_immutable tN) (.cons a (.cons x .nil))
+
+/-- `uint53__lean_array_fset_immutable(a, i, x)` (`Array.set`, the bound proved). -/
+def fsetE {C M : List JsTy} (a : JsExpr C M tA) (i x : JsExpr C M tN) : JsExpr C M tA :=
+  .imported (.uint53__lean_array_fset_immutable (.generic tN)) (.cons a (.cons i (.cons x .nil)))
 
 /-- The literal `1`. -/
 def one {C M : List JsTy} : JsExpr C M tN := .lit (.uint53 1 (by decide))
@@ -191,10 +195,11 @@ def moreJsSpec : Spec := describe "JsTerm" do
       (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr [big, big] [] big)))
     assertEq "Nat.land (uint53): the runtime" "uint53__lean_nat_land(c1, c0)"
       (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr [tN, tN] [] tN)))
-    -- `Array.fset` is `Array.set` (the same function of the runtime at the same signature)
+    -- `Array.set` (`lean_array_fset`, the bound proved) has its own operation, which does not
+    -- check the bound
     let fsetArgs : JsArgs [tN, tN, tA] [] [tA, tN, tN] :=
       .cons (.cvar (.succ (.succ .zero))) (.cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil))
-    assertEq "Array.fset is Array.set" "uint53__lean_array_set_immutable(c2, c1, c0)"
+    assertEq "Array.set" "uint53__lean_array_fset_immutable(c2, c1, c0)"
       (shown (lowerExtern "lean_array_fset" fsetArgs : Except String (JsExpr [tN, tN, tA] [] tA)))
     assertEq "no operation" true
       ((shown (lowerExtern "lean_no_such_extern" args : Except String (JsExpr [tN, tN] [] tN))).startsWith
@@ -241,6 +246,86 @@ def moreJsSpec : Spec := describe "JsTerm" do
     | .ok ⟨t, l⟩ => assertEq "a BigInt" "1152921504606846976n" (l.shape.pretty ++ "" ++
         (if t == JsTerminalTy.bigint_nat then "" else "?"))
     | .error e => assertEq "a BigInt" "a literal" e
+  it "every array update has an immutable and a mutable version" do
+    -- by name: each `…_mutable` operation has its `…_immutable` one, and each `…_immutable` one
+    -- has its `…_mutable` one, except `push` / `pop` on a typed array (which cannot grow or
+    -- shrink)
+    let names := JsOpImported.names.toList
+    let imm := names.filter fun (n : String) => n.endsWith "_immutable"
+    let mut' := names.filter fun (n : String) => n.endsWith "_mutable"
+    let base (suffix n : String) : String := (n.dropEnd suffix.length).toString
+    assertEq "the immutable updates"
+      ["array__lean_array_pop_immutable", "array__lean_array_push_immutable",
+       "bigint_nat__lean_array_fset_immutable", "bigint_nat__lean_array_fswap_immutable",
+       "bigint_nat__lean_array_set_immutable", "bigint_nat__lean_array_swap_immutable",
+       "typedArray__lean_array_pop_immutable", "typedArray__lean_array_push_immutable",
+       "uint53__lean_array_fset_immutable", "uint53__lean_array_fswap_immutable",
+       "uint53__lean_array_set_immutable", "uint53__lean_array_swap_immutable"]
+      (imm.toArray.qsort (· < ·)).toList
+    assertEq "a mutable update without its immutable one" ([] : List String)
+      (mut'.filter fun n => !imm.contains (base "_mutable" n ++ "_immutable"))
+    assertEq "an immutable update without its mutable one"
+      ["typedArray__lean_array_push_immutable", "typedArray__lean_array_pop_immutable"]
+      (imm.filter fun n => !mut'.contains (base "_immutable" n ++ "_mutable"))
+    -- `toMutable?` pairs them, and only the mutable one is effectful
+    let pairName {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+        (op : JsOpImported e t σs τ) : String :=
+      match op.toMutable? with
+      | some ⟨_, m⟩ => s!"{op.name} {repr e} -> {m.name}"
+      | none => s!"{op.name} {repr e} -> none"
+    assertEq "push" "array__lean_array_push_immutable MoreJs.Effectfulness.pure -> array__lean_array_push_mutable"
+      (pairName (.array__lean_array_push_immutable tN))
+    assertEq "typed push" "typedArray__lean_array_push_immutable MoreJs.Effectfulness.pure -> none"
+      (pairName (.typedArray__lean_array_push_immutable .uint8))
+    assertEq "fset" "uint53__lean_array_fset_immutable MoreJs.Effectfulness.pure -> uint53__lean_array_fset_mutable"
+      (pairName (.uint53__lean_array_fset_immutable (.generic tN)))
+    assertEq "fswap, typed" "bigint_nat__lean_array_fswap_immutable MoreJs.Effectfulness.pure -> bigint_nat__lean_array_fswap_mutable"
+      (pairName (.bigint_nat__lean_array_fswap_immutable (.typed .uint8)))
+    assertEq "a mutable one is effectful" "uint53__lean_array_set_mutable MoreJs.Effectfulness.effectful -> none"
+      (pairName (.uint53__lean_array_set_mutable (.generic tN)))
+  it "the immutable array updates of runtime.js copy, the mutable ones update in place (needs node)" do
+    -- each case: an update, its arguments after the array, and the array it is applied to
+    let cases : List (String × String × String) := [
+      ("array__lean_array_push", "5", "[1, 2, 3]"),
+      ("array__lean_array_pop", "", "[1, 2, 3]"),
+      ("bigint_nat__lean_array_set", "1n, 9", "[1, 2, 3]"),
+      ("bigint_nat__lean_array_set", "7n, 9", "[1, 2, 3]"),
+      ("uint53__lean_array_set", "2, 9", "new Uint8Array([1, 2, 3])"),
+      ("bigint_nat__lean_array_swap", "0n, 2n", "[1, 2, 3]"),
+      ("uint53__lean_array_swap", "0, 5", "[1, 2, 3]"),
+      ("bigint_nat__lean_array_fset", "0n, 9", "new Float64Array([1, 2, 3])"),
+      ("uint53__lean_array_fset", "2, 9", "[1, 2, 3]"),
+      ("bigint_nat__lean_array_fswap", "0n, 1n", "[1, 2, 3]"),
+      ("uint53__lean_array_fswap", "1, 2", "new Int32Array([1, 2, 3])")]
+    let cwd ← IO.currentDir
+    let names := cases.foldl (fun (acc : List String) (c : String × String × String) =>
+      acc ++ [c.1 ++ "_immutable", c.1 ++ "_mutable"]) []
+    let names := names.foldl (fun (acc : List String) n => if acc.contains n then acc else acc ++ [n]) []
+    -- prints, per case: whether the immutable one left its argument alone, whether it returned
+    -- a new array (or its argument, unchanged, out of bounds), whether the mutable one returned
+    -- its argument, and whether the two agree
+    let check (c : String × String × String) : String :=
+      let (f, args, arr) := c
+      let args := if args.isEmpty then "" else ", " ++ args
+      s!"\{ const a = {arr}; const before = Array.from(a).join(); " ++
+      s!"const r = {f}_immutable(a{args}); " ++
+      s!"const b = {arr}; const m = {f}_mutable(b{args}); " ++
+      "console.log([Array.from(a).join() === before, r !== a || Array.from(r).join() === before, m === b, " ++
+      "Array.from(r).join() === Array.from(m).join(), r.constructor === m.constructor].join()); }
+"
+    let script := s!"import \{ {", ".intercalate names} } from {(s!"file://{cwd}/runtime.js").quote};\n" ++
+      String.join (cases.map check)
+    let out ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      catch _ => pure none
+    match out with
+    | none => pure ()  -- no `node`: nothing to run
+    | some out =>
+      assertEq "node" "" (if out.exitCode == 0 then "" else out.stderr)
+      let lines := (out.stdout.splitOn "\n").filter (· ≠ "")
+      assertEq "one line per case" cases.length lines.length
+      for (c, got) in cases.zip lines do
+        assertEq s!"{c.1}({c.2.2}, {c.2.1})" "true,true,true,true,true" got
   it "runtime.js exports every imported operation" do
     let src ← IO.FS.readFile "runtime.js"
     let missing := JsOpImported.names.toList.filter fun n =>
@@ -327,6 +412,12 @@ def moreJsSpec : Spec := describe "JsTerm" do
       .letMut "acc" emptyA (.forRange "i" .uint53 (.cvar .zero)
         (.assign .zero (pushE (.mvar .zero) (.cvar .zero)) .next) (.ret (.mvar .zero)))
     assertEq "accumulator" ["array__lean_array_push_mutable"] (callsOf (inPlace loop))
+    -- `Array.set` (`fset`) has a mutable version too
+    let owned' : JsBlock [] [] [] (.ret tA) :=
+      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one)
+        (.const "c" (fsetE (.cvar .zero) (.lit (.uint53 0 (by decide))) one) (.ret (.cvar .zero))))
+    assertEq "owned, fset" ["array__lean_array_push_mutable", "uint53__lean_array_fset_mutable"]
+      (callsOf (inPlace owned'))
   it "closed constructors are shared constants" do
     let m := mkModule faithful [hoistFun]
     assertEq "constants" [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 1 }")]

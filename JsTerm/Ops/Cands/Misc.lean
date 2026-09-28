@@ -21,11 +21,11 @@ namespace JsOp
 
 /-- The operations of `lean_array_fset`. -/
 def «cands_lean_array_fset» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_set_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_set_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fset_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_fset_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_fswap`. -/
 def «cands_lean_array_fswap» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_swap_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_swap_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fswap_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_fswap_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_get`. -/
 def «cands_lean_array_get» (σs : List JsTy) (τ : JsTy) : List Cand :=
@@ -45,11 +45,11 @@ def «cands_lean_array_mk» (σs : List JsTy) (τ : JsTy) : List Cand :=
 
 /-- The operations of `lean_array_pop`. -/
 def «cands_lean_array_pop» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.array__lean_array_pop_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.array__lean_array_pop_immutable α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__lean_array_pop_immutable t)⟩] | _ => [])
 
 /-- The operations of `lean_array_push`. -/
 def «cands_lean_array_push» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.array__lean_array_push_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.array__lean_array_push_immutable α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__lean_array_push_immutable t)⟩] | _ => [])
 
 /-- The operations of `lean_array_set`. -/
 def «cands_lean_array_set» (σs : List JsTy) (τ : JsTy) : List Cand :=

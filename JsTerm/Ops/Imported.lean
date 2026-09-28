@@ -27,7 +27,9 @@ namespace MoreJs
     indexed by their effects, the types of their arguments and the type of their result. -/
 inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → Type where
   /-- Array.push -/
-  | array__lean_array_push_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, E] A
+  | array__lean_array_push_immutable : (α : JsTy) → JsOpImported .pure .doesntThrow [(.array α), α] (.array α)
+  /-- Array.push -/
+  | typedArray__lean_array_push_immutable : (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.typedArray t), (.terminal t.leaf)] (.typedArray t)
   /-- Array.toList -/
   | typedArray__lean_array_to_list : (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.typedArray t)] (.list (.terminal t.leaf))
   /-- Array.get!Internal -/
@@ -46,6 +48,14 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bigint_nat__lean_array_set_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), E] A
   /-- Array.set! -/
   | uint53__lean_array_set_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), E] A
+  /-- Array.set (decides `i < xs.size`) -/
+  | bigint_nat__lean_array_fset_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), E] A
+  /-- Array.set (decides `i < xs.size`) -/
+  | uint53__lean_array_fset_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), E] A
+  /-- Array.swap (decides `i < xs.size`, `j < xs.size`) -/
+  | bigint_nat__lean_array_fswap_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
+  /-- Array.swap (decides `i < xs.size`, `j < xs.size`) -/
+  | uint53__lean_array_fswap_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
   /-- Array.replicate -/
   | bigint_nat__lean_mk_array : (α : JsTy) → JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), α] (.array α)
   /-- Array.replicate -/
@@ -59,7 +69,9 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Array.swapIfInBounds -/
   | uint53__lean_array_swap_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
   /-- Array.pop -/
-  | array__lean_array_pop_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A] A
+  | array__lean_array_pop_immutable : (α : JsTy) → JsOpImported .pure .doesntThrow [(.array α)] (.array α)
+  /-- Array.pop -/
+  | typedArray__lean_array_pop_immutable : (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.typedArray t)] (.typedArray t)
   /-- `array__lean_array_push_immutable`, updating the array in place (Array.push) -/
   | array__lean_array_push_mutable : (α : JsTy) → JsOpImported .effectful .doesntThrow [(.array α), α] (.array α)
   /-- `array__lean_array_pop_immutable`, updating the array in place (Array.pop) -/
@@ -72,6 +84,14 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bigint_nat__lean_array_swap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
   /-- `uint53__lean_array_swap_immutable`, updating the array in place (Array.swapIfInBounds) -/
   | uint53__lean_array_swap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
+  /-- `bigint_nat__lean_array_fset_immutable`, updating the array in place (Array.set (decides `i < xs.size`)) -/
+  | bigint_nat__lean_array_fset_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .bigint_nat), E] A
+  /-- `uint53__lean_array_fset_immutable`, updating the array in place (Array.set (decides `i < xs.size`)) -/
+  | uint53__lean_array_fset_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .uint53), E] A
+  /-- `bigint_nat__lean_array_fswap_immutable`, updating the array in place (Array.swap (decides `i < xs.size`, `j < xs.size`)) -/
+  | bigint_nat__lean_array_fswap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
+  /-- `uint53__lean_array_fswap_immutable`, updating the array in place (Array.swap (decides `i < xs.size`, `j < xs.size`)) -/
+  | uint53__lean_array_fswap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
   /-- Nat.div -/
   | bigint_nat__lean_nat_div : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- Nat.div -/
@@ -829,12 +849,16 @@ def extraArgs {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
 /-- The version of an array update that updates the array in place, if it has one. -/
 def toMutable? {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
     JsOpImported e t σs τ → Option (Σ t' : MayThrow, JsOpImported .effectful t' σs τ)
-  | .array__lean_array_push_immutable (.generic α) => some ⟨_, .array__lean_array_push_mutable α⟩
-  | .array__lean_array_pop_immutable (.generic α) => some ⟨_, .array__lean_array_pop_mutable α⟩
+  | .array__lean_array_push_immutable α => some ⟨_, .array__lean_array_push_mutable α⟩
+  | .array__lean_array_pop_immutable α => some ⟨_, .array__lean_array_pop_mutable α⟩
   | .bigint_nat__lean_array_set_immutable l => some ⟨_, .bigint_nat__lean_array_set_mutable l⟩
   | .uint53__lean_array_set_immutable l => some ⟨_, .uint53__lean_array_set_mutable l⟩
   | .bigint_nat__lean_array_swap_immutable l => some ⟨_, .bigint_nat__lean_array_swap_mutable l⟩
   | .uint53__lean_array_swap_immutable l => some ⟨_, .uint53__lean_array_swap_mutable l⟩
+  | .bigint_nat__lean_array_fset_immutable l => some ⟨_, .bigint_nat__lean_array_fset_mutable l⟩
+  | .uint53__lean_array_fset_immutable l => some ⟨_, .uint53__lean_array_fset_mutable l⟩
+  | .bigint_nat__lean_array_fswap_immutable l => some ⟨_, .bigint_nat__lean_array_fswap_mutable l⟩
+  | .uint53__lean_array_fswap_immutable l => some ⟨_, .uint53__lean_array_fswap_mutable l⟩
   | _ => none
 
 end JsOpImported

@@ -34,7 +34,8 @@ def JsOpImported.buildsArray {e : Effectfulness} {t : MayThrow} {σs : List JsTy
     itself, when an index is out of bounds)? -/
 def JsOpImported.updatesArray {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
     (op : JsOpImported e t σs τ) : Bool :=
-  ["lean_array_set_immutable", "lean_array_swap_immutable"].any (nameHas op.name)
+  ["lean_array_set_immutable", "lean_array_swap_immutable", "lean_array_fset_immutable",
+   "lean_array_fswap_immutable"].any (nameHas op.name)
 
 /-- Is every value of the type free of arrays (so that no two values of it can share a mutable
     part)?  Numbers, strings, booleans, enums, and records and unions of those. -/

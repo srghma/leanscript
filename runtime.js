@@ -8,12 +8,25 @@
 // of a global are not here: they are written inline (`JsOpInlinable`).
 //
 // An alias `export const a = b;` of an operation at the same signature is not an operation of
-// its own: the extern of `a` is compiled to `b` (`lean_array_fset` is `lean_array_set`).
+// its own: the extern of `a` is compiled to `b` (`lean_array_get_borrowed` is `lean_array_get`).
 //
 // Every function is pure (it never mutates an argument), except the `_mutable` array
-// updates, which the backend calls only on an array nothing else refers to (their
-// `_immutable` versions return an updated copy).  A function that may throw is one that
-// contains a `throw` or calls one that may: the generator reads that off this file.
+// updates, which the backend calls only on an array nothing else refers to.  Every array
+// update comes as the pair of the operations of `JsTerm/Ops/Imported.lean` that
+// `JsOpImported.toMutable?` relates, at the same signature:
+//
+//   `…_immutable` (pure: returns an updated copy)  `…_mutable` (effectful: updates in place)
+//   `array__lean_array_push_immutable`            `array__lean_array_push_mutable`
+//   `array__lean_array_pop_immutable`             `array__lean_array_pop_mutable`
+//   `<ix>__lean_array_set_immutable`              `<ix>__lean_array_set_mutable`
+//   `<ix>__lean_array_swap_immutable`             `<ix>__lean_array_swap_mutable`
+//   `<ix>__lean_array_fset_immutable`             `<ix>__lean_array_fset_mutable`
+//   `<ix>__lean_array_fswap_immutable`            `<ix>__lean_array_fswap_mutable`
+//
+// where `<ix>` is the representation of the index (`bigint_nat` or `uint53`).  `push` / `pop`
+// on a typed array (`typedArray__lean_array_push_immutable`, `…_pop_immutable`) have only the
+// `_immutable` version: a typed array cannot grow or shrink.  A function that may throw is
+// one that contains a `throw` or calls one that may: the generator reads that off this file.
 //
 // Every function gets exactly the representations its name says (a `bigint_nat` argument is
 // always a `BigInt`, a `uint53` one always a safe non-negative number, …), so no function
@@ -364,10 +377,10 @@ const $subNext = (ss, p) => {
 
 /* ------------------------------------------------------------ non_configurable */
 
-/** `Array.pop`: a copy without the last element.
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @returns {Array<E>|TypedArray} `A` */
+/** `Array.pop`: a copy without the last element (on a generic array).
+ *  @template α the element type
+ *  @param {Array<α>} a `array α`
+ *  @returns {Array<α>} `array α` */
 export const array__lean_array_pop_immutable = (a) => a.slice(0, -1);
 
 /** `Array.pop`, in place (on a generic array only: a typed array cannot shrink).
@@ -379,18 +392,12 @@ export const array__lean_array_pop_mutable = (a) => {
   return a;
 };
 
-/** `Array.push`: a copy with one more element.
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @param {E} x `E`
- *  @returns {Array<E>|TypedArray} `A` */
-export const array__lean_array_push_immutable = (a, x) => {
-  if (Array.isArray(a)) return [...a, x];
-  const r = new a.constructor(a.length + 1);
-  r.set(a);
-  r[a.length] = x;
-  return r;
-};
+/** `Array.push`: a copy with one more element (on a generic array).
+ *  @template α the element type
+ *  @param {Array<α>} a `array α`
+ *  @param {α} x `α`
+ *  @returns {Array<α>} `array α` */
+export const array__lean_array_push_immutable = (a, x) => [...a, x];
 
 /** `Array.push`, in place (on a generic array only: a typed array cannot grow).
  *  @template α the element type
@@ -400,6 +407,26 @@ export const array__lean_array_push_immutable = (a, x) => {
 export const array__lean_array_push_mutable = (a, x) => {
   a.push(x);
   return a;
+};
+
+/** `Array.pop`: a copy without the last element, on a typed array (which cannot shrink, so
+ *  this has no `_mutable` version).
+ *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
+ *  @param {TypedArray} a `typedArray t`
+ *  @returns {TypedArray} `typedArray t` */
+export const typedArray__lean_array_pop_immutable = (a) => a.slice(0, -1);
+
+/** `Array.push`: a copy with one more element, on a typed array (which cannot grow, so this
+ *  has no `_mutable` version).
+ *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
+ *  @param {TypedArray} a `typedArray t`
+ *  @param {number|bigint} x `t.leaf`
+ *  @returns {TypedArray} `typedArray t` */
+export const typedArray__lean_array_push_immutable = (a, x) => {
+  const r = new a.constructor(a.length + 1);
+  r.set(a);
+  r[a.length] = x;
+  return r;
 };
 
 /** `Int16.ofInt`.
@@ -462,10 +489,6 @@ export const int53__lean_int64_to_int32 = (a) => a | 0;
  *  @returns {number} `int8` */
 export const int53__lean_int64_to_int8 = (a) => (a << 24) >> 24;
 
-/** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
-
-/** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
-
 /** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds.
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
  *  @param {E} d `E`
@@ -476,8 +499,6 @@ export const bigint_nat__lean_array_get = (d, a, i) => {
   const k = Number(i);
   return k < a.length ? a[k] : d;
 };
-
-/** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
 
 /** `Array.set!`: a copy with one element replaced (the array itself out of bounds).
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
@@ -536,6 +557,62 @@ export const bigint_nat__lean_array_swap_mutable = (a, i, j) => {
     a[k] = a[l];
     a[l] = t;
   }
+  return a;
+};
+
+/** `Array.set`: a copy with one element replaced (the bound `i < a.size` is proved, so it is
+ *  not checked).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const bigint_nat__lean_array_fset_immutable = (a, i, x) => {
+  const r = a.slice();
+  r[Number(i)] = x;
+  return r;
+};
+
+/** `Array.set`, in place (the bound is proved).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const bigint_nat__lean_array_fset_mutable = (a, i, x) => {
+  a[Number(i)] = x;
+  return a;
+};
+
+/** `Array.swap`: a copy with two elements swapped (the bounds are proved, so they are not
+ *  checked).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {bigint} j `bigint_nat`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const bigint_nat__lean_array_fswap_immutable = (a, i, j) => {
+  const k = Number(i);
+  const l = Number(j);
+  const r = a.slice();
+  const t = r[k];
+  r[k] = r[l];
+  r[l] = t;
+  return r;
+};
+
+/** `Array.swap`, in place (the bounds are proved).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {bigint} j `bigint_nat`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const bigint_nat__lean_array_fswap_mutable = (a, i, j) => {
+  const k = Number(i);
+  const l = Number(j);
+  const t = a[k];
+  a[k] = a[l];
+  a[l] = t;
   return a;
 };
 
@@ -1215,10 +1292,6 @@ export const uint32__lean_uint32_to_uint8 = (a) => a & 255;
  *  @returns {number} `uint32` */
 export const uint32__lean_uint32_xor = (a, b) => (a ^ b) >>> 0;
 
-/** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
-
-/** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
-
 /** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds.
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
  *  @param {E} d `E`
@@ -1226,8 +1299,6 @@ export const uint32__lean_uint32_xor = (a, b) => (a ^ b) >>> 0;
  *  @param {number} i `uint53`
  *  @returns {E} `E` */
 export const uint53__lean_array_get = (d, a, i) => (i < a.length ? a[i] : d);
-
-/** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
 
 /** `Array.set!`: a copy with one element replaced (the array itself out of bounds).
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
@@ -1280,6 +1351,58 @@ export const uint53__lean_array_swap_mutable = (a, i, j) => {
     a[i] = a[j];
     a[j] = t;
   }
+  return a;
+};
+
+/** `Array.set`: a copy with one element replaced (the bound `i < a.size` is proved, so it is
+ *  not checked).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const uint53__lean_array_fset_immutable = (a, i, x) => {
+  const r = a.slice();
+  r[i] = x;
+  return r;
+};
+
+/** `Array.set`, in place (the bound is proved).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const uint53__lean_array_fset_mutable = (a, i, x) => {
+  a[i] = x;
+  return a;
+};
+
+/** `Array.swap`: a copy with two elements swapped (the bounds are proved, so they are not
+ *  checked).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {number} j `uint53`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const uint53__lean_array_fswap_immutable = (a, i, j) => {
+  const r = a.slice();
+  const t = r[i];
+  r[i] = r[j];
+  r[j] = t;
+  return r;
+};
+
+/** `Array.swap`, in place (the bounds are proved).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {number} j `uint53`
+ *  @returns {Array<E>|TypedArray} `A` */
+export const uint53__lean_array_fswap_mutable = (a, i, j) => {
+  const t = a[i];
+  a[i] = a[j];
+  a[j] = t;
   return a;
 };
 
@@ -2823,21 +2946,7 @@ export const bool__lean_internal_has_llvm_backend = () => () => false;
 
 /* ------------------------------------------------------------ operations that share a function */
 
-/**
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @param {bigint} i `bigint_nat`
- *  @param {E} x `E`
- *  @returns {Array<E>|TypedArray} `A` */
-export const bigint_nat__lean_array_fset = bigint_nat__lean_array_set_immutable;
-/**
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @param {bigint} i `bigint_nat`
- *  @param {bigint} j `bigint_nat`
- *  @returns {Array<E>|TypedArray} `A` */
-export const bigint_nat__lean_array_fswap = bigint_nat__lean_array_swap_immutable;
-/**
+/** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`.
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
  *  @param {E} d `E`
  *  @param {Array<E>|TypedArray} a `A`
@@ -2906,21 +3015,7 @@ export const string__lean_string_utf8_next__String_next = string__lean_string_ut
  *  @param {string} c `string`
  *  @returns {string} `string` */
 export const string__lean_string_utf8_set__String_set = string__lean_string_utf8_set__String_Pos_Raw_set;
-/**
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @param {number} i `uint53`
- *  @param {E} x `E`
- *  @returns {Array<E>|TypedArray} `A` */
-export const uint53__lean_array_fset = uint53__lean_array_set_immutable;
-/**
- *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
- *  @param {Array<E>|TypedArray} a `A`
- *  @param {number} i `uint53`
- *  @param {number} j `uint53`
- *  @returns {Array<E>|TypedArray} `A` */
-export const uint53__lean_array_fswap = uint53__lean_array_swap_immutable;
-/**
+/** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`.
  *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
  *  @param {E} d `E`
  *  @param {Array<E>|TypedArray} a `A`

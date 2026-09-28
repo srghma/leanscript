@@ -31,7 +31,8 @@ their value:
   booleans, enums, and records and unions of those), an array just built (a literal, an
   operation answering with a new array: `…__lean_array_push`, `…__lean_mk_array`, `[]`,
   `Uint8Array.from(a)`, …), an owned variable (read for the last time), an update
-  (`…__lean_array_set`, `…__lean_array_swap`) of an owned variable, an inlined operation
+  (`…__lean_array_set`, `…__lean_array_swap`, `…__lean_array_fset`, `…__lean_array_fswap`)
+  of an owned variable, an inlined operation
   answering with its argument (`Array.mk` on generic arrays) of a fresh value, a field of a
   record or union that an owned variable holds, or a record or union all of whose fields are
   fresh.  Nothing else refers to an array an owning variable holds (directly, or through the

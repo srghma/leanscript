@@ -1,3 +1,33 @@
+# Summary of changes for run 247c4764-15d3-4d16-abe4-9e7ca3367cae
+I read your request as asking for mutable and immutable *variants* (not variables): every array update in `runtime.js` should now come as an `…_immutable` / `…_mutable` pair whose names and signatures match the operations in `JsTerm/Ops`, paired by `JsOpImported.toMutable?`. That was the unfinished part of §7.2 of `proposals/JsTermReviewPlan.md`. This is checked by tests, not by a proof.
+
+**What changed in `runtime.js`**
+- **`fset` / `fswap` (`Array.set` / `Array.swap`, whose bounds are proved):** these were only copying aliases of `set_immutable` / `swap_immutable`. They are now real functions, `bigint_nat__…` and `uint53__lean_array_fset_immutable` / `_mutable` and `lean_array_fswap_immutable` / `_mutable`. They don't check bounds, because Lean has already proved `i < a.size`.
+- **`push` / `pop` split by layout:**
+  - On generic arrays: `array__lean_array_push_immutable` / `_mutable` and `array__lean_array_pop_immutable` / `_mutable`, each pair with the same signature.
+  - On typed arrays: new `typedArray__lean_array_push_immutable` and `typedArray__lean_array_pop_immutable`, with no mutable version, since a typed array can't grow or shrink.
+  - This removes the last `Array.isArray` run-time test from the runtime.
+- **Header:** there is now a table listing every pair. I also moved three stray doc comments back onto the functions they describe.
+
+**Generated and Lean code**
+- `scripts/gen_js_ops.py` now treats `fset` / `fswap` as updates and splits `push` / `pop`. The script now fails if an update's `_mutable` function is missing from the runtime.
+- The regenerated `JsTerm/Ops/Imported.lean` has 398 imported operations, up from 388. `toMutable?` now pairs all 10 updates that have a mutable version.
+- In `JsTerm/Ops/Cands/Misc.lean`, `lean_array_fset` / `lean_array_fswap` now go to their own operations.
+- The in-place pass (`JsTerm/Passes/InPlace/Linear.lean`) now counts `fset` / `fswap` as updates, so they are done in place when the array is owned. The docs are updated in `JsTerm/Ops/Basic.lean`, `JsTerm/Passes/InPlace.lean` and `README.md`.
+- `scripts/annotate_runtime.py` has been rerun, and `--check` reports the `runtime.js` comments are up to date.
+
+**Checks**
+- **Build:** `lake build JsTerm leanscript tests LeanScriptCli RuntimeSpec` succeeds with no errors or warnings.
+- **`lake exe tests`:** 57/57 pass. The new tests are:
+  - Every `_mutable` operation has its `_immutable` one. Every `_immutable` one has a `_mutable` one, except typed `push` / `pop`.
+  - `toMutable?` pairs the right operations, and only the mutable ones are effectful.
+  - A node run over 11 cases shows that each immutable function leaves its argument unchanged, each mutable one returns its argument, and both give the same array (including typed arrays and out-of-bounds indices). This test passes silently if `node` is not installed.
+  - An owned array gets `uint53__lean_array_fset_mutable`.
+- **`scripts/leanscript-snapshots.sh`:** 3806 passed, 0 failed, and no existing snapshot changed. It still exits 1, as before, because of the deliberate panic and literal-too-big inputs.
+- **New snapshot `Tests/SnapshotsMy/ArrayFSet.lean`:** all 18 checks pass. The generated code shows `fset_mutable` / `fswap_mutable` on an owned array, the immutable versions on a shared array or a parameter, and typed `push` / `pop`.
+
+The result is in the Properties table as a tested property (in progress, not proved). All work is committed.
+
 # Summary of changes for run 696172ff-3b3e-4f05-a9f9-e308b76e4c21
 `JsTerm/` had already been split into groups (`Ty/`, `Ops/`, `Syntax/`, `Passes/`, `Lower/`, `Print/`) before this session. I split the remaining large hand-written files further and grouped the new pieces into subdirectories. The sets of definitions, theorems and instances before and after are identical (I diffed them), so no definition changed; they only moved.
 

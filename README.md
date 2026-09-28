@@ -87,7 +87,8 @@ one at the types of a call is an error of the conversion.  Functions are uncurri
 its type and a call passes them all (a partial application is a closure).  Two optimisations
 run on the `JsTerm` of every function: an array only one variable refers to, and that is not
 read afterwards, is updated in place (`array__lean_array_push_mutable`,
-`uint53__lean_array_set_mutable`, … instead of the copying `…_immutable` versions;
+`uint53__lean_array_set_mutable`, `uint53__lean_array_fset_mutable`, … instead of the copying
+`…_immutable` versions; every array update has both in `runtime.js`;
 `JsTerm/Passes/InPlace.lean`), and every expression that depends on no variable (a constructor
 without fields, a record of literals, a closure that captures nothing) is computed once at the
 top of the module and shared by every function (`const $tag0 = { tag: 0 };`, `$k1`, …;
