@@ -122,7 +122,7 @@ options.
 | `JsTerm/Simplify.lean` | clean-ups: loop bodies, peephole rules, array literals |
 | `JsTerm/InPlace.lean` | updating in place the arrays nothing else refers to (`inPlace`) |
 | `JsTerm/Hoist.lean` | moving the constant expressions of a module to its top, once (`hoistConsts`), and the imports of a module (`mkModule`) |
-| `runtime.js` | the runtime the generated code imports: one function per imported operation, of the same name |
+| `runtime.js` | the runtime the generated code imports: one function per imported operation, of the same name, each with JSDoc `@param`/`@returns` tags giving the JavaScript type and the `JsTy` of its arguments and result (written by `scripts/annotate_runtime.py`) |
 | `JsTerm/FromTerm.lean` | `MoreJs.termToJs`: a closed `Term` to a `JsFun` (loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
 | `JsTerm/PrintMini.lean` | `JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text |
 | `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating, open definitions of recursive functions), `RecCalls.lean` (binding the recursive functions of an open definition in its JavaScript, direct calls), `Check.lean` (`--check`), `Main.lean` |
@@ -164,7 +164,7 @@ options.
 | `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs; unit tests of the JavaScript conversion (typed operations, in-place arrays, shared constants, literals too big for a `number`; `runtime.js` exports every imported operation) |
 | `RuntimeSpec/` (`Model.lean`, `Runtime.lean`, `Correct.lean`) | the integer functions of `runtime.js` whose code was simplified, transcribed into a model of the JavaScript they use (`BigInt`s and safe-integer `number`s as `Int`, the 32-bit operators exactly, an overflow `RangeError` as `none`), with the old versions beside them; proofs that each computes Lean's operation on its representation (a function that may throw returns Lean's result checked to be a safe integer), that the `BigInt`/`number` split agrees with the old `typeof` tests, and that every removed throw could never fire (`lake build RuntimeSpec`) |
 | `proposals/` | proposals, reviews and stand-alone sketches; nothing here is part of the build (`NominalTyProposal.md` is the design that is implemented) |
-| `scripts/` | benchmarking scripts |
+| `scripts/` | benchmarking scripts; `annotate_runtime.py` writes the type comments of the functions of `runtime.js` from the signatures of `JsTerm/Ops.lean` (`--check`: fail if they are not up to date) |
 
 Elaborators, notations, tactics and the meta-level code they use live in `XxxElab/`
 directories (`TyElab/`, `TermElab/`, `GenElab/`, `ExternElab/`, `TacticElab/`), next to the

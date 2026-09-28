@@ -1,3 +1,40 @@
+# Summary of changes for run d3b7d4c7-a546-4b4a-b067-c43210f6b01a
+I added `scripts/annotate_runtime.py` and ran it: each of the 422 exported functions in `runtime.js` now has a comment on top giving the types of its arguments and its result.
+
+**Where the types come from.** The script imports `scripts/gen_js_ops.py` and uses the same signatures that go into `JsTerm/Ops.lean`. So the types are the ones the backend actually calls each function at. It adds JSDoc tags to the end of each function's existing description, for example:
+
+```
+/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {E} d `E`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @returns {E} `E` */
+```
+
+Each tag gives the JavaScript type in braces, followed by the `JsTy` representation, which says more (a `uint53` and an `int16` are both `number`s). Other types are written like this:
+- records as `{_1: …, _2: …}` and unions as `({tag: 0}|{tag: 1, _1: string})`;
+- substrings and string slices as `[string, number, number]`;
+- functions as `function(string): boolean`;
+- thunks as `Thunk<α>`.
+
+Polymorphic operations also get a `@template` line. For the typed-array `mk_array` functions, the extra first parameter `C` (the typed-array constructor) is documented too. An alias (`export const a = b;`) gets the types of its own signature, using `b`'s parameter names.
+
+**Running it:**
+- `python3 scripts/annotate_runtime.py` rewrites `runtime.js`. You can run it again after changing a signature: it first removes the tags it wrote before, so nothing is duplicated.
+- `python3 scripts/annotate_runtime.py --check` changes nothing and exits 1 if the comments are out of date.
+- The script stops with an error if a function's parameter count in `runtime.js` doesn't match its signature. There were no mismatches and no exported function without a signature.
+- The private `$…` helpers have no signature in `JsTerm/Ops.lean`, so they are left as they were.
+
+**Checks:**
+- With comments removed, the code in `runtime.js` is the same as before (only blank lines differ).
+- `node --check runtime.js` passes, and node can import the module and call its functions.
+- Running `gen_js_ops.py` again leaves `JsTerm/Ops.lean` and `JsTerm/OpsLookup.lean` unchanged, so the detection of which operations may throw is unaffected.
+- Running the script a second time gives the same file.
+- I did not rebuild or run the Lean test suite. No Lean file changed, and the tests only look for the `export const …` lines, which are unchanged.
+
+I also added a short note to the header of `runtime.js` pointing to the script, and updated the `runtime.js` and `scripts/` rows of the `README.md` layout table. Everything is committed.
+
 # Summary of changes for run 062e2ff6-504b-4c8d-b37c-06125785d425
 I refactored `runtime.js` and formalized the refactor in Lean. Everything builds with no `sorry`.
 

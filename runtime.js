@@ -22,6 +22,10 @@
 // result always is one (`uint53__lean_uint64_div`, `int53__lean_int64_abs`, …) does not
 // check, and so does not throw.  A count too large for memory (`Array.replicate`,
 // `String.pushn`) fails in JavaScript's own allocation, as it runs out of memory in Lean.
+//
+// The `@param` / `@returns` tags of every exported function give the JavaScript type and the
+// `JsTy` of its arguments and result, from its signature in `JsTerm/Ops.lean`; they are written
+// by `python3 scripts/annotate_runtime.py` (run it again after changing a signature).
 
 /* ------------------------------------------------------------ private helpers */
 
@@ -360,16 +364,26 @@ const $subNext = (ss, p) => {
 
 /* ------------------------------------------------------------ non_configurable */
 
-/** `Array.pop`: a copy without the last element. */
+/** `Array.pop`: a copy without the last element.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const array__lean_array_pop_immutable = (a) => a.slice(0, -1);
 
-/** `Array.pop`, in place (on a generic array only: a typed array cannot shrink). */
+/** `Array.pop`, in place (on a generic array only: a typed array cannot shrink).
+ *  @template α the element type
+ *  @param {Array<α>} a `array α`
+ *  @returns {Array<α>} `array α` */
 export const array__lean_array_pop_mutable = (a) => {
   a.pop();
   return a;
 };
 
-/** `Array.push`: a copy with one more element. */
+/** `Array.push`: a copy with one more element.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const array__lean_array_push_immutable = (a, x) => {
   if (Array.isArray(a)) return [...a, x];
   const r = new a.constructor(a.length + 1);
@@ -378,53 +392,86 @@ export const array__lean_array_push_immutable = (a, x) => {
   return r;
 };
 
-/** `Array.push`, in place (on a generic array only: a typed array cannot grow). */
+/** `Array.push`, in place (on a generic array only: a typed array cannot grow).
+ *  @template α the element type
+ *  @param {Array<α>} a `array α`
+ *  @param {α} x `α`
+ *  @returns {Array<α>} `array α` */
 export const array__lean_array_push_mutable = (a, x) => {
   a.push(x);
   return a;
 };
 
-/** `Int16.ofInt`. */
+/** `Int16.ofInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int16` */
 export const bigint_int__lean_int16_of_int = (a) => Number(BigInt.asIntN(16, a));
 
-/** `Int32.ofInt`. */
+/** `Int32.ofInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int32` */
 export const bigint_int__lean_int32_of_int = (a) => Number(BigInt.asIntN(32, a));
 
-/** `Int8.ofInt`. */
+/** `Int8.ofInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int8` */
 export const bigint_int__lean_int8_of_int = (a) => Number(BigInt.asIntN(8, a));
 
-/** `Int64.toInt16`. */
+/** `Int64.toInt16`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int16` */
 export const bigint_int__lean_int64_to_int16 = (a) => Number(BigInt.asIntN(16, a));
 
-/** `Int64.toInt32`. */
+/** `Int64.toInt32`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int32` */
 export const bigint_int__lean_int64_to_int32 = (a) => Number(BigInt.asIntN(32, a));
 
-/** `Int64.toInt8`. */
+/** `Int64.toInt8`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int8` */
 export const bigint_int__lean_int64_to_int8 = (a) => Number(BigInt.asIntN(8, a));
 
-/** `Int16.ofInt` (`ToInt32` takes a safe integer modulo `2^32`). */
+/** `Int16.ofInt` (`ToInt32` takes a safe integer modulo `2^32`).
+ *  @param {number} a `int53`
+ *  @returns {number} `int16` */
 export const int53__lean_int16_of_int = (a) => (a << 16) >> 16;
 
-/** `Int32.ofInt`. */
+/** `Int32.ofInt`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int32` */
 export const int53__lean_int32_of_int = (a) => a | 0;
 
-/** `Int8.ofInt`. */
+/** `Int8.ofInt`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int8` */
 export const int53__lean_int8_of_int = (a) => (a << 24) >> 24;
 
-/** `Int64.toInt16`. */
+/** `Int64.toInt16`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int16` */
 export const int53__lean_int64_to_int16 = (a) => (a << 16) >> 16;
 
-/** `Int64.toInt32`. */
+/** `Int64.toInt32`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int32` */
 export const int53__lean_int64_to_int32 = (a) => a | 0;
 
-/** `Int64.toInt8`. */
+/** `Int64.toInt8`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int8` */
 export const int53__lean_int64_to_int8 = (a) => (a << 24) >> 24;
 
 /** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
 
 /** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
 
-/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds. */
+/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {E} d `E`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @returns {E} `E` */
 export const bigint_nat__lean_array_get = (d, a, i) => {
   const k = Number(i);
   return k < a.length ? a[k] : d;
@@ -432,7 +479,12 @@ export const bigint_nat__lean_array_get = (d, a, i) => {
 
 /** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
 
-/** `Array.set!`: a copy with one element replaced (the array itself out of bounds). */
+/** `Array.set!`: a copy with one element replaced (the array itself out of bounds).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_set_immutable = (a, i, x) => {
   const k = Number(i);
   if (k >= a.length) return a;
@@ -441,14 +493,24 @@ export const bigint_nat__lean_array_set_immutable = (a, i, x) => {
   return r;
 };
 
-/** `Array.set!`, in place. */
+/** `Array.set!`, in place.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_set_mutable = (a, i, x) => {
   const k = Number(i);
   if (k < a.length) a[k] = x;
   return a;
 };
 
-/** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds). */
+/** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {bigint} j `bigint_nat`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_swap_immutable = (a, i, j) => {
   const k = Number(i);
   const l = Number(j);
@@ -460,7 +522,12 @@ export const bigint_nat__lean_array_swap_immutable = (a, i, j) => {
   return r;
 };
 
-/** `Array.swapIfInBounds`, in place. */
+/** `Array.swapIfInBounds`, in place.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {bigint} j `bigint_nat`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_swap_mutable = (a, i, j) => {
   const k = Number(i);
   const l = Number(j);
@@ -472,232 +539,424 @@ export const bigint_nat__lean_array_swap_mutable = (a, i, j) => {
   return a;
 };
 
-/** `Int16.ofNat`. */
+/** `Int16.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int16` */
 export const bigint_nat__lean_int16_of_nat = bigint_int__lean_int16_of_int;
 
-/** `Int32.ofNat`. */
+/** `Int32.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int32` */
 export const bigint_nat__lean_int32_of_nat = bigint_int__lean_int32_of_int;
 
-/** `Int8.ofNat`. */
+/** `Int8.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int8` */
 export const bigint_nat__lean_int8_of_nat = bigint_int__lean_int8_of_int;
 
-/** `Array.replicate`, on a generic array. */
+/** `Array.replicate`, on a generic array.
+ *  @template α the element type
+ *  @param {bigint} n `bigint_nat`
+ *  @param {α} v `α`
+ *  @returns {Array<α>} `array α` */
 export const bigint_nat__lean_mk_array = (n, v) => new Array(Number(n)).fill(v);
 
-/** `String.Internal.pushn`. */
+/** `String.Internal.pushn`.
+ *  @param {string} a `string`
+ *  @param {string} b `string`
+ *  @param {bigint} c `bigint_nat`
+ *  @returns {string} `string` */
 export const bigint_nat__lean_string_pushn = (a, b, c) => a + b.repeat(Number(c));
 
-/** `UInt16.ofNat`, `UInt16.ofNatLT`. */
+/** `UInt16.ofNat`, `UInt16.ofNatLT`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint16` */
 export const bigint_nat__lean_uint16_of_nat__UInt16_ofNat = (a) => Number(BigInt.asUintN(16, a));
 
-/** `Char.ofNatAux`. */
+/** `Char.ofNatAux`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {string} `string` */
 export const bigint_nat__lean_uint32_of_nat__Char_ofNatAux = (a) => String.fromCodePoint(Number(a));
 
-/** `UInt32.ofNat`, `UInt32.ofNatLT`. */
+/** `UInt32.ofNat`, `UInt32.ofNatLT`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint32` */
 export const bigint_nat__lean_uint32_of_nat__UInt32_ofNat = (a) => Number(BigInt.asUintN(32, a));
 
-/** `UInt64.toUInt16`. */
+/** `UInt64.toUInt16`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint16` */
 export const bigint_nat__lean_uint64_to_uint16 = (a) => Number(BigInt.asUintN(16, a));
 
-/** `UInt64.toUInt32`. */
+/** `UInt64.toUInt32`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint32` */
 export const bigint_nat__lean_uint64_to_uint32 = (a) => Number(BigInt.asUintN(32, a));
 
-/** `UInt64.toUInt8`. */
+/** `UInt64.toUInt8`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint8` */
 export const bigint_nat__lean_uint64_to_uint8 = (a) => Number(BigInt.asUintN(8, a));
 
-/** `UInt8.ofNat`, `UInt8.ofNatLT`. */
+/** `UInt8.ofNat`, `UInt8.ofNatLT`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint8` */
 export const bigint_nat__lean_uint8_of_nat__UInt8_ofNat = (a) => Number(BigInt.asUintN(8, a));
 
-/** `Bool.toInt16`. */
+/** `Bool.toInt16`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `int16` */
 export const bool__lean_bool_to_int16 = (a) => a ? 1 : 0;
 
-/** `Bool.toInt32`. */
+/** `Bool.toInt32`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `int32` */
 export const bool__lean_bool_to_int32 = (a) => a ? 1 : 0;
 
-/** `Bool.toInt8`. */
+/** `Bool.toInt8`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `int8` */
 export const bool__lean_bool_to_int8 = (a) => a ? 1 : 0;
 
-/** `Bool.toUInt16`. */
+/** `Bool.toUInt16`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `uint16` */
 export const bool__lean_bool_to_uint16 = (a) => a ? 1 : 0;
 
-/** `Bool.toUInt32`. */
+/** `Bool.toUInt32`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `uint32` */
 export const bool__lean_bool_to_uint32 = (a) => a ? 1 : 0;
 
-/** `Bool.toUInt8`. */
+/** `Bool.toUInt8`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `uint8` */
 export const bool__lean_bool_to_uint8 = (a) => a ? 1 : 0;
 
-/** `Float32.add`. */
+/** `Float32.add`.
+ *  @param {number} a `float32`
+ *  @param {number} b `float32`
+ *  @returns {number} `float32` */
 export const float32__lean_float32_add = (a, b) => Math.fround(a + b);
 
-/** `Float32.div`. */
+/** `Float32.div`.
+ *  @param {number} a `float32`
+ *  @param {number} b `float32`
+ *  @returns {number} `float32` */
 export const float32__lean_float32_div = (a, b) => Math.fround(a / b);
 
-/** `Float32.isFinite`. */
+/** `Float32.isFinite`.
+ *  @param {number} a `float32`
+ *  @returns {boolean} `bool` */
 export const float32__lean_float32_isfinite = (a) => Number.isFinite(a);
 
-/** `Float32.isInf`. */
+/** `Float32.isInf`.
+ *  @param {number} a `float32`
+ *  @returns {boolean} `bool` */
 export const float32__lean_float32_isinf = (a) => a === Infinity || a === -Infinity;
 
-/** `Float32.isNaN`. */
+/** `Float32.isNaN`.
+ *  @param {number} a `float32`
+ *  @returns {boolean} `bool` */
 export const float32__lean_float32_isnan = (a) => Number.isNaN(a);
 
-/** `Float32.mul`. */
+/** `Float32.mul`.
+ *  @param {number} a `float32`
+ *  @param {number} b `float32`
+ *  @returns {number} `float32` */
 export const float32__lean_float32_mul = (a, b) => Math.fround(a * b);
 
-/** `Float32.sub`. */
+/** `Float32.sub`.
+ *  @param {number} a `float32`
+ *  @param {number} b `float32`
+ *  @returns {number} `float32` */
 export const float32__lean_float32_sub = (a, b) => Math.fround(a - b);
 
-/** `Float.isFinite`. */
+/** `Float.isFinite`.
+ *  @param {number} a `float`
+ *  @returns {boolean} `bool` */
 export const float__lean_float_isfinite = (a) => Number.isFinite(a);
 
-/** `Float.isInf`. */
+/** `Float.isInf`.
+ *  @param {number} a `float`
+ *  @returns {boolean} `bool` */
 export const float__lean_float_isinf = (a) => a === Infinity || a === -Infinity;
 
-/** `Float.isNaN`. */
+/** `Float.isNaN`.
+ *  @param {number} a `float`
+ *  @returns {boolean} `bool` */
 export const float__lean_float_isnan = (a) => Number.isNaN(a);
 
-/** `Float.toFloat32`. */
+/** `Float.toFloat32`.
+ *  @param {number} a `float`
+ *  @returns {number} `float32` */
 export const float__lean_float_to_float32 = (a) => Math.fround(a);
 
-/** `Int16.abs`. */
+/** `Int16.abs`.
+ *  @param {number} a `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_abs = (a) => (Math.abs(a) << 16) >> 16;
 
-/** `Int16.add`. */
+/** `Int16.add`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_add = (a, b) => ((a + b) << 16) >> 16;
 
-/** `Int16.complement`. */
+/** `Int16.complement`.
+ *  @param {number} a `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_complement = (a) => (~a << 16) >> 16;
 
-/** `Int16.div`. */
+/** `Int16.div`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_div = (a, b) => b === 0 ? 0 : (Math.trunc(a / b) << 16) >> 16;
 
-/** `Int16.land`. */
+/** `Int16.land`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_land = (a, b) => ((a & b) << 16) >> 16;
 
-/** `Int16.lor`. */
+/** `Int16.lor`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_lor = (a, b) => ((a | b) << 16) >> 16;
 
-/** `Int16.mod`. */
+/** `Int16.mod`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int16.mul`. */
+/** `Int16.mul`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_mul = (a, b) => ((a * b) << 16) >> 16;
 
-/** `Int16.neg`. */
+/** `Int16.neg`.
+ *  @param {number} a `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_neg = (a) => (-a << 16) >> 16;
 
-/** `Int16.shiftLeft`. */
+/** `Int16.shiftLeft`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_shift_left = (a, b) => ((a << (((b % 16) + 16) % 16)) << 16) >> 16;
 
-/** `Int16.shiftRight`. */
+/** `Int16.shiftRight`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_shift_right = (a, b) => a >> (((b % 16) + 16) % 16);
 
-/** `Int16.sub`. */
+/** `Int16.sub`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_sub = (a, b) => ((a - b) << 16) >> 16;
 
-/** `Int16.toInt8`. */
+/** `Int16.toInt8`.
+ *  @param {number} a `int16`
+ *  @returns {number} `int8` */
 export const int16__lean_int16_to_int8 = (a) => (a << 24) >> 24;
 
-/** `Int16.xor`. */
+/** `Int16.xor`.
+ *  @param {number} a `int16`
+ *  @param {number} b `int16`
+ *  @returns {number} `int16` */
 export const int16__lean_int16_xor = (a, b) => ((a ^ b) << 16) >> 16;
 
-/** `Int32.abs`. */
+/** `Int32.abs`.
+ *  @param {number} a `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_abs = (a) => Math.abs(a) | 0;
 
-/** `Int32.add`. */
+/** `Int32.add`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_add = (a, b) => (a + b) | 0;
 
-/** `Int32.complement`. */
+/** `Int32.complement`.
+ *  @param {number} a `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_complement = (a) => ~a | 0;
 
-/** `Int32.div`. */
+/** `Int32.div`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_div = (a, b) => b === 0 ? 0 : Math.trunc(a / b) | 0;
 
-/** `Int32.land`. */
+/** `Int32.land`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_land = (a, b) => (a & b) | 0;
 
-/** `Int32.lor`. */
+/** `Int32.lor`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_lor = (a, b) => a | b | 0;
 
-/** `Int32.mod`. */
+/** `Int32.mod`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int32.mul`. */
+/** `Int32.mul`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_mul = (a, b) => Math.imul(a, b) | 0;
 
-/** `Int32.neg`. */
+/** `Int32.neg`.
+ *  @param {number} a `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_neg = (a) => -a | 0;
 
-/** `Int32.shiftLeft`. */
+/** `Int32.shiftLeft`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_shift_left = (a, b) => (a << (((b % 32) + 32) % 32)) | 0;
 
-/** `Int32.shiftRight`. */
+/** `Int32.shiftRight`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_shift_right = (a, b) => a >> (((b % 32) + 32) % 32);
 
-/** `Int32.sub`. */
+/** `Int32.sub`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_sub = (a, b) => (a - b) | 0;
 
-/** `Int32.toInt16`. */
+/** `Int32.toInt16`.
+ *  @param {number} a `int32`
+ *  @returns {number} `int16` */
 export const int32__lean_int32_to_int16 = (a) => (a << 16) >> 16;
 
-/** `Int32.toInt8`. */
+/** `Int32.toInt8`.
+ *  @param {number} a `int32`
+ *  @returns {number} `int8` */
 export const int32__lean_int32_to_int8 = (a) => (a << 24) >> 24;
 
-/** `Int32.xor`. */
+/** `Int32.xor`.
+ *  @param {number} a `int32`
+ *  @param {number} b `int32`
+ *  @returns {number} `int32` */
 export const int32__lean_int32_xor = (a, b) => (a ^ b) | 0;
 
-/** `Int8.abs`. */
+/** `Int8.abs`.
+ *  @param {number} a `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_abs = (a) => (Math.abs(a) << 24) >> 24;
 
-/** `Int8.add`. */
+/** `Int8.add`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_add = (a, b) => ((a + b) << 24) >> 24;
 
-/** `Int8.complement`. */
+/** `Int8.complement`.
+ *  @param {number} a `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_complement = (a) => (~a << 24) >> 24;
 
-/** `Int8.div`. */
+/** `Int8.div`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_div = (a, b) => b === 0 ? 0 : (Math.trunc(a / b) << 24) >> 24;
 
-/** `Int8.land`. */
+/** `Int8.land`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_land = (a, b) => ((a & b) << 24) >> 24;
 
-/** `Int8.lor`. */
+/** `Int8.lor`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_lor = (a, b) => ((a | b) << 24) >> 24;
 
-/** `Int8.mod`. */
+/** `Int8.mod`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int8.mul`. */
+/** `Int8.mul`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_mul = (a, b) => ((a * b) << 24) >> 24;
 
-/** `Int8.neg`. */
+/** `Int8.neg`.
+ *  @param {number} a `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_neg = (a) => (-a << 24) >> 24;
 
-/** `Int8.shiftLeft`. */
+/** `Int8.shiftLeft`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_shift_left = (a, b) => ((a << (((b % 8) + 8) % 8)) << 24) >> 24;
 
-/** `Int8.shiftRight`. */
+/** `Int8.shiftRight`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_shift_right = (a, b) => a >> (((b % 8) + 8) % 8);
 
-/** `Int8.sub`. */
+/** `Int8.sub`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_sub = (a, b) => ((a - b) << 24) >> 24;
 
-/** `Int8.xor`. */
+/** `Int8.xor`.
+ *  @param {number} a `int8`
+ *  @param {number} b `int8`
+ *  @returns {number} `int8` */
 export const int8__lean_int8_xor = (a, b) => ((a ^ b) << 24) >> 24;
 
-/** `String.compare`. */
+/** `String.compare`.
+ *  @param {string} a `string`
+ *  @param {string} b `string`
+ *  @returns {number} `enum 3 (-1)` */
 export const string__lean_string_compare = (a, b) => a < b ? -1 : a === b ? 0 : 1;
 
-/** `String.data`, `String.toList`. */
+/** `String.data`, `String.toList`.
+ *  @param {string} a `string`
+ *  @returns {Array<string>} `list string` */
 export const string__lean_string_data__String_data = (a) => [...a];
 
-/** `String.Internal.isEmpty`. */
+/** `String.Internal.isEmpty`.
+ *  @param {string} a `string`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_isempty = (a) => a.length === 0;
 
 /**
  * `String.Slice.Pattern.Internal.memcmpStr`: are the `len` bytes of `lhs` at `lstart`
  * the same as the `len` bytes of `rhs` at `rstart`?
- */
+ *  @param {string} lhs `string`
+ *  @param {string} rhs `string`
+ *  @param {number} lstart `uint53`
+ *  @param {number} rstart `uint53`
+ *  @param {number} len `uint53`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_memcmp = (lhs, rhs, lstart, rstart, len) => {
   const l = encoder.encode(lhs);
   const r = encoder.encode(rhs);
@@ -707,28 +966,53 @@ export const string__lean_string_memcmp = (lhs, rhs, lstart, rstart, len) => {
   return true;
 };
 
-/** `String.ofList`, `String.mk`. */
+/** `String.ofList`, `String.mk`.
+ *  @param {Array<string>} a `list string`
+ *  @returns {string} `string` */
 export const string__lean_string_mk__String_mk = (a) => a.join("");
 
-/** `String.Internal.atEnd`, `String.atEnd`, `String.Pos.Raw.atEnd`. */
+/** `String.Internal.atEnd`, `String.atEnd`, `String.Pos.Raw.atEnd`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_utf8_at_end__String_Internal_atEnd = (a, b) => b >= $utf8(a).length;
 
-/** `String.Internal.extract`, `String.Pos.Raw.extract`. */
+/** `String.Internal.extract`, `String.Pos.Raw.extract`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @param {number} c `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_extract__String_Internal_extract = (a, b, c) => $utf8Extract(a, b, c);
 
-/** `String.Internal.get`, `String.Pos.Raw.get`, `String.get`. */
+/** `String.Internal.get`, `String.Pos.Raw.get`, `String.get`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get__String_Internal_get = (a, b) => $get(a, b);
 
-/** `String.Internal.next`, `String.next`, `String.Pos.Raw.next`. */
+/** `String.Internal.next`, `String.next`, `String.Pos.Raw.next`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_next__String_Internal_next = (a, b) => $next(a, b);
 
-/** `String.Pos.Raw.set`, `String.set`. */
+/** `String.Pos.Raw.set`, `String.set`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @param {string} c `string`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_set__String_Pos_Raw_set = (a, b, c) => $utf8Set(a, b, c);
 
-/** `Thunk.mk`: a memoised delay of the function `f`. */
+/** `Thunk.mk`: a memoised delay of the function `f`.
+ *  @template α the delayed type
+ *  @param {function(): α} f `fn [] α`
+ *  @returns {Thunk<α>} `thunk α` */
 export const thunk__lean_mk_thunk = (f) => ({ f, v: undefined, done: false });
 
-/** `Thunk.get`: the value of a memoised delay, computed the first time. */
+/** `Thunk.get`: the value of a memoised delay, computed the first time.
+ *  @template α the delayed type
+ *  @param {Thunk<α>} t `thunk α`
+ *  @returns {α} `α` */
 export const thunk__lean_thunk_get_own = (t) => {
   if (!t.done) {
     t.v = t.f();
@@ -738,115 +1022,219 @@ export const thunk__lean_thunk_get_own = (t) => {
   return t.v;
 };
 
-/** `Thunk.pure`: a memoised delay whose value is already known. */
+/** `Thunk.pure`: a memoised delay whose value is already known.
+ *  @template α the delayed type
+ *  @param {α} v `α`
+ *  @returns {Thunk<α>} `thunk α` */
 export const thunk__lean_thunk_pure = (v) => ({ f: undefined, v, done: true });
 
-/** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …). */
+/** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …).
+ *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
+ *  @param {function(new:TypedArray, number)} C `t.kind` (the typed-array constructor)
+ *  @param {bigint} n `bigint_nat`
+ *  @param {number|bigint} v `t.leaf`
+ *  @returns {TypedArray} `typedArray t` */
 export const typedArray__bigint_nat__lean_mk_array = (C, n, v) => new C(Number(n)).fill(v);
 
-/** `Array.toList`: the list of an array, generic or typed (a list is a generic array). */
+/** `Array.toList`: the list of an array, generic or typed (a list is a generic array).
+ *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
+ *  @param {TypedArray} a `typedArray t`
+ *  @returns {Array<number|bigint>} `list t.leaf` */
 export const typedArray__lean_array_to_list = (a) => Array.from(a);
 
-/** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …). */
+/** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …).
+ *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
+ *  @param {function(new:TypedArray, number)} C `t.kind` (the typed-array constructor)
+ *  @param {number} n `uint53`
+ *  @param {number|bigint} v `t.leaf`
+ *  @returns {TypedArray} `typedArray t` */
 export const typedArray__uint53__lean_mk_array = (C, n, v) => new C(n).fill(v);
 
-/** `UInt16.add`. */
+/** `UInt16.add`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_add = (a, b) => (a + b) & 65535;
 
-/** `UInt16.complement`. */
+/** `UInt16.complement`.
+ *  @param {number} a `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_complement = (a) => ~a & 65535;
 
-/** `UInt16.div`. */
+/** `UInt16.div`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `UInt16.land`. */
+/** `UInt16.land`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_land = (a, b) => a & b & 65535;
 
-/** `UInt16.log2`. */
+/** `UInt16.log2`.
+ *  @param {number} a `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
 
-/** `UInt16.lor`. */
+/** `UInt16.lor`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_lor = (a, b) => (a | b) & 65535;
 
-/** `UInt16.mod`. */
+/** `UInt16.mod`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `UInt16.mul`. */
+/** `UInt16.mul`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_mul = (a, b) => (a * b) & 65535;
 
-/** `UInt16.neg`. */
+/** `UInt16.neg`.
+ *  @param {number} a `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_neg = (a) => -a & 65535;
 
-/** `UInt16.shiftLeft`. */
+/** `UInt16.shiftLeft`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_shift_left = (a, b) => (a << (((b % 16) + 16) % 16)) & 65535;
 
-/** `UInt16.shiftRight`. */
+/** `UInt16.shiftRight`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_shift_right = (a, b) => a >>> (b % 16);
 
-/** `UInt16.sub`. */
+/** `UInt16.sub`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_sub = (a, b) => (a - b) & 65535;
 
-/** `UInt16.toUInt8`. */
+/** `UInt16.toUInt8`.
+ *  @param {number} a `uint16`
+ *  @returns {number} `uint8` */
 export const uint16__lean_uint16_to_uint8 = (a) => a & 255;
 
-/** `UInt16.xor`. */
+/** `UInt16.xor`.
+ *  @param {number} a `uint16`
+ *  @param {number} b `uint16`
+ *  @returns {number} `uint16` */
 export const uint16__lean_uint16_xor = (a, b) => (a ^ b) & 65535;
 
-/** `UInt32.add`. */
+/** `UInt32.add`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_add = (a, b) => (a + b) >>> 0;
 
-/** `UInt32.complement`. */
+/** `UInt32.complement`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_complement = (a) => ~a >>> 0;
 
-/** `UInt32.div`. */
+/** `UInt32.div`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `UInt32.land`. */
+/** `UInt32.land`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_land = (a, b) => (a & b) >>> 0;
 
-/** `UInt32.log2`. */
+/** `UInt32.log2`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
 
-/** `UInt32.lor`. */
+/** `UInt32.lor`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_lor = (a, b) => (a | b) >>> 0;
 
-/** `UInt32.mod`. */
+/** `UInt32.mod`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `UInt32.mul`. */
+/** `UInt32.mul`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_mul = (a, b) => Math.imul(a, b) >>> 0;
 
-/** `UInt32.neg`. */
+/** `UInt32.neg`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_neg = (a) => -a >>> 0;
 
-/** `UInt32.shiftLeft`. */
+/** `UInt32.shiftLeft`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_shift_left = (a, b) => (a << (((b % 32) + 32) % 32)) >>> 0;
 
-/** `UInt32.shiftRight`. */
+/** `UInt32.shiftRight`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_shift_right = (a, b) => a >>> (b % 32);
 
-/** `UInt32.sub`. */
+/** `UInt32.sub`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_sub = (a, b) => (a - b) >>> 0;
 
-/** `UInt32.toUInt16`. */
+/** `UInt32.toUInt16`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `uint16` */
 export const uint32__lean_uint32_to_uint16 = (a) => a & 65535;
 
-/** `UInt32.toUInt8`. */
+/** `UInt32.toUInt8`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `uint8` */
 export const uint32__lean_uint32_to_uint8 = (a) => a & 255;
 
-/** `UInt32.xor`. */
+/** `UInt32.xor`.
+ *  @param {number} a `uint32`
+ *  @param {number} b `uint32`
+ *  @returns {number} `uint32` */
 export const uint32__lean_uint32_xor = (a, b) => (a ^ b) >>> 0;
 
 /** `Array.set`: the same as `Array.set!` (the proof of the bound is erased). */
 
 /** `Array.swap`: the same as `Array.swapIfInBounds` (the proofs of the bounds are erased). */
 
-/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds. */
+/** `Array.get!Internal`: `a[i]`, or the default `d` out of bounds.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {E} d `E`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @returns {E} `E` */
 export const uint53__lean_array_get = (d, a, i) => (i < a.length ? a[i] : d);
 
 /** `Array.get!InternalBorrowed`: the same as `Array.get!Internal`. */
 
-/** `Array.set!`: a copy with one element replaced (the array itself out of bounds). */
+/** `Array.set!`: a copy with one element replaced (the array itself out of bounds).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_set_immutable = (a, i, x) => {
   if (i >= a.length) return a;
   const r = a.slice();
@@ -854,13 +1242,23 @@ export const uint53__lean_array_set_immutable = (a, i, x) => {
   return r;
 };
 
-/** `Array.set!`, in place. */
+/** `Array.set!`, in place.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_set_mutable = (a, i, x) => {
   if (i < a.length) a[i] = x;
   return a;
 };
 
-/** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds). */
+/** `Array.swapIfInBounds`: a copy with two elements swapped (the array itself out of bounds).
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {number} j `uint53`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_swap_immutable = (a, i, j) => {
   if (i >= a.length || j >= a.length) return a;
   const r = a.slice();
@@ -870,7 +1268,12 @@ export const uint53__lean_array_swap_immutable = (a, i, j) => {
   return r;
 };
 
-/** `Array.swapIfInBounds`, in place. */
+/** `Array.swapIfInBounds`, in place.
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {number} j `uint53`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_swap_mutable = (a, i, j) => {
   if (i < a.length && j < a.length) {
     const t = a[i];
@@ -880,184 +1283,335 @@ export const uint53__lean_array_swap_mutable = (a, i, j) => {
   return a;
 };
 
-/** `Int16.ofNat`. */
+/** `Int16.ofNat`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `int16` */
 export const uint53__lean_int16_of_nat = int53__lean_int16_of_int;
 
-/** `Int32.ofNat`. */
+/** `Int32.ofNat`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `int32` */
 export const uint53__lean_int32_of_nat = int53__lean_int32_of_int;
 
-/** `Int8.ofNat`. */
+/** `Int8.ofNat`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `int8` */
 export const uint53__lean_int8_of_nat = int53__lean_int8_of_int;
 
-/** `Array.replicate`, on a generic array. */
+/** `Array.replicate`, on a generic array.
+ *  @template α the element type
+ *  @param {number} n `uint53`
+ *  @param {α} v `α`
+ *  @returns {Array<α>} `array α` */
 export const uint53__lean_mk_array = (n, v) => new Array(n).fill(v);
 
-/** `String.Internal.pushn`. */
+/** `String.Internal.pushn`.
+ *  @param {string} a `string`
+ *  @param {string} b `string`
+ *  @param {number} c `uint53`
+ *  @returns {string} `string` */
 export const uint53__lean_string_pushn = (a, b, c) => a + b.repeat(c);
 
-/** `String.Pos.Raw.set`, `String.set`. */
+/** `String.Pos.Raw.set`, `String.set`.
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @param {string} c `string`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_set__String_Pos_set = (a, b, c) => $utf8Set(a, b, c);
 
-/** `UInt16.ofNat`, `UInt16.ofNatLT` (`ToInt32` takes a safe integer modulo `2^32`). */
+/** `UInt16.ofNat`, `UInt16.ofNatLT` (`ToInt32` takes a safe integer modulo `2^32`).
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint16` */
 export const uint53__lean_uint16_of_nat__UInt16_ofNat = (a) => a & 65535;
 
-/** `Char.ofNatAux`. */
+/** `Char.ofNatAux`.
+ *  @param {number} a `uint53`
+ *  @returns {string} `string` */
 export const uint53__lean_uint32_of_nat__Char_ofNatAux = (a) => String.fromCodePoint(a);
 
-/** `UInt32.ofNat`, `UInt32.ofNatLT`. */
+/** `UInt32.ofNat`, `UInt32.ofNatLT`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint32` */
 export const uint53__lean_uint32_of_nat__UInt32_ofNat = (a) => a >>> 0;
 
-/** `UInt64.toUInt16`. */
+/** `UInt64.toUInt16`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint16` */
 export const uint53__lean_uint64_to_uint16 = (a) => a & 65535;
 
-/** `UInt64.toUInt32`. */
+/** `UInt64.toUInt32`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint32` */
 export const uint53__lean_uint64_to_uint32 = (a) => a >>> 0;
 
-/** `UInt64.toUInt8`. */
+/** `UInt64.toUInt8`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint8` */
 export const uint53__lean_uint64_to_uint8 = (a) => a & 255;
 
-/** `UInt8.ofNat`, `UInt8.ofNatLT`. */
+/** `UInt8.ofNat`, `UInt8.ofNatLT`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint8` */
 export const uint53__lean_uint8_of_nat__UInt8_ofNat = (a) => a & 255;
 
-/** `UInt8.add`. */
+/** `UInt8.add`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_add = (a, b) => (a + b) & 255;
 
-/** `UInt8.complement`. */
+/** `UInt8.complement`.
+ *  @param {number} a `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_complement = (a) => ~a & 255;
 
-/** `UInt8.div`. */
+/** `UInt8.div`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `UInt8.land`. */
+/** `UInt8.land`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_land = (a, b) => a & b & 255;
 
-/** `UInt8.log2`. */
+/** `UInt8.log2`.
+ *  @param {number} a `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_log2 = (a) => a === 0 ? 0 : 31 - Math.clz32(a);
 
-/** `UInt8.lor`. */
+/** `UInt8.lor`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_lor = (a, b) => (a | b) & 255;
 
-/** `UInt8.mod`. */
+/** `UInt8.mod`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `UInt8.mul`. */
+/** `UInt8.mul`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_mul = (a, b) => (a * b) & 255;
 
-/** `UInt8.neg`. */
+/** `UInt8.neg`.
+ *  @param {number} a `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_neg = (a) => -a & 255;
 
-/** `UInt8.shiftLeft`. */
+/** `UInt8.shiftLeft`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_shift_left = (a, b) => (a << (((b % 8) + 8) % 8)) & 255;
 
-/** `UInt8.shiftRight`. */
+/** `UInt8.shiftRight`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_shift_right = (a, b) => a >>> (b % 8);
 
-/** `UInt8.sub`. */
+/** `UInt8.sub`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_sub = (a, b) => (a - b) & 255;
 
-/** `UInt8.xor`. */
+/** `UInt8.xor`.
+ *  @param {number} a `uint8`
+ *  @param {number} b `uint8`
+ *  @returns {number} `uint8` */
 export const uint8__lean_uint8_xor = (a, b) => (a ^ b) & 255;
 
 /* ------------------------------------------------------------ nat_bigint */
 
-/** `Int.natAbs`. */
+/** `Int.natAbs`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_int__bigint_nat__lean_nat_abs = (a) => (a < 0n ? -a : a);
 
-/** `Nat.div`. */
+/** `Nat.div`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_div = (a, b) => b === 0n ? 0n : a / b;
 
-/** `Nat.divExact`. */
+/** `Nat.divExact`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_div_exact = (a, b) => b === 0n ? 0n : a / b;
 
-/** `Nat.log2`. */
+/** `Nat.log2`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_log2 = (a) => a === 0n ? 0n : BigInt(a.toString(2).length - 1);
 
-/** `Nat.modCore`, `Nat.mod`. */
+/** `Nat.modCore`, `Nat.mod`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_mod__Nat_mod = (a, b) => b === 0n ? a : a % b;
 
-/** `Nat.pow`. */
+/** `Nat.pow`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_pow = (a, b) => $bigPow(a, b);
 
-/** `Nat.pred`. */
+/** `Nat.pred`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_pred = (a) => a > 0n ? a - 1n : 0n;
 
-/** `Nat.sub`. */
+/** `Nat.sub`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_sub = (a, b) => a > b ? a - b : 0n;
 
-/** `String.Internal.length`, `String.length`. */
+/** `String.Internal.length`, `String.length`.
+ *  @param {string} a `string`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_string_length__String_Internal_length = (a) => BigInt([...a].length);
 
-/** `String.utf8ByteSize`. */
+/** `String.utf8ByteSize`.
+ *  @param {string} a `string`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_string_utf8_byte_size = (a) => BigInt($utf8(a).length);
 
 /* ------------------------------------------------------------ nat_num */
 
-/** `Int.natAbs`. */
+/** `Int.natAbs`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `uint53` */
 export const bigint_int__uint53__lean_nat_abs = (a) => $toNum53(a < 0n ? -a : a);
 
-/** `Int.natAbs`. */
+/** `Int.natAbs`.
+ *  @param {number} a `int53`
+ *  @returns {bigint} `bigint_nat` */
 export const int53__bigint_nat__lean_nat_abs = (a) => BigInt(Math.abs(a));
 
-/** `Int.natAbs` (the absolute value of a safe integer is one). */
+/** `Int.natAbs` (the absolute value of a safe integer is one).
+ *  @param {number} a `int53`
+ *  @returns {number} `uint53` */
 export const int53__uint53__lean_nat_abs = (a) => Math.abs(a);
 
-/** `UInt64.toNat`. */
+/** `UInt64.toNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint53` */
 export const bigint_nat__uint53__lean_uint64_to_nat__UInt64_toNat = (a) => $toNum53(a);
 
-/** `Nat.add`. */
+/** `Nat.add`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_add = (a, b) => $chk53(a + b);
 
-/** `Nat.div`. */
+/** `Nat.div`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `Nat.divExact`. */
+/** `Nat.divExact`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_div_exact = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `Nat.land`. */
+/** `Nat.land`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_land = (a, b) => $land53(a, b);
 
-/** `Nat.log2`. */
+/** `Nat.log2`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_log2 = (a) => a === 0 ? 0 : a.toString(2).length - 1;
 
-/** `Nat.lor`. */
+/** `Nat.lor`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_lor = (a, b) => $lor53(a, b);
 
-/** `Nat.xor`. */
+/** `Nat.xor`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_lxor = (a, b) => $xor53(a, b);
 
-/** `Nat.modCore`, `Nat.mod`. */
+/** `Nat.modCore`, `Nat.mod`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_mod__Nat_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Nat.mul`. */
+/** `Nat.mul`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_mul = (a, b) => $chk53(a * b);
 
-/** `Nat.pow`. */
+/** `Nat.pow`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_pow = (a, b) => $chk53(Math.pow(a, b));
 
-/** `Nat.pred`. */
+/** `Nat.pred`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_pred = (a) => a > 0 ? a - 1 : 0;
 
-/** `Nat.shiftLeft`. */
+/** `Nat.shiftLeft`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_shiftl = (a, b) => $chk53(a * Math.pow(2, b));
 
-/** `Nat.shiftRight`. */
+/** `Nat.shiftRight`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_shiftr = (a, b) => Math.floor(a / Math.pow(2, b));
 
-/** `Nat.sub`. */
+/** `Nat.sub`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_sub = (a, b) => a > b ? a - b : 0;
 
-/** `String.Internal.length`, `String.length`. */
+/** `String.Internal.length`, `String.length`.
+ *  @param {string} a `string`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_length__String_Internal_length = (a) => [...a].length;
 
-/** `String.utf8ByteSize`. */
+/** `String.utf8ByteSize`.
+ *  @param {string} a `string`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_utf8_byte_size = (a) => $utf8(a).length;
 
 /* ------------------------------------------------------------ int_bigint */
 
-/** `Int.tdiv`. */
+/** `Int.tdiv`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int_div = (a, b) => b === 0n ? 0n : a / b;
 
-/** `Int.divExact`. */
+/** `Int.divExact`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int_div_exact = (a, b) =>
   b === 0n
   ? 0n
@@ -1067,7 +1621,10 @@ export const bigint_int__lean_int_div_exact = (a, b) =>
       : a / b + 1n
     : a / b;
 
-/** `Int.ediv`. */
+/** `Int.ediv`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int_ediv = (a, b) =>
   b === 0n
   ? 0n
@@ -1077,39 +1634,66 @@ export const bigint_int__lean_int_ediv = (a, b) =>
       : a / b + 1n
     : a / b;
 
-/** `Int.emod`. */
+/** `Int.emod`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int_emod = (a, b) => b === 0n ? a : ((a % b) + (b < 0n ? -b : b)) % (b < 0n ? -b : b);
 
-/** `Int.tmod`. */
+/** `Int.tmod`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int_mod = (a, b) => b === 0n ? a : a % b;
 
-/** `Int.negSucc`. */
+/** `Int.negSucc`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_nat__bigint_int__lean_int_neg_succ_of_nat = (a) => -a - 1n;
 
-/** `Int.negSucc`. */
+/** `Int.negSucc`.
+ *  @param {number} a `uint53`
+ *  @returns {bigint} `bigint_int` */
 export const uint53__bigint_int__lean_int_neg_succ_of_nat = (a) => -BigInt(a) - 1n;
 
 /* ------------------------------------------------------------ int_num */
 
-/** `Int64.toInt`. */
+/** `Int64.toInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int53` */
 export const bigint_int__int53__lean_int64_to_int_sint = (a) => $toNum53(a);
 
-/** `Int.negSucc`. */
+/** `Int.negSucc`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int53` */
 export const bigint_nat__int53__lean_int_neg_succ_of_nat = (a) => $toNum53(-a - 1n);
 
-/** `Int.negSucc`. */
+/** `Int.negSucc`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `int53` */
 export const uint53__int53__lean_int_neg_succ_of_nat = (a) => -a - 1;
 
-/** `Int.ofNat`. */
+/** `Int.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int53` */
 export const bigint_nat__int53__lean_nat_to_int = (a) => $toNum53(a);
 
-/** `Int.add`. */
+/** `Int.add`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_add = (a, b) => $chk53(a + b);
 
-/** `Int.tdiv`. */
+/** `Int.tdiv`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_div = (a, b) => b === 0 ? 0 : Math.trunc(a / b);
 
-/** `Int.divExact`. */
+/** `Int.divExact`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_div_exact = (a, b) =>
   b === 0
   ? 0
@@ -1119,7 +1703,10 @@ export const int53__lean_int_div_exact = (a, b) =>
       : Math.trunc(a / b) + 1
     : Math.trunc(a / b);
 
-/** `Int.ediv`. */
+/** `Int.ediv`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_ediv = (a, b) =>
   b === 0
   ? 0
@@ -1129,412 +1716,704 @@ export const int53__lean_int_ediv = (a, b) =>
       : Math.trunc(a / b) + 1
     : Math.trunc(a / b);
 
-/** `Int.emod`. */
+/** `Int.emod`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_emod = (a, b) => b === 0 ? a : ((a % b) + Math.abs(b)) % Math.abs(b);
 
-/** `Int.tmod`. */
+/** `Int.tmod`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int.mul`. */
+/** `Int.mul`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_mul = (a, b) => $chk53(a * b);
 
-/** `Int.neg`. */
+/** `Int.neg`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_neg = (a) => 0 - a;
 
-/** `Int.sub`. */
+/** `Int.sub`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int_sub = (a, b) => $chk53(a - b);
 
 /* ------------------------------------------------------------ uint64_bigint */
 
-/** `Bool.toUInt64`. */
+/** `Bool.toUInt64`.
+ *  @param {boolean} a `bool`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_bool_to_uint64 = (a) => a ? 1n : 0n;
 
-/** `String.hash`: Lean's hash of the UTF-8 bytes (MurmurHash64A, seed 11). */
+/** `String.hash`: Lean's hash of the UTF-8 bytes (MurmurHash64A, seed 11).
+ *  @param {string} s `string`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_string_hash = (s) => $hashBytes(encoder.encode(s));
 
-/** `UInt64.add`. */
+/** `UInt64.add`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_add = (a, b) => BigInt.asUintN(64, a + b);
 
-/** `UInt64.complement`. */
+/** `UInt64.complement`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_complement = (a) => BigInt.asUintN(64, ~a);
 
-/** `UInt64.div`. */
+/** `UInt64.div`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_div = (a, b) => b === 0n ? 0n : BigInt.asUintN(64, a / b);
 
-/** `UInt64.land`. */
+/** `UInt64.land`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_land = (a, b) => BigInt.asUintN(64, a & b);
 
-/** `UInt64.log2`. */
+/** `UInt64.log2`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_log2 = (a) => a === 0n ? 0n : BigInt(a.toString(2).length - 1);
 
-/** `UInt64.lor`. */
+/** `UInt64.lor`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_lor = (a, b) => BigInt.asUintN(64, a | b);
 
-/** `UInt64.mod`. */
+/** `UInt64.mod`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_mod = (a, b) => b === 0n ? a : a % b;
 
-/** `UInt64.mul`. */
+/** `UInt64.mul`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_mul = (a, b) => BigInt.asUintN(64, a * b);
 
-/** `UInt64.neg`. */
+/** `UInt64.neg`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_neg = (a) => BigInt.asUintN(64, -a);
 
-/** `UInt64.ofNat`, `UInt64.ofNatLT`. */
+/** `UInt64.ofNat`, `UInt64.ofNatLT`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_of_nat__UInt64_ofNat = (a) => BigInt.asUintN(64, a);
 
-/** `UInt64.ofNat`, `UInt64.ofNatLT` (a safe integer is below `2^64`). */
+/** `UInt64.ofNat`, `UInt64.ofNatLT` (a safe integer is below `2^64`).
+ *  @param {number} a `uint53`
+ *  @returns {bigint} `bigint_nat` */
 export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat = (a) => BigInt(a);
 
-/** `UInt64.shiftLeft`. */
+/** `UInt64.shiftLeft`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_shift_left = (a, b) => BigInt.asUintN(64, a << (((b % 64n) + 64n) % 64n));
 
-/** `UInt64.shiftRight`. */
+/** `UInt64.shiftRight`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_shift_right = (a, b) => a >> (((b % 64n) + 64n) % 64n);
 
-/** `UInt64.sub`. */
+/** `UInt64.sub`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_sub = (a, b) => BigInt.asUintN(64, a - b);
 
-/** `UInt64.xor`. */
+/** `UInt64.xor`.
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_xor = (a, b) => BigInt.asUintN(64, a ^ b);
 
 /* ------------------------------------------------------------ uint64_num */
 // A `UInt64` below `2^53`: a result that is not throws.
 
-/** `UInt64.ofBitVec`. */
+/** `UInt64.ofBitVec`.
+ *  @param {bigint} a `bigint_bitvec64`
+ *  @returns {number} `uint53` */
 export const bigint_bitvec64__uint53__lean_uint64_of_nat_mk = (a) => $toNum53(a);
 
-/** `UInt64.ofNatLT`, `UInt64.ofNat`. */
+/** `UInt64.ofNatLT`, `UInt64.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint53` */
 export const bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat = (a) => $toNum53(BigInt.asUintN(64, a));
 
-/** `UInt64.ofNat`, `UInt64.ofNatLT`: a safe integer is below `2^64`. */
+/** `UInt64.ofNat`, `UInt64.ofNatLT`: a safe integer is below `2^64`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_of_nat__UInt64_ofNat = (a) => a;
 
-/** `Bool.toUInt64`. */
+/** `Bool.toUInt64`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `uint53` */
 export const uint53__lean_bool_to_uint64 = (a) => a ? 1 : 0;
 
-/** `String.hash`: Lean's hash of the UTF-8 bytes (MurmurHash64A, seed 11). */
+/** `String.hash`: Lean's hash of the UTF-8 bytes (MurmurHash64A, seed 11).
+ *  @param {string} s `string`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_hash = (s) => $toNum53($hashBytes(encoder.encode(s)));
 
-/** `UInt64.add` (the sum of two safe integers is below `2^64`). */
+/** `UInt64.add` (the sum of two safe integers is below `2^64`).
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_add = (a, b) => $chk53(a + b);
 
-/** `UInt64.complement` (it is at least `2^64 - 2^53`: it always throws). */
+/** `UInt64.complement` (it is at least `2^64 - 2^53`: it always throws).
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_complement = (a) => $toNum53(BigInt.asUintN(64, ~BigInt(a)));
 
-/** `UInt64.div`. */
+/** `UInt64.div`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_div = (a, b) => b === 0 ? 0 : Math.floor(a / b);
 
-/** `UInt64.land`. */
+/** `UInt64.land`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_land = (a, b) => $land53(a, b);
 
-/** `UInt64.log2`. */
+/** `UInt64.log2`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_log2 = (a) => $log2_53(a);
 
-/** `UInt64.lor`. */
+/** `UInt64.lor`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_lor = (a, b) => $lor53(a, b);
 
-/** `UInt64.mod`. */
+/** `UInt64.mod`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `UInt64.mul` (modulo `2^64`, which may bring it back below `2^53`). */
+/** `UInt64.mul` (modulo `2^64`, which may bring it back below `2^53`).
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_mul = (a, b) => $toNum53(BigInt.asUintN(64, BigInt(a) * BigInt(b)));
 
-/** `UInt64.neg` (only `0` has a negation below `2^53`). */
+/** `UInt64.neg` (only `0` has a negation below `2^53`).
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_neg = (a) => (a === 0 ? 0 : $toNum53(18446744073709551616n - BigInt(a)));
 
-/** `UInt64.shiftLeft` (modulo `2^64`). */
+/** `UInt64.shiftLeft` (modulo `2^64`).
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_shift_left = (a, b) => $toNum53(BigInt.asUintN(64, BigInt(a) << BigInt(b % 64)));
 
-/** `UInt64.shiftRight`. */
+/** `UInt64.shiftRight`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_shift_right = (a, b) => Math.floor(a / 2 ** (b % 64));
 
-/** `UInt64.sub` (a negative difference wraps to `2^64 - 2^53` or more). */
+/** `UInt64.sub` (a negative difference wraps to `2^64 - 2^53` or more).
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_sub = (a, b) => (a >= b ? a - b : $toNum53(BigInt.asUintN(64, BigInt(a - b))));
 
-/** `UInt64.xor`. */
+/** `UInt64.xor`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_xor = (a, b) => $xor53(a, b);
 
 /* ------------------------------------------------------------ int64_bigint */
 
-/** `Bool.toInt64`. */
+/** `Bool.toInt64`.
+ *  @param {boolean} a `bool`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_bool_to_int64 = (a) => a ? 1n : 0n;
 
-/** `Int64.abs`. */
+/** `Int64.abs`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_abs = (a) => BigInt.asIntN(64, a < 0n ? -a : a);
 
-/** `Int64.add`. */
+/** `Int64.add`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_add = (a, b) => BigInt.asIntN(64, a + b);
 
-/** `Int64.complement`. */
+/** `Int64.complement`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_complement = (a) => BigInt.asIntN(64, ~a);
 
-/** `Int64.div`. */
+/** `Int64.div`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_div = (a, b) => b === 0n ? 0n : BigInt.asIntN(64, a / b);
 
-/** `Int64.land`. */
+/** `Int64.land`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_land = (a, b) => BigInt.asIntN(64, a & b);
 
-/** `Int64.lor`. */
+/** `Int64.lor`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_lor = (a, b) => BigInt.asIntN(64, a | b);
 
-/** `Int64.mod`. */
+/** `Int64.mod`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_mod = (a, b) => b === 0n ? a : a % b;
 
-/** `Int64.mul`. */
+/** `Int64.mul`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_mul = (a, b) => BigInt.asIntN(64, a * b);
 
-/** `Int64.neg`. */
+/** `Int64.neg`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_neg = (a) => BigInt.asIntN(64, -a);
 
-/** `Int64.ofInt`. */
+/** `Int64.ofInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_of_int = (a) => BigInt.asIntN(64, a);
 
-/** `Int64.ofInt` (a safe integer is an `Int64`). */
+/** `Int64.ofInt` (a safe integer is an `Int64`).
+ *  @param {number} a `int53`
+ *  @returns {bigint} `bigint_int` */
 export const int53__bigint_int__lean_int64_of_int = (a) => BigInt(a);
 
-/** `Int64.shiftLeft`. */
+/** `Int64.shiftLeft`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_shift_left = (a, b) => BigInt.asIntN(64, a << (((b % 64n) + 64n) % 64n));
 
-/** `Int64.shiftRight`. */
+/** `Int64.shiftRight`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_shift_right = (a, b) => a >> (((b % 64n) + 64n) % 64n);
 
-/** `Int64.sub`. */
+/** `Int64.sub`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_sub = (a, b) => BigInt.asIntN(64, a - b);
 
-/** `Int64.xor`. */
+/** `Int64.xor`.
+ *  @param {bigint} a `bigint_int`
+ *  @param {bigint} b `bigint_int`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_int64_xor = (a, b) => BigInt.asIntN(64, a ^ b);
 
-/** `Int64.ofNat`. */
+/** `Int64.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_nat__bigint_int__lean_int64_of_nat = bigint_int__lean_int64_of_int;
 
-/** `Int64.ofNat`. */
+/** `Int64.ofNat`.
+ *  @param {number} a `uint53`
+ *  @returns {bigint} `bigint_int` */
 export const uint53__bigint_int__lean_int64_of_nat = int53__bigint_int__lean_int64_of_int;
 
 /* ------------------------------------------------------------ int64_num */
 // An `Int64` of absolute value below `2^53`: a result that is not throws.
 
-/** `Int64.ofInt`. */
+/** `Int64.ofInt`.
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `int53` */
 export const bigint_int__int53__lean_int64_of_int = (a) => $toNum53(BigInt.asIntN(64, a));
 
-/** `Int64.ofNat`. */
+/** `Int64.ofNat`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int53` */
 export const bigint_nat__int53__lean_int64_of_nat = bigint_int__int53__lean_int64_of_int;
 
-/** `Int64.ofInt` (a safe integer is an `Int64`). */
+/** `Int64.ofInt` (a safe integer is an `Int64`).
+ *  @param {number} a `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_of_int = (a) => a;
 
-/** `Int64.ofNat`. */
+/** `Int64.ofNat`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `int53` */
 export const uint53__int53__lean_int64_of_nat = int53__lean_int64_of_int;
 
-/** `Bool.toInt64`. */
+/** `Bool.toInt64`.
+ *  @param {boolean} a `bool`
+ *  @returns {number} `int53` */
 export const int53__lean_bool_to_int64 = (a) => a ? 1 : 0;
 
-/** `Int64.abs`. */
+/** `Int64.abs`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_abs = (a) => Math.abs(a);
 
-/** `Int64.add` (the sum of two safe integers is an `Int64`). */
+/** `Int64.add` (the sum of two safe integers is an `Int64`).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_add = (a, b) => $chk53(a + b);
 
-/** `Int64.complement`. */
+/** `Int64.complement`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_complement = (a) => $chk53(-a - 1);
 
-/** `Int64.div` (truncated). */
+/** `Int64.div` (truncated).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_div = (a, b) => b === 0 ? 0 : Math.trunc(a / b);
 
-/** `Int64.land`. */
+/** `Int64.land`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_land = (a, b) => $toNum53(BigInt(a) & BigInt(b));
 
-/** `Int64.lor`. */
+/** `Int64.lor`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_lor = (a, b) => $toNum53(BigInt(a) | BigInt(b));
 
-/** `Int64.mod` (the sign of `a`). */
+/** `Int64.mod` (the sign of `a`).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_mod = (a, b) => b === 0 ? a : a % b;
 
-/** `Int64.mul` (modulo `2^64`, which may bring it back to a safe integer). */
+/** `Int64.mul` (modulo `2^64`, which may bring it back to a safe integer).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_mul = (a, b) => $toNum53(BigInt.asIntN(64, BigInt(a) * BigInt(b)));
 
-/** `Int64.neg`. */
+/** `Int64.neg`.
+ *  @param {number} a `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_neg = (a) => 0 - a;
 
-/** `Int64.shiftLeft` (modulo `2^64`). */
+/** `Int64.shiftLeft` (modulo `2^64`).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_shift_left = (a, b) =>
   $toNum53(BigInt.asIntN(64, BigInt(a) << BigInt(((b % 64) + 64) % 64)));
 
-/** `Int64.shiftRight` (arithmetic). */
+/** `Int64.shiftRight` (arithmetic).
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_shift_right = (a, b) => Math.floor(a / 2 ** (((b % 64) + 64) % 64));
 
-/** `Int64.sub`. */
+/** `Int64.sub`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_sub = (a, b) => $chk53(a - b);
 
-/** `Int64.xor`. */
+/** `Int64.xor`.
+ *  @param {number} a `int53`
+ *  @param {number} b `int53`
+ *  @returns {number} `int53` */
 export const int53__lean_int64_xor = (a, b) => $toNum53(BigInt(a) ^ BigInt(b));
 
 /* ------------------------------------------------------------ bitvec_bigint */
 
 /* ------------------------------------------------------------ bitvec_num */
 
-/** `UInt64.toBitVec`. */
+/** `UInt64.toBitVec`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `int53_bitvec64` */
 export const bigint_nat__int53_bitvec64__lean_uint64_to_nat__UInt64_toBitVec = (a) => $toNum53(a);
 
 
 /* ------------------------------------------------------------ floats */
 
-/** `Float.round`. */
+/** `Float.round`.
+ *  @param {number} a `float`
+ *  @returns {number} `float` */
 export const float__round = (a) => $round(a);
 
-/** `Float32.round`. */
+/** `Float32.round`.
+ *  @param {number} a `float32`
+ *  @returns {number} `float32` */
 export const float32__roundf = (a) => $round(a);
 
-/** `Float.toString`. */
+/** `Float.toString`.
+ *  @param {number} a `float`
+ *  @returns {string} `string` */
 export const float__lean_float_to_string = (a) => $fmtF6(a);
 
-/** `Float32.toString`. */
+/** `Float32.toString`.
+ *  @param {number} a `float32`
+ *  @returns {string} `string` */
 export const float32__lean_float32_to_string = (a) => $fmtF6(a);
 
-/** `Float.toUInt8` (saturating; `NaN` is `0`). */
+/** `Float.toUInt8` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `uint8` */
 export const float__lean_float_to_uint8 = (a) => $satNum(a, 0, 255);
 
-/** `Float.toUInt16` (saturating; `NaN` is `0`). */
+/** `Float.toUInt16` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `uint16` */
 export const float__lean_float_to_uint16 = (a) => $satNum(a, 0, 65535);
 
-/** `Float.toUInt32` (saturating; `NaN` is `0`). */
+/** `Float.toUInt32` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `uint32` */
 export const float__lean_float_to_uint32 = (a) => $satNum(a, 0, 4294967295);
 
-/** `Float.toUInt64` (saturating; `NaN` is `0`). */
+/** `Float.toUInt64` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_float_to_uint64 = (a) => $satBig(a, 0n, 18446744073709551615n);
 
-/** `Float.toUInt64` (saturating; `NaN` is `0`), a result of `2^53` or more throws. */
+/** `Float.toUInt64` (saturating; `NaN` is `0`), a result of `2^53` or more throws.
+ *  @param {number} a `float`
+ *  @returns {number} `uint53` */
 export const uint53__lean_float_to_uint64 = (a) => $toNum53($satBig(a, 0n, 18446744073709551615n));
 
-/** `Float.toInt8` (saturating; `NaN` is `0`). */
+/** `Float.toInt8` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `int8` */
 export const float__lean_float_to_int8 = (a) => $satNum(a, -128, 127);
 
-/** `Float.toInt16` (saturating; `NaN` is `0`). */
+/** `Float.toInt16` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `int16` */
 export const float__lean_float_to_int16 = (a) => $satNum(a, -32768, 32767);
 
-/** `Float.toInt32` (saturating; `NaN` is `0`). */
+/** `Float.toInt32` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {number} `int32` */
 export const float__lean_float_to_int32 = (a) => $satNum(a, -2147483648, 2147483647);
 
-/** `Float.toInt64` (saturating; `NaN` is `0`). */
+/** `Float.toInt64` (saturating; `NaN` is `0`).
+ *  @param {number} a `float`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_float_to_int64 = (a) =>
   $satBig(a, -9223372036854775808n, 9223372036854775807n);
 
-/** `Float.toInt64` (saturating; `NaN` is `0`), a result of absolute value `2^53` or more throws. */
+/** `Float.toInt64` (saturating; `NaN` is `0`), a result of absolute value `2^53` or more throws.
+ *  @param {number} a `float`
+ *  @returns {number} `int53` */
 export const int53__lean_float_to_int64 = (a) =>
   $toNum53($satBig(a, -9223372036854775808n, 9223372036854775807n));
 
-/** `Float32.toUInt8` (saturating; `NaN` is `0`). */
+/** `Float32.toUInt8` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `uint8` */
 export const float32__lean_float32_to_uint8 = (a) => $satNum(a, 0, 255);
 
-/** `Float32.toUInt16` (saturating; `NaN` is `0`). */
+/** `Float32.toUInt16` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `uint16` */
 export const float32__lean_float32_to_uint16 = (a) => $satNum(a, 0, 65535);
 
-/** `Float32.toUInt32` (saturating; `NaN` is `0`). */
+/** `Float32.toUInt32` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `uint32` */
 export const float32__lean_float32_to_uint32 = (a) => $satNum(a, 0, 4294967295);
 
-/** `Float32.toUInt64` (saturating; `NaN` is `0`). */
+/** `Float32.toUInt64` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_float32_to_uint64 = (a) => $satBig(a, 0n, 18446744073709551615n);
 
-/** `Float32.toUInt64` (saturating; `NaN` is `0`), a result of `2^53` or more throws. */
+/** `Float32.toUInt64` (saturating; `NaN` is `0`), a result of `2^53` or more throws.
+ *  @param {number} a `float32`
+ *  @returns {number} `uint53` */
 export const uint53__lean_float32_to_uint64 = (a) => $toNum53($satBig(a, 0n, 18446744073709551615n));
 
-/** `Float32.toInt8` (saturating; `NaN` is `0`). */
+/** `Float32.toInt8` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `int8` */
 export const float32__lean_float32_to_int8 = (a) => $satNum(a, -128, 127);
 
-/** `Float32.toInt16` (saturating; `NaN` is `0`). */
+/** `Float32.toInt16` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `int16` */
 export const float32__lean_float32_to_int16 = (a) => $satNum(a, -32768, 32767);
 
-/** `Float32.toInt32` (saturating; `NaN` is `0`). */
+/** `Float32.toInt32` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {number} `int32` */
 export const float32__lean_float32_to_int32 = (a) => $satNum(a, -2147483648, 2147483647);
 
-/** `Float32.toInt64` (saturating; `NaN` is `0`). */
+/** `Float32.toInt64` (saturating; `NaN` is `0`).
+ *  @param {number} a `float32`
+ *  @returns {bigint} `bigint_int` */
 export const bigint_int__lean_float32_to_int64 = (a) =>
   $satBig(a, -9223372036854775808n, 9223372036854775807n);
 
-/** `Float32.toInt64` (saturating; `NaN` is `0`), a result of absolute value `2^53` or more throws. */
+/** `Float32.toInt64` (saturating; `NaN` is `0`), a result of absolute value `2^53` or more throws.
+ *  @param {number} a `float32`
+ *  @returns {number} `int53` */
 export const int53__lean_float32_to_int64 = (a) =>
   $toNum53($satBig(a, -9223372036854775808n, 9223372036854775807n));
 
-/** `Float.toBits`. */
+/** `Float.toBits`.
+ *  @param {number} a `float`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_float_to_bits__Float_toBits = (a) => $toBits(a);
 
 /** `Float.toBits`; bits of `2^53` or more (every double of absolute value at least `2^-1021`,
- *  and every negative one) throw. */
+ *  and every negative one) throw.
+ *  @param {number} a `float`
+ *  @returns {number} `uint53` */
 export const uint53__lean_float_to_bits__Float_toBits = (a) => $toNum53($toBits(a));
 
-/** `Float.ofBits`. */
+/** `Float.ofBits`.
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `float` */
 export const bigint_nat__lean_float_of_bits__Float_ofBits = (a) => $ofBits(a);
 
-/** `Float.ofBits`. */
+/** `Float.ofBits`.
+ *  @param {number} a `uint53`
+ *  @returns {number} `float` */
 export const uint53__lean_float_of_bits__Float_ofBits = (a) => $ofBits(BigInt(a));
 
-/** `Float32.toBits`. */
+/** `Float32.toBits`.
+ *  @param {number} a `float32`
+ *  @returns {number} `uint32` */
 export const float32__lean_float32_to_bits__Float32_toBits = (a) => {
   const dv = new DataView(new ArrayBuffer(4));
   dv.setFloat32(0, a);
   return dv.getUint32(0);
 };
 
-/** `Float32.ofBits`. */
+/** `Float32.ofBits`.
+ *  @param {number} a `uint32`
+ *  @returns {number} `float32` */
 export const uint32__lean_float32_of_bits__Float32_ofBits = (a) => {
   const dv = new DataView(new ArrayBuffer(4));
   dv.setUint32(0, a);
   return dv.getFloat32(0);
 };
 
-/** `Float.frExp`. */
+/** `Float.frExp`.
+ *  @param {number} a `float`
+ *  @returns {{_1: number, _2: bigint}} `record float bigint_int []` */
 export const bigint_int__lean_float_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: BigInt(e) };
 };
 
-/** `Float.frExp`. */
+/** `Float.frExp`.
+ *  @param {number} a `float`
+ *  @returns {{_1: number, _2: number}} `record float int53 []` */
 export const int53__lean_float_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: e };
 };
 
-/** `Float32.frExp`. */
+/** `Float32.frExp`.
+ *  @param {number} a `float32`
+ *  @returns {{_1: number, _2: bigint}} `record float32 bigint_int []` */
 export const bigint_int__lean_float32_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: BigInt(e) };
 };
 
-/** `Float32.frExp`. */
+/** `Float32.frExp`.
+ *  @param {number} a `float32`
+ *  @returns {{_1: number, _2: number}} `record float32 int53 []` */
 export const int53__lean_float32_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: e };
 };
 
-/** `Float.scaleB`. */
+/** `Float.scaleB`.
+ *  @param {number} a `float`
+ *  @param {bigint} n `bigint_int`
+ *  @returns {number} `float` */
 export const bigint_int__lean_float_scaleb = (a, n) => $scalbn(a, $clampExp(n));
 
-/** `Float.scaleB` (`$scalbn` clamps the exponent itself). */
+/** `Float.scaleB` (`$scalbn` clamps the exponent itself).
+ *  @param {number} a `float`
+ *  @param {number} n `int53`
+ *  @returns {number} `float` */
 export const int53__lean_float_scaleb = (a, n) => $scalbn(a, n);
 
-/** `Float32.scaleB`. */
+/** `Float32.scaleB`.
+ *  @param {number} a `float32`
+ *  @param {bigint} n `bigint_int`
+ *  @returns {number} `float32` */
 export const bigint_int__lean_float32_scaleb = (a, n) => $scalbnf(a, $clampExp(n));
 
-/** `Float32.scaleB` (`$scalbnf` clamps the exponent itself). */
+/** `Float32.scaleB` (`$scalbnf` clamps the exponent itself).
+ *  @param {number} a `float32`
+ *  @param {number} n `int53`
+ *  @returns {number} `float32` */
 export const int53__lean_float32_scaleb = (a, n) => $scalbnf(a, n);
 
 /* ------------------------------------------------------------ strings */
 
-/** `String.Internal.drop`: without its first `n` characters. */
+/** `String.Internal.drop`: without its first `n` characters.
+ *  @param {string} s `string`
+ *  @param {number} n `uint53`
+ *  @returns {string} `string` */
 export const uint53__lean_string_drop = (s, n) => [...s].slice(n).join("");
 
-/** `String.Internal.drop` (`Number` keeps a count too large for a string too large). */
+/** `String.Internal.drop` (`Number` keeps a count too large for a string too large).
+ *  @param {string} s `string`
+ *  @param {bigint} n `bigint_nat`
+ *  @returns {string} `string` */
 export const bigint_nat__lean_string_drop = (s, n) => uint53__lean_string_drop(s, Number(n));
 
-/** `String.Internal.dropRight`: without its last `n` characters. */
+/** `String.Internal.dropRight`: without its last `n` characters.
+ *  @param {string} s `string`
+ *  @param {number} n `uint53`
+ *  @returns {string} `string` */
 export const uint53__lean_string_dropright = (s, n) => {
   const cs = [...s];
   return cs.slice(0, Math.max(cs.length - n, 0)).join("");
 };
 
-/** `String.Internal.dropRight`. */
+/** `String.Internal.dropRight`.
+ *  @param {string} s `string`
+ *  @param {bigint} n `bigint_nat`
+ *  @returns {string} `string` */
 export const bigint_nat__lean_string_dropright = (s, n) => uint53__lean_string_dropright(s, Number(n));
 
-/** `String.Internal.trim`: without the whitespace (`Char.isWhitespace`) at both ends. */
+/** `String.Internal.trim`: without the whitespace (`Char.isWhitespace`) at both ends.
+ *  @param {string} s `string`
+ *  @returns {string} `string` */
 export const string__lean_string_trim = (s) => {
   const cs = [...s];
   let b = 0;
@@ -1544,55 +2423,88 @@ export const string__lean_string_trim = (s) => {
   return cs.slice(b, e).join("");
 };
 
-/** `String.Internal.foldl`. */
+/** `String.Internal.foldl`.
+ *  @param {function(string, string): string} f `fn [string, string] string`
+ *  @param {string} init `string`
+ *  @param {string} s `string`
+ *  @returns {string} `string` */
 export const string__lean_string_foldl = (f, init, s) => {
   let acc = init;
   for (const c of s) acc = f(acc, c);
   return acc;
 };
 
-/** `String.Internal.isPrefixOf`. */
+/** `String.Internal.isPrefixOf`.
+ *  @param {string} p `string`
+ *  @param {string} s `string`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_isprefixof = (p, s) => s.startsWith(p);
 
-/** `String.Internal.contains`. */
+/** `String.Internal.contains`.
+ *  @param {string} s `string`
+ *  @param {string} c `string`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_contains = (s, c) => s.includes(c);
 
-/** `String.Internal.front`: the first character (`'A'` for the empty string). */
+/** `String.Internal.front`: the first character (`'A'` for the empty string).
+ *  @param {string} s `string`
+ *  @returns {string} `string` */
 export const string__lean_string_front = (s) => (s.length === 0 ? "A" : String.fromCodePoint(s.codePointAt(0)));
 
-/** `String.Internal.posOf`: the position of the first `c`, or the end position. */
+/** `String.Internal.posOf`: the position of the first `c`, or the end position.
+ *  @param {string} s `string`
+ *  @param {string} c `string`
+ *  @returns {number} `uint53` */
 export const string__lean_string_posof = (s, c) => {
   const i = s.indexOf(c);
   return encoder.encode(i < 0 ? s : s.slice(0, i)).length;
 };
 
-/** `String.Internal.intercalate`. */
+/** `String.Internal.intercalate`.
+ *  @param {string} sep `string`
+ *  @param {Array<string>} xs `list string`
+ *  @returns {string} `string` */
 export const string__lean_string_intercalate = (sep, xs) => xs.join(sep);
 
 /** `String.Internal.nextWhile`: from `i`, the position of the first character that fails `p`
- *  (or the end). */
+ *  (or the end).
+ *  @param {string} s `string`
+ *  @param {function(string): boolean} p `fn [string] bool`
+ *  @param {number} i `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_nextwhile = (s, p, i) => {
   const end = $utf8(s).length;
   while (i < end && p($get(s, i))) i = $next(s, i);
   return i;
 };
 
-/** `String.Internal.any`. */
+/** `String.Internal.any`.
+ *  @param {string} s `string`
+ *  @param {function(string): boolean} p `fn [string] bool`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_any = (s, p) => {
   for (const c of s) if (p(c)) return true;
   return false;
 };
 
-/** `String.Internal.capitalize`: the first character in upper case (ASCII only). */
+/** `String.Internal.capitalize`: the first character in upper case (ASCII only).
+ *  @param {string} s `string`
+ *  @returns {string} `string` */
 export const string__lean_string_capitalize = (s) => {
   const c = s.charCodeAt(0);
   return c >= 97 && c <= 122 ? String.fromCharCode(c - 32) + s.slice(1) : s;
 };
 
-/** `String.Internal.offsetOfPos`: the number of characters that start before `p`. */
+/** `String.Internal.offsetOfPos`: the number of characters that start before `p`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_string_offsetofpos = (s, p) => BigInt(uint53__lean_string_offsetofpos(s, p));
 
-/** `String.Internal.offsetOfPos`: the number of characters that start before `p`. */
+/** `String.Internal.offsetOfPos`: the number of characters that start before `p`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_offsetofpos = (s, p) => {
   let n = 0;
   let off = 0;
@@ -1604,87 +2516,161 @@ export const uint53__lean_string_offsetofpos = (s, p) => {
   return n;
 };
 
-/** `String.Internal.getUTF8Byte`: byte `n` of the UTF-8 encoding. */
+/** `String.Internal.getUTF8Byte`: byte `n` of the UTF-8 encoding.
+ *  @param {string} s `string`
+ *  @param {bigint} n `bigint_nat`
+ *  @returns {number} `uint8` */
 export const bigint_nat__lean_string_get_byte_fast__String_Internal_getUTF8Byte = (s, n) =>
   encoder.encode(s)[Number(n)];
 
-/** `String.Internal.getUTF8Byte`: byte `n` of the UTF-8 encoding. */
+/** `String.Internal.getUTF8Byte`: byte `n` of the UTF-8 encoding.
+ *  @param {string} s `string`
+ *  @param {number} n `uint53`
+ *  @returns {number} `uint8` */
 export const uint53__lean_string_get_byte_fast__String_Internal_getUTF8Byte = (s, n) => encoder.encode(s)[n];
 
-/** `String.getUTF8Byte`: the byte at position `p`. */
+/** `String.getUTF8Byte`: the byte at position `p`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint8` */
 export const string__lean_string_get_byte_fast__String_getUTF8Byte = (s, p) => encoder.encode(s)[p];
 
-/** `String.getUtf8Byte`. */
+/** `String.getUtf8Byte`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint8` */
 export const string__lean_string_get_byte_fast__String_getUtf8Byte = string__lean_string_get_byte_fast__String_getUTF8Byte;
 
-/** `String.Pos.Raw.get?`, `String.get?`: the character that starts at `p`, if one does. */
+/** `String.Pos.Raw.get?`, `String.get?`: the character that starts at `p`, if one does.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {({tag: 0}|{tag: 1, _1: string})} `union [] [string] []` */
 export const string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F = (s, p) => {
   const r = $utf8At(s, p);
   return r === undefined ? { tag: 0 } : { tag: 1, _1: r[0] };
 };
 
 /** `String.Pos.Raw.get!`, `String.get!`, `String.Pos.Raw.get'`, `String.get'`: the character at `p`
- *  (`'A'` if none starts there). */
+ *  (`'A'` if none starts there).
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get_bang__String_Pos_Raw_get$21 = (s, p) => $get(s, p);
 
-/** `String.Pos.Raw.prev`, `String.prev`. */
+/** `String.Pos.Raw.prev`, `String.prev`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_prev__String_Pos_Raw_prev = (s, p) => $prev(s, p);
 
-/** `String.get?`. */
+/** `String.get?`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {({tag: 0}|{tag: 1, _1: string})} `union [] [string] []` */
 export const string__lean_string_utf8_get_opt__String_get$3F = string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F;
 
-/** `String.get!`. */
+/** `String.get!`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get_bang__String_get$21 = string__lean_string_utf8_get_bang__String_Pos_Raw_get$21;
 
-/** `String.get'`. */
+/** `String.get'`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get_fast__String_get$27 = string__lean_string_utf8_get_bang__String_Pos_Raw_get$21;
 
-/** `String.Pos.Raw.get'`. */
+/** `String.Pos.Raw.get'`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get_fast__String_Pos_Raw_get$27 = string__lean_string_utf8_get_bang__String_Pos_Raw_get$21;
 
-/** `String.prev`. */
+/** `String.prev`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_prev__String_prev = string__lean_string_utf8_prev__String_Pos_Raw_prev;
 
-/** `dbgTraceIfShared msg a`: `a` (JavaScript does not tell whether a value is shared). */
+/** `dbgTraceIfShared msg a`: `a` (JavaScript does not tell whether a value is shared).
+ *  @template α the delayed type
+ *  @param {string} msg `string`
+ *  @param {α} a `α`
+ *  @returns {α} `α` */
 export const string__lean_dbg_trace_if_shared = (msg, a) => a;
 
-/** `String.next'`. */
+/** `String.next'`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_next_fast__String_next$27 = (s, p) => $next(s, p);
 
-/** `String.Pos.next` (on a position of the string `s` given first). */
+/** `String.Pos.next` (on a position of the string `s` given first).
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_next_fast__String_Pos_next = (s, p) => $next(s, p);
 
-/** `String.extract` (on positions of the string `s` given first). */
+/** `String.extract` (on positions of the string `s` given first).
+ *  @param {string} s `string`
+ *  @param {number} b `uint53`
+ *  @param {number} e `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_extract_fast = (s, b, e) => $utf8Extract(s, b, e);
 
-/** `String.Pos.Raw.isValid`. */
+/** `String.Pos.Raw.isValid`.
+ *  @param {string} s `string`
+ *  @param {number} p `uint53`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_is_valid_pos = (s, p) => $isValid(s, p);
 
-/** `String.Pos.Raw.Internal.min`. */
+/** `String.Pos.Raw.Internal.min`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_pos_min = (a, b) => Math.min(a, b);
 
-/** `String.Pos.Raw.Internal.sub`. */
+/** `String.Pos.Raw.Internal.sub`.
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_pos_sub = (a, b) => Math.max(a - b, 0);
 
-/** `Substring.Raw.Internal.toString`. */
+/** `Substring.Raw.Internal.toString`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @returns {string} `string` */
 export const substring__lean_substring_tostring = (ss) => $utf8Extract(ss[0], ss[1], ss[2]);
 
-/** `Substring.Raw.Internal.get`. */
+/** `Substring.Raw.Internal.get`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {number} p `uint53`
+ *  @returns {string} `string` */
 export const substring__lean_substring_get = (ss, p) => $get(ss[0], ss[1] + p);
 
-/** `Substring.Raw.Internal.front`. */
+/** `Substring.Raw.Internal.front`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @returns {string} `string` */
 export const substring__lean_substring_front = (ss) => $get(ss[0], ss[1]);
 
-/** `Substring.Raw.Internal.isEmpty`. */
+/** `Substring.Raw.Internal.isEmpty`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @returns {boolean} `bool` */
 export const substring__lean_substring_isempty = (ss) => ss[2] <= ss[1];
 
-/** `Substring.Raw.Internal.prev`. */
+/** `Substring.Raw.Internal.prev`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {number} p `uint53`
+ *  @returns {number} `uint53` */
 export const substring__lean_substring_prev = (ss, p) => {
   const absP = ss[1] + p;
   return absP === ss[1] ? p : Math.max($prev(ss[0], absP) - ss[1], 0);
 };
 
-/** `Substring.Raw.Internal.drop`: without its first `n` characters. */
+/** `Substring.Raw.Internal.drop`: without its first `n` characters.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {number} n `uint53`
+ *  @returns {[string, number, number]} `substring` */
 export const uint53__lean_substring_drop = (ss, n) => {
   let k = n;
   let p = 0;
@@ -1697,21 +2683,34 @@ export const uint53__lean_substring_drop = (ss, n) => {
   return [ss[0], ss[1] + p, ss[2]];
 };
 
-/** `Substring.Raw.Internal.drop`. */
+/** `Substring.Raw.Internal.drop`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {bigint} n `bigint_nat`
+ *  @returns {[string, number, number]} `substring` */
 export const bigint_nat__lean_substring_drop = (ss, n) => uint53__lean_substring_drop(ss, Number(n));
 
-/** `Substring.Raw.Internal.extract`. */
+/** `Substring.Raw.Internal.extract`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {number} b `uint53`
+ *  @param {number} e `uint53`
+ *  @returns {[string, number, number]} `substring` */
 export const substring__lean_substring_extract = (ss, b, e) =>
   b >= e ? ["", 0, 0] : [ss[0], Math.min(ss[2], ss[1] + b), Math.min(ss[2], ss[1] + e)];
 
-/** `Substring.Raw.Internal.takeWhile`. */
+/** `Substring.Raw.Internal.takeWhile`.
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {function(string): boolean} p `fn [string] bool`
+ *  @returns {[string, number, number]} `substring` */
 export const substring__lean_substring_takewhile = (ss, p) => {
   let i = ss[1];
   while (i < ss[2] && p($get(ss[0], i))) i = $next(ss[0], i);
   return [ss[0], ss[1], i];
 };
 
-/** `Substring.Raw.Internal.all` (`true` for a substring whose bounds are not valid). */
+/** `Substring.Raw.Internal.all` (`true` for a substring whose bounds are not valid).
+ *  @param {[string, number, number]} ss `substring`
+ *  @param {function(string): boolean} p `fn [string] bool`
+ *  @returns {boolean} `bool` */
 export const substring__lean_substring_all = (ss, p) => {
   const [s, b, e] = ss;
   if (!($isValid(s, b) && $isValid(s, e) && b <= e)) return true;
@@ -1719,7 +2718,10 @@ export const substring__lean_substring_all = (ss, p) => {
   return true;
 };
 
-/** `Substring.Raw.Internal.beq`: the same bytes (after moving an invalid bound to the end). */
+/** `Substring.Raw.Internal.beq`: the same bytes (after moving an invalid bound to the end).
+ *  @param {[string, number, number]} x `substring`
+ *  @param {[string, number, number]} y `substring`
+ *  @returns {boolean} `bool` */
 export const substring__lean_substring_beq = (x, y) => {
   const fix = ([s, b, e]) => {
     const n = $utf8(s).length;
@@ -1732,96 +2734,242 @@ export const substring__lean_substring_beq = (x, y) => {
   return true;
 };
 
-/** `String.Slice` `<`: the order of the strings of the slices. */
+/** `String.Slice` `<`: the order of the strings of the slices.
+ *  @param {[string, number, number]} a `stringSlice`
+ *  @param {[string, number, number]} b `stringSlice`
+ *  @returns {boolean} `bool` */
 export const stringSlice__lean_slice_dec_lt = (a, b) =>
   $cmpStr($utf8Extract(a[0], a[1], a[2]), $utf8Extract(b[0], b[1], b[2])) < 0;
 
-/** `String.Slice.hash`: the hash of the string of the slice. */
+/** `String.Slice.hash`: the hash of the string of the slice.
+ *  @param {[string, number, number]} a `stringSlice`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_slice_hash = (a) => $hashBytes($sliceBytes(a));
 
-/** `String.Slice.hash`: the hash of the string of the slice (`2^53` or more throws). */
+/** `String.Slice.hash`: the hash of the string of the slice (`2^53` or more throws).
+ *  @param {[string, number, number]} a `stringSlice`
+ *  @returns {number} `uint53` */
 export const uint53__lean_slice_hash = (a) => $toNum53($hashBytes($sliceBytes(a)));
 
 /* ------------------------------------------------------------ hashes */
 
-/** `mixHash`. */
+/** `mixHash`.
+ *  @param {bigint} h `bigint_nat`
+ *  @param {bigint} k `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_mix_hash = (h, k) => $mixHash(h, k);
 
-/** `mixHash` (a result of `2^53` or more throws). */
+/** `mixHash` (a result of `2^53` or more throws).
+ *  @param {number} h `uint53`
+ *  @param {number} k `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_mix_hash = (h, k) => $toNum53($mixHash(BigInt(h), BigInt(k)));
 
 /* ------------------------------------------------------------ version and platform */
 // The values of the Lean toolchain the snapshots are checked against (4.34.0 on
 // x86_64-unknown-linux-gnu); `Tests/Main.lean` checks them against the Lean that runs it.
 
-/** `Lean.version.getMajor`. */
+/** `Lean.version.getMajor`.
+ *  @returns {function(): bigint} `fn [] bigint_nat` */
 export const bigint_nat__lean_version_get_major = () => () => 4n;
 
-/** `Lean.version.getMajor`. */
+/** `Lean.version.getMajor`.
+ *  @returns {function(): number} `fn [] uint53` */
 export const uint53__lean_version_get_major = () => () => 4;
 
-/** `Lean.version.getMinor`. */
+/** `Lean.version.getMinor`.
+ *  @returns {function(): bigint} `fn [] bigint_nat` */
 export const bigint_nat__lean_version_get_minor = () => () => 34n;
 
-/** `Lean.version.getMinor`. */
+/** `Lean.version.getMinor`.
+ *  @returns {function(): number} `fn [] uint53` */
 export const uint53__lean_version_get_minor = () => () => 34;
 
-/** `Lean.version.getPatch`. */
+/** `Lean.version.getPatch`.
+ *  @returns {function(): bigint} `fn [] bigint_nat` */
 export const bigint_nat__lean_version_get_patch = () => () => 0n;
 
-/** `Lean.version.getPatch`. */
+/** `Lean.version.getPatch`.
+ *  @returns {function(): number} `fn [] uint53` */
 export const uint53__lean_version_get_patch = () => () => 0;
 
-/** `Lean.version.getIsRelease`. */
+/** `Lean.version.getIsRelease`.
+ *  @returns {function(): boolean} `fn [] bool` */
 export const bool__lean_version_get_is_release = () => () => true;
 
-/** `Lean.version.getSpecialDesc`. */
+/** `Lean.version.getSpecialDesc`.
+ *  @returns {function(): string} `fn [] string` */
 export const string__lean_version_get_special_desc = () => () => "";
 
-/** `Lean.getGithash`. */
+/** `Lean.getGithash`.
+ *  @returns {function(): string} `fn [] string` */
 export const string__lean_get_githash = () => () => "293d5d0c0c3f3dded4688b3ccd6a33939ac5102b";
 
-/** `System.Platform.getTarget`. */
+/** `System.Platform.getTarget`.
+ *  @returns {function(): string} `fn [] string` */
 export const string__lean_system_platform_target = () => () => "x86_64-unknown-linux-gnu";
 
-/** `System.Platform.getIsEmscripten`. */
+/** `System.Platform.getIsEmscripten`.
+ *  @returns {function(): boolean} `fn [] bool` */
 export const bool__lean_system_platform_emscripten = () => () => false;
 
-/** `Lean.Internal.isStage0`. */
+/** `Lean.Internal.isStage0`.
+ *  @returns {function(): boolean} `fn [] bool` */
 export const bool__lean_internal_is_stage0 = () => () => false;
 
-/** `Lean.Internal.hasLLVMBackend`. */
+/** `Lean.Internal.hasLLVMBackend`.
+ *  @returns {function(): boolean} `fn [] bool` */
 export const bool__lean_internal_has_llvm_backend = () => () => false;
 
 /* ------------------------------------------------------------ operations that share a function */
 
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_fset = bigint_nat__lean_array_set_immutable;
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @param {bigint} j `bigint_nat`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const bigint_nat__lean_array_fswap = bigint_nat__lean_array_swap_immutable;
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {E} d `E`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {bigint} i `bigint_nat`
+ *  @returns {E} `E` */
 export const bigint_nat__lean_array_get_borrowed = bigint_nat__lean_array_get;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint16` */
 export const bigint_nat__lean_uint16_of_nat__UInt16_ofNatLT = bigint_nat__lean_uint16_of_nat__UInt16_ofNat;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint32` */
 export const bigint_nat__lean_uint32_of_nat__UInt32_ofNatLT = bigint_nat__lean_uint32_of_nat__UInt32_ofNat;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint8` */
 export const bigint_nat__lean_uint8_of_nat__UInt8_ofNatLT = bigint_nat__lean_uint8_of_nat__UInt8_ofNat;
+/**
+ *  @param {string} a `string`
+ *  @returns {Array<string>} `list string` */
 export const string__lean_string_data__String_toList = string__lean_string_data__String_data;
+/**
+ *  @param {Array<string>} a `list string`
+ *  @returns {string} `string` */
 export const string__lean_string_mk__String_ofList = string__lean_string_mk__String_mk;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_utf8_at_end__String_Pos_Raw_atEnd = string__lean_string_utf8_at_end__String_Internal_atEnd;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {boolean} `bool` */
 export const string__lean_string_utf8_at_end__String_atEnd = string__lean_string_utf8_at_end__String_Internal_atEnd;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @param {number} c `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_extract__String_Pos_Raw_extract = string__lean_string_utf8_extract__String_Internal_extract;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get__String_Pos_Raw_get = string__lean_string_utf8_get__String_Internal_get;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_get__String_get = string__lean_string_utf8_get__String_Internal_get;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_next__String_Pos_Raw_next = string__lean_string_utf8_next__String_Internal_next;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const string__lean_string_utf8_next__String_next = string__lean_string_utf8_next__String_Internal_next;
+/**
+ *  @param {string} a `string`
+ *  @param {number} b `uint53`
+ *  @param {string} c `string`
+ *  @returns {string} `string` */
 export const string__lean_string_utf8_set__String_set = string__lean_string_utf8_set__String_Pos_Raw_set;
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {E} x `E`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_fset = uint53__lean_array_set_immutable;
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @param {number} j `uint53`
+ *  @returns {Array<E>|TypedArray} `A` */
 export const uint53__lean_array_fswap = uint53__lean_array_swap_immutable;
+/**
+ *  @template A, E the array layout `l : JsArrayLayout A E`: `A` is `array E`, or `typedArray t` with `E` = `terminal t.leaf`
+ *  @param {E} d `E`
+ *  @param {Array<E>|TypedArray} a `A`
+ *  @param {number} i `uint53`
+ *  @returns {E} `E` */
 export const uint53__lean_array_get_borrowed = uint53__lean_array_get;
+/**
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint16` */
 export const uint53__lean_uint16_of_nat__UInt16_ofNatLT = uint53__lean_uint16_of_nat__UInt16_ofNat;
+/**
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint32` */
 export const uint53__lean_uint32_of_nat__UInt32_ofNatLT = uint53__lean_uint32_of_nat__UInt32_ofNat;
+/**
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint8` */
 export const uint53__lean_uint8_of_nat__UInt8_ofNatLT = uint53__lean_uint8_of_nat__UInt8_ofNat;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_nat_mod__Nat_modCore = bigint_nat__lean_nat_mod__Nat_mod;
+/**
+ *  @param {string} a `string`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_string_length__String_length = bigint_nat__lean_string_length__String_Internal_length;
+/**
+ *  @param {number} a `uint53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_nat_mod__Nat_modCore = uint53__lean_nat_mod__Nat_mod;
+/**
+ *  @param {string} a `string`
+ *  @returns {number} `uint53` */
 export const uint53__lean_string_length__String_length = uint53__lean_string_length__String_Internal_length;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {bigint} `bigint_nat` */
 export const bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__lean_uint64_of_nat__UInt64_ofNat;
+/**
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `uint53` */
 export const bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNatLT = bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat;
+/**
+ *  @param {number} a `uint53`
+ *  @returns {bigint} `bigint_nat` */
 export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = (a) => BigInt(a);
+/**
+ *  @param {number} a `uint53`
+ *  @returns {number} `uint53` */
 export const uint53__lean_uint64_of_nat__UInt64_ofNatLT = (a) => a;
