@@ -1,3 +1,28 @@
+# Summary of changes for run b930ce8d-207d-4a52-bb68-04dd7543f37d
+This request was already done in the previous run, whose changes are in the project. I rechecked that it still holds, and the only thing I changed this session was an out-of-date planning doc.
+
+**What `runtime.js` has, matching `JsTerm/Ops`**
+- Every array update comes as a pair: `…_immutable`, which returns an updated copy and leaves the argument unchanged, and `…_mutable`, which updates the array in place and returns it.
+- The updates are `push`, `pop`, `set`, `swap`, `fset` and `fswap`. `set` and `swap` exist for both index types, `bigint_nat__…` and `uint53__…`, and so do `fset` and `fswap`.
+- Both functions in a pair have the same signature, and their names match the `JsOpImported` constructors in `JsTerm/Ops/Imported.lean`. The generated `JsOpImported.toMutable?` pairs them: 10 updates have both versions.
+- In `JsTerm/Ops`, the `_mutable` operations are the only ones marked `effectful`; everything else is `pure`.
+- **One exception:** `push` and `pop` on a typed array (`typedArray__lean_array_push_immutable`, `typedArray__lean_array_pop_immutable`) only have the immutable version, because a typed array can't grow or shrink.
+- String operations have no mutable version, because JavaScript strings are immutable.
+- Inside the runtime's own functions, `let` is used only for variables that are reassigned; everything else is `const`.
+
+**Checks run this session**
+- The build of `JsTerm`, `leanscript`, `tests`, `LeanScriptCli` and `RuntimeSpec` succeeds with no warnings.
+- `lake exe tests` passes 57/57. This includes:
+  - a check that every `_mutable` function has an `_immutable` partner;
+  - a check of `toMutable?` and of which operations are marked effectful;
+  - a `node` run showing that each immutable function leaves its argument unchanged, each mutable one returns its argument, and both give the same array.
+- Running `scripts/gen_js_ops.py` again changes nothing, and `scripts/annotate_runtime.py --check` reports that the `runtime.js` comments are up to date.
+- This is checked by tests, not by a Lean proof. The Properties table row stays in progress, with the new checks noted in its comments.
+
+**Change this session:** in `proposals/JsTermReviewPlan.md`, the status table still said `lean_array_fset` was just an alias of `set`, and gave the old count of 388 operations. I updated it to describe the current pairing and the 398 operations. This is committed.
+
+If you meant something else by "mutable and immutable variables", such as mutable and immutable variables in the generated JavaScript, tell me and I'll work on that instead.
+
 # Summary of changes for run 247c4764-15d3-4d16-abe4-9e7ca3367cae
 I read your request as asking for mutable and immutable *variants* (not variables): every array update in `runtime.js` should now come as an `…_immutable` / `…_mutable` pair whose names and signatures match the operations in `JsTerm/Ops`, paired by `JsOpImported.toMutable?`. That was the unfinished part of §7.2 of `proposals/JsTermReviewPlan.md`. This is checked by tests, not by a proof.
 

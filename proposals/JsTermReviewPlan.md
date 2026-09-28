@@ -21,11 +21,11 @@ The plan below was reviewed and implemented as follows:
 | 4 | uncurried functions: `fn (doms : List JsTy) cod`, n-ary `lam`/`app`, `lazy t` is `fn [] t`, maximal uncurrying by type, partial application as a closure, exported functions take every parameter of their type | done (`JsTerm/FromTerm.lean`) |
 | 5 | `JsTerm/NumberLit.lean`, from `Float.Model.UnpackedFloat` | done |
 | 6 | every extern implemented (`runtime.js`), `lean_extern_unimplemented` deleted; a missing operation is a conversion error and the generator refuses to run | done |
-| 7 | one `JsTerm/Ops.lean`: `JsOpImported` and `JsOpInlinable`, indexed by `Effectfulness` (`pure`/`effectful`) and `MayThrow` (`doesntThrow`/`mayThrow`); the runtime name is the constructor name (`ctor_names%`, `JsOpImported.runtimeName`); the array updates are `…_immutable` / `…_mutable`; aliases at the same signature are merged (`lean_array_fset` is `…_set_immutable`) | done |
+| 7 | one `JsTerm/Ops.lean`: `JsOpImported` and `JsOpInlinable`, indexed by `Effectfulness` (`pure`/`effectful`) and `MayThrow` (`doesntThrow`/`mayThrow`); the runtime name is the constructor name (`ctor_names%`, `JsOpImported.runtimeName`); every array update (`push`, `pop`, `set`, `swap`, `fset`, `fswap`) is a pair `…_immutable` / `…_mutable` of functions of `runtime.js` at the same signature, paired by the generated `JsOpImported.toMutable?` (typed-array `push` / `pop` are `_immutable` only); aliases at the same signature are merged (`lean_array_get_borrowed` is `lean_array_get`) | done (now split into `JsTerm/Ops/`) |
 | 7.3 | effect-directed optimisations in `JsTerm` | not done, by decision: every optimisation belongs to `Term.optimize` |
 
-`JsOpImported` has 388 constructors and `JsTerm/Ops.lean` elaborates in about 12 s, so it was
-not split into groups.
+`JsOpImported` has 398 constructors (`JsTerm/Ops/Imported.lean`, generated); the operations
+of each group of externs are in the generated `JsTerm/Ops/Cands/*.lean`.
 
 The rest of this file is the plan as it was written, before the implementation. The facts about
 the code it gives are those of that time.
