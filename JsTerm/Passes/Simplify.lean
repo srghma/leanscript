@@ -1,6 +1,6 @@
 module
 
-public import JsTerm.Vars
+public import JsTerm.Syntax.Vars
 
 @[expose] public section
 

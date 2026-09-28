@@ -5,7 +5,7 @@ the comment on top of it.
     python3 scripts/annotate_runtime.py           # rewrite runtime.js
     python3 scripts/annotate_runtime.py --check   # exit 1 (changing nothing) if it is not up to date
 
-The types come from the signatures of the operations (`JsOpImported` in `JsTerm/Ops.lean`), as
+The types come from the signatures of the operations (`JsOpImported` in `JsTerm/Ops/Imported.lean`), as
 `scripts/gen_js_ops.py` computes them from the catalogue of externs, so they are the types the
 backend calls the function at.  Every exported function of `runtime.js` gets JSDoc tags after
 its description:
@@ -23,7 +23,7 @@ and the parameter names of `b`.
 
 The tags are the only lines the script writes: it removes the ones it wrote before, so it can
 be run again after an edit of `runtime.js` or of the catalogue.  The private helpers (`$…`) have
-no signature in `JsTerm/Ops.lean` and are left as they are.
+no signature in `JsTerm/Ops/Imported.lean` and are left as they are.
 """
 import os, re, sys
 
@@ -38,7 +38,7 @@ def tokenize(s):
     return re.findall(r'\(|\)|\[|\]|,|[^\s()\[\],]+', s)
 
 def parse(s):
-    """A `JsTy` written as in `JsTerm/Ops.lean` (`(.terminal .bigint_nat)`, `(.array α)`, `A`, …),
+    """A `JsTy` written as in `JsTerm/Ops/Imported.lean` (`(.terminal .bigint_nat)`, `(.array α)`, `A`, …),
     as a tuple."""
     toks = tokenize(s)
     t, i = parse_at(toks, 0)
@@ -168,7 +168,7 @@ def js(t):
     raise ValueError(t)
 
 def rep(t, top=True):
-    """A `JsTy` in the notation of `JsTerm/Ty.lean`, without the dots (`array bigint_nat`)."""
+    """A `JsTy` in the notation of `JsTerm/Ty/Basic.lean`, without the dots (`array bigint_nat`)."""
     k = t[0]
     if k in ('leaf', 'var'):
         return t[1]

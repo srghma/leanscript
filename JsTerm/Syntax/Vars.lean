@@ -1,6 +1,6 @@
 module
 
-public import JsTerm.Syntax
+public import JsTerm.Syntax.Basic
 
 @[expose] public section
 

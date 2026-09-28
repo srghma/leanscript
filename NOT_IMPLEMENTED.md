@@ -190,7 +190,7 @@ The supported fragment and the refusals are listed in the header of
 
 - **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
   `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
-  (`JsTerm/FromTerm.lean`), so every function over a user inductive, … is listed
+  (`JsTerm/Lower/FromTerm.lean`), so every function over a user inductive, … is listed
   under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
   and unions as objects, enums; only the recursors are missing.)
 - **Every extern of the catalogue has a JavaScript implementation** at every representation
@@ -203,7 +203,7 @@ The supported fragment and the refusals are listed in the header of
   `2^53 - 1` in absolute value at the preset `pbo`) is refused: `leanscript` reports it and
   exits with a failure, instead of computing with a rounded value.
 - **Arrays that start as a parameter are always copied** by the first update: the in-place
-  pass (`JsTerm/InPlace.lean`) only mutates arrays the function itself built, since the caller
+  pass (`JsTerm/Passes/InPlace.lean`) only mutates arrays the function itself built, since the caller
   may still refer to a parameter.  (A loop that pushes onto a parameter copies it once per
   iteration; copying it once before the loop is not done yet.)
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
@@ -222,7 +222,7 @@ The supported fragment and the refusals are listed in the header of
   translated: `x :: xs` with `xs` not a literal, a `match` on a list and the other `List`
   functions are refused.
 - `Array Bool` and `Array Char` are always generic JavaScript arrays (the `Uint8Array` /
-  `Uint32Array` representations are commented out in `JsTerm/Config.lean`).
+  `Uint32Array` representations are commented out in `JsTerm/Ty/Config.lean`).
 - The optimiser does not inline a join point jumped to only once when its body is not
   trivial, and does not share computations across closure / loop-body boundaries.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure

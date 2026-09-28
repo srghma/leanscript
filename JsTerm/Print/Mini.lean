@@ -1,4 +1,4 @@
-import JsTerm.Vars
+import JsTerm.Syntax.Vars
 import LanguageJavascriptMini.Printer
 
 /-!

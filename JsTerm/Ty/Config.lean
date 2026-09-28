@@ -31,7 +31,7 @@ represented in more than one way there.  The choice is this configuration:
 
 A number representation of an unbounded type (`Nat` as `UInt53`) is only faithful below
 `2^53`: a literal that does not fit is refused when the term is converted
-(`JsTerm.FromTerm`), and the arithmetic of the generated runtime throws a `RangeError`
+(`JsTerm.Lower.FromTerm`), and the arithmetic of the generated runtime throws a `RangeError`
 instead of silently losing precision.
 
 `JsConfig.reprOfPrim` answers the question for *every* constructor of `LeanPrimTy`, with no

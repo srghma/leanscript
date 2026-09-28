@@ -13,7 +13,7 @@ set_option autoImplicit false
 `externName e` is the name of the entry `e` of the catalogue of externs
 (`LeanScript.LeanInitPureExtern`), as written in the catalogue: `lean_nat_add`,
 `lean_nat_mod__Nat_mod`, ….  The JavaScript backend chooses the implementation of a call by
-this name (`JsTerm.Extern`).
+this name (`JsTerm.Lower.Extern`).
 -/
 
 namespace LeanScript

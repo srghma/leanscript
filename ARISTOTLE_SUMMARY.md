@@ -1,3 +1,47 @@
+# Summary of changes for run 4f9140d4-5dc9-4bc9-8472-0c0cbc1c3532
+I reorganized `JsTerm/` into subdirectories by group and split its large files. The refactor changes no definitions: the same declarations are just in new places. Builds pass for `JsTerm`, `leanscript`, `tests`, `TyTests`, `TermTests` and `LeanScriptCli` with no warnings. `lake exe tests` passes 55/55. `scripts/leanscript-snapshots.sh` reports 3806 passed and 0 failed, and no snapshot file changed.
+
+The script itself still exits with status 1. That comes from inputs it is meant to reject: the literal-too-big errors in `PrimOpInt0{2,3}Configurable` and the deliberate `mypanic` panics. A plain `lake build` of all default targets still fails on `LeanScript/Term/Syntax/UsageAlgebra.lean` ("unknown module prefix 'Mathlib'"). I did not touch that file.
+
+**New layout**
+- `Ty/`
+  - `Config.lean`
+  - `Basic.lean`: `JsTerminalTy`, `JsTy`, layouts. It no longer depends on the configuration.
+  - `Lower.lean`: `lowerScalarPrim`, `lowerArrayPrim`, `lowerTy`, split out of the old `Ty.lean`.
+- `Ops/` (replaces the 1593-line `Ops.lean` and the 2356-line `OpsLookup.lean`)
+  - `Basic.lean`, hand-written: `Effectfulness`, `MayThrow`, `JsInline`, `jsSafeName`.
+  - Generated: `Imported.lean` (`JsOpImported`, `extraArgs`, `toMutable?`) and `Inlinable.lean` (`JsOpInlinable`, `template`).
+  - `Op.lean`, hand-written: `JsOp`, `Cand`, `firstOf`, …
+  - Generated `Cands/{Nat,UInt,SInt,Float,String,Misc}.lean`: each group's per-extern candidate lists plus its own dispatch function.
+  - Generated `Lookup.lean`: a short `JsOp.lookup` that tries the groups in turn. The groups don't overlap, so its results are unchanged.
+- `Syntax/`
+  - `NumberLit.lean`
+  - `Basic.lean`: the grammar. It now imports only the operation types, not the whole lookup.
+  - `Vars.lean`
+  - `Pretty.lean`: the `-JsTerm-*.txt` dump, split out of the old `Syntax.lean`.
+- `Passes/`: `Simplify.lean`, `InPlace.lean`, `Hoist.lean`.
+- `Lower/`
+  - `Extern.lean`
+  - `Basic.lean`: literals, `ConvM`, `Ref`/`Names`, casts and builders.
+  - `FromTerm.lean`: the conversion itself and `termToJs`, split out of the old `FromTerm.lean`.
+- `Print/Mini.lean`: the old `PrintMini.lean`.
+- Summary modules `JsTerm/{Ty,Ops,Syntax,Passes,Lower}.lean` each import their whole group.
+
+The largest file is now `Ops/Imported.lean` at 844 lines, most of it the single `JsOpImported` inductive, which can't be split further. Every other file is under 710 lines.
+
+**Generator**
+- `scripts/gen_js_ops.py` now writes the generated `Ops/` modules above.
+- The constructors and candidate lists it produces are the same as before; I compared them line by line.
+- Running it again changes nothing.
+- `scripts/annotate_runtime.py --check` still reports the `runtime.js` comments as up to date.
+
+**Other updates**
+- Imports in `LeanScriptCli/Main.lean`, `LeanScriptCli/Check.lean`, `Tests/Main.lean` and the disabled `LeanScriptCli/RecCalls.lean_`.
+- Path references in `README.md` (the layout table now describes the new directories), `NOT_IMPLEMENTED.md`, `runtime.js`, `scripts/annotate_runtime.py` and doc comments.
+- I left the older design notes in `proposals/` as they were, so they still use the old paths.
+
+Everything is committed.
+
 # Summary of changes for run d3b7d4c7-a546-4b4a-b067-c43210f6b01a
 I added `scripts/annotate_runtime.py` and ran it: each of the 422 exported functions in `runtime.js` now has a comment on top giving the types of its arguments and its result.
 

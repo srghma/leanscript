@@ -2,9 +2,9 @@ import LeanScriptCli.Frontend
 import LeanScriptCli.Check
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
-import JsTerm.FromTerm
-import JsTerm.PrintMini
-import JsTerm.Hoist
+import JsTerm.Lower.FromTerm
+import JsTerm.Print.Mini
+import JsTerm.Passes.Hoist
 
 /-!
 # `leanscript`: Lean to JavaScript

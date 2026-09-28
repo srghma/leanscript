@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the typed operations of `JsTerm` from the catalogue of externs.
 
-    python3 scripts/gen_js_ops.py            # regenerate JsTerm/Ops.lean and JsTerm/OpsLookup.lean
+    python3 scripts/gen_js_ops.py            # regenerate the generated modules of JsTerm/Ops/
     python3 scripts/gen_js_ops.py --report   # list the operations with no implementation
 
 Every extern of the catalogue (`LeanScript/LeanInitPureExterns/*.lean`) is split by the
@@ -328,7 +328,7 @@ def ident_re(name):
     return re.compile(r'(?<![\w$])' + re.escape(name) + r'(?![\w$])')
 
 # The characters of a Lean identifier that a JavaScript one cannot have, and how the name of a
-# function of `runtime.js` writes them (`jsSafeName` in `JsTerm/Ops.lean`).
+# function of `runtime.js` writes them (`jsSafeName` in `JsTerm/Ops/Basic.lean`).
 JS_ESCAPES = {'?': '$3F', '!': '$21', "'": '$27'}
 
 def js_name(name):
@@ -750,108 +750,27 @@ def ctor_line(op, fam):
         doc = f'  /-- {op["lean"]} -/\n' if op['lean'] else ''
     return f'{doc}  | {op["name"]} : {params}{fam} {sig}\n'
 
-HEADER = '''module
+OPS_DIR = os.path.join(ROOT, 'JsTerm', 'Ops')
 
-public import JsTerm.Ty
-public import LeanScript.Term.Extern.NameElab
+def lean_file(imports, title, doc, body, namespaces=('MoreJs',)):
+    """A generated module: its imports, its doc (after the title and the generated notice), and
+    its body, in the namespaces."""
+    s = 'module\n\n'
+    s += ''.join(f'public import {m}\n' for m in imports)
+    s += '\n@[expose] public section\n\nset_option autoImplicit false\n\n'
+    s += f'/-!\n# {title}\n\n**Generated** by `scripts/gen_js_ops.py`; do not edit.\n\n{doc}-/\n\n'
+    s += ''.join(f'namespace {n}\n\n' for n in namespaces)
+    s += body.rstrip('\n') + '\n\n'
+    s += ''.join(f'end {n}\n\n' for n in reversed(namespaces))
+    s += 'end\n'
+    return s
 
-@[expose] public section
+def write_ops_file(rel, s):
+    path = os.path.join(OPS_DIR, *rel.split('/'))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, 'w').write(s)
 
-set_option autoImplicit false
-
-/-!
-# The operations of `JsTerm`
-
-**Generated** by `scripts/gen_js_ops.py` from the catalogue of externs
-(`LeanScript/LeanInitPureExterns/*.lean`) and `runtime.js`; do not edit.
-
-Every extern of the catalogue is split by the JavaScript representation of its arguments and
-its result (`lean_nat_div : [nat, nat] → nat` is `bigint_nat__lean_nat_div : [bigint_nat,
-bigint_nat] → bigint_nat` and `uint53__lean_nat_div : [uint53, uint53] → uint53`).  An
-operation is either
-
-* **imported** (`JsOpImported`): a call of the function of `runtime.js` named as its
-  constructor (`JsOpImported.runtimeName`, read off the constructors by `ctor_names%`), which
-  the generated module imports; or
-* **inlined** (`JsOpInlinable`): written in place of its call as a JavaScript operator,
-  conversion or literal over its arguments (`JsOpInlinable.template`).
-
-The name of an operation is its *type prefix* and the name of the extern, joined by `__`: the
-representations of the configurable Lean types of the signature (`Nat`, `Int`, `UInt64`,
-`Int64`, `BitVec n` for `n > 53`) in order of first appearance and without repetitions, or,
-when there is none, the first leaf of the signature (`uint32__lean_uint32_add`), or the family
-of a polymorphic operation (`array__lean_array_push_immutable`, `thunk__lean_mk_thunk`).  A
-polymorphic array operation works on every layout of an array (`JsArrayLayout`: a generic
-array or a typed array).
-
-Both families are indexed by what an operation may do besides answering (`Effectfulness`,
-`MayThrow`), by the types of its arguments and by the type of its result:
-
-* an operation is **effectful** when it changes something outside of it: the `_mutable` array
-  updates, which update their array argument in place (the backend calls them only on an array
-  nothing else refers to), are the only ones; every other operation is **pure**;
-* an operation **may throw** when its function in `runtime.js` may (a `throw`, directly or in a
-  function it calls): the operations on a `number` representation of an unbounded type, which
-  throw a `RangeError` when the result does not fit in a safe integer (so that no result is
-  ever silently wrong).  The inlined operations never throw.
-
-The array updates come in two versions: `…_immutable` (the extern: a copy of the array) and
-`…_mutable` (the same update in place); `JsOpImported.toMutable?` pairs them.  An extern whose
-function in `runtime.js` is an alias of another at the same signature (`lean_array_fset` of
-`lean_array_set`) has that operation.
--/
-
-namespace MoreJs
-
-/-- Whether an operation changes something outside of it. -/
-inductive Effectfulness where
-  /-- It only computes its result. -/
-  | pure
-  /-- It changes something outside of it (it updates an argument in place). -/
-  | effectful
-  deriving DecidableEq, Repr, Inhabited
-
-/-- Whether an operation may throw. -/
-inductive MayThrow where
-  /-- It never throws. -/
-  | doesntThrow
-  /-- It may throw (a `RangeError` when a result does not fit in its representation). -/
-  | mayThrow
-  deriving DecidableEq, Repr, Inhabited
-
-/-- How an inlined operation is written in JavaScript, over its arguments. -/
-inductive JsInline where
-  /-- The argument of position `i` (from `0`). -/
-  | arg (i : Nat)
-  /-- `a op b`, for the JavaScript binary operator `op` (`+`, `&`, `===`, …). -/
-  | bin (op : String) (a b : JsInline)
-  /-- `op a`, for the JavaScript prefix operator `op` (`-`, `~`, `!`). -/
-  | un (op : String) (a : JsInline)
-  /-- `f(args)`, `f` a global function (`BigInt`, `Number`, `Math.sin`, `Uint8Array.from`). -/
-  | call (f : String) (args : List JsInline)
-  /-- `new C(args)`. -/
-  | new (ctor : String) (args : List JsInline)
-  /-- An integer `number` literal. -/
-  | num (n : Int)
-  /-- A `BigInt` literal. -/
-  | big (n : Int)
-  /-- `[]`. -/
-  | emptyArray
-  /-- `a.field` (`a.length`). -/
-  | member (a : JsInline) (field : String)
-  deriving Inhabited, Repr
-
-/-- The name of a function of `runtime.js` for the name of an operation: the characters a
-    JavaScript identifier cannot have are written `$` and their code in hexadecimal (`get?` is
-    `get$3F`, `get!` is `get$21`, `next'` is `next$27`). -/
-def jsSafeName (s : String) : String :=
-  s.foldl (fun acc c => match c with
-    | '?' => acc ++ "$3F"
-    | '!' => acc ++ "$21"
-    | '\\'' => acc ++ "$27"
-    | c => acc.push c) ""
-
-'''
+SIG_ARGS = '{e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}'
 
 def write_lean(ops):
     # the constructors with parameters first: the compiled code represents a constructor with
@@ -860,53 +779,40 @@ def write_lean(ops):
     live = [o for o in ops if not o['sameAs']]
     imp = sorted([o for o in live if o['impl'][0] == 'import'], key=by_params)
     inl = sorted([o for o in live if o['impl'][0] == 'inline'], key=by_params)
-    s = HEADER
-    s += '/-- The operations implemented by the function of `runtime.js` named as the constructor,\n'
+
+    # JsTerm/Ops/Imported.lean
+    s = '/-- The operations implemented by the function of `runtime.js` named as the constructor,\n'
     s += '    indexed by their effects, the types of their arguments and the type of their result. -/\n'
     s += 'inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → Type where\n'
     for o in imp:
         s += ctor_line(o, 'JsOpImported')
-    s += '''
+    s += f'''
+namespace JsOpImported
+
 /-- The names of the constructors of `JsOpImported`, in order. -/
-def JsOpImported.names : Array String := ctor_names% JsOpImported
+def names : Array String := ctor_names% JsOpImported
 
 /-- The name of the operation (the name of its constructor). -/
-def JsOpImported.name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+def name {SIG_ARGS}
     (op : JsOpImported e t σs τ) : String :=
   JsOpImported.names[op.ctorIdx]!
 
 /-- The name of the function of `runtime.js` that implements the operation: the name of its
     constructor, made a JavaScript identifier (`jsSafeName`). -/
-def JsOpImported.runtimeName {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+def runtimeName {SIG_ARGS}
     (op : JsOpImported e t σs τ) : String :=
   jsSafeName op.name
 
 '''
-    s += '/-- The operations written inline, indexed by their effects, the types of their arguments\n'
-    s += '    and the type of their result. -/\n'
-    s += 'inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → Type where\n'
-    for o in inl:
-        s += ctor_line(o, 'JsOpInlinable')
-    s += '''
-/-- The names of the constructors of `JsOpInlinable`, in order. -/
-def JsOpInlinable.names : Array String := ctor_names% JsOpInlinable
-
-/-- The name of the operation (the name of its constructor). -/
-def JsOpInlinable.name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
-    (op : JsOpInlinable e t σs τ) : String :=
-  JsOpInlinable.names[op.ctorIdx]!
-
-'''
-    s += 'namespace JsOpImported\n\n'
     s += '/-- The globals passed before the arguments (the constructor of a typed array). -/\n'
-    s += 'def extraArgs {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += f'def extraArgs {SIG_ARGS} :\n'
     s += '    JsOpImported e t σs τ → List String\n'
     for o in imp:
         if o.get('ctorArg'):
             s += f'  | .{o["name"]} t => [t.kind.ctorName]\n'
     s += '  | _ => []\n\n'
     s += '/-- The version of an array update that updates the array in place, if it has one. -/\n'
-    s += 'def toMutable? {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += f'def toMutable? {SIG_ARGS} :\n'
     s += '    JsOpImported e t σs τ → Option (Σ t\' : MayThrow, JsOpImported .effectful t\' σs τ)\n'
     for o in imp:
         m = o.get('mutableOf')
@@ -917,16 +823,51 @@ def JsOpInlinable.name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ 
         else:
             s += f'  | .{m} l => some ⟨_, .{o["name"]} l⟩\n'
     s += '  | _ => none\n\n'
-    s += 'end JsOpImported\n\n'
+    s += 'end JsOpImported\n'
+    write_ops_file('Imported.lean', lean_file(
+        ['JsTerm.Ty.Basic', 'JsTerm.Ops.Basic', 'LeanScript.Term.Extern.NameElab'],
+        'The operations of `JsTerm` implemented by `runtime.js`',
+        '''`JsOpImported`: the operations that call the function of `runtime.js` named as their
+constructor (`JsOpImported.runtimeName`, read off the constructors by `ctor_names%`), which the
+generated module imports; the families, their names and their effects are explained in
+`JsTerm.Ops.Basic`.  The array updates come in two versions, `…_immutable` (the extern: a copy
+of the array) and `…_mutable` (the same update in place), which `JsOpImported.toMutable?`
+pairs.
+''', s))
+
+    # JsTerm/Ops/Inlinable.lean
+    s = '/-- The operations written inline, indexed by their effects, the types of their arguments\n'
+    s += '    and the type of their result. -/\n'
+    s += 'inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → Type where\n'
+    for o in inl:
+        s += ctor_line(o, 'JsOpInlinable')
+    s += f'''
+namespace JsOpInlinable
+
+/-- The names of the constructors of `JsOpInlinable`, in order. -/
+def names : Array String := ctor_names% JsOpInlinable
+
+/-- The name of the operation (the name of its constructor). -/
+def name {SIG_ARGS}
+    (op : JsOpInlinable e t σs τ) : String :=
+  JsOpInlinable.names[op.ctorIdx]!
+
+'''
     s += '/-- The JavaScript of an inlined operation, over its arguments. -/\n'
-    s += 'def JsOpInlinable.template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :\n'
+    s += f'def template {SIG_ARGS} :\n'
     s += '    JsOpInlinable e t σs τ → JsInline\n'
     for o in inl:
         ps = param_names(o)
         pat = ''.join(' ' + (p if p == 't' else '_') for p in ps)
         s += f'  | .{o["name"]}{pat} => {tmpl_lean(o["impl"][1])}\n'
-    s += '\nend MoreJs\n\nend\n'
-    open(os.path.join(ROOT, 'JsTerm', 'Ops.lean'), 'w').write(s)
+    s += '\nend JsOpInlinable\n'
+    write_ops_file('Inlinable.lean', lean_file(
+        ['JsTerm.Ty.Basic', 'JsTerm.Ops.Basic', 'LeanScript.Term.Extern.NameElab'],
+        'The operations of `JsTerm` written inline',
+        '''`JsOpInlinable`: the operations written in place of their call as a JavaScript operator,
+conversion or literal over their arguments (`JsOpInlinable.template`, a `JsInline`); they never
+throw.  The families, their names and their effects are explained in `JsTerm.Ops.Basic`.
+''', s))
     write_lookup(ops)
 
 def cand(o):
@@ -945,68 +886,31 @@ def cand(o):
         return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .{wrap} (.{n} t)⟩] | _ => [])'
     raise ValueError(o)
 
-LOOKUP_HEADER = '''module
+# The groups of externs of the lookup, one module `JsTerm/Ops/Cands/<name>.lean` each, in the
+# order the lookup tries them (the groups are disjoint, so the order does not matter).
+CAND_GROUPS = [
+    ('Nat', '`Nat` and `Int`', '`lean_nat_*`, `lean_int_*`'),
+    ('UInt', 'the unsigned fixed-width integers', '`lean_uint8_*`, …, `lean_uint64_*`, `lean_usize_*`'),
+    ('SInt', 'the signed fixed-width integers', '`lean_int8_*`, …, `lean_int64_*`, `lean_isize_*`'),
+    ('Float', 'the floating-point numbers',
+     '`lean_float_*`, `lean_float32_*` and the C functions of `math.h`: `sin`, `sinf`, …'),
+    ('String', 'the strings', '`lean_string_*`, `lean_substring_*`, `lean_slice_*`, `lean_char_*`'),
+    ('Misc', 'the other externs', 'arrays, thunks, `Bool` conversions, version and platform'),
+]
 
-public import JsTerm.Ops
-
-@[expose] public section
-
-set_option autoImplicit false
-
-/-!
-# Finding the operation of an extern call
-
-**Generated** by `scripts/gen_js_ops.py`; do not edit.
-
-`JsOp.lookup name σs τ` is the operation of the extern `name` (as the catalogue spells it,
-`lean_nat_div`) at the argument types `σs` and the result type `τ`, if there is one: the
-constructor of `JsOpImported` or `JsOpInlinable` whose signature is exactly `σs → τ` (a
-polymorphic one instantiated from the types), with its effects.
--/
-
-namespace MoreJs
-
-/-- An operation: one that calls the runtime, or one written inline. -/
-inductive JsOp : Effectfulness → MayThrow → List JsTy → JsTy → Type where
-  | imported {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
-      (op : JsOpImported e t σs τ) : JsOp e t σs τ
-  | inlined {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
-      (op : JsOpInlinable e t σs τ) : JsOp e t σs τ
-
-/-- An operation of some effects. -/
-abbrev JsSomeOp (σs : List JsTy) (τ : JsTy) : Type := Σ e t, JsOp e t σs τ
-
-namespace JsOp
-
-/-- The name of the operation. -/
-def name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} : JsOp e t σs τ → String
-  | .imported op => op.name
-  | .inlined op => op.name
-
-/-- A candidate: an operation at some signature. -/
-abbrev Cand : Type := Σ (σs : List JsTy) (τ : JsTy) (e : Effectfulness) (t : MayThrow), JsOp e t σs τ
-
-/-- The first candidate that has the signature `σs → τ`. -/
-def firstOf (σs : List JsTy) (τ : JsTy) : List Cand → Option (JsSomeOp σs τ)
-  | [] => none
-  | ⟨σs', τ', e, t, op⟩ :: rest =>
-    if h : σs' = σs ∧ τ' = τ then some ⟨e, t, h.1 ▸ h.2 ▸ op⟩ else firstOf σs τ rest
-
-/-- The type a thunk operation delays (the first delay among the types). -/
-def elemOf? : List JsTy → JsTy
-  | [] => .terminal .bool
-  | .thunk t :: _ => t
-  | .fn [] t :: _ => t
-  | _ :: ts => elemOf? ts
-
-/-- The layout of the array among the argument types (the first one that is an array). -/
-def layoutOf? : List JsTy → Option (Σ a e, JsArrayLayout a e)
-  | [] => none
-  | t :: ts => match JsArrayLayout.of? t with
-    | some ⟨e, l⟩ => some ⟨t, e, l⟩
-    | none => layoutOf? ts
-
-'''
+def cand_group(ext):
+    """The group of an extern (the name of its module in `JsTerm/Ops/Cands/`)."""
+    if not ext.startswith('lean_') or ext.startswith('lean_float'):
+        return 'Float'
+    if re.match(r'lean_(nat|int)_', ext):
+        return 'Nat'
+    if re.match(r'lean_(uint\d+|usize)_', ext):
+        return 'UInt'
+    if re.match(r'lean_(int\d+|isize)_', ext):
+        return 'SInt'
+    if re.match(r'lean_(string|substring|slice|char)_', ext):
+        return 'String'
+    return 'Misc'
 
 def write_lookup(ops):
     byname = {o['name']: o for o in ops}
@@ -1015,36 +919,53 @@ def write_lookup(ops):
         if o['extern']:
             target = byname[o['sameAs']] if o['sameAs'] else o
             by_ext.setdefault(o['extern'], []).append(target)
-    s = LOOKUP_HEADER
     names = sorted(by_ext)
-    uses_sig = {}
-    for ext in names:
-        items = [cand(o) for o in by_ext[ext]]
-        mono = [x for x in items if x.startswith('⟨')]
-        rest = [x for x in items if not x.startswith('⟨')]
-        uses_sig[ext] = bool(rest)
-        expr = ' ++ '.join((['[' + ', '.join(mono) + ']'] if mono else []) + rest)
-        s += f'/-- The operations of `{ext}`. -/\n'
-        if rest:
-            s += f'def «cands_{ext}» (σs : List JsTy) (τ : JsTy) : List Cand :=\n'
-        else:
-            s += f'def «cands_{ext}» : List Cand :=\n'
-        s += '  ' + expr + '\n\n'
-    s += '''/-- The operation of the extern `name` at the signature `σs → τ`, if there is one. -/
-def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsSomeOp σs τ) :=
-  firstOf σs τ (match name with
-'''
-    for ext in names:
-        s += f'    | "{ext}" => «cands_{ext}»' + (' σs τ' if uses_sig[ext] else '') + '\n'
-    s += '''    | _ => [])
-
-end JsOp
-
-end MoreJs
-
-end
-'''
-    open(os.path.join(ROOT, 'JsTerm', 'OpsLookup.lean'), 'w').write(s)
+    group_sig = {}
+    for group, what, which in CAND_GROUPS:
+        s = ''
+        mine = [ext for ext in names if cand_group(ext) == group]
+        uses_sig = {}
+        for ext in mine:
+            items = [cand(o) for o in by_ext[ext]]
+            mono = [x for x in items if x.startswith('⟨')]
+            rest = [x for x in items if not x.startswith('⟨')]
+            uses_sig[ext] = bool(rest)
+            expr = ' ++ '.join((['[' + ', '.join(mono) + ']'] if mono else []) + rest)
+            s += f'/-- The operations of `{ext}`. -/\n'
+            if rest:
+                s += f'def «cands_{ext}» (σs : List JsTy) (τ : JsTy) : List Cand :=\n'
+            else:
+                s += f'def «cands_{ext}» : List Cand :=\n'
+            s += '  ' + expr + '\n\n'
+        group_sig[group] = any(uses_sig.values())
+        s += f'/-- The candidates of the extern `name`, when it is one of {what}. -/\n'
+        sig = ' (σs : List JsTy) (τ : JsTy)' if group_sig[group] else ''
+        s += f'def cands{group}? (name : String){sig} : Option (List Cand) :=\n'
+        s += '  match name with\n'
+        for ext in mine:
+            s += (f'  | "{ext}" => some («cands_{ext}» σs τ)\n' if uses_sig[ext]
+                  else f'  | "{ext}" => some «cands_{ext}»\n')
+        s += '  | _ => none\n'
+        write_ops_file(f'Cands/{group}.lean', lean_file(
+            ['JsTerm.Ops.Op'],
+            f'The operations of the externs of {what}',
+            f'''The candidates (`JsOp.Cand`) of every extern of {what} ({which}): its
+operations at their signatures, for the lookup (`JsOp.lookup`, `JsTerm.Ops.Lookup`).
+''', s, ('MoreJs', 'JsOp')))
+    s = '/-- The operation of the extern `name` at the signature `σs → τ`, if there is one. -/\n'
+    s += 'def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsSomeOp σs τ) :=\n'
+    s += '  firstOf σs τ ((' + ' <|>\n      '.join(f'cands{g}? name' + (' σs τ' if group_sig[g] else '')
+                                        for g, _, _ in CAND_GROUPS)
+    s += ').getD [])\n'
+    write_ops_file('Lookup.lean', lean_file(
+        [f'JsTerm.Ops.Cands.{g}' for g, _, _ in CAND_GROUPS],
+        'Finding the operation of an extern call',
+        '''`JsOp.lookup name σs τ` is the operation of the extern `name` (as the catalogue spells it,
+`lean_nat_div`) at the argument types `σs` and the result type `τ`, if there is one: the
+constructor of `JsOpImported` or `JsOpInlinable` whose signature is exactly `σs → τ` (a
+polymorphic one instantiated from the types), with its effects.  The candidates of the externs
+are in `JsTerm/Ops/Cands/`, by group of externs.
+''', s, ('MoreJs', 'JsOp')))
 
 # ------------------------------------------------------------------------------ main
 

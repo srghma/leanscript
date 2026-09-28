@@ -1,6 +1,6 @@
 // The runtime of the JavaScript that LeanScript generates: one module.
 //
-// Every function exported here is an operation of `JsTerm/Ops.lean` (`JsOpImported`), of
+// Every function exported here is an operation of `JsTerm/Ops/Imported.lean` (`JsOpImported`), of
 // the same name: the name of the extern it implements, behind the JavaScript representation
 // of its arguments and result (`bigint_nat__lean_nat_div` on `BigInt`s, `uint53__lean_nat_div`
 // on numbers below 2^53; see `scripts/gen_js_ops.py` for the naming).  A generated module
@@ -24,7 +24,7 @@
 // `String.pushn`) fails in JavaScript's own allocation, as it runs out of memory in Lean.
 //
 // The `@param` / `@returns` tags of every exported function give the JavaScript type and the
-// `JsTy` of its arguments and result, from its signature in `JsTerm/Ops.lean`; they are written
+// `JsTy` of its arguments and result, from its signature in `JsTerm/Ops/Imported.lean`; they are written
 // by `python3 scripts/annotate_runtime.py` (run it again after changing a signature).
 
 /* ------------------------------------------------------------ private helpers */

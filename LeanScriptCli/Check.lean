@@ -1,5 +1,5 @@
 import Lean
-import JsTerm.Config
+import JsTerm.Ty.Config
 
 /-!
 # Differential checks of the generated JavaScript against Lean

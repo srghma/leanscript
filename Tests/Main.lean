@@ -7,8 +7,8 @@ import TermTests.Datatypes.QuotientTest
 import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import LeanScript.Term.Optimize.Basic
-import JsTerm.FromTerm
-import JsTerm.Hoist
+import JsTerm.Lower.FromTerm
+import JsTerm.Passes.Hoist
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled

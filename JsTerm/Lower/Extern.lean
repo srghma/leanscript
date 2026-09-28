@@ -1,6 +1,7 @@
 module
 
-public import JsTerm.Vars
+public import JsTerm.Syntax.Vars
+public import JsTerm.Ops.Lookup
 public import LeanScript.Term.Extern.Name
 
 @[expose] public section
@@ -12,7 +13,7 @@ set_option autoImplicit false
 
 A call of an extern of the catalogue (`LeanScript.Neu.extern`) becomes, in `JsTerm`, a call
 of the **operation** of that extern at the JavaScript types of its arguments and result
-(`JsOp.lookup`, `JsTerm.OpsLookup`): `Nat.div` on `BigInt`s is `bigint_nat__lean_nat_div`, a
+(`JsOp.lookup`, `JsTerm.Ops.Lookup`): `Nat.div` on `BigInt`s is `bigint_nat__lean_nat_div`, a
 function of `runtime.js`; `Nat.land` on `BigInt`s is `bigint_nat__lean_nat_land`, written
 inline as `a & b`.  The operations are typed, so a representation is never converted where it
 does not need to be (an index held as a `uint53` is passed as it is; one held as a

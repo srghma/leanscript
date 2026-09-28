@@ -1,4 +1,4 @@
-import JsTerm.Syntax
+import JsTerm.Syntax.Basic
 
 /-!
 # Calls of recursive functions in the JavaScript of an open definition
