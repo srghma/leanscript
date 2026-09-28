@@ -27,7 +27,7 @@ represented in more than one way there.  The choice is this configuration:
 | `Char` | always a one-character string | — |
 | `Bool` | always a JavaScript boolean | — |
 | `String` | always a JavaScript string | — |
-| `Array α` | a JavaScript array, or a typed array (the `array…Repr` knobs) | `array…Repr` |
+| `Array α` | a JavaScript array, or a typed array (the `array…Repr` knobs; `Array Bool` and `Array Char` are always generic) | `array…Repr` |
 
 A number representation of an unbounded type (`Nat` as `UInt53`) is only faithful below
 `2^53`: a literal that does not fit is refused when the term is converted
@@ -90,21 +90,24 @@ inductive ArrayBitVecRepr where
   | genericArray
   deriving Repr, DecidableEq, BEq, Inhabited
 
-/-- Strategy for modeling `Array Bool` in JS. -/
-inductive ArrayBoolRepr where
-  /-- Standard JS `Array<boolean>`. -/
-  | genericArray
-  /-- Byte buffer `Uint8Array` (stores `0` or `1` per byte). -/
-  | uint8Array
-  deriving Repr, DecidableEq, BEq, Inhabited
+-- /-- Strategy for modeling `Array Bool` in JS. -/
+-- inductive ArrayBoolRepr where
+--   /-- Standard JS `Array<boolean>`. -/
+--   | genericArray
+--   /-- Byte buffer `Uint8Array` (stores `0` or `1` per byte). -/
+--   | uint8Array
+--   deriving Repr, DecidableEq, BEq, Inhabited
+--
+-- /-- Strategy for modeling `Array Char` in JS. -/
+-- inductive ArrayCharRepr where
+--   /-- `Array<string>` where each element is a one-character string. -/
+--   | genericArray
+--   /-- `Uint32Array` holding the Unicode scalar values. -/
+--   | uint32Array
+--   deriving Repr, DecidableEq, BEq, Inhabited
 
-/-- Strategy for modeling `Array Char` in JS. -/
-inductive ArrayCharRepr where
-  /-- `Array<string>` where each element is a one-character string. -/
-  | genericArray
-  /-- `Uint32Array` holding the Unicode scalar values. -/
-  | uint32Array
-  deriving Repr, DecidableEq, BEq, Inhabited
+-- (`Array Bool` and `Array Char` are always generic JavaScript arrays for now:
+-- `Array<boolean>` and `Array<string>` of one-character strings.)
 
 /-- The configuration of the backend: every representation decision, in one record.  The
     default keeps Lean's semantics exactly (`BigInt` wherever a knob allows one). -/
@@ -130,10 +133,6 @@ structure JsConfig where
   arrayBitVecRepr : ArrayBitVecRepr := .roundUpToSmallestTypedArray
   /-- How `Array Float` and `Array Float32` are modeled. -/
   arrayFloatRepr : ArrayTypedOrGeneric := .typedArray
-  /-- How `Array Bool` is modeled. -/
-  arrayBoolRepr : ArrayBoolRepr := .genericArray
-  /-- How `Array Char` is modeled. -/
-  arrayCharRepr : ArrayCharRepr := .genericArray
   deriving Repr, DecidableEq, Inhabited
 
 namespace JsConfig
@@ -229,14 +228,6 @@ def setKnob? (cfg : JsConfig) (knob val : String) : Option JsConfig := do
     | "exact" => return { cfg with arrayBitVecRepr := .exactTypedArrayOnly }
     | "generic" => return { cfg with arrayBitVecRepr := .genericArray }
     | _ => none
-  | "array-bool" => match val with
-    | "uint8" => return { cfg with arrayBoolRepr := .uint8Array }
-    | "generic" => return { cfg with arrayBoolRepr := .genericArray }
-    | _ => none
-  | "array-char" => match val with
-    | "uint32" => return { cfg with arrayCharRepr := .uint32Array }
-    | "generic" => return { cfg with arrayCharRepr := .genericArray }
-    | _ => none
   | _ => none
 
 /-- The configuration in one line, as the command line spells it.  This is what the header
@@ -253,9 +244,7 @@ def describe (cfg : JsConfig) : String :=
       "array-int64=" ++ typed (cfg.arrayInt64Repr == .bigInt64Array),
       "array-bitvec=" ++ (match cfg.arrayBitVecRepr with
         | .roundUpToSmallestTypedArray => "round-up" | .exactTypedArrayOnly => "exact"
-        | .genericArray => "generic"),
-      "array-bool=" ++ (if cfg.arrayBoolRepr == .uint8Array then "uint8" else "generic"),
-      "array-char=" ++ (if cfg.arrayCharRepr == .uint32Array then "uint32" else "generic") ]
+        | .genericArray => "generic") ]
 
 end JsConfig
 

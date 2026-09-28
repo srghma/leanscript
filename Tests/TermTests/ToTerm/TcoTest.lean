@@ -94,12 +94,12 @@ def stepSumT := #leanscript_to_term stepSum
 
 -- (moved to `Tests/Main.lean`: too slow for the kernel, run compiled)
 
-#eval stepSum 2 30
-#eval stepSum 5 12
-#eval ack2 2 3
-#eval hyperWhile 1 2 3
-#eval hyperTCO 3 2 3
-#eval hyperWhile 3 2 3
+#guard stepSum 2 30 = 26
+#guard stepSum 5 12 = 24
+#guard ack2 2 3 = 9
+#guard hyperWhile 1 2 3 = 5
+#guard hyperTCO 3 2 3 = 8
+#guard hyperWhile 3 2 3 = 8
 
 end Tco
 

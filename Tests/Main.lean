@@ -139,8 +139,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
     it s!"ack2 converts ({cfgName})" do
       let f ← conv cfg "ack2" ["m", "n"] ⟨[], .nil, _, _, Tco.ack2T⟩
       -- `ack2` is `fun m => nat_rec …`: one parameter, returning a function of `n`
-      assertEq "parameters" ["m"] (f.params.map Prod.fst)
-      assertEq "exported" true ((f.pretty.splitOn "export function ack2(").length > 1)
+      assertEq "parameters" ["m"] f.params
+      assertEq "exported" true ((f.pretty.splitOn "export const ack2 = (m) =>").length > 1)
     it s!"hyperWhile converts to loops ({cfgName})" do
       let f ← conv cfg "hyperWhile" ["n", "a", "b"] ⟨[], .nil, _, _, Tco.hyperWhileT⟩
       assertEq "a for loop" true ((f.pretty.splitOn "for (").length > 1)

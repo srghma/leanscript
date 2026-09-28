@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Optimize.Dce
+public import LeanScript.Term.Optimize.Cse
 
 @[expose] public section
 
@@ -20,7 +20,18 @@ also recounts the usages.  The rewrites, all of which only ever *remove* work:
   `let x := share n; jump j x` becomes `jump j n` (the neutral expression `n` is computed once
   either way, and nothing else reads `x`);
 * **dead case analysis**: `record_casesOn us n b` where `b` reads none of the fields becomes
-  `b` (the language is pure and total, so taking a record apart for nothing is dead code).
+  `b` (the language is pure and total, so taking a record apart for nothing is dead code);
+
+Then a second walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
+
+* **common subexpressions** (`Term.cseLetE`): a simple computation (`f a`, `t ()`, `force t`
+  on atoms) repeated at the same depth in the scope of its first occurrence is computed once;
+* **identical branches** (`Term.mkBranch`): `if c then ret a else ret a` is `ret a`;
+* **trivial join points** (`Branch.mkJoin`): a join point whose body is `ret a` (an atom) or
+  `ret x` (its parameter) is inlined into its jumps and dropped.
+
+(`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
+`LeanScript.Term.Rewrite`, `Term.simp_star`.)
 
 Each rewrite is done only when it keeps the level index of the statement (like the drops of
 `Term.dce`), which is decided on the spot; otherwise the statement is kept as it is.
@@ -30,46 +41,6 @@ Each rewrite is done only when it keeps the level index of the statement (like t
 namespace LeanScript
 
 variable {ks : List Nat} {Δ : DSig ks}
-
-/-! ## Renamings used by the rewrites -/
-
-/-- Rename the innermost unknown to the unknown `x` (of the same type and level). -/
-def URen.subst {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {d ℓ : Nat} (x : UVar Γ σ ℓ)
-    (h : ℓ = d) : URen (⟨σ, u, d⟩ :: Γ) Γ
-  | _, _, .head _ => some (h ▸ x)
-  | _, _, .tail y => some y
-
-/-- Drop the binders `bs` in front of a context (none of them may be used). -/
-def URen.dropN {Γ : UCtx ks} : (bs : UCtx ks) → URen (bs ++ Γ) Γ
-  | [] => URen.id
-  | ⟨_, _, _⟩ :: bs => fun x => match x with
-    | .head _ => none
-    | .tail y => URen.dropN bs y
-
-theorem URen.Agree.subst {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {d ℓ : Nat} (x : UVar Γ σ ℓ)
-    (h : ℓ = d) (ρ : UEnv Δ Γ) :
-    URen.Agree (URen.subst (u := u) x h) (Tuple.cons (ρ.get x) ρ) ρ := by
-  subst h
-  intro _ _ y z hyz
-  cases y with
-  | head _ =>
-      simp only [URen.subst, Option.some.injEq] at hyz
-      subst hyz; simp
-  | tail y =>
-      simp only [URen.subst, Option.some.injEq] at hyz
-      subst hyz; simp
-
-theorem URen.Agree.dropN {Γ : UCtx ks} (ρ : UEnv Δ Γ) : (bs : UCtx ks) → (vs : UEnv Δ bs) →
-    URen.Agree (URen.dropN (Γ := Γ) bs) (Tuple.append vs ρ) ρ
-  | [], _ => URen.Agree.id ρ
-  | ⟨_, _, _⟩ :: bs, vs => by
-      intro y z hyz
-      cases y with
-      | head _ => simp [URen.dropN] at hyz
-      | tail y =>
-          simp only [URen.dropN] at hyz
-          rw [Tuple.append_cons, UEnv.get_cons_tail]
-          exact URen.Agree.dropN ρ bs vs.tail y z hyz
 
 /-! ## The rewrites, one step each -/
 
@@ -213,10 +184,155 @@ def Branches.simp : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : Li
   | _, _, _, _, _, _, _, _, .cons us b bs => .cons us b.simp bs.simp
 end
 
-/-- **The optimiser**: the rewrites, then dead-code elimination. -/
+
+/-! ## The second walk: sharing, identical branches, trivial join points -/
+
+mutual
+/-- `Term.cseWalk` inside the bodies of a value. -/
+def Val.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {o : Lvl} →
+    Val Δ d Φ Γ τ o → Val Δ d Φ Γ τ o
+  | _, _, _, _, _, .lam b => .lam b.cseWalk
+  | _, _, _, _, _, .thunk_mk b => .thunk_mk b.cseWalk
+  | _, _, _, _, _, .lazy_mk b => .lazy_mk b.cseWalk
+  | _, _, _, _, _, .record_mk args => .record_mk args
+  | _, _, _, _, _, .union_mk ix args => .union_mk ix args
+  | _, _, _, _, _, .array_mk es => .array_mk es
+  | _, _, _, _, _, .list_mk es => .list_mk es
+  | _, _, _, _, _, .data_in b j e => .data_in b j e
+/-- `Term.cseWalk` in a body. -/
+def Body.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ bs : UCtx ks} → {τ : Ty ks} → {o : Lvl} →
+    Body Δ d Φ Γ bs τ o → Body Δ d Φ Γ bs τ o
+  | _, _, _, _, _, _, .closed t => .closed t.cseWalk
+  | _, _, _, _, _, _, .opened t h => .opened t.cseWalk h
+/-- `Term.cseWalk` inside the bodies of a computation. -/
+def Comp.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {ℓ : Nat} →
+    Comp Δ d Φ Γ τ ℓ → Comp Δ d Φ Γ τ ℓ
+  | _, _, _, _, _, .app f a h => .app f a h
+  | _, _, _, _, _, .share n => .share n
+  | _, _, _, _, _, .nat_rec n z s h => .nat_rec n z s.cseWalk h
+  | _, _, _, _, _, .array_foldl a z s h => .array_foldl a z s.cseWalk h
+  | _, _, _, _, _, .data_rec b ρ us brs j e h => .data_rec b ρ us (fun i => (brs i).cseWalk) j e h
+  | _, _, _, _, _, .data_brec b ρ k us brs j e h =>
+      .data_brec b ρ k us (fun i => (brs i).cseWalk) j e h
+  | _, _, _, _, _, .thunk_force e => .thunk_force e
+  | _, _, _, _, _, .lazy_force e => .lazy_force e
+/-- **The second walk** of the optimiser: bottom-up, common subexpression elimination
+    (`Term.cseLetE`), identical branches (`Term.mkBranch`) and trivial join points
+    (`Branch.mkJoin`). -/
+def Term.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {js : JCtx ks} →
+    {o : Lvl} → Term Δ d Φ Γ τ js o → Term Δ d Φ Γ τ js o
+  | _, _, _, _, _, _, .ret e => .ret e
+  | _, _, _, _, _, _, .letV u v b => .letV u v.cseWalk b.cseWalk
+  | _, _, _, _, _, _, .letE u c b => Term.cseLetE u c.cseWalk b.cseWalk
+  | _, _, _, _, _, _, .record_casesOn us n b => .record_casesOn us n b.cseWalk
+  | _, _, _, _, _, _, .branch br => Term.mkBranch br.cseWalk
+  | _, _, _, _, _, _, .jump j e => .jump j e
+/-- `Term.cseWalk` in a branch. -/
+def Branch.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {js : JCtx ks} →
+    {ℓ : Nat} → Branch Δ d Φ Γ τ js ℓ → Branch Δ d Φ Γ τ js ℓ
+  | _, _, _, _, _, _, .ite c t e => .ite c t.cseWalk e.cseWalk
+  | _, _, _, _, _, _, .enum_casesOn e bs => .enum_casesOn e (fun i => (bs i).cseWalk)
+  | _, _, _, _, _, _, .union_casesOn e bs => .union_casesOn e bs.cseWalk
+  | _, _, _, _, _, _, .join σ u uₓ body main => Branch.mkJoin σ u uₓ body.cseWalk main.cseWalk
+/-- `Term.cseWalk` in the branches of a union's case analysis. -/
+def Branches.cseWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : List Bool} →
+    {cs : Ctors ks bs} → {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} →
+    Branches Δ d Φ Γ cs τ js o → Branches Δ d Φ Γ cs τ js o
+  | _, _, _, _, _, _, _, _, .two us₁ us₂ b₁ b₂ => .two us₁ us₂ b₁.cseWalk b₂.cseWalk
+  | _, _, _, _, _, _, _, _, .cons us b bs => .cons us b.cseWalk bs.cseWalk
+end
+
+mutual
+theorem Val.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {o : Lvl} →
+    (v : Val Δ d Φ Γ τ o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → v.cseWalk.eval κ ρ = v.eval κ ρ
+  | _, _, _, _, _, .lam b, κ, ρ => by
+      simp only [Val.cseWalk, Val.eval]; funext x; rw [Body.cseWalk_eval b κ ρ]
+  | _, _, _, _, _, .thunk_mk b, κ, ρ => by
+      simp only [Val.cseWalk, Val.eval]; rw [Body.cseWalk_eval b κ ρ]
+  | _, _, _, _, _, .lazy_mk b, κ, ρ => by
+      simp only [Val.cseWalk, Val.eval]; rw [Body.cseWalk_eval b κ ρ]
+  | _, _, _, _, _, .record_mk _, _, _ => rfl
+  | _, _, _, _, _, .union_mk _ _, _, _ => rfl
+  | _, _, _, _, _, .array_mk _, _, _ => rfl
+  | _, _, _, _, _, .list_mk _, _, _ => rfl
+  | _, _, _, _, _, .data_in _ _ _, _, _ => rfl
+  termination_by structural _ _ _ _ _ x _ _ => x
+theorem Body.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ bs : UCtx ks} → {τ : Ty ks} →
+    {o : Lvl} → (b : Body Δ d Φ Γ bs τ o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) →
+    (vs : UEnv Δ bs) → b.cseWalk.eval κ ρ vs = b.eval κ ρ vs
+  | _, _, _, _, _, _, .closed t, _, _, _ => by
+      simp only [Body.cseWalk, Body.eval]; exact Term.cseWalk_eval t _ _ _
+  | _, _, _, _, _, _, .opened t _, _, _, _ => by
+      simp only [Body.cseWalk, Body.eval]; exact Term.cseWalk_eval t _ _ _
+  termination_by structural _ _ _ _ _ _ x _ _ _ => x
+theorem Comp.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
+    {ℓ : Nat} → (c : Comp Δ d Φ Γ τ ℓ) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) →
+    c.cseWalk.eval κ ρ = c.eval κ ρ
+  | _, _, _, _, _, .app _ _ _, _, _ => rfl
+  | _, _, _, _, _, .share _, _, _ => rfl
+  | _, _, _, _, _, .nat_rec n z s _, κ, ρ => by
+      simp only [Comp.cseWalk, Comp.eval]
+      congr 1; funext k acc; exact Body.cseWalk_eval s κ ρ _
+  | _, _, _, _, _, .array_foldl a z s _, κ, ρ => by
+      simp only [Comp.cseWalk, Comp.eval]
+      congr 1; funext acc x; exact Body.cseWalk_eval s κ ρ _
+  | _, _, _, _, _, .data_rec b ρt us brs j e _, κ, ρ => by
+      simp only [Comp.cseWalk, Comp.eval]
+      congr 1; funext i x; exact Body.cseWalk_eval (brs i) κ ρ _
+  | _, _, _, _, _, .data_brec b ρt k us brs j e _, κ, ρ => by
+      simp only [Comp.cseWalk, Comp.eval]
+      congr 1; funext i x; exact Body.cseWalk_eval (brs i) κ ρ _
+  | _, _, _, _, _, .thunk_force _, _, _ => rfl
+  | _, _, _, _, _, .lazy_force _, _, _ => rfl
+  termination_by structural _ _ _ _ _ x _ _ => x
+theorem Term.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
+    {js : JCtx ks} → {o : Lvl} → (t : Term Δ d Φ Γ τ js o) → (κ : KEnv Δ Φ) →
+    (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) → t.cseWalk.eval κ ρ jκ = t.eval κ ρ jκ
+  | _, _, _, _, _, _, .ret _, _, _, _ => rfl
+  | _, _, _, _, _, _, .letV u v b, κ, ρ, jκ => by
+      simp only [Term.cseWalk, Term.eval, Val.cseWalk_eval v, Term.cseWalk_eval b]
+  | _, _, _, _, _, _, .letE u c b, κ, ρ, jκ => by
+      simp only [Term.cseWalk]
+      rw [Term.cseLetE_eval]
+      simp only [Term.eval, Comp.cseWalk_eval c, Term.cseWalk_eval b]
+  | _, _, _, _, _, _, .record_casesOn us n b, κ, ρ, jκ => by
+      simp only [Term.cseWalk, Term.eval, Term.cseWalk_eval b]
+  | _, _, _, _, _, _, .branch br, κ, ρ, jκ => by
+      simp only [Term.cseWalk]
+      rw [Term.mkBranch_eval]
+      simp only [Term.eval, Branch.cseWalk_eval br]
+  | _, _, _, _, _, _, .jump _ _, _, _, _ => rfl
+  termination_by structural _ _ _ _ _ _ x _ _ _ => x
+theorem Branch.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
+    {js : JCtx ks} → {ℓ : Nat} → (br : Branch Δ d Φ Γ τ js ℓ) → (κ : KEnv Δ Φ) →
+    (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) → br.cseWalk.eval κ ρ jκ = br.eval κ ρ jκ
+  | _, _, _, _, _, _, .ite c t e, κ, ρ, jκ => by
+      simp only [Branch.cseWalk, Branch.eval, Term.cseWalk_eval t, Term.cseWalk_eval e]
+  | _, _, _, _, _, _, .enum_casesOn e bs, κ, ρ, jκ => by
+      simp only [Branch.cseWalk, Branch.eval]; exact Term.cseWalk_eval _ _ _ _
+  | _, _, _, _, _, _, .union_casesOn e bs, κ, ρ, jκ => by
+      simp only [Branch.cseWalk, Branch.eval]; exact Branches.cseWalk_eval bs κ ρ jκ _
+  | _, _, _, _, _, _, .join σ u uₓ body main, κ, ρ, jκ => by
+      simp only [Branch.cseWalk]
+      rw [Branch.mkJoin_eval]
+      simp only [Branch.eval, Branch.cseWalk_eval main, Term.cseWalk_eval body]
+  termination_by structural _ _ _ _ _ _ x _ _ _ => x
+theorem Branches.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : List Bool} →
+    {cs : Ctors ks bs} → {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} →
+    (br : Branches Δ d Φ Γ cs τ js o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
+      ∀ x, br.cseWalk.eval κ ρ jκ x = br.eval κ ρ jκ x
+  | _, _, _, _, _, _, _, _, .two us₁ us₂ b₁ b₂, κ, ρ, jκ, x => by
+      simp only [Branches.cseWalk, Branches.eval, Term.cseWalk_eval b₁, Term.cseWalk_eval b₂]
+  | _, _, _, _, _, _, _, _, .cons us b bs, κ, ρ, jκ, x => by
+      simp only [Branches.cseWalk, Branches.eval, Term.cseWalk_eval b, Branches.cseWalk_eval bs]
+  termination_by structural _ _ _ _ _ _ _ _ x _ _ _ _ => x
+end
+
+/-- **The optimiser**: the rewrites of `Term.simp`, those of `Term.cseWalk`, then dead-code
+    elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  t.simp.dce
+  t.simp.cseWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -420,7 +536,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.simp_eval]
+  rw [Term.optimize, Term.dce_eval, Term.cseWalk_eval, Term.simp_eval]
 
 /-- Running the optimiser any number of times does not change the value either. -/
 theorem Term.optimizeN_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}

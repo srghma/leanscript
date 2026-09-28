@@ -175,10 +175,7 @@ def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
 /-- Lowers an array of a leaf type into the optimized `JsTerm`. -/
 def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
   match prim with
-  | .bool =>
-    match cfg.arrayBoolRepr with
-    | .genericArray => .genericArray .bool
-    | .uint8Array => .uint8Array
+  | .bool => .genericArray .bool
   | .bitvec n _ =>
     let generic : JsTerm := .genericArray (lowerScalarPrim cfg prim)
     match cfg.arrayBitVecRepr with
@@ -233,9 +230,7 @@ def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerm :=
   | .float32 => match cfg.arrayFloatRepr with
     | .typedArray => .float32Array
     | .genericArray => .genericArray .float32
-  | .char => match cfg.arrayCharRepr with
-    | .genericArray => .genericArray .string
-    | .uint32Array => .uint32Array
+  | .char => .genericArray .string
   | other => .genericArray (lowerScalarPrim cfg other)
 
 /-- The name of member `j` of a block of a signature, as a JavaScript type name. -/

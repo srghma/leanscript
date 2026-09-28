@@ -46,7 +46,7 @@ partial def Ty.pretty {ks : List Nat} {d : Bool} : Ty ks d → String
   | .union cs (h := _) => "(" ++ " | ".intercalate (Ctors.prettyList cs) ++ ")"
   | .data r => s!"(data {repr r})"
   | .thunk t => s!"(Thunk {t.pretty})"
-  | .lazy t => s!"(Unit → {t.pretty})"
+  | .lazy t => s!"(Lazy {t.pretty})"
 /-- The fields of a record, as text. -/
 partial def Fields.prettyList {ks : List Nat} : Fields ks → List String
   | .one t => [t.pretty]

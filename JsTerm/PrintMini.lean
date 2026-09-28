@@ -16,8 +16,12 @@ system, and a module cannot import a file that is not one.)
 The mapping is direct: a `const`/`let` is a declaration, a destructuring `const [a, , b] = e`
 an array pattern, a counting loop a `for (let i = 0n; i < n; i++)`, an arrow whose body is a
 single `return e` is printed `(x) => e`, and an `if` whose `else` branch is a single `if`
-is printed `else if`.  Floats are printed as the shortest decimal that reads back as the
-same double.
+is printed `else if`.  A join point `join x block` is the **labelled block** `j$k: { … }`
+(`k` counting the join points of the function from the outside in, so nested blocks have
+different labels) and a jump of de Bruijn index `i` is `x = e; break j$k;` for the variable
+and the label of the `i`-th enclosing block.  An exported function is
+`export const f = (x, y) => { … };`.  Numbers are printed as integers when they are small
+integers, otherwise as the shortest decimal that reads back as the same double.
 -/
 
 namespace MoreJs
@@ -38,124 +42,157 @@ def natNum (n : Nat) : MiniExpr := .number (.decimal n 0)
 def intNum (n : Int) : MiniExpr :=
   if n < 0 then .unary .minus (natNum n.natAbs) else natNum n.natAbs
 
-/-- The number of decimal digits of `n` (`1` for `0`). -/
-def decDigits (n : Nat) : Nat := (toString n).length
-
-/-- The shortest decimal `(digits, exponent)` with `digits * 10 ^ exponent` reading back as
-    the double `m * 2 ^ e` (`m > 0`). -/
-def shortestDecimal (m : Nat) (e : Int) : Nat × Int :=
-  -- the exact value as `D * 10 ^ (-K)`
-  let (D, K) : Nat × Nat := if e ≥ 0 then (m * 2 ^ e.toNat, 0) else (m * 5 ^ e.natAbs, e.natAbs)
-  let exact : Float := Float.ofScientific D true K
-  let L := decDigits D
-  let rec go (fuel k : Nat) : Nat × Int :=
-    match fuel with
-    | 0 => (D, -(K : Int))
-    | fuel + 1 =>
-      if k ≥ L then (D, -(K : Int)) else
-      let drop := L - k
-      let q := D / 10 ^ drop
-      let r := D % 10 ^ drop
-      let q := if 2 * r ≥ 10 ^ drop then q + 1 else q
-      let ex : Int := (drop : Int) - K
-      let f : Float := if ex ≥ 0 then Float.ofScientific q false ex.toNat
-        else Float.ofScientific q true ex.natAbs
-      if f.toBits == exact.toBits then (q, ex) else go fuel (k + 1)
-  go 20 1
+/-- A `number` literal. -/
+def numberExpr (f : Float) : MiniExpr :=
+  match floatSmallInt? f, floatParts f with
+  | some 0, .finite true _ _ => .unary .minus (natNum 0)
+  | some n, _ => intNum n
+  | none, .nan => ident "NaN"
+  | none, .inf neg => if neg then .unary .minus (ident "Infinity") else ident "Infinity"
+  | none, .finite neg m e =>
+    let (d, ex) := shortestDecimal m e
+    let num : MiniExpr := .number (.decimal d ex)
+    if neg then .unary .minus num else num
 
 /-- A literal. -/
 def litExpr : JsLit → MiniExpr
   | .bool true => .true_
   | .bool false => .false_
-  | .int n => intNum n
+  | .number f => numberExpr f
   | .bigint n =>
     let b : MiniExpr := .number (.bigint .decimal n.natAbs)
     if n < 0 then .unary .minus b else b
-  | .float m e =>
-    let (d, ex) := shortestDecimal m.natAbs e
-    let num : MiniExpr := .number (.decimal d ex)
-    if m < 0 then .unary .minus num else num
-  | .special "NaN" => ident "NaN"
-  | .special "-Infinity" => .unary .minus (ident "Infinity")
-  | .special n => ident n
   | .str s => .string s
 
-/-- A binary operator. -/
-def binOp : JsBinOp → Option BinOp
+/-- An arithmetic or bitwise operator (`none` for `**`, printed `Math.pow(a, b)`). -/
+def numBinOp : JsNumBinOp → Option BinOp
   | .add => some .plus | .sub => some .minus | .mul => some .times | .div => some .divide
-  | .mod => some .mod | .pow => none | .strictEq => some .strictEq
-  | .strictNeq => some .strictNeq | .lt => some .lt | .le => some .le | .gt => some .gt
-  | .ge => some .ge | .and => some .and | .or => some .or | .bitAnd => some .bitAnd
-  | .bitOr => some .bitOr | .bitXor => some .bitXor | .shl => some .lsh | .shr => some .rsh
-  | .ushr => some .ursh
+  | .mod => some .mod | .pow => none | .lt => some .lt | .le => some .le | .gt => some .gt
+  | .ge => some .ge | .bitAnd => some .bitAnd | .bitOr => some .bitOr
+  | .bitXor => some .bitXor | .shl => some .lsh | .shr => some .rsh | .ushr => some .ursh
+
+/-- An operator on `BigInt`s. -/
+def bigIntBinOp : JsBigIntBinOp → BinOp
+  | .add => .plus | .sub => .minus | .mul => .times | .div => .divide | .mod => .mod
+  | .lt => .lt | .le => .le | .gt => .gt | .ge => .ge | .bitAnd => .bitAnd
+  | .bitOr => .bitOr | .bitXor => .bitXor | .shl => .lsh | .shr => .rsh
+
+/-- A binary operator (`none` for `**` on numbers). -/
+def binOp : JsBinOp → Option BinOp
+  | .num op => numBinOp op
+  | .bigint op => some (bigIntBinOp op)
+  | .bool .and => some .and
+  | .bool .or => some .or
+  | .str .concat => some .plus
+  | .str .lt => some .lt | .str .le => some .le | .str .gt => some .gt | .str .ge => some .ge
+  | .strictEq => some .strictEq
+  | .strictNeq => some .strictNeq
 
 /-- A unary operator. -/
 def unOp : JsUnOp → UnaryOp
-  | .not => .not | .neg => .minus | .bitNot => .tilde
+  | .bool .not => .not
+  | .num .neg | .bigint .neg => .minus
+  | .num .bitNot | .bigint .bitNot => .tilde
+
+/-- Where the statements are printed: the join points around them (innermost first, each as
+    its label and variable) and how many join points the function has so far (for fresh
+    labels). -/
+structure JoinCtx where
+  joins : List (String × String) := []
+  next : Nat := 1
 
 mutual
 /-- An expression as a `MiniAST` expression. -/
-partial def exprToMini : JsExpr → MiniExpr
+partial def exprToMini (c : JoinCtx) : JsExpr → MiniExpr
   | .var x => ident x
   | .lit l => litExpr l
   | .bin op a b => match binOp op with
-    | some o => .binary (exprToMini a) o (exprToMini b)
-    | none => .call (.dot (ident "Math") (nes "pow")) [exprToMini a, exprToMini b]
-  | .un op a => .unary (unOp op) (exprToMini a)
-  | .helper n args => .call (ident n) (args.map exprToMini)
-  | .call f args => .call (exprToMini f) (args.map exprToMini)
+    | some o => .binary (exprToMini c a) o (exprToMini c b)
+    | none => .call (.dot (ident "Math") (nes "pow")) [exprToMini c a, exprToMini c b]
+  | .un op a => .unary (unOp op) (exprToMini c a)
+  | .helper n args => .call (ident n) (args.map (exprToMini c))
+  | .call f args => .call (exprToMini c f) (args.map (exprToMini c))
   | .arrow ps body =>
     let params := ps.map fun p => MiniParam.plain (.ident (nes p))
+    -- a function starts afresh: no jump leaves it (the labels stay distinct all the same)
+    let c' : JoinCtx := { joins := [], next := c.next }
     match body with
-    | [.ret e] => .arrow false params (.expr (exprToMini e))
-    | _ => .arrow false params (.block (stmtsToMini body))
-  | .array es => .array (es.map fun e => .elem (exprToMini e))
-  | .typedArray c es => .call (.dot (ident c) (nes "of")) (es.map exprToMini)
-  | .index e i => .index (exprToMini e) (natNum i)
-  | .member e n => .dot (exprToMini e) (nes n)
-  | .cond c a b => .ternary (exprToMini c) (exprToMini a) (exprToMini b)
+    | [.ret e] => .arrow false params (.expr (exprToMini c' e))
+    | _ => .arrow false params (.block (stmtsToMini c' body))
+  | .array es => .array (es.map fun e => .elem (exprToMini c e))
+  | .typedArray k es => .call (.dot (ident k) (nes "of")) (es.map (exprToMini c))
+  | .index e i => .index (exprToMini c e) (natNum i)
+  | .member e n => .dot (exprToMini c e) (nes n)
+  | .cond k a b => .ternary (exprToMini c k) (exprToMini c a) (exprToMini c b)
 
-/-- A statement as a `MiniAST` statement. -/
-partial def stmtToMini : JsStmt → MiniStatement
-  | .const x _ e => .decl .const ⟨⟨.ident (nes x), some (exprToMini e)⟩, []⟩
-  | .letMut x _ e => .decl .let_ ⟨⟨.ident (nes x), some (exprToMini e)⟩, []⟩
-  | .assign x e => .expr (.assign (ident x) .assign (exprToMini e))
+/-- A statement as `MiniAST` statements (a jump is two: the assignment and the `break`). -/
+partial def stmtToMini (c : JoinCtx) : JsStmt → List MiniStatement
+  | .const x e => [.decl .const ⟨⟨.ident (nes x), some (exprToMini c e)⟩, []⟩]
+  | .letMut x e => [.decl .let_ ⟨⟨.ident (nes x), e.map (exprToMini c)⟩, []⟩]
+  | .assign x e => [.expr (.assign (ident x) .assign (exprToMini c e))]
   | .destructure xs e =>
     let elems := xs.map fun
-      | some (x, _) => MiniArrayPatternElem.elem (.ident (nes x))
+      | some x => MiniArrayPatternElem.elem (.ident (nes x))
       | none => .hole
     -- trailing holes are dropped (`[a, ,]` is `[a]`)
     let elems := (elems.reverse.dropWhile fun | .hole => true | _ => false).reverse
-    .decl .const ⟨⟨.array elems, some (exprToMini e)⟩, []⟩
-  | .ret e => .return_ (some (exprToMini e))
-  | .ite c t e =>
+    [.decl .const ⟨⟨.array elems, some (exprToMini c e)⟩, []⟩]
+  | .ret e => [.return_ (some (exprToMini c e))]
+  | .ite k t e =>
     let els : Option MiniStatement := match e with
       | [] => none
-      | [s@(.ite ..)] => some (stmtToMini s)
-      | ss => some (.block (stmtsToMini ss))
-    .if_ (exprToMini c) (.block (stmtsToMini t)) els
+      | [s@(.ite ..)] => match stmtToMini c s with
+        | [m] => some m
+        | ms => some (.block ms)
+      | ss => some (.block (stmtsToMini c ss))
+    [.if_ (exprToMini c k) (.block (stmtsToMini c t)) els]
   | .forRange i big n body =>
     let zero : MiniExpr := if big then .number (.bigint .decimal 0) else natNum 0
-    .for_ (.decl .let_ ⟨⟨.ident (nes i), some zero⟩, []⟩)
-      (some (.binary (ident i) .lt (exprToMini n)))
-      (some (.postfix (ident i) .incr)) (.block (stmtsToMini body))
+    [.for_ (.decl .let_ ⟨⟨.ident (nes i), some zero⟩, []⟩)
+      (some (.binary (ident i) .lt (exprToMini c n)))
+      (some (.postfix (ident i) .incr)) (.block (stmtsToMini c body))]
   | .forOf x xs body =>
-    .forOf false (.decl .const (.ident (nes x))) (exprToMini xs) (.block (stmtsToMini body))
-  | .throw msg => .throw (.new (ident "Error") [.string msg])
+    [.forOf false (.decl .const (.ident (nes x))) (exprToMini c xs) (.block (stmtsToMini c body))]
+  | .throw msg => [.throw (.new (ident "Error") [.string msg])]
+  | .join x block =>
+    let label := s!"j${c.next}"
+    let c' : JoinCtx := { joins := (label, x) :: c.joins, next := c.next + 1 }
+    [.labelled (nes label) (.block (stmtsToMini c' block))]
+  | .jump j e =>
+    match c.joins[j]? with
+    | some (label, x) =>
+      [.expr (.assign (ident x) .assign (exprToMini c e)), .break_ (some (nes label))]
+    | none => [.throw (.new (ident "Error") [.string s!"LeanScript: jump to an unknown join point {j}"])]
 
-/-- Statements. -/
-partial def stmtsToMini (ss : List JsStmt) : List MiniStatement := ss.map stmtToMini
+/-- Statements.  (The labels of sibling join points are distinct too: each `join` takes the
+    next number, whatever its depth.) -/
+partial def stmtsToMini (c : JoinCtx) (ss : List JsStmt) : List MiniStatement :=
+  (ss.foldl (fun (acc : Array MiniStatement × Nat) s =>
+    let (ms, next) := acc
+    let out := stmtToMini { c with next } s
+    (ms ++ out, next + joinCount s)) (#[], c.next)).1.toList
+
+/-- The number of join points a statement declares (outside of its arrows are counted too:
+    they only need to differ, not to be dense). -/
+partial def joinCount : JsStmt → Nat
+  | .join _ b => 1 + (b.map joinCount).sum
+  | .ite _ t e => (t.map joinCount).sum + (e.map joinCount).sum
+  | .forRange _ _ _ b | .forOf _ _ b => (b.map joinCount).sum
+  | _ => 0
 end
 
-/-- A function as an exported declaration. -/
+/-- A function as an exported declaration: `export const name = (params) => { body };`. -/
 def JsFun.toMini (f : JsFun) : MiniModuleItem :=
-  .exportDecl (.decl (.funcDecl false false (nes f.name)
-    (f.params.map fun (x, _) => .plain (.ident (nes x))) (stmtsToMini f.body)))
+  let params := f.params.map fun x => MiniParam.plain (.ident (nes x))
+  let body : MiniArrowBody := match f.body with
+    | [.ret e] => .expr (exprToMini {} e)
+    | _ => .block (stmtsToMini {} f.body)
+  .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (.arrow false params body)⟩, []⟩))
 
 /-- The comment above an exported function: its Lean name, and the layouts of its
     parameters and result. -/
 def JsFun.docComment (f : JsFun) : String :=
-  let ps := f.params.map fun (x, ty) => s!" * @param \{{ty}} {x}"
+  let ps := (f.params.zip f.paramTys).map fun (x, ty) => s!" * @param \{{ty}} {x}"
   "\n".intercalate (["/**", s!" * `{f.leanName}`"] ++ ps ++ [s!" * @returns \{{f.ret}}", " */"])
 
 /-- The text of the `.js` file of a module.  `header` are comment lines put first. -/

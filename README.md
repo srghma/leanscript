@@ -34,43 +34,36 @@ with Batteries and Aesop); `LeanScript/Term/Syntax/UsageAlgebra.lean` takes the 
 ## From Lean to JavaScript: `leanscript`
 
 ```
-scripts/install-leanscript.sh                 # builds it, links ./.lake/bin/leanscript
-./.lake/bin/leanscript Tests/SnapshotsMy/TcoAck.lean     # or a module name: SnapshotsMy.TcoAck
-./.lake/bin/leanscript --preset=pbo --check FILE.lean    # numbers instead of BigInt; differential checks
-scripts/leanscript-snapshots.sh               # Tests/SnapshotsMy + Tests/SnapshotsPBOPure (files with a public total function: structural or well-founded), checks run with node
+lake build leanscript
+.lake/build/bin/leanscript Tests/SnapshotsMy/TcoAck.lean     # or a module name: SnapshotsMy.TcoAck
+.lake/build/bin/leanscript --check FILE.lean                 # also differential checks
+scripts/leanscript-snapshots.sh               # Tests/SnapshotsMy + Tests/SnapshotsPBOPure (files with a public non-recursive or structurally recursive function), checks run with node
 ```
 
-For each public total function of the file (structurally recursive or defined by
-well-founded recursion), `leanscript` reads its `Expr`
-(not LCNF or IR, which have lost the types), translates it to a `Term`
-(`#leanscript_to_term`), optimises it (`Term.optimizeN`, which preserves `Term.eval`:
-`Term.optimizeN_eval`), converts it to the JavaScript grammar `JsTerm` at the chosen
-configuration (`MoreJs.termToJs`) and prints it with `LanguageJavascriptMini`.  Next to
+For each public definition of the file that `LeanScript.Term` supports — non-recursive or
+structurally recursive (well-founded and `mutual` definitions are refused for now, with the
+reason) — `leanscript` reads its `Expr` (not LCNF or IR, which have lost the types),
+translates it to a `Term` (`#leanscript_to_term`), optimises it (`Term.optimizeN`, which
+preserves `Term.eval`: `Term.optimizeN_eval`), converts it to the untyped JavaScript grammar
+`JsTerm` twice, once per preset (`MoreJs.termToJs`: `pbo` uses `number` for the integer
+types, `faithful` uses `BigInt`), and prints it with `LanguageJavascriptMini`.  Next to
 `FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
-`FILE-JsTerm.txt` and `FILE.js` (the runtime helpers the module needs, then one
-`export function` per function); with `--check` also `FILE.check.mjs`, which calls every
-exported function on sample arguments and compares the answers with the ones Lean computes.
-Every output starts with the configuration and lists the functions that were not translated,
-with the reason.
+`FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`, `FILE-pbo.js` and `FILE-faithful.js` (the
+runtime helpers the module needs, then one `export const f = (x, y) => …` per function: a
+chain of lambdas becomes one arrow with several parameters); with `--check` also
+`FILE-pbo.check.mjs` and `FILE-faithful.check.mjs`, which call every exported function on
+sample arguments and compare the answers with the ones Lean computes.  Every output lists
+the definitions that were not translated, with the reason; the JavaScript outputs also start
+with their configuration.  Join points are de Bruijn indexed in `JsTerm` (`JsStmt.join`,
+`JsStmt.jump`) and printed as labelled blocks (`j$1: { …; break j$1; }`).  In the `Term`
+files a lazy value `Unit → τ` is printed `(Lazy τ)`.
 
-A function defined by well-founded recursion is first read like a structural one (when every
-recursive call is on a subvalue).  Otherwise — and for members of a `mutual` block and
-functions calling such functions — it is translated through its *open definition*
-(`LeanScriptCli/Frontend.lean`, `openDef`): the right-hand side of its unfolding equation with
-each call of such a function `g` made a call of a new first parameter `g_rec`.  The `Term`
-files show that open term, under a line `-- recursive (f.leanscript_open): …` naming the
-functions it takes; `f` is its fixed point.  In `FILE.js` the exported `f` binds `g_rec` to
-the exported `g` itself, and a call that gives `g_rec` all of `g`'s parameters becomes a direct
-call `g(a, b)` (`LeanScriptCli/RecCalls.lean`).  An auxiliary proof Lean abstracted out of
-the body (`f._proof_3`, whose statement mentions `f`) is inlined into the open definition, so
-that its calls of `f` become calls of `f_rec` too; a constant calling such functions
-(`def ack999 := ack 999 1`) is exported as a function of no parameter.  A function type whose
-result depends on the argument only through what the translation erases (the predicate of a
-subtype: `(n : Nat) → {m // m ≥ n - 10}`, as in `Tco09`'s `Mc91.M`) is read as the
-non-dependent `Nat → Nat`, and a local proof `have h : p := …` is substituted into the body.  `a == b` on `Char` (whose instance projects the leaf `Char`) is translated as the comparison of the one-character strings `"".push a` and `"".push b` (`LeanScript/TermElab/ToTerm/CharEq.lean` proves the two decisions equal), which is `a === b` in JavaScript.  A case analysis `0` / `k + 1` that the
-translation reads as a recursion whose step ignores the accumulator is printed as an `if`,
-not a loop.  `leanscript --help` lists the configuration options (`--nat=num|bigint`,
-`--int=…`, `--array-bool=uint8|generic`, …; `JsTerm/Config.lean`).
+The optimiser (`LeanScript/Term/Optimize/Basic.lean`, `Cse.lean`, `Atom.lean`) does constant
+folding, copy propagation, dead-code elimination, common subexpression elimination of pure
+computations (`let x := f a; … let y := f a; …` computes `f a` once), an `if` whose branches
+are the same atom, and inlining of a join point whose body is trivial (`ret a`, an atom);
+`Term.optimize_eval` proves it does not change `Term.eval`, and `Term.numCalls_optimize` that it never increases the number of calls.  `leanscript --help` lists the
+options.
 
 | path | what it holds |
 | :-- | :-- |
@@ -99,6 +92,7 @@ not a loop.  `leanscript --help` lists the configuration options (`--nat=num|big
 | `LeanScript/Term/Rename/Basic.lean`, `LeanScript/Term/Rename/Eval.lean`, `LeanScript/Term/Rename/Weaken.lean` | renaming (partial: it fails on a dropped variable that is used) and weakening, and the fact that renaming commutes with evaluation (`Term.rename_eval`, `TermTests/Semantics/RenameTest.lean`) |
 | `LeanScript/Term/Optimize/Occ.lean`, `LeanScript/Term/Optimize/Dce.lean` | occurrence counts (added along straight-line code, the maximum across the arms of a branch, `ω` inside a body that may run many times) and dead-code elimination with exact usages, which preserves the meaning (`Term.dce_eval`) |
 | `LeanScript/Term/Optimize/Basic.lean` | the optimiser `Term.optimize`: copy propagation (`let x := share y`), a shared answer returned directly (`let x := share n; ret x` is `ret n`), dead `record_casesOn` dropped, then dead-code elimination; it preserves the value (`Term.optimize_eval`, `Term.optimize_run`, `TermTests/Optimize/OptimizeTest.lean`) |
+| `LeanScript/Term/Optimize/Count.lean`, `CountRename.lean`, `CountDce.lean`, `CountOptimize.lean`, `Tests/TermTests/Optimize/CseTest.lean` | `Term.numCalls`, the number of calls (`f a`, `t.get`, `t ()`) written in a statement; renaming preserves it (`Term.numCalls_rename`), and every pass of the optimiser never increases it (`Term.numCalls_simp`, `Term.numCalls_cseWalk`, `Term.numCalls_dce`, so `Term.numCalls_optimize`, `Term.numCalls_optimizeN`); on `EsPrecedence01.test1` the translation has 5 calls and the optimised statement 1, with the same value |
 | `LeanScript/Term/Rewrite/Step.lean`, `LeanScript/Term/Rename/Comp.lean`, `LeanScript/Term/Rewrite/StepRename.lean`, `LeanScript/Term/Rewrite/StepInv.lean`, `LeanScript/Term/Rewrite/Abstract.lean`, `LeanScript/Term/Rewrite/ChurchRosser.lean`, `LeanScript/Term/Rewrite/SimpStep.lean` | Church–Rosser for rewriting under `Term.eval`: the one-step relation `Term.Step` (drop a dead `val`/`let`/`record_casesOn`/`join`, copy propagation, a shared answer returned or jumped directly, anywhere in a term), which preserves the value (`Term.Step.eval`); it is strongly confluent, hence confluent and Church–Rosser (`Term.Step.confluent`, `Term.Step.churchRosser`, `Term.eval_churchRosser`, `Term.run_churchRosser`), normal forms are unique (`Term.Step.normal_unique`), and the optimiser's rewriting pass is a sequence of such steps (`Term.simp_star`, `Term.simp_joinable`; `TermTests/Optimize/ChurchRosserTest.lean`) |
 | `LeanScript/Term/Optimize/OpenRec.lean`, `Tests/TermTests/Optimize/OpenRecTest.lean` | why `leanscript`'s open definitions are faithful: a functional whose recursive calls go down a well-founded relation has exactly one fixed point (`OpenRec.fix_unique`, `OpenRec.fix_isFix`, `OpenRec.eq_fix_of_isFix`); the optimiser keeps the fixed points of a translated open definition (`Term.optimizeN_isFix_iff`, `Term.optimizeN_fix_eq`); a `nat_rec` whose step ignores the accumulator is the `if` the JavaScript prints (`natIter_of_ignoresAcc'`); for `mc91Loop` and `ack` (open definitions written as the tool builds them), every solution of the unfolding equation is the function, and every fixed point of the `#leanscript_to_term` translation of `mc91Loop`'s open definition, optimised any number of times, is `mc91Loop` (`mc91LoopOpenT_optimizeN_fix`) |
 | `LeanScript/WFTerm/Syntax.lean`, `LeanScript/WFTerm/Eval.lean`, `LeanScript/WFTerm/Optimize.lean` | `WFTerm`: well-founded recursion around `Term` (whose normal-form terms are the call-free atoms): global functions with pre/postconditions and a well-founded relation, recursive calls (`WFComp.self`) carrying their decrease proof under the path condition, calls of earlier global functions, shared values, `map`/`foldl` whose body knows `x ∈ l`, join points and recursive join points (`joinrec`, loops whose back edges carry their decrease proof); the evaluator `WFTerm.eval`/`WFProgram.run` is total and structural, runs recursion by `WellFounded.fix` (proofs only: no fuel, no measure, no default value) and returns the answer with its postcondition; the optimiser `WFTerm.optimize` (atoms by `Term.optimize`, constant tests, a join point entered at once inlined, folds of `[]`) preserves the value (`WFTerm.optimize_eval`, `WFProgram.optimize_run`; `TermTests/Optimize/WFTermTest.lean`, run in `Tests/Main.lean`) |

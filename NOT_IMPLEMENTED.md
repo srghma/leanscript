@@ -201,17 +201,16 @@ The supported fragment and the refusals are listed in the header of
   `U+FFFF` with characters in `U+E000`–`U+FFFF`.
 - A top-level function whose body is not a chain of lambdas (e.g. `fun m => nat_rec …`
   returning a function) is exported curried: `ack2(m)(n)`.
-- `leanscript` only reads the definitions it can translate: `partial` definitions,
-  `IO`/`ST` actions, definitions with errors, `while` loops whose termination the translator
-  cannot see, and constants whose value is not computable at compile time are listed with the
-  reason in every output file.  Well-founded recursion is translated (through open
-  definitions), but a well-founded function is still refused when its body uses something
-  the translator does not support in general: the ones left in `Tests/SnapshotsMy` and
-  `Tests/SnapshotsPBOPure` are polymorphic or monadic (`Fusion02`'s `toArrayLoop` and
-  `filterMapStep`, `RecursionSchemes01`'s `cata`/`cataMap`, `VanLaarhovenTraversals01`'s
-  `rewriteBottomUpM`).  (`Char` equality, which kept `StringWalk`'s `test1.go`/`test2.go`
-  out, is now translated: `LeanScript/TermElab/ToTerm/CharEq.lean`.)  Run `leanscript`
-  without `--quiet` to see each refused open definition reported on its own line.
+- `leanscript` only reads the definitions `LeanScript.Term` supports: non-recursive and
+  structurally recursive ones.  Well-founded recursion and `mutual` blocks are refused for now
+  (the open-definition machinery in `LeanScriptCli/Frontend.lean` is kept but unused, and
+  `LeanScriptCli/RecCalls.lean_` is set aside), as are `partial` definitions, `IO`/`ST`
+  actions, definitions with errors and constants whose value is not computable; each is
+  listed with the reason in every output file.
+- `Array Bool` and `Array Char` are always generic JavaScript arrays (the `Uint8Array` /
+  `Uint32Array` representations are commented out in `JsTerm/Config.lean`).
+- The optimiser does not inline a join point jumped to only once when its body is not
+  trivial, and does not share computations across closure / loop-body boundaries.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

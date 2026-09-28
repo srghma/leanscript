@@ -443,32 +443,36 @@ def lowerExtern (name : String) (argTys : List JsTerm) (resTy : JsTerm)
   let bin (op : JsBinOp) : JsExpr := match args with
     | [a, b] => .bin op a b
     | _ => .helper name args
+  let big := t0.isBigInt
+  -- an arithmetic operator on the representation of the first argument
+  let arith (nop : JsNumBinOp) (bop : JsBigIntBinOp) : JsExpr :=
+    bin (if big then .bigint bop else .num nop)
   let inline? : Option JsExpr :=
     match sym with
-    | "lean_nat_add" | "lean_int_add" => if t0.isBigInt then some (bin .add) else none
-    | "lean_nat_mul" | "lean_int_mul" => if t0.isBigInt then some (bin .mul) else none
-    | "lean_int_sub" => if t0.isBigInt then some (bin .sub) else none
+    | "lean_nat_add" | "lean_int_add" => if big then some (bin (.bigint .add)) else none
+    | "lean_nat_mul" | "lean_int_mul" => if big then some (bin (.bigint .mul)) else none
+    | "lean_int_sub" => if big then some (bin (.bigint .sub)) else none
     | "lean_nat_dec_eq" | "lean_int_dec_eq" | "lean_string_dec_eq" | "lean_float_beq" =>
       some (bin .strictEq)
-    | "lean_nat_dec_lt" | "lean_int_dec_lt" | "lean_float_decLt" => some (bin .lt)
-    | "lean_nat_dec_le" | "lean_int_dec_le" | "lean_float_decLe" => some (bin .le)
-    | "lean_strict_and" => some (bin .and)
-    | "lean_strict_or" => some (bin .or)
+    | "lean_nat_dec_lt" | "lean_int_dec_lt" | "lean_float_decLt" => some (arith .lt .lt)
+    | "lean_nat_dec_le" | "lean_int_dec_le" | "lean_float_decLe" => some (arith .le .le)
+    | "lean_strict_and" => some (bin (.bool .and))
+    | "lean_strict_or" => some (bin (.bool .or))
     -- `"".push c` is the one-character string `c` itself (a `Char` is a string of one
     -- code point), how `a = b` on `Char` is translated
     | "lean_string_push" => match args with
       | [.lit (.str ""), c] => some c
-      | _ => some (bin .add)
-    | "lean_string_append" => some (bin .add)
-    | "lean_float_add" => some (bin .add)
-    | "lean_float_sub" => some (bin .sub)
-    | "lean_float_mul" => some (bin .mul)
-    | "lean_float_div" => some (bin .div)
+      | _ => some (bin (.str .concat))
+    | "lean_string_append" => some (bin (.str .concat))
+    | "lean_float_add" => some (bin (.num .add))
+    | "lean_float_sub" => some (bin (.num .sub))
+    | "lean_float_mul" => some (bin (.num .mul))
+    | "lean_float_div" => some (bin (.num .div))
     | _ =>
       match parseFixed? sym with
       | some (_, _, "dec_eq") => some (bin .strictEq)
-      | some (_, _, "dec_lt") => some (bin .lt)
-      | some (_, _, "dec_le") => some (bin .le)
+      | some (_, _, "dec_lt") => some (arith .lt .lt)
+      | some (_, _, "dec_le") => some (arith .le .le)
       | _ => none
   match inline? with
   | some e => (e, [])

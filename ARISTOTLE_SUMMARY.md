@@ -1,3 +1,21 @@
+# Summary of changes for run bdbea385-e2ff-4c39-bf36-b4e37ca3d699
+I've proved in Lean the two claims that weren't formal yet: that the optimizer never adds calls, and that it reduces `EsPrecedence01.test1` from five calls to one. The files below build with no `sorry`, `#print axioms` shows only the standard axioms, and `lake exe tests` still passes 45/45. The existing proof that the optimizer doesn't change `Term.eval` (`Term.optimize_eval`, `Term.optimizeN_eval`) is unchanged.
+
+**How calls are counted:** `Term.numCalls` (`LeanScript/Term/Optimize/Count.lean`) counts every `f a`, `t.get` and `t ()` written in a statement, including inside closures, loop bodies, branches and join points.
+
+**The optimizer never adds calls:** `Term.numCalls_optimize` states `t.optimize.numCalls ≤ t.numCalls` for every statement, and `Term.numCalls_optimizeN` states the same for any number of rounds. It is proved one piece at a time:
+- `Term.numCalls_rename` (`CountRename.lean`): renaming variables doesn't change the count.
+- `Term.numCalls_dce` (`CountDce.lean`): dead-code elimination only removes calls.
+- `Term.numCalls_simp` (`CountOptimize.lean`): the first pass (copy propagation, shared answers, dropping unused record matches) never adds calls.
+- `Term.numCalls_cseWalk` (`CountOptimize.lean`): the second pass (sharing repeated calls, collapsing identical branches, inlining trivial join points) never adds calls.
+
+**`EsPrecedence01.test1`** (`Tests/TermTests/Optimize/CseTest.lean`, checked when the file builds):
+- The unoptimized Term has 5 calls of `f`. That is 5, not 3: the translation also emits a call for `f b` and `f ()`, which are the same call because `a b : Unit`.
+- After `optimizeN 3` there is exactly 1 call.
+- For every `b`, the optimized Term computes `test1 (fun _ => b) () ()`.
+
+The new files are all in the `LeanScript` library, and `README.md` has a row for them. The Properties table lists `Term.numCalls`, `Term.numCalls_optimize` (proved) and the `EsPrecedence01` result (proved).
+
 # Summary of changes for run 71e123da-7a39-4478-ba2e-5e1a63f2f9d4
 `MoreJsTy` is now `JsTerm` everywhere in the project except `ARISTOTLE_SUMMARY.md`, which you asked me not to edit. The code builds and all 45 tests pass, but only with a temporary lakefile change (see below), so I'm not listing any build targets.
 
