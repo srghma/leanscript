@@ -36,7 +36,6 @@ It writes, next to the file (or in `--out-dir`), where `FILE` is the path withou
 
 * `FILE-Term-unoptimized.txt`: the translations, as translated;
 * `FILE-Term-optimized.txt`: the translations, optimised;
-* `FILE-JsTerm-pbo.txt`, `FILE-JsTerm-faithful.txt`: the JavaScript grammar at each preset;
 * `FILE-pbo.js`, `FILE-faithful.js`: the JavaScript modules: the import of the runtime
   functions they call, from `runtime.js` of the project (or `--runtime`), by a path relative
   to the output file; the constants they share; then one `export const f = (…) => …` per
@@ -79,10 +78,8 @@ Translates the public total functions of each Lean file that LeanScript.Term sup
 file (FILE is its path without `.lean`):
   FILE-Term-unoptimized.txt   the translations to LeanScript.Term
   FILE-Term-optimized.txt     the same, optimised (Term.optimizeN)
-  FILE-JsTerm-pbo.txt         the JavaScript grammar, numbers instead of BigInt (preset pbo)
-  FILE-JsTerm-faithful.txt    the JavaScript grammar, BigInt everywhere (preset faithful)
-  FILE-pbo.js                 the JavaScript module (preset pbo)
-  FILE-faithful.js            the JavaScript module (preset faithful)
+  FILE-pbo.js                 the JavaScript module, numbers instead of BigInt (preset pbo)
+  FILE-faithful.js            the JavaScript module, BigInt everywhere (preset faithful)
 
 options:
   --out-dir=DIR               write the outputs to DIR instead of next to the file
@@ -324,9 +321,9 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     let jsPath := outPath o file s!"-{preset}.js"
     let jsDir ← IO.FS.realPath ((jsPath.parent.getD ".").toString |> fun s =>
       if s.isEmpty then "." else s)
-    IO.FS.writeFile (outPath o file s!"-JsTerm-{preset}.txt")
-      (String.join ((header "The JavaScript grammar").map fun l => s!"// {l}\n") ++ "\n" ++
-        m.pretty)
+    -- the grammar dump `FILE-JsTerm-{preset}.txt` is no longer written: remove a stale one
+    let staleDump := outPath o file s!"-JsTerm-{preset}.txt"
+    if ← staleDump.pathExists then IO.FS.removeFile staleDump
     IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtFile))
     if o.check then
       let jsFile := jsPath.fileName.getD "out.js"

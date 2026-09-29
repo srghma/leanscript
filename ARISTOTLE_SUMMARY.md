@@ -1,3 +1,18 @@
+# Summary of changes for run b0e523ce-d852-4b35-9565-27a3bace3fbd
+`leanscript` no longer writes `FILE-JsTerm-pbo.txt` or `FILE-JsTerm-faithful.txt`, and I deleted the 280 existing copies from `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`. There are none left in the project.
+
+**What changed:**
+- **`LeanScriptCli/Main.lean`:** the line that wrote the grammar dump for each preset is gone. If an old `FILE-JsTerm-{pbo,faithful}.txt` is next to the output, the tool now deletes it, so running it again on an older tree cleans up after itself. They are also still on the `--functions-only` cleanup list. I took them out of the module doc and the `--help` text. The help lines for `FILE-pbo.js` and `FILE-faithful.js` now say what each preset means: numbers instead of BigInt for `pbo`, BigInt everywhere for `faithful`.
+- **`scripts/leanscript-snapshots.sh` and `README.md`:** these no longer list the removed files.
+- **Kept:** the code that prints the grammar, in `JsTerm/Syntax/Pretty.lean` and the type renderings, because `Tests/Main.lean` uses it. It just isn't written to a file any more.
+
+**Checks:**
+- `lake build leanscript` succeeds.
+- I ran the tool on `Tests/SnapshotsMy/AppArity.lean` with a stale `AppArity-JsTerm-pbo.txt` next to it. It deleted that file and wrote no dump. Its other outputs differed only in the file path in the header line, because I ran it from a different directory. I restored those files, so no other snapshot changed.
+- `lake exe tests` passes 57/57.
+
+Everything is committed.
+
 # Summary of changes for run eb85d3b2-900e-4286-bea3-cb753ade3aeb
 You're right that `Number(x)` on an `int53` does nothing: it's the identity. But the identity is also wrong here, so this was a bug, not just a wasted call. A `float32` value is supposed to be a number already rounded to single precision by `Math.fround`, and `Int64.toFloat32` rounds. For example, `(16777217 : Int64).toFloat32` is `16777216` in Lean, but the generated JavaScript returned `16777217`, which isn't a single-precision value at all. The template should have been `Math.fround(x)`. The cause is `conv_value` in `scripts/gen_js_ops.py`, which handled `float` and `float32` targets the same way.
 

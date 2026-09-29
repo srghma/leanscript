@@ -3,7 +3,7 @@
 # `Tests/SnapshotsPBOPure/*.lean` that has at least one public total function (non-recursive
 # or structurally recursive), writing next to each such file
 #   FILE-Term-unoptimized.txt, FILE-Term-optimized.txt,
-#   FILE-JsTerm-pbo.txt, FILE-JsTerm-faithful.txt, FILE-pbo.js, FILE-faithful.js,
+#   FILE-pbo.js, FILE-faithful.js,
 #   FILE-pbo.check.mjs, FILE-faithful.check.mjs
 # (a file without one gets no outputs), then run every check module with node.  Extra
 # arguments are passed to leanscript.  Exits non-zero if a check fails.
