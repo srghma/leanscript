@@ -21,7 +21,7 @@ Rewrites of `JsTerm` that make the printed JavaScript shorter, all type-preservi
   is `jump j e;`, and a join point whose block only jumps to it, `let x; L: { x = e; break L; }`,
   is `const x = e;` (one whose block is `if (c) { jump a } else { jump b }` is
   `const x = c ? a : b;`);
-* **array literals** (`inlineArrays`): the appends of generic arrays are array literals of
+* **array literals** (`flattenRw`, `inlineArrayNode`): the appends of generic arrays are array literals of
   spreads (`[...a, ...b]`), so a chain of appends is nested literals.  A spread of an array
   literal is its elements (`[x, ...[y, ...z]]` is `[x, y, ...z]`), and `const x = [ … ];` used
   exactly once afterwards, not inside a loop or a closure, is inlined into that use (the
@@ -393,10 +393,6 @@ def inlineArrayNode {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → JsBloc
       (rest.subst (JsSubst.inst e)).mapBU flattenRw .id
     else b
   | b => b
-
-/-- Flatten the array literals, and inline the ones used once (see above). -/
-def inlineArrays {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : JsBlock C M J k :=
-  b.mapBU flattenRw ⟨fun _ _ _ _ b => inlineArrayNode b⟩
 
 end MoreJs
 

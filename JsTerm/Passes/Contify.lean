@@ -31,8 +31,9 @@ proved: `JsTerm` has no semantics; checked by the snapshots):
   and read no mutable variable assigned in between), so that an accumulator starting from it
   can be unboxed.
 
-`tidy` runs these and the passes of `JsTerm.Passes.Unbox` bottom-up, with the clean-ups of
-`JsTerm.Passes.Cleanup` between the rounds, until nothing changes.
+`tidyStep` combines these with the passes of `JsTerm.Passes.Unbox`, one node at a time; the
+conversion applies it to every block it builds (`JsBlock.emit`, `JsTerm.Lower.Emit`), with the
+clean-ups of `JsTerm.Passes.Cleanup`, so no pass runs over a finished function.
 -/
 
 namespace MoreJs
@@ -274,21 +275,6 @@ def tidyStep (noCapture : Bool) {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M
   let b := coalesceNode noCapture b
   let b := hoistAssignNode noCapture b
   tcoNode noCapture b
-
-/-- The passes of this file and of `JsTerm.Passes.Unbox`, everywhere, then the clean-ups
-    (`cleanup`, `peephole`), until nothing changes (at most `fuel` rounds). -/
-def tidy {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) (fuel : Nat := 6) :
-    JsBlock C M J k :=
-  let noCapture := !b.capturesMut
-  go noCapture fuel b (b.pretty "")
-where
-  /-- The rounds. -/
-  go (noCapture : Bool) : Nat → JsBlock C M J k → String → JsBlock C M J k
-    | 0, b, _ => b
-    | n + 1, b, s =>
-      let b' := peephole (cleanup (b.mapBU betaRw ⟨fun _ _ _ _ b => tidyStep noCapture b⟩))
-      let s' := b'.pretty ""
-      if s' == s then b' else go noCapture n b' s'
 
 end MoreJs
 

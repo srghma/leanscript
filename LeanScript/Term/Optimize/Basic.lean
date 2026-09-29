@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.FieldsWalk
+public import LeanScript.Term.Optimize.Cond
 
 @[expose] public section
 
@@ -36,6 +37,10 @@ Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimiz
   `if c then ret a else ret b` is `ret (c ? a : b)` (the pure conditional `Neu.cond`);
 * **trivial join points** (`Branch.mkJoin`): a join point whose body is `ret a` (an atom) or
   `ret x` (its parameter) is inlined into its jumps and dropped.
+
+Then the boolean conditions (`Term.condWalk`, `LeanScript.Term.Optimize.Cond`):
+`c ? true : false` is `c`, and a negated condition (`c ? false : true`) of a conditional or of
+an `if` is read as `c` with the two branches swapped.
 
 (`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
 `LeanScript.Term.Rewrite`, `Term.simp_star`.)
@@ -339,10 +344,11 @@ theorem Branches.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} 
 end
 
 /-- **The optimiser**: the rewrites of `Term.simp`, the known fields (`Term.widenFields`, then
-    `Term.reuseFields`), those of `Term.cseWalk`, then dead-code elimination. -/
+    `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions (`Term.condWalk`), then
+    dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.simp.widenFields.reuseFields []).cseWalk.dce
+  (t.simp.widenFields.reuseFields []).cseWalk.condWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -546,7 +552,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.cseWalk_eval,
+  rw [Term.optimize, Term.dce_eval, Term.condWalk_eval, Term.cseWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval]
 

@@ -1,3 +1,30 @@
+# Summary of changes for run 548bb7bc-3053-4d68-81fe-5b4762d7f12c
+**Is it possible?** Mostly, yes. The function-level part is now done. The function-level JsTerm optimisations no longer run as a separate JsTerm→JsTerm stage: they now happen while `termToJs` builds the JsTerm. Two things still run on finished JsTerm: `inPlace` and the module assembly in `mkModule`. Removing either today would lose optimisations, so I kept them. I checked that nothing was lost by regenerating the snapshots and running the tests; this is not a formal proof that the output is unchanged.
+
+**What changed**
+- **New file `JsTerm/Lower/Emit.lean`:** it adds `JsBlock.emit`, which every block goes through as `JsTerm/Lower/FromTerm.lean` builds it. The children of a block are already simplified, so it only applies the rules at the new block. These are the same rules the old passes used: `cleanup` (copy propagation, constants used once, …), `peephole`, the array-literal rules, and `tidyStep` (unboxing, scalar replacement, contification, join-point flattening, closure-chain tail calls, target-specific narrowing and arithmetic).
+  - When a rule rewrites a block, that block is simplified again until nothing changes. I tried one pass without this: 21 snapshot files came out worse, so the repeat is needed to miss nothing.
+  - Some rules are only valid when no closure reads a mutable variable, which depends on the whole function. So `termToJs` first does a quick conversion with no rules to decide that, then the real one.
+- **`termToJs`** no longer calls `cleanup`, `peephole`, `inlineArrays` or `tidy`. I deleted the unused whole-function drivers `tidy` and `inlineArrays`.
+- **New Term-level pass `LeanScript/Term/Optimize/Cond.lean`:** `Term.condWalk` is now part of `Term.optimize`. It rewrites `c ? true : false` to `c`, and a test of `c ? false : true` swaps the two arms. I proved it keeps the value (`Term.condWalk_eval` and related lemmas), so `Term.optimize_eval` and `Term.optimizeN_eval` still hold. Their only axioms are `propext`, `Classical.choice` and `Quot.sound`. I also proved it never adds calls (`numCalls_condWalk`).
+  - It shortens three `Term-optimized.txt` snapshots, e.g. in `PrimOpBoolean01` a four-deep nested `cond(...)` becomes `cond(x2,false,x4)`.
+  - The JavaScript for those is unchanged, because the JsTerm rules already simplified it.
+
+**Checks**
+- `lake build leanscript tests JsTerm TermTests TyTests` succeeds, with no `sorry` in the new code.
+- Every JavaScript snapshot in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` regenerates byte-for-byte the same as before; only the three Term snapshots above changed.
+- The test runner passes 61/61.
+- As before, the `LeanScript` library as a whole still doesn't build, because `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which this project doesn't have. That's why I built the specific targets above.
+
+**What still runs on finished JsTerm, and why** (details in `proposals/NoJsTermOptimizations.md`)
+- **`inPlace`** updates arrays in place when nothing else refers to them. It needs to see every later read of the array in the whole function, so it can't be done block by block. Moving it earlier would need a uniqueness analysis at the Term level.
+- **`mkModule`:**
+  - `hoistConsts` and `shareFuns` work across all the functions of one `.js` file; they are what builds the module.
+  - `inlineConsts` inlines known closures from the module into their call sites. That is a functional optimisation that belongs in `Term.optimize`, but it needs a proven Term-level inliner first. That is the main remaining piece of work.
+- The proposal document also has a table of how often each rule fired across the snapshots (from an instrumented run, not a formal check), and whether each could move to Term.
+
+I also updated the `README.md` and the docstrings that described the old pipeline, and added the new pass and `JsBlock.emit` to the Properties table. `ARISTOTLE_SUMMARY.md` is unchanged. All work is committed.
+
 # Summary of changes for run bfd42c21-9291-4ab3-a611-9ceae53b2e42
 I wrote the proposals in `proposals/TypedDataProposals3.md`. The project already had two notes on this question (`proposals/TypedDataProposals.md` and `TypedDataProposals2.md`), so this one only covers designs they don't. Nothing in `JsTerm` was changed.
 

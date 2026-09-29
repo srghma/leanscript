@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Lower.Basic
+public import JsTerm.Lower.Emit
 public import JsTerm.Passes.InPlace
 public import JsTerm.Passes.Cleanup
 public import JsTerm.Passes.Contify
@@ -73,7 +74,7 @@ namespace MoreJs
 open LeanScript
 
 section
-variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
+variable (cfg : JsConfig) (ec : EmitCfg) {ks : List Nat} {Δ : DSig ks}
 
 mutual
 
@@ -181,7 +182,8 @@ partial def cApplyTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o :
       if ds.length != ps.length then throw "internal: the parameters of a function" else
       let call ← papCall (.c C.length) ((ps.zip ds).map fun (p, t) => (p, t)) c
         (C := lowerTy cfg τ :: C) (M := M)
-      castRet (.join "f" (blk.retToJump (k := .ret c)) (.ret call)) r
+      castRet ((JsBlock.join "f" ((blk.retToJump (k := .ret c)).emitAll ec)
+        ((JsBlock.ret call).emit ec)).emit ec) r
     | _ => throw "internal: applying a value that is not a function"
   if ps.isEmpty then whole else
   match t with
@@ -222,9 +224,9 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
         ConvM (JsBlock C M J e) := do
       match pexprRef? f n with
       | some r@(.c _) | some r@(.pap ..) => rest r C
-      | _ => bindConst (← cPExpr f n C M) rest
+      | _ => return (← bindConst (← cPExpr f n C M) rest).emit ec
     withF fun fr C₁ => do
-      bindConst (← cPExpr a n C₁ M) fun ar C₂ => do
+      return (← bindConst (← cPExpr a n C₁ M) fun ar C₂ => do
         let (base, args) := match fr with
           | .pap b as => (b, as)
           | r => (r, [])
@@ -234,10 +236,10 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
           k (.pap base args) C₂ M
         else
           let call ← papCall base args (lowerTy cfg τ) (C := C₂) (M := M)
-          return .const "x" call (← k (.c C₂.length) _ M)
+          return (JsBlock.const "x" call (← k (.c C₂.length) _ M)).emit ec).emit ec
   | .share e => do
     let ee ← cNeu e n C M
-    return .const "x" ee (← k (.c C.length) _ M)
+    return (JsBlock.const "x" ee (← k (.c C.length) _ M)).emit ec
   | Comp.nat_rec (τ := ρ) cnt z s _ => do
     let N := lowerTy cfg (Ty.nat : Ty ks)
     let some nt := JsNatTy.of? N | throw "internal: the representation of a Nat"
@@ -251,7 +253,8 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     let body ← cBody s n (α :: N :: C) M' [.c (C.length + 1), .c C.length]
     let rest ← k (.m accLvl) C M'
     if body.mentions ⟨false, 0⟩ then
-      return .letMut "acc" zE (.forRange "i" nt cntE.wkM (loopBody acc body) rest)
+      return (JsBlock.letMut "acc" zE
+        ((JsBlock.forRange "i" nt cntE.wkM ((loopBody acc body).emitAll ec) rest).emit ec)).emit ec
     else
       -- a step that ignores the accumulator (a case analysis `0` / `k + 1` read as a
       -- recursion): only the last iteration counts, `i = n - 1`, so no loop
@@ -261,8 +264,11 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
         | _, .succ x => some x
       match body.renameM drop (fun x => some x) with
       | some body' =>
-        return .letMut "acc" zE (.lastIter "i" nt cntE.wkM (body'.retToNext acc) rest)
-      | none => return .letMut "acc" zE (.forRange "i" nt cntE.wkM (loopBody acc body) rest)
+        return (JsBlock.letMut "acc" zE
+          ((JsBlock.lastIter "i" nt cntE.wkM ((body'.retToNext acc).emitAll ec) rest).emit ec)).emit ec
+      | none =>
+        return (JsBlock.letMut "acc" zE
+          ((JsBlock.forRange "i" nt cntE.wkM ((loopBody acc body).emitAll ec) rest).emit ec)).emit ec
   | Comp.array_foldl (t := t) (ρ := ρ) arr z s _ => do
     let A := lowerTy cfg (Ty.array (d := true) t)
     let α := lowerTy cfg ρ
@@ -276,38 +282,41 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     -- arrays is the array literal `[...z, ...arr]`
     if isPushStep body && α == A then
       if let some lit := appendLit l (← castE zE A) arrE then
-        return .const "x" (← castE lit α) (← k (.c C.length) _ M)
+        return (JsBlock.const "x" (← castE lit α) (← k (.c C.length) _ M)).emit ec
     let rest ← k (.m M.length) C M'
-    return .letMut "acc" zE (.forOf "e" l arrE.wkM (loopBody .zero body) rest)
+    return (JsBlock.letMut "acc" zE
+      ((JsBlock.forOf "e" l arrE.wkM ((loopBody .zero body).emitAll ec) rest).emit ec)).emit ec
   | .data_rec _ _ _ _ _ _ _ => notYet
   | .data_brec _ _ _ _ _ _ _ _ => notYet
   | Comp.thunk_force (τ := t) p => do
     let pe ← cPExpr p n C M
     let e : JsExpr C M (lowerTy cfg t.relax) ← lowerExtern "lean_thunk_get_own" (.cons pe .nil)
-    return .const "x" e (← k (.c C.length) _ M)
+    return (JsBlock.const "x" e (← k (.c C.length) _ M)).emit ec
   | Comp.lazy_force (τ := t) p => do
     let pe ← cPExpr p n C M
     let e ← forceLazy pe (lowerTy cfg t.relax)
-    return .const "x" e (← k (.c C.length) _ M)
+    return (JsBlock.const "x" e (← k (.c C.length) _ M)).emit ec
 
 /-- A statement: a block every path of which ends in a `return` (or a jump). -/
 partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) (n : Names) (C M J : List JsTy) :
     ConvM (JsBlock C M J (.ret (lowerTy cfg τ))) :=
   match t with
-  | .ret p => return .ret (← cPExpr p n C M)
+  | .ret p => return (JsBlock.ret (← cPExpr p n C M)).emit ec
   | Term.letV (σ := σ) _ v t => do
     let ve ← cVal v n C M
-    return .const "k" ve (← cTerm t { n with k := .c C.length :: n.k } (lowerTy cfg σ :: C) M J)
+    return (JsBlock.const "k" ve
+      (← cTerm t { n with k := .c C.length :: n.k } (lowerTy cfg σ :: C) M J)).emit ec
   | .letE _ c t => cComp c n C M J fun x C' M' => cTerm t { n with u := x :: n.u } C' M' J
   | Term.record_casesOn us e t => do
     let ee ← cNeu e n C M
-    destructureAny ee (usedFields us) fun refs C' => cTerm t { n with u := refs ++ n.u } C' M J
+    return (← destructureAny ee (usedFields us) fun refs C' =>
+      cTerm t { n with u := refs ++ n.u } C' M J).emit ec
   | .branch b => cBranch b n C M J
   | Term.jump (σ := σ) j p => do
     let pe ← cPExpr p n C M
     match JsMem.ofIndex? J j.index (lowerTy cfg σ) with
-    | some jm => return .jump jm pe
+    | some jm => return (JsBlock.jump jm pe).emit ec
     | none => throw "internal: a join point"
 
 /-- A branch in tail position. -/
@@ -317,7 +326,7 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
   match b with
   | .ite c t e => do
     let ce ← castE (← cNeu c n C M) (.terminal .bool)
-    return .ite ce (← cTerm t n C M J) (← cTerm e n C M J)
+    return (JsBlock.ite ce (← cTerm t n C M J) (← cTerm e n C M J)).emit ec
   | Branch.enum_casesOn (s := s) c bs => do
     let ce ← cNeu c n C M
     let k := s.nOfConstructors
@@ -328,15 +337,15 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
         if h : start < k then
           return .cons (← cTerm (bs ⟨start, h⟩) n C M J) (← arms m (start + 1))
         else throw "internal: an arm of a case analysis"
-    return .enumCases ce (← arms k 0)
+    return (JsBlock.enumCases ce (← arms k 0)).emit ec
   | Branch.union_casesOn e brs => do
     let ee ← cNeu e n C M
-    unionCasesAny ee (← cBranches brs n C M J)
+    return (← unionCasesAny ee (← cBranches brs n C M J)).emit ec
   | Branch.join σ _ _ body br => do
     let σ' := lowerTy cfg σ
     let block ← cBranch br n C M (σ' :: J)
     let rest ← cTerm body { n with u := .c C.length :: n.u } (σ' :: C) M J
-    return .join "x" block rest
+    return (JsBlock.join "x" block rest).emit ec
 
 /-- The arms of a union's case analysis: each binds the fields it uses
     (`const { _1: f₁, _2: f₂ } = s;`) and continues. -/
@@ -364,9 +373,10 @@ end
 
 /-- Convert a closed program into an exported JavaScript function named `name`
     (`export const name = (params) => …`), of all the parameters of its type (none when it is
-    not a function).  `paramNames` are the preferred names of its parameters.  The body is
-    cleaned up (`cleanup`, `peephole`, `inlineArrays`), and the arrays nothing else refers to are updated
-    in place (`inPlace`). -/
+    not a function).  `paramNames` are the preferred names of its parameters.  Every block is
+    emitted in normal form as it is built (`JsBlock.emit`: the clean-ups, peephole rules, array
+    literals, loops and accumulators of `EmitCfg`), so the only pass over the finished body updates
+    in place the arrays nothing else refers to (`inPlace`, a whole-function ownership analysis). -/
 def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String)
     (ct : ClosedTerm) : Except String JsFun := do
   let τ := lowerTy cfg ct.τ
@@ -374,12 +384,13 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
     | .fn ds c => (ds, c)
     | t => ([], t)
   let ps : List (String × JsTy) := ds.zipIdx.map fun (t, i) => (paramNames.getD i s!"p{i}", t)
-  let body ← cApplyTerm cfg ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1)) ret
+  let conv (ec : EmitCfg) :=
+    cApplyTerm cfg ec ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1)) ret
+  -- does a closure read a mutable variable? (the conversion, with no rule applied)
+  let raw ← conv { rules := false }
+  let body ← conv { noCapture := !raw.capturesMut }
   let body ← if h : pushAll ds [] = pushAll (ps.map (·.2)) [] then pure (h ▸ body) else
     throw "internal: the parameters of a function"
-  let body := peephole (inlineArrays (peephole (cleanup body)))
-  let body := peephole (cleanup body)
-  let body := tidy body
   let body := inPlace body
   return { name, leanName, params := ps, ret, body }
 

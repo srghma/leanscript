@@ -17,28 +17,28 @@ ret k1
 -- test3 : Bool → Bool → Bool
 val k1 [1] : (Bool → (Bool → Bool)) := fun x2 [ω] : Bool => (closed)
   val k3 [1] : (Bool → Bool) := fun x4 [ω] : Bool => (open)
-    ret cond(cond(x2, cond(x4, true, false), cond(x4, false, true)), true, false)
+    ret cond(x2, x4, cond(x4, false, true))
   ret k3
 ret k1
 
 -- test4 : Bool → Bool → Bool
 val k1 [1] : (Bool → (Bool → Bool)) := fun x2 [ω] : Bool => (closed)
   val k3 [1] : (Bool → Bool) := fun x4 [ω] : Bool => (open)
-    ret cond(cond(cond(x2, cond(x4, true, false), cond(x4, false, true)), true, false), false, true)
+    ret cond(cond(x2, x4, cond(x4, false, true)), false, true)
   ret k3
 ret k1
 
 -- test5 : Bool → Bool → Bool
 val k1 [1] : (Bool → (Bool → Bool)) := fun x2 [ω] : Bool => (closed)
   val k3 [1] : (Bool → Bool) := fun x4 [1] : Bool => (open)
-    ret cond(cond(cond(cond(x2, false, true), x4, false), true, false), true, false)
+    ret cond(x2, false, x4)
   ret k3
 ret k1
 
 -- test6 : Bool → Bool → Bool
 val k1 [1] : (Bool → (Bool → Bool)) := fun x2 [ω] : Bool => (closed)
   val k3 [1] : (Bool → Bool) := fun x4 [1] : Bool => (open)
-    ret cond(cond(cond(cond(x4, false, true), x2, false), true, false), true, false)
+    ret cond(x4, false, x2)
   ret k3
 ret k1
 

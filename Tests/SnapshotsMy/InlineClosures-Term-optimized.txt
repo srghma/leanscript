@@ -68,7 +68,7 @@ ret k1
 
 -- keep : Int → Int
 val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  ret cond(cond(lean_int_dec_eq(x2, 7), false, true), x2, 7)
+  ret cond(lean_int_dec_eq(x2, 7), 7, x2)
 ret k1
 
 -- around : List String → List String
