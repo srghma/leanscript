@@ -5,9 +5,6 @@ import { uint53__lean_array_get } from "runtime.js";
 
 // test
 export const test = (fn1 : (string, string) => string, fn2 : () => string) : string => {
-  const x = c0();
-  const k = ["foo", "bar", "baz", c0];
-  const x = uint53__lean_array_get("", c0, 0);
-  const x = uint53__lean_array_get("", c1, 2);
-  return c5(c1, c0);
+  const k = ["foo", "bar", "baz", c0()];
+  return c2(uint53__lean_array_get("", c0, 0), uint53__lean_array_get("", c0, 2));
 };

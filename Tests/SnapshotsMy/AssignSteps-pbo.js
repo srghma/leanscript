@@ -28,22 +28,17 @@ const $k3 = (x$1, x$2) => uint53__lean_nat_add(x$1, x$2);
  * @returns {uint53(number)}
  */
 export const test1 = (fuel, a, b) => {
-  const k$1 = $k1;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < fuel; i$3++) {
-    const a$4 = acc$2;
-    const k$8 = (x$5, x$6) => {
-      if (x$6 === 0) {
-        return x$5;
-      } else {
-        const x$7 = uint53__lean_nat_mod__Nat_mod(x$5, x$6);
-        return a$4(x$6, x$7);
+  let acc$1 = $k1;
+  for (let i$2 = 0; i$2 < fuel; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4, x$5) => {
+      if (x$5 === 0) {
+        return x$4;
       }
+      return a$3(x$5, uint53__lean_nat_mod__Nat_mod(x$4, x$5));
     };
-    acc$2 = k$8;
   }
-  const x$9 = acc$2;
-  return x$9(a, b);
+  return acc$1(a, b);
 };
 
 /**
@@ -55,18 +50,12 @@ export const test1 = (fuel, a, b) => {
  * @returns {uint53(number)}
  */
 export const test2 = (fuel, a, b, c) => {
-  const k$1 = $k2;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < fuel; i$3++) {
-    const a$4 = acc$2;
-    const k$9 = (x$5, x$6, x$7) => {
-      const x$8 = uint53__lean_nat_add(x$5, 1);
-      return a$4(x$6, x$7, x$8);
-    };
-    acc$2 = k$9;
+  let acc$1 = $k2;
+  for (let i$2 = 0; i$2 < fuel; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4, x$5, x$6) => a$3(x$5, x$6, uint53__lean_nat_add(x$4, 1));
   }
-  const x$10 = acc$2;
-  return x$10(a, b, c);
+  return acc$1(a, b, c);
 };
 
 /**
@@ -77,17 +66,11 @@ export const test2 = (fuel, a, b, c) => {
  * @returns {uint53(number)}
  */
 export const test4 = (fuel, a, b) => {
-  const k$1 = $k3;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < fuel; i$3++) {
-    const a$4 = acc$2;
-    const k$9 = (x$5, x$6) => {
-      const x$7 = uint53__lean_nat_add(x$5, 1);
-      const x$8 = uint53__lean_nat_add(x$6, 2);
-      return a$4(x$7, x$8);
-    };
-    acc$2 = k$9;
+  let acc$1 = $k3;
+  for (let i$2 = 0; i$2 < fuel; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4, x$5) =>
+      a$3(uint53__lean_nat_add(x$4, 1), uint53__lean_nat_add(x$5, 2));
   }
-  const x$10 = acc$2;
-  return x$10(a, b);
+  return acc$1(a, b);
 };

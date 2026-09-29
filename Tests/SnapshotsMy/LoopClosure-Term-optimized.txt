@@ -7,9 +7,9 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)
     let x18 [1] : ([Nat] | [Nat]) := nat_rec x4 ctor#1(0) fun acc5 i6 => (open)
       case acc5 of
-      | ctor#0(f7 [ω] : Nat) =>
+      | ctor#0(f7 [1] : Nat) =>
         ret ctor#0(f7)
-      | ctor#1(f8 [ω] : Nat) =>
+      | ctor#1(f8 [1] : Nat) =>
         val k9 [1] : ((Nat → Nat) → Nat) := fun x10 [ω] : (Nat → Nat) => (closed)
           let x11 [1] : Nat := x10 1
           let x12 [1] : Nat := x10 2
@@ -21,9 +21,9 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
         let x17 [1] : Nat := share lean_nat_add(f8, x16)
         ret ctor#1(x17)
     case x18 of
-    | ctor#0(f19 [ω] : Nat) =>
+    | ctor#0(f19 [1] : Nat) =>
       ret f19
-    | ctor#1(f20 [ω] : Nat) =>
+    | ctor#1(f20 [1] : Nat) =>
       ret f20
   ret k3
 ret k1

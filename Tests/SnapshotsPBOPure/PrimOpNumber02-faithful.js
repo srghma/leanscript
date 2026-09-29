@@ -88,13 +88,7 @@ export const TestFloat32$eqNoInline = (a, b) => a === b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$neNoInline = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestFloat32$neNoInline = (a, b) => a !== b;
 
 /**
  * `TestFloat32.ltNoInline`

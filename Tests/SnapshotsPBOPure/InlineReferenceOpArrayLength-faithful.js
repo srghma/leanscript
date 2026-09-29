@@ -11,23 +11,18 @@ const $k1 = () => 0n;
  * @returns {Array<int(bigint)>}
  */
 export const test1 = (fn) => {
-  const x$1 = fn();
-  const k$2 = [1n, 2n, x$1];
-  if (BigInt(k$2.length) === 3n) {
-    return k$2;
-  } else {
-    return [];
+  const k$1 = [1n, 2n, fn()];
+  if (BigInt(k$1.length) === 3n) {
+    return k$1;
   }
+  return [];
 };
 
 /**
  * `fn'`
  * @returns {int(bigint)}
  */
-export const fn_ = () => {
-  const f$1 = $k1;
-  return f$1();
-};
+export const fn_ = () => $k1();
 
 /**
  * `extern1`

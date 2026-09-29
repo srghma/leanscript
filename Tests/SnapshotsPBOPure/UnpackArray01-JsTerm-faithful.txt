@@ -5,9 +5,6 @@ import { bigint_nat__lean_array_get } from "runtime.js";
 
 // test
 export const test = (fn1 : (string, string) => string, fn2 : () => string) : string => {
-  const x = c0();
-  const k = ["foo", "bar", "baz", c0];
-  const x = bigint_nat__lean_array_get("", c0, 0n);
-  const x = bigint_nat__lean_array_get("", c1, 2n);
-  return c5(c1, c0);
+  const k = ["foo", "bar", "baz", c0()];
+  return c2(bigint_nat__lean_array_get("", c0, 0n), bigint_nat__lean_array_get("", c0, 2n));
 };

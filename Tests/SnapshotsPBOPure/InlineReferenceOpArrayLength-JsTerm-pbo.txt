@@ -9,8 +9,7 @@ const $k1 : () => int53(number) = () => {
 
 // test1
 export const test1 = (fn : () => int53(number)) : Array<int53(number)> => {
-  const x = c0();
-  const k = [1, 2, c0];
+  const k = [1, 2, c0()];
   if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3)) {
     return c0;
   } else {
@@ -20,8 +19,7 @@ export const test1 = (fn : () => int53(number)) : Array<int53(number)> => {
 
 // fn'
 export const fn_ = () : int53(number) => {
-  const f = $k1;
-  return c0();
+  return $k1();
 };
 
 // extern1

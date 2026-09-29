@@ -16,12 +16,9 @@ const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
   return inline:bigint_nat__lean_nat_add(c0, 1n);
 };
 const $k2 : ((nat(bigint)) => nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
-  const x = 1n;
-  const x = c2(c0);
-  let acc = c0;
-  for (i < c2) {
-    const x = c4(m0);
-    m0 = c0;
+  let acc = c1(1n);
+  for (i < c0) {
+    m0 = c2(m0);
     next;
   }
   return m0;
@@ -30,13 +27,11 @@ const $k2 : ((nat(bigint)) => nat(bigint), nat(bigint)) => nat(bigint) = (x, x) 
 // ack2
 export const ack2 = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
   join f {
-    const k = $k1;
-    let acc = c0;
-    for (i < c2) {
+    let acc = $k1;
+    for (i < c1) {
       const a = m0;
-      const k = $k2;
       m0 = (y) => {
-        return c1(c2, c0);
+        return $k2(c1, c0);
       };
       next;
     }

@@ -13,12 +13,12 @@
 
 // test1
 export const test1 = (a : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
-  const { _1: f, _2: f } = c0;
-  return c1;
+  const { _1: f } = c0;
+  return c0;
 };
 
 // test2
 export const test2 = (a : { _1: int(bigint), _2: int(bigint) }) : int(bigint) => {
-  const { _1: f, _2: f } = c0;
-  return c1;
+  const { _1: f } = c0;
+  return c0;
 };

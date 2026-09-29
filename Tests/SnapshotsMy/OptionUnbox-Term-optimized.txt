@@ -20,11 +20,11 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
       case x9 of
       | ctor#0() =>
         ret 2
-      | ctor#1(f10 [ω] : (• | [Nat])) =>
+      | ctor#1(f10 [1] : (• | [Nat])) =>
         case f10 of
         | ctor#0() =>
           ret 1
-        | ctor#1(f11 [ω] : Nat) =>
+        | ctor#1(f11 [1] : Nat) =>
           ret f11
     if lean_nat_dec_lt(x4, lean_array_get_size(x7)) then
       val k12 [1] : (Nat → (Array (• | [Nat]))) := fun x13 [1] : Nat => (closed)

@@ -11,19 +11,15 @@ const $k3 = { _1: 42n, _2: 2n, _3: 3n };
  * @returns {int(bigint)}
  */
 export const test1 = (fn) => {
-  const x$1 = fn();
-  const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
-  return f$4;
+  const { _3: f$1 } = fn();
+  return f$1;
 };
 
 /**
  * `fn_prime`
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const fn_prime = () => {
-  const f$1 = $k2;
-  return f$1();
-};
+export const fn_prime = () => $k2();
 
 /**
  * `extern1`

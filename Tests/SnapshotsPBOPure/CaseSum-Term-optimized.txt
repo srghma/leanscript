@@ -11,6 +11,6 @@ val k1 [1] : (([Nat] | [Nat]) → String) := fun x2 [1] : ([Nat] | [Nat]) => (cl
         ret "2"
       else
         ret "3"
-  | ctor#1(f4 [ω] : Nat) =>
+  | ctor#1(f4 [0] : Nat) =>
     ret "4"
 ret k1

@@ -15,17 +15,13 @@ export const messages = () : List<string> => {
 
 // countUp
 export const countUp = (unused : string, step : nat(bigint), n : nat(bigint), acc : nat(bigint)) : nat(bigint) => {
-  const k = $k1;
-  let acc = c0;
-  for (i < c2) {
+  let acc = $k1;
+  for (i < c1) {
     const a = m0;
-    const k = (x) => {
-      const x = inline:bigint_nat__lean_nat_add(c0, c6);
-      return c2(c0);
+    m0 = (x) => {
+      return c1(inline:bigint_nat__lean_nat_add(c0, c5));
     };
-    m0 = c0;
     next;
   }
-  const x = m0;
-  return c0(c2);
+  return m0(c0);
 };

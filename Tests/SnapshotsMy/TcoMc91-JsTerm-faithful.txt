@@ -23,17 +23,13 @@ export const mc91 = (n : nat(bigint)) : nat(bigint) => {
 
 // iter
 export const iter = (f : (nat(bigint)) => nat(bigint), a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
-  const k = $k1;
-  let acc = c0;
-  for (i < c2) {
+  let acc = $k1;
+  for (i < c1) {
     const a = m0;
-    const k = (x) => {
-      const x = c6(c0);
-      return c2(c0);
+    m0 = (x) => {
+      return c1(c5(c0));
     };
-    m0 = c0;
     next;
   }
-  const x = m0;
-  return c0(c2);
+  return m0(c0);
 };

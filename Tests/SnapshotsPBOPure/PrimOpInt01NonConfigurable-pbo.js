@@ -64,13 +64,7 @@ export const TestUInt8$eq = (a, b) => a === b;
  * @param {uint8} b
  * @returns {boolean}
  */
-export const TestUInt8$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestUInt8$ne = (a, b) => a !== b;
 
 /**
  * `TestUInt8.lt`
@@ -157,13 +151,7 @@ export const TestUInt16$eq = (a, b) => a === b;
  * @param {uint16} b
  * @returns {boolean}
  */
-export const TestUInt16$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestUInt16$ne = (a, b) => a !== b;
 
 /**
  * `TestUInt16.lt`
@@ -250,13 +238,7 @@ export const TestUInt32$eq = (a, b) => a === b;
  * @param {uint32} b
  * @returns {boolean}
  */
-export const TestUInt32$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestUInt32$ne = (a, b) => a !== b;
 
 /**
  * `TestUInt32.lt`
@@ -343,13 +325,7 @@ export const TestInt8$eq = (a, b) => a === b;
  * @param {int8} b
  * @returns {boolean}
  */
-export const TestInt8$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestInt8$ne = (a, b) => a !== b;
 
 /**
  * `TestInt8.lt`
@@ -436,13 +412,7 @@ export const TestInt16$eq = (a, b) => a === b;
  * @param {int16} b
  * @returns {boolean}
  */
-export const TestInt16$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestInt16$ne = (a, b) => a !== b;
 
 /**
  * `TestInt16.lt`
@@ -529,13 +499,7 @@ export const TestInt32$eq = (a, b) => a === b;
  * @param {int32} b
  * @returns {boolean}
  */
-export const TestInt32$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestInt32$ne = (a, b) => a !== b;
 
 /**
  * `TestInt32.lt`

@@ -3,8 +3,7 @@
 
 const $k1 : ((nat(bigint), nat(bigint)) => nat(bigint), nat(bigint), nat(bigint)) => nat(bigint) = (x, x, x) => {
   const x = c2(c1, c0);
-  const x = c3(c1, c2);
-  return inline:bigint_nat__lean_nat_add(c1, c0);
+  return inline:bigint_nat__lean_nat_add(c0, c3(c1, c2));
 };
 const $k2 : (nat(bigint), nat(bigint), nat(bigint)) => nat(bigint) = (x, x, x) => {
   return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c1, c0), c2);
@@ -26,12 +25,9 @@ export const mkAdd = (n : nat(bigint), a : nat(bigint), a1 : nat(bigint)) : nat(
 
 // test1
 export const test1 = (n : nat(bigint), x : nat(bigint), y : nat(bigint)) : nat(bigint) => {
-  const k = $k1;
-  const k = $k2;
-  const x = (y, y) => {
-    return c2(c6, c1, c0);
-  };
-  return c2(c0, c4, c3);
+  return $k1((y, y) => {
+    return $k2(c4, c1, c0);
+  }, c1, c0);
 };
 
 // mkMul
@@ -41,12 +37,9 @@ export const mkMul = (n : nat(bigint), a : nat(bigint), a1 : nat(bigint)) : nat(
 
 // test2
 export const test2 = (n : nat(bigint), x : nat(bigint), y : nat(bigint)) : nat(bigint) => {
-  const k = $k1;
-  const k = $k3;
-  const x = (y, y) => {
-    return c2(c6, c1, c0);
-  };
-  return c2(c0, c4, c3);
+  return $k1((y, y) => {
+    return $k3(c4, c1, c0);
+  }, c1, c0);
 };
 
 // mkSum3
@@ -56,17 +49,13 @@ export const mkSum3 = (n : nat(bigint), a : nat(bigint), a1 : nat(bigint), a2 : 
 
 // test3
 export const test3 = (n : nat(bigint), x : nat(bigint), y : nat(bigint)) : nat(bigint) => {
-  const k = $k4;
-  const k = $k5;
-  const x = (y, y, y) => {
-    return c3(c7, c2, c1, c0);
-  };
-  return c2(c0, c4, c3);
+  return $k4((y, y, y) => {
+    return $k5(c5, c2, c1, c0);
+  }, c1, c0);
 };
 
 // test4
 export const test4 = (f : (nat(bigint), nat(bigint)) => nat(bigint), x : nat(bigint), y : nat(bigint)) : nat(bigint) => {
   const x = c2(c1, c0);
-  const x = c3(c1, c2);
-  return inline:bigint_nat__lean_nat_add(c1, c0);
+  return inline:bigint_nat__lean_nat_add(c0, c3(c1, c2));
 };

@@ -20,10 +20,4 @@ export const test1 = (a, b) => a === b;
  * @param {string} b
  * @returns {boolean}
  */
-export const test2 = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const test2 = (a, b) => a !== b;

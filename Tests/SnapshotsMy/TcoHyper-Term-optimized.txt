@@ -102,15 +102,15 @@ val k1 [1] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
           let x27 [1] : Nat := x26 x4
           let x33 [1] : ([Nat] | [Nat]) := nat_rec x12 ctor#1(x27) fun acc28 i29 => (open)
             case acc28 of
-            | ctor#0(f30 [ω] : Nat) =>
+            | ctor#0(f30 [1] : Nat) =>
               ret ctor#0(f30)
-            | ctor#1(f31 [ω] : Nat) =>
+            | ctor#1(f31 [1] : Nat) =>
               let x32 [1] : Nat := acc9 f31
               ret ctor#1(x32)
           case x33 of
-          | ctor#0(f34 [ω] : Nat) =>
+          | ctor#0(f34 [1] : Nat) =>
             ret f34
-          | ctor#1(f35 [ω] : Nat) =>
+          | ctor#1(f35 [1] : Nat) =>
             ret f35
         ret k11
       let x37 [1] : Nat := x36 x6

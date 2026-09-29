@@ -45,23 +45,23 @@ export const test3 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) })
 export const test4 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }, a1 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : int(bigint) => {
   const { _1: f, _2: f, _3: f } = c1;
   if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
-    const { _1: f, _2: f, _3: f } = c3;
-    if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
+    const { _1: f, _3: f } = c3;
+    if (inline:bigint_int__lean_int_dec_eq(c1, 1n)) {
       return 1n;
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c2, 2n)) {
+      if (inline:bigint_int__lean_int_dec_eq(c1, 2n)) {
         return 2n;
       } else {
-        if (inline:bigint_int__lean_int_dec_eq(c2, 3n)) {
+        if (inline:bigint_int__lean_int_dec_eq(c1, 3n)) {
           return 3n;
         } else {
-          if (inline:bigint_int__lean_int_dec_eq(c2, 4n)) {
+          if (inline:bigint_int__lean_int_dec_eq(c1, 4n)) {
             return 4n;
           } else {
-            if (inline:bigint_int__lean_int_dec_eq(c2, 5n)) {
+            if (inline:bigint_int__lean_int_dec_eq(c1, 5n)) {
               return 5n;
             } else {
-              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
+              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c2), c0);
             }
           }
         }

@@ -9,11 +9,9 @@
 export const test1 = (a) => {
   if (a === 1n) {
     return "1";
-  } else if (a === 2n) {
-    return "2";
-  } else if (a === 3n) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (a === 2n) {
+    return "2";
+  }
+  return a === 3n ? "3" : "catch";
 };

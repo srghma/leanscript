@@ -3,26 +3,17 @@
 
 // test1
 export const test1 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint)) : int(bigint) => {
-  const x = 1n;
-  const x = c1(c0);
-  const x = 2n;
-  const x = 3n;
-  return c5(c2, c1, c0);
+  return c1(c0(1n), 2n, 3n);
 };
 
 // test2
 export const test2 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), i : int(bigint)) : int(bigint) => {
-  const x = 1n;
-  const x = c2(c0);
-  const x = 2n;
-  return c5(c1, c0, c3);
+  return c2(c1(1n), 2n, c0);
 };
 
 // test3
 export const test3 = (f : (int(bigint), int(bigint), int(bigint)) => int(bigint), g : (int(bigint)) => int(bigint), i : int(bigint), j : int(bigint)) : int(bigint) => {
-  const x = 1n;
-  const x = c3(c0);
-  return c5(c0, c3, c2);
+  return c3(c2(1n), c1, c0);
 };
 
 // test4

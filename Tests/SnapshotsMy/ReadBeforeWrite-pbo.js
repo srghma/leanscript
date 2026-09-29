@@ -18,9 +18,10 @@ import {
  */
 export const test1 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
-  const x$2 = uint53__lean_array_get(0, x$1, 0);
-  const x$3 = uint53__lean_array_set_immutable(x$1, 0, 99);
-  return uint53__lean_nat_add(x$2, uint53__lean_array_get(0, x$3, 1));
+  return uint53__lean_nat_add(
+    uint53__lean_array_get(0, x$1, 0),
+    uint53__lean_array_get(0, uint53__lean_array_set_immutable(x$1, 0, 99), 1),
+  );
 };
 
 /**
@@ -49,9 +50,10 @@ export const test2 = (n) => {
  */
 export const test3 = (n) => {
   const k$1 = [uint53__lean_nat_add(n, 1)];
-  const x$2 = uint53__lean_array_get(0, k$1, 0);
-  const x$3 = array__lean_array_push_immutable(k$1, 5);
-  return uint53__lean_nat_add(x$2, x$3.length);
+  return uint53__lean_nat_add(
+    uint53__lean_array_get(0, k$1, 0),
+    array__lean_array_push_immutable(k$1, 5).length,
+  );
 };
 
 /**
@@ -62,8 +64,7 @@ export const test3 = (n) => {
 export const test4 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
   const x$2 = uint53__lean_array_get(0, x$1, 0);
-  const x$3 = uint53__lean_array_set_immutable(x$1, 0, 99);
-  return { _1: x$3, _2: x$2 };
+  return { _1: uint53__lean_array_set_immutable(x$1, 0, 99), _2: x$2 };
 };
 
 /**
@@ -72,34 +73,27 @@ export const test4 = (n) => {
  * @returns {uint53(number)}
  */
 export const test5 = (n) => {
-  const x$1 = uint53__lean_mk_array(4, n);
-  let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0 } };
-  for (let i$3 = 0; i$3 < 4; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$4 } = acc$2;
-      acc$2 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$2;
-      const { _1: f$6, _2: f$7 } = f$5;
-      const { _1: f$8, _2: f$9 } = f$5;
-      const x$10 = uint53__lean_array_get(0, f$6, i$3);
-      const x$11 = uint53__lean_array_set_immutable(
-        f$6,
-        i$3,
-        uint53__lean_nat_add(i$3, 1),
-      );
-      const x$12 = uint53__lean_nat_add(f$9, x$10);
-      acc$2 = { tag: 1, _1: { _1: x$11, _2: x$12 } };
+  let acc$1 = { tag: 1, _1: { _1: uint53__lean_mk_array(4, n), _2: 0 } };
+  for (let i$2 = 0; i$2 < 4; i$2++) {
+    if (acc$1.tag !== 0) {
+      const { _1: f$3 } = acc$1;
+      const { _1: f$4, _2: f$5 } = f$3;
+      const x$6 = uint53__lean_array_get(0, f$4, i$2);
+      acc$1 = {
+        tag: 1,
+        _1: {
+          _1: uint53__lean_array_set_immutable(
+            f$4,
+            i$2,
+            uint53__lean_nat_add(i$2, 1),
+          ),
+          _2: uint53__lean_nat_add(f$5, x$6),
+        },
+      };
     }
   }
-  let x$13;
-  if (acc$2.tag === 0) {
-    const { _1: f$14 } = acc$2;
-    x$13 = f$14;
-  } else {
-    const { _1: f$15 } = acc$2;
-    x$13 = f$15;
-  }
-  const { _1: f$16, _2: f$17 } = x$13;
-  return f$17;
+  const { _1: f$8 } = acc$1;
+  const x$7 = f$8;
+  const { _2: f$9 } = x$7;
+  return f$9;
 };

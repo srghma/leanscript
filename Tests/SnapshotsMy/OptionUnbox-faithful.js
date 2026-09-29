@@ -25,25 +25,20 @@ export const test5 = (n) => [{ tag: 1, _1: n }, $tag0];
  * @returns {nat(bigint)}
  */
 export const test6 = (n, i) => {
-  const k$1 = $k2;
-  const x$2 = k$1(n);
-  let x$3;
-  if (i < BigInt(x$2.length)) {
-    const k$4 = $k2;
-    const x$5 = k$4(n);
-    x$3 = { tag: 1, _1: bigint_nat__lean_array_get($tag0, x$5, i) };
+  const x$1 = $k2(n);
+  let x$2;
+  if (i < BigInt(x$1.length)) {
+    x$2 = { tag: 1, _1: bigint_nat__lean_array_get($tag0, $k2(n), i) };
   } else {
-    x$3 = $tag0;
+    x$2 = $tag0;
   }
-  if (x$3.tag === 0) {
+  if (x$2.tag === 0) {
     return 2n;
-  } else {
-    const { _1: f$6 } = x$3;
-    if (f$6.tag === 0) {
-      return 1n;
-    } else {
-      const { _1: f$7 } = f$6;
-      return f$7;
-    }
   }
+  const { _1: f$3 } = x$2;
+  if (f$3.tag === 0) {
+    return 1n;
+  }
+  const { _1: f$4 } = f$3;
+  return f$4;
 };

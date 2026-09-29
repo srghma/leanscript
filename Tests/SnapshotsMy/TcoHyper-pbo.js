@@ -9,18 +9,12 @@ import { uint53__lean_nat_add } from "../../runtime.js";
 const $k1 = (x$1) => x$1;
 const $k2 = (x$1) => uint53__lean_nat_add(x$1, 1);
 const $k3 = (x$1, x$2, x$3) => {
-  const k$4 = $k1;
-  let acc$5 = k$4;
-  for (let i$6 = 0; i$6 < x$2; i$6++) {
-    const a$7 = acc$5;
-    const k$10 = (x$8) => {
-      const x$9 = x$1(x$8);
-      return a$7(x$9);
-    };
-    acc$5 = k$10;
+  let acc$4 = $k1;
+  for (let i$5 = 0; i$5 < x$2; i$5++) {
+    const a$6 = acc$4;
+    acc$4 = (x$7) => a$6(x$1(x$7));
   }
-  const x$11 = acc$5;
-  return x$11(x$3);
+  return acc$4(x$3);
 };
 const $k4 = (x$1, x$2) => {
   let acc$3 = 1;
@@ -74,18 +68,12 @@ export const hyperBase = (a, a1) => {
  * @returns {uint53(number)}
  */
 export const hyperLoop = (f, a, a1) => {
-  const k$1 = $k1;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < a; i$3++) {
-    const a$4 = acc$2;
-    const k$7 = (x$5) => {
-      const x$6 = f(x$5);
-      return a$4(x$6);
-    };
-    acc$2 = k$7;
+  let acc$1 = $k1;
+  for (let i$2 = 0; i$2 < a; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4) => a$3(f(x$4));
   }
-  const x$8 = acc$2;
-  return x$8(a1);
+  return acc$1(a1);
 };
 
 /**
@@ -96,21 +84,12 @@ export const hyperLoop = (f, a, a1) => {
  * @returns {uint53(number)}
  */
 export const hyperTCO = (a, a1, a2) => {
-  const k$1 = $k2;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < a; i$3++) {
-    const a$4 = acc$2;
-    const k$10 = (x$5) => {
-      const k$6 = $k3;
-      const k$7 = $k4;
-      const x$8 = uint53__lean_nat_add(i$3, 1);
-      const x$9 = k$7(x$8, a1);
-      return k$6(a$4, x$5, x$9);
-    };
-    acc$2 = k$10;
+  let acc$1 = $k2;
+  for (let i$2 = 0; i$2 < a; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4) => $k3(a$3, x$4, $k4(uint53__lean_nat_add(i$2, 1), a1));
   }
-  const x$11 = acc$2;
-  return x$11(a2);
+  return acc$1(a2);
 };
 
 /**
@@ -121,35 +100,20 @@ export const hyperTCO = (a, a1, a2) => {
  * @returns {uint53(number)}
  */
 export const hyperWhile = (a, a1, a2) => {
-  const k$1 = $k2;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < a; i$3++) {
-    const a$4 = acc$2;
-    const k$16 = (x$5) => {
-      const k$6 = $k4;
-      const x$7 = uint53__lean_nat_add(i$3, 1);
-      const x$8 = k$6(x$7, a1);
-      let acc$9 = { tag: 1, _1: x$8 };
-      for (let i$10 = 0; i$10 < x$5; i$10++) {
-        if (acc$9.tag === 0) {
-          const { _1: f$11 } = acc$9;
-          acc$9 = { tag: 0, _1: f$11 };
-        } else {
-          const { _1: f$12 } = acc$9;
-          const x$13 = a$4(f$12);
-          acc$9 = { tag: 1, _1: x$13 };
+  let acc$1 = $k2;
+  for (let i$2 = 0; i$2 < a; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4) => {
+      let acc$5 = { tag: 1, _1: $k4(uint53__lean_nat_add(i$2, 1), a1) };
+      for (let i$6 = 0; i$6 < x$4; i$6++) {
+        if (acc$5.tag !== 0) {
+          const { _1: f$7 } = acc$5;
+          acc$5 = { tag: 1, _1: a$3(f$7) };
         }
       }
-      if (acc$9.tag === 0) {
-        const { _1: f$14 } = acc$9;
-        return f$14;
-      } else {
-        const { _1: f$15 } = acc$9;
-        return f$15;
-      }
+      const { _1: f$8 } = acc$5;
+      return f$8;
     };
-    acc$2 = k$16;
   }
-  const x$17 = acc$2;
-  return x$17(a2);
+  return acc$1(a2);
 };

@@ -15,15 +15,12 @@ export const test3 = (s : string, n : uint53(number)) : uint53(number) => {
   let acc = { tag: 1, _1: { _1: c1, _2: 0 } };
   for (i < c0) {
     switch (m0.tag) {
-    case 0 { _1: f }:
-      m0 = { tag: 0, _1: c0 };
+    case 0 {  }:
       next;
     case 1 { _1: f }:
       const { _1: f, _2: f } = c0;
-      const { _1: f, _2: f } = c2;
-      const x = uint53__lean_nat_add(c0, uint53__lean_string_utf8_byte_size(c3));
-      const x = inline:string__lean_string_push(c4, "x");
-      m0 = { tag: 1, _1: { _1: c0, _2: c1 } };
+      const x = uint53__lean_nat_add(c0, uint53__lean_string_utf8_byte_size(c1));
+      m0 = { tag: 1, _1: { _1: inline:string__lean_string_push(c2, "x"), _2: c0 } };
       next;
     }
   }
@@ -35,6 +32,6 @@ export const test3 = (s : string, n : uint53(number)) : uint53(number) => {
       jump 0 c0;
     }
   }
-  const { _1: f, _2: f } = c0;
+  const { _2: f } = c0;
   return c0;
 };

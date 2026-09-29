@@ -15,8 +15,7 @@ export const test2 = (a : Array<uint53(number)>, b : Array<uint53(number)>) : ui
 
 // test3
 export const test3 = (a : Array<uint53(number)>) : uint53(number) => {
-  const x = inline:uint53__lean_array_get_size(c0);
-  return uint53__lean_nat_shiftr(c0, 1);
+  return uint53__lean_nat_shiftr(inline:uint53__lean_array_get_size(c0), 1);
 };
 
 // test4

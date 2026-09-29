@@ -5,7 +5,6 @@
 export const test = (n : nat(bigint)) : nat(bigint) => {
   let acc = 0n;
   for (i < c0) {
-    m0 = m0;
     next;
   }
   return m0;

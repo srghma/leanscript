@@ -14,15 +14,14 @@ const $tag0 = { tag: 0 };
 const $k6 = (x$1) => {
   if (x$1 === "foo") {
     return $k1;
-  } else if (x$1 === "bar") {
-    return $k2;
-  } else if (x$1 === "baz") {
-    return $k3;
-  } else if (x$1 === "qux") {
-    return $k4;
-  } else {
-    return $tag0;
   }
+  if (x$1 === "bar") {
+    return $k2;
+  }
+  if (x$1 === "baz") {
+    return $k3;
+  }
+  return x$1 === "qux" ? $k4 : $tag0;
 };
 
 /**
@@ -37,13 +36,8 @@ export const known1 = () => "b";
  * @returns {int53(number)}
  */
 export const test1 = (a) => {
-  if (a.tag === 0) {
-    const { _1: f$1 } = a;
-    return f$1;
-  } else {
-    const { _1: f$2 } = a;
-    return f$2;
-  }
+  const { _1: f$1 } = a;
+  return f$1;
 };
 
 /**
@@ -54,15 +48,14 @@ export const test1 = (a) => {
 export const fromString = (s) => {
   if (s === "foo") {
     return $k1;
-  } else if (s === "bar") {
-    return $k2;
-  } else if (s === "baz") {
-    return $k3;
-  } else if (s === "qux") {
-    return $k4;
-  } else {
-    return $tag0;
   }
+  if (s === "bar") {
+    return $k2;
+  }
+  if (s === "baz") {
+    return $k3;
+  }
+  return s === "qux" ? $k4 : $tag0;
 };
 
 /**
@@ -71,20 +64,16 @@ export const fromString = (s) => {
  * @returns {int53(number)}
  */
 export const test6 = (a) => {
-  const k$1 = $k6;
-  const x$2 = k$1(a);
-  if (x$2.tag === 0) {
+  const x$1 = $k6(a);
+  if (x$1.tag === 0) {
     return 0;
-  } else {
-    const { _1: f$3 } = x$2;
-    if (f$3 === 0) {
-      return 1;
-    } else if (f$3 === 1) {
-      return 2;
-    } else if (f$3 === 2) {
-      return 3;
-    } else {
-      return 4;
-    }
   }
+  const { _1: f$2 } = x$1;
+  if (f$2 === 0) {
+    return 1;
+  }
+  if (f$2 === 1) {
+    return 2;
+  }
+  return f$2 === 2 ? 3 : 4;
 };

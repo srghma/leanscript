@@ -20,13 +20,10 @@ export const test5 = (n : uint53(number)) : Array<({ tag: 0 } | { tag: 1, _1: ui
 
 // test6
 export const test6 = (n : uint53(number), i : uint53(number)) : uint53(number) => {
-  const k = $k2;
-  const x = c0(c2);
+  const x = $k2(c1);
   join x {
-    if (inline:uint53__lean_nat_dec_lt(c2, inline:uint53__lean_array_get_size(c0))) {
-      const k = $k2;
-      const x = c0(c4);
-      jump 0 { tag: 1, _1: uint53__lean_array_get($tag0, c0, c4) };
+    if (inline:uint53__lean_nat_dec_lt(c1, inline:uint53__lean_array_get_size(c0))) {
+      jump 0 { tag: 1, _1: uint53__lean_array_get($tag0, $k2(c2), c1) };
     } else {
       jump 0 $tag0;
     }

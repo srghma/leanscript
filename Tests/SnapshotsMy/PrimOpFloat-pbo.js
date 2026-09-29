@@ -31,13 +31,7 @@ export const test3 = (a, b) => a === b;
  * @param {float} b
  * @returns {boolean}
  */
-export const test4 = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const test4 = (a, b) => a !== b;
 
 /**
  * `test5`

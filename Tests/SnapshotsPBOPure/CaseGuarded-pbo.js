@@ -16,13 +16,11 @@ import { int53__lean_int_add } from "../../runtime.js";
 export const test2 = (a) => {
   if (a < 1) {
     return a;
-  } else if (1 < a) {
-    return a;
-  } else if (a === 1) {
-    return 1;
-  } else {
-    return 0;
   }
+  if (1 < a) {
+    return a;
+  }
+  return a === 1 ? 1 : 0;
 };
 
 /**
@@ -34,13 +32,11 @@ export const test3 = (a) => {
   const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === f$2) {
     return f$1;
-  } else if (f$3 === f$2) {
-    return f$1;
-  } else if (f$1 === f$3) {
-    return f$3;
-  } else {
-    return f$2;
   }
+  if (f$3 === f$2) {
+    return f$1;
+  }
+  return f$1 === f$3 ? f$3 : f$2;
 };
 
 /**
@@ -52,65 +48,64 @@ export const test3 = (a) => {
 export const test4 = (a, a1) => {
   const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1) {
-    const { _1: f$4, _2: f$5, _3: f$6 } = a1;
+    const { _1: f$4, _3: f$5 } = a1;
     if (f$4 === 1) {
       return 1;
-    } else if (f$4 === 2) {
+    }
+    if (f$4 === 2) {
       return 2;
-    } else if (f$4 === 3) {
+    }
+    if (f$4 === 3) {
       return 3;
-    } else if (f$4 === 4) {
+    }
+    if (f$4 === 4) {
       return 4;
-    } else if (f$4 === 5) {
+    }
+    if (f$4 === 5) {
       return 5;
-    } else {
-      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$6);
     }
-  } else if (f$1 === 2) {
-    const { _1: f$7, _2: f$8, _3: f$9 } = a1;
-    if (f$7 === 2) {
-      return 2;
-    } else if (f$7 === 3) {
-      return 3;
-    } else if (f$7 === 1) {
-      return 6;
-    } else if (f$7 === 4) {
-      if (f$3 === f$8) {
-        return 7;
-      } else if (f$3 < f$8) {
-        return 8;
-      } else {
-        return 9;
-      }
-    } else {
-      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$9);
-    }
-  } else {
-    const { _1: f$10, _2: f$11, _3: f$12 } = a1;
-    if (f$10 === 2) {
-      return 2;
-    } else if (f$10 === 3) {
-      return 3;
-    } else if (f$10 === 4) {
-      if (f$3 === f$11) {
-        return 7;
-      } else if (f$3 < f$11) {
-        return 8;
-      } else {
-        return 9;
-      }
-    } else if (f$10 === 1) {
-      if (f$12 === 10) {
-        if (f$2 === 2) {
-          return 10;
-        } else {
-          return int53__lean_int_add(int53__lean_int_add(11, f$3), 10);
-        }
-      } else {
-        return int53__lean_int_add(int53__lean_int_add(11, f$3), f$12);
-      }
-    } else {
-      return int53__lean_int_add(int53__lean_int_add(11, f$3), f$12);
-    }
+    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$5);
   }
+  if (f$1 === 2) {
+    const { _1: f$6, _2: f$7, _3: f$8 } = a1;
+    if (f$6 === 2) {
+      return 2;
+    }
+    if (f$6 === 3) {
+      return 3;
+    }
+    if (f$6 === 1) {
+      return 6;
+    }
+    if (f$6 === 4) {
+      if (f$3 === f$7) {
+        return 7;
+      }
+      return f$3 < f$7 ? 8 : 9;
+    }
+    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$8);
+  }
+  const { _1: f$9, _2: f$10, _3: f$11 } = a1;
+  if (f$9 === 2) {
+    return 2;
+  }
+  if (f$9 === 3) {
+    return 3;
+  }
+  if (f$9 === 4) {
+    if (f$3 === f$10) {
+      return 7;
+    }
+    return f$3 < f$10 ? 8 : 9;
+  }
+  if (f$9 === 1) {
+    if (f$11 === 10) {
+      if (f$2 === 2) {
+        return 10;
+      }
+      return int53__lean_int_add(int53__lean_int_add(11, f$3), 10);
+    }
+    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$11);
+  }
+  return int53__lean_int_add(int53__lean_int_add(11, f$3), f$11);
 };

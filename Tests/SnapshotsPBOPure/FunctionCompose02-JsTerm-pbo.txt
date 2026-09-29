@@ -3,30 +3,20 @@
 
 // test1
 export const test1 = (f : (int53(number)) => int53(number), g : (int53(number)) => int53(number), p2 : int53(number)) : int53(number) => {
-  const x = c1(c0);
-  return c3(c0);
+  return c2(c1(c0));
 };
 
 // test2
 export const test2 = (f : (int53(number)) => int53(number), g : (int53(number)) => int53(number), p2 : int53(number)) : int53(number) => {
-  const x = c1(c0);
-  const x = c3(c0);
-  return c3(c0);
+  return c1(c2(c1(c0)));
 };
 
 // test3
 export const test3 = (f : (int53(number)) => int53(number), g : (int53(number)) => int53(number), p2 : int53(number)) : int53(number) => {
-  const x = c1(c0);
-  const x = c3(c0);
-  const x = c3(c0);
-  return c5(c0);
+  return c2(c1(c2(c1(c0))));
 };
 
 // test4
 export const test4 = (f : (int53(number)) => int53(number), g : (int53(number)) => int53(number), p2 : int53(number)) : int53(number) => {
-  const x = c1(c0);
-  const x = c3(c0);
-  const x = c3(c0);
-  const x = c5(c0);
-  return c5(c0);
+  return c1(c2(c1(c2(c1(c0)))));
 };

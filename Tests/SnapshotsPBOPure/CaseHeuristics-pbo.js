@@ -17,27 +17,19 @@ export const testP = (a, a1, a2) => {
     if (a1 === 2) {
       if (a2 === 1) {
         return 1;
-      } else if (a2 === 2) {
-        return 2;
-      } else if (a2 === 3) {
-        return 3;
-      } else if (a2 === 4) {
-        return 4;
-      } else {
-        return 5;
       }
-    } else if (a2 === 4) {
-      return 4;
-    } else {
-      return 5;
+      if (a2 === 2) {
+        return 2;
+      }
+      if (a2 === 3) {
+        return 3;
+      }
+      return a2 === 4 ? 4 : 5;
     }
-  } else if (a1 === 2) {
-    if (a2 === 3) {
-      return 3;
-    } else {
-      return 5;
-    }
-  } else {
-    return 5;
+    return a2 === 4 ? 4 : 5;
   }
+  if (a1 === 2) {
+    return a2 === 3 ? 3 : 5;
+  }
+  return 5;
 };

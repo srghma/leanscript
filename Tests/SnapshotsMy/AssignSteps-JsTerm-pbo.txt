@@ -17,56 +17,43 @@ const $k3 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
 
 // test1
 export const test1 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
-  const k = $k1;
-  let acc = c0;
-  for (i < c3) {
+  let acc = $k1;
+  for (i < c2) {
     const a = m0;
-    const k = (x, x) => {
+    m0 = (x, x) => {
       if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 0)) {
         return c1;
       } else {
-        const x = uint53__lean_nat_mod__Nat_mod(c1, c0);
-        return c3(c1, c0);
+        return c2(c0, uint53__lean_nat_mod__Nat_mod(c1, c0));
       }
     };
-    m0 = c0;
     next;
   }
-  const x = m0;
-  return c0(c3, c2);
+  return m0(c1, c0);
 };
 
 // test2
 export const test2 = (fuel : uint53(number), a : uint53(number), b : uint53(number), c : uint53(number)) : uint53(number) => {
-  const k = $k2;
-  let acc = c0;
-  for (i < c4) {
+  let acc = $k2;
+  for (i < c3) {
     const a = m0;
-    const k = (x, x, x) => {
-      const x = uint53__lean_nat_add(c2, 1);
-      return c4(c2, c1, c0);
+    m0 = (x, x, x) => {
+      return c3(c1, c0, uint53__lean_nat_add(c2, 1));
     };
-    m0 = c0;
     next;
   }
-  const x = m0;
-  return c0(c4, c3, c2);
+  return m0(c2, c1, c0);
 };
 
 // test4
 export const test4 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
-  const k = $k3;
-  let acc = c0;
-  for (i < c3) {
+  let acc = $k3;
+  for (i < c2) {
     const a = m0;
-    const k = (x, x) => {
-      const x = uint53__lean_nat_add(c1, 1);
-      const x = uint53__lean_nat_add(c1, 2);
-      return c4(c1, c0);
+    m0 = (x, x) => {
+      return c2(uint53__lean_nat_add(c1, 1), uint53__lean_nat_add(c0, 2));
     };
-    m0 = c0;
     next;
   }
-  const x = m0;
-  return c0(c3, c2);
+  return m0(c1, c0);
 };

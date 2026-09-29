@@ -7,15 +7,15 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   let x3 [1] : (Array Nat) := share lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(x2)
   let x9 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec x2 ctor#1(x3) fun acc4 i5 => (closed)
     case acc4 of
-    | ctor#0(f6 [ω] : (Array Nat)) =>
+    | ctor#0(f6 [1] : (Array Nat)) =>
       ret ctor#0(f6)
-    | ctor#1(f7 [ω] : (Array Nat)) =>
+    | ctor#1(f7 [1] : (Array Nat)) =>
       let x8 [1] : (Array Nat) := share lean_array_push(f7, lean_nat_mul(i5, i5))
       ret ctor#1(x8)
   case x9 of
-  | ctor#0(f10 [ω] : (Array Nat)) =>
+  | ctor#0(f10 [1] : (Array Nat)) =>
     ret f10
-  | ctor#1(f11 [ω] : (Array Nat)) =>
+  | ctor#1(f11 [1] : (Array Nat)) =>
     ret f11
 ret k1
 
@@ -23,15 +23,15 @@ ret k1
 val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
   let x8 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec lean_array_get_size(x2) ctor#1(x2) fun acc3 i4 => (closed)
     case acc3 of
-    | ctor#0(f5 [ω] : (Array Nat)) =>
+    | ctor#0(f5 [1] : (Array Nat)) =>
       ret ctor#0(f5)
     | ctor#1(f6 [ω] : (Array Nat)) =>
       let x7 [1] : (Array Nat) := share lean_array_set(f6, i4, lean_nat_mul(2, lean_array_get(0, f6, i4)))
       ret ctor#1(x7)
   case x8 of
-  | ctor#0(f9 [ω] : (Array Nat)) =>
+  | ctor#0(f9 [1] : (Array Nat)) =>
     ret f9
-  | ctor#1(f10 [ω] : (Array Nat)) =>
+  | ctor#1(f10 [1] : (Array Nat)) =>
     ret f10
 ret k1
 
@@ -46,30 +46,30 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   let x3 [1] : (Array Nat) := share lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(x2)
   let x9 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec x2 ctor#1(x3) fun acc4 i5 => (closed)
     case acc4 of
-    | ctor#0(f6 [ω] : (Array Nat)) =>
+    | ctor#0(f6 [1] : (Array Nat)) =>
       ret ctor#0(f6)
-    | ctor#1(f7 [ω] : (Array Nat)) =>
+    | ctor#1(f7 [1] : (Array Nat)) =>
       let x8 [1] : (Array Nat) := share lean_array_push(f7, i5)
       ret ctor#1(x8)
   join j10 [1] (x11 [1] : (Array Nat)) :=
     let x17 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec lean_nat_div(x2, 2) ctor#1(x11) fun acc12 i13 => (open)
       case acc12 of
-      | ctor#0(f14 [ω] : (Array Nat)) =>
+      | ctor#0(f14 [1] : (Array Nat)) =>
         ret ctor#0(f14)
-      | ctor#1(f15 [ω] : (Array Nat)) =>
+      | ctor#1(f15 [1] : (Array Nat)) =>
         let x16 [1] : (Array Nat) := share lean_array_swap(f15, i13, lean_nat_sub(lean_nat_sub(x2, i13), 1))
         ret ctor#1(x16)
     join j18 [1] (x19 [1] : (Array Nat)) :=
       ret lean_array_pop(x19)
     case x17 of
-    | ctor#0(f20 [ω] : (Array Nat)) =>
+    | ctor#0(f20 [1] : (Array Nat)) =>
       jump j18 f20
-    | ctor#1(f21 [ω] : (Array Nat)) =>
+    | ctor#1(f21 [1] : (Array Nat)) =>
       jump j18 f21
   case x9 of
-  | ctor#0(f22 [ω] : (Array Nat)) =>
+  | ctor#0(f22 [1] : (Array Nat)) =>
     jump j10 f22
-  | ctor#1(f23 [ω] : (Array Nat)) =>
+  | ctor#1(f23 [1] : (Array Nat)) =>
     jump j10 f23
 ret k1
 

@@ -20,44 +20,20 @@ export const g = (x : string) : string => {
 
 // test1
 export const test1 = (a : string) : string => {
-  const k = $k1;
-  const k = $k2;
-  const x = c0(c2);
-  return c2(c0);
+  return $k1($k2(c0));
 };
 
 // test2
 export const test2 = (a : string) : string => {
-  const k = $k2;
-  const k = $k1;
-  const k = $k2;
-  const x = c0(c3);
-  const x = c2(c0);
-  return c4(c0);
+  return $k2($k1($k2(c0)));
 };
 
 // test3
 export const test3 = (a : string) : string => {
-  const k = $k1;
-  const k = $k2;
-  const k = $k1;
-  const k = $k2;
-  const x = c0(c4);
-  const x = c2(c0);
-  const x = c4(c0);
-  return c6(c0);
+  return $k1($k2($k1($k2(c0))));
 };
 
 // test4
 export const test4 = (a : string) : string => {
-  const k = $k2;
-  const k = $k1;
-  const k = $k2;
-  const k = $k1;
-  const k = $k2;
-  const x = c0(c5);
-  const x = c2(c0);
-  const x = c4(c0);
-  const x = c6(c0);
-  return c8(c0);
+  return $k2($k1($k2($k1($k2(c0)))));
 };

@@ -3,7 +3,7 @@
 -- test1 : (Unit → Rec) → Int
 val k1 [1] : ((Lazy (Int × Int × Int)) → Int) := fun x2 [1] : (Lazy (Int × Int × Int)) => (closed)
   let x3 [1] : (Int × Int × Int) := x2 ()
-  let ⟨f4 [ω] : Int, f5 [ω] : Int, f6 [ω] : Int⟩ := x3
+  let ⟨f4 [0] : Int, f5 [0] : Int, f6 [1] : Int⟩ := x3
   ret f6
 ret k1
 

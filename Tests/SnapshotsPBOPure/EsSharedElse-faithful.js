@@ -12,14 +12,8 @@ export const test1 = (a, b, c) => {
   if (a) {
     if (b) {
       return 1n;
-    } else if (c) {
-      return 2n;
-    } else {
-      return 3n;
     }
-  } else if (c) {
-    return 2n;
-  } else {
-    return 3n;
+    return c ? 2n : 3n;
   }
+  return c ? 2n : 3n;
 };

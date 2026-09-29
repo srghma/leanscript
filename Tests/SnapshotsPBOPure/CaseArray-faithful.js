@@ -11,21 +11,12 @@ import { bigint_nat__lean_array_get } from "../../runtime.js";
 export const test1 = (a) => {
   if (BigInt(a.length) === 0n) {
     return "0";
-  } else if (BigInt(a.length) === 1n) {
-    if (bigint_nat__lean_array_get(0n, a, 0n) === 1n) {
-      return "1";
-    } else {
-      return "any1";
-    }
-  } else if (BigInt(a.length) === 2n) {
-    if (bigint_nat__lean_array_get(0n, a, 1n) === 2n) {
-      return "2";
-    } else {
-      return "catch";
-    }
-  } else if (BigInt(a.length) === 3n) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (BigInt(a.length) === 1n) {
+    return bigint_nat__lean_array_get(0n, a, 0n) === 1n ? "1" : "any1";
+  }
+  if (BigInt(a.length) === 2n) {
+    return bigint_nat__lean_array_get(0n, a, 1n) === 2n ? "2" : "catch";
+  }
+  return BigInt(a.length) === 3n ? "3" : "catch";
 };

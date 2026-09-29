@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Optimize.Cse
+public import LeanScript.Term.Optimize.FieldsWalk
 
 @[expose] public section
 
@@ -22,7 +23,12 @@ also recounts the usages.  The rewrites, all of which only ever *remove* work:
 * **dead case analysis**: `record_casesOn us n b` where `b` reads none of the fields becomes
   `b` (the language is pure and total, so taking a record apart for nothing is dead code);
 
-Then a second walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
+Then the known fields (`LeanScript.Term.Optimize.Fields`): every record case analysis binds all
+its fields (`Term.widenFields`), and a case analysis of an unknown record whose fields are
+already bound is dropped, its fields renamed to the ones already bound (`Term.reuseFields`:
+`let ⟨a, b⟩ := x; …; let ⟨c, d⟩ := x; body` is `let ⟨a, b⟩ := x; …; body[c := a, d := b]`).
+
+Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
 
 * **common subexpressions** (`Term.cseLetE`): a simple computation (`f a`, `t ()`, `force t`
   on atoms) repeated at the same depth in the scope of its first occurrence is computed once;
@@ -35,6 +41,9 @@ Then a second walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimi
 
 Each rewrite is done only when it keeps the level index of the statement (like the drops of
 `Term.dce`), which is decided on the spot; otherwise the statement is kept as it is.
+Last, `Term.dce` drops the dead bindings and counts the usages again, the fields of case
+analyses included (a field that is never read is annotated `0`).
+
 `Term.optimizeN k` runs `optimize` `k` times (a rewrite can expose another one).
 -/
 
@@ -328,11 +337,11 @@ theorem Branches.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} 
   termination_by structural _ _ _ _ _ _ _ _ x _ _ _ _ => x
 end
 
-/-- **The optimiser**: the rewrites of `Term.simp`, those of `Term.cseWalk`, then dead-code
-    elimination. -/
+/-- **The optimiser**: the rewrites of `Term.simp`, the known fields (`Term.widenFields`, then
+    `Term.reuseFields`), those of `Term.cseWalk`, then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  t.simp.cseWalk.dce
+  (t.simp.widenFields.reuseFields []).cseWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -536,7 +545,9 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.cseWalk_eval, Term.simp_eval]
+  rw [Term.optimize, Term.dce_eval, Term.cseWalk_eval,
+    Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
+    Term.simp_eval]
 
 /-- Running the optimiser any number of times does not change the value either. -/
 theorem Term.optimizeN_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}

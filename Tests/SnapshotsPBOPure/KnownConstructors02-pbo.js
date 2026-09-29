@@ -7,11 +7,6 @@
  * @returns {int53(number)}
  */
 export const test = (a) => {
-  if (a.tag === 0) {
-    const { _1: f$1 } = a;
-    return f$1;
-  } else {
-    const { _1: f$2 } = a;
-    return f$2;
-  }
+  const { _1: f$1 } = a;
+  return f$1;
 };

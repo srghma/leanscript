@@ -2,7 +2,7 @@
 
 -- test1 : Product3 Nat Nat Nat → String
 val k1 [1] : ((Nat × Nat × Nat) → String) := fun x2 [1] : (Nat × Nat × Nat) => (closed)
-  let ⟨f3 [ω] : Nat, f4 [ω] : Nat, f5 [ω] : Nat⟩ := x2
+  let ⟨f3 [ω] : Nat, f4 [ω] : Nat, f5 [1] : Nat⟩ := x2
   if lean_nat_dec_eq__Nat_decEq(f3, 1) then
     if lean_nat_dec_eq__Nat_decEq(f4, 2) then
       if lean_nat_dec_eq__Nat_decEq(f5, 3) then

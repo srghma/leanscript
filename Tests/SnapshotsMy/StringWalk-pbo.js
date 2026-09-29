@@ -22,29 +22,18 @@ import {
 export const test3 = (s, n) => {
   let acc$1 = { tag: 1, _1: { _1: s, _2: 0 } };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 0) {
+    if (acc$1.tag !== 0) {
       const { _1: f$3 } = acc$1;
-      acc$1 = { tag: 0, _1: f$3 };
-    } else {
-      const { _1: f$4 } = acc$1;
-      const { _1: f$5, _2: f$6 } = f$4;
-      const { _1: f$7, _2: f$8 } = f$4;
-      const x$9 = uint53__lean_nat_add(
-        f$8,
-        uint53__lean_string_utf8_byte_size(f$5),
+      const { _1: f$4, _2: f$5 } = f$3;
+      const x$6 = uint53__lean_nat_add(
+        f$5,
+        uint53__lean_string_utf8_byte_size(f$4),
       );
-      const x$10 = f$5 + "x";
-      acc$1 = { tag: 1, _1: { _1: x$10, _2: x$9 } };
+      acc$1 = { tag: 1, _1: { _1: f$4 + "x", _2: x$6 } };
     }
   }
-  let x$11;
-  if (acc$1.tag === 0) {
-    const { _1: f$12 } = acc$1;
-    x$11 = f$12;
-  } else {
-    const { _1: f$13 } = acc$1;
-    x$11 = f$13;
-  }
-  const { _1: f$14, _2: f$15 } = x$11;
-  return f$15;
+  const { _1: f$8 } = acc$1;
+  const x$7 = f$8;
+  const { _2: f$9 } = x$7;
+  return f$9;
 };

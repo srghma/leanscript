@@ -8,7 +8,7 @@
 -- test1 : Int × Int → Int → Int
 val k1 [1] : ((Int × Int) → (Int → Int)) := fun x2 [ω] : (Int × Int) => (closed)
   val k3 [1] : (Int → Int) := fun x4 [1] : Int => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+    let ⟨f5 [1] : Int, f6 [0] : Int⟩ := x2
     ret lean_int_add(f5, x4)
   ret k3
 ret k1
@@ -16,7 +16,7 @@ ret k1
 -- test2 : Int × Int → Int → Int
 val k1 [1] : ((Int × Int) → (Int → Int)) := fun x2 [ω] : (Int × Int) => (closed)
   val k3 [1] : (Int → Int) := fun x4 [1] : Int => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+    let ⟨f5 [1] : Int, f6 [0] : Int⟩ := x2
     ret lean_int_add(f5, x4)
   ret k3
 ret k1
@@ -24,7 +24,7 @@ ret k1
 -- test3 : Int × Int → Box (Int → Int)
 val k1 [1] : ((Int × Int) → (Int → Int)) := fun x2 [ω] : (Int × Int) => (closed)
   val k3 [1] : (Int → Int) := fun x4 [1] : Int => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+    let ⟨f5 [1] : Int, f6 [0] : Int⟩ := x2
     ret lean_int_add(f5, x4)
   ret k3
 ret k1

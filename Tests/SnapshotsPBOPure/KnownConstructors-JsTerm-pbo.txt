@@ -69,8 +69,7 @@ export const fromString = (s : string) : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) 
 
 // test6
 export const test6 = (a : string) : int53(number) => {
-  const k = $k6;
-  const x = c0(c1);
+  const x = $k6(c0);
   switch (c0.tag) {
   case 0 {  }:
     return 0;

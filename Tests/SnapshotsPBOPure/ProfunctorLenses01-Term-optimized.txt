@@ -12,12 +12,12 @@
 
 -- test1 : RecFooBaz → Int
 val k1 [1] : ((Int × Int) → Int) := fun x2 [1] : (Int × Int) => (closed)
-  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f3 [1] : Int, f4 [0] : Int⟩ := x2
   ret f3
 ret k1
 
 -- test2 : RecFooBaz → Int
 val k1 [1] : ((Int × Int) → Int) := fun x2 [1] : (Int × Int) => (closed)
-  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f3 [1] : Int, f4 [0] : Int⟩ := x2
   ret f3
 ret k1

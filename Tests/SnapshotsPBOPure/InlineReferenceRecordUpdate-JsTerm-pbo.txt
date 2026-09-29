@@ -9,15 +9,13 @@ const $k3 : { _1: int53(number), _2: int53(number), _3: int53(number) } = { _1: 
 
 // test1
 export const test1 = (fn : () => { _1: int53(number), _2: int53(number), _3: int53(number) }) : int53(number) => {
-  const x = c0();
-  const { _1: f, _2: f, _3: f } = c0;
+  const { _3: f } = c0();
   return c0;
 };
 
 // fn_prime
 export const fn_prime = () : { _1: int53(number), _2: int53(number), _3: int53(number) } => {
-  const f = $k2;
-  return c0();
+  return $k2();
 };
 
 // extern1

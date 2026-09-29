@@ -12,8 +12,7 @@
 export const test = (a) => {
   if (a.tag === 0) {
     return "";
-  } else {
-    const { _1: f$1 } = a;
-    return f$1;
   }
+  const { _1: f$1 } = a;
+  return f$1;
 };

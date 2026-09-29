@@ -21,28 +21,19 @@ export const ListTest$test1 = (arr : List<string>) : List<string> => {
   const x = [...inline:array__lean_array_mk(c0), "c"];
   const x = [...inline:array__lean_array_mk(c1), ...c0];
   const x = [...inline:array__lean_array_mk(c2), ...c0];
-  const x = [...inline:array__lean_array_mk(c3), ...c0];
-  return inline:array__lean_array_to_list(["a", "b", ...c0, "d"]);
+  return inline:array__lean_array_to_list(["a", "b", ...[...inline:array__lean_array_mk(c3), ...c0], "d"]);
 };
 
 // ListTest.test2
 export const ListTest$test2 = (arr : List<string>) : List<string> => {
-  const x = ["b", ...inline:array__lean_array_mk(c0)];
-  const x = [...c0, ...inline:array__lean_array_mk(c1)];
-  const x = [...c0, ...inline:array__lean_array_mk(c2)];
-  const x = [...c0, ...inline:array__lean_array_mk(c3)];
-  return inline:array__lean_array_to_list(["a", ...c0, "c", "d"]);
+  return inline:array__lean_array_to_list(["a", ...[...[...[...["b", ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)], "c", "d"]);
 };
 
 // ListTest.test3
 export const ListTest$test3 = (arr : List<string>) : List<string> => {
-  const x = ["e", ...inline:array__lean_array_mk(c0)];
-  const x = [...c0, ...inline:array__lean_array_mk(c1)];
-  const x = [...c0, ...inline:array__lean_array_mk(c2)];
-  const x = [...c0, ...inline:array__lean_array_mk(c3)];
-  const x = [...inline:array__lean_array_mk(c4), "c"];
-  const x = [...inline:array__lean_array_mk(c5), ...c0];
-  const x = [...inline:array__lean_array_mk(c6), ...c0];
-  const x = [...inline:array__lean_array_mk(c7), ...c0];
-  return inline:array__lean_array_to_list(["a", "b", ...c0, "d", ...c4, "f", "g"]);
+  const x = [...[...[...["e", ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)], ...inline:array__lean_array_mk(c0)];
+  const x = [...inline:array__lean_array_mk(c1), "c"];
+  const x = [...inline:array__lean_array_mk(c2), ...c0];
+  const x = [...inline:array__lean_array_mk(c3), ...c0];
+  return inline:array__lean_array_to_list(["a", "b", ...[...inline:array__lean_array_mk(c4), ...c0], "d", ...c3, "f", "g"]);
 };

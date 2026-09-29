@@ -3,38 +3,25 @@
 
 // test1
 export const test1 = (f : () => (int53(number)) => int53(number), g : () => (int53(number)) => int53(number), a : int53(number)) : int53(number) => {
-  const x = c2();
-  const x = c2();
-  const x = c0(c2);
-  return c2(c0);
+  return c2()(c1()(c0));
 };
 
 // test2
 export const test2 = (f : () => (int53(number)) => int53(number), g : () => (int53(number)) => int53(number), a : int53(number)) : int53(number) => {
   const x = c1();
-  const x = c3();
-  const x = c1(c2);
-  const x = c1(c0);
-  return c3(c0);
+  return c0(c3()(c0(c1)));
 };
 
 // test3
 export const test3 = (f : () => (int53(number)) => int53(number), g : () => (int53(number)) => int53(number), a : int53(number)) : int53(number) => {
   const x = c2();
   const x = c2();
-  const x = c0(c2);
-  const x = c2(c0);
-  const x = c2(c0);
-  return c4(c0);
+  return c1(c0(c1(c0(c2))));
 };
 
 // test4
 export const test4 = (f : () => (int53(number)) => int53(number), g : () => (int53(number)) => int53(number), a : int53(number)) : int53(number) => {
   const x = c1();
   const x = c3();
-  const x = c1(c2);
-  const x = c1(c0);
-  const x = c3(c0);
-  const x = c3(c0);
-  return c5(c0);
+  return c1(c0(c1(c0(c1(c2)))));
 };

@@ -17,8 +17,14 @@ import {
 export const test1 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
   const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
-  const x$3 = bigint_nat__lean_array_set_immutable(x$1, 0n, 99n);
-  return x$2 + bigint_nat__lean_array_get(0n, x$3, 1n);
+  return (
+    x$2 +
+    bigint_nat__lean_array_get(
+      0n,
+      bigint_nat__lean_array_set_immutable(x$1, 0n, 99n),
+      1n,
+    )
+  );
 };
 
 /**
@@ -41,8 +47,7 @@ export const test2 = (n) => {
 export const test3 = (n) => {
   const k$1 = [n + 1n];
   const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
-  const x$3 = array__lean_array_push_immutable(k$1, 5n);
-  return x$2 + BigInt(x$3.length);
+  return x$2 + BigInt(array__lean_array_push_immutable(k$1, 5n).length);
 };
 
 /**
@@ -53,8 +58,7 @@ export const test3 = (n) => {
 export const test4 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
   const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
-  const x$3 = bigint_nat__lean_array_set_immutable(x$1, 0n, 99n);
-  return { _1: x$3, _2: x$2 };
+  return { _1: bigint_nat__lean_array_set_immutable(x$1, 0n, 99n), _2: x$2 };
 };
 
 /**
@@ -63,30 +67,23 @@ export const test4 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test5 = (n) => {
-  const x$1 = bigint_nat__lean_mk_array(4n, n);
-  let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0n } };
-  for (let i$3 = 0n; i$3 < 4n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$4 } = acc$2;
-      acc$2 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$2;
-      const { _1: f$6, _2: f$7 } = f$5;
-      const { _1: f$8, _2: f$9 } = f$5;
-      const x$10 = bigint_nat__lean_array_get(0n, f$6, i$3);
-      const x$11 = bigint_nat__lean_array_set_immutable(f$6, i$3, i$3 + 1n);
-      const x$12 = f$9 + x$10;
-      acc$2 = { tag: 1, _1: { _1: x$11, _2: x$12 } };
+  let acc$1 = { tag: 1, _1: { _1: bigint_nat__lean_mk_array(4n, n), _2: 0n } };
+  for (let i$2 = 0n; i$2 < 4n; i$2++) {
+    if (acc$1.tag !== 0) {
+      const { _1: f$3 } = acc$1;
+      const { _1: f$4, _2: f$5 } = f$3;
+      const x$6 = bigint_nat__lean_array_get(0n, f$4, i$2);
+      acc$1 = {
+        tag: 1,
+        _1: {
+          _1: bigint_nat__lean_array_set_immutable(f$4, i$2, i$2 + 1n),
+          _2: f$5 + x$6,
+        },
+      };
     }
   }
-  let x$13;
-  if (acc$2.tag === 0) {
-    const { _1: f$14 } = acc$2;
-    x$13 = f$14;
-  } else {
-    const { _1: f$15 } = acc$2;
-    x$13 = f$15;
-  }
-  const { _1: f$16, _2: f$17 } = x$13;
-  return f$17;
+  const { _1: f$8 } = acc$1;
+  const x$7 = f$8;
+  const { _2: f$9 } = x$7;
+  return f$9;
 };

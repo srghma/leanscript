@@ -9,15 +9,13 @@ const $k3 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = { _1: 42n, _
 
 // test1
 export const test1 = (fn : () => { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : int(bigint) => {
-  const x = c0();
-  const { _1: f, _2: f, _3: f } = c0;
+  const { _3: f } = c0();
   return c0;
 };
 
 // fn_prime
 export const fn_prime = () : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } => {
-  const f = $k2;
-  return c0();
+  return $k2();
 };
 
 // extern1

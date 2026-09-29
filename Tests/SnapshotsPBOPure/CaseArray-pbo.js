@@ -11,21 +11,12 @@ import { uint53__lean_array_get } from "../../runtime.js";
 export const test1 = (a) => {
   if (a.length === 0) {
     return "0";
-  } else if (a.length === 1) {
-    if (uint53__lean_array_get(0, a, 0) === 1) {
-      return "1";
-    } else {
-      return "any1";
-    }
-  } else if (a.length === 2) {
-    if (uint53__lean_array_get(0, a, 1) === 2) {
-      return "2";
-    } else {
-      return "catch";
-    }
-  } else if (a.length === 3) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (a.length === 1) {
+    return uint53__lean_array_get(0, a, 0) === 1 ? "1" : "any1";
+  }
+  if (a.length === 2) {
+    return uint53__lean_array_get(0, a, 1) === 2 ? "2" : "catch";
+  }
+  return a.length === 3 ? "3" : "catch";
 };

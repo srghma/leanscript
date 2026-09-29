@@ -38,13 +38,7 @@ export const TestFloat$test3 = (a, b) => a === b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat$test4 = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestFloat$test4 = (a, b) => a !== b;
 
 /**
  * `TestFloat.test5`
@@ -149,13 +143,7 @@ export const TestFloat32$test3 = (a, b) => a === b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test4 = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestFloat32$test4 = (a, b) => a !== b;
 
 /**
  * `TestFloat32.test5`

@@ -19,11 +19,11 @@ export const eval_ = (a) => {
   if (a.tag === 0) {
     const { _1: f$1 } = a;
     return f$1;
-  } else if (a.tag === 1) {
+  }
+  if (a.tag === 1) {
     const { _1: f$2, _2: f$3 } = a;
     return int53__lean_int_add(f$2, f$3);
-  } else {
-    const { _1: f$4, _2: f$5 } = a;
-    return int53__lean_int_mul(f$4, f$5);
   }
+  const { _1: f$4, _2: f$5 } = a;
+  return int53__lean_int_mul(f$4, f$5);
 };

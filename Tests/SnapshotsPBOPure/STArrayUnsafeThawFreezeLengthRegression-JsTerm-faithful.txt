@@ -6,6 +6,5 @@ import { array__lean_array_push_immutable } from "runtime.js";
 // test
 export const test = (x : int(bigint)) : Array<int(bigint)> => {
   const x = array__lean_array_push_immutable([c0], 12n);
-  const x = inline:bigint_nat__bigint_int__lean_nat_to_int(inline:bigint_nat__lean_array_get_size(c0));
-  return array__lean_array_push_immutable(c1, c0);
+  return array__lean_array_push_immutable(c0, inline:bigint_nat__bigint_int__lean_nat_to_int(inline:bigint_nat__lean_array_get_size(c0)));
 };

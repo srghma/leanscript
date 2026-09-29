@@ -9,13 +9,11 @@
 export const test1 = (v) => {
   if (v === 1) {
     return "1";
-  } else if (v === 2) {
-    return "2";
-  } else if (v === 3) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (v === 2) {
+    return "2";
+  }
+  return v === 3 ? "3" : "catch";
 };
 
 /**
@@ -26,11 +24,9 @@ export const test1 = (v) => {
 export const test2 = (a) => {
   if (a === 1) {
     return "1";
-  } else if (a === 2) {
-    return "2";
-  } else if (a === 3) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (a === 2) {
+    return "2";
+  }
+  return a === 3 ? "3" : "catch";
 };

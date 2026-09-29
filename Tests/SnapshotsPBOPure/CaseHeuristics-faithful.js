@@ -17,27 +17,19 @@ export const testP = (a, a1, a2) => {
     if (a1 === 2n) {
       if (a2 === 1n) {
         return 1n;
-      } else if (a2 === 2n) {
-        return 2n;
-      } else if (a2 === 3n) {
-        return 3n;
-      } else if (a2 === 4n) {
-        return 4n;
-      } else {
-        return 5n;
       }
-    } else if (a2 === 4n) {
-      return 4n;
-    } else {
-      return 5n;
+      if (a2 === 2n) {
+        return 2n;
+      }
+      if (a2 === 3n) {
+        return 3n;
+      }
+      return a2 === 4n ? 4n : 5n;
     }
-  } else if (a1 === 2n) {
-    if (a2 === 3n) {
-      return 3n;
-    } else {
-      return 5n;
-    }
-  } else {
-    return 5n;
+    return a2 === 4n ? 4n : 5n;
   }
+  if (a1 === 2n) {
+    return a2 === 3n ? 3n : 5n;
+  }
+  return 5n;
 };

@@ -16,10 +16,9 @@ import { int53__lean_int_add } from "../../runtime.js";
 export const test1 = (f, a) => {
   if (a.tag === 0) {
     return f();
-  } else {
-    const { _1: f$1 } = a;
-    return int53__lean_int_add(f$1, 1);
   }
+  const { _1: f$1 } = a;
+  return int53__lean_int_add(f$1, 1);
 };
 
 /**
@@ -31,8 +30,7 @@ export const test1 = (f, a) => {
 export const test3 = (f, a) => {
   if (a.tag === 0) {
     return f();
-  } else {
-    const { _1: f$1 } = a;
-    return int53__lean_int_add(f$1, 1);
   }
+  const { _1: f$1 } = a;
+  return int53__lean_int_add(f$1, 1);
 };

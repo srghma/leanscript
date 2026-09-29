@@ -11,13 +11,8 @@ const $k1 = { _1: 99n, _2: 0n, _3: 11n };
  * @returns {int(bigint)}
  */
 export const localTest = (f) => {
-  const x$1 = $k1;
-  const x$2 = f(x$1);
-  if (x$2 === -2147483648n ? false : true) {
-    return x$2;
-  } else {
-    return 0n;
-  }
+  const x$1 = f($k1);
+  return x$1 !== -2147483648n ? x$1 : 0n;
 };
 
 /**
@@ -56,13 +51,8 @@ export const extern = () => $k1;
  * @returns {int(bigint)}
  */
 export const externTest = (f) => {
-  const x$1 = $k1;
-  const x$2 = f(x$1);
-  if (x$2 === -2147483648n ? false : true) {
-    return x$2;
-  } else {
-    return -2147483648n;
-  }
+  const x$1 = f($k1);
+  return x$1 !== -2147483648n ? x$1 : -2147483648n;
 };
 
 /**

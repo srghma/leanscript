@@ -8,27 +8,25 @@
 
 -- Inline.appendR : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
 -- Inline.test1 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
@@ -36,54 +34,50 @@ ret k1
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
     val k5 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x6 [ω] : (String × (Array String)) => (closed)
-      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [ω] : (String × (Array String)) => (open)
-        let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x6
-        let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x8
-        let ⟨f13 [ω] : String, f14 [ω] : (Array String)⟩ := x8
-        let ⟨f15 [ω] : String, f16 [ω] : (Array String)⟩ := x6
-        let x19 [1] : (Array String) := array_foldl f14 f16 fun e17 acc18 => (closed)
-          ret lean_array_push(acc18, e17)
-        ret ⟨lean_string_append__String_append(f9, f11), x19⟩
+      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [1] : (String × (Array String)) => (open)
+        let ⟨f9 [1] : String, f10 [0] : (Array String)⟩ := x6
+        let ⟨f11 [1] : String, f12 [1] : (Array String)⟩ := x8
+        let ⟨f13 [0] : String, f14 [1] : (Array String)⟩ := x6
+        let x17 [1] : (Array String) := array_foldl f12 f14 fun e15 acc16 => (closed)
+          ret lean_array_push(acc16, e15)
+        ret ⟨lean_string_append__String_append(f9, f11), x17⟩
       ret k7
-    let x20 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
-    let x21 [1] : (String × (Array String)) := x20 x4
-    ret x21
+    let x18 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
+    let x19 [1] : (String × (Array String)) := x18 x4
+    ret x19
   ret k3
 ret k1
 
 -- Inline.test3 : R → R
-val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  let ⟨f3 [ω] : String, f4 [ω] : (Array String)⟩ := x2
-  let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-  val k7 [1] : (Array String) := #["hello"]
-  let x10 [1] : (Array String) := array_foldl f6 k7 fun e8 acc9 => (closed)
-    ret lean_array_push(acc9, e8)
-  ret ⟨lean_string_append__String_append("hello", f3), x10⟩
+val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [1] : (String × (Array String)) => (closed)
+  let ⟨f3 [1] : String, f4 [1] : (Array String)⟩ := x2
+  val k5 [1] : (Array String) := #["hello"]
+  let x8 [1] : (Array String) := array_foldl f4 k5 fun e6 acc7 => (closed)
+    ret lean_array_push(acc7, e6)
+  ret ⟨lean_string_append__String_append("hello", f3), x8⟩
 ret k1
 
 -- Noinline.appendR : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
 -- Noinline.test1 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
@@ -91,54 +85,50 @@ ret k1
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
     val k5 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x6 [ω] : (String × (Array String)) => (closed)
-      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [ω] : (String × (Array String)) => (open)
-        let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x6
-        let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x8
-        let ⟨f13 [ω] : String, f14 [ω] : (Array String)⟩ := x8
-        let ⟨f15 [ω] : String, f16 [ω] : (Array String)⟩ := x6
-        let x19 [1] : (Array String) := array_foldl f14 f16 fun e17 acc18 => (closed)
-          ret lean_array_push(acc18, e17)
-        ret ⟨lean_string_append__String_append(f9, f11), x19⟩
+      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [1] : (String × (Array String)) => (open)
+        let ⟨f9 [1] : String, f10 [0] : (Array String)⟩ := x6
+        let ⟨f11 [1] : String, f12 [1] : (Array String)⟩ := x8
+        let ⟨f13 [0] : String, f14 [1] : (Array String)⟩ := x6
+        let x17 [1] : (Array String) := array_foldl f12 f14 fun e15 acc16 => (closed)
+          ret lean_array_push(acc16, e15)
+        ret ⟨lean_string_append__String_append(f9, f11), x17⟩
       ret k7
-    let x20 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
-    let x21 [1] : (String × (Array String)) := x20 x4
-    ret x21
+    let x18 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
+    let x19 [1] : (String × (Array String)) := x18 x4
+    ret x19
   ret k3
 ret k1
 
 -- Noinline.test3 : R → R
-val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  let ⟨f3 [ω] : String, f4 [ω] : (Array String)⟩ := x2
-  let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-  val k7 [1] : (Array String) := #["hello"]
-  let x10 [1] : (Array String) := array_foldl f6 k7 fun e8 acc9 => (closed)
-    ret lean_array_push(acc9, e8)
-  ret ⟨lean_string_append__String_append("hello", f3), x10⟩
+val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [1] : (String × (Array String)) => (closed)
+  let ⟨f3 [1] : String, f4 [1] : (Array String)⟩ := x2
+  val k5 [1] : (Array String) := #["hello"]
+  let x8 [1] : (Array String) := array_foldl f4 k5 fun e6 acc7 => (closed)
+    ret lean_array_push(acc7, e6)
+  ret ⟨lean_string_append__String_append("hello", f3), x8⟩
 ret k1
 
 -- AlwaysInline.appendR : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
 -- AlwaysInline.test1 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
@@ -146,54 +136,50 @@ ret k1
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
     val k5 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x6 [ω] : (String × (Array String)) => (closed)
-      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [ω] : (String × (Array String)) => (open)
-        let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x6
-        let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x8
-        let ⟨f13 [ω] : String, f14 [ω] : (Array String)⟩ := x8
-        let ⟨f15 [ω] : String, f16 [ω] : (Array String)⟩ := x6
-        let x19 [1] : (Array String) := array_foldl f14 f16 fun e17 acc18 => (closed)
-          ret lean_array_push(acc18, e17)
-        ret ⟨lean_string_append__String_append(f9, f11), x19⟩
+      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [1] : (String × (Array String)) => (open)
+        let ⟨f9 [1] : String, f10 [0] : (Array String)⟩ := x6
+        let ⟨f11 [1] : String, f12 [1] : (Array String)⟩ := x8
+        let ⟨f13 [0] : String, f14 [1] : (Array String)⟩ := x6
+        let x17 [1] : (Array String) := array_foldl f12 f14 fun e15 acc16 => (closed)
+          ret lean_array_push(acc16, e15)
+        ret ⟨lean_string_append__String_append(f9, f11), x17⟩
       ret k7
-    let x20 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
-    let x21 [1] : (String × (Array String)) := x20 x4
-    ret x21
+    let x18 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
+    let x19 [1] : (String × (Array String)) := x18 x4
+    ret x19
   ret k3
 ret k1
 
 -- AlwaysInline.test3 : R → R
-val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  let ⟨f3 [ω] : String, f4 [ω] : (Array String)⟩ := x2
-  let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-  val k7 [1] : (Array String) := #["hello"]
-  let x10 [1] : (Array String) := array_foldl f6 k7 fun e8 acc9 => (closed)
-    ret lean_array_push(acc9, e8)
-  ret ⟨lean_string_append__String_append("hello", f3), x10⟩
+val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [1] : (String × (Array String)) => (closed)
+  let ⟨f3 [1] : String, f4 [1] : (Array String)⟩ := x2
+  val k5 [1] : (Array String) := #["hello"]
+  let x8 [1] : (Array String) := array_foldl f4 k5 fun e6 acc7 => (closed)
+    ret lean_array_push(acc7, e6)
+  ret ⟨lean_string_append__String_append("hello", f3), x8⟩
 ret k1
 
 -- InlineIfReduceInline.appendR : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
 -- InlineIfReduceInline.test1 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [ω] : (String × (Array String)) => (open)
-    let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-    let ⟨f7 [ω] : String, f8 [ω] : (Array String)⟩ := x4
-    let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x4
-    let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x2
-    let x15 [1] : (Array String) := array_foldl f10 f12 fun e13 acc14 => (closed)
-      ret lean_array_push(acc14, e13)
-    ret ⟨lean_string_append__String_append(f5, f7), x15⟩
+  val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
+    let ⟨f5 [1] : String, f6 [0] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [1] : (Array String)⟩ := x2
+    let x13 [1] : (Array String) := array_foldl f8 f10 fun e11 acc12 => (closed)
+      ret lean_array_push(acc12, e11)
+    ret ⟨lean_string_append__String_append(f5, f7), x13⟩
   ret k3
 ret k1
 
@@ -201,27 +187,25 @@ ret k1
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
     val k5 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x6 [ω] : (String × (Array String)) => (closed)
-      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [ω] : (String × (Array String)) => (open)
-        let ⟨f9 [ω] : String, f10 [ω] : (Array String)⟩ := x6
-        let ⟨f11 [ω] : String, f12 [ω] : (Array String)⟩ := x8
-        let ⟨f13 [ω] : String, f14 [ω] : (Array String)⟩ := x8
-        let ⟨f15 [ω] : String, f16 [ω] : (Array String)⟩ := x6
-        let x19 [1] : (Array String) := array_foldl f14 f16 fun e17 acc18 => (closed)
-          ret lean_array_push(acc18, e17)
-        ret ⟨lean_string_append__String_append(f9, f11), x19⟩
+      val k7 [1] : ((String × (Array String)) → (String × (Array String))) := fun x8 [1] : (String × (Array String)) => (open)
+        let ⟨f9 [1] : String, f10 [0] : (Array String)⟩ := x6
+        let ⟨f11 [1] : String, f12 [1] : (Array String)⟩ := x8
+        let ⟨f13 [0] : String, f14 [1] : (Array String)⟩ := x6
+        let x17 [1] : (Array String) := array_foldl f12 f14 fun e15 acc16 => (closed)
+          ret lean_array_push(acc16, e15)
+        ret ⟨lean_string_append__String_append(f9, f11), x17⟩
       ret k7
-    let x20 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
-    let x21 [1] : (String × (Array String)) := x20 x4
-    ret x21
+    let x18 [1] : ((String × (Array String)) → (String × (Array String))) := k5 x2
+    let x19 [1] : (String × (Array String)) := x18 x4
+    ret x19
   ret k3
 ret k1
 
 -- InlineIfReduceInline.test3 : R → R
-val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [ω] : (String × (Array String)) => (closed)
-  let ⟨f3 [ω] : String, f4 [ω] : (Array String)⟩ := x2
-  let ⟨f5 [ω] : String, f6 [ω] : (Array String)⟩ := x2
-  val k7 [1] : (Array String) := #["hello"]
-  let x10 [1] : (Array String) := array_foldl f6 k7 fun e8 acc9 => (closed)
-    ret lean_array_push(acc9, e8)
-  ret ⟨lean_string_append__String_append("hello", f3), x10⟩
+val k1 [1] : ((String × (Array String)) → (String × (Array String))) := fun x2 [1] : (String × (Array String)) => (closed)
+  let ⟨f3 [1] : String, f4 [1] : (Array String)⟩ := x2
+  val k5 [1] : (Array String) := #["hello"]
+  let x8 [1] : (Array String) := array_foldl f4 k5 fun e6 acc7 => (closed)
+    ret lean_array_push(acc7, e6)
+  ret ⟨lean_string_append__String_append("hello", f3), x8⟩
 ret k1

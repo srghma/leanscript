@@ -15,13 +15,7 @@ export const test1 = (a, b) => a === b;
  * @param {string} b
  * @returns {boolean}
  */
-export const test2 = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const test2 = (a, b) => a !== b;
 
 /**
  * `test3`
@@ -45,13 +39,7 @@ export const test4 = (a, b) => b < a;
  * @param {string} b
  * @returns {boolean}
  */
-export const test5 = (a, b) => {
-  if (b < a) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const test5 = (a, b) => !(b < a);
 
 /**
  * `test6`
@@ -59,13 +47,7 @@ export const test5 = (a, b) => {
  * @param {string} b
  * @returns {boolean}
  */
-export const test6 = (a, b) => {
-  if (a < b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const test6 = (a, b) => !(a < b);
 
 /**
  * `test7`

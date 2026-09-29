@@ -16,7 +16,6 @@ export const test5 = (a : Array<nat(bigint)>) : Array<nat(bigint)> => {
       m0 = array__lean_array_push_mutable(m0, c0);
       next;
     } else {
-      m0 = m0;
       next;
     }
   }

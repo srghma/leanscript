@@ -11,13 +11,8 @@ export const test1 = (v) => {
     const { _1: f$1 } = v;
     if (f$1 === 1) {
       return "1";
-    } else if (f$1 === 2) {
-      return "2";
-    } else {
-      return "3";
     }
-  } else {
-    const { _1: f$2 } = v;
-    return "4";
+    return f$1 === 2 ? "2" : "3";
   }
+  return "4";
 };

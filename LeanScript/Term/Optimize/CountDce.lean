@@ -28,6 +28,15 @@ variable {ks : List Nat} {Δ : DSig ks}
     (br.castLvl h).numCalls = br.numCalls := by
   subst h; rfl
 
+theorem Term.numCalls_reannotFields {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
+    {js : JCtx ks} {o : Lvl} (ts : List (Ty ks)) (us : List Usage01ω)
+    (b : Term Δ d Φ (UCtx.annot d ts us ++ Γ) τ js o) :
+    (Term.reannotFields ts us b).2.numCalls = b.numCalls := by
+  dsimp only [Term.reannotFields]
+  cases hb : b.rename KRen.id (URen.reannot d ts us (b.countFields ts.length)) JRen.id with
+  | none => rfl
+  | some b' => exact Term.numCalls_rename b hb
+
 theorem Body.numCalls_reuse1 {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
     {u : Usage01ω} {ℓ : Nat} {o : Lvl} {u' : Usage01ω} {b : Body Δ d Φ Γ [⟨σ, u, ℓ⟩] τ o}
     {b' : Body Δ d Φ Γ [⟨σ, u', ℓ⟩] τ o} (h : b.reuse1 u' = some b') :
@@ -123,7 +132,7 @@ theorem Term.numCalls_dce : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → 
           simp only [Term.numCalls, Term.numCalls_rename _ hb']; omega
         · simp only [Term.numCalls]; omega
   | _, _, _, _, _, _, .record_casesOn us n b => by
-      simp only [Term.dce, Term.numCalls]; exact Term.numCalls_dce b
+      simp only [Term.dce, Term.numCalls, Term.numCalls_reannotFields]; exact Term.numCalls_dce b
   | _, _, _, _, _, _, .branch br => by
       simp only [Term.dce, Term.numCalls]; exact Branch.numCalls_dce br
   | _, _, _, _, _, _, .jump _ _ => Nat.le_refl _
@@ -165,11 +174,11 @@ theorem Branches.numCalls_dce : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} 
   | _, _, _, _, _, _, _, _, .two us₁ us₂ b₁ b₂ => by
       have h₁ := Term.numCalls_dce b₁
       have h₂ := Term.numCalls_dce b₂
-      simp only [Branches.dce, Branches.numCalls]; omega
+      simp only [Branches.dce, Branches.numCalls, Term.numCalls_reannotFields]; omega
   | _, _, _, _, _, _, _, _, .cons us b bs => by
       have h₁ := Term.numCalls_dce b
       have h₂ := Branches.numCalls_dce bs
-      simp only [Branches.dce, Branches.numCalls]; omega
+      simp only [Branches.dce, Branches.numCalls, Term.numCalls_reannotFields]; omega
   termination_by structural _ _ _ _ _ _ _ _ x => x
 end
 

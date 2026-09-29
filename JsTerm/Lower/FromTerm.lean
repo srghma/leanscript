@@ -2,6 +2,7 @@ module
 
 public import JsTerm.Lower.Basic
 public import JsTerm.Passes.InPlace
+public import JsTerm.Passes.Cleanup
 
 @[expose] public section
 
@@ -363,7 +364,7 @@ end
 /-- Convert a closed program into an exported JavaScript function named `name`
     (`export const name = (params) => …`), of all the parameters of its type (none when it is
     not a function).  `paramNames` are the preferred names of its parameters.  The body is
-    cleaned up (`peephole`, `inlineArrays`), and the arrays nothing else refers to are updated
+    cleaned up (`cleanup`, `peephole`, `inlineArrays`), and the arrays nothing else refers to are updated
     in place (`inPlace`). -/
 def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String)
     (ct : ClosedTerm) : Except String JsFun := do
@@ -375,7 +376,8 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
   let body ← cApplyTerm cfg ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1)) ret
   let body ← if h : pushAll ds [] = pushAll (ps.map (·.2)) [] then pure (h ▸ body) else
     throw "internal: the parameters of a function"
-  let body := peephole (inlineArrays (peephole body))
+  let body := peephole (inlineArrays (peephole (cleanup body)))
+  let body := peephole (cleanup body)
   let body := inPlace body
   return { name, leanName, params := ps, ret, body }
 

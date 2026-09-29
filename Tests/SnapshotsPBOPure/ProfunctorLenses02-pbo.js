@@ -17,10 +17,8 @@ export const test1 = (a) => {
   if (a.tag === 0) {
     const { _1: f$1 } = a;
     return { tag: 1, _1: f$1 };
-  } else {
-    const { _1: f$2 } = a;
-    return $tag0;
   }
+  return $tag0;
 };
 
 /**
@@ -32,8 +30,6 @@ export const test2 = (a) => {
   if (a.tag === 0) {
     const { _1: f$1 } = a;
     return { tag: 1, _1: f$1 };
-  } else {
-    const { _1: f$2 } = a;
-    return $tag0;
   }
+  return $tag0;
 };

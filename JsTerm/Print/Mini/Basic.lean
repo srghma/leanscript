@@ -1,4 +1,5 @@
 import JsTerm.Syntax.Vars
+import JsTerm.Syntax.Pretty
 import LanguageJavascriptMini.Printer
 
 /-!
@@ -147,16 +148,80 @@ def asStmt : List MiniStatement → MiniStatement
   | [s] => s
   | ss => .block ss
 
+/-- How many times the statements assign the variable of a join point `x` (`x = e;`, possibly
+    in an `if` or a block: the only statements a jump to it is written in). -/
+partial def assignsTo (x : String) (ss : List MiniStatement) : Nat :=
+  ss.foldl (fun n s => n + go s) 0
+where
+  /-- In one statement. -/
+  go : MiniStatement → Nat
+    | .expr (.assign (.ident y) _ _) => if y == nes x then 1 else 0
+    | .if_ _ t e => go t + (e.map go).getD 0
+    | .block ss => assignsTo x ss
+    | .labelled _ s => go s
+    | _ => 0
+
+/-- The negation of a condition: `a !== b` for `a === b`, `c` for `!c`, `!c` otherwise. -/
+def negateCond : MiniExpr → MiniExpr
+  | .binary a .strictEq b => .binary a .strictNeq b
+  | .binary a .strictNeq b => .binary a .strictEq b
+  | .unary .not c => c
+  | .true_ => .false_
+  | .false_ => .true_
+  | c => .unary .not c
+
+/-- Is the expression short enough to be an arm of `c ? a : b` (a name, a literal, a field)? -/
+def isSimpleMini : MiniExpr → Bool
+  | .ident _ | .number _ | .string _ | .true_ | .false_ | .null => true
+  | .dot e _ => isSimpleMini e
+  | .unary .minus e => isSimpleMini e
+  | _ => false
+
+/-- Does evaluating the condition have no effect (a comparison of names, literals and
+    fields)? -/
+def isPureCond : MiniExpr → Bool
+  | .binary a op b =>
+    isSimpleMini a && isSimpleMini b &&
+      (match op with | .strictEq | .strictNeq | .lt | .le | .gt | .ge => true | _ => false)
+  | .unary .not c => isPureCond c
+  | c => isSimpleMini c
+
+/-- `if (c) { t } else { e }`, written as short as it can be: no `else` when `e` is empty,
+    `if (!c) { e }` when `t` is, `return c;` for `if (c) { return true; } else { return false; }`,
+    `return c ? a : b;` when both arms return a name or a literal, nothing when both are
+    empty and `c` has no effect, no `else` after a `then` that ends in a `return` (or `throw`,
+    `break`, `continue`), and `else if` for an `else` that is a single `if`. -/
+def mkIf (c : MiniExpr) (t e : List MiniStatement) : List MiniStatement :=
+  match t, e with
+  | [.return_ (some .true_)], [.return_ (some .false_)] => [.return_ (some c)]
+  | [.return_ (some .false_)], [.return_ (some .true_)] => [.return_ (some (negateCond c))]
+  | [.return_ (some a)], [.return_ (some b)] =>
+    if isSimpleMini a && isSimpleMini b then [.return_ (some (.ternary c a b))]
+    else .if_ c (.block t) none :: e
+  | [], [] => if isPureCond c then [] else [.if_ c (.block []) none]
+  | t, [] => [.if_ c (.block t) none]
+  | [], e => [.if_ (negateCond c) (.block e) none]
+  | t, e =>
+    if endsAbruptly t then .if_ c (.block t) none :: e
+    else [.if_ c (.block t) (some (asStmt' e))]
+where
+  /-- Does the block end in a `return`, `throw`, `break` or `continue` (so that an `else`
+      after it is not needed: every name of a function is distinct)? -/
+  endsAbruptly (ss : List MiniStatement) : Bool :=
+    match ss.getLast? with
+    | some (.return_ _) | some (.throw _) | some (.break_ _) | some (.continue_ _) => true
+    | _ => false
+  /-- An `else`: a single `if` as it is (`else if`), otherwise a block. -/
+  asStmt' : List MiniStatement → MiniStatement
+    | [s@(.if_ ..)] => s
+    | ss => .block ss
+
 /-- The chain `if (t₀) { b₀ } else if (t₁) { b₁ } … else { bₙ }` of the arms of a case
-    analysis (the last arm needs no test). -/
+    analysis (the last arm needs no test), written as short as it can be (`mkIf`). -/
 def ifChain : List (MiniExpr × List MiniStatement) → List MiniStatement
   | [] => [.throw (.new (ident "Error") [.string "LeanScript: an empty case analysis"])]
   | [(_, b)] => b
-  | (t, b) :: rest =>
-    let els := match ifChain rest with
-      | [s@(.if_ ..)] => s
-      | ss => .block ss
-    [.if_ t (.block b) (some els)]
+  | (t, b) :: rest => mkIf t b (ifChain rest)
 
 /-! ## Where an iteration ends early -/
 

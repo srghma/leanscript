@@ -9,15 +9,14 @@ const $tag0 = { tag: 0 };
 const $k6 = (x$1) => {
   if (x$1 === "foo") {
     return $k1;
-  } else if (x$1 === "bar") {
-    return $k2;
-  } else if (x$1 === "baz") {
-    return $k3;
-  } else if (x$1 === "qux") {
-    return $k4;
-  } else {
-    return $tag0;
   }
+  if (x$1 === "bar") {
+    return $k2;
+  }
+  if (x$1 === "baz") {
+    return $k3;
+  }
+  return x$1 === "qux" ? $k4 : $tag0;
 };
 
 /**
@@ -28,15 +27,14 @@ const $k6 = (x$1) => {
 export const fromString = (a) => {
   if (a === "foo") {
     return $k1;
-  } else if (a === "bar") {
-    return $k2;
-  } else if (a === "baz") {
-    return $k3;
-  } else if (a === "qux") {
-    return $k4;
-  } else {
-    return $tag0;
   }
+  if (a === "bar") {
+    return $k2;
+  }
+  if (a === "baz") {
+    return $k3;
+  }
+  return a === "qux" ? $k4 : $tag0;
 };
 
 /**
@@ -45,20 +43,16 @@ export const fromString = (a) => {
  * @returns {int(bigint)}
  */
 export const test = (a) => {
-  const k$1 = $k6;
-  const x$2 = k$1(a);
-  if (x$2.tag === 0) {
+  const x$1 = $k6(a);
+  if (x$1.tag === 0) {
     return 0n;
-  } else {
-    const { _1: f$3 } = x$2;
-    if (f$3 === 0) {
-      return 1n;
-    } else if (f$3 === 1) {
-      return 2n;
-    } else if (f$3 === 2) {
-      return 3n;
-    } else {
-      return 4n;
-    }
   }
+  const { _1: f$2 } = x$1;
+  if (f$2 === 0) {
+    return 1n;
+  }
+  if (f$2 === 1) {
+    return 2n;
+  }
+  return f$2 === 2 ? 3n : 4n;
 };

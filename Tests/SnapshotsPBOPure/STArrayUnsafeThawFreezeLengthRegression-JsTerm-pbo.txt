@@ -6,6 +6,5 @@ import { array__lean_array_push_immutable } from "runtime.js";
 // test
 export const test = (x : int53(number)) : Array<int53(number)> => {
   const x = array__lean_array_push_immutable([c0], 12);
-  const x = inline:uint53__int53__lean_nat_to_int(inline:uint53__lean_array_get_size(c0));
-  return array__lean_array_push_immutable(c1, c0);
+  return array__lean_array_push_immutable(c0, inline:uint53__int53__lean_nat_to_int(inline:uint53__lean_array_get_size(c0)));
 };

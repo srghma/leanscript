@@ -1,3 +1,38 @@
+# Summary of changes for run c23dc253-fc6e-49fb-952d-599dcf6008dd
+I improved both `Term.optimize` and the Term → JsTerm → JavaScript conversion. The generated JavaScript is now shorter, and all 3824 snapshot checks still pass.
+
+**What changed in the output.** Across all snapshots (`Tests/SnapshotsMy`, `Tests/SnapshotsPBOPure`, both presets, all regenerated and committed):
+- lines: 6949 → 5477
+- bytes: 163888 → 137190
+- statements: 3468 → 2513
+- record/union destructurings: 310 → 200
+- copies like `const y = x;`: 222 → 38 (the ones left are needed, e.g. values captured by closures inside loops)
+- self-assignments `x = x;`: 4 → 0
+
+**`Term.optimize` (proved).** It is now `(t.simp.widenFields.reuseFields []).cseWalk.dce`:
+- **Field reuse:** a record that has already been taken apart, or was rebuilt from known fields, reuses the fields bound the first time instead of taking the record apart again (`Fields.lean`, `FieldsWalk.lean`).
+- **Unused fields:** dead-code elimination now re-annotates the fields of each case analysis with how often they are used, so a field nobody reads is not taken apart (`Reannot.lean`, `Term.reannotFields`).
+
+`Term.optimize_eval`, `Term.optimizeN_eval`, `Term.numCalls_optimize`, `Term.reuseFields_eval` and `Term.reannotFields_eval` are proved without `sorry`, using only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+**JsTerm clean-ups (tested, not proved).** These passes are in the new file `JsTerm/Passes/Cleanup.lean`. They run after the conversion (`termToJs`) and again after constants are moved to the top of the module (`mkModule`). There is no formal proof for them because JsTerm has no formal semantics.
+- **Copy propagation:** removes copies such as `const k$1 = $k1;` and `const y = x;`. A copy of a mutable variable is removed only when that variable is never reassigned afterwards and the copy is not captured by a closure.
+- **Self-assignments:** `x = x;` is dropped.
+- **Rebuilt unions:** in a case analysis on a variable, an arm that rebuilds the value it just took apart (`acc = { tag: 0, _1: f }` in the tag-0 arm) uses the variable instead.
+- **Unused pattern fields:** fields that are bound but never read are left out of the pattern.
+- **One-use constants (last pass):** a constant read once, by the next statement, is inlined there (`const x = f(y); return g(x);` → `return g(f(y));`). This only happens if nothing that could have an effect or throw is evaluated before the read, so evaluation order is unchanged. The pass does nothing if any closure assigns a captured mutable variable; the backend never produces such a closure.
+
+**Printer changes.**
+- **`if` statements:** no empty `else`; an empty `then` becomes a negated test (`x.tag !== 0`); no `else` after a `return`/`throw`/`break`/`continue`.
+- **Returns and conditions:** `if (c) return true; else return false;` → `return c;`, and branches returning names or literals become `return c ? a : b;`. `c ? true : false` → `c`, and `c ? false : true` → the negated test.
+- **Identical union arms** are written once, with no test. The arms are compared as generated statements.
+- **Join points:** one that is assigned once becomes a `const`.
+- **Arrows:** a body that prints as a single `return` becomes `(x) => e`.
+
+**Checks run.** `lake build JsTerm leanscript tests LeanScriptCli TermTests TyTests RuntimeSpec` succeeds, and `lake exe tests` passes 57/57. There is no `sorry` in the optimizer or JsTerm files.
+
+`README.md` now describes the new optimizer steps, the clean-ups, the printer changes and these numbers. I added two rows to the Properties table: the clean-up passes (tested, not proved) and the extended optimizer theorem (proved).
+
 # Summary of changes for run b930ce8d-207d-4a52-bb68-04dd7543f37d
 This request was already done in the previous run, whose changes are in the project. I rechecked that it still holds, and the only thing I changed this session was an out-of-date planning doc.
 

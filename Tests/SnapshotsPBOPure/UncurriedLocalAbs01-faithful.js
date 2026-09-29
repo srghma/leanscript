@@ -36,6 +36,5 @@ export const test = (x, y) => {
     return acc$3;
   };
   const x$6 = k$5(x, y);
-  const x$7 = k$5(y, x);
-  return x$6 + x$7;
+  return x$6 + k$5(y, x);
 };

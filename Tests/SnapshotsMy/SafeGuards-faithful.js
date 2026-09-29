@@ -27,10 +27,7 @@ export const test2 = (a, b) => (BigInt(a.length) + BigInt(b.length)) * 3n;
  * @param {Array<nat(bigint)>} a
  * @returns {nat(bigint)}
  */
-export const test3 = (a) => {
-  const x$1 = BigInt(a.length);
-  return x$1 >> 1n;
-};
+export const test3 = (a) => BigInt(a.length) >> 1n;
 
 /**
  * `test4`

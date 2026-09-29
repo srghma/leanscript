@@ -21,6 +21,12 @@ def natLitOf {N : JsTy} (nt : JsNatTy N) (n : Nat) : MiniExpr :=
   | .bigint_nat => bigintNum n
   | .uint53 => natNum n
 
+/-- The dump of each arm of a case analysis on a union (with the fields it takes apart). -/
+partial def JsUnionArms.keys {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
+    JsUnionArms C M J k cs → List String
+  | .nil => []
+  | .cons sel b rest => (toString (sel.binds.map (·.1)) ++ b.pretty "") :: rest.keys
+
 mutual
 /-- An expression as a `MiniAST` expression. -/
 partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M τ → PM MiniExpr
@@ -50,7 +56,11 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M �
     return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)
   | .list_mk ps => do return .array ((← partsToMini sc ps).map .elem)
   | .cond c a b => do
-    return .ternary (← exprToMini sc c) (← exprToMini sc a) (← exprToMini sc b)
+    let c ← exprToMini sc c
+    match ← exprToMini sc a, ← exprToMini sc b with
+    | .true_, .false_ => return c
+    | .false_, .true_ => return negateCond c
+    | a, b => return .ternary c a b
 
 /-- An arrow function of parameters `ps` (already in `sc`). -/
 partial def arrowToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) (ps : List String)
@@ -58,7 +68,10 @@ partial def arrowToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) (ps : List St
   let params := ps.map fun p => MiniParam.plain (.ident (nes p))
   match body with
   | .ret e => return .arrow false params (.expr (← exprToMini sc e))
-  | _ => return .arrow false params (.block (← blockToMini sc {} body))
+  | _ =>
+    match ← blockToMini sc {} body with
+    | [.return_ (some e)] => return .arrow false params (.expr e)
+    | ss => return .arrow false params (.block ss)
 
 /-- Arguments. -/
 partial def argsToMini {C M σs : List JsTy} (sc : Scope) : JsArgs C M σs → PM (List MiniExpr)
@@ -121,16 +134,16 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let c ← exprToMini sc c
     let t ← blockToMini sc tl t
     let e ← blockToMini sc tl e
-    let els := match e with
-      | [s@(.if_ ..)] => s
-      | ss => .block ss
-    return [.if_ c (.block t) (some els)]
+    return mkIf c t e
   | .enumCases (shift := shift) e arms => do
     let (pre, s) ← bindSubject sc "s" e
     let arms ← enumArmsToMini sc tl s shift 0 arms
     return pre ++ ifChain arms
   | .unionCases e arms => do
     let (pre, s) ← bindSubject sc "s" e
+    -- arms that are all written the same (`if (x.tag === 0) { const { _1: f } = x; return f; }
+    -- else { const { _1: f } = x; return f; }`) are written once, without a test
+    if let some b ← sameUnionArms sc tl s arms then return pre ++ b
     let arms ← unionArmsToMini sc tl s 0 arms
     return pre ++ ifChain arms
   | .join hint block rest => do
@@ -143,7 +156,12 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let r ← blockToMini { sc with c := x :: sc.c } tl rest
     let decl : MiniStatement := .decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩
     if early then return decl :: .labelled (nes label) (.block b) :: r
-    else return decl :: b ++ r
+    -- `let x; …; x = e;` with no other assignment of `x` is `…; const x = e;`
+    match b.getLast? with
+    | some (.expr (.assign (.ident y) .assign e)) =>
+      if y == nes x && assignsTo x b == 1 then return b.dropLast ++ constDecl x e :: r
+      else return decl :: b ++ r
+    | _ => return decl :: b ++ r
   | .forRange hint nt n body rest => do
     let (pre, n) ← bindSubject sc "n" n
     let i ← freshName hint
@@ -188,6 +206,44 @@ partial def enumArmsToMini {C M J : List JsTy} {k : JsEnd} {n : Nat} (sc : Scope
     let b ← blockToMini sc tl b
     return (.binary s .strictEq (intNum (shift + i)), b) ::
       (← enumArmsToMini sc tl s shift (i + 1) rest)
+
+/-- The statements of every arm of a case analysis on a union, when there are two arms or
+    more and they are all the same (each written from the same state of the printer): the
+    statements, the printer's state being the one after the first arm.  The arms are first
+    compared as dumps (`JsBlock.pretty`), so that they are only written more than once when
+    they are likely to be the same. -/
+partial def sameUnionArms {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (sc : Scope)
+    (tl : Tail) (s : MiniExpr) (arms : JsUnionArms C M J k cs) :
+    PM (Option (List MiniStatement)) := do
+  let keys := arms.keys
+  match keys with
+  | k₀ :: k₁ :: ks =>
+    if !(k₁ :: ks).all (· == k₀) then return none
+    let st₀ ← get
+    let bodies ← arms.bodiesFrom sc tl s st₀
+    match bodies with
+    | (b₀, st₁) :: rest =>
+      if rest.all (·.1 == b₀) then
+        set st₁
+        return some b₀
+      else
+        set st₀
+        return none
+    | [] => set st₀; return none
+  | _ => return none
+
+/-- The statements of each arm of a case analysis on a union (taking its fields apart), each
+    written from the printer's state `st`, with the state after it. -/
+partial def JsUnionArms.bodiesFrom {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
+    (sc : Scope) (tl : Tail) (s : MiniExpr) (st : PrintSt) :
+    JsUnionArms C M J k cs → PM (List (List MiniStatement × PrintSt))
+  | .nil => pure []
+  | .cons sel b rest => do
+    set st
+    let (d, sc') ← destructureToMini sc s sel.binds
+    let b ← blockToMini sc' tl b
+    let st' ← get
+    return (d ++ b, st') :: (← rest.bodiesFrom sc tl s st)
 
 /-- The arms of a case analysis on a union, each with its test (`s.tag === i`), taking the
     fields it uses apart. -/

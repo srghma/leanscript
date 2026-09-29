@@ -5,13 +5,10 @@
 
 const $k1 : ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) }) = { tag: 1, _1: 0n };
 const $k2 : ((nat(bigint)) => nat(bigint)) => nat(bigint) = (x) => {
-  const x = 1n;
-  const x = c1(c0);
-  const x = 2n;
-  const x = c3(c0);
-  const x = 3n;
-  const x = c5(c0);
-  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c4, c2), c0);
+  const x = c0(1n);
+  const x = c1(2n);
+  const x = c2(3n);
+  return inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c2, c1), c0);
 };
 
 // test1
@@ -20,17 +17,13 @@ export const test1 = (k : nat(bigint), n : nat(bigint)) : nat(bigint) => {
   for (i < c0) {
     const a = m0;
     switch (c0.tag) {
-    case 0 { _1: f }:
-      m0 = { tag: 0, _1: c0 };
+    case 0 {  }:
+      m0 = c0;
       next;
     case 1 { _1: f }:
-      const k = $k2;
-      const k = (x) => {
-        return inline:bigint_nat__lean_nat_add(c0, c6);
-      };
-      const x = c1(c0);
-      const x = inline:bigint_nat__lean_nat_add(c3, c0);
-      m0 = { tag: 1, _1: c0 };
+      m0 = { tag: 1, _1: inline:bigint_nat__lean_nat_add(c0, $k2((x) => {
+        return inline:bigint_nat__lean_nat_add(c0, c5);
+      })) };
       next;
     }
   }

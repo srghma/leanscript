@@ -14,13 +14,11 @@
 export const test2 = (a) => {
   if (a < 1n) {
     return a;
-  } else if (1n < a) {
-    return a;
-  } else if (a === 1n) {
-    return 1n;
-  } else {
-    return 0n;
   }
+  if (1n < a) {
+    return a;
+  }
+  return a === 1n ? 1n : 0n;
 };
 
 /**
@@ -32,13 +30,11 @@ export const test3 = (a) => {
   const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === f$2) {
     return f$1;
-  } else if (f$3 === f$2) {
-    return f$1;
-  } else if (f$1 === f$3) {
-    return f$3;
-  } else {
-    return f$2;
   }
+  if (f$3 === f$2) {
+    return f$1;
+  }
+  return f$1 === f$3 ? f$3 : f$2;
 };
 
 /**
@@ -50,65 +46,64 @@ export const test3 = (a) => {
 export const test4 = (a, a1) => {
   const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1n) {
-    const { _1: f$4, _2: f$5, _3: f$6 } = a1;
+    const { _1: f$4, _3: f$5 } = a1;
     if (f$4 === 1n) {
       return 1n;
-    } else if (f$4 === 2n) {
+    }
+    if (f$4 === 2n) {
       return 2n;
-    } else if (f$4 === 3n) {
+    }
+    if (f$4 === 3n) {
       return 3n;
-    } else if (f$4 === 4n) {
+    }
+    if (f$4 === 4n) {
       return 4n;
-    } else if (f$4 === 5n) {
+    }
+    if (f$4 === 5n) {
       return 5n;
-    } else {
-      return 11n + f$3 + f$6;
     }
-  } else if (f$1 === 2n) {
-    const { _1: f$7, _2: f$8, _3: f$9 } = a1;
-    if (f$7 === 2n) {
-      return 2n;
-    } else if (f$7 === 3n) {
-      return 3n;
-    } else if (f$7 === 1n) {
-      return 6n;
-    } else if (f$7 === 4n) {
-      if (f$3 === f$8) {
-        return 7n;
-      } else if (f$3 < f$8) {
-        return 8n;
-      } else {
-        return 9n;
-      }
-    } else {
-      return 11n + f$3 + f$9;
-    }
-  } else {
-    const { _1: f$10, _2: f$11, _3: f$12 } = a1;
-    if (f$10 === 2n) {
-      return 2n;
-    } else if (f$10 === 3n) {
-      return 3n;
-    } else if (f$10 === 4n) {
-      if (f$3 === f$11) {
-        return 7n;
-      } else if (f$3 < f$11) {
-        return 8n;
-      } else {
-        return 9n;
-      }
-    } else if (f$10 === 1n) {
-      if (f$12 === 10n) {
-        if (f$2 === 2n) {
-          return 10n;
-        } else {
-          return 11n + f$3 + 10n;
-        }
-      } else {
-        return 11n + f$3 + f$12;
-      }
-    } else {
-      return 11n + f$3 + f$12;
-    }
+    return 11n + f$3 + f$5;
   }
+  if (f$1 === 2n) {
+    const { _1: f$6, _2: f$7, _3: f$8 } = a1;
+    if (f$6 === 2n) {
+      return 2n;
+    }
+    if (f$6 === 3n) {
+      return 3n;
+    }
+    if (f$6 === 1n) {
+      return 6n;
+    }
+    if (f$6 === 4n) {
+      if (f$3 === f$7) {
+        return 7n;
+      }
+      return f$3 < f$7 ? 8n : 9n;
+    }
+    return 11n + f$3 + f$8;
+  }
+  const { _1: f$9, _2: f$10, _3: f$11 } = a1;
+  if (f$9 === 2n) {
+    return 2n;
+  }
+  if (f$9 === 3n) {
+    return 3n;
+  }
+  if (f$9 === 4n) {
+    if (f$3 === f$10) {
+      return 7n;
+    }
+    return f$3 < f$10 ? 8n : 9n;
+  }
+  if (f$9 === 1n) {
+    if (f$11 === 10n) {
+      if (f$2 === 2n) {
+        return 10n;
+      }
+      return 11n + f$3 + 10n;
+    }
+    return 11n + f$3 + f$11;
+  }
+  return 11n + f$3 + f$11;
 };

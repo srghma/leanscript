@@ -9,7 +9,7 @@ val k1 [1] : ((Lazy (Int × Int × Int)) → (Int → Int)) := fun x2 [ω] : (La
     if lean_int_dec_eq(x4, 42) then
       ret lean_int_add(x4, 1)
     else
-      let ⟨f6 [ω] : Int, f7 [ω] : Int, f8 [ω] : Int⟩ := x5
+      let ⟨f6 [0] : Int, f7 [0] : Int, f8 [1] : Int⟩ := x5
       ret f8
   ret k3
 ret k1

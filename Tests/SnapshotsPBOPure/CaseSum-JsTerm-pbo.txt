@@ -14,7 +14,7 @@ export const test1 = (v : ({ tag: 0, _1: uint53(number) } | { tag: 1, _1: uint53
         return "3";
       }
     }
-  case 1 { _1: f }:
+  case 1 {  }:
     return "4";
   }
 };

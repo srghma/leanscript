@@ -11,22 +11,20 @@ export const test1 = (x, y) => {
   if (x === 1n) {
     if (y === 1n) {
       return "1.1";
-    } else if (y === 2n) {
-      return "1.2";
-    } else if (y === 3n) {
-      return "1.3";
-    } else if (y === 4n) {
-      return "_.4";
-    } else if (y === 5n) {
-      return "1.5";
-    } else {
-      return "_._";
     }
-  } else if (y === 4n) {
-    return "_.4";
-  } else if (y === 2n) {
-    return "_.2";
-  } else {
-    return "_._";
+    if (y === 2n) {
+      return "1.2";
+    }
+    if (y === 3n) {
+      return "1.3";
+    }
+    if (y === 4n) {
+      return "_.4";
+    }
+    return y === 5n ? "1.5" : "_._";
   }
+  if (y === 4n) {
+    return "_.4";
+  }
+  return y === 2n ? "_.2" : "_._";
 };

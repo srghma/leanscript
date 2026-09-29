@@ -29,20 +29,11 @@ export const test4 = (b) => [1, 2, ...b];
 export const test5 = (n) => {
   let acc$1 = { tag: 1, _1: [] };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 0) {
+    if (acc$1.tag !== 0) {
       const { _1: f$3 } = acc$1;
-      acc$1 = { tag: 0, _1: f$3 };
-    } else {
-      const { _1: f$4 } = acc$1;
-      const x$5 = [...f$4, i$2, uint53__lean_nat_mul(i$2, i$2)];
-      acc$1 = { tag: 1, _1: x$5 };
+      acc$1 = { tag: 1, _1: [...f$3, i$2, uint53__lean_nat_mul(i$2, i$2)] };
     }
   }
-  if (acc$1.tag === 0) {
-    const { _1: f$6 } = acc$1;
-    return f$6;
-  } else {
-    const { _1: f$7 } = acc$1;
-    return f$7;
-  }
+  const { _1: f$4 } = acc$1;
+  return f$4;
 };

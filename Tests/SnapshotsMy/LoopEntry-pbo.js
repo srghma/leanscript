@@ -23,16 +23,10 @@ export const messages = () => ["one", "two", "three"];
  * @returns {uint53(number)}
  */
 export const countUp = (unused, step, n, acc) => {
-  const k$1 = $k1;
-  let acc$2 = k$1;
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    const a$4 = acc$2;
-    const k$7 = (x$5) => {
-      const x$6 = uint53__lean_nat_add(x$5, step);
-      return a$4(x$6);
-    };
-    acc$2 = k$7;
+  let acc$1 = $k1;
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (x$4) => a$3(uint53__lean_nat_add(x$4, step));
   }
-  const x$8 = acc$2;
-  return x$8(acc);
+  return acc$1(acc);
 };

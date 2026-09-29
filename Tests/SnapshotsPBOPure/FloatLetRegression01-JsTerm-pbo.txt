@@ -3,11 +3,5 @@
 
 // test
 export const test = (f : (int53(number)) => int53(number)) : { _1: int53(number), _2: int53(number), _3: int53(number) } => {
-  const x = 1;
-  const x = c1(c0);
-  const x = 2;
-  const x = c3(c0);
-  const x = 2;
-  const x = c5(c0);
-  return { _1: c4, _2: c2, _3: c0 };
+  return { _1: c0(1), _2: c0(2), _3: c0(2) };
 };

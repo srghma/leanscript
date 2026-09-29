@@ -6,10 +6,4 @@
  * @param {boolean} a
  * @returns {string}
  */
-export const test1 = (a) => {
-  if (a) {
-    return "1";
-  } else {
-    return "2";
-  }
-};
+export const test1 = (a) => (a ? "1" : "2");

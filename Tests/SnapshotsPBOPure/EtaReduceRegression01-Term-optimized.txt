@@ -8,6 +8,6 @@ val k1 [1] : ((• | [String]) → String) := fun x2 [1] : (• | [String]) => (
   case x2 of
   | ctor#0() =>
     ret ""
-  | ctor#1(f3 [ω] : String) =>
+  | ctor#1(f3 [1] : String) =>
     ret f3
 ret k1

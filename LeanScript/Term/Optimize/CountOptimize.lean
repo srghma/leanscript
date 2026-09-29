@@ -454,8 +454,10 @@ theorem Term.numCalls_optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
     {js : JCtx ks} {o : Lvl} (t : Term Δ d Φ Γ τ js o) :
     t.optimize.numCalls ≤ t.numCalls := by
   have h1 := Term.numCalls_simp t
-  have h2 := Term.numCalls_cseWalk t.simp
-  have h3 := Term.numCalls_dce t.simp.cseWalk
+  have h2 := Term.numCalls_widenFields t.simp
+  have h3 := Term.numCalls_reuseFields t.simp.widenFields []
+  have h4 := Term.numCalls_cseWalk (t.simp.widenFields.reuseFields [])
+  have h5 := Term.numCalls_dce (t.simp.widenFields.reuseFields []).cseWalk
   simp only [Term.optimize]; omega
 
 /-- Running the optimiser any number of times never adds calls either. -/

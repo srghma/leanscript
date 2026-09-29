@@ -10,10 +10,10 @@
 -- eval : ExprF Int → Int
 val k1 [1] : (([Int] | [Int, Int] | [Int, Int]) → Int) := fun x2 [1] : ([Int] | [Int, Int] | [Int, Int]) => (closed)
   case x2 of
-  | ctor#0(f3 [ω] : Int) =>
+  | ctor#0(f3 [1] : Int) =>
     ret f3
-  | ctor#1(f4 [ω] : Int, f5 [ω] : Int) =>
+  | ctor#1(f4 [1] : Int, f5 [1] : Int) =>
     ret lean_int_add(f4, f5)
-  | ctor#2(f6 [ω] : Int, f7 [ω] : Int) =>
+  | ctor#2(f6 [1] : Int, f7 [1] : Int) =>
     ret lean_int_mul(f6, f7)
 ret k1

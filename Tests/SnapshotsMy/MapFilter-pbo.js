@@ -18,8 +18,6 @@ export const test5 = (a) => {
   for (const e$2 of a) {
     if (4 < e$2) {
       acc$1 = array__lean_array_push_mutable(acc$1, e$2);
-    } else {
-      acc$1 = acc$1;
     }
   }
   return acc$1;

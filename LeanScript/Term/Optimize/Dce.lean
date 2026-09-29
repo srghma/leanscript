@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Rename.Eval
 public import LeanScript.Term.Optimize.Occ
+public import LeanScript.Term.Optimize.Reannot
 
 @[expose] public section
 
@@ -62,6 +63,31 @@ def Body.countParam {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o :
     Body Δ d Φ Γ bs τ o → Usage01ω
   | .closed t => t.countU 0
   | .opened t _ => t.countU 0
+
+/-- The fields `ts` bound in front of `b` (with usages `us`), re-annotated with their counted
+    usages (`Term.countFields`); unchanged when the renaming fails. -/
+def Term.reannotFields {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} (ts : List (Ty ks)) (us : List Usage01ω)
+    (b : Term Δ d Φ (UCtx.annot d ts us ++ Γ) τ js o) :
+    (us' : List Usage01ω) × Term Δ d Φ (UCtx.annot d ts us' ++ Γ) τ js o :=
+  let us' := b.countFields ts.length
+  match b.rename KRen.id (URen.reannot d ts us us') JRen.id with
+  | some b' => ⟨us', b'⟩
+  | none => ⟨us, b⟩
+
+theorem Term.reannotFields_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
+    {js : JCtx ks} {o : Lvl} (ts : List (Ty ks)) (us : List Usage01ω)
+    (b : Term Δ d Φ (UCtx.annot d ts us ++ Γ) τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) (v : DenList (DSig.refDen Δ) ts) :
+    (Term.reannotFields ts us b).2.eval κ
+        (Tuple.append (UEnv.ofDL d ts (Term.reannotFields ts us b).1 v) ρ) jκ =
+      b.eval κ (Tuple.append (UEnv.ofDL d ts us v) ρ) jκ := by
+  dsimp only [Term.reannotFields]
+  cases hb : b.rename KRen.id (URen.reannot d ts us (b.countFields ts.length)) JRen.id with
+  | none => rfl
+  | some b' =>
+      exact Term.rename_eval (KRen.Agree.id _) (URen.Agree.reannot ρ d ts us _ v)
+        (JRen.Agree.id _) b hb
 
 mutual
 /-- Dead-code elimination in a value. -/
@@ -128,7 +154,9 @@ def Term.dce : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} 
         match b.rename KRen.id (URen.reuse (n.toUsage1ω hn).toUsage01ω) JRen.id with
         | some b' => .letE (n.toUsage1ω hn) c b'
         | none => .letE u c b
-  | _, _, _, _, _, _, .record_casesOn us n b => .record_casesOn us n b.dce
+  | _, _, _, _, _, _, .record_casesOn (t := t) (fs := fs) us n b =>
+      let r := Term.reannotFields (t :: fs.toList) us b.dce
+      .record_casesOn r.1 n r.2
   | _, _, _, _, _, _, .branch br => .branch br.dce
   | _, _, _, _, _, _, .jump j e => .jump j e
 /-- Dead-code elimination in a branch; a join point that is never jumped to is dropped. -/
@@ -158,8 +186,13 @@ def Branch.dce : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks
 def Branches.dce : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : List Bool} →
     {cs : Ctors ks bs} → {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} →
     Branches Δ d Φ Γ cs τ js o → Branches Δ d Φ Γ cs τ js o
-  | _, _, _, _, _, _, _, _, .two us₁ us₂ b₁ b₂ => .two us₁ us₂ b₁.dce b₂.dce
-  | _, _, _, _, _, _, _, _, .cons us b bs => .cons us b.dce bs.dce
+  | _, _, _, _, _, _, _, _, .two (c₁ := c₁) (c₂ := c₂) us₁ us₂ b₁ b₂ =>
+      let r₁ := Term.reannotFields c₁.binds us₁ b₁.dce
+      let r₂ := Term.reannotFields c₂.binds us₂ b₂.dce
+      .two r₁.1 r₂.1 r₁.2 r₂.2
+  | _, _, _, _, _, _, _, _, .cons (c := c) us b bs =>
+      let r := Term.reannotFields c.binds us b.dce
+      .cons r.1 r.2 bs.dce
 end
 
 /-! ## `dce` preserves the value -/
@@ -268,7 +301,7 @@ theorem Term.dce_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ 
           simp only [Term.dce_eval b, Comp.dce_eval c]
         · simp only [Term.eval, Term.dce_eval b, Comp.dce_eval c]
   | _, _, _, _, _, _, .record_casesOn us n b, κ, ρ, jκ => by
-      simp only [Term.dce, Term.eval, Term.dce_eval b]
+      simp only [Term.dce, Term.eval, Term.reannotFields_eval, Term.dce_eval b]
   | _, _, _, _, _, _, .branch br, κ, ρ, jκ => by
       simp only [Term.dce, Term.eval, Branch.dce_eval br]
   | _, _, _, _, _, _, .jump _ _, _, _, _ => rfl
@@ -314,9 +347,11 @@ theorem Branches.dce_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → 
     (br : Branches Δ d Φ Γ cs τ js o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
       ∀ x, br.dce.eval κ ρ jκ x = br.eval κ ρ jκ x
   | _, _, _, _, _, _, _, _, .two us₁ us₂ b₁ b₂, κ, ρ, jκ, x => by
-      simp only [Branches.dce, Branches.eval, Term.dce_eval b₁, Term.dce_eval b₂]
+      simp only [Branches.dce, Branches.eval, Term.reannotFields_eval, Term.dce_eval b₁,
+        Term.dce_eval b₂]
   | _, _, _, _, _, _, _, _, .cons us b bs, κ, ρ, jκ, x => by
-      simp only [Branches.dce, Branches.eval, Term.dce_eval b, Branches.dce_eval bs]
+      simp only [Branches.dce, Branches.eval, Term.reannotFields_eval, Term.dce_eval b,
+        Branches.dce_eval bs]
   termination_by structural _ _ _ _ _ _ _ _ x _ _ _ _ => x
 end
 

@@ -6,6 +6,5 @@
 // test
 export const test = (f : (int(bigint)) => int(bigint), y : int(bigint)) : { _1: int(bigint), _2: int(bigint) } => {
   const x = c1(c0);
-  const x = inline:bigint_int__lean_int_add(c0, 1n);
-  return { _1: c0, _2: inline:bigint_int__lean_int_sub(c1, 2n) };
+  return { _1: inline:bigint_int__lean_int_add(c0, 1n), _2: inline:bigint_int__lean_int_sub(c0, 2n) };
 };

@@ -14,36 +14,25 @@ const $k1 : (enum4@0) => nat(bigint) = (x) => {
   }
 };
 const $k2 : (enum4@0) => boolean = (x) => {
-  const k = $k1;
-  const x = c0(c1);
-  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(2n, c0);
+  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(2n, $k1(c0));
 };
 const $k3 : (enum4@0, enum4@0) => boolean = (x, x) => {
-  const k = $k1;
-  const x = c0(c2);
-  const k = $k1;
-  const x = c0(c3);
-  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, c0);
+  const x = $k1(c1);
+  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, $k1(c1));
 };
 
 // instBEqTestEnum.beq
 export const instBEqTestEnum$beq = (x : enum4@0, y : enum4@0) : boolean => {
-  const k = $k1;
-  const x = c0(c2);
-  const k = $k1;
-  const x = c0(c3);
-  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, c0);
+  const x = $k1(c1);
+  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, $k1(c1));
 };
 
 // test1
 export const test1 = (a : enum4@0) : boolean => {
-  const k = $k2;
-  return c0(c1);
+  return $k2(c0);
 };
 
 // test2
 export const test2 = (a : enum4@0) : boolean => {
-  const k = $k3;
-  const x = 2;
-  return c1(c2, c0);
+  return $k3(c0, 2);
 };

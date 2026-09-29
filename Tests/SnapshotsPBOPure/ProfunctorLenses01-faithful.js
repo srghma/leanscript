@@ -17,7 +17,7 @@
  * @returns {int(bigint)}
  */
 export const test1 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$1 } = a;
   return f$1;
 };
 
@@ -27,6 +27,6 @@ export const test1 = (a) => {
  * @returns {int(bigint)}
  */
 export const test2 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
+  const { _1: f$1 } = a;
   return f$1;
 };

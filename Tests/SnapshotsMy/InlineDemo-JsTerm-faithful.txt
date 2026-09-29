@@ -20,12 +20,8 @@ export const bar = () : nat(bigint) => {
 
 // useScale
 export const useScale = (n : nat(bigint)) : nat(bigint) => {
-  const k = $k1;
-  const x = c0(c1);
-  const k = $k1;
-  const x = inline:bigint_nat__lean_nat_add(c3, 1n);
-  const x = c1(c0);
-  return inline:bigint_nat__lean_nat_add(c3, c0);
+  const x = $k1(c0);
+  return inline:bigint_nat__lean_nat_add(c0, $k1(inline:bigint_nat__lean_nat_add(c1, 1n)));
 };
 
 // triple
@@ -35,10 +31,6 @@ export const triple = (a : nat(bigint)) : nat(bigint) => {
 
 // useTriple
 export const useTriple = (n : nat(bigint)) : nat(bigint) => {
-  const k = $k2;
-  const x = c0(c1);
-  const k = $k2;
-  const x = inline:bigint_nat__lean_nat_add(c3, 1n);
-  const x = c1(c0);
-  return inline:bigint_nat__lean_nat_add(c3, c0);
+  const x = $k2(c0);
+  return inline:bigint_nat__lean_nat_add(c0, $k2(inline:bigint_nat__lean_nat_add(c1, 1n)));
 };

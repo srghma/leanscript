@@ -11,9 +11,9 @@ ret "b"
 -- test1 : Int ⊕ Int → Int
 val k1 [1] : (([Int] | [Int]) → Int) := fun x2 [1] : ([Int] | [Int]) => (closed)
   case x2 of
-  | ctor#0(f3 [ω] : Int) =>
+  | ctor#0(f3 [1] : Int) =>
     ret f3
-  | ctor#1(f4 [ω] : Int) =>
+  | ctor#1(f4 [1] : Int) =>
     ret f4
 ret k1
 
@@ -54,7 +54,7 @@ val k1 [1] : (String → Int) := fun x2 [1] : String => (closed)
   case x5 of
   | ctor#0() =>
     ret 0
-  | ctor#1(f6 [ω] : (enum 4 @0)) =>
+  | ctor#1(f6 [1] : (enum 4 @0)) =>
     case f6 of
     | enum#0 =>
       ret 1

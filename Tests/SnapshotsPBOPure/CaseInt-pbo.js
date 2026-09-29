@@ -9,11 +9,9 @@
 export const test1 = (a) => {
   if (a === 1) {
     return "1";
-  } else if (a === 2) {
-    return "2";
-  } else if (a === 3) {
-    return "3";
-  } else {
-    return "catch";
   }
+  if (a === 2) {
+    return "2";
+  }
+  return a === 3 ? "3" : "catch";
 };

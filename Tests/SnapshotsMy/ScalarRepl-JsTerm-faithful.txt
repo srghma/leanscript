@@ -8,26 +8,18 @@ import { bigint_nat__lean_nat_sub } from "runtime.js";
 const $k1 : ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) }) = { tag: 1, _1: 0n };
 const $k2 : ({ _1: nat(bigint), _2: nat(bigint) }) => nat(bigint) = (x) => {
   const { _1: f, _2: f } = c0;
-  const { _1: f, _2: f } = c2;
-  if (inline:bigint_nat__lean_nat_dec_lt(c3, c0)) {
-    const { _1: f, _2: f } = c4;
-    const { _1: f, _2: f } = c6;
-    return bigint_nat__lean_nat_sub(c2, c1);
+  if (inline:bigint_nat__lean_nat_dec_lt(c1, c0)) {
+    return bigint_nat__lean_nat_sub(c0, c1);
   } else {
-    const { _1: f, _2: f } = c4;
-    const { _1: f, _2: f } = c6;
-    return bigint_nat__lean_nat_sub(c3, c0);
+    return bigint_nat__lean_nat_sub(c1, c0);
   }
 };
 const $k3 : ({ _1: nat(bigint), _2: nat(bigint) }) => { _1: nat(bigint), _2: nat(bigint) } = (x) => {
   const { _1: f, _2: f } = c0;
-  const { _1: f, _2: f } = c2;
-  if (inline:bigint_nat__lean_nat_dec_lt(c3, c0)) {
-    return c4;
+  if (inline:bigint_nat__lean_nat_dec_lt(c1, c0)) {
+    return c2;
   } else {
-    const { _1: f, _2: f } = c4;
-    const { _1: f, _2: f } = c6;
-    return { _1: c2, _2: c1 };
+    return { _1: c0, _2: c1 };
   }
 };
 const $k4 : (({ tag: 0 } | { tag: 1, _1: { _1: nat(bigint), _2: nat(bigint) } })) => nat(bigint) = (x) => {
@@ -45,12 +37,10 @@ export const test1 = (n : nat(bigint)) : nat(bigint) => {
   let acc = $k1;
   for (i < c0) {
     switch (m0.tag) {
-    case 0 { _1: f }:
-      m0 = { tag: 0, _1: c0 };
+    case 0 {  }:
       next;
     case 1 { _1: f }:
-      const x = inline:bigint_nat__lean_nat_add(c0, c1);
-      m0 = { tag: 1, _1: c0 };
+      m0 = { tag: 1, _1: inline:bigint_nat__lean_nat_add(c0, c1) };
       next;
     }
   }
@@ -67,19 +57,16 @@ export const test2 = (n : nat(bigint)) : nat(bigint) => {
   let acc = $k1;
   for (i < c0) {
     switch (m0.tag) {
-    case 0 { _1: f }:
-      m0 = { tag: 0, _1: c0 };
+    case 0 {  }:
       next;
     case 1 { _1: f }:
       let acc = { tag: 1, _1: c0 };
       for (i < c1) {
         switch (m0.tag) {
-        case 0 { _1: f }:
-          m0 = { tag: 0, _1: c0 };
+        case 0 {  }:
           next;
         case 1 { _1: f }:
-          const x = inline:bigint_nat__lean_nat_add(c0, c1);
-          m0 = { tag: 1, _1: c0 };
+          m0 = { tag: 1, _1: inline:bigint_nat__lean_nat_add(c0, c1) };
           next;
         }
       }
@@ -105,26 +92,16 @@ export const test2 = (n : nat(bigint)) : nat(bigint) => {
 
 // test3
 export const test3 = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  const k = $k2;
-  const x = { _1: c2, _2: c1 };
-  const x = c1(c0);
-  const k = $k2;
-  const x = { _1: c4, _2: inline:bigint_nat__lean_nat_add(c5, 1n) };
-  const x = c1(c0);
-  return inline:bigint_nat__lean_nat_add(c3, c0);
+  const x = $k2({ _1: c1, _2: c0 });
+  return inline:bigint_nat__lean_nat_add(c0, $k2({ _1: c1, _2: inline:bigint_nat__lean_nat_add(c2, 1n) }));
 };
 
 // test4
 export const test4 = (a : nat(bigint), b : nat(bigint)) : { _1: nat(bigint), _2: nat(bigint) } => {
-  const k = $k3;
-  const x = { _1: c2, _2: c1 };
-  return c1(c0);
+  return $k3({ _1: c1, _2: c0 });
 };
 
 // test5
 export const test5 = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  const k = $k4;
-  const x = { tag: 1, _1: { _1: c2, _2: c1 } };
-  const x = c1(c0);
-  return inline:bigint_nat__lean_nat_add(c0, 0n);
+  return inline:bigint_nat__lean_nat_add($k4({ tag: 1, _1: { _1: c1, _2: c0 } }), 0n);
 };

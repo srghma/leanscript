@@ -13,7 +13,7 @@
  * @returns {int(bigint)}
  */
 export const test1 = (v, b) => {
-  const { _1: f$1, _2: f$2 } = v;
+  const { _1: f$1 } = v;
   return f$1 + b;
 };
 
@@ -24,7 +24,7 @@ export const test1 = (v, b) => {
  * @returns {int(bigint)}
  */
 export const test2 = (v, a) => {
-  const { _1: f$1, _2: f$2 } = v;
+  const { _1: f$1 } = v;
   return f$1 + a;
 };
 
@@ -35,6 +35,6 @@ export const test2 = (v, a) => {
  * @returns {int(bigint)}
  */
 export const test3 = (v, p1) => {
-  const { _1: f$1, _2: f$2 } = v;
+  const { _1: f$1 } = v;
   return f$1 + p1;
 };

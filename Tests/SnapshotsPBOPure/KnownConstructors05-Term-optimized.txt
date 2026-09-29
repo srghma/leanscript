@@ -37,7 +37,7 @@ val k1 [1] : (String → Int) := fun x2 [1] : String => (closed)
   case x5 of
   | ctor#0() =>
     ret 0
-  | ctor#1(f6 [ω] : (enum 4 @0)) =>
+  | ctor#1(f6 [1] : (enum 4 @0)) =>
     case f6 of
     | enum#0 =>
       ret 1

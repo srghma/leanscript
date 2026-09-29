@@ -32,10 +32,7 @@ export const test2 = (a, b) =>
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const test3 = (a) => {
-  const x$1 = a.length;
-  return uint53__lean_nat_shiftr(x$1, 1);
-};
+export const test3 = (a) => uint53__lean_nat_shiftr(a.length, 1);
 
 /**
  * `test4`

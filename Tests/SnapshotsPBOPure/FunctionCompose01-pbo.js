@@ -23,57 +23,25 @@ export const g = (x) => "b";
  * @param {string} a
  * @returns {string}
  */
-export const test1 = (a) => {
-  const k$1 = $k1;
-  const k$2 = $k2;
-  const x$3 = k$2(a);
-  return k$1(x$3);
-};
+export const test1 = (a) => $k1($k2(a));
 
 /**
  * `test2`
  * @param {string} a
  * @returns {string}
  */
-export const test2 = (a) => {
-  const k$1 = $k2;
-  const k$2 = $k1;
-  const k$3 = $k2;
-  const x$4 = k$3(a);
-  const x$5 = k$2(x$4);
-  return k$1(x$5);
-};
+export const test2 = (a) => $k2($k1($k2(a)));
 
 /**
  * `test3`
  * @param {string} a
  * @returns {string}
  */
-export const test3 = (a) => {
-  const k$1 = $k1;
-  const k$2 = $k2;
-  const k$3 = $k1;
-  const k$4 = $k2;
-  const x$5 = k$4(a);
-  const x$6 = k$3(x$5);
-  const x$7 = k$2(x$6);
-  return k$1(x$7);
-};
+export const test3 = (a) => $k1($k2($k1($k2(a))));
 
 /**
  * `test4`
  * @param {string} a
  * @returns {string}
  */
-export const test4 = (a) => {
-  const k$1 = $k2;
-  const k$2 = $k1;
-  const k$3 = $k2;
-  const k$4 = $k1;
-  const k$5 = $k2;
-  const x$6 = k$5(a);
-  const x$7 = k$4(x$6);
-  const x$8 = k$3(x$7);
-  const x$9 = k$2(x$8);
-  return k$1(x$9);
-};
+export const test4 = (a) => $k2($k1($k2($k1($k2(a)))));

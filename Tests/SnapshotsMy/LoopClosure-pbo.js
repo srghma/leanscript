@@ -7,13 +7,10 @@ import { uint53__lean_nat_add } from "../../runtime.js";
 
 const $k1 = { tag: 1, _1: 0 };
 const $k2 = (x$1) => {
-  const x$2 = 1;
-  const x$3 = x$1(x$2);
-  const x$4 = 2;
-  const x$5 = x$1(x$4);
-  const x$6 = 3;
-  const x$7 = x$1(x$6);
-  return uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$5), x$7);
+  const x$2 = x$1(1);
+  const x$3 = x$1(2);
+  const x$4 = x$1(3);
+  return uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$4);
 };
 
 /**
@@ -27,22 +24,18 @@ export const test1 = (k, n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      const { _1: f$4 } = a$3;
-      acc$1 = { tag: 0, _1: f$4 };
+      acc$1 = a$3;
     } else {
-      const { _1: f$5 } = a$3;
-      const k$6 = $k2;
-      const k$8 = (x$7) => uint53__lean_nat_add(x$7, k);
-      const x$9 = k$6(k$8);
-      const x$10 = uint53__lean_nat_add(f$5, x$9);
-      acc$1 = { tag: 1, _1: x$10 };
+      const { _1: f$4 } = a$3;
+      acc$1 = {
+        tag: 1,
+        _1: uint53__lean_nat_add(
+          f$4,
+          $k2((x$5) => uint53__lean_nat_add(x$5, k)),
+        ),
+      };
     }
   }
-  if (acc$1.tag === 0) {
-    const { _1: f$11 } = acc$1;
-    return f$11;
-  } else {
-    const { _1: f$12 } = acc$1;
-    return f$12;
-  }
+  const { _1: f$6 } = acc$1;
+  return f$6;
 };

@@ -11,23 +11,18 @@ const $k1 = () => 0;
  * @returns {Array<int53(number)>}
  */
 export const test1 = (fn) => {
-  const x$1 = fn();
-  const k$2 = [1, 2, x$1];
-  if (k$2.length === 3) {
-    return k$2;
-  } else {
-    return [];
+  const k$1 = [1, 2, fn()];
+  if (k$1.length === 3) {
+    return k$1;
   }
+  return [];
 };
 
 /**
  * `fn'`
  * @returns {int53(number)}
  */
-export const fn_ = () => {
-  const f$1 = $k1;
-  return f$1();
-};
+export const fn_ = () => $k1();
 
 /**
  * `extern1`

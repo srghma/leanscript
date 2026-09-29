@@ -8,17 +8,17 @@
 -- test1 : Except Int Int → Option Int
 val k1 [1] : (([Int] | [Int]) → (• | [Int])) := fun x2 [1] : ([Int] | [Int]) => (closed)
   case x2 of
-  | ctor#0(f3 [ω] : Int) =>
+  | ctor#0(f3 [1] : Int) =>
     ret ctor#1(f3)
-  | ctor#1(f4 [ω] : Int) =>
+  | ctor#1(f4 [0] : Int) =>
     ret ctor#0()
 ret k1
 
 -- test2 : Except Int Int → Option Int
 val k1 [1] : (([Int] | [Int]) → (• | [Int])) := fun x2 [1] : ([Int] | [Int]) => (closed)
   case x2 of
-  | ctor#0(f3 [ω] : Int) =>
+  | ctor#0(f3 [1] : Int) =>
     ret ctor#1(f3)
-  | ctor#1(f4 [ω] : Int) =>
+  | ctor#1(f4 [0] : Int) =>
     ret ctor#0()
 ret k1

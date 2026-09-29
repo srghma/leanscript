@@ -10,8 +10,7 @@
  */
 export const test1 = (f, g, a) => {
   const x$1 = f(a);
-  const x$2 = g(a);
-  return x$1 + x$2;
+  return x$1 + g(a);
 };
 
 /**

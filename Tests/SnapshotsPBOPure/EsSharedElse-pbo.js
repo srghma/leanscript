@@ -12,14 +12,8 @@ export const test1 = (a, b, c) => {
   if (a) {
     if (b) {
       return 1;
-    } else if (c) {
-      return 2;
-    } else {
-      return 3;
     }
-  } else if (c) {
-    return 2;
-  } else {
-    return 3;
+    return c ? 2 : 3;
   }
+  return c ? 2 : 3;
 };

@@ -82,7 +82,6 @@ export const test3 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) =>
   if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
     return c1;
   } else {
-    const { _1: f, _2: f } = c2;
     if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
       return c0;
     } else {
@@ -97,7 +96,6 @@ export const test4 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) =>
   if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
     return c1;
   } else {
-    const { _1: f, _2: f } = c2;
     if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
       return c0;
     } else {
@@ -112,7 +110,6 @@ export const test5 = (x : { _1: int(bigint), _2: int(bigint) }) : int(bigint) =>
   if (inline:bigint_int__lean_int_dec_lt(0n, c1)) {
     return c1;
   } else {
-    const { _1: f, _2: f } = c2;
     if (inline:bigint_int__lean_int_dec_lt(0n, c0)) {
       return c0;
     } else {

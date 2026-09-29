@@ -15,8 +15,7 @@ export const test2 = (a : Array<nat(bigint)>, b : Array<nat(bigint)>) : nat(bigi
 
 // test3
 export const test3 = (a : Array<nat(bigint)>) : nat(bigint) => {
-  const x = inline:bigint_nat__lean_array_get_size(c0);
-  return inline:bigint_nat__lean_nat_shiftr(c0, 1n);
+  return inline:bigint_nat__lean_nat_shiftr(inline:bigint_nat__lean_array_get_size(c0), 1n);
 };
 
 // test4

@@ -4,25 +4,16 @@
 const $k1 = (x$1) => {
   if (x$1 === 0) {
     return 0;
-  } else if (x$1 === 1) {
-    return 1;
-  } else if (x$1 === 2) {
-    return 2;
-  } else {
-    return 3;
   }
+  if (x$1 === 1) {
+    return 1;
+  }
+  return x$1 === 2 ? 2 : 3;
 };
-const $k2 = (x$1) => {
-  const k$2 = $k1;
-  const x$3 = k$2(x$1);
-  return 2 === x$3;
-};
+const $k2 = (x$1) => 2 === $k1(x$1);
 const $k3 = (x$1, x$2) => {
-  const k$3 = $k1;
-  const x$4 = k$3(x$1);
-  const k$5 = $k1;
-  const x$6 = k$5(x$2);
-  return x$4 === x$6;
+  const x$3 = $k1(x$1);
+  return x$3 === $k1(x$2);
 };
 
 /**
@@ -32,11 +23,8 @@ const $k3 = (x$1, x$2) => {
  * @returns {boolean}
  */
 export const instBEqTestEnum$beq = (x, y) => {
-  const k$1 = $k1;
-  const x$2 = k$1(x);
-  const k$3 = $k1;
-  const x$4 = k$3(y);
-  return x$2 === x$4;
+  const x$1 = $k1(x);
+  return x$1 === $k1(y);
 };
 
 /**
@@ -44,18 +32,11 @@ export const instBEqTestEnum$beq = (x, y) => {
  * @param {enum4@0} a
  * @returns {boolean}
  */
-export const test1 = (a) => {
-  const k$1 = $k2;
-  return k$1(a);
-};
+export const test1 = (a) => $k2(a);
 
 /**
  * `test2`
  * @param {enum4@0} a
  * @returns {boolean}
  */
-export const test2 = (a) => {
-  const k$1 = $k3;
-  const x$2 = 2;
-  return k$1(a, x$2);
-};
+export const test2 = (a) => $k3(a, 2);

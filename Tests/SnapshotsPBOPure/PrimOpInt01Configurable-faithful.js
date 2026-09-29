@@ -70,13 +70,7 @@ export const TestUInt64$eq = (a, b) => a === b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestUInt64$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestUInt64$ne = (a, b) => a !== b;
 
 /**
  * `TestUInt64.lt`
@@ -163,13 +157,7 @@ export const TestNat$eq = (a, b) => a === b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestNat$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestNat$ne = (a, b) => a !== b;
 
 /**
  * `TestNat.lt`
@@ -249,13 +237,7 @@ export const TestInt64$eq = (a, b) => a === b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt64$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestInt64$ne = (a, b) => a !== b;
 
 /**
  * `TestInt64.lt`
@@ -342,13 +324,7 @@ export const TestInt$eq = (a, b) => a === b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt$ne = (a, b) => {
-  if (a === b) {
-    return false;
-  } else {
-    return true;
-  }
-};
+export const TestInt$ne = (a, b) => a !== b;
 
 /**
  * `TestInt.lt`

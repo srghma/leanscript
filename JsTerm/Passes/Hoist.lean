@@ -2,6 +2,7 @@ module
 
 public import JsTerm.Syntax.Vars
 public import JsTerm.Syntax.Pretty
+public import JsTerm.Passes.Cleanup
 
 @[expose] public section
 
@@ -209,10 +210,14 @@ def collectImports (consts : List JsConst) (funs : List JsFun) : List String :=
   let acc := consts.foldl (fun acc c => c.e.runtimeNames acc) #[]
   (funs.foldl (fun acc f => f.body.runtimeNames acc) acc).toList
 
-/-- A module of the functions `funs`: their constants shared (`hoistConsts`) and the imports
-    they need. -/
+/-- A module of the functions `funs`: their constants shared (`hoistConsts`), the copies of
+    the constants this leaves propagated (`cleanup`), the constants used once right away
+    inlined (`inlineOnce`), and the imports they need. -/
 def mkModule (config : JsConfig) (funs : List JsFun) : JsModule :=
   let (consts, funs) := hoistConsts funs
+  -- hoisting leaves copies of the module constants (`const k$1 = $k1;`)
+  let consts := consts.map fun c => { c with e := inlineOnceExpr (cleanupExpr c.e) }
+  let funs := funs.map fun f => { f with body := inlineOnce (peephole (cleanup f.body)) }
   { config, imports := collectImports consts funs, consts, funs }
 
 end MoreJs

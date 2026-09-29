@@ -10,31 +10,18 @@ export const test1 = (a) => {
   const { _1: f$1, _2: f$2, _3: f$3 } = a;
   if (f$1 === 1) {
     if (f$2 === 2) {
-      if (f$3 === 3) {
-        return "1";
-      } else {
-        return "catch";
-      }
-    } else if (f$2 === 4) {
-      return "2";
-    } else {
-      return "catch";
+      return f$3 === 3 ? "1" : "catch";
     }
-  } else if (f$1 === 4) {
+    return f$2 === 4 ? "2" : "catch";
+  }
+  if (f$1 === 4) {
     if (f$2 === 4) {
       return "2";
-    } else if (f$2 === 5) {
-      if (f$3 === 6) {
-        return "3";
-      } else {
-        return "catch";
-      }
-    } else {
-      return "catch";
     }
-  } else if (f$2 === 4) {
-    return "2";
-  } else {
+    if (f$2 === 5) {
+      return f$3 === 6 ? "3" : "catch";
+    }
     return "catch";
   }
+  return f$2 === 4 ? "2" : "catch";
 };

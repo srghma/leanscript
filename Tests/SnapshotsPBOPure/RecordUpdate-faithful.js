@@ -13,10 +13,9 @@ export const test1 = (fn, val) => {
   const x$1 = fn();
   if (val === 42n) {
     return val + 1n;
-  } else {
-    const { _1: f$2, _2: f$3, _3: f$4 } = x$1;
-    return f$4;
   }
+  const { _3: f$2 } = x$1;
+  return f$2;
 };
 
 /**
@@ -27,6 +26,5 @@ export const test1 = (fn, val) => {
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
-  const x$2 = x$1 + 1n;
-  return { _1: x$2, _2: x$1 - 2n, _3: x$1 };
+  return { _1: x$1 + 1n, _2: x$1 - 2n, _3: x$1 };
 };
