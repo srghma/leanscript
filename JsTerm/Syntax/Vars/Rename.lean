@@ -17,6 +17,8 @@ is valid in every context).
 
 namespace MoreJs
 
+variable {S : JsSig}
+
 /-- A renaming of a context of variables, in a monad `m`. -/
 abbrev JsRenM (m : Type → Type) (Γ Δ : List JsTy) : Type := ∀ {τ : JsTy}, JsMem Γ τ → m (JsMem Δ τ)
 
@@ -41,10 +43,9 @@ end JsRenM
 mutual
 /-- Rename the variables of an expression. -/
 def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
-    (rc : JsRenM m C C') (rm : JsRenM m M M') {τ : JsTy} : JsExpr C M τ → m (JsExpr C' M' τ)
+    (rc : JsRenM m C C') (rm : JsRenM m M M') {τ : JsTy} : JsExpr S C M τ → m (JsExpr S C' M' τ)
   | .cvar x => .cvar <$> rc x
   | .mvar x => .mvar <$> rm x
-  | .global n t => pure (.global n t)
   | .lit l => pure (.lit l)
   | .imported op as => .imported op <$> as.renameM rc rm
   | .inlined op as => .inlined op <$> as.renameM rc rm
@@ -58,18 +59,20 @@ def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
   | .list_mk ps => .list_mk <$> ps.renameM rc rm
   | .cond c a b => return .cond (← c.renameM rc rm) (← a.renameM rc rm) (← b.renameM rc rm)
   | .listOp op as => .listOp op <$> as.renameM rc rm
+  | .fold i e => .fold i <$> e.renameM rc rm
+  | .unfold i e => .unfold i <$> e.renameM rc rm
 
 /-- Rename the variables of arguments. -/
 def JsArgs.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
     (rc : JsRenM m C C') (rm : JsRenM m M M') {σs : List JsTy} :
-    JsArgs C M σs → m (JsArgs C' M' σs)
+    JsArgs S C M σs → m (JsArgs S C' M' σs)
   | .nil => pure .nil
   | .cons a as => return .cons (← a.renameM rc rm) (← as.renameM rc rm)
 
 /-- Rename the variables of the parts of an array literal. -/
 def JsParts.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
     (rc : JsRenM m C C') (rm : JsRenM m M M') {A E : JsTy} :
-    JsParts C M A E → m (JsParts C' M' A E)
+    JsParts S C M A E → m (JsParts S C' M' A E)
   | .nil => pure .nil
   | .elem e rest => return .elem (← e.renameM rc rm) (← rest.renameM rc rm)
   | .spread a rest => return .spread (← a.renameM rc rm) (← rest.renameM rc rm)
@@ -77,7 +80,7 @@ def JsParts.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
 /-- Rename the variables of a block. -/
 def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
     (rc : JsRenM m C C') (rm : JsRenM m M M') {k : JsEnd} :
-    JsBlock C M J k → m (JsBlock C' M' J k)
+    JsBlock S C M J k → m (JsBlock S C' M' J k)
   | .ret e => .ret <$> e.renameM rc rm
   | .next => pure .next
   | .jump j e => .jump j <$> e.renameM rc rm
@@ -93,22 +96,23 @@ def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
   | .join x b rest => return .join x (← b.renameM rc rm) (← rest.renameM (JsRenM.lift rc) rm)
   | .forRange x nt n b rest =>
     return .forRange x nt (← n.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm) (← rest.renameM rc rm)
-  | .lastIter x nt n b rest =>
-    return .lastIter x nt (← n.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm) (← rest.renameM rc rm)
   | .forOf x l xs b rest =>
     return .forOf x l (← xs.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm) (← rest.renameM rc rm)
+  | .funs (τs := τs) xs defs rest =>
+    return .funs xs (← defs.renameM (JsRenM.liftAll τs rc) rm)
+      (← rest.renameM (JsRenM.liftAll τs rc) rm)
 
 /-- Rename the variables of the arms of a case analysis on an enum. -/
 def JsEnumArms.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
     (rc : JsRenM m C C') (rm : JsRenM m M M') {k : JsEnd} {n : Nat} :
-    JsEnumArms C M J k n → m (JsEnumArms C' M' J k n)
+    JsEnumArms S C M J k n → m (JsEnumArms S C' M' J k n)
   | .nil => pure .nil
   | .cons b rest => return .cons (← b.renameM rc rm) (← rest.renameM rc rm)
 
 /-- Rename the variables of the arms of a case analysis on a union. -/
 def JsUnionArms.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
     (rc : JsRenM m C C') (rm : JsRenM m M M') {k : JsEnd} {cs : List (List JsTy)} :
-    JsUnionArms C M J k cs → m (JsUnionArms C' M' J k cs)
+    JsUnionArms S C M J k cs → m (JsUnionArms S C' M' J k cs)
   | .nil => pure .nil
   | .cons (us := us) sel b rest =>
     return .cons sel (← b.renameM (JsRenM.liftAll us rc) rm) (← rest.renameM rc rm)
@@ -121,28 +125,28 @@ def JsRen.id {Γ : List JsTy} : JsRenM Id Γ Γ := fun x => x
 def JsRen.succ {Γ : List JsTy} {σ : JsTy} : JsRenM Id Γ (σ :: Γ) := fun x => JsMem.succ x
 
 /-- An expression under a new constant. -/
-def JsExpr.wkC {C M : List JsTy} {σ τ : JsTy} (e : JsExpr C M τ) : JsExpr (σ :: C) M τ :=
+def JsExpr.wkC {C M : List JsTy} {σ τ : JsTy} (e : JsExpr S C M τ) : JsExpr S (σ :: C) M τ :=
   Id.run (e.renameM JsRen.succ JsRen.id)
 
 /-- Arguments under a new constant. -/
-def JsArgs.wkC {C M σs : List JsTy} {σ : JsTy} (as : JsArgs C M σs) : JsArgs (σ :: C) M σs :=
+def JsArgs.wkC {C M σs : List JsTy} {σ : JsTy} (as : JsArgs S C M σs) : JsArgs S (σ :: C) M σs :=
   Id.run (as.renameM JsRen.succ JsRen.id)
 
 /-- An expression under a new mutable variable. -/
-def JsExpr.wkM {C M : List JsTy} {σ τ : JsTy} (e : JsExpr C M τ) : JsExpr C (σ :: M) τ :=
+def JsExpr.wkM {C M : List JsTy} {σ τ : JsTy} (e : JsExpr S C M τ) : JsExpr S C (σ :: M) τ :=
   Id.run (e.renameM JsRen.id JsRen.succ)
 
 /-- An expression that mentions no variable, in the empty contexts. -/
-def JsExpr.closed? {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) : Option (JsExpr [] [] τ) :=
+def JsExpr.closed? {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) : Option (JsExpr S [] [] τ) :=
   e.renameM (fun _ => none) (fun _ => none)
 
 /-- An expression that mentions no variable, in any contexts. -/
-def JsExpr.embed {C M : List JsTy} {τ : JsTy} (e : JsExpr [] [] τ) : JsExpr C M τ :=
+def JsExpr.embed {C M : List JsTy} {τ : JsTy} (e : JsExpr S [] [] τ) : JsExpr S C M τ :=
   Id.run (e.renameM (fun x => nomatch x) (fun x => nomatch x))
 
 /-- A block that mentions no join point bound outside it, under join points `J`. -/
 def JsBlock.embedJ? {C M J : List JsTy} {k : JsEnd} (J' : List JsTy) :
-    JsBlock C M J k → Option (JsBlock C M J' k) :=
+    JsBlock S C M J k → Option (JsBlock S C M J' k) :=
   fun b => if h : J = J' then some (h ▸ b) else none
 
 end MoreJs

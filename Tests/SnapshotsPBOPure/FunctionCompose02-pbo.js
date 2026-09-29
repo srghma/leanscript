@@ -8,7 +8,11 @@
  * @param {int53(number)} p2
  * @returns {int53(number)}
  */
-export const test1 = (f, g, p2) => f(g(p2));
+export const test1 = (f, g, p2) => {
+  const x$1 = g(p2);
+  const x$2 = f(x$1);
+  return x$2;
+};
 
 /**
  * `test2`
@@ -17,7 +21,12 @@ export const test1 = (f, g, p2) => f(g(p2));
  * @param {int53(number)} p2
  * @returns {int53(number)}
  */
-export const test2 = (f, g, p2) => g(f(g(p2)));
+export const test2 = (f, g, p2) => {
+  const x$1 = g(p2);
+  const x$2 = f(x$1);
+  const x$3 = g(x$2);
+  return x$3;
+};
 
 /**
  * `test3`
@@ -26,7 +35,13 @@ export const test2 = (f, g, p2) => g(f(g(p2)));
  * @param {int53(number)} p2
  * @returns {int53(number)}
  */
-export const test3 = (f, g, p2) => f(g(f(g(p2))));
+export const test3 = (f, g, p2) => {
+  const x$1 = g(p2);
+  const x$2 = f(x$1);
+  const x$3 = g(x$2);
+  const x$4 = f(x$3);
+  return x$4;
+};
 
 /**
  * `test4`
@@ -35,4 +50,11 @@ export const test3 = (f, g, p2) => f(g(f(g(p2))));
  * @param {int53(number)} p2
  * @returns {int53(number)}
  */
-export const test4 = (f, g, p2) => g(f(g(f(g(p2)))));
+export const test4 = (f, g, p2) => {
+  const x$1 = g(p2);
+  const x$2 = f(x$1);
+  const x$3 = g(x$2);
+  const x$4 = f(x$3);
+  const x$5 = g(x$4);
+  return x$5;
+};

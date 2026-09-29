@@ -2,9 +2,9 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  bigint_nat__lean_array_fswap_immutable,
-  bigint_nat__lean_array_fset_immutable,
   array__lean_array_push_immutable,
+  bigint_nat__lean_array_fset_immutable,
+  bigint_nat__lean_array_fswap_immutable,
   typedArray__lean_array_pop_immutable,
   typedArray__lean_array_push_immutable,
 } from "../../runtime.js";
@@ -14,16 +14,11 @@ import {
  * @param {nat(bigint)} x
  * @returns {Array<nat(bigint)>}
  */
-export const test1 = (x) =>
-  bigint_nat__lean_array_fswap_immutable(
-    bigint_nat__lean_array_fset_immutable(
-      array__lean_array_push_immutable([x, 1n, 2n], 3n),
-      0n,
-      7n,
-    ),
-    1n,
-    2n,
-  );
+export const test1 = (x) => {
+  const x$1 = array__lean_array_push_immutable([x, 1n, 2n], 3n);
+  const x$2 = bigint_nat__lean_array_fset_immutable(x$1, 0n, 7n);
+  return bigint_nat__lean_array_fswap_immutable(x$2, 1n, 2n);
+};
 
 /**
  * `test2`

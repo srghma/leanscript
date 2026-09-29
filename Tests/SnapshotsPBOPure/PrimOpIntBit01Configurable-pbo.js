@@ -41,7 +41,7 @@ import {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$land = uint53__lean_uint64_land;
+export const TestUInt64$land = (a, b) => uint53__lean_uint64_land(a, b);
 
 /**
  * `TestUInt64.lor`
@@ -49,7 +49,7 @@ export const TestUInt64$land = uint53__lean_uint64_land;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$lor = uint53__lean_uint64_lor;
+export const TestUInt64$lor = (a, b) => uint53__lean_uint64_lor(a, b);
 
 /**
  * `TestUInt64.shiftLeft`
@@ -57,7 +57,8 @@ export const TestUInt64$lor = uint53__lean_uint64_lor;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$shiftLeft = uint53__lean_uint64_shift_left;
+export const TestUInt64$shiftLeft = (a, b) =>
+  uint53__lean_uint64_shift_left(a, b);
 
 /**
  * `TestUInt64.shiftRight`
@@ -65,7 +66,8 @@ export const TestUInt64$shiftLeft = uint53__lean_uint64_shift_left;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$shiftRight = uint53__lean_uint64_shift_right;
+export const TestUInt64$shiftRight = (a, b) =>
+  uint53__lean_uint64_shift_right(a, b);
 
 /**
  * `TestUInt64.xor`
@@ -73,14 +75,14 @@ export const TestUInt64$shiftRight = uint53__lean_uint64_shift_right;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$xor = uint53__lean_uint64_xor;
+export const TestUInt64$xor = (a, b) => uint53__lean_uint64_xor(a, b);
 
 /**
  * `TestUInt64.complement`
  * @param {uint53(number)} a
  * @returns {uint53(number)}
  */
-export const TestUInt64$complement = uint53__lean_uint64_complement;
+export const TestUInt64$complement = (a) => uint53__lean_uint64_complement(a);
 
 /**
  * `TestNat.land`
@@ -88,7 +90,7 @@ export const TestUInt64$complement = uint53__lean_uint64_complement;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$land = uint53__lean_nat_land;
+export const TestNat$land = (a, b) => uint53__lean_nat_land(a, b);
 
 /**
  * `TestNat.lor`
@@ -96,7 +98,7 @@ export const TestNat$land = uint53__lean_nat_land;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$lor = uint53__lean_nat_lor;
+export const TestNat$lor = (a, b) => uint53__lean_nat_lor(a, b);
 
 /**
  * `TestNat.shiftLeft`
@@ -104,7 +106,7 @@ export const TestNat$lor = uint53__lean_nat_lor;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$shiftLeft = uint53__lean_nat_shiftl;
+export const TestNat$shiftLeft = (a, b) => uint53__lean_nat_shiftl(a, b);
 
 /**
  * `TestNat.shiftRight`
@@ -112,7 +114,7 @@ export const TestNat$shiftLeft = uint53__lean_nat_shiftl;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$shiftRight = uint53__lean_nat_shiftr;
+export const TestNat$shiftRight = (a, b) => uint53__lean_nat_shiftr(a, b);
 
 /**
  * `TestNat.xor`
@@ -120,7 +122,7 @@ export const TestNat$shiftRight = uint53__lean_nat_shiftr;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$xor = uint53__lean_nat_lxor;
+export const TestNat$xor = (a, b) => uint53__lean_nat_lxor(a, b);
 
 /**
  * `TestInt64.land`
@@ -128,7 +130,7 @@ export const TestNat$xor = uint53__lean_nat_lxor;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$land = int53__lean_int64_land;
+export const TestInt64$land = (a, b) => int53__lean_int64_land(a, b);
 
 /**
  * `TestInt64.lor`
@@ -136,7 +138,7 @@ export const TestInt64$land = int53__lean_int64_land;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$lor = int53__lean_int64_lor;
+export const TestInt64$lor = (a, b) => int53__lean_int64_lor(a, b);
 
 /**
  * `TestInt64.shiftLeft`
@@ -144,7 +146,7 @@ export const TestInt64$lor = int53__lean_int64_lor;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$shiftLeft = int53__lean_int64_shift_left;
+export const TestInt64$shiftLeft = (a, b) => int53__lean_int64_shift_left(a, b);
 
 /**
  * `TestInt64.shiftRight`
@@ -152,7 +154,8 @@ export const TestInt64$shiftLeft = int53__lean_int64_shift_left;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$shiftRight = int53__lean_int64_shift_right;
+export const TestInt64$shiftRight = (a, b) =>
+  int53__lean_int64_shift_right(a, b);
 
 /**
  * `TestInt64.xor`
@@ -160,11 +163,11 @@ export const TestInt64$shiftRight = int53__lean_int64_shift_right;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$xor = int53__lean_int64_xor;
+export const TestInt64$xor = (a, b) => int53__lean_int64_xor(a, b);
 
 /**
  * `TestInt64.complement`
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const TestInt64$complement = int53__lean_int64_complement;
+export const TestInt64$complement = (a) => int53__lean_int64_complement(a);

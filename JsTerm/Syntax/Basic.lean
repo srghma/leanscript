@@ -17,7 +17,7 @@ could be computed computed.  The grammar here models the **JavaScript** the back
 a simply typed subset of JavaScript, split into expressions (`JsExpr`) and blocks of
 statements (`JsBlock`), with `return`, loops with a mutable accumulator, calls of the
 runtime, and join points.  It is intrinsically typed too: an expression of type `τ` is a
-`JsExpr C M τ`, and a block a `JsBlock C M J k`, so the printer never meets an ill-typed
+`JsExpr S C M τ`, and a block a `JsBlock S C M J k`, so the printer never meets an ill-typed
 term, and every pass of the backend is type-preserving by construction.
 
 `JsTerm.Print.Mini` maps the grammar onto the full JavaScript syntax tree of
@@ -71,10 +71,23 @@ point, or in a `throw`.  A join point `join x block rest` is the labelled block 
 whose statements may jump to it (join point `0` inside `block`), passing a value that `rest`
 reads as its innermost constant `x`.
 
+## Objects: one set of forms, at nominal types
+
+Every object — a record, a tagged union, a cons cell, a value of a declared datatype — has a
+nominal type `obj id args` (`JsTy.obj`), and its layout is read from the declaration: the
+grammar is parameterised by the signature `S : JsSig` of the function (its declared
+datatypes), and `record_mk` / `destructure` are indexed by the fields `S.fieldsOf id args`,
+`union_mk` / `unionCases` by the constructors `S.ctorsOf id args`.  So the constructor a
+`union_mk` builds and the arms of a `unionCases` on it are indexed by the **same** list, for
+anonymous unions, cons cells and declared datatypes alike.  One layer of a declared datatype
+in and out are the casts `fold` / `unfold` (nothing at run time).
+
 The dump of the grammar (`-JsTerm-*.txt`) is in `JsTerm.Syntax.Pretty`.
 -/
 
 namespace MoreJs
+
+variable {S : JsSig}
 
 /-! ## Contexts -/
 
@@ -212,38 +225,25 @@ partial def JsLitShape.pretty : JsLitShape → String
 
 /-! ## Lists of cons cells -/
 
-/-- The operations on the lists of tagged cons cells (`JsTy.consList`, the layout of `List`
-    under `ListRepr.taggedUnion`): the two constructors, written inline as objects, and the two
-    conversions from and to the array layout of a list (`JsTy.list`), functions of the runtime.
-    The externs of the catalogue that take or answer a list are written for the array layout;
-    at the tagged layout their arguments and result are converted
-    (`MoreJs.lowerExtern`). -/
+/-- The conversions between the two layouts of a list: tagged cons cells (`JsTy.consList`, the
+    layout of `List` under `ListRepr.taggedUnion`, the prelude's declaration `consList`) and the
+    array layout (`JsTy.list`), functions of the runtime.  The externs of the catalogue that
+    take or answer a list are written for the array layout; at the tagged layout their
+    arguments and result are converted (`MoreJs.lowerExtern`).  The cells themselves are built
+    and taken apart as any object (`union_mk`, `unionCases`). -/
 inductive JsListOp : List JsTy → JsTy → Type where
-  /-- `[]`: `{ tag: 0 }`. -/
-  | nil (α : JsTy) : JsListOp [] (.consList α)
-  /-- `h :: t`: `{ tag: 1, _1: h, _2: t }` (the tail is shared). -/
-  | cons (α : JsTy) : JsListOp [α, .consList α] (.consList α)
   /-- The cons cells of the elements of an array: `consList__of_array(a)`. -/
   | ofArray (α : JsTy) : JsListOp [.list α] (.consList α)
   /-- The array of the elements of cons cells: `consList__to_array(l)`. -/
   | toArray (α : JsTy) : JsListOp [.consList α] (.list α)
-  /-- The cons cells of the elements of an array in front of the cons cells `l`, which are
-      shared, not copied: `consList__of_array_onto(a, l)`. -/
-  | ofArrayOnto (α : JsTy) : JsListOp [.list α, .consList α] (.consList α)
-  /-- `l ++ t`: copies of the cells of `l` in front of the cells `t`, which are shared:
-      `consList__append(l, t)`. -/
-  | append (α : JsTy) : JsListOp [.consList α, .consList α] (.consList α)
   deriving Repr
 
 namespace JsListOp
 
-/-- The function of `runtime.js` the operation calls, if it is not written inline. -/
-def runtimeName? {σs : List JsTy} {τ : JsTy} : JsListOp σs τ → Option String
-  | .nil _ | .cons _ => none
-  | .ofArray _ => some "consList__of_array"
-  | .toArray _ => some "consList__to_array"
-  | .ofArrayOnto _ => some "consList__of_array_onto"
-  | .append _ => some "consList__append"
+/-- The function of `runtime.js` the operation calls. -/
+def runtimeName {σs : List JsTy} {τ : JsTy} : JsListOp σs τ → String
+  | .ofArray _ => "consList__of_array"
+  | .toArray _ => "consList__to_array"
 
 end JsListOp
 
@@ -251,244 +251,213 @@ end JsListOp
 
 mutual
 /-- Expressions of type `τ`, over the constants `C` and the mutable variables `M`. -/
-inductive JsExpr : List JsTy → List JsTy → JsTy → Type where
+inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
   /-- A constant (a parameter, a `const`, …), by its de Bruijn index among the constants. -/
-  | cvar {C M : List JsTy} {τ : JsTy} (x : JsMem C τ) : JsExpr C M τ
+  | cvar {C M : List JsTy} {τ : JsTy} (x : JsMem C τ) : JsExpr S C M τ
   /-- A mutable variable (a `let`), by its de Bruijn index among the mutable variables. -/
-  | mvar {C M : List JsTy} {τ : JsTy} (x : JsMem M τ) : JsExpr C M τ
-  /-- A constant the module shares (`$tag0`, `$k1`), of type `τ`. -/
-  | global {C M : List JsTy} (name : String) (τ : JsTy) : JsExpr C M τ
+  | mvar {C M : List JsTy} {τ : JsTy} (x : JsMem M τ) : JsExpr S C M τ
   /-- A literal. -/
-  | lit {C M : List JsTy} {t : JsTerminalTy} (l : JsLit t) : JsExpr C M (.terminal t)
+  | lit {C M : List JsTy} {t : JsTerminalTy} (l : JsLit t) : JsExpr S C M (.terminal t)
   /-- A call of an operation of the runtime, `name(args)`. -/
   | imported {C M σs : List JsTy} {τ : JsTy} {e : Effectfulness} {t : MayThrow}
-      (op : JsOpImported e t σs τ) (args : JsArgs C M σs) : JsExpr C M τ
+      (op : JsOpImported e t σs τ) (args : JsArgs S C M σs) : JsExpr S C M τ
   /-- An operation written inline (`a & b`, `BigInt(a)`, …). -/
   | inlined {C M σs : List JsTy} {τ : JsTy} {e : Effectfulness} {t : MayThrow}
-      (op : JsOpInlinable e t σs τ) (args : JsArgs C M σs) : JsExpr C M τ
+      (op : JsOpInlinable e t σs τ) (args : JsArgs S C M σs) : JsExpr S C M τ
   /-- A value that is never read (a field annotated unused, the default of a traversal):
       `undefined`. -/
-  | unreachable {C M : List JsTy} (τ : JsTy) : JsExpr C M τ
+  | unreachable {C M : List JsTy} (τ : JsTy) : JsExpr S C M τ
   /-- `f(a₁, …, aₙ)`: a call passing all the parameters. -/
-  | app {C M σs : List JsTy} {τ : JsTy} (f : JsExpr C M (.fn σs τ)) (args : JsArgs C M σs) :
-      JsExpr C M τ
+  | app {C M σs : List JsTy} {τ : JsTy} (f : JsExpr S C M (.fn σs τ)) (args : JsArgs S C M σs) :
+      JsExpr S C M τ
   /-- `(x₁, …, xₙ) => { body }`: the parameters are the innermost constants of the body (the
       last one innermost); `hints` are their preferred names. -/
   | lam {C M σs : List JsTy} {τ : JsTy} (hints : List String)
-      (body : JsBlock (pushAll σs C) M [] (.ret τ)) : JsExpr C M (.fn σs τ)
-  /-- `{ _1: f₁, _2: f₂, … }` (two fields or more). -/
-  | record_mk {C M : List JsTy} {f₁ f₂ : JsTy} {fs : List JsTy} (args : JsArgs C M (f₁ :: f₂ :: fs)) :
-      JsExpr C M (.record f₁ f₂ fs)
-  /-- `{ tag: i, _1: f₁, … }`, `i` the position of the constructor `ix`. -/
-  | union_mk {C M : List JsTy} {c₀ c₁ : List JsTy} {cs : List (List JsTy)} {fs : List JsTy}
-      (ix : JsMem (c₀ :: c₁ :: cs) fs) (args : JsArgs C M fs) : JsExpr C M (.union c₀ c₁ cs)
+      (body : JsBlock S (pushAll σs C) M [] (.ret τ)) : JsExpr S C M (.fn σs τ)
+  /-- `{ _1: f₁, _2: f₂, … }`: a record of the declaration `id` (its fields
+      `S.fieldsOf id args`). -/
+  | record_mk {C M : List JsTy} {id : JsObjId} {args : List JsTy}
+      (fs : JsArgs S C M (S.fieldsOf id args)) : JsExpr S C M (.obj id args)
+  /-- `{ tag: i, _1: f₁, … }`: constructor `ix` (at position `i`) of the declaration `id` (its
+      constructors `S.ctorsOf id args`). -/
+  | union_mk {C M : List JsTy} {id : JsObjId} {args fs : List JsTy}
+      (ix : JsMem (S.ctorsOf id args) fs) (as : JsArgs S C M fs) : JsExpr S C M (.obj id args)
+  /-- One layer into declaration `i`: a value of its body is a value of the datatype (nothing
+      at run time: the value is laid out as its body). -/
+  | fold {C M : List JsTy} (i : Nat) (e : JsExpr S C M (S.body i)) : JsExpr S C M (.obj (.decl i) [])
+  /-- One layer out of declaration `i` (nothing at run time). -/
+  | unfold {C M : List JsTy} (i : Nat) (e : JsExpr S C M (.obj (.decl i) [])) : JsExpr S C M (S.body i)
   /-- The number `shift + i`. -/
-  | enum_mk {C M : List JsTy} (n : Nat) (shift : Int) (i : Fin n) : JsExpr C M (.enum n shift)
+  | enum_mk {C M : List JsTy} (n : Nat) (shift : Int) (i : Fin n) : JsExpr S C M (.enum n shift)
   /-- `[e₀, ...a, e₂]` (a generic array) or `Uint8Array.of(e₀, ...a)` (a typed array). -/
-  | array_mk {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (parts : JsParts C M A E) :
-      JsExpr C M A
+  | array_mk {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (parts : JsParts S C M A E) :
+      JsExpr S C M A
   /-- `[e₀, ...xs, e₂]`: a list. -/
-  | list_mk {C M : List JsTy} {α : JsTy} (parts : JsParts C M (.list α) α) : JsExpr C M (.list α)
+  | list_mk {C M : List JsTy} {α : JsTy} (parts : JsParts S C M (.list α) α) : JsExpr S C M (.list α)
   /-- `c ? a : b`. -/
-  | cond {C M : List JsTy} {τ : JsTy} (c : JsExpr C M (.terminal .bool)) (a b : JsExpr C M τ) :
-      JsExpr C M τ
-  /-- An operation on lists of cons cells (`JsListOp`): `{ tag: 0 }`,
-      `{ tag: 1, _1: h, _2: t }`, or a conversion from or to an array. -/
-  | listOp {C M σs : List JsTy} {τ : JsTy} (op : JsListOp σs τ) (args : JsArgs C M σs) :
-      JsExpr C M τ
+  | cond {C M : List JsTy} {τ : JsTy} (c : JsExpr S C M (.terminal .bool)) (a b : JsExpr S C M τ) :
+      JsExpr S C M τ
+  /-- A conversion of a list from or to cons cells (`JsListOp`). -/
+  | listOp {C M σs : List JsTy} {τ : JsTy} (op : JsListOp σs τ) (args : JsArgs S C M σs) :
+      JsExpr S C M τ
 
 /-- The arguments of an operation or the fields of a record. -/
-inductive JsArgs : List JsTy → List JsTy → List JsTy → Type where
-  | nil {C M : List JsTy} : JsArgs C M []
-  | cons {C M : List JsTy} {σ : JsTy} {σs : List JsTy} (a : JsExpr C M σ) (as : JsArgs C M σs) :
-      JsArgs C M (σ :: σs)
+inductive JsArgs (S : JsSig) : List JsTy → List JsTy → List JsTy → Type where
+  | nil {C M : List JsTy} : JsArgs S C M []
+  | cons {C M : List JsTy} {σ : JsTy} {σs : List JsTy} (a : JsExpr S C M σ) (as : JsArgs S C M σs) :
+      JsArgs S C M (σ :: σs)
 
 /-- The parts of an array literal of type `A` (of elements `E`): elements, and spreads of
     arrays of the same type. -/
-inductive JsParts : List JsTy → List JsTy → JsTy → JsTy → Type where
-  | nil {C M : List JsTy} {A E : JsTy} : JsParts C M A E
-  | elem {C M : List JsTy} {A E : JsTy} (e : JsExpr C M E) (rest : JsParts C M A E) :
-      JsParts C M A E
-  | spread {C M : List JsTy} {A E : JsTy} (a : JsExpr C M A) (rest : JsParts C M A E) :
-      JsParts C M A E
+inductive JsParts (S : JsSig) : List JsTy → List JsTy → JsTy → JsTy → Type where
+  | nil {C M : List JsTy} {A E : JsTy} : JsParts S C M A E
+  | elem {C M : List JsTy} {A E : JsTy} (e : JsExpr S C M E) (rest : JsParts S C M A E) :
+      JsParts S C M A E
+  | spread {C M : List JsTy} {A E : JsTy} (a : JsExpr S C M A) (rest : JsParts S C M A E) :
+      JsParts S C M A E
 
 /-- Blocks of statements, over the constants `C`, the mutable variables `M` and the join points
     `J`, ending as `k` says. -/
-inductive JsBlock : List JsTy → List JsTy → List JsTy → JsEnd → Type where
+inductive JsBlock (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd → Type where
   /-- `return e;` -/
-  | ret {C M J : List JsTy} {τ : JsTy} (e : JsExpr C M τ) : JsBlock C M J (.ret τ)
+  | ret {C M J : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) : JsBlock S C M J (.ret τ)
   /-- The end of an iteration of a loop (`continue;`, or nothing at the end of the body). -/
-  | next {C M J : List JsTy} : JsBlock C M J .loop
+  | next {C M J : List JsTy} : JsBlock S C M J .loop
   /-- `x = e; break L;`, `L` and `x` the label and the variable of the join point `j`. -/
-  | jump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (j : JsMem J τ) (e : JsExpr C M τ) :
-      JsBlock C M J k
+  | jump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (j : JsMem J τ) (e : JsExpr S C M τ) :
+      JsBlock S C M J k
   /-- `throw new Error(msg);` -/
-  | throw {C M J : List JsTy} {k : JsEnd} (msg : String) : JsBlock C M J k
+  | throw {C M J : List JsTy} {k : JsEnd} (msg : String) : JsBlock S C M J k
   /-- `const x = e;` and the rest, which reads `x` as its innermost constant. -/
-  | const {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (e : JsExpr C M τ)
-      (rest : JsBlock (τ :: C) M J k) : JsBlock C M J k
+  | const {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (e : JsExpr S C M τ)
+      (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
   /-- `let x = e;` and the rest, which reads and assigns `x` as its innermost mutable
       variable. -/
-  | letMut {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (e : JsExpr C M τ)
-      (rest : JsBlock C (τ :: M) J k) : JsBlock C M J k
+  | letMut {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (e : JsExpr S C M τ)
+      (rest : JsBlock S C (τ :: M) J k) : JsBlock S C M J k
   /-- `x = e;` and the rest. -/
-  | assign {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (x : JsMem M τ) (e : JsExpr C M τ)
-      (rest : JsBlock C M J k) : JsBlock C M J k
+  | assign {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (x : JsMem M τ) (e : JsExpr S C M τ)
+      (rest : JsBlock S C M J k) : JsBlock S C M J k
   /-- `const { _1: f₁, _3: f₃ } = e;` and the rest, which reads the fields `sel` keeps as
       constants (the last one innermost). -/
-  | destructure {C M J : List JsTy} {f₁ f₂ : JsTy} {fs us : List JsTy} {k : JsEnd}
-      (e : JsExpr C M (.record f₁ f₂ fs)) (sel : JsSel (f₁ :: f₂ :: fs) us)
-      (rest : JsBlock (pushAll us C) M J k) : JsBlock C M J k
+  | destructure {C M J : List JsTy} {id : JsObjId} {args us : List JsTy} {k : JsEnd}
+      (e : JsExpr S C M (.obj id args)) (sel : JsSel (S.fieldsOf id args) us)
+      (rest : JsBlock S (pushAll us C) M J k) : JsBlock S C M J k
   /-- `if (c) { t } else { e }`. -/
-  | ite {C M J : List JsTy} {k : JsEnd} (c : JsExpr C M (.terminal .bool)) (t e : JsBlock C M J k) :
-      JsBlock C M J k
+  | ite {C M J : List JsTy} {k : JsEnd} (c : JsExpr S C M (.terminal .bool)) (t e : JsBlock S C M J k) :
+      JsBlock S C M J k
   /-- A case analysis on an enum: `if (e === shift) { … } else if (e === shift + 1) …`. -/
-  | enumCases {C M J : List JsTy} {k : JsEnd} {n : Nat} {shift : Int} (e : JsExpr C M (.enum n shift))
-      (arms : JsEnumArms C M J k n) : JsBlock C M J k
+  | enumCases {C M J : List JsTy} {k : JsEnd} {n : Nat} {shift : Int} (e : JsExpr S C M (.enum n shift))
+      (arms : JsEnumArms S C M J k n) : JsBlock S C M J k
   /-- A case analysis on a union: `if (e.tag === 0) { const { _1: f } = e; … } else …`. -/
-  | unionCases {C M J : List JsTy} {k : JsEnd} {c₀ c₁ : List JsTy} {cs : List (List JsTy)}
-      (e : JsExpr C M (.union c₀ c₁ cs)) (arms : JsUnionArms C M J k (c₀ :: c₁ :: cs)) :
-      JsBlock C M J k
+  | unionCases {C M J : List JsTy} {k : JsEnd} {id : JsObjId} {args : List JsTy}
+      (e : JsExpr S C M (.obj id args)) (arms : JsUnionArms S C M J k (S.ctorsOf id args)) :
+      JsBlock S C M J k
   /-- A join point: `let x; L: { block }` and the rest, which reads the value the jumps of
       `block` to it (join point `0`) pass as its innermost constant `x`. -/
-  | join {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (block : JsBlock C M (τ :: J) k)
-      (rest : JsBlock (τ :: C) M J k) : JsBlock C M J k
+  | join {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (block : JsBlock S C M (τ :: J) k)
+      (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
   /-- `for (let i = 0; i < n; i++) { body }` (`0n` for a `BigInt` counter) and the rest; the
       body reads the counter as its innermost constant. -/
   | forRange {C M J : List JsTy} {N : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
-      (n : JsExpr C M N) (body : JsBlock (N :: C) M [] .loop) (rest : JsBlock C M J k) :
-      JsBlock C M J k
-  /-- The last iteration of a counting loop only, `if (0 < n) { const i = n - 1; body }`, and
-      the rest. -/
-  | lastIter {C M J : List JsTy} {N : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
-      (n : JsExpr C M N) (body : JsBlock (N :: C) M [] .loop) (rest : JsBlock C M J k) :
-      JsBlock C M J k
+      (n : JsExpr S C M N) (body : JsBlock S (N :: C) M [] .loop) (rest : JsBlock S C M J k) :
+      JsBlock S C M J k
   /-- `for (const x of xs) { body }` and the rest; the body reads the element as its innermost
       constant. -/
   | forOf {C M J : List JsTy} {A E : JsTy} {k : JsEnd} (hint : String) (l : JsArrayLayout A E)
-      (xs : JsExpr C M A) (body : JsBlock (E :: C) M [] .loop) (rest : JsBlock C M J k) :
-      JsBlock C M J k
+      (xs : JsExpr S C M A) (body : JsBlock S (E :: C) M [] .loop) (rest : JsBlock S C M J k) :
+      JsBlock S C M J k
+  /-- Mutually recursive local functions: `const f₀ = e₀; const f₁ = e₁; …` and the rest.  Every
+      definition `eᵢ` (an arrow function, so that it reads the others only when it is called)
+      and the rest read all the `fᵢ` as constants (the last one innermost). -/
+  | funs {C M J : List JsTy} {τs : List JsTy} {k : JsEnd} (hints : List String)
+      (defs : JsArgs S (pushAll τs C) M τs) (rest : JsBlock S (pushAll τs C) M J k) :
+      JsBlock S C M J k
 
 /-- The arms of a case analysis on an enum of `n` constructors, in order. -/
-inductive JsEnumArms : List JsTy → List JsTy → List JsTy → JsEnd → Nat → Type where
-  | nil {C M J : List JsTy} {k : JsEnd} : JsEnumArms C M J k 0
-  | cons {C M J : List JsTy} {k : JsEnd} {n : Nat} (b : JsBlock C M J k)
-      (rest : JsEnumArms C M J k n) : JsEnumArms C M J k (n + 1)
+inductive JsEnumArms (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd → Nat → Type where
+  | nil {C M J : List JsTy} {k : JsEnd} : JsEnumArms S C M J k 0
+  | cons {C M J : List JsTy} {k : JsEnd} {n : Nat} (b : JsBlock S C M J k)
+      (rest : JsEnumArms S C M J k n) : JsEnumArms S C M J k (n + 1)
 
 /-- The arms of a case analysis on a union of constructors `cs`, in order: each binds the
     fields its pattern keeps. -/
-inductive JsUnionArms : List JsTy → List JsTy → List JsTy → JsEnd → List (List JsTy) → Type where
-  | nil {C M J : List JsTy} {k : JsEnd} : JsUnionArms C M J k []
+inductive JsUnionArms (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd → List (List JsTy) → Type where
+  | nil {C M J : List JsTy} {k : JsEnd} : JsUnionArms S C M J k []
   | cons {C M J : List JsTy} {k : JsEnd} {fs us : List JsTy} {cs : List (List JsTy)}
-      (sel : JsSel fs us) (b : JsBlock (pushAll us C) M J k) (rest : JsUnionArms C M J k cs) :
-      JsUnionArms C M J k (fs :: cs)
+      (sel : JsSel fs us) (b : JsBlock S (pushAll us C) M J k) (rest : JsUnionArms S C M J k cs) :
+      JsUnionArms S C M J k (fs :: cs)
 end
 
-instance {C M : List JsTy} {τ : JsTy} : Inhabited (JsExpr C M τ) := ⟨.unreachable τ⟩
-instance {C M J : List JsTy} {k : JsEnd} : Inhabited (JsBlock C M J k) := ⟨.throw "unreachable"⟩
-instance {C M : List JsTy} {A E : JsTy} : Inhabited (JsParts C M A E) := ⟨.nil⟩
+instance {C M : List JsTy} {τ : JsTy} : Inhabited (JsExpr S C M τ) := ⟨.unreachable τ⟩
+instance {C M J : List JsTy} {k : JsEnd} : Inhabited (JsBlock S C M J k) := ⟨.throw "unreachable"⟩
+instance {C M : List JsTy} {A E : JsTy} : Inhabited (JsParts S C M A E) := ⟨.nil⟩
 
 /-- Arguments that throw (the default of a traversal). -/
-def JsArgs.default {C M : List JsTy} : (σs : List JsTy) → JsArgs C M σs
+def JsArgs.default {C M : List JsTy} : (σs : List JsTy) → JsArgs S C M σs
   | [] => .nil
   | σ :: σs => .cons (.unreachable σ) (JsArgs.default σs)
 
-instance {C M σs : List JsTy} : Inhabited (JsArgs C M σs) := ⟨JsArgs.default σs⟩
+instance {C M σs : List JsTy} : Inhabited (JsArgs S C M σs) := ⟨JsArgs.default σs⟩
 
 /-- Arms that throw (the default of a traversal). -/
-def JsEnumArms.default {C M J : List JsTy} {k : JsEnd} : (n : Nat) → JsEnumArms C M J k n
+def JsEnumArms.default {C M J : List JsTy} {k : JsEnd} : (n : Nat) → JsEnumArms S C M J k n
   | 0 => .nil
   | n + 1 => .cons (.throw "unreachable") (JsEnumArms.default n)
 
-instance {C M J : List JsTy} {k : JsEnd} {n : Nat} : Inhabited (JsEnumArms C M J k n) :=
+instance {C M J : List JsTy} {k : JsEnd} {n : Nat} : Inhabited (JsEnumArms S C M J k n) :=
   ⟨JsEnumArms.default n⟩
 
 /-- Arms that throw (the default of a traversal). -/
 def JsUnionArms.default {C M J : List JsTy} {k : JsEnd} :
-    (cs : List (List JsTy)) → JsUnionArms C M J k cs
+    (cs : List (List JsTy)) → JsUnionArms S C M J k cs
   | [] => .nil
   | fs :: cs => .cons (JsSel.none fs) (.throw "unreachable") (JsUnionArms.default cs)
 
 instance {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
-    Inhabited (JsUnionArms C M J k cs) := ⟨JsUnionArms.default cs⟩
+    Inhabited (JsUnionArms S C M J k cs) := ⟨JsUnionArms.default cs⟩
 
 /-- The integer literal `n` at a natural-number representation, if it fits. -/
-def JsNatTy.lit? {C M : List JsTy} {N : JsTy} (nt : JsNatTy N) (n : Nat) : Option (JsExpr C M N) :=
+def JsNatTy.lit? {C M : List JsTy} {N : JsTy} (nt : JsNatTy N) (n : Nat) : Option (JsExpr S C M N) :=
   match nt with
   | .bigint_nat => some (.lit (.bigint_nat n))
   | .uint53 => if h : n ≤ maxSafe then some (.lit (.uint53 n h)) else none
 
 /-! ## Lists of cons cells: builders -/
 
-/-- The cons cells an array list was converted from, if it was: `consList__to_array(l)`, also
-    seen through `Array.toList (List.toArray _)` (both written as their argument on generic
-    arrays). -/
-def JsExpr.consListOf? {C M : List JsTy} {α : JsTy} :
-    JsExpr C M (.list α) → Option (JsExpr C M (.consList α))
-  | .listOp (.toArray _) (.cons l .nil) => some l
-  | .inlined (.array__lean_array_to_list _)
-      (.cons (.inlined (.array__lean_array_mk _) (.cons (.listOp (.toArray _) (.cons l .nil)) .nil))
-        .nil) => some l
-  | _ => none
+/-- `[]` as cons cells: `{ tag: 0 }`, constructor `0` of the prelude's `consList`. -/
+def JsExpr.consNil {C M : List JsTy} {α : JsTy} : JsExpr S C M (.consList α) :=
+  .union_mk (id := .consList) (args := [α]) .zero .nil
 
-/-- The cons cells of an array list `xs` (`consList__of_array(xs)`), or the cons cells `xs`
-    was converted from (`consList__to_array(l)`: a round trip is the list itself). -/
-def JsExpr.ofArrayList {C M : List JsTy} {α : JsTy} (xs : JsExpr C M (.list α)) :
-    JsExpr C M (.consList α) :=
-  xs.consListOf?.getD (.listOp (.ofArray α) (.cons xs .nil))
+/-- `h :: t` as cons cells: `{ tag: 1, _1: h, _2: t }`, constructor `1` of `consList`. -/
+def JsExpr.consCons {C M : List JsTy} {α : JsTy} (h : JsExpr S C M α)
+    (t : JsExpr S C M (.consList α)) : JsExpr S C M (.consList α) :=
+  .union_mk (id := .consList) (args := [α]) (.succ .zero) (.cons h (.cons t .nil))
 
-/-- The array list of the cons cells `l` (`consList__to_array(l)`), or the array list `l` was
-    converted from. -/
-def JsExpr.toArrayList {C M : List JsTy} {α : JsTy} :
-    JsExpr C M (.consList α) → JsExpr C M (.list α)
-  | .listOp (.ofArray _) (.cons xs .nil) => xs
-  | l => .listOp (.toArray α) (.cons l .nil)
+/-- The cons cells of an array list `xs`: `consList__of_array(xs)`. -/
+def JsExpr.ofArrayList {C M : List JsTy} {α : JsTy} (xs : JsExpr S C M (.list α)) :
+    JsExpr S C M (.consList α) :=
+  .listOp (.ofArray α) (.cons xs .nil)
 
-/-- The parts of a list literal made of elements and at most one spread, the last part, as cons
-    cells: the elements in front of the cons cells of the spread (shared, not copied), or of
-    `[]`; none when a spread is not the last part. -/
-def JsParts.toConsList? {C M : List JsTy} {α : JsTy} :
-    JsParts C M (.list α) α → Option (JsExpr C M (.consList α))
-  | .nil => some (.listOp (.nil α) .nil)
-  | .elem e ps => do return .listOp (.cons α) (.cons e (.cons (← ps.toConsList?) .nil))
-  | .spread xs .nil => some xs.ofArrayList
+/-- The array list of the cons cells `l`: `consList__to_array(l)`. -/
+def JsExpr.toArrayList {C M : List JsTy} {α : JsTy} (l : JsExpr S C M (.consList α)) :
+    JsExpr S C M (.list α) :=
+  .listOp (.toArray α) (.cons l .nil)
+
+/-- The elements of the parts of a list literal, when there is no spread. -/
+def JsParts.elems? {C M : List JsTy} {A E : JsTy} : JsParts S C M A E → Option (List (JsExpr S C M E))
+  | .nil => some []
+  | .elem e ps => (e :: ·) <$> ps.elems?
   | .spread _ _ => none
 
-/-- Are there no parts? -/
-def JsParts.isNil {C M : List JsTy} {A E : JsTy} : JsParts C M A E → Bool
-  | .nil => true
-  | _ => false
-
-/-- The parts of a literal split before its tail: the parts up to the last spread that an
-    element follows, and the others (elements, then at most one spread, the last part), which
-    `JsParts.toConsList?` writes as cons cells. -/
-def JsParts.splitTail {C M : List JsTy} {A E : JsTy} :
-    JsParts C M A E → JsParts C M A E × JsParts C M A E
-  | .nil => (.nil, .nil)
-  | .elem e ps =>
-    let (pre, post) := ps.splitTail
-    if pre.isNil then (.nil, .elem e post) else (.elem e pre, post)
-  | .spread a ps =>
-    let (pre, post) := ps.splitTail
-    if !pre.isNil then (.spread a pre, post)
-    else if post.isNil then (.nil, .spread a .nil)
-    else (.spread a .nil, post)
-
-/-- The parts of a list literal as cons cells: the cells of its tail (`JsParts.splitTail`),
-    shared with the last spread, with the elements of the parts before it in front
-    (`consList__of_array_onto([…], tail)`). -/
-def JsParts.toConsList {C M : List JsTy} {α : JsTy} (ps : JsParts C M (.list α) α) :
-    JsExpr C M (.consList α) :=
-  let (pre, post) := ps.splitTail
-  let tail := post.toConsList?.getD (.listOp (.ofArray α) (.cons (.list_mk post) .nil))
-  match pre with
-  | .nil => tail
-  -- `[...xs, …]`: the cells of `xs` (as cons cells, copied), or the elements of the array `xs`
-  | .spread xs .nil =>
-    match xs.consListOf? with
-    | some l => .listOp (.append α) (.cons l (.cons tail .nil))
-    | none => .listOp (.ofArrayOnto α) (.cons xs (.cons tail .nil))
-  | pre => .listOp (.ofArrayOnto α) (.cons (.list_mk pre) (.cons tail .nil))
+/-- The parts of a list literal as cons cells: `{ tag: 1, _1: e₀, _2: … { tag: 0 } }`, the cells
+    of the elements in order (the cells of the array literal, `consList__of_array([…])`, when
+    it has a spread). -/
+def JsParts.toConsList {C M : List JsTy} {α : JsTy} (ps : JsParts S C M (.list α) α) :
+    JsExpr S C M (.consList α) :=
+  match ps.elems? with
+  | some es => es.foldr JsExpr.consCons JsExpr.consNil
+  | none => JsExpr.ofArrayList (.list_mk ps)
 
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
 def fieldKey (i : Nat) : String := s!"_{i + 1}"
@@ -501,34 +470,22 @@ structure JsFun where
   name : String
   /-- The Lean definition it was translated from. -/
   leanName : String
+  /-- The declared datatypes its types name (`JsObjId.decl`). -/
+  sig : JsSig := {}
   /-- The parameters (zero or more), as the names they are printed with and their types; the
       body reads them as its outermost constants (the last one innermost). -/
   params : List (String × JsTy)
   /-- The type of the result. -/
   ret : JsTy
   /-- The body; every path ends in a `return` (or a `throw`). -/
-  body : JsBlock (pushAll (params.map (·.2)) []) [] [] (.ret ret)
-  /-- Another exported function of the module, defined before this one, that is the same
-      function (the same type and body), or the function of the runtime this one only passes
-      its parameters to: this one is then written `export const name = other;`
-      (`JsModule.shareFuns`). -/
-  alias : Option String := none
+  body : JsBlock sig (pushAll (params.map (·.2)) []) [] [] (.ret ret)
 
-/-- A constant shared by the functions of a module: `const name = e;`. -/
-structure JsConst where
-  name : String
-  ty : JsTy
-  e : JsExpr [] [] ty
-
-/-- A whole module: the operations of the runtime it imports, the constants it computes once
-    (at the top of the module, `const name = e;`), and its exported functions. -/
+/-- A whole module: the operations of the runtime it imports, and its exported functions. -/
 structure JsModule where
   /-- The configuration it was generated with. -/
   config : JsConfig
   /-- The names of the functions of `runtime.js` it calls, each once, in order of first use. -/
   imports : List String
-  /-- The constants shared by its functions, each defined before it is used. -/
-  consts : List JsConst := []
   /-- The exported functions. -/
   funs : List JsFun
 

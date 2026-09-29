@@ -23,11 +23,14 @@ export const bar = () => 3;
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const useScale = (n) =>
-  uint53__lean_nat_add(
-    uint53__lean_nat_mul(n, 2),
-    uint53__lean_nat_mul(uint53__lean_nat_add(n, 1), 2),
-  );
+export const useScale = (n) => {
+  const k$2 = (x$1) => uint53__lean_nat_mul(x$1, 2);
+  const x$3 = k$2(n);
+  const k$5 = (x$4) => uint53__lean_nat_mul(x$4, 2);
+  const x$6 = uint53__lean_nat_add(n, 1);
+  const x$7 = k$5(x$6);
+  return uint53__lean_nat_add(x$3, x$7);
+};
 
 /**
  * `triple`
@@ -41,8 +44,11 @@ export const triple = (a) => uint53__lean_nat_mul(a, 3);
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const useTriple = (n) =>
-  uint53__lean_nat_add(
-    uint53__lean_nat_mul(n, 3),
-    uint53__lean_nat_mul(uint53__lean_nat_add(n, 1), 3),
-  );
+export const useTriple = (n) => {
+  const k$2 = (x$1) => uint53__lean_nat_mul(x$1, 3);
+  const x$3 = k$2(n);
+  const k$5 = (x$4) => uint53__lean_nat_mul(x$4, 3);
+  const x$6 = uint53__lean_nat_add(n, 1);
+  const x$7 = k$5(x$6);
+  return uint53__lean_nat_add(x$3, x$7);
+};

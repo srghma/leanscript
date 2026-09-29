@@ -3,16 +3,15 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
-const $k1 = { _1: 99n, _2: 0n, _3: 11n };
-
 /**
  * `localTest`
  * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)} f
  * @returns {int(bigint)}
  */
 export const localTest = (f) => {
-  const x$1 = f($k1);
-  return x$1 === -2147483648n ? 0n : x$1;
+  const x$1 = { _1: 99n, _2: 0n, _3: 11n };
+  const x$2 = f(x$1);
+  return x$2 === -2147483648n ? 0n : x$2;
 };
 
 /**
@@ -43,35 +42,39 @@ export const test4 = () => 9n;
  * `extern`
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern = () => $k1;
+export const extern = () => ({ _1: 99n, _2: 0n, _3: 11n });
 
 /**
  * `externTest`
  * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)} f
  * @returns {int(bigint)}
  */
-export const externTest = (f) => f($k1);
+export const externTest = (f) => {
+  const x$1 = { _1: 99n, _2: 0n, _3: 11n };
+  const x$2 = f(x$1);
+  return x$2 === -2147483648n ? -2147483648n : x$2;
+};
 
 /**
  * `test5`
  * @returns {int(bigint)}
  */
-export const test5 = test1;
+export const test5 = () => 110n;
 
 /**
  * `test6`
  * @returns {int(bigint)}
  */
-export const test6 = test2;
+export const test6 = () => 88n;
 
 /**
  * `test7`
  * @returns {int(bigint)}
  */
-export const test7 = test3;
+export const test7 = () => 1089n;
 
 /**
  * `test8`
  * @returns {int(bigint)}
  */
-export const test8 = test4;
+export const test8 = () => 9n;

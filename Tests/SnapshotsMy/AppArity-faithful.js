@@ -17,7 +17,17 @@ export const mkAdd = (n, a, a1) => a + a1 + n;
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const test1 = (n, x, y) => test4((y$1, y$2) => y$1 + y$2 + n, x, y);
+export const test1 = (n, x, y) => {
+  const k$6 = (x$1, x$2, x$3) => {
+    const x$4 = x$1(x$2, x$3);
+    const x$5 = x$1(x$3, x$2);
+    return x$4 + x$5;
+  };
+  const k$10 = (x$7, x$8, x$9) => x$8 + x$9 + x$7;
+  const x$13 = (y$11, y$12) => k$10(n, y$11, y$12);
+  const x$14 = k$6(x$13, x, y);
+  return x$14;
+};
 
 /**
  * `mkMul`
@@ -35,7 +45,17 @@ export const mkMul = (n, a, a1) => a * a1 * n;
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const test2 = (n, x, y) => test4((y$1, y$2) => y$1 * y$2 * n, x, y);
+export const test2 = (n, x, y) => {
+  const k$6 = (x$1, x$2, x$3) => {
+    const x$4 = x$1(x$2, x$3);
+    const x$5 = x$1(x$3, x$2);
+    return x$4 + x$5;
+  };
+  const k$10 = (x$7, x$8, x$9) => x$8 * x$9 * x$7;
+  const x$13 = (y$11, y$12) => k$10(n, y$11, y$12);
+  const x$14 = k$6(x$13, x, y);
+  return x$14;
+};
 
 /**
  * `mkSum3`
@@ -54,7 +74,16 @@ export const mkSum3 = (n, a, a1, a2) => a + a1 + a2 + n;
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const test3 = (n, x, y) => x + y + x + n;
+export const test3 = (n, x, y) => {
+  const k$5 = (x$1, x$2, x$3) => {
+    const x$4 = x$1(x$2, x$3, x$2);
+    return x$4;
+  };
+  const k$10 = (x$6, x$7, x$8, x$9) => x$7 + x$8 + x$9 + x$6;
+  const x$14 = (y$11, y$12, y$13) => k$10(n, y$11, y$12, y$13);
+  const x$15 = k$5(x$14, x, y);
+  return x$15;
+};
 
 /**
  * `test4`
@@ -63,4 +92,8 @@ export const test3 = (n, x, y) => x + y + x + n;
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const test4 = (f, x, y) => f(x, y) + f(y, x);
+export const test4 = (f, x, y) => {
+  const x$1 = f(x, y);
+  const x$2 = f(y, x);
+  return x$1 + x$2;
+};

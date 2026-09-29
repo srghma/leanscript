@@ -23,4 +23,4 @@ export const test1 = (a) => a._1;
  * @param {{ _1: int(bigint), _2: int(bigint) }} a
  * @returns {int(bigint)}
  */
-export const test2 = test1;
+export const test2 = (a) => a._1;

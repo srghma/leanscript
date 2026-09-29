@@ -8,6 +8,9 @@
  */
 export const test = (n) => {
   let acc$1 = 0;
-  for (let i$2 = 0; i$2 < n; i$2++) {}
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = a$3;
+  }
   return acc$1;
 };

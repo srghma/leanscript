@@ -23,4 +23,4 @@ export const test1 = (a) => a._1;
  * @param {{ _1: int53(number), _2: int53(number) }} a
  * @returns {int53(number)}
  */
-export const test2 = test1;
+export const test2 = (a) => a._1;

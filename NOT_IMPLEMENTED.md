@@ -188,11 +188,20 @@ The supported fragment and the refusals are listed in the header of
 
 ## 4. Backend (`JsTerm/`, `leanscript`)
 
-- **Declared datatypes are not converted to JavaScript**: a term using `data_in`,
-  `data_out`, `data_rec` or `data_brec` is refused by `MoreJs.termToJs`
-  (`JsTerm/Lower/FromTerm.lean`), so every function over a user inductive, … is listed
-  under "not translated" in the outputs.  (The layouts exist in `JsTerm.lowerTy`: records
-  and unions as objects, enums; only the recursors are missing.)
+- **Course-of-values folds of depth 1 or more over declared datatypes are not converted to
+  JavaScript** (`data_brec` with `k ≥ 1`): a term using one is refused by `MoreJs.termToJs`.
+  Declared datatypes themselves (`data_in`, `data_out`) and their folds (`data_rec`, and
+  `data_brec` at depth `0`) are converted (`JsTerm/Lower/DataRec.lean`).
+- **Proposals R and S of `proposals/TypedDataProposals3.md` are not implemented**: two
+  declarations with the same layout keep different object ids (no partition refinement), and
+  every declaration has the one representation of objects (no per-declaration `smallIntNullary`,
+  `nullable`, struct-of-arrays …).  The `obj` types carry arguments (`JsTy.obj id args`), but
+  parameters are not recovered from declared datatypes by anti-unification: a declared datatype
+  is `obj (decl i) []`.
+- **No optimisation of the JavaScript grammar**: `JsTerm` is written out as the conversion builds
+  it, so the output is larger than it was with the former `JsTerm` passes (in-place array
+  updates, shared constants, clean-ups); the optimisations that matter have to be written on
+  `Term`, with their `Term.eval` proofs.
 - **Every extern of the catalogue has a JavaScript implementation** at every representation
   of its types (`scripts/gen_js_ops.py` refuses to generate the operations otherwise, and
   `python3 scripts/gen_js_ops.py --report` lists none).  Known approximations of the

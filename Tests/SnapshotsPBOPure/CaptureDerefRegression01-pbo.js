@@ -22,7 +22,7 @@ export const test1 = (v, b) => int53__lean_int_add(v._1, b);
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test2 = test1;
+export const test2 = (v, a) => int53__lean_int_add(v._1, a);
 
 /**
  * `test3`
@@ -30,4 +30,4 @@ export const test2 = test1;
  * @param {int53(number)} p1
  * @returns {int53(number)}
  */
-export const test3 = test1;
+export const test3 = (v, p1) => int53__lean_int_add(v._1, p1);

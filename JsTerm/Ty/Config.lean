@@ -154,6 +154,11 @@ structure JsConfig where
   arrayFloatRepr : ArrayTypedOrGeneric := .typedArray
   /-- Strategy for representing `List` and list-like inductive types in JS. -/
   listRepr : ListRepr := .taggedUnion
+  /-- The canonical declaration of each declared datatype, by its stable number (`refIndex`):
+      datatypes whose layouts are equal as infinite trees share one object id (proposal R of
+      `proposals/TypedDataProposals3.md`, `MoreJs.canonDecls`).  Set per function by
+      `termToJs` from its signature; a datatype it does not list is its own. -/
+  declCanon : Array Nat := #[]
   deriving Repr, DecidableEq, Inhabited
 
 namespace JsConfig

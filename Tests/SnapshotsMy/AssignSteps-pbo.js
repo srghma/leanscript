@@ -17,23 +17,23 @@ import {
  * @returns {uint53(number)}
  */
 export const test1 = (fuel, a, b) => {
-  let r$1 = undefined;
-  let done$2 = false;
-  let x$3 = a;
-  let x$4 = b;
-  for (let j$5 = 0; j$5 < fuel; j$5++) {
-    if (!done$2) {
-      const x$6 = x$3;
-      if (x$4 === 0) {
-        r$1 = x$6;
-        done$2 = true;
-      } else {
-        x$3 = x$4;
-        x$4 = uint53__lean_nat_mod__Nat_mod(x$6, x$4);
+  const k$3 = (x$1, x$2) => x$1;
+  let acc$4 = k$3;
+  for (let i$5 = 0; i$5 < fuel; i$5++) {
+    const a$6 = acc$4;
+    const k$11 = (x$7, x$8) => {
+      if (x$8 === 0) {
+        return x$7;
       }
-    }
+      const x$9 = uint53__lean_nat_mod__Nat_mod(x$7, x$8);
+      const x$10 = a$6(x$8, x$9);
+      return x$10;
+    };
+    acc$4 = k$11;
   }
-  return done$2 ? r$1 : x$3;
+  const x$12 = acc$4;
+  const x$13 = x$12(a, b);
+  return x$13;
 };
 
 /**
@@ -45,22 +45,27 @@ export const test1 = (fuel, a, b) => {
  * @returns {uint53(number)}
  */
 export const test2 = (fuel, a, b, c) => {
-  let x$1 = a;
-  let x$2 = b;
-  let x$3 = c;
-  for (let j$4 = 0; j$4 < fuel; j$4++) {
-    const x$5 = x$1;
-    x$1 = x$2;
-    x$2 = x$3;
-    x$3 = uint53__lean_nat_add(x$5, 1);
-  }
-  return uint53__lean_nat_add(
+  const k$4 = (x$1, x$2, x$3) =>
     uint53__lean_nat_add(
-      uint53__lean_nat_mul(x$1, 100),
-      uint53__lean_nat_mul(x$2, 10),
-    ),
-    x$3,
-  );
+      uint53__lean_nat_add(
+        uint53__lean_nat_mul(x$1, 100),
+        uint53__lean_nat_mul(x$2, 10),
+      ),
+      x$3,
+    );
+  let acc$5 = k$4;
+  for (let i$6 = 0; i$6 < fuel; i$6++) {
+    const a$7 = acc$5;
+    const k$13 = (x$8, x$9, x$10) => {
+      const x$11 = uint53__lean_nat_add(x$8, 1);
+      const x$12 = a$7(x$9, x$10, x$11);
+      return x$12;
+    };
+    acc$5 = k$13;
+  }
+  const x$14 = acc$5;
+  const x$15 = x$14(a, b, c);
+  return x$15;
 };
 
 /**
@@ -71,11 +76,19 @@ export const test2 = (fuel, a, b, c) => {
  * @returns {uint53(number)}
  */
 export const test4 = (fuel, a, b) => {
-  let x$1 = a;
-  let x$2 = b;
-  for (let j$3 = 0; j$3 < fuel; j$3++) {
-    x$1 = uint53__lean_nat_add(x$1, 1);
-    x$2 = uint53__lean_nat_add(x$2, 2);
+  const k$3 = (x$1, x$2) => uint53__lean_nat_add(x$1, x$2);
+  let acc$4 = k$3;
+  for (let i$5 = 0; i$5 < fuel; i$5++) {
+    const a$6 = acc$4;
+    const k$12 = (x$7, x$8) => {
+      const x$9 = uint53__lean_nat_add(x$7, 1);
+      const x$10 = uint53__lean_nat_add(x$8, 2);
+      const x$11 = a$6(x$9, x$10);
+      return x$11;
+    };
+    acc$4 = k$12;
   }
-  return uint53__lean_nat_add(x$1, x$2);
+  const x$13 = acc$4;
+  const x$14 = x$13(a, b);
+  return x$14;
 };

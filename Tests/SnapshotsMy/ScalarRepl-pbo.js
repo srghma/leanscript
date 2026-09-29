@@ -3,14 +3,7 @@
 // not translated:
 //   test6: invalid scope
 
-import { uint53__lean_nat_sub, uint53__lean_nat_add } from "../../runtime.js";
-
-const $k1 = (x$1) => {
-  const { _1: f$2, _2: f$3 } = x$1;
-  return f$2 < f$3
-    ? uint53__lean_nat_sub(f$3, f$2)
-    : uint53__lean_nat_sub(f$2, f$3);
-};
+import { uint53__lean_nat_add, uint53__lean_nat_sub } from "../../runtime.js";
 
 /**
  * `test1`
@@ -18,11 +11,17 @@ const $k1 = (x$1) => {
  * @returns {uint53(number)}
  */
 export const test1 = (n) => {
-  let acc$1 = 0;
+  let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    acc$1 = uint53__lean_nat_add(acc$1, i$2);
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const x$4 = uint53__lean_nat_add(a$3._1, i$2);
+      acc$1 = { tag: 1, _1: x$4 };
+    }
   }
-  return acc$1;
+  return acc$1._1;
 };
 
 /**
@@ -31,13 +30,27 @@ export const test1 = (n) => {
  * @returns {uint53(number)}
  */
 export const test2 = (n) => {
-  let acc$1 = 0;
+  let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    for (let i$3 = 0; i$3 < i$2; i$3++) {
-      acc$1 = uint53__lean_nat_add(acc$1, i$3);
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      let acc$4 = { tag: 1, _1: a$3._1 };
+      for (let i$5 = 0; i$5 < i$2; i$5++) {
+        const a$6 = acc$4;
+        if (a$6.tag === 0) {
+          acc$4 = { tag: 0, _1: a$6._1 };
+        } else {
+          const x$7 = uint53__lean_nat_add(a$6._1, i$5);
+          acc$4 = { tag: 1, _1: x$7 };
+        }
+      }
+      const x$8 = acc$4._1;
+      acc$1 = { tag: 1, _1: x$8 };
     }
   }
-  return acc$1;
+  return acc$1._1;
 };
 
 /**
@@ -46,11 +59,25 @@ export const test2 = (n) => {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const test3 = (a, b) =>
-  uint53__lean_nat_add(
-    $k1({ _1: a, _2: b }),
-    $k1({ _1: b, _2: uint53__lean_nat_add(a, 1) }),
-  );
+export const test3 = (a, b) => {
+  const k$4 = (x$1) => {
+    const { _1: f$2, _2: f$3 } = x$1;
+    return f$2 < f$3
+      ? uint53__lean_nat_sub(f$3, f$2)
+      : uint53__lean_nat_sub(f$2, f$3);
+  };
+  const x$5 = { _1: a, _2: b };
+  const x$6 = k$4(x$5);
+  const k$10 = (x$7) => {
+    const { _1: f$8, _2: f$9 } = x$7;
+    return f$8 < f$9
+      ? uint53__lean_nat_sub(f$9, f$8)
+      : uint53__lean_nat_sub(f$8, f$9);
+  };
+  const x$11 = { _1: b, _2: uint53__lean_nat_add(a, 1) };
+  const x$12 = k$10(x$11);
+  return uint53__lean_nat_add(x$6, x$12);
+};
 
 /**
  * `test4`
@@ -58,7 +85,15 @@ export const test3 = (a, b) =>
  * @param {uint53(number)} b
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
-export const test4 = (a, b) => (a < b ? { _1: a, _2: b } : { _1: b, _2: a });
+export const test4 = (a, b) => {
+  const k$4 = (x$1) => {
+    const { _1: f$2, _2: f$3 } = x$1;
+    return f$2 < f$3 ? x$1 : { _1: f$3, _2: f$2 };
+  };
+  const x$5 = { _1: a, _2: b };
+  const x$6 = k$4(x$5);
+  return x$6;
+};
 
 /**
  * `test5`
@@ -66,4 +101,14 @@ export const test4 = (a, b) => (a < b ? { _1: a, _2: b } : { _1: b, _2: a });
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const test5 = uint53__lean_nat_add;
+export const test5 = (a, b) => {
+  const k$2 = (x$1) => {
+    if (x$1.tag === 0) {
+      return 0;
+    }
+    return uint53__lean_nat_add(x$1._1._1, x$1._1._2);
+  };
+  const x$3 = { tag: 1, _1: { _1: a, _2: b } };
+  const x$4 = k$2(x$3);
+  return uint53__lean_nat_add(x$4, 0);
+};

@@ -15,6 +15,8 @@ or a loop (where it may be evaluated more than once).
 
 namespace MoreJs
 
+variable {S : JsSig}
+
 /-- An occurrence of a variable: a constant or a mutable variable, by its de Bruijn index
     where the walk started; whether it is an assignment, inside a closure, or inside a loop or
     a closure (evaluated possibly more than once). -/
@@ -73,11 +75,12 @@ end OccCtx
 
 mutual
 /-- The occurrences of the variables of an expression. -/
-def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr C M τ → Array JsOcc
+def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr S C M τ → Array JsOcc
   | .cvar x => o.cOcc x.index
   | .mvar x => o.mOcc x.index
-  | .global .. | .lit _ | .unreachable _ | .enum_mk .. => #[]
+  | .lit _ | .unreachable _ | .enum_mk .. => #[]
   | .imported _ as | .inlined _ as | .listOp _ as => as.occsAt o
+  | .fold _ e | .unfold _ e => e.occsAt o
   | .app f as => f.occsAt o ++ as.occsAt o
   | .lam (σs := σs) _ b => b.occsAt (o.closure σs.length)
   | .record_mk fs => fs.occsAt o
@@ -87,18 +90,18 @@ def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr C M τ →
   | .cond c a b => c.occsAt o ++ a.occsAt o ++ b.occsAt o
 
 /-- The occurrences of the variables of arguments. -/
-def JsArgs.occsAt {C M σs : List JsTy} (o : OccCtx) : JsArgs C M σs → Array JsOcc
+def JsArgs.occsAt {C M σs : List JsTy} (o : OccCtx) : JsArgs S C M σs → Array JsOcc
   | .nil => #[]
   | .cons a as => a.occsAt o ++ as.occsAt o
 
 /-- The occurrences of the variables of the parts of an array literal. -/
-def JsParts.occsAt {C M : List JsTy} {A E : JsTy} (o : OccCtx) : JsParts C M A E → Array JsOcc
+def JsParts.occsAt {C M : List JsTy} {A E : JsTy} (o : OccCtx) : JsParts S C M A E → Array JsOcc
   | .nil => #[]
   | .elem e rest => e.occsAt o ++ rest.occsAt o
   | .spread a rest => a.occsAt o ++ rest.occsAt o
 
 /-- The occurrences of the variables of a block. -/
-def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock C M J k → Array JsOcc
+def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock S C M J k → Array JsOcc
   | .ret e | .jump _ e => e.occsAt o
   | .next | .throw _ => #[]
   | .const _ e rest => e.occsAt o ++ rest.occsAt (o.under 1 0)
@@ -109,41 +112,44 @@ def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock C M J 
   | .enumCases e arms => e.occsAt o ++ arms.occsAt o
   | .unionCases e arms => e.occsAt o ++ arms.occsAt o
   | .join _ b rest => b.occsAt o ++ rest.occsAt (o.under 1 0)
-  | .forRange _ _ n b rest | .lastIter _ _ n b rest =>
+  | .forRange _ _ n b rest =>
     n.occsAt o ++ b.occsAt (o.loop 1) ++ rest.occsAt o
   | .forOf _ _ xs b rest => xs.occsAt o ++ b.occsAt (o.loop 1) ++ rest.occsAt o
+  | .funs (τs := τs) _ defs rest =>
+    defs.occsAt (o.under τs.length 0) ++ rest.occsAt (o.under τs.length 0)
 
 /-- The occurrences of the variables of the arms of a case analysis on an enum. -/
 def JsEnumArms.occsAt {C M J : List JsTy} {k : JsEnd} {n : Nat} (o : OccCtx) :
-    JsEnumArms C M J k n → Array JsOcc
+    JsEnumArms S C M J k n → Array JsOcc
   | .nil => #[]
   | .cons b rest => b.occsAt o ++ rest.occsAt o
 
 /-- The occurrences of the variables of the arms of a case analysis on a union. -/
 def JsUnionArms.occsAt {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (o : OccCtx) :
-    JsUnionArms C M J k cs → Array JsOcc
+    JsUnionArms S C M J k cs → Array JsOcc
   | .nil => #[]
   | .cons (us := us) _ b rest => b.occsAt (o.under us.length 0) ++ rest.occsAt o
 end
 
 /-- The occurrences of the variables of an expression. -/
-def JsExpr.occs {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) : Array JsOcc := e.occsAt {}
+def JsExpr.occs {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) : Array JsOcc := e.occsAt {}
 
 /-- The occurrences of the variables of a block. -/
-def JsBlock.occs {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : Array JsOcc := b.occsAt {}
+def JsBlock.occs {C M J : List JsTy} {k : JsEnd} (b : JsBlock S C M J k) : Array JsOcc := b.occsAt {}
 
 /-- Does the expression mention the variable? -/
-def JsExpr.mentions {C M : List JsTy} {τ : JsTy} (x : JsVar) (e : JsExpr C M τ) : Bool :=
+def JsExpr.mentions {C M : List JsTy} {τ : JsTy} (x : JsVar) (e : JsExpr S C M τ) : Bool :=
   e.occs.any (·.is x)
 
 /-- Does the block mention the variable? -/
-def JsBlock.mentions {C M J : List JsTy} {k : JsEnd} (x : JsVar) (b : JsBlock C M J k) : Bool :=
+def JsBlock.mentions {C M J : List JsTy} {k : JsEnd} (x : JsVar) (b : JsBlock S C M J k) : Bool :=
   b.occs.any (·.is x)
 
-/-- Is the expression a variable, a global or a literal (one that can be repeated without
+/-- Is the expression a variable or a literal (one that can be repeated without
     recomputing anything)? -/
-def JsExpr.isAtom {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
-  | .cvar _ | .mvar _ | .global .. | .lit _ | .enum_mk .. => true
+def JsExpr.isAtom {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. => true
+  | .fold _ e | .unfold _ e => e.isAtom
   | _ => false
 
 end MoreJs

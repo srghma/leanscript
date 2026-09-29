@@ -8,7 +8,13 @@
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test1 = (f, g, a) => f()(g()(a));
+export const test1 = (f, g, a) => {
+  const x$1 = f();
+  const x$2 = g();
+  const x$3 = x$2(a);
+  const x$4 = x$1(x$3);
+  return x$4;
+};
 
 /**
  * `test2`
@@ -19,7 +25,11 @@ export const test1 = (f, g, a) => f()(g()(a));
  */
 export const test2 = (f, g, a) => {
   const x$1 = g();
-  return x$1(f()(x$1(a)));
+  const x$2 = f();
+  const x$3 = x$1(a);
+  const x$4 = x$2(x$3);
+  const x$5 = x$1(x$4);
+  return x$5;
 };
 
 /**
@@ -32,7 +42,11 @@ export const test2 = (f, g, a) => {
 export const test3 = (f, g, a) => {
   const x$1 = f();
   const x$2 = g();
-  return x$1(x$2(x$1(x$2(a))));
+  const x$3 = x$2(a);
+  const x$4 = x$1(x$3);
+  const x$5 = x$2(x$4);
+  const x$6 = x$1(x$5);
+  return x$6;
 };
 
 /**
@@ -45,5 +59,10 @@ export const test3 = (f, g, a) => {
 export const test4 = (f, g, a) => {
   const x$1 = g();
   const x$2 = f();
-  return x$1(x$2(x$1(x$2(x$1(a)))));
+  const x$3 = x$1(a);
+  const x$4 = x$2(x$3);
+  const x$5 = x$1(x$4);
+  const x$6 = x$2(x$5);
+  const x$7 = x$1(x$6);
+  return x$7;
 };

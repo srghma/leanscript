@@ -3,8 +3,6 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
-const $k1 = { _1: true, _2: 0, _3: true, _4: false };
-
 /**
  * `test1`
  * @returns {int53(number)}
@@ -15,34 +13,34 @@ export const test1 = () => 42;
  * `test2`
  * @returns {int53(number)}
  */
-export const test2 = test1;
+export const test2 = () => 42;
 
 /**
  * `test3`
  * @returns {int53(number)}
  */
-export const test3 = test1;
+export const test3 = () => 42;
 
 /**
  * `extern1`
  * @returns {{ _1: boolean, _2: int53(number), _3: boolean, _4: boolean }}
  */
-export const extern1 = () => $k1;
+export const extern1 = () => ({ _1: true, _2: 0, _3: true, _4: false });
 
 /**
  * `test4`
  * @returns {int53(number)}
  */
-export const test4 = test1;
+export const test4 = () => 42;
 
 /**
  * `test5`
  * @returns {int53(number)}
  */
-export const test5 = test1;
+export const test5 = () => 42;
 
 /**
  * `test6`
  * @returns {int53(number)}
  */
-export const test6 = test1;
+export const test6 = () => 42;

@@ -4,7 +4,7 @@ import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
 import JsTerm.Print.Mini
-import JsTerm.Passes.Hoist
+import JsTerm.Lower.Module
 
 /-!
 # `leanscript`: Lean to JavaScript

@@ -695,7 +695,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- String.getUTF8Byte (decides `p < s.rawEndPos`) -/
   | string__lean_string_get_byte_fast__String_getUTF8Byte : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.terminal .uint8)
   /-- String.Pos.Raw.get? -/
-  | string__lean_string_utf8_get_opt__String_Pos_Raw_get? : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.union [] [(.terminal .string)] [])
+  | string__lean_string_utf8_get_opt__String_Pos_Raw_get? : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.obj (.union [0, 1]) [(.terminal .string)])
   /-- String.Pos.Raw.prev -/
   | string__lean_string_utf8_prev__String_Pos_Raw_prev : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.terminal .uint53)
   /-- String.next' (decides `¬String.Pos.Raw.atEnd s p = Bool.true`) -/
@@ -725,9 +725,9 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- String.compare -/
   | string__lean_string_compare : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .string)] (.enum 3 (-1))
   /-- Float.frExp -/
-  | bigint_int__lean_float_frexp : JsOpImported .pure .doesntThrow [(.terminal .float)] (.record (.terminal .float) (.terminal .bigint_int) [])
+  | bigint_int__lean_float_frexp : JsOpImported .pure .doesntThrow [(.terminal .float)] (.obj (.record 2) [(.terminal .float), (.terminal .bigint_int)])
   /-- Float.frExp -/
-  | int53__lean_float_frexp : JsOpImported .pure .doesntThrow [(.terminal .float)] (.record (.terminal .float) (.terminal .int53) [])
+  | int53__lean_float_frexp : JsOpImported .pure .doesntThrow [(.terminal .float)] (.obj (.record 2) [(.terminal .float), (.terminal .int53)])
   /-- Float.toBits -/
   | bigint_nat__lean_float_to_bits__Float_toBits : JsOpImported .pure .doesntThrow [(.terminal .float)] (.terminal .bigint_nat)
   /-- Float.toBits -/
@@ -779,9 +779,9 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- Float32.ofBits -/
   | uint32__lean_float32_of_bits__Float32_ofBits : JsOpImported .pure .doesntThrow [(.terminal .uint32)] (.terminal .float32)
   /-- Float32.frExp -/
-  | bigint_int__lean_float32_frexp : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.record (.terminal .float32) (.terminal .bigint_int) [])
+  | bigint_int__lean_float32_frexp : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.obj (.record 2) [(.terminal .float32), (.terminal .bigint_int)])
   /-- Float32.frExp -/
-  | int53__lean_float32_frexp : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.record (.terminal .float32) (.terminal .int53) [])
+  | int53__lean_float32_frexp : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.obj (.record 2) [(.terminal .float32), (.terminal .int53)])
   /-- Float32.toUInt64 -/
   | bigint_nat__lean_float32_to_uint64 : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .bigint_nat)
   /-- Float32.toUInt64 -/

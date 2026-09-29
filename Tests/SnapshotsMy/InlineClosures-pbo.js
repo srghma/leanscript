@@ -4,8 +4,7 @@
 import {
   uint53__lean_nat_add,
   uint53__lean_nat_mul,
-  array__lean_array_push_mutable,
-  uint53__lean_nat_sub,
+  array__lean_array_push_immutable,
 } from "../../runtime.js";
 
 /**
@@ -16,13 +15,21 @@ import {
  * @returns {uint53(number)}
  */
 export const addAfter = (fuel, a, b) => {
-  let x$1 = a;
-  let x$2 = b;
-  for (let j$3 = 0; j$3 < fuel; j$3++) {
-    x$1 = uint53__lean_nat_add(x$1, 2);
-    x$2 = uint53__lean_nat_add(x$2, 3);
+  const k$3 = (x$1, x$2) => uint53__lean_nat_add(x$1, x$2);
+  let acc$4 = k$3;
+  for (let i$5 = 0; i$5 < fuel; i$5++) {
+    const a$6 = acc$4;
+    const k$12 = (x$7, x$8) => {
+      const x$9 = uint53__lean_nat_add(x$7, 2);
+      const x$10 = uint53__lean_nat_add(x$8, 3);
+      const x$11 = a$6(x$9, x$10);
+      return x$11;
+    };
+    acc$4 = k$12;
   }
-  return uint53__lean_nat_add(x$1, x$2);
+  const x$13 = acc$4;
+  const x$14 = x$13(a, b);
+  return x$14;
 };
 
 /**
@@ -31,9 +38,18 @@ export const addAfter = (fuel, a, b) => {
  * @returns {uint53(number)}
  */
 export const sumShifted = (k) => {
-  const x$1 = uint53__lean_nat_mul(2, k);
-  const x$2 = uint53__lean_nat_mul(3, k);
-  return uint53__lean_nat_add(uint53__lean_nat_add(k, x$1), x$2);
+  const k$8 = (x$1) => {
+    const x$2 = 1;
+    const x$3 = x$1(x$2);
+    const x$4 = 2;
+    const x$5 = x$1(x$4);
+    const x$6 = 3;
+    const x$7 = x$1(x$6);
+    return uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$5), x$7);
+  };
+  const k$10 = (x$9) => uint53__lean_nat_mul(x$9, k);
+  const x$11 = k$8(k$10);
+  return x$11;
 };
 
 /**
@@ -42,14 +58,25 @@ export const sumShifted = (k) => {
  * @returns {Array<uint53(number)>}
  */
 export const downFrom = (n) => {
-  let x$1 = [];
-  for (let j$2 = 0; j$2 < n; j$2++) {
-    x$1 = array__lean_array_push_mutable(
-      x$1,
-      uint53__lean_nat_sub(uint53__lean_nat_sub(n, 1), j$2),
-    );
-  }
-  return x$1;
+  const k$14 = (x$1, x$2) => {
+    const k$4 = (x$3) => x$3;
+    let acc$5 = k$4;
+    for (let i$6 = 0; i$6 < x$1; i$6++) {
+      const a$7 = acc$5;
+      const k$11 = (x$8) => {
+        const x$9 = array__lean_array_push_immutable(x$8, i$6);
+        const x$10 = a$7(x$9);
+        return x$10;
+      };
+      acc$5 = k$11;
+    }
+    const x$12 = acc$5;
+    const x$13 = x$12(x$2);
+    return x$13;
+  };
+  const x$15 = [];
+  const x$16 = k$14(n, x$15);
+  return x$16;
 };
 
 /**
@@ -58,18 +85,48 @@ export const downFrom = (n) => {
  * @param {uint53(number)} b
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
-export const ordered = (a, b) => (a <= b ? { _1: a, _2: b } : { _1: b, _2: a });
+export const ordered = (a, b) => {
+  const k$4 = (x$1) => {
+    const { _1: f$2, _2: f$3 } = x$1;
+    return f$2 <= f$3 ? x$1 : { _1: f$3, _2: f$2 };
+  };
+  const x$5 = { _1: a, _2: b };
+  const x$6 = k$4(x$5);
+  return x$6;
+};
 
 /**
  * `keep`
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const keep = (x) => x;
+export const keep = (x) => (x === 7 ? 7 : x);
 
 /**
  * `around`
  * @param {List<string>} xs
  * @returns {List<string>}
  */
-export const around = (xs) => ["<", ...xs, ",", ...xs, ">"];
+export const around = (xs) => {
+  let acc$1 = xs;
+  for (const e$2 of [">"]) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+  }
+  let acc$4 = [","];
+  for (const e$5 of acc$1) {
+    const a$6 = acc$4;
+    acc$4 = array__lean_array_push_immutable(a$6, e$5);
+  }
+  let acc$7 = xs;
+  for (const e$8 of acc$4) {
+    const a$9 = acc$7;
+    acc$7 = array__lean_array_push_immutable(a$9, e$8);
+  }
+  let acc$10 = ["<"];
+  for (const e$11 of acc$7) {
+    const a$12 = acc$10;
+    acc$10 = array__lean_array_push_immutable(a$12, e$11);
+  }
+  return acc$10;
+};

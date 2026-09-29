@@ -20,7 +20,14 @@ export const bar = () => 3n;
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const useScale = (n) => n * 2n + (n + 1n) * 2n;
+export const useScale = (n) => {
+  const k$2 = (x$1) => x$1 * 2n;
+  const x$3 = k$2(n);
+  const k$5 = (x$4) => x$4 * 2n;
+  const x$6 = n + 1n;
+  const x$7 = k$5(x$6);
+  return x$3 + x$7;
+};
 
 /**
  * `triple`
@@ -34,4 +41,11 @@ export const triple = (a) => a * 3n;
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const useTriple = (n) => n * 3n + (n + 1n) * 3n;
+export const useTriple = (n) => {
+  const k$2 = (x$1) => x$1 * 3n;
+  const x$3 = k$2(n);
+  const k$5 = (x$4) => x$4 * 3n;
+  const x$6 = n + 1n;
+  const x$7 = k$5(x$6);
+  return x$3 + x$7;
+};

@@ -20,15 +20,21 @@ import {
  * @returns {uint53(number)}
  */
 export const test3 = (s, n) => {
-  let acc$1 = s;
-  let acc$2 = 0;
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    const f$4 = acc$1;
-    acc$1 = f$4 + "x";
-    acc$2 = uint53__lean_nat_add(
-      acc$2,
-      uint53__lean_string_utf8_byte_size(f$4),
-    );
+  let acc$1 = { tag: 1, _1: { _1: s, _2: 0 } };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _1: f$4 } = a$3._1;
+      const x$5 = uint53__lean_nat_add(
+        a$3._1._2,
+        uint53__lean_string_utf8_byte_size(f$4),
+      );
+      const x$6 = f$4 + "x";
+      acc$1 = { tag: 1, _1: { _1: x$6, _2: x$5 } };
+    }
   }
-  return acc$2;
+  const x$7 = acc$1._1;
+  return x$7._2;
 };

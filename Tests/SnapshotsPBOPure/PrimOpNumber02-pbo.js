@@ -62,7 +62,8 @@ import {
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$addNoInline = float32__lean_float32_add;
+export const TestFloat32$addNoInline = (a, b) =>
+  float32__lean_float32_add(a, b);
 
 /**
  * `TestFloat32.subNoInline`
@@ -70,7 +71,8 @@ export const TestFloat32$addNoInline = float32__lean_float32_add;
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$subNoInline = float32__lean_float32_sub;
+export const TestFloat32$subNoInline = (a, b) =>
+  float32__lean_float32_sub(a, b);
 
 /**
  * `TestFloat32.eqNoInline`
@@ -126,7 +128,8 @@ export const TestFloat32$geNoInline = (a, b) => b <= a;
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$mulNoInline = float32__lean_float32_mul;
+export const TestFloat32$mulNoInline = (a, b) =>
+  float32__lean_float32_mul(a, b);
 
 /**
  * `TestFloat32.divNoInline`
@@ -134,7 +137,8 @@ export const TestFloat32$mulNoInline = float32__lean_float32_mul;
  * @param {float32} b
  * @returns {float32}
  */
-export const TestFloat32$divNoInline = float32__lean_float32_div;
+export const TestFloat32$divNoInline = (a, b) =>
+  float32__lean_float32_div(a, b);
 
 /**
  * `TestFloat32.negNoInline`

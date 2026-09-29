@@ -6,21 +6,25 @@ import {
   bigint_nat__lean_string_length__String_Internal_length,
 } from "../../runtime.js";
 
-const $k1 = { tag: 1, _1: 0n };
-
 /**
  * `sumCount`
  * @param {nat(bigint)} n
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
 export const sumCount = (n) => {
-  let acc$1 = 0n;
-  let acc$2 = 0n;
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    acc$1 = acc$1 + i$3;
-    acc$2 = acc$2 + 1n;
+  let acc$1 = { tag: 1, _1: { _1: 0n, _2: 0n } };
+  for (let i$2 = 0n; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const x$4 = a$3._1._1 + i$2;
+      const x$5 = a$3._1._2 + 1n;
+      acc$1 = { tag: 1, _1: { _1: x$4, _2: x$5 } };
+    }
   }
-  return { _1: acc$1, _2: acc$2 };
+  const x$6 = acc$1._1;
+  return { _1: x$6._1, _2: x$6._2 };
 };
 
 /**
@@ -29,14 +33,19 @@ export const sumCount = (n) => {
  * @returns {nat(bigint)}
  */
 export const fib = (n) => {
-  let acc$1 = 0n;
-  let acc$2 = 1n;
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    const f$4 = acc$1;
-    acc$1 = acc$2;
-    acc$2 = f$4 + acc$2;
+  let acc$1 = { tag: 1, _1: { _1: 0n, _2: 1n } };
+  for (let i$2 = 0n; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _2: f$4 } = a$3._1;
+      const x$5 = a$3._1._1 + f$4;
+      acc$1 = { tag: 1, _1: { _1: f$4, _2: x$5 } };
+    }
   }
-  return acc$1;
+  const x$6 = acc$1._1;
+  return x$6._1;
 };
 
 /**
@@ -45,20 +54,48 @@ export const fib = (n) => {
  * @returns {{ _1: nat(bigint), _2: { _1: nat(bigint), _2: nat(bigint) } }}
  */
 export const minMaxSum = (n) => {
-  let acc$1 = 1000000n;
-  let acc$2 = 0n;
-  let acc$3 = 0n;
-  for (let i$4 = 0n; i$4 < n; i$4++) {
-    const x$5 = bigint_nat__lean_nat_mod__Nat_mod(i$4 * 7n, 11n);
-    if (x$5 < acc$1) {
-      acc$1 = x$5;
+  let acc$1 = { tag: 1, _1: { _1: 1000000n, _2: { _1: 0n, _2: 0n } } };
+  for (let i$2 = 0n; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _1: f$4 } = a$3._1;
+      const { _1: f$5, _2: f$6 } = a$3._1._2;
+      const x$7 = bigint_nat__lean_nat_mod__Nat_mod(i$2 * 7n, 11n);
+      const k$18 = () => {
+        const k$17 = (x$8) => {
+          const k$12 = () => {
+            const k$11 = (x$9) => {
+              const x$10 = f$6 + x$7;
+              return { tag: 1, _1: { _1: x$8, _2: { _1: x$9, _2: x$10 } } };
+            };
+            return k$11;
+          };
+          if (f$5 < x$7) {
+            const x$13 = k$12();
+            const x$14 = x$13(x$7);
+            return x$14;
+          }
+          const x$15 = k$12();
+          const x$16 = x$15(f$5);
+          return x$16;
+        };
+        return k$17;
+      };
+      if (x$7 < f$4) {
+        const x$19 = k$18();
+        const x$20 = x$19(x$7);
+        acc$1 = x$20;
+      } else {
+        const x$21 = k$18();
+        const x$22 = x$21(f$4);
+        acc$1 = x$22;
+      }
     }
-    if (acc$2 < x$5) {
-      acc$2 = x$5;
-    }
-    acc$3 = acc$3 + x$5;
   }
-  return { _1: acc$1, _2: { _1: acc$2, _2: acc$3 } };
+  const x$23 = acc$1._1;
+  return { _1: x$23._1, _2: { _1: x$23._2._1, _2: x$23._2._2 } };
 };
 
 /**
@@ -68,12 +105,13 @@ export const minMaxSum = (n) => {
  * @returns {nat(bigint)}
  */
 export const firstAbove = (n, k) => {
-  let acc$1 = $k1;
+  let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1.tag !== 0) {
-      if (k < i$2 * i$2) {
-        acc$1 = { tag: 0, _1: i$2 };
-      }
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      acc$1 = k < i$2 * i$2 ? { tag: 0, _1: i$2 } : { tag: 1, _1: a$3._1 };
     }
   }
   return acc$1._1;
@@ -86,11 +124,18 @@ export const firstAbove = (n, k) => {
  * @returns {{ _1: string, _2: nat(bigint) }}
  */
 export const repeatCount = (s, n) => {
-  let acc$1 = "";
-  let acc$2 = 0n;
-  for (let i$3 = 0n; i$3 < n; i$3++) {
-    acc$1 = acc$1 + s;
-    acc$2 = acc$2 + bigint_nat__lean_string_length__String_Internal_length(s);
+  let acc$1 = { tag: 1, _1: { _1: "", _2: 0n } };
+  for (let i$2 = 0n; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const x$4 = a$3._1._1 + s;
+      const x$5 =
+        a$3._1._2 + bigint_nat__lean_string_length__String_Internal_length(s);
+      acc$1 = { tag: 1, _1: { _1: x$4, _2: x$5 } };
+    }
   }
-  return { _1: acc$1, _2: acc$2 };
+  const x$6 = acc$1._1;
+  return { _1: x$6._1, _2: x$6._2 };
 };

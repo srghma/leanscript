@@ -222,10 +222,11 @@ def lean_of(t, var='α'):
     lst = lambda ts: '[' + ', '.join(lean_of(a, var) for a in ts) + ']'
     if k == 'union':
         cs = t[1]
-        return f'(.union {lst(cs[0])} {lst(cs[1])} [' + ', '.join(lst(c) for c in cs[2:]) + '])'
+        ar = ', '.join(str(len(c)) for c in cs)
+        return f'(.obj (.union [{ar}]) ' + lst([a for c in cs for a in c]) + ')'
     if k == 'record':
         fs = t[1]
-        return f'(.record {lean_of(fs[0], var)} {lean_of(fs[1], var)} {lst(fs[2:])})'
+        return f'(.obj (.record {len(fs)}) {lst(fs)})'
     if k == 'fn':
         return f'(.fn {lst(t[1])} {lean_of(t[2], var)})'
     raise ValueError(t)

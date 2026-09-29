@@ -9,6 +9,8 @@ import { array__lean_array_push_immutable } from "../../runtime.js";
  * @returns {Array<int53(number)>}
  */
 export const test = (x) => {
-  const x$1 = array__lean_array_push_immutable([x], 12);
-  return array__lean_array_push_immutable(x$1, x$1.length);
+  const k$1 = [x];
+  const x$2 = array__lean_array_push_immutable(k$1, 12);
+  const x$3 = x$2.length;
+  return array__lean_array_push_immutable(x$2, x$3);
 };

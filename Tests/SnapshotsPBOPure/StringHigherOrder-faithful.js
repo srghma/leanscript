@@ -3,59 +3,52 @@
 // not translated:
 //   stringValues: LeanScript: `stringValues` is universe polymorphic
 
-const $tag0 = { tag: 0 };
-const $k2 = {
-  tag: 1,
-  _1: true,
-  _2: { tag: 1, _1: false, _2: { tag: 1, _1: false, _2: $tag0 } },
-};
-const $k3 = {
-  tag: 1,
-  _1: false,
-  _2: { tag: 1, _1: true, _2: { tag: 1, _1: true, _2: $tag0 } },
-};
-const $k4 = {
-  tag: 1,
-  _1: false,
-  _2: { tag: 1, _1: true, _2: { tag: 1, _1: false, _2: $tag0 } },
-};
-const $k5 = {
-  tag: 1,
-  _1: false,
-  _2: { tag: 1, _1: false, _2: { tag: 1, _1: true, _2: $tag0 } },
-};
-const $k6 = {
-  tag: 1,
-  _1: "aa",
-  _2: { tag: 1, _1: "ab", _2: { tag: 1, _1: "ba", _2: $tag0 } },
-};
-
 /**
  * `test1`
  * @returns {ConsList<boolean>}
  */
-export const test1 = () => $k2;
+export const test1 = () => ({
+  tag: 1,
+  _1: true,
+  _2: { tag: 1, _1: false, _2: { tag: 1, _1: false, _2: { tag: 0 } } },
+});
 
 /**
  * `test2`
  * @returns {ConsList<boolean>}
  */
-export const test2 = () => $k3;
+export const test2 = () => ({
+  tag: 1,
+  _1: false,
+  _2: { tag: 1, _1: true, _2: { tag: 1, _1: true, _2: { tag: 0 } } },
+});
 
 /**
  * `test3`
  * @returns {ConsList<boolean>}
  */
-export const test3 = () => $k4;
+export const test3 = () => ({
+  tag: 1,
+  _1: false,
+  _2: { tag: 1, _1: true, _2: { tag: 1, _1: false, _2: { tag: 0 } } },
+});
 
 /**
  * `test4`
  * @returns {ConsList<boolean>}
  */
-export const test4 = () => $k5;
+export const test4 = () => ({
+  tag: 1,
+  _1: false,
+  _2: { tag: 1, _1: false, _2: { tag: 1, _1: true, _2: { tag: 0 } } },
+});
 
 /**
  * `test7`
  * @returns {ConsList<string>}
  */
-export const test7 = () => $k6;
+export const test7 = () => ({
+  tag: 1,
+  _1: "aa",
+  _2: { tag: 1, _1: "ab", _2: { tag: 1, _1: "ba", _2: { tag: 0 } } },
+});

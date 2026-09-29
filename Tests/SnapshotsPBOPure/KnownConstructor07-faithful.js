@@ -11,5 +11,6 @@
  */
 export const test = (f, y) => {
   const x$1 = f(y);
-  return { _1: x$1 + 1n, _2: x$1 - 2n };
+  const x$2 = x$1 + 1n;
+  return { _1: x$2, _2: x$1 - 2n };
 };

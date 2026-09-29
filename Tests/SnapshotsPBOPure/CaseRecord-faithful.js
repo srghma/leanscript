@@ -70,7 +70,13 @@ export const test3 = (x) => {
  * @param {{ _1: int(bigint), _2: int(bigint) }} x
  * @returns {int(bigint)}
  */
-export const test4 = test3;
+export const test4 = (x) => {
+  const { _1: f$1, _2: f$2 } = x;
+  if (0n < f$1) {
+    return f$1;
+  }
+  return 1n < f$2 ? f$2 : 3n;
+};
 
 /**
  * `test5`
@@ -90,4 +96,10 @@ export const test5 = (x) => {
  * @param {{ _1: int(bigint), _2: int(bigint) }} x
  * @returns {int(bigint)}
  */
-export const test6 = test5;
+export const test6 = (x) => {
+  const { _1: f$1, _2: f$2 } = x;
+  if (0n < f$1) {
+    return f$1;
+  }
+  return 0n < f$2 ? f$2 : 0n;
+};

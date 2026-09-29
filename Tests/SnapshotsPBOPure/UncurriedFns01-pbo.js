@@ -7,7 +7,14 @@
  * @param {(int53(number)) => int53(number)} g
  * @returns {int53(number)}
  */
-export const test1 = (f, g) => f(g(1), 2, 3);
+export const test1 = (f, g) => {
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  const x$3 = 2;
+  const x$4 = 3;
+  const x$5 = f(x$2, x$3, x$4);
+  return x$5;
+};
 
 /**
  * `test2`
@@ -16,7 +23,13 @@ export const test1 = (f, g) => f(g(1), 2, 3);
  * @param {int53(number)} i
  * @returns {int53(number)}
  */
-export const test2 = (f, g, i) => f(g(1), 2, i);
+export const test2 = (f, g, i) => {
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  const x$3 = 2;
+  const x$4 = f(x$2, x$3, i);
+  return x$4;
+};
 
 /**
  * `test3`
@@ -26,7 +39,12 @@ export const test2 = (f, g, i) => f(g(1), 2, i);
  * @param {int53(number)} j
  * @returns {int53(number)}
  */
-export const test3 = (f, g, i, j) => f(g(1), i, j);
+export const test3 = (f, g, i, j) => {
+  const x$1 = 1;
+  const x$2 = g(x$1);
+  const x$3 = f(x$2, i, j);
+  return x$3;
+};
 
 /**
  * `test4`
@@ -36,4 +54,7 @@ export const test3 = (f, g, i, j) => f(g(1), i, j);
  * @param {int53(number)} k
  * @returns {int53(number)}
  */
-export const test4 = (f, i, j, k) => f(i, j, k);
+export const test4 = (f, i, j, k) => {
+  const x$1 = f(i, j, k);
+  return x$1;
+};

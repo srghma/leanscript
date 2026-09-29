@@ -20,7 +20,7 @@ export const test1 = (v, b) => v._1 + b;
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const test2 = test1;
+export const test2 = (v, a) => v._1 + a;
 
 /**
  * `test3`
@@ -28,4 +28,4 @@ export const test2 = test1;
  * @param {int(bigint)} p1
  * @returns {int(bigint)}
  */
-export const test3 = test1;
+export const test3 = (v, p1) => v._1 + p1;

@@ -8,8 +8,6 @@ import {
   uint53__lean_nat_mul,
 } from "../../runtime.js";
 
-const $k1 = { tag: 1, _1: 0 };
-
 /**
  * `swapSum`
  * @param {{ _1: uint53(number), _2: uint53(number) }} p
@@ -27,7 +25,10 @@ export const swapSum = (p, q) => ({
  * @param {{ _1: uint53(number), _2: uint53(number) }} q
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
-export const swapSum_ = swapSum;
+export const swapSum_ = (p, q) => ({
+  _1: uint53__lean_nat_add(p._2, q._2),
+  _2: uint53__lean_nat_add(p._1, q._1),
+});
 
 /**
  * `absDiff`
@@ -44,7 +45,7 @@ export const absDiff = (a, b) =>
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const plus = uint53__lean_nat_add;
+export const plus = (a, b) => uint53__lean_nat_add(a, b);
 
 /**
  * `maxMod`
@@ -52,17 +53,18 @@ export const plus = uint53__lean_nat_add;
  * @returns {uint53(number)}
  */
 export const maxMod = (n) => {
-  let acc$1 = $k1;
+  let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag !== 0) {
-      const { _1: f$3 } = acc$1;
-      const x$4 = uint53__lean_nat_mod__Nat_mod(
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _1: f$4 } = a$3;
+      const x$5 = uint53__lean_nat_mod__Nat_mod(
         uint53__lean_nat_mul(3, i$2),
         10,
       );
-      if (f$3 < x$4) {
-        acc$1 = { tag: 1, _1: x$4 };
-      }
+      acc$1 = f$4 < x$5 ? { tag: 1, _1: x$5 } : { tag: 1, _1: f$4 };
     }
   }
   return acc$1._1;

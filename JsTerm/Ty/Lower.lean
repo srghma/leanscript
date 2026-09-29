@@ -111,13 +111,40 @@ def lowerArrayPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTy :=
   | .float32 => typedIf floats .float32
   | _ => generic
 
-/-- The name of member `j` of a block of a signature, as a JavaScript type name. -/
-def refName {ks : List Nat} : Ref ks → String :=
-  go 0
-where
-  go {ks : List Nat} (depth : Nat) : Ref ks → String
-    | .here j => s!"D{depth}_{j.val}"
-    | .there r => go (depth + 1) r
+/-- The number of datatypes in the blocks `ks` (a block of size `k` has `k + 1`). -/
+def blocksSize (ks : List Nat) : Nat := (ks.map (· + 1)).sum
+
+/-- The number of a declared datatype: its position among the datatypes of the signature,
+    **oldest first** (the members of the oldest block are `0`, `1`, …).  It does not depend on
+    the scope: a datatype of an older block keeps its number under the newer blocks
+    (`refIndex_there`), so the same datatype has the same declaration (`JsObjId.decl`)
+    wherever it is named. -/
+def refIndex : {ks : List Nat} → Ref ks → Nat
+  | _ :: ks, .here j => blocksSize ks + j.val
+  | _ :: _, .there r => refIndex r
+
+/-- A datatype of an older block keeps its number. -/
+@[simp] theorem refIndex_there {k : Nat} {ks : List Nat} (r : Ref ks) :
+    refIndex (Ref.there (k := k) r) = refIndex r := rfl
+
+/-- The number of a datatype is below the number of datatypes of the signature. -/
+theorem refIndex_lt : {ks : List Nat} → (r : Ref ks) → refIndex r < blocksSize ks
+  | k :: ks, .here j => by
+    simp only [refIndex, blocksSize, List.map_cons, List.sum_cons]; omega
+  | k :: ks, .there r => by
+    have := refIndex_lt r
+    simp only [refIndex, blocksSize, List.map_cons, List.sum_cons] at *; omega
+
+/-- Two datatypes of a signature have the same number only if they are the same datatype. -/
+theorem refIndex_injective : {ks : List Nat} → {r₁ r₂ : Ref ks} →
+    refIndex r₁ = refIndex r₂ → r₁ = r₂
+  | _ :: _, .here j₁, .here j₂, h => by
+    simp only [refIndex] at h; exact congrArg Ref.here (Fin.ext (by omega))
+  | _ :: _, .here _, .there r₂, h => by
+    have := refIndex_lt r₂; simp only [refIndex] at h; omega
+  | _ :: _, .there r₁, .here _, h => by
+    have := refIndex_lt r₁; simp only [refIndex] at h; omega
+  | _ :: _, .there _, .there _, h => congrArg Ref.there (refIndex_injective h)
 
 /-- Is the type an arrow (`Ty.fn`)? -/
 def _root_.LeanScript.Ty.isFn {ks : List Nat} {d : Bool} : Ty ks d → Bool
@@ -141,22 +168,18 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
   | .array t => .array (lowerTy cfg t)
   | .list t => match cfg.listRepr with
     | .stdListToJsArray => .list (lowerTy cfg t)
-    | .taggedUnion => .consList (lowerTy cfg t)
+    | .taggedUnion => .obj .consList [lowerTy cfg t]
   | .enum s => .enum s.nOfConstructors s.shift
-  | .record t fs => .record (lowerTy cfg t) (lowerFields1 cfg fs).1 (lowerFields1 cfg fs).2
+  | .record t fs => .obj (.record (lowerFields cfg fs).length.succ) (lowerTy cfg t :: lowerFields cfg fs)
   | .union cs (h := _) =>
-    .union (lowerCtors2 cfg cs).1 (lowerCtors2 cfg cs).2.1 (lowerCtors2 cfg cs).2.2
-  | .data r => .data (refName r)
+    .obj (.union ((lowerCtors cfg cs).map List.length)) (lowerCtors cfg cs).flatten
+  | .data r => .obj (.decl (cfg.declCanon.getD (refIndex r) (refIndex r))) []
   | .thunk t => .thunk (lowerTy cfg t)
   | .lazy t => .fn [] (lowerTy cfg t)
 /-- The layouts of the fields of a record or a constructor. -/
 def lowerFields (cfg : JsConfig) {ks : List Nat} : Fields ks → List JsTy
   | .one t => [lowerTy cfg t]
   | .cons t fs => lowerTy cfg t :: lowerFields cfg fs
-/-- The layouts of one field or more: the first one and the others. -/
-def lowerFields1 (cfg : JsConfig) {ks : List Nat} : Fields ks → JsTy × List JsTy
-  | .one t => (lowerTy cfg t, [])
-  | .cons t fs => (lowerTy cfg t, lowerFields cfg fs)
 /-- The layouts of the fields of a constructor. -/
 def lowerCtor (cfg : JsConfig) {ks : List Nat} {b : Bool} : Ctor ks b → List JsTy
   | .nullary => []
@@ -166,16 +189,6 @@ def lowerCtors (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs �
     List (List JsTy)
   | .two a b => [lowerCtor cfg a, lowerCtor cfg b]
   | .cons c cs => lowerCtor cfg c :: lowerCtors cfg cs
-/-- The layouts of two constructors or more: the first two and the others. -/
-def lowerCtors2 (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs →
-    List JsTy × List JsTy × List (List JsTy)
-  | .two a b => (lowerCtor cfg a, lowerCtor cfg b, [])
-  | .cons c cs => (lowerCtor cfg c, lowerCtors1 cfg cs)
-/-- The layouts of two constructors or more: the first one and the others. -/
-def lowerCtors1 (cfg : JsConfig) {ks : List Nat} {bs : List Bool} : Ctors ks bs →
-    List JsTy × List (List JsTy)
-  | .two a b => (lowerCtor cfg a, [lowerCtor cfg b])
-  | .cons c cs => (lowerCtor cfg c, lowerCtors cfg cs)
 end
 
 example : lowerTy JsConfig.default (Ty.nat : Ty []) = .terminal .bigint_nat := rfl
@@ -187,7 +200,7 @@ example : lowerTy JsConfig.presetPBO (.array (.prim .uint8) : Ty []) =
 /-- Under `ListRepr.taggedUnion` the standard library's `List` is laid out as cons cells. -/
 theorem lowerTy_list_of_taggedUnion (cfg : JsConfig) (h : cfg.listRepr = .taggedUnion)
     {ks : List Nat} {d : Bool} (t : Ty ks) :
-    lowerTy cfg (Ty.list (d := d) t) = .consList (lowerTy cfg t) := by
+    lowerTy cfg (Ty.list (d := d) t) = .obj .consList [lowerTy cfg t] := by
   simp only [lowerTy, h]
 
 /-- Under `ListRepr.stdListToJsArray` the standard library's `List` is laid out as a JavaScript
@@ -205,7 +218,23 @@ theorem lowerTy_data_listRepr (cfg : JsConfig) (r : ListRepr) {ks : List Nat} {d
   simp only [lowerTy]
 
 example : lowerTy JsConfig.presetFaithful (.list .nat : Ty []) =
-    .consList (.terminal .bigint_nat) := rfl
+    .obj .consList [.terminal .bigint_nat] := rfl
+/-- A record is the anonymous declaration of its number of fields, at its fields. -/
+example : lowerTy JsConfig.presetPBO (.record .nat (.one .string) : Ty []) =
+    .obj (.record 2) [.terminal .uint53, .terminal .string] := rfl
+/-- `Option String` and `Option Nat` share the anonymous declaration `union [0, 1]`. -/
+example : lowerTy JsConfig.presetPBO (.union (.two .nullary (.fields (.one .string))) : Ty []) =
+    .obj (.union [0, 1]) [.terminal .string] := rfl
+example : lowerTy JsConfig.presetPBO (.union (.two .nullary (.fields (.one .nat))) : Ty []) =
+    .obj (.union [0, 1]) [.terminal .uint53] := rfl
+/-- A declared datatype is its stable number: member `1` of the only block of sizes `[2]`
+    (three members), and the same datatype seen from under a newer block of two members. -/
+example : lowerTy JsConfig.presetPBO (.data (.here ⟨1, by decide⟩) : Ty [2]) =
+    .obj (.decl 1) [] := rfl
+example : lowerTy JsConfig.presetPBO (.data (.there (.here ⟨1, by decide⟩)) : Ty [1, 2]) =
+    .obj (.decl 1) [] := rfl
+example : lowerTy JsConfig.presetPBO (.data (.here ⟨1, by decide⟩) : Ty [1, 2]) =
+    .obj (.decl 4) [] := rfl
 example : lowerTy JsConfig.presetPBO (.list .nat : Ty []) =
     .list (.terminal .uint53) := rfl
 

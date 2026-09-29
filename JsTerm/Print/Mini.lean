@@ -52,7 +52,6 @@ open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
 
 /-- A function as an exported declaration: `export const name = (params) => { body };`. -/
 def JsFun.toMini (f : JsFun) : MiniModuleItem :=
-  if let some g := f.alias then .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (ident g)⟩, []⟩)) else
   let go : PM MiniModuleItem := do
     -- the parameters keep their names (a name met twice gets a fresh one)
     let params ← f.params.foldlM (fun (acc : Array String) (p, _) =>
@@ -69,10 +68,6 @@ def importToMini (path : String) (names : List String) : MiniModuleItem :=
   .importDecl (.clause (MiniImportClause.mk none none
     (some (names.map fun n => Specifier.mk (nes n) none)) (nes path) [] (Or.inr (Or.inr rfl))))
 
-/-- A constant shared by the functions of a module: `const name = e;`. -/
-def JsConst.toMini (c : JsConst) : MiniModuleItem :=
-  .stmt (constDecl c.name ((exprToMini {} c.e).run' {}))
-
 /-- The comment above an exported function: its Lean name, and the types of its parameters
     and result. -/
 def JsFun.docComment (f : JsFun) : String :=
@@ -86,9 +81,7 @@ def JsModule.toJs (m : JsModule) (header : List String) (runtime : String) : Str
   let head := String.join (header.map fun l => s!"// {l}\n")
   let importsTxt := if m.imports.isEmpty then "" else
     printProgram ⟨[importToMini runtime m.imports]⟩ ++ "\n"
-  let constsTxt := if m.consts.isEmpty then "" else
-    printProgram ⟨m.consts.map JsConst.toMini⟩ ++ "\n"
   let funs := m.funs.map fun f => f.docComment ++ "\n" ++ printProgram ⟨[f.toMini]⟩
-  head ++ "\n" ++ importsTxt ++ constsTxt ++ "\n".intercalate funs
+  head ++ "\n" ++ importsTxt ++ "\n".intercalate funs
 
 end MoreJs

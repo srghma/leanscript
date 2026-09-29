@@ -2,32 +2,26 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  consList__of_array_onto,
   consList__to_array,
-  consList__append,
+  array__lean_array_push_immutable,
   consList__of_array,
 } from "../../runtime.js";
-
-const $tag0 = { tag: 0 };
-const $k2 = {
-  tag: 1,
-  _1: 1n,
-  _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 3n, _2: $tag0 } },
-};
-const $k3 = { tag: 1, _1: 7n, _2: { tag: 1, _1: 8n, _2: $tag0 } };
-const $k4 = { tag: 1, _1: 1n, _2: $tag0 };
 
 /**
  * `ListRepr.x`
  * @returns {ConsList<nat(bigint)>}
  */
-export const ListRepr$x = () => $k2;
+export const ListRepr$x = () => ({
+  tag: 1,
+  _1: 1n,
+  _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 3n, _2: { tag: 0 } } },
+});
 
 /**
  * `ListRepr.empty`
  * @returns {ConsList<string>}
  */
-export const ListRepr$empty = () => $tag0;
+export const ListRepr$empty = () => ({ tag: 0 });
 
 /**
  * `ListRepr.front`
@@ -35,19 +29,33 @@ export const ListRepr$empty = () => $tag0;
  * @param {ConsList<string>} xs
  * @returns {ConsList<string>}
  */
-export const ListRepr$front = (a, xs) => ({
-  tag: 1,
-  _1: a,
-  _2: { tag: 1, _1: "b", _2: xs },
-});
+export const ListRepr$front = (a, xs) => {
+  let acc$1 = [a, "b"];
+  for (const e$2 of consList__to_array(xs)) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+  }
+  return consList__of_array(acc$1);
+};
 
 /**
  * `ListRepr.middle`
  * @param {ConsList<nat(bigint)>} xs
  * @returns {ConsList<nat(bigint)>}
  */
-export const ListRepr$middle = (xs) =>
-  consList__of_array_onto([0n, ...consList__to_array(xs)], $k3);
+export const ListRepr$middle = (xs) => {
+  let acc$1 = [0n];
+  for (const e$2 of consList__to_array(xs)) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+  }
+  let acc$4 = acc$1;
+  for (const e$5 of [7n, 8n]) {
+    const a$6 = acc$4;
+    acc$4 = array__lean_array_push_immutable(a$6, e$5);
+  }
+  return consList__of_array(acc$4);
+};
 
 /**
  * `ListRepr.append`
@@ -55,7 +63,14 @@ export const ListRepr$middle = (xs) =>
  * @param {ConsList<nat(bigint)>} ys
  * @returns {ConsList<nat(bigint)>}
  */
-export const ListRepr$append = (xs, ys) => consList__append(xs, ys);
+export const ListRepr$append = (xs, ys) => {
+  let acc$1 = consList__to_array(xs);
+  for (const e$2 of consList__to_array(ys)) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+  }
+  return consList__of_array(acc$1);
+};
 
 /**
  * `ListRepr.ofArr`
@@ -76,7 +91,8 @@ export const ListRepr$toArr = (xs) => consList__to_array(xs);
  * @param {ConsList<int(bigint)>} xs
  * @returns {ConsList<int(bigint)>}
  */
-export const ListRepr$roundTrip = (xs) => xs;
+export const ListRepr$roundTrip = (xs) =>
+  consList__of_array(consList__to_array(xs));
 
 /**
  * `ListRepr.nested`
@@ -86,5 +102,9 @@ export const ListRepr$roundTrip = (xs) => xs;
 export const ListRepr$nested = (xs) => ({
   tag: 1,
   _1: xs,
-  _2: { tag: 1, _1: $k4, _2: { tag: 1, _1: xs, _2: $tag0 } },
+  _2: {
+    tag: 1,
+    _1: { tag: 1, _1: 1n, _2: { tag: 0 } },
+    _2: { tag: 1, _1: xs, _2: { tag: 0 } },
+  },
 });

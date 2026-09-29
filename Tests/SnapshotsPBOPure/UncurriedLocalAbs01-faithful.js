@@ -8,7 +8,7 @@
  * @returns {int(bigint)}
  */
 export const test = (x, y) => {
-  const k$5 = (x$1, x$2) => {
+  const k$6 = (x$1, x$2) => {
     let acc$3 = 0n;
     for (const e$4 of [
       x,
@@ -31,9 +31,12 @@ export const test = (x, y) => {
       x$1,
       x$2,
     ]) {
-      acc$3 = acc$3 + e$4;
+      const a$5 = acc$3;
+      acc$3 = a$5 + e$4;
     }
     return acc$3;
   };
-  return k$5(x, y) + k$5(y, x);
+  const x$7 = k$6(x, y);
+  const x$8 = k$6(y, x);
+  return x$7 + x$8;
 };

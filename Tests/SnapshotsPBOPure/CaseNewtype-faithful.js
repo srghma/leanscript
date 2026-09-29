@@ -21,4 +21,12 @@ export const test1 = (v) => {
  * @param {int(bigint)} a
  * @returns {string}
  */
-export const test2 = test1;
+export const test2 = (a) => {
+  if (a === 1n) {
+    return "1";
+  }
+  if (a === 2n) {
+    return "2";
+  }
+  return a === 3n ? "3" : "catch";
+};

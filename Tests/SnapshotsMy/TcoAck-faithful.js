@@ -12,8 +12,6 @@
 
 import { bigint_nat__lean_nat_div } from "../../runtime.js";
 
-const $k1 = (x$1) => x$1 + 1n;
-
 /**
  * `ack2`
  * @param {nat(bigint)} a
@@ -21,18 +19,25 @@ const $k1 = (x$1) => x$1 + 1n;
  * @returns {nat(bigint)}
  */
 export const ack2 = (a, a1) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0n; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (y$4) => {
-      let acc$5 = a$3(1n);
-      for (let i$6 = 0n; i$6 < y$4; i$6++) {
-        acc$5 = a$3(acc$5);
+  const k$3 = (x$2) => x$2 + 1n;
+  let acc$4 = k$3;
+  for (let i$5 = 0n; i$5 < a; i$5++) {
+    const a$6 = acc$4;
+    const k$15 = (x$7, x$8) => {
+      const x$9 = 1n;
+      const x$10 = x$7(x$9);
+      let acc$11 = x$10;
+      for (let i$12 = 0n; i$12 < x$8; i$12++) {
+        const a$13 = acc$11;
+        const x$14 = x$7(a$13);
+        acc$11 = x$14;
       }
-      return acc$5;
+      return acc$11;
     };
+    acc$4 = (y$16) => k$15(a$6, y$16);
   }
-  return acc$1(a1);
+  const f$1 = acc$4;
+  return f$1(a1);
 };
 
 /**

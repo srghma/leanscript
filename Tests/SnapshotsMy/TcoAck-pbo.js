@@ -16,8 +16,6 @@ import {
   uint53__lean_nat_mul,
 } from "../../runtime.js";
 
-const $k1 = (x$1) => uint53__lean_nat_add(x$1, 1);
-
 /**
  * `ack2`
  * @param {uint53(number)} a
@@ -25,18 +23,25 @@ const $k1 = (x$1) => uint53__lean_nat_add(x$1, 1);
  * @returns {uint53(number)}
  */
 export const ack2 = (a, a1) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (y$4) => {
-      let acc$5 = a$3(1);
-      for (let i$6 = 0; i$6 < y$4; i$6++) {
-        acc$5 = a$3(acc$5);
+  const k$3 = (x$2) => uint53__lean_nat_add(x$2, 1);
+  let acc$4 = k$3;
+  for (let i$5 = 0; i$5 < a; i$5++) {
+    const a$6 = acc$4;
+    const k$15 = (x$7, x$8) => {
+      const x$9 = 1;
+      const x$10 = x$7(x$9);
+      let acc$11 = x$10;
+      for (let i$12 = 0; i$12 < x$8; i$12++) {
+        const a$13 = acc$11;
+        const x$14 = x$7(a$13);
+        acc$11 = x$14;
       }
-      return acc$5;
+      return acc$11;
     };
+    acc$4 = (y$16) => k$15(a$6, y$16);
   }
-  return acc$1(a1);
+  const f$1 = acc$4;
+  return f$1(a1);
 };
 
 /**

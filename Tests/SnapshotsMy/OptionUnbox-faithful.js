@@ -8,14 +8,12 @@
 
 import { bigint_nat__lean_array_get } from "../../runtime.js";
 
-const $tag0 = { tag: 0 };
-
 /**
  * `test5`
  * @param {nat(bigint)} n
  * @returns {Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })>}
  */
-export const test5 = (n) => [{ tag: 1, _1: n }, $tag0];
+export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
 
 /**
  * `test6`
@@ -24,15 +22,18 @@ export const test5 = (n) => [{ tag: 1, _1: n }, $tag0];
  * @returns {nat(bigint)}
  */
 export const test6 = (n, i) => {
-  const x$1 =
-    i < BigInt([{ tag: 1, _1: n }, $tag0].length)
-      ? {
-          tag: 1,
-          _1: bigint_nat__lean_array_get($tag0, [{ tag: 1, _1: n }, $tag0], i),
-        }
-      : $tag0;
-  if (x$1.tag === 0) {
+  const k$2 = (x$1) => [{ tag: 1, _1: x$1 }, { tag: 0 }];
+  const x$3 = k$2(n);
+  let x$4;
+  if (i < BigInt(x$3.length)) {
+    const k$6 = (x$5) => [{ tag: 1, _1: x$5 }, { tag: 0 }];
+    const x$7 = k$6(n);
+    x$4 = { tag: 1, _1: bigint_nat__lean_array_get({ tag: 0 }, x$7, i) };
+  } else {
+    x$4 = { tag: 0 };
+  }
+  if (x$4.tag === 0) {
     return 2n;
   }
-  return x$1._1.tag === 0 ? 1n : x$1._1._1;
+  return x$4._1.tag === 0 ? 1n : x$4._1._1;
 };

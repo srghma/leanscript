@@ -107,33 +107,28 @@ def isBigInt : JsTy → Bool
   | .terminal t => t.isBigInt
   | _ => false
 
-/-- The fields of a record type, in order. -/
-def recordFields : JsTy → Option (List JsTy)
-  | .record f₁ f₂ fs => some (f₁ :: f₂ :: fs)
-  | _ => none
+/-- The name of declaration `i` of a signature, as a JavaScript type name. -/
+def declName (i : Nat) : String := s!"D{i}"
 
-/-- The constructors of a union type, in order. -/
-def unionCtors : JsTy → Option (List (List JsTy))
-  | .union c₀ c₁ cs => some (c₀ :: c₁ :: cs)
-  | _ => none
-
-/-- A rendering for the `-JsTerm.txt` dump. -/
+/-- A rendering for the `-JsTerm-*.txt` dump and the JSDoc comments. -/
 partial def pretty : JsTy → String
   | .terminal t => t.pretty
   | .array t => s!"Array<{t.pretty}>"
   | .typedArray t => s!"{t.kind.ctorName}<{t.leaf.pretty}>"
   | .list t => s!"List<{t.pretty}>"
-  | .consList t => s!"ConsList<{t.pretty}>"
   | .fn ds c => "(" ++ ", ".intercalate (ds.map pretty) ++ s!") => {c.pretty}"
-  | .record f₁ f₂ fs => let ts := f₁ :: f₂ :: fs; "{ " ++ ", ".intercalate
+  | .enum n shift => s!"enum{n}@{shift}"
+  | .thunk t => s!"Thunk<{t.pretty}>"
+  | .obj (.record _) ts => "{ " ++ ", ".intercalate
       ((List.range ts.length).zip ts |>.map fun (i, t) => s!"_{i + 1}: {t.pretty}") ++ " }"
-  | .union c₀ c₁ cs => let cs := c₀ :: c₁ :: cs; "(" ++ " | ".intercalate
+  | .obj (.union ar) args => let cs := splitArities ar args; "(" ++ " | ".intercalate
       ((List.range cs.length).zip cs |>.map fun (i, fs) =>
         "{ " ++ ", ".intercalate (s!"tag: {i}" ::
           ((List.range fs.length).zip fs |>.map fun (j, t) => s!"_{j + 1}: {t.pretty}")) ++ " }") ++ ")"
-  | .enum n shift => s!"enum{n}@{shift}"
-  | .data n => n
-  | .thunk t => s!"Thunk<{t.pretty}>"
+  | .obj .consList [t] => s!"ConsList<{t.pretty}>"
+  | .obj .consList ts => "ConsList<" ++ ", ".intercalate (ts.map pretty) ++ ">"
+  | .obj (.decl i) [] => declName i
+  | .obj (.decl i) ts => declName i ++ "<" ++ ", ".intercalate (ts.map pretty) ++ ">"
 
 instance : ToString JsTy := ⟨pretty⟩
 

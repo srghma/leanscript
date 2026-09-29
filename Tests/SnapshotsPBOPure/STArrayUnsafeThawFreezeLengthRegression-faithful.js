@@ -9,6 +9,8 @@ import { array__lean_array_push_immutable } from "../../runtime.js";
  * @returns {Array<int(bigint)>}
  */
 export const test = (x) => {
-  const x$1 = array__lean_array_push_immutable([x], 12n);
-  return array__lean_array_push_immutable(x$1, BigInt(x$1.length));
+  const k$1 = [x];
+  const x$2 = array__lean_array_push_immutable(k$1, 12n);
+  const x$3 = BigInt(x$2.length);
+  return array__lean_array_push_immutable(x$2, x$3);
 };

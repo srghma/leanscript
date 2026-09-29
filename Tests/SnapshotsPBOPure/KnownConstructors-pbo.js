@@ -6,12 +6,6 @@
 //   test4: Expected type must not contain metavariables ?m.195 ≠ LeanScript.Usage01ω.zero
 //   test5: Expected type must not contain metavariables ?m.141 ≠ LeanScript.Usage01ω.zero
 
-const $k1 = { tag: 1, _1: 0 };
-const $k2 = { tag: 1, _1: 1 };
-const $k3 = { tag: 1, _1: 2 };
-const $k4 = { tag: 1, _1: 3 };
-const $tag0 = { tag: 0 };
-
 /**
  * `known1`
  * @returns {string}
@@ -32,15 +26,15 @@ export const test1 = (a) => a._1;
  */
 export const fromString = (s) => {
   if (s === "foo") {
-    return $k1;
+    return { tag: 1, _1: 0 };
   }
   if (s === "bar") {
-    return $k2;
+    return { tag: 1, _1: 1 };
   }
   if (s === "baz") {
-    return $k3;
+    return { tag: 1, _1: 2 };
   }
-  return s === "qux" ? $k4 : $tag0;
+  return s === "qux" ? { tag: 1, _1: 3 } : { tag: 0 };
 };
 
 /**
@@ -49,15 +43,27 @@ export const fromString = (s) => {
  * @returns {int53(number)}
  */
 export const test6 = (a) => {
-  const x$1 = fromString(a);
-  if (x$1.tag === 0) {
+  const k$2 = (x$1) => {
+    if (x$1 === "foo") {
+      return { tag: 1, _1: 0 };
+    }
+    if (x$1 === "bar") {
+      return { tag: 1, _1: 1 };
+    }
+    if (x$1 === "baz") {
+      return { tag: 1, _1: 2 };
+    }
+    return x$1 === "qux" ? { tag: 1, _1: 3 } : { tag: 0 };
+  };
+  const x$3 = k$2(a);
+  if (x$3.tag === 0) {
     return 0;
   }
-  if (x$1._1 === 0) {
+  if (x$3._1 === 0) {
     return 1;
   }
-  if (x$1._1 === 1) {
+  if (x$3._1 === 1) {
     return 2;
   }
-  return x$1._1 === 2 ? 3 : 4;
+  return x$3._1 === 2 ? 3 : 4;
 };

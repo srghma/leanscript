@@ -15,7 +15,8 @@ import { int53__lean_int_add } from "../../runtime.js";
  */
 export const test1 = (f, a) => {
   if (a.tag === 0) {
-    return f();
+    const x$1 = f();
+    return x$1;
   }
   return int53__lean_int_add(a._1, 1);
 };
@@ -26,4 +27,10 @@ export const test1 = (f, a) => {
  * @param {({ tag: 0 } | { tag: 1, _1: int53(number) })} a
  * @returns {int53(number)}
  */
-export const test3 = test1;
+export const test3 = (f, a) => {
+  if (a.tag === 0) {
+    const x$1 = f();
+    return x$1;
+  }
+  return int53__lean_int_add(a._1, 1);
+};

@@ -2,7 +2,7 @@ module
 
 public import JsTerm.Ty.Lower
 public import JsTerm.Lower.Extern
-public import JsTerm.Passes.Simplify
+public import JsTerm.Lower.Tail
 public import LeanScript.Term.Syntax.Packed
 
 @[expose] public section
@@ -20,7 +20,71 @@ JavaScript shapes the conversion emits (bindings, patterns, records, unions, loo
 
 namespace MoreJs
 
+variable {S : JsSig}
+
 open LeanScript
+
+/-! ## The signature of a function -/
+
+/-- The blocks of a signature, newest first. -/
+def _root_.LeanScript.DSig.brefs : {ks : List Nat} → DSig ks → List (BRef ks)
+  | [], .nil => []
+  | _ :: _, .cons Δ _ _ => .here :: Δ.brefs.map .there
+
+/-- The type with every declaration `decl j` it names renamed to `decl (f j)`. -/
+partial def _root_.MoreJs.JsTy.mapDecl (f : Nat → Nat) : JsTy → JsTy
+  | .array e => .array (e.mapDecl f)
+  | .list e => .list (e.mapDecl f)
+  | .fn ds c => .fn (ds.map (·.mapDecl f)) (c.mapDecl f)
+  | .thunk t => .thunk (t.mapDecl f)
+  | .obj id args =>
+    let id' := match id with
+      | .decl j => .decl (f j)
+      | id => id
+    .obj id' (args.map (·.mapDecl f))
+  | t => t
+
+/-- **Canonical layout ids** (proposal R of `proposals/TypedDataProposals3.md`): the table of
+    declarations (`bodies[i]`: the body of datatype `i`, its recursive positions `decl j`) read
+    as an automaton, minimised by partition refinement.  The answer maps each datatype to the
+    least datatype of its class; two datatypes are in one class when their layouts are equal as
+    infinite trees.  Every class starts as one; a round splits a class by the bodies of its
+    members, their recursive positions read as classes; at most one round per datatype.  The
+    result is checked (every datatype's body, its recursive positions read as canonical ids, is
+    the body of its canonical datatype, read the same way: the classes are a bisimulation), and
+    when the check fails (it cannot) every datatype is its own. -/
+def canonDecls (bodies : Array JsTy) : Array Nat := Id.run do
+  let n := bodies.size
+  let key (cls : Array Nat) (i : Nat) : JsTy := (bodies[i]?.getD default).mapDecl (cls.getD · 0)
+  let mut cls : Array Nat := Array.replicate n 0
+  for _ in [0:n + 1] do
+    let new := (Array.range n).map fun i =>
+      ((List.range n).find? fun k => cls[k]? == cls[i]? && key cls k == key cls i).getD i
+    if new == cls then break
+    cls := new
+  let canonKey (i : Nat) : JsTy := (bodies[i]?.getD default).mapDecl (cls.getD · 0)
+  if (List.range n).all fun i => canonKey i == canonKey (cls.getD i i) then cls
+  else Array.range n
+
+/-- The signature of the JavaScript of a program over the datatypes `Δ`: declaration
+    `refIndex r` is the layout of one layer of the datatype `r`, its unfolded body lowered
+    (`lowerTy cfg (unfold r)`: an anonymous record or union — or the one field of a datatype
+    of one constructor of one field — whose recursive positions are `obj (decl i) []`).  With
+    canonical ids (`cfg.declCanon`), the row of a datatype is at its canonical id. -/
+def jsSigOf (cfg : JsConfig) {ks : List Nat} (Δ : DSig ks) : JsSig :=
+  let rows : List (Nat × JsTy) := Δ.brefs.flatMap fun b =>
+    (List.finRange ((Δ.block b).k + 1)).map fun j =>
+      let i := refIndex ((Δ.block b).ref j)
+      (cfg.declCanon.getD i i, lowerTy cfg ((Δ.block b).unfold j))
+  let n := blocksSize ks
+  { decls := (Array.range n).map fun i =>
+      ((rows.find? (·.1 == i)).map (·.2)).getD (.obj (.decl i) []) }
+
+/-- The configuration `cfg` with the canonical ids of the datatypes of `Δ` (`canonDecls` of
+    their bodies, lowered with every datatype its own). -/
+def withCanonDecls (cfg : JsConfig) {ks : List Nat} (Δ : DSig ks) : JsConfig :=
+  let cfg₀ := { cfg with declCanon := #[] }
+  { cfg with declCanon := canonDecls (jsSigOf cfg₀ Δ).decls }
 
 /-! ## Literals -/
 
@@ -107,19 +171,19 @@ structure Names where
 
 /-- An expression at another type, when the two types are equal (they always are: a failure is
     an error of the backend). -/
-def castE {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) (τ' : JsTy) : ConvM (JsExpr C M τ') :=
+def castE {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) (τ' : JsTy) : ConvM (JsExpr S C M τ') :=
   if h : τ = τ' then pure (h ▸ e) else
     throw s!"internal: the JavaScript type {τ} is not {τ'}"
 
 /-- Arguments at other types, when the types are equal. -/
-def castArgs {C M σs : List JsTy} (as : JsArgs C M σs) (σs' : List JsTy) :
-    ConvM (JsArgs C M σs') :=
+def castArgs {C M σs : List JsTy} (as : JsArgs S C M σs) (σs' : List JsTy) :
+    ConvM (JsArgs S C M σs') :=
   if h : σs = σs' then pure (h ▸ as) else
     throw s!"internal: the JavaScript types {σs} are not {σs'}"
 
 /-- The parts of an array literal at another element type, when the types are equal. -/
-def castParts {C M : List JsTy} {A E : JsTy} (ps : JsParts C M A E) (E' : JsTy) :
-    ConvM (JsParts C M A E') :=
+def castParts {C M : List JsTy} {A E : JsTy} (ps : JsParts S C M A E) (E' : JsTy) :
+    ConvM (JsParts S C M A E') :=
   if h : E = E' then pure (h ▸ ps) else
     throw s!"internal: the JavaScript type {E} is not {E'}"
 
@@ -130,7 +194,7 @@ def paramRefs (C ts : List JsTy) : List (Ref × JsTy) :=
 mutual
 /-- The JavaScript value of a `Ref`, in the contexts `C` and `M`, at the type `τ`: a variable,
     or the closure of a partial application (`(y) => f(a, y)`). -/
-partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr C M τ) :=
+partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr S C M τ) :=
   match r with
   | .c l => match JsMem.ofIndex? C (C.length - 1 - l) τ with
     | some x => pure (.cvar x)
@@ -147,19 +211,19 @@ partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr C M 
 
 /-- The call of `base` on all its arguments `args`, answering a value of type `c`. -/
 partial def papCall {C M : List JsTy} (base : Ref) (args : List (Ref × JsTy)) (c : JsTy) :
-    ConvM (JsExpr C M c) := do
+    ConvM (JsExpr S C M c) := do
   return .app (← base.get (.fn (args.map (·.2)) c)) (← refArgs args)
 
 /-- The values of `Ref`s, as arguments. -/
-partial def refArgs {C M : List JsTy} : (as : List (Ref × JsTy)) → ConvM (JsArgs C M (as.map (·.2)))
+partial def refArgs {C M : List JsTy} : (as : List (Ref × JsTy)) → ConvM (JsArgs S C M (as.map (·.2)))
   | [] => pure .nil
   | (r, t) :: as => return .cons (← r.get t) (← refArgs as)
 end
 
 /-- `e` as a constant, for `k`: `e` itself when it is a constant already, else `const x = e;`
     and the rest. -/
-def bindConst {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr C M τ)
-    (rest : Ref → (C' : List JsTy) → ConvM (JsBlock C' M J k)) : ConvM (JsBlock C M J k) :=
+def bindConst {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ)
+    (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J k)) : ConvM (JsBlock S C M J k) :=
   match e with
   | .cvar x => rest (.c (C.length - 1 - x.index)) C
   | e => return .const "x" e (← rest (.c C.length) (τ :: C))
@@ -192,52 +256,70 @@ def ctorIxIndex {ks : List Nat} : {bs : List Bool} → {b : Bool} → {cs : Ctor
 
 /-- The error for the constructs not converted yet. -/
 def notYet {α : Type} : ConvM α :=
-  throw "the recursors of declared datatypes are not converted to JavaScript yet"
+  throw "the course-of-values recursion of depth 1 or more over a declared datatype is not converted to JavaScript yet"
+
+/-- The number of declaration a type names, when it is a declared datatype. -/
+def declOf? : JsTy → Option Nat
+  | .obj (.decl i) [] => some i
+  | _ => none
+
+/-- One layer into a declared datatype (`JsExpr.fold`): `e`, a value of the body, at the type
+    `τ` of the datatype. -/
+def foldE {C M : List JsTy} {σ : JsTy} (e : JsExpr S C M σ) (τ : JsTy) : ConvM (JsExpr S C M τ) :=
+  match declOf? τ with
+  | some i => do castE (.fold i (← castE e (S.body i))) τ
+  | none => throw s!"internal: a layer into the type {τ}"
+
+/-- One layer out of a declared datatype (`JsExpr.unfold`), at the type `τ` of its body. -/
+def unfoldE {C M : List JsTy} {σ : JsTy} (e : JsExpr S C M σ) (τ : JsTy) : ConvM (JsExpr S C M τ) :=
+  match declOf? σ with
+  | some i => do castE (.unfold i (← castE e (.obj (.decl i) []))) τ
+  | none => throw s!"internal: a layer out of the type {σ}"
 
 /-- A block at another type of result, when the types are equal. -/
-def castRet {C M J : List JsTy} {τ : JsTy} (b : JsBlock C M J (.ret τ)) (τ' : JsTy) :
-    ConvM (JsBlock C M J (.ret τ')) :=
+def castRet {C M J : List JsTy} {τ : JsTy} (b : JsBlock S C M J (.ret τ)) (τ' : JsTy) :
+    ConvM (JsBlock S C M J (.ret τ')) :=
   if h : τ = τ' then pure (h ▸ b) else
     throw s!"internal: the JavaScript type {τ} is not {τ'}"
 
 /-- The arms of a case analysis on a union at other constructors, when they are equal. -/
-def castArms {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (a : JsUnionArms C M J k cs)
-    (cs' : List (List JsTy)) : ConvM (JsUnionArms C M J k cs') :=
+def castArms {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (a : JsUnionArms S C M J k cs)
+    (cs' : List (List JsTy)) : ConvM (JsUnionArms S C M J k cs') :=
   if h : cs = cs' then pure (h ▸ a) else
     throw s!"internal: the constructors {cs} are not {cs'}"
 
-/-- A record literal of type `τ` (a record type) of the fields `as`. -/
-def recordLit {C M σs : List JsTy} (as : JsArgs C M σs) (τ : JsTy) : ConvM (JsExpr C M τ) :=
+/-- A record literal of type `τ` (an object type) of the fields `as`. -/
+def recordLit {C M σs : List JsTy} (as : JsArgs S C M σs) (τ : JsTy) : ConvM (JsExpr S C M τ) :=
   match τ with
-  | .record f₁ f₂ fs => do return .record_mk (← castArgs as (f₁ :: f₂ :: fs))
+  | .obj id args => do return .record_mk (← castArgs as (S.fieldsOf id args))
   | τ => throw s!"internal: a record literal of type {τ}"
 
 /-- A list literal of type `L` (a list type) of the parts `ps`: `[e₀, …]` at the array layout
     (`JsTy.list`), the cons cells `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` at the tagged layout
-    (`JsTy.consList`, `ListRepr.taggedUnion`). -/
-def listLit {C M : List JsTy} {α : JsTy} (ps : JsParts C M (.list α) α) (L : JsTy) :
-    ConvM (JsExpr C M L) :=
+    (the prelude's `consList`, `ListRepr.taggedUnion`). -/
+def listLit {C M : List JsTy} {α : JsTy} (ps : JsParts S C M (.list α) α) (L : JsTy) :
+    ConvM (JsExpr S C M L) :=
   if L.isConsList then castE ps.toConsList L else castE (.list_mk ps) L
 
 /-- `e()`: the value of a delay (a function of no parameter) of type `r`. -/
-def forceLazy {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) (r : JsTy) : ConvM (JsExpr C M r) :=
+def forceLazy {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) (r : JsTy) : ConvM (JsExpr S C M r) :=
   match τ, e with
   | .fn [] _, e => castE (.app e .nil) r
   | τ, _ => throw s!"internal: forcing a value of type {τ}"
 
-/-- The constructor of position `i` of the union type `τ`, of the fields `as`. -/
-def unionMk {C M σs : List JsTy} (τ : JsTy) (i : Nat) (as : JsArgs C M σs) : ConvM (JsExpr C M τ) :=
+/-- The constructor of position `i` of the object type `τ`, of the fields `as`. -/
+def unionMk {C M σs : List JsTy} (τ : JsTy) (i : Nat) (as : JsArgs S C M σs) : ConvM (JsExpr S C M τ) :=
   match τ with
-  | .union c₀ c₁ cs => match JsMem.ofIndex? (c₀ :: c₁ :: cs) i σs with
+  | .obj id args => match JsMem.ofIndex? (S.ctorsOf id args) i σs with
     | some m => pure (.union_mk m as)
     | none => throw "internal: the fields of a constructor"
   | τ => throw s!"internal: a constructor of type {τ}"
 
 /-- A case analysis on `e`, a value of a union type, by the arms `arms`. -/
 def unionCasesAny {C M J : List JsTy} {k : JsEnd} {σ : JsTy} {cs : List (List JsTy)}
-    (e : JsExpr C M σ) (arms : JsUnionArms C M J k cs) : ConvM (JsBlock C M J k) :=
+    (e : JsExpr S C M σ) (arms : JsUnionArms S C M J k cs) : ConvM (JsBlock S C M J k) :=
   match σ, e with
-  | .union c₀ c₁ cs', e => do return .unionCases e (← castArms arms (c₀ :: c₁ :: cs'))
+  | .obj id args, e => do return .unionCases e (← castArms arms (S.ctorsOf id args))
   | σ, _ => throw s!"internal: a case analysis on a value of type {σ}"
 
 /-- Where the function of a call lives, when it is a variable. -/
@@ -256,55 +338,31 @@ def stringPosArg? {ks : List Nat} : List (Ty ks) → Option String
   | _ :: ts => stringPosArg? ts
 
 /-- The body of a loop at another element type, when the types are equal. -/
-def castBodyElem {C M : List JsTy} {α E : JsTy} {k : JsEnd} (b : JsBlock (α :: E :: C) M [] k)
-    (E'' : JsTy) : ConvM (JsBlock (α :: E'' :: C) M [] k) :=
+def castBodyElem {C M : List JsTy} {α E : JsTy} {k : JsEnd} (b : JsBlock S (α :: E :: C) M [] k)
+    (E'' : JsTy) : ConvM (JsBlock S (α :: E'' :: C) M [] k) :=
   if h : E = E'' then pure (h ▸ b) else
     throw s!"internal: the JavaScript type {E} is not {E''}"
 
-/-- Is the body of an array fold, whose accumulator is its innermost constant and element the
-    one around it, the push of the element onto the accumulator
-    (`return array__lean_array_push(acc, e);`)? -/
-def isPushStep {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → Bool
-  | .ret (.imported op (.cons a (.cons b .nil))) =>
-    op.name == "array__lean_array_push_immutable" && cvarIndex? a == some 0 &&
-      cvarIndex? b == some 1
-  | _ => false
-where
-  cvarIndex? {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Option Nat
-    | .cvar x => some x.index
-    | _ => none
-
 /-- `const { … } = e;` (for the fields `used` says) and the rest, which `rest` builds from where
     the fields live; just the rest when the pattern binds nothing. -/
-def destructureAny {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr C M τ) (used : List Bool)
-    (rest : List Ref → (C' : List JsTy) → ConvM (JsBlock C' M J k)) : ConvM (JsBlock C M J k) :=
+def destructureAny {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ) (used : List Bool)
+    (rest : List Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J k)) : ConvM (JsBlock S C M J k) :=
   match τ, e with
-  | .record f₁ f₂ fs, e => do
-    let (⟨us, sel⟩, refs) := mkSel (f₁ :: f₂ :: fs) used C
+  | .obj id args, e => do
+    let (⟨us, sel⟩, refs) := mkSel (S.fieldsOf id args) used C
     match us, sel with
     | [], _ => rest refs C
     | u :: us', sel => return .destructure e sel (← rest refs (pushAll (u :: us') C))
   | τ, _ => throw s!"internal: taking apart a value of type {τ}"
 
 
-/-- `[...z, ...arr]` on a generic array (none on a typed array). -/
-def appendLit {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (z arr : JsExpr C M A) :
-    Option (JsExpr C M A) :=
-  match A, E, l, z, arr with
-  | _, _, .generic _, z, arr => some (.array_mk (.generic _) (.spread z (.spread arr .nil)))
-  | _, _, .typed .., _, _ => none
-
 /-- The body of a loop whose accumulator is the mutable variable `acc`, the body reading the
-    accumulator as its innermost constant: every `return e` becomes `acc = e;`.  When the body
-    builds a closure, the constant is a `const` copy of `acc` made at the start of the
-    iteration (a closure must capture the value of this iteration, not the variable the loop
-    reassigns); otherwise the body reads `acc` itself. -/
+    accumulator as its innermost constant: the body starts with a `const` copy of `acc` (a
+    closure built by the body captures the value of this iteration, not the variable the loop
+    reassigns), and every `return e` becomes `acc = e;`. -/
 def loopBody {C M : List JsTy} {α E : JsTy} (acc : JsMem M α)
-    (body : JsBlock (α :: E :: C) M [] (.ret α)) : JsBlock (E :: C) M [] .loop :=
-  if body.occs.any (·.inClosure) then
-    .const "a" (.mvar acc) (body.retToNext acc)
-  else
-    (body.subst (JsSubst.inst (.mvar acc))).retToNext acc
+    (body : JsBlock S (α :: E :: C) M [] (.ret α)) : JsBlock S (E :: C) M [] .loop :=
+  .const "a" (.mvar acc) (body.retToNext acc)
 
 end MoreJs
 

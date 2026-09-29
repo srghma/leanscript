@@ -8,21 +8,25 @@ import {
   uint53__lean_string_length__String_Internal_length,
 } from "../../runtime.js";
 
-const $k1 = { tag: 1, _1: 0 };
-
 /**
  * `sumCount`
  * @param {uint53(number)} n
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
 export const sumCount = (n) => {
-  let acc$1 = 0;
-  let acc$2 = 0;
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    acc$1 = uint53__lean_nat_add(acc$1, i$3);
-    acc$2 = uint53__lean_nat_add(acc$2, 1);
+  let acc$1 = { tag: 1, _1: { _1: 0, _2: 0 } };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const x$4 = uint53__lean_nat_add(a$3._1._1, i$2);
+      const x$5 = uint53__lean_nat_add(a$3._1._2, 1);
+      acc$1 = { tag: 1, _1: { _1: x$4, _2: x$5 } };
+    }
   }
-  return { _1: acc$1, _2: acc$2 };
+  const x$6 = acc$1._1;
+  return { _1: x$6._1, _2: x$6._2 };
 };
 
 /**
@@ -31,14 +35,19 @@ export const sumCount = (n) => {
  * @returns {uint53(number)}
  */
 export const fib = (n) => {
-  let acc$1 = 0;
-  let acc$2 = 1;
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    const f$4 = acc$1;
-    acc$1 = acc$2;
-    acc$2 = uint53__lean_nat_add(f$4, acc$2);
+  let acc$1 = { tag: 1, _1: { _1: 0, _2: 1 } };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _2: f$4 } = a$3._1;
+      const x$5 = uint53__lean_nat_add(a$3._1._1, f$4);
+      acc$1 = { tag: 1, _1: { _1: f$4, _2: x$5 } };
+    }
   }
-  return acc$1;
+  const x$6 = acc$1._1;
+  return x$6._1;
 };
 
 /**
@@ -47,20 +56,51 @@ export const fib = (n) => {
  * @returns {{ _1: uint53(number), _2: { _1: uint53(number), _2: uint53(number) } }}
  */
 export const minMaxSum = (n) => {
-  let acc$1 = 1000000;
-  let acc$2 = 0;
-  let acc$3 = 0;
-  for (let i$4 = 0; i$4 < n; i$4++) {
-    const x$5 = uint53__lean_nat_mod__Nat_mod(uint53__lean_nat_mul(i$4, 7), 11);
-    if (x$5 < acc$1) {
-      acc$1 = x$5;
+  let acc$1 = { tag: 1, _1: { _1: 1000000, _2: { _1: 0, _2: 0 } } };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _1: f$4 } = a$3._1;
+      const { _1: f$5, _2: f$6 } = a$3._1._2;
+      const x$7 = uint53__lean_nat_mod__Nat_mod(
+        uint53__lean_nat_mul(i$2, 7),
+        11,
+      );
+      const k$18 = () => {
+        const k$17 = (x$8) => {
+          const k$12 = () => {
+            const k$11 = (x$9) => {
+              const x$10 = uint53__lean_nat_add(f$6, x$7);
+              return { tag: 1, _1: { _1: x$8, _2: { _1: x$9, _2: x$10 } } };
+            };
+            return k$11;
+          };
+          if (f$5 < x$7) {
+            const x$13 = k$12();
+            const x$14 = x$13(x$7);
+            return x$14;
+          }
+          const x$15 = k$12();
+          const x$16 = x$15(f$5);
+          return x$16;
+        };
+        return k$17;
+      };
+      if (x$7 < f$4) {
+        const x$19 = k$18();
+        const x$20 = x$19(x$7);
+        acc$1 = x$20;
+      } else {
+        const x$21 = k$18();
+        const x$22 = x$21(f$4);
+        acc$1 = x$22;
+      }
     }
-    if (acc$2 < x$5) {
-      acc$2 = x$5;
-    }
-    acc$3 = uint53__lean_nat_add(acc$3, x$5);
   }
-  return { _1: acc$1, _2: { _1: acc$2, _2: acc$3 } };
+  const x$23 = acc$1._1;
+  return { _1: x$23._1, _2: { _1: x$23._2._1, _2: x$23._2._2 } };
 };
 
 /**
@@ -70,12 +110,16 @@ export const minMaxSum = (n) => {
  * @returns {uint53(number)}
  */
 export const firstAbove = (n, k) => {
-  let acc$1 = $k1;
+  let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag !== 0) {
-      if (k < uint53__lean_nat_mul(i$2, i$2)) {
-        acc$1 = { tag: 0, _1: i$2 };
-      }
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      acc$1 =
+        k < uint53__lean_nat_mul(i$2, i$2)
+          ? { tag: 0, _1: i$2 }
+          : { tag: 1, _1: a$3._1 };
     }
   }
   return acc$1._1;
@@ -88,14 +132,20 @@ export const firstAbove = (n, k) => {
  * @returns {{ _1: string, _2: uint53(number) }}
  */
 export const repeatCount = (s, n) => {
-  let acc$1 = "";
-  let acc$2 = 0;
-  for (let i$3 = 0; i$3 < n; i$3++) {
-    acc$1 = acc$1 + s;
-    acc$2 = uint53__lean_nat_add(
-      acc$2,
-      uint53__lean_string_length__String_Internal_length(s),
-    );
+  let acc$1 = { tag: 1, _1: { _1: "", _2: 0 } };
+  for (let i$2 = 0; i$2 < n; i$2++) {
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const x$4 = a$3._1._1 + s;
+      const x$5 = uint53__lean_nat_add(
+        a$3._1._2,
+        uint53__lean_string_length__String_Internal_length(s),
+      );
+      acc$1 = { tag: 1, _1: { _1: x$4, _2: x$5 } };
+    }
   }
-  return { _1: acc$1, _2: acc$2 };
+  const x$6 = acc$1._1;
+  return { _1: x$6._1, _2: x$6._2 };
 };

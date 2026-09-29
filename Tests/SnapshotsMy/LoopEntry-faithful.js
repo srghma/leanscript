@@ -4,18 +4,15 @@
 //   printAll: an `IO`/`ST` action: the language has no side effects
 //   main: an `IO`/`ST` action: the language has no side effects
 
-const $tag0 = { tag: 0 };
-const $k2 = {
-  tag: 1,
-  _1: "one",
-  _2: { tag: 1, _1: "two", _2: { tag: 1, _1: "three", _2: $tag0 } },
-};
-
 /**
  * `messages`
  * @returns {ConsList<string>}
  */
-export const messages = () => $k2;
+export const messages = () => ({
+  tag: 1,
+  _1: "one",
+  _2: { tag: 1, _1: "two", _2: { tag: 1, _1: "three", _2: { tag: 0 } } },
+});
 
 /**
  * `countUp`
@@ -26,9 +23,18 @@ export const messages = () => $k2;
  * @returns {nat(bigint)}
  */
 export const countUp = (unused, step, n, acc) => {
-  let x$1 = acc;
-  for (let j$2 = 0n; j$2 < n; j$2++) {
-    x$1 = x$1 + step;
+  const k$2 = (x$1) => x$1;
+  let acc$3 = k$2;
+  for (let i$4 = 0n; i$4 < n; i$4++) {
+    const a$5 = acc$3;
+    const k$9 = (x$6) => {
+      const x$7 = x$6 + step;
+      const x$8 = a$5(x$7);
+      return x$8;
+    };
+    acc$3 = k$9;
   }
-  return x$1;
+  const x$10 = acc$3;
+  const x$11 = x$10(acc);
+  return x$11;
 };

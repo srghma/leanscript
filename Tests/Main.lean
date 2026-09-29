@@ -8,7 +8,8 @@ import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
-import JsTerm.Passes.Hoist
+import JsTerm.Lower.Module
+import JsTerm.Syntax.Pretty
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -129,35 +130,29 @@ open MoreJs
 abbrev tN : JsTy := .terminal .uint53
 abbrev tA : JsTy := .array tN
 
-/-- `array__lean_array_push_immutable(a, x)`. -/
-def pushE {C M : List JsTy} (a : JsExpr C M tA) (x : JsExpr C M tN) : JsExpr C M tA :=
-  .imported (.array__lean_array_push_immutable tN) (.cons a (.cons x .nil))
-
-/-- `uint53__lean_array_fset_immutable(a, i, x)` (`Array.set`, the bound proved). -/
-def fsetE {C M : List JsTy} (a : JsExpr C M tA) (i x : JsExpr C M tN) : JsExpr C M tA :=
-  .imported (.uint53__lean_array_fset_immutable (.generic tN)) (.cons a (.cons i (.cons x .nil)))
+/-- The signature of the hand-written terms below: no declared datatype. -/
+abbrev S : JsSig := {}
 
 /-- The literal `1`. -/
-def one {C M : List JsTy} : JsExpr C M tN := .lit (.uint53 1 (by decide))
+def one {S : JsSig} {C M : List JsTy} : JsExpr S C M tN := .lit (.uint53 1 (by decide))
 
-/-- `[]`. -/
-def emptyA {C M : List JsTy} : JsExpr C M tA := .array_mk (.generic tN) .nil
+/-- A signature of one declared datatype, `D0 := nil | cons (h : uint53) (t : D0)` (a user's
+    list of numbers): its body is the anonymous union of arities `[0, 2]` whose recursive
+    field is `obj (decl 0) []`. -/
+def myListSig : JsSig := { decls := #[.obj (.union [0, 2]) [tN, .obj (.decl 0) []]] }
 
-/-- `(x) => x ? { tag: 0 } : { tag: 1, _1: 1 }`. -/
-def hoistFun : JsFun where
+/-- `(x) => fold(cons(1, fold(nil)))`, over `myListSig`: the casts print as nothing. -/
+def myListFun : JsFun where
   name := "f"
   leanName := "f"
-  params := [("x", .terminal .bool)]
-  ret := .union [] [tN] []
-  body := .ret (.cond (.cvar .zero) (.union_mk .zero .nil) (.union_mk (.succ .zero) (.cons one .nil)))
-
-/-- The runtime functions a block calls. -/
-def callsOf {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : List String :=
-  (b.runtimeNames #[]).toList
+  sig := myListSig
+  params := [("x", tN)]
+  ret := .obj (.decl 0) []
+  body := .ret (.fold 0 (.union_mk (id := .union [0, 2]) (.succ .zero)
+    (.cons (.cvar .zero) (.cons (.fold 0 (.union_mk (id := .union [0, 2]) .zero .nil)) .nil))))
 
 /-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the types
-    the configuration chooses, the typed operations of the externs, the in-place updates, the
-    shared constants, and the shape of the functions it produces.  (The generated JavaScript
+    the configuration chooses, the typed operations of the externs, and the shape of the functions it produces.  (The generated JavaScript
     itself is run against Lean by `scripts/leanscript-snapshots.sh`.) -/
 def moreJsSpec : Spec := describe "JsTerm" do
   let faithful : JsConfig := {}
@@ -168,41 +163,61 @@ def moreJsSpec : Spec := describe "JsTerm" do
     assertEq "Float.Model" "float" (lowerScalarPrim faithful .floatModel).pretty
     assertEq "Float32.Model" "float32" (lowerScalarPrim pbo .float32Model).pretty
   it "records and unions are objects" do
-    let r : JsExpr [] [] (.record tN (.terminal .bool) []) :=
+    let r : JsExpr S [] [] (.obj (.record 2) [tN, .terminal .bool]) :=
       .record_mk (.cons one (.cons (.lit (.bool true)) .nil))
     assertEq "record" "{ _1: 1, _2: true }" (r.pretty "")
-    let u0 : JsExpr [] [] (.union [] [tN] []) := .union_mk .zero .nil
-    let u1 : JsExpr [] [] (.union [] [tN] []) := .union_mk (.succ .zero) (.cons one .nil)
+    let u0 : JsExpr S [] [] (.obj (.union [0, 1]) [tN]) := .union_mk .zero .nil
+    let u1 : JsExpr S [] [] (.obj (.union [0, 1]) [tN]) := .union_mk (.succ .zero) (.cons one .nil)
     assertEq "nullary constructor" "{ tag: 0 }" (u0.pretty "")
     assertEq "constructor" "{ tag: 1, _1: 1 }" (u1.pretty "")
     assertEq "record type" "{ _1: nat(bigint), _2: boolean }"
-      (JsTy.record (.terminal .bigint_nat) (.terminal .bool) []).pretty
+      (JsTy.record [.terminal .bigint_nat, .terminal .bool]).pretty
     assertEq "typed array type" "Uint8Array<uint8>" (JsTy.typedArray .uint8).pretty
     assertEq "BitVec 12 in a Uint16Array" "Uint16Array"
       (JsTypedElem.bitvec 12 (by decide) (by decide)).kind.ctorName
+  it "object types are nominal: an identity and arguments" do
+    -- `Option String` and `Option Nat` share the anonymous declaration `union [0, 1]`
+    let optS : LeanScript.Ty [] := .union (.two .nullary (.fields (.one .string)))
+    let optN : LeanScript.Ty [] := .union (.two .nullary (.fields (.one .nat)))
+    assertEq "Option String" (repr (JsObjId.union [0, 1])).pretty
+      (match lowerTy pbo optS with | .obj id _ => (repr id).pretty | _ => "?")
+    assertEq "Option Nat" (repr (JsObjId.union [0, 1])).pretty
+      (match lowerTy pbo optN with | .obj id _ => (repr id).pretty | _ => "?")
+    assertEq "constructors of Option String" "[[], [string]]"
+      (toString ((S.ctorsOf (.union [0, 1]) [.terminal .string]).map fun (cs : List JsTy) => cs.map JsTy.pretty))
+    -- the prelude's `List α` is one declaration at every element type
+    assertEq "cons cells" "[[], [uint53(number), ConsList<uint53(number)>]]"
+      (toString ((S.ctorsOf .consList [tN]).map fun (cs : List JsTy) => cs.map JsTy.pretty))
+    -- a declared datatype is read from the signature, and one layer in/out prints as nothing
+    assertEq "a declaration's constructors" "[[], [uint53(number), D0]]"
+      (toString ((myListSig.ctorsOf (.decl 0) []).map fun (cs : List JsTy) => cs.map JsTy.pretty))
+    assertEq "the module of the function imports nothing" ([] : List String)
+      (mkModule pbo [myListFun]).imports
+    assertEq "the dump shows the casts" "fold<D0>({ tag: 1, _1: c0, _2: fold<D0>({ tag: 0 }) })"
+      (match myListFun.body with | .ret e => e.pretty "" | _ => "?")
   it "an extern is an operation named after its types" do
     let big : JsTy := .terminal .bigint_nat
-    let args {σ : JsTy} : JsArgs [σ, σ] [] [σ, σ] := .cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)
-    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr C M τ)) : String :=
+    let args {σ : JsTy} : JsArgs S [σ, σ] [] [σ, σ] := .cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)
+    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr S C M τ)) : String :=
       match e with
       | .ok e => e.pretty ""
       | .error msg => s!"error: {msg}"
     assertEq "Nat.div (bigint)" "bigint_nat__lean_nat_div(c1, c0)"
-      (shown (lowerExtern "lean_nat_div" args : Except String (JsExpr [big, big] [] big)))
+      (shown (lowerExtern "lean_nat_div" args : Except String (JsExpr S [big, big] [] big)))
     assertEq "Nat.div (uint53)" "uint53__lean_nat_div(c1, c0)"
-      (shown (lowerExtern "lean_nat_div" args : Except String (JsExpr [tN, tN] [] tN)))
+      (shown (lowerExtern "lean_nat_div" args : Except String (JsExpr S [tN, tN] [] tN)))
     assertEq "Nat.land (bigint): inlined" "inline:bigint_nat__lean_nat_land(c1, c0)"
-      (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr [big, big] [] big)))
+      (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr S [big, big] [] big)))
     assertEq "Nat.land (uint53): the runtime" "uint53__lean_nat_land(c1, c0)"
-      (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr [tN, tN] [] tN)))
+      (shown (lowerExtern "lean_nat_land" args : Except String (JsExpr S [tN, tN] [] tN)))
     -- `Array.set` (`lean_array_fset`, the bound proved) has its own operation, which does not
     -- check the bound
-    let fsetArgs : JsArgs [tN, tN, tA] [] [tA, tN, tN] :=
+    let fsetArgs : JsArgs S [tN, tN, tA] [] [tA, tN, tN] :=
       .cons (.cvar (.succ (.succ .zero))) (.cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil))
     assertEq "Array.set" "uint53__lean_array_fset_immutable(c2, c1, c0)"
-      (shown (lowerExtern "lean_array_fset" fsetArgs : Except String (JsExpr [tN, tN, tA] [] tA)))
+      (shown (lowerExtern "lean_array_fset" fsetArgs : Except String (JsExpr S [tN, tN, tA] [] tA)))
     assertEq "no operation" true
-      ((shown (lowerExtern "lean_no_such_extern" args : Except String (JsExpr [tN, tN] [] tN))).startsWith
+      ((shown (lowerExtern "lean_no_such_extern" args : Except String (JsExpr S [tN, tN] [] tN))).startsWith
         "error: the extern lean_no_such_extern has no operation")
   it "operations carry their effects" do
     -- a `uint53` addition throws past `2^53`, a `BigInt` one never throws; only the `_mutable`
@@ -409,45 +424,6 @@ def moreJsSpec : Spec := describe "JsTerm" do
       assertEq "one line per case" cases.length lines.length
       for ((js, expected), got) in cases.zip lines do
         assertEq js expected got
-  it "an array nothing else refers to is updated in place" do
-    -- const a = []; const b = push(a, 1); return b;
-    let owned : JsBlock [] [] [] (.ret tA) :=
-      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one) (.ret (.cvar .zero)))
-    assertEq "owned" ["array__lean_array_push_mutable"] (callsOf (inPlace owned))
-    -- a parameter may be referred to by the caller
-    let param : JsBlock [tA] [] [] (.ret tA) := .const "b" (pushE (.cvar .zero) one) (.ret (.cvar .zero))
-    assertEq "parameter" ["array__lean_array_push_immutable"] (callsOf (inPlace param))
-    -- read twice
-    let shared : JsBlock [] [] [] (.ret (.record tA tA [])) :=
-      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one)
-        (.ret (.record_mk (.cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)))))
-    assertEq "shared" ["array__lean_array_push_immutable"] (callsOf (inPlace shared))
-    -- captured by a closure
-    let closure : JsBlock [] [] [] (.ret (.fn [tN] tA)) :=
-      .const "a" emptyA (.ret (.lam (σs := [tN]) ["x"] (.ret (pushE (.cvar (.succ .zero)) (.cvar .zero)))))
-    assertEq "closure" ["array__lean_array_push_immutable"] (callsOf (inPlace closure))
-    -- let acc = []; for (let i = 0; i < n; i++) { acc = push(acc, i); } return acc;
-    let loop : JsBlock [tN] [] [] (.ret tA) :=
-      .letMut "acc" emptyA (.forRange "i" .uint53 (.cvar .zero)
-        (.assign .zero (pushE (.mvar .zero) (.cvar .zero)) .next) (.ret (.mvar .zero)))
-    assertEq "accumulator" ["array__lean_array_push_mutable"] (callsOf (inPlace loop))
-    -- `Array.set` (`fset`) has a mutable version too
-    let owned' : JsBlock [] [] [] (.ret tA) :=
-      .const "a" emptyA (.const "b" (pushE (.cvar .zero) one)
-        (.const "c" (fsetE (.cvar .zero) (.lit (.uint53 0 (by decide))) one) (.ret (.cvar .zero))))
-    assertEq "owned, fset" ["array__lean_array_push_mutable", "uint53__lean_array_fset_mutable"]
-      (callsOf (inPlace owned'))
-  it "closed constructors are shared constants" do
-    let m := mkModule faithful [hoistFun]
-    assertEq "constants" [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 1 }")]
-      (m.consts.map fun (c : JsConst) => (c.name, c.e.pretty ""))
-    let body : String := match m.funs with
-      | [g] => match g.body with
-        | .ret e => e.pretty ""
-        | _ => "?"
-      | _ => "?"
-    assertEq "body" "(c0 ? $tag0 : $k2)" body
-    assertEq "imports" ([] : List String) m.imports
   it "List is tagged cons cells (faithful) or a JavaScript array (pbo)" do
     let listNat : LeanScript.Ty [] := .list .nat
     assertEq "faithful" "ConsList<nat(bigint)>" (lowerTy faithful listNat).pretty
@@ -460,58 +436,26 @@ def moreJsSpec : Spec := describe "JsTerm" do
     let myList : LeanScript.Ty [2] := .data (.here ⟨0, by decide⟩)
     assertEq "a datatype does not depend on listRepr" (lowerTy faithful myList).pretty
       (lowerTy pbo myList).pretty
-  it "a list literal is cons cells sharing [] and constant cells" do
-    let lc : JsTy := .consList tN
-    let lit {C M : List JsTy} (ps : JsParts C M (.list tN) tN) : JsExpr C M lc :=
-      match listLit ps lc with
-      | .ok e => e
-      | .error _ => .unreachable lc
-    -- `[1, 1]`, and `[x, 1]`: the cells after the first variable are one constant
-    let two : JsParts [] [] (.list tN) tN := .elem one (.elem one .nil)
-    let xOne : JsParts [tN] [] (.list tN) tN := .elem (.cvar .zero) (.elem one .nil)
-    let f : JsFun := { name := "f", leanName := "f", params := [], ret := lc, body := .ret (lit two) }
-    let g : JsFun := { name := "g", leanName := "g", params := [("x", tN)], ret := lc,
-                       body := .ret (lit xOne) }
-    let m := mkModule faithful [f, g]
-    assertEq "constants"
-      [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 1, _2: { tag: 1, _1: 1, _2: $tag0 } }"),
-       ("$k3", "{ tag: 1, _1: 1, _2: $tag0 }")]
-      (m.consts.map fun (c : JsConst) => (c.name, c.e.pretty ""))
-    let bodies := m.funs.map fun (g : JsFun) => match g.body with
-      | .ret e => e.pretty ""
-      | _ => "?"
-    assertEq "bodies" ["$k2", "{ tag: 1, _1: c0, _2: $k3 }"] bodies
-    assertEq "imports" ([] : List String) m.imports
-    -- a spread at the end is the tail, shared; one before it is copied in front of the tail
-    let tail : JsParts [.list tN] [] (.list tN) tN := .elem one (.spread (.cvar .zero) .nil)
-    assertEq "tail" "{ tag: 1, _1: 1, _2: consList__of_array(c0) }" ((lit tail).pretty "")
-    let mid : JsParts [.list tN] [] (.list tN) tN := .spread (.cvar .zero) (.elem one .nil)
-    assertEq "middle" "consList__of_array_onto(c0, { tag: 1, _1: 1, _2: { tag: 0 } })"
-      ((lit mid).pretty "")
-    -- a spread of cons cells converted to an array, before elements: an append of cells
-    let midL : JsParts [lc] [] (.list tN) tN :=
-      .spread (JsExpr.toArrayList (.cvar .zero)) (.elem one .nil)
-    assertEq "append" "consList__append(c0, { tag: 1, _1: 1, _2: { tag: 0 } })"
-      ((lit midL).pretty "")
   it "an extern on lists converts cons cells at its boundary" do
     let lc : JsTy := .consList tN
-    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr C M τ)) : String :=
+    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr S C M τ)) : String :=
       match e with
       | .ok e => e.pretty ""
       | .error msg => s!"error: {msg}"
-    let arg {σ : JsTy} : JsArgs [σ] [] [σ] := .cons (.cvar .zero) .nil
+    let arg {σ : JsTy} : JsArgs S [σ] [] [σ] := .cons (.cvar .zero) .nil
     assertEq "List.toArray" "inline:array__lean_array_mk(consList__to_array(c0))"
-      (shown (lowerExtern "lean_array_mk" arg : Except String (JsExpr [lc] [] tA)))
+      (shown (lowerExtern "lean_array_mk" arg : Except String (JsExpr S [lc] [] tA)))
     assertEq "Array.toList" "consList__of_array(inline:array__lean_array_to_list(c0))"
-      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr [tA] [] lc)))
+      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr S [tA] [] lc)))
     -- the elements of a polymorphic operation are passed as they are
     let ll : JsTy := .consList lc
     assertEq "Array (List Nat) → List (List Nat)"
       "consList__of_array(inline:array__lean_array_to_list(c0))"
-      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr [.array lc] [] ll)))
-    -- a round trip through the array layout is the list itself
-    let rt : JsExpr [lc] [] lc := (JsExpr.toArrayList (.cvar .zero)).ofArrayList
-    assertEq "round trip" "c0" (rt.pretty "")
+      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr S [.array lc] [] ll)))
+    -- the grammar is not rewritten: a round trip through the array layout is written as it is
+    -- (every optimisation is done on `Term`)
+    let rt : JsExpr S [lc] [] lc := (JsExpr.toArrayList (.cvar .zero)).ofArrayList
+    assertEq "round trip" "consList__of_array(consList__to_array(c0))" (rt.pretty "")
   it "the cons cells of runtime.js (needs node)" do
     let cwd ← IO.currentDir
     let names := ["consList__of_array", "consList__of_array_onto", "consList__to_array",
@@ -557,6 +501,21 @@ def moreJsSpec : Spec := describe "JsTerm" do
     it s!"bits converts ({cfgName})" do
       let f ← conv cfg "bits" ["n"] ⟨[], .nil, _, _, WhileTest.bitsT⟩
       assertEq "result type" (lowerScalarPrim cfg .nat).pretty f.ret.pretty
+    it s!"folds of declared datatypes are mutually recursive local functions ({cfgName})" do
+      let has (f : JsFun) (s : String) : Bool := (f.pretty.splitOn s).length > 1
+      -- `RoseA := node (Array RoseA)`: the array of children is mapped by a loop
+      let rA ← conv cfg "roseASize" ["r"] ⟨_, RoseVariantsTest.Prog.Δ, _, _, RoseVariantsTest.roseASizeT⟩
+      assertEq "RoseA: the functions of the fold" true (has rA "const go0 = (v)")
+      assertEq "RoseA: the children mapped by a loop" true (has rA "array__lean_array_push_mutable")
+      -- `RoseF := node (m : Nat) (Fin m → RoseF)`: two members (`Option RoseF`, `RoseF`), a
+      -- function field mapped by a lambda
+      let rF ← conv cfg "roseFSize" ["r"] ⟨_, RoseVariantsTest.Prog.Δ, _, _, RoseVariantsTest.roseFSizeT⟩
+      assertEq "RoseF: two mutually recursive functions" true (has rF "const go1 = (v)")
+      -- `RoseL := node (List RoseL)` and `T5 := node (Array (Option T5 × Nat))`
+      let rL ← conv cfg "roseLSize" ["r"] ⟨_, RoseVariantsTest.Prog.Δ, _, _, RoseVariantsTest.roseLSizeT⟩
+      assertEq "RoseL: two mutually recursive functions" true (has rL "const go1 = (v)")
+      let t5 ← conv cfg "t5Sum" ["t"] ⟨_, RoseVariantsTest.Prog.Δ, _, _, RoseVariantsTest.t5SumT⟩
+      assertEq "T5: three members" true (has t5 "const go2 = (v)")
 
 end MoreJsTests
 

@@ -6,4 +6,12 @@
  * @param {(int(bigint)) => int(bigint)} f
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const test = (f) => ({ _1: f(1n), _2: f(2n), _3: f(2n) });
+export const test = (f) => {
+  const x$1 = 1n;
+  const x$2 = f(x$1);
+  const x$3 = 2n;
+  const x$4 = f(x$3);
+  const x$5 = 2n;
+  const x$6 = f(x$5);
+  return { _1: x$2, _2: x$4, _3: x$6 };
+};

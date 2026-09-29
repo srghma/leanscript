@@ -16,9 +16,8 @@ import { array__lean_array_push_immutable } from "../../runtime.js";
 export const test5 = (a) => {
   let acc$1 = [];
   for (const e$2 of a) {
-    if (4n < e$2) {
-      acc$1 = array__lean_array_push_immutable(acc$1, e$2);
-    }
+    const a$3 = acc$1;
+    acc$1 = 4n < e$2 ? array__lean_array_push_immutable(a$3, e$2) : a$3;
   }
   return acc$1;
 };

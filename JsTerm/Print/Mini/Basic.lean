@@ -15,6 +15,8 @@ the end of its body (`JsBlock.earlyNext`), which decides how `next` is written.
 
 namespace MoreJs
 
+variable {S : JsSig}
+
 open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
 
 /-- A non-empty string (the grammar never produces an empty name). -/
@@ -237,23 +239,23 @@ mutual
 /-- Does an iteration of the block end (`next`) somewhere other than at its end (`tail`
     says whether the end of the block is the end of the iteration)? -/
 partial def JsBlock.earlyNext {C M J : List JsTy} {k : JsEnd} (tail : Bool) :
-    JsBlock C M J k → Bool
+    JsBlock S C M J k → Bool
   | .next => !tail
   | .const _ _ r | .letMut _ _ r | .assign _ _ r | .destructure _ _ r => r.earlyNext tail
   | .ite _ t e => t.earlyNext tail || e.earlyNext tail
   | .enumCases _ arms => arms.earlyNext tail
   | .unionCases _ arms => arms.earlyNext tail
   | .join _ b r => b.earlyNext false || r.earlyNext tail
-  | .forRange _ _ _ _ r | .lastIter _ _ _ _ r | .forOf _ _ _ _ r => r.earlyNext tail
+  | .forRange _ _ _ _ r | .forOf _ _ _ _ r | .funs _ _ r => r.earlyNext tail
   | .ret _ | .jump _ _ | .throw _ => false
 /-- `earlyNext` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.earlyNext {C M J : List JsTy} {k : JsEnd} {n : Nat} (tail : Bool) :
-    JsEnumArms C M J k n → Bool
+    JsEnumArms S C M J k n → Bool
   | .nil => false
   | .cons b rest => b.earlyNext tail || rest.earlyNext tail
 /-- `earlyNext` of the arms of a union's case analysis. -/
 partial def JsUnionArms.earlyNext {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
-    (tail : Bool) : JsUnionArms C M J k cs → Bool
+    (tail : Bool) : JsUnionArms S C M J k cs → Bool
   | .nil => false
   | .cons _ b rest => b.earlyNext tail || rest.earlyNext tail
 end
@@ -262,23 +264,23 @@ mutual
 /-- Does the block jump to the join point of index `i` somewhere other than at its end (`tail`
     says whether the end of the block is the end of the labelled block of that join point)? -/
 partial def JsBlock.earlyJump {C M J : List JsTy} {k : JsEnd} (i : Nat) (tail : Bool) :
-    JsBlock C M J k → Bool
+    JsBlock S C M J k → Bool
   | .jump j _ => j.index == i && !tail
   | .const _ _ r | .letMut _ _ r | .assign _ _ r | .destructure _ _ r => r.earlyJump i tail
   | .ite _ t e => t.earlyJump i tail || e.earlyJump i tail
   | .enumCases _ arms => arms.earlyJump i tail
   | .unionCases _ arms => arms.earlyJump i tail
   | .join _ b r => b.earlyJump (i + 1) false || r.earlyJump i tail
-  | .forRange _ _ _ _ r | .lastIter _ _ _ _ r | .forOf _ _ _ _ r => r.earlyJump i tail
+  | .forRange _ _ _ _ r | .forOf _ _ _ _ r | .funs _ _ r => r.earlyJump i tail
   | .ret _ | .next | .throw _ => false
 /-- `earlyJump` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.earlyJump {C M J : List JsTy} {k : JsEnd} {n : Nat} (i : Nat)
-    (tail : Bool) : JsEnumArms C M J k n → Bool
+    (tail : Bool) : JsEnumArms S C M J k n → Bool
   | .nil => false
   | .cons b rest => b.earlyJump i tail || rest.earlyJump i tail
 /-- `earlyJump` of the arms of a union's case analysis. -/
 partial def JsUnionArms.earlyJump {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
-    (i : Nat) (tail : Bool) : JsUnionArms C M J k cs → Bool
+    (i : Nat) (tail : Bool) : JsUnionArms S C M J k cs → Bool
   | .nil => false
   | .cons _ b rest => b.earlyJump i tail || rest.earlyJump i tail
 end

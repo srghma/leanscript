@@ -9,15 +9,20 @@
  * @returns {Array<int53(number)>}
  */
 export const test1 = (fn) => {
-  const k$1 = [1, 2, fn()];
-  return k$1.length === 3 ? k$1 : [];
+  const x$1 = fn();
+  const k$2 = [1, 2, x$1];
+  return k$2.length === 3 ? k$2 : [];
 };
 
 /**
  * `fn'`
  * @returns {int53(number)}
  */
-export const fn_ = () => 0;
+export const fn_ = () => {
+  const k$2 = () => 0;
+  const f$1 = k$2;
+  return f$1();
+};
 
 /**
  * `extern1`
@@ -35,10 +40,10 @@ export const extern2 = () => [[1, 2, 0], [3], [0]];
  * `test3`
  * @returns {Array<int53(number)>}
  */
-export const test3 = extern1;
+export const test3 = () => [1, 2, 0];
 
 /**
  * `test4`
  * @returns {Array<Array<int53(number)>>}
  */
-export const test4 = extern2;
+export const test4 = () => [[1, 2, 0], [3], [0]];

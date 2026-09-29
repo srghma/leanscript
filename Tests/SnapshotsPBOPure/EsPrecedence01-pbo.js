@@ -6,4 +6,10 @@
  * @param {() => boolean} f
  * @returns {() => boolean}
  */
-export const test1 = (f) => () => f();
+export const test1 = (f) => {
+  const k$2 = () => {
+    const x$1 = f();
+    return x$1;
+  };
+  return k$2;
+};

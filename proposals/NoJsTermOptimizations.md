@@ -1,5 +1,20 @@
 # No `JsTerm → JsTerm` optimisation stage: is it possible?
 
+> **Status (current tree): there is no `JsTerm → JsTerm` stage at all.**  Everything below
+> describes an intermediate state.  Since then `JsTerm/Passes/` and `JsTerm/Lower/Emit.lean`
+> were deleted: `termToJs` builds each block directly (`JsTerm/Lower/FromTerm.lean`, with
+> `JsTerm/Lower/Tail.lean` for returns as loop assignments or jumps), `inPlace` is gone (array
+> updates are the copying `…_immutable` operations), and `mkModule` (`JsTerm/Lower/Module.lean`)
+> only collects the imports.  `JsTerm` is used only to print the JavaScript and to connect it to
+> `runtime.js`; every optimisation is on `Term` (`Term.optimize`, proved by `Term.optimize_eval`).
+> The generated JavaScript is larger than with the former passes; all the snapshot checks pass.
+> The pipeline is now
+>
+> ```
+> Lean ─elab/translate→ Term ─Term.optimizeN (proved: Term.optimizeN_eval)→ Term
+>      ─termToJs→ JsTerm ─mkModule (imports)→ JsModule ─toMini→ MiniJs ─print→ string
+> ```
+
 Short answer: **mostly yes, and it is now done for the function level.**  The JavaScript of a
 function is emitted in normal form while `Term → JsTerm` builds it; no pass rewrites a finished
 function except `inPlace`.  What still runs over finished `JsTerm` is (1) `inPlace` and (2) the

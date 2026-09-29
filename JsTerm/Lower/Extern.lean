@@ -39,46 +39,52 @@ polymorphic one are passed through as they are).
 
 namespace MoreJs
 
+variable {S : JsSig}
+
 open LeanScript
 
 /-- The array layout of a type of cons cells (`consList α` is `list α`); any other type
     itself. -/
 def JsTy.arrayList : JsTy → JsTy
-  | .consList α => .list α
+  | .obj .consList [α] => .list α
   | t => t
 
 /-- Is the type a list of cons cells? -/
 def JsTy.isConsList : JsTy → Bool
-  | .consList _ => true
+  | .obj .consList [_] => true
   | _ => false
 
 /-- A value at the array layout of its type (`JsTy.arrayList`): cons cells converted to an
     array, any other value itself. -/
-def JsExpr.asArrayList {C M : List JsTy} : {σ : JsTy} → JsExpr C M σ → JsExpr C M σ.arrayList
-  | .consList _, e => e.toArrayList
+def JsExpr.asArrayList {C M : List JsTy} : {σ : JsTy} → JsExpr S C M σ → JsExpr S C M σ.arrayList
+  | .obj .consList [_], e => e.toArrayList
+  | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
+  | .obj (.union _) _, e | .obj (.decl _) _, e => e
   | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
-  | .record _ _ _, e | .union _ _ _, e | .enum _ _, e | .data _, e | .thunk _, e => e
+  | .enum _ _, e | .thunk _, e => e
 
 /-- A value given at the array layout of its type (`JsTy.arrayList`), at its type: an array
     converted to cons cells, any other value itself. -/
-def JsExpr.ofArrayListAt {C M : List JsTy} : (σ : JsTy) → JsExpr C M σ.arrayList → JsExpr C M σ
-  | .consList _, e => e.ofArrayList
+def JsExpr.ofArrayListAt {C M : List JsTy} : (σ : JsTy) → JsExpr S C M σ.arrayList → JsExpr S C M σ
+  | .obj .consList [_], e => e.ofArrayList
+  | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
+  | .obj (.union _) _, e | .obj (.decl _) _, e => e
   | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
-  | .record _ _ _, e | .union _ _ _, e | .enum _ _, e | .data _, e | .thunk _, e => e
+  | .enum _ _, e | .thunk _, e => e
 
 /-- Arguments at the array layouts of their types. -/
-def JsArgs.asArrayLists {C M : List JsTy} : {σs : List JsTy} → JsArgs C M σs →
-    JsArgs C M (σs.map JsTy.arrayList)
+def JsArgs.asArrayLists {C M : List JsTy} : {σs : List JsTy} → JsArgs S C M σs →
+    JsArgs S C M (σs.map JsTy.arrayList)
   | [], .nil => .nil
   | _ :: _, .cons a as => .cons a.asArrayList as.asArrayLists
 
 /-- The call of the extern `name` on the arguments `args`, answering a value of type `τ`; an
     error if the extern has no operation at these types. -/
-def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs C M σs) :
-    Except String (JsExpr C M τ) :=
+def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs S C M σs) :
+    Except String (JsExpr S C M τ) :=
   -- `"".push c` is the one-character string `c` itself (a `Char` is a string of one code
   -- point), how `a = b` on `Char` is translated
-  let pushEmpty? : Option (JsExpr C M τ) :=
+  let pushEmpty? : Option (JsExpr S C M τ) :=
     if name != "lean_string_push" then none else
     match args with
     | .cons (.lit (.string s)) (.cons (σ := σ) c .nil) =>

@@ -6,8 +6,6 @@ import {
   bigint_nat__lean_nat_mod__Nat_mod,
 } from "../../runtime.js";
 
-const $k1 = { tag: 1, _1: 0n };
-
 /**
  * `swapSum`
  * @param {{ _1: nat(bigint), _2: nat(bigint) }} p
@@ -22,7 +20,7 @@ export const swapSum = (p, q) => ({ _1: p._2 + q._2, _2: p._1 + q._1 });
  * @param {{ _1: nat(bigint), _2: nat(bigint) }} q
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
-export const swapSum_ = swapSum;
+export const swapSum_ = (p, q) => ({ _1: p._2 + q._2, _2: p._1 + q._1 });
 
 /**
  * `absDiff`
@@ -47,14 +45,15 @@ export const plus = (a, b) => a + b;
  * @returns {nat(bigint)}
  */
 export const maxMod = (n) => {
-  let acc$1 = $k1;
+  let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1.tag !== 0) {
-      const { _1: f$3 } = acc$1;
-      const x$4 = bigint_nat__lean_nat_mod__Nat_mod(3n * i$2, 10n);
-      if (f$3 < x$4) {
-        acc$1 = { tag: 1, _1: x$4 };
-      }
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const { _1: f$4 } = a$3;
+      const x$5 = bigint_nat__lean_nat_mod__Nat_mod(3n * i$2, 10n);
+      acc$1 = f$4 < x$5 ? { tag: 1, _1: x$5 } : { tag: 1, _1: f$4 };
     }
   }
   return acc$1._1;

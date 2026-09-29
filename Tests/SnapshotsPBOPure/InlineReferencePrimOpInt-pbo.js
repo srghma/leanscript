@@ -3,16 +3,15 @@
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
 
-const $k1 = { _1: 99, _2: 0, _3: 11 };
-
 /**
  * `localTest`
  * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)} f
  * @returns {int53(number)}
  */
 export const localTest = (f) => {
-  const x$1 = f($k1);
-  return x$1 === -2147483648 ? 0 : x$1;
+  const x$1 = { _1: 99, _2: 0, _3: 11 };
+  const x$2 = f(x$1);
+  return x$2 === -2147483648 ? 0 : x$2;
 };
 
 /**
@@ -43,35 +42,39 @@ export const test4 = () => 9;
  * `extern`
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const extern = () => $k1;
+export const extern = () => ({ _1: 99, _2: 0, _3: 11 });
 
 /**
  * `externTest`
  * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)} f
  * @returns {int53(number)}
  */
-export const externTest = (f) => f($k1);
+export const externTest = (f) => {
+  const x$1 = { _1: 99, _2: 0, _3: 11 };
+  const x$2 = f(x$1);
+  return x$2 === -2147483648 ? -2147483648 : x$2;
+};
 
 /**
  * `test5`
  * @returns {int53(number)}
  */
-export const test5 = test1;
+export const test5 = () => 110;
 
 /**
  * `test6`
  * @returns {int53(number)}
  */
-export const test6 = test2;
+export const test6 = () => 88;
 
 /**
  * `test7`
  * @returns {int53(number)}
  */
-export const test7 = test3;
+export const test7 = () => 1089;
 
 /**
  * `test8`
  * @returns {int53(number)}
  */
-export const test8 = test4;
+export const test8 = () => 9;

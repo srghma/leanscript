@@ -85,41 +85,31 @@ import path is relative to the output file; `leanscript` fails if the runtime do
 one of them).  Every extern has an operation at every representation, so an extern without
 one at the types of a call is an error of the conversion.  Functions are uncurried: a Lean
 `A → B → C` is a JavaScript function of two parameters, a lambda takes all the parameters of
-its type and a call passes them all (a partial application is a closure).  Two optimisations
-run on the `JsTerm` of every function: an array only one variable refers to, and that is not
-read afterwards, is updated in place (`array__lean_array_push_mutable`,
-`uint53__lean_array_set_mutable`, `uint53__lean_array_fset_mutable`, … instead of the copying
-`…_immutable` versions; every array update has both in `runtime.js`;
-`JsTerm/Passes/InPlace.lean`), and every expression that depends on no variable (a constructor
-without fields, a record of literals, a closure that captures nothing) is computed once at the
-top of the module and shared by every function (`const $tag0 = { tag: 0 };`, `$k1`, …;
-`JsTerm/Passes/Hoist.lean`; arrays and runtime calls are never shared).  The constants are named by
-their shape, since the types of `Term` do not carry the Lean names of the constructors.  Join points are de Bruijn indexed in `JsTerm` (`JsBlock.join`,
+its type and a call passes them all (a partial application is a closure).  The `JsTerm` of a function is written out as
+the conversion builds it: nothing rewrites it (`JsTerm` is only the typed shape of the printed
+JavaScript and its link to `runtime.js`; every optimisation is done on `Term`, by
+`Term.optimize`, before the conversion — see `proposals/NoJsTermOptimizations.md`).  So an array
+update is the copying `…_immutable` operation (the `…_mutable` ones, which update in place, are
+used only on the arrays the conversion itself builds and nothing else sees), and a constant value
+is written where it is used.  Join points are de Bruijn indexed in `JsTerm` (`JsBlock.join`,
 `JsBlock.jump`) and printed as labelled blocks (`let x$1; j$2: { …; x$1 = e; break j$2; }`).  In the `Term`
 files a lazy value `Unit → τ` is printed `(Lazy τ)`.
 
 In the tool a `List α` is the built-in list `Ty.list α` (an immutable JavaScript array), not a
 datatype (the tool has no signature to declare it in): a literal `[a, b]` is a list literal,
 and `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`.  An append of arrays is a fold pushing
-every element, which the JavaScript conversion writes `[...xs, ...ys]` on generic arrays; an
-array literal used once is inlined and the spreads of literals are flattened, so
-`#["a"] ++ (arr ++ #["b"])` (or the same on lists) is `["a", ...arr, "b"]`
-(`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).
+every element, written as that loop (`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).
 
 How a `List` is laid out in JavaScript is the knob `JsConfig.listRepr` (`MoreJs.ListRepr`,
 `JsTerm/Ty/Config.lean`; spelled `list=tagged` or `list=array` in the configuration line of
 every output):
 
 * `taggedUnion` (the default, preset `faithful`): cons cells, `[]` is `{ tag: 0 }` and
-  `x :: xs` is `{ tag: 1, _1: x, _2: xs }` (`JsTy.consList`).  A constant list is one shared
-  constant (`const $k2 = { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: $tag0 } };`, the empty
-  list being the `$tag0` every constructor without fields shares), and a list after elements
-  is the tail of their cells, shared, not copied: `[a, "b"] ++ xs` is
-  `{ tag: 1, _1: a, _2: { tag: 1, _1: "b", _2: xs } }`.  Before a tail, a list is copied
-  (`consList__append(xs, ys)`, `consList__of_array_onto(arr, tail)`).  The externs over lists
-  (`Array.toList`, `List.toArray`, …) are written for arrays: their list arguments and results
-  are converted (`consList__to_array`, `consList__of_array`), and a round trip is dropped
-  (`xs.toArray.toList` is `xs`).  These four functions are in `runtime.js`;
+  `x :: xs` is `{ tag: 1, _1: x, _2: xs }`: the prelude object type `JsTy.consList α`
+  (`obj consList [α]`, one declaration for every element type).  A list literal is its cells.
+  The externs over lists (`Array.toList`, `List.toArray`, …) are written for arrays: their list
+  arguments and results are converted (`consList__to_array`, `consList__of_array`, in
+  `runtime.js`);
 * `stdListToJsArray` (preset `pbo`): an immutable JavaScript array (`JsTy.list`), as above.
 
 Only the standard library's `List` follows the knob: a user's list-like inductive
@@ -142,85 +132,39 @@ When dropping a repeated `record_casesOn` would change the level of its body, th
 the case analysis but renames its fields to the ones already known (`Term.reuseRecord`,
 `FieldVars.toRenKeep`), so a record is not taken apart twice under different names.
 
-The conversion to JavaScript then cleans the `JsTerm` of every function up
-(`JsTerm/Passes/Cleanup.lean`, after the conversion and again after hoisting): copies are
-propagated (`const k$1 = $k1;`, `const y = x;`, a copy of a mutable variable when it is not
-reassigned and not captured), `x = x;` is dropped, an arm of a case analysis on a variable
-that rebuilds the value it takes apart (`acc = { tag: 0, _1: f };` in the arm of tag `0`) uses
-the variable instead, the fields a pattern binds but nothing reads are left out of it, and
-(last) a constant read once, by the next statement, before anything that could have an effect
-is evaluated, is inlined there (`const x = f(y); return g(x);` is `return g(f(y));`).  The
-printer writes `if` statements as short as it can (no empty `else`, `if (x.tag !== 0)` for an
-empty `then`, no `else` after a `return`, `return c;` for `if (c) return true; else return
-false;`, `c ? a : b` for returns of names and literals), writes arms of a union's case
-analysis that are all the same once, without a test, a join point assigned once as a `const`,
-and an arrow whose body is one `return` as `(x) => e`.  On the snapshots
-(`Tests/SnapshotsMy`, `Tests/SnapshotsPBOPure`) the generated JavaScript went from 6949 to
-5477 lines (163888 to 137190 bytes, 3468 to 2513 statements), with the same 3824 checks
-passing.
+The printer (`JsTerm/Print/Mini/`) only chooses how to spell what the `JsTerm` says: it writes
+`if` statements as short as it can (no empty `else`, `if (x.tag !== 0)` for an empty `then`, no
+`else` after a `return`, `c ? a : b` for returns of names and literals), arms of a union's case
+analysis that are all the same once, without a test, a join point assigned once as a `const`, a
+field read once, outside loops and closures, in place (`p._1`), and an arrow whose body is one
+`return` as `(x) => e`.  `leanscript --help` lists the options.
 
-Further rules then tidy the loops and accumulators of every function
-(`JsTerm/Passes/Unbox.lean`, `Contify.lean`, `Tco.lean`, combined in `tidyStep` and applied to
-each block as the conversion builds it, `JsTerm/Lower/Emit.lean`; see
-`proposals/NoJsTermOptimizations.md`): an accumulator of a union with one constructor is kept
-unboxed, a record accumulator is replaced by one mutable variable per field, a join point jumped
-to once is flattened into its caller, a local closure called only in tail position becomes a join
-point, assignments are moved up and literals inlined, a returned closure applied at once is
-beta-reduced, mutable variables that only copy each other are coalesced, dead constants are
-dropped, and the closure chains a tail-recursive function builds as a loop accumulator
-(`acc = (x) => a(f(x))`) become a loop over the parameters (`x = f(x)`), with an early-return
-variant.  The printer omits the unused counter of a last iteration.  These passes are tested by
-the snapshots (they are not proved): on the `-pbo.js`/`-faithful.js` snapshots (without comments
-and blank lines, and without the new `Tests/SnapshotsMy/LoopState.lean`) the code went from 4229
-to 4073 lines (135942 to 130955 bytes, 200 to 138 record destructurings, 50 to 26 `.tag` reads,
-1791 to 1667 `const`s), with all 3860 checks passing.  `leanscript --help` lists the
-options.
-
-A further round made small functions smaller.  The optimiser writes `if c then ret a else ret b`
-as `ret (c ? a : b)` (the pure conditional `Neu.cond`, `Term.condRet`, unless `a` or `b` is a
-conditional already, so that no chain of conditionals is built); `Term.optimize_eval` and
-`Term.numCalls_optimize` still hold.  The printer reads a field that is read once, outside loops
-and closures, in place (`p._1`) instead of taking the record apart into a `const` (when the
-record is a constant, or a mutable variable not reassigned afterwards), and writes
-`x = c ? a : x;` as `if (c) { x = a; }`; a rebuilt union is also recognised inside a conditional
-expression (`Cleanup.lean`).  When the module is put together (`JsModule.shareFuns` in
-`Hoist.lean`), a module constant that is a closure equal to an exported function is dropped
-and the function is read instead (only when no constant reads it while the module loads), an
-exported function equal to one before it is written `export const g = f;`, and an exported
-function that only passes its parameters, in order, to a function of the runtime is that
-function (`export const add = uint8__lean_uint8_add;`).  On the same `-pbo.js`/`-faithful.js`
-snapshots as above (without the new `Tests/SnapshotsMy/ShareFuns.lean`) the code went from 4192
-to 3738 lines (133990 to 120319 bytes, 140 to 30 record destructurings, 74 to 56 module
-constants `$k`, 240 to 196 `if`s), with all the checks passing (3922 with the new file).
-
-The latest round works on the `JsTerm` passes only (the `Term` optimiser and its proofs are
-unchanged).  Spreads are flattened through the list/array conversions, so a list built from
-literals and an array is one literal `["a", ...arr, "b"]` (`Simplify.lean`).  `Cleanup.lean`
-now knows the evaluation order of the inlined operator templates (`JsInline.argSeq`: the
-operands of `a && b`, `c ? a : b` that may not be evaluated), and treats pure operations that
-cannot throw as transparent when it inlines a constant used once; it picks the field of a
-record or the arm of a union whose value is known (`destructKnownNode`, `unionKnownNode`), and
-simplifies conditionals and arithmetic (`(c ? false : true) ? a : b` is `c ? b : a`, `c ? a : a`
-is `a`, `x === y ? y : x` is `x` on non-float types, `x + 0`, `x * 1`, `x - 0` are `x` on the
-integer representations).  The new `JsTerm/Passes/InlineConsts.lean`, run by `mkModule` after
-hoisting, inlines the module constants that are known values: a closure passed as an argument
-or called is written out where it is used (up to 4 uses, then beta-reduced), a record or union
-of constants is read where it is used, and a block closure called once in tail position is
-inlined there; the functions it changed are then run through `inPlace` and the clean-ups
-again.  A closure equal to an exported function is still read as that function.  On the
-`-pbo.js`/`-faithful.js` snapshots present before this round (without comments, imports and
-blank lines) the code went from 3437 to 3387 lines (108840 to 106540 bytes, 1568 to 1511
-`const`s, 58 to 39 module constants `$k`, 947 to 922 arrows); with the new
-`Tests/SnapshotsMy/InlineClosures.lean` all 4002 checks pass.  These passes are tested by the
-snapshots, not proved.
+**Object types are nominal** (`proposals/TypedDataProposals3.md`, proposals P and Q).  Every
+tagged object is `JsTy.obj id args`, a name and arguments, looked up in the signature `JsSig` of
+the function (a parameter of the grammar: `JsExpr S C M τ`, `JsBlock S C M J k`): a record is
+the anonymous declaration `record n` of its number of fields, a structural union the anonymous
+declaration `union arities` of the numbers of fields of its constructors (so `Option Nat` and
+`Option String` share `union [0, 1]`, at different arguments), the built-in list at the tagged
+layout the prelude declaration `consList` (`obj consList [α]`), and a declared datatype its
+stable number (`decl i`, `refIndex`: the same whatever scope names it), whose row in `JsSig` is
+its unfolded body.  The four forms that build and take objects apart (`record_mk`, `union_mk`,
+`destructure`, `unionCases`) are indexed by `S.fieldsOf id args` / `S.ctorsOf id args`; the casts
+`fold i` / `unfold i` go one layer into and out of a declared datatype (nothing at run time).
+Type equality is syntactic.  So functions over the user's recursive datatypes
+(`leanscript_signature`) are converted: `data_in`/`data_out` are the casts, and a fold
+(`data_rec`, `data_brec` of depth `0`) is one local function per member of the block, mutually
+recursive (`JsBlock.funs`), each rebuilding one layer with the answers at its holes and running
+the member's branch on it (`JsTerm/Lower/DataRec.lean`; `Tests/SnapshotsMy/RecData.lean`).  Not
+done: the canonical layout ids of proposal R (declarations with the same layout still have
+different ids), the per-declaration representations of proposal S, and course-of-values folds
+of depth `1` or more.
 
 | path | what it holds |
 | :-- | :-- |
-| `JsTerm/Ty/` | the types of `JsTerm` (`JsTerm/Ty.lean` imports them all): `Config.lean` (`MoreJs.JsConfig`: how each leaf type is represented, a `number` or a `BigInt`, typed or generic arrays; presets `faithful` (default) and `pbo`, command-line knobs), `Defs.lean` (the leaves `JsTerminalTy` — `uint53`: a `number` standing for a `Nat`; `bigint_nat`: a `BigInt`; … — and `JsTy`: arrays, typed arrays, lists, functions, records `{ _1: …, _2: … }`, unions `{ tag: i, _1: … }`, enums, thunks), `DecEq.lean` (decidable equality of `JsTy`), `Basic.lean` (names and renderings of the types, the layouts `JsNatTy` and `JsArrayLayout`), `Lower.lean` (`lowerScalarPrim`/`lowerArrayPrim`/`lowerTy`) |
+| `JsTerm/Ty/` | the types of `JsTerm` (`JsTerm/Ty.lean` imports them all): `Config.lean` (`MoreJs.JsConfig`: how each leaf type is represented, a `number` or a `BigInt`, typed or generic arrays; presets `faithful` (default) and `pbo`, command-line knobs), `Defs.lean` (the leaves `JsTerminalTy` — `uint53`: a `number` standing for a `Nat`; `bigint_nat`: a `BigInt`; … — and `JsTy`: arrays, typed arrays, lists, functions, enums, thunks, and the nominal object types `obj id args` — records `{ _1: …, _2: … }`, unions `{ tag: i, _1: … }`, the prelude `consList`, declared datatypes — with the signature `JsSig` that gives their layouts), `DecEq.lean` (decidable equality of `JsTy`), `Basic.lean` (names and renderings of the types, the layouts `JsNatTy` and `JsArrayLayout`), `Lower.lean` (`lowerScalarPrim`/`lowerArrayPrim`/`lowerTy`) |
 | `JsTerm/Ops/` | the typed operations (`type__extern`; `JsTerm/Ops.lean` imports them all): `Basic.lean` (their indices `Effectfulness`, `MayThrow`, the `JsInline` templates), and, generated by `scripts/gen_js_ops.py`, `Imported.lean` (the ones implemented by `runtime.js`, `JsOpImported`) `Inlinable.lean` (the ones written inline, `JsOpInlinable`) and `Template.lean` (their JavaScript, `JsOpInlinable.template`); `Op.lean` (`JsOp`, either of them), and the operation of an extern at given types (`JsOp.lookup`, generated): its candidates by group of externs in `Cands/` (`Nat`, `UInt`, `SInt`, `Float`, `String`, `Misc`) and `Lookup.lean` |
-| `JsTerm/Syntax/` | the JavaScript grammar (`JsTerm/Syntax.lean` imports it all): `NumberLit.lean` (`number` literals), `Basic.lean` (the grammar, intrinsically typed with de Bruijn indices — constants, mutable variables, join points: `JsExpr`, `JsBlock`, `JsFun`, `JsConst`, `JsModule`), `Vars.lean` with `Vars/` (`Rename.lean`: renaming and weakening of the variables; `Subst.lean`: substitution of the constants; `Occs.lean`: their occurrences), `Pretty.lean` (a readable dump of the grammar, used by the tests; the tool no longer writes it to a file) |
-| `JsTerm/Passes/` | the passes over `JsTerm` (`JsTerm/Passes.lean` imports them all): `Simplify.lean` (clean-ups: loop bodies, peephole rules, array literals), `Cleanup.lean` (copy propagation, self-assignments, rebuilt unions, unused pattern fields, constants used once right away), `InPlace.lean` with `InPlace/` (updating in place the arrays nothing else refers to, `inPlace`; `Linear.lean`: the array operations and linear variables, `Collect.lean`: the definitions of the variables), `Unbox.lean`, `Contify.lean`, `Tco.lean` (unboxing and scalar replacement of accumulators, join-point flattening and contification, closure-chain loops to parameter loops, `tidyStep`), `InlineConsts.lean` (inlining module constants that are known closures, records and unions where they are used, `inlineConsts`), `Hoist.lean` (moving the constant expressions of a module to its top, once, `hoistConsts`; sharing the closures and functions that are the same function, `JsModule.shareFuns`; and the imports of a module, `mkModule`) |
-| `JsTerm/Lower/` | from `Term` to `JsTerm` (`JsTerm/Lower.lean` imports it all): `Extern.lean` (an extern call as its typed operation, `lowerExtern`; an error when there is none), `Basic.lean` (the support of the conversion: literals, `ConvM`, casts, builders), `FromTerm.lean` (`MoreJs.termToJs`: a closed `Term` to a `JsFun` — loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas) |
+| `JsTerm/Syntax/` | the JavaScript grammar (`JsTerm/Syntax.lean` imports it all): `NumberLit.lean` (`number` literals), `Basic.lean` (the grammar, intrinsically typed with de Bruijn indices — constants, mutable variables, join points: `JsExpr`, `JsBlock`, `JsFun`, `JsModule`, over a signature `JsSig`), `Vars.lean` with `Vars/` (`Rename.lean`: renaming and weakening of the variables; `Occs.lean`: their occurrences), `Pretty.lean` (a readable dump of the grammar, used by the tests; the tool no longer writes it to a file) |
+| `JsTerm/Lower/` | from `Term` to `JsTerm` (`JsTerm/Lower.lean` imports it all): `Extern.lean` (an extern call as its typed operation, `lowerExtern`; an error when there is none), `Basic.lean` (the support of the conversion: literals, `ConvM`, casts, builders, the signature `jsSigOf`), `Tail.lean` (returns as loop assignments or jumps), `DataRec.lean` (the folds of declared datatypes as mutually recursive local functions), `FromTerm.lean` (`MoreJs.termToJs`: a closed `Term` to a `JsFun` — loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas), `Module.lean` (the imports of a module, `mkModule`) |
 | `JsTerm/Print/` | printing (`JsTerm/Print.lean` imports it all): `Mini.lean` (`JsModule.toJs`: through the `LanguageJavascriptMini` AST to source text) with `Mini/` (`Basic.lean`: helpers, the printer's state, early ends of iterations; `Block.lean`: expressions and blocks) |
 | `runtime.js` | the runtime the generated code imports: one function per imported operation, of the same name, each with JSDoc `@param`/`@returns` tags giving the JavaScript type and the `JsTy` of its arguments and result (written by `scripts/annotate_runtime.py`) |
 | `LeanScriptCli/` | the executable: `Frontend.lean` (elaborating the file, choosing the definitions, translating, open definitions of recursive functions), `RecCalls.lean` (binding the recursive functions of an open definition in its JavaScript, direct calls), `Check.lean` (`--check`), `Main.lean` |
@@ -260,7 +204,7 @@ snapshots, not proved.
 | `HashableFloat/` | `HashableFloat`/`HashableFloat32`: floats with lawful `BEq`, `Hashable` and a linear `Ord` (away from `NaN`), the leaf types of the floats |
 | `NonEmpty/` | correct-by-construction non-empty lists, arrays and strings (their literal notations and `ToExpr` instances are in `NonEmpty/*Elab/`) |
 | `TyTests/`, `TermTests/` | the tests, checked by `lake build` (`#guard_msgs` snapshots, `rfl` runs) |
-| `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs; unit tests of the JavaScript conversion (typed operations, in-place arrays, shared constants, literals too big for a `number`; `runtime.js` exports every imported operation) |
+| `Tests/Main.lean`, `Spec/` | `lake test`: the checks on values that are too slow for the kernel (`kernel_rfl` runs of `Term.eval` taking from half a second to many seconds), run compiled with the `Spec` test library, and the optimiser on the same programs; unit tests of the JavaScript conversion (typed operations, nominal object types, folds of declared datatypes, literals too big for a `number`; `runtime.js` exports every imported operation) |
 | `RuntimeSpec/` (`Model.lean`, `Runtime.lean`, `Correct.lean`) | the integer functions of `runtime.js` whose code was simplified, transcribed into a model of the JavaScript they use (`BigInt`s and safe-integer `number`s as `Int`, the 32-bit operators exactly, an overflow `RangeError` as `none`), with the old versions beside them; proofs that each computes Lean's operation on its representation (a function that may throw returns Lean's result checked to be a safe integer), that the `BigInt`/`number` split agrees with the old `typeof` tests, and that every removed throw could never fire (`lake build RuntimeSpec`) |
 | `proposals/` | proposals, reviews and stand-alone sketches; nothing here is part of the build (`NominalTyProposal.md` is the design that is implemented) |
 | `scripts/` | benchmarking scripts; `annotate_runtime.py` writes the type comments of the functions of `runtime.js` from the signatures of `JsTerm/Ops/Imported.lean` (`--check`: fail if they are not up to date) |

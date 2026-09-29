@@ -10,9 +10,26 @@
  * @returns {nat(bigint)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = 0n;
+  let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    acc$1 = acc$1 + (1n + k + (2n + k) + (3n + k));
+    const a$3 = acc$1;
+    if (a$3.tag === 0) {
+      acc$1 = { tag: 0, _1: a$3._1 };
+    } else {
+      const k$11 = (x$4) => {
+        const x$5 = 1n;
+        const x$6 = x$4(x$5);
+        const x$7 = 2n;
+        const x$8 = x$4(x$7);
+        const x$9 = 3n;
+        const x$10 = x$4(x$9);
+        return x$6 + x$8 + x$10;
+      };
+      const k$13 = (x$12) => x$12 + k;
+      const x$14 = k$11(k$13);
+      const x$15 = a$3._1 + x$14;
+      acc$1 = { tag: 1, _1: x$15 };
+    }
   }
-  return acc$1;
+  return acc$1._1;
 };

@@ -6,8 +6,6 @@
 //   test3: LeanScript: the parameter `α` of `preview_left_right` is a type
 //   test4: LeanScript: the parameter `α` of `preview_left_right` is a type
 
-const $tag0 = { tag: 0 };
-
 /**
  * `test1`
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
@@ -17,7 +15,7 @@ export const test1 = (a) => {
   if (a.tag === 0) {
     return { tag: 1, _1: a._1 };
   }
-  return $tag0;
+  return { tag: 0 };
 };
 
 /**
@@ -25,4 +23,9 @@ export const test1 = (a) => {
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
  * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
-export const test2 = test1;
+export const test2 = (a) => {
+  if (a.tag === 0) {
+    return { tag: 1, _1: a._1 };
+  }
+  return { tag: 0 };
+};

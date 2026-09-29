@@ -23,25 +23,44 @@ The leaves are `JsTerminalTy`; the compound shapes have one layout each:
 | --- | --- | --- |
 | a leaf | `terminal t` | a boolean, a number, a `BigInt` or a string (`JsTerminalTy`) |
 | `array t` | `array t` or `typedArray e` | a JavaScript `Array`, or a typed array (`Uint8Array`, …) of the element `e` |
-| `record t fs` | `record f₁ f₂ [f₃, …]` | an object `{ _1: f₁, _2: f₂, … }` (two fields or more) |
-| `union cs` | `union c₀ c₁ [c₂, …]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more, each the list of its fields) |
+| `record t fs` | `obj (record n) [f₁, …, fₙ]` | an object `{ _1: f₁, _2: f₂, … }` (two fields or more) |
+| `union cs` | `obj (union [a₀, a₁, …]) [fields…]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more; `aᵢ` fields each) |
 | `enum s` | `enum n shift` | the number `shift + i` |
 | `list t` | `list t` (`listRepr = stdListToJsArray`) | an (immutable) JavaScript array |
-| `list t` | `consList t` (`listRepr = taggedUnion`) | cons cells: `{ tag: 0 }` (`[]`) and `{ tag: 1, _1: head, _2: tail }` |
+| `list t` | `obj consList [t]` (`listRepr = taggedUnion`) | cons cells: `{ tag: 0 }` (`[]`) and `{ tag: 1, _1: head, _2: tail }` |
 | `fn a (fn b c)` | `fn [a, b] c` | a function of all its arguments (uncurried) |
 | `thunk t` | `thunk t` | a memoising thunk object |
 | `lazy t` | `fn [] t` | a function of no argument |
-| `data r` | `data name` | a declared datatype (not converted yet) |
+| `data r` | `obj (decl i) []` | a declared datatype: an object (or array, or function) laid out as its body, declaration `i` of the signature (`JsSig`) |
 
 A Lean function type is uncurried **maximally**: `Nat → Nat → Nat` is `fn [nat, nat] nat`, a
 JavaScript function of two arguments, wherever the value goes (a parameter, a field, the
 result of a function).  A delay (`lazy t`) is a function of no argument, so `Nat → Lazy
 Nat` stays `fn [nat] (fn [] nat)`: only the arrows of `Ty.fn` are merged.
 
-Records and unions are structural: a record has two fields or more and a union two
-constructors or more (the source types guarantee both: a structure of one field is unboxed,
-a type of one constructor is a record, before this stage), so the type of an empty record
-or a union of one constructor cannot be written.
+## Object types are nominal
+
+Every object type is a **name**, `obj id args` (`proposals/TypedDataProposals3.md`, Proposals
+P and Q): an identity (`JsObjId`) and type arguments.  The layout — the fields of a record, the
+constructors of a union — is not written in the type; it is read from the declaration
+(`JsSig.fieldsOf`, `JsSig.ctorsOf`), so a record, a tagged union, a cons cell and a value of a
+declared (recursive) datatype are all built and taken apart by the same four forms of the
+grammar (`record_mk`, `destructure`, `union_mk`, `unionCases`), at one index, `obj id args`.
+Equality of types stays syntactic (an identity and a list of types): no type contains a binder.
+
+* A structural record or union of the source is an **anonymous declaration** whose identity is
+  its layout (`record n`, `union arities`) and whose arguments are its fields: equal layouts
+  share their declaration, and it needs no table.
+* `List α` as cons cells is the prelude's declaration `consList` at `[α]`: one declaration for
+  every element type.
+* A declared datatype of the source is `decl i`: its number is stable (`refIndex`: the position
+  of the datatype among the datatypes of the source's signature, oldest first, whatever the
+  scope), and its body — one layer, a structural type whose recursive positions are
+  `obj (decl j) []` — is row `i` of the signature `JsSig`, a parameter of the grammar.  One layer
+  in and out are the casts `JsExpr.fold` / `JsExpr.unfold`, which print as nothing.
+
+Records and unions have two fields or constructors or more (the source types guarantee both: a
+structure of one field is unboxed, a type of one constructor is a record, before this stage).
 
 Decidable equality of `JsTy` is in `JsTerm.Ty.DecEq`; the names, renderings and array layouts
 in `JsTerm.Ty.Basic`; how a Lean type is lowered to its `JsTy` (`lowerTy`) in `JsTerm.Ty.Lower`.
@@ -132,6 +151,32 @@ def leaf : JsTypedElem → JsTerminalTy
 
 end JsTypedElem
 
+/-- The identity of an object type (`JsTy.obj`): **every** object the backend builds (a record,
+    a tagged union, a cons cell, a value of a declared datatype) has a nominal type, an
+    identity and a list of type arguments, and the identity says where the layout comes from.
+
+    * `record n` and `union arities` are the **anonymous** declarations of the structural types
+      of the source: the identity *is* the layout (the number of fields of a record, the number
+      of fields of each constructor of a union), and the arguments are the types of the fields,
+      in order.  So two structural types of the same layout share their declaration (`Option
+      String` and `Option Nat` are `union [0, 1]` at `[string]` and at `[nat]`), and the
+      layout of an anonymous declaration needs no table.
+    * `consList` is the one declaration of the prelude with a parameter: `List α` as cons cells,
+      `[[], [α, List α]]`, at the argument `[α]`.  It serves every element type.
+    * `decl i` is declaration `i` of the signature of the function (`JsSig`): a declared, possibly
+      recursive, datatype of the source (its number is its position among the datatypes of the
+      source's signature, oldest first: `refIndex`, the same in every scope). -/
+inductive JsObjId where
+  /-- An anonymous record of `n` fields (`n ≥ 2`): `{ _1: f₁, …, _n: fₙ }`. -/
+  | record (n : Nat)
+  /-- An anonymous union whose constructors have `arities` fields: `{ tag: i, _1: f₁, … }`. -/
+  | union (arities : List Nat)
+  /-- The prelude's `List α` as cons cells: `{ tag: 0 }` and `{ tag: 1, _1: head, _2: tail }`. -/
+  | consList
+  /-- Declaration `i` of the signature. -/
+  | decl (i : Nat)
+  deriving Inhabited, Repr, DecidableEq, Hashable
+
 /-- The types of `JsTerm`: how a Lean value is laid out in JavaScript. -/
 inductive JsTy where
   /-- A leaf. -/
@@ -143,26 +188,68 @@ inductive JsTy where
   | typedArray (elem : JsTypedElem)
   /-- A Lean `List`, as an immutable JavaScript array (`ListRepr.stdListToJsArray`). -/
   | list (elem : JsTy)
-  /-- A Lean `List`, as tagged cons cells (`ListRepr.taggedUnion`): the empty list is
-      `{ tag: 0 }`, `head :: tail` is `{ tag: 1, _1: head, _2: tail }` — the layout of a union
-      of the constructors `nil` and `cons`, which a structural `union` cannot write (the type
-      is recursive).  A tail is shared, never copied. -/
-  | consList (elem : JsTy)
   /-- A function of the arguments `doms` (none for a delay): `(x₁, …, xₙ) => …`. -/
   | fn (doms : List JsTy) (cod : JsTy)
-  /-- A record of two fields or more: an object `{ _1: f₁, _2: f₂, … }` (numbered from `1`). -/
-  | record (f₁ f₂ : JsTy) (fs : List JsTy)
-  /-- A union of two constructors or more, each the list of its fields: an object
-      `{ tag: i, _1: f₁, … }` of the position `i` (from `0`) of the constructor and its fields
-      (numbered from `1`). -/
-  | union (c₀ c₁ : List JsTy) (cs : List (List JsTy))
   /-- An enum: a number, `shift` for the first of its `n` constructors. -/
   | enum (n : Nat) (shift : Int)
-  /-- A declared datatype, by name (`D<block>_<member>`). -/
-  | data (name : String)
   /-- A memoised delay. -/
   | thunk (t : JsTy)
+  /-- An object of the declaration `id` at the type arguments `args` (`JsObjId`): records,
+      tagged unions, cons cells and declared datatypes alike.  Its layout is read from the
+      declaration (`JsSig.fieldsOf`, `JsSig.ctorsOf`), never from the type itself. -/
+  | obj (id : JsObjId) (args : List JsTy)
   deriving Inhabited, Repr
+
+/-- The prelude's `List α` as cons cells (`ListRepr.taggedUnion`). -/
+abbrev JsTy.consList (α : JsTy) : JsTy := .obj .consList [α]
+
+/-- The anonymous record of the fields `fs` (two or more). -/
+abbrev JsTy.record (fs : List JsTy) : JsTy := .obj (.record fs.length) fs
+
+/-- The anonymous union of the constructors `cs` (two or more), each the list of its fields. -/
+abbrev JsTy.union (cs : List (List JsTy)) : JsTy := .obj (.union (cs.map List.length)) cs.flatten
+
+/-- The fields `ts` cut into the constructors of `arities` fields. -/
+def splitArities : List Nat → List JsTy → List (List JsTy)
+  | [], _ => []
+  | a :: as, ts => ts.take a :: splitArities as (ts.drop a)
+
+/-- The signature of a function: its declared datatypes.  Declaration `i` is the **body** of
+    datatype `i`, one layer of it: the structural type (an anonymous record or union, or the one
+    field of a datatype of one constructor of one field) whose recursive positions are
+    `obj (decl j) []`.  It is a parameter of the grammar (`JsExpr S …`): an expression's type
+    only names a declaration, and the layout is read here. -/
+structure JsSig where
+  /-- The body of each declaration, by its number. -/
+  decls : Array JsTy := #[]
+  deriving Inhabited, Repr
+
+namespace JsSig
+
+/-- The body of declaration `i` (itself, when the signature has no declaration `i`). -/
+def body (S : JsSig) (i : Nat) : JsTy := S.decls[i]?.getD (.obj (.decl i) [])
+
+/-- The constructors of the union declaration `id` at the arguments `args`, each the list of
+    its fields (none for a record or a declaration that is not a union). -/
+def ctorsOf (S : JsSig) : JsObjId → List JsTy → List (List JsTy)
+  | .union ar, args => splitArities ar args
+  | .consList, [α] => [[], [α, .obj .consList [α]]]
+  | .consList, _ => []
+  | .record _, _ => []
+  | .decl i, _ => match S.body i with
+    | .obj (.union ar) args => splitArities ar args
+    | _ => []
+
+/-- The fields of the record declaration `id` at the arguments `args` (none for a union or a
+    declaration that is not a record). -/
+def fieldsOf (S : JsSig) : JsObjId → List JsTy → List JsTy
+  | .record _, args => args
+  | .decl i, _ => match S.body i with
+    | .obj (.record _) args => args
+    | _ => []
+  | _, _ => []
+
+end JsSig
 
 end MoreJs
 

@@ -40,7 +40,7 @@ import {
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$add = uint8__lean_uint8_add;
+export const TestUInt8$add = (a, b) => uint8__lean_uint8_add(a, b);
 
 /**
  * `TestUInt8.sub`
@@ -48,7 +48,7 @@ export const TestUInt8$add = uint8__lean_uint8_add;
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$sub = uint8__lean_uint8_sub;
+export const TestUInt8$sub = (a, b) => uint8__lean_uint8_sub(a, b);
 
 /**
  * `TestUInt8.eq`
@@ -104,7 +104,7 @@ export const TestUInt8$ge = (a, b) => b <= a;
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$mul = uint8__lean_uint8_mul;
+export const TestUInt8$mul = (a, b) => uint8__lean_uint8_mul(a, b);
 
 /**
  * `TestUInt8.div`
@@ -112,14 +112,14 @@ export const TestUInt8$mul = uint8__lean_uint8_mul;
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$div = uint8__lean_uint8_div;
+export const TestUInt8$div = (a, b) => uint8__lean_uint8_div(a, b);
 
 /**
  * `TestUInt8.neg`
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8$neg = uint8__lean_uint8_neg;
+export const TestUInt8$neg = (a) => uint8__lean_uint8_neg(a);
 
 /**
  * `TestUInt16.add`
@@ -127,7 +127,7 @@ export const TestUInt8$neg = uint8__lean_uint8_neg;
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$add = uint16__lean_uint16_add;
+export const TestUInt16$add = (a, b) => uint16__lean_uint16_add(a, b);
 
 /**
  * `TestUInt16.sub`
@@ -135,7 +135,7 @@ export const TestUInt16$add = uint16__lean_uint16_add;
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$sub = uint16__lean_uint16_sub;
+export const TestUInt16$sub = (a, b) => uint16__lean_uint16_sub(a, b);
 
 /**
  * `TestUInt16.eq`
@@ -191,7 +191,7 @@ export const TestUInt16$ge = (a, b) => b <= a;
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$mul = uint16__lean_uint16_mul;
+export const TestUInt16$mul = (a, b) => uint16__lean_uint16_mul(a, b);
 
 /**
  * `TestUInt16.div`
@@ -199,14 +199,14 @@ export const TestUInt16$mul = uint16__lean_uint16_mul;
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$div = uint16__lean_uint16_div;
+export const TestUInt16$div = (a, b) => uint16__lean_uint16_div(a, b);
 
 /**
  * `TestUInt16.neg`
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16$neg = uint16__lean_uint16_neg;
+export const TestUInt16$neg = (a) => uint16__lean_uint16_neg(a);
 
 /**
  * `TestUInt32.add`
@@ -214,7 +214,7 @@ export const TestUInt16$neg = uint16__lean_uint16_neg;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$add = uint32__lean_uint32_add;
+export const TestUInt32$add = (a, b) => uint32__lean_uint32_add(a, b);
 
 /**
  * `TestUInt32.sub`
@@ -222,7 +222,7 @@ export const TestUInt32$add = uint32__lean_uint32_add;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$sub = uint32__lean_uint32_sub;
+export const TestUInt32$sub = (a, b) => uint32__lean_uint32_sub(a, b);
 
 /**
  * `TestUInt32.eq`
@@ -278,7 +278,7 @@ export const TestUInt32$ge = (a, b) => b <= a;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$mul = uint32__lean_uint32_mul;
+export const TestUInt32$mul = (a, b) => uint32__lean_uint32_mul(a, b);
 
 /**
  * `TestUInt32.div`
@@ -286,14 +286,14 @@ export const TestUInt32$mul = uint32__lean_uint32_mul;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$div = uint32__lean_uint32_div;
+export const TestUInt32$div = (a, b) => uint32__lean_uint32_div(a, b);
 
 /**
  * `TestUInt32.neg`
  * @param {uint32} a
  * @returns {uint32}
  */
-export const TestUInt32$neg = uint32__lean_uint32_neg;
+export const TestUInt32$neg = (a) => uint32__lean_uint32_neg(a);
 
 /**
  * `TestInt8.add`
@@ -301,7 +301,7 @@ export const TestUInt32$neg = uint32__lean_uint32_neg;
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$add = int8__lean_int8_add;
+export const TestInt8$add = (a, b) => int8__lean_int8_add(a, b);
 
 /**
  * `TestInt8.sub`
@@ -309,7 +309,7 @@ export const TestInt8$add = int8__lean_int8_add;
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$sub = int8__lean_int8_sub;
+export const TestInt8$sub = (a, b) => int8__lean_int8_sub(a, b);
 
 /**
  * `TestInt8.eq`
@@ -365,7 +365,7 @@ export const TestInt8$ge = (a, b) => b <= a;
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$mul = int8__lean_int8_mul;
+export const TestInt8$mul = (a, b) => int8__lean_int8_mul(a, b);
 
 /**
  * `TestInt8.div`
@@ -373,14 +373,14 @@ export const TestInt8$mul = int8__lean_int8_mul;
  * @param {int8} b
  * @returns {int8}
  */
-export const TestInt8$div = int8__lean_int8_div;
+export const TestInt8$div = (a, b) => int8__lean_int8_div(a, b);
 
 /**
  * `TestInt8.neg`
  * @param {int8} a
  * @returns {int8}
  */
-export const TestInt8$neg = int8__lean_int8_neg;
+export const TestInt8$neg = (a) => int8__lean_int8_neg(a);
 
 /**
  * `TestInt16.add`
@@ -388,7 +388,7 @@ export const TestInt8$neg = int8__lean_int8_neg;
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$add = int16__lean_int16_add;
+export const TestInt16$add = (a, b) => int16__lean_int16_add(a, b);
 
 /**
  * `TestInt16.sub`
@@ -396,7 +396,7 @@ export const TestInt16$add = int16__lean_int16_add;
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$sub = int16__lean_int16_sub;
+export const TestInt16$sub = (a, b) => int16__lean_int16_sub(a, b);
 
 /**
  * `TestInt16.eq`
@@ -452,7 +452,7 @@ export const TestInt16$ge = (a, b) => b <= a;
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$mul = int16__lean_int16_mul;
+export const TestInt16$mul = (a, b) => int16__lean_int16_mul(a, b);
 
 /**
  * `TestInt16.div`
@@ -460,14 +460,14 @@ export const TestInt16$mul = int16__lean_int16_mul;
  * @param {int16} b
  * @returns {int16}
  */
-export const TestInt16$div = int16__lean_int16_div;
+export const TestInt16$div = (a, b) => int16__lean_int16_div(a, b);
 
 /**
  * `TestInt16.neg`
  * @param {int16} a
  * @returns {int16}
  */
-export const TestInt16$neg = int16__lean_int16_neg;
+export const TestInt16$neg = (a) => int16__lean_int16_neg(a);
 
 /**
  * `TestInt32.add`
@@ -475,7 +475,7 @@ export const TestInt16$neg = int16__lean_int16_neg;
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$add = int32__lean_int32_add;
+export const TestInt32$add = (a, b) => int32__lean_int32_add(a, b);
 
 /**
  * `TestInt32.sub`
@@ -483,7 +483,7 @@ export const TestInt32$add = int32__lean_int32_add;
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$sub = int32__lean_int32_sub;
+export const TestInt32$sub = (a, b) => int32__lean_int32_sub(a, b);
 
 /**
  * `TestInt32.eq`
@@ -539,7 +539,7 @@ export const TestInt32$ge = (a, b) => b <= a;
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$mul = int32__lean_int32_mul;
+export const TestInt32$mul = (a, b) => int32__lean_int32_mul(a, b);
 
 /**
  * `TestInt32.div`
@@ -547,11 +547,11 @@ export const TestInt32$mul = int32__lean_int32_mul;
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$div = int32__lean_int32_div;
+export const TestInt32$div = (a, b) => int32__lean_int32_div(a, b);
 
 /**
  * `TestInt32.neg`
  * @param {int32} a
  * @returns {int32}
  */
-export const TestInt32$neg = int32__lean_int32_neg;
+export const TestInt32$neg = (a) => int32__lean_int32_neg(a);

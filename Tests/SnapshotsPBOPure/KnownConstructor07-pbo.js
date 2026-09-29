@@ -13,5 +13,6 @@ import { int53__lean_int_add, int53__lean_int_sub } from "../../runtime.js";
  */
 export const test = (f, y) => {
   const x$1 = f(y);
-  return { _1: int53__lean_int_add(x$1, 1), _2: int53__lean_int_sub(x$1, 2) };
+  const x$2 = int53__lean_int_add(x$1, 1);
+  return { _1: x$2, _2: int53__lean_int_sub(x$1, 2) };
 };

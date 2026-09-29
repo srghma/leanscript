@@ -2,13 +2,10 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  array__lean_array_push_mutable,
-  bigint_nat__lean_nat_sub,
-  consList__append,
+  array__lean_array_push_immutable,
+  consList__to_array,
+  consList__of_array,
 } from "../../runtime.js";
-
-const $tag0 = { tag: 0 };
-const $k6 = { tag: 1, _1: ">", _2: $tag0 };
 
 /**
  * `addAfter`
@@ -18,13 +15,21 @@ const $k6 = { tag: 1, _1: ">", _2: $tag0 };
  * @returns {nat(bigint)}
  */
 export const addAfter = (fuel, a, b) => {
-  let x$1 = a;
-  let x$2 = b;
-  for (let j$3 = 0n; j$3 < fuel; j$3++) {
-    x$1 = x$1 + 2n;
-    x$2 = x$2 + 3n;
+  const k$3 = (x$1, x$2) => x$1 + x$2;
+  let acc$4 = k$3;
+  for (let i$5 = 0n; i$5 < fuel; i$5++) {
+    const a$6 = acc$4;
+    const k$12 = (x$7, x$8) => {
+      const x$9 = x$7 + 2n;
+      const x$10 = x$8 + 3n;
+      const x$11 = a$6(x$9, x$10);
+      return x$11;
+    };
+    acc$4 = k$12;
   }
-  return x$1 + x$2;
+  const x$13 = acc$4;
+  const x$14 = x$13(a, b);
+  return x$14;
 };
 
 /**
@@ -32,7 +37,20 @@ export const addAfter = (fuel, a, b) => {
  * @param {nat(bigint)} k
  * @returns {nat(bigint)}
  */
-export const sumShifted = (k) => k + 2n * k + 3n * k;
+export const sumShifted = (k) => {
+  const k$8 = (x$1) => {
+    const x$2 = 1n;
+    const x$3 = x$1(x$2);
+    const x$4 = 2n;
+    const x$5 = x$1(x$4);
+    const x$6 = 3n;
+    const x$7 = x$1(x$6);
+    return x$3 + x$5 + x$7;
+  };
+  const k$10 = (x$9) => x$9 * k;
+  const x$11 = k$8(k$10);
+  return x$11;
+};
 
 /**
  * `downFrom`
@@ -40,14 +58,25 @@ export const sumShifted = (k) => k + 2n * k + 3n * k;
  * @returns {Array<nat(bigint)>}
  */
 export const downFrom = (n) => {
-  let x$1 = [];
-  for (let j$2 = 0n; j$2 < n; j$2++) {
-    x$1 = array__lean_array_push_mutable(
-      x$1,
-      bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(n, 1n), j$2),
-    );
-  }
-  return x$1;
+  const k$14 = (x$1, x$2) => {
+    const k$4 = (x$3) => x$3;
+    let acc$5 = k$4;
+    for (let i$6 = 0n; i$6 < x$1; i$6++) {
+      const a$7 = acc$5;
+      const k$11 = (x$8) => {
+        const x$9 = array__lean_array_push_immutable(x$8, i$6);
+        const x$10 = a$7(x$9);
+        return x$10;
+      };
+      acc$5 = k$11;
+    }
+    const x$12 = acc$5;
+    const x$13 = x$12(x$2);
+    return x$13;
+  };
+  const x$15 = [];
+  const x$16 = k$14(n, x$15);
+  return x$16;
 };
 
 /**
@@ -56,22 +85,48 @@ export const downFrom = (n) => {
  * @param {nat(bigint)} b
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
-export const ordered = (a, b) => (a <= b ? { _1: a, _2: b } : { _1: b, _2: a });
+export const ordered = (a, b) => {
+  const k$4 = (x$1) => {
+    const { _1: f$2, _2: f$3 } = x$1;
+    return f$2 <= f$3 ? x$1 : { _1: f$3, _2: f$2 };
+  };
+  const x$5 = { _1: a, _2: b };
+  const x$6 = k$4(x$5);
+  return x$6;
+};
 
 /**
  * `keep`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const keep = (x) => x;
+export const keep = (x) => (x === 7n ? 7n : x);
 
 /**
  * `around`
  * @param {ConsList<string>} xs
  * @returns {ConsList<string>}
  */
-export const around = (xs) => ({
-  tag: 1,
-  _1: "<",
-  _2: consList__append(xs, { tag: 1, _1: ",", _2: consList__append(xs, $k6) }),
-});
+export const around = (xs) => {
+  let acc$1 = consList__to_array(xs);
+  for (const e$2 of [">"]) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+  }
+  let acc$4 = [","];
+  for (const e$5 of acc$1) {
+    const a$6 = acc$4;
+    acc$4 = array__lean_array_push_immutable(a$6, e$5);
+  }
+  let acc$7 = consList__to_array(xs);
+  for (const e$8 of acc$4) {
+    const a$9 = acc$7;
+    acc$7 = array__lean_array_push_immutable(a$9, e$8);
+  }
+  let acc$10 = ["<"];
+  for (const e$11 of acc$7) {
+    const a$12 = acc$10;
+    acc$10 = array__lean_array_push_immutable(a$12, e$11);
+  }
+  return consList__of_array(acc$10);
+};
