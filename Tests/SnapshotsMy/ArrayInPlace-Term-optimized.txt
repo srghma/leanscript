@@ -20,6 +20,7 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
 ret k1
 
 -- test3 : Array Nat → Array Nat
+-- version test3$$mut_0: owns `a0`: its caller gives it up, and it may update it in place (1 update(s) in place, 0 copies of arrays)
 val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
   let x8 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec lean_array_get_size(x2) ctor#1(x2) fun acc3 i4 => (closed)
     case acc3 of

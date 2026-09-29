@@ -95,9 +95,17 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     return .cond ce (← cPExpr a n C M) (← cPExpr b n C M)
   | Neu.extern (σs := σs) e args _ => do
     let as ← cArgs args n C M
-    match stringPosArg? σs with
-    | some s => lowerExtern (externName e) (.cons (.lit (.string s)) as)
-    | none => lowerExtern (externName e) as
+    let r ← match stringPosArg? σs with
+      | some s => lowerExtern (externName e) (.cons (.lit (.string s)) as)
+      | none => lowerExtern (externName e) as
+    -- an update of an array nothing else refers to is done in place; `set!` and
+    -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new)
+    if Own.updateInPlace n.cx (externName e) args then return r.inPlace
+    else if Own.copyThenUpdate (externName e) then
+      match r.updateOnCopy? with
+      | some r' => return r'
+      | none => throw s!"internal: the update {externName e} on a copy"
+    else return r
 
 /-- A pure expression. -/
 partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
@@ -116,6 +124,29 @@ partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
     listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | PExpr.data_in b j e => do
     foldE (← cPExpr e n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
+
+/-- A pure expression whose value is made owned by copying arrays (`Own.PExpr.copyable`): its
+    owned parts as they are, each other array copied (`[...a]`). -/
+partial def cPExprOwned {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (n : Names) (C M : List JsTy) : ConvM (JsExpr S C M (lowerTy cfg τ)) :=
+  if Own.PExpr.owned n.cx e then cPExpr e n C M else
+  match e with
+  | .record_mk args => do recordLit (← cArgsOwned args n C M) _
+  | PExpr.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgsOwned args n C M)
+  | PExpr.data_in b j e => do
+    foldE (← cPExprOwned e n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
+  | e => do
+    match (← cPExpr e n C M).copyArray? with
+    | some c => pure c
+    | none => throw "internal: a copy of a value that is not an array"
+
+/-- `cPExprOwned` of arguments. -/
+partial def cArgsOwned {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
+    (as : Args Δ Φ Γ σs o) (n : Names) (C M : List JsTy) :
+    ConvM (JsArgs S C M (σs.map (lowerTy cfg))) :=
+  match as with
+  | .nil => pure .nil
+  | .cons a as => return .cons (← cPExprOwned a n C M) (← cArgsOwned as n C M)
 
 /-- Arguments. -/
 partial def cArgs {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
@@ -158,14 +189,17 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
     | .fn (d₀ :: ds) c =>
       -- all the parameters of the type at once
       let ps := paramRefs C (d₀ :: ds)
-      let body ← cApplyBody b n (pushAll (d₀ :: ds) C) M (ps.map (·.1)) c
+      -- a closure borrows its parameters, and nothing from outside is owned in it (it may
+      -- run later, or many times)
+      let body ← cApplyBody b { n with own := n.own.none } (pushAll (d₀ :: ds) C) M
+        (ps.map (·.1)) (ps.map fun _ => false) c
       castE (.lam ((d₀ :: ds).map fun _ => "x") body) _
     | _ => throw "internal: the type of a lambda"
   | Val.thunk_mk (τ := t) b => do
-    let body ← cBody b n C M []
+    let body ← cBody b n C M [] []
     let lz : JsExpr S C M (.fn [] (lowerTy cfg t.relax)) := .lam (σs := []) [] body
     lowerExtern "lean_mk_thunk" (.cons lz .nil)
-  | Val.lazy_mk b => do castE (.lam (σs := []) [] (← cBody b n C M [])) _
+  | Val.lazy_mk b => do castE (.lam (σs := []) [] (← cBody b n C M [] [])) _
   | .record_mk args => do recordLit (← cArgs args n C M) _
   | Val.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgs args n C M)
   | Val.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
@@ -178,9 +212,10 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
     first one outermost), answering a value of type `r`: the chain of lambdas `val k := fun x =>
     …; ret k` takes the parameters one after the other; any other statement computes the
     function (a block computing it into a join point), which is then called on the parameters
-    left (`f(y)`). -/
+    left (`f(y)`).  `fl` says which of the parameters are owned (`Own.Term.walkApplied`). -/
 partial def cApplyTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (t : Term Δ d Φ Γ τ [] o) (n : Names) (C M : List JsTy) (ps : List Ref) (r : JsTy) :
+    (t : Term Δ d Φ Γ τ [] o) (n : Names) (C M : List JsTy) (ps : List Ref) (fl : List Bool)
+    (r : JsTy) :
     ConvM (JsBlock S C M [] (.ret r)) :=
   let whole : ConvM (JsBlock S C M [] (.ret r)) := do
     let blk ← cTerm t n C M []
@@ -198,28 +233,34 @@ partial def cApplyTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o :
   | .letV _ v (.ret (.kvar k)) =>
     if k.index != 0 then whole else
     match v with
-    | Val.lam b => cApplyBody b n C M ps r
+    | Val.lam b => cApplyBody b n C M ps fl r
     | _ => whole
   | _ => whole
 
-/-- The body of a lambda applied to the parameters `ps` (its own parameter first). -/
+/-- The body of a lambda applied to the parameters `ps` (its own parameter first), owned or not
+    (`fl`). -/
 partial def cApplyBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (ps : List Ref) (r : JsTy) :
-    ConvM (JsBlock S C M [] (.ret r)) :=
+    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (ps : List Ref) (fl : List Bool)
+    (r : JsTy) : ConvM (JsBlock S C M [] (.ret r)) :=
   match ps with
   | [] => throw "internal: a lambda without a parameter"
-  | p :: ps' => match b with
-    | .closed t => cApplyTerm t { n with u := [p] } C M ps' r
-    | .opened t _ => cApplyTerm t { n with u := p :: n.u } C M ps' r
+  | p :: ps' =>
+    let f := fl.headD false
+    match b with
+    | .closed t =>
+      cApplyTerm t { n with u := [p], own := { u := [f], k := n.own.k } } C M ps' fl.tail r
+    | .opened t _ =>
+      cApplyTerm t { n with u := p :: n.u, own := n.own.pushU [f] } C M ps' fl.tail r
 
 /-- The body of a closure, a delay or a loop, whose parameters live at `xs` (innermost first;
-    `C` already holds them): a block ending in `return`. -/
+    `C` already holds them) and are owned or not (`fl`; nothing from outside is owned in the
+    body): a block ending in `return`. -/
 partial def cBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (xs : List Ref) :
+    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (xs : List Ref) (fl : List Bool) :
     ConvM (JsBlock S C M [] (.ret (lowerTy cfg τ))) :=
   match b with
-  | .closed t => cTerm t { n with u := xs } C M []
-  | .opened t _ => cTerm t { n with u := xs ++ n.u } C M []
+  | .closed t => cTerm t { n with u := xs, own := n.own.body true fl } C M []
+  | .opened t _ => cTerm t { n with u := xs ++ n.u, own := n.own.body false fl } C M []
 
 /-- A computation, followed by the block `k` builds from where its result lives. -/
 partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
@@ -253,22 +294,27 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     let some nt := JsNatTy.of? N | throw "internal: the representation of a Nat"
     let α := lowerTy cfg ρ
     let cntE ← cPExpr cnt n C M
-    let zE ← cPExpr z n C M
+    -- the body owns its accumulator when every iteration hands the next an owned value (the
+    -- initial value copied first if it is not owned, when that saves copies in the body)
+    let mode := Own.natRecAcc n.cx z s
+    let zE ← if mode == .copy then cPExprOwned z n C M else cPExpr z n C M
     let accLvl := M.length
     let M' := α :: M
     let acc : JsMem M' α := .zero
     -- the body: the counter, then the accumulator it reads
-    let body ← cBody s n (α :: N :: C) M' [.c (C.length + 1), .c C.length]
+    let body ← cBody s n (α :: N :: C) M' [.c (C.length + 1), .c C.length] [mode.owns, false]
     let rest ← k (.m accLvl) C M'
     return JsBlock.letMut "acc" zE (JsBlock.forRange "i" nt cntE.wkM (loopBody acc body) rest)
   | Comp.array_foldl (t := t) (ρ := ρ) arr z s _ => do
     let A := lowerTy cfg (Ty.array (d := true) t)
     let α := lowerTy cfg ρ
     let arrE ← cPExpr arr n C M
-    let zE ← cPExpr z n C M
+    let mode := Own.foldlAcc n.cx z s
+    let zE ← if mode == .copy then cPExprOwned z n C M else cPExpr z n C M
     let some ⟨E, l⟩ := JsArrayLayout.of? A | throw "internal: the layout of an array"
     let M' := α :: M
     let body ← cBody s n (α :: lowerTy cfg t :: C) M' [.c C.length, .c (C.length + 1)]
+      [false, mode.owns]
     let body ← castBodyElem body E
     let rest ← k (.m M.length) C M'
     return (JsBlock.letMut "acc" zE
@@ -276,11 +322,11 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
   | Comp.data_rec (b := b) ρ _ branches j e _ =>
     let B := Δ.block b
     dataFold B ρ (fun i => Ty.pair (.data (B.ref i)) (ρ i))
-      (fun i x C' => cBody (branches i) n C' M [x]) j e
+      (fun i x C' => cBody (branches i) n C' M [x] [false]) j e
   | Comp.data_brec (b := b) ρ 0 _ branches j e _ =>
     -- depth `0`: the windows are the pairs of `data_rec`
     let B := Δ.block b
-    dataFold B ρ (fun i => B.win ρ 0 i) (fun i x C' => cBody (branches i) n C' M [x]) j e
+    dataFold B ρ (fun i => B.win ρ 0 i) (fun i x C' => cBody (branches i) n C' M [x] [false]) j e
   | .data_brec _ _ (_ + 1) _ _ _ _ _ => notYet
   | Comp.thunk_force (τ := t) p => do
     let pe ← cPExpr p n C M
@@ -313,19 +359,33 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     (t : Term Δ d Φ Γ τ js o) (n : Names) (C M J : List JsTy) :
     ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
   match t with
-  | .ret p => return (JsBlock.ret (← cPExpr p n C M))
+  | .ret p => do
+    let (cx, _) := n.own.stmt (fun v => Own.PExpr.occ v p) (fun _ => false)
+    return (JsBlock.ret (← cPExpr p { n with cx } C M))
   | Term.letV (σ := σ) _ v t => do
-    let ve ← cVal v n C M
+    let (cx, env') := n.own.stmt (fun w => Own.Val.occ w v)
+      (fun w => (Own.Term.occ (w.upK 1) t).n > 0)
+    let ve ← cVal v { n with cx } C M
     return (JsBlock.const "k" ve
-      (← cTerm t { n with k := .c C.length :: n.k } (lowerTy cfg σ :: C) M J))
-  | .letE _ c t => cComp c n C M J fun x C' M' => cTerm t { n with u := x :: n.u } C' M' J
-  | Term.record_casesOn us e t => do
-    let ee ← cNeu e n C M
+      (← cTerm t { n with k := .c C.length :: n.k, own := env'.pushK (Own.Val.owned cx v) }
+        (lowerTy cfg σ :: C) M J))
+  | .letE _ c t =>
+    let (cx, env') := n.own.stmt (fun w => Own.Comp.occ w c)
+      (fun w => (Own.Term.occ (w.upU 1) t).n > 0)
+    let own := env'.pushU [Own.Comp.owned cx c]
+    cComp c { n with cx } C M J fun x C' M' => cTerm t { n with u := x :: n.u, own } C' M' J
+  | Term.record_casesOn (t := t₀) (fs := fs) us e t => do
+    let m := (t₀ :: fs.toList).length
+    let (cx, env') := n.own.stmt (fun w => Own.Neu.occ w e)
+      (fun w => (Own.Term.occ (w.upU m) t).n > 0)
+    let own := env'.pushU (Own.fieldsOwned m (Own.Neu.owned cx e))
+    let ee ← cNeu e { n with cx } C M
     return (← destructureAny ee (usedFields us) fun refs C' =>
-      cTerm t { n with u := refs ++ n.u } C' M J)
+      cTerm t { n with u := refs ++ n.u, own } C' M J)
   | .branch b => cBranch b n C M J
   | Term.jump (σ := σ) j p => do
-    let pe ← cPExpr p n C M
+    let (cx, _) := n.own.stmt (fun v => Own.PExpr.occ v p) (fun _ => false)
+    let pe ← cPExpr p { n with cx } C M
     match JsMem.ofIndex? J j.index (lowerTy cfg σ) with
     | some jm => return (JsBlock.jump jm pe)
     | none => throw "internal: a join point"
@@ -336,10 +396,15 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
   match b with
   | .ite c t e => do
-    let ce ← castE (← cNeu c n C M) (.terminal .bool)
-    return (JsBlock.ite ce (← cTerm t n C M J) (← cTerm e n C M J))
+    let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
+      (fun w => (Own.Term.occ w t).n > 0 || (Own.Term.occ w e).n > 0)
+    let ce ← castE (← cNeu c { n with cx } C M) (.terminal .bool)
+    return (JsBlock.ite ce (← cTerm t { n with own } C M J) (← cTerm e { n with own } C M J))
   | Branch.enum_casesOn (s := s) c bs => do
-    let ce ← cNeu c n C M
+    let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
+      (fun w => (List.finRange _).any fun j => (Own.Term.occ w (bs j)).n > 0)
+    let ce ← cNeu c { n with cx } C M
+    let n := { n with own }
     let k := s.nOfConstructors
     let rec arms (m start : Nat) : ConvM (JsEnumArms S C M J (.ret (lowerTy cfg τ)) m) :=
       match m with
@@ -350,31 +415,39 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
         else throw "internal: an arm of a case analysis"
     return (JsBlock.enumCases ce (← arms k 0))
   | Branch.union_casesOn e brs => do
-    let ee ← cNeu e n C M
-    return (← unionCasesAny ee (← cBranches brs n C M J))
+    let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w e)
+      (fun w => (Own.Branches.occ w brs).n > 0)
+    let ee ← cNeu e { n with cx } C M
+    return (← unionCasesAny ee (← cBranches brs { n with own } (Own.Neu.owned cx e) C M J))
   | Branch.join σ _ _ body br => do
     let σ' := lowerTy cfg σ
-    let block ← cBranch br n C M (σ' :: J)
-    let rest ← cTerm body { n with u := .c C.length :: n.u } (σ' :: C) M J
+    let envBr := Own.joinBranchEnv n.own body
+    let block ← cBranch br { n with own := envBr } C M (σ' :: J)
+    -- the join point owns its parameter when every jump passes an owned value
+    let own := (Own.joinBodyEnv n.own br).pushU [Own.joinParam σ envBr br]
+    let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
     return (JsBlock.join "x" block rest)
 
 /-- The arms of a union's case analysis: each binds the fields it uses
-    (`const { _1: f₁, _2: f₂ } = s;`) and continues. -/
+    (`const { _1: f₁, _2: f₂ } = s;`), owned or not (`ow`), and continues. -/
 partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {τ : Ty ks} {js : JCtx ks} {o : Lvl}
-    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (C M J : List JsTy) :
+    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (ow : Bool) (C M J : List JsTy) :
     ConvM (JsUnionArms S C M J (.ret (lowerTy cfg τ)) (lowerCtors cfg cs)) :=
   match brs with
   | Branches.two (c₁ := c₁) (c₂ := c₂) us₁ us₂ b₁ b₂ => do
     let (⟨u₁, s₁⟩, r₁) := mkSel (lowerCtor cfg c₁) (usedFields us₁) C
     let (⟨u₂, s₂⟩, r₂) := mkSel (lowerCtor cfg c₂) (usedFields us₂) C
-    let a₁ ← cTerm b₁ { n with u := r₁ ++ n.u } (pushAll u₁ C) M J
-    let a₂ ← cTerm b₂ { n with u := r₂ ++ n.u } (pushAll u₂ C) M J
+    let own₁ := n.own.pushU (Own.fieldsOwned c₁.binds.length ow)
+    let own₂ := n.own.pushU (Own.fieldsOwned c₂.binds.length ow)
+    let a₁ ← cTerm b₁ { n with u := r₁ ++ n.u, own := own₁ } (pushAll u₁ C) M J
+    let a₂ ← cTerm b₂ { n with u := r₂ ++ n.u, own := own₂ } (pushAll u₂ C) M J
     return .cons s₁ a₁ (.cons s₂ a₂ .nil)
   | Branches.cons (c := c) us b rest => do
     let (⟨u, s⟩, r) := mkSel (lowerCtor cfg c) (usedFields us) C
-    let a ← cTerm b { n with u := r ++ n.u } (pushAll u C) M J
-    return .cons s a (← cBranches rest n C M J)
+    let own := n.own.pushU (Own.fieldsOwned c.binds.length ow)
+    let a ← cTerm b { n with u := r ++ n.u, own } (pushAll u C) M J
+    return .cons s a (← cBranches rest n ow C M J)
 
 end
 
@@ -384,11 +457,13 @@ end
 
 /-- Convert a closed program into an exported JavaScript function named `name`
     (`export const name = (params) => …`), of all the parameters of its type (none when it is
-    not a function).  `paramNames` are the preferred names of its parameters.  The conversion
-    is the whole translation: the finished function is not rewritten afterwards (every
-    optimisation is done on `Term`, before, by `Term.optimize`). -/
+    not a function).  `paramNames` are the preferred names of its parameters.  `owned` says
+    which parameters the function owns (`OwnVersion.owned`; none by default): it may update
+    those in place.  The conversion is the whole translation: the finished function is not
+    rewritten afterwards (every optimisation is done on `Term`, before, by `Term.optimize`,
+    and the updates done in place are decided on `Term`, by `LeanScript.Term.Ownership`). -/
 def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String)
-    (ct : ClosedTerm) : Except String JsFun := do
+    (ct : ClosedTerm) (owned : List Bool := []) : Except String JsFun := do
   -- datatypes of equal layouts share one object id (`canonDecls`)
   let cfg := withCanonDecls cfg ct.Δ
   let τ := lowerTy cfg ct.τ
@@ -397,7 +472,9 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
     | t => ([], t)
   let ps : List (String × JsTy) := ds.zipIdx.map fun (t, i) => (paramNames.getD i s!"p{i}", t)
   let sig := jsSigOf cfg ct.Δ
-  let body ← cApplyTerm (S := sig) cfg ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1)) ret
+  let fl := ds.zipIdx.map fun (_, i) => owned.getD i false
+  let body ← cApplyTerm (S := sig) cfg ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1))
+    fl ret
   let body ← if h : pushAll ds [] = pushAll (ps.map (·.2)) [] then pure (h ▸ body) else
     throw "internal: the parameters of a function"
   return { name, leanName, sig, params := ps, ret, body }

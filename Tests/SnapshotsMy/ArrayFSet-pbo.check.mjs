@@ -42,9 +42,13 @@ check("test1(2)", () => M.test1(2), "#[7, 2, 1, 3]", false);
 check("test1(5)", () => M.test1(5), "#[7, 2, 1, 3]", false);
 check("test1(13)", () => M.test1(13), "#[7, 2, 1, 3]", false);
 check("test4([])", () => M.test4([]), "#[]", false);
+check("test4([]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([]), "#[]", false);
 check("test4([0])", () => M.test4([0]), "#[5]", false);
+check("test4([0]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0]), "#[5]", false);
 check("test4([0, 1, 2])", () => M.test4([0, 1, 2]), "#[5, 1, 2]", false);
+check("test4([0, 1, 2]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0, 1, 2]), "#[5, 1, 2]", false);
 check("test4([13, 5, 2, 1])", () => M.test4([13, 5, 2, 1]), "#[5, 5, 2, 1]", false);
+check("test4([13, 5, 2, 1]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([13, 5, 2, 1]), "#[5, 5, 2, 1]", false);
 
 console.log(`ArrayFSet-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

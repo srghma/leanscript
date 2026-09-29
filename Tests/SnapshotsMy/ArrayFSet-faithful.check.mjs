@@ -42,9 +42,13 @@ check("test1(2n)", () => M.test1(2n), "#[7, 2, 1, 3]", false);
 check("test1(5n)", () => M.test1(5n), "#[7, 2, 1, 3]", false);
 check("test1(13n)", () => M.test1(13n), "#[7, 2, 1, 3]", false);
 check("test4([])", () => M.test4([]), "#[]", false);
+check("test4([]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([]), "#[]", false);
 check("test4([0n])", () => M.test4([0n]), "#[5]", false);
+check("test4([0n]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0n]), "#[5]", false);
 check("test4([0n, 1n, 2n])", () => M.test4([0n, 1n, 2n]), "#[5, 1, 2]", false);
+check("test4([0n, 1n, 2n]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0n, 1n, 2n]), "#[5, 1, 2]", false);
 check("test4([13n, 5n, 2n, 1n])", () => M.test4([13n, 5n, 2n, 1n]), "#[5, 5, 2, 1]", false);
+check("test4([13n, 5n, 2n, 1n]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([13n, 5n, 2n, 1n]), "#[5, 5, 2, 1]", false);
 
 console.log(`ArrayFSet-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

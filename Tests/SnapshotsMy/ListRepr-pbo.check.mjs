@@ -79,9 +79,13 @@ check("ListRepr$append([0, 1, 2], [13, 5, 2, 1])", () => M.ListRepr$append([0, 1
 check("ListRepr$append([13, 5, 2, 1], [0, 1, 2])", () => M.ListRepr$append([13, 5, 2, 1], [0, 1, 2]), "#[13, 5, 2, 1, 0, 1, 2]", false);
 check("ListRepr$append([13, 5, 2, 1], [13, 5, 2, 1])", () => M.ListRepr$append([13, 5, 2, 1], [13, 5, 2, 1]), "#[13, 5, 2, 1, 13, 5, 2, 1]", false);
 check("ListRepr$ofArr([])", () => M.ListRepr$ofArr([]), "#[]", false);
+check("ListRepr$ofArr([]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([]), "#[]", false);
 check("ListRepr$ofArr([0])", () => M.ListRepr$ofArr([0]), "#[0]", false);
+check("ListRepr$ofArr([0]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([0]), "#[0]", false);
 check("ListRepr$ofArr([0, 1, 2])", () => M.ListRepr$ofArr([0, 1, 2]), "#[0, 1, 2]", false);
+check("ListRepr$ofArr([0, 1, 2]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([0, 1, 2]), "#[0, 1, 2]", false);
 check("ListRepr$ofArr([13, 5, 2, 1])", () => M.ListRepr$ofArr([13, 5, 2, 1]), "#[13, 5, 2, 1]", false);
+check("ListRepr$ofArr([13, 5, 2, 1]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([13, 5, 2, 1]), "#[13, 5, 2, 1]", false);
 check("ListRepr$toArr([])", () => M.ListRepr$toArr([]), "#[]", false);
 check("ListRepr$toArr([0])", () => M.ListRepr$toArr([0]), "#[0]", false);
 check("ListRepr$toArr([0, 1, 2])", () => M.ListRepr$toArr([0, 1, 2]), "#[0, 1, 2]", false);

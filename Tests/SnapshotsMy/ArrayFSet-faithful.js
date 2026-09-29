@@ -3,8 +3,9 @@
 
 import {
   array__lean_array_push_immutable,
+  bigint_nat__lean_array_fset_mutable,
+  bigint_nat__lean_array_fswap_mutable,
   bigint_nat__lean_array_fset_immutable,
-  bigint_nat__lean_array_fswap_immutable,
   typedArray__lean_array_pop_immutable,
   typedArray__lean_array_push_immutable,
 } from "../../runtime.js";
@@ -16,8 +17,8 @@ import {
  */
 export const test1 = (x) => {
   const x$1 = array__lean_array_push_immutable([x, 1n, 2n], 3n);
-  const x$2 = bigint_nat__lean_array_fset_immutable(x$1, 0n, 7n);
-  return bigint_nat__lean_array_fswap_immutable(x$2, 1n, 2n);
+  const x$2 = bigint_nat__lean_array_fset_mutable(x$1, 0n, 7n);
+  return bigint_nat__lean_array_fswap_mutable(x$2, 1n, 2n);
 };
 
 /**
@@ -38,7 +39,7 @@ export const test2 = (x) => {
 export const test3 = (x) =>
   typedArray__lean_array_pop_immutable(
     typedArray__lean_array_push_immutable(
-      bigint_nat__lean_array_fswap_immutable(
+      bigint_nat__lean_array_fswap_mutable(
         bigint_nat__lean_array_fset_immutable(Uint8Array.of(x, 1, 2), 2n, x),
         0n,
         2n,

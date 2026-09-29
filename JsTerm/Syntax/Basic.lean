@@ -491,6 +491,8 @@ structure JsFun where
   name : String
   /-- The Lean definition it was translated from. -/
   leanName : String
+  /-- More lines of its documentation comment (which parameters a version owns, …). -/
+  notes : List String := []
   /-- The declared datatypes its types name (`JsObjId.decl`). -/
   sig : JsSig := {}
   /-- The parameters (zero or more), as the names they are printed with and their types; the

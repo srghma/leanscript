@@ -72,7 +72,9 @@ def importToMini (path : String) (names : List String) : MiniModuleItem :=
     and result. -/
 def JsFun.docComment (f : JsFun) : String :=
   let ps := f.params.map fun (x, ty) => s!" * @param \{{ty}} {x}"
-  "\n".intercalate ([s!"/**", s!" * `{f.leanName}`"] ++ ps ++ [s!" * @returns \{{f.ret}}", " */"])
+  let notes := f.notes.map fun l => s!" * {l}"
+  "\n".intercalate ([s!"/**", s!" * `{f.leanName}`"] ++ notes ++ ps ++
+    [s!" * @returns \{{f.ret}}", " */"])
 
 /-- The text of the `.js` file of a module.  `header` are comment lines put first; `runtime`
     is how the module refers to the runtime (a path relative to the module,

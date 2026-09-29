@@ -8,6 +8,19 @@
 > only collects the imports.  `JsTerm` is used only to print the JavaScript and to connect it to
 > `runtime.js`; every optimisation is on `Term` (`Term.optimize`, proved by `Term.optimize_eval`).
 > The generated JavaScript is larger than with the former passes; all the snapshot checks pass.
+>
+> **Update: `inPlace` is back, at the `Term` level.**  The whole-function uniqueness analysis
+> this document asked for now exists on `Term` (`LeanScript/Term/Ownership/Basic.lean`,
+> `Walk.lean`): it tracks owned/borrowed arrays through the optimised `Term`, and `termToJs`
+> emits `…_mutable` updates directly where the array is owned and dead afterwards (no pass
+> over the finished `JsTerm`).  It also chooses, per function, versions owning some
+> array parameters (`OwnedTerm`, generated as extra exports `f$$mut_i_j`), and loop
+> accumulators that are copied once before the loop instead of once per iteration.  On
+> `ArrayInPlace`, `test1`/`test5` update in place, `test3` copies its parameter once before
+> the loop, and `test3$$mut_0` does not copy at all.  The analysis is unproved (it does not
+> change `Term.eval`; the snapshot checks run every version).  The module-constant inliner
+> `inlineConsts` stays out: a proven Term-level inliner across definitions is still the open
+> piece of work described below.
 > The pipeline is now
 >
 > ```

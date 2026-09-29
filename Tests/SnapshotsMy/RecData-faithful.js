@@ -12,7 +12,10 @@
 //   RecData.Prog.tree: LeanScript: the recursive type LeanScript.Ref is not declared in the signature `RecData.Prog`; add it to `leanscript_signature RecData.Prog`
 //   RecData.Prog.block1: LeanScript: a field of the constructor `LeanScript.Mems.cons` has the type LeanScript.Decl [0] (0 + 1) g which depends on the value of an earlier field (or of the argument of a dependent arrow) in a way that cannot be erased: only arrows, type arguments, and inductive types with one constructor of one field besides proofs (`Fin n`, `Vector α n`, `{x // p x}`) are erased to a non-dependent type
 
-import { array__lean_array_push_immutable } from "../../runtime.js";
+import {
+  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
+} from "../../runtime.js";
 
 /**
  * `RecData.Prog.ks`
@@ -198,7 +201,7 @@ export const RecData$inorder = (a) => {
     let acc$6 = array__lean_array_push_immutable(x$3._1._2, x$3._2);
     for (const e$7 of x$3._3._2) {
       const a$8 = acc$6;
-      acc$6 = array__lean_array_push_immutable(a$8, e$7);
+      acc$6 = array__lean_array_push_mutable(a$8, e$7);
     }
     return acc$6;
   };
@@ -350,7 +353,7 @@ export const RecData$sort = (xs) => {
       let acc$7 = array__lean_array_push_immutable(x$4._1._2, x$4._2);
       for (const e$8 of x$4._3._2) {
         const a$9 = acc$7;
-        acc$7 = array__lean_array_push_immutable(a$9, e$8);
+        acc$7 = array__lean_array_push_mutable(a$9, e$8);
       }
       return acc$7;
     };

@@ -221,10 +221,14 @@ The supported fragment and the refusals are listed in the header of
 - **A literal too big for a `number`** (a `Nat`, `UInt64`, `Int` or `Int64` literal beyond
   `2^53 - 1` in absolute value at the preset `pbo`) is refused: `leanscript` reports it and
   exits with a failure, instead of computing with a rounded value.
-- **Arrays that start as a parameter are always copied** by the first update: the in-place
-  pass (`JsTerm/Passes/InPlace.lean`) only mutates arrays the function itself built, since the caller
-  may still refer to a parameter.  (A loop that pushes onto a parameter copies it once per
-  iteration; copying it once before the loop is not done yet.)
+- **In-place array updates are decided statically** (`LeanScript/Term/Ownership/`), not by
+  reference counts: the plain export of a function always treats its parameters as borrowed
+  (the first update of a parameter array copies it, once before a loop when possible); the
+  extra `…$$mut_…` exports own some parameters and may mutate them, so a JavaScript caller must
+  not use such an argument afterwards.  Translated functions do not call each other, so the
+  versions are only for JavaScript callers; local closures get no versions (they borrow their
+  parameters).  The analysis is not proved correct; it is checked by the snapshot tests
+  (every version gives the same answer, and the plain export does not mutate its arguments).
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
   units, not code points as Lean does: the two differ on strings mixing characters above
   `U+FFFF` with characters in `U+E000`–`U+FFFF`.

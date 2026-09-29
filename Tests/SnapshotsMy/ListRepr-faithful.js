@@ -3,7 +3,7 @@
 
 import {
   consList__to_array,
-  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
   consList__of_array,
 } from "../../runtime.js";
 
@@ -33,7 +33,7 @@ export const ListRepr$front = (a, xs) => {
   let acc$1 = [a, "b"];
   for (const e$2 of consList__to_array(xs)) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return consList__of_array(acc$1);
 };
@@ -47,12 +47,12 @@ export const ListRepr$middle = (xs) => {
   let acc$1 = [0n];
   for (const e$2 of consList__to_array(xs)) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   let acc$4 = acc$1;
   for (const e$5 of [7n, 8n]) {
     const a$6 = acc$4;
-    acc$4 = array__lean_array_push_immutable(a$6, e$5);
+    acc$4 = array__lean_array_push_mutable(a$6, e$5);
   }
   return consList__of_array(acc$4);
 };
@@ -64,10 +64,10 @@ export const ListRepr$middle = (xs) => {
  * @returns {ConsList<nat(bigint)>}
  */
 export const ListRepr$append = (xs, ys) => {
-  let acc$1 = consList__to_array(xs);
+  let acc$1 = [...consList__to_array(xs)];
   for (const e$2 of consList__to_array(ys)) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return consList__of_array(acc$1);
 };

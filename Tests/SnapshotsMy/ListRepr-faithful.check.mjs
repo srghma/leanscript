@@ -79,9 +79,13 @@ check("ListRepr$append({ tag: 1, _1: 0n, _2: { tag: 1, _1: 1n, _2: { tag: 1, _1:
 check("ListRepr$append({ tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }, { tag: 1, _1: 0n, _2: { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: { tag: 0 } } } })", () => M.ListRepr$append({ tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }, { tag: 1, _1: 0n, _2: { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: { tag: 0 } } } }), "#[13, 5, 2, 1, 0, 1, 2]", false);
 check("ListRepr$append({ tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }, { tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } })", () => M.ListRepr$append({ tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }, { tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }), "#[13, 5, 2, 1, 13, 5, 2, 1]", false);
 check("ListRepr$ofArr([])", () => M.ListRepr$ofArr([]), "#[]", false);
+check("ListRepr$ofArr([]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([]), "#[]", false);
 check("ListRepr$ofArr([0n])", () => M.ListRepr$ofArr([0n]), "#[0]", false);
+check("ListRepr$ofArr([0n]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([0n]), "#[0]", false);
 check("ListRepr$ofArr([0n, 1n, 2n])", () => M.ListRepr$ofArr([0n, 1n, 2n]), "#[0, 1, 2]", false);
+check("ListRepr$ofArr([0n, 1n, 2n]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([0n, 1n, 2n]), "#[0, 1, 2]", false);
 check("ListRepr$ofArr([13n, 5n, 2n, 1n])", () => M.ListRepr$ofArr([13n, 5n, 2n, 1n]), "#[13, 5, 2, 1]", false);
+check("ListRepr$ofArr([13n, 5n, 2n, 1n]) twice", () => ((a0) => (M.ListRepr$ofArr(a0), M.ListRepr$ofArr(a0)))([13n, 5n, 2n, 1n]), "#[13, 5, 2, 1]", false);
 check("ListRepr$toArr({ tag: 0 })", () => M.ListRepr$toArr({ tag: 0 }), "#[]", false);
 check("ListRepr$toArr({ tag: 1, _1: 0n, _2: { tag: 0 } })", () => M.ListRepr$toArr({ tag: 1, _1: 0n, _2: { tag: 0 } }), "#[0]", false);
 check("ListRepr$toArr({ tag: 1, _1: 0n, _2: { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: { tag: 0 } } } })", () => M.ListRepr$toArr({ tag: 1, _1: 0n, _2: { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: { tag: 0 } } } }), "#[0, 1, 2]", false);

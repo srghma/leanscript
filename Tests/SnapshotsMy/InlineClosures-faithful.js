@@ -4,6 +4,7 @@
 import {
   array__lean_array_push_immutable,
   consList__to_array,
+  array__lean_array_push_mutable,
   consList__of_array,
 } from "../../runtime.js";
 
@@ -108,25 +109,25 @@ export const keep = (x) => (x === 7n ? 7n : x);
  * @returns {ConsList<string>}
  */
 export const around = (xs) => {
-  let acc$1 = consList__to_array(xs);
+  let acc$1 = [...consList__to_array(xs)];
   for (const e$2 of [">"]) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   let acc$4 = [","];
   for (const e$5 of acc$1) {
     const a$6 = acc$4;
-    acc$4 = array__lean_array_push_immutable(a$6, e$5);
+    acc$4 = array__lean_array_push_mutable(a$6, e$5);
   }
-  let acc$7 = consList__to_array(xs);
+  let acc$7 = [...consList__to_array(xs)];
   for (const e$8 of acc$4) {
     const a$9 = acc$7;
-    acc$7 = array__lean_array_push_immutable(a$9, e$8);
+    acc$7 = array__lean_array_push_mutable(a$9, e$8);
   }
   let acc$10 = ["<"];
   for (const e$11 of acc$7) {
     const a$12 = acc$10;
-    acc$10 = array__lean_array_push_immutable(a$12, e$11);
+    acc$10 = array__lean_array_push_mutable(a$12, e$11);
   }
   return consList__of_array(acc$10);
 };

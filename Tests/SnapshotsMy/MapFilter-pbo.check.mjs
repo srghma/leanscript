@@ -37,9 +37,13 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test5([])", () => M.test5([]), "#[]", false);
+check("test5([]) twice", () => ((a0) => (M.test5(a0), M.test5(a0)))([]), "#[]", false);
 check("test5([0])", () => M.test5([0]), "#[]", false);
+check("test5([0]) twice", () => ((a0) => (M.test5(a0), M.test5(a0)))([0]), "#[]", false);
 check("test5([0, 1, 2])", () => M.test5([0, 1, 2]), "#[]", false);
+check("test5([0, 1, 2]) twice", () => ((a0) => (M.test5(a0), M.test5(a0)))([0, 1, 2]), "#[]", false);
 check("test5([13, 5, 2, 1])", () => M.test5([13, 5, 2, 1]), "#[13, 5]", false);
+check("test5([13, 5, 2, 1]) twice", () => ((a0) => (M.test5(a0), M.test5(a0)))([13, 5, 2, 1]), "#[13, 5]", false);
 
 console.log(`MapFilter-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

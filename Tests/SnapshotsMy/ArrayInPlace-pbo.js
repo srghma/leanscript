@@ -4,15 +4,16 @@
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 import {
-  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
   uint53__lean_nat_mul,
-  uint53__lean_array_set_immutable,
+  uint53__lean_array_set_mutable,
   uint53__lean_array_get,
   uint53__lean_mk_array,
   uint53__lean_nat_div,
-  uint53__lean_array_swap_immutable,
+  uint53__lean_array_swap_mutable,
   uint53__lean_nat_sub,
-  array__lean_array_pop_immutable,
+  array__lean_array_pop_mutable,
+  array__lean_array_push_immutable,
 } from "../../runtime.js";
 
 /**
@@ -28,7 +29,7 @@ export const test1 = (n) => {
     if (a$4.tag === 0) {
       acc$2 = { tag: 0, _1: a$4._1 };
     } else {
-      const x$5 = array__lean_array_push_immutable(
+      const x$5 = array__lean_array_push_mutable(
         a$4._1,
         uint53__lean_nat_mul(i$3, i$3),
       );
@@ -44,6 +45,32 @@ export const test1 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const test3 = (a0) => {
+  let acc$1 = { tag: 1, _1: [...a0] };
+  const n$2 = a0.length;
+  for (let i$3 = 0; i$3 < n$2; i$3++) {
+    const a$4 = acc$1;
+    if (a$4.tag === 0) {
+      acc$1 = { tag: 0, _1: a$4._1 };
+    } else {
+      const { _1: f$5 } = a$4;
+      const x$6 = uint53__lean_array_set_mutable(
+        f$5,
+        i$3,
+        uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
+      );
+      acc$1 = { tag: 1, _1: x$6 };
+    }
+  }
+  return acc$1._1;
+};
+
+/**
+ * `test3`
+ * owns `a0`: its caller gives it up, and it may update it in place (1 update(s) in place, 0 copies of arrays)
+ * @param {Array<uint53(number)>} a0
+ * @returns {Array<uint53(number)>}
+ */
+export const test3$$mut_0 = (a0) => {
   let acc$1 = { tag: 1, _1: a0 };
   const n$2 = a0.length;
   for (let i$3 = 0; i$3 < n$2; i$3++) {
@@ -52,7 +79,7 @@ export const test3 = (a0) => {
       acc$1 = { tag: 0, _1: a$4._1 };
     } else {
       const { _1: f$5 } = a$4;
-      const x$6 = uint53__lean_array_set_immutable(
+      const x$6 = uint53__lean_array_set_mutable(
         f$5,
         i$3,
         uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
@@ -70,7 +97,7 @@ export const test3 = (a0) => {
  */
 export const test4 = (n) => {
   const x$1 = uint53__lean_mk_array(3, n);
-  return { _1: x$1, _2: uint53__lean_array_set_immutable(x$1, 0, 7) };
+  return { _1: x$1, _2: uint53__lean_array_set_mutable([...x$1], 0, 7) };
 };
 
 /**
@@ -86,7 +113,7 @@ export const test5 = (n) => {
     if (a$4.tag === 0) {
       acc$2 = { tag: 0, _1: a$4._1 };
     } else {
-      const x$5 = array__lean_array_push_immutable(a$4._1, i$3);
+      const x$5 = array__lean_array_push_mutable(a$4._1, i$3);
       acc$2 = { tag: 1, _1: x$5 };
     }
   }
@@ -98,7 +125,7 @@ export const test5 = (n) => {
     if (a$10.tag === 0) {
       acc$7 = { tag: 0, _1: a$10._1 };
     } else {
-      const x$11 = uint53__lean_array_swap_immutable(
+      const x$11 = uint53__lean_array_swap_mutable(
         a$10._1,
         i$9,
         uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$9), 1),
@@ -107,7 +134,7 @@ export const test5 = (n) => {
     }
   }
   const x$12 = acc$7._1;
-  return array__lean_array_pop_immutable(x$12);
+  return array__lean_array_pop_mutable(x$12);
 };
 
 /**

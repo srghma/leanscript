@@ -37,17 +37,29 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("ArrayTest$test1([])", () => M.ArrayTest$test1([]), "#[a, b, c, d]", false);
+check("ArrayTest$test1([]) twice", () => ((a0) => (M.ArrayTest$test1(a0), M.ArrayTest$test1(a0)))([]), "#[a, b, c, d]", false);
 check("ArrayTest$test1([\"\"])", () => M.ArrayTest$test1([""]), "#[a, b, , , , , c, d]", false);
+check("ArrayTest$test1([\"\"]) twice", () => ((a0) => (M.ArrayTest$test1(a0), M.ArrayTest$test1(a0)))([""]), "#[a, b, , , , , c, d]", false);
 check("ArrayTest$test1([\"\", \"a\", \"hello world\"])", () => M.ArrayTest$test1(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d]", false);
+check("ArrayTest$test1([\"\", \"a\", \"hello world\"]) twice", () => ((a0) => (M.ArrayTest$test1(a0), M.ArrayTest$test1(a0)))(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d]", false);
 check("ArrayTest$test1([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"])", () => M.ArrayTest$test1(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d]", false);
+check("ArrayTest$test1([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"]) twice", () => ((a0) => (M.ArrayTest$test1(a0), M.ArrayTest$test1(a0)))(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d]", false);
 check("ArrayTest$test2([])", () => M.ArrayTest$test2([]), "#[a, b, c, d]", false);
+check("ArrayTest$test2([]) twice", () => ((a0) => (M.ArrayTest$test2(a0), M.ArrayTest$test2(a0)))([]), "#[a, b, c, d]", false);
 check("ArrayTest$test2([\"\"])", () => M.ArrayTest$test2([""]), "#[a, b, , , , , c, d]", false);
+check("ArrayTest$test2([\"\"]) twice", () => ((a0) => (M.ArrayTest$test2(a0), M.ArrayTest$test2(a0)))([""]), "#[a, b, , , , , c, d]", false);
 check("ArrayTest$test2([\"\", \"a\", \"hello world\"])", () => M.ArrayTest$test2(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d]", false);
+check("ArrayTest$test2([\"\", \"a\", \"hello world\"]) twice", () => ((a0) => (M.ArrayTest$test2(a0), M.ArrayTest$test2(a0)))(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d]", false);
 check("ArrayTest$test2([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"])", () => M.ArrayTest$test2(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d]", false);
+check("ArrayTest$test2([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"]) twice", () => ((a0) => (M.ArrayTest$test2(a0), M.ArrayTest$test2(a0)))(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d]", false);
 check("ArrayTest$test3([])", () => M.ArrayTest$test3([]), "#[a, b, c, d, e, f, g]", false);
+check("ArrayTest$test3([]) twice", () => ((a0) => (M.ArrayTest$test3(a0), M.ArrayTest$test3(a0)))([]), "#[a, b, c, d, e, f, g]", false);
 check("ArrayTest$test3([\"\"])", () => M.ArrayTest$test3([""]), "#[a, b, , , , , c, d, e, , , , , f, g]", false);
+check("ArrayTest$test3([\"\"]) twice", () => ((a0) => (M.ArrayTest$test3(a0), M.ArrayTest$test3(a0)))([""]), "#[a, b, , , , , c, d, e, , , , , f, g]", false);
 check("ArrayTest$test3([\"\", \"a\", \"hello world\"])", () => M.ArrayTest$test3(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d, e, , a, hello world, , a, hello world, , a, hello world, , a, hello world, f, g]", false);
+check("ArrayTest$test3([\"\", \"a\", \"hello world\"]) twice", () => ((a0) => (M.ArrayTest$test3(a0), M.ArrayTest$test3(a0)))(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d, e, , a, hello world, , a, hello world, , a, hello world, , a, hello world, f, g]", false);
 check("ArrayTest$test3([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"])", () => M.ArrayTest$test3(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d, e, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, f, g]", false);
+check("ArrayTest$test3([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"]) twice", () => ((a0) => (M.ArrayTest$test3(a0), M.ArrayTest$test3(a0)))(["abcabc", "héllo, wörld", "hello world", "a"]), "#[a, b, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, c, d, e, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, abcabc, héllo, wörld, hello world, a, f, g]", false);
 check("ListTest$test1([])", () => M.ListTest$test1([]), "#[a, b, c, d]", false);
 check("ListTest$test1([\"\"])", () => M.ListTest$test1([""]), "#[a, b, , , , , c, d]", false);
 check("ListTest$test1([\"\", \"a\", \"hello world\"])", () => M.ListTest$test1(["", "a", "hello world"]), "#[a, b, , a, hello world, , a, hello world, , a, hello world, , a, hello world, c, d]", false);

@@ -5,6 +5,7 @@ public import JsTerm.Ty.Canon
 public import JsTerm.Lower.Extern
 public import JsTerm.Lower.Tail
 public import LeanScript.Term.Syntax.Packed
+public import LeanScript.Term.Ownership.Walk
 
 @[expose] public section
 
@@ -133,7 +134,40 @@ structure Names where
   u : List Ref := []
   /-- The known values (`Φ`). -/
   k : List Ref := []
+  /-- Which unknowns and known values are owned (`LeanScript.Own.Env`, in the same order). -/
+  own : Own.Env := {}
+  /-- The context of ownership of the part of a statement being converted (an update of an
+      array in it is done in place when `Own.updateInPlace` says so). -/
+  cx : Own.Ctx := default
   deriving Inhabited
+
+/-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes
+    `…_mutable`); any other expression itself.  Only used where `Own.updateInPlace` says that
+    nothing else refers to the array. -/
+def JsExpr.inPlace {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → JsExpr S C M τ
+  | .imported op args =>
+    match op.toMutable? with
+    | some ⟨_, op'⟩ => .imported op' args
+    | none => .imported op args
+  | e => e
+
+/-- A copy of an array: `[...a]`, or `Uint8Array.of(...a)` for a typed array (`none` at a type
+    that is not an array). -/
+def JsExpr.copyArray? {C M : List JsTy} {A : JsTy} (e : JsExpr S C M A) :
+    Option (JsExpr S C M A) :=
+  match JsArrayLayout.of? A with
+  | some ⟨_, l⟩ => some (.array_mk l (.spread e .nil))
+  | none => none
+
+/-- The same update of an array, done in place on a copy of the array
+    (`…_mutable([...a], …)`): its answer is a new array even where the `…_immutable` operation
+    would answer its argument itself (`Own.copyThenUpdate`). -/
+def JsExpr.updateOnCopy? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option (JsExpr S C M τ)
+  | .imported op (.cons a rest) =>
+    match op.toMutable?, a.copyArray? with
+    | some ⟨_, op'⟩, some a' => some (.imported op' (.cons a' rest))
+    | _, _ => none
+  | _ => none
 
 /-- An expression at another type, when the two types are equal (they always are: a failure is
     an error of the backend). -/

@@ -3,9 +3,11 @@
 
 import {
   array__lean_array_push_immutable,
+  uint53__lean_array_fset_mutable,
+  uint53__lean_array_fswap_mutable,
   uint53__lean_array_fset_immutable,
-  uint53__lean_array_fswap_immutable,
-  array__lean_array_pop_immutable,
+  array__lean_array_pop_mutable,
+  array__lean_array_push_mutable,
 } from "../../runtime.js";
 
 /**
@@ -15,8 +17,8 @@ import {
  */
 export const test1 = (x) => {
   const x$1 = array__lean_array_push_immutable([x, 1, 2], 3);
-  const x$2 = uint53__lean_array_fset_immutable(x$1, 0, 7);
-  return uint53__lean_array_fswap_immutable(x$2, 1, 2);
+  const x$2 = uint53__lean_array_fset_mutable(x$1, 0, 7);
+  return uint53__lean_array_fswap_mutable(x$2, 1, 2);
 };
 
 /**
@@ -35,9 +37,9 @@ export const test2 = (x) => {
  * @returns {Array<uint8>}
  */
 export const test3 = (x) =>
-  array__lean_array_pop_immutable(
-    array__lean_array_push_immutable(
-      uint53__lean_array_fswap_immutable(
+  array__lean_array_pop_mutable(
+    array__lean_array_push_mutable(
+      uint53__lean_array_fswap_mutable(
         uint53__lean_array_fset_immutable([x, 1, 2], 2, x),
         0,
         2,

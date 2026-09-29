@@ -4,7 +4,7 @@
 //   test1: LeanScript: the call List.forIn'.loop xss (fun a x => (fun xs __s => have acc := __s; have acc := acc ++ xs; pure (ForInStep.yield acc)) a) xss acc ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test3: Application type mismatch: The argument LeanScript.UVar.head ⋯ has type LeanScript.UVar ({ ty := ?m.359, use := ?m.360, lv := ?m.361 } :: ?m.362) ?m.359 ?m.361 but is expected to have type LeanScript.UVar [{ ty := LeanScript.Ty.prim ?m.283, use := LeanScript.Usage1ω.many.toUsage01ω, lv := 1 }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array, use := LeanScript.Usage01ω.many, lv := 0 + 1 }] (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array ?m.351 in the application LeanScript.Neu.var (LeanScript.UVar.head ⋯)
 
-import { array__lean_array_push_immutable } from "../../runtime.js";
+import { array__lean_array_push_mutable } from "../../runtime.js";
 
 /**
  * `test2`
@@ -13,10 +13,26 @@ import { array__lean_array_push_immutable } from "../../runtime.js";
  * @returns {Array<nat(bigint)>}
  */
 export const test2 = (a, b) => {
+  let acc$1 = [...a];
+  for (const e$2 of b) {
+    const a$3 = acc$1;
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
+  }
+  return acc$1;
+};
+
+/**
+ * `test2`
+ * owns `a`: its caller gives it up, and it may update it in place (1 update(s) in place, 0 copies of arrays)
+ * @param {Array<nat(bigint)>} a
+ * @param {Array<nat(bigint)>} b
+ * @returns {Array<nat(bigint)>}
+ */
+export const test2$$mut_0 = (a, b) => {
   let acc$1 = a;
   for (const e$2 of b) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return acc$1;
 };
@@ -30,7 +46,7 @@ export const test4 = (b) => {
   let acc$1 = [1n, 2n];
   for (const e$2 of b) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return acc$1;
 };
@@ -51,7 +67,7 @@ export const test5 = (n) => {
       let acc$5 = a$4._1;
       for (const e$6 of [i$3, i$3 * i$3]) {
         const a$7 = acc$5;
-        acc$5 = array__lean_array_push_immutable(a$7, e$6);
+        acc$5 = array__lean_array_push_mutable(a$7, e$6);
       }
       acc$2 = { tag: 1, _1: acc$5 };
     }

@@ -1,3 +1,41 @@
+# Summary of changes for run 65988e37-4427-41dc-9c90-c5f78cb3c033
+The compiler now updates arrays in place based on a static "functional but in place" analysis, with no reference counts at run time. It generates several versions of each exported function, which differ in which array parameters they are allowed to mutate. The analysis itself is not proved correct; it is checked by tests.
+
+**Ownership analysis on `Term`** (`LeanScript/Term/Ownership/Basic.lean`, `Walk.lean`)
+- It runs on the optimised `Term`, before conversion to JavaScript.
+- For each variable it counts uses, and separately the uses that escape, the uses inside a loop body, and the uses inside a closure or delay.
+- It then walks each function in execution order and tracks which arrays are *owned*: built by the function itself, or a parameter the caller gave up. An owned array that nothing uses afterwards is updated in place (`push`, `pop`, `set`, `swap`, `fset`, `fswap`).
+- A `set!`/`swapIfInBounds` on an array that is still used afterwards copies it first, then updates the copy.
+- The accumulator of a loop (`nat_rec`, `foldl`) is borrowed, owned, or copied once before the loop when that saves a copy on every iteration.
+- As you suggested, only types that contain arrays take part; numbers, records of numbers and lists do not.
+
+**Function versions**
+- `Translated.optimized` in `LeanScriptCli/Main.lean` is now an `OwnedTerm`: the optimised term plus a non-empty list of versions. Each version records which parameters it owns and its static cost (updates in place, array copies).
+- The first version borrows every parameter; it is the plain export and is safe for any caller.
+- If owning some array parameters saves copies, there is one extra version owning all of them. When two or three parameters qualify, there is also one version owning each of them alone.
+- `termToJs … owned` builds each version from the same `Term`. Extra versions are exported as `f$$mut_i_j` (owning parameters i and j), and each one's doc comment says what it owns and what it costs. `FILE-Term-optimized.txt` lists them as `-- version …` lines.
+- Example from the `ArrayInPlace` snapshot: `test1` and `test5` update in place; `test3` copies its parameter once before the loop (`[...a0]`) and then mutates the copy; `test3$$mut_0` never copies.
+
+**Limits**
+- Translated functions never call each other, so the `$$mut` versions are only for JavaScript callers. A caller must not use an array after passing it to a parameter that version owns.
+- Local closures get no versions; they always borrow their parameters.
+
+**The second item ("finish" the remaining JsTerm-stage work)**
+- The in-place rewrite that used to run on finished JsTerm is now decided on `Term`, and the conversion emits the in-place (`…_mutable`) array updates directly.
+- The module-level inlining of known closures (`inlineConsts`) is still not done. It needs a proven inliner at the `Term` level, and it remains open, as noted in `proposals/NoJsTermOptimizations.md`.
+
+**Checks**
+- The node snapshot checks now run every version of each function. For functions with array parameters, they also call the plain export twice on the same array to confirm it does not mutate its argument.
+- All snapshots in `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure` were regenerated and all node checks passed. The run's non-zero exit is the existing "literal too big" refusal in `PrimOpInt02`/`PrimOpInt03Configurable`, which is expected.
+- `lake build JsTerm leanscript tests TermTests TyTests` succeeds and `lake exe tests` passes 65/65.
+- No `sorry` in the new code, and `Term.eval` and the proofs about `Term.optimize` are unchanged.
+
+**Docs**
+- `README.md`, `NOT_IMPLEMENTED.md` and the status note in `proposals/NoJsTermOptimizations.md` describe the analysis and its limits.
+- `OwnedTerm` is in the Properties table as an unproved definition.
+
+All work is committed.
+
 # Summary of changes for run fdf29682-b553-456d-978f-6030204fda0d
 Proposals P, R and S from `proposals/TypedDataProposals3.md` are now in place, along with Q's prelude. Q's other part, recovering type parameters, is not done. As you asked, nothing optimises JsTerm into JsTerm. The new typing and representations are chosen when `Term` is converted to JsTerm, and the printer only reads them. All optimisations are still on `Term`.
 

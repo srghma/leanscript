@@ -7,7 +7,7 @@
 //   AlwaysInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 //   InlineIfReduceInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
 
-import { array__lean_array_push_immutable } from "../../runtime.js";
+import { array__lean_array_push_mutable } from "../../runtime.js";
 
 /**
  * `Inline.appendR`
@@ -16,10 +16,10 @@ import { array__lean_array_push_immutable } from "../../runtime.js";
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline$appendR = (a, b) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of b._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + b._1, _2: acc$1 };
 };
@@ -31,10 +31,10 @@ export const Inline$appendR = (a, b) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline$test1 = (a, a1) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of a1._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + a1._1, _2: acc$1 };
 };
@@ -47,10 +47,10 @@ export const Inline$test1 = (a, a1) => {
  */
 export const Inline$test2 = (a, b) => {
   const k$6 = (x$1, x$2) => {
-    let acc$3 = x$1._2;
+    let acc$3 = [...x$1._2];
     for (const e$4 of x$2._2) {
       const a$5 = acc$3;
-      acc$3 = array__lean_array_push_immutable(a$5, e$4);
+      acc$3 = array__lean_array_push_mutable(a$5, e$4);
     }
     return { _1: x$1._1 + x$2._1, _2: acc$3 };
   };
@@ -68,7 +68,7 @@ export const Inline$test3 = (a) => {
   let acc$2 = k$1;
   for (const e$3 of a._2) {
     const a$4 = acc$2;
-    acc$2 = array__lean_array_push_immutable(a$4, e$3);
+    acc$2 = array__lean_array_push_mutable(a$4, e$3);
   }
   return { _1: "hello" + a._1, _2: acc$2 };
 };
@@ -80,10 +80,10 @@ export const Inline$test3 = (a) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline$appendR = (a, b) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of b._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + b._1, _2: acc$1 };
 };
@@ -95,10 +95,10 @@ export const Noinline$appendR = (a, b) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline$test1 = (a, a1) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of a1._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + a1._1, _2: acc$1 };
 };
@@ -111,10 +111,10 @@ export const Noinline$test1 = (a, a1) => {
  */
 export const Noinline$test2 = (a, b) => {
   const k$6 = (x$1, x$2) => {
-    let acc$3 = x$1._2;
+    let acc$3 = [...x$1._2];
     for (const e$4 of x$2._2) {
       const a$5 = acc$3;
-      acc$3 = array__lean_array_push_immutable(a$5, e$4);
+      acc$3 = array__lean_array_push_mutable(a$5, e$4);
     }
     return { _1: x$1._1 + x$2._1, _2: acc$3 };
   };
@@ -132,7 +132,7 @@ export const Noinline$test3 = (a) => {
   let acc$2 = k$1;
   for (const e$3 of a._2) {
     const a$4 = acc$2;
-    acc$2 = array__lean_array_push_immutable(a$4, e$3);
+    acc$2 = array__lean_array_push_mutable(a$4, e$3);
   }
   return { _1: "hello" + a._1, _2: acc$2 };
 };
@@ -144,10 +144,10 @@ export const Noinline$test3 = (a) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline$appendR = (a, b) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of b._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + b._1, _2: acc$1 };
 };
@@ -159,10 +159,10 @@ export const AlwaysInline$appendR = (a, b) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline$test1 = (a, a1) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of a1._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + a1._1, _2: acc$1 };
 };
@@ -175,10 +175,10 @@ export const AlwaysInline$test1 = (a, a1) => {
  */
 export const AlwaysInline$test2 = (a, b) => {
   const k$6 = (x$1, x$2) => {
-    let acc$3 = x$1._2;
+    let acc$3 = [...x$1._2];
     for (const e$4 of x$2._2) {
       const a$5 = acc$3;
-      acc$3 = array__lean_array_push_immutable(a$5, e$4);
+      acc$3 = array__lean_array_push_mutable(a$5, e$4);
     }
     return { _1: x$1._1 + x$2._1, _2: acc$3 };
   };
@@ -196,7 +196,7 @@ export const AlwaysInline$test3 = (a) => {
   let acc$2 = k$1;
   for (const e$3 of a._2) {
     const a$4 = acc$2;
-    acc$2 = array__lean_array_push_immutable(a$4, e$3);
+    acc$2 = array__lean_array_push_mutable(a$4, e$3);
   }
   return { _1: "hello" + a._1, _2: acc$2 };
 };
@@ -208,10 +208,10 @@ export const AlwaysInline$test3 = (a) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline$appendR = (a, b) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of b._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + b._1, _2: acc$1 };
 };
@@ -223,10 +223,10 @@ export const InlineIfReduceInline$appendR = (a, b) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline$test1 = (a, a1) => {
-  let acc$1 = a._2;
+  let acc$1 = [...a._2];
   for (const e$2 of a1._2) {
     const a$3 = acc$1;
-    acc$1 = array__lean_array_push_immutable(a$3, e$2);
+    acc$1 = array__lean_array_push_mutable(a$3, e$2);
   }
   return { _1: a._1 + a1._1, _2: acc$1 };
 };
@@ -239,10 +239,10 @@ export const InlineIfReduceInline$test1 = (a, a1) => {
  */
 export const InlineIfReduceInline$test2 = (a, b) => {
   const k$6 = (x$1, x$2) => {
-    let acc$3 = x$1._2;
+    let acc$3 = [...x$1._2];
     for (const e$4 of x$2._2) {
       const a$5 = acc$3;
-      acc$3 = array__lean_array_push_immutable(a$5, e$4);
+      acc$3 = array__lean_array_push_mutable(a$5, e$4);
     }
     return { _1: x$1._1 + x$2._1, _2: acc$3 };
   };
@@ -260,7 +260,7 @@ export const InlineIfReduceInline$test3 = (a) => {
   let acc$2 = k$1;
   for (const e$3 of a._2) {
     const a$4 = acc$2;
-    acc$2 = array__lean_array_push_immutable(a$4, e$3);
+    acc$2 = array__lean_array_push_mutable(a$4, e$3);
   }
   return { _1: "hello" + a._1, _2: acc$2 };
 };

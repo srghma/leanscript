@@ -4,6 +4,7 @@
 --   test3: Application type mismatch: The argument LeanScript.UVar.head ⋯ has type LeanScript.UVar ({ ty := ?m.359, use := ?m.360, lv := ?m.361 } :: ?m.362) ?m.359 ?m.361 but is expected to have type LeanScript.UVar [{ ty := LeanScript.Ty.prim ?m.283, use := LeanScript.Usage1ω.many.toUsage01ω, lv := 1 }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array, use := LeanScript.Usage01ω.many, lv := 0 + 1 }] (LeanScript.Ty.prim LeanScript.LeanPrimTy.nat).array ?m.351 in the application LeanScript.Neu.var (LeanScript.UVar.head ⋯)
 
 -- test2 : Array Nat → Array Nat → Array Nat
+-- version test2$$mut_0: owns `a`: its caller gives it up, and it may update it in place (1 update(s) in place, 0 copies of arrays)
 val k1 [1] : ((Array Nat) → ((Array Nat) → (Array Nat))) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [1] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (open)
     let x7 [1] : (Array Nat) := array_foldl x4 x2 fun e5 acc6 => (closed)

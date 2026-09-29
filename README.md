@@ -88,10 +88,30 @@ one at the types of a call is an error of the conversion.  Functions are uncurri
 its type and a call passes them all (a partial application is a closure).  The `JsTerm` of a function is written out as
 the conversion builds it: nothing rewrites it (`JsTerm` is only the typed shape of the printed
 JavaScript and its link to `runtime.js`; every optimisation is done on `Term`, by
-`Term.optimize`, before the conversion — see `proposals/NoJsTermOptimizations.md`).  So an array
-update is the copying `…_immutable` operation (the `…_mutable` ones, which update in place, are
-used only on the arrays the conversion itself builds and nothing else sees), and a constant value
-is written where it is used.  Join points are de Bruijn indexed in `JsTerm` (`JsBlock.join`,
+`Term.optimize`, before the conversion — see `proposals/NoJsTermOptimizations.md`).  Array
+updates are in place when a static ownership analysis of the optimised `Term`
+(`LeanScript/Term/Ownership/`, below) says nothing else can still see the array; otherwise they
+are the copying `…_immutable` operations.  A constant value is written where it is used.
+
+**Functional but in place, statically.**  There are no reference counts at run time.  Instead
+`LeanScript/Term/Ownership/Basic.lean` counts the occurrences of every variable (with the ones
+that escape, the ones in a loop body and the ones in a closure or delay), and
+`LeanScript/Term/Ownership/Walk.lean` walks a function in the order it runs and tracks which
+arrays are *owned* (built by the function itself, or a parameter its caller gave up) and not
+used later: an update (`push`, `pop`, `set`, `swap`, `fset`, `fswap`) of such an array is done
+in place, a `set!`/`swapIfInBounds` of an array that is still used copies first, and the
+accumulator of a loop (`nat_rec`, `foldl`) is borrowed, owned, or copied once before the loop
+when that saves a copy per iteration.  Every translated function gets **versions**
+(`OwnedTerm`, `Own.Version`, `ClosedTerm.withOwnership`): the first borrows every parameter
+(the plain export, safe for any caller); when owning an array-holding parameter saves copies,
+an extra export owns those parameters (`f$$mut_0_2` owns parameters 0 and 2), and for two or
+three such parameters one version owns each alone.  The conversion (`termToJs … owned`)
+generates each version from the same `Term`; the doc comment of each version says what it
+owns and its static cost, and `FILE-Term-optimized.txt` lists them (`-- version …`).  The node
+checks run every version and, for functions with array parameters, call the plain export twice
+on the same array to check it is not mutated.  This analysis is not proved (it only decides
+which array operations are in place); `Term.eval` and the proofs about `Term.optimize` are
+unaffected.  Join points are de Bruijn indexed in `JsTerm` (`JsBlock.join`,
 `JsBlock.jump`) and printed as labelled blocks (`let x$1; j$2: { …; x$1 = e; break j$2; }`).  In the `Term`
 files a lazy value `Unit → τ` is printed `(Lazy τ)`.
 
@@ -206,6 +226,7 @@ and gains listed in the proposal, and course-of-values folds of depth `1` or mor
 | `LeanScript/Term/Semantics/Closed.lean` | a term with no unknown and no open known value is a value (`Term.closed_isValue`, `Term.run_isValue`) |
 | `LeanScript/Term/Semantics/NormalValue.lean` | `Term.eval` of a statement in which every variable is known (no unknown, no open known value, no join point, completely normalised known values) is the reading of a completely normalised value `NVal`: constructors all the way down, delays forced, functions as closures of closed bodies over completely normalised values (`Term.eval_normal`, `Term.run_normal`) |
 | `LeanScript/Term/Rename/Basic.lean`, `LeanScript/Term/Rename/Eval.lean`, `LeanScript/Term/Rename/Weaken.lean` | renaming (partial: it fails on a dropped variable that is used) and weakening, and the fact that renaming commutes with evaluation (`Term.rename_eval`, `TermTests/Semantics/RenameTest.lean`) |
+| `LeanScript/Term/Ownership/Basic.lean`, `LeanScript/Term/Ownership/Walk.lean` | the static ownership analysis (not proved): occurrences of variables, owned/borrowed arrays, in-place updates, loop accumulator modes, the versions of a function (`Own.Version.select`, `OwnedTerm`) generated as extra exports |
 | `LeanScript/Term/Optimize/Occ.lean`, `LeanScript/Term/Optimize/Dce.lean` | occurrence counts (added along straight-line code, the maximum across the arms of a branch, `ω` inside a body that may run many times) and dead-code elimination with exact usages, which preserves the meaning (`Term.dce_eval`) |
 | `LeanScript/Term/Optimize/Fields.lean`, `LeanScript/Term/Optimize/FieldsWalk.lean`, `LeanScript/Term/Optimize/Reannot.lean` | the known fields of records: facts `x = (f₁, …, fₙ)` gathered along a term (`RecFact`, `RecFact.Holds`), `Term.widenFields` (a `record_casesOn` binds every field), `Term.reuseFields` (a later `record_casesOn` of a known record reuses its fields), with `Term.widenFields_eval`, `Term.reuseFields_eval` and their call counts; `Term.reannotFields` (the fields of a case analysis annotated with their counted usages, `Term.reannotFields_eval`) |
 | `LeanScript/Term/Optimize/Basic.lean` | the optimiser `Term.optimize` (`Term.simp`, `Term.widenFields`, `Term.reuseFields`, `Term.cseWalk`, `Term.condWalk` in `Cond.lean`, `Term.dce`): copy propagation (`let x := share y`), a shared answer returned directly (`let x := share n; ret x` is `ret n`), dead `record_casesOn` dropped, known fields reused, boolean conditions simplified (`c ? true : false` is `c`, a test of a negation swaps the arms), then dead-code elimination; it preserves the value (`Term.optimize_eval`, `Term.optimize_run`, `TermTests/Optimize/OptimizeTest.lean`) |
