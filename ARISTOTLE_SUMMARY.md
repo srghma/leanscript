@@ -1,3 +1,27 @@
+# Summary of changes for run bf163571-921e-461c-8c7a-e52fbcdd477d
+I wrote the proposals in `proposals/TypedDataProposals.md`. It builds on §3 of `JsTermReviewPlan.md` and on `RecursiveDatatypesProposal.md`. Nothing in the main code base was changed.
+
+**The problem.** The passes in `JsTerm/Passes` find their work by matching on `union_mk`, `unionCases`, `record_mk` and `destructure`, about 40 places in all. The usual way to type `data` adds two "cast" nodes (`data_in` / `data_out`) that do nothing at run time. Those nodes would hide the patterns from the passes, so optimisations like `$tag0` sharing, `Unbox`, and case of a known constructor would silently stop firing. The snapshots would still pass; only the output would get slower. Separately, the current `D<depth>_<j>` name is computed from a relative depth, so the same datatype can get different names in different scopes.
+
+**The five proposals:**
+1. **Store an index plus a checker.** `data (id : Nat)`, with a table of layouts in `JsModule` and a separate well-formedness check. No pass changes and nothing is lost, but the typing is only checked, not guaranteed by Lean's types.
+2. **Keep the cast nodes, but add helpers.** Constructors that cancel a cast followed by its inverse, plus "views" that let each pass look through casts. It works, but every pass has to be ported.
+3. **Recommended: prove the layout instead of casting.** `union_mk`, `unionCases`, `record_mk` and `destructure` each take a proof that their type unfolds to the given constructors (`τ.ctors? Σ = some cs`). A structural union and a declared datatype then use the same syntax. Porting a pass means adding one proof field to its patterns, and one rewrite covers both kinds of type.
+4. **Make the signature a parameter.** Passing the signature as a parameter of `JsExpr` / `JsBlock`, instead of indexing every type by it, keeps the changes small. `JsTy`'s decidable equality stays as it is, and names become stable across scopes.
+5. **A recursive-type binder (`μ`) in `JsTy`.** Assessed and not recommended: type equality stops being syntactic and the cast problem comes back.
+
+**How typing can improve the optimisations:**
+- `consList` becomes the built-in `List` datatype, so lists and user datatypes share one set of passes (including tail sharing).
+- Whether a traversal can be compiled to a loop (lists and other linear types) becomes a property of the signature that can be decided, instead of a guess from the code's shape.
+- A "known constructor" type would allow reading fields directly (`cur._1`) with no tag test, typed loops over a cursor, and a type-directed `Unbox`.
+- Layout choices per datatype (`null` for the empty case, `Nat`-like types as numbers, and so on) would be enforced by the types.
+- The generator could emit equality, hashing and array conversion once per datatype.
+- `JsTerm` would get a semantics that passes can be proved against.
+
+The document ends with a comparison table and a suggested order: Proposal 1 first to unblock the `FromTerm` translation, then 3 + 4, then the improvements.
+
+**Toy model.** `proposals/TypedDataToy.lean` is a small standalone Lean model of Proposal 3. It is not part of the Lake build; check it with `lake env lean proposals/TypedDataToy.lean`. It compiles with no errors and no `sorry`. It has one constructor former and one case analysis serving both structural unions and a recursive declared datatype, an evaluator that needs no fuel, and a proof that the case-of-known-constructor rewrite preserves evaluation (`Expr.knownCtor_eval`, which depends only on `propext`). It also includes a small `List Nat` example checked by `rfl`.
+
 # Summary of changes for run 8008d3bc-0d2e-457a-a2c8-fa56fdc6ffad
 I added the `ListRepr` setting to the JavaScript backend, exactly as you wrote it, and implemented both layouts. `JsConfig.listRepr` defaults to `.taggedUnion`, and `JsConfig.presetPBO` sets `.stdListToJsArray`. The setting is also available as the knob `list=tagged|array`, and every generated file's configuration line now shows `list=…`. The snapshot checks show the generated code gives the same answers as Lean under both presets.
 
