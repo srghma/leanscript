@@ -1,3 +1,29 @@
+# Summary of changes for run bfd42c21-9291-4ab3-a611-9ceae53b2e42
+I wrote the proposals in `proposals/TypedDataProposals3.md`. The project already had two notes on this question (`proposals/TypedDataProposals.md` and `TypedDataProposals2.md`), so this one only covers designs they don't. Nothing in `JsTerm` was changed.
+
+**Why optimisations get lost.** The passes find their work by matching four forms: `union_mk`, `unionCases`, `record_mk` and `destructure`. Checking the code, I found that the passes never *create* an object type; they only match on one. Object types are created only during lowering and in five signatures of the extern catalogue: `Option String` and four pairs. So the object types can be redesigned without rewriting the passes themselves; only the type indices in their patterns change.
+
+**The proposals:**
+- **P (recommended): every tagged-object type becomes a name.** `JsTy` gets one form, `obj (n : Nat) (args : List JsTy)`, which replaces `record`, `union`, `data` and `consList`. It points into a table of declarations; a structural union becomes an anonymous declaration. The constructor form and the case analysis use the same index, so rewrites like case-of-a-known-constructor need no cast nodes, proof fields or type coercions. Each value also has exactly one type, unlike the earlier "head form" design, where a value has one type at a binder and another inside fields. Type equality becomes a comparison of a number and a list of arguments.
+- **Q: datatypes with type parameters.** JavaScript erases types, so one declaration of `List α` can serve every element type. The built-in `List` and a user's `MyList α` would share one code path, which removes `consList` and the roughly 40 list-specific matches in the passes. The extern catalogue gets a small prelude (`Option`, `Prod`, `List`), and helpers are emitted once per datatype rather than once per element type.
+- **R: one id per layout.** Before building the typed code, datatypes with identical layouts (compared as possibly infinite trees) are merged into one id, using a standard automaton-minimisation algorithm. This gives the meaning of a recursive-type binder, but equality is decided once, up front, so inside the typed code it stays a plain comparison. Datatypes with the same layout then produce identical JavaScript.
+- **S: the representation stored with each declaration.** The layout choice (cells, array, nullable, and so on) becomes part of a declaration's table entry instead of the global `listRepr` setting. Two representations of the same constructors are different types, so Lean's type checker rejects mixing them, and every change of representation is an explicit conversion. The global setting stays as the default.
+
+**How typing can improve the optimisations (beyond the earlier notes):**
+- identical code, constants and object shapes for identical layouts;
+- constructors without fields printed as small integers instead of `{ tag: 0 }` objects;
+- tag tests by pointer comparison (`x === $tag0`);
+- one typed array per field for arrays of all-number records;
+- loop fusion and constructor specialisation written once for all datatypes;
+- unboxing record parameters of functions, as `Unbox` already does for local variables;
+- faster type comparison in the compiler, and an `a === b ||` shortcut in generated equality helpers.
+
+The note ends with a comparison table against the earlier recommendations and a suggested order: stable ids, then pass counters, then P (tried first on `Unbox`), then Q, R and S.
+
+**Toy model.** `proposals/TypedDataNodeToy.lean` is a small standalone model of P and Q together, outside the Lake build. It compiles with `lake env lean proposals/TypedDataNodeToy.lean` with no errors, warnings or `sorry`. It proves that the case-of-a-known-constructor rewrite preserves evaluation (`Expr.knownCtor_eval`, which uses only the `propext` axiom). Its examples use one declaration of `List α` at both `List Nat` and `List (List Nat)`, plus an anonymous union, checked by `rfl`. It doesn't model the real passes, the lowering, R's merging or S's representations.
+
+Everything is committed.
+
 # Summary of changes for run 5a7cf501-d194-4980-9eea-1de898c78986
 I wrote the proposals in `proposals/TypedDataProposals2.md`. The project already had `proposals/TypedDataProposals.md` on the same question, so this note covers designs that one doesn't. Nothing in `JsTerm` was changed.
 
