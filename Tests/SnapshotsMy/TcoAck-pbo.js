@@ -50,14 +50,13 @@ export const ack2 = (a, a1) => {
  * @param {uint53(number)} y
  * @returns {uint53(number)}
  */
-export const AckWithoutStackButUsingCantorPairing$pair = (x, y) =>
-  uint53__lean_nat_add(
+export const AckWithoutStackButUsingCantorPairing$pair = (x, y) => {
+  const x$1 = uint53__lean_nat_add(x, y);
+  return uint53__lean_nat_add(
     uint53__lean_nat_div(
-      uint53__lean_nat_mul(
-        uint53__lean_nat_add(x, y),
-        uint53__lean_nat_add(uint53__lean_nat_add(x, y), 1),
-      ),
+      uint53__lean_nat_mul(x$1, uint53__lean_nat_add(x$1, 1)),
       2,
     ),
     y,
   );
+};

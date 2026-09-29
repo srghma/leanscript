@@ -46,5 +46,7 @@ export const ack2 = (a, a1) => {
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const AckWithoutStackButUsingCantorPairing$pair = (x, y) =>
-  bigint_nat__lean_nat_div((x + y) * (x + y + 1n), 2n) + y;
+export const AckWithoutStackButUsingCantorPairing$pair = (x, y) => {
+  const x$1 = x + y;
+  return bigint_nat__lean_nat_div(x$1 * (x$1 + 1n), 2n) + y;
+};

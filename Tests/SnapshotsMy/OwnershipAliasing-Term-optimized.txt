@@ -4,7 +4,6 @@
 --   BagSig.bag: LeanScript: the recursive type LeanScript.Ref is not declared in the signature `BagSig`; add it to `leanscript_signature BagSig`
 --   BagSig.Δ: LeanScript: a field of the constructor `LeanScript.DSig.cons` has the type LeanScript.Mems ks (k + 1) which depends on the value of an earlier field (or of the argument of a dependent arrow) in a way that cannot be erased: only arrows, type arguments, and inductive types with one constructor of one field besides proofs (`Fin n`, `Vector α n`, `{x // p x}`) are erased to a non-dependent type
 --   BagSig.block0: LeanScript: a field of the constructor `LeanScript.Mems.cons` has the type LeanScript.Decl [] (0 + 1) g which depends on the value of an earlier field (or of the argument of a dependent arrow) in a way that cannot be erased: only arrows, type arguments, and inductive types with one constructor of one field besides proofs (`Fin n`, `Vector α n`, `{x // p x}`) are erased to a non-dependent type
---   bag3: LeanScript: the call Array.extract.loop xs sz' 0 (Array.emptyWithCapacity sz') is not a call of an extern: `Array.extract.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 -- alias1 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
@@ -12,9 +11,7 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   val k4 [1] : (Nat → (Array Nat)) := fun x5 [1] : Nat => (open)
     ret lean_array_push(x3, x5)
   let x6 [1] : (Array Nat) := k4 x2
-  let x9 [1] : (Array Nat) := array_foldl x3 x6 fun e7 acc8 => (closed)
-    ret lean_array_push(acc8, e7)
-  ret x9
+  ret lean_array_append(x6, x3)
 ret k1
 
 -- alias2 : Nat → Array Nat
@@ -24,11 +21,9 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
       ret lean_array_push(lean_array_push(x4, x6), x2)
     ret k5
   let x7 [ω] : (Nat → (Array Nat)) := k3 lean_mk_array(x2, 0)
-  let x8 [1] : (Array Nat) := x7 2
-  let x9 [1] : (Array Nat) := x7 1
-  let x12 [1] : (Array Nat) := array_foldl x8 x9 fun e10 acc11 => (closed)
-    ret lean_array_push(acc11, e10)
-  ret x12
+  let x8 [1] : (Array Nat) := x7 1
+  let x9 [1] : (Array Nat) := x7 2
+  ret lean_array_append(x8, x9)
 ret k1
 
 -- alias3 : Nat → Array Nat
@@ -45,11 +40,7 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
     ret x13
   let x14 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
   let x15 [ω] : (Array Nat) := k3 x14
-  let x18 [1] : (Array Nat) := array_foldl x15 x15 fun e16 acc17 => (closed)
-    ret lean_array_push(acc17, e16)
-  let x21 [1] : (Array Nat) := array_foldl x14 x18 fun e19 acc20 => (closed)
-    ret lean_array_push(acc20, e19)
-  ret x21
+  ret lean_array_append(lean_array_append(x15, x15), x14)
 ret k1
 
 -- alias4 : Nat → Array Nat
@@ -68,26 +59,18 @@ val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
     let x16 [1] : (Array Nat) := k3 lean_mk_array(x15, 5)
     ret x16
   let x17 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
-  let x18 [1] : (Array Nat) := k3 x17
+  let x18 [1] : (Array Nat) := k14 1
   let x19 [1] : (Array Nat) := k14 2
-  let x20 [1] : (Array Nat) := k14 1
-  let x23 [1] : (Array Nat) := array_foldl x19 x20 fun e21 acc22 => (closed)
-    ret lean_array_push(acc22, e21)
-  let x26 [1] : (Array Nat) := array_foldl x18 x23 fun e24 acc25 => (closed)
-    ret lean_array_push(acc25, e24)
-  let x29 [1] : (Array Nat) := array_foldl x17 x26 fun e27 acc28 => (closed)
-    ret lean_array_push(acc28, e27)
-  ret x29
+  let x20 [1] : (Array Nat) := k3 x17
+  ret lean_array_append(lean_array_append(lean_array_append(x18, x19), x20), x17)
 ret k1
 
 -- alias5 : Array Nat → Bool → Array Nat
--- version alias5$$mut_0: owns `a`: its caller gives it up, and it may update it in place (2 update(s) in place, 2 copies of arrays)
+-- version alias5$$mut_0: owns `a`: its caller gives it up, and it may update it in place (1 update(s) in place, 3 copies of arrays)
 val k1 [1] : ((Array Nat) → (Bool → (Array Nat))) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [1] : (Bool → (Array Nat)) := fun x4 [1] : Bool => (open)
     let x5 [ω] : (Array Nat) := share lean_array_push(x2, 1)
-    let x8 [1] : (Array Nat) := array_foldl x5 cond(x4, lean_array_push(x5, 2), lean_array_push(x5, 3)) fun e6 acc7 => (closed)
-      ret lean_array_push(acc7, e6)
-    ret x8
+    ret lean_array_append(cond(x4, lean_array_push(x5, 2), lean_array_push(x5, 3)), x5)
   ret k3
 ret k1
 
@@ -98,11 +81,7 @@ val k1 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x2 [ω] : (Array Nat
     val k6 [1] : (Nat → (Array Nat)) := fun x7 [ω] : Nat => (open)
       ret cond(lean_nat_dec_eq__Nat_decEq(x7, 0), x5, lean_array_push(x5, x7))
     let x8 [1] : (Array Nat) := k6 x4
-    let x11 [1] : (Array Nat) := array_foldl x5 lean_array_push(x8, 9) fun e9 acc10 => (closed)
-      ret lean_array_push(acc10, e9)
-    let x14 [1] : (Array Nat) := array_foldl x2 x11 fun e12 acc13 => (closed)
-      ret lean_array_push(acc13, e12)
-    ret x14
+    ret lean_array_append(lean_array_append(lean_array_push(x8, 9), x5), x2)
   ret k3
 ret k1
 
@@ -118,17 +97,15 @@ ret k1
 
 -- Bag.collect : Bag → Array Nat
 val k1 [1] : ((data LeanScript.Ref.here 0) → (Array Nat)) := fun x2 [1] : (data LeanScript.Ref.here 0) => (closed)
-  let x11 [1] : (Array Nat) := data_rec#0 x2
+  let x8 [1] : (Array Nat) := data_rec#0 x2
     | branch 0 fun r3 => (closed)
       case r3 of
       | ctor#0() =>
         ret #[]
       | ctor#1(f4 [ω] : (Array Nat), f5 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
         let ⟨f6 [0] : (data LeanScript.Ref.here 0), f7 [1] : (Array Nat)⟩ := f5
-        let x10 [1] : (Array Nat) := array_foldl f4 lean_array_push(f7, lean_array_get_size(f4)) fun e8 acc9 => (closed)
-          ret lean_array_push(acc9, e8)
-        ret x10
-  ret x11
+        ret lean_array_append(lean_array_push(f7, lean_array_get_size(f4)), f4)
+  ret x8
 ret k1
 
 -- Bag.firstItems : Bag → Array Nat
@@ -146,75 +123,83 @@ ret k1
 
 -- Bag.twice : Bag → Array Nat
 val k1 [1] : ((data LeanScript.Ref.here 0) → (Array Nat)) := fun x2 [1] : (data LeanScript.Ref.here 0) => (closed)
-  let x11 [1] : (Array Nat) := data_rec#0 x2
+  let x8 [1] : (Array Nat) := data_rec#0 x2
     | branch 0 fun r3 => (closed)
       case r3 of
       | ctor#0() =>
         ret #[1]
       | ctor#1(f4 [1] : (Array Nat), f5 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
         let ⟨f6 [0] : (data LeanScript.Ref.here 0), f7 [ω] : (Array Nat)⟩ := f5
-        let x10 [1] : (Array Nat) := array_foldl f7 lean_array_push(f7, lean_array_get_size(f4)) fun e8 acc9 => (closed)
-          ret lean_array_push(acc9, e8)
-        ret x10
-  ret x11
+        ret lean_array_append(lean_array_push(f7, lean_array_get_size(f4)), f7)
+  ret x8
 ret k1
 
 -- bag1 : Array Nat → Array Nat
 val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
   let x5 [ω] : (data LeanScript.Ref.here 0) := array_foldl x2 in#0(ctor#1(x2, in#0(ctor#0()))) fun e3 acc4 => (closed)
     ret in#0(ctor#1(lean_mk_array(e3, e3), acc4))
-  let x14 [1] : (Array Nat) := data_rec#0 x5
+  let x11 [1] : (Array Nat) := data_rec#0 x5
     | branch 0 fun r6 => (closed)
       case r6 of
       | ctor#0() =>
         ret #[]
       | ctor#1(f7 [ω] : (Array Nat), f8 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
         let ⟨f9 [0] : (data LeanScript.Ref.here 0), f10 [1] : (Array Nat)⟩ := f8
-        let x13 [1] : (Array Nat) := array_foldl f7 lean_array_push(f10, lean_array_get_size(f7)) fun e11 acc12 => (closed)
-          ret lean_array_push(acc12, e11)
-        ret x13
-  let x23 [1] : (Array Nat) := data_rec#0 x5
-    | branch 0 fun r15 => (closed)
-      case r15 of
+        ret lean_array_append(lean_array_push(f10, lean_array_get_size(f7)), f7)
+  let x17 [1] : (Array Nat) := data_rec#0 x5
+    | branch 0 fun r12 => (closed)
+      case r12 of
       | ctor#0() =>
         ret #[]
-      | ctor#1(f16 [ω] : (Array Nat), f17 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
-        let ⟨f18 [0] : (data LeanScript.Ref.here 0), f19 [1] : (Array Nat)⟩ := f17
-        let x22 [1] : (Array Nat) := array_foldl f16 lean_array_push(f19, lean_array_get_size(f16)) fun e20 acc21 => (closed)
-          ret lean_array_push(acc21, e20)
-        ret x22
-  let x26 [1] : (Array Nat) := array_foldl x14 x23 fun e24 acc25 => (closed)
-    ret lean_array_push(acc25, e24)
-  let x29 [1] : (Array Nat) := array_foldl x2 x26 fun e27 acc28 => (closed)
-    ret lean_array_push(acc28, e27)
-  ret x29
+      | ctor#1(f13 [ω] : (Array Nat), f14 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
+        let ⟨f15 [0] : (data LeanScript.Ref.here 0), f16 [1] : (Array Nat)⟩ := f14
+        ret lean_array_append(lean_array_push(f16, lean_array_get_size(f13)), f13)
+  ret lean_array_append(lean_array_append(x11, x17), x2)
 ret k1
 
 -- bag2 : Array Nat → Array Nat
 val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
   let x5 [ω] : (data LeanScript.Ref.here 0) := array_foldl x2 in#0(ctor#1(x2, in#0(ctor#0()))) fun e3 acc4 => (closed)
     ret in#0(ctor#1(lean_mk_array(e3, e3), acc4))
-  let x14 [1] : (Array Nat) := data_rec#0 x5
+  let x11 [1] : (Array Nat) := data_rec#0 x5
     | branch 0 fun r6 => (closed)
       case r6 of
       | ctor#0() =>
         ret #[]
       | ctor#1(f7 [ω] : (Array Nat), f8 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
-        let ⟨f9 [0] : (data LeanScript.Ref.here 0), f10 [1] : (Array Nat)⟩ := f8
-        let x13 [1] : (Array Nat) := array_foldl f7 lean_array_push(f10, lean_array_get_size(f7)) fun e11 acc12 => (closed)
-          ret lean_array_push(acc12, e11)
-        ret x13
-  let x20 [1] : (Array Nat) := data_rec#0 x5
-    | branch 0 fun r15 => (closed)
-      case r15 of
+        let ⟨f9 [0] : (data LeanScript.Ref.here 0), f10 [ω] : (Array Nat)⟩ := f8
+        ret cond(lean_nat_dec_lt(2, lean_array_get_size(f7)), lean_array_push(f7, lean_array_get_size(f10)), f10)
+  let x17 [1] : (Array Nat) := data_rec#0 x5
+    | branch 0 fun r12 => (closed)
+      case r12 of
       | ctor#0() =>
         ret #[]
-      | ctor#1(f16 [ω] : (Array Nat), f17 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
-        let ⟨f18 [0] : (data LeanScript.Ref.here 0), f19 [ω] : (Array Nat)⟩ := f17
-        ret cond(lean_nat_dec_lt(2, lean_array_get_size(f16)), lean_array_push(f16, lean_array_get_size(f19)), f19)
-  let x23 [1] : (Array Nat) := array_foldl x14 x20 fun e21 acc22 => (closed)
-    ret lean_array_push(acc22, e21)
-  let x26 [1] : (Array Nat) := array_foldl x2 x23 fun e24 acc25 => (closed)
-    ret lean_array_push(acc25, e24)
-  ret x26
+      | ctor#1(f13 [ω] : (Array Nat), f14 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
+        let ⟨f15 [0] : (data LeanScript.Ref.here 0), f16 [1] : (Array Nat)⟩ := f14
+        ret lean_array_append(lean_array_push(f16, lean_array_get_size(f13)), f13)
+  ret lean_array_append(lean_array_append(x11, x17), x2)
+ret k1
+
+-- bag3 : Array Nat → Array Nat
+val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [1] : (Array Nat) => (closed)
+  let x3 [ω] : (Array Nat) := share lean_array_extract(x2, 0, 4)
+  let x6 [ω] : (data LeanScript.Ref.here 0) := array_foldl x3 in#0(ctor#1(x3, in#0(ctor#0()))) fun e4 acc5 => (closed)
+    ret in#0(ctor#1(lean_mk_array(e4, e4), acc5))
+  let x12 [1] : (Array Nat) := data_rec#0 x6
+    | branch 0 fun r7 => (closed)
+      case r7 of
+      | ctor#0() =>
+        ret #[1]
+      | ctor#1(f8 [1] : (Array Nat), f9 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
+        let ⟨f10 [0] : (data LeanScript.Ref.here 0), f11 [ω] : (Array Nat)⟩ := f9
+        ret lean_array_append(lean_array_push(f11, lean_array_get_size(f8)), f11)
+  let x18 [1] : (Array Nat) := data_rec#0 x6
+    | branch 0 fun r13 => (closed)
+      case r13 of
+      | ctor#0() =>
+        ret #[]
+      | ctor#1(f14 [ω] : (Array Nat), f15 [1] : ((data LeanScript.Ref.here 0) × (Array Nat))) =>
+        let ⟨f16 [0] : (data LeanScript.Ref.here 0), f17 [1] : (Array Nat)⟩ := f15
+        ret lean_array_append(lean_array_push(f17, lean_array_get_size(f14)), f14)
+  ret lean_array_append(x12, x18)
 ret k1

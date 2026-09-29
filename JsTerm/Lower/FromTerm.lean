@@ -109,6 +109,15 @@ def accEnv {ks : List Nat} (mode : Own.AccMode) (idx fid : Nat) (ρ : Ty ks) : O
 section
 variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
 
+/-- The operands of a chain of `List.append`s (`lean_list_append`), whatever its nesting, in
+    order: `(a ++ b) ++ (c ++ d)` has the operands `a, b, c, d`. -/
+partial def listAppendLeaves {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o : Lvl} →
+    PExpr Δ Φ Γ τ o → List ((τ' : Ty ks) × (o' : Lvl) × PExpr Δ Φ Γ τ' o')
+  | _, _, p@(.neu (Neu.extern e (.cons a (.cons b .nil)) _)) =>
+    if externName e == "lean_list_append" then listAppendLeaves a ++ listAppendLeaves b
+    else [⟨_, _, p⟩]
+  | _, _, p => [⟨_, _, p⟩]
+
 mutual
 
 /-- A neutral expression. -/
@@ -120,19 +129,69 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
   | .cond c a b => do
     let ce ← castE (← cNeu c n C M) (.terminal .bool)
     return .cond ce (← cPExpr a n C M) (← cPExpr b n C M)
-  | Neu.extern (σs := σs) e args _ => do
+  | Neu.extern (σs := σs) (τ := τ) e args h => do
+    let nm := externName e
+    -- `l ++ l'` on cons cells: the whole chain of appends, built from its end (`cConsAppend`)
+    if nm == "lean_list_append" && (lowerTy cfg τ).isConsList then
+      return ← cConsAppend (listAppendLeaves (.neu (Neu.extern e args h))) n C M _
     let as ← cArgs args n C M
     let r ← match stringPosArg? σs with
-      | some s => lowerExtern (externName e) (.cons (.lit (.string s)) as)
-      | none => lowerExtern (externName e) as
+      | some s => lowerExtern nm (.cons (.lit (.string s)) as)
+      | none => lowerExtern nm as
     -- an update of an array nothing else refers to is done in place; `set!` and
-    -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new)
-    if Own.updateInPlace n.cx (externName e) args then return r.inPlace
-    else if Own.copyThenUpdate (externName e) then
+    -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new).
+    -- An append onto an array literal is better written as one literal (below).
+    if Own.updateInPlace n.cx nm args && !(nm == "lean_array_append" && as.firstIsArrayLit) then
+      return r.inPlace
+    else if Own.copyThenUpdate nm then
       match r.updateOnCopy? with
       | some r' => return r'
-      | none => throw s!"internal: the update {externName e} on a copy"
+      | none => throw s!"internal: the update {nm} on a copy"
+    -- `a ++ b` on arrays (and on lists at the array layout) is the literal `[...a, ...b]`, in
+    -- which the literal operands, and the appends already written as literals, are spliced
+    else if nm == "lean_array_append" || nm == "lean_list_append" then
+      return (← appendLit? as).getD r
     else return r
+
+/-- A chain of appends of lists of cons cells (`ListRepr.taggedUnion`), given by its operands
+    (`listAppendLeaves`), at the type `L`: built from its end, so that the last operand is shared,
+    not copied, a literal operand is its cells put in front of the rest
+    (`{ tag: 1, _1: "a", _2: rest }`), and any other operand is copied in front of the rest
+    (`consList__lean_list_append(xs, rest)`).  `(a ++ b) ++ c` is written `a ++ (b ++ c)`, which
+    copies the cells of `a` once instead of twice (`List.append` is associative). -/
+partial def cConsAppend {Φ : KCtx ks} {Γ : UCtx ks}
+    (leaves : List ((τ' : Ty ks) × (o' : Lvl) × PExpr Δ Φ Γ τ' o')) (n : Names)
+    (C M : List JsTy) (L : JsTy) : ConvM (JsExpr S C M L) := do
+  match L with
+  | .obj .consList [α] =>
+    match leaves.reverse with
+    | [] => throw "internal: an append of no list"
+    | ⟨_, _, last⟩ :: before =>
+      let mut acc : JsExpr S C M (.consList α) ← castE (← cPExpr last n C M) _
+      for ⟨_, _, leaf⟩ in before do
+        let whole : ConvM (JsExpr S C M (.consList α)) := do
+          let e ← castE (← cPExpr leaf n C M) (.consList α)
+          lowerExtern "lean_list_append" (.cons e (.cons acc .nil))
+        acc ← match ← cConsLitFront? leaf n C M α acc with
+          | some r => pure r
+          | none => whole
+      castE acc L
+  | L => throw s!"internal: an append of lists of type {L}"
+
+/-- A list literal put in front of `rest` as its cells (`{ tag: 1, _1: e₀, _2: rest }`); `none`
+    when the expression is not a list literal of plain elements. -/
+partial def cConsLitFront? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (n : Names) (C M : List JsTy) (α : JsTy)
+    (rest : JsExpr S C M (.consList α)) : ConvM (Option (JsExpr S C M (.consList α))) :=
+  match e with
+  | PExpr.list_mk (t := t) es => do
+    let ps : JsParts S C M (.list (lowerTy cfg t)) (lowerTy cfg t) ← cElems es n C M
+    match ps.elems? with
+    | some xs => do
+      let xs ← xs.mapM (castE · α)
+      pure (some (xs.foldr JsExpr.consCons rest))
+    | none => pure none
+  | _ => pure none
 
 /-- A pure expression. -/
 partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}

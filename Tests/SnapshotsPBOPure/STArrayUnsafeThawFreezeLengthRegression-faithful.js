@@ -9,8 +9,7 @@ import { array__lean_array_push_mutable } from "../../runtime.js";
  * @returns {Array<int(bigint)>}
  */
 export const test = (x) => {
-  const k$1 = [x];
-  const x$2 = array__lean_array_push_mutable(k$1, 12n);
-  const x$3 = BigInt(x$2.length);
-  return array__lean_array_push_mutable(x$2, x$3);
+  const x$1 = array__lean_array_push_mutable([x], 12n);
+  const x$2 = BigInt(x$1.length);
+  return array__lean_array_push_mutable(x$1, x$2);
 };

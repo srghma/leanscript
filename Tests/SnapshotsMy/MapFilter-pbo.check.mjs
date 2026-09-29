@@ -36,6 +36,22 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1([])", () => M.test1([]), "#[]", false);
+check("test1([]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([]), "#[]", false);
+check("test1([0])", () => M.test1([0]), "#[]", false);
+check("test1([0]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0]), "#[]", false);
+check("test1([0, 1, 2])", () => M.test1([0, 1, 2]), "#[]", false);
+check("test1([0, 1, 2]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0, 1, 2]), "#[]", false);
+check("test1([13, 5, 2, 1])", () => M.test1([13, 5, 2, 1]), "#[26, 10]", false);
+check("test1([13, 5, 2, 1]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([13, 5, 2, 1]), "#[26, 10]", false);
+check("test4([])", () => M.test4([]), "#[]", false);
+check("test4([]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([]), "#[]", false);
+check("test4([0])", () => M.test4([0]), "#[1]", false);
+check("test4([0]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0]), "#[1]", false);
+check("test4([0, 1, 2])", () => M.test4([0, 1, 2]), "#[1, 2, 3]", false);
+check("test4([0, 1, 2]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([0, 1, 2]), "#[1, 2, 3]", false);
+check("test4([13, 5, 2, 1])", () => M.test4([13, 5, 2, 1]), "#[14, 6, 3, 2]", false);
+check("test4([13, 5, 2, 1]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([13, 5, 2, 1]), "#[14, 6, 3, 2]", false);
 check("test5([])", () => M.test5([]), "#[]", false);
 check("test5([]) twice", () => ((a0) => (M.test5(a0), M.test5(a0)))([]), "#[]", false);
 check("test5([0])", () => M.test5([0]), "#[]", false);

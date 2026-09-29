@@ -3152,3 +3152,345 @@ export const uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT = (a) => Big
  *  @param {number} a `uint53`
  *  @returns {number} `uint53` */
 export const uint53__lean_uint64_of_nat__UInt64_ofNatLT = (a) => a;
+
+/* ------------------------------------------------------------ array functions written in Lean */
+
+// The operations of the externs of `ArrayStdExtern`
+// (`LeanScript/LeanInitPureExterns/ArrayStdFunctionsNonExternButBigEnoughToLoseInformation.lean`):
+// the array functions of `Init` that are written in Lean (`Array.append`, `Array.map`,
+// `Array.filter`, …), each written here as JavaScript does it.  They take a generic or a typed
+// array (the operations are layout-polymorphic, `JsArrayLayout`), which they only read, and
+// always answer a *new* array (the ownership analysis counts on it, `Own.freshExterns`), except
+// `array__lean_array_append_mutable`, which pushes onto its first argument.  An operation whose
+// result is a typed array while its argument may be of another layout (`Array.map`,
+// `Array.flatMap`, `Array.flatten`, `Array.zipWith`) takes the constructor of the typed array
+// first (`typedArray__…`).  The `bigint_nat__…` versions read their indices as numbers (an index
+// past `2^53` is past the end of any array: `Infinity`) and answer `BigInt`s.
+
+/** An index given as a `BigInt`, as a number (`Infinity` past `2^53`, past the end of any array). */
+const $bigIdx = (x) => (x > 9007199254740991n ? Infinity : Number(x));
+
+/** `Array.append` (`a ++ b`): a new array, the elements of `a` then those of `b`. */
+export const array__lean_array_append_immutable = (a, b) => {
+  if (Array.isArray(a)) return a.concat(b);
+  const r = new a.constructor(a.length + b.length);
+  r.set(a);
+  r.set(b, a.length);
+  return r;
+};
+
+/** `Array.append`, pushing the elements of `b` onto `a` (a generic array nothing else refers
+ *  to; a typed array cannot grow, so it gets a new one).  `b` may be `a` itself. */
+export const array__lean_array_append_mutable = (a, b) => {
+  if (!Array.isArray(a)) return array__lean_array_append_immutable(a, b);
+  const n = b.length;
+  for (let i = 0; i < n; i++) a.push(b[i]);
+  return a;
+};
+
+/** `Array.map f a`, as a generic array. */
+export const array__lean_array_map = (f, a) => {
+  const n = a.length;
+  const r = new Array(n);
+  for (let i = 0; i < n; i++) r[i] = f(a[i]);
+  return r;
+};
+
+/** `Array.map f a`, as a typed array of constructor `C`. */
+export const typedArray__lean_array_map = (C, f, a) => {
+  const n = a.length;
+  const r = new C(n);
+  for (let i = 0; i < n; i++) r[i] = f(a[i]);
+  return r;
+};
+
+/** `Array.filter p a start stop`: the elements of `a[start, min(stop, a.length))` that satisfy `p`. */
+export const uint53__lean_array_filter = (p, a, start, stop) => {
+  const r = [];
+  const e = Math.min(stop, a.length);
+  for (let i = start; i < e; i++) if (p(a[i])) r.push(a[i]);
+  return Array.isArray(a) ? r : a.constructor.from(r);
+};
+
+/** `Array.filter`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_filter = (p, a, start, stop) =>
+  uint53__lean_array_filter(p, a, $bigIdx(start), $bigIdx(stop));
+
+/** `Array.flatMap f a`, as a generic array. */
+export const array__lean_array_flat_map = (f, a) => {
+  const r = [];
+  for (let i = 0; i < a.length; i++) {
+    const b = f(a[i]);
+    for (let j = 0; j < b.length; j++) r.push(b[j]);
+  }
+  return r;
+};
+
+/** The arrays `bs` one after the other, as a typed array of constructor `C`. */
+const $concatTyped = (C, bs) => {
+  let n = 0;
+  for (const b of bs) n += b.length;
+  const r = new C(n);
+  let o = 0;
+  for (const b of bs) {
+    r.set(b, o);
+    o += b.length;
+  }
+  return r;
+};
+
+/** `Array.flatMap f a`, as a typed array of constructor `C`. */
+export const typedArray__lean_array_flat_map = (C, f, a) => {
+  const bs = [];
+  for (let i = 0; i < a.length; i++) bs.push(f(a[i]));
+  return $concatTyped(C, bs);
+};
+
+/** `Array.flatten a`, as a generic array. */
+export const array__lean_array_flatten = (a) => {
+  const r = [];
+  for (let i = 0; i < a.length; i++) {
+    const b = a[i];
+    for (let j = 0; j < b.length; j++) r.push(b[j]);
+  }
+  return r;
+};
+
+/** `Array.flatten a`, as a typed array of constructor `C`. */
+export const typedArray__lean_array_flatten = (C, a) => $concatTyped(C, a);
+
+/** `Array.reverse a`: a new array. */
+export const array__lean_array_reverse = (a) => a.slice().reverse();
+
+/** `Array.extract a start stop` (`a.take n`, `a.drop n`): `a[start, min(stop, a.length))`. */
+export const uint53__lean_array_extract = (a, start, stop) => a.slice(start, stop);
+
+/** `Array.extract`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_extract = (a, start, stop) =>
+  a.slice($bigIdx(start), $bigIdx(stop));
+
+/** `Array.any a p start stop`: does an element of `a[start, min(stop, a.length))` satisfy `p`? */
+export const uint53__lean_array_any = (a, p, start, stop) => {
+  const e = Math.min(stop, a.length);
+  for (let i = start; i < e; i++) if (p(a[i])) return true;
+  return false;
+};
+
+/** `Array.any`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_any = (a, p, start, stop) =>
+  uint53__lean_array_any(a, p, $bigIdx(start), $bigIdx(stop));
+
+/** `Array.all a p start stop`: do all the elements of `a[start, min(stop, a.length))` satisfy `p`? */
+export const uint53__lean_array_all = (a, p, start, stop) => {
+  const e = Math.min(stop, a.length);
+  for (let i = start; i < e; i++) if (!p(a[i])) return false;
+  return true;
+};
+
+/** `Array.all`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_all = (a, p, start, stop) =>
+  uint53__lean_array_all(a, p, $bigIdx(start), $bigIdx(stop));
+
+/** `Array.contains a x` (`x ∈ a`), `beq` the function of the `BEq` instance: `beq(x, a[i])`
+ *  for some `i`. */
+export const array__lean_array_contains = (beq, a, x) => {
+  for (let i = 0; i < a.length; i++) if (beq(x, a[i])) return true;
+  return false;
+};
+
+/** `Array.find? p a`: the first element that satisfies `p`, if one does. */
+export const array__lean_array_find_opt = (p, a) => {
+  for (let i = 0; i < a.length; i++) if (p(a[i])) return { tag: 1, _1: a[i] };
+  return { tag: 0 };
+};
+
+/** `Array.findIdx? p a`: the index of the first element that satisfies `p`, if one does. */
+export const uint53__lean_array_find_idx_opt = (p, a) => {
+  for (let i = 0; i < a.length; i++) if (p(a[i])) return { tag: 1, _1: i };
+  return { tag: 0 };
+};
+
+/** `Array.findIdx?`, answering a `BigInt`. */
+export const bigint_nat__lean_array_find_idx_opt = (p, a) => {
+  for (let i = 0; i < a.length; i++) if (p(a[i])) return { tag: 1, _1: BigInt(i) };
+  return { tag: 0 };
+};
+
+/** `Array.idxOf? a x`, `beq` the function of the `BEq` instance: the first `i` with
+ *  `beq(a[i], x)`, if there is one. */
+export const uint53__lean_array_idx_of_opt = (beq, a, x) => {
+  for (let i = 0; i < a.length; i++) if (beq(a[i], x)) return { tag: 1, _1: i };
+  return { tag: 0 };
+};
+
+/** `Array.idxOf?`, answering a `BigInt`. */
+export const bigint_nat__lean_array_idx_of_opt = (beq, a, x) => {
+  for (let i = 0; i < a.length; i++) if (beq(a[i], x)) return { tag: 1, _1: BigInt(i) };
+  return { tag: 0 };
+};
+
+/** `Array.eraseIdx! a i`: a new array without the element `i`; out of bounds Lean panics, and
+ *  the value of the panic is the empty array. */
+export const uint53__lean_array_erase_idx = (a, i) => {
+  if (!(i < a.length)) return a.slice(0, 0);
+  const r = new a.constructor(a.length - 1);
+  for (let j = 0; j < i; j++) r[j] = a[j];
+  for (let j = i + 1; j < a.length; j++) r[j - 1] = a[j];
+  return r;
+};
+
+/** `Array.eraseIdx!`, on a `BigInt` index. */
+export const bigint_nat__lean_array_erase_idx = (a, i) => uint53__lean_array_erase_idx(a, $bigIdx(i));
+
+/** `Array.insertIdx! a i x`: a new array with `x` at `i` (`i ≤ a.length`); out of bounds Lean
+ *  panics, and the value of the panic is the empty array. */
+export const uint53__lean_array_insert_idx = (a, i, x) => {
+  if (!(i <= a.length)) return a.slice(0, 0);
+  const r = new a.constructor(a.length + 1);
+  for (let j = 0; j < i; j++) r[j] = a[j];
+  r[i] = x;
+  for (let j = i; j < a.length; j++) r[j + 1] = a[j];
+  return r;
+};
+
+/** `Array.insertIdx!`, on a `BigInt` index. */
+export const bigint_nat__lean_array_insert_idx = (a, i, x) =>
+  uint53__lean_array_insert_idx(a, $bigIdx(i), x);
+
+/** `Array.eraseIdxIfInBounds a i`: a new array without the element `i`; out of bounds a copy of
+ *  `a` (Lean answers `a` itself; the copy keeps the answer a new array). */
+export const uint53__lean_array_erase_idx_if_in_bounds = (a, i) =>
+  i < a.length ? uint53__lean_array_erase_idx(a, i) : a.slice();
+
+/** `Array.eraseIdxIfInBounds`, on a `BigInt` index. */
+export const bigint_nat__lean_array_erase_idx_if_in_bounds = (a, i) =>
+  uint53__lean_array_erase_idx_if_in_bounds(a, $bigIdx(i));
+
+/** `Array.insertIdxIfInBounds a i x`: a new array with `x` at `i` (`i ≤ a.length`); out of
+ *  bounds a copy of `a`. */
+export const uint53__lean_array_insert_idx_if_in_bounds = (a, i, x) =>
+  i <= a.length ? uint53__lean_array_insert_idx(a, i, x) : a.slice();
+
+/** `Array.insertIdxIfInBounds`, on a `BigInt` index. */
+export const bigint_nat__lean_array_insert_idx_if_in_bounds = (a, i, x) =>
+  uint53__lean_array_insert_idx_if_in_bounds(a, $bigIdx(i), x);
+
+/** `Array.qpartition` (`Init/Data/Array/QSort/Basic.lean`), in place on `as[lo..hi]`
+ *  (`lo < hi`): the pivot is the median of `as[lo]`, `as[mid]`, `as[hi]`, moved to `hi`; the
+ *  answer is the final position of the pivot. */
+const $qpartition = (as, lt, lo, hi) => {
+  const swap = (i, j) => {
+    const t = as[i];
+    as[i] = as[j];
+    as[j] = t;
+  };
+  const mid = Math.floor((lo + hi) / 2);
+  if (lt(as[mid], as[lo])) swap(lo, mid);
+  if (lt(as[hi], as[lo])) swap(lo, hi);
+  if (lt(as[mid], as[hi])) swap(mid, hi);
+  const pivot = as[hi];
+  let i = lo;
+  for (let k = lo; k < hi; k++) {
+    if (lt(as[k], pivot)) {
+      swap(i, k);
+      i++;
+    }
+  }
+  swap(i, hi);
+  return i;
+};
+
+/** `Array.qsort.sort`, in place on `as[lo..hi]`: Lean's quicksort step for step (it is not
+ *  stable, so a different algorithm could order equivalent elements differently); the second
+ *  recursive call is a loop. */
+const $qsortRange = (as, lt, lo, hi) => {
+  while (lo < hi) {
+    const mid = $qpartition(as, lt, lo, hi);
+    if (mid >= hi) return;
+    $qsortRange(as, lt, lo, mid);
+    lo = mid + 1;
+  }
+};
+
+/** `Array.qsort a lt lo hi`: a sorted copy of `a` (the part `a[lo..hi]`). */
+export const uint53__lean_array_qsort = (a, lt, lo, hi) => {
+  const r = a.slice();
+  const n = r.length;
+  if (n === 0) return r;
+  const lo1 = Math.min(lo, n - 1);
+  const hi1 = Math.max(lo1, Math.min(hi, n - 1));
+  $qsortRange(r, lt, lo1, hi1);
+  return r;
+};
+
+/** `Array.qsort`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_qsort = (a, lt, lo, hi) =>
+  uint53__lean_array_qsort(a, lt, $bigIdx(lo), $bigIdx(hi));
+
+/** `Array.foldr f z a start stop`: `f(a[stop], … f(a[s - 1], z))` with `s = min(start, a.length)`. */
+export const uint53__lean_array_foldr = (f, z, a, start, stop) => {
+  let acc = z;
+  for (let i = Math.min(start, a.length) - 1; i >= stop; i--) acc = f(a[i], acc);
+  return acc;
+};
+
+/** `Array.foldr`, on `BigInt` bounds. */
+export const bigint_nat__lean_array_foldr = (f, z, a, start, stop) =>
+  uint53__lean_array_foldr(f, z, a, $bigIdx(start), $bigIdx(stop));
+
+/** `Array.zipWith f a b`, as a generic array (as long as the shorter array). */
+export const array__lean_array_zip_with = (f, a, b) => {
+  const n = Math.min(a.length, b.length);
+  const r = new Array(n);
+  for (let i = 0; i < n; i++) r[i] = f(a[i], b[i]);
+  return r;
+};
+
+/** `Array.zipWith f a b`, as a typed array of constructor `C`. */
+export const typedArray__lean_array_zip_with = (C, f, a, b) => {
+  const n = Math.min(a.length, b.length);
+  const r = new C(n);
+  for (let i = 0; i < n; i++) r[i] = f(a[i], b[i]);
+  return r;
+};
+
+/** `Array.zip a b`: the pairs `{ _1: a[i], _2: b[i] }` (as long as the shorter array). */
+export const array__lean_array_zip = (a, b) => {
+  const n = Math.min(a.length, b.length);
+  const r = new Array(n);
+  for (let i = 0; i < n; i++) r[i] = { _1: a[i], _2: b[i] };
+  return r;
+};
+
+/** `Array.back? a`: the last element, if there is one. */
+export const array__lean_array_back_opt = (a) =>
+  a.length === 0 ? { tag: 0 } : { tag: 1, _1: a[a.length - 1] };
+
+/** `Array.countP p a`: the number of elements that satisfy `p`. */
+export const uint53__lean_array_count_p = (p, a) => {
+  let n = 0;
+  for (let i = 0; i < a.length; i++) if (p(a[i])) n++;
+  return n;
+};
+
+/** `Array.countP`, answering a `BigInt`. */
+export const bigint_nat__lean_array_count_p = (p, a) => BigInt(uint53__lean_array_count_p(p, a));
+
+/** `List.append` (`l ++ l'`) on the array layout of lists: a new array. */
+export const list__lean_list_append = (a, b) => a.concat(b);
+
+/** `List.append` (`l ++ l'`) on cons cells (`ListRepr.taggedUnion`): copies of the cells of
+ *  `xs` in front of the cells of `ys`, which are shared, not copied (`xs` itself when `ys` is
+ *  empty, `ys` itself when `xs` is). */
+export const consList__lean_list_append = (xs, ys) => {
+  if (xs.tag === 0) return ys;
+  if (ys.tag === 0) return xs;
+  const head = { tag: 1, _1: xs._1, _2: ys };
+  let cur = head;
+  for (let it = xs._2; it.tag === 1; it = it._2) {
+    const c = { tag: 1, _1: it._1, _2: ys };
+    cur._2 = c;
+    cur = c;
+  }
+  return head;
+};

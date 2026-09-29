@@ -478,7 +478,31 @@ def externTableList : List (Name × Name) :=
    (`Int8.toFloat32, `lean_int8_to_float32),
    (`Float32.toInt32, `lean_float32_to_int32),
    (`Int16.toFloat32, `lean_int16_to_float32),
-   (`Int64.toFloat32, `lean_int64_to_float32)]
+   (`Int64.toFloat32, `lean_int64_to_float32),
+   (`Array.append, `lean_array_append),
+   (`Array.map, `lean_array_map),
+   (`Array.filter, `lean_array_filter),
+   (`Array.flatMap, `lean_array_flat_map),
+   (`Array.flatten, `lean_array_flatten),
+   (`Array.reverse, `lean_array_reverse),
+   (`Array.extract, `lean_array_extract),
+   (`Array.any, `lean_array_any),
+   (`Array.all, `lean_array_all),
+   (`Array.contains, `lean_array_contains),
+   (`Array.find?, `lean_array_find_opt),
+   (`Array.findIdx?, `lean_array_find_idx_opt),
+   (`Array.idxOf?, `lean_array_idx_of_opt),
+   (`Array.eraseIdx!, `lean_array_erase_idx),
+   (`Array.insertIdx!, `lean_array_insert_idx),
+   (`Array.eraseIdxIfInBounds, `lean_array_erase_idx_if_in_bounds),
+   (`Array.insertIdxIfInBounds, `lean_array_insert_idx_if_in_bounds),
+   (`Array.qsort, `lean_array_qsort),
+   (`Array.foldr, `lean_array_foldr),
+   (`Array.zipWith, `lean_array_zip_with),
+   (`Array.zip, `lean_array_zip),
+   (`Array.back?, `lean_array_back_opt),
+   (`Array.countP, `lean_array_count_p),
+   (`List.append, `lean_list_append)]
 
 /-- `externTableList`, as a map from the Lean function to the entry. -/
 def externTable : NameMap Name :=

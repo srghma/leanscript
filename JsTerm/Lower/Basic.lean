@@ -197,6 +197,58 @@ def castParts {C M : List JsTy} {A E : JsTy} (ps : JsParts S C M A E) (E' : JsTy
 def paramRefs (C ts : List JsTy) : List (Ref × JsTy) :=
   ts.zipIdx.map fun (t, i) => (.c (C.length + i), t)
 
+/-! ## Appends as literals -/
+
+/-- The parts of one literal followed by the parts of another. -/
+def JsParts.append {C M : List JsTy} {A E : JsTy} : JsParts S C M A E → JsParts S C M A E →
+    JsParts S C M A E
+  | .nil, qs => qs
+  | .elem e ps, qs => .elem e (ps.append qs)
+  | .spread a ps, qs => .spread a (ps.append qs)
+
+/-- The parts `e` brings to an array (or array-layout list) literal of type `A`: the parts of
+    `e` when it is a literal itself (`[...[x, ...a], y]` is `[x, ...a, y]`), otherwise the spread
+    `...e`. -/
+def JsExpr.spliceParts {C M : List JsTy} {A : JsTy} (E : JsTy) :
+    JsExpr S C M A → ConvM (JsParts S C M A E)
+  | .array_mk _ ps => castParts ps E
+  | .list_mk ps => castParts ps E
+  | e => pure (.spread e .nil)
+
+/-- `a ++ b` (`Array.append`, `List.append` at the array layout) as one literal, `[...a, ...b]`,
+    in which an operand that is a literal itself (an array literal, or an append already written
+    as one) is spliced: a chain of appends is one literal whatever the nesting, and its literal
+    operands are merged (`#["a"] ++ (xs ++ #["b"])` is `["a", ...xs, "b"]`).  `none` when the
+    arguments are not two arrays (or two array-layout lists) of type `τ`. -/
+def appendLit? {C M σs : List JsTy} {τ : JsTy} (as : JsArgs S C M σs) :
+    ConvM (Option (JsExpr S C M τ)) :=
+  match σs, as with
+  | [_, _], .cons a (.cons b .nil) => do
+    match JsArrayLayout.of? τ with
+    | some ⟨E, l⟩ =>
+      let pa ← (← castE a τ).spliceParts E
+      let pb ← (← castE b τ).spliceParts E
+      return some (.array_mk l (pa.append pb))
+    | none =>
+      match τ with
+      | .list α =>
+        let pa ← (← castE a (.list α)).spliceParts α
+        let pb ← (← castE b (.list α)).spliceParts α
+        return some (← castE (.list_mk (pa.append pb)) τ)
+      | _ => return none
+  | _, _ => return none
+
+/-- Is the expression an array (or array-layout list) literal? -/
+def JsExpr.isArrayLit {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .array_mk _ _ => true
+  | .list_mk _ => true
+  | _ => false
+
+/-- Is the first of the arguments an array (or array-layout list) literal? -/
+def JsArgs.firstIsArrayLit {C M σs : List JsTy} : JsArgs S C M σs → Bool
+  | .cons a _ => a.isArrayLit
+  | .nil => false
+
 mutual
 /-- The JavaScript value of a `Ref`, in the contexts `C` and `M`, at the type `τ`: a variable,
     or the closure of a partial application (`(y) => f(a, y)`). -/

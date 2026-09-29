@@ -67,13 +67,5 @@ ret k1
 
 -- around : List String → List String
 val k1 [1] : ((List String) → (List String)) := fun x2 [ω] : (List String) => (closed)
-  let x5 [1] : (Array String) := array_foldl #[">"] lean_array_mk(x2) fun e3 acc4 => (closed)
-    ret lean_array_push(acc4, e3)
-  let x8 [1] : (Array String) := array_foldl x5 #[","] fun e6 acc7 => (closed)
-    ret lean_array_push(acc7, e6)
-  let x11 [1] : (Array String) := array_foldl x8 lean_array_mk(x2) fun e9 acc10 => (closed)
-    ret lean_array_push(acc10, e9)
-  let x14 [1] : (Array String) := array_foldl x11 #["<"] fun e12 acc13 => (closed)
-    ret lean_array_push(acc13, e12)
-  ret lean_array_to_list(x14)
+  ret lean_list_append(["<"], lean_list_append(x2, lean_list_append([","], lean_list_append(x2, [">"]))))
 ret k1

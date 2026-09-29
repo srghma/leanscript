@@ -92,6 +92,92 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bigint_nat__lean_array_fswap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
   /-- `uint53__lean_array_fswap_immutable`, updating the array in place (Array.swap (decides `i < xs.size`, `j < xs.size`)) -/
   | uint53__lean_array_fswap_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
+  /-- Array.append -/
+  | array__lean_array_append_immutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, A] A
+  /-- `array__lean_array_append_immutable`, updating the array in place (Array.append) -/
+  | array__lean_array_append_mutable : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .effectful .doesntThrow [A, A] A
+  /-- Array.map -/
+  | array__lean_array_map : {A E : JsTy} → (l : JsArrayLayout A E) → (β : JsTy) → JsOpImported .pure .doesntThrow [(.fn [E] β), A] (.array β)
+  /-- Array.map -/
+  | typedArray__lean_array_map : {A E : JsTy} → (l : JsArrayLayout A E) → (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal t.leaf)), A] (.typedArray t)
+  /-- Array.flatMap -/
+  | array__lean_array_flat_map : {A E : JsTy} → (l : JsArrayLayout A E) → (β : JsTy) → JsOpImported .pure .doesntThrow [(.fn [E] (.array β)), A] (.array β)
+  /-- Array.flatMap -/
+  | typedArray__lean_array_flat_map : {A E : JsTy} → (l : JsArrayLayout A E) → (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.fn [E] (.typedArray t)), A] (.typedArray t)
+  /-- Array.flatten -/
+  | array__lean_array_flatten : (β : JsTy) → JsOpImported .pure .doesntThrow [(.array (.array β))] (.array β)
+  /-- Array.flatten -/
+  | typedArray__lean_array_flatten : (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.array (.typedArray t))] (.typedArray t)
+  /-- Array.reverse -/
+  | array__lean_array_reverse : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A] A
+  /-- Array.contains -/
+  | array__lean_array_contains : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E, E] (.terminal .bool)), A, E] (.terminal .bool)
+  /-- Array.find? -/
+  | array__lean_array_find_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A] (.obj (.union [0, 1] .cells) [E])
+  /-- Array.zipWith -/
+  | array__lean_array_zip_with : {A E B F : JsTy} → (l₁ : JsArrayLayout A E) → (l₂ : JsArrayLayout B F) → (γ : JsTy) → JsOpImported .pure .doesntThrow [(.fn [E, F] γ), A, B] (.array γ)
+  /-- Array.zipWith -/
+  | typedArray__lean_array_zip_with : {A E B F : JsTy} → (l₁ : JsArrayLayout A E) → (l₂ : JsArrayLayout B F) → (t : JsTypedElem) → JsOpImported .pure .doesntThrow [(.fn [E, F] (.terminal t.leaf)), A, B] (.typedArray t)
+  /-- Array.zip -/
+  | array__lean_array_zip : {A E B F : JsTy} → (l₁ : JsArrayLayout A E) → (l₂ : JsArrayLayout B F) → JsOpImported .pure .doesntThrow [A, B] (.array (.obj (.record 2) [E, F]))
+  /-- Array.back? -/
+  | array__lean_array_back_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A] (.obj (.union [0, 1] .cells) [E])
+  /-- Array.filter -/
+  | bigint_nat__lean_array_filter : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
+  /-- Array.extract -/
+  | bigint_nat__lean_array_extract : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), (.terminal .bigint_nat)] A
+  /-- Array.any -/
+  | bigint_nat__lean_array_any : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E] (.terminal .bool)), (.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bool)
+  /-- Array.all -/
+  | bigint_nat__lean_array_all : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E] (.terminal .bool)), (.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bool)
+  /-- Array.findIdx? -/
+  | bigint_nat__lean_array_find_idx_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A] (.obj (.union [0, 1] .cells) [(.terminal .bigint_nat)])
+  /-- Array.idxOf? -/
+  | bigint_nat__lean_array_idx_of_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E, E] (.terminal .bool)), A, E] (.obj (.union [0, 1] .cells) [(.terminal .bigint_nat)])
+  /-- Array.eraseIdx! -/
+  | bigint_nat__lean_array_erase_idx : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat)] A
+  /-- Array.insertIdx! -/
+  | bigint_nat__lean_array_insert_idx : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), E] A
+  /-- Array.eraseIdxIfInBounds -/
+  | bigint_nat__lean_array_erase_idx_if_in_bounds : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat)] A
+  /-- Array.insertIdxIfInBounds -/
+  | bigint_nat__lean_array_insert_idx_if_in_bounds : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .bigint_nat), E] A
+  /-- Array.qsort -/
+  | bigint_nat__lean_array_qsort : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E, E] (.terminal .bool)), (.terminal .bigint_nat), (.terminal .bigint_nat)] A
+  /-- Array.foldr -/
+  | bigint_nat__lean_array_foldr : {A E : JsTy} → (l : JsArrayLayout A E) → (β : JsTy) → JsOpImported .pure .doesntThrow [(.fn [E, β] β), β, A, (.terminal .bigint_nat), (.terminal .bigint_nat)] β
+  /-- Array.countP -/
+  | bigint_nat__lean_array_count_p : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A] (.terminal .bigint_nat)
+  /-- Array.filter -/
+  | uint53__lean_array_filter : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A, (.terminal .uint53), (.terminal .uint53)] A
+  /-- Array.extract -/
+  | uint53__lean_array_extract : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), (.terminal .uint53)] A
+  /-- Array.any -/
+  | uint53__lean_array_any : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E] (.terminal .bool)), (.terminal .uint53), (.terminal .uint53)] (.terminal .bool)
+  /-- Array.all -/
+  | uint53__lean_array_all : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E] (.terminal .bool)), (.terminal .uint53), (.terminal .uint53)] (.terminal .bool)
+  /-- Array.findIdx? -/
+  | uint53__lean_array_find_idx_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A] (.obj (.union [0, 1] .cells) [(.terminal .uint53)])
+  /-- Array.idxOf? -/
+  | uint53__lean_array_idx_of_opt : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E, E] (.terminal .bool)), A, E] (.obj (.union [0, 1] .cells) [(.terminal .uint53)])
+  /-- Array.eraseIdx! -/
+  | uint53__lean_array_erase_idx : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53)] A
+  /-- Array.insertIdx! -/
+  | uint53__lean_array_insert_idx : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), E] A
+  /-- Array.eraseIdxIfInBounds -/
+  | uint53__lean_array_erase_idx_if_in_bounds : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53)] A
+  /-- Array.insertIdxIfInBounds -/
+  | uint53__lean_array_insert_idx_if_in_bounds : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.terminal .uint53), E] A
+  /-- Array.qsort -/
+  | uint53__lean_array_qsort : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [A, (.fn [E, E] (.terminal .bool)), (.terminal .uint53), (.terminal .uint53)] A
+  /-- Array.foldr -/
+  | uint53__lean_array_foldr : {A E : JsTy} → (l : JsArrayLayout A E) → (β : JsTy) → JsOpImported .pure .doesntThrow [(.fn [E, β] β), β, A, (.terminal .uint53), (.terminal .uint53)] β
+  /-- Array.countP -/
+  | uint53__lean_array_count_p : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [(.fn [E] (.terminal .bool)), A] (.terminal .uint53)
+  /-- List.append -/
+  | list__lean_list_append : (α : JsTy) → JsOpImported .pure .doesntThrow [(.list α), (.list α)] (.list α)
+  /-- List.append -/
+  | consList__lean_list_append : (α : JsTy) → JsOpImported .pure .doesntThrow [(.obj .consList [α]), (.obj .consList [α])] (.obj .consList [α])
   /-- Nat.div -/
   | bigint_nat__lean_nat_div : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- Nat.div -/
@@ -848,6 +934,10 @@ def extraArgs {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
     JsOpImported e t σs τ → List String
   | .typedArray__bigint_nat__lean_mk_array t => [t.kind.ctorName]
   | .typedArray__uint53__lean_mk_array t => [t.kind.ctorName]
+  | .typedArray__lean_array_map _ t => [t.kind.ctorName]
+  | .typedArray__lean_array_flat_map _ t => [t.kind.ctorName]
+  | .typedArray__lean_array_flatten t => [t.kind.ctorName]
+  | .typedArray__lean_array_zip_with _ _ t => [t.kind.ctorName]
   | _ => []
 
 /-- The version of an array update that updates the array in place, if it has one. -/
@@ -863,6 +953,7 @@ def toMutable? {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} 
   | .uint53__lean_array_fset_immutable l => some ⟨_, .uint53__lean_array_fset_mutable l⟩
   | .bigint_nat__lean_array_fswap_immutable l => some ⟨_, .bigint_nat__lean_array_fswap_mutable l⟩
   | .uint53__lean_array_fswap_immutable l => some ⟨_, .uint53__lean_array_fswap_mutable l⟩
+  | .array__lean_array_append_immutable l => some ⟨_, .array__lean_array_append_mutable l⟩
   | _ => none
 
 end JsOpImported

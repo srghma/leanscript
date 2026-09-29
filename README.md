@@ -129,8 +129,36 @@ files a lazy value `Unit → τ` is printed `(Lazy τ)`.
 
 In the tool a `List α` is the built-in list `Ty.list α` (an immutable JavaScript array), not a
 datatype (the tool has no signature to declare it in): a literal `[a, b]` is a list literal,
-and `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`.  An append of arrays is a fold pushing
-every element, written as that loop (`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).
+and `xs ++ ys` is the extern `lean_list_append` (`List.append`).
+
+**Array functions written in Lean.**  `Array.append`, `Array.map`, `Array.filter`,
+`Array.flatMap`, `Array.flatten`, `Array.reverse`, `Array.extract` (and so `take`/`drop`),
+`Array.any`/`all`/`contains`/`find?`/`findIdx?`/`idxOf?`, `Array.eraseIdx!`/`insertIdx!` (and
+their `IfInBounds` versions), `Array.qsort`, `Array.foldr`, `Array.zipWith`/`zip`, `Array.back?`,
+`Array.countP` and `List.append` are not `@[extern]` in Lean, but they are entries of the
+catalogue of externs (`ArrayStdExtern`,
+`LeanScript/LeanInitPureExterns/ArrayStdFunctionsNonExternButBigEnoughToLoseInformation.lean`),
+whose meaning is the Lean function itself (`LeanScript/Term/Extern/Eval/ArrayStd.lean`): without
+an entry the elaborator would unfold them into folds (`xs ++ ys` into
+`array_foldl ys xs (fun e acc => lean_array_push acc e)`), and the backend could no longer tell
+which function was called.  With the entry, the JavaScript is the function of `runtime.js`
+(`array__lean_array_map`, …) and appends are optimised in the conversion to `JsTerm`:
+
+* an append of arrays (or of lists at `list=array`) is one array literal in which the literal
+  operands and the appends already written as literals are spliced: `#["a"] ++ (xs ++ #["b"])`
+  is `["a", ...xs, "b"]`, whatever the nesting (an append onto an array nothing else refers to
+  is otherwise done in place, `array__lean_array_append_mutable`);
+* an append of cons-cell lists (`list=tagged`) is built from its end, as `a ++ (b ++ (c ++ d))`
+  (the last operand is shared, not copied; `List.append` is associative), a literal operand is
+  its cells put in front of the rest, and any other operand is copied in front of the rest by
+  `consList__lean_list_append`;
+* an array literal bound by a `let` and used once (not under a `fun`) is substituted, so that it
+  can be spliced; an argument of an extern that another argument also computes (the array of
+  `(xs.map f).filter p`, whose default bound is `(xs.map f).size`) is bound once.
+
+`Tests/SnapshotsPBOPure/AssocArrayAppend.lean` (compare with
+`Tests/SnapshotsPBOPure/legacy-backend/AssocArrayAppend.js`) and
+`Tests/SnapshotsMy/ArrayStdFunctions.lean` show them.
 
 How a `List` is laid out in JavaScript is the knob `JsConfig.listRepr` (`MoreJs.ListRepr`,
 `JsTerm/Ty/Config.lean`; spelled `list=tagged` or `list=array` in the configuration line of

@@ -1,3 +1,36 @@
+# Summary of changes for run 93fd0d49-ba7c-43f4-9cbd-4556a621e7ac
+The JavaScript for `AssocArrayAppend.lean` now matches the purescript-backend-optimizer output: every array test, and the list tests at the `pbo` preset, compile to one array literal. For example, `ArrayTest.test1` and `test2` both become `(arr) => ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"]`, the same as `legacy-backend/AssocArrayAppend.js`. At the `faithful` preset, `ListTest.test1` is close to your sketch:
+```
+{ tag: 1, _1: "a", _2: { tag: 1, _1: "b", _2:
+  consList__lean_list_append(arr, consList__lean_list_append(arr, … consList__lean_list_append(arr,
+    { tag: 1, _1: "c", _2: { tag: 1, _1: "d", _2: { tag: 0 } } })…)) } }
+```
+The append chain is regrouped to the right, and literal operands become cells directly, so there is nothing to copy or mutate. The copying helper comes from `runtime.js` rather than being generated per module. The in-place variant (`__owned_at_1`) wasn't needed. All 36 generated checks pass in node for both presets.
+
+**Why new externs rather than recovering the pattern.** Once `Array.append` is unfolded into `array_foldl … lean_array_push`, the loop could be the unfolding of `append`, of `map`, or of any hand-written fold. Recognising it again would be fragile, and a Term→Term pass can't express the result anyway, because `Term` has no array literal with spreads. So I took the middle-ground option you suggested: std functions written in Lean become catalogue entries whose meaning is the Lean function itself. The existing eval proofs therefore still apply, and an entry can't change what a program computes. The literal splicing is done in the Term→JsTerm conversion.
+
+**From your table** (catalogue in `LeanScript/LeanInitPureExterns/ArrayStdFunctionsNonExternButBigEnoughToLoseInformation.lean`):
+- **Added:** `append`, `map`, `filter`, `flatMap`, `flatten`, `reverse`, `extract`, `any`, `all`, `contains`, `find?`, `findIdx?`, `idxOf?`, `eraseIdx!`, `insertIdx!`, `qsort` (an exact port of Lean's quicksort, so the order matches), plus `eraseIdxIfInBounds`, `insertIdxIfInBounds`, `foldr`, `zipWith`, `zip`, `back?`, `countP` and `List.append`.
+- **Not needed:** `Array.replicate` is already the C extern `lean_mk_array`. `take` and `drop` unfold to `extract`. `back!` and `xs[i]?` unfold to a bounds check and a read.
+
+**Other changes:**
+- **Conversion to JavaScript** (`JsTerm/Lower`): chains of appends become one literal, merging any literal operands. Cons-cell list appends are built from the end as described above. An append onto an array nothing else refers to is still done in place.
+- **Elaborator:** an array literal bound by `let` and used once (not inside a `fun`) is substituted so it can be spliced. An argument that another argument also computes is now bound once; before, `(a.map f).filter p` computed `a.map f` twice because of the default bound `.size`.
+- **JavaScript operations and `runtime.js`:** new functions for all entries, with generic and typed-array versions and both number and BigInt indices. I fixed a wrong result type for `zip`.
+- **Proof:** `OpsSpec.cands_sig_nodup` now also covers the new entries (no extern has two candidates at one signature). `lake build OpsSpec RuntimeSpec RefactorSpec` passes with no `sorry`.
+- **Tests:**
+  - `lake exe tests` passes 66/66; I updated the list of array updates to include append.
+  - New snapshot `Tests/SnapshotsMy/ArrayStdFunctions.lean` translates all 22 functions, and its 304 checks pass in node for both presets.
+  - After regenerating all snapshots, every node check passes and no file translates fewer functions. `MapFilter`, `CaseLeafTco` and `OwnershipAliasing` now translate more.
+  - README and `NOT_IMPLEMENTED.md` are updated.
+
+**Still failing or not supported:**
+- `lake build` fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib; that file is unchanged since the initial commit and the project doesn't depend on Mathlib. Everything else in the default build compiles.
+- The snapshot script still reports "literal too big" for `PrimOpInt02Configurable`/`PrimOpInt03Configurable`, as it did before.
+- `Array.map` and similar over arrays whose elements are functions still can't be translated, as before. Such calls now fall back to unfolding, which fails for `Array.map`.
+- `ArrayAppend` tests `test1` and `test3` were already untranslated before these changes and still are.
+- I did not add a proved Term→Term append pass; I kept the optimisation in the conversion for the reason above.
+
 # Summary of changes for run 124c4104-9e6e-43a8-bd95-e720134d20cc
 I extended the proven `Term.optimize` inliner and brought the documentation up to date. Everything builds with no `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`), and `lake exe tests` passes 66/66.
 

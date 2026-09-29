@@ -37,6 +37,9 @@ when one has neither an inline form nor a function in `runtime.js`.
 """
 import os, re, sys, itertools, json
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import js_ops_array_std as array_std
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT = os.path.join(ROOT, 'LeanScript', 'LeanInitPureExterns')
 RUNTIME = os.path.join(ROOT, 'runtime.js')
@@ -644,6 +647,14 @@ def build_ops(rt):
             else:
                 ops.append(mk_op(mname, None, e, o['args'], o['res'], ('import',),
                                  params=LAYOUT_PARAMS, poly='layout', mutableOf=o['name']))
+    # the array functions written in Lean (`ArrayStdExtern`), listed by hand
+    # (`scripts/js_ops_array_std.py`)
+    for d in array_std.ops():
+        if d['name'] not in exports:
+            missing.append(d['name'])
+            continue
+        ops.append(dict(d, impl=('import',), poly='std', group='ArrayStd',
+                        ctorArg=d.get('ctorArg'), mutableOf=d.get('mutableOf')))
     # effects and throws
     for o in ops:
         o['eff'] = 'effectful' if o['name'].endswith('_mutable') else 'pure'
@@ -841,7 +852,10 @@ def runtimeName {SIG_ARGS}
     s += '    JsOpImported e t σs τ → List String\n'
     for o in imp:
         if o.get('ctorArg'):
-            s += f'  | .{o["name"]} t => [t.kind.ctorName]\n'
+            # the explicit parameters before the typed element `t` (the layouts of the
+            # arguments, for the operations of `ArrayStdExtern`)
+            before = ''.join('_ ' for _ in re.findall(r'\((l|l₁|l₂) :', o['params']))
+            s += f'  | .{o["name"]} {before}t => [t.kind.ctorName]\n'
     s += '  | _ => []\n\n'
     s += '/-- The version of an array update that updates the array in place, if it has one. -/\n'
     s += f'def toMutable? {SIG_ARGS} :\n'
@@ -968,10 +982,15 @@ CAND_GROUPS = [
      '`lean_float_*`, `lean_float32_*` and the C functions of `math.h`: `sin`, `sinf`, …'),
     ('String', 'the strings', '`lean_string_*`, `lean_substring_*`, `lean_slice_*`, `lean_char_*`'),
     ('Misc', 'the other externs', 'arrays, thunks, `Bool` conversions, version and platform'),
+    ('ArrayStd', 'the array functions written in Lean',
+     '`ArrayStdExtern`: `lean_array_append`, `lean_array_map`, …, `lean_list_append`; listed by '
+     'hand in `scripts/js_ops_array_std.py`'),
 ]
 
 def cand_group(ext):
     """The group of an extern (the name of its module in `JsTerm/Ops/Cands/`)."""
+    if ext in array_std.CANDS:
+        return 'ArrayStd'
     if not ext.startswith('lean_') or ext.startswith('lean_float'):
         return 'Float'
     if re.match(r'lean_(nat|int)_', ext):
@@ -999,8 +1018,19 @@ def write_lookup(ops):
         s = ''
         mine = [ext for ext in names if cand_group(ext) == group]
         uses_sig = {}
+        if group == 'ArrayStd':
+            s += array_std.HELPERS
         for ext in mine:
             check_unique_sigs(ext, by_ext[ext])
+            if group == 'ArrayStd':
+                uses_sig[ext] = True
+                s += f'/-- The operations of `{ext}`. -/\n'
+                body = array_std.CANDS[ext]
+                ps = '(σs : List JsTy)' if 'σs' in body else '(_ : List JsTy)'
+                pt = '(τ : JsTy)' if 'τ' in body else '(_ : JsTy)'
+                s += f'def «cands_{ext}» {ps} {pt} : List Cand :=\n'
+                s += '  ' + body + '\n\n'
+                continue
             mono = [cand(o) for o in by_ext[ext] if o['poly'] is None]
             rest = poly_cands([o for o in by_ext[ext] if o['poly'] is not None])
             uses_sig[ext] = bool(rest)

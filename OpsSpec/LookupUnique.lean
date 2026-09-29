@@ -96,6 +96,12 @@ private theorem nodup_misc (name : String) (σs : List JsTy) (τ : JsTy) :
     generalize layoutOf? (σs ++ [τ]) = x
     rcases x with _ | ⟨a, e, l⟩ <;> (try cases l) <;> simp [Cand.sig]
 
+private theorem nodup_arrayStd (name : String) (σs : List JsTy) (τ : JsTy) :
+    (((candsArrayStd? name σs τ).getD []).map Cand.sig).Nodup := by
+  unfold candsArrayStd?; split <;> (try decide)
+  all_goals simp only [Option.getD_some, «cands_lean_array_all», «cands_lean_array_any», «cands_lean_array_append», «cands_lean_array_back_opt», «cands_lean_array_contains», «cands_lean_array_count_p», «cands_lean_array_erase_idx», «cands_lean_array_erase_idx_if_in_bounds», «cands_lean_array_extract», «cands_lean_array_filter», «cands_lean_array_find_idx_opt», «cands_lean_array_find_opt», «cands_lean_array_flat_map», «cands_lean_array_flatten», «cands_lean_array_foldr», «cands_lean_array_idx_of_opt», «cands_lean_array_insert_idx», «cands_lean_array_insert_idx_if_in_bounds», «cands_lean_array_map», «cands_lean_array_qsort», «cands_lean_array_reverse», «cands_lean_array_zip», «cands_lean_array_zip_with», «cands_lean_list_append»]
+  all_goals (repeat' split) <;> simp [Cand.sig]
+
 /-- The candidates of an extern have pairwise distinct signatures. -/
 theorem cands_sig_nodup (name : String) (σs : List JsTy) (τ : JsTy) :
     ((cands name σs τ).map Cand.sig).Nodup := by
@@ -104,8 +110,9 @@ theorem cands_sig_nodup (name : String) (σs : List JsTy) (τ : JsTy) :
   refine getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_uint name) ?_
   refine getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_sint name) ?_
   refine getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_float name) ?_
-  exact getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_string name)
-    (nodup_misc name σs τ)
+  refine getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_string name) ?_
+  exact getD_orElse (P := fun l => (l.map Cand.sig).Nodup) (nodup_misc name σs τ)
+    (nodup_arrayStd name σs τ)
 
 /-- **Only one candidate per signature**: two candidates of an extern at the same signature are
     the same candidate. -/

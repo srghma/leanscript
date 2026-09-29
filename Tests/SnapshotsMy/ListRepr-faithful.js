@@ -2,9 +2,9 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  consList__to_array,
-  array__lean_array_push_mutable,
+  consList__lean_list_append,
   consList__of_array,
+  consList__to_array,
 } from "../../runtime.js";
 
 /**
@@ -29,33 +29,26 @@ export const ListRepr$empty = () => ({ tag: 0 });
  * @param {ConsList<string>} xs
  * @returns {ConsList<string>}
  */
-export const ListRepr$front = (a, xs) => {
-  let acc$1 = [a, "b"];
-  for (const e$2 of consList__to_array(xs)) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return consList__of_array(acc$1);
-};
+export const ListRepr$front = (a, xs) => ({
+  tag: 1,
+  _1: a,
+  _2: { tag: 1, _1: "b", _2: xs },
+});
 
 /**
  * `ListRepr.middle`
  * @param {ConsList<nat(bigint)>} xs
  * @returns {ConsList<nat(bigint)>}
  */
-export const ListRepr$middle = (xs) => {
-  let acc$1 = [0n];
-  for (const e$2 of consList__to_array(xs)) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  let acc$4 = acc$1;
-  for (const e$5 of [7n, 8n]) {
-    const a$6 = acc$4;
-    acc$4 = array__lean_array_push_mutable(a$6, e$5);
-  }
-  return consList__of_array(acc$4);
-};
+export const ListRepr$middle = (xs) => ({
+  tag: 1,
+  _1: 0n,
+  _2: consList__lean_list_append(xs, {
+    tag: 1,
+    _1: 7n,
+    _2: { tag: 1, _1: 8n, _2: { tag: 0 } },
+  }),
+});
 
 /**
  * `ListRepr.append`
@@ -63,14 +56,7 @@ export const ListRepr$middle = (xs) => {
  * @param {ConsList<nat(bigint)>} ys
  * @returns {ConsList<nat(bigint)>}
  */
-export const ListRepr$append = (xs, ys) => {
-  let acc$1 = [...consList__to_array(xs)];
-  for (const e$2 of consList__to_array(ys)) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return consList__of_array(acc$1);
-};
+export const ListRepr$append = (xs, ys) => consList__lean_list_append(xs, ys);
 
 /**
  * `ListRepr.ofArr`

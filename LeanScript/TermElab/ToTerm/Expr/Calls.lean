@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.TermElab.ToTerm.Expr.Loops
+public meta import Lean.Compiler.ExternAttr
 
 @[expose] public section
 
@@ -122,8 +123,9 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
 /-- A call of the extern `entry` (an entry of the catalogue, `LeanInitPureExtern.entry`)
     whose Lean function is `fn`, applied to `args`: `Neu.extern (.entry _ …) args'`.  The
     arguments of the extern are the explicit arguments of `fn` that are values (not types,
-    proofs or `()`), and the default value of an `[Inhabited α]` argument (`Array.get!Internal`
-    takes the default as an argument of the extern); the proofs are erased (the evaluator of the
+    proofs or `()`), the default value of an `[Inhabited α]` argument (`Array.get!Internal`
+    takes the default as an argument of the extern), and the function `fun x y => x == y` of a
+    `[BEq α]` argument (`Array.contains`); the proofs are erased (the evaluator of the
     extern decides them).  The type arguments of the entry (`αt` of `lean_array_push αt`) are
     found by unification with the types of the arguments. -/
 partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) : TM Src := do
@@ -137,9 +139,27 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
     if bi.isInstImplicit && d.isAppOfArity ``Inhabited 1 then
       let v ← whnf (← mkAppOptM ``Inhabited.default #[d.appArg!, a])
       vals := vals.push (if v.isConstOf ``Nat.zero then mkNatLit 0 else v)
+    else if bi.isInstImplicit && d.isAppOfArity ``BEq 1 then
+      -- a `[BEq α]` argument is its function `beq` (`fun x y => x == y`), which the extern
+      -- takes as an argument (`Array.contains`, `Array.idxOf?`)
+      let α := d.appArg!
+      let f ← withLocalDeclD `x α fun x => withLocalDeclD `y α fun y => do
+        mkLambdaFVars #[x, y] (← mkAppOptM ``BEq.beq #[α, a, x, y])
+      vals := vals.push f
     else if bi.isExplicit && !(← isProp d) && !(← isType a) && !(← isUnitType d) then
       vals := vals.push a
     ty := b.instantiate1 a
+  -- an argument that another argument also computes (the array of `(xs.map f).filter p`,
+  -- whose default bound is `(xs.map f).size`) is bound once: `let a := xs.map f; a.filter p 0
+  -- a.size`, not two computations of `xs.map f`
+  let trivial (v : Expr) : Bool :=
+    v.isFVar || v.isConst || v.isLit || v.isLambda || v.hasLooseBVars || v.isMVar
+  if let some v := vals.find? fun v => !trivial v &&
+      vals.any fun w => w != v && (w.find? (· == v)).isSome then
+    let call := mkAppN fn args
+    let body ← kabstract call v
+    if body.hasLooseBVars then
+      return ← tr L (.letE `a (← inferType v) v body false)
   let sc := `LeanScript.LeanInitPureExtern ++ entry
   let some info := (← getEnv).find? sc
     | fail m!"the entry `{entry}` of the catalogue of externs has no shorthand `{sc}`"
@@ -148,6 +168,12 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
   let entryStx ← `($(mkIdent (`_root_ ++ sc)) $holes*)
   let argSrcs ← vals.mapM (tr L)
   return .extern entryStx argSrcs
+
+/-- Is `a` a type of functions (`Nat → Nat`)? -/
+def isFunType (a : Expr) : MetaM Bool := do
+  if !(← isType a) then return false
+  let a ← whnf a
+  return a.isForall && !(← isProp a)
 
 /-- A call `c a₁ … aₙ` of a library function.  When `c` is the Lean function of an entry of
     the catalogue of externs (`externTable`), it is a call of that extern (`externCall`).
@@ -164,6 +190,12 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
       language would need a representative of the class (`Quot.out` is not computable)"
   let .const c _ := fn | fail m!"cannot translate the application{indentExpr e}"
   if let some entry := externTable.find? c then
+    -- a function of values that are functions (`Array.map g` on an array of functions) is
+    -- unfolded rather than the extern: JavaScript uncurries `fun x => fun y => b` to
+    -- `(x, y) => b`, which the operations of the externs (which take `(x) => …`) do not accept
+    unless !isExtern (← getEnv) c && (← args.anyM fun a => isFunType a) do
+      return ← externCall tr L entry fn args
+    if let some e' ← unfoldCall? e then return ← tr L e'
     return ← externCall tr L entry fn args
   -- `n.succ` is `n + 1`
   if c == ``Nat.succ && args.size == 1 then

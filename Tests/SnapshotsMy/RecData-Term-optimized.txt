@@ -98,7 +98,7 @@ ret k1
 
 -- RecData.inorder : RecData.Tree → Array Nat
 val k1 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (Array Nat)) := fun x2 [1] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) => (closed)
-  let x14 [1] : (Array Nat) := data_rec#0 x2
+  let x11 [1] : (Array Nat) := data_rec#0 x2
     | branch 0 fun r3 => (closed)
       case r3 of
       | ctor#0() =>
@@ -106,10 +106,8 @@ val k1 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.h
       | ctor#1(f4 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat)), f5 [1] : Nat, f6 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat))) =>
         let ⟨f7 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f8 [1] : (Array Nat)⟩ := f4
         let ⟨f9 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f10 [1] : (Array Nat)⟩ := f6
-        let x13 [1] : (Array Nat) := array_foldl f10 lean_array_push(f8, f5) fun e11 acc12 => (closed)
-          ret lean_array_push(acc12, e11)
-        ret x13
-  ret x14
+        ret lean_array_append(lean_array_push(f8, f5), f10)
+  ret x11
 ret k1
 
 -- RecData.ofArrayT : Array Nat → RecData.Tree
@@ -180,7 +178,7 @@ val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [1] : (Array Nat) => (close
       ret x15
     let x16 [1] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := k5 acc4
     ret x16
-  let x29 [1] : (Array Nat) := data_rec#0 x17
+  let x26 [1] : (Array Nat) := data_rec#0 x17
     | branch 0 fun r18 => (closed)
       case r18 of
       | ctor#0() =>
@@ -188,10 +186,8 @@ val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [1] : (Array Nat) => (close
       | ctor#1(f19 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat)), f20 [1] : Nat, f21 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat))) =>
         let ⟨f22 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f23 [1] : (Array Nat)⟩ := f19
         let ⟨f24 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f25 [1] : (Array Nat)⟩ := f21
-        let x28 [1] : (Array Nat) := array_foldl f25 lean_array_push(f23, f20) fun e26 acc27 => (closed)
-          ret lean_array_push(acc27, e26)
-        ret x28
-  ret x29
+        ret lean_array_append(lean_array_push(f23, f20), f25)
+  ret x26
 ret k1
 
 -- RecData.sizeArray : Array Nat → Nat

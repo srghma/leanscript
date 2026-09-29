@@ -117,6 +117,12 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
 - **A recursive occurrence in the domain of a function** is refused (`Gen/Translate.lean`,
   `toFIR`).
 - **Effects.** There is no type former for `IO`, tasks or promises.
+- **Array functions of `ArrayStdExtern` at function-valued elements.**  `Array.map g` (and
+  `filter`, `qsort`, `foldr`, …) where an element or the answer of `g` is itself a function
+  (`xs.map (fun x => fun y => x + y)`) has no JavaScript operation: JavaScript uncurries
+  `fun x => fun y => b` to `(x, y) => b`, which the operations (taking `(x) => …`) do not accept.
+  The call is then unfolded, which fails for `Array.map` (a private well-founded loop).
+  `Array.flatten`/`Array.flatMap` into a typed array take only generic inner arrays.
 
 ## 2. Terms
 

@@ -101,7 +101,7 @@ ret k1
 
 -- RecData.inorder : RecData.Tree → Array Nat
 val k1 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (Array Nat)) := fun x2 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) => (closed)
-  let x14 [ω] : (Array Nat) := data_rec#0 x2
+  let x11 [ω] : (Array Nat) := data_rec#0 x2
     | branch 0 fun r3 => (closed)
       case r3 of
       | ctor#0() =>
@@ -109,10 +109,8 @@ val k1 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.
       | ctor#1(f4 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat)), f5 [ω] : Nat, f6 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat))) =>
         let ⟨f7 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f8 [ω] : (Array Nat)⟩ := f4
         let ⟨f9 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f10 [ω] : (Array Nat)⟩ := f6
-        let x13 [ω] : (Array Nat) := array_foldl f10 lean_array_push(f8, f5) fun e11 acc12 => (closed)
-          ret lean_array_push(acc12, e11)
-        ret x13
-  ret x14
+        ret lean_array_append(lean_array_push(f8, f5), f10)
+  ret x11
 ret k1
 
 -- RecData.ofArrayT : Array Nat → RecData.Tree
@@ -188,7 +186,7 @@ ret k1
 -- RecData.sort : Array Nat → Array Nat
 val k1 [ω] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (Array Nat)) := fun x4 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) => (closed)
-    let x16 [ω] : (Array Nat) := data_rec#0 x4
+    let x13 [ω] : (Array Nat) := data_rec#0 x4
       | branch 0 fun r5 => (closed)
         case r5 of
         | ctor#0() =>
@@ -196,35 +194,33 @@ val k1 [ω] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (clo
         | ctor#1(f6 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat)), f7 [ω] : Nat, f8 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (Array Nat))) =>
           let ⟨f9 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f10 [ω] : (Array Nat)⟩ := f6
           let ⟨f11 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f12 [ω] : (Array Nat)⟩ := f8
-          let x15 [ω] : (Array Nat) := array_foldl f12 lean_array_push(f10, f7) fun e13 acc14 => (closed)
-            ret lean_array_push(acc14, e13)
-          ret x15
-    ret x16
-  val k17 [ω] : ((Array Nat) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := fun x18 [ω] : (Array Nat) => (closed)
-    let x36 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := array_foldl x18 in#0(ctor#0()) fun e19 acc20 => (closed)
-      val k21 [ω] : (Nat → ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))))) := fun x22 [ω] : Nat => (closed)
-        val k23 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := fun x24 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) => (open)
-          let x33 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := data_rec#0 x24
-            | branch 0 fun r25 => (open)
-              case r25 of
+          ret lean_array_append(lean_array_push(f10, f7), f12)
+    ret x13
+  val k14 [ω] : ((Array Nat) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := fun x15 [ω] : (Array Nat) => (closed)
+    let x33 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := array_foldl x15 in#0(ctor#0()) fun e16 acc17 => (closed)
+      val k18 [ω] : (Nat → ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))))) := fun x19 [ω] : Nat => (closed)
+        val k20 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := fun x21 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) => (open)
+          let x30 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := data_rec#0 x21
+            | branch 0 fun r22 => (open)
+              case r22 of
               | ctor#0() =>
-                ret in#0(ctor#1(in#0(ctor#0()), x22, in#0(ctor#0())))
-              | ctor#1(f26 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))), f27 [ω] : Nat, f28 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))))) =>
-                let ⟨f29 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f30 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))⟩ := f26
-                let ⟨f31 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f32 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))⟩ := f28
-                if lean_nat_dec_lt(x22, f27) then
-                  ret in#0(ctor#1(f30, f27, f31))
+                ret in#0(ctor#1(in#0(ctor#0()), x19, in#0(ctor#0())))
+              | ctor#1(f23 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))), f24 [ω] : Nat, f25 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))))) =>
+                let ⟨f26 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f27 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))⟩ := f23
+                let ⟨f28 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f29 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))⟩ := f25
+                if lean_nat_dec_lt(x19, f24) then
+                  ret in#0(ctor#1(f27, f24, f28))
                 else
-                  ret in#0(ctor#1(f29, f27, f32))
-          ret x33
-        ret k23
-      let x34 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := k21 e19
-      let x35 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := x34 acc20
-      ret x35
-    ret x36
-  let x37 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := k17 x2
-  let x38 [ω] : (Array Nat) := k3 x37
-  ret x38
+                  ret in#0(ctor#1(f26, f24, f29))
+          ret x30
+        ret k20
+      let x31 [ω] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) → (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0)))) := k18 e16
+      let x32 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := x31 acc17
+      ret x32
+    ret x33
+  let x34 [ω] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) := k14 x2
+  let x35 [ω] : (Array Nat) := k3 x34
+  ret x35
 ret k1
 
 -- RecData.sizeArray : Array Nat → Nat

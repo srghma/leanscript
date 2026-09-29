@@ -332,6 +332,32 @@ partial def listLit? (e : Expr) : MetaM (Option (Array Expr)) := do
     return some (#[e.appFn!.appArg!] ++ rest)
   return none
 
+/-- Is `e` an array literal `#[a, b, …]` (`List.toArray [a, b, …]`)? -/
+def arrayLit? (e : Expr) : MetaM Bool := do
+  let e ← instantiateMVars e
+  if e.isAppOfArity ``List.toArray 2 then return (← listLit? e.appArg!).isSome
+  return false
+
+/-- Is the loose bound variable `i` of `e` used at most once, and not under a `fun` (where
+    substituting a value for it would compute the value at each call)? -/
+partial def usedOnceOutsideFun (e : Expr) (i : Nat := 0) : Bool :=
+  (go e i false).2 && (go e i false).1 ≤ 1
+where
+  /-- The number of uses, and whether none of them is under a `fun`. -/
+  go (e : Expr) (i : Nat) (underFun : Bool) : Nat × Bool :=
+    if !e.hasLooseBVar i then (0, true) else
+    match e with
+    | .bvar j => if j == i then (1, !underFun) else (0, true)
+    | .app f a => add (go f i underFun) (go a i underFun)
+    | .lam _ t b _ => add (go t i underFun) (go b (i + 1) true)
+    | .forallE _ t b _ => add (go t i underFun) (go b (i + 1) underFun)
+    | .letE _ t v b _ => add (add (go t i underFun) (go v i underFun)) (go b (i + 1) underFun)
+    | .mdata _ b => go b i underFun
+    | .proj _ _ b => go b i underFun
+    | _ => (0, true)
+  /-- The sum of two counts. -/
+  add (a b : Nat × Bool) : Nat × Bool := (a.1 + b.1, a.2 && b.2)
+
 /-- For a member `mems[i]` of the block recursed on that is `Option X`, where `X` is a member
     recursed on by a function `g` of the group: the answer type at `X` (the result type of
     `g`, whose parameter `p` is a value of `X`). -/

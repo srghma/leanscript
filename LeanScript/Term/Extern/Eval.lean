@@ -5,6 +5,7 @@ public import LeanScript.Term.Extern.Eval.UInt
 public import LeanScript.Term.Extern.Eval.SInt
 public import LeanScript.Term.Extern.Eval.String
 public import LeanScript.Term.Extern.Eval.Float
+public import LeanScript.Term.Extern.Eval.ArrayStd
 
 @[expose] public section
 
@@ -17,7 +18,7 @@ set_option autoImplicit false
 `LeanInitPureExtern` over the types of the language, `LeanScript.Extern`) on the values `v`
 of its arguments — the Lean function the entry stands for.  It takes the family of the
 entry apart and hands the entry to the evaluator of its family
-(`LeanScript.Term.Extern.Eval.Core`, `.UInt`, `.SInt`, `.String`, `.Float`).
+(`LeanScript.Term.Extern.Eval.Core`, `.UInt`, `.SInt`, `.String`, `.Float`, `.ArrayStd`).
 -/
 
 namespace LeanScript
@@ -60,6 +61,7 @@ def Extern.eval {ks : List Nat} (E : Ref ks → Type) {σs : List (Ty ks)} {τ :
   | .float32Extern e => Float32Extern.eval E e
   | .sIntFloat32Extern e => SIntFloat32Extern.eval E e
   | .ordStringExtern e => OrdStringExtern.eval E e
+  | .arrayStdExtern e => ArrayStdExtern.eval E e
 
 end LeanScript
 

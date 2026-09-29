@@ -30,6 +30,7 @@ ret k1
 -- AckWithoutStackButUsingCantorPairing.pair : Nat → Nat → Nat
 val k1 [ω] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [ω] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
-    ret lean_nat_add(lean_nat_div(lean_nat_mul(lean_nat_add(x2, x4), lean_nat_add(lean_nat_add(x2, x4), 1)), 2), x4)
+    let x5 [ω] : Nat := share lean_nat_add(x2, x4)
+    ret lean_nat_add(lean_nat_div(lean_nat_mul(x5, lean_nat_add(x5, 1)), 2), x4)
   ret k3
 ret k1

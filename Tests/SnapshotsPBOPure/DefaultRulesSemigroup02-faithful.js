@@ -2,12 +2,12 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 // not translated:
 //   instReprR.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
-//   Inline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
-//   Noinline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
-//   AlwaysInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
-//   InlineIfReduceInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1332 ?m.1273 ?m.1274 (LeanScript.Ty.prim ?m.1276) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1226 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1288 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Args.nil)))
+//   Inline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1135 ?m.1058 ?m.1059 (LeanScript.Ty.prim ?m.1061) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1011 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)))
+//   Noinline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1135 ?m.1058 ?m.1059 (LeanScript.Ty.prim ?m.1061) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1011 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)))
+//   AlwaysInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1135 ?m.1058 ?m.1059 (LeanScript.Ty.prim ?m.1061) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1011 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)))
+//   InlineIfReduceInline.test4: Application type mismatch: The argument LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)) has type LeanScript.PExpr ?m.1135 ?m.1058 ?m.1059 (LeanScript.Ty.prim ?m.1061) none but is expected to have type LeanScript.PExpr Δ [{ ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array, use := LeanScript.Usage1ω.many, lv := LeanScript.Lvl.meet none none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)), use := LeanScript.Usage1ω.many, lv := none, vis := true }, { ty := ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn (((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array)).fn ((LeanScript.Ty.prim LeanScript.LeanPrimTy.string).record (LeanScript.Fields.one (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array))), use := LeanScript.Usage1ω.many, lv := none, vis := true }] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.string).array ?m.1011 in the application R.mk.leanScriptCtor (LeanScript.PExpr.externLit LeanScript.LeanInitPureExtern.lean_string_append__String_append (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") (LeanScript.Args.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string ", World!") LeanScript.Args.nil))) (LeanScript.PExpr.externLit ?m.1073 (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "hello") LeanScript.Elems.nil)) (LeanScript.Args.cons (LeanScript.PExpr.array_mk (LeanScript.Elems.cons (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "World!") LeanScript.Elems.nil)) LeanScript.Args.nil)))
 
-import { array__lean_array_push_mutable } from "../../runtime.js";
+import { array__lean_array_append_mutable } from "../../runtime.js";
 
 /**
  * `Inline.appendR`
@@ -15,14 +15,10 @@ import { array__lean_array_push_mutable } from "../../runtime.js";
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$appendR = (a, b) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of b._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + b._1, _2: acc$1 };
-};
+export const Inline$appendR = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `Inline.test1`
@@ -30,14 +26,10 @@ export const Inline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test1 = (a, a1) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of a1._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + a1._1, _2: acc$1 };
-};
+export const Inline$test1 = (a, a1) => ({
+  _1: a._1 + a1._1,
+  _2: [...a._2, ...a1._2],
+});
 
 /**
  * `Inline.test2`
@@ -46,16 +38,9 @@ export const Inline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline$test2 = (a, b) => {
-  const k$5 = (x$1) => {
-    let acc$2 = [...a._2];
-    for (const e$3 of x$1._2) {
-      const a$4 = acc$2;
-      acc$2 = array__lean_array_push_mutable(a$4, e$3);
-    }
-    return { _1: a._1 + x$1._1, _2: acc$2 };
-  };
-  const x$6 = k$5(b);
-  return x$6;
+  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
+  const x$3 = k$2(b);
+  return x$3;
 };
 
 /**
@@ -65,12 +50,10 @@ export const Inline$test2 = (a, b) => {
  */
 export const Inline$test3 = (a) => {
   const k$1 = ["hello"];
-  let acc$2 = k$1;
-  for (const e$3 of a._2) {
-    const a$4 = acc$2;
-    acc$2 = array__lean_array_push_mutable(a$4, e$3);
-  }
-  return { _1: "hello" + a._1, _2: acc$2 };
+  return {
+    _1: "hello" + a._1,
+    _2: array__lean_array_append_mutable(k$1, a._2),
+  };
 };
 
 /**
@@ -79,14 +62,10 @@ export const Inline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$appendR = (a, b) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of b._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + b._1, _2: acc$1 };
-};
+export const Noinline$appendR = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `Noinline.test1`
@@ -94,14 +73,10 @@ export const Noinline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test1 = (a, a1) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of a1._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + a1._1, _2: acc$1 };
-};
+export const Noinline$test1 = (a, a1) => ({
+  _1: a._1 + a1._1,
+  _2: [...a._2, ...a1._2],
+});
 
 /**
  * `Noinline.test2`
@@ -110,16 +85,9 @@ export const Noinline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline$test2 = (a, b) => {
-  const k$5 = (x$1) => {
-    let acc$2 = [...a._2];
-    for (const e$3 of x$1._2) {
-      const a$4 = acc$2;
-      acc$2 = array__lean_array_push_mutable(a$4, e$3);
-    }
-    return { _1: a._1 + x$1._1, _2: acc$2 };
-  };
-  const x$6 = k$5(b);
-  return x$6;
+  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
+  const x$3 = k$2(b);
+  return x$3;
 };
 
 /**
@@ -129,12 +97,10 @@ export const Noinline$test2 = (a, b) => {
  */
 export const Noinline$test3 = (a) => {
   const k$1 = ["hello"];
-  let acc$2 = k$1;
-  for (const e$3 of a._2) {
-    const a$4 = acc$2;
-    acc$2 = array__lean_array_push_mutable(a$4, e$3);
-  }
-  return { _1: "hello" + a._1, _2: acc$2 };
+  return {
+    _1: "hello" + a._1,
+    _2: array__lean_array_append_mutable(k$1, a._2),
+  };
 };
 
 /**
@@ -143,14 +109,10 @@ export const Noinline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$appendR = (a, b) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of b._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + b._1, _2: acc$1 };
-};
+export const AlwaysInline$appendR = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `AlwaysInline.test1`
@@ -158,14 +120,10 @@ export const AlwaysInline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test1 = (a, a1) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of a1._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + a1._1, _2: acc$1 };
-};
+export const AlwaysInline$test1 = (a, a1) => ({
+  _1: a._1 + a1._1,
+  _2: [...a._2, ...a1._2],
+});
 
 /**
  * `AlwaysInline.test2`
@@ -174,16 +132,9 @@ export const AlwaysInline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline$test2 = (a, b) => {
-  const k$5 = (x$1) => {
-    let acc$2 = [...a._2];
-    for (const e$3 of x$1._2) {
-      const a$4 = acc$2;
-      acc$2 = array__lean_array_push_mutable(a$4, e$3);
-    }
-    return { _1: a._1 + x$1._1, _2: acc$2 };
-  };
-  const x$6 = k$5(b);
-  return x$6;
+  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
+  const x$3 = k$2(b);
+  return x$3;
 };
 
 /**
@@ -193,12 +144,10 @@ export const AlwaysInline$test2 = (a, b) => {
  */
 export const AlwaysInline$test3 = (a) => {
   const k$1 = ["hello"];
-  let acc$2 = k$1;
-  for (const e$3 of a._2) {
-    const a$4 = acc$2;
-    acc$2 = array__lean_array_push_mutable(a$4, e$3);
-  }
-  return { _1: "hello" + a._1, _2: acc$2 };
+  return {
+    _1: "hello" + a._1,
+    _2: array__lean_array_append_mutable(k$1, a._2),
+  };
 };
 
 /**
@@ -207,14 +156,10 @@ export const AlwaysInline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$appendR = (a, b) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of b._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + b._1, _2: acc$1 };
-};
+export const InlineIfReduceInline$appendR = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `InlineIfReduceInline.test1`
@@ -222,14 +167,10 @@ export const InlineIfReduceInline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test1 = (a, a1) => {
-  let acc$1 = [...a._2];
-  for (const e$2 of a1._2) {
-    const a$3 = acc$1;
-    acc$1 = array__lean_array_push_mutable(a$3, e$2);
-  }
-  return { _1: a._1 + a1._1, _2: acc$1 };
-};
+export const InlineIfReduceInline$test1 = (a, a1) => ({
+  _1: a._1 + a1._1,
+  _2: [...a._2, ...a1._2],
+});
 
 /**
  * `InlineIfReduceInline.test2`
@@ -238,16 +179,9 @@ export const InlineIfReduceInline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline$test2 = (a, b) => {
-  const k$5 = (x$1) => {
-    let acc$2 = [...a._2];
-    for (const e$3 of x$1._2) {
-      const a$4 = acc$2;
-      acc$2 = array__lean_array_push_mutable(a$4, e$3);
-    }
-    return { _1: a._1 + x$1._1, _2: acc$2 };
-  };
-  const x$6 = k$5(b);
-  return x$6;
+  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
+  const x$3 = k$2(b);
+  return x$3;
 };
 
 /**
@@ -257,10 +191,8 @@ export const InlineIfReduceInline$test2 = (a, b) => {
  */
 export const InlineIfReduceInline$test3 = (a) => {
   const k$1 = ["hello"];
-  let acc$2 = k$1;
-  for (const e$3 of a._2) {
-    const a$4 = acc$2;
-    acc$2 = array__lean_array_push_mutable(a$4, e$3);
-  }
-  return { _1: "hello" + a._1, _2: acc$2 };
+  return {
+    _1: "hello" + a._1,
+    _2: array__lean_array_append_mutable(k$1, a._2),
+  };
 };

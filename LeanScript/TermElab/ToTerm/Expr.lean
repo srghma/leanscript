@@ -22,21 +22,6 @@ open Lean Meta Elab Term
 open LeanScript.Anf (Src)
 
 namespace LeanScript.Gen
-/-- A list built by appends (`xs ++ ys`, `List.append xs ys`) as the array of its elements:
-    the appends of the arrays of its parts, so a chain of appends is one chain of array appends
-    (`(xs ++ ys).toArray` is `xs.toArray ++ ys.toArray`). -/
-partial def listAppendAsArray (l : Expr) : MetaM Expr := do
-  let l ← instantiateMVars l
-  let parts? : MetaM (Option (Expr × Expr)) := do
-    if l.isAppOfArity ``List.append 3 then return some (l.appFn!.appArg!, l.appArg!)
-    if l.isAppOfArity ``HAppend.hAppend 6 then
-      let a := l.appFn!.appArg!
-      let b := l.appArg!
-      if ← isDefEq l (← mkAppM ``List.append #[a, b]) then return some (a, b)
-    return none
-  match ← parts? with
-  | some (a, b) => mkAppM ``Array.append #[← listAppendAsArray a, ← listAppendAsArray b]
-  | none => mkAppM ``List.toArray #[l]
 
 mutual
 
@@ -66,6 +51,10 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
     -- (`List.toArray`, in an append) is then an array literal
     if (← cirOf L t false) matches .list _ then
       if (← listLit? v).isSome then return ← tr L (b.instantiate1 v)
+    -- an array literal used once (outside a `fun`) is substituted: an append onto it is then
+    -- one literal (`#["a"] ++ xs` is `["a", ...xs]`)
+    if usedOnceOutsideFun b then
+      if ← arrayLit? v then return ← tr L (b.instantiate1 v)
     discard <| cirOf L t
     let tv ← tr L v
     withLocalDeclD n t fun x => do
@@ -257,14 +246,16 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
         discard <| cirOf L (← inferType e) false
         return Src.arrayMk (← xs.mapM (tr L))
     -- the built-in list (`useBuiltinList`): a literal `[a, b, …]` is `PExpr.list_mk`, and
-    -- `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`, an append of arrays
+    -- `xs ++ ys` is the extern `lean_list_append` (`List.append`)
     if c == ``List.nil || c == ``List.cons then
       if (← cirOf L (← inferType e) false) matches .list _ then
         if let some xs ← listLit? e then return .list (← xs.mapM (tr L))
         fail m!"the list{indentExpr e}\nis not a literal: the built-in list has no `cons` yet"
     if c == ``List.append && args.size == 3 then
       if (← cirOf L (← inferType e) false) matches .list _ then
-        return ← tr L (← mkAppM ``Array.toList #[← listAppendAsArray e])
+        return ← trExtern tr L e fn args
+      -- a list that is a datatype of the program: `List.append` is an ordinary function
+      if let some e' ← unfoldCall? e then return ← tr L e'
     -- the conversions between a list and an array are their externs (`lean_array_mk`,
     -- `lean_array_to_list`), not the constructor and the projection of the structure `Array`
     if (c == ``Array.mk || c == ``Array.toList) && args.size == 2 then

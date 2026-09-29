@@ -15,6 +15,7 @@
 import {
   uint53__lean_nat_add,
   array__lean_array_push_mutable,
+  array__lean_array_append_mutable,
 } from "../../runtime.js";
 
 /**
@@ -190,15 +191,13 @@ export const RecData$inorder = (a) => {
     if (x$3.tag === 0) {
       return [];
     }
-    let acc$6 = array__lean_array_push_mutable(x$3._1._2, x$3._2);
-    for (const e$7 of x$3._3._2) {
-      const a$8 = acc$6;
-      acc$6 = array__lean_array_push_mutable(a$8, e$7);
-    }
-    return acc$6;
+    return array__lean_array_append_mutable(
+      array__lean_array_push_mutable(x$3._1._2, x$3._2),
+      x$3._3._2,
+    );
   };
-  const x$9 = go0$1(a);
-  return x$9;
+  const x$6 = go0$1(a);
+  return x$6;
 };
 
 /**
@@ -356,15 +355,13 @@ export const RecData$sort = (xs) => {
     if (x$16.tag === 0) {
       return [];
     }
-    let acc$19 = array__lean_array_push_mutable(x$16._1._2, x$16._2);
-    for (const e$20 of x$16._3._2) {
-      const a$21 = acc$19;
-      acc$19 = array__lean_array_push_mutable(a$21, e$20);
-    }
-    return acc$19;
+    return array__lean_array_append_mutable(
+      array__lean_array_push_mutable(x$16._1._2, x$16._2),
+      x$16._3._2,
+    );
   };
-  const x$22 = go0$14(acc$1);
-  return x$22;
+  const x$19 = go0$14(acc$1);
+  return x$19;
 };
 
 /**

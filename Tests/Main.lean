@@ -401,8 +401,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
     let mut' := names.filter fun (n : String) => n.endsWith "_mutable"
     let base (suffix n : String) : String := (n.dropEnd suffix.length).toString
     assertEq "the immutable updates"
-      ["array__lean_array_pop_immutable", "array__lean_array_push_immutable",
-       "bigint_nat__lean_array_fset_immutable", "bigint_nat__lean_array_fswap_immutable",
+      ["array__lean_array_append_immutable", "array__lean_array_pop_immutable",
+       "array__lean_array_push_immutable", "bigint_nat__lean_array_fset_immutable", "bigint_nat__lean_array_fswap_immutable",
        "bigint_nat__lean_array_set_immutable", "bigint_nat__lean_array_swap_immutable",
        "typedArray__lean_array_pop_immutable", "typedArray__lean_array_push_immutable",
        "uint53__lean_array_fset_immutable", "uint53__lean_array_fswap_immutable",
@@ -427,6 +427,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
       (pairName (.uint53__lean_array_fset_immutable (.generic tN)))
     assertEq "fswap, typed" "bigint_nat__lean_array_fswap_immutable MoreJs.Effectfulness.pure -> bigint_nat__lean_array_fswap_mutable"
       (pairName (.bigint_nat__lean_array_fswap_immutable (.typed .uint8)))
+    assertEq "append" "array__lean_array_append_immutable MoreJs.Effectfulness.pure -> array__lean_array_append_mutable"
+      (pairName (.array__lean_array_append_immutable (.generic tN)))
     assertEq "a mutable one is effectful" "uint53__lean_array_set_mutable MoreJs.Effectfulness.effectful -> none"
       (pairName (.uint53__lean_array_set_mutable (.generic tN)))
   it "the immutable array updates of runtime.js copy, the mutable ones update in place (needs node)" do
@@ -442,7 +444,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
       ("bigint_nat__lean_array_fset", "0n, 9", "new Float64Array([1, 2, 3])"),
       ("uint53__lean_array_fset", "2, 9", "[1, 2, 3]"),
       ("bigint_nat__lean_array_fswap", "0n, 1n", "[1, 2, 3]"),
-      ("uint53__lean_array_fswap", "1, 2", "new Int32Array([1, 2, 3])")]
+      ("uint53__lean_array_fswap", "1, 2", "new Int32Array([1, 2, 3])"),
+      ("array__lean_array_append", "[4, 5]", "[1, 2, 3]")]
     let cwd ← IO.currentDir
     let names := cases.foldl (fun (acc : List String) (c : String × String × String) =>
       acc ++ [c.1 ++ "_immutable", c.1 ++ "_mutable"]) []

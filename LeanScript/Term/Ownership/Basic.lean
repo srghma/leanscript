@@ -96,7 +96,7 @@ end
 /-- The updates of an array (their array is the first argument). -/
 def updateExterns : List String :=
   ["lean_array_push", "lean_array_set", "lean_array_fset", "lean_array_swap",
-   "lean_array_fswap", "lean_array_pop"]
+   "lean_array_fswap", "lean_array_pop", "lean_array_append"]
 
 /-- Is the extern an update of an array? -/
 def isUpdate (name : String) : Bool := updateExterns.contains name
@@ -113,7 +113,14 @@ def copyThenUpdate (name : String) : Bool :=
 def freshExterns : List String :=
   updateExterns ++
   ["lean_mk_array", "lean_mk_empty_array_with_capacity__Array_emptyWithCapacity",
-   "lean_mk_empty_array_with_capacity__Array_mkEmpty"]
+   "lean_mk_empty_array_with_capacity__Array_mkEmpty",
+   -- the array functions written in Lean (`ArrayStdExtern`): their operations always build a
+   -- new array (`runtime.js`)
+   "lean_array_map", "lean_array_filter", "lean_array_flat_map", "lean_array_flatten",
+   "lean_array_reverse", "lean_array_extract", "lean_array_erase_idx",
+   "lean_array_insert_idx", "lean_array_erase_idx_if_in_bounds",
+   "lean_array_insert_idx_if_in_bounds", "lean_array_qsort", "lean_array_zip_with",
+   "lean_array_zip"]
 
 /-- Does the extern always answer a new array? -/
 def isFresh (name : String) : Bool := freshExterns.contains name
@@ -123,6 +130,19 @@ def isFresh (name : String) : Bool := freshExterns.contains name
 def readSlot? (name : String) : Option Nat :=
   if name == "lean_array_get" || name == "lean_array_get_borrowed" then some 1
   else if name == "lean_array_get_size" then some 0
+  -- the array functions written in Lean (`ArrayStdExtern`) read their array argument during
+  -- the call (its elements are copied, the array itself is not kept); the array of
+  -- `lean_array_append` is its second argument, the first one is updated
+  else if ["lean_array_append", "lean_array_map", "lean_array_filter", "lean_array_flat_map",
+      "lean_array_contains", "lean_array_find_opt", "lean_array_find_idx_opt",
+      "lean_array_idx_of_opt", "lean_array_count_p", "lean_array_zip_with"].contains name then
+    some 1
+  else if ["lean_array_flatten", "lean_array_reverse", "lean_array_extract", "lean_array_any",
+      "lean_array_all", "lean_array_erase_idx", "lean_array_insert_idx", "lean_array_qsort",
+      "lean_array_erase_idx_if_in_bounds", "lean_array_insert_idx_if_in_bounds",
+      "lean_array_zip", "lean_array_back_opt"].contains name then
+    some 0
+  else if name == "lean_array_foldr" then some 2
   else none
 
 /-! ## Variables and occurrences -/

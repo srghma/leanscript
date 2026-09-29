@@ -6,6 +6,7 @@ public import JsTerm.Ops.Cands.SInt
 public import JsTerm.Ops.Cands.Float
 public import JsTerm.Ops.Cands.String
 public import JsTerm.Ops.Cands.Misc
+public import JsTerm.Ops.Cands.ArrayStd
 
 @[expose] public section
 
@@ -36,7 +37,8 @@ def cands (name : String) (σs : List JsTy) (τ : JsTy) : List Cand :=
     candsSInt? name <|>
     candsFloat? name <|>
     candsString? name <|>
-    candsMisc? name σs τ).getD []
+    candsMisc? name σs τ <|>
+    candsArrayStd? name σs τ).getD []
 
 /-- The operation of the extern `name` at the signature `σs → τ`, if there is one: the
     candidate at this signature (there is at most one, `OpsSpec.LookupUnique`). -/

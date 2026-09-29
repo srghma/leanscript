@@ -6,6 +6,7 @@ public import LeanScript.LeanInitPureExterns.Core
 public import LeanScript.LeanInitPureExterns.FixedWidth
 public import LeanScript.LeanInitPureExterns.String
 public import LeanScript.LeanInitPureExterns.Float
+public import LeanScript.LeanInitPureExterns.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation
 -- public import Init.Data.FloatArray.Basic
 -- public import Init.System.IO
 -- public import Init.System.Promise
@@ -64,9 +65,11 @@ the types `σs`, and `LeanScript.Extern.eval` gives the meaning of each entry (t
 named in its comment).  `#leanscript_to_term` translates a call of such a Lean function to the
 call of its entry (`LeanScript.TermElab.ToTerm.ExternTable`).
 
-The families are in four modules, by theme: `LeanScript.LeanInitPureExterns.Core`
+The families are in five modules, by theme: `LeanScript.LeanInitPureExterns.Core`
 (`Prelude`, `Core`, `Nat`, `Int`, `Array`, …), `.FixedWidth` (`UInt8` … `Int64`),
-`.String` and `.Float`.  This module holds the sections of `Init` whose entries are all
+`.String`, `.Float`, and `.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation` (the array
+functions written in Lean, not `@[extern]`, that the backend knows: `Array.append`,
+`Array.map`, `Array.filter`, …).  This module holds the sections of `Init` whose entries are all
 commented out, and `LeanInitPureExtern` itself.
 
 Each `-- Init/…` section of the catalogue is an inductive of its own (a *family*,
@@ -240,6 +243,9 @@ inductive LeanInitPureExtern : List MyTy → MyTy → Type where
   | sIntFloat32Extern {σs : List MyTy} {τ : MyTy} : SIntFloat32Extern σs τ → LeanInitPureExtern σs τ
   /-- An entry of `OrdStringExtern` (`Init/Data/Ord/String.lean`). -/
   | ordStringExtern {σs : List MyTy} {τ : MyTy} : OrdStringExtern ordering σs τ → LeanInitPureExtern σs τ
+  /-- An entry of `ArrayStdExtern` (the array functions of `Init` written in Lean that the
+      backend knows, `LeanScript.LeanInitPureExterns.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation`). -/
+  | arrayStdExtern {σs : List MyTy} {τ : MyTy} : ArrayStdExtern option fn1 fn2 prod σs τ → LeanInitPureExtern σs τ
 
 end LeanScript
 
