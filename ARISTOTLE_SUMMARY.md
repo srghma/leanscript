@@ -1,3 +1,31 @@
+# Summary of changes for run 5a7cf501-d194-4980-9eea-1de898c78986
+I wrote the proposals in `proposals/TypedDataProposals2.md`. The project already had `proposals/TypedDataProposals.md` on the same question, so this note covers designs that one doesn't. Nothing in `JsTerm` was changed.
+
+**The risk.** The optimisation passes find their work by matching the syntax of four forms: `union_mk`, `unionCases`, `record_mk` and `destructure`. There are 114 such matches in `JsTerm/Passes` and `JsTerm/Print`. The usual typed design adds "cast" nodes around datatype values. The passes would no longer recognise those values, and an optimisation that stops firing fails silently: the snapshots still compute the right answers.
+
+**The proposals:**
+- **A. A stable number per datatype.** `data (id : Nat)` with a table in the module. The current `D<depth>_<j>` names come from a relative depth, so they change between scopes and can clash. This step fixes that, and the other proposals build on it.
+- **B. No expression has a datatype type (recommended).** Wherever a value is bound (a match arm, a constructor argument, a function parameter), its type is the datatype unfolded one level. A `List Nat` value then has an ordinary union type. It is built by the existing `union_mk` and matched by the existing `unionCases`, so all 114 patterns keep their shape, with no cast nodes and no proof fields. Only the indices of binders change (`heads Σ fs`).
+- **C. The datatype's declaration stored inside the type.** Recursive positions become slots, so the passes need no extra signature parameter. Combined with B, the passes keep their current parameters; the cost is a larger hand-written equality on types.
+- **D. The layout proof found automatically.** A lighter version of part 1's recommendation, where instance search supplies the proof that a type unfolds to given constructors.
+- **E. Rejected:** indexing expressions by runtime shape loses the field types.
+
+**Catching a lost optimisation.**
+- Each pass would report counters (known-constructor rewrites, shared `$tag0` constants, `Unbox` removals, in-place updates), and a test in `Tests/Main.lean` fails if a count drops.
+- A second test compiles the same program with `List` and with an equivalent user type `MyList` and requires identical JavaScript. It can only run once recursive user types are accepted.
+
+**Optimisations typing adds:**
+- Built-in lists and user datatypes share one code path, replacing about 40 list-specific lines in the passes.
+- In-place array updates next to lists and other array-free datatypes. Today the check (`shareFree`) rejects any value containing a list.
+- Overwriting a matched cell in place when it is uniquely owned (the reset/reuse technique Lean's own compiler uses).
+- One object layout per datatype, so JavaScript engines see a single object shape.
+- `null` for the empty case of option-like types.
+- Loops chosen from the type, direct field reads, and per-datatype equality and hashing helpers.
+
+The note ends with a comparison table and a suggested order: A, then the counters, then B, then the gains.
+
+**Toy model.** `proposals/TypedDataHeadToy.lean` is a small standalone model of Proposal B, outside the Lake build; check it with `lake env lean proposals/TypedDataHeadToy.lean`. It compiles with no errors, warnings or `sorry`. It proves that the case-of-known-constructor rewrite preserves evaluation (`Expr.knownCtor_eval`, which uses only the `propext` axiom), and that rewrite needs no casts. The model also has a fuel-free evaluator and `List Nat` examples checked by `rfl`. What it doesn't show is that the real passes, `Unbox` in particular, adapt as easily; the note says to try `Unbox` first. Everything is committed.
+
 # Summary of changes for run bf163571-921e-461c-8c7a-e52fbcdd477d
 I wrote the proposals in `proposals/TypedDataProposals.md`. It builds on §3 of `JsTermReviewPlan.md` and on `RecursiveDatatypesProposal.md`. Nothing in the main code base was changed.
 
