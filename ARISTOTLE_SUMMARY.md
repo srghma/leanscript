@@ -1,3 +1,33 @@
+# Summary of changes for run 69593980-3404-45a2-931b-86343b876529
+I proved in Lean that removing the duplicated `number` literal code changed neither the JavaScript tree nor the source text it produces, for every `Float` and every `Float32`. I also turned the other duplications I named last time into theorems. Everything builds with no `sorry`. The main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+The proofs are in a new library, `RefactorSpec` (added to `lakefile.toml`). It contains a copy of the removed code, under `MoreJs.Legacy`, so old and new can be compared.
+
+**Results:**
+- **Printed JavaScript is unchanged** (`RefactorSpec/NumberPrint.lean`):
+  - `numberExpr_ofFloat_eq_legacy` and `numberExpr_ofFloat32_eq_legacy`: for every `Float` or `Float32`, the new printer builds exactly the same JavaScript syntax tree as the removed one.
+  - The general form, `numberExpr_eq_legacy`, covers every unpacked float whose mantissa is below 2^53. That limit is needed: the removed code only stripped up to 400 trailing zeros, so for huge mantissas the two versions really do differ.
+- **Supporting facts** (`RefactorSpec/NumberStrip.lean`):
+  - The old zero-stripping equals `JSNumber.stripZeros` on any positive number with fewer than 400 trailing zeros.
+  - `shortestDecimal` only ever produces such numbers when the mantissa is below 2^53.
+  - Every unpacked `Float` or `Float32` has a mantissa below 2^53.
+- **Source text is unchanged** (`RefactorSpec/NumberSource.lean`):
+  - `numberSource_eq_legacy` and `float32Source_eq_legacy`: the new spelling equals the old one, including `1e+21`, `-0`, `NaN` and `-Infinity`.
+  - The core step, `withExponentSign_renderDecimal`: the decimal writer of the JavaScript trees, `JSNumber.renderDecimal`, plus the `+` added to a positive exponent, is exactly the removed `decimalString` for every positive mantissa.
+- **The other duplications** (`RefactorSpec/Duplicates.lean`):
+  - `neList_equiv_nonEmptyList`: the removed `NEList` and your `NonEmptyList` convert into each other and back without change, keeping the same elements.
+  - `WFFnVar` and `JsMem` convert into each other and back without change, via `wfFnVarToJsMem` and `jsMemToWFFnVar`.
+  - `lookup_eq_find?_map`: the hand-written lookup `(l.find? (·.1 == n)).map (·.2)` is `List.lookup n l`.
+  - `JSNumber.repeatChar` is `String.pushn`, and `JSNumber.powNat` is `^`.
+  - That `JSNumber.digitChar` equals `Nat.digitChar` below 16 was already proved in your project (`LiteralPrintSpec.JSNumber.digitChar_eq`), so I didn't repeat it.
+
+**Code changes needed for the proofs:**
+- `withExponentSign` in `JsTerm/Syntax/NumberLit.lean` now works on the character list instead of using `splitOn`, which made it provable. Its output is the same; the full build, `lake exe tests` (57/57) and the snapshot checks (4002 passed, 0 failed, no snapshot file changed) all still pass.
+- `smallNat?_pos` moved from `NumberPrint.lean` to `NumberStrip.lean` so both proof files can use it.
+- `NumberPrint.lean` and `NumberSource.lean` are not module files, because the files they import (the printer and `LiteralPrintSpec`) are not modules. `NumberStrip.lean` and `Duplicates.lean` are.
+
+The Properties table has four new entries: the `NumberForm` definition, and the three results above, marked proved. Everything is committed.
+
 # Summary of changes for run 6152da32-29f0-462a-8dd7-2f58d6ef43b2
 I made the generated JavaScript smaller by improving the Term → JsTerm conversion passes. I did not change `Term.optimize`: the extra rewrites I considered there, such as inlining beta-redexes, would have meant a lot of new proof work on top of `Term.optimize_eval`. So that optimiser and its proofs are exactly as before, and all the new work is in the JsTerm passes. Those passes are checked by the snapshot tests, not proved.
 

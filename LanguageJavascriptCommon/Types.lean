@@ -1,3 +1,5 @@
+module
+
 /-
 Refined component types shared by the three JavaScript ASTs.
 
@@ -11,8 +13,7 @@ This module collects the refined types all three of them use:
 
 * `NonEmptyString` (from the `NonEmpty` library), a string which carries a
   proof that it is not `""`;
-* `NEList` and `NEArray`, a list respectively an array which cannot be
-  empty;
+* `NonEmptyList` (from the `NonEmpty` library), a list which cannot be empty;
 * `JSNumber`, a numeric literal *as a number* — an exact decimal, an exact
   natural number in base two, eight or sixteen, or a `BigInt`;
 * `RegExpFlags` and `RegExpLit`, a regular expression literal with its flags
@@ -31,7 +32,10 @@ parent of the namespace of each of the three trees, so the names are visible
 inside all of them without an `open`.
 -/
 
-import NonEmpty.String
+public import NonEmpty.String
+public import NonEmpty.ListCorrectByConstruction.Basic
+
+@[expose] public section
 
 open NonEmpty.String
 
@@ -96,108 +100,13 @@ needs, which build one out of the source text in place. -/
 export NonEmpty.String (NonEmptyString)
 
 
-/-! ## Non-empty lists and arrays
+/-! ## Non-empty lists
 
-The invariant is structural — the first element is a field — rather than a
-proof, because the ASTs nest these containers inside their own recursive
-types and Lean does not allow a nested inductive whose parameters mention
-the nested type. -/
+Lists of the trees that cannot be empty (the links of an optional chain, the declarators of a
+declaration, …) are a `NonEmptyList` of the `NonEmpty` library: the first element is a field
+(`head`) rather than a proof, so the ASTs can nest it inside their own recursive types. -/
 
-/-- A list that is known not to be empty. -/
-structure NEList (α : Type) where
-  /-- The first element. -/
-  hd : α
-  /-- The remaining elements. -/
-  tl : List α
-deriving Repr, BEq, DecidableEq, Inhabited
-
-namespace NEList
-
-variable {α β : Type}
-
-/-- The elements, as an ordinary list. -/
-def toList (l : NEList α) : List α := l.hd :: l.tl
-
-@[simp] theorem toList_ne_nil (l : NEList α) : l.toList ≠ [] := by
-  simp [toList]
-
-/-- A non-empty list from a list, or `none` if it is empty. -/
-def ofList? : List α → Option (NEList α)
-  | [] => none
-  | a :: as => some ⟨a, as⟩
-
-/-- A non-empty list from a list; a singleton placeholder if it is empty. -/
-def ofList! [Inhabited α] : List α → NEList α
-  | [] => ⟨default, []⟩
-  | a :: as => ⟨a, as⟩
-
-@[simp] theorem toList_ofList! [Inhabited α] (a : α) (as : List α) :
-    (ofList! (a :: as)).toList = a :: as := rfl
-
-/-- Map a function over the elements. -/
-def map (f : α → β) (l : NEList α) : NEList β := ⟨f l.hd, l.tl.map f⟩
-
-/-- The number of elements. -/
-def length (l : NEList α) : Nat := l.tl.length + 1
-
-@[simp] theorem length_pos (l : NEList α) : 0 < l.length := by
-  simp [length]
-
-/-- A singleton. -/
-def singleton (a : α) : NEList α := ⟨a, []⟩
-
-/-- The elements in reverse order, pushed in front of `acc`. -/
-def reverseAux : List α → NEList α → NEList α
-  | [], acc => acc
-  | a :: as, acc => reverseAux as ⟨a, acc.hd :: acc.tl⟩
-
-/-- The elements in reverse order. -/
-def reverse (l : NEList α) : NEList α := reverseAux l.tl ⟨l.hd, []⟩
-
-theorem toList_reverseAux : ∀ (as : List α) (acc : NEList α),
-    (reverseAux as acc).toList = as.reverse ++ acc.toList
-  | [], acc => by simp [reverseAux]
-  | a :: as, acc => by
-      rw [reverseAux, toList_reverseAux as ⟨a, acc.hd :: acc.tl⟩]
-      simp [toList]
-
-/-- Reversing a non-empty list reverses the list of its elements. -/
-@[simp] theorem toList_reverse (l : NEList α) : l.reverse.toList = l.toList.reverse := by
-  rw [reverse, toList_reverseAux]
-  simp [toList]
-
-end NEList
-
-/-- An array that is known not to be empty. -/
-structure NEArray (α : Type) where
-  /-- The first element. -/
-  hd : α
-  /-- The remaining elements. -/
-  tl : Array α
-deriving Repr, BEq, DecidableEq, Inhabited
-
-namespace NEArray
-
-variable {α β : Type}
-
-/-- The elements, as an ordinary array. -/
-def toArray (a : NEArray α) : Array α := #[a.hd] ++ a.tl
-
-@[simp] theorem size_toArray (a : NEArray α) : a.toArray.size = a.tl.size + 1 := by
-  simp [toArray, Array.size_append]
-  omega
-
-/-- A non-empty array from an array, or `none` if it is empty. -/
-def ofArray? (a : Array α) : Option (NEArray α) :=
-  if h : 0 < a.size then some ⟨a[0], a.extract 1 a.size⟩ else none
-
-/-- Map a function over the elements. -/
-def map (f : α → β) (a : NEArray α) : NEArray β := ⟨f a.hd, a.tl.map f⟩
-
-/-- The number of elements. -/
-def size (a : NEArray α) : Nat := a.tl.size + 1
-
-end NEArray
+export NonEmpty.ListCorrectByConstruction (NonEmptyList)
 
 /-! ## Numeric literals
 
@@ -275,13 +184,13 @@ The recursion is structural, on the fuel, rather than well founded on `m`,
 so that the kernel can evaluate it: a literal of the annotated tree carries
 a proof that its spelling parses, and `JSNumber.parse?` normalises through
 this function. -/
-private def stripZerosAux : Nat → Nat → Int → Nat × Int
+def stripZerosAux : Nat → Nat → Int → Nat × Int
   | 0, m, e => (m, e)
   | fuel + 1, m, e => if m % 10 == 0 then stripZerosAux fuel (m / 10) (e + 1) else (m, e)
 
 /-- Strip the trailing zeros of a base ten mantissa, moving them into the
 exponent. -/
-private def stripZeros (m : Nat) (e : Int) : Nat × Int :=
+def stripZeros (m : Nat) (e : Int) : Nat × Int :=
   if m == 0 then (0, 0) else stripZerosAux m m e
 
 /-- The canonical form of a literal: the mantissa of a base ten literal has
@@ -354,14 +263,14 @@ def digitsAux (base : Nat) : Nat → Nat → String → String
 def digitsOf (base : Nat) (n : Nat) : String :=
   if n == 0 then "0" else digitsAux base (n + 1) n ""
 
-private def repeatChar (c : Char) (n : Nat) : String := String.pushn "" c n
+def repeatChar (c : Char) (n : Nat) : String := String.pushn "" c n
 
 /-- Render a base ten literal `mantissa * 10 ^ exponent`, following the
 `Number::toString` rules of ECMAScript: a plain decimal spelling when the
 decimal point falls within a reasonable range, and the exponent form
 otherwise.  Unlike ECMAScript, a positive exponent is written without a
 `+`, the way `prettier` normalises it. -/
-private def renderDecimal (mantissa : Nat) (exponent : Int) : String :=
+def renderDecimal (mantissa : Nat) (exponent : Int) : String :=
   if mantissa == 0 then "0"
   else
     let s := digitsOf 10 mantissa
@@ -853,3 +762,5 @@ def ofSubstring? (ss : Substring.Raw) : Option JSStringSrc :=
 end JSStringSrc
 
 end Language.JavaScript
+
+end

@@ -1,5 +1,7 @@
 module
 
+public import LanguageJavascriptCommon.Types
+
 @[expose] public section
 
 set_option autoImplicit false
@@ -12,22 +14,21 @@ small integer as itself (`12`, `-3`), the special values as `NaN`, `Infinity`, `
 `-0`, and every other value as the **shortest** decimal that reads back as the same double
 (`0.1`, `1e-7`, `5e-324`).
 
-The value is taken apart with the core library's model of IEEE floats,
-`Float.Model.UnpackedFloat` (`f.toModel.unpack`): not a number, a signed infinity, a signed
-zero, or `± m * 2 ^ e` with `m > 0`.  A `Float32` unpacks to the same shape (`Float32.toModel`),
-and its value is a double too, so the two share `UnpackedFloat.form`: the decimal printed for
-a `Float32` reads back as that double exactly (a `number` holding a `Float32` is always one
-`Math.fround` has rounded, so the literal must not be a shorter decimal that only rounds to the
-same `Float32`).
+A double is kept as the core library's model of IEEE floats, `Float.Model.UnpackedFloat`
+(`f.toModel.unpack`): not a number, a signed infinity, a signed zero, or `± m * 2 ^ e` with
+`m > 0`.  A `Float32` unpacks to the same shape (`Float32.toModel`), and its value is a double
+too, so the two share `NumberForm.finiteDecimal`: the decimal printed for a `Float32` reads
+back as that double exactly (a `number` holding a `Float32` is always one `Math.fround` has
+rounded, so the literal must not be a shorter decimal that only rounds to the same `Float32`).
+The decimal is a `Language.JavaScript.JSNumber`, the literal type of the JavaScript trees, and
+is spelled with its `render`.
 -/
 
 namespace MoreJs
 
 open Float.Model (UnpackedFloat)
 open Float.Model.UnpackedFloat (Sign)
-
-/-- The number of decimal digits of `n` (`1` for `0`). -/
-def decDigits (n : Nat) : Nat := (toString n).length
+open Language.JavaScript (JSNumber)
 
 /-- The shortest decimal `(digits, exponent)` with `digits * 10 ^ exponent` reading back as
     the double `m * 2 ^ e` (`m > 0`). -/
@@ -35,7 +36,7 @@ def shortestDecimal (m : Nat) (e : Int) : Nat × Int :=
   -- the exact value as `D * 10 ^ (-K)`
   let (D, K) : Nat × Nat := if e ≥ 0 then (m * 2 ^ e.toNat, 0) else (m * 5 ^ e.natAbs, e.natAbs)
   let exact : Float := Float.ofScientific D true K
-  let L := decDigits D
+  let L := (toString D).length
   let rec go (fuel k : Nat) : Nat × Int :=
     match fuel with
     | 0 => (D, -(K : Int))
@@ -51,24 +52,17 @@ def shortestDecimal (m : Nat) (e : Int) : Nat × Int :=
       if f.toBits == exact.toBits then (q, ex) else go fuel (k + 1)
   go 20 1
 
-/-- How a `number` is written in JavaScript source. -/
+/-- A `number` literal: an integer, or a double taken apart by the core library's model
+    (`Float.Model.UnpackedFloat`: not a number, a signed infinity, a signed zero, or
+    `± m * 2 ^ e`).  The decimal digits of a double are only worked out when it is written
+    (`finiteDecimal`), and written with the literal type of the JavaScript trees
+    (`Language.JavaScript.JSNumber`). -/
 inductive NumberForm where
-  /-- `NaN`. -/
-  | nan
-  /-- `Infinity` or `-Infinity`. -/
-  | infinity (neg : Bool)
-  /-- `-0`. -/
-  | negZero
-  /-- An integer of absolute value at most `2 ^ 53`, written as itself. -/
+  /-- An integer, written as itself. -/
   | int (n : Int)
-  /-- `(neg ? "-" : "") digits e exponent`, the shortest such decimal. -/
-  | decimal (neg : Bool) (digits : Nat) (exponent : Int)
-  deriving Inhabited, Repr, BEq, DecidableEq
-
-/-- Is the sign negative? -/
-def signIsNeg : Sign → Bool
-  | .negative => true
-  | .positive => false
+  /-- A double. -/
+  | float (u : UnpackedFloat)
+  deriving Inhabited, Repr, BEq
 
 namespace NumberForm
 
@@ -81,59 +75,42 @@ def smallNat? (m : Nat) (e : Int) : Option Nat :=
   | some v => if v ≤ 2 ^ 53 then some v else none
   | none => none
 
-/-- The form of an unpacked float. -/
-def ofUnpacked : UnpackedFloat → NumberForm
-  | .notANumber => .nan
-  | .infinity s => .infinity (signIsNeg s)
-  | .zero s => if signIsNeg s then .negZero else .int 0
-  | .finite s m e _ =>
-    match smallNat? m e with
-    | some v => .int (if signIsNeg s then -(v : Int) else v)
-    | none =>
-      let (d, ex) := stripZeros (shortestDecimal m e)
-      .decimal (signIsNeg s) d ex
-where
-  /-- `(d, ex)` without the trailing zeros of `d` (rounding up can leave one: `10e-7`). -/
-  stripZeros (p : Nat × Int) : Nat × Int :=
-    let rec go (fuel : Nat) (d : Nat) (ex : Int) : Nat × Int :=
-      match fuel with
-      | 0 => (d, ex)
-      | fuel + 1 => if d != 0 && d % 10 == 0 then go fuel (d / 10) (ex + 1) else (d, ex)
-    go 400 p.1 p.2
+/-- The positive double `m * 2 ^ e` (`m > 0`) as a base ten literal: the integer itself when
+    it is one of at most `2 ^ 53`, the shortest decimal that reads back as it otherwise. -/
+def finiteDecimal (m : Nat) (e : Int) : JSNumber :=
+  match smallNat? m e with
+  | some v => .decimal v 0
+  | none => let (d, ex) := shortestDecimal m e; JSNumber.normalize (.decimal d ex)
 
 /-- The form of a double. -/
-def ofFloat (f : Float) : NumberForm := ofUnpacked f.toModel.unpack
+def ofFloat (f : Float) : NumberForm := .float f.toModel.unpack
 
 /-- The form of a `Float32`, as the double that holds it. -/
-def ofFloat32 (f : Float32) : NumberForm := ofUnpacked f.toModel.unpack
+def ofFloat32 (f : Float32) : NumberForm := .float f.toModel.unpack
 
-/-- The decimal `digits * 10 ^ exponent` (`digits > 0`) as JavaScript's `Number.prototype.
-    toString` writes it: positional when the decimal point falls at most 21 digits to the right
-    and 6 zeros to the left of the digits, scientific (`1.5e-7`, `1e+21`) otherwise. -/
-def decimalString (digits : Nat) (exponent : Int) : String :=
-  let s := toString digits
-  let k : Int := s.length
-  -- the position of the decimal point, counted from the left of the digits
-  let n : Int := exponent + k
-  if k ≤ n ∧ n ≤ 21 then s ++ String.ofList (List.replicate (n - k).toNat '0')
-  else if 0 < n ∧ n ≤ 21 then
-    String.ofList (s.toList.take n.toNat) ++ "." ++ String.ofList (s.toList.drop n.toNat)
-  else if -6 < n ∧ n ≤ 0 then "0." ++ String.ofList (List.replicate n.natAbs '0') ++ s
-  else
-    let mant := match s.toList with
-      | [] => s
-      | [c] => String.singleton c
-      | c :: cs => String.singleton c ++ "." ++ String.ofList cs
-    let e := n - 1
-    mant ++ "e" ++ (if e ≥ 0 then "+" else "-") ++ toString e.natAbs
+/-- `JSNumber.render` writes a positive exponent without a sign (`1e21`, as `prettier` does);
+    `Number.prototype.toString` writes it with one (`1e+21`). -/
+def withExponentSign (s : String) : String := String.ofList (go s.toList)
+where
+  /-- A `+` after the first `e`, unless a `-` follows it. -/
+  go : List Char → List Char
+    | [] => []
+    | c :: cs =>
+      if c = 'e' then (if cs.head? = some '-' then c :: cs else c :: '+' :: cs)
+      else c :: go cs
+
+/-- `"-"` for a negative sign. -/
+def signPrefix : Sign → String
+  | .negative => "-"
+  | .positive => ""
 
 /-- The form as JavaScript source, spelled as `String(x)` spells the number in JavaScript. -/
 def source : NumberForm → String
-  | .nan => "NaN"
-  | .infinity neg => if neg then "-Infinity" else "Infinity"
-  | .negZero => "-0"
   | .int n => toString n
-  | .decimal neg d ex => (if neg then "-" else "") ++ decimalString d ex
+  | .float .notANumber => "NaN"
+  | .float (.infinity s) => signPrefix s ++ "Infinity"
+  | .float (.zero s) => signPrefix s ++ "0"
+  | .float (.finite s m e _) => signPrefix s ++ withExponentSign (finiteDecimal m e).render
 
 end NumberForm
 

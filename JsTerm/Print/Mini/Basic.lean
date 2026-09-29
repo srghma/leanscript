@@ -42,15 +42,19 @@ def bigintNum (n : Int) : MiniExpr :=
   let b : MiniExpr := .number (.bigint .decimal n.natAbs)
   if n < 0 then .unary .minus b else b
 
+/-- `-x` for a negative sign. -/
+def withSign (s : Float.Model.UnpackedFloat.Sign) (x : MiniExpr) : MiniExpr :=
+  match s with
+  | .negative => .unary .minus x
+  | .positive => x
+
 /-- A `number` literal. -/
 def numberExpr : NumberForm → MiniExpr
-  | .nan => ident "NaN"
-  | .infinity neg => if neg then .unary .minus (ident "Infinity") else ident "Infinity"
-  | .negZero => .unary .minus (natNum 0)
   | .int n => intNum n
-  | .decimal neg d ex =>
-    let num : MiniExpr := .number (.decimal d ex)
-    if neg then .unary .minus num else num
+  | .float .notANumber => ident "NaN"
+  | .float (.infinity s) => withSign s (ident "Infinity")
+  | .float (.zero s) => withSign s (natNum 0)
+  | .float (.finite s m e _) => withSign s (.number (NumberForm.finiteDecimal m e))
 
 /-- A literal, by its shape. -/
 partial def shapeExpr : JsLitShape → MiniExpr

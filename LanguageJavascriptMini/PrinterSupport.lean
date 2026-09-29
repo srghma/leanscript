@@ -473,7 +473,7 @@ def chainLinkIsCall : MiniChainLink → Bool
 /-- Whether an optional chain used as the base of another one merges into
 it: it does when the link that follows it is optional, which makes the
 parentheses around the base unnecessary. -/
-def chainMergesBase (links : NEList MiniChainLink) : Bool := chainLinkIsOptional links.hd
+def chainMergesBase (links : NonEmptyList MiniChainLink) : Bool := chainLinkIsOptional links.head
 
 /-- Whether the leftmost token of the expression opens a function or a
 class expression, so that `export default` in front of it would be read as
@@ -1032,7 +1032,7 @@ def babelNodeCount : MiniExpr → Nat
         + (match opts with | some o => 1 + babelNodeCount o | none => 0)
   | .dot o _ | .privateDot o _ => 2 + babelNodeCount o
   | .index o i => 2 + babelNodeCount o + babelNodeCount i
-  | .chain b links => babelNodeCount b + babelChainLinksCount (links.hd :: links.tl)
+  | .chain b links => babelNodeCount b + babelChainLinksCount links.toList
   | .classExpr _ name heritage _ =>
       1 + (if name.isSome then 1 else 0)
         + (match heritage with | some h => 1 + babelNodeCount h | none => 0)
@@ -1364,7 +1364,7 @@ at the end of an optional chain counts. -/
 def isCallWithArgs : MiniExpr → Bool
   | .call _ args => !args.isEmpty
   | .chain _ links =>
-      match (links.hd :: links.tl).getLast? with
+      match links.toList.getLast? with
       | some (.call _ args) => !args.isEmpty
       | _ => false
   | _ => false
@@ -1385,16 +1385,16 @@ def memberInlines (pos : Pos) (objIsIdent objIsCallWithArgs objIsChain propIsIde
 /-- Whether the first link of a chain is a computed access: the parentheses
 that a base may need then stay tight against the `[` that follows them,
 whereas a `.` access is allowed to go on a line of its own. -/
-def chainStartsComputed (links : NEList MiniChainLink) : Bool :=
-  match links.hd with
+def chainStartsComputed (links : NonEmptyList MiniChainLink) : Bool :=
+  match links.head with
   | .index .. => true
   | _ => false
 
 /-- The position of the base of an optional chain that stands in `pos`:
 the base is the callee of the first link when that link is a call, and
 the object of a member access otherwise. -/
-def chainBasePos (pos : Pos) (links : NEList MiniChainLink) : Pos :=
-  match links.hd with
+def chainBasePos (pos : Pos) (links : NonEmptyList MiniChainLink) : Pos :=
+  match links.head with
   | .call _ args => calleePos pos args.length
   | _ =>
       -- a call among the links stands between the base and whatever holds
@@ -1472,7 +1472,7 @@ def chainShapeItems : MiniExpr → List ChainItem
         ++ [chainCallItem args .nil]
   | .chain b links =>
       (if isChainSpine b then chainShapeItems b else [chainBaseItem b .nil])
-        ++ (links.hd :: links.tl).map chainLinkShapeItem
+        ++ links.toList.map chainLinkShapeItem
   | e => [chainBaseItem e .nil]
 
 /-- Whether prettier lays the expression out with the member chain layout.
@@ -1687,8 +1687,8 @@ def chainAssemble (pos : Pos) (items : List ChainItem) : Doc :=
 
 /-- Whether the last link of an optional chain is a member access rather
 than a call. -/
-def chainEndsInMember (links : NEList MiniChainLink) : Bool :=
-  match (links.hd :: links.tl).getLast? with
+def chainEndsInMember (links : NonEmptyList MiniChainLink) : Bool :=
+  match links.toList.getLast? with
   | some (.call ..) => false
   | _ => true
 
@@ -1735,7 +1735,7 @@ def couldExpandArg (inChain : Bool) : MiniExpr → Bool
         | .ternary .. | .call .. => !inChain
         -- an optional chain that ends in a call is a call too
         | .chain _ links =>
-            !inChain && (match (links.hd :: links.tl).getLast? with
+            !inChain && (match links.toList.getLast? with
               | some (.call ..) => true
               | _ => false)
         | _ => false
@@ -1749,7 +1749,7 @@ def isHopefullyShortCallArgument (e : MiniExpr) : Bool :=
   | .new _ args => args.length ≤ 1 && isSimpleCallArgument 2 e
   -- a chain that ends in a call is a call too
   | .chain _ links =>
-      (match (links.hd :: links.tl).getLast? with
+      (match links.toList.getLast? with
         | some (.call _ args) => args.length ≤ 1
         | _ => true)
       && isSimpleCallArgument 2 e
@@ -1779,7 +1779,7 @@ optional chain. -/
 def callArgumentsOf : MiniExpr → Option (List MiniExpr)
   | .call _ args => some args
   | .chain _ links =>
-      match (links.hd :: links.tl).getLast? with
+      match links.toList.getLast? with
       | some (.call _ args) => some args
       | _ => none
   | _ => none

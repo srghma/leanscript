@@ -667,9 +667,9 @@ def chainItemsOf (pos : Pos) (atStart : StartCtx) (merge underCall : Bool) :
   | e => [chainBaseItem e .nil]
 
 /-- The elements of the links of an optional chain. -/
-def chainLinkItemsNE (lastCtx : StartCtx) (links : NEList MiniChainLink) : List ChainItem :=
-  chainLinkItem (if links.tl.isEmpty then lastCtx else .none) links.hd
-    :: chainLinkItems lastCtx links.tl
+def chainLinkItemsNE (lastCtx : StartCtx) (links : NonEmptyList MiniChainLink) : List ChainItem :=
+  chainLinkItem (if links.tail.isEmpty then lastCtx else .none) links.head
+    :: chainLinkItems lastCtx links.tail
 
 /-- The elements of the links of an optional chain. -/
 def chainLinkItems (lastCtx : StartCtx) : List MiniChainLink → List ChainItem

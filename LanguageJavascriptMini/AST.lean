@@ -22,7 +22,7 @@ thing give equal `MiniAST` values, and the printer turns a value back into
 one canonical, opinionated rendering of it.
 
 The refined component types it is phrased in terms of — `NonEmptyString`,
-`NEList`, `JSNumber` and `RegExpLit` — are those of
+`NonEmptyList`, `JSNumber` and `RegExpLit` — are those of
 `Language.JavaScript.Types`, and the leaf types it shares with the other
 trees — the operators, `VarKind`, `MethodKind`, `Specifier`, `ImportAttr`
 and `JSXName` — those of `Language.JavaScript.Common`.  Both live in
@@ -128,7 +128,7 @@ inductive MiniExpr where
   /-- `obj[index]` -/
   | index (obj : MiniExpr) (idx : MiniExpr)
   /-- An optional chain expression. -/
-  | chain (base : MiniExpr) (links : NEList MiniChainLink)
+  | chain (base : MiniExpr) (links : NonEmptyList MiniChainLink)
   /-- `import.meta` -/
   | importMeta
   /-- A dynamic import, `import(specifier)` or `import(specifier, options)`. -/
@@ -316,7 +316,7 @@ structure MiniDeclarator where
 inductive MiniForInit where
   | none
   | expr (expr : MiniExpr)
-  | decl (kind : VarKind) (decls : NEList MiniDeclarator)
+  | decl (kind : VarKind) (decls : NonEmptyList MiniDeclarator)
 
 /-- The binder of a `for (... in ...)` or `for (... of ...)` statement:
 either an assignment to something which already exists, or a declaration. -/
@@ -350,7 +350,7 @@ inductive MiniFinallyClause where
 or a `finally`, which this makes structurally impossible to violate. -/
 inductive MiniTryTail where
   /-- At least one `catch` clause, and possibly a `finally`. -/
-  | catches (catches : NEList MiniCatchClause) (fin : MiniFinallyClause)
+  | catches (catches : NonEmptyList MiniCatchClause) (fin : MiniFinallyClause)
   /-- No `catch` clause, only a `finally`. -/
   | finallyOnly (body : List MiniStatement)
 
@@ -363,10 +363,10 @@ inductive MiniStatement where
   | classDecl (decorators : List MiniExpr) (name : NonEmptyString) (heritage : Option MiniExpr)
       (body : List MiniClassElement)
   /-- `var`/`let`/`const` declaration; it declares at least one name. -/
-  | decl (kind : VarKind) (decls : NEList MiniDeclarator)
+  | decl (kind : VarKind) (decls : NonEmptyList MiniDeclarator)
   /-- `using x = e;` and `await using x = e;`, the explicit resource
   management declarations; `isAwait` selects the second. -/
-  | using_ (isAwait : Bool) (decls : NEList MiniDeclarator)
+  | using_ (isAwait : Bool) (decls : NonEmptyList MiniDeclarator)
   /-- `debugger;` -/
   | debugger
   | doWhile (body : MiniStatement) (cond : MiniExpr)

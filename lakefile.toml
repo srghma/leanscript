@@ -82,3 +82,8 @@ globs = ["JsTerm.+"]
 [[lean_lib]]
 name = "RuntimeSpec"
 globs = ["RuntimeSpec.+"]
+
+# Proofs that the de-duplication refactorings (`NumberForm`, …) did not change behaviour.
+[[lean_lib]]
+name = "RefactorSpec"
+globs = ["RefactorSpec.+"]
