@@ -258,18 +258,20 @@ The supported fragment and the refusals are listed in the header of
   `Uint32Array` representations are commented out in `JsTerm/Ty/Config.lean`).
 - The optimiser does not inline a join point jumped to only once when its body is not
   trivial, and does not share computations across closure / loop-body boundaries.
-- **Inlining known closures is limited** (`Term.inlineKnown`, `LeanScript/Term/Optimize/Inline.lean`,
-  proved: `Term.inlineKnown_eval`, `Term.numCalls_inlineKnown`): only a known closure whose
-  body is *closed* and is a single `ret e` is inlined, and only at a call `let y := k a`
-  whose result `e[a]` is a neutral expression of the call's level (it becomes
-  `let y := share e[a]`).  Not inlined: a closure whose body has `let`s, branches or case
-  analyses, or mentions an outer unknown; a call whose result is a literal, a constant or a
-  data literal (`fun _ => "a"`, `fun x => #[some x, none]`), because the unknown `y` cannot be
-  bound to a value of known shape without renormalising the rest; a closure passed to another
-  closure (`sum3 (fun x => x * k)`), which needs substituting a *known* value and normalising
-  again.  The module-level `inlineConsts` of the former JavaScript backend did those; a general
-  Term-level inliner (substitution of values plus renormalisation, with re-levelling of the
-  inlined body) is still the open piece of work.
+- **Inlining known closures is limited** (`Term.inlineKnown`, `Inline.lean`, and
+  `Term.inlineRet`, `InlineRet.lean`, `InlineBlock.lean`, both in `LeanScript/Term/Optimize/`;
+  proved: `Term.inlineKnown_eval`, `Term.numCalls_inlineKnown`, `Term.inlineRet_eval`,
+  `Term.numCalls_inlineRet`, `Term.relvl_eval`).  Inlined: a known closure `fun x => ret e`
+  (closed body) at any call whose result is neutral, and at a call in tail position whatever
+  `e[a]` is (a literal, a constant, a data literal); a known closure *used once* whose closed
+  body makes no call, at a call on a neutral argument (its body is re-levelled and its answer
+  bound to the call's result, through a join point when the body ends in a branch).  Not
+  inlined: a closure whose body mentions an outer unknown or makes calls; a closure used
+  several times whose body is not a single `ret e`; a call on a non-neutral argument (e.g. a
+  record literal `k ⟨x, y⟩`); a non-tail call whose result is not neutral; closures returning
+  closures (`AppArity`); a closure passed to another closure (`sum3 (fun x => x * k)`), which
+  needs substituting a *known* value and normalising again.  The module-level `inlineConsts`
+  of the former JavaScript backend did some of those.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

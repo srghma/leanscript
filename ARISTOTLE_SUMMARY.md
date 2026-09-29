@@ -1,3 +1,39 @@
+# Summary of changes for run eabcd799-d14b-4458-a4a4-d464fa3c2891
+This session adds a proven Term-level inliner, `Term.inlineRet`, which takes over part of what the old module-level `inlineConsts` did. It does not replace `inlineConsts` completely; the cases it still misses are listed at the end. It runs inside `Term.optimize`, after `condWalk` and before `dce`, and `Term.optimize_eval` still holds. `Term.optimize_eval`, `Term.inlineRet_eval`, `Term.relvl_eval` and `Term.numCalls_inlineRet` have no `sorry` and depend only on the axioms `propext`, `Classical.choice` and `Quot.sound`.
+
+**What the inliner does** (`LeanScript/Term/Optimize/InlineRet.lean`, `InlineBlock.lean`)
+- **Tail calls:** when a call to a known closure `fun x => ret e` is returned directly (`let y := k a; ret y`), it becomes `ret e[a]`. This works whatever the result is, including literals, constants and data literals.
+- **Dead bindings:** they are dropped even when that changes the level, for example inside closed bodies.
+- **Closures used once:** a known closure used once, whose closed body makes no calls, is inlined where it is called on a simple variable or expression argument. Its body is moved to the call site with a new renaming that can change levels (`Term.relvl`, in `LeanScript/Term/Rename/Relevel.lean`). The body's result is then bound to the call's result.
+- **Bodies ending in a branch (new this session):** the rest of the calling code becomes a join point, and every arm of the branch jumps to it. This adds `Term.retToJump` / `Branch.retToJump` / `Branches.retToJump`, with proofs that they keep the value and add no calls.
+
+**Proved results**
+- `Term.inlineRet_eval`: the pass does not change `Term.eval`.
+- `Term.numCalls_inlineRet`: the pass never adds calls; `Term.numCalls_optimize` was extended to cover it.
+- `Term.relvl_eval`: the level-changing renaming does not change `Term.eval`.
+
+**Effect on the generated JavaScript** (all snapshots regenerated)
+- `FunctionCompose01` shrinks to `(a) => "a"`.
+- The helper closures of `RecData` (`sumArray`, `reverse`, `sort`) and `OwnershipAliasing` are now inlined.
+- `KnownConstructors`, `KnownConstructors05` and `BranchSpecialization01` no longer build a local closure and call it; for example, `test6` now assigns the result directly in an if/else chain.
+
+**Checks**
+- `lake build leanscript tests TermTests TyTests JsTerm` and `LeanScript.Term.Optimize.CountOptimize` both succeed.
+- `lake exe tests` passes 66/66.
+- There is no `sorry` in `LeanScript/Term/Optimize` or `LeanScript/Term/Rename`.
+- All node snapshot checks passed. The snapshot script still exits with status 1, only because of the same "literal too big" errors as before in `PrimOpInt02Configurable` and `PrimOpInt03Configurable`.
+
+**Documentation:** updated `README.md`, `LeanScript/Term/README.md`, `NOT_IMPLEMENTED.md`, `proposals/NoJsTermOptimizations.md` and the `Term.optimize` docstring. Three proved entries were added to the Properties table.
+
+**Still not done**
+- These cases are not inlined yet:
+  - calls whose argument is not a simple variable or expression, such as a record literal `k ⟨x, y⟩`;
+  - closure bodies that make calls;
+  - closures used several times whose body is more than a single `ret e`;
+  - closures that return closures (`AppArity`);
+  - closures passed to other closures (`InlineClosures.sumShifted`).
+- Fusion, constructor specialisation, unboxing of parameters, the nullable and struct-of-arrays representations, and recovering `Q`'s type parameters are also not implemented.
+
 # Summary of changes for run d1f4c2f2-996f-4294-afb8-ba499ba78b49
 The first part of your request was already in place from earlier runs: several versions of each non-inlined function, each allowed to update different array parameters in place. For the "finish" part, I added the first step of the Term-level inliner, which the proposal named as the main remaining work. It is proved correct. Everything else on that list is still not done.
 

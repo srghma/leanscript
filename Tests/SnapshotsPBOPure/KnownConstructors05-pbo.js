@@ -25,27 +25,24 @@ export const fromString = (a) => {
  * @returns {int53(number)}
  */
 export const test = (a) => {
-  const k$2 = (x$1) => {
-    if (x$1 === "foo") {
-      return { tag: 1, _1: 0 };
-    }
-    if (x$1 === "bar") {
-      return { tag: 1, _1: 1 };
-    }
-    if (x$1 === "baz") {
-      return { tag: 1, _1: 2 };
-    }
-    return x$1 === "qux" ? { tag: 1, _1: 3 } : { tag: 0 };
-  };
-  const x$3 = k$2(a);
-  if (x$3.tag === 0) {
+  let x$1;
+  if (a === "foo") {
+    x$1 = { tag: 1, _1: 0 };
+  } else if (a === "bar") {
+    x$1 = { tag: 1, _1: 1 };
+  } else if (a === "baz") {
+    x$1 = { tag: 1, _1: 2 };
+  } else {
+    x$1 = a === "qux" ? { tag: 1, _1: 3 } : { tag: 0 };
+  }
+  if (x$1.tag === 0) {
     return 0;
   }
-  if (x$3._1 === 0) {
+  if (x$1._1 === 0) {
     return 1;
   }
-  if (x$3._1 === 1) {
+  if (x$1._1 === 1) {
     return 2;
   }
-  return x$3._1 === 2 ? 3 : 4;
+  return x$1._1 === 2 ? 3 : 4;
 };

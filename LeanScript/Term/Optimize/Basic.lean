@@ -4,6 +4,7 @@ public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
 public import LeanScript.Term.Optimize.InlineEval
+public import LeanScript.Term.Optimize.InlineRetEval
 
 @[expose] public section
 
@@ -43,11 +44,20 @@ Then the boolean conditions (`Term.condWalk`, `LeanScript.Term.Optimize.Cond`):
 `c ? true : false` is `c`, and a negated condition (`c ? false : true`) of a conditional or of
 an `if` is read as `c` with the two branches swapped.
 
+Then the inlining in tail position (`Term.inlineRet`, `LeanScript.Term.Optimize.InlineRet`):
+`let y := k a; ret y` is `ret e[a]` for a known closure computing `e`, whatever `e[a]` is,
+dead bindings are dropped even when this changes the level (inside closed bodies), and a
+known closure used once, whose closed body makes no call, is inlined at a call on a neutral
+argument (`Term.blockLetE`): its body, re-levelled (`Term.relvl`), replaces the call, its
+answer bound to the call's result (`Term.bindRet`; when the body ends in a branch, the rest of
+the statement becomes a join point the arms of the branch jump to).
+
 (`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
 `LeanScript.Term.Rewrite`, `Term.simp_star`.)
 
-Each rewrite is done only when it keeps the level index of the statement (like the drops of
-`Term.dce`), which is decided on the spot; otherwise the statement is kept as it is.
+Except in `Term.inlineRet` (whose walk lets the level change), each rewrite is done only when
+it keeps the level index of the statement (like the drops of `Term.dce`), which is decided on
+the spot; otherwise the statement is kept as it is.
 Last, `Term.dce` drops the dead bindings and counts the usages again, the fields of case
 analyses included (a field that is never read is annotated `0`).
 
@@ -347,10 +357,11 @@ end
 /-- **The optimiser**: the inlining of known closures that compute an expression
     (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
     then `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions
-    (`Term.condWalk`), then dead-code elimination. -/
+    (`Term.condWalk`), the inlining in tail position with dead bindings dropped even when the
+    level changes (`Term.inlineRet`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.inlineRet.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -554,7 +565,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.condWalk_eval, Term.cseWalk_eval,
+  rw [Term.optimize, Term.dce_eval, Term.inlineRet_eval, Term.condWalk_eval, Term.cseWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]
 

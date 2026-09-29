@@ -8,27 +8,27 @@
  * @returns {boolean}
  */
 export const instBEqTestEnum$beq = (x, y) => {
-  const k$2 = (x$1) => {
-    if (x$1 === 0) {
-      return 0n;
-    }
-    if (x$1 === 1) {
-      return 1n;
-    }
-    return x$1 === 2 ? 2n : 3n;
-  };
-  const x$3 = k$2(x);
-  const k$5 = (x$4) => {
-    if (x$4 === 0) {
-      return 0n;
-    }
-    if (x$4 === 1) {
-      return 1n;
-    }
-    return x$4 === 2 ? 2n : 3n;
-  };
-  const x$6 = k$5(y);
-  return x$3 === x$6;
+  let x$1;
+  if (x === 0) {
+    x$1 = 0n;
+  } else if (x === 1) {
+    x$1 = 1n;
+  } else if (x === 2) {
+    x$1 = 2n;
+  } else {
+    x$1 = 3n;
+  }
+  let x$2;
+  if (y === 0) {
+    x$2 = 0n;
+  } else if (y === 1) {
+    x$2 = 1n;
+  } else if (y === 2) {
+    x$2 = 2n;
+  } else {
+    x$2 = 3n;
+  }
+  return x$1 === x$2;
 };
 
 /**
@@ -37,21 +37,17 @@ export const instBEqTestEnum$beq = (x, y) => {
  * @returns {boolean}
  */
 export const test1 = (a) => {
-  const k$5 = (x$1) => {
-    const k$3 = (x$2) => {
-      if (x$2 === 0) {
-        return 0n;
-      }
-      if (x$2 === 1) {
-        return 1n;
-      }
-      return x$2 === 2 ? 2n : 3n;
-    };
-    const x$4 = k$3(x$1);
-    return 2n === x$4;
-  };
-  const x$6 = k$5(a);
-  return x$6;
+  let x$1;
+  if (a === 0) {
+    x$1 = 0n;
+  } else if (a === 1) {
+    x$1 = 1n;
+  } else if (a === 2) {
+    x$1 = 2n;
+  } else {
+    x$1 = 3n;
+  }
+  return 2n === x$1;
 };
 
 /**
@@ -60,30 +56,30 @@ export const test1 = (a) => {
  * @returns {boolean}
  */
 export const test2 = (a) => {
-  const k$9 = (x$1, x$2) => {
-    const k$4 = (x$3) => {
-      if (x$3 === 0) {
-        return 0n;
-      }
-      if (x$3 === 1) {
-        return 1n;
-      }
-      return x$3 === 2 ? 2n : 3n;
-    };
-    const x$5 = k$4(x$1);
-    const k$7 = (x$6) => {
-      if (x$6 === 0) {
-        return 0n;
-      }
-      if (x$6 === 1) {
-        return 1n;
-      }
-      return x$6 === 2 ? 2n : 3n;
-    };
-    const x$8 = k$7(x$2);
-    return x$5 === x$8;
+  const k$5 = (x$1, x$2) => {
+    let x$3;
+    if (x$1 === 0) {
+      x$3 = 0n;
+    } else if (x$1 === 1) {
+      x$3 = 1n;
+    } else if (x$1 === 2) {
+      x$3 = 2n;
+    } else {
+      x$3 = 3n;
+    }
+    let x$4;
+    if (x$2 === 0) {
+      x$4 = 0n;
+    } else if (x$2 === 1) {
+      x$4 = 1n;
+    } else if (x$2 === 2) {
+      x$4 = 2n;
+    } else {
+      x$4 = 3n;
+    }
+    return x$3 === x$4;
   };
-  const x$10 = 2;
-  const x$11 = k$9(a, x$10);
-  return x$11;
+  const x$6 = 2;
+  const x$7 = k$5(a, x$6);
+  return x$7;
 };

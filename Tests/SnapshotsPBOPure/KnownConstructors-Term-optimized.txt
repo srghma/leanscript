@@ -32,30 +32,29 @@ val k1 [1] : (String → (• | [(enum 4 @0)])) := fun x2 [ω] : String => (clos
 ret k1
 
 -- test6 : String → Int
-val k1 [1] : (String → Int) := fun x2 [1] : String => (closed)
-  val k3 [1] : (String → (• | [(enum 4 @0)])) := fun x4 [ω] : String => (closed)
-    if lean_string_dec_eq(x4, "foo") then
-      ret ctor#1(enum#0)
+val k1 [1] : (String → Int) := fun x2 [ω] : String => (closed)
+  join j3 [1] (x4 [1] : (• | [(enum 4 @0)])) :=
+    case x4 of
+    | ctor#0() =>
+      ret 0
+    | ctor#1(f5 [1] : (enum 4 @0)) =>
+      case f5 of
+      | enum#0 =>
+        ret 1
+      | enum#1 =>
+        ret 2
+      | enum#2 =>
+        ret 3
+      | enum#3 =>
+        ret 4
+  if lean_string_dec_eq(x2, "foo") then
+    jump j3 ctor#1(enum#0)
+  else
+    if lean_string_dec_eq(x2, "bar") then
+      jump j3 ctor#1(enum#1)
     else
-      if lean_string_dec_eq(x4, "bar") then
-        ret ctor#1(enum#1)
+      if lean_string_dec_eq(x2, "baz") then
+        jump j3 ctor#1(enum#2)
       else
-        if lean_string_dec_eq(x4, "baz") then
-          ret ctor#1(enum#2)
-        else
-          ret cond(lean_string_dec_eq(x4, "qux"), ctor#1(enum#3), ctor#0())
-  let x5 [1] : (• | [(enum 4 @0)]) := k3 x2
-  case x5 of
-  | ctor#0() =>
-    ret 0
-  | ctor#1(f6 [1] : (enum 4 @0)) =>
-    case f6 of
-    | enum#0 =>
-      ret 1
-    | enum#1 =>
-      ret 2
-    | enum#2 =>
-      ret 3
-    | enum#3 =>
-      ret 4
+        jump j3 cond(lean_string_dec_eq(x2, "qux"), ctor#1(enum#3), ctor#0())
 ret k1

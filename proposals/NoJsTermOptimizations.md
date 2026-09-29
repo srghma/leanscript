@@ -46,6 +46,23 @@
 > `FunctionCompose01`; a data literal in `OptionUnbox`, `RecData`), closures whose body is a
 > block, and closures passed to closures (`InlineClosures.sumShifted`), which need
 > substitution of *known* values with renormalisation and re-levelling.
+> **Update: inlining in tail position and of single-use closures.**  `Term.inlineRet`
+> (`LeanScript/Term/Optimize/InlineRet.lean`, `InlineBlock.lean`, run after `Term.condWalk`
+> in `Term.optimize`) walks the term letting the level index change (a re-levelling renaming
+> `Term.relvl`, `LeanScript/Term/Rename/Relevel.lean`, proved by `Term.relvl_eval`).  It
+> rewrites a tail call `let y := k a; ret y` of a known closure `fun x => ret e` into
+> `ret e[a]` whatever `e[a]` is (literals, constants and data literals included), drops dead
+> bindings whatever their level, and inlines a known closure *used once* whose closed body
+> makes no call at a call on a neutral argument: the body is re-levelled, and its answer bound
+> to the call's result (through a new join point when the body ends in a branch).  Proved:
+> `Term.inlineRet_eval` (so `Term.optimize_eval` still holds) and `Term.numCalls_inlineRet`.
+> On the snapshots `FunctionCompose01` collapses to `(a) => "a"`, and the helper closures of
+> `RecData` (`sumArray`, `reverse`, `sort`), `OwnershipAliasing`, `BranchSpecialization01`
+> and `KnownConstructors` are inlined.  Still missing from the former `inlineConsts`: calls
+> on non-neutral arguments (record literals), bodies that make calls, closures used several
+> times whose body is not a single `ret e`, closures returning closures (`AppArity`) and
+> closures passed to closures (`InlineClosures.sumShifted`).  Fusion, constructor
+> specialisation and unboxing of parameters are not done.
 > The pipeline is now
 >
 > ```

@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Optimize.CountDce
 public import LeanScript.Term.Optimize.Basic
 public import LeanScript.Term.Optimize.CountInline
+public import LeanScript.Term.Optimize.CountInlineRet
 
 @[expose] public section
 
@@ -462,7 +463,9 @@ theorem Term.numCalls_optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
   have h3 := Term.numCalls_reuseFields t.inlineKnown.simp.widenFields []
   have h4 := Term.numCalls_cseWalk (t.inlineKnown.simp.widenFields.reuseFields [])
   have h5 := Term.numCalls_condWalk (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk
-  have h6 := Term.numCalls_dce (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk
+  have h6 := Term.numCalls_inlineRet (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk
+  have h7 := Term.numCalls_dce
+    (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.inlineRet
   simp only [Term.optimize]; omega
 
 /-- Running the optimiser any number of times never adds calls either. -/

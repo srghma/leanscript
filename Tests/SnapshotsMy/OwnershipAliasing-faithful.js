@@ -330,80 +330,65 @@ export const Bag$twice = (a) => {
  * @returns {Array<nat(bigint)>}
  */
 export const bag1 = (xs) => {
-  const k$5 = (x$1) => {
-    let acc$2 = { tag: 1, _1: x$1, _2: { tag: 0 } };
-    for (const e$3 of x$1) {
-      const a$4 = acc$2;
-      acc$2 = { tag: 1, _1: bigint_nat__lean_mk_array(e$3, e$3), _2: a$4 };
+  let acc$1 = { tag: 1, _1: xs, _2: { tag: 0 } };
+  for (const e$2 of xs) {
+    const a$3 = acc$1;
+    acc$1 = { tag: 1, _1: bigint_nat__lean_mk_array(e$2, e$2), _2: a$3 };
+  }
+  const go0$4 = (v$5) => {
+    let x$6;
+    if (v$5.tag === 0) {
+      x$6 = { tag: 0 };
+    } else {
+      const { _2: f$7 } = v$5;
+      x$6 = { tag: 1, _1: v$5._1, _2: { _1: f$7, _2: go0$4(f$7) } };
     }
-    return acc$2;
+    if (x$6.tag === 0) {
+      return [];
+    }
+    const { _1: f$8 } = x$6;
+    let acc$9 = array__lean_array_push_mutable(x$6._2._2, BigInt(f$8.length));
+    for (const e$10 of f$8) {
+      const a$11 = acc$9;
+      acc$9 = array__lean_array_push_mutable(a$11, e$10);
+    }
+    return acc$9;
   };
-  const x$6 = k$5(xs);
-  const k$17 = (x$7) => {
-    const go0$8 = (v$9) => {
-      let x$10;
-      if (v$9.tag === 0) {
-        x$10 = { tag: 0 };
-      } else {
-        const { _2: f$11 } = v$9;
-        x$10 = { tag: 1, _1: v$9._1, _2: { _1: f$11, _2: go0$8(f$11) } };
-      }
-      if (x$10.tag === 0) {
-        return [];
-      }
-      const { _1: f$12 } = x$10;
-      let acc$13 = array__lean_array_push_mutable(
-        x$10._2._2,
-        BigInt(f$12.length),
-      );
-      for (const e$14 of f$12) {
-        const a$15 = acc$13;
-        acc$13 = array__lean_array_push_mutable(a$15, e$14);
-      }
-      return acc$13;
-    };
-    const x$16 = go0$8(x$7);
-    return x$16;
+  const x$12 = go0$4(acc$1);
+  const go0$13 = (v$14) => {
+    let x$15;
+    if (v$14.tag === 0) {
+      x$15 = { tag: 0 };
+    } else {
+      const { _2: f$16 } = v$14;
+      x$15 = { tag: 1, _1: v$14._1, _2: { _1: f$16, _2: go0$13(f$16) } };
+    }
+    if (x$15.tag === 0) {
+      return [];
+    }
+    const { _1: f$17 } = x$15;
+    let acc$18 = array__lean_array_push_mutable(
+      x$15._2._2,
+      BigInt(f$17.length),
+    );
+    for (const e$19 of f$17) {
+      const a$20 = acc$18;
+      acc$18 = array__lean_array_push_mutable(a$20, e$19);
+    }
+    return acc$18;
   };
-  const x$18 = k$17(x$6);
-  const k$29 = (x$19) => {
-    const go0$20 = (v$21) => {
-      let x$22;
-      if (v$21.tag === 0) {
-        x$22 = { tag: 0 };
-      } else {
-        const { _2: f$23 } = v$21;
-        x$22 = { tag: 1, _1: v$21._1, _2: { _1: f$23, _2: go0$20(f$23) } };
-      }
-      if (x$22.tag === 0) {
-        return [];
-      }
-      const { _1: f$24 } = x$22;
-      let acc$25 = array__lean_array_push_mutable(
-        x$22._2._2,
-        BigInt(f$24.length),
-      );
-      for (const e$26 of f$24) {
-        const a$27 = acc$25;
-        acc$25 = array__lean_array_push_mutable(a$27, e$26);
-      }
-      return acc$25;
-    };
-    const x$28 = go0$20(x$19);
-    return x$28;
-  };
-  const x$30 = k$29(x$6);
-  let acc$31 = x$30;
-  for (const e$32 of x$18) {
-    const a$33 = acc$31;
-    acc$31 = array__lean_array_push_mutable(a$33, e$32);
+  const x$21 = go0$13(acc$1);
+  let acc$22 = x$21;
+  for (const e$23 of x$12) {
+    const a$24 = acc$22;
+    acc$22 = array__lean_array_push_mutable(a$24, e$23);
   }
-  let acc$34 = acc$31;
-  for (const e$35 of xs) {
-    const a$36 = acc$34;
-    acc$34 = array__lean_array_push_mutable(a$36, e$35);
+  let acc$25 = acc$22;
+  for (const e$26 of xs) {
+    const a$27 = acc$25;
+    acc$25 = array__lean_array_push_mutable(a$27, e$26);
   }
-  return acc$34;
+  return acc$25;
 };
 
 /**
@@ -412,73 +397,58 @@ export const bag1 = (xs) => {
  * @returns {Array<nat(bigint)>}
  */
 export const bag2 = (xs) => {
-  const k$5 = (x$1) => {
-    let acc$2 = { tag: 1, _1: x$1, _2: { tag: 0 } };
-    for (const e$3 of x$1) {
-      const a$4 = acc$2;
-      acc$2 = { tag: 1, _1: bigint_nat__lean_mk_array(e$3, e$3), _2: a$4 };
+  let acc$1 = { tag: 1, _1: xs, _2: { tag: 0 } };
+  for (const e$2 of xs) {
+    const a$3 = acc$1;
+    acc$1 = { tag: 1, _1: bigint_nat__lean_mk_array(e$2, e$2), _2: a$3 };
+  }
+  const go0$4 = (v$5) => {
+    let x$6;
+    if (v$5.tag === 0) {
+      x$6 = { tag: 0 };
+    } else {
+      const { _2: f$7 } = v$5;
+      x$6 = { tag: 1, _1: v$5._1, _2: { _1: f$7, _2: go0$4(f$7) } };
     }
-    return acc$2;
+    if (x$6.tag === 0) {
+      return [];
+    }
+    const { _1: f$8 } = x$6;
+    let acc$9 = array__lean_array_push_mutable(x$6._2._2, BigInt(f$8.length));
+    for (const e$10 of f$8) {
+      const a$11 = acc$9;
+      acc$9 = array__lean_array_push_mutable(a$11, e$10);
+    }
+    return acc$9;
   };
-  const x$6 = k$5(xs);
-  const k$17 = (x$7) => {
-    const go0$8 = (v$9) => {
-      let x$10;
-      if (v$9.tag === 0) {
-        x$10 = { tag: 0 };
-      } else {
-        const { _2: f$11 } = v$9;
-        x$10 = { tag: 1, _1: v$9._1, _2: { _1: f$11, _2: go0$8(f$11) } };
-      }
-      if (x$10.tag === 0) {
-        return [];
-      }
-      const { _1: f$12 } = x$10;
-      let acc$13 = array__lean_array_push_mutable(
-        x$10._2._2,
-        BigInt(f$12.length),
-      );
-      for (const e$14 of f$12) {
-        const a$15 = acc$13;
-        acc$13 = array__lean_array_push_mutable(a$15, e$14);
-      }
-      return acc$13;
-    };
-    const x$16 = go0$8(x$7);
-    return x$16;
+  const x$12 = go0$4(acc$1);
+  const go0$13 = (v$14) => {
+    let x$15;
+    if (v$14.tag === 0) {
+      x$15 = { tag: 0 };
+    } else {
+      const { _2: f$16 } = v$14;
+      x$15 = { tag: 1, _1: v$14._1, _2: { _1: f$16, _2: go0$13(f$16) } };
+    }
+    if (x$15.tag === 0) {
+      return [];
+    }
+    const { _1: f$17 } = x$15;
+    const { _2: f$18 } = x$15._2;
+    return 2n < BigInt(f$17.length)
+      ? array__lean_array_push_immutable(f$17, BigInt(f$18.length))
+      : f$18;
   };
-  const x$18 = k$17(x$6);
-  const k$27 = (x$19) => {
-    const go0$20 = (v$21) => {
-      let x$22;
-      if (v$21.tag === 0) {
-        x$22 = { tag: 0 };
-      } else {
-        const { _2: f$23 } = v$21;
-        x$22 = { tag: 1, _1: v$21._1, _2: { _1: f$23, _2: go0$20(f$23) } };
-      }
-      if (x$22.tag === 0) {
-        return [];
-      }
-      const { _1: f$24 } = x$22;
-      const { _2: f$25 } = x$22._2;
-      return 2n < BigInt(f$24.length)
-        ? array__lean_array_push_immutable(f$24, BigInt(f$25.length))
-        : f$25;
-    };
-    const x$26 = go0$20(x$19);
-    return x$26;
-  };
-  const x$28 = k$27(x$6);
-  let acc$29 = x$28;
-  for (const e$30 of x$18) {
-    const a$31 = acc$29;
-    acc$29 = array__lean_array_push_mutable(a$31, e$30);
+  const x$19 = go0$13(acc$1);
+  let acc$20 = x$19;
+  for (const e$21 of x$12) {
+    const a$22 = acc$20;
+    acc$20 = array__lean_array_push_mutable(a$22, e$21);
   }
-  let acc$32 = acc$29;
-  for (const e$33 of xs) {
-    const a$34 = acc$32;
-    acc$32 = array__lean_array_push_mutable(a$34, e$33);
+  let acc$23 = acc$20;
+  for (const e$24 of xs) {
+    const a$25 = acc$23;
+    acc$23 = array__lean_array_push_mutable(a$25, e$24);
   }
-  return acc$32;
+  return acc$23;
 };

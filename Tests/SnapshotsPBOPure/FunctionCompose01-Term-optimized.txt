@@ -11,63 +11,21 @@ val k1 [1] : (String → String) := fun x2 [0] : String => (closed)
 ret k1
 
 -- test1 : String → String
-val k1 [1] : (String → String) := fun x2 [1] : String => (closed)
-  val k3 [1] : (String → String) := fun x4 [0] : String => (closed)
-    ret "a"
-  val k5 [1] : (String → String) := fun x6 [0] : String => (closed)
-    ret "b"
-  let x7 [1] : String := k5 x2
-  let x8 [1] : String := k3 x7
-  ret x8
+val k1 [1] : (String → String) := fun x2 [0] : String => (closed)
+  ret "a"
 ret k1
 
 -- test2 : String → String
-val k1 [1] : (String → String) := fun x2 [1] : String => (closed)
-  val k3 [1] : (String → String) := fun x4 [0] : String => (closed)
-    ret "b"
-  val k5 [1] : (String → String) := fun x6 [0] : String => (closed)
-    ret "a"
-  val k7 [1] : (String → String) := fun x8 [0] : String => (closed)
-    ret "b"
-  let x9 [1] : String := k7 x2
-  let x10 [1] : String := k5 x9
-  let x11 [1] : String := k3 x10
-  ret x11
+val k1 [1] : (String → String) := fun x2 [0] : String => (closed)
+  ret "b"
 ret k1
 
 -- test3 : String → String
-val k1 [1] : (String → String) := fun x2 [1] : String => (closed)
-  val k3 [1] : (String → String) := fun x4 [0] : String => (closed)
-    ret "a"
-  val k5 [1] : (String → String) := fun x6 [0] : String => (closed)
-    ret "b"
-  val k7 [1] : (String → String) := fun x8 [0] : String => (closed)
-    ret "a"
-  val k9 [1] : (String → String) := fun x10 [0] : String => (closed)
-    ret "b"
-  let x11 [1] : String := k9 x2
-  let x12 [1] : String := k7 x11
-  let x13 [1] : String := k5 x12
-  let x14 [1] : String := k3 x13
-  ret x14
+val k1 [1] : (String → String) := fun x2 [0] : String => (closed)
+  ret "a"
 ret k1
 
 -- test4 : String → String
-val k1 [1] : (String → String) := fun x2 [1] : String => (closed)
-  val k3 [1] : (String → String) := fun x4 [0] : String => (closed)
-    ret "b"
-  val k5 [1] : (String → String) := fun x6 [0] : String => (closed)
-    ret "a"
-  val k7 [1] : (String → String) := fun x8 [0] : String => (closed)
-    ret "b"
-  val k9 [1] : (String → String) := fun x10 [0] : String => (closed)
-    ret "a"
-  val k11 [1] : (String → String) := fun x12 [0] : String => (closed)
-    ret "b"
-  let x13 [1] : String := k11 x2
-  let x14 [1] : String := k9 x13
-  let x15 [1] : String := k7 x14
-  let x16 [1] : String := k5 x15
-  let x17 [1] : String := k3 x16
-  ret x17
+val k1 [1] : (String → String) := fun x2 [0] : String => (closed)
+  ret "b"
 ret k1
