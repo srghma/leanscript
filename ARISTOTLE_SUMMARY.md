@@ -1,3 +1,27 @@
+# Summary of changes for run 8ddc87fc-4a97-4d7a-b7cb-d49aca150751
+**Short answer: no, `JsOpImported` (398 constructors) and `JsOpInlinable` (219) don't need to be split at their current size.** I measured this with the Lean profiler. The full write-up is in `proposals/JsOpSizeAssessment.md`.
+
+**Why splitting isn't needed:**
+
+1. **The "tag too big" limit isn't reached.** Compiled code can't build a constructor whose index is above 243 if it has fields. I re-checked this on the current toolchain: `.c243 1` compiles, `.c244 1` fails, and a constructor with no fields at index 249 is fine. `scripts/gen_js_ops.py` already puts the constructors with fields first, so only indices 0–32 (`JsOpImported`) and 0–12 (`JsOpInlinable`) have fields.
+
+2. **No `rfl`/`decide` proof reduces `JsOp` values.** This is why `LeanInitPureExtern` did have to be split: kernel reduction of a match costs time in proportion to the number of constructors. The JsTerm pipeline only runs as compiled code, where a `match` is a jump on the tag and `name` is an array lookup. So the number of constructors doesn't slow down running code.
+
+3. **Compile time is moderate.** Building `Imported.lean` takes about 17 s and `Inlinable.lean` about 10 s; roughly 3–3.5 s of each is loading imports. Declaring the first 100, 200 and 398 constructors of `JsOpImported` took about 1.2 s, 3.0 s and 8.5 s, so the cost grows a bit faster than linearly.
+   - Splitting it into about 4 groups would save roughly 3–4 s of CPU, and only when the generator is re-run.
+   - None of the files that use these types (`Template`, `Op`, `Cands/*`, `Lookup`, the in-place passes, `Hoist`, `Print/Mini`, `Syntax/Basic`) has a declaration above 0.3 s, except `template` at about 1.5 s. Their time goes mostly into loading imports, which a split wouldn't change.
+
+**When to split:**
+- more than 244 constructors with fields;
+- proofs that evaluate `JsOp` values by `rfl` or `decide`;
+- `JsOpImported` growing to around 800 or more constructors.
+
+If that happens, the note describes a split following the existing `LeanInitPureExtern` pattern: one group per lookup group, a wrapper type, and shorthand definitions so existing patterns keep working.
+
+**One code change:** `scripts/gen_js_ops.py` now stops with an error if either type ever has more than 244 constructors with fields, so the tag limit can't be exceeded without notice. Re-running the generator produces identical Lean files.
+
+No Lean code changed, so there was nothing new to build. The note and the generator change are committed.
+
 # Summary of changes for run 69593980-3404-45a2-931b-86343b876529
 I proved in Lean that removing the duplicated `number` literal code changed neither the JavaScript tree nor the source text it produces, for every `Float` and every `Float32`. I also turned the other duplications I named last time into theorems. Everything builds with no `sorry`. The main theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
 

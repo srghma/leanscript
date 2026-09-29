@@ -789,6 +789,14 @@ def write_lean(ops):
     live = [o for o in ops if not o['sameAs']]
     imp = sorted([o for o in live if o['impl'][0] == 'import'], key=by_params)
     inl = sorted([o for o in live if o['impl'][0] == 'inline'], key=by_params)
+    # the ordering above is only enough while at most 244 constructors have fields (the
+    # compiled code refuses to build one of index > 243 that has fields, "tag too big"); past
+    # that the inductive must be split into families (as `LeanInitPureExtern` is)
+    for kind, lst in (('JsOpImported', imp), ('JsOpInlinable', inl)):
+        with_fields = sum(1 for o in lst if o['params'])
+        if with_fields > 244:
+            sys.exit(f'{kind}: {with_fields} constructors with fields, more than the 244 the '
+                     'compiled code can build; split it into families')
 
     # JsTerm/Ops/Imported.lean
     s = '/-- The operations implemented by the function of `runtime.js` named as the constructor,\n'
