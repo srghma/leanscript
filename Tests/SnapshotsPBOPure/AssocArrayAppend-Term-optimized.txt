@@ -2,30 +2,30 @@
 
 -- ArrayTest.test1 : Array String → Array String
 val k1 [1] : ((Array String) → (Array String)) := fun x2 [ω] : (Array String) => (closed)
-  ret lean_array_append(lean_array_append(#["a"], lean_array_append(#["b"], lean_array_append(x2, lean_array_append(x2, lean_array_append(x2, lean_array_append(x2, #["c"])))))), #["d"])
+  ret lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["a", "b"], x2), x2), x2), x2), #["c", "d"])
 ret k1
 
 -- ArrayTest.test2 : Array String → Array String
 val k1 [1] : ((Array String) → (Array String)) := fun x2 [ω] : (Array String) => (closed)
-  ret lean_array_append(lean_array_append(#["a"], lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["b"], x2), x2), x2), x2), #["c"])), #["d"])
+  ret lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["a", "b"], x2), x2), x2), x2), #["c", "d"])
 ret k1
 
 -- ArrayTest.test3 : Array String → Array String
 val k1 [1] : ((Array String) → (Array String)) := fun x2 [ω] : (Array String) => (closed)
-  ret lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["a"], lean_array_append(#["b"], lean_array_append(x2, lean_array_append(x2, lean_array_append(x2, lean_array_append(x2, #["c"])))))), #["d"]), lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["e"], x2), x2), x2), x2), #["f"])), #["g"])
+  ret lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(lean_array_append(#["a", "b"], x2), x2), x2), x2), #["c", "d", "e"]), x2), x2), x2), x2), #["f", "g"])
 ret k1
 
 -- ListTest.test1 : List String → List String
 val k1 [1] : ((List String) → (List String)) := fun x2 [ω] : (List String) => (closed)
-  ret lean_list_append(lean_list_append(["a"], lean_list_append(["b"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, ["c"])))))), ["d"])
+  ret lean_list_append(["a", "b"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, ["c", "d"])))))
 ret k1
 
 -- ListTest.test2 : List String → List String
 val k1 [1] : ((List String) → (List String)) := fun x2 [ω] : (List String) => (closed)
-  ret lean_list_append(lean_list_append(["a"], lean_list_append(lean_list_append(lean_list_append(lean_list_append(lean_list_append(["b"], x2), x2), x2), x2), ["c"])), ["d"])
+  ret lean_list_append(["a", "b"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, ["c", "d"])))))
 ret k1
 
 -- ListTest.test3 : List String → List String
 val k1 [1] : ((List String) → (List String)) := fun x2 [ω] : (List String) => (closed)
-  ret lean_list_append(lean_list_append(lean_list_append(lean_list_append(["a"], lean_list_append(["b"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, ["c"])))))), ["d"]), lean_list_append(lean_list_append(lean_list_append(lean_list_append(lean_list_append(["e"], x2), x2), x2), x2), ["f"])), ["g"])
+  ret lean_list_append(["a", "b"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(["c", "d", "e"], lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, lean_list_append(x2, ["f", "g"]))))))))))
 ret k1

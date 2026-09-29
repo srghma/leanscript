@@ -15,7 +15,7 @@ ret k1
 
 -- ListRepr.middle : List Nat → List Nat
 val k1 [1] : ((List Nat) → (List Nat)) := fun x2 [1] : (List Nat) => (closed)
-  ret lean_list_append(lean_list_append([0], x2), [7, 8])
+  ret lean_list_append([0], lean_list_append(x2, [7, 8]))
 ret k1
 
 -- ListRepr.append : List Nat → List Nat → List Nat

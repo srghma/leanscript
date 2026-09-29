@@ -6,6 +6,8 @@ import TermTests.ToTerm.WhileTest
 import TermTests.Datatypes.QuotientTest
 import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
+import TermTests.Optimize.AppendTest
+import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
 import JsTerm.Lower.Module
@@ -122,6 +124,36 @@ def optimizeSpec : Spec := describe "Term.optimize" do
     (((QuotientTest.sOddsT (Δ := DSig.nil)).optimizeN 3).run ((3 : Nat), (#[1, 2, 5] : Array Nat)))
   checkNat "roseFv.size" 9
     ((RoseVariantsTest.roseFSizeT.optimizeN 3).run (RoseVariantsTest.roseFT.optimizeN 3).run)
+
+/-- `Tests/TermTests/Optimize/AppendTest.lean`: the optimiser regroups chains of `++` to the
+    right, drops empty literals and merges neighbouring literals (`Term.appendWalk`); the
+    optimised statements, printed, and their values (compiled). -/
+def appendSpec : Spec := describe "Term.appendWalk" do
+  it "AssocArrayAppend.ArrayTest.test1: one literal in front, one at the end" do
+    assertEq "printed" ("val k1 [1] : ((Array String) → (Array String)) := " ++
+      "fun x2 [ω] : (Array String) => (closed)\n  ret lean_array_append(lean_array_append(" ++
+      "lean_array_append(lean_array_append(lean_array_append(#[\"a\", \"b\"], x2), x2), x2), " ++
+      "x2), #[\"c\", \"d\"])\nret k1")
+      ((AppendTest.arrTest1T (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "value" (AppendTest.arrTest1 #["x", "y"])
+      (((AppendTest.arrTest1T (Δ := DSig.nil)).optimizeN 3).run #["x", "y"])
+  it "AssocArrayAppend.ArrayTest.test3: literals between the operands are merged" do
+    assertEq "printed" ("val k1 [1] : ((Array String) → (Array String)) := " ++
+      "fun x2 [ω] : (Array String) => (closed)\n  ret lean_array_append(lean_array_append(" ++
+      "lean_array_append(lean_array_append(lean_array_append(lean_array_append(" ++
+      "lean_array_append(lean_array_append(lean_array_append(lean_array_append(" ++
+      "#[\"a\", \"b\"], x2), x2), x2), x2), #[\"c\", \"d\", \"e\"]), x2), x2), x2), x2), " ++
+      "#[\"f\", \"g\"])\nret k1")
+      ((AppendTest.arrTest3T (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "value" (AppendTest.arrTest3 #["x"])
+      (((AppendTest.arrTest3T (Δ := DSig.nil)).optimizeN 3).run #["x"])
+  it "empty literals are dropped" do
+    assertEq "printed" ("val k1 [1] : ((Array Nat) → (Array Nat)) := " ++
+      "fun x2 [1] : (Array Nat) => (closed)\n  ret lean_array_append(" ++
+      "lean_array_append(#[1, 2], x2), #[3])\nret k1")
+      ((AppendTest.arrEmptyT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "value" (AppendTest.arrEmpty #[7, 8])
+      (((AppendTest.arrEmptyT (Δ := DSig.nil)).optimizeN 3).run (#[7, 8] : Array Nat))
 
 section MoreJsTests
 open MoreJs
@@ -714,6 +746,7 @@ def spec : Spec := do
   quotientSpec
   roseSpec
   optimizeSpec
+  appendSpec
   moreJsSpec
   wfTermSpec
 
