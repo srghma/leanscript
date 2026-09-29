@@ -18,17 +18,17 @@ export const test3 = (a : boolean, b : boolean) : boolean => {
 
 // test4
 export const test4 = (a : boolean, b : boolean) : boolean => {
-  return (((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? true : false) ? false : true);
+  return ((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? false : true);
 };
 
 // test5
 export const test5 = (a : boolean, b : boolean) : boolean => {
-  return ((((c1 ? false : true) ? c0 : false) ? true : false) ? true : false);
+  return ((c1 ? false : c0) ? true : false);
 };
 
 // test6
 export const test6 = (a : boolean, b : boolean) : boolean => {
-  return ((((c0 ? false : true) ? c1 : false) ? true : false) ? true : false);
+  return ((c0 ? false : c1) ? true : false);
 };
 
 // test7

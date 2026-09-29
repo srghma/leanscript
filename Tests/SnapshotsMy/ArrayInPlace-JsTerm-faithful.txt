@@ -3,16 +3,7 @@
 // not translated:
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { array__lean_array_push_immutable, bigint_nat__lean_nat_sub, array__lean_array_push_mutable, bigint_nat__lean_array_set_immutable, bigint_nat__lean_array_get, bigint_nat__lean_mk_array, bigint_nat__lean_nat_div, bigint_nat__lean_array_swap_mutable, array__lean_array_pop_mutable } from "runtime.js";
-
-const $k1 : (nat(bigint), Array<nat(bigint)>) => Array<nat(bigint)> = (x, x) => {
-  let x = c0;
-  for (j < c1) {
-    m0 = array__lean_array_push_immutable(m0, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c2, 1n), c0));
-    next;
-  }
-  return m0;
-};
+import { array__lean_array_push_mutable, bigint_nat__lean_array_set_immutable, bigint_nat__lean_array_get, bigint_nat__lean_mk_array, bigint_nat__lean_nat_div, bigint_nat__lean_array_swap_mutable, bigint_nat__lean_nat_sub, array__lean_array_pop_mutable } from "runtime.js";
 
 // test1
 export const test1 = (n : nat(bigint)) : Array<nat(bigint)> => {
@@ -56,5 +47,10 @@ export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
 
 // test6
 export const test6 = (n : nat(bigint)) : Array<nat(bigint)> => {
-  return $k1(c0, inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0));
+  let x = inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0);
+  for (j < c0) {
+    m0 = array__lean_array_push_mutable(m0, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c1, 1n), c0));
+    next;
+  }
+  return m0;
 };

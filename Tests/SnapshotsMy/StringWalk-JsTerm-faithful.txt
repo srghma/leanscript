@@ -15,9 +15,9 @@ export const test3 = (s : string, n : nat(bigint)) : nat(bigint) => {
   let acc = c1;
   let acc = 0n;
   for (i < c0) {
-    const x = inline:bigint_nat__lean_nat_add(m0, bigint_nat__lean_string_utf8_byte_size(m1));
-    m1 = inline:string__lean_string_push(m1, "x");
-    m0 = c0;
+    const f = m1;
+    m1 = inline:string__lean_string_push(c0, "x");
+    m0 = inline:bigint_nat__lean_nat_add(m0, bigint_nat__lean_string_utf8_byte_size(c0));
     next;
   }
   return m0;

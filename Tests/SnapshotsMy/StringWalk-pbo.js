@@ -23,12 +23,12 @@ export const test3 = (s, n) => {
   let acc$1 = s;
   let acc$2 = 0;
   for (let i$3 = 0; i$3 < n; i$3++) {
-    const x$4 = uint53__lean_nat_add(
+    const f$4 = acc$1;
+    acc$1 = f$4 + "x";
+    acc$2 = uint53__lean_nat_add(
       acc$2,
-      uint53__lean_string_utf8_byte_size(acc$1),
+      uint53__lean_string_utf8_byte_size(f$4),
     );
-    acc$1 = acc$1 + "x";
-    acc$2 = x$4;
   }
   return acc$2;
 };

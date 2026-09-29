@@ -18,15 +18,15 @@ export const test3 = (x : int(bigint)) : int(bigint) => {
 
 // test4
 export const test4 = (x : int(bigint)) : int(bigint) => {
-  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(1n, inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(2n, c0), c0), c0), c0), 3n)), 4n);
+  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(2n, c0), c0), c0), c0), 3n), 4n);
 };
 
 // test5
 export const test5 = (x : int(bigint)) : int(bigint) => {
-  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(1n, inline:bigint_int__lean_int_mul(2n, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, 3n)))))), 4n);
+  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(2n, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, 3n))))), 4n);
 };
 
 // test6
 export const test6 = (x : int(bigint)) : int(bigint) => {
-  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(1n, inline:bigint_int__lean_int_mul(2n, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, 3n)))))), 4n), inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(5n, c0), c0), c0), c0), 6n)), 7n);
+  return inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(2n, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, inline:bigint_int__lean_int_mul(c0, 3n))))), 4n), inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(inline:bigint_int__lean_int_mul(5n, c0), c0), c0), c0), 6n)), 7n);
 };

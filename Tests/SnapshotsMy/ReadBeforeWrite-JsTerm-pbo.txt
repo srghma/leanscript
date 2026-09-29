@@ -26,8 +26,7 @@ export const test3 = (n : uint53(number)) : uint53(number) => {
 // test4
 export const test4 = (n : uint53(number)) : { _1: Array<uint53(number)>, _2: uint53(number) } => {
   const x = uint53__lean_mk_array(3, uint53__lean_nat_add(c0, 7));
-  const x = uint53__lean_array_get(0, c0, 0);
-  return { _1: uint53__lean_array_set_immutable(c1, 0, 99), _2: c0 };
+  return { _1: uint53__lean_array_set_immutable(c0, 0, 99), _2: uint53__lean_array_get(0, c0, 0) };
 };
 
 // test5

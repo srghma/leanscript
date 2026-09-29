@@ -3,6 +3,8 @@ module
 public import JsTerm.Syntax.Vars
 public import JsTerm.Syntax.Pretty
 public import JsTerm.Passes.Cleanup
+public import JsTerm.Passes.InlineConsts
+public import JsTerm.Passes.InPlace
 
 @[expose] public section
 
@@ -315,6 +317,17 @@ def mkModule (config : JsConfig) (funs : List JsFun) : JsModule :=
   let consts := consts.map fun c =>
     { c with e := inlineOnceExpr ((cleanupExpr c.e).mapBU .id ⟨fun _ _ _ _ b => peepholeNode b⟩) }
   let funs := funs.map fun f => { f with body := inlineOnce (peephole (cleanup f.body)) }
+  -- the calls of closures of the module inlined (`inlineConsts`); an array a body inlined
+  -- builds may now be updated in place (`inPlace`: the module constants are never arrays)
+  let before := funs.map JsFun.key
+  let isFun : JsConst → Bool := fun c => match c.key? with
+    | some k => funs.any fun f => f.ty == c.ty && f.key == k
+    | none => false
+  let (consts, funs') := inlineConsts isFun consts funs
+  let funs := (funs'.zip before).map fun (f, k) =>
+    if f.key == k then f else { f with body := inlineOnce (peephole (cleanup (inPlace f.body))) }
+  -- conditionals and arithmetic with a unit simplified, and the copies this leaves propagated
+  let funs := funs.map fun f => { f with body := inlineOnce (cleanup (simplifyExprs f.body)) }
   JsModule.shareFuns { config, imports := collectImports consts funs, consts, funs }
 
 end MoreJs

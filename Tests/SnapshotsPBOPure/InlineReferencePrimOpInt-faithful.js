@@ -12,7 +12,7 @@ const $k1 = { _1: 99n, _2: 0n, _3: 11n };
  */
 export const localTest = (f) => {
   const x$1 = f($k1);
-  return x$1 !== -2147483648n ? x$1 : 0n;
+  return x$1 === -2147483648n ? 0n : x$1;
 };
 
 /**
@@ -50,10 +50,7 @@ export const extern = () => $k1;
  * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)} f
  * @returns {int(bigint)}
  */
-export const externTest = (f) => {
-  const x$1 = f($k1);
-  return x$1 !== -2147483648n ? x$1 : -2147483648n;
-};
+export const externTest = (f) => f($k1);
 
 /**
  * `test5`

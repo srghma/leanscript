@@ -15,9 +15,9 @@ export const test3 = (s : string, n : uint53(number)) : uint53(number) => {
   let acc = c1;
   let acc = 0;
   for (i < c0) {
-    const x = uint53__lean_nat_add(m0, uint53__lean_string_utf8_byte_size(m1));
-    m1 = inline:string__lean_string_push(m1, "x");
-    m0 = c0;
+    const f = m1;
+    m1 = inline:string__lean_string_push(c0, "x");
+    m0 = uint53__lean_nat_add(m0, uint53__lean_string_utf8_byte_size(c0));
     next;
   }
   return m0;

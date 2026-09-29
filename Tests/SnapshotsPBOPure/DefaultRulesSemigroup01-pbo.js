@@ -8,10 +8,7 @@
  * @param {int53(number)} a
  * @returns {string}
  */
-export const test1 = (f, g, a) => {
-  const x$1 = f(a);
-  return x$1 + g(a);
-};
+export const test1 = (f, g, a) => f(a) + g(a);
 
 /**
  * `test2`

@@ -287,19 +287,6 @@ def tcoNode (noCapture : Bool) {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M 
 
 /-! ## Calls of known functions -/
 
-/-- Arguments under one more constant. -/
-def JsArgs.wkC {C M σs : List JsTy} {σ : JsTy} (as : JsArgs C M σs) : JsArgs (σ :: C) M σs :=
-  Id.run (as.renameM JsRen.succ JsRen.id)
-
-/-- The substitution of the arguments for the parameters of a function (its innermost
-    constants, the last one innermost). -/
-def JsSubst.params {C M : List JsTy} : {σs : List JsTy} → JsArgs C M σs →
-    JsSubst (pushAll σs C) M C M
-  | [], .nil => { c := fun x => .cvar x, m := JsRen.id }
-  | _ :: _, .cons a as =>
-    let s₁ := JsSubst.params as.wkC
-    { c := fun x => (s₁.c x).subst (JsSubst.inst a), m := JsRen.id }
-
 /-- `((x) => e)(a)` with atoms for arguments: `e` with the arguments for the parameters. -/
 def betaNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
   | e@(.app (.lam _ (.ret body)) args) =>

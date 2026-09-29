@@ -63,8 +63,10 @@ export const test3 = (n) => {
  */
 export const test4 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
-  const x$2 = uint53__lean_array_get(0, x$1, 0);
-  return { _1: uint53__lean_array_set_immutable(x$1, 0, 99), _2: x$2 };
+  return {
+    _1: uint53__lean_array_set_immutable(x$1, 0, 99),
+    _2: uint53__lean_array_get(0, x$1, 0),
+  };
 };
 
 /**

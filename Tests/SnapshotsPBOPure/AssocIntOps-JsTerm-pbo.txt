@@ -20,15 +20,15 @@ export const test3 = (x : int53(number)) : int53(number) => {
 
 // test4
 export const test4 = (x : int53(number)) : int53(number) => {
-  return int53__lean_int_mul(int53__lean_int_mul(1, int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(2, c0), c0), c0), c0), 3)), 4);
+  return int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(2, c0), c0), c0), c0), 3), 4);
 };
 
 // test5
 export const test5 = (x : int53(number)) : int53(number) => {
-  return int53__lean_int_mul(int53__lean_int_mul(1, int53__lean_int_mul(2, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, 3)))))), 4);
+  return int53__lean_int_mul(int53__lean_int_mul(2, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, 3))))), 4);
 };
 
 // test6
 export const test6 = (x : int53(number)) : int53(number) => {
-  return int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(1, int53__lean_int_mul(2, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, 3)))))), 4), int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(5, c0), c0), c0), c0), 6)), 7);
+  return int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(2, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, int53__lean_int_mul(c0, 3))))), 4), int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(5, c0), c0), c0), c0), 6)), 7);
 };

@@ -123,6 +123,10 @@ def JsRen.succ {Γ : List JsTy} {σ : JsTy} : JsRenM Id Γ (σ :: Γ) := fun x =
 def JsExpr.wkC {C M : List JsTy} {σ τ : JsTy} (e : JsExpr C M τ) : JsExpr (σ :: C) M τ :=
   Id.run (e.renameM JsRen.succ JsRen.id)
 
+/-- Arguments under a new constant. -/
+def JsArgs.wkC {C M σs : List JsTy} {σ : JsTy} (as : JsArgs C M σs) : JsArgs (σ :: C) M σs :=
+  Id.run (as.renameM JsRen.succ JsRen.id)
+
 /-- An expression under a new mutable variable. -/
 def JsExpr.wkM {C M : List JsTy} {σ τ : JsTy} (e : JsExpr C M τ) : JsExpr C (σ :: M) τ :=
   Id.run (e.renameM JsRen.id JsRen.succ)

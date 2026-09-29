@@ -20,9 +20,9 @@ export const test3 = (s, n) => {
   let acc$1 = s;
   let acc$2 = 0n;
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    const x$4 = acc$2 + bigint_nat__lean_string_utf8_byte_size(acc$1);
-    acc$1 = acc$1 + "x";
-    acc$2 = x$4;
+    const f$4 = acc$1;
+    acc$1 = f$4 + "x";
+    acc$2 = acc$2 + bigint_nat__lean_string_utf8_byte_size(f$4);
   }
   return acc$2;
 };

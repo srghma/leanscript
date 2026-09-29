@@ -28,14 +28,14 @@ export const test3 = (x) =>
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test4 = (x) => 1n * (2n * x * x * x * x * 3n) * 4n;
+export const test4 = (x) => 2n * x * x * x * x * 3n * 4n;
 
 /**
  * `test5`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test5 = (x) => 1n * (2n * (x * (x * (x * (x * 3n))))) * 4n;
+export const test5 = (x) => 2n * (x * (x * (x * (x * 3n)))) * 4n;
 
 /**
  * `test6`
@@ -43,4 +43,4 @@ export const test5 = (x) => 1n * (2n * (x * (x * (x * (x * 3n))))) * 4n;
  * @returns {int(bigint)}
  */
 export const test6 = (x) =>
-  1n * (2n * (x * (x * (x * (x * 3n))))) * 4n * (5n * x * x * x * x * 6n) * 7n;
+  2n * (x * (x * (x * (x * 3n)))) * 4n * (5n * x * x * x * x * 6n) * 7n;

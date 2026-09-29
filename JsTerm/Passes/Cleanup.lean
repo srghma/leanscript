@@ -193,9 +193,77 @@ def narrowNode {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → JsBlock C M
 
 /-! ## All the clean-ups -/
 
+/-! ## Known records -/
+
+/-- The fields a pattern keeps, of the fields `as`. -/
+def JsSel.pick {C M : List JsTy} : {ts us : List JsTy} → JsSel ts us → JsArgs C M ts → JsArgs C M us
+  | _, _, .nil, .nil => .nil
+  | _, _, .keep _ s, .cons a as => .cons a (s.pick as)
+  | _, _, .skip s, .cons _ as => s.pick as
+
+/-- A constant, a module constant or a literal (not a mutable variable, which could be
+    assigned before a copy of it is read). -/
+def JsExpr.isConstAtom {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+  | .cvar _ | .global .. | .enum_mk .. => true
+  | .lit l => l.isSmall
+  | _ => false
+
+/-- Are all the arguments constants or literals (`JsExpr.isConstAtom`)? -/
+def JsArgs.allConstAtoms {C M σs : List JsTy} : JsArgs C M σs → Bool
+  | .nil => true
+  | .cons a as => a.isConstAtom && as.allConstAtoms
+
+/-- Are the fields a pattern keeps constants or literals, and the others variables, literals
+    or operations that have no effect and cannot fail on those? -/
+def JsSel.pickable {C M : List JsTy} : {ts us : List JsTy} → JsSel ts us → JsArgs C M ts → Bool
+  | _, _, .nil, .nil => true
+  | _, _, .keep _ s, .cons a as => a.isConstAtom && s.pickable as
+  | _, _, .skip s, .cons a as => a.isCheapPure && s.pickable as
+
+/-- `const { _1: a, _2: b } = { _1: x, _2: y }; rest` is `rest` with `x` for `a` and `y` for
+    `b` (when the fields are constants or literals). -/
+def destructKnownNode {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → JsBlock C M J k
+  | b@(.destructure (.record_mk fs) sel rest) =>
+    if sel.pickable fs then rest.subst (JsSubst.params (sel.pick fs)) else b
+  | b => b
+
+mutual
+/-- A constant, a literal, or a record or a constructor of those. -/
+partial def JsExpr.isConstValue {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+  | .record_mk fs | .union_mk _ fs => fs.allConstValues
+  | e => e.isConstAtom
+/-- Are all the arguments `isConstValue`? -/
+partial def JsArgs.allConstValues {C M σs : List JsTy} : JsArgs C M σs → Bool
+  | .nil => true
+  | .cons a as => a.isConstValue && as.allConstValues
+end
+
+/-- `JsSel.pickable`, with records and constructors of constants kept too. -/
+def JsSel.pickableValues {C M : List JsTy} :
+    {ts us : List JsTy} → JsSel ts us → JsArgs C M ts → Bool
+  | _, _, .nil, .nil => true
+  | _, _, .keep _ s, .cons a as => a.isConstValue && s.pickableValues as
+  | _, _, .skip s, .cons a as => a.isCheapPure && s.pickableValues as
+
+/-- The arm of constructor `ix` of a case analysis on a union, with the fields `as` for the
+    fields it binds (when they are constants, literals, or records and constructors of those;
+    the fields it does not bind must have no effect and be unable to fail). -/
+def JsUnionArms.select {C M J : List JsTy} {k : JsEnd} {fs : List JsTy} :
+    {cs : List (List JsTy)} → JsUnionArms C M J k cs → JsMem cs fs → JsArgs C M fs →
+      Option (JsBlock C M J k)
+  | _, .cons sel b _, .zero, as =>
+    if sel.pickableValues as then some (b.subst (JsSubst.params (sel.pick as))) else none
+  | _, .cons _ _ rest, .succ m, as => rest.select m as
+
+/-- A case analysis on a constructor written right there (`{ tag: 1, _1: x }`) is the arm of
+    that constructor (see `JsUnionArms.select`). -/
+def unionKnownNode {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → JsBlock C M J k
+  | b@(.unionCases (.union_mk ix as) arms) => (arms.select ix as).getD b
+  | b => b
+
 /-- One step of the clean-ups, on a block whose parts are clean already. -/
 def cleanupNode {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : JsBlock C M J k :=
-  narrowNode (selfAssignNode (copyPropNode (rebuildNode b)))
+  narrowNode (selfAssignNode (copyPropNode (rebuildNode (destructKnownNode (unionKnownNode b)))))
 
 /-- The clean-ups of this file, everywhere. -/
 def cleanup {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : JsBlock C M J k :=
@@ -271,18 +339,38 @@ def FirstRead.thenCall : FirstRead → FirstRead
   | .found => .found
   | _ => .dirty
 
+/-- The arguments a template reads, in the order JavaScript evaluates them. -/
+partial def JsInline.argSeq : JsInline → List Nat
+  | .arg i => [i]
+  | .bin _ a b => a.argSeq ++ b.argSeq
+  | .un _ a | .member a _ => a.argSeq
+  | .call _ as | .new _ as => as.flatMap JsInline.argSeq
+  | _ => []
+
+/-- Does the template evaluate an operand only sometimes (`&&`, `||`, `??`)? -/
+partial def JsInline.shortCircuits : JsInline → Bool
+  | .bin op a b => op == "&&" || op == "||" || op == "??" || a.shortCircuits || b.shortCircuits
+  | .un _ a | .member a _ => a.shortCircuits
+  | .call _ as | .new _ as => as.any JsInline.shortCircuits
+  | _ => false
+
 mutual
 /-- `FirstRead` of the constant of index `d` in an expression (JavaScript evaluates the
-    callee, then the arguments, the fields and the parts of literals, left to right; an
-    inlined operation may evaluate its arguments in any order, so they must all be
-    effect-free but the one that reads the constant). -/
+    callee, then the arguments, the fields and the parts of literals, left to right).  An
+    inlined operation evaluates its arguments in the order its template reads them: when
+    that is not each once, left to right, they must all be effect-free but the one that
+    reads the constant (and that one must be the first operand of a template that only
+    sometimes evaluates the others, `a && b`). -/
 partial def JsExpr.firstRead {C M : List JsTy} {τ : JsTy} (d : Nat) : JsExpr C M τ → FirstRead
   | .cvar x => if x.index == d then .found else .clean
   | .global .. | .lit _ | .enum_mk .. | .unreachable _ => .clean
   -- the value of a mutable variable only changes by assignments (see `inlineOnce`)
   | .mvar _ => .clean
+  -- an operation that has no effect and cannot fail is transparent
+  | .imported (e := .pure) (t := .doesntThrow) _ as => as.firstRead d
+  | .inlined (e := .pure) (t := .doesntThrow) op as => as.firstReadTpl d op.template
   | .imported _ as => (as.firstRead d).thenCall
-  | .inlined _ as => (as.firstReadAny d).thenCall
+  | .inlined op as => (as.firstReadTpl d op.template).thenCall
   | .app f as => ((f.firstRead d).andThen fun _ => as.firstRead d).thenCall
   | e@(.lam ..) => if e.occs.any (·.is ⟨false, d⟩) then .dirty else .clean
   | .record_mk fs => fs.firstRead d
@@ -298,14 +386,25 @@ partial def JsExpr.firstRead {C M : List JsTy} {τ : JsTy} (d : Nat) : JsExpr C 
 partial def JsArgs.firstRead {C M σs : List JsTy} (d : Nat) : JsArgs C M σs → FirstRead
   | .nil => .clean
   | .cons a as => (a.firstRead d).andThen fun _ => as.firstRead d
-/-- `FirstRead` of arguments evaluated in any order. -/
-partial def JsArgs.firstReadAny {C M σs : List JsTy} (d : Nat) : JsArgs C M σs → FirstRead
-  | .nil => .clean
-  | .cons a as =>
-    match a.firstRead d, as.firstReadAny d with
-    | .clean, r => r
-    | .found, .clean => .found
-    | _, _ => .dirty
+/-- `FirstRead` of the arguments of an inlined operation of template `t` (see
+    `JsExpr.firstRead`). -/
+partial def JsArgs.firstReadTpl {C M σs : List JsTy} (d : Nat) (t : JsInline)
+    (as : JsArgs C M σs) : FirstRead :=
+  let seq := t.argSeq
+  let rs := as.firstReads d
+  if !t.shortCircuits && seq == List.range rs.length then
+    rs.foldl (fun acc r => acc.andThen fun _ => r) .clean
+  else
+    match rs.findIdx? (· != .clean) with
+    | none => .clean
+    | some i =>
+      if rs[i]? == some .found && (rs.drop (i + 1)).all (· == .clean) && seq.count i == 1 &&
+          (!t.shortCircuits || seq.head? == some i) then .found
+      else .dirty
+/-- `FirstRead` of each argument. -/
+partial def JsArgs.firstReads {C M σs : List JsTy} (d : Nat) : JsArgs C M σs → List FirstRead
+  | .nil => []
+  | .cons a as => a.firstRead d :: as.firstReads d
 /-- `FirstRead` of the parts of an array literal, left to right. -/
 partial def JsParts.firstRead {C M : List JsTy} {A E : JsTy} (d : Nat) : JsParts C M A E → FirstRead
   | .nil => .clean
@@ -320,6 +419,99 @@ def JsBlock.headRead {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → First
   | .ite c _ _ => c.firstRead 0
   | _ => .dirty
 
+/-! ## Conditionals -/
+
+/-- A key that is the same for two variables, module constants or literals exactly when they
+    are the same one. -/
+def JsExpr.atomKey? {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Option String
+  | .cvar x => some s!"c{x.index}"
+  | .mvar x => some s!"m{x.index}"
+  | .global n _ => some s!"g{n}"
+  | .lit l => some s!"l{l.shape.pretty}"
+  | .enum_mk _ s i => some s!"e{s + i}"
+  | _ => none
+
+/-- Are the two expressions the same variable, module constant or literal? -/
+def JsExpr.sameAtom {C M : List JsTy} {σ τ : JsTy} (a : JsExpr C M σ) (b : JsExpr C M τ) : Bool :=
+  match a.atomKey?, b.atomKey? with
+  | some x, some y => x == y
+  | _, _ => false
+
+/-- Is the type one whose values `===` compares exactly (not a float, where `-0 === 0`)? -/
+def JsTy.strictEqExact : JsTy → Bool
+  | .terminal .float | .terminal .float32 => false
+  | .terminal _ | .enum .. => true
+  | _ => false
+
+/-- `a === b`, an equality test on a type `JsTy.strictEqExact`, as its operands. -/
+def JsExpr.strictEq? {C M : List JsTy} :
+    JsExpr C M (.terminal .bool) → Option (Σ σ : JsTy, JsExpr C M σ × JsExpr C M σ)
+  | .inlined (σs := [σ, σ']) op (.cons a (.cons b .nil)) =>
+    match op.template with
+    | .bin "===" (.arg 0) (.arg 1) =>
+      if h : σ' = σ then (if σ.strictEqExact then some ⟨σ, a, h ▸ b⟩ else none) else none
+    | _ => none
+  | _ => none
+
+/-- Conditionals that are simpler:
+
+* `(c ? false : true) ? a : b` is `c ? b : a`, and `(c ? true : false) ? a : b` is
+  `c ? a : b`;
+* `c ? a : a`, `c` without effects that cannot fail, is `a`;
+* `x === y ? y : x` and `x === y ? x : y` (variables or literals) are `x` and `y`: the
+  answer is the value of the other branch in both cases. -/
+def condNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
+  | .cond (.cond c (.lit (.bool false)) (.lit (.bool true))) a b => condBranches c b a
+  | .cond (.cond c (.lit (.bool true)) (.lit (.bool false))) a b => condBranches c a b
+  | .cond c a b => condBranches c a b
+  | e => e
+where
+  /-- `c ? a : b`, simplified by its branches. -/
+  condBranches (c : JsExpr C M (.terminal .bool)) (a b : JsExpr C M τ) : JsExpr C M τ :=
+    if a.sameAtom b && c.firstRead (C.length + 1) == .clean then a else
+    match c.strictEq? with
+    | some ⟨_, x, y⟩ =>
+      if (a.sameAtom x && b.sameAtom y) || (a.sameAtom y && b.sameAtom x) then b else .cond c a b
+    | none => .cond c a b
+
+/-- The integer operations with a unit: its name, the unit, and whether the unit may be the
+    first operand too (`x + 0`, `0 + x`, `x * 1`, `1 * x`, `x - 0`).  On integers, whatever
+    their representation, the result is the other operand, which fits in the representation
+    already (so the operation could not have failed). -/
+def unitOps : List (String × Int × Bool) :=
+  (["uint53__lean_nat", "bigint_nat__lean_nat", "int53__lean_int", "bigint_int__lean_int"].map
+    fun p => [(p ++ "_add", 0, true), (p ++ "_mul", 1, true), (p ++ "_sub", 0, false)]).flatten
+
+/-- Is the expression the integer literal `n`? -/
+def JsExpr.isIntLit {C M : List JsTy} {τ : JsTy} (n : Int) : JsExpr C M τ → Bool
+  | .lit l => match l.shape with
+    | .number (.int m) | .bigint m => m == n
+    | _ => false
+  | _ => false
+
+/-- `x + 0`, `x * 1`, `x - 0` (and `0 + x`, `1 * x`) on integers are `x` (see `unitOps`). -/
+def arithNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
+  | e@(.imported (σs := [_, _]) op (.cons a (.cons b .nil))) => unitCore op.name a b e
+  | e@(.inlined (σs := [_, _]) op (.cons a (.cons b .nil))) => unitCore op.name a b e
+  | e => e
+where
+  /-- The operation `name` on `a` and `b` (the expression `e`), simplified. -/
+  unitCore {σ σ' : JsTy} (name : String) (a : JsExpr C M σ) (b : JsExpr C M σ')
+      (e : JsExpr C M τ) : JsExpr C M τ :=
+    match unitOps.find? (·.1 == name) with
+    | some (_, u, comm) =>
+      if b.isIntLit u then (if h : σ = τ then h ▸ a else e)
+      else if comm && a.isIntLit u then (if h : σ' = τ then h ▸ b else e)
+      else e
+    | none => e
+
+/-- `condNode` and `arithNode`, as a rewrite of every expression. -/
+def condRw : JsExprRewrite := ⟨fun _ _ _ e => condNode (arithNode e)⟩
+
+/-- `condRw` everywhere. -/
+def simplifyExprs {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : JsBlock C M J k :=
+  b.mapBU condRw .id
+
 /-- `const x = e; S` where the first statement of `S` reads `x` before doing anything that
     could have an effect or fail, and nothing else reads `x`: `S` with `e` for `x`
     (`const x = f(y); return g(x);` is `return g(f(y));`).  `e` is still evaluated exactly
@@ -331,18 +523,19 @@ def inlineOnceNode {C M J : List JsTy} {k : JsEnd} : JsBlock C M J k → JsBlock
     if uses.size == 1 then rest.subst (JsSubst.inst e) else b
   | b => b
 
-/-- `inlineOnceNode` everywhere (once arrays are updated in place: it is run last).  Moving
+/-- `inlineOnceNode` everywhere, and `condNode` (once arrays are updated in place: it is run
+    last).  Moving
     `e` past reads of mutable variables is only safe when no closure assigns a mutable
     variable (calling it could change them): the backend never writes such a closure, and the
     pass does nothing otherwise. -/
 def inlineOnce {C M J : List JsTy} {k : JsEnd} (b : JsBlock C M J k) : JsBlock C M J k :=
-  if b.closureWrites then b else
-  b.mapBU .id ⟨fun _ _ _ _ b => inlineOnceNode b⟩
+  if b.closureWrites then b.mapBU condRw .id else
+  b.mapBU condRw ⟨fun _ _ _ _ b => inlineOnceNode b⟩
 
 /-- `inlineOnce` in an expression (the bodies of its closures). -/
 def inlineOnceExpr {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) : JsExpr C M τ :=
-  if e.closureWrites then e else
-  e.mapBU .id ⟨fun _ _ _ _ b => inlineOnceNode b⟩
+  if e.closureWrites then e.mapBU condRw .id else
+  e.mapBU condRw ⟨fun _ _ _ _ b => inlineOnceNode b⟩
 
 end MoreJs
 

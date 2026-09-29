@@ -3,17 +3,7 @@
 // not translated:
 //   test3: LeanScript: the call b.gcd (a + 7) is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { uint53__lean_nat_add, uint53__lean_nat_mul, uint53__lean_nat_mod__Nat_mod } from "runtime.js";
-
-const $k1 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
-  return c1;
-};
-const $k2 : (uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
-  return uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_mul(c2, 100), uint53__lean_nat_mul(c1, 10)), c0);
-};
-const $k3 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
-  return uint53__lean_nat_add(c1, c0);
-};
+import { uint53__lean_nat_mod__Nat_mod, uint53__lean_nat_add, uint53__lean_nat_mul } from "runtime.js";
 
 // test1
 export const test1 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
@@ -37,7 +27,7 @@ export const test1 = (fuel : uint53(number), a : uint53(number), b : uint53(numb
       }
     }
   }
-  return (m2 ? m3 : $k1(m1, m0));
+  return (m2 ? m3 : m1);
 };
 
 // test2
@@ -52,7 +42,7 @@ export const test2 = (fuel : uint53(number), a : uint53(number), b : uint53(numb
     m0 = uint53__lean_nat_add(c0, 1);
     next;
   }
-  return $k2(m2, m1, m0);
+  return uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_mul(m2, 100), uint53__lean_nat_mul(m1, 10)), m0);
 };
 
 // test4
@@ -64,5 +54,5 @@ export const test4 = (fuel : uint53(number), a : uint53(number), b : uint53(numb
     m0 = uint53__lean_nat_add(m0, 2);
     next;
   }
-  return $k3(m1, m0);
+  return uint53__lean_nat_add(m1, m0);
 };

@@ -11,16 +11,6 @@ const $k1 = (x$1) => {
     ? bigint_nat__lean_nat_sub(f$3, f$2)
     : bigint_nat__lean_nat_sub(f$2, f$3);
 };
-const $k2 = (x$1) => {
-  const { _1: f$2, _2: f$3 } = x$1;
-  return f$2 < f$3 ? x$1 : { _1: f$3, _2: f$2 };
-};
-const $k3 = (x$1) => {
-  if (x$1.tag === 0) {
-    return 0n;
-  }
-  return x$1._1._1 + x$1._1._2;
-};
 
 /**
  * `test1`
@@ -56,10 +46,8 @@ export const test2 = (n) => {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const test3 = (a, b) => {
-  const x$1 = $k1({ _1: a, _2: b });
-  return x$1 + $k1({ _1: b, _2: a + 1n });
-};
+export const test3 = (a, b) =>
+  $k1({ _1: a, _2: b }) + $k1({ _1: b, _2: a + 1n });
 
 /**
  * `test4`
@@ -67,7 +55,7 @@ export const test3 = (a, b) => {
  * @param {nat(bigint)} b
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
-export const test4 = (a, b) => $k2({ _1: a, _2: b });
+export const test4 = (a, b) => (a < b ? { _1: a, _2: b } : { _1: b, _2: a });
 
 /**
  * `test5`
@@ -75,4 +63,4 @@ export const test4 = (a, b) => $k2({ _1: a, _2: b });
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const test5 = (a, b) => $k3({ tag: 1, _1: { _1: a, _2: b } }) + 0n;
+export const test5 = (a, b) => a + b;

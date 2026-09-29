@@ -117,6 +117,15 @@ def JsUnionArms.subst {C M C' M' J : List JsTy} (s : JsSubst C M C' M') {k : JsE
   | .cons (us := us) sel b rest => .cons sel (b.subst (s.liftCAll us)) (rest.subst s)
 end
 
+/-- The substitution of the arguments for the parameters of a function (its innermost
+    constants, the last one innermost). -/
+def JsSubst.params {C M : List JsTy} : {σs : List JsTy} → JsArgs C M σs →
+    JsSubst (pushAll σs C) M C M
+  | [], .nil => { c := fun x => .cvar x, m := JsRen.id }
+  | _ :: _, .cons a as =>
+    let s₁ := JsSubst.params as.wkC
+    { c := fun x => (s₁.c x).subst (JsSubst.inst a), m := JsRen.id }
+
 end MoreJs
 
 end

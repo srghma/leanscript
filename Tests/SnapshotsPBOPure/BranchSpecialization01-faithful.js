@@ -17,10 +17,7 @@ const $k1 = (x$1) => {
  * @param {enum4@0} y
  * @returns {boolean}
  */
-export const instBEqTestEnum$beq = (x, y) => {
-  const x$1 = $k1(x);
-  return x$1 === $k1(y);
-};
+export const instBEqTestEnum$beq = (x, y) => $k1(x) === $k1(y);
 
 /**
  * `test1`
@@ -34,7 +31,4 @@ export const test1 = (a) => 2n === $k1(a);
  * @param {enum4@0} a
  * @returns {boolean}
  */
-export const test2 = (a) => {
-  const x$1 = $k1(a);
-  return x$1 === $k1(2);
-};
+export const test2 = (a) => $k1(a) === $k1(2);

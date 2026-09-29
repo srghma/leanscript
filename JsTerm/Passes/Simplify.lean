@@ -227,22 +227,67 @@ def JsParts.append {C M : List JsTy} {A E : JsTy} : JsParts C M A E → JsParts 
   | .elem e ps, qs => .elem e (ps.append qs)
   | .spread a ps, qs => .spread a (ps.append qs)
 
+/-- The parts of a list literal, as the parts of an array literal: a list is a JavaScript
+    array, so a spread of a list `xs` is the spread of `xs` as an array
+    (`array__lean_array_mk`, which is written as its argument). -/
+def JsParts.listToArray {C M : List JsTy} {α : JsTy} :
+    JsParts C M (.list α) α → JsParts C M (.array α) α
+  | .nil => .nil
+  | .elem e ps => .elem e ps.listToArray
+  | .spread xs ps => .spread (.inlined (.array__lean_array_mk α) (.cons xs .nil)) ps.listToArray
+
+/-- The parts of a generic array literal, as the parts of a list literal (a spread of an
+    array `a` is the spread of `a` as a list, `array__lean_array_to_list`, written as its
+    argument). -/
+def JsParts.arrayToList {C M : List JsTy} {α : JsTy} :
+    JsParts C M (.array α) α → JsParts C M (.list α) α
+  | .nil => .nil
+  | .elem e ps => .elem e ps.arrayToList
+  | .spread a ps => .spread (.inlined (.array__lean_array_to_list α) (.cons a .nil)) ps.arrayToList
+
+/-- The parts of a generic array that is a literal: an array literal, or a list literal
+    converted to an array (`array__lean_array_mk([ … ])`, the same JavaScript array). -/
+def JsExpr.arrayLitParts? {C M : List JsTy} {α : JsTy} :
+    JsExpr C M (.array α) → Option (JsParts C M (.array α) α)
+  | .array_mk (.generic _) ps => some ps
+  | .inlined (.array__lean_array_mk _) (.cons (.list_mk ps) .nil) => some ps.listToArray
+  | _ => none
+
+/-- The parts of a list that is a literal: a list literal, or a generic array literal
+    converted to a list (`array__lean_array_to_list([ … ])`). -/
+def JsExpr.listLitParts? {C M : List JsTy} {α : JsTy} :
+    JsExpr C M (.list α) → Option (JsParts C M (.list α) α)
+  | .list_mk ps => some ps
+  | .inlined (.array__lean_array_to_list _) (.cons (.array_mk (.generic _) ps) .nil) =>
+    some ps.arrayToList
+  | _ => none
+
+/-- The parts of an array of layout `l` that is a literal (see `JsExpr.arrayLitParts?`). -/
+def JsArrayLayout.litParts? {C M : List JsTy} {A E : JsTy} :
+    (l : JsArrayLayout A E) → JsExpr C M A → Option (JsParts C M A E)
+  | .generic _, a => a.arrayLitParts?
+  | .typed _, .array_mk l' qs => some (JsArrayLayout.elem_unique l' (.typed _) ▸ qs)
+  | .typed _, _ => none
+
 /-- The spreads of array literals (of the layout `l`) replaced by their elements. -/
 def JsParts.flatten {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) :
     JsParts C M A E → JsParts C M A E
   | .nil => .nil
   | .elem e ps => .elem e (ps.flatten l)
-  | .spread (.array_mk l' qs) ps =>
-    (JsArrayLayout.elem_unique l' l ▸ qs).append (ps.flatten l)
-  | .spread a ps => .spread a (ps.flatten l)
+  | .spread a ps =>
+    match l.litParts? a with
+    | some qs => qs.append (ps.flatten l)
+    | none => .spread a (ps.flatten l)
 
 /-- The spreads of list literals replaced by their elements. -/
 def JsParts.flattenList {C M : List JsTy} {α : JsTy} :
     JsParts C M (.list α) α → JsParts C M (.list α) α
   | .nil => .nil
   | .elem e ps => .elem e ps.flattenList
-  | .spread (.list_mk qs) ps => qs.append ps.flattenList
-  | .spread a ps => .spread a ps.flattenList
+  | .spread a ps =>
+    match a.listLitParts? with
+    | some qs => qs.append ps.flattenList
+    | none => .spread a ps.flattenList
 
 /-- One step of flattening. -/
 def flattenNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
@@ -253,23 +298,33 @@ def flattenNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
 /-- The flattening rewrite. -/
 def flattenRw : JsExprRewrite := ⟨fun _ _ _ e => flattenNode e⟩
 
-/-- A variable, a literal, or a spread of one: a part of an array literal that has no effect,
-    cannot fail and is cheap. -/
-def JsParts.isMovable {C M : List JsTy} {A E : JsTy} : JsParts C M A E → Bool
-  | .nil => true
-  | .elem e ps => e.isAtom && ps.isMovable
-  | .spread a ps => a.isAtom && ps.isMovable
-
 /-- Are all the arguments variables, globals or literals? -/
 def JsArgs.allAtoms {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => true
   | .cons a as => a.isAtom && as.allAtoms
+
+/-- A variable, a literal, or an inlined operation that has no effect and cannot fail on
+    those (`xs` as an array, `a.length`): an expression that can be evaluated later, or not
+    at all, without changing anything. -/
+def JsExpr.isCheapPure {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+  | .inlined (e := .pure) (t := .doesntThrow) _ as => as.allAtoms
+  | e => e.isAtom
+
+/-- A cheap pure expression (`JsExpr.isCheapPure`), or a spread of one: a part of an array
+    literal that has no effect, cannot fail and is cheap. -/
+def JsParts.isMovable {C M : List JsTy} {A E : JsTy} : JsParts C M A E → Bool
+  | .nil => true
+  | .elem e ps => e.isCheapPure && ps.isMovable
+  | .spread a ps => a.isCheapPure && ps.isMovable
 
 /-- An array or list literal that can be moved to its use (`[]` written by an inlined
     operation, `Array.emptyWithCapacity n`, too). -/
 def JsExpr.isMovableArray {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
   | .array_mk (.generic _) ps => ps.isMovable
   | .list_mk ps => ps.isMovable
+  | .inlined (.array__lean_array_mk _) (.cons (.list_mk ps) .nil) => ps.isMovable
+  | .inlined (.array__lean_array_to_list _) (.cons (.array_mk (.generic _) ps) .nil) =>
+    ps.isMovable
   | .inlined op args => (match op.template with | .emptyArray => true | _ => false) && args.allAtoms
   | _ => false
 

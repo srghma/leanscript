@@ -11,6 +11,5 @@ export const test = (x : int(bigint), y : int(bigint)) : int(bigint) => {
     }
     return m0;
   };
-  const x = c0(c2, c1);
-  return inline:bigint_int__lean_int_add(c0, c1(c2, c3));
+  return inline:bigint_int__lean_int_add(c0(c2, c1), c0(c1, c2));
 };

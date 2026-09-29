@@ -4,21 +4,10 @@
 //   test3: LeanScript: the call b.gcd (a + 7) is not a call of an extern: `Nat.gcd` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 import {
+  uint53__lean_nat_mod__Nat_mod,
   uint53__lean_nat_add,
   uint53__lean_nat_mul,
-  uint53__lean_nat_mod__Nat_mod,
 } from "../../runtime.js";
-
-const $k1 = (x$1, x$2) => x$1;
-const $k2 = (x$1, x$2, x$3) =>
-  uint53__lean_nat_add(
-    uint53__lean_nat_add(
-      uint53__lean_nat_mul(x$1, 100),
-      uint53__lean_nat_mul(x$2, 10),
-    ),
-    x$3,
-  );
-const $k3 = (x$1, x$2) => uint53__lean_nat_add(x$1, x$2);
 
 /**
  * `test1`
@@ -44,7 +33,7 @@ export const test1 = (fuel, a, b) => {
       }
     }
   }
-  return done$2 ? r$1 : $k1(x$3, x$4);
+  return done$2 ? r$1 : x$3;
 };
 
 /**
@@ -65,7 +54,13 @@ export const test2 = (fuel, a, b, c) => {
     x$2 = x$3;
     x$3 = uint53__lean_nat_add(x$5, 1);
   }
-  return $k2(x$1, x$2, x$3);
+  return uint53__lean_nat_add(
+    uint53__lean_nat_add(
+      uint53__lean_nat_mul(x$1, 100),
+      uint53__lean_nat_mul(x$2, 10),
+    ),
+    x$3,
+  );
 };
 
 /**
@@ -82,5 +77,5 @@ export const test4 = (fuel, a, b) => {
     x$1 = uint53__lean_nat_add(x$1, 1);
     x$2 = uint53__lean_nat_add(x$2, 2);
   }
-  return $k3(x$1, x$2);
+  return uint53__lean_nat_add(x$1, x$2);
 };

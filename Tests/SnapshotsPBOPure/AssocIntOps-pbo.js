@@ -95,17 +95,14 @@ export const test3 = (x) =>
 export const test4 = (x) =>
   int53__lean_int_mul(
     int53__lean_int_mul(
-      1,
       int53__lean_int_mul(
         int53__lean_int_mul(
-          int53__lean_int_mul(
-            int53__lean_int_mul(int53__lean_int_mul(2, x), x),
-            x,
-          ),
+          int53__lean_int_mul(int53__lean_int_mul(2, x), x),
           x,
         ),
-        3,
+        x,
       ),
+      3,
     ),
     4,
   );
@@ -118,15 +115,12 @@ export const test4 = (x) =>
 export const test5 = (x) =>
   int53__lean_int_mul(
     int53__lean_int_mul(
-      1,
+      2,
       int53__lean_int_mul(
-        2,
+        x,
         int53__lean_int_mul(
           x,
-          int53__lean_int_mul(
-            x,
-            int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
-          ),
+          int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
         ),
       ),
     ),
@@ -143,15 +137,12 @@ export const test6 = (x) =>
     int53__lean_int_mul(
       int53__lean_int_mul(
         int53__lean_int_mul(
-          1,
+          2,
           int53__lean_int_mul(
-            2,
+            x,
             int53__lean_int_mul(
               x,
-              int53__lean_int_mul(
-                x,
-                int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
-              ),
+              int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
             ),
           ),
         ),

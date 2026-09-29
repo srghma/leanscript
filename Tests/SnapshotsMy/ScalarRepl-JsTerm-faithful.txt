@@ -9,19 +9,6 @@ const $k1 : ({ _1: nat(bigint), _2: nat(bigint) }) => nat(bigint) = (x) => {
   const { _1: f, _2: f } = c0;
   return (inline:bigint_nat__lean_nat_dec_lt(c1, c0) ? bigint_nat__lean_nat_sub(c0, c1) : bigint_nat__lean_nat_sub(c1, c0));
 };
-const $k2 : ({ _1: nat(bigint), _2: nat(bigint) }) => { _1: nat(bigint), _2: nat(bigint) } = (x) => {
-  const { _1: f, _2: f } = c0;
-  return (inline:bigint_nat__lean_nat_dec_lt(c1, c0) ? c2 : { _1: c0, _2: c1 });
-};
-const $k3 : (({ tag: 0 } | { tag: 1, _1: { _1: nat(bigint), _2: nat(bigint) } })) => nat(bigint) = (x) => {
-  switch (c0.tag) {
-  case 0 {  }:
-    return 0n;
-  case 1 { _1: f }:
-    const { _1: f, _2: f } = c0;
-    return inline:bigint_nat__lean_nat_add(c1, c0);
-  }
-};
 
 // test1
 export const test1 = (n : nat(bigint)) : nat(bigint) => {
@@ -48,16 +35,15 @@ export const test2 = (n : nat(bigint)) : nat(bigint) => {
 
 // test3
 export const test3 = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  const x = $k1({ _1: c1, _2: c0 });
-  return inline:bigint_nat__lean_nat_add(c0, $k1({ _1: c1, _2: inline:bigint_nat__lean_nat_add(c2, 1n) }));
+  return inline:bigint_nat__lean_nat_add($k1({ _1: c1, _2: c0 }), $k1({ _1: c0, _2: inline:bigint_nat__lean_nat_add(c1, 1n) }));
 };
 
 // test4
 export const test4 = (a : nat(bigint), b : nat(bigint)) : { _1: nat(bigint), _2: nat(bigint) } => {
-  return $k2({ _1: c1, _2: c0 });
+  return (inline:bigint_nat__lean_nat_dec_lt(c1, c0) ? { _1: c1, _2: c0 } : { _1: c0, _2: c1 });
 };
 
 // test5
 export const test5 = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return inline:bigint_nat__lean_nat_add($k3({ tag: 1, _1: { _1: c1, _2: c0 } }), 0n);
+  return inline:bigint_nat__lean_nat_add(c1, c0);
 };

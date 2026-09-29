@@ -3,8 +3,7 @@
 
 // test1
 export const test1 = (f : (int53(number)) => string, g : (int53(number)) => string, a : int53(number)) : string => {
-  const x = c2(c0);
-  return inline:string__lean_string_append__String_append(c0, c2(c1));
+  return inline:string__lean_string_append__String_append(c2(c0), c1(c0));
 };
 
 // test2

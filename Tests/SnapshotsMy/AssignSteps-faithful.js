@@ -5,10 +5,6 @@
 
 import { bigint_nat__lean_nat_mod__Nat_mod } from "../../runtime.js";
 
-const $k1 = (x$1, x$2) => x$1;
-const $k2 = (x$1, x$2, x$3) => x$1 * 100n + x$2 * 10n + x$3;
-const $k3 = (x$1, x$2) => x$1 + x$2;
-
 /**
  * `test1`
  * @param {nat(bigint)} fuel
@@ -33,7 +29,7 @@ export const test1 = (fuel, a, b) => {
       }
     }
   }
-  return done$2 ? r$1 : $k1(x$3, x$4);
+  return done$2 ? r$1 : x$3;
 };
 
 /**
@@ -54,7 +50,7 @@ export const test2 = (fuel, a, b, c) => {
     x$2 = x$3;
     x$3 = x$5 + 1n;
   }
-  return $k2(x$1, x$2, x$3);
+  return x$1 * 100n + x$2 * 10n + x$3;
 };
 
 /**
@@ -71,5 +67,5 @@ export const test4 = (fuel, a, b) => {
     x$1 = x$1 + 1n;
     x$2 = x$2 + 2n;
   }
-  return $k3(x$1, x$2);
+  return x$1 + x$2;
 };

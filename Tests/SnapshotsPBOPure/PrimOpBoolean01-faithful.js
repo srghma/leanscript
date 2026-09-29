@@ -39,7 +39,7 @@ export const test4 = (a, b) => !(a ? b : !b);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test5 = (a, b) => (!a ? b : false);
+export const test5 = (a, b) => (a ? false : b);
 
 /**
  * `test6`
@@ -47,7 +47,7 @@ export const test5 = (a, b) => (!a ? b : false);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test6 = (a, b) => (!b ? a : false);
+export const test6 = (a, b) => (b ? false : a);
 
 /**
  * `test7`

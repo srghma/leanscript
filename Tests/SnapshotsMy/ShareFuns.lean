@@ -7,8 +7,10 @@ Smaller JavaScript for small functions:
 * a function equal to one before it is written as that one (`export const g = f;`), and a
   function that only passes its parameters on to a function of the runtime is that function.
 
-(A closure equal to an exported function is that function, not a copy of it:
-`Tests/SnapshotsMy/AppArity.lean`, `Tests/SnapshotsMy/TcoHyper.lean`.)
+(A block closure equal to an exported function is that function, not a copy of it:
+`Tests/SnapshotsMy/TcoHyper.lean`. A closure that only returns an expression is written out
+where it is used instead: `Tests/SnapshotsMy/AppArity.lean`,
+`Tests/SnapshotsMy/InlineClosures.lean`.)
 -/
 
 /-- The fields of a pair, each read once. -/

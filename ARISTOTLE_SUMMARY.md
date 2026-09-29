@@ -1,3 +1,40 @@
+# Summary of changes for run 6152da32-29f0-462a-8dd7-2f58d6ef43b2
+I made the generated JavaScript smaller by improving the Term → JsTerm conversion passes. I did not change `Term.optimize`: the extra rewrites I considered there, such as inlining beta-redexes, would have meant a lot of new proof work on top of `Term.optimize_eval`. So that optimiser and its proofs are exactly as before, and all the new work is in the JsTerm passes. Those passes are checked by the snapshot tests, not proved.
+
+What changed:
+- **`JsTerm/Passes/Simplify.lean`:** array spreads are now flattened through list↔array conversions. A list built from literals and an array becomes a single literal, e.g. `["a", ...arr, "b"]`.
+- **`JsTerm/Passes/Cleanup.lean`:**
+  - When it inlines a constant that is used once, it now respects the evaluation order of inlined operators: operands of `a && b` or `c ? a : b` may not be evaluated. It also lets that inlining pass over pure operations that cannot throw.
+  - When the value of a record or union is known, it picks the field or union arm directly.
+  - It simplifies conditionals: `(c ? false : true) ? a : b` becomes `c ? b : a`, `c ? a : a` becomes `a`, and `x === y ? y : x` becomes `x` on non-float types.
+  - It drops `+0`, `*1` and `-0` on the integer representations.
+- **New `JsTerm/Passes/InlineConsts.lean`** (run from `mkModule` after hoisting) inlines module constants whose values are known:
+  - a closure that is passed as an argument or called is written out where it is used (up to 4 uses), then beta-reduced;
+  - a record or union of constants is read directly where it is used;
+  - a block closure called once in tail position is inlined there.
+  Functions this changes go through in-place array updates and the clean-ups again. A closure equal to an exported function still just refers to that function. For example, `test5` in `Tests/SnapshotsMy/ScalarRepl.lean` is now `export const test5 = uint53__lean_nat_add;`.
+- **New snapshot test:** `Tests/SnapshotsMy/InlineClosures.lean` (40 checks).
+
+**Results:** I compared the `-pbo.js` and `-faithful.js` snapshots that existed at the start of this round, ignoring comments, imports and blank lines:
+
+| | before | after |
+| :-- | --: | --: |
+| lines | 3437 | 3387 |
+| bytes | 108840 | 106540 |
+| `const`s | 1568 | 1511 |
+| module constants (`$k`) | 58 | 39 |
+| arrows | 947 | 922 |
+
+16 test programs' output changed.
+
+**Checks run:**
+- Regenerating all snapshots passes 4002 node checks with 0 failures. The script still exits with status 1, as before, because of the tests that deliberately panic.
+- `lake build JsTerm leanscript tests LeanScriptCli TermTests TyTests RuntimeSpec` succeeds.
+- `lake exe tests` reports 57/57 passed.
+- No `sorry` in the pass files.
+
+The README now describes the new passes and gives these numbers. I also corrected the comment in `Tests/SnapshotsMy/ShareFuns.lean`, and the Properties table has an updated row for the clean-up passes and a new row for the constant inlining, both marked as test-checked rather than proved. Everything is committed.
+
 # Summary of changes for run 98d27366-ec64-4629-a737-71f7610e83dd
 I made `Term.optimize` and the Term → JsTerm → JavaScript conversion produce smaller JavaScript. The optimizer change is proved correct in Lean. The JavaScript changes are checked only by the snapshot tests, because `JsTerm` has no formal semantics to prove them against.
 

@@ -52,34 +52,43 @@ export const ArrayTest$test3 = (arr) => [
  * @param {List<string>} arr
  * @returns {List<string>}
  */
-export const ListTest$test1 = (arr) => {
-  const x$1 = [...arr, "c"];
-  const x$2 = [...arr, ...x$1];
-  const x$3 = [...arr, ...x$2];
-  return ["a", "b", ...[...arr, ...x$3], "d"];
-};
+export const ListTest$test1 = (arr) => [
+  "a",
+  "b",
+  ...arr,
+  ...arr,
+  ...arr,
+  ...arr,
+  "c",
+  "d",
+];
 
 /**
  * `ListTest.test2`
  * @param {List<string>} arr
  * @returns {List<string>}
  */
-export const ListTest$test2 = (arr) => [
-  "a",
-  ...[...[...[...["b", ...arr], ...arr], ...arr], ...arr],
-  "c",
-  "d",
-];
+export const ListTest$test2 = ListTest$test1;
 
 /**
  * `ListTest.test3`
  * @param {List<string>} arr
  * @returns {List<string>}
  */
-export const ListTest$test3 = (arr) => {
-  const x$1 = [...[...[...["e", ...arr], ...arr], ...arr], ...arr];
-  const x$2 = [...arr, "c"];
-  const x$3 = [...arr, ...x$2];
-  const x$4 = [...arr, ...x$3];
-  return ["a", "b", ...[...arr, ...x$4], "d", ...x$1, "f", "g"];
-};
+export const ListTest$test3 = (arr) => [
+  "a",
+  "b",
+  ...arr,
+  ...arr,
+  ...arr,
+  ...arr,
+  "c",
+  "d",
+  "e",
+  ...arr,
+  ...arr,
+  ...arr,
+  ...arr,
+  "f",
+  "g",
+];

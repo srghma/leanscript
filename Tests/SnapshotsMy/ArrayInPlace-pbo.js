@@ -4,8 +4,6 @@
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
 import {
-  array__lean_array_push_immutable,
-  uint53__lean_nat_sub,
   array__lean_array_push_mutable,
   uint53__lean_nat_mul,
   uint53__lean_array_set_immutable,
@@ -13,19 +11,9 @@ import {
   uint53__lean_mk_array,
   uint53__lean_nat_div,
   uint53__lean_array_swap_mutable,
+  uint53__lean_nat_sub,
   array__lean_array_pop_mutable,
 } from "../../runtime.js";
-
-const $k1 = (x$1, x$2) => {
-  let x$3 = x$2;
-  for (let j$4 = 0; j$4 < x$1; j$4++) {
-    x$3 = array__lean_array_push_immutable(
-      x$3,
-      uint53__lean_nat_sub(uint53__lean_nat_sub(x$1, 1), j$4),
-    );
-  }
-  return x$3;
-};
 
 /**
  * `test1`
@@ -97,4 +85,13 @@ export const test5 = (n) => {
  * @param {uint53(number)} n
  * @returns {Array<uint53(number)>}
  */
-export const test6 = (n) => $k1(n, []);
+export const test6 = (n) => {
+  let x$1 = [];
+  for (let j$2 = 0; j$2 < n; j$2++) {
+    x$1 = array__lean_array_push_mutable(
+      x$1,
+      uint53__lean_nat_sub(uint53__lean_nat_sub(n, 1), j$2),
+    );
+  }
+  return x$1;
+};

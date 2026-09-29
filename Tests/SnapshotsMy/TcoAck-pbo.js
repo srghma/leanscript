@@ -17,13 +17,6 @@ import {
 } from "../../runtime.js";
 
 const $k1 = (x$1) => uint53__lean_nat_add(x$1, 1);
-const $k2 = (x$1, x$2) => {
-  let acc$3 = x$1(1);
-  for (let i$4 = 0; i$4 < x$2; i$4++) {
-    acc$3 = x$1(acc$3);
-  }
-  return acc$3;
-};
 
 /**
  * `ack2`
@@ -35,7 +28,13 @@ export const ack2 = (a, a1) => {
   let acc$1 = $k1;
   for (let i$2 = 0; i$2 < a; i$2++) {
     const a$3 = acc$1;
-    acc$1 = (y$4) => $k2(a$3, y$4);
+    acc$1 = (y$4) => {
+      let acc$5 = a$3(1);
+      for (let i$6 = 0; i$6 < y$4; i$6++) {
+        acc$5 = a$3(acc$5);
+      }
+      return acc$5;
+    };
   }
   return acc$1(a1);
 };

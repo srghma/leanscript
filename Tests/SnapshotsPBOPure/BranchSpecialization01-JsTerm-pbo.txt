@@ -16,8 +16,7 @@ const $k1 : (enum4@0) => uint53(number) = (x) => {
 
 // instBEqTestEnum.beq
 export const instBEqTestEnum$beq = (x : enum4@0, y : enum4@0) : boolean => {
-  const x = $k1(c1);
-  return inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, $k1(c1));
+  return inline:uint53__lean_nat_dec_eq__Nat_decEq($k1(c1), $k1(c0));
 };
 
 // test1
@@ -27,6 +26,5 @@ export const test1 = (a : enum4@0) : boolean => {
 
 // test2
 export const test2 = (a : enum4@0) : boolean => {
-  const x = $k1(c0);
-  return inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, $k1(2));
+  return inline:uint53__lean_nat_dec_eq__Nat_decEq($k1(c0), $k1(2));
 };
