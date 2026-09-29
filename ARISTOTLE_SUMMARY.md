@@ -1,3 +1,24 @@
+# Summary of changes for run 0c5446ca-5acd-4474-a6e6-0cb2e1c64833
+Most of this task was already done in the previous run. The generated JavaScript for `AssocArrayAppend.lean` already matches `legacy-backend/AssocArrayAppend.js`: every array test, and the list tests at the `pbo` preset, compile to one literal such as `(arr) => ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"]`. The std array functions from your table were already catalogue entries, so they are no longer unfolded into `array_foldl`/`lean_array_push`. This session closed one remaining gap between the output and your `ListTest.test1` sketch.
+
+**What changed: `List.append` on cons cells is now written into the generated module, not imported.** As you pointed out, the code generator chooses how `List` is laid out (`{ tag, _1, _2 }` cells), so the append helper shouldn't live in `runtime.js`.
+- New file `JsTerm/Lower/LocalHelpers.lean` holds the table of such helpers (`localHelper?`). For now the only entry is `consList__lean_list_append`, written as a loop so a long list can't overflow the stack.
+- `JsModule` has a new `locals` field. `mkModule` moves these helpers out of the import list, and the printer writes their definitions (not exported) at the top of any module that calls them.
+- `ListTest.test1` at the `faithful` preset now has no import at all. It is the local helper followed by `{ tag: 1, _1: "a", _2: { tag: 1, _1: "b", _2: consList__lean_list_append(arr, … consList__lean_list_append(arr, { tag: 1, _1: "c", _2: { tag: 1, _1: "d", _2: { tag: 0 } } })…) } }`.
+- The literal operands become cells directly, so nothing gets copied or mutated. That's why the `__owned_at_1` call from your sketch isn't needed.
+- `runtime.js` keeps a function of the same name, because the operation tables are generated from it.
+
+**Checks**
+- `lake build JsTerm leanscript tests` succeeds.
+- `lake exe tests` passes 67/67. The new test runs both copies in node and checks that they give the same results, share the right operand, and handle a 200,000-cell list.
+- I regenerated the three snapshots that use the helper (`AssocArrayAppend`, `ListRepr`, `InlineClosures`). All their node checks pass at both presets (36, 58 and 40 cases).
+- `README.md` and `NOT_IMPLEMENTED.md` are updated, and the helper table is registered in the Properties table.
+
+**Not done**
+- **In-place (`__mut0`) version:** there is no version that mutates the last cell of the left list. The ownership analysis only tracks arrays, not list spines, so it can't tell when the left list is safe to mutate. In every current snapshot the non-literal left operand is a function parameter, which the caller may still hold, so this version could not be used there anyway.
+- **Other cons-list helpers:** the other cons-list functions in `runtime.js` (`consList__of_array`, `consList__to_array`, `consList__append`, …) are still imported. They convert lists between the array and cons-cell layouts.
+- **`lake build` failure:** the full `lake build` still fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib. That file hasn't changed since the initial commit, and the project doesn't depend on Mathlib.
+
 # Summary of changes for run 93fd0d49-ba7c-43f4-9cbd-4556a621e7ac
 The JavaScript for `AssocArrayAppend.lean` now matches the purescript-backend-optimizer output: every array test, and the list tests at the `pbo` preset, compile to one array literal. For example, `ArrayTest.test1` and `test2` both become `(arr) => ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"]`, the same as `legacy-backend/AssocArrayAppend.js`. At the `faithful` preset, `ListTest.test1` is close to your sketch:
 ```

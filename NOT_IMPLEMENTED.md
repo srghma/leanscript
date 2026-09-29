@@ -283,6 +283,10 @@ The supported fragment and the refusals are listed in the header of
   closure's body; a closure passed to a non-inlined closure (which needs specialising the
   callee).  The module-level `inlineConsts` of the former JavaScript backend did some of
   those.
+- `List.append` on cons cells (`list=tagged`) has no destructive version (mutating the last
+  cell of an owned left operand, 0 allocations): the ownership analysis
+  (`LeanScript/Term/Ownership`) tracks arrays only, not the spines of lists.  The copying
+  version is written into each module that uses it (`JsTerm/Lower/LocalHelpers.lean`).
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

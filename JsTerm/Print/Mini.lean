@@ -1,11 +1,13 @@
 import JsTerm.Print.Mini.Block
+import JsTerm.Lower.LocalHelpers
 
 /-!
 # Printing the JavaScript grammar with `LanguageJavascriptMini`
 
 `MoreJs.JsModule.toJs m` is the text of the `.js` file of a module: a header comment, the
 import of the runtime functions the module calls (`import { … } from "…/runtime.js";`), the
-constants its functions share (`const $tag0 = { tag: 0 };`), and the exported functions, all
+definitions of the operations the module writes itself (`localHelper?`: `List.append` on cons
+cells, `JsTerm.Lower.LocalHelpers`), the constants its functions share (`const $tag0 = { tag: 0 };`), and the exported functions, all
 converted to the JavaScript syntax tree of `LanguageJavascriptMini` (`MiniAST`) and printed by
 its printer (prettier's style: two space indentation, double quotes, semicolons, 80 columns).
 
@@ -83,7 +85,9 @@ def JsModule.toJs (m : JsModule) (header : List String) (runtime : String) : Str
   let head := String.join (header.map fun l => s!"// {l}\n")
   let importsTxt := if m.imports.isEmpty then "" else
     printProgram ⟨[importToMini runtime m.imports]⟩ ++ "\n"
+  let localsTxt := String.join (m.locals.filterMap fun n =>
+    (localHelper? n).map (· ++ "\n"))
   let funs := m.funs.map fun f => f.docComment ++ "\n" ++ printProgram ⟨[f.toMini]⟩
-  head ++ "\n" ++ importsTxt ++ "\n".intercalate funs
+  head ++ "\n" ++ importsTxt ++ localsTxt ++ "\n".intercalate funs
 
 end MoreJs

@@ -617,6 +617,34 @@ def moreJsSpec : Spec := describe "JsTerm" do
       assertEq "output" ["{\"tag\":0}", "{\"tag\":1,\"_1\":7,\"_2\":{\"tag\":0}}", "1,2,3,4", "true", "0",
         "0,1,2,3,4 true true"]
         ((out.stdout.splitOn "\n").filter (· ≠ ""))
+  it "List.append on cons cells is written into the module, and answers what runtime.js does (needs node)" do
+    let n := "consList__lean_list_append"
+    assertEq "defined in the module" true (isLocalHelper n)
+    let src ← IO.FS.readFile "runtime.js"
+    assertEq "also in runtime.js" true ((src.splitOn s!"export const {n} =").length > 1)
+    let cwd ← IO.currentDir
+    let script := s!"import \{ {n} as rt, consList__of_array, consList__to_array } from {(s!"file://{cwd}/runtime.js").quote};\n" ++
+      (localHelper? n).getD "" ++
+      "const cases = [[[], []], [[1], []], [[], [2]], [[1, 2, 3], [4, 5]], [[7], [8]]];\n" ++
+      "for (const [a, b] of cases) {\n" ++
+      "  const xs = consList__of_array(a), ys = consList__of_array(b);\n" ++
+      "  const l = consList__lean_list_append(xs, ys), r = rt(xs, ys);\n" ++
+      "  console.log(consList__to_array(l).join(), consList__to_array(r).join(),\n" ++
+      "    consList__to_array(xs).join() === a.join(), b.length === 0 || a.length === 0 || l._2 !== xs._2);\n" ++
+      "}\n" ++
+      "let big = consList__of_array([]);\n" ++
+      "for (let i = 0; i < 200000; i++) big = { tag: 1, _1: i, _2: big };\n" ++
+      "console.log(consList__to_array(consList__lean_list_append(big, consList__of_array([1]))).length);\n"
+    let out ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      catch _ => pure none
+    match out with
+    | none => pure ()  -- no `node`: nothing to run
+    | some out =>
+      assertEq "node" "" (if out.exitCode == 0 then "" else out.stderr)
+      assertEq "output" ["  true true", "1 1 true true", "2 2 true true",
+        "1,2,3,4,5 1,2,3,4,5 true true", "7,8 7,8 true true", "200001"]
+        ((out.stdout.splitOn "\n").filter (· ≠ ""))
   let conv (cfg : JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
       IO JsFun :=
     match termToJs cfg name name ps ct with

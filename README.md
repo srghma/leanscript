@@ -151,7 +151,14 @@ which function was called.  With the entry, the JavaScript is the function of `r
 * an append of cons-cell lists (`list=tagged`) is built from its end, as `a ++ (b ++ (c ++ d))`
   (the last operand is shared, not copied; `List.append` is associative), a literal operand is
   its cells put in front of the rest, and any other operand is copied in front of the rest by
-  `consList__lean_list_append`;
+  `consList__lean_list_append` (a loop, so a long list does not overflow the stack).  Since the
+  cons-cell layout is chosen by the code generator, this function is **written into the
+  generated module** (not exported, only when the module calls it; `JsTerm/Lower/LocalHelpers.lean`)
+  instead of imported from `runtime.js`; `runtime.js` keeps a copy of the same name for the
+  operation tables, and `lake exe tests` checks that the two agree.  There is no destructive
+  (in-place) version of it: the ownership analysis tracks arrays only, not the spines of lists,
+  and in the snapshots every non-literal operand is a parameter, which the caller may still
+  hold;
 * an array literal bound by a `let` and used once (not under a `fun`) is substituted, so that it
   can be spliced; an argument of an extern that another argument also computes (the array of
   `(xs.map f).filter p`, whose default bound is `(xs.map f).size`) is bound once.

@@ -119,6 +119,8 @@ def JsFun.pretty (f : JsFun) : String :=
 def JsModule.pretty (m : JsModule) : String :=
   (if m.imports.isEmpty then "" else
     s!"import \{ {", ".intercalate m.imports} } from \"runtime.js\";\n\n") ++
+  (if m.locals.isEmpty then "" else
+    s!"// defined in the module: {", ".intercalate m.locals}\n\n") ++
   "\n".intercalate (m.funs.map JsFun.pretty)
 
 end MoreJs

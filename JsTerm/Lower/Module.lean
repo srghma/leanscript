@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Syntax.Basic
+public import JsTerm.Lower.LocalHelpers
 
 @[expose] public section
 
@@ -11,7 +12,8 @@ set_option autoImplicit false
 
 `mkModule` puts the functions converted from `Term` (`termToJs`) together as one `.js`
 module: the functions, in order, and the operations of the runtime they call (the imports),
-each once, in order of first use.  Nothing is rewritten: every optimisation is done on `Term`
+each once, in order of first use; the operations over the cons cells of `List` are written
+into the module instead of imported (`JsTerm.Lower.LocalHelpers`).  Nothing is rewritten: every optimisation is done on `Term`
 (`Term.optimize`) before the conversion.
 -/
 
@@ -82,9 +84,11 @@ end
 def collectImports (funs : List JsFun) : List String :=
   (funs.foldl (fun acc f => f.body.runtimeNames acc) #[]).toList
 
-/-- The module of the functions `funs`, with the imports they need. -/
+/-- The module of the functions `funs`, with the imports they need; the operations the module
+    defines itself (`localHelper?`) are not imported but written with it (`locals`). -/
 def mkModule (config : JsConfig) (funs : List JsFun) : JsModule :=
-  { config, imports := collectImports funs, funs }
+  let all := collectImports funs
+  { config, imports := all.filter (!isLocalHelper ·), locals := all.filter isLocalHelper, funs }
 
 end MoreJs
 

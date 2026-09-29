@@ -509,6 +509,9 @@ structure JsModule where
   config : JsConfig
   /-- The names of the functions of `runtime.js` it calls, each once, in order of first use. -/
   imports : List String
+  /-- The operations it calls that it defines itself instead of importing them
+      (`localHelper?`: the operations over the cons cells of `List`), each once. -/
+  locals : List String := []
   /-- The exported functions. -/
   funs : List JsFun
 
