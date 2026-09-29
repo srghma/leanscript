@@ -13,25 +13,21 @@ ret k1
 -- test6 : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
-    val k5 [1] : (Nat → (Array (• | [Nat]))) := fun x6 [1] : Nat => (closed)
-      ret #[ctor#1(x6), ctor#0()]
-    let x7 [1] : (Array (• | [Nat])) := k5 x2
-    join j8 [1] (x9 [1] : (• | [(• | [Nat])])) :=
-      case x9 of
+    val k5 [1] : (Array (• | [Nat])) := #[ctor#1(x2), ctor#0()]
+    join j6 [1] (x7 [1] : (• | [(• | [Nat])])) :=
+      case x7 of
       | ctor#0() =>
         ret 2
-      | ctor#1(f10 [1] : (• | [Nat])) =>
-        case f10 of
+      | ctor#1(f8 [1] : (• | [Nat])) =>
+        case f8 of
         | ctor#0() =>
           ret 1
-        | ctor#1(f11 [1] : Nat) =>
-          ret f11
-    if lean_nat_dec_lt(x4, lean_array_get_size(x7)) then
-      val k12 [1] : (Nat → (Array (• | [Nat]))) := fun x13 [1] : Nat => (closed)
-        ret #[ctor#1(x13), ctor#0()]
-      let x14 [1] : (Array (• | [Nat])) := k12 x2
-      jump j8 ctor#1(lean_array_get(ctor#0(), x14, x4))
+        | ctor#1(f9 [1] : Nat) =>
+          ret f9
+    if lean_nat_dec_lt(x4, lean_array_get_size(k5)) then
+      val k10 [1] : (Array (• | [Nat])) := #[ctor#1(x2), ctor#0()]
+      jump j6 ctor#1(lean_array_get(ctor#0(), k10, x4))
     else
-      jump j8 ctor#0()
+      jump j6 ctor#0()
   ret k3
 ret k1

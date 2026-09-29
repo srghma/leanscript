@@ -38,18 +38,14 @@ export const addAfter = (fuel, a, b) => {
  * @returns {nat(bigint)}
  */
 export const sumShifted = (k) => {
-  const k$8 = (x$1) => {
-    const x$2 = 1n;
-    const x$3 = x$1(x$2);
-    const x$4 = 2n;
-    const x$5 = x$1(x$4);
-    const x$6 = 3n;
-    const x$7 = x$1(x$6);
-    return x$3 + x$5 + x$7;
-  };
-  const k$10 = (x$9) => x$9 * k;
-  const x$11 = k$8(k$10);
-  return x$11;
+  const k$2 = (x$1) => x$1 * k;
+  const x$3 = 1n;
+  const x$4 = k$2(x$3);
+  const x$5 = 2n;
+  const x$6 = k$2(x$5);
+  const x$7 = 3n;
+  const x$8 = k$2(x$7);
+  return x$4 + x$6 + x$8;
 };
 
 /**
@@ -58,25 +54,25 @@ export const sumShifted = (k) => {
  * @returns {Array<nat(bigint)>}
  */
 export const downFrom = (n) => {
-  const k_mut$14 = (x$1, x$2) => {
-    const k$4 = (x$3) => x$3;
-    let acc$5 = k$4;
-    for (let i$6 = 0n; i$6 < x$1; i$6++) {
-      const a$7 = acc$5;
-      const k_mut$11 = (x$8) => {
-        const x$9 = array__lean_array_push_mutable(x$8, i$6);
-        const x$10 = a$7(x$9);
-        return x$10;
+  const k_mut$13 = (x$1) => {
+    const k$3 = (x$2) => x$2;
+    let acc$4 = k$3;
+    for (let i$5 = 0n; i$5 < n; i$5++) {
+      const a$6 = acc$4;
+      const k_mut$10 = (x$7) => {
+        const x$8 = array__lean_array_push_mutable(x$7, i$5);
+        const x$9 = a$6(x$8);
+        return x$9;
       };
-      acc$5 = k_mut$11;
+      acc$4 = k_mut$10;
     }
-    const x$12 = acc$5;
-    const x$13 = x$12(x$2);
-    return x$13;
+    const x$11 = acc$4;
+    const x$12 = x$11(x$1);
+    return x$12;
   };
-  const x$15 = [];
-  const x$16 = k_mut$14(n, x$15);
-  return x$16;
+  const x$14 = [];
+  const x$15 = k_mut$13(x$14);
+  return x$15;
 };
 
 /**

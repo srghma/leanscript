@@ -56,7 +56,17 @@ export const test1 = (a) => {
  * @returns {boolean}
  */
 export const test2 = (a) => {
-  const k$5 = (x$1, x$2) => {
+  const k$4 = (x$1) => {
+    let x$2;
+    if (a === 0) {
+      x$2 = 0n;
+    } else if (a === 1) {
+      x$2 = 1n;
+    } else if (a === 2) {
+      x$2 = 2n;
+    } else {
+      x$2 = 3n;
+    }
     let x$3;
     if (x$1 === 0) {
       x$3 = 0n;
@@ -67,19 +77,9 @@ export const test2 = (a) => {
     } else {
       x$3 = 3n;
     }
-    let x$4;
-    if (x$2 === 0) {
-      x$4 = 0n;
-    } else if (x$2 === 1) {
-      x$4 = 1n;
-    } else if (x$2 === 2) {
-      x$4 = 2n;
-    } else {
-      x$4 = 3n;
-    }
-    return x$3 === x$4;
+    return x$2 === x$3;
   };
-  const x$6 = 2;
-  const x$7 = k$5(a, x$6);
-  return x$7;
+  const x$5 = 2;
+  const x$6 = k$4(x$5);
+  return x$6;
 };

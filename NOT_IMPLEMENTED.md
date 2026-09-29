@@ -259,19 +259,24 @@ The supported fragment and the refusals are listed in the header of
 - The optimiser does not inline a join point jumped to only once when its body is not
   trivial, and does not share computations across closure / loop-body boundaries.
 - **Inlining known closures is limited** (`Term.inlineKnown`, `Inline.lean`, and
-  `Term.inlineRet`, `InlineRet.lean`, `InlineBlock.lean`, both in `LeanScript/Term/Optimize/`;
-  proved: `Term.inlineKnown_eval`, `Term.numCalls_inlineKnown`, `Term.inlineRet_eval`,
-  `Term.numCalls_inlineRet`, `Term.relvl_eval`).  Inlined: a known closure `fun x => ret e`
-  (closed body) at any call whose result is neutral, and at a call in tail position whatever
-  `e[a]` is (a literal, a constant, a data literal); a known closure *used once* whose closed
-  body makes no call, at a call on a neutral argument (its body is re-levelled and its answer
-  bound to the call's result, through a join point when the body ends in a branch).  Not
-  inlined: a closure whose body mentions an outer unknown or makes calls; a closure used
-  several times whose body is not a single `ret e`; a call on a non-neutral argument (e.g. a
-  record literal `k ⟨x, y⟩`); a non-tail call whose result is not neutral; closures returning
-  closures (`AppArity`); a closure passed to another closure (`sum3 (fun x => x * k)`), which
-  needs substituting a *known* value and normalising again.  The module-level `inlineConsts`
-  of the former JavaScript backend did some of those.
+  `Term.inlineRet`, `InlineRet.lean`, `InlineBlock.lean`, `InlineSubst.lean`, `InlineOnce.lean`,
+  `Subst.lean`, all in `LeanScript/Term/Optimize/`; proved: `Term.inlineKnown_eval`,
+  `Term.numCalls_inlineKnown`, `Term.inlineRet_eval`, `Term.numCalls_inlineRet`,
+  `Term.relvl_eval`, `Term.subst_eval`, `Term.numCalls_subst`, `Term.inlineAt_eval`,
+  `Term.numCalls_inlineAt`).  Inlined: a known closure `fun x => ret e` (closed body) at any
+  call whose result is neutral, and at a call in tail position whatever `e[a]` is; a known
+  closure *used once* whose closed body makes no call, at a call on any pure argument (record
+  literals included: the parameter is substituted, case analyses of the literal reduced,
+  computing fields named first so that nothing is computed twice), its answer bound to the
+  call's result (through a join point when the body ends in a branch); a known closure used
+  once whose closed body makes calls, at its only call when that call is reached through
+  `let`s, record case analyses, `if` arms and join points.  Not inlined: a closure whose body
+  mentions an outer unknown (an *opened* body, e.g. `k$2` of `InlineClosures.sumShifted`,
+  which captures `k`); a closure used several times whose body is not a single `ret e`; a
+  closure used once whose only call is under an enum/union case analysis or inside another
+  closure's body; a closure passed to a non-inlined closure (which needs specialising the
+  callee).  The module-level `inlineConsts` of the former JavaScript backend did some of
+  those.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 

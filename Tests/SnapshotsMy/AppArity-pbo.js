@@ -21,16 +21,15 @@ export const mkAdd = (n, a, a1) =>
  * @returns {uint53(number)}
  */
 export const test1 = (n, x, y) => {
-  const k$6 = (x$1, x$2, x$3) => {
-    const x$4 = x$1(x$2, x$3);
-    const x$5 = x$1(x$3, x$2);
-    return uint53__lean_nat_add(x$4, x$5);
+  const k$3 = (x$1, x$2) =>
+    uint53__lean_nat_add(uint53__lean_nat_add(x$1, x$2), n);
+  const k$8 = (x$4, x$5) => {
+    const x$6 = k$3(x$4, x$5);
+    const x$7 = k$3(x$5, x$4);
+    return uint53__lean_nat_add(x$6, x$7);
   };
-  const k$10 = (x$7, x$8, x$9) =>
-    uint53__lean_nat_add(uint53__lean_nat_add(x$8, x$9), x$7);
-  const x$13 = (y$11, y$12) => k$10(n, y$11, y$12);
-  const x$14 = k$6(x$13, x, y);
-  return x$14;
+  const x$9 = k$8(x, y);
+  return x$9;
 };
 
 /**
@@ -51,16 +50,15 @@ export const mkMul = (n, a, a1) =>
  * @returns {uint53(number)}
  */
 export const test2 = (n, x, y) => {
-  const k$6 = (x$1, x$2, x$3) => {
-    const x$4 = x$1(x$2, x$3);
-    const x$5 = x$1(x$3, x$2);
-    return uint53__lean_nat_add(x$4, x$5);
+  const k$3 = (x$1, x$2) =>
+    uint53__lean_nat_mul(uint53__lean_nat_mul(x$1, x$2), n);
+  const k$8 = (x$4, x$5) => {
+    const x$6 = k$3(x$4, x$5);
+    const x$7 = k$3(x$5, x$4);
+    return uint53__lean_nat_add(x$6, x$7);
   };
-  const k$10 = (x$7, x$8, x$9) =>
-    uint53__lean_nat_mul(uint53__lean_nat_mul(x$8, x$9), x$7);
-  const x$13 = (y$11, y$12) => k$10(n, y$11, y$12);
-  const x$14 = k$6(x$13, x, y);
-  return x$14;
+  const x$9 = k$8(x, y);
+  return x$9;
 };
 
 /**
@@ -85,18 +83,17 @@ export const mkSum3 = (n, a, a1, a2) =>
  * @returns {uint53(number)}
  */
 export const test3 = (n, x, y) => {
-  const k$5 = (x$1, x$2, x$3) => {
-    const x$4 = x$1(x$2, x$3, x$2);
-    return x$4;
-  };
-  const k$10 = (x$6, x$7, x$8, x$9) =>
+  const k$4 = (x$1, x$2, x$3) =>
     uint53__lean_nat_add(
-      uint53__lean_nat_add(uint53__lean_nat_add(x$7, x$8), x$9),
-      x$6,
+      uint53__lean_nat_add(uint53__lean_nat_add(x$1, x$2), x$3),
+      n,
     );
-  const x$14 = (y$11, y$12, y$13) => k$10(n, y$11, y$12, y$13);
-  const x$15 = k$5(x$14, x, y);
-  return x$15;
+  const k$8 = (x$5, x$6) => {
+    const x$7 = k$4(x$5, x$6, x$5);
+    return x$7;
+  };
+  const x$9 = k$8(x, y);
+  return x$9;
 };
 
 /**

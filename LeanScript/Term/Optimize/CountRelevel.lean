@@ -12,8 +12,8 @@ set_option autoImplicit false
 
 `Term.numCalls_relvl`: `Term.relvl` only renames variables and recomputes levels.  Hence the
 body of a closure inlined at a call has as many calls as the body
-(`BlockFn.numCalls_applyNeu`), and splicing a straight-line body in front of the rest adds
-nothing (`Term.numCalls_bindRet`).
+(`BlockFn.numCalls_applyNeu`); splicing a straight-line body in front of the rest adds
+nothing (`Term.numCalls_bindRet`, in `LeanScript.Term.Optimize.CountInlineSubst`).
 -/
 
 namespace LeanScript
@@ -261,42 +261,6 @@ theorem Branches.numCalls_retToJump {σ τ : Ty ks} : {d : Nat} → {Φ : KCtx k
         Branches.numCalls_retToJump bs m j]
   termination_by structural _ _ _ _ _ _ _ _ br => br
 end
-
-theorem Term.numCalls_bindRet {d : Nat} {σ τ : Ty ks} {u : Usage1ω} :
-    {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} → {o o' : Lvl} →
-    (t : Term Δ d Φ Γ σ [] o) → (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') →
-    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} → Term.bindRet t b = some r →
-    r.2.numCalls = t.numCalls + b.numCalls
-  | _, _, _, _, _, .ret e, b, r, h => by
-      cases e with
-      | neu n =>
-          simp only [Term.bindRet, Option.some.injEq] at h
-          subst h
-          simp only [Term.numCalls, Comp.numCalls]
-      | _ => simp [Term.bindRet] at h
-  | _, _, _, _, _, .letE u' c t, b, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.numCalls]
-      rw [Term.numCalls_bindRet t b' hr', Term.numCalls_rename b hb']
-      omega
-  | _, _, _, _, _, .letV u' v t, b, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.numCalls]
-      rw [Term.numCalls_bindRet t b' hr', Term.numCalls_rename b hb']
-      omega
-  | _, _, _, _, _, .record_casesOn us n t, b, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.numCalls]
-      rw [Term.numCalls_bindRet t b' hr', Term.numCalls_rename b hb']
-  | _, _, _, _, _, .branch br, b, r, h => by
-      simp only [Term.bindRet, Option.some.injEq] at h
-      subst h
-      simp only [Term.numCalls, Branch.numCalls, Branch.numCalls_retToJump]
-      omega
-  | _, _, _, _, _, .jump _ _, _, _, h => by simp [Term.bindRet] at h
 
 end LeanScript
 

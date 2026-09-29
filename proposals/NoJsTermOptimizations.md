@@ -63,6 +63,23 @@
 > times whose body is not a single `ret e`, closures returning closures (`AppArity`) and
 > closures passed to closures (`InlineClosures.sumShifted`).  Fusion, constructor
 > specialisation and unboxing of parameters are not done.
+> **Update: substitution, inlining on any argument and at a unique call.**  `Term.subst`
+> (`LeanScript/Term/Optimize/Subst.lean`, proved `Term.subst_eval`, `Term.numCalls_subst`)
+> substitutes pure expressions for unknowns while re-levelling, and reduces a record case
+> analysis of a record literal; it substitutes only cheap expressions (variables, constants,
+> literals) where they could be evaluated more than once, so no computation is repeated.  With
+> it, a closure used once is inlined at a call on a record literal (`BlockFn.applyP`, computing
+> fields named first by `Args.shareFirst`), and its answer may be any expression
+> (`Term.bindAns`, `Term.bindRet` in `InlineSubst.lean`).  `Term.inlineAt`
+> (`InlineOnce.lean`, proved `Term.inlineAt_eval`, `Term.numCalls_inlineAt`) inlines a closure
+> used once whose closed body makes calls at its only call, when that call is reached through
+> `let`s, record case analyses, `if` arms and join points.  On the snapshots `ScalarRepl.test3`
+> no longer builds a record, and more helper closures are inlined in `AppArity`, `RecData`,
+> `OptionUnbox`, `LoopClosure`, `LocalFnInPlace`, `OwnershipAliasing`, `ArrayInPlace` and
+> `InlineClosures`.  Still missing from the former `inlineConsts`:
+> closures with an opened body (mentioning an outer unknown, `InlineClosures.sumShifted`),
+> closures used several times whose body is not a single `ret e`, and a unique call under an
+> enum/union case analysis.
 > The pipeline is now
 >
 > ```

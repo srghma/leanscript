@@ -9,15 +9,12 @@
 -- alias1 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   let x3 [ω] : (Array Nat) := share lean_mk_array(x2, 1)
-  val k4 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x5 [ω] : (Array Nat) => (closed)
-    val k6 [1] : (Nat → (Array Nat)) := fun x7 [1] : Nat => (open)
-      ret lean_array_push(x5, x7)
-    ret k6
-  let x8 [1] : (Nat → (Array Nat)) := k4 x3
-  let x9 [1] : (Array Nat) := x8 x2
-  let x12 [1] : (Array Nat) := array_foldl x3 x9 fun e10 acc11 => (closed)
-    ret lean_array_push(acc11, e10)
-  ret x12
+  val k4 [1] : (Nat → (Array Nat)) := fun x5 [1] : Nat => (open)
+    ret lean_array_push(x3, x5)
+  let x6 [1] : (Array Nat) := k4 x2
+  let x9 [1] : (Array Nat) := array_foldl x3 x6 fun e7 acc8 => (closed)
+    ret lean_array_push(acc8, e7)
+  ret x9
 ret k1
 
 -- alias2 : Nat → Array Nat
@@ -36,57 +33,51 @@ ret k1
 
 -- alias3 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : (Nat → ((Array Nat) → (Array Nat))) := fun x4 [ω] : Nat => (closed)
-    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (open)
-      val k7 [1] : ((Array Nat) → (Array Nat)) := fun x8 [1] : (Array Nat) => (closed)
-        ret x8
-      let x14 [1] : ((Array Nat) → (Array Nat)) := nat_rec x4 k7 fun acc9 i10 => (closed)
-        val k11 [1] : ((Array Nat) → (Array Nat)) := fun x12 [1] : (Array Nat) => (open)
-          let x13 [1] : (Array Nat) := acc9 lean_array_push(x12, i10)
-          ret x13
-        ret k11
-      let x15 [1] : (Array Nat) := x14 x6
-      ret x15
-    ret k5
-  let x16 [1] : ((Array Nat) → (Array Nat)) := k3 x2
-  let x17 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
-  let x18 [ω] : (Array Nat) := x16 x17
-  let x21 [1] : (Array Nat) := array_foldl x18 x18 fun e19 acc20 => (closed)
+  val k3 [1] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (open)
+    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (closed)
+      ret x6
+    let x12 [1] : ((Array Nat) → (Array Nat)) := nat_rec x2 k5 fun acc7 i8 => (closed)
+      val k9 [1] : ((Array Nat) → (Array Nat)) := fun x10 [1] : (Array Nat) => (open)
+        let x11 [1] : (Array Nat) := acc7 lean_array_push(x10, i8)
+        ret x11
+      ret k9
+    let x13 [1] : (Array Nat) := x12 x4
+    ret x13
+  let x14 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
+  let x15 [ω] : (Array Nat) := k3 x14
+  let x18 [1] : (Array Nat) := array_foldl x15 x15 fun e16 acc17 => (closed)
+    ret lean_array_push(acc17, e16)
+  let x21 [1] : (Array Nat) := array_foldl x14 x18 fun e19 acc20 => (closed)
     ret lean_array_push(acc20, e19)
-  let x24 [1] : (Array Nat) := array_foldl x17 x21 fun e22 acc23 => (closed)
-    ret lean_array_push(acc23, e22)
-  ret x24
+  ret x21
 ret k1
 
 -- alias4 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : (Nat → ((Array Nat) → (Array Nat))) := fun x4 [ω] : Nat => (closed)
-    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (open)
-      val k7 [1] : ((Array Nat) → (Array Nat)) := fun x8 [1] : (Array Nat) => (closed)
-        ret x8
-      let x14 [1] : ((Array Nat) → (Array Nat)) := nat_rec x4 k7 fun acc9 i10 => (closed)
-        val k11 [1] : ((Array Nat) → (Array Nat)) := fun x12 [1] : (Array Nat) => (open)
-          let x13 [1] : (Array Nat) := acc9 lean_array_push(x12, i10)
-          ret x13
-        ret k11
-      let x15 [1] : (Array Nat) := x14 x6
-      ret x15
-    ret k5
-  let x16 [ω] : ((Array Nat) → (Array Nat)) := k3 x2
-  val k17 [ω] : (Nat → (Array Nat)) := fun x18 [1] : Nat => (open)
-    let x19 [1] : (Array Nat) := x16 lean_mk_array(x18, 5)
-    ret x19
-  let x20 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
-  let x21 [1] : (Array Nat) := x16 x20
-  let x22 [1] : (Array Nat) := k17 2
-  let x23 [1] : (Array Nat) := k17 1
-  let x26 [1] : (Array Nat) := array_foldl x22 x23 fun e24 acc25 => (closed)
+  val k3 [ω] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (open)
+    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (closed)
+      ret x6
+    let x12 [1] : ((Array Nat) → (Array Nat)) := nat_rec x2 k5 fun acc7 i8 => (closed)
+      val k9 [1] : ((Array Nat) → (Array Nat)) := fun x10 [1] : (Array Nat) => (open)
+        let x11 [1] : (Array Nat) := acc7 lean_array_push(x10, i8)
+        ret x11
+      ret k9
+    let x13 [1] : (Array Nat) := x12 x4
+    ret x13
+  val k14 [ω] : (Nat → (Array Nat)) := fun x15 [1] : Nat => (open)
+    let x16 [1] : (Array Nat) := k3 lean_mk_array(x15, 5)
+    ret x16
+  let x17 [ω] : (Array Nat) := share lean_mk_array(x2, 3)
+  let x18 [1] : (Array Nat) := k3 x17
+  let x19 [1] : (Array Nat) := k14 2
+  let x20 [1] : (Array Nat) := k14 1
+  let x23 [1] : (Array Nat) := array_foldl x19 x20 fun e21 acc22 => (closed)
+    ret lean_array_push(acc22, e21)
+  let x26 [1] : (Array Nat) := array_foldl x18 x23 fun e24 acc25 => (closed)
     ret lean_array_push(acc25, e24)
-  let x29 [1] : (Array Nat) := array_foldl x21 x26 fun e27 acc28 => (closed)
+  let x29 [1] : (Array Nat) := array_foldl x17 x26 fun e27 acc28 => (closed)
     ret lean_array_push(acc28, e27)
-  let x32 [1] : (Array Nat) := array_foldl x20 x29 fun e30 acc31 => (closed)
-    ret lean_array_push(acc31, e30)
-  ret x32
+  ret x29
 ret k1
 
 -- alias5 : Array Nat → Bool → Array Nat
@@ -104,17 +95,14 @@ ret k1
 val k1 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [1] : (Nat → (Array Nat)) := fun x4 [ω] : Nat => (open)
     let x5 [ω] : (Array Nat) := share lean_mk_array(x4, 4)
-    val k6 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x7 [ω] : (Array Nat) => (closed)
-      val k8 [1] : (Nat → (Array Nat)) := fun x9 [ω] : Nat => (open)
-        ret cond(lean_nat_dec_eq__Nat_decEq(x9, 0), x7, lean_array_push(x7, x9))
-      ret k8
-    let x10 [1] : (Nat → (Array Nat)) := k6 x5
-    let x11 [1] : (Array Nat) := x10 x4
-    let x14 [1] : (Array Nat) := array_foldl x5 lean_array_push(x11, 9) fun e12 acc13 => (closed)
+    val k6 [1] : (Nat → (Array Nat)) := fun x7 [ω] : Nat => (open)
+      ret cond(lean_nat_dec_eq__Nat_decEq(x7, 0), x5, lean_array_push(x5, x7))
+    let x8 [1] : (Array Nat) := k6 x4
+    let x11 [1] : (Array Nat) := array_foldl x5 lean_array_push(x8, 9) fun e9 acc10 => (closed)
+      ret lean_array_push(acc10, e9)
+    let x14 [1] : (Array Nat) := array_foldl x2 x11 fun e12 acc13 => (closed)
       ret lean_array_push(acc13, e12)
-    let x17 [1] : (Array Nat) := array_foldl x2 x14 fun e15 acc16 => (closed)
-      ret lean_array_push(acc16, e15)
-    ret x17
+    ret x14
   ret k3
 ret k1
 

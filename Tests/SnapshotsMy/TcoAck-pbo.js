@@ -27,18 +27,18 @@ export const ack2 = (a, a1) => {
   let acc$4 = k$3;
   for (let i$5 = 0; i$5 < a; i$5++) {
     const a$6 = acc$4;
-    const k$15 = (x$7, x$8) => {
-      const x$9 = 1;
-      const x$10 = x$7(x$9);
-      let acc$11 = x$10;
-      for (let i$12 = 0; i$12 < x$8; i$12++) {
-        const a$13 = acc$11;
-        const x$14 = x$7(a$13);
-        acc$11 = x$14;
+    const k$14 = (x$7) => {
+      const x$8 = 1;
+      const x$9 = a$6(x$8);
+      let acc$10 = x$9;
+      for (let i$11 = 0; i$11 < x$7; i$11++) {
+        const a$12 = acc$10;
+        const x$13 = a$6(a$12);
+        acc$10 = x$13;
       }
-      return acc$11;
+      return acc$10;
     };
-    acc$4 = (y$16) => k$15(a$6, y$16);
+    acc$4 = k$14;
   }
   const f$1 = acc$4;
   return f$1(a1);

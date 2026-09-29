@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Optimize.InlineBlock
+public import LeanScript.Term.Optimize.InlineOnce
 
 @[expose] public section
 
@@ -56,33 +56,6 @@ def Comp.answer? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : Nat
   | .app (.kvar k) a _ => (I.get k).bind fun e => e.apply a
   | _ => none
 
-/-- The innermost unknown, as a variable: its type is the one of the binder. -/
-def UVar.isHead? {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat} :
-    {τ : Ty ks} → {ℓ' : Nat} → UVar (⟨σ, u, ℓ⟩ :: Γ) τ ℓ' → Option (PLift (τ = σ))
-  | _, _, .head _ => some ⟨rfl⟩
-  | _, _, .tail _ => none
-
-/-- The innermost unknown, as a neutral expression. -/
-def Neu.isHead? {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat} :
-    {τ : Ty ks} → {ℓ' : Nat} → Neu Δ Φ (⟨σ, u, ℓ⟩ :: Γ) τ ℓ' → Option (PLift (τ = σ))
-  | _, _, .var x => x.isHead?
-  | _, _, .data_out _ _ _ => none
-  | _, _, .cond _ _ _ => none
-  | _, _, .extern _ _ _ => none
-
-/-- The innermost unknown, as a pure expression. -/
-def PExpr.isHead? {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat} :
-    {τ : Ty ks} → {o : Lvl} → PExpr Δ Φ (⟨σ, u, ℓ⟩ :: Γ) τ o → Option (PLift (τ = σ))
-  | _, _, .neu n => n.isHead?
-  | _, _, .kvar _ => none
-  | _, _, .lit _ _ => none
-  | _, _, .enum_mk _ _ => none
-  | _, _, .record_mk _ => none
-  | _, _, .union_mk _ _ => none
-  | _, _, .array_mk _ => none
-  | _, _, .list_mk _ => none
-  | _, _, .data_in _ _ _ => none
-
 /-- `b` with its innermost unknown replaced by `p`, when `b` is `ret x` or `jump j x` for that
     unknown `x`. -/
 def Term.substTail {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat}
@@ -127,24 +100,12 @@ def RInfo.cons {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o : Lvl} (u
     (v : Val Δ d Φ Γ σ o) (I : RInfo Δ Φ) : RInfo Δ (⟨σ, u, o, true⟩ :: Φ) :=
   ⟨KInfo.cons v.exprFn? I.e, BInfo.cons (v.blockFnIf u) I.b⟩
 
-/-- `b` is `ret x` for its innermost unknown `x`. -/
-def Term.retHead? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat} :
-    {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} → Term Δ d Φ (⟨σ, u, ℓ⟩ :: Γ) τ js o →
-    Option (PLift (τ = σ))
-  | _, _, _, .ret e => e.isHead?
-  | _, _, _, .jump _ _ => none
-  | _, _, _, .letV _ _ _ => none
-  | _, _, _, .letE _ _ _ => none
-  | _, _, _, .record_casesOn _ _ _ => none
-  | _, _, _, .branch _ => none
-
 /-- The body of the closure called by `c`, at the call, when `c` calls a known closure with a
-    closed body and no call, on a neutral argument. -/
+    closed body and no call (`BlockFn.applyP`: the argument is any pure expression). -/
 def Comp.blockCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : Nat} {js : JCtx ks}
     (B : BInfo Δ Φ) : Comp Δ d Φ Γ σ ℓ → Option ((o : Lvl) × Term Δ d Φ Γ σ js o)
   | .app (.kvar k) a _ =>
-      (B.get k).bind fun f => (a.toNeu?).bind fun m =>
-        if f.body.numCalls = 0 then f.applyNeu m.2 else none
+      (B.get k).bind fun f => if f.body.numCalls = 0 then f.applyP a else none
   | _ => none
 
 /-- `let y := c; b` where `c` calls a known closure with a closed body: the body in tail
@@ -156,6 +117,20 @@ def Term.blockLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js :
   match b.retHead? with
   | some h => (c.blockCall? B (js := js)).map fun r => ⟨r.1, h.down ▸ r.2⟩
   | none => (c.blockCall? B (js := [])).bind fun r => Term.bindRet r.2 b
+
+/-- `Term.blockLetE` after naming by `let` (up to `fuel`) the fields of a record literal passed
+    to the call that compute something, so that the inlined body can take the record apart
+    without repeating them. -/
+def Term.blockLetS {d : Nat} {Φ : KCtx ks} {σ τ : Ty ks} {js : JCtx ks} (B : BInfo Δ Φ)
+    (u : Usage1ω) : (fuel : Nat) → {Γ : UCtx ks} → {ℓ : Nat} → {o' : Lvl} → Comp Δ d Φ Γ σ ℓ →
+    Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o' → Option ((o : Lvl) × Term Δ d Φ Γ τ js o)
+  | 0, _, _, _, c, b => Term.blockLetE B u c b
+  | fuel + 1, _, _, _, c, b =>
+      match c.shareArg? with
+      | none => Term.blockLetE B u c b
+      | some ⟨_, _, n, _, c'⟩ =>
+          (b.rename KRen.id (URen.lift URen.wk1 _) JRen.id).bind fun b' =>
+            (Term.blockLetS B u fuel c' b').map fun r => ⟨_, .letE .many (.share n) r.2⟩
 
 /-- `let y := c; b` (both already walked), with the rewrites of the tail, of a shared answer
     and of a dead `let`. -/
@@ -173,15 +148,23 @@ def Term.retLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : J
               match p.shareAny? (d := d) with
               | some ⟨_, c'⟩ => ⟨_, .letE u c' b⟩
               | none => ⟨_, .letE u c b⟩
-      | none => (Term.blockLetE I.b u c b).getD ⟨_, .letE u c b⟩
+      | none =>
+          match Term.blockLetE I.b u c b with
+          | some r => r
+          | none => (Term.blockLetS I.b u 16 c b).getD ⟨_, .letE u c b⟩
 
-/-- `val k := v; b` (both already walked), dropped when `b` does not mention `k`. -/
+/-- `val k := v; b` (both already walked), dropped when `b` does not mention `k`; when `k` is a
+    closure with a closed body called exactly once in `b` (`Term.inlineAt`), its body replaces
+    the call. -/
 def Term.retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {o o' : Lvl}
     (u : Usage1ω) (v : Val Δ d Φ Γ σ o) (b : Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o') :
     (o'' : Lvl) × Term Δ d Φ Γ τ js o'' :=
   match b.rename KRen.drop URen.id JRen.id with
   | some b' => ⟨_, b'⟩
-  | none => ⟨_, .letV u v b⟩
+  | none =>
+      match v.blockFn?.bind fun f => b.inlineAt (InlTgt.single (b := ⟨σ, u, o, true⟩) f) with
+      | some r => r
+      | none => ⟨_, .letV u v b⟩
 
 /-! ## The walk -/
 

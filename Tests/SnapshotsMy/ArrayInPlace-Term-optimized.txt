@@ -76,19 +76,16 @@ ret k1
 
 -- test6 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : (Nat → ((Array Nat) → (Array Nat))) := fun x4 [ω] : Nat => (closed)
-    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (open)
-      val k7 [1] : ((Array Nat) → (Array Nat)) := fun x8 [1] : (Array Nat) => (closed)
-        ret x8
-      let x14 [1] : ((Array Nat) → (Array Nat)) := nat_rec x4 k7 fun acc9 i10 => (closed)
-        val k11 [1] : ((Array Nat) → (Array Nat)) := fun x12 [1] : (Array Nat) => (open)
-          let x13 [1] : (Array Nat) := acc9 lean_array_push(x12, i10)
-          ret x13
-        ret k11
-      let x15 [1] : (Array Nat) := x14 x6
-      ret x15
-    ret k5
-  let x16 [1] : ((Array Nat) → (Array Nat)) := k3 x2
-  let x17 [1] : (Array Nat) := x16 lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(x2)
-  ret x17
+  val k3 [1] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (open)
+    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (closed)
+      ret x6
+    let x12 [1] : ((Array Nat) → (Array Nat)) := nat_rec x2 k5 fun acc7 i8 => (closed)
+      val k9 [1] : ((Array Nat) → (Array Nat)) := fun x10 [1] : (Array Nat) => (open)
+        let x11 [1] : (Array Nat) := acc7 lean_array_push(x10, i8)
+        ret x11
+      ret k9
+    let x13 [1] : (Array Nat) := x12 x4
+    ret x13
+  let x14 [1] : (Array Nat) := k3 lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(x2)
+  ret x14
 ret k1

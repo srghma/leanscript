@@ -17,7 +17,8 @@ not an unknown):
 
 * in tail position, `let y := k a; ret y` becomes the body itself (`BlockFn.applyNeu`);
 * otherwise the body must be a straight line of `let`s ending in `ret e` with `e` neutral, and
-  the rest of the statement is put after it, `let y := share e; rest` (`Term.bindRet`).
+  the rest of the statement is put after it, `let y := share e; rest` (`Term.bindRet`, in
+  `LeanScript.Term.Optimize.InlineSubst`).
 
 This file has the pieces: what is known about a closure (`BlockFn`, `BInfo`), the renaming of
 its body to a call, and the splicing of a straight-line body in front of the rest.  The walk
@@ -173,37 +174,6 @@ end
 
 /-- No join point to rename. -/
 def JMap.ofNil {js : JCtx ks} : JMap [] js := fun x => nomatch x
-
-/-- `t`, whose answer is then bound to the innermost unknown of `b`: `t` is a line of `let`s and
-    case analyses of records ending in `ret e`, `e` neutral (the answer is `let y := share e; b`
-    at its end), or in a branch (`b` becomes a join point, and the answers of the branch jumps
-    to it). -/
-def Term.bindRet {d : Nat} {σ τ : Ty ks} {u : Usage1ω} :
-    {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} → {o o' : Lvl} → Term Δ d Φ Γ σ [] o →
-    Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o' → Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'')
-  | _, _, _, _, _, .ret e, b =>
-      match e with
-      | .neu n => some ⟨_, .letE u (.share n) b⟩
-      | .kvar _ => none
-      | .lit _ _ => none
-      | .enum_mk _ _ => none
-      | .record_mk _ => none
-      | .union_mk _ _ => none
-      | .array_mk _ => none
-      | .list_mk _ => none
-      | .data_in _ _ _ => none
-  | _, _, _, _, _, .letE u' c t, b =>
-      (b.rename KRen.id (URen.lift URen.wk1 _) JRen.id).bind fun b' =>
-        (Term.bindRet t b').map fun r => ⟨_, .letE u' c r.2⟩
-  | _, _, _, _, _, .letV u' v t, b =>
-      (b.rename KRen.wk1 URen.id JRen.id).bind fun b' =>
-        (Term.bindRet t b').map fun r => ⟨_, .letV u' v r.2⟩
-  | _, _, _, _, _, .record_casesOn us n t, b =>
-      (b.rename KRen.id (URen.lift (URen.wkN _) _) JRen.id).bind fun b' =>
-        (Term.bindRet t b').map fun r => ⟨_, .record_casesOn us n r.2⟩
-  | _, _, _, _, _, .branch br, b =>
-      some ⟨_, .branch (.join _ .many _ b (br.retToJump JMap.ofNil .head))⟩
-  | _, _, _, _, _, .jump _ _, _ => none
 
 end LeanScript
 

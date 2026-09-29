@@ -47,10 +47,16 @@ an `if` is read as `c` with the two branches swapped.
 Then the inlining in tail position (`Term.inlineRet`, `LeanScript.Term.Optimize.InlineRet`):
 `let y := k a; ret y` is `ret e[a]` for a known closure computing `e`, whatever `e[a]` is,
 dead bindings are dropped even when this changes the level (inside closed bodies), and a
-known closure used once, whose closed body makes no call, is inlined at a call on a neutral
-argument (`Term.blockLetE`): its body, re-levelled (`Term.relvl`), replaces the call, its
-answer bound to the call's result (`Term.bindRet`; when the body ends in a branch, the rest of
-the statement becomes a join point the arms of the branch jump to).
+known closure used once, whose closed body makes no call, is inlined at a call
+(`Term.blockLetE`): its body, re-levelled (`Term.relvl`), replaces the call, its answer bound
+to the call's result (`Term.bindRet`; when the body ends in a branch, the rest of the statement
+becomes a join point the arms of the branch jump to).  The argument may be any pure expression,
+a record literal included (`BlockFn.applyP`: the parameter is substituted by `Term.subst`,
+which also reduces a case analysis of the literal; `Term.blockLetS` first names by `let` the
+fields of the literal that compute something, `Args.shareFirst`, so that they are not
+repeated).  A known closure used once whose closed body makes calls is inlined at its only
+call when that call is reached through `let`s, record case analyses, `if` arms and join points
+(`Term.inlineAt`).
 
 (`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
 `LeanScript.Term.Rewrite`, `Term.simp_star`.)

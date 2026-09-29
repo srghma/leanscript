@@ -46,16 +46,16 @@ export const Inline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Inline$test2 = (a, b) => {
-  const k$6 = (x$1, x$2) => {
-    let acc$3 = [...x$1._2];
-    for (const e$4 of x$2._2) {
-      const a$5 = acc$3;
-      acc$3 = array__lean_array_push_mutable(a$5, e$4);
+  const k$5 = (x$1) => {
+    let acc$2 = [...a._2];
+    for (const e$3 of x$1._2) {
+      const a$4 = acc$2;
+      acc$2 = array__lean_array_push_mutable(a$4, e$3);
     }
-    return { _1: x$1._1 + x$2._1, _2: acc$3 };
+    return { _1: a._1 + x$1._1, _2: acc$2 };
   };
-  const x$7 = k$6(a, b);
-  return x$7;
+  const x$6 = k$5(b);
+  return x$6;
 };
 
 /**
@@ -110,16 +110,16 @@ export const Noinline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const Noinline$test2 = (a, b) => {
-  const k$6 = (x$1, x$2) => {
-    let acc$3 = [...x$1._2];
-    for (const e$4 of x$2._2) {
-      const a$5 = acc$3;
-      acc$3 = array__lean_array_push_mutable(a$5, e$4);
+  const k$5 = (x$1) => {
+    let acc$2 = [...a._2];
+    for (const e$3 of x$1._2) {
+      const a$4 = acc$2;
+      acc$2 = array__lean_array_push_mutable(a$4, e$3);
     }
-    return { _1: x$1._1 + x$2._1, _2: acc$3 };
+    return { _1: a._1 + x$1._1, _2: acc$2 };
   };
-  const x$7 = k$6(a, b);
-  return x$7;
+  const x$6 = k$5(b);
+  return x$6;
 };
 
 /**
@@ -174,16 +174,16 @@ export const AlwaysInline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const AlwaysInline$test2 = (a, b) => {
-  const k$6 = (x$1, x$2) => {
-    let acc$3 = [...x$1._2];
-    for (const e$4 of x$2._2) {
-      const a$5 = acc$3;
-      acc$3 = array__lean_array_push_mutable(a$5, e$4);
+  const k$5 = (x$1) => {
+    let acc$2 = [...a._2];
+    for (const e$3 of x$1._2) {
+      const a$4 = acc$2;
+      acc$2 = array__lean_array_push_mutable(a$4, e$3);
     }
-    return { _1: x$1._1 + x$2._1, _2: acc$3 };
+    return { _1: a._1 + x$1._1, _2: acc$2 };
   };
-  const x$7 = k$6(a, b);
-  return x$7;
+  const x$6 = k$5(b);
+  return x$6;
 };
 
 /**
@@ -238,16 +238,16 @@ export const InlineIfReduceInline$test1 = (a, a1) => {
  * @returns {{ _1: string, _2: Array<string> }}
  */
 export const InlineIfReduceInline$test2 = (a, b) => {
-  const k$6 = (x$1, x$2) => {
-    let acc$3 = [...x$1._2];
-    for (const e$4 of x$2._2) {
-      const a$5 = acc$3;
-      acc$3 = array__lean_array_push_mutable(a$5, e$4);
+  const k$5 = (x$1) => {
+    let acc$2 = [...a._2];
+    for (const e$3 of x$1._2) {
+      const a$4 = acc$2;
+      acc$2 = array__lean_array_push_mutable(a$4, e$3);
     }
-    return { _1: x$1._1 + x$2._1, _2: acc$3 };
+    return { _1: a._1 + x$1._1, _2: acc$2 };
   };
-  const x$7 = k$6(a, b);
-  return x$7;
+  const x$6 = k$5(b);
+  return x$6;
 };
 
 /**

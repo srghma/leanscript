@@ -1,3 +1,22 @@
+# Summary of changes for run 124c4104-9e6e-43a8-bd95-e720134d20cc
+I extended the proven `Term.optimize` inliner and brought the documentation up to date. Everything builds with no `sorry`. The new theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`), and `lake exe tests` passes 66/66.
+
+**New optimisations, each proved to leave `Term.eval` unchanged and never add calls:**
+- **Substitution (`Term.subst`, `LeanScript/Term/Optimize/Subst.lean`):** replaces variables with pure expressions. It also simplifies a record pattern-match applied directly to a record literal. It only copies cheap expressions (variables, constants, literals) into places where they could run more than once, so no computation is repeated. Proved: `Term.subst_eval` (value unchanged) and `Term.numCalls_subst` (number of calls exactly the same).
+- **Inlining on any argument (`InlineSubst.lean`):** a closure used once can now be inlined at a call whose argument is any pure expression, including a record literal. Record fields that compute something are first given names with `let`, so they aren't evaluated twice. The inlined body's result can be any expression.
+- **Inlining at the only call (`Term.inlineAt`, `InlineOnce.lean`):** a closure used once whose body itself makes calls is inlined at its single call. This works when that call is reached through `let`s, record pattern-matches, `if` branches and join points. Proved: `Term.inlineAt_eval` and `Term.numCalls_inlineAt`.
+- These are wired into `Term.inlineRet`, so `Term.optimize_eval` and `Term.numCalls_optimize` still hold.
+
+**Effect on the output:** I regenerated the snapshots. `ScalarRepl.test3` no longer builds a record, and more helper closures are inlined in `AppArity`, `RecData`, `OptionUnbox`, `LoopClosure`, `LocalFnInPlace`, `OwnershipAliasing`, `ArrayInPlace` and `InlineClosures`. The node checks report no failures. The snapshot script still exits with an error, but only because of a "literal too big" problem in `PrimOpInt02`/`PrimOpInt03Configurable` that was there before this work.
+
+**Documentation:** updated the `Term.optimize` docstring in `Optimize/Basic.lean`, the `InlineBlock.lean` header, `README.md`, `LeanScript/Term/README.md`, `NOT_IMPLEMENTED.md` and `proposals/NoJsTermOptimizations.md`. The four new theorems are in the Properties table as proved, and the `Term.inlineRet_eval` entry now describes the pass as it is. I haven't re-checked the rest of the table in this session.
+
+**Still not done:**
+- **Closures that capture outer variables** are not inlined, for example `k$2` in `InlineClosures.sumShifted`. This is the main remaining piece of the old `inlineConsts`.
+- Closures used several times whose body is more than a single `ret e` are not inlined.
+- A closure whose only call sits under a match on an enum or union is not inlined.
+- Fusion, constructor specialisation, unboxing parameters, recovering `Q`'s type parameters, and the other data representations are not implemented.
+
 # Summary of changes for run eabcd799-d14b-4458-a4a4-d464fa3c2891
 This session adds a proven Term-level inliner, `Term.inlineRet`, which takes over part of what the old module-level `inlineConsts` did. It does not replace `inlineConsts` completely; the cases it still misses are listed at the end. It runs inside `Term.optimize`, after `condWalk` and before `dce`, and `Term.optimize_eval` still holds. `Term.optimize_eval`, `Term.inlineRet_eval`, `Term.relvl_eval` and `Term.numCalls_inlineRet` have no `sorry` and depend only on the axioms `propext`, `Classical.choice` and `Quot.sound`.
 

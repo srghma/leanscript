@@ -67,51 +67,51 @@ export const hyperTCO = (a, a1, a2) => {
   let acc$3 = k$2;
   for (let i$4 = 0; i$4 < a; i$4++) {
     const a$5 = acc$3;
-    const k$37 = (x$6) => {
-      const k$21 = (x$7, x$8, x$9) => {
-        const k$11 = (x$10) => x$10;
-        let acc$12 = k$11;
-        for (let i$13 = 0; i$13 < x$8; i$13++) {
-          const a$14 = acc$12;
-          const k$18 = (x$15) => {
-            const x$16 = x$7(x$15);
-            const x$17 = a$14(x$16);
-            return x$17;
+    const k$35 = (x$6) => {
+      const k$20 = (x$7, x$8) => {
+        const k$10 = (x$9) => x$9;
+        let acc$11 = k$10;
+        for (let i$12 = 0; i$12 < x$7; i$12++) {
+          const a$13 = acc$11;
+          const k$17 = (x$14) => {
+            const x$15 = a$5(x$14);
+            const x$16 = a$13(x$15);
+            return x$16;
           };
-          acc$12 = k$18;
+          acc$11 = k$17;
         }
-        const x$19 = acc$12;
-        const x$20 = x$19(x$9);
-        return x$20;
+        const x$18 = acc$11;
+        const x$19 = x$18(x$8);
+        return x$19;
       };
-      const k$33 = (x$22, x$23) => {
-        let acc$24 = 1;
-        for (let i$25 = 0; i$25 < x$22; i$25++) {
-          const a$26 = acc$24;
-          let acc$27 = x$23;
-          for (let i$28 = 0; i$28 < i$25; i$28++) {
-            const a$29 = acc$27;
-            let acc$30 = 0;
-            for (let i$31 = 0; i$31 < i$28; i$31++) {
-              const a$32 = acc$30;
-              acc$30 = 1;
+      const x$21 = uint53__lean_nat_add(i$4, 1);
+      const k$32 = (x$22) => {
+        let acc$23 = 1;
+        for (let i$24 = 0; i$24 < x$21; i$24++) {
+          const a$25 = acc$23;
+          let acc$26 = x$22;
+          for (let i$27 = 0; i$27 < i$24; i$27++) {
+            const a$28 = acc$26;
+            let acc$29 = 0;
+            for (let i$30 = 0; i$30 < i$27; i$30++) {
+              const a$31 = acc$29;
+              acc$29 = 1;
             }
-            acc$27 = acc$30;
+            acc$26 = acc$29;
           }
-          acc$24 = acc$27;
+          acc$23 = acc$26;
         }
-        return acc$24;
+        return acc$23;
       };
-      const x$34 = uint53__lean_nat_add(i$4, 1);
-      const x$35 = k$33(x$34, a1);
-      const x$36 = k$21(a$5, x$6, x$35);
-      return x$36;
+      const x$33 = k$32(a1);
+      const x$34 = k$20(x$6, x$33);
+      return x$34;
     };
-    acc$3 = k$37;
+    acc$3 = k$35;
   }
-  const x$38 = acc$3;
-  const x$39 = x$38(a2);
-  return x$39;
+  const x$36 = acc$3;
+  const x$37 = x$36(a2);
+  return x$37;
 };
 
 /**
@@ -126,8 +126,9 @@ export const hyperWhile = (a, a1, a2) => {
   let acc$3 = k$2;
   for (let i$4 = 0; i$4 < a; i$4++) {
     const a$5 = acc$3;
-    const k$25 = (x$6) => {
-      const k$18 = (x$7, x$8) => {
+    const k$24 = (x$6) => {
+      const x$7 = uint53__lean_nat_add(i$4, 1);
+      const k$18 = (x$8) => {
         let acc$9 = 1;
         for (let i$10 = 0; i$10 < x$7; i$10++) {
           const a$11 = acc$9;
@@ -145,23 +146,22 @@ export const hyperWhile = (a, a1, a2) => {
         }
         return acc$9;
       };
-      const x$19 = uint53__lean_nat_add(i$4, 1);
-      const x$20 = k$18(x$19, a1);
-      let acc$21 = { tag: 1, _1: x$20 };
-      for (let i$22 = 0; i$22 < x$6; i$22++) {
-        const a$23 = acc$21;
-        if (a$23.tag === 0) {
-          acc$21 = { tag: 0, _1: a$23._1 };
+      const x$19 = k$18(a1);
+      let acc$20 = { tag: 1, _1: x$19 };
+      for (let i$21 = 0; i$21 < x$6; i$21++) {
+        const a$22 = acc$20;
+        if (a$22.tag === 0) {
+          acc$20 = { tag: 0, _1: a$22._1 };
         } else {
-          const x$24 = a$5(a$23._1);
-          acc$21 = { tag: 1, _1: x$24 };
+          const x$23 = a$5(a$22._1);
+          acc$20 = { tag: 1, _1: x$23 };
         }
       }
-      return acc$21._1;
+      return acc$20._1;
     };
-    acc$3 = k$25;
+    acc$3 = k$24;
   }
-  const x$26 = acc$3;
-  const x$27 = x$26(a2);
-  return x$27;
+  const x$25 = acc$3;
+  const x$26 = x$25(a2);
+  return x$26;
 };

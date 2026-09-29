@@ -12,8 +12,8 @@ set_option autoImplicit false
 # Inlining the body of a known closure preserves the value
 
 The pieces of `LeanScript.Term.Optimize.InlineBlock` compute the value they replace:
-`BlockFn.applyNeu_eval` (the body at the call is the call) and `Term.bindRet_eval` (a
-straight-line body followed by the rest is the rest applied to its answer).
+`BlockFn.applyNeu_eval` (the body at the call is the call) and `Branch.retToJump_eval`
+(answers turned into jumps); `Term.bindRet_eval` is in `LeanScript.Term.Optimize.InlineSubstEval`.
 -/
 
 namespace LeanScript
@@ -231,48 +231,6 @@ theorem Branches.retToJump_eval {σ τ : Ty ks} : {d : Nat} → {Φ : KCtx ks} �
       split <;> (split <;> rfl)
   termination_by structural _ _ _ _ _ _ _ _ br => br
 end
-
-theorem Term.bindRet_eval {d : Nat} {σ τ : Ty ks} {u : Usage1ω} :
-    {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} → {o o' : Lvl} →
-    (t : Term Δ d Φ Γ σ [] o) → (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') →
-    (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
-    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} → Term.bindRet t b = some r →
-    r.2.eval κ ρ jκ = b.eval κ (Tuple.cons (t.eval κ ρ PUnit.unit) ρ) jκ
-  | _, _, _, _, _, .ret e, b, κ, ρ, jκ, r, h => by
-      cases e with
-      | neu n =>
-          simp only [Term.bindRet, Option.some.injEq] at h
-          subst h; rfl
-      | _ => simp [Term.bindRet] at h
-  | _, _, _, _, _, .letE u' c t, b, κ, ρ, jκ, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.eval]
-      rw [Term.bindRet_eval t b' κ _ jκ hr']
-      exact Term.rename_eval (KRen.Agree.id κ)
-        (URen.Agree.lift (URen.Agree.wk1 (b := ⟨_, u'.toUsage01ω, d⟩) ρ (c.eval κ ρ)) _ _)
-        (JRen.Agree.id jκ) b hb'
-  | _, _, _, _, _, .letV u' v t, b, κ, ρ, jκ, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.eval]
-      rw [Term.bindRet_eval t b' _ ρ jκ hr']
-      exact Term.rename_eval (KRen.Agree.wk1 (b := ⟨_, u', _, true⟩) κ (v.eval κ ρ))
-        (URen.Agree.id _) (JRen.Agree.id jκ) b hb'
-  | _, _, _, _, _, .record_casesOn us n t, b, κ, ρ, jκ, r, h => by
-      simp only [Term.bindRet, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
-      obtain ⟨b', hb', r', hr', rfl⟩ := h
-      simp only [Term.eval]
-      rw [Term.bindRet_eval t b' κ _ jκ hr']
-      exact Term.rename_eval (KRen.Agree.id κ) (URen.Agree.lift (URen.Agree.wkN ρ _ _) _ _)
-        (JRen.Agree.id jκ) b hb'
-  | _, _, _, _, _, .branch br, b, κ, ρ, jκ, r, h => by
-      simp only [Term.bindRet, Option.some.injEq] at h
-      subst h
-      simp only [Term.eval, Branch.eval]
-      rw [Branch.retToJump_eval br JMap.ofNil .head κ ρ PUnit.unit _ (fun x => nomatch x)]
-      simp
-  | _, _, _, _, _, .jump _ _, _, _, _, _, _, h => by simp [Term.bindRet] at h
 
 end LeanScript
 

@@ -210,33 +210,33 @@ export const RecData$ofArrayT = (xs) => {
   let acc$1 = { tag: 0 };
   for (const e$2 of xs) {
     const a$3 = acc$1;
-    const k$13 = (x$4, x$5) => {
-      const go0$6 = (v$7) => {
-        let x$8;
-        if (v$7.tag === 0) {
-          x$8 = { tag: 0 };
+    const k$12 = (x$4) => {
+      const go0$5 = (v$6) => {
+        let x$7;
+        if (v$6.tag === 0) {
+          x$7 = { tag: 0 };
         } else {
-          const { _1: f$9, _3: f$10 } = v$7;
-          x$8 = {
+          const { _1: f$8, _3: f$9 } = v$6;
+          x$7 = {
             tag: 1,
-            _1: { _1: f$9, _2: go0$6(f$9) },
-            _2: v$7._2,
-            _3: { _1: f$10, _2: go0$6(f$10) },
+            _1: { _1: f$8, _2: go0$5(f$8) },
+            _2: v$6._2,
+            _3: { _1: f$9, _2: go0$5(f$9) },
           };
         }
-        if (x$8.tag === 0) {
-          return { tag: 1, _1: { tag: 0 }, _2: x$4, _3: { tag: 0 } };
+        if (x$7.tag === 0) {
+          return { tag: 1, _1: { tag: 0 }, _2: e$2, _3: { tag: 0 } };
         }
-        const { _2: f$11 } = x$8;
-        return x$4 < f$11
-          ? { tag: 1, _1: x$8._1._2, _2: f$11, _3: x$8._3._1 }
-          : { tag: 1, _1: x$8._1._1, _2: f$11, _3: x$8._3._2 };
+        const { _2: f$10 } = x$7;
+        return e$2 < f$10
+          ? { tag: 1, _1: x$7._1._2, _2: f$10, _3: x$7._3._1 }
+          : { tag: 1, _1: x$7._1._1, _2: f$10, _3: x$7._3._2 };
       };
-      const x$12 = go0$6(x$5);
-      return x$12;
+      const x$11 = go0$5(x$4);
+      return x$11;
     };
-    const x$14 = k$13(e$2, a$3);
-    acc$1 = x$14;
+    const x$13 = k$12(a$3);
+    acc$1 = x$13;
   }
   return acc$1;
 };
@@ -309,66 +309,62 @@ export const RecData$reverse = (xs) => {
  * @returns {Array<uint53(number)>}
  */
 export const RecData$sort = (xs) => {
-  const k$16 = (x$1) => {
-    let acc$2 = { tag: 0 };
-    for (const e$3 of x$1) {
-      const a$4 = acc$2;
-      const k$14 = (x$5, x$6) => {
-        const go0$7 = (v$8) => {
-          let x$9;
-          if (v$8.tag === 0) {
-            x$9 = { tag: 0 };
-          } else {
-            const { _1: f$10, _3: f$11 } = v$8;
-            x$9 = {
-              tag: 1,
-              _1: { _1: f$10, _2: go0$7(f$10) },
-              _2: v$8._2,
-              _3: { _1: f$11, _2: go0$7(f$11) },
-            };
-          }
-          if (x$9.tag === 0) {
-            return { tag: 1, _1: { tag: 0 }, _2: x$5, _3: { tag: 0 } };
-          }
-          const { _2: f$12 } = x$9;
-          return x$5 < f$12
-            ? { tag: 1, _1: x$9._1._2, _2: f$12, _3: x$9._3._1 }
-            : { tag: 1, _1: x$9._1._1, _2: f$12, _3: x$9._3._2 };
-        };
-        const x$13 = go0$7(x$6);
-        return x$13;
+  let acc$1 = { tag: 0 };
+  for (const e$2 of xs) {
+    const a$3 = acc$1;
+    const k$12 = (x$4) => {
+      const go0$5 = (v$6) => {
+        let x$7;
+        if (v$6.tag === 0) {
+          x$7 = { tag: 0 };
+        } else {
+          const { _1: f$8, _3: f$9 } = v$6;
+          x$7 = {
+            tag: 1,
+            _1: { _1: f$8, _2: go0$5(f$8) },
+            _2: v$6._2,
+            _3: { _1: f$9, _2: go0$5(f$9) },
+          };
+        }
+        if (x$7.tag === 0) {
+          return { tag: 1, _1: { tag: 0 }, _2: e$2, _3: { tag: 0 } };
+        }
+        const { _2: f$10 } = x$7;
+        return e$2 < f$10
+          ? { tag: 1, _1: x$7._1._2, _2: f$10, _3: x$7._3._1 }
+          : { tag: 1, _1: x$7._1._1, _2: f$10, _3: x$7._3._2 };
       };
-      const x$15 = k$14(e$3, a$4);
-      acc$2 = x$15;
-    }
-    return acc$2;
-  };
-  const x$17 = k$16(xs);
-  const go0$18 = (v$19) => {
-    let x$20;
-    if (v$19.tag === 0) {
-      x$20 = { tag: 0 };
+      const x$11 = go0$5(x$4);
+      return x$11;
+    };
+    const x$13 = k$12(a$3);
+    acc$1 = x$13;
+  }
+  const go0$14 = (v$15) => {
+    let x$16;
+    if (v$15.tag === 0) {
+      x$16 = { tag: 0 };
     } else {
-      const { _1: f$21, _3: f$22 } = v$19;
-      x$20 = {
+      const { _1: f$17, _3: f$18 } = v$15;
+      x$16 = {
         tag: 1,
-        _1: { _1: f$21, _2: go0$18(f$21) },
-        _2: v$19._2,
-        _3: { _1: f$22, _2: go0$18(f$22) },
+        _1: { _1: f$17, _2: go0$14(f$17) },
+        _2: v$15._2,
+        _3: { _1: f$18, _2: go0$14(f$18) },
       };
     }
-    if (x$20.tag === 0) {
+    if (x$16.tag === 0) {
       return [];
     }
-    let acc$23 = array__lean_array_push_mutable(x$20._1._2, x$20._2);
-    for (const e$24 of x$20._3._2) {
-      const a$25 = acc$23;
-      acc$23 = array__lean_array_push_mutable(a$25, e$24);
+    let acc$19 = array__lean_array_push_mutable(x$16._1._2, x$16._2);
+    for (const e$20 of x$16._3._2) {
+      const a$21 = acc$19;
+      acc$19 = array__lean_array_push_mutable(a$21, e$20);
     }
-    return acc$23;
+    return acc$19;
   };
-  const x$26 = go0$18(x$17);
-  return x$26;
+  const x$22 = go0$14(acc$1);
+  return x$22;
 };
 
 /**
@@ -377,64 +373,60 @@ export const RecData$sort = (xs) => {
  * @returns {uint53(number)}
  */
 export const RecData$sizeArray = (xs) => {
-  const k$16 = (x$1) => {
-    let acc$2 = { tag: 0 };
-    for (const e$3 of x$1) {
-      const a$4 = acc$2;
-      const k$14 = (x$5, x$6) => {
-        const go0$7 = (v$8) => {
-          let x$9;
-          if (v$8.tag === 0) {
-            x$9 = { tag: 0 };
-          } else {
-            const { _1: f$10, _3: f$11 } = v$8;
-            x$9 = {
-              tag: 1,
-              _1: { _1: f$10, _2: go0$7(f$10) },
-              _2: v$8._2,
-              _3: { _1: f$11, _2: go0$7(f$11) },
-            };
-          }
-          if (x$9.tag === 0) {
-            return { tag: 1, _1: { tag: 0 }, _2: x$5, _3: { tag: 0 } };
-          }
-          const { _2: f$12 } = x$9;
-          return x$5 < f$12
-            ? { tag: 1, _1: x$9._1._2, _2: f$12, _3: x$9._3._1 }
-            : { tag: 1, _1: x$9._1._1, _2: f$12, _3: x$9._3._2 };
-        };
-        const x$13 = go0$7(x$6);
-        return x$13;
+  let acc$1 = { tag: 0 };
+  for (const e$2 of xs) {
+    const a$3 = acc$1;
+    const k$12 = (x$4) => {
+      const go0$5 = (v$6) => {
+        let x$7;
+        if (v$6.tag === 0) {
+          x$7 = { tag: 0 };
+        } else {
+          const { _1: f$8, _3: f$9 } = v$6;
+          x$7 = {
+            tag: 1,
+            _1: { _1: f$8, _2: go0$5(f$8) },
+            _2: v$6._2,
+            _3: { _1: f$9, _2: go0$5(f$9) },
+          };
+        }
+        if (x$7.tag === 0) {
+          return { tag: 1, _1: { tag: 0 }, _2: e$2, _3: { tag: 0 } };
+        }
+        const { _2: f$10 } = x$7;
+        return e$2 < f$10
+          ? { tag: 1, _1: x$7._1._2, _2: f$10, _3: x$7._3._1 }
+          : { tag: 1, _1: x$7._1._1, _2: f$10, _3: x$7._3._2 };
       };
-      const x$15 = k$14(e$3, a$4);
-      acc$2 = x$15;
-    }
-    return acc$2;
-  };
-  const x$17 = k$16(xs);
-  const go0$18 = (v$19) => {
-    let x$20;
-    if (v$19.tag === 0) {
-      x$20 = { tag: 0 };
+      const x$11 = go0$5(x$4);
+      return x$11;
+    };
+    const x$13 = k$12(a$3);
+    acc$1 = x$13;
+  }
+  const go0$14 = (v$15) => {
+    let x$16;
+    if (v$15.tag === 0) {
+      x$16 = { tag: 0 };
     } else {
-      const { _1: f$21, _3: f$22 } = v$19;
-      x$20 = {
+      const { _1: f$17, _3: f$18 } = v$15;
+      x$16 = {
         tag: 1,
-        _1: { _1: f$21, _2: go0$18(f$21) },
-        _2: v$19._2,
-        _3: { _1: f$22, _2: go0$18(f$22) },
+        _1: { _1: f$17, _2: go0$14(f$17) },
+        _2: v$15._2,
+        _3: { _1: f$18, _2: go0$14(f$18) },
       };
     }
-    if (x$20.tag === 0) {
+    if (x$16.tag === 0) {
       return 0;
     }
     return uint53__lean_nat_add(
-      uint53__lean_nat_add(x$20._1._2, 1),
-      x$20._3._2,
+      uint53__lean_nat_add(x$16._1._2, 1),
+      x$16._3._2,
     );
   };
-  const x$23 = go0$18(x$17);
-  return x$23;
+  const x$19 = go0$14(acc$1);
+  return x$19;
 };
 
 /**
@@ -460,10 +452,13 @@ export const RecData$roseKids = (a) => {
  * @returns {uint53(number)}
  */
 export const RecData$roseKidsTest = (x) => {
-  const k$2 = (x$1) => (2 < x$1 ? [[], [[]]] : [[[], []]]);
-  const x$3 = k$2(x);
-  const x$4 = x$3;
-  return x$4.length;
+  const k$3 = (x$1) => {
+    const x$2 = x$1;
+    return x$2.length;
+  };
+  const k$4 = 2 < x ? [[], [[]]] : [[[], []]];
+  const x$5 = k$3(k$4);
+  return x$5;
 };
 
 /**
@@ -541,64 +536,57 @@ export const RecData$roseFOf = (n) => {
  * @returns {uint53(number)}
  */
 export const RecData$roseFTest = (n) => {
-  const k$19 = (x$1) => {
-    const go0$2 = (v$4) => {
-      let x$5;
-      if (v$4.tag === 0) {
-        x$5 = { tag: 0 };
-      } else {
-        const { _1: f$6 } = v$4;
-        x$5 = { tag: 1, _1: { _1: f$6, _2: go1$3(f$6) } };
-      }
-      if (x$5.tag === 0) {
-        return { tag: 0 };
-      }
-      return { tag: 1, _1: x$5._1._2 };
-    };
-    const go1$3 = (v$7) => {
-      const { _2: f$8 } = v$7;
-      const x$11 = {
-        _1: v$7._1,
-        _2: (y$9) => {
-          const r$10 = f$8(y$9);
-          return { _1: r$10, _2: go0$2(r$10) };
-        },
-      };
-      const { _2: f$12 } = x$11;
-      let acc$13 = 1;
-      for (let i$14 = 0; i$14 < x$11._1; i$14++) {
-        const a$15 = acc$13;
-        const x$16 = f$12(i$14);
-        let x$17;
-        if (x$16._2.tag === 0) {
-          x$17 = 0;
-        } else {
-          x$17 = x$16._2._1;
+  const k$6 = (x$1) => {
+    if (x$1 < n) {
+      const k$5 = (x$2) => {
+        if (x$2 < 2) {
+          const k$4 = (x$3) => ({ tag: 0 });
+          return { tag: 1, _1: { _1: 0, _2: k$4 } };
         }
-        acc$13 = uint53__lean_nat_add(a$15, x$17);
-      }
-      return acc$13;
-    };
-    const x$18 = go1$3(x$1);
-    return x$18;
+        return { tag: 0 };
+      };
+      return { tag: 1, _1: { _1: 2, _2: k$5 } };
+    }
+    return { tag: 0 };
   };
-  const k$27 = (x$20) => {
-    const k$26 = (x$21) => {
-      if (x$21 < x$20) {
-        const k$25 = (x$22) => {
-          if (x$22 < 2) {
-            const k$24 = (x$23) => ({ tag: 0 });
-            return { tag: 1, _1: { _1: 0, _2: k$24 } };
-          }
-          return { tag: 0 };
-        };
-        return { tag: 1, _1: { _1: 2, _2: k$25 } };
-      }
+  const k$7 = { _1: n, _2: k$6 };
+  const go0$8 = (v$10) => {
+    let x$11;
+    if (v$10.tag === 0) {
+      x$11 = { tag: 0 };
+    } else {
+      const { _1: f$12 } = v$10;
+      x$11 = { tag: 1, _1: { _1: f$12, _2: go1$9(f$12) } };
+    }
+    if (x$11.tag === 0) {
       return { tag: 0 };
-    };
-    return { _1: x$20, _2: k$26 };
+    }
+    return { tag: 1, _1: x$11._1._2 };
   };
-  const x$28 = k$27(n);
-  const x$29 = k$19(x$28);
-  return x$29;
+  const go1$9 = (v$13) => {
+    const { _2: f$14 } = v$13;
+    const x$17 = {
+      _1: v$13._1,
+      _2: (y$15) => {
+        const r$16 = f$14(y$15);
+        return { _1: r$16, _2: go0$8(r$16) };
+      },
+    };
+    const { _2: f$18 } = x$17;
+    let acc$19 = 1;
+    for (let i$20 = 0; i$20 < x$17._1; i$20++) {
+      const a$21 = acc$19;
+      const x$22 = f$18(i$20);
+      let x$23;
+      if (x$22._2.tag === 0) {
+        x$23 = 0;
+      } else {
+        x$23 = x$22._2._1;
+      }
+      acc$19 = uint53__lean_nat_add(a$21, x$23);
+    }
+    return acc$19;
+  };
+  const x$24 = go1$9(k$7);
+  return x$24;
 };

@@ -20,14 +20,14 @@ import {
  */
 export const alias1 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(n, 1n);
-  const k$4 = (x$2, x$3) => array__lean_array_push_immutable(x$2, x$3);
-  const x$5 = k$4(x$1, n);
-  let acc$6 = x$5;
-  for (const e$7 of x$1) {
-    const a$8 = acc$6;
-    acc$6 = array__lean_array_push_mutable(a$8, e$7);
+  const k$3 = (x$2) => array__lean_array_push_immutable(x$1, x$2);
+  const x$4 = k$3(n);
+  let acc$5 = x$4;
+  for (const e$6 of x$1) {
+    const a$7 = acc$5;
+    acc$5 = array__lean_array_push_mutable(a$7, e$6);
   }
-  return acc$6;
+  return acc$5;
 };
 
 /**
@@ -60,35 +60,35 @@ export const alias2 = (n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const alias3 = (n) => {
-  const k$14 = (x$1, x$2) => {
-    const k$4 = (x$3) => x$3;
-    let acc$5 = k$4;
-    for (let i$6 = 0n; i$6 < x$1; i$6++) {
-      const a$7 = acc$5;
-      const k_mut$11 = (x$8) => {
-        const x$9 = array__lean_array_push_mutable(x$8, i$6);
-        const x$10 = a$7(x$9);
-        return x$10;
+  const k$13 = (x$1) => {
+    const k$3 = (x$2) => x$2;
+    let acc$4 = k$3;
+    for (let i$5 = 0n; i$5 < n; i$5++) {
+      const a$6 = acc$4;
+      const k_mut$10 = (x$7) => {
+        const x$8 = array__lean_array_push_mutable(x$7, i$5);
+        const x$9 = a$6(x$8);
+        return x$9;
       };
-      acc$5 = k_mut$11;
+      acc$4 = k_mut$10;
     }
-    const x$12 = acc$5;
-    const x$13 = x$12([...x$2]);
-    return x$13;
+    const x$11 = acc$4;
+    const x$12 = x$11([...x$1]);
+    return x$12;
   };
-  const x$15 = bigint_nat__lean_mk_array(n, 3n);
-  const x$16 = k$14(n, x$15);
-  let acc$17 = [...x$16];
-  for (const e$18 of x$16) {
-    const a$19 = acc$17;
-    acc$17 = array__lean_array_push_mutable(a$19, e$18);
+  const x$14 = bigint_nat__lean_mk_array(n, 3n);
+  const x$15 = k$13(x$14);
+  let acc$16 = [...x$15];
+  for (const e$17 of x$15) {
+    const a$18 = acc$16;
+    acc$16 = array__lean_array_push_mutable(a$18, e$17);
   }
-  let acc$20 = acc$17;
-  for (const e$21 of x$15) {
-    const a$22 = acc$20;
-    acc$20 = array__lean_array_push_mutable(a$22, e$21);
+  let acc$19 = acc$16;
+  for (const e$20 of x$14) {
+    const a$21 = acc$19;
+    acc$19 = array__lean_array_push_mutable(a$21, e$20);
   }
-  return acc$20;
+  return acc$19;
 };
 
 /**
@@ -97,65 +97,65 @@ export const alias3 = (n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const alias4 = (n) => {
-  const k$14 = (x$1, x$2) => {
-    const k$4 = (x$3) => x$3;
-    let acc$5 = k$4;
-    for (let i$6 = 0n; i$6 < x$1; i$6++) {
-      const a$7 = acc$5;
-      const k_mut$11 = (x$8) => {
-        const x$9 = array__lean_array_push_mutable(x$8, i$6);
-        const x$10 = a$7(x$9);
-        return x$10;
+  const k$13 = (x$1) => {
+    const k$3 = (x$2) => x$2;
+    let acc$4 = k$3;
+    for (let i$5 = 0n; i$5 < n; i$5++) {
+      const a$6 = acc$4;
+      const k_mut$10 = (x$7) => {
+        const x$8 = array__lean_array_push_mutable(x$7, i$5);
+        const x$9 = a$6(x$8);
+        return x$9;
       };
-      acc$5 = k_mut$11;
+      acc$4 = k_mut$10;
     }
-    const x$12 = acc$5;
-    const x$13 = x$12([...x$2]);
-    return x$13;
+    const x$11 = acc$4;
+    const x$12 = x$11([...x$1]);
+    return x$12;
   };
-  const k_mut$28 = (x$15, x$16) => {
-    const k$18 = (x$17) => x$17;
-    let acc$19 = k$18;
-    for (let i$20 = 0n; i$20 < x$15; i$20++) {
-      const a$21 = acc$19;
-      const k_mut$25 = (x$22) => {
-        const x$23 = array__lean_array_push_mutable(x$22, i$20);
-        const x$24 = a$21(x$23);
-        return x$24;
+  const k_mut$26 = (x$14) => {
+    const k$16 = (x$15) => x$15;
+    let acc$17 = k$16;
+    for (let i$18 = 0n; i$18 < n; i$18++) {
+      const a$19 = acc$17;
+      const k_mut$23 = (x$20) => {
+        const x$21 = array__lean_array_push_mutable(x$20, i$18);
+        const x$22 = a$19(x$21);
+        return x$22;
       };
-      acc$19 = k_mut$25;
+      acc$17 = k_mut$23;
     }
-    const x$26 = acc$19;
-    const x$27 = x$26(x$16);
-    return x$27;
+    const x$24 = acc$17;
+    const x$25 = x$24(x$14);
+    return x$25;
   };
-  const k$32 = (x$29) => {
-    const x$30 = bigint_nat__lean_mk_array(x$29, 5n);
-    const x$31 = k_mut$28(n, x$30);
-    return x$31;
+  const k$30 = (x$27) => {
+    const x$28 = bigint_nat__lean_mk_array(x$27, 5n);
+    const x$29 = k_mut$26(x$28);
+    return x$29;
   };
-  const x$33 = bigint_nat__lean_mk_array(n, 3n);
-  const x$34 = k$14(n, x$33);
-  const x$35 = 2n;
-  const x$36 = k$32(x$35);
-  const x$37 = 1n;
-  const x$38 = k$32(x$37);
-  let acc$39 = [...x$38];
-  for (const e$40 of x$36) {
-    const a$41 = acc$39;
-    acc$39 = array__lean_array_push_mutable(a$41, e$40);
+  const x$31 = bigint_nat__lean_mk_array(n, 3n);
+  const x$32 = k$13(x$31);
+  const x$33 = 2n;
+  const x$34 = k$30(x$33);
+  const x$35 = 1n;
+  const x$36 = k$30(x$35);
+  let acc$37 = [...x$36];
+  for (const e$38 of x$34) {
+    const a$39 = acc$37;
+    acc$37 = array__lean_array_push_mutable(a$39, e$38);
   }
-  let acc$42 = acc$39;
-  for (const e$43 of x$34) {
-    const a$44 = acc$42;
-    acc$42 = array__lean_array_push_mutable(a$44, e$43);
+  let acc$40 = acc$37;
+  for (const e$41 of x$32) {
+    const a$42 = acc$40;
+    acc$40 = array__lean_array_push_mutable(a$42, e$41);
   }
-  let acc$45 = acc$42;
-  for (const e$46 of x$33) {
-    const a$47 = acc$45;
-    acc$45 = array__lean_array_push_mutable(a$47, e$46);
+  let acc$43 = acc$40;
+  for (const e$44 of x$31) {
+    const a$45 = acc$43;
+    acc$43 = array__lean_array_push_mutable(a$45, e$44);
   }
-  return acc$45;
+  return acc$43;
 };
 
 /**
@@ -203,20 +203,20 @@ export const alias5$$mut_0 = (a, c) => {
  */
 export const alias6 = (a, n) => {
   const x$1 = bigint_nat__lean_mk_array(n, 4n);
-  const k$4 = (x$2, x$3) =>
-    x$3 === 0n ? x$2 : array__lean_array_push_immutable(x$2, x$3);
-  const x$5 = k$4(x$1, n);
-  let acc$6 = array__lean_array_push_immutable(x$5, 9n);
-  for (const e$7 of x$1) {
-    const a$8 = acc$6;
-    acc$6 = array__lean_array_push_mutable(a$8, e$7);
+  const k$3 = (x$2) =>
+    x$2 === 0n ? x$1 : array__lean_array_push_immutable(x$1, x$2);
+  const x$4 = k$3(n);
+  let acc$5 = array__lean_array_push_immutable(x$4, 9n);
+  for (const e$6 of x$1) {
+    const a$7 = acc$5;
+    acc$5 = array__lean_array_push_mutable(a$7, e$6);
   }
-  let acc$9 = acc$6;
-  for (const e$10 of a) {
-    const a$11 = acc$9;
-    acc$9 = array__lean_array_push_mutable(a$11, e$10);
+  let acc$8 = acc$5;
+  for (const e$9 of a) {
+    const a$10 = acc$8;
+    acc$8 = array__lean_array_push_mutable(a$10, e$9);
   }
-  return acc$9;
+  return acc$8;
 };
 
 /**

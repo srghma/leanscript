@@ -3,6 +3,8 @@ module
 public import LeanScript.Term.Optimize.InlineRet
 public import LeanScript.Term.Optimize.CountRename
 public import LeanScript.Term.Optimize.CountRelevel
+public import LeanScript.Term.Optimize.CountInlineSubst
+public import LeanScript.Term.Optimize.CountInlineOnce
 
 @[expose] public section
 
@@ -62,10 +64,10 @@ theorem Comp.numCalls_blockCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : T
   unfold Comp.blockCall? at h
   split at h
   · simp only [Option.bind_eq_some_iff] at h
-    obtain ⟨f, _, m, _, h⟩ := h
+    obtain ⟨f, _, h⟩ := h
     split at h
     · rename_i h0
-      rw [BlockFn.numCalls_applyNeu f m.2 h, h0]
+      rw [BlockFn.numCalls_applyP f _ h, h0]
     · cases h
   · cases h
 
@@ -88,6 +90,35 @@ theorem Term.numCalls_blockLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ :
     rw [Term.numCalls_bindRet r'.2 b h, Comp.numCalls_blockCall? B c hr']
     omega
 
+theorem Comp.numCalls_shareArg? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : Nat}
+    (c : Comp Δ d Φ Γ σ ℓ)
+    {r : (τ : Ty ks) × (ℓn : Nat) × Neu Δ Φ Γ τ ℓn × (ℓ' : Nat) ×
+      Comp Δ d Φ (⟨τ, Usage1ω.many.toUsage01ω, d⟩ :: Γ) σ ℓ'}
+    (h : c.shareArg? = some r) : r.2.2.2.2.numCalls = c.numCalls := by
+  unfold Comp.shareArg? at h
+  split at h
+  · simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+    obtain ⟨_, _, _, _, rfl⟩ := h
+    rfl
+  · cases h
+
+theorem Term.numCalls_blockLetS {d : Nat} {Φ : KCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    (B : BInfo Δ Φ) (u : Usage1ω) : (fuel : Nat) → {Γ : UCtx ks} → {ℓ : Nat} → {o' : Lvl} →
+    (c : Comp Δ d Φ Γ σ ℓ) → (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') →
+    {r : (o : Lvl) × Term Δ d Φ Γ τ js o} → Term.blockLetS B u fuel c b = some r →
+    r.2.numCalls ≤ b.numCalls
+  | 0, _, _, _, c, b, _, h => Term.numCalls_blockLetE B u c b h
+  | fuel + 1, _, _, _, c, b, r, h => by
+      simp only [Term.blockLetS] at h
+      split at h
+      · exact Term.numCalls_blockLetE B u c b h
+      · rename_i c' _
+        simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+        obtain ⟨b', hb', r', hr', rfl⟩ := h
+        simp only [Term.numCalls, Comp.numCalls, Nat.zero_add]
+        rw [← Term.numCalls_rename b hb']
+        exact Term.numCalls_blockLetS B u fuel _ b' hr'
+
 theorem Term.numCalls_retLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
     {js : JCtx ks} {ℓ : Nat} {o' : Lvl} (I : RInfo Δ Φ) (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
     (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') :
@@ -103,10 +134,16 @@ theorem Term.numCalls_retLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : T
       | none =>
           simp only
           cases hbl : Term.blockLetE I.b u c b with
-          | none => exact Nat.le_refl _
+          | none =>
+              simp only
+              cases hbs : Term.blockLetS I.b u 16 c b with
+              | none => exact Nat.le_refl _
+              | some r =>
+                  have := Term.numCalls_blockLetS I.b u 16 c b hbs
+                  simp only [Option.getD_some]; omega
           | some r =>
               have := Term.numCalls_blockLetE I.b u c b hbl
-              simp only [Option.getD_some]; omega
+              simp only; omega
       | some r =>
           obtain ⟨op, p⟩ := r
           simp only
@@ -132,7 +169,24 @@ theorem Term.numCalls_retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : T
   | some b' =>
       simp only
       rw [Term.numCalls_rename b hb]; omega
-  | none => exact Nat.le_refl _
+  | none =>
+      simp only
+      split
+      · rename_i r hr
+        simp only [Option.bind_eq_some_iff] at hr
+        obtain ⟨f, hf, hr⟩ := hr
+        have hC : (InlTgt.single (b := ⟨σ, u, o, true⟩) f).Bound f.body.numCalls := by
+          intro _ _ k g hg
+          cases k with
+          | head =>
+              simp only [InlTgt.single, Option.some.injEq] at hg
+              subst hg; exact Nat.le_refl _
+          | tail k => simp [InlTgt.single] at hg
+        have := Term.numCalls_inlineAt hC b hr
+        rw [Val.numCalls_blockFn? v hf] at this
+        simp only
+        omega
+      · exact Nat.le_refl _
 
 mutual
 theorem Val.numCalls_retWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →

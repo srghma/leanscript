@@ -3,6 +3,8 @@ module
 public import LeanScript.Term.Optimize.InlineRet
 public import LeanScript.Term.Optimize.InlineEval
 public import LeanScript.Term.Optimize.InlineBlockEval
+public import LeanScript.Term.Optimize.InlineSubstEval
+public import LeanScript.Term.Optimize.InlineOnceEval
 
 @[expose] public section
 
@@ -48,22 +50,6 @@ theorem Comp.answer?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {
     rw [ExprFn.apply_eval (hI k e he) a ρ ha]
     rfl
   · cases h
-
-theorem PExpr.isHead?_eval {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat}
-    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (v : Ty.Den Δ σ) {o : Lvl}
-    (e : PExpr Δ Φ (⟨σ, u, ℓ⟩ :: Γ) σ o) {h : PLift (σ = σ)} (he : e.isHead? = some h) :
-    e.eval κ (Tuple.cons v ρ) = v := by
-  cases e with
-  | neu n =>
-      cases n with
-      | var x =>
-          cases x with
-          | head _ => simp only [PExpr.eval, Neu.eval, UEnv.get_cons_head]
-          | tail _ => simp [PExpr.isHead?, Neu.isHead?, UVar.isHead?] at he
-      | data_out => simp [PExpr.isHead?, Neu.isHead?] at he
-      | cond => simp [PExpr.isHead?, Neu.isHead?] at he
-      | extern => simp [PExpr.isHead?, Neu.isHead?] at he
-  | _ => simp [PExpr.isHead?] at he
 
 theorem Term.substTail_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω}
     {ℓ : Nat} {op : Lvl} (p : PExpr Δ Φ Γ σ op) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
@@ -122,17 +108,6 @@ theorem RInfo.Agree.cons {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o
   ⟨KInfo.Agree.cons hI.1 (fun _ hf => Val.exprFn?_sem v κ ρ hf),
     BInfo.Agree.cons hI.2 (fun _ hf => Val.blockFnIf_sem u v κ ρ hf)⟩
 
-theorem Term.retHead?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω}
-    {ℓ : Nat} {js : JCtx ks} {o : Lvl} (b : Term Δ d Φ (⟨σ, u, ℓ⟩ :: Γ) σ js o)
-    {h : PLift (σ = σ)} (hb : b.retHead? = some h) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
-    (v : Ty.Den Δ σ) (jκ : JEnv Δ σ js) : b.eval κ (Tuple.cons v ρ) jκ = v := by
-  cases b with
-  | ret e =>
-      simp only [Term.retHead?] at hb
-      simp only [Term.eval]
-      exact PExpr.isHead?_eval κ ρ v e hb
-  | _ => simp [Term.retHead?] at hb
-
 theorem Comp.blockCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : Nat}
     {js : JCtx ks} {B : BInfo Δ Φ} {κ : KEnv Δ Φ} (hB : B.Agree κ) (ρ : UEnv Δ Γ)
     (jκ : JEnv Δ σ js) (c : Comp Δ d Φ Γ σ ℓ) {r : (o : Lvl) × Term Δ d Φ Γ σ js o}
@@ -141,9 +116,9 @@ theorem Comp.blockCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks
   split at h
   · rename_i k a hl
     simp only [Option.bind_eq_some_iff] at h
-    obtain ⟨f, hf, m, hm, h⟩ := h
+    obtain ⟨f, hf, h⟩ := h
     split at h
-    · rw [BlockFn.applyNeu_eval (hB k f hf) m.2 ρ jκ h, PExpr.toNeu?_eval κ ρ a hm]
+    · rw [BlockFn.applyP_eval (hB k f hf) a ρ jκ h]
       rfl
     · cases h
   · cases h
@@ -169,6 +144,30 @@ theorem Term.blockLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty 
     rw [Term.bindRet_eval r'.2 b κ ρ jκ h, Comp.blockCall?_eval (js := []) hB ρ PUnit.unit c hr']
     rfl
 
+theorem Term.blockLetS_eval {d : Nat} {Φ : KCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    {B : BInfo Δ Φ} {κ : KEnv Δ Φ} (hB : B.Agree κ) (u : Usage1ω) : (fuel : Nat) →
+    {Γ : UCtx ks} → {ℓ : Nat} → {o' : Lvl} → (c : Comp Δ d Φ Γ σ ℓ) →
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
+    {r : (o : Lvl) × Term Δ d Φ Γ τ js o} → Term.blockLetS B u fuel c b = some r →
+    r.2.eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ
+  | 0, _, _, _, c, b, ρ, jκ, _, h => Term.blockLetE_eval hB u c b ρ jκ h
+  | fuel + 1, _, _, _, c, b, ρ, jκ, r, h => by
+      simp only [Term.blockLetS] at h
+      split at h
+      · exact Term.blockLetE_eval hB u c b ρ jκ h
+      · rename_i τn ℓn n ℓ' c' hc
+        simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+        obtain ⟨b', hb', r', hr', rfl⟩ := h
+        simp only [Term.eval, Comp.eval]
+        rw [Term.blockLetS_eval hB u fuel c' b' _ jκ hr']
+        simp only [Term.eval]
+        have hc' := Comp.shareArg?_eval κ ρ c hc
+        simp only at hc'
+        rw [hc']
+        exact Term.rename_eval (KRen.Agree.id κ)
+          (URen.Agree.lift (URen.Agree.wk1 (b := ⟨_, Usage1ω.many.toUsage01ω, d⟩) ρ (n.eval κ ρ)) _ _)
+          (JRen.Agree.id jκ) b hb'
+
 theorem Term.retLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
     {ℓ : Nat} {o' : Lvl} {I : RInfo Δ Φ} {κ : KEnv Δ Φ} (hI : I.Agree κ) (u : Usage1ω)
     (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o')
@@ -185,7 +184,11 @@ theorem Term.retLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
       | none =>
           simp only
           cases hbl : Term.blockLetE I.b u c b with
-          | none => rfl
+          | none =>
+              simp only
+              cases hbs : Term.blockLetS I.b u 16 c b with
+              | none => rfl
+              | some r => exact Term.blockLetS_eval hI.2 u 16 c b ρ jκ hbs
           | some r => exact Term.blockLetE_eval hI.2 u c b ρ jκ hbl
       | some r =>
           obtain ⟨op, p⟩ := r
@@ -214,7 +217,14 @@ theorem Term.retLetV_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
   · rename_i b' hb
     simp only [Term.eval]
     exact Term.rename_eval (KRen.Agree.drop _ κ) (URen.Agree.id _) (JRen.Agree.id _) b hb
-  · rfl
+  · simp only
+    split
+    · rename_i r hr
+      simp only [Option.bind_eq_some_iff] at hr
+      obtain ⟨f, hf, hr⟩ := hr
+      simp only [Term.eval]
+      exact Term.inlineAt_eval (InlTgt.Agree.single (Val.blockFn?_sem v κ ρ hf)) b ρ jκ hr
+    · rfl
 
 /-! ## The walk -/
 
