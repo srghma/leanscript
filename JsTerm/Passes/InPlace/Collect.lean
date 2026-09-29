@@ -170,6 +170,9 @@ partial def collectE {C M : List JsTy} {τ : JsTy} (env : InEnv) :
   | .list_mk ps => do
     let fp ← collectP env ps
     return fun own => .list_mk (fp own)
+  | .listOp op as => do
+    let fa ← collectA env as
+    return fun own => .listOp op (fa own)
   | .cond c a b => do
     let fc ← collectE env c
     let fa ← collectE env a

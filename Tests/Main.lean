@@ -448,6 +448,97 @@ def moreJsSpec : Spec := describe "JsTerm" do
       | _ => "?"
     assertEq "body" "(c0 ? $tag0 : $k2)" body
     assertEq "imports" ([] : List String) m.imports
+  it "List is tagged cons cells (faithful) or a JavaScript array (pbo)" do
+    let listNat : LeanScript.Ty [] := .list .nat
+    assertEq "faithful" "ConsList<nat(bigint)>" (lowerTy faithful listNat).pretty
+    assertEq "pbo" "List<uint53(number)>" (lowerTy pbo listNat).pretty
+    assertEq "default is faithful's" ListRepr.taggedUnion ({} : JsConfig).listRepr
+    assertEq "knob" (some ListRepr.stdListToJsArray) ((faithful.setKnob? "list" "array").map JsConfig.listRepr)
+    assertEq "described" true ((faithful.describe.splitOn "list=tagged").length > 1)
+    assertEq "described (pbo)" true ((pbo.describe.splitOn "list=array").length > 1)
+    -- a user datatype shaped like a list is a datatype (a tagged union), whatever `listRepr`
+    let myList : LeanScript.Ty [2] := .data (.here ⟨0, by decide⟩)
+    assertEq "a datatype does not depend on listRepr" (lowerTy faithful myList).pretty
+      (lowerTy pbo myList).pretty
+  it "a list literal is cons cells sharing [] and constant cells" do
+    let lc : JsTy := .consList tN
+    let lit {C M : List JsTy} (ps : JsParts C M (.list tN) tN) : JsExpr C M lc :=
+      match listLit ps lc with
+      | .ok e => e
+      | .error _ => .unreachable lc
+    -- `[1, 1]`, and `[x, 1]`: the cells after the first variable are one constant
+    let two : JsParts [] [] (.list tN) tN := .elem one (.elem one .nil)
+    let xOne : JsParts [tN] [] (.list tN) tN := .elem (.cvar .zero) (.elem one .nil)
+    let f : JsFun := { name := "f", leanName := "f", params := [], ret := lc, body := .ret (lit two) }
+    let g : JsFun := { name := "g", leanName := "g", params := [("x", tN)], ret := lc,
+                       body := .ret (lit xOne) }
+    let m := mkModule faithful [f, g]
+    assertEq "constants"
+      [("$tag0", "{ tag: 0 }"), ("$k2", "{ tag: 1, _1: 1, _2: { tag: 1, _1: 1, _2: $tag0 } }"),
+       ("$k3", "{ tag: 1, _1: 1, _2: $tag0 }")]
+      (m.consts.map fun (c : JsConst) => (c.name, c.e.pretty ""))
+    let bodies := m.funs.map fun (g : JsFun) => match g.body with
+      | .ret e => e.pretty ""
+      | _ => "?"
+    assertEq "bodies" ["$k2", "{ tag: 1, _1: c0, _2: $k3 }"] bodies
+    assertEq "imports" ([] : List String) m.imports
+    -- a spread at the end is the tail, shared; one before it is copied in front of the tail
+    let tail : JsParts [.list tN] [] (.list tN) tN := .elem one (.spread (.cvar .zero) .nil)
+    assertEq "tail" "{ tag: 1, _1: 1, _2: consList__of_array(c0) }" ((lit tail).pretty "")
+    let mid : JsParts [.list tN] [] (.list tN) tN := .spread (.cvar .zero) (.elem one .nil)
+    assertEq "middle" "consList__of_array_onto(c0, { tag: 1, _1: 1, _2: { tag: 0 } })"
+      ((lit mid).pretty "")
+    -- a spread of cons cells converted to an array, before elements: an append of cells
+    let midL : JsParts [lc] [] (.list tN) tN :=
+      .spread (JsExpr.toArrayList (.cvar .zero)) (.elem one .nil)
+    assertEq "append" "consList__append(c0, { tag: 1, _1: 1, _2: { tag: 0 } })"
+      ((lit midL).pretty "")
+  it "an extern on lists converts cons cells at its boundary" do
+    let lc : JsTy := .consList tN
+    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr C M τ)) : String :=
+      match e with
+      | .ok e => e.pretty ""
+      | .error msg => s!"error: {msg}"
+    let arg {σ : JsTy} : JsArgs [σ] [] [σ] := .cons (.cvar .zero) .nil
+    assertEq "List.toArray" "inline:array__lean_array_mk(consList__to_array(c0))"
+      (shown (lowerExtern "lean_array_mk" arg : Except String (JsExpr [lc] [] tA)))
+    assertEq "Array.toList" "consList__of_array(inline:array__lean_array_to_list(c0))"
+      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr [tA] [] lc)))
+    -- the elements of a polymorphic operation are passed as they are
+    let ll : JsTy := .consList lc
+    assertEq "Array (List Nat) → List (List Nat)"
+      "consList__of_array(inline:array__lean_array_to_list(c0))"
+      (shown (lowerExtern "lean_array_to_list" arg : Except String (JsExpr [.array lc] [] ll)))
+    -- a round trip through the array layout is the list itself
+    let rt : JsExpr [lc] [] lc := (JsExpr.toArrayList (.cvar .zero)).ofArrayList
+    assertEq "round trip" "c0" (rt.pretty "")
+  it "the cons cells of runtime.js (needs node)" do
+    let cwd ← IO.currentDir
+    let names := ["consList__of_array", "consList__of_array_onto", "consList__to_array",
+      "consList__append"]
+    let src ← IO.FS.readFile "runtime.js"
+    for n in names do
+      assertEq s!"exports {n}" true ((src.splitOn s!"export const {n} =").length > 1)
+    let script := s!"import \{ {", ".intercalate names} } from {(s!"file://{cwd}/runtime.js").quote};\n" ++
+      "const t = consList__of_array([3, 4]);\n" ++
+      "const l = consList__of_array_onto([1, 2], t);\n" ++
+      "console.log(JSON.stringify(consList__of_array([])));\n" ++
+      "console.log(JSON.stringify(consList__of_array([7])));\n" ++
+      "console.log(consList__to_array(l).join());\n" ++
+      "console.log(l._2._2 === t);\n" ++
+      "console.log(consList__to_array(consList__of_array([])).length);\n" ++
+      "const u = consList__append(consList__of_array([0]), l);\n" ++
+      "console.log(consList__to_array(u).join(), u._2 === l, consList__append(l, consList__of_array([])) === l);\n"
+    let out ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      catch _ => pure none
+    match out with
+    | none => pure ()  -- no `node`: nothing to run
+    | some out =>
+      assertEq "node" "" (if out.exitCode == 0 then "" else out.stderr)
+      assertEq "output" ["{\"tag\":0}", "{\"tag\":1,\"_1\":7,\"_2\":{\"tag\":0}}", "1,2,3,4", "true", "0",
+        "0,1,2,3,4 true true"]
+        ((out.stdout.splitOn "\n").filter (· ≠ ""))
   let conv (cfg : JsConfig) (name : String) (ps : List String) (ct : ClosedTerm) :
       IO JsFun :=
     match termToJs cfg name name ps ct with

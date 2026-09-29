@@ -57,6 +57,7 @@ def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
   | .array_mk l ps => .array_mk l <$> ps.renameM rc rm
   | .list_mk ps => .list_mk <$> ps.renameM rc rm
   | .cond c a b => return .cond (← c.renameM rc rm) (← a.renameM rc rm) (← b.renameM rc rm)
+  | .listOp op as => .listOp op <$> as.renameM rc rm
 
 /-- Rename the variables of arguments. -/
 def JsArgs.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}

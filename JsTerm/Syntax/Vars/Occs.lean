@@ -77,7 +77,7 @@ def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr C M τ →
   | .cvar x => o.cOcc x.index
   | .mvar x => o.mOcc x.index
   | .global .. | .lit _ | .unreachable _ | .enum_mk .. => #[]
-  | .imported _ as | .inlined _ as => as.occsAt o
+  | .imported _ as | .inlined _ as | .listOp _ as => as.occsAt o
   | .app f as => f.occsAt o ++ as.occsAt o
   | .lam (σs := σs) _ b => b.occsAt (o.closure σs.length)
   | .record_mk fs => fs.occsAt o

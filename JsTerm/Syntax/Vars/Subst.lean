@@ -71,6 +71,7 @@ def JsExpr.subst {C M C' M' : List JsTy} (s : JsSubst C M C' M') {τ : JsTy} :
   | .array_mk l ps => .array_mk l (ps.subst s)
   | .list_mk ps => .list_mk (ps.subst s)
   | .cond c a b => .cond (c.subst s) (a.subst s) (b.subst s)
+  | .listOp op as => .listOp op (as.subst s)
 
 /-- Substitute the constants of arguments. -/
 def JsArgs.subst {C M C' M' : List JsTy} (s : JsSubst C M C' M') {σs : List JsTy} :

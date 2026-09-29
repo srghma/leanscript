@@ -46,7 +46,8 @@ reason) — `leanscript` reads its `Expr` (not LCNF or IR, which have lost the t
 translates it to a `Term` (`#leanscript_to_term`), optimises it (`Term.optimizeN`, which
 preserves `Term.eval`: `Term.optimizeN_eval`), converts it to the simply typed JavaScript
 grammar `JsTerm` twice, once per preset (`MoreJs.termToJs`: `pbo` uses `number` for the integer
-types, `faithful` uses `BigInt`), and prints it with `LanguageJavascriptMini`.  Next to
+types and JavaScript arrays for `List`, `faithful` uses `BigInt` and tagged cons cells for
+`List`), and prints it with `LanguageJavascriptMini`.  Next to
 `FILE.lean` it writes `FILE-Term-unoptimized.txt`, `FILE-Term-optimized.txt`,
 `FILE-pbo.js` and `FILE-faithful.js` (one
 `import { … } from "<relative path>/runtime.js"` of the runtime functions the code calls, then the constants of the module, then one `export const f = (x, y) => …` per function: a
@@ -103,7 +104,27 @@ and `xs ++ ys` is `(xs.toArray ++ ys.toArray).toList`.  An append of arrays is a
 every element, which the JavaScript conversion writes `[...xs, ...ys]` on generic arrays; an
 array literal used once is inlined and the spreads of literals are flattened, so
 `#["a"] ++ (arr ++ #["b"])` (or the same on lists) is `["a", ...arr, "b"]`
-(`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).  A `Float.Model` (`Float32.Model`) is the
+(`Tests/SnapshotsPBOPure/AssocArrayAppend.lean`).
+
+How a `List` is laid out in JavaScript is the knob `JsConfig.listRepr` (`MoreJs.ListRepr`,
+`JsTerm/Ty/Config.lean`; spelled `list=tagged` or `list=array` in the configuration line of
+every output):
+
+* `taggedUnion` (the default, preset `faithful`): cons cells, `[]` is `{ tag: 0 }` and
+  `x :: xs` is `{ tag: 1, _1: x, _2: xs }` (`JsTy.consList`).  A constant list is one shared
+  constant (`const $k2 = { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: $tag0 } };`, the empty
+  list being the `$tag0` every constructor without fields shares), and a list after elements
+  is the tail of their cells, shared, not copied: `[a, "b"] ++ xs` is
+  `{ tag: 1, _1: a, _2: { tag: 1, _1: "b", _2: xs } }`.  Before a tail, a list is copied
+  (`consList__append(xs, ys)`, `consList__of_array_onto(arr, tail)`).  The externs over lists
+  (`Array.toList`, `List.toArray`, …) are written for arrays: their list arguments and results
+  are converted (`consList__to_array`, `consList__of_array`), and a round trip is dropped
+  (`xs.toArray.toList` is `xs`).  These four functions are in `runtime.js`;
+* `stdListToJsArray` (preset `pbo`): an immutable JavaScript array (`JsTy.list`), as above.
+
+Only the standard library's `List` follows the knob: a user's list-like inductive
+(`inductive MyList | nil | cons (h : α) (t : MyList α)`) is a datatype, a tagged union, in both
+(`MoreJs.lowerTy_data_listRepr`).  `Tests/SnapshotsMy/ListRepr.lean` shows both layouts.  A `Float.Model` (`Float32.Model`) is the
 `number` of the float it models.
 
 The optimiser (`LeanScript/Term/Optimize/Basic.lean`, `Cse.lean`, `Atom.lean`) does constant

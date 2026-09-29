@@ -1148,6 +1148,46 @@ export const typedArray__bigint_nat__lean_mk_array = (C, n, v) => new C(Number(n
  *  @returns {Array<number|bigint>} `list t.leaf` */
 export const typedArray__lean_array_to_list = (a) => Array.from(a);
 
+/** The empty list of cons cells (`ListRepr.taggedUnion`): `{ tag: 0 }`, shared. */
+const $consNil = Object.freeze({ tag: 0 });
+
+/** A `List` as cons cells (`ListRepr.taggedUnion`) from its array layout: `[a, b]` is
+ *  `{ tag: 1, _1: a, _2: { tag: 1, _1: b, _2: { tag: 0 } } }`.  Linear, built from the end.
+ *  @template α
+ *  @param {Array<α>} a `list α`
+ *  @returns {({tag: 0}|{tag: 1, _1: α, _2: *})} `consList α` */
+export const consList__of_array = (a) => consList__of_array_onto(a, $consNil);
+
+/** The cons cells of the elements of an array in front of the cons cells `l`, which are shared,
+ *  not copied (`ListRepr.taggedUnion`): `(a.toList ++ l)` in `O(a.length)`.
+ *  @template α
+ *  @param {Array<α>} a `list α`
+ *  @param {({tag: 0}|{tag: 1, _1: α, _2: *})} l `consList α`
+ *  @returns {({tag: 0}|{tag: 1, _1: α, _2: *})} `consList α` */
+export const consList__of_array_onto = (a, l) => {
+  for (let i = a.length - 1; i >= 0; i--) l = { tag: 1, _1: a[i], _2: l };
+  return l;
+};
+
+/** `l ++ t` on cons cells (`ListRepr.taggedUnion`): copies of the cells of `l` in front of the
+ *  cells `t`, which are shared (`l` itself when `t` is empty).
+ *  @template α
+ *  @param {({tag: 0}|{tag: 1, _1: α, _2: *})} l `consList α`
+ *  @param {({tag: 0}|{tag: 1, _1: α, _2: *})} t `consList α`
+ *  @returns {({tag: 0}|{tag: 1, _1: α, _2: *})} `consList α` */
+export const consList__append = (l, t) =>
+  t.tag === 0 ? l : consList__of_array_onto(consList__to_array(l), t);
+
+/** The array layout of a `List` of cons cells (`ListRepr.taggedUnion`): the elements, in order.
+ *  @template α
+ *  @param {({tag: 0}|{tag: 1, _1: α, _2: *})} l `consList α`
+ *  @returns {Array<α>} `list α` */
+export const consList__to_array = (l) => {
+  const a = [];
+  for (; l.tag === 1; l = l._2) a.push(l._1);
+  return a;
+};
+
 /** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …).
  *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
  *  @param {function(new:TypedArray, number)} C `t.kind` (the typed-array constructor)

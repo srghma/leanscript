@@ -3,6 +3,12 @@ import * as M from "./InlineClosures-faithful.js";
 
 function show(v) {
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return "#[" + [...v].map(show).join(", ") + "]";
+  // a list of cons cells (`ListRepr.taggedUnion`) is shown as its elements
+  if (v !== null && typeof v === "object" && (v.tag === 0 || v.tag === 1)) {
+    const a = [];
+    for (; v.tag === 1; v = v._2) a.push(v._1);
+    return show(a);
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -66,10 +72,10 @@ check("keep(-1n)", () => M.keep(-1n), "-1", false);
 check("keep(0n)", () => M.keep(0n), "0", false);
 check("keep(3n)", () => M.keep(3n), "3", false);
 check("keep(12n)", () => M.keep(12n), "12", false);
-check("around([])", () => M.around([]), "#[<, ,, >]", false);
-check("around([\"\"])", () => M.around([""]), "#[<, , ,, , >]", false);
-check("around([\"\", \"a\", \"hello world\"])", () => M.around(["", "a", "hello world"]), "#[<, , a, hello world, ,, , a, hello world, >]", false);
-check("around([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"])", () => M.around(["abcabc", "héllo, wörld", "hello world", "a"]), "#[<, abcabc, héllo, wörld, hello world, a, ,, abcabc, héllo, wörld, hello world, a, >]", false);
+check("around({ tag: 0 })", () => M.around({ tag: 0 }), "#[<, ,, >]", false);
+check("around({ tag: 1, _1: \"\", _2: { tag: 0 } })", () => M.around({ tag: 1, _1: "", _2: { tag: 0 } }), "#[<, , ,, , >]", false);
+check("around({ tag: 1, _1: \"\", _2: { tag: 1, _1: \"a\", _2: { tag: 1, _1: \"hello world\", _2: { tag: 0 } } } })", () => M.around({ tag: 1, _1: "", _2: { tag: 1, _1: "a", _2: { tag: 1, _1: "hello world", _2: { tag: 0 } } } }), "#[<, , a, hello world, ,, , a, hello world, >]", false);
+check("around({ tag: 1, _1: \"abcabc\", _2: { tag: 1, _1: \"héllo, wörld\", _2: { tag: 1, _1: \"hello world\", _2: { tag: 1, _1: \"a\", _2: { tag: 0 } } } } })", () => M.around({ tag: 1, _1: "abcabc", _2: { tag: 1, _1: "héllo, wörld", _2: { tag: 1, _1: "hello world", _2: { tag: 1, _1: "a", _2: { tag: 0 } } } } }), "#[<, abcabc, héllo, wörld, hello world, a, ,, abcabc, héllo, wörld, hello world, a, >]", false);
 
 console.log(`InlineClosures-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -123,6 +123,7 @@ partial def pretty : JsTy → String
   | .array t => s!"Array<{t.pretty}>"
   | .typedArray t => s!"{t.kind.ctorName}<{t.leaf.pretty}>"
   | .list t => s!"List<{t.pretty}>"
+  | .consList t => s!"ConsList<{t.pretty}>"
   | .fn ds c => "(" ++ ", ".intercalate (ds.map pretty) ++ s!") => {c.pretty}"
   | .record f₁ f₂ fs => let ts := f₁ :: f₂ :: fs; "{ " ++ ", ".intercalate
       ((List.range ts.length).zip ts |>.map fun (i, t) => s!"_{i + 1}: {t.pretty}") ++ " }"

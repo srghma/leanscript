@@ -42,7 +42,8 @@ partial def JsExpr.foldNodes {α : Type} (f : JsExprFold α) {C M : List JsTy} {
     (e : JsExpr C M τ) (acc : α) : α :=
   let acc := f.run _ _ _ e acc
   match e with
-  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as => as.foldNodes f acc
+  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as | .listOp _ as =>
+    as.foldNodes f acc
   | .app g as => as.foldNodes f (g.foldNodes f acc)
   | .lam _ b => b.foldNodes f acc
   | .array_mk _ ps | .list_mk ps => ps.foldNodes f acc
@@ -100,6 +101,7 @@ def recordsFold : JsExprFold Nat :=
   ⟨fun _ _ _ e acc => match e with
     | .record_mk .. => acc + 1
     | .union_mk _ (.cons ..) => acc + 1
+    | .listOp (.cons _) _ => acc + 1
     | _ => acc⟩
 
 /-- The closures an expression node is. -/
@@ -198,7 +200,7 @@ structure InlineCand where
 mutual
 /-- The number of nodes of an expression (a closure counts as many). -/
 partial def JsExpr.size {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Nat
-  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as => as.size + 1
+  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as | .listOp _ as => as.size + 1
   | .app f as => f.size + as.size + 1
   | .lam .. => 100
   | .array_mk _ ps | .list_mk ps => ps.size + 1

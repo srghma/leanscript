@@ -210,6 +210,43 @@ partial def JsLitShape.pretty : JsLitShape → String
   | .str s => s.quote
   | .array es => "[" ++ ", ".intercalate (es.map JsLitShape.pretty) ++ "]"
 
+/-! ## Lists of cons cells -/
+
+/-- The operations on the lists of tagged cons cells (`JsTy.consList`, the layout of `List`
+    under `ListRepr.taggedUnion`): the two constructors, written inline as objects, and the two
+    conversions from and to the array layout of a list (`JsTy.list`), functions of the runtime.
+    The externs of the catalogue that take or answer a list are written for the array layout;
+    at the tagged layout their arguments and result are converted
+    (`MoreJs.lowerExtern`). -/
+inductive JsListOp : List JsTy → JsTy → Type where
+  /-- `[]`: `{ tag: 0 }`. -/
+  | nil (α : JsTy) : JsListOp [] (.consList α)
+  /-- `h :: t`: `{ tag: 1, _1: h, _2: t }` (the tail is shared). -/
+  | cons (α : JsTy) : JsListOp [α, .consList α] (.consList α)
+  /-- The cons cells of the elements of an array: `consList__of_array(a)`. -/
+  | ofArray (α : JsTy) : JsListOp [.list α] (.consList α)
+  /-- The array of the elements of cons cells: `consList__to_array(l)`. -/
+  | toArray (α : JsTy) : JsListOp [.consList α] (.list α)
+  /-- The cons cells of the elements of an array in front of the cons cells `l`, which are
+      shared, not copied: `consList__of_array_onto(a, l)`. -/
+  | ofArrayOnto (α : JsTy) : JsListOp [.list α, .consList α] (.consList α)
+  /-- `l ++ t`: copies of the cells of `l` in front of the cells `t`, which are shared:
+      `consList__append(l, t)`. -/
+  | append (α : JsTy) : JsListOp [.consList α, .consList α] (.consList α)
+  deriving Repr
+
+namespace JsListOp
+
+/-- The function of `runtime.js` the operation calls, if it is not written inline. -/
+def runtimeName? {σs : List JsTy} {τ : JsTy} : JsListOp σs τ → Option String
+  | .nil _ | .cons _ => none
+  | .ofArray _ => some "consList__of_array"
+  | .toArray _ => some "consList__to_array"
+  | .ofArrayOnto _ => some "consList__of_array_onto"
+  | .append _ => some "consList__append"
+
+end JsListOp
+
 /-! ## Expressions and blocks -/
 
 mutual
@@ -254,6 +291,10 @@ inductive JsExpr : List JsTy → List JsTy → JsTy → Type where
   | list_mk {C M : List JsTy} {α : JsTy} (parts : JsParts C M (.list α) α) : JsExpr C M (.list α)
   /-- `c ? a : b`. -/
   | cond {C M : List JsTy} {τ : JsTy} (c : JsExpr C M (.terminal .bool)) (a b : JsExpr C M τ) :
+      JsExpr C M τ
+  /-- An operation on lists of cons cells (`JsListOp`): `{ tag: 0 }`,
+      `{ tag: 1, _1: h, _2: t }`, or a conversion from or to an array. -/
+  | listOp {C M σs : List JsTy} {τ : JsTy} (op : JsListOp σs τ) (args : JsArgs C M σs) :
       JsExpr C M τ
 
 /-- The arguments of an operation or the fields of a record. -/
@@ -376,6 +417,78 @@ def JsNatTy.lit? {C M : List JsTy} {N : JsTy} (nt : JsNatTy N) (n : Nat) : Optio
   match nt with
   | .bigint_nat => some (.lit (.bigint_nat n))
   | .uint53 => if h : n ≤ maxSafe then some (.lit (.uint53 n h)) else none
+
+/-! ## Lists of cons cells: builders -/
+
+/-- The cons cells an array list was converted from, if it was: `consList__to_array(l)`, also
+    seen through `Array.toList (List.toArray _)` (both written as their argument on generic
+    arrays). -/
+def JsExpr.consListOf? {C M : List JsTy} {α : JsTy} :
+    JsExpr C M (.list α) → Option (JsExpr C M (.consList α))
+  | .listOp (.toArray _) (.cons l .nil) => some l
+  | .inlined (.array__lean_array_to_list _)
+      (.cons (.inlined (.array__lean_array_mk _) (.cons (.listOp (.toArray _) (.cons l .nil)) .nil))
+        .nil) => some l
+  | _ => none
+
+/-- The cons cells of an array list `xs` (`consList__of_array(xs)`), or the cons cells `xs`
+    was converted from (`consList__to_array(l)`: a round trip is the list itself). -/
+def JsExpr.ofArrayList {C M : List JsTy} {α : JsTy} (xs : JsExpr C M (.list α)) :
+    JsExpr C M (.consList α) :=
+  xs.consListOf?.getD (.listOp (.ofArray α) (.cons xs .nil))
+
+/-- The array list of the cons cells `l` (`consList__to_array(l)`), or the array list `l` was
+    converted from. -/
+def JsExpr.toArrayList {C M : List JsTy} {α : JsTy} :
+    JsExpr C M (.consList α) → JsExpr C M (.list α)
+  | .listOp (.ofArray _) (.cons xs .nil) => xs
+  | l => .listOp (.toArray α) (.cons l .nil)
+
+/-- The parts of a list literal made of elements and at most one spread, the last part, as cons
+    cells: the elements in front of the cons cells of the spread (shared, not copied), or of
+    `[]`; none when a spread is not the last part. -/
+def JsParts.toConsList? {C M : List JsTy} {α : JsTy} :
+    JsParts C M (.list α) α → Option (JsExpr C M (.consList α))
+  | .nil => some (.listOp (.nil α) .nil)
+  | .elem e ps => do return .listOp (.cons α) (.cons e (.cons (← ps.toConsList?) .nil))
+  | .spread xs .nil => some xs.ofArrayList
+  | .spread _ _ => none
+
+/-- Are there no parts? -/
+def JsParts.isNil {C M : List JsTy} {A E : JsTy} : JsParts C M A E → Bool
+  | .nil => true
+  | _ => false
+
+/-- The parts of a literal split before its tail: the parts up to the last spread that an
+    element follows, and the others (elements, then at most one spread, the last part), which
+    `JsParts.toConsList?` writes as cons cells. -/
+def JsParts.splitTail {C M : List JsTy} {A E : JsTy} :
+    JsParts C M A E → JsParts C M A E × JsParts C M A E
+  | .nil => (.nil, .nil)
+  | .elem e ps =>
+    let (pre, post) := ps.splitTail
+    if pre.isNil then (.nil, .elem e post) else (.elem e pre, post)
+  | .spread a ps =>
+    let (pre, post) := ps.splitTail
+    if !pre.isNil then (.spread a pre, post)
+    else if post.isNil then (.nil, .spread a .nil)
+    else (.spread a .nil, post)
+
+/-- The parts of a list literal as cons cells: the cells of its tail (`JsParts.splitTail`),
+    shared with the last spread, with the elements of the parts before it in front
+    (`consList__of_array_onto([…], tail)`). -/
+def JsParts.toConsList {C M : List JsTy} {α : JsTy} (ps : JsParts C M (.list α) α) :
+    JsExpr C M (.consList α) :=
+  let (pre, post) := ps.splitTail
+  let tail := post.toConsList?.getD (.listOp (.ofArray α) (.cons (.list_mk post) .nil))
+  match pre with
+  | .nil => tail
+  -- `[...xs, …]`: the cells of `xs` (as cons cells, copied), or the elements of the array `xs`
+  | .spread xs .nil =>
+    match xs.consListOf? with
+    | some l => .listOp (.append α) (.cons l (.cons tail .nil))
+    | none => .listOp (.ofArrayOnto α) (.cons xs (.cons tail .nil))
+  | pre => .listOp (.ofArrayOnto α) (.cons (.list_mk pre) (.cons tail .nil))
 
 /-- The name of field `i` (from `0`) of a record or a constructor: `_1`, `_2`, …. -/
 def fieldKey (i : Nat) : String := s!"_{i + 1}"

@@ -47,6 +47,9 @@ partial def JsExpr.discardable {C M : List JsTy} {τ : JsTy} : JsExpr C M τ →
   | .union_mk _ as => as.discardable
   | .array_mk _ ps | .list_mk ps => ps.discardable
   | .cond c a b => c.discardable && a.discardable && b.discardable
+  -- a cons cell and the conversions between cons cells and arrays have no effect and never
+  -- throw
+  | .listOp _ as => as.discardable
 /-- `discardable` of arguments. -/
 partial def JsArgs.discardable {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => true
@@ -507,6 +510,7 @@ partial def JsExpr.capturesMut {C M : List JsTy} {τ : JsTy} : JsExpr C M τ →
   | .union_mk _ as => as.capturesMut
   | .array_mk _ ps | .list_mk ps => ps.capturesMut
   | .cond c a b => c.capturesMut || a.capturesMut || b.capturesMut
+  | .listOp _ as => as.capturesMut
 /-- `capturesMut` of arguments. -/
 partial def JsArgs.capturesMut {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => false

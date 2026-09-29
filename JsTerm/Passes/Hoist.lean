@@ -60,17 +60,28 @@ def JsArgs.allConstLeaves {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => true
   | .cons a as => a.isConstLeaf && as.allConstLeaves
 
+/-- Cons cells whose elements are all literals, enums or constants, down to a tail that is one
+    too (`[]` is shared as `$tag0` before its cells are looked at). -/
+def JsExpr.isConstSpine {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+  | .listOp (.nil _) _ => true
+  | .listOp (.cons _) (.cons h (.cons t .nil)) => h.isConstLeaf && t.isConstSpine
+  | e => e.isConstLeaf
+
 /-- Is an expression (whose parts are already rewritten) worth sharing, if it is closed? -/
 def JsExpr.shareable {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
   | .record_mk fs => fs.allConstLeaves
   | .union_mk _ as => as.allConstLeaves
   | .lam .. => true
+  | .listOp (.nil _) _ => true
+  | e@(.listOp (.cons _) _) => e.isConstSpine
   | _ => false
 
-/-- The name of the constant of an expression: `$tag{i}` for a constructor without fields. -/
+/-- The name of the constant of an expression: `$tag{i}` for a constructor without fields
+    (`[]` of cons cells is `{ tag: 0 }`, the same object as a constructor `0` without fields). -/
 def constName {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) (n : Nat) : String :=
   match e with
   | .union_mk ix .nil => s!"$tag{ix.index}"
+  | .listOp (.nil _) _ => "$tag0"
   | _ => s!"$k{n}"
 
 /-- Share the expression `e` if it is a closed constant worth sharing. -/
@@ -101,7 +112,31 @@ partial def hoistE {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → HoistM (JsE
   | .array_mk l ps => do return .array_mk l (← hoistP ps)
   | .list_mk ps => do return .list_mk (← hoistP ps)
   | .cond c a b => do return .cond (← hoistE c) (← hoistE a) (← hoistE b)
+  | e@(.listOp (.cons _) _) => do
+    let (e', whole) ← hoistCons e
+    if whole then hoistNode e' else return e'
+  | .listOp op as => do hoistNode (.listOp op (← hoistA as))
   | e => return e
+/-- Share the constants of cons cells, keeping a run of constant cells in one piece: the cells
+    rebuilt, and whether they are all constant down to their tail (`JsExpr.isConstSpine`: then
+    the caller shares them whole, `{ tag: 1, _1: 1, _2: { tag: 1, _1: 2, _2: $tag0 } }`, rather
+    than one constant per cell). -/
+partial def hoistCons {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) :
+    HoistM (JsExpr C M τ × Bool) :=
+  match e with
+  | .listOp (.cons α) (.cons h (.cons t .nil)) => do
+    let h' ← hoistE h
+    let (t', tailConst) ← match t with
+      | .listOp (.cons _) _ => hoistCons t
+      | t => do
+        let t' ← hoistE t
+        pure (t', t'.isConstLeaf)
+    if h'.isConstLeaf && tailConst then
+      return (.listOp (.cons α) (.cons h' (.cons t' .nil)), true)
+    -- this cell is not constant: a constant run of cells after it is shared here
+    let t'' ← if tailConst then hoistNode t' else pure t'
+    return (.listOp (.cons α) (.cons h' (.cons t'' .nil)), false)
+  | e => do return (← hoistE e, false)
 /-- Share the constants of arguments. -/
 partial def hoistA {C M σs : List JsTy} : JsArgs C M σs → HoistM (JsArgs C M σs)
   | .nil => pure .nil
@@ -168,6 +203,8 @@ partial def JsExpr.runtimeNames {C M : List JsTy} {τ : JsTy} (acc : Array Strin
   | .union_mk _ as => as.runtimeNames acc
   | .array_mk _ ps | .list_mk ps => ps.runtimeNames acc
   | .cond c a b => b.runtimeNames (a.runtimeNames (c.runtimeNames acc))
+  | .listOp op as =>
+    as.runtimeNames (match op.runtimeName? with | some n => addName acc n | none => acc)
   | _ => acc
 /-- `runtimeNames` of arguments. -/
 partial def JsArgs.runtimeNames {C M σs : List JsTy} (acc : Array String) :
@@ -220,7 +257,8 @@ mutual
 partial def JsExpr.globalsNow {C M : List JsTy} {τ : JsTy} (acc : Array String) :
     JsExpr C M τ → Array String
   | .global n _ => acc.push n
-  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as => as.globalsNow acc
+  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as | .listOp _ as =>
+    as.globalsNow acc
   | .app f as => as.globalsNow (f.globalsNow acc)
   | .array_mk _ ps | .list_mk ps => ps.globalsNow acc
   | .cond c a b => b.globalsNow (a.globalsNow (c.globalsNow acc))

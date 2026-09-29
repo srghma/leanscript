@@ -26,7 +26,8 @@ The leaves are `JsTerminalTy`; the compound shapes have one layout each:
 | `record t fs` | `record f₁ f₂ [f₃, …]` | an object `{ _1: f₁, _2: f₂, … }` (two fields or more) |
 | `union cs` | `union c₀ c₁ [c₂, …]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more, each the list of its fields) |
 | `enum s` | `enum n shift` | the number `shift + i` |
-| `list t` | `list t` | an (immutable) JavaScript array |
+| `list t` | `list t` (`listRepr = stdListToJsArray`) | an (immutable) JavaScript array |
+| `list t` | `consList t` (`listRepr = taggedUnion`) | cons cells: `{ tag: 0 }` (`[]`) and `{ tag: 1, _1: head, _2: tail }` |
 | `fn a (fn b c)` | `fn [a, b] c` | a function of all its arguments (uncurried) |
 | `thunk t` | `thunk t` | a memoising thunk object |
 | `lazy t` | `fn [] t` | a function of no argument |
@@ -140,8 +141,13 @@ inductive JsTy where
   /-- A typed array (`Uint8Array`, …) of the elements `elem` (a `BitVec 5` in a
       `Uint8Array`, …). -/
   | typedArray (elem : JsTypedElem)
-  /-- A Lean `List`, as an immutable JavaScript array. -/
+  /-- A Lean `List`, as an immutable JavaScript array (`ListRepr.stdListToJsArray`). -/
   | list (elem : JsTy)
+  /-- A Lean `List`, as tagged cons cells (`ListRepr.taggedUnion`): the empty list is
+      `{ tag: 0 }`, `head :: tail` is `{ tag: 1, _1: head, _2: tail }` — the layout of a union
+      of the constructors `nil` and `cons`, which a structural `union` cannot write (the type
+      is recursive).  A tail is shared, never copied. -/
+  | consList (elem : JsTy)
   /-- A function of the arguments `doms` (none for a delay): `(x₁, …, xₙ) => …`. -/
   | fn (doms : List JsTy) (cod : JsTy)
   /-- A record of two fields or more: an object `{ _1: f₁, _2: f₂, … }` (numbered from `1`). -/

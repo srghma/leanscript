@@ -212,6 +212,13 @@ def recordLit {C M σs : List JsTy} (as : JsArgs C M σs) (τ : JsTy) : ConvM (J
   | .record f₁ f₂ fs => do return .record_mk (← castArgs as (f₁ :: f₂ :: fs))
   | τ => throw s!"internal: a record literal of type {τ}"
 
+/-- A list literal of type `L` (a list type) of the parts `ps`: `[e₀, …]` at the array layout
+    (`JsTy.list`), the cons cells `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` at the tagged layout
+    (`JsTy.consList`, `ListRepr.taggedUnion`). -/
+def listLit {C M : List JsTy} {α : JsTy} (ps : JsParts C M (.list α) α) (L : JsTy) :
+    ConvM (JsExpr C M L) :=
+  if L.isConsList then castE ps.toConsList L else castE (.list_mk ps) L
+
 /-- `e()`: the value of a delay (a function of no parameter) of type `r`. -/
 def forceLazy {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) (r : JsTy) : ConvM (JsExpr C M r) :=
   match τ, e with

@@ -286,6 +286,7 @@ partial def JsExpr.closureWrites {C M : List JsTy} {τ : JsTy} : JsExpr C M τ �
   | .union_mk _ as => as.closureWrites
   | .array_mk _ ps | .list_mk ps => ps.closureWrites
   | .cond c a b => c.closureWrites || a.closureWrites || b.closureWrites
+  | .listOp _ as => as.closureWrites
 /-- `closureWrites` of arguments. -/
 partial def JsArgs.closureWrites {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => false
@@ -377,6 +378,9 @@ partial def JsExpr.firstRead {C M : List JsTy} {τ : JsTy} (d : Nat) : JsExpr C 
   | .union_mk _ as => as.firstRead d
   | .array_mk _ ps => ps.firstRead d
   | .list_mk ps => ps.firstRead d
+  -- a cons cell, and the conversions of the runtime between cons cells and arrays, have no
+  -- effect and cannot fail
+  | .listOp _ as => as.firstRead d
   | .cond c a b =>
     match c.firstRead d with
     | .found => .found

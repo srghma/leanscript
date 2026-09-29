@@ -87,6 +87,14 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M �
   | .array_mk (.typed t) ps => do
     return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)
   | .list_mk ps => do return .array ((← partsToMini sc ps).map .elem)
+  | .listOp op args => do
+    let es ← argsToMini sc args
+    match op.runtimeName? with
+    | some f => return .call (ident f) es
+    | none =>
+      -- `{ tag: 0 }` and `{ tag: 1, _1: head, _2: tail }`
+      return .object (.keyValue (.ident (nes "tag")) (natNum (min 1 es.length)) ::
+        es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
   | .cond c a b => do
     let c ← exprToMini sc c
     match ← exprToMini sc a, ← exprToMini sc b with

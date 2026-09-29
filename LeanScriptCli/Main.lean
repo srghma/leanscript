@@ -78,8 +78,11 @@ Translates the public total functions of each Lean file that LeanScript.Term sup
 file (FILE is its path without `.lean`):
   FILE-Term-unoptimized.txt   the translations to LeanScript.Term
   FILE-Term-optimized.txt     the same, optimised (Term.optimizeN)
-  FILE-pbo.js                 the JavaScript module, numbers instead of BigInt (preset pbo)
-  FILE-faithful.js            the JavaScript module, BigInt everywhere (preset faithful)
+  FILE-pbo.js                 the JavaScript module, numbers instead of BigInt and a List
+                              as a JavaScript array (preset pbo)
+  FILE-faithful.js            the JavaScript module, BigInt everywhere and a List as
+                              tagged cons cells { tag: 1, _1: head, _2: tail } (preset
+                              faithful)
 
 options:
   --out-dir=DIR               write the outputs to DIR instead of next to the file

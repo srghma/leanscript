@@ -1,3 +1,31 @@
+# Summary of changes for run 8008d3bc-0d2e-457a-a2c8-fa56fdc6ffad
+I added the `ListRepr` setting to the JavaScript backend, exactly as you wrote it, and implemented both layouts. `JsConfig.listRepr` defaults to `.taggedUnion`, and `JsConfig.presetPBO` sets `.stdListToJsArray`. The setting is also available as the knob `list=tagged|array`, and every generated file's configuration line now shows `list=…`. The snapshot checks show the generated code gives the same answers as Lean under both presets.
+
+**How it works**
+- **The tagged layout (default, `faithful` preset).** A list is cons cells: `[]` is `{ tag: 0 }` and `x :: xs` is `{ tag: 1, _1: x, _2: xs }`. I added a new JS type, `JsTy.consList`, and a small set of list operations (`JsListOp`: the two constructors plus conversions to and from arrays). All the JS passes, the printers and the `lowerTy` conversion handle them.
+- **Constant lists** become one shared constant, and the empty list reuses the existing `$tag0`. The one difference from your example is naming: the constant is `$k2` and the exported definition is `() => $k2`, not `k0` and a plain constant:
+  ```js
+  const $tag0 = { tag: 0 };
+  const $k2 = { tag: 1, _1: 1n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 3n, _2: $tag0 } } };
+  export const ListRepr$x = () => $k2;
+  ```
+- **Tail sharing.** A list that ends an expression is shared, not copied. For example, `[a, "b"] ++ xs` becomes `{ tag: 1, _1: a, _2: { tag: 1, _1: "b", _2: xs } }`. A list that comes before other elements has to be copied, via `consList__append(xs, ys)` or `consList__of_array_onto(arr, tail)`.
+- **Built-in list operations** such as `Array.toList` and `List.toArray` are still written for arrays. Under the tagged layout, their list arguments and results are converted at the call. A round trip is removed, so `xs.toArray.toList` compiles to just `xs`.
+- **`runtime.js`** has four new functions: `consList__of_array`, `consList__of_array_onto`, `consList__append` and `consList__to_array`.
+- **The array layout (`pbo` preset)** is unchanged; its outputs differ only in the configuration line.
+- **User-defined list-like types** (your `MyList`) are declared datatypes, not the standard `List`, so they stay tagged unions whatever `listRepr` says. Recursive user datatypes are still refused by the JavaScript conversion, as they were before this change.
+
+**Proofs** (in `JsTerm/Ty/Lower.lean`, no `sorry`, standard axioms only):
+- `lowerTy_list_of_taggedUnion` and `lowerTy_list_of_stdListToJsArray`: which JS type `List t` gets under each setting.
+- `lowerTy_data_listRepr`: a declared datatype's layout doesn't depend on `listRepr`.
+
+**Tests**
+- There's a new snapshot, `Tests/SnapshotsMy/ListRepr.lean`, showing both layouts. All snapshot outputs were regenerated: 4150 checks run under node pass and none fail. The script still exits with an error, as before this change, because some `pbo` tests use literals too big for a JavaScript number.
+- `Tests/Main.lean` has 4 new Spec tests: types and knobs, literals and sharing, conversions around the list operations, and the new runtime functions under node. `lake exe tests` passes 61/61.
+- `lake build` succeeds except for `LeanScript/Term/Syntax/UsageAlgebra.lean`, which fails because it imports Mathlib and the project doesn't depend on it. That was already the case and I didn't touch it. `OpsSpec`, `RefactorSpec` and `RuntimeSpec` build.
+
+The README and the `leanscript --help` text describe the new setting. Everything is committed.
+
 # Summary of changes for run 34eda188-bea5-45e0-bcb9-4cbe3537257f
 **Why `Cand` exists:** each extern has one operation for every way its configurable Lean types (`Nat`, `Int`, `UInt64`, `Int64`, wide `BitVec`) can be represented in JavaScript, as a `BigInt` or as a `number`. For example, `lean_nat_div` has `bigint_nat__lean_nat_div : [bigint_nat, bigint_nat] → bigint_nat` and `uint53__lean_nat_div : [uint53, uint53] → uint53`. Array externs also have a generic and a typed-array version. `JsOp e t σs τ` is indexed by its signature, so these operations all have different types. The only way to put them in one list is to pack each with its signature, which is what `Cand` does. `firstOf` then compares signatures to pick the one the call needs.
 

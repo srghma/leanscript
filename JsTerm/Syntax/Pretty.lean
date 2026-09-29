@@ -41,6 +41,13 @@ partial def JsExpr.pretty {C M : List JsTy} {τ : JsTy} (ind : String) : JsExpr 
   | .array_mk (.typed t) ps => t.kind.ctorName ++ ".of(" ++ ", ".intercalate (ps.pretty ind) ++ ")"
   | .list_mk ps => "list[" ++ ", ".intercalate (ps.pretty ind) ++ "]"
   | .cond c a b => s!"({c.pretty ind} ? {a.pretty ind} : {b.pretty ind})"
+  | .listOp op args =>
+    match op.runtimeName? with
+    | some f => f ++ "(" ++ ", ".intercalate (args.pretty ind) ++ ")"
+    | none =>
+      -- the same text as the constructor of a union (`{ tag: 0 }`), which it is at run time
+      "{ " ++ ", ".intercalate (s!"tag: {args.pretty ind |>.length |> min 1}" ::
+        ((args.pretty ind).zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}")) ++ " }"
 
 /-- Arguments. -/
 partial def JsArgs.pretty {C M σs : List JsTy} (ind : String) : JsArgs C M σs → List String

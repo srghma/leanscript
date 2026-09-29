@@ -28,6 +28,7 @@ represented in more than one way there.  The choice is this configuration:
 | `Bool` | always a JavaScript boolean | — |
 | `String` | always a JavaScript string | — |
 | `Array α` | a JavaScript array, or a typed array (the `array…Repr` knobs; `Array Bool` and `Array Char` are always generic) | `array…Repr` |
+| `List α` (the standard library's) | tagged cons cells `{ tag: 0 }` / `{ tag: 1, _1: head, _2: tail }`, or an immutable JavaScript array | `listRepr` |
 
 A number representation of an unbounded type (`Nat` as `UInt53`) is only faithful below
 `2^53`: a literal that does not fit is refused when the term is converted
@@ -109,6 +110,24 @@ inductive ArrayBitVecRepr where
 -- (`Array Bool` and `Array Char` are always generic JavaScript arrays for now:
 -- `Array<boolean>` and `Array<string>` of one-character strings.)
 
+/-- Strategy for representing Lean `List` and list-like inductive types in JavaScript. -/
+inductive ListRepr where
+  /-- Default: Emit lists as standard tagged union cons-cells:
+      `def x = [1, 2, 3]` is rendered as:
+      `const k0 = { tag: 0 }; export const x = { tag: 1, _1: 1, _2: { tag: 1, _1: 2, _2: { tag: 1, _1: 3, _2: k0 } } };`
+      This guarantees `O(1)` tail-sharing for all functional list operations. -/
+  | taggedUnion -- default in faithful preset
+
+  /--
+    Emit the standard library `List` as a native JavaScript `Array` (`[...]`).
+    This concerns only `List` from `Std` (even when elements are shared/used non-linearly),
+    non `Std` `List`-like tagged unions
+    (e.g. `inductive MyList (α : Type u) where | nil : MyList α | cons (head : α) (tail : MyList α) : MyList α`)
+    should always be converted to tagged union.
+  -/
+  | stdListToJsArray -- default in pbo preset
+  deriving Repr, DecidableEq, BEq, Inhabited
+
 /-- The configuration of the backend: every representation decision, in one record.  The
     default keeps Lean's semantics exactly (`BigInt` wherever a knob allows one). -/
 structure JsConfig where
@@ -133,6 +152,8 @@ structure JsConfig where
   arrayBitVecRepr : ArrayBitVecRepr := .roundUpToSmallestTypedArray
   /-- How `Array Float` and `Array Float32` are modeled. -/
   arrayFloatRepr : ArrayTypedOrGeneric := .typedArray
+  /-- Strategy for representing `List` and list-like inductive types in JS. -/
+  listRepr : ListRepr := .taggedUnion
   deriving Repr, DecidableEq, Inhabited
 
 namespace JsConfig
@@ -153,6 +174,7 @@ def presetPBO : JsConfig where
   arrayInt64Repr := .genericArray
   arrayBitVecRepr := .genericArray
   arrayFloatRepr := .genericArray
+  listRepr := .stdListToJsArray
 
 /-- The representation that keeps Lean's semantics exactly: `BigInt` everywhere an
     unbounded or 64-bit integer can appear (the default). -/
@@ -228,7 +250,16 @@ def setKnob? (cfg : JsConfig) (knob val : String) : Option JsConfig := do
     | "exact" => return { cfg with arrayBitVecRepr := .exactTypedArrayOnly }
     | "generic" => return { cfg with arrayBitVecRepr := .genericArray }
     | _ => none
+  | "list" => match val with
+    | "tagged" | "tagged-union" => return { cfg with listRepr := .taggedUnion }
+    | "array" | "js-array" => return { cfg with listRepr := .stdListToJsArray }
+    | _ => none
   | _ => none
+
+/-- How a list representation is spelled on the command line. -/
+def listReprName : ListRepr → String
+  | .taggedUnion => "tagged"
+  | .stdListToJsArray => "array"
 
 /-- The configuration in one line, as the command line spells it.  This is what the header
     of every generated file says, so an output can be traced back to its settings. -/
@@ -244,7 +275,8 @@ def describe (cfg : JsConfig) : String :=
       "array-int64=" ++ typed (cfg.arrayInt64Repr == .bigInt64Array),
       "array-bitvec=" ++ (match cfg.arrayBitVecRepr with
         | .roundUpToSmallestTypedArray => "round-up" | .exactTypedArrayOnly => "exact"
-        | .genericArray => "generic") ]
+        | .genericArray => "generic"),
+      "list=" ++ listReprName cfg.listRepr ]
 
 end JsConfig
 

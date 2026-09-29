@@ -3,6 +3,12 @@ import * as M from "./PrimOpBitVec01Configurable-faithful.js";
 
 function show(v) {
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return "#[" + [...v].map(show).join(", ") + "]";
+  // a list of cons cells (`ListRepr.taggedUnion`) is shown as its elements
+  if (v !== null && typeof v === "object" && (v.tag === 0 || v.tag === 1)) {
+    const a = [];
+    for (; v.tag === 1; v = v._2) a.push(v._1);
+    return show(a);
+  }
   return String(v);
 }
 function floatBits(x) {

@@ -140,6 +140,7 @@ def JsExpr.mapBU (fe : JsExprRewrite) (fb : JsBlockRewrite) {C M : List JsTy} {�
   | .array_mk l ps => fe.run _ _ _ (.array_mk l (ps.mapBU fe fb))
   | .list_mk ps => fe.run _ _ _ (.list_mk (ps.mapBU fe fb))
   | .cond c a b => fe.run _ _ _ (.cond (c.mapBU fe fb) (a.mapBU fe fb) (b.mapBU fe fb))
+  | .listOp op as => fe.run _ _ _ (.listOp op (as.mapBU fe fb))
 /-- `mapBU` of arguments. -/
 def JsArgs.mapBU (fe : JsExprRewrite) (fb : JsBlockRewrite) {C M σs : List JsTy} :
     JsArgs C M σs → JsArgs C M σs
@@ -289,10 +290,38 @@ def JsParts.flattenList {C M : List JsTy} {α : JsTy} :
     | some qs => qs.append ps.flattenList
     | none => .spread a ps.flattenList
 
+/-! ## Lists of cons cells -/
+
+/-- Cons cells as the parts of a list literal: the elements of the cells, and a spread of the
+    tail as an array unless it is `[]`. -/
+partial def JsExpr.consListParts {C M : List JsTy} {α : JsTy} :
+    JsExpr C M (.consList α) → JsParts C M (.list α) α
+  | .listOp (.nil _) .nil => .nil
+  | .listOp (.cons _) (.cons h (.cons t .nil)) => .elem h t.consListParts
+  | .listOp (.ofArrayOnto _) (.cons xs (.cons t .nil)) => .spread xs t.consListParts
+  | .listOp (.append _) (.cons l (.cons t .nil)) => .spread l.toArrayList t.consListParts
+  | l => .spread l.toArrayList .nil
+
+/-- One step on the conversions of cons cells: a round trip between cons cells and an array is
+    the value itself, the array of known cons cells is a list literal (which the flattening of
+    array literals can then take apart), and the cons cells of a list literal are written
+    directly. -/
+def listConvNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
+  | .listOp (.toArray _) (.cons l .nil) =>
+    match l.consListParts with
+    | .spread xs .nil => xs
+    | ps => .list_mk ps
+  | .listOp (.ofArray _) (.cons xs .nil) =>
+    match xs.listLitParts? with
+    | some ps => ps.toConsList
+    | none => xs.ofArrayList
+  | e => e
+
 /-- One step of flattening. -/
 def flattenNode {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → JsExpr C M τ
   | .array_mk l ps => .array_mk l (ps.flatten l)
   | .list_mk ps => .list_mk ps.flattenList
+  | e@(.listOp ..) => listConvNode e
   | e => e
 
 /-- The flattening rewrite. -/
@@ -303,11 +332,24 @@ def JsArgs.allAtoms {C M σs : List JsTy} : JsArgs C M σs → Bool
   | .nil => true
   | .cons a as => a.isAtom && as.allAtoms
 
+/-- A variable, a global or a literal, or the conversion of one between cons cells and an
+    array (`consList__to_array(xs)`, which has no effect and cannot fail). -/
+def JsExpr.isConvAtom {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+  | .listOp (.toArray _) (.cons a .nil) | .listOp (.ofArray _) (.cons a .nil) => a.isAtom
+  | e => e.isAtom
+
+/-- Are all the arguments `JsExpr.isConvAtom`? -/
+def JsArgs.allConvAtoms {C M σs : List JsTy} : JsArgs C M σs → Bool
+  | .nil => true
+  | .cons a as => a.isConvAtom && as.allConvAtoms
+
 /-- A variable, a literal, or an inlined operation that has no effect and cannot fail on
     those (`xs` as an array, `a.length`): an expression that can be evaluated later, or not
     at all, without changing anything. -/
 def JsExpr.isCheapPure {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
-  | .inlined (e := .pure) (t := .doesntThrow) _ as => as.allAtoms
+  | .inlined (e := .pure) (t := .doesntThrow) _ as => as.allConvAtoms
+  -- a cons cell, or a conversion between cons cells and an array, of variables
+  | .listOp _ as => as.allConvAtoms
   | e => e.isAtom
 
 /-- A cheap pure expression (`JsExpr.isCheapPure`), or a spread of one: a part of an array
@@ -319,8 +361,17 @@ def JsParts.isMovable {C M : List JsTy} {A E : JsTy} : JsParts C M A E → Bool
 
 /-- An array or list literal that can be moved to its use (`[]` written by an inlined
     operation, `Array.emptyWithCapacity n`, too). -/
-def JsExpr.isMovableArray {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
+partial def JsExpr.isMovableArray {C M : List JsTy} {τ : JsTy} : JsExpr C M τ → Bool
   | .array_mk (.generic _) ps => ps.isMovable
+  -- lists of cons cells: the conversion of a literal, and cells of cheap elements
+  | .listOp (.ofArray _) (.cons xs .nil) => xs.isMovableArray
+  | .listOp (.toArray _) (.cons l .nil) => l.isMovableArray
+  | .listOp (.ofArrayOnto _) (.cons xs (.cons t .nil)) =>
+    xs.isMovableArray && (t.isCheapPure || t.isMovableArray)
+  | .listOp (.append _) (.cons l (.cons t .nil)) =>
+    (l.isCheapPure || l.isMovableArray) && (t.isCheapPure || t.isMovableArray)
+  | .listOp (.nil _) _ => true
+  | .listOp (.cons _) (.cons h (.cons t .nil)) => h.isCheapPure && (t.isCheapPure || t.isMovableArray)
   | .list_mk ps => ps.isMovable
   | .inlined (.array__lean_array_mk _) (.cons (.list_mk ps) .nil) => ps.isMovable
   | .inlined (.array__lean_array_to_list _) (.cons (.array_mk (.generic _) ps) .nil) =>

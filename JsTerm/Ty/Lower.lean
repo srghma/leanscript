@@ -13,7 +13,11 @@ set_option autoImplicit false
 
 `lowerTy cfg τ` is the layout in JavaScript of the Lean type `τ` (a `LeanScript.Ty`), under
 the configuration `cfg`.  `lowerScalarPrim` and `lowerArrayPrim` are the
-configuration-dependent part: how a leaf, and an array of leaves, is represented.
+configuration-dependent part: how a leaf, and an array of leaves, is represented; and
+`cfg.listRepr` says whether the standard library's `List` (`Ty.list`) is a JavaScript array
+(`JsTy.list`) or tagged cons cells (`JsTy.consList`).  A user datatype shaped like a list
+(`inductive MyList | nil | cons (h : α) (t : MyList)`) is never `Ty.list` — only `List` is read
+as the built-in list — so it is a tagged union whatever `listRepr` says.
 -/
 
 namespace MoreJs
@@ -135,7 +139,9 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
   | .fn a b => JsTy.arrow (lowerTy cfg a) b.isFn (lowerTy cfg b)
   | .array (.prim p) => lowerArrayPrim cfg p
   | .array t => .array (lowerTy cfg t)
-  | .list t => .list (lowerTy cfg t)
+  | .list t => match cfg.listRepr with
+    | .stdListToJsArray => .list (lowerTy cfg t)
+    | .taggedUnion => .consList (lowerTy cfg t)
   | .enum s => .enum s.nOfConstructors s.shift
   | .record t fs => .record (lowerTy cfg t) (lowerFields1 cfg fs).1 (lowerFields1 cfg fs).2
   | .union cs (h := _) =>
@@ -178,6 +184,30 @@ example : lowerTy JsConfig.default (.array (.prim .uint8) : Ty []) =
     .typedArray .uint8 := rfl
 example : lowerTy JsConfig.presetPBO (.array (.prim .uint8) : Ty []) =
     .array (.terminal .uint8) := rfl
+/-- Under `ListRepr.taggedUnion` the standard library's `List` is laid out as cons cells. -/
+theorem lowerTy_list_of_taggedUnion (cfg : JsConfig) (h : cfg.listRepr = .taggedUnion)
+    {ks : List Nat} {d : Bool} (t : Ty ks) :
+    lowerTy cfg (Ty.list (d := d) t) = .consList (lowerTy cfg t) := by
+  simp only [lowerTy, h]
+
+/-- Under `ListRepr.stdListToJsArray` the standard library's `List` is laid out as a JavaScript
+    array. -/
+theorem lowerTy_list_of_stdListToJsArray (cfg : JsConfig) (h : cfg.listRepr = .stdListToJsArray)
+    {ks : List Nat} {d : Bool} (t : Ty ks) :
+    lowerTy cfg (Ty.list (d := d) t) = .list (lowerTy cfg t) := by
+  simp only [lowerTy, h]
+
+/-- A declared datatype — a user's list-like inductive (`MyList`) among them — is laid out the
+    same whatever `listRepr` says: only the standard library's `List` follows the knob. -/
+theorem lowerTy_data_listRepr (cfg : JsConfig) (r : ListRepr) {ks : List Nat} {d : Bool}
+    (ref : Ref ks) :
+    lowerTy { cfg with listRepr := r } (Ty.data (d := d) ref) = lowerTy cfg (Ty.data (d := d) ref) := by
+  simp only [lowerTy]
+
+example : lowerTy JsConfig.presetFaithful (.list .nat : Ty []) =
+    .consList (.terminal .bigint_nat) := rfl
+example : lowerTy JsConfig.presetPBO (.list .nat : Ty []) =
+    .list (.terminal .uint53) := rfl
 
 end MoreJs
 

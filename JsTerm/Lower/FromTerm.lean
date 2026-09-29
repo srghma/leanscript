@@ -21,7 +21,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | --- | --- |
 | an unknown, a known value (de Bruijn) | a constant (`const`, a parameter, a field) or a mutable variable (the accumulator of a loop), by its de Bruijn index in its own context; join points stay de Bruijn indexed |
 | `PExpr.lit` | a literal at the configured representation (`12n` or `12`); a literal that does not fit in a `number` is refused |
-| `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` |
+| `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` (`listRepr = stdListToJsArray`) or `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` (`listRepr = taggedUnion`) |
 | `enum_mk i` | the number `shift + i` |
 | `Neu.cond` | `c ? a : b` |
 | `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`) |
@@ -106,7 +106,7 @@ partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
   | PExpr.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgs args n C M)
   | PExpr.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | PExpr.list_mk (t := t) es => do
-    castE (.list_mk (← cElems (A := .list (lowerTy cfg t)) es n C M)) _
+    listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | .data_in _ _ _ => notYet
 
 /-- Arguments. -/
@@ -162,7 +162,7 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
   | Val.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgs args n C M)
   | Val.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | Val.list_mk (t := t) es => do
-    castE (.list_mk (← cElems (A := .list (lowerTy cfg t)) es n C M)) _
+    listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | .data_in _ _ _ => notYet
 
 /-- A statement that answers a function, applied to the parameters `ps` (bound in `C`, the

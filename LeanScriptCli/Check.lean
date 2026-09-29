@@ -12,7 +12,8 @@ status when one fails.
 
 Only functions whose parameters and result are all of a *sample type* are checked: `Nat`,
 `Int`, `Bool`, `String`, `Char`, `Float`, and `Array` and `List` of `Nat`, `Int`, `Bool` or
-`String` (a list is a JavaScript array, and is printed as its array, `#[…]`).
+`String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
+printed as its array, `#[…]`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
 -/
@@ -84,16 +85,20 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
     [f 0 false 0 "0", f 5 true 1 "0.5", f 225 true 2 "2.25", f 3 false 1 "30",
       ⟨mkApp (mkConst ``Float.neg) (mkApp3 (mkConst ``Float.ofScientific) (mkNatLit 15)
         (toExpr true) (mkNatLit 1)), "-1.5"⟩]
-  | .arr t => (samplesOf cfg (.list t)).map fun l =>
+  | .arr t => (listSamples cfg t true).map fun l =>
       ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
-  | .list t =>
+  | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray)
+where
+  /-- The samples of `List t`, spelled as a JavaScript array (`array`) or as the cons cells of
+      `ListRepr.taggedUnion` (`{ tag: 1, _1: x, _2: … { tag: 0 } }`). -/
+  listSamples (cfg : JsConfig) (t : SType) (array : Bool) : List Sample :=
     let elems := samplesOf cfg t
     let mk (xs : List Sample) : Sample :=
       ⟨xs.foldr (fun x acc => mkApp3 (mkConst ``List.cons [.zero]) (elemTy t) x.lean acc)
           (mkApp (mkConst ``List.nil [.zero]) (elemTy t)),
-       "[" ++ ", ".intercalate (xs.map (·.js)) ++ "]"⟩
+       if array then "[" ++ ", ".intercalate (xs.map (·.js)) ++ "]"
+       else xs.foldr (fun x acc => s!"\{ tag: 1, _1: {x.js}, _2: {acc} }") "{ tag: 0 }"⟩
     [mk [], mk (elems.take 1), mk (elems.take 3), mk (elems.reverse.take 4)]
-where
   /-- The Lean type of the elements of an array or a list sample. -/
   elemTy : SType → Expr
     | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
@@ -183,6 +188,12 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
 def checkPrelude : String := "
 function show(v) {
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return \"#[\" + [...v].map(show).join(\", \") + \"]\";
+  // a list of cons cells (`ListRepr.taggedUnion`) is shown as its elements
+  if (v !== null && typeof v === \"object\" && (v.tag === 0 || v.tag === 1)) {
+    const a = [];
+    for (; v.tag === 1; v = v._2) a.push(v._1);
+    return show(a);
+  }
   return String(v);
 }
 function floatBits(x) {
