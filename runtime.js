@@ -1188,6 +1188,21 @@ export const consList__to_array = (l) => {
   return a;
 };
 
+/** A union whose constructors are all objects (`JsRepr.cells`: `{ tag: i }` for a constructor
+ *  without fields), with its constructors without fields as the numbers of their positions
+ *  (`JsRepr.smallIntNullary`): how the generated code takes a union an operation answers.
+ *  A constructor without fields is the object with no field `_1`.
+ *  @param {{tag: number}} u `obj (union ar cells) args`
+ *  @returns {number|{tag: number}} `obj (union ar smallIntNullary) args` */
+export const obj__nullary_to_int = (u) => ("_1" in u ? u : u.tag);
+
+/** A union whose constructors without fields are numbers (`JsRepr.smallIntNullary`), with every
+ *  constructor an object (`JsRepr.cells`): how the generated code passes a union to an
+ *  operation.
+ *  @param {number|{tag: number}} u `obj (union ar smallIntNullary) args`
+ *  @returns {{tag: number}} `obj (union ar cells) args` */
+export const obj__nullary_to_cells = (u) => (typeof u === "number" ? { tag: u } : u);
+
 /** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …).
  *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
  *  @param {function(new:TypedArray, number)} C `t.kind` (the typed-array constructor)
@@ -2520,7 +2535,7 @@ export const uint32__lean_float32_of_bits__Float32_ofBits = (a) => {
 
 /** `Float.frExp`.
  *  @param {number} a `float`
- *  @returns {{_1: number, _2: bigint}} `record float bigint_int []` */
+ *  @returns {{_1: number, _2: bigint}} `obj (record 2) [float, bigint_int]` */
 export const bigint_int__lean_float_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: BigInt(e) };
@@ -2528,7 +2543,7 @@ export const bigint_int__lean_float_frexp = (a) => {
 
 /** `Float.frExp`.
  *  @param {number} a `float`
- *  @returns {{_1: number, _2: number}} `record float int53 []` */
+ *  @returns {{_1: number, _2: number}} `obj (record 2) [float, int53]` */
 export const int53__lean_float_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: e };
@@ -2536,7 +2551,7 @@ export const int53__lean_float_frexp = (a) => {
 
 /** `Float32.frExp`.
  *  @param {number} a `float32`
- *  @returns {{_1: number, _2: bigint}} `record float32 bigint_int []` */
+ *  @returns {{_1: number, _2: bigint}} `obj (record 2) [float32, bigint_int]` */
 export const bigint_int__lean_float32_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: BigInt(e) };
@@ -2544,7 +2559,7 @@ export const bigint_int__lean_float32_frexp = (a) => {
 
 /** `Float32.frExp`.
  *  @param {number} a `float32`
- *  @returns {{_1: number, _2: number}} `record float32 int53 []` */
+ *  @returns {{_1: number, _2: number}} `obj (record 2) [float32, int53]` */
 export const int53__lean_float32_frexp = (a) => {
   const [m, e] = $frexp(a);
   return { _1: m, _2: e };
@@ -2736,7 +2751,7 @@ export const string__lean_string_get_byte_fast__String_getUtf8Byte = string__lea
 /** `String.Pos.Raw.get?`, `String.get?`: the character that starts at `p`, if one does.
  *  @param {string} s `string`
  *  @param {number} p `uint53`
- *  @returns {({tag: 0}|{tag: 1, _1: string})} `union [] [string] []` */
+ *  @returns {({tag: 0}|{tag: 1, _1: string})} `obj (union [0, 1] cells) [string]` */
 export const string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F = (s, p) => {
   const r = $utf8At(s, p);
   return r === undefined ? { tag: 0 } : { tag: 1, _1: r[0] };
@@ -2758,7 +2773,7 @@ export const string__lean_string_utf8_prev__String_Pos_Raw_prev = (s, p) => $pre
 /** `String.get?`.
  *  @param {string} s `string`
  *  @param {number} p `uint53`
- *  @returns {({tag: 0}|{tag: 1, _1: string})} `union [] [string] []` */
+ *  @returns {({tag: 0}|{tag: 1, _1: string})} `obj (union [0, 1] cells) [string]` */
 export const string__lean_string_utf8_get_opt__String_get$3F = string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F;
 
 /** `String.get!`.

@@ -43,36 +43,43 @@ variable {S : JsSig}
 
 open LeanScript
 
-/-- The array layout of a type of cons cells (`consList α` is `list α`); any other type
-    itself. -/
+/-- The layout the operations of the catalogue use for a type (`runtime.js` is written for
+    it): cons cells at the array layout (`consList α` is `list α`), a union whose constructors
+    without fields are numbers with every constructor an object (`JsRepr.cells`); any other
+    type itself.  Only the outermost type changes, which is all the operations see. -/
 def JsTy.arrayList : JsTy → JsTy
   | .obj .consList [α] => .list α
+  | .obj (.union ar .smallIntNullary) args => .obj (.union ar .cells) args
   | t => t
 
-/-- Is the type a list of cons cells? -/
+/-- Is the type one whose layout the operations do not use (`JsTy.arrayList` changes it)? -/
 def JsTy.isConsList : JsTy → Bool
   | .obj .consList [_] => true
+  | .obj (.union _ .smallIntNullary) _ => true
   | _ => false
 
-/-- A value at the array layout of its type (`JsTy.arrayList`): cons cells converted to an
-    array, any other value itself. -/
+/-- A value at the layout of the operations (`JsTy.arrayList`): cons cells converted to an
+    array, the constructors without fields of a union to objects, any other value itself. -/
 def JsExpr.asArrayList {C M : List JsTy} : {σ : JsTy} → JsExpr S C M σ → JsExpr S C M σ.arrayList
   | .obj .consList [_], e => e.toArrayList
+  | .obj (.union ar .smallIntNullary) args, e => .listOp (.nullaryToCells ar args) (.cons e .nil)
   | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
-  | .obj (.union _) _, e | .obj (.decl _) _, e => e
+  | .obj (.union _ .cells) _, e | .obj (.decl _) _, e => e
   | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
   | .enum _ _, e | .thunk _, e => e
 
-/-- A value given at the array layout of its type (`JsTy.arrayList`), at its type: an array
-    converted to cons cells, any other value itself. -/
+/-- A value given at the layout of the operations (`JsTy.arrayList`), at its type: an array
+    converted to cons cells, the constructors without fields of a union to numbers, any other
+    value itself. -/
 def JsExpr.ofArrayListAt {C M : List JsTy} : (σ : JsTy) → JsExpr S C M σ.arrayList → JsExpr S C M σ
   | .obj .consList [_], e => e.ofArrayList
+  | .obj (.union ar .smallIntNullary) args, e => .listOp (.nullaryToInt ar args) (.cons e .nil)
   | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
-  | .obj (.union _) _, e | .obj (.decl _) _, e => e
+  | .obj (.union _ .cells) _, e | .obj (.decl _) _, e => e
   | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
   | .enum _ _, e | .thunk _, e => e
 
-/-- Arguments at the array layouts of their types. -/
+/-- Arguments at the layouts of the operations. -/
 def JsArgs.asArrayLists {C M : List JsTy} : {σs : List JsTy} → JsArgs S C M σs →
     JsArgs S C M (σs.map JsTy.arrayList)
   | [], .nil => .nil
@@ -99,7 +106,8 @@ def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs
     | none =>
       let err := s!"the extern {name} has no operation at the types {σs} → {τ}"
       if !(σs.any JsTy.isConsList || τ.isConsList) then throw err else
-      -- lists of cons cells: the operation at the array layout, with conversions around it
+      -- lists of cons cells, unions with numbers: the operation at the layout of the
+      -- catalogue, with conversions around it
       let as := args.asArrayLists
       match JsOp.lookup name (σs.map JsTy.arrayList) τ.arrayList with
       | some ⟨_, _, .imported op⟩ => pure (JsExpr.ofArrayListAt τ (.imported op as))

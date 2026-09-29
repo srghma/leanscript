@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Ty.Lower
+public import JsTerm.Ty.Canon
 public import JsTerm.Lower.Extern
 public import JsTerm.Lower.Tail
 public import LeanScript.Term.Syntax.Packed
@@ -30,41 +31,6 @@ open LeanScript
 def _root_.LeanScript.DSig.brefs : {ks : List Nat} → DSig ks → List (BRef ks)
   | [], .nil => []
   | _ :: _, .cons Δ _ _ => .here :: Δ.brefs.map .there
-
-/-- The type with every declaration `decl j` it names renamed to `decl (f j)`. -/
-partial def _root_.MoreJs.JsTy.mapDecl (f : Nat → Nat) : JsTy → JsTy
-  | .array e => .array (e.mapDecl f)
-  | .list e => .list (e.mapDecl f)
-  | .fn ds c => .fn (ds.map (·.mapDecl f)) (c.mapDecl f)
-  | .thunk t => .thunk (t.mapDecl f)
-  | .obj id args =>
-    let id' := match id with
-      | .decl j => .decl (f j)
-      | id => id
-    .obj id' (args.map (·.mapDecl f))
-  | t => t
-
-/-- **Canonical layout ids** (proposal R of `proposals/TypedDataProposals3.md`): the table of
-    declarations (`bodies[i]`: the body of datatype `i`, its recursive positions `decl j`) read
-    as an automaton, minimised by partition refinement.  The answer maps each datatype to the
-    least datatype of its class; two datatypes are in one class when their layouts are equal as
-    infinite trees.  Every class starts as one; a round splits a class by the bodies of its
-    members, their recursive positions read as classes; at most one round per datatype.  The
-    result is checked (every datatype's body, its recursive positions read as canonical ids, is
-    the body of its canonical datatype, read the same way: the classes are a bisimulation), and
-    when the check fails (it cannot) every datatype is its own. -/
-def canonDecls (bodies : Array JsTy) : Array Nat := Id.run do
-  let n := bodies.size
-  let key (cls : Array Nat) (i : Nat) : JsTy := (bodies[i]?.getD default).mapDecl (cls.getD · 0)
-  let mut cls : Array Nat := Array.replicate n 0
-  for _ in [0:n + 1] do
-    let new := (Array.range n).map fun i =>
-      ((List.range n).find? fun k => cls[k]? == cls[i]? && key cls k == key cls i).getD i
-    if new == cls then break
-    cls := new
-  let canonKey (i : Nat) : JsTy := (bodies[i]?.getD default).mapDecl (cls.getD · 0)
-  if (List.range n).all fun i => canonKey i == canonKey (cls.getD i i) then cls
-  else Array.range n
 
 /-- The signature of the JavaScript of a program over the datatypes `Δ`: declaration
     `refIndex r` is the layout of one layer of the datatype `r`, its unfolded body lowered

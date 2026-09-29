@@ -139,7 +139,7 @@ def one {S : JsSig} {C M : List JsTy} : JsExpr S C M tN := .lit (.uint53 1 (by d
 /-- A signature of one declared datatype, `D0 := nil | cons (h : uint53) (t : D0)` (a user's
     list of numbers): its body is the anonymous union of arities `[0, 2]` whose recursive
     field is `obj (decl 0) []`. -/
-def myListSig : JsSig := { decls := #[.obj (.union [0, 2]) [tN, .obj (.decl 0) []]] }
+def myListSig : JsSig := { decls := #[.obj (.union [0, 2] .cells) [tN, .obj (.decl 0) []]] }
 
 /-- `(x) => fold(cons(1, fold(nil)))`, over `myListSig`: the casts print as nothing. -/
 def myListFun : JsFun where
@@ -148,8 +148,8 @@ def myListFun : JsFun where
   sig := myListSig
   params := [("x", tN)]
   ret := .obj (.decl 0) []
-  body := .ret (.fold 0 (.union_mk (id := .union [0, 2]) (.succ .zero)
-    (.cons (.cvar .zero) (.cons (.fold 0 (.union_mk (id := .union [0, 2]) .zero .nil)) .nil))))
+  body := .ret (.fold 0 (.union_mk (id := .union [0, 2] .cells) (.succ .zero)
+    (.cons (.cvar .zero) (.cons (.fold 0 (.union_mk (id := .union [0, 2] .cells) .zero .nil)) .nil))))
 
 /-- The conversion to the JavaScript grammar (`MoreJs.termToJs`) at both presets: the types
     the configuration chooses, the typed operations of the externs, and the shape of the functions it produces.  (The generated JavaScript
@@ -166,8 +166,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
     let r : JsExpr S [] [] (.obj (.record 2) [tN, .terminal .bool]) :=
       .record_mk (.cons one (.cons (.lit (.bool true)) .nil))
     assertEq "record" "{ _1: 1, _2: true }" (r.pretty "")
-    let u0 : JsExpr S [] [] (.obj (.union [0, 1]) [tN]) := .union_mk .zero .nil
-    let u1 : JsExpr S [] [] (.obj (.union [0, 1]) [tN]) := .union_mk (.succ .zero) (.cons one .nil)
+    let u0 : JsExpr S [] [] (.obj (.union [0, 1] .cells) [tN]) := .union_mk .zero .nil
+    let u1 : JsExpr S [] [] (.obj (.union [0, 1] .cells) [tN]) := .union_mk (.succ .zero) (.cons one .nil)
     assertEq "nullary constructor" "{ tag: 0 }" (u0.pretty "")
     assertEq "constructor" "{ tag: 1, _1: 1 }" (u1.pretty "")
     assertEq "record type" "{ _1: nat(bigint), _2: boolean }"
@@ -179,12 +179,12 @@ def moreJsSpec : Spec := describe "JsTerm" do
     -- `Option String` and `Option Nat` share the anonymous declaration `union [0, 1]`
     let optS : LeanScript.Ty [] := .union (.two .nullary (.fields (.one .string)))
     let optN : LeanScript.Ty [] := .union (.two .nullary (.fields (.one .nat)))
-    assertEq "Option String" (repr (JsObjId.union [0, 1])).pretty
+    assertEq "Option String" (repr (JsObjId.union [0, 1] .cells)).pretty
       (match lowerTy pbo optS with | .obj id _ => (repr id).pretty | _ => "?")
-    assertEq "Option Nat" (repr (JsObjId.union [0, 1])).pretty
+    assertEq "Option Nat" (repr (JsObjId.union [0, 1] .cells)).pretty
       (match lowerTy pbo optN with | .obj id _ => (repr id).pretty | _ => "?")
     assertEq "constructors of Option String" "[[], [string]]"
-      (toString ((S.ctorsOf (.union [0, 1]) [.terminal .string]).map fun (cs : List JsTy) => cs.map JsTy.pretty))
+      (toString ((S.ctorsOf (.union [0, 1] .cells) [.terminal .string]).map fun (cs : List JsTy) => cs.map JsTy.pretty))
     -- the prelude's `List α` is one declaration at every element type
     assertEq "cons cells" "[[], [uint53(number), ConsList<uint53(number)>]]"
       (toString ((S.ctorsOf .consList [tN]).map fun (cs : List JsTy) => cs.map JsTy.pretty))
@@ -195,6 +195,108 @@ def moreJsSpec : Spec := describe "JsTerm" do
       (mkModule pbo [myListFun]).imports
     assertEq "the dump shows the casts" "fold<D0>({ tag: 1, _1: c0, _2: fold<D0>({ tag: 0 }) })"
       (match myListFun.body with | .ret e => e.pretty "" | _ => "?")
+  it "canonical layout ids: datatypes of equal layouts share one id (proposal R)" do
+    let d (i : Nat) : JsTy := .obj (.decl i) []
+    let lst (e : JsTy) (i : Nat) : JsTy := .obj (.union [0, 2] .cells) [e, d i]
+    -- `D0 := nil | cons N D0`, `D1` the same, `D2 := nil | cons string D2`, `D3 := nil | cons
+    -- N D1` (a list of `N` whose tail is a `D1`: the same infinite tree), `D4 := leaf | node D4
+    -- N D5`, `D5 := leaf | node D5 N D4` (two mutually recursive trees of one layout)
+    let tree (i j : Nat) : JsTy := .obj (.union [0, 3] .cells) [d i, tN, d j]
+    let bodies : Array JsTy := #[lst tN 0, lst tN 1, lst (.terminal .string) 2, lst tN 1,
+      tree 4 5, tree 5 4]
+    let cls := canonDecls bodies
+    assertEq "classes" [0, 0, 2, 0, 4, 4] ((List.range 6).map (classOf cls))
+    assertEq "the classes are a bisimulation" true (isBisim bodies (refineClasses bodies))
+    -- `canonDecls_sound`: the unfoldings agree (here at depth 3)
+    assertEq "D3 unfolds as D0" true
+      (JsTy.unfoldDecls bodies 3 (d 3) == JsTy.unfoldDecls bodies 3 (d 0))
+    assertEq "D2 does not unfold as D0" false
+      (JsTy.unfoldDecls bodies 3 (d 2) == JsTy.unfoldDecls bodies 3 (d 0))
+    -- the configuration that `termToJs` sets: every datatype named by its canonical id
+    let cfg : JsConfig := { declCanon := cls }
+    let dataTy (i : Fin 7) : LeanScript.Ty [6] := .data (.here i)
+    assertEq "D1 is named D0" (d 0).pretty (lowerTy cfg (dataTy 1)).pretty
+    assertEq "D5 is named D4" (d 4).pretty (lowerTy cfg (dataTy 5)).pretty
+  it "the representation of a union is part of its identity (proposal S)" do
+    let small : JsConfig := { pbo with nullaryRepr := .smallInt }
+    let optN : LeanScript.Ty [] := .union (.two .nullary (.fields (.one .nat)))
+    let pairs : LeanScript.Ty [] := .union (.two (.fields (.one .nat)) (.fields (.one .string)))
+    assertEq "Option Nat, numbers" (repr (JsObjId.union [0, 1] .smallIntNullary)).pretty
+      (match lowerTy small optN with | .obj id _ => (repr id).pretty | _ => "?")
+    assertEq "Option Nat, cells (the default)" (repr (JsObjId.union [0, 1] .cells)).pretty
+      (match lowerTy pbo optN with | .obj id _ => (repr id).pretty | _ => "?")
+    -- a union whose constructors all have fields has nothing to change
+    assertEq "no constructor without fields" (repr (JsObjId.union [1, 1] .cells)).pretty
+      (match lowerTy small pairs with | .obj id _ => (repr id).pretty | _ => "?")
+    let sid : JsObjId := .union [0, 1] .smallIntNullary
+    let n0 : JsExpr S [] [] (.obj sid [tN]) := .union_mk .zero .nil
+    let n1 : JsExpr S [] [] (.obj sid [tN]) := .union_mk (.succ .zero) (.cons one .nil)
+    assertEq "nullary constructor: a number" "0" (n0.pretty "")
+    assertEq "constructor with fields: an object" "{ tag: 1, _1: 1 }" (n1.pretty "")
+    assertEq "the type" "(0 | { tag: 1, _1: uint53(number) })" (JsTy.obj sid [tN]).pretty
+    -- the operations of the catalogue answer cells: the answer is converted
+    let str : JsTy := .terminal .string
+    let args : JsArgs S [str, tN] [] [str, tN] := .cons (.cvar .zero) (.cons (.cvar (.succ .zero)) .nil)
+    let shown {C M : List JsTy} {τ : JsTy} (e : Except String (JsExpr S C M τ)) : String :=
+      match e with
+      | .ok e => e.pretty ""
+      | .error msg => s!"error: {msg}"
+    assertEq "String.get?, cells"
+      "string__lean_string_utf8_get_opt__String_Pos_Raw_get?(c0, c1)"
+      (shown (lowerExtern "lean_string_utf8_get_opt__String_Pos_Raw_get?" args :
+        Except String (JsExpr S [str, tN] [] (.obj (.union [0, 1] .cells) [str]))))
+    assertEq "String.get?, numbers"
+      "obj__nullary_to_int(string__lean_string_utf8_get_opt__String_Pos_Raw_get?(c0, c1))"
+      (shown (lowerExtern "lean_string_utf8_get_opt__String_Pos_Raw_get?" args :
+        Except String (JsExpr S [str, tN] [] (.obj (.union [0, 1] .smallIntNullary) [str]))))
+    assertEq "the configuration line" true
+      ((small.describe.splitOn "nullary=int").length > 1 && (pbo.describe.splitOn "nullary").length == 1)
+  it "the conversions of unions of runtime.js (needs node)" do
+    let cwd ← IO.currentDir
+    let names := JsListOp.runtimeNames
+    let src ← IO.FS.readFile "runtime.js"
+    for n in names do
+      assertEq s!"exports {n}" true ((src.splitOn s!"export const {n} =").length > 1)
+    let script := s!"import \{ {", ".intercalate names} } from {(s!"file://{cwd}/runtime.js").quote};\n" ++
+      "console.log(JSON.stringify([obj__nullary_to_int({ tag: 0 }), obj__nullary_to_int({ tag: 2 }), obj__nullary_to_int({ tag: 1, _1: 'a' })]));\n" ++
+      "console.log(JSON.stringify([obj__nullary_to_cells(0), obj__nullary_to_cells(2), obj__nullary_to_cells({ tag: 1, _1: 'a' })]));\n"
+    let out ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      catch _ => pure none
+    match out with
+    | none => pure ()  -- no `node`: nothing to run
+    | some out =>
+      assertEq "node" "" (if out.exitCode == 0 then "" else out.stderr)
+      assertEq "output" ["[0,2,{\"tag\":1,\"_1\":\"a\"}]", "[{\"tag\":0},{\"tag\":2},{\"tag\":1,\"_1\":\"a\"}]"]
+        ((out.stdout.splitOn "\n").filter (· ≠ ""))
+  it "constructors without fields as numbers: the generated code runs (needs node and leanscript)" do
+    -- `leanscript --nullary=int` on programs over declared datatypes, `Option`s and lists, and
+    -- the differential checks it writes run against Lean's answers
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/nullary-int"
+    IO.FS.createDirAll dir
+    for file in ["RecData", "ListRepr"] do
+      let args := #["--quiet", "--check", "--nullary=int", s!"--out-dir={dir}",
+        s!"Tests/SnapshotsMy/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: the configuration" true ((js.splitOn "nullary=int").length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+        assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+        assertEq s!"{file}-{preset}: no check failed" true
+          ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn "FAIL").length == 1)
+    -- a user's list: `nil` is `0` and is tested by `=== 0`
+    let js ← IO.FS.readFile s!"{dir}/RecData-pbo.js"
+    assertEq "a nullary constructor is tested by ===" true ((js.splitOn " === 0").length > 1)
+    assertEq "no nullary constructor is an object" 1 (js.splitOn "{ tag: 0 }").length
   it "an extern is an operation named after its types" do
     let big : JsTy := .terminal .bigint_nat
     let args {σ : JsTy} : JsArgs S [σ, σ] [] [σ, σ] := .cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)

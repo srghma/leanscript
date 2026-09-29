@@ -223,19 +223,34 @@ partial def JsLitShape.pretty : JsLitShape → String
   | .str s => s.quote
   | .array es => "[" ++ ", ".intercalate (es.map JsLitShape.pretty) ++ "]"
 
-/-! ## Lists of cons cells -/
+/-! ## Conversions between representations -/
 
-/-- The conversions between the two layouts of a list: tagged cons cells (`JsTy.consList`, the
-    layout of `List` under `ListRepr.taggedUnion`, the prelude's declaration `consList`) and the
-    array layout (`JsTy.list`), functions of the runtime.  The externs of the catalogue that
-    take or answer a list are written for the array layout; at the tagged layout their
-    arguments and result are converted (`MoreJs.lowerExtern`).  The cells themselves are built
-    and taken apart as any object (`union_mk`, `unionCases`). -/
+/-- The conversions between two representations of the same values, functions of the runtime
+    (proposal S of `proposals/TypedDataProposals3.md`: two representations are two types, and a
+    change of representation is one of these, never implicit).
+
+    * The two layouts of a list: tagged cons cells (`JsTy.consList`, the layout of `List` under
+      `ListRepr.taggedUnion`, the prelude's declaration `consList`) and the array layout
+      (`JsTy.list`).  The externs of the catalogue that take or answer a list are written for
+      the array layout; at the tagged layout their arguments and result are converted
+      (`MoreJs.lowerExtern`).  The cells themselves are built and taken apart as any object
+      (`union_mk`, `unionCases`).
+    * The two representations of a union (`JsRepr`): every constructor an object (`cells`, what
+      the externs of the catalogue take and answer), or the constructors without fields as
+      numbers (`smallIntNullary`). -/
 inductive JsListOp : List JsTy → JsTy → Type where
   /-- The cons cells of the elements of an array: `consList__of_array(a)`. -/
   | ofArray (α : JsTy) : JsListOp [.list α] (.consList α)
   /-- The array of the elements of cons cells: `consList__to_array(l)`. -/
   | toArray (α : JsTy) : JsListOp [.consList α] (.list α)
+  /-- A union whose constructors are objects, with its constructors without fields as numbers:
+      `obj__nullary_to_int(u)` (`{ tag: i }` is `i`). -/
+  | nullaryToInt (ar : List Nat) (args : List JsTy) :
+      JsListOp [.obj (.union ar .cells) args] (.obj (.union ar .smallIntNullary) args)
+  /-- A union whose constructors without fields are numbers, with every constructor an object:
+      `obj__nullary_to_cells(u)` (`i` is `{ tag: i }`). -/
+  | nullaryToCells (ar : List Nat) (args : List JsTy) :
+      JsListOp [.obj (.union ar .smallIntNullary) args] (.obj (.union ar .cells) args)
   deriving Repr
 
 namespace JsListOp
@@ -244,6 +259,12 @@ namespace JsListOp
 def runtimeName {σs : List JsTy} {τ : JsTy} : JsListOp σs τ → String
   | .ofArray _ => "consList__of_array"
   | .toArray _ => "consList__to_array"
+  | .nullaryToInt _ _ => "obj__nullary_to_int"
+  | .nullaryToCells _ _ => "obj__nullary_to_cells"
+
+/-- The functions of `runtime.js` the conversions call. -/
+def runtimeNames : List String :=
+  ["consList__of_array", "consList__to_array", "obj__nullary_to_int", "obj__nullary_to_cells"]
 
 end JsListOp
 

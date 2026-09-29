@@ -5,6 +5,35 @@
 | data (name : String)          -- JsTerm/Ty/Defs.lean
 ```
 
+> **Implementation status (current tree).**  No proposal here adds a `JsTerm → JsTerm` pass:
+> `JsTerm` is only printed and connected to `runtime.js`, every optimisation is on `Term`
+> (`Term.optimize`, proved by `Term.optimize_eval`).  The typing and the representations below
+> are decided when `Term` is converted (`termToJs`, `lowerTy`) and read by the printer.
+>
+> * **P** — done: `JsTy.obj id args`, the signature `JsSig`, one index for `record_mk` /
+>   `destructure` / `union_mk` / `unionCases` (`JsTerm/Ty/Defs.lean`, `JsTerm/Syntax/Basic.lean`).
+>   Deviation: a declared datatype `decl i` has its body in `JsSig`, and one layer in / out is
+>   the cast `fold` / `unfold` (prints as nothing), because `Term`'s `data_in` takes any value of
+>   the unfolded type, not only a constructor.
+> * **Q** — the prelude is done (`consList` at `[α]`; `Option` / `Prod` are the anonymous
+>   declarations `union [0, 1] r` / `record 2` at their arguments, also in the catalogue's
+>   signatures).  Not done: parameters recovered by anti-unification (no helper is emitted per
+>   declaration, so the JavaScript would be the same).
+> * **R** — done: `JsTerm/Ty/Canon.lean` (`refineClasses`, `canonDecls`, the check `isBisim`),
+>   with the proof `canonDecls_sound`: a datatype and its canonical datatype unfold to the same
+>   layout at every depth.  `termToJs` names every datatype by its canonical id.
+> * **S** — done for the representations `cells` and `smallIntNullary`: the representation is in
+>   the identity, `JsObjId.union arities repr`, so two representations are two types; the
+>   conversions are the explicit `JsListOp.nullaryToInt` / `nullaryToCells` (around the externs of
+>   the catalogue, which use cells).  Chosen by `JsConfig.nullaryRepr` (`leanscript
+>   --nullary=int`), per union from its layout (`JsConfig.unionRepr`); the default is `cells`, so
+>   the preset snapshots are unchanged.  This is gain 2 (and makes gain 3 unnecessary: the test is
+>   `x === 0`, no property load).  `lake test` runs the generated code of `RecData` and `ListRepr`
+>   at `--nullary=int` against Lean; the whole snapshot corpus also passed its checks at
+>   `--nullary=int` when this was written (a manual run, not part of `lake test`).
+> * Gains 4–7 are not done (see `NOT_IMPLEMENTED.md`): those that are optimisations belong on
+>   `Term`.
+
 This is the third note on the question. Part 1 (`proposals/TypedDataProposals.md`) and part 2
 (`proposals/TypedDataProposals2.md`) already cover: a checked global index, cast nodes with views,
 a layout proof as a field, the signature as a parameter, an equi-recursive `μ` (rejected), types

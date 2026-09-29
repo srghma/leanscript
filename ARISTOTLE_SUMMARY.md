@@ -1,3 +1,39 @@
+# Summary of changes for run fdf29682-b553-456d-978f-6030204fda0d
+Proposals P, R and S from `proposals/TypedDataProposals3.md` are now in place, along with Q's prelude. Q's other part, recovering type parameters, is not done. As you asked, nothing optimises JsTerm into JsTerm. The new typing and representations are chosen when `Term` is converted to JsTerm, and the printer only reads them. All optimisations are still on `Term`.
+
+**What I found.** P (nominal `JsTy.obj id args` with the signature `JsSig`) and Q's prelude (`consList`, plus `Option`/`Prod` as anonymous `union`/`record` declarations) were already implemented. R had unchecked, untested code, and the docs said it was missing. S had not been started.
+
+**R: one id for datatypes with the same layout** (new file `JsTerm/Ty/Canon.lean`)
+- `refineClasses` merges datatypes whose layouts are equal as infinite trees. `isBisim` checks the result, and `canonDecls` falls back to "every datatype keeps its own id" if the check fails. `termToJs` names each datatype by its canonical id.
+- **Proved:** `canonDecls_sound` says a datatype and its canonical datatype unfold to the same layout at every depth. It follows from `isBisim_sound` and uses only the `propext` and `Quot.sound` axioms, with no `sorry`.
+
+**S: the representation is part of the type**
+- A union's id now carries its representation, `JsObjId.union arities repr`, with `JsRepr` either `cells` or `smallIntNullary`. So the two representations are different types, and switching between them needs an explicit conversion.
+- Under `smallIntNullary`, a constructor without fields is printed as the number of its position (`0` instead of `{ tag: 0 }`) and tested with `s === 0`. Constructors with fields are unchanged.
+- It is off by default. Turn it on with `leanscript --nullary=int` (`JsConfig.nullaryRepr`). It then applies only to unions that have constructors both with and without fields. The standard library's cons cells stay as they are, because `runtime.js` reads them.
+- Catalogue externs still take and return the object form. Around them the conversion is explicit (`JsListOp.nullaryToInt` / `nullaryToCells`, backed by two new `runtime.js` functions).
+
+**Tooling**
+- `scripts/gen_js_ops.py` emits the new union form, and rerunning it reproduces `JsTerm/Ops/Imported.lean` exactly.
+- `scripts/annotate_runtime.py` could not parse `.obj` types before this change. It can now, and it keeps hand-written tags. `--check` passes.
+
+**Checks**
+- `lake build JsTerm TermTests TyTests tests leanscript OpsSpec RefactorSpec` succeeds.
+- `lake exe tests` passes 65/65. Four tests are new:
+  - canonical ids;
+  - representation typing and the converted extern;
+  - the `runtime.js` conversions under node;
+  - an end-to-end run of `leanscript --nullary=int --check` on `RecData` and `ListRepr`, with the generated checks run under node.
+- `scripts/leanscript-snapshots.sh` regenerates every snapshot byte-for-byte with the default settings. The script still exits non-zero, as it did before my changes, because of the existing "literal too big" refusals in `PrimOpInt02Configurable` and `PrimOpInt03Configurable`.
+- I also ran the whole snapshot corpus with `--nullary=int`: all 282 check files passed (4206 checks). That was a one-off run and is not part of `lake test`.
+
+**Not done** (recorded in `NOT_IMPLEMENTED.md` and in a status note at the top of the proposal):
+- Q's type parameters are not recovered by anti-unification. Datatypes stay `obj (decl i) []`, and the JavaScript would be identical either way.
+- The other representations (`nullable`, struct-of-arrays) are not implemented, and the representation is chosen per module, not per use.
+- The gains that are really optimisations are not done: fusion, constructor specialisation and unboxing parameters. They would have to be written on `Term`, with `Term.eval` proofs.
+
+I updated `README.md` and the Properties table: I added `canonDecls_sound` (proved), `canonDecls` and `JsRepr`, and removed an entry for the deleted `JsBlock.emit`. All work is committed.
+
 # Summary of changes for run 548bb7bc-3053-4d68-81fe-5b4762d7f12c
 **Is it possible?** Mostly, yes. The function-level part is now done. The function-level JsTerm optimisations no longer run as a separate JsTerm→JsTerm stage: they now happen while `termToJs` builds the JsTerm. Two things still run on finished JsTerm: `inPlace` and the module assembly in `mkModule`. Removing either today would lose optimisations, so I kept them. I checked that nothing was lost by regenerating the snapshots and running the tests; this is not a formal proof that the output is unchanged.
 

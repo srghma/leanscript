@@ -128,6 +128,19 @@ inductive ListRepr where
   | stdListToJsArray -- default in pbo preset
   deriving Repr, DecidableEq, BEq, Inhabited
 
+/-- How the constructors without fields of a tagged union are represented (proposal S of
+    `proposals/TypedDataProposals3.md`).  The choice is made per union, from its layout, and
+    recorded in its object identity (`MoreJs.JsObjId.union`, `MoreJs.JsRepr`): only a union
+    that has constructors with and without fields changes (an `Option`, a `List`-like
+    datatype, a tree with leaves); the standard library's cons cells (`ListRepr.taggedUnion`),
+    which `runtime.js` reads, keep their cells. -/
+inductive NullaryRepr where
+  /-- Default: a constructor without fields is an object, `{ tag: i }`. -/
+  | cells
+  /-- A constructor without fields is the number `i` (no allocation, and a test `s === i`). -/
+  | smallInt
+  deriving Repr, DecidableEq, BEq, Inhabited
+
 /-- The configuration of the backend: every representation decision, in one record.  The
     default keeps Lean's semantics exactly (`BigInt` wherever a knob allows one). -/
 structure JsConfig where
@@ -154,6 +167,8 @@ structure JsConfig where
   arrayFloatRepr : ArrayTypedOrGeneric := .typedArray
   /-- Strategy for representing `List` and list-like inductive types in JS. -/
   listRepr : ListRepr := .taggedUnion
+  /-- How the constructors without fields of a tagged union are represented. -/
+  nullaryRepr : NullaryRepr := .cells
   /-- The canonical declaration of each declared datatype, by its stable number (`refIndex`):
       datatypes whose layouts are equal as infinite trees share one object id (proposal R of
       `proposals/TypedDataProposals3.md`, `MoreJs.canonDecls`).  Set per function by
@@ -259,6 +274,10 @@ def setKnob? (cfg : JsConfig) (knob val : String) : Option JsConfig := do
     | "tagged" | "tagged-union" => return { cfg with listRepr := .taggedUnion }
     | "array" | "js-array" => return { cfg with listRepr := .stdListToJsArray }
     | _ => none
+  | "nullary" => match val with
+    | "cells" | "object" => return { cfg with nullaryRepr := .cells }
+    | "int" | "small-int" => return { cfg with nullaryRepr := .smallInt }
+    | _ => none
   | _ => none
 
 /-- How a list representation is spelled on the command line. -/
@@ -281,7 +300,9 @@ def describe (cfg : JsConfig) : String :=
       "array-bitvec=" ++ (match cfg.arrayBitVecRepr with
         | .roundUpToSmallestTypedArray => "round-up" | .exactTypedArrayOnly => "exact"
         | .genericArray => "generic"),
-      "list=" ++ listReprName cfg.listRepr ]
+      "list=" ++ listReprName cfg.listRepr ] ++
+  -- written only when it is not the default, so the outputs of the presets do not change
+  (if cfg.nullaryRepr == .smallInt then " nullary=int" else "")
 
 end JsConfig
 

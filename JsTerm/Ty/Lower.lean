@@ -159,6 +159,15 @@ def JsTy.arrow (a : JsTy) (fnRes : Bool) (b : JsTy) : JsTy :=
   | true, .fn ds c => .fn (a :: ds) c
   | _, b => .fn [a] b
 
+/-- The representation of a union whose constructors have `arities` fields (proposal S of
+    `proposals/TypedDataProposals3.md`): its constructors without fields are numbers when the
+    configuration asks for it (`NullaryRepr.smallInt`) and the union has constructors both
+    with and without fields; otherwise every constructor is an object. -/
+def JsConfig.unionRepr (cfg : JsConfig) (arities : List Nat) : JsRepr :=
+  match cfg.nullaryRepr with
+  | .smallInt => if arities.any (· == 0) && arities.any (· != 0) then .smallIntNullary else .cells
+  | .cells => .cells
+
 mutual
 /-- The layout of a Lean type in JavaScript. -/
 def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
@@ -172,7 +181,8 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
   | .enum s => .enum s.nOfConstructors s.shift
   | .record t fs => .obj (.record (lowerFields cfg fs).length.succ) (lowerTy cfg t :: lowerFields cfg fs)
   | .union cs (h := _) =>
-    .obj (.union ((lowerCtors cfg cs).map List.length)) (lowerCtors cfg cs).flatten
+    .obj (.union ((lowerCtors cfg cs).map List.length)
+      (cfg.unionRepr ((lowerCtors cfg cs).map List.length))) (lowerCtors cfg cs).flatten
   | .data r => .obj (.decl (cfg.declCanon.getD (refIndex r) (refIndex r))) []
   | .thunk t => .thunk (lowerTy cfg t)
   | .lazy t => .fn [] (lowerTy cfg t)
@@ -224,9 +234,13 @@ example : lowerTy JsConfig.presetPBO (.record .nat (.one .string) : Ty []) =
     .obj (.record 2) [.terminal .uint53, .terminal .string] := rfl
 /-- `Option String` and `Option Nat` share the anonymous declaration `union [0, 1]`. -/
 example : lowerTy JsConfig.presetPBO (.union (.two .nullary (.fields (.one .string))) : Ty []) =
-    .obj (.union [0, 1]) [.terminal .string] := rfl
+    .obj (.union [0, 1] .cells) [.terminal .string] := rfl
 example : lowerTy JsConfig.presetPBO (.union (.two .nullary (.fields (.one .nat))) : Ty []) =
-    .obj (.union [0, 1]) [.terminal .uint53] := rfl
+    .obj (.union [0, 1] .cells) [.terminal .uint53] := rfl
+/-- With numbers for the constructors without fields, `Option Nat`'s `none` is `0`. -/
+example : lowerTy { JsConfig.presetPBO with nullaryRepr := .smallInt }
+    (.union (.two .nullary (.fields (.one .nat))) : Ty []) =
+    .obj (.union [0, 1] .smallIntNullary) [.terminal .uint53] := rfl
 /-- A declared datatype is its stable number: member `1` of the only block of sizes `[2]`
     (three members), and the same datatype seen from under a newer block of two members. -/
 example : lowerTy JsConfig.presetPBO (.data (.here ⟨1, by decide⟩) : Ty [2]) =

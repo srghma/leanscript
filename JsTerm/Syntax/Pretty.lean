@@ -34,7 +34,10 @@ partial def JsExpr.pretty {C M : List JsTy} {τ : JsTy} (ind : String) : JsExpr 
   | .lam xs body => "(" ++ ", ".intercalate xs ++ ") => {\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}"
   | .record_mk fs =>
     "{ " ++ ", ".intercalate ((fs.pretty ind).zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}") ++ " }"
-  | .union_mk ix args =>
+  | .union_mk (id := id) ix args =>
+    if args.pretty ind |>.isEmpty then
+      if S.reprOf id == .smallIntNullary then toString ix.index else s!"\{ tag: {ix.index} }"
+    else
     "{ " ++ ", ".intercalate (s!"tag: {ix.index}" ::
       ((args.pretty ind).zipIdx.map fun (e, i) => s!"{fieldKey i}: {e}")) ++ " }"
   | .enum_mk _ shift i => toString (shift + i.val)

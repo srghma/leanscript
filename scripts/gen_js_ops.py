@@ -223,7 +223,7 @@ def lean_of(t, var='α'):
     if k == 'union':
         cs = t[1]
         ar = ', '.join(str(len(c)) for c in cs)
-        return f'(.obj (.union [{ar}]) ' + lst([a for c in cs for a in c]) + ')'
+        return f'(.obj (.union [{ar}] .cells) ' + lst([a for c in cs for a in c]) + ')'
     if k == 'record':
         fs = t[1]
         return f'(.obj (.record {len(fs)}) {lst(fs)})'

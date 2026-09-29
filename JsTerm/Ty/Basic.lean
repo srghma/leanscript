@@ -121,8 +121,9 @@ partial def pretty : JsTy → String
   | .thunk t => s!"Thunk<{t.pretty}>"
   | .obj (.record _) ts => "{ " ++ ", ".intercalate
       ((List.range ts.length).zip ts |>.map fun (i, t) => s!"_{i + 1}: {t.pretty}") ++ " }"
-  | .obj (.union ar) args => let cs := splitArities ar args; "(" ++ " | ".intercalate
+  | .obj (.union ar r) args => let cs := splitArities ar args; "(" ++ " | ".intercalate
       ((List.range cs.length).zip cs |>.map fun (i, fs) =>
+        if r == .smallIntNullary && fs.isEmpty then toString i else
         "{ " ++ ", ".intercalate (s!"tag: {i}" ::
           ((List.range fs.length).zip fs |>.map fun (j, t) => s!"_{j + 1}: {t.pretty}")) ++ " }") ++ ")"
   | .obj .consList [t] => s!"ConsList<{t.pretty}>"

@@ -139,7 +139,7 @@ analysis that are all the same once, without a test, a join point assigned once 
 field read once, outside loops and closures, in place (`p._1`), and an arrow whose body is one
 `return` as `(x) => e`.  `leanscript --help` lists the options.
 
-**Object types are nominal** (`proposals/TypedDataProposals3.md`, proposals P and Q).  Every
+**Object types are nominal** (`proposals/TypedDataProposals3.md`, proposals P, Q, R and S).  Every
 tagged object is `JsTy.obj id args`, a name and arguments, looked up in the signature `JsSig` of
 the function (a parameter of the grammar: `JsExpr S C M τ`, `JsBlock S C M J k`): a record is
 the anonymous declaration `record n` of its number of fields, a structural union the anonymous
@@ -154,14 +154,36 @@ Type equality is syntactic.  So functions over the user's recursive datatypes
 (`leanscript_signature`) are converted: `data_in`/`data_out` are the casts, and a fold
 (`data_rec`, `data_brec` of depth `0`) is one local function per member of the block, mutually
 recursive (`JsBlock.funs`), each rebuilding one layer with the answers at its holes and running
-the member's branch on it (`JsTerm/Lower/DataRec.lean`; `Tests/SnapshotsMy/RecData.lean`).  Not
-done: the canonical layout ids of proposal R (declarations with the same layout still have
-different ids), the per-declaration representations of proposal S, and course-of-values folds
-of depth `1` or more.
+the member's branch on it (`JsTerm/Lower/DataRec.lean`; `Tests/SnapshotsMy/RecData.lean`).
+
+*Canonical layout ids* (proposal R, `JsTerm/Ty/Canon.lean`): before a function is converted, the
+table of its datatypes is minimised by partition refinement (`MoreJs.canonDecls`), so datatypes
+whose layouts are equal as infinite trees (`MyList Nat` and a `Stack` of the same constructors,
+two mutually recursive trees of one shape) get one object id.  The classes are checked to be a
+bisimulation (`MoreJs.isBisim`), and `MoreJs.canonDecls_sound` proves that a datatype and its
+canonical datatype unfold to the same layout at every depth (`MoreJs.JsTy.unfoldDecls`).
+
+*The representation is part of the identity* (proposal S): a union is `obj (union arities r)
+args`, `r` a `MoreJs.JsRepr` — `cells` (every constructor an object, the default) or
+`smallIntNullary` (a constructor without fields is the number of its position, `0` instead of
+`{ tag: 0 }`, and is tested by `s === 0`; a constructor with fields is still `{ tag: i, … }`,
+tested by `s.tag === i`).  The knob `JsConfig.nullaryRepr` (`leanscript --nullary=int`) chooses
+`smallIntNullary` for every union that has constructors with and without fields
+(`JsConfig.unionRepr`: `Option`, list-like and tree-like datatypes); the standard library's cons
+cells keep their cells (`runtime.js` reads them).  Two representations are two types: where an
+extern of the catalogue answers (or takes) a union, the value is converted explicitly
+(`JsListOp.nullaryToInt` / `nullaryToCells`, `obj__nullary_to_int` / `obj__nullary_to_cells` in
+`runtime.js`).  The default is `cells`, so the snapshots of the presets are unchanged; `lake test`
+runs `leanscript --nullary=int --check` on `RecData` and `ListRepr` and the checks against Lean
+with node.
+
+Not done: recovering type parameters of declared datatypes by anti-unification (a declared
+datatype is `obj (decl i) []`; the JavaScript is the same either way), the other representations
+and gains listed in the proposal, and course-of-values folds of depth `1` or more.
 
 | path | what it holds |
 | :-- | :-- |
-| `JsTerm/Ty/` | the types of `JsTerm` (`JsTerm/Ty.lean` imports them all): `Config.lean` (`MoreJs.JsConfig`: how each leaf type is represented, a `number` or a `BigInt`, typed or generic arrays; presets `faithful` (default) and `pbo`, command-line knobs), `Defs.lean` (the leaves `JsTerminalTy` — `uint53`: a `number` standing for a `Nat`; `bigint_nat`: a `BigInt`; … — and `JsTy`: arrays, typed arrays, lists, functions, enums, thunks, and the nominal object types `obj id args` — records `{ _1: …, _2: … }`, unions `{ tag: i, _1: … }`, the prelude `consList`, declared datatypes — with the signature `JsSig` that gives their layouts), `DecEq.lean` (decidable equality of `JsTy`), `Basic.lean` (names and renderings of the types, the layouts `JsNatTy` and `JsArrayLayout`), `Lower.lean` (`lowerScalarPrim`/`lowerArrayPrim`/`lowerTy`) |
+| `JsTerm/Ty/` | the types of `JsTerm` (`JsTerm/Ty.lean` imports them all): `Config.lean` (`MoreJs.JsConfig`: how each leaf type is represented, a `number` or a `BigInt`, typed or generic arrays; presets `faithful` (default) and `pbo`, command-line knobs), `Defs.lean` (the leaves `JsTerminalTy` — `uint53`: a `number` standing for a `Nat`; `bigint_nat`: a `BigInt`; … — and `JsTy`: arrays, typed arrays, lists, functions, enums, thunks, and the nominal object types `obj id args` — records `{ _1: …, _2: … }`, unions `{ tag: i, _1: … }`, the prelude `consList`, declared datatypes — with the signature `JsSig` that gives their layouts), `DecEq.lean` (decidable equality of `JsTy`), `Basic.lean` (names and renderings of the types, the layouts `JsNatTy` and `JsArrayLayout`), `Lower.lean` (`lowerScalarPrim`/`lowerArrayPrim`/`lowerTy`, the representation of a union `JsConfig.unionRepr`), `Canon.lean` (canonical layout ids of datatypes, `canonDecls`, and their soundness `canonDecls_sound`) |
 | `JsTerm/Ops/` | the typed operations (`type__extern`; `JsTerm/Ops.lean` imports them all): `Basic.lean` (their indices `Effectfulness`, `MayThrow`, the `JsInline` templates), and, generated by `scripts/gen_js_ops.py`, `Imported.lean` (the ones implemented by `runtime.js`, `JsOpImported`) `Inlinable.lean` (the ones written inline, `JsOpInlinable`) and `Template.lean` (their JavaScript, `JsOpInlinable.template`); `Op.lean` (`JsOp`, either of them), and the operation of an extern at given types (`JsOp.lookup`, generated): its candidates by group of externs in `Cands/` (`Nat`, `UInt`, `SInt`, `Float`, `String`, `Misc`) and `Lookup.lean` |
 | `JsTerm/Syntax/` | the JavaScript grammar (`JsTerm/Syntax.lean` imports it all): `NumberLit.lean` (`number` literals), `Basic.lean` (the grammar, intrinsically typed with de Bruijn indices — constants, mutable variables, join points: `JsExpr`, `JsBlock`, `JsFun`, `JsModule`, over a signature `JsSig`), `Vars.lean` with `Vars/` (`Rename.lean`: renaming and weakening of the variables; `Occs.lean`: their occurrences), `Pretty.lean` (a readable dump of the grammar, used by the tests; the tool no longer writes it to a file) |
 | `JsTerm/Lower/` | from `Term` to `JsTerm` (`JsTerm/Lower.lean` imports it all): `Extern.lean` (an extern call as its typed operation, `lowerExtern`; an error when there is none), `Basic.lean` (the support of the conversion: literals, `ConvM`, casts, builders, the signature `jsSigOf`), `Tail.lean` (returns as loop assignments or jumps), `DataRec.lean` (the folds of declared datatypes as mutually recursive local functions), `FromTerm.lean` (`MoreJs.termToJs`: a closed `Term` to a `JsFun` — loops for `nat_rec`/`array_foldl`, `if`/`switch` for branches, closures for lambdas), `Module.lean` (the imports of a module, `mkModule`) |

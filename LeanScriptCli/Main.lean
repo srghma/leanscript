@@ -64,6 +64,9 @@ structure CliOptions where
   functionsOnly : Bool := false
   /-- The runtime the JavaScript imports (default: `runtime.js` in the project). -/
   runtime : Option System.FilePath := none
+  /-- How the constructors without fields of a union are represented, at both presets
+      (`JsConfig.nullaryRepr`: objects `{ tag: i }` by default, or the numbers `i`). -/
+  nullary : NullaryRepr := .cells
   inputs : List String := []
 
 /-- The presets every file is converted at, with the name of their outputs. -/
@@ -97,6 +100,9 @@ options:
   --functions-only            skip a file that has no public total function
                               (a definition with at least one value parameter), removing
                               the outputs an earlier run wrote for it
+  --nullary=cells|int         how a constructor without fields of a union that also has
+                              constructors with fields is written: { tag: i } (cells,
+                              the default) or the number i (int); at both presets
   --quiet                     do not print the progress
   -h, --help                  this text"
 
@@ -118,6 +124,10 @@ def parseArgs : List String → CliOptions → Except String CliOptions
           | some n => parseArgs rest { o with rounds := n }
           | none => throw s!"not a number: `{v}`"
         else if k == "only" then parseArgs rest { o with only := v.splitOn "," }
+        else if k == "nullary" then
+          match (JsConfig.setKnob? {} "nullary" v).map (·.nullaryRepr) with
+          | some r => parseArgs rest { o with nullary := r }
+          | none => throw s!"not a representation of constructors without fields: `{v}` (cells or int)"
         else throw s!"unknown option or value: `{a}`\n\n{usage}"
       | _ => throw s!"unknown option: `{a}`\n\n{usage}"
     else parseArgs rest { o with inputs := a :: o.inputs }
@@ -304,6 +314,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   let rtSrc ← IO.FS.readFile rtFile
   let mut fatal : Array String := #[]
   for (preset, cfg) in presets do
+    let cfg := { cfg with nullaryRepr := o.nullary }
     let mut funs : Array JsFun := #[]
     let mut jsRefused : Array (Name × String) := #[]
     let mut exported : Array (Name × String × Nat) := #[]

@@ -57,6 +57,17 @@ def parse_list(toks, i):
         out.append(t)
     return out, i + 1
 
+def parse_arities(toks, i):
+    """A list of numbers `[0, 1]`."""
+    assert toks[i] == '['
+    i += 1
+    out = []
+    while toks[i] != ']':
+        if toks[i] != ',':
+            out.append(int(toks[i]))
+        i += 1
+    return out, i + 1
+
 def parse_at(toks, i):
     tok = toks[i]
     if tok == '[':
@@ -107,6 +118,28 @@ def parse_at(toks, i):
         cs, i = parse_list(toks, i)
         assert toks[i] == ')'
         return ('union', [c0, c1] + cs), i + 1
+    if head == '.obj':
+        # a nominal object type: `(.obj (.record n) [fields])` or
+        # `(.obj (.union [arities] .cells) [fields of every constructor, in order])`
+        assert toks[i] == '('
+        kind = toks[i + 1]
+        if kind == '.record':
+            i += 4  # `(`, `.record`, n, `)`
+            args, i = parse_list(toks, i)
+            assert toks[i] == ')'
+            return ('record', args), i + 1
+        if kind == '.union':
+            ar, i = parse_arities(toks, i + 2)
+            assert toks[i] == '.cells' and toks[i + 1] == ')', toks[i:i + 2]
+            i += 2
+            args, i = parse_list(toks, i)
+            assert toks[i] == ')'
+            cs, k = [], 0
+            for a in ar:
+                cs.append(args[k:k + a])
+                k += a
+            return ('union', cs), i + 1
+        raise ValueError(f'unknown object identity {kind}')
     if head == '.enum':
         n = toks[i]
         i += 1
@@ -180,9 +213,10 @@ def rep(t, top=True):
     elif k == 'fn':
         s = f'fn {lst(t[1])} {rep(t[2], False)}'
     elif k == 'record':
-        s = f'record {rep(t[1][0], False)} {rep(t[1][1], False)} {lst(t[1][2:])}'
+        s = f'obj (record {len(t[1])}) {lst(t[1])}'
     elif k == 'union':
-        s = f'union {lst(t[1][0])} {lst(t[1][1])} [' + ', '.join(lst(c) for c in t[1][2:]) + ']'
+        ar = ', '.join(str(len(c)) for c in t[1])
+        s = f'obj (union [{ar}] cells) {lst([a for c in t[1] for a in c])}'
     elif k == 'enum':
         s = f'enum {t[1]} ({t[2]})' if t[2] < 0 else f'enum {t[1]} {t[2]}'
     else:
@@ -293,9 +327,9 @@ def annotate(text, ops):
             doc = with_tags(strip_tags(doc) if doc else [], tags(byname[name], params[name]))
             done += 1
         else:
+            # not an operation of the catalogue (the conversions of `JsListOp`: cons cells,
+            # unions with numbers): its tags are written by hand and kept as they are
             skipped.append(name)
-            if doc:
-                doc = strip_tags(doc)
         out.extend(doc)
         out.append(l)
         i += 1

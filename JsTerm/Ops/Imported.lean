@@ -695,7 +695,7 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- String.getUTF8Byte (decides `p < s.rawEndPos`) -/
   | string__lean_string_get_byte_fast__String_getUTF8Byte : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.terminal .uint8)
   /-- String.Pos.Raw.get? -/
-  | string__lean_string_utf8_get_opt__String_Pos_Raw_get? : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.obj (.union [0, 1]) [(.terminal .string)])
+  | string__lean_string_utf8_get_opt__String_Pos_Raw_get? : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.obj (.union [0, 1] .cells) [(.terminal .string)])
   /-- String.Pos.Raw.prev -/
   | string__lean_string_utf8_prev__String_Pos_Raw_prev : JsOpImported .pure .doesntThrow [(.terminal .string), (.terminal .uint53)] (.terminal .uint53)
   /-- String.next' (decides `¬String.Pos.Raw.atEnd s p = Bool.true`) -/

@@ -24,7 +24,7 @@ The leaves are `JsTerminalTy`; the compound shapes have one layout each:
 | a leaf | `terminal t` | a boolean, a number, a `BigInt` or a string (`JsTerminalTy`) |
 | `array t` | `array t` or `typedArray e` | a JavaScript `Array`, or a typed array (`Uint8Array`, …) of the element `e` |
 | `record t fs` | `obj (record n) [f₁, …, fₙ]` | an object `{ _1: f₁, _2: f₂, … }` (two fields or more) |
-| `union cs` | `obj (union [a₀, a₁, …]) [fields…]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more; `aᵢ` fields each) |
+| `union cs` | `obj (union [a₀, a₁, …] r) [fields…]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more; `aᵢ` fields each); at the representation `r = smallIntNullary` a constructor without fields is the number `i` |
 | `enum s` | `enum n shift` | the number `shift + i` |
 | `list t` | `list t` (`listRepr = stdListToJsArray`) | an (immutable) JavaScript array |
 | `list t` | `obj consList [t]` (`listRepr = taggedUnion`) | cons cells: `{ tag: 0 }` (`[]`) and `{ tag: 1, _1: head, _2: tail }` |
@@ -41,7 +41,7 @@ Nat` stays `fn [nat] (fn [] nat)`: only the arrows of `Ty.fn` are merged.
 ## Object types are nominal
 
 Every object type is a **name**, `obj id args` (`proposals/TypedDataProposals3.md`, Proposals
-P and Q): an identity (`JsObjId`) and type arguments.  The layout — the fields of a record, the
+P, Q, R and S): an identity (`JsObjId`) and type arguments.  The layout — the fields of a record, the
 constructors of a union — is not written in the type; it is read from the declaration
 (`JsSig.fieldsOf`, `JsSig.ctorsOf`), so a record, a tagged union, a cons cell and a value of a
 declared (recursive) datatype are all built and taken apart by the same four forms of the
@@ -51,13 +51,20 @@ Equality of types stays syntactic (an identity and a list of types): no type con
 * A structural record or union of the source is an **anonymous declaration** whose identity is
   its layout (`record n`, `union arities`) and whose arguments are its fields: equal layouts
   share their declaration, and it needs no table.
+* The representation of a union is part of its identity (`JsRepr`, proposal S): `union ar
+  cells` (every constructor an object) and `union ar smallIntNullary` (the constructors without
+  fields as numbers) are two types, and a change of representation is an explicit conversion
+  (`JsListOp.nullaryToInt`, `nullaryToCells`: the externs of the catalogue take and answer
+  cells).  Which one a union gets is decided from its layout when it is lowered
+  (`JsConfig.unionRepr`).
 * `List α` as cons cells is the prelude's declaration `consList` at `[α]`: one declaration for
   every element type.
 * A declared datatype of the source is `decl i`: its number is stable (`refIndex`: the position
   of the datatype among the datatypes of the source's signature, oldest first, whatever the
   scope), and its body — one layer, a structural type whose recursive positions are
   `obj (decl j) []` — is row `i` of the signature `JsSig`, a parameter of the grammar.  One layer
-  in and out are the casts `JsExpr.fold` / `JsExpr.unfold`, which print as nothing.
+  in and out are the casts `JsExpr.fold` / `JsExpr.unfold`, which print as nothing.  Datatypes
+  whose layouts are equal as infinite trees share one number (proposal R, `JsTerm.Ty.Canon`).
 
 Records and unions have two fields or constructors or more (the source types guarantee both: a
 structure of one field is unboxed, a type of one constructor is a record, before this stage).
@@ -151,6 +158,24 @@ def leaf : JsTypedElem → JsTerminalTy
 
 end JsTypedElem
 
+/-- How the constructors of a tagged union are laid out in JavaScript (proposal S of
+    `proposals/TypedDataProposals3.md`): the representation is part of the object's identity
+    (`JsObjId.union`), so two representations of the same constructors are two types, and a
+    change of representation is an explicit conversion (`JsListOp.cellsToSmall`, …).
+
+    * `cells`: every constructor is an object, `{ tag: i }` for a constructor without fields
+      and `{ tag: i, _1: f₁, … }` otherwise;
+    * `smallIntNullary`: a constructor without fields is the number `i` itself (no allocation),
+      a constructor with fields is `{ tag: i, _1: f₁, … }`.  A case analysis tests a
+      constructor without fields by `s === i` and one with fields by `s.tag === i` (a number
+      has no `tag`). -/
+inductive JsRepr where
+  /-- Every constructor an object with its `tag`. -/
+  | cells
+  /-- A constructor without fields the number of its position, the others objects. -/
+  | smallIntNullary
+  deriving Inhabited, Repr, DecidableEq, Hashable
+
 /-- The identity of an object type (`JsTy.obj`): **every** object the backend builds (a record,
     a tagged union, a cons cell, a value of a declared datatype) has a nominal type, an
     identity and a list of type arguments, and the identity says where the layout comes from.
@@ -169,8 +194,10 @@ end JsTypedElem
 inductive JsObjId where
   /-- An anonymous record of `n` fields (`n ≥ 2`): `{ _1: f₁, …, _n: fₙ }`. -/
   | record (n : Nat)
-  /-- An anonymous union whose constructors have `arities` fields: `{ tag: i, _1: f₁, … }`. -/
-  | union (arities : List Nat)
+  /-- An anonymous union whose constructors have `arities` fields, at the representation
+      `repr` (`JsRepr`): `{ tag: i, _1: f₁, … }` (and, at `smallIntNullary`, the number `i` for
+      a constructor without fields). -/
+  | union (arities : List Nat) (repr : JsRepr)
   /-- The prelude's `List α` as cons cells: `{ tag: 0 }` and `{ tag: 1, _1: head, _2: tail }`. -/
   | consList
   /-- Declaration `i` of the signature. -/
@@ -206,8 +233,10 @@ abbrev JsTy.consList (α : JsTy) : JsTy := .obj .consList [α]
 /-- The anonymous record of the fields `fs` (two or more). -/
 abbrev JsTy.record (fs : List JsTy) : JsTy := .obj (.record fs.length) fs
 
-/-- The anonymous union of the constructors `cs` (two or more), each the list of its fields. -/
-abbrev JsTy.union (cs : List (List JsTy)) : JsTy := .obj (.union (cs.map List.length)) cs.flatten
+/-- The anonymous union of the constructors `cs` (two or more), each the list of its fields,
+    at the representation `r` (every constructor an object by default). -/
+abbrev JsTy.union (cs : List (List JsTy)) (r : JsRepr := .cells) : JsTy :=
+  .obj (.union (cs.map List.length) r) cs.flatten
 
 /-- The fields `ts` cut into the constructors of `arities` fields. -/
 def splitArities : List Nat → List JsTy → List (List JsTy)
@@ -232,12 +261,12 @@ def body (S : JsSig) (i : Nat) : JsTy := S.decls[i]?.getD (.obj (.decl i) [])
 /-- The constructors of the union declaration `id` at the arguments `args`, each the list of
     its fields (none for a record or a declaration that is not a union). -/
 def ctorsOf (S : JsSig) : JsObjId → List JsTy → List (List JsTy)
-  | .union ar, args => splitArities ar args
+  | .union ar _, args => splitArities ar args
   | .consList, [α] => [[], [α, .obj .consList [α]]]
   | .consList, _ => []
   | .record _, _ => []
   | .decl i, _ => match S.body i with
-    | .obj (.union ar) args => splitArities ar args
+    | .obj (.union ar _) args => splitArities ar args
     | _ => []
 
 /-- The fields of the record declaration `id` at the arguments `args` (none for a union or a
@@ -248,6 +277,16 @@ def fieldsOf (S : JsSig) : JsObjId → List JsTy → List JsTy
     | .obj (.record _) args => args
     | _ => []
   | _, _ => []
+
+/-- The representation of the constructors of the object declaration `id` (`JsRepr`): the
+    one its identity says for an anonymous union, the one of its body for a declared datatype,
+    cells for the others (the prelude's cons cells, which `runtime.js` reads, are cells). -/
+def reprOf (S : JsSig) : JsObjId → JsRepr
+  | .union _ r => r
+  | .decl i => match S.body i with
+    | .obj (.union _ r) _ => r
+    | _ => .cells
+  | _ => .cells
 
 end JsSig
 

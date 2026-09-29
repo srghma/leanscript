@@ -80,8 +80,11 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
   | .record_mk fs => do
     let es ← argsToMini sc fs
     return .object (es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
-  | .union_mk ix args => do
+  | .union_mk (id := id) ix args => do
     let es ← argsToMini sc args
+    -- a constructor without fields of a union whose constructors without fields are numbers
+    -- (`JsRepr.smallIntNullary`) is its position
+    if es.isEmpty && S.reprOf id == .smallIntNullary then return natNum ix.index
     return .object (.keyValue (.ident (nes "tag")) (natNum ix.index) ::
       es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
   | .enum_mk _ shift i => pure (intNum (shift + i.val))
@@ -186,13 +189,13 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let (pre, s) ← bindSubject sc "s" e
     let arms ← enumArmsToMini sc tl s shift 0 arms
     return pre ++ ifChain arms
-  | .unionCases e arms => do
+  | .unionCases (id := id) e arms => do
     let (pre, s) ← bindSubject sc "s" e
     -- arms that are all written the same (`if (x.tag === 0) { const { _1: f } = x; return f; }
     -- else { const { _1: f } = x; return f; }`) are written once, without a test
     let src := e.fieldSource (bound := !e.isAtom)
     if let some b ← sameUnionArms sc tl s src arms then return pre ++ b
-    let arms ← unionArmsToMini sc tl s src 0 arms
+    let arms ← unionArmsToMini sc tl s src (S.reprOf id == .smallIntNullary) 0 arms
     return pre ++ ifChain arms
   | .join hint block rest => do
     let x ← freshName hint
@@ -297,16 +300,20 @@ partial def JsUnionArms.bodiesFrom {C M J : List JsTy} {k : JsEnd} {cs : List (L
     return (d ++ b, st') :: (← rest.bodiesFrom sc tl s src st)
 
 /-- The arms of a case analysis on a union, each with its test (`s.tag === i`), taking the
-    fields it uses apart. -/
+    fields it uses apart.  When the constructors without fields are numbers (`small`,
+    `JsRepr.smallIntNullary`), the test of a constructor without fields is `s === i` (and the
+    one of a constructor with fields still `s.tag === i`: a number has no `tag`). -/
 partial def unionArmsToMini {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (sc : Scope)
-    (tl : Tail) (s : MiniExpr) (src : Option (Option Nat)) (i : Nat) :
+    (tl : Tail) (s : MiniExpr) (src : Option (Option Nat)) (small : Bool) (i : Nat) :
     JsUnionArms S C M J k cs → PM (List (MiniExpr × List MiniStatement))
   | .nil => pure []
-  | .cons sel b rest => do
+  | .cons (fs := fs) sel b rest => do
     let (d, sc') ← destructureToMini sc s sel.binds (readInPlace src sel.binds.length b)
     let b ← blockToMini sc' tl b
-    return (.binary (.dot s (nes "tag")) .strictEq (natNum i), d ++ b) ::
-      (← unionArmsToMini sc tl s src (i + 1) rest)
+    let test : MiniExpr :=
+      if small && fs.isEmpty then .binary s .strictEq (natNum i)
+      else .binary (.dot s (nes "tag")) .strictEq (natNum i)
+    return (test, d ++ b) :: (← unionArmsToMini sc tl s src small (i + 1) rest)
 end
 
 end MoreJs
