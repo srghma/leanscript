@@ -31,6 +31,21 @@
 > consumes an array in either arm.  `ArrayInPlace.test6`, `InlineClosures.downFrom`,
 > `RecData.toArray`/`inorder`/`reverse`/`sort`, `MapFilter.test5` and `ArrayFSet` now update
 > in place where they copied before.
+> **Update: a first Term-level inliner.**  `Term.inlineKnown`
+> (`LeanScript/Term/Optimize/Inline.lean`, run first in `Term.optimize`) inlines a known
+> closure whose body is closed and only computes a pure expression of its parameter
+> (`val k := fun x => ret e[x]`) at its calls: `let y := k a` becomes `let y := share e[a]`
+> when `e[a]` is a neutral expression of the call's level; `Term.dce` then drops `k`.  It
+> walks the term with what is known about every known variable in scope (`KInfo`, moved
+> along `val`s by weakening and into closed bodies by masking).  Proved:
+> `Term.inlineKnown_eval` (value preserved, so `Term.optimize_eval`/`Term.optimizeN_eval`
+> still hold) and `Term.numCalls_inlineKnown` (no call added).  This is the first case of the
+> former `inlineConsts`; on the snapshots it removes the helper closures of
+> `InlineDemo.useScale`/`useTriple` and `LocalFnInPlace` (6 calls).  Still missing (the rest of
+> `inlineConsts`): calls whose result is not neutral (a literal, `fun _ => "a"` in
+> `FunctionCompose01`; a data literal in `OptionUnbox`, `RecData`), closures whose body is a
+> block, and closures passed to closures (`InlineClosures.sumShifted`), which need
+> substitution of *known* values with renormalisation and re-levelling.
 > The pipeline is now
 >
 > ```

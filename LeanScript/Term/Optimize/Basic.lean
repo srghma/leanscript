@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
+public import LeanScript.Term.Optimize.InlineEval
 
 @[expose] public section
 
@@ -343,12 +344,13 @@ theorem Branches.cseWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} 
   termination_by structural _ _ _ _ _ _ _ _ x _ _ _ _ => x
 end
 
-/-- **The optimiser**: the rewrites of `Term.simp`, the known fields (`Term.widenFields`, then
-    `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions (`Term.condWalk`), then
-    dead-code elimination. -/
+/-- **The optimiser**: the inlining of known closures that compute an expression
+    (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
+    then `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions
+    (`Term.condWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.simp.widenFields.reuseFields []).cseWalk.condWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -554,7 +556,7 @@ theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} 
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
   rw [Term.optimize, Term.dce_eval, Term.condWalk_eval, Term.cseWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
-    Term.simp_eval]
+    Term.simp_eval, Term.inlineKnown_eval]
 
 /-- Running the optimiser any number of times does not change the value either. -/
 theorem Term.optimizeN_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}

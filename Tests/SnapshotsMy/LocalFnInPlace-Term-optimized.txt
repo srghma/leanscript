@@ -39,13 +39,11 @@ ret k1
 -- test3 : Nat → Nat → Array Nat
 val k1 [1] : (Nat → (Nat → (Array Nat))) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → (Array Nat)) := fun x4 [ω] : Nat => (open)
-    val k5 [ω] : (Nat → (Array Nat)) := fun x6 [ω] : Nat => (closed)
-      ret lean_mk_array(x6, x6)
-    let x7 [1] : (Array Nat) := k5 x2
-    let x8 [1] : (Array Nat) := k5 x4
-    let x11 [1] : (Array Nat) := array_foldl x8 lean_array_push(x7, x4) fun e9 acc10 => (closed)
-      ret lean_array_push(acc10, e9)
-    ret x11
+    let x5 [1] : (Array Nat) := share lean_mk_array(x2, x2)
+    let x6 [1] : (Array Nat) := share lean_mk_array(x4, x4)
+    let x9 [1] : (Array Nat) := array_foldl x6 lean_array_push(x5, x4) fun e7 acc8 => (closed)
+      ret lean_array_push(acc8, e7)
+    ret x9
   ret k3
 ret k1
 

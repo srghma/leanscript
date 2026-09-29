@@ -74,15 +74,14 @@ export const test2 = (n, m) => {
  * @returns {Array<uint53(number)>}
  */
 export const test3 = (n, m) => {
-  const k$2 = (x$1) => uint53__lean_mk_array(x$1, x$1);
-  const x$3 = k$2(n);
-  const x$4 = k$2(m);
-  let acc$5 = array__lean_array_push_mutable(x$3, m);
-  for (const e$6 of x$4) {
-    const a$7 = acc$5;
-    acc$5 = array__lean_array_push_mutable(a$7, e$6);
+  const x$1 = uint53__lean_mk_array(n, n);
+  const x$2 = uint53__lean_mk_array(m, m);
+  let acc$3 = array__lean_array_push_mutable(x$1, m);
+  for (const e$4 of x$2) {
+    const a$5 = acc$3;
+    acc$3 = array__lean_array_push_mutable(a$5, e$4);
   }
-  return acc$5;
+  return acc$3;
 };
 
 /**

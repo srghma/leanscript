@@ -12,13 +12,9 @@ ret 3
 
 -- useScale : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (closed)
-    ret lean_nat_mul(x4, 2)
-  let x5 [1] : Nat := k3 x2
-  val k6 [1] : (Nat → Nat) := fun x7 [1] : Nat => (closed)
-    ret lean_nat_mul(x7, 2)
-  let x8 [1] : Nat := k6 lean_nat_add(x2, 1)
-  ret lean_nat_add(x5, x8)
+  let x3 [1] : Nat := share lean_nat_mul(x2, 2)
+  let x4 [1] : Nat := share lean_nat_mul(lean_nat_add(x2, 1), 2)
+  ret lean_nat_add(x3, x4)
 ret k1
 
 -- triple : Nat → Nat
@@ -28,11 +24,7 @@ ret k1
 
 -- useTriple : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (closed)
-    ret lean_nat_mul(x4, 3)
-  let x5 [1] : Nat := k3 x2
-  val k6 [1] : (Nat → Nat) := fun x7 [1] : Nat => (closed)
-    ret lean_nat_mul(x7, 3)
-  let x8 [1] : Nat := k6 lean_nat_add(x2, 1)
-  ret lean_nat_add(x5, x8)
+  let x3 [1] : Nat := share lean_nat_mul(x2, 3)
+  let x4 [1] : Nat := share lean_nat_mul(lean_nat_add(x2, 1), 3)
+  ret lean_nat_add(x3, x4)
 ret k1

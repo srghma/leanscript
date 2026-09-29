@@ -1,3 +1,38 @@
+# Summary of changes for run d1f4c2f2-996f-4294-afb8-ba499ba78b49
+The first part of your request was already in place from earlier runs: several versions of each non-inlined function, each allowed to update different array parameters in place. For the "finish" part, I added the first step of the Term-level inliner, which the proposal named as the main remaining work. It is proved correct. Everything else on that list is still not done.
+
+**What was added: `Term.inlineKnown`**
+- New files: `LeanScript/Term/Optimize/Inline.lean`, `InlineEval.lean`, `CountInline.lean`. It is now the first pass of `Term.optimize`.
+- It handles a local closure whose body mentions nothing from outside and is just `ret e[x]`, i.e. it only computes one expression of its parameter.
+- At a call `let y := k a`, the call becomes `let y := share e[a]`. This only happens when `e[a]` is an expression that can be named by `let`. Dead-code elimination then removes `k`.
+- The walk keeps track of what it knows about each closure in scope. It carries that information into the body of each `val` and into closed bodies.
+
+**Proved (no `sorry`; only the axioms `propext`, `Classical.choice`, `Quot.sound`)**
+- `Term.inlineKnown_eval`: the pass does not change `Term.eval`, in any environment. So `Term.optimize_eval` and `Term.optimizeN_eval` still hold for the extended optimiser.
+- `Term.numCalls_inlineKnown`: the pass never adds calls. `Term.numCalls_optimize` now covers it.
+
+**Effect on the generated code**
+- The snapshots were regenerated. Only `InlineDemo` and `LocalFnInPlace` changed, with 6 calls inlined in total.
+- For example, `useScale` now emits `const x$1 = uint53__lean_nat_mul(n, 2); …` with no helper closure.
+- All node checks pass. The script still exits with an error because of the existing "literal too big" refusals in `PrimOpInt02Configurable` and `PrimOpInt03Configurable` under the pbo preset.
+- `lake build leanscript tests JsTerm TermTests TyTests` succeeds and `lake exe tests` passes 66/66.
+
+**Not inlined yet** (listed in `NOT_IMPLEMENTED.md` and `proposals/NoJsTermOptimizations.md`)
+- Calls whose result is a literal or data literal, such as `fun _ => "a"` in `FunctionCompose01`, `OptionUnbox` and `RecData`. The result cannot simply be named by `let`; handling these means re-normalising the rest of the function.
+- Closures whose body is more than one expression.
+- Closures passed to other closures, such as `InlineClosures.sumShifted`.
+
+The remaining cases would all need a general inliner. It would have to substitute known values, normalise the result again, and shift the depth of the inlined body.
+
+**Also still open from your list:**
+- Fusion, constructor specialisation and unboxing parameters.
+- The nullable and struct-of-arrays representations.
+- Recovering Q's type parameters.
+
+**Also note:** `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which this project does not depend on, so building the whole `LeanScript` library fails on that one file. This was already the case before this work. The targets above do not depend on it.
+
+README, `LeanScript/Term/README.md`, `NOT_IMPLEMENTED.md` and the proposal document are updated. Both theorems are in the Properties table as proved, and all work is committed.
+
 # Summary of changes for run 4e42c39e-2e2f-4623-aa50-762420654cfa
 I extended the static in-place analysis (no runtime reference counts) from top-level exports to local functions, closures and folds over datatypes. None of this analysis is proved: it only decides which array updates the generated JavaScript does in place, and it is checked by tests. `Term.eval`, the optimiser and its existing correctness proofs are unchanged. The Term-level inliner that would replace `inlineConsts` is still not done.
 

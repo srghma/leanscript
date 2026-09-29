@@ -258,6 +258,18 @@ The supported fragment and the refusals are listed in the header of
   `Uint32Array` representations are commented out in `JsTerm/Ty/Config.lean`).
 - The optimiser does not inline a join point jumped to only once when its body is not
   trivial, and does not share computations across closure / loop-body boundaries.
+- **Inlining known closures is limited** (`Term.inlineKnown`, `LeanScript/Term/Optimize/Inline.lean`,
+  proved: `Term.inlineKnown_eval`, `Term.numCalls_inlineKnown`): only a known closure whose
+  body is *closed* and is a single `ret e` is inlined, and only at a call `let y := k a`
+  whose result `e[a]` is a neutral expression of the call's level (it becomes
+  `let y := share e[a]`).  Not inlined: a closure whose body has `let`s, branches or case
+  analyses, or mentions an outer unknown; a call whose result is a literal, a constant or a
+  data literal (`fun _ => "a"`, `fun x => #[some x, none]`), because the unknown `y` cannot be
+  bound to a value of known shape without renormalising the rest; a closure passed to another
+  closure (`sum3 (fun x => x * k)`), which needs substituting a *known* value and normalising
+  again.  The module-level `inlineConsts` of the former JavaScript backend did those; a general
+  Term-level inliner (substitution of values plus renormalisation, with re-levelling of the
+  inlined body) is still the open piece of work.
 - The translator reports "invalid scope" for `ScalarRepl.test6` (a private structure
   passed through a structural recursion); not investigated.
 
