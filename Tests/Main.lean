@@ -347,6 +347,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
     -- each case: a JavaScript expression over the runtime, and what Lean computes, as
     -- JavaScript's `String(v)` writes it
     let pair (a b : String) : String := a ++ "," ++ b
+    -- the bits of a `float32` result, as a `Float32Array` stores them
+    let f32Bits (e : String) : String := s!"new Uint32Array(new Float32Array([{e}]).buffer)[0]"
     let cases : List (String × String) := [
       ("bigint_nat__lean_string_hash(\"hello\")", toString "hello".hash),
       ("bigint_nat__lean_string_hash(\"héllo€😀\")", toString "héllo€😀".hash),
@@ -368,7 +370,23 @@ def moreJsSpec : Spec := describe "JsTerm" do
       ("string__lean_string_utf8_prev__String_Pos_Raw_prev(\"aé€\", 6)",
         toString (String.Pos.Raw.prev "aé€" ⟨6⟩).byteIdx),
       ("string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F(\"aé\", 2).tag",
-        if (String.Pos.Raw.get? "aé" ⟨2⟩).isSome then "1" else "0")]
+        if (String.Pos.Raw.get? "aé" ⟨2⟩).isSome then "1" else "0"),
+      -- a 64-bit integer to a `Float32` rounds once: `2^63 + 2^39 + 1` is just above the
+      -- midpoint of two floats (rounding to a double first would land on the midpoint)
+      (f32Bits "bigint_nat__lean_uint64_to_float32(9223372586610589697n)",
+        toString (9223372586610589697 : UInt64).toFloat32.toBits),
+      (f32Bits "bigint_nat__lean_uint64_to_float32(9223372586610589696n)",
+        toString (9223372586610589696 : UInt64).toFloat32.toBits),
+      (f32Bits "bigint_nat__lean_uint64_to_float32(18446744073709551615n)",
+        toString (18446744073709551615 : UInt64).toFloat32.toBits),
+      (f32Bits "bigint_nat__lean_uint64_to_float32(16777217n)",
+        toString (16777217 : UInt64).toFloat32.toBits),
+      (f32Bits "bigint_int__lean_int64_to_float32(-4611686293305294849n)",
+        toString (-4611686293305294849 : Int64).toFloat32.toBits),
+      (f32Bits "bigint_int__lean_int64_to_float32(-9223372036854775808n)",
+        toString (-9223372036854775808 : Int64).toFloat32.toBits),
+      (f32Bits "bigint_int__lean_int64_to_float32(-16777219n)",
+        toString (-16777219 : Int64).toFloat32.toBits)]
     let cwd ← IO.currentDir
     let names := ["bigint_nat__lean_string_hash", "uint53__lean_string_hash",
       "bigint_nat__lean_uint64_mix_hash", "float__lean_float_to_string",
@@ -376,7 +394,8 @@ def moreJsSpec : Spec := describe "JsTerm" do
       "bigint_int__lean_float_scaleb", "float__lean_float_to_uint8",
       "bigint_nat__lean_float_to_bits__Float_toBits",
       "string__lean_string_utf8_prev__String_Pos_Raw_prev",
-      "string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F"]
+      "string__lean_string_utf8_get_opt__String_Pos_Raw_get$3F",
+      "bigint_nat__lean_uint64_to_float32", "bigint_int__lean_int64_to_float32"]
     let script := s!"import \{ {", ".intercalate names} } from {(s!"file://{cwd}/runtime.js").quote};\n" ++
       String.join (cases.map fun (c : String × String) => s!"console.log(String({c.1}));\n")
     let out ← try

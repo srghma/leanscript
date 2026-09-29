@@ -808,6 +808,8 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | float32__lean_float32_to_string : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .string)
   /-- Float32.toUInt32 -/
   | float32__lean_float32_to_uint32 : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .uint32)
+  /-- UInt64.toFloat32 -/
+  | bigint_nat__lean_uint64_to_float32 : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .float32)
   /-- Float32.round -/
   | float32__roundf : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
   /-- Float32.toUInt8 -/
@@ -822,6 +824,8 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | float32__lean_float32_to_int16 : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .int16)
   /-- Float32.toInt32 -/
   | float32__lean_float32_to_int32 : JsOpImported .pure .doesntThrow [(.terminal .float32)] (.terminal .int32)
+  /-- Int64.toFloat32 -/
+  | bigint_int__lean_int64_to_float32 : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .float32)
 
 namespace JsOpImported
 

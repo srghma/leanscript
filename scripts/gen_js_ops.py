@@ -376,13 +376,26 @@ def conv_value(src, dst):
     s, d = leaf_of(src), leaf_of(dst)
     sb = s is not None and is_big(s)
     db = d is not None and is_big(d)
-    if d in ('float', 'float32'):
+    if d == 'float':
+        # `Number` of a `BigInt` rounds once, to nearest (ties to even), as the C cast does;
+        # every integer `number` source is already that double exactly.
         return ('call', 'Number', [A(0)]) if sb else A(0)
+    if d == 'float32':
+        # A `float32` is a `number` rounded by `Math.fround`.  The integers of at most 24 bits
+        # (and a `float32` itself) are already `float32`s; a wider integer `number` (exact in a
+        # double) must be rounded once, by `Math.fround`.  A `BigInt` cannot be written inline:
+        # `Math.fround(Number(x))` would round twice (`runtime.js` has `$bigToF32`).
+        if sb:
+            return None
+        return A(0) if s in F32_EXACT_LEAVES else ('call', 'Math.fround', [A(0)])
     if sb == db:
         return A(0)
     if db:
         return ('call', 'BigInt', [A(0)])
     return None
+
+# The leaves whose every value is exactly a `float32`.
+F32_EXACT_LEAVES = {'uint8', 'uint16', 'int8', 'int16', 'float32'}
 
 def old_inline(name, arg_tys, res_ty):
     """The inline expression the old backend used for an extern (on non-array layouts)."""

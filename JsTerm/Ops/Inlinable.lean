@@ -416,7 +416,7 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | float32__sinhf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
   /-- `Math.fround(Math.cos(a))` (Float32.cos) -/
   | float32__cosf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
-  /-- `a` (UInt32.toFloat32) -/
+  /-- `Math.fround(a)` (UInt32.toFloat32) -/
   | uint32__lean_uint32_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .uint32)] (.terminal .float32)
   /-- `-a` (Float32.neg) -/
   | float32__lean_float32_negate : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
@@ -428,9 +428,7 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | float32__asinhf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
   /-- `Math.fround(Math.log2(a))` (Float32.log2) -/
   | float32__log2f : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
-  /-- `Number(a)` (UInt64.toFloat32) -/
-  | bigint_nat__lean_uint64_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .float32)
-  /-- `Number(a)` (UInt64.toFloat32) -/
+  /-- `Math.fround(a)` (UInt64.toFloat32) -/
   | uint53__lean_uint64_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .uint53)] (.terminal .float32)
   /-- `Math.fround(Math.atanh(a))` (Float32.atanh) -/
   | float32__atanhf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
@@ -452,15 +450,13 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | float32__coshf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
   /-- `Math.fround(Math.exp(a))` (Float32.exp) -/
   | float32__expf : JsOpInlinable .pure .doesntThrow [(.terminal .float32)] (.terminal .float32)
-  /-- `a` (Int32.toFloat32) -/
+  /-- `Math.fround(a)` (Int32.toFloat32) -/
   | int32__lean_int32_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .float32)
   /-- `a` (Int8.toFloat32) -/
   | int8__lean_int8_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .float32)
   /-- `a` (Int16.toFloat32) -/
   | int16__lean_int16_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .float32)
-  /-- `Number(a)` (Int64.toFloat32) -/
-  | bigint_int__lean_int64_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .float32)
-  /-- `Number(a)` (Int64.toFloat32) -/
+  /-- `Math.fround(a)` (Int64.toFloat32) -/
   | int53__lean_int64_to_float32 : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .float32)
 
 namespace JsOpInlinable

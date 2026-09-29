@@ -352,6 +352,25 @@ const $scalbnf = (x, n) => {
   return f(y * 2 ** n);
 };
 
+/** A `BigInt` as a `float32`: rounded once, to nearest, ties to even (C's `(float)` cast of a
+ *  64-bit integer).  `Math.fround(Number(x))` would round twice (to a double, then to a
+ *  float), which differs on e.g. `2n ** 63n + 2n ** 39n + 1n`: the double is the midpoint
+ *  `2^63 + 2^39` of two floats, which `Math.fround` rounds to even, down to `2^63`, while the
+ *  integer is above it and rounds up to `2^63 + 2^40`.  So a wide `x` is first cut to its 30
+ *  leading bits, the lowest of them set when a dropped bit is (a sticky bit): that number is a
+ *  double exactly and lies on the same side of every midpoint of floats as `x`. */
+const $bigToF32 = (x) => {
+  const neg = x < 0n;
+  let m = neg ? -x : x;
+  if (m >= 9007199254740992n) {
+    const s = BigInt(m.toString(2).length - 30);
+    const dropped = m & ((1n << s) - 1n);
+    m = ((m >> s) | (dropped === 0n ? 0n : 1n)) << s;
+  }
+  const f = Math.fround(Number(m));
+  return neg ? -f : f;
+};
+
 /** The bits of a double, as a `BigInt`. */
 const $toBits = (x) => {
   const dv = new DataView(new ArrayBuffer(8));
@@ -768,6 +787,16 @@ export const float__lean_float_isnan = (a) => Number.isNaN(a);
  *  @param {number} a `float`
  *  @returns {number} `float32` */
 export const float__lean_float_to_float32 = (a) => Math.fround(a);
+
+/** `UInt64.toFloat32` (on `BigInt`s).
+ *  @param {bigint} a `bigint_nat`
+ *  @returns {number} `float32` */
+export const bigint_nat__lean_uint64_to_float32 = (a) => $bigToF32(a);
+
+/** `Int64.toFloat32` (on `BigInt`s).
+ *  @param {bigint} a `bigint_int`
+ *  @returns {number} `float32` */
+export const bigint_int__lean_int64_to_float32 = (a) => $bigToF32(a);
 
 /** `Int16.abs`.
  *  @param {number} a `int16`

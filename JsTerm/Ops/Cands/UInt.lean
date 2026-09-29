@@ -313,7 +313,7 @@ def «cands_lean_uint64_to_float» : List Cand :=
 
 /-- The operations of `lean_uint64_to_float32`. -/
 def «cands_lean_uint64_to_float32» : List Cand :=
-  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_to_float32⟩, ⟨_, _, _, _, .inlined .uint53__lean_uint64_to_float32⟩]
+  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_to_float32⟩, ⟨_, _, _, _, .inlined .uint53__lean_uint64_to_float32⟩]
 
 /-- The operations of `lean_uint64_to_nat__UInt64_toBitVec`. -/
 def «cands_lean_uint64_to_nat__UInt64_toBitVec» : List Cand :=

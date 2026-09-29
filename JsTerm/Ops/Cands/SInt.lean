@@ -285,7 +285,7 @@ def «cands_lean_int64_to_float» : List Cand :=
 
 /-- The operations of `lean_int64_to_float32`. -/
 def «cands_lean_int64_to_float32» : List Cand :=
-  [⟨_, _, _, _, .inlined .bigint_int__lean_int64_to_float32⟩, ⟨_, _, _, _, .inlined .int53__lean_int64_to_float32⟩]
+  [⟨_, _, _, _, .imported .bigint_int__lean_int64_to_float32⟩, ⟨_, _, _, _, .inlined .int53__lean_int64_to_float32⟩]
 
 /-- The operations of `lean_int64_to_int16`. -/
 def «cands_lean_int64_to_int16» : List Cand :=

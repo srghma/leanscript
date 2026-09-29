@@ -219,14 +219,13 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .float32__atan2f => .call "Math.fround" [.call "Math.atan2" [.arg 0, .arg 1]]
   | .float32__sinhf => .call "Math.fround" [.call "Math.sinh" [.arg 0]]
   | .float32__cosf => .call "Math.fround" [.call "Math.cos" [.arg 0]]
-  | .uint32__lean_uint32_to_float32 => .arg 0
+  | .uint32__lean_uint32_to_float32 => .call "Math.fround" [.arg 0]
   | .float32__lean_float32_negate => .un "-" (.arg 0)
   | .float32__ceilf => .call "Math.ceil" [.arg 0]
   | .float32__sinf => .call "Math.fround" [.call "Math.sin" [.arg 0]]
   | .float32__asinhf => .call "Math.fround" [.call "Math.asinh" [.arg 0]]
   | .float32__log2f => .call "Math.fround" [.call "Math.log2" [.arg 0]]
-  | .bigint_nat__lean_uint64_to_float32 => .call "Number" [.arg 0]
-  | .uint53__lean_uint64_to_float32 => .call "Number" [.arg 0]
+  | .uint53__lean_uint64_to_float32 => .call "Math.fround" [.arg 0]
   | .float32__atanhf => .call "Math.fround" [.call "Math.atanh" [.arg 0]]
   | .float32__floorf => .call "Math.floor" [.arg 0]
   | .float32__fabsf => .call "Math.abs" [.arg 0]
@@ -237,11 +236,10 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint16__lean_uint16_to_float32 => .arg 0
   | .float32__coshf => .call "Math.fround" [.call "Math.cosh" [.arg 0]]
   | .float32__expf => .call "Math.fround" [.call "Math.exp" [.arg 0]]
-  | .int32__lean_int32_to_float32 => .arg 0
+  | .int32__lean_int32_to_float32 => .call "Math.fround" [.arg 0]
   | .int8__lean_int8_to_float32 => .arg 0
   | .int16__lean_int16_to_float32 => .arg 0
-  | .bigint_int__lean_int64_to_float32 => .call "Number" [.arg 0]
-  | .int53__lean_int64_to_float32 => .call "Number" [.arg 0]
+  | .int53__lean_int64_to_float32 => .call "Math.fround" [.arg 0]
 
 end JsOpInlinable
 

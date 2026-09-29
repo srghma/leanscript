@@ -1,3 +1,36 @@
+# Summary of changes for run eb85d3b2-900e-4286-bea3-cb753ade3aeb
+You're right that `Number(x)` on an `int53` does nothing: it's the identity. But the identity is also wrong here, so this was a bug, not just a wasted call. A `float32` value is supposed to be a number already rounded to single precision by `Math.fround`, and `Int64.toFloat32` rounds. For example, `(16777217 : Int64).toFloat32` is `16777216` in Lean, but the generated JavaScript returned `16777217`, which isn't a single-precision value at all. The template should have been `Math.fround(x)`. The cause is `conv_value` in `scripts/gen_js_ops.py`, which handled `float` and `float32` targets the same way.
+
+**Other inlined operations.** I checked every template in `JsTerm/Ops/Template.lean` that is the identity or calls `Number`, `BigInt` or `Math.fround`. Six were wrong:
+- `int53__lean_int64_to_float32` and `uint53__lean_uint64_to_float32` (both did nothing with `Number(x)`) and `int32__lean_int32_to_float32` and `uint32__lean_uint32_to_float32` (both the identity). These are now `Math.fround(x)`.
+- `bigint_int__lean_int64_to_float32` and `bigint_nat__lean_uint64_to_float32` used `Number(x)`, which gives a double, not a single. `Math.fround(Number(x))` wouldn't fix it, because it rounds twice: `2^63 + 2^39 + 1` would come out as `2^63` instead of `2^63 + 2^40`. They are now `runtime.js` functions using a new helper, `$bigToF32`, which rounds once.
+
+All the other templates are correct, and none does nothing:
+- 8- and 16-bit integers → float32 are exact, so the identity is right.
+- Integer `number` → `Float` is exact.
+- `Number(bigint)` → `Float` rounds correctly.
+- Every other `Number` or `BigInt` call changes the JavaScript type.
+
+**`runtime.js`.** No function converts a value to the type it already has, and every function returning a `float32` rounds its result. Some `uint53`/`int53` functions go through `BigInt` (multiply, shift left, bitwise and/or/xor, the hash mix). That's needed for 64-bit wrap-around and for bit operations above 32 bits. Two functions do unneeded work, and I left them unchanged because `RuntimeSpec` models and proves them as written:
+- `uint53__lean_uint64_neg` always throws for any argument other than 0.
+- `uint53__lean_uint64_complement` always throws.
+
+**Changes:**
+- `scripts/gen_js_ops.py` and `scripts/js_ops_inline.json` now produce the corrected templates.
+- `runtime.js` has `$bigToF32` and the two new exported functions.
+- The generated files `Template`, `Inlinable`, `Imported` and `Cands/{SInt,UInt}` are regenerated; running the generator again changes nothing.
+
+**Checks:**
+- In a one-off script (not part of the test suite), I compared about 19,800 values, including values at and next to every rounding midpoint, against Lean's `UInt64.toFloat32` and `Int64.toFloat32`. The new code had 0 mismatches. The old code had 18,670, and `Math.fround(Number(x))` had 1,201.
+- New regression tests:
+  - seven cases in `Tests/Main.lean` ("runtime.js computes what Lean computes");
+  - a new snapshot test, `Tests/SnapshotsMy/IntToFloat32.lean`, with 20 checks per preset. With the old templates, 8 of the 20 `pbo` checks fail.
+- `lake exe tests` passes 57/57.
+- The snapshot suite passes 4042 checks with 0 failures, and no existing snapshot changed. The snapshot script still exits with an error, but only because some existing `pbo` tests use literals too large for a JavaScript number; that is unrelated to this change.
+- `lake build` fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib, a library the project doesn't depend on. I didn't touch that file.
+
+The full write-up is in `proposals/IntToFloat32Conversions.md`. Everything is committed.
+
 # Summary of changes for run 8ddc87fc-4a97-4d7a-b7cb-d49aca150751
 **Short answer: no, `JsOpImported` (398 constructors) and `JsOpInlinable` (219) don't need to be split at their current size.** I measured this with the Lean profiler. The full write-up is in `proposals/JsOpSizeAssessment.md`.
 

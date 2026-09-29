@@ -1,15 +1,4 @@
 {
-"bigint_int__lean_int64_to_float32": [
-"call",
-"Number",
-[
-"__list__",
-[
-"arg",
-0
-]
-]
-],
 "bigint_int__lean_int_neg": [
 "un",
 "-",
@@ -76,17 +65,6 @@
 [
 "arg",
 1
-]
-],
-"bigint_nat__lean_uint64_to_float32": [
-"call",
-"Number",
-[
-"__list__",
-[
-"arg",
-0
-]
 ]
 ],
 "float32__lean_float32_beq": [
@@ -167,7 +145,7 @@
 ],
 "int53__lean_int64_to_float32": [
 "call",
-"Number",
+"Math.fround",
 [
 "__list__",
 [
@@ -190,7 +168,7 @@
 ],
 "uint53__lean_uint64_to_float32": [
 "call",
-"Number",
+"Math.fround",
 [
 "__list__",
 [
