@@ -71,6 +71,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint53__lean_uint64_dec_eq => .bin "===" (.arg 0) (.arg 1)
   | .bitvec8__lean_uint8_of_nat_mk => .arg 0
   | .uint8__lean_uint8_dec_eq => .bin "===" (.arg 0) (.arg 1)
+  | .bigint_nat__lean_nat_pow => .bin "**" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_mul => .bin "*" (.arg 0) (.arg 1)
   | .bool__lean_strict_or => .bin "||" (.arg 0) (.arg 1)
   | .bool__lean_strict_and => .bin "&&" (.arg 0) (.arg 1)
@@ -89,6 +90,8 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .bigint_int__lean_int_add => .bin "+" (.arg 0) (.arg 1)
   | .bigint_int__lean_int_neg => .un "-" (.arg 0)
   | .bigint_int__lean_int_sub => .bin "-" (.arg 0) (.arg 1)
+  | .bigint_int__bigint_nat__lean_int_pow => .bin "**" (.arg 0) (.arg 1)
+  | .bigint_int__uint53__lean_int_pow => .bin "**" (.arg 0) (.call "BigInt" [.arg 1])
   | .bigint_nat__lean_nat_lxor => .bin "^" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_shiftl => .bin "<<" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_shiftr => .bin ">>" (.arg 0) (.arg 1)

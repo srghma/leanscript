@@ -77,6 +77,24 @@ const $toNum53 = (x) => (x > 9007199254740991n || x < -9007199254740991n ? $over
 /** A number result that must be a safe integer (one that is not throws). */
 const $chk53 = (x) => (Number.isSafeInteger(x) ? x : $overflow());
 
+// `a ** e` of a safe integer `a` and a `number` `e >= 0`, exactly, by squaring (`Math.pow` need not be
+// exact): every product is checked, and a square is only taken when it is multiplied into the
+// result later, so it overflows only when the result does.
+const $pow53 = (a, e) => {
+  let r = 1;
+  let x = a;
+  while (e > 0) {
+    if (e % 2 === 1) {
+      r = $chk53(r * x);
+    }
+    e = Math.floor(e / 2);
+    if (e > 0) {
+      x = $chk53(x * x);
+    }
+  }
+  return r;
+};
+
 const $utf8Extract = (s, b, e) => {
   if (b >= e) {
     return "";
@@ -1772,7 +1790,7 @@ export const uint53__lean_nat_mul = (a, b) => $chk53(a * b);
  *  @param {number} a `uint53`
  *  @param {number} b `uint53`
  *  @returns {number} `uint53` */
-export const uint53__lean_nat_pow = (a, b) => $chk53(Math.pow(a, b));
+export const uint53__lean_nat_pow = (a, b) => $pow53(a, b);
 
 /** `Nat.pred`.
  *  @param {number} a `uint53`
@@ -1940,6 +1958,22 @@ export const int53__lean_int_mod = (a, b) => b === 0 ? a : a % b;
  *  @param {number} b `int53`
  *  @returns {number} `int53` */
 export const int53__lean_int_mul = (a, b) => $chk53(a * b);
+
+/** `Int.pow`.
+ *  @param {number} a `int53`
+ *  @param {number} b `uint53`
+ *  @returns {number} `int53` */
+export const int53__uint53__lean_int_pow = (a, b) => $pow53(a, b);
+
+/** `Int.pow`, of a `BigInt` exponent (only `-1`, `0` and `1` have a safe power of an exponent
+ *  of more than 53 bits).
+ *  @param {number} a `int53`
+ *  @param {bigint} b `bigint_nat`
+ *  @returns {number} `int53` */
+export const int53__bigint_nat__lean_int_pow = (a, b) =>
+  a === 0 || a === 1 || a === -1 || b <= 64n
+    ? $pow53(a, Number(b > 64n ? (b % 2n) + 2n : b))
+    : $overflow();
 
 /** `Int.neg`.
  *  @param {number} a `int53`

@@ -133,6 +133,7 @@ inductive IntBasicExtern : List MyTy → MyTy → Type where
   | lean_int_neg : IntBasicExtern [int] int -- Int.neg
   | lean_int_sub : IntBasicExtern [int, int] int -- Int.sub
   | lean_nat_abs : IntBasicExtern [int] nat -- Int.natAbs
+  | lean_int_pow : IntBasicExtern [int, nat] int -- Int.pow (not `@[extern]`: a recursion in Lean)
 
 -------------------------------
 -- Init/Data/Nat/Div/Basic.lean

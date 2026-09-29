@@ -90,6 +90,7 @@ def externTableList : List (Name × Name) :=
    (`Int.neg, `lean_int_neg),
    (`Int.sub, `lean_int_sub),
    (`Int.natAbs, `lean_nat_abs),
+   (`Int.pow, `lean_int_pow),
    (`Nat.divExact, `lean_nat_div_exact),
    (`Nat.xor, `lean_nat_lxor),
    (`Nat.shiftLeft, `lean_nat_shiftl),

@@ -266,6 +266,10 @@ def IntBasicExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty 
   | _, _, .lean_nat_abs, x1 =>
     let x1 : Int := x1
     (Int.natAbs x1 : Nat)
+  | _, _, .lean_int_pow, (x1, x2) =>
+    let x1 : Int := x1
+    let x2 : Nat := x2
+    (Int.pow x1 x2 : Int)
 
 /-- The value of an entry of `NatDivExtern` on the values of its arguments. -/
 def NatDivExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty ks)} → {τ : Ty ks} →

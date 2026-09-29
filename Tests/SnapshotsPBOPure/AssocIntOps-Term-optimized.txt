@@ -16,16 +16,16 @@ val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)
 ret k1
 
 -- test4 : Int → Int
-val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  ret lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(x2, x2), x2), x2), 24)
+val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)
+  ret lean_int_mul(lean_int_pow(x2, 4), 24)
 ret k1
 
 -- test5 : Int → Int
-val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  ret lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(x2, x2), x2), x2), 24)
+val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)
+  ret lean_int_mul(lean_int_pow(x2, 4), 24)
 ret k1
 
 -- test6 : Int → Int
-val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  ret lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(x2, x2), x2), x2), x2), x2), x2), x2), 5040)
+val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)
+  ret lean_int_mul(lean_int_pow(x2, 8), 5040)
 ret k1

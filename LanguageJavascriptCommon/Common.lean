@@ -33,6 +33,9 @@ inductive BinOp where
   | lt | le | gt | ge
   | lsh | rsh | ursh
   | plus | minus | times | divide | mod
+  /-- `**`, exponentiation (right associative; its left operand may not be a unary
+  expression). -/
+  | exp
   | inOp | instanceOf
 deriving Repr, BEq, DecidableEq, Inhabited
 

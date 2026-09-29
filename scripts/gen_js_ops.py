@@ -421,6 +421,13 @@ def old_inline(name, arg_tys, res_ty):
         return bin2('*') if big else None
     if sym == 'lean_int_sub':
         return bin2('-') if big else None
+    if sym in ('lean_nat_pow', 'lean_int_pow'):
+        # `a ** b` (the exponent is a `Nat`, so it is never negative); a `number` exponent of a
+        # `BigInt` base is made a `BigInt` first
+        if not big:
+            return None
+        e = arg_tys[1]
+        return B('**', A(0), A(1) if is_big(leaf_of(e)) else ('call', 'BigInt', [A(1)]))
     if sym in ('lean_nat_dec_eq', 'lean_int_dec_eq', 'lean_string_dec_eq', 'lean_float_beq'):
         return bin2('===')
     if sym in ('lean_nat_dec_lt', 'lean_int_dec_lt', 'lean_float_decLt'):

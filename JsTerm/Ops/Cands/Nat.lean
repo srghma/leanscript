@@ -71,6 +71,10 @@ def «cands_lean_int_neg» : List Cand :=
 def «cands_lean_int_neg_succ_of_nat» : List Cand :=
   [⟨_, _, _, _, .imported .bigint_nat__bigint_int__lean_int_neg_succ_of_nat⟩, ⟨_, _, _, _, .imported .bigint_nat__int53__lean_int_neg_succ_of_nat⟩, ⟨_, _, _, _, .imported .uint53__bigint_int__lean_int_neg_succ_of_nat⟩, ⟨_, _, _, _, .imported .uint53__int53__lean_int_neg_succ_of_nat⟩]
 
+/-- The operations of `lean_int_pow`. -/
+def «cands_lean_int_pow» : List Cand :=
+  [⟨_, _, _, _, .inlined .bigint_int__bigint_nat__lean_int_pow⟩, ⟨_, _, _, _, .inlined .bigint_int__uint53__lean_int_pow⟩, ⟨_, _, _, _, .imported .int53__bigint_nat__lean_int_pow⟩, ⟨_, _, _, _, .imported .int53__uint53__lean_int_pow⟩]
+
 /-- The operations of `lean_int_sub`. -/
 def «cands_lean_int_sub» : List Cand :=
   [⟨_, _, _, _, .inlined .bigint_int__lean_int_sub⟩, ⟨_, _, _, _, .imported .int53__lean_int_sub⟩]
@@ -141,7 +145,7 @@ def «cands_lean_nat_mul» : List Cand :=
 
 /-- The operations of `lean_nat_pow`. -/
 def «cands_lean_nat_pow» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_nat_pow⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_pow⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_nat_pow⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_pow⟩]
 
 /-- The operations of `lean_nat_pred`. -/
 def «cands_lean_nat_pred» : List Cand :=
@@ -179,6 +183,7 @@ def candsNat? (name : String) : Option (List Cand) :=
   | "lean_int_mul" => some «cands_lean_int_mul»
   | "lean_int_neg" => some «cands_lean_int_neg»
   | "lean_int_neg_succ_of_nat" => some «cands_lean_int_neg_succ_of_nat»
+  | "lean_int_pow" => some «cands_lean_int_pow»
   | "lean_int_sub" => some «cands_lean_int_sub»
   | "lean_nat_abs" => some «cands_lean_nat_abs»
   | "lean_nat_add" => some «cands_lean_nat_add»

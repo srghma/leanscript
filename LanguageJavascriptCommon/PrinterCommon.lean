@@ -71,6 +71,7 @@ def binOpText : BinOp → String
   | .lt => "<" | .le => "<=" | .gt => ">" | .ge => ">="
   | .lsh => "<<" | .rsh => ">>" | .ursh => ">>>"
   | .plus => "+" | .minus => "-" | .times => "*" | .divide => "/" | .mod => "%"
+  | .exp => "**"
   | .inOp => "in" | .instanceOf => "instanceof"
 
 /-- Binary operator precedence, as prettier orders them; higher binds
@@ -87,6 +88,7 @@ def binOpPrec : BinOp → Nat
   | .lsh | .rsh | .ursh => 9
   | .plus | .minus => 10
   | .times | .divide | .mod => 11
+  | .exp => 12
 
 /-- `&&`, `||` and `??`, the operators of a logical expression. -/
 def isLogicalOp : BinOp → Bool
@@ -112,7 +114,7 @@ def isBitwiseOp : BinOp → Bool
 /-- Whether a child operator of the same precedence may be flattened into
 the operator chain of its parent. -/
 def shouldFlatten (parentOp childOp : BinOp) : Bool :=
-  binOpPrec parentOp == binOpPrec childOp
+  parentOp != .exp && binOpPrec parentOp == binOpPrec childOp
     && !(isEqualityOp parentOp && isEqualityOp childOp)
     && !((childOp == .mod && isMultiplicativeOp parentOp)
           || (parentOp == .mod && isMultiplicativeOp childOp))
@@ -139,7 +141,9 @@ def varKindText : VarKind → String
 
 /-- Whether a binary operand needs parentheses inside a binary parent. -/
 def binaryOperandParens (parentOp childOp : BinOp) (isLeft : Bool) : Bool :=
-  if isLogicalOp parentOp && isLogicalOp childOp then parentOp != childOp
+  -- `(a ** b) ** c` and `a ** (b ** c)`: the parentheses of a nested `**` are always kept
+  if parentOp == .exp && childOp == .exp then true
+  else if isLogicalOp parentOp && isLogicalOp childOp then parentOp != childOp
   else
     let pp := binOpPrec parentOp
     let cp := binOpPrec childOp

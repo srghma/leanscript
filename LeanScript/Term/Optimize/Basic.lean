@@ -68,8 +68,9 @@ call when that call is reached through `let`s, record case analyses, `if` arms a
 Then the chains of additions and multiplications (`Term.arithWalk`,
 `LeanScript.Term.Optimize.Arith`) of `Int`, `Nat` and the fixed-width integers: the literals
 of a chain are folded into one (dropped when it is the unit), the copies of an unknown in a sum
-are counted (`x + x + x` is `x * 3`) and the operands are combined from the left, the literal
-last (`1 + (2 + (x + (x + 3))) + 4` is `x * 2 + 10`).
+are counted (`x + x + x` is `x * 3`), so are three copies or more in a product of `Int`s or
+`Nat`s (`x * x * x` is `x ^ 3`), and the operands are combined from the left, the literal last
+(`1 + (2 + (x + (x + 3))) + 4` is `x * 2 + 10`).
 
 (`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
 `LeanScript.Term.Rewrite`, `Term.simp_star`.)

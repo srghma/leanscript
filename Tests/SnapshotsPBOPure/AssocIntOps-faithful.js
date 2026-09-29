@@ -27,18 +27,18 @@ export const test3 = (x) => x * 8n + 28n;
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test4 = (x) => x * x * x * x * 24n;
+export const test4 = (x) => x ** 4n * 24n;
 
 /**
  * `test5`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test5 = (x) => x * x * x * x * 24n;
+export const test5 = (x) => x ** 4n * 24n;
 
 /**
  * `test6`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test6 = (x) => x * x * x * x * x * x * x * x * 5040n;
+export const test6 = (x) => x ** 8n * 5040n;

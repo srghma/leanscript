@@ -120,6 +120,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bitvec8__lean_uint8_of_nat_mk : JsOpInlinable .pure .doesntThrow [(.terminal (.bitvec_small 8 (by decide) (by decide)))] (.terminal .uint8)
   /-- `a === b` (UInt8.decEq) -/
   | uint8__lean_uint8_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .bool)
+  /-- `a ** b` (Nat.pow) -/
+  | bigint_nat__lean_nat_pow : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a * b` (Nat.mul) -/
   | bigint_nat__lean_nat_mul : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a || b` (strictOr) -/
@@ -156,6 +158,10 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_int__lean_int_neg : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `a - b` (Int.sub) -/
   | bigint_int__lean_int_sub : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `a ** b` (Int.pow (not `@[extern]`: a recursion in Lean)) -/
+  | bigint_int__bigint_nat__lean_int_pow : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_nat)] (.terminal .bigint_int)
+  /-- `a ** BigInt(b)` (Int.pow (not `@[extern]`: a recursion in Lean)) -/
+  | bigint_int__uint53__lean_int_pow : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .uint53)] (.terminal .bigint_int)
   /-- `a ^ b` (Nat.xor) -/
   | bigint_nat__lean_nat_lxor : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a << b` (Nat.shiftLeft) -/

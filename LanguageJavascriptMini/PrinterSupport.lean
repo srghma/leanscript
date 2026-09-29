@@ -331,7 +331,7 @@ def needsParens (pos0 : Pos) (e : MiniExpr) : Bool :=
   | .unary uop _ =>
       (uop != .preIncr && uop != .preDecr &&
         match pos with
-        | .binOperand op true => op == .inOp || op == .instanceOf
+        | .binOperand op true => op == .inOp || op == .instanceOf || op == .exp
         | _ => false)
         || exprPrec e < pos.minPrec
   -- `(x) => ({ a: 1 })`: an object literal body needs parentheses

@@ -70,7 +70,8 @@ partial def shapeExpr : JsLitShape → MiniExpr
 /-- The binary operator of the syntax tree written `op`. -/
 def binOpOf? : String → Option BinOp
   | "+" => some .plus | "-" => some .minus | "*" => some .times | "/" => some .divide
-  | "%" => some .mod | "<" => some .lt | "<=" => some .le | ">" => some .gt | ">=" => some .ge
+  | "%" => some .mod | "**" => some .exp | "<" => some .lt | "<=" => some .le | ">" => some .gt
+  | ">=" => some .ge
   | "===" => some .strictEq | "!==" => some .strictNeq | "&" => some .bitAnd
   | "|" => some .bitOr | "^" => some .bitXor | "<<" => some .lsh | ">>" => some .rsh
   | ">>>" => some .ursh | "&&" => some .and | "||" => some .or

@@ -213,8 +213,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt64.ofBitVec -/
   | bigint_bitvec64__uint53__lean_uint64_of_nat_mk : JsOpImported .pure .mayThrow [(.terminal (.bigint_bitvec_big 64 (by decide)))] (.terminal .uint53)
   /-- Nat.pow -/
-  | bigint_nat__lean_nat_pow : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
-  /-- Nat.pow -/
   | uint53__lean_nat_pow : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Nat.mul -/
   | uint53__lean_nat_mul : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
@@ -256,6 +254,10 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | int53__bigint_nat__lean_nat_abs : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .bigint_nat)
   /-- Int.natAbs -/
   | int53__uint53__lean_nat_abs : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .uint53)
+  /-- Int.pow (not `@[extern]`: a recursion in Lean) -/
+  | int53__bigint_nat__lean_int_pow : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .bigint_nat)] (.terminal .int53)
+  /-- Int.pow (not `@[extern]`: a recursion in Lean) -/
+  | int53__uint53__lean_int_pow : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .uint53)] (.terminal .int53)
   /-- Nat.divExact (decides `y ∣ x`) -/
   | bigint_nat__lean_nat_div_exact : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- Nat.divExact (decides `y ∣ x`) -/
