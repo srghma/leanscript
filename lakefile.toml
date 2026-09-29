@@ -87,3 +87,9 @@ globs = ["RuntimeSpec.+"]
 [[lean_lib]]
 name = "RefactorSpec"
 globs = ["RefactorSpec.+"]
+
+# Proofs about the generated lookup of the operations (`JsTerm/Ops/`): no extern has two
+# candidates at one signature.
+[[lean_lib]]
+name = "OpsSpec"
+globs = ["OpsSpec.+"]

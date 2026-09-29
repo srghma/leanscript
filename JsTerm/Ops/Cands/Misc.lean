@@ -21,47 +21,47 @@ namespace JsOp
 
 /-- The operations of `lean_array_fset`. -/
 def «cands_lean_array_fset» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fset_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_fset_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fset_immutable l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_fset_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_fswap`. -/
 def «cands_lean_array_fswap» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fswap_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_fswap_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_fswap_immutable l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_fswap_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_get`. -/
 def «cands_lean_array_get» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_get l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_get l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_get l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_get l)⟩] | none => [])
 
 /-- The operations of `lean_array_get_borrowed`. -/
 def «cands_lean_array_get_borrowed» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_get l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_get l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_get l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_get l)⟩] | none => [])
 
 /-- The operations of `lean_array_get_size`. -/
 def «cands_lean_array_get_size» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .inlined (.bigint_nat__lean_array_get_size l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .inlined (.uint53__lean_array_get_size l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .inlined (.bigint_nat__lean_array_get_size l)⟩, ⟨_, _, _, _, .inlined (.uint53__lean_array_get_size l)⟩] | none => [])
 
 /-- The operations of `lean_array_mk`. -/
 def «cands_lean_array_mk» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.array__lean_array_mk α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .inlined (.typedArray__lean_array_mk t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .inlined (.array__lean_array_mk α)⟩] | .typed t => [⟨_, _, _, _, .inlined (.typedArray__lean_array_mk t)⟩]) | none => [])
 
 /-- The operations of `lean_array_pop`. -/
 def «cands_lean_array_pop» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.array__lean_array_pop_immutable α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__lean_array_pop_immutable t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .imported (.array__lean_array_pop_immutable α)⟩] | .typed t => [⟨_, _, _, _, .imported (.typedArray__lean_array_pop_immutable t)⟩]) | none => [])
 
 /-- The operations of `lean_array_push`. -/
 def «cands_lean_array_push» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.array__lean_array_push_immutable α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__lean_array_push_immutable t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .imported (.array__lean_array_push_immutable α)⟩] | .typed t => [⟨_, _, _, _, .imported (.typedArray__lean_array_push_immutable t)⟩]) | none => [])
 
 /-- The operations of `lean_array_set`. -/
 def «cands_lean_array_set» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_set_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_set_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_set_immutable l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_set_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_swap`. -/
 def «cands_lean_array_swap» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_swap_immutable l)⟩] | none => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.uint53__lean_array_swap_immutable l)⟩] | none => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_array_swap_immutable l)⟩, ⟨_, _, _, _, .imported (.uint53__lean_array_swap_immutable l)⟩] | none => [])
 
 /-- The operations of `lean_array_to_list`. -/
 def «cands_lean_array_to_list» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.array__lean_array_to_list α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__lean_array_to_list t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .inlined (.array__lean_array_to_list α)⟩] | .typed t => [⟨_, _, _, _, .imported (.typedArray__lean_array_to_list t)⟩]) | none => [])
 
 /-- The operations of `lean_bool_to_int16`. -/
 def «cands_lean_bool_to_int16» : List Cand :=
@@ -113,15 +113,15 @@ def «cands_lean_internal_is_stage0» : List Cand :=
 
 /-- The operations of `lean_mk_array`. -/
 def «cands_lean_mk_array» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.bigint_nat__lean_mk_array α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__bigint_nat__lean_mk_array t)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .imported (.uint53__lean_mk_array α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .imported (.typedArray__uint53__lean_mk_array t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .imported (.bigint_nat__lean_mk_array α)⟩, ⟨_, _, _, _, .imported (.uint53__lean_mk_array α)⟩] | .typed t => [⟨_, _, _, _, .imported (.typedArray__bigint_nat__lean_mk_array t)⟩, ⟨_, _, _, _, .imported (.typedArray__uint53__lean_mk_array t)⟩]) | none => [])
 
 /-- The operations of `lean_mk_empty_array_with_capacity__Array_emptyWithCapacity`. -/
 def «cands_lean_mk_empty_array_with_capacity__Array_emptyWithCapacity» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .inlined (.typedArray__bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity t)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .inlined (.typedArray__uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .inlined (.bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity α)⟩, ⟨_, _, _, _, .inlined (.uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity α)⟩] | .typed t => [⟨_, _, _, _, .inlined (.typedArray__bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity t)⟩, ⟨_, _, _, _, .inlined (.typedArray__uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity t)⟩]) | none => [])
 
 /-- The operations of `lean_mk_empty_array_with_capacity__Array_mkEmpty`. -/
 def «cands_lean_mk_empty_array_with_capacity__Array_mkEmpty» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.bigint_nat__lean_mk_empty_array_with_capacity__Array_mkEmpty α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .inlined (.typedArray__bigint_nat__lean_mk_empty_array_with_capacity__Array_mkEmpty t)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .inlined (.uint53__lean_mk_empty_array_with_capacity__Array_mkEmpty α)⟩] | _ => []) ++ (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .inlined (.typedArray__uint53__lean_mk_empty_array_with_capacity__Array_mkEmpty t)⟩] | _ => [])
+  (match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => (match l with | .generic α => [⟨_, _, _, _, .inlined (.bigint_nat__lean_mk_empty_array_with_capacity__Array_mkEmpty α)⟩, ⟨_, _, _, _, .inlined (.uint53__lean_mk_empty_array_with_capacity__Array_mkEmpty α)⟩] | .typed t => [⟨_, _, _, _, .inlined (.typedArray__bigint_nat__lean_mk_empty_array_with_capacity__Array_mkEmpty t)⟩, ⟨_, _, _, _, .inlined (.typedArray__uint53__lean_mk_empty_array_with_capacity__Array_mkEmpty t)⟩]) | none => [])
 
 /-- The operations of `lean_mk_thunk`. -/
 def «cands_lean_mk_thunk» (σs : List JsTy) (τ : JsTy) : List Cand :=

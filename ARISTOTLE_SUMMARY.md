@@ -1,3 +1,23 @@
+# Summary of changes for run 34eda188-bea5-45e0-bcb9-4cbe3537257f
+**Why `Cand` exists:** each extern has one operation for every way its configurable Lean types (`Nat`, `Int`, `UInt64`, `Int64`, wide `BitVec`) can be represented in JavaScript, as a `BigInt` or as a `number`. For example, `lean_nat_div` has `bigint_nat__lean_nat_div : [bigint_nat, bigint_nat] → bigint_nat` and `uint53__lean_nat_div : [uint53, uint53] → uint53`. Array externs also have a generic and a typed-array version. `JsOp e t σs τ` is indexed by its signature, so these operations all have different types. The only way to put them in one list is to pack each with its signature, which is what `Cand` does. `firstOf` then compares signatures to pick the one the call needs.
+
+**Were there duplicates?** No. I checked all 457 externs: 301 have one candidate, 127 have two and 11 have four (the other 18 are the array/thunk externs, whose candidates depend on the call's types). Within each extern the candidates' signatures are all different, and I proved this in Lean for every extern. So a call, whose types are fixed by the configuration, never has more than one candidate. The lookup already returned exactly one; the other list entries are the versions for other representations.
+
+**What I changed:**
+- **Proof that there is only one candidate.** New library `OpsSpec` (added to `lakefile.toml`, not a default target), file `OpsSpec/LookupUnique.lean`:
+  - `cands_sig_nodup`: for every extern name and types, the candidates have pairwise distinct signatures.
+  - `cands_unique`: two candidates of one extern with the same signature are the same candidate.
+  - `lookup_unique`: when `JsOp.lookup name σs τ` finds an operation, every candidate at `σs → τ` is that operation.
+  - These build with no `sorry` and use only the standard axioms `propext` and `Quot.sound`. The file takes about 2.5 minutes to build, which is why it isn't a default target.
+- **Generator (`scripts/gen_js_ops.py`):**
+  - It now stops with an error if an extern ever gets two operations at the same signature, and an alias pointing at an operation already listed is added only once. This way a real duplicate can't appear without notice.
+  - Polymorphic array candidates used to recompute `layoutOf? (σs ++ [τ])` once per candidate and join several one-element lists. They now compute it once, with a single match (`JsTerm/Ops/Cands/Misc.lean` regenerated).
+  - `JsTerm/Ops/Lookup.lean` now has a named `JsOp.cands name σs τ`, and `lookup` is `firstOf σs τ (cands name σs τ)`.
+  - Running the generator again changes nothing.
+- **`JsTerm/Ops/Op.lean`:** `Cand` now has a doc comment explaining the above, and there is a new `Cand.sig`, the signature of a candidate.
+
+**Checks:** `lake build JsTerm tests OpsSpec` succeeds, and `lake exe tests` passes 57/57. The lookup's behaviour is unchanged: since signatures are unique, the reordering of the array candidates can't change which one is picked. Everything is committed.
+
 # Summary of changes for run b0e523ce-d852-4b35-9565-27a3bace3fbd
 `leanscript` no longer writes `FILE-JsTerm-pbo.txt` or `FILE-JsTerm-faithful.txt`, and I deleted the 280 existing copies from `Tests/SnapshotsMy` and `Tests/SnapshotsPBOPure`. There are none left in the project.
 

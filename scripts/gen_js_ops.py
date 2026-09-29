@@ -914,20 +914,48 @@ they never throw.  The families, their names and their effects are explained in
     write_lookup(ops)
 
 def cand(o):
-    """The candidate expression of an operation, in the lookup."""
+    """The candidate expression of a monomorphic operation, in the lookup."""
     wrap = 'imported' if o['impl'][0] == 'import' else 'inlined'
-    n = o['name']
-    if o['poly'] is None:
-        return f'⟨_, _, _, _, .{wrap} .{n}⟩'
-    if o['poly'] == 'layout':
-        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => [⟨_, _, _, _, .{wrap} (.{n} l)⟩] | none => [])'
-    if o['poly'] == 'elem':
-        return f'[⟨_, _, _, _, .{wrap} (.{n} (elemOf? (σs ++ [τ])))⟩]'
-    if o['poly'] == 'generic':
-        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .generic α⟩ => [⟨_, _, _, _, .{wrap} (.{n} α)⟩] | _ => [])'
-    if o['poly'] == 'typed':
-        return f'(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, .typed t⟩ => [⟨_, _, _, _, .{wrap} (.{n} t)⟩] | _ => [])'
-    raise ValueError(o)
+    return f'⟨_, _, _, _, .{wrap} .{o["name"]}⟩'
+
+def poly_cands(os_):
+    """The candidates of the polymorphic operations of an extern, as one expression over `σs`
+    and `τ`: the layout of the array among the types is found once (`layoutOf?`), and each
+    operation is instantiated from it (or from the delayed type, `elemOf?`)."""
+    def item(o, arg):
+        wrap = 'imported' if o['impl'][0] == 'import' else 'inlined'
+        return f'⟨_, _, _, _, .{wrap} (.{o["name"]} {arg})⟩'
+    by = {k: [o for o in os_ if o['poly'] == k] for k in ('layout', 'generic', 'typed', 'elem')}
+    unknown = [o for o in os_ if o['poly'] not in by]
+    if unknown:
+        raise ValueError(unknown)
+    parts = []
+    if by['elem']:
+        parts.append('[' + ', '.join(item(o, '(elemOf? (σs ++ [τ]))') for o in by['elem']) + ']')
+    if by['layout'] or by['generic'] or by['typed']:
+        inner = []
+        if by['layout']:
+            inner.append('[' + ', '.join(item(o, 'l') for o in by['layout']) + ']')
+        if by['generic'] or by['typed']:
+            g = '[' + ', '.join(item(o, 'α') for o in by['generic']) + ']'
+            t = '[' + ', '.join(item(o, 't') for o in by['typed']) + ']'
+            ga = 'α' if by['generic'] else '_'
+            ta = 't' if by['typed'] else '_'
+            inner.append(f'(match l with | .generic {ga} => {g} | .typed {ta} => {t})')
+        parts.append('(match layoutOf? (σs ++ [τ]) with | some ⟨_, _, l⟩ => '
+                     + ' ++ '.join(inner) + ' | none => [])')
+    return parts
+
+def check_unique_sigs(ext, targets):
+    """No two operations of an extern at the same signature: the lookup must find at most one
+    candidate for a call (`OpsSpec.LookupUnique` proves it of the generated modules)."""
+    seen = {}
+    for o in targets:
+        key = (repr(o['args']), repr(o['res']), o['params'], o['poly'])
+        if key in seen:
+            sys.exit(f'the extern {ext} has two operations at the same signature: '
+                     f'{seen[key]} and {o["name"]}')
+        seen[key] = o['name']
 
 # The groups of externs of the lookup, one module `JsTerm/Ops/Cands/<name>.lean` each, in the
 # order the lookup tries them (the groups are disjoint, so the order does not matter).
@@ -961,7 +989,9 @@ def write_lookup(ops):
     for o in ops:
         if o['extern']:
             target = byname[o['sameAs']] if o['sameAs'] else o
-            by_ext.setdefault(o['extern'], []).append(target)
+            # an alias is the operation it names: list it once
+            if target not in by_ext.setdefault(o['extern'], []):
+                by_ext[o['extern']].append(target)
     names = sorted(by_ext)
     group_sig = {}
     for group, what, which in CAND_GROUPS:
@@ -969,9 +999,9 @@ def write_lookup(ops):
         mine = [ext for ext in names if cand_group(ext) == group]
         uses_sig = {}
         for ext in mine:
-            items = [cand(o) for o in by_ext[ext]]
-            mono = [x for x in items if x.startswith('⟨')]
-            rest = [x for x in items if not x.startswith('⟨')]
+            check_unique_sigs(ext, by_ext[ext])
+            mono = [cand(o) for o in by_ext[ext] if o['poly'] is None]
+            rest = poly_cands([o for o in by_ext[ext] if o['poly'] is not None])
             uses_sig[ext] = bool(rest)
             expr = ' ++ '.join((['[' + ', '.join(mono) + ']'] if mono else []) + rest)
             s += f'/-- The operations of `{ext}`. -/\n'
@@ -995,11 +1025,17 @@ def write_lookup(ops):
             f'''The candidates (`JsOp.Cand`) of every extern of {what} ({which}): its
 operations at their signatures, for the lookup (`JsOp.lookup`, `JsTerm.Ops.Lookup`).
 ''', s, ('MoreJs', 'JsOp')))
-    s = '/-- The operation of the extern `name` at the signature `σs → τ`, if there is one. -/\n'
+    s = ('/-- The candidates of the extern `name` (none if it is not an extern of the catalogue): its\n'
+         '    operations, one per representation of its configurable types, at most one of them at\n'
+         '    any signature (`OpsSpec.LookupUnique`). -/\n')
+    s += 'def cands (name : String) (σs : List JsTy) (τ : JsTy) : List Cand :=\n'
+    s += '  (' + ' <|>\n    '.join(f'cands{g}? name' + (' σs τ' if group_sig[g] else '')
+                                  for g, _, _ in CAND_GROUPS)
+    s += ').getD []\n\n'
+    s += ('/-- The operation of the extern `name` at the signature `σs → τ`, if there is one: the\n'
+          '    candidate at this signature (there is at most one, `OpsSpec.LookupUnique`). -/\n')
     s += 'def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsSomeOp σs τ) :=\n'
-    s += '  firstOf σs τ ((' + ' <|>\n      '.join(f'cands{g}? name' + (' σs τ' if group_sig[g] else '')
-                                        for g, _, _ in CAND_GROUPS)
-    s += ').getD [])\n'
+    s += '  firstOf σs τ (cands name σs τ)\n'
     write_ops_file('Lookup.lean', lean_file(
         [f'JsTerm.Ops.Cands.{g}' for g, _, _ in CAND_GROUPS],
         'Finding the operation of an extern call',

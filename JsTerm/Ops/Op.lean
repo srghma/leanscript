@@ -36,10 +36,25 @@ def name {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} : JsOp
   | .imported op => op.name
   | .inlined op => op.name
 
-/-- A candidate: an operation at some signature. -/
+/-- A candidate: an operation at some signature.
+
+    The candidates of one extern are its operations for every choice of representation of the
+    configurable Lean types of its signature (`Nat`, `Int`, `UInt64`, `Int64`, the wide
+    `BitVec`s: a `BigInt` or a `number`): `lean_nat_div` has `bigint_nat__lean_nat_div` at
+    `[bigint_nat, bigint_nat] → bigint_nat` and `uint53__lean_nat_div` at
+    `[uint53, uint53] → uint53`.  An operation's type `JsOp e t σs τ` is indexed by its
+    signature and its effects, so operations of different signatures have different types:
+    to keep them in one list, each is packed with its indices (a dependent pair).  They are
+    not duplicates: no two candidates of an extern have the same signature
+    (`OpsSpec.LookupUnique`), so a call, whose types are fixed by the configuration, has at most
+    one candidate, which `firstOf` finds by comparing signatures. -/
 abbrev Cand : Type := Σ (σs : List JsTy) (τ : JsTy) (e : Effectfulness) (t : MayThrow), JsOp e t σs τ
 
-/-- The first candidate that has the signature `σs → τ`. -/
+/-- The signature of a candidate: its argument types and its result type. -/
+def Cand.sig (c : Cand) : List JsTy × JsTy := (c.1, c.2.1)
+
+/-- The candidate that has the signature `σs → τ` (the first one, but there is at most one:
+    `OpsSpec.LookupUnique`). -/
 def firstOf (σs : List JsTy) (τ : JsTy) : List Cand → Option (JsSomeOp σs τ)
   | [] => none
   | ⟨σs', τ', e, t, op⟩ :: rest =>

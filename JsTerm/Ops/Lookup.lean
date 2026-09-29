@@ -27,14 +27,21 @@ namespace MoreJs
 
 namespace JsOp
 
-/-- The operation of the extern `name` at the signature `σs → τ`, if there is one. -/
+/-- The candidates of the extern `name` (none if it is not an extern of the catalogue): its
+    operations, one per representation of its configurable types, at most one of them at
+    any signature (`OpsSpec.LookupUnique`). -/
+def cands (name : String) (σs : List JsTy) (τ : JsTy) : List Cand :=
+  (candsNat? name <|>
+    candsUInt? name <|>
+    candsSInt? name <|>
+    candsFloat? name <|>
+    candsString? name <|>
+    candsMisc? name σs τ).getD []
+
+/-- The operation of the extern `name` at the signature `σs → τ`, if there is one: the
+    candidate at this signature (there is at most one, `OpsSpec.LookupUnique`). -/
 def lookup (name : String) (σs : List JsTy) (τ : JsTy) : Option (JsSomeOp σs τ) :=
-  firstOf σs τ ((candsNat? name <|>
-      candsUInt? name <|>
-      candsSInt? name <|>
-      candsFloat? name <|>
-      candsString? name <|>
-      candsMisc? name σs τ).getD [])
+  firstOf σs τ (cands name σs τ)
 
 end JsOp
 
