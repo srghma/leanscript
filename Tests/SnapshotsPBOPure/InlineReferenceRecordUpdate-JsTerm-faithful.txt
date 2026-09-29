@@ -2,10 +2,7 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 const $k1 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = { _1: 1n, _2: 2n, _3: 3n };
-const $k2 : () => { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = () => {
-  return $k1;
-};
-const $k3 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = { _1: 42n, _2: 2n, _3: 3n };
+const $k2 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = { _1: 42n, _2: 2n, _3: 3n };
 
 // test1
 export const test1 = (fn : () => { _1: int(bigint), _2: int(bigint), _3: int(bigint) }) : int(bigint) => {
@@ -15,12 +12,12 @@ export const test1 = (fn : () => { _1: int(bigint), _2: int(bigint), _3: int(big
 
 // fn_prime
 export const fn_prime = () : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } => {
-  return $k2();
+  return $k1;
 };
 
 // extern1
 export const extern1 = () : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } => {
-  return $k3;
+  return $k2;
 };
 
 // test2

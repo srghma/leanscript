@@ -3,8 +3,7 @@
 // not translated:
 //   test2: LeanScript: the call List.map (fun xs => List.map (fun x => x + k) xs) xss is not a call of an extern: `List.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-const $k1 = { tag: 1, _1: 0n };
-const $k2 = (x$1) => {
+const $k1 = (x$1) => {
   const x$2 = x$1(1n);
   const x$3 = x$1(2n);
   const x$4 = x$1(3n);
@@ -18,16 +17,9 @@ const $k2 = (x$1) => {
  * @returns {nat(bigint)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = $k1;
+  let acc$1 = 0n;
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      const { _1: f$4 } = a$3;
-      acc$1 = { tag: 1, _1: f$4 + $k2((x$5) => x$5 + k) };
-    }
+    acc$1 = acc$1 + $k1((x$3) => x$3 + k);
   }
-  const { _1: f$6 } = acc$1;
-  return f$6;
+  return acc$1;
 };

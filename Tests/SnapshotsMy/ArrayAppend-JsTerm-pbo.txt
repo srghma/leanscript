@@ -18,20 +18,10 @@ export const test4 = (b : Array<uint53(number)>) : Array<uint53(number)> => {
 
 // test5
 export const test5 = (n : uint53(number)) : Array<uint53(number)> => {
-  let acc = { tag: 1, _1: inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  let acc = inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0);
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: [...c0, c1, uint53__lean_nat_mul(c1, c1)] };
-      next;
-    }
+    m0 = [...m0, c0, uint53__lean_nat_mul(c0, c0)];
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };

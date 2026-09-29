@@ -34,26 +34,13 @@ export const test4 = (n : nat(bigint)) : { _1: Array<nat(bigint)>, _2: nat(bigin
 
 // test5
 export const test5 = (n : nat(bigint)) : nat(bigint) => {
-  let acc = { tag: 1, _1: { _1: bigint_nat__lean_mk_array(4n, c0), _2: 0n } };
+  let acc = bigint_nat__lean_mk_array(4n, c0);
+  let acc = 0n;
   for (i < 4n) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      const { _1: f, _2: f } = c0;
-      const x = bigint_nat__lean_array_get(0n, c1, c3);
-      m0 = { tag: 1, _1: { _1: bigint_nat__lean_array_set_immutable(c2, c4, inline:bigint_nat__lean_nat_add(c4, 1n)), _2: inline:bigint_nat__lean_nat_add(c1, c0) } };
-      next;
-    }
+    const x = bigint_nat__lean_array_get(0n, m1, c0);
+    m1 = bigint_nat__lean_array_set_immutable(m1, c1, inline:bigint_nat__lean_nat_add(c1, 1n));
+    m0 = inline:bigint_nat__lean_nat_add(m0, c0);
+    next;
   }
-  join x {
-    switch (m0.tag) {
-    case 0 { _1: f }:
-      jump 0 c0;
-    case 1 { _1: f }:
-      jump 0 c0;
-    }
-  }
-  const { _2: f } = c0;
-  return c0;
+  return m0;
 };

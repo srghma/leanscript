@@ -9,7 +9,6 @@
 import { bigint_nat__lean_array_get } from "../../runtime.js";
 
 const $tag0 = { tag: 0 };
-const $k2 = (x$1) => [{ tag: 1, _1: x$1 }, $tag0];
 
 /**
  * `test5`
@@ -25,20 +24,20 @@ export const test5 = (n) => [{ tag: 1, _1: n }, $tag0];
  * @returns {nat(bigint)}
  */
 export const test6 = (n, i) => {
-  const x$1 = $k2(n);
-  let x$2;
-  if (i < BigInt(x$1.length)) {
-    x$2 = { tag: 1, _1: bigint_nat__lean_array_get($tag0, $k2(n), i) };
-  } else {
-    x$2 = $tag0;
-  }
-  if (x$2.tag === 0) {
+  const x$1 =
+    i < BigInt([{ tag: 1, _1: n }, $tag0].length)
+      ? {
+          tag: 1,
+          _1: bigint_nat__lean_array_get($tag0, [{ tag: 1, _1: n }, $tag0], i),
+        }
+      : $tag0;
+  if (x$1.tag === 0) {
     return 2n;
   }
-  const { _1: f$3 } = x$2;
-  if (f$3.tag === 0) {
+  const { _1: f$2 } = x$1;
+  if (f$2.tag === 0) {
     return 1n;
   }
-  const { _1: f$4 } = f$3;
-  return f$4;
+  const { _1: f$3 } = f$2;
+  return f$3;
 };

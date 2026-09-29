@@ -1,3 +1,34 @@
+# Summary of changes for run 9fac2b3b-5bb8-4b18-9826-4c32388c445a
+I improved `Term.optimize` and the Term → JsTerm conversion so the generated JavaScript is smaller and the loops are simpler. The optimizer change is proved correct. The JavaScript changes are only checked by tests: `JsTerm` has no formal semantics, so there is nothing to prove them against.
+
+**Term optimizer (proved).** `Term.reuseRecord` in `LeanScript/Term/Optimize/FieldsWalk.lean` used to drop a repeated record case analysis only when that left the level of its body unchanged. When dropping it would change the level, it now keeps the case analysis but renames its fields to the ones already known. The helpers for this, `FieldVars.toRenKeep` and `FieldVars.Holds.agreeKeep`, are in `Fields.lean`. This stops a record from being taken apart twice under different names. I updated the proofs that the optimizer leaves `Term.eval` unchanged and never adds calls. They build without `sorry`, and `#print axioms LeanScript.Term.optimize_eval` shows only `propext`, `Classical.choice` and `Quot.sound`.
+
+**New JsTerm passes (tested, not proved).** There are three new files, `JsTerm/Passes/Unbox.lean`, `Contify.lean` and `Tco.lean`. A driver, `tidy`, repeats them until the output stops changing (at most 6 rounds); `termToJs` calls it before `inPlace`. They:
+- keep accumulators of a one-constructor union unboxed;
+- replace a record accumulator with one mutable variable per field;
+- merge a join point that is jumped to only once into its caller;
+- turn a local closure that is only called in tail position into a join point;
+- move assignments up and inline literals;
+- beta-reduce a returned closure that is applied straight away;
+- merge mutable variables that only copy each other, and drop constants nothing uses;
+- turn the closure chains a tail-recursive function builds as a loop accumulator (`acc = (x) => a(f(x))`) into a loop over its parameters (`x = f(x)`), including a version with early return.
+
+**Smaller changes.** The printer now leaves out the loop counter in a last iteration that doesn't use it. `Cleanup.lean` now spots a rebuilt union even when it is nested inside other statements. There is a new snapshot, `Tests/SnapshotsMy/LoopState.lean`, with small loop examples.
+
+**Results.** On the `-pbo.js`/`-faithful.js` snapshots, not counting comments, blank lines or the new snapshot:
+
+| | before | after |
+| :-- | --: | --: |
+| lines | 4229 | 4073 |
+| bytes | 135942 | 130955 |
+| record destructurings | 200 | 138 |
+| `.tag` reads | 50 | 26 |
+| `const`s | 1791 | 1667 |
+
+All snapshots were regenerated and all 3860 snapshot checks pass. The snapshot script still exits with status 1, because of panics that were already expected: "literal too big" in the `PrimOpInt0*Configurable` tests and `mypanic` in `CasePartial`. `lake build JsTerm leanscript tests LeanScriptCli TermTests TyTests RuntimeSpec` succeeds, and `lake exe tests` passes 57/57.
+
+I added a section on the new passes to `README.md` and updated the Properties table. All work is committed.
+
 # Summary of changes for run c23dc253-fc6e-49fb-952d-599dcf6008dd
 I improved both `Term.optimize` and the Term → JsTerm → JavaScript conversion. The generated JavaScript is now shorter, and all 3824 snapshot checks still pass.
 

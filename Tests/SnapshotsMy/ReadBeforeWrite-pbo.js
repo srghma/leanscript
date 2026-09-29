@@ -73,27 +73,16 @@ export const test4 = (n) => {
  * @returns {uint53(number)}
  */
 export const test5 = (n) => {
-  let acc$1 = { tag: 1, _1: { _1: uint53__lean_mk_array(4, n), _2: 0 } };
-  for (let i$2 = 0; i$2 < 4; i$2++) {
-    if (acc$1.tag !== 0) {
-      const { _1: f$3 } = acc$1;
-      const { _1: f$4, _2: f$5 } = f$3;
-      const x$6 = uint53__lean_array_get(0, f$4, i$2);
-      acc$1 = {
-        tag: 1,
-        _1: {
-          _1: uint53__lean_array_set_immutable(
-            f$4,
-            i$2,
-            uint53__lean_nat_add(i$2, 1),
-          ),
-          _2: uint53__lean_nat_add(f$5, x$6),
-        },
-      };
-    }
+  let acc$1 = uint53__lean_mk_array(4, n);
+  let acc$2 = 0;
+  for (let i$3 = 0; i$3 < 4; i$3++) {
+    const x$4 = uint53__lean_array_get(0, acc$1, i$3);
+    acc$1 = uint53__lean_array_set_immutable(
+      acc$1,
+      i$3,
+      uint53__lean_nat_add(i$3, 1),
+    );
+    acc$2 = uint53__lean_nat_add(acc$2, x$4);
   }
-  const { _1: f$8 } = acc$1;
-  const x$7 = f$8;
-  const { _2: f$9 } = x$7;
-  return f$9;
+  return acc$2;
 };

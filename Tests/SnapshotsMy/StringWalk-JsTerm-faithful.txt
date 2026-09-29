@@ -12,26 +12,13 @@ import { bigint_nat__lean_string_utf8_byte_size } from "runtime.js";
 
 // test3
 export const test3 = (s : string, n : nat(bigint)) : nat(bigint) => {
-  let acc = { tag: 1, _1: { _1: c1, _2: 0n } };
+  let acc = c1;
+  let acc = 0n;
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      const { _1: f, _2: f } = c0;
-      const x = inline:bigint_nat__lean_nat_add(c0, bigint_nat__lean_string_utf8_byte_size(c1));
-      m0 = { tag: 1, _1: { _1: inline:string__lean_string_push(c2, "x"), _2: c0 } };
-      next;
-    }
+    const x = inline:bigint_nat__lean_nat_add(m0, bigint_nat__lean_string_utf8_byte_size(m1));
+    m1 = inline:string__lean_string_push(m1, "x");
+    m0 = c0;
+    next;
   }
-  join x {
-    switch (m0.tag) {
-    case 0 { _1: f }:
-      jump 0 c0;
-    case 1 { _1: f }:
-      jump 0 c0;
-    }
-  }
-  const { _2: f } = c0;
-  return c0;
+  return m0;
 };

@@ -26,18 +26,15 @@ const $k2 : ((nat(bigint)) => nat(bigint), nat(bigint)) => nat(bigint) = (x, x) 
 
 // ack2
 export const ack2 = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
-  join f {
-    let acc = $k1;
-    for (i < c1) {
-      const a = m0;
-      m0 = (y) => {
-        return $k2(c1, c0);
-      };
-      next;
-    }
-    jump 0 m0;
+  let acc = $k1;
+  for (i < c1) {
+    const a = m0;
+    m0 = (y) => {
+      return $k2(c1, c0);
+    };
+    next;
   }
-  return c0(c1);
+  return m0(c0);
 };
 
 // AckWithoutStackButUsingCantorPairing.pair

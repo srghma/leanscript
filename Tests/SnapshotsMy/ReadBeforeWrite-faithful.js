@@ -67,23 +67,12 @@ export const test4 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test5 = (n) => {
-  let acc$1 = { tag: 1, _1: { _1: bigint_nat__lean_mk_array(4n, n), _2: 0n } };
-  for (let i$2 = 0n; i$2 < 4n; i$2++) {
-    if (acc$1.tag !== 0) {
-      const { _1: f$3 } = acc$1;
-      const { _1: f$4, _2: f$5 } = f$3;
-      const x$6 = bigint_nat__lean_array_get(0n, f$4, i$2);
-      acc$1 = {
-        tag: 1,
-        _1: {
-          _1: bigint_nat__lean_array_set_immutable(f$4, i$2, i$2 + 1n),
-          _2: f$5 + x$6,
-        },
-      };
-    }
+  let acc$1 = bigint_nat__lean_mk_array(4n, n);
+  let acc$2 = 0n;
+  for (let i$3 = 0n; i$3 < 4n; i$3++) {
+    const x$4 = bigint_nat__lean_array_get(0n, acc$1, i$3);
+    acc$1 = bigint_nat__lean_array_set_immutable(acc$1, i$3, i$3 + 1n);
+    acc$2 = acc$2 + x$4;
   }
-  const { _1: f$8 } = acc$1;
-  const x$7 = f$8;
-  const { _2: f$9 } = x$7;
-  return f$9;
+  return acc$2;
 };

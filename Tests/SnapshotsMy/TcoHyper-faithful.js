@@ -4,31 +4,26 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-const $k1 = (x$1) => x$1;
-const $k2 = (x$1) => x$1 + 1n;
-const $k3 = (x$1, x$2, x$3) => {
-  let acc$4 = $k1;
-  for (let i$5 = 0n; i$5 < x$2; i$5++) {
-    const a$6 = acc$4;
-    acc$4 = (x$7) => a$6(x$1(x$7));
+const $k1 = (x$1) => x$1 + 1n;
+const $k2 = (x$1, x$2, x$3) => {
+  let x$4 = x$3;
+  for (let j$5 = 0n; j$5 < x$2; j$5++) {
+    x$4 = x$1(x$4);
   }
-  return acc$4(x$3);
+  return x$4;
 };
-const $k4 = (x$1, x$2) => {
+const $k3 = (x$1, x$2) => {
   let acc$3 = 1n;
   if (0n < x$1) {
     const i$4 = x$1 - 1n;
-    let acc$5 = x$2;
+    acc$3 = x$2;
     if (0n < i$4) {
-      const i$6 = i$4 - 1n;
-      let acc$7 = 0n;
-      if (0n < i$6) {
-        const i$8 = i$6 - 1n;
-        acc$7 = 1n;
+      const i$5 = i$4 - 1n;
+      acc$3 = 0n;
+      if (0n < i$5) {
+        acc$3 = 1n;
       }
-      acc$5 = acc$7;
     }
-    acc$3 = acc$5;
   }
   return acc$3;
 };
@@ -43,17 +38,14 @@ export const hyperBase = (a, a1) => {
   let acc$1 = 1n;
   if (0n < a) {
     const i$2 = a - 1n;
-    let acc$3 = a1;
+    acc$1 = a1;
     if (0n < i$2) {
-      const i$4 = i$2 - 1n;
-      let acc$5 = 0n;
-      if (0n < i$4) {
-        const i$6 = i$4 - 1n;
-        acc$5 = 1n;
+      const i$3 = i$2 - 1n;
+      acc$1 = 0n;
+      if (0n < i$3) {
+        acc$1 = 1n;
       }
-      acc$3 = acc$5;
     }
-    acc$1 = acc$3;
   }
   return acc$1;
 };
@@ -66,12 +58,11 @@ export const hyperBase = (a, a1) => {
  * @returns {nat(bigint)}
  */
 export const hyperLoop = (f, a, a1) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0n; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4) => a$3(f(x$4));
+  let x$1 = a1;
+  for (let j$2 = 0n; j$2 < a; j$2++) {
+    x$1 = f(x$1);
   }
-  return acc$1(a1);
+  return x$1;
 };
 
 /**
@@ -82,10 +73,10 @@ export const hyperLoop = (f, a, a1) => {
  * @returns {nat(bigint)}
  */
 export const hyperTCO = (a, a1, a2) => {
-  let acc$1 = $k2;
+  let acc$1 = $k1;
   for (let i$2 = 0n; i$2 < a; i$2++) {
     const a$3 = acc$1;
-    acc$1 = (x$4) => $k3(a$3, x$4, $k4(i$2 + 1n, a1));
+    acc$1 = (x$4) => $k2(a$3, x$4, $k3(i$2 + 1n, a1));
   }
   return acc$1(a2);
 };
@@ -98,19 +89,15 @@ export const hyperTCO = (a, a1, a2) => {
  * @returns {nat(bigint)}
  */
 export const hyperWhile = (a, a1, a2) => {
-  let acc$1 = $k2;
+  let acc$1 = $k1;
   for (let i$2 = 0n; i$2 < a; i$2++) {
     const a$3 = acc$1;
     acc$1 = (x$4) => {
-      let acc$5 = { tag: 1, _1: $k4(i$2 + 1n, a1) };
+      let acc$5 = $k3(i$2 + 1n, a1);
       for (let i$6 = 0n; i$6 < x$4; i$6++) {
-        if (acc$5.tag !== 0) {
-          const { _1: f$7 } = acc$5;
-          acc$5 = { tag: 1, _1: a$3(f$7) };
-        }
+        acc$5 = a$3(acc$5);
       }
-      const { _1: f$8 } = acc$5;
-      return f$8;
+      return acc$5;
     };
   }
   return acc$1(a2);

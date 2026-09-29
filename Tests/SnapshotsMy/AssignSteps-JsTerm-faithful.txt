@@ -17,43 +17,52 @@ const $k3 : (nat(bigint), nat(bigint)) => nat(bigint) = (x, x) => {
 
 // test1
 export const test1 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  let acc = $k1;
-  for (i < c2) {
-    const a = m0;
-    m0 = (x, x) => {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 0n)) {
-        return c1;
+  let r = undefined;
+  let done = false;
+  let x = c1;
+  let x = c0;
+  for (j < c2) {
+    if (m2) {
+      next;
+    } else {
+      const x = m1;
+      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(m0, 0n)) {
+        m3 = c0;
+        m2 = true;
+        next;
       } else {
-        return c2(c0, bigint_nat__lean_nat_mod__Nat_mod(c1, c0));
+        m1 = m0;
+        m0 = bigint_nat__lean_nat_mod__Nat_mod(c0, m0);
+        next;
       }
-    };
-    next;
+    }
   }
-  return m0(c1, c0);
+  return (m2 ? m3 : $k1(m1, m0));
 };
 
 // test2
 export const test2 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint), c : nat(bigint)) : nat(bigint) => {
-  let acc = $k2;
-  for (i < c3) {
-    const a = m0;
-    m0 = (x, x, x) => {
-      return c3(c1, c0, inline:bigint_nat__lean_nat_add(c2, 1n));
-    };
+  let x = c2;
+  let x = c1;
+  let x = c0;
+  for (j < c3) {
+    const x = m2;
+    m2 = m1;
+    m1 = m0;
+    m0 = inline:bigint_nat__lean_nat_add(c0, 1n);
     next;
   }
-  return m0(c2, c1, c0);
+  return $k2(m2, m1, m0);
 };
 
 // test4
 export const test4 = (fuel : nat(bigint), a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  let acc = $k3;
-  for (i < c2) {
-    const a = m0;
-    m0 = (x, x) => {
-      return c2(inline:bigint_nat__lean_nat_add(c1, 1n), inline:bigint_nat__lean_nat_add(c0, 2n));
-    };
+  let x = c1;
+  let x = c0;
+  for (j < c2) {
+    m1 = inline:bigint_nat__lean_nat_add(m1, 1n);
+    m0 = inline:bigint_nat__lean_nat_add(m0, 2n);
     next;
   }
-  return m0(c1, c0);
+  return $k3(m1, m0);
 };

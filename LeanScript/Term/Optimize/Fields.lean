@@ -224,6 +224,24 @@ theorem Holds.agree {ρ : UEnv Δ Γ} : {ts : List (Ty ks)} → (fv : FieldVars 
           simp only [FieldVars.toRen] at h
           rw [Holds.agree fv v.tail h₂ us x y h, UEnv.get_ofDL_cons_tail ρ d _ _ u us v x]
 
+/-- `toRen`, into the context that still binds the fields of the second case analysis (which
+    the renamed statement no longer reads): the case analysis is kept, its fields unused. -/
+def toRenKeep {ts : List (Ty ks)} (fv : FieldVars Γ d ts) (us : List Usage01ω) :
+    URen (UCtx.annot d ts us ++ Γ) (UCtx.annot d ts us ++ Γ) :=
+  fun x => (fv.toRen us x).map (UVar.weakenN _)
+
+/-- Renaming the fields of a second case analysis to the known ones, keeping the case analysis,
+    keeps the value. -/
+theorem Holds.agreeKeep {ρ : UEnv Δ Γ} {ts : List (Ty ks)} (fv : FieldVars Γ d ts)
+    (v : DenList (DSig.refDen Δ) ts) (h : fv.Holds ρ v) (us : List Usage01ω) :
+    URen.Agree (fv.toRenKeep us) (Tuple.append (UEnv.ofDL d ts us v) ρ)
+      (Tuple.append (UEnv.ofDL d ts us v) ρ) := by
+  intro _ _ x y hxy
+  simp only [toRenKeep, Option.map_eq_some_iff] at hxy
+  obtain ⟨z, hz, rfl⟩ := hxy
+  rw [UEnv.get_weakenN]
+  exact Holds.agree fv v h us x z hz
+
 end FieldVars
 
 /-! ## Facts: an unknown record and the unknowns holding its fields -/

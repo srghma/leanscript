@@ -5,8 +5,7 @@
 
 import { uint53__lean_nat_add } from "../../runtime.js";
 
-const $k1 = { tag: 1, _1: 0 };
-const $k2 = (x$1) => {
+const $k1 = (x$1) => {
   const x$2 = x$1(1);
   const x$3 = x$1(2);
   const x$4 = x$1(3);
@@ -20,22 +19,12 @@ const $k2 = (x$1) => {
  * @returns {uint53(number)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = $k1;
+  let acc$1 = 0;
   for (let i$2 = 0; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      const { _1: f$4 } = a$3;
-      acc$1 = {
-        tag: 1,
-        _1: uint53__lean_nat_add(
-          f$4,
-          $k2((x$5) => uint53__lean_nat_add(x$5, k)),
-        ),
-      };
-    }
+    acc$1 = uint53__lean_nat_add(
+      acc$1,
+      $k1((x$3) => uint53__lean_nat_add(x$3, k)),
+    );
   }
-  const { _1: f$6 } = acc$1;
-  return f$6;
+  return acc$1;
 };

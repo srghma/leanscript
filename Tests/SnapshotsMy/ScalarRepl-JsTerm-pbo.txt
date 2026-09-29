@@ -5,8 +5,7 @@
 
 import { uint53__lean_nat_sub, uint53__lean_nat_add } from "runtime.js";
 
-const $k1 : ({ tag: 0, _1: uint53(number) } | { tag: 1, _1: uint53(number) }) = { tag: 1, _1: 0 };
-const $k2 : ({ _1: uint53(number), _2: uint53(number) }) => uint53(number) = (x) => {
+const $k1 : ({ _1: uint53(number), _2: uint53(number) }) => uint53(number) = (x) => {
   const { _1: f, _2: f } = c0;
   if (inline:uint53__lean_nat_dec_lt(c1, c0)) {
     return uint53__lean_nat_sub(c0, c1);
@@ -14,7 +13,7 @@ const $k2 : ({ _1: uint53(number), _2: uint53(number) }) => uint53(number) = (x)
     return uint53__lean_nat_sub(c1, c0);
   }
 };
-const $k3 : ({ _1: uint53(number), _2: uint53(number) }) => { _1: uint53(number), _2: uint53(number) } = (x) => {
+const $k2 : ({ _1: uint53(number), _2: uint53(number) }) => { _1: uint53(number), _2: uint53(number) } = (x) => {
   const { _1: f, _2: f } = c0;
   if (inline:uint53__lean_nat_dec_lt(c1, c0)) {
     return c2;
@@ -22,7 +21,7 @@ const $k3 : ({ _1: uint53(number), _2: uint53(number) }) => { _1: uint53(number)
     return { _1: c0, _2: c1 };
   }
 };
-const $k4 : (({ tag: 0 } | { tag: 1, _1: { _1: uint53(number), _2: uint53(number) } })) => uint53(number) = (x) => {
+const $k3 : (({ tag: 0 } | { tag: 1, _1: { _1: uint53(number), _2: uint53(number) } })) => uint53(number) = (x) => {
   switch (c0.tag) {
   case 0 {  }:
     return 0;
@@ -34,73 +33,38 @@ const $k4 : (({ tag: 0 } | { tag: 1, _1: { _1: uint53(number), _2: uint53(number
 
 // test1
 export const test1 = (n : uint53(number)) : uint53(number) => {
-  let acc = $k1;
+  let acc = 0;
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: uint53__lean_nat_add(c0, c1) };
-      next;
-    }
+    m0 = uint53__lean_nat_add(m0, c0);
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };
 
 // test2
 export const test2 = (n : uint53(number)) : uint53(number) => {
-  let acc = $k1;
+  let acc = 0;
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      let acc = { tag: 1, _1: c0 };
-      for (i < c1) {
-        switch (m0.tag) {
-        case 0 {  }:
-          next;
-        case 1 { _1: f }:
-          m0 = { tag: 1, _1: uint53__lean_nat_add(c0, c1) };
-          next;
-        }
-      }
-      join x {
-        switch (m0.tag) {
-        case 0 { _1: f }:
-          jump 0 c0;
-        case 1 { _1: f }:
-          jump 0 c0;
-        }
-      }
-      m1 = { tag: 1, _1: c0 };
+    for (i < c0) {
+      m0 = uint53__lean_nat_add(m0, c0);
       next;
     }
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };
 
 // test3
 export const test3 = (a : uint53(number), b : uint53(number)) : uint53(number) => {
-  return uint53__lean_nat_add($k2({ _1: c1, _2: c0 }), $k2({ _1: c0, _2: uint53__lean_nat_add(c1, 1) }));
+  return uint53__lean_nat_add($k1({ _1: c1, _2: c0 }), $k1({ _1: c0, _2: uint53__lean_nat_add(c1, 1) }));
 };
 
 // test4
 export const test4 = (a : uint53(number), b : uint53(number)) : { _1: uint53(number), _2: uint53(number) } => {
-  return $k3({ _1: c1, _2: c0 });
+  return $k2({ _1: c1, _2: c0 });
 };
 
 // test5
 export const test5 = (a : uint53(number), b : uint53(number)) : uint53(number) => {
-  return uint53__lean_nat_add($k4({ tag: 1, _1: { _1: c1, _2: c0 } }), 0);
+  return uint53__lean_nat_add($k3({ tag: 1, _1: { _1: c1, _2: c0 } }), 0);
 };

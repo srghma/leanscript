@@ -12,21 +12,16 @@
 //   gcdT: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   stepsDown: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
-  return c0;
-};
+import { bigint_nat__lean_nat_sub } from "runtime.js";
 
 // sumAcc
 export const sumAcc = (a : nat(bigint), a1 : nat(bigint)) : nat(bigint) => {
-  let acc = $k1;
-  for (i < c1) {
-    const a = m0;
-    m0 = (x) => {
-      return c1(inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(c0, c2), 1n));
-    };
+  let x = c0;
+  for (j < c1) {
+    m0 = inline:bigint_nat__lean_nat_add(inline:bigint_nat__lean_nat_add(m0, bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(c2, 1n), c0)), 1n);
     next;
   }
-  return m0(c0);
+  return m0;
 };
 
 // factD

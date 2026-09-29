@@ -3,8 +3,7 @@
 // not translated:
 //   test2: LeanScript: the call List.map (fun xs => List.map (fun x => x + k) xs) xss is not a call of an extern: `List.map` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-const $k1 : ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) }) = { tag: 1, _1: 0n };
-const $k2 : ((nat(bigint)) => nat(bigint)) => nat(bigint) = (x) => {
+const $k1 : ((nat(bigint)) => nat(bigint)) => nat(bigint) = (x) => {
   const x = c0(1n);
   const x = c1(2n);
   const x = c2(3n);
@@ -13,24 +12,12 @@ const $k2 : ((nat(bigint)) => nat(bigint)) => nat(bigint) = (x) => {
 
 // test1
 export const test1 = (k : nat(bigint), n : nat(bigint)) : nat(bigint) => {
-  let acc = $k1;
+  let acc = 0n;
   for (i < c0) {
-    const a = m0;
-    switch (c0.tag) {
-    case 0 {  }:
-      m0 = c0;
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: inline:bigint_nat__lean_nat_add(c0, $k2((x) => {
-        return inline:bigint_nat__lean_nat_add(c0, c5);
-      })) };
-      next;
-    }
+    m0 = inline:bigint_nat__lean_nat_add(m0, $k1((x) => {
+      return inline:bigint_nat__lean_nat_add(c0, c3);
+    }));
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };

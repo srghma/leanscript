@@ -80,28 +80,35 @@ def JsSel.keepsAll {ts us : List JsTy} : JsSel ts us → Bool
   | .skip _ => false
 
 /-- Are the arguments the `n` fields a pattern keeping every field binds, in order (from the
-    `j`-th)? -/
-def JsArgs.areFields {C M σs : List JsTy} (n j : Nat) : JsArgs C M σs → Bool
+    `j`-th), seen under `d` more constants? -/
+def JsArgs.areFields {C M σs : List JsTy} (n j : Nat) (d : Nat := 0) : JsArgs C M σs → Bool
   | .nil => j == n
-  | .cons (.cvar x) as => x.index + 1 + j == n && as.areFields n (j + 1)
+  | .cons (.cvar x) as => x.index ≥ d && x.index - d + 1 + j == n && as.areFields n (j + 1) d
   | .cons _ _ => false
 
 /-- `e` is the constructor `i` of the fields `0 … n-1` (as a pattern keeping every field binds
-    them): the value `s` it takes apart, when it has the same type. -/
-def rebuiltAs {C M : List JsTy} {σ τ : JsTy} (s : JsExpr C M σ) (i n : Nat) (e : JsExpr C M τ) :
-    JsExpr C M τ :=
+    them, `d` constants further out): the value `s` it takes apart, when it has the same
+    type. -/
+def rebuiltAs {C M : List JsTy} {σ τ : JsTy} (s : JsExpr C M σ) (i n : Nat) (e : JsExpr C M τ)
+    (d : Nat := 0) : JsExpr C M τ :=
   let isRebuild : Bool := match e with
-    | .union_mk ix args => ix.index == i && args.areFields n 0
+    | .union_mk ix args => ix.index == i && args.areFields n 0 d
     | _ => false
   if isRebuild then (if h : σ = τ then h ▸ s else e) else e
 
-/-- `rebuiltAs` in the first statement of a block. -/
-def rebuildHead {C M J : List JsTy} {σ : JsTy} {k : JsEnd} (s : JsExpr C M σ) (i n : Nat) :
-    JsBlock C M J k → JsBlock C M J k
-  | .ret e => .ret (rebuiltAs s i n e)
-  | .jump j e => .jump j (rebuiltAs s i n e)
-  | .assign x e rest => .assign x (rebuiltAs s i n e) rest
-  | .const x e rest => .const x (rebuiltAs s i n e) rest
+/-- `rebuiltAs` in the statements of a block that run before `s` could change: through
+    constants and assignments of other variables, into both branches of an `if` (`d` constants
+    bound since the pattern). -/
+partial def rebuildHead {C M J : List JsTy} {σ : JsTy} {k : JsEnd} (s : JsExpr C M σ) (i n : Nat)
+    (d : Nat := 0) : JsBlock C M J k → JsBlock C M J k
+  | .ret e => .ret (rebuiltAs s i n e d)
+  | .jump j e => .jump j (rebuiltAs s i n e d)
+  | .assign x e rest =>
+    let rest := if s.mentions ⟨true, x.index⟩ then rest else rebuildHead s i n d rest
+    .assign x (rebuiltAs s i n e d) rest
+  | .const x e rest => .const x (rebuiltAs s i n e d) (rebuildHead s.wkC i n (d + 1) rest)
+  | .letMut x e rest => .letMut x e (rebuildHead s.wkM i n d rest)
+  | .ite c t e => .ite c (rebuildHead s i n d t) (rebuildHead s i n d e)
   | b => b
 
 /-- `rebuildHead` in each arm of a case analysis on `s` (the arms from the `i`-th). -/
@@ -110,7 +117,7 @@ def JsUnionArms.rebuild {C M J : List JsTy} {σ : JsTy} {k : JsEnd} (s : JsExpr 
   | _, .nil => .nil
   | _, .cons (us := us) sel b rest =>
     let b := if sel.keepsAll then
-      rebuildHead (Id.run (s.renameM (JsRen.skipAll us) JsRen.id)) i us.length b else b
+      rebuildHead (Id.run (s.renameM (JsRen.skipAll us) JsRen.id)) i us.length 0 b else b
     .cons sel b (rest.rebuild s (i + 1))
 
 /-- In a case analysis on a variable, an arm that starts by rebuilding the value it takes

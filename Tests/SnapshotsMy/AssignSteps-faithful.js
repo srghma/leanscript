@@ -17,17 +17,23 @@ const $k3 = (x$1, x$2) => x$1 + x$2;
  * @returns {nat(bigint)}
  */
 export const test1 = (fuel, a, b) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0n; i$2 < fuel; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4, x$5) => {
-      if (x$5 === 0n) {
-        return x$4;
+  let r$1 = undefined;
+  let done$2 = false;
+  let x$3 = a;
+  let x$4 = b;
+  for (let j$5 = 0n; j$5 < fuel; j$5++) {
+    if (!done$2) {
+      const x$6 = x$3;
+      if (x$4 === 0n) {
+        r$1 = x$6;
+        done$2 = true;
+      } else {
+        x$3 = x$4;
+        x$4 = bigint_nat__lean_nat_mod__Nat_mod(x$6, x$4);
       }
-      return a$3(x$5, bigint_nat__lean_nat_mod__Nat_mod(x$4, x$5));
-    };
+    }
   }
-  return acc$1(a, b);
+  return done$2 ? r$1 : $k1(x$3, x$4);
 };
 
 /**
@@ -39,12 +45,16 @@ export const test1 = (fuel, a, b) => {
  * @returns {nat(bigint)}
  */
 export const test2 = (fuel, a, b, c) => {
-  let acc$1 = $k2;
-  for (let i$2 = 0n; i$2 < fuel; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4, x$5, x$6) => a$3(x$5, x$6, x$4 + 1n);
+  let x$1 = a;
+  let x$2 = b;
+  let x$3 = c;
+  for (let j$4 = 0n; j$4 < fuel; j$4++) {
+    const x$5 = x$1;
+    x$1 = x$2;
+    x$2 = x$3;
+    x$3 = x$5 + 1n;
   }
-  return acc$1(a, b, c);
+  return $k2(x$1, x$2, x$3);
 };
 
 /**
@@ -55,10 +65,11 @@ export const test2 = (fuel, a, b, c) => {
  * @returns {nat(bigint)}
  */
 export const test4 = (fuel, a, b) => {
-  let acc$1 = $k3;
-  for (let i$2 = 0n; i$2 < fuel; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4, x$5) => a$3(x$4 + 1n, x$5 + 2n);
+  let x$1 = a;
+  let x$2 = b;
+  for (let j$3 = 0n; j$3 < fuel; j$3++) {
+    x$1 = x$1 + 1n;
+    x$2 = x$2 + 2n;
   }
-  return acc$1(a, b);
+  return $k3(x$1, x$2);
 };

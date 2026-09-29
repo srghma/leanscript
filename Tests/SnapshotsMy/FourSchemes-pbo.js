@@ -12,9 +12,11 @@
 //   gcdT: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   stepsDown: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-import { uint53__lean_nat_add, uint53__lean_nat_mul } from "../../runtime.js";
-
-const $k1 = (x$1) => x$1;
+import {
+  uint53__lean_nat_add,
+  uint53__lean_nat_sub,
+  uint53__lean_nat_mul,
+} from "../../runtime.js";
 
 /**
  * `sumAcc`
@@ -23,13 +25,17 @@ const $k1 = (x$1) => x$1;
  * @returns {uint53(number)}
  */
 export const sumAcc = (a, a1) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4) =>
-      a$3(uint53__lean_nat_add(uint53__lean_nat_add(x$4, i$2), 1));
+  let x$1 = a1;
+  for (let j$2 = 0; j$2 < a; j$2++) {
+    x$1 = uint53__lean_nat_add(
+      uint53__lean_nat_add(
+        x$1,
+        uint53__lean_nat_sub(uint53__lean_nat_sub(a, 1), j$2),
+      ),
+      1,
+    );
   }
-  return acc$1(a1);
+  return x$1;
 };
 
 /**

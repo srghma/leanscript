@@ -9,9 +9,6 @@
 import { bigint_nat__lean_array_get } from "runtime.js";
 
 const $tag0 : ({ tag: 0 } | { tag: 1, _1: nat(bigint) }) = { tag: 0 };
-const $k2 : (nat(bigint)) => Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })> = (x) => {
-  return [{ tag: 1, _1: c0 }, $tag0];
-};
 
 // test5
 export const test5 = (n : nat(bigint)) : Array<({ tag: 0 } | { tag: 1, _1: nat(bigint) })> => {
@@ -20,14 +17,7 @@ export const test5 = (n : nat(bigint)) : Array<({ tag: 0 } | { tag: 1, _1: nat(b
 
 // test6
 export const test6 = (n : nat(bigint), i : nat(bigint)) : nat(bigint) => {
-  const x = $k2(c1);
-  join x {
-    if (inline:bigint_nat__lean_nat_dec_lt(c1, inline:bigint_nat__lean_array_get_size(c0))) {
-      jump 0 { tag: 1, _1: bigint_nat__lean_array_get($tag0, $k2(c2), c1) };
-    } else {
-      jump 0 $tag0;
-    }
-  }
+  const x = (inline:bigint_nat__lean_nat_dec_lt(c0, inline:bigint_nat__lean_array_get_size([{ tag: 1, _1: c1 }, $tag0])) ? { tag: 1, _1: bigint_nat__lean_array_get($tag0, [{ tag: 1, _1: c1 }, $tag0], c0) } : $tag0);
   switch (c0.tag) {
   case 0 {  }:
     return 2n;

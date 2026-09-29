@@ -13,13 +13,6 @@ const $k1 : (enum4@0) => nat(bigint) = (x) => {
     return 3n;
   }
 };
-const $k2 : (enum4@0) => boolean = (x) => {
-  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(2n, $k1(c0));
-};
-const $k3 : (enum4@0, enum4@0) => boolean = (x, x) => {
-  const x = $k1(c1);
-  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, $k1(c1));
-};
 
 // instBEqTestEnum.beq
 export const instBEqTestEnum$beq = (x : enum4@0, y : enum4@0) : boolean => {
@@ -29,10 +22,11 @@ export const instBEqTestEnum$beq = (x : enum4@0, y : enum4@0) : boolean => {
 
 // test1
 export const test1 = (a : enum4@0) : boolean => {
-  return $k2(c0);
+  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(2n, $k1(c0));
 };
 
 // test2
 export const test2 = (a : enum4@0) : boolean => {
-  return $k3(c0, 2);
+  const x = $k1(c0);
+  return inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, $k1(2));
 };

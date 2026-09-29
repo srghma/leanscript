@@ -8,10 +8,6 @@
 
 import { uint53__lean_nat_sub } from "runtime.js";
 
-const $k1 : (uint53(number)) => uint53(number) = (x) => {
-  return c0;
-};
-
 // mc91
 export const mc91 = (n : uint53(number)) : uint53(number) => {
   if (inline:uint53__lean_nat_dec_lt(100, c0)) {
@@ -23,13 +19,10 @@ export const mc91 = (n : uint53(number)) : uint53(number) => {
 
 // iter
 export const iter = (f : (uint53(number)) => uint53(number), a : uint53(number), a1 : uint53(number)) : uint53(number) => {
-  let acc = $k1;
-  for (i < c1) {
-    const a = m0;
-    m0 = (x) => {
-      return c1(c5(c0));
-    };
+  let x = c0;
+  for (j < c1) {
+    m0 = c3(m0);
     next;
   }
-  return m0(c0);
+  return m0;
 };

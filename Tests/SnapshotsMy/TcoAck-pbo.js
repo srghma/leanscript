@@ -32,13 +32,12 @@ const $k2 = (x$1, x$2) => {
  * @returns {uint53(number)}
  */
 export const ack2 = (a, a1) => {
-  let acc$2 = $k1;
-  for (let i$3 = 0; i$3 < a; i$3++) {
-    const a$4 = acc$2;
-    acc$2 = (y$5) => $k2(a$4, y$5);
+  let acc$1 = $k1;
+  for (let i$2 = 0; i$2 < a; i$2++) {
+    const a$3 = acc$1;
+    acc$1 = (y$4) => $k2(a$3, y$4);
   }
-  const f$1 = acc$2;
-  return f$1(a1);
+  return acc$1(a1);
 };
 
 /**

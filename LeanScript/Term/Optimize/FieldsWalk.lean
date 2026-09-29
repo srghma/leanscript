@@ -337,7 +337,12 @@ def Term.reuseRecord {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : F
       match b.rename KRen.id (fv.toRen us) JRen.id with
       | some b' =>
           if ho : o' = some (Lvl.meetL ℓ o') then b'.castLvl ho
-          else .record_casesOn us (.var y) b
+          else
+            -- dropping the case analysis would change the level: keep it, but read the known
+            -- fields (its own are then unused, and left out by the later passes)
+            match b.rename KRen.id (fv.toRenKeep us) JRen.id with
+            | some b'' => .record_casesOn us (.var y) b''
+            | none => .record_casesOn us (.var y) b
       | none => .record_casesOn us (.var y) b
     | none => .record_casesOn us (.var y) b
   | n => .record_casesOn us n b
@@ -361,7 +366,13 @@ theorem Term.reuseRecord_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks
           exact Term.rename_eval (KRen.Agree.id _)
             (FieldVars.Holds.agree fv _ (RecFact.find?_holds facts h hfv) us) (JRen.Agree.id _)
             b hb
-        · rfl
+        · split
+          · rename_i b'' hb''
+            simp only [Term.eval]
+            exact Term.rename_eval (KRen.Agree.id _)
+              (FieldVars.Holds.agreeKeep fv _ (RecFact.find?_holds facts h hfv) us)
+              (JRen.Agree.id _) b hb''
+          · rfl
       · rfl
     · rfl
   · rfl
@@ -378,7 +389,10 @@ theorem Term.numCalls_reuseRecord {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : T
       · rename_i b' hb
         split
         · simp only [Term.numCalls_castLvl, Term.numCalls_rename b hb, Nat.le_refl]
-        · exact Nat.le_refl _
+        · split
+          · rename_i b'' hb''
+            simp only [Term.numCalls, Term.numCalls_rename b hb'', Nat.le_refl]
+          · exact Nat.le_refl _
       · exact Nat.le_refl _
     · exact Nat.le_refl _
   · exact Nat.le_refl _

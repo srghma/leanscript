@@ -3,61 +3,35 @@
 // not translated:
 //   test2: LeanScript: the call List.forIn'.loop xs (fun a x => (fun x __s => have a := __s; have a := a.set! (x % 8) (a[x % 8]! + 1); pure (ForInStep.yield a)) a) xs a ⋯ is not a call of an extern: `List.forIn'.loop` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { array__lean_array_push_immutable, uint53__lean_nat_mul, uint53__lean_array_set_immutable, uint53__lean_array_get, uint53__lean_mk_array, uint53__lean_nat_div, uint53__lean_array_swap_immutable, uint53__lean_nat_sub, array__lean_array_pop_immutable } from "runtime.js";
+import { array__lean_array_push_immutable, uint53__lean_nat_sub, array__lean_array_push_mutable, uint53__lean_nat_mul, uint53__lean_array_set_immutable, uint53__lean_array_get, uint53__lean_mk_array, uint53__lean_nat_div, uint53__lean_array_swap_mutable, array__lean_array_pop_mutable } from "runtime.js";
 
-const $k1 : (Array<uint53(number)>) => Array<uint53(number)> = (x) => {
-  return c0;
-};
-const $k2 : (uint53(number), Array<uint53(number)>) => Array<uint53(number)> = (x, x) => {
-  let acc = $k1;
-  for (i < c1) {
-    const a = m0;
-    m0 = (x) => {
-      return c1(array__lean_array_push_immutable(c0, c2));
-    };
+const $k1 : (uint53(number), Array<uint53(number)>) => Array<uint53(number)> = (x, x) => {
+  let x = c0;
+  for (j < c1) {
+    m0 = array__lean_array_push_immutable(m0, uint53__lean_nat_sub(uint53__lean_nat_sub(c2, 1), c0));
     next;
   }
-  return m0(c0);
+  return m0;
 };
 
 // test1
 export const test1 = (n : uint53(number)) : Array<uint53(number)> => {
-  let acc = { tag: 1, _1: inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  let acc = inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0);
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: array__lean_array_push_immutable(c0, uint53__lean_nat_mul(c1, c1)) };
-      next;
-    }
+    m0 = array__lean_array_push_mutable(m0, uint53__lean_nat_mul(c0, c0));
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };
 
 // test3
 export const test3 = (a0 : Array<uint53(number)>) : Array<uint53(number)> => {
-  let acc = { tag: 1, _1: c0 };
+  let acc = c0;
   for (i < inline:uint53__lean_array_get_size(c0)) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: uint53__lean_array_set_immutable(c0, c1, uint53__lean_nat_mul(2, uint53__lean_array_get(0, c0, c1))) };
-      next;
-    }
+    m0 = uint53__lean_array_set_immutable(m0, c0, uint53__lean_nat_mul(2, uint53__lean_array_get(0, m0, c0)));
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };
 
 // test4
@@ -68,46 +42,19 @@ export const test4 = (n : uint53(number)) : { _1: Array<uint53(number)>, _2: Arr
 
 // test5
 export const test5 = (n : uint53(number)) : Array<uint53(number)> => {
-  let acc = { tag: 1, _1: inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  let acc = inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0);
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: array__lean_array_push_immutable(c0, c1) };
-      next;
-    }
+    m0 = array__lean_array_push_mutable(m0, c0);
+    next;
   }
-  join x {
-    switch (m0.tag) {
-    case 0 { _1: f }:
-      jump 0 c0;
-    case 1 { _1: f }:
-      jump 0 c0;
-    }
+  for (i < uint53__lean_nat_div(c0, 2)) {
+    m0 = uint53__lean_array_swap_mutable(m0, c0, uint53__lean_nat_sub(uint53__lean_nat_sub(c1, c0), 1));
+    next;
   }
-  let acc = { tag: 1, _1: c0 };
-  for (i < uint53__lean_nat_div(c1, 2)) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: uint53__lean_array_swap_immutable(c0, c1, uint53__lean_nat_sub(uint53__lean_nat_sub(c3, c1), 1)) };
-      next;
-    }
-  }
-  join x {
-    switch (m0.tag) {
-    case 0 { _1: f }:
-      jump 0 c0;
-    case 1 { _1: f }:
-      jump 0 c0;
-    }
-  }
-  return array__lean_array_pop_immutable(c0);
+  return array__lean_array_pop_mutable(m0);
 };
 
 // test6
 export const test6 = (n : uint53(number)) : Array<uint53(number)> => {
-  return $k2(c0, inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0));
+  return $k1(c0, inline:uint53__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0));
 };

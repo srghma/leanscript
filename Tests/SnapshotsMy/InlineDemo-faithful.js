@@ -24,7 +24,7 @@ export const bar = () => 3n;
  * @returns {nat(bigint)}
  */
 export const useScale = (n) => {
-  const x$1 = $k1(n);
+  const x$1 = n * 2n;
   return x$1 + $k1(n + 1n);
 };
 
@@ -41,6 +41,6 @@ export const triple = (a) => a * 3n;
  * @returns {nat(bigint)}
  */
 export const useTriple = (n) => {
-  const x$1 = $k2(n);
+  const x$1 = n * 3n;
   return x$1 + $k2(n + 1n);
 };

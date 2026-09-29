@@ -7,36 +7,28 @@
 import { uint53__lean_nat_add } from "runtime.js";
 
 const $k1 : (uint53(number)) => uint53(number) = (x) => {
-  return c0;
-};
-const $k2 : (uint53(number)) => uint53(number) = (x) => {
   return uint53__lean_nat_add(c0, 1);
 };
-const $k3 : ((uint53(number)) => uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
-  let acc = $k1;
-  for (i < c1) {
-    const a = m0;
-    m0 = (x) => {
-      return c1(c5(c0));
-    };
+const $k2 : ((uint53(number)) => uint53(number), uint53(number), uint53(number)) => uint53(number) = (x, x, x) => {
+  let x = c0;
+  for (j < c1) {
+    m0 = c3(m0);
     next;
   }
-  return m0(c0);
+  return m0;
 };
-const $k4 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
+const $k3 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
   let acc = 1;
   last (i < c1) {
-    let acc = c1;
+    m0 = c1;
     last (i < c0) {
-      let acc = 0;
+      m0 = 0;
       last (i < c0) {
         m0 = 1;
         next;
       }
-      m1 = m0;
       next;
     }
-    m1 = m0;
     next;
   }
   return m0;
@@ -46,17 +38,15 @@ const $k4 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
 export const hyperBase = (a : uint53(number), a1 : uint53(number)) : uint53(number) => {
   let acc = 1;
   last (i < c1) {
-    let acc = c1;
+    m0 = c1;
     last (i < c0) {
-      let acc = 0;
+      m0 = 0;
       last (i < c0) {
         m0 = 1;
         next;
       }
-      m1 = m0;
       next;
     }
-    m1 = m0;
     next;
   }
   return m0;
@@ -64,24 +54,21 @@ export const hyperBase = (a : uint53(number), a1 : uint53(number)) : uint53(numb
 
 // hyperLoop
 export const hyperLoop = (f : (uint53(number)) => uint53(number), a : uint53(number), a1 : uint53(number)) : uint53(number) => {
-  let acc = $k1;
-  for (i < c1) {
-    const a = m0;
-    m0 = (x) => {
-      return c1(c5(c0));
-    };
+  let x = c0;
+  for (j < c1) {
+    m0 = c3(m0);
     next;
   }
-  return m0(c0);
+  return m0;
 };
 
 // hyperTCO
 export const hyperTCO = (a : uint53(number), a1 : uint53(number), a2 : uint53(number)) : uint53(number) => {
-  let acc = $k2;
+  let acc = $k1;
   for (i < c2) {
     const a = m0;
     m0 = (x) => {
-      return $k3(c1, c0, $k4(uint53__lean_nat_add(c2, 1), c4));
+      return $k2(c1, c0, $k3(uint53__lean_nat_add(c2, 1), c4));
     };
     next;
   }
@@ -90,26 +77,16 @@ export const hyperTCO = (a : uint53(number), a1 : uint53(number), a2 : uint53(nu
 
 // hyperWhile
 export const hyperWhile = (a : uint53(number), a1 : uint53(number), a2 : uint53(number)) : uint53(number) => {
-  let acc = $k2;
+  let acc = $k1;
   for (i < c2) {
     const a = m0;
     m0 = (x) => {
-      let acc = { tag: 1, _1: $k4(uint53__lean_nat_add(c2, 1), c4) };
+      let acc = $k3(uint53__lean_nat_add(c2, 1), c4);
       for (i < c0) {
-        switch (m0.tag) {
-        case 0 {  }:
-          next;
-        case 1 { _1: f }:
-          m0 = { tag: 1, _1: c3(c0) };
-          next;
-        }
+        m0 = c2(m0);
+        next;
       }
-      switch (m0.tag) {
-      case 0 { _1: f }:
-        return c0;
-      case 1 { _1: f }:
-        return c0;
-      }
+      return m0;
     };
     next;
   }

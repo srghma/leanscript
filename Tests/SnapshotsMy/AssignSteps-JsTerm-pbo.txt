@@ -17,43 +17,52 @@ const $k3 : (uint53(number), uint53(number)) => uint53(number) = (x, x) => {
 
 // test1
 export const test1 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
-  let acc = $k1;
-  for (i < c2) {
-    const a = m0;
-    m0 = (x, x) => {
-      if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 0)) {
-        return c1;
+  let r = undefined;
+  let done = false;
+  let x = c1;
+  let x = c0;
+  for (j < c2) {
+    if (m2) {
+      next;
+    } else {
+      const x = m1;
+      if (inline:uint53__lean_nat_dec_eq__Nat_decEq(m0, 0)) {
+        m3 = c0;
+        m2 = true;
+        next;
       } else {
-        return c2(c0, uint53__lean_nat_mod__Nat_mod(c1, c0));
+        m1 = m0;
+        m0 = uint53__lean_nat_mod__Nat_mod(c0, m0);
+        next;
       }
-    };
-    next;
+    }
   }
-  return m0(c1, c0);
+  return (m2 ? m3 : $k1(m1, m0));
 };
 
 // test2
 export const test2 = (fuel : uint53(number), a : uint53(number), b : uint53(number), c : uint53(number)) : uint53(number) => {
-  let acc = $k2;
-  for (i < c3) {
-    const a = m0;
-    m0 = (x, x, x) => {
-      return c3(c1, c0, uint53__lean_nat_add(c2, 1));
-    };
+  let x = c2;
+  let x = c1;
+  let x = c0;
+  for (j < c3) {
+    const x = m2;
+    m2 = m1;
+    m1 = m0;
+    m0 = uint53__lean_nat_add(c0, 1);
     next;
   }
-  return m0(c2, c1, c0);
+  return $k2(m2, m1, m0);
 };
 
 // test4
 export const test4 = (fuel : uint53(number), a : uint53(number), b : uint53(number)) : uint53(number) => {
-  let acc = $k3;
-  for (i < c2) {
-    const a = m0;
-    m0 = (x, x) => {
-      return c2(uint53__lean_nat_add(c1, 1), uint53__lean_nat_add(c0, 2));
-    };
+  let x = c1;
+  let x = c0;
+  for (j < c2) {
+    m1 = uint53__lean_nat_add(m1, 1);
+    m0 = uint53__lean_nat_add(m0, 2);
     next;
   }
-  return m0(c1, c0);
+  return $k3(m1, m0);
 };

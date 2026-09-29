@@ -176,8 +176,10 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let label ← if early then freshLabel else pure ""
     let b ← blockToMini { c := i :: sc.c, m := sc.m, loop := .brk label } { loop := true } body
     let r ← blockToMini sc tl rest
-    let s : MiniStatement := .if_ (.binary (natLitOf nt 0) .lt n)
-      (.block (constDecl i (.binary n .minus (natLitOf nt 1)) :: b)) none
+    -- the counter is only declared when the body reads it
+    let decl := if body.mentions ⟨false, 0⟩ then [constDecl i (.binary n .minus (natLitOf nt 1))]
+      else []
+    let s : MiniStatement := .if_ (.binary (natLitOf nt 0) .lt n) (.block (decl ++ b)) none
     return pre ++ (if early then .labelled (nes label) s else s) :: r
   | .forOf hint _ xs body rest => do
     let xs ← exprToMini sc xs

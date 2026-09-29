@@ -6,8 +6,6 @@
 
 import { uint53__lean_nat_add } from "../../runtime.js";
 
-const $k1 = (x$1) => x$1;
-
 /**
  * `messages`
  * @returns {List<string>}
@@ -23,10 +21,9 @@ export const messages = () => ["one", "two", "three"];
  * @returns {uint53(number)}
  */
 export const countUp = (unused, step, n, acc) => {
-  let acc$1 = $k1;
-  for (let i$2 = 0; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (x$4) => a$3(uint53__lean_nat_add(x$4, step));
+  let x$1 = acc;
+  for (let j$2 = 0; j$2 < n; j$2++) {
+    x$1 = uint53__lean_nat_add(x$1, step);
   }
-  return acc$1(acc);
+  return x$1;
 };

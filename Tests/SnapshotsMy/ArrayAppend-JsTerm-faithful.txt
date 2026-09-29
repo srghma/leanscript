@@ -16,20 +16,10 @@ export const test4 = (b : Array<nat(bigint)>) : Array<nat(bigint)> => {
 
 // test5
 export const test5 = (n : nat(bigint)) : Array<nat(bigint)> => {
-  let acc = { tag: 1, _1: inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0) };
+  let acc = inline:bigint_nat__lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(c0);
   for (i < c0) {
-    switch (m0.tag) {
-    case 0 {  }:
-      next;
-    case 1 { _1: f }:
-      m0 = { tag: 1, _1: [...c0, c1, inline:bigint_nat__lean_nat_mul(c1, c1)] };
-      next;
-    }
+    m0 = [...m0, c0, inline:bigint_nat__lean_nat_mul(c0, c0)];
+    next;
   }
-  switch (m0.tag) {
-  case 0 { _1: f }:
-    return c0;
-  case 1 { _1: f }:
-    return c0;
-  }
+  return m0;
 };

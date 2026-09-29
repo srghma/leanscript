@@ -3,6 +3,7 @@ module
 public import JsTerm.Lower.Basic
 public import JsTerm.Passes.InPlace
 public import JsTerm.Passes.Cleanup
+public import JsTerm.Passes.Contify
 
 @[expose] public section
 
@@ -378,6 +379,7 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
     throw "internal: the parameters of a function"
   let body := peephole (inlineArrays (peephole (cleanup body)))
   let body := peephole (cleanup body)
+  let body := tidy body
   let body := inPlace body
   return { name, leanName, params := ps, ret, body }
 
