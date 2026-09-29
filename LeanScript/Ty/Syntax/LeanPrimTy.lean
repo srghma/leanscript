@@ -182,6 +182,17 @@ def isNumberConfigurable : LeanPrimTy → Bool
   | .bitvec n _ => 32 ≤ n
   | _ => false
 
+/-- Can a value of this leaf be the key of a hash map (or hash set) that the JavaScript backend
+    compiles to an object keyed by `String(key)` (`LeanPrimTyCovariant.hashMap`)?  Yes when two
+    values are equal (by the lawful `BEq` of the leaf) exactly when the `String`s of their
+    JavaScript representations are: numbers (a `float` is never `NaN` nor `-0.0`), `bigint`s,
+    booleans, strings and characters.  No for `substringRaw` and `stringSlice` (a slice is
+    represented by a string and two positions, and equal slices of different strings are equal)
+    and for the float models (structures, not numbers). -/
+def isObjectKey : LeanPrimTy → Bool
+  | .substringRaw | .stringSlice | .floatModel | .float32Model => false
+  | _ => true
+
 /-- The Lean type a terminal type describes: the type of the values its literals hold.
     Every terminal type has literals: the three run-time handles, which had none, are
     commented out of `LeanPrimTy`. -/

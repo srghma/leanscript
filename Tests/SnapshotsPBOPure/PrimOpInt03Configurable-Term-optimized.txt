@@ -20,7 +20,7 @@ ret 6553255926290448384
 
 -- TestUInt64.test4 : UInt64 → UInt64
 val k1 [1] : (UInt64 → UInt64) := fun x2 [1] : UInt64 => (closed)
-  ret lean_uint64_add(lean_uint64_add(10000000000000000000, x2), 10000000000000000000)
+  ret lean_uint64_add(x2, 1553255926290448384)
 ret k1
 
 -- TestNat.test1 : Nat
@@ -34,7 +34,7 @@ ret 4000000000000000000
 
 -- TestNat.test4 : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [1] : Nat => (closed)
-  ret lean_nat_add(lean_nat_add(2000000000, x2), 2000000000)
+  ret lean_nat_add(x2, 4000000000)
 ret k1
 
 -- TestInt64.test1 : Int64
@@ -48,7 +48,7 @@ ret 6553255926290448384
 
 -- TestInt64.test4 : Int64 → Int64
 val k1 [1] : (Int64 → Int64) := fun x2 [1] : Int64 => (closed)
-  ret lean_int64_add(lean_int64_add(5000000000000000000, x2), 5000000000000000000)
+  ret lean_int64_add(x2, -8446744073709551616)
 ret k1
 
 -- TestInt.test1 : Int
@@ -62,5 +62,5 @@ ret 4000000000000000000
 
 -- TestInt.test4 : Int → Int
 val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)
-  ret lean_int_add(lean_int_add(2000000000, x2), 2000000000)
+  ret lean_int_add(x2, 4000000000)
 ret k1

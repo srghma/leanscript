@@ -7,6 +7,8 @@ public import LeanScript.LeanInitPureExterns.FixedWidth
 public import LeanScript.LeanInitPureExterns.String
 public import LeanScript.LeanInitPureExterns.Float
 public import LeanScript.LeanInitPureExterns.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation
+public import LeanScript.LeanInitPureExterns.HashMap
+public import LeanScript.LeanInitPureExterns.HashSet
 -- public import Init.Data.FloatArray.Basic
 -- public import Init.System.IO
 -- public import Init.System.Promise
@@ -71,6 +73,12 @@ The families are in five modules, by theme: `LeanScript.LeanInitPureExterns.Core
 functions written in Lean, not `@[extern]`, that the backend knows: `Array.append`,
 `Array.map`, `Array.filter`, …).  This module holds the sections of `Init` whose entries are all
 commented out, and `LeanInitPureExtern` itself.
+
+Two more modules record the functions of `Std.HashMap` and `Std.HashSet`
+(`LeanScript.LeanInitPureExterns.HashMap`, `.HashSet`: the families `HashMapExtern` and
+`HashSetExtern`, over the formers `LeanPrimTyCovariant.hashMap` and `.hashSet`).  They are not
+constructors of `LeanInitPureExtern` yet: `Ty` has no former for hash maps and hash sets, so
+no extern of the language could have such a type (`LeanScript.Ty.ofCovariant`).
 
 Each `-- Init/…` section of the catalogue is an inductive of its own (a *family*,
 `PreludeExtern`, `StringBasicExtern`, …; the long `UInt`/`SInt` sections are split by

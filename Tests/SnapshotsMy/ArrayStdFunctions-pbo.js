@@ -163,7 +163,7 @@ export const ArrStd$tSort = (a) => {
  */
 export const ArrStd$tFoldr = (a) => {
   const k$3 = (x$1, x$2) =>
-    uint53__lean_nat_add(x$1, uint53__lean_nat_mul(2, x$2));
+    uint53__lean_nat_add(x$1, uint53__lean_nat_mul(x$2, 2));
   return uint53__lean_array_foldr(k$3, 0, a, a.length, 0);
 };
 

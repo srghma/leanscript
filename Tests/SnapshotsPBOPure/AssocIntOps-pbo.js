@@ -8,84 +8,21 @@ import { int53__lean_int_add, int53__lean_int_mul } from "../../runtime.js";
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const test1 = (x) =>
-  int53__lean_int_add(
-    int53__lean_int_add(
-      1,
-      int53__lean_int_add(
-        int53__lean_int_add(
-          int53__lean_int_add(
-            int53__lean_int_add(int53__lean_int_add(2, x), x),
-            x,
-          ),
-          x,
-        ),
-        3,
-      ),
-    ),
-    4,
-  );
+export const test1 = (x) => int53__lean_int_add(int53__lean_int_mul(x, 4), 10);
 
 /**
  * `test2`
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const test2 = (x) =>
-  int53__lean_int_add(
-    int53__lean_int_add(
-      1,
-      int53__lean_int_add(
-        2,
-        int53__lean_int_add(
-          x,
-          int53__lean_int_add(
-            x,
-            int53__lean_int_add(x, int53__lean_int_add(x, 3)),
-          ),
-        ),
-      ),
-    ),
-    4,
-  );
+export const test2 = (x) => int53__lean_int_add(int53__lean_int_mul(x, 4), 10);
 
 /**
  * `test3`
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const test3 = (x) =>
-  int53__lean_int_add(
-    int53__lean_int_add(
-      int53__lean_int_add(
-        int53__lean_int_add(
-          1,
-          int53__lean_int_add(
-            2,
-            int53__lean_int_add(
-              x,
-              int53__lean_int_add(
-                x,
-                int53__lean_int_add(x, int53__lean_int_add(x, 3)),
-              ),
-            ),
-          ),
-        ),
-        4,
-      ),
-      int53__lean_int_add(
-        int53__lean_int_add(
-          int53__lean_int_add(
-            int53__lean_int_add(int53__lean_int_add(5, x), x),
-            x,
-          ),
-          x,
-        ),
-        6,
-      ),
-    ),
-    7,
-  );
+export const test3 = (x) => int53__lean_int_add(int53__lean_int_mul(x, 8), 28);
 
 /**
  * `test4`
@@ -94,20 +31,8 @@ export const test3 = (x) =>
  */
 export const test4 = (x) =>
   int53__lean_int_mul(
-    int53__lean_int_mul(
-      1,
-      int53__lean_int_mul(
-        int53__lean_int_mul(
-          int53__lean_int_mul(
-            int53__lean_int_mul(int53__lean_int_mul(2, x), x),
-            x,
-          ),
-          x,
-        ),
-        3,
-      ),
-    ),
-    4,
+    int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(x, x), x), x),
+    24,
   );
 
 /**
@@ -117,20 +42,8 @@ export const test4 = (x) =>
  */
 export const test5 = (x) =>
   int53__lean_int_mul(
-    int53__lean_int_mul(
-      1,
-      int53__lean_int_mul(
-        2,
-        int53__lean_int_mul(
-          x,
-          int53__lean_int_mul(
-            x,
-            int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
-          ),
-        ),
-      ),
-    ),
-    4,
+    int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(x, x), x), x),
+    24,
   );
 
 /**
@@ -143,30 +56,18 @@ export const test6 = (x) =>
     int53__lean_int_mul(
       int53__lean_int_mul(
         int53__lean_int_mul(
-          1,
           int53__lean_int_mul(
-            2,
             int53__lean_int_mul(
+              int53__lean_int_mul(int53__lean_int_mul(x, x), x),
               x,
-              int53__lean_int_mul(
-                x,
-                int53__lean_int_mul(x, int53__lean_int_mul(x, 3)),
-              ),
             ),
-          ),
-        ),
-        4,
-      ),
-      int53__lean_int_mul(
-        int53__lean_int_mul(
-          int53__lean_int_mul(
-            int53__lean_int_mul(int53__lean_int_mul(5, x), x),
             x,
           ),
           x,
         ),
-        6,
+        x,
       ),
+      x,
     ),
-    7,
+    5040,
   );

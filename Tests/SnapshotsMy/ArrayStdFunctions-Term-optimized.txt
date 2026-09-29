@@ -107,7 +107,7 @@ ret k1
 val k1 [1] : ((Array Nat) → Nat) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [1] : (Nat → (Nat → Nat)) := fun x4 [ω] : Nat => (closed)
     val k5 [1] : (Nat → Nat) := fun x6 [1] : Nat => (open)
-      ret lean_nat_add(x4, lean_nat_mul(2, x6))
+      ret lean_nat_add(x4, lean_nat_mul(x6, 2))
     ret k5
   ret lean_array_foldr(k3, 0, x2, lean_array_get_size(x2), 0)
 ret k1

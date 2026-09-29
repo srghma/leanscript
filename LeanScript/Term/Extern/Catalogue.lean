@@ -74,12 +74,21 @@ def ofStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E (Ty.relax t.stri
   | .thunk t, x => Ty.ofRelax E t x
   | .lazy t, x => Ty.ofRelax E t x
 
-/-- The covariant type formers of the catalogue (`array`, `list`, `thunk`, `lazy`), as types. -/
+/-- The covariant type formers of the catalogue (`array`, `list`, `thunk`, `lazy`), as types.
+
+    **Hash maps and hash sets are not types of the language yet** (`Ty` has no former for
+    them, and their meaning needs the `BEq`/`Hashable` instances of the key).  The families of
+    the catalogue that speak about them (`HashMapExtern`, `HashSetExtern`) are therefore not
+    constructors of `LeanInitPureExtern`, so no extern of the language has such a type.  Until
+    `Ty` has the formers, this coercion sends them to the type of their `toArray`
+    (`Array (κ × ν)`, `Array κ`), only so that it is total; nothing reads this. -/
 def ofCovariant : LeanPrimTyCovariant (Ty ks) → Ty ks
   | .array t => .array t
   | .list t => .list t
   | .thunk t => .thunk t.strictOf
   | .lazy t => .lazy t.strictOf
+  | .hashMap k v => .array (Ty.pair k v)
+  | .hashSet k => .array k
 
 /-- A function of two arguments. -/
 abbrev fn2 (a b c : Ty ks) : Ty ks := .fn a (.fn b c)

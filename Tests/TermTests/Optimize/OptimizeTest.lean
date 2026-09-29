@@ -65,11 +65,13 @@ def copy : T 0 [] [] (.fn .nat .nat) none :=
         (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (x0 (τ := .nat)) .nil)) rfl))))))
     (.ret (.kvar .head))
 
-/-- `fun n => n + n`: the parameter is now used ω times (recounted by `dce`). -/
+/-- `fun n => n * 2`: after copy propagation the body is `n + n`, and the two copies of `n` in
+    the sum are counted (`Term.arithWalk`); the parameter is now used once (recounted by
+    `dce`). -/
 def copyOpt : T 0 [] [] (.fn .nat .nat) none :=
   .letV .one
-    (.lam (u := .many) (.closed
-      (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (x0 (τ := .nat)) .nil)) rfl)))))
+    (.lam (u := .one) (.closed
+      (.ret (.neu (.extern .lean_nat_mul (.cons (x0 (τ := .nat)) (.cons (.lit .nat (2 : Nat)) .nil)) rfl)))))
     (.ret (.kvar .head))
 
 example : copy.optimize = copyOpt := by rfl

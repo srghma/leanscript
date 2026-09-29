@@ -167,7 +167,7 @@ export const ArrStd$tSort = (a) => {
  * @returns {nat(bigint)}
  */
 export const ArrStd$tFoldr = (a) => {
-  const k$3 = (x$1, x$2) => x$1 + 2n * x$2;
+  const k$3 = (x$1, x$2) => x$1 + x$2 * 2n;
   return bigint_nat__lean_array_foldr(k$3, 0n, a, BigInt(a.length), 0n);
 };
 

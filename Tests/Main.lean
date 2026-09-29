@@ -7,6 +7,7 @@ import TermTests.Datatypes.QuotientTest
 import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import TermTests.Optimize.AppendTest
+import TermTests.Optimize.ArithTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
@@ -154,6 +155,39 @@ def appendSpec : Spec := describe "Term.appendWalk" do
       ((AppendTest.arrEmptyT (Δ := DSig.nil)).optimizeN 3).pretty
     assertEq "value" (AppendTest.arrEmpty #[7, 8])
       (((AppendTest.arrEmptyT (Δ := DSig.nil)).optimizeN 3).run (#[7, 8] : Array Nat))
+
+/-- `Tests/TermTests/Optimize/ArithTest.lean`: the optimiser folds the literals of chains of
+    `+` and `*`, counts the copies of an unknown in a sum and combines the operands from the
+    left (`Term.arithWalk`); the optimised statements, printed, and their values (compiled). -/
+def arithSpec : Spec := describe "Term.arithWalk" do
+  it "AssocIntOps.test1: 1 + (((((2 + x) + x) + x) + x) + 3) + 4 is x * 4 + 10" do
+    assertEq "printed" ("val k1 [1] : (Int → Int) := fun x2 [1] : Int => (closed)\n" ++
+      "  ret lean_int_add(lean_int_mul(x2, 4), 10)\nret k1")
+      ((ArithTest.test1T (Δ := DSig.nil)).optimizeN 3).pretty
+    for x in [(-7 : Int), 0, 12] do
+      assertEq s!"value at {x}" (ArithTest.test1 x) (((ArithTest.test1T (Δ := DSig.nil)).optimizeN 3).run x)
+  it "AssocIntOps.test3: two chains, x * 8 + 28" do
+    for x in [(-7 : Int), 0, 12] do
+      assertEq s!"value at {x}" (ArithTest.test3 x) (((ArithTest.test3T (Δ := DSig.nil)).optimizeN 3).run x)
+  it "AssocIntOps.test5: 1 * (2 * (x * (x * (x * (x * 3))))) * 4 is x * x * x * x * 24" do
+    assertEq "printed" ("val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)\n" ++
+      "  ret lean_int_mul(lean_int_mul(lean_int_mul(lean_int_mul(x2, x2), x2), x2), 24)\nret k1")
+      ((ArithTest.test5T (Δ := DSig.nil)).optimizeN 3).pretty
+    for x in [(-7 : Int), 0, 12] do
+      assertEq s!"value at {x}" (ArithTest.test5 x) (((ArithTest.test5T (Δ := DSig.nil)).optimizeN 3).run x)
+  it "UInt8: the literals are folded modulo 2^8" do
+    assertEq "printed" ("val k1 [1] : (UInt8 → UInt8) := fun x2 [1] : UInt8 => (closed)\n" ++
+      "  ret lean_uint8_add(x2, 144)\nret k1")
+      ((ArithTest.wrap8T (Δ := DSig.nil)).optimizeN 3).pretty
+    for x in [(0 : UInt8), 55, 56, 255] do
+      assertEq s!"value at {x}" (ArithTest.wrap8 x) (((ArithTest.wrap8T (Δ := DSig.nil)).optimizeN 3).run x)
+  it "two unknowns are counted separately" do
+    assertEq "printed" ("val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)\n" ++
+      "  val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)\n" ++
+      "    ret lean_nat_add(lean_nat_add(lean_nat_mul(x2, 3), lean_nat_mul(x4, 2)), 1)\n" ++
+      "  ret k3\nret k1")
+      ((ArithTest.twoVarsT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "value" (ArithTest.twoVars 5 7) (((ArithTest.twoVarsT (Δ := DSig.nil)).optimizeN 3).run (5 : Nat) (7 : Nat))
 
 section MoreJsTests
 open MoreJs
@@ -747,6 +781,7 @@ def spec : Spec := do
   roseSpec
   optimizeSpec
   appendSpec
+  arithSpec
   moreJsSpec
   wfTermSpec
 

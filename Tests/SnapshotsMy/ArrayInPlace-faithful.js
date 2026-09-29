@@ -51,7 +51,7 @@ export const test3 = (a0) => {
       const x$6 = bigint_nat__lean_array_set_mutable(
         f$5,
         i$3,
-        2n * bigint_nat__lean_array_get(0n, f$5, i$3),
+        bigint_nat__lean_array_get(0n, f$5, i$3) * 2n,
       );
       acc$1 = { tag: 1, _1: x$6 };
     }
@@ -77,7 +77,7 @@ export const test3$$mut_0 = (a0) => {
       const x$6 = bigint_nat__lean_array_set_mutable(
         f$5,
         i$3,
-        2n * bigint_nat__lean_array_get(0n, f$5, i$3),
+        bigint_nat__lean_array_get(0n, f$5, i$3) * 2n,
       );
       acc$1 = { tag: 1, _1: x$6 };
     }

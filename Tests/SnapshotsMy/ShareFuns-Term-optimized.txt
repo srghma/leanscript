@@ -41,7 +41,7 @@ val k1 [1] : (Nat → Nat) := fun x2 [1] : Nat => (closed)
     | ctor#0(f5 [1] : Nat) =>
       ret ctor#0(f5)
     | ctor#1(f6 [ω] : Nat) =>
-      let x7 [ω] : Nat := share lean_nat_mod__Nat_mod(lean_nat_mul(3, i4), 10)
+      let x7 [ω] : Nat := share lean_nat_mod__Nat_mod(lean_nat_mul(i4, 3), 10)
       ret cond(lean_nat_dec_lt(f6, x7), ctor#1(x7), ctor#1(f6))
   case x8 of
   | ctor#0(f9 [1] : Nat) =>

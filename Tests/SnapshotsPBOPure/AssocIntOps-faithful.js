@@ -6,41 +6,39 @@
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test1 = (x) => 1n + (2n + x + x + x + x + 3n) + 4n;
+export const test1 = (x) => x * 4n + 10n;
 
 /**
  * `test2`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test2 = (x) => 1n + (2n + (x + (x + (x + (x + 3n))))) + 4n;
+export const test2 = (x) => x * 4n + 10n;
 
 /**
  * `test3`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test3 = (x) =>
-  1n + (2n + (x + (x + (x + (x + 3n))))) + 4n + (5n + x + x + x + x + 6n) + 7n;
+export const test3 = (x) => x * 8n + 28n;
 
 /**
  * `test4`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test4 = (x) => 1n * (2n * x * x * x * x * 3n) * 4n;
+export const test4 = (x) => x * x * x * x * 24n;
 
 /**
  * `test5`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test5 = (x) => 1n * (2n * (x * (x * (x * (x * 3n))))) * 4n;
+export const test5 = (x) => x * x * x * x * 24n;
 
 /**
  * `test6`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const test6 = (x) =>
-  1n * (2n * (x * (x * (x * (x * 3n))))) * 4n * (5n * x * x * x * x * 6n) * 7n;
+export const test6 = (x) => x * x * x * x * x * x * x * x * 5040n;

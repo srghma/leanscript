@@ -39,10 +39,7 @@ export const TestUInt64$test3 = () => 6553255926290448384n;
  * @returns {nat(bigint)}
  */
 export const TestUInt64$test4 = (a) =>
-  bigint_nat__lean_uint64_add(
-    bigint_nat__lean_uint64_add(10000000000000000000n, a),
-    10000000000000000000n,
-  );
+  bigint_nat__lean_uint64_add(a, 1553255926290448384n);
 
 /**
  * `TestNat.test1`
@@ -67,7 +64,7 @@ export const TestNat$test3 = () => 4000000000000000000n;
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestNat$test4 = (a) => 2000000000n + a + 2000000000n;
+export const TestNat$test4 = (a) => a + 4000000000n;
 
 /**
  * `TestInt64.test1`
@@ -93,10 +90,7 @@ export const TestInt64$test3 = () => 6553255926290448384n;
  * @returns {int(bigint)}
  */
 export const TestInt64$test4 = (a) =>
-  bigint_int__lean_int64_add(
-    bigint_int__lean_int64_add(5000000000000000000n, a),
-    5000000000000000000n,
-  );
+  bigint_int__lean_int64_add(a, -8446744073709551616n);
 
 /**
  * `TestInt.test1`
@@ -121,4 +115,4 @@ export const TestInt$test3 = () => 4000000000000000000n;
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt$test4 = (a) => 2000000000n + a + 2000000000n;
+export const TestInt$test4 = (a) => a + 4000000000n;

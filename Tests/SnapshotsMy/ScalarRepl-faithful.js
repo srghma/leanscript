@@ -101,5 +101,5 @@ export const test5 = (a, b) => {
   };
   const x$3 = { tag: 1, _1: { _1: a, _2: b } };
   const x$4 = k$2(x$3);
-  return x$4 + 0n;
+  return x$4;
 };

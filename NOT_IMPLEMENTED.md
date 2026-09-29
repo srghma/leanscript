@@ -123,6 +123,24 @@ This list describes the project as it stands now: one grammar of types (`LeanScr
   `fun x => fun y => b` to `(x, y) => b`, which the operations (taking `(x) => …`) do not accept.
   The call is then unfolded, which fails for `Array.map` (a private well-founded loop).
   `Array.flatten`/`Array.flatMap` into a typed array take only generic inner arrays.
+- **Hash maps and hash sets are catalogued, not yet types of the language.**
+  `LeanPrimTyCovariant` has the formers `hashMap κ ν` and `hashSet κ`, and the functions of
+  `Std.HashMap`/`Std.HashSet` are recorded as the families `HashMapExtern`/`HashSetExtern`
+  (`LeanScript/LeanInitPureExterns/HashMap.lean`, `HashSet.lean`; their argument orders are
+  checked against the Lean functions in `Tests/TermTests/Extern/HashExternCatalogueTest.lean`).
+  What remains:
+  - `Ty` has no `hashMap`/`hashSet` constructor, so `Ty.ofCovariant` sends the formers to the
+    type of their `toArray` only to be total, and the families are not constructors of
+    `LeanInitPureExtern` (no evaluator entry `Extern.eval`, no `#leanscript_to_term` table
+    entry, no ownership rule, no JavaScript operation yet).
+  - The meaning of such a type is the hard part: `Std.HashMap κ ν` takes the `BEq`/`Hashable`
+    instances of `κ` as parameters of the *type*, and `Ty.den κ` has no instances in general
+    (a function has no `BEq`).  One option is a former restricted to the object keys
+    (`LeanPrimTy.isObjectKey`, enums) with the canonical instances; another is a former that
+    carries the instances as functions.
+  - The order of `toList`/`toArray`/`keys`/`values`/`fold` is the order of Lean's buckets,
+    not of a JavaScript object or `Map`: the backend may use the JavaScript containers for
+    those entries only when the order does not matter, or must reproduce Lean's buckets.
 
 ## 2. Terms
 

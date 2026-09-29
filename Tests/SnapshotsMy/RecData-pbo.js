@@ -131,7 +131,7 @@ export const RecData$size = (a) => {
     if (x$3.tag === 0) {
       return 0;
     }
-    return uint53__lean_nat_add(uint53__lean_nat_add(x$3._1._2, 1), x$3._3._2);
+    return uint53__lean_nat_add(uint53__lean_nat_add(x$3._1._2, x$3._3._2), 1);
   };
   const x$6 = go0$1(a);
   return x$6;
@@ -418,8 +418,8 @@ export const RecData$sizeArray = (xs) => {
       return 0;
     }
     return uint53__lean_nat_add(
-      uint53__lean_nat_add(x$16._1._2, 1),
-      x$16._3._2,
+      uint53__lean_nat_add(x$16._1._2, x$16._3._2),
+      1,
     );
   };
   const x$19 = go0$14(acc$1);

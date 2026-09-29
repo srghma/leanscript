@@ -59,7 +59,7 @@ export const test4 = (a, a1) => {
     if (f$3 === 4n) {
       return 4n;
     }
-    return f$3 === 5n ? 5n : 11n + f$2 + a1._3;
+    return f$3 === 5n ? 5n : f$2 + a1._3 + 11n;
   }
   if (f$1 === 2n) {
     const { _1: f$4, _2: f$5 } = a1;
@@ -78,7 +78,7 @@ export const test4 = (a, a1) => {
       }
       return f$2 < f$5 ? 8n : 9n;
     }
-    return 11n + f$2 + a1._3;
+    return f$2 + a1._3 + 11n;
   }
   const { _1: f$6, _2: f$7, _3: f$8 } = a1;
   if (f$6 === 2n) {
@@ -95,9 +95,9 @@ export const test4 = (a, a1) => {
   }
   if (f$6 === 1n) {
     if (f$8 === 10n) {
-      return a._2 === 2n ? 10n : 11n + f$2 + 10n;
+      return a._2 === 2n ? 10n : f$2 + 21n;
     }
-    return 11n + f$2 + f$8;
+    return f$2 + f$8 + 11n;
   }
-  return 11n + f$2 + f$8;
+  return f$2 + f$8 + 11n;
 };

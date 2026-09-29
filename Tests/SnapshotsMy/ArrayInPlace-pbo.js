@@ -55,7 +55,7 @@ export const test3 = (a0) => {
       const x$6 = uint53__lean_array_set_mutable(
         f$5,
         i$3,
-        uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
+        uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
       );
       acc$1 = { tag: 1, _1: x$6 };
     }
@@ -81,7 +81,7 @@ export const test3$$mut_0 = (a0) => {
       const x$6 = uint53__lean_array_set_mutable(
         f$5,
         i$3,
-        uint53__lean_nat_mul(2, uint53__lean_array_get(0, f$5, i$3)),
+        uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
       );
       acc$1 = { tag: 1, _1: x$6 };
     }

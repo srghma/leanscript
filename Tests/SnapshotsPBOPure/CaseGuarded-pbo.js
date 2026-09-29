@@ -63,7 +63,7 @@ export const test4 = (a, a1) => {
     }
     return f$3 === 5
       ? 5
-      : int53__lean_int_add(int53__lean_int_add(11, f$2), a1._3);
+      : int53__lean_int_add(int53__lean_int_add(f$2, a1._3), 11);
   }
   if (f$1 === 2) {
     const { _1: f$4, _2: f$5 } = a1;
@@ -82,7 +82,7 @@ export const test4 = (a, a1) => {
       }
       return f$2 < f$5 ? 8 : 9;
     }
-    return int53__lean_int_add(int53__lean_int_add(11, f$2), a1._3);
+    return int53__lean_int_add(int53__lean_int_add(f$2, a1._3), 11);
   }
   const { _1: f$6, _2: f$7, _3: f$8 } = a1;
   if (f$6 === 2) {
@@ -99,11 +99,9 @@ export const test4 = (a, a1) => {
   }
   if (f$6 === 1) {
     if (f$8 === 10) {
-      return a._2 === 2
-        ? 10
-        : int53__lean_int_add(int53__lean_int_add(11, f$2), 10);
+      return a._2 === 2 ? 10 : int53__lean_int_add(f$2, 21);
     }
-    return int53__lean_int_add(int53__lean_int_add(11, f$2), f$8);
+    return int53__lean_int_add(int53__lean_int_add(f$2, f$8), 11);
   }
-  return int53__lean_int_add(int53__lean_int_add(11, f$2), f$8);
+  return int53__lean_int_add(int53__lean_int_add(f$2, f$8), 11);
 };

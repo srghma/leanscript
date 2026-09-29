@@ -27,7 +27,7 @@ val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (clos
     | ctor#0(f5 [1] : (Array Nat)) =>
       ret ctor#0(f5)
     | ctor#1(f6 [ω] : (Array Nat)) =>
-      let x7 [1] : (Array Nat) := share lean_array_set(f6, i4, lean_nat_mul(2, lean_array_get(0, f6, i4)))
+      let x7 [1] : (Array Nat) := share lean_array_set(f6, i4, lean_nat_mul(lean_array_get(0, f6, i4), 2))
       ret ctor#1(x7)
   case x8 of
   | ctor#0(f9 [1] : (Array Nat)) =>

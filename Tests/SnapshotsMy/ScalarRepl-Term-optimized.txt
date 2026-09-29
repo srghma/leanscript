@@ -78,6 +78,6 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
         let ⟨f8 [1] : Nat, f9 [1] : Nat⟩ := f7
         ret lean_nat_add(f8, f9)
     let x10 [1] : Nat := k5 ctor#1(⟨x2, x4⟩)
-    ret lean_nat_add(x10, 0)
+    ret x10
   ret k3
 ret k1

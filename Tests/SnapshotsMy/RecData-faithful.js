@@ -138,7 +138,7 @@ export const RecData$size = (a) => {
     if (x$3.tag === 0) {
       return 0n;
     }
-    return x$3._1._2 + 1n + x$3._3._2;
+    return x$3._1._2 + x$3._3._2 + 1n;
   };
   const x$6 = go0$1(a);
   return x$6;
@@ -424,7 +424,7 @@ export const RecData$sizeArray = (xs) => {
     if (x$16.tag === 0) {
       return 0n;
     }
-    return x$16._1._2 + 1n + x$16._3._2;
+    return x$16._1._2 + x$16._3._2 + 1n;
   };
   const x$19 = go0$14(acc$1);
   return x$19;

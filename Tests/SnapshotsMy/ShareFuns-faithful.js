@@ -52,7 +52,7 @@ export const maxMod = (n) => {
       acc$1 = { tag: 0, _1: a$3._1 };
     } else {
       const { _1: f$4 } = a$3;
-      const x$5 = bigint_nat__lean_nat_mod__Nat_mod(3n * i$2, 10n);
+      const x$5 = bigint_nat__lean_nat_mod__Nat_mod(i$2 * 3n, 10n);
       acc$1 = f$4 < x$5 ? { tag: 1, _1: x$5 } : { tag: 1, _1: f$4 };
     }
   }

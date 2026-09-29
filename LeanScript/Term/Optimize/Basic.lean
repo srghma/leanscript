@@ -4,6 +4,7 @@ public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
 public import LeanScript.Term.Optimize.Append
+public import LeanScript.Term.Optimize.Arith
 public import LeanScript.Term.Optimize.InlineEval
 public import LeanScript.Term.Optimize.InlineRetEval
 
@@ -63,6 +64,12 @@ fields of the literal that compute something, `Args.shareFirst`, so that they ar
 repeated).  A known closure used once whose closed body makes calls is inlined at its only
 call when that call is reached through `let`s, record case analyses, `if` arms and join points
 (`Term.inlineAt`).
+
+Then the chains of additions and multiplications (`Term.arithWalk`,
+`LeanScript.Term.Optimize.Arith`) of `Int`, `Nat` and the fixed-width integers: the literals
+of a chain are folded into one (dropped when it is the unit), the copies of an unknown in a sum
+are counted (`x + x + x` is `x * 3`) and the operands are combined from the left, the literal
+last (`1 + (2 + (x + (x + 3))) + 4` is `x * 2 + 10`).
 
 (`Term.simp` is kept separate: each of its rewrites is a step of the rewriting system of
 `LeanScript.Term.Rewrite`, `Term.simp_star`.)
@@ -370,10 +377,11 @@ end
     (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
     then `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions
     (`Term.condWalk`), the append chains (`Term.appendWalk`), the inlining in tail position with dead bindings dropped even when the
-    level changes (`Term.inlineRet`), then dead-code elimination. -/
+    level changes (`Term.inlineRet`), the chains of additions and multiplications
+    (`Term.arithWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.appendWalk.inlineRet.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.appendWalk.inlineRet.arithWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -577,7 +585,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.inlineRet_eval, Term.appendWalk_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.appendWalk_eval, Term.condWalk_eval,
     Term.cseWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

@@ -46,7 +46,7 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
             if lean_int_dec_eq(f8, 4) then
               ret 4
             else
-              ret cond(lean_int_dec_eq(f8, 5), 5, lean_int_add(lean_int_add(11, f7), f10))
+              ret cond(lean_int_dec_eq(f8, 5), 5, lean_int_add(lean_int_add(f7, f10), 11))
     else
       if lean_int_dec_eq(f5, 2) then
         let ⟨f11 [ω] : Int, f12 [ω] : Int, f13 [1] : Int⟩ := x4
@@ -65,7 +65,7 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
                 else
                   ret cond(lean_int_dec_lt(f7, f12), 8, 9)
               else
-                ret lean_int_add(lean_int_add(11, f7), f13)
+                ret lean_int_add(lean_int_add(f7, f13), 11)
       else
         let ⟨f14 [ω] : Int, f15 [ω] : Int, f16 [ω] : Int⟩ := x4
         if lean_int_dec_eq(f14, 2) then
@@ -82,10 +82,10 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
             else
               if lean_int_dec_eq(f14, 1) then
                 if lean_int_dec_eq(f16, 10) then
-                  ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(lean_int_add(11, f7), 10))
+                  ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(f7, 21))
                 else
-                  ret lean_int_add(lean_int_add(11, f7), f16)
+                  ret lean_int_add(lean_int_add(f7, f16), 11)
               else
-                ret lean_int_add(lean_int_add(11, f7), f16)
+                ret lean_int_add(lean_int_add(f7, f16), 11)
   ret k3
 ret k1

@@ -76,7 +76,7 @@ val k1 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.h
       | ctor#1(f4 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × Nat), f5 [0] : Nat, f6 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × Nat)) =>
         let ⟨f7 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f8 [1] : Nat⟩ := f4
         let ⟨f9 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f10 [1] : Nat⟩ := f6
-        ret lean_nat_add(lean_nat_add(f8, 1), f10)
+        ret lean_nat_add(lean_nat_add(f8, f10), 1)
   ret x11
 ret k1
 
@@ -214,7 +214,7 @@ val k1 [1] : ((Array Nat) → Nat) := fun x2 [1] : (Array Nat) => (closed)
       | ctor#1(f19 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × Nat), f20 [0] : Nat, f21 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))) × Nat)) =>
         let ⟨f22 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f23 [1] : Nat⟩ := f19
         let ⟨f24 [0] : (data LeanScript.Ref.there (LeanScript.Ref.there (LeanScript.Ref.here 0))), f25 [1] : Nat⟩ := f21
-        ret lean_nat_add(lean_nat_add(f23, 1), f25)
+        ret lean_nat_add(lean_nat_add(f23, f25), 1)
   ret x26
 ret k1
 

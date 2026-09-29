@@ -61,7 +61,7 @@ export const maxMod = (n) => {
     } else {
       const { _1: f$4 } = a$3;
       const x$5 = uint53__lean_nat_mod__Nat_mod(
-        uint53__lean_nat_mul(3, i$2),
+        uint53__lean_nat_mul(i$2, 3),
         10,
       );
       acc$1 = f$4 < x$5 ? { tag: 1, _1: x$5 } : { tag: 1, _1: f$4 };

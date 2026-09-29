@@ -1,3 +1,59 @@
+# Summary of changes for run 3a0b9416-3542-4366-9f58-f7075301ffe5
+The faithful (BigInt) JavaScript for `AssocIntOps.lean` is now shorter than the legacy-backend output. For example, `test1` compiles to `(x) => x * 4n + 10n`, where the legacy backend wrote nine chained `+`/`|0` steps. All of the change is in the `Term → Term` phase, with a proof that it doesn't change the result.
+
+**What the analysis showed.** Before this change, `Term.optimize` left the chains exactly as elaborated, e.g. `lean_int_add(lean_int_add(1, …lean_int_add(2, x2)…), 4)`. The JavaScript converter then printed them one operation at a time. The legacy backend at least folded the literals at the ends of each chain (`3 + x … + 7`).
+
+**New pass: `Term.arithWalk`** (`LeanScript/Term/Optimize/Arith.lean`, run inside `Term.optimize` after `inlineRet`). It works on chains of `+` and `*` over `Int`, `Nat`, `UInt8`–`UInt64` and `Int8`–`Int64`:
+- All literals in a chain are folded into one, which goes last and is dropped if it is `0` (sums) or `1` (products). Fixed-width types wrap around, e.g. `200 + x + 200 : UInt8` becomes `x + 144`.
+- In a sum, repeated copies of the same variable are counted: `x + … + x` becomes `x * k`. A term already written as `x * c` counts as `c` copies, so inner chains that were already rewritten still combine correctly with the chain around them.
+- The operands are then combined from the left.
+- **Proved:** `Term.arithWalk_eval` (the value is unchanged in every environment) and `Term.numCalls_arithWalk` (no calls are added). `Term.optimize_eval` and `Term.numCalls_optimize` were updated and still hold. The proofs use only the standard axioms and contain no `sorry`.
+
+**Result on `AssocIntOps`, faithful preset:**
+| | new output | legacy backend |
+|---|---|---|
+| `test1`, `test2` | `x * 4n + 10n` | 9 operations |
+| `test3` | `x * 8n + 28n` | 19 operations |
+| `test4`, `test5` | `x * x * x * x * 24n` | 9 operations |
+| `test6` | `x * x * x * x * x * x * x * x * 5040n` | 19 operations |
+
+At the `pbo` preset, `test1` is `int53__lean_int_add(int53__lean_int_mul(x, 4), 10)`: two operations instead of nine. They stay calls into `runtime.js` rather than inline `|0`, because `|0` wraps to 32 bits and would give wrong answers for Lean's `Int`; these calls check for overflow instead. Since the pass reorders operations, at this preset it can change which intermediate result overflows, though never the value when nothing overflows.
+
+**Tests and snapshots**
+- New `Tests/TermTests/Optimize/ArithTest.lean` proves, for all inputs, that the optimised terms compute the original functions (`AssocIntOps` tests 1, 3 and 5, a `UInt8` example and a two-variable `Nat` example).
+- New `arithSpec` in `Tests/Main.lean` checks the printed optimised terms and their values. `lake exe tests` passes 75/75.
+- One existing expectation in `OptimizeTest.lean` changed: `n + n` now optimises to `n * 2`.
+- I regenerated all snapshots and every node check passes. Only files with integer chains changed, all in the same direction (e.g. `11n + f$2 + 10n` became `f$2 + 21n`, and `x + 0n` became `x`).
+- The snapshot script still exits non-zero because of the "literal too big" errors at the `pbo` preset in `PrimOpInt02Configurable`/`PrimOpInt03Configurable`, which were there before this change. In `PrimOpInt03Configurable`, the failing `test4` functions now report the folded literal (for example `1553255926290448384`) instead of the original one.
+- `README.md` and `LeanScript/Term/README.md` are updated, and both theorems are in the Properties table as proved.
+
+**Limitations**
+- Only unknowns (not other repeated expressions) are counted in sums.
+- There is no power operation for `Int`, so `x * x * x * x` is not shortened further.
+- `x * 0` is not simplified to `0`.
+- Subtraction is not part of the chains.
+
+# Summary of changes for run ee049884-65ac-4c81-91b0-bdb941450640
+I added `hashMap` and `hashSet` to `LeanPrimTyCovariant` and catalogued the `Std.HashMap` and `Std.HashSet` functions in two new files under `LeanScript/LeanInitPureExterns/`. They are **not connected to the compiler yet**: `Ty` has no hash-map or hash-set type, so these calls are not translated, evaluated or compiled to JS. The default build succeeds except for `LeanScript/Term/Syntax/UsageAlgebra.lean`, which fails because the project has no Mathlib dependency. That file was already there and nothing imports it. `lake exe tests` passes.
+
+**What changed**
+- **`LeanScript/Ty/Syntax/LeanPrimTyCovariant.lean`:** the two new formers are `hashMap : α → α → LeanPrimTyCovariant α` (keys, then values) and `hashSet : α → LeanPrimTyCovariant α`. `map` and `format` handle them. I replaced `val` with `children : … → List α`, because a hash map has two children; nothing in the project used `val`.
+- **`LeanPrimTy.isObjectKey`** (in `LeanPrimTy.lean`): decides when a key can become a JS `Object` property via `String(key)`. It is true for every leaf type except `substringRaw`, `stringSlice`, `floatModel` and `float32Model`, since equal slices can come from different strings and the float models are structures. Enums also qualify; the docs say so, since enums are not leaf types. For other keys, the documented plan is a JS `Map` from hash to bucket, using the program's own `BEq` and `Hashable`.
+
+**What the analysis found**
+- No function of `Std.HashMap` or `Std.HashSet` is `@[extern]`: each is Lean code over an array of buckets. Unfolding them loses the fact that the value is a hash map, so every function gets an entry.
+- `LeanInitPureExterns/HashMap.lean` defines `HashMapExtern` with 41 entries, including `Array.groupByKey` and `List.groupByKey`. `LeanInitPureExterns/HashSet.lean` defines `HashSetExtern` with 25 entries. Each file's header has a table mapping every function to its JS form (e.g. `{...m, [k]: v}`, `k in m`, `Object.entries`, `Object.groupBy`, `Set.union`).
+- **Hash and equality functions:** following the `Array.contains` pattern, entries that hash or compare keys take the key's `BEq.beq` and `Hashable.hash` as their first two arguments. Entries that only walk the buckets (`size`, `toList`, `fold`, `filter`, `map`, `all`, …) don't take them. The backend drops the two arguments for object keys.
+- **Iteration order differs:** `toList`, `toArray`, `keys`, `values` and `fold` follow Lean's bucket order. That depends on the hashes and on the map's history. A JS `Object` lists integer-like keys first and a `Map` uses insertion order. These entries are marked `(order)`: JS containers are only safe for them when the result doesn't depend on order; otherwise the runtime must reproduce Lean's buckets.
+- **Left out on purpose, with reasons in comments:** `get`/`getKey` (they take a proof), the monadic `foldM`/`forM`/`forIn`, and `unitOfList`/`unitOfArray`/`insertManyIfNewUnit` (they return `HashMap κ Unit`, which is really a hash set). `Repr` and `numBuckets` are also omitted.
+
+**Why it isn't connected yet**
+- A `Std.HashMap κ ν` type takes the key's `BEq`/`Hashable` instances as parameters. Most key types in the language have no such instances (functions have no `BEq`), so a new `Ty` constructor needs a design decision first. One option is to allow only object keys; another is to store the instances as functions. This is written up in `NOT_IMPLEMENTED.md`.
+- Until then, the two families are not part of `LeanInitPureExtern`. `Ty.ofCovariant` sends the new formers to the type of their `toArray`, only so the function covers every case; nothing uses that result.
+- The extern-table and JS-ops generator scripts read an explicit list of catalogue files, so the new files don't affect generated code.
+
+**Test:** `Tests/TermTests/Extern/HashExternCatalogueTest.lean` checks that every entry's argument order matches the real Lean function (with `String` keys and `Nat` values). It also builds entries of both families over the language's own types, and checks `isObjectKey`, `map` and `children` on a few examples.
+
 # Summary of changes for run 45b9c980-61ca-4514-a782-9d4c2396d7b3
 When this session started, the generated JavaScript for `AssocArrayAppend.lean` already matched `legacy-backend/AssocArrayAppend.js`. Every array test compiled to one literal like `(arr) => ["a", "b", ...arr, ...arr, ...arr, ...arr, "c", "d"]`, and so did the list tests at the `pbo` preset. What I changed is where the regrouping happens: you said you prefer optimisations in the `Term → Term` phase, so I moved it there, with a proof that it doesn't change the result. The generated JavaScript is the same as before.
 
