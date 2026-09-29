@@ -297,6 +297,35 @@ def moreJsSpec : Spec := describe "JsTerm" do
     let js ← IO.FS.readFile s!"{dir}/RecData-pbo.js"
     assertEq "a nullary constructor is tested by ===" true ((js.splitOn " === 0").length > 1)
     assertEq "no nullary constructor is an object" 1 (js.splitOn "{ tag: 0 }").length
+  it "versions of local functions and owning closures update in place, never visibly (needs node and leanscript)" do
+    -- `LocalFnInPlace`: local functions get one constant per version (`k_mut…` owns its array
+    -- parameter), and a recursion with an array accumulator builds owning closures;
+    -- `OwnershipAliasing`: programs where an update in place would be visible.  Their
+    -- differential checks compare every answer with Lean's.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/ownership"
+    IO.FS.createDirAll dir
+    for file in ["LocalFnInPlace", "OwnershipAliasing"] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsMy/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+        assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+        assertEq s!"{file}-{preset}: no check failed" true
+          ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn "FAIL").length == 1)
+    let js ← IO.FS.readFile s!"{dir}/LocalFnInPlace-pbo.js"
+    assertEq "a version of a local function owning its array" true ((js.splitOn "const k_mut").length > 1)
+    -- `test5`: the recursion on an array built here copies nothing
+    let test5 := ((js.splitOn "export const test5 ").getD 1 "").splitOn "export const" |>.headD ""
+    assertEq "test5 updates in place" true ((test5.splitOn "_mutable(").length > 1)
+    assertEq "test5 never copies" 1 ((test5.splitOn "_immutable(").length + (test5.splitOn "[...").length - 1)
   it "an extern is an operation named after its types" do
     let big : JsTy := .terminal .bigint_nat
     let args {σ : JsTy} : JsArgs S [σ, σ] [] [σ, σ] := .cons (.cvar (.succ .zero)) (.cons (.cvar .zero) .nil)

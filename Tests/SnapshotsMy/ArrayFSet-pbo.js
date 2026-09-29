@@ -2,12 +2,11 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 
 import {
-  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
   uint53__lean_array_fset_mutable,
   uint53__lean_array_fswap_mutable,
   uint53__lean_array_fset_immutable,
   array__lean_array_pop_mutable,
-  array__lean_array_push_mutable,
 } from "../../runtime.js";
 
 /**
@@ -16,7 +15,7 @@ import {
  * @returns {Array<uint53(number)>}
  */
 export const test1 = (x) => {
-  const x$1 = array__lean_array_push_immutable([x, 1, 2], 3);
+  const x$1 = array__lean_array_push_mutable([x, 1, 2], 3);
   const x$2 = uint53__lean_array_fset_mutable(x$1, 0, 7);
   return uint53__lean_array_fswap_mutable(x$2, 1, 2);
 };
@@ -27,7 +26,7 @@ export const test1 = (x) => {
  * @returns {{ _1: Array<uint53(number)>, _2: Array<uint53(number)> }}
  */
 export const test2 = (x) => {
-  const x$1 = array__lean_array_push_immutable([x, 1, 2], 3);
+  const x$1 = array__lean_array_push_mutable([x, 1, 2], 3);
   return { _1: x$1, _2: uint53__lean_array_fset_immutable(x$1, 2, x) };
 };
 
@@ -40,7 +39,7 @@ export const test3 = (x) =>
   array__lean_array_pop_mutable(
     array__lean_array_push_mutable(
       uint53__lean_array_fswap_mutable(
-        uint53__lean_array_fset_immutable([x, 1, 2], 2, x),
+        uint53__lean_array_fset_mutable([x, 1, 2], 2, x),
         0,
         2,
       ),

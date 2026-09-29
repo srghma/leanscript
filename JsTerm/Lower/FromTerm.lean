@@ -79,6 +79,33 @@ variable {S : JsSig}
 
 open LeanScript
 
+/-- The constant of the version of the local function `fi` a call giving up the arguments `off`
+    calls (`Own.FnOwn.chosen`), when it is generated. -/
+def fnVersionRef? (n : Names) (fi : Own.FnOwn) (off : List Bool) : Option Ref :=
+  match (n.fns.lookup fi.id).bind (·[(fi.chosen off).1]?) with
+  | some r@(.c _) => some r
+  | _ => none
+
+/-- The values of `Ref`s as arguments, those `copies` says copied (`[...a]`). -/
+def refArgsCopy {C M : List JsTy} :
+    (as : List (Ref × JsTy)) → List Bool → ConvM (JsArgs S C M (as.map (·.2)))
+  | [], _ => pure .nil
+  | (r, t) :: as, cs => do
+    let e ← r.get t
+    let e ← if cs.headD false then
+        match e.copyArray? with
+        | some e' => pure e'
+        | none => throw "internal: a copy of an argument that is not an array"
+      else pure e
+    return .cons e (← refArgsCopy as cs.tail)
+
+/-- The change of the environment of the body of a loop whose accumulator (the parameter `idx`)
+    is an owning closure (`Own.AccMode.ownFn`, `Own.Env.withAccFn`). -/
+def accEnv {ks : List Nat} (mode : Own.AccMode) (idx fid : Nat) (ρ : Ty ks) : Own.Env → Own.Env :=
+  match mode with
+  | .ownFn m r => Own.Env.withAccFn idx (Own.mustFn fid ρ m r) m r
+  | _ => fun e => e
+
 section
 variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
 
@@ -182,17 +209,19 @@ partial def arrayLit {C M : List JsTy} (t : Ty ks)
 
 /-- A value of known shape. -/
 partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (v : Val Δ d Φ Γ τ o) (n : Names) (C M : List JsTy) : ConvM (JsExpr S C M (lowerTy cfg τ)) :=
+    (v : Val Δ d Φ Γ τ o) (n : Names) (C M : List JsTy) (fl : List Bool := []) :
+    ConvM (JsExpr S C M (lowerTy cfg τ)) :=
   match v with
   | Val.lam (σ := σ) (τ := ρ) b => do
     match lowerTy cfg (Ty.fn (d := true) σ ρ) with
     | .fn (d₀ :: ds) c =>
       -- all the parameters of the type at once
       let ps := paramRefs C (d₀ :: ds)
-      -- a closure borrows its parameters, and nothing from outside is owned in it (it may
-      -- run later, or many times)
+      -- a closure owns the parameters `fl` says (a version of a local function, `Own.lamPlan`)
+      -- and borrows the others; nothing from outside is owned in it (it may run later, or many
+      -- times)
       let body ← cApplyBody b { n with own := n.own.none } (pushAll (d₀ :: ds) C) M
-        (ps.map (·.1)) (ps.map fun _ => false) c
+        (ps.map (·.1)) (ps.zipIdx.map fun (_, i) => fl.getD i false) c
       castE (.lam ((d₀ :: ds).map fun _ => "x") body) _
     | _ => throw "internal: the type of a lambda"
   | Val.thunk_mk (τ := t) b => do
@@ -248,7 +277,7 @@ partial def cApplyBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {
     let f := fl.headD false
     match b with
     | .closed t =>
-      cApplyTerm t { n with u := [p], own := { u := [f], k := n.own.k } } C M ps' fl.tail r
+      cApplyTerm t { n with u := [p], own := n.own.closedBody [f] } C M ps' fl.tail r
     | .opened t _ =>
       cApplyTerm t { n with u := p :: n.u, own := n.own.pushU [f] } C M ps' fl.tail r
 
@@ -256,11 +285,24 @@ partial def cApplyBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {
     `C` already holds them) and are owned or not (`fl`; nothing from outside is owned in the
     body): a block ending in `return`. -/
 partial def cBody {d : Nat} {Φ : KCtx ks} {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (xs : List Ref) (fl : List Bool) :
-    ConvM (JsBlock S C M [] (.ret (lowerTy cfg τ))) :=
+    (b : Body Δ d Φ Γ bs τ o) (n : Names) (C M : List JsTy) (xs : List Ref) (fl : List Bool)
+    (mod : Own.Env → Own.Env := id) : ConvM (JsBlock S C M [] (.ret (lowerTy cfg τ))) :=
   match b with
-  | .closed t => cTerm t { n with u := xs, own := n.own.body true fl } C M []
-  | .opened t _ => cTerm t { n with u := xs ++ n.u, own := n.own.body false fl } C M []
+  | .closed t => cTerm t { n with u := xs, own := mod (n.own.body true fl) } C M []
+  | .opened t _ => cTerm t { n with u := xs ++ n.u, own := mod (n.own.body false fl) } C M []
+
+/-- The initial value of a loop whose accumulator is an owning closure owning `m`
+    (`Own.AccMode.ownFn`): a local function is given by its version owning the most of `m`. -/
+partial def cPExprFn {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (m : List Bool) (n : Names) (C M : List JsTy) :
+    ConvM (JsExpr S C M (lowerTy cfg τ)) :=
+  match e with
+  | .kvar x => match n.own.kf.getD x.index none with
+    | some fi => match fnVersionRef? n fi m with
+      | some r => r.get _
+      | none => cPExpr e n C M
+    | none => cPExpr e n C M
+  | e => cPExpr e n C M
 
 /-- A computation, followed by the block `k` builds from where its result lives. -/
 partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
@@ -272,7 +314,7 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     let withF (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J e)) :
         ConvM (JsBlock S C M J e) := do
       match pexprRef? f n with
-      | some r@(.c _) | some r@(.pap ..) => rest r C
+      | some r@(.c _) | some r@(.pap ..) | some r@.none => rest r C
       | _ => return (← bindConst (← cPExpr f n C M) rest)
     withF fun fr C₁ => do
       return (← bindConst (← cPExpr a n C₁ M) fun ar C₂ => do
@@ -284,7 +326,15 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
           -- a partial application: the call waits for the other parameters
           k (.pap base args) C₂ M
         else
-          let call ← papCall base args (lowerTy cfg τ) (C := C₂) (M := M)
+          -- a local function with versions: the version owning the most arguments the caller
+          -- gives up (`Own.FnOwn.choose`, as `Own.Comp.cost` decides it)
+          let (base, copies) := match Own.appOffer n.cx f a with
+            | some (fi, off) =>
+              ((fnVersionRef? n fi off).getD base, fi.copyMask off)
+            | none => (base, [])
+          -- an owning closure copies the arguments it owns that the caller keeps
+          let call : JsExpr S C₂ M (lowerTy cfg τ) :=
+            .app (← base.get (.fn (args.map (·.2)) (lowerTy cfg τ))) (← refArgsCopy args copies)
           return (JsBlock.const "x" call (← k (.c C₂.length) _ M)))
   | .share e => do
     let ee ← cNeu e n C M
@@ -296,33 +346,43 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     let cntE ← cPExpr cnt n C M
     -- the body owns its accumulator when every iteration hands the next an owned value (the
     -- initial value copied first if it is not owned, when that saves copies in the body)
-    let mode := Own.natRecAcc n.cx z s
-    let zE ← if mode == .copy then cPExprOwned z n C M else cPExpr z n C M
+    let mode := Own.natRecAcc n.cx z s n.allowFn
+    let zE ← match mode with
+      | .copy => cPExprOwned z n C M
+      | .ownFn m _ => cPExprFn z m n C M
+      | _ => cPExpr z n C M
     let accLvl := M.length
     let M' := α :: M
     let acc : JsMem M' α := .zero
     -- the body: the counter, then the accumulator it reads
     let body ← cBody s n (α :: N :: C) M' [.c (C.length + 1), .c C.length] [mode.owns, false]
+      (accEnv mode 0 (Own.accFnId d n.cx.env) ρ)
     let rest ← k (.m accLvl) C M'
     return JsBlock.letMut "acc" zE (JsBlock.forRange "i" nt cntE.wkM (loopBody acc body) rest)
   | Comp.array_foldl (t := t) (ρ := ρ) arr z s _ => do
     let A := lowerTy cfg (Ty.array (d := true) t)
     let α := lowerTy cfg ρ
     let arrE ← cPExpr arr n C M
-    let mode := Own.foldlAcc n.cx z s
-    let zE ← if mode == .copy then cPExprOwned z n C M else cPExpr z n C M
+    let mode := Own.foldlAcc n.cx z s n.allowFn
+    let zE ← match mode with
+      | .copy => cPExprOwned z n C M
+      | .ownFn m _ => cPExprFn z m n C M
+      | _ => cPExpr z n C M
     let some ⟨E, l⟩ := JsArrayLayout.of? A | throw "internal: the layout of an array"
     let M' := α :: M
     let body ← cBody s n (α :: lowerTy cfg t :: C) M' [.c C.length, .c (C.length + 1)]
-      [false, mode.owns]
+      [false, mode.owns] (accEnv mode 1 (Own.accFnId d n.cx.env) ρ)
     let body ← castBodyElem body E
     let rest ← k (.m M.length) C M'
     return (JsBlock.letMut "acc" zE
       ((JsBlock.forOf "e" l arrE.wkM ((loopBody .zero body)) rest)))
   | Comp.data_rec (b := b) ρ _ branches j e _ =>
     let B := Δ.block b
+    -- the answers at the holes of a layer are owned when every branch answers an owned value
+    let f := if Own.dataRecOwns n.cx b ρ branches then Own.Env.withHoles (Own.recHoles b ρ)
+      else fun e => e
     dataFold B ρ (fun i => Ty.pair (.data (B.ref i)) (ρ i))
-      (fun i x C' => cBody (branches i) n C' M [x] [false]) j e
+      (fun i x C' => cBody (branches i) n C' M [x] [false] f) j e
   | Comp.data_brec (b := b) ρ 0 _ branches j e _ =>
     -- depth `0`: the windows are the pairs of `data_rec`
     let B := Δ.block b
@@ -361,24 +421,24 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
   match t with
   | .ret p => do
     let (cx, _) := n.own.stmt (fun v => Own.PExpr.occ v p) (fun _ => false)
-    return (JsBlock.ret (← cPExpr p { n with cx } C M))
-  | Term.letV (σ := σ) _ v t => do
-    let (cx, env') := n.own.stmt (fun w => Own.Val.occ w v)
-      (fun w => (Own.Term.occ (w.upK 1) t).n > 0)
-    let ve ← cVal v { n with cx } C M
-    return (JsBlock.const "k" ve
-      (← cTerm t { n with k := .c C.length :: n.k, own := env'.pushK (Own.Val.owned cx v) }
-        (lowerTy cfg σ :: C) M J))
+    match n.own.retFn with
+    | some (m, _) => return (JsBlock.ret (← cPExprFn p m { n with cx } C M))
+    | none => return (JsBlock.ret (← cPExpr p { n with cx } C M))
+  | Term.letV uk v t => cLetV uk v t n C M J
   | .letE _ c t =>
     let (cx, env') := n.own.stmt (fun w => Own.Comp.occ w c)
       (fun w => (Own.Term.occ (w.upU 1) t).n > 0)
-    let own := env'.pushU [Own.Comp.owned cx c]
-    cComp c { n with cx } C M J fun x C' M' => cTerm t { n with u := x :: n.u, own } C' M' J
+    let allow := Own.fnAllow cx env' c t
+    let fr := (Own.Comp.fnResult cx c allow).or (Own.papInfo cx c (Own.Term.occ (.u 0) t)).1
+    let own := env'.pushUF (Own.Comp.owned cx c allow) fr
+    cComp c { n with cx, allowFn := allow } C M J fun x C' M' =>
+      cTerm t { n with u := x :: n.u, own } C' M' J
   | Term.record_casesOn (t := t₀) (fs := fs) us e t => do
     let m := (t₀ :: fs.toList).length
     let (cx, env') := n.own.stmt (fun w => Own.Neu.occ w e)
       (fun w => (Own.Term.occ (w.upU m) t).n > 0)
-    let own := env'.pushU (Own.fieldsOwned m (Own.Neu.owned cx e))
+    let (bs, hs) := Own.recordFields cx t₀ fs e
+    let own := env'.pushUH bs hs
     let ee ← cNeu e { n with cx } C M
     return (← destructureAny ee (usedFields us) fun refs C' =>
       cTerm t { n with u := refs ++ n.u, own } C' M J)
@@ -389,6 +449,38 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     match JsMem.ofIndex? J j.index (lowerTy cfg σ) with
     | some jm => return (JsBlock.jump jm pe)
     | none => throw "internal: a join point"
+
+/-- `val k := v; t`.  A local function gets one constant per version generated
+    (`Own.lamPlan`); any other value one constant. -/
+partial def cLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {o o' : Lvl}
+    (uk : Usage1ω) (v : Val Δ d Φ Γ σ o) (t : Term Δ d (⟨σ, uk, o, true⟩ :: Φ) Γ τ js o')
+    (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+  let ce := n.own.stmt (fun w => Own.Val.occ w v) (fun w => (Own.Term.occ (w.upK 1) t).n > 0)
+  let cx := ce.1
+  let env' := ce.2
+  match v, t with
+  | Val.lam (σ := σ₁) (τ := τ₁) b, t =>
+    let plan := Own.lamPlan uk cx env' b t
+    let own := env'.pushKF true (some plan.info)
+    let F := lowerTy cfg (Ty.fn (d := true) σ₁ τ₁)
+    let rec versions (vs : List (Own.FnVer × Bool)) (C' : List JsTy) (refs : List Ref) :
+        ConvM (JsBlock S C' M J (.ret (lowerTy cfg τ))) :=
+      match vs with
+      | [] =>
+        let refs := refs.reverse
+        let n' : Names := { n with k := refs.headD Ref.none :: n.k, own := own }
+        cTerm t { n' with fns := (plan.info.id, refs) :: n.fns } C' M J
+      | (ver, e) :: vs => do
+        if !e then versions vs C' (.none :: refs) else
+        let ve ← cVal (Val.lam b) { n with cx } C' M ver.mask
+        return JsBlock.const (if ver.mask.any (·) then "k_mut" else "k") ve
+          (← versions vs (F :: C') (.c C'.length :: refs))
+    versions (plan.info.vers.zip plan.emit) C []
+  | v, t => do
+    let ve ← cVal v { n with cx } C M
+    return (JsBlock.const "k" ve
+      (← cTerm t { n with k := .c C.length :: n.k, own := env'.pushK (Own.Val.owned cx v) }
+        (lowerTy cfg σ :: C) M J))
 
 /-- A branch in tail position. -/
 partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
@@ -418,7 +510,8 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w e)
       (fun w => (Own.Branches.occ w brs).n > 0)
     let ee ← cNeu e { n with cx } C M
-    return (← unionCasesAny ee (← cBranches brs { n with own } (Own.Neu.owned cx e) C M J))
+    return (← unionCasesAny ee
+      (← cBranches brs { n with own } (Own.Neu.owned cx e) (Own.Neu.partOwned cx e) C M J))
   | Branch.join σ _ _ body br => do
     let σ' := lowerTy cfg σ
     let envBr := Own.joinBranchEnv n.own body
@@ -432,22 +525,24 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     (`const { _1: f₁, _2: f₂ } = s;`), owned or not (`ow`), and continues. -/
 partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {τ : Ty ks} {js : JCtx ks} {o : Lvl}
-    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (ow : Bool) (C M J : List JsTy) :
+    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (ow ph : Bool) (C M J : List JsTy) :
     ConvM (JsUnionArms S C M J (.ret (lowerTy cfg τ)) (lowerCtors cfg cs)) :=
   match brs with
   | Branches.two (c₁ := c₁) (c₂ := c₂) us₁ us₂ b₁ b₂ => do
     let (⟨u₁, s₁⟩, r₁) := mkSel (lowerCtor cfg c₁) (usedFields us₁) C
     let (⟨u₂, s₂⟩, r₂) := mkSel (lowerCtor cfg c₂) (usedFields us₂) C
-    let own₁ := n.own.pushU (Own.fieldsOwned c₁.binds.length ow)
-    let own₂ := n.own.pushU (Own.fieldsOwned c₂.binds.length ow)
+    let own₁ := n.own.pushUH (Own.fieldsOwned c₁.binds.length ow)
+      (Own.fieldsOwned c₁.binds.length ph)
+    let own₂ := n.own.pushUH (Own.fieldsOwned c₂.binds.length ow)
+      (Own.fieldsOwned c₂.binds.length ph)
     let a₁ ← cTerm b₁ { n with u := r₁ ++ n.u, own := own₁ } (pushAll u₁ C) M J
     let a₂ ← cTerm b₂ { n with u := r₂ ++ n.u, own := own₂ } (pushAll u₂ C) M J
     return .cons s₁ a₁ (.cons s₂ a₂ .nil)
   | Branches.cons (c := c) us b rest => do
     let (⟨u, s⟩, r) := mkSel (lowerCtor cfg c) (usedFields us) C
-    let own := n.own.pushU (Own.fieldsOwned c.binds.length ow)
+    let own := n.own.pushUH (Own.fieldsOwned c.binds.length ow) (Own.fieldsOwned c.binds.length ph)
     let a ← cTerm b { n with u := r ++ n.u, own } (pushAll u C) M J
-    return .cons s a (← cBranches rest n ow C M J)
+    return .cons s a (← cBranches rest n ow ph C M J)
 
 end
 

@@ -226,9 +226,19 @@ The supported fragment and the refusals are listed in the header of
   (the first update of a parameter array copies it, once before a loop when possible); the
   extra `…$$mut_…` exports own some parameters and may mutate them, so a JavaScript caller must
   not use such an argument afterwards.  Translated functions do not call each other, so the
-  versions are only for JavaScript callers; local closures get no versions (they borrow their
-  parameters).  The analysis is not proved correct; it is checked by the snapshot tests
-  (every version gives the same answer, and the plain export does not mutate its arguments).
+  exported versions are only for JavaScript callers.  Inside a function, local functions that
+  are not inlined get versions (`Own.lamPlan`, at most three besides the borrowing one), loops
+  whose accumulator is a function build owning closures, and folds over declared datatypes own
+  the answers at the holes of their layers.  Limits: a local function used as a value (passed
+  to an extern, stored, returned) is always its borrowing version; an owning closure is only
+  built for a loop whose initial value is a local function and whose body answers local
+  functions, and it is given up as soon as the closure is used as a value; a course-of-values
+  fold (`data_brec`) and the answers of a fold nested inside an array field of a layer are
+  never owned; ownership is shallow for arrays (their elements are never updated in place).
+  The analysis is not proved correct; it is checked by the snapshot tests (every version gives
+  the same answer, the plain export does not mutate its arguments, and
+  `Tests/SnapshotsMy/OwnershipAliasing.lean` compares programs where an update in place would
+  be visible with Lean).
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
   units, not code points as Lean does: the two differ on strings mixing characters above
   `U+FFFF` with characters in `U+E000`–`U+FFFF`.

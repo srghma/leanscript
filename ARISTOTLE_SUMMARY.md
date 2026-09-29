@@ -1,3 +1,36 @@
+# Summary of changes for run 4e42c39e-2e2f-4623-aa50-762420654cfa
+I extended the static in-place analysis (no runtime reference counts) from top-level exports to local functions, closures and folds over datatypes. None of this analysis is proved: it only decides which array updates the generated JavaScript does in place, and it is checked by tests. `Term.eval`, the optimiser and its existing correctness proofs are unchanged. The Term-level inliner that would replace `inlineConsts` is still not done.
+
+**What changed**
+- **Usage counters** (`LeanScript/Term/Ownership/Basic.lean`, `Walk.lean`):
+  - The two arms of a conditional now count as exclusive, so a value used once in each arm counts as used once.
+  - The environment now tracks, for each local function, which versions of it exist and which of its parameters it may update in place.
+- **Versions of local functions:** a function that is not inlined can get up to 3 extra versions, each updating a different set of array parameters in place. For example, one version can update its 1st argument in place and leave the 2nd and 3rd alone. When the conversion to JsTerm (`JsTerm/Lower/FromTerm.lean`) emits the function, it writes one constant per version (`k`, `k_mut`, …), and each call site picks the version that fits what that site owns. Partially applied functions that are used more than once keep this information, but pass no ownership.
+- **Owning closures:** a closure can own an array it captures. The array is updated in place inside the closure, and is copied once when the closure is called if the caller does not own it.
+- **Other cases now updated in place:**
+  - array literals;
+  - the result of a conditional, when both arms give an owned array;
+  - owned results of calls;
+  - fields of records;
+  - in folds over declared datatypes, the answers coming back from the recursive positions.
+- **Data structure:** `Translated.optimized` holds an `OwnedTerm`: the optimised term plus the list of versions to generate. The first version borrows every parameter, and each extra export is emitted as `f$$mut_i_j`.
+
+**Checks**
+- Two new snapshot files, `Tests/SnapshotsMy/LocalFnInPlace.lean` and `Tests/SnapshotsMy/OwnershipAliasing.lean`, cover this. The second includes a `Bag` datatype to test aliasing.
+- The JavaScript now updates in place in several existing snapshots: `ArrayInPlace.test6`, `InlineClosures.downFrom`, `RecData` (`toArray`, `inorder`, `reverse`, `sort`), `MapFilter.test5` and `ArrayFSet`.
+- The full snapshot run found no failing node check. It still exits with an error, because the UInt64 and Nat literals in `PrimOpInt02Configurable` and `PrimOpInt03Configurable` don't fit in a JavaScript number under the pbo preset; that error was already there before this work.
+- The node checks run every version and check they give the same answer. They also call each plain export twice on the same array, to confirm it does not change its argument.
+- `lake build tests TermTests TyTests JsTerm leanscript` succeeds. `lake exe tests` passes 66/66, including a new test for local-function versions and owning closures.
+- There is no `sorry` in the ownership code.
+
+**Still not done** (recorded in `README.md`, `NOT_IMPLEMENTED.md` and `proposals/NoJsTermOptimizations.md`, all updated)
+- `inPlace` still runs on the finished JsTerm.
+- `hoistConsts` and `shareFuns` still build the module.
+- `inlineConsts` needs a proven Term-level inliner before it can move.
+- Fusion, constructor specialisation and unboxing parameters have not been written.
+
+The `OwnedTerm` entry in the Properties table is updated and stays in progress, since the analysis has no proof. All work is committed.
+
 # Summary of changes for run 65988e37-4427-41dc-9c90-c5f78cb3c033
 The compiler now updates arrays in place based on a static "functional but in place" analysis, with no reference counts at run time. It generates several versions of each exported function, which differ in which array parameters they are allowed to mutate. The analysis itself is not proved correct; it is checked by tests.
 

@@ -2,7 +2,7 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  array__lean_array_push_immutable,
+  array__lean_array_push_mutable,
   bigint_nat__lean_array_fset_mutable,
   bigint_nat__lean_array_fswap_mutable,
   bigint_nat__lean_array_fset_immutable,
@@ -16,7 +16,7 @@ import {
  * @returns {Array<nat(bigint)>}
  */
 export const test1 = (x) => {
-  const x$1 = array__lean_array_push_immutable([x, 1n, 2n], 3n);
+  const x$1 = array__lean_array_push_mutable([x, 1n, 2n], 3n);
   const x$2 = bigint_nat__lean_array_fset_mutable(x$1, 0n, 7n);
   return bigint_nat__lean_array_fswap_mutable(x$2, 1n, 2n);
 };
@@ -27,7 +27,7 @@ export const test1 = (x) => {
  * @returns {{ _1: Array<nat(bigint)>, _2: Array<nat(bigint)> }}
  */
 export const test2 = (x) => {
-  const x$1 = array__lean_array_push_immutable([x, 1n, 2n], 3n);
+  const x$1 = array__lean_array_push_mutable([x, 1n, 2n], 3n);
   return { _1: x$1, _2: bigint_nat__lean_array_fset_immutable(x$1, 2n, x) };
 };
 
@@ -40,7 +40,7 @@ export const test3 = (x) =>
   typedArray__lean_array_pop_immutable(
     typedArray__lean_array_push_immutable(
       bigint_nat__lean_array_fswap_mutable(
-        bigint_nat__lean_array_fset_immutable(Uint8Array.of(x, 1, 2), 2n, x),
+        bigint_nat__lean_array_fset_mutable(Uint8Array.of(x, 1, 2), 2n, x),
         0n,
         2n,
       ),

@@ -14,7 +14,6 @@
 
 import {
   uint53__lean_nat_add,
-  array__lean_array_push_immutable,
   array__lean_array_push_mutable,
 } from "../../runtime.js";
 
@@ -103,7 +102,7 @@ export const RecData$toArray = (a) => {
     if (x$3.tag === 0) {
       return [];
     }
-    return array__lean_array_push_immutable(x$3._2._2, x$3._1);
+    return array__lean_array_push_mutable(x$3._2._2, x$3._1);
   };
   const x$5 = go0$1(a);
   return x$5;
@@ -191,7 +190,7 @@ export const RecData$inorder = (a) => {
     if (x$3.tag === 0) {
       return [];
     }
-    let acc$6 = array__lean_array_push_immutable(x$3._1._2, x$3._2);
+    let acc$6 = array__lean_array_push_mutable(x$3._1._2, x$3._2);
     for (const e$7 of x$3._3._2) {
       const a$8 = acc$6;
       acc$6 = array__lean_array_push_mutable(a$8, e$7);
@@ -302,7 +301,7 @@ export const RecData$reverse = (xs) => {
       if (x$4.tag === 0) {
         return [];
       }
-      return array__lean_array_push_immutable(x$4._2._2, x$4._1);
+      return array__lean_array_push_mutable(x$4._2._2, x$4._1);
     };
     const x$6 = go0$2(x$1);
     return x$6;
@@ -343,7 +342,7 @@ export const RecData$sort = (xs) => {
       if (x$4.tag === 0) {
         return [];
       }
-      let acc$7 = array__lean_array_push_immutable(x$4._1._2, x$4._2);
+      let acc$7 = array__lean_array_push_mutable(x$4._1._2, x$4._2);
       for (const e$8 of x$4._3._2) {
         const a$9 = acc$7;
         acc$7 = array__lean_array_push_mutable(a$9, e$8);

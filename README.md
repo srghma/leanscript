@@ -109,7 +109,19 @@ three such parameters one version owns each alone.  The conversion (`termToJs �
 generates each version from the same `Term`; the doc comment of each version says what it
 owns and its static cost, and `FILE-Term-optimized.txt` lists them (`-- version …`).  The node
 checks run every version and, for functions with array parameters, call the plain export twice
-on the same array to check it is not mutated.  This analysis is not proved (it only decides
+on the same array to check it is not mutated.  Inside a function the same analysis covers:
+**local functions** that are not inlined (`Own.lamPlan`): each gets one JavaScript constant per
+way its calls give up their array arguments (`k` borrows, `k_mut` owns), each call calls the
+version owning the most arguments its caller gives up, and the answer of a call is owned when
+every path of that version answers a new array; **owning closures** (`Own.AccMode.ownFn`): a
+loop whose accumulator is a function (a structural recursion with an array accumulator, such as
+`fill : Nat → Array Nat → Array Nat`) makes every closure it builds own its array argument,
+and every call of one gives up its argument or copies it once (`[...a]`); **folds over
+declared datatypes** (`Own.dataRecOwns`): when every branch answers a new array, the answers at
+the holes of a layer are owned, so `(toArray t).push h` pushes in place; and conditionals
+(`c ? push(a, x) : a` consumes `a` in either arm).  `Tests/SnapshotsMy/LocalFnInPlace.lean` shows
+these, and `Tests/SnapshotsMy/OwnershipAliasing.lean` programs where an update in place would be
+visible (their checks compare every answer with Lean's).  This analysis is not proved (it only decides
 which array operations are in place); `Term.eval` and the proofs about `Term.optimize` are
 unaffected.  Join points are de Bruijn indexed in `JsTerm` (`JsBlock.join`,
 `JsBlock.jump`) and printed as labelled blocks (`let x$1; j$2: { …; x$1 = e; break j$2; }`).  In the `Term`
@@ -226,7 +238,7 @@ and gains listed in the proposal, and course-of-values folds of depth `1` or mor
 | `LeanScript/Term/Semantics/Closed.lean` | a term with no unknown and no open known value is a value (`Term.closed_isValue`, `Term.run_isValue`) |
 | `LeanScript/Term/Semantics/NormalValue.lean` | `Term.eval` of a statement in which every variable is known (no unknown, no open known value, no join point, completely normalised known values) is the reading of a completely normalised value `NVal`: constructors all the way down, delays forced, functions as closures of closed bodies over completely normalised values (`Term.eval_normal`, `Term.run_normal`) |
 | `LeanScript/Term/Rename/Basic.lean`, `LeanScript/Term/Rename/Eval.lean`, `LeanScript/Term/Rename/Weaken.lean` | renaming (partial: it fails on a dropped variable that is used) and weakening, and the fact that renaming commutes with evaluation (`Term.rename_eval`, `TermTests/Semantics/RenameTest.lean`) |
-| `LeanScript/Term/Ownership/Basic.lean`, `LeanScript/Term/Ownership/Walk.lean` | the static ownership analysis (not proved): occurrences of variables, owned/borrowed arrays, in-place updates, loop accumulator modes, the versions of a function (`Own.Version.select`, `OwnedTerm`) generated as extra exports |
+| `LeanScript/Term/Ownership/Basic.lean`, `LeanScript/Term/Ownership/Walk.lean` | the static ownership analysis (not proved): occurrences of variables, owned/borrowed arrays, in-place updates, loop accumulator modes, the versions of a function (`Own.Version.select`, `OwnedTerm`) generated as extra exports, the versions of local functions (`Own.lamPlan`), owning closures (`Own.AccMode.ownFn`), owned answers of folds (`Own.dataRecOwns`) |
 | `LeanScript/Term/Optimize/Occ.lean`, `LeanScript/Term/Optimize/Dce.lean` | occurrence counts (added along straight-line code, the maximum across the arms of a branch, `ω` inside a body that may run many times) and dead-code elimination with exact usages, which preserves the meaning (`Term.dce_eval`) |
 | `LeanScript/Term/Optimize/Fields.lean`, `LeanScript/Term/Optimize/FieldsWalk.lean`, `LeanScript/Term/Optimize/Reannot.lean` | the known fields of records: facts `x = (f₁, …, fₙ)` gathered along a term (`RecFact`, `RecFact.Holds`), `Term.widenFields` (a `record_casesOn` binds every field), `Term.reuseFields` (a later `record_casesOn` of a known record reuses its fields), with `Term.widenFields_eval`, `Term.reuseFields_eval` and their call counts; `Term.reannotFields` (the fields of a case analysis annotated with their counted usages, `Term.reannotFields_eval`) |
 | `LeanScript/Term/Optimize/Basic.lean` | the optimiser `Term.optimize` (`Term.simp`, `Term.widenFields`, `Term.reuseFields`, `Term.cseWalk`, `Term.condWalk` in `Cond.lean`, `Term.dce`): copy propagation (`let x := share y`), a shared answer returned directly (`let x := share n; ret x` is `ret n`), dead `record_casesOn` dropped, known fields reused, boolean conditions simplified (`c ? true : false` is `c`, a test of a negation swaps the arms), then dead-code elimination; it preserves the value (`Term.optimize_eval`, `Term.optimize_run`, `TermTests/Optimize/OptimizeTest.lean`) |

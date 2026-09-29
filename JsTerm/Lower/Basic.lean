@@ -139,6 +139,12 @@ structure Names where
   /-- The context of ownership of the part of a statement being converted (an update of an
       array in it is done in place when `Own.updateInPlace` says so). -/
   cx : Own.Ctx := default
+  /-- The constants of the versions of each local function with versions, by its number
+      (`Own.FnOwn.id`), in the order of its versions (`.none` for a version not generated). -/
+  fns : List (Nat × List Ref) := []
+  /-- May the loop being converted have an owning closure as its accumulator
+      (`Own.fnAllow`)? -/
+  allowFn : Bool := true
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes

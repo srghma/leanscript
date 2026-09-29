@@ -13,7 +13,6 @@ import {
   uint53__lean_array_swap_mutable,
   uint53__lean_nat_sub,
   array__lean_array_pop_mutable,
-  array__lean_array_push_immutable,
 } from "../../runtime.js";
 
 /**
@@ -143,23 +142,23 @@ export const test5 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const test6 = (n) => {
-  const k$14 = (x$1, x$2) => {
+  const k_mut$14 = (x$1, x$2) => {
     const k$4 = (x$3) => x$3;
     let acc$5 = k$4;
     for (let i$6 = 0; i$6 < x$1; i$6++) {
       const a$7 = acc$5;
-      const k$11 = (x$8) => {
-        const x$9 = array__lean_array_push_immutable(x$8, i$6);
+      const k_mut$11 = (x$8) => {
+        const x$9 = array__lean_array_push_mutable(x$8, i$6);
         const x$10 = a$7(x$9);
         return x$10;
       };
-      acc$5 = k$11;
+      acc$5 = k_mut$11;
     }
     const x$12 = acc$5;
     const x$13 = x$12(x$2);
     return x$13;
   };
   const x$15 = [];
-  const x$16 = k$14(n, x$15);
+  const x$16 = k_mut$14(n, x$15);
   return x$16;
 };

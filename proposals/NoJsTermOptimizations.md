@@ -21,6 +21,16 @@
 > change `Term.eval`; the snapshot checks run every version).  The module-constant inliner
 > `inlineConsts` stays out: a proven Term-level inliner across definitions is still the open
 > piece of work described below.
+> **Update: the analysis now reaches inside functions.**  Local functions that are not
+> inlined get versions too (`Own.lamPlan`: one constant per way their calls give up array
+> arguments, the call choosing the version owning the most, and owned answers when the version
+> answers new arrays); loops whose accumulator is a function build *owning closures*
+> (`Own.AccMode.ownFn`: the closures of a structural recursion with an array accumulator own
+> their argument, and a call copies an argument its caller keeps); folds over declared
+> datatypes own the answers at the holes of their layers (`Own.dataRecOwns`); a conditional
+> consumes an array in either arm.  `ArrayInPlace.test6`, `InlineClosures.downFrom`,
+> `RecData.toArray`/`inorder`/`reverse`/`sort`, `MapFilter.test5` and `ArrayFSet` now update
+> in place where they copied before.
 > The pipeline is now
 >
 > ```

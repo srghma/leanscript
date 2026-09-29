@@ -159,6 +159,12 @@ structure Occ where
 instance : Add Occ :=
   ⟨fun a b => ⟨a.n + b.n, a.esc + b.esc, a.inBody + b.inBody, a.inClosure + b.inClosure⟩⟩
 
+/-- The occurrences of two pieces of code of which only one runs (the arms of a conditional):
+    the larger count of each kind. -/
+def Occ.max (a b : Occ) : Occ :=
+  ⟨Nat.max a.n b.n, Nat.max a.esc b.esc, Nat.max a.inBody b.inBody,
+    Nat.max a.inClosure b.inClosure⟩
+
 /-- One escaping occurrence. -/
 def Occ.one : Occ := ⟨1, 1, 0, 0⟩
 
@@ -190,7 +196,7 @@ partial def Neu.occ {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} (v : 
     Neu Δ Φ Γ τ ℓ → Occ
   | .var x => if uIs x v then Occ.one else {}
   | .data_out _ _ n => Neu.occ v n
-  | .cond c a b => Neu.occ v c + PExpr.occ v a + PExpr.occ v b
+  | .cond c a b => Neu.occ v c + Occ.max (PExpr.occ v a) (PExpr.occ v b)
   | .extern e args _ => Args.occAt v (readSlot? (externName e)) 0 args
 /-- Occurrences of a variable in a pure expression. -/
 partial def PExpr.occ {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} (v : V) :
@@ -294,13 +300,79 @@ end
 
 end Occurrences
 
+/-! ## Known functions and their versions -/
+
+/-- A version of a local function: the parameters it owns (`mask`, the first one first) and
+    whether its answer is owned (`ret`: every path of its body answers an owned value). -/
+structure FnVer where
+  mask : List Bool
+  ret : Bool
+  deriving Inhabited, Repr, BEq
+
+/-- What is known of a function value at the places it is called: the versions of it that are
+    available (`vers`, never empty: the first one borrows every parameter), a stable number
+    (`id`: the position of the known value it comes from, counted from the outermost), and,
+    for a partial application of it, whether each argument passed so far was given up by its
+    caller (`passed`). -/
+structure FnOwn where
+  id : Nat
+  vers : List FnVer
+  passed : List Bool := []
+  /-- An **owning closure** (the accumulator of a loop answering functions, and the result of
+      such a loop): its only version (`vers`, one) owns the parameters of its mask, and every call
+      must give them up — an argument its caller still holds is copied first (`copyable` says
+      which parameters are arrays, which can be copied).  Such a function must not be used as
+      a value (`CallRec.isUse`): its callers would not know. -/
+  must : Bool := false
+  copyable : List Bool := []
+  deriving Inhabited, Repr
+
+/-- The version called when the arguments are given up or not (`off`): among the versions
+    owning only parameters given up, the one owning the most (the first such one); the first
+    version, which owns nothing, is always possible. -/
+def FnOwn.choose (fi : FnOwn) (off : List Bool) : Nat :=
+  let ok (v : FnVer) : Bool := v.mask.zipIdx.all fun (b, i) => !b || off.getD i false
+  let score (v : FnVer) : Nat := (v.mask.filter fun b => b).length
+  (fi.vers.zipIdx.foldl (fun (best : Option (Nat × Nat)) (v, i) =>
+    if !ok v then best else
+    match best with
+    | some (_, s) => if score v > s then some (i, score v) else best
+    | none => some (i, score v)) none).map (·.1) |>.getD 0
+
+/-- A call of a function: which function (`id`), the ownership of its arguments (`offered`), and
+    the version called (`chosen`, an index into `FnOwn.vers`; `0` also stands for a use of the
+    function as a value, which needs the version borrowing everything). -/
+structure CallRec where
+  id : Nat
+  offered : List Bool
+  chosen : Nat
+  /-- A use of the function as a value (not a call). -/
+  isUse : Bool := false
+  deriving Inhabited, Repr, BEq
+
+/-- The numbers of owning closures (`FnOwn.must`) start here (below: known values). -/
+def mustBase : Nat := 1000000
+
 /-! ## Environments -/
 
-/-- Which unknowns (`u`) and known values (`k`) are owned, innermost first. -/
+/-- Which unknowns (`u`) and known values (`k`) are owned, innermost first; and what is known of
+    those that are functions with versions (`uf`, `kf`, in the same order). -/
 structure Env where
   u : List Bool := []
   k : List Bool := []
-  deriving Inhabited, Repr
+  uf : List (Option FnOwn) := []
+  kf : List (Option FnOwn) := []
+  /-- The answers (`ret`) of the statement must be closures owning the parameters of this mask
+      (the body of a loop whose accumulator is an owning closure), and, when the flag is set,
+      closures whose answer is owned. -/
+  retFn : Option (List Bool × Bool) := none
+  /-- The unknowns (in the order of `u`) that are **partly owned**: the answers of a fold
+      inside them (the second component of a value of one of the types `holes`, the pairs of a
+      subvalue and the answer of the fold at it) are owned, the rest is not.  The layer a
+      branch of `data_rec` takes apart, when every branch answers an owned value. -/
+  uh : List Bool := []
+  holes : List ((ks : List Nat) × Ty ks) := []
+  deriving Inhabited
 
 namespace Env
 
@@ -312,17 +384,55 @@ def get (e : Env) : V → Bool
 /-- The environment where the owned variables satisfying `p` are no longer owned (`p` is only
     asked about owned variables). -/
 def kill (e : Env) (p : V → Bool) : Env :=
-  { u := e.u.mapIdx fun i b => b && !p (.u i)
-    k := e.k.mapIdx fun i b => b && !p (.k i) }
+  { e with
+    u := e.u.mapIdx fun i b => b && !p (.u i)
+    k := e.k.mapIdx fun i b => b && !p (.k i)
+    uh := e.uh.mapIdx fun i b => b && !p (.u i) }
 
-/-- Nothing owned, with the same number of variables. -/
-def none (e : Env) : Env := { u := e.u.map fun _ => false, k := e.k.map fun _ => false }
+/-- Is the unknown partly owned (`uh`)? -/
+def getH (e : Env) : V → Bool
+  | .u i => e.uh.getD i false
+  | .k _ => false
+
+/-- Is the type one of the pairs of a subvalue and the answer of a fold (`holes`)? -/
+def isHole {ks : List Nat} (e : Env) (t : Ty ks) : Bool :=
+  e.holes.any fun ⟨ks', h⟩ => if hk : ks' = ks then decide ((hk ▸ h) = t) else false
+
+/-- Nothing owned, with the same number of variables (the functions stay known — every call
+    of an owning closure must give up its arguments — but the arguments a partial application
+    holds are no longer given up: it may be called many times). -/
+def none (e : Env) : Env :=
+  { u := e.u.map fun _ => false, k := e.k.map fun _ => false,
+    uf := e.uf.map fun f => f.map fun fi => { fi with passed := fi.passed.map fun _ => false },
+    kf := e.kf, uh := e.uh.map fun _ => false, holes := e.holes }
 
 /-- New unknowns, innermost first. -/
-def pushU (e : Env) (bs : List Bool) : Env := { e with u := bs ++ e.u }
+def pushU (e : Env) (bs : List Bool) : Env :=
+  { e with
+    u := bs ++ e.u
+    uf := bs.map (fun _ => Option.none) ++ e.uf
+    uh := bs.map (fun _ => false) ++ e.uh }
+
+/-- New unknowns, owned (`bs`) or partly owned (`hs`) or not. -/
+def pushUH (e : Env) (bs hs : List Bool) : Env :=
+  { e with u := bs ++ e.u, uf := bs.map (fun _ => Option.none) ++ e.uf, uh := hs ++ e.uh }
+
+/-- A new unknown, which may be a tracked function. -/
+def pushUF (e : Env) (b : Bool) (f : Option FnOwn) : Env :=
+  { e with u := b :: e.u, uf := f :: e.uf, uh := false :: e.uh }
 
 /-- A new known value. -/
-def pushK (e : Env) (b : Bool) : Env := { e with k := b :: e.k }
+def pushK (e : Env) (b : Bool) : Env := { e with k := b :: e.k, kf := Option.none :: e.kf }
+
+/-- A new known value, which may be a function with versions. -/
+def pushKF (e : Env) (b : Bool) (f : Option FnOwn) : Env :=
+  { e with k := b :: e.k, kf := f :: e.kf }
+
+/-- The environment of a closed body: only the parameters `ps` and the known values (none of
+    them owned). -/
+def closedBody (e : Env) (ps : List Bool) : Env :=
+  { u := ps, k := e.k.map fun _ => false, uf := ps.map fun _ => Option.none, kf := e.kf,
+    uh := ps.map fun _ => false, holes := e.holes }
 
 /-- Is any variable owned? -/
 def any (e : Env) : Bool := e.u.any id || e.k.any id
@@ -345,6 +455,12 @@ namespace Ctx
 def consumable (c : Ctx) (v : V) : Bool :=
   let o := c.occ v
   c.env.get v && o.esc == 1 && o.inBody == 0
+
+/-- The partly owned variable (`Env.uh`) is taken apart for the last time in `S` (as
+    `consumable`, for the parts it owns). -/
+def partConsumable (c : Ctx) (v : V) : Bool :=
+  let o := c.occ v
+  c.env.getH v && o.esc == 1 && o.inBody == 0
 
 /-- The variable can be updated in place by an update whose other arguments have the
     occurrences `rest`: it is owned, not used after `S`, and its other occurrences in `S` are
