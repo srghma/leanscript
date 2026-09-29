@@ -210,15 +210,112 @@ def collectImports (consts : List JsConst) (funs : List JsFun) : List String :=
   let acc := consts.foldl (fun acc c => c.e.runtimeNames acc) #[]
   (funs.foldl (fun acc f => f.body.runtimeNames acc) acc).toList
 
+/-! ## Constants and functions that are the same function -/
+
+mutual
+/-- The module constants an expression reads when it is evaluated (not inside its closures,
+    which only read them when they are called). -/
+partial def JsExpr.globalsNow {C M : List JsTy} {τ : JsTy} (acc : Array String) :
+    JsExpr C M τ → Array String
+  | .global n _ => acc.push n
+  | .imported _ as | .inlined _ as | .record_mk as | .union_mk _ as => as.globalsNow acc
+  | .app f as => as.globalsNow (f.globalsNow acc)
+  | .array_mk _ ps | .list_mk ps => ps.globalsNow acc
+  | .cond c a b => b.globalsNow (a.globalsNow (c.globalsNow acc))
+  | _ => acc
+/-- `globalsNow` of arguments. -/
+partial def JsArgs.globalsNow {C M σs : List JsTy} (acc : Array String) :
+    JsArgs C M σs → Array String
+  | .nil => acc
+  | .cons a as => as.globalsNow (a.globalsNow acc)
+/-- `globalsNow` of the parts of an array literal. -/
+partial def JsParts.globalsNow {C M : List JsTy} {A E : JsTy} (acc : Array String) :
+    JsParts C M A E → Array String
+  | .nil => acc
+  | .elem e rest | .spread e rest => rest.globalsNow (e.globalsNow acc)
+end
+
+/-- The module constants renamed as `ren` says (in a whole block or expression). -/
+def renameGlobalsRw (ren : String → Option String) : JsExprRewrite :=
+  ⟨fun _ _ τ e => match e with
+    | .global n _ => match ren n with
+      | some n' => .global n' τ
+      | none => e
+    | e => e⟩
+
+/-- The type of a function. -/
+def JsFun.ty (f : JsFun) : JsTy := .fn (f.params.map (·.2)) f.ret
+
+/-- The dump of the body of a function (its parameters are its outermost constants, their
+    names left out): two functions of the same type with the same key are the same function. -/
+def JsFun.key (f : JsFun) : String := f.body.pretty "  "
+
+/-- The dump of the body of a closure that is a module constant (its parameters' hints left
+    out), as `JsFun.key`. -/
+def JsConst.key? (c : JsConst) : Option String :=
+  match c.ty, c.e with
+  | _, .lam _ body => some (body.pretty "  ")
+  | _, _ => none
+
+/-- Sharing the functions of a module:
+
+* a module constant that is a closure equal to an exported function (`const $k3 = (x$1, x$2)
+  => …;`, the copy of a function a call inlined) is dropped, and the function is read instead
+  (`hyperBase`).  This is only done when no module constant reads it when the module is
+  loaded (only closures do, when they are called), so that the function is never read before
+  it is defined;
+* an exported function equal to one before it is written as that one
+  (`export const test1 = appendR;`, `JsFun.alias`), and one that only passes its parameters
+  on to a function of the runtime as that function. -/
+def JsModule.shareFuns (m : JsModule) : JsModule :=
+  let funs := m.funs.toArray
+  let readNow := m.consts.foldl (fun acc c => c.e.globalsNow acc) #[]
+  let dropped : Array (String × String) := m.consts.foldl (init := #[]) fun acc c =>
+    match c.key? with
+    | none => acc
+    | some k =>
+      if readNow.contains c.name then acc else
+      match funs.find? fun f => f.alias.isNone && f.ty == c.ty && f.key == k with
+      | some f => acc.push (c.name, f.name)
+      | none => acc
+  let ren : String → Option String := fun n => (dropped.find? (·.1 == n)).map (·.2)
+  let consts := (m.consts.filter fun c => (ren c.name).isNone).map fun c =>
+    { c with e := c.e.mapBU (renameGlobalsRw ren) .id }
+  let funs := funs.map fun f => { f with body := f.body.mapBU (renameGlobalsRw ren) .id }
+  -- equal functions: the first one of each body is kept
+  let funs := (List.range funs.size).foldl (init := funs) fun fs i =>
+    match fs[i]? with
+    | none => fs
+    | some f =>
+      let k := f.key
+      match (fs.extract 0 i).find? fun g => g.alias.isNone && g.ty == f.ty && g.key == k with
+      | some g => fs.set! i { f with alias := some g.name }
+      | none => fs
+  -- a function that only passes its parameters, in order, to a function of the runtime is
+  -- that function (`export const add = (a, b) => uint8__lean_uint8_add(a, b);` is
+  -- `export const add = uint8__lean_uint8_add;`)
+  let funs := funs.map fun f =>
+    if f.alias.isSome then f else
+    match f.body with
+    | .ret (.imported op args) =>
+      if op.extraArgs.isEmpty && args.areFields f.params.length 0 then
+        { f with alias := some op.runtimeName }
+      else f
+    | _ => f
+  -- (the body of a function written as another one is kept: it calls what that one calls)
+  { m with consts, funs := funs.toList, imports := collectImports consts funs.toList }
+
 /-- A module of the functions `funs`: their constants shared (`hoistConsts`), the copies of
     the constants this leaves propagated (`cleanup`), the constants used once right away
-    inlined (`inlineOnce`), and the imports they need. -/
+    inlined (`inlineOnce`), the constants and functions that are the same function shared
+    (`JsModule.shareFuns`), and the imports they need. -/
 def mkModule (config : JsConfig) (funs : List JsFun) : JsModule :=
   let (consts, funs) := hoistConsts funs
   -- hoisting leaves copies of the module constants (`const k$1 = $k1;`)
-  let consts := consts.map fun c => { c with e := inlineOnceExpr (cleanupExpr c.e) }
+  let consts := consts.map fun c =>
+    { c with e := inlineOnceExpr ((cleanupExpr c.e).mapBU .id ⟨fun _ _ _ _ b => peepholeNode b⟩) }
   let funs := funs.map fun f => { f with body := inlineOnce (peephole (cleanup f.body)) }
-  { config, imports := collectImports consts funs, consts, funs }
+  JsModule.shareFuns { config, imports := collectImports consts funs, consts, funs }
 
 end MoreJs
 

@@ -15,18 +15,10 @@ export const Inline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: 
 };
 
 // Inline.test1
-export const Inline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const Inline$test1 = Inline$appendR;
 
 // Inline.test2
-export const Inline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const Inline$test2 = Inline$appendR;
 
 // Inline.test3
 export const Inline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
@@ -35,82 +27,37 @@ export const Inline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: stri
 };
 
 // Noinline.appendR
-export const Noinline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const Noinline$appendR = Inline$appendR;
 
 // Noinline.test1
-export const Noinline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const Noinline$test1 = Inline$appendR;
 
 // Noinline.test2
-export const Noinline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const Noinline$test2 = Inline$appendR;
 
 // Noinline.test3
-export const Noinline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c0;
-  return { _1: inline:string__lean_string_append__String_append("hello", c1), _2: ["hello", ...c0] };
-};
+export const Noinline$test3 = Inline$test3;
 
 // AlwaysInline.appendR
-export const AlwaysInline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const AlwaysInline$appendR = Inline$appendR;
 
 // AlwaysInline.test1
-export const AlwaysInline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const AlwaysInline$test1 = Inline$appendR;
 
 // AlwaysInline.test2
-export const AlwaysInline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const AlwaysInline$test2 = Inline$appendR;
 
 // AlwaysInline.test3
-export const AlwaysInline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c0;
-  return { _1: inline:string__lean_string_append__String_append("hello", c1), _2: ["hello", ...c0] };
-};
+export const AlwaysInline$test3 = Inline$test3;
 
 // InlineIfReduceInline.appendR
-export const InlineIfReduceInline$appendR = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const InlineIfReduceInline$appendR = Inline$appendR;
 
 // InlineIfReduceInline.test1
-export const InlineIfReduceInline$test1 = (a : { _1: string, _2: Array<string> }, a1 : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const InlineIfReduceInline$test1 = Inline$appendR;
 
 // InlineIfReduceInline.test2
-export const InlineIfReduceInline$test2 = (a : { _1: string, _2: Array<string> }, b : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c1;
-  const { _1: f, _2: f } = c2;
-  return { _1: inline:string__lean_string_append__String_append(c3, c1), _2: [...c2, ...c0] };
-};
+export const InlineIfReduceInline$test2 = Inline$appendR;
 
 // InlineIfReduceInline.test3
-export const InlineIfReduceInline$test3 = (a : { _1: string, _2: Array<string> }) : { _1: string, _2: Array<string> } => {
-  const { _1: f, _2: f } = c0;
-  return { _1: inline:string__lean_string_append__String_append("hello", c1), _2: ["hello", ...c0] };
-};
+export const InlineIfReduceInline$test3 = Inline$test3;

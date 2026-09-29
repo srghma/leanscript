@@ -51,17 +51,11 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
     val k5 [1] : ((Nat × Nat) → Nat) := fun x6 [1] : (Nat × Nat) => (closed)
       let ⟨f7 [ω] : Nat, f8 [ω] : Nat⟩ := x6
-      if lean_nat_dec_lt(f7, f8) then
-        ret lean_nat_sub(f8, f7)
-      else
-        ret lean_nat_sub(f7, f8)
+      ret cond(lean_nat_dec_lt(f7, f8), lean_nat_sub(f8, f7), lean_nat_sub(f7, f8))
     let x9 [1] : Nat := k5 ⟨x2, x4⟩
     val k10 [1] : ((Nat × Nat) → Nat) := fun x11 [1] : (Nat × Nat) => (closed)
       let ⟨f12 [ω] : Nat, f13 [ω] : Nat⟩ := x11
-      if lean_nat_dec_lt(f12, f13) then
-        ret lean_nat_sub(f13, f12)
-      else
-        ret lean_nat_sub(f12, f13)
+      ret cond(lean_nat_dec_lt(f12, f13), lean_nat_sub(f13, f12), lean_nat_sub(f12, f13))
     let x14 [1] : Nat := k10 ⟨x4, lean_nat_add(x2, 1)⟩
     ret lean_nat_add(x9, x14)
   ret k3
@@ -72,10 +66,7 @@ val k1 [1] : (Nat → (Nat → (Nat × Nat))) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → (Nat × Nat)) := fun x4 [1] : Nat => (open)
     val k5 [1] : ((Nat × Nat) → (Nat × Nat)) := fun x6 [ω] : (Nat × Nat) => (closed)
       let ⟨f7 [ω] : Nat, f8 [ω] : Nat⟩ := x6
-      if lean_nat_dec_lt(f7, f8) then
-        ret x6
-      else
-        ret ⟨f8, f7⟩
+      ret cond(lean_nat_dec_lt(f7, f8), x6, ⟨f8, f7⟩)
     let x9 [1] : (Nat × Nat) := k5 ⟨x2, x4⟩
     ret x9
   ret k3

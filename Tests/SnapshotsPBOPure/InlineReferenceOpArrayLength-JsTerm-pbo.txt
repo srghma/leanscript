@@ -6,11 +6,7 @@
 // test1
 export const test1 = (fn : () => int53(number)) : Array<int53(number)> => {
   const k = [1, 2, c0()];
-  if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3)) {
-    return c0;
-  } else {
-    return [];
-  }
+  return (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3) ? c0 : []);
 };
 
 // fn'
@@ -29,11 +25,7 @@ export const extern2 = () : Array<Array<int53(number)>> => {
 };
 
 // test3
-export const test3 = () : Array<int53(number)> => {
-  return [1, 2, 0];
-};
+export const test3 = extern1;
 
 // test4
-export const test4 = () : Array<Array<int53(number)>> => {
-  return [[1, 2, 0], [3], [0]];
-};
+export const test4 = extern2;

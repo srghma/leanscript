@@ -16,11 +16,7 @@ export const test1 = (x : int(bigint), y : int(bigint)) : string => {
           if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
             return "_.4";
           } else {
-            if (inline:bigint_int__lean_int_dec_eq(c0, 5n)) {
-              return "1.5";
-            } else {
-              return "_._";
-            }
+            return (inline:bigint_int__lean_int_dec_eq(c0, 5n) ? "1.5" : "_._");
           }
         }
       }
@@ -29,11 +25,7 @@ export const test1 = (x : int(bigint), y : int(bigint)) : string => {
     if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
       return "_.4";
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
-        return "_.2";
-      } else {
-        return "_._";
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c0, 2n) ? "_.2" : "_._");
     }
   }
 };

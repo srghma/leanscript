@@ -16,17 +16,11 @@ val k1 [1] : (Int → (Int → String)) := fun x2 [ω] : Int => (closed)
             if lean_int_dec_eq(x4, 4) then
               ret "_.4"
             else
-              if lean_int_dec_eq(x4, 5) then
-                ret "1.5"
-              else
-                ret "_._"
+              ret cond(lean_int_dec_eq(x4, 5), "1.5", "_._")
     else
       if lean_int_dec_eq(x4, 4) then
         ret "_.4"
       else
-        if lean_int_dec_eq(x4, 2) then
-          ret "_.2"
-        else
-          ret "_._"
+        ret cond(lean_int_dec_eq(x4, 2), "_.2", "_._")
   ret k3
 ret k1

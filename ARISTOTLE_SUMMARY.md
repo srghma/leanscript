@@ -1,3 +1,33 @@
+# Summary of changes for run 98d27366-ec64-4629-a737-71f7610e83dd
+I made `Term.optimize` and the Term → JsTerm → JavaScript conversion produce smaller JavaScript. The optimizer change is proved correct in Lean. The JavaScript changes are checked only by the snapshot tests, because `JsTerm` has no formal semantics to prove them against.
+
+**`Term.optimize` (proved).** `if c then ret a else ret b` now becomes `ret (c ? a : b)`, using the existing pure conditional (`Term.condRet` in `LeanScript/Term/Optimize/Cse.lean`). This is skipped when `a` or `b` is already a conditional, so long chains of `?:` are not built. The new lemma `Term.condRet_eval` proves this step leaves `Term.eval` unchanged, and I updated the proofs of `Term.optimize_eval` and `Term.numCalls_optimize` to use it. There is no `sorry`, and `#print axioms` for these theorems shows only `propext`, `Classical.choice` and `Quot.sound`.
+
+**JavaScript output (tested, not proved).**
+- **Fields read in place:** a field that is read once, outside loops and closures, is now read as `p._1` instead of being unpacked into a `const` first. This only happens when the record is a constant, or a mutable variable that is not reassigned afterwards. Example: `(a, b) => ({ _1: a._1 + b._1, … })`.
+- **One-sided updates:** `x = c ? a : x;` is now written `if (c) { x = a; }`.
+- **Rebuilt values:** the existing check for a union arm that rebuilds the value it just unpacked now also works inside a `?:` expression (`Cleanup.lean`).
+- **Sharing functions** (new `JsModule.shareFuns` in `Hoist.lean`, run when the module is assembled):
+  - a module-level closure that equals an exported function is dropped, and the function is used instead. This is skipped if another constant reads it while the module loads, so nothing is read before it is defined.
+  - an exported function equal to an earlier one is written `export const g = f;`.
+  - an exported function that only passes its parameters, in order, to a runtime function is written as that function, e.g. `export const add = uint8__lean_uint8_add;`.
+
+**Results** on the `-pbo.js`/`-faithful.js` snapshots, not counting comments, blank lines or the new test file:
+
+| | before | after |
+| :-- | --: | --: |
+| lines | 4192 | 3738 |
+| bytes | 133990 | 120319 |
+| record destructurings | 140 | 30 |
+| `$k` module constants | 74 | 56 |
+| `if`s | 240 | 196 |
+
+**Checks.** I regenerated all snapshots, and all 3922 checks pass: the previous 3860, plus 62 from a new file, `Tests/SnapshotsMy/ShareFuns.lean`, which exercises the in-place field reads, the `?:` returns, the one-sided update and both kinds of aliases. The snapshot script still exits with status 1 because of the panics that were already expected ("literal too big", `mypanic`). `lake build JsTerm leanscript tests LeanScriptCli TermTests TyTests RuntimeSpec` succeeds with no warnings, and `lake exe tests` passes 57/57.
+
+**Existing build failure.** Building the whole `LeanScript` library, which is one of the default targets, fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`: it imports Mathlib, which this project does not depend on. That file is unchanged since the initial commit, and I did not touch it.
+
+I added a paragraph on these changes to `README.md` and updated the Properties table: the optimizer row stays proved, and there is a new tested-only row for `JsModule.shareFuns`. All work is committed.
+
 # Summary of changes for run 9fac2b3b-5bb8-4b18-9826-4c32388c445a
 I improved `Term.optimize` and the Term → JsTerm conversion so the generated JavaScript is smaller and the loops are simpler. The optimizer change is proved correct. The JavaScript changes are only checked by tests: `JsTerm` has no formal semantics, so there is nothing to prove them against.
 

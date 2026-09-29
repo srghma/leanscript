@@ -9,24 +9,12 @@ export const test1 = (a : Array<uint53(number)>) : string => {
     return "0";
   } else {
     if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 1)) {
-      if (inline:uint53__lean_nat_dec_eq__Nat_decEq(uint53__lean_array_get(0, c0, 0), 1)) {
-        return "1";
-      } else {
-        return "any1";
-      }
+      return (inline:uint53__lean_nat_dec_eq__Nat_decEq(uint53__lean_array_get(0, c0, 0), 1) ? "1" : "any1");
     } else {
       if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 2)) {
-        if (inline:uint53__lean_nat_dec_eq__Nat_decEq(uint53__lean_array_get(0, c0, 1), 2)) {
-          return "2";
-        } else {
-          return "catch";
-        }
+        return (inline:uint53__lean_nat_dec_eq__Nat_decEq(uint53__lean_array_get(0, c0, 1), 2) ? "2" : "catch");
       } else {
-        if (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3)) {
-          return "3";
-        } else {
-          return "catch";
-        }
+        return (inline:uint53__lean_nat_dec_eq__Nat_decEq(inline:uint53__lean_array_get_size(c0), 3) ? "3" : "catch");
       }
     }
   }

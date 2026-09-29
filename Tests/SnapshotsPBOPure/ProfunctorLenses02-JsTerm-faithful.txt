@@ -19,11 +19,4 @@ export const test1 = (a : ({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigin
 };
 
 // test2
-export const test2 = (a : ({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })) : ({ tag: 0 } | { tag: 1, _1: int(bigint) }) => {
-  switch (c0.tag) {
-  case 0 { _1: f }:
-    return { tag: 1, _1: c0 };
-  case 1 {  }:
-    return $tag0;
-  }
-};
+export const test2 = test1;

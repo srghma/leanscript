@@ -5,30 +5,18 @@ val k1 [1] : ((Nat × Nat × Nat) → String) := fun x2 [1] : (Nat × Nat × Nat
   let ⟨f3 [ω] : Nat, f4 [ω] : Nat, f5 [1] : Nat⟩ := x2
   if lean_nat_dec_eq__Nat_decEq(f3, 1) then
     if lean_nat_dec_eq__Nat_decEq(f4, 2) then
-      if lean_nat_dec_eq__Nat_decEq(f5, 3) then
-        ret "1"
-      else
-        ret "catch"
+      ret cond(lean_nat_dec_eq__Nat_decEq(f5, 3), "1", "catch")
     else
-      if lean_nat_dec_eq__Nat_decEq(f4, 4) then
-        ret "2"
-      else
-        ret "catch"
+      ret cond(lean_nat_dec_eq__Nat_decEq(f4, 4), "2", "catch")
   else
     if lean_nat_dec_eq__Nat_decEq(f3, 4) then
       if lean_nat_dec_eq__Nat_decEq(f4, 4) then
         ret "2"
       else
         if lean_nat_dec_eq__Nat_decEq(f4, 5) then
-          if lean_nat_dec_eq__Nat_decEq(f5, 6) then
-            ret "3"
-          else
-            ret "catch"
+          ret cond(lean_nat_dec_eq__Nat_decEq(f5, 6), "3", "catch")
         else
           ret "catch"
     else
-      if lean_nat_dec_eq__Nat_decEq(f4, 4) then
-        ret "2"
-      else
-        ret "catch"
+      ret cond(lean_nat_dec_eq__Nat_decEq(f4, 4), "2", "catch")
 ret k1

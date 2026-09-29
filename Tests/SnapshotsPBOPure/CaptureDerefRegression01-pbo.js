@@ -14,10 +14,7 @@ import { int53__lean_int_add } from "../../runtime.js";
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const test1 = (v, b) => {
-  const { _1: f$1 } = v;
-  return int53__lean_int_add(f$1, b);
-};
+export const test1 = (v, b) => int53__lean_int_add(v._1, b);
 
 /**
  * `test2`
@@ -25,10 +22,7 @@ export const test1 = (v, b) => {
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test2 = (v, a) => {
-  const { _1: f$1 } = v;
-  return int53__lean_int_add(f$1, a);
-};
+export const test2 = test1;
 
 /**
  * `test3`
@@ -36,7 +30,4 @@ export const test2 = (v, a) => {
  * @param {int53(number)} p1
  * @returns {int53(number)}
  */
-export const test3 = (v, p1) => {
-  const { _1: f$1 } = v;
-  return int53__lean_int_add(f$1, p1);
-};
+export const test3 = test1;

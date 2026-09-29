@@ -4,9 +4,6 @@
 const $k1 : (nat(bigint)) => nat(bigint) = (x) => {
   return inline:bigint_nat__lean_nat_mul(c0, 2n);
 };
-const $k2 : (nat(bigint)) => nat(bigint) = (x) => {
-  return inline:bigint_nat__lean_nat_mul(c0, 3n);
-};
 
 // foo
 export const foo = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
@@ -32,5 +29,5 @@ export const triple = (a : nat(bigint)) : nat(bigint) => {
 // useTriple
 export const useTriple = (n : nat(bigint)) : nat(bigint) => {
   const x = inline:bigint_nat__lean_nat_mul(c0, 3n);
-  return inline:bigint_nat__lean_nat_add(c0, $k2(inline:bigint_nat__lean_nat_add(c1, 1n)));
+  return inline:bigint_nat__lean_nat_add(c0, triple(inline:bigint_nat__lean_nat_add(c1, 1n)));
 };

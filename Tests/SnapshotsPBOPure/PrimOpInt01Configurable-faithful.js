@@ -46,7 +46,7 @@ import {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$add = (a, b) => bigint_nat__lean_uint64_add(a, b);
+export const TestUInt64$add = bigint_nat__lean_uint64_add;
 
 /**
  * `TestUInt64.sub`
@@ -54,7 +54,7 @@ export const TestUInt64$add = (a, b) => bigint_nat__lean_uint64_add(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$sub = (a, b) => bigint_nat__lean_uint64_sub(a, b);
+export const TestUInt64$sub = bigint_nat__lean_uint64_sub;
 
 /**
  * `TestUInt64.eq`
@@ -110,7 +110,7 @@ export const TestUInt64$ge = (a, b) => b <= a;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$mul = (a, b) => bigint_nat__lean_uint64_mul(a, b);
+export const TestUInt64$mul = bigint_nat__lean_uint64_mul;
 
 /**
  * `TestUInt64.div`
@@ -118,14 +118,14 @@ export const TestUInt64$mul = (a, b) => bigint_nat__lean_uint64_mul(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$div = (a, b) => bigint_nat__lean_uint64_div(a, b);
+export const TestUInt64$div = bigint_nat__lean_uint64_div;
 
 /**
  * `TestUInt64.neg`
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestUInt64$neg = (a) => bigint_nat__lean_uint64_neg(a);
+export const TestUInt64$neg = bigint_nat__lean_uint64_neg;
 
 /**
  * `TestNat.add`
@@ -141,7 +141,7 @@ export const TestNat$add = (a, b) => a + b;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat$sub = (a, b) => bigint_nat__lean_nat_sub(a, b);
+export const TestNat$sub = bigint_nat__lean_nat_sub;
 
 /**
  * `TestNat.eq`
@@ -205,7 +205,7 @@ export const TestNat$mul = (a, b) => a * b;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestNat$div = (a, b) => bigint_nat__lean_nat_div(a, b);
+export const TestNat$div = bigint_nat__lean_nat_div;
 
 /**
  * `TestInt64.add`
@@ -213,7 +213,7 @@ export const TestNat$div = (a, b) => bigint_nat__lean_nat_div(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$add = (a, b) => bigint_int__lean_int64_add(a, b);
+export const TestInt64$add = bigint_int__lean_int64_add;
 
 /**
  * `TestInt64.sub`
@@ -221,7 +221,7 @@ export const TestInt64$add = (a, b) => bigint_int__lean_int64_add(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$sub = (a, b) => bigint_int__lean_int64_sub(a, b);
+export const TestInt64$sub = bigint_int__lean_int64_sub;
 
 /**
  * `TestInt64.eq`
@@ -277,7 +277,7 @@ export const TestInt64$ge = (a, b) => b <= a;
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$mul = (a, b) => bigint_int__lean_int64_mul(a, b);
+export const TestInt64$mul = bigint_int__lean_int64_mul;
 
 /**
  * `TestInt64.div`
@@ -285,14 +285,14 @@ export const TestInt64$mul = (a, b) => bigint_int__lean_int64_mul(a, b);
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt64$div = (a, b) => bigint_int__lean_int64_div(a, b);
+export const TestInt64$div = bigint_int__lean_int64_div;
 
 /**
  * `TestInt64.neg`
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const TestInt64$neg = (a) => bigint_int__lean_int64_neg(a);
+export const TestInt64$neg = bigint_int__lean_int64_neg;
 
 /**
  * `TestInt.add`
@@ -372,7 +372,7 @@ export const TestInt$mul = (a, b) => a * b;
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const TestInt$div = (a, b) => bigint_int__lean_int_ediv(a, b);
+export const TestInt$div = bigint_int__lean_int_ediv;
 
 /**
  * `TestInt.neg`

@@ -53,12 +53,8 @@ export const firstAbove = (n : nat(bigint), k : nat(bigint)) : nat(bigint) => {
     case 0 {  }:
       next;
     case 1 {  }:
-      if (inline:bigint_nat__lean_nat_dec_lt(c1, inline:bigint_nat__lean_nat_mul(c0, c0))) {
-        m0 = { tag: 0, _1: c0 };
-        next;
-      } else {
-        next;
-      }
+      m0 = (inline:bigint_nat__lean_nat_dec_lt(c1, inline:bigint_nat__lean_nat_mul(c0, c0)) ? { tag: 0, _1: c0 } : m0);
+      next;
     }
   }
   switch (m0.tag) {

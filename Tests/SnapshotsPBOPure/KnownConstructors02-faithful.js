@@ -6,7 +6,4 @@
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */
-export const test = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test = (a) => a._1;

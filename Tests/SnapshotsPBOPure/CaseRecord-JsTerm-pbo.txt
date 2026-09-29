@@ -12,28 +12,16 @@ export const test1 = (x : { _1: int53(number), _2: int53(number), _3: int53(numb
         return "1";
       } else {
         if (inline:int53__lean_int_dec_eq(c1, 2)) {
-          if (inline:int53__lean_int_dec_eq(c0, 1)) {
-            return "2";
-          } else {
-            return "3";
-          }
+          return (inline:int53__lean_int_dec_eq(c0, 1) ? "2" : "3");
         } else {
-          if (inline:int53__lean_int_dec_eq(c0, 1)) {
-            return "2";
-          } else {
-            return "catch";
-          }
+          return (inline:int53__lean_int_dec_eq(c0, 1) ? "2" : "catch");
         }
       }
     } else {
       if (inline:int53__lean_int_dec_eq(c1, 1)) {
         return "1";
       } else {
-        if (inline:int53__lean_int_dec_eq(c0, 1)) {
-          return "2";
-        } else {
-          return "catch";
-        }
+        return (inline:int53__lean_int_dec_eq(c0, 1) ? "2" : "catch");
       }
     }
   }
@@ -47,11 +35,7 @@ export const Test2$test2 = (x : { _1: { _1: int53(number), _2: int53(number) }, 
     if (inline:int53__lean_int_dec_eq(c0, 2)) {
       const { _1: f, _2: f } = c2;
       if (inline:int53__lean_int_dec_eq(c1, 1)) {
-        if (inline:int53__lean_int_dec_eq(c0, 2)) {
-          return 1;
-        } else {
-          return 3;
-        }
+        return (inline:int53__lean_int_dec_eq(c0, 2) ? 1 : 3);
       } else {
         return 3;
       }
@@ -62,11 +46,7 @@ export const Test2$test2 = (x : { _1: { _1: int53(number), _2: int53(number) }, 
     if (inline:int53__lean_int_dec_eq(c0, 2)) {
       const { _1: f, _2: f } = c2;
       if (inline:int53__lean_int_dec_eq(c1, 1)) {
-        if (inline:int53__lean_int_dec_eq(c0, 2)) {
-          return 2;
-        } else {
-          return 4;
-        }
+        return (inline:int53__lean_int_dec_eq(c0, 2) ? 2 : 4);
       } else {
         return 4;
       }
@@ -82,27 +62,12 @@ export const test3 = (x : { _1: int53(number), _2: int53(number) }) : int53(numb
   if (inline:int53__lean_int_dec_lt(0, c1)) {
     return c1;
   } else {
-    if (inline:int53__lean_int_dec_lt(1, c0)) {
-      return c0;
-    } else {
-      return 3;
-    }
+    return (inline:int53__lean_int_dec_lt(1, c0) ? c0 : 3);
   }
 };
 
 // test4
-export const test4 = (x : { _1: int53(number), _2: int53(number) }) : int53(number) => {
-  const { _1: f, _2: f } = c0;
-  if (inline:int53__lean_int_dec_lt(0, c1)) {
-    return c1;
-  } else {
-    if (inline:int53__lean_int_dec_lt(1, c0)) {
-      return c0;
-    } else {
-      return 3;
-    }
-  }
-};
+export const test4 = test3;
 
 // test5
 export const test5 = (x : { _1: int53(number), _2: int53(number) }) : int53(number) => {
@@ -110,24 +75,9 @@ export const test5 = (x : { _1: int53(number), _2: int53(number) }) : int53(numb
   if (inline:int53__lean_int_dec_lt(0, c1)) {
     return c1;
   } else {
-    if (inline:int53__lean_int_dec_lt(0, c0)) {
-      return c0;
-    } else {
-      return 0;
-    }
+    return (inline:int53__lean_int_dec_lt(0, c0) ? c0 : 0);
   }
 };
 
 // test6
-export const test6 = (x : { _1: int53(number), _2: int53(number) }) : int53(number) => {
-  const { _1: f, _2: f } = c0;
-  if (inline:int53__lean_int_dec_lt(0, c1)) {
-    return c1;
-  } else {
-    if (inline:int53__lean_int_dec_lt(0, c0)) {
-      return c0;
-    } else {
-      return 0;
-    }
-  }
-};
+export const test6 = test5;

@@ -18,28 +18,16 @@ export const testP = (a : int(bigint), a1 : int(bigint), a2 : int(bigint)) : int
           if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
             return 3n;
           } else {
-            if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
-              return 4n;
-            } else {
-              return 5n;
-            }
+            return (inline:bigint_int__lean_int_dec_eq(c0, 4n) ? 4n : 5n);
           }
         }
       }
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c0, 4n)) {
-        return 4n;
-      } else {
-        return 5n;
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c0, 4n) ? 4n : 5n);
     }
   } else {
     if (inline:bigint_int__lean_int_dec_eq(c1, 2n)) {
-      if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
-        return 3n;
-      } else {
-        return 5n;
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c0, 3n) ? 3n : 5n);
     } else {
       return 5n;
     }

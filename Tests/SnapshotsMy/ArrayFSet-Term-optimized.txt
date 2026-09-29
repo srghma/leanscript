@@ -20,8 +20,5 @@ ret k1
 
 -- test4 : Array Nat → Array Nat
 val k1 [1] : ((Array Nat) → (Array Nat)) := fun x2 [ω] : (Array Nat) => (closed)
-  if lean_nat_dec_lt(0, lean_array_get_size(x2)) then
-    ret lean_array_fset(x2, 0, 5)
-  else
-    ret x2
+  ret cond(lean_nat_dec_lt(0, lean_array_get_size(x2)), lean_array_fset(x2, 0, 5), x2)
 ret k1

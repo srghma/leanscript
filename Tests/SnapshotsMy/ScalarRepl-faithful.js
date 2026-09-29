@@ -7,25 +7,19 @@ import { bigint_nat__lean_nat_sub } from "../../runtime.js";
 
 const $k1 = (x$1) => {
   const { _1: f$2, _2: f$3 } = x$1;
-  if (f$2 < f$3) {
-    return bigint_nat__lean_nat_sub(f$3, f$2);
-  }
-  return bigint_nat__lean_nat_sub(f$2, f$3);
+  return f$2 < f$3
+    ? bigint_nat__lean_nat_sub(f$3, f$2)
+    : bigint_nat__lean_nat_sub(f$2, f$3);
 };
 const $k2 = (x$1) => {
   const { _1: f$2, _2: f$3 } = x$1;
-  if (f$2 < f$3) {
-    return x$1;
-  }
-  return { _1: f$3, _2: f$2 };
+  return f$2 < f$3 ? x$1 : { _1: f$3, _2: f$2 };
 };
 const $k3 = (x$1) => {
   if (x$1.tag === 0) {
     return 0n;
   }
-  const { _1: f$2 } = x$1;
-  const { _1: f$3, _2: f$4 } = f$2;
-  return f$3 + f$4;
+  return x$1._1._1 + x$1._1._2;
 };
 
 /**

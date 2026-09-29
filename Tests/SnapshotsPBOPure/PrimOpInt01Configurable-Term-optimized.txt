@@ -47,10 +47,7 @@ ret k1
 -- TestUInt64.ne : UInt64 → UInt64 → Bool
 val k1 [1] : (UInt64 → (UInt64 → Bool)) := fun x2 [ω] : UInt64 => (closed)
   val k3 [1] : (UInt64 → Bool) := fun x4 [1] : UInt64 => (open)
-    if lean_uint64_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_uint64_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -125,10 +122,7 @@ ret k1
 -- TestNat.ne : Nat → Nat → Bool
 val k1 [1] : (Nat → (Nat → Bool)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Bool) := fun x4 [1] : Nat => (open)
-    if lean_nat_dec_eq__Nat_decEq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_nat_dec_eq__Nat_decEq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -198,10 +192,7 @@ ret k1
 -- TestInt64.ne : Int64 → Int64 → Bool
 val k1 [1] : (Int64 → (Int64 → Bool)) := fun x2 [ω] : Int64 => (closed)
   val k3 [1] : (Int64 → Bool) := fun x4 [1] : Int64 => (open)
-    if lean_int64_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_int64_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -276,10 +267,7 @@ ret k1
 -- TestInt.ne : Int → Int → Bool
 val k1 [1] : (Int → (Int → Bool)) := fun x2 [ω] : Int => (closed)
   val k3 [1] : (Int → Bool) := fun x4 [1] : Int => (open)
-    if lean_int_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_int_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 

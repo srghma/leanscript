@@ -14,8 +14,7 @@ export const test1 = (fn, val) => {
   if (val === 42n) {
     return val + 1n;
   }
-  const { _3: f$2 } = x$1;
-  return f$2;
+  return x$1._3;
 };
 
 /**

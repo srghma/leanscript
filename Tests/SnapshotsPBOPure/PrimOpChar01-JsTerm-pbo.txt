@@ -13,9 +13,5 @@ export const test1 = (a : string, b : string) : boolean => {
 
 // test2
 export const test2 = (a : string, b : string) : boolean => {
-  if (inline:string__lean_string_dec_eq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:string__lean_string_dec_eq(c1, c0) ? false : true);
 };

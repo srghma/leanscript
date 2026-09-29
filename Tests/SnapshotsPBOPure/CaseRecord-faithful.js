@@ -32,22 +32,20 @@ export const test1 = (x) => {
  * @returns {int(bigint)}
  */
 export const Test2$test2 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  const { _1: f$3, _2: f$4 } = f$1;
-  if (f$3 === 1n) {
-    if (f$4 === 2n) {
-      const { _1: f$5, _2: f$6 } = f$2;
-      if (f$5 === 1n) {
-        return f$6 === 2n ? 1n : 3n;
+  const { _2: f$1 } = x;
+  const { _2: f$2 } = x._1;
+  if (x._1._1 === 1n) {
+    if (f$2 === 2n) {
+      if (f$1._1 === 1n) {
+        return f$1._2 === 2n ? 1n : 3n;
       }
       return 3n;
     }
     return 4n;
   }
-  if (f$4 === 2n) {
-    const { _1: f$7, _2: f$8 } = f$2;
-    if (f$7 === 1n) {
-      return f$8 === 2n ? 2n : 4n;
+  if (f$2 === 2n) {
+    if (f$1._1 === 1n) {
+      return f$1._2 === 2n ? 2n : 4n;
     }
     return 4n;
   }
@@ -72,13 +70,7 @@ export const test3 = (x) => {
  * @param {{ _1: int(bigint), _2: int(bigint) }} x
  * @returns {int(bigint)}
  */
-export const test4 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if (0n < f$1) {
-    return f$1;
-  }
-  return 1n < f$2 ? f$2 : 3n;
-};
+export const test4 = test3;
 
 /**
  * `test5`
@@ -98,10 +90,4 @@ export const test5 = (x) => {
  * @param {{ _1: int(bigint), _2: int(bigint) }} x
  * @returns {int(bigint)}
  */
-export const test6 = (x) => {
-  const { _1: f$1, _2: f$2 } = x;
-  if (0n < f$1) {
-    return f$1;
-  }
-  return 0n < f$2 ? f$2 : 0n;
-};
+export const test6 = test5;

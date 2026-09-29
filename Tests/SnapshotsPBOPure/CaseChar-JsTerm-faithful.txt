@@ -9,11 +9,7 @@ export const test1 = (a : string) : string => {
     if (inline:string__lean_string_dec_eq(c0, "b")) {
       return "2";
     } else {
-      if (inline:string__lean_string_dec_eq(c0, "c")) {
-        return "3";
-      } else {
-        return "catch";
-      }
+      return (inline:string__lean_string_dec_eq(c0, "c") ? "3" : "catch");
     }
   }
 };

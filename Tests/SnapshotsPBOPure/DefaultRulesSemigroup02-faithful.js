@@ -13,11 +13,10 @@
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Inline$appendR = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `Inline.test1`
@@ -25,11 +24,7 @@ export const Inline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Inline$test1 = Inline$appendR;
 
 /**
  * `Inline.test2`
@@ -37,21 +32,17 @@ export const Inline$test1 = (a, a1) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test2 = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Inline$test2 = Inline$appendR;
 
 /**
  * `Inline.test3`
  * @param {{ _1: string, _2: Array<string> }} a
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  return { _1: "hello" + f$1, _2: ["hello", ...f$2] };
-};
+export const Inline$test3 = (a) => ({
+  _1: "hello" + a._1,
+  _2: ["hello", ...a._2],
+});
 
 /**
  * `Noinline.appendR`
@@ -59,11 +50,7 @@ export const Inline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Noinline$appendR = Inline$appendR;
 
 /**
  * `Noinline.test1`
@@ -71,11 +58,7 @@ export const Noinline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Noinline$test1 = Inline$appendR;
 
 /**
  * `Noinline.test2`
@@ -83,21 +66,14 @@ export const Noinline$test1 = (a, a1) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test2 = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const Noinline$test2 = Inline$appendR;
 
 /**
  * `Noinline.test3`
  * @param {{ _1: string, _2: Array<string> }} a
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  return { _1: "hello" + f$1, _2: ["hello", ...f$2] };
-};
+export const Noinline$test3 = Inline$test3;
 
 /**
  * `AlwaysInline.appendR`
@@ -105,11 +81,7 @@ export const Noinline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const AlwaysInline$appendR = Inline$appendR;
 
 /**
  * `AlwaysInline.test1`
@@ -117,11 +89,7 @@ export const AlwaysInline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const AlwaysInline$test1 = Inline$appendR;
 
 /**
  * `AlwaysInline.test2`
@@ -129,21 +97,14 @@ export const AlwaysInline$test1 = (a, a1) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test2 = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const AlwaysInline$test2 = Inline$appendR;
 
 /**
  * `AlwaysInline.test3`
  * @param {{ _1: string, _2: Array<string> }} a
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  return { _1: "hello" + f$1, _2: ["hello", ...f$2] };
-};
+export const AlwaysInline$test3 = Inline$test3;
 
 /**
  * `InlineIfReduceInline.appendR`
@@ -151,11 +112,7 @@ export const AlwaysInline$test3 = (a) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$appendR = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const InlineIfReduceInline$appendR = Inline$appendR;
 
 /**
  * `InlineIfReduceInline.test1`
@@ -163,11 +120,7 @@ export const InlineIfReduceInline$appendR = (a, b) => {
  * @param {{ _1: string, _2: Array<string> }} a1
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test1 = (a, a1) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = a1;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const InlineIfReduceInline$test1 = Inline$appendR;
 
 /**
  * `InlineIfReduceInline.test2`
@@ -175,18 +128,11 @@ export const InlineIfReduceInline$test1 = (a, a1) => {
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test2 = (a, b) => {
-  const { _1: f$1, _2: f$2 } = a;
-  const { _1: f$3, _2: f$4 } = b;
-  return { _1: f$1 + f$3, _2: [...f$2, ...f$4] };
-};
+export const InlineIfReduceInline$test2 = Inline$appendR;
 
 /**
  * `InlineIfReduceInline.test3`
  * @param {{ _1: string, _2: Array<string> }} a
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test3 = (a) => {
-  const { _1: f$1, _2: f$2 } = a;
-  return { _1: "hello" + f$1, _2: ["hello", ...f$2] };
-};
+export const InlineIfReduceInline$test3 = Inline$test3;

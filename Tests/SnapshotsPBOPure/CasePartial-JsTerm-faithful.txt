@@ -9,11 +9,7 @@ export const test1 = (a : int(bigint)) : int(bigint) => {
     if (inline:bigint_int__lean_int_dec_eq(c0, 2n)) {
       return 2n;
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c0, 3n)) {
-        return 3n;
-      } else {
-        return 0n;
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c0, 3n) ? 3n : 0n);
     }
   }
 };

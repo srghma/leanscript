@@ -24,10 +24,7 @@ ret k1
 -- TestUInt8.ne : UInt8 → UInt8 → Bool
 val k1 [1] : (UInt8 → (UInt8 → Bool)) := fun x2 [ω] : UInt8 => (closed)
   val k3 [1] : (UInt8 → Bool) := fun x4 [1] : UInt8 => (open)
-    if lean_uint8_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_uint8_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -102,10 +99,7 @@ ret k1
 -- TestUInt16.ne : UInt16 → UInt16 → Bool
 val k1 [1] : (UInt16 → (UInt16 → Bool)) := fun x2 [ω] : UInt16 => (closed)
   val k3 [1] : (UInt16 → Bool) := fun x4 [1] : UInt16 => (open)
-    if lean_uint16_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_uint16_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -180,10 +174,7 @@ ret k1
 -- TestUInt32.ne : UInt32 → UInt32 → Bool
 val k1 [1] : (UInt32 → (UInt32 → Bool)) := fun x2 [ω] : UInt32 => (closed)
   val k3 [1] : (UInt32 → Bool) := fun x4 [1] : UInt32 => (open)
-    if lean_uint32_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_uint32_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -258,10 +249,7 @@ ret k1
 -- TestInt8.ne : Int8 → Int8 → Bool
 val k1 [1] : (Int8 → (Int8 → Bool)) := fun x2 [ω] : Int8 => (closed)
   val k3 [1] : (Int8 → Bool) := fun x4 [1] : Int8 => (open)
-    if lean_int8_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_int8_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -336,10 +324,7 @@ ret k1
 -- TestInt16.ne : Int16 → Int16 → Bool
 val k1 [1] : (Int16 → (Int16 → Bool)) := fun x2 [ω] : Int16 => (closed)
   val k3 [1] : (Int16 → Bool) := fun x4 [1] : Int16 => (open)
-    if lean_int16_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_int16_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -414,10 +399,7 @@ ret k1
 -- TestInt32.ne : Int32 → Int32 → Bool
 val k1 [1] : (Int32 → (Int32 → Bool)) := fun x2 [ω] : Int32 => (closed)
   val k3 [1] : (Int32 → Bool) := fun x4 [1] : Int32 => (open)
-    if lean_int32_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_int32_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 

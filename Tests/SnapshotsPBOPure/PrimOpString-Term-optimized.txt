@@ -10,10 +10,7 @@ ret k1
 -- test2 : String → String → Bool
 val k1 [1] : (String → (String → Bool)) := fun x2 [ω] : String => (closed)
   val k3 [1] : (String → Bool) := fun x4 [1] : String => (open)
-    if lean_string_dec_eq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_string_dec_eq(x2, x4), false, true)
   ret k3
 ret k1
 
@@ -34,20 +31,14 @@ ret k1
 -- test5 : String → String → Bool
 val k1 [1] : (String → (String → Bool)) := fun x2 [ω] : String => (closed)
   val k3 [1] : (String → Bool) := fun x4 [1] : String => (open)
-    if lean_string_dec_lt(x4, x2) then
-      ret false
-    else
-      ret true
+    ret cond(lean_string_dec_lt(x4, x2), false, true)
   ret k3
 ret k1
 
 -- test6 : String → String → Bool
 val k1 [1] : (String → (String → Bool)) := fun x2 [ω] : String => (closed)
   val k3 [1] : (String → Bool) := fun x4 [1] : String => (open)
-    if lean_string_dec_lt(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_string_dec_lt(x2, x4), false, true)
   ret k3
 ret k1
 

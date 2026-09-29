@@ -27,10 +27,42 @@ partial def JsUnionArms.keys {C M J : List JsTy} {k : JsEnd} {cs : List (List Js
   | .nil => []
   | .cons sel b rest => (toString (sel.binds.map (·.1)) ++ b.pretty "") :: rest.keys
 
+/-! ## Fields read once -/
+
+/-- Where the value a pattern takes apart comes from, for reading its fields in place: `none`
+    when they cannot be (an expression that is not a variable), `some none` when it never
+    changes (a constant, a module constant, or the new constant holding the subject of a case
+    analysis, `bound`), `some (some m)` when it is the mutable variable `m`. -/
+def JsExpr.fieldSource {C M : List JsTy} {τ : JsTy} (e : JsExpr C M τ) (bound : Bool := false) :
+    Option (Option Nat) :=
+  match e with
+  | .cvar _ | .global .. => some none
+  | .mvar m => some (some m.index)
+  | _ => if bound then some none else none
+
+/-- The fields (by their positions `j` among the `n` a pattern binds) that the block after the
+    pattern may read in place (`x._1` instead of `const { _1: f } = x; … f …`): the value keeps
+    holding the same record in the whole block (`src`: it is not a mutable variable the block
+    assigns), and the block reads the field exactly once, outside loops and closures (so the
+    field is still read once, and a closure does not keep the whole record alive). -/
+def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n : Nat)
+    (rest : JsBlock C M J k) : Nat → Bool :=
+  match src with
+  | none => fun _ => false
+  | some m =>
+    let occs := rest.occs
+    let stable := match m with
+      | none => true
+      | some m => !occs.any fun o => o.write && o.is ⟨true, m⟩
+    if !stable then fun _ => false else
+    fun j =>
+      let us := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
+      us.size == 1 && !us.any (·.again)
+
 mutual
 /-- An expression as a `MiniAST` expression. -/
 partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M τ → PM MiniExpr
-  | .cvar x => pure (nameAt sc.c x.index)
+  | .cvar x => pure (exprAt sc.c x.index)
   | .mvar x => pure (nameAt sc.m x.index)
   | .global n _ => pure (ident n)
   | .lit l => pure (shapeExpr l.shape)
@@ -42,7 +74,7 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr C M �
   | .lam (σs := σs) hints body => do
     let xs ← (List.range σs.length).mapM fun i => freshName (hints.getD i "x")
     -- a function starts afresh: no jump leaves it, and it is no iteration of a loop
-    arrowToMini { c := xs.reverse ++ sc.c, m := sc.m } xs body
+    arrowToMini { c := xs.reverse.map ident ++ sc.c, m := sc.m } xs body
   | .record_mk fs => do
     let es ← argsToMini sc fs
     return .object (es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
@@ -117,7 +149,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .const hint e rest => do
     let e ← exprToMini sc e
     let x ← freshName hint
-    return constDecl x e :: (← blockToMini { sc with c := x :: sc.c } tl rest)
+    return constDecl x e :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
   | .letMut hint e rest => do
     let e ← exprToMini sc e
     let x ← freshName hint
@@ -125,10 +157,20 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
       (← blockToMini { sc with m := x :: sc.m } tl rest)
   | .assign x e rest => do
     let e ← exprToMini sc e
-    return .expr (.assign (nameAt sc.m x.index) .assign e) :: (← blockToMini sc tl rest)
+    let v := nameAt sc.m x.index
+    -- `x = c ? a : x;` is `if (c) x = a;` (and `x = c ? x : b;` is `if (!c) x = b;`)
+    let s : MiniStatement := match e with
+      | .ternary c a b =>
+        if b == v then .if_ c (.block [.expr (.assign v .assign a)]) none
+        else if a == v then .if_ (negateCond c) (.block [.expr (.assign v .assign b)]) none
+        else .expr (.assign v .assign e)
+      | _ => .expr (.assign v .assign e)
+    return s :: (← blockToMini sc tl rest)
   | .destructure e sel rest => do
+    let src := e.fieldSource
     let e ← exprToMini sc e
-    let (d, sc') ← destructureToMini sc e sel.binds
+    let n := sel.binds.length
+    let (d, sc') ← destructureToMini sc e sel.binds (readInPlace src n rest)
     return d ++ (← blockToMini sc' tl rest)
   | .ite c t e => do
     let c ← exprToMini sc c
@@ -143,8 +185,9 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let (pre, s) ← bindSubject sc "s" e
     -- arms that are all written the same (`if (x.tag === 0) { const { _1: f } = x; return f; }
     -- else { const { _1: f } = x; return f; }`) are written once, without a test
-    if let some b ← sameUnionArms sc tl s arms then return pre ++ b
-    let arms ← unionArmsToMini sc tl s 0 arms
+    let src := e.fieldSource (bound := !e.isAtom)
+    if let some b ← sameUnionArms sc tl s src arms then return pre ++ b
+    let arms ← unionArmsToMini sc tl s src 0 arms
     return pre ++ ifChain arms
   | .join hint block rest => do
     let x ← freshName hint
@@ -153,7 +196,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let early := block.earlyJump 0 true
     let label ← if early then freshLabel else pure ""
     let b ← blockToMini { sc with joins := (label, x) :: sc.joins } { join := true } block
-    let r ← blockToMini { sc with c := x :: sc.c } tl rest
+    let r ← blockToMini { sc with c := ident x :: sc.c } tl rest
     let decl : MiniStatement := .decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩
     if early then return decl :: .labelled (nes label) (.block b) :: r
     -- `let x; …; x = e;` with no other assignment of `x` is `…; const x = e;`
@@ -165,7 +208,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .forRange hint nt n body rest => do
     let (pre, n) ← bindSubject sc "n" n
     let i ← freshName hint
-    let b ← blockToMini { c := i :: sc.c, m := sc.m, loop := .cont } { loop := true } body
+    let b ← blockToMini { c := ident i :: sc.c, m := sc.m, loop := .cont } { loop := true } body
     let r ← blockToMini sc tl rest
     return pre ++ .for_ (.decl .let_ ⟨⟨.ident (nes i), some (natLitOf nt 0)⟩, []⟩)
       (some (.binary (ident i) .lt n)) (some (.postfix (ident i) .incr)) (.block b) :: r
@@ -174,7 +217,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let i ← freshName hint
     let early := body.earlyNext true
     let label ← if early then freshLabel else pure ""
-    let b ← blockToMini { c := i :: sc.c, m := sc.m, loop := .brk label } { loop := true } body
+    let b ← blockToMini { c := ident i :: sc.c, m := sc.m, loop := .brk label } { loop := true } body
     let r ← blockToMini sc tl rest
     -- the counter is only declared when the body reads it
     let decl := if body.mentions ⟨false, 0⟩ then [constDecl i (.binary n .minus (natLitOf nt 1))]
@@ -184,20 +227,25 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .forOf hint _ xs body rest => do
     let xs ← exprToMini sc xs
     let x ← freshName hint
-    let b ← blockToMini { c := x :: sc.c, m := sc.m, loop := .cont } { loop := true } body
+    let b ← blockToMini { c := ident x :: sc.c, m := sc.m, loop := .cont } { loop := true } body
     let r ← blockToMini sc tl rest
     return .forOf false (.decl .const (.ident (nes x))) xs (.block b) :: r
 
 /-- `const { _1: a, _3: c } = e;` for the fields `binds` keeps (none when it keeps none), and
-    the scope with them bound (the last one innermost). -/
-partial def destructureToMini (sc : Scope) (e : MiniExpr) (binds : List (Nat × String)) :
-    PM (List MiniStatement × Scope) := do
+    the scope with them bound (the last one innermost).  A field `inPlace` says (by its position
+    in `binds`) is not bound: it is read in place, `e._2`. -/
+partial def destructureToMini (sc : Scope) (e : MiniExpr) (binds : List (Nat × String))
+    (inPlace : Nat → Bool := fun _ => false) : PM (List MiniStatement × Scope) := do
   if binds.isEmpty then return ([], sc) else
-  let names ← binds.mapM fun (_, x) => freshName x
-  let props := (binds.zip names).map fun ((i, _), x) =>
+  let fs ← binds.zipIdx.mapM fun ((i, x), j) =>
+    if inPlace j then pure (i, none) else do return (i, some (← freshName x))
+  let props := fs.filterMap fun (i, x?) => x?.map fun x =>
     MiniObjectPatternProp.mk (.ident (nes (fieldKey i))) (.ident (nes x))
-  return ([.decl .const ⟨⟨.object props none, some e⟩, []⟩],
-    { sc with c := names.reverse ++ sc.c })
+  let es := fs.map fun (i, x?) => match x? with
+    | some x => ident x
+    | none => .dot e (nes (fieldKey i))
+  let d := if props.isEmpty then [] else [.decl .const ⟨⟨.object props none, some e⟩, []⟩]
+  return (d, { sc with c := es.reverse ++ sc.c })
 
 /-- The arms of a case analysis on an enum, each with its test (`s === shift + i`). -/
 partial def enumArmsToMini {C M J : List JsTy} {k : JsEnd} {n : Nat} (sc : Scope) (tl : Tail)
@@ -215,14 +263,14 @@ partial def enumArmsToMini {C M J : List JsTy} {k : JsEnd} {n : Nat} (sc : Scope
     compared as dumps (`JsBlock.pretty`), so that they are only written more than once when
     they are likely to be the same. -/
 partial def sameUnionArms {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (sc : Scope)
-    (tl : Tail) (s : MiniExpr) (arms : JsUnionArms C M J k cs) :
+    (tl : Tail) (s : MiniExpr) (src : Option (Option Nat)) (arms : JsUnionArms C M J k cs) :
     PM (Option (List MiniStatement)) := do
   let keys := arms.keys
   match keys with
   | k₀ :: k₁ :: ks =>
     if !(k₁ :: ks).all (· == k₀) then return none
     let st₀ ← get
-    let bodies ← arms.bodiesFrom sc tl s st₀
+    let bodies ← arms.bodiesFrom sc tl s src st₀
     match bodies with
     | (b₀, st₁) :: rest =>
       if rest.all (·.1 == b₀) then
@@ -237,27 +285,27 @@ partial def sameUnionArms {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)
 /-- The statements of each arm of a case analysis on a union (taking its fields apart), each
     written from the printer's state `st`, with the state after it. -/
 partial def JsUnionArms.bodiesFrom {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)}
-    (sc : Scope) (tl : Tail) (s : MiniExpr) (st : PrintSt) :
+    (sc : Scope) (tl : Tail) (s : MiniExpr) (src : Option (Option Nat)) (st : PrintSt) :
     JsUnionArms C M J k cs → PM (List (List MiniStatement × PrintSt))
   | .nil => pure []
   | .cons sel b rest => do
     set st
-    let (d, sc') ← destructureToMini sc s sel.binds
+    let (d, sc') ← destructureToMini sc s sel.binds (readInPlace src sel.binds.length b)
     let b ← blockToMini sc' tl b
     let st' ← get
-    return (d ++ b, st') :: (← rest.bodiesFrom sc tl s st)
+    return (d ++ b, st') :: (← rest.bodiesFrom sc tl s src st)
 
 /-- The arms of a case analysis on a union, each with its test (`s.tag === i`), taking the
     fields it uses apart. -/
 partial def unionArmsToMini {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} (sc : Scope)
-    (tl : Tail) (s : MiniExpr) (i : Nat) :
+    (tl : Tail) (s : MiniExpr) (src : Option (Option Nat)) (i : Nat) :
     JsUnionArms C M J k cs → PM (List (MiniExpr × List MiniStatement))
   | .nil => pure []
   | .cons sel b rest => do
-    let (d, sc') ← destructureToMini sc s sel.binds
+    let (d, sc') ← destructureToMini sc s sel.binds (readInPlace src sel.binds.length b)
     let b ← blockToMini sc' tl b
     return (.binary (.dot s (nes "tag")) .strictEq (natNum i), d ++ b) ::
-      (← unionArmsToMini sc tl s (i + 1) rest)
+      (← unionArmsToMini sc tl s src (i + 1) rest)
 end
 
 end MoreJs

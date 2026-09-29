@@ -4,7 +4,6 @@
 import { uint53__lean_nat_mul, uint53__lean_nat_add } from "../../runtime.js";
 
 const $k1 = (x$1) => uint53__lean_nat_mul(x$1, 2);
-const $k2 = (x$1) => uint53__lean_nat_mul(x$1, 3);
 
 /**
  * `foo`
@@ -47,5 +46,5 @@ export const triple = (a) => uint53__lean_nat_mul(a, 3);
 export const useTriple = (n) =>
   uint53__lean_nat_add(
     uint53__lean_nat_mul(n, 3),
-    $k2(uint53__lean_nat_add(n, 1)),
+    triple(uint53__lean_nat_add(n, 1)),
   );

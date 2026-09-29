@@ -6,10 +6,7 @@
 val k1 [1] : ((Lazy Int) → (Array Int)) := fun x2 [1] : (Lazy Int) => (closed)
   let x3 [1] : Int := x2 ()
   val k4 [ω] : (Array Int) := #[1, 2, x3]
-  if lean_nat_dec_eq__Nat_decEq(lean_array_get_size(k4), 3) then
-    ret k4
-  else
-    ret #[]
+  ret cond(lean_nat_dec_eq__Nat_decEq(lean_array_get_size(k4), 3), k4, #[])
 ret k1
 
 -- fn' : Unit → Int

@@ -18,7 +18,9 @@ Three rewrites of normal-form terms, each proved to preserve the value (`Term.ev
   gives the value of the first.  (Computations inside closures, delays and loop bodies are
   not shared with the ones outside: they run at another depth.)
 * **Identical branches** (`Term.mkBranch`): `if c then ret a else ret a`, `a` an atom, is
-  `ret a` (the condition is pure, it need not be computed).
+  `ret a` (the condition is pure, it need not be computed); `if c then ret a else ret b` is
+  `ret (c ? a : b)` (`Neu.cond`, printed as a conditional expression) when neither `a` nor `b`
+  is a conditional already.
 * **Trivial join points** (`Branch.mkJoin`): a join point whose body is `ret a`, `a` an atom
   that is not its parameter, or `ret x`, `x` its parameter, is inlined: every `jump j v` to
   it becomes `ret a` (resp. `ret v`), and the join point, now unused, is dropped (`Branch.dce`).
@@ -227,8 +229,32 @@ theorem Term.cseLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
 
 /-! ## Identical branches -/
 
+/-- Is the pure expression a conditional (`Neu.cond`)? -/
+def PExpr.isCond {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} : PExpr Δ Φ Γ τ o → Bool
+  | .neu (.cond ..) => true
+  | _ => false
+
+/-- `ret (c ? a : b)` for `if c then ret a else ret b`, unless `a` or `b` is a conditional
+    already (so that no chain of conditionals is built). -/
+def Term.condRet {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
+    {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) :
+    Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ (Lvl.meet o₁ o₂))) :=
+  if a.isCond || b.isCond then .branch (.ite c (.ret a) (.ret b)) else .ret (.neu (.cond c a b))
+
+theorem Term.condRet_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁)
+    (b : PExpr Δ Φ Γ τ o₂) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.condRet (d := d) c a b).eval κ ρ jκ =
+      (Term.branch (d := d) (.ite c (.ret a) (.ret b))).eval κ ρ jκ := by
+  unfold Term.condRet
+  split
+  · rfl
+  · simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+
 /-- `if c then t else e`, which is `t` when both are `ret a` for the same atom `a` (and the
-    level comes out the same). -/
+    level comes out the same), and otherwise, when both are `ret`s, `ret (c ? a : b)`: the
+    pure conditional (`Neu.cond`), which has exactly the level of the branch
+    (`Term.condRet`). -/
 def Term.mkIte {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
     {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ) (t : Term Δ d Φ Γ τ js o₁)
     (e : Term Δ d Φ Γ τ js o₂) : Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ (Lvl.meet o₁ o₂))) :=
@@ -238,8 +264,8 @@ def Term.mkIte {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx k
     | some a', some b' =>
       if h : a'.key = b'.key ∧ o₁ = some (Lvl.meetL ℓ (Lvl.meet o₁ o₂)) then
         (Term.ret a).castLvl h.2
-      else .branch (.ite c (.ret a) (.ret b))
-    | _, _ => .branch (.ite c (.ret a) (.ret b))
+      else Term.condRet c a b
+    | _, _ => Term.condRet c a b
   | t, e => .branch (.ite c t e)
 
 theorem Term.mkIte_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
@@ -259,8 +285,8 @@ theorem Term.mkIte_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js
           exact (eq_of_heq ((Atom.eq_of_key_eq (Δ := Δ) a' b' h.1).2 κ ρ)).symm
         simp only [Term.eval, Branch.eval]
         cases (c.eval κ ρ : Bool) <;> simp [hab]
-      · rfl
-    · rfl
+      · exact Term.condRet_eval c a b κ ρ jκ
+    · exact Term.condRet_eval c a b κ ρ jκ
   · rfl
 
 /-- A branch in tail position, with the rewrite of `Term.mkIte`. -/

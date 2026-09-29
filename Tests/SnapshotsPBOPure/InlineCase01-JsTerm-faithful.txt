@@ -16,11 +16,4 @@ export const test1 = (f : () => int(bigint), a : ({ tag: 0 } | { tag: 1, _1: int
 };
 
 // test3
-export const test3 = (f : () => int(bigint), a : ({ tag: 0 } | { tag: 1, _1: int(bigint) })) : int(bigint) => {
-  switch (c0.tag) {
-  case 0 {  }:
-    return c1();
-  case 1 { _1: f }:
-    return inline:bigint_int__lean_int_add(c0, 1n);
-  }
-};
+export const test3 = test1;

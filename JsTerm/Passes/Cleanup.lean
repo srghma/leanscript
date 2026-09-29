@@ -88,13 +88,17 @@ def JsArgs.areFields {C M σs : List JsTy} (n j : Nat) (d : Nat := 0) : JsArgs C
 
 /-- `e` is the constructor `i` of the fields `0 … n-1` (as a pattern keeping every field binds
     them, `d` constants further out): the value `s` it takes apart, when it has the same
-    type. -/
+    type.  In both branches of a conditional expression too (`c ? { tag: 0, _1: f } : y` is
+    `c ? s : y`). -/
 def rebuiltAs {C M : List JsTy} {σ τ : JsTy} (s : JsExpr C M σ) (i n : Nat) (e : JsExpr C M τ)
     (d : Nat := 0) : JsExpr C M τ :=
-  let isRebuild : Bool := match e with
-    | .union_mk ix args => ix.index == i && args.areFields n 0 d
-    | _ => false
-  if isRebuild then (if h : σ = τ then h ▸ s else e) else e
+  match e with
+  | .cond c a b => .cond c (rebuiltAs s i n a d) (rebuiltAs s i n b d)
+  | e =>
+    let isRebuild : Bool := match e with
+      | .union_mk ix args => ix.index == i && args.areFields n 0 d
+      | _ => false
+    if isRebuild then (if h : σ = τ then h ▸ s else e) else e
 
 /-- `rebuiltAs` in the statements of a block that run before `s` could change: through
     constants and assignments of other variables, into both branches of an `if` (`d` constants

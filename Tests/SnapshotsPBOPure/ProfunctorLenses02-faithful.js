@@ -15,8 +15,7 @@ const $tag0 = { tag: 0 };
  */
 export const test1 = (a) => {
   if (a.tag === 0) {
-    const { _1: f$1 } = a;
-    return { tag: 1, _1: f$1 };
+    return { tag: 1, _1: a._1 };
   }
   return $tag0;
 };
@@ -26,10 +25,4 @@ export const test1 = (a) => {
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
  * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
-export const test2 = (a) => {
-  if (a.tag === 0) {
-    const { _1: f$1 } = a;
-    return { tag: 1, _1: f$1 };
-  }
-  return $tag0;
-};
+export const test2 = test1;

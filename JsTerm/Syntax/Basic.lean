@@ -395,6 +395,11 @@ structure JsFun where
   ret : JsTy
   /-- The body; every path ends in a `return` (or a `throw`). -/
   body : JsBlock (pushAll (params.map (·.2)) []) [] [] (.ret ret)
+  /-- Another exported function of the module, defined before this one, that is the same
+      function (the same type and body), or the function of the runtime this one only passes
+      its parameters to: this one is then written `export const name = other;`
+      (`JsModule.shareFuns`). -/
+  alias : Option String := none
 
 /-- A constant shared by the functions of a module: `const name = e;`. -/
 structure JsConst where

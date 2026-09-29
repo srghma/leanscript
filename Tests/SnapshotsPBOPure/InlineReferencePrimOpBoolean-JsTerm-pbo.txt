@@ -11,14 +11,10 @@ export const test1 = () : int53(number) => {
 };
 
 // test2
-export const test2 = () : int53(number) => {
-  return 42;
-};
+export const test2 = test1;
 
 // test3
-export const test3 = () : int53(number) => {
-  return 42;
-};
+export const test3 = test1;
 
 // extern1
 export const extern1 = () : { _1: boolean, _2: int53(number), _3: boolean, _4: boolean } => {
@@ -26,16 +22,10 @@ export const extern1 = () : { _1: boolean, _2: int53(number), _3: boolean, _4: b
 };
 
 // test4
-export const test4 = () : int53(number) => {
-  return 42;
-};
+export const test4 = test1;
 
 // test5
-export const test5 = () : int53(number) => {
-  return 42;
-};
+export const test5 = test1;
 
 // test6
-export const test6 = () : int53(number) => {
-  return 42;
-};
+export const test6 = test1;

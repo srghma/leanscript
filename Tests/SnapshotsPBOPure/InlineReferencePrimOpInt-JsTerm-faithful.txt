@@ -8,11 +8,7 @@ const $k1 : { _1: int(bigint), _2: int(bigint), _3: int(bigint) } = { _1: 99n, _
 // localTest
 export const localTest = (f : ({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)) : int(bigint) => {
   const x = c0($k1);
-  if ((inline:bigint_int__lean_int_dec_eq(c0, -2147483648n) ? false : true)) {
-    return c0;
-  } else {
-    return 0n;
-  }
+  return ((inline:bigint_int__lean_int_dec_eq(c0, -2147483648n) ? false : true) ? c0 : 0n);
 };
 
 // test1
@@ -43,29 +39,17 @@ export const extern = () : { _1: int(bigint), _2: int(bigint), _3: int(bigint) }
 // externTest
 export const externTest = (f : ({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)) : int(bigint) => {
   const x = c0($k1);
-  if ((inline:bigint_int__lean_int_dec_eq(c0, -2147483648n) ? false : true)) {
-    return c0;
-  } else {
-    return -2147483648n;
-  }
+  return ((inline:bigint_int__lean_int_dec_eq(c0, -2147483648n) ? false : true) ? c0 : -2147483648n);
 };
 
 // test5
-export const test5 = () : int(bigint) => {
-  return 110n;
-};
+export const test5 = test1;
 
 // test6
-export const test6 = () : int(bigint) => {
-  return 88n;
-};
+export const test6 = test2;
 
 // test7
-export const test7 = () : int(bigint) => {
-  return 1089n;
-};
+export const test7 = test3;
 
 // test8
-export const test8 = () : int(bigint) => {
-  return 9n;
-};
+export const test8 = test4;

@@ -18,7 +18,4 @@ export const test1 = (a : { _1: int53(number), _2: int53(number) }) : int53(numb
 };
 
 // test2
-export const test2 = (a : { _1: int53(number), _2: int53(number) }) : int53(number) => {
-  const { _1: f } = c0;
-  return c0;
-};
+export const test2 = test1;

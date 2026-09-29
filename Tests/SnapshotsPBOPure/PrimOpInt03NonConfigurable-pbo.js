@@ -26,7 +26,7 @@ export const TestUInt8$test2 = () => 106;
  * `TestUInt8.test3`
  * @returns {uint8}
  */
-export const TestUInt8$test3 = () => 144;
+export const TestUInt8$test3 = TestUInt8$test1;
 
 /**
  * `TestUInt8.test4`

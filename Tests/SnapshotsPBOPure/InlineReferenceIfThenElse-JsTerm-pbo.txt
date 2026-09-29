@@ -16,6 +16,4 @@ export const extern1 = () : { _1: boolean, _2: int53(number) } => {
 };
 
 // test2
-export const test2 = () : int53(number) => {
-  return 42;
-};
+export const test2 = test1;

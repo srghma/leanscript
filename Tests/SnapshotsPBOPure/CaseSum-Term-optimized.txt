@@ -7,10 +7,7 @@ val k1 [1] : (([Nat] | [Nat]) → String) := fun x2 [1] : ([Nat] | [Nat]) => (cl
     if lean_nat_dec_eq__Nat_decEq(f3, 1) then
       ret "1"
     else
-      if lean_nat_dec_eq__Nat_decEq(f3, 2) then
-        ret "2"
-      else
-        ret "3"
+      ret cond(lean_nat_dec_eq__Nat_decEq(f3, 2), "2", "3")
   | ctor#1(f4 [0] : Nat) =>
     ret "4"
 ret k1

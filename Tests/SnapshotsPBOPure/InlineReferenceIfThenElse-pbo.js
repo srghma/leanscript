@@ -21,4 +21,4 @@ export const extern1 = () => $k1;
  * `test2`
  * @returns {int53(number)}
  */
-export const test2 = () => 42;
+export const test2 = test1;

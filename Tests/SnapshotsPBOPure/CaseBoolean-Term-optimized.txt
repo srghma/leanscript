@@ -2,8 +2,5 @@
 
 -- test1 : Bool → String
 val k1 [1] : (Bool → String) := fun x2 [1] : Bool => (closed)
-  if x2 then
-    ret "1"
-  else
-    ret "2"
+  ret cond(x2, "1", "2")
 ret k1

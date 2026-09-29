@@ -8,11 +8,7 @@ export const test1 = (v : ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigin
     if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 1n)) {
       return "1";
     } else {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 2n)) {
-        return "2";
-      } else {
-        return "3";
-      }
+      return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 2n) ? "2" : "3");
     }
   case 1 {  }:
     return "4";

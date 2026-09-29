@@ -13,13 +13,7 @@ export const test1 = (v : { _1: int(bigint), _2: int(bigint) }, b : int(bigint))
 };
 
 // test2
-export const test2 = (v : { _1: int(bigint), _2: int(bigint) }, a : int(bigint)) : int(bigint) => {
-  const { _1: f } = c1;
-  return inline:bigint_int__lean_int_add(c0, c1);
-};
+export const test2 = test1;
 
 // test3
-export const test3 = (v : { _1: int(bigint), _2: int(bigint) }, p1 : int(bigint)) : int(bigint) => {
-  const { _1: f } = c1;
-  return inline:bigint_int__lean_int_add(c0, c1);
-};
+export const test3 = test1;

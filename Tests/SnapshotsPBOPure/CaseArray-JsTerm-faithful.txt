@@ -9,24 +9,12 @@ export const test1 = (a : Array<nat(bigint)>) : string => {
     return "0";
   } else {
     if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 1n)) {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(bigint_nat__lean_array_get(0n, c0, 0n), 1n)) {
-        return "1";
-      } else {
-        return "any1";
-      }
+      return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(bigint_nat__lean_array_get(0n, c0, 0n), 1n) ? "1" : "any1");
     } else {
       if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 2n)) {
-        if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(bigint_nat__lean_array_get(0n, c0, 1n), 2n)) {
-          return "2";
-        } else {
-          return "catch";
-        }
+        return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(bigint_nat__lean_array_get(0n, c0, 1n), 2n) ? "2" : "catch");
       } else {
-        if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 3n)) {
-          return "3";
-        } else {
-          return "catch";
-        }
+        return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 3n) ? "3" : "catch");
       }
     }
   }

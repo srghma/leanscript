@@ -10,11 +10,7 @@ import { uint53__lean_nat_sub } from "runtime.js";
 
 // mc91
 export const mc91 = (n : uint53(number)) : uint53(number) => {
-  if (inline:uint53__lean_nat_dec_lt(100, c0)) {
-    return uint53__lean_nat_sub(c0, 10);
-  } else {
-    return 91;
-  }
+  return (inline:uint53__lean_nat_dec_lt(100, c0) ? uint53__lean_nat_sub(c0, 10) : 91);
 };
 
 // iter

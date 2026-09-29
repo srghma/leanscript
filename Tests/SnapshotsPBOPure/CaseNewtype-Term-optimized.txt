@@ -8,10 +8,7 @@ val k1 [1] : (Int → String) := fun x2 [ω] : Int => (closed)
     if lean_int_dec_eq(x2, 2) then
       ret "2"
     else
-      if lean_int_dec_eq(x2, 3) then
-        ret "3"
-      else
-        ret "catch"
+      ret cond(lean_int_dec_eq(x2, 3), "3", "catch")
 ret k1
 
 -- test2 : NewTypeInt → String
@@ -22,8 +19,5 @@ val k1 [1] : (Int → String) := fun x2 [ω] : Int => (closed)
     if lean_int_dec_eq(x2, 2) then
       ret "2"
     else
-      if lean_int_dec_eq(x2, 3) then
-        ret "3"
-      else
-        ret "catch"
+      ret cond(lean_int_dec_eq(x2, 3), "3", "catch")
 ret k1

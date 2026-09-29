@@ -15,13 +15,13 @@ export const test1 = () => 42n;
  * `test2`
  * @returns {int(bigint)}
  */
-export const test2 = () => 42n;
+export const test2 = test1;
 
 /**
  * `test3`
  * @returns {int(bigint)}
  */
-export const test3 = () => 42n;
+export const test3 = test1;
 
 /**
  * `extern1`
@@ -33,16 +33,16 @@ export const extern1 = () => $k1;
  * `test4`
  * @returns {int(bigint)}
  */
-export const test4 = () => 42n;
+export const test4 = test1;
 
 /**
  * `test5`
  * @returns {int(bigint)}
  */
-export const test5 = () => 42n;
+export const test5 = test1;
 
 /**
  * `test6`
  * @returns {int(bigint)}
  */
-export const test6 = () => 42n;
+export const test6 = test1;

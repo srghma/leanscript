@@ -16,17 +16,11 @@
  * @param {{ _1: int53(number), _2: int53(number) }} a
  * @returns {int53(number)}
  */
-export const test1 = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test1 = (a) => a._1;
 
 /**
  * `test2`
  * @param {{ _1: int53(number), _2: int53(number) }} a
  * @returns {int53(number)}
  */
-export const test2 = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test2 = test1;

@@ -8,15 +8,9 @@ val k1 [1] : (Bool → (Bool → (Bool → Int))) := fun x2 [ω] : Bool => (clos
         if x4 then
           ret 1
         else
-          if x6 then
-            ret 2
-          else
-            ret 3
+          ret cond(x6, 2, 3)
       else
-        if x6 then
-          ret 2
-        else
-          ret 3
+        ret cond(x6, 2, 3)
     ret k5
   ret k3
 ret k1

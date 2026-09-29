@@ -46,66 +46,64 @@ export const test3 = (a) => {
  * @returns {int53(number)}
  */
 export const test4 = (a, a1) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = a;
+  const { _1: f$1, _3: f$2 } = a;
   if (f$1 === 1) {
-    const { _1: f$4, _3: f$5 } = a1;
-    if (f$4 === 1) {
+    const { _1: f$3 } = a1;
+    if (f$3 === 1) {
       return 1;
     }
+    if (f$3 === 2) {
+      return 2;
+    }
+    if (f$3 === 3) {
+      return 3;
+    }
+    if (f$3 === 4) {
+      return 4;
+    }
+    return f$3 === 5
+      ? 5
+      : int53__lean_int_add(int53__lean_int_add(11, f$2), a1._3);
+  }
+  if (f$1 === 2) {
+    const { _1: f$4, _2: f$5 } = a1;
     if (f$4 === 2) {
       return 2;
     }
     if (f$4 === 3) {
       return 3;
     }
-    if (f$4 === 4) {
-      return 4;
-    }
-    if (f$4 === 5) {
-      return 5;
-    }
-    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$5);
-  }
-  if (f$1 === 2) {
-    const { _1: f$6, _2: f$7, _3: f$8 } = a1;
-    if (f$6 === 2) {
-      return 2;
-    }
-    if (f$6 === 3) {
-      return 3;
-    }
-    if (f$6 === 1) {
+    if (f$4 === 1) {
       return 6;
     }
-    if (f$6 === 4) {
-      if (f$3 === f$7) {
+    if (f$4 === 4) {
+      if (f$2 === f$5) {
         return 7;
       }
-      return f$3 < f$7 ? 8 : 9;
+      return f$2 < f$5 ? 8 : 9;
     }
-    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$8);
+    return int53__lean_int_add(int53__lean_int_add(11, f$2), a1._3);
   }
-  const { _1: f$9, _2: f$10, _3: f$11 } = a1;
-  if (f$9 === 2) {
+  const { _1: f$6, _2: f$7, _3: f$8 } = a1;
+  if (f$6 === 2) {
     return 2;
   }
-  if (f$9 === 3) {
+  if (f$6 === 3) {
     return 3;
   }
-  if (f$9 === 4) {
-    if (f$3 === f$10) {
+  if (f$6 === 4) {
+    if (f$2 === f$7) {
       return 7;
     }
-    return f$3 < f$10 ? 8 : 9;
+    return f$2 < f$7 ? 8 : 9;
   }
-  if (f$9 === 1) {
-    if (f$11 === 10) {
-      if (f$2 === 2) {
-        return 10;
-      }
-      return int53__lean_int_add(int53__lean_int_add(11, f$3), 10);
+  if (f$6 === 1) {
+    if (f$8 === 10) {
+      return a._2 === 2
+        ? 10
+        : int53__lean_int_add(int53__lean_int_add(11, f$2), 10);
     }
-    return int53__lean_int_add(int53__lean_int_add(11, f$3), f$11);
+    return int53__lean_int_add(int53__lean_int_add(11, f$2), f$8);
   }
-  return int53__lean_int_add(int53__lean_int_add(11, f$3), f$11);
+  return int53__lean_int_add(int53__lean_int_add(11, f$2), f$8);
 };

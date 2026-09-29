@@ -260,8 +260,10 @@ theorem Term.numCalls_mkIte {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
   unfold Term.mkIte
   split
   · split
-    · split <;> simp [Term.numCalls, Branch.numCalls]
-    · simp [Term.numCalls, Branch.numCalls]
+    · split
+      · simp [Term.numCalls]
+      · unfold Term.condRet; split <;> simp [Term.numCalls, Branch.numCalls]
+    · unfold Term.condRet; split <;> simp [Term.numCalls, Branch.numCalls]
   · simp [Term.numCalls, Branch.numCalls]
 
 theorem Term.numCalls_mkBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}

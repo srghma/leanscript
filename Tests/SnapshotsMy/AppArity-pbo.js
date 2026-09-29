@@ -3,18 +3,7 @@
 
 import { uint53__lean_nat_add, uint53__lean_nat_mul } from "../../runtime.js";
 
-const $k1 = (x$1, x$2, x$3) =>
-  uint53__lean_nat_add(x$1(x$2, x$3), x$1(x$3, x$2));
-const $k2 = (x$1, x$2, x$3) =>
-  uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$1);
-const $k3 = (x$1, x$2, x$3) =>
-  uint53__lean_nat_mul(uint53__lean_nat_mul(x$2, x$3), x$1);
 const $k4 = (x$1, x$2, x$3) => x$1(x$2, x$3, x$2);
-const $k5 = (x$1, x$2, x$3, x$4) =>
-  uint53__lean_nat_add(
-    uint53__lean_nat_add(uint53__lean_nat_add(x$2, x$3), x$4),
-    x$1,
-  );
 
 /**
  * `mkAdd`
@@ -33,7 +22,7 @@ export const mkAdd = (n, a, a1) =>
  * @param {uint53(number)} y
  * @returns {uint53(number)}
  */
-export const test1 = (n, x, y) => $k1((y$1, y$2) => $k2(n, y$1, y$2), x, y);
+export const test1 = (n, x, y) => test4((y$1, y$2) => mkAdd(n, y$1, y$2), x, y);
 
 /**
  * `mkMul`
@@ -52,7 +41,7 @@ export const mkMul = (n, a, a1) =>
  * @param {uint53(number)} y
  * @returns {uint53(number)}
  */
-export const test2 = (n, x, y) => $k1((y$1, y$2) => $k3(n, y$1, y$2), x, y);
+export const test2 = (n, x, y) => test4((y$1, y$2) => mkMul(n, y$1, y$2), x, y);
 
 /**
  * `mkSum3`
@@ -76,7 +65,7 @@ export const mkSum3 = (n, a, a1, a2) =>
  * @returns {uint53(number)}
  */
 export const test3 = (n, x, y) =>
-  $k4((y$1, y$2, y$3) => $k5(n, y$1, y$2, y$3), x, y);
+  $k4((y$1, y$2, y$3) => mkSum3(n, y$1, y$2, y$3), x, y);
 
 /**
  * `test4`

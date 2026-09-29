@@ -59,22 +59,22 @@ export const externTest = (f) => {
  * `test5`
  * @returns {int53(number)}
  */
-export const test5 = () => 110;
+export const test5 = test1;
 
 /**
  * `test6`
  * @returns {int53(number)}
  */
-export const test6 = () => 88;
+export const test6 = test2;
 
 /**
  * `test7`
  * @returns {int53(number)}
  */
-export const test7 = () => 1089;
+export const test7 = test3;
 
 /**
  * `test8`
  * @returns {int53(number)}
  */
-export const test8 = () => 9;
+export const test8 = test4;

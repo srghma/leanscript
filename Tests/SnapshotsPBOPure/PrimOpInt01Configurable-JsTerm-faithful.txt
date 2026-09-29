@@ -27,14 +27,10 @@
 import { bigint_nat__lean_uint64_add, bigint_nat__lean_uint64_sub, bigint_nat__lean_uint64_mul, bigint_nat__lean_uint64_div, bigint_nat__lean_uint64_neg, bigint_nat__lean_nat_sub, bigint_nat__lean_nat_div, bigint_int__lean_int64_add, bigint_int__lean_int64_sub, bigint_int__lean_int64_mul, bigint_int__lean_int64_div, bigint_int__lean_int64_neg, bigint_int__lean_int_ediv } from "runtime.js";
 
 // TestUInt64.add
-export const TestUInt64$add = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_add(c1, c0);
-};
+export const TestUInt64$add = bigint_nat__lean_uint64_add;
 
 // TestUInt64.sub
-export const TestUInt64$sub = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_sub(c1, c0);
-};
+export const TestUInt64$sub = bigint_nat__lean_uint64_sub;
 
 // TestUInt64.eq
 export const TestUInt64$eq = (a : nat(bigint), b : nat(bigint)) : boolean => {
@@ -43,11 +39,7 @@ export const TestUInt64$eq = (a : nat(bigint), b : nat(bigint)) : boolean => {
 
 // TestUInt64.ne
 export const TestUInt64$ne = (a : nat(bigint), b : nat(bigint)) : boolean => {
-  if (inline:bigint_nat__lean_uint64_dec_eq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:bigint_nat__lean_uint64_dec_eq(c1, c0) ? false : true);
 };
 
 // TestUInt64.lt
@@ -71,19 +63,13 @@ export const TestUInt64$ge = (a : nat(bigint), b : nat(bigint)) : boolean => {
 };
 
 // TestUInt64.mul
-export const TestUInt64$mul = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_mul(c1, c0);
-};
+export const TestUInt64$mul = bigint_nat__lean_uint64_mul;
 
 // TestUInt64.div
-export const TestUInt64$div = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_div(c1, c0);
-};
+export const TestUInt64$div = bigint_nat__lean_uint64_div;
 
 // TestUInt64.neg
-export const TestUInt64$neg = (a : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_neg(c0);
-};
+export const TestUInt64$neg = bigint_nat__lean_uint64_neg;
 
 // TestNat.add
 export const TestNat$add = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
@@ -91,9 +77,7 @@ export const TestNat$add = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
 };
 
 // TestNat.sub
-export const TestNat$sub = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_nat_sub(c1, c0);
-};
+export const TestNat$sub = bigint_nat__lean_nat_sub;
 
 // TestNat.eq
 export const TestNat$eq = (a : nat(bigint), b : nat(bigint)) : boolean => {
@@ -102,11 +86,7 @@ export const TestNat$eq = (a : nat(bigint), b : nat(bigint)) : boolean => {
 
 // TestNat.ne
 export const TestNat$ne = (a : nat(bigint), b : nat(bigint)) : boolean => {
-  if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, c0) ? false : true);
 };
 
 // TestNat.lt
@@ -135,19 +115,13 @@ export const TestNat$mul = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
 };
 
 // TestNat.div
-export const TestNat$div = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_nat_div(c1, c0);
-};
+export const TestNat$div = bigint_nat__lean_nat_div;
 
 // TestInt64.add
-export const TestInt64$add = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_add(c1, c0);
-};
+export const TestInt64$add = bigint_int__lean_int64_add;
 
 // TestInt64.sub
-export const TestInt64$sub = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_sub(c1, c0);
-};
+export const TestInt64$sub = bigint_int__lean_int64_sub;
 
 // TestInt64.eq
 export const TestInt64$eq = (a : int(bigint), b : int(bigint)) : boolean => {
@@ -156,11 +130,7 @@ export const TestInt64$eq = (a : int(bigint), b : int(bigint)) : boolean => {
 
 // TestInt64.ne
 export const TestInt64$ne = (a : int(bigint), b : int(bigint)) : boolean => {
-  if (inline:bigint_int__lean_int64_dec_eq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:bigint_int__lean_int64_dec_eq(c1, c0) ? false : true);
 };
 
 // TestInt64.lt
@@ -184,19 +154,13 @@ export const TestInt64$ge = (a : int(bigint), b : int(bigint)) : boolean => {
 };
 
 // TestInt64.mul
-export const TestInt64$mul = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_mul(c1, c0);
-};
+export const TestInt64$mul = bigint_int__lean_int64_mul;
 
 // TestInt64.div
-export const TestInt64$div = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_div(c1, c0);
-};
+export const TestInt64$div = bigint_int__lean_int64_div;
 
 // TestInt64.neg
-export const TestInt64$neg = (a : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_neg(c0);
-};
+export const TestInt64$neg = bigint_int__lean_int64_neg;
 
 // TestInt.add
 export const TestInt$add = (a : int(bigint), b : int(bigint)) : int(bigint) => {
@@ -215,11 +179,7 @@ export const TestInt$eq = (a : int(bigint), b : int(bigint)) : boolean => {
 
 // TestInt.ne
 export const TestInt$ne = (a : int(bigint), b : int(bigint)) : boolean => {
-  if (inline:bigint_int__lean_int_dec_eq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:bigint_int__lean_int_dec_eq(c1, c0) ? false : true);
 };
 
 // TestInt.lt
@@ -248,9 +208,7 @@ export const TestInt$mul = (a : int(bigint), b : int(bigint)) : int(bigint) => {
 };
 
 // TestInt.div
-export const TestInt$div = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int_ediv(c1, c0);
-};
+export const TestInt$div = bigint_int__lean_int_ediv;
 
 // TestInt.neg
 export const TestInt$neg = (a : int(bigint)) : int(bigint) => {

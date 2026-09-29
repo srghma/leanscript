@@ -8,11 +8,7 @@ export const test1 = (v : ({ tag: 0, _1: uint53(number) } | { tag: 1, _1: uint53
     if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 1)) {
       return "1";
     } else {
-      if (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 2)) {
-        return "2";
-      } else {
-        return "3";
-      }
+      return (inline:uint53__lean_nat_dec_eq__Nat_decEq(c0, 2) ? "2" : "3");
     }
   case 1 {  }:
     return "4";

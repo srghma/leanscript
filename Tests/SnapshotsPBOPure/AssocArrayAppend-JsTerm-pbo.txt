@@ -7,9 +7,7 @@ export const ArrayTest$test1 = (arr : Array<string>) : Array<string> => {
 };
 
 // ArrayTest.test2
-export const ArrayTest$test2 = (arr : Array<string>) : Array<string> => {
-  return ["a", "b", ...c0, ...c0, ...c0, ...c0, "c", "d"];
-};
+export const ArrayTest$test2 = ArrayTest$test1;
 
 // ArrayTest.test3
 export const ArrayTest$test3 = (arr : Array<string>) : Array<string> => {

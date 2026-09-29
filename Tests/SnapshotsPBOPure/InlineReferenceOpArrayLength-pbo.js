@@ -10,10 +10,7 @@
  */
 export const test1 = (fn) => {
   const k$1 = [1, 2, fn()];
-  if (k$1.length === 3) {
-    return k$1;
-  }
-  return [];
+  return k$1.length === 3 ? k$1 : [];
 };
 
 /**
@@ -38,10 +35,10 @@ export const extern2 = () => [[1, 2, 0], [3], [0]];
  * `test3`
  * @returns {Array<int53(number)>}
  */
-export const test3 = () => [1, 2, 0];
+export const test3 = extern1;
 
 /**
  * `test4`
  * @returns {Array<Array<int53(number)>>}
  */
-export const test4 = () => [[1, 2, 0], [3], [0]];
+export const test4 = extern2;

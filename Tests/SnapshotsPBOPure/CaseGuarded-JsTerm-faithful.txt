@@ -14,11 +14,7 @@ export const test2 = (a : int(bigint)) : int(bigint) => {
     if (inline:bigint_int__lean_int_dec_lt(1n, c0)) {
       return c0;
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c0, 1n)) {
-        return 1n;
-      } else {
-        return 0n;
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c0, 1n) ? 1n : 0n);
     }
   }
 };
@@ -32,11 +28,7 @@ export const test3 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) })
     if (inline:bigint_int__lean_int_dec_eq(c0, c1)) {
       return c2;
     } else {
-      if (inline:bigint_int__lean_int_dec_eq(c2, c0)) {
-        return c0;
-      } else {
-        return c1;
-      }
+      return (inline:bigint_int__lean_int_dec_eq(c2, c0) ? c0 : c1);
     }
   }
 };
@@ -58,11 +50,7 @@ export const test4 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) },
           if (inline:bigint_int__lean_int_dec_eq(c1, 4n)) {
             return 4n;
           } else {
-            if (inline:bigint_int__lean_int_dec_eq(c1, 5n)) {
-              return 5n;
-            } else {
-              return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c2), c0);
-            }
+            return (inline:bigint_int__lean_int_dec_eq(c1, 5n) ? 5n : inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c2), c0));
           }
         }
       }
@@ -83,11 +71,7 @@ export const test4 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) },
               if (inline:bigint_int__lean_int_dec_eq(c3, c1)) {
                 return 7n;
               } else {
-                if (inline:bigint_int__lean_int_dec_lt(c3, c1)) {
-                  return 8n;
-                } else {
-                  return 9n;
-                }
+                return (inline:bigint_int__lean_int_dec_lt(c3, c1) ? 8n : 9n);
               }
             } else {
               return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
@@ -107,20 +91,12 @@ export const test4 = (a : { _1: int(bigint), _2: int(bigint), _3: int(bigint) },
             if (inline:bigint_int__lean_int_dec_eq(c3, c1)) {
               return 7n;
             } else {
-              if (inline:bigint_int__lean_int_dec_lt(c3, c1)) {
-                return 8n;
-              } else {
-                return 9n;
-              }
+              return (inline:bigint_int__lean_int_dec_lt(c3, c1) ? 8n : 9n);
             }
           } else {
             if (inline:bigint_int__lean_int_dec_eq(c2, 1n)) {
               if (inline:bigint_int__lean_int_dec_eq(c0, 10n)) {
-                if (inline:bigint_int__lean_int_dec_eq(c4, 2n)) {
-                  return 10n;
-                } else {
-                  return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), 10n);
-                }
+                return (inline:bigint_int__lean_int_dec_eq(c4, 2n) ? 10n : inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), 10n));
               } else {
                 return inline:bigint_int__lean_int_add(inline:bigint_int__lean_int_add(11n, c3), c0);
               }

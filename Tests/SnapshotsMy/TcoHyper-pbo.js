@@ -7,28 +7,6 @@
 import { uint53__lean_nat_add } from "../../runtime.js";
 
 const $k1 = (x$1) => uint53__lean_nat_add(x$1, 1);
-const $k2 = (x$1, x$2, x$3) => {
-  let x$4 = x$3;
-  for (let j$5 = 0; j$5 < x$2; j$5++) {
-    x$4 = x$1(x$4);
-  }
-  return x$4;
-};
-const $k3 = (x$1, x$2) => {
-  let acc$3 = 1;
-  if (0 < x$1) {
-    const i$4 = x$1 - 1;
-    acc$3 = x$2;
-    if (0 < i$4) {
-      const i$5 = i$4 - 1;
-      acc$3 = 0;
-      if (0 < i$5) {
-        acc$3 = 1;
-      }
-    }
-  }
-  return acc$3;
-};
 
 /**
  * `hyperBase`
@@ -78,7 +56,8 @@ export const hyperTCO = (a, a1, a2) => {
   let acc$1 = $k1;
   for (let i$2 = 0; i$2 < a; i$2++) {
     const a$3 = acc$1;
-    acc$1 = (x$4) => $k2(a$3, x$4, $k3(uint53__lean_nat_add(i$2, 1), a1));
+    acc$1 = (x$4) =>
+      hyperLoop(a$3, x$4, hyperBase(uint53__lean_nat_add(i$2, 1), a1));
   }
   return acc$1(a2);
 };
@@ -95,7 +74,7 @@ export const hyperWhile = (a, a1, a2) => {
   for (let i$2 = 0; i$2 < a; i$2++) {
     const a$3 = acc$1;
     acc$1 = (x$4) => {
-      let acc$5 = $k3(uint53__lean_nat_add(i$2, 1), a1);
+      let acc$5 = hyperBase(uint53__lean_nat_add(i$2, 1), a1);
       for (let i$6 = 0; i$6 < x$4; i$6++) {
         acc$5 = a$3(acc$5);
       }

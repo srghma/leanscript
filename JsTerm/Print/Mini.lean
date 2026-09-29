@@ -52,11 +52,12 @@ open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
 
 /-- A function as an exported declaration: `export const name = (params) => { body };`. -/
 def JsFun.toMini (f : JsFun) : MiniModuleItem :=
+  if let some g := f.alias then .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some (ident g)⟩, []⟩)) else
   let go : PM MiniModuleItem := do
     -- the parameters keep their names (a name met twice gets a fresh one)
     let params ← f.params.foldlM (fun (acc : Array String) (p, _) =>
       if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
-    let sc : Scope := { c := params.toList.reverse }
+    let sc : Scope := { c := params.toList.reverse.map ident }
     let e ← arrowToMini sc params.toList f.body
     return .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some e⟩, []⟩))
   go.run' {}

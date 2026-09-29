@@ -15,9 +15,6 @@ ret k1
 -- test2 : Char → Char → Bool
 val k1 [1] : (Char → (Char → Bool)) := fun x2 [ω] : Char => (closed)
   val k3 [1] : (Char → Bool) := fun x4 [1] : Char => (open)
-    if lean_string_dec_eq(lean_string_push("", x2), lean_string_push("", x4)) then
-      ret false
-    else
-      ret true
+    ret cond(lean_string_dec_eq(lean_string_push("", x2), lean_string_push("", x4)), false, true)
   ret k3
 ret k1

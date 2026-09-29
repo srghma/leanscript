@@ -18,11 +18,4 @@ export const test1 = (f : () => int53(number), a : ({ tag: 0 } | { tag: 1, _1: i
 };
 
 // test3
-export const test3 = (f : () => int53(number), a : ({ tag: 0 } | { tag: 1, _1: int53(number) })) : int53(number) => {
-  switch (c0.tag) {
-  case 0 {  }:
-    return c1();
-  case 1 { _1: f }:
-    return int53__lean_int_add(c0, 1);
-  }
-};
+export const test3 = test1;

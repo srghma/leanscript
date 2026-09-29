@@ -19,21 +19,12 @@ val k1 [1] : (Int → (Int → (Int → Int))) := fun x2 [ω] : Int => (closed)
               if lean_int_dec_eq(x6, 3) then
                 ret 3
               else
-                if lean_int_dec_eq(x6, 4) then
-                  ret 4
-                else
-                  ret 5
+                ret cond(lean_int_dec_eq(x6, 4), 4, 5)
         else
-          if lean_int_dec_eq(x6, 4) then
-            ret 4
-          else
-            ret 5
+          ret cond(lean_int_dec_eq(x6, 4), 4, 5)
       else
         if lean_int_dec_eq(x4, 2) then
-          if lean_int_dec_eq(x6, 3) then
-            ret 3
-          else
-            ret 5
+          ret cond(lean_int_dec_eq(x6, 3), 3, 5)
         else
           ret 5
     ret k5

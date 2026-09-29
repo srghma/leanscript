@@ -16,6 +16,4 @@ export const extern1 = () : { _1: boolean, _2: int(bigint) } => {
 };
 
 // test2
-export const test2 = () : int(bigint) => {
-  return 42n;
-};
+export const test2 = test1;

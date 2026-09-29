@@ -10,11 +10,7 @@ import { bigint_nat__lean_nat_sub } from "runtime.js";
 
 // mc91
 export const mc91 = (n : nat(bigint)) : nat(bigint) => {
-  if (inline:bigint_nat__lean_nat_dec_lt(100n, c0)) {
-    return bigint_nat__lean_nat_sub(c0, 10n);
-  } else {
-    return 91n;
-  }
+  return (inline:bigint_nat__lean_nat_dec_lt(100n, c0) ? bigint_nat__lean_nat_sub(c0, 10n) : 91n);
 };
 
 // iter

@@ -94,10 +94,7 @@ val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
       | ctor#0(f7 [1] : Nat) =>
         ret ctor#0(f7)
       | ctor#1(f8 [1] : Nat) =>
-        if lean_nat_dec_lt(x4, lean_nat_mul(i6, i6)) then
-          ret ctor#0(i6)
-        else
-          ret ctor#1(f8)
+        ret cond(lean_nat_dec_lt(x4, lean_nat_mul(i6, i6)), ctor#0(i6), ctor#1(f8))
     case x9 of
     | ctor#0(f10 [1] : Nat) =>
       ret f10

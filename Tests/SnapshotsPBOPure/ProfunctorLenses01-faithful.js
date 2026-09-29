@@ -16,17 +16,11 @@
  * @param {{ _1: int(bigint), _2: int(bigint) }} a
  * @returns {int(bigint)}
  */
-export const test1 = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test1 = (a) => a._1;
 
 /**
  * `test2`
  * @param {{ _1: int(bigint), _2: int(bigint) }} a
  * @returns {int(bigint)}
  */
-export const test2 = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test2 = test1;

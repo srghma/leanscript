@@ -20,25 +20,25 @@ export const g = (x) => "b";
  * @param {string} a
  * @returns {string}
  */
-export const test1 = (a) => "a";
+export const test1 = f;
 
 /**
  * `test2`
  * @param {string} a
  * @returns {string}
  */
-export const test2 = (a) => "b";
+export const test2 = g;
 
 /**
  * `test3`
  * @param {string} a
  * @returns {string}
  */
-export const test3 = (a) => "a";
+export const test3 = f;
 
 /**
  * `test4`
  * @param {string} a
  * @returns {string}
  */
-export const test4 = (a) => "b";
+export const test4 = g;

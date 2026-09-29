@@ -2,7 +2,6 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up
 
 const $k1 = (x$1) => x$1 * 2n;
-const $k2 = (x$1) => x$1 * 3n;
 
 /**
  * `foo`
@@ -42,5 +41,5 @@ export const triple = (a) => a * 3n;
  */
 export const useTriple = (n) => {
   const x$1 = n * 3n;
-  return x$1 + $k2(n + 1n);
+  return x$1 + triple(n + 1n);
 };

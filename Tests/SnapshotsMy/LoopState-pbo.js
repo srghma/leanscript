@@ -52,8 +52,12 @@ export const minMaxSum = (n) => {
   let acc$3 = 0;
   for (let i$4 = 0; i$4 < n; i$4++) {
     const x$5 = uint53__lean_nat_mod__Nat_mod(uint53__lean_nat_mul(i$4, 7), 11);
-    acc$1 = x$5 < acc$1 ? x$5 : acc$1;
-    acc$2 = acc$2 < x$5 ? x$5 : acc$2;
+    if (x$5 < acc$1) {
+      acc$1 = x$5;
+    }
+    if (acc$2 < x$5) {
+      acc$2 = x$5;
+    }
     acc$3 = uint53__lean_nat_add(acc$3, x$5);
   }
   return { _1: acc$1, _2: { _1: acc$2, _2: acc$3 } };
@@ -74,8 +78,7 @@ export const firstAbove = (n, k) => {
       }
     }
   }
-  const { _1: f$3 } = acc$1;
-  return f$3;
+  return acc$1._1;
 };
 
 /**

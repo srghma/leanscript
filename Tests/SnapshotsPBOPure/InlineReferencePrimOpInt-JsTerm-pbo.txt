@@ -8,11 +8,7 @@ const $k1 : { _1: int53(number), _2: int53(number), _3: int53(number) } = { _1: 
 // localTest
 export const localTest = (f : ({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)) : int53(number) => {
   const x = c0($k1);
-  if ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true)) {
-    return c0;
-  } else {
-    return 0;
-  }
+  return ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true) ? c0 : 0);
 };
 
 // test1
@@ -43,29 +39,17 @@ export const extern = () : { _1: int53(number), _2: int53(number), _3: int53(num
 // externTest
 export const externTest = (f : ({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)) : int53(number) => {
   const x = c0($k1);
-  if ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true)) {
-    return c0;
-  } else {
-    return -2147483648;
-  }
+  return ((inline:int53__lean_int_dec_eq(c0, -2147483648) ? false : true) ? c0 : -2147483648);
 };
 
 // test5
-export const test5 = () : int53(number) => {
-  return 110;
-};
+export const test5 = test1;
 
 // test6
-export const test6 = () : int53(number) => {
-  return 88;
-};
+export const test6 = test2;
 
 // test7
-export const test7 = () : int53(number) => {
-  return 1089;
-};
+export const test7 = test3;
 
 // test8
-export const test8 = () : int53(number) => {
-  return 9;
-};
+export const test8 = test4;

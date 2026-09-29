@@ -16,11 +16,7 @@ export const test2 = (a : int53(number)) : int53(number) => {
     if (inline:int53__lean_int_dec_lt(1, c0)) {
       return c0;
     } else {
-      if (inline:int53__lean_int_dec_eq(c0, 1)) {
-        return 1;
-      } else {
-        return 0;
-      }
+      return (inline:int53__lean_int_dec_eq(c0, 1) ? 1 : 0);
     }
   }
 };
@@ -34,11 +30,7 @@ export const test3 = (a : { _1: int53(number), _2: int53(number), _3: int53(numb
     if (inline:int53__lean_int_dec_eq(c0, c1)) {
       return c2;
     } else {
-      if (inline:int53__lean_int_dec_eq(c2, c0)) {
-        return c0;
-      } else {
-        return c1;
-      }
+      return (inline:int53__lean_int_dec_eq(c2, c0) ? c0 : c1);
     }
   }
 };
@@ -60,11 +52,7 @@ export const test4 = (a : { _1: int53(number), _2: int53(number), _3: int53(numb
           if (inline:int53__lean_int_dec_eq(c1, 4)) {
             return 4;
           } else {
-            if (inline:int53__lean_int_dec_eq(c1, 5)) {
-              return 5;
-            } else {
-              return int53__lean_int_add(int53__lean_int_add(11, c2), c0);
-            }
+            return (inline:int53__lean_int_dec_eq(c1, 5) ? 5 : int53__lean_int_add(int53__lean_int_add(11, c2), c0));
           }
         }
       }
@@ -85,11 +73,7 @@ export const test4 = (a : { _1: int53(number), _2: int53(number), _3: int53(numb
               if (inline:int53__lean_int_dec_eq(c3, c1)) {
                 return 7;
               } else {
-                if (inline:int53__lean_int_dec_lt(c3, c1)) {
-                  return 8;
-                } else {
-                  return 9;
-                }
+                return (inline:int53__lean_int_dec_lt(c3, c1) ? 8 : 9);
               }
             } else {
               return int53__lean_int_add(int53__lean_int_add(11, c3), c0);
@@ -109,20 +93,12 @@ export const test4 = (a : { _1: int53(number), _2: int53(number), _3: int53(numb
             if (inline:int53__lean_int_dec_eq(c3, c1)) {
               return 7;
             } else {
-              if (inline:int53__lean_int_dec_lt(c3, c1)) {
-                return 8;
-              } else {
-                return 9;
-              }
+              return (inline:int53__lean_int_dec_lt(c3, c1) ? 8 : 9);
             }
           } else {
             if (inline:int53__lean_int_dec_eq(c2, 1)) {
               if (inline:int53__lean_int_dec_eq(c0, 10)) {
-                if (inline:int53__lean_int_dec_eq(c4, 2)) {
-                  return 10;
-                } else {
-                  return int53__lean_int_add(int53__lean_int_add(11, c3), 10);
-                }
+                return (inline:int53__lean_int_dec_eq(c4, 2) ? 10 : int53__lean_int_add(int53__lean_int_add(11, c3), 10));
               } else {
                 return int53__lean_int_add(int53__lean_int_add(11, c3), c0);
               }

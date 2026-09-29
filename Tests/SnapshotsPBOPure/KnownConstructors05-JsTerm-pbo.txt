@@ -6,25 +6,6 @@ const $k2 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 1 };
 const $k3 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 2 };
 const $k4 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 1, _1: 3 };
 const $tag0 : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = { tag: 0 };
-const $k6 : (string) => ({ tag: 0 } | { tag: 1, _1: enum4@0 }) = (x) => {
-  if (inline:string__lean_string_dec_eq(c0, "foo")) {
-    return $k1;
-  } else {
-    if (inline:string__lean_string_dec_eq(c0, "bar")) {
-      return $k2;
-    } else {
-      if (inline:string__lean_string_dec_eq(c0, "baz")) {
-        return $k3;
-      } else {
-        if (inline:string__lean_string_dec_eq(c0, "qux")) {
-          return $k4;
-        } else {
-          return $tag0;
-        }
-      }
-    }
-  }
-};
 
 // fromString
 export const fromString = (a : string) : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) => {
@@ -37,11 +18,7 @@ export const fromString = (a : string) : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) 
       if (inline:string__lean_string_dec_eq(c0, "baz")) {
         return $k3;
       } else {
-        if (inline:string__lean_string_dec_eq(c0, "qux")) {
-          return $k4;
-        } else {
-          return $tag0;
-        }
+        return (inline:string__lean_string_dec_eq(c0, "qux") ? $k4 : $tag0);
       }
     }
   }
@@ -49,7 +26,7 @@ export const fromString = (a : string) : ({ tag: 0 } | { tag: 1, _1: enum4@0 }) 
 
 // test
 export const test = (a : string) : int53(number) => {
-  const x = $k6(c0);
+  const x = fromString(c0);
   switch (c0.tag) {
   case 0 {  }:
     return 0;

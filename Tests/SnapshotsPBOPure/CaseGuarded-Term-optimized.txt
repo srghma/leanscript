@@ -13,10 +13,7 @@ val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
     if lean_int_dec_lt(1, x2) then
       ret x2
     else
-      if lean_int_dec_eq(x2, 1) then
-        ret 1
-      else
-        ret 0
+      ret cond(lean_int_dec_eq(x2, 1), 1, 0)
 ret k1
 
 -- test3 : Product3 Int Int Int → Int
@@ -28,10 +25,7 @@ val k1 [1] : ((Int × Int × Int) → Int) := fun x2 [1] : (Int × Int × Int) =
     if lean_int_dec_eq(f5, f4) then
       ret f3
     else
-      if lean_int_dec_eq(f3, f5) then
-        ret f5
-      else
-        ret f4
+      ret cond(lean_int_dec_eq(f3, f5), f5, f4)
 ret k1
 
 -- test4 : Rec1 → Rec2 → Int
@@ -52,10 +46,7 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
             if lean_int_dec_eq(f8, 4) then
               ret 4
             else
-              if lean_int_dec_eq(f8, 5) then
-                ret 5
-              else
-                ret lean_int_add(lean_int_add(11, f7), f10)
+              ret cond(lean_int_dec_eq(f8, 5), 5, lean_int_add(lean_int_add(11, f7), f10))
     else
       if lean_int_dec_eq(f5, 2) then
         let ⟨f11 [ω] : Int, f12 [ω] : Int, f13 [1] : Int⟩ := x4
@@ -72,10 +63,7 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
                 if lean_int_dec_eq(f7, f12) then
                   ret 7
                 else
-                  if lean_int_dec_lt(f7, f12) then
-                    ret 8
-                  else
-                    ret 9
+                  ret cond(lean_int_dec_lt(f7, f12), 8, 9)
               else
                 ret lean_int_add(lean_int_add(11, f7), f13)
       else
@@ -90,17 +78,11 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
               if lean_int_dec_eq(f7, f15) then
                 ret 7
               else
-                if lean_int_dec_lt(f7, f15) then
-                  ret 8
-                else
-                  ret 9
+                ret cond(lean_int_dec_lt(f7, f15), 8, 9)
             else
               if lean_int_dec_eq(f14, 1) then
                 if lean_int_dec_eq(f16, 10) then
-                  if lean_int_dec_eq(f6, 2) then
-                    ret 10
-                  else
-                    ret lean_int_add(lean_int_add(11, f7), 10)
+                  ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(lean_int_add(11, f7), 10))
                 else
                   ret lean_int_add(lean_int_add(11, f7), f16)
               else

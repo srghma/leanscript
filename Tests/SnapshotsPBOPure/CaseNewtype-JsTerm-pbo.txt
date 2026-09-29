@@ -9,28 +9,10 @@ export const test1 = (v : int53(number)) : string => {
     if (inline:int53__lean_int_dec_eq(c0, 2)) {
       return "2";
     } else {
-      if (inline:int53__lean_int_dec_eq(c0, 3)) {
-        return "3";
-      } else {
-        return "catch";
-      }
+      return (inline:int53__lean_int_dec_eq(c0, 3) ? "3" : "catch");
     }
   }
 };
 
 // test2
-export const test2 = (a : int53(number)) : string => {
-  if (inline:int53__lean_int_dec_eq(c0, 1)) {
-    return "1";
-  } else {
-    if (inline:int53__lean_int_dec_eq(c0, 2)) {
-      return "2";
-    } else {
-      if (inline:int53__lean_int_dec_eq(c0, 3)) {
-        return "3";
-      } else {
-        return "catch";
-      }
-    }
-  }
-};
+export const test2 = test1;

@@ -18,34 +18,22 @@
 import { bigint_nat__lean_uint64_land, bigint_nat__lean_uint64_lor, bigint_nat__lean_uint64_shift_left, bigint_nat__lean_uint64_shift_right, bigint_nat__lean_uint64_xor, bigint_nat__lean_uint64_complement, bigint_int__lean_int64_land, bigint_int__lean_int64_lor, bigint_int__lean_int64_shift_left, bigint_int__lean_int64_shift_right, bigint_int__lean_int64_xor, bigint_int__lean_int64_complement } from "runtime.js";
 
 // TestUInt64.land
-export const TestUInt64$land = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_land(c1, c0);
-};
+export const TestUInt64$land = bigint_nat__lean_uint64_land;
 
 // TestUInt64.lor
-export const TestUInt64$lor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_lor(c1, c0);
-};
+export const TestUInt64$lor = bigint_nat__lean_uint64_lor;
 
 // TestUInt64.shiftLeft
-export const TestUInt64$shiftLeft = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_shift_left(c1, c0);
-};
+export const TestUInt64$shiftLeft = bigint_nat__lean_uint64_shift_left;
 
 // TestUInt64.shiftRight
-export const TestUInt64$shiftRight = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_shift_right(c1, c0);
-};
+export const TestUInt64$shiftRight = bigint_nat__lean_uint64_shift_right;
 
 // TestUInt64.xor
-export const TestUInt64$xor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_xor(c1, c0);
-};
+export const TestUInt64$xor = bigint_nat__lean_uint64_xor;
 
 // TestUInt64.complement
-export const TestUInt64$complement = (a : nat(bigint)) : nat(bigint) => {
-  return bigint_nat__lean_uint64_complement(c0);
-};
+export const TestUInt64$complement = bigint_nat__lean_uint64_complement;
 
 // TestNat.land
 export const TestNat$land = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
@@ -73,31 +61,19 @@ export const TestNat$xor = (a : nat(bigint), b : nat(bigint)) : nat(bigint) => {
 };
 
 // TestInt64.land
-export const TestInt64$land = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_land(c1, c0);
-};
+export const TestInt64$land = bigint_int__lean_int64_land;
 
 // TestInt64.lor
-export const TestInt64$lor = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_lor(c1, c0);
-};
+export const TestInt64$lor = bigint_int__lean_int64_lor;
 
 // TestInt64.shiftLeft
-export const TestInt64$shiftLeft = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_shift_left(c1, c0);
-};
+export const TestInt64$shiftLeft = bigint_int__lean_int64_shift_left;
 
 // TestInt64.shiftRight
-export const TestInt64$shiftRight = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_shift_right(c1, c0);
-};
+export const TestInt64$shiftRight = bigint_int__lean_int64_shift_right;
 
 // TestInt64.xor
-export const TestInt64$xor = (a : int(bigint), b : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_xor(c1, c0);
-};
+export const TestInt64$xor = bigint_int__lean_int64_xor;
 
 // TestInt64.complement
-export const TestInt64$complement = (a : int(bigint)) : int(bigint) => {
-  return bigint_int__lean_int64_complement(c0);
-};
+export const TestInt64$complement = bigint_int__lean_int64_complement;

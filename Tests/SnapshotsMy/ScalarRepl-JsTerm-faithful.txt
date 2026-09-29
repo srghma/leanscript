@@ -7,19 +7,11 @@ import { bigint_nat__lean_nat_sub } from "runtime.js";
 
 const $k1 : ({ _1: nat(bigint), _2: nat(bigint) }) => nat(bigint) = (x) => {
   const { _1: f, _2: f } = c0;
-  if (inline:bigint_nat__lean_nat_dec_lt(c1, c0)) {
-    return bigint_nat__lean_nat_sub(c0, c1);
-  } else {
-    return bigint_nat__lean_nat_sub(c1, c0);
-  }
+  return (inline:bigint_nat__lean_nat_dec_lt(c1, c0) ? bigint_nat__lean_nat_sub(c0, c1) : bigint_nat__lean_nat_sub(c1, c0));
 };
 const $k2 : ({ _1: nat(bigint), _2: nat(bigint) }) => { _1: nat(bigint), _2: nat(bigint) } = (x) => {
   const { _1: f, _2: f } = c0;
-  if (inline:bigint_nat__lean_nat_dec_lt(c1, c0)) {
-    return c2;
-  } else {
-    return { _1: c0, _2: c1 };
-  }
+  return (inline:bigint_nat__lean_nat_dec_lt(c1, c0) ? c2 : { _1: c0, _2: c1 });
 };
 const $k3 : (({ tag: 0 } | { tag: 1, _1: { _1: nat(bigint), _2: nat(bigint) } })) => nat(bigint) = (x) => {
   switch (c0.tag) {

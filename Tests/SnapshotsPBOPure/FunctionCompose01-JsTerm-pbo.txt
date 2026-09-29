@@ -12,21 +12,13 @@ export const g = (x : string) : string => {
 };
 
 // test1
-export const test1 = (a : string) : string => {
-  return "a";
-};
+export const test1 = f;
 
 // test2
-export const test2 = (a : string) : string => {
-  return "b";
-};
+export const test2 = g;
 
 // test3
-export const test3 = (a : string) : string => {
-  return "a";
-};
+export const test3 = f;
 
 // test4
-export const test4 = (a : string) : string => {
-  return "b";
-};
+export const test4 = g;

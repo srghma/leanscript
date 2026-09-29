@@ -14,9 +14,7 @@ export const TestUInt8$test2 = () : uint8 => {
 };
 
 // TestUInt8.test3
-export const TestUInt8$test3 = () : uint8 => {
-  return 144;
-};
+export const TestUInt8$test3 = TestUInt8$test1;
 
 // TestUInt8.test4
 export const TestUInt8$test4 = (a : uint8) : uint8 => {

@@ -28,10 +28,7 @@ val k1 [1] : (String → (• | [(enum 4 @0)])) := fun x2 [ω] : String => (clos
       if lean_string_dec_eq(x2, "baz") then
         ret ctor#1(enum#2)
       else
-        if lean_string_dec_eq(x2, "qux") then
-          ret ctor#1(enum#3)
-        else
-          ret ctor#0()
+        ret cond(lean_string_dec_eq(x2, "qux"), ctor#1(enum#3), ctor#0())
 ret k1
 
 -- test6 : String → Int
@@ -46,10 +43,7 @@ val k1 [1] : (String → Int) := fun x2 [1] : String => (closed)
         if lean_string_dec_eq(x4, "baz") then
           ret ctor#1(enum#2)
         else
-          if lean_string_dec_eq(x4, "qux") then
-            ret ctor#1(enum#3)
-          else
-            ret ctor#0()
+          ret cond(lean_string_dec_eq(x4, "qux"), ctor#1(enum#3), ctor#0())
   let x5 [1] : (• | [(enum 4 @0)]) := k3 x2
   case x5 of
   | ctor#0() =>

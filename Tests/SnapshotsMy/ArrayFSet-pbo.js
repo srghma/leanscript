@@ -56,9 +56,5 @@ export const test3 = (x) =>
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const test4 = (a) => {
-  if (0 < a.length) {
-    return uint53__lean_array_fset_immutable(a, 0, 5);
-  }
-  return a;
-};
+export const test4 = (a) =>
+  0 < a.length ? uint53__lean_array_fset_immutable(a, 0, 5) : a;

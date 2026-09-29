@@ -11,18 +11,6 @@ const $k2 = { tag: 1, _1: 1 };
 const $k3 = { tag: 1, _1: 2 };
 const $k4 = { tag: 1, _1: 3 };
 const $tag0 = { tag: 0 };
-const $k6 = (x$1) => {
-  if (x$1 === "foo") {
-    return $k1;
-  }
-  if (x$1 === "bar") {
-    return $k2;
-  }
-  if (x$1 === "baz") {
-    return $k3;
-  }
-  return x$1 === "qux" ? $k4 : $tag0;
-};
 
 /**
  * `known1`
@@ -35,10 +23,7 @@ export const known1 = () => "b";
  * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */
-export const test1 = (a) => {
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test1 = (a) => a._1;
 
 /**
  * `fromString`
@@ -64,16 +49,15 @@ export const fromString = (s) => {
  * @returns {int(bigint)}
  */
 export const test6 = (a) => {
-  const x$1 = $k6(a);
+  const x$1 = fromString(a);
   if (x$1.tag === 0) {
     return 0n;
   }
-  const { _1: f$2 } = x$1;
-  if (f$2 === 0) {
+  if (x$1._1 === 0) {
     return 1n;
   }
-  if (f$2 === 1) {
+  if (x$1._1 === 1) {
     return 2n;
   }
-  return f$2 === 2 ? 3n : 4n;
+  return x$1._1 === 2 ? 3n : 4n;
 };

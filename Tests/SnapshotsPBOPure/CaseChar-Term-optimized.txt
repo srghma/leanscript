@@ -8,8 +8,5 @@ val k1 [1] : (Char → String) := fun x2 [ω] : Char => (closed)
     if lean_string_dec_eq(lean_string_push("", x2), "b") then
       ret "2"
     else
-      if lean_string_dec_eq(lean_string_push("", x2), "c") then
-        ret "3"
-      else
-        ret "catch"
+      ret cond(lean_string_dec_eq(lean_string_push("", x2), "c"), "3", "catch")
 ret k1

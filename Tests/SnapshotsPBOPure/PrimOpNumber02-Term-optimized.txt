@@ -72,10 +72,7 @@ ret k1
 -- TestFloat32.neNoInline : Float32 → Float32 → Bool
 val k1 [1] : (Float32 → (Float32 → Bool)) := fun x2 [ω] : Float32 => (closed)
   val k3 [1] : (Float32 → Bool) := fun x4 [1] : Float32 => (open)
-    if lean_float32_beq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_float32_beq(x2, x4), false, true)
   ret k3
 ret k1
 

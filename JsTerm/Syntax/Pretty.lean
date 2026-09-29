@@ -104,6 +104,7 @@ end
 
 /-- A function, for the dump (its parameters are its outermost constants). -/
 def JsFun.pretty (f : JsFun) : String :=
+  if let some g := f.alias then s!"// {f.leanName}\nexport const {f.name} = {g};\n" else
   let ps := f.params.map fun (x, t) => s!"{x} : {t}"
   s!"// {f.leanName}\nexport const {f.name} = ({", ".intercalate ps}) : {f.ret} => \{\n" ++
     f.body.pretty "  " ++ "};\n"

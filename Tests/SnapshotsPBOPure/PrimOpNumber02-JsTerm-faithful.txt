@@ -52,14 +52,10 @@
 import { float32__lean_float32_add, float32__lean_float32_sub, float32__lean_float32_mul, float32__lean_float32_div } from "runtime.js";
 
 // TestFloat32.addNoInline
-export const TestFloat32$addNoInline = (a : float32, b : float32) : float32 => {
-  return float32__lean_float32_add(c1, c0);
-};
+export const TestFloat32$addNoInline = float32__lean_float32_add;
 
 // TestFloat32.subNoInline
-export const TestFloat32$subNoInline = (a : float32, b : float32) : float32 => {
-  return float32__lean_float32_sub(c1, c0);
-};
+export const TestFloat32$subNoInline = float32__lean_float32_sub;
 
 // TestFloat32.eqNoInline
 export const TestFloat32$eqNoInline = (a : float32, b : float32) : boolean => {
@@ -68,11 +64,7 @@ export const TestFloat32$eqNoInline = (a : float32, b : float32) : boolean => {
 
 // TestFloat32.neNoInline
 export const TestFloat32$neNoInline = (a : float32, b : float32) : boolean => {
-  if (inline:float32__lean_float32_beq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:float32__lean_float32_beq(c1, c0) ? false : true);
 };
 
 // TestFloat32.ltNoInline
@@ -96,14 +88,10 @@ export const TestFloat32$geNoInline = (a : float32, b : float32) : boolean => {
 };
 
 // TestFloat32.mulNoInline
-export const TestFloat32$mulNoInline = (a : float32, b : float32) : float32 => {
-  return float32__lean_float32_mul(c1, c0);
-};
+export const TestFloat32$mulNoInline = float32__lean_float32_mul;
 
 // TestFloat32.divNoInline
-export const TestFloat32$divNoInline = (a : float32, b : float32) : float32 => {
-  return float32__lean_float32_div(c1, c0);
-};
+export const TestFloat32$divNoInline = float32__lean_float32_div;
 
 // TestFloat32.negNoInline
 export const TestFloat32$negNoInline = (a : float32) : float32 => {

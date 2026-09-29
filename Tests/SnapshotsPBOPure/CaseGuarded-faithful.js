@@ -44,66 +44,60 @@ export const test3 = (a) => {
  * @returns {int(bigint)}
  */
 export const test4 = (a, a1) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = a;
+  const { _1: f$1, _3: f$2 } = a;
   if (f$1 === 1n) {
-    const { _1: f$4, _3: f$5 } = a1;
-    if (f$4 === 1n) {
+    const { _1: f$3 } = a1;
+    if (f$3 === 1n) {
       return 1n;
     }
+    if (f$3 === 2n) {
+      return 2n;
+    }
+    if (f$3 === 3n) {
+      return 3n;
+    }
+    if (f$3 === 4n) {
+      return 4n;
+    }
+    return f$3 === 5n ? 5n : 11n + f$2 + a1._3;
+  }
+  if (f$1 === 2n) {
+    const { _1: f$4, _2: f$5 } = a1;
     if (f$4 === 2n) {
       return 2n;
     }
     if (f$4 === 3n) {
       return 3n;
     }
-    if (f$4 === 4n) {
-      return 4n;
-    }
-    if (f$4 === 5n) {
-      return 5n;
-    }
-    return 11n + f$3 + f$5;
-  }
-  if (f$1 === 2n) {
-    const { _1: f$6, _2: f$7, _3: f$8 } = a1;
-    if (f$6 === 2n) {
-      return 2n;
-    }
-    if (f$6 === 3n) {
-      return 3n;
-    }
-    if (f$6 === 1n) {
+    if (f$4 === 1n) {
       return 6n;
     }
-    if (f$6 === 4n) {
-      if (f$3 === f$7) {
+    if (f$4 === 4n) {
+      if (f$2 === f$5) {
         return 7n;
       }
-      return f$3 < f$7 ? 8n : 9n;
+      return f$2 < f$5 ? 8n : 9n;
     }
-    return 11n + f$3 + f$8;
+    return 11n + f$2 + a1._3;
   }
-  const { _1: f$9, _2: f$10, _3: f$11 } = a1;
-  if (f$9 === 2n) {
+  const { _1: f$6, _2: f$7, _3: f$8 } = a1;
+  if (f$6 === 2n) {
     return 2n;
   }
-  if (f$9 === 3n) {
+  if (f$6 === 3n) {
     return 3n;
   }
-  if (f$9 === 4n) {
-    if (f$3 === f$10) {
+  if (f$6 === 4n) {
+    if (f$2 === f$7) {
       return 7n;
     }
-    return f$3 < f$10 ? 8n : 9n;
+    return f$2 < f$7 ? 8n : 9n;
   }
-  if (f$9 === 1n) {
-    if (f$11 === 10n) {
-      if (f$2 === 2n) {
-        return 10n;
-      }
-      return 11n + f$3 + 10n;
+  if (f$6 === 1n) {
+    if (f$8 === 10n) {
+      return a._2 === 2n ? 10n : 11n + f$2 + 10n;
     }
-    return 11n + f$3 + f$11;
+    return 11n + f$2 + f$8;
   }
-  return 11n + f$3 + f$11;
+  return 11n + f$2 + f$8;
 };

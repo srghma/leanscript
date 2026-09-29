@@ -21,9 +21,5 @@ export const test3 = (x : uint8) : Array<uint8> => {
 
 // test4
 export const test4 = (a : Array<uint53(number)>) : Array<uint53(number)> => {
-  if (inline:uint53__lean_nat_dec_lt(0, inline:uint53__lean_array_get_size(c0))) {
-    return uint53__lean_array_fset_immutable(c0, 0, 5);
-  } else {
-    return c0;
-  }
+  return (inline:uint53__lean_nat_dec_lt(0, inline:uint53__lean_array_get_size(c0)) ? uint53__lean_array_fset_immutable(c0, 0, 5) : c0);
 };

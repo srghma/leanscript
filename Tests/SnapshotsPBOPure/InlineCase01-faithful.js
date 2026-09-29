@@ -15,8 +15,7 @@ export const test1 = (f, a) => {
   if (a.tag === 0) {
     return f();
   }
-  const { _1: f$1 } = a;
-  return f$1 + 1n;
+  return a._1 + 1n;
 };
 
 /**
@@ -25,10 +24,4 @@ export const test1 = (f, a) => {
  * @param {({ tag: 0 } | { tag: 1, _1: int(bigint) })} a
  * @returns {int(bigint)}
  */
-export const test3 = (f, a) => {
-  if (a.tag === 0) {
-    return f();
-  }
-  const { _1: f$1 } = a;
-  return f$1 + 1n;
-};
+export const test3 = test1;

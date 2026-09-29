@@ -17,8 +17,7 @@ export const test1 = (f, a) => {
   if (a.tag === 0) {
     return f();
   }
-  const { _1: f$1 } = a;
-  return int53__lean_int_add(f$1, 1);
+  return int53__lean_int_add(a._1, 1);
 };
 
 /**
@@ -27,10 +26,4 @@ export const test1 = (f, a) => {
  * @param {({ tag: 0 } | { tag: 1, _1: int53(number) })} a
  * @returns {int53(number)}
  */
-export const test3 = (f, a) => {
-  if (a.tag === 0) {
-    return f();
-  }
-  const { _1: f$1 } = a;
-  return int53__lean_int_add(f$1, 1);
-};
+export const test3 = test1;

@@ -10,10 +10,7 @@
  */
 export const test1 = (fn) => {
   const k$1 = [1n, 2n, fn()];
-  if (BigInt(k$1.length) === 3n) {
-    return k$1;
-  }
-  return [];
+  return BigInt(k$1.length) === 3n ? k$1 : [];
 };
 
 /**
@@ -38,10 +35,10 @@ export const extern2 = () => [[1n, 2n, 0n], [3n], [0n]];
  * `test3`
  * @returns {Array<int(bigint)>}
  */
-export const test3 = () => [1n, 2n, 0n];
+export const test3 = extern1;
 
 /**
  * `test4`
  * @returns {Array<Array<int(bigint)>>}
  */
-export const test4 = () => [[1n, 2n, 0n], [3n], [0n]];
+export const test4 = extern2;

@@ -6,11 +6,7 @@
 // test1
 export const test1 = (fn : () => int(bigint)) : Array<int(bigint)> => {
   const k = [1n, 2n, c0()];
-  if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 3n)) {
-    return c0;
-  } else {
-    return [];
-  }
+  return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(inline:bigint_nat__lean_array_get_size(c0), 3n) ? c0 : []);
 };
 
 // fn'
@@ -29,11 +25,7 @@ export const extern2 = () : Array<Array<int(bigint)>> => {
 };
 
 // test3
-export const test3 = () : Array<int(bigint)> => {
-  return [1n, 2n, 0n];
-};
+export const test3 = extern1;
 
 // test4
-export const test4 = () : Array<Array<int(bigint)>> => {
-  return [[1n, 2n, 0n], [3n], [0n]];
-};
+export const test4 = extern2;

@@ -8,8 +8,5 @@ val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
     if lean_int_dec_eq(x2, 2) then
       ret 2
     else
-      if lean_int_dec_eq(x2, 3) then
-        ret 3
-      else
-        ret 0
+      ret cond(lean_int_dec_eq(x2, 3), 3, 0)
 ret k1

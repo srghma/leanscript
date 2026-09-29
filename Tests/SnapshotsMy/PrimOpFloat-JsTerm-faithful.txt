@@ -18,11 +18,7 @@ export const test3 = (a : float, b : float) : boolean => {
 
 // test4
 export const test4 = (a : float, b : float) : boolean => {
-  if (inline:float__lean_float_beq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:float__lean_float_beq(c1, c0) ? false : true);
 };
 
 // test5

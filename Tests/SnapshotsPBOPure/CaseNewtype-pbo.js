@@ -21,12 +21,4 @@ export const test1 = (v) => {
  * @param {int53(number)} a
  * @returns {string}
  */
-export const test2 = (a) => {
-  if (a === 1) {
-    return "1";
-  }
-  if (a === 2) {
-    return "2";
-  }
-  return a === 3 ? "3" : "catch";
-};
+export const test2 = test1;

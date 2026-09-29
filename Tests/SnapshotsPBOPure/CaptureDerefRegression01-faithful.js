@@ -12,10 +12,7 @@
  * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const test1 = (v, b) => {
-  const { _1: f$1 } = v;
-  return f$1 + b;
-};
+export const test1 = (v, b) => v._1 + b;
 
 /**
  * `test2`
@@ -23,10 +20,7 @@ export const test1 = (v, b) => {
  * @param {int(bigint)} a
  * @returns {int(bigint)}
  */
-export const test2 = (v, a) => {
-  const { _1: f$1 } = v;
-  return f$1 + a;
-};
+export const test2 = test1;
 
 /**
  * `test3`
@@ -34,7 +28,4 @@ export const test2 = (v, a) => {
  * @param {int(bigint)} p1
  * @returns {int(bigint)}
  */
-export const test3 = (v, p1) => {
-  const { _1: f$1 } = v;
-  return f$1 + p1;
-};
+export const test3 = test1;

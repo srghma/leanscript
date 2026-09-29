@@ -7,10 +7,7 @@
 
 -- mc91 : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [ω] : Nat => (closed)
-  if lean_nat_dec_lt(100, x2) then
-    ret lean_nat_sub(x2, 10)
-  else
-    ret 91
+  ret cond(lean_nat_dec_lt(100, x2), lean_nat_sub(x2, 10), 91)
 ret k1
 
 -- iter : (Nat → Nat) → Nat → Nat → Nat

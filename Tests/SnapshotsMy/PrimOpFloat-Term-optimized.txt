@@ -24,10 +24,7 @@ ret k1
 -- test4 : Float → Float → Bool
 val k1 [1] : (Float → (Float → Bool)) := fun x2 [ω] : Float => (closed)
   val k3 [1] : (Float → Bool) := fun x4 [1] : Float => (open)
-    if lean_float_beq(x2, x4) then
-      ret false
-    else
-      ret true
+    ret cond(lean_float_beq(x2, x4), false, true)
   ret k3
 ret k1
 

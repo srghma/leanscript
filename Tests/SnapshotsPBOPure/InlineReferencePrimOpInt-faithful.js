@@ -59,22 +59,22 @@ export const externTest = (f) => {
  * `test5`
  * @returns {int(bigint)}
  */
-export const test5 = () => 110n;
+export const test5 = test1;
 
 /**
  * `test6`
  * @returns {int(bigint)}
  */
-export const test6 = () => 88n;
+export const test6 = test2;
 
 /**
  * `test7`
  * @returns {int(bigint)}
  */
-export const test7 = () => 1089n;
+export const test7 = test3;
 
 /**
  * `test8`
  * @returns {int(bigint)}
  */
-export const test8 = () => 9n;
+export const test8 = test4;

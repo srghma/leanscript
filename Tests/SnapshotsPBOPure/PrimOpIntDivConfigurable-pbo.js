@@ -24,7 +24,7 @@ import {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$divNoInline = (a, b) => uint53__lean_uint64_div(a, b);
+export const TestUInt64$divNoInline = uint53__lean_uint64_div;
 
 /**
  * `TestUInt64.test1_0_shouldBeTrue`
@@ -36,13 +36,13 @@ export const TestUInt64$test1_0_shouldBeTrue = () => true;
  * `TestUInt64.test3_2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestUInt64$test3_2_shouldBeTrue = () => true;
+export const TestUInt64$test3_2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestUInt64.test3m2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestUInt64$test3m2_shouldBeTrue = () => true;
+export const TestUInt64$test3m2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestNat.divNoInline`
@@ -50,19 +50,19 @@ export const TestUInt64$test3m2_shouldBeTrue = () => true;
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$divNoInline = (a, b) => uint53__lean_nat_div(a, b);
+export const TestNat$divNoInline = uint53__lean_nat_div;
 
 /**
  * `TestNat.test1_0_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestNat$test1_0_shouldBeTrue = () => true;
+export const TestNat$test1_0_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestNat.test3_2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestNat$test3_2_shouldBeTrue = () => true;
+export const TestNat$test3_2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt64.divNoInline`
@@ -70,25 +70,25 @@ export const TestNat$test3_2_shouldBeTrue = () => true;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt64$divNoInline = (a, b) => int53__lean_int64_div(a, b);
+export const TestInt64$divNoInline = int53__lean_int64_div;
 
 /**
  * `TestInt64.test1_0_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt64$test1_0_shouldBeTrue = () => true;
+export const TestInt64$test1_0_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt64.test3_2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt64$test3_2_shouldBeTrue = () => true;
+export const TestInt64$test3_2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt64.test3m2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt64$test3m2_shouldBeTrue = () => true;
+export const TestInt64$test3m2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt.divNoInline`
@@ -96,22 +96,22 @@ export const TestInt64$test3m2_shouldBeTrue = () => true;
  * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const TestInt$divNoInline = (a, b) => int53__lean_int_ediv(a, b);
+export const TestInt$divNoInline = int53__lean_int_ediv;
 
 /**
  * `TestInt.test1_0_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt$test1_0_shouldBeTrue = () => true;
+export const TestInt$test1_0_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt.test3_2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt$test3_2_shouldBeTrue = () => true;
+export const TestInt$test3_2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;
 
 /**
  * `TestInt.test3m2_shouldBeTrue`
  * @returns {boolean}
  */
-export const TestInt$test3m2_shouldBeTrue = () => true;
+export const TestInt$test3m2_shouldBeTrue = TestUInt64$test1_0_shouldBeTrue;

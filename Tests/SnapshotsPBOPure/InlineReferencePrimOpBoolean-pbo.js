@@ -15,13 +15,13 @@ export const test1 = () => 42;
  * `test2`
  * @returns {int53(number)}
  */
-export const test2 = () => 42;
+export const test2 = test1;
 
 /**
  * `test3`
  * @returns {int53(number)}
  */
-export const test3 = () => 42;
+export const test3 = test1;
 
 /**
  * `extern1`
@@ -33,16 +33,16 @@ export const extern1 = () => $k1;
  * `test4`
  * @returns {int53(number)}
  */
-export const test4 = () => 42;
+export const test4 = test1;
 
 /**
  * `test5`
  * @returns {int53(number)}
  */
-export const test5 = () => 42;
+export const test5 = test1;
 
 /**
  * `test6`
  * @returns {int53(number)}
  */
-export const test6 = () => 42;
+export const test6 = test1;

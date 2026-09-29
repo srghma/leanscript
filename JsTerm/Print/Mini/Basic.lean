@@ -106,7 +106,7 @@ inductive LoopExit where
     around them (innermost first, each as its label and the name of its variable), and how an
     iteration of the enclosing loop ends. -/
 structure Scope where
-  c : List String := []
+  c : List MiniExpr := []
   m : List String := []
   joins : List (String × String) := []
   loop : LoopExit := .none
@@ -138,6 +138,10 @@ def freshLabel : PM String :=
 /-- The name of a variable (`undefined` for an index out of scope, which a well-typed body
     never has). -/
 def nameAt (names : List String) (i : Nat) : MiniExpr := ident (names.getD i "undefined")
+
+/-- The expression a constant is printed as: its name, or the read of a field (`x._1`) it
+    stands for (`undefined` for an index out of scope). -/
+def exprAt (es : List MiniExpr) (i : Nat) : MiniExpr := es.getD i (ident "undefined")
 
 /-- `const x = e;`. -/
 def constDecl (x : String) (e : MiniExpr) : MiniStatement :=

@@ -8,11 +8,7 @@ export const test1 = (a : string, b : string) : boolean => {
 
 // test2
 export const test2 = (a : string, b : string) : boolean => {
-  if (inline:string__lean_string_dec_eq(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:string__lean_string_dec_eq(c1, c0) ? false : true);
 };
 
 // test3
@@ -27,20 +23,12 @@ export const test4 = (a : string, b : string) : boolean => {
 
 // test5
 export const test5 = (a : string, b : string) : boolean => {
-  if (inline:string__lean_string_dec_lt(c0, c1)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:string__lean_string_dec_lt(c0, c1) ? false : true);
 };
 
 // test6
 export const test6 = (a : string, b : string) : boolean => {
-  if (inline:string__lean_string_dec_lt(c1, c0)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (inline:string__lean_string_dec_lt(c1, c0) ? false : true);
 };
 
 // test7

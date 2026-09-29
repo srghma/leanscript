@@ -5,28 +5,6 @@
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
 const $k1 = (x$1) => x$1 + 1n;
-const $k2 = (x$1, x$2, x$3) => {
-  let x$4 = x$3;
-  for (let j$5 = 0n; j$5 < x$2; j$5++) {
-    x$4 = x$1(x$4);
-  }
-  return x$4;
-};
-const $k3 = (x$1, x$2) => {
-  let acc$3 = 1n;
-  if (0n < x$1) {
-    const i$4 = x$1 - 1n;
-    acc$3 = x$2;
-    if (0n < i$4) {
-      const i$5 = i$4 - 1n;
-      acc$3 = 0n;
-      if (0n < i$5) {
-        acc$3 = 1n;
-      }
-    }
-  }
-  return acc$3;
-};
 
 /**
  * `hyperBase`
@@ -76,7 +54,7 @@ export const hyperTCO = (a, a1, a2) => {
   let acc$1 = $k1;
   for (let i$2 = 0n; i$2 < a; i$2++) {
     const a$3 = acc$1;
-    acc$1 = (x$4) => $k2(a$3, x$4, $k3(i$2 + 1n, a1));
+    acc$1 = (x$4) => hyperLoop(a$3, x$4, hyperBase(i$2 + 1n, a1));
   }
   return acc$1(a2);
 };
@@ -93,7 +71,7 @@ export const hyperWhile = (a, a1, a2) => {
   for (let i$2 = 0n; i$2 < a; i$2++) {
     const a$3 = acc$1;
     acc$1 = (x$4) => {
-      let acc$5 = $k3(i$2 + 1n, a1);
+      let acc$5 = hyperBase(i$2 + 1n, a1);
       for (let i$6 = 0n; i$6 < x$4; i$6++) {
         acc$5 = a$3(acc$5);
       }

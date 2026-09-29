@@ -22,16 +22,7 @@ export const ArrayTest$test1 = (arr) => [
  * @param {Array<string>} arr
  * @returns {Array<string>}
  */
-export const ArrayTest$test2 = (arr) => [
-  "a",
-  "b",
-  ...arr,
-  ...arr,
-  ...arr,
-  ...arr,
-  "c",
-  "d",
-];
+export const ArrayTest$test2 = ArrayTest$test1;
 
 /**
  * `ArrayTest.test3`

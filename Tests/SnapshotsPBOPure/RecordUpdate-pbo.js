@@ -16,8 +16,7 @@ export const test1 = (fn, val) => {
   if (val === 42) {
     return int53__lean_int_add(val, 1);
   }
-  const { _3: f$2 } = x$1;
-  return f$2;
+  return x$1._3;
 };
 
 /**

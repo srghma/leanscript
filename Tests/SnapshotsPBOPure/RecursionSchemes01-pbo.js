@@ -17,13 +17,10 @@ import { int53__lean_int_add, int53__lean_int_mul } from "../../runtime.js";
  */
 export const eval_ = (a) => {
   if (a.tag === 0) {
-    const { _1: f$1 } = a;
-    return f$1;
+    return a._1;
   }
   if (a.tag === 1) {
-    const { _1: f$2, _2: f$3 } = a;
-    return int53__lean_int_add(f$2, f$3);
+    return int53__lean_int_add(a._1, a._2);
   }
-  const { _1: f$4, _2: f$5 } = a;
-  return int53__lean_int_mul(f$4, f$5);
+  return int53__lean_int_mul(a._1, a._2);
 };

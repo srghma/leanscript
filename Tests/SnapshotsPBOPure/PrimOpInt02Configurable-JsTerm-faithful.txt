@@ -96,14 +96,10 @@ export const TestNat$test2 = () : Array<nat(bigint)> => {
 };
 
 // TestNat.test3
-export const TestNat$test3 = () : Array<boolean> => {
-  return [true, false, false, false, false, true];
-};
+export const TestNat$test3 = TestUInt64$test3;
 
 // TestNat.test4
-export const TestNat$test4 = () : Array<boolean> => {
-  return [false, true, true, true, true, false];
-};
+export const TestNat$test4 = TestUInt64$test4;
 
 // TestNat.test5
 export const TestNat$test5 = () : Array<boolean> => {
@@ -146,34 +142,22 @@ export const TestInt64$test2 = () : BigInt64Array<int(bigint)> => {
 };
 
 // TestInt64.test3
-export const TestInt64$test3 = () : Array<boolean> => {
-  return [true, false, false, false, false, true];
-};
+export const TestInt64$test3 = TestUInt64$test3;
 
 // TestInt64.test4
-export const TestInt64$test4 = () : Array<boolean> => {
-  return [false, true, true, true, true, false];
-};
+export const TestInt64$test4 = TestUInt64$test4;
 
 // TestInt64.test5
-export const TestInt64$test5 = () : Array<boolean> => {
-  return [false, true, false, false, true, false];
-};
+export const TestInt64$test5 = TestNat$test5;
 
 // TestInt64.test6
-export const TestInt64$test6 = () : Array<boolean> => {
-  return [false, false, true, true, false, false];
-};
+export const TestInt64$test6 = TestNat$test6;
 
 // TestInt64.test7
-export const TestInt64$test7 = () : Array<boolean> => {
-  return [true, true, false, false, true, true];
-};
+export const TestInt64$test7 = TestNat$test7;
 
 // TestInt64.test8
-export const TestInt64$test8 = () : Array<boolean> => {
-  return [true, false, true, true, false, true];
-};
+export const TestInt64$test8 = TestNat$test8;
 
 // TestInt64.test9
 export const TestInt64$test9 = () : BigInt64Array<int(bigint)> => {
@@ -201,34 +185,22 @@ export const TestInt$test2 = () : Array<int(bigint)> => {
 };
 
 // TestInt.test3
-export const TestInt$test3 = () : Array<boolean> => {
-  return [true, false, false, false, false, true];
-};
+export const TestInt$test3 = TestUInt64$test3;
 
 // TestInt.test4
-export const TestInt$test4 = () : Array<boolean> => {
-  return [false, true, true, true, true, false];
-};
+export const TestInt$test4 = TestUInt64$test4;
 
 // TestInt.test5
-export const TestInt$test5 = () : Array<boolean> => {
-  return [false, true, false, false, true, false];
-};
+export const TestInt$test5 = TestNat$test5;
 
 // TestInt.test6
-export const TestInt$test6 = () : Array<boolean> => {
-  return [false, false, true, true, false, false];
-};
+export const TestInt$test6 = TestNat$test6;
 
 // TestInt.test7
-export const TestInt$test7 = () : Array<boolean> => {
-  return [true, true, false, false, true, true];
-};
+export const TestInt$test7 = TestNat$test7;
 
 // TestInt.test8
-export const TestInt$test8 = () : Array<boolean> => {
-  return [true, false, true, true, false, true];
-};
+export const TestInt$test8 = TestNat$test8;
 
 // TestInt.test9
 export const TestInt$test9 = () : Array<int(bigint)> => {

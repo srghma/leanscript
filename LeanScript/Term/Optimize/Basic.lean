@@ -32,7 +32,8 @@ Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimiz
 
 * **common subexpressions** (`Term.cseLetE`): a simple computation (`f a`, `t ()`, `force t`
   on atoms) repeated at the same depth in the scope of its first occurrence is computed once;
-* **identical branches** (`Term.mkBranch`): `if c then ret a else ret a` is `ret a`;
+* **identical branches** (`Term.mkBranch`): `if c then ret a else ret a` is `ret a`, and
+  `if c then ret a else ret b` is `ret (c ? a : b)` (the pure conditional `Neu.cond`);
 * **trivial join points** (`Branch.mkJoin`): a join point whose body is `ret a` (an atom) or
   `ret x` (its parameter) is inlined into its jumps and dropped.
 

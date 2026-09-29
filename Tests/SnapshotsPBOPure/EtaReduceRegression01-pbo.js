@@ -9,10 +9,4 @@
  * @param {({ tag: 0 } | { tag: 1, _1: string })} a
  * @returns {string}
  */
-export const test = (a) => {
-  if (a.tag === 0) {
-    return "";
-  }
-  const { _1: f$1 } = a;
-  return f$1;
-};
+export const test = (a) => (a.tag === 0 ? "" : a._1);

@@ -15,13 +15,7 @@ export const test1 = (v : { _1: int53(number), _2: int53(number) }, b : int53(nu
 };
 
 // test2
-export const test2 = (v : { _1: int53(number), _2: int53(number) }, a : int53(number)) : int53(number) => {
-  const { _1: f } = c1;
-  return int53__lean_int_add(c0, c1);
-};
+export const test2 = test1;
 
 // test3
-export const test3 = (v : { _1: int53(number), _2: int53(number) }, p1 : int53(number)) : int53(number) => {
-  const { _1: f } = c1;
-  return int53__lean_int_add(c0, c1);
-};
+export const test3 = test1;

@@ -34,10 +34,5 @@ export const test6 = (n, i) => {
   if (x$1.tag === 0) {
     return 2n;
   }
-  const { _1: f$2 } = x$1;
-  if (f$2.tag === 0) {
-    return 1n;
-  }
-  const { _1: f$3 } = f$2;
-  return f$3;
+  return x$1._1.tag === 0 ? 1n : x$1._1._1;
 };

@@ -6,17 +6,9 @@ export const test1 = (a : { _1: nat(bigint), _2: nat(bigint), _3: nat(bigint) })
   const { _1: f, _2: f, _3: f } = c0;
   if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, 1n)) {
     if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 2n)) {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 3n)) {
-        return "1";
-      } else {
-        return "catch";
-      }
+      return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 3n) ? "1" : "catch");
     } else {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n)) {
-        return "2";
-      } else {
-        return "catch";
-      }
+      return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n) ? "2" : "catch");
     }
   } else {
     if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c2, 4n)) {
@@ -24,21 +16,13 @@ export const test1 = (a : { _1: nat(bigint), _2: nat(bigint), _3: nat(bigint) })
         return "2";
       } else {
         if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 5n)) {
-          if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 6n)) {
-            return "3";
-          } else {
-            return "catch";
-          }
+          return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c0, 6n) ? "3" : "catch");
         } else {
           return "catch";
         }
       }
     } else {
-      if (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n)) {
-        return "2";
-      } else {
-        return "catch";
-      }
+      return (inline:bigint_nat__lean_nat_dec_eq__Nat_decEq(c1, 4n) ? "2" : "catch");
     }
   }
 };

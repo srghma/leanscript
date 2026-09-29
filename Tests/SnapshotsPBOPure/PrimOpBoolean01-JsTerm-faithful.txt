@@ -3,81 +3,45 @@
 
 // test1
 export const test1 = (a : boolean, b : boolean) : boolean => {
-  if (c1) {
-    return c0;
-  } else {
-    return false;
-  }
+  return (c1 ? c0 : false);
 };
 
 // test2
 export const test2 = (a : boolean, b : boolean) : boolean => {
-  if (c1) {
-    return true;
-  } else {
-    return c0;
-  }
+  return (c1 ? true : c0);
 };
 
 // test3
 export const test3 = (a : boolean, b : boolean) : boolean => {
-  if ((c1 ? (c0 ? true : false) : (c0 ? false : true))) {
-    return true;
-  } else {
-    return false;
-  }
+  return ((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? true : false);
 };
 
 // test4
 export const test4 = (a : boolean, b : boolean) : boolean => {
-  if (((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? true : false)) {
-    return false;
-  } else {
-    return true;
-  }
+  return (((c1 ? (c0 ? true : false) : (c0 ? false : true)) ? true : false) ? false : true);
 };
 
 // test5
 export const test5 = (a : boolean, b : boolean) : boolean => {
-  if ((((c1 ? false : true) ? c0 : false) ? true : false)) {
-    return true;
-  } else {
-    return false;
-  }
+  return ((((c1 ? false : true) ? c0 : false) ? true : false) ? true : false);
 };
 
 // test6
 export const test6 = (a : boolean, b : boolean) : boolean => {
-  if ((((c0 ? false : true) ? c1 : false) ? true : false)) {
-    return true;
-  } else {
-    return false;
-  }
+  return ((((c0 ? false : true) ? c1 : false) ? true : false) ? true : false);
 };
 
 // test7
 export const test7 = (a : boolean, b : boolean) : boolean => {
-  if (c1) {
-    return c0;
-  } else {
-    return true;
-  }
+  return (c1 ? c0 : true);
 };
 
 // test8
 export const test8 = (a : boolean, b : boolean) : boolean => {
-  if (c0) {
-    return c1;
-  } else {
-    return true;
-  }
+  return (c0 ? c1 : true);
 };
 
 // test9
 export const test9 = (a : boolean) : boolean => {
-  if (c0) {
-    return false;
-  } else {
-    return true;
-  }
+  return (c0 ? false : true);
 };

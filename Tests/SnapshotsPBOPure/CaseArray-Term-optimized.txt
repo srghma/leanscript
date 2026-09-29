@@ -6,19 +6,10 @@ val k1 [1] : ((Array Nat) → String) := fun x2 [ω] : (Array Nat) => (closed)
     ret "0"
   else
     if lean_nat_dec_eq__Nat_decEq(lean_array_get_size(x2), 1) then
-      if lean_nat_dec_eq__Nat_decEq(lean_array_get(0, x2, 0), 1) then
-        ret "1"
-      else
-        ret "any1"
+      ret cond(lean_nat_dec_eq__Nat_decEq(lean_array_get(0, x2, 0), 1), "1", "any1")
     else
       if lean_nat_dec_eq__Nat_decEq(lean_array_get_size(x2), 2) then
-        if lean_nat_dec_eq__Nat_decEq(lean_array_get(0, x2, 1), 2) then
-          ret "2"
-        else
-          ret "catch"
+        ret cond(lean_nat_dec_eq__Nat_decEq(lean_array_get(0, x2, 1), 2), "2", "catch")
       else
-        if lean_nat_dec_eq__Nat_decEq(lean_array_get_size(x2), 3) then
-          ret "3"
-        else
-          ret "catch"
+        ret cond(lean_nat_dec_eq__Nat_decEq(lean_array_get_size(x2), 3), "3", "catch")
 ret k1
