@@ -23,11 +23,8 @@ export const mkAdd = (n, a, a1) =>
 export const test1 = (n, x, y) => {
   const k$3 = (x$1, x$2) =>
     uint53__lean_nat_add(uint53__lean_nat_add(x$1, x$2), n);
-  const k$7 = (x$4, x$5) => {
-    const x$6 = k$3(x$4, x$5);
-    return uint53__lean_nat_add(x$6, k$3(x$5, x$4));
-  };
-  return k$7(x, y);
+  const k$6 = (x$4, x$5) => uint53__lean_nat_add(k$3(x$4, x$5), k$3(x$5, x$4));
+  return k$6(x, y);
 };
 
 /**
@@ -50,11 +47,8 @@ export const mkMul = (n, a, a1) =>
 export const test2 = (n, x, y) => {
   const k$3 = (x$1, x$2) =>
     uint53__lean_nat_mul(uint53__lean_nat_mul(x$1, x$2), n);
-  const k$7 = (x$4, x$5) => {
-    const x$6 = k$3(x$4, x$5);
-    return uint53__lean_nat_add(x$6, k$3(x$5, x$4));
-  };
-  return k$7(x, y);
+  const k$6 = (x$4, x$5) => uint53__lean_nat_add(k$3(x$4, x$5), k$3(x$5, x$4));
+  return k$6(x, y);
 };
 
 /**
@@ -95,7 +89,4 @@ export const test3 = (n, x, y) => {
  * @param {uint53(number)} y
  * @returns {uint53(number)}
  */
-export const test4 = (f, x, y) => {
-  const x$1 = f(x, y);
-  return uint53__lean_nat_add(x$1, f(y, x));
-};
+export const test4 = (f, x, y) => uint53__lean_nat_add(f(x, y), f(y, x));

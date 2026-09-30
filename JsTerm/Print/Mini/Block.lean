@@ -68,27 +68,6 @@ def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n :
       let us := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
       us.size == 1 && !us.any (·.again)
 
-/-- Is the constant `const x = e;` followed by `rest` written at its only use instead: `rest`
-    reads it once, not in a loop or a closure (nor as the function called, for a closure), where
-    computing `e` gives the same result (`JsExpr.movable` anywhere; otherwise at a use it reads
-    first, `JsBlock.useFirst`)? -/
-def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ)
-    (rest : JsBlock S (τ :: C) M J k) : Bool :=
-  let us := rest.occs.filter fun o => !o.isMut && o.idx == 0
-  match us.toList with
-  | [u] =>
-    if u.again then false
-    else
-      let isLam := match e with
-        | .lam .. => true
-        | _ => false
-      if isLam && u.callee then false
-      else if e.movable then true
-      else
-        let reads := (e.occs.filter (·.isMut)).toList.map (·.idx)
-        rest.useFirst (!e.noEffect) reads 0
-  | _ => false
-
 mutual
 /-- An expression as a `MiniAST` expression. -/
 partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M τ → PM MiniExpr
@@ -130,6 +109,7 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
   | .listOp op args => do return .call (ident op.runtimeName) (← argsToMini sc args)
   -- one layer in or out of a declared datatype: nothing at run time
   | .fold _ e | .unfold _ e => exprToMini sc e
+  | .global name => pure (ident name)
   | .cond c a b => do
     let c ← exprToMini sc c
     match ← exprToMini sc a, ← exprToMini sc b with
@@ -283,6 +263,24 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     if direct then return [decl, loop]
     let r ← blockToMini { sc with c := ident x :: sc.c } tl rest
     return decl :: .decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩ :: .labelled (nes label) loop :: r
+  | .tick nt j base rest => do
+    let v := nameAt sc.m j.index
+    let b ← blockToMini sc {} base
+    let r ← blockToMini sc tl rest
+    return .if_ (.binary v .strictEq (natLitOf nt 0)) (.block b) none ::
+      .expr (.postfix v .decr) :: r
+  | .natCase hint nt n zero succ => do
+    let (pre, m) ← bindSubject sc "n" n
+    let z ← blockToMini sc {} zero
+    let p : MiniExpr := .binary m .minus (natLitOf nt 1)
+    -- the predecessor read once, not in a loop or a closure: written at its use
+    let us := succ.occs.filter fun o => !o.isMut && o.idx == 0
+    let once := us.size == 1 && !us.any (·.again) && !(n matches .mvar _)
+    let test : MiniStatement := .if_ (.binary m .strictEq (natLitOf nt 0)) (.block z) none
+    if once then
+      return pre ++ test :: (← blockToMini { sc with c := p :: sc.c } tl succ)
+    let x ← freshName hint
+    return pre ++ test :: constDecl x p :: (← blockToMini { sc with c := ident x :: sc.c } tl succ)
   | .forOf hint _ xs body rest => do
     let xs ← exprToMini sc xs
     let x ← freshName hint

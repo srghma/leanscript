@@ -50,6 +50,7 @@ partial def JsExpr.pretty {C M : List JsTy} {τ : JsTy} (ind : String) : JsExpr 
   | .listOp op args => op.runtimeName ++ "(" ++ ", ".intercalate (args.pretty ind) ++ ")"
   | .fold i e => s!"fold<{JsTy.declName i}>({e.pretty ind})"
   | .unfold i e => s!"unfold<{JsTy.declName i}>({e.pretty ind})"
+  | .global name => name
 
 /-- Arguments. -/
 partial def JsArgs.pretty {C M σs : List JsTy} (ind : String) : JsArgs S C M σs → List String
@@ -94,6 +95,12 @@ partial def JsBlock.pretty {C M J : List JsTy} {k : JsEnd} (ind : String) :
   | .forOf x _ xs body rest =>
     s!"{ind}for ({x} of {xs.pretty ind}) \{\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}\n" ++
       rest.pretty ind
+  | .tick _ j base rest =>
+    s!"{ind}if (m{j.index} === 0) \{\n" ++ base.pretty (ind ++ "  ") ++ ind ++ "}\n" ++
+      s!"{ind}m{j.index}--;\n" ++ rest.pretty ind
+  | .natCase x _ n z s =>
+    s!"{ind}if ({n.pretty ind} === 0) \{\n" ++ z.pretty (ind ++ "  ") ++ ind ++ "}\n" ++
+      s!"{ind}const {x} = {n.pretty ind} - 1;\n" ++ s.pretty ind
   | .funs xs defs rest =>
     let ds := (xs.zip (defs.pretty ind)).map fun (x, d) => s!"{ind}const {x} = {d};\n"
     s!"{ind}rec \{\n" ++ String.join ds ++ ind ++ "}\n" ++ rest.pretty ind

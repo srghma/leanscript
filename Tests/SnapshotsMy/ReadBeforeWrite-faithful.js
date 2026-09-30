@@ -76,10 +76,15 @@ export const test5 = (n) => {
     } else {
       const { _1: f$5 } = a$4._1;
       const x$6 = bigint_nat__lean_array_get(0n, f$5, i$3);
-      const x$7 = bigint_nat__lean_array_set_mutable(f$5, i$3, i$3 + 1n);
-      acc$2 = { tag: 1, _1: { _1: x$7, _2: a$4._1._2 + x$6 } };
+      acc$2 = {
+        tag: 1,
+        _1: {
+          _1: bigint_nat__lean_array_set_mutable(f$5, i$3, i$3 + 1n),
+          _2: a$4._1._2 + x$6,
+        },
+      };
     }
   }
-  const x$8 = acc$2._1;
-  return x$8._2;
+  const x$7 = acc$2._1;
+  return x$7._2;
 };

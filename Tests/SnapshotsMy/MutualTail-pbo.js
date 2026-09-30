@@ -7,37 +7,31 @@
 
 /**
  * `test1`
- * (private) the code of `test1`, `test2`, which call it with the initial value of its first variable as `tag`
- * @param {boolean} tag
  * @param {uint53(number)} a
  * @returns {boolean}
  */
-const test1$shared = (tag, a) => {
-  let p$1 = tag;
-  let j$2 = a;
+export const test1 = (a) => {
+  let j$1 = a;
   while (true) {
-    if (j$2 === 0) {
-      return p$1;
+    if (j$1 === 0) {
+      return true;
     }
-    j$2--;
-    if (p$1) {
-      p$1 = false;
-    } else {
-      p$1 = true;
+    j$1--;
+    if (j$1 === 0) {
+      return false;
     }
+    j$1--;
   }
 };
-
-/**
- * `test1`
- * @param {uint53(number)} a
- * @returns {boolean}
- */
-export const test1 = (a) => test1$shared(true, a);
 
 /**
  * `test2`
  * @param {uint53(number)} a
  * @returns {boolean}
  */
-export const test2 = (a) => test1$shared(false, a);
+export const test2 = (a) => {
+  if (a === 0) {
+    return false;
+  }
+  return test1(a - 1);
+};

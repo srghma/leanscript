@@ -27,9 +27,11 @@ export const test1 = (a, n) => {
       array__lean_array_push_mutable(x$4, x$5),
       uint53__lean_nat_add(x$5, 1),
     );
-  const x$7 = k_mut$6(uint53__lean_mk_array(n, 0), n);
   return array__lean_array_append_mutable(
-    array__lean_array_append_mutable(x$7, k$3(a, n)),
+    array__lean_array_append_mutable(
+      k_mut$6(uint53__lean_mk_array(n, 0), n),
+      k$3(a, n),
+    ),
     a,
   );
 };
@@ -47,9 +49,8 @@ export const test2 = (n, m) => {
       0,
       x$2,
     );
-  const x$4 = k_mut$3(uint53__lean_mk_array(n, 0), m);
   return array__lean_array_append_mutable(
-    x$4,
+    k_mut$3(uint53__lean_mk_array(n, 0), m),
     k_mut$3(uint53__lean_mk_array(m, 1), n),
   );
 };

@@ -38,8 +38,7 @@ export const addAfter = (fuel, a, b) => {
       return p$1 + p$2;
     }
     j$3--;
-    const x$4 = p$1 + 2n;
-    p$1 = x$4;
+    p$1 = p$1 + 2n;
     p$2 = p$2 + 3n;
   }
 };

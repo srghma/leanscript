@@ -37,8 +37,7 @@ export const alias2 = (n) => {
       n,
     );
   const x$4 = uint53__lean_mk_array(n, 0);
-  const x$5 = k$3(x$4, 1);
-  return array__lean_array_append_mutable(x$5, k$3(x$4, 2));
+  return array__lean_array_append_mutable(k$3(x$4, 1), k$3(x$4, 2));
 };
 
 /**

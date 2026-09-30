@@ -8,6 +8,5 @@
  */
 export const test = (f) => {
   const x$1 = f(1);
-  const x$2 = f(2);
-  return { _1: x$1, _2: x$2, _3: f(2) };
+  return { _1: x$1, _2: f(2), _3: f(2) };
 };

@@ -37,6 +37,5 @@ export const test = (x, y) => {
     }
     return acc$3;
   };
-  const x$6 = k$5(x, y);
-  return int53__lean_int_add(x$6, k$5(y, x));
+  return int53__lean_int_add(k$5(x, y), k$5(y, x));
 };

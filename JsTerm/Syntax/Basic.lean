@@ -329,6 +329,9 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
   /-- A conversion of a list from or to cons cells (`JsListOp`). -/
   | listOp {C M σs : List JsTy} {τ : JsTy} (op : JsListOp σs τ) (args : JsArgs S C M σs) :
       JsExpr S C M τ
+  /-- A top-level function of the module, by its JavaScript name (a call of another function
+      of the module, `JsTerm.Lower.Unroll`). -/
+  | global {C M : List JsTy} {τ : JsTy} (name : String) : JsExpr S C M τ
 
 /-- The arguments of an operation or the fields of a record. -/
 inductive JsArgs (S : JsSig) : List JsTy → List JsTy → List JsTy → Type where
@@ -405,6 +408,16 @@ inductive JsBlock (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd 
   | countdown {C M J : List JsTy} {N τ : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
       (n : JsExpr S C M N) (base step : JsBlock S C (N :: M) [τ] .loop)
       (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
+  /-- A test of the counter `j` of an enclosing counting-down loop in the middle of its step
+      (`JsTerm.Lower.Unroll`: a step running several iterations of the loop): `if (j === 0)
+      { base } j--;` and the rest.  `base` ends the iteration (it never falls through). -/
+  | tick {C M J : List JsTy} {N : JsTy} {k : JsEnd} (nt : JsNatTy N) (j : JsMem M N)
+      (base rest : JsBlock S C M J k) : JsBlock S C M J k
+  /-- A case analysis on a natural number: `if (n === 0) { zero }` and `succ`, which reads the
+      predecessor `n - 1` as its innermost constant.  `zero` never falls through. -/
+  | natCase {C M J : List JsTy} {N : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
+      (n : JsExpr S C M N) (zero : JsBlock S C M J k) (succ : JsBlock S (N :: C) M J k) :
+      JsBlock S C M J k
   /-- Mutually recursive local functions: `const f₀ = e₀; const f₁ = e₁; …` and the rest.  Every
       definition `eᵢ` (an arrow function, so that it reads the others only when it is called)
       and the rest read all the `fᵢ` as constants (the last one innermost). -/

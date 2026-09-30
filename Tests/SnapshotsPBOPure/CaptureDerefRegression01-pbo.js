@@ -49,45 +49,29 @@ export const test5 = (v) => ({
 
 /**
  * `testEven`
- * (private) the code of `testEven`, `testOdd`, which call it with the initial value of its first variable as `tag`
- * @param {boolean} tag
  * @param {uint53(number)} n
  * @param {{ _1: int53(number), _2: int53(number) }} b
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */
-const testEven$shared = (tag, n, b) => {
-  let p$1 = tag;
-  let p$2 = b._1;
-  let p$3 = b._2;
-  let j$4 = n;
+export const testEven = (n, b) => {
+  let p$1 = b._1;
+  let p$2 = b._2;
+  let j$3 = n;
   while (true) {
-    if (j$4 === 0) {
-      return { _1: p$2, _2: p$3 };
+    if (j$3 === 0) {
+      return { _1: p$1, _2: p$2 };
     }
-    j$4--;
-    if (p$1) {
-      const x$5 = int53__lean_int_add(p$3, 1);
-      const x$6 = int53__lean_int_add(p$2, 2);
-      p$1 = false;
-      p$2 = x$5;
-      p$3 = x$6;
-    } else {
-      const x$7 = int53__lean_int_add(p$3, 3);
-      const x$8 = int53__lean_int_add(p$2, 4);
-      p$1 = true;
-      p$2 = x$7;
-      p$3 = x$8;
+    j$3--;
+    const x$4 = int53__lean_int_add(p$2, 1);
+    const x$5 = int53__lean_int_add(p$1, 2);
+    if (j$3 === 0) {
+      return { _1: x$4, _2: x$5 };
     }
+    j$3--;
+    p$1 = int53__lean_int_add(x$5, 3);
+    p$2 = int53__lean_int_add(x$4, 4);
   }
 };
-
-/**
- * `testEven`
- * @param {uint53(number)} n
- * @param {{ _1: int53(number), _2: int53(number) }} b
- * @returns {{ _1: int53(number), _2: int53(number) }}
- */
-export const testEven = (n, b) => testEven$shared(true, n, b);
 
 /**
  * `testOdd`
@@ -95,4 +79,12 @@ export const testEven = (n, b) => testEven$shared(true, n, b);
  * @param {{ _1: int53(number), _2: int53(number) }} b
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */
-export const testOdd = (n, b) => testEven$shared(false, n, b);
+export const testOdd = (n, b) => {
+  if (n === 0) {
+    return b;
+  }
+  return testEven(n - 1, {
+    _1: int53__lean_int_add(b._2, 3),
+    _2: int53__lean_int_add(b._1, 4),
+  });
+};

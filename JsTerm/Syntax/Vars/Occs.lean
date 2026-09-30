@@ -83,7 +83,7 @@ mutual
 def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr S C M τ → Array JsOcc
   | .cvar x => o.cOcc x.index
   | .mvar x => o.mOcc x.index
-  | .lit _ | .unreachable _ | .enum_mk .. => #[]
+  | .lit _ | .unreachable _ | .enum_mk .. | .global _ => #[]
   | .imported _ as | .inlined _ as | .listOp _ as => as.occsAt o
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.occsAt o
   | .enumEq a b => a.occsAt o ++ b.occsAt o
@@ -127,6 +127,8 @@ def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock S C M 
   | .forOf _ _ xs b rest => xs.occsAt o ++ b.occsAt (o.loop 1) ++ rest.occsAt o
   | .countdown _ _ n b s rest =>
     n.occsAt o ++ b.occsAt o.countLoop ++ s.occsAt o.countLoop ++ rest.occsAt (o.under 1 0)
+  | .tick _ j b rest => o.mOcc j.index ++ o.mOcc j.index true ++ b.occsAt o ++ rest.occsAt o
+  | .natCase _ _ n z s => n.occsAt o ++ z.occsAt o ++ s.occsAt (o.under 1 0)
   | .funs (τs := τs) _ defs rest =>
     defs.occsAt (o.under τs.length 0) ++ rest.occsAt (o.under τs.length 0)
 
@@ -165,7 +167,7 @@ mutual
     array or a record that an update in place could change (no operation at all: it only builds
     values from constants, literals and closures)? -/
 def JsExpr.movable {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
-  | .cvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. => true
+  | .cvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. | .global _ => true
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.movable
   | .enumEq a b => a.movable && b.movable
   | .record_mk fs => fs.movable
@@ -188,7 +190,7 @@ mutual
 /-- Has the expression no effect (it may throw): no call of a function (which may update an
     argument in place) and no update in place? -/
 def JsExpr.noEffect {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
-  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. => true
+  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. | .global _ => true
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.noEffect
   | .enumEq a b => a.noEffect && b.noEffect
   | .record_mk fs => fs.noEffect
@@ -212,82 +214,129 @@ end
 
 /-- Is the expression a constant, a literal or `undefined`, whose value nothing can change? -/
 def JsExpr.inert {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
-  | .cvar _ | .lit _ | .enum_mk .. | .unreachable _ => true
+  | .cvar _ | .lit _ | .enum_mk .. | .unreachable _ | .global _ => true
   | .fold _ e | .unfold _ e => e.inert
   | _ => false
 
+/-- Can the expression be computed after the constant being moved (`readFirst`): it can wait
+    (`movable`; with `strict`, only `inert`), and it reads none of the constants `bars` (constants
+    whose computation is itself moved to where they are read, which must stay after it). -/
+def JsExpr.waits {C M : List JsTy} {τ : JsTy} (strict : Bool) (bars : List Nat)
+    (a : JsExpr S C M τ) : Bool :=
+  (if strict then a.inert else a.movable) && !bars.any (a.mentions ⟨false, ·⟩)
+
 mutual
 /-- Is the constant of index `x` read first when the expression is computed, nothing before it
-    but expressions that can be computed later (`movable`; with `strict`, only `inert` ones)?
-    Then the computation of the constant can be done there instead. -/
-partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : Nat) :
-    JsExpr S C M τ → Bool
+    but expressions that can be computed later (`JsExpr.waits`)?  Then the computation of the
+    constant can be done there instead. -/
+partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : Nat)
+    (bars : List Nat) : JsExpr S C M τ → Bool
   | .cvar y => y.index == x
-  | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x
-  | .enumEq a b => JsExpr.readFirst2 strict x a b
+  | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x bars
+  | .enumEq a b => JsExpr.readFirst2 strict x bars a b
   | .app f as =>
     if f.mentions ⟨false, x⟩ then false
-    else (if strict then f.inert else f.movable) && as.readFirst strict x
-  | .imported _ as | .listOp _ as => as.readFirst strict x
+    else f.waits strict bars && as.readFirst strict x bars
+  | .imported _ as | .listOp _ as => as.readFirst strict x bars
   -- an inlined operation may write its arguments in another order: the others must all wait
-  | .inlined _ as => as.readFirstAny strict x
-  | .record_mk fs => fs.readFirst strict x
-  | .union_mk _ as => as.readFirst strict x
+  | .inlined _ as => as.readFirstAny strict x bars
+  | .record_mk fs => fs.readFirst strict x bars
+  | .union_mk _ as => as.readFirst strict x bars
   | .cond c a b =>
-    if c.mentions ⟨false, x⟩ then c.readFirst strict x
-    else (if strict then c.inert else c.movable) &&
-      (if a.mentions ⟨false, x⟩ then a.readFirst strict x else b.readFirst strict x)
+    if c.mentions ⟨false, x⟩ then c.readFirst strict x bars
+    else c.waits strict bars &&
+      (if a.mentions ⟨false, x⟩ then a.readFirst strict x bars else b.readFirst strict x bars)
   | _ => false
 /-- `readFirst` of two operands, in order. -/
 partial def JsExpr.readFirst2 {C M : List JsTy} {τ τ' : JsTy} (strict : Bool) (x : Nat)
-    (a : JsExpr S C M τ) (b : JsExpr S C M τ') : Bool :=
-  if a.mentions ⟨false, x⟩ then a.readFirst strict x
-  else (if strict then a.inert else a.movable) && b.readFirst strict x
+    (bars : List Nat) (a : JsExpr S C M τ) (b : JsExpr S C M τ') : Bool :=
+  if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+  else a.waits strict bars && b.readFirst strict x bars
 /-- `readFirst` of arguments, computed in order. -/
-partial def JsArgs.readFirst {C M σs : List JsTy} (strict : Bool) (x : Nat) : JsArgs S C M σs → Bool
+partial def JsArgs.readFirst {C M σs : List JsTy} (strict : Bool) (x : Nat) (bars : List Nat) :
+    JsArgs S C M σs → Bool
   | .nil => false
   | .cons a as =>
-    if a.mentions ⟨false, x⟩ then a.readFirst strict x
-    else (if strict then a.inert else a.movable) && as.readFirst strict x
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+    else a.waits strict bars && as.readFirst strict x bars
 /-- `readFirst` of arguments computed in any order: the one reading the constant reads it
     first, and all the others can wait. -/
-partial def JsArgs.readFirstAny {C M σs : List JsTy} (strict : Bool) (x : Nat) : JsArgs S C M σs → Bool
+partial def JsArgs.readFirstAny {C M σs : List JsTy} (strict : Bool) (x : Nat) (bars : List Nat) :
+    JsArgs S C M σs → Bool
   | .nil => false
   | .cons a as =>
-    if a.mentions ⟨false, x⟩ then a.readFirst strict x && as.allWait strict
-    else (if strict then a.inert else a.movable) && as.readFirstAny strict x
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars && as.allWait strict bars
+    else a.waits strict bars && as.readFirstAny strict x bars
 /-- Can all the arguments wait? -/
-partial def JsArgs.allWait {C M σs : List JsTy} (strict : Bool) : JsArgs S C M σs → Bool
+partial def JsArgs.allWait {C M σs : List JsTy} (strict : Bool) (bars : List Nat) :
+    JsArgs S C M σs → Bool
   | .nil => true
-  | .cons a as => (if strict then a.inert else a.movable) && as.allWait strict
+  | .cons a as => a.waits strict bars && as.allWait strict bars
 end
 
+mutual
 /-- Is the constant of index `x` read (once) where the computation of a value `e` put in it can be
     moved to: before any effect or throw of the block, and before any assignment of a mutable
     variable `e` reads (`reads`)?  With `strict` (`e` has an effect), nothing may be computed
-    before it (only constants and literals may be read). -/
+    before it (only constants and literals may be read).  A constant in between whose own
+    computation is moved to its use (`constInline`) is no obstacle, provided `x` is read before
+    it (`bars`); `fuel` bounds how many such constants are looked through. -/
 partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (reads : List Nat)
-    (x : Nat) : JsBlock S C M J k → Bool
-  | .ret a | .jump _ a => a.readFirst strict x
+    (x : Nat) (bars : List Nat := []) (fuel : Nat := 3) : JsBlock S C M J k → Bool
+  | .ret a | .jump _ a => a.readFirst strict x bars
   | .const _ a r =>
-    if a.mentions ⟨false, x⟩ then a.readFirst strict x
-    else !strict && a.movable && r.useFirst strict reads (x + 1)
+    if a.mentions ⟨false, x⟩ then
+      -- read by a constant that is itself moved to its use: it might then be read after a
+      -- constant of `bars`
+      if !bars.isEmpty && constInline a r fuel then false
+      else a.readFirst strict x bars
+    else if !strict && a.waits strict bars then
+      r.useFirst strict reads (x + 1) (bars.map (· + 1)) fuel
+    else match fuel with
+      | 0 => false
+      | fuel + 1 =>
+        constInline a r fuel && r.useFirst strict reads (x + 1) (0 :: bars.map (· + 1)) fuel
   | .assign y a r =>
-    if a.mentions ⟨false, x⟩ then a.readFirst strict x
-    else !strict && a.movable && !reads.contains y.index && r.useFirst strict reads x
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+    else !strict && a.waits strict bars && !reads.contains y.index &&
+      r.useFirst strict reads x bars fuel
   | .destructure (us := us) a _ r =>
-    if a.mentions ⟨false, x⟩ then a.readFirst strict x
-    else !strict && a.movable && r.useFirst strict reads (x + us.length)
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+    else !strict && a.waits strict bars &&
+      r.useFirst strict reads (x + us.length) (bars.map (· + us.length)) fuel
   | .ite c t e =>
-    if c.mentions ⟨false, x⟩ then c.readFirst strict x
-    else !strict && c.movable &&
-      (if t.mentions ⟨false, x⟩ then t.useFirst strict reads x else e.useFirst strict reads x)
+    if c.mentions ⟨false, x⟩ then c.readFirst strict x bars
+    else !strict && c.waits strict bars &&
+      (if t.mentions ⟨false, x⟩ then t.useFirst strict reads x bars fuel
+       else e.useFirst strict reads x bars fuel)
   | _ => false
+
+/-- Is the constant `const x = e;` followed by `rest` written at its only use instead: `rest`
+    reads it once, not in a loop or a closure (nor as the function called, for a closure), where
+    computing `e` gives the same result (`JsExpr.movable` anywhere; otherwise at a use it reads
+    first, `JsBlock.useFirst`)? -/
+partial def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ)
+    (rest : JsBlock S (τ :: C) M J k) (fuel : Nat := 3) : Bool :=
+  let us := rest.occs.filter fun o => !o.isMut && o.idx == 0
+  match us.toList with
+  | [u] =>
+    if u.again then false
+    else
+      let isLam := match e with
+        | .lam .. => true
+        | _ => false
+      if isLam && u.callee then false
+      else if e.movable then true
+      else
+        let reads := (e.occs.filter (·.isMut)).toList.map (·.idx)
+        rest.useFirst (!e.noEffect) reads 0 [] fuel
+  | _ => false
+end
 
 /-- Is the expression a variable or a literal (one that can be repeated without
     recomputing anything)? -/
 def JsExpr.isAtom {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
-  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. => true
+  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .global _ => true
   | .fold _ e | .unfold _ e => e.isAtom
   | _ => false
 

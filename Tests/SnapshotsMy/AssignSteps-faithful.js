@@ -74,8 +74,7 @@ export const test4 = (fuel, a, b) => {
       return p$1 + p$2;
     }
     j$3--;
-    const x$4 = p$1 + 1n;
-    p$1 = x$4;
+    p$1 = p$1 + 1n;
     p$2 = p$2 + 2n;
   }
 };

@@ -1,3 +1,51 @@
+# Summary of changes for run 38c147f6-2a99-423b-8dc8-3be65e844e1a
+The JS for `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` now has the same structure as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, and is a little shorter.
+
+**`testEven` / `testOdd` now (pbo preset):**
+```js
+export const testEven = (n, b) => {
+  let p$1 = b._1; let p$2 = b._2; let j$3 = n;
+  while (true) {
+    if (j$3 === 0) { return { _1: p$1, _2: p$2 }; }
+    j$3--;
+    const x$4 = int53__lean_int_add(p$2, 1);
+    const x$5 = int53__lean_int_add(p$1, 2);
+    if (j$3 === 0) { return { _1: x$4, _2: x$5 }; }
+    j$3--;
+    p$1 = int53__lean_int_add(x$5, 3);
+    p$2 = int53__lean_int_add(x$4, 4);
+  }
+};
+export const testOdd = (n, b) => {
+  if (n === 0) { return b; }
+  return testEven(n - 1, { _1: int53__lean_int_add(b._2, 3), _2: int53__lean_int_add(b._1, 4) });
+};
+```
+- **Before:** one shared loop tested and set a `Bool` tag on every step.
+- **Now:** PBO's shape — the loop runs two steps per iteration with no tag, and `testOdd` does one step and then calls `testEven`.
+- **Compared with PBO:** there is no `tag: 0` field, and `testOdd` returns `b` itself when `n` is 0.
+- The loop uses constant stack space.
+- `int53__lean_int_add` is still there because of how the pbo preset handles `Int`; the faithful preset writes `+`.
+
+**Where the changes went.** None of this could go in the `Term → Term` optimizer. The tag, the loop counter and the loop variables are JavaScript-level mutable variables, which `Term` doesn't have. And a `Term` can't refer to another top-level function, which the new `testOdd` does. So everything is in `JsTerm → JsTerm`, and the optimizer and its proofs are unchanged. There are also no new Lean theorems. These are code-generation changes, checked by the differential tests below.
+
+1. **Unrolling** (new file `JsTerm/Lower/Unroll.lean`): a loop over a `Bool` tag runs two iterations per step, with a test of the counter in the middle, and the tag is dropped. The last assignments of the first half are postponed, so the second half reads the new values directly. A base case that reads the tag gets the value the tag would have at that point.
+2. **Peeling:** the other function of the pair runs one iteration without any mutable variables, then calls the first function. Its arguments are rebuilt from how the first function initialises its loop. A record literal built from all the fields of a destructured record of plain values is replaced by that record (hence `return b;`).
+3. **Where they run:** both happen in `pairTagLoops` (`JsTerm/Print/Share.lean`), before the existing shared-worker pass. They are all-or-nothing: on any shape they don't recognise, the old output is kept.
+4. **Grammar:** three new constructors — `JsBlock.tick` (a mid-step `if (j === 0) {…} j--;`), `JsBlock.natCase` (`if (n === 0) {…}`, then `n - 1`) and `JsExpr.global` (a call to another function in the module). All traversals and the printer handle them.
+5. **Printer** (`JsTerm/Syntax/Vars/Occs.lean`): a constant can now be written at its use even when another constant that is also inlined sits in between, as long as evaluation order is kept. My first version of this reordered an array read past an in-place update, and `ReadBeforeWrite` test5 caught it; I fixed that before regenerating.
+
+**Rendering:** loops are `while (true)` with `return` and no recursion, so there is no stack growth. No labelled blocks were needed for these functions; the existing `countdown`/join rendering still uses labels where needed.
+
+**Checks**
+- All snapshots regenerated with `scripts/leanscript-snapshots.sh`: all 336 node check outputs report 0 failures. The script's non-zero exit is the same as before: the known "literal too big" cases and the intentional `mypanic` test.
+- Other snapshots that changed:
+  - `Tests/SnapshotsMy/MutualTail`: `test1` is now a tag-free loop, and `test2` is `if (a === 0) return false; return test1(a - 1);`.
+  - About 16 snapshot files in `SnapshotsMy`/`SnapshotsPBOPure` just lose a temporary `const`.
+- `lake build JsTerm tests leanscript` succeeds with no warnings, and `lake exe tests` passes 76/76.
+- No `sorry` was added, and nothing was added to the Properties table because there are no new theorems.
+- All work is committed.
+
 # Summary of changes for run 5d9def2c-bb05-47dc-9575-1705020fb0d4
 The JS generated for `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` is now as good as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, and a little better in places. The two changes are below. Neither one could go in the `Term → Term` optimizer, so its proofs are unchanged.
 

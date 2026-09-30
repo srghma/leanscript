@@ -1,5 +1,6 @@
 import JsTerm.Print.Mini
 import JsTerm.Lower.Tail
+import JsTerm.Lower.Unroll
 
 set_option autoImplicit false
 
@@ -17,6 +18,10 @@ const testEven$shared = (tag, n, b) => { let p$1 = tag; … };
 export const testEven = (n, b) => testEven$shared(true, n, b);
 export const testOdd = (n, b) => testEven$shared(false, n, b);
 ```
+
+A `mutual` pair whose loop can do without the tag is not shared that way but rewritten
+first (`pairTagLoops`, `JsTerm.Lower.Unroll`): the first function's loop runs two iterations
+per step, and the second function runs one iteration and calls the first.
 
 Two functions share a worker only when the JavaScript of their two workers is the same text,
 so the rewrite never changes what a function computes: each calls a function whose code is
@@ -103,10 +108,45 @@ def JsFun.worker? (f : JsFun) (name : String) : Option (JsFun × JsLitShape) := 
 /-- The text of a function. -/
 def JsFun.text (f : JsFun) : String := printProgram ⟨[f.toMini]⟩
 
+/-- The functions `funs`, the pairs of them that compute the same loop over a `Bool` tag up to
+    the initial value of the tag (the `mutual` pairs recursing on a `Nat`, `testEven`/`testOdd`)
+    rewritten without the tag (`JsTerm.Lower.Unroll`): the first one with its loop unrolled (two
+    iterations per step, so that the tag is always the same at the start of a step), the second
+    one as one iteration of its own state followed by a call of the first one (or, when its
+    arguments cannot be rebuilt, with its own loop unrolled too). -/
+def pairTagLoops (funs : List JsFun) : List JsFun := Id.run do
+  let arr := funs.toArray
+  let keyOf (f : JsFun) : Option (String × Bool) :=
+    match f.worker? "w" with
+    | some (w, .bool c) =>
+      if (w.params.headD ("", .terminal .bool)).2 == .terminal .bool then some (w.text, c) else none
+    | _ => none
+  let keys := arr.map keyOf
+  let mut out := arr
+  let mut done : Array Bool := arr.map fun _ => false
+  for i in [0:arr.size] do
+    if done[i]! then continue
+    let some f := arr[i]? | continue
+    let some (key, cf) := keys[i]?.join | continue
+    let js := (List.range arr.size).filter fun j => j > i && !done[j]! &&
+      (match arr[j]?, keys[j]?.join with
+       | some g, some (k, _) => g.params == f.params && g.ret == f.ret && k == key
+       | _, _ => false)
+    let [j] := js | continue
+    let some g := arr[j]? | continue
+    let some (_, cg) := keys[j]?.join | continue
+    if cg == cf then continue
+    let some f' := f.unrollTag? | continue
+    let some g' := (g.peelInto? f cg cf).orElse fun _ => g.unrollTag? | continue
+    out := (out.set! i f').set! j g'
+    done := (done.set! i true).set! j true
+  return out.toList
+
 /-- The functions `funs`, those that compute the same up to the literal initial value of their
     first mutable variable written as calls of one shared worker (put just before the first of
-    them). -/
+    them); first, the pairs of `pairTagLoops` without their tag. -/
 def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
+  let funs := pairTagLoops funs
   let arr := funs.toArray.map fun _ => ()
   let names := funs.map (·.name)
   -- for each function: the worker put before it, and the call it is written as

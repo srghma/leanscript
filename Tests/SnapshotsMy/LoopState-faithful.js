@@ -18,12 +18,11 @@ export const sumCount = (n) => {
     if (a$3.tag === 0) {
       acc$1 = { tag: 0, _1: a$3._1 };
     } else {
-      const x$4 = a$3._1._1 + i$2;
-      acc$1 = { tag: 1, _1: { _1: x$4, _2: a$3._1._2 + 1n } };
+      acc$1 = { tag: 1, _1: { _1: a$3._1._1 + i$2, _2: a$3._1._2 + 1n } };
     }
   }
-  const x$5 = acc$1._1;
-  return { _1: x$5._1, _2: x$5._2 };
+  const x$4 = acc$1._1;
+  return { _1: x$4._1, _2: x$4._2 };
 };
 
 /**
@@ -118,11 +117,10 @@ export const repeatCount = (s, n) => {
     if (a$3.tag === 0) {
       acc$1 = { tag: 0, _1: a$3._1 };
     } else {
-      const x$4 = a$3._1._1 + s;
       acc$1 = {
         tag: 1,
         _1: {
-          _1: x$4,
+          _1: a$3._1._1 + s,
           _2:
             a$3._1._2 +
             bigint_nat__lean_string_length__String_Internal_length(s),
@@ -130,6 +128,6 @@ export const repeatCount = (s, n) => {
       };
     }
   }
-  const x$5 = acc$1._1;
-  return { _1: x$5._1, _2: x$5._2 };
+  const x$4 = acc$1._1;
+  return { _1: x$4._1, _2: x$4._2 };
 };

@@ -63,6 +63,7 @@ def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
   | .listOp op as => .listOp op <$> as.renameM rc rm
   | .fold i e => .fold i <$> e.renameM rc rm
   | .unfold i e => .unfold i <$> e.renameM rc rm
+  | .global name => pure (.global name)
 
 /-- Rename the variables of arguments. -/
 def JsArgs.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
@@ -103,6 +104,9 @@ def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
   | .countdown x nt n b s rest =>
     return .countdown x nt (← n.renameM rc rm) (← b.renameM rc (JsRenM.lift rm))
       (← s.renameM rc (JsRenM.lift rm)) (← rest.renameM (JsRenM.lift rc) rm)
+  | .tick nt j b rest => return .tick nt (← rm j) (← b.renameM rc rm) (← rest.renameM rc rm)
+  | .natCase x nt n z s =>
+    return .natCase x nt (← n.renameM rc rm) (← z.renameM rc rm) (← s.renameM (JsRenM.lift rc) rm)
   | .funs (τs := τs) xs defs rest =>
     return .funs xs (← defs.renameM (JsRenM.liftAll τs rc) rm)
       (← rest.renameM (JsRenM.liftAll τs rc) rm)

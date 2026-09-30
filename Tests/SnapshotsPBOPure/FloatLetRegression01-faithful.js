@@ -8,6 +8,5 @@
  */
 export const test = (f) => {
   const x$1 = f(1n);
-  const x$2 = f(2n);
-  return { _1: x$1, _2: x$2, _3: f(2n) };
+  return { _1: x$1, _2: f(2n), _3: f(2n) };
 };

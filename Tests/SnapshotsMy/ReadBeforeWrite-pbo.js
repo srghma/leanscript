@@ -18,9 +18,8 @@ import {
  */
 export const test1 = (n) => {
   const x$1 = uint53__lean_mk_array(3, uint53__lean_nat_add(n, 7));
-  const x$2 = uint53__lean_array_get(0, x$1, 0);
   return uint53__lean_nat_add(
-    x$2,
+    uint53__lean_array_get(0, x$1, 0),
     uint53__lean_array_get(0, uint53__lean_array_set_mutable(x$1, 0, 99), 1),
   );
 };
@@ -51,9 +50,8 @@ export const test2 = (n) => {
  */
 export const test3 = (n) => {
   const k$1 = [uint53__lean_nat_add(n, 1)];
-  const x$2 = uint53__lean_array_get(0, k$1, 0);
   return uint53__lean_nat_add(
-    x$2,
+    uint53__lean_array_get(0, k$1, 0),
     array__lean_array_push_mutable(k$1, 5).length,
   );
 };
@@ -84,17 +82,19 @@ export const test5 = (n) => {
     } else {
       const { _1: f$5 } = a$4._1;
       const x$6 = uint53__lean_array_get(0, f$5, i$3);
-      const x$7 = uint53__lean_array_set_mutable(
-        f$5,
-        i$3,
-        uint53__lean_nat_add(i$3, 1),
-      );
       acc$2 = {
         tag: 1,
-        _1: { _1: x$7, _2: uint53__lean_nat_add(a$4._1._2, x$6) },
+        _1: {
+          _1: uint53__lean_array_set_mutable(
+            f$5,
+            i$3,
+            uint53__lean_nat_add(i$3, 1),
+          ),
+          _2: uint53__lean_nat_add(a$4._1._2, x$6),
+        },
       };
     }
   }
-  const x$8 = acc$2._1;
-  return x$8._2;
+  const x$7 = acc$2._1;
+  return x$7._2;
 };
