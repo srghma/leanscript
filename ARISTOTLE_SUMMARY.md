@@ -1,3 +1,37 @@
+# Summary of changes for run 27a66449-9222-4829-9974-31c76bbf45de
+I made no changes. `CaseGrafting`'s JavaScript output already beats purescript-backend-optimizer's legacy output, because of the fix from the previous session. That fix is in the source (`sparseAsCasesOn?` in `LeanScript/TermElab/ToTerm/Expr/Cases.lean`, called from `LeanScript/TermElab/ToTerm/Expr.lean`).
+
+**Checks:**
+- I rebuilt `leanscript` from the current source and regenerated all six `Tests/SnapshotsPBOPure/CaseGrafting-*` files. They came out byte-for-byte identical to the committed ones.
+- The generated checks `CaseGrafting-pbo.check.mjs` and `CaseGrafting-faithful.check.mjs` pass 8/8 each, covering all eight Boolean argument combinations.
+
+**Current output** (`CaseGrafting-pbo.js`; `-faithful.js` is the same with `1n`…`4n`):
+```js
+export const test1 = (a, a1, a2) => {
+  if (a1) {
+    if (a) {
+      return a2 ? 4 : 3;
+    }
+    return 2;
+  }
+  return a2 ? 1 : 3;
+};
+```
+
+**Compared with PBO's version** (`legacy-backend/CaseGrafting.js`):
+- Ours tests each argument at most once, so any call does at most 3 tests. PBO's re-tests `v1` and `v2`, and one path does 5.
+- Ours has no dead `if (v2)` and no `throw new Error("UNREACHABLE")`.
+- Ours is a single uncurried function rather than three nested closures.
+
+**Where the work happens:**
+- **Elaboration** turns Lean's sparse case analysis (`_sparseCasesOn`) into an ordinary full case split. This is what lets `test1` translate at all.
+- **`Term` optimizer** (your preferred phase) turns the innermost `if`s into `cond(x6, 4, 3)` and `cond(x6, 1, 3)`, which print as the ternaries. You can see this by comparing `CaseGrafting-Term-unoptimized.txt` with `CaseGrafting-Term-optimized.txt`.
+- **`Term → JsTerm` conversion and `JsTerm → JsTerm` optimizer** add nothing for this file.
+
+There is no recursion or loop in this file, so labelled blocks and loops don't apply and there is no stack-overflow risk.
+
+No Lean theorems were involved, so the Properties table is unchanged.
+
 # Summary of changes for run c30895da-dd6f-4dbf-b87d-a23c0d14faa4
 `CaseGrafting` now translates, and its JS is better than purescript-backend-optimizer's legacy output. Before this change `test1` wasn't translated at all: every output file only said "the helper `test1._sparseCasesOn_1` is universe polymorphic".
 
