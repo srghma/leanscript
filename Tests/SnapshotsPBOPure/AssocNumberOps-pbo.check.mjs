@@ -36,6 +36,36 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(0)", () => M.test1(0), "4621819117588971520", true);
+check("test1(0.5)", () => M.test1(0.5), "4622945017495814144", true);
+check("test1(2.25)", () => M.test1(2.25), "4626041242239631360", true);
+check("test1(30)", () => M.test1(30), "4638777984935788544", true);
+check("test1(-1.5)", () => M.test1(-1.5), "4616189618054758400", true);
+check("test2(0)", () => M.test2(0), "4621819117588971520", true);
+check("test2(0.5)", () => M.test2(0.5), "4622945017495814144", true);
+check("test2(2.25)", () => M.test2(2.25), "4626041242239631360", true);
+check("test2(30)", () => M.test2(30), "4638777984935788544", true);
+check("test2(-1.5)", () => M.test2(-1.5), "4616189618054758400", true);
+check("test3(0)", () => M.test3(0), "4628574517030027264", true);
+check("test3(0.5)", () => M.test3(0.5), "4629700416936869888", true);
+check("test3(2.25)", () => M.test3(2.25), "4631670741773844480", true);
+check("test3(30)", () => M.test3(30), "4643422322051514368", true);
+check("test3(-1.5)", () => M.test3(-1.5), "4625196817309499392", true);
+check("test4(0)", () => M.test4(0), "0", true);
+check("test4(0.5)", () => M.test4(0.5), "4609434218613702656", true);
+check("test4(2.25)", () => M.test4(2.25), "4648621637661360128", true);
+check("test4(30)", () => M.test4(30), "4715983595494178816", true);
+check("test4(-1.5)", () => M.test4(-1.5), "4638250219354456064", true);
+check("test5(0)", () => M.test5(0), "0", true);
+check("test5(0.5)", () => M.test5(0.5), "4609434218613702656", true);
+check("test5(2.25)", () => M.test5(2.25), "4648621637661360128", true);
+check("test5(30)", () => M.test5(30), "4715983595494178816", true);
+check("test5(-1.5)", () => M.test5(-1.5), "4638250219354456064", true);
+check("test6(0)", () => M.test6(0), "0", true);
+check("test6(0.5)", () => M.test6(0.5), "4626234756286119936", true);
+check("test6(2.25)", () => M.test6(2.25), "4704363608314216448", true);
+check("test6(30)", () => M.test6(30), "4838975888168542208", true);
+check("test6(-1.5)", () => M.test6(-1.5), "4683612886545727488", true);
 
 console.log(`AssocNumberOps-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

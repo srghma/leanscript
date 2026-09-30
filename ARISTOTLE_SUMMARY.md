@@ -1,3 +1,46 @@
+# Summary of changes for run 5955a48e-7894-4519-b892-47ec6545df8d
+**What I found.** `AssocNumberOps` wasn't being translated at all: all six functions failed, and the committed `.js` files contained only "not translated" errors. The cause was float literals such as `1.0`:
+- The language's float type is `HashableFloat`, not `Float`, so the literal didn't type-check.
+- The command-line tool then tried to reduce the float symbolically at compile time, which is far too slow.
+
+The same bug also affected `CaseNumber`, `InlineReferencePrimOpNumber` and `PrimOpNumber02`.
+
+**What I changed**
+1. **Float literals now translate** (`TermElab/ToTerm/Expr.lean`, `LeanScriptCli/Frontend.lean`).
+   - A closed `Float`/`Float32` value becomes a literal and is computed natively.
+   - `NaN` and `-0.0` are refused with a clear error. The language's floats can't represent them, and silently turning them into `0.0` would change the program.
+2. **New proved step in the `Term → Term` optimiser** (`Term/Optimize/FloatUnit.lean`, run inside `Term.arithWalk`).
+   - `x * 1.0`, `1.0 * x`, `x / 1.0` and `x - 0.0` become `x`.
+   - The facts behind it are proved from Lean's float model in the new file `HashableFloat/Identities.lean`. They hold bit for bit for every float, `NaN` and `-0.0` included.
+   - `Term.optimize_eval` still holds, using only the standard axioms.
+   - `x + 0.0` is not rewritten, because it gives `+0.0` when `x` is `-0.0`.
+3. **Optional `--float-reassoc` flag** (`Term/Optimize/FloatReassoc.lean`). It regroups float chains from the left and folds neighbouring literals, as the legacy backend does. It is off by default, and the JavaScript header says when it was used.
+
+**Output compared with the legacy backend**
+
+| | default (same results as Lean) | `--float-reassoc` | legacy |
+|---|---|---|---|
+| test1 | `1 + (2 + x + x + x + x + 3) + 4` | `3 + x + x + x + x + 7` | same as `--float-reassoc` |
+| test4 | `2 * x * x * x * x * 3 * 4` | `2 * x * x * x * x * 12` | same as `--float-reassoc` |
+| test6 | `2 * (x * (x * (x * (x * 3)))) * 4 * (5 * x * x * x * x * 6) * 7` | `2 * x * x * x * x * 60 * x * x * x * x * 42` | same as `--float-reassoc` |
+
+With `--float-reassoc` the output is exactly the legacy output. The default mode is not on par for sums: float addition isn't associative, so the legacy form computes something different from Lean. `Tests/TermTests/Optimize/AssocNumberOpsTest.lean` shows this:
+- `test1` and the legacy body differ at `x = 3/7`.
+- `--float-reassoc` changes the translated `test1`'s result at that input.
+
+That is why regrouping isn't part of the proved optimiser. These checks, and the ones showing the exact optimised output, use `native_decide`, so they depend on Lean's compiler.
+
+**Checks**
+- The listed build targets build, with no `sorry`.
+- `lake exe tests` passes 76/76.
+- I regenerated all snapshots and every node check passes, including the new `Tests/SnapshotsMy/FloatUnit.lean` (55 checks per preset).
+- The snapshot script still exits non-zero, because of the existing "literal too big" errors at the pbo preset.
+- The Properties table and the READMEs are updated.
+
+**Still open**
+- In `PrimOpNumber02`, the closed comparisons such as `1.5 == 1.0` still can't be computed at compile time.
+- Passing two files to one `leanscript --functions-only` call deleted the second file's outputs. The snapshot script runs one file at a time, so it isn't affected. I didn't investigate this.
+
 # Summary of changes for run fdf39749-5b78-4d25-983f-6bcd472e7ec5
 I added a new Lean file, `Tests/TermTests/Optimize/AssocIntOpsTest.lean`, that proves the `AssocIntOps` results for all six functions. It builds with no `sorry`, and it is committed.
 

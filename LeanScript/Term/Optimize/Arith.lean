@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Optimize.ArithPow
+public import LeanScript.Term.Optimize.FloatUnit
 
 @[expose] public section
 
@@ -377,15 +378,17 @@ theorem normAt_eval (a : ArithOp) {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy)
 end ArithOp
 
 /-- `ArithOp.normAt` of every operation, in turn (`ArithOp.all`), on a neutral expression of a
-    leaf type: for an integer type, its sums, then its products. -/
+    leaf type: for an integer type, its sums, then its products; then, for a float type, a unit
+    operand dropped (`Neu.floatUnit`: `x * 1.0` is `x`, …). -/
 def Neu.normArithPrim {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) : Neu Δ Φ Γ (.prim p) ℓ :=
-  ArithOp.all.foldl (fun n a => a.normAt p n) n
+  Neu.floatUnit p (ArithOp.all.foldl (fun n a => a.normAt p n) n)
 
 theorem Neu.normArithPrim_eval {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (Neu.normArithPrim p n).eval κ ρ = n.eval κ ρ := by
   unfold Neu.normArithPrim
+  rw [Neu.floatUnit_eval]
   generalize ArithOp.all = as
   induction as generalizing n with
   | nil => rfl

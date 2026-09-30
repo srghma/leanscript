@@ -345,11 +345,18 @@ partial def isValueLike (e : Expr) : MetaM Bool := do
     translator put a closed Lean term such as `3 + 4` or `ack 2 3`), so that evaluating the
     translation is cheap: each value is normalised with a bounded budget, and a value that
     does not normalise to literals and constructors is refused rather than computed. -/
-def reduceLits (e : Expr) : MetaM Expr :=
+def reduceLits (e : Expr) (nativeFloat : Expr → MetaM (Option Expr) := fun _ => pure none) :
+    MetaM Expr :=
   Meta.transform e (post := fun e => do
     if e.isAppOfArity ``LeanScript.PExpr.lit 6 then
       let v := e.appArg!
       if ← isValueLike v then return .done e
+      -- a closed float (`HashableFloat.normalize (1.5 + 1.0)`): computed natively, to its bits
+      -- (reducing the float model symbolically is far too slow); refused when it is `NaN` or
+      -- `-0.0`, which the language's floats do not have (`checkFloatLit`)
+      if v.isAppOfArity ``HashableFloat.normalize 1 || v.isAppOfArity ``HashableFloat32.normalize 1 then
+        if let some a' ← nativeFloat v.appArg! then
+          return .done (mkApp e.appFn! (mkApp v.appFn! a'))
       let v' ← tryCatchRuntimeEx
           (withTheReader Core.Context (fun c => { c with maxHeartbeats := 200 * 1000 }) do
             withCurrHeartbeats do
@@ -368,6 +375,26 @@ def reduceLits (e : Expr) : MetaM Expr :=
           (it normalises to `{v'}`)"
       return .done (mkApp e.appFn! v')
     return .continue)
+
+/-- A closed float (`Float` or `Float32`), computed natively: `Float.ofBits b` (`Float32.ofBits b`)
+    for its bits `b`.  Refused when it is `NaN` or `-0.0`: the language's floats
+    (`HashableFloat`) have neither, and normalising it to `0.0` would change the program. -/
+unsafe def checkFloatLit (a : Expr) : MetaM (Option Expr) := do
+  let ty ← whnf (← inferType a)
+  let refuse (what : String) : MetaM (Option Expr) :=
+    throwError "the closed float `{a}` is {what}, which the language's floats \
+      (`HashableFloat`) cannot represent"
+  if ty.isConstOf ``Float then
+    let f ← evalExpr Float (mkConst ``Float) a
+    if f.isNaN then return ← refuse "NaN"
+    if f.toBits == 0x8000000000000000 then return ← refuse "-0.0"
+    return some (mkApp (mkConst ``Float.ofBits) (toExpr f.toBits))
+  else if ty.isConstOf ``Float32 then
+    let f ← evalExpr Float32 (mkConst ``Float32) a
+    if f.isNaN then return ← refuse "NaN"
+    if f.toBits == 0x80000000 then return ← refuse "-0.0"
+    return some (mkApp (mkConst ``Float32.ofBits) (toExpr f.toBits))
+  else return none
 
 /-- Translate a definition to a closed `Term` value. -/
 unsafe def translate (n : Name) : TermElabM ClosedTerm := do
@@ -396,7 +423,7 @@ unsafe def translate (n : Name) : TermElabM ClosedTerm := do
   let ty ← whnfR (← inferType v)
   unless ty.isAppOfArity ``LeanScript.Term 8 do
     throwError "unexpected type of the translation: {ty}"
-  let v ← reduceLits v
+  let v ← reduceLits v checkFloatLit
   let as := ty.getAppArgs
   let packed := mkAppN (mkConst ``LeanScript.ClosedTerm.mk) #[as[0]!, as[1]!, as[5]!, as[7]!, v]
   evalExpr LeanScript.ClosedTerm (mkConst ``LeanScript.ClosedTerm) packed

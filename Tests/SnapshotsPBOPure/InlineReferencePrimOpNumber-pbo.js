@@ -2,15 +2,79 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 // not translated:
 //   fn: LeanScript: the parameter `α` of `fn` is a type
-//   localTest: Application type mismatch: The argument rfl has type ?m.132 = ?m.132 but is expected to have type LeanScript.Lvl.meet (some (0 + 1)) (LeanScript.Lvl.meet ?m.180 (LeanScript.Lvl.meet ?m.181 (LeanScript.Lvl.meet ?m.182 none))) = some ?m.179 in the application LeanScript.Comp.app (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (Rec.mk.leanScriptCtor ?m.120 ?m.125 ?m.130) ⋯
-//   test1: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel + { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel + { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel))
-//   test2: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel - { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel - { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel))
-//   test3: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel * { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel * { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel))
-//   test4: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel / { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ({ a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.a.b.c.toModel / { a := { b := { c := 99.0 } }, d := fn (), e := 11.0 }.e.toModel))
-//   extern: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ((Nat.toUInt64 110).toFloat.toModel / Float.exactlyRepresentablePowersOfTen[1].toModel) has type LeanScript.PExpr ?m.48 ?m.49 ?m.50 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) ?m.36 in the application Rec.mk.leanScriptCtor ?m.41 ?m.46 (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel ((Nat.toUInt64 110).toFloat.toModel / Float.exactlyRepresentablePowersOfTen[1].toModel))
-//   externTest: Application type mismatch: The argument rfl has type ?m.147 = ?m.147 but is expected to have type LeanScript.Lvl.meet (some (0 + 1)) (LeanScript.Lvl.meet ?m.195 (LeanScript.Lvl.meet ?m.196 (LeanScript.Lvl.meet ?m.197 none))) = some ?m.194 in the application LeanScript.Comp.app (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (Rec.mk.leanScriptCtor ?m.135 ?m.140 ?m.145) ⋯
-//   test5: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel + extern.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel + extern.e.toModel))
-//   test6: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel - extern.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel - extern.e.toModel))
-//   test7: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel * extern.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel * extern.e.toModel))
-//   test8: Application type mismatch: The argument LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel / extern.e.toModel) has type LeanScript.PExpr ?m.21 ?m.22 ?m.23 (LeanScript.Ty.prim LeanScript.LeanPrimTy.floatModel) none but is expected to have type LeanScript.PExpr Δ [] [] (LeanScript.Ty.prim LeanScript.LeanPrimTy.float) none in the application LeanScript.Term.ret (LeanScript.PExpr.lit LeanScript.LeanPrimTy.floatModel (extern.a.b.c.toModel / extern.e.toModel))
 
+/**
+ * `localTest`
+ * @param {({ _1: float, _2: float, _3: float }) => float} f
+ * @returns {float}
+ */
+export const localTest = (f) => {
+  const x$1 = { _1: 99, _2: 0, _3: 11 };
+  const x$2 = f(x$1);
+  return x$2;
+};
+
+/**
+ * `test1`
+ * @returns {float}
+ */
+export const test1 = () => 110;
+
+/**
+ * `test2`
+ * @returns {float}
+ */
+export const test2 = () => 88;
+
+/**
+ * `test3`
+ * @returns {float}
+ */
+export const test3 = () => 1089;
+
+/**
+ * `test4`
+ * @returns {float}
+ */
+export const test4 = () => 9;
+
+/**
+ * `extern`
+ * @returns {{ _1: float, _2: float, _3: float }}
+ */
+export const extern = () => ({ _1: 99, _2: 0, _3: 11 });
+
+/**
+ * `externTest`
+ * @param {({ _1: float, _2: float, _3: float }) => float} f
+ * @returns {float}
+ */
+export const externTest = (f) => {
+  const x$1 = { _1: 99, _2: 0, _3: 11 };
+  const x$2 = f(x$1);
+  return x$2;
+};
+
+/**
+ * `test5`
+ * @returns {float}
+ */
+export const test5 = () => 110;
+
+/**
+ * `test6`
+ * @returns {float}
+ */
+export const test6 = () => 88;
+
+/**
+ * `test7`
+ * @returns {float}
+ */
+export const test7 = () => 1089;
+
+/**
+ * `test8`
+ * @returns {float}
+ */
+export const test8 = () => 9;

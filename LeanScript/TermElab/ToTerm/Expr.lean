@@ -91,6 +91,13 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
             | some n => .nat n
             | none => .other
           return ← Src.lit' p (← exprToSyntax e) val
+        -- a closed `Float` (`Float32`): the literal of the language is its `HashableFloat`
+        -- (`HashableFloat32`), the float with `NaN` and `-0.0` normalised to `0.0`, as the
+        -- result of every float operation of the language is (`FloatExtern.eval`)
+        if T.isConstOf ``Float && (← whnf d).isConstOf ``HashableFloat then
+          return ← Src.lit' p (← `(HashableFloat.normalize $(← exprToSyntax e)))
+        if T.isConstOf ``Float32 && (← whnf d).isConstOf ``HashableFloat32 then
+          return ← Src.lit' p (← `(HashableFloat32.normalize $(← exprToSyntax e)))
         -- a closed value of a type read as a leaf without being one (a wrapper `⟨1, h⟩ : Pos`,
         -- a quotient `Quot.mk r 3`): its head normal form, whose value is the literal
         let e' ← whnf e

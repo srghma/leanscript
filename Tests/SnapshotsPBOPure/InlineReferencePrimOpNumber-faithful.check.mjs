@@ -36,6 +36,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1()", () => M.test1(), "4637440978796412928", true);
+check("test2()", () => M.test2(), "4635892866424504320", true);
+check("test3()", () => M.test3(), "4652504288096944128", true);
+check("test4()", () => M.test4(), "4621256167635550208", true);
+check("test5()", () => M.test5(), "4637440978796412928", true);
+check("test6()", () => M.test6(), "4635892866424504320", true);
+check("test7()", () => M.test7(), "4652504288096944128", true);
+check("test8()", () => M.test8(), "4621256167635550208", true);
 
 console.log(`InlineReferencePrimOpNumber-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
