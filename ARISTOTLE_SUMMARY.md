@@ -1,3 +1,27 @@
+# Summary of changes for run 446048a4-c2d8-4c3a-96af-ad58638b3578
+I made no code changes: the JavaScript output for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already matches purescript-backend-optimizer's `BackendSemantics01.js`, apart from style. An earlier run made the fix, and the current code still reproduces it.
+
+**Checks I ran:** I rebuilt the tool (`lake build leanscript` succeeded) and regenerated this file's outputs with `leanscript --skip-empty --check`. The regenerated files are byte-identical to the committed ones (`git status` is clean), and the node checks pass 4/4 at both the `pbo` and `faithful` presets.
+
+**What each stage does:**
+- **Lean → `Term`:** elaboration already reduces every definition to a literal. `BackendSemantics01-Term-unoptimized.txt` is just `ret 2147483646`, `ret -2147483647`, `ret '\uFFFF'` and `ret '\x00'`.
+- **`Term` → optimised `Term`:** there is nothing left to optimise; `BackendSemantics01-Term-optimized.txt` is the same as the unoptimised version.
+- **Conversion, `JsTerm` optimisation and printing:** the one real gap was here, and it is already fixed. A definition with no parameters used to come out as a zero-argument function (`() => 2147483646`); it is now printed as a plain constant. That fix is in the final print step (`JsTerm/Syntax/Basic.lean`, `JsTerm/Print/Mini.lean`). It couldn't go in one of the earlier stages you preferred, because neither `Term`, the conversion step nor the `JsTerm` grammar can tell a constant apart from a zero-argument function.
+
+**Current output, the same at both presets (doc comments omitted):**
+```js
+export const test1 = 2147483646;
+export const test2 = -2147483647;
+export const test3 = "￿";
+export const test4 = "\x00";
+```
+This has the same four values as PBO's output. The differences are cosmetic:
+- **Exports:** they are written inline instead of in a closing `export { … }` list.
+- **Escape spelling:** `"\x00"` is a shorter way to write PBO's `"\u0000"`; both are the same string.
+- **Doc comments:** each constant has an `@type` comment, which PBO's output doesn't have.
+
+Since nothing changed, there was nothing to commit, and no proofs or Properties-table entries were affected.
+
 # Summary of changes for run 367a5680-d978-4bd7-964a-413b4ea61f13
 I didn't need to change anything. `BackendSemantics01` already compiles to the same JavaScript as purescript-backend-optimizer, apart from how exports are written. The fix was made in the previous run, and the current code reproduces it exactly.
 
