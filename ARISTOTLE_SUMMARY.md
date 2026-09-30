@@ -1,3 +1,31 @@
+# Summary of changes for run 270dba99-9b5a-499a-8d7d-c84afc62fb48
+I made no changes. `CaseBoolean`'s JS output already matches purescript-backend-optimizer's legacy output, and is shorter.
+
+**Current output** (`Tests/SnapshotsPBOPure/CaseBoolean-pbo.js`; `CaseBoolean-faithful.js` is identical):
+```js
+export const test1 = (a) => (a ? "1" : "2");
+```
+
+**PBO's output** (`legacy-backend/CaseBoolean.js`):
+```js
+const test1 = (v) => {
+  if (v) {
+    return "1";
+  }
+  return "2";
+};
+```
+
+**How they compare:** both test the boolean once, with no runtime helpers and no imports. Ours is a single-expression arrow function, while PBO's needs a block with `if`/`return`. Both presets produce the same code, since a `Bool` is a plain JS boolean in each.
+
+**Which phase does the work:** the `Term` optimizer, which is the phase you prefer. `CaseBoolean-Term-unoptimized.txt` has `if x2 then ret "1" else ret "2"`. `CaseBoolean-Term-optimized.txt` rewrites that to `ret cond(x2, "1", "2")`. The conversion then prints it directly as a ternary. The conversion step and the `JsTerm → JsTerm` step add nothing for this file. Because there is no loop or recursion, there was nothing that needed labelled blocks or loops, and no stack-overflow risk.
+
+**How I checked it:**
+- I rebuilt `leanscript` from the current source and regenerated the `CaseBoolean` outputs. The regenerated files matched the committed ones exactly (the working tree stayed clean).
+- The generated differential checks passed: `CaseBoolean-pbo.check.mjs` and `CaseBoolean-faithful.check.mjs` each ran 2/2, covering `test1(true)` → `"1"` and `test1(false)` → `"2"`.
+
+No Lean theorems were involved, so nothing was added to the Properties table, and there was nothing to commit.
+
 # Summary of changes for run eab80d7a-b3b3-43d4-99d4-226372c2de6d
 I made no changes: `CaseArray`'s JS output was already on par with purescript-backend-optimizer's legacy output, and in one respect better.
 
