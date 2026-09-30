@@ -1411,6 +1411,74 @@ def caseStringSpec : Spec := describe "CaseString" do
             (n.toNat! ≤ m.toNat!)
         | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
 
+/-- `CaseSum`: a `match` on a sum type with a `Nat` field, with literal patterns on the field. -/
+def caseSumSpec : Spec := describe "CaseSum" do
+  it "test1 gives Lean's answers, with at most PBO's comparisons and reads (needs node and leanscript)" do
+    -- `| .L 1 => "1" | .L 2 => "2" | .L _ => "3" | .R _ => "4"`: one test of the tag, then the
+    -- tests of the field in the order of the patterns, as purescript-backend-optimizer writes it
+    -- (`legacy-backend/CaseSum.js`), but without PBO's second tag test (`R` is the only
+    -- constructor left) nor its `throw`, and reading the field once (`const { _1: f$1 } = v`).
+    -- On every input, `test1` gives Lean's answer (PBO's too) and makes no more comparisons and
+    -- no more reads of the value than PBO's.  The differential checks take the field among the
+    -- literals of the patterns too (`LeanScript.Cli.natLitsOf`), so each arm is taken.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseSum"
+    IO.FS.createDirAll dir
+    let file := "CaseSum"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let lean (c : Bool) (n : Nat) : String :=
+      match c, n with
+      | true, 1 => "1"
+      | true, 2 => "2"
+      | true, _ => "3"
+      | false, _ => "4"
+    let xs : List (Bool × Nat) :=
+      [0, 1, 2, 3, 13, 1000].flatMap fun n => [(true, n), (false, n)]
+    let json := "[" ++ ",".intercalate (xs.map fun ((c, n) : Bool × Nat) =>
+      s!"[\"{cond c "L" "R"}\",{n}]") ++ "]"
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      let lit := if preset == "pbo" then "" else "n"
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      assertEq s!"{file}-{preset}: the checks take the arm of `.L 2`" true
+        ((checks.splitOn s!"M.test1(\{ tag: 0, _1: 2{lit} })").length > 1)
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      assertEq s!"{file}-{preset}: one test of the tag" 2 (js.splitOn ".tag === ").length
+      assertEq s!"{file}-{preset}: no throw" 1 (js.splitOn "throw").length
+      for k in [1, 2] do
+        assertEq s!"{file}-{preset}: one test of {k}" 2 (js.splitOn s!" === {k}{lit}").length
+      let run ← IO.Process.output { cmd := "node", args := #["scripts/sum-compare.mjs",
+        s!"{dir}/{file}-{preset}.js", s!"Tests/SnapshotsPBOPure/legacy-backend/{file}.js", json] }
+      assertEq s!"{file}-{preset}: sum-compare" "" (if run.exitCode == 0 then "" else run.stderr)
+      let lines := (run.stdout.splitOn "\n").filter (· != "")
+      assertEq s!"{file}-{preset}: test1 on every input" xs.length lines.length
+      for ((c, n), l) in xs.zip lines do
+        let v := s!"{cond c "L" "R"} {n}"
+        match l.splitOn "|" with
+        | [o, p, oc, pc, or_, pr] =>
+          assertEq s!"{file}-{preset}: test1 ({v})" (lean c n) o
+          assertEq s!"{file}-{preset}: PBO's test1 ({v})" (lean c n) p
+          assertEq s!"{file}-{preset}: test1 ({v}) makes at most PBO's {pc} comparisons" true
+            (oc.toNat! ≤ pc.toNat!)
+          assertEq s!"{file}-{preset}: test1 ({v}) makes at most PBO's {pr} reads" true
+            (or_.toNat! ≤ pr.toNat!)
+          -- `R n`: one tag test and one read (PBO: two of each)
+          if !c then
+            assertEq s!"{file}-{preset}: test1 ({v}) makes one comparison" "1" oc
+        | _ => assertEq s!"{file}-{preset}: a line of the results" "o|p|oc|pc|or|pr" l
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1422,6 +1490,7 @@ def spec : Spec := do
   moreJsSpec
   caseRedBlackTreeSpec
   caseStringSpec
+  caseSumSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

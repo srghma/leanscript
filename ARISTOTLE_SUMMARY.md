@@ -1,3 +1,45 @@
+# Summary of changes for run e3409c00-d31f-4f1f-b262-a7a0a1fd216b
+`CaseSum` already compiled to JavaScript that matches or beats `legacy-backend/CaseSum.js`, so I left all three compilation phases unchanged. What I changed is the testing: the generated check files never called `test1` with `.L 2`, so the `"2"` arm had never been run. Now it is, and a new test compares our output with PBO's.
+
+**Current output** (`CaseSum-pbo.js`; `-faithful.js` is the same with `1n`, `2n`):
+```js
+export const test1 = (v) => {
+  if (v.tag === 0) {
+    const { _1: f$1 } = v;
+    if (f$1 === 1) { return "1"; }
+    return f$1 === 2 ? "2" : "3";
+  }
+  return "4";
+};
+```
+- **Same order of tests as PBO:** one tag test, then `=== 1`, then `=== 2`.
+- **Better than PBO in two places:**
+  - On `R`, PBO tests the tag a second time (`v.tag === "R"`) and ends with `throw new Error("UNREACHABLE")`. We skip both, because `R` is the only constructor left.
+  - PBO reads `v._n` for each test. We read the field once, into `f$1`.
+- **Measured on 12 inputs** (`L`/`R` with 0, 1, 2, 3, 13, 1000), both presets:
+  - every answer is Lean's, and PBO's answers are too;
+  - `R n` takes 1 comparison and 1 read of the value, where PBO takes 2 and 2;
+  - `L 0`, `L 2`, `L 3` take 2 reads, where PBO takes 3;
+  - comparisons on `L` are equal to PBO's.
+- **Why no labelled blocks or loops:** there is no recursion and no shared tail here, so they would add nothing. No change in any phase would reduce the tests further.
+- **Only difference in style:** the last test is written as a conditional expression (`?:`) instead of PBO's `if` and `return`. It makes the same comparisons, and the other snapshots already print this pattern that way.
+
+**Changes**
+- **Check inputs (`LeanScriptCli/Check.lean`):** a `Nat` field of an inductive-type parameter is now also tried with the number literals in the function and its helpers such as `test1.match_1` (new `natLitsOf`, at most 4 values). Before, only the first two samples (0 and 1) were used. The checks in `CaseSum-*.check.mjs` went from 4 to 6 and now include `test1({ tag: 0, _1: 2 })` giving `"2"`.
+- **New script `scripts/sum-compare.mjs`:** runs our `test1` and PBO's on the same values and counts comparisons with a literal and reads of the value.
+- **New test in `Tests/Main.lean` (`caseSumSpec`):** for both presets it checks that:
+  - the check file passes and covers the `.L 2` arm;
+  - the JS has no runtime import, no `throw`, one tag test, and one test each of `1` and `2`;
+  - on every input the answer is Lean's (PBO's too), with no more comparisons or reads than PBO, and exactly one comparison on `R`.
+- **`README.md`** describes the new check inputs.
+
+**Checks run**
+- `lake build leanscript tests` succeeds, and `lake exe tests` passes 88/88, including the new test.
+- I regenerated all snapshots. No `.js` output changed. Only 4 check files gained cases: `CaseSum-*.check.mjs` and `Tests/SnapshotsMy/TagChain-*.check.mjs`, which now also tries the literal `4`. Every node check passes.
+- The snapshot script still exits 1, as before, because of the "literal too big" errors in `PrimOpInt02Configurable` and `PrimOpInt03Configurable`.
+
+No Lean theorems changed, so the Properties table is unchanged. Everything is committed.
+
 # Summary of changes for run 28f7b2e0-617b-44e2-a21f-96f3ee85f3ea
 `CaseString` was already on par with `legacy-backend/CaseString.js` before this session, so I changed none of the three compilation phases. What I did change is the testing: the generated check files never tried the inputs `"foo"` or `"bar"`, so two of the four arms had never been tested. Now they are.
 

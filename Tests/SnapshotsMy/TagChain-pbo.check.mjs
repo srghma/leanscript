@@ -80,10 +80,16 @@ check("test2({ tag: 2, _1: 1, _2: 1 }, 13)", () => M.test2({ tag: 2, _1: 1, _2: 
 check("test3({ tag: 0 })", () => M.test3({ tag: 0 }), "0", false);
 check("test3({ tag: 1, _1: 0 })", () => M.test3({ tag: 1, _1: 0 }), "0", false);
 check("test3({ tag: 1, _1: 1 })", () => M.test3({ tag: 1, _1: 1 }), "1", false);
+check("test3({ tag: 1, _1: 4 })", () => M.test3({ tag: 1, _1: 4 }), "4", false);
 check("test3({ tag: 2, _1: 0, _2: 0 })", () => M.test3({ tag: 2, _1: 0, _2: 0 }), "0", false);
 check("test3({ tag: 2, _1: 0, _2: 1 })", () => M.test3({ tag: 2, _1: 0, _2: 1 }), "1", false);
+check("test3({ tag: 2, _1: 0, _2: 4 })", () => M.test3({ tag: 2, _1: 0, _2: 4 }), "4", false);
 check("test3({ tag: 2, _1: 1, _2: 0 })", () => M.test3({ tag: 2, _1: 1, _2: 0 }), "1", false);
 check("test3({ tag: 2, _1: 1, _2: 1 })", () => M.test3({ tag: 2, _1: 1, _2: 1 }), "2", false);
+check("test3({ tag: 2, _1: 1, _2: 4 })", () => M.test3({ tag: 2, _1: 1, _2: 4 }), "5", false);
+check("test3({ tag: 2, _1: 4, _2: 0 })", () => M.test3({ tag: 2, _1: 4, _2: 0 }), "4", false);
+check("test3({ tag: 2, _1: 4, _2: 1 })", () => M.test3({ tag: 2, _1: 4, _2: 1 }), "5", false);
+check("test3({ tag: 2, _1: 4, _2: 4 })", () => M.test3({ tag: 2, _1: 4, _2: 4 }), "8", false);
 
 console.log(`TagChain-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

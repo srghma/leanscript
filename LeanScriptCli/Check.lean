@@ -147,8 +147,12 @@ structure Sample where
   js : String
   deriving Inhabited
 
-/-- The samples of a type (few and small: the functions are called on every combination). -/
-partial def samplesOf (cfg : JsConfig) : SType → List Sample
+/-- The samples of a type (few and small: the functions are called on every combination).
+    `nats` are the natural-number literals of the function (`natLitsOf`): the `Nat` fields of the
+    values of a `SType.tree` take them too, besides their first two samples, so that a pattern
+    `| .L 2 => …` is taken by some check. -/
+partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : List Sample :=
+  match t with
   | .nat => [0, 1, 2, 5, 13].map fun n => ⟨mkNatLit n, intLit (cfg.natRepr == .bigint) n⟩
   | .int => [(-7 : Int), -1, 0, 1, 2, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
   | .bool => [⟨toExpr false, "false"⟩, ⟨toExpr true, "true"⟩]
@@ -174,32 +178,38 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
       f 225 true 2 "2.25", f 3 false 1 "30",
       ⟨mkApp (mkConst ``Float.neg) (mkApp3 (mkConst ``Float.ofScientific) (mkNatLit 15)
         (toExpr true) (mkNatLit 1)), "-1.5"⟩]
-  | .arr t => (listSamples cfg t true).map fun l =>
+  | .arr t => (listSamples cfg t true nats).map fun l =>
       ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
-  | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray)
+  | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray) nats
   | .record _ ctor fs =>
     -- a few records, the samples of each field taken at shifted positions
-    let fss := fs.map (samplesOf cfg)
+    let fss := fs.map (samplesOf cfg · nats)
     (List.range 3).map fun i =>
       let picks : List Sample := fss.zipIdx.map fun (ss, j) => ss[(i + j) % ss.length]!
       ⟨mkAppN ctor (picks.map (·.lean)).toArray,
        "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
-  | .wrap _ ctor t => (samplesOf cfg t).map fun x => ⟨mkApp ctor x.lean, x.js⟩
+  | .wrap _ ctor t => (samplesOf cfg t nats).map fun x => ⟨mkApp ctor x.lean, x.js⟩
   | .tree ctors =>
     -- the values of depth at most 2 (the leaves taken among their first two samples), the
     -- smallest first, at most `treeCap` of them
     let grow (vs : List Sample) : List Sample :=
-      vs ++ (treeLayer cfg ctors vs).filter fun v => !vs.any (·.js == v.js)
+      vs ++ (treeLayer cfg ctors nats vs).filter fun v => !vs.any (·.js == v.js)
     (grow (grow (grow []))).take treeCap
 where
   /-- The values built by one constructor on top of the values `sub` (the leaves among their
-      first two samples), at every constructor. -/
-  treeLayer (cfg : JsConfig) (ctors : List (Expr × List (Option SType))) (sub : List Sample) :
-      List Sample :=
+      first two samples, and a `Nat` leaf among the literals `nats` too), at every
+      constructor. -/
+  treeLayer (cfg : JsConfig) (ctors : List (Expr × List (Option SType))) (nats : List Nat)
+      (sub : List Sample) : List Sample :=
     ctors.zipIdx.flatMap fun ((ctor, fs), i) =>
       let choices : List (List Sample) := fs.map fun
         | none => sub
-        | some t => (samplesOf cfg t).take 2
+        | some t =>
+          let first := (samplesOf cfg t nats).take 2
+          if t == .nat then
+            first ++ ((nats.filter fun (k : Nat) => !first.any (·.js == intLit (cfg.natRepr == .bigint) k)).map
+              fun (k : Nat) => ⟨mkNatLit k, intLit (cfg.natRepr == .bigint) k⟩)
+          else first
       let picks : List (List Sample) := choices.foldr
         (fun cs acc => cs.flatMap fun c => acc.map (c :: ·)) [[]]
       picks.map fun xs =>
@@ -212,8 +222,8 @@ where
   treeCap : Nat := 48
   /-- The samples of `List t`, spelled as a JavaScript array (`array`) or as the cons cells of
       `ListRepr.taggedUnion` (`{ tag: 1, _1: x, _2: … { tag: 0 } }`). -/
-  listSamples (cfg : JsConfig) (t : SType) (array : Bool) : List Sample :=
-    let elems := samplesOf cfg t
+  listSamples (cfg : JsConfig) (t : SType) (array : Bool) (nats : List Nat) : List Sample :=
+    let elems := samplesOf cfg t nats
     let mk (xs : List Sample) : Sample :=
       ⟨xs.foldr (fun x acc => mkApp3 (mkConst ``List.cons [.zero]) (elemTy t) x.lean acc)
           (mkApp (mkConst ``List.nil [.zero]) (elemTy t)),
@@ -239,8 +249,8 @@ where
     the space (each list is walked with a stride so that not only the first samples of the
     first parameter are used), then ordered from the smallest up (by the sum of the
     positions of the samples in their lists, which list the small samples first). -/
-def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) (strs : List String := []) :
-    List (List Sample) :=
+def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) (strs : List String := [])
+    (nats : List Nat := []) : List (List Sample) :=
   let all : List (Nat × List Sample) := ts.foldr (fun t acc =>
     ((samplesOf' t).zipIdx).flatMap fun (s, i) => acc.map fun (k, ss) => (i + k, s :: ss))
     [(0, [])]
@@ -254,7 +264,7 @@ where
   /-- The samples of a parameter type: those of `samplesOf`, and for a `String` the literals
       `strs` of the function too (after the others). -/
   samplesOf' (t : SType) : List Sample :=
-    let base := samplesOf cfg t
+    let base := samplesOf cfg t nats
     if t == .string then
       base ++ (strs.filter fun s => !base.any (·.js == jsStringLit s)).map fun s =>
         ⟨toExpr s, jsStringLit s⟩
@@ -281,6 +291,28 @@ def stringLitsOf (n : Name) (max : Nat := 8) : MetaM (List String) := do
   for c in aux do
     if let some (.defnInfo a) := env.find? c then acc := strLitsAux a.value acc
   return acc.toList.take max
+
+/-- The natural-number literals of `e` added to `acc` (once each), in order of appearance. -/
+partial def natLitsAux (e : Expr) (acc : Array Nat) : Array Nat :=
+  match e with
+  | .lit (.natVal k) => if acc.contains k then acc else acc.push k
+  | .app f a => natLitsAux a (natLitsAux f acc)
+  | .lam _ t b _ | .forallE _ t b _ => natLitsAux b (natLitsAux t acc)
+  | .letE _ t v b _ => natLitsAux b (natLitsAux v (natLitsAux t acc))
+  | .mdata _ b | .proj _ _ b => natLitsAux b acc
+  | _ => acc
+
+/-- The natural-number literals (below `2 ^ 32`) of the definition `n` and of its auxiliary
+    definitions (`n.match_1`, …), at most `max` of them, in order of appearance: the patterns of
+    a `match` on a `Nat` field (`| .L 2 => …`), so that the checks take every arm. -/
+def natLitsOf (n : Name) (max : Nat := 4) : MetaM (List Nat) := do
+  let env ← getEnv
+  let some (.defnInfo d) := env.find? n | return []
+  let aux := d.value.getUsedConstants.filter fun c => n.isPrefixOf c && c != n
+  let mut acc := natLitsAux d.value #[]
+  for c in aux do
+    if let some (.defnInfo a) := env.find? c then acc := natLitsAux a.value acc
+  return (acc.toList.filter (· < 2 ^ 32)).take max
 
 /-- A check: the JavaScript call and the answer Lean gives, printed. -/
 structure CheckCase where
@@ -402,7 +434,8 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
   let mut out : Array CheckCase := #[]
   let cap := if ps.any (· matches .tree _) then 48 else 24
   let strs ← if ps.contains .string then stringLitsOf n else pure []
-  for args in combos cfg ps cap strs do
+  let nats ← if ps.any (· matches .tree _) then natLitsOf n else pure []
+  for args in combos cfg ps cap strs nats do
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
     let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)

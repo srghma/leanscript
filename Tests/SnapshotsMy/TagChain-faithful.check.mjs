@@ -80,10 +80,16 @@ check("test2({ tag: 2, _1: 1n, _2: 1n }, 13n)", () => M.test2({ tag: 2, _1: 1n, 
 check("test3({ tag: 0 })", () => M.test3({ tag: 0 }), "0", false);
 check("test3({ tag: 1, _1: 0n })", () => M.test3({ tag: 1, _1: 0n }), "0", false);
 check("test3({ tag: 1, _1: 1n })", () => M.test3({ tag: 1, _1: 1n }), "1", false);
+check("test3({ tag: 1, _1: 4n })", () => M.test3({ tag: 1, _1: 4n }), "4", false);
 check("test3({ tag: 2, _1: 0n, _2: 0n })", () => M.test3({ tag: 2, _1: 0n, _2: 0n }), "0", false);
 check("test3({ tag: 2, _1: 0n, _2: 1n })", () => M.test3({ tag: 2, _1: 0n, _2: 1n }), "1", false);
+check("test3({ tag: 2, _1: 0n, _2: 4n })", () => M.test3({ tag: 2, _1: 0n, _2: 4n }), "4", false);
 check("test3({ tag: 2, _1: 1n, _2: 0n })", () => M.test3({ tag: 2, _1: 1n, _2: 0n }), "1", false);
 check("test3({ tag: 2, _1: 1n, _2: 1n })", () => M.test3({ tag: 2, _1: 1n, _2: 1n }), "2", false);
+check("test3({ tag: 2, _1: 1n, _2: 4n })", () => M.test3({ tag: 2, _1: 1n, _2: 4n }), "5", false);
+check("test3({ tag: 2, _1: 4n, _2: 0n })", () => M.test3({ tag: 2, _1: 4n, _2: 0n }), "4", false);
+check("test3({ tag: 2, _1: 4n, _2: 1n })", () => M.test3({ tag: 2, _1: 4n, _2: 1n }), "5", false);
+check("test3({ tag: 2, _1: 4n, _2: 4n })", () => M.test3({ tag: 2, _1: 4n, _2: 4n }), "8", false);
 
 console.log(`TagChain-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
