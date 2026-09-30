@@ -42,16 +42,17 @@ def WFAtom.optimize {Γ : WCtx ks} {τ : Ty ks} (a : WFAtom Δ Γ τ) : WFAtom �
   ⟨a.term.optimize⟩
 
 @[simp] theorem WFAtom.optimize_eval {Γ : WCtx ks} {τ : Ty ks} (a : WFAtom Δ Γ τ)
-    (e : WEnv Δ Γ) : a.optimize.eval e = a.eval e :=
-  Term.optimize_eval _ _ _ _
+    (e : WEnv Δ Γ) : a.optimize.eval e = a.eval e := by
+  simp only [WFAtom.optimize, WFAtom.eval]
+  exact Term.optimize_eval _ _ _ _
 
 @[simp] theorem WFAtom.optimize_evalBool {Γ : WCtx ks} (a : WFAtom Δ Γ .bool)
     (e : WEnv Δ Γ) : a.optimize.evalBool e = a.evalBool e :=
-  Term.optimize_eval _ _ _ _
+  WFAtom.optimize_eval a e
 
 @[simp] theorem WFAtom.optimize_evalList {Γ : WCtx ks} {τ : Ty ks} (a : WFAtom Δ Γ (.list τ))
     (e : WEnv Δ Γ) : a.optimize.evalList e = a.evalList e :=
-  Term.optimize_eval _ _ _ _
+  WFAtom.optimize_eval a e
 
 /-- Arguments optimised one by one. -/
 def WFAtoms.optimize {Γ : WCtx ks} : {ts : WCtx ks} → WFAtoms Δ Γ ts → WFAtoms Δ Γ ts

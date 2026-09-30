@@ -605,6 +605,68 @@ def moreJsSpec : Spec := describe "JsTerm" do
           assertEq s!"{file}-{preset}: test1 {x} makes at most PBO's {m} comparisons" true
             (n.toNat! ≤ m.toNat!)
         | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
+  it "a test both arms of an if begin with is made first (needs node and leanscript)" do
+    -- `CaseProduct`: `| ⟨1, 2, 3⟩ | ⟨_, 4, _⟩ | ⟨4, 5, 6⟩ | _`.  When the first field is not `1`,
+    -- both arms of `if a == 4` begin with `if b == 4 then "2"`; that test is made first
+    -- (`Term.shareTestWalk`), as purescript-backend-optimizer does
+    -- (`legacy-backend/CaseProduct.js`): on every input no more comparisons than PBO's, fewer on
+    -- some, and the answers of Lean.  `CaseRecord.test1` (`| {a := 1} | {b := 1} | {c := 1} |
+    -- {a := 2, b := 2} | _`) becomes PBO's chain of tests the same way.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/shareTest"
+    IO.FS.createDirAll dir
+    let count (js mode : String) (ts : List (List Int)) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, "test1", mode, toString ts]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let vs : List Int := [0, 1, 2, 3, 4, 5, 6]
+    let tuples : List (List Int) := vs.flatMap fun a => vs.flatMap fun b => vs.map fun c => [a, b, c]
+    let product (a b c : Int) : String :=
+      match a, b, c with
+      | 1, 2, 3 => "1"
+      | _, 4, _ => "2"
+      | 4, 5, 6 => "3"
+      | _, _, _ => "catch"
+    let record (a b c : Int) : String :=
+      match a, b, c with
+      | 1, _, _ => "0"
+      | _, 1, _ => "1"
+      | _, _, 1 => "2"
+      | 2, 2, _ => "3"
+      | _, _, _ => "catch"
+    for (file, lean) in [("CaseProduct", product), ("CaseRecord", record)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      let pbo ← count s!"Tests/SnapshotsPBOPure/legacy-backend/{file}.js" "spread" tuples
+      for preset in ["pbo", "faithful"] do
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+        assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+        assertEq s!"{file}-{preset}: checks run, none failed" true
+          ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+        let ours ← count s!"{dir}/{file}-{preset}.js" "record" tuples
+        assertEq s!"{file}-{preset}: test1 on every input" tuples.length ours.length
+        let mut total := 0
+        let mut totalPbo := 0
+        for ((o, p), t) in (ours.zip pbo).zip tuples do
+          match o, p, t with
+          | [x, r, n], [_, _, m], [a, b, c] =>
+            assertEq s!"{file}-{preset}: test1 {x}" (lean a b c) r
+            assertEq s!"{file}-{preset}: test1 {x} makes at most PBO's {m} comparisons" true
+              (n.toNat! ≤ m.toNat!)
+            total := total + n.toNat!
+            totalPbo := totalPbo + m.toNat!
+          | _, _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
+        if file == "CaseProduct" then
+          assertEq s!"{file}-{preset}: fewer comparisons than PBO in all ({total} < {totalPbo})"
+            true (total < totalPbo)
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

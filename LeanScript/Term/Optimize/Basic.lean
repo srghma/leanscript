@@ -4,6 +4,7 @@ public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.Hoist
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
+public import LeanScript.Term.Optimize.ShareTest
 public import LeanScript.Term.Optimize.Append
 public import LeanScript.Term.Optimize.Arith
 public import LeanScript.Term.Optimize.InlineEval
@@ -33,6 +34,11 @@ Then the known fields (`LeanScript.Term.Optimize.Fields`): every record case ana
 its fields (`Term.widenFields`), and a case analysis of an unknown record whose fields are
 already bound is dropped, its fields renamed to the ones already bound (`Term.reuseFields`:
 `let ⟨a, b⟩ := x; …; let ⟨c, d⟩ := x; body` is `let ⟨a, b⟩ := x; …; body[c := a, d := b]`).
+
+Then a test that both arms of an `if` begin with, and that leads to the same answer (or jump)
+in both, is made first (`Term.shareTestWalk`, `LeanScript.Term.Optimize.ShareTest`):
+`if p then (if q then X else Y) else (if q then X else Z)` is
+`if q then X else if p then Y else Z` (never more tests on any path, `X` written once).
 
 Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
 
@@ -385,14 +391,15 @@ end
 
 /-- **The optimiser**: the inlining of known closures that compute an expression
     (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
-    then `Term.reuseFields`), those of `Term.cseWalk`, the hoisting of the extern calls every
+    then `Term.reuseFields`), the tests shared by both arms of an `if` made first
+    (`Term.shareTestWalk`), those of `Term.cseWalk`, the hoisting of the extern calls every
     path computes (`Term.hoistWalk`), the boolean conditions
     (`Term.condWalk`), the append chains (`Term.appendWalk`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
     (`Term.arithWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.hoistWalk.condWalk.appendWalk.inlineRet.arithWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk.condWalk.appendWalk.inlineRet.arithWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -597,7 +604,7 @@ theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} 
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
   rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.appendWalk_eval, Term.condWalk_eval,
-    Term.hoistWalk_eval, Term.cseWalk_eval,
+    Term.hoistWalk_eval, Term.cseWalk_eval, Term.shareTestWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]
 

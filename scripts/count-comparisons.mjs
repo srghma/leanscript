@@ -4,12 +4,18 @@
 //
 //   node count-comparisons.mjs FILE.js FUNCTION CURRIED XS YS
 //   node count-comparisons.mjs FILE.js FUNCTION CURRIED XS
+//   node count-comparisons.mjs FILE.js FUNCTION record TUPLES
+//   node count-comparisons.mjs FILE.js FUNCTION spread TUPLES
 //
 // CURRIED is `1` for `f(x)(y)` (purescript-backend-optimizer) and `0` for `f(x, y)`; XS and YS
 // are JSON arrays of numbers (integers are passed as BigInts when the module compares with BigInt
 // literals).  Prints one line `x,y,result,comparisons` per pair; without YS the function takes
 // one argument, and each line is `x,result,comparisons`.  A call that throws has the result
-// `threw: MESSAGE` (a `panic!`).
+// `threw: MESSAGE` (a `panic!`).  With `record` (resp. `spread`), TUPLES is a JSON array of arrays
+// of numbers, and the function is called on the record `{ _1: x1, _2: x2, … }` of each (resp. as
+// `f(x1, x2, …)`, as purescript-backend-optimizer spells a product's fields); each line is
+// `x1;x2;…,result,comparisons`.  The compared operand may be a name with `$` or a field read
+// (`f$1 === 4`, `x._3 === 1`).
 import { readFileSync } from "node:fs";
 
 const [file, fn, curried, xsJson, ysJson] = process.argv.slice(2);
@@ -19,7 +25,7 @@ globalThis.__cmp = (a, op, b) => {
   return op === "===" ? a === b : a !== b;
 };
 const src = readFileSync(file, "utf8").replace(
-  /\b(\w+) (===|!==) (-?\d+(?:\.\d+)?n?)\b/g,
+  /(?<![\w$.])([\w$]+(?:\.[\w$]+)*) (===|!==) (-?\d+(?:\.\d+)?n?)\b/g,
   (_, a, op, b) => `__cmp(${a}, "${op}", ${b})`,
 );
 const M = await import("data:text/javascript," + encodeURIComponent(src));
@@ -33,6 +39,20 @@ const call = (thunk) => {
   }
 };
 const out = [];
+if (curried === "record" || curried === "spread") {
+  for (const t of JSON.parse(xsJson)) {
+    comparisons = 0;
+    const args = t.map(lift);
+    const r = call(() =>
+      curried === "record"
+        ? M[fn](Object.fromEntries(args.map((v, i) => ["_" + (i + 1), v])))
+        : M[fn](...args),
+    );
+    out.push(`${t.join(";")},${r},${comparisons}`);
+  }
+  console.log(out.join("\n"));
+  process.exit(0);
+}
 for (const x of JSON.parse(xsJson)) {
   if (ysJson === undefined) {
     comparisons = 0;

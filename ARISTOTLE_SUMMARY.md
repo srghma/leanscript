@@ -1,3 +1,49 @@
+# Summary of changes for run 2cec354c-8ba1-4f61-9f9f-172a408550a8
+`CaseProduct` now compiles to the same tests as `legacy-backend/CaseProduct.js`. Across a 7×7×7 grid of inputs it never makes more comparisons than PBO and makes fewer on 6 of them. The change is a new `Term → Term` optimizer pass, proved to preserve `eval`. No change to the `JsTerm` phases was needed.
+
+**Analysis.** The previous output answered correctly, but it tested `a == 4` before `b == 4` when `a ≠ 1`, because Lean's match compiler splits on the first field first. PBO tests `b == 4` first for the `⟨_, 4, _⟩` row. Counting comparisons on inputs 0–6 for each field, our old code made more comparisons than PBO on 42 of 343 inputs.
+
+**New output** (`CaseProduct-pbo.js`; `-faithful.js` is the same with `1n`, …):
+```js
+export const test1 = (a) => {
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
+  if (f$1 === 1) {
+    if (f$2 === 2) { return f$3 === 3 ? "1" : "catch"; }
+    return f$2 === 4 ? "2" : "catch";
+  }
+  if (f$2 === 4) { return "2"; }
+  if (f$1 === 4 && f$2 === 5 && f$3 === 6) { return "3"; }
+  return "catch";
+};
+```
+- **Comparisons:** on all 343 inputs every answer matches Lean and PBO, and we never make more comparisons than PBO. On 6 inputs we make fewer, because in the `a == 1` branch we test `b` before `c`.
+- **Remaining difference from PBO:** PBO takes the three fields as separate arguments; we take the structure and destructure it once.
+- **Labelled blocks:** there is no recursion or shared tail here, so no labelled block or loop is needed.
+
+**The pass** (`Term.shareTestWalk`, in the new `LeanScript/Term/Optimize/ShareTest.lean`, run right after `reuseFields` in `Term.optimize`):
+- `if p then (if q then X else Y) else (if q then X else Z)` becomes `if q then X else if p then Y else Z`, and the same when the shared part is the `else` branch.
+- A branch written as `ret (q ? a : b)` is treated as an `if` too.
+- No input is tested more often than before; when `q` holds it saves one test, and `X` is written once.
+- Conditions only count as the same when written identically: same variables, literals and externs. I extended extern comparison to the entries of `PreludeExtern` without type arguments, such as `lean_nat_dec_eq`, because the existing comparison didn't cover that family.
+
+**Proofs** (standard axioms only, no `sorry`; both added to the Properties table as proved):
+- `Term.shareTestWalk_eval`: the pass doesn't change the value of a statement, so `Term.optimize_eval` still holds.
+- `Term.numCalls_shareTestWalk`: the pass adds no calls, so `Term.numCalls_optimize` still holds.
+- `CaseProductTest.test1_optimized_run` (new file `Tests/TermTests/Optimize/CaseProductTest.lean`): for every `a b c`, the optimised `Term` computes Lean's `test1 ⟨a, b, c⟩`. The same file has a `native_decide` check of the optimised text.
+
+**Other effects**
+- **`CaseRecord` also improved:** its `test1` is now PBO's chain of tests. On a small grid, `test1` and `test2` now make exactly as many comparisons as PBO; before, they made more on many inputs.
+- **Snapshots:** I regenerated all of them. Only the `CaseProduct` and `CaseRecord` outputs changed, and every node check passes. The script still exits 1, only because of the existing "literal too big" errors.
+- **`LeanScript/WFTerm/Optimize.lean`:** adding the pass made three one-line proofs time out, so I rewrote them to unfold explicitly.
+- **`scripts/count-comparisons.mjs`:** it can now pass a record or separate arguments, and counts comparisons on names containing `$` and on field reads.
+- **New test in `Tests/Main.lean`:** for both presets, on all 343 inputs, it checks that `CaseProduct` and `CaseRecord` give Lean's answers and never make more comparisons than PBO. It also checks that `CaseProduct` makes fewer in total.
+- **Weak check file:** `CaseProduct-*.check.mjs` still only tries 3 inputs, all of which answer `"catch"`. The new test above covers every branch instead.
+
+**Verification**
+- `lake build tests TermTests TyTests JsSpec OpsSpec RuntimeSpec JsTerm leanscript LeanScript.WFTerm.Optimize` succeeds.
+- `lake exe tests` passes 84/84. The first run had two 30-second timeouts under parallel load. Both pass on their own, the rerun passed everything, and timing `leanscript` before and after the change showed no slowdown.
+- I also updated `README.md` to describe the pass. Everything is committed.
+
 # Summary of changes for run 554e1c5f-dd9a-434c-bcb4-42434e20e727
 `CasePartial` now compiles to JavaScript with the same shape as `legacy-backend/CasePartial.js`, and the panic arm now throws, which resolves your `TODO: make sure throws`.
 
