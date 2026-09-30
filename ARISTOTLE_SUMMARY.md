@@ -1,3 +1,31 @@
+# Summary of changes for run c4dce21e-c8f8-45f3-bbd6-16acd18393db
+I didn't need to change anything. `AssocStringAppend` already compiles to JavaScript that matches the legacy backend at both presets, because the fix was made in the previous run.
+
+**Output now, the same at both presets:**
+```
+export const test1 = (x) => "ab" + x + x + x + x + "cd";
+export const test2 = (x) => "ab" + x + x + x + x + "cd";
+export const test3 = (x) => "ab" + x + x + x + x + "cde" + x + x + x + x + "fg";
+```
+These function bodies are character-for-character the same as `legacy-backend/AssocStringAppend.js`. The only difference is style: the exports are written inline (`export const`) rather than in a closing `export { … }` list, which does the same thing.
+
+**Why the output matches.** Lean turns each `testN` into nested `String.append` calls; `AssocStringAppend-Term-unoptimized.txt` shows `"a"`, `"b"`, `"c"` and `"d"` still separate. The fix is entirely in the `Term → Term` phase, which is the phase you prefer. The `StrApp.normNeu` step in `LeanScript/Term/Optimize/StringAppend.lean` runs as part of `Term.optimize` and does three things:
+- drops empty `""` literals;
+- merges neighbouring literals, so `"a" ++ "b"` becomes `"ab"`;
+- regroups the whole chain from the left, `((x₁ ++ x₂) ++ …) ++ xₙ`.
+
+JavaScript's `+` also groups from the left, so the printer needs no parentheses and none of the later phases had to change. `AssocStringAppend-Term-optimized.txt` shows the regrouped chain.
+
+**Checks I ran this session:**
+- **Snapshot:** I rebuilt the `leanscript` tool and regenerated the snapshot from the current code. The new files are byte-identical to the committed ones.
+- **JavaScript tests:** the node checks pass, 15/15 for each preset.
+- **Proofs:** `LeanScript.Term.Optimize.StringAppend` and `TermTests.Optimize.AssocStringAppendTest` build, with no `sorry`.
+  - `StrApp.normNeu_eval` proves the step never changes a value, so the theorem that the whole optimiser preserves results (`Term.optimize_eval`) still holds. It uses only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+  - `testN_optimized_run` proves that for every `x`, each optimised `testN` computes the legacy body. For `test3` that is `"ab" ++ x ++ x ++ x ++ x ++ "cde" ++ x ++ x ++ x ++ x ++ "fg"`.
+  - `testN_optimized_pretty` checks that the optimised term has exactly this form. These use `native_decide`, so they also depend on Lean's compiler.
+
+Both results were already marked proved in the Properties table, and I left the table as it was. There were no changes to commit.
+
 # Summary of changes for run 2a0f49c6-8076-414f-9c35-d5cfc587645e
 The JavaScript for `AssocStringAppend` now matches the legacy backend exactly, at both presets. The fix is entirely in the `Term → Term` optimiser; the later phases didn't need changes.
 
