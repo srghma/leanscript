@@ -102,6 +102,13 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
       else .binary x .minus (natNum shift.natAbs)
     return natOfNumber nt i
   | .enumEq a b => do return .binary (← exprToMini sc a) .strictEq (← exprToMini sc b)
+  | .index _ nt a i => do
+    let a ← exprToMini sc a
+    let i : MiniExpr ← match nt.isBigInt, i.natLit? with
+      | true, some k => pure (natNum k)
+      | true, none => do pure (.call (ident "Number") [← exprToMini sc i])
+      | false, _ => exprToMini sc i
+    return .index a i
   | .array_mk (.generic _) ps => do return .array ((← partsToMini sc ps).map .elem)
   | .array_mk (.typed t) ps => do
     return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)

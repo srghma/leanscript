@@ -215,7 +215,7 @@ export const Bag$firstItems = (a) => {
     }
     const { _1: f$5 } = x$3;
     const { _2: f$6 } = x$3._2;
-    return 2n < BigInt(f$5.length)
+    return 2 < f$5.length
       ? array__lean_array_push_immutable(f$5, BigInt(f$6.length))
       : f$6;
   };
@@ -324,7 +324,7 @@ export const bag2 = (xs) => {
     }
     const { _1: f$8 } = x$6;
     const { _2: f$9 } = x$6._2;
-    return 2n < BigInt(f$8.length)
+    return 2 < f$8.length
       ? array__lean_array_push_immutable(f$8, BigInt(f$9.length))
       : f$9;
   };

@@ -137,6 +137,23 @@ inductive Ref where
   | fields (fs : List Ref) (strict : Bool)
   deriving Inhabited
 
+/-- A variable of JavaScript as the facts on sizes name it: a mutable variable or not, and its
+    de Bruijn *level* (`Ref.c`, `Ref.m`), which does not change under binders. -/
+abbrev VarKey := Bool × Nat
+
+/-- What the tests around the part of a statement being converted say of the sizes of arrays
+    held in variables (`JsTerm.Lower.Bounds`).  A fact is about the value a variable of `Term`
+    has; the JavaScript variable holding it keeps that value everywhere below the test that
+    established it (a constant is never reassigned; a mutable variable of a loop is only
+    assigned at the end of an iteration, from values computed before, `loopNext`). -/
+structure BoundFacts where
+  /-- `(a, k)`: the array in the variable `a` has at least `k` elements. -/
+  minSize : List (VarKey × Nat) := []
+  /-- `(i, a)`: the natural number in the variable `i` is smaller than the size of the array in
+      the variable `a`. -/
+  idxLt : List (VarKey × VarKey) := []
+  deriving Inhabited
+
 /-- The JavaScript variables of the two contexts of variables of a statement: the unknowns `Γ`
     and the known values `Φ`, innermost first. -/
 structure Names where
@@ -160,6 +177,9 @@ structure Names where
       to `acc` has its fields bound one by one, so that the next iteration assigns them to the
       variables instead of building the record. -/
   flatAcc : Option Nat := none
+  /-- What the enclosing tests say of the sizes of arrays (`JsTerm.Lower.Bounds`): an access
+      known to be in bounds is written `a[i]` (`JsExpr.index`). -/
+  bounds : BoundFacts := {}
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes

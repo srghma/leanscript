@@ -87,6 +87,7 @@ def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr S C M τ �
   | .imported _ as | .inlined _ as | .listOp _ as => as.occsAt o
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.occsAt o
   | .enumEq a b => a.occsAt o ++ b.occsAt o
+  | .index _ _ a i => a.occsAt o ++ i.occsAt o
   | .app f as =>
     let fo := match f with
       | .cvar x => (o.cOcc x.index).map fun oc => { oc with callee := true }
@@ -193,6 +194,7 @@ def JsExpr.noEffect {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
   | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. | .global _ => true
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.noEffect
   | .enumEq a b => a.noEffect && b.noEffect
+  | .index _ _ a i => a.noEffect && i.noEffect
   | .record_mk fs => fs.noEffect
   | .union_mk _ as => as.noEffect
   | .inlined (e := .pure) _ as => as.noEffect
@@ -234,6 +236,7 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
   | .cvar y => y.index == x
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x bars
   | .enumEq a b => JsExpr.readFirst2 strict x bars a b
+  | .index _ _ a i => JsExpr.readFirst2 strict x bars a i
   | .app f as =>
     if f.mentions ⟨false, x⟩ then false
     else f.waits strict bars && as.readFirst strict x bars

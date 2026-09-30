@@ -11,7 +11,7 @@
 export const test1 = (fn) => {
   const x$1 = fn();
   const k$2 = [1n, 2n, x$1];
-  return BigInt(k$2.length) === 3n ? k$2 : [];
+  return k$2.length === 3 ? k$2 : [];
 };
 
 /**

@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Lower.DataRec
+public import JsTerm.Lower.Bounds
 
 @[expose] public section
 
@@ -21,7 +22,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` (`listRepr = stdListToJsArray`) or `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` (`listRepr = taggedUnion`) |
 | `enum_mk i` | the number `shift + i` |
 | `Neu.cond` | `c ? a : b` |
-| `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`) |
+| `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
 | `Val.lam` | `(x, y) => { … }`, of all the parameters of its type (uncurried) |
 | `Val.thunk_mk`, `Val.lazy_mk` | `thunk__lean_mk_thunk(() => { … })`, `() => { … }` |
 | `Term.ret`, `Term.jump j v` | `return e;`, a jump to the join point `j` |
@@ -174,11 +175,6 @@ partial def listAppendLeaves {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o
     else [⟨_, _, p⟩]
   | _, _, p => [⟨_, _, p⟩]
 
-/-- Is the representation `BigInt`? -/
-def JsNatTy.isBigInt {N : JsTy} : JsNatTy N → Bool
-  | .bigint_nat => true
-  | .uint53 => false
-
 /-- The enum constructor `shift + k` of an enum of `n` constructors, when `k < n`. -/
 def enumCtorOf? {C M : List JsTy} (n : Nat) (shift : Int) (k : Nat) :
     Option (JsExpr S C M (.enum n shift)) :=
@@ -191,12 +187,6 @@ def enumIndexEqLit {C M : List JsTy} {n : Nat} {shift : Int} (e : JsExpr S C M (
   match enumCtorOf? n shift k with
   | some c => .enumEq e c
   | none => .lit (.bool false)
-
-/-- A literal natural number (at a `number` or `BigInt` representation). -/
-def JsExpr.natLit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option Nat
-  | .lit (.uint53 k _) => some k
-  | .lit (.bigint_nat k) => some k
-  | _ => none
 
 /-- `Nat.decEq` of the positions of two constructors of the same enum (`JsExpr.enumIndex`, what a
     derived `BEq` or `DecidableEq` compares) is `a === b` on the enum itself, and of the position
@@ -239,7 +229,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
   | Neu.data_out b j e => do unfoldE (← cNeu e n C M) (lowerTy cfg ((Δ.block b).unfold j))
   | .cond c a b => do
     let ce ← castE (← cNeu c n C M) (.terminal .bool)
-    return .cond ce (← cPExpr a n C M) (← cPExpr b n C M)
+    let (nt, ne) := n.splitOn c
+    return .cond ce (← cPExpr a nt C M) (← cPExpr b ne C M)
   | Neu.extern (σs := σs) (τ := τ) e args h => do
     let nm := externName e
     -- `l ++ l'` on cons cells: the whole chain of appends, built from its end (`cConsAppend`)
@@ -251,6 +242,11 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     let r ← match stringPosArg? σs with
       | some s => lowerExtern nm (.cons (.lit (.string s)) as)
       | none => lowerExtern nm as
+    -- an access known to be in bounds is `a[i]`, and a comparison of sizes of arrays at the
+    -- `BigInt` representation is done on the numbers (`JsTerm.Lower.Bounds`)
+    if (nm == "lean_array_get" || nm == "lean_array_get_borrowed") && n.getInBounds args then
+      if let some r' := r.uncheckedGet? then return r'
+    if let some r' := r.narrowCmp? then return r'
     -- an update of an array nothing else refers to is done in place; `set!` and
     -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new).
     -- An append onto an array literal is better written as one literal (below).
@@ -889,7 +885,8 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
       (fun w => (Own.Term.occ w t).n > 0 || (Own.Term.occ w e).n > 0)
     let ce ← castE (← cNeu c { n with cx } C M) (.terminal .bool)
-    return (JsBlock.ite ce (← cTerm t { n with own } C M J) (← cTerm e { n with own } C M J))
+    let (nt, ne) := n.splitOn c
+    return (JsBlock.ite ce (← cTerm t { nt with own } C M J) (← cTerm e { ne with own } C M J))
   | Branch.enum_casesOn (s := s) c bs => do
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
       (fun w => (List.finRange _).any fun j => (Own.Term.occ w (bs j)).n > 0)

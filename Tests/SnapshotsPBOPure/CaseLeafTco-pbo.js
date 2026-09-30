@@ -2,7 +2,6 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 
 import {
-  uint53__lean_array_get,
   array__lean_array_back_opt,
   array__lean_array_push_mutable,
 } from "../../runtime.js";
@@ -24,7 +23,7 @@ export const test1Fuel = (a, a1, a2) => {
     j$2--;
     let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: uint53__lean_array_get(0, p$1, 0) };
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -119,7 +118,7 @@ export const test1Fuel$$mut_2 = (a, a1, a2) => {
     j$2--;
     let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: uint53__lean_array_get(0, p$1, 0) };
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -212,7 +211,7 @@ export const test1FuelCalled = (b, arr) => {
     j$2--;
     let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: uint53__lean_array_get(0, p$1, 0) };
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -306,7 +305,7 @@ export const test1FuelCalled$$mut_1 = (b, arr) => {
     j$2--;
     let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: uint53__lean_array_get(0, p$1, 0) };
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }

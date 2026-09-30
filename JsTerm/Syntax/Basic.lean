@@ -332,6 +332,12 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
   /-- A top-level function of the module, by its JavaScript name (a call of another function
       of the module, `JsTerm.Lower.Unroll`). -/
   | global {C M : List JsTy} {τ : JsTy} (name : String) : JsExpr S C M τ
+  /-- `a[i]`: the element at an index **known to be in bounds** (`a[Number(i)]` for a `BigInt`
+      index that is not a literal).  Only built where the conversion knows `i < a.length`
+      (`JsTerm.Lower.FromTerm`, `lean_array_get` under a test of the size of the array);
+      `lean_array_get` itself reads the default out of bounds. -/
+  | index {C M : List JsTy} {A E N : JsTy} (l : JsArrayLayout A E) (nt : JsNatTy N)
+      (a : JsExpr S C M A) (i : JsExpr S C M N) : JsExpr S C M E
 
 /-- The arguments of an operation or the fields of a record. -/
 inductive JsArgs (S : JsSig) : List JsTy → List JsTy → List JsTy → Type where
@@ -467,6 +473,12 @@ def JsUnionArms.default {C M J : List JsTy} {k : JsEnd} :
 
 instance {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
     Inhabited (JsUnionArms S C M J k cs) := ⟨JsUnionArms.default cs⟩
+
+/-- A literal natural number (at a `number` or `BigInt` representation). -/
+def JsExpr.natLit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option Nat
+  | .lit (.uint53 k _) => some k
+  | .lit (.bigint_nat k) => some k
+  | _ => none
 
 /-- The integer literal `n` at a natural-number representation, if it fits. -/
 def JsNatTy.lit? {C M : List JsTy} {N : JsTy} (nt : JsNatTy N) (n : Nat) : Option (JsExpr S C M N) :=

@@ -42,6 +42,7 @@ partial def JsExpr.runtimeNames {C M : List JsTy} {τ : JsTy} (acc : Array Strin
   | .listOp op as => as.runtimeNames (addName acc op.runtimeName)
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.runtimeNames acc
   | .enumEq a b => b.runtimeNames (a.runtimeNames acc)
+  | .index _ _ a i => i.runtimeNames (a.runtimeNames acc)
   | _ => acc
 /-- `runtimeNames` of arguments. -/
 partial def JsArgs.runtimeNames {C M σs : List JsTy} (acc : Array String) :

@@ -75,6 +75,11 @@ inductive JsNatTy : JsTy → Type where
   | uint53 : JsNatTy (.terminal .uint53)
   deriving Repr
 
+/-- Is the representation `BigInt`? -/
+def JsNatTy.isBigInt {N : JsTy} : JsNatTy N → Bool
+  | .bigint_nat => true
+  | .uint53 => false
+
 /-- The natural-number representation of a type, if it is one. -/
 def JsNatTy.of? : (t : JsTy) → Option (JsNatTy t)
   | .terminal .bigint_nat => some .bigint_nat

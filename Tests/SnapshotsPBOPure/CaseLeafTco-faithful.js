@@ -2,7 +2,6 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  bigint_nat__lean_array_get,
   array__lean_array_back_opt,
   array__lean_array_push_mutable,
 } from "../../runtime.js";
@@ -23,8 +22,8 @@ export const test1Fuel = (a, a1, a2) => {
     }
     j$2--;
     let x$3;
-    if (0n < BigInt(p$1.length)) {
-      x$3 = { tag: 1, _1: bigint_nat__lean_array_get(0n, p$1, 0n) };
+    if (0 < p$1.length) {
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -118,8 +117,8 @@ export const test1Fuel$$mut_2 = (a, a1, a2) => {
     }
     j$2--;
     let x$3;
-    if (0n < BigInt(p$1.length)) {
-      x$3 = { tag: 1, _1: bigint_nat__lean_array_get(0n, p$1, 0n) };
+    if (0 < p$1.length) {
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -211,8 +210,8 @@ export const test1FuelCalled = (b, arr) => {
     }
     j$2--;
     let x$3;
-    if (0n < BigInt(p$1.length)) {
-      x$3 = { tag: 1, _1: bigint_nat__lean_array_get(0n, p$1, 0n) };
+    if (0 < p$1.length) {
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }
@@ -305,8 +304,8 @@ export const test1FuelCalled$$mut_1 = (b, arr) => {
     }
     j$2--;
     let x$3;
-    if (0n < BigInt(p$1.length)) {
-      x$3 = { tag: 1, _1: bigint_nat__lean_array_get(0n, p$1, 0n) };
+    if (0 < p$1.length) {
+      x$3 = { tag: 1, _1: p$1[0] };
     } else {
       x$3 = { tag: 0 };
     }

@@ -59,4 +59,4 @@ export const test3 = (x) =>
  * @returns {Array<nat(bigint)>}
  */
 export const test4 = (a) =>
-  0n < BigInt(a.length) ? bigint_nat__lean_array_fset_immutable(a, 0n, 5n) : a;
+  0 < a.length ? bigint_nat__lean_array_fset_immutable(a, 0n, 5n) : a;

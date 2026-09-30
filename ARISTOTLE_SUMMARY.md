@@ -1,3 +1,57 @@
+# Summary of changes for run 13b05612-04c5-4646-8db7-a3cfc44aa239
+`CaseArray` now generates the same JS as purescript-backend-optimizer in both presets, and it keeps the `#[1]`/`#[_]` distinction that PBO's legacy output drops. All differential checks pass.
+
+**What was different.** The branch structure already matched PBO. Two things were left:
+1. Each element read under a size test went through the runtime's bounds-checked getter, e.g. `uint53__lean_array_get(0, a, 1)`.
+2. The `faithful` preset converted the length before comparing it: `BigInt(a.length) === 2n`.
+
+**Output now (`faithful`; `pbo` is the same with `1`/`2` for `1n`/`2n`):**
+```js
+export const test1 = (a) => {
+  if (a.length === 0) { return "0"; }
+  if (a.length === 1) { return a[0] === 1n ? "1" : "any1"; }
+  if (a.length === 2) { return a[1] === 2n ? "2" : "catch"; }
+  return a.length === 3 ? "3" : "catch";
+};
+```
+The pbo file no longer imports anything from the runtime.
+
+**Why these went in the `Term → JsTerm` conversion, not the `Term` optimizer.** The `Term` language can't express either change:
+- It has no array read without a default: the proof that the index is in bounds is erased, so `a[i]` becomes `get!`.
+- It has no choice of number representation: `BigInt` vs `number` only exists after conversion.
+
+The `Term` optimizer and its proofs are unchanged. No `JsTerm → JsTerm` pass was needed either.
+
+**Changes** (new file `JsTerm/Lower/Bounds.lean`, called from `JsTerm/Lower/FromTerm.lean`):
+- **Tracking sizes:** while converting `if`/`?:`, the conversion records what each test says about array sizes:
+  - `a.size = k`, `k < a.size`, `k ≤ a.size` (literal `k`), or `i < a.size` in the `then` branch;
+  - the negated forms in the `else` branch, e.g. `a.size ≥ 1` after `a.size = 0`, and `i < a.size` after `a.size ≤ i`.
+  - Facts are recorded for constants and for a loop's mutable variables. A loop only reassigns those at the end of an iteration, from values computed before any assignment.
+- **Plain reads:** under such a fact, `a[i]!` is written as a new `JsExpr.index`: `a[i]`, or `a[Number(i)]` for a `BigInt` index that isn't a literal. This only happens when the dropped default value involves no operation. All passes and the printer handle the new constructor.
+- **Comparing lengths as numbers:** at the `BigInt` preset, `===`, `<` and `<=` between an array length and another length or a small literal now compare plain numbers.
+
+**Rendering:** no recursion was added. Loops stay `while (true)` with `return`, so the stack doesn't grow; the existing labelled blocks are unchanged.
+
+**Tests**
+- New snapshot `Tests/SnapshotsMy/ArrayBounds.lean` covers:
+  - array-literal patterns;
+  - `if h : i < a.size`, `getD`, and the `else` of `a.size ≤ i` and of `a.size = 0`;
+  - literal indices under `2 < a.size`;
+  - size comparisons;
+  - two loops where the index, or the array and the index, are loop variables;
+  - an access that isn't known to be in bounds, which keeps its own test.
+- **Bug caught and fixed:** my first printer version wrote `Number(i)` without the `a[...]` around it at the `faithful` preset. The differential checks caught it.
+- **Other snapshots that improved:**
+  - `CaseLeafTco` (both presets) now reads `p$1[0]` under `0 < p$1.length`.
+  - `ArrayFSet`, `OwnershipAliasing` and `InlineReferenceOpArrayLength` (faithful) lose their `BigInt(...length)` wrappers.
+- **Results:**
+  - `scripts/leanscript-snapshots.sh`: all 340 node check outputs report 0 failures. It still exits non-zero for the same reasons as before: the "literal too big" cases and the deliberate `mypanic` test.
+  - `lake exe tests`: 76/76 passed.
+  - `lake build tests JsTerm leanscript LanguageJavascriptMini` succeeds.
+  - Plain `lake build` fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib; that file was already like this in the project and is not imported by anything else.
+
+No Lean theorems were added. These are code-generation changes checked by the differential tests, so nothing was added to the Properties table. All work is committed.
+
 # Summary of changes for run ac02405e-93ac-4066-ad7b-44ceeba7cc30
 `CaptureDerefRegression01` was already close to the purescript-backend-optimizer output from earlier sessions: same loop shape, `testOdd` as a short wrapper around `testEven`, and no recursion. The one place it was still no better than PBO was the unrolled loop in `testEven`. It now beats PBO there in both presets, and all differential checks pass.
 
