@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7n)", () => M.test1(-7n), "catch", false);
+check("test1(-1n)", () => M.test1(-1n), "catch", false);
+check("test1(0n)", () => M.test1(0n), "catch", false);
+check("test1(1n)", () => M.test1(1n), "1", false);
+check("test1(2n)", () => M.test1(2n), "2", false);
+check("test1(3n)", () => M.test1(3n), "3", false);
+check("test1(12n)", () => M.test1(12n), "catch", false);
+check("test2(-7n)", () => M.test2(-7n), "catch", false);
+check("test2(-1n)", () => M.test2(-1n), "catch", false);
+check("test2(0n)", () => M.test2(0n), "catch", false);
+check("test2(1n)", () => M.test2(1n), "1", false);
+check("test2(2n)", () => M.test2(2n), "2", false);
+check("test2(3n)", () => M.test2(3n), "3", false);
+check("test2(12n)", () => M.test2(12n), "catch", false);
 
 console.log(`CaseNewtype-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

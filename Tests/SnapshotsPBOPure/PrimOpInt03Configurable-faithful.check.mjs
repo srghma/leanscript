@@ -72,6 +72,8 @@ check("TestInt$test3", () => M.TestInt$test3, "4000000000000000000", false);
 check("TestInt$test4(-7n)", () => M.TestInt$test4(-7n), "3999999993", false);
 check("TestInt$test4(-1n)", () => M.TestInt$test4(-1n), "3999999999", false);
 check("TestInt$test4(0n)", () => M.TestInt$test4(0n), "4000000000", false);
+check("TestInt$test4(1n)", () => M.TestInt$test4(1n), "4000000001", false);
+check("TestInt$test4(2n)", () => M.TestInt$test4(2n), "4000000002", false);
 check("TestInt$test4(3n)", () => M.TestInt$test4(3n), "4000000003", false);
 check("TestInt$test4(12n)", () => M.TestInt$test4(12n), "4000000012", false);
 

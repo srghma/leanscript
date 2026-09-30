@@ -43,17 +43,21 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test1(-7, -7)", () => M.test1(-7, -7), "_._", false);
-check("test1(-7, 0)", () => M.test1(-7, 0), "_._", false);
-check("test1(-1, -1)", () => M.test1(-1, -1), "_._", false);
-check("test1(0, -7)", () => M.test1(0, -7), "_._", false);
+check("test1(-7, 1)", () => M.test1(-7, 1), "_._", false);
+check("test1(-1, 0)", () => M.test1(-1, 0), "_._", false);
+check("test1(0, -1)", () => M.test1(0, -1), "_._", false);
+check("test1(1, -7)", () => M.test1(1, -7), "_._", false);
 check("test1(-7, 12)", () => M.test1(-7, 12), "_._", false);
 check("test1(-1, 3)", () => M.test1(-1, 3), "_._", false);
-check("test1(0, 0)", () => M.test1(0, 0), "_._", false);
+check("test1(0, 2)", () => M.test1(0, 2), "_.2", false);
+check("test1(1, 1)", () => M.test1(1, 1), "1.1", false);
+check("test1(2, 0)", () => M.test1(2, 0), "_._", false);
 check("test1(3, -1)", () => M.test1(3, -1), "_._", false);
 check("test1(12, -7)", () => M.test1(12, -7), "_._", false);
-check("test1(0, 12)", () => M.test1(0, 12), "_._", false);
-check("test1(3, 3)", () => M.test1(3, 3), "_._", false);
-check("test1(12, 0)", () => M.test1(12, 0), "_._", false);
+check("test1(1, 12)", () => M.test1(1, 12), "_._", false);
+check("test1(2, 3)", () => M.test1(2, 3), "_._", false);
+check("test1(3, 2)", () => M.test1(3, 2), "_.2", false);
+check("test1(12, 1)", () => M.test1(12, 1), "_._", false);
 check("test1(12, 12)", () => M.test1(12, 12), "_._", false);
 
 console.log(`CaseMulti-pbo.js: ${passed} passed, ${failed} failed`);

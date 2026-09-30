@@ -99,7 +99,7 @@ check("ListRepr$toArr({ tag: 1, _1: 13n, _2: { tag: 1, _1: 5n, _2: { tag: 1, _1:
 check("ListRepr$roundTrip({ tag: 0 })", () => M.ListRepr$roundTrip({ tag: 0 }), "#[]", false);
 check("ListRepr$roundTrip({ tag: 1, _1: -7n, _2: { tag: 0 } })", () => M.ListRepr$roundTrip({ tag: 1, _1: -7n, _2: { tag: 0 } }), "#[-7]", false);
 check("ListRepr$roundTrip({ tag: 1, _1: -7n, _2: { tag: 1, _1: -1n, _2: { tag: 1, _1: 0n, _2: { tag: 0 } } } })", () => M.ListRepr$roundTrip({ tag: 1, _1: -7n, _2: { tag: 1, _1: -1n, _2: { tag: 1, _1: 0n, _2: { tag: 0 } } } }), "#[-7, -1, 0]", false);
-check("ListRepr$roundTrip({ tag: 1, _1: 12n, _2: { tag: 1, _1: 3n, _2: { tag: 1, _1: 0n, _2: { tag: 1, _1: -1n, _2: { tag: 0 } } } } })", () => M.ListRepr$roundTrip({ tag: 1, _1: 12n, _2: { tag: 1, _1: 3n, _2: { tag: 1, _1: 0n, _2: { tag: 1, _1: -1n, _2: { tag: 0 } } } } }), "#[12, 3, 0, -1]", false);
+check("ListRepr$roundTrip({ tag: 1, _1: 12n, _2: { tag: 1, _1: 3n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } })", () => M.ListRepr$roundTrip({ tag: 1, _1: 12n, _2: { tag: 1, _1: 3n, _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 1n, _2: { tag: 0 } } } } }), "#[12, 3, 2, 1]", false);
 
 console.log(`ListRepr-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

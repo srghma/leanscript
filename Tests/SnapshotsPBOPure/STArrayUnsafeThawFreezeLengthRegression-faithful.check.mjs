@@ -45,6 +45,8 @@ function check(label, thunk, expected, isFloat) {
 check("test(-7n)", () => M.test(-7n), "#[-7, 12, 2]", false);
 check("test(-1n)", () => M.test(-1n), "#[-1, 12, 2]", false);
 check("test(0n)", () => M.test(0n), "#[0, 12, 2]", false);
+check("test(1n)", () => M.test(1n), "#[1, 12, 2]", false);
+check("test(2n)", () => M.test(2n), "#[2, 12, 2]", false);
 check("test(3n)", () => M.test(3n), "#[3, 12, 2]", false);
 check("test(12n)", () => M.test(12n), "#[12, 12, 2]", false);
 

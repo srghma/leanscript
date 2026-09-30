@@ -99,7 +99,7 @@ check("ListRepr$toArr([13, 5, 2, 1])", () => M.ListRepr$toArr([13, 5, 2, 1]), "#
 check("ListRepr$roundTrip([])", () => M.ListRepr$roundTrip([]), "#[]", false);
 check("ListRepr$roundTrip([-7])", () => M.ListRepr$roundTrip([-7]), "#[-7]", false);
 check("ListRepr$roundTrip([-7, -1, 0])", () => M.ListRepr$roundTrip([-7, -1, 0]), "#[-7, -1, 0]", false);
-check("ListRepr$roundTrip([12, 3, 0, -1])", () => M.ListRepr$roundTrip([12, 3, 0, -1]), "#[12, 3, 0, -1]", false);
+check("ListRepr$roundTrip([12, 3, 2, 1])", () => M.ListRepr$roundTrip([12, 3, 2, 1]), "#[12, 3, 2, 1]", false);
 
 console.log(`ListRepr-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

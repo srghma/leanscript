@@ -45,6 +45,8 @@ function check(label, thunk, expected, isFloat) {
 check("test1(-7)", () => M.test1(-7), "catch", false);
 check("test1(-1)", () => M.test1(-1), "catch", false);
 check("test1(0)", () => M.test1(0), "catch", false);
+check("test1(1)", () => M.test1(1), "1", false);
+check("test1(2)", () => M.test1(2), "2", false);
 check("test1(3)", () => M.test1(3), "3", false);
 check("test1(12)", () => M.test1(12), "catch", false);
 

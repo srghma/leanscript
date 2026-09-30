@@ -42,18 +42,30 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: -7, _2: -1 })", () => M.test1({ _1: -7, _2: -1 }), "-7", false);
+check("test1({ _1: -1, _2: 0 })", () => M.test1({ _1: -1, _2: 0 }), "-1", false);
+check("test1({ _1: 0, _2: 1 })", () => M.test1({ _1: 0, _2: 1 }), "0", false);
+check("test2({ _1: -7, _2: -1 })", () => M.test2({ _1: -7, _2: -1 }), "-7", false);
+check("test2({ _1: -1, _2: 0 })", () => M.test2({ _1: -1, _2: 0 }), "-1", false);
+check("test2({ _1: 0, _2: 1 })", () => M.test2({ _1: 0, _2: 1 }), "0", false);
 check("test3({ _1: -7, _2: -1 })", () => M.test3({ _1: -7, _2: -1 }), "{-7, 0}", false);
 check("test3({ _1: -1, _2: 0 })", () => M.test3({ _1: -1, _2: 0 }), "{-1, 1}", false);
-check("test3({ _1: 0, _2: 3 })", () => M.test3({ _1: 0, _2: 3 }), "{0, 4}", false);
+check("test3({ _1: 0, _2: 1 })", () => M.test3({ _1: 0, _2: 1 }), "{0, 2}", false);
 check("test4({ _1: -7, _2: -1 })", () => M.test4({ _1: -7, _2: -1 }), "{-7, 0}", false);
 check("test4({ _1: -1, _2: 0 })", () => M.test4({ _1: -1, _2: 0 }), "{-1, 1}", false);
-check("test4({ _1: 0, _2: 3 })", () => M.test4({ _1: 0, _2: 3 }), "{0, 4}", false);
+check("test4({ _1: 0, _2: 1 })", () => M.test4({ _1: 0, _2: 1 }), "{0, 2}", false);
+check("test5({ _1: -7, _2: -1 })", () => M.test5({ _1: -7, _2: -1 }), "{-7, 0}", false);
+check("test5({ _1: -1, _2: 0 })", () => M.test5({ _1: -1, _2: 0 }), "{-1, 1}", false);
+check("test5({ _1: 0, _2: 1 })", () => M.test5({ _1: 0, _2: 1 }), "{0, 2}", false);
+check("test6({ _1: -7, _2: -1 })", () => M.test6({ _1: -7, _2: -1 }), "{-7, 0}", false);
+check("test6({ _1: -1, _2: 0 })", () => M.test6({ _1: -1, _2: 0 }), "{-1, 1}", false);
+check("test6({ _1: 0, _2: 1 })", () => M.test6({ _1: 0, _2: 1 }), "{0, 2}", false);
 check("test7({ _1: -7, _2: -1 })", () => M.test7({ _1: -7, _2: -1 }), "{-6, 41}", false);
 check("test7({ _1: -1, _2: 0 })", () => M.test7({ _1: -1, _2: 0 }), "{0, 42}", false);
-check("test7({ _1: 0, _2: 3 })", () => M.test7({ _1: 0, _2: 3 }), "{1, 45}", false);
+check("test7({ _1: 0, _2: 1 })", () => M.test7({ _1: 0, _2: 1 }), "{1, 43}", false);
 check("test8({ _1: -7, _2: -1 })", () => M.test8({ _1: -7, _2: -1 }), "{-6, 41}", false);
 check("test8({ _1: -1, _2: 0 })", () => M.test8({ _1: -1, _2: 0 }), "{0, 42}", false);
-check("test8({ _1: 0, _2: 3 })", () => M.test8({ _1: 0, _2: 3 }), "{1, 45}", false);
+check("test8({ _1: 0, _2: 1 })", () => M.test8({ _1: 0, _2: 1 }), "{1, 43}", false);
 
 console.log(`ProfunctorLenses01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

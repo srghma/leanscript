@@ -43,17 +43,21 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test1(-7n, -7n)", () => M.test1(-7n, -7n), "_._", false);
-check("test1(-7n, 0n)", () => M.test1(-7n, 0n), "_._", false);
-check("test1(-1n, -1n)", () => M.test1(-1n, -1n), "_._", false);
-check("test1(0n, -7n)", () => M.test1(0n, -7n), "_._", false);
+check("test1(-7n, 1n)", () => M.test1(-7n, 1n), "_._", false);
+check("test1(-1n, 0n)", () => M.test1(-1n, 0n), "_._", false);
+check("test1(0n, -1n)", () => M.test1(0n, -1n), "_._", false);
+check("test1(1n, -7n)", () => M.test1(1n, -7n), "_._", false);
 check("test1(-7n, 12n)", () => M.test1(-7n, 12n), "_._", false);
 check("test1(-1n, 3n)", () => M.test1(-1n, 3n), "_._", false);
-check("test1(0n, 0n)", () => M.test1(0n, 0n), "_._", false);
+check("test1(0n, 2n)", () => M.test1(0n, 2n), "_.2", false);
+check("test1(1n, 1n)", () => M.test1(1n, 1n), "1.1", false);
+check("test1(2n, 0n)", () => M.test1(2n, 0n), "_._", false);
 check("test1(3n, -1n)", () => M.test1(3n, -1n), "_._", false);
 check("test1(12n, -7n)", () => M.test1(12n, -7n), "_._", false);
-check("test1(0n, 12n)", () => M.test1(0n, 12n), "_._", false);
-check("test1(3n, 3n)", () => M.test1(3n, 3n), "_._", false);
-check("test1(12n, 0n)", () => M.test1(12n, 0n), "_._", false);
+check("test1(1n, 12n)", () => M.test1(1n, 12n), "_._", false);
+check("test1(2n, 3n)", () => M.test1(2n, 3n), "_._", false);
+check("test1(3n, 2n)", () => M.test1(3n, 2n), "_.2", false);
+check("test1(12n, 1n)", () => M.test1(12n, 1n), "_._", false);
 check("test1(12n, 12n)", () => M.test1(12n, 12n), "_._", false);
 
 console.log(`CaseMulti-faithful.js: ${passed} passed, ${failed} failed`);

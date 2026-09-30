@@ -14,7 +14,8 @@ Only functions whose parameters and result are all of a *sample type* are checke
 `Int`, `Bool`, `String`, `Char`, `Float`, the fixed-width integers (`UInt8` … `UInt64`,
 `Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
 `String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
-printed as its array, `#[…]`).
+printed as its array, `#[…]`), structures of such fields (a structure of one field is unboxed:
+its sample is its field's), and some unions.
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
 -/
@@ -37,6 +38,11 @@ inductive SType where
       JavaScript record `{ _1: …, _2: … }`.  `ind` is the type, `ctor` its constructor applied
       to the parameters. -/
   | record (ind : Name) (ctor : Expr) (fields : List SType)
+  /-- A value of a structure-like type (one constructor, no index, not recursive) of exactly one
+      field, of a sample type other than `Float` and a union (`structure NewTypeInt where val : Int`): the
+      structure is unboxed, its JavaScript value is the field's.  `ind` is the type, `ctor` its
+      constructor applied to the parameters. -/
+  | wrap (ind : Name) (ctor : Expr) (field : SType)
   /-- A value of a (recursive) inductive type of two or more constructors, one of them at
       least with fields, each field the type itself (`none`) or of a sample type among `Nat`,
       `Int`, `Bool`, `String`, `Char` (`Expr`, `Tree Nat`): a JavaScript union
@@ -114,6 +120,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       | some ft => out := out.push ft
     return some out.toList
   match fields? with
+  | some [f] => if f matches .tree _ then return none else return some (.wrap c ctor f)
   | some fs => if fs.length ≥ 2 then return some (.record c ctor fs) else return none
   | none => return none
 
@@ -143,7 +150,7 @@ structure Sample where
 /-- The samples of a type (few and small: the functions are called on every combination). -/
 partial def samplesOf (cfg : JsConfig) : SType → List Sample
   | .nat => [0, 1, 2, 5, 13].map fun n => ⟨mkNatLit n, intLit (cfg.natRepr == .bigint) n⟩
-  | .int => [(-7 : Int), -1, 0, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
+  | .int => [(-7 : Int), -1, 0, 1, 2, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
   | .bool => [⟨toExpr false, "false"⟩, ⟨toExpr true, "true"⟩]
   -- the fixed-width integers: small ones, and the edges of the range (which overflow at the
   -- first addition) below 64 bits, where they are JavaScript numbers at every preset
@@ -176,6 +183,7 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
       let picks : List Sample := fss.zipIdx.map fun (ss, j) => ss[(i + j) % ss.length]!
       ⟨mkAppN ctor (picks.map (·.lean)).toArray,
        "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
+  | .wrap _ ctor t => (samplesOf cfg t).map fun x => ⟨mkApp ctor x.lean, x.js⟩
   | .tree ctors =>
     -- the values of depth at most 2 (the leaves taken among their first two samples), the
     -- smallest first, at most `treeCap` of them
@@ -288,6 +296,7 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
       | [] => pure (toExpr "")
       | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
     app (← app (toExpr "{") body) (toExpr "}")
+  | .wrap ind _ t => showExpr t (.proj ind 0 e)
   | _ => mkAppM ``toString #[e]
 
 /-- The checks of one function: `none` when its type is not one of sample types.  Each

@@ -43,23 +43,23 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test1({ _1: -7n, _2: -1n, _3: 0n })", () => M.test1({ _1: -7n, _2: -1n, _3: 0n }), "catch", false);
-check("test1({ _1: -1n, _2: 0n, _3: 3n })", () => M.test1({ _1: -1n, _2: 0n, _3: 3n }), "catch", false);
-check("test1({ _1: 0n, _2: 3n, _3: 12n })", () => M.test1({ _1: 0n, _2: 3n, _3: 12n }), "catch", false);
+check("test1({ _1: -1n, _2: 0n, _3: 1n })", () => M.test1({ _1: -1n, _2: 0n, _3: 1n }), "2", false);
+check("test1({ _1: 0n, _2: 1n, _3: 2n })", () => M.test1({ _1: 0n, _2: 1n, _3: 2n }), "1", false);
 check("Test2$test2({ _1: { _1: -7n, _2: -1n }, _2: { _1: -1n, _2: 0n } })", () => M.Test2$test2({ _1: { _1: -7n, _2: -1n }, _2: { _1: -1n, _2: 0n } }), "4", false);
-check("Test2$test2({ _1: { _1: -1n, _2: 0n }, _2: { _1: 0n, _2: 3n } })", () => M.Test2$test2({ _1: { _1: -1n, _2: 0n }, _2: { _1: 0n, _2: 3n } }), "4", false);
-check("Test2$test2({ _1: { _1: 0n, _2: 3n }, _2: { _1: -7n, _2: -1n } })", () => M.Test2$test2({ _1: { _1: 0n, _2: 3n }, _2: { _1: -7n, _2: -1n } }), "4", false);
+check("Test2$test2({ _1: { _1: -1n, _2: 0n }, _2: { _1: 0n, _2: 1n } })", () => M.Test2$test2({ _1: { _1: -1n, _2: 0n }, _2: { _1: 0n, _2: 1n } }), "4", false);
+check("Test2$test2({ _1: { _1: 0n, _2: 1n }, _2: { _1: -7n, _2: -1n } })", () => M.Test2$test2({ _1: { _1: 0n, _2: 1n }, _2: { _1: -7n, _2: -1n } }), "4", false);
 check("test3({ _1: -7n, _2: -1n })", () => M.test3({ _1: -7n, _2: -1n }), "3", false);
 check("test3({ _1: -1n, _2: 0n })", () => M.test3({ _1: -1n, _2: 0n }), "3", false);
-check("test3({ _1: 0n, _2: 3n })", () => M.test3({ _1: 0n, _2: 3n }), "3", false);
+check("test3({ _1: 0n, _2: 1n })", () => M.test3({ _1: 0n, _2: 1n }), "3", false);
 check("test4({ _1: -7n, _2: -1n })", () => M.test4({ _1: -7n, _2: -1n }), "3", false);
 check("test4({ _1: -1n, _2: 0n })", () => M.test4({ _1: -1n, _2: 0n }), "3", false);
-check("test4({ _1: 0n, _2: 3n })", () => M.test4({ _1: 0n, _2: 3n }), "3", false);
+check("test4({ _1: 0n, _2: 1n })", () => M.test4({ _1: 0n, _2: 1n }), "3", false);
 check("test5({ _1: -7n, _2: -1n })", () => M.test5({ _1: -7n, _2: -1n }), "0", false);
 check("test5({ _1: -1n, _2: 0n })", () => M.test5({ _1: -1n, _2: 0n }), "0", false);
-check("test5({ _1: 0n, _2: 3n })", () => M.test5({ _1: 0n, _2: 3n }), "3", false);
+check("test5({ _1: 0n, _2: 1n })", () => M.test5({ _1: 0n, _2: 1n }), "1", false);
 check("test6({ _1: -7n, _2: -1n })", () => M.test6({ _1: -7n, _2: -1n }), "0", false);
 check("test6({ _1: -1n, _2: 0n })", () => M.test6({ _1: -1n, _2: 0n }), "0", false);
-check("test6({ _1: 0n, _2: 3n })", () => M.test6({ _1: 0n, _2: 3n }), "3", false);
+check("test6({ _1: 0n, _2: 1n })", () => M.test6({ _1: 0n, _2: 1n }), "1", false);
 
 console.log(`CaseRecord-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

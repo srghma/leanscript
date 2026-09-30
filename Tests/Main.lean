@@ -448,6 +448,56 @@ def moreJsSpec : Spec := describe "JsTerm" do
           assertEq s!"{file}-{preset}: test1 {x} {y} makes at most PBO's {m} comparisons" true
             (n.toNat! ≤ m.toNat!)
         | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "y", "r", "n"] o
+  it "a structure of one field is its field: matching on it is one comparison per arm (needs node and leanscript)" do
+    -- `CaseNewtype`: `NewTypeInt` has one field, so its JavaScript value is the `Int` itself;
+    -- `match v.val with` and `match v with | ⟨1⟩ …` both test it once per arm, as
+    -- purescript-backend-optimizer does (`legacy-backend/CaseNewtype.js`): on every input the
+    -- generated functions make no more comparisons than PBO's, and answer what Lean does.  The
+    -- differential checks try every arm too (`SType.wrap`, and `1`, `2` among the `Int` samples).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseNewtype"
+    IO.FS.createDirAll dir
+    let file := "CaseNewtype"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let xs : List Int := [-1, 0, 1, 2, 3, 4, 12]
+    let lean (x : Int) : String :=
+      match x with
+      | 1 => "1"
+      | 2 => "2"
+      | 3 => "3"
+      | _ => "catch"
+    let count (js f : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, f, "0", toString xs]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      for f in ["test1", "test2"] do
+        let pbo ← count "Tests/SnapshotsPBOPure/legacy-backend/CaseNewtype.js" f
+        let ours ← count s!"{dir}/{file}-{preset}.js" f
+        assertEq s!"{file}-{preset}: {f} on every input" xs.length ours.length
+        for (o, p) in ours.zip pbo do
+          match o, p with
+          | [x, r, n], [_, _, m] =>
+            assertEq s!"{file}-{preset}: {f} {x}" (lean x.toInt!) r
+            assertEq s!"{file}-{preset}: {f} {x} makes at most PBO's {m} comparisons" true
+              (n.toNat! ≤ m.toNat!)
+          | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
+      -- the value is the field itself: no `_1`, no record
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no field read" 1 (js.splitOn "._1").length
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

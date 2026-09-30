@@ -42,18 +42,30 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: -7n, _2: -1n })", () => M.test1({ _1: -7n, _2: -1n }), "-7", false);
+check("test1({ _1: -1n, _2: 0n })", () => M.test1({ _1: -1n, _2: 0n }), "-1", false);
+check("test1({ _1: 0n, _2: 1n })", () => M.test1({ _1: 0n, _2: 1n }), "0", false);
+check("test2({ _1: -7n, _2: -1n })", () => M.test2({ _1: -7n, _2: -1n }), "-7", false);
+check("test2({ _1: -1n, _2: 0n })", () => M.test2({ _1: -1n, _2: 0n }), "-1", false);
+check("test2({ _1: 0n, _2: 1n })", () => M.test2({ _1: 0n, _2: 1n }), "0", false);
 check("test3({ _1: -7n, _2: -1n })", () => M.test3({ _1: -7n, _2: -1n }), "{-7, 0}", false);
 check("test3({ _1: -1n, _2: 0n })", () => M.test3({ _1: -1n, _2: 0n }), "{-1, 1}", false);
-check("test3({ _1: 0n, _2: 3n })", () => M.test3({ _1: 0n, _2: 3n }), "{0, 4}", false);
+check("test3({ _1: 0n, _2: 1n })", () => M.test3({ _1: 0n, _2: 1n }), "{0, 2}", false);
 check("test4({ _1: -7n, _2: -1n })", () => M.test4({ _1: -7n, _2: -1n }), "{-7, 0}", false);
 check("test4({ _1: -1n, _2: 0n })", () => M.test4({ _1: -1n, _2: 0n }), "{-1, 1}", false);
-check("test4({ _1: 0n, _2: 3n })", () => M.test4({ _1: 0n, _2: 3n }), "{0, 4}", false);
+check("test4({ _1: 0n, _2: 1n })", () => M.test4({ _1: 0n, _2: 1n }), "{0, 2}", false);
+check("test5({ _1: -7n, _2: -1n })", () => M.test5({ _1: -7n, _2: -1n }), "{-7, 0}", false);
+check("test5({ _1: -1n, _2: 0n })", () => M.test5({ _1: -1n, _2: 0n }), "{-1, 1}", false);
+check("test5({ _1: 0n, _2: 1n })", () => M.test5({ _1: 0n, _2: 1n }), "{0, 2}", false);
+check("test6({ _1: -7n, _2: -1n })", () => M.test6({ _1: -7n, _2: -1n }), "{-7, 0}", false);
+check("test6({ _1: -1n, _2: 0n })", () => M.test6({ _1: -1n, _2: 0n }), "{-1, 1}", false);
+check("test6({ _1: 0n, _2: 1n })", () => M.test6({ _1: 0n, _2: 1n }), "{0, 2}", false);
 check("test7({ _1: -7n, _2: -1n })", () => M.test7({ _1: -7n, _2: -1n }), "{-6, 41}", false);
 check("test7({ _1: -1n, _2: 0n })", () => M.test7({ _1: -1n, _2: 0n }), "{0, 42}", false);
-check("test7({ _1: 0n, _2: 3n })", () => M.test7({ _1: 0n, _2: 3n }), "{1, 45}", false);
+check("test7({ _1: 0n, _2: 1n })", () => M.test7({ _1: 0n, _2: 1n }), "{1, 43}", false);
 check("test8({ _1: -7n, _2: -1n })", () => M.test8({ _1: -7n, _2: -1n }), "{-6, 41}", false);
 check("test8({ _1: -1n, _2: 0n })", () => M.test8({ _1: -1n, _2: 0n }), "{0, 42}", false);
-check("test8({ _1: 0n, _2: 3n })", () => M.test8({ _1: 0n, _2: 3n }), "{1, 45}", false);
+check("test8({ _1: 0n, _2: 1n })", () => M.test8({ _1: 0n, _2: 1n }), "{1, 43}", false);
 
 console.log(`ProfunctorLenses01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

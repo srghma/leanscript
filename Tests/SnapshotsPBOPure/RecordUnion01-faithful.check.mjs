@@ -42,6 +42,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test(\"\")", () => M.test(""), "{42, }", false);
+check("test(\"a\")", () => M.test("a"), "{42, a}", false);
+check("test(\"hello world\")", () => M.test("hello world"), "{42, hello world}", false);
+check("test(\"héllo, wörld\")", () => M.test("héllo, wörld"), "{42, héllo, wörld}", false);
+check("test(\"abcabc\")", () => M.test("abcabc"), "{42, abcabc}", false);
 
 console.log(`RecordUnion01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -43,6 +43,7 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test1", () => M.test1, "42", false);
+check("extern1", () => M.extern1, "{true, 0}", false);
 check("test2", () => M.test2, "42", false);
 
 console.log(`InlineReferenceIfThenElse-pbo.js: ${passed} passed, ${failed} failed`);

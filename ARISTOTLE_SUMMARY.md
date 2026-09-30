@@ -1,3 +1,37 @@
+# Summary of changes for run af8e26f8-0a6b-4eee-b8c8-01b5e407c30b
+`CaseNewtype` already compiles to JavaScript that matches `legacy-backend/CaseNewtype.js`, and is slightly shorter, so I made no compiler changes. I rebuilt `leanscript` from the current sources and regenerated the file; the JS and `Term` outputs came out byte-for-byte the same as the committed snapshots.
+
+**What the output looks like** (`CaseNewtype-pbo.js`; `-faithful.js` is the same with `1n`, `2n`, …):
+```js
+export const test1 = (v) => {
+  if (v === 1) { return "1"; }
+  if (v === 2) { return "2"; }
+  return v === 3 ? "3" : "catch";
+};
+```
+`test2` is the same, with the parameter named `a`, because the Lean pattern-matching definition has no user-given name for it.
+- The one-field structure `NewTypeInt` is stored as its `Int`, with no record and no `._1`, just like PureScript's newtype.
+- `match v.val` and `match v with ⟨1⟩` produce the same code.
+- The optimized `Term` (`CaseNewtype-Term-optimized.txt`) is already a single test per arm, the same decision tree as PBO's. The only change from PBO is that the last `if` becomes a `?:`.
+- There is no recursion or shared tail, so no labelled block or loop is needed.
+
+**Comparison with PBO.** For inputs -1, 0, 1, 2, 3, 4 and 12, on both functions and both presets, our answers equal Lean's. We make exactly as many comparisons as PBO on every input: 1, 2 or 3.
+
+**A problem I found and fixed.** The generated `CaseNewtype-*.check.mjs` files contained no checks at all ("0 passed, 0 failed"). I fixed this in `LeanScriptCli/Check.lean`:
+- A structure with one field is now accepted as a check argument or result, using its field's sample values, since that is how it is stored in JS. The exception is a field that is itself a tagged union, which still has no Lean `ToString` to compare against.
+- `1` and `2` are now among the `Int` samples, so the checks reach the `| 1` and `| 2` arms here and in other snapshots.
+- `CaseNewtype` now runs 14 checks per preset, all passing.
+
+**Effect on other snapshots.** I regenerated all of them. Only `*.check.mjs` files changed (52 of them, now with more cases); no generated JS changed, and every node check passes. The snapshot script still exits 1, only because of the known "literal too big" errors in the `PrimOpInt*Configurable` files.
+
+**New test.** I added a test in `Tests/Main.lean`, and `scripts/count-comparisons.mjs` now also accepts one-argument functions. For both presets the test checks that:
+- the generated checks actually run and none fail;
+- every answer equals the Lean `match`;
+- we never make more comparisons than PBO;
+- no field is ever read.
+
+`lake build tests leanscript` succeeds and `lake exe tests` passes 81/81. Nothing new was formally proved, so I added no rows to the Properties table. All work is committed.
+
 # Summary of changes for run 014398fd-e9fe-4b8e-9aa6-575964a558cb
 `CaseNamed` now compiles to JavaScript that is as good as `legacy-backend/CaseNamed.js` or better. `test1` has the same shape as purescript-backend-optimizer's (PBO) version, and `test2` makes fewer string conversions on three of its four paths and the same number on the last. The fix is a new pass in the `Term → Term` optimizer, the phase you preferred, with proofs.
 

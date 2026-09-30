@@ -43,17 +43,21 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("test(-7n, -7n)", () => M.test(-7n, -7n), "-266", false);
-check("test(-7n, 0n)", () => M.test(-7n, 0n), "-140", false);
-check("test(-1n, -1n)", () => M.test(-1n, -1n), "-38", false);
-check("test(0n, -7n)", () => M.test(0n, -7n), "-126", false);
+check("test(-7n, 1n)", () => M.test(-7n, 1n), "-122", false);
+check("test(-1n, 0n)", () => M.test(-1n, 0n), "-20", false);
+check("test(0n, -1n)", () => M.test(0n, -1n), "-18", false);
+check("test(1n, -7n)", () => M.test(1n, -7n), "-106", false);
 check("test(-7n, 12n)", () => M.test(-7n, 12n), "76", false);
 check("test(-1n, 3n)", () => M.test(-1n, 3n), "34", false);
-check("test(0n, 0n)", () => M.test(0n, 0n), "0", false);
+check("test(0n, 2n)", () => M.test(0n, 2n), "36", false);
+check("test(1n, 1n)", () => M.test(1n, 1n), "38", false);
+check("test(2n, 0n)", () => M.test(2n, 0n), "40", false);
 check("test(3n, -1n)", () => M.test(3n, -1n), "42", false);
 check("test(12n, -7n)", () => M.test(12n, -7n), "114", false);
-check("test(0n, 12n)", () => M.test(0n, 12n), "216", false);
-check("test(3n, 3n)", () => M.test(3n, 3n), "114", false);
-check("test(12n, 0n)", () => M.test(12n, 0n), "240", false);
+check("test(1n, 12n)", () => M.test(1n, 12n), "236", false);
+check("test(2n, 3n)", () => M.test(2n, 3n), "94", false);
+check("test(3n, 2n)", () => M.test(3n, 2n), "96", false);
+check("test(12n, 1n)", () => M.test(12n, 1n), "258", false);
 check("test(12n, 12n)", () => M.test(12n, 12n), "456", false);
 
 console.log(`UncurriedLocalAbs01-faithful.js: ${passed} passed, ${failed} failed`);
