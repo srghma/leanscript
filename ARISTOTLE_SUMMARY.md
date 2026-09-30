@@ -1,3 +1,28 @@
+# Summary of changes for run e9ca2fb9-6607-4693-b486-d52307a3f196
+I made no code changes. The JavaScript generated for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already matches purescript-backend-optimizer's `BackendSemantics01.js` in values and structure, so no stage of the pipeline needed a new optimisation.
+
+**Checks I ran:** I rebuilt the `leanscript` tool (it built without errors) and regenerated this file's outputs with `leanscript --quiet --skip-empty --check`. The regenerated files are identical to the committed ones (`git status` shows no changes). The node checks pass 4 of 4 for both the `pbo` and `faithful` presets.
+
+**What each stage does:**
+- **Lean code → `Term`:** elaboration already turns all four definitions into literals: `ret 2147483646`, `ret -2147483647`, `ret '\uFFFF'` and `ret '\x00'` (see `BackendSemantics01-Term-unoptimized.txt`).
+- **`Term` → optimised `Term`:** there is nothing left to simplify, so `BackendSemantics01-Term-optimized.txt` is the same as the unoptimised file.
+- **Convert to `JsTerm`, optimise and print:** each literal comes out as a plain constant, not a zero-argument function.
+
+**Current output, the same for both presets (doc comments left out):**
+```js
+export const test1 = 2147483646;
+export const test2 = -2147483647;
+export const test3 = "￿";
+export const test4 = "\x00";
+```
+
+**How this differs from PBO's output, all in style only:**
+- **Exports:** each constant is exported where it is defined (`export const`), instead of in one `export { test1, test2, test3, test4 }` at the end. The same names are exported.
+- **Escape spelling:** `"\x00"` is a shorter way to write PBO's `"\u0000"`; both give the same string.
+- **Comments:** each constant has a JSDoc comment with its `@type`, which PBO's output doesn't have.
+
+There was nothing to commit, and no proofs or Properties-table entries changed. I listed no Lean targets below because no Lean files were edited; the only build was the `leanscript` rebuild described above.
+
 # Summary of changes for run f5971781-903e-4130-95b6-03ec20ca0974
 I made no code changes: the JavaScript this project generates for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already has the same values and structure as purescript-backend-optimizer's `BackendSemantics01.js`. The only differences are in style.
 
