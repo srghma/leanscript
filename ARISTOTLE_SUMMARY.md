@@ -1,3 +1,42 @@
+# Summary of changes for run ac02405e-93ac-4066-ad7b-44ceeba7cc30
+`CaptureDerefRegression01` was already close to the purescript-backend-optimizer output from earlier sessions: same loop shape, `testOdd` as a short wrapper around `testEven`, and no recursion. The one place it was still no better than PBO was the unrolled loop in `testEven`. It now beats PBO there in both presets, and all differential checks pass.
+
+**What was left.** In the loop that runs two steps per iteration, the second step was built on temporaries from the first: `x5 = p1 + 2; …; p1 = x5 + 3`. PBO produces the same chain.
+
+**Change 1: additions of literals folded through constants** (new file `JsTerm/Lower/AddChain.lean`, in the `JsTerm → JsTerm` phase)
+- `x + c2`, where `x` is a constant holding `a + c1`, becomes `a + (c1 + c2)`. On integers, subtracting a literal counts as adding its negative, so `(p - 7) + 3` becomes `p - 4`.
+- **Why not earlier phases:** the `Term` optimizer already folds `1 + x + x + 3` to `x * 2 + 4` (see the `AssocIntOps` snapshots). This chain only appears after the loop is unrolled at the JS level, so the `Term` phase never sees it.
+- **Safety with mutable variables:** if `a` is a mutable variable, the fold is only done while `a` is certainly unchanged. What is known about it is forgotten after:
+  - an assignment to it, or a counter decrement,
+  - any function call,
+  - entering a closure or a loop, or leaving a loop or a labelled block.
+- **Safety with overflow checks:** on the overflow-checked safe-integer operations used by the `pbo` preset, literals are only combined when they have the same sign. That way the new code throws whenever the old one did. BigInt addition is exact, so the `faithful` preset has no such limit.
+
+**Change 2: pure constants moved into the only branch that reads them** (new file `JsTerm/Lower/Sink.lean`)
+- If `const x = e` is followed by `if (j === 0) {…} j--;` or an `if/else`, and only one of the two paths reads `x`, the constant moves into that path.
+- This is only done when `e` cannot throw, has no effect, and works only on numbers, booleans or strings, so it applies to the `faithful` preset but not to `pbo`'s checked arithmetic.
+- The printer then writes the constant directly where it is used.
+
+**Result for `testEven`**
+- `faithful`: `if (j$3 === 0n) { return { _1: p$2 + 1n, _2: p$1 + 2n }; } j$3--; p$1 = p$1 + 5n; p$2 = p$2 + 5n;` Each variable now depends only on itself, and the loop does two additions per iteration instead of four.
+- `pbo`: `p$1 = int53__lean_int_add(p$1, 5); p$2 = int53__lean_int_add(p$2, 5);` PBO writes `v3 = v7 + 3; v4 = v6 + 4`.
+
+Both passes run on every function in `JsTerm/Print/Share.lean`, after the loop unrolling. The loops stay `while (true)` loops using `return` and labels, with no recursion, so the stack doesn't grow.
+
+**New snapshot** `Tests/SnapshotsMy/AddChainMutual.lean` covers three mutual pairs:
+- fields swapped each step, which folds to `p = p + 5`;
+- fields not swapped, where each new value depends on the other variable. This one checks that the second assignment doesn't read a variable the first has just changed; it is still folded correctly to `p$2 + 4n` / `p$1 + 6n`.
+- literals of mixed sign, which `faithful` combines (`p$1 - 4n`) and `pbo` deliberately leaves alone.
+
+**Checks**
+- `scripts/leanscript-snapshots.sh`: all 338 node check outputs report 0 failures (336 existing plus the 2 new ones). The script still exits non-zero for the same reasons as before: the known "literal too big" cases and the intentional `mypanic` test.
+- No other existing snapshot changed.
+- `lake build JsTerm tests leanscript` succeeds, and `lake exe tests` passes 76/76.
+- The `Term` optimizer and its proofs are unchanged.
+- No `sorry` was added. These are code-generation passes checked by the differential tests, not Lean theorems, so I added nothing to the Properties table.
+
+All work is committed.
+
 # Summary of changes for run 38c147f6-2a99-423b-8dc8-3be65e844e1a
 The JS for `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` now has the same structure as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, and is a little shorter.
 

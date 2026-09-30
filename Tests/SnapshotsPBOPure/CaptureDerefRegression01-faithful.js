@@ -60,14 +60,12 @@ export const testEven = (n, b) => {
       return { _1: p$1, _2: p$2 };
     }
     j$3--;
-    const x$4 = p$2 + 1n;
-    const x$5 = p$1 + 2n;
     if (j$3 === 0n) {
-      return { _1: x$4, _2: x$5 };
+      return { _1: p$2 + 1n, _2: p$1 + 2n };
     }
     j$3--;
-    p$1 = x$5 + 3n;
-    p$2 = x$4 + 4n;
+    p$1 = p$1 + 5n;
+    p$2 = p$2 + 5n;
   }
 };
 

@@ -68,8 +68,8 @@ export const testEven = (n, b) => {
       return { _1: x$4, _2: x$5 };
     }
     j$3--;
-    p$1 = int53__lean_int_add(x$5, 3);
-    p$2 = int53__lean_int_add(x$4, 4);
+    p$1 = int53__lean_int_add(p$1, 5);
+    p$2 = int53__lean_int_add(p$2, 5);
   }
 };
 
