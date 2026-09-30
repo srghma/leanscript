@@ -1,3 +1,26 @@
+# Summary of changes for run fdf39749-5b78-4d25-983f-6bcd472e7ec5
+I added a new Lean file, `Tests/TermTests/Optimize/AssocIntOpsTest.lean`, that proves the `AssocIntOps` results for all six functions. It builds with no `sorry`, and it is committed.
+
+**What is proved, for each `testN`** (the functions are copied from `Tests/SnapshotsPBOPure/AssocIntOps.lean`, translated to `Term` and optimised with `optimizeN 3`):
+- **The optimised term computes the closed form for every `x`** (`testN_optimized_run`):
+  - test1 and test2: `x * 4 + 10`
+  - test3: `x * 8 + 28`
+  - test4 and test5: `x ^ 4 * 24`
+  - test6: `x ^ 8 * 5040`
+  
+  The proofs combine the existing theorem that the optimiser never changes a result (`Term.optimizeN_run`) with a proof about the Lean function itself (`testN_eq`). They use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+- **The optimised term is exactly the two-operation term** (`testN_optimized_pretty`). For example, test6 becomes `ret lean_int_mul(lean_int_pow(x2, 8), 5040)`, which matches `AssocIntOps-Term-optimized.txt`.
+- **Operation counts** (`numIntOps_optimized`, `numIntOps_unoptimized`): every optimised term has 2 `lean_int_…` operations. The unoptimised terms have 7 (test1, test2, test4, test5) or 14 (test3, test6).
+
+**Caveats:**
+- **Two statements depend on Lean's compiler.** The printed form and the operation counts are checked with `native_decide`, because the printer is compiled code that Lean's proof checker cannot run. So those theorems are trusted only as far as the compiler is. The closed-form theorems don't have this dependency.
+- **Operation count is at the `Term` level.** It counts operations in the printed `Term`, not in the final JavaScript.
+- **Legacy numbers are my own count.** In `legacy-backend/AssocIntOps.js`, the legacy backend writes 5 or 10 `+`/`*` operations, each followed by `| 0`. That count is from reading the file, not proved in Lean.
+
+**Correction:** my previous reply said the legacy output had "9 ops" and "19 ops". The correct counts are 5 and 10 arithmetic operations, each with its own `| 0`.
+
+**Checks:** `lake build TermTests.Optimize.AssocIntOpsTest` succeeds. I checked the axioms with `#print axioms` on one theorem of each kind (a closed form, a printed form and the operation counts). Both results are in the Properties table as proved.
+
 # Summary of changes for run 6e55788b-8aed-4d9a-b403-2ad68c80aef4
 I made no changes in this session. The work you asked for was already done in the previous run, and I checked that it still builds and passes.
 
