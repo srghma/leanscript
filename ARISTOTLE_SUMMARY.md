@@ -1,3 +1,32 @@
+# Summary of changes for run e0e7c6c6-0da2-4e01-8d12-7c42e4b25e01
+I made no code changes this session. The JavaScript for `CaseInt` already matches purescript-backend-optimizer's legacy output and is slightly shorter, so there was nothing left to optimise.
+
+**Checks**
+- I rebuilt `leanscript` from the current source and regenerated all six `Tests/SnapshotsPBOPure/CaseInt-*` files. They came out byte-for-byte identical to the committed ones, and `git status` is clean.
+- The generated checks `CaseInt-pbo.check.mjs` and `CaseInt-faithful.check.mjs` pass 5/5 each.
+- Those checks only try the inputs −7, −1, 0, 3 and 12, so the `1` and `2` arms are never tested. I ran the functions by hand on 0–4 in both presets and got `catch, 1, 2, 3, catch`, which is correct. That hand check isn't saved anywhere in the project.
+
+**Current output** (`CaseInt-pbo.js`; `-faithful.js` is the same except it uses BigInt literals `1n`, `2n`, `3n`):
+```js
+export const test1 = (a) => {
+  if (a === 1) { return "1"; }
+  if (a === 2) { return "2"; }
+  return a === 3 ? "3" : "catch";
+};
+```
+
+**Compared with `legacy-backend/CaseInt.js`:**
+- **Same tests:** both run the same three comparisons in the same order, so no input costs more tests than in PBO's version.
+- **Shorter:** ours has one fewer `if` statement, because the last test and the fall-through `"catch"` become one ternary.
+
+**Which phase does the work** — your preferred phase, `Term → Term`:
+- The step from Lean to `Term` already turns the `Int` match into a chain of `lean_int_dec_eq` tests with one final `"catch"`. Lean's decision tree creates no repeated fall-through here, so there's nothing to share.
+- The `Term` optimizer then turns the last `if` into `cond(lean_int_dec_eq(x2, 3), "3", "catch")`, which prints as the ternary. You can see this by comparing `CaseInt-Term-unoptimized.txt` with `CaseInt-Term-optimized.txt`.
+- The later phases (`Term → JsTerm`, the `JsTerm` optimizer) only print this out; nothing needs deduplicating.
+- No labelled blocks or loops are needed: the function has no shared tail and no recursion, so nothing risks a stack overflow.
+
+The only Lean I built was the `leanscript` executable, to regenerate the snapshots; I'm claiming no new Lean results.
+
 # Summary of changes for run 1fbff342-249f-48d7-8a5c-ac17ace2328d
 The JavaScript for `CaseHeuristics` is now better than purescript-backend-optimizer's legacy output for all four functions. All 21 generated checks pass in both presets.
 
