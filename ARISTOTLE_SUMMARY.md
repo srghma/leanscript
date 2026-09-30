@@ -1,3 +1,44 @@
+# Summary of changes for run 466f136c-66dc-441d-b487-7868036304be
+The JavaScript for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already gave the same four values as purescript-backend-optimizer's `BackendSemantics01.js`. I made one printing change that makes one line more readable than PBO's.
+
+**What each stage does with this file**
+- **Lean code → `Term`:** elaboration already turns each definition into a literal: `ret 2147483646`, `ret -2147483647`, `ret '\uFFFF'` and `ret '\x00'`.
+- **`Term` → optimised `Term`:** there is nothing left to simplify, so `BackendSemantics01-Term-optimized.txt` is the same as the unoptimised file. This is why none of your three preferred stages needed a new optimisation for this file.
+- **Converting to `JsTerm`, optimising and printing:** each literal becomes a plain constant.
+
+**The change**
+- **Before:** `test3` was written as the raw character U+FFFF between quotes. That character is invisible in editors and diffs, and it is a Unicode "noncharacter". PBO's file has the same raw character.
+- **After:** it is written as `"\uFFFF"`.
+- **Where:** the string-literal printer, `LanguageJavascriptCommon/StringLit.lean`, in the last step that turns the syntax tree into text. It can't go in an earlier stage, because it only changes how a string is spelled, not its value.
+- **Which characters are now escaped:**
+  - C1 control characters (U+0080–U+009F);
+  - U+2028 and U+2029, which weren't allowed in string literals before ES2019;
+  - zero-width and bidirectional formatting characters (U+200B–200F, U+202A–202E, U+2066–2069);
+  - the byte-order mark U+FEFF;
+  - noncharacters: U+FDD0–FDEF and the last two code points of every plane, e.g. U+FFFF.
+- **Format:** characters up to U+FFFF are written as `\uXXXX`; those above it as `\u{…}`.
+- **Tests:** I added `#guard` checks that pin these spellings and confirm the escaped text decodes back to the original string.
+
+**Output now (both presets, doc comments left out):**
+```js
+export const test1 = 2147483646;
+export const test2 = -2147483647;
+export const test3 = "\uFFFF";
+export const test4 = "\x00";
+```
+**Remaining differences from PBO, all style only:**
+- Each constant is exported where it is defined, instead of in one closing `export { … }` list.
+- `"\x00"` is a shorter spelling of PBO's `"\u0000"`; both give the same string.
+- Each constant has a JSDoc `@type` comment, which PBO's output doesn't have.
+
+**Checks**
+- **Builds:** `lake build leanscript LanguageJavascriptMini JsTerm TermTests TyTests tests` succeeds, and `lake exe tests` passes 76/76.
+- **Snapshots:** I regenerated every snapshot with `scripts/leanscript-snapshots.sh`. Only the two `BackendSemantics01-{pbo,faithful}.js` files changed. No node check failed; `BackendSemantics01` passes 4/4 at both presets.
+  - The script still exits with status 1 because of the known `mypanic` panics in the test inputs.
+- **Existing problem, not changed:** a plain `lake build` of the default targets fails because `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which this project doesn't depend on. This was already the case before my change. Nothing else imports that file, so none of the targets above are affected.
+
+The change is committed. No Properties-table entries were affected.
+
 # Summary of changes for run e9ca2fb9-6607-4693-b486-d52307a3f196
 I made no code changes. The JavaScript generated for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already matches purescript-backend-optimizer's `BackendSemantics01.js` in values and structure, so no stage of the pipeline needed a new optimisation.
 

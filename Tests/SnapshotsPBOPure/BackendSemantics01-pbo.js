@@ -17,7 +17,7 @@ export const test2 = -2147483647;
  * `test3`
  * @type {string}
  */
-export const test3 = "￿";
+export const test3 = "\uFFFF";
 
 /**
  * `test4`

@@ -30,6 +30,39 @@ namespace Language.JavaScript.MiniAST
 
 /-! ## Encoding a string literal -/
 
+/-- Whether `c` is written as a `\u` escape in a string literal rather than
+as itself: the characters which are invisible or ambiguous in source text,
+although a literal may hold them as they are —
+
+* the C1 controls `U+0080`–`U+009F`;
+* the line and paragraph separators `U+2028` and `U+2029`, which end a line
+  in the source and were not allowed in a string literal before ES2019;
+* the zero-width and bidirectional formatting characters `U+200B`–`U+200F`,
+  `U+202A`–`U+202E` and `U+2066`–`U+2069`, which change how the source is
+  displayed without being seen themselves;
+* the byte order mark `U+FEFF`;
+* the noncharacters `U+FDD0`–`U+FDEF` and the last two code points of every
+  plane (`U+FFFE`, `U+FFFF`, `U+1FFFE`, …), which are meant never to appear
+  in interchanged text. -/
+def needsUnicodeEscape (c : Char) : Bool :=
+  let n := c.toNat
+  (0x80 ≤ n && n ≤ 0x9F) || n == 0x2028 || n == 0x2029
+    || (0x200B ≤ n && n ≤ 0x200F) || (0x202A ≤ n && n ≤ 0x202E)
+    || (0x2066 ≤ n && n ≤ 0x2069) || n == 0xFEFF
+    || (0xFDD0 ≤ n && n ≤ 0xFDEF) || n % 0x10000 ≥ 0xFFFE
+
+/-- Push the `\u` escape of `c` onto `acc`: four upper-case hexadecimal
+digits, `\uFFFF`, for a character of the basic plane, and braces around
+the digits, `\u{1FFFF}`, for one beyond it. -/
+private def pushUnicodeEscape (acc : String) (c : Char) : String :=
+  let hex := (Nat.toDigits 16 c.toNat).map Char.toUpper
+  let acc := (acc.push '\\').push 'u'
+  if c.toNat ≤ 0xFFFF then
+    let acc := (List.replicate (4 - hex.length) '0').foldl String.push acc
+    hex.foldl String.push acc
+  else
+    (hex.foldl String.push (acc.push '{')).push '}'
+
 /-- Push the spelling of `c` in a literal quoted with `quote` onto `acc`. -/
 private def pushEscaped (quote : Char) (acc : String) (c : Char) : String :=
   if c == quote then (acc.push '\\').push quote
@@ -45,6 +78,7 @@ private def pushEscaped (quote : Char) (acc : String) (c : Char) : String :=
     let acc := (acc.push '\\').push 'x'
     let acc := if hex.length == 1 then acc.push '0' else acc
     hex.foldl (fun acc d => acc.push d) acc
+  else if needsUnicodeEscape c then pushUnicodeEscape acc c
   else acc.push c
 
 /-- The quote a literal holding `value` is written with, given the quote
@@ -254,5 +288,19 @@ def decodeStringLiteral (raw : String) : String :=
         decodeFrom raw close.byteIdx size ⟨1⟩ ""
       else decodeFrom raw size size ⟨1⟩ ""
     else decodeFrom raw size size ⟨0⟩ ""
+
+/-! ## Examples -/
+
+-- invisible characters and noncharacters are written as `\u` escapes
+#guard encodeStringLiteral (String.singleton (Char.ofNat 0xFFFF)) == "\"\\uFFFF\""
+#guard encodeStringLiteral (String.ofList [Char.ofNat 0x2028, Char.ofNat 0x85, Char.ofNat 0x1FFFF])
+  == "\"\\u2028\\u0085\\u{1FFFF}\""
+-- visible characters beyond ASCII stand as they are
+#guard encodeStringLiteral "é😀" == "\"é😀\""
+-- and every escape reads back as the character it was written for
+#guard
+  let s := String.ofList ['a', Char.ofNat 0x2028, Char.ofNat 0x85, Char.ofNat 0x1FFFF, 'é',
+    Char.ofNat 0x1F600, Char.ofNat 0, Char.ofNat 0xFEFF, Char.ofNat 0xFFFF, '"', '\\']
+  decodeStringLiteral (encodeStringLiteral s) == some s
 
 end Language.JavaScript.MiniAST
