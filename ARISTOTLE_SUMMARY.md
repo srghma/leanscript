@@ -1,3 +1,37 @@
+# Summary of changes for run 28f7b2e0-617b-44e2-a21f-96f3ee85f3ea
+`CaseString` was already on par with `legacy-backend/CaseString.js` before this session, so I changed none of the three compilation phases. What I did change is the testing: the generated check files never tried the inputs `"foo"` or `"bar"`, so two of the four arms had never been tested. Now they are.
+
+**Analysis.** The unoptimised `Term` is PBO's chain of tests: `"foo"`, then `"bar"`, then `""`, then `"catch"`. The `Term → Term` optimizer turns only the last `if` into `cond(lean_string_dec_eq(x, ""), "3", "catch")`. Both presets then print this:
+```js
+export const test1 = (x) => {
+  if (x === "foo") { return "1"; }
+  if (x === "bar") { return "2"; }
+  return x === "" ? "3" : "catch";
+};
+```
+- **Same tests as PBO.** The three tests are the same as PBO's and come in the same order, and each literal is compared once. On every input we tried, both versions make exactly the same number of comparisons: 1 for `"foo"`, 2 for `"bar"`, 3 for anything else.
+- **Only difference.** Where PBO writes `if (v === "") return "3"; return "catch";`, we write the same thing as a conditional expression. It is shorter and makes the same comparisons, and it is how the other snapshots already print this pattern.
+- **Nothing to gain from more work.** The code has no recursion and no shared tail, so there was no reason for labelled blocks or loops. I found no change in any phase that would reduce the number of comparisons, so I left the JavaScript as it is.
+
+**Changes**
+- **Check inputs (`LeanScriptCli/Check.lean`).** With `--check`, a function with a `String` parameter is now also called on the string literals in its own definition and in its helper definitions such as `test1.match_1`, up to 8 of them. So the checks now cover every arm of a `match` on strings. `CaseString-*.check.mjs` went from 5 to 11 checks, including `test1("foo")` giving `"1"` and `test1("bar")` giving `"2"`.
+- **Comparison counting (`scripts/count-comparisons.mjs`).** The script now also counts `===` against a string literal, and accepts strings as arguments.
+- **New test in `Tests/Main.lean` (`caseStringSpec`).** For both presets it runs `test1` on 10 inputs (the three pattern literals and seven others). It checks that:
+  - our answer and PBO's are both Lean's;
+  - we never make more comparisons than PBO;
+  - each literal is tested exactly once;
+  - there is no runtime import;
+  - the check file covers the `"foo"` and `"bar"` arms.
+- **`README.md`** now describes the new check inputs.
+
+**Checks run**
+- `lake build leanscript tests` succeeds, and `lake exe tests` passes 87/87, including the new test.
+- I regenerated all snapshots. No `.js` output changed. Only `.check.mjs` files changed: those of the eight snapshots with a `String` parameter (16 files). In functions with several parameters, the new inputs shift which argument combinations are sampled, but the number of checks there stays the same. Every node check passes.
+- The snapshot script still exits 1, as it did before, because of the "literal too big" errors in the `PrimOp*Configurable` files.
+- No Lean theorems changed, so the Properties table is unchanged. Everything is committed.
+
+**Side observation, not implemented.** In a variant with `| "foo" => x ++ "!"`, the output is `x + "!"` inside `if (x === "foo")`. Replacing `x` with the known literal would give the constant `"foo!"`. That is outside `CaseString` and would need a new rewrite in the `Term` phase.
+
 # Summary of changes for run 11b85fc3-0084-4634-a5d4-9aec69a10bbc
 `CaseRedBlackTree` now compiles to JavaScript with the same decision tree as `legacy-backend/CaseRedBlackTree.js`. A new test runs it on all 723 trees of depth 3 or less: it gives Lean's answer on every tree and never reads more tags or colours than PBO. The file dropped from about 440 lines to 80. The changes are in the `Term → JsTerm` step and the printer, not in the `Term → Term` optimizer, for the reason given further down.
 

@@ -18,7 +18,8 @@
 // function gets nested records (`{ _1: { _1: 1, _2: 2 }, _2: { … } }`), with `spread` the
 // flattened fields (`f(1, 2, 3, 4)`), and the line lists the flattened fields.  The compared
 // operand may be a name with `$` or a field read (`f$1 === 4`, `x._3 === 1`); orderings with a
-// numeric literal (`0 < f$1`, `v_a > 0`) are counted too.
+// numeric literal (`0 < f$1`, `v_a > 0`) are counted too, and so are the equalities with a string
+// literal (`v === "foo"`; an argument may then be a JSON string).
 import { readFileSync } from "node:fs";
 
 const [file, fn, curried, xsJson, ysJson] = process.argv.slice(2);
@@ -37,7 +38,7 @@ globalThis.__cmp = (a, op, b) => {
 };
 const src = readFileSync(file, "utf8")
   .replace(
-    /(?<![\w$.])([\w$]+(?:\.[\w$]+)*) (===|!==|<=|>=|<|>) (-?\d+(?:\.\d+)?n?)(?![\w$.])/g,
+    /(?<![\w$.])([\w$]+(?:\.[\w$]+)*) (===|!==|<=|>=|<|>) (-?\d+(?:\.\d+)?n?(?![\w$.])|"(?:[^"\\\n]|\\.)*")/g,
     (_, a, op, b) => `__cmp(${a}, "${op}", ${b})`,
   )
   .replace(
@@ -46,7 +47,7 @@ const src = readFileSync(file, "utf8")
   );
 const M = await import("data:text/javascript," + encodeURIComponent(src));
 const big = /\b\d+n\b/.test(src);
-const lift = (v) => (big ? BigInt(v) : v);
+const lift = (v) => (big && typeof v === "number" ? BigInt(v) : v);
 const call = (thunk) => {
   try {
     return thunk();

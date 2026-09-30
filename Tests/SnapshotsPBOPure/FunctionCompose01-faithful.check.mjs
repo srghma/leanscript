@@ -52,6 +52,7 @@ check("g(\"a\")", () => M.g("a"), "b", false);
 check("g(\"hello world\")", () => M.g("hello world"), "b", false);
 check("g(\"héllo, wörld\")", () => M.g("héllo, wörld"), "b", false);
 check("g(\"abcabc\")", () => M.g("abcabc"), "b", false);
+check("g(\"b\")", () => M.g("b"), "b", false);
 check("test1(\"\")", () => M.test1(""), "a", false);
 check("test1(\"a\")", () => M.test1("a"), "a", false);
 check("test1(\"hello world\")", () => M.test1("hello world"), "a", false);

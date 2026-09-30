@@ -47,6 +47,12 @@ check("test1(\"a\")", () => M.test1("a"), "catch", false);
 check("test1(\"hello world\")", () => M.test1("hello world"), "catch", false);
 check("test1(\"héllo, wörld\")", () => M.test1("héllo, wörld"), "catch", false);
 check("test1(\"abcabc\")", () => M.test1("abcabc"), "catch", false);
+check("test1(\"1\")", () => M.test1("1"), "catch", false);
+check("test1(\"2\")", () => M.test1("2"), "catch", false);
+check("test1(\"3\")", () => M.test1("3"), "catch", false);
+check("test1(\"catch\")", () => M.test1("catch"), "catch", false);
+check("test1(\"foo\")", () => M.test1("foo"), "1", false);
+check("test1(\"bar\")", () => M.test1("bar"), "2", false);
 
 console.log(`CaseString-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

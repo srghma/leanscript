@@ -54,7 +54,9 @@ types and JavaScript arrays for `List`, `faithful` uses `BigInt` and tagged cons
 chain of lambdas becomes one arrow with several parameters, and the components of the Lean
 name are joined by `$`, `ArrayTest.test1` is `ArrayTest$test1`); with `--check` also
 `FILE-pbo.check.mjs` and `FILE-faithful.check.mjs`, which call every exported function on
-sample arguments and compare the answers with the ones Lean computes.  Every output lists
+sample arguments and compare the answers with the ones Lean computes (a `String` parameter also
+takes the string literals of the definition, such as the patterns of a `match` on strings, so
+that every arm is taken).  Every output lists
 the definitions that were not translated, with the reason; the JavaScript outputs also start
 with their configuration.
 

@@ -1350,6 +1350,67 @@ def caseRedBlackTreeSpec : Spec := describe "CaseRedBlackTree" do
       assertEq s!"{file}-{preset}: at most PBO's tests in all ({total} ≤ {totalPbo})" true
         (total ≤ totalPbo)
 
+/-- `CaseString`: a `match` on string literals. -/
+def caseStringSpec : Spec := describe "CaseString" do
+  it "test1 gives Lean's answers, with at most PBO's comparisons (needs node and leanscript)" do
+    -- `| "foo" => "1" | "bar" => "2" | "" => "3" | _ => "catch"`: a chain of `===` tests with a
+    -- string literal, in the order of the patterns, as purescript-backend-optimizer writes it
+    -- (`legacy-backend/CaseString.js`).  On every input, `test1` gives Lean's answer (PBO's
+    -- too) and makes no more comparisons than PBO's.  The differential checks call it on the
+    -- literals of the patterns too (`LeanScript.Cli.stringLitsOf`), so each arm is taken.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseString"
+    IO.FS.createDirAll dir
+    let file := "CaseString"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let lean (x : String) : String :=
+      match x with
+      | "foo" => "1"
+      | "bar" => "2"
+      | "" => "3"
+      | _ => "catch"
+    let xs : List String := ["foo", "bar", "", "a", "fo", "foobar", "Foo", "catch", "1", "héllo"]
+    let json := "[" ++ ",".intercalate (xs.map fun x => "\"" ++ x ++ "\"") ++ "]"
+    let count (js : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, "test1", "0", json]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let pbo ← count s!"Tests/SnapshotsPBOPure/legacy-backend/{file}.js"
+    assertEq s!"{file}: PBO's test1 on every input" xs.length pbo.length
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      for lit in ["foo", "bar"] do
+        assertEq s!"{file}-{preset}: the checks take the arm of {lit}" true
+          ((checks.splitOn s!"M.test1(\"{lit}\")").length > 1)
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for lit in ["foo", "bar", ""] do
+        assertEq s!"{file}-{preset}: one test of \"{lit}\"" 2
+          (js.splitOn s!"x === \"{lit}\"").length
+      let ours ← count s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: test1 on every input" xs.length ours.length
+      for ((o, p), x) in (ours.zip pbo).zip xs do
+        match o, p with
+        | [_, r, n], [_, q, m] =>
+          assertEq s!"{file}-{preset}: test1 \"{x}\"" (lean x) r
+          assertEq s!"{file}-{preset}: PBO's test1 \"{x}\"" (lean x) q
+          assertEq s!"{file}-{preset}: test1 \"{x}\" makes at most PBO's {m} comparisons" true
+            (n.toNat! ≤ m.toNat!)
+        | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1360,6 +1421,7 @@ def spec : Spec := do
   arithSpec
   moreJsSpec
   caseRedBlackTreeSpec
+  caseStringSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

@@ -239,9 +239,10 @@ where
     the space (each list is walked with a stride so that not only the first samples of the
     first parameter are used), then ordered from the smallest up (by the sum of the
     positions of the samples in their lists, which list the small samples first). -/
-def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) : List (List Sample) :=
+def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) (strs : List String := []) :
+    List (List Sample) :=
   let all : List (Nat × List Sample) := ts.foldr (fun t acc =>
-    ((samplesOf cfg t).zipIdx).flatMap fun (s, i) => acc.map fun (k, ss) => (i + k, s :: ss))
+    ((samplesOf' t).zipIdx).flatMap fun (s, i) => acc.map fun (k, ss) => (i + k, s :: ss))
     [(0, [])]
   let picked := if all.length ≤ cap then all
     else
@@ -249,6 +250,37 @@ def combos (cfg : JsConfig) (ts : List SType) (cap : Nat := 24) : List (List Sam
       (List.range all.length).filterMap fun i =>
         if i % stride == 0 then all[i]? else none
   (picked.mergeSort fun a b => a.1 ≤ b.1).map (·.2)
+where
+  /-- The samples of a parameter type: those of `samplesOf`, and for a `String` the literals
+      `strs` of the function too (after the others). -/
+  samplesOf' (t : SType) : List Sample :=
+    let base := samplesOf cfg t
+    if t == .string then
+      base ++ (strs.filter fun s => !base.any (·.js == jsStringLit s)).map fun s =>
+        ⟨toExpr s, jsStringLit s⟩
+    else base
+
+/-- The string literals of `e` added to `acc` (once each), in order of appearance. -/
+partial def strLitsAux (e : Expr) (acc : Array String) : Array String :=
+  match e with
+  | .lit (.strVal s) => if acc.contains s then acc else acc.push s
+  | .app f a => strLitsAux a (strLitsAux f acc)
+  | .lam _ t b _ | .forallE _ t b _ => strLitsAux b (strLitsAux t acc)
+  | .letE _ t v b _ => strLitsAux b (strLitsAux v (strLitsAux t acc))
+  | .mdata _ b | .proj _ _ b => strLitsAux b acc
+  | _ => acc
+
+/-- The string literals of the definition `n` and of its auxiliary definitions (`n.match_1`, …,
+    whose name `n` begins), at most `max` of them, in order of appearance: the patterns of a
+    `match` on a `String` (`| "foo" => …`), so that the checks take every arm. -/
+def stringLitsOf (n : Name) (max : Nat := 8) : MetaM (List String) := do
+  let env ← getEnv
+  let some (.defnInfo d) := env.find? n | return []
+  let aux := d.value.getUsedConstants.filter fun c => n.isPrefixOf c && c != n
+  let mut acc := strLitsAux d.value #[]
+  for c in aux do
+    if let some (.defnInfo a) := env.find? c then acc := strLitsAux a.value acc
+  return acc.toList.take max
 
 /-- A check: the JavaScript call and the answer Lean gives, printed. -/
 structure CheckCase where
@@ -369,7 +401,8 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     | return none
   let mut out : Array CheckCase := #[]
   let cap := if ps.any (· matches .tree _) then 48 else 24
-  for args in combos cfg ps cap do
+  let strs ← if ps.contains .string then stringLitsOf n else pure []
+  for args in combos cfg ps cap strs do
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
     let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)
