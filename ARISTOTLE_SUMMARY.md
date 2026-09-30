@@ -1,3 +1,32 @@
+# Summary of changes for run 60fdd191-962d-472c-997e-10af6daab90a
+I made no changes. `CaseChar`'s JS output already matches purescript-backend-optimizer's legacy output, and is slightly shorter.
+
+**Current output** (`Tests/SnapshotsPBOPure/CaseChar-pbo.js`; `CaseChar-faithful.js` is identical):
+```js
+export const test1 = (a) => {
+  if (a === "a") { return "1"; }
+  if (a === "b") { return "2"; }
+  return a === "c" ? "3" : "catch";
+};
+```
+**PBO's output** (`legacy-backend/CaseChar.js`): the same chain of `if (v === "a") return "1"; …`, but with a fourth `if`/`return` where ours has a ternary.
+
+**How they compare:** both are the same chain of early returns. Each branch does one `===` on the character, which in both backends is a one-character JS string. Neither needs runtime helpers or imports. There is no recursion or loop, so labelled blocks and loops don't come into it, and nothing here can overflow the stack.
+
+**Which phase does the work:**
+- **Elaboration:** Lean's `Char` match becomes `lean_string_dec_eq(lean_string_push("", x2), "a")`, one per literal (`CaseChar-Term-unoptimized.txt`). The translator compares characters this way because it can't look inside a `Char` value.
+- **`Term` optimizer:** it turns the last `if` into `cond(…, "3", "catch")`, which becomes the final ternary (`CaseChar-Term-optimized.txt`).
+- **`Term → JsTerm` conversion** (`lowerExtern` in `JsTerm/Lower/Extern.lean`): it prints `"".push c` as just `c`, and string equality as `===`. This gives `a === "a"`.
+
+That last rewrite can't move into the `Term` phase, your preferred one. In `Term`, a `Char` is not a `String`, so `"".push c` has no simpler form there; the two only coincide after conversion to JS. So the conversion step is the next-best place for it, and no `JsTerm → JsTerm` pass is needed.
+
+**How I checked it:**
+- I rebuilt `leanscript` from the current source and regenerated the six `CaseChar` output files. They were byte-for-byte identical to the committed ones.
+- The generated checks `CaseChar-pbo.check.mjs` and `CaseChar-faithful.check.mjs` pass 4/4 each. They cover `"a"`, `"z"`, `" "` and `"é"`.
+- Those checks never test `'b'` or `'c'`, so I also ran both presets by hand on `a, b, c, d, "ab", 😀`. Both gave `1, 2, 3, catch, catch, catch`, which is what the Lean definition says. This hand check isn't saved in the project.
+
+No Lean theorems were involved, so nothing was added to the Properties table, and there was nothing to commit.
+
 # Summary of changes for run 270dba99-9b5a-499a-8d7d-c84afc62fb48
 I made no changes. `CaseBoolean`'s JS output already matches purescript-backend-optimizer's legacy output, and is shorter.
 
