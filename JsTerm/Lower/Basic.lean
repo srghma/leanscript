@@ -135,6 +135,14 @@ inductive Ref where
       is refused (an error) when `strict` (in the step of the loop, where it would build a
       record at every iteration). -/
   | fields (fs : List Ref) (strict : Bool)
+  /-- A value of a union known to be its constructor `tag`, whose fields are `fs` (the layer a
+      branch of a fold runs on, `JsTerm.Lower.DataRec`): a case analysis of it takes the arm
+      `tag` without a test (`cBranchAt`); reading it whole builds `{ tag: tag, _1: f₁, … }`. -/
+  | ctor (tag : Nat) (fs : List Ref)
+  /-- A call not made yet, `f(args)` answering a value of type `ret` (the answer of a fold at
+      a subvalue, `JsTerm.Lower.DataRec`): made where it is read, or bound to a constant
+      where the pair holding it is taken apart (`bindCalls`). -/
+  | call (f : Ref) (args : List (Ref × JsTy)) (ret : JsTy)
   deriving Inhabited
 
 /-- A variable of JavaScript as the facts on sizes name it: a mutable variable or not, and its
@@ -152,6 +160,17 @@ structure BoundFacts where
   /-- `(i, a)`: the natural number in the variable `i` is smaller than the size of the array in
       the variable `a`. -/
   idxLt : List (VarKey × VarKey) := []
+  deriving Inhabited
+
+/-- What a case analysis on a value says of it, in one of its arms: the constant of level `src`
+    (of JavaScript type `ty`) holds the constructor `tag`, whose fields are in `fields` (`.none`
+    for a field the arm does not bind).  A constructor expression of the same constructor on the
+    same fields is that value (`knownCtorLvl?`): it is not built again. -/
+structure CtorFact where
+  src : Nat
+  ty : JsTy
+  tag : Nat
+  fields : List Ref
   deriving Inhabited
 
 /-- The JavaScript variables of the two contexts of variables of a statement: the unknowns `Γ`
@@ -180,6 +199,8 @@ structure Names where
   /-- What the enclosing tests say of the sizes of arrays (`JsTerm.Lower.Bounds`): an access
       known to be in bounds is written `a[i]` (`JsExpr.index`). -/
   bounds : BoundFacts := {}
+  /-- What the enclosing case analyses say of the values they take apart (`CtorFact`). -/
+  ctors : List CtorFact := []
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes
@@ -313,6 +334,16 @@ partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr S C 
       let as : JsArgs S C M ts ← castArgs (← refArgs (fs.zip ts)) ts
       castE (JsExpr.record_mk (id := id) (args := args) as) τ
     | _ => throw s!"internal: a record kept in variables at the type {τ}"
+  | .ctor tag fs => match τ with
+    | .obj id args => do
+      let some ts := (S.ctorsOf id args)[tag]? | throw "internal: a known constructor"
+      if fs.length != ts.length then throw "internal: the fields of a known constructor"
+      let as ← refArgs (C := C) (M := M) (fs.zip ts)
+      match JsMem.ofIndex? (S.ctorsOf id args) tag ((fs.zip ts).map (·.2)) with
+      | some m => pure (.union_mk m as)
+      | none => throw "internal: the fields of a known constructor"
+    | _ => throw s!"internal: a known constructor at the type {τ}"
+  | .call f args ret => do castE (← papCall f args ret) τ
 
 /-- The call of `base` on all its arguments `args`, answering a value of type `c`. -/
 partial def papCall {C M : List JsTy} (base : Ref) (args : List (Ref × JsTy)) (c : JsTy) :
@@ -324,6 +355,44 @@ partial def refArgs {C M : List JsTy} : (as : List (Ref × JsTy)) → ConvM (JsA
   | [] => pure .nil
   | (r, t) :: as => return .cons (← r.get t) (← refArgs as)
 end
+
+/-- Can a value of the type hold an array that an update in place could change (a generic or
+    typed array, anywhere in it, the declared datatypes `S` unfolded)?  A value of any other
+    type is never changed once built, so it can be shared instead of built again. -/
+partial def JsTy.hasMutable (S : JsSig) (seen : List Nat := []) : JsTy → Bool
+  | .array _ | .typedArray _ => true
+  | .terminal _ | .enum .. | .fn .. => false
+  | .list e | .thunk e => e.hasMutable S seen
+  | .obj (.decl i) args =>
+    args.any (·.hasMutable S seen) || (!seen.contains i && (S.body i).hasMutable S (i :: seen))
+  | .obj _ args => args.any (·.hasMutable S seen)
+
+/-- The level of the constant that already holds the constructor `tag` of type `ty` on the
+    fields held by the constants of levels `args`, by the facts `facts` of the enclosing case
+    analyses (`CtorFact`); never for a type that can hold an array (`JsTy.hasMutable`). -/
+def knownCtorLvl? (facts : List CtorFact) (tag : Nat) (args : List (Option Nat)) (ty : JsTy) :
+    Option Nat :=
+  if ty.hasMutable S then none else
+  (facts.find? fun f => f.tag == tag && f.ty == ty && f.fields.length == args.length &&
+    (f.fields.zip args).all fun (r, a) => match r, a with
+      | .c l, some l' => l == l'
+      | _, _ => false).map (·.src)
+
+/-- The refs `rs` with every call not made yet (`Ref.call`) that `used` says is read bound to a
+    constant first (`const x = f(a);`), for `rest`; a call that is not read is dropped (it
+    would compute nothing anybody reads: the language is pure and total). -/
+partial def bindCalls {C M J : List JsTy} {k : JsEnd} (rs : List Ref) (used : List Bool)
+    (rest : List Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J k)) : ConvM (JsBlock S C M J k) :=
+  match rs with
+  | [] => rest [] C
+  | r :: rs' =>
+    match r, used.headD true with
+    | .call f as t, true => do
+      let e ← papCall (C := C) (M := M) f as t
+      return .const "x" e (← bindCalls (C := t :: C) rs' used.tail fun rs'' C' =>
+        rest (.c C.length :: rs'') C')
+    | .call _ _ _, false => bindCalls rs' used.tail fun rs'' C' => rest (.none :: rs'') C'
+    | _, _ => bindCalls rs' used.tail fun rs'' C' => rest (r :: rs'') C'
 
 /-- `e` as a constant, for `k`: `e` itself when it is a constant already, else `const x = e;`
     and the rest. -/

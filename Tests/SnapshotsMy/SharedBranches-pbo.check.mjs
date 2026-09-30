@@ -42,6 +42,44 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ tag: 0 }, 0, \"\")", () => M.test1({ tag: 0 }, 0, ""), " (error code: 0)", false);
+check("test1({ tag: 0 }, 0, \"hello world\")", () => M.test1({ tag: 0 }, 0, "hello world"), "hello world (error code: 0)", false);
+check("test1({ tag: 0 }, 1, \"a\")", () => M.test1({ tag: 0 }, 1, "a"), "a (error code: 1)", false);
+check("test1({ tag: 0 }, 2, \"\")", () => M.test1({ tag: 0 }, 2, ""), " (error code: 2)", false);
+check("test1({ tag: 1, _1: \"\" }, 0, \"a\")", () => M.test1({ tag: 1, _1: "" }, 0, "a"), "a (error code: 0)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 1, \"\")", () => M.test1({ tag: 1, _1: "" }, 1, ""), " (error code: 1)\n  file: ", false);
+check("test1({ tag: 1, _1: \"a\" }, 0, \"\")", () => M.test1({ tag: 1, _1: "a" }, 0, ""), " (error code: 0)\n  file: a", false);
+check("test1({ tag: 0 }, 0, \"abcabc\")", () => M.test1({ tag: 0 }, 0, "abcabc"), "abcabc (error code: 0)", false);
+check("test1({ tag: 0 }, 1, \"héllo, wörld\")", () => M.test1({ tag: 0 }, 1, "héllo, wörld"), "héllo, wörld (error code: 1)", false);
+check("test1({ tag: 0 }, 2, \"hello world\")", () => M.test1({ tag: 0 }, 2, "hello world"), "hello world (error code: 2)", false);
+check("test1({ tag: 0 }, 5, \"a\")", () => M.test1({ tag: 0 }, 5, "a"), "a (error code: 5)", false);
+check("test1({ tag: 0 }, 13, \"\")", () => M.test1({ tag: 0 }, 13, ""), " (error code: 13)", false);
+check("test1({ tag: 1, _1: \"\" }, 0, \"héllo, wörld\")", () => M.test1({ tag: 1, _1: "" }, 0, "héllo, wörld"), "héllo, wörld (error code: 0)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 1, \"hello world\")", () => M.test1({ tag: 1, _1: "" }, 1, "hello world"), "hello world (error code: 1)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 2, \"a\")", () => M.test1({ tag: 1, _1: "" }, 2, "a"), "a (error code: 2)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 5, \"\")", () => M.test1({ tag: 1, _1: "" }, 5, ""), " (error code: 5)\n  file: ", false);
+check("test1({ tag: 1, _1: \"a\" }, 0, \"hello world\")", () => M.test1({ tag: 1, _1: "a" }, 0, "hello world"), "hello world (error code: 0)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 1, \"a\")", () => M.test1({ tag: 1, _1: "a" }, 1, "a"), "a (error code: 1)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 2, \"\")", () => M.test1({ tag: 1, _1: "a" }, 2, ""), " (error code: 2)\n  file: a", false);
+check("test1({ tag: 0 }, 2, \"abcabc\")", () => M.test1({ tag: 0 }, 2, "abcabc"), "abcabc (error code: 2)", false);
+check("test1({ tag: 0 }, 5, \"héllo, wörld\")", () => M.test1({ tag: 0 }, 5, "héllo, wörld"), "héllo, wörld (error code: 5)", false);
+check("test1({ tag: 0 }, 13, \"hello world\")", () => M.test1({ tag: 0 }, 13, "hello world"), "hello world (error code: 13)", false);
+check("test1({ tag: 1, _1: \"\" }, 1, \"abcabc\")", () => M.test1({ tag: 1, _1: "" }, 1, "abcabc"), "abcabc (error code: 1)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 2, \"héllo, wörld\")", () => M.test1({ tag: 1, _1: "" }, 2, "héllo, wörld"), "héllo, wörld (error code: 2)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 5, \"hello world\")", () => M.test1({ tag: 1, _1: "" }, 5, "hello world"), "hello world (error code: 5)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 13, \"a\")", () => M.test1({ tag: 1, _1: "" }, 13, "a"), "a (error code: 13)\n  file: ", false);
+check("test1({ tag: 1, _1: \"a\" }, 0, \"abcabc\")", () => M.test1({ tag: 1, _1: "a" }, 0, "abcabc"), "abcabc (error code: 0)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 1, \"héllo, wörld\")", () => M.test1({ tag: 1, _1: "a" }, 1, "héllo, wörld"), "héllo, wörld (error code: 1)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 2, \"hello world\")", () => M.test1({ tag: 1, _1: "a" }, 2, "hello world"), "hello world (error code: 2)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 5, \"a\")", () => M.test1({ tag: 1, _1: "a" }, 5, "a"), "a (error code: 5)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 13, \"\")", () => M.test1({ tag: 1, _1: "a" }, 13, ""), " (error code: 13)\n  file: a", false);
+check("test1({ tag: 0 }, 13, \"abcabc\")", () => M.test1({ tag: 0 }, 13, "abcabc"), "abcabc (error code: 13)", false);
+check("test1({ tag: 1, _1: \"\" }, 5, \"abcabc\")", () => M.test1({ tag: 1, _1: "" }, 5, "abcabc"), "abcabc (error code: 5)\n  file: ", false);
+check("test1({ tag: 1, _1: \"\" }, 13, \"héllo, wörld\")", () => M.test1({ tag: 1, _1: "" }, 13, "héllo, wörld"), "héllo, wörld (error code: 13)\n  file: ", false);
+check("test1({ tag: 1, _1: \"a\" }, 2, \"abcabc\")", () => M.test1({ tag: 1, _1: "a" }, 2, "abcabc"), "abcabc (error code: 2)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 5, \"héllo, wörld\")", () => M.test1({ tag: 1, _1: "a" }, 5, "héllo, wörld"), "héllo, wörld (error code: 5)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 13, \"hello world\")", () => M.test1({ tag: 1, _1: "a" }, 13, "hello world"), "hello world (error code: 13)\n  file: a", false);
+check("test1({ tag: 1, _1: \"a\" }, 13, \"abcabc\")", () => M.test1({ tag: 1, _1: "a" }, 13, "abcabc"), "abcabc (error code: 13)\n  file: a", false);
 check("test3(\"\")", () => M.test3(""), "A", false);
 check("test3(\"a\")", () => M.test3("a"), "a", false);
 check("test3(\"hello world\")", () => M.test3("hello world"), "h", false);

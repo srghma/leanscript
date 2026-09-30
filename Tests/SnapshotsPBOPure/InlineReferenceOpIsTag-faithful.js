@@ -2,14 +2,84 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 // not translated:
 //   instReprMyList.repr: LeanScript: the parameter `α._@.LeanScriptInput.1518142420._hygCtx._hyg.31` of `instReprMyList.repr` is a type
-//   test1: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   test2: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   test3: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   fn_prime: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   extern1: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   extern2: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   extern3: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   test4: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   test5: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
-//   test6: LeanScript: the recursive type MyList Int is not declared in any signature; declare it with `leanscript_signature`
 
+/**
+ * `test1`
+ * @param {() => D1} fn
+ * @returns {D1}
+ */
+export const test1 = (fn) => ({
+  tag: 0,
+  _1: 0n,
+  _2: { tag: 0, _1: 1n, _2: fn() },
+});
+
+/**
+ * `test2`
+ * @param {() => D1} fn
+ * @returns {D1}
+ */
+export const test2 = (fn) => ({
+  tag: 0,
+  _1: 0n,
+  _2: { tag: 0, _1: 1n, _2: fn() },
+});
+
+/**
+ * `test3`
+ * @param {() => D1} fn
+ * @returns {D1}
+ */
+export const test3 = (fn) => ({
+  tag: 0,
+  _1: 0n,
+  _2: { tag: 0, _1: 1n, _2: fn() },
+});
+
+/**
+ * `fn_prime`
+ * @type {D1}
+ */
+export const fn_prime = (() => {
+  const f$1 = () => ({ tag: 1 });
+  return f$1();
+})();
+
+/**
+ * `extern1`
+ * @type {D1}
+ */
+export const extern1 = { tag: 0, _1: 1n, _2: { tag: 1 } };
+
+/**
+ * `extern2`
+ * @type {D1}
+ */
+export const extern2 = { tag: 0, _1: 1n, _2: { tag: 1 } };
+
+/**
+ * `extern3`
+ * @type {{ _1: D1, _2: D1 }}
+ */
+export const extern3 = {
+  _1: { tag: 0, _1: 1n, _2: { tag: 1 } },
+  _2: { tag: 1 },
+};
+
+/**
+ * `test4`
+ * @type {D1}
+ */
+export const test4 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };
+
+/**
+ * `test5`
+ * @type {D1}
+ */
+export const test5 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };
+
+/**
+ * `test6`
+ * @type {D1}
+ */
+export const test6 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };

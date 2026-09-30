@@ -42,6 +42,48 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test2({ tag: 0 }, 0n)", () => M.test2({ tag: 0 }, 0n), "0", false);
+check("test2({ tag: 0 }, 1n)", () => M.test2({ tag: 0 }, 1n), "1", false);
+check("test2({ tag: 1, _1: 0n }, 0n)", () => M.test2({ tag: 1, _1: 0n }, 0n), "0", false);
+check("test2({ tag: 0 }, 2n)", () => M.test2({ tag: 0 }, 2n), "2", false);
+check("test2({ tag: 1, _1: 0n }, 1n)", () => M.test2({ tag: 1, _1: 0n }, 1n), "1", false);
+check("test2({ tag: 1, _1: 1n }, 0n)", () => M.test2({ tag: 1, _1: 1n }, 0n), "1", false);
+check("test2({ tag: 0 }, 5n)", () => M.test2({ tag: 0 }, 5n), "5", false);
+check("test2({ tag: 1, _1: 0n }, 2n)", () => M.test2({ tag: 1, _1: 0n }, 2n), "2", false);
+check("test2({ tag: 1, _1: 1n }, 1n)", () => M.test2({ tag: 1, _1: 1n }, 1n), "2", false);
+check("test2({ tag: 2, _1: 0n, _2: 0n }, 0n)", () => M.test2({ tag: 2, _1: 0n, _2: 0n }, 0n), "0", false);
+check("test2({ tag: 0 }, 13n)", () => M.test2({ tag: 0 }, 13n), "13", false);
+check("test2({ tag: 1, _1: 0n }, 5n)", () => M.test2({ tag: 1, _1: 0n }, 5n), "5", false);
+check("test2({ tag: 1, _1: 1n }, 2n)", () => M.test2({ tag: 1, _1: 1n }, 2n), "3", false);
+check("test2({ tag: 2, _1: 0n, _2: 0n }, 1n)", () => M.test2({ tag: 2, _1: 0n, _2: 0n }, 1n), "1", false);
+check("test2({ tag: 2, _1: 0n, _2: 1n }, 0n)", () => M.test2({ tag: 2, _1: 0n, _2: 1n }, 0n), "1", false);
+check("test2({ tag: 1, _1: 0n }, 13n)", () => M.test2({ tag: 1, _1: 0n }, 13n), "13", false);
+check("test2({ tag: 1, _1: 1n }, 5n)", () => M.test2({ tag: 1, _1: 1n }, 5n), "6", false);
+check("test2({ tag: 2, _1: 0n, _2: 0n }, 2n)", () => M.test2({ tag: 2, _1: 0n, _2: 0n }, 2n), "2", false);
+check("test2({ tag: 2, _1: 0n, _2: 1n }, 1n)", () => M.test2({ tag: 2, _1: 0n, _2: 1n }, 1n), "2", false);
+check("test2({ tag: 2, _1: 1n, _2: 0n }, 0n)", () => M.test2({ tag: 2, _1: 1n, _2: 0n }, 0n), "1", false);
+check("test2({ tag: 1, _1: 1n }, 13n)", () => M.test2({ tag: 1, _1: 1n }, 13n), "14", false);
+check("test2({ tag: 2, _1: 0n, _2: 0n }, 5n)", () => M.test2({ tag: 2, _1: 0n, _2: 0n }, 5n), "5", false);
+check("test2({ tag: 2, _1: 0n, _2: 1n }, 2n)", () => M.test2({ tag: 2, _1: 0n, _2: 1n }, 2n), "3", false);
+check("test2({ tag: 2, _1: 1n, _2: 0n }, 1n)", () => M.test2({ tag: 2, _1: 1n, _2: 0n }, 1n), "2", false);
+check("test2({ tag: 2, _1: 1n, _2: 1n }, 0n)", () => M.test2({ tag: 2, _1: 1n, _2: 1n }, 0n), "2", false);
+check("test2({ tag: 2, _1: 0n, _2: 0n }, 13n)", () => M.test2({ tag: 2, _1: 0n, _2: 0n }, 13n), "13", false);
+check("test2({ tag: 2, _1: 0n, _2: 1n }, 5n)", () => M.test2({ tag: 2, _1: 0n, _2: 1n }, 5n), "6", false);
+check("test2({ tag: 2, _1: 1n, _2: 0n }, 2n)", () => M.test2({ tag: 2, _1: 1n, _2: 0n }, 2n), "3", false);
+check("test2({ tag: 2, _1: 1n, _2: 1n }, 1n)", () => M.test2({ tag: 2, _1: 1n, _2: 1n }, 1n), "3", false);
+check("test2({ tag: 2, _1: 0n, _2: 1n }, 13n)", () => M.test2({ tag: 2, _1: 0n, _2: 1n }, 13n), "14", false);
+check("test2({ tag: 2, _1: 1n, _2: 0n }, 5n)", () => M.test2({ tag: 2, _1: 1n, _2: 0n }, 5n), "6", false);
+check("test2({ tag: 2, _1: 1n, _2: 1n }, 2n)", () => M.test2({ tag: 2, _1: 1n, _2: 1n }, 2n), "4", false);
+check("test2({ tag: 2, _1: 1n, _2: 0n }, 13n)", () => M.test2({ tag: 2, _1: 1n, _2: 0n }, 13n), "14", false);
+check("test2({ tag: 2, _1: 1n, _2: 1n }, 5n)", () => M.test2({ tag: 2, _1: 1n, _2: 1n }, 5n), "7", false);
+check("test2({ tag: 2, _1: 1n, _2: 1n }, 13n)", () => M.test2({ tag: 2, _1: 1n, _2: 1n }, 13n), "15", false);
+check("test3({ tag: 0 })", () => M.test3({ tag: 0 }), "0", false);
+check("test3({ tag: 1, _1: 0n })", () => M.test3({ tag: 1, _1: 0n }), "0", false);
+check("test3({ tag: 1, _1: 1n })", () => M.test3({ tag: 1, _1: 1n }), "1", false);
+check("test3({ tag: 2, _1: 0n, _2: 0n })", () => M.test3({ tag: 2, _1: 0n, _2: 0n }), "0", false);
+check("test3({ tag: 2, _1: 0n, _2: 1n })", () => M.test3({ tag: 2, _1: 0n, _2: 1n }), "1", false);
+check("test3({ tag: 2, _1: 1n, _2: 0n })", () => M.test3({ tag: 2, _1: 1n, _2: 0n }), "1", false);
+check("test3({ tag: 2, _1: 1n, _2: 1n })", () => M.test3({ tag: 2, _1: 1n, _2: 1n }), "2", false);
 
 console.log(`TagChain-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -68,20 +68,15 @@ syntax (name := leanscriptSignature)
 /-- `leanscript_use_signature Prog` makes the program `Prog` the current one. -/
 syntax (name := leanscriptUseSignature) "leanscript_use_signature " ident : command
 
-@[command_elab leanscriptSignature]
-def elabSignature : CommandElab := fun stx => do
-  let name : Ident := ⟨stx[1]⟩
+/-- Declare the program `name` (relative to the current namespace) whose requested types are
+    `reqs` (closed, normalised Lean types), each named by the matching entry of `entries`: the
+    command behind `leanscript_signature`, also used by the `leanscript` tool to declare the
+    recursive types of a file on its own (`LeanScript.Cli.autoSignature`). -/
+def declareProgram (name : Ident) (entries : Array Name) (reqs : Array Expr) :
+    CommandElabM Unit := do
   let fullName := (← getCurrNamespace) ++ name.getId
-  let entries := stx[3].getSepArgs
-  let pairs : Array (Ident × Lean.Term) := entries.map fun e => (⟨e[0]⟩, ⟨e[2]⟩)
   let sub (s : Name) : Ident := mkIdentFrom name (name.getId ++ s)
   let (info, cmds) ← liftTermElabM do
-    let reqs ← pairs.mapM fun (_, t) => do
-      let e ← Term.elabType t
-      Term.synthesizeSyntheticMVarsNoPostponing
-      let e ← normType (← instantiateMVars e)
-      if e.hasFVar || e.hasMVar then fail m!"the type{indentExpr e}\nis not closed"
-      return e
     let ((blocks, tys), st) ← (do
         for r in reqs do discover r
         let blocks ← declareBlocks true none
@@ -102,11 +97,25 @@ def elabSignature : CommandElab := fun stx => do
       sig ← `(DSig.cons $sig $(quote (blocks[b]!.members.size - 1))
         $(sub (.mkSimple s!"block{b}")))
     out := out.push (← `(def $(sub `Δ) : DSig $(sub `ks) := $sig))
-    for i in [0:pairs.size] do
-      out := out.push (← `(def $(sub pairs[i]!.1.getId) : Ty $(sub `ks) := $(← tys[i]!.stx nb #[])))
+    for i in [0:entries.size] do
+      out := out.push (← `(def $(sub entries[i]!) : Ty $(sub `ks) := $(← tys[i]!.stx nb #[])))
     return (info, out)
   for c in cmds do elabCommand c
   addEntry (.prog info)
+
+@[command_elab leanscriptSignature]
+def elabSignature : CommandElab := fun stx => do
+  let name : Ident := ⟨stx[1]⟩
+  let entries := stx[3].getSepArgs
+  let pairs : Array (Ident × Lean.Term) := entries.map fun e => (⟨e[0]⟩, ⟨e[2]⟩)
+  let reqs ← liftTermElabM do
+    pairs.mapM fun (_, t) => do
+      let e ← Term.elabType t
+      Term.synthesizeSyntheticMVarsNoPostponing
+      let e ← normType (← instantiateMVars e)
+      if e.hasFVar || e.hasMVar then fail m!"the type{indentExpr e}\nis not closed"
+      return e
+  declareProgram name (pairs.map (·.1.getId)) reqs
 
 @[command_elab leanscriptUseSignature]
 def elabUseSignature : CommandElab := fun stx => do

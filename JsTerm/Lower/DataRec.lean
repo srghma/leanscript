@@ -164,12 +164,37 @@ partial def mapArms {C M : List JsTy} {τ : JsTy} (tgt : JsTy) :
     return .cons sel (.jump .zero mk) (← mapArms tgt cs fls (idx + 1))
   | _ :: _, [], _ => throw "internal: the constructors of a layer"
 
+/-- The arms of the case analysis of a union member **fused** with the branch: each takes its
+    constructor apart and runs `rest` at once on the layer as a known constructor (`Ref.ctor`),
+    each hole `i'` of it the pair of the subvalue `c` and the call `go_i'(c)` not made yet
+    (`Ref.call`: it is made where the branch takes the pair apart and reads the answer,
+    `bindCalls`).  So the branch, which starts with a case analysis of its layer, takes the arm
+    of the constructor without a test (`cBranchAt`), and builds no pair. -/
+partial def fusedArms {C M : List JsTy} {τ : JsTy}
+    (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M [] (.ret τ))) :
+    (cs : List (List JsTy)) → List (List (Σ g, Fld ks' n g)) → Nat →
+    ConvM (JsUnionArms S C M [] (.ret τ) cs)
+  | [], _, _ => pure .nil
+  | fs :: cs, flds :: fls, idx => do
+    let (⟨us, sel⟩, refs) := mkSel fs [] C
+    let frefs := (flds.zip refs).map fun (⟨_, f⟩, r) => match f with
+      | .hole i _ => Ref.fields [r, .call (go i) [(r, lowerTy cfg (σs i))] (R i)] false
+      | _ => r
+    let body ← rest (.ctor idx frefs) (pushAll us C)
+    return .cons sel body (← fusedArms rest cs fls (idx + 1))
+  | _ :: _, [], _ => throw "internal: the constructors of a layer"
+
+/-- Can the case analysis of a union member be fused with the branch (`fusedArms`): every field
+    is a hole or a field without a hole. -/
+def fusableFlds {g : Nat} (fls : List (List (Σ g', Fld ks' n g'))) : Bool :=
+  fls.all (·.all fun ⟨_, f⟩ => match f with | .hole .. | .old _ => true | _ => false)
+
 /-- The body of the function of member `i`, of declaration `d`, whose parameter (a value of the
     member) is the constant `v`: the layer mapped (`mapFld`), then `rest`, from where the mapped
     layer lives. -/
 partial def recMember {C M : List JsTy} {τ : JsTy} {g : Nat} (d : Decl ks' n g) (T : JsTy)
-    (v : Ref) (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M [] (.ret τ))) :
-    ConvM (JsBlock S C M [] (.ret τ)) := do
+    (v : Ref) (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M [] (.ret τ)))
+    (fused : Bool := false) : ConvM (JsBlock S C M [] (.ret τ)) := do
   let src := lowerTy cfg (Decl.inst w σs d)
   let tgt := lowerTy cfg (Decl.inst w σt d)
   let ue : JsExpr S C M src ← unfoldE (← v.get T) src
@@ -187,6 +212,10 @@ partial def recMember {C M : List JsTy} {τ : JsTy} {g : Nat} (d : Decl ks' n g)
   | .union u (h := _) =>
     match src, ue with
     | .obj id args, ue =>
+      if fused && fusableFlds (g := g) u.fldLists then
+        let arms ← fusedArms cfg σs go R (ks' := ks') (C := C) (M := M) rest (S.ctorsOf id args)
+          u.fldLists 0
+        return JsBlock.unionCases ue arms
       let arms ← mapArms cfg w σs σt go R (C := C) (M := M) (τ := τ) tgt (S.ctorsOf id args)
         u.fldLists 0
       let block := JsBlock.unionCases ue arms
@@ -204,7 +233,8 @@ def recFuns (cfg : JsConfig) {ks ks' : List Nat} {n : Nat} (w : LeanScript.Ref k
     (σs σt : Fin n → Ty ks) (members : Fin n → Σ g, Decl ks' n g) (T R : Fin n → JsTy)
     {C M J : List JsTy} {k : JsEnd}
     (branch : (i : Fin n) → Ref → (C' : List JsTy) → ConvM (JsBlock S C' M [] (.ret (R i))))
-    (rest : (C' : List JsTy) → ConvM (JsBlock S C' M J k)) : ConvM (JsBlock S C M J k) := do
+    (rest : (C' : List JsTy) → ConvM (JsBlock S C' M J k))
+    (fused : Fin n → Bool := fun _ => false) : ConvM (JsBlock S C M J k) := do
   let is := List.finRange n
   let τs := is.map fun i => JsTy.fn [T i] (R i)
   let C' := pushAll τs C
@@ -214,7 +244,7 @@ def recFuns (cfg : JsConfig) {ks ks' : List Nat} {n : Nat} (w : LeanScript.Ref k
     | i :: is => do
       let ⟨_, d⟩ := members i
       let body ← recMember cfg w σs σt go R (C := T i :: C') (M := M) d (T i) (.c C'.length)
-        (branch i)
+        (branch i) (fused i)
       return .cons (.lam ["v"] body) (← mkDefs is)
   let defs ← mkDefs is
   return .funs ((List.range n).map fun i => s!"go{i}") defs (← rest C')

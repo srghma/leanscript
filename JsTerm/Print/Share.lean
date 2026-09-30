@@ -5,6 +5,7 @@ import JsTerm.Lower.AddChain
 import JsTerm.Lower.Sink
 import JsTerm.Lower.MergeIte
 import JsTerm.Lower.ShareTail
+import JsTerm.Lower.Globals
 
 set_option autoImplicit false
 
@@ -167,7 +168,7 @@ def mergedCost (S : JsSig) : BlockCost S := fun b => blockCost S b.mergeIte
     written once after a labelled block (`JsTerm.Lower.ShareTail`, where that makes the
     JavaScript shorter, the tests then merged again). -/
 def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
-  let funs := (pairTagLoops funs).map fun f => (f.foldAdds.sink.mergeIte.shareTails mergedCost).mergeIte
+  let funs := (pairTagLoops (linkGlobals funs)).map fun f => (f.foldAdds.sink.mergeIte.shareTails mergedCost).mergeIte
   let arr := funs.toArray.map fun _ => ()
   let names := funs.map (·.name)
   -- for each function: the worker put before it, and the call it is written as

@@ -24,7 +24,7 @@ export const test3 = (s, n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       const { _1: f$4 } = a$3._1;
       const x$5 = uint53__lean_nat_add(

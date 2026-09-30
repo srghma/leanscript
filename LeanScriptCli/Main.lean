@@ -290,6 +290,8 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
   unless o.quiet do IO.eprintln s!"leanscript: elaborating {file}"
   let el ← elabFile file
   let (cands0, refused0) ← candidates el
+  -- the recursive types the candidates mention, declared as the signature of the program
+  let el ← autoSignature el cands0
   -- the definitions `Term` does not support are refused
   let mut refused : Array (Name × String) := refused0
   let mut cands : Array Name := #[]

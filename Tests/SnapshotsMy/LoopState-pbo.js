@@ -18,7 +18,7 @@ export const sumCount = (n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       acc$1 = {
         tag: 1,
@@ -43,7 +43,7 @@ export const fib = (n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       const { _2: f$4 } = a$3._1;
       acc$1 = {
@@ -66,7 +66,7 @@ export const minMaxSum = (n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       const { _1: f$4 } = a$3._1;
       const { _1: f$5, _2: f$6 } = a$3._1._2;
@@ -110,12 +110,9 @@ export const firstAbove = (n, k) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
-      acc$1 =
-        k < uint53__lean_nat_mul(i$2, i$2)
-          ? { tag: 0, _1: i$2 }
-          : { tag: 1, _1: a$3._1 };
+      acc$1 = k < uint53__lean_nat_mul(i$2, i$2) ? { tag: 0, _1: i$2 } : a$3;
     }
   }
   return acc$1._1;
@@ -132,7 +129,7 @@ export const repeatCount = (s, n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       acc$1 = {
         tag: 1,

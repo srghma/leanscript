@@ -80,6 +80,19 @@ variable {S : JsSig}
 
 open LeanScript
 
+/-- Does the statement start with a case analysis of its innermost unknown (`case x of …`), and
+    read it nowhere else? -/
+def _root_.LeanScript.Term.casesOnHead {ks : List Nat} {Δ : DSig ks} {d : Nat} {Φ : KCtx ks}
+    {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} : Term Δ d Φ Γ τ js o → Bool
+  | t@(.branch (.union_casesOn (.var x) _)) => x.index == 0 && (Own.Term.occ (.u 0) t).n == 1
+  | _ => false
+
+/-- Does the body (of one parameter) start with a case analysis of its parameter? -/
+def _root_.LeanScript.Body.casesOnParam {ks : List Nat} {Δ : DSig ks} {d : Nat} {Φ : KCtx ks}
+    {Γ bs : UCtx ks} {τ : Ty ks} {o : Lvl} : Body Δ d Φ Γ bs τ o → Bool
+  | .closed t => t.casesOnHead
+  | .opened t _ => t.casesOnHead
+
 /-- The constant of the version of the local function `fi` a call giving up the arguments `off`
     calls (`Own.FnOwn.chosen`), when it is generated. -/
 def fnVersionRef? (n : Names) (fi : Own.FnOwn) (off : List Bool) : Option Ref :=
@@ -204,6 +217,68 @@ def enumIndexEq? {C M σs : List JsTy} (as : JsArgs S C M σs) :
     | _, _ => none
   | _ => none
 
+/-! ## Values known from a case analysis
+
+In the arm of `case x of | cᵢ(f₁, …) => …`, the constructor expression `cᵢ(f₁, …)` (on the very
+fields the arm binds) is the value of `x` itself: Lean's `match` builds it again when a later
+pattern names the whole value (`| x => … x …`), and the conversion writes `x` instead
+(`CtorFact`, `knownCtorLvl?`), as purescript-backend-optimizer does.  Only for values that
+hold no array (`JsTy.hasMutable`): nothing can then tell the value built again from the one
+taken apart. -/
+
+mutual
+/-- The level of the constant holding the value of a pure expression, when it is a variable held
+    in a constant, or a constructor expression of a value known from a case analysis. -/
+partial def pexprLvl? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (n : Names) : Option Nat :=
+  match e with
+  | .neu (.var y) => match n.u.getD y.index .none with
+    | .c l => some l
+    | _ => none
+  | .kvar k => match n.k.getD k.index .none with
+    | .c l => some l
+    | _ => none
+  | .union_mk .. => ctorLvl? e (lowerTy cfg τ) n
+  | .data_in _ _ e' => ctorLvl? e' (lowerTy cfg τ) n
+  | _ => none
+/-- The level of the constant holding the value of a constructor expression `e` (of a union),
+    whose value has the JavaScript type `ty` (the union, or the datatype it is the layer of). -/
+partial def ctorLvl? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (ty : JsTy) (n : Names) : Option Nat :=
+  match e with
+  | .union_mk ix args => knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls args n) ty
+  | _ => none
+/-- `pexprLvl?` of each argument. -/
+partial def argsLvls {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
+    (as : Args Δ Φ Γ σs o) (n : Names) : List (Option Nat) :=
+  match as with
+  | .nil => []
+  | .cons a as => pexprLvl? a n :: argsLvls as n
+end
+
+/-- The level of the constant holding the value of a constructor built again on the fields of a
+    value known from a case analysis (`ctorLvl?`). -/
+def valCtorLvl? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o : Lvl}
+    (v : Val Δ d Φ Γ σ o) (n : Names) : Option Nat :=
+  match v with
+  | Val.union_mk ix args =>
+    knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls (S := S) cfg args n) (lowerTy cfg σ)
+  | Val.data_in _ _ e => ctorLvl? (S := S) cfg e (lowerTy cfg σ) n
+  | _ => none
+
+/-- The unknown a case analysis takes apart, when it is one (or one layer out of one). -/
+def _root_.LeanScript.Neu.scrutVar? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
+    Neu Δ Φ Γ τ ℓ → Option Nat
+  | .var x => some x.index
+  | .data_out _ _ (.var x) => some x.index
+  | _ => none
+
+/-- The constant of level `l`, when the constructor expression is known to be its value. -/
+def knownGet? {C M : List JsTy} (l? : Option Nat) (τ : JsTy) : ConvM (Option (JsExpr S C M τ)) :=
+  match l? with
+  | some l => do return some (← (Ref.c l).get τ)
+  | none => pure none
+
 /-- Is the statement `jump j i`, `j` the innermost join point and `i` the literal `Nat` `k`? -/
 def isJumpNatLit {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (k : Nat) : Term Δ d Φ Γ τ js o → Bool
@@ -313,12 +388,15 @@ partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
     castE (.lit l) _
   | .enum_mk s i => pure (.enum_mk s.nOfConstructors s.shift i)
   | .record_mk args => do recordLit (← cArgs args n C M) _
-  | PExpr.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgs args n C M)
+  | PExpr.union_mk (cs := cs) (c := c) ix args => do
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n) _ then return v
+    unionLit cs c ix (← cArgs args n C M)
   | PExpr.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | PExpr.list_mk (t := t) es => do
     listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
-  | PExpr.data_in b j e => do
-    foldE (← cPExpr e n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
+  | PExpr.data_in b j e' => do
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e' (lowerTy cfg τ) n) _ then return v
+    foldE (← cPExpr e' n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
 
 /-- A pure expression whose value is made owned by copying arrays (`Own.PExpr.copyable`): its
     owned parts as they are, each other array copied (`[...a]`). -/
@@ -420,11 +498,15 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
     lowerExtern "lean_mk_thunk" (.cons lz .nil)
   | Val.lazy_mk b => do castE (.lam (σs := []) [] (← cBody b n C M [] [])) _
   | .record_mk args => do recordLit (← cArgs args n C M) _
-  | Val.union_mk (cs := cs) (c := c) ix args => do unionLit cs c ix (← cArgs args n C M)
+  | Val.union_mk (cs := cs) (c := c) ix args => do
+    let l? := knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls (S := S) cfg args n) (lowerTy cfg τ)
+    if let some v ← knownGet? l? _ then return v
+    unionLit cs c ix (← cArgs args n C M)
   | Val.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | Val.list_mk (t := t) es => do
     listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | Val.data_in b j e => do
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n) _ then return v
     foldE (← cPExpr e n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
 
 /-- A statement that answers a function, applied to the parameters `ps` (bound in `C`, the
@@ -576,8 +658,11 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     -- the answers at the holes of a layer are owned when every branch answers an owned value
     let f := if Own.dataRecOwns n.cx b ρ branches then Own.Env.withHoles (Own.recHoles b ρ)
       else fun e => e
+    -- a branch that starts with a case analysis of its layer, read nowhere else, is fused with the
+    -- case analysis that maps the layer (`fusedArms`)
     dataFold B ρ (fun i => Ty.pair (.data (B.ref i)) (ρ i))
       (fun i x C' => cBody (branches i) n C' M [x] [false] f) j e
+      (fun i => (branches i).casesOnParam)
   | Comp.data_brec (b := b) ρ 0 _ branches j e _ =>
     -- depth `0`: the windows are the pairs of `data_rec`
     let B := Δ.block b
@@ -598,16 +683,17 @@ where
   dataFold {oe : Lvl} (B : Δ.Block) (ρ : Fin (B.k + 1) → Ty ks) (σt : Fin (B.k + 1) → Ty ks)
       (branch : (i : Fin (B.k + 1)) → Ref → (C' : List JsTy) →
         ConvM (JsBlock S C' M [] (.ret (lowerTy cfg (ρ i)))))
-      (j : Fin (B.k + 1)) (sub : PExpr Δ Φ Γ (.data (B.ref j)) oe) : ConvM (JsBlock S C M J e) := do
+      (j : Fin (B.k + 1)) (sub : PExpr Δ Φ Γ (.data (B.ref j)) oe)
+      (fused : Fin (B.k + 1) → Bool := fun _ => false) : ConvM (JsBlock S C M J e) := do
     let members : Fin (B.k + 1) → Σ g, Decl B.ks' (B.k + 1) g :=
       fun i => (B.bs.decl? i.val).getD ⟨0, default⟩
     let T : Fin (B.k + 1) → JsTy := fun i => lowerTy cfg (Ty.data (d := true) (B.ref i))
     let R : Fin (B.k + 1) → JsTy := fun i => lowerTy cfg (ρ i)
-    recFuns cfg B.old (fun i => .data (B.ref i)) σt members T R branch fun C' => do
+    recFuns cfg B.old (fun i => .data (B.ref i)) σt members T R branch (fun C' => do
       let ee ← castE (← cPExpr sub n C' M) (T j)
       let call : JsExpr S C' M (R j) :=
         .app (← (Ref.c (C.length + j.val)).get (.fn [T j] (R j))) (.cons ee .nil)
-      return .const "x" call (← k (.c C'.length) (R j :: C') M)
+      return .const "x" call (← k (.c C'.length) (R j :: C') M)) fused
 
 /-- A statement: a block every path of which ends in a `return` (or a jump). -/
 partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
@@ -668,7 +754,10 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
         | _ => none
       | _ => none
     match kept? with
-    | some rs => cTerm t { n with u := rs ++ n.u, own } C M J
+    | some rs =>
+      -- an answer of a fold not computed yet (`Ref.call`, `JsTerm.Lower.DataRec`) is computed
+      -- here, once, if it is read
+      bindCalls rs (usedFields us) fun rs' C' => cTerm t { n with u := rs' ++ n.u, own } C' M J
     | none =>
     let ee ← cNeu e { n with cx } C M
     return (← destructureAny ee (usedFields us) fun refs C' =>
@@ -729,6 +818,11 @@ partial def cLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : 
           (← versions vs (F :: C') (.c C'.length :: refs))
     versions (plan.info.vers.zip plan.emit) C []
   | v, t => do
+    -- a constructor built again on the fields of a case analysis: a new name of the value
+    -- taken apart, no constant
+    if let some l := valCtorLvl? (S := S) cfg v n then
+      return (← cTerm t { n with k := .c l :: n.k, own := env'.pushK (Own.Val.owned cx v) }
+        C M J)
     let ve ← cVal v { n with cx } C M
     return (JsBlock.const "k" ve
       (← cTerm t { n with k := .c C.length :: n.k, own := env'.pushK (Own.Val.owned cx v) }
@@ -904,9 +998,23 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
   | Branch.union_casesOn e brs => do
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w e)
       (fun w => (Own.Branches.occ w brs).n > 0)
+    -- a value known to be one constructor (the layer of a fused fold, `Ref.ctor`): its arm
+    let known? : Option (Nat × List Ref) := match e with
+      | .var x => match n.u.getD x.index .none with
+        | .ctor tag fs => some (tag, fs)
+        | _ => none
+      | _ => none
+    if let some (tag, fs) := known? then
+      return ← cBranchAt brs tag fs { n with own } C M J
     let ee ← cNeu e { n with cx } C M
+    -- the constant taken apart, if it is one: each arm knows its constructor (`CtorFact`)
+    let src? : Option (Nat × JsTy) :=
+      let ofVar (i : Nat) : Option (Nat × JsTy) := match n.u.getD i .none with
+        | .c l => (C[C.length - 1 - l]?).map (l, ·)
+        | _ => none
+      e.scrutVar?.bind ofVar
     return (← unionCasesAny ee
-      (← cBranches brs { n with own } (Own.Neu.owned cx e) (Own.Neu.partOwned cx e) C M J))
+      (← cBranches brs { n with own } (Own.Neu.owned cx e) (Own.Neu.partOwned cx e) C M J src?))
   -- `join j (x : Nat) := body; case e of | cᵢ => jump j i`: `x` is the position of the
   -- constructor of `e` (`toCtorIdx e`), read from `e` itself (`JsExpr.enumIndex`, nothing at all
   -- for a `number` when the enum starts at `0`) instead of computed by a case analysis
@@ -944,12 +1052,58 @@ partial def cJoin {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
     return (JsBlock.join "x" block rest)
 
+/-- The arm `tag` of a union's case analysis on a value known to be that constructor, whose
+    fields are `fs` (`Ref.ctor`): no test.  A field read more than once that holds calls not
+    made yet (`Ref.call`) has them made first, once. -/
+partial def cBranchAt {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ cs τ js o) (tag : Nat) (fs : List Ref) (n : Names) (C M J : List JsTy) :
+    ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+  let arm (k : Nat) (us : List Usage01ω) (go : List Ref → (C' : List JsTy) →
+      ConvM (JsBlock S C' M J (.ret (lowerTy cfg τ)))) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+    if fs.length != k then throw "internal: the fields of a known constructor" else
+    bindShared fs us go
+  let withFields (rs : List Ref) : Names :=
+    let own := n.own.pushUH (Own.fieldsOwned rs.length false) (Own.fieldsOwned rs.length false)
+    { n with u := rs ++ n.u, own }
+  match brs, tag with
+  | Branches.two (c₁ := c₁) us₁ _ b₁ _, 0 =>
+    arm c₁.binds.length us₁ fun rs C' =>
+      cTerm b₁ (withFields rs) C' M J
+  | Branches.two (c₂ := c₂) _ us₂ _ b₂, 1 =>
+    arm c₂.binds.length us₂ fun rs C' =>
+      cTerm b₂ (withFields rs) C' M J
+  | Branches.cons (c := c) us b _, 0 =>
+    arm c.binds.length us fun rs C' =>
+      cTerm b (withFields rs) C' M J
+  | Branches.cons _ _ rest, k + 1 => cBranchAt rest k fs n C M J
+  | _, _ => throw "internal: a known constructor out of range"
+where
+  /-- The fields `fs`, those read more than once (`us`) that hold calls not made yet made
+      first. -/
+  bindShared {C : List JsTy} (fs : List Ref) (us : List Usage01ω)
+      (go : List Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J (.ret (lowerTy cfg τ)))) :
+      ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+    match fs with
+    | [] => go [] C
+    | f :: fs' =>
+      match f, us.headD .many with
+      | .fields rs s, .many =>
+        bindCalls rs [] fun rs' C' => bindShared (C := C') fs' us.tail fun fs'' C'' =>
+          go (.fields rs' s :: fs'') C''
+      | _, _ => bindShared fs' us.tail fun fs'' C' => go (f :: fs'') C'
+
 /-- The arms of a union's case analysis: each binds the fields it uses
     (`const { _1: f₁, _2: f₂ } = s;`), owned or not (`ow`), and continues. -/
 partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {τ : Ty ks} {js : JCtx ks} {o : Lvl}
-    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (ow ph : Bool) (C M J : List JsTy) :
+    (brs : Branches Δ d Φ Γ cs τ js o) (n : Names) (ow ph : Bool) (C M J : List JsTy)
+    (src? : Option (Nat × JsTy) := none) (tag : Nat := 0) :
     ConvM (JsUnionArms S C M J (.ret (lowerTy cfg τ)) (lowerCtors cfg cs)) :=
+  -- the fact the arm of constructor `t` knows, its fields in `r`
+  let facts (t : Nat) (r : List Ref) : List CtorFact := match src? with
+    | some (l, ty) => { src := l, ty, tag := t, fields := r } :: n.ctors
+    | none => n.ctors
   match brs with
   | Branches.two (c₁ := c₁) (c₂ := c₂) us₁ us₂ b₁ b₂ => do
     let (⟨u₁, s₁⟩, r₁) := mkSel (lowerCtor cfg c₁) (usedFields us₁) C
@@ -958,14 +1112,15 @@ partial def cBranches {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {
       (Own.fieldsOwned c₁.binds.length ph)
     let own₂ := n.own.pushUH (Own.fieldsOwned c₂.binds.length ow)
       (Own.fieldsOwned c₂.binds.length ph)
-    let a₁ ← cTerm b₁ { n with u := r₁ ++ n.u, own := own₁ } (pushAll u₁ C) M J
-    let a₂ ← cTerm b₂ { n with u := r₂ ++ n.u, own := own₂ } (pushAll u₂ C) M J
+    let a₁ ← cTerm b₁ { n with u := r₁ ++ n.u, own := own₁, ctors := facts tag r₁ } (pushAll u₁ C) M J
+    let a₂ ← cTerm b₂ { n with u := r₂ ++ n.u, own := own₂, ctors := facts (tag + 1) r₂ }
+      (pushAll u₂ C) M J
     return .cons s₁ a₁ (.cons s₂ a₂ .nil)
   | Branches.cons (c := c) us b rest => do
     let (⟨u, s⟩, r) := mkSel (lowerCtor cfg c) (usedFields us) C
     let own := n.own.pushUH (Own.fieldsOwned c.binds.length ow) (Own.fieldsOwned c.binds.length ph)
-    let a ← cTerm b { n with u := r ++ n.u, own } (pushAll u C) M J
-    return .cons s a (← cBranches rest n ow ph C M J)
+    let a ← cTerm b { n with u := r ++ n.u, own, ctors := facts tag r } (pushAll u C) M J
+    return .cons s a (← cBranches rest n ow ph C M J src? (tag + 1))
 
 end
 

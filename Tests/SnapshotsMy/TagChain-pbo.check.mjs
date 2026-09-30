@@ -42,6 +42,48 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test2({ tag: 0 }, 0)", () => M.test2({ tag: 0 }, 0), "0", false);
+check("test2({ tag: 0 }, 1)", () => M.test2({ tag: 0 }, 1), "1", false);
+check("test2({ tag: 1, _1: 0 }, 0)", () => M.test2({ tag: 1, _1: 0 }, 0), "0", false);
+check("test2({ tag: 0 }, 2)", () => M.test2({ tag: 0 }, 2), "2", false);
+check("test2({ tag: 1, _1: 0 }, 1)", () => M.test2({ tag: 1, _1: 0 }, 1), "1", false);
+check("test2({ tag: 1, _1: 1 }, 0)", () => M.test2({ tag: 1, _1: 1 }, 0), "1", false);
+check("test2({ tag: 0 }, 5)", () => M.test2({ tag: 0 }, 5), "5", false);
+check("test2({ tag: 1, _1: 0 }, 2)", () => M.test2({ tag: 1, _1: 0 }, 2), "2", false);
+check("test2({ tag: 1, _1: 1 }, 1)", () => M.test2({ tag: 1, _1: 1 }, 1), "2", false);
+check("test2({ tag: 2, _1: 0, _2: 0 }, 0)", () => M.test2({ tag: 2, _1: 0, _2: 0 }, 0), "0", false);
+check("test2({ tag: 0 }, 13)", () => M.test2({ tag: 0 }, 13), "13", false);
+check("test2({ tag: 1, _1: 0 }, 5)", () => M.test2({ tag: 1, _1: 0 }, 5), "5", false);
+check("test2({ tag: 1, _1: 1 }, 2)", () => M.test2({ tag: 1, _1: 1 }, 2), "3", false);
+check("test2({ tag: 2, _1: 0, _2: 0 }, 1)", () => M.test2({ tag: 2, _1: 0, _2: 0 }, 1), "1", false);
+check("test2({ tag: 2, _1: 0, _2: 1 }, 0)", () => M.test2({ tag: 2, _1: 0, _2: 1 }, 0), "1", false);
+check("test2({ tag: 1, _1: 0 }, 13)", () => M.test2({ tag: 1, _1: 0 }, 13), "13", false);
+check("test2({ tag: 1, _1: 1 }, 5)", () => M.test2({ tag: 1, _1: 1 }, 5), "6", false);
+check("test2({ tag: 2, _1: 0, _2: 0 }, 2)", () => M.test2({ tag: 2, _1: 0, _2: 0 }, 2), "2", false);
+check("test2({ tag: 2, _1: 0, _2: 1 }, 1)", () => M.test2({ tag: 2, _1: 0, _2: 1 }, 1), "2", false);
+check("test2({ tag: 2, _1: 1, _2: 0 }, 0)", () => M.test2({ tag: 2, _1: 1, _2: 0 }, 0), "1", false);
+check("test2({ tag: 1, _1: 1 }, 13)", () => M.test2({ tag: 1, _1: 1 }, 13), "14", false);
+check("test2({ tag: 2, _1: 0, _2: 0 }, 5)", () => M.test2({ tag: 2, _1: 0, _2: 0 }, 5), "5", false);
+check("test2({ tag: 2, _1: 0, _2: 1 }, 2)", () => M.test2({ tag: 2, _1: 0, _2: 1 }, 2), "3", false);
+check("test2({ tag: 2, _1: 1, _2: 0 }, 1)", () => M.test2({ tag: 2, _1: 1, _2: 0 }, 1), "2", false);
+check("test2({ tag: 2, _1: 1, _2: 1 }, 0)", () => M.test2({ tag: 2, _1: 1, _2: 1 }, 0), "2", false);
+check("test2({ tag: 2, _1: 0, _2: 0 }, 13)", () => M.test2({ tag: 2, _1: 0, _2: 0 }, 13), "13", false);
+check("test2({ tag: 2, _1: 0, _2: 1 }, 5)", () => M.test2({ tag: 2, _1: 0, _2: 1 }, 5), "6", false);
+check("test2({ tag: 2, _1: 1, _2: 0 }, 2)", () => M.test2({ tag: 2, _1: 1, _2: 0 }, 2), "3", false);
+check("test2({ tag: 2, _1: 1, _2: 1 }, 1)", () => M.test2({ tag: 2, _1: 1, _2: 1 }, 1), "3", false);
+check("test2({ tag: 2, _1: 0, _2: 1 }, 13)", () => M.test2({ tag: 2, _1: 0, _2: 1 }, 13), "14", false);
+check("test2({ tag: 2, _1: 1, _2: 0 }, 5)", () => M.test2({ tag: 2, _1: 1, _2: 0 }, 5), "6", false);
+check("test2({ tag: 2, _1: 1, _2: 1 }, 2)", () => M.test2({ tag: 2, _1: 1, _2: 1 }, 2), "4", false);
+check("test2({ tag: 2, _1: 1, _2: 0 }, 13)", () => M.test2({ tag: 2, _1: 1, _2: 0 }, 13), "14", false);
+check("test2({ tag: 2, _1: 1, _2: 1 }, 5)", () => M.test2({ tag: 2, _1: 1, _2: 1 }, 5), "7", false);
+check("test2({ tag: 2, _1: 1, _2: 1 }, 13)", () => M.test2({ tag: 2, _1: 1, _2: 1 }, 13), "15", false);
+check("test3({ tag: 0 })", () => M.test3({ tag: 0 }), "0", false);
+check("test3({ tag: 1, _1: 0 })", () => M.test3({ tag: 1, _1: 0 }), "0", false);
+check("test3({ tag: 1, _1: 1 })", () => M.test3({ tag: 1, _1: 1 }), "1", false);
+check("test3({ tag: 2, _1: 0, _2: 0 })", () => M.test3({ tag: 2, _1: 0, _2: 0 }), "0", false);
+check("test3({ tag: 2, _1: 0, _2: 1 })", () => M.test3({ tag: 2, _1: 0, _2: 1 }), "1", false);
+check("test3({ tag: 2, _1: 1, _2: 0 })", () => M.test3({ tag: 2, _1: 1, _2: 0 }), "1", false);
+check("test3({ tag: 2, _1: 1, _2: 1 })", () => M.test3({ tag: 2, _1: 1, _2: 1 }), "2", false);
 
 console.log(`TagChain-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

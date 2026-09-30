@@ -20,10 +20,7 @@ export const bar = 3n;
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const useScale = (n) => {
-  const x$1 = n * 2n;
-  return x$1 + (n + 1n) * 2n;
-};
+export const useScale = (n) => n * 2n + (n + 1n) * 2n;
 
 /**
  * `triple`
@@ -37,7 +34,4 @@ export const triple = (a) => a * 3n;
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const useTriple = (n) => {
-  const x$1 = n * 3n;
-  return x$1 + (n + 1n) * 3n;
-};
+export const useTriple = (n) => n * 3n + (n + 1n) * 3n;

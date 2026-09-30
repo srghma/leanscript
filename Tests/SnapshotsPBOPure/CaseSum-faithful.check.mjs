@@ -42,6 +42,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ tag: 0, _1: 0n })", () => M.test1({ tag: 0, _1: 0n }), "3", false);
+check("test1({ tag: 0, _1: 1n })", () => M.test1({ tag: 0, _1: 1n }), "1", false);
+check("test1({ tag: 1, _1: 0n })", () => M.test1({ tag: 1, _1: 0n }), "4", false);
+check("test1({ tag: 1, _1: 1n })", () => M.test1({ tag: 1, _1: 1n }), "4", false);
 
 console.log(`CaseSum-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

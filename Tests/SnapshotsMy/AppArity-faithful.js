@@ -19,11 +19,8 @@ export const mkAdd = (n, a, a1) => a + a1 + n;
  */
 export const test1 = (n, x, y) => {
   const k$3 = (x$1, x$2) => x$1 + x$2 + n;
-  const k$7 = (x$4, x$5) => {
-    const x$6 = k$3(x$4, x$5);
-    return x$6 + k$3(x$5, x$4);
-  };
-  return k$7(x, y);
+  const k$6 = (x$4, x$5) => k$3(x$4, x$5) + k$3(x$5, x$4);
+  return k$6(x, y);
 };
 
 /**
@@ -44,11 +41,8 @@ export const mkMul = (n, a, a1) => a * a1 * n;
  */
 export const test2 = (n, x, y) => {
   const k$3 = (x$1, x$2) => x$1 * x$2 * n;
-  const k$7 = (x$4, x$5) => {
-    const x$6 = k$3(x$4, x$5);
-    return x$6 + k$3(x$5, x$4);
-  };
-  return k$7(x, y);
+  const k$6 = (x$4, x$5) => k$3(x$4, x$5) + k$3(x$5, x$4);
+  return k$6(x, y);
 };
 
 /**
@@ -81,7 +75,4 @@ export const test3 = (n, x, y) => {
  * @param {nat(bigint)} y
  * @returns {nat(bigint)}
  */
-export const test4 = (f, x, y) => {
-  const x$1 = f(x, y);
-  return x$1 + f(y, x);
-};
+export const test4 = (f, x, y) => f(x, y) + f(y, x);

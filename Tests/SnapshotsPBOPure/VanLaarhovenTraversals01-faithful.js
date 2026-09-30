@@ -2,10 +2,10 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 // not translated:
 //   rewriteBottomUpM: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
-//   instReprFun.repr: LeanScript: the recursive type Fun is not declared in any signature; declare it with `leanscript_signature`
-//   instDecidableEqFun.decEq: LeanScript: the recursive type Fun is not declared in any signature; declare it with `leanscript_signature`
+//   instReprFun.repr: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
+//   instDecidableEqFun.decEq: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
 //   traverseFun1: LeanScript: not a type former application Type
-//   Fun.size: LeanScript: the recursive type Fun is not declared in any signature; declare it with `leanscript_signature`
+//   Fun.size: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
 //   traverseFun1D: LeanScript: not a type former application Type
-//   rewriteBottomUp: LeanScript: the recursive type Fun is not declared in any signature; declare it with `leanscript_signature`
+//   rewriteBottomUp: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
 

@@ -428,6 +428,94 @@ unsafe def translate (n : Name) : TermElabM ClosedTerm := do
   let packed := mkAppN (mkConst ``LeanScript.ClosedTerm.mk) #[as[0]!, as[1]!, as[5]!, as[7]!, v]
   evalExpr LeanScript.ClosedTerm (mkConst ``LeanScript.ClosedTerm) packed
 
+/-! ## The recursive types of a file, declared on their own
+
+`Term` refers to a recursive type by its name in the signature of the program
+(`leanscript_signature`).  A file written for Lean only declares none, so the tool declares one
+itself (`autoSignature`): the program `LeanScriptAutoSig` of every recursive inductive type the
+candidates mention (in their types or their bodies) at closed arguments. -/
+
+/-- The name of the program the tool declares for the recursive types of a file. -/
+def autoSigName : Name := `LeanScriptAutoSig
+
+/-- The closed applications of recursive inductive types in `e` (`Expr`, `Tree Nat`): the types
+    the translation of a definition mentioning `e` must find in the signature. -/
+partial def recTypeApps (e : Expr) : MetaM (Array Expr) := do
+  let env ← getEnv
+  let isRecInd (c : Name) : Bool := match env.find? c with
+    | some (.inductInfo i) => (i.isRec || i.all.length > 1 || i.numNested > 0) &&
+        ![``Nat, ``List, ``Array, ``Lean.Name, ``String, ``Int].contains c
+    | _ => false
+  let mut acc : Array Expr := #[]
+  let mut seen : Std.HashSet Expr := {}
+  let mut todo : Array Expr := #[e]
+  while h : todo.size > 0 do
+    let x := todo[todo.size - 1]
+    todo := todo.pop
+    if seen.contains x then continue
+    seen := seen.insert x
+    match x with
+    | .app .. =>
+      if let .const c _ := x.getAppFn then
+        if isRecInd c && !x.hasLooseBVars && !x.hasFVar && !x.hasMVar then
+          if let some (.inductInfo i) := env.find? c then
+            if x.getAppNumArgs == i.numParams + i.numIndices then acc := acc.push x
+      todo := todo.push x.appFn! |>.push x.appArg!
+    | .const c _ =>
+      if isRecInd c then
+        if let some (.inductInfo i) := env.find? c then
+          if i.numParams + i.numIndices == 0 then acc := acc.push x
+    | .lam _ t b _ | .forallE _ t b _ => todo := todo.push t |>.push b
+    | .letE _ t v b _ => todo := todo.push t |>.push v |>.push b
+    | .mdata _ b | .proj _ _ b => todo := todo.push b
+    | _ => pure ()
+  return acc
+
+/-- Run a command in the environment of an elaborated file; the new environment, or `none`
+    when the command fails. -/
+def runCommandElab (el : Elaborated) (opts : Options) (x : Command.CommandElabM Unit) :
+    IO (Option Environment) := do
+  let ctx : Command.Context := { fileName := el.inputCtx.fileName, fileMap := el.inputCtx.fileMap,
+                                 snap? := none, cancelTk? := none }
+  let st := Command.mkState el.env {} opts
+  match ← (x ctx |>.run st).toBaseIO with
+  | .ok ((), st') => return if st'.messages.hasErrors then none else some st'.env
+  | .error _ => return none
+
+/-- Declare the program of the recursive types the candidates `cands` mention
+    (`autoSigName`), and make it the current one, unless the file declares a program itself.
+    A type the signature refuses is left out (the translation of a definition using it then
+    reports why). -/
+def autoSignature (el : Elaborated) (cands : Array Name) : IO Elaborated := do
+  -- a file that declares its own program is translated against it
+  let own ← runTermElab el (return (← LeanScript.Gen.currentProg?).isSome)
+  if own then return el
+  let opts := ({} : Options).setBool LeanScript.Gen.builtinListOption true
+  let tys ← runTermElab el (withOptions (fun _ => opts) do
+    let mut out : Array Expr := #[]
+    for n in cands do
+      let ci ← getConstInfo n
+      let mut es := (← recTypeApps ci.type)
+      if let some v := ci.value? then es := es ++ (← recTypeApps v)
+      for t in es do
+        let t ← try LeanScript.Gen.normType t catch _ => continue
+        unless out.contains t do out := out.push t
+    return out)
+  if tys.isEmpty then return el
+  let declare (ts : Array Expr) : IO (Option Environment) :=
+    runCommandElab el opts do
+      let names := (List.range ts.size).toArray.map fun i => Name.mkSimple s!"t{i}"
+      LeanScript.Gen.declareProgram (mkIdent autoSigName) names ts
+  if let some env ← declare tys then return { el with env }
+  -- some type is refused: keep the ones the signature accepts on their own
+  let mut kept : Array Expr := #[]
+  for t in tys do
+    if (← declare #[t]).isSome then kept := kept.push t
+  if kept.isEmpty then return el
+  match ← declare kept with
+  | some env => return { el with env }
+  | none => return el
+
 /-- The type of a definition, as Lean prints it. -/
 def typeString (n : Name) : MetaM String := do
   return toString (← ppExpr (← getConstInfo n).type)

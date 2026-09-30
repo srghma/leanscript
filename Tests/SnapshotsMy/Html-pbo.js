@@ -2,5 +2,5 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 // not translated:
 //   instReprHtml.repr: a `partial` definition
-//   test: LeanScript: the recursive type Html is not declared in any signature; declare it with `leanscript_signature`
+//   test: LeanScript: the type PUnit has one constructor and no field (it has one value)
 

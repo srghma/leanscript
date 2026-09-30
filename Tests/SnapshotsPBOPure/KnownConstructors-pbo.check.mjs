@@ -43,6 +43,10 @@ function check(label, thunk, expected, isFloat) {
 }
 
 check("known1", () => M.known1, "b", false);
+check("test1({ tag: 0, _1: -7 })", () => M.test1({ tag: 0, _1: -7 }), "-7", false);
+check("test1({ tag: 0, _1: -1 })", () => M.test1({ tag: 0, _1: -1 }), "-1", false);
+check("test1({ tag: 1, _1: -7 })", () => M.test1({ tag: 1, _1: -7 }), "-7", false);
+check("test1({ tag: 1, _1: -1 })", () => M.test1({ tag: 1, _1: -1 }), "-1", false);
 check("test6(\"\")", () => M.test6(""), "0", false);
 check("test6(\"a\")", () => M.test6("a"), "0", false);
 check("test6(\"hello world\")", () => M.test6("hello world"), "0", false);

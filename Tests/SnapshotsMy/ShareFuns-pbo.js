@@ -57,14 +57,13 @@ export const maxMod = (n) => {
   for (let i$2 = 0; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
-      const { _1: f$4 } = a$3;
-      const x$5 = uint53__lean_nat_mod__Nat_mod(
+      const x$4 = uint53__lean_nat_mod__Nat_mod(
         uint53__lean_nat_mul(i$2, 3),
         10,
       );
-      acc$1 = f$4 < x$5 ? { tag: 1, _1: x$5 } : { tag: 1, _1: f$4 };
+      acc$1 = a$3._1 < x$4 ? { tag: 1, _1: x$4 } : a$3;
     }
   }
   return acc$1._1;

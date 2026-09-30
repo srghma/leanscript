@@ -14,13 +14,12 @@ export const test1 = (k, n) => {
   for (let i$2 = 0n; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       const k$5 = (x$4) => x$4 + k;
       const x$6 = k$5(1n);
       const x$7 = k$5(2n);
-      const x$8 = k$5(3n);
-      acc$1 = { tag: 1, _1: a$3._1 + (x$6 + x$7 + x$8) };
+      acc$1 = { tag: 1, _1: a$3._1 + (x$6 + x$7 + k$5(3n)) };
     }
   }
   return acc$1._1;

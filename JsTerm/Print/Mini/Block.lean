@@ -88,7 +88,8 @@ def JsExpr.fieldSource {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) (boun
     pattern may read in place (`x._1` instead of `const { _1: f } = x; … f …`): the value keeps
     holding the same record in the whole block (`src`: it is not a mutable variable the block
     assigns), and the block reads the field exactly once, outside loops and closures (so the
-    field is still read once, and a closure does not keep the whole record alive). -/
+    field is still read once, and a closure does not keep the whole record alive); a field the
+    block never reads is never bound. -/
 def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n : Nat)
     (rest : JsBlock S C M J k) : Nat → Bool :=
   match src with
@@ -98,10 +99,12 @@ def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n :
     let stable := match m with
       | none => true
       | some m => !occs.any fun o => o.write && o.is ⟨true, m⟩
-    if !stable then fun _ => false else
+    let uses j := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
+    -- a field the block never reads is not bound
+    if !stable then fun j => (uses j).isEmpty else
     fun j =>
-      let us := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
-      us.size == 1 && !us.any (·.again)
+      let us := uses j
+      us.isEmpty || (us.size == 1 && !us.any (·.again))
 
 mutual
 /-- An expression as a `MiniAST` expression. -/

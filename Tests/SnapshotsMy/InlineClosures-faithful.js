@@ -51,9 +51,7 @@ export const addAfter = (fuel, a, b) => {
 export const sumShifted = (k) => {
   const k$2 = (x$1) => x$1 * k;
   const x$3 = k$2(1n);
-  const x$4 = k$2(2n);
-  const x$5 = k$2(3n);
-  return x$3 + x$4 + x$5;
+  return x$3 + k$2(2n) + k$2(3n);
 };
 
 /**

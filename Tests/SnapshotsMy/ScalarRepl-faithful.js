@@ -16,7 +16,7 @@ export const test1 = (n) => {
   for (let i$2 = 0n; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       acc$1 = { tag: 1, _1: a$3._1 + i$2 };
     }
@@ -34,13 +34,13 @@ export const test2 = (n) => {
   for (let i$2 = 0n; i$2 < n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
-      let acc$4 = { tag: 1, _1: a$3._1 };
+      let acc$4 = a$3;
       for (let i$5 = 0n; i$5 < i$2; i$5++) {
         const a$6 = acc$4;
         if (a$6.tag === 0) {
-          acc$4 = { tag: 0, _1: a$6._1 };
+          acc$4 = a$6;
         } else {
           acc$4 = { tag: 1, _1: a$6._1 + i$5 };
         }

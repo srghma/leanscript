@@ -176,24 +176,14 @@ export const Bag$ofArray = (xs) => {
  * @returns {Array<uint53(number)>}
  */
 export const Bag$collect = (a) => {
-  const go0$1 = (v$2) => {
-    let x$3;
-    if (v$2.tag === 0) {
-      x$3 = { tag: 0 };
-    } else {
-      const { _2: f$4 } = v$2;
-      x$3 = { tag: 1, _1: v$2._1, _2: { _1: f$4, _2: go0$1(f$4) } };
-    }
-    if (x$3.tag === 0) {
-      return [];
-    }
-    const { _1: f$5 } = x$3;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_mutable(x$3._2._2, f$5.length),
-      f$5,
-    );
-  };
-  return go0$1(a);
+  if (a.tag === 0) {
+    return [];
+  }
+  const { _1: f$1 } = a;
+  return array__lean_array_append_mutable(
+    array__lean_array_push_immutable(Bag$collect(a._2), f$1.length),
+    f$1,
+  );
 };
 
 /**
@@ -202,24 +192,14 @@ export const Bag$collect = (a) => {
  * @returns {Array<uint53(number)>}
  */
 export const Bag$firstItems = (a) => {
-  const go0$1 = (v$2) => {
-    let x$3;
-    if (v$2.tag === 0) {
-      x$3 = { tag: 0 };
-    } else {
-      const { _2: f$4 } = v$2;
-      x$3 = { tag: 1, _1: v$2._1, _2: { _1: f$4, _2: go0$1(f$4) } };
-    }
-    if (x$3.tag === 0) {
-      return [];
-    }
-    const { _1: f$5 } = x$3;
-    const { _2: f$6 } = x$3._2;
-    return 2 < f$5.length
-      ? array__lean_array_push_immutable(f$5, f$6.length)
-      : f$6;
-  };
-  return go0$1(a);
+  if (a.tag === 0) {
+    return [];
+  }
+  const { _1: f$1 } = a;
+  const x$2 = Bag$firstItems(a._2);
+  return 2 < f$1.length
+    ? array__lean_array_push_immutable(f$1, x$2.length)
+    : x$2;
 };
 
 /**
@@ -228,24 +208,14 @@ export const Bag$firstItems = (a) => {
  * @returns {Array<uint53(number)>}
  */
 export const Bag$twice = (a) => {
-  const go0$1 = (v$2) => {
-    let x$3;
-    if (v$2.tag === 0) {
-      x$3 = { tag: 0 };
-    } else {
-      const { _2: f$4 } = v$2;
-      x$3 = { tag: 1, _1: v$2._1, _2: { _1: f$4, _2: go0$1(f$4) } };
-    }
-    if (x$3.tag === 0) {
-      return [1];
-    }
-    const { _2: f$5 } = x$3._2;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_immutable(f$5, x$3._1.length),
-      f$5,
-    );
-  };
-  return go0$1(a);
+  if (a.tag === 0) {
+    return [1];
+  }
+  const x$1 = Bag$twice(a._2);
+  return array__lean_array_append_mutable(
+    array__lean_array_push_immutable(x$1, a._1.length),
+    x$1,
+  );
 };
 
 /**
@@ -259,43 +229,8 @@ export const bag1 = (xs) => {
     const a$3 = acc$1;
     acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: a$3 };
   }
-  const go0$4 = (v$5) => {
-    let x$6;
-    if (v$5.tag === 0) {
-      x$6 = { tag: 0 };
-    } else {
-      const { _2: f$7 } = v$5;
-      x$6 = { tag: 1, _1: v$5._1, _2: { _1: f$7, _2: go0$4(f$7) } };
-    }
-    if (x$6.tag === 0) {
-      return [];
-    }
-    const { _1: f$8 } = x$6;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_mutable(x$6._2._2, f$8.length),
-      f$8,
-    );
-  };
-  const x$9 = go0$4(acc$1);
-  const go0$10 = (v$11) => {
-    let x$12;
-    if (v$11.tag === 0) {
-      x$12 = { tag: 0 };
-    } else {
-      const { _2: f$13 } = v$11;
-      x$12 = { tag: 1, _1: v$11._1, _2: { _1: f$13, _2: go0$10(f$13) } };
-    }
-    if (x$12.tag === 0) {
-      return [];
-    }
-    const { _1: f$14 } = x$12;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_mutable(x$12._2._2, f$14.length),
-      f$14,
-    );
-  };
   return array__lean_array_append_mutable(
-    array__lean_array_append_mutable(x$9, go0$10(acc$1)),
+    array__lean_array_append_mutable(Bag$collect(acc$1), Bag$collect(acc$1)),
     xs,
   );
 };
@@ -311,43 +246,8 @@ export const bag2 = (xs) => {
     const a$3 = acc$1;
     acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: a$3 };
   }
-  const go0$4 = (v$5) => {
-    let x$6;
-    if (v$5.tag === 0) {
-      x$6 = { tag: 0 };
-    } else {
-      const { _2: f$7 } = v$5;
-      x$6 = { tag: 1, _1: v$5._1, _2: { _1: f$7, _2: go0$4(f$7) } };
-    }
-    if (x$6.tag === 0) {
-      return [];
-    }
-    const { _1: f$8 } = x$6;
-    const { _2: f$9 } = x$6._2;
-    return 2 < f$8.length
-      ? array__lean_array_push_immutable(f$8, f$9.length)
-      : f$9;
-  };
-  const x$10 = go0$4(acc$1);
-  const go0$11 = (v$12) => {
-    let x$13;
-    if (v$12.tag === 0) {
-      x$13 = { tag: 0 };
-    } else {
-      const { _2: f$14 } = v$12;
-      x$13 = { tag: 1, _1: v$12._1, _2: { _1: f$14, _2: go0$11(f$14) } };
-    }
-    if (x$13.tag === 0) {
-      return [];
-    }
-    const { _1: f$15 } = x$13;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_mutable(x$13._2._2, f$15.length),
-      f$15,
-    );
-  };
   return array__lean_array_append_mutable(
-    array__lean_array_append_mutable(x$10, go0$11(acc$1)),
+    array__lean_array_append_mutable(Bag$firstItems(acc$1), Bag$collect(acc$1)),
     xs,
   );
 };
@@ -364,40 +264,5 @@ export const bag3 = (xs) => {
     const a$4 = acc$2;
     acc$2 = { tag: 1, _1: uint53__lean_mk_array(e$3, e$3), _2: a$4 };
   }
-  const go0$5 = (v$6) => {
-    let x$7;
-    if (v$6.tag === 0) {
-      x$7 = { tag: 0 };
-    } else {
-      const { _2: f$8 } = v$6;
-      x$7 = { tag: 1, _1: v$6._1, _2: { _1: f$8, _2: go0$5(f$8) } };
-    }
-    if (x$7.tag === 0) {
-      return [1];
-    }
-    const { _2: f$9 } = x$7._2;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_immutable(f$9, x$7._1.length),
-      f$9,
-    );
-  };
-  const x$10 = go0$5(acc$2);
-  const go0$11 = (v$12) => {
-    let x$13;
-    if (v$12.tag === 0) {
-      x$13 = { tag: 0 };
-    } else {
-      const { _2: f$14 } = v$12;
-      x$13 = { tag: 1, _1: v$12._1, _2: { _1: f$14, _2: go0$11(f$14) } };
-    }
-    if (x$13.tag === 0) {
-      return [];
-    }
-    const { _1: f$15 } = x$13;
-    return array__lean_array_append_mutable(
-      array__lean_array_push_mutable(x$13._2._2, f$15.length),
-      f$15,
-    );
-  };
-  return array__lean_array_append_mutable(x$10, go0$11(acc$2));
+  return array__lean_array_append_mutable(Bag$twice(acc$2), Bag$collect(acc$2));
 };

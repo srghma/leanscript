@@ -37,7 +37,40 @@ inductive SType where
       JavaScript record `{ _1: …, _2: … }`.  `ind` is the type, `ctor` its constructor applied
       to the parameters. -/
   | record (ind : Name) (ctor : Expr) (fields : List SType)
+  /-- A value of a (recursive) inductive type of two or more constructors, one of them at
+      least with fields, each field the type itself (`none`) or of a sample type among `Nat`,
+      `Int`, `Bool`, `String`, `Char` (`Expr`, `Tree Nat`): a JavaScript union
+      `{ tag: i, _1: …, … }`.  `ctors` are the constructors applied to the parameters.  Only a
+      parameter can have this type (a result is not compared). -/
+  | tree (ctors : List (Expr × List (Option SType)))
   deriving Inhabited, BEq
+
+mutual
+
+/-- The sample type of the inductive type `e` (of declaration `ind`), when it is a union whose
+    fields are itself or leaves (`SType.tree`). -/
+partial def treeOf? (e : Expr) (ind : InductiveVal) (lvls : List Level) :
+    MetaM (Option SType) := do
+  unless ind.ctors.length ≥ 2 && ind.numIndices == 0 && e.getAppNumArgs == ind.numParams do
+    return none
+  let mut out : Array (Expr × List (Option SType)) := #[]
+  for c in ind.ctors do
+    let ctor := mkAppN (mkConst c lvls) e.getAppArgs
+    let fs? ← forallTelescopeReducing (← inferType ctor) fun xs _ => do
+      let mut fs : Array (Option SType) := #[]
+      for x in xs do
+        let t ← instantiateMVars (← inferType x)
+        if t.hasAnyFVar (fun _ => true) then return none
+        if t == e then fs := fs.push none
+        else
+          let some ft ← stypeOf? t | return none
+          unless [SType.nat, .int, .bool, .string, .char].contains ft do return none
+          fs := fs.push (some ft)
+      return some fs.toList
+    let some fs := fs? | return none
+    out := out.push (ctor, fs)
+  unless out.any (!·.2.isEmpty) do return none
+  return some (.tree out.toList)
 
 /-- The sample type of a Lean type, if it is one. -/
 partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
@@ -65,6 +98,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   -- a structure-like type of two or more fields of sample types
   let some (c, lvls) := e.getAppFn.const? | return none
   let some (.inductInfo ind) := (← getEnv).find? c | return none
+  if let some t ← treeOf? e ind lvls then return some t
   unless ind.ctors.length == 1 && ind.numIndices == 0 && !ind.isRec &&
     e.getAppNumArgs == ind.numParams do return none
   let ctor := mkAppN (mkConst ind.ctors.head! lvls) e.getAppArgs
@@ -82,6 +116,8 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   match fields? with
   | some fs => if fs.length ≥ 2 then return some (.record c ctor fs) else return none
   | none => return none
+
+end
 
 /-- A JavaScript string literal. -/
 def jsStringLit (s : String) : String := Id.run do
@@ -140,7 +176,31 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
       let picks : List Sample := fss.zipIdx.map fun (ss, j) => ss[(i + j) % ss.length]!
       ⟨mkAppN ctor (picks.map (·.lean)).toArray,
        "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
+  | .tree ctors =>
+    -- the values of depth at most 2 (the leaves taken among their first two samples), the
+    -- smallest first, at most `treeCap` of them
+    let grow (vs : List Sample) : List Sample :=
+      vs ++ (treeLayer cfg ctors vs).filter fun v => !vs.any (·.js == v.js)
+    (grow (grow (grow []))).take treeCap
 where
+  /-- The values built by one constructor on top of the values `sub` (the leaves among their
+      first two samples), at every constructor. -/
+  treeLayer (cfg : JsConfig) (ctors : List (Expr × List (Option SType))) (sub : List Sample) :
+      List Sample :=
+    ctors.zipIdx.flatMap fun ((ctor, fs), i) =>
+      let choices : List (List Sample) := fs.map fun
+        | none => sub
+        | some t => (samplesOf cfg t).take 2
+      let picks : List (List Sample) := choices.foldr
+        (fun cs acc => cs.flatMap fun c => acc.map (c :: ·)) [[]]
+      picks.map fun xs =>
+        ⟨mkAppN ctor (xs.map (·.lean)).toArray,
+         if xs.isEmpty then
+           (if cfg.nullaryRepr == .smallInt then toString i else s!"\{ tag: {i} }")
+         else s!"\{ tag: {i}, " ++
+           ", ".intercalate (xs.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
+  /-- The most samples of a `SType.tree`. -/
+  treeCap : Nat := 48
   /-- The samples of `List t`, spelled as a JavaScript array (`array`) or as the cons cells of
       `ListRepr.taggedUnion` (`{ tag: 1, _1: x, _2: … { tag: 0 } }`). -/
   listSamples (cfg : JsConfig) (t : SType) (array : Bool) : List Sample :=
@@ -245,10 +305,12 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
         ps := ps.push t
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
+      if rt matches .tree _ then return none
       return some (ps.toList, rt))
     | return none
   let mut out : Array CheckCase := #[]
-  for args in combos cfg ps do
+  let cap := if ps.any (· matches .tree _) then 48 else 24
+  for args in combos cfg ps cap do
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
     let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)

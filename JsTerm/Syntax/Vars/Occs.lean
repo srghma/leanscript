@@ -220,12 +220,43 @@ def JsExpr.inert {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
   | .fold _ e | .unfold _ e => e.inert
   | _ => false
 
+mutual
+/-- Is the expression computed from constants and literals of leaf types (numbers, booleans,
+    strings) by operations that are pure and never throw (`"Add(" + x`)?  Nothing a computation
+    with an effect does (a call, an update in place of an array) can change its value, and
+    computing it cannot fail. -/
+def JsExpr.pureLeaf {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .cvar _ | .lit _ | .enum_mk .. => true
+  | .inlined (σs := σs) (e := .pure) (t := .doesntThrow) _ as =>
+    (match τ with | .terminal _ => true | _ => false) &&
+      σs.all (fun | .terminal _ => true | _ => false) && as.pureLeaf
+  | _ => false
+/-- `pureLeaf` of arguments. -/
+def JsArgs.pureLeaf {C M σs : List JsTy} : JsArgs S C M σs → Bool
+  | .nil => true
+  | .cons a as => a.pureLeaf && as.pureLeaf
+end
+
+/-- The positions of the arguments of an operation written inline, in the order JavaScript
+    computes them (operands and arguments from left to right). -/
+def JsInline.argOrder : JsInline → List Nat
+  | .arg i => [i]
+  | .bin _ a b => a.argOrder ++ b.argOrder
+  | .un _ a => a.argOrder
+  | .call _ as | .new _ as => as.flatMap (fun a => a.argOrder)
+  | .member a _ => a.argOrder
+  | .num _ | .big _ | .emptyArray => []
+
+/-- Does the operation written inline compute its `n` arguments once each, in order? -/
+def JsInline.inOrder (t : JsInline) (n : Nat) : Bool := t.argOrder == List.range n
+
 /-- Can the expression be computed after the constant being moved (`readFirst`): it can wait
-    (`movable`; with `strict`, only `inert`), and it reads none of the constants `bars` (constants
-    whose computation is itself moved to where they are read, which must stay after it). -/
+    (`movable`; with `strict`, only `inert` or `pureLeaf`), and it reads none of the constants
+    `bars` (constants whose computation is itself moved to where they are read, which must stay
+    after it). -/
 def JsExpr.waits {C M : List JsTy} {τ : JsTy} (strict : Bool) (bars : List Nat)
     (a : JsExpr S C M τ) : Bool :=
-  (if strict then a.inert else a.movable) && !bars.any (a.mentions ⟨false, ·⟩)
+  (if strict then a.inert || a.pureLeaf else a.movable) && !bars.any (a.mentions ⟨false, ·⟩)
 
 mutual
 /-- Is the constant of index `x` read first when the expression is computed, nothing before it
@@ -242,7 +273,10 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
     else f.waits strict bars && as.readFirst strict x bars
   | .imported _ as | .listOp _ as => as.readFirst strict x bars
   -- an inlined operation may write its arguments in another order: the others must all wait
-  | .inlined _ as => as.readFirstAny strict x bars
+  -- (unless it computes them in order, `a + b`)
+  | .inlined (σs := σs) op as =>
+    if op.template.inOrder σs.length then as.readFirst strict x bars
+    else as.readFirstAny strict x bars
   | .record_mk fs => fs.readFirst strict x bars
   | .union_mk _ as => as.readFirst strict x bars
   | .cond c a b =>

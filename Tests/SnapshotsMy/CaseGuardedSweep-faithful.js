@@ -87,7 +87,7 @@ export const sweep1 = (lo) => {
   for (let i$2 = 0n; i$2 < 110n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
       const x$4 = lo + i$2;
       let x$5;
@@ -112,37 +112,37 @@ export const sweep4 = (lo) => {
   for (let i$2 = 0n; i$2 < 4n; i$2++) {
     const a$3 = acc$1;
     if (a$3.tag === 0) {
-      acc$1 = { tag: 0, _1: a$3._1 };
+      acc$1 = a$3;
     } else {
-      let acc$4 = { tag: 1, _1: a$3._1 };
+      let acc$4 = a$3;
       for (let i$5 = 0n; i$5 < 3n; i$5++) {
         const a$6 = acc$4;
         if (a$6.tag === 0) {
-          acc$4 = { tag: 0, _1: a$6._1 };
+          acc$4 = a$6;
         } else {
-          let acc$7 = { tag: 1, _1: a$6._1 };
+          let acc$7 = a$6;
           for (let i$8 = 0n; i$8 < 7n; i$8++) {
             const a$9 = acc$7;
             if (a$9.tag === 0) {
-              acc$7 = { tag: 0, _1: a$9._1 };
+              acc$7 = a$9;
             } else {
-              let acc$10 = { tag: 1, _1: a$9._1 };
+              let acc$10 = a$9;
               for (let i$11 = 0n; i$11 < 2n; i$11++) {
                 const a$12 = acc$10;
                 if (a$12.tag === 0) {
-                  acc$10 = { tag: 0, _1: a$12._1 };
+                  acc$10 = a$12;
                 } else {
-                  let acc$13 = { tag: 1, _1: a$12._1 };
+                  let acc$13 = a$12;
                   for (let i$14 = 0n; i$14 < 3n; i$14++) {
                     const a$15 = acc$13;
                     if (a$15.tag === 0) {
-                      acc$13 = { tag: 0, _1: a$15._1 };
+                      acc$13 = a$15;
                     } else {
-                      let acc$16 = { tag: 1, _1: a$15._1 };
+                      let acc$16 = a$15;
                       for (let i$17 = 0n; i$17 < 3n; i$17++) {
                         const a$18 = acc$16;
                         if (a$18.tag === 0) {
-                          acc$16 = { tag: 0, _1: a$18._1 };
+                          acc$16 = a$18;
                         } else {
                           const k$29 = (x$19, x$20) => {
                             const { _1: f$21, _3: f$22 } = x$19;

@@ -1,3 +1,33 @@
+# Summary of changes for run 1bede2c0-a286-42bf-b63d-f580e62309be
+`Tests/SnapshotsPBOPure/CaseJacobs.lean` now translates, and the generated JS is equal to or better than `legacy-backend/CaseJacobs.js`. This work is all in the conversion, JS-optimisation and printing phases, and none of it is proved; the Term optimizer is untouched.
+
+**What was wrong.** The committed CaseJacobs outputs were empty. The CLI never declared signatures, so it rejected both functions with "the recursive type Expr is not declared in any signature".
+
+**What the output looks like now.** `Tests/SnapshotsPBOPure/CaseJacobs-pbo.js`:
+- `renderExpr` is plain direct recursion: an `if` chain on `a.tag` that recurses on the fields. It matches PBO without the nested `else`.
+- `test1` is one decision tree. Each shared fall-through (`e7`, `e4`) is written once and reached by falling out of the `if`s, where PBO repeats `return "e7: " + renderExpr(v0)` four times. A constructor rebuilt from the fields being matched (`x@(.add a b)`) is written as the original value `a`, as PBO does, with no alias constant. Calls sit inline in the string concatenations.
+- Both preset outputs pass 148 checks each, run with node on samples of the recursive type.
+- PBO also exports `instToStringExpr_toString = renderExpr`; we don't export the instance.
+- One small leftover: `const { _1: f$5, _2: f$6 } = f$3;` is not yet moved into the one branch that uses it.
+
+**Changes, by phase:**
+- **CLI** (`LeanScriptCli/Frontend.lean`, `Main.lean`, `LeanScript/GenElab/Signature.lean`): the recursive types a file uses are now declared automatically. `LeanScriptCli/Check.lean` now also builds sample values of recursive union types for the checks.
+- **Term → JsTerm** (`JsTerm/Lower/FromTerm.lean`, `Basic.lean`, `DataRec.lean`):
+  - When a fold's case analysis is on the parameter it recurses on, the analysis is merged into the branch, so no pairs are built.
+  - Facts recorded from case analyses let a rebuilt constructor reuse the matched value. This session I made such a rebuilt value just a new name for the original instead of a `const k = a` alias; that alias was what stopped the last duplicated `e7` arm from being shared.
+- **JsTerm → JsTerm:** a new `JsTerm/Lower/Globals.lean` makes a module's recursive functions call each other directly by name. `JsTerm/Syntax/Vars/Occs.lean` moves calls into concatenations when the evaluation order stays the same.
+- **Printing** (`JsTerm/Print/Mini/Block.lean`): a pattern field the block never reads is no longer bound. This removes dead `const { _1: f } = a;` lines in `ScalarRepl`, `LoopState` and similar files.
+
+**Why not in the Term optimizer:** reusing a matched value is only valid under facts from the enclosing case analyses, and the Term optimizer requires a proof that the result is unchanged. That proof would need a large new body of lemmas, so the rewrite went into conversion.
+
+**Labelled blocks and loops:** shared tails become labelled blocks with `break`, and folds keep compiling to loops. `renderExpr` stays ordinary recursion, as in PBO, because it is not tail-recursive.
+
+**Checks:**
+- All snapshots were regenerated with `scripts/leanscript-snapshots.sh`, and every node check passes. The script still exits 1, only because of the known "literal too big" errors in the three `PrimOpInt*Configurable` files.
+- Other snapshots got shorter (for example `RecData`, `OwnershipAliasing`, `CaseGuardedSweep`). Newly translated files (for example `CaseGuarded`, `ProfunctorLenses01`, `KnownConstructor07`) now have output where they had none.
+- `lake build JsTerm JsSpec tests leanscript` succeeds, and `lake exe tests` passes 77/77.
+- Everything is committed.
+
 # Summary of changes for run e0e7c6c6-0da2-4e01-8d12-7c42e4b25e01
 I made no code changes this session. The JavaScript for `CaseInt` already matches purescript-backend-optimizer's legacy output and is slightly shorter, so there was nothing left to optimise.
 

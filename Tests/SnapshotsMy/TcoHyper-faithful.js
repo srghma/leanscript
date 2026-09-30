@@ -133,7 +133,7 @@ export const hyperWhile = (a, a1, a2) => {
       for (let i$20 = 0n; i$20 < x$5; i$20++) {
         const a$21 = acc$19;
         if (a$21.tag === 0) {
-          acc$19 = { tag: 0, _1: a$21._1 };
+          acc$19 = a$21;
         } else {
           acc$19 = { tag: 1, _1: a$4(a$21._1) };
         }

@@ -16,9 +16,8 @@ import {
  */
 export const test1 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(3n, n + 7n);
-  const x$2 = bigint_nat__lean_array_get(0n, x$1, 0n);
   return (
-    x$2 +
+    bigint_nat__lean_array_get(0n, x$1, 0n) +
     bigint_nat__lean_array_get(
       0n,
       bigint_nat__lean_array_set_mutable(x$1, 0n, 99n),
@@ -34,9 +33,14 @@ export const test1 = (n) => {
  */
 export const test2 = (n) => {
   const k$1 = [n + 1n, n + 2n, n + 3n];
-  const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
-  const x$3 = bigint_nat__lean_array_swap_mutable(k$1, 0n, 2n);
-  return x$2 * 10n + bigint_nat__lean_array_get(0n, x$3, 0n);
+  return (
+    bigint_nat__lean_array_get(0n, k$1, 0n) * 10n +
+    bigint_nat__lean_array_get(
+      0n,
+      bigint_nat__lean_array_swap_mutable(k$1, 0n, 2n),
+      0n,
+    )
+  );
 };
 
 /**
@@ -46,8 +50,10 @@ export const test2 = (n) => {
  */
 export const test3 = (n) => {
   const k$1 = [n + 1n];
-  const x$2 = bigint_nat__lean_array_get(0n, k$1, 0n);
-  return x$2 + BigInt(array__lean_array_push_mutable(k$1, 5n).length);
+  return (
+    bigint_nat__lean_array_get(0n, k$1, 0n) +
+    BigInt(array__lean_array_push_mutable(k$1, 5n).length)
+  );
 };
 
 /**

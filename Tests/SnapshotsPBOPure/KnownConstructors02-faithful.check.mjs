@@ -42,6 +42,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test({ tag: 0, _1: -7n })", () => M.test({ tag: 0, _1: -7n }), "-7", false);
+check("test({ tag: 0, _1: -1n })", () => M.test({ tag: 0, _1: -1n }), "-1", false);
+check("test({ tag: 1, _1: -7n })", () => M.test({ tag: 1, _1: -7n }), "-7", false);
+check("test({ tag: 1, _1: -1n })", () => M.test({ tag: 1, _1: -1n }), "-1", false);
 
 console.log(`KnownConstructors02-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -42,6 +42,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ tag: 0, _1: 0 })", () => M.test1({ tag: 0, _1: 0 }), "3", false);
+check("test1({ tag: 0, _1: 1 })", () => M.test1({ tag: 0, _1: 1 }), "1", false);
+check("test1({ tag: 1, _1: 0 })", () => M.test1({ tag: 1, _1: 0 }), "4", false);
+check("test1({ tag: 1, _1: 1 })", () => M.test1({ tag: 1, _1: 1 }), "4", false);
 
 console.log(`CaseSum-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

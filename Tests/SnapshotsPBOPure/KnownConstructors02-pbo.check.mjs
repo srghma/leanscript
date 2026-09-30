@@ -42,6 +42,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test({ tag: 0, _1: -7 })", () => M.test({ tag: 0, _1: -7 }), "-7", false);
+check("test({ tag: 0, _1: -1 })", () => M.test({ tag: 0, _1: -1 }), "-1", false);
+check("test({ tag: 1, _1: -7 })", () => M.test({ tag: 1, _1: -7 }), "-7", false);
+check("test({ tag: 1, _1: -1 })", () => M.test({ tag: 1, _1: -1 }), "-1", false);
 
 console.log(`KnownConstructors02-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

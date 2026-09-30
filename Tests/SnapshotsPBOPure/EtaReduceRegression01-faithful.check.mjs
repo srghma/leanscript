@@ -42,6 +42,9 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test({ tag: 0 })", () => M.test({ tag: 0 }), "", false);
+check("test({ tag: 1, _1: \"\" })", () => M.test({ tag: 1, _1: "" }), "", false);
+check("test({ tag: 1, _1: \"a\" })", () => M.test({ tag: 1, _1: "a" }), "a", false);
 
 console.log(`EtaReduceRegression01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
