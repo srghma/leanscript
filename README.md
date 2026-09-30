@@ -203,8 +203,25 @@ The printer (`JsTerm/Print/Mini/`) only chooses how to spell what the `JsTerm` s
 `if` statements as short as it can (no empty `else`, `if (x.tag !== 0)` for an empty `then`, no
 `else` after a `return`, `c ? a : b` for returns of names and literals), arms of a union's case
 analysis that are all the same once, without a test, a join point assigned once as a `const`, a
-field read once, outside loops and closures, in place (`p._1`), and an arrow whose body is one
+field read once, outside loops and closures, in place (`p._1`), the fields of a pattern taken
+apart after a lone `if` that reads none of them (`const { … } = s; if (c) { … }` is
+`if (c) { const { … } = s; … }`, so that it merges with the test of the arm:
+`if (s.tag === 1 && c)`, `sinkPattern`), and an arrow whose body is one
 `return` as `(x) => e`.  `leanscript --help` lists the options.
+
+**A constructor rebuilt on the fields just taken apart is the value itself.**  In the arm of a
+case analysis, the conversion writes the constant taken apart for a constructor expression of the
+same constructor on the very fields the arm binds (`CtorFact`, `knownCtorLvl?`), also when a
+field is a boolean literal that an enclosing `if` tested that field to be (`Names.bools`: Lean's
+match compiler rebuilds `Node Red l x r` with the literal `Red` once it has tested the colour).
+A constructor without fields written on its own is not replaced (it is as short as a name, and
+replacing it would make copies of the same fall-through read different variables); inside a
+constructor that is replaced it still counts (`add zero y` in the arm of `x = zero` is the value
+taken apart, `CaseJacobs`).  With this, the copies of the
+tests of the right subtree that Lean's match compiler puts in every branch where the patterns on
+the left subtree fail are the same statements, and `JsBlock.shareTails` writes them once
+(`CaseRedBlackTree`: the shape of `legacy-backend/CaseRedBlackTree.js`, checked on every tree of
+depth ≤ 3 in `Tests/Main.lean` with `scripts/rbt-compare.mjs`).
 
 **Object types are nominal** (`proposals/TypedDataProposals3.md`, proposals P, Q, R and S).  Every
 tagged object is `JsTy.obj id args`, a name and arguments, looked up in the signature `JsSig` of

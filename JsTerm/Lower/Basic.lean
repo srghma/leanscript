@@ -162,6 +162,14 @@ structure BoundFacts where
   idxLt : List (VarKey × VarKey) := []
   deriving Inhabited
 
+/-- What an argument of a constructor expression is, for `knownCtorLvl?`: the constant of a
+    level, a boolean literal, or something else. -/
+inductive ArgKey where
+  | lvl (l : Nat)
+  | bool (b : Bool)
+  | none
+  deriving Inhabited, BEq
+
 /-- What a case analysis on a value says of it, in one of its arms: the constant of level `src`
     (of JavaScript type `ty`) holds the constructor `tag`, whose fields are in `fields` (`.none`
     for a field the arm does not bind).  A constructor expression of the same constructor on the
@@ -221,6 +229,10 @@ structure Names where
   bounds : BoundFacts := {}
   /-- What the enclosing case analyses say of the values they take apart (`CtorFact`). -/
   ctors : List CtorFact := []
+  /-- What the enclosing `if`s say of the booleans held in constants: `(l, b)`, the constant of
+      level `l` holds `b` (a constructor expression with the literal `b` for that field is
+      then still the value taken apart, `knownCtorLvl?`). -/
+  bools : List (Nat × Bool) := []
   /-- The join point of `J` each join point of `Term` is (by their indices): the identity,
       except in the body of a join point written at a jump (`JoinInl`), which sees the join
       points around the join point, and in the branch of a join point with no join point of
@@ -398,12 +410,18 @@ partial def JsTy.hasMutable (S : JsSig) (seen : List Nat := []) : JsTy → Bool
 /-- The level of the constant that already holds the constructor `tag` of type `ty` on the
     fields held by the constants of levels `args`, by the facts `facts` of the enclosing case
     analyses (`CtorFact`); never for a type that can hold an array (`JsTy.hasMutable`). -/
-def knownCtorLvl? (facts : List CtorFact) (tag : Nat) (args : List (Option Nat)) (ty : JsTy) :
-    Option Nat :=
-  if ty.hasMutable S then none else
+def knownCtorLvl? (facts : List CtorFact) (bools : List (Nat × Bool)) (tag : Nat)
+    (args : List ArgKey) (ty : JsTy) (nullary : Bool := true) : Option Nat :=
+  -- a constructor without fields written on its own (`nullary = false`) is not looked up:
+  -- `{ tag: 0 }` is as short as a name, and writing whichever constant happens to hold it would
+  -- make copies of the same statement (the fall-through of a `match`) read different variables,
+  -- so they could not be shared; inside a constructor that is looked up it still is
+  if ty.hasMutable S || (!nullary && args.isEmpty) then none else
   (facts.find? fun f => f.tag == tag && f.ty == ty && f.fields.length == args.length &&
     (f.fields.zip args).all fun (r, a) => match r, a with
-      | .c l, some l' => l == l'
+      | .c l, .lvl l' => l == l'
+      -- a boolean literal is the field known to hold it (an enclosing `if` tested it)
+      | .c l, .bool b => bools.contains (l, b)
       | _, _ => false).map (·.src)
 
 /-- The refs `rs` with every call not made yet (`Ref.call`) that `used` says is read bound to a

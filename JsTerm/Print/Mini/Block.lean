@@ -260,7 +260,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let e ← exprToMini sc e
     let n := sel.binds.length
     let (d, sc') ← destructureToMini sc e sel.binds (readInPlace src n rest)
-    return d ++ (← blockToMini sc' tl rest)
+    return sinkPattern d (← blockToMini sc' tl rest)
   | .ite c t e => do
     let c ← exprToMini sc c
     let t ← blockToMini sc tl t
@@ -439,7 +439,7 @@ partial def unionArmsToMini {C M J : List JsTy} {k : JsEnd} {cs : List (List JsT
     let test : MiniExpr :=
       if small && fs.isEmpty then .binary s .strictEq (natNum i)
       else .binary (.dot s (nes "tag")) .strictEq (natNum i)
-    return (test, d ++ b) :: (← unionArmsToMini sc tl s src small (i + 1) rest)
+    return (test, sinkPattern d b) :: (← unionArmsToMini sc tl s src small (i + 1) rest)
 end
 
 end MoreJs

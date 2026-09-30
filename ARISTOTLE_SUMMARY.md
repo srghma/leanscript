@@ -1,3 +1,56 @@
+# Summary of changes for run 11b85fc3-0084-4634-a5d4-9aec69a10bbc
+`CaseRedBlackTree` now compiles to JavaScript with the same decision tree as `legacy-backend/CaseRedBlackTree.js`. A new test runs it on all 723 trees of depth 3 or less: it gives Lean's answer on every tree and never reads more tags or colours than PBO. The file dropped from about 440 lines to 80. The changes are in the `Term → JsTerm` step and the printer, not in the `Term → Term` optimizer, for the reason given further down.
+
+**What was wrong.** For patterns 1 and 2, Lean's match compiler copies the tests on the right subtree (patterns 3 and 4) into every branch where they fail. The existing tail-sharing pass (`JsBlock.shareTails`) should have written those copies once, but they were not the same statements, for two reasons:
+1. **Rebuilt left subtree.** Lean rebuilds the left subtree from its fields, as `in#0(ctor#1(false, f24, f25, f26))`, using the literal `Red` (`false`) because it has already tested the colour. The step that writes the original variable in place of a rebuilt constructor only matched variables, so each copy rebuilt the subtree differently.
+2. **Default answer.** Inside `Leaf` arms, `Leaf` in the default answer was replaced by whichever variable was known to be `Leaf` (`_2: f$3`, `_2: f$9`, …). So each copy of the default answer read a different variable.
+
+**Changes**
+- **`Term → JsTerm` (`JsTerm/Lower/Basic.lean`, `FromTerm.lean`):**
+  - An `if` on a boolean held in a constant now records that constant's value in each branch (`Names.bools`). A rebuilt constructor whose field is that boolean literal is then recognised as the value already taken apart (`ArgKey`, `knownCtorLvl?`).
+  - A constructor without fields, written on its own, is no longer replaced by a variable. Inside a constructor that is replaced it still is, which keeps `CaseJacobs` as it was.
+- **Printer (`JsTerm/Print/Mini`, `sinkPattern`):** `const { … } = s; if (c) { … }` with nothing after the `if` becomes `if (c) { const { … } = s; … }`. This only happens when `c` has no effect and reads none of the fields. The `if` then merges with the arm's test, giving `if (t.tag === 1 && t._1)`, which is PBO's `v.tag === "Node" && v._color === "Black"`.
+
+**New output** (`CaseRedBlackTree-pbo.js`; `-faithful.js` is the same with `1n`, …):
+```js
+export const test1 = (t) => {
+  if (t.tag === 1 && t._1) {
+    const { _2: f$1, _3: f$2, _4: f$3 } = t;
+    if (f$1.tag === 1 && !f$1._1) {
+      const { _2: f$4, _3: f$5, _4: f$6 } = f$1;
+      if (f$4.tag === 1 && !f$4._1) { return { _1: 1, … }; }
+      if (f$6.tag === 1 && !f$6._1) { return { _1: 2, … }; }
+    }
+    if (f$3.tag === 1 && !f$3._1) {
+      const { _2: f$7, _3: f$8, _4: f$9 } = f$3;
+      if (f$7.tag === 1 && !f$7._1) { return { _1: 3, … }; }
+      if (f$9.tag === 1 && !f$9._1) { return { _1: 4, … }; }
+    }
+  }
+  return { _1: 0, _2: { tag: 0 }, … };
+};
+```
+There is no recursion here, and the shared tail is a plain fall-through, so no labelled block or loop was needed.
+
+**Remaining differences from PBO**
+- **Unmatched trees return `default`; PBO throws.** A `panic!` with a constant message is compiled to its `default` value, which is what Lean returns. Making it throw would need `Term` to allow an extern call with only constant arguments, which is a grammar change across all the proofs.
+- **Field names.** The result record uses `_1…_8` rather than field names, as all generated records do.
+
+**Why not the `Term → Term` phase.** The rewrite needs to know which boolean an enclosing `if` tested, and it changes a literal into a variable. In the intrinsically typed `Term`, that changes the level index. The conversion already had this "rebuilt constructor = scrutinee" mechanism, so I extended it there.
+
+**Tests and checks**
+- **New test in `Tests/Main.lean` (`caseRedBlackTreeSpec`):** it compares our JS, in both presets, with a Lean copy of `test1` on all 723 trees, using the new `scripts/rbt-compare.mjs`. It checks:
+  - every answer matches Lean's, and PBO's matches too, or PBO throws where Lean returns `default`;
+  - on every tree we read no more tags and colours than PBO;
+  - the default answer and each pattern are written exactly once.
+- `lake exe tests` passes 86/86.
+- `lake build leanscript JsTerm tests OpsSpec` succeeds.
+- I regenerated all snapshots and all 342 node check files pass. Only the `CaseRedBlackTree` outputs changed. The script still exits 1, only because of the existing "literal too big" errors in the `PrimOp*Configurable` files.
+- `README.md` describes the two changes.
+- No Lean theorems changed, so the Properties table is unchanged.
+
+Everything is committed.
+
 # Summary of changes for run 3f0fc641-6a56-498a-8978-c658361af94f
 `CaseRecord` now compiles to JavaScript on par with `legacy-backend/CaseRecord.js`. All six functions give Lean's answers and never make more comparisons than PBO. `Test2.test2` was the one function whose shape differed; it now matches PBO's. The fix is a new pass in the `Term → Term` phase, proved to preserve `eval`. The other phases needed no changes.
 

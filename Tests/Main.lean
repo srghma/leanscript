@@ -1233,6 +1233,123 @@ def wfTermSpec : Spec := describe "WFTerm" do
 
 end WFTerm
 
+namespace CaseRBT
+
+/-! `Tests/SnapshotsPBOPure/CaseRedBlackTree.lean`, the reference the generated code is compared
+with (`panic!` answers `default`, as it does in Lean: the unmatched trees answer `default`). -/
+
+inductive Color where
+  | Red
+  | Black
+
+inductive Tree where
+  | Leaf
+  | Node (color : Color) (l : Tree) (val : Nat) (r : Tree)
+
+structure Result where
+  i : Nat
+  a : Tree
+  x : Nat
+  b : Tree
+  y : Nat
+  c : Tree
+  z : Nat
+  d : Tree
+
+def test1 (t : Tree) : Result :=
+  match t with
+  | .Node .Black (.Node .Red (.Node .Red a x b) y c) z d => { i := 1, a, x, b, y, c, z, d }
+  | .Node .Black (.Node .Red a x (.Node .Red b y c)) z d => { i := 2, a, x, b, y, c, z, d }
+  | .Node .Black a x (.Node .Red (.Node .Red b y c) z d) => { i := 3, a, x, b, y, c, z, d }
+  | .Node .Black a x (.Node .Red b y (.Node .Red c z d)) => { i := 4, a, x, b, y, c, z, d }
+  | _ => { i := 0, a := .Leaf, x := 0, b := .Leaf, y := 0, c := .Leaf, z := 0, d := .Leaf }
+
+/-- The shapes of the trees of depth at most `n`, with every value `0`. -/
+def shapes : Nat → List Tree
+  | 0 => [.Leaf]
+  | n + 1 =>
+    let sub := shapes n
+    .Leaf :: [Color.Red, Color.Black].flatMap fun c =>
+      sub.flatMap fun l => sub.map fun r => .Node c l 0 r
+
+/-- The tree with its values numbered in order, from `k`; and the next number. -/
+def number : Tree → Nat → Tree × Nat
+  | .Leaf, k => (.Leaf, k)
+  | .Node c l _ r, k =>
+    let (l', k) := number l k
+    let (r', k') := number r (k + 1)
+    (.Node c l' k r', k')
+
+def Tree.show : Tree → String
+  | .Leaf => "L"
+  | .Node c l v r => s!"N({match c with | .Red => "R" | .Black => "B"},{l.show},{v},{r.show})"
+
+def Tree.json : Tree → String
+  | .Leaf => "null"
+  | .Node c l v r =>
+    s!"[\"{match c with | .Red => "R" | .Black => "B"}\",{l.json},{v},{r.json}]"
+
+def Result.show (r : Result) : String :=
+  s!"{r.i};{r.a.show};{r.x};{r.b.show};{r.y};{r.c.show};{r.z};{r.d.show}"
+
+end CaseRBT
+
+/-- `CaseRedBlackTree`: the balancing patterns of a red-black tree. -/
+def caseRedBlackTreeSpec : Spec := describe "CaseRedBlackTree" do
+  it "every tree of depth ≤ 3 gets Lean's answer, with at most PBO's tests (needs node and leanscript)" do
+    -- Lean's match compiler copies the tests of the right subtree (patterns 3 and 4) into every
+    -- branch where patterns 1 and 2 fail, and rebuilds the left subtree from its fields
+    -- (`Node Red l' x' r'`) instead of naming it.  The rebuilt subtree is the value taken apart
+    -- (`knownCtorLvl?`, a boolean literal included when an enclosing `if` tested that field),
+    -- so the copies are the same statements and are written once (`JsBlock.shareTails`), as
+    -- purescript-backend-optimizer does (`legacy-backend/CaseRedBlackTree.js`).  On every tree
+    -- of depth at most 3, `test1` gives Lean's answer (PBO's too, or PBO throws where Lean
+    -- answers `default`), and reads no more tags and colours than PBO.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseRedBlackTree"
+    IO.FS.createDirAll dir
+    let file := "CaseRedBlackTree"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let trees := (CaseRBT.shapes 3).map fun t => (CaseRBT.number t 1).1
+    let json := "[" ++ ",".intercalate (trees.map CaseRBT.Tree.json) ++ "]"
+    for preset in ["pbo", "faithful"] do
+      let src ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      -- the default answer (a tree without a match) is written once, and so is each pattern
+      let lit := if preset == "pbo" then "" else "n"
+      assertEq s!"{file}-{preset}: one default answer" 2 (src.splitOn s!"_1: 0{lit},").length
+      for i in [1, 2, 3, 4] do
+        assertEq s!"{file}-{preset}: pattern {i} written once" 2
+          (src.splitOn s!"_1: {i}{lit},").length
+      let run ← IO.Process.output { cmd := "node", args := #["scripts/rbt-compare.mjs",
+        s!"{dir}/{file}-{preset}.js", s!"Tests/SnapshotsPBOPure/legacy-backend/{file}.js", json] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      let lines := (run.stdout.splitOn "\n").filter (· != "")
+      assertEq s!"{file}-{preset}: every tree" trees.length lines.length
+      let mut total := 0
+      let mut totalPbo := 0
+      for (t, l) in trees.zip lines do
+        let expected := (CaseRBT.test1 t).show
+        match l.splitOn "|" with
+        | [o, p, n, m] =>
+          assertEq s!"{file}-{preset}: test1 {t.show}" expected o
+          assertEq s!"{file}-{preset}: PBO's test1 {t.show}" true
+            (p == expected || ((CaseRBT.test1 t).i == 0 && p.startsWith "threw:"))
+          assertEq s!"{file}-{preset}: test1 {t.show} makes at most PBO's {m} tests" true
+            (n.toNat! ≤ m.toNat!)
+          total := total + n.toNat!
+          totalPbo := totalPbo + m.toNat!
+        | _ => assertEq s!"{file}-{preset}: a line of the results" "ours|pbo|n|m" l
+      assertEq s!"{file}-{preset}: at most PBO's tests in all ({total} ≤ {totalPbo})" true
+        (total ≤ totalPbo)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1242,6 +1359,7 @@ def spec : Spec := do
   appendSpec
   arithSpec
   moreJsSpec
+  caseRedBlackTreeSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

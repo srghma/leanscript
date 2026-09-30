@@ -247,6 +247,43 @@ where
     | [s@(.if_ ..)] => s
     | ss => .block ss
 
+/-- The names a condition without effect reads (names, literals and fields, compared, negated
+    and joined by `&&` and `||`), or `none` for any other expression. -/
+partial def pureCondNames? : MiniExpr → Option (List NonEmptyString)
+  | .ident x => some [x]
+  | .number _ | .string _ | .true_ | .false_ | .null => some []
+  | .dot e _ => pureCondNames? e
+  | .unary .not e | .unary .minus e => pureCondNames? e
+  | .binary a op b =>
+    match op with
+    | .strictEq | .strictNeq | .lt | .le | .gt | .ge | .and | .or => do
+      return (← pureCondNames? a) ++ (← pureCondNames? b)
+    | _ => none
+  | _ => none
+
+/-- `const { _1: a, … } = s;` followed by `if (c) { S }` alone (no `else`, nothing after it),
+    with `c` a condition without effect that reads none of the names of the pattern (and `s` a
+    name or a field), is `if (c) { const { _1: a, … } = s; S }`: the fields are then only read
+    on the path that uses them, and the `if` can be merged with a test around it
+    (`if (s.tag === 1 && c) { … }`, `mkIf`).  Reading fields has no effect, so reading them
+    after `c`, or not at all when `c` is false, changes nothing. -/
+def sinkPattern (d b : List MiniStatement) : List MiniStatement :=
+  match d, b with
+  | [dd@(.decl .const ⟨⟨.object props none, some src⟩, []⟩)], [.if_ c s none] =>
+    let names := props.filterMap fun p => match p.value with
+      | .ident x => some x
+      | _ => none
+    let body := match s with
+      | .block ss => ss
+      | s => [s]
+    match pureCondNames? c with
+    | some ns =>
+      if isSimpleMini src && names.length == props.length && !ns.any names.contains then
+        [.if_ c (.block (dd :: body)) none]
+      else d ++ b
+    | none => d ++ b
+  | _, _ => d ++ b
+
 /-- The chain `if (t₀) { b₀ } else if (t₁) { b₁ } … else { bₙ }` of the arms of a case
     analysis (the last arm needs no test), written as short as it can be (`mkIf`). -/
 def ifChain : List (MiniExpr × List MiniStatement) → List MiniStatement

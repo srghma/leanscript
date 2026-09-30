@@ -298,16 +298,18 @@ partial def pexprLvl? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
 /-- The level of the constant holding the value of a constructor expression `e` (of a union),
     whose value has the JavaScript type `ty` (the union, or the datatype it is the layer of). -/
 partial def ctorLvl? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
-    (e : PExpr Δ Φ Γ τ o) (ty : JsTy) (n : Names) : Option Nat :=
+    (e : PExpr Δ Φ Γ τ o) (ty : JsTy) (n : Names) (nullary : Bool := true) : Option Nat :=
   match e with
-  | .union_mk ix args => knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls args n) ty
+  | .union_mk ix args =>
+    knownCtorLvl? (S := S) n.ctors n.bools (ctorIxIndex ix) (argsLvls args n) ty nullary
   | _ => none
-/-- `pexprLvl?` of each argument. -/
+/-- `pexprLvl?` of each argument (a boolean literal as itself). -/
 partial def argsLvls {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
-    (as : Args Δ Φ Γ σs o) (n : Names) : List (Option Nat) :=
+    (as : Args Δ Φ Γ σs o) (n : Names) : List ArgKey :=
   match as with
   | .nil => []
-  | .cons a as => pexprLvl? a n :: argsLvls as n
+  | .cons (.lit .bool b) as => .bool b :: argsLvls as n
+  | .cons a as => ((pexprLvl? a n).map ArgKey.lvl).getD .none :: argsLvls as n
 end
 
 /-- The level of the constant holding the value of a constructor built again on the fields of a
@@ -316,7 +318,8 @@ def valCtorLvl? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o : Lvl}
     (v : Val Δ d Φ Γ σ o) (n : Names) : Option Nat :=
   match v with
   | Val.union_mk ix args =>
-    knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls (S := S) cfg args n) (lowerTy cfg σ)
+    knownCtorLvl? (S := S) n.ctors n.bools (ctorIxIndex ix) (argsLvls (S := S) cfg args n)
+      (lowerTy cfg σ)
   | Val.data_in _ _ e => ctorLvl? (S := S) cfg e (lowerTy cfg σ) n
   | _ => none
 
@@ -443,13 +446,13 @@ partial def cPExpr {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
   | .enum_mk s i => pure (.enum_mk s.nOfConstructors s.shift i)
   | .record_mk args => do recordLit (← cArgs args n C M) _
   | PExpr.union_mk (cs := cs) (c := c) ix args => do
-    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n) _ then return v
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n (nullary := false)) _ then return v
     unionLit cs c ix (← cArgs args n C M)
   | PExpr.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | PExpr.list_mk (t := t) es => do
     listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | PExpr.data_in b j e' => do
-    if let some v ← knownGet? (ctorLvl? (S := S) cfg e' (lowerTy cfg τ) n) _ then return v
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e' (lowerTy cfg τ) n (nullary := false)) _ then return v
     foldE (← cPExpr e' n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
 
 /-- A pure expression whose value is made owned by copying arrays (`Own.PExpr.copyable`): its
@@ -553,14 +556,15 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
   | Val.lazy_mk b => do castE (.lam (σs := []) [] (← cBody b n C M [] [])) _
   | .record_mk args => do recordLit (← cArgs args n C M) _
   | Val.union_mk (cs := cs) (c := c) ix args => do
-    let l? := knownCtorLvl? (S := S) n.ctors (ctorIxIndex ix) (argsLvls (S := S) cfg args n) (lowerTy cfg τ)
+    let l? := knownCtorLvl? (S := S) n.ctors n.bools (ctorIxIndex ix)
+      (argsLvls (S := S) cfg args n) (lowerTy cfg τ) (nullary := false)
     if let some v ← knownGet? l? _ then return v
     unionLit cs c ix (← cArgs args n C M)
   | Val.array_mk (t := t) es => do arrayLit t (← cElems (A := lowerTy cfg (Ty.array (d := true) t)) es n C M)
   | Val.list_mk (t := t) es => do
     listLit (← cElems (A := .list (lowerTy cfg t)) es n C M) _
   | Val.data_in b j e => do
-    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n) _ then return v
+    if let some v ← knownGet? (ctorLvl? (S := S) cfg e (lowerTy cfg τ) n (nullary := false)) _ then return v
     foldE (← cPExpr e n C M) (lowerTy cfg (Ty.data (d := true) ((Δ.block b).ref j)))
 
 /-- A statement that answers a function, applied to the parameters `ps` (bound in `C`, the
@@ -1048,6 +1052,13 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
       (fun w => (Own.Term.occ w t).n > 0 || (Own.Term.occ w e).n > 0)
     let ce ← castE (← cNeu c { n with cx } C M) (.terminal .bool)
     let (nt, ne) := n.splitOn c
+    -- a test of a boolean held in a constant: its value in each branch
+    let (nt, ne) := match c with
+      | .var x => match n.u.getD x.index .none with
+        | .c l => ({ nt with bools := (l, true) :: nt.bools },
+                   { ne with bools := (l, false) :: ne.bools })
+        | _ => (nt, ne)
+      | _ => (nt, ne)
     return (JsBlock.ite ce (← cTerm t { nt with own } C M J) (← cTerm e { ne with own } C M J))
   | Branch.enum_casesOn (s := s) c bs => do
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
