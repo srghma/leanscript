@@ -67,13 +67,19 @@ def JsFun.toMini (f : JsFun) : MiniModuleItem :=
     let params ← f.params.foldlM (fun (acc : Array String) (p, _) =>
       if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
     let sc : Scope := { c := params.toList.reverse.map ident }
-    let e ← arrowToMini sc params.toList f.body
+    let e ← match f.delegate? with
+      | some (w, lit) =>
+        -- a call of the worker it shares (`JsTerm.Print.Share`)
+        pure (.arrow false (params.toList.map fun p => MiniParam.plain (.ident (nes p)))
+          (.expr (.call (ident w) (shapeExpr lit :: params.toList.map ident))))
+      | none => arrowToMini sc params.toList f.body
     let e := if f.isConst then
         match e with
         | .arrow _ [] (.expr v) => v
         | e => .call e []
       else e
-    return .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some e⟩, []⟩))
+    let decl : MiniStatement := .decl .const ⟨⟨.ident (nes f.name), some e⟩, []⟩
+    return if f.exported then .exportDecl (.decl decl) else .stmt decl
   go.run' {}
 
 /-- The import of the functions `names` of the runtime `path`:

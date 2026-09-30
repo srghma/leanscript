@@ -7,11 +7,13 @@
 
 /**
  * `test1`
+ * (private) the code of `test1`, `test2`, which call it with the initial value of its first variable as `tag`
+ * @param {boolean} tag
  * @param {nat(bigint)} a
  * @returns {boolean}
  */
-export const test1 = (a) => {
-  let p$1 = true;
+const test1$shared = (tag, a) => {
+  let p$1 = tag;
   let j$2 = a;
   while (true) {
     if (j$2 === 0n) {
@@ -27,22 +29,15 @@ export const test1 = (a) => {
 };
 
 /**
+ * `test1`
+ * @param {nat(bigint)} a
+ * @returns {boolean}
+ */
+export const test1 = (a) => test1$shared(true, a);
+
+/**
  * `test2`
  * @param {nat(bigint)} a
  * @returns {boolean}
  */
-export const test2 = (a) => {
-  let p$1 = false;
-  let j$2 = a;
-  while (true) {
-    if (j$2 === 0n) {
-      return p$1;
-    }
-    j$2--;
-    if (p$1) {
-      p$1 = false;
-    } else {
-      p$1 = true;
-    }
-  }
-};
+export const test2 = (a) => test1$shared(false, a);

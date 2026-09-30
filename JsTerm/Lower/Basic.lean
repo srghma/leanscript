@@ -129,6 +129,12 @@ inductive Ref where
       (`JsExpr.enumIndex`): a natural number that is not stored anywhere, but read from the enum
       (`base` itself for a `number` and `shift = 0`) wherever it is used. -/
   | enumIdx (base : Ref) (n : Nat) (shift : Int)
+  /-- A record whose fields are not stored together but each in its own variable, `fs` (the
+      variables of a loop that keeps a record in one variable per field, `cTailLoop`): taking
+      it apart reads the variables; reading it whole builds the record `{ _1: f₁, … }`, which
+      is refused (an error) when `strict` (in the step of the loop, where it would build a
+      record at every iteration). -/
+  | fields (fs : List Ref) (strict : Bool)
   deriving Inhabited
 
 /-- The JavaScript variables of the two contexts of variables of a statement: the unknowns `Γ`
@@ -149,6 +155,11 @@ structure Names where
   /-- May the loop being converted have an owning closure as its accumulator
       (`Own.fnAllow`)? -/
   allowFn : Bool := true
+  /-- The level of the constant of the accumulator `acc` of the tail loop being converted, when
+      the loop keeps a record in one variable per field (`Ref.fields`): a record literal passed
+      to `acc` has its fields bound one by one, so that the next iteration assigns them to the
+      variables instead of building the record. -/
+  flatAcc : Option Nat := none
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes
@@ -273,6 +284,15 @@ partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr S C 
   | .enumIdx base n shift => match JsNatTy.of? τ with
     | some nt => return .enumIndex nt (← base.get (.enum n shift))
     | none => throw s!"internal: the position of a constructor at the type {τ}"
+  | .fields fs strict => do
+    if strict then throw "tail loop: a record kept in the variables of the loop is read whole"
+    match τ with
+    | .obj id args =>
+      let ts := S.fieldsOf id args
+      if fs.length != ts.length then throw "internal: the fields of a record kept in variables"
+      let as : JsArgs S C M ts ← castArgs (← refArgs (fs.zip ts)) ts
+      castE (JsExpr.record_mk (id := id) (args := args) as) τ
+    | _ => throw s!"internal: a record kept in variables at the type {τ}"
 
 /-- The call of `base` on all its arguments `args`, answering a value of type `c`. -/
 partial def papCall {C M : List JsTy} (base : Ref) (args : List (Ref × JsTy)) (c : JsTy) :

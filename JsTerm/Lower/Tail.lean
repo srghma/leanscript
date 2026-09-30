@@ -221,6 +221,29 @@ def loopNext {C M J : List JsTy} (ds : List JsTy) (lvls : List Nat) (σs : List 
     (a, earlier.any fun idx => a.2.2.mentions ⟨true, idx⟩)
   return assignThenNext [] marked
 
+/-- The arguments of a call as the values of the variables of a loop that keeps some of its
+    parameters (`flat` says which) in one variable per field: the fields of a record literal
+    passed for such a parameter, in order.  `none` when such an argument is not a record
+    literal. -/
+def flattenArgs {C M : List JsTy} :
+    List Bool → List ((σ : JsTy) × JsExpr S C M σ) → Option (List ((σ : JsTy) × JsExpr S C M σ))
+  | [], [] => some []
+  | false :: fl, a :: as => (a :: ·) <$> flattenArgs fl as
+  | true :: fl, ⟨_, .record_mk fs⟩ :: as => (fs.toList ++ ·) <$> flattenArgs fl as
+  | _, _ => none
+
+/-- `loopNext` for a loop whose variables (of types `ds`, at levels `lvls`) keep the parameters
+    `flat` says in one variable per field: the call's arguments are flattened
+    (`flattenArgs`). -/
+def loopNextFlat {C M J : List JsTy} (flat : List Bool) (ds : List JsTy) (lvls : List Nat)
+    (σs : List JsTy) (args : JsArgs S C M σs) : Option (JsBlock S C M J .loop) := do
+  let items ← flattenArgs flat args.toList
+  let rec toArgs : List ((σ : JsTy) × JsExpr S C M σ) → (τs : List JsTy) → Option (JsArgs S C M τs)
+    | [], [] => some .nil
+    | ⟨σ, e⟩ :: es, τ :: τs => if h : σ = τ then (JsArgs.cons (h ▸ e) ·) <$> toArgs es τs else none
+    | _, _ => none
+  loopNext ds lvls ds (← toArgs items ds)
+
 end MoreJs
 
 end

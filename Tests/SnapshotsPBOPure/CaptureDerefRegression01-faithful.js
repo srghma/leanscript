@@ -47,30 +47,45 @@ export const test5 = (v) => ({
 
 /**
  * `testEven`
+ * (private) the code of `testEven`, `testOdd`, which call it with the initial value of its first variable as `tag`
+ * @param {boolean} tag
  * @param {nat(bigint)} n
  * @param {{ _1: int(bigint), _2: int(bigint) }} b
  * @returns {{ _1: int(bigint), _2: int(bigint) }}
  */
-export const testEven = (n, b) => {
-  let p$1 = true;
-  let p$2 = b;
-  let j$3 = n;
+const testEven$shared = (tag, n, b) => {
+  let p$1 = tag;
+  let p$2 = b._1;
+  let p$3 = b._2;
+  let j$4 = n;
   while (true) {
-    if (j$3 === 0n) {
-      return p$2;
+    if (j$4 === 0n) {
+      return { _1: p$2, _2: p$3 };
     }
-    j$3--;
+    j$4--;
     if (p$1) {
-      const { _1: f$4, _2: f$5 } = p$2;
+      const x$5 = p$3 + 1n;
+      const x$6 = p$2 + 2n;
       p$1 = false;
-      p$2 = { _1: f$5 + 1n, _2: f$4 + 2n };
+      p$2 = x$5;
+      p$3 = x$6;
     } else {
-      const { _1: f$6, _2: f$7 } = p$2;
+      const x$7 = p$3 + 3n;
+      const x$8 = p$2 + 4n;
       p$1 = true;
-      p$2 = { _1: f$7 + 3n, _2: f$6 + 4n };
+      p$2 = x$7;
+      p$3 = x$8;
     }
   }
 };
+
+/**
+ * `testEven`
+ * @param {nat(bigint)} n
+ * @param {{ _1: int(bigint), _2: int(bigint) }} b
+ * @returns {{ _1: int(bigint), _2: int(bigint) }}
+ */
+export const testEven = (n, b) => testEven$shared(true, n, b);
 
 /**
  * `testOdd`
@@ -78,23 +93,4 @@ export const testEven = (n, b) => {
  * @param {{ _1: int(bigint), _2: int(bigint) }} b
  * @returns {{ _1: int(bigint), _2: int(bigint) }}
  */
-export const testOdd = (n, b) => {
-  let p$1 = false;
-  let p$2 = b;
-  let j$3 = n;
-  while (true) {
-    if (j$3 === 0n) {
-      return p$2;
-    }
-    j$3--;
-    if (p$1) {
-      const { _1: f$4, _2: f$5 } = p$2;
-      p$1 = false;
-      p$2 = { _1: f$5 + 1n, _2: f$4 + 2n };
-    } else {
-      const { _1: f$6, _2: f$7 } = p$2;
-      p$1 = true;
-      p$2 = { _1: f$7 + 3n, _2: f$6 + 4n };
-    }
-  }
-};
+export const testOdd = (n, b) => testEven$shared(false, n, b);

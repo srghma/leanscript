@@ -1,3 +1,39 @@
+# Summary of changes for run 5d9def2c-bb05-47dc-9575-1705020fb0d4
+The JS generated for `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` is now as good as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, and a little better in places. The two changes are below. Neither one could go in the `Term → Term` optimizer, so its proofs are unchanged.
+
+**What was still worse than PBO at the start**
+- `testEven` and `testOdd` each carried their pair argument as a record in one loop variable. Every iteration built a new `{_1, _2}` and took it apart again, so it allocated once per step. PBO keeps the two fields in separate variables.
+- `testOdd` repeated the whole loop. PBO writes it as a short wrapper around the other function.
+
+**1. Loop variables that hold a record are split into one variable per field (`Term → JsTerm`, `JsTerm/Lower/FromTerm.lean`, `Basic.lean`, `Tail.lean`)**
+- This applies when the record's fields are all plain values (numbers, booleans, strings, enums) and the loop body only takes the record apart. The body passes the next record as a literal, and those fields are assigned straight to the variables.
+- The whole record is rebuilt only where the loop returns it.
+- If the body uses the record whole anywhere, this is not done: that would build a record on every step, so the loop is converted exactly as before.
+- It can't go in the Term optimizer because it is about mutable JS loop variables, which Term doesn't have.
+
+**2. Functions that differ only in their first starting value share one private worker (`JsTerm → JsTerm`, new `JsTerm/Print/Share.lean`)**
+- `testEven` and `testOdd` compile to the same loop apart from the starting `Bool` tag.
+- The tool now writes the loop once, as `const testEven$shared = (tag, n, b) => …`, then `export const testEven = (n, b) => testEven$shared(true, n, b);` and the same for `testOdd` with `false`.
+- Two functions share a worker only when the printed JS of their workers is exactly the same text, so each still runs its own code.
+- It can't go in the Term phase or the conversion because a Term can't refer to another top-level definition, and each function is converted on its own.
+- To support this, `JsFun` has two new fields, `exported` and `delegate?`, and the printer handles both.
+
+**How the output now compares with PBO**
+- `test1`, `test2`: identical.
+- `test3`: both arguments taken at once instead of curried.
+- `test4`, `test5`: no `tag: 0` field.
+- `testEven`, `testOdd`: one loop with no allocation per step and constant stack use, plus two one-line wrappers. PBO has one loop and one wrapper. The loop starts with `let p$2 = b._1; let p$3 = b._2;` and its steps only assign numbers.
+- Remaining differences:
+  - PBO handles two steps per iteration and so needs no tag; we still test and set a `Bool` tag each step.
+  - The `pbo` preset calls `int53__lean_int_add` where PBO writes `+`. That is the preset's overflow-checked `Int`, not something I changed; the `faithful` preset writes `+` on BigInts.
+
+**Checks**
+- All snapshots were regenerated with `scripts/leanscript-snapshots.sh`, and all 336 node checks pass with 0 failures.
+- Only two snapshots changed: this one and `Tests/SnapshotsMy/MutualTail`, where `test1` and `test2` now share a worker in the same way.
+- `lake build JsTerm tests` succeeds and `lake exe tests` passes 76/76.
+- No `sorry` was added. These are code-generation changes checked by the differential tests, with no new Lean theorems, so I added no entries to the Properties table.
+- All work is committed.
+
 # Summary of changes for run 3c48ab1a-45eb-45f5-aa51-e42c6592d447
 I rewrote how `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` is compiled. For every test except `testOdd`, the JavaScript is now as short as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, or shorter. `testOdd` is still a full loop, while the legacy backend gives it a 5-line wrapper. Both presets pass all 60 differential checks against Lean.
 

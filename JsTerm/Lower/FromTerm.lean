@@ -106,6 +106,62 @@ def accEnv {ks : List Nat} (mode : Own.AccMode) (idx fid : Nat) (ρ : Ty ks) : O
   | .ownFn m r => Own.Env.withAccFn idx (Own.mustFn fid ρ m r) m r
   | _ => fun e => e
 
+/-! ## Records kept in one variable per field
+
+The variables of a tail loop (`cTailLoop`) that hold a record of leaves (numbers, booleans,
+strings, enums) that the step only takes apart, and rebuilds as a literal for the next
+iteration, are kept as one variable per field (`Ref.fields`): the loop then builds no record
+per iteration and takes none apart (`let p$2 = b._1, p$3 = b._2; … p$2 = f(p$3); …`). -/
+
+/-- The fields of a record type whose fields are all leaves (the records a loop may keep in
+    one variable per field). -/
+def scalarRecordFields? : JsTy → Option (List JsTy)
+  | .obj (.record _) ts =>
+    if ts.all (fun | .terminal _ => true | .enum _ _ => true | _ => false) then some ts else none
+  | _ => none
+
+/-- Is the expression a record literal? -/
+def JsExpr.isRecordMk {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .record_mk _ => true
+  | _ => false
+
+/-- The pattern that binds every field. -/
+def JsSel.all : (ts : List JsTy) → JsSel ts ts
+  | [] => .nil
+  | _ :: ts => .keep "f" (JsSel.all ts)
+
+/-- The renaming of the constants `C` into `pushAll us C` (under the variables of a
+    pattern). -/
+def wkAllRen {C : List JsTy} : (us : List JsTy) → JsRenM Id C (pushAll us C)
+  | [] => fun x => x
+  | _ :: us => fun x => wkAllRen us (JsMem.succ x)
+
+/-- The initial values of the variables of a loop keeping the parameters `flat` says in one
+    variable per field (`cTailLoop`): the values `todo`, the fields of a record literal given
+    for such a parameter, and for another value of such a parameter (a variable) its fields,
+    taken apart first (`const { _1: f₁, … } = e;`, in front of the loop).  `k` builds the rest
+    from the constants then in scope and the flattened values. -/
+partial def flattenInit {C M J : List JsTy} {k : JsEnd}
+    (done : List ((σ : JsTy) × JsExpr S C M σ))
+    (todo : List (((σ : JsTy) × JsExpr S C M σ) × Bool))
+    (kont : (C' : List JsTy) → List ((σ : JsTy) × JsExpr S C' M σ) → ConvM (JsBlock S C' M J k)) :
+    ConvM (JsBlock S C M J k) :=
+  match todo with
+  | [] => kont C done.reverse
+  | (a, false) :: rest => flattenInit (a :: done) rest kont
+  | (⟨_, .record_mk fs⟩, true) :: rest => flattenInit (fs.toList.reverse ++ done) rest kont
+  | (⟨.obj id args, e⟩, true) :: rest => do
+    let ts := S.fieldsOf id args
+    let ren : JsRenM Id C (pushAll ts C) := wkAllRen ts
+    let wk : ((σ : JsTy) × JsExpr S C M σ) → ((σ : JsTy) × JsExpr S (pushAll ts C) M σ) :=
+      fun ⟨σ, e⟩ => ⟨σ, Id.run (e.renameM ren JsRen.id)⟩
+    let fieldEs ← (paramRefs C ts).mapM fun (r, t) => do
+      let fe : JsExpr S (pushAll ts C) M t ← r.get t
+      return (⟨t, fe⟩ : (σ : JsTy) × JsExpr S (pushAll ts C) M σ)
+    return .destructure e (JsSel.all ts) (← flattenInit (fieldEs.reverse ++ done.map wk)
+      (rest.map fun (a, b) => (wk a, b)) kont)
+  | (_, true) :: _ => throw "internal: a record kept in variables that is not a record"
+
 section
 variable (cfg : JsConfig) {ks : List Nat} {Δ : DSig ks}
 
@@ -299,6 +355,28 @@ partial def cArgs {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
   | .nil => pure .nil
   | .cons a as => return .cons (← cPExpr a n C M) (← cArgs as n C M)
 
+/-- Arguments, each bound as a constant (unless it is one already), for `rest`, which receives
+    where they live. -/
+partial def cArgsBind {Φ : KCtx ks} {Γ : UCtx ks} {σs : List (Ty ks)} {o : Lvl}
+    (as : Args Δ Φ Γ σs o) (n : Names) (C M J : List JsTy) {e : JsEnd} (acc : List Ref)
+    (rest : List Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J e)) :
+    ConvM (JsBlock S C M J e) :=
+  match as with
+  | .nil => rest acc.reverse C
+  | .cons a as => do
+    bindConst (← cPExpr a n C M) fun r C' => cArgsBind as n C' M J (r :: acc) rest
+
+/-- An argument bound as a constant (unless it is one already), for `rest`, which receives
+    where it lives; a record literal, when `flat`, has its fields bound one by one
+    (`Ref.fields`). -/
+partial def cBindArg {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o : Lvl}
+    (a : PExpr Δ Φ Γ σ o) (n : Names) (C M J : List JsTy) {e : JsEnd} (flat : Bool)
+    (rest : Ref → (C' : List JsTy) → ConvM (JsBlock S C' M J e)) :
+    ConvM (JsBlock S C M J e) :=
+  match flat, a with
+  | true, .record_mk as => cArgsBind as n C M J [] fun rs C' => rest (.fields rs false) C'
+  | _, a => do bindConst (← cPExpr a n C M) rest
+
 /-- Elements of an array or list literal of type `A`. -/
 partial def cElems {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {o : Lvl} {A : JsTy}
     (es : Elems Δ Φ Γ t o) (n : Names) (C M : List JsTy) :
@@ -433,7 +511,12 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
       | some r@(.c _) | some r@(.pap ..) | some r@.none => rest r C
       | _ => return (← bindConst (← cPExpr f n C M) rest)
     withF fun fr C₁ => do
-      return (← bindConst (← cPExpr a n C₁ M) fun ar C₂ => do
+      -- a record literal passed to the accumulator of a loop keeping it in one variable per
+      -- field: its fields bound one by one (`Ref.fields`)
+      let toFlatAcc : Bool := match fr with
+        | .pap (.c l) _ | .c l => n.flatAcc == some l
+        | _ => false
+      return (← cBindArg a n C₁ M J toFlatAcc fun ar C₂ => do
         let (base, args) := match fr with
           | .pap b as => (b, as)
           | r => (r, [])
@@ -582,6 +665,15 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
       (fun w => (Own.Term.occ (w.upU m) t).n > 0)
     let (bs, hs) := Own.recordFields cx t₀ fs e
     let own := env'.pushUH bs hs
+    -- a record kept in one variable per field (`Ref.fields`): its fields are those variables
+    let kept? : Option (List Ref) := match e with
+      | .var x => match n.u.getD x.index .none with
+        | .fields rs _ => if rs.length == m then some rs else none
+        | _ => none
+      | _ => none
+    match kept? with
+    | some rs => cTerm t { n with u := rs ++ n.u, own } C M J
+    | none =>
     let ee ← cNeu e { n with cx } C M
     return (← destructureAny ee (usedFields us) fun refs C' =>
       cTerm t { n with u := refs ++ n.u, own } C' M J)
@@ -694,7 +786,27 @@ partial def cTailLoop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ρ τ : Ty ks} {j
     (cnt : PExpr Δ Φ Γ .nat on) (s : Body Δ d Φ Γ [⟨ρ, u₁, d + 1⟩, ⟨.nat, u₂, d + 1⟩] ρ os)
     (base : (C' M' : List JsTy) → List Ref → (r : JsTy) → ConvM (JsBlock S C' M' [] (.ret r)))
     (mode : Own.AccMode) (u : Usage1ω) (t : Term Δ d Φ (⟨ρ, u, d⟩ :: Γ) τ js o)
-    (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) := do
+    (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+  -- first with the records of leaves kept in one variable per field, when there is one
+  match lowerTy cfg ρ with
+  | .fn ds _ =>
+    if ds.any (scalarRecordFields? · |>.isSome) then
+      tryCatch (cTailLoopAt cnt s base mode u t n C M J true) fun _ =>
+        cTailLoopAt cnt s base mode u t n C M J false
+    else cTailLoopAt cnt s base mode u t n C M J false
+  | _ => cTailLoopAt cnt s base mode u t n C M J false
+
+/-- `cTailLoop`, keeping (when `flatOk`) the variables of the loop that hold a record of
+    leaves given as a record literal or a variable in one variable per field (`Ref.fields`),
+    strictly in the step (an error when the step reads such a record whole: it would build it
+    at every iteration). -/
+partial def cTailLoopAt {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ρ τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} {u₁ u₂ : Usage01ω} {on os : Lvl}
+    (cnt : PExpr Δ Φ Γ .nat on) (s : Body Δ d Φ Γ [⟨ρ, u₁, d + 1⟩, ⟨.nat, u₂, d + 1⟩] ρ os)
+    (base : (C' M' : List JsTy) → List Ref → (r : JsTy) → ConvM (JsBlock S C' M' [] (.ret r)))
+    (mode : Own.AccMode) (u : Usage1ω) (t : Term Δ d Φ (⟨ρ, u, d⟩ :: Γ) τ js o)
+    (n : Names) (C0 M J : List JsTy) (flatOk : Bool) :
+    ConvM (JsBlock S C0 M J (.ret (lowerTy cfg τ))) := do
   unless u == .one do throw "tail loop: the fold is used more than once"
   let F := lowerTy cfg ρ
   let .fn ds R := F | throw "tail loop: the answer is not a function"
@@ -707,38 +819,59 @@ partial def cTailLoop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ρ τ : Ty ks} {j
     | .ownFn m _ => m
     | _ => []
   let accMod := accEnv mode 0 (Own.accFnId d n.cx.env) ρ
-  cTailChain t ds.length 1 n C M mask [] fun tRest bound args => do
+  cTailChain t ds.length 1 n C0 M mask [] fun tRest bound args0 => do
+    -- the parameters kept in one variable per field
+    let flat : List Bool := (ds.zip args0).zipIdx.map fun ((dt, ⟨_, e⟩), i) =>
+      flatOk && !(mask.getD i false) && (scalarRecordFields? dt).isSome &&
+        (e.isAtom || e.isRecordMk)
+    let fieldsOf (dt : JsTy) : List JsTy := (scalarRecordFields? dt).getD []
+    let ds' := (ds.zip flat).flatMap fun (dt, f) => if f then fieldsOf dt else [dt]
+    flattenInit [] (args0.zip flat) fun C args => do
     -- the initial values of the variables of the loop
-    let some argsJs := argsOfList? args ds | throw "tail loop: the types of the arguments"
-    let M1 := pushAll ds M
-    let lvls := (List.range ds.length).map (M.length + ·)
-    let pRefs := lvls.map Ref.m
+    let some argsJs := argsOfList? args ds' | throw "tail loop: the types of the arguments"
+    let M1 := pushAll ds' M
+    let lvls := (List.range ds'.length).map (M.length + ·)
+    -- where each parameter lives: a variable, or one variable per field
+    let mkRefs (strict : Bool) : List Ref := Id.run do
+      let mut off := M.length
+      let mut out : Array Ref := #[]
+      for (dt, f) in ds.zip flat do
+        if f then
+          let k := (fieldsOf dt).length
+          out := out.push (Ref.fields ((List.range k).map fun j => Ref.m (off + j)) strict)
+          off := off + k
+        else
+          out := out.push (Ref.m off)
+          off := off + 1
+      return out.toList
+    let pRefs := mkRefs true
     -- the counter, already decremented in the step, is the predecessor the step reads
     let iRef := if u₂ == .zero then Ref.none else Ref.m M1.length
     let accRef := Ref.c C.length
     let fl := pRefs.zipIdx.map fun (_, i) => mask.getD i false
+    let flatAccLvl := if flat.any (·) then some C.length else none
     let stepB : JsBlock S (F :: C) (N :: M1) [] (.ret R) ← match os, s with
       | _, .closed ts =>
         let own := accMod (n.own.body true [mode.owns, false])
-        cApplyTerm ts { n with u := [accRef, iRef], own }
+        cApplyTerm ts { n with u := [accRef, iRef], own, flatAcc := flatAccLvl }
           (F :: C) (N :: M1) pRefs fl R
       | _, .opened ts _ =>
         let own := accMod (n.own.body false [mode.owns, false])
-        cApplyTerm ts { n with u := [accRef, iRef] ++ n.u, own }
+        cApplyTerm ts { n with u := [accRef, iRef] ++ n.u, own, flatAcc := flatAccLvl }
           (F :: C) (N :: M1) pRefs fl R
     let emit : {C M J : List JsTy} → (σs : List JsTy) → JsArgs S C M σs →
-        Option (JsBlock S C M J .loop) := fun σs as => loopNext ds lvls σs as
+        Option (JsBlock S C M J .loop) := fun σs as => loopNextFlat flat ds' lvls σs as
     let some loopB := stepB.tailToLoop 0 emit | throw "tail loop: the step"
     let dropAcc : JsRenM Option (F :: C) C := fun x => match x with
       | .zero => none
       | .succ y => some y
     let some stepL := loopB.renameM dropAcc (fun x => some x)
       | throw "tail loop: a call of the fold that is not a tail call"
-    let baseB ← base C (N :: M1) pRefs R
+    let baseB ← base C (N :: M1) (mkRefs false) R
     let baseL : JsBlock S C (N :: M1) [R] .loop := baseB.retToJump
     -- a closure reading a variable of the loop would see its later values
     let captured (b : JsBlock S C (N :: M1) [R] .loop) : Bool :=
-      b.occs.any fun oc => oc.isMut && oc.inClosure && oc.idx ≤ ds.length
+      b.occs.any fun oc => oc.isMut && oc.inClosure && oc.idx ≤ ds'.length
     if captured baseL || captured stepL then
       throw "tail loop: a closure reads a variable of the loop"
     let cntE ← cPExpr cnt n C M1

@@ -519,6 +519,13 @@ structure JsFun where
   ret : JsTy
   /-- The body; every path ends in a `return` (or a `throw`). -/
   body : JsBlock sig (pushAll (params.map (·.2)) []) [] [] (.ret ret)
+  /-- Exported (`export const name = …;`), or private to the module (`const name = …;`: a
+      worker shared by other functions, `JsTerm.Print.Share`). -/
+  exported : Bool := true
+  /-- Written as a call of another function of the module, the name of that function and the
+      literal it passes first: `(params) => worker(lit, params)` (`JsTerm.Print.Share`); the
+      body, which computes the same, is then not printed. -/
+  delegate? : Option (String × JsLitShape) := none
 
 /-- A top-level definition without parameters (its type is not a function, `termToJs`) is a
     constant: it is exported as the value its body computes, `export const name = value;`,

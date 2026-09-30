@@ -49,36 +49,45 @@ export const test5 = (v) => ({
 
 /**
  * `testEven`
+ * (private) the code of `testEven`, `testOdd`, which call it with the initial value of its first variable as `tag`
+ * @param {boolean} tag
  * @param {uint53(number)} n
  * @param {{ _1: int53(number), _2: int53(number) }} b
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */
-export const testEven = (n, b) => {
-  let p$1 = true;
-  let p$2 = b;
-  let j$3 = n;
+const testEven$shared = (tag, n, b) => {
+  let p$1 = tag;
+  let p$2 = b._1;
+  let p$3 = b._2;
+  let j$4 = n;
   while (true) {
-    if (j$3 === 0) {
-      return p$2;
+    if (j$4 === 0) {
+      return { _1: p$2, _2: p$3 };
     }
-    j$3--;
+    j$4--;
     if (p$1) {
-      const { _1: f$4, _2: f$5 } = p$2;
+      const x$5 = int53__lean_int_add(p$3, 1);
+      const x$6 = int53__lean_int_add(p$2, 2);
       p$1 = false;
-      p$2 = {
-        _1: int53__lean_int_add(f$5, 1),
-        _2: int53__lean_int_add(f$4, 2),
-      };
+      p$2 = x$5;
+      p$3 = x$6;
     } else {
-      const { _1: f$6, _2: f$7 } = p$2;
+      const x$7 = int53__lean_int_add(p$3, 3);
+      const x$8 = int53__lean_int_add(p$2, 4);
       p$1 = true;
-      p$2 = {
-        _1: int53__lean_int_add(f$7, 3),
-        _2: int53__lean_int_add(f$6, 4),
-      };
+      p$2 = x$7;
+      p$3 = x$8;
     }
   }
 };
+
+/**
+ * `testEven`
+ * @param {uint53(number)} n
+ * @param {{ _1: int53(number), _2: int53(number) }} b
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const testEven = (n, b) => testEven$shared(true, n, b);
 
 /**
  * `testOdd`
@@ -86,29 +95,4 @@ export const testEven = (n, b) => {
  * @param {{ _1: int53(number), _2: int53(number) }} b
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */
-export const testOdd = (n, b) => {
-  let p$1 = false;
-  let p$2 = b;
-  let j$3 = n;
-  while (true) {
-    if (j$3 === 0) {
-      return p$2;
-    }
-    j$3--;
-    if (p$1) {
-      const { _1: f$4, _2: f$5 } = p$2;
-      p$1 = false;
-      p$2 = {
-        _1: int53__lean_int_add(f$5, 1),
-        _2: int53__lean_int_add(f$4, 2),
-      };
-    } else {
-      const { _1: f$6, _2: f$7 } = p$2;
-      p$1 = true;
-      p$2 = {
-        _1: int53__lean_int_add(f$7, 3),
-        _2: int53__lean_int_add(f$6, 4),
-      };
-    }
-  }
-};
+export const testOdd = (n, b) => testEven$shared(false, n, b);

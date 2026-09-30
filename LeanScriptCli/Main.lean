@@ -6,6 +6,7 @@ import LeanScript.Term.Optimize.FloatReassoc
 import LeanScript.Term.Ownership.Walk
 import JsTerm.Lower.FromTerm
 import JsTerm.Print.Mini
+import JsTerm.Print.Share
 import JsTerm.Lower.Module
 
 /-!
@@ -380,7 +381,9 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
       | .error e =>
         if isLiteralTooBig e then fatal := fatal.push s!"{t.name} (preset {preset}): {e}"
         jsRefused := jsRefused.push (t.name, e)
-    let m := mkModule cfg funs.toList
+    -- functions that differ only in the literal initial value of their first variable share one
+    -- worker (`JsTerm.Print.Share`: the `mutual` groups recursing on a `Nat`)
+    let m := mkModule cfg (shareWorkers funs.toList)
     for n in missingExports rtSrc m.imports do
       fatal := fatal.push s!"preset {preset}: the runtime {rtFile} does not export {n}"
     let header (what : String) : List String :=

@@ -1,4 +1,5 @@
 import JsTerm.Print.Mini
+import JsTerm.Print.Share
 
 /-! # Printing `JsTerm` (`JsTerm/Print/`): a module as the text of its `.js` file
 
