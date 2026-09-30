@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(false, false, false)", () => M.test1(false, false, false), "3", false);
+check("test1(false, false, true)", () => M.test1(false, false, true), "1", false);
+check("test1(false, true, false)", () => M.test1(false, true, false), "2", false);
+check("test1(true, false, false)", () => M.test1(true, false, false), "3", false);
+check("test1(false, true, true)", () => M.test1(false, true, true), "2", false);
+check("test1(true, false, true)", () => M.test1(true, false, true), "1", false);
+check("test1(true, true, false)", () => M.test1(true, true, false), "3", false);
+check("test1(true, true, true)", () => M.test1(true, true, true), "4", false);
 
 console.log(`CaseGrafting-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -1,3 +1,53 @@
+# Summary of changes for run c30895da-dd6f-4dbf-b87d-a23c0d14faa4
+`CaseGrafting` now translates, and its JS is better than purescript-backend-optimizer's legacy output. Before this change `test1` wasn't translated at all: every output file only said "the helper `test1._sparseCasesOn_1` is universe polymorphic".
+
+**Why it failed.** For overlapping patterns like these, Lean's `match` compiler emits a sparse case analysis, `T._sparseCasesOn_k`. It has arms for only some constructors plus a catch-all `else`. The translator didn't recognise it, fell back to treating it as an ordinary helper function, and rejected it for being universe polymorphic.
+
+**The fix is in elaboration (Lean → `Term`), the step before the `Term` optimizer.** Nothing needed to change in `Term → Term`, `Term → JsTerm` or `JsTerm → JsTerm`:
+- A new `sparseAsCasesOn?` in `LeanScript/TermElab/ToTerm/Expr/Cases.lean` rewrites a sparse case analysis into the full `T.casesOn` it stands for, built the same way Lean's own `mkSparseCasesOn` builds it.
+  - Each constructor that has an arm gets that arm.
+  - Every other constructor gets the `else` branch, applied to a proof that the translation erases.
+  - The catch-all is passed as an extra argument, which the existing `casesOn` translation already pushes into the branches.
+- `LeanScript/TermElab/ToTerm/Expr.lean` calls it wherever `_sparseCasesOn` appears.
+
+**Output now** (`CaseGrafting-pbo.js`; `-faithful.js` is the same with `1n`…`4n`):
+```js
+export const test1 = (a, a1, a2) => {
+  if (a1) {
+    if (a) { return a2 ? 4 : 3; }
+    return 2;
+  }
+  return a2 ? 1 : 3;
+};
+```
+The optimised `Term` is the same decision tree, with the inner branches already turned into `cond` by the `Term` optimizer.
+
+**Compared with PBO's version:**
+- Ours tests each argument at most once, so any call does at most 3 tests. PBO's re-tests `v1` and `v2` and can do up to 5.
+- There is no dead `if (v2)` and no `throw new Error("UNREACHABLE")`.
+- It is a single uncurried function.
+- There is no recursion or loop, so labelled blocks and loops don't come into it for this file.
+
+**Checks:**
+- The generated differential checks cover all 8 argument combinations and pass 8/8 in both presets.
+- I regenerated every snapshot with `scripts/leanscript-snapshots.sh`, and all node checks pass.
+- `lake build` builds every default target except `LeanScript.Term.Syntax.UsageAlgebra`. That module imports Mathlib, which this project doesn't depend on, so the failure is unrelated to this change.
+- `lake exe tests` passes 76/76.
+
+**Side effects in other snapshots.** The same fix lets more definitions translate:
+- `test2`/`test3` in `TagChain`
+- `test5` in `CaseGuarded`
+- `testPB`, `testPBA`, `testPBAN` in `CaseHeuristics`
+- parts of `ProfunctorLenses02` and `RecursionSchemes01`
+
+Their output is correct but not yet tight:
+- **Repeated tests:** an inner `match` on the same value re-tests a constructor the outer one has already decided (e.g. `s.tag === 0` inside the `s.tag === 1` branch).
+- **Pointless ternaries:** some have identical branches, like `x ? 4 : 4`.
+
+Removing those would take a new "known constructor" pass in the `Term` optimizer, with its proof that `eval` is unchanged; I haven't done that. `TagChain`'s `test1` now fails with a different message, an `omega` error, which I haven't investigated.
+
+No Lean theorems were added or changed, so nothing was added to the Properties table. The work is committed.
+
 # Summary of changes for run 60fdd191-962d-472c-997e-10af6daab90a
 I made no changes. `CaseChar`'s JS output already matches purescript-backend-optimizer's legacy output, and is slightly shorter.
 

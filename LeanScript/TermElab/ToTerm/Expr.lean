@@ -218,6 +218,10 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
           -- the proof of membership is erased: a local that the translation never reads
           withLocalDeclD `h hTy fun h => pure (mkApp3 args[8]! i h r)
     if isCasesOnRecursor env c then return ← trCases tr L c args e
+    -- a sparse case analysis (`T._sparseCasesOn_k`, of a `match` with overlapping patterns):
+    -- the full case analysis it abbreviates
+    if isSparseCasesOn env c then
+      if let some e' ← sparseAsCasesOn? c fn.constLevels! args then return ← tr L e'
     -- a quotient is read as its carrier (`quotCarrier?`), a value of it as a representative:
     -- `Quot.mk r a` is `a`, and a function on the quotient (`Quot.lift f h q`, `Quot.rec`, …)
     -- is `f` applied to the representative `q`

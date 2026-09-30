@@ -4,7 +4,6 @@
 //   mapExprF: LeanScript: the parameter `α` of `mapExprF` is a type
 //   cata: LeanScript: the parameter `α` of `cata` is a type
 //   cataMap: LeanScript: the parameter `α` of `cataMap` is a type
-//   bump: LeanScript: the helper `bump._sparseCasesOn_1` is universe polymorphic
 //   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 //   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
@@ -21,4 +20,16 @@ export const eval_ = (a) => {
     return a._1 + a._2;
   }
   return a._1 * a._2;
+};
+
+/**
+ * `bump`
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint), _2: int(bigint) } | { tag: 2, _1: int(bigint), _2: int(bigint) })} a
+ * @returns {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: int(bigint), _2: int(bigint) } | { tag: 2, _1: int(bigint), _2: int(bigint) })}
+ */
+export const bump = (a) => {
+  if (a.tag === 0) {
+    return { tag: 0, _1: a._1 + 1n };
+  }
+  return a.tag === 1 ? a : a;
 };

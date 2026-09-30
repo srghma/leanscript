@@ -3,7 +3,6 @@
 --   test1: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 --   instReprRec1.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 --   instReprRec2.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
---   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
 -- test2 : NInt → Int
 val k1 [ω] : (Int → Int) := fun x2 [ω] : Int => (closed)
@@ -106,4 +105,20 @@ val k1 [ω] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 
               else
                 ret lean_int_add(lean_int_add(11, f7), f16)
   ret k3
+ret k1
+
+-- test5 : Option (Except Int Int) → Int
+val k1 [ω] : ((• | [([Int] | [Int])]) → Int) := fun x2 [ω] : (• | [([Int] | [Int])]) => (closed)
+  case x2 of
+  | ctor#0() =>
+    ret 5
+  | ctor#1(f3 [ω] : ([Int] | [Int])) =>
+    case f3 of
+    | ctor#0(f4 [ω] : Int) =>
+      if lean_int_dec_eq(f4, 2) then
+        ret 4
+      else
+        ret 5
+    | ctor#1(f5 [ω] : Int) =>
+      ret f5
 ret k1

@@ -4,7 +4,6 @@
 //   test1: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 //   instReprRec1.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   instReprRec2.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
-//   test5: LeanScript: the helper `test5._sparseCasesOn_1` is universe polymorphic
 
 import { int53__lean_int_add } from "../../runtime.js";
 
@@ -104,4 +103,19 @@ export const test4 = (a, a1) => {
     return int53__lean_int_add(int53__lean_int_add(f$2, f$8), 11);
   }
   return int53__lean_int_add(int53__lean_int_add(f$2, f$8), 11);
+};
+
+/**
+ * `test5`
+ * @param {({ tag: 0 } | { tag: 1, _1: ({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number) }) })} x_
+ * @returns {int53(number)}
+ */
+export const test5 = (x_) => {
+  if (x_.tag === 0) {
+    return 5;
+  }
+  if (x_._1.tag === 0) {
+    return x_._1._1 === 2 ? 4 : 5;
+  }
+  return x_._1._1;
 };

@@ -2,8 +2,6 @@
 -- not translated:
 --   preview_left: LeanScript: the parameter `α` of `preview_left` is a type
 --   preview_left_right: LeanScript: the parameter `α` of `preview_left_right` is a type
---   test3: LeanScript: the parameter `α` of `preview_left_right` is a type
---   test4: LeanScript: the parameter `α` of `preview_left_right` is a type
 
 -- test1 : Except Int Int → Option Int
 val k1 [1] : (([Int] | [Int]) → (• | [Int])) := fun x2 [1] : ([Int] | [Int]) => (closed)
@@ -20,5 +18,31 @@ val k1 [1] : (([Int] | [Int]) → (• | [Int])) := fun x2 [1] : ([Int] | [Int])
   | ctor#0(f3 [1] : Int) =>
     ret ctor#1(f3)
   | ctor#1(f4 [0] : Int) =>
+    ret ctor#0()
+ret k1
+
+-- test3 : Except (Except Int Int) Int → Option Int
+val k1 [1] : (([([Int] | [Int])] | [Int]) → (• | [Int])) := fun x2 [1] : ([([Int] | [Int])] | [Int]) => (closed)
+  case x2 of
+  | ctor#0(f3 [1] : ([Int] | [Int])) =>
+    case f3 of
+    | ctor#0(f4 [0] : Int) =>
+      ret ctor#0()
+    | ctor#1(f5 [1] : Int) =>
+      ret ctor#1(f5)
+  | ctor#1(f6 [0] : Int) =>
+    ret ctor#0()
+ret k1
+
+-- test4 : Except (Except Int Int) Int → Option Int
+val k1 [1] : (([([Int] | [Int])] | [Int]) → (• | [Int])) := fun x2 [1] : ([([Int] | [Int])] | [Int]) => (closed)
+  case x2 of
+  | ctor#0(f3 [1] : ([Int] | [Int])) =>
+    case f3 of
+    | ctor#0(f4 [0] : Int) =>
+      ret ctor#0()
+    | ctor#1(f5 [1] : Int) =>
+      ret ctor#1(f5)
+  | ctor#1(f6 [0] : Int) =>
     ret ctor#0()
 ret k1

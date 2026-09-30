@@ -3,8 +3,6 @@
 // not translated:
 //   preview_left: LeanScript: the parameter `α` of `preview_left` is a type
 //   preview_left_right: LeanScript: the parameter `α` of `preview_left_right` is a type
-//   test3: LeanScript: the parameter `α` of `preview_left_right` is a type
-//   test4: LeanScript: the parameter `α` of `preview_left_right` is a type
 
 /**
  * `test1`
@@ -26,6 +24,36 @@ export const test1 = (a) => {
 export const test2 = (a) => {
   if (a.tag === 0) {
     return { tag: 1, _1: a._1 };
+  }
+  return { tag: 0 };
+};
+
+/**
+ * `test3`
+ * @param {({ tag: 0, _1: ({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number) }) } | { tag: 1, _1: int53(number) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: int53(number) })}
+ */
+export const test3 = (a) => {
+  if (a.tag === 0) {
+    if (a._1.tag === 0) {
+      return { tag: 0 };
+    }
+    return { tag: 1, _1: a._1._1 };
+  }
+  return { tag: 0 };
+};
+
+/**
+ * `test4`
+ * @param {({ tag: 0, _1: ({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number) }) } | { tag: 1, _1: int53(number) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: int53(number) })}
+ */
+export const test4 = (a) => {
+  if (a.tag === 0) {
+    if (a._1.tag === 0) {
+      return { tag: 0 };
+    }
+    return { tag: 1, _1: a._1._1 };
   }
   return { tag: 0 };
 };

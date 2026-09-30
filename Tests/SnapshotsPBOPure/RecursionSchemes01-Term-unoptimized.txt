@@ -3,7 +3,6 @@
 --   mapExprF: LeanScript: the parameter `α` of `mapExprF` is a type
 --   cata: LeanScript: the parameter `α` of `cata` is a type
 --   cataMap: LeanScript: the parameter `α` of `cataMap` is a type
---   bump: LeanScript: the helper `bump._sparseCasesOn_1` is universe polymorphic
 --   test1: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 --   test2: LeanScript: the recursive type FixExpr is not declared in any signature; declare it with `leanscript_signature`
 
@@ -16,4 +15,15 @@ val k1 [ω] : (([Int] | [Int, Int] | [Int, Int]) → Int) := fun x2 [ω] : ([Int
     ret lean_int_add(f4, f5)
   | ctor#2(f6 [ω] : Int, f7 [ω] : Int) =>
     ret lean_int_mul(f6, f7)
+ret k1
+
+-- bump : ExprF Int → ExprF Int
+val k1 [ω] : (([Int] | [Int, Int] | [Int, Int]) → ([Int] | [Int, Int] | [Int, Int])) := fun x2 [ω] : ([Int] | [Int, Int] | [Int, Int]) => (closed)
+  case x2 of
+  | ctor#0(f3 [ω] : Int) =>
+    ret ctor#0(lean_int_add(f3, 1))
+  | ctor#1(f4 [ω] : Int, f5 [ω] : Int) =>
+    ret x2
+  | ctor#2(f6 [ω] : Int, f7 [ω] : Int) =>
+    ret x2
 ret k1

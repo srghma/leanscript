@@ -1,6 +1,9 @@
 module
 
 public meta import LeanScript.TermElab.ToTerm.Expr.Ctor
+public meta import Lean.Meta.Constructions.SparseCasesOn
+public meta import Lean.Meta.HasNotBit
+public meta import Lean.Meta.Constructions.CtorIdx
 
 @[expose] public section
 
@@ -25,6 +28,49 @@ namespace LeanScript.Gen
     the join point of the rest of the computation). -/
 def tyOf? (L : Loc) (T : Expr) : TM (Option Lean.Term) := do
   try return some (← (← cirOf L T false).stx L.c #[]) catch _ => return none
+
+/-- A sparse case analysis `T._sparseCasesOn_k motive major alts… else` (arms for some of the
+    constructors of `T`, and a catch-all `else` for the others, which Lean's `match` compiler
+    generates for overlapping patterns) as the full case analysis it abbreviates:
+    `T.casesOn major` whose branch at an interesting constructor is its arm, and at any other
+    constructor is `else` (applied to the proof that the constructor is not one of the
+    interesting ones, which the language erases).  As in `mkSparseCasesOn`, the motive of the
+    `casesOn` is a function of the catch-all, which is passed as an extra argument (and pushed
+    into the branches).  `none` when `c` is not a sparse case analysis or is not fully applied. -/
+def sparseAsCasesOn? (c : Name) (lvls : List Level) (args : Array Expr) : MetaM (Option Expr) := do
+  let some info ← getSparseCasesOnInfo c | return none
+  unless args.size ≥ info.arity do return none
+  let ind ← getConstInfoInduct info.indName
+  let nP := ind.numParams
+  let nI := ind.numIndices
+  let ctors := info.insterestingCtors
+  let params := args[:nP].toArray
+  let motive := args[nP]!
+  let indices := args[nP + 1 : nP + 1 + nI].toArray
+  let major := args[nP + 1 + nI]!
+  let alts := args[nP + 2 + nI : nP + 2 + nI + ctors.size].toArray
+  let elseArg := args[nP + 2 + nI + ctors.size]!
+  let extra := args[info.arity:].toArray
+  let overlapping ← ctors.mapM fun ctor => return (← getConstInfoCtor ctor).cidx
+  let us := lvls.drop 1
+  let motive' ← forallTelescope (← inferType motive) fun ism _ => do
+    let ctorIdxApp := mkAppN (mkConst (mkCtorIdxName info.indName) us) (params ++ ism)
+    let hyp := mkHasNotBit ctorIdxApp overlapping
+    let body := mkAppN motive ism
+    mkLambdaFVars ism (mkForall `else .default (mkForall `h .default hyp body) body)
+  let e := mkAppN (mkConst (mkCasesOnName info.indName) lvls) (params ++ #[motive'] ++ indices)
+  let e := mkApp e major
+  let altTypes ← inferArgumentTypesN ind.ctors.length e
+  let e := mkAppN e <| ← ind.ctors.toArray.zipWithM (bs := altTypes) fun ctor t =>
+    forallTelescope t fun ys _ => do
+      let fields := ys.pop
+      let elseMinor := ys.back!
+      if let some idx := ctors.idxOf? ctor then
+        mkLambdaFVars ys (mkAppN alts[idx]! fields).headBeta
+      else
+        let idx := (← getConstInfoCtor ctor).cidx
+        mkLambdaFVars ys (mkApp elseMinor (← mkHasNotBitProof (mkRawNatLit idx) overlapping))
+  return some (mkAppN (mkApp e elseArg) extra)
 
 variable (tr : Loc → Expr → TM Src)
 
