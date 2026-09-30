@@ -1,3 +1,50 @@
+# Summary of changes for run 1fbff342-249f-48d7-8a5c-ac17ace2328d
+The JavaScript for `CaseHeuristics` is now better than purescript-backend-optimizer's legacy output for all four functions. All 21 generated checks pass in both presets.
+
+**What was wrong with the old output.** Lean compiles each `match` into a decision tree and copies the last pattern (`_, _ => …`) into every branch where an earlier test fails. As a result:
+- `testPB` repeated its fall-through five times.
+- `testPBA` and `testPBAN` repeated `return 4` many times.
+- There were tests with identical outcomes, like `a1.tag === 1 ? 4 : 4`.
+
+**Result (`pbo`; `faithful` is the same with BigInt literals):**
+```js
+export const testPB = (a, a1) => {
+  if (a.tag === 1) {
+    if (a._1 === 1 && a1.tag === 1 && a1._1 === 1) { return 1; }
+  } else if (a.tag === 2 && a._1 === 2 && a._2 === 3 && a1.tag === 2 && a1._1 === 2 && a1._2 === 3) {
+    return 2;
+  }
+  return a1.tag === 0 ? 3 : 4;
+};
+```
+- `testPBA` and `testPBAN` also end in a single `return 4;`, with no repeated tag test.
+- `testP` keeps its shape but drops the repeated `a2 === 4 ? 4 : 5`.
+- Line counts: `testPB` 16 vs PBO's 23, `testPBA`/`testPBAN` 14 vs 20, `testP` 18 vs 22.
+
+**Where the changes are.** None are in the `Term` optimizer. Its rewrites all carry proofs that `eval` is unchanged, and this one would need two things `Term` lacks: a default case arm, and a join point that passes no value (every type has at least two values). Proving that comparison and specialisation preserve `eval` in the intrinsically typed `Term` was more than I could finish here. The conversion step (`Term → JsTerm`) wasn't a good fit either, because the rewrite needs whole blocks to compare.
+- **`JsTerm` optimizer, new pass `JsTerm/Lower/ShareTail.lean` (`JsBlock.shareTails`):** at each test, it finds a block that ends two or more branches and writes it once after a labelled block `L: { … }`. Each copy becomes `break L;`, or nothing when it falls through.
+  - Tests already decided above a copy are taken into account: inside `a1.tag === 0`, `return 3` counts as a copy. This only uses tests on constants, whose values can't change.
+  - `return c ? a : b` becomes `if (c) return a;` plus a jump when `return b` is a copy.
+  - Among candidates it keeps the one whose printed JavaScript is shortest, and only if that is shorter than the original (`blockCost` in `JsTerm/Print/Share.lean`).
+  - The pass runs between two runs of the existing `mergeIte`.
+- **Printer (`JsTerm/Print/Mini/`):**
+  - Identical case arms are written once under `t₀ || t₁`, and the most common arm comes last with no test (`groupedChain`).
+  - `if (c) { if (b) S }` becomes `if (c && b) S`.
+  - A jump that carries no value writes no assignment and needs no `let x;`.
+
+**Checks.**
+- I regenerated all snapshots: every generated check passes, and 16 other snapshot files changed, all shorter or dead code removed (e.g. `a.tag === 1 ? a : a` becomes `a`).
+- The script still exits with status 1, but only because of the same "literal too big" errors (the `PrimOpInt*Configurable` files) it reported before these changes.
+- `lake exe tests` passes, including a new test in `Tests/Main.lean` that checks `CaseHeuristics`.
+- A full `lake build` fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib, and Mathlib isn't available here. I didn't touch that file. `lake build JsTerm JsSpec tests leanscript` succeeds.
+
+**Proofs.** In the model of JavaScript with state and exceptions from `JsSpec/MergeIte.lean`, `JsSpec/ShareTail.lean` proves, with no `sorry` and only standard axioms:
+- `TStmt.labelled_share_den`: sharing a tail behind a labelled block keeps the meaning, including copies narrowed by earlier tests and the `? :` form.
+- `chain_eq_arm`: the grouped chain of arms computes the arm for the actual tag.
+- `jsAnd_not_eq_eq`: `!(x === l₁) && x === l₂` equals `x === l₂` when `l₁ ≠ l₂`.
+
+These are proofs about a model of the algorithms, not the `JsTerm` code itself, and the code's "same dump" check is modelled as syntactic equality. They are registered as proved in the Properties table.
+
 # Summary of changes for run fb688dc2-829b-4305-81b2-e73561aa086f
 I proved the CaseGuarded changes in Lean. Both files build with no `sorry` and use only the standard axioms. One limit: the proofs about the JavaScript-side rewrites are about a model of the algorithm, not the `JsTerm` code itself, because `JsTerm` has no formal semantics.
 

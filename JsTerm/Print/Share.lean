@@ -4,6 +4,7 @@ import JsTerm.Lower.Unroll
 import JsTerm.Lower.AddChain
 import JsTerm.Lower.Sink
 import JsTerm.Lower.MergeIte
+import JsTerm.Lower.ShareTail
 
 set_option autoImplicit false
 
@@ -145,14 +146,28 @@ def pairTagLoops (funs : List JsFun) : List JsFun := Id.run do
     done := (done.set! i true).set! j true
   return out.toList
 
+/-- The length of the JavaScript of a block, printed on its own (its variables all named `v`,
+    its join points all `L`): the measure of `JsBlock.shareTails`. -/
+def blockCost (S : JsSig) : BlockCost S := fun {C M J _} b =>
+  let sc : Scope := { c := C.map fun _ => ident "v", m := M.map fun _ => "v",
+                      joins := J.map fun _ => ("L", "v") }
+  let ss := (blockToMini sc {} b).run' {}
+  (printProgram ⟨ss.map .stmt⟩).length
+
+/-- `blockCost` of the block with its tests that end in the same statements merged (as it is
+    printed in the end). -/
+def mergedCost (S : JsSig) : BlockCost S := fun b => blockCost S b.mergeIte
+
 /-- The functions `funs`, those that compute the same up to the literal initial value of their
     first mutable variable written as calls of one shared worker (put just before the first of
     them); first, the pairs of `pairTagLoops` without their tag, then the additions of
     literals folded through constants (`JsTerm.Lower.AddChain`), the constants read on one
-    path only computed on it (`JsTerm.Lower.Sink`) and the tests that end in the same
-    statements merged (`JsTerm.Lower.MergeIte`). -/
+    path only computed on it (`JsTerm.Lower.Sink`), the tests that end in the same statements
+    merged (`JsTerm.Lower.MergeIte`), and the tails that several branches of a test end in
+    written once after a labelled block (`JsTerm.Lower.ShareTail`, where that makes the
+    JavaScript shorter, the tests then merged again). -/
 def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
-  let funs := (pairTagLoops funs).map fun f => f.foldAdds.sink.mergeIte
+  let funs := (pairTagLoops funs).map fun f => (f.foldAdds.sink.mergeIte.shareTails mergedCost).mergeIte
   let arr := funs.toArray.map fun _ => ()
   let names := funs.map (·.name)
   -- for each function: the worker put before it, and the call it is written as

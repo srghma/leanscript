@@ -34,10 +34,7 @@ export const test2 = (a) => {
  * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
 export const test3 = (a) => {
-  if (a.tag === 0) {
-    if (a._1.tag === 0) {
-      return { tag: 0 };
-    }
+  if (a.tag === 0 && a._1.tag === 1) {
     return { tag: 1, _1: a._1._1 };
   }
   return { tag: 0 };
@@ -49,10 +46,7 @@ export const test3 = (a) => {
  * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
  */
 export const test4 = (a) => {
-  if (a.tag === 0) {
-    if (a._1.tag === 0) {
-      return { tag: 0 };
-    }
+  if (a.tag === 0 && a._1.tag === 1) {
     return { tag: 1, _1: a._1._1 };
   }
   return { tag: 0 };

@@ -369,6 +369,39 @@ def moreJsSpec : Spec := describe "JsTerm" do
     let js ← IO.FS.readFile s!"{dir}/RecData-pbo.js"
     assertEq "a nullary constructor is tested by ===" true ((js.splitOn " === 0").length > 1)
     assertEq "no nullary constructor is an object" 1 (js.splitOn "{ tag: 0 }").length
+  it "the fall-through of a decision tree is written once (needs node and leanscript)" do
+    -- `CaseHeuristics`: the last pattern `_, _ => …` of each match is copied into every branch
+    -- of the decision tree; it is written once, after the tests (`JsTerm.Lower.ShareTail`), and
+    -- the arms that are the same are tested once (`groupedChain`).  The differential checks
+    -- compare every answer with Lean's.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/shareTail"
+    IO.FS.createDirAll dir
+    let file := "CaseHeuristics"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: no check failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn "FAIL").length == 1)
+    let js ← IO.FS.readFile s!"{dir}/{file}-pbo.js"
+    let body (f : String) : String :=
+      ((js.splitOn s!"export const {f} ").getD 1 "").splitOn "export const" |>.headD ""
+    -- `testPB`: its fall-through `_, .zero => 3 | _, _ => 4` once, and no test of a tag twice
+    assertEq "testPB: the fall-through once" 2 ((body "testPB").splitOn "a1.tag === 0").length
+    assertEq "testPB: `4` returned once" 2 ((body "testPB").splitOn " 4;").length
+    -- `testPBA`, `testPBAN`: `_, _ => 4` once
+    for f in ["testPBA", "testPBAN"] do
+      assertEq s!"{f}: `return 4` once" 2 ((body f).splitOn "return 4;").length
+      assertEq s!"{f}: no test of the same tag twice" 1 ((body f).splitOn "? 4 : 4").length
   it "versions of local functions and owning closures update in place, never visibly (needs node and leanscript)" do
     -- `LocalFnInPlace`: local functions get one constant per version (`k_mut…` owns its array
     -- parameter), and a recursion with an array accumulator builds owning closures;

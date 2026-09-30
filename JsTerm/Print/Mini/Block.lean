@@ -64,6 +64,12 @@ partial def JsUnionArms.keys {C M J : List JsTy} {k : JsEnd} {cs : List (List Js
   | .nil => []
   | .cons sel b rest => (toString (sel.binds.map (·.1)) ++ b.pretty "") :: rest.keys
 
+/-- The dump of each arm of a case analysis on an enum. -/
+partial def JsEnumArms.keys {C M J : List JsTy} {k : JsEnd} {n : Nat} :
+    JsEnumArms S C M J k n → List String
+  | .nil => []
+  | .cons b rest => b.pretty "" :: rest.keys
+
 /-! ## Fields read once -/
 
 /-- Where the value a pattern takes apart comes from, for reading its fields in place: `none`
@@ -203,14 +209,20 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     | .brk l => pure [.break_ (some (nes l))]
     | .none => pure []
   | .jump j e => do
+    -- a jump passing no value (`undefined`, to a shared tail, `JsTerm.Lower.ShareTail`)
+    -- assigns nothing
+    let noValue := match e with
+      | .unreachable _ => true
+      | _ => false
     let e ← exprToMini sc e
     match sc.joins[j.index]? with
     -- the exit of a loop followed by `return` of what it passes (`countdown`): `return e;`
     | some (_, "") => return [.return_ (some e)]
     | some (label, x) =>
-      let set : MiniStatement := .expr (.assign (ident x) .assign e)
-      if j.index == 0 && tl.join then return [set]
-      else return [set, .break_ (some (nes label))]
+      let set : List MiniStatement := if noValue then [] else
+        if x == unreadJoinVar then [.expr e] else [.expr (.assign (ident x) .assign e)]
+      if j.index == 0 && tl.join then return set
+      else return set ++ [.break_ (some (nes label))]
     | none =>
       return [.throw (.new (ident "Error") [.string s!"LeanScript: an unknown join point"])]
   | .throw msg => pure [.throw (.new (ident "Error") [.string msg])]
@@ -252,18 +264,22 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     return mkIf c t e
   | .enumCases (shift := shift) e arms => do
     let (pre, s) ← bindSubject sc "s" e
+    let keys := arms.keys
     let arms ← enumArmsToMini sc tl s shift 0 arms
-    return pre ++ ifChain arms
+    return pre ++ groupedChain (arms.zip keys)
   | .unionCases (id := id) e arms => do
     let (pre, s) ← bindSubject sc "s" e
     -- arms that are all written the same (`if (x.tag === 0) { const { _1: f } = x; return f; }
     -- else { const { _1: f } = x; return f; }`) are written once, without a test
     let src := e.fieldSource (bound := !e.isAtom)
     if let some b ← sameUnionArms sc tl s src arms then return pre ++ b
+    let keys := arms.keys
     let arms ← unionArmsToMini sc tl s src (S.reprOf id == .smallIntNullary) 0 arms
-    return pre ++ ifChain arms
+    return pre ++ groupedChain (arms.zip keys)
   | .join hint block rest => do
-    let x ← freshName hint
+    -- a value that `rest` does not read is not kept (no `let x;`)
+    let read := rest.mentions ⟨false, 0⟩
+    let x ← if read then freshName hint else pure unreadJoinVar
     -- the labelled block is only needed when a jump leaves it before its end; otherwise its
     -- statements run on into `rest` (every name of a function is distinct)
     let early := block.earlyJump 0 true
@@ -271,6 +287,8 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let b ← blockToMini { sc with joins := (label, x) :: sc.joins } { join := true } block
     let r ← blockToMini { sc with c := ident x :: sc.c } tl rest
     let decl : MiniStatement := .decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩
+    if !read then
+      return (if early then [.labelled (nes label) (.block b)] else b) ++ r
     if early then return decl :: .labelled (nes label) (.block b) :: r
     -- `let x; …; x = e;` with no other assignment of `x` is `…; const x = e;`
     match b.getLast? with

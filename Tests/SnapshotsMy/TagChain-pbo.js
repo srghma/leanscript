@@ -22,15 +22,6 @@ export const test2 = (s, n) => {
   if (s.tag === 0) {
     return n;
   }
-  if (s.tag === 1) {
-    if (s.tag === 0) {
-      return 0;
-    }
-    if (s.tag === 1) {
-      return uint53__lean_nat_add(s._1, n);
-    }
-    return uint53__lean_nat_add(uint53__lean_nat_add(s._1, s._2), n);
-  }
   if (s.tag === 0) {
     return 0;
   }
@@ -51,10 +42,7 @@ export const test3 = (s) => {
   }
   if (s.tag === 1) {
     const { _1: f$1 } = s;
-    if (s.tag === 0) {
-      return f$1;
-    }
-    return s.tag === 1 ? f$1 : s._1;
+    return s.tag === 2 ? s._1 : f$1;
   }
   return uint53__lean_nat_add(s._1, s._2);
 };

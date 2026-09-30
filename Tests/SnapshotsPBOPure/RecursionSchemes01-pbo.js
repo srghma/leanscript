@@ -33,5 +33,5 @@ export const bump = (a) => {
   if (a.tag === 0) {
     return { tag: 0, _1: int53__lean_int_add(a._1, 1) };
   }
-  return a.tag === 1 ? a : a;
+  return a;
 };

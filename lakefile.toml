@@ -96,7 +96,8 @@ name = "OpsSpec"
 globs = ["OpsSpec.+"]
 
 # Proofs, in a model of JavaScript (state and exceptions), of the rewrites of the JavaScript
-# backend that `Term` cannot express: `&&`/`||`, merged tests, digits in a concatenation.
+# backend that `Term` cannot express: `&&`/`||`, merged tests, digits in a concatenation,
+# tails shared behind a labelled block, the arms of a case analysis grouped.
 [[lean_lib]]
 name = "JsSpec"
 globs = ["JsSpec.+"]

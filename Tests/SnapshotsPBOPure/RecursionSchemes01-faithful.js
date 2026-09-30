@@ -31,5 +31,5 @@ export const bump = (a) => {
   if (a.tag === 0) {
     return { tag: 0, _1: a._1 + 1n };
   }
-  return a.tag === 1 ? a : a;
+  return a;
 };

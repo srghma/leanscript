@@ -12,14 +12,12 @@ export const test1 = (a) => {
     if (f$2 === 2n) {
       return f$3 === 3n ? "1" : "catch";
     }
-    return f$2 === 4n ? "2" : "catch";
-  }
-  if (f$1 === 4n) {
+  } else if (f$1 === 4n) {
     if (f$2 === 4n) {
       return "2";
     }
-    if (f$2 === 5n) {
-      return f$3 === 6n ? "3" : "catch";
+    if (f$2 === 5n && f$3 === 6n) {
+      return "3";
     }
     return "catch";
   }

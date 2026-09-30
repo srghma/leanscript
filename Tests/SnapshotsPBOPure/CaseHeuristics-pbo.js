@@ -20,12 +20,11 @@ export const testP = (a, a1, a2) => {
       if (a2 === 3) {
         return 3;
       }
-      return a2 === 4 ? 4 : 5;
     }
     return a2 === 4 ? 4 : 5;
   }
-  if (a1 === 2) {
-    return a2 === 3 ? 3 : 5;
+  if (a1 === 2 && a2 === 3) {
+    return 3;
   }
   return 5;
 };
@@ -37,43 +36,21 @@ export const testP = (a, a1, a2) => {
  * @returns {int53(number)}
  */
 export const testPB = (a, a1) => {
-  if (a.tag === 0) {
-    if (a1.tag === 0) {
-      return 3;
-    }
-    return a1.tag === 1 ? 4 : 4;
-  }
   if (a.tag === 1) {
-    if (a._1 === 1) {
-      if (a1.tag === 0) {
-        return 3;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 1 ? 1 : 4;
-      }
-      return 4;
+    if (a._1 === 1 && a1.tag === 1 && a1._1 === 1) {
+      return 1;
     }
-    if (a1.tag === 0) {
-      return 3;
-    }
-    return a1.tag === 1 ? 4 : 4;
+  } else if (
+    a.tag === 2 &&
+    a._1 === 2 &&
+    a._2 === 3 &&
+    a1.tag === 2 &&
+    a1._1 === 2 &&
+    a1._2 === 3
+  ) {
+    return 2;
   }
-  if (a._1 === 2 && a._2 === 3) {
-    if (a1.tag === 0) {
-      return 3;
-    }
-    if (a1.tag === 1) {
-      return 4;
-    }
-    if (a1._1 === 2) {
-      return a1._2 === 3 ? 2 : 4;
-    }
-    return 4;
-  }
-  if (a1.tag === 0) {
-    return 3;
-  }
-  return a1.tag === 1 ? 4 : 4;
+  return a1.tag === 0 ? 3 : 4;
 };
 
 /**
@@ -83,36 +60,17 @@ export const testPB = (a, a1) => {
  * @returns {int53(number)}
  */
 export const testPBA = (a, a1) => {
-  if (a.tag === 0) {
-    return 4;
-  }
   if (a.tag === 1) {
     const { _1: f$1 } = a;
     if (f$1 === 1) {
-      if (a1.tag === 0) {
-        return 4;
+      if (a1.tag === 1 && a1._1 === 1) {
+        return 1;
       }
-      if (a1.tag === 1) {
-        return a1._1 === 1 ? 1 : 4;
-      }
-      return 4;
+    } else if (f$1 === 2 && a1.tag === 1 && a1._1 === 2) {
+      return 2;
     }
-    if (f$1 === 2) {
-      if (a1.tag === 0) {
-        return 4;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 2 ? 2 : 4;
-      }
-      return 4;
-    }
-    return 4;
-  }
-  if (a._1 === 1) {
-    if (a1.tag === 0) {
-      return 4;
-    }
-    return a1.tag === 1 ? 4 : 3;
+  } else if (a.tag === 2 && a._1 === 1 && a1.tag === 2) {
+    return 3;
   }
   return 4;
 };
@@ -124,33 +82,17 @@ export const testPBA = (a, a1) => {
  * @returns {int53(number)}
  */
 export const testPBAN = (a, a1) => {
-  if (a.tag === 0) {
-    return 4;
-  }
   if (a.tag === 1) {
     const { _1: f$1 } = a;
     if (f$1 === 1) {
-      if (a1.tag === 0) {
-        return 4;
+      if (a1.tag === 1 && a1._1 === 1) {
+        return 1;
       }
-      if (a1.tag === 1) {
-        return a1._1 === 1 ? 1 : 4;
-      }
-      return 4;
+    } else if (f$1 === 2 && a1.tag === 1 && a1._1 === 2) {
+      return 2;
     }
-    if (f$1 === 2) {
-      if (a1.tag === 0) {
-        return 4;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 2 ? 2 : 4;
-      }
-      return 4;
-    }
-    return 4;
+  } else if (a.tag === 2 && a1.tag === 2) {
+    return 3;
   }
-  if (a1.tag === 0) {
-    return 4;
-  }
-  return a1.tag === 1 ? 4 : 3;
+  return 4;
 };

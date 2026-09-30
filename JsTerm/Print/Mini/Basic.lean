@@ -124,6 +124,10 @@ structure Tail where
   loop : Bool := false
   join : Bool := false
 
+/-- The name recorded for the value of a join point that the statements after it do not
+    read (`let x;` is not written, and a jump to it assigns nothing). -/
+def unreadJoinVar : String := "$unread"
+
 /-- The printer's counters: of the names of the local variables and of the labels, which it
     chooses (`x$1`, `acc$2`, … from the hints of the binders; `j$1`, `j$2`, … for the labels).
     A name is never met twice in a function, so no name ever hides another. -/
@@ -201,9 +205,13 @@ def isPureCond : MiniExpr → Bool
     `if (!c) { e }` when `t` is, `return c;` for `if (c) { return true; } else { return false; }`,
     `return c ? a : b;` when both arms return a name or a literal, nothing when both are
     empty and `c` has no effect, no `else` after a `then` that ends in a `return` (or `throw`,
-    `break`, `continue`), and `else if` for an `else` that is a single `if`. -/
+    `break`, `continue`), `else if` for an `else` that is a single `if`, and one test
+    `if (c && b) { … }` for an `if` whose only statement is an `if`, neither with an `else`. -/
 def mkIf (c : MiniExpr) (t e : List MiniStatement) : List MiniStatement :=
   match t, e with
+  -- `if (c) { if (b) { s } }` is `if (c && b) { s }` (`b` is evaluated exactly when it was)
+  | [.if_ b s none], [] => [.if_ (.binary c .and b) s none]
+  | [], [.if_ b s none] => [.if_ (andNot c b) s none]
   | [.return_ (some .true_)], [.return_ (some .false_)] => [.return_ (some c)]
   | [.return_ (some .false_)], [.return_ (some .true_)] => [.return_ (some (negateCond c))]
   | [.return_ (some a)], [.return_ (some b)] =>
@@ -222,6 +230,18 @@ where
     match ss.getLast? with
     | some (.return_ _) | some (.throw _) | some (.break_ _) | some (.continue_ _) => true
     | _ => false
+  /-- `!c && b`, just `b` when `b` implies `!c`: `x === l₁` and `x === l₂` for two different
+      literals that are non-negative integers or strings (two different such literals are
+      two different values). -/
+  andNot (c b : MiniExpr) : MiniExpr :=
+    let distinctLits (l₁ l₂ : MiniExpr) : Bool := l₁ != l₂ && match l₁, l₂ with
+      | .number (.decimal _ 0), .number (.decimal _ 0) => true
+      | .string _, .string _ => true
+      | _, _ => false
+    match c, b with
+    | .binary x .strictEq l₁, .binary y .strictEq l₂ =>
+      if x == y && distinctLits l₁ l₂ then b else .binary (negateCond c) .and b
+    | _, _ => .binary (negateCond c) .and b
   /-- An `else`: a single `if` as it is (`else if`), otherwise a block. -/
   asStmt' : List MiniStatement → MiniStatement
     | [s@(.if_ ..)] => s
@@ -233,6 +253,31 @@ def ifChain : List (MiniExpr × List MiniStatement) → List MiniStatement
   | [] => [.throw (.new (ident "Error") [.string "LeanScript: an empty case analysis"])]
   | [(_, b)] => b
   | (t, b) :: rest => mkIf t b (ifChain rest)
+
+/-- The chain of the arms of a case analysis, each with its test and its key (the dump of the
+    arm: two arms of the same key are the same statements), the arms of the same key written
+    once, under one test `t₀ || t₂`.  The arms written last, without a test, are the most
+    frequent ones (on a tie, those whose statements are empty, a jump to the end of the block
+    of a join point; then the last ones). -/
+def groupedChain (arms : List ((MiniExpr × List MiniStatement) × String)) : List MiniStatement :=
+  -- the groups, in the order of their first arm: the key, the tests, the statements
+  let groups : Array (String × Array MiniExpr × List MiniStatement) :=
+    arms.foldl (fun acc ((t, b), key) =>
+      match acc.findIdx? (·.1 == key) with
+      | some i => acc.modify i fun (k, ts, b') => (k, ts.push t, b')
+      | none => acc.push (key, #[t], b)) #[]
+  if groups.size ≤ 1 && arms.length ≥ 1 then (groups[0]?.map (·.2.2)).getD [] else
+  if groups.size ≤ 1 then ifChain (arms.map (·.1)) else
+  let score (i : Nat) : Nat × Nat × Nat :=
+    let g := groups[i]!
+    (g.2.1.size, if g.2.2.isEmpty then 1 else 0, i)
+  let better (a b : Nat × Nat × Nat) : Bool :=
+    a.1 > b.1 || (a.1 == b.1 && (a.2.1 > b.2.1 || (a.2.1 == b.2.1 && a.2.2 > b.2.2)))
+  let dflt := (List.range groups.size).foldl
+    (fun best i => if better (score i) (score best) then i else best) 0
+  let tested := (groups.toList.zipIdx.filter (·.2 != dflt)).map fun ((_, ts, b), _) =>
+    ((ts.toList.tail.foldl (fun acc t => .binary acc .or t) ts[0]!), b)
+  ifChain (tested ++ [(.true_, groups[dflt]!.2.2)])
 
 /-! ## Where an iteration ends early -/
 

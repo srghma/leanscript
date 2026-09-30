@@ -20,12 +20,11 @@ export const testP = (a, a1, a2) => {
       if (a2 === 3n) {
         return 3n;
       }
-      return a2 === 4n ? 4n : 5n;
     }
     return a2 === 4n ? 4n : 5n;
   }
-  if (a1 === 2n) {
-    return a2 === 3n ? 3n : 5n;
+  if (a1 === 2n && a2 === 3n) {
+    return 3n;
   }
   return 5n;
 };
@@ -37,43 +36,21 @@ export const testP = (a, a1, a2) => {
  * @returns {int(bigint)}
  */
 export const testPB = (a, a1) => {
-  if (a.tag === 0) {
-    if (a1.tag === 0) {
-      return 3n;
-    }
-    return a1.tag === 1 ? 4n : 4n;
-  }
   if (a.tag === 1) {
-    if (a._1 === 1n) {
-      if (a1.tag === 0) {
-        return 3n;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 1n ? 1n : 4n;
-      }
-      return 4n;
+    if (a._1 === 1n && a1.tag === 1 && a1._1 === 1n) {
+      return 1n;
     }
-    if (a1.tag === 0) {
-      return 3n;
-    }
-    return a1.tag === 1 ? 4n : 4n;
+  } else if (
+    a.tag === 2 &&
+    a._1 === 2n &&
+    a._2 === 3n &&
+    a1.tag === 2 &&
+    a1._1 === 2n &&
+    a1._2 === 3n
+  ) {
+    return 2n;
   }
-  if (a._1 === 2n && a._2 === 3n) {
-    if (a1.tag === 0) {
-      return 3n;
-    }
-    if (a1.tag === 1) {
-      return 4n;
-    }
-    if (a1._1 === 2n) {
-      return a1._2 === 3n ? 2n : 4n;
-    }
-    return 4n;
-  }
-  if (a1.tag === 0) {
-    return 3n;
-  }
-  return a1.tag === 1 ? 4n : 4n;
+  return a1.tag === 0 ? 3n : 4n;
 };
 
 /**
@@ -83,36 +60,17 @@ export const testPB = (a, a1) => {
  * @returns {int(bigint)}
  */
 export const testPBA = (a, a1) => {
-  if (a.tag === 0) {
-    return 4n;
-  }
   if (a.tag === 1) {
     const { _1: f$1 } = a;
     if (f$1 === 1n) {
-      if (a1.tag === 0) {
-        return 4n;
+      if (a1.tag === 1 && a1._1 === 1n) {
+        return 1n;
       }
-      if (a1.tag === 1) {
-        return a1._1 === 1n ? 1n : 4n;
-      }
-      return 4n;
+    } else if (f$1 === 2n && a1.tag === 1 && a1._1 === 2n) {
+      return 2n;
     }
-    if (f$1 === 2n) {
-      if (a1.tag === 0) {
-        return 4n;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 2n ? 2n : 4n;
-      }
-      return 4n;
-    }
-    return 4n;
-  }
-  if (a._1 === 1n) {
-    if (a1.tag === 0) {
-      return 4n;
-    }
-    return a1.tag === 1 ? 4n : 3n;
+  } else if (a.tag === 2 && a._1 === 1n && a1.tag === 2) {
+    return 3n;
   }
   return 4n;
 };
@@ -124,33 +82,17 @@ export const testPBA = (a, a1) => {
  * @returns {int(bigint)}
  */
 export const testPBAN = (a, a1) => {
-  if (a.tag === 0) {
-    return 4n;
-  }
   if (a.tag === 1) {
     const { _1: f$1 } = a;
     if (f$1 === 1n) {
-      if (a1.tag === 0) {
-        return 4n;
+      if (a1.tag === 1 && a1._1 === 1n) {
+        return 1n;
       }
-      if (a1.tag === 1) {
-        return a1._1 === 1n ? 1n : 4n;
-      }
-      return 4n;
+    } else if (f$1 === 2n && a1.tag === 1 && a1._1 === 2n) {
+      return 2n;
     }
-    if (f$1 === 2n) {
-      if (a1.tag === 0) {
-        return 4n;
-      }
-      if (a1.tag === 1) {
-        return a1._1 === 2n ? 2n : 4n;
-      }
-      return 4n;
-    }
-    return 4n;
+  } else if (a.tag === 2 && a1.tag === 2) {
+    return 3n;
   }
-  if (a1.tag === 0) {
-    return 4n;
-  }
-  return a1.tag === 1 ? 4n : 3n;
+  return 4n;
 };

@@ -11,14 +11,8 @@ export const test1 = (x) => {
   if (f$1 === 1n) {
     return "0";
   }
-  if (f$1 === 2n) {
-    if (f$2 === 1n) {
-      return "1";
-    }
-    if (f$2 === 2n) {
-      return f$3 === 1n ? "2" : "3";
-    }
-    return f$3 === 1n ? "2" : "catch";
+  if (f$1 === 2n && f$2 !== 1n && f$2 === 2n) {
+    return f$3 === 1n ? "2" : "3";
   }
   if (f$2 === 1n) {
     return "1";
@@ -36,18 +30,13 @@ export const Test2$test2 = (x) => {
   const { _2: f$2 } = x._1;
   if (x._1._1 === 1n) {
     if (f$2 === 2n) {
-      if (f$1._1 === 1n) {
-        return f$1._2 === 2n ? 1n : 3n;
+      if (f$1._1 === 1n && f$1._2 === 2n) {
+        return 1n;
       }
       return 3n;
     }
-    return 4n;
-  }
-  if (f$2 === 2n) {
-    if (f$1._1 === 1n) {
-      return f$1._2 === 2n ? 2n : 4n;
-    }
-    return 4n;
+  } else if (f$2 === 2n && f$1._1 === 1n && f$1._2 === 2n) {
+    return 2n;
   }
   return 4n;
 };
