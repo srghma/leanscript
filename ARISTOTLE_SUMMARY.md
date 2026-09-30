@@ -1,3 +1,42 @@
+# Summary of changes for run 5f82cc03-3403-467f-a252-e83b868e2365
+I checked `CaseMulti` again. The code as it stands already produces JS that is as good as `legacy-backend/CaseMulti.js` or better, so I made no changes this session.
+
+**What I ran**
+- I rebuilt `leanscript` from the current sources and regenerated `CaseMulti` with `--check`.
+- All six output files (`CaseMulti-Term-unoptimized.txt`, `CaseMulti-Term-optimized.txt`, `CaseMulti-pbo.js`, `CaseMulti-faithful.js` and both `.check.mjs` files) came out byte-for-byte the same as the committed snapshots.
+- The generated node checks pass: 13/13 for the `pbo` preset and 13/13 for `faithful`.
+- I did not re-run the full `lake exe tests` suite.
+
+**Output now (`CaseMulti-pbo.js`)**
+```js
+export const test1 = (x, y) => {
+  if (x === 1) {
+    if (y === 1) { return "1.1"; }
+    if (y === 2) { return "1.2"; }
+    if (y === 3) { return "1.3"; }
+    if (y !== 4) { return y === 5 ? "1.5" : "_._"; }
+  } else if (y !== 4) {
+    return y === 2 ? "_.2" : "_._";
+  }
+  return "_.4";
+};
+```
+`CaseMulti-faithful.js` is the same with BigInt literals (`1n`, `2n`, …).
+
+**Comparison with purescript-backend-optimizer**
+- **Results:** I ran our output and theirs through `scripts/count-comparisons.mjs` for every `x` in {0,1,2} and `y` in {0,…,6}. Both give the same result for every pair.
+- **Comparisons:** the number of comparisons is also identical on every pair. For example, 5 for `(1,4)`, 2 for `(0,4)`, and 6 for `(1,0)`.
+- **Size:** ours is smaller. `"_.4"` is written once instead of twice, there are two fewer `if` statements, and the function takes both arguments at once instead of being curried.
+- **Labelled blocks:** nothing here needs a labelled block or loop. It is plain nested `if`s and returns, so there is no recursion or stack-depth risk.
+
+**Where each part happens in your pipeline**
+- **Term → Term optimizer:** its output (`CaseMulti-Term-optimized.txt`) is already the same decision tree as the purescript-backend-optimizer's, one test per `if`.
+- **JsTerm → JsTerm:** the only step that improves on it is the tail-sharing pass (`JsTerm/Lower/ShareTail.lean`), done in an earlier session. It writes `return "_.4"` once and has each branch fall through to it. It shares a tail only when that doesn't make any input do more comparisons.
+- Neither Term optimization was possible here, because the saving comes from merging identical JS tails, which only exist after conversion.
+- The existing `CaseMulti` test in `Tests/Main.lean` checks both properties: answers equal the Lean `match`, and our comparison count is never above theirs.
+
+No properties were added, since no new formal result was proved.
+
 # Summary of changes for run f1979b50-1050-4919-9c64-d218ea6cf35c
 `CaseMulti` now makes no more comparisons than `legacy-backend/CaseMulti.js` on any input, and its code is shorter. The fix is in the JsTerm → JsTerm pass that shares common tails. It is checked by tests and snapshots, not by a proof.
 
