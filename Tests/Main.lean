@@ -498,6 +498,57 @@ def moreJsSpec : Spec := describe "JsTerm" do
       -- the value is the field itself: no `_1`, no record
       let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
       assertEq s!"{file}-{preset}: no field read" 1 (js.splitOn "._1").length
+  it "a match on float literals is one `===` per arm (needs node and leanscript)" do
+    -- `CaseNumber`: `test1` tests `f == 1.0`, … with `if`s, `test2` matches `| 1.0 => …`, whose
+    -- matcher decides `x = 1.0` (structural equality of floats).  Against a finite non-zero
+    -- literal that is `x == 1.0` (`decide_float_eq_beq_of_finite`), so both are written as
+    -- purescript-backend-optimizer writes its `test1` (`legacy-backend/CaseNumber.js`): on every
+    -- input they make no more comparisons than PBO's and answer what Lean does.  The
+    -- differential checks try every arm too (`1`, `2`, `3` among the `Float` samples).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseNumber"
+    IO.FS.createDirAll dir
+    let file := "CaseNumber"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let xs : List Float := [-1.5, 0, 0.5, 1, 2, 2.25, 3, 4, 30]
+    let lean : Float → String
+      | 1.0 => "1"
+      | 2.0 => "2"
+      | 3.0 => "3"
+      | _ => "catch"
+    let count (js f : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, f, "0", toString xs]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let pbo ← count "Tests/SnapshotsPBOPure/legacy-backend/CaseNumber.js" "test1"
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: test2 translated" true
+        ((js.splitOn "export const test2 = ").length > 1)
+      assertEq s!"{file}-{preset}: no bit pattern compared" 1 (js.splitOn "toBits").length
+      for f in ["test1", "test2"] do
+        let ours ← count s!"{dir}/{file}-{preset}.js" f
+        assertEq s!"{file}-{preset}: {f} on every input" xs.length ours.length
+        for ((o, p), x) in (ours.zip pbo).zip xs do
+          match o, p with
+          | [_, r, n], [_, _, m] =>
+            assertEq s!"{file}-{preset}: {f} {x}" (lean x) r
+            assertEq s!"{file}-{preset}: {f} {x} makes at most PBO's {m} comparisons" true
+              (n.toNat! ≤ m.toNat!)
+          | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

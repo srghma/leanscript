@@ -214,6 +214,40 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
     of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot \
     be unfolded"
 
+/-- The value of a float literal (`1.0`, `2`, `-1.5`: `OfScientific.ofScientific`, `OfNat.ofNat`,
+    `Float.ofScientific`, `Float.ofNat`, their negations), or `none`. -/
+partial def floatLit? (e : Expr) : MetaM (Option Float) := do
+  let e ← instantiateMVars e
+  let nat? (n : Expr) : Option Nat := match n.rawNatLit? with
+    | some k => some k
+    | none => n.nat?
+  let bool? (b : Expr) : Option Bool :=
+    if b.isConstOf ``Bool.true then some true
+    else if b.isConstOf ``Bool.false then some false else none
+  let isFloat (t : Expr) : Bool := t.isConstOf ``Float
+  match e.getAppFn.constName?, e.getAppArgs with
+  | some ``OfScientific.ofScientific, #[t, _, m, s, x] =>
+    if !isFloat t then return none
+    return do Float.ofScientific (← nat? m) (← bool? s) (← nat? x)
+  | some ``Float.ofScientific, #[m, s, x] =>
+    return do Float.ofScientific (← nat? m) (← bool? s) (← nat? x)
+  | some ``OfNat.ofNat, #[t, n, _] =>
+    if !isFloat t then return none
+    return (nat? n).map Float.ofNat
+  | some ``Float.ofNat, #[n] => return (nat? n).map Float.ofNat
+  | some ``Neg.neg, #[t, _, x] =>
+    if !isFloat t then return none
+    return (← floatLit? x).map (- ·)
+  | some ``Float.neg, #[x] => return (← floatLit? x).map (- ·)
+  | _, _ => return none
+
+/-- Is the float finite and non-zero (its model unpacks to `.finite`)?  Then `x = c` is
+    `x == c` (`decide_float_eq_beq_of_finite`). -/
+def floatFiniteNonzero (c : Float) : Bool :=
+  match Float.Model.UnpackedFloat.unpack .binary64 c.toBits.toBitVec with
+  | .finite .. => true
+  | _ => false
+
 /-- `decide p` (of the instance `inst : Decidable p`): the call of the extern whose Lean
     function decides `p` (`Nat.decLt a b` for `a < b` on `Nat`: `lean_nat_dec_lt`, a `.bool`),
     `&&`, `||`, `!` of the decisions for `∧`, `∨`, `¬`, or else the instance unfolded
@@ -242,6 +276,18 @@ partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
         let one (c : Expr) : Expr := mkApp2 (mkConst ``String.push) (mkStrLit "") c
         let (x, y) := (one a, one b)
         return ← tr L (dec (← mkEq x y) (mkApp2 (mkConst ``String.decEq) x y))
+    -- `a = b` on `Float` (a `match` on float literals, `| 1.0 => …`): `Float` is a leaf, so the
+    -- instance's comparison of the models has no translation.  Against a finite non-zero
+    -- literal `c` it is `x == c` (`Float.beq`, `===` in JavaScript;
+    -- `decide_float_eq_beq_of_finite`), otherwise the comparison of the bit patterns
+    -- (`decide_float_eq_toBits`), which tells the zeros apart and NaN equal to itself
+    | ``instDecidableEqFloat, #[a, b] =>
+        let finite (x : Expr) : MetaM Bool := return (← floatLit? x).any floatFiniteNonzero
+        if ← finite b then return ← tr L (mkApp2 (mkConst ``Float.beq) a b)
+        if ← finite a then return ← tr L (mkApp2 (mkConst ``Float.beq) b a)
+        let bits (c : Expr) : Expr := mkApp (mkConst ``Float.toBits) c
+        let (x, y) := (bits a, bits b)
+        return ← tr L (dec (← mkEq x y) (mkApp2 (mkConst ``UInt64.decEq) x y))
     | ``instDecidableTrue, _ => return ← tr L (mkConst ``Bool.true)
     | ``instDecidableFalse, _ => return ← tr L (mkConst ``Bool.false)
     | ``Decidable.isTrue, _ => return ← tr L (mkConst ``Bool.true)

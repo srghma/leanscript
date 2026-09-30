@@ -170,7 +170,8 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
     -- `Float.ofScientific m s e` is `m * 10^-e` (`s = true`) or `m * 10^e`
     let f (m : Nat) (s : Bool) (e : Nat) (js : String) : Sample :=
       ⟨mkApp3 (mkConst ``Float.ofScientific) (mkNatLit m) (toExpr s) (mkNatLit e), js⟩
-    [f 0 false 0 "0", f 5 true 1 "0.5", f 225 true 2 "2.25", f 3 false 1 "30",
+    [f 0 false 0 "0", f 5 true 1 "0.5", f 1 false 0 "1", f 2 false 0 "2", f 3 false 0 "3",
+      f 225 true 2 "2.25", f 3 false 1 "30",
       ⟨mkApp (mkConst ``Float.neg) (mkApp3 (mkConst ``Float.ofScientific) (mkNatLit 15)
         (toExpr true) (mkNatLit 1)), "-1.5"⟩]
   | .arr t => (listSamples cfg t true).map fun l =>

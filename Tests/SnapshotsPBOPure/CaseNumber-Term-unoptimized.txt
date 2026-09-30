@@ -13,3 +13,17 @@ val k1 [ω] : (Float → String) := fun x2 [ω] : Float => (closed)
       else
         ret "catch"
 ret k1
+
+-- test2 : Float → String
+val k1 [ω] : (Float → String) := fun x2 [ω] : Float => (closed)
+  if lean_float_beq(x2, 1.000000) then
+    ret "1"
+  else
+    if lean_float_beq(x2, 2.000000) then
+      ret "2"
+    else
+      if lean_float_beq(x2, 3.000000) then
+        ret "3"
+      else
+        ret "catch"
+ret k1

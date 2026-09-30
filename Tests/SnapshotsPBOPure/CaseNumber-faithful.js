@@ -15,3 +15,18 @@ export const test1 = (f) => {
   }
   return f === 3 ? "3" : "catch";
 };
+
+/**
+ * `test2`
+ * @param {float} a
+ * @returns {string}
+ */
+export const test2 = (a) => {
+  if (a === 1) {
+    return "1";
+  }
+  if (a === 2) {
+    return "2";
+  }
+  return a === 3 ? "3" : "catch";
+};

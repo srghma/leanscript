@@ -44,9 +44,20 @@ function check(label, thunk, expected, isFloat) {
 
 check("test1(0)", () => M.test1(0), "catch", false);
 check("test1(0.5)", () => M.test1(0.5), "catch", false);
+check("test1(1)", () => M.test1(1), "1", false);
+check("test1(2)", () => M.test1(2), "2", false);
+check("test1(3)", () => M.test1(3), "3", false);
 check("test1(2.25)", () => M.test1(2.25), "catch", false);
 check("test1(30)", () => M.test1(30), "catch", false);
 check("test1(-1.5)", () => M.test1(-1.5), "catch", false);
+check("test2(0)", () => M.test2(0), "catch", false);
+check("test2(0.5)", () => M.test2(0.5), "catch", false);
+check("test2(1)", () => M.test2(1), "1", false);
+check("test2(2)", () => M.test2(2), "2", false);
+check("test2(3)", () => M.test2(3), "3", false);
+check("test2(2.25)", () => M.test2(2.25), "catch", false);
+check("test2(30)", () => M.test2(30), "catch", false);
+check("test2(-1.5)", () => M.test2(-1.5), "catch", false);
 
 console.log(`CaseNumber-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

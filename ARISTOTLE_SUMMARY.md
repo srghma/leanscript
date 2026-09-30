@@ -1,3 +1,46 @@
+# Summary of changes for run f1904c96-30cb-4b3f-b1d9-fa31e1792cef
+`test1` in `CaseNumber` already compiled to the same JavaScript as `legacy-backend/CaseNumber.js`. The one real gap was your commented-out `test2` (`| 1.0 => …`): it works on this Lean version, but the translator couldn't handle it. It now compiles, and both functions produce the same code as PBO's `test1`.
+
+**Output now** (`CaseNumber-pbo.js`; `-faithful.js` is the same):
+```js
+export const test1 = (f) => {
+  if (f === 1) { return "1"; }
+  if (f === 2) { return "2"; }
+  return f === 3 ? "3" : "catch";
+};
+export const test2 = (a) => { /* same body */ };
+```
+The only difference from PBO is that the last `if` is written as `?:`. There's no recursion or shared tail here, so no labelled block or loop is needed.
+
+**Why `test2` failed.** A match on float literals checks exact equality `x = 1.0`, not `==`. The translator had no way to handle that equality for `Float`, so it rejected the function.
+
+**The fix** is in the Lean → `Term` translation (`trDecide` in `LeanScript/TermElab/ToTerm/Expr/Calls.lean`). The later phases couldn't do it, because the function never got that far.
+- If one side of `x = c` is a finite, non-zero float literal, the translator writes `x == c` (`===` in JavaScript). It checks this condition on the literal while translating.
+- Any other float equality (a `0.0` or NaN arm, or no literal) becomes a comparison of the raw bits, which is always correct.
+
+**Proofs** (in the new `LeanScript/TermElab/ToTerm/FloatEq.lean`, no `sorry`, standard axioms only; both added to the Properties table as proved):
+- `decide_float_eq_beq_of_finite`: for a finite non-zero `c`, `decide (x = c) = (x == c)`. This works because a finite number has only one bit pattern.
+- `decide_float_eq_toBits`: `decide (x = y) = decide (x.toBits = y.toBits)`.
+
+**One limitation of the fallback:** with the `pbo` preset, 64-bit patterns don't fit in a JavaScript number. So a function with a `0.0` or NaN literal arm throws an overflow error at run time under `pbo` instead of answering. Under `faithful` it gives the right answer. I saw this with a scratch example; nothing in the committed snapshots uses it.
+
+**Other changes**
+- `CaseNumber.lean`: I uncommented `test2` and removed its TODO.
+- `LeanScriptCli/Check.lean`: before, the generated checks for `CaseNumber` only tried inputs that return `"catch"`. I added `1`, `2`, `3` to the `Float` sample values, so they now reach every arm.
+- `scripts/count-comparisons.mjs` now also recognises decimal literals like `1.0`, which PBO's output uses.
+- A new test in `Tests/Main.lean`, run for both presets, checks that:
+  - the generated checks run and none fail;
+  - both functions give Lean's answers on 9 inputs;
+  - both make no more comparisons than PBO's `test1`;
+  - no bit comparison is left in the output.
+
+**Results**
+- I regenerated all snapshots. Besides `CaseNumber`, only `*.check.mjs` files changed (they have more float cases now); no other generated JavaScript changed, and every node check passes. The snapshot script still exits 1, only because of the known "literal too big" errors in the `PrimOpInt*Configurable` files.
+- `lake build leanscript tests TyTests TermTests JsTerm JsSpec` succeeds, and `lake exe tests` passes 82/82.
+- A plain `lake build` fails, but not because of this change: `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which this project doesn't depend on, and I didn't touch that file.
+
+Everything is committed.
+
 # Summary of changes for run af8e26f8-0a6b-4eee-b8c8-01b5e407c30b
 `CaseNewtype` already compiles to JavaScript that matches `legacy-backend/CaseNewtype.js`, and is slightly shorter, so I made no compiler changes. I rebuilt `leanscript` from the current sources and regenerated the file; the JS and `Term` outputs came out byte-for-byte the same as the committed snapshots.
 
