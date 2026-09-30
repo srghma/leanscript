@@ -402,6 +402,35 @@ def moreJsSpec : Spec := describe "JsTerm" do
     for f in ["testPBA", "testPBAN"] do
       assertEq s!"{f}: `return 4` once" 2 ((body f).splitOn "return 4;").length
       assertEq s!"{f}: no test of the same tag twice" 1 ((body f).splitOn "? 4 : 4").length
+  it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
+    -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
+    -- join point that takes it apart at once; the arm of each constructor is written at its jump
+    -- (`JoinInl`), so no option is built.  `test1FuelCalled` is `test1Fuel 1000000`: it is
+    -- written as that call (`literalCalls`).  The differential checks compare every answer with
+    -- Lean's.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/joinInl"
+    IO.FS.createDirAll dir
+    let file := "CaseLeafTco"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: no check failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn "FAIL").length == 1)
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no option built" 1 (js.splitOn "tag: 1").length
+      assertEq s!"{file}-{preset}: no join point" 1 (js.splitOn "let x$").length
+      assertEq s!"{file}-{preset}: test1FuelCalled calls test1Fuel" true
+        ((js.splitOn "export const test1FuelCalled = (b, arr) => test1Fuel(1000000").length > 1)
   it "versions of local functions and owning closures update in place, never visibly (needs node and leanscript)" do
     -- `LocalFnInPlace`: local functions get one constant per version (`k_mut…` owns its array
     -- parameter), and a recursion with an array accumulator builds owning closures;

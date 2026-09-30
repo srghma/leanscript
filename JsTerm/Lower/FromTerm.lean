@@ -29,7 +29,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `Term.letV`, `Term.letE` | `const k = v;`, `const x = c;` |
 | `Term.record_casesOn` | `const { _1: f₁, _3: f₃ } = r;` (unused fields skipped) |
 | `Branch.ite`, `enum_casesOn`, `union_casesOn` | `if`/`else`, and case analyses |
-| `Branch.join` | a join point (`JsBlock.join`) |
+| `Branch.join` | a join point (`JsBlock.join`); a join point whose body takes its parameter apart at once is written at each jump passing a constructor literal (of a constructor no other jump passes), on the fields of the literal (`JoinInl`), and disappears when every jump is one of those |
 | `Comp.app f a`, `Comp.share n` | `f(a, b)` once every parameter is passed (a partial application is a closure), `n` |
 | `Comp.nat_rec n z s` | `let acc = z; for (let i = 0n; i < n; i++) { …; acc = …; }` |
 | `Comp.array_foldl a z s` | `let acc = z; for (const e of a) { …; acc = …; }`; a fold pushing every element (`Array.append z a`) on generic arrays is `[...z, ...a]` |
@@ -86,6 +86,60 @@ def _root_.LeanScript.Term.casesOnHead {ks : List Nat} {Δ : DSig ks} {d : Nat} 
     {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} : Term Δ d Φ Γ τ js o → Bool
   | t@(.branch (.union_casesOn (.var x) _)) => x.index == 0 && (Own.Term.occ (.u 0) t).n == 1
   | _ => false
+
+/-- The constructor of a union a pure expression is a literal of (`some` its position), if it is
+    one. -/
+def _root_.LeanScript.PExpr.ctorTag? {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks}
+    {σ : Ty ks} {o : Lvl} : PExpr Δ Φ Γ σ o → Option Nat
+  | .union_mk ix _ => some (ctorIxIndex ix)
+  | _ => none
+
+/-- The position of the constructor and the fields of a constructor literal of a union. -/
+def _root_.LeanScript.PExpr.ctorArgs? {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks}
+    {σ : Ty ks} {o : Lvl} :
+    PExpr Δ Φ Γ σ o → Option (Nat × (σs : List (Ty ks)) × (o' : Lvl) × Args Δ Φ Γ σs o')
+  | .union_mk ix args => some (ctorIxIndex ix, ⟨_, _, args⟩)
+  | _ => none
+
+mutual
+/-- What the jumps of a statement to the join point of index `j` pass: `some` the position of the
+    constructor for a constructor literal of a union, `none` for any other value; one entry per
+    jump. -/
+partial def _root_.LeanScript.Term.jumpCtors {ks : List Nat} {Δ : DSig ks} {d : Nat}
+    {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} (j : Nat) :
+    Term Δ d Φ Γ τ js o → List (Option Nat)
+  | .ret _ => []
+  | .letV _ _ t => t.jumpCtors j
+  | .letE _ _ t => t.jumpCtors j
+  | .record_casesOn _ _ t => t.jumpCtors j
+  | .branch b => b.jumpCtors j
+  | .jump x p => if x.index == j then [p.ctorTag?] else []
+
+/-- `Term.jumpCtors` of a branch. -/
+partial def _root_.LeanScript.Branch.jumpCtors {ks : List Nat} {Δ : DSig ks} {d : Nat}
+    {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} (j : Nat) :
+    Branch Δ d Φ Γ τ js ℓ → List (Option Nat)
+  | .ite _ a b => a.jumpCtors j ++ b.jumpCtors j
+  | .enum_casesOn (s := s) _ bs =>
+    (List.range s.nOfConstructors).flatMap fun i =>
+      if h : i < s.nOfConstructors then (bs ⟨i, h⟩).jumpCtors j else []
+  | .union_casesOn _ brs => brs.jumpCtors j
+  | .join _ _ _ body br => body.jumpCtors j ++ br.jumpCtors (j + 1)
+
+/-- `Term.jumpCtors` of the arms of a case analysis. -/
+partial def _root_.LeanScript.Branches.jumpCtors {ks : List Nat} {Δ : DSig ks} {d : Nat}
+    {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs} {τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} (j : Nat) : Branches Δ d Φ Γ cs τ js o → List (Option Nat)
+  | .two _ _ a b => a.jumpCtors j ++ b.jumpCtors j
+  | .cons _ a rest => a.jumpCtors j ++ rest.jumpCtors j
+end
+
+/-- The join points seen under one more join point, which is the join point `0` of `J`. -/
+def jmapPush (m : Nat → Nat) : Nat → Nat := fun i => if i == 0 then 0 else m (i - 1) + 1
+
+/-- The join points seen under one more join point that has no join point in `J` (every jump to
+    it is written at the jump, `JoinInl`). -/
+def jmapSkip (m : Nat → Nat) : Nat → Nat := fun i => if i == 0 then 0 else m (i - 1)
 
 /-- Does the body (of one parameter) start with a case analysis of its parameter? -/
 def _root_.LeanScript.Body.casesOnParam {ks : List Nat} {Δ : DSig ks} {d : Nat} {Φ : KCtx ks}
@@ -765,8 +819,22 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
   | .branch b => cBranch b n C M J
   | Term.jump (σ := σ) j p => do
     let (cx, _) := n.own.stmt (fun v => Own.PExpr.occ v p) (fun _ => false)
+    -- a join point written at its jumps (`JoinInl`): the arm of the constructor passed, here, on
+    -- the fields of the literal
+    let inl? : Option JoinInl := (n.inl.getD j.index none).bind fun inl =>
+      match p.ctorTag? with
+      | some t => if inl.tags.contains t then some inl else none
+      | none => none
+    match inl?, p.ctorArgs? with
+    | some inl, some ⟨tag, _, _, args⟩ =>
+      if h : inl.sig = S then
+        cArgsBind args { n with cx } C M J [] fun rs C' =>
+          h ▸ inl.conv tag rs (fun i => n.jmap (i + j.index + 1)) n.bounds n.ctors C' M J
+            (lowerTy cfg τ)
+      else throw "internal: the signature of a join point"
+    | _, _ =>
     let pe ← cPExpr p { n with cx } C M
-    match JsMem.ofIndex? J j.index (lowerTy cfg σ) with
+    match JsMem.ofIndex? J (n.jmap j.index) (lowerTy cfg σ) with
     | some jm => return (JsBlock.jump jm pe)
     | none => throw "internal: a join point"
 
@@ -1046,9 +1114,31 @@ partial def cJoin {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) := do
     let σ' := lowerTy cfg σ
     let envBr := Own.joinBranchEnv n.own body
-    let block ← cBranch br { n with own := envBr } C M (σ' :: J)
     -- the join point owns its parameter when every jump passes an owned value
     let own := (Own.joinBodyEnv n.own br).pushU [Own.joinParam σ envBr br]
+    -- a body starting with a case analysis of the parameter, and jumps passing constructor
+    -- literals, each constructor at one jump only: the arm of each such constructor is written at
+    -- its jump, on the fields of the literal, so that no value is built to be taken apart at once
+    -- (`JoinInl`); when every jump is one of those, there is no join point left
+    let tags := br.jumpCtors 0
+    let once : List Nat := (tags.filterMap id).filter fun t => (tags.filter (· == some t)).length == 1
+    if body.casesOnHead && !once.isEmpty then
+      let conv (tag : Nat) (frefs : List Ref) (jm : Nat → Nat) (bounds : BoundFacts)
+          (ctors : List CtorFact) (C' M' J' : List JsTy) (τ' : JsTy) :
+          ConvM (JsBlock S C' M' J' (.ret τ')) := do
+        let n' : Names := { n with u := .ctor tag frefs :: n.u, own, jmap := jm, bounds, ctors }
+        castRet (← cTerm body n' C' M' J') τ'
+      let entry : Option JoinInl := some { tags := once, sig := S, conv }
+      if tags.all (fun t => match t with | some t => once.contains t | none => false) then
+        cBranch br { n with own := envBr, inl := entry :: n.inl, jmap := jmapSkip n.jmap } C M J
+      else
+        let block ← cBranch br { n with own := envBr, inl := entry :: n.inl, jmap := jmapPush n.jmap }
+          C M (σ' :: J)
+        let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
+        return (JsBlock.join "x" block rest)
+    else
+    let block ← cBranch br { n with own := envBr, inl := none :: n.inl, jmap := jmapPush n.jmap }
+      C M (σ' :: J)
     let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
     return (JsBlock.join "x" block rest)
 

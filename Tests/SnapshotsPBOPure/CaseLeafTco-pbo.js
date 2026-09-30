@@ -21,81 +21,76 @@ export const test1Fuel = (a, a1, a2) => {
       return p$1;
     }
     j$2--;
-    let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: p$1[0] };
-    } else {
-      x$3 = { tag: 0 };
-    }
-    if (x$3.tag === 0) {
-      const s$4 = array__lean_array_back_opt(p$1);
-      if (s$4.tag === 0) {
-        return p$1;
+      const x$3 = p$1[0];
+      if (x$3 === 1) {
+        const s$4 = array__lean_array_back_opt(p$1);
+        if (s$4.tag === 0) {
+          return array__lean_array_push_mutable(p$1, 1);
+        }
+        const { _1: f$5 } = s$4;
+        if (f$5 === 2) {
+          return p$1;
+        }
+        if (a1) {
+          return [];
+        }
+        p$1 = [
+          f$5,
+          1,
+          3,
+          f$5,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          1,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          ...p$1,
+        ];
+      } else {
+        const s$6 = array__lean_array_back_opt(p$1);
+        if (s$6.tag === 0) {
+          return array__lean_array_push_mutable(p$1, x$3);
+        }
+        const { _1: f$7 } = s$6;
+        if (a1) {
+          return [];
+        }
+        p$1 = [
+          f$7,
+          x$3,
+          3,
+          f$7,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          x$3,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          ...p$1,
+        ];
       }
-      return array__lean_array_push_mutable(p$1, s$4._1);
-    }
-    const { _1: f$5 } = x$3;
-    if (f$5 === 1) {
-      const s$6 = array__lean_array_back_opt(p$1);
-      if (s$6.tag === 0) {
-        return array__lean_array_push_mutable(p$1, 1);
-      }
-      const { _1: f$7 } = s$6;
-      if (f$7 === 2) {
-        return p$1;
-      }
-      if (a1) {
-        return [];
-      }
-      p$1 = [
-        f$7,
-        1,
-        3,
-        f$7,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        1,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
     } else {
       const s$8 = array__lean_array_back_opt(p$1);
       if (s$8.tag === 0) {
-        return array__lean_array_push_mutable(p$1, f$5);
+        return p$1;
       }
-      const { _1: f$9 } = s$8;
-      if (a1) {
-        return [];
-      }
-      p$1 = [
-        f$9,
-        f$5,
-        3,
-        f$9,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        f$5,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
+      return array__lean_array_push_mutable(p$1, s$8._1);
     }
   }
 };
@@ -116,81 +111,76 @@ export const test1Fuel$$mut_2 = (a, a1, a2) => {
       return p$1;
     }
     j$2--;
-    let x$3;
     if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: p$1[0] };
-    } else {
-      x$3 = { tag: 0 };
-    }
-    if (x$3.tag === 0) {
-      const s$4 = array__lean_array_back_opt(p$1);
-      if (s$4.tag === 0) {
-        return p$1;
+      const x$3 = p$1[0];
+      if (x$3 === 1) {
+        const s$4 = array__lean_array_back_opt(p$1);
+        if (s$4.tag === 0) {
+          return array__lean_array_push_mutable(p$1, 1);
+        }
+        const { _1: f$5 } = s$4;
+        if (f$5 === 2) {
+          return p$1;
+        }
+        if (a1) {
+          return [];
+        }
+        p$1 = [
+          f$5,
+          1,
+          3,
+          f$5,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          1,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          ...p$1,
+        ];
+      } else {
+        const s$6 = array__lean_array_back_opt(p$1);
+        if (s$6.tag === 0) {
+          return array__lean_array_push_mutable(p$1, x$3);
+        }
+        const { _1: f$7 } = s$6;
+        if (a1) {
+          return [];
+        }
+        p$1 = [
+          f$7,
+          x$3,
+          3,
+          f$7,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          x$3,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          ...p$1,
+        ];
       }
-      return array__lean_array_push_mutable(p$1, s$4._1);
-    }
-    const { _1: f$5 } = x$3;
-    if (f$5 === 1) {
-      const s$6 = array__lean_array_back_opt(p$1);
-      if (s$6.tag === 0) {
-        return array__lean_array_push_mutable(p$1, 1);
-      }
-      const { _1: f$7 } = s$6;
-      if (f$7 === 2) {
-        return p$1;
-      }
-      if (a1) {
-        return [];
-      }
-      p$1 = [
-        f$7,
-        1,
-        3,
-        f$7,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        1,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
     } else {
       const s$8 = array__lean_array_back_opt(p$1);
       if (s$8.tag === 0) {
-        return array__lean_array_push_mutable(p$1, f$5);
+        return p$1;
       }
-      const { _1: f$9 } = s$8;
-      if (a1) {
-        return [];
-      }
-      p$1 = [
-        f$9,
-        f$5,
-        3,
-        f$9,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        f$5,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
+      return array__lean_array_push_mutable(p$1, s$8._1);
     }
   }
 };
@@ -201,92 +191,7 @@ export const test1Fuel$$mut_2 = (a, a1, a2) => {
  * @param {Array<int53(number)>} arr
  * @returns {Array<int53(number)>}
  */
-export const test1FuelCalled = (b, arr) => {
-  let p$1 = [...arr];
-  let j$2 = 1000000;
-  while (true) {
-    if (j$2 === 0) {
-      return p$1;
-    }
-    j$2--;
-    let x$3;
-    if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: p$1[0] };
-    } else {
-      x$3 = { tag: 0 };
-    }
-    if (x$3.tag === 0) {
-      const s$4 = array__lean_array_back_opt(p$1);
-      if (s$4.tag === 0) {
-        return p$1;
-      }
-      return array__lean_array_push_mutable(p$1, s$4._1);
-    }
-    const { _1: f$5 } = x$3;
-    if (f$5 === 1) {
-      const s$6 = array__lean_array_back_opt(p$1);
-      if (s$6.tag === 0) {
-        return array__lean_array_push_mutable(p$1, 1);
-      }
-      const { _1: f$7 } = s$6;
-      if (f$7 === 2) {
-        return p$1;
-      }
-      if (b) {
-        return [];
-      }
-      p$1 = [
-        f$7,
-        1,
-        3,
-        f$7,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        1,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
-    } else {
-      const s$8 = array__lean_array_back_opt(p$1);
-      if (s$8.tag === 0) {
-        return array__lean_array_push_mutable(p$1, f$5);
-      }
-      const { _1: f$9 } = s$8;
-      if (b) {
-        return [];
-      }
-      p$1 = [
-        f$9,
-        f$5,
-        3,
-        f$9,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        f$5,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
-    }
-  }
-};
+export const test1FuelCalled = (b, arr) => test1Fuel(1000000, b, arr);
 
 /**
  * `test1FuelCalled`
@@ -295,89 +200,5 @@ export const test1FuelCalled = (b, arr) => {
  * @param {Array<int53(number)>} arr
  * @returns {Array<int53(number)>}
  */
-export const test1FuelCalled$$mut_1 = (b, arr) => {
-  let p$1 = arr;
-  let j$2 = 1000000;
-  while (true) {
-    if (j$2 === 0) {
-      return p$1;
-    }
-    j$2--;
-    let x$3;
-    if (0 < p$1.length) {
-      x$3 = { tag: 1, _1: p$1[0] };
-    } else {
-      x$3 = { tag: 0 };
-    }
-    if (x$3.tag === 0) {
-      const s$4 = array__lean_array_back_opt(p$1);
-      if (s$4.tag === 0) {
-        return p$1;
-      }
-      return array__lean_array_push_mutable(p$1, s$4._1);
-    }
-    const { _1: f$5 } = x$3;
-    if (f$5 === 1) {
-      const s$6 = array__lean_array_back_opt(p$1);
-      if (s$6.tag === 0) {
-        return array__lean_array_push_mutable(p$1, 1);
-      }
-      const { _1: f$7 } = s$6;
-      if (f$7 === 2) {
-        return p$1;
-      }
-      if (b) {
-        return [];
-      }
-      p$1 = [
-        f$7,
-        1,
-        3,
-        f$7,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        1,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
-    } else {
-      const s$8 = array__lean_array_back_opt(p$1);
-      if (s$8.tag === 0) {
-        return array__lean_array_push_mutable(p$1, f$5);
-      }
-      const { _1: f$9 } = s$8;
-      if (b) {
-        return [];
-      }
-      p$1 = [
-        f$9,
-        f$5,
-        3,
-        f$9,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        f$5,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        ...p$1,
-      ];
-    }
-  }
-};
+export const test1FuelCalled$$mut_1 = (b, arr) =>
+  test1Fuel$$mut_2(1000000, b, arr);

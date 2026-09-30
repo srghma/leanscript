@@ -1,3 +1,50 @@
+# Summary of changes for run bbd12bbe-c1a3-401b-8046-7accbe90b348
+The JS for `CaseLeafTco` now has the same shape as `legacy-backend/CaseLeafTco.js`, and is a bit better in places. It took two changes: one in the `Term → JsTerm` conversion and one in the JsTerm pass that shares code between the functions of a module. Neither change is formally proved. They are checked by the node tests, the snapshots and a new test.
+
+**Problems in the old output**
+1. Each loop iteration built an option and then took it apart right away:
+   ```js
+   let x$3;
+   if (0 < p$1.length) { x$3 = { tag: 1, _1: p$1[0] }; } else { x$3 = { tag: 0 }; }
+   if (x$3.tag === 0) { … }
+   ```
+   In the optimized `Term` this is a join point whose body does `case` on its parameter, reached by two jumps: one passes `ctor#1(…)`, the other `ctor#0()`.
+2. `test1FuelCalled` contained a second full copy of `test1Fuel`'s loop, with `1000000` in place of the first parameter. `Term` has no global definitions, so the call gets inlined. PBO writes it as a plain call.
+
+**Output now** (`CaseLeafTco-pbo.js`; `-faithful.js` is the same but uses `1000000n`):
+```js
+if (0 < p$1.length) {
+  const x$3 = p$1[0];
+  if (x$3 === 1) { … } else { … }
+} else { … }
+…
+export const test1FuelCalled = (b, arr) => test1Fuel(1000000, b, arr);
+export const test1FuelCalled$$mut_1 = (b, arr) => test1Fuel$$mut_2(1000000, b, arr);
+```
+It matches PBO's control flow. It is better in three ways: tests are `x === 1` rather than `Int_instDecidableEq(v7, 1)`, the array is one flat literal rather than 17 nested spreads with `Array_append`, and the version that owns its array updates it in place. The loop is still a `while (true)` loop, so recursion depth isn't an issue.
+
+**Change 1: `Term → JsTerm` conversion** (`JsTerm/Lower/FromTerm.lean`, `JsTerm/Lower/Basic.lean`)
+- This applies to a join point whose body starts with a case analysis of its parameter and reads it nowhere else.
+- At a jump that passes a constructor literal, the arm for that constructor is converted right there, using the literal's fields. This only happens for constructors that no other jump passes, so no code is duplicated.
+- If every jump is handled this way, the join point disappears. Otherwise it stays for the remaining jumps.
+- A new mapping in `Names` from `Term` join-point indices to `JsTerm` ones (`jmap`, `inl`) keeps the jumps inside the moved arm pointing at the right join points. The arm also gets the bounds and constructor facts known at the jump, which is why `p$1[0]` is written without a bounds check.
+
+**Change 2: sharing code between functions** (`JsTerm/Print/Share.lean`, `literalCalls`)
+- A function `g` becomes a call `f(lit, params…)` of an earlier function `f` only when two things hold:
+  - `g`'s code dump is exactly `f`'s dump with its first parameter replaced by the literal;
+  - the call is shorter than the code. Without this rule, `test9 = (a) => !a` in `PrimOpBoolean01` turned into `test6(true, a)`, so I added the length check.
+
+**Why not the `Term` optimizer (your first choice):** every rewrite there has to come with a proof that `eval` is unchanged. This one needs substitution, weakening from the join point's context to the jump's context, and reindexing of the join-point context, all proved correct against the evaluator's join-point semantics in the intrinsically typed `Term`. That is a large piece of new proof work, so I did the rewrite in the next phase you preferred instead.
+
+**Checks**
+- All snapshots were regenerated with `scripts/leanscript-snapshots.sh`, and all 342 node check runs pass.
+  - The script still exits 1, only because of the known "literal too big" errors in the `PrimOpInt*Configurable` files.
+  - Apart from `CaseLeafTco`, one snapshot changed: `OptionUnbox` `test6` builds no option any more and is shorter.
+- `lake build JsTerm JsSpec tests leanscript` succeeds.
+- `lake exe tests` passes 78/78. That includes a new test in `Tests/Main.lean`: it runs the `CaseLeafTco` checks in both presets, checks that no option or join variable is built, and checks that `test1FuelCalled` calls `test1Fuel`.
+
+I added no rows to the Properties table, because none of this is a formally proved result. Everything is committed.
+
 # Summary of changes for run 1bede2c0-a286-42bf-b63d-f580e62309be
 `Tests/SnapshotsPBOPure/CaseJacobs.lean` now translates, and the generated JS is equal to or better than `legacy-backend/CaseJacobs.js`. This work is all in the conversion, JS-optimisation and printing phases, and none of it is proved; the Term optimizer is untouched.
 

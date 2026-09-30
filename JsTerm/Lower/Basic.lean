@@ -173,6 +173,26 @@ structure CtorFact where
   fields : List Ref
   deriving Inhabited
 
+/-- A join point whose body starts with a case analysis of its parameter, written at its jumps
+    instead (`cJoin`): a jump passing a constructor literal of one of the constructors `tags` runs
+    the arm of that constructor right there, on the fields of the literal, and builds no value.
+    `conv tag fields jmap bounds ctors C M J τ` converts the body of the join point with its
+    parameter known to be constructor `tag` of fields `fields` (`Ref.ctor`), at the place of the
+    jump: `jmap` maps the join points the body sees (by their index in `Term`) to the join points
+    of `J`, and `bounds` and `ctors` are the facts known at the jump. -/
+instance : DecidableEq JsSig := fun a b =>
+  if h : a.decls = b.decls then isTrue (by cases a; cases b; cases h; rfl)
+  else isFalse (fun e => h (by cases e; rfl))
+
+structure JoinInl where
+  tags : List Nat
+  /-- The signature of the function being converted. -/
+  sig : JsSig
+  conv : (tag : Nat) → List Ref → (Nat → Nat) → BoundFacts → List CtorFact →
+    (C M J : List JsTy) → (τ : JsTy) → ConvM (JsBlock sig C M J (.ret τ))
+
+instance : Inhabited JoinInl := ⟨⟨[], {}, fun _ _ _ _ _ _ _ _ _ => throw "internal: a join point"⟩⟩
+
 /-- The JavaScript variables of the two contexts of variables of a statement: the unknowns `Γ`
     and the known values `Φ`, innermost first. -/
 structure Names where
@@ -201,6 +221,14 @@ structure Names where
   bounds : BoundFacts := {}
   /-- What the enclosing case analyses say of the values they take apart (`CtorFact`). -/
   ctors : List CtorFact := []
+  /-- The join point of `J` each join point of `Term` is (by their indices): the identity,
+      except in the body of a join point written at a jump (`JoinInl`), which sees the join
+      points around the join point, and in the branch of a join point with no join point of
+      its own. -/
+  jmap : Nat → Nat := id
+  /-- For each join point of `Term` (by its index), whether it is written at its jumps
+      (`JoinInl`). -/
+  inl : List (Option JoinInl) := []
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes

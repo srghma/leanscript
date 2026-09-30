@@ -159,6 +159,80 @@ def blockCost (S : JsSig) : BlockCost S := fun {C M J _} b =>
     printed in the end). -/
 def mergedCost (S : JsSig) : BlockCost S := fun b => blockCost S b.mergeIte
 
+/-! ## Functions that are another function called on a literal
+
+A Lean definition calling another one of the module has it inlined (`Term` has no global
+definitions), so `def g b arr := f 1000000 b arr` is translated into the code of `f` over again,
+with its first parameter read as the literal `1000000`.  Such a function is written as the call
+of `f` instead (`JsFun.delegate?`), as purescript-backend-optimizer writes it:
+
+```js
+export const test1FuelCalled = (b, arr) => test1Fuel(1000000, b, arr);
+```
+
+The rewrite is only done when the call is shorter than the code, and when the code of `g` is
+**the code of `f`** with every read of its first
+parameter replaced by the literal (their dumps, `JsBlock.pretty`, are the same text): calling `f`
+on the literal runs exactly that code. -/
+
+/-- The name standing for the first parameter of `f` in the dump compared (`literalCallOf?`); no
+    function or variable is named so. -/
+def litPlaceholder : String := "$lit"
+
+/-- The literal written as `s` in a dump: an integer (`12`, `-3`), a `BigInt` (`12n`) or a
+    boolean. -/
+def litShapeOfDump? (s : String) : Option JsLitShape :=
+  let digits (t : String) : Bool := !t.isEmpty && t.all Char.isDigit
+  let int? (t : String) : Option Int :=
+    if t.startsWith "-" then
+      let u := (t.drop 1).toString
+      if digits u then u.toNat?.map fun n => -(n : Int) else none
+    else if digits t then t.toNat?.map fun n => (n : Int) else none
+  if s == "true" then some (.bool true)
+  else if s == "false" then some (.bool false)
+  else if s.endsWith "n" then (int? (s.dropEnd 1).toString).map .bigint
+  else (int? s).map fun n => .number (.int n)
+
+/-- `g` is `f` called on a literal and on all the parameters of `g` (see above): the literal. -/
+def literalCallOf? (f g : JsFun) : Option JsLitShape := do
+  if f.isConst || g.isConst || f.delegate?.isSome || g.delegate?.isSome then none
+  let fps := f.params.map (·.2)
+  let gps := g.params.map (·.2)
+  unless fps.tail == gps && fps.length == gps.length + 1 && f.ret == g.ret do none
+  -- the first parameter of `f` as the placeholder, the others as the parameters of `g`
+  let rc : JsSubG (pushAll fps []) (pushAll gps []) := fun {τ} x =>
+    let lvl := fps.length - 1 - x.index
+    if lvl == 0 then some (.inr litPlaceholder)
+    else (JsMem.ofIndex? (pushAll gps []) (gps.length - lvl) τ).map .inl
+  let rm : JsRenM Option ([] : List JsTy) [] := fun x => some x
+  let fb ← f.body.substG rc rm
+  let fd := fb.pretty ""
+  let gd := g.body.pretty ""
+  let pieces := fd.splitOn litPlaceholder
+  let k := pieces.length - 1
+  if k == 0 then none
+  let rest := pieces.foldl (fun acc p => acc + p.length) 0
+  unless gd.length > rest && (gd.length - rest) % k == 0 do none
+  let p0 := pieces.headD ""
+  unless gd.startsWith p0 do none
+  let lit := ((gd.drop p0.length).take ((gd.length - rest) / k)).toString
+  unless String.intercalate lit pieces == gd do none
+  litShapeOfDump? lit
+
+/-- The functions `funs`, each that is a function before it called on a literal and on all its
+    parameters (`literalCallOf?`) written as that call, when the call is shorter. -/
+def literalCalls (funs : List JsFun) : List JsFun := Id.run do
+  let mut out : Array JsFun := #[]
+  for g in funs do
+    let cand := out.toList.findSome? fun f => (literalCallOf? f g).map (f.name, ·)
+    -- only when the call is shorter than the code (`test9 = (a) => !a` stays as it is)
+    match cand with
+    | some d =>
+      let g' := { g with delegate? := some d }
+      out := out.push (if g'.text.length < g.text.length then g' else g)
+    | none => out := out.push g
+  return out.toList
+
 /-- The functions `funs`, those that compute the same up to the literal initial value of their
     first mutable variable written as calls of one shared worker (put just before the first of
     them); first, the pairs of `pairTagLoops` without their tag, then the additions of
@@ -201,6 +275,6 @@ def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
   for (f, i) in funs.zipIdx do
     if let some w := before[i]! then out := out.push w
     out := out.push { f with delegate? := delegate[i]! }
-  return out.toList
+  return literalCalls out.toList
 
 end MoreJs
