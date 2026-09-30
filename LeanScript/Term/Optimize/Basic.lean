@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Optimize.Cse
+public import LeanScript.Term.Optimize.Hoist
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
 public import LeanScript.Term.Optimize.Append
@@ -41,6 +42,11 @@ Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimiz
   `if c then ret a else ret b` is `ret (c ? a : b)` (the pure conditional `Neu.cond`);
 * **trivial join points** (`Branch.mkJoin`): a join point whose body is `ret a` (an atom) or
   `ret x` (its parameter) is inlined into its jumps and dropped.
+
+Then the hoisting walk (`Term.hoistWalk`, `LeanScript.Term.Optimize.Hoist`): a call of an extern
+on atoms (`toString x`) that every path of a statement computes, and that occurs at least twice
+in it, is computed once in front of it and named (`let y := toString x; if c then y ++ y else
+f y`); no path computes more than before.
 
 Then the boolean conditions (`Term.condWalk`, `LeanScript.Term.Optimize.Cond`):
 `c ? true : false` is `c`, and a negated condition (`c ? false : true`) of a conditional or of
@@ -379,13 +385,14 @@ end
 
 /-- **The optimiser**: the inlining of known closures that compute an expression
     (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
-    then `Term.reuseFields`), those of `Term.cseWalk`, the boolean conditions
+    then `Term.reuseFields`), those of `Term.cseWalk`, the hoisting of the extern calls every
+    path computes (`Term.hoistWalk`), the boolean conditions
     (`Term.condWalk`), the append chains (`Term.appendWalk`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
     (`Term.arithWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.condWalk.appendWalk.inlineRet.arithWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).cseWalk.hoistWalk.condWalk.appendWalk.inlineRet.arithWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -590,7 +597,7 @@ theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} 
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
   rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.appendWalk_eval, Term.condWalk_eval,
-    Term.cseWalk_eval,
+    Term.hoistWalk_eval, Term.cseWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]
 

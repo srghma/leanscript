@@ -86,4 +86,4 @@ export const natPow = (x, n) => x ** n * x;
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const powSum = (x) => x ** 3n + x ** 3n;
+export const powSum = (x) => x * x * x * 2n;

@@ -1,3 +1,52 @@
+# Summary of changes for run 014398fd-e9fe-4b8e-9aa6-575964a558cb
+`CaseNamed` now compiles to JavaScript that is as good as `legacy-backend/CaseNamed.js` or better. `test1` has the same shape as purescript-backend-optimizer's (PBO) version, and `test2` makes fewer string conversions on three of its four paths and the same number on the last. The fix is a new pass in the `Term → Term` optimizer, the phase you preferred, with proofs.
+
+**What was wrong**
+- `test1`: every arm computed `String(x)` separately.
+- `test2`: the last arm converted `a` twice (`String(f$1) + f$1`), so that path made 4 conversions where PBO makes 3.
+
+**Output now** (`CaseNamed-pbo.js`; `-faithful.js` is the same with `1n`):
+```js
+export const test1 = (x) => {
+  const x$1 = String(x);
+  if (x === 1) { return x$1 + x$1 + x$1; }
+  return x === 2 ? x$1 : "any: " + x$1 + x$1 + x$1;
+};
+export const test2 = (x) => {
+  const { _1: f$1, _2: f$2, _3: f$3 } = x;
+  if (f$1 === 1) { return String(f$2) + f$3 + "1"; }
+  const x$4 = String(f$1);
+  if (f$2 === 1) { return x$4 + f$3 + "1"; }
+  const x$5 = String(f$2);
+  if (f$3 === 1) { return x$4 + x$5 + "1"; }
+  const x$6 = String(f$3);
+  return x$4 + x$4 + x$5 + x$5 + x$6 + x$6;
+};
+```
+Counting by hand from this output (not measured by a tool), `test2` makes 2, 2, 2 and 3 conversions on its four paths. PBO computes all three `toString`s up front, so it makes 3 on every path. There's no recursion or shared tail here, so no labelled blocks or loops are needed.
+
+**The new pass** (`LeanScript/Term/Optimize/Hoist.lean`, `HoistExpr.lean`, `ExternEq.lean`)
+- It looks for a call of an extern whose arguments are all variables, such as `toString x`.
+- If every path of a statement already makes that call, and it appears at least twice, the call is made once in front of the statement and every occurrence is replaced by the new name. No path does more work than before.
+- It runs inside `Term.optimize`, right after the existing common-subexpression pass.
+- Two calls count as the same when their externs are equal by `Extern.beq`, which is proved correct (`Extern.eq_of_beq`). It only recognises the extern families where Lean could derive equality automatically: arithmetic, bitwise, conversion and string externs. Calls from the other families are never shared, which is safe but misses some cases.
+
+**Proofs** (no `sorry`, standard axioms only), both added to the Properties table as proved:
+- `Term.hoistWalk_eval`: the pass doesn't change `eval`. `Term.optimize_eval` still holds with the pass included.
+- `Term.numCalls_hoistWalk`: the pass adds no calls, so `Term.numCalls_optimize` still holds.
+- One limit: "no path makes more extern calls than before" comes from how the pass chooses what to hoist, and is not proved.
+
+**Effect on other snapshots.** I regenerated all of them with `scripts/leanscript-snapshots.sh` and every node check passes. The script still exits 1, only because of the known "literal too big" errors in the `PrimOpInt*Configurable` files. Two other snapshots changed:
+- `IntPow.powSum`: `x^3 + x^3` became `x*x*x*2`.
+- `ProfunctorLenses01`: `String(x)`, which appeared in both arms of `x < 0 ? {…String(x)} : {…String(x)}`, is now computed once. The speed is the same, but the function is now a block instead of a single expression, so it's a few lines longer.
+
+**New test.** The generated `CaseNamed-*.check.mjs` only try inputs that reach the last arm, so I added a test to `Tests/Main.lean`. For both presets it:
+- runs every arm and compares each answer with the Lean `match`;
+- checks that `test1` converts `x` exactly once, before the tests;
+- checks that `test2`'s last `return` makes no conversion of its own.
+
+`lake build tests TermTests TyTests JsSpec JsTerm leanscript` succeeds and `lake exe tests` passes 80/80. Everything is committed.
+
 # Summary of changes for run 5f82cc03-3403-467f-a252-e83b868e2365
 I checked `CaseMulti` again. The code as it stands already produces JS that is as good as `legacy-backend/CaseMulti.js` or better, so I made no changes this session.
 

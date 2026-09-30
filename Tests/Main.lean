@@ -477,6 +477,64 @@ def moreJsSpec : Spec := describe "JsTerm" do
       assertEq s!"{file}-{preset}: no join point" 1 (js.splitOn "let x$").length
       assertEq s!"{file}-{preset}: test1FuelCalled calls test1Fuel" true
         ((js.splitOn "export const test1FuelCalled = (b, arr) => test1Fuel(1000000").length > 1)
+  it "a conversion every path makes is made once, in front (needs node and leanscript)" do
+    -- `CaseNamed`: every arm of `test1` converts `x` to a string, and the last arm of `test2`
+    -- converts `a` twice (`toString a ++ toString a`); each conversion is made once, before the
+    -- tests that need it (`Term.hoistWalk`).  Every arm answers what Lean does (the generated
+    -- checks only try inputs that reach the last arm).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/hoist"
+    IO.FS.createDirAll dir
+    let file := "CaseNamed"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let test1 (x : Int) : String :=
+      match x with
+      | 1 => toString x ++ toString x ++ toString x
+      | 2 => toString x
+      | n => "any: " ++ toString n ++ toString n ++ toString n
+    let test2 (a b c : Int) : String :=
+      match a, b, c with
+      | 1, a, b => toString a ++ toString b ++ "1"
+      | a, 1, b => toString a ++ toString b ++ "1"
+      | a, b, 1 => toString a ++ toString b ++ "1"
+      | a, b, c => toString a ++ toString a ++ toString b ++ toString b ++ toString c ++ toString c
+    let xs : List Int := [1, 2, 3, -4]
+    let triples : List (Int × Int × Int) :=
+      [(1, 7, -8), (7, 1, -8), (7, -8, 1), (7, -8, 9), (1, 1, 1), (2, 1, 1)]
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: no check failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn "FAIL").length == 1)
+      let lit (n : Int) : String := if preset == "faithful" then s!"{n}n" else toString n
+      let calls := (xs.map fun x => s!"M.test1({lit x})") ++
+        (triples.map fun (a, b, c) => s!"M.test2(\{ _1: {lit a}, _2: {lit b}, _3: {lit c} })")
+      let script := s!"import * as M from {(s!"file://{dir}/{file}-{preset}.js").quote};\n" ++
+        s!"console.log(JSON.stringify([{", ".intercalate calls}]));\n"
+      let res ← IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      assertEq s!"{file}-{preset}: node (every arm)" "" (if res.exitCode == 0 then "" else res.stderr)
+      let expected := (xs.map test1) ++ (triples.map fun (a, b, c) => test2 a b c)
+      let shown := "[" ++ ",".intercalate (expected.map fun (s : String) => s.quote) ++ "]"
+      assertEq s!"{file}-{preset}: every arm answers what Lean does" shown res.stdout.trimAscii.toString
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let body (f : String) : String :=
+        ((js.splitOn s!"export const {f} ").getD 1 "").splitOn "export const" |>.headD ""
+      -- `test1`: `String(x)` once, before the tests
+      assertEq s!"{file}-{preset}: test1 converts x once" 2 ((body "test1").splitOn "String(").length
+      assertEq s!"{file}-{preset}: test1 converts x first" true
+        (((body "test1").splitOn "\n").getD 1 "" |>.trimAscii.toString |>.startsWith "const x$1 = String(x);")
+      -- `test2`: the last arm reads each conversion from a constant, and converts nothing
+      let lastReturn := ((body "test2").splitOn "return ").getLast!
+      assertEq s!"{file}-{preset}: test2's last arm converts nothing" 1 (lastReturn.splitOn "String(").length
+      assertEq s!"{file}-{preset}: test2's last arm adds no field" 1 (lastReturn.splitOn "+ f$").length
   it "versions of local functions and owning closures update in place, never visibly (needs node and leanscript)" do
     -- `LocalFnInPlace`: local functions get one constant per version (`k_mut…` owns its array
     -- parameter), and a recursion with an array accumulator builds owning closures;

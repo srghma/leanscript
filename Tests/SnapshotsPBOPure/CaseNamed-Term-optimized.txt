@@ -2,15 +2,11 @@
 
 -- test1 : Int → String
 val k1 [1] : (Int → String) := fun x2 [ω] : Int => (closed)
+  let x3 [ω] : String := share lean_int_repr(x2)
   if lean_int_dec_eq(x2, 1) then
-    let x3 [ω] : String := share lean_int_repr(x2)
     ret lean_string_append__String_append(lean_string_append__String_append(x3, x3), x3)
   else
-    if lean_int_dec_eq(x2, 2) then
-      ret lean_int_repr(x2)
-    else
-      let x4 [ω] : String := share lean_int_repr(x2)
-      ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("any: ", x4), x4), x4)
+    ret cond(lean_int_dec_eq(x2, 2), x3, lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("any: ", x3), x3), x3))
 ret k1
 
 -- test2 : Product3 → String
@@ -19,13 +15,14 @@ val k1 [1] : ((Int × Int × Int) → String) := fun x2 [1] : (Int × Int × Int
   if lean_int_dec_eq(f3, 1) then
     ret lean_string_append__String_append(lean_string_append__String_append(lean_int_repr(f4), lean_int_repr(f5)), "1")
   else
+    let x6 [ω] : String := share lean_int_repr(f3)
     if lean_int_dec_eq(f4, 1) then
-      ret lean_string_append__String_append(lean_string_append__String_append(lean_int_repr(f3), lean_int_repr(f5)), "1")
+      ret lean_string_append__String_append(lean_string_append__String_append(x6, lean_int_repr(f5)), "1")
     else
+      let x7 [ω] : String := share lean_int_repr(f4)
       if lean_int_dec_eq(f5, 1) then
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_int_repr(f3), lean_int_repr(f4)), "1")
+        ret lean_string_append__String_append(lean_string_append__String_append(x6, x7), "1")
       else
-        let x6 [ω] : String := share lean_int_repr(f5)
-        let x7 [ω] : String := share lean_int_repr(f4)
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_int_repr(f3), lean_int_repr(f3)), x7), x7), x6), x6)
+        let x8 [ω] : String := share lean_int_repr(f5)
+        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(x6, x6), x7), x7), x8), x8)
 ret k1

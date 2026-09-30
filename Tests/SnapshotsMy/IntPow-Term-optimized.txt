@@ -63,5 +63,7 @@ ret k1
 
 -- powSum : Int → Int
 val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  ret lean_int_add(lean_int_pow(x2, 3), lean_int_pow(x2, 3))
+  let x3 [1] : Int := share lean_int_mul(x2, x2)
+  let x4 [1] : Int := share lean_int_mul(x3, x2)
+  ret lean_int_mul(x4, 2)
 ret k1

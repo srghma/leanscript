@@ -7,7 +7,6 @@ import {
   int53__lean_int_mul,
   uint53__lean_nat_mul,
   uint53__lean_nat_pow,
-  int53__lean_int_add,
 } from "../../runtime.js";
 
 /**
@@ -108,7 +107,4 @@ export const natPow = (x, n) =>
  * @returns {int53(number)}
  */
 export const powSum = (x) =>
-  int53__lean_int_add(
-    int53__uint53__lean_int_pow(x, 3),
-    int53__uint53__lean_int_pow(x, 3),
-  );
+  int53__lean_int_mul(int53__lean_int_mul(int53__lean_int_mul(x, x), x), 2);

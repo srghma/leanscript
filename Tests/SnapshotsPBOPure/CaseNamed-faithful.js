@@ -7,15 +7,11 @@
  * @returns {string}
  */
 export const test1 = (x) => {
+  const x$1 = String(x);
   if (x === 1n) {
-    const x$1 = String(x);
     return x$1 + x$1 + x$1;
   }
-  if (x === 2n) {
-    return String(x);
-  }
-  const x$2 = String(x);
-  return "any: " + x$2 + x$2 + x$2;
+  return x === 2n ? x$1 : "any: " + x$1 + x$1 + x$1;
 };
 
 /**
@@ -28,13 +24,14 @@ export const test2 = (x) => {
   if (f$1 === 1n) {
     return String(f$2) + f$3 + "1";
   }
+  const x$4 = String(f$1);
   if (f$2 === 1n) {
-    return String(f$1) + f$3 + "1";
+    return x$4 + f$3 + "1";
   }
-  if (f$3 === 1n) {
-    return String(f$1) + f$2 + "1";
-  }
-  const x$4 = String(f$3);
   const x$5 = String(f$2);
-  return String(f$1) + f$1 + x$5 + x$5 + x$4 + x$4;
+  if (f$3 === 1n) {
+    return x$4 + x$5 + "1";
+  }
+  const x$6 = String(f$3);
+  return x$4 + x$4 + x$5 + x$5 + x$6 + x$6;
 };
