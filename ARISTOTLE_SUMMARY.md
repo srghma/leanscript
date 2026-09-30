@@ -1,3 +1,33 @@
+# Summary of changes for run 47d9506c-cc16-4c16-bcc9-b60d06e01ed0
+I made no changes this session. `CaseGrafting`'s JavaScript output is already better than purescript-backend-optimizer's legacy output, so there was nothing left to optimize.
+
+**Checks:** I rebuilt `leanscript` from the current source and regenerated the `Tests/SnapshotsPBOPure/CaseGrafting-*` files. They came out byte-for-byte identical to the committed ones (`git status` is clean). The generated checks `CaseGrafting-pbo.check.mjs` and `CaseGrafting-faithful.check.mjs` pass 8/8 each, covering every combination of the three `Bool` arguments.
+
+**Current output** (`CaseGrafting-pbo.js`; `-faithful.js` is the same except it uses BigInt literals `1n`…`4n`):
+```js
+export const test1 = (a, a1, a2) => {
+  if (a1) {
+    if (a) {
+      return a2 ? 4 : 3;
+    }
+    return 2;
+  }
+  return a2 ? 1 : 3;
+};
+```
+
+**Compared with `legacy-backend/CaseGrafting.js`:**
+- **Fewer tests:** ours checks each argument at most once, so a call makes at most 3 tests. PBO's checks `v1` and `v2` more than once, making up to 5 tests on some inputs.
+- **No dead code:** ours has no unreachable `if (v2)` and no `throw new Error("UNREACHABLE")`.
+- **One function:** ours is a single function taking all three arguments, where PBO's is three nested closures.
+
+**Which phase does the work:**
+- **Before the `Term` optimizer:** the step from Lean to `Term` turns Lean's sparse case analysis (`_sparseCasesOn`) into a full case split. This was added in an earlier session in `LeanScript/TermElab/ToTerm/Expr/Cases.lean` (`sparseAsCasesOn?`).
+- **`Term` optimizer (your preferred phase):** it turns the innermost `if`s into `cond(x6, 4, 3)` and `cond(x6, 1, 3)`, which print as the ternaries. You can see this by comparing `CaseGrafting-Term-unoptimized.txt` with `CaseGrafting-Term-optimized.txt`.
+- **`Term → JsTerm` conversion and the `JsTerm` optimizer:** they add nothing for this file.
+
+This function has no recursion or loops, so labelled blocks and loops don't come into play here. No Lean theorems were involved, so the Properties table is unchanged.
+
 # Summary of changes for run 27a66449-9222-4829-9974-31c76bbf45de
 I made no changes. `CaseGrafting`'s JavaScript output already beats purescript-backend-optimizer's legacy output, because of the fix from the previous session. That fix is in the source (`sparseAsCasesOn?` in `LeanScript/TermElab/ToTerm/Expr/Cases.lean`, called from `LeanScript/TermElab/ToTerm/Expr.lean`).
 
