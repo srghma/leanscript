@@ -97,7 +97,7 @@ def «cands_lean_bool_to_uint8» : List Cand :=
 
 /-- The operations of `lean_dbg_trace_if_shared`. -/
 def «cands_lean_dbg_trace_if_shared» (σs : List JsTy) (τ : JsTy) : List Cand :=
-  [⟨_, _, _, _, .imported (.string__lean_dbg_trace_if_shared (elemOf? (σs ++ [τ])))⟩]
+  [⟨_, _, _, _, .imported (.string__lean_dbg_trace_if_shared τ)⟩]
 
 /-- The operations of `lean_get_githash`. -/
 def «cands_lean_get_githash» : List Cand :=
@@ -126,6 +126,10 @@ def «cands_lean_mk_empty_array_with_capacity__Array_mkEmpty» (σs : List JsTy)
 /-- The operations of `lean_mk_thunk`. -/
 def «cands_lean_mk_thunk» (σs : List JsTy) (τ : JsTy) : List Cand :=
   [⟨_, _, _, _, .imported (.thunk__lean_mk_thunk (elemOf? (σs ++ [τ])))⟩]
+
+/-- The operations of `lean_panic_fn`. -/
+def «cands_lean_panic_fn» (σs : List JsTy) (τ : JsTy) : List Cand :=
+  [⟨_, _, _, _, .imported (.string__lean_panic_fn τ)⟩]
 
 /-- The operations of `lean_strict_and`. -/
 def «cands_lean_strict_and» : List Cand :=
@@ -201,6 +205,7 @@ def candsMisc? (name : String) (σs : List JsTy) (τ : JsTy) : Option (List Cand
   | "lean_mk_empty_array_with_capacity__Array_emptyWithCapacity" => some («cands_lean_mk_empty_array_with_capacity__Array_emptyWithCapacity» σs τ)
   | "lean_mk_empty_array_with_capacity__Array_mkEmpty" => some («cands_lean_mk_empty_array_with_capacity__Array_mkEmpty» σs τ)
   | "lean_mk_thunk" => some («cands_lean_mk_thunk» σs τ)
+  | "lean_panic_fn" => some («cands_lean_panic_fn» σs τ)
   | "lean_strict_and" => some «cands_lean_strict_and»
   | "lean_strict_or" => some «cands_lean_strict_or»
   | "lean_system_platform_emscripten" => some «cands_lean_system_platform_emscripten»

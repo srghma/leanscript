@@ -53,6 +53,9 @@ def PreludeExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : List (Ty k
     let x2 : Array (Ty.den E αt) := x2
     let x3 : Nat := x3
     (@Array.get!Internal _ ⟨inhabited_default⟩ x2 x3 : Ty.den E αt) -- `Array.get!InternalBorrowed` is `unsafe`: the same function, borrowing its array
+  | _, _, (.lean_panic_fn αt), (inhabited_default, _msg) =>
+    -- `panicCore msg` is `default` (the runtime prints `msg` first, or aborts): its value
+    (inhabited_default : Ty.den E αt)
   | _, _, .lean_uint8_to_nat__UInt8_toBitVec, x1 =>
     let x1 : UInt8 := x1
     (UInt8.toBitVec x1 : BitVec 8)

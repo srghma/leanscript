@@ -25,7 +25,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
 | `Val.lam` | `(x, y) => { … }`, of all the parameters of its type (uncurried) |
 | `Val.thunk_mk`, `Val.lazy_mk` | `thunk__lean_mk_thunk(() => { … })`, `() => { … }` |
-| `Term.ret`, `Term.jump j v` | `return e;`, a jump to the join point `j` |
+| `Term.ret`, `Term.jump j v` | `return e;`, a jump to the join point `j`; `throw new Error(msg);` when the value is a panic, `lean_panic_fn(d, msg)`, or an arm of a conditional is one (`JsBlock.retOrRaise`) |
 | `Term.letV`, `Term.letE` | `const k = v;`, `const x = c;` |
 | `Term.record_casesOn` | `const { _1: f₁, _3: f₃ } = r;` (unused fields skipped) |
 | `Branch.ite`, `enum_casesOn`, `union_casesOn` | `if`/`else`, and case analyses |
@@ -757,8 +757,8 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
   | .ret p => do
     let (cx, _) := n.own.stmt (fun v => Own.PExpr.occ v p) (fun _ => false)
     match n.own.retFn with
-    | some (m, _) => return (JsBlock.ret (← cPExprFn p m { n with cx } C M))
-    | none => return (JsBlock.ret (← cPExpr p { n with cx } C M))
+    | some (m, _) => return (JsBlock.retOrRaise (← cPExprFn p m { n with cx } C M))
+    | none => return (JsBlock.retOrRaise (← cPExpr p { n with cx } C M))
   | Term.letV uk v t => cLetV uk v t n C M J
   | .letE uu c t =>
     let normal (_ : Unit) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
@@ -835,7 +835,7 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     | _, _ =>
     let pe ← cPExpr p { n with cx } C M
     match JsMem.ofIndex? J (n.jmap j.index) (lowerTy cfg σ) with
-    | some jm => return (JsBlock.jump jm pe)
+    | some jm => return (JsBlock.jumpOrRaise jm pe)
     | none => throw "internal: a join point"
 
 /-- `val k := v; t`.  A local function gets one constant per version generated

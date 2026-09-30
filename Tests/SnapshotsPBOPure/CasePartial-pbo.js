@@ -13,5 +13,8 @@ export const test1 = (a) => {
   if (a === 2) {
     return 2;
   }
-  return a === 3 ? 3 : 0;
+  if (a === 3) {
+    return 3;
+  }
+  throw new Error("PANIC at test1 CasePartial:5:9: mypanic " + a);
 };

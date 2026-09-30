@@ -366,6 +366,10 @@ inductive JsBlock (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd 
       JsBlock S C M J k
   /-- `throw new Error(msg);` -/
   | throw {C M J : List JsTy} {k : JsEnd} (msg : String) : JsBlock S C M J k
+  /-- `throw new Error(msg);`, the message computed: a `panic!` (the extern `lean_panic_fn`)
+      whose value is the answer or the value passed to a join point (`JsBlock.retOrRaise`). -/
+  | raise {C M J : List JsTy} {k : JsEnd} (msg : JsExpr S C M (.terminal .string)) :
+      JsBlock S C M J k
   /-- `const x = e;` and the rest, which reads `x` as its innermost constant. -/
   | const {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String) (e : JsExpr S C M τ)
       (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
@@ -473,6 +477,46 @@ def JsUnionArms.default {C M J : List JsTy} {k : JsEnd} :
 
 instance {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
     Inhabited (JsUnionArms S C M J k cs) := ⟨JsUnionArms.default cs⟩
+
+/-! ## Panics -/
+
+/-- The message of a call of `lean_panic_fn` (`panicCore d msg`, the operation
+    `string__lean_panic_fn(d, msg)`, which throws `msg`). -/
+def JsExpr.panicMsg? {C M : List JsTy} {τ : JsTy} :
+    JsExpr S C M τ → Option (JsExpr S C M (.terminal .string))
+  | .imported (.string__lean_panic_fn _) (.cons _ (.cons m .nil)) => some m
+  | _ => none
+
+/-- Does the value of the expression, when it is answered, end in a panic on some path (a call
+    of `lean_panic_fn`, possibly in an arm of a conditional)? -/
+def JsExpr.endsInPanic {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .cond _ a b => a.endsInPanic || b.endsInPanic
+  | e => e.panicMsg?.isSome
+
+/-- `return e;`, where an answer that is a panic is thrown instead: `throw new Error(msg);` for
+    `return string__lean_panic_fn(d, msg);` (the call throws `msg` itself, and `d` is never
+    answered), and `if (c) { … } else { … }` for `return c ? a : b;` when an arm ends in a panic.
+    (A labelled block or `if` rather than a function call that throws: nothing on the stack.) -/
+def JsBlock.retOrRaise {C M J : List JsTy} {τ : JsTy} :
+    JsExpr S C M τ → JsBlock S C M J (.ret τ)
+  | .cond c a b =>
+    if a.endsInPanic || b.endsInPanic then .ite c (JsBlock.retOrRaise a) (JsBlock.retOrRaise b)
+    else .ret (.cond c a b)
+  | e => match e.panicMsg? with
+    | some m => .raise m
+    | none => .ret e
+
+/-- `x = e; break L;` (a jump to the join point `j`), where a value that is a panic is thrown
+    instead, as in `JsBlock.retOrRaise`. -/
+def JsBlock.jumpOrRaise {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (j : JsMem J τ) :
+    JsExpr S C M τ → JsBlock S C M J k
+  | .cond c a b =>
+    if a.endsInPanic || b.endsInPanic then
+      .ite c (JsBlock.jumpOrRaise j a) (JsBlock.jumpOrRaise j b)
+    else .jump j (.cond c a b)
+  | e => match e.panicMsg? with
+    | some m => .raise m
+    | none => .jump j e
 
 /-- A literal natural number (at a `number` or `BigInt` representation). -/
 def JsExpr.natLit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option Nat

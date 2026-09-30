@@ -90,7 +90,7 @@ private theorem nodup_misc (name : String) (σs : List JsTy) (τ : JsTy) :
     «cands_lean_array_mk», «cands_lean_array_pop», «cands_lean_array_push», «cands_lean_array_set»,
     «cands_lean_array_swap», «cands_lean_array_to_list», «cands_lean_dbg_trace_if_shared»,
     «cands_lean_mk_array», «cands_lean_mk_empty_array_with_capacity__Array_emptyWithCapacity»,
-    «cands_lean_mk_empty_array_with_capacity__Array_mkEmpty», «cands_lean_mk_thunk»,
+    «cands_lean_mk_empty_array_with_capacity__Array_mkEmpty», «cands_lean_mk_thunk», «cands_lean_panic_fn»,
     «cands_lean_thunk_get_own», «cands_lean_thunk_pure»]
   all_goals
     generalize layoutOf? (σs ++ [τ]) = x

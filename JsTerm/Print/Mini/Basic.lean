@@ -295,7 +295,7 @@ partial def JsBlock.earlyNext {C M J : List JsTy} {k : JsEnd} (tail : Bool) :
   | .forRange _ _ _ _ r | .forOf _ _ _ _ r | .funs _ _ r => r.earlyNext tail
   | .countdown _ _ _ _ _ r => r.earlyNext tail
   | .tick _ _ b r | .natCase _ _ _ b r => b.earlyNext false || r.earlyNext tail
-  | .ret _ | .jump _ _ | .throw _ => false
+  | .ret _ | .jump _ _ | .throw _ | .raise _ => false
 /-- `earlyNext` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.earlyNext {C M J : List JsTy} {k : JsEnd} {n : Nat} (tail : Bool) :
     JsEnumArms S C M J k n → Bool
@@ -322,7 +322,7 @@ partial def JsBlock.earlyJump {C M J : List JsTy} {k : JsEnd} (i : Nat) (tail : 
   | .forRange _ _ _ _ r | .forOf _ _ _ _ r | .funs _ _ r => r.earlyJump i tail
   | .countdown _ _ _ _ _ r => r.earlyJump i tail
   | .tick _ _ b r | .natCase _ _ _ b r => b.earlyJump i false || r.earlyJump i tail
-  | .ret _ | .next | .throw _ => false
+  | .ret _ | .next | .throw _ | .raise _ => false
 /-- `earlyJump` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.earlyJump {C M J : List JsTy} {k : JsEnd} {n : Nat} (i : Nat)
     (tail : Bool) : JsEnumArms S C M J k n → Bool

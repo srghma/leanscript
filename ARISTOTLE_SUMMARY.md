@@ -1,3 +1,47 @@
+# Summary of changes for run 554e1c5f-dd9a-434c-bcb4-42434e20e727
+`CasePartial` now compiles to JavaScript with the same shape as `legacy-backend/CasePartial.js`, and the panic arm now throws, which resolves your `TODO: make sure throws`.
+
+**Before:** `panic!` was unfolded to its logical value, the default `0`. The generated JS ended in `return a === 3 ? 3 : 0;`, the message was lost, and nothing was thrown.
+
+**Now** (`CasePartial-pbo.js`; `-faithful.js` is the same with BigInt literals):
+```js
+export const test1 = (a) => {
+  if (a === 1) { return 1; }
+  if (a === 2) { return 2; }
+  if (a === 3) { return 3; }
+  throw new Error("PANIC at test1 CasePartial:5:9: mypanic " + a);
+};
+```
+- **Comparisons:** I ran `scripts/count-comparisons.mjs` on eight inputs from −7 to 12. We make the same number of comparisons as PBO on each (1, 2 or 3).
+- **Message:** it is the exact text Lean prints on a panic, built with one `+`. PBO writes `"panic! mypanic " + v.toString()`.
+- **Runtime:** the module imports nothing from `runtime.js`. The throw is a plain statement, with no helper call and no extra stack frame.
+- **No labelled block needed:** there is no shared tail or recursion here.
+
+**Changes, by phase**
+1. **Lean → `Term`, and the `Term` optimizer**
+   - `panicCore` is now a catalogue extern, `lean_panic_fn`, taking the `Inhabited` default and the message. Its evaluator returns the default, which is what `panicCore` means in Lean's logic, so the existing proof that the optimizer preserves `eval` still covers it.
+   - A panic whose message is a constant is still just its default value, because `Term` can't represent an extern call with only constant arguments.
+   - The string-append merging in the optimizer (`StringAppend.lean`) now also handles `String.Internal.append`, which Lean uses to build the panic message. This is how the message ends up as one literal plus `a`.
+   - One assumption to be aware of: `String.Internal.append` is `opaque`, so its evaluator is now defined as `String.append`. Both run the same runtime function, but Lean can't prove the two are equal.
+   - The tool now names the module after the input file (`CasePartial`) instead of `LeanScriptInput`. That name appears in the message.
+2. **`Term` → `JsTerm`:** there is a new `JsBlock.raise msg` statement. When the value being returned or passed to a join point is a panic, including one arm of a `c ? a : b`, the conversion writes `throw new Error(msg)` instead (`JsBlock.retOrRaise`). The existing `JsTerm` passes all handle the new statement.
+3. **Runtime and operation tables:** I added `string__lean_panic_fn` to `runtime.js` for panics that aren't the returned value, and regenerated the tables with the scripts. The operation lookup for this kind of polymorphic extern was wrong, so I fixed it in `gen_js_ops.py`. That also affects `dbgTraceIfShared`.
+
+**Differential checks:** Lean prints a panic message straight to stderr and carries on with the default, so the tool can't see it happen. When a file uses `lean_panic_fn`, `leanscript --check` now runs itself a second time as a child process to record which sample calls panic, and with what message. Those calls are then expected to throw exactly that message. As a side effect, the check run no longer prints PANIC output.
+
+**Verification**
+- **Formal checks** (`Tests/TermTests/Optimize/CasePartialTest.lean`, standard axioms plus `native_decide` for the printer check; added to the Properties table):
+  - `test1_optimized_run`: for every `n`, the optimised `Term` computes Lean's `test1 n`.
+  - `eval_lean_panic_fn`: the extern means `panicCore`.
+  - These cover the `Term` phase only. The step to a JavaScript throw is covered by tests, not a proof.
+- **New test in `Tests/Main.lean`:** checks the throw statement and message, that the module has no runtime import, that each answer or thrown message matches Lean, and that we make no more comparisons than PBO. `lake exe tests` passes 83/83.
+- **All snapshots regenerated:** 14,844 node checks pass, 0 fail.
+  - Besides `CasePartial`, only `InlineReferenceOpIsTag` changed: the module name inside an error comment.
+  - The script still exits 1, only because of the existing "literal too big" errors.
+- **Builds:** `lake build tests TermTests TyTests JsSpec OpsSpec RuntimeSpec JsTerm leanscript` succeeds. As before, building the whole `LeanScript` library fails on `UsageAlgebra.lean`, which imports Mathlib; I didn't touch it.
+
+Everything is committed.
+
 # Summary of changes for run edc709df-3eca-43aa-b8ca-03ba15ad57d8
 I didn't change any code: `CaseNumber` already compiles to JavaScript that matches `legacy-backend/CaseNumber.js`. The previous session did that work and committed it. In this session I rebuilt from the current sources, regenerated the files and re-ran the tests to confirm it still holds.
 

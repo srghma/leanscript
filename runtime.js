@@ -2841,6 +2841,16 @@ export const string__lean_string_utf8_prev__String_prev = string__lean_string_ut
  *  @returns {α} `α` */
 export const string__lean_dbg_trace_if_shared = (msg, a) => a;
 
+/** `panicCore msg` (`panic!`): throws `msg` (Lean's own runtime prints it and goes on with
+ *  the default `d`, or aborts under `LEAN_ABORT_ON_PANIC`).
+ *  @template α the delayed type
+ *  @param {α} d `α`
+ *  @param {string} msg `string`
+ *  @returns {α} `α` */
+export const string__lean_panic_fn = (d, msg) => {
+  throw new Error(msg);
+};
+
 /** `String.next'`.
  *  @param {string} s `string`
  *  @param {number} p `uint53`

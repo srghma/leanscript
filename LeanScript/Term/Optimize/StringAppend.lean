@@ -10,9 +10,10 @@ set_option autoImplicit false
 /-!
 # String append chains
 
-`StrApp.normNeu` regroups a chain of string appends (`String.append`, the extern
-`lean_string_append__String_append`, and `String.push` of a literal character, which is the
-append of a one-character literal): the chain is read into its operands (`StrApp.flat`),
+`StrApp.normNeu` regroups a chain of string appends (`String.append`, the externs
+`lean_string_append__String_append` and `lean_string_append__String_Internal_append`, and
+`String.push` of a literal character, which is the append of a one-character literal): the
+chain is read into its operands (`StrApp.flat`),
 empty string literals are dropped and neighbouring string literals are merged into one
 (`StrApp.merge`), and the operands are appended again **from the left**,
 `((x₁ ++ x₂) ++ …) ++ xₙ` (`StrApp.buildL`).
@@ -78,6 +79,8 @@ def charLit? : {o : Lvl} → (e : PExpr Δ Φ Γ (.prim .char) o) →
 /-- The operands of a string append, when a pure expression is one. -/
 def view : {o : Lvl} → (e : PExpr Δ Φ Γ strTy o) → Option (Split e)
   | _, .neu (.extern (.stringDefsExtern .lean_string_append__String_append)
+      (.cons a (.cons b .nil)) _) => some ⟨_, _, a, b, fun _ _ => rfl⟩
+  | _, .neu (.extern (.stringBootstrapExtern .lean_string_append__String_Internal_append)
       (.cons a (.cons b .nil)) _) => some ⟨_, _, a, b, fun _ _ => rfl⟩
   | _, .neu (.extern (.stringBootstrapExtern .lean_string_push) (.cons a (.cons b .nil)) _) =>
       match charLit? b with

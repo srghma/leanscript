@@ -58,7 +58,7 @@ partial def JsParts.runtimeNames {C M : List JsTy} {A E : JsTy} (acc : Array Str
 /-- `runtimeNames` of a block. -/
 partial def JsBlock.runtimeNames {C M J : List JsTy} {k : JsEnd} (acc : Array String) :
     JsBlock S C M J k → Array String
-  | .ret e | .jump _ e => e.runtimeNames acc
+  | .ret e | .jump _ e | .raise e => e.runtimeNames acc
   | .next | .throw _ => acc
   | .const _ e rest | .letMut _ e rest | .assign _ e rest | .destructure e _ rest =>
     rest.runtimeNames (e.runtimeNames acc)

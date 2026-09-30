@@ -227,6 +227,7 @@ partial def JsBlock.foldAdds {C M J : List JsTy} {k : JsEnd} (env : AddEnv) :
   | .next => .next
   | .jump j e => .jump j (e.foldAdds env)
   | .throw m => .throw m
+  | .raise e => .raise (e.foldAdds env)
   | .const x e rest =>
     let e' := e.foldAdds env
     let env := if e.calls then env.dropMut else env

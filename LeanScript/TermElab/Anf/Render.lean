@@ -154,10 +154,18 @@ def dataOutSem (b j : Lean.Term) (s : Sem) : TermElabM Sem := do
       throwError "cannot take apart a value of unknown shape (a Lean term) while normalising"
     return .dataOut b j s
 
+/-- Is the extern `e` (`LeanInitPureExtern.lean_panic_fn _`) the one of `panicCore`? -/
+def isPanicEntry (e : Lean.Term) : Bool :=
+  let f := if e.raw.isIdent then e.raw else e.raw[0]
+  f.isIdent && f.getId.getString! == "lean_panic_fn"
+
 /-- A call of an extern: computed when every argument is closed (`PExpr.externLit`), else a
     neutral call. -/
 def externSem (e : Lean.Term) (fs : Array Sem) : TermElabM Sem := do
   if (Sem.lvAll fs.toList).isNone then
+    -- `panicCore d msg` on a closed message is its value `d` (the language has no call on
+    -- closed arguments; the JavaScript of an open one throws)
+    if isPanicEntry e && fs.size == 2 then return fs[0]!
     let args ← argsStx (← fs.toList.mapM (render · {} true))
     let stx ← `(LeanScript.PExpr.externLit $e $args)
     -- its value, as a literal, when it is found while normalising

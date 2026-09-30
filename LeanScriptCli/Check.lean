@@ -273,6 +273,54 @@ def evalWithTimeout (f : Unit → String) (ms : UInt32) : IO (Option String) := 
   | .ok v => return v
   | .error _ => return none
 
+/-! ## Panics
+
+Lean's `panic!` prints its message on the standard error of the process (from the runtime, not
+through `IO`) and goes on with the default value, while the JavaScript throws the message
+(`lean_panic_fn`).  So when the translation of a file calls `lean_panic_fn`, the tool computes
+the expected answers a second time in a child process (`--probe-panics`), which marks each
+evaluation on its standard error (`probeMark`); the lines `PANIC at …` printed between the
+marks of a call are the message of a panic of Lean in it (`panicsOf`), and the call is then
+expected to throw that message (`threw: PANIC at …`). -/
+
+/-- The mark printed on the standard error before the evaluation of a call (followed by the
+    call). -/
+def probeCase : String := "@@leanscript-probe-case@@ "
+
+/-- The mark printed on the standard error after the evaluation of a call. -/
+def probeEnd : String := "@@leanscript-probe-end@@"
+
+/-- The mark printed on the standard error before the checks of a preset (followed by it). -/
+def probePreset : String := "@@leanscript-probe-preset@@ "
+
+/-- Print a mark of `--probe-panics` on its own line of the standard error. -/
+def probeMark (m : String) : IO Unit := do
+  let e ← IO.getStderr
+  e.putStr s!"\n{m}\n"
+  e.flush
+
+/-- The panics of Lean, read off the standard error of a child process run with
+    `--probe-panics`: for each preset, each call during which Lean printed a line `PANIC at …`,
+    and that line (the first one). -/
+def panicsOf (stderr : String) : Std.HashMap String (Std.HashMap String String) := Id.run do
+  let mut out : Std.HashMap String (Std.HashMap String String) := {}
+  let mut preset := ""
+  let mut call : Option String := none
+  let mut msg : Option String := none
+  for l in stderr.splitOn "\n" do
+    if l.startsWith probePreset then
+      preset := (l.drop probePreset.length).toString
+    else if l.startsWith probeCase then
+      call := some (l.drop probeCase.length).toString
+      msg := none
+    else if l == probeEnd then
+      if let (some c, some m) := (call, msg) then
+        out := out.insert preset ((out.getD preset {}).insert c m)
+      call := none
+    else if call.isSome && msg.isNone && l.startsWith "PANIC at " then
+      msg := some l
+  return out
+
 /-- The JavaScript spelling of a call of a function exported with `arity` parameters: the
     first `arity` arguments in one call, the others one at a time (the exported function
     returns a curried function then).  A definition without parameters is exported as a
@@ -305,7 +353,8 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
     samples are tried from the smallest up, and the first call over budget ends the checks of
     the function (a larger sample would not be faster). -/
 unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
-    (timeoutMs : UInt32 := 2000) (versions : List String := []) (twice : Bool := false) :
+    (timeoutMs : UInt32 := 2000) (versions : List String := []) (twice : Bool := false)
+    (probe : Bool := false) (panics : Std.HashMap String String := {}) :
     MetaM (Option (List CheckCase)) := do
   let ci ← getConstInfo n
   let some (ps, res) ← forallTelescope ci.type (fun xs r => do
@@ -329,7 +378,15 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
         some <$> evalExpr (Unit → String) thunkTy thunk
       catch _ => pure none
     let some f := f? | continue
-    match ← evalWithTimeout f timeoutMs with
+    let label := jsCall jsName arity (args.map (·.js))
+    if probe then probeMark s!"{probeCase}{label}"
+    -- a call known to make Lean panic (`panic!`: it prints the message and goes on with the
+    -- default) is not evaluated again: the JavaScript throws the same message (`lean_panic_fn`)
+    let r ← match panics.get? label with
+      | some msg => pure (some s!"threw: {msg}")
+      | none => evalWithTimeout f timeoutMs
+    if probe then probeMark probeEnd
+    match r with
     | some e =>
       -- a 64-bit answer outside `±(2^53 - 1)` where the preset makes the type a number: the
       -- JavaScript throws by design ("integer overflow … use the bigint representation"),

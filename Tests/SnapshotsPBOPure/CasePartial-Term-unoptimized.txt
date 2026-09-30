@@ -11,5 +11,5 @@ val k1 [ω] : (Int → Int) := fun x2 [ω] : Int => (closed)
       if lean_int_dec_eq(x2, 3) then
         ret 3
       else
-        ret 0
+        ret lean_panic_fn(0, lean_string_append__String_Internal_append("PANIC at test1 CasePartial:5:9: ", lean_string_append__String_append("mypanic ", lean_int_repr(x2))))
 ret k1

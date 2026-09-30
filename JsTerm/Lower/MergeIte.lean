@@ -105,6 +105,7 @@ partial def JsBlock.mergeIte {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k
   | .next => .next
   | .jump j e => .jump j e.mergeIte
   | .throw m => .throw m
+  | .raise e => .raise e.mergeIte
   | .const x e rest => .const x e.mergeIte rest.mergeIte
   | .letMut x e rest => .letMut x e.mergeIte rest.mergeIte
   | .assign x e rest => .assign x e.mergeIte rest.mergeIte

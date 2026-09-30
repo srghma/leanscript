@@ -113,7 +113,7 @@ def JsParts.occsAt {C M : List JsTy} {A E : JsTy} (o : OccCtx) : JsParts S C M A
 
 /-- The occurrences of the variables of a block. -/
 def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock S C M J k → Array JsOcc
-  | .ret e | .jump _ e => e.occsAt o
+  | .ret e | .jump _ e | .raise e => e.occsAt o
   | .next | .throw _ => #[]
   | .const _ e rest => e.occsAt o ++ rest.occsAt (o.under 1 0)
   | .letMut _ e rest => e.occsAt o ++ rest.occsAt (o.under 0 1)
@@ -320,7 +320,7 @@ mutual
     it (`bars`); `fuel` bounds how many such constants are looked through. -/
 partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (reads : List Nat)
     (x : Nat) (bars : List Nat := []) (fuel : Nat := 3) : JsBlock S C M J k → Bool
-  | .ret a | .jump _ a => a.readFirst strict x bars
+  | .ret a | .jump _ a | .raise a => a.readFirst strict x bars
   | .const _ a r =>
     if a.mentions ⟨false, x⟩ then
       -- read by a constant that is itself moved to its use: it might then be read after a

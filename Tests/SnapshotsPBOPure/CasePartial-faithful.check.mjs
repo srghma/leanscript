@@ -42,13 +42,13 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1(-7n)", () => M.test1(-7n), "0", false);
-check("test1(-1n)", () => M.test1(-1n), "0", false);
-check("test1(0n)", () => M.test1(0n), "0", false);
+check("test1(-7n)", () => M.test1(-7n), "threw: PANIC at test1 CasePartial:5:9: mypanic -7", false);
+check("test1(-1n)", () => M.test1(-1n), "threw: PANIC at test1 CasePartial:5:9: mypanic -1", false);
+check("test1(0n)", () => M.test1(0n), "threw: PANIC at test1 CasePartial:5:9: mypanic 0", false);
 check("test1(1n)", () => M.test1(1n), "1", false);
 check("test1(2n)", () => M.test1(2n), "2", false);
 check("test1(3n)", () => M.test1(3n), "3", false);
-check("test1(12n)", () => M.test1(12n), "0", false);
+check("test1(12n)", () => M.test1(12n), "threw: PANIC at test1 CasePartial:5:9: mypanic 12", false);
 
 console.log(`CasePartial-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

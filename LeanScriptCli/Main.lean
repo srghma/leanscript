@@ -77,6 +77,9 @@ structure CliOptions where
   /-- Re-associate float chains after optimising (`Term.floatReassoc`), as the legacy backend
       does: **changes results** (IEEE arithmetic is not associative), so off by default. -/
   floatReassoc : Bool := false
+  /-- (Internal, `LeanScript.Cli.panicsOf`.)  Mark each evaluation of a check on the standard
+      error, for the parent process to see which calls make Lean panic. -/
+  probePanics : Bool := false
   inputs : List String := []
 
 /-- The presets every file is converted at, with the name of their outputs. -/
@@ -136,6 +139,7 @@ def parseArgs : List String → CliOptions → Except String CliOptions
     else if a == "--functions-only" then parseArgs rest { o with functionsOnly := true }
     else if a == "--skip-empty" then parseArgs rest { o with skipEmpty := true }
     else if a == "--float-reassoc" then parseArgs rest { o with floatReassoc := true }
+    else if a == "--probe-panics" then parseArgs rest { o with probePanics := true }
     else if a.startsWith "--" then
       match (a.drop 2).toString.splitOn "=" with
       | [k, v] =>
@@ -354,6 +358,24 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
       s!"-- {t.name} : {oneLine t.ty}\n{notes}{ct.term.pretty}\n")
   IO.FS.writeFile (outPath o file "-Term-unoptimized.txt") (termFile false)
   IO.FS.writeFile (outPath o file "-Term-optimized.txt") (termFile true)
+  -- the calls of the checks that make Lean panic, with its message (`LeanScript.Cli.panicsOf`),
+  -- found by a child process when the translations call `lean_panic_fn`
+  let panics : Std.HashMap String (Std.HashMap String String) ← do
+    let callsPanic := ((termFile true).splitOn "lean_panic_fn").length > 1
+    if !o.check || o.probePanics || !callsPanic then
+      pure {}
+    else
+      let tmp ← IO.FS.createTempDir
+      let args : Array String :=
+        #["--probe-panics", "--check", "--quiet", s!"--out-dir={tmp}",
+          s!"--optimize-rounds={o.rounds}",
+          s!"--nullary={match o.nullary with | .cells => "cells" | .smallInt => "int"}"] ++
+        (if o.only.isEmpty then #[] else #[s!"--only={",".intercalate o.only}"]) ++
+        (match o.runtime with | some r => #[s!"--runtime={r}"] | none => #[]) ++
+        (if o.floatReassoc then #["--float-reassoc"] else #[]) ++ #[file.toString]
+      let out ← IO.Process.output { cmd := (← IO.appPath).toString, args }
+      IO.FS.removeDirAll tmp
+      pure (panicsOf out.stderr)
   -- the JavaScript, at each preset
   let mut nExported := 0
   let mut nJsRefused := 0
@@ -402,10 +424,12 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtFile))
     if o.check then
       let jsFile := jsPath.fileName.getD "out.js"
+      if o.probePanics then probeMark s!"{probePreset}{preset}"
       let cases ← runTermElab el (do
         let mut acc : Array CheckCase := #[]
         for (n, jsName, arity, sfxs, twice) in exported do
-          match ← checksOf cfg n jsName arity (versions := sfxs) (twice := twice) with
+          match ← checksOf cfg n jsName arity (versions := sfxs) (twice := twice)
+              (probe := o.probePanics) (panics := panics.getD preset {}) with
           | some cs => acc := acc ++ cs.toArray
           | none => pure ()
         return acc)

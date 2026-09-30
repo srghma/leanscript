@@ -119,6 +119,7 @@ partial def JsBlock.sink {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k →
   | .next => .next
   | .jump j e => .jump j e.sink
   | .throw m => .throw m
+  | .raise e => .raise e.sink
   | .const x e rest => JsBlock.sinkConst x e.sink rest.sink
   | .letMut x e rest => .letMut x e.sink rest.sink
   | .assign x e rest => .assign x e.sink rest.sink

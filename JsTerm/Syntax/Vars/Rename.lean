@@ -89,6 +89,7 @@ def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
   | .next => pure .next
   | .jump j e => .jump j <$> e.renameM rc rm
   | .throw msg => pure (.throw msg)
+  | .raise e => .raise <$> e.renameM rc rm
   | .const x e rest => return .const x (← e.renameM rc rm) (← rest.renameM (JsRenM.lift rc) rm)
   | .letMut x e rest => return .letMut x (← e.renameM rc rm) (← rest.renameM rc (JsRenM.lift rm))
   | .assign x e rest => return .assign (← rm x) (← e.renameM rc rm) (← rest.renameM rc rm)

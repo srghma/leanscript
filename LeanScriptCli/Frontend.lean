@@ -75,8 +75,13 @@ structure Elaborated where
   /-- The imports of the header that could not be found. -/
   missing : Array Name
 
-/-- The name the main module of an elaborated file gets. -/
-def mainModuleName : Name := `LeanScriptInput
+/-- The name the main module of an elaborated file gets: the name of the file
+    (`CasePartial` for `Tests/CasePartial.lean`, which is what `panic!` writes in its message,
+    `PANIC at test1 CasePartial:5:9: …`), or `LeanScriptInput` when it has none. -/
+def mainModuleName (file : System.FilePath) : Name :=
+  match file.fileStem with
+  | some s => if s.isEmpty then `LeanScriptInput else Name.mkSimple s
+  | none => `LeanScriptInput
 
 /-- Elaborate a Lean file. -/
 def elabFile (file : System.FilePath) : IO Elaborated := do
@@ -91,7 +96,7 @@ def elabFile (file : System.FilePath) : IO Elaborated := do
     else missing := missing.push i.module
   unless kept.any (·.module == `Init) do kept := #[{ module := `Init }] ++ kept
   let (env, messages) ← processHeaderCore (header.raw.getPos?.getD 0) (kept ++ extraImports)
-    false {} messages inputCtx (trustLevel := 1024) (mainModule := mainModuleName)
+    false {} messages inputCtx (trustLevel := 1024) (mainModule := mainModuleName file)
   let cmdState := Command.mkState env messages {}
   let s ← IO.processCommands inputCtx parserState cmdState
   return { env := s.commandState.env, messages := s.commandState.messages, inputCtx, missing }

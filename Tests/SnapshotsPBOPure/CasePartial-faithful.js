@@ -13,5 +13,8 @@ export const test1 = (a) => {
   if (a === 2n) {
     return 2n;
   }
-  return a === 3n ? 3n : 0n;
+  if (a === 3n) {
+    return 3n;
+  }
+  throw new Error("PANIC at test1 CasePartial:5:9: mypanic " + a);
 };

@@ -72,6 +72,7 @@ partial def JsBlock.pretty {C M J : List JsTy} {k : JsEnd} (ind : String) :
   | .next => s!"{ind}next;\n"
   | .jump j e => s!"{ind}jump {j.index} {e.pretty ind};\n"
   | .throw msg => s!"{ind}throw new Error({msg.quote});\n"
+  | .raise e => s!"{ind}throw new Error({e.pretty ind});\n"
   | .const x e rest => s!"{ind}const {x} = {e.pretty ind};\n" ++ rest.pretty ind
   | .letMut x e rest => s!"{ind}let {x} = {e.pretty ind};\n" ++ rest.pretty ind
   | .assign x e rest => s!"{ind}m{x.index} = {e.pretty ind};\n" ++ rest.pretty ind

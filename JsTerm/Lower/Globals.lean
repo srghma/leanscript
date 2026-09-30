@@ -116,6 +116,7 @@ def JsBlock.substG {C M C' M' J : List JsTy} (rc : JsSubG C C') (rm : JsRenM Opt
   | .next => pure .next
   | .jump j e => .jump j <$> e.substG rc rm
   | .throw msg => pure (.throw msg)
+  | .raise e => .raise <$> e.substG rc rm
   | .const x e rest => return .const x (← e.substG rc rm) (← rest.substG rc.lift rm)
   | .letMut x e rest => return .letMut x (← e.substG rc rm) (← rest.substG rc (JsRenM.lift rm))
   | .assign x e rest => return .assign (← rm x) (← e.substG rc rm) (← rest.substG rc rm)
@@ -258,6 +259,7 @@ partial def JsBlock.linkFuns {C M J : List JsTy} {k : JsEnd}
   | .next => .next
   | .jump j e => .jump j (e.linkFuns tbl)
   | .throw m => .throw m
+  | .raise e => .raise (e.linkFuns tbl)
   | .const x e rest => .const x (e.linkFuns tbl) (rest.linkFuns tbl)
   | .letMut x e rest => .letMut x (e.linkFuns tbl) (rest.linkFuns tbl)
   | .assign x e rest => .assign x (e.linkFuns tbl) (rest.linkFuns tbl)

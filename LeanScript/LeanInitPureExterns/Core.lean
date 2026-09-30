@@ -70,7 +70,7 @@ inductive PreludeExtern : List MyTy → MyTy → Type where
   | lean_nat_dec_le__Nat_decLe : PreludeExtern [nat, nat] LeanPrimTy.bool -- Nat.decLe
   | lean_array_get : (αt : MyTy) → PreludeExtern [αt, (array αt), nat] αt -- Array.get!Internal
   | lean_nat_add : PreludeExtern [nat, nat] nat -- Nat.add
-  -- | lean_panic_fn_borrowed : (αt : MyTy) → String → PreludeExtern αt -- panicCore
+  | lean_panic_fn : (αt : MyTy) → PreludeExtern [αt, string] αt -- panicCore (the default of the `Inhabited` instance, and the message)
   | lean_uint16_to_nat__UInt16_toBitVec : PreludeExtern [uint16] (bitvec 16) -- UInt16.toBitVec
   | lean_uint16_of_nat_mk : PreludeExtern [(bitvec 16)] uint16 -- UInt16.ofBitVec
   | lean_uint16_dec_eq : PreludeExtern [uint16, uint16] LeanPrimTy.bool -- UInt16.decEq

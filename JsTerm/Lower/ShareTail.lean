@@ -101,6 +101,7 @@ partial def JsBlock.renJ {C M J J' : List JsTy} {k : JsEnd} (rj : JsRenM Id J J'
   | .next => .next
   | .jump j e => .jump (rj j) e
   | .throw m => .throw m
+  | .raise e => .raise e
   | .const x e rest => .const x e (rest.renJ rj)
   | .letMut x e rest => .letMut x e (rest.renJ rj)
   | .assign x e rest => .assign x e (rest.renJ rj)
@@ -253,7 +254,7 @@ partial def JsBlock.tailsBelow {R MR C M J : List JsTy} {k : JsEnd} (rc : JsRenM
   | .countdown _ _ _ _ _ rest => rest.tails (JsRenM.forget rc) rm false acc
   | .natCase _ _ _ z s => s.tails (JsRenM.forget rc) rm false (z.tails rc rm false acc)
   | .funs (τs := τs) _ _ rest => rest.tails (JsRenM.forgetAll τs rc) rm false acc
-  | .ret _ | .next | .jump .. | .throw _ => acc
+  | .ret _ | .next | .jump .. | .throw _ | .raise _ => acc
 /-- `tails` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.tails {R MR C M J : List JsTy} {k : JsEnd} {n : Nat}
     (rc : JsRenM Option C R) (rm : JsRenM Option M MR) (acc : Array (String × JsBlock S R MR J k)) :
@@ -328,6 +329,7 @@ partial def JsBlock.shareStep {R MR C M J J' : List JsTy} {k : JsEnd} (dump : Fa
   | .next => return .next
   | .jump j e => return .jump (rj j) e
   | .throw m => return .throw m
+  | .raise e => return .raise e
   | .const x e rest =>
     return .const x e (← rest.shareGo dump tgt rj { at_ with rc := JsRenM.forget at_.rc })
   | .letMut x e rest =>
@@ -445,6 +447,7 @@ partial def JsBlock.shareTails {C M J : List JsTy} {k : JsEnd} (cost : BlockCost
       | .next => .next
       | .jump j e => .jump j e
       | .throw m => .throw m
+      | .raise e => .raise e
       | .const x e rest => .const x e (rest.shareTails cost)
       | .letMut x e rest => .letMut x e (rest.shareTails cost)
       | .assign x e rest => .assign x e (rest.shareTails cost)

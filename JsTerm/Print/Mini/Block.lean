@@ -229,6 +229,7 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     | none =>
       return [.throw (.new (ident "Error") [.string s!"LeanScript: an unknown join point"])]
   | .throw msg => pure [.throw (.new (ident "Error") [.string msg])]
+  | .raise e => do return [.throw (.new (ident "Error") [← exprToMini sc e])]
   | .const hint e rest => do
     -- a constant read once, where its computation can be moved to (not in a loop or a closure,
     -- nothing in between that the move would reorder): its value written there

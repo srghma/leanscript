@@ -52,6 +52,7 @@ def externTableList : List (Name × Name) :=
    (`Nat.decLe, `lean_nat_dec_le__Nat_decLe),
    (`Array.get!Internal, `lean_array_get),
    (`Nat.add, `lean_nat_add),
+   (`panicCore, `lean_panic_fn),
    (`UInt16.toBitVec, `lean_uint16_to_nat__UInt16_toBitVec),
    (`UInt16.ofBitVec, `lean_uint16_of_nat_mk),
    (`UInt16.decEq, `lean_uint16_dec_eq),

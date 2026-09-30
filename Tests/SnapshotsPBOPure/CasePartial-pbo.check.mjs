@@ -42,13 +42,13 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1(-7)", () => M.test1(-7), "0", false);
-check("test1(-1)", () => M.test1(-1), "0", false);
-check("test1(0)", () => M.test1(0), "0", false);
+check("test1(-7)", () => M.test1(-7), "threw: PANIC at test1 CasePartial:5:9: mypanic -7", false);
+check("test1(-1)", () => M.test1(-1), "threw: PANIC at test1 CasePartial:5:9: mypanic -1", false);
+check("test1(0)", () => M.test1(0), "threw: PANIC at test1 CasePartial:5:9: mypanic 0", false);
 check("test1(1)", () => M.test1(1), "1", false);
 check("test1(2)", () => M.test1(2), "2", false);
 check("test1(3)", () => M.test1(3), "3", false);
-check("test1(12)", () => M.test1(12), "0", false);
+check("test1(12)", () => M.test1(12), "threw: PANIC at test1 CasePartial:5:9: mypanic 12", false);
 
 console.log(`CasePartial-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

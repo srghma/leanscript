@@ -34,6 +34,7 @@ partial def JsBlock.retToNext {C M J : List JsTy} {α : JsTy} (acc : JsMem M α)
   | .ret e => .assign acc e .next
   | .jump j e => .jump j e
   | .throw msg => .throw msg
+  | .raise e => .raise e
   | .const x e rest => .const x e (rest.retToNext acc)
   | .letMut x e rest => .letMut x e (rest.retToNext acc.succ)
   | .assign x e rest => .assign x e (rest.retToNext acc)
@@ -81,6 +82,7 @@ partial def JsBlock.retToJump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} :
   | .ret e => .jump (JsMem.last J) e
   | .jump j e => .jump (j.appendR [τ]) e
   | .throw msg => .throw msg
+  | .raise e => .raise e
   | .const x e rest => .const x e rest.retToJump
   | .letMut x e rest => .letMut x e rest.retToJump
   | .assign x e rest => .assign x e rest.retToJump
@@ -132,6 +134,7 @@ partial def JsBlock.tailToLoop {C M J : List JsTy} {τ : JsTy} (acc : Nat)
     | none => some (.jump (JsMem.last J) e)
   | .jump j e => some (.jump (j.appendR [τ]) e)
   | .throw msg => some (.throw msg)
+  | .raise e => some (.raise e)
   | .const x e rest =>
     let tail : Bool := match rest with
       | .ret (.cvar .zero) => true

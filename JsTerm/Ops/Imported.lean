@@ -36,6 +36,8 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bigint_nat__lean_array_get : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [E, A, (.terminal .bigint_nat)] E
   /-- Array.get!Internal -/
   | uint53__lean_array_get : {A E : JsTy} → (l : JsArrayLayout A E) → JsOpImported .pure .doesntThrow [E, A, (.terminal .uint53)] E
+  /-- panicCore (the default of the `Inhabited` instance, and the message) -/
+  | string__lean_panic_fn : (α : JsTy) → JsOpImported .pure .mayThrow [α, (.terminal .string)] α
   /-- Thunk.pure -/
   | thunk__lean_thunk_pure : (α : JsTy) → JsOpImported .pure .doesntThrow [α] (.thunk α)
   /-- Thunk.mk -/

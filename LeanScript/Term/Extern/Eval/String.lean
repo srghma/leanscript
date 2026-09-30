@@ -58,7 +58,11 @@ def StringBootstrapExtern.eval {ks : List Nat} (E : Ref ks → Type) : {σs : Li
   | _, _, .lean_string_append__String_Internal_append, (x1, x2) =>
     let x1 : String := x1
     let x2 : String := x2
-    (String.Internal.append x1 x2 : String)
+    -- `String.Internal.append` is `opaque` (the logic cannot unfold it); it is implemented by
+    -- `lean_string_append`, the implementation of `String.append` too: its value is the append
+    -- (so the append chains of `LeanScript.Term.Optimize.StringAppend` see through it:
+    -- `mkPanicMessageWithDecl`, written in `Prelude` before `++`, appends with it)
+    (String.append x1 x2 : String)
   | _, _, .lean_string_get_byte_fast__String_Internal_getUTF8Byte, (s, n) =>
     let s : String := s
     let n : Nat := n

@@ -549,6 +549,62 @@ def moreJsSpec : Spec := describe "JsTerm" do
             assertEq s!"{file}-{preset}: {f} {x} makes at most PBO's {m} comparisons" true
               (n.toNat! ≤ m.toNat!)
           | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
+  it "a panic! is thrown, with Lean's message, as a statement (needs node and leanscript)" do
+    -- `CasePartial`: `| n => panic! ("mypanic " ++ toString n)`.  `panicCore` is the extern
+    -- `lean_panic_fn`; the answer that is a panic becomes `throw new Error(msg)` in the
+    -- conversion to JavaScript (`JsBlock.retOrRaise`), with the message Lean prints
+    -- (`PANIC at test1 CasePartial:5:9: mypanic -7`, its literals merged into one); as
+    -- purescript-backend-optimizer writes it (`legacy-backend/CasePartial.js`): on every input
+    -- no more comparisons than PBO's.  The differential checks expect Lean's panics as throws of
+    -- the same message (`LeanScript.Cli.panicsOf`).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/casePartial"
+    IO.FS.createDirAll dir
+    let file := "CasePartial"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    assertEq s!"{file}: no panic printed while checking" 1 (out.stderr.splitOn "PANIC").length
+    let xs : List Int := [-7, -1, 0, 1, 2, 3, 4, 12]
+    let lean (x : Int) : String :=
+      match x with
+      | 1 => "1"
+      | 2 => "2"
+      | 3 => "3"
+      | n => s!"threw: PANIC at test1 CasePartial:5:9: mypanic {n}"
+    let count (js : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, "test1", "0", toString xs]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let pbo ← count "Tests/SnapshotsPBOPure/legacy-backend/CasePartial.js"
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      assertEq s!"{file}-{preset}: Lean's panics expected as throws" true
+        ((checks.splitOn "threw: PANIC at test1 CasePartial:5:9: mypanic -7").length > 1)
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: thrown as a statement, the message one concatenation" true
+        ((js.splitOn "throw new Error(\"PANIC at test1 CasePartial:5:9: mypanic \" + a);").length > 1)
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      let ours ← count s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: test1 on every input" xs.length ours.length
+      for (o, p) in ours.zip pbo do
+        match o, p with
+        | [x, r, n], [_, _, m] =>
+          assertEq s!"{file}-{preset}: test1 {x}" (lean x.toInt!) r
+          assertEq s!"{file}-{preset}: test1 {x} makes at most PBO's {m} comparisons" true
+            (n.toNat! ≤ m.toNat!)
+        | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

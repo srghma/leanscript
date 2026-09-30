@@ -584,7 +584,7 @@ POLY = {
     'lean_mk_empty_array_with_capacity__Array_mkEmpty': 'split',
     'lean_array_mk': 'split',
     'lean_thunk_pure': 'thunk', 'lean_mk_thunk': 'thunk', 'lean_thunk_get_own': 'thunk',
-    'lean_dbg_trace_if_shared': 'any',
+    'lean_dbg_trace_if_shared': 'any', 'lean_panic_fn': 'any',
 }
 
 # The array updates that return a copy of their array argument: an `_immutable` operation
@@ -718,7 +718,9 @@ def poly_ops(e, pre, arg_tys, res_ty, seen, exports, missing):
             return []
         seen.add(opname)
         args, res = [lean_of(t, 'α') for t in arg_tys], lean_of(res_ty, 'α')
-        return [mk_op(opname, name, e, args, res, ('import',), '(α : JsTy)', 'elem')]
+        # 'any': the result is the type itself (`dbgTraceIfShared msg a`, `panicCore d msg`)
+        elem = '(elemOf? (σs ++ [τ]))' if kind == 'thunk' else 'τ'
+        return [mk_op(opname, name, e, args, res, ('import',), '(α : JsTy)', 'elem', elemArg=elem)]
     # split: a generic and a typed op
     gname = op_name(pre, name)
     tname = 'typedArray__' + (gname if pre != 'array' else gname[len('array__'):])
@@ -956,7 +958,7 @@ def poly_cands(os_):
         raise ValueError(unknown)
     parts = []
     if by['elem']:
-        parts.append('[' + ', '.join(item(o, '(elemOf? (σs ++ [τ]))') for o in by['elem']) + ']')
+        parts.append('[' + ', '.join(item(o, o.get('elemArg', '(elemOf? (σs ++ [τ]))')) for o in by['elem']) + ']')
     if by['layout'] or by['generic'] or by['typed']:
         inner = []
         if by['layout']:
