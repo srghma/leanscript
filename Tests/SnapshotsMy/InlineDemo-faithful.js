@@ -22,8 +22,7 @@ export const bar = 3n;
  */
 export const useScale = (n) => {
   const x$1 = n * 2n;
-  const x$2 = (n + 1n) * 2n;
-  return x$1 + x$2;
+  return x$1 + (n + 1n) * 2n;
 };
 
 /**
@@ -40,6 +39,5 @@ export const triple = (a) => a * 3n;
  */
 export const useTriple = (n) => {
   const x$1 = n * 3n;
-  const x$2 = (n + 1n) * 3n;
-  return x$1 + x$2;
+  return x$1 + (n + 1n) * 3n;
 };

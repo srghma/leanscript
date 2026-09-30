@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -59,6 +65,19 @@ check("test3(2, 13)", () => M.test3(2, 13), "21", false);
 check("test3(5, 5)", () => M.test3(5, 5), "1", false);
 check("test3(13, 2)", () => M.test3(13, 2), "23", false);
 check("test3(13, 13)", () => M.test3(13, 13), "1", false);
+check("test4(0, 0)", () => M.test4(0, 0), "{0, 0}", false);
+check("test4(0, 2)", () => M.test4(0, 2), "{0, 2}", false);
+check("test4(1, 1)", () => M.test4(1, 1), "{1, 1}", false);
+check("test4(2, 0)", () => M.test4(2, 0), "{0, 2}", false);
+check("test4(0, 13)", () => M.test4(0, 13), "{0, 13}", false);
+check("test4(1, 5)", () => M.test4(1, 5), "{1, 5}", false);
+check("test4(2, 2)", () => M.test4(2, 2), "{2, 2}", false);
+check("test4(5, 1)", () => M.test4(5, 1), "{1, 5}", false);
+check("test4(13, 0)", () => M.test4(13, 0), "{0, 13}", false);
+check("test4(2, 13)", () => M.test4(2, 13), "{2, 13}", false);
+check("test4(5, 5)", () => M.test4(5, 5), "{5, 5}", false);
+check("test4(13, 2)", () => M.test4(13, 2), "{2, 13}", false);
+check("test4(13, 13)", () => M.test4(13, 13), "{13, 13}", false);
 check("test5(0, 0)", () => M.test5(0, 0), "0", false);
 check("test5(0, 2)", () => M.test5(0, 2), "2", false);
 check("test5(1, 1)", () => M.test5(1, 1), "2", false);
@@ -72,6 +91,11 @@ check("test5(2, 13)", () => M.test5(2, 13), "15", false);
 check("test5(5, 5)", () => M.test5(5, 5), "10", false);
 check("test5(13, 2)", () => M.test5(13, 2), "15", false);
 check("test5(13, 13)", () => M.test5(13, 13), "26", false);
+check("test6(0)", () => M.test6(0), "0", false);
+check("test6(1)", () => M.test6(1), "1", false);
+check("test6(2)", () => M.test6(2), "4", false);
+check("test6(5)", () => M.test6(5), "13", false);
+check("test6(13)", () => M.test6(13), "73", false);
 
 console.log(`ScalarRepl-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

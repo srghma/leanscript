@@ -9,9 +9,8 @@
  * @returns {int(bigint)}
  */
 export const localTest = (f) => {
-  const x$1 = { _1: 99n, _2: 0n, _3: 11n };
-  const x$2 = f(x$1);
-  return x$2 === -2147483648n ? 0n : x$2;
+  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
+  return x$1 === -2147483648n ? 0n : x$1;
 };
 
 /**
@@ -50,9 +49,8 @@ export const extern = { _1: 99n, _2: 0n, _3: 11n };
  * @returns {int(bigint)}
  */
 export const externTest = (f) => {
-  const x$1 = { _1: 99n, _2: 0n, _3: 11n };
-  const x$2 = f(x$1);
-  return x$2 === -2147483648n ? -2147483648n : x$2;
+  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
+  return x$1 === -2147483648n ? -2147483648n : x$1;
 };
 
 /**

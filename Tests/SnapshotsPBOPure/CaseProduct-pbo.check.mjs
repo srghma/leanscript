@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,9 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: 0, _2: 1, _3: 2 })", () => M.test1({ _1: 0, _2: 1, _3: 2 }), "catch", false);
+check("test1({ _1: 1, _2: 2, _3: 5 })", () => M.test1({ _1: 1, _2: 2, _3: 5 }), "catch", false);
+check("test1({ _1: 2, _2: 5, _3: 13 })", () => M.test1({ _1: 2, _2: 5, _3: 13 }), "catch", false);
 
 console.log(`CaseProduct-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

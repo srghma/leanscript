@@ -187,6 +187,7 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
       |>.map (kept[·]!)
     let dataKept := (List.range kept.size).toArray.filter (!proofs[·]!) |>.map (kept[·]!)
     let L : Loc := { slots := slotted.map (some ·.fvarId!), fns := if recursive then group else #[],
+                     fn := f,
                      params, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Anf.Src × Lean.Term) := do
       for x in kept do

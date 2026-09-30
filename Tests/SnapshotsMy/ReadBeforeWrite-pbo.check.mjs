@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -51,6 +57,11 @@ check("test3(1)", () => M.test3(1), "4", false);
 check("test3(2)", () => M.test3(2), "5", false);
 check("test3(5)", () => M.test3(5), "8", false);
 check("test3(13)", () => M.test3(13), "16", false);
+check("test4(0)", () => M.test4(0), "{#[99, 7, 7], 7}", false);
+check("test4(1)", () => M.test4(1), "{#[99, 8, 8], 8}", false);
+check("test4(2)", () => M.test4(2), "{#[99, 9, 9], 9}", false);
+check("test4(5)", () => M.test4(5), "{#[99, 12, 12], 12}", false);
+check("test4(13)", () => M.test4(13), "{#[99, 20, 20], 20}", false);
 check("test5(0)", () => M.test5(0), "0", false);
 check("test5(1)", () => M.test5(1), "4", false);
 check("test5(2)", () => M.test5(2), "8", false);

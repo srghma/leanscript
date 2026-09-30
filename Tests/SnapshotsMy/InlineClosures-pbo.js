@@ -15,21 +15,18 @@ import {
  * @returns {uint53(number)}
  */
 export const addAfter = (fuel, a, b) => {
-  const k$3 = (x$1, x$2) => uint53__lean_nat_add(x$1, x$2);
-  let acc$4 = k$3;
-  for (let i$5 = 0; i$5 < fuel; i$5++) {
-    const a$6 = acc$4;
-    const k$12 = (x$7, x$8) => {
-      const x$9 = uint53__lean_nat_add(x$7, 2);
-      const x$10 = uint53__lean_nat_add(x$8, 3);
-      const x$11 = a$6(x$9, x$10);
-      return x$11;
-    };
-    acc$4 = k$12;
+  let p$1 = a;
+  let p$2 = b;
+  let j$3 = fuel;
+  while (true) {
+    if (j$3 === 0) {
+      return uint53__lean_nat_add(p$1, p$2);
+    }
+    j$3--;
+    const x$4 = uint53__lean_nat_add(p$1, 2);
+    p$1 = x$4;
+    p$2 = uint53__lean_nat_add(p$2, 3);
   }
-  const x$13 = acc$4;
-  const x$14 = x$13(a, b);
-  return x$14;
 };
 
 /**
@@ -39,13 +36,10 @@ export const addAfter = (fuel, a, b) => {
  */
 export const sumShifted = (k) => {
   const k$2 = (x$1) => uint53__lean_nat_mul(x$1, k);
-  const x$3 = 1;
-  const x$4 = k$2(x$3);
-  const x$5 = 2;
-  const x$6 = k$2(x$5);
-  const x$7 = 3;
-  const x$8 = k$2(x$7);
-  return uint53__lean_nat_add(uint53__lean_nat_add(x$4, x$6), x$8);
+  const x$3 = k$2(1);
+  const x$4 = k$2(2);
+  const x$5 = k$2(3);
+  return uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$4), x$5);
 };
 
 /**
@@ -54,21 +48,15 @@ export const sumShifted = (k) => {
  * @returns {Array<uint53(number)>}
  */
 export const downFrom = (n) => {
-  const k$2 = (x$1) => x$1;
-  let acc$3 = k$2;
-  for (let i$4 = 0; i$4 < n; i$4++) {
-    const a$5 = acc$3;
-    const k_mut$9 = (x$6) => {
-      const x$7 = array__lean_array_push_mutable(x$6, i$4);
-      const x$8 = a$5(x$7);
-      return x$8;
-    };
-    acc$3 = k_mut$9;
+  let p$1 = [];
+  let j$2 = n;
+  while (true) {
+    if (j$2 === 0) {
+      return p$1;
+    }
+    j$2--;
+    p$1 = array__lean_array_push_mutable(p$1, j$2);
   }
-  const x$10 = acc$3;
-  const x$11 = [];
-  const x$12 = x$10(x$11);
-  return x$12;
 };
 
 /**
@@ -82,9 +70,7 @@ export const ordered = (a, b) => {
     const { _1: f$2, _2: f$3 } = x$1;
     return f$2 <= f$3 ? x$1 : { _1: f$3, _2: f$2 };
   };
-  const x$5 = { _1: a, _2: b };
-  const x$6 = k$4(x$5);
-  return x$6;
+  return k$4({ _1: a, _2: b });
 };
 
 /**

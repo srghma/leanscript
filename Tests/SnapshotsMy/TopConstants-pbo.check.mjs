@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -40,6 +46,7 @@ check("maxMinusOne", () => M.maxMinusOne, "2147483646", false);
 check("minPlusOne", () => M.minPlusOne, "-2147483647", false);
 check("byteMax", () => M.byteMax, "255", false);
 check("wrapped", () => M.wrapped, "0", false);
+check("pair", () => M.pair, "{3, three}", false);
 check("small", () => M.small, "#[1, 2, 3]", false);
 check("someList", () => M.someList, "#[a, b]", false);
 check("sumTo(0)", () => M.sumTo(0), "0", false);

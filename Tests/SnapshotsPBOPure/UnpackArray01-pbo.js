@@ -13,7 +13,5 @@ export const test = (fn1, fn2) => {
   const x$1 = fn2();
   const k$2 = ["foo", "bar", "baz", x$1];
   const x$3 = uint53__lean_array_get("", k$2, 0);
-  const x$4 = uint53__lean_array_get("", k$2, 2);
-  const x$5 = fn1(x$3, x$4);
-  return x$5;
+  return fn1(x$3, uint53__lean_array_get("", k$2, 2));
 };

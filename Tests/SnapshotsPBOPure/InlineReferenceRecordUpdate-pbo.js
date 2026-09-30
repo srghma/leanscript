@@ -6,18 +6,14 @@
  * @param {() => { _1: int53(number), _2: int53(number), _3: int53(number) }} fn
  * @returns {int53(number)}
  */
-export const test1 = (fn) => {
-  const x$1 = fn();
-  return x$1._3;
-};
+export const test1 = (fn) => fn()._3;
 
 /**
  * `fn_prime`
  * @type {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const fn_prime = (() => {
-  const k$2 = () => ({ _1: 1, _2: 2, _3: 3 });
-  const f$1 = k$2;
+  const f$1 = () => ({ _1: 1, _2: 2, _3: 3 });
   return f$1();
 })();
 

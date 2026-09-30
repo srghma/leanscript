@@ -14,10 +14,8 @@ import {
  * @returns {Array<uint53(number)>}
  */
 export const test1 = (a) => {
-  const k$2 = (x$1) => uint53__lean_nat_mul(x$1, 2);
-  const x$3 = array__lean_array_map(k$2, a);
-  const k$5 = (x$4) => 4 < x$4;
-  return uint53__lean_array_filter(k$5, x$3, 0, x$3.length);
+  const x$2 = array__lean_array_map((x$1) => uint53__lean_nat_mul(x$1, 2), a);
+  return uint53__lean_array_filter((x$3) => 4 < x$3, x$2, 0, x$2.length);
 };
 
 /**
@@ -38,10 +36,11 @@ export const test2 = (a, f, g) => {
  * @returns {{ _1: Array<uint53(number)>, _2: Array<uint53(number)> }}
  */
 export const test3 = (a) => {
-  const k$2 = (x$1) => uint53__lean_nat_mul(x$1, 2);
-  const x$3 = array__lean_array_map(k$2, a);
-  const k$5 = (x$4) => 4 < x$4;
-  return { _1: x$3, _2: uint53__lean_array_filter(k$5, x$3, 0, x$3.length) };
+  const x$2 = array__lean_array_map((x$1) => uint53__lean_nat_mul(x$1, 2), a);
+  return {
+    _1: x$2,
+    _2: uint53__lean_array_filter((x$3) => 4 < x$3, x$2, 0, x$2.length),
+  };
 };
 
 /**
@@ -49,17 +48,13 @@ export const test3 = (a) => {
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const test4 = (a) => {
-  const k$2 = (x$1) => uint53__lean_nat_add(x$1, 1);
-  return array__lean_array_map(k$2, a);
-};
+export const test4 = (a) =>
+  array__lean_array_map((x$1) => uint53__lean_nat_add(x$1, 1), a);
 
 /**
  * `test5`
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const test5 = (a) => {
-  const k$2 = (x$1) => 4 < x$1;
-  return uint53__lean_array_filter(k$2, a, 0, a.length);
-};
+export const test5 = (a) =>
+  uint53__lean_array_filter((x$1) => 4 < x$1, a, 0, a.length);

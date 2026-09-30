@@ -396,6 +396,15 @@ inductive JsBlock (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd 
   | forOf {C M J : List JsTy} {A E : JsTy} {k : JsEnd} (hint : String) (l : JsArrayLayout A E)
       (xs : JsExpr S C M A) (body : JsBlock S (E :: C) M [] .loop) (rest : JsBlock S C M J k) :
       JsBlock S C M J k
+  /-- A counting-down loop with an exit: `let j = n; L: while (true) { if (j === 0) { base }
+      j--; step }` and the rest.  `base` and `step` read and assign the counter `j` as their
+      innermost mutable variable (in `step`, already decremented); an iteration ends by going on
+      (`next`, `continue;`) or by jumping to the join point `0`, which ends the loop and passes a
+      value that `rest` reads as its innermost constant.  (A tail-recursive fold,
+      `JsTerm.Lower.FromTerm`: the loop runs at most `n + 1` times.) -/
+  | countdown {C M J : List JsTy} {N τ : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
+      (n : JsExpr S C M N) (base step : JsBlock S C (N :: M) [τ] .loop)
+      (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
   /-- Mutually recursive local functions: `const f₀ = e₀; const f₁ = e₁; …` and the rest.  Every
       definition `eᵢ` (an arrow function, so that it reads the others only when it is called)
       and the rest read all the `fᵢ` as constants (the last one innermost). -/

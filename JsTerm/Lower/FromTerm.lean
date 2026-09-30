@@ -541,14 +541,41 @@ partial def cTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
     | some (m, _) => return (JsBlock.ret (← cPExprFn p m { n with cx } C M))
     | none => return (JsBlock.ret (← cPExpr p { n with cx } C M))
   | Term.letV uk v t => cLetV uk v t n C M J
-  | .letE _ c t =>
-    let (cx, env') := n.own.stmt (fun w => Own.Comp.occ w c)
-      (fun w => (Own.Term.occ (w.upU 1) t).n > 0)
-    let allow := Own.fnAllow cx env' c t
-    let fr := (Own.Comp.fnResult cx c allow).or (Own.papInfo cx c (Own.Term.occ (.u 0) t)).1
-    let own := env'.pushUF (Own.Comp.owned cx c allow) fr
-    cComp c { n with cx, allowFn := allow } C M J fun x C' M' =>
-      cTerm t { n with u := x :: n.u, own } C' M' J
+  | .letE uu c t =>
+    let normal (_ : Unit) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
+      let (cx, env') := n.own.stmt (fun w => Own.Comp.occ w c)
+        (fun w => (Own.Term.occ (w.upU 1) t).n > 0)
+      let allow := Own.fnAllow cx env' c t
+      let fr := (Own.Comp.fnResult cx c allow).or (Own.papInfo cx c (Own.Term.occ (.u 0) t)).1
+      let own := env'.pushUF (Own.Comp.owned cx c allow) fr
+      cComp c { n with cx, allowFn := allow } C M J fun x C' M' =>
+        cTerm t { n with u := x :: n.u, own } C' M' J
+    -- a fold answering a function, applied at once: a loop when its step calls the answer at
+    -- the predecessor only in tail position (`cTailLoop`); the initial function is called in
+    -- the base case
+    match c, t with
+    | Comp.nat_rec (τ := ρ) cnt z s _, t =>
+      let viaLoop : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) := do
+        let .fn ds _ := lowerTy cfg ρ | throw "tail loop: the answer is not a function"
+        let (cx, _) := n.own.stmt (fun w => Own.Comp.occ w c)
+          (fun w => (Own.Term.occ (w.upU 1) t).n > 0)
+        -- the variables of the loop are owned as the parameters of an owning closure would be
+        let mode := Own.natRecAcc cx z s n.allowFn
+        let base (C' M' : List JsTy) (ps : List Ref) (r : JsTy) :
+            ConvM (JsBlock S C' M' [] (.ret r)) := do
+          let zE ← match mode with
+            | .ownFn m _ => cPExprFn z m { n with cx } C' M'
+            | _ => cPExpr z { n with cx } C' M'
+          match lowerTy cfg ρ with
+          | .fn ds' c' =>
+            let zF ← castE zE (.fn ds' c')
+            let call : JsExpr S C' M' c' := .app zF (← castArgs (← refArgs (ps.zip ds')) ds')
+            castRet (.ret call) r
+          | _ => throw "tail loop: the answer is not a function"
+        if ds.isEmpty then throw "tail loop: no parameter"
+        cTailLoop cnt s base mode uu t { n with cx } C M J
+      tryCatch viaLoop fun _ => normal ()
+    | _, _ => normal ()
   | Term.record_casesOn (t := t₀) (fs := fs) us e t => do
     let m := (t₀ :: fs.toList).length
     let (cx, env') := n.own.stmt (fun w => Own.Neu.occ w e)
@@ -574,6 +601,27 @@ partial def cLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : 
   let ce := n.own.stmt (fun w => Own.Val.occ w v) (fun w => (Own.Term.occ (w.upK 1) t).n > 0)
   let cx := ce.1
   let env' := ce.2
+  -- `val k := fun x => …; let f := nat_rec n k s; f a …`, `k` used only there: the tail loop of
+  -- the fold (`cTailLoop`), with the body of `k` in its base case
+  let viaLoop? : Option (ConvM (JsBlock S C M J (.ret (lowerTy cfg τ)))) :=
+    match v, t with
+    | Val.lam b, tt@(Term.letE uu c@(Comp.nat_rec cnt (.kvar k0) s _) t') =>
+      if k0.index == 0 && uk == .one then
+        -- the variables of the loop are owned as the parameters of an owning closure would be
+        let plan := Own.lamPlan uk cx env' b tt
+        let (cx', _) := (env'.pushKF true (some plan.info)).stmt (fun w => Own.Comp.occ w c)
+          (fun w => (Own.Term.occ (w.upU 1) t').n > 0)
+        let mode := Own.natRecAcc cx' (.kvar k0) s n.allowFn
+        let fl := match mode with
+          | .ownFn m _ => m
+          | _ => []
+        some (cTailLoop cnt s
+          (fun C' M' ps r => cApplyBody b { n with cx, own := n.own.none } C' M' ps
+            (ps.zipIdx.map fun (_, i) => fl.getD i false) r)
+          mode uu t' { n with k := .none :: n.k, own := env'.pushK false, cx := cx' } C M J)
+      else none
+    | _, _ => none
+  let general (_ : Unit) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) :=
   match v, t with
   | Val.lam (σ := σ₁) (τ := τ₁) b, t =>
     let plan := Own.lamPlan uk cx env' b t
@@ -597,6 +645,107 @@ partial def cLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : 
     return (JsBlock.const "k" ve
       (← cTerm t { n with k := .c C.length :: n.k, own := env'.pushK (Own.Val.owned cx v) }
         (lowerTy cfg σ :: C) M J))
+  match viaLoop? with
+  | some m => tryCatch m fun _ => general ()
+  | none => general ()
+
+/-- The applications `let x₁ := x₀ a₁; let x₂ := x₁ a₂; …` of the answer `x₀` of a fold (the
+    unknown `0` of `t`, `bound - 1` applications already read, whose arguments are `args`),
+    `left` more of them, each result used only by the next application: `k` receives the
+    statement after the last one, the number of unknowns the applications bind, and the
+    arguments (converted where the fold is, `C` and `M`: the applications are not written). -/
+partial def cTailChain {d : Nat} {Φ : KCtx ks} {Γ' : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    {X : Type} (t : Term Δ d Φ Γ' τ js o) (left bound : Nat) (n : Names) (C M : List JsTy)
+    (mask : List Bool) (args : List ((σ : JsTy) × JsExpr S C M σ))
+    (k : {Γ'' : UCtx ks} → {o' : Lvl} → Term Δ d Φ Γ'' τ js o' → Nat →
+      List ((σ : JsTy) × JsExpr S C M σ) → ConvM X) : ConvM X :=
+  match t with
+  | .letE u (Comp.app (σ := σ) (.neu (.var x)) a _) t' => do
+    if x.index != 0 then throw "tail loop: not an application of the fold"
+    if left > 1 && u != .one then throw "tail loop: a partial application used more than once"
+    -- the argument must not read the answers of the applications (they are not written)
+    if (List.range bound).any fun i => (Own.PExpr.occ (.u i) a).n > 0 then
+      throw "tail loop: an argument reads the fold"
+    let own := n.own.pushU (List.replicate bound false)
+    let (cx, _) := own.stmt (fun w => Own.PExpr.occ w a)
+      (fun w => (Own.Term.occ (w.upU 1) t').n > 0)
+    let na : Names := { n with u := List.replicate bound .none ++ n.u, own, cx }
+    -- an argument for a variable of the loop that is owned: copied unless owned
+    let ae ← if mask.getD (bound - 1) false then cPExprOwned a na C M else cPExpr a na C M
+    let args := args ++ [⟨lowerTy cfg σ, ae⟩]
+    if left ≤ 1 then k t' (bound + 1) args
+    else cTailChain t' (left - 1) (bound + 1) n C M mask args k
+  | _ => throw "tail loop: the fold is not applied to all its parameters"
+
+/-- `let f := nat_rec cnt z s; f a₁ … aₙ; rest` (`t` the statement after the fold), when the
+    step `s` computes the function at `i + 1` from the function `acc` at `i` calling `acc` only
+    in tail position (`acc b₁ … bₙ` answered as it is: `f` is tail recursive): the loop
+    `let p₁ = a₁; …; let j = cnt; while (true) { if (j === 0) { base } j--; step }`, whose
+    step is the body of the function `s` answers on `p₁ … pₙ` with each tail call `acc b₁ … bₙ`
+    written `p₁ = b₁; …; continue;` (`JsBlock.tailToLoop`), and whose base case is `base` on
+    `p₁ … pₙ` (the initial function called, or its body).  The function at `j` applied to
+    `p₁ … pₙ` is the answer at every iteration, so the loop computes `f a₁ … aₙ` without a
+    closure per step and without a call per step (a tail-recursive Lean function on a `Nat`
+    runs in constant stack).  An error when the shape is not this one (a call of `acc` that is
+    not a tail call, a closure reading a variable of the loop, …): the caller then converts the
+    fold as it is. -/
+partial def cTailLoop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ρ τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} {u₁ u₂ : Usage01ω} {on os : Lvl}
+    (cnt : PExpr Δ Φ Γ .nat on) (s : Body Δ d Φ Γ [⟨ρ, u₁, d + 1⟩, ⟨.nat, u₂, d + 1⟩] ρ os)
+    (base : (C' M' : List JsTy) → List Ref → (r : JsTy) → ConvM (JsBlock S C' M' [] (.ret r)))
+    (mode : Own.AccMode) (u : Usage1ω) (t : Term Δ d Φ (⟨ρ, u, d⟩ :: Γ) τ js o)
+    (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) := do
+  unless u == .one do throw "tail loop: the fold is used more than once"
+  let F := lowerTy cfg ρ
+  let .fn ds R := F | throw "tail loop: the answer is not a function"
+  let N := lowerTy cfg (Ty.nat : Ty ks)
+  let some nt := JsNatTy.of? N | throw "internal: the representation of a Nat"
+  -- the parameters an owning closure would own (`Own.AccMode.ownFn`): owned variables of the
+  -- loop, whose initial values are copied unless owned; the tail calls of the step hand owned
+  -- values over (copied by the call of the owning closure `acc` otherwise)
+  let mask := match mode with
+    | .ownFn m _ => m
+    | _ => []
+  let accMod := accEnv mode 0 (Own.accFnId d n.cx.env) ρ
+  cTailChain t ds.length 1 n C M mask [] fun tRest bound args => do
+    -- the initial values of the variables of the loop
+    let some argsJs := argsOfList? args ds | throw "tail loop: the types of the arguments"
+    let M1 := pushAll ds M
+    let lvls := (List.range ds.length).map (M.length + ·)
+    let pRefs := lvls.map Ref.m
+    -- the counter, already decremented in the step, is the predecessor the step reads
+    let iRef := if u₂ == .zero then Ref.none else Ref.m M1.length
+    let accRef := Ref.c C.length
+    let fl := pRefs.zipIdx.map fun (_, i) => mask.getD i false
+    let stepB : JsBlock S (F :: C) (N :: M1) [] (.ret R) ← match os, s with
+      | _, .closed ts =>
+        let own := accMod (n.own.body true [mode.owns, false])
+        cApplyTerm ts { n with u := [accRef, iRef], own }
+          (F :: C) (N :: M1) pRefs fl R
+      | _, .opened ts _ =>
+        let own := accMod (n.own.body false [mode.owns, false])
+        cApplyTerm ts { n with u := [accRef, iRef] ++ n.u, own }
+          (F :: C) (N :: M1) pRefs fl R
+    let emit : {C M J : List JsTy} → (σs : List JsTy) → JsArgs S C M σs →
+        Option (JsBlock S C M J .loop) := fun σs as => loopNext ds lvls σs as
+    let some loopB := stepB.tailToLoop 0 emit | throw "tail loop: the step"
+    let dropAcc : JsRenM Option (F :: C) C := fun x => match x with
+      | .zero => none
+      | .succ y => some y
+    let some stepL := loopB.renameM dropAcc (fun x => some x)
+      | throw "tail loop: a call of the fold that is not a tail call"
+    let baseB ← base C (N :: M1) pRefs R
+    let baseL : JsBlock S C (N :: M1) [R] .loop := baseB.retToJump
+    -- a closure reading a variable of the loop would see its later values
+    let captured (b : JsBlock S C (N :: M1) [R] .loop) : Bool :=
+      b.occs.any fun oc => oc.isMut && oc.inClosure && oc.idx ≤ ds.length
+    if captured baseL || captured stepL then
+      throw "tail loop: a closure reads a variable of the loop"
+    let cntE ← cPExpr cnt n C M1
+    let nR : Names := { n with u := .c C.length :: (List.replicate (bound - 1) .none ++ n.u),
+                               own := n.own.pushU (List.replicate bound false) }
+    let restB ← cTerm tRest nR (R :: C) M1 J
+    return letMutsThen "p" argsJs (.countdown "j" nt cntE baseL stepL restB)
 
 /-- A branch in tail position. -/
 partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat}

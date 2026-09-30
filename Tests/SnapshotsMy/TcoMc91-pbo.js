@@ -23,18 +23,13 @@ export const mc91 = (n) => (100 < n ? uint53__lean_nat_sub(n, 10) : 91);
  * @returns {uint53(number)}
  */
 export const iter = (f, a, a1) => {
-  const k$2 = (x$1) => x$1;
-  let acc$3 = k$2;
-  for (let i$4 = 0; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$9 = (x$6) => {
-      const x$7 = f(x$6);
-      const x$8 = a$5(x$7);
-      return x$8;
-    };
-    acc$3 = k$9;
+  let p$1 = a1;
+  let j$2 = a;
+  while (true) {
+    if (j$2 === 0) {
+      return p$1;
+    }
+    j$2--;
+    p$1 = f(p$1);
   }
-  const x$10 = acc$3;
-  const x$11 = x$10(a1);
-  return x$11;
 };

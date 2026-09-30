@@ -32,6 +32,11 @@ inductive SType where
   | sint (bits : Nat)
   | arr (t : SType)
   | list (t : SType)
+  /-- A value of a structure-like type (one constructor, no index, not recursive) of two or
+      more fields, all of sample types other than `Float` (`Int × Int`, a `Box2 Int`): a
+      JavaScript record `{ _1: …, _2: … }`.  `ind` is the type, `ctor` its constructor applied
+      to the parameters. -/
+  | record (ind : Name) (ctor : Expr) (fields : List SType)
   deriving Inhabited, BEq
 
 /-- The sample type of a Lean type, if it is one. -/
@@ -57,7 +62,26 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
       return some (.list t)
     | _ => return none
-  return none
+  -- a structure-like type of two or more fields of sample types
+  let some (c, lvls) := e.getAppFn.const? | return none
+  let some (.inductInfo ind) := (← getEnv).find? c | return none
+  unless ind.ctors.length == 1 && ind.numIndices == 0 && !ind.isRec &&
+    e.getAppNumArgs == ind.numParams do return none
+  let ctor := mkAppN (mkConst ind.ctors.head! lvls) e.getAppArgs
+  let fields? ← forallTelescopeReducing (← inferType ctor) fun xs _ => do
+    let mut out : Array SType := #[]
+    for x in xs do
+      let t ← inferType x
+      -- a field that depends on another one (a proof about it, an index) is left out of the
+      -- JavaScript value: no sample
+      if t.hasAnyFVar (fun _ => true) then return none
+      match ← stypeOf? t with
+      | some .float | none => return none
+      | some ft => out := out.push ft
+    return some out.toList
+  match fields? with
+  | some fs => if fs.length ≥ 2 then return some (.record c ctor fs) else return none
+  | none => return none
 
 /-- A JavaScript string literal. -/
 def jsStringLit (s : String) : String := Id.run do
@@ -78,6 +102,7 @@ def intLit (big : Bool) (i : Int) : String :=
 structure Sample where
   lean : Expr
   js : String
+  deriving Inhabited
 
 /-- The samples of a type (few and small: the functions are called on every combination). -/
 partial def samplesOf (cfg : JsConfig) : SType → List Sample
@@ -108,6 +133,13 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
   | .arr t => (listSamples cfg t true).map fun l =>
       ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
   | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray)
+  | .record _ ctor fs =>
+    -- a few records, the samples of each field taken at shifted positions
+    let fss := fs.map (samplesOf cfg)
+    (List.range 3).map fun i =>
+      let picks : List Sample := fss.zipIdx.map fun (ss, j) => ss[(i + j) % ss.length]!
+      ⟨mkAppN ctor (picks.map (·.lean)).toArray,
+       "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
 where
   /-- The samples of `List t`, spelled as a JavaScript array (`array`) or as the cons cells of
       `ListRepr.taggedUnion` (`{ tag: 1, _1: x, _2: … { tag: 0 } }`). -/
@@ -182,6 +214,22 @@ def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
   let rest := args.drop arity
   s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
 
+/-- The Lean expression printing the value `e` of the sample type `t` as the check module
+    prints the JavaScript value (`show`): `toString`, of the bits of a `Float`, of the array
+    of a `List`, and `{a, b}` for a record. -/
+partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
+  match t with
+  | .float => mkAppM ``toString #[mkApp (mkConst ``Float.toBits) e]
+  | .list _ => mkAppM ``toString #[← mkAppM ``List.toArray #[e]]
+  | .record ind _ fs =>
+    let parts ← fs.zipIdx.mapM fun (ft, i) => showExpr ft (.proj ind i e)
+    let app (a b : Expr) : MetaM Expr := mkAppM ``HAppend.hAppend #[a, b]
+    let body ← match parts with
+      | [] => pure (toExpr "")
+      | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
+    app (← app (toExpr "{") body) (toExpr "}")
+  | _ => mkAppM ``toString #[e]
+
 /-- The checks of one function: `none` when its type is not one of sample types.  Each
     expected answer is computed by Lean with a time budget of `timeoutMs` milliseconds; the
     samples are tried from the smallest up, and the first call over budget ends the checks of
@@ -202,10 +250,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
   let mut out : Array CheckCase := #[]
   for args in combos cfg ps do
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
-    let shown ← match res with
-      | .float => mkAppM ``toString #[mkApp (mkConst ``Float.toBits) app]
-      | .list _ => do mkAppM ``toString #[← mkAppM ``List.toArray #[app]]
-      | _ => mkAppM ``toString #[app]
+    let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)
     let thunk := mkLambda `u .default (mkConst ``Unit) shown
     let f? ← try
@@ -253,6 +298,12 @@ function show(v) {
     const a = [];
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
+  }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === \"object\" && !(\"tag\" in v) && \"_1\" in v) {
+    const fs = [];
+    for (let i = 1; (\"_\" + i) in v; i++) fs.push(show(v[\"_\" + i]));
+    return \"{\" + fs.join(\", \") + \"}\";
   }
   return String(v);
 }

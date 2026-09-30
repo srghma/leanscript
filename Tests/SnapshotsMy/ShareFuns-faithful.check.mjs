@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("swapSum({ _1: 0n, _2: 1n }, { _1: 0n, _2: 1n })", () => M.swapSum({ _1: 0n, _2: 1n }, { _1: 0n, _2: 1n }), "{2, 0}", false);
+check("swapSum({ _1: 0n, _2: 1n }, { _1: 1n, _2: 2n })", () => M.swapSum({ _1: 0n, _2: 1n }, { _1: 1n, _2: 2n }), "{3, 1}", false);
+check("swapSum({ _1: 1n, _2: 2n }, { _1: 0n, _2: 1n })", () => M.swapSum({ _1: 1n, _2: 2n }, { _1: 0n, _2: 1n }), "{3, 1}", false);
+check("swapSum({ _1: 0n, _2: 1n }, { _1: 2n, _2: 5n })", () => M.swapSum({ _1: 0n, _2: 1n }, { _1: 2n, _2: 5n }), "{6, 2}", false);
+check("swapSum({ _1: 1n, _2: 2n }, { _1: 1n, _2: 2n })", () => M.swapSum({ _1: 1n, _2: 2n }, { _1: 1n, _2: 2n }), "{4, 2}", false);
+check("swapSum({ _1: 2n, _2: 5n }, { _1: 0n, _2: 1n })", () => M.swapSum({ _1: 2n, _2: 5n }, { _1: 0n, _2: 1n }), "{6, 2}", false);
+check("swapSum({ _1: 1n, _2: 2n }, { _1: 2n, _2: 5n })", () => M.swapSum({ _1: 1n, _2: 2n }, { _1: 2n, _2: 5n }), "{7, 3}", false);
+check("swapSum({ _1: 2n, _2: 5n }, { _1: 1n, _2: 2n })", () => M.swapSum({ _1: 2n, _2: 5n }, { _1: 1n, _2: 2n }), "{7, 3}", false);
+check("swapSum({ _1: 2n, _2: 5n }, { _1: 2n, _2: 5n })", () => M.swapSum({ _1: 2n, _2: 5n }, { _1: 2n, _2: 5n }), "{10, 4}", false);
+check("swapSum_({ _1: 0n, _2: 1n }, { _1: 0n, _2: 1n })", () => M.swapSum_({ _1: 0n, _2: 1n }, { _1: 0n, _2: 1n }), "{2, 0}", false);
+check("swapSum_({ _1: 0n, _2: 1n }, { _1: 1n, _2: 2n })", () => M.swapSum_({ _1: 0n, _2: 1n }, { _1: 1n, _2: 2n }), "{3, 1}", false);
+check("swapSum_({ _1: 1n, _2: 2n }, { _1: 0n, _2: 1n })", () => M.swapSum_({ _1: 1n, _2: 2n }, { _1: 0n, _2: 1n }), "{3, 1}", false);
+check("swapSum_({ _1: 0n, _2: 1n }, { _1: 2n, _2: 5n })", () => M.swapSum_({ _1: 0n, _2: 1n }, { _1: 2n, _2: 5n }), "{6, 2}", false);
+check("swapSum_({ _1: 1n, _2: 2n }, { _1: 1n, _2: 2n })", () => M.swapSum_({ _1: 1n, _2: 2n }, { _1: 1n, _2: 2n }), "{4, 2}", false);
+check("swapSum_({ _1: 2n, _2: 5n }, { _1: 0n, _2: 1n })", () => M.swapSum_({ _1: 2n, _2: 5n }, { _1: 0n, _2: 1n }), "{6, 2}", false);
+check("swapSum_({ _1: 1n, _2: 2n }, { _1: 2n, _2: 5n })", () => M.swapSum_({ _1: 1n, _2: 2n }, { _1: 2n, _2: 5n }), "{7, 3}", false);
+check("swapSum_({ _1: 2n, _2: 5n }, { _1: 1n, _2: 2n })", () => M.swapSum_({ _1: 2n, _2: 5n }, { _1: 1n, _2: 2n }), "{7, 3}", false);
+check("swapSum_({ _1: 2n, _2: 5n }, { _1: 2n, _2: 5n })", () => M.swapSum_({ _1: 2n, _2: 5n }, { _1: 2n, _2: 5n }), "{10, 4}", false);
 check("absDiff(0n, 0n)", () => M.absDiff(0n, 0n), "0", false);
 check("absDiff(0n, 2n)", () => M.absDiff(0n, 2n), "2", false);
 check("absDiff(1n, 1n)", () => M.absDiff(1n, 1n), "0", false);

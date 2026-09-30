@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -67,6 +73,19 @@ check("downFrom(1n)", () => M.downFrom(1n), "#[0]", false);
 check("downFrom(2n)", () => M.downFrom(2n), "#[1, 0]", false);
 check("downFrom(5n)", () => M.downFrom(5n), "#[4, 3, 2, 1, 0]", false);
 check("downFrom(13n)", () => M.downFrom(13n), "#[12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]", false);
+check("ordered(0n, 0n)", () => M.ordered(0n, 0n), "{0, 0}", false);
+check("ordered(0n, 2n)", () => M.ordered(0n, 2n), "{0, 2}", false);
+check("ordered(1n, 1n)", () => M.ordered(1n, 1n), "{1, 1}", false);
+check("ordered(2n, 0n)", () => M.ordered(2n, 0n), "{0, 2}", false);
+check("ordered(0n, 13n)", () => M.ordered(0n, 13n), "{0, 13}", false);
+check("ordered(1n, 5n)", () => M.ordered(1n, 5n), "{1, 5}", false);
+check("ordered(2n, 2n)", () => M.ordered(2n, 2n), "{2, 2}", false);
+check("ordered(5n, 1n)", () => M.ordered(5n, 1n), "{1, 5}", false);
+check("ordered(13n, 0n)", () => M.ordered(13n, 0n), "{0, 13}", false);
+check("ordered(2n, 13n)", () => M.ordered(2n, 13n), "{2, 13}", false);
+check("ordered(5n, 5n)", () => M.ordered(5n, 5n), "{5, 5}", false);
+check("ordered(13n, 2n)", () => M.ordered(13n, 2n), "{2, 13}", false);
+check("ordered(13n, 13n)", () => M.ordered(13n, 13n), "{13, 13}", false);
 check("keep(-7n)", () => M.keep(-7n), "-7", false);
 check("keep(-1n)", () => M.keep(-1n), "-1", false);
 check("keep(0n)", () => M.keep(0n), "0", false);

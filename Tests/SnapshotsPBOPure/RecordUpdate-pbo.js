@@ -27,6 +27,9 @@ export const test1 = (fn, val) => {
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
-  const x$2 = int53__lean_int_add(x$1, 1);
-  return { _1: x$2, _2: int53__lean_int_sub(x$1, 2), _3: x$1 };
+  return {
+    _1: int53__lean_int_add(x$1, 1),
+    _2: int53__lean_int_sub(x$1, 2),
+    _3: x$1,
+  };
 };

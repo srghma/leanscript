@@ -103,6 +103,14 @@ structure Loc where
       recursed on.  The answer of the fold is then a function of them, and a recursive call
       applies the answer to its arguments at these positions. -/
   vary : Array Nat := #[]
+  /-- The function translated (a member of `fns`). -/
+  fn : Name := .anonymous
+  /-- Inside the fold of a structural recursion on a `Nat` by a `mutual` group of functions
+      (`trNatGroup`): the group, in order.  The answer of the fold is then a function of a tag
+      first (which function of the group is called: a `Bool`, `true` for the first, for a
+      group of two, otherwise its position as a `Nat`), and a recursive call passes the tag of
+      the function it calls. -/
+  natGroup : Array Name := #[]
   deriving Inhabited
 
 def Loc.bind (L : Loc) (x : Option FVarId) : Loc := { L with slots := L.slots.push x }

@@ -241,10 +241,12 @@ def versionNote (params : List String) (v : OwnVersion) : String :=
 /-- Why a candidate is not translated for now, if it is not: `Term` supports non-recursive
     and structurally recursive definitions only. -/
 def unsupportedRecursion? (n : Name) : MetaM (Option String) := do
-  if (← recGroup n).size > 1 then
-    return some "a member of a `mutual` block: only non-recursive and structurally recursive \
-      definitions are translated (to `Term`)"
+  -- a member of a `mutual` block defined by structural recursion is a candidate (the
+  -- translator reads the whole group, `LeanScript.TermElab.ToTerm`)
   if ← isWellFounded n then
+    if (← recGroup n).size > 1 then
+      return some "a member of a `mutual` block defined by well-founded recursion: only \
+        non-recursive and structurally recursive definitions are translated (to `Term`)"
     return some "defined by well-founded recursion: only non-recursive and structurally \
       recursive definitions are translated (to `Term`)"
   return none

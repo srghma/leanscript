@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: -7, _2: -1, _3: 0 })", () => M.test1({ _1: -7, _2: -1, _3: 0 }), "catch", false);
+check("test1({ _1: -1, _2: 0, _3: 3 })", () => M.test1({ _1: -1, _2: 0, _3: 3 }), "catch", false);
+check("test1({ _1: 0, _2: 3, _3: 12 })", () => M.test1({ _1: 0, _2: 3, _3: 12 }), "catch", false);
+check("Test2$test2({ _1: { _1: -7, _2: -1 }, _2: { _1: -1, _2: 0 } })", () => M.Test2$test2({ _1: { _1: -7, _2: -1 }, _2: { _1: -1, _2: 0 } }), "4", false);
+check("Test2$test2({ _1: { _1: -1, _2: 0 }, _2: { _1: 0, _2: 3 } })", () => M.Test2$test2({ _1: { _1: -1, _2: 0 }, _2: { _1: 0, _2: 3 } }), "4", false);
+check("Test2$test2({ _1: { _1: 0, _2: 3 }, _2: { _1: -7, _2: -1 } })", () => M.Test2$test2({ _1: { _1: 0, _2: 3 }, _2: { _1: -7, _2: -1 } }), "4", false);
+check("test3({ _1: -7, _2: -1 })", () => M.test3({ _1: -7, _2: -1 }), "3", false);
+check("test3({ _1: -1, _2: 0 })", () => M.test3({ _1: -1, _2: 0 }), "3", false);
+check("test3({ _1: 0, _2: 3 })", () => M.test3({ _1: 0, _2: 3 }), "3", false);
+check("test4({ _1: -7, _2: -1 })", () => M.test4({ _1: -7, _2: -1 }), "3", false);
+check("test4({ _1: -1, _2: 0 })", () => M.test4({ _1: -1, _2: 0 }), "3", false);
+check("test4({ _1: 0, _2: 3 })", () => M.test4({ _1: 0, _2: 3 }), "3", false);
+check("test5({ _1: -7, _2: -1 })", () => M.test5({ _1: -7, _2: -1 }), "0", false);
+check("test5({ _1: -1, _2: 0 })", () => M.test5({ _1: -1, _2: 0 }), "0", false);
+check("test5({ _1: 0, _2: 3 })", () => M.test5({ _1: 0, _2: 3 }), "3", false);
+check("test6({ _1: -7, _2: -1 })", () => M.test6({ _1: -7, _2: -1 }), "0", false);
+check("test6({ _1: -1, _2: 0 })", () => M.test6({ _1: -1, _2: 0 }), "0", false);
+check("test6({ _1: 0, _2: 3 })", () => M.test6({ _1: 0, _2: 3 }), "3", false);
 
 console.log(`CaseRecord-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

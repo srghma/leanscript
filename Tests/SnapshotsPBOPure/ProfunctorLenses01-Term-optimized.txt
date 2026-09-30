@@ -3,12 +3,6 @@
 --   instReprRecBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 --   instReprRecFooBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 --   instReprRecFooBar.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
---   test3: invalid scope
---   test4: invalid scope
---   test5: invalid scope
---   test6: invalid scope
---   test7: invalid scope
---   test8: invalid scope
 
 -- test1 : RecFooBaz → Int
 val k1 [1] : ((Int × Int) → Int) := fun x2 [1] : (Int × Int) => (closed)
@@ -20,4 +14,44 @@ ret k1
 val k1 [1] : ((Int × Int) → Int) := fun x2 [1] : (Int × Int) => (closed)
   let ⟨f3 [1] : Int, f4 [0] : Int⟩ := x2
   ret f3
+ret k1
+
+-- test3 : RecFooBar → RecFooBar
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  let x5 [1] : Int := share lean_int_add(f4, 1)
+  ret ⟨f3, x5⟩
+ret k1
+
+-- test4 : RecFooBar → RecFooBar
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  ret ⟨f3, lean_int_add(f4, 1)⟩
+ret k1
+
+-- test5 : RecFooBaz → RecFooBaz
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  let x5 [1] : Int := share lean_int_add(f4, 1)
+  ret ⟨f3, x5⟩
+ret k1
+
+-- test6 : RecFooBaz → RecFooBaz
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  ret ⟨f3, lean_int_add(f4, 1)⟩
+ret k1
+
+-- test7 : RecFooBar → RecFooBar
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  let x5 [1] : Int := share lean_int_add(f3, 1)
+  ret ⟨x5, lean_int_add(f4, 42)⟩
+ret k1
+
+-- test8 : RecFooBar → RecFooBar
+val k1 [1] : ((Int × Int) → (Int × Int)) := fun x2 [1] : (Int × Int) => (closed)
+  let ⟨f3 [1] : Int, f4 [1] : Int⟩ := x2
+  let x5 [1] : Int := share lean_int_add(f3, 1)
+  ret ⟨x5, lean_int_add(f4, 42)⟩
 ret k1

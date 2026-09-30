@@ -13,8 +13,7 @@
  */
 export const test1 = (f, a) => {
   if (a.tag === 0) {
-    const x$1 = f();
-    return x$1;
+    return f();
   }
   return a._1 + 1n;
 };
@@ -27,8 +26,7 @@ export const test1 = (f, a) => {
  */
 export const test3 = (f, a) => {
   if (a.tag === 0) {
-    const x$1 = f();
-    return x$1;
+    return f();
   }
   return a._1 + 1n;
 };

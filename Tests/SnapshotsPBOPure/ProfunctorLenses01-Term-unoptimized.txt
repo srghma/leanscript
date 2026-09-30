@@ -3,12 +3,6 @@
 --   instReprRecBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 --   instReprRecFooBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 --   instReprRecFooBar.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
---   test3: invalid scope
---   test4: invalid scope
---   test5: invalid scope
---   test6: invalid scope
---   test7: invalid scope
---   test8: invalid scope
 
 -- test1 : RecFooBaz → Int
 val k1 [ω] : ((Int × Int) → Int) := fun x2 [ω] : (Int × Int) => (closed)
@@ -20,4 +14,73 @@ ret k1
 val k1 [ω] : ((Int × Int) → Int) := fun x2 [ω] : (Int × Int) => (closed)
   let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
   ret f3
+ret k1
+
+-- test3 : RecFooBar → RecFooBar
+val k1 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x2 [ω] : (Int → Int) => (closed)
+  val k3 [ω] : ((Int × Int) → (Int × Int)) := fun x4 [ω] : (Int × Int) => (open)
+    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x4
+    let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x4
+    let x9 [ω] : Int := x2 f8
+    ret ⟨f5, x9⟩
+  ret k3
+val k10 [ω] : (Int → Int) := fun x11 [ω] : Int => (closed)
+  ret lean_int_add(x11, 1)
+val k12 [ω] : ((Int × Int) → (Int × Int)) := fun x13 [ω] : (Int × Int) => (closed)
+  let ⟨f14 [ω] : Int, f15 [ω] : Int⟩ := x13
+  let ⟨f16 [ω] : Int, f17 [ω] : Int⟩ := x13
+  let x18 [ω] : Int := k10 f17
+  ret ⟨f14, x18⟩
+ret k12
+
+-- test4 : RecFooBar → RecFooBar
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+  ret ⟨f3, lean_int_add(f6, 1)⟩
+ret k1
+
+-- test5 : RecFooBaz → RecFooBaz
+val k1 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x2 [ω] : (Int → Int) => (closed)
+  val k3 [ω] : ((Int × Int) → (Int × Int)) := fun x4 [ω] : (Int × Int) => (open)
+    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x4
+    let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x4
+    let ⟨f9 [ω] : Int, f10 [ω] : Int⟩ := x4
+    let x11 [ω] : Int := x2 f10
+    ret ⟨f5, x11⟩
+  ret k3
+val k12 [ω] : (Int → Int) := fun x13 [ω] : Int => (closed)
+  ret lean_int_add(x13, 1)
+val k14 [ω] : ((Int × Int) → (Int × Int)) := fun x15 [ω] : (Int × Int) => (closed)
+  let ⟨f16 [ω] : Int, f17 [ω] : Int⟩ := x15
+  let ⟨f18 [ω] : Int, f19 [ω] : Int⟩ := x15
+  let ⟨f20 [ω] : Int, f21 [ω] : Int⟩ := x15
+  let x22 [ω] : Int := k12 f21
+  ret ⟨f16, x22⟩
+ret k14
+
+-- test6 : RecFooBaz → RecFooBaz
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+  let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x2
+  ret ⟨f3, lean_int_add(f8, 1)⟩
+ret k1
+
+-- test7 : RecFooBar → RecFooBar
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+  let x7 [ω] : Int := share lean_int_add(f3, 1)
+  let x8 [ω] : Int := share lean_int_add(f3, 1)
+  ret ⟨x7, lean_int_add(f6, 42)⟩
+ret k1
+
+-- test8 : RecFooBar → RecFooBar
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
+  let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x2
+  let x7 [ω] : Int := share lean_int_add(f3, 1)
+  let x8 [ω] : Int := share lean_int_add(f3, 1)
+  ret ⟨x7, lean_int_add(f6, 42)⟩
 ret k1

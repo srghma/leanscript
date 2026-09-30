@@ -100,6 +100,9 @@ def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
     return .forRange x nt (← n.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm) (← rest.renameM rc rm)
   | .forOf x l xs b rest =>
     return .forOf x l (← xs.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm) (← rest.renameM rc rm)
+  | .countdown x nt n b s rest =>
+    return .countdown x nt (← n.renameM rc rm) (← b.renameM rc (JsRenM.lift rm))
+      (← s.renameM rc (JsRenM.lift rm)) (← rest.renameM (JsRenM.lift rc) rm)
   | .funs (τs := τs) xs defs rest =>
     return .funs xs (← defs.renameM (JsRenM.liftAll τs rc) rm)
       (← rest.renameM (JsRenM.liftAll τs rc) rm)

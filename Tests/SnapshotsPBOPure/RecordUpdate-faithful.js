@@ -25,6 +25,5 @@ export const test1 = (fn, val) => {
  */
 export const test7 = (f, y) => {
   const x$1 = f(y);
-  const x$2 = x$1 + 1n;
-  return { _1: x$2, _2: x$1 - 2n, _3: x$1 };
+  return { _1: x$1 + 1n, _2: x$1 - 2n, _3: x$1 };
 };

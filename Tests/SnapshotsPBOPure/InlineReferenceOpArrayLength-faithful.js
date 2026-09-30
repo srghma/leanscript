@@ -19,8 +19,7 @@ export const test1 = (fn) => {
  * @type {int(bigint)}
  */
 export const fn_ = (() => {
-  const k$2 = () => 0n;
-  const f$1 = k$2;
+  const f$1 = () => 0n;
   return f$1();
 })();
 

@@ -19,15 +19,16 @@ export const test1 = (k, n) => {
       acc$1 = { tag: 0, _1: a$3._1 };
     } else {
       const k$5 = (x$4) => uint53__lean_nat_add(x$4, k);
-      const x$6 = 1;
-      const x$7 = k$5(x$6);
-      const x$8 = 2;
-      const x$9 = k$5(x$8);
-      const x$10 = 3;
-      const x$11 = k$5(x$10);
-      const x$12 = uint53__lean_nat_add(uint53__lean_nat_add(x$7, x$9), x$11);
-      const x$13 = uint53__lean_nat_add(a$3._1, x$12);
-      acc$1 = { tag: 1, _1: x$13 };
+      const x$6 = k$5(1);
+      const x$7 = k$5(2);
+      const x$8 = k$5(3);
+      acc$1 = {
+        tag: 1,
+        _1: uint53__lean_nat_add(
+          a$3._1,
+          uint53__lean_nat_add(uint53__lean_nat_add(x$6, x$7), x$8),
+        ),
+      };
     }
   }
   return acc$1._1;

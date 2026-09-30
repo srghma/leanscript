@@ -9,9 +9,8 @@
  * @returns {int53(number)}
  */
 export const localTest = (f) => {
-  const x$1 = { _1: 99, _2: 0, _3: 11 };
-  const x$2 = f(x$1);
-  return x$2 === -2147483648 ? 0 : x$2;
+  const x$1 = f({ _1: 99, _2: 0, _3: 11 });
+  return x$1 === -2147483648 ? 0 : x$1;
 };
 
 /**
@@ -50,9 +49,8 @@ export const extern = { _1: 99, _2: 0, _3: 11 };
  * @returns {int53(number)}
  */
 export const externTest = (f) => {
-  const x$1 = { _1: 99, _2: 0, _3: 11 };
-  const x$2 = f(x$1);
-  return x$2 === -2147483648 ? -2147483648 : x$2;
+  const x$1 = f({ _1: 99, _2: 0, _3: 11 });
+  return x$1 === -2147483648 ? -2147483648 : x$1;
 };
 
 /**

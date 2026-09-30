@@ -68,6 +68,8 @@ partial def JsBlock.runtimeNames {C M J : List JsTy} {k : JsEnd} (acc : Array St
   | .forRange _ _ n b rest =>
     rest.runtimeNames (b.runtimeNames (n.runtimeNames acc))
   | .forOf _ _ xs b rest => rest.runtimeNames (b.runtimeNames (xs.runtimeNames acc))
+  | .countdown _ _ n b s rest =>
+    rest.runtimeNames (s.runtimeNames (b.runtimeNames (n.runtimeNames acc)))
   | .funs _ defs rest => rest.runtimeNames (defs.runtimeNames acc)
 /-- `runtimeNames` of the arms of an enum's case analysis. -/
 partial def JsEnumArms.runtimeNames {C M J : List JsTy} {k : JsEnd} {n : Nat}

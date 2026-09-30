@@ -28,11 +28,13 @@ export const test1 = (n) => {
     if (a$4.tag === 0) {
       acc$2 = { tag: 0, _1: a$4._1 };
     } else {
-      const x$5 = array__lean_array_push_mutable(
-        a$4._1,
-        uint53__lean_nat_mul(i$3, i$3),
-      );
-      acc$2 = { tag: 1, _1: x$5 };
+      acc$2 = {
+        tag: 1,
+        _1: array__lean_array_push_mutable(
+          a$4._1,
+          uint53__lean_nat_mul(i$3, i$3),
+        ),
+      };
     }
   }
   return acc$2._1;
@@ -52,12 +54,14 @@ export const test3 = (a0) => {
       acc$1 = { tag: 0, _1: a$4._1 };
     } else {
       const { _1: f$5 } = a$4;
-      const x$6 = uint53__lean_array_set_mutable(
-        f$5,
-        i$3,
-        uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
-      );
-      acc$1 = { tag: 1, _1: x$6 };
+      acc$1 = {
+        tag: 1,
+        _1: uint53__lean_array_set_mutable(
+          f$5,
+          i$3,
+          uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
+        ),
+      };
     }
   }
   return acc$1._1;
@@ -78,12 +82,14 @@ export const test3$$mut_0 = (a0) => {
       acc$1 = { tag: 0, _1: a$4._1 };
     } else {
       const { _1: f$5 } = a$4;
-      const x$6 = uint53__lean_array_set_mutable(
-        f$5,
-        i$3,
-        uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
-      );
-      acc$1 = { tag: 1, _1: x$6 };
+      acc$1 = {
+        tag: 1,
+        _1: uint53__lean_array_set_mutable(
+          f$5,
+          i$3,
+          uint53__lean_nat_mul(uint53__lean_array_get(0, f$5, i$3), 2),
+        ),
+      };
     }
   }
   return acc$1._1;
@@ -112,28 +118,29 @@ export const test5 = (n) => {
     if (a$4.tag === 0) {
       acc$2 = { tag: 0, _1: a$4._1 };
     } else {
-      const x$5 = array__lean_array_push_mutable(a$4._1, i$3);
-      acc$2 = { tag: 1, _1: x$5 };
+      acc$2 = { tag: 1, _1: array__lean_array_push_mutable(a$4._1, i$3) };
     }
   }
-  const x$6 = acc$2._1;
-  let acc$7 = { tag: 1, _1: x$6 };
-  const n$8 = uint53__lean_nat_div(n, 2);
-  for (let i$9 = 0; i$9 < n$8; i$9++) {
-    const a$10 = acc$7;
-    if (a$10.tag === 0) {
-      acc$7 = { tag: 0, _1: a$10._1 };
+  const x$5 = acc$2._1;
+  let acc$6 = { tag: 1, _1: x$5 };
+  const n$7 = uint53__lean_nat_div(n, 2);
+  for (let i$8 = 0; i$8 < n$7; i$8++) {
+    const a$9 = acc$6;
+    if (a$9.tag === 0) {
+      acc$6 = { tag: 0, _1: a$9._1 };
     } else {
-      const x$11 = uint53__lean_array_swap_mutable(
-        a$10._1,
-        i$9,
-        uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$9), 1),
-      );
-      acc$7 = { tag: 1, _1: x$11 };
+      acc$6 = {
+        tag: 1,
+        _1: uint53__lean_array_swap_mutable(
+          a$9._1,
+          i$8,
+          uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$8), 1),
+        ),
+      };
     }
   }
-  const x$12 = acc$7._1;
-  return array__lean_array_pop_mutable(x$12);
+  const x$10 = acc$6._1;
+  return array__lean_array_pop_mutable(x$10);
 };
 
 /**
@@ -142,19 +149,13 @@ export const test5 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const test6 = (n) => {
-  const k$2 = (x$1) => x$1;
-  let acc$3 = k$2;
-  for (let i$4 = 0; i$4 < n; i$4++) {
-    const a$5 = acc$3;
-    const k_mut$9 = (x$6) => {
-      const x$7 = array__lean_array_push_mutable(x$6, i$4);
-      const x$8 = a$5(x$7);
-      return x$8;
-    };
-    acc$3 = k_mut$9;
+  let p$1 = [];
+  let j$2 = n;
+  while (true) {
+    if (j$2 === 0) {
+      return p$1;
+    }
+    j$2--;
+    p$1 = array__lean_array_push_mutable(p$1, j$2);
   }
-  const x$10 = acc$3;
-  const x$11 = [];
-  const x$12 = x$10(x$11);
-  return x$12;
 };

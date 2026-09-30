@@ -33,20 +33,20 @@ import {
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const ArrStd$tMap = (a) => {
-  const k$2 = (x$1) => x$1 + 1n;
-  return array__lean_array_map(k$2, a);
-};
+export const ArrStd$tMap = (a) => array__lean_array_map((x$1) => x$1 + 1n, a);
 
 /**
  * `ArrStd.tFilter`
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const ArrStd$tFilter = (a) => {
-  const k$2 = (x$1) => bigint_nat__lean_nat_mod__Nat_mod(x$1, 2n) === 0n;
-  return bigint_nat__lean_array_filter(k$2, a, 0n, BigInt(a.length));
-};
+export const ArrStd$tFilter = (a) =>
+  bigint_nat__lean_array_filter(
+    (x$1) => bigint_nat__lean_nat_mod__Nat_mod(x$1, 2n) === 0n,
+    a,
+    0n,
+    BigInt(a.length),
+  );
 
 /**
  * `ArrStd.tRev`
@@ -70,20 +70,16 @@ export const ArrStd$tExtract = (a, i, j) =>
  * @param {Array<nat(bigint)>} a
  * @returns {boolean}
  */
-export const ArrStd$tAny = (a) => {
-  const k$2 = (x$1) => 3n < x$1;
-  return bigint_nat__lean_array_any(a, k$2, 0n, BigInt(a.length));
-};
+export const ArrStd$tAny = (a) =>
+  bigint_nat__lean_array_any(a, (x$1) => 3n < x$1, 0n, BigInt(a.length));
 
 /**
  * `ArrStd.tAll`
  * @param {Array<nat(bigint)>} a
  * @returns {boolean}
  */
-export const ArrStd$tAll = (a) => {
-  const k$2 = (x$1) => 3n < x$1;
-  return bigint_nat__lean_array_all(a, k$2, 0n, BigInt(a.length));
-};
+export const ArrStd$tAll = (a) =>
+  bigint_nat__lean_array_all(a, (x$1) => 3n < x$1, 0n, BigInt(a.length));
 
 /**
  * `ArrStd.tContains`
@@ -91,30 +87,24 @@ export const ArrStd$tAll = (a) => {
  * @param {nat(bigint)} x
  * @returns {boolean}
  */
-export const ArrStd$tContains = (a, x) => {
-  const k$3 = (x$1, x$2) => x$1 === x$2;
-  return array__lean_array_contains(k$3, a, x);
-};
+export const ArrStd$tContains = (a, x) =>
+  array__lean_array_contains((x$1, x$2) => x$1 === x$2, a, x);
 
 /**
  * `ArrStd.tFind`
  * @param {Array<nat(bigint)>} a
  * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
-export const ArrStd$tFind = (a) => {
-  const k$2 = (x$1) => 2n < x$1;
-  return array__lean_array_find_opt(k$2, a);
-};
+export const ArrStd$tFind = (a) =>
+  array__lean_array_find_opt((x$1) => 2n < x$1, a);
 
 /**
  * `ArrStd.tFindIdx`
  * @param {Array<nat(bigint)>} a
  * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
-export const ArrStd$tFindIdx = (a) => {
-  const k$2 = (x$1) => 2n < x$1;
-  return bigint_nat__lean_array_find_idx_opt(k$2, a);
-};
+export const ArrStd$tFindIdx = (a) =>
+  bigint_nat__lean_array_find_idx_opt((x$1) => 2n < x$1, a);
 
 /**
  * `ArrStd.tIdxOf`
@@ -122,10 +112,8 @@ export const ArrStd$tFindIdx = (a) => {
  * @param {string} s
  * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
-export const ArrStd$tIdxOf = (a, s) => {
-  const k$3 = (x$1, x$2) => x$1 === x$2;
-  return bigint_nat__lean_array_idx_of_opt(k$3, a, s);
-};
+export const ArrStd$tIdxOf = (a, s) =>
+  bigint_nat__lean_array_idx_of_opt((x$1, x$2) => x$1 === x$2, a, s);
 
 /**
  * `ArrStd.tErase`
@@ -151,25 +139,27 @@ export const ArrStd$tInsert = (a, i, x) =>
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const ArrStd$tSort = (a) => {
-  const k$3 = (x$1, x$2) => x$1 < x$2;
-  return bigint_nat__lean_array_qsort(
+export const ArrStd$tSort = (a) =>
+  bigint_nat__lean_array_qsort(
     a,
-    k$3,
+    (x$1, x$2) => x$1 < x$2,
     0n,
     bigint_nat__lean_nat_sub(BigInt(a.length), 1n),
   );
-};
 
 /**
  * `ArrStd.tFoldr`
  * @param {Array<nat(bigint)>} a
  * @returns {nat(bigint)}
  */
-export const ArrStd$tFoldr = (a) => {
-  const k$3 = (x$1, x$2) => x$1 + x$2 * 2n;
-  return bigint_nat__lean_array_foldr(k$3, 0n, a, BigInt(a.length), 0n);
-};
+export const ArrStd$tFoldr = (a) =>
+  bigint_nat__lean_array_foldr(
+    (x$1, x$2) => x$1 + x$2 * 2n,
+    0n,
+    a,
+    BigInt(a.length),
+    0n,
+  );
 
 /**
  * `ArrStd.tZip`
@@ -185,20 +175,16 @@ export const ArrStd$tZip = (a, b) => array__lean_array_zip(a, b);
  * @param {Array<nat(bigint)>} b
  * @returns {Array<nat(bigint)>}
  */
-export const ArrStd$tZipWith = (a, b) => {
-  const k$3 = (x$1, x$2) => x$1 * x$2;
-  return array__lean_array_zip_with(k$3, a, b);
-};
+export const ArrStd$tZipWith = (a, b) =>
+  array__lean_array_zip_with((x$1, x$2) => x$1 * x$2, a, b);
 
 /**
  * `ArrStd.tFlatMap`
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const ArrStd$tFlatMap = (a) => {
-  const k$2 = (x$1) => [x$1, x$1];
-  return array__lean_array_flat_map(k$2, a);
-};
+export const ArrStd$tFlatMap = (a) =>
+  array__lean_array_flat_map((x$1) => [x$1, x$1], a);
 
 /**
  * `ArrStd.tFlatten`
@@ -219,10 +205,8 @@ export const ArrStd$tBack = (a) => array__lean_array_back_opt(a);
  * @param {Array<nat(bigint)>} a
  * @returns {nat(bigint)}
  */
-export const ArrStd$tCount = (a) => {
-  const k$2 = (x$1) => 1n < x$1;
-  return bigint_nat__lean_array_count_p(k$2, a);
-};
+export const ArrStd$tCount = (a) =>
+  bigint_nat__lean_array_count_p((x$1) => 1n < x$1, a);
 
 /**
  * `ArrStd.tTake`
@@ -238,10 +222,17 @@ export const ArrStd$tTake = (a, n) => bigint_nat__lean_array_extract(a, 0n, n);
  * @returns {Uint8Array<uint8>}
  */
 export const ArrStd$tU8 = (a) => {
-  const k$2 = (x$1) => uint8__lean_uint8_add(x$1, 1);
-  const x$3 = typedArray__lean_array_map(Uint8Array, k$2, a);
-  const k$5 = (x$4) => 3 < x$4;
+  const x$2 = typedArray__lean_array_map(
+    Uint8Array,
+    (x$1) => uint8__lean_uint8_add(x$1, 1),
+    a,
+  );
   return array__lean_array_reverse(
-    bigint_nat__lean_array_filter(k$5, x$3, 0n, BigInt(x$3.length)),
+    bigint_nat__lean_array_filter(
+      (x$3) => 3 < x$3,
+      x$2,
+      0n,
+      BigInt(x$2.length),
+    ),
   );
 };

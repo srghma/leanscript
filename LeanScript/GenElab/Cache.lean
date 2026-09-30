@@ -90,12 +90,25 @@ def cached? {m : Type → Type} [Monad m] [MonadEnv m] (key : GenKey) : m (Optio
     if k == key && env.contains d then return some d
   return none
 
+/-- A name a `def` command accepts for a generated definition: the name of a private
+    declaration (`_private.M.0.Box2.mk`, whose numeric component a `def` command refuses with
+    "invalid scope") without its private prefix (`Box2.mk`), and every other numeric
+    component `i` written `_i`. -/
+def declSafeName (n : Name) : Name :=
+  go (if isPrivateName n then privateToUserName n else n)
+where
+  go : Name → Name
+    | .anonymous => .anonymous
+    | .str p s => .str (go p) s
+    | .num p i => .str (go p) s!"_{i}"
+
 /-- A fresh name for a generated definition: `base`, or `base_1`, `base_2`, …, under the
     current module's name when `owner` is declared in another module (so that two modules
     never generate the same name). -/
 def freshDeclName {m : Type → Type} [Monad m] [MonadEnv m] (owner base : Name) : m Name := do
   let env ← getEnv
   let main ← getMainModule
+  let base := declSafeName base
   let base := if (env.getModuleIdxFor? owner).isSome then main ++ base else base
   if !env.contains base then return base
   let mut i := 1

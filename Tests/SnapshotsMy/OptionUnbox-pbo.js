@@ -22,16 +22,21 @@ export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
  * @returns {uint53(number)}
  */
 export const test6 = (n, i) => {
-  const k$1 = [{ tag: 1, _1: n }, { tag: 0 }];
-  let x$2;
-  if (i < k$1.length) {
-    const k$3 = [{ tag: 1, _1: n }, { tag: 0 }];
-    x$2 = { tag: 1, _1: uint53__lean_array_get({ tag: 0 }, k$3, i) };
+  let x$1;
+  if (i < [{ tag: 1, _1: n }, { tag: 0 }].length) {
+    x$1 = {
+      tag: 1,
+      _1: uint53__lean_array_get(
+        { tag: 0 },
+        [{ tag: 1, _1: n }, { tag: 0 }],
+        i,
+      ),
+    };
   } else {
-    x$2 = { tag: 0 };
+    x$1 = { tag: 0 };
   }
-  if (x$2.tag === 0) {
+  if (x$1.tag === 0) {
     return 2;
   }
-  return x$2._1.tag === 0 ? 1 : x$2._1._1;
+  return x$1._1.tag === 0 ? 1 : x$1._1._1;
 };

@@ -421,6 +421,14 @@ def destructureAny {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M
   | τ, _ => throw s!"internal: taking apart a value of type {τ}"
 
 
+/-- The expressions `es` as the arguments of types `σs`, when their types are those. -/
+def argsOfList? {C M : List JsTy} :
+    List ((σ : JsTy) × JsExpr S C M σ) → (σs : List JsTy) → Option (JsArgs S C M σs)
+  | [], [] => some .nil
+  | ⟨σ, e⟩ :: es, σ' :: σs =>
+    if h : σ = σ' then (JsArgs.cons (h ▸ e) ·) <$> argsOfList? es σs else none
+  | _, _ => none
+
 /-- The body of a loop whose accumulator is the mutable variable `acc`, the body reading the
     accumulator as its innermost constant: the body starts with a `const` copy of `acc` (a
     closure built by the body captures the value of this iteration, not the variable the loop

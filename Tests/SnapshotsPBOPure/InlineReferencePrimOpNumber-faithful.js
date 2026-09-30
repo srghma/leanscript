@@ -8,11 +8,7 @@
  * @param {({ _1: float, _2: float, _3: float }) => float} f
  * @returns {float}
  */
-export const localTest = (f) => {
-  const x$1 = { _1: 99, _2: 0, _3: 11 };
-  const x$2 = f(x$1);
-  return x$2;
-};
+export const localTest = (f) => f({ _1: 99, _2: 0, _3: 11 });
 
 /**
  * `test1`
@@ -49,11 +45,7 @@ export const extern = { _1: 99, _2: 0, _3: 11 };
  * @param {({ _1: float, _2: float, _3: float }) => float} f
  * @returns {float}
  */
-export const externTest = (f) => {
-  const x$1 = { _1: 99, _2: 0, _3: 11 };
-  const x$2 = f(x$1);
-  return x$2;
-};
+export const externTest = (f) => f({ _1: 99, _2: 0, _3: 11 });
 
 /**
  * `test5`

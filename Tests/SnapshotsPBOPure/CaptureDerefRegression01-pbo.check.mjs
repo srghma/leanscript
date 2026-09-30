@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,66 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: -7, _2: -1 }, -7)", () => M.test1({ _1: -7, _2: -1 }, -7), "-14", false);
+check("test1({ _1: -7, _2: -1 }, -1)", () => M.test1({ _1: -7, _2: -1 }, -1), "-8", false);
+check("test1({ _1: -1, _2: 0 }, -7)", () => M.test1({ _1: -1, _2: 0 }, -7), "-8", false);
+check("test1({ _1: -7, _2: -1 }, 0)", () => M.test1({ _1: -7, _2: -1 }, 0), "-7", false);
+check("test1({ _1: -1, _2: 0 }, -1)", () => M.test1({ _1: -1, _2: 0 }, -1), "-2", false);
+check("test1({ _1: 0, _2: 3 }, -7)", () => M.test1({ _1: 0, _2: 3 }, -7), "-7", false);
+check("test1({ _1: -7, _2: -1 }, 3)", () => M.test1({ _1: -7, _2: -1 }, 3), "-4", false);
+check("test1({ _1: -1, _2: 0 }, 0)", () => M.test1({ _1: -1, _2: 0 }, 0), "-1", false);
+check("test1({ _1: 0, _2: 3 }, -1)", () => M.test1({ _1: 0, _2: 3 }, -1), "-1", false);
+check("test1({ _1: -7, _2: -1 }, 12)", () => M.test1({ _1: -7, _2: -1 }, 12), "5", false);
+check("test1({ _1: -1, _2: 0 }, 3)", () => M.test1({ _1: -1, _2: 0 }, 3), "2", false);
+check("test1({ _1: 0, _2: 3 }, 0)", () => M.test1({ _1: 0, _2: 3 }, 0), "0", false);
+check("test1({ _1: -1, _2: 0 }, 12)", () => M.test1({ _1: -1, _2: 0 }, 12), "11", false);
+check("test1({ _1: 0, _2: 3 }, 3)", () => M.test1({ _1: 0, _2: 3 }, 3), "3", false);
+check("test1({ _1: 0, _2: 3 }, 12)", () => M.test1({ _1: 0, _2: 3 }, 12), "12", false);
+check("test2({ _1: -7, _2: -1 }, -7)", () => M.test2({ _1: -7, _2: -1 }, -7), "-14", false);
+check("test2({ _1: -7, _2: -1 }, -1)", () => M.test2({ _1: -7, _2: -1 }, -1), "-8", false);
+check("test2({ _1: -1, _2: 0 }, -7)", () => M.test2({ _1: -1, _2: 0 }, -7), "-8", false);
+check("test2({ _1: -7, _2: -1 }, 0)", () => M.test2({ _1: -7, _2: -1 }, 0), "-7", false);
+check("test2({ _1: -1, _2: 0 }, -1)", () => M.test2({ _1: -1, _2: 0 }, -1), "-2", false);
+check("test2({ _1: 0, _2: 3 }, -7)", () => M.test2({ _1: 0, _2: 3 }, -7), "-7", false);
+check("test2({ _1: -7, _2: -1 }, 3)", () => M.test2({ _1: -7, _2: -1 }, 3), "-4", false);
+check("test2({ _1: -1, _2: 0 }, 0)", () => M.test2({ _1: -1, _2: 0 }, 0), "-1", false);
+check("test2({ _1: 0, _2: 3 }, -1)", () => M.test2({ _1: 0, _2: 3 }, -1), "-1", false);
+check("test2({ _1: -7, _2: -1 }, 12)", () => M.test2({ _1: -7, _2: -1 }, 12), "5", false);
+check("test2({ _1: -1, _2: 0 }, 3)", () => M.test2({ _1: -1, _2: 0 }, 3), "2", false);
+check("test2({ _1: 0, _2: 3 }, 0)", () => M.test2({ _1: 0, _2: 3 }, 0), "0", false);
+check("test2({ _1: -1, _2: 0 }, 12)", () => M.test2({ _1: -1, _2: 0 }, 12), "11", false);
+check("test2({ _1: 0, _2: 3 }, 3)", () => M.test2({ _1: 0, _2: 3 }, 3), "3", false);
+check("test2({ _1: 0, _2: 3 }, 12)", () => M.test2({ _1: 0, _2: 3 }, 12), "12", false);
+check("testEven(0, { _1: -7, _2: -1 })", () => M.testEven(0, { _1: -7, _2: -1 }), "{-7, -1}", false);
+check("testEven(0, { _1: -1, _2: 0 })", () => M.testEven(0, { _1: -1, _2: 0 }), "{-1, 0}", false);
+check("testEven(1, { _1: -7, _2: -1 })", () => M.testEven(1, { _1: -7, _2: -1 }), "{0, -5}", false);
+check("testEven(0, { _1: 0, _2: 3 })", () => M.testEven(0, { _1: 0, _2: 3 }), "{0, 3}", false);
+check("testEven(1, { _1: -1, _2: 0 })", () => M.testEven(1, { _1: -1, _2: 0 }), "{1, 1}", false);
+check("testEven(2, { _1: -7, _2: -1 })", () => M.testEven(2, { _1: -7, _2: -1 }), "{-2, 4}", false);
+check("testEven(1, { _1: 0, _2: 3 })", () => M.testEven(1, { _1: 0, _2: 3 }), "{4, 2}", false);
+check("testEven(2, { _1: -1, _2: 0 })", () => M.testEven(2, { _1: -1, _2: 0 }), "{4, 5}", false);
+check("testEven(5, { _1: -7, _2: -1 })", () => M.testEven(5, { _1: -7, _2: -1 }), "{10, 5}", false);
+check("testEven(2, { _1: 0, _2: 3 })", () => M.testEven(2, { _1: 0, _2: 3 }), "{5, 8}", false);
+check("testEven(5, { _1: -1, _2: 0 })", () => M.testEven(5, { _1: -1, _2: 0 }), "{11, 11}", false);
+check("testEven(13, { _1: -7, _2: -1 })", () => M.testEven(13, { _1: -7, _2: -1 }), "{30, 25}", false);
+check("testEven(5, { _1: 0, _2: 3 })", () => M.testEven(5, { _1: 0, _2: 3 }), "{14, 12}", false);
+check("testEven(13, { _1: -1, _2: 0 })", () => M.testEven(13, { _1: -1, _2: 0 }), "{31, 31}", false);
+check("testEven(13, { _1: 0, _2: 3 })", () => M.testEven(13, { _1: 0, _2: 3 }), "{34, 32}", false);
+check("testOdd(0, { _1: -7, _2: -1 })", () => M.testOdd(0, { _1: -7, _2: -1 }), "{-7, -1}", false);
+check("testOdd(0, { _1: -1, _2: 0 })", () => M.testOdd(0, { _1: -1, _2: 0 }), "{-1, 0}", false);
+check("testOdd(1, { _1: -7, _2: -1 })", () => M.testOdd(1, { _1: -7, _2: -1 }), "{2, -3}", false);
+check("testOdd(0, { _1: 0, _2: 3 })", () => M.testOdd(0, { _1: 0, _2: 3 }), "{0, 3}", false);
+check("testOdd(1, { _1: -1, _2: 0 })", () => M.testOdd(1, { _1: -1, _2: 0 }), "{3, 3}", false);
+check("testOdd(2, { _1: -7, _2: -1 })", () => M.testOdd(2, { _1: -7, _2: -1 }), "{-2, 4}", false);
+check("testOdd(1, { _1: 0, _2: 3 })", () => M.testOdd(1, { _1: 0, _2: 3 }), "{6, 4}", false);
+check("testOdd(2, { _1: -1, _2: 0 })", () => M.testOdd(2, { _1: -1, _2: 0 }), "{4, 5}", false);
+check("testOdd(5, { _1: -7, _2: -1 })", () => M.testOdd(5, { _1: -7, _2: -1 }), "{12, 7}", false);
+check("testOdd(2, { _1: 0, _2: 3 })", () => M.testOdd(2, { _1: 0, _2: 3 }), "{5, 8}", false);
+check("testOdd(5, { _1: -1, _2: 0 })", () => M.testOdd(5, { _1: -1, _2: 0 }), "{13, 13}", false);
+check("testOdd(13, { _1: -7, _2: -1 })", () => M.testOdd(13, { _1: -7, _2: -1 }), "{32, 27}", false);
+check("testOdd(5, { _1: 0, _2: 3 })", () => M.testOdd(5, { _1: 0, _2: 3 }), "{16, 14}", false);
+check("testOdd(13, { _1: -1, _2: 0 })", () => M.testOdd(13, { _1: -1, _2: 0 }), "{33, 33}", false);
+check("testOdd(13, { _1: 0, _2: 3 })", () => M.testOdd(13, { _1: 0, _2: 3 }), "{36, 34}", false);
 
 console.log(`CaptureDerefRegression01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,66 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({ _1: -7n, _2: -1n }, -7n)", () => M.test1({ _1: -7n, _2: -1n }, -7n), "-14", false);
+check("test1({ _1: -7n, _2: -1n }, -1n)", () => M.test1({ _1: -7n, _2: -1n }, -1n), "-8", false);
+check("test1({ _1: -1n, _2: 0n }, -7n)", () => M.test1({ _1: -1n, _2: 0n }, -7n), "-8", false);
+check("test1({ _1: -7n, _2: -1n }, 0n)", () => M.test1({ _1: -7n, _2: -1n }, 0n), "-7", false);
+check("test1({ _1: -1n, _2: 0n }, -1n)", () => M.test1({ _1: -1n, _2: 0n }, -1n), "-2", false);
+check("test1({ _1: 0n, _2: 3n }, -7n)", () => M.test1({ _1: 0n, _2: 3n }, -7n), "-7", false);
+check("test1({ _1: -7n, _2: -1n }, 3n)", () => M.test1({ _1: -7n, _2: -1n }, 3n), "-4", false);
+check("test1({ _1: -1n, _2: 0n }, 0n)", () => M.test1({ _1: -1n, _2: 0n }, 0n), "-1", false);
+check("test1({ _1: 0n, _2: 3n }, -1n)", () => M.test1({ _1: 0n, _2: 3n }, -1n), "-1", false);
+check("test1({ _1: -7n, _2: -1n }, 12n)", () => M.test1({ _1: -7n, _2: -1n }, 12n), "5", false);
+check("test1({ _1: -1n, _2: 0n }, 3n)", () => M.test1({ _1: -1n, _2: 0n }, 3n), "2", false);
+check("test1({ _1: 0n, _2: 3n }, 0n)", () => M.test1({ _1: 0n, _2: 3n }, 0n), "0", false);
+check("test1({ _1: -1n, _2: 0n }, 12n)", () => M.test1({ _1: -1n, _2: 0n }, 12n), "11", false);
+check("test1({ _1: 0n, _2: 3n }, 3n)", () => M.test1({ _1: 0n, _2: 3n }, 3n), "3", false);
+check("test1({ _1: 0n, _2: 3n }, 12n)", () => M.test1({ _1: 0n, _2: 3n }, 12n), "12", false);
+check("test2({ _1: -7n, _2: -1n }, -7n)", () => M.test2({ _1: -7n, _2: -1n }, -7n), "-14", false);
+check("test2({ _1: -7n, _2: -1n }, -1n)", () => M.test2({ _1: -7n, _2: -1n }, -1n), "-8", false);
+check("test2({ _1: -1n, _2: 0n }, -7n)", () => M.test2({ _1: -1n, _2: 0n }, -7n), "-8", false);
+check("test2({ _1: -7n, _2: -1n }, 0n)", () => M.test2({ _1: -7n, _2: -1n }, 0n), "-7", false);
+check("test2({ _1: -1n, _2: 0n }, -1n)", () => M.test2({ _1: -1n, _2: 0n }, -1n), "-2", false);
+check("test2({ _1: 0n, _2: 3n }, -7n)", () => M.test2({ _1: 0n, _2: 3n }, -7n), "-7", false);
+check("test2({ _1: -7n, _2: -1n }, 3n)", () => M.test2({ _1: -7n, _2: -1n }, 3n), "-4", false);
+check("test2({ _1: -1n, _2: 0n }, 0n)", () => M.test2({ _1: -1n, _2: 0n }, 0n), "-1", false);
+check("test2({ _1: 0n, _2: 3n }, -1n)", () => M.test2({ _1: 0n, _2: 3n }, -1n), "-1", false);
+check("test2({ _1: -7n, _2: -1n }, 12n)", () => M.test2({ _1: -7n, _2: -1n }, 12n), "5", false);
+check("test2({ _1: -1n, _2: 0n }, 3n)", () => M.test2({ _1: -1n, _2: 0n }, 3n), "2", false);
+check("test2({ _1: 0n, _2: 3n }, 0n)", () => M.test2({ _1: 0n, _2: 3n }, 0n), "0", false);
+check("test2({ _1: -1n, _2: 0n }, 12n)", () => M.test2({ _1: -1n, _2: 0n }, 12n), "11", false);
+check("test2({ _1: 0n, _2: 3n }, 3n)", () => M.test2({ _1: 0n, _2: 3n }, 3n), "3", false);
+check("test2({ _1: 0n, _2: 3n }, 12n)", () => M.test2({ _1: 0n, _2: 3n }, 12n), "12", false);
+check("testEven(0n, { _1: -7n, _2: -1n })", () => M.testEven(0n, { _1: -7n, _2: -1n }), "{-7, -1}", false);
+check("testEven(0n, { _1: -1n, _2: 0n })", () => M.testEven(0n, { _1: -1n, _2: 0n }), "{-1, 0}", false);
+check("testEven(1n, { _1: -7n, _2: -1n })", () => M.testEven(1n, { _1: -7n, _2: -1n }), "{0, -5}", false);
+check("testEven(0n, { _1: 0n, _2: 3n })", () => M.testEven(0n, { _1: 0n, _2: 3n }), "{0, 3}", false);
+check("testEven(1n, { _1: -1n, _2: 0n })", () => M.testEven(1n, { _1: -1n, _2: 0n }), "{1, 1}", false);
+check("testEven(2n, { _1: -7n, _2: -1n })", () => M.testEven(2n, { _1: -7n, _2: -1n }), "{-2, 4}", false);
+check("testEven(1n, { _1: 0n, _2: 3n })", () => M.testEven(1n, { _1: 0n, _2: 3n }), "{4, 2}", false);
+check("testEven(2n, { _1: -1n, _2: 0n })", () => M.testEven(2n, { _1: -1n, _2: 0n }), "{4, 5}", false);
+check("testEven(5n, { _1: -7n, _2: -1n })", () => M.testEven(5n, { _1: -7n, _2: -1n }), "{10, 5}", false);
+check("testEven(2n, { _1: 0n, _2: 3n })", () => M.testEven(2n, { _1: 0n, _2: 3n }), "{5, 8}", false);
+check("testEven(5n, { _1: -1n, _2: 0n })", () => M.testEven(5n, { _1: -1n, _2: 0n }), "{11, 11}", false);
+check("testEven(13n, { _1: -7n, _2: -1n })", () => M.testEven(13n, { _1: -7n, _2: -1n }), "{30, 25}", false);
+check("testEven(5n, { _1: 0n, _2: 3n })", () => M.testEven(5n, { _1: 0n, _2: 3n }), "{14, 12}", false);
+check("testEven(13n, { _1: -1n, _2: 0n })", () => M.testEven(13n, { _1: -1n, _2: 0n }), "{31, 31}", false);
+check("testEven(13n, { _1: 0n, _2: 3n })", () => M.testEven(13n, { _1: 0n, _2: 3n }), "{34, 32}", false);
+check("testOdd(0n, { _1: -7n, _2: -1n })", () => M.testOdd(0n, { _1: -7n, _2: -1n }), "{-7, -1}", false);
+check("testOdd(0n, { _1: -1n, _2: 0n })", () => M.testOdd(0n, { _1: -1n, _2: 0n }), "{-1, 0}", false);
+check("testOdd(1n, { _1: -7n, _2: -1n })", () => M.testOdd(1n, { _1: -7n, _2: -1n }), "{2, -3}", false);
+check("testOdd(0n, { _1: 0n, _2: 3n })", () => M.testOdd(0n, { _1: 0n, _2: 3n }), "{0, 3}", false);
+check("testOdd(1n, { _1: -1n, _2: 0n })", () => M.testOdd(1n, { _1: -1n, _2: 0n }), "{3, 3}", false);
+check("testOdd(2n, { _1: -7n, _2: -1n })", () => M.testOdd(2n, { _1: -7n, _2: -1n }), "{-2, 4}", false);
+check("testOdd(1n, { _1: 0n, _2: 3n })", () => M.testOdd(1n, { _1: 0n, _2: 3n }), "{6, 4}", false);
+check("testOdd(2n, { _1: -1n, _2: 0n })", () => M.testOdd(2n, { _1: -1n, _2: 0n }), "{4, 5}", false);
+check("testOdd(5n, { _1: -7n, _2: -1n })", () => M.testOdd(5n, { _1: -7n, _2: -1n }), "{12, 7}", false);
+check("testOdd(2n, { _1: 0n, _2: 3n })", () => M.testOdd(2n, { _1: 0n, _2: 3n }), "{5, 8}", false);
+check("testOdd(5n, { _1: -1n, _2: 0n })", () => M.testOdd(5n, { _1: -1n, _2: 0n }), "{13, 13}", false);
+check("testOdd(13n, { _1: -7n, _2: -1n })", () => M.testOdd(13n, { _1: -7n, _2: -1n }), "{32, 27}", false);
+check("testOdd(5n, { _1: 0n, _2: 3n })", () => M.testOdd(5n, { _1: 0n, _2: 3n }), "{16, 14}", false);
+check("testOdd(13n, { _1: -1n, _2: 0n })", () => M.testOdd(13n, { _1: -1n, _2: 0n }), "{33, 33}", false);
+check("testOdd(13n, { _1: 0n, _2: 3n })", () => M.testOdd(13n, { _1: 0n, _2: 3n }), "{36, 34}", false);
 
 console.log(`CaptureDerefRegression01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

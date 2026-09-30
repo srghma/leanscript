@@ -22,8 +22,7 @@ import {
 export const alias1 = (n) => {
   const x$1 = uint53__lean_mk_array(n, 1);
   const k$3 = (x$2) => array__lean_array_push_immutable(x$1, x$2);
-  const x$4 = k$3(n);
-  return array__lean_array_append_mutable(x$4, x$1);
+  return array__lean_array_append_mutable(k$3(n), x$1);
 };
 
 /**
@@ -38,11 +37,8 @@ export const alias2 = (n) => {
       n,
     );
   const x$4 = uint53__lean_mk_array(n, 0);
-  const x$5 = 1;
-  const x$6 = k$3(x$4, x$5);
-  const x$7 = 2;
-  const x$8 = k$3(x$4, x$7);
-  return array__lean_array_append_mutable(x$6, x$8);
+  const x$5 = k$3(x$4, 1);
+  return array__lean_array_append_mutable(x$5, k$3(x$4, 2));
 };
 
 /**
@@ -51,25 +47,20 @@ export const alias2 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const alias3 = (n) => {
-  const k$13 = (x$1) => {
-    const k$3 = (x$2) => x$2;
-    let acc$4 = k$3;
-    for (let i$5 = 0; i$5 < n; i$5++) {
-      const a$6 = acc$4;
-      const k_mut$10 = (x$7) => {
-        const x$8 = array__lean_array_push_mutable(x$7, i$5);
-        const x$9 = a$6(x$8);
-        return x$9;
-      };
-      acc$4 = k_mut$10;
+  const k$4 = (x$1) => {
+    let p$2 = [...x$1];
+    let j$3 = n;
+    while (true) {
+      if (j$3 === 0) {
+        return p$2;
+      }
+      j$3--;
+      p$2 = array__lean_array_push_mutable(p$2, j$3);
     }
-    const x$11 = acc$4;
-    const x$12 = x$11([...x$1]);
-    return x$12;
   };
-  const x$14 = uint53__lean_mk_array(n, 3);
-  const x$15 = k$13(x$14);
-  return [...x$15, ...x$15, ...x$14];
+  const x$5 = uint53__lean_mk_array(n, 3);
+  const x$6 = k$4(x$5);
+  return [...x$6, ...x$6, ...x$5];
 };
 
 /**
@@ -78,50 +69,34 @@ export const alias3 = (n) => {
  * @returns {Array<uint53(number)>}
  */
 export const alias4 = (n) => {
-  const k$13 = (x$1) => {
-    const k$3 = (x$2) => x$2;
-    let acc$4 = k$3;
-    for (let i$5 = 0; i$5 < n; i$5++) {
-      const a$6 = acc$4;
-      const k_mut$10 = (x$7) => {
-        const x$8 = array__lean_array_push_mutable(x$7, i$5);
-        const x$9 = a$6(x$8);
-        return x$9;
-      };
-      acc$4 = k_mut$10;
+  const k$4 = (x$1) => {
+    let p$2 = [...x$1];
+    let j$3 = n;
+    while (true) {
+      if (j$3 === 0) {
+        return p$2;
+      }
+      j$3--;
+      p$2 = array__lean_array_push_mutable(p$2, j$3);
     }
-    const x$11 = acc$4;
-    const x$12 = x$11([...x$1]);
-    return x$12;
   };
-  const k_mut$26 = (x$14) => {
-    const k$16 = (x$15) => x$15;
-    let acc$17 = k$16;
-    for (let i$18 = 0; i$18 < n; i$18++) {
-      const a$19 = acc$17;
-      const k_mut$23 = (x$20) => {
-        const x$21 = array__lean_array_push_mutable(x$20, i$18);
-        const x$22 = a$19(x$21);
-        return x$22;
-      };
-      acc$17 = k_mut$23;
+  const k_mut$8 = (x$5) => {
+    let p$6 = x$5;
+    let j$7 = n;
+    while (true) {
+      if (j$7 === 0) {
+        return p$6;
+      }
+      j$7--;
+      p$6 = array__lean_array_push_mutable(p$6, j$7);
     }
-    const x$24 = acc$17;
-    const x$25 = x$24(x$14);
-    return x$25;
   };
-  const k$30 = (x$27) => {
-    const x$28 = uint53__lean_mk_array(x$27, 5);
-    const x$29 = k_mut$26(x$28);
-    return x$29;
-  };
-  const x$31 = uint53__lean_mk_array(n, 3);
-  const x$32 = 1;
-  const x$33 = k$30(x$32);
-  const x$34 = 2;
-  const x$35 = k$30(x$34);
-  const x$36 = k$13(x$31);
-  return [...x$33, ...x$35, ...x$36, ...x$31];
+  const k$10 = (x$9) => k_mut$8(uint53__lean_mk_array(x$9, 5));
+  const x$11 = uint53__lean_mk_array(n, 3);
+  const x$12 = k$10(1);
+  const x$13 = k$10(2);
+  const x$14 = k$4(x$11);
+  return [...x$12, ...x$13, ...x$14, ...x$11];
 };
 
 /**
@@ -167,10 +142,9 @@ export const alias6 = (a, n) => {
   const x$1 = uint53__lean_mk_array(n, 4);
   const k$3 = (x$2) =>
     x$2 === 0 ? x$1 : array__lean_array_push_immutable(x$1, x$2);
-  const x$4 = k$3(n);
   return array__lean_array_append_mutable(
     array__lean_array_append_mutable(
-      array__lean_array_push_immutable(x$4, 9),
+      array__lean_array_push_immutable(k$3(n), 9),
       x$1,
     ),
     a,
@@ -220,8 +194,7 @@ export const Bag$collect = (a) => {
       f$5,
     );
   };
-  const x$6 = go0$1(a);
-  return x$6;
+  return go0$1(a);
 };
 
 /**
@@ -247,8 +220,7 @@ export const Bag$firstItems = (a) => {
       ? array__lean_array_push_immutable(f$5, f$6.length)
       : f$6;
   };
-  const x$7 = go0$1(a);
-  return x$7;
+  return go0$1(a);
 };
 
 /**
@@ -274,8 +246,7 @@ export const Bag$twice = (a) => {
       f$5,
     );
   };
-  const x$6 = go0$1(a);
-  return x$6;
+  return go0$1(a);
 };
 
 /**
@@ -324,9 +295,8 @@ export const bag1 = (xs) => {
       f$14,
     );
   };
-  const x$15 = go0$10(acc$1);
   return array__lean_array_append_mutable(
-    array__lean_array_append_mutable(x$9, x$15),
+    array__lean_array_append_mutable(x$9, go0$10(acc$1)),
     xs,
   );
 };
@@ -377,9 +347,8 @@ export const bag2 = (xs) => {
       f$15,
     );
   };
-  const x$16 = go0$11(acc$1);
   return array__lean_array_append_mutable(
-    array__lean_array_append_mutable(x$10, x$16),
+    array__lean_array_append_mutable(x$10, go0$11(acc$1)),
     xs,
   );
 };
@@ -431,6 +400,5 @@ export const bag3 = (xs) => {
       f$15,
     );
   };
-  const x$16 = go0$11(acc$2);
-  return array__lean_array_append_mutable(x$10, x$16);
+  return array__lean_array_append_mutable(x$10, go0$11(acc$2));
 };

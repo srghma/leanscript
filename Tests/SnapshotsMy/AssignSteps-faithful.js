@@ -13,23 +13,22 @@ import { bigint_nat__lean_nat_mod__Nat_mod } from "../../runtime.js";
  * @returns {nat(bigint)}
  */
 export const test1 = (fuel, a, b) => {
-  const k$3 = (x$1, x$2) => x$1;
-  let acc$4 = k$3;
-  for (let i$5 = 0n; i$5 < fuel; i$5++) {
-    const a$6 = acc$4;
-    const k$11 = (x$7, x$8) => {
-      if (x$8 === 0n) {
-        return x$7;
-      }
-      const x$9 = bigint_nat__lean_nat_mod__Nat_mod(x$7, x$8);
-      const x$10 = a$6(x$8, x$9);
-      return x$10;
-    };
-    acc$4 = k$11;
+  let p$1 = a;
+  let p$2 = b;
+  let j$3 = fuel;
+  while (true) {
+    if (j$3 === 0n) {
+      return p$1;
+    }
+    j$3--;
+    if (p$2 === 0n) {
+      return p$1;
+    }
+    const x$4 = p$2;
+    const x$5 = bigint_nat__lean_nat_mod__Nat_mod(p$1, p$2);
+    p$1 = x$4;
+    p$2 = x$5;
   }
-  const x$12 = acc$4;
-  const x$13 = x$12(a, b);
-  return x$13;
 };
 
 /**
@@ -41,20 +40,22 @@ export const test1 = (fuel, a, b) => {
  * @returns {nat(bigint)}
  */
 export const test2 = (fuel, a, b, c) => {
-  const k$4 = (x$1, x$2, x$3) => x$1 * 100n + x$2 * 10n + x$3;
-  let acc$5 = k$4;
-  for (let i$6 = 0n; i$6 < fuel; i$6++) {
-    const a$7 = acc$5;
-    const k$13 = (x$8, x$9, x$10) => {
-      const x$11 = x$8 + 1n;
-      const x$12 = a$7(x$9, x$10, x$11);
-      return x$12;
-    };
-    acc$5 = k$13;
+  let p$1 = a;
+  let p$2 = b;
+  let p$3 = c;
+  let j$4 = fuel;
+  while (true) {
+    if (j$4 === 0n) {
+      return p$1 * 100n + p$2 * 10n + p$3;
+    }
+    j$4--;
+    const x$5 = p$2;
+    const x$6 = p$3;
+    const x$7 = p$1 + 1n;
+    p$1 = x$5;
+    p$2 = x$6;
+    p$3 = x$7;
   }
-  const x$14 = acc$5;
-  const x$15 = x$14(a, b, c);
-  return x$15;
 };
 
 /**
@@ -65,19 +66,16 @@ export const test2 = (fuel, a, b, c) => {
  * @returns {nat(bigint)}
  */
 export const test4 = (fuel, a, b) => {
-  const k$3 = (x$1, x$2) => x$1 + x$2;
-  let acc$4 = k$3;
-  for (let i$5 = 0n; i$5 < fuel; i$5++) {
-    const a$6 = acc$4;
-    const k$12 = (x$7, x$8) => {
-      const x$9 = x$7 + 1n;
-      const x$10 = x$8 + 2n;
-      const x$11 = a$6(x$9, x$10);
-      return x$11;
-    };
-    acc$4 = k$12;
+  let p$1 = a;
+  let p$2 = b;
+  let j$3 = fuel;
+  while (true) {
+    if (j$3 === 0n) {
+      return p$1 + p$2;
+    }
+    j$3--;
+    const x$4 = p$1 + 1n;
+    p$1 = x$4;
+    p$2 = p$2 + 2n;
   }
-  const x$13 = acc$4;
-  const x$14 = x$13(a, b);
-  return x$14;
 };

@@ -31,10 +31,9 @@ export const test3 = (s, n) => {
         a$3._1._2,
         uint53__lean_string_utf8_byte_size(f$4),
       );
-      const x$6 = f$4 + "x";
-      acc$1 = { tag: 1, _1: { _1: x$6, _2: x$5 } };
+      acc$1 = { tag: 1, _1: { _1: f$4 + "x", _2: x$5 } };
     }
   }
-  const x$7 = acc$1._1;
-  return x$7._2;
+  const x$6 = acc$1._1;
+  return x$6._2;
 };

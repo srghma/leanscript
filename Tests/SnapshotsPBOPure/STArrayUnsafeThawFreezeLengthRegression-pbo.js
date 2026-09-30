@@ -10,6 +10,5 @@ import { array__lean_array_push_mutable } from "../../runtime.js";
  */
 export const test = (x) => {
   const x$1 = array__lean_array_push_mutable([x], 12);
-  const x$2 = x$1.length;
-  return array__lean_array_push_mutable(x$1, x$2);
+  return array__lean_array_push_mutable(x$1, x$1.length);
 };

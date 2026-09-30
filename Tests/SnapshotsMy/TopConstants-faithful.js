@@ -69,8 +69,7 @@ export const sumTo = (n) => {
     if (a$3.tag === 0) {
       acc$1 = { tag: 0, _1: a$3._1 };
     } else {
-      const x$4 = a$3._1 + i$2;
-      acc$1 = { tag: 1, _1: x$4 };
+      acc$1 = { tag: 1, _1: a$3._1 + i$2 };
     }
   }
   return acc$1._1;

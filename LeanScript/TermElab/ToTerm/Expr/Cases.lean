@@ -79,6 +79,15 @@ partial def trNestFoldl (L : Loc) (arr : Src) (s : NShape) (args : Array Expr) :
       let L2 := { L2 with nest := L2.nest.insert x.fvarId! s' }
       return Src.arrayFoldl arr z (← tr L2 body)
 
+/-- The tag of the function at position `i` of a `mutual` group of `k` functions recursing on a
+    `Nat` (`Loc.natGroup`): `true` for the first of two and `false` for the second, otherwise
+    the position as a `Nat`. -/
+def natGroupTag (k i : Nat) : Expr :=
+  if k == 2 then (if i == 0 then mkConst ``Bool.true else mkConst ``Bool.false) else mkNatLit i
+
+/-- The type of the tags of a `mutual` group of `k` functions recursing on a `Nat`. -/
+def natGroupTagTy (k : Nat) : Expr := if k == 2 then mkConst ``Bool else mkConst ``Nat
+
 /-- A recursive call `f … y …` on a subvalue `y` the recursion reached: the variable of its
     answer. -/
 partial def trRecCall (L : Loc) (e : Expr) : TM Src := do
@@ -124,7 +133,13 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Src := do
   -- the answer is a function of the parameters that change, then applied to the arguments
   -- beyond the parameters (`ack2 m n` for `ack2 : Nat → (Nat → Nat)`)
   let extra ← args[n:].toArray.mapM (tr L)
-  appStx t (varyArgs ++ extra)
+  -- in the fold of a `mutual` group recursing on a `Nat`: first the tag of the function called
+  let tag ← if L.natGroup.isEmpty then pure #[] else
+    match e.getAppFn.constName?.bind L.natGroup.idxOf? with
+    | some i => pure #[← tr L (natGroupTag L.natGroup.size i)]
+    | none => fail m!"the recursive call{indentExpr e}\ncalls no function of the `mutual` group"
+  appStx t (tag ++ varyArgs ++ extra)
+
 
 /-- The case analysis of `y` at the top of the body `e` of the function `g` (through the
     `match` it is compiled from). -/
@@ -174,6 +189,76 @@ partial def recBranch (L : Loc) (c : Name) (args : Array Expr) : TM Src := do
         openWindows Lb L.mems xs erased L.depth (tr · (body.replaceFVars vps vs))
     casesSrc plan (← varStx vps.size) brs none
 
+/-- Structural recursion on the `Nat` parameter `p` (the subject of the case analysis `e` at
+    the top of the body) by a `mutual` group of functions `L.fns` (`testEven`/`testOdd`), which
+    all have the type of the function translated `L.fn` and match on the parameter `p` at the
+    top of their bodies.  One fold (`Comp.nat_rec`) computes all of them: its answer is a
+    function of a tag first (which function: `natGroupTag`), then of the parameters the
+    recursive calls change; each branch dispatches on the tag to the branch of that function,
+    and a recursive call applies the answer at the predecessor to the tag of the function it
+    calls (`trRecCall`).  The translation is the fold applied to the tag of `L.fn`. -/
+partial def trNatGroup (L : Loc) (p : Nat) (e : Expr) : TM Src := do
+  let group := L.fns
+  let k := group.size
+  let some self := group.idxOf? L.fn
+    | fail m!"`{L.fn}` is not a member of its `mutual` group"
+  let fTy := (← getConstInfo L.fn).type
+  for g in group do
+    let info ← getConstInfo g
+    unless info.levelParams.isEmpty do fail m!"`{g}` is universe polymorphic"
+    unless ← isDefEq info.type fTy do
+      fail m!"`{g}` does not have the type of `{L.fn}`: the functions of a `mutual` group \
+        recursing on a `Nat` must all have the same type"
+  let y := L.params[p]!
+  -- the case analysis on `y` at the top of each function of the group
+  let cases ← group.mapM fun g => do
+    let some eqn ← getUnfoldEqnFor? g (nonRec := true)
+      | fail m!"`{g}` is not a definition that can be unfolded"
+    let eq ← instantiateForall (← inferType (mkConst eqn)) L.params
+    let some (_, _, rhs) := eq.eq? | fail m!"unexpected unfolding equation of `{g}`"
+    let (c, args) ← peelCases g y rhs
+    unless c == ``Nat.casesOn && args.size ≥ 4 do
+      fail m!"`{g}` must match on the `Nat` it recurses on at the top of its body"
+    return args
+  let vary ← varyingParams L p (cases.flatMap (·[2:].toArray))
+  let ps := vary.map (L.params[·]!)
+  let Lv := { L with vary, natGroup := group }
+  let tagTy := natGroupTagTy k
+  let resTy ← inferType e
+  let ty? ← tyOf? L resTy
+  -- `if tag = 0 then b₀ else if tag = 1 then b₁ … else bₖ₋₁`
+  let dispatch (L' : Loc) (tag : Expr) (brs : Array Src) : TM Src := do
+    let mut out := brs.back!
+    for i in (List.range (brs.size - 1)).reverse do
+      let c ← if k == 2 then tr L' tag else tr L' (mkApp2 (mkConst ``Nat.beq) tag (mkNatLit i))
+      out := Src.ite ty? c brs[i]! out
+    return out
+  -- the branch at `Nat.zero`/`Nat.succ m` of every function: a function of the tag and the
+  -- parameters that change
+  let branch (L0 : Loc) (bodies : Array Expr) : TM Src := do
+    withLocalDeclD `tag tagTy fun tag => do
+      let Lt := L0.bind tag.fvarId!
+      let packed := mkAppN (mkConst `LeanScript.Gen.natGroupBodies) bodies
+      let inner ← withVaryLocals Lt packed fun L' packed' => do
+        let bs := packed'.getAppArgs
+        -- the same branch for every function (`| 0, b => b` in both): no dispatch
+        if bs.all (· == bs[0]!) then tr L' bs[0]! else
+        dispatch L' tag (← bs.mapM (tr L'))
+      return Src.lam (some (← tyStx L tagTy)) inner
+  let zeroBodies := cases.map fun args =>
+    ((mkAppN args[2]! args[4:].toArray).headBeta).replaceFVar y (mkConst ``Nat.zero)
+  let z ← branch Lv zeroBodies
+  let s ← withLocalDeclD `n (mkConst ``Nat) fun m => do
+    let succBodies := cases.map fun args =>
+      ((mkAppN (mkApp args[3]! m) args[4:].toArray).headBeta).replaceFVar y
+        (mkApp (mkConst ``Nat.succ) m)
+    let L' := (Lv.bind m.fvarId!).bind none
+    let L' := { L' with ans := L'.ans.insert m.fvarId! (L'.slots.size - 1) }
+    branch L' succBodies
+  let ρ ← tyStx L (← mkArrow tagTy (← mkForallFVars ps resTy))
+  let r := Src.natRec (some ρ) (← tr L y) z s
+  appStx r (#[← tr L (natGroupTag k self)] ++ (← ps.mapM (tr L)))
+
 /-- A case analysis `T.casesOn motive major minors…`. -/
 partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src := do
   let ind ← getConstInfoInduct c.getPrefix
@@ -203,6 +288,9 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src
         ps) xs)
     else body
   if ind.name == ``Nat then
+    -- a `mutual` group recursing on a `Nat`: one fold of all its functions
+    if let some p := recPos? then
+      if L.fns.size > 1 then return ← trNatGroup tr L p e
     -- the parameters the recursive calls change: the answer is a function of them
     let vary ← match recPos? with
       | some p => varyingParams L p minors

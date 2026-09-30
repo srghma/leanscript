@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -59,6 +65,19 @@ check("test3(2n, 13n)", () => M.test3(2n, 13n), "21", false);
 check("test3(5n, 5n)", () => M.test3(5n, 5n), "1", false);
 check("test3(13n, 2n)", () => M.test3(13n, 2n), "23", false);
 check("test3(13n, 13n)", () => M.test3(13n, 13n), "1", false);
+check("test4(0n, 0n)", () => M.test4(0n, 0n), "{0, 0}", false);
+check("test4(0n, 2n)", () => M.test4(0n, 2n), "{0, 2}", false);
+check("test4(1n, 1n)", () => M.test4(1n, 1n), "{1, 1}", false);
+check("test4(2n, 0n)", () => M.test4(2n, 0n), "{0, 2}", false);
+check("test4(0n, 13n)", () => M.test4(0n, 13n), "{0, 13}", false);
+check("test4(1n, 5n)", () => M.test4(1n, 5n), "{1, 5}", false);
+check("test4(2n, 2n)", () => M.test4(2n, 2n), "{2, 2}", false);
+check("test4(5n, 1n)", () => M.test4(5n, 1n), "{1, 5}", false);
+check("test4(13n, 0n)", () => M.test4(13n, 0n), "{0, 13}", false);
+check("test4(2n, 13n)", () => M.test4(2n, 13n), "{2, 13}", false);
+check("test4(5n, 5n)", () => M.test4(5n, 5n), "{5, 5}", false);
+check("test4(13n, 2n)", () => M.test4(13n, 2n), "{2, 13}", false);
+check("test4(13n, 13n)", () => M.test4(13n, 13n), "{13, 13}", false);
 check("test5(0n, 0n)", () => M.test5(0n, 0n), "0", false);
 check("test5(0n, 2n)", () => M.test5(0n, 2n), "2", false);
 check("test5(1n, 1n)", () => M.test5(1n, 1n), "2", false);
@@ -72,6 +91,11 @@ check("test5(2n, 13n)", () => M.test5(2n, 13n), "15", false);
 check("test5(5n, 5n)", () => M.test5(5n, 5n), "10", false);
 check("test5(13n, 2n)", () => M.test5(13n, 2n), "15", false);
 check("test5(13n, 13n)", () => M.test5(13n, 13n), "26", false);
+check("test6(0n)", () => M.test6(0n), "0", false);
+check("test6(1n)", () => M.test6(1n), "1", false);
+check("test6(2n)", () => M.test6(2n), "4", false);
+check("test6(5n)", () => M.test6(5n), "13", false);
+check("test6(13n)", () => M.test6(13n), "73", false);
 
 console.log(`ScalarRepl-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

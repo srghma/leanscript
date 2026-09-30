@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,11 +42,21 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("sumCount(0)", () => M.sumCount(0), "{0, 0}", false);
+check("sumCount(1)", () => M.sumCount(1), "{0, 1}", false);
+check("sumCount(2)", () => M.sumCount(2), "{1, 2}", false);
+check("sumCount(5)", () => M.sumCount(5), "{10, 5}", false);
+check("sumCount(13)", () => M.sumCount(13), "{78, 13}", false);
 check("fib(0)", () => M.fib(0), "0", false);
 check("fib(1)", () => M.fib(1), "1", false);
 check("fib(2)", () => M.fib(2), "1", false);
 check("fib(5)", () => M.fib(5), "5", false);
 check("fib(13)", () => M.fib(13), "233", false);
+check("minMaxSum(0)", () => M.minMaxSum(0), "{1000000, {0, 0}}", false);
+check("minMaxSum(1)", () => M.minMaxSum(1), "{0, {0, 0}}", false);
+check("minMaxSum(2)", () => M.minMaxSum(2), "{0, {7, 7}}", false);
+check("minMaxSum(5)", () => M.minMaxSum(5), "{0, {10, 26}}", false);
+check("minMaxSum(13)", () => M.minMaxSum(13), "{0, {10, 62}}", false);
 check("firstAbove(0, 0)", () => M.firstAbove(0, 0), "0", false);
 check("firstAbove(0, 2)", () => M.firstAbove(0, 2), "0", false);
 check("firstAbove(1, 1)", () => M.firstAbove(1, 1), "0", false);
@@ -54,6 +70,19 @@ check("firstAbove(2, 13)", () => M.firstAbove(2, 13), "0", false);
 check("firstAbove(5, 5)", () => M.firstAbove(5, 5), "3", false);
 check("firstAbove(13, 2)", () => M.firstAbove(13, 2), "2", false);
 check("firstAbove(13, 13)", () => M.firstAbove(13, 13), "4", false);
+check("repeatCount(\"\", 0)", () => M.repeatCount("", 0), "{, 0}", false);
+check("repeatCount(\"\", 2)", () => M.repeatCount("", 2), "{, 0}", false);
+check("repeatCount(\"a\", 1)", () => M.repeatCount("a", 1), "{a, 1}", false);
+check("repeatCount(\"hello world\", 0)", () => M.repeatCount("hello world", 0), "{, 0}", false);
+check("repeatCount(\"\", 13)", () => M.repeatCount("", 13), "{, 0}", false);
+check("repeatCount(\"a\", 5)", () => M.repeatCount("a", 5), "{aaaaa, 5}", false);
+check("repeatCount(\"hello world\", 2)", () => M.repeatCount("hello world", 2), "{hello worldhello world, 22}", false);
+check("repeatCount(\"héllo, wörld\", 1)", () => M.repeatCount("héllo, wörld", 1), "{héllo, wörld, 12}", false);
+check("repeatCount(\"abcabc\", 0)", () => M.repeatCount("abcabc", 0), "{, 0}", false);
+check("repeatCount(\"hello world\", 13)", () => M.repeatCount("hello world", 13), "{hello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello world, 143}", false);
+check("repeatCount(\"héllo, wörld\", 5)", () => M.repeatCount("héllo, wörld", 5), "{héllo, wörldhéllo, wörldhéllo, wörldhéllo, wörldhéllo, wörld, 60}", false);
+check("repeatCount(\"abcabc\", 2)", () => M.repeatCount("abcabc", 2), "{abcabcabcabc, 12}", false);
+check("repeatCount(\"abcabc\", 13)", () => M.repeatCount("abcabc", 13), "{abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc, 78}", false);
 
 console.log(`LoopState-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

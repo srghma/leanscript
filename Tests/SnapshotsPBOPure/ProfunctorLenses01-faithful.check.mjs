@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,18 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test3({ _1: -7n, _2: -1n })", () => M.test3({ _1: -7n, _2: -1n }), "{-7, 0}", false);
+check("test3({ _1: -1n, _2: 0n })", () => M.test3({ _1: -1n, _2: 0n }), "{-1, 1}", false);
+check("test3({ _1: 0n, _2: 3n })", () => M.test3({ _1: 0n, _2: 3n }), "{0, 4}", false);
+check("test4({ _1: -7n, _2: -1n })", () => M.test4({ _1: -7n, _2: -1n }), "{-7, 0}", false);
+check("test4({ _1: -1n, _2: 0n })", () => M.test4({ _1: -1n, _2: 0n }), "{-1, 1}", false);
+check("test4({ _1: 0n, _2: 3n })", () => M.test4({ _1: 0n, _2: 3n }), "{0, 4}", false);
+check("test7({ _1: -7n, _2: -1n })", () => M.test7({ _1: -7n, _2: -1n }), "{-6, 41}", false);
+check("test7({ _1: -1n, _2: 0n })", () => M.test7({ _1: -1n, _2: 0n }), "{0, 42}", false);
+check("test7({ _1: 0n, _2: 3n })", () => M.test7({ _1: 0n, _2: 3n }), "{1, 45}", false);
+check("test8({ _1: -7n, _2: -1n })", () => M.test8({ _1: -7n, _2: -1n }), "{-6, 41}", false);
+check("test8({ _1: -1n, _2: 0n })", () => M.test8({ _1: -1n, _2: 0n }), "{0, 42}", false);
+check("test8({ _1: 0n, _2: 3n })", () => M.test8({ _1: 0n, _2: 3n }), "{1, 45}", false);
 
 console.log(`ProfunctorLenses01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

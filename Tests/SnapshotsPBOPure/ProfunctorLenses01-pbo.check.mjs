@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -36,6 +42,18 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test3({ _1: -7, _2: -1 })", () => M.test3({ _1: -7, _2: -1 }), "{-7, 0}", false);
+check("test3({ _1: -1, _2: 0 })", () => M.test3({ _1: -1, _2: 0 }), "{-1, 1}", false);
+check("test3({ _1: 0, _2: 3 })", () => M.test3({ _1: 0, _2: 3 }), "{0, 4}", false);
+check("test4({ _1: -7, _2: -1 })", () => M.test4({ _1: -7, _2: -1 }), "{-7, 0}", false);
+check("test4({ _1: -1, _2: 0 })", () => M.test4({ _1: -1, _2: 0 }), "{-1, 1}", false);
+check("test4({ _1: 0, _2: 3 })", () => M.test4({ _1: 0, _2: 3 }), "{0, 4}", false);
+check("test7({ _1: -7, _2: -1 })", () => M.test7({ _1: -7, _2: -1 }), "{-6, 41}", false);
+check("test7({ _1: -1, _2: 0 })", () => M.test7({ _1: -1, _2: 0 }), "{0, 42}", false);
+check("test7({ _1: 0, _2: 3 })", () => M.test7({ _1: 0, _2: 3 }), "{1, 45}", false);
+check("test8({ _1: -7, _2: -1 })", () => M.test8({ _1: -7, _2: -1 }), "{-6, 41}", false);
+check("test8({ _1: -1, _2: 0 })", () => M.test8({ _1: -1, _2: 0 }), "{0, 42}", false);
+check("test8({ _1: 0, _2: 3 })", () => M.test8({ _1: 0, _2: 3 }), "{1, 45}", false);
 
 console.log(`ProfunctorLenses01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

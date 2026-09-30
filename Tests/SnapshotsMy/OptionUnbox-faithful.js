@@ -22,16 +22,21 @@ export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
  * @returns {nat(bigint)}
  */
 export const test6 = (n, i) => {
-  const k$1 = [{ tag: 1, _1: n }, { tag: 0 }];
-  let x$2;
-  if (i < BigInt(k$1.length)) {
-    const k$3 = [{ tag: 1, _1: n }, { tag: 0 }];
-    x$2 = { tag: 1, _1: bigint_nat__lean_array_get({ tag: 0 }, k$3, i) };
+  let x$1;
+  if (i < BigInt([{ tag: 1, _1: n }, { tag: 0 }].length)) {
+    x$1 = {
+      tag: 1,
+      _1: bigint_nat__lean_array_get(
+        { tag: 0 },
+        [{ tag: 1, _1: n }, { tag: 0 }],
+        i,
+      ),
+    };
   } else {
-    x$2 = { tag: 0 };
+    x$1 = { tag: 0 };
   }
-  if (x$2.tag === 0) {
+  if (x$1.tag === 0) {
     return 2n;
   }
-  return x$2._1.tag === 0 ? 1n : x$2._1._1;
+  return x$1._1.tag === 0 ? 1n : x$1._1._1;
 };

@@ -46,11 +46,13 @@ export const test5 = (n) => {
     if (a$4.tag === 0) {
       acc$2 = { tag: 0, _1: a$4._1 };
     } else {
-      const x$5 = array__lean_array_append_mutable(a$4._1, [
-        i$3,
-        uint53__lean_nat_mul(i$3, i$3),
-      ]);
-      acc$2 = { tag: 1, _1: x$5 };
+      acc$2 = {
+        tag: 1,
+        _1: array__lean_array_append_mutable(a$4._1, [
+          i$3,
+          uint53__lean_nat_mul(i$3, i$3),
+        ]),
+      };
     }
   }
   return acc$2._1;

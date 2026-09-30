@@ -15,11 +15,16 @@ import {
  * @param {nat(bigint)} x
  * @returns {Array<nat(bigint)>}
  */
-export const test1 = (x) => {
-  const x$1 = array__lean_array_push_mutable([x, 1n, 2n], 3n);
-  const x$2 = bigint_nat__lean_array_fset_mutable(x$1, 0n, 7n);
-  return bigint_nat__lean_array_fswap_mutable(x$2, 1n, 2n);
-};
+export const test1 = (x) =>
+  bigint_nat__lean_array_fswap_mutable(
+    bigint_nat__lean_array_fset_mutable(
+      array__lean_array_push_mutable([x, 1n, 2n], 3n),
+      0n,
+      7n,
+    ),
+    1n,
+    2n,
+  );
 
 /**
  * `test2`

@@ -19,8 +19,7 @@ export const test1 = (fn) => {
  * @type {int53(number)}
  */
 export const fn_ = (() => {
-  const k$2 = () => 0;
-  const f$1 = k$2;
+  const f$1 = () => 0;
   return f$1();
 })();
 

@@ -14,11 +14,16 @@ import {
  * @param {uint53(number)} x
  * @returns {Array<uint53(number)>}
  */
-export const test1 = (x) => {
-  const x$1 = array__lean_array_push_mutable([x, 1, 2], 3);
-  const x$2 = uint53__lean_array_fset_mutable(x$1, 0, 7);
-  return uint53__lean_array_fswap_mutable(x$2, 1, 2);
-};
+export const test1 = (x) =>
+  uint53__lean_array_fswap_mutable(
+    uint53__lean_array_fset_mutable(
+      array__lean_array_push_mutable([x, 1, 2], 3),
+      0,
+      7,
+    ),
+    1,
+    2,
+  );
 
 /**
  * `test2`

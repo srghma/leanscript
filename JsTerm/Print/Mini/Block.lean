@@ -68,6 +68,27 @@ def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n :
       let us := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
       us.size == 1 && !us.any (·.again)
 
+/-- Is the constant `const x = e;` followed by `rest` written at its only use instead: `rest`
+    reads it once, not in a loop or a closure (nor as the function called, for a closure), where
+    computing `e` gives the same result (`JsExpr.movable` anywhere; otherwise at a use it reads
+    first, `JsBlock.useFirst`)? -/
+def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ)
+    (rest : JsBlock S (τ :: C) M J k) : Bool :=
+  let us := rest.occs.filter fun o => !o.isMut && o.idx == 0
+  match us.toList with
+  | [u] =>
+    if u.again then false
+    else
+      let isLam := match e with
+        | .lam .. => true
+        | _ => false
+      if isLam && u.callee then false
+      else if e.movable then true
+      else
+        let reads := (e.occs.filter (·.isMut)).toList.map (·.idx)
+        rest.useFirst (!e.noEffect) reads 0
+  | _ => false
+
 mutual
 /-- An expression as a `MiniAST` expression. -/
 partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M τ → PM MiniExpr
@@ -161,6 +182,8 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .jump j e => do
     let e ← exprToMini sc e
     match sc.joins[j.index]? with
+    -- the exit of a loop followed by `return` of what it passes (`countdown`): `return e;`
+    | some (_, "") => return [.return_ (some e)]
     | some (label, x) =>
       let set : MiniStatement := .expr (.assign (ident x) .assign e)
       if j.index == 0 && tl.join then return [set]
@@ -169,6 +192,11 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
       return [.throw (.new (ident "Error") [.string s!"LeanScript: an unknown join point"])]
   | .throw msg => pure [.throw (.new (ident "Error") [.string msg])]
   | .const hint e rest => do
+    -- a constant read once, where its computation can be moved to (not in a loop or a closure,
+    -- nothing in between that the move would reorder): its value written there
+    if constInline e rest then
+      let m ← exprToMini sc e
+      return ← blockToMini { sc with c := m :: sc.c } tl rest
     let e ← exprToMini sc e
     let x ← freshName hint
     return constDecl x e :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
@@ -234,6 +262,27 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let r ← blockToMini sc tl rest
     return pre ++ .for_ (.decl .let_ ⟨⟨.ident (nes i), some (natLitOf nt 0)⟩, []⟩)
       (some (.binary (ident i) .lt n)) (some (.postfix (ident i) .incr)) (.block b) :: r
+  | .countdown hint nt n base step rest => do
+    let n ← exprToMini sc n
+    let j ← freshName hint
+    -- `return x` of what the loop passes: every exit is `return e;`
+    let direct := match rest with
+      | .ret (.cvar .zero) => true
+      | _ => false
+    let x ← if direct then pure "" else freshName "r"
+    let label ← if direct then pure "" else freshLabel
+    let sc' : Scope := { c := sc.c, m := j :: sc.m, joins := [(label, x)], loop := .cont }
+    let b ← blockToMini sc' {} base
+    let s ← blockToMini sc' { loop := true } step
+    let test : MiniExpr := .binary (ident j) .strictEq (natLitOf nt 0)
+    -- the base ends the loop (it jumps out): no `else` is needed
+    let body : List MiniStatement :=
+      .if_ test (.block b) none :: .expr (.postfix (ident j) .decr) :: s
+    let loop : MiniStatement := .while_ .true_ (.block body)
+    let decl : MiniStatement := .decl .let_ ⟨⟨.ident (nes j), some n⟩, []⟩
+    if direct then return [decl, loop]
+    let r ← blockToMini { sc with c := ident x :: sc.c } tl rest
+    return decl :: .decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩ :: .labelled (nes label) loop :: r
   | .forOf hint _ xs body rest => do
     let xs ← exprToMini sc xs
     let x ← freshName hint

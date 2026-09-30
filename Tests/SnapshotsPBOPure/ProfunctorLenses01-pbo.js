@@ -4,12 +4,8 @@
 //   instReprRecBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   instReprRecFooBaz.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
 //   instReprRecFooBar.repr: LeanScript: the recursive type Std.Format is not declared in any signature; declare it with `leanscript_signature`
-//   test3: invalid scope
-//   test4: invalid scope
-//   test5: invalid scope
-//   test6: invalid scope
-//   test7: invalid scope
-//   test8: invalid scope
+
+import { int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `test1`
@@ -24,3 +20,51 @@ export const test1 = (a) => a._1;
  * @returns {int53(number)}
  */
 export const test2 = (a) => a._1;
+
+/**
+ * `test3`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test3 = (a) => ({ _1: a._1, _2: int53__lean_int_add(a._2, 1) });
+
+/**
+ * `test4`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test4 = (a) => ({ _1: a._1, _2: int53__lean_int_add(a._2, 1) });
+
+/**
+ * `test5`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test5 = (a) => ({ _1: a._1, _2: int53__lean_int_add(a._2, 1) });
+
+/**
+ * `test6`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test6 = (a) => ({ _1: a._1, _2: int53__lean_int_add(a._2, 1) });
+
+/**
+ * `test7`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test7 = (a) => ({
+  _1: int53__lean_int_add(a._1, 1),
+  _2: int53__lean_int_add(a._2, 42),
+});
+
+/**
+ * `test8`
+ * @param {{ _1: int53(number), _2: int53(number) }} a
+ * @returns {{ _1: int53(number), _2: int53(number) }}
+ */
+export const test8 = (a) => ({
+  _1: int53__lean_int_add(a._1, 1),
+  _2: int53__lean_int_add(a._2, 42),
+});

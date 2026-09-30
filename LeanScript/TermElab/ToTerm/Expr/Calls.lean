@@ -47,6 +47,7 @@ partial def trHelperCall (L : Loc) (c : Name) (e : Expr) (args : Array Expr) : T
     let group ← mutualGroup c
     let recursive := group.any fun g => (rhs.find? (·.isConstOf g)).isSome
     let L0 : Loc := { slots := xs.map (some ·.fvarId!), fns := if recursive then group else #[],
+                      fn := c,
                       params, prog? := L.prog?, c := L.c }
     let saved := (← get).inlining
     modify fun s => { s with inlining := s.inlining.push c }

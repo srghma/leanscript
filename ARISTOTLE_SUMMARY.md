@@ -1,3 +1,32 @@
+# Summary of changes for run 3c48ab1a-45eb-45f5-aa51-e42c6592d447
+I rewrote how `Tests/SnapshotsPBOPure/CaptureDerefRegression01.lean` is compiled. For every test except `testOdd`, the JavaScript is now as short as the purescript-backend-optimizer output in `legacy-backend/CaptureDerefRegression01.js`, or shorter. `testOdd` is still a full loop, while the legacy backend gives it a 5-line wrapper. Both presets pass all 60 differential checks against Lean.
+
+**What was wrong at the start**
+- `test4` and `test5` were not translated at all, because private types gave an "invalid scope" error.
+- `testEven` and `testOdd`, which call each other, were refused. Once the refusal was removed, a hidden miscompile showed up: the call to the other function was treated as a call to itself.
+- The output kept temporary constants that are read only once, such as `const k$2 = …; return {_1: k$2, …}` and `const x$6 = false; p$1 = x$6;`.
+
+**Changes, in pipeline order**
+1. **Lean → Term:** private declaration names are cleaned up, which fixes the scope error. Mutual recursion on a `Nat` (like `testEven`/`testOdd`) becomes one `nat_rec` whose answer takes a tag saying which function is running (a `Bool` for two functions). This also fixes the miscompile.
+2. **Term → JsTerm:** when a `nat_rec` answers a function that is applied at once and only calls itself in tail position, it becomes a countdown loop, `let p = …; let j = n; while (true) { if (j === 0) … j--; … }`. So these functions no longer need stack space for each step. Loop variables that hold arrays can now be updated in place: the initial value is copied only if something else still uses it. Without this, `LocalFnInPlace` `test5`/`test6` copied the array on every step, and the `lake exe tests` check "test5 updates in place" failed. They now use `push_mutable` in the loop.
+3. **Printing:** a constant read exactly once is written at its use, but only when that cannot change behaviour: not inside a loop or a closure, and not moved past any side effect. While doing this I found and fixed a bug where an array read was moved past an in-place update of the same array (it broke `Tests/SnapshotsMy/ReadBeforeWrite`). Now only constants, literals, closures and fresh records or arrays can be moved past other code.
+
+I did not put the loop and ownership work in the Term optimizer as you preferred, because it depends on JavaScript-level facts (loops, mutable variables, in-place updates). The Term optimizer and its proofs are unchanged.
+
+**Result compared with the legacy backend**
+- `test1`, `test2`: identical.
+- `test3`: we produce `(v, p1) => …` with both arguments at once; the legacy backend produces the curried `(v0) => (v1) => …`.
+- `test4`, `test5`: `(v) => ({ _1: (x) => …, _2: (x) => … })`, the same as the legacy backend but without the `tag: 0` field.
+- `testEven`, `testOdd`: each is a while loop with a `Bool` tag, which is linear time and uses constant stack. The legacy backend instead specialises two steps per iteration and keeps the fields in separate variables. We still destructure the record in each branch, so this part is close to the legacy output but not identical.
+- The `pbo` preset calls `int53__lean_int_add` where the legacy backend writes `+`, because of how that preset handles `Int`; the `faithful` preset writes `f + 1n`.
+
+**Verification**
+- All snapshots were regenerated with `scripts/leanscript-snapshots.sh`. All 336 node check outputs report 0 failures. The script still exits non-zero, as before, because of the known "literal too big" cases and the intended `mypanic` test.
+- `lake build leanscript` succeeds, and `lake exe tests` passes 76/76.
+- A plain `lake build` of the default targets fails in `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib. That file is unchanged since the initial commit, so this failure was already there before this session.
+
+All work is committed. The main files changed are `LeanScript/GenElab/Cache.lean`, `LeanScript/TermElab/ToTerm/Expr/Cases.lean`, `LeanScriptCli/Main.lean`, `LeanScriptCli/Check.lean`, `JsTerm/Lower/FromTerm.lean`, `JsTerm/Syntax/Vars/Occs.lean`, `JsTerm/Print/Mini/Block.lean` and the JsTerm loop support files.
+
 # Summary of changes for run 842d423c-714b-4752-b48b-f54cc64bb8dc
 The JS for `BranchSpecialization01` is now shorter than the purescript-backend-optimizer output. PBO's `instBEqTestEnum$beq` is a four-branch `if` chain; ours is a single comparison:
 ```js

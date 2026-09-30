@@ -37,20 +37,15 @@ export const hyperBase = (a, a1) => {
  * @returns {nat(bigint)}
  */
 export const hyperLoop = (f, a, a1) => {
-  const k$2 = (x$1) => x$1;
-  let acc$3 = k$2;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$9 = (x$6) => {
-      const x$7 = f(x$6);
-      const x$8 = a$5(x$7);
-      return x$8;
-    };
-    acc$3 = k$9;
+  let p$1 = a1;
+  let j$2 = a;
+  while (true) {
+    if (j$2 === 0n) {
+      return p$1;
+    }
+    j$2--;
+    p$1 = f(p$1);
   }
-  const x$10 = acc$3;
-  const x$11 = x$10(a1);
-  return x$11;
 };
 
 /**
@@ -61,55 +56,45 @@ export const hyperLoop = (f, a, a1) => {
  * @returns {nat(bigint)}
  */
 export const hyperTCO = (a, a1, a2) => {
-  const k$2 = (x$1) => x$1 + 1n;
-  let acc$3 = k$2;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$35 = (x$6) => {
-      const k$20 = (x$7, x$8) => {
-        const k$10 = (x$9) => x$9;
-        let acc$11 = k$10;
-        for (let i$12 = 0n; i$12 < x$7; i$12++) {
-          const a$13 = acc$11;
-          const k$17 = (x$14) => {
-            const x$15 = a$5(x$14);
-            const x$16 = a$13(x$15);
-            return x$16;
-          };
-          acc$11 = k$17;
-        }
-        const x$18 = acc$11;
-        const x$19 = x$18(x$8);
-        return x$19;
-      };
-      const x$21 = i$4 + 1n;
-      const k$32 = (x$22) => {
-        let acc$23 = 1n;
-        for (let i$24 = 0n; i$24 < x$21; i$24++) {
-          const a$25 = acc$23;
-          let acc$26 = x$22;
-          for (let i$27 = 0n; i$27 < i$24; i$27++) {
-            const a$28 = acc$26;
-            let acc$29 = 0n;
-            for (let i$30 = 0n; i$30 < i$27; i$30++) {
-              const a$31 = acc$29;
-              acc$29 = 1n;
-            }
-            acc$26 = acc$29;
+  let acc$2 = (x$1) => x$1 + 1n;
+  for (let i$3 = 0n; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    acc$2 = (x$5) => {
+      const k$10 = (x$6, x$7) => {
+        let p$8 = x$7;
+        let j$9 = x$6;
+        while (true) {
+          if (j$9 === 0n) {
+            return p$8;
           }
-          acc$23 = acc$26;
+          j$9--;
+          p$8 = a$4(p$8);
         }
-        return acc$23;
       };
-      const x$33 = k$32(a1);
-      const x$34 = k$20(x$6, x$33);
-      return x$34;
+      const x$11 = i$3 + 1n;
+      const k$22 = (x$12) => {
+        let acc$13 = 1n;
+        for (let i$14 = 0n; i$14 < x$11; i$14++) {
+          const a$15 = acc$13;
+          let acc$16 = x$12;
+          for (let i$17 = 0n; i$17 < i$14; i$17++) {
+            const a$18 = acc$16;
+            let acc$19 = 0n;
+            for (let i$20 = 0n; i$20 < i$17; i$20++) {
+              const a$21 = acc$19;
+              acc$19 = 1n;
+            }
+            acc$16 = acc$19;
+          }
+          acc$13 = acc$16;
+        }
+        return acc$13;
+      };
+      return k$10(x$5, k$22(a1));
     };
-    acc$3 = k$35;
   }
-  const x$36 = acc$3;
-  const x$37 = x$36(a2);
-  return x$37;
+  const x$23 = acc$2;
+  return x$23(a2);
 };
 
 /**
@@ -120,46 +105,42 @@ export const hyperTCO = (a, a1, a2) => {
  * @returns {nat(bigint)}
  */
 export const hyperWhile = (a, a1, a2) => {
-  const k$2 = (x$1) => x$1 + 1n;
-  let acc$3 = k$2;
-  for (let i$4 = 0n; i$4 < a; i$4++) {
-    const a$5 = acc$3;
-    const k$24 = (x$6) => {
-      const x$7 = i$4 + 1n;
-      const k$18 = (x$8) => {
-        let acc$9 = 1n;
-        for (let i$10 = 0n; i$10 < x$7; i$10++) {
-          const a$11 = acc$9;
-          let acc$12 = x$8;
-          for (let i$13 = 0n; i$13 < i$10; i$13++) {
-            const a$14 = acc$12;
-            let acc$15 = 0n;
-            for (let i$16 = 0n; i$16 < i$13; i$16++) {
-              const a$17 = acc$15;
-              acc$15 = 1n;
+  let acc$2 = (x$1) => x$1 + 1n;
+  for (let i$3 = 0n; i$3 < a; i$3++) {
+    const a$4 = acc$2;
+    acc$2 = (x$5) => {
+      const x$6 = i$3 + 1n;
+      const k$17 = (x$7) => {
+        let acc$8 = 1n;
+        for (let i$9 = 0n; i$9 < x$6; i$9++) {
+          const a$10 = acc$8;
+          let acc$11 = x$7;
+          for (let i$12 = 0n; i$12 < i$9; i$12++) {
+            const a$13 = acc$11;
+            let acc$14 = 0n;
+            for (let i$15 = 0n; i$15 < i$12; i$15++) {
+              const a$16 = acc$14;
+              acc$14 = 1n;
             }
-            acc$12 = acc$15;
+            acc$11 = acc$14;
           }
-          acc$9 = acc$12;
+          acc$8 = acc$11;
         }
-        return acc$9;
+        return acc$8;
       };
-      const x$19 = k$18(a1);
-      let acc$20 = { tag: 1, _1: x$19 };
-      for (let i$21 = 0n; i$21 < x$6; i$21++) {
-        const a$22 = acc$20;
-        if (a$22.tag === 0) {
-          acc$20 = { tag: 0, _1: a$22._1 };
+      const x$18 = k$17(a1);
+      let acc$19 = { tag: 1, _1: x$18 };
+      for (let i$20 = 0n; i$20 < x$5; i$20++) {
+        const a$21 = acc$19;
+        if (a$21.tag === 0) {
+          acc$19 = { tag: 0, _1: a$21._1 };
         } else {
-          const x$23 = a$5(a$22._1);
-          acc$20 = { tag: 1, _1: x$23 };
+          acc$19 = { tag: 1, _1: a$4(a$21._1) };
         }
       }
-      return acc$20._1;
+      return acc$19._1;
     };
-    acc$3 = k$24;
   }
-  const x$25 = acc$3;
-  const x$26 = x$25(a2);
-  return x$26;
+  const x$22 = acc$2;
+  return x$22(a2);
 };

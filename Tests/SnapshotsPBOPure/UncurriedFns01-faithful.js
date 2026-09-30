@@ -8,12 +8,8 @@
  * @returns {int(bigint)}
  */
 export const test1 = (f, g) => {
-  const x$1 = 1n;
-  const x$2 = g(x$1);
-  const x$3 = 2n;
-  const x$4 = 3n;
-  const x$5 = f(x$2, x$3, x$4);
-  return x$5;
+  const x$1 = g(1n);
+  return f(x$1, 2n, 3n);
 };
 
 /**
@@ -24,11 +20,8 @@ export const test1 = (f, g) => {
  * @returns {int(bigint)}
  */
 export const test2 = (f, g, i) => {
-  const x$1 = 1n;
-  const x$2 = g(x$1);
-  const x$3 = 2n;
-  const x$4 = f(x$2, x$3, i);
-  return x$4;
+  const x$1 = g(1n);
+  return f(x$1, 2n, i);
 };
 
 /**
@@ -39,12 +32,7 @@ export const test2 = (f, g, i) => {
  * @param {int(bigint)} j
  * @returns {int(bigint)}
  */
-export const test3 = (f, g, i, j) => {
-  const x$1 = 1n;
-  const x$2 = g(x$1);
-  const x$3 = f(x$2, i, j);
-  return x$3;
-};
+export const test3 = (f, g, i, j) => f(g(1n), i, j);
 
 /**
  * `test4`
@@ -54,7 +42,4 @@ export const test3 = (f, g, i, j) => {
  * @param {int(bigint)} k
  * @returns {int(bigint)}
  */
-export const test4 = (f, i, j, k) => {
-  const x$1 = f(i, j, k);
-  return x$1;
-};
+export const test4 = (f, i, j, k) => f(i, j, k);

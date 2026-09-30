@@ -88,6 +88,9 @@ partial def JsBlock.pretty {C M J : List JsTy} {k : JsEnd} (ind : String) :
   | .forRange i _ n body rest =>
     s!"{ind}for ({i} < {n.pretty ind}) \{\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}\n" ++
       rest.pretty ind
+  | .countdown j _ n base step rest =>
+    s!"{ind}countdown ({j} from {n.pretty ind}) \{\n" ++ base.pretty (ind ++ "  ") ++
+      ind ++ "} step {\n" ++ step.pretty (ind ++ "  ") ++ ind ++ "}\n" ++ rest.pretty ind
   | .forOf x _ xs body rest =>
     s!"{ind}for ({x} of {xs.pretty ind}) \{\n" ++ body.pretty (ind ++ "  ") ++ ind ++ "}\n" ++
       rest.pretty ind

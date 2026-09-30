@@ -34,20 +34,21 @@ import {
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const ArrStd$tMap = (a) => {
-  const k$2 = (x$1) => uint53__lean_nat_add(x$1, 1);
-  return array__lean_array_map(k$2, a);
-};
+export const ArrStd$tMap = (a) =>
+  array__lean_array_map((x$1) => uint53__lean_nat_add(x$1, 1), a);
 
 /**
  * `ArrStd.tFilter`
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const ArrStd$tFilter = (a) => {
-  const k$2 = (x$1) => uint53__lean_nat_mod__Nat_mod(x$1, 2) === 0;
-  return uint53__lean_array_filter(k$2, a, 0, a.length);
-};
+export const ArrStd$tFilter = (a) =>
+  uint53__lean_array_filter(
+    (x$1) => uint53__lean_nat_mod__Nat_mod(x$1, 2) === 0,
+    a,
+    0,
+    a.length,
+  );
 
 /**
  * `ArrStd.tRev`
@@ -70,20 +71,16 @@ export const ArrStd$tExtract = (a, i, j) => uint53__lean_array_extract(a, i, j);
  * @param {Array<uint53(number)>} a
  * @returns {boolean}
  */
-export const ArrStd$tAny = (a) => {
-  const k$2 = (x$1) => 3 < x$1;
-  return uint53__lean_array_any(a, k$2, 0, a.length);
-};
+export const ArrStd$tAny = (a) =>
+  uint53__lean_array_any(a, (x$1) => 3 < x$1, 0, a.length);
 
 /**
  * `ArrStd.tAll`
  * @param {Array<uint53(number)>} a
  * @returns {boolean}
  */
-export const ArrStd$tAll = (a) => {
-  const k$2 = (x$1) => 3 < x$1;
-  return uint53__lean_array_all(a, k$2, 0, a.length);
-};
+export const ArrStd$tAll = (a) =>
+  uint53__lean_array_all(a, (x$1) => 3 < x$1, 0, a.length);
 
 /**
  * `ArrStd.tContains`
@@ -91,30 +88,24 @@ export const ArrStd$tAll = (a) => {
  * @param {uint53(number)} x
  * @returns {boolean}
  */
-export const ArrStd$tContains = (a, x) => {
-  const k$3 = (x$1, x$2) => x$1 === x$2;
-  return array__lean_array_contains(k$3, a, x);
-};
+export const ArrStd$tContains = (a, x) =>
+  array__lean_array_contains((x$1, x$2) => x$1 === x$2, a, x);
 
 /**
  * `ArrStd.tFind`
  * @param {Array<uint53(number)>} a
  * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
-export const ArrStd$tFind = (a) => {
-  const k$2 = (x$1) => 2 < x$1;
-  return array__lean_array_find_opt(k$2, a);
-};
+export const ArrStd$tFind = (a) =>
+  array__lean_array_find_opt((x$1) => 2 < x$1, a);
 
 /**
  * `ArrStd.tFindIdx`
  * @param {Array<uint53(number)>} a
  * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
-export const ArrStd$tFindIdx = (a) => {
-  const k$2 = (x$1) => 2 < x$1;
-  return uint53__lean_array_find_idx_opt(k$2, a);
-};
+export const ArrStd$tFindIdx = (a) =>
+  uint53__lean_array_find_idx_opt((x$1) => 2 < x$1, a);
 
 /**
  * `ArrStd.tIdxOf`
@@ -122,10 +113,8 @@ export const ArrStd$tFindIdx = (a) => {
  * @param {string} s
  * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
-export const ArrStd$tIdxOf = (a, s) => {
-  const k$3 = (x$1, x$2) => x$1 === x$2;
-  return uint53__lean_array_idx_of_opt(k$3, a, s);
-};
+export const ArrStd$tIdxOf = (a, s) =>
+  uint53__lean_array_idx_of_opt((x$1, x$2) => x$1 === x$2, a, s);
 
 /**
  * `ArrStd.tErase`
@@ -151,21 +140,27 @@ export const ArrStd$tInsert = (a, i, x) =>
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const ArrStd$tSort = (a) => {
-  const k$3 = (x$1, x$2) => x$1 < x$2;
-  return uint53__lean_array_qsort(a, k$3, 0, uint53__lean_nat_sub(a.length, 1));
-};
+export const ArrStd$tSort = (a) =>
+  uint53__lean_array_qsort(
+    a,
+    (x$1, x$2) => x$1 < x$2,
+    0,
+    uint53__lean_nat_sub(a.length, 1),
+  );
 
 /**
  * `ArrStd.tFoldr`
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const ArrStd$tFoldr = (a) => {
-  const k$3 = (x$1, x$2) =>
-    uint53__lean_nat_add(x$1, uint53__lean_nat_mul(x$2, 2));
-  return uint53__lean_array_foldr(k$3, 0, a, a.length, 0);
-};
+export const ArrStd$tFoldr = (a) =>
+  uint53__lean_array_foldr(
+    (x$1, x$2) => uint53__lean_nat_add(x$1, uint53__lean_nat_mul(x$2, 2)),
+    0,
+    a,
+    a.length,
+    0,
+  );
 
 /**
  * `ArrStd.tZip`
@@ -181,20 +176,20 @@ export const ArrStd$tZip = (a, b) => array__lean_array_zip(a, b);
  * @param {Array<uint53(number)>} b
  * @returns {Array<uint53(number)>}
  */
-export const ArrStd$tZipWith = (a, b) => {
-  const k$3 = (x$1, x$2) => uint53__lean_nat_mul(x$1, x$2);
-  return array__lean_array_zip_with(k$3, a, b);
-};
+export const ArrStd$tZipWith = (a, b) =>
+  array__lean_array_zip_with(
+    (x$1, x$2) => uint53__lean_nat_mul(x$1, x$2),
+    a,
+    b,
+  );
 
 /**
  * `ArrStd.tFlatMap`
  * @param {Array<uint53(number)>} a
  * @returns {Array<uint53(number)>}
  */
-export const ArrStd$tFlatMap = (a) => {
-  const k$2 = (x$1) => [x$1, x$1];
-  return array__lean_array_flat_map(k$2, a);
-};
+export const ArrStd$tFlatMap = (a) =>
+  array__lean_array_flat_map((x$1) => [x$1, x$1], a);
 
 /**
  * `ArrStd.tFlatten`
@@ -215,10 +210,8 @@ export const ArrStd$tBack = (a) => array__lean_array_back_opt(a);
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const ArrStd$tCount = (a) => {
-  const k$2 = (x$1) => 1 < x$1;
-  return uint53__lean_array_count_p(k$2, a);
-};
+export const ArrStd$tCount = (a) =>
+  uint53__lean_array_count_p((x$1) => 1 < x$1, a);
 
 /**
  * `ArrStd.tTake`
@@ -234,10 +227,8 @@ export const ArrStd$tTake = (a, n) => uint53__lean_array_extract(a, 0, n);
  * @returns {Array<uint8>}
  */
 export const ArrStd$tU8 = (a) => {
-  const k$2 = (x$1) => uint8__lean_uint8_add(x$1, 1);
-  const x$3 = array__lean_array_map(k$2, a);
-  const k$5 = (x$4) => 3 < x$4;
+  const x$2 = array__lean_array_map((x$1) => uint8__lean_uint8_add(x$1, 1), a);
   return array__lean_array_reverse(
-    uint53__lean_array_filter(k$5, x$3, 0, x$3.length),
+    uint53__lean_array_filter((x$3) => 3 < x$3, x$2, 0, x$2.length),
   );
 };

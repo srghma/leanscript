@@ -12,10 +12,13 @@ import {
  * @returns {Array<nat(bigint)>}
  */
 export const test1 = (a) => {
-  const k$2 = (x$1) => x$1 * 2n;
-  const x$3 = array__lean_array_map(k$2, a);
-  const k$5 = (x$4) => 4n < x$4;
-  return bigint_nat__lean_array_filter(k$5, x$3, 0n, BigInt(x$3.length));
+  const x$2 = array__lean_array_map((x$1) => x$1 * 2n, a);
+  return bigint_nat__lean_array_filter(
+    (x$3) => 4n < x$3,
+    x$2,
+    0n,
+    BigInt(x$2.length),
+  );
 };
 
 /**
@@ -36,12 +39,15 @@ export const test2 = (a, f, g) => {
  * @returns {{ _1: Array<nat(bigint)>, _2: Array<nat(bigint)> }}
  */
 export const test3 = (a) => {
-  const k$2 = (x$1) => x$1 * 2n;
-  const x$3 = array__lean_array_map(k$2, a);
-  const k$5 = (x$4) => 4n < x$4;
+  const x$2 = array__lean_array_map((x$1) => x$1 * 2n, a);
   return {
-    _1: x$3,
-    _2: bigint_nat__lean_array_filter(k$5, x$3, 0n, BigInt(x$3.length)),
+    _1: x$2,
+    _2: bigint_nat__lean_array_filter(
+      (x$3) => 4n < x$3,
+      x$2,
+      0n,
+      BigInt(x$2.length),
+    ),
   };
 };
 
@@ -50,17 +56,12 @@ export const test3 = (a) => {
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const test4 = (a) => {
-  const k$2 = (x$1) => x$1 + 1n;
-  return array__lean_array_map(k$2, a);
-};
+export const test4 = (a) => array__lean_array_map((x$1) => x$1 + 1n, a);
 
 /**
  * `test5`
  * @param {Array<nat(bigint)>} a
  * @returns {Array<nat(bigint)>}
  */
-export const test5 = (a) => {
-  const k$2 = (x$1) => 4n < x$1;
-  return bigint_nat__lean_array_filter(k$2, a, 0n, BigInt(a.length));
-};
+export const test5 = (a) =>
+  bigint_nat__lean_array_filter((x$1) => 4n < x$1, a, 0n, BigInt(a.length));

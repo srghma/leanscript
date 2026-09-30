@@ -9,6 +9,12 @@ function show(v) {
     for (; v.tag === 1; v = v._2) a.push(v._1);
     return show(a);
   }
+  // a record (a structure-like type) is shown as its fields: `{a, b}`
+  if (v !== null && typeof v === "object" && !("tag" in v) && "_1" in v) {
+    const fs = [];
+    for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+    return "{" + fs.join(", ") + "}";
+  }
   return String(v);
 }
 function floatBits(x) {
@@ -44,6 +50,14 @@ check("test1([0, 1, 2])", () => M.test1([0, 1, 2]), "#[]", false);
 check("test1([0, 1, 2]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0, 1, 2]), "#[]", false);
 check("test1([13, 5, 2, 1])", () => M.test1([13, 5, 2, 1]), "#[26, 10]", false);
 check("test1([13, 5, 2, 1]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([13, 5, 2, 1]), "#[26, 10]", false);
+check("test3([])", () => M.test3([]), "{#[], #[]}", false);
+check("test3([]) twice", () => ((a0) => (M.test3(a0), M.test3(a0)))([]), "{#[], #[]}", false);
+check("test3([0])", () => M.test3([0]), "{#[0], #[]}", false);
+check("test3([0]) twice", () => ((a0) => (M.test3(a0), M.test3(a0)))([0]), "{#[0], #[]}", false);
+check("test3([0, 1, 2])", () => M.test3([0, 1, 2]), "{#[0, 2, 4], #[]}", false);
+check("test3([0, 1, 2]) twice", () => ((a0) => (M.test3(a0), M.test3(a0)))([0, 1, 2]), "{#[0, 2, 4], #[]}", false);
+check("test3([13, 5, 2, 1])", () => M.test3([13, 5, 2, 1]), "{#[26, 10, 4, 2], #[26, 10]}", false);
+check("test3([13, 5, 2, 1]) twice", () => ((a0) => (M.test3(a0), M.test3(a0)))([13, 5, 2, 1]), "{#[26, 10, 4, 2], #[26, 10]}", false);
 check("test4([])", () => M.test4([]), "#[]", false);
 check("test4([]) twice", () => ((a0) => (M.test4(a0), M.test4(a0)))([]), "#[]", false);
 check("test4([0])", () => M.test4([0]), "#[1]", false);
