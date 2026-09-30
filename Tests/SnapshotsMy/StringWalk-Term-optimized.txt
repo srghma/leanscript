@@ -17,7 +17,7 @@ val k1 [1] : (String → (Nat → Nat)) := fun x2 [ω] : String => (closed)
       | ctor#1(f8 [1] : (String × Nat)) =>
         let ⟨f9 [ω] : String, f10 [1] : Nat⟩ := f8
         let x11 [1] : Nat := share lean_nat_add(f10, lean_string_utf8_byte_size(f9))
-        let x12 [1] : String := share lean_string_push(f9, 'x')
+        let x12 [1] : String := share lean_string_append__String_append(f9, "x")
         ret ctor#1(⟨x12, x11⟩)
     join j14 [1] (x15 [1] : (String × Nat)) :=
       let ⟨f16 [0] : String, f17 [1] : Nat⟩ := x15

@@ -2,15 +2,15 @@
 
 -- test1 : String → String
 val k1 [1] : (String → String) := fun x2 [ω] : String => (closed)
-  ret lean_string_append__String_append(lean_string_append__String_append("a", lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("b", x2), x2), x2), x2), "c")), "d")
+  ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("ab", x2), x2), x2), x2), "cd")
 ret k1
 
 -- test2 : String → String
 val k1 [1] : (String → String) := fun x2 [ω] : String => (closed)
-  ret lean_string_append__String_append(lean_string_append__String_append("a", lean_string_append__String_append("b", lean_string_append__String_append(x2, lean_string_append__String_append(x2, lean_string_append__String_append(x2, lean_string_append__String_append(x2, "c")))))), "d")
+  ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("ab", x2), x2), x2), x2), "cd")
 ret k1
 
 -- test3 : String → String
 val k1 [1] : (String → String) := fun x2 [ω] : String => (closed)
-  ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("a", lean_string_append__String_append("b", lean_string_append__String_append(x2, lean_string_append__String_append(x2, lean_string_append__String_append(x2, lean_string_append__String_append(x2, "c")))))), "d"), lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e", x2), x2), x2), x2), "f")), "g")
+  ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("ab", x2), x2), x2), x2), "cde"), x2), x2), x2), x2), "fg")
 ret k1

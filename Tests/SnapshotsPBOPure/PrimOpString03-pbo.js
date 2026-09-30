@@ -6,18 +6,18 @@
  * @param {string} a
  * @returns {string}
  */
-export const test1 = (a) => "ab" + a + "c" + "d";
+export const test1 = (a) => "ab" + a + "cd";
 
 /**
  * `test2`
  * @param {string} a
  * @returns {string}
  */
-export const test2 = (a) => "a" + ("b" + a + "c") + "d";
+export const test2 = (a) => "ab" + a + "cd";
 
 /**
  * `test3`
  * @param {string} a
  * @returns {string}
  */
-export const test3 = (a) => "a" + ("b" + (a + "c")) + "d";
+export const test3 = (a) => "ab" + a + "cd";

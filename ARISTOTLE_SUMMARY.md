@@ -1,3 +1,42 @@
+# Summary of changes for run 2a0f49c6-8076-414f-9c35-d5cfc587645e
+The JavaScript for `AssocStringAppend` now matches the legacy backend exactly, at both presets. The fix is entirely in the `Term → Term` optimiser; the later phases didn't need changes.
+
+**What was wrong.** Lean elaborates each `testN` into nested `String.append` calls (see `AssocStringAppend-Term-unoptimized.txt`), and the optimiser left them as they were. JavaScript's `+` groups from the left, so every append nested on the right got its own parentheses, and literals like `"a" ++ "b"` stayed separate:
+`"a" + ("b" + (x + (x + (x + (x + "c"))))) + "d"`.
+
+**What I changed**
+- **New optimiser step** (`LeanScript/Term/Optimize/StringAppend.lean`). It takes a chain of `String.append`s and:
+  - drops empty `""` literals;
+  - merges neighbouring literals into one;
+  - regroups the chain from the left, `((x₁ ++ x₂) ++ …) ++ xₙ`. This is also the grouping Lean's `String.append` works best with, since it appends in place onto its left operand.
+  - `String.push s 'c'` with a literal character counts as `s ++ "c"`, so it joins the chain.
+- **Hooked in** through `Neu.normAppend` in `Append.lean`, so it runs inside the existing `Term.appendWalk`.
+- **Proved:** the step never changes a value (`StrApp.normNeu_eval`), so the theorem that the whole optimiser preserves results (`Term.optimize_eval`) still holds. Both use only the standard axioms. The theorem that the optimiser adds no calls is unaffected.
+- `String.Internal.append` is left alone, because Lean treats it as opaque and nothing can be proved about it.
+
+**Result**
+```
+export const test1 = (x) => "ab" + x + x + x + x + "cd";
+export const test2 = (x) => "ab" + x + x + x + x + "cd";
+export const test3 = (x) => "ab" + x + x + x + x + "cde" + x + x + x + x + "fg";
+```
+- **`PrimOpString03`** also changed. Its three tests all became `"ab" + a + "cd"`, which is exactly its legacy output.
+- **`StringWalk`:** only the optimised `Term` changed (`push` became an append); its JavaScript is the same.
+
+**Tests added**
+- `Tests/TermTests/Optimize/AssocStringAppendTest.lean`:
+  - For every `x`, each optimised `testN` computes the legacy body, e.g. `"ab" ++ x ++ x ++ x ++ x ++ "cde" ++ x ++ x ++ x ++ x ++ "fg"`. These proofs use only the standard axioms.
+  - The optimised term is exactly the left-grouped chain with merged literals. This is checked with `native_decide`, because the printer is compiled code, so it also depends on Lean's compiler.
+- `Tests/SnapshotsMy/StringAppend.lean` covers edge cases: `"" ++ x`, `x ++ ""`, a closed part, two variables, a chain inside a call, `push`, and Unicode. Its node checks pass (77 per preset).
+
+**Checks**
+- The listed targets build with no `sorry`.
+- `lake exe tests` passes 76/76.
+- I regenerated all snapshots, and every node check passes. The snapshot script still exits non-zero because of the existing "literal too big" errors at the pbo preset.
+- The docs in `Term/Optimize/Basic.lean` and `LeanScript/Term/README.md` are updated, and both results are in the Properties table as proved.
+
+A plain `lake build` of the default targets fails at `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib. That file isn't imported by the rest of the project, and I didn't touch it.
+
 # Summary of changes for run 5955a48e-7894-4519-b892-47ec6545df8d
 **What I found.** `AssocNumberOps` wasn't being translated at all: all six functions failed, and the committed `.js` files contained only "not translated" errors. The cause was float literals such as `1.0`:
 - The language's float type is `HashableFloat`, not `Float`, so the literal didn't type-check.

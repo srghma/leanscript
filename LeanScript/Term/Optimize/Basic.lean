@@ -49,7 +49,10 @@ an `if` is read as `c` with the two branches swapped.
 Then the append chains (`Term.appendWalk`, `LeanScript.Term.Optimize.Append`): a chain of
 `Array.append`s is regrouped to the left and one of `List.append`s to the right, its empty
 literals are dropped and neighbouring literals are merged (`#[a] ++ (#[b] ++ x) ++ #[c]` is
-`(#[a, b] ++ x) ++ #[c]`, `[a] ++ ([b] ++ x) ++ [c]` is `[a, b] ++ (x ++ [c])`).
+`(#[a, b] ++ x) ++ #[c]`, `[a] ++ ([b] ++ x) ++ [c]` is `[a, b] ++ (x ++ [c])`); a chain of
+`String.append`s (and of `String.push`es of a literal character) is regrouped to the left, its
+empty literals dropped and neighbouring literals merged (`"a" ++ ("b" ++ x) ++ "c"` is
+`("ab" ++ x) ++ "c"`, `LeanScript.Term.Optimize.StringAppend`).
 
 Then the inlining in tail position (`Term.inlineRet`, `LeanScript.Term.Optimize.InlineRet`):
 `let y := k a; ret y` is `ret e[a]` for a known closure computing `e`, whatever `e[a]` is,

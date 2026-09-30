@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Semantics.Eval
 public import LeanScript.Term.Extern.Eval
 public import LeanScript.Term.Optimize.Count
+public import LeanScript.Term.Optimize.StringAppend
 
 @[expose] public section
 
@@ -517,11 +518,13 @@ theorem normNeu_eval (k : SeqKind) {t : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ (k.
 
 end SeqKind
 
-/-- `SeqKind.normNeu` on a neutral expression of an array or list type. -/
+/-- `SeqKind.normNeu` on a neutral expression of an array or list type, `StrApp.normNeu`
+    (`LeanScript.Term.Optimize.StringAppend`) on one of type `String`. -/
 def Neu.normAppend {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {ℓ : Nat} →
     Neu Δ Φ Γ τ ℓ → Neu Δ Φ Γ τ ℓ
   | .array t, _, n => SeqKind.normNeu .array (t := t) n
   | .list t, _, n => SeqKind.normNeu .list (t := t) n
+  | .prim .string, _, n => StrApp.normNeu n
   | _, _, n => n
 
 theorem Neu.normAppend_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
@@ -530,6 +533,10 @@ theorem Neu.normAppend_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
   cases τ with
   | array t => exact SeqKind.normNeu_eval .array (t := t) n κ ρ
   | list t => exact SeqKind.normNeu_eval .list (t := t) n κ ρ
+  | prim p =>
+    cases p
+    case string => exact StrApp.normNeu_eval n κ ρ
+    all_goals rfl
   | _ => rfl
 
 /-! ## The walk -/
