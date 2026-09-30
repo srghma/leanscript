@@ -1,3 +1,40 @@
+# Summary of changes for run 87bd1df3-dd62-43c2-8b0d-1d7b6ab52db1
+I didn't change any code this time. `CaseProduct` already compiles to JavaScript that matches `legacy-backend/CaseProduct.js`, and is slightly better on comparison count. The previous session did the work, and I rebuilt from the current sources to confirm it still holds.
+
+**Reproduced from source:** I built `leanscript` fresh and regenerated `CaseProduct` (`--check`). The output is identical to the committed files: `-Term-unoptimized.txt`, `-Term-optimized.txt`, `-pbo.js` and `-faithful.js`. Output (`CaseProduct-pbo.js`; `-faithful.js` is the same with `1n`, …):
+```js
+export const test1 = (a) => {
+  const { _1: f$1, _2: f$2, _3: f$3 } = a;
+  if (f$1 === 1) {
+    if (f$2 === 2) { return f$3 === 3 ? "1" : "catch"; }
+    return f$2 === 4 ? "2" : "catch";
+  }
+  if (f$2 === 4) { return "2"; }
+  if (f$1 === 4 && f$2 === 5 && f$3 === 6) { return "3"; }
+  return "catch";
+};
+```
+
+**Where the optimization lives:** it happens in the `Term → Term` phase, as you preferred. The pass is `Term.shareTestWalk` in `LeanScript/Term/Optimize/ShareTest.lean`. Where both arms of an `if` start with the same test leading to the same answer, it moves that test first. That makes `b == 4` run before `a == 4` once `a ≠ 1`, as PBO does. The `Term → JsTerm` and `JsTerm → JsTerm` phases needed no changes. There is no recursion or shared tail here, so no labelled block or loop was needed.
+
+**Comparison with PBO:** I ran `scripts/count-comparisons.mjs` on all 343 inputs with each field from 0 to 6.
+- Every answer matches PBO's.
+- We never make more comparisons than PBO, and make fewer on 6 inputs (1036 in total against 1042). The saving is in the `a == 1` branch: when `b ≠ 2` we don't test `c`, while PBO tests `c === 3` first.
+
+**Remaining differences from PBO:**
+- PBO takes the three fields as separate arguments, `(v_a, v_b, v_c)`. We take the structure and destructure it once. This is how every structure is passed, so changing it would change the interface of all generated functions; I left it alone.
+- The generated `CaseProduct-*.check.mjs` files only try 3 inputs, all of which answer `"catch"`, because they use the generic sample values. The test in `Tests/Main.lean` covers every branch instead, on all 343 inputs.
+
+**Checks run this session:**
+- `lake build leanscript tests TermTests.Optimize.CaseProductTest` succeeds, and there is no `sorry` in the pass or the `CaseProduct` proof file.
+- `lake exe tests` passes 84/84. This includes the test that checks `CaseProduct` and `CaseRecord` against Lean's answers and PBO's comparison counts on all 343 inputs, for both presets.
+- Both `CaseProduct` check files pass in node.
+- Two properties in the table stay proved:
+  - `Term.shareTestWalk_eval`: the pass doesn't change `eval`.
+  - `CaseProductTest.test1_optimized_run`: the optimised `Term` computes Lean's `test1` for every input.
+
+The step from `Term` to JavaScript is covered by the tests, not by a proof.
+
 # Summary of changes for run 2cec354c-8ba1-4f61-9f9f-172a408550a8
 `CaseProduct` now compiles to the same tests as `legacy-backend/CaseProduct.js`. Across a 7×7×7 grid of inputs it never makes more comparisons than PBO and makes fewer on 6 of them. The change is a new `Term → Term` optimizer pass, proved to preserve `eval`. No change to the `JsTerm` phases was needed.
 
