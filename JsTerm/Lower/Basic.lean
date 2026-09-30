@@ -125,6 +125,10 @@ inductive Ref where
   /-- A partial application: the function `base` (a constant) and the arguments passed so far,
       constants, with their types (the function takes more). -/
   | pap (base : Ref) (args : List (Ref × JsTy))
+  /-- The position of the constructor held by `base`, an enum of `n` constructors from `shift`
+      (`JsExpr.enumIndex`): a natural number that is not stored anywhere, but read from the enum
+      (`base` itself for a `number` and `shift = 0`) wherever it is used. -/
+  | enumIdx (base : Ref) (n : Nat) (shift : Int)
   deriving Inhabited
 
 /-- The JavaScript variables of the two contexts of variables of a statement: the unknowns `Γ`
@@ -266,6 +270,9 @@ partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr S C 
       let body ← papCall base (args ++ paramRefs C ds) c (C := pushAll ds C) (M := M)
       return .lam (ds.map fun _ => "y") (.ret body)
     | _ => throw s!"internal: a partial application at the type {τ}"
+  | .enumIdx base n shift => match JsNatTy.of? τ with
+    | some nt => return .enumIndex nt (← base.get (.enum n shift))
+    | none => throw s!"internal: the position of a constructor at the type {τ}"
 
 /-- The call of `base` on all its arguments `args`, answering a value of type `c`. -/
 partial def papCall {C M : List JsTy} (base : Ref) (args : List (Ref × JsTy)) (c : JsTy) :

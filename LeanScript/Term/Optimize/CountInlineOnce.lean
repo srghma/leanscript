@@ -47,8 +47,7 @@ theorem Comp.numCalls_tgtCall? {d : Nat} {Φ Φ' : KCtx ks} {Γ : UCtx ks} {σ :
   · rename_i k a _
     simp only [Option.bind_eq_some_iff] at h
     obtain ⟨f, hf, a', _, h⟩ := h
-    rw [BlockFn.numCalls_applyP f a' h]
-    exact ⟨hT k f hf, rfl⟩
+    exact ⟨Nat.le_trans (BlockFn.numCalls_applyP f a' h) (hT k f hf), rfl⟩
   · cases h
 
 theorem Term.numCalls_tgtLetE {d : Nat} {Φ Φ' : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
@@ -72,7 +71,8 @@ theorem Term.numCalls_tgtLetE {d : Nat} {Φ Φ' : KCtx ks} {Γ : UCtx ks} {σ τ
   · simp only [Option.bind_eq_some_iff] at h
     obtain ⟨r', hr', h⟩ := h
     have := Comp.numCalls_tgtCall? hT c hr'
-    rw [Term.numCalls_bindRet r'.2 b' h, Term.numCalls_rename b hb']
+    have := Term.numCalls_bindRet r'.2 b' h
+    rw [Term.numCalls_rename b hb'] at this
     omega
 
 theorem Val.numCalls_blockFn? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty : Ty ks} {o : Lvl}

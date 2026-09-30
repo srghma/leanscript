@@ -40,7 +40,8 @@ partial def JsExpr.runtimeNames {C M : List JsTy} {τ : JsTy} (acc : Array Strin
   | .array_mk _ ps | .list_mk ps => ps.runtimeNames acc
   | .cond c a b => b.runtimeNames (a.runtimeNames (c.runtimeNames acc))
   | .listOp op as => as.runtimeNames (addName acc op.runtimeName)
-  | .fold _ e | .unfold _ e => e.runtimeNames acc
+  | .fold _ e | .unfold _ e | .enumIndex _ e => e.runtimeNames acc
+  | .enumEq a b => b.runtimeNames (a.runtimeNames acc)
   | _ => acc
 /-- `runtimeNames` of arguments. -/
 partial def JsArgs.runtimeNames {C M σs : List JsTy} (acc : Array String) :

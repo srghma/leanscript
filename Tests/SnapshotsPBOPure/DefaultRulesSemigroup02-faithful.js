@@ -37,11 +37,10 @@ export const Inline$test1 = (a, a1) => ({
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test2 = (a, b) => {
-  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
-  const x$3 = k$2(b);
-  return x$3;
-};
+export const Inline$test2 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `Inline.test3`
@@ -84,11 +83,10 @@ export const Noinline$test1 = (a, a1) => ({
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test2 = (a, b) => {
-  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
-  const x$3 = k$2(b);
-  return x$3;
-};
+export const Noinline$test2 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `Noinline.test3`
@@ -131,11 +129,10 @@ export const AlwaysInline$test1 = (a, a1) => ({
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test2 = (a, b) => {
-  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
-  const x$3 = k$2(b);
-  return x$3;
-};
+export const AlwaysInline$test2 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `AlwaysInline.test3`
@@ -178,11 +175,10 @@ export const InlineIfReduceInline$test1 = (a, a1) => ({
  * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test2 = (a, b) => {
-  const k$2 = (x$1) => ({ _1: a._1 + x$1._1, _2: [...a._2, ...x$1._2] });
-  const x$3 = k$2(b);
-  return x$3;
-};
+export const InlineIfReduceInline$test2 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
+});
 
 /**
  * `InlineIfReduceInline.test3`

@@ -310,6 +310,14 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
   | unfold {C M : List JsTy} (i : Nat) (e : JsExpr S C M (.obj (.decl i) [])) : JsExpr S C M (S.body i)
   /-- The number `shift + i`. -/
   | enum_mk {C M : List JsTy} (n : Nat) (shift : Int) (i : Fin n) : JsExpr S C M (.enum n shift)
+  /-- The position `i` of the constructor `shift + i` of an enum, as a natural number of the
+      representation `nt`: `e - shift` (just `e` when `shift = 0`), `BigInt(e - shift)` for a
+      `BigInt`.  (Lean's `toCtorIdx`, which a derived `BEq`/`DecidableEq`/`Ord` compares.) -/
+  | enumIndex {C M : List JsTy} {n : Nat} {shift : Int} {N : JsTy} (nt : JsNatTy N)
+      (e : JsExpr S C M (.enum n shift)) : JsExpr S C M N
+  /-- `a === b` on two constructors of the same enum. -/
+  | enumEq {C M : List JsTy} {n : Nat} {shift : Int} (a b : JsExpr S C M (.enum n shift)) :
+      JsExpr S C M (.terminal .bool)
   /-- `[e₀, ...a, e₂]` (a generic array) or `Uint8Array.of(e₀, ...a)` (a typed array). -/
   | array_mk {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (parts : JsParts S C M A E) :
       JsExpr S C M A

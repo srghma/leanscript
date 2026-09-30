@@ -1,3 +1,39 @@
+# Summary of changes for run 842d423c-714b-4752-b48b-f54cc64bb8dc
+The JS for `BranchSpecialization01` is now shorter than the purescript-backend-optimizer output. PBO's `instBEqTestEnum$beq` is a four-branch `if` chain; ours is a single comparison:
+```js
+export const instBEqTestEnum$beq = (x, y) => x === y;
+export const test1 = (a) => a === 2;
+export const test2 = (a) => a === 2;
+```
+The pbo and faithful presets now give the same output, and neither uses `BigInt`.
+
+**Why the old output was big.** Lean compiles `BEq` on an enum as `Nat.decEq (toCtorIdx x) (toCtorIdx y)`. `toCtorIdx` became a join point fed by a case analysis over every constructor (`case e of cᵢ => jump j i`). On top of that, closure wrappers (`const k = x => …; const y = k(a); return y`) were left around the tail calls.
+
+**What changed at each stage:**
+
+1. **`Term → Term` optimizer (proved).**
+   - `Term.subst` now reduces a case analysis on an enum literal.
+   - It also collapses a join point once its main part becomes a jump; this only happens when the argument is cheap or used at most once.
+   - New rewrite `Term.openTailCall?`: `val k := fun x => body; let y := k a; ret y` becomes `body[x:=a]`. It runs inside `Term.retLetV`.
+   - Proved that these rewrites never change the result of eval: `Term.subst_eval` (re-proved for the extended substitution) and `Term.openTailCall?_eval`. The matching call-count lemmas are proved too; the `numCalls_subst` lemmas now state `≤` instead of `=`, because these rewrites can remove calls.
+   - So `Term.optimize_eval` still holds. Both eval theorems use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
+
+2. **`Term → JsTerm` conversion (not proved; the JS side has no formal semantics in this project).**
+   - Recognizing `toCtorIdx` couldn't be done in the Term phase: the Term grammar has no enum-to-Nat primitive, and adding one would touch the whole proved codebase. So it lives in the conversion.
+   - `cBranch` recognizes the pattern `join j (x:Nat) := body; case e of cᵢ => jump j i` and binds `x` as a view of the enum's index, with no join. There are two new `JsExpr` constructors: `enumIndex` (printed as `e`, `e±k` or `BigInt(…)`) and `enumEq` (printed as `a === b`).
+   - In `cNeu`, `Nat.decEq`/`Nat.beq` on two such indices becomes `enumEq`. Against an out-of-range literal it becomes `false`.
+
+3. **`JsTerm` optimizer:** unchanged.
+
+**Verification:**
+- The listed targets build, and `lake exe tests` passes 76/76.
+- No `sorry` was added.
+- All 179 snapshots were regenerated and every node check passed. `leanscript` exited non-zero on three `PrimOp*Configurable` files, but those errors are expected: they are "literal too big" refusals for the pbo preset.
+- Other snapshots changed only for the better: the `k$…` wrapper closures are gone from `DefaultRulesSemigroup02`, `CaseLeafTco`, `RecData`, `LocalFnInPlace`, `ArrayInPlace` and `InlineClosures`. In total that is 861 lines added and 985 removed.
+- Regenerated snapshots are committed.
+
+**Remaining differences from PBO:** only style. We emit one `export const` per definition plus JSDoc comments, where PBO uses a different export layout.
+
 # Summary of changes for run 49637ffa-a26f-4355-9e3a-c74256372169
 I made no code changes. The JavaScript generated for `Tests/SnapshotsPBOPure/BackendSemantics02.lean` already matches purescript-backend-optimizer's `BackendSemantics02.js`: both come down to a single constant, 97. So none of the three pipeline stages you listed needed a new optimisation.
 

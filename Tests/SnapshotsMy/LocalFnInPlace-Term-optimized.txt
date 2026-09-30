@@ -58,36 +58,30 @@ ret k1
 
 -- test5 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (open)
-    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (closed)
-      ret x6
-    let x12 [1] : ((Array Nat) → (Array Nat)) := nat_rec x2 k5 fun acc7 i8 => (closed)
-      val k9 [1] : ((Array Nat) → (Array Nat)) := fun x10 [1] : (Array Nat) => (open)
-        let x11 [1] : (Array Nat) := acc7 lean_array_push(x10, i8)
-        ret x11
-      ret k9
-    let x13 [1] : (Array Nat) := x12 x4
-    ret x13
-  let x14 [1] : (Array Nat) := k3 lean_mk_array(x2, 7)
-  ret x14
+  val k3 [1] : ((Array Nat) → (Array Nat)) := fun x4 [1] : (Array Nat) => (closed)
+    ret x4
+  let x10 [1] : ((Array Nat) → (Array Nat)) := nat_rec x2 k3 fun acc5 i6 => (closed)
+    val k7 [1] : ((Array Nat) → (Array Nat)) := fun x8 [1] : (Array Nat) => (open)
+      let x9 [1] : (Array Nat) := acc5 lean_array_push(x8, i6)
+      ret x9
+    ret k7
+  let x11 [1] : (Array Nat) := x10 lean_mk_array(x2, 7)
+  ret x11
 ret k1
 
 -- test6 : Array Nat → Nat → Array Nat
 -- version test6$$mut_0: owns `a`: its caller gives it up, and it may update it in place (1 update(s) in place, 0 copies of arrays)
 val k1 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x2 [ω] : (Array Nat) => (closed)
-  val k3 [1] : (Nat → (Array Nat)) := fun x4 [ω] : Nat => (open)
-    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (open)
-      val k7 [1] : ((Array Nat) → (Array Nat)) := fun x8 [1] : (Array Nat) => (closed)
-        ret x8
-      let x14 [1] : ((Array Nat) → (Array Nat)) := nat_rec x4 k7 fun acc9 i10 => (closed)
-        val k11 [1] : ((Array Nat) → (Array Nat)) := fun x12 [1] : (Array Nat) => (open)
-          let x13 [1] : (Array Nat) := acc9 lean_array_push(x12, i10)
-          ret x13
-        ret k11
-      let x15 [1] : (Array Nat) := x14 x6
-      ret x15
-    let x16 [1] : (Array Nat) := k5 x2
-    ret x16
+  val k3 [1] : (Nat → (Array Nat)) := fun x4 [1] : Nat => (open)
+    val k5 [1] : ((Array Nat) → (Array Nat)) := fun x6 [1] : (Array Nat) => (closed)
+      ret x6
+    let x12 [1] : ((Array Nat) → (Array Nat)) := nat_rec x4 k5 fun acc7 i8 => (closed)
+      val k9 [1] : ((Array Nat) → (Array Nat)) := fun x10 [1] : (Array Nat) => (open)
+        let x11 [1] : (Array Nat) := acc7 lean_array_push(x10, i8)
+        ret x11
+      ret k9
+    let x13 [1] : (Array Nat) := x12 x2
+    ret x13
   ret k3
 ret k1
 

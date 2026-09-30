@@ -103,25 +103,21 @@ export const test4 = (a, n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const test5 = (n) => {
-  const k_mut$13 = (x$1) => {
-    const k$3 = (x$2) => x$2;
-    let acc$4 = k$3;
-    for (let i$5 = 0n; i$5 < n; i$5++) {
-      const a$6 = acc$4;
-      const k_mut$10 = (x$7) => {
-        const x$8 = array__lean_array_push_mutable(x$7, i$5);
-        const x$9 = a$6(x$8);
-        return x$9;
-      };
-      acc$4 = k_mut$10;
-    }
-    const x$11 = acc$4;
-    const x$12 = x$11(x$1);
-    return x$12;
-  };
-  const x$14 = bigint_nat__lean_mk_array(n, 7n);
-  const x$15 = k_mut$13(x$14);
-  return x$15;
+  const k$2 = (x$1) => x$1;
+  let acc$3 = k$2;
+  for (let i$4 = 0n; i$4 < n; i$4++) {
+    const a$5 = acc$3;
+    const k_mut$9 = (x$6) => {
+      const x$7 = array__lean_array_push_mutable(x$6, i$4);
+      const x$8 = a$5(x$7);
+      return x$8;
+    };
+    acc$3 = k_mut$9;
+  }
+  const x$10 = acc$3;
+  const x$11 = bigint_nat__lean_mk_array(n, 7n);
+  const x$12 = x$10(x$11);
+  return x$12;
 };
 
 /**
@@ -131,24 +127,20 @@ export const test5 = (n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const test6 = (a, n) => {
-  const k$13 = (x$1) => {
-    const k$3 = (x$2) => x$2;
-    let acc$4 = k$3;
-    for (let i$5 = 0n; i$5 < n; i$5++) {
-      const a$6 = acc$4;
-      const k_mut$10 = (x$7) => {
-        const x$8 = array__lean_array_push_mutable(x$7, i$5);
-        const x$9 = a$6(x$8);
-        return x$9;
-      };
-      acc$4 = k_mut$10;
-    }
-    const x$11 = acc$4;
-    const x$12 = x$11([...x$1]);
-    return x$12;
-  };
-  const x$14 = k$13(a);
-  return x$14;
+  const k$2 = (x$1) => x$1;
+  let acc$3 = k$2;
+  for (let i$4 = 0n; i$4 < n; i$4++) {
+    const a$5 = acc$3;
+    const k_mut$9 = (x$6) => {
+      const x$7 = array__lean_array_push_mutable(x$6, i$4);
+      const x$8 = a$5(x$7);
+      return x$8;
+    };
+    acc$3 = k_mut$9;
+  }
+  const x$10 = acc$3;
+  const x$11 = x$10([...a]);
+  return x$11;
 };
 
 /**
@@ -159,24 +151,20 @@ export const test6 = (a, n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const test6$$mut_0 = (a, n) => {
-  const k_mut$13 = (x$1) => {
-    const k$3 = (x$2) => x$2;
-    let acc$4 = k$3;
-    for (let i$5 = 0n; i$5 < n; i$5++) {
-      const a$6 = acc$4;
-      const k_mut$10 = (x$7) => {
-        const x$8 = array__lean_array_push_mutable(x$7, i$5);
-        const x$9 = a$6(x$8);
-        return x$9;
-      };
-      acc$4 = k_mut$10;
-    }
-    const x$11 = acc$4;
-    const x$12 = x$11(x$1);
-    return x$12;
-  };
-  const x$14 = k_mut$13(a);
-  return x$14;
+  const k$2 = (x$1) => x$1;
+  let acc$3 = k$2;
+  for (let i$4 = 0n; i$4 < n; i$4++) {
+    const a$5 = acc$3;
+    const k_mut$9 = (x$6) => {
+      const x$7 = array__lean_array_push_mutable(x$6, i$4);
+      const x$8 = a$5(x$7);
+      return x$8;
+    };
+    acc$3 = k_mut$9;
+  }
+  const x$10 = acc$3;
+  const x$11 = x$10(a);
+  return x$11;
 };
 
 /**

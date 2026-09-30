@@ -31,7 +31,11 @@ The rewrites, bottom-up:
   `let y := share e[a]; b` when `e[a]` is neutral (of any level, where `Term.inlineKnown` asks
   for the level of the call);
 * **dead bindings**: `let y := c; b` and `val k := v; b` where `b` does not mention the binder
-  become `b`, even when this changes the level.
+  become `b`, even when this changes the level;
+* **an open closure called in tail position**: `val k := fun x => (open) body; let y := k a;
+  ret y` becomes `body[x := a]` at the depth of the call (`Term.openTailCall?`; `a` costs
+  nothing to repeat, or `x` is used at most once).  The substitution reduces a case analysis
+  that `a` makes known (`case x of …` for an enum literal `a` is the arm of its constructor).
 
 **Proved:** `Term.inlineRet_eval` (the value does not change, in any environment) and
 `Term.numCalls_inlineRet` (no call is added).
@@ -153,9 +157,74 @@ def Term.retLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : J
           | some r => r
           | none => (Term.blockLetS I.b u 16 c b).getD ⟨_, .letE u c b⟩
 
+/-- A closure with an open body. -/
+structure OpenFn (Δ : DSig ks) (d : Nat) (Φ : KCtx ks) (Γ : UCtx ks) (ty : Ty ks) where
+  σ : Ty ks
+  τ : Ty ks
+  hty : ty = .fn σ τ
+  u : Usage01ω
+  m : Nat
+  body : Term Δ (d + 1) Φ (⟨σ, u, d + 1⟩ :: Γ) τ [] (some m)
+
+def Val.openFn? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty : Ty ks} :
+    {o : Lvl} → Val Δ d Φ Γ ty o → Option (OpenFn Δ d Φ Γ ty)
+  | _, .lam (.opened t _) => some ⟨_, _, rfl, _, _, t⟩
+  | _, _ => none
+
+/-- Is the known variable the innermost one? -/
+def KVar.isHead? {Φ : KCtx ks} {b : KBinder ks} {t : Ty ks} {o : Lvl} :
+    KVar (b :: Φ) t o → Option (PLift (t = b.ty))
+  | .head => some ⟨rfl⟩
+  | .tail _ => none
+
+/-- Is the pure expression the innermost known variable? -/
+def PExpr.isKHead? {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks} {t : Ty ks} :
+    {o : Lvl} → PExpr Δ (b :: Φ) Γ t o → Option (PLift (t = b.ty))
+  | _, .kvar k => k.isHead?
+  | _, _ => none
+
+/-- A call `k a` of the innermost known variable `k`: the argument `a`. -/
+def Comp.appHead? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks} {τ : Ty ks} {ℓ : Nat} :
+    Comp Δ d (b :: Φ) Γ τ ℓ →
+      Option ((σ : Ty ks) × (oa : Lvl) × PExpr Δ (b :: Φ) Γ σ oa × PLift (b.ty = .fn σ τ))
+  | .app f a _ => f.isKHead?.map fun h => ⟨_, _, a, ⟨h.down.symm⟩⟩
+  | _ => none
+
+/-- `let y := k a; ret y` for the innermost known variable `k`: the argument `a`. -/
+def Term.tailCallHead? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks} {τ : Ty ks}
+    {js : JCtx ks} : {o' : Lvl} → Term Δ d (b :: Φ) Γ τ js o' →
+      Option ((σ : Ty ks) × (oa : Lvl) × PExpr Δ (b :: Φ) Γ σ oa × PLift (b.ty = .fn σ τ))
+  | _, .letE _ c rest =>
+      match c.appHead?, rest.retHead? with
+      | some ⟨σ, oa, a, ⟨h₁⟩⟩, some ⟨h₂⟩ => some ⟨σ, oa, a, ⟨h₂ ▸ h₁⟩⟩
+      | _, _ => none
+  | _, _ => none
+
+/-- `val k := fun x => (open) body; let y := k a; ret y` (`k` used nowhere else): the body at
+    the depth of the call, `x` replaced by `a` (a pure expression that costs nothing to repeat,
+    or any one when `x` is used at most once). -/
+def Term.openTailCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks} {js : JCtx ks}
+    {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ ty o)
+    (b : Term Δ d (⟨ty, u, o, true⟩ :: Φ) Γ τ js o') :
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'') :=
+  match v.openFn?, b.tailCallHead? with
+  | some ⟨σ₁, τ₁, _, uₓ, _, body⟩, some ⟨σa, _, a, _⟩ =>
+      if hst : σa = σ₁ ∧ τ₁ = τ then
+        match a.rename KRen.drop URen.id with
+        | some a' =>
+            if a'.isCheap || uₓ.atMostOnce then
+              (body.subst (D' := d) (js' := js) KLRen.id
+                (USub.cons ⟨_, hst.1 ▸ a'⟩ (USub.ofRen ULRen.idL)) JRen.ofNil).map
+                fun r => ⟨r.1, hst.2 ▸ r.2⟩
+            else none
+        | none => none
+      else none
+  | _, _ => none
+
 /-- `val k := v; b` (both already walked), dropped when `b` does not mention `k`; when `k` is a
     closure with a closed body called exactly once in `b` (`Term.inlineAt`), its body replaces
-    the call. -/
+    the call; when `k` is a closure with an open body and `b` is `let y := k a; ret y`
+    (`Term.openTailCall?`), `b` is the body of `k` with its parameter replaced by `a`. -/
 def Term.retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {o o' : Lvl}
     (u : Usage1ω) (v : Val Δ d Φ Γ σ o) (b : Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o') :
     (o'' : Lvl) × Term Δ d Φ Γ τ js o'' :=
@@ -164,7 +233,10 @@ def Term.retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : J
   | none =>
       match v.blockFn?.bind fun f => b.inlineAt (InlTgt.single (b := ⟨σ, u, o, true⟩) f) with
       | some r => r
-      | none => ⟨_, .letV u v b⟩
+      | none =>
+          match Term.openTailCall? u v b with
+          | some r => r
+          | none => ⟨_, .letV u v b⟩
 
 /-! ## The walk -/
 

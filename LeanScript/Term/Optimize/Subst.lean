@@ -190,6 +190,32 @@ def Neu.substN {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) : Option ((ℓ
 
 end Layer1
 
+/-- The constructor of an enum literal. -/
+def PExpr.enumLit? {Φ : KCtx ks} {Γ : UCtx ks} {e : LeanEnumSchema} :
+    {o : Lvl} → PExpr Δ Φ Γ (.enum e) o → Option (Fin e.nOfConstructors)
+  | _, .enum_mk _ i => some i
+  | _, _ => none
+
+/-- A jump out of the branch of a join point `j`: to `j` itself (`inl`, its argument of the type
+    of the parameter of `j`) or to a join point further out (`inr`). -/
+def JVar.split {σ τ' : Ty ks} {u : Usage1ω} {js : JCtx ks} :
+    JVar (⟨σ, u⟩ :: js) τ' → PLift (τ' = σ) ⊕ JVar js τ'
+  | .head => .inl ⟨rfl⟩
+  | .tail j => .inr j
+
+/-- The branch a statement is, if it is one. -/
+def Term.asBranch? {D : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} :
+    {o : Lvl} → Term Δ D Φ Γ τ js o → Option ((ℓ : Nat) × Branch Δ D Φ Γ τ js ℓ)
+  | _, .branch b => some ⟨_, b⟩
+  | _, _ => none
+
+/-- The jump a statement is, if it is one. -/
+def Term.asJump? {D : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} :
+    {o : Lvl} → Term Δ D Φ Γ τ js o →
+      Option ((σ : Ty ks) × JVar js σ × (o' : Lvl) × PExpr Δ Φ Γ σ o')
+  | _, .jump j a => some ⟨_, j, _, a⟩
+  | _, _ => none
+
 /-! ## Statements -/
 
 mutual
@@ -281,33 +307,54 @@ def Term.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} → 
       | none =>
           let as ← p.2.recordArgs?
           b.subst (D' := D') rk (USub.ofArgs s D (t :: fs.toList) us as.2) rj
-  | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .branch br =>
-      (br.subst rk s rj).map fun p => ⟨_, .branch p.2⟩
+  | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .branch br => br.subst rk s rj
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .jump j e => do
       let j ← rj j
       let e ← e.subst rk s
       pure ⟨_, .jump j e.2⟩
-/-- Substitute in a branch and move it from depth `D` to depth `D'`. -/
+/-- Substitute in a branch and move it from depth `D` to depth `D'`; the result is a statement,
+    because a case analysis of a constructor that the substitution makes known is reduced:
+    `case e of …` where `e` becomes an enum literal is the arm of its constructor, and a join
+    point whose branch becomes a jump is gone (`join j x := body; jump j a` is `body[x := a]`,
+    when `a` costs nothing to repeat or `x` is used at most once; a jump to a join point further
+    out stays that jump). -/
 def Branch.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} → {js js' : JCtx ks} →
     KLRen Φ Φ' → USub Δ Φ' Γ Γ' → JRen js js' → {τ : Ty ks} → {ℓ : Nat} →
-    Branch Δ D Φ Γ τ js ℓ → Option ((ℓ' : Nat) × Branch Δ D' Φ' Γ' τ js' ℓ')
+    Branch Δ D Φ Γ τ js ℓ → Option ((o' : Lvl) × Term Δ D' Φ' Γ' τ js' o')
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .ite c t e => do
       let c ← c.substN rk s
       let t ← t.subst rk s rj
       let e ← e.subst rk s rj
-      pure ⟨_, .ite c.2 t.2 e.2⟩
+      pure ⟨_, .branch (.ite c.2 t.2 e.2)⟩
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .enum_casesOn e bs => do
-      let e ← e.substN rk s
-      let bs ← Fin.optAll (fun i => (bs i).subst rk s rj)
-      pure ⟨_, .enum_casesOn e.2 (fun i => (bs i).2)⟩
+      let p ← e.subst rk s
+      match p.2.toNeu? with
+      | some m =>
+          let bs ← Fin.optAll (fun i => (bs i).subst rk s rj)
+          pure ⟨_, .branch (.enum_casesOn m.2 (fun i => (bs i).2))⟩
+      | none =>
+          let i ← p.2.enumLit?
+          (bs i).subst rk s rj
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .union_casesOn e bs => do
       let e ← e.substN rk s
       let bs ← bs.subst rk s rj
-      pure ⟨_, .union_casesOn e.2 bs.2⟩
+      pure ⟨_, .branch (.union_casesOn e.2 bs.2)⟩
   | D, D', _, _, _, _, _, _, rk, s, rj, _, _, .join σ u uₓ body main => do
-      let body ← body.subst (D' := D') rk (USub.lift s σ uₓ D D') rj
-      let main ← main.subst rk s (JRen.lift rj _)
-      pure ⟨_, .join σ u uₓ body.2 main.2⟩
+      let m ← main.subst rk s (JRen.lift rj _)
+      match m.2.asBranch? with
+      | some b =>
+          let body ← body.subst (D' := D') rk (USub.lift s σ uₓ D D') rj
+          pure ⟨_, .branch (.join σ u uₓ body.2 b.2)⟩
+      | none =>
+          match m.2.asJump? with
+          | some ⟨_, j, _, a⟩ =>
+              match j.split with
+              | .inl h =>
+                  if a.isCheap || uₓ.atMostOnce then
+                    body.subst (D' := D') rk (USub.cons ⟨_, h.down ▸ a⟩ s) rj
+                  else none
+              | .inr j' => pure ⟨_, .jump j' a⟩
+          | none => none
 /-- Substitute in the branches of a union's case analysis. -/
 def Branches.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} → {js js' : JCtx ks} →
     KLRen Φ Φ' → USub Δ Φ' Γ Γ' → JRen js js' → {bs : List Bool} → {cs : Ctors ks bs} →

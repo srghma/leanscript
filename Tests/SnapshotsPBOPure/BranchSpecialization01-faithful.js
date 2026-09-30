@@ -7,79 +7,18 @@
  * @param {enum4@0} y
  * @returns {boolean}
  */
-export const instBEqTestEnum$beq = (x, y) => {
-  let x$1;
-  if (x === 0) {
-    x$1 = 0n;
-  } else if (x === 1) {
-    x$1 = 1n;
-  } else if (x === 2) {
-    x$1 = 2n;
-  } else {
-    x$1 = 3n;
-  }
-  let x$2;
-  if (y === 0) {
-    x$2 = 0n;
-  } else if (y === 1) {
-    x$2 = 1n;
-  } else if (y === 2) {
-    x$2 = 2n;
-  } else {
-    x$2 = 3n;
-  }
-  return x$1 === x$2;
-};
+export const instBEqTestEnum$beq = (x, y) => x === y;
 
 /**
  * `test1`
  * @param {enum4@0} a
  * @returns {boolean}
  */
-export const test1 = (a) => {
-  let x$1;
-  if (a === 0) {
-    x$1 = 0n;
-  } else if (a === 1) {
-    x$1 = 1n;
-  } else if (a === 2) {
-    x$1 = 2n;
-  } else {
-    x$1 = 3n;
-  }
-  return 2n === x$1;
-};
+export const test1 = (a) => a === 2;
 
 /**
  * `test2`
  * @param {enum4@0} a
  * @returns {boolean}
  */
-export const test2 = (a) => {
-  const k$4 = (x$1) => {
-    let x$2;
-    if (a === 0) {
-      x$2 = 0n;
-    } else if (a === 1) {
-      x$2 = 1n;
-    } else if (a === 2) {
-      x$2 = 2n;
-    } else {
-      x$2 = 3n;
-    }
-    let x$3;
-    if (x$1 === 0) {
-      x$3 = 0n;
-    } else if (x$1 === 1) {
-      x$3 = 1n;
-    } else if (x$1 === 2) {
-      x$3 = 2n;
-    } else {
-      x$3 = 3n;
-    }
-    return x$2 === x$3;
-  };
-  const x$5 = 2;
-  const x$6 = k$4(x$5);
-  return x$6;
-};
+export const test2 = (a) => a === 2;

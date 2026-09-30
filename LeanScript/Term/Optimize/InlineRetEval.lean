@@ -208,6 +208,104 @@ theorem Term.retLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
                   simp only [Term.eval]
                   rw [PExpr.shareAny?_eval κ ρ p hsh, hp]
 
+theorem PExpr.isKHead?_eval {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks} {t : Ty ks} {o : Lvl}
+    (p : PExpr Δ (b :: Φ) Γ t o) {h : PLift (t = b.ty)} (hp : p.isKHead? = some h)
+    (x : Ty.Den Δ b.ty) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    p.eval (Tuple.cons x κ) ρ = cast (congrArg (Ty.Den Δ) h.down.symm) x := by
+  cases p with
+  | kvar k =>
+      cases k with
+      | head =>
+          obtain ⟨h⟩ := h
+          simp only [PExpr.eval, KEnv.get, cast_eq, Tuple.head_cons]
+      | tail _ => simp [PExpr.isKHead?, KVar.isHead?] at hp
+  | _ => simp [PExpr.isKHead?] at hp
+
+theorem Comp.appHead?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks} {τ : Ty ks}
+    {ℓ : Nat} (c : Comp Δ d (b :: Φ) Γ τ ℓ)
+    {r : (σ : Ty ks) × (oa : Lvl) × PExpr Δ (b :: Φ) Γ σ oa × PLift (b.ty = .fn σ τ)}
+    (hc : c.appHead? = some r) (x : Ty.Den Δ b.ty) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    c.eval (Tuple.cons x κ) ρ =
+      (cast (congrArg (Ty.Den Δ) r.2.2.2.down) x : Ty.Den Δ (.fn r.1 τ))
+        (r.2.2.1.eval (Tuple.cons x κ) ρ) := by
+  cases c with
+  | app f a _ =>
+      simp only [Comp.appHead?, Option.map_eq_some_iff] at hc
+      obtain ⟨h, hf, rfl⟩ := hc
+      simp only [Comp.eval]
+      rw [PExpr.isKHead?_eval f hf]
+  | _ => simp [Comp.appHead?] at hc
+
+theorem Val.openFn?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty : Ty ks} :
+    {o : Lvl} → (v : Val Δ d Φ Γ ty o) → {f : OpenFn Δ d Φ Γ ty} → v.openFn? = some f →
+    ∀ (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (x : Ty.Den Δ f.σ),
+      (cast (congrArg (Ty.Den Δ) f.hty) (v.eval κ ρ) : Ty.Den Δ (.fn f.σ f.τ)) x =
+        f.body.eval κ (Tuple.cons x ρ) PUnit.unit
+  | _, .lam (.opened t _), f, h, κ, ρ, x => by
+      simp only [Val.openFn?, Option.some.injEq] at h
+      subst h; rfl
+  | _, .lam (.closed _), _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .thunk_mk _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .lazy_mk _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .record_mk _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .union_mk _ _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .array_mk _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .list_mk _, _, h, _, _, _ => by simp [Val.openFn?] at h
+  | _, .data_in _ _ _, _, h, _, _, _ => by simp [Val.openFn?] at h
+
+theorem Term.tailCallHead?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {b : KBinder ks}
+    {τ : Ty ks} {js : JCtx ks} {o' : Lvl} (t : Term Δ d (b :: Φ) Γ τ js o')
+    {r : (σ : Ty ks) × (oa : Lvl) × PExpr Δ (b :: Φ) Γ σ oa × PLift (b.ty = .fn σ τ)}
+    (h : t.tailCallHead? = some r) (κ : KEnv Δ Φ) (x : Ty.Den Δ b.ty) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) :
+    t.eval (Tuple.cons x κ) ρ jκ =
+      (cast (congrArg (Ty.Den Δ) r.2.2.2.down) x : Ty.Den Δ (.fn r.1 τ))
+        (r.2.2.1.eval (Tuple.cons x κ) ρ) := by
+  cases t with
+  | letE u c rest =>
+      simp only [Term.tailCallHead?] at h
+      split at h
+      · rename_i σ oa a h₁ h₂ hc hr
+        simp only [Option.some.injEq] at h
+        subst h
+        simp only [Term.eval]
+        subst h₂
+        rw [Term.retHead?_eval rest hr, Comp.appHead?_eval c hc]
+      · cases h
+  | _ => simp [Term.tailCallHead?] at h
+
+theorem Term.openTailCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks}
+    {js : JCtx ks} {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ ty o)
+    (b : Term Δ d (⟨ty, u, o, true⟩ :: Φ) Γ τ js o') (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''}
+    (h : Term.openTailCall? u v b = some r) :
+    r.2.eval κ ρ jκ = (Term.letV u v b).eval κ ρ jκ := by
+  unfold Term.openTailCall? at h
+  split at h
+  · rename_i σ₁ τ₁ hty uₓ m body σa oa a hca hf hc
+    split at h
+    · rename_i hst
+      obtain ⟨rfl, rfl⟩ := hst
+      split at h
+      · rename_i a' ha
+        split at h
+        · simp only [Option.map_eq_some_iff] at h
+          obtain ⟨r', hr', rfl⟩ := h
+          simp only [Term.eval]
+          rw [Term.tailCallHead?_eval b hc κ _ ρ jκ]
+          have hv := Val.openFn?_eval v hf κ ρ
+          simp only at hv hr' ⊢
+          have hs := Term.subst_eval (KLRen.Agree.id κ)
+            (USub.Agree.cons (USub.Agree.ofRen (Δ := Δ) (Φ' := Φ) (κ' := κ) (ULRen.Agree.idL ρ))
+              ⟨_, a'⟩)
+            (JRen.Agree.ofNil jκ) body hr'
+          rw [hs, ← PExpr.rename_eval (KRen.Agree.drop _ κ) (URen.Agree.id ρ) a ha]
+          exact (hv _).symm
+        · cases h
+      · cases h
+    · cases h
+  · cases h
+
 theorem Term.retLetV_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
     {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ σ o) (b : Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o')
     (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
@@ -224,7 +322,11 @@ theorem Term.retLetV_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
       obtain ⟨f, hf, hr⟩ := hr
       simp only [Term.eval]
       exact Term.inlineAt_eval (InlTgt.Agree.single (Val.blockFn?_sem v κ ρ hf)) b ρ jκ hr
-    · rfl
+    · simp only
+      split
+      · rename_i r hr
+        exact Term.openTailCall?_eval u v b κ ρ jκ hr
+      · rfl
 
 /-! ## The walk -/
 

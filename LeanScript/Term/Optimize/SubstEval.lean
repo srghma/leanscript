@@ -272,6 +272,63 @@ theorem Neu.substN_eval (hk : KLRen.Agree rk κ κ') (hs : USub.Agree s κ' ρ �
 
 end Layer1
 
+theorem PExpr.enumLit?_eval {Φ : KCtx ks} {Γ : UCtx ks} {e : LeanEnumSchema} (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) : {o : Lvl} → (p : PExpr Δ Φ Γ (.enum e) o) → {i : Fin e.nOfConstructors} →
+    p.enumLit? = some i → p.eval κ ρ = i
+  | _, .enum_mk _ _, _, h => by
+      simp only [PExpr.enumLit?, Option.some.injEq] at h
+      subst h; rfl
+  | _, .neu _, _, h => by simp [PExpr.enumLit?] at h
+  | _, .kvar _, _, h => by simp [PExpr.enumLit?] at h
+
+theorem Term.asBranch?_eval {D : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    {o : Lvl} → (t : Term Δ D Φ Γ τ js o) → {b : (ℓ : Nat) × Branch Δ D Φ Γ τ js ℓ} →
+    t.asBranch? = some b → t.eval κ ρ jκ = b.2.eval κ ρ jκ
+  | _, .branch _, _, h => by
+      simp only [Term.asBranch?, Option.some.injEq] at h
+      subst h; rfl
+  | _, .ret _, _, h => by simp [Term.asBranch?] at h
+  | _, .letV _ _ _, _, h => by simp [Term.asBranch?] at h
+  | _, .letE _ _ _, _, h => by simp [Term.asBranch?] at h
+  | _, .record_casesOn _ _ _, _, h => by simp [Term.asBranch?] at h
+  | _, .jump _ _, _, h => by simp [Term.asBranch?] at h
+
+theorem Term.asJump?_eval {D : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    {o : Lvl} → (t : Term Δ D Φ Γ τ js o) →
+    {r : (σ : Ty ks) × JVar js σ × (o' : Lvl) × PExpr Δ Φ Γ σ o'} →
+    t.asJump? = some r → t.eval κ ρ jκ = jκ.get r.2.1 (r.2.2.2.eval κ ρ)
+  | _, .jump _ _, _, h => by
+      simp only [Term.asJump?, Option.some.injEq] at h
+      subst h; rfl
+  | _, .ret _, _, h => by simp [Term.asJump?] at h
+  | _, .letV _ _ _, _, h => by simp [Term.asJump?] at h
+  | _, .letE _ _ _, _, h => by simp [Term.asJump?] at h
+  | _, .record_casesOn _ _ _, _, h => by simp [Term.asJump?] at h
+  | _, .branch _, _, h => by simp [Term.asJump?] at h
+
+theorem JVar.split_inl_get {σ τ' τ : Ty ks} {u : Usage1ω} {js : JCtx ks} (jκ : JEnv Δ τ js)
+    (f : Ty.Den Δ σ → Ty.Den Δ τ) :
+    (j : JVar (⟨σ, u⟩ :: js) τ') → {h : PLift (τ' = σ)} → j.split = .inl h →
+    ∀ v, JEnv.get (Tuple.cons f jκ : JEnv Δ τ (⟨σ, u⟩ :: js)) j v = f (h.down ▸ v)
+  | .head, _, _, _ => by simp
+  | .tail _, _, h, _ => by simp [JVar.split] at h
+
+theorem JVar.split_inr_get {σ τ' τ : Ty ks} {u : Usage1ω} {js : JCtx ks} (jκ : JEnv Δ τ js)
+    (f : Ty.Den Δ σ → Ty.Den Δ τ) :
+    (j : JVar (⟨σ, u⟩ :: js) τ') → {j' : JVar js τ'} → j.split = .inr j' →
+    JEnv.get (Tuple.cons f jκ : JEnv Δ τ (⟨σ, u⟩ :: js)) j = jκ.get j'
+  | .head, _, h => by simp [JVar.split] at h
+  | .tail _, _, h => by
+      simp only [JVar.split, Sum.inr.injEq] at h
+      subst h; simp
+
+theorem PExpr.eval_cast {Φ : KCtx ks} {Γ : UCtx ks} {τ σ : Ty ks} {o : Lvl} (h : τ = σ)
+    (a : PExpr Δ Φ Γ τ o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    (h ▸ a : PExpr Δ Φ Γ σ o).eval κ ρ = h ▸ a.eval κ ρ := by
+  subst h; rfl
+
 /-! ## Statements -/
 
 mutual
@@ -451,10 +508,9 @@ theorem Term.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx
         rw [hv]
         exact Term.subst_eval hk (hs.ofArgs _ _ _ as.2) hj b hb
   | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .branch br, _, h => by
-      simp only [Term.subst, Option.map_eq_some_iff] at h
-      obtain ⟨br', hbr, rfl⟩ := h
+      simp only [Term.subst] at h
       simp only [Term.eval]
-      exact Branch.subst_eval hk hs hj br hbr
+      exact Branch.subst_eval hk hs hj br h
   | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .jump j e, _, h => by
       simp only [Term.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
         Option.some.injEq] at h
@@ -466,36 +522,73 @@ theorem Branch.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UC
     {rj : JRen js js'} → {κ : KEnv Δ Φ} → {κ' : KEnv Δ Φ'} → {ρ : UEnv Δ Γ} →
     {ρ' : UEnv Δ Γ'} → {jκ : JEnv Δ τ js} → {jκ' : JEnv Δ τ js'} →
     KLRen.Agree rk κ κ' → USub.Agree s κ' ρ ρ' → JRen.Agree rj jκ jκ' →
-    {ℓ : Nat} → (br : Branch Δ D Φ Γ τ js ℓ) → {p : (ℓ' : Nat) × Branch Δ D' Φ' Γ' τ js' ℓ'} →
+    {ℓ : Nat} → (br : Branch Δ D Φ Γ τ js ℓ) → {p : (o' : Lvl) × Term Δ D' Φ' Γ' τ js' o'} →
     br.subst rk s rj = some p → p.2.eval κ' ρ' jκ' = br.eval κ ρ jκ
   | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .ite c t e, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
         Option.some.injEq] at h
       obtain ⟨c', hc, t', ht, e', he, rfl⟩ := h
-      simp only [Branch.eval, Neu.substN_eval hk hs c hc, Term.subst_eval hk hs hj t ht,
+      simp only [Term.eval, Branch.eval, Neu.substN_eval hk hs c hc, Term.subst_eval hk hs hj t ht,
         Term.subst_eval hk hs hj e he]
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .enum_casesOn e bs, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨e', he, bs', hbs, rfl⟩ := h
-      simp only [Branch.eval]
-      rw [Neu.substN_eval hk hs e he]
-      exact Term.subst_eval hk hs hj _ (Fin.optAll_eq_some hbs _)
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, κ', _, ρ', _, _, hk, hs, hj, _,
+      .enum_casesOn e bs, _, h => by
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨q, hq, h⟩ := h
+      have he := Neu.subst_eval hk hs e hq
+      split at h
+      · rename_i m hm
+        simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨bs', hbs, rfl⟩ := h
+        simp only [Term.eval, Branch.eval]
+        rw [PExpr.toNeu?_eval κ' ρ' q.2 hm, he]
+        exact Term.subst_eval hk hs hj _ (Fin.optAll_eq_some hbs _)
+      · simp only [Option.bind_eq_some_iff] at h
+        obtain ⟨i, hi, h⟩ := h
+        have hv := PExpr.enumLit?_eval κ' ρ' q.2 hi
+        rw [he] at hv
+        simp only [Branch.eval]
+        rw [hv]
+        exact Term.subst_eval hk hs hj _ h
   | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .union_casesOn e bs, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
         Option.some.injEq] at h
       obtain ⟨e', he, bs', hbs, rfl⟩ := h
-      simp only [Branch.eval, Neu.substN_eval hk hs e he]
+      simp only [Term.eval, Branch.eval, Neu.substN_eval hk hs e he]
       exact Branches.subst_eval hk hs hj bs hbs _
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _,
+  | _, _, _, _, _, _, _, _, _, _, _, _, κ, κ', ρ, ρ', jκ, jκ', hk, hs, hj, _,
       .join σ u uₓ body main, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨body', hbody, main', hmain, rfl⟩ := h
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨m, hm, h⟩ := h
+      -- the join point, seen from both sides: the source's closure
+      let f := fun v => body.eval κ (Tuple.cons v ρ) jκ
+      have hmain := Branch.subst_eval (jκ := Tuple.cons f jκ) (jκ' := Tuple.cons f jκ') hk hs
+        (hj.lift ⟨σ, u⟩ f) main hm
       simp only [Branch.eval]
-      have hf := funext fun v => Term.subst_eval hk (hs.lift _ _ _ _ v) hj body hbody
-      rw [hf]
-      exact Branch.subst_eval hk hs (hj.lift _ _) main hmain
+      split at h
+      · rename_i b hb
+        simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨body', hbody, rfl⟩ := h
+        have hf := funext fun v => Term.subst_eval hk (hs.lift _ _ _ _ v) hj body hbody
+        simp only [Term.eval, Branch.eval]
+        rw [hf, ← Term.asBranch?_eval κ' ρ' _ m.2 hb]
+        exact hmain
+      · split at h
+        · rename_i σ' j o' a hr
+          rw [← hmain, Term.asJump?_eval κ' ρ' _ m.2 hr]
+          simp only
+          split at h
+          · rename_i hh hsplit
+            split at h
+            · rw [JVar.split_inl_get jκ' f j hsplit]
+              have := Term.subst_eval hk (hs.cons ⟨_, hh.down ▸ a⟩) hj body h
+              rw [this]
+              simp only [f, PExpr.eval_cast]
+            · cases h
+          · rename_i j' hsplit
+            simp only [Option.pure_def, Option.some.injEq] at h
+            subst h
+            simp only [Term.eval, JVar.split_inr_get jκ' f j hsplit]
+        · cases h
   termination_by structural _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x _ _ => x
 theorem Branches.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} →
     {js js' : JCtx ks} → {τ : Ty ks} → {rk : KLRen Φ Φ'} → {s : USub Δ Φ' Γ Γ'} →

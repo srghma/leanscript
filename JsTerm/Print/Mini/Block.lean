@@ -23,6 +23,12 @@ def natLitOf {N : JsTy} (nt : JsNatTy N) (n : Nat) : MiniExpr :=
   | .bigint_nat => bigintNum n
   | .uint53 => natNum n
 
+/-- A `number` holding a natural number, at the representation `nt`: itself, or `BigInt(e)`. -/
+def natOfNumber {N : JsTy} (nt : JsNatTy N) (e : MiniExpr) : MiniExpr :=
+  match nt with
+  | .bigint_nat => .call (ident "BigInt") [e]
+  | .uint53 => e
+
 /-- The dump of each arm of a case analysis on a union (with the fields it takes apart). -/
 partial def JsUnionArms.keys {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
     JsUnionArms S C M J k cs → List String
@@ -88,6 +94,14 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
     return .object (.keyValue (.ident (nes "tag")) (natNum ix.index) ::
       es.zipIdx.map fun (e, i) => .keyValue (.ident (nes (fieldKey i))) e)
   | .enum_mk _ shift i => pure (intNum (shift + i.val))
+  | .enumIndex (shift := shift) nt e => do
+    let x ← exprToMini sc e
+    let i : MiniExpr :=
+      if shift = 0 then x
+      else if shift < 0 then .binary x .plus (natNum shift.natAbs)
+      else .binary x .minus (natNum shift.natAbs)
+    return natOfNumber nt i
+  | .enumEq a b => do return .binary (← exprToMini sc a) .strictEq (← exprToMini sc b)
   | .array_mk (.generic _) ps => do return .array ((← partsToMini sc ps).map .elem)
   | .array_mk (.typed t) ps => do
     return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)

@@ -29,13 +29,10 @@ ret k1
 -- Inline.test2 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
-    val k5 [1] : ((String × (Array String)) → (String × (Array String))) := fun x6 [1] : (String × (Array String)) => (open)
-      let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x2
-      let ⟨f9 [1] : String, f10 [1] : (Array String)⟩ := x6
-      let ⟨f11 [0] : String, f12 [0] : (Array String)⟩ := x2
-      ret ⟨lean_string_append__String_append(f7, f9), lean_array_append(f8, f10)⟩
-    let x13 [1] : (String × (Array String)) := k5 x4
-    ret x13
+    let ⟨f5 [1] : String, f6 [1] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [0] : (Array String)⟩ := x2
+    ret ⟨lean_string_append__String_append(f5, f7), lean_array_append(f6, f8)⟩
   ret k3
 ret k1
 
@@ -69,13 +66,10 @@ ret k1
 -- Noinline.test2 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
-    val k5 [1] : ((String × (Array String)) → (String × (Array String))) := fun x6 [1] : (String × (Array String)) => (open)
-      let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x2
-      let ⟨f9 [1] : String, f10 [1] : (Array String)⟩ := x6
-      let ⟨f11 [0] : String, f12 [0] : (Array String)⟩ := x2
-      ret ⟨lean_string_append__String_append(f7, f9), lean_array_append(f8, f10)⟩
-    let x13 [1] : (String × (Array String)) := k5 x4
-    ret x13
+    let ⟨f5 [1] : String, f6 [1] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [0] : (Array String)⟩ := x2
+    ret ⟨lean_string_append__String_append(f5, f7), lean_array_append(f6, f8)⟩
   ret k3
 ret k1
 
@@ -109,13 +103,10 @@ ret k1
 -- AlwaysInline.test2 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
-    val k5 [1] : ((String × (Array String)) → (String × (Array String))) := fun x6 [1] : (String × (Array String)) => (open)
-      let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x2
-      let ⟨f9 [1] : String, f10 [1] : (Array String)⟩ := x6
-      let ⟨f11 [0] : String, f12 [0] : (Array String)⟩ := x2
-      ret ⟨lean_string_append__String_append(f7, f9), lean_array_append(f8, f10)⟩
-    let x13 [1] : (String × (Array String)) := k5 x4
-    ret x13
+    let ⟨f5 [1] : String, f6 [1] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [0] : (Array String)⟩ := x2
+    ret ⟨lean_string_append__String_append(f5, f7), lean_array_append(f6, f8)⟩
   ret k3
 ret k1
 
@@ -149,13 +140,10 @@ ret k1
 -- InlineIfReduceInline.test2 : R → R → R
 val k1 [1] : ((String × (Array String)) → ((String × (Array String)) → (String × (Array String)))) := fun x2 [ω] : (String × (Array String)) => (closed)
   val k3 [1] : ((String × (Array String)) → (String × (Array String))) := fun x4 [1] : (String × (Array String)) => (open)
-    val k5 [1] : ((String × (Array String)) → (String × (Array String))) := fun x6 [1] : (String × (Array String)) => (open)
-      let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x2
-      let ⟨f9 [1] : String, f10 [1] : (Array String)⟩ := x6
-      let ⟨f11 [0] : String, f12 [0] : (Array String)⟩ := x2
-      ret ⟨lean_string_append__String_append(f7, f9), lean_array_append(f8, f10)⟩
-    let x13 [1] : (String × (Array String)) := k5 x4
-    ret x13
+    let ⟨f5 [1] : String, f6 [1] : (Array String)⟩ := x2
+    let ⟨f7 [1] : String, f8 [1] : (Array String)⟩ := x4
+    let ⟨f9 [0] : String, f10 [0] : (Array String)⟩ := x2
+    ret ⟨lean_string_append__String_append(f5, f7), lean_array_append(f6, f8)⟩
   ret k3
 ret k1
 

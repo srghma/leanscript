@@ -118,6 +118,61 @@ partial def listAppendLeaves {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o
     else [⟨_, _, p⟩]
   | _, _, p => [⟨_, _, p⟩]
 
+/-- Is the representation `BigInt`? -/
+def JsNatTy.isBigInt {N : JsTy} : JsNatTy N → Bool
+  | .bigint_nat => true
+  | .uint53 => false
+
+/-- The enum constructor `shift + k` of an enum of `n` constructors, when `k < n`. -/
+def enumCtorOf? {C M : List JsTy} (n : Nat) (shift : Int) (k : Nat) :
+    Option (JsExpr S C M (.enum n shift)) :=
+  if h : k < n then some (.enum_mk n shift ⟨k, h⟩) else none
+
+/-- `x === k` for the position `x` of the constructor of `e` (`JsExpr.enumIndex`) and a literal
+    `k`: `e === shift + k`, or `false` when the enum has no constructor `k`. -/
+def enumIndexEqLit {C M : List JsTy} {n : Nat} {shift : Int} (e : JsExpr S C M (.enum n shift))
+    (k : Nat) : JsExpr S C M (.terminal .bool) :=
+  match enumCtorOf? n shift k with
+  | some c => .enumEq e c
+  | none => .lit (.bool false)
+
+/-- A literal natural number (at a `number` or `BigInt` representation). -/
+def JsExpr.natLit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option Nat
+  | .lit (.uint53 k _) => some k
+  | .lit (.bigint_nat k) => some k
+  | _ => none
+
+/-- `Nat.decEq` of the positions of two constructors of the same enum (`JsExpr.enumIndex`, what a
+    derived `BEq` or `DecidableEq` compares) is `a === b` on the enum itself, and of the position
+    of a constructor and a literal `k` is `a === shift + k`: no conversion to a number or a
+    `BigInt` is written.  `none` for any other arguments. -/
+def enumIndexEq? {C M σs : List JsTy} (as : JsArgs S C M σs) :
+    Option (JsExpr S C M (.terminal .bool)) :=
+  match as with
+  | .cons a (.cons b .nil) =>
+    match a, b with
+    | .enumIndex (n := n) (shift := sh) _ x, .enumIndex (n := n') (shift := sh') _ y =>
+      if h : n' = n ∧ sh' = sh then some (.enumEq x (h.1 ▸ h.2 ▸ y)) else none
+    | .enumIndex _ x, b => b.natLit?.map (enumIndexEqLit x)
+    | a, .enumIndex _ y => a.natLit?.map (enumIndexEqLit y)
+    | _, _ => none
+  | _ => none
+
+/-- Is the statement `jump j i`, `j` the innermost join point and `i` the literal `Nat` `k`? -/
+def isJumpNatLit {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (k : Nat) : Term Δ d Φ Γ τ js o → Bool
+  | .jump j (.lit .nat v) => j.index == 0 && v == k
+  | _ => false
+
+/-- Is the case analysis on an enum `case e of | c₀ => jump j 0 | c₁ => jump j 1 | …`, every
+    arm jumping to the innermost join point with the position of its constructor as a `Nat` (the
+    shape of Lean's `toCtorIdx e`, which a derived `BEq`, `DecidableEq` or `Ord` compares)? -/
+def isCtorIdxCases {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} :
+    Branch Δ d Φ Γ τ js ℓ → Bool
+  | .enum_casesOn (s := s) _ bs =>
+    (List.finRange s.nOfConstructors).all fun i => isJumpNatLit i.val (bs i)
+  | _ => false
+
 mutual
 
 /-- A neutral expression. -/
@@ -135,6 +190,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     if nm == "lean_list_append" && (lowerTy cfg τ).isConsList then
       return ← cConsAppend (listAppendLeaves (.neu (Neu.extern e args h))) n C M _
     let as ← cArgs args n C M
+    if nm == "lean_nat_dec_eq__Nat_decEq" || nm == "lean_nat_dec_eq__Nat_beq" then
+      if let some r := enumIndexEq? as then return ← castE r _
     let r ← match stringPosArg? σs with
       | some s => lowerExtern nm (.cons (.lit (.string s)) as)
       | none => lowerExtern nm as
@@ -571,7 +628,35 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let ee ← cNeu e { n with cx } C M
     return (← unionCasesAny ee
       (← cBranches brs { n with own } (Own.Neu.owned cx e) (Own.Neu.partOwned cx e) C M J))
-  | Branch.join σ _ _ body br => do
+  -- `join j (x : Nat) := body; case e of | cᵢ => jump j i`: `x` is the position of the
+  -- constructor of `e` (`toCtorIdx e`), read from `e` itself (`JsExpr.enumIndex`, nothing at all
+  -- for a `number` when the enum starts at `0`) instead of computed by a case analysis
+  | Branch.join σ _ uₓ body br =>
+    match br with
+    | Branch.enum_casesOn (s := s) c _ =>
+    if isCtorIdxCases br then do
+      let σ' := lowerTy cfg σ
+      let some nt := JsNatTy.of? σ' | throw "internal: the representation of a Nat"
+      let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
+        (fun w => (Own.Term.occ (w.upU 1) body).n > 0)
+      let ce ← cNeu c { n with cx } C M
+      let own := own.pushU [false]
+      bindConst ce fun r C' => do
+        -- a `BigInt` read more than once is converted once
+        if nt.isBigInt && uₓ == .many then
+          let ie : JsExpr S C' M σ' := .enumIndex nt (← r.get (.enum s.nOfConstructors s.shift))
+          return .const "x" ie
+            (← cTerm body { n with u := .c C'.length :: n.u, own } (σ' :: C') M J)
+        else
+          cTerm body { n with u := .enumIdx r s.nOfConstructors s.shift :: n.u, own } C' M J
+    else cJoin σ body br n C M J
+    | br => cJoin σ body br n C M J
+
+/-- A join point in front of a branch (`JsBlock.join`). -/
+partial def cJoin {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
+    {o : Lvl} (σ : Ty ks) {u : Usage1ω} {uₓ : Usage01ω}
+    (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o) (br : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ)
+    (n : Names) (C M J : List JsTy) : ConvM (JsBlock S C M J (.ret (lowerTy cfg τ))) := do
     let σ' := lowerTy cfg σ
     let envBr := Own.joinBranchEnv n.own body
     let block ← cBranch br { n with own := envBr } C M (σ' :: J)
