@@ -1,3 +1,31 @@
+# Summary of changes for run edc709df-3eca-43aa-b8ca-03ba15ad57d8
+I didn't change any code: `CaseNumber` already compiles to JavaScript that matches `legacy-backend/CaseNumber.js`. The previous session did that work and committed it. In this session I rebuilt from the current sources, regenerated the files and re-ran the tests to confirm it still holds.
+
+**Current output** (`CaseNumber-pbo.js`; `CaseNumber-faithful.js` is the same):
+```js
+export const test1 = (f) => {
+  if (f === 1) { return "1"; }
+  if (f === 2) { return "2"; }
+  return f === 3 ? "3" : "catch";
+};
+export const test2 = (a) => { /* same body */ };
+```
+- **Same code for both functions:** the `if f == 1.0 …` chain (`test1`) and the `| 1.0 => …` literal match (`test2`) produce the same decision tree as PBO's `test1`.
+- **Only difference from PBO:** the last `if … return; return …` is written as a `?:`, which is the same logic in less code.
+- **Labelled blocks:** there's no recursion or shared tail here, so no labelled block or loop is needed.
+- **Where it happens:** the match translation is fixed in the Lean → `Term` step. The `Term` optimizer turns the last `if` into a `cond`, which becomes the `?:`. No `JsTerm`-level pass is involved.
+
+**Checks from this session**
+- I rebuilt `leanscript` and regenerated `CaseNumber`. All six output files came out byte-for-byte the same as the committed ones.
+- The generated check modules pass: 16 of 16 for each preset.
+- I ran `scripts/count-comparisons.mjs` on inputs 0, 1, 2, 3, 4, 1.5, -1 and -0. Our `test1` and `test2` give the same answers as PBO's `test1`, with exactly the same number of comparisons on each input: 1, 2 or 3.
+- `lake build tests` succeeds and `lake exe tests` passes 82/82, including the `CaseNumber` test in `Tests/Main.lean`.
+- The two float-equality lemmas behind the `| 1.0 =>` translation (in `LeanScript/TermElab/ToTerm/FloatEq.lean`) build as part of `leanscript`, and are already listed as proved in the Properties table.
+
+**Limitation (unchanged from before):** under the `pbo` preset, a match arm on `0.0` or NaN falls back to comparing raw bit patterns. That fallback overflows JavaScript numbers and throws at run time; under `faithful` it gives the right answer. `CaseNumber` has no such arms, so it isn't affected.
+
+There was nothing new to commit.
+
 # Summary of changes for run f1904c96-30cb-4b3f-b1d9-fa31e1792cef
 `test1` in `CaseNumber` already compiled to the same JavaScript as `legacy-backend/CaseNumber.js`. The one real gap was your commented-out `test2` (`| 1.0 => …`): it works on this Lean version, but the translator couldn't handle it. It now compiles, and both functions produce the same code as PBO's `test1`.
 
