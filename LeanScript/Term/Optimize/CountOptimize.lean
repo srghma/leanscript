@@ -462,18 +462,19 @@ theorem Term.numCalls_optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
   have h2 := Term.numCalls_widenFields t.inlineKnown.simp
   have h3 := Term.numCalls_reuseFields t.inlineKnown.simp.widenFields []
   have h3' := Term.numCalls_shareTestWalk (t.inlineKnown.simp.widenFields.reuseFields [])
-  have h4 := Term.numCalls_cseWalk (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk
-  have h4' := Term.numCalls_hoistWalk (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk
+  have h3'' := Term.numCalls_zipTestWalk (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk
+  have h4 := Term.numCalls_cseWalk (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk
+  have h4' := Term.numCalls_hoistWalk (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk
   have h5 := Term.numCalls_condWalk
-    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk
   have h5' := Term.numCalls_appendWalk
-    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk.condWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk
   have h6 := Term.numCalls_inlineRet
-    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk.condWalk.appendWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.appendWalk
   have h6' := Term.numCalls_arithWalk
-    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk.condWalk.appendWalk.inlineRet
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.appendWalk.inlineRet
   have h7 := Term.numCalls_dce
-    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.cseWalk.hoistWalk.condWalk.appendWalk.inlineRet.arithWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.appendWalk.inlineRet.arithWalk
   simp only [Term.optimize]; omega
 
 /-- Running the optimiser any number of times never adds calls either. -/

@@ -14,20 +14,36 @@
 // `threw: MESSAGE` (a `panic!`).  With `record` (resp. `spread`), TUPLES is a JSON array of arrays
 // of numbers, and the function is called on the record `{ _1: x1, _2: x2, … }` of each (resp. as
 // `f(x1, x2, …)`, as purescript-backend-optimizer spells a product's fields); each line is
-// `x1;x2;…,result,comparisons`.  The compared operand may be a name with `$` or a field read
-// (`f$1 === 4`, `x._3 === 1`).
+// `x1;x2;…,result,comparisons`.  A tuple may nest (`[[1, 2], [3, 4]]`): with `record` the
+// function gets nested records (`{ _1: { _1: 1, _2: 2 }, _2: { … } }`), with `spread` the
+// flattened fields (`f(1, 2, 3, 4)`), and the line lists the flattened fields.  The compared
+// operand may be a name with `$` or a field read (`f$1 === 4`, `x._3 === 1`); orderings with a
+// numeric literal (`0 < f$1`, `v_a > 0`) are counted too.
 import { readFileSync } from "node:fs";
 
 const [file, fn, curried, xsJson, ysJson] = process.argv.slice(2);
 let comparisons = 0;
+const ops = {
+  "===": (a, b) => a === b,
+  "!==": (a, b) => a !== b,
+  "<": (a, b) => a < b,
+  ">": (a, b) => a > b,
+  "<=": (a, b) => a <= b,
+  ">=": (a, b) => a >= b,
+};
 globalThis.__cmp = (a, op, b) => {
   comparisons++;
-  return op === "===" ? a === b : a !== b;
+  return ops[op](a, b);
 };
-const src = readFileSync(file, "utf8").replace(
-  /(?<![\w$.])([\w$]+(?:\.[\w$]+)*) (===|!==) (-?\d+(?:\.\d+)?n?)\b/g,
-  (_, a, op, b) => `__cmp(${a}, "${op}", ${b})`,
-);
+const src = readFileSync(file, "utf8")
+  .replace(
+    /(?<![\w$.])([\w$]+(?:\.[\w$]+)*) (===|!==|<=|>=|<|>) (-?\d+(?:\.\d+)?n?)(?![\w$.])/g,
+    (_, a, op, b) => `__cmp(${a}, "${op}", ${b})`,
+  )
+  .replace(
+    /(?<![\w$.])(-?\d+(?:\.\d+)?n?) (<=|>=|<|>) ([\w$]+(?:\.[\w$]+)*)(?![\w$.(])/g,
+    (_, a, op, b) => `__cmp(${a}, "${op}", ${b})`,
+  );
 const M = await import("data:text/javascript," + encodeURIComponent(src));
 const big = /\b\d+n\b/.test(src);
 const lift = (v) => (big ? BigInt(v) : v);
@@ -42,13 +58,13 @@ const out = [];
 if (curried === "record" || curried === "spread") {
   for (const t of JSON.parse(xsJson)) {
     comparisons = 0;
-    const args = t.map(lift);
+    const toRecord = (v) =>
+      Array.isArray(v) ? Object.fromEntries(v.map((w, i) => ["_" + (i + 1), toRecord(w)])) : lift(v);
+    const flat = t.flat(Infinity);
     const r = call(() =>
-      curried === "record"
-        ? M[fn](Object.fromEntries(args.map((v, i) => ["_" + (i + 1), v])))
-        : M[fn](...args),
+      curried === "record" ? M[fn](toRecord(t)) : M[fn](...flat.map(lift)),
     );
-    out.push(`${t.join(";")},${r},${comparisons}`);
+    out.push(`${flat.join(";")},${r},${comparisons}`);
   }
   console.log(out.join("\n"));
   process.exit(0);

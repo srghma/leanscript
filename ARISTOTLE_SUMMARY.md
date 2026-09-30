@@ -1,3 +1,52 @@
+# Summary of changes for run 3f0fc641-6a56-498a-8978-c658361af94f
+`CaseRecord` now compiles to JavaScript on par with `legacy-backend/CaseRecord.js`. All six functions give Lean's answers and never make more comparisons than PBO. `Test2.test2` was the one function whose shape differed; it now matches PBO's. The fix is a new pass in the `Term → Term` phase, proved to preserve `eval`. The other phases needed no changes.
+
+**What was wrong.** `test1` and `test3`–`test6` already matched PBO. In `Test2.test2`, once `a.c == 2`, we tested `a.b == 1` first. Both of its arms then took `d` apart and tested `d.e == 1 && d.f == 2`, so that test appeared twice. PBO tests `d` once and tests `a.b` inside each result.
+
+**New output** (`CaseRecord-pbo.js`; `-faithful.js` is the same with `1n`, …):
+```js
+export const Test2$test2 = (x) => {
+  const { _1: f$1 } = x._1;
+  if (x._1._2 === 2) {
+    if (x._2._1 === 1 && x._2._2 === 2) {
+      return f$1 === 1 ? 1 : 2;
+    }
+    return f$1 === 1 ? 3 : 4;
+  }
+  return 4;
+};
+```
+This has PBO's structure. On all 256 inputs with each field from 0 to 3, it makes the same number of comparisons as PBO on every input (400 in total for both).
+
+**The pass** (`Term.zipTestWalk`, in the new `LeanScript/Term/Optimize/ZipTest.lean`; it runs right after `shareTestWalk` in `Term.optimize`):
+- It applies at an `if p` when both arms make the same tests (the same conditions and the same record destructurings, in the same order) and differ only in their answers.
+- It then moves `p` into the answers: `if p then (if q then a else b) else (if q then c else d)` becomes `if q then (p ? a : c) else (p ? b : d)`, or just `a` where both answers are the same.
+- No input is tested more often than before, and the shared tests are written once.
+- It is skipped when both arms are plain answers, or when the result would change the statement's level index.
+
+**Proofs** (standard axioms only, no `sorry`):
+- `Term.zipTestWalk_eval`: the pass doesn't change `eval`, so `Term.optimize_eval` still holds. This is added to the Properties table as proved.
+- `Term.numCalls_zipTestWalk`: the pass adds no calls, so `Term.numCalls_optimize` still holds.
+- In `LeanScript/WFTerm/Optimize.lean`, one existing proof (the `jump` case of `optimizeUnder_eval`) hit the heartbeat limit after the change. I rewrote it without `congr`.
+
+**Tests and tooling**
+- `scripts/count-comparisons.mjs` now handles nested records (flattened into separate arguments for PBO). It also counts comparisons such as `0 < f$1` and `v_a > 0`.
+- New test in `Tests/Main.lean`, run for both presets on a grid of inputs: all six `CaseRecord` functions give Lean's answers (checked against PBO's too) and never make more comparisons than PBO. It also checks that `Test2.test2` writes the test of `d` once.
+- The `README.md` now describes the pass.
+
+**Remaining differences from PBO**
+- PBO takes the fields as separate arguments; we pass the record and read its fields. This is how every structure is passed, so I left the interface unchanged.
+- Where PBO writes `if (c) return a; return b;` we write `return c ? a : b;`. The comparisons are the same.
+- There is no recursion or shared tail in this file, so no labelled block or loop was needed.
+
+**Checks run**
+- `lake build leanscript tests TermTests JsSpec JsTerm LeanScript.WFTerm.Optimize LeanScript.Term.Optimize.CountOptimize` succeeds.
+- `lake exe tests` passes 85/85, including the new test.
+- I regenerated every snapshot. Only the `CaseRecord` outputs changed, and every node check passes. The snapshot script still exits 1, but only because of the existing "literal too big" errors in the `PrimOp*Configurable` files.
+- Building the whole `LeanScript` library fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib when the project doesn't depend on it. I didn't change that file.
+
+Everything is committed.
+
 # Summary of changes for run 87bd1df3-dd62-43c2-8b0d-1d7b6ab52db1
 I didn't change any code this time. `CaseProduct` already compiles to JavaScript that matches `legacy-backend/CaseProduct.js`, and is slightly better on comparison count. The previous session did the work, and I rebuilt from the current sources to confirm it still holds.
 

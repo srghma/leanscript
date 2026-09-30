@@ -667,6 +667,74 @@ def moreJsSpec : Spec := describe "JsTerm" do
         if file == "CaseProduct" then
           assertEq s!"{file}-{preset}: fewer comparisons than PBO in all ({total} < {totalPbo})"
             true (total < totalPbo)
+  it "CaseRecord: every function gives Lean's answers, with at most PBO's comparisons (needs node and leanscript)" do
+    -- `CaseRecord`: the six functions of `legacy-backend/CaseRecord.js`.  In `Test2.test2`, once
+    -- `a.c == 2`, both arms of `if a.b == 1` test `d.e == 1 && d.f == 2`; `a.b` is tested in the
+    -- answers instead (`Term.zipTestWalk`), so the test of `d` is written once, as
+    -- purescript-backend-optimizer does.  On every input of a grid, each function gives Lean's
+    -- answer and makes no more comparisons (equalities and orderings with a literal) than PBO's.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseRecord"
+    IO.FS.createDirAll dir
+    let file := "CaseRecord"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let count (js fn mode tuples : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, fn, mode, tuples]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let js (xs : List Int) : String := "[" ++ ",".intercalate (xs.map toString) ++ "]"
+    let vs : List Int := [0, 1, 2, 3]
+    let ws : List Int := [-1, 0, 1, 2, 3]
+    let abc : List (List Int) := vs.flatMap fun a => vs.flatMap fun b => vs.map fun c => [a, b, c]
+    let ab : List (List Int) := ws.flatMap fun a => ws.map fun b => [a, b]
+    let bcef : List (List Int) := vs.flatMap fun b => vs.flatMap fun c =>
+      vs.flatMap fun e => vs.map fun f => [b, c, e, f]
+    let flatJson (ts : List (List Int)) : String := "[" ++ ",".intercalate (ts.map js) ++ "]"
+    let nestedJson (ts : List (List Int)) : String :=
+      "[" ++ ",".intercalate (ts.map fun (t : List Int) => s!"[{js (t.take 2)},{js (t.drop 2)}]") ++ "]"
+    let test1 : List Int → String
+      | [1, _, _] => "0" | [_, 1, _] => "1" | [_, _, 1] => "2" | [2, 2, _] => "3" | _ => "catch"
+    let test2 : List Int → String
+      | [1, 2, 1, 2] => "1" | [_, 2, 1, 2] => "2" | [1, 2, _, _] => "3" | _ => "4"
+    let test3 : List Int → String
+      | [a, b] => toString (if a > 0 then a else if b > 1 then b else 3) | _ => "?"
+    let test5 : List Int → String
+      | [a, b] => toString (if a > 0 then a else if b > 0 then b else 0) | _ => "?"
+    let cases : List (String × String × List (List Int) × String × String × (List Int → String)) :=
+      [("test1", "test1", abc, flatJson abc, flatJson abc, test1),
+       ("Test2$test2", "test2", bcef, nestedJson bcef, nestedJson bcef, test2),
+       ("test3", "test3", ab, flatJson ab, flatJson ab, test3),
+       ("test4", "test4", ab, flatJson ab, flatJson ab, test3),
+       ("test5", "test5", ab, flatJson ab, flatJson ab, test5),
+       ("test6", "test6", ab, flatJson ab, flatJson ab, test5)]
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      let src ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let lit := if preset == "pbo" then "" else "n"
+      assertEq s!"{file}-{preset}: the test of `d` written once in Test2.test2" 2
+        (src.splitOn s!"x._2._1 === 1{lit} && x._2._2 === 2{lit}").length
+      for (ours, theirs, ts, ourJson, pboJson, lean) in cases do
+        let pbo ← count "Tests/SnapshotsPBOPure/legacy-backend/CaseRecord.js" theirs "spread" pboJson
+        let got ← count s!"{dir}/{file}-{preset}.js" ours "record" ourJson
+        assertEq s!"{file}-{preset}: {ours} on every input" ts.length got.length
+        for ((o, p), t) in (got.zip pbo).zip ts do
+          match o, p with
+          | [x, r, n], [_, r', m] =>
+            assertEq s!"{file}-{preset}: {ours} {x}" (lean t) r
+            assertEq s!"{file}-{preset}: PBO's {theirs} {x}" (lean t) r'
+            assertEq s!"{file}-{preset}: {ours} {x} makes at most PBO's {m} comparisons" true
+              (n.toNat! ≤ m.toNat!)
+          | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "r", "n"] o
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

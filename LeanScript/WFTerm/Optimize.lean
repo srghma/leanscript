@@ -367,8 +367,10 @@ theorem WFTerm.optimizeUnder_eval : {Γ : WCtx ks} → {G : WEnv Δ Γ → Prop}
   | _, _, _, _, _, _, .jump i a hpre hpost, _, h, e, hg, sv, je => by
       apply Subtype.ext
       simp only [WFTerm.optimizeUnder, WFTerm.eval]
-      congr 2
-      exact WFAtom.optimize_eval a e
+      have key : ∀ (x y : Ty.Den Δ i.arg) (hx : i.pre e x) (hy : i.pre e y), x = y →
+          (i.get je x hx).val = (i.get je y hy).val := by
+        intro x y hx hy hxy; subst hxy; rfl
+      exact key _ _ _ _ (WFAtom.optimize_eval a e)
 
 end
 

@@ -29,17 +29,12 @@ export const test1 = (x) => {
  * @returns {int(bigint)}
  */
 export const Test2$test2 = (x) => {
-  const { _2: f$1 } = x;
+  const { _1: f$1 } = x._1;
   if (x._1._2 === 2n) {
-    if (x._1._1 === 1n) {
-      if (f$1._1 === 1n && f$1._2 === 2n) {
-        return 1n;
-      }
-      return 3n;
+    if (x._2._1 === 1n && x._2._2 === 2n) {
+      return f$1 === 1n ? 1n : 2n;
     }
-    if (f$1._1 === 1n && f$1._2 === 2n) {
-      return 2n;
-    }
+    return f$1 === 1n ? 3n : 4n;
   }
   return 4n;
 };
