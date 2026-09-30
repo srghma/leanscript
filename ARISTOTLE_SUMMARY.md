@@ -1,3 +1,34 @@
+# Summary of changes for run eab80d7a-b3b3-43d4-99d4-226372c2de6d
+I made no changes: `CaseArray`'s JS output was already on par with purescript-backend-optimizer's legacy output, and in one respect better.
+
+**Current output** (`Tests/SnapshotsPBOPure/CaseArray-pbo.js`; the `faithful` preset is the same with `0n`/`1n`/`2n`):
+```js
+export const test1 = (a) => {
+  if (a.length === 0) { return "0"; }
+  if (a.length === 1) { return a[0] === 1 ? "1" : "any1"; }
+  if (a.length === 2) { return a[1] === 2 ? "2" : "catch"; }
+  return a.length === 3 ? "3" : "catch";
+};
+```
+
+**Compared with `legacy-backend/CaseArray.js`:**
+- **Same structure:** a chain of early `return`s on `a.length`, one element read per branch, plain `a[i]` reads with no bounds-checked runtime helper, and no runtime imports.
+- **Better on correctness:** PBO's output returns `"1"` for every one-element array, so it loses the difference between `#[1]` and `#[_]`. Ours keeps it with `a[0] === 1 ? "1" : "any1"`.
+- **Shorter:** the final `if`/`return` pairs are written as ternaries.
+
+**Where the earlier work went:** the previous session made these improvements, as recorded in `ARISTOTLE_SUMMARY.md`. They sit in the `Term → JsTerm` conversion (`JsTerm/Lower/Bounds.lean`, called from `JsTerm/Lower/FromTerm.lean`) rather than the `Term` optimizer you'd prefer. That's because `Term` can't express either change:
+- It has no array read without a default value: the in-bounds proof is erased, so every read becomes `get!`.
+- It has no choice between `BigInt` and `number`, which only exists after conversion.
+
+No `JsTerm → JsTerm` pass was needed. There is no recursion and no deep nesting, so nothing here could overflow the stack.
+
+**How I checked it:**
+- I rebuilt `leanscript` from the current source and regenerated all six `CaseArray` output files. The result was identical to the committed files.
+- The generated differential checks (`CaseArray-pbo.check.mjs` and `CaseArray-faithful.check.mjs`) pass 8/8 each.
+- Those checks never reach the `#[1]`, `#[_, 2]` or `#[_, y≠2]` branches. So I ran both JS presets by hand on `#[1]`, `#[7]`, `#[5,2]`, `#[5,3]`, `#[1,2,3]` and `#[]`. Both gave the same answers as Lean's own evaluation of `test1`: `"1"`, `"any1"`, `"2"`, `"catch"`, `"3"`, `"0"`. This hand check isn't saved in the project.
+
+No Lean theorems were involved, so nothing was added to the Properties table, and there was nothing to commit.
+
 # Summary of changes for run 13b05612-04c5-4646-8db7-a3cfc44aa239
 `CaseArray` now generates the same JS as purescript-backend-optimizer in both presets, and it keeps the `#[1]`/`#[_]` distinction that PBO's legacy output drops. All differential checks pass.
 
