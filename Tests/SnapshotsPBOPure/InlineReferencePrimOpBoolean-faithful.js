@@ -5,42 +5,42 @@
 
 /**
  * `test1`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test1 = () => 42n;
+export const test1 = 42n;
 
 /**
  * `test2`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test2 = () => 42n;
+export const test2 = 42n;
 
 /**
  * `test3`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test3 = () => 42n;
+export const test3 = 42n;
 
 /**
  * `extern1`
- * @returns {{ _1: boolean, _2: int(bigint), _3: boolean, _4: boolean }}
+ * @type {{ _1: boolean, _2: int(bigint), _3: boolean, _4: boolean }}
  */
-export const extern1 = () => ({ _1: true, _2: 0n, _3: true, _4: false });
+export const extern1 = { _1: true, _2: 0n, _3: true, _4: false };
 
 /**
  * `test4`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test4 = () => 42n;
+export const test4 = 42n;
 
 /**
  * `test5`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test5 = () => 42n;
+export const test5 = 42n;
 
 /**
  * `test6`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test6 = () => 42n;
+export const test6 = 42n;

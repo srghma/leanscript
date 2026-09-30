@@ -13,22 +13,22 @@ export const test1 = (fn) => {
 
 /**
  * `fn_prime`
- * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
+ * @type {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const fn_prime = () => {
+export const fn_prime = (() => {
   const k$2 = () => ({ _1: 1n, _2: 2n, _3: 3n });
   const f$1 = k$2;
   return f$1();
-};
+})();
 
 /**
  * `extern1`
- * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
+ * @type {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern1 = () => ({ _1: 42n, _2: 2n, _3: 3n });
+export const extern1 = { _1: 42n, _2: 2n, _3: 3n };
 
 /**
  * `test2`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test2 = () => 3n;
+export const test2 = 3n;

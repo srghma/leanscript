@@ -5,6 +5,6 @@
 
 /**
  * `run`
- * @returns {uint53(number)}
+ * @type {uint53(number)}
  */
-export const run = () => 6;
+export const run = 6;

@@ -5,50 +5,50 @@
 
 /**
  * `test1`
- * @returns {ConsList<boolean>}
+ * @type {ConsList<boolean>}
  */
-export const test1 = () => ({
+export const test1 = {
   tag: 1,
   _1: true,
   _2: { tag: 1, _1: false, _2: { tag: 1, _1: false, _2: { tag: 0 } } },
-});
+};
 
 /**
  * `test2`
- * @returns {ConsList<boolean>}
+ * @type {ConsList<boolean>}
  */
-export const test2 = () => ({
+export const test2 = {
   tag: 1,
   _1: false,
   _2: { tag: 1, _1: true, _2: { tag: 1, _1: true, _2: { tag: 0 } } },
-});
+};
 
 /**
  * `test3`
- * @returns {ConsList<boolean>}
+ * @type {ConsList<boolean>}
  */
-export const test3 = () => ({
+export const test3 = {
   tag: 1,
   _1: false,
   _2: { tag: 1, _1: true, _2: { tag: 1, _1: false, _2: { tag: 0 } } },
-});
+};
 
 /**
  * `test4`
- * @returns {ConsList<boolean>}
+ * @type {ConsList<boolean>}
  */
-export const test4 = () => ({
+export const test4 = {
   tag: 1,
   _1: false,
   _2: { tag: 1, _1: false, _2: { tag: 1, _1: true, _2: { tag: 0 } } },
-});
+};
 
 /**
  * `test7`
- * @returns {ConsList<string>}
+ * @type {ConsList<string>}
  */
-export const test7 = () => ({
+export const test7 = {
   tag: 1,
   _1: "aa",
   _2: { tag: 1, _1: "ab", _2: { tag: 1, _1: "ba", _2: { tag: 0 } } },
-});
+};

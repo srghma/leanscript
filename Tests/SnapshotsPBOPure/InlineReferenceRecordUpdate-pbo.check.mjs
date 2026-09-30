@@ -36,7 +36,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test2()", () => M.test2(), "3", false);
+check("test2", () => M.test2, "3", false);
 
 console.log(`InlineReferenceRecordUpdate-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

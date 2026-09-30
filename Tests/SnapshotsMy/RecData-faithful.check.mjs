@@ -36,8 +36,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("RecData$Prog$ks()", () => M.RecData$Prog$ks(), "#[1, 0, 0, 0]", false);
-check("RecData$sumTwo()", () => M.RecData$sumTwo(), "3", false);
+check("RecData$Prog$ks", () => M.RecData$Prog$ks, "#[1, 0, 0, 0]", false);
+check("RecData$sumTwo", () => M.RecData$sumTwo, "3", false);
 check("RecData$sumArray([])", () => M.RecData$sumArray([]), "0", false);
 check("RecData$sumArray([]) twice", () => ((a0) => (M.RecData$sumArray(a0), M.RecData$sumArray(a0)))([]), "0", false);
 check("RecData$sumArray([0n])", () => M.RecData$sumArray([0n]), "0", false);

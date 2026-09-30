@@ -503,6 +503,14 @@ structure JsFun where
   /-- The body; every path ends in a `return` (or a `throw`). -/
   body : JsBlock sig (pushAll (params.map (·.2)) []) [] [] (.ret ret)
 
+/-- A top-level definition without parameters (its type is not a function, `termToJs`) is a
+    constant: it is exported as the value its body computes, `export const name = value;`,
+    not as a function of no arguments (the translated programs are pure and total, so the
+    value is the same whenever it is computed).  The value is shared by every reader: like a
+    borrowed argument, it must not be given to a version of a function that owns (and may
+    update in place) its parameter. -/
+def JsFun.isConst (f : JsFun) : Bool := f.params.isEmpty
+
 /-- A whole module: the operations of the runtime it imports, and its exported functions. -/
 structure JsModule where
   /-- The configuration it was generated with. -/

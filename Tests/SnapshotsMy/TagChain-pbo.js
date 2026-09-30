@@ -8,6 +8,6 @@
 
 /**
  * `instInhabitedColour.default`
- * @returns {enum3@0}
+ * @type {enum3@0}
  */
-export const instInhabitedColour$default_ = () => 0;
+export const instInhabitedColour$default_ = 0;

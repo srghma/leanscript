@@ -179,9 +179,9 @@ export const alias6 = (a, n) => {
 
 /**
  * `BagSig.ks`
- * @returns {List<uint53(number)>}
+ * @type {List<uint53(number)>}
  */
-export const BagSig$ks = () => [0];
+export const BagSig$ks = [0];
 
 /**
  * `Bag.ofArray`

@@ -6,6 +6,6 @@
 
 /**
  * `wat`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const wat = () => 42n;
+export const wat = 42n;

@@ -11,21 +11,21 @@ import {
 
 /**
  * `TestUInt8.test1_0__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt8$test1_0__shouldBeTrue = () => true;
+export const TestUInt8$test1_0__shouldBeTrue = true;
 
 /**
  * `TestUInt8.test3_2__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt8$test3_2__shouldBeTrue = () => true;
+export const TestUInt8$test3_2__shouldBeTrue = true;
 
 /**
  * `TestUInt8.test3m2__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt8$test3m2__shouldBeTrue = () => true;
+export const TestUInt8$test3m2__shouldBeTrue = true;
 
 /**
  * `TestUInt16.divNoInline`
@@ -37,21 +37,21 @@ export const TestUInt16$divNoInline = (a, b) => uint16__lean_uint16_div(a, b);
 
 /**
  * `TestUInt16.test1_0__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt16$test1_0__shouldBeTrue = () => true;
+export const TestUInt16$test1_0__shouldBeTrue = true;
 
 /**
  * `TestUInt16.test3_2__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt16$test3_2__shouldBeTrue = () => true;
+export const TestUInt16$test3_2__shouldBeTrue = true;
 
 /**
  * `TestUInt16.test3m2__shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt16$test3m2__shouldBeTrue = () => true;
+export const TestUInt16$test3m2__shouldBeTrue = true;
 
 /**
  * `TestUInt32.divNoInline`
@@ -63,21 +63,21 @@ export const TestUInt32$divNoInline = (a, b) => uint32__lean_uint32_div(a, b);
 
 /**
  * `TestUInt32.test1_0_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt32$test1_0_shouldBeTrue = () => true;
+export const TestUInt32$test1_0_shouldBeTrue = true;
 
 /**
  * `TestUInt32.test3_2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt32$test3_2_shouldBeTrue = () => true;
+export const TestUInt32$test3_2_shouldBeTrue = true;
 
 /**
  * `TestUInt32.test3m2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestUInt32$test3m2_shouldBeTrue = () => true;
+export const TestUInt32$test3m2_shouldBeTrue = true;
 
 /**
  * `TestInt8.divNoInline`
@@ -89,21 +89,21 @@ export const TestInt8$divNoInline = (a, b) => int8__lean_int8_div(a, b);
 
 /**
  * `TestInt8.test1_0_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt8$test1_0_shouldBeTrue = () => true;
+export const TestInt8$test1_0_shouldBeTrue = true;
 
 /**
  * `TestInt8.test3_2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt8$test3_2_shouldBeTrue = () => true;
+export const TestInt8$test3_2_shouldBeTrue = true;
 
 /**
  * `TestInt8.test3m2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt8$test3m2_shouldBeTrue = () => true;
+export const TestInt8$test3m2_shouldBeTrue = true;
 
 /**
  * `TestInt16.divNoInline`
@@ -115,21 +115,21 @@ export const TestInt16$divNoInline = (a, b) => int16__lean_int16_div(a, b);
 
 /**
  * `TestInt16.test1_0_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt16$test1_0_shouldBeTrue = () => true;
+export const TestInt16$test1_0_shouldBeTrue = true;
 
 /**
  * `TestInt16.test3_2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt16$test3_2_shouldBeTrue = () => true;
+export const TestInt16$test3_2_shouldBeTrue = true;
 
 /**
  * `TestInt16.test3m2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt16$test3m2_shouldBeTrue = () => true;
+export const TestInt16$test3m2_shouldBeTrue = true;
 
 /**
  * `TestInt32.divNoInline`
@@ -141,18 +141,18 @@ export const TestInt32$divNoInline = (a, b) => int32__lean_int32_div(a, b);
 
 /**
  * `TestInt32.test1_0_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt32$test1_0_shouldBeTrue = () => true;
+export const TestInt32$test1_0_shouldBeTrue = true;
 
 /**
  * `TestInt32.test3_2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt32$test3_2_shouldBeTrue = () => true;
+export const TestInt32$test3_2_shouldBeTrue = true;
 
 /**
  * `TestInt32.test3m2_shouldBeTrue`
- * @returns {boolean}
+ * @type {boolean}
  */
-export const TestInt32$test3m2_shouldBeTrue = () => true;
+export const TestInt32$test3m2_shouldBeTrue = true;

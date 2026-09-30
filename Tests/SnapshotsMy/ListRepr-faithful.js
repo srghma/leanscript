@@ -24,19 +24,19 @@ const consList__lean_list_append = (xs, ys) => {
 
 /**
  * `ListRepr.x`
- * @returns {ConsList<nat(bigint)>}
+ * @type {ConsList<nat(bigint)>}
  */
-export const ListRepr$x = () => ({
+export const ListRepr$x = {
   tag: 1,
   _1: 1n,
   _2: { tag: 1, _1: 2n, _2: { tag: 1, _1: 3n, _2: { tag: 0 } } },
-});
+};
 
 /**
  * `ListRepr.empty`
- * @returns {ConsList<string>}
+ * @type {ConsList<string>}
  */
-export const ListRepr$empty = () => ({ tag: 0 });
+export const ListRepr$empty = { tag: 0 };
 
 /**
  * `ListRepr.front`

@@ -5,18 +5,18 @@
 
 /**
  * `test1`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test1 = () => 42;
+export const test1 = 42;
 
 /**
  * `extern1`
- * @returns {{ _1: boolean, _2: int53(number) }}
+ * @type {{ _1: boolean, _2: int53(number) }}
  */
-export const extern1 = () => ({ _1: true, _2: 0 });
+export const extern1 = { _1: true, _2: 0 };
 
 /**
  * `test2`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test2 = () => 42;
+export const test2 = 42;

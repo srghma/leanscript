@@ -16,34 +16,34 @@ export const test1 = (fn) => {
 
 /**
  * `fn'`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const fn_ = () => {
+export const fn_ = (() => {
   const k$2 = () => 0n;
   const f$1 = k$2;
   return f$1();
-};
+})();
 
 /**
  * `extern1`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const extern1 = () => [1n, 2n, 0n];
+export const extern1 = [1n, 2n, 0n];
 
 /**
  * `extern2`
- * @returns {Array<Array<int(bigint)>>}
+ * @type {Array<Array<int(bigint)>>}
  */
-export const extern2 = () => [[1n, 2n, 0n], [3n], [0n]];
+export const extern2 = [[1n, 2n, 0n], [3n], [0n]];
 
 /**
  * `test3`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const test3 = () => [1n, 2n, 0n];
+export const test3 = [1n, 2n, 0n];
 
 /**
  * `test4`
- * @returns {Array<Array<int(bigint)>>}
+ * @type {Array<Array<int(bigint)>>}
  */
-export const test4 = () => [[1n, 2n, 0n], [3n], [0n]];
+export const test4 = [[1n, 2n, 0n], [3n], [0n]];

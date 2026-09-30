@@ -8,9 +8,9 @@ import { uint53__lean_nat_add } from "../../runtime.js";
 
 /**
  * `messages`
- * @returns {List<string>}
+ * @type {List<string>}
  */
-export const messages = () => ["one", "two", "three"];
+export const messages = ["one", "two", "three"];
 
 /**
  * `countUp`

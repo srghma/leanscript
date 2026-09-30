@@ -32,284 +32,286 @@
 
 /**
  * `TestUInt64.test1`
- * @returns {BigUint64Array<nat(bigint)>}
+ * @type {BigUint64Array<nat(bigint)>}
  */
-export const TestUInt64$test1 = () =>
-  BigUint64Array.of(
-    2n,
-    3n,
-    3n,
-    18446744073709551615n,
-    1n,
-    18446744073709551614n,
-  );
+export const TestUInt64$test1 = BigUint64Array.of(
+  2n,
+  3n,
+  3n,
+  18446744073709551615n,
+  1n,
+  18446744073709551614n,
+);
 
 /**
  * `TestUInt64.test2`
- * @returns {BigUint64Array<nat(bigint)>}
+ * @type {BigUint64Array<nat(bigint)>}
  */
-export const TestUInt64$test2 = () =>
-  BigUint64Array.of(
-    0n,
-    18446744073709551615n,
-    1n,
-    3n,
-    18446744073709551613n,
-    0n,
-  );
+export const TestUInt64$test2 = BigUint64Array.of(
+  0n,
+  18446744073709551615n,
+  1n,
+  3n,
+  18446744073709551613n,
+  0n,
+);
 
 /**
  * `TestUInt64.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test3 = () => [true, false, false, false, false, true];
+export const TestUInt64$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestUInt64.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test4 = () => [false, true, true, true, true, false];
+export const TestUInt64$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestUInt64.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test5 = () => [false, true, false, true, false, false];
+export const TestUInt64$test5 = [false, true, false, true, false, false];
 
 /**
  * `TestUInt64.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test6 = () => [false, false, true, false, true, false];
+export const TestUInt64$test6 = [false, false, true, false, true, false];
 
 /**
  * `TestUInt64.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test7 = () => [true, true, false, true, false, true];
+export const TestUInt64$test7 = [true, true, false, true, false, true];
 
 /**
  * `TestUInt64.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt64$test8 = () => [true, false, true, false, true, true];
+export const TestUInt64$test8 = [true, false, true, false, true, true];
 
 /**
  * `TestUInt64.test9`
- * @returns {BigUint64Array<nat(bigint)>}
+ * @type {BigUint64Array<nat(bigint)>}
  */
-export const TestUInt64$test9 = () =>
-  BigUint64Array.of(
-    1n,
-    2n,
-    2n,
-    18446744073709551614n,
-    18446744073709551614n,
-    1n,
-  );
+export const TestUInt64$test9 = BigUint64Array.of(
+  1n,
+  2n,
+  2n,
+  18446744073709551614n,
+  18446744073709551614n,
+  1n,
+);
 
 /**
  * `TestUInt64.test10`
- * @returns {BigUint64Array<nat(bigint)>}
+ * @type {BigUint64Array<nat(bigint)>}
  */
-export const TestUInt64$test10 = () =>
-  BigUint64Array.of(1n, 0n, 2n, 0n, 9223372036854775807n, 1n);
+export const TestUInt64$test10 = BigUint64Array.of(
+  1n,
+  0n,
+  2n,
+  0n,
+  9223372036854775807n,
+  1n,
+);
 
 /**
  * `TestUInt64.test11`
- * @returns {BigUint64Array<nat(bigint)>}
+ * @type {BigUint64Array<nat(bigint)>}
  */
-export const TestUInt64$test11 = () =>
-  BigUint64Array.of(18446744073709551615n, 1n);
+export const TestUInt64$test11 = BigUint64Array.of(18446744073709551615n, 1n);
 
 /**
  * `TestNat.test1`
- * @returns {Array<nat(bigint)>}
+ * @type {Array<nat(bigint)>}
  */
-export const TestNat$test1 = () => [2n, 3n, 3n, 1n, 2n, 0n];
+export const TestNat$test1 = [2n, 3n, 3n, 1n, 2n, 0n];
 
 /**
  * `TestNat.test2`
- * @returns {Array<nat(bigint)>}
+ * @type {Array<nat(bigint)>}
  */
-export const TestNat$test2 = () => [0n, 0n, 1n, 1n, 0n, 0n];
+export const TestNat$test2 = [0n, 0n, 1n, 1n, 0n, 0n];
 
 /**
  * `TestNat.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test3 = () => [true, false, false, false, false, true];
+export const TestNat$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestNat.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test4 = () => [false, true, true, true, true, false];
+export const TestNat$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestNat.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test5 = () => [false, true, false, false, true, false];
+export const TestNat$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestNat.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test6 = () => [false, false, true, true, false, false];
+export const TestNat$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestNat.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test7 = () => [true, true, false, false, true, true];
+export const TestNat$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestNat.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestNat$test8 = () => [true, false, true, true, false, true];
+export const TestNat$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestNat.test9`
- * @returns {Array<nat(bigint)>}
+ * @type {Array<nat(bigint)>}
  */
-export const TestNat$test9 = () => [1n, 2n, 2n, 0n, 0n, 0n];
+export const TestNat$test9 = [1n, 2n, 2n, 0n, 0n, 0n];
 
 /**
  * `TestNat.test10`
- * @returns {Array<nat(bigint)>}
+ * @type {Array<nat(bigint)>}
  */
-export const TestNat$test10 = () => [1n, 0n, 2n, 0n, 0n, 0n];
+export const TestNat$test10 = [1n, 0n, 2n, 0n, 0n, 0n];
 
 /**
  * `TestInt64.test1`
- * @returns {BigInt64Array<int(bigint)>}
+ * @type {BigInt64Array<int(bigint)>}
  */
-export const TestInt64$test1 = () => BigInt64Array.of(2n, 3n, 3n, -1n, 1n, -2n);
+export const TestInt64$test1 = BigInt64Array.of(2n, 3n, 3n, -1n, 1n, -2n);
 
 /**
  * `TestInt64.test2`
- * @returns {BigInt64Array<int(bigint)>}
+ * @type {BigInt64Array<int(bigint)>}
  */
-export const TestInt64$test2 = () => BigInt64Array.of(0n, -1n, 1n, 3n, -3n, 0n);
+export const TestInt64$test2 = BigInt64Array.of(0n, -1n, 1n, 3n, -3n, 0n);
 
 /**
  * `TestInt64.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test3 = () => [true, false, false, false, false, true];
+export const TestInt64$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestInt64.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test4 = () => [false, true, true, true, true, false];
+export const TestInt64$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestInt64.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test5 = () => [false, true, false, false, true, false];
+export const TestInt64$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestInt64.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test6 = () => [false, false, true, true, false, false];
+export const TestInt64$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestInt64.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test7 = () => [true, true, false, false, true, true];
+export const TestInt64$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestInt64.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt64$test8 = () => [true, false, true, true, false, true];
+export const TestInt64$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestInt64.test9`
- * @returns {BigInt64Array<int(bigint)>}
+ * @type {BigInt64Array<int(bigint)>}
  */
-export const TestInt64$test9 = () => BigInt64Array.of(1n, 2n, 2n, -2n, -2n, 1n);
+export const TestInt64$test9 = BigInt64Array.of(1n, 2n, 2n, -2n, -2n, 1n);
 
 /**
  * `TestInt64.test10`
- * @returns {BigInt64Array<int(bigint)>}
+ * @type {BigInt64Array<int(bigint)>}
  */
-export const TestInt64$test10 = () => BigInt64Array.of(1n, 0n, 2n, 0n, 0n, 1n);
+export const TestInt64$test10 = BigInt64Array.of(1n, 0n, 2n, 0n, 0n, 1n);
 
 /**
  * `TestInt64.test11`
- * @returns {BigInt64Array<int(bigint)>}
+ * @type {BigInt64Array<int(bigint)>}
  */
-export const TestInt64$test11 = () => BigInt64Array.of(-1n, 1n);
+export const TestInt64$test11 = BigInt64Array.of(-1n, 1n);
 
 /**
  * `TestInt.test1`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const TestInt$test1 = () => [2n, 3n, 3n, -1n, 1n, -2n];
+export const TestInt$test1 = [2n, 3n, 3n, -1n, 1n, -2n];
 
 /**
  * `TestInt.test2`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const TestInt$test2 = () => [0n, -1n, 1n, 3n, -3n, 0n];
+export const TestInt$test2 = [0n, -1n, 1n, 3n, -3n, 0n];
 
 /**
  * `TestInt.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test3 = () => [true, false, false, false, false, true];
+export const TestInt$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestInt.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test4 = () => [false, true, true, true, true, false];
+export const TestInt$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestInt.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test5 = () => [false, true, false, false, true, false];
+export const TestInt$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestInt.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test6 = () => [false, false, true, true, false, false];
+export const TestInt$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestInt.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test7 = () => [true, true, false, false, true, true];
+export const TestInt$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestInt.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt$test8 = () => [true, false, true, true, false, true];
+export const TestInt$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestInt.test9`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const TestInt$test9 = () => [1n, 2n, 2n, -2n, -2n, 1n];
+export const TestInt$test9 = [1n, 2n, 2n, -2n, -2n, 1n];
 
 /**
  * `TestInt.test10`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const TestInt$test10 = () => [1n, 0n, 2n, 0n, -1n, 1n];
+export const TestInt$test10 = [1n, 0n, 2n, 0n, -1n, 1n];
 
 /**
  * `TestInt.test11`
- * @returns {Array<int(bigint)>}
+ * @type {Array<int(bigint)>}
  */
-export const TestInt$test11 = () => [-1n, 1n];
+export const TestInt$test11 = [-1n, 1n];

@@ -16,33 +16,33 @@ export const localTest = (f) => {
 
 /**
  * `test1`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test1 = () => 110;
+export const test1 = 110;
 
 /**
  * `test2`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test2 = () => 88;
+export const test2 = 88;
 
 /**
  * `test3`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test3 = () => 1089;
+export const test3 = 1089;
 
 /**
  * `test4`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test4 = () => 9;
+export const test4 = 9;
 
 /**
  * `extern`
- * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
+ * @type {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const extern = () => ({ _1: 99, _2: 0, _3: 11 });
+export const extern = { _1: 99, _2: 0, _3: 11 };
 
 /**
  * `externTest`
@@ -57,24 +57,24 @@ export const externTest = (f) => {
 
 /**
  * `test5`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test5 = () => 110;
+export const test5 = 110;
 
 /**
  * `test6`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test6 = () => 88;
+export const test6 = 88;
 
 /**
  * `test7`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test7 = () => 1089;
+export const test7 = 1089;
 
 /**
  * `test8`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test8 = () => 9;
+export const test8 = 9;

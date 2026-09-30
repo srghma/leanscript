@@ -56,15 +56,15 @@ import {
 
 /**
  * `TestFloat.test11`
- * @returns {Array<float>}
+ * @type {Array<float>}
  */
-export const TestFloat$test11 = () => [-1.5, 1.5];
+export const TestFloat$test11 = [-1.5, 1.5];
 
 /**
  * `TestFloat32.test11`
- * @returns {Array<float32>}
+ * @type {Array<float32>}
  */
-export const TestFloat32$test11 = () => [-1.5, 1.5];
+export const TestFloat32$test11 = [-1.5, 1.5];
 
 /**
  * `TestFloat32.addNoInline`

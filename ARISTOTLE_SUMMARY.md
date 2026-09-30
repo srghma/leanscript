@@ -1,3 +1,42 @@
+# Summary of changes for run 60036a24-2ad5-4987-a0a3-13e7bef71b58
+`BackendSemantics01` now compiles to the same JavaScript as purescript-backend-optimizer, apart from export style.
+
+**What was wrong.** The `Term` side was already fine: the unoptimised and optimised terms are both just `ret 2147483646`, `ret -2147483647`, `ret '\uFFFF'` and `ret '\x00'`. There were two real gaps and one tooling problem:
+1. **Definitions without parameters became zero-argument functions**, e.g. `export const test1 = () => 2147483646;`. PBO writes `const test1 = 2147483646;`.
+2. **`test1` and `test2` (`Int32`) got no node checks**, because the check generator didn't accept fixed-width integer types.
+3. **The snapshot script deleted this file's outputs**, because `--functions-only` skips files that contain only constants.
+
+**Output now (both presets):**
+```js
+export const test1 = 2147483646;
+export const test2 = -2147483647;
+export const test3 = "￿";
+export const test4 = "\x00";
+```
+The remaining differences are style only. The exports are written inline instead of in a closing `export { … }` list. `"\x00"` is a shorter spelling of PBO's `"\u0000"`; both give the same string.
+
+**Changes**
+- **Constants** (`JsTerm/Syntax/Basic.lean`, `JsTerm/Print/Mini.lean`): a definition whose type isn't a function is now printed as `export const x = value;`, with `@type` in its doc comment. If the body is more than a single `return e`, it is wrapped in an arrow that is called immediately, `export const x = (() => { … })();`.
+  - This lives in the print step, because none of `Term`, the conversion or the `JsTerm` grammar can express "constant vs zero-argument function"; only the top-level declaration form changes.
+  - The value is now computed once, when the module loads, which is how Lean initialises closed constants. Since the translated programs are pure and total, the value doesn't change.
+  - Caveat: the constant is shared, so it must not be passed to a version of a function that owns its parameter and may update it in place (the `$$mut` versions). The doc comment says this.
+- **Checks** (`LeanScriptCli/Check.lean`):
+  - Constants are read (`M.test1`) rather than called.
+  - `UInt8`–`UInt64` and `Int8`–`Int64` are now sample types. Below 64 bits the samples include the range edges, to exercise wrapping.
+  - At the `pbo` preset, where 64-bit integers are plain numbers, a 64-bit expected answer beyond ±(2^53−1) is skipped. The runtime deliberately throws there ("use the bigint representation"), so there is nothing to compare.
+- **Snapshot script:** a new `leanscript --skip-empty` option skips a file only if it has no translatable definition at all. `scripts/leanscript-snapshots.sh` now uses it, so files with only constants (`BackendSemantics01`/`02`, the `PrimOp…` files and others) now get outputs and checks.
+- **New snapshot** `Tests/SnapshotsMy/TopConstants.lean` covers `Int32`/`UInt8` constants (including a wrapped one), a pair, an array, a list, and functions over every fixed-width type.
+
+**Checks run**
+- Rebuilt `leanscript` and regenerated all snapshots. All node checks pass, and the `pbo` checks went from 3297 to 5549. `BackendSemantics01` passes 4/4 at both presets; `TopConstants` passes 76/76.
+- `lake build JsTerm tests` succeeds, and `lake exe tests` passes 76/76. No proofs or theorems changed, so I added nothing to the Properties table.
+- The snapshot script still exits non-zero because of the "literal too big" errors at the `pbo` preset. These already existed for `PrimOpInt02Configurable` and `PrimOpInt03Configurable`. `PrimOpIntBit02Configurable` now shows the same error too, because it is translated for the first time.
+
+**Separate issues I noticed and didn't fix:**
+- `InlineReferenceRecordUpdate.fn_prime` now comes out as an immediately-called arrow. That exposes a missed `Term` inlining: a local zero-argument closure that is only copied and then called is not inlined.
+- A constant built from a `for` loop over `push` (e.g. `squares`) fails to translate with a type mismatch.
+- `Int32` addition calls a runtime function rather than being written inline.
+
 # Summary of changes for run c4dce21e-c8f8-45f3-bbd6-16acd18393db
 I didn't need to change anything. `AssocStringAppend` already compiles to JavaScript that matches the legacy backend at both presets, because the fix was made in the previous run.
 

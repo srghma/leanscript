@@ -3,15 +3,15 @@
 
 /**
  * `ListRepr.x`
- * @returns {List<uint53(number)>}
+ * @type {List<uint53(number)>}
  */
-export const ListRepr$x = () => [1, 2, 3];
+export const ListRepr$x = [1, 2, 3];
 
 /**
  * `ListRepr.empty`
- * @returns {List<string>}
+ * @type {List<string>}
  */
-export const ListRepr$empty = () => [];
+export const ListRepr$empty = [];
 
 /**
  * `ListRepr.front`

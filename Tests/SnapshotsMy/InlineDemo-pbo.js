@@ -14,9 +14,9 @@ export const foo = (a, b) =>
 
 /**
  * `bar`
- * @returns {uint53(number)}
+ * @type {uint53(number)}
  */
-export const bar = () => 3;
+export const bar = 3;
 
 /**
  * `useScale`

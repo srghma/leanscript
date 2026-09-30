@@ -17,21 +17,21 @@ import {
 
 /**
  * `TestUInt64.test1`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestUInt64$test1 = () => 1553255926290448384n;
+export const TestUInt64$test1 = 1553255926290448384n;
 
 /**
  * `TestUInt64.test2`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestUInt64$test2 = () => 9446744073709551616n;
+export const TestUInt64$test2 = 9446744073709551616n;
 
 /**
  * `TestUInt64.test3`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestUInt64$test3 = () => 6553255926290448384n;
+export const TestUInt64$test3 = 6553255926290448384n;
 
 /**
  * `TestUInt64.test4`
@@ -43,21 +43,21 @@ export const TestUInt64$test4 = (a) =>
 
 /**
  * `TestNat.test1`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestNat$test1 = () => 4000000000n;
+export const TestNat$test1 = 4000000000n;
 
 /**
  * `TestNat.test2`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestNat$test2 = () => 0n;
+export const TestNat$test2 = 0n;
 
 /**
  * `TestNat.test3`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const TestNat$test3 = () => 4000000000000000000n;
+export const TestNat$test3 = 4000000000000000000n;
 
 /**
  * `TestNat.test4`
@@ -68,21 +68,21 @@ export const TestNat$test4 = (a) => a + 4000000000n;
 
 /**
  * `TestInt64.test1`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt64$test1 = () => -8446744073709551616n;
+export const TestInt64$test1 = -8446744073709551616n;
 
 /**
  * `TestInt64.test2`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt64$test2 = () => 8446744073709551616n;
+export const TestInt64$test2 = 8446744073709551616n;
 
 /**
  * `TestInt64.test3`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt64$test3 = () => 6553255926290448384n;
+export const TestInt64$test3 = 6553255926290448384n;
 
 /**
  * `TestInt64.test4`
@@ -94,21 +94,21 @@ export const TestInt64$test4 = (a) =>
 
 /**
  * `TestInt.test1`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt$test1 = () => 4000000000n;
+export const TestInt$test1 = 4000000000n;
 
 /**
  * `TestInt.test2`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt$test2 = () => -4000000000n;
+export const TestInt$test2 = -4000000000n;
 
 /**
  * `TestInt.test3`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const TestInt$test3 = () => 4000000000000000000n;
+export const TestInt$test3 = 4000000000000000000n;
 
 /**
  * `TestInt.test4`

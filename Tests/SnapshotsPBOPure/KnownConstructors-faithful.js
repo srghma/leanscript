@@ -8,9 +8,9 @@
 
 /**
  * `known1`
- * @returns {string}
+ * @type {string}
  */
-export const known1 = () => "b";
+export const known1 = "b";
 
 /**
  * `test1`

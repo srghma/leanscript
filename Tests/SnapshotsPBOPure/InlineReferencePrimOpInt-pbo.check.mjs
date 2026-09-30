@@ -36,14 +36,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1()", () => M.test1(), "110", false);
-check("test2()", () => M.test2(), "88", false);
-check("test3()", () => M.test3(), "1089", false);
-check("test4()", () => M.test4(), "9", false);
-check("test5()", () => M.test5(), "110", false);
-check("test6()", () => M.test6(), "88", false);
-check("test7()", () => M.test7(), "1089", false);
-check("test8()", () => M.test8(), "9", false);
+check("test1", () => M.test1, "110", false);
+check("test2", () => M.test2, "88", false);
+check("test3", () => M.test3, "1089", false);
+check("test4", () => M.test4, "9", false);
+check("test5", () => M.test5, "110", false);
+check("test6", () => M.test6, "88", false);
+check("test7", () => M.test7, "1089", false);
+check("test8", () => M.test8, "9", false);
 
 console.log(`InlineReferencePrimOpInt-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

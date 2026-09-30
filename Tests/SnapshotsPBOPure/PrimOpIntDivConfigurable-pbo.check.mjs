@@ -36,9 +36,22 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("TestUInt64$test1_0_shouldBeTrue()", () => M.TestUInt64$test1_0_shouldBeTrue(), "true", false);
-check("TestUInt64$test3_2_shouldBeTrue()", () => M.TestUInt64$test3_2_shouldBeTrue(), "true", false);
-check("TestUInt64$test3m2_shouldBeTrue()", () => M.TestUInt64$test3m2_shouldBeTrue(), "true", false);
+check("TestUInt64$divNoInline(0, 0)", () => M.TestUInt64$divNoInline(0, 0), "0", false);
+check("TestUInt64$divNoInline(0, 2)", () => M.TestUInt64$divNoInline(0, 2), "0", false);
+check("TestUInt64$divNoInline(1, 1)", () => M.TestUInt64$divNoInline(1, 1), "1", false);
+check("TestUInt64$divNoInline(2, 0)", () => M.TestUInt64$divNoInline(2, 0), "0", false);
+check("TestUInt64$divNoInline(0, 13)", () => M.TestUInt64$divNoInline(0, 13), "0", false);
+check("TestUInt64$divNoInline(1, 5)", () => M.TestUInt64$divNoInline(1, 5), "0", false);
+check("TestUInt64$divNoInline(2, 2)", () => M.TestUInt64$divNoInline(2, 2), "1", false);
+check("TestUInt64$divNoInline(5, 1)", () => M.TestUInt64$divNoInline(5, 1), "5", false);
+check("TestUInt64$divNoInline(13, 0)", () => M.TestUInt64$divNoInline(13, 0), "0", false);
+check("TestUInt64$divNoInline(2, 13)", () => M.TestUInt64$divNoInline(2, 13), "0", false);
+check("TestUInt64$divNoInline(5, 5)", () => M.TestUInt64$divNoInline(5, 5), "1", false);
+check("TestUInt64$divNoInline(13, 2)", () => M.TestUInt64$divNoInline(13, 2), "6", false);
+check("TestUInt64$divNoInline(13, 13)", () => M.TestUInt64$divNoInline(13, 13), "1", false);
+check("TestUInt64$test1_0_shouldBeTrue", () => M.TestUInt64$test1_0_shouldBeTrue, "true", false);
+check("TestUInt64$test3_2_shouldBeTrue", () => M.TestUInt64$test3_2_shouldBeTrue, "true", false);
+check("TestUInt64$test3m2_shouldBeTrue", () => M.TestUInt64$test3m2_shouldBeTrue, "true", false);
 check("TestNat$divNoInline(0, 0)", () => M.TestNat$divNoInline(0, 0), "0", false);
 check("TestNat$divNoInline(0, 2)", () => M.TestNat$divNoInline(0, 2), "0", false);
 check("TestNat$divNoInline(1, 1)", () => M.TestNat$divNoInline(1, 1), "1", false);
@@ -52,11 +65,24 @@ check("TestNat$divNoInline(2, 13)", () => M.TestNat$divNoInline(2, 13), "0", fal
 check("TestNat$divNoInline(5, 5)", () => M.TestNat$divNoInline(5, 5), "1", false);
 check("TestNat$divNoInline(13, 2)", () => M.TestNat$divNoInline(13, 2), "6", false);
 check("TestNat$divNoInline(13, 13)", () => M.TestNat$divNoInline(13, 13), "1", false);
-check("TestNat$test1_0_shouldBeTrue()", () => M.TestNat$test1_0_shouldBeTrue(), "true", false);
-check("TestNat$test3_2_shouldBeTrue()", () => M.TestNat$test3_2_shouldBeTrue(), "true", false);
-check("TestInt64$test1_0_shouldBeTrue()", () => M.TestInt64$test1_0_shouldBeTrue(), "true", false);
-check("TestInt64$test3_2_shouldBeTrue()", () => M.TestInt64$test3_2_shouldBeTrue(), "true", false);
-check("TestInt64$test3m2_shouldBeTrue()", () => M.TestInt64$test3m2_shouldBeTrue(), "true", false);
+check("TestNat$test1_0_shouldBeTrue", () => M.TestNat$test1_0_shouldBeTrue, "true", false);
+check("TestNat$test3_2_shouldBeTrue", () => M.TestNat$test3_2_shouldBeTrue, "true", false);
+check("TestInt64$divNoInline(-7, -7)", () => M.TestInt64$divNoInline(-7, -7), "1", false);
+check("TestInt64$divNoInline(-7, 0)", () => M.TestInt64$divNoInline(-7, 0), "0", false);
+check("TestInt64$divNoInline(-1, -1)", () => M.TestInt64$divNoInline(-1, -1), "1", false);
+check("TestInt64$divNoInline(0, -7)", () => M.TestInt64$divNoInline(0, -7), "0", false);
+check("TestInt64$divNoInline(-7, 12)", () => M.TestInt64$divNoInline(-7, 12), "0", false);
+check("TestInt64$divNoInline(-1, 3)", () => M.TestInt64$divNoInline(-1, 3), "0", false);
+check("TestInt64$divNoInline(0, 0)", () => M.TestInt64$divNoInline(0, 0), "0", false);
+check("TestInt64$divNoInline(3, -1)", () => M.TestInt64$divNoInline(3, -1), "-3", false);
+check("TestInt64$divNoInline(12, -7)", () => M.TestInt64$divNoInline(12, -7), "-1", false);
+check("TestInt64$divNoInline(0, 12)", () => M.TestInt64$divNoInline(0, 12), "0", false);
+check("TestInt64$divNoInline(3, 3)", () => M.TestInt64$divNoInline(3, 3), "1", false);
+check("TestInt64$divNoInline(12, 0)", () => M.TestInt64$divNoInline(12, 0), "0", false);
+check("TestInt64$divNoInline(12, 12)", () => M.TestInt64$divNoInline(12, 12), "1", false);
+check("TestInt64$test1_0_shouldBeTrue", () => M.TestInt64$test1_0_shouldBeTrue, "true", false);
+check("TestInt64$test3_2_shouldBeTrue", () => M.TestInt64$test3_2_shouldBeTrue, "true", false);
+check("TestInt64$test3m2_shouldBeTrue", () => M.TestInt64$test3m2_shouldBeTrue, "true", false);
 check("TestInt$divNoInline(-7, -7)", () => M.TestInt$divNoInline(-7, -7), "1", false);
 check("TestInt$divNoInline(-7, 0)", () => M.TestInt$divNoInline(-7, 0), "0", false);
 check("TestInt$divNoInline(-1, -1)", () => M.TestInt$divNoInline(-1, -1), "1", false);
@@ -70,9 +96,9 @@ check("TestInt$divNoInline(0, 12)", () => M.TestInt$divNoInline(0, 12), "0", fal
 check("TestInt$divNoInline(3, 3)", () => M.TestInt$divNoInline(3, 3), "1", false);
 check("TestInt$divNoInline(12, 0)", () => M.TestInt$divNoInline(12, 0), "0", false);
 check("TestInt$divNoInline(12, 12)", () => M.TestInt$divNoInline(12, 12), "1", false);
-check("TestInt$test1_0_shouldBeTrue()", () => M.TestInt$test1_0_shouldBeTrue(), "true", false);
-check("TestInt$test3_2_shouldBeTrue()", () => M.TestInt$test3_2_shouldBeTrue(), "true", false);
-check("TestInt$test3m2_shouldBeTrue()", () => M.TestInt$test3m2_shouldBeTrue(), "true", false);
+check("TestInt$test1_0_shouldBeTrue", () => M.TestInt$test1_0_shouldBeTrue, "true", false);
+check("TestInt$test3_2_shouldBeTrue", () => M.TestInt$test3_2_shouldBeTrue, "true", false);
+check("TestInt$test3m2_shouldBeTrue", () => M.TestInt$test3m2_shouldBeTrue, "true", false);
 
 console.log(`PrimOpIntDivConfigurable-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

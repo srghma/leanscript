@@ -10,396 +10,396 @@
 
 /**
  * `TestUInt8.test1`
- * @returns {Array<uint8>}
+ * @type {Array<uint8>}
  */
-export const TestUInt8$test1 = () => [2, 3, 3, 255, 1, 254];
+export const TestUInt8$test1 = [2, 3, 3, 255, 1, 254];
 
 /**
  * `TestUInt8.test2`
- * @returns {Array<uint8>}
+ * @type {Array<uint8>}
  */
-export const TestUInt8$test2 = () => [0, 255, 1, 3, 253, 0];
+export const TestUInt8$test2 = [0, 255, 1, 3, 253, 0];
 
 /**
  * `TestUInt8.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test3 = () => [true, false, false, false, false, true];
+export const TestUInt8$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestUInt8.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test4 = () => [false, true, true, true, true, false];
+export const TestUInt8$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestUInt8.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test5 = () => [false, true, false, true, false, false];
+export const TestUInt8$test5 = [false, true, false, true, false, false];
 
 /**
  * `TestUInt8.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test6 = () => [false, false, true, false, true, false];
+export const TestUInt8$test6 = [false, false, true, false, true, false];
 
 /**
  * `TestUInt8.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test7 = () => [true, true, false, true, false, true];
+export const TestUInt8$test7 = [true, true, false, true, false, true];
 
 /**
  * `TestUInt8.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt8$test8 = () => [true, false, true, false, true, true];
+export const TestUInt8$test8 = [true, false, true, false, true, true];
 
 /**
  * `TestUInt8.test9`
- * @returns {Array<uint8>}
+ * @type {Array<uint8>}
  */
-export const TestUInt8$test9 = () => [1, 2, 2, 254, 254, 1];
+export const TestUInt8$test9 = [1, 2, 2, 254, 254, 1];
 
 /**
  * `TestUInt8.test10`
- * @returns {Array<uint8>}
+ * @type {Array<uint8>}
  */
-export const TestUInt8$test10 = () => [1, 0, 2, 0, 127, 1];
+export const TestUInt8$test10 = [1, 0, 2, 0, 127, 1];
 
 /**
  * `TestUInt8.test11`
- * @returns {Array<uint8>}
+ * @type {Array<uint8>}
  */
-export const TestUInt8$test11 = () => [255, 1];
+export const TestUInt8$test11 = [255, 1];
 
 /**
  * `TestUInt16.test1`
- * @returns {Array<uint16>}
+ * @type {Array<uint16>}
  */
-export const TestUInt16$test1 = () => [2, 3, 3, 65535, 1, 65534];
+export const TestUInt16$test1 = [2, 3, 3, 65535, 1, 65534];
 
 /**
  * `TestUInt16.test2`
- * @returns {Array<uint16>}
+ * @type {Array<uint16>}
  */
-export const TestUInt16$test2 = () => [0, 65535, 1, 3, 65533, 0];
+export const TestUInt16$test2 = [0, 65535, 1, 3, 65533, 0];
 
 /**
  * `TestUInt16.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test3 = () => [true, false, false, false, false, true];
+export const TestUInt16$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestUInt16.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test4 = () => [false, true, true, true, true, false];
+export const TestUInt16$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestUInt16.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test5 = () => [false, true, false, true, false, false];
+export const TestUInt16$test5 = [false, true, false, true, false, false];
 
 /**
  * `TestUInt16.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test6 = () => [false, false, true, false, true, false];
+export const TestUInt16$test6 = [false, false, true, false, true, false];
 
 /**
  * `TestUInt16.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test7 = () => [true, true, false, true, false, true];
+export const TestUInt16$test7 = [true, true, false, true, false, true];
 
 /**
  * `TestUInt16.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt16$test8 = () => [true, false, true, false, true, true];
+export const TestUInt16$test8 = [true, false, true, false, true, true];
 
 /**
  * `TestUInt16.test9`
- * @returns {Array<uint16>}
+ * @type {Array<uint16>}
  */
-export const TestUInt16$test9 = () => [1, 2, 2, 65534, 65534, 1];
+export const TestUInt16$test9 = [1, 2, 2, 65534, 65534, 1];
 
 /**
  * `TestUInt16.test10`
- * @returns {Array<uint16>}
+ * @type {Array<uint16>}
  */
-export const TestUInt16$test10 = () => [1, 0, 2, 0, 32767, 1];
+export const TestUInt16$test10 = [1, 0, 2, 0, 32767, 1];
 
 /**
  * `TestUInt16.test11`
- * @returns {Array<uint16>}
+ * @type {Array<uint16>}
  */
-export const TestUInt16$test11 = () => [65535, 1];
+export const TestUInt16$test11 = [65535, 1];
 
 /**
  * `TestUInt32.test1`
- * @returns {Array<uint32>}
+ * @type {Array<uint32>}
  */
-export const TestUInt32$test1 = () => [2, 3, 3, 4294967295, 1, 4294967294];
+export const TestUInt32$test1 = [2, 3, 3, 4294967295, 1, 4294967294];
 
 /**
  * `TestUInt32.test2`
- * @returns {Array<uint32>}
+ * @type {Array<uint32>}
  */
-export const TestUInt32$test2 = () => [0, 4294967295, 1, 3, 4294967293, 0];
+export const TestUInt32$test2 = [0, 4294967295, 1, 3, 4294967293, 0];
 
 /**
  * `TestUInt32.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test3 = () => [true, false, false, false, false, true];
+export const TestUInt32$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestUInt32.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test4 = () => [false, true, true, true, true, false];
+export const TestUInt32$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestUInt32.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test5 = () => [false, true, false, true, false, false];
+export const TestUInt32$test5 = [false, true, false, true, false, false];
 
 /**
  * `TestUInt32.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test6 = () => [false, false, true, false, true, false];
+export const TestUInt32$test6 = [false, false, true, false, true, false];
 
 /**
  * `TestUInt32.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test7 = () => [true, true, false, true, false, true];
+export const TestUInt32$test7 = [true, true, false, true, false, true];
 
 /**
  * `TestUInt32.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestUInt32$test8 = () => [true, false, true, false, true, true];
+export const TestUInt32$test8 = [true, false, true, false, true, true];
 
 /**
  * `TestUInt32.test9`
- * @returns {Array<uint32>}
+ * @type {Array<uint32>}
  */
-export const TestUInt32$test9 = () => [1, 2, 2, 4294967294, 4294967294, 1];
+export const TestUInt32$test9 = [1, 2, 2, 4294967294, 4294967294, 1];
 
 /**
  * `TestUInt32.test10`
- * @returns {Array<uint32>}
+ * @type {Array<uint32>}
  */
-export const TestUInt32$test10 = () => [1, 0, 2, 0, 2147483647, 1];
+export const TestUInt32$test10 = [1, 0, 2, 0, 2147483647, 1];
 
 /**
  * `TestUInt32.test11`
- * @returns {Array<uint32>}
+ * @type {Array<uint32>}
  */
-export const TestUInt32$test11 = () => [4294967295, 1];
+export const TestUInt32$test11 = [4294967295, 1];
 
 /**
  * `TestInt8.test1`
- * @returns {Array<int8>}
+ * @type {Array<int8>}
  */
-export const TestInt8$test1 = () => [2, 3, 3, -1, 1, -2];
+export const TestInt8$test1 = [2, 3, 3, -1, 1, -2];
 
 /**
  * `TestInt8.test2`
- * @returns {Array<int8>}
+ * @type {Array<int8>}
  */
-export const TestInt8$test2 = () => [0, -1, 1, 3, -3, 0];
+export const TestInt8$test2 = [0, -1, 1, 3, -3, 0];
 
 /**
  * `TestInt8.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test3 = () => [true, false, false, false, false, true];
+export const TestInt8$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestInt8.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test4 = () => [false, true, true, true, true, false];
+export const TestInt8$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestInt8.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test5 = () => [false, true, false, false, true, false];
+export const TestInt8$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestInt8.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test6 = () => [false, false, true, true, false, false];
+export const TestInt8$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestInt8.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test7 = () => [true, true, false, false, true, true];
+export const TestInt8$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestInt8.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt8$test8 = () => [true, false, true, true, false, true];
+export const TestInt8$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestInt8.test9`
- * @returns {Array<int8>}
+ * @type {Array<int8>}
  */
-export const TestInt8$test9 = () => [1, 2, 2, -2, -2, 1];
+export const TestInt8$test9 = [1, 2, 2, -2, -2, 1];
 
 /**
  * `TestInt8.test10`
- * @returns {Array<int8>}
+ * @type {Array<int8>}
  */
-export const TestInt8$test10 = () => [1, 0, 2, 0, 0, 1];
+export const TestInt8$test10 = [1, 0, 2, 0, 0, 1];
 
 /**
  * `TestInt8.test11`
- * @returns {Array<int8>}
+ * @type {Array<int8>}
  */
-export const TestInt8$test11 = () => [-1, 1];
+export const TestInt8$test11 = [-1, 1];
 
 /**
  * `TestInt16.test1`
- * @returns {Array<int16>}
+ * @type {Array<int16>}
  */
-export const TestInt16$test1 = () => [2, 3, 3, -1, 1, -2];
+export const TestInt16$test1 = [2, 3, 3, -1, 1, -2];
 
 /**
  * `TestInt16.test2`
- * @returns {Array<int16>}
+ * @type {Array<int16>}
  */
-export const TestInt16$test2 = () => [0, -1, 1, 3, -3, 0];
+export const TestInt16$test2 = [0, -1, 1, 3, -3, 0];
 
 /**
  * `TestInt16.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test3 = () => [true, false, false, false, false, true];
+export const TestInt16$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestInt16.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test4 = () => [false, true, true, true, true, false];
+export const TestInt16$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestInt16.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test5 = () => [false, true, false, false, true, false];
+export const TestInt16$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestInt16.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test6 = () => [false, false, true, true, false, false];
+export const TestInt16$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestInt16.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test7 = () => [true, true, false, false, true, true];
+export const TestInt16$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestInt16.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt16$test8 = () => [true, false, true, true, false, true];
+export const TestInt16$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestInt16.test9`
- * @returns {Array<int16>}
+ * @type {Array<int16>}
  */
-export const TestInt16$test9 = () => [1, 2, 2, -2, -2, 1];
+export const TestInt16$test9 = [1, 2, 2, -2, -2, 1];
 
 /**
  * `TestInt16.test10`
- * @returns {Array<int16>}
+ * @type {Array<int16>}
  */
-export const TestInt16$test10 = () => [1, 0, 2, 0, 0, 1];
+export const TestInt16$test10 = [1, 0, 2, 0, 0, 1];
 
 /**
  * `TestInt16.test11`
- * @returns {Array<int16>}
+ * @type {Array<int16>}
  */
-export const TestInt16$test11 = () => [-1, 1];
+export const TestInt16$test11 = [-1, 1];
 
 /**
  * `TestInt32.test1`
- * @returns {Array<int32>}
+ * @type {Array<int32>}
  */
-export const TestInt32$test1 = () => [2, 3, 3, -1, 1, -2];
+export const TestInt32$test1 = [2, 3, 3, -1, 1, -2];
 
 /**
  * `TestInt32.test2`
- * @returns {Array<int32>}
+ * @type {Array<int32>}
  */
-export const TestInt32$test2 = () => [0, -1, 1, 3, -3, 0];
+export const TestInt32$test2 = [0, -1, 1, 3, -3, 0];
 
 /**
  * `TestInt32.test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test3 = () => [true, false, false, false, false, true];
+export const TestInt32$test3 = [true, false, false, false, false, true];
 
 /**
  * `TestInt32.test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test4 = () => [false, true, true, true, true, false];
+export const TestInt32$test4 = [false, true, true, true, true, false];
 
 /**
  * `TestInt32.test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test5 = () => [false, true, false, false, true, false];
+export const TestInt32$test5 = [false, true, false, false, true, false];
 
 /**
  * `TestInt32.test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test6 = () => [false, false, true, true, false, false];
+export const TestInt32$test6 = [false, false, true, true, false, false];
 
 /**
  * `TestInt32.test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test7 = () => [true, true, false, false, true, true];
+export const TestInt32$test7 = [true, true, false, false, true, true];
 
 /**
  * `TestInt32.test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const TestInt32$test8 = () => [true, false, true, true, false, true];
+export const TestInt32$test8 = [true, false, true, true, false, true];
 
 /**
  * `TestInt32.test9`
- * @returns {Array<int32>}
+ * @type {Array<int32>}
  */
-export const TestInt32$test9 = () => [1, 2, 2, -2, -2, 1];
+export const TestInt32$test9 = [1, 2, 2, -2, -2, 1];
 
 /**
  * `TestInt32.test10`
- * @returns {Array<int32>}
+ * @type {Array<int32>}
  */
-export const TestInt32$test10 = () => [1, 0, 2, 0, 0, 1];
+export const TestInt32$test10 = [1, 0, 2, 0, 0, 1];
 
 /**
  * `TestInt32.test11`
- * @returns {Array<int32>}
+ * @type {Array<int32>}
  */
-export const TestInt32$test11 = () => [-1, 1];
+export const TestInt32$test11 = [-1, 1];

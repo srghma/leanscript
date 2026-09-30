@@ -12,21 +12,21 @@ import {
 
 /**
  * `TestUInt8.test1`
- * @returns {uint8}
+ * @type {uint8}
  */
-export const TestUInt8$test1 = () => 144;
+export const TestUInt8$test1 = 144;
 
 /**
  * `TestUInt8.test2`
- * @returns {uint8}
+ * @type {uint8}
  */
-export const TestUInt8$test2 = () => 106;
+export const TestUInt8$test2 = 106;
 
 /**
  * `TestUInt8.test3`
- * @returns {uint8}
+ * @type {uint8}
  */
-export const TestUInt8$test3 = () => 144;
+export const TestUInt8$test3 = 144;
 
 /**
  * `TestUInt8.test4`
@@ -37,21 +37,21 @@ export const TestUInt8$test4 = (a) => uint8__lean_uint8_add(a, 144);
 
 /**
  * `TestUInt16.test1`
- * @returns {uint16}
+ * @type {uint16}
  */
-export const TestUInt16$test1 = () => 34464;
+export const TestUInt16$test1 = 34464;
 
 /**
  * `TestUInt16.test2`
- * @returns {uint16}
+ * @type {uint16}
  */
-export const TestUInt16$test2 = () => 25536;
+export const TestUInt16$test2 = 25536;
 
 /**
  * `TestUInt16.test3`
- * @returns {uint16}
+ * @type {uint16}
  */
-export const TestUInt16$test3 = () => 16960;
+export const TestUInt16$test3 = 16960;
 
 /**
  * `TestUInt16.test4`
@@ -62,21 +62,21 @@ export const TestUInt16$test4 = (a) => uint16__lean_uint16_add(a, 34464);
 
 /**
  * `TestUInt32.test1`
- * @returns {uint32}
+ * @type {uint32}
  */
-export const TestUInt32$test1 = () => 1705032704;
+export const TestUInt32$test1 = 1705032704;
 
 /**
  * `TestUInt32.test2`
- * @returns {uint32}
+ * @type {uint32}
  */
-export const TestUInt32$test2 = () => 2294967296;
+export const TestUInt32$test2 = 2294967296;
 
 /**
  * `TestUInt32.test3`
- * @returns {uint32}
+ * @type {uint32}
  */
-export const TestUInt32$test3 = () => 2643460096;
+export const TestUInt32$test3 = 2643460096;
 
 /**
  * `TestUInt32.test4`
@@ -87,21 +87,21 @@ export const TestUInt32$test4 = (a) => uint32__lean_uint32_add(a, 1705032704);
 
 /**
  * `TestInt8.test1`
- * @returns {int8}
+ * @type {int8}
  */
-export const TestInt8$test1 = () => -56;
+export const TestInt8$test1 = -56;
 
 /**
  * `TestInt8.test2`
- * @returns {int8}
+ * @type {int8}
  */
-export const TestInt8$test2 = () => 56;
+export const TestInt8$test2 = 56;
 
 /**
  * `TestInt8.test3`
- * @returns {int8}
+ * @type {int8}
  */
-export const TestInt8$test3 = () => -112;
+export const TestInt8$test3 = -112;
 
 /**
  * `TestInt8.test4`
@@ -112,21 +112,21 @@ export const TestInt8$test4 = (a) => int8__lean_int8_add(a, -56);
 
 /**
  * `TestInt16.test1`
- * @returns {int16}
+ * @type {int16}
  */
-export const TestInt16$test1 = () => -25536;
+export const TestInt16$test1 = -25536;
 
 /**
  * `TestInt16.test2`
- * @returns {int16}
+ * @type {int16}
  */
-export const TestInt16$test2 = () => 25536;
+export const TestInt16$test2 = 25536;
 
 /**
  * `TestInt16.test3`
- * @returns {int16}
+ * @type {int16}
  */
-export const TestInt16$test3 = () => 16960;
+export const TestInt16$test3 = 16960;
 
 /**
  * `TestInt16.test4`
@@ -137,21 +137,21 @@ export const TestInt16$test4 = (a) => int16__lean_int16_add(a, -25536);
 
 /**
  * `TestInt32.test1`
- * @returns {int32}
+ * @type {int32}
  */
-export const TestInt32$test1 = () => -294967296;
+export const TestInt32$test1 = -294967296;
 
 /**
  * `TestInt32.test2`
- * @returns {int32}
+ * @type {int32}
  */
-export const TestInt32$test2 = () => 294967296;
+export const TestInt32$test2 = 294967296;
 
 /**
  * `TestInt32.test3`
- * @returns {int32}
+ * @type {int32}
  */
-export const TestInt32$test3 = () => -1946474495;
+export const TestInt32$test3 = -1946474495;
 
 /**
  * `TestInt32.test4`

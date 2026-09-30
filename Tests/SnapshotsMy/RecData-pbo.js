@@ -20,19 +20,19 @@ import {
 
 /**
  * `RecData.Prog.ks`
- * @returns {List<uint53(number)>}
+ * @type {List<uint53(number)>}
  */
-export const RecData$Prog$ks = () => [1, 0, 0, 0];
+export const RecData$Prog$ks = [1, 0, 0, 0];
 
 /**
  * `RecData.two`
- * @returns {D0}
+ * @type {D0}
  */
-export const RecData$two = () => ({
+export const RecData$two = {
   tag: 1,
   _1: 1,
   _2: { tag: 1, _1: 2, _2: { tag: 0 } },
-});
+};
 
 /**
  * `RecData.push`
@@ -242,9 +242,9 @@ export const RecData$ofArrayT = (xs) => {
 
 /**
  * `RecData.sumTwo`
- * @returns {uint53(number)}
+ * @type {uint53(number)}
  */
-export const RecData$sumTwo = () => 3;
+export const RecData$sumTwo = 3;
 
 /**
  * `RecData.sumArray`

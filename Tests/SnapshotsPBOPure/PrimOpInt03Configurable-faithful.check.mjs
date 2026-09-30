@@ -36,17 +36,33 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("TestNat$test1()", () => M.TestNat$test1(), "4000000000", false);
-check("TestNat$test2()", () => M.TestNat$test2(), "0", false);
-check("TestNat$test3()", () => M.TestNat$test3(), "4000000000000000000", false);
+check("TestUInt64$test1", () => M.TestUInt64$test1, "1553255926290448384", false);
+check("TestUInt64$test2", () => M.TestUInt64$test2, "9446744073709551616", false);
+check("TestUInt64$test3", () => M.TestUInt64$test3, "6553255926290448384", false);
+check("TestUInt64$test4(0n)", () => M.TestUInt64$test4(0n), "1553255926290448384", false);
+check("TestUInt64$test4(1n)", () => M.TestUInt64$test4(1n), "1553255926290448385", false);
+check("TestUInt64$test4(2n)", () => M.TestUInt64$test4(2n), "1553255926290448386", false);
+check("TestUInt64$test4(5n)", () => M.TestUInt64$test4(5n), "1553255926290448389", false);
+check("TestUInt64$test4(13n)", () => M.TestUInt64$test4(13n), "1553255926290448397", false);
+check("TestNat$test1", () => M.TestNat$test1, "4000000000", false);
+check("TestNat$test2", () => M.TestNat$test2, "0", false);
+check("TestNat$test3", () => M.TestNat$test3, "4000000000000000000", false);
 check("TestNat$test4(0n)", () => M.TestNat$test4(0n), "4000000000", false);
 check("TestNat$test4(1n)", () => M.TestNat$test4(1n), "4000000001", false);
 check("TestNat$test4(2n)", () => M.TestNat$test4(2n), "4000000002", false);
 check("TestNat$test4(5n)", () => M.TestNat$test4(5n), "4000000005", false);
 check("TestNat$test4(13n)", () => M.TestNat$test4(13n), "4000000013", false);
-check("TestInt$test1()", () => M.TestInt$test1(), "4000000000", false);
-check("TestInt$test2()", () => M.TestInt$test2(), "-4000000000", false);
-check("TestInt$test3()", () => M.TestInt$test3(), "4000000000000000000", false);
+check("TestInt64$test1", () => M.TestInt64$test1, "-8446744073709551616", false);
+check("TestInt64$test2", () => M.TestInt64$test2, "8446744073709551616", false);
+check("TestInt64$test3", () => M.TestInt64$test3, "6553255926290448384", false);
+check("TestInt64$test4(-7n)", () => M.TestInt64$test4(-7n), "-8446744073709551623", false);
+check("TestInt64$test4(-1n)", () => M.TestInt64$test4(-1n), "-8446744073709551617", false);
+check("TestInt64$test4(0n)", () => M.TestInt64$test4(0n), "-8446744073709551616", false);
+check("TestInt64$test4(3n)", () => M.TestInt64$test4(3n), "-8446744073709551613", false);
+check("TestInt64$test4(12n)", () => M.TestInt64$test4(12n), "-8446744073709551604", false);
+check("TestInt$test1", () => M.TestInt$test1, "4000000000", false);
+check("TestInt$test2", () => M.TestInt$test2, "-4000000000", false);
+check("TestInt$test3", () => M.TestInt$test3, "4000000000000000000", false);
 check("TestInt$test4(-7n)", () => M.TestInt$test4(-7n), "3999999993", false);
 check("TestInt$test4(-1n)", () => M.TestInt$test4(-1n), "3999999999", false);
 check("TestInt$test4(0n)", () => M.TestInt$test4(0n), "4000000000", false);

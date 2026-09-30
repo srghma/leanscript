@@ -5,42 +5,42 @@
 
 /**
  * `test1`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test1 = () => 42;
+export const test1 = 42;
 
 /**
  * `test2`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test2 = () => 42;
+export const test2 = 42;
 
 /**
  * `test3`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test3 = () => 42;
+export const test3 = 42;
 
 /**
  * `extern1`
- * @returns {{ _1: boolean, _2: int53(number), _3: boolean, _4: boolean }}
+ * @type {{ _1: boolean, _2: int53(number), _3: boolean, _4: boolean }}
  */
-export const extern1 = () => ({ _1: true, _2: 0, _3: true, _4: false });
+export const extern1 = { _1: true, _2: 0, _3: true, _4: false };
 
 /**
  * `test4`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test4 = () => 42;
+export const test4 = 42;
 
 /**
  * `test5`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test5 = () => 42;
+export const test5 = 42;
 
 /**
  * `test6`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test6 = () => 42;
+export const test6 = 42;

@@ -179,9 +179,9 @@ export const alias6 = (a, n) => {
 
 /**
  * `BagSig.ks`
- * @returns {ConsList<nat(bigint)>}
+ * @type {ConsList<nat(bigint)>}
  */
-export const BagSig$ks = () => ({ tag: 1, _1: 0n, _2: { tag: 0 } });
+export const BagSig$ks = { tag: 1, _1: 0n, _2: { tag: 0 } };
 
 /**
  * `Bag.ofArray`

@@ -36,10 +36,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1()", () => M.test1(), "42", false);
-check("test3()", () => M.test3(), "true", false);
-check("test4()", () => M.test4(), "wat", false);
-check("test5()", () => M.test5(), "w", false);
+check("test1", () => M.test1, "42", false);
+check("test3", () => M.test3, "true", false);
+check("test4", () => M.test4, "wat", false);
+check("test5", () => M.test5, "w", false);
 
 console.log(`ShowLiterals-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

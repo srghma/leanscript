@@ -36,15 +36,15 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("TestNat$test1()", () => M.TestNat$test1(), "4000000000", false);
-check("TestNat$test2()", () => M.TestNat$test2(), "0", false);
+check("TestNat$test1", () => M.TestNat$test1, "4000000000", false);
+check("TestNat$test2", () => M.TestNat$test2, "0", false);
 check("TestNat$test4(0)", () => M.TestNat$test4(0), "4000000000", false);
 check("TestNat$test4(1)", () => M.TestNat$test4(1), "4000000001", false);
 check("TestNat$test4(2)", () => M.TestNat$test4(2), "4000000002", false);
 check("TestNat$test4(5)", () => M.TestNat$test4(5), "4000000005", false);
 check("TestNat$test4(13)", () => M.TestNat$test4(13), "4000000013", false);
-check("TestInt$test1()", () => M.TestInt$test1(), "4000000000", false);
-check("TestInt$test2()", () => M.TestInt$test2(), "-4000000000", false);
+check("TestInt$test1", () => M.TestInt$test1, "4000000000", false);
+check("TestInt$test2", () => M.TestInt$test2, "-4000000000", false);
 check("TestInt$test4(-7)", () => M.TestInt$test4(-7), "3999999993", false);
 check("TestInt$test4(-1)", () => M.TestInt$test4(-1), "3999999999", false);
 check("TestInt$test4(0)", () => M.TestInt$test4(0), "4000000000", false);

@@ -36,8 +36,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("extern1()", () => M.extern1(), "#[1, 2, 0]", false);
-check("test3()", () => M.test3(), "#[1, 2, 0]", false);
+check("extern1", () => M.extern1, "#[1, 2, 0]", false);
+check("test3", () => M.test3, "#[1, 2, 0]", false);
 
 console.log(`InlineReferenceOpArrayLength-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -36,8 +36,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test4()", () => M.test4(), "total (3, ok)", false);
-check("test5()", () => M.test5(), "h", false);
+check("test4", () => M.test4, "total (3, ok)", false);
+check("test5", () => M.test5, "h", false);
 
 console.log(`Specialize01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -36,11 +36,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1()", () => M.test1(), "#[true, false, false]", false);
-check("test2()", () => M.test2(), "#[false, true, true]", false);
-check("test3()", () => M.test3(), "#[false, true, false]", false);
-check("test4()", () => M.test4(), "#[false, false, true]", false);
-check("test7()", () => M.test7(), "#[aa, ab, ba]", false);
+check("test1", () => M.test1, "#[true, false, false]", false);
+check("test2", () => M.test2, "#[false, true, true]", false);
+check("test3", () => M.test3, "#[false, true, false]", false);
+check("test4", () => M.test4, "#[false, false, true]", false);
+check("test7", () => M.test7, "#[aa, ab, ba]", false);
 
 console.log(`StringHigherOrder-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

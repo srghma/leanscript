@@ -24,54 +24,54 @@ export const boolValues = (op) => {
 
 /**
  * `test1`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test1 = () => [true, false, false, false];
+export const test1 = [true, false, false, false];
 
 /**
  * `test2`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test2 = () => [true, true, true, false];
+export const test2 = [true, true, true, false];
 
 /**
  * `test3`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test3 = () => [true, false, false, true];
+export const test3 = [true, false, false, true];
 
 /**
  * `test4`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test4 = () => [false, true, true, false];
+export const test4 = [false, true, true, false];
 
 /**
  * `test5`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test5 = () => [false, false, true, false];
+export const test5 = [false, false, true, false];
 
 /**
  * `test6`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test6 = () => [false, true, false, false];
+export const test6 = [false, true, false, false];
 
 /**
  * `test7`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test7 = () => [true, false, true, true];
+export const test7 = [true, false, true, true];
 
 /**
  * `test8`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test8 = () => [true, true, false, true];
+export const test8 = [true, true, false, true];
 
 /**
  * `test9`
- * @returns {Array<boolean>}
+ * @type {Array<boolean>}
  */
-export const test9 = () => [false, true];
+export const test9 = [false, true];

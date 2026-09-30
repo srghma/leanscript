@@ -36,7 +36,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("wat()", () => M.wat(), "42", false);
+check("wat", () => M.wat, "42", false);
 
 console.log(`TopLevelHygiene02-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -36,6 +36,42 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(0, 0)", () => M.test1(0, 0), "0", false);
+check("test1(1, 0)", () => M.test1(1, 0), "1", false);
+check("test1(0, 2)", () => M.test1(0, 2), "0", false);
+check("test1(2, 0)", () => M.test1(2, 0), "2", false);
+check("test1(1, 2)", () => M.test1(1, 2), "0", false);
+check("test1(5, 0)", () => M.test1(5, 0), "5", false);
+check("test1(0, 13)", () => M.test1(0, 13), "0", false);
+check("test1(2, 2)", () => M.test1(2, 2), "0", false);
+check("test1(13, 0)", () => M.test1(13, 0), "13", false);
+check("test1(1, 13)", () => M.test1(1, 13), "0", false);
+check("test1(5, 2)", () => M.test1(5, 2), "0", false);
+check("test1(4294967295, 0)", () => M.test1(4294967295, 0), "4294967295", false);
+check("test1(2, 13)", () => M.test1(2, 13), "0", false);
+check("test1(13, 2)", () => M.test1(13, 2), "0", false);
+check("test1(5, 13)", () => M.test1(5, 13), "0", false);
+check("test1(4294967295, 2)", () => M.test1(4294967295, 2), "268435455", false);
+check("test1(13, 13)", () => M.test1(13, 13), "0", false);
+check("test1(4294967295, 13)", () => M.test1(4294967295, 13), "63", false);
+check("test2(0, 0)", () => M.test2(0, 0), "0", false);
+check("test2(1, 0)", () => M.test2(1, 0), "1", false);
+check("test2(0, 2)", () => M.test2(0, 2), "0", false);
+check("test2(2, 0)", () => M.test2(2, 0), "2", false);
+check("test2(1, 2)", () => M.test2(1, 2), "1", false);
+check("test2(5, 0)", () => M.test2(5, 0), "5", false);
+check("test2(0, 13)", () => M.test2(0, 13), "0", false);
+check("test2(2, 2)", () => M.test2(2, 2), "2", false);
+check("test2(13, 0)", () => M.test2(13, 0), "13", false);
+check("test2(1, 13)", () => M.test2(1, 13), "1", false);
+check("test2(5, 2)", () => M.test2(5, 2), "5", false);
+check("test2(4294967295, 0)", () => M.test2(4294967295, 0), "4294967295", false);
+check("test2(2, 13)", () => M.test2(2, 13), "2", false);
+check("test2(13, 2)", () => M.test2(13, 2), "13", false);
+check("test2(5, 13)", () => M.test2(5, 13), "5", false);
+check("test2(4294967295, 2)", () => M.test2(4294967295, 2), "4294967295", false);
+check("test2(13, 13)", () => M.test2(13, 13), "13", false);
+check("test2(4294967295, 13)", () => M.test2(4294967295, 13), "4294967295", false);
 
 console.log(`EsPrecedence03-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

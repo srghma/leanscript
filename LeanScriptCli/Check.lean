@@ -11,7 +11,8 @@ of the elaborated file).  `node FILE.check.mjs` prints the checks and exits with
 status when one fails.
 
 Only functions whose parameters and result are all of a *sample type* are checked: `Nat`,
-`Int`, `Bool`, `String`, `Char`, `Float`, and `Array` and `List` of `Nat`, `Int`, `Bool` or
+`Int`, `Bool`, `String`, `Char`, `Float`, the fixed-width integers (`UInt8` … `UInt64`,
+`Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
 `String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
 printed as its array, `#[…]`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
@@ -25,6 +26,10 @@ namespace LeanScript.Cli
 /-- The types the checks can produce samples of and compare. -/
 inductive SType where
   | nat | int | bool | string | char | float
+  /-- `UInt8`, `UInt16`, `UInt32`, `UInt64` (`bits` is the width). -/
+  | uint (bits : Nat)
+  /-- `Int8`, `Int16`, `Int32`, `Int64` (`bits` is the width). -/
+  | sint (bits : Nat)
   | arr (t : SType)
   | list (t : SType)
   deriving Inhabited, BEq
@@ -38,6 +43,10 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   if e.isConstOf ``String then return some .string
   if e.isConstOf ``Char then return some .char
   if e.isConstOf ``Float then return some .float
+  for (n, b) in [(``UInt8, 8), (``UInt16, 16), (``UInt32, 32), (``UInt64, 64)] do
+    if e.isConstOf n then return some (.uint b)
+  for (n, b) in [(``Int8, 8), (``Int16, 16), (``Int32, 32), (``Int64, 64)] do
+    if e.isConstOf n then return some (.sint b)
   if e.isAppOfArity ``Array 1 then
     match ← stypeOf? e.appArg! with
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
@@ -75,6 +84,17 @@ partial def samplesOf (cfg : JsConfig) : SType → List Sample
   | .nat => [0, 1, 2, 5, 13].map fun n => ⟨mkNatLit n, intLit (cfg.natRepr == .bigint) n⟩
   | .int => [(-7 : Int), -1, 0, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
   | .bool => [⟨toExpr false, "false"⟩, ⟨toExpr true, "true"⟩]
+  -- the fixed-width integers: small ones, and the edges of the range (which overflow at the
+  -- first addition) below 64 bits, where they are JavaScript numbers at every preset
+  | .uint b =>
+    let big := b == 64 && cfg.uint64Repr == .bigint
+    let ns : List Nat := [0, 1, 2, 5, 13] ++ (if b < 64 then [2 ^ b - 1] else [])
+    ns.map fun n => ⟨uintExpr b n, intLit big n⟩
+  | .sint b =>
+    let big := b == 64 && cfg.int64Repr == .bigint
+    let is : List Int := [-7, -1, 0, 3, 12] ++
+      (if b < 64 then [-(2 : Int) ^ (b - 1), 2 ^ (b - 1) - 1] else [])
+    is.map fun i => ⟨sintExpr b i, intLit big i⟩
   | .string => ["", "a", "hello world", "héllo, wörld", "abcabc"].map fun s =>
       ⟨toExpr s, jsStringLit s⟩
   | .char => ['a', 'z', ' ', 'é'].map fun c => ⟨toExpr c, jsStringLit (String.singleton c)⟩
@@ -99,6 +119,16 @@ where
        if array then "[" ++ ", ".intercalate (xs.map (·.js)) ++ "]"
        else xs.foldr (fun x acc => s!"\{ tag: 1, _1: {x.js}, _2: {acc} }") "{ tag: 0 }"⟩
     [mk [], mk (elems.take 1), mk (elems.take 3), mk (elems.reverse.take 4)]
+  /-- The Lean value `n` of `UInt{b}`. -/
+  uintExpr (b n : Nat) : Expr :=
+    match b with
+    | 8 => toExpr n.toUInt8 | 16 => toExpr n.toUInt16 | 32 => toExpr n.toUInt32
+    | _ => toExpr n.toUInt64
+  /-- The Lean value `i` of `Int{b}`. -/
+  sintExpr (b : Nat) (i : Int) : Expr :=
+    match b with
+    | 8 => toExpr i.toInt8 | 16 => toExpr i.toInt16 | 32 => toExpr i.toInt32
+    | _ => toExpr i.toInt64
   /-- The Lean type of the elements of an array or a list sample. -/
   elemTy : SType → Expr
     | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
@@ -144,8 +174,10 @@ def evalWithTimeout (f : Unit → String) (ms : UInt32) : IO (Option String) := 
 
 /-- The JavaScript spelling of a call of a function exported with `arity` parameters: the
     first `arity` arguments in one call, the others one at a time (the exported function
-    returns a curried function then). -/
+    returns a curried function then).  A definition without parameters is exported as a
+    constant (`JsFun.isConst`): it is read, not called. -/
 def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
+  if arity == 0 && args.isEmpty then jsName else
   let first := args.take arity
   let rest := args.drop arity
   s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
@@ -182,6 +214,17 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     let some f := f? | continue
     match ← evalWithTimeout f timeoutMs with
     | some e =>
+      -- a 64-bit answer outside `±(2^53 - 1)` where the preset makes the type a number: the
+      -- JavaScript throws by design ("integer overflow … use the bigint representation"),
+      -- there is no answer to compare
+      let num64 := match res with
+        | .uint 64 => cfg.uint64Repr == .num
+        | .sint 64 => cfg.int64Repr == .num
+        | _ => false
+      let tooBig : Bool := match e.toInt? with
+        | some i => decide (i.natAbs > 2 ^ 53 - 1)
+        | none => false
+      if num64 && tooBig then continue
       let js := args.map (·.js)
       out := out.push { call := jsCall jsName arity js, expected := e, isFloat := res == .float }
       -- the versions owning some parameters (`LeanScript.Term.Ownership`): the same answer on

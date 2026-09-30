@@ -8,12 +8,12 @@
 
 /**
  * `test4`
- * @returns {string}
+ * @type {string}
  */
-export const test4 = () => "total (3, ok)";
+export const test4 = "total (3, ok)";
 
 /**
  * `test5`
- * @returns {string}
+ * @type {string}
  */
-export const test5 = () => "h";
+export const test5 = "h";

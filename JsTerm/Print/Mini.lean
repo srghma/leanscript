@@ -52,7 +52,15 @@ open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
 
 /-! ## Functions and modules -/
 
-/-- A function as an exported declaration: `export const name = (params) => { body };`. -/
+/-- A function as an exported declaration: `export const name = (params) => { body };`.
+
+    A definition without parameters (`JsFun.isConst`: its type is not a function) is a
+    constant, `export const name = value;`, as purescript-backend-optimizer writes it,
+    rather than a function of no arguments: the value is computed once, when the module is
+    loaded (as Lean itself initialises a closed constant), and read without a call.  The
+    translated program is pure and total, so computing it there instead of at each call does
+    not change it.  A body that is not a single `return e` is computed by an arrow called on
+    the spot, `export const name = (() => { … })();`. -/
 def JsFun.toMini (f : JsFun) : MiniModuleItem :=
   let go : PM MiniModuleItem := do
     -- the parameters keep their names (a name met twice gets a fresh one)
@@ -60,6 +68,11 @@ def JsFun.toMini (f : JsFun) : MiniModuleItem :=
       if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
     let sc : Scope := { c := params.toList.reverse.map ident }
     let e ← arrowToMini sc params.toList f.body
+    let e := if f.isConst then
+        match e with
+        | .arrow _ [] (.expr v) => v
+        | e => .call e []
+      else e
     return .exportDecl (.decl (.decl .const ⟨⟨.ident (nes f.name), some e⟩, []⟩))
   go.run' {}
 
@@ -75,8 +88,9 @@ def importToMini (path : String) (names : List String) : MiniModuleItem :=
 def JsFun.docComment (f : JsFun) : String :=
   let ps := f.params.map fun (x, ty) => s!" * @param \{{ty}} {x}"
   let notes := f.notes.map fun l => s!" * {l}"
-  "\n".intercalate ([s!"/**", s!" * `{f.leanName}`"] ++ notes ++ ps ++
-    [s!" * @returns \{{f.ret}}", " */"])
+  -- a constant has a type, a function a result
+  let ret := if f.isConst then s!" * @type \{{f.ret}}" else s!" * @returns \{{f.ret}}"
+  "\n".intercalate ([s!"/**", s!" * `{f.leanName}`"] ++ notes ++ ps ++ [ret, " */"])
 
 /-- The text of the `.js` file of a module.  `header` are comment lines put first; `runtime`
     is how the module refers to the runtime (a path relative to the module,

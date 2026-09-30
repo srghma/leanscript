@@ -6,13 +6,13 @@
 
 /**
  * `messages`
- * @returns {ConsList<string>}
+ * @type {ConsList<string>}
  */
-export const messages = () => ({
+export const messages = {
   tag: 1,
   _1: "one",
   _2: { tag: 1, _1: "two", _2: { tag: 1, _1: "three", _2: { tag: 0 } } },
-});
+};
 
 /**
  * `countUp`

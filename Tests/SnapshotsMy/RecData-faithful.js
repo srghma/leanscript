@@ -19,9 +19,9 @@ import {
 
 /**
  * `RecData.Prog.ks`
- * @returns {ConsList<nat(bigint)>}
+ * @type {ConsList<nat(bigint)>}
  */
-export const RecData$Prog$ks = () => ({
+export const RecData$Prog$ks = {
   tag: 1,
   _1: 1n,
   _2: {
@@ -29,17 +29,17 @@ export const RecData$Prog$ks = () => ({
     _1: 0n,
     _2: { tag: 1, _1: 0n, _2: { tag: 1, _1: 0n, _2: { tag: 0 } } },
   },
-});
+};
 
 /**
  * `RecData.two`
- * @returns {D0}
+ * @type {D0}
  */
-export const RecData$two = () => ({
+export const RecData$two = {
   tag: 1,
   _1: 1n,
   _2: { tag: 1, _1: 2n, _2: { tag: 0 } },
-});
+};
 
 /**
  * `RecData.push`
@@ -249,9 +249,9 @@ export const RecData$ofArrayT = (xs) => {
 
 /**
  * `RecData.sumTwo`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const RecData$sumTwo = () => 3n;
+export const RecData$sumTwo = 3n;
 
 /**
  * `RecData.sumArray`

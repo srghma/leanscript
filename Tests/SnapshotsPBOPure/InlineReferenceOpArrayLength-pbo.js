@@ -16,34 +16,34 @@ export const test1 = (fn) => {
 
 /**
  * `fn'`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const fn_ = () => {
+export const fn_ = (() => {
   const k$2 = () => 0;
   const f$1 = k$2;
   return f$1();
-};
+})();
 
 /**
  * `extern1`
- * @returns {Array<int53(number)>}
+ * @type {Array<int53(number)>}
  */
-export const extern1 = () => [1, 2, 0];
+export const extern1 = [1, 2, 0];
 
 /**
  * `extern2`
- * @returns {Array<Array<int53(number)>>}
+ * @type {Array<Array<int53(number)>>}
  */
-export const extern2 = () => [[1, 2, 0], [3], [0]];
+export const extern2 = [[1, 2, 0], [3], [0]];
 
 /**
  * `test3`
- * @returns {Array<int53(number)>}
+ * @type {Array<int53(number)>}
  */
-export const test3 = () => [1, 2, 0];
+export const test3 = [1, 2, 0];
 
 /**
  * `test4`
- * @returns {Array<Array<int53(number)>>}
+ * @type {Array<Array<int53(number)>>}
  */
-export const test4 = () => [[1, 2, 0], [3], [0]];
+export const test4 = [[1, 2, 0], [3], [0]];

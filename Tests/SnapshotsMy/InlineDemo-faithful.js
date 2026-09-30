@@ -11,9 +11,9 @@ export const foo = (a, b) => a * b + a;
 
 /**
  * `bar`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const bar = () => 3n;
+export const bar = 3n;
 
 /**
  * `useScale`

@@ -36,7 +36,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("run()", () => M.run(), "6", false);
+check("run", () => M.run, "6", false);
 
 console.log(`BadEntry-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

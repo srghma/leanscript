@@ -36,12 +36,12 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1()", () => M.test1(), "42", false);
-check("test2()", () => M.test2(), "42", false);
-check("test3()", () => M.test3(), "42", false);
-check("test4()", () => M.test4(), "42", false);
-check("test5()", () => M.test5(), "42", false);
-check("test6()", () => M.test6(), "42", false);
+check("test1", () => M.test1, "42", false);
+check("test2", () => M.test2, "42", false);
+check("test3", () => M.test3, "42", false);
+check("test4", () => M.test4, "42", false);
+check("test5", () => M.test5, "42", false);
+check("test6", () => M.test6, "42", false);
 
 console.log(`InlineReferencePrimOpBoolean-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

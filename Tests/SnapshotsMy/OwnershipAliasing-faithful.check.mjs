@@ -120,7 +120,7 @@ check("alias6([13n, 5n, 2n, 1n], 5n)", () => M.alias6([13n, 5n, 2n, 1n], 5n), "#
 check("alias6([13n, 5n, 2n, 1n], 5n) twice", () => ((a0, a1) => (M.alias6(a0, a1), M.alias6(a0, a1)))([13n, 5n, 2n, 1n], 5n), "#[4, 4, 4, 4, 4, 5, 9, 4, 4, 4, 4, 4, 13, 5, 2, 1]", false);
 check("alias6([13n, 5n, 2n, 1n], 13n)", () => M.alias6([13n, 5n, 2n, 1n], 13n), "#[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 13, 9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 13, 5, 2, 1]", false);
 check("alias6([13n, 5n, 2n, 1n], 13n) twice", () => ((a0, a1) => (M.alias6(a0, a1), M.alias6(a0, a1)))([13n, 5n, 2n, 1n], 13n), "#[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 13, 9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 13, 5, 2, 1]", false);
-check("BagSig$ks()", () => M.BagSig$ks(), "#[0]", false);
+check("BagSig$ks", () => M.BagSig$ks, "#[0]", false);
 check("bag1([])", () => M.bag1([]), "#[0, 0]", false);
 check("bag1([]) twice", () => ((a0) => (M.bag1(a0), M.bag1(a0)))([]), "#[0, 0]", false);
 check("bag1([0n])", () => M.bag1([0n]), "#[1, 0, 0, 1, 0, 0, 0]", false);

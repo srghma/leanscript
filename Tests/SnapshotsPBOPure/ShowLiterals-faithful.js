@@ -8,24 +8,24 @@
 
 /**
  * `test1`
- * @returns {string}
+ * @type {string}
  */
-export const test1 = () => "42";
+export const test1 = "42";
 
 /**
  * `test3`
- * @returns {string}
+ * @type {string}
  */
-export const test3 = () => "true";
+export const test3 = "true";
 
 /**
  * `test4`
- * @returns {string}
+ * @type {string}
  */
-export const test4 = () => "wat";
+export const test4 = "wat";
 
 /**
  * `test5`
- * @returns {string}
+ * @type {string}
  */
-export const test5 = () => "w";
+export const test5 = "w";

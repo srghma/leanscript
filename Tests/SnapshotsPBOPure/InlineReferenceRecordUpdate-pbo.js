@@ -13,22 +13,22 @@ export const test1 = (fn) => {
 
 /**
  * `fn_prime`
- * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
+ * @type {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const fn_prime = () => {
+export const fn_prime = (() => {
   const k$2 = () => ({ _1: 1, _2: 2, _3: 3 });
   const f$1 = k$2;
   return f$1();
-};
+})();
 
 /**
  * `extern1`
- * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
+ * @type {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const extern1 = () => ({ _1: 42, _2: 2, _3: 3 });
+export const extern1 = { _1: 42, _2: 2, _3: 3 };
 
 /**
  * `test2`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const test2 = () => 3;
+export const test2 = 3;

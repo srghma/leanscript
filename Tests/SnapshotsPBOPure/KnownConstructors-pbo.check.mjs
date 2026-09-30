@@ -36,7 +36,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("known1()", () => M.known1(), "b", false);
+check("known1", () => M.known1, "b", false);
 check("test6(\"\")", () => M.test6(""), "0", false);
 check("test6(\"a\")", () => M.test6("a"), "0", false);
 check("test6(\"hello world\")", () => M.test6("hello world"), "0", false);

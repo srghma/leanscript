@@ -36,8 +36,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("ListRepr$x()", () => M.ListRepr$x(), "#[1, 2, 3]", false);
-check("ListRepr$empty()", () => M.ListRepr$empty(), "#[]", false);
+check("ListRepr$x", () => M.ListRepr$x, "#[1, 2, 3]", false);
+check("ListRepr$empty", () => M.ListRepr$empty, "#[]", false);
 check("ListRepr$front(\"\", { tag: 0 })", () => M.ListRepr$front("", { tag: 0 }), "#[, b]", false);
 check("ListRepr$front(\"\", { tag: 1, _1: \"\", _2: { tag: 0 } })", () => M.ListRepr$front("", { tag: 1, _1: "", _2: { tag: 0 } }), "#[, b, ]", false);
 check("ListRepr$front(\"a\", { tag: 0 })", () => M.ListRepr$front("a", { tag: 0 }), "#[a, b]", false);

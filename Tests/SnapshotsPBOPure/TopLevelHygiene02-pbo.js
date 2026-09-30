@@ -6,6 +6,6 @@
 
 /**
  * `wat`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const wat = () => 42;
+export const wat = 42;

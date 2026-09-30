@@ -16,33 +16,33 @@ export const localTest = (f) => {
 
 /**
  * `test1`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test1 = () => 110n;
+export const test1 = 110n;
 
 /**
  * `test2`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test2 = () => 88n;
+export const test2 = 88n;
 
 /**
  * `test3`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test3 = () => 1089n;
+export const test3 = 1089n;
 
 /**
  * `test4`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test4 = () => 9n;
+export const test4 = 9n;
 
 /**
  * `extern`
- * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
+ * @type {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const extern = () => ({ _1: 99n, _2: 0n, _3: 11n });
+export const extern = { _1: 99n, _2: 0n, _3: 11n };
 
 /**
  * `externTest`
@@ -57,24 +57,24 @@ export const externTest = (f) => {
 
 /**
  * `test5`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test5 = () => 110n;
+export const test5 = 110n;
 
 /**
  * `test6`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test6 = () => 88n;
+export const test6 = 88n;
 
 /**
  * `test7`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test7 = () => 1089n;
+export const test7 = 1089n;
 
 /**
  * `test8`
- * @returns {int(bigint)}
+ * @type {int(bigint)}
  */
-export const test8 = () => 9n;
+export const test8 = 9n;

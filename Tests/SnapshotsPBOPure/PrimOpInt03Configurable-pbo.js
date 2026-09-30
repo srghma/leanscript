@@ -24,15 +24,15 @@ import { uint53__lean_nat_add, int53__lean_int_add } from "../../runtime.js";
 
 /**
  * `TestNat.test1`
- * @returns {uint53(number)}
+ * @type {uint53(number)}
  */
-export const TestNat$test1 = () => 4000000000;
+export const TestNat$test1 = 4000000000;
 
 /**
  * `TestNat.test2`
- * @returns {uint53(number)}
+ * @type {uint53(number)}
  */
-export const TestNat$test2 = () => 0;
+export const TestNat$test2 = 0;
 
 /**
  * `TestNat.test4`
@@ -43,15 +43,15 @@ export const TestNat$test4 = (a) => uint53__lean_nat_add(a, 4000000000);
 
 /**
  * `TestInt.test1`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const TestInt$test1 = () => 4000000000;
+export const TestInt$test1 = 4000000000;
 
 /**
  * `TestInt.test2`
- * @returns {int53(number)}
+ * @type {int53(number)}
  */
-export const TestInt$test2 = () => -4000000000;
+export const TestInt$test2 = -4000000000;
 
 /**
  * `TestInt.test4`

@@ -5,30 +5,30 @@
 
 /**
  * `test1`
- * @returns {List<boolean>}
+ * @type {List<boolean>}
  */
-export const test1 = () => [true, false, false];
+export const test1 = [true, false, false];
 
 /**
  * `test2`
- * @returns {List<boolean>}
+ * @type {List<boolean>}
  */
-export const test2 = () => [false, true, true];
+export const test2 = [false, true, true];
 
 /**
  * `test3`
- * @returns {List<boolean>}
+ * @type {List<boolean>}
  */
-export const test3 = () => [false, true, false];
+export const test3 = [false, true, false];
 
 /**
  * `test4`
- * @returns {List<boolean>}
+ * @type {List<boolean>}
  */
-export const test4 = () => [false, false, true];
+export const test4 = [false, false, true];
 
 /**
  * `test7`
- * @returns {List<string>}
+ * @type {List<string>}
  */
-export const test7 = () => ["aa", "ab", "ba"];
+export const test7 = ["aa", "ab", "ba"];

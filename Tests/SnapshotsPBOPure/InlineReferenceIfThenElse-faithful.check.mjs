@@ -36,8 +36,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("test1()", () => M.test1(), "42", false);
-check("test2()", () => M.test2(), "42", false);
+check("test1", () => M.test1, "42", false);
+check("test2", () => M.test2, "42", false);
 
 console.log(`InlineReferenceIfThenElse-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

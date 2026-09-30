@@ -5,6 +5,6 @@
 
 /**
  * `run`
- * @returns {nat(bigint)}
+ * @type {nat(bigint)}
  */
-export const run = () => 6n;
+export const run = 6n;
