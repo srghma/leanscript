@@ -18,11 +18,11 @@ export const test1 = (x, y) => {
     if (y === 3n) {
       return "1.3";
     }
+    if (y !== 4n) {
+      return y === 5n ? "1.5" : "_._";
+    }
   } else if (y !== 4n) {
     return y === 2n ? "_.2" : "_._";
   }
-  if (y === 4n) {
-    return "_.4";
-  }
-  return y === 5n ? "1.5" : "_._";
+  return "_.4";
 };

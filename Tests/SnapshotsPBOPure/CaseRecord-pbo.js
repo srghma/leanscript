@@ -28,17 +28,15 @@ export const test1 = (x) => {
 export const Test2$test2 = (x) => {
   const { _2: f$1 } = x;
   const { _2: f$2 } = x._1;
-  if (x._1._1 !== 1 && f$2 === 2) {
-    if (f$1._1 === 1 && f$1._2 === 2) {
-      return 2;
+  if (x._1._1 === 1) {
+    if (f$2 === 2) {
+      if (f$1._1 === 1 && f$1._2 === 2) {
+        return 1;
+      }
+      return 3;
     }
-    return 4;
-  }
-  if (f$2 === 2) {
-    if (f$1._1 === 1 && f$1._2 === 2) {
-      return 1;
-    }
-    return 3;
+  } else if (f$2 === 2 && f$1._1 === 1 && f$1._2 === 2) {
+    return 2;
   }
   return 4;
 };

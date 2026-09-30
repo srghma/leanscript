@@ -402,6 +402,52 @@ def moreJsSpec : Spec := describe "JsTerm" do
     for f in ["testPBA", "testPBAN"] do
       assertEq s!"{f}: `return 4` once" 2 ((body f).splitOn "return 4;").length
       assertEq s!"{f}: no test of the same tag twice" 1 ((body f).splitOn "? 4 : 4").length
+  it "a shared tail never tests again what its jumps already tested (needs node and leanscript)" do
+    -- `CaseMulti`: `match x, y with | 1, 1 | 1, 2 | 1, 3 | _, 4 | 1, 5 | _, 2 | _, _`.  A jump to a
+    -- shared tail that the tests around it specialise runs those tests again (`retestCost`):
+    -- on every input, the generated function makes no more comparisons than
+    -- purescript-backend-optimizer's (`legacy-backend/CaseMulti.js`), and answers what Lean does.
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/caseMulti"
+    IO.FS.createDirAll dir
+    let file := "CaseMulti"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let xs : List Int := [0, 1, 2]
+    let ys : List Int := [0, 1, 2, 3, 4, 5, 6]
+    let lean (x y : Int) : String :=
+      match x, y with
+      | 1, 1 => "1.1"
+      | 1, 2 => "1.2"
+      | 1, 3 => "1.3"
+      | _, 4 => "_.4"
+      | 1, 5 => "1.5"
+      | _, 2 => "_.2"
+      | _, _ => "_._"
+    let count (js : String) (curried : String) : IO (List (List String)) := do
+      let args := #["scripts/count-comparisons.mjs", js, "test1", curried, toString xs, toString ys]
+      let run ← IO.Process.output { cmd := "node", args }
+      if run.exitCode != 0 then throw (IO.userError run.stderr)
+      return ((run.stdout.splitOn "\n").filter (· != "")).map (fun (l : String) => l.splitOn ",")
+    let pbo ← count "Tests/SnapshotsPBOPure/legacy-backend/CaseMulti.js" "1"
+    for preset in ["pbo", "faithful"] do
+      let ours ← count s!"{dir}/{file}-{preset}.js" "0"
+      assertEq s!"{file}-{preset}: every pair run" (xs.length * ys.length) ours.length
+      for (o, p) in ours.zip pbo do
+        match o, p with
+        | [x, y, r, n], [_, _, _, m] =>
+          let expected := lean x.toInt! y.toInt!
+          assertEq s!"{file}-{preset}: test1 {x} {y}" expected r
+          assertEq s!"{file}-{preset}: test1 {x} {y} makes at most PBO's {m} comparisons" true
+            (n.toNat! ≤ m.toNat!)
+        | _, _ => assertEq s!"{file}-{preset}: a line of the counts" ["x", "y", "r", "n"] o
   it "a join point taking apart the constructor its jumps pass is written at the jumps (needs node and leanscript)" do
     -- `CaseLeafTco`: `match arr[0]?, arr.back? with …` builds `some (arr[0])` or `none` into a
     -- join point that takes it apart at once; the arm of each constructor is written at its jump

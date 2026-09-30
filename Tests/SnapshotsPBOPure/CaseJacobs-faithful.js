@@ -41,17 +41,14 @@ export const test1 = (a) => {
     const { _1: f$3, _2: f$4 } = a;
     if (f$3.tag === 0) {
       const { _1: f$5, _2: f$6 } = f$3;
-      if (f$4.tag !== 3) {
-        return (
-          "e5: " +
-          renderExpr(f$5) +
-          " " +
-          renderExpr(f$6) +
-          " " +
-          renderExpr(f$4)
-        );
+      if (f$4.tag === 3) {
+        return "e4: " + renderExpr(f$3);
       }
-    } else if (f$3.tag === 3) {
+      return (
+        "e5: " + renderExpr(f$5) + " " + renderExpr(f$6) + " " + renderExpr(f$4)
+      );
+    }
+    if (f$3.tag === 3) {
       return "e2: " + renderExpr(f$4);
     }
     if (f$4.tag === 3) {

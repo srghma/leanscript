@@ -1,3 +1,48 @@
+# Summary of changes for run f1979b50-1050-4919-9c64-d218ea6cf35c
+`CaseMulti` now makes no more comparisons than `legacy-backend/CaseMulti.js` on any input, and its code is shorter. The fix is in the JsTerm → JsTerm pass that shares common tails. It is checked by tests and snapshots, not by a proof.
+
+**What was wrong.** The `Term` after optimisation was already the same decision tree as PBO's. The problem came later, in the pass that writes a repeated fall-through only once (`JsTerm/Lower/ShareTail.lean`). That pass shared `if (y === 4) return "_.4"; return y === 5 ? …` with the leaf `return "_.4"` in the `x ≠ 1` branch, which is already inside a `y === 4` test. The jump from that leaf then tested `y === 4` a second time. So for `x ≠ 1, y = 4` the old output made 3 comparisons where PBO makes 2.
+
+**Output now** (`CaseMulti-pbo.js`; `-faithful.js` is the same but uses `1n`, `2n`, …):
+```js
+export const test1 = (x, y) => {
+  if (x === 1) {
+    if (y === 1) { return "1.1"; }
+    if (y === 2) { return "1.2"; }
+    if (y === 3) { return "1.3"; }
+    if (y !== 4) { return y === 5 ? "1.5" : "_._"; }
+  } else if (y !== 4) {
+    return y === 2 ? "_.2" : "_._";
+  }
+  return "_.4";
+};
+```
+- **Speed:** on every pair in {0,1,2} × {0..6}, the number of comparisons is exactly PBO's.
+- **Size:** `"_.4"` is written once, and there are two fewer `if` statements than in PBO's version.
+- **Labelled blocks:** nothing here needs one. Where a shared tail does need one, the pass still writes a labelled block with `break`.
+
+**The change.** Sharing a tail used to be chosen only by code size. Now, whenever a jump comes from a copy of the tail that the surrounding tests have already narrowed down, each test the tail will run again adds a penalty (`retestCost` = 20 characters, about the size of one `if`). That makes this kind of sharing happen only when it saves more code than repeating the tests would cost.
+
+**Why not in the earlier phases:** there was nothing to fix there. The optimised `Term` already matches PBO's tree, and the extra test was introduced only by this JsTerm pass.
+
+**Effect on other snapshots.** I regenerated all of them with `scripts/leanscript-snapshots.sh`, and every node check passes. Only two other files changed:
+- `CaseJacobs.test1` no longer tests `f$4.tag === 3` twice, and now has the same structure as PBO's.
+- `CaseRecord.Test2$test2` no longer tests `b === 1` twice, and is shorter.
+
+I tried larger penalties too, but they made `CaseRecord.test1` and `CaseRedBlackTree` noticeably longer, so I kept 20.
+
+**New test.** The generated `CaseMulti-*.check.mjs` files only try inputs that return `"_._"`, so I added a test in `Tests/Main.lean` using a new helper, `scripts/count-comparisons.mjs`. It runs both presets and PBO's JS on the whole grid above and counts every comparison with a literal. It checks that:
+- each answer equals the Lean `match`;
+- our comparison count is never above PBO's on any input.
+
+The old output fails this test at (0, 4) and (2, 4).
+
+**Checks:**
+- `lake build JsTerm JsSpec tests leanscript` succeeds.
+- `lake exe tests` passes 79/79.
+
+Nothing new was formally proved, so I added no rows to the Properties table. All work is committed.
+
 # Summary of changes for run bbd12bbe-c1a3-401b-8046-7accbe90b348
 The JS for `CaseLeafTco` now has the same shape as `legacy-backend/CaseLeafTco.js`, and is a bit better in places. It took two changes: one in the `Term → JsTerm` conversion and one in the JsTerm pass that shares code between the functions of a module. Neither change is formally proved. They are checked by the node tests, the snapshots and a new test.
 

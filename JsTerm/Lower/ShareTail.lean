@@ -51,6 +51,13 @@ printer's measure, `JsTerm.Print.Share.blockCost`: a jump at the end of the labe
 nothing, one elsewhere a `break`), and only when it is shorter than the test as it is; a jump,
 a `continue` or a `throw` is never shared.
 
+A jump from a copy of `D` specialised by the tests around it runs those tests of `D` again at
+run time, so each of them adds `retestCost` to the measure (`JsBlock.assumeSkipped`).  In
+`CaseMulti.lean` sharing `if (y === 4) { return "_.4"; } return y === 5 ? …` with the leaf
+`return "_.4"` of the other branch (under `y === 4`) would test `y === 4` twice on that path;
+the leaf `return "_.4"` itself is shared instead, and no path makes more comparisons than
+purescript-backend-optimizer's decision tree.
+
 **Why the value is the same.**  A jump replaces a copy of `D` that is in tail position (the
 last thing the block does before it returns, ends its iteration, or jumps out): the join
 point's block ends there, and `D`, right after it, runs in the same state, on the same
@@ -181,6 +188,34 @@ partial def JsBlock.assume {C M J : List JsTy} {k : JsEnd} (facts : Facts) :
     | none => .enumCases e arms
   | b => b
 
+/-- What a test run again by a jump to a shared tail costs, measured as text (`BlockCost`):
+    about the length of the `if (…) { … }` it would take to write the test once more, so a
+    tail is shared from a specialised copy only when that saves more text than writing the
+    tests again would. -/
+def retestCost : Nat := 20
+
+/-- The tests `JsBlock.assume facts` decides in the block, each by the length of the dump of
+    its subject (a jump to a shared tail specialised there runs them again). -/
+partial def JsBlock.assumeSkipped {C M J : List JsTy} {k : JsEnd} (facts : Facts) :
+    JsBlock S C M J k → Nat
+  | .ite c t e =>
+    let key := "c:" ++ c.pretty ""
+    match facts.lookup key with
+    | some 1 => retestCost + t.assumeSkipped facts
+    | some _ => retestCost + e.assumeSkipped facts
+    | none => 0
+  | .unionCases e arms =>
+    let key := "u:" ++ e.pretty ""
+    match (facts.lookup key).bind (arms.arm? ·) with
+    | some b => retestCost + b.assumeSkipped facts
+    | none => 0
+  | .enumCases e arms =>
+    let key := "e:" ++ e.pretty ""
+    match (facts.lookup key).bind (arms.arm? ·) with
+    | some b => retestCost + b.assumeSkipped facts
+    | none => 0
+  | _ => 0
+
 /-! ## Finding the tails -/
 
 /-- Does the block only leave (a jump, the end of an iteration, a `throw`)? -/
@@ -244,6 +279,9 @@ structure ShareAt (R MR : List JsTy) (C M : List JsTy) where
   facts : Facts
   /-- The branch of the test the block is in (`none`: the test itself). -/
   child : Option Nat
+  /-- What a jump from where the tests `facts` hold costs at run time: the tests of `D`
+      decided there, run again (`JsBlock.assumeSkipped`). -/
+  penalty : Facts → Nat := fun _ => 0
 
 /-- Is the block, moved to the context of the test, the dump `dump facts` (`D` where the tests
     `facts` hold)? -/
@@ -254,16 +292,13 @@ def JsBlock.isTail {R MR C M J : List JsTy} {k : JsEnd} (dump : Facts → String
     | none => false
 
 /-- The walk replacing copies of `D`: the copies it replaced, each by the branch of the test it
-    is in and its size (the length of its dump). -/
+    is in and the tests of `D` a jump from there runs again (`ShareAt.penalty`). -/
 abbrev ShareM := StateM (Array (Nat × Nat))
 
-/-- Record a copy of `D` replaced (the block moved to the context of the test). -/
-def ShareAt.hit {R MR C M J : List JsTy} {k : JsEnd} (at_ : ShareAt R MR C M)
-    (b : JsBlock S C M J k) : ShareM Unit :=
-  let size := match b.renameM at_.rc at_.rm with
-    | some b' => (b'.pretty "").length
-    | none => 0
-  modify (·.push (at_.child.getD 0, size))
+/-- Record a copy of `D` replaced: the branch of the test it is in, and the tests of `D` a jump
+    from there runs again. -/
+def ShareAt.hit {R MR C M : List JsTy} (at_ : ShareAt R MR C M) : ShareM Unit :=
+  modify (·.push (at_.child.getD 0, at_.penalty at_.facts))
 
 mutual
 /-- The block under the test with the copies of `D` (`dump`: the dump of `D` where tests hold)
@@ -274,7 +309,7 @@ partial def JsBlock.shareGo {R MR C M J J' : List JsTy} {k : JsEnd} (dump : Fact
     JsBlock S C M J k → ShareM (JsBlock S C M J' k)
   | b => do
     if b.isTail dump at_ then
-      at_.hit b
+      at_.hit
       return .jump tgt (.unreachable tailTy)
     b.shareStep dump tgt rj at_
 /-- `shareGo` of a block that is not a copy of `D`: its blocks in tail position. -/
@@ -283,10 +318,10 @@ partial def JsBlock.shareStep {R MR C M J J' : List JsTy} {k : JsEnd} (dump : Fa
     JsBlock S C M J k → ShareM (JsBlock S C M J' k)
   | .ret (.cond c a e) => do
     if (JsBlock.ret (J := J) e).isTail dump at_ then
-      at_.hit (JsBlock.ret (J := J) e)
+      at_.hit
       return .ite c (.ret a) (.jump tgt (.unreachable tailTy))
     if (JsBlock.ret (J := J) a).isTail dump at_ then
-      at_.hit (JsBlock.ret (J := J) a)
+      at_.hit
       return .ite c (.jump tgt (.unreachable tailTy)) (.ret e)
     return .ret (.cond c a e)
   | .ret e => return .ret e
@@ -346,7 +381,7 @@ partial def JsUnionArms.shareGo {R MR C M J J' : List JsTy} {k : JsEnd} {cs : Li
   | .cons (us := us) sel b rest => do
     let b' ← b.shareGo dump tgt rj
       { rc := JsRenM.forgetAll us at_.rc, rm := at_.rm, facts := at_.facts.add key i,
-        child := at_.child.orElse fun _ => some i }
+        child := at_.child.orElse fun _ => some i, penalty := at_.penalty }
     return .cons sel b' (← rest.shareGo dump tgt rj at_ key (i + 1))
 end
 
@@ -387,11 +422,12 @@ def JsBlock.hoistTail? {C M J : List JsTy} {k : JsEnd} (cost : BlockCost S)
   for (_, d) in best do
     let dump : Facts → String := fun facts => (d.assume facts).pretty ""
     let (b', hits) := (b.shareGo dump .zero (fun j => JsMem.succ j)
-      { rc := JsRenM.someId, rm := JsRenM.someId, facts := [], child := none }).run #[]
+      { rc := JsRenM.someId, rm := JsRenM.someId, facts := [], child := none,
+        penalty := fun facts => d.assumeSkipped facts }).run #[]
     let branches := hits.foldl (fun acc (i, _) => if acc.contains i then acc else acc.push i) #[]
     if hits.size ≥ 2 && branches.size ≥ 2 then
       let d' := Id.run (d.renameM JsRen.succ JsRen.id)
-      let c := cost (JsBlock.join "t" b' d')
+      let c := cost (JsBlock.join "t" b' d') + hits.foldl (fun acc (_, p) => acc + p) 0
       if c < base && chosen.all (c < ·.1) then chosen := some (c, b', d')
   return chosen.map fun (_, b', d') => (b', d')
 
