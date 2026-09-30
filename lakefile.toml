@@ -10,6 +10,7 @@ defaultTargets = [
   "tests",
   "LanguageJavascriptMini",
   "JsTerm",
+  "JsSpec",
 ]
 
 [[require]]
@@ -93,3 +94,9 @@ globs = ["RefactorSpec.+"]
 [[lean_lib]]
 name = "OpsSpec"
 globs = ["OpsSpec.+"]
+
+# Proofs, in a model of JavaScript (state and exceptions), of the rewrites of the JavaScript
+# backend that `Term` cannot express: `&&`/`||`, merged tests, digits in a concatenation.
+[[lean_lib]]
+name = "JsSpec"
+globs = ["JsSpec.+"]

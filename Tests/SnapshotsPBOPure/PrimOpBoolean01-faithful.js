@@ -7,7 +7,7 @@
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test1 = (a, b) => (a ? b : false);
+export const test1 = (a, b) => a && b;
 
 /**
  * `test2`
@@ -15,7 +15,7 @@ export const test1 = (a, b) => (a ? b : false);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test2 = (a, b) => (a ? true : b);
+export const test2 = (a, b) => a || b;
 
 /**
  * `test3`

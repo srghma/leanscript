@@ -9,11 +9,8 @@
  * @returns {int53(number)}
  */
 export const test1 = (a, b, c) => {
-  if (a) {
-    if (b) {
-      return 1;
-    }
-    return c ? 2 : 3;
+  if (a && b) {
+    return 1;
   }
   return c ? 2 : 3;
 };

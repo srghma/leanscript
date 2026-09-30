@@ -42,6 +42,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7n)", () => M.test1(-7n), "n: -7", false);
+check("test1(-1n)", () => M.test1(-1n), "n: -1", false);
+check("test1(0n)", () => M.test1(0n), "n: 0", false);
+check("test1(3n)", () => M.test1(3n), "1 < x < 100: 3", false);
+check("test1(12n)", () => M.test1(12n), "1 < x < 100: 12", false);
 check("test3({ _1: -7n, _2: -1n, _3: 0n })", () => M.test3({ _1: -7n, _2: -1n, _3: 0n }), "-1", false);
 check("test3({ _1: -1n, _2: 0n, _3: 3n })", () => M.test3({ _1: -1n, _2: 0n, _3: 3n }), "0", false);
 check("test3({ _1: 0n, _2: 3n, _3: 12n })", () => M.test3({ _1: 0n, _2: 3n, _3: 12n }), "3", false);

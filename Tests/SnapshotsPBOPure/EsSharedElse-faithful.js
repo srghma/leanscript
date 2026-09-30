@@ -9,11 +9,8 @@
  * @returns {int(bigint)}
  */
 export const test1 = (a, b, c) => {
-  if (a) {
-    if (b) {
-      return 1n;
-    }
-    return c ? 2n : 3n;
+  if (a && b) {
+    return 1n;
   }
   return c ? 2n : 3n;
 };

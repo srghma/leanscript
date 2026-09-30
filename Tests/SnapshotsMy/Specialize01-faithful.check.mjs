@@ -42,6 +42,37 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(0n)", () => M.test1(0n), "count (0)", false);
+check("test1(1n)", () => M.test1(1n), "count (1)", false);
+check("test1(2n)", () => M.test1(2n), "count (2)", false);
+check("test1(5n)", () => M.test1(5n), "count (5)", false);
+check("test1(13n)", () => M.test1(13n), "count (13)", false);
+check("test2(0n, \"\")", () => M.test2(0n, ""), "count (0, )", false);
+check("test2(0n, \"hello world\")", () => M.test2(0n, "hello world"), "count (0, hello world)", false);
+check("test2(1n, \"a\")", () => M.test2(1n, "a"), "count (1, a)", false);
+check("test2(2n, \"\")", () => M.test2(2n, ""), "count (2, )", false);
+check("test2(0n, \"abcabc\")", () => M.test2(0n, "abcabc"), "count (0, abcabc)", false);
+check("test2(1n, \"héllo, wörld\")", () => M.test2(1n, "héllo, wörld"), "count (1, héllo, wörld)", false);
+check("test2(2n, \"hello world\")", () => M.test2(2n, "hello world"), "count (2, hello world)", false);
+check("test2(5n, \"a\")", () => M.test2(5n, "a"), "count (5, a)", false);
+check("test2(13n, \"\")", () => M.test2(13n, ""), "count (13, )", false);
+check("test2(2n, \"abcabc\")", () => M.test2(2n, "abcabc"), "count (2, abcabc)", false);
+check("test2(5n, \"héllo, wörld\")", () => M.test2(5n, "héllo, wörld"), "count (5, héllo, wörld)", false);
+check("test2(13n, \"hello world\")", () => M.test2(13n, "hello world"), "count (13, hello world)", false);
+check("test2(13n, \"abcabc\")", () => M.test2(13n, "abcabc"), "count (13, abcabc)", false);
+check("test3(\"\", 0n)", () => M.test3("", 0n), " (0)", false);
+check("test3(\"\", 2n)", () => M.test3("", 2n), " (2)", false);
+check("test3(\"a\", 1n)", () => M.test3("a", 1n), "a (1)", false);
+check("test3(\"hello world\", 0n)", () => M.test3("hello world", 0n), "hello world (0)", false);
+check("test3(\"\", 13n)", () => M.test3("", 13n), " (13)", false);
+check("test3(\"a\", 5n)", () => M.test3("a", 5n), "a (5)", false);
+check("test3(\"hello world\", 2n)", () => M.test3("hello world", 2n), "hello world (2)", false);
+check("test3(\"héllo, wörld\", 1n)", () => M.test3("héllo, wörld", 1n), "héllo, wörld (1)", false);
+check("test3(\"abcabc\", 0n)", () => M.test3("abcabc", 0n), "abcabc (0)", false);
+check("test3(\"hello world\", 13n)", () => M.test3("hello world", 13n), "hello world (13)", false);
+check("test3(\"héllo, wörld\", 5n)", () => M.test3("héllo, wörld", 5n), "héllo, wörld (5)", false);
+check("test3(\"abcabc\", 2n)", () => M.test3("abcabc", 2n), "abcabc (2)", false);
+check("test3(\"abcabc\", 13n)", () => M.test3("abcabc", 13n), "abcabc (13)", false);
 check("test4", () => M.test4, "total (3, ok)", false);
 check("test5", () => M.test5, "h", false);
 

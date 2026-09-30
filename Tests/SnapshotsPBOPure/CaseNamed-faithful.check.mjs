@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7n)", () => M.test1(-7n), "any: -7-7-7", false);
+check("test1(-1n)", () => M.test1(-1n), "any: -1-1-1", false);
+check("test1(0n)", () => M.test1(0n), "any: 000", false);
+check("test1(3n)", () => M.test1(3n), "any: 333", false);
+check("test1(12n)", () => M.test1(12n), "any: 121212", false);
+check("test2({ _1: -7n, _2: -1n, _3: 0n })", () => M.test2({ _1: -7n, _2: -1n, _3: 0n }), "-7-7-1-100", false);
+check("test2({ _1: -1n, _2: 0n, _3: 3n })", () => M.test2({ _1: -1n, _2: 0n, _3: 3n }), "-1-10033", false);
+check("test2({ _1: 0n, _2: 3n, _3: 12n })", () => M.test2({ _1: 0n, _2: 3n, _3: 12n }), "00331212", false);
 
 console.log(`CaseNamed-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

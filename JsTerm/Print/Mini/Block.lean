@@ -29,6 +29,35 @@ def natOfNumber {N : JsTy} (nt : JsNatTy N) (e : MiniExpr) : MiniExpr :=
   | .bigint_nat => .call (ident "BigInt") [e]
   | .uint53 => e
 
+/-! ## Decimal digits in a concatenation -/
+
+/-- Is the expression the decimal digits of a number, `String(x)` (`Nat.repr`, `Int.repr`)? -/
+def JsExpr.isDigits {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .inlined op _ => op.name.endsWith "__lean_nat_repr" || op.name.endsWith "__lean_int_repr"
+  | _ => false
+
+/-- `x` when the printed expression is `String(x)`. -/
+def unDigits : MiniExpr → MiniExpr
+  | .call _ [x] => x
+  | e => e
+
+/-- The printed arguments of an inlined operation, where it is a concatenation of strings
+    (`a + b`, `String.append`) one of whose operands is the decimal digits of a number
+    `String(x)`: that operand written `x` (`"n: " + n`).  JavaScript's `+` converts a number,
+    or a `BigInt`, to its decimal digits when the other operand is a string, as `String` does,
+    so only one of the two operands is written without its `String`: the other one is still a
+    string. -/
+def concatDigits {C M : List JsTy} {e : Effectfulness} {t : MayThrow} {σs : List JsTy}
+    {τ : JsTy} (op : JsOpInlinable e t σs τ) (args : JsArgs S C M σs) (es : List MiniExpr) :
+    List MiniExpr :=
+  if !op.name.startsWith "string__lean_string_append" then es else
+  match args, es with
+  | .cons a (.cons b .nil), [x, y] =>
+    if b.isDigits then [x, unDigits y]
+    else if a.isDigits then [unDigits x, y]
+    else es
+  | _, _ => es
+
 /-- The dump of each arm of a case analysis on a union (with the fields it takes apart). -/
 partial def JsUnionArms.keys {C M J : List JsTy} {k : JsEnd} {cs : List (List JsTy)} :
     JsUnionArms S C M J k cs → List String
@@ -76,7 +105,9 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
   | .lit l => pure (shapeExpr l.shape)
   | .imported op args => do
     return .call (ident op.runtimeName) (op.extraArgs.map dotted ++ (← argsToMini sc args))
-  | .inlined op args => do return inlineToMini (← argsToMini sc args).toArray op.template
+  | .inlined op args => do
+    let es ← argsToMini sc args
+    return inlineToMini (concatDigits op args es).toArray op.template
   | .unreachable _ => pure (ident "undefined")
   | .app f as => do return .call (← exprToMini sc f) (← argsToMini sc as)
   | .lam (σs := σs) hints body => do
@@ -122,6 +153,11 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
     match ← exprToMini sc a, ← exprToMini sc b with
     | .true_, .false_ => return c
     | .false_, .true_ => return negateCond c
+    -- a boolean `c ? a : false` is `c && a`, and `c ? true : b` is `c || b` (the operators
+    -- evaluate their right operand exactly when the conditional does, and answer the same
+    -- boolean)
+    | a, .false_ => return .binary c .and a
+    | .true_, b => return .binary c .or b
     | a, b => return .ternary c a b
 
 /-- An arrow function of parameters `ps` (already in `sc`). -/

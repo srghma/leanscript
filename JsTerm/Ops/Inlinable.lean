@@ -162,6 +162,14 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_int__bigint_nat__lean_int_pow : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_nat)] (.terminal .bigint_int)
   /-- `a ** BigInt(b)` (Int.pow (not `@[extern]`: a recursion in Lean)) -/
   | bigint_int__uint53__lean_int_pow : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .uint53)] (.terminal .bigint_int)
+  /-- `String(a)` (Nat.repr (not `@[extern]`, in `Init/Data/Repr.lean`: the decimal digits, a recursion in Lean)) -/
+  | bigint_nat__lean_nat_repr : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .string)
+  /-- `String(a)` (Nat.repr (not `@[extern]`, in `Init/Data/Repr.lean`: the decimal digits, a recursion in Lean)) -/
+  | uint53__lean_nat_repr : JsOpInlinable .pure .doesntThrow [(.terminal .uint53)] (.terminal .string)
+  /-- `String(a)` (Int.repr (not `@[extern]`, in `Init/Data/Repr.lean`: a match on the constructors of `Int`, a leaf of the language)) -/
+  | bigint_int__lean_int_repr : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .string)
+  /-- `String(a)` (Int.repr (not `@[extern]`, in `Init/Data/Repr.lean`: a match on the constructors of `Int`, a leaf of the language)) -/
+  | int53__lean_int_repr : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .string)
   /-- `a ^ b` (Nat.xor) -/
   | bigint_nat__lean_nat_lxor : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a << b` (Nat.shiftLeft) -/

@@ -1,3 +1,28 @@
+# Summary of changes for run fb688dc2-829b-4305-81b2-e73561aa086f
+I proved the CaseGuarded changes in Lean. Both files build with no `sorry` and use only the standard axioms. One limit: the proofs about the JavaScript-side rewrites are about a model of the algorithm, not the `JsTerm` code itself, because `JsTerm` has no formal semantics.
+
+**1. `test1` through the `Term` optimizer** (`Tests/TermTests/Optimize/CaseGuardedTest.lean`)
+- `test1_optimized_run`: for every `n : Int`, the translated and optimised `Term` (`Term.optimizeN 3`) computes the Lean `test1 n`, including `toString n`, which is now the new extern `lean_int_repr`.
+- It rests on `test1T_run`, checked by the kernel with `kernel_rfl`: the translated statement's three tests, with its strings built by `Int.repr`.
+- `test1_optimized_pretty`: the optimised term is exactly the one in `CaseGuarded-Term-optimized.txt`. This is checked with `native_decide`, since the printer is compiled code.
+- `eval_lean_int_repr` and `eval_lean_nat_repr`: the two new externs mean Lean's `toString`, so the existing proof that the optimizer doesn't change `eval` covers them.
+
+**2. The JavaScript-side rewrites** (new library `JsSpec`, file `JsSpec/MergeIte.lean`)
+These three rewrites can't be expressed in `Term`, so they're proved in a small model of JavaScript where every expression or statement reads and writes a state and may throw. Evaluation order, side effects and exceptions all count.
+- **Merged tests** (`Stmt.mergeIte_den`):
+  - The model repeats the algorithm of `JsTerm/Lower/MergeIte.lean`, including left-grouping of `&&`/`||` chains.
+  - Rewriting `if (a) { if (b) T; E } E` to `if (a && b) T; E`, and the `||` form, bottom-up, leaves every statement's meaning unchanged, whatever the tests and other statements do.
+  - The implementation decides that two statements are the same by comparing their dumps; the model treats that as syntactic equality, which is not itself proved.
+- **`&&` and `||`**:
+  - `cond_false_eq_and` / `cond_true_eq_or`: `c ? a : false` equals `c && a`, and `c ? true : b` equals `c || b`.
+  - `jsAnd_assoc` / `jsOr_assoc`: a chain can be regrouped to the left.
+- **Numbers in a concatenation**:
+  - `plus_str_digits` / `plus_digits_str`: in a model of JavaScript `+` on numbers, BigInts and strings, `s + String(x)` equals `s + x`, and `String(x) + s` equals `x + s`.
+  - `plus_str_num`: `"n: " + n` equals Lean's `"n: " ++ toString n`.
+  - This rests on one modelling assumption: JavaScript's conversion of a safe integer or BigInt to a string gives the same decimal digits as Lean's `toString`.
+
+**Build:** `lake build JsSpec TermTests` succeeds, and I added `JsSpec` to `lakefile.toml` and its default targets. `rg` finds no `sorry` or `admit`. `#print axioms` shows only `propext`, `Classical.choice`, `Quot.sound`, plus the axiom `native_decide` generates for the printer check. The four main results are marked proved in the Properties table, and all work is committed.
+
 # Summary of changes for run a78d54e4-d55b-499f-ac6f-a121c67c56f7
 I made no code changes this session. The JavaScript output for `CaseGrafting` is already better than purescript-backend-optimizer's legacy output, so there was nothing left to optimize.
 

@@ -5,9 +5,19 @@
 //   «term_<$_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 //   «term_$>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 //   «term_<@>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
-//   test1: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 //   test2: LeanScript: the parameter `α` of `test2` is a type
 //   test3: LeanScript: the parameter `α` of `test3` is a type
 //   test4: LeanScript: the parameter `α` of `test4` is a type
 //   test5: LeanScript: the parameter `α` of `test5` is a type
 
+/**
+ * `test1`
+ * @param {({ tag: 0 } | { tag: 1, _1: int53(number) })} mb
+ * @returns {({ tag: 0 } | { tag: 1, _1: string })}
+ */
+export const test1 = (mb) => {
+  if (mb.tag === 0) {
+    return { tag: 0 };
+  }
+  return { tag: 1, _1: String(mb._1) };
+};

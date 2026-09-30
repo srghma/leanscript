@@ -58,23 +58,17 @@ export const testPB = (a, a1) => {
     }
     return a1.tag === 1 ? 4 : 4;
   }
-  if (a._1 === 2) {
-    if (a._2 === 3) {
-      if (a1.tag === 0) {
-        return 3;
-      }
-      if (a1.tag === 1) {
-        return 4;
-      }
-      if (a1._1 === 2) {
-        return a1._2 === 3 ? 2 : 4;
-      }
-      return 4;
-    }
+  if (a._1 === 2 && a._2 === 3) {
     if (a1.tag === 0) {
       return 3;
     }
-    return a1.tag === 1 ? 4 : 4;
+    if (a1.tag === 1) {
+      return 4;
+    }
+    if (a1._1 === 2) {
+      return a1._2 === 3 ? 2 : 4;
+    }
+    return 4;
   }
   if (a1.tag === 0) {
     return 3;

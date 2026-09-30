@@ -58,23 +58,17 @@ export const testPB = (a, a1) => {
     }
     return a1.tag === 1 ? 4n : 4n;
   }
-  if (a._1 === 2n) {
-    if (a._2 === 3n) {
-      if (a1.tag === 0) {
-        return 3n;
-      }
-      if (a1.tag === 1) {
-        return 4n;
-      }
-      if (a1._1 === 2n) {
-        return a1._2 === 3n ? 2n : 4n;
-      }
-      return 4n;
-    }
+  if (a._1 === 2n && a._2 === 3n) {
     if (a1.tag === 0) {
       return 3n;
     }
-    return a1.tag === 1 ? 4n : 4n;
+    if (a1.tag === 1) {
+      return 4n;
+    }
+    if (a1._1 === 2n) {
+      return a1._2 === 3n ? 2n : 4n;
+    }
+    return 4n;
   }
   if (a1.tag === 0) {
     return 3n;

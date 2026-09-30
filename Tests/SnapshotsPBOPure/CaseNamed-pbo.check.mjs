@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7)", () => M.test1(-7), "any: -7-7-7", false);
+check("test1(-1)", () => M.test1(-1), "any: -1-1-1", false);
+check("test1(0)", () => M.test1(0), "any: 000", false);
+check("test1(3)", () => M.test1(3), "any: 333", false);
+check("test1(12)", () => M.test1(12), "any: 121212", false);
+check("test2({ _1: -7, _2: -1, _3: 0 })", () => M.test2({ _1: -7, _2: -1, _3: 0 }), "-7-7-1-100", false);
+check("test2({ _1: -1, _2: 0, _3: 3 })", () => M.test2({ _1: -1, _2: 0, _3: 3 }), "-1-10033", false);
+check("test2({ _1: 0, _2: 3, _3: 12 })", () => M.test2({ _1: 0, _2: 3, _3: 12 }), "00331212", false);
 
 console.log(`CaseNamed-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

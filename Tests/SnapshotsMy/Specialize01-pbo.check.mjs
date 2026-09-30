@@ -42,6 +42,37 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(0)", () => M.test1(0), "count (0)", false);
+check("test1(1)", () => M.test1(1), "count (1)", false);
+check("test1(2)", () => M.test1(2), "count (2)", false);
+check("test1(5)", () => M.test1(5), "count (5)", false);
+check("test1(13)", () => M.test1(13), "count (13)", false);
+check("test2(0, \"\")", () => M.test2(0, ""), "count (0, )", false);
+check("test2(0, \"hello world\")", () => M.test2(0, "hello world"), "count (0, hello world)", false);
+check("test2(1, \"a\")", () => M.test2(1, "a"), "count (1, a)", false);
+check("test2(2, \"\")", () => M.test2(2, ""), "count (2, )", false);
+check("test2(0, \"abcabc\")", () => M.test2(0, "abcabc"), "count (0, abcabc)", false);
+check("test2(1, \"héllo, wörld\")", () => M.test2(1, "héllo, wörld"), "count (1, héllo, wörld)", false);
+check("test2(2, \"hello world\")", () => M.test2(2, "hello world"), "count (2, hello world)", false);
+check("test2(5, \"a\")", () => M.test2(5, "a"), "count (5, a)", false);
+check("test2(13, \"\")", () => M.test2(13, ""), "count (13, )", false);
+check("test2(2, \"abcabc\")", () => M.test2(2, "abcabc"), "count (2, abcabc)", false);
+check("test2(5, \"héllo, wörld\")", () => M.test2(5, "héllo, wörld"), "count (5, héllo, wörld)", false);
+check("test2(13, \"hello world\")", () => M.test2(13, "hello world"), "count (13, hello world)", false);
+check("test2(13, \"abcabc\")", () => M.test2(13, "abcabc"), "count (13, abcabc)", false);
+check("test3(\"\", 0)", () => M.test3("", 0), " (0)", false);
+check("test3(\"\", 2)", () => M.test3("", 2), " (2)", false);
+check("test3(\"a\", 1)", () => M.test3("a", 1), "a (1)", false);
+check("test3(\"hello world\", 0)", () => M.test3("hello world", 0), "hello world (0)", false);
+check("test3(\"\", 13)", () => M.test3("", 13), " (13)", false);
+check("test3(\"a\", 5)", () => M.test3("a", 5), "a (5)", false);
+check("test3(\"hello world\", 2)", () => M.test3("hello world", 2), "hello world (2)", false);
+check("test3(\"héllo, wörld\", 1)", () => M.test3("héllo, wörld", 1), "héllo, wörld (1)", false);
+check("test3(\"abcabc\", 0)", () => M.test3("abcabc", 0), "abcabc (0)", false);
+check("test3(\"hello world\", 13)", () => M.test3("hello world", 13), "hello world (13)", false);
+check("test3(\"héllo, wörld\", 5)", () => M.test3("héllo, wörld", 5), "héllo, wörld (5)", false);
+check("test3(\"abcabc\", 2)", () => M.test3("abcabc", 2), "abcabc (2)", false);
+check("test3(\"abcabc\", 13)", () => M.test3("abcabc", 13), "abcabc (13)", false);
 check("test4", () => M.test4, "total (3, ok)", false);
 check("test5", () => M.test5, "h", false);
 

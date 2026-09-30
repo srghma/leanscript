@@ -75,6 +75,10 @@ def «cands_lean_int_neg_succ_of_nat» : List Cand :=
 def «cands_lean_int_pow» : List Cand :=
   [⟨_, _, _, _, .inlined .bigint_int__bigint_nat__lean_int_pow⟩, ⟨_, _, _, _, .inlined .bigint_int__uint53__lean_int_pow⟩, ⟨_, _, _, _, .imported .int53__bigint_nat__lean_int_pow⟩, ⟨_, _, _, _, .imported .int53__uint53__lean_int_pow⟩]
 
+/-- The operations of `lean_int_repr`. -/
+def «cands_lean_int_repr» : List Cand :=
+  [⟨_, _, _, _, .inlined .bigint_int__lean_int_repr⟩, ⟨_, _, _, _, .inlined .int53__lean_int_repr⟩]
+
 /-- The operations of `lean_int_sub`. -/
 def «cands_lean_int_sub» : List Cand :=
   [⟨_, _, _, _, .inlined .bigint_int__lean_int_sub⟩, ⟨_, _, _, _, .imported .int53__lean_int_sub⟩]
@@ -151,6 +155,10 @@ def «cands_lean_nat_pow» : List Cand :=
 def «cands_lean_nat_pred» : List Cand :=
   [⟨_, _, _, _, .imported .bigint_nat__lean_nat_pred⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_pred⟩]
 
+/-- The operations of `lean_nat_repr`. -/
+def «cands_lean_nat_repr» : List Cand :=
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_nat_repr⟩, ⟨_, _, _, _, .inlined .uint53__lean_nat_repr⟩]
+
 /-- The operations of `lean_nat_shiftl`. -/
 def «cands_lean_nat_shiftl» : List Cand :=
   [⟨_, _, _, _, .inlined .bigint_nat__lean_nat_shiftl⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_shiftl⟩]
@@ -184,6 +192,7 @@ def candsNat? (name : String) : Option (List Cand) :=
   | "lean_int_neg" => some «cands_lean_int_neg»
   | "lean_int_neg_succ_of_nat" => some «cands_lean_int_neg_succ_of_nat»
   | "lean_int_pow" => some «cands_lean_int_pow»
+  | "lean_int_repr" => some «cands_lean_int_repr»
   | "lean_int_sub" => some «cands_lean_int_sub»
   | "lean_nat_abs" => some «cands_lean_nat_abs»
   | "lean_nat_add" => some «cands_lean_nat_add»
@@ -203,6 +212,7 @@ def candsNat? (name : String) : Option (List Cand) :=
   | "lean_nat_mul" => some «cands_lean_nat_mul»
   | "lean_nat_pow" => some «cands_lean_nat_pow»
   | "lean_nat_pred" => some «cands_lean_nat_pred»
+  | "lean_nat_repr" => some «cands_lean_nat_repr»
   | "lean_nat_shiftl" => some «cands_lean_nat_shiftl»
   | "lean_nat_shiftr" => some «cands_lean_nat_shiftr»
   | "lean_nat_sub" => some «cands_lean_nat_sub»

@@ -3,6 +3,7 @@ import JsTerm.Lower.Tail
 import JsTerm.Lower.Unroll
 import JsTerm.Lower.AddChain
 import JsTerm.Lower.Sink
+import JsTerm.Lower.MergeIte
 
 set_option autoImplicit false
 
@@ -147,10 +148,11 @@ def pairTagLoops (funs : List JsFun) : List JsFun := Id.run do
 /-- The functions `funs`, those that compute the same up to the literal initial value of their
     first mutable variable written as calls of one shared worker (put just before the first of
     them); first, the pairs of `pairTagLoops` without their tag, then the additions of
-    literals folded through constants (`JsTerm.Lower.AddChain`) and the constants read on one
-    path only computed on it (`JsTerm.Lower.Sink`). -/
+    literals folded through constants (`JsTerm.Lower.AddChain`), the constants read on one
+    path only computed on it (`JsTerm.Lower.Sink`) and the tests that end in the same
+    statements merged (`JsTerm.Lower.MergeIte`). -/
 def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
-  let funs := (pairTagLoops funs).map fun f => f.foldAdds.sink
+  let funs := (pairTagLoops funs).map fun f => f.foldAdds.sink.mergeIte
   let arr := funs.toArray.map fun _ => ()
   let names := funs.map (·.name)
   -- for each function: the worker put before it, and the call it is written as
