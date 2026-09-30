@@ -1,3 +1,32 @@
+# Summary of changes for run 49637ffa-a26f-4355-9e3a-c74256372169
+I made no code changes. The JavaScript generated for `Tests/SnapshotsPBOPure/BackendSemantics02.lean` already matches purescript-backend-optimizer's `BackendSemantics02.js`: both come down to a single constant, 97. So none of the three pipeline stages you listed needed a new optimisation.
+
+**The input:** `def test1 : Nat := 'a'.toNat`
+
+**PBO's output:**
+```js
+const test1 = 97;
+export { test1 };
+```
+
+**What each stage does:**
+- **Lean code → `Term`:** elaboration already reduces `'a'.toNat` to the literal `ret 97` (see `BackendSemantics02-Term-unoptimized.txt`).
+- **`Term` → optimised `Term`:** there is nothing left to simplify, so `BackendSemantics02-Term-optimized.txt` is the same as the unoptimised file.
+- **Converting to `JsTerm`, optimising and printing:** the literal comes out as a plain constant, not a zero-argument function.
+  - With the `pbo` preset, `Nat` is a JS number: `export const test1 = 97;` (`BackendSemantics02-pbo.js`).
+  - With the `faithful` preset, `Nat` is a BigInt: `export const test1 = 97n;` (`BackendSemantics02-faithful.js`). That `n` is a deliberate choice of how numbers are represented, not a missed optimisation.
+
+**Remaining differences from PBO, all style only:**
+- The constant is exported where it is defined (`export const`), instead of in a closing `export { test1 }`.
+- There is a JSDoc comment giving the type, which PBO's output doesn't have.
+
+**Checks I ran:**
+- I rebuilt the `leanscript` tool (`lake build leanscript` succeeded).
+- I regenerated this file's outputs with `leanscript --quiet --skip-empty --check`. The new files are identical to the committed ones (`git status` shows no changes).
+- The node checks pass 1 of 1 for both presets.
+
+There was nothing to commit, and no Properties-table entries changed. I listed no build targets because I edited no Lean files; the only build was the `leanscript` rebuild above.
+
 # Summary of changes for run 466f136c-66dc-441d-b487-7868036304be
 The JavaScript for `Tests/SnapshotsPBOPure/BackendSemantics01.lean` already gave the same four values as purescript-backend-optimizer's `BackendSemantics01.js`. I made one printing change that makes one line more readable than PBO's.
 
