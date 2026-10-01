@@ -13,6 +13,7 @@ public import LeanScript.Term.Optimize.InlineEval
 public import LeanScript.Term.Optimize.InlineRetEval
 public import LeanScript.Term.Optimize.JoinCtorEval
 public import LeanScript.Term.Optimize.OpenCallEval
+public import LeanScript.Term.Optimize.DelayEtaEval
 
 @[expose] public section
 
@@ -80,6 +81,11 @@ literals are dropped and neighbouring literals are merged (`#[a] ++ (#[b] ++ x) 
 `String.append`s (and of `String.push`es of a literal character) is regrouped to the left, its
 empty literals dropped and neighbouring literals merged (`"a" ++ ("b" ++ x) ++ "c"` is
 `("ab" ++ x) ++ "c"`, `LeanScript.Term.Optimize.StringAppend`).
+
+Then the delays that only force another delay (`Term.delayEta`,
+`LeanScript.Term.Optimize.DelayEta`): a known `val k := lazy (let x := e (); ret x)` (or the same
+`thunk` around `force e`) is `e` itself, which replaces every mention of `k` (so
+`fun f => (() => f())` is `fun f => f`).
 
 Then the inlining in tail position (`Term.inlineRet`, `LeanScript.Term.Optimize.InlineRet`):
 `let y := k a; ret y` is `ret e[a]` for a known closure computing `e`, whatever `e[a]` is,
@@ -411,12 +417,13 @@ end
     same other tests (`Term.zipTestWalk`), those of `Term.cseWalk`, the hoisting of the extern calls every
     path computes (`Term.hoistWalk`), the boolean conditions
     (`Term.condWalk`), the known constant literals written in place in append chains
-    (`Term.knownLits`), the append chains (`Term.appendWalk`), the inlining in tail position with dead bindings dropped even when the
+    (`Term.knownLits`), the append chains (`Term.appendWalk`), the delays that only force another
+    delay replaced by it (`Term.delayEta`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
     (`Term.arithWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.knownLits.appendWalk.joinCtor.openCall.inlineRet.arithWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -620,7 +627,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.condWalk_eval,
     Term.hoistWalk_eval, Term.cseWalk_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

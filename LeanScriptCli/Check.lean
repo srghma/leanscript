@@ -17,7 +17,8 @@ Only functions whose parameters and result are all of a *sample type* are checke
 printed as its array, `#[…]`), structures of such fields (a structure of one field is unboxed:
 its sample is its field's), and some unions; a parameter can also be a function of one
 argument (`Int → String`, `Nat → Nat`, …: `SType.fn`), passed a few fixed functions spelled in
-both languages.
+both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
+of the checked function are one call `()` of the delay it answers (`test1(() => true)()`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
 -/
@@ -57,11 +58,16 @@ inductive SType where
       that tell their arguments apart (`fun x => "[" ++ toString x ++ "]"`), spelled in Lean
       and in JavaScript. -/
   | fn (dom cod : SType)
+  /-- `Unit`: only as the domain of a lazy parameter (`f : Unit → Bool`, a JavaScript
+      `() => …`), or as a trailing parameter of the checked function (`(a b : Unit)`), whose run
+      of `Unit` parameters is one call `()` in JavaScript (the delays collapse into one). -/
+  | unit
   deriving Inhabited, BEq
 
 /-- The functions `dom → cod` the checks have samples of (`SType.fn`). -/
 def fnSampleOk : SType → SType → Bool
   | .nat, .string | .int, .string | .string, .string | .nat, .nat | .int, .int => true
+  | .unit, .bool | .unit, .nat | .unit, .int | .unit, .string => true
   | _, _ => false
 
 mutual
@@ -98,6 +104,7 @@ partial def treeOf? (e : Expr) (ind : InductiveVal) (lvls : List Level) :
 partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   let e ← instantiateMVars e
   if e.isConstOf ``Nat then return some .nat
+  if e.isConstOf ``Unit || e.isConstOf ``PUnit then return some .unit
   if e.isConstOf ``Int then return some .int
   if e.isConstOf ``Bool then return some .bool
   if e.isConstOf ``String then return some .string
@@ -137,7 +144,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       -- JavaScript value: no sample
       if t.hasAnyFVar (fun _ => true) then return none
       match ← stypeOf? t with
-      | some .float | some (.fn ..) | none => return none
+      | some .float | some (.fn ..) | some .unit | none => return none
       | some ft => out := out.push ft
     return some out.toList
   match fields? with
@@ -177,6 +184,8 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
   | .nat => [0, 1, 2, 5, 13].map fun n => ⟨mkNatLit n, intLit (cfg.natRepr == .bigint) n⟩
   | .int => [(-7 : Int), -1, 0, 1, 2, 3, 12].map fun i => ⟨toExpr i, intLit (cfg.intRepr == .bigint) i⟩
   | .bool => [⟨toExpr false, "false"⟩, ⟨toExpr true, "true"⟩]
+  -- a `Unit` parameter has no JavaScript argument (`checksOf` calls the delay with `()`)
+  | .unit => [⟨mkConst ``Unit.unit, ""⟩]
   -- the fixed-width integers: small ones, and the edges of the range (which overflow at the
   -- first addition) below 64 bits, where they are JavaScript numbers at every preset
   | .uint b =>
@@ -220,6 +229,10 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
     -- two functions, different from each other, whose answers show their argument
     let x : Expr := .bvar 0
     let lam (body : Expr) : Expr := mkLambda `x .default (elemTy dom) body
+    if dom == .unit then
+      -- a lazy value `Unit → cod`: two constant delays `() => c`
+      (samplesOf cfg cod nats |>.reverse.take 2).map fun c => ⟨lam c.lean, s!"() => {c.js}"⟩
+    else
     match cod with
     | .string =>
       let shown : Expr := match dom with
@@ -287,6 +300,7 @@ where
   /-- The Lean type of the elements of an array or a list sample. -/
   elemTy : SType → Expr
     | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
+    | .unit => mkConst ``Unit
     | _ => mkConst ``String
 
 /-- All combinations of samples of the parameter types, at most `cap` of them, spread over
@@ -482,7 +496,10 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
-      if rt matches .tree _ | .fn .. then return none
+      if rt matches .tree _ | .fn .. | .unit then return none
+      -- `Unit` parameters only at the end (one delay, called with `()` in JavaScript)
+      let firstUnit := ps.toList.findIdx (· == .unit)
+      unless (ps.toList.drop firstUnit).all (· == .unit) do return none
       return some (ps.toList, rt, tyPos.toList))
     | return none
   -- the arguments of the Lean call: `Nat` at the type parameters, the samples elsewhere
@@ -495,6 +512,12 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
         out := out.push (vs.headD (mkConst ``Nat))
         vs := vs.tail
     return out ++ vs.toArray
+  -- the JavaScript call: the `Unit` arguments dropped, one `()` for their run (a function of
+  -- `Unit` parameters only is exported as the constant it answers: no call)
+  let nArgs := (ps.filter (· != .unit)).length
+  let hasUnit := ps.contains .unit && nArgs > 0
+  let jsCall (name : String) (arity : Nat) (js : List String) : String :=
+    jsCall name arity (js.take nArgs) ++ (if hasUnit then "()" else "")
   let mut out : Array CheckCase := #[]
   let cap := if ps.any (· matches .tree _) then 48 else 24
   let strs ← if ps.contains .string then stringLitsOf n else pure []
@@ -538,6 +561,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
                           isFloat := res == .float }
       -- the version borrowing its parameters leaves them alone: called twice on the same
       -- arguments, it answers the same
+      let js := js.take nArgs
       if twice && !js.isEmpty then
         let xs := (List.range js.length).map fun i => s!"a{i}"
         let call := jsCall jsName arity xs

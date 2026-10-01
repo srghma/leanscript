@@ -8,6 +8,7 @@ import TermTests.Datatypes.RoseVariantsTest
 import TermTests.Optimize.WFTermTest
 import TermTests.Optimize.AppendTest
 import TermTests.Optimize.ArithTest
+import TermTests.Optimize.CseTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
@@ -1835,6 +1836,64 @@ def escapeIdentifiersSpec : Spec := describe "EscapeIdentifiers" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 1 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/EsPrecedence01.lean`: the repeated `f a` are shared, and the delay
+    `() => f()` that is left is `f` itself (`Term.delayEta`), so `test1` is `(f) => f`, where
+    purescript-backend-optimizer calls `f` up to three times. -/
+def esPrecedence01Spec : Spec := describe "EsPrecedence01" do
+  it "the optimised statement answers its argument, with no call" do
+    let t := CseTest.test1T (Δ := DSig.nil)
+    assertEq "calls before" 5 t.numCalls
+    assertEq "calls after" 0 (t.optimizeN 3).numCalls
+    assertEq "printed" ("val k1 [1] : ((Lazy Bool) → (Lazy Bool)) := " ++
+      "fun x2 [1] : (Lazy Bool) => (closed)\n  ret x2\nret k1") (t.optimizeN 3).pretty
+    for b in [false, true] do
+      assertEq s!"value at {b}" (CseTest.test1 (fun _ => b) () ()) ((t.optimizeN 3).run b)
+  it "Term.delayEta alone: the delay `() => f()` is `f`" do
+    let t := CseTest.etaT (Δ := DSig.nil)
+    assertEq "translated" ("val k1 [ω] : ((Lazy Bool) → (Lazy Bool)) := " ++
+      "fun x2 [ω] : (Lazy Bool) => (closed)\n  val k3 [ω] : (Lazy Bool) := lazy (open)\n" ++
+      "    let x4 [ω] : Bool := x2 ()\n    ret x4\n  ret k3\nret k1") t.pretty
+    -- the mention of the delay is `f`; the delay is then dead
+    assertEq "Term.delayEta" true ((t.delayEta.pretty.splitOn "  ret x2\nret k1").length > 1)
+    assertEq "then Term.dce" ("val k1 [1] : ((Lazy Bool) → (Lazy Bool)) := " ++
+      "fun x2 [1] : (Lazy Bool) => (closed)\n  ret x2\nret k1") t.delayEta.dce.pretty
+    assertEq "the calls are kept" t.numCalls t.delayEta.numCalls
+    for b in [false, true] do
+      assertEq s!"value at {b}" (CseTest.eta (fun _ => b) ()) (t.delayEta.run b)
+  it "Term.delayEta: a delay passed to a call is the delay it forces" do
+    let t := CseTest.etaArgT (Δ := DSig.nil)
+    assertEq "optimised" ("val k1 [1] : (((Lazy Nat) → Nat) → ((Lazy Nat) → Nat)) := " ++
+      "fun x2 [ω] : ((Lazy Nat) → Nat) => (closed)\n" ++
+      "  val k3 [1] : ((Lazy Nat) → Nat) := fun x4 [1] : (Lazy Nat) => (open)\n" ++
+      "    let x5 [1] : Nat := x2 x4\n    ret lean_nat_mul(x5, 2)\n  ret k3\nret k1")
+      (t.optimizeN 3).pretty
+    -- a delay denotes the value it holds: `g` is run on `Nat → Nat`
+    for (g, n) in [((fun x => x + 1 : Nat → Nat), 5), (fun x => x * 3, 2)] do
+      assertEq s!"value at {n}" (CseTest.etaArg (fun h => g (h ())) (fun _ => n))
+        ((t.optimizeN 3).run g n)
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/esPrecedence01"
+    IO.FS.createDirAll dir
+    let file := "EsPrecedence01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let l := "export const test1 = (f) => f;"
+      assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 2 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1855,6 +1914,7 @@ def spec : Spec := do
   defaultRulesSemigroupSpec
   defaultRulesSemigroup02Spec
   escapeIdentifiersSpec
+  esPrecedence01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

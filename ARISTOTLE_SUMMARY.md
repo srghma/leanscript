@@ -1,3 +1,38 @@
+# Summary of changes for run eb49fd69-3145-4583-8065-cbbc647ed39a
+`EsPrecedence01.test1` now compiles to `export const test1 = (f) => f;` under both presets (`pbo`, `faithful`). That beats the legacy purescript-backend-optimizer output, which still calls `f` up to three times plus `f(b)` and builds nested closures. The change is a new pass in the `Term -[optimize]-> Term` phase, and it is proved not to change `Term.eval`.
+
+**What was there before**
+- `-Term-unoptimized.txt`: `f` is called 5 times. `a`, `b` and `()` all have type `Unit`, so `f a`, `f b` and `f ()` are the same call.
+- `-Term-optimized.txt`: the existing passes had already shared these into one call, leaving `val k3 := lazy (let x4 := x2 (); ret x4); ret k3`. The JS was `(f) => () => f()`, a new delay that only calls `f`.
+- That one call is the whole answer, because `test1 f a b = f ()` (if `f ()` is false, `y` is true and the result is `f ()`; if true, everything is `f ()`).
+- `.check.mjs` had 0 checks, because parameters of type `Unit → Bool` and trailing `Unit` parameters had no samples.
+
+**The new pass, `Term.delayEta`** (`LeanScript/Term/Optimize/DelayEta.lean`)
+- A known delay whose body only forces another delay `e` and returns its value is `e` itself. This covers `lazy (let x := e (); ret x)` (that is, `() => e()`) and the same with `thunk`/`force`.
+- Every mention of such a delay is replaced by `e`, and the existing dead-code pass then removes the delay. Replacements are made only when the levels match, so the pass changes only the pure expressions in a statement, never its shape.
+- It runs inside `Term.optimize`, after `openCall` and before `inlineRet`.
+
+**Proofs** (`LeanScript/Term/Optimize/DelayEtaEval.lean`, no `sorry`, only the standard axioms)
+- `Term.delayEta_eval`: the pass does not change the result of evaluation.
+- `Term.numCalls_delayEta`: it keeps the number of calls the same.
+- The overall theorems that the optimizer preserves evaluation (`optimize_eval`, `optimizeN_eval`) and never adds calls (`numCalls_optimize`) were updated and still build.
+
+**Checks for lazy parameters** (`LeanScriptCli/Check.lean`)
+- A parameter of type `Unit → Bool/Nat/Int/String` now gets two sample delays, e.g. `() => true`.
+- A run of trailing `Unit` parameters becomes one `()` call, e.g. `test1(() => true)()`.
+- A function whose parameters are all `Unit` is exported as a constant, so it is read rather than called.
+- `EsPrecedence01` now has 2 checks per preset, and both pass.
+- `InlineCase01`, `InlineReferenceOpArrayLength` and `InlineReferenceRecordUpdate` also gained checks; all pass.
+
+**Tests**
+- `Tests/TermTests/Optimize/CseTest.lean`: the call count after optimization is now 0 (it was 1). I added two small examples, `eta` and `etaArg`; with `etaArg`, a delay passed as an argument to another function is also replaced by the delay it forces.
+- `Tests/Main.lean` has a new `esPrecedence01Spec`. It checks the call counts, the printed optimized `Term`, the values, the pass on its own, and runs `leanscript --check` with node on both presets. `lake exe tests` passes 104/104.
+- I regenerated all snapshots. No other JS output changed. The only failures are the existing "literal too big" errors in the `PrimOp*Configurable` files under `pbo`.
+
+This file has no recursion, so labeled blocks and loops don't come into it. I also updated the READMEs and the module docs. Everything is committed.
+
+One gap I left: Lean's `Thunk.mk (fun _ => t.get)` translates to a lazy wrapped around a thunk force, and the new pass does not simplify it. The two delay kinds differ, so it needs a separate rewrite, and this file doesn't use it.
+
 # Summary of changes for run 766b0177-2811-4150-9fbd-4e092f1dba76
 The output for `Tests/SnapshotsPBOPure/EscapeIdentifiers.lean` now uses the same escape style as purescript-backend-optimizer, and it improves on it: no two different Lean names can get the same JavaScript name, and I proved this in Lean.
 

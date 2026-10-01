@@ -42,6 +42,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("fn_prime", () => M.fn_prime, "{1, 2, 3}", false);
 check("extern1", () => M.extern1, "{42, 2, 3}", false);
 check("test2", () => M.test2, "3", false);
 

@@ -14,7 +14,7 @@ set_option autoImplicit false
 including inside closures, delays, loop bodies, branches and join points.  It measures what
 the optimiser saves: `Tests/TermTests/Optimize/CseTest.lean` states, for instance, that the
 optimiser takes the translation of `EsPrecedence01.test1`, which calls its lazy argument five
-times, to a statement that calls it once.
+times, to a statement that makes no call (it answers the argument itself).
 -/
 
 namespace LeanScript

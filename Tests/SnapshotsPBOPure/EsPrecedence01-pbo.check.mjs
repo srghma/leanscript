@@ -42,6 +42,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(() => true)()", () => M.test1(() => true)(), "true", false);
+check("test1(() => false)()", () => M.test1(() => false)(), "false", false);
 
 console.log(`EsPrecedence01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -42,6 +42,9 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(() => 12n)", () => M.test1(() => 12n), "#[1, 2, 12]", false);
+check("test1(() => 3n)", () => M.test1(() => 3n), "#[1, 2, 3]", false);
+check("fn_x27", () => M.fn_x27, "0", false);
 check("extern1", () => M.extern1, "#[1, 2, 0]", false);
 check("test3", () => M.test3, "#[1, 2, 0]", false);
 
