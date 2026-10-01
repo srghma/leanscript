@@ -42,16 +42,16 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("eval_({ tag: 0, _1: -7n })", () => M.eval_({ tag: 0, _1: -7n }), "-7", false);
-check("eval_({ tag: 0, _1: -1n })", () => M.eval_({ tag: 0, _1: -1n }), "-1", false);
-check("eval_({ tag: 1, _1: -7n, _2: -7n })", () => M.eval_({ tag: 1, _1: -7n, _2: -7n }), "-14", false);
-check("eval_({ tag: 1, _1: -7n, _2: -1n })", () => M.eval_({ tag: 1, _1: -7n, _2: -1n }), "-8", false);
-check("eval_({ tag: 1, _1: -1n, _2: -7n })", () => M.eval_({ tag: 1, _1: -1n, _2: -7n }), "-8", false);
-check("eval_({ tag: 1, _1: -1n, _2: -1n })", () => M.eval_({ tag: 1, _1: -1n, _2: -1n }), "-2", false);
-check("eval_({ tag: 2, _1: -7n, _2: -7n })", () => M.eval_({ tag: 2, _1: -7n, _2: -7n }), "49", false);
-check("eval_({ tag: 2, _1: -7n, _2: -1n })", () => M.eval_({ tag: 2, _1: -7n, _2: -1n }), "7", false);
-check("eval_({ tag: 2, _1: -1n, _2: -7n })", () => M.eval_({ tag: 2, _1: -1n, _2: -7n }), "7", false);
-check("eval_({ tag: 2, _1: -1n, _2: -1n })", () => M.eval_({ tag: 2, _1: -1n, _2: -1n }), "1", false);
+check("eval_x({ tag: 0, _1: -7n })", () => M.eval_x({ tag: 0, _1: -7n }), "-7", false);
+check("eval_x({ tag: 0, _1: -1n })", () => M.eval_x({ tag: 0, _1: -1n }), "-1", false);
+check("eval_x({ tag: 1, _1: -7n, _2: -7n })", () => M.eval_x({ tag: 1, _1: -7n, _2: -7n }), "-14", false);
+check("eval_x({ tag: 1, _1: -7n, _2: -1n })", () => M.eval_x({ tag: 1, _1: -7n, _2: -1n }), "-8", false);
+check("eval_x({ tag: 1, _1: -1n, _2: -7n })", () => M.eval_x({ tag: 1, _1: -1n, _2: -7n }), "-8", false);
+check("eval_x({ tag: 1, _1: -1n, _2: -1n })", () => M.eval_x({ tag: 1, _1: -1n, _2: -1n }), "-2", false);
+check("eval_x({ tag: 2, _1: -7n, _2: -7n })", () => M.eval_x({ tag: 2, _1: -7n, _2: -7n }), "49", false);
+check("eval_x({ tag: 2, _1: -7n, _2: -1n })", () => M.eval_x({ tag: 2, _1: -7n, _2: -1n }), "7", false);
+check("eval_x({ tag: 2, _1: -1n, _2: -7n })", () => M.eval_x({ tag: 2, _1: -1n, _2: -7n }), "7", false);
+check("eval_x({ tag: 2, _1: -1n, _2: -1n })", () => M.eval_x({ tag: 2, _1: -1n, _2: -1n }), "1", false);
 
 console.log(`RecursionSchemes01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

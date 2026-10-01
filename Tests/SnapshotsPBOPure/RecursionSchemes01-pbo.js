@@ -29,7 +29,7 @@ export const mapExprF = (f, a) => {
  * @param {({ tag: 0, _1: int53(number) } | { tag: 1, _1: int53(number), _2: int53(number) } | { tag: 2, _1: int53(number), _2: int53(number) })} a
  * @returns {int53(number)}
  */
-export const eval_ = (a) => {
+export const eval_x = (a) => {
   if (a.tag === 0) {
     return a._1;
   }

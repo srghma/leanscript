@@ -7,5 +7,6 @@ public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
 public import JsTerm.Lower.FromTerm
 public import JsTerm.Lower.Module
+public import JsTerm.Lower.Ident
 
 /-! # From `Term` to `JsTerm` (`JsTerm/Lower/`): externs as operations, the conversion, modules -/

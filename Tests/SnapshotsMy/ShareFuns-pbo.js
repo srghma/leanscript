@@ -25,7 +25,7 @@ export const swapSum = (p, q) => ({
  * @param {{ _1: uint53(number), _2: uint53(number) }} q
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
-export const swapSum_ = (p, q) => ({
+export const swapSum_x27 = (p, q) => ({
   _1: uint53__lean_nat_add(p._2, q._2),
   _2: uint53__lean_nat_add(p._1, q._1),
 });

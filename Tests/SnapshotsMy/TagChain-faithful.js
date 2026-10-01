@@ -8,7 +8,7 @@
  * `instInhabitedColour.default`
  * @type {enum3@0}
  */
-export const instInhabitedColour$default_ = 0;
+export const instInhabitedColour$default = 0;
 
 /**
  * `test2`

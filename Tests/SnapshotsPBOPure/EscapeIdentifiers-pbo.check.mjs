@@ -42,7 +42,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("a_b_________", () => M.a_b_________, "42", false);
+check("a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192", () => M.a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192, "42", false);
 
 console.log(`EscapeIdentifiers-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

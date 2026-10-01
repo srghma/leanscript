@@ -8,6 +8,8 @@ import JsTerm.Lower.FromTerm
 import JsTerm.Print.Mini
 import JsTerm.Print.Share
 import JsTerm.Lower.Module
+import JsTerm.Lower.Ident
+import LanguageJavascriptCommon.Unicode
 
 /-!
 # `leanscript`: Lean to JavaScript
@@ -177,13 +179,36 @@ def jsReserved : List String :=
    "implements", "interface", "package", "private", "protected", "public", "await",
    "arguments", "eval", "undefined", "NaN", "Infinity"]
 
+/-- Whether a name is not written as it is: a reserved word of JavaScript (`jsReserved`), or a
+    global name the printed code reads (`MoreJs.jsReservedNames`: `Math`, `String`, `BigInt`…;
+    the contextual keywords `async`, `of`, `get`, `set` are ordinary names). -/
+def jsReservedIdent (s : String) : Bool :=
+  jsReserved.contains s ||
+    (MoreJs.jsReservedNames.contains s && !["async", "of", "get", "set"].contains s)
+
+/-- Whether a character beyond ASCII may stand in an identifier: at its start (`ID_Start`) or
+    after it (`ID_Continue`). -/
+def jsIdChar (first : Bool) (c : Char) : Bool :=
+  if first then Language.JavaScript.Unicode.isIdStart c
+  else Language.JavaScript.Unicode.isIdContinue c
+
 /-- A JavaScript identifier for a Lean name component or binder name (never containing `$`,
-    which the generated names use). -/
+    which the generated names use): letters and digits are kept, other characters escaped by
+    their code points (`a.b` is `a_x2eb`, `foo'` is `foo_x27`), and no two names get the same
+    identifier (`MoreJs.Ident.ident_injective`). -/
 def jsIdent (s : String) : String :=
-  let s := String.ofList (s.toList.map fun c => if c.isAlphanum || c == '_' then c else '_')
+  MoreJs.Ident.ident jsIdChar jsReservedIdent s
+
+/-- A JavaScript name for a parameter: as `jsIdent`, but every other character is written `_`
+    (`x'` is `x_`) — a parameter is local, and `dedupNames` makes the names of a function
+    distinct. -/
+def jsParamName (s : String) : String :=
+  let s := String.ofList (s.toList.map fun c =>
+    if c.isAlphanum || c == '_' || (c.toNat ≥ 128 && jsIdChar false c) then c else '_')
   let s := if s.isEmpty then "_" else s
-  let s := if (s.front).isDigit then "_" ++ s else s
-  if jsReserved.contains s then s ++ "_" else s
+  let s := if s.front.isDigit || (s.front.toNat ≥ 128 && !jsIdChar true s.front) then "_" ++ s
+    else s
+  if jsReservedIdent s then s ++ "_" else s
 
 /-- Make parameter names distinct: a name met again (Lean allows two binders with the same
     name, and the anonymous binders of `Nat → Nat → Nat` are all `a`) gets a numeric suffix. -/
@@ -204,7 +229,7 @@ def dedupNames (ps : List String) : List String := Id.run do
     an identifier, joined by `$` (`ArrayTest.test1` is `ArrayTest$test1`; `jsIdent` never
     writes a `$`, so the separator cannot be confused with a part of a component). -/
 def jsFunName (n : Name) : String :=
-  "$".intercalate (n.components.map fun c => jsIdent (c.toString (escape := false)))
+  MoreJs.Ident.name jsIdChar jsReservedIdent (n.components.map (·.toString (escape := false)))
 
 /-- The path of an output file: the input path without `.lean`, then `suffix`. -/
 def outPath (o : CliOptions) (file : System.FilePath) (suffix : String) : System.FilePath :=
@@ -334,7 +359,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     | .ok (ct, ty, ps) =>
       let t := ct.term.optimizeN o.rounds
       let opt : ClosedTerm := { ct with term := if o.floatReassoc then t.floatReassoc else t }
-      done := done.push { name := n, ty, params := dedupNames (ps.map jsIdent), term := ct,
+      done := done.push { name := n, ty, params := dedupNames (ps.map jsParamName), term := ct,
                           optimized := opt.withOwnership }
     | .error e => refused := refused.push (n, e)
   -- the definitions that only rename one translated before them: another name of its function

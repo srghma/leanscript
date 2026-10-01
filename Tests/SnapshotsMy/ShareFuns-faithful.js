@@ -20,7 +20,7 @@ export const swapSum = (p, q) => ({ _1: p._2 + q._2, _2: p._1 + q._1 });
  * @param {{ _1: nat(bigint), _2: nat(bigint) }} q
  * @returns {{ _1: nat(bigint), _2: nat(bigint) }}
  */
-export const swapSum_ = (p, q) => ({ _1: p._2 + q._2, _2: p._1 + q._1 });
+export const swapSum_x27 = (p, q) => ({ _1: p._2 + q._2, _2: p._1 + q._1 });
 
 /**
  * `absDiff`

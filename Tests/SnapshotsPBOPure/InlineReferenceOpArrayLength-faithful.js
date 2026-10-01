@@ -18,7 +18,7 @@ export const test1 = (fn) => {
  * `fn'`
  * @type {int(bigint)}
  */
-export const fn_ = (() => {
+export const fn_x27 = (() => {
   const f$1 = () => 0n;
   return f$1();
 })();

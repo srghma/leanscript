@@ -42,16 +42,16 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
-check("eval_({ tag: 0, _1: -7 })", () => M.eval_({ tag: 0, _1: -7 }), "-7", false);
-check("eval_({ tag: 0, _1: -1 })", () => M.eval_({ tag: 0, _1: -1 }), "-1", false);
-check("eval_({ tag: 1, _1: -7, _2: -7 })", () => M.eval_({ tag: 1, _1: -7, _2: -7 }), "-14", false);
-check("eval_({ tag: 1, _1: -7, _2: -1 })", () => M.eval_({ tag: 1, _1: -7, _2: -1 }), "-8", false);
-check("eval_({ tag: 1, _1: -1, _2: -7 })", () => M.eval_({ tag: 1, _1: -1, _2: -7 }), "-8", false);
-check("eval_({ tag: 1, _1: -1, _2: -1 })", () => M.eval_({ tag: 1, _1: -1, _2: -1 }), "-2", false);
-check("eval_({ tag: 2, _1: -7, _2: -7 })", () => M.eval_({ tag: 2, _1: -7, _2: -7 }), "49", false);
-check("eval_({ tag: 2, _1: -7, _2: -1 })", () => M.eval_({ tag: 2, _1: -7, _2: -1 }), "7", false);
-check("eval_({ tag: 2, _1: -1, _2: -7 })", () => M.eval_({ tag: 2, _1: -1, _2: -7 }), "7", false);
-check("eval_({ tag: 2, _1: -1, _2: -1 })", () => M.eval_({ tag: 2, _1: -1, _2: -1 }), "1", false);
+check("eval_x({ tag: 0, _1: -7 })", () => M.eval_x({ tag: 0, _1: -7 }), "-7", false);
+check("eval_x({ tag: 0, _1: -1 })", () => M.eval_x({ tag: 0, _1: -1 }), "-1", false);
+check("eval_x({ tag: 1, _1: -7, _2: -7 })", () => M.eval_x({ tag: 1, _1: -7, _2: -7 }), "-14", false);
+check("eval_x({ tag: 1, _1: -7, _2: -1 })", () => M.eval_x({ tag: 1, _1: -7, _2: -1 }), "-8", false);
+check("eval_x({ tag: 1, _1: -1, _2: -7 })", () => M.eval_x({ tag: 1, _1: -1, _2: -7 }), "-8", false);
+check("eval_x({ tag: 1, _1: -1, _2: -1 })", () => M.eval_x({ tag: 1, _1: -1, _2: -1 }), "-2", false);
+check("eval_x({ tag: 2, _1: -7, _2: -7 })", () => M.eval_x({ tag: 2, _1: -7, _2: -7 }), "49", false);
+check("eval_x({ tag: 2, _1: -7, _2: -1 })", () => M.eval_x({ tag: 2, _1: -7, _2: -1 }), "7", false);
+check("eval_x({ tag: 2, _1: -1, _2: -7 })", () => M.eval_x({ tag: 2, _1: -1, _2: -7 }), "7", false);
+check("eval_x({ tag: 2, _1: -1, _2: -1 })", () => M.eval_x({ tag: 2, _1: -1, _2: -1 }), "1", false);
 
 console.log(`RecursionSchemes01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

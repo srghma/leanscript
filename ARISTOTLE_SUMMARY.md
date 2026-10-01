@@ -1,3 +1,44 @@
+# Summary of changes for run 766b0177-2811-4150-9fbd-4e092f1dba76
+The output for `Tests/SnapshotsPBOPure/EscapeIdentifiers.lean` now uses the same escape style as purescript-backend-optimizer, and it improves on it: no two different Lean names can get the same JavaScript name, and I proved this in Lean.
+
+**What was wrong**
+- The two output files differed only in the exported name. The Term files are just `ret 42`, so there was nothing to optimize.
+- Our old name was `a_b_________`, because every character that isn't allowed in an identifier became `_`. That loses information: `a.b`, `a'b` and `a_b` all came out as `a_b`.
+- PBO writes `a_u2eb_u20_u3f…_u2192`. Its escapes have no fixed length, so `_u2eb` could be read either as `.` then `b`, or as the single character U+02EB.
+
+**What it produces now**
+```js
+export const a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192 = 42;
+```
+- Each escape is as short as PBO's, but always has the same number of digits: `_xHH` for codes below 0x100, `_uHHHH` below 0x10000, and `_UHHHHHH` above that.
+- The Lean name really does contain a backslash (`«…\" →»`), which shows up as `_x5c`. The PureScript name has no backslash.
+- The other rules:
+  - Letters and digits stay as they are.
+  - Non-ASCII letters that JavaScript allows in identifiers (`α`) stay as they are.
+  - `_` stays, unless the next character is `x`, `u` or `U`, so it can't be mistaken for the start of an escape.
+  - A digit at the start is escaped.
+  - Reserved words and globals the generated code relies on (`class`, `Math`) get `_x` added at the end.
+  - Name parts are joined with `$`.
+
+**Where the change lives.** This is about naming, not optimization, so neither the Term nor the JsTerm optimizer could handle it. It sits in the Term → JsTerm conversion step, in a new file, `JsTerm/Lower/Ident.lean`. `LeanScriptCli/Main.lean` now uses it for exported names. Parameter names keep their short form (`x'` → `x_`), because they are local and duplicates are already renamed. The labeled blocks/loops preference doesn't come into play: this file has no recursion.
+
+**Proof.** `MoreJs.Ident.name_injective` says two non-empty Lean names with the same JavaScript name are equal. It is proved by decoding: `decodeName_name` recovers the original name from the JavaScript one. The file has no `sorry`, and the proof uses only the standard axioms.
+
+**Tests**
+- I added `escapeIdentifiersSpec` to `Tests/Main.lean`. It checks sample escapes and that names decode back, then runs `leanscript --check` on this file and confirms both presets' node checks pass.
+- `lake exe tests` passes 100/100.
+- I regenerated all snapshots. The only failures are the existing `PrimOp*Configurable` "literal too big" ones under the pbo preset.
+- Other exported names that changed, with their node checks still passing:
+
+| Before | Now |
+|---|---|
+| `instInhabitedColour$default_` | `instInhabitedColour$default` (reserved words are now checked against the whole name, not each part) |
+| `swapSum_` | `swapSum_x27` (from `swapSum'`) |
+| `fn_` | `fn_x27` (from `fn'`) |
+| `eval_` | `eval_x` |
+
+Everything is committed.
+
 # Summary of changes for run 7b417144-dae3-4fc6-89da-213e81ee6e7b
 The generated JavaScript for `DefaultRulesSemigroup02` now matches the legacy purescript-backend-optimizer output, and is ahead of it in a few places. Both presets (`pbo`, `faithful`) pass all 244 generated runtime checks.
 

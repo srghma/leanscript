@@ -12,6 +12,7 @@ import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
 import JsTerm.Lower.Module
+import JsTerm.Lower.Ident
 import JsTerm.Syntax.Pretty
 
 /-!
@@ -1794,6 +1795,46 @@ def defaultRulesSemigroup02Spec : Spec := describe "DefaultRulesSemigroup02" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 244 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- The JavaScript names of Lean names (`MoreJs.Ident`): escaped by code points, read back. -/
+def escapeIdentifiersSpec : Spec := describe "EscapeIdentifiers" do
+  -- characters beyond ASCII kept: only `α` here (the tool asks `ID_Start` / `ID_Continue`)
+  let idc : Bool → Char → Bool := fun _ c => c == 'α'
+  let res : String → Bool := fun s => ["class", "Math"].contains s
+  it "escapes every other character by its code point" do
+    for (n, js) in [("a.b ?$$ \\\" →", "a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192"),
+        ("foo'", "foo_x27"), ("x_x", "x_x5fx"), ("a_b", "a_b"), ("class", "class_x"),
+        ("", "_x"), ("1abc", "_x31abc"), ("α₁", "α_u2081"), ("😀", "_U01f600")] do
+      assertEq n js (MoreJs.Ident.ident idc res n)
+    assertEq "Foo.bar" "Foo$bar" (MoreJs.Ident.name idc res ["Foo", "bar"])
+  it "reads the names back" do
+    for ns in [["a.b ?$$ \\\" →"], ["foo'", "x_x"], ["class"], [""], ["_u", "a$b"], ["😀", "1"]] do
+      assertEq s!"{ns}" ns (MoreJs.Ident.decodeName (MoreJs.Ident.name idc res ns))
+  it "the export of purescript-backend-optimizer's EscapeIdentifiers (needs node and leanscript)" do
+    -- purescript-backend-optimizer: `a_u2eb_u20_u3f_u24_u24_u20_u22_u20_u2192` (its escapes have
+    -- no fixed width: `_u2eb` may be `.` then `b`).  Ours: fixed widths, read back exactly (the
+    -- Lean name holds a backslash, `_x5c`).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/escapeIdentifiers"
+    IO.FS.createDirAll dir
+    let file := "EscapeIdentifiers"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, v) in [("pbo", "42"), ("faithful", "42n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let l := s!"export const a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192 = {v};"
+      assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 1 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1813,6 +1854,7 @@ def spec : Spec := do
   defaultRulesMonoidSpec
   defaultRulesSemigroupSpec
   defaultRulesSemigroup02Spec
+  escapeIdentifiersSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

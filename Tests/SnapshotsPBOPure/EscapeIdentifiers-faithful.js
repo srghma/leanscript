@@ -5,4 +5,4 @@
  * `«a.b ?$$ \" →»`
  * @type {int(bigint)}
  */
-export const a_b_________ = 42n;
+export const a_x2eb_x20_x3f_x24_x24_x20_x5c_x22_x20_u2192 = 42n;
