@@ -205,12 +205,8 @@ so it can only be used by a function generic in the index
 #guard_msgs in
 #leanscript_to_term headNat
 
--- `Unit` and `Empty` elements stay refused (a unit-like or an empty field)
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
+-- a `Unit` element is a constructor field of `Unit`, erased (`isUnitField`): `Nest Unit` is read
+-- with field-less elements; an `Empty` element stays refused (an empty field)
 #guard_msgs in
 leanscript_signature ProgUnit where
   u := Nest Unit

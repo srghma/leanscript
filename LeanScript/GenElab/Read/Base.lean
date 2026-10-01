@@ -59,14 +59,27 @@ def builtinListOption : Name := `leanscript.builtinList
 def useBuiltinList : MetaM Bool :=
   return (← getOptions).getBool builtinListOption false
 
-/-- Is a field of this type erased: a proof or an instance?  (A `Unit` field is **not**
-    erased: `Unit` has one value, so it has no type in the language, and a constructor with
-    such a field is refused like every other unit-like type.  Two values are `Bool`, never
-    `Option Unit`.) -/
+/-- Is a field of this type erased: a proof or an instance?  (A `Unit` field of a
+    constructor is erased too, but only there: see `isUnitField`.) -/
 def isErasedField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
   if ← isProp t then return true
   if bi.isInstImplicit then return true
   return (← isClass? t).isSome
+
+/-- Is a constructor field of this type erased because it is `Unit` (`PUnit`)?  `Unit` has one
+    value, so a field of it carries no information: it is dropped from the constructor, and
+    the value of the field is `()` wherever it is read.  So `Option Unit` has two field-less
+    constructors, and is read as `Bool` (two values are only ever `Bool`: `none` is `false`,
+    `some ()` is `true`), and `Nat × Unit` as `Nat`.  `Unit` itself still has no type in the
+    language (a value of type `Unit` that is not a constructor field is refused). -/
+def isUnitField (t : Expr) : MetaM Bool := do
+  let t ← whnfR t
+  return t.isConstOf ``Unit || t.getAppFn.isConstOf ``PUnit
+
+/-- Is a constructor field of this type erased (`isErasedField`, `isUnitField`)? -/
+def isErasedCtorField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
+  if ← isErasedField bi t then return true
+  isUnitField t
 
 /-- The inductive family (with indices, valued in `Type`) a type is a full application of:
     its information, universe levels, parameters and indices. -/

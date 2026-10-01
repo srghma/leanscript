@@ -49,9 +49,9 @@ export const addAfter = (fuel, a, b) => {
  * @returns {nat(bigint)}
  */
 export const sumShifted = (k) => {
-  const k$2 = (x$1) => x$1 * k;
-  const x$3 = k$2(1n);
-  return x$3 + k$2(2n) + k$2(3n);
+  const x$1 = k * 2n;
+  const x$2 = k * 3n;
+  return k + x$1 + x$2;
 };
 
 /**

@@ -5,23 +5,21 @@
 -- test1 : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)
-    let x16 [1] : ([Nat] | [Nat]) := nat_rec x4 ctor#1(0) fun acc5 i6 => (open)
+    let x14 [1] : ([Nat] | [Nat]) := nat_rec x4 ctor#1(0) fun acc5 i6 => (open)
       case acc5 of
       | ctor#0(f7 [1] : Nat) =>
         ret ctor#0(f7)
       | ctor#1(f8 [1] : Nat) =>
-        val k9 [ω] : (Nat → Nat) := fun x10 [1] : Nat => (open)
-          ret lean_nat_add(x10, x2)
-        let x11 [1] : Nat := k9 1
-        let x12 [1] : Nat := k9 2
-        let x13 [1] : Nat := k9 3
-        let x14 [1] : Nat := share lean_nat_add(lean_nat_add(x11, x12), x13)
-        let x15 [1] : Nat := share lean_nat_add(f8, x14)
-        ret ctor#1(x15)
-    case x16 of
-    | ctor#0(f17 [1] : Nat) =>
-      ret f17
-    | ctor#1(f18 [1] : Nat) =>
-      ret f18
+        let x9 [1] : Nat := share lean_nat_add(x2, 1)
+        let x10 [1] : Nat := share lean_nat_add(x2, 2)
+        let x11 [1] : Nat := share lean_nat_add(x2, 3)
+        let x12 [1] : Nat := share lean_nat_add(lean_nat_add(x9, x10), x11)
+        let x13 [1] : Nat := share lean_nat_add(f8, x12)
+        ret ctor#1(x13)
+    case x14 of
+    | ctor#0(f15 [1] : Nat) =>
+      ret f15
+    | ctor#1(f16 [1] : Nat) =>
+      ret f16
   ret k3
 ret k1

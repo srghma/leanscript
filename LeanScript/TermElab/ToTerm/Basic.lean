@@ -176,9 +176,18 @@ def Loc.mentionsFn (L : Loc) (e : Expr) : Bool :=
 
 /-- For a constructor of an inductive type of two constructors whose fields are all proofs
     (`Decidable`, `Bool`): the `Bool` it is read as (the second constructor is `true`). -/
-def twoPointCtor? (cinfo : ConstructorVal) : MetaM (Option Bool) := do
+def twoPointCtor? (cinfo : ConstructorVal) (us : List Level := []) (args : Array Expr := #[]) :
+    MetaM (Option Bool) := do
   let ind ← getConstInfoInduct cinfo.induct
   unless ind.ctors.length == 2 && ind.numIndices == 0 do return none
+  -- at its parameters, when they are given: a constructor whose fields are all erased there
+  -- (`Option.some () : Option Unit`, its `Unit` field erased, `isUnitField`)
+  if cinfo.numParams > 0 && args.size ≥ cinfo.numParams then
+    let ps := args[:cinfo.numParams].toArray
+    for ctor in ind.ctors do
+      let mask ← ctorErasedMask ctor us ps
+      unless mask.all id do return none
+    return some (cinfo.cidx == 1)
   for ctor in ind.ctors do
     let ci ← getConstInfoCtor ctor
     let allProofs ← forallTelescope ci.type fun xs _ => do

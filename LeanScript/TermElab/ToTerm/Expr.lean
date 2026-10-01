@@ -118,9 +118,9 @@ partial def trProj (L : Loc) (S : Name) (i : Nat) (s : Expr) : TM Src := do
   for k in [0:i + 1] do
     ty ← whnf ty
     let .forallE _ d b bi := ty | fail m!"bad projection of `{S}`"
-    let erased ← isErasedField bi d
+    let erased ← isErasedCtorField bi d
     if k = i then
-      if erased then fail m!"the field {i} of `{S}` is a proof or an instance"
+      if erased then fail m!"the field {i} of `{S}` is a proof, an instance or a `Unit`"
     else if !erased then q := q + 1
     ty := b.instantiate1 (mkProj S k s)
   let n := plan.ctors[0]!.2.size
@@ -289,7 +289,7 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if let some (.ctorInfo cinfo) := env.find? c then
       -- a constructor of a type of two values without fields (`Decidable.isTrue h`, the proof
       -- erased) is a `.bool`: the second constructor is `true`
-      if let some b ← twoPointCtor? cinfo then return Src.boolLit b
+      if let some b ← twoPointCtor? cinfo fn.constLevels! args then return Src.boolLit b
       -- a wrapper of one value (`Fin.mk n v h`, `Subtype.mk v h`, `Vector.mk a h`) is erased
       -- to that value, also when its parameters mention locals (`⟨0, h⟩ : Fin c.n`)
       if let some a ← wrapperField? cinfo args then

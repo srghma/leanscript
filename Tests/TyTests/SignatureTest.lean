@@ -163,13 +163,8 @@ has one constructor and no field (it has one value)
 leanscript_signature Bad₂ where
   u := Unit
 
--- A `Unit` field is not erased: `Unit` has one value, so `Option Unit` (two points, which are
--- only ever `bool`) is refused like `Unit` itself.
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
+-- A `Unit` field of a constructor is erased (`isUnitField`): `Option Unit` has two field-less
+-- constructors, and is read as `bool` (while `Unit` itself is refused, above).
 #guard_msgs in
 leanscript_signature Bad₄ where
   u := Option Unit

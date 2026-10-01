@@ -16,10 +16,10 @@ export const test1 = (k, n) => {
     if (a$3.tag === 0) {
       acc$1 = a$3;
     } else {
-      const k$5 = (x$4) => x$4 + k;
-      const x$6 = k$5(1n);
-      const x$7 = k$5(2n);
-      acc$1 = { tag: 1, _1: a$3._1 + (x$6 + x$7 + k$5(3n)) };
+      const x$4 = k + 1n;
+      const x$5 = k + 2n;
+      const x$6 = k + 3n;
+      acc$1 = { tag: 1, _1: a$3._1 + (x$4 + x$5 + x$6) };
     }
   }
   return acc$1._1;

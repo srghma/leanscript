@@ -47,7 +47,7 @@ namespace LeanScript.Gen
 def erasedFields (xs : Array Expr) (res : Expr) : MetaM (Array Bool) := do
   let base ← xs.mapM fun x => do
     let d ← x.fvarId!.getDecl
-    isErasedField d.binderInfo d.type
+    isErasedCtorField d.binderInfo d.type
   -- the field that is the index of a type-indexed family (`α` in `Nest.cons {α} a r`) is
   -- erased: the family is read at one index (`canonIndex`)
   if let some (info, _, _, resIdx) ← familyApp? (← whnf res) then

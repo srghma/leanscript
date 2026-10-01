@@ -34,11 +34,9 @@ export const addAfter = (fuel, a, b) => {
  * @returns {uint53(number)}
  */
 export const sumShifted = (k) => {
-  const k$2 = (x$1) => uint53__lean_nat_mul(x$1, k);
-  const x$3 = k$2(1);
-  const x$4 = k$2(2);
-  const x$5 = k$2(3);
-  return uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$4), x$5);
+  const x$1 = uint53__lean_nat_mul(k, 2);
+  const x$2 = uint53__lean_nat_mul(k, 3);
+  return uint53__lean_nat_add(uint53__lean_nat_add(k, x$1), x$2);
 };
 
 /**

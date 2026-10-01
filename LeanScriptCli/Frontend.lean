@@ -133,6 +133,10 @@ def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
   let .defnInfo d := ci | return some .silent
   if isAuxRecursor env n || isNoConfusion env n || isMatcherCore env n then return some .silent
   if (← isInstance n) then return some .silent
+  -- the parser of a notation (`infixl`, `notation`, `syntax`): part of the syntax of the file,
+  -- not of its program
+  if d.type.isConstOf ``Lean.ParserDescr || d.type.isConstOf ``Lean.TrailingParserDescr then
+    return some .silent
   if (env.getProjectionFnInfo? n).isSome then return some .silent
   -- the auxiliary definitions Lean generates next to a definition
   let auxComponent (s : String) : Bool :=

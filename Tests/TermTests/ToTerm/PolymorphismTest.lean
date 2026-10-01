@@ -98,12 +98,13 @@ def swapT := #leanscript_to_term swap
 
 theorem swapT_run (a : P0) (b : P1) : (swapT (Δ := DSig.nil)).run (a, b) = swap (a, b) := rfl
 
-/-- `Option Unit` is `Option P` for the generalisation (`isSome` never looks at the value). -/
+/-- `Option Unit` is read as `Bool` (its `Unit` field erased, `isUnitField`): `some ()` is
+    `true`. -/
 def isSomeU (o : Option Unit) : Bool := o.isSome
 def isSomeUT := #leanscript_to_term isSomeU
 
-theorem isSomeUT_run (o : Option P0) :
-    (isSomeUT (Δ := DSig.nil)).run o = isSomeU._leanscript_unit_gen P0 o := by
+theorem isSomeUT_run (o : Option Unit) :
+    (isSomeUT (Δ := DSig.nil)).run o.isSome = isSomeU o := by
   cases o <;> rfl
 
 /-- A rank-2 parameter used at two different instances is refused (the language reads a

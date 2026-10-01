@@ -1533,6 +1533,47 @@ console.log([M.test1(f, g, 'u'), M.test2(f, g, 'u'), M.test3(f, g, 'u'), M.test4
         "f(1,g(foo,u))|f(1,g(foo,u))|f(g(1,2),3)|f(b,a)|a|a"
         run.stdout.trimAscii.toString
 
+def defaultRulesFunctorSpec : Spec := describe "DefaultRulesFunctor01" do
+  it "every function is one test of the option, with no closure (needs node and leanscript)" do
+    -- purescript-backend-optimizer (`legacy-backend/DefaultRulesFunctor01.js`) writes each
+    -- function as one test of the option and a new option.  Ours: the same test; `test2`
+    -- (`Option Unit`, its `Unit` field erased) is a boolean, and `test5` answers its argument
+    -- itself when it is a `some` (the join point is written at its jumps, `Term.joinCtor`, and
+    -- the call of `const` opened, `Term.openCall`).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesFunctor"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesFunctor01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let n := if preset == "pbo" then "" else "n"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: every function translated" 1 (js.splitOn "not translated").length
+      assertEq s!"{file}-{preset}: no closure" 1 (js.splitOn "=> f").length
+      assertEq s!"{file}-{preset}: test2 is a boolean" true
+        ((js.splitOn "export const test2 = (mb) => mb.tag !== 0;").length > 1)
+      assertEq s!"{file}-{preset}: test5 answers its argument" true
+        ((js.splitOn "  return mb;\n};").length > 1)
+      let script := s!"import * as M from '{dir}/{file}-{preset}.js';
+const none = \{ tag: 0 }, some = (x) => (\{ tag: 1, _1: x });
+const show = (o) => typeof o === 'boolean' ? String(o) : o.tag === 0 ? 'none' : 'some ' + o._1;
+console.log([M.test1(none), M.test1(some(-3{n})), M.test2(none), M.test2(some('a')),
+  M.test3(none), M.test3(some('a')), M.test4(none), M.test4(some('a')),
+  M.test5(none), M.test5(some('a'))].map(show).join('|'));"
+      let run ← IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      assertEq s!"{file}-{preset}: node -e" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: the answers"
+        "none|some -3|false|true|none|some 42|none|some 42|none|some a"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1546,6 +1587,7 @@ def spec : Spec := do
   caseStringSpec
   caseSumSpec
   defaultRulesFunctionSpec
+  defaultRulesFunctorSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

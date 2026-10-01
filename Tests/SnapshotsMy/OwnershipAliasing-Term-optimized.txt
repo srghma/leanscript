@@ -8,10 +8,8 @@
 -- alias1 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   let x3 [ω] : (Array Nat) := share lean_mk_array(x2, 1)
-  val k4 [1] : (Nat → (Array Nat)) := fun x5 [1] : Nat => (open)
-    ret lean_array_push(x3, x5)
-  let x6 [1] : (Array Nat) := k4 x2
-  ret lean_array_append(x6, x3)
+  let x4 [1] : (Array Nat) := share lean_array_push(x3, x2)
+  ret lean_array_append(x4, x3)
 ret k1
 
 -- alias2 : Nat → Array Nat
@@ -78,10 +76,8 @@ ret k1
 val k1 [1] : ((Array Nat) → (Nat → (Array Nat))) := fun x2 [ω] : (Array Nat) => (closed)
   val k3 [1] : (Nat → (Array Nat)) := fun x4 [ω] : Nat => (open)
     let x5 [ω] : (Array Nat) := share lean_mk_array(x4, 4)
-    val k6 [1] : (Nat → (Array Nat)) := fun x7 [ω] : Nat => (open)
-      ret cond(lean_nat_dec_eq__Nat_decEq(x7, 0), x5, lean_array_push(x5, x7))
-    let x8 [1] : (Array Nat) := k6 x4
-    ret lean_array_append(lean_array_append(lean_array_push(x8, 9), x5), x2)
+    let x6 [1] : (Array Nat) := share cond(lean_nat_dec_eq__Nat_decEq(x4, 0), x5, lean_array_push(x5, x4))
+    ret lean_array_append(lean_array_append(lean_array_push(x6, 9), x5), x2)
   ret k3
 ret k1
 

@@ -21,8 +21,10 @@ import {
  */
 export const alias1 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(n, 1n);
-  const k$3 = (x$2) => array__lean_array_push_immutable(x$1, x$2);
-  return array__lean_array_append_mutable(k$3(n), x$1);
+  return array__lean_array_append_mutable(
+    array__lean_array_push_immutable(x$1, n),
+    x$1,
+  );
 };
 
 /**
@@ -139,11 +141,12 @@ export const alias5$$mut_0 = (a, c) => {
  */
 export const alias6 = (a, n) => {
   const x$1 = bigint_nat__lean_mk_array(n, 4n);
-  const k$3 = (x$2) =>
-    x$2 === 0n ? x$1 : array__lean_array_push_immutable(x$1, x$2);
   return array__lean_array_append_mutable(
     array__lean_array_append_mutable(
-      array__lean_array_push_immutable(k$3(n), 9n),
+      array__lean_array_push_immutable(
+        n === 0n ? x$1 : array__lean_array_push_immutable(x$1, n),
+        9n,
+      ),
       x$1,
     ),
     a,

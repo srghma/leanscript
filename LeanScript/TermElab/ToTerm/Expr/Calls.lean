@@ -117,7 +117,7 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
   for a in args[cinfo.numParams:] do
     ty ← whnf ty
     let .forallE _ d b bi := ty | return none
-    unless ← isErasedField bi d do kept := kept.push a
+    unless ← isErasedCtorField bi d do kept := kept.push a
     ty := b.instantiate1 a
   return if kept.size == 1 then some kept[0]! else none
 

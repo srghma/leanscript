@@ -23,12 +23,12 @@ export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
  */
 export const test6 = (n, i) => {
   if (i < [{ tag: 1, _1: n }, { tag: 0 }].length) {
-    const x$1 = uint53__lean_array_get(
+    const s$1 = uint53__lean_array_get(
       { tag: 0 },
       [{ tag: 1, _1: n }, { tag: 0 }],
       i,
     );
-    return x$1.tag === 0 ? 1 : x$1._1;
+    return s$1.tag === 0 ? 1 : s$1._1;
   }
   return 2;
 };

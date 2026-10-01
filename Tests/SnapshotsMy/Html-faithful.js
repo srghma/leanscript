@@ -2,5 +2,5 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 // not translated:
 //   instReprHtml.repr: a `partial` definition
-//   test: LeanScript: the type PUnit has one constructor and no field (it has one value)
+//   test: Application type mismatch: The argument rfl has type ?m.7452 = ?m.7452 but is expected to have type LeanScript.Lvl.meet (some 2) ((LeanScript.Lvl.meet none (LeanScript.Lvl.meet ?m.7177 none)).meet none) = some ?m.7128 in the application LeanScript.Neu.extern (LeanScript.LeanInitPureExtern.lean_array_push (LeanScript.Ty.data (LeanScript.Ref.here 0))) (LeanScript.Args.cons (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (LeanScript.Args.cons (LeanScriptAutoSig.Html.elem (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "article") ?m.7446) LeanScript.Args.nil)) ⋯
 

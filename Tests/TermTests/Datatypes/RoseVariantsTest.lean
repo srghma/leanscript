@@ -348,14 +348,9 @@ example : roseSSizeT.run roseST.run = (3 : Nat) := by kernel_rfl
 
 /-! ## Refusals: no, one or two values -/
 
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
-#guard_msgs in
-leanscript_signature Bad₁ where
-  t := RoseTreeL Unit
+-- (`RoseTreeL Unit` and `RoseTreeA Unit` are not refused: a `Unit` label is a constructor field
+-- of `Unit`, erased (`isUnitField`), so their nodes are label-less.  They are not declared here,
+-- so that `Prog` stays the signature the proofs read.)
 
 /--
 error: LeanScript: the type
@@ -365,15 +360,6 @@ has no constructor (it has no value)
 #guard_msgs in
 leanscript_signature Bad₂ where
   t := RoseTreeF Empty
-
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
-#guard_msgs in
-leanscript_signature Bad₃ where
-  t := RoseTreeA Unit
 
 /-- Children on a function from `Fin m` to a type of one value are refused too. -/
 inductive UF where

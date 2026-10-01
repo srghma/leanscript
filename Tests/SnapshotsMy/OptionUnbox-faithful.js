@@ -23,12 +23,12 @@ export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
  */
 export const test6 = (n, i) => {
   if (i < BigInt([{ tag: 1, _1: n }, { tag: 0 }].length)) {
-    const x$1 = bigint_nat__lean_array_get(
+    const s$1 = bigint_nat__lean_array_get(
       { tag: 0 },
       [{ tag: 1, _1: n }, { tag: 0 }],
       i,
     );
-    return x$1.tag === 0 ? 1n : x$1._1;
+    return s$1.tag === 0 ? 1n : s$1._1;
   }
   return 2n;
 };
