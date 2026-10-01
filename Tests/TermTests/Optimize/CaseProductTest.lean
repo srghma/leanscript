@@ -25,7 +25,9 @@ else …) else (b == 4 ? "2" : "catch")` is `if b == 4 then "2" else if a == 4 t
 * `test1_optimized_run`: for **every** `⟨a, b, c⟩`, the optimised statement (`Term.optimizeN 3`,
   the `Term → Term` phase of the pipeline) computes `test1 ⟨a, b, c⟩`.
 * `test1_optimized_pretty`: the optimised statement is the one of
-  `CaseProduct-Term-optimized.txt`, with the test of `b == 4` made first.
+  `CaseProduct-Term-optimized.txt`, with the test of `b == 4` made first, and the three tests
+  of `⟨4, 5, 6⟩`, which all fall through to `"catch"`, merged into one condition
+  `a == 4 && b == 5 && c == 6` (`Term.mergeTestWalk`), as in the legacy output.
 -/
 
 namespace CaseProductTest
@@ -82,7 +84,8 @@ theorem test1_optimized_run (a b c : Nat) :
 
 /-- The optimised statement of `test1` is the one of
     `Tests/SnapshotsPBOPure/CaseProduct-Term-optimized.txt` (checked with `native_decide`, since
-    the printer is compiled code): when the first field is not `1`, `b == 4` is tested first. -/
+    the printer is compiled code): when the first field is not `1`, `b == 4` is tested first,
+    then `a == 4 && b == 5 && c == 6` as one condition. -/
 theorem test1_optimized_pretty :
     ((test1T (Δ := DSig.nil)).optimizeN 3).pretty =
       "val k1 [1] : ((Nat × Nat × Nat) → String) := fun x2 [1] : (Nat × Nat × Nat) => (closed)\n" ++
@@ -96,13 +99,9 @@ theorem test1_optimized_pretty :
       "    if lean_nat_dec_eq__Nat_decEq(f4, 4) then\n" ++
       "      ret \"2\"\n" ++
       "    else\n" ++
-      "      if lean_nat_dec_eq__Nat_decEq(f3, 4) then\n" ++
-      "        if lean_nat_dec_eq__Nat_decEq(f4, 5) then\n" ++
-      "          ret cond(lean_nat_dec_eq__Nat_decEq(f5, 6), \"3\", \"catch\")\n" ++
-      "        else\n" ++
-      "          ret \"catch\"\n" ++
-      "      else\n" ++
-      "        ret \"catch\"\n" ++
+      "      ret cond(cond(cond(lean_nat_dec_eq__Nat_decEq(f3, 4), " ++
+      "lean_nat_dec_eq__Nat_decEq(f4, 5), false), lean_nat_dec_eq__Nat_decEq(f5, 6), false), " ++
+      "\"3\", \"catch\")\n" ++
       "ret k1" := by
   native_decide
 

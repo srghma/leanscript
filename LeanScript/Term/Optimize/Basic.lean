@@ -5,6 +5,7 @@ public import LeanScript.Term.Optimize.Hoist
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.Cond
 public import LeanScript.Term.Optimize.ShareTest
+public import LeanScript.Term.Optimize.MergeTest
 public import LeanScript.Term.Optimize.ZipTest
 public import LeanScript.Term.Optimize.Append
 public import LeanScript.Term.Optimize.KnownLit
@@ -69,6 +70,13 @@ f y`); no path computes more than before.
 Then the boolean conditions (`Term.condWalk`, `LeanScript.Term.Optimize.Cond`):
 `c ? true : false` is `c`, and a negated condition (`c ? false : true`) of a conditional or of
 an `if` is read as `c` with the two branches swapped.
+
+Then two tests that end in the same answer (or jump) are merged into one condition
+(`Term.mergeTestWalk`, `LeanScript.Term.Optimize.MergeTest`):
+`if p then (if q then X else E) else E` is `if (p && q) then X else E`, and
+`if p then E else (if q then E else X)` is `if (p || q) then E else X` (with `!q` when `E` is
+the other arm of the inner test; an inner test may be a conditional answer `ret (q ? a : b)`;
+`p && q` is the pure conditional `p ? q : false`, `p || q` is `p ? true : q`).
 
 Then the known constant literals (`Term.knownLits`, `LeanScript.Term.Optimize.KnownLit`): an
 operand of an append that names a `val` of a constant array or list literal is the literal
@@ -416,14 +424,15 @@ end
     (`Term.shareTestWalk`), a test pushed into the answers when both arms of an `if` make the
     same other tests (`Term.zipTestWalk`), those of `Term.cseWalk`, the hoisting of the extern calls every
     path computes (`Term.hoistWalk`), the boolean conditions
-    (`Term.condWalk`), the known constant literals written in place in append chains
+    (`Term.condWalk`), two tests that end in the same answer merged into one condition
+    (`Term.mergeTestWalk`), the known constant literals written in place in append chains
     (`Term.knownLits`), the append chains (`Term.appendWalk`), the delays that only force another
     delay replaced by it (`Term.delayEta`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
     (`Term.arithWalk`), then dead-code elimination. -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -627,7 +636,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
     Term.hoistWalk_eval, Term.cseWalk_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

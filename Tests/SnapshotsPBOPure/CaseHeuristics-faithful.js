@@ -23,10 +23,7 @@ export const testP = (a, a1, a2) => {
     }
     return a2 === 4n ? 4n : 5n;
   }
-  if (a1 === 2n && a2 === 3n) {
-    return 3n;
-  }
-  return 5n;
+  return a1 === 2n && a2 === 3n ? 3n : 5n;
 };
 
 /**

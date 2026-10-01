@@ -10,6 +10,7 @@ import TermTests.Optimize.AppendTest
 import TermTests.Optimize.ArithTest
 import TermTests.Optimize.CseTest
 import TermTests.Optimize.FloatCommTest
+import TermTests.Optimize.MergeTestTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
@@ -1998,6 +1999,62 @@ def esPrecedence03Spec : Spec := describe "EsPrecedence03" do
         assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: {n} passed, 0 failed"
           run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/EsSharedElse.lean`: two tests that end in the same answer are
+    merged into one condition by the `Term` optimiser (`Branch.mergeTest`,
+    `Tests/TermTests/Optimize/MergeTestTest.lean`): `if (a && b) { return 1; } return c ? 2 : 3;`,
+    as purescript-backend-optimizer's output (`legacy-backend/EsSharedElse.js`), with the shared
+    `else` as one conditional. -/
+def esSharedElseSpec : Spec := describe "EsSharedElse" do
+  let bools := [false, true]
+  it "the optimised statements, and their values (the Lean functions', on every input)" do
+    assertEq "test1: printed" MergeTestTest.test1Printed
+      ((MergeTestTest.test1T (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "andChain: printed" MergeTestTest.andChainPrinted
+      ((MergeTestTest.andChainT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "orChain: printed" MergeTestTest.orChainPrinted
+      ((MergeTestTest.orChainT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "andNot: printed" MergeTestTest.andNotPrinted
+      ((MergeTestTest.andNotT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "orNot: printed" MergeTestTest.orNotPrinted
+      ((MergeTestTest.orNotT (Δ := DSig.nil)).optimizeN 3).pretty
+    for a in bools do
+      for b in bools do
+        assertEq s!"orChain {a} {b}" (MergeTestTest.orChain a b)
+          (((MergeTestTest.orChainT (Δ := DSig.nil)).optimizeN 3).run a b)
+        assertEq s!"orNot {a} {b}" (MergeTestTest.orNot a b)
+          (((MergeTestTest.orNotT (Δ := DSig.nil)).optimizeN 3).run a b)
+        for c in bools do
+          assertEq s!"test1 {a} {b} {c}" (MergeTestTest.test1 a b c)
+            (((MergeTestTest.test1T (Δ := DSig.nil)).optimizeN 3).run a b c)
+          assertEq s!"andChain {a} {b} {c}" (MergeTestTest.andChain a b c)
+            (((MergeTestTest.andChainT (Δ := DSig.nil)).optimizeN 3).run a b c)
+          assertEq s!"andNot {a} {b} {c}" (MergeTestTest.andNot a b c)
+            (((MergeTestTest.andNotT (Δ := DSig.nil)).optimizeN 3).run a b c)
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/esSharedElse"
+    IO.FS.createDirAll dir
+    let file := "EsSharedElse"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, one) in [("pbo", "1"), ("faithful", "1n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let two := if preset == "pbo" then "2 : 3" else "2n : 3n"
+      for l in ["export const test1 = (a, b, c) => {\n  if (a && b) {\n    return " ++ one ++
+          ";\n  }\n  return c ? " ++ two ++ ";\n};"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 8 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2021,6 +2078,7 @@ def spec : Spec := do
   esPrecedence01Spec
   esPrecedence02Spec
   esPrecedence03Spec
+  esSharedElseSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

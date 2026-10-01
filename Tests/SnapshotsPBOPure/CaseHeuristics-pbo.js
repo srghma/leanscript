@@ -23,10 +23,7 @@ export const testP = (a, a1, a2) => {
     }
     return a2 === 4 ? 4 : 5;
   }
-  if (a1 === 2 && a2 === 3) {
-    return 3;
-  }
-  return 5;
+  return a1 === 2 && a2 === 3 ? 3 : 5;
 };
 
 /**

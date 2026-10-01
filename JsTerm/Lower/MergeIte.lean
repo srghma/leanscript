@@ -35,6 +35,10 @@ writes with the operators); a chain is grouped to the left (`a && b && c`).
 when the original evaluated the inner test: after `a`, when `a` is true (resp. false).  The
 two tests are evaluated in the same order in both programs, so `E` then runs in the same state
 as `E` or `E'` did.  Nothing is duplicated: a test and one copy of `E` are dropped.
+
+The `Term` optimiser makes the same rewrite first, proved (`LeanScript.Term.Optimize.MergeTest`,
+`Branch.mergeTest`), when the shared arm `E` is an answer or a jump; this pass is kept for the
+shared arms that are larger statements, and for the tests the lowering itself writes.
 -/
 
 namespace MoreJs

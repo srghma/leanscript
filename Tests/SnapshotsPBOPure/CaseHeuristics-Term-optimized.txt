@@ -19,10 +19,7 @@ val k1 [1] : (Int → (Int → (Int → Int))) := fun x2 [ω] : Int => (closed)
         else
           ret cond(lean_int_dec_eq(x6, 4), 4, 5)
       else
-        if lean_int_dec_eq(x4, 2) then
-          ret cond(lean_int_dec_eq(x6, 3), 3, 5)
-        else
-          ret 5
+        ret cond(cond(lean_int_dec_eq(x4, 2), lean_int_dec_eq(x6, 3), false), 3, 5)
     ret k5
   ret k3
 ret k1
@@ -65,10 +62,7 @@ val k1 [1] : ((• | [Int] | [Int, Int]) → ((• | [Int] | [Int, Int]) → Int
           | ctor#1(f17 [0] : Int) =>
             ret 4
           | ctor#2(f18 [1] : Int, f19 [1] : Int) =>
-            if lean_int_dec_eq(f18, 2) then
-              ret cond(lean_int_dec_eq(f19, 3), 2, 4)
-            else
-              ret 4
+            ret cond(cond(lean_int_dec_eq(f18, 2), lean_int_dec_eq(f19, 3), false), 2, 4)
         else
           case x4 of
           | ctor#0() =>

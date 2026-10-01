@@ -1,3 +1,46 @@
+# Summary of changes for run f51e836d-36aa-4e87-921d-62a6e2ca14ca
+The JavaScript for `Tests/SnapshotsPBOPure/EsSharedElse.lean` was already on par with the legacy output, and slightly shorter. The one gap was where the work happened: the merge was done by the JavaScript-side pass, not the `Term` optimiser. I moved it into the `Term -[optimize]-> Term` phase and proved it doesn't change `Term.eval`. The JS for this file is unchanged:
+
+```js
+export const test1 = (a, b, c) => {          // legacy:  if (a && b) { return 1; }
+  if (a && b) { return 1; }                  //          if (c) { return 2; }
+  return c ? 2 : 3;                          //          return 3;
+};
+```
+
+**What the outputs showed.**
+- `-Term-unoptimized.txt` has the nested `if`s, with the `else` (`c ? 2 : 3`) written twice.
+- `-Term-optimized.txt` still had both copies (`if x2 then (if x4 then ret 1 else E) else E`).
+- The `&&` came only from `JsBlock.mergeIte` in `JsTerm/Lower/MergeIte.lean`, which works on JavaScript blocks and has no proof.
+
+**The new pass, `Term.mergeTestWalk`** (`LeanScript/Term/Optimize/MergeTest.lean`) runs inside `Term.optimize`, after `condWalk`. When two tests end in the same answer or jump, it merges them into one condition:
+- `if p then (if q then X else E) else E` becomes `if (p && q) then X else E`.
+- `if p then E else (if q then E else X)` becomes `if (p || q) then E else X`.
+- When `E` is the other arm of the inner test, it uses `!q` instead.
+- The inner test may also be a conditional answer `ret (q ? a : b)`.
+- Chains are grouped to the left (`a && b && c`).
+
+`EsSharedElse-Term-optimized.txt` is now `if cond(x2, x4, false) then ret 1 else ret cond(x6, 2, 3)`. The JavaScript-side pass is kept as a fallback for shared arms bigger than an answer or a jump.
+
+**Proofs** (no `sorry`; only `propext`, `Classical.choice`, `Quot.sound`):
+- `Term.mergeTestWalk_eval`: the pass doesn't change evaluation.
+- `Term.numCalls_mergeTestWalk`: it never adds a call.
+- `Term.optimize_eval`, `optimizeN_eval` and `numCalls_optimize` were updated and still build.
+
+**Other snapshots.** I regenerated all of them. Three files changed in JS, all shorter:
+- `CaseProduct` now ends `return f$1 === 4 && f$2 === 5 && f$3 === 6 ? "3" : "catch";` (it was an `if` plus a `return`).
+- `CaseRecord` and `CaseHeuristics` change the same way.
+- Every node check passes. The only failures are the existing "literal too big" errors in `PrimOp*Configurable` under `pbo`.
+- On extra examples I tried, the output is now `a || b ? 1 : 2`, `a && b && c ? 1 : 3` and `a || !b ? 1 : 2`; before, the `||` cases weren't merged at all.
+
+**Tests.**
+- New `Tests/TermTests/Optimize/MergeTestTest.lean` checks evaluation is preserved for `test1` and two of the extra examples, and checks the printed optimised `Term` for all five functions.
+- `Tests/TermTests/Optimize/CaseProductTest.lean` was updated to the merged form.
+- New `esSharedElseSpec` in `Tests/Main.lean` compares all five functions with Lean on every input. It also runs `leanscript --check` and node on both presets (8/8 checks each).
+- `lake exe tests` passes 110/110.
+
+`EsSharedElse` has no recursion and no shared statement tails beyond this one, so labeled blocks and loops didn't come into it. I updated `README.md` and the module docs, and everything is committed. As in earlier runs, the `LeanScript` library as a whole doesn't build because `UsageAlgebra.lean` imports Mathlib, so I built the modules I needed individually.
+
 # Summary of changes for run 527b5d4f-7879-418b-8147-0ed74feaaeba
 The JavaScript for `Tests/SnapshotsPBOPure/EsPrecedence03.lean` now matches the legacy purescript-backend-optimizer output in shape, and it uses the right operator for Lean's types. Both presets print:
 

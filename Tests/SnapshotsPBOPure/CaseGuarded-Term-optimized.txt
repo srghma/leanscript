@@ -10,25 +10,19 @@ ret k1
 
 -- test2 : NInt → Int
 val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  if lean_int_dec_lt(x2, 1) then
+  if cond(lean_int_dec_lt(x2, 1), true, lean_int_dec_lt(1, x2)) then
     ret x2
   else
-    if lean_int_dec_lt(1, x2) then
-      ret x2
-    else
-      ret cond(lean_int_dec_eq(x2, 1), 1, 0)
+    ret cond(lean_int_dec_eq(x2, 1), 1, 0)
 ret k1
 
 -- test3 : Product3 Int Int Int → Int
 val k1 [1] : ((Int × Int × Int) → Int) := fun x2 [1] : (Int × Int × Int) => (closed)
   let ⟨f3 [ω] : Int, f4 [ω] : Int, f5 [ω] : Int⟩ := x2
-  if lean_int_dec_eq(f3, f4) then
+  if cond(lean_int_dec_eq(f3, f4), true, lean_int_dec_eq(f5, f4)) then
     ret f3
   else
-    if lean_int_dec_eq(f5, f4) then
-      ret f3
-    else
-      ret cond(lean_int_dec_eq(f3, f5), f5, f4)
+    ret cond(lean_int_dec_eq(f3, f5), f5, f4)
 ret k1
 
 -- instReprRec1.repr : Rec1 → Nat → Std.Format
@@ -141,11 +135,8 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
               else
                 ret cond(lean_int_dec_lt(f7, f15), 8, 9)
             else
-              if lean_int_dec_eq(f14, 1) then
-                if lean_int_dec_eq(f16, 10) then
-                  ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(f7, 21))
-                else
-                  ret lean_int_add(lean_int_add(f7, f16), 11)
+              if cond(lean_int_dec_eq(f14, 1), lean_int_dec_eq(f16, 10), false) then
+                ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(f7, 21))
               else
                 ret lean_int_add(lean_int_add(f7, f16), 11)
   ret k3

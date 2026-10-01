@@ -17,10 +17,7 @@ export const test1 = (x) => {
   if (x._3 === 1n) {
     return "2";
   }
-  if (f$1 === 2n && f$2 === 2n) {
-    return "3";
-  }
-  return "catch";
+  return f$1 === 2n && f$2 === 2n ? "3" : "catch";
 };
 
 /**

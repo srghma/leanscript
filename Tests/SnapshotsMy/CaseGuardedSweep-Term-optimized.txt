@@ -60,11 +60,8 @@ val k1 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x2 [
               else
                 ret cond(lean_int_dec_lt(f7, f15), 8, 9)
             else
-              if lean_int_dec_eq(f14, 1) then
-                if lean_int_dec_eq(f16, 10) then
-                  ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(f7, 21))
-                else
-                  ret lean_int_add(lean_int_add(f7, f16), 11)
+              if cond(lean_int_dec_eq(f14, 1), lean_int_dec_eq(f16, 10), false) then
+                ret cond(lean_int_dec_eq(f6, 2), 10, lean_int_add(f7, 21))
               else
                 ret lean_int_add(lean_int_add(f7, f16), 11)
   ret k3
@@ -175,11 +172,8 @@ val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
                                         else
                                           ret cond(lean_int_dec_lt(f33, f41), 8, 9)
                                       else
-                                        if lean_int_dec_eq(f40, 1) then
-                                          if lean_int_dec_eq(f42, 10) then
-                                            ret cond(lean_int_dec_eq(f32, 2), 10, lean_int_add(f33, 21))
-                                          else
-                                            ret lean_int_add(lean_int_add(f33, f42), 11)
+                                        if cond(lean_int_dec_eq(f40, 1), lean_int_dec_eq(f42, 10), false) then
+                                          ret cond(lean_int_dec_eq(f32, 2), 10, lean_int_add(f33, 21))
                                         else
                                           ret lean_int_add(lean_int_add(f33, f42), 11)
                             ret k29

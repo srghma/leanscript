@@ -17,8 +17,5 @@ export const test1 = (a) => {
   if (f$2 === 4n) {
     return "2";
   }
-  if (f$1 === 4n && f$2 === 5n && f$3 === 6n) {
-    return "3";
-  }
-  return "catch";
+  return f$1 === 4n && f$2 === 5n && f$3 === 6n ? "3" : "catch";
 };

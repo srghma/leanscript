@@ -12,10 +12,7 @@ val k1 [1] : ((Int × Int × Int) → String) := fun x2 [1] : (Int × Int × Int
       if lean_int_dec_eq(f5, 1) then
         ret "2"
       else
-        if lean_int_dec_eq(f3, 2) then
-          ret cond(lean_int_dec_eq(f4, 2), "3", "catch")
-        else
-          ret "catch"
+        ret cond(cond(lean_int_dec_eq(f3, 2), lean_int_dec_eq(f4, 2), false), "3", "catch")
 ret k1
 
 -- Test2.test2 : Test2.Outer → Int
@@ -24,11 +21,8 @@ val k1 [1] : (((Int × Int) × (Int × Int)) → Int) := fun x2 [1] : ((Int × I
   let ⟨f5 [1] : Int, f6 [1] : Int⟩ := f3
   if lean_int_dec_eq(f6, 2) then
     let ⟨f7 [1] : Int, f8 [1] : Int⟩ := f4
-    if lean_int_dec_eq(f7, 1) then
-      if lean_int_dec_eq(f8, 2) then
-        ret cond(lean_int_dec_eq(f5, 1), 1, 2)
-      else
-        ret cond(lean_int_dec_eq(f5, 1), 3, 4)
+    if cond(lean_int_dec_eq(f7, 1), lean_int_dec_eq(f8, 2), false) then
+      ret cond(lean_int_dec_eq(f5, 1), 1, 2)
     else
       ret cond(lean_int_dec_eq(f5, 1), 3, 4)
   else

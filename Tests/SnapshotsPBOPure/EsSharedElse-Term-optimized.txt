@@ -4,11 +4,8 @@
 val k1 [1] : (Bool → (Bool → (Bool → Int))) := fun x2 [ω] : Bool => (closed)
   val k3 [1] : (Bool → (Bool → Int)) := fun x4 [ω] : Bool => (open)
     val k5 [1] : (Bool → Int) := fun x6 [1] : Bool => (open)
-      if x2 then
-        if x4 then
-          ret 1
-        else
-          ret cond(x6, 2, 3)
+      if cond(x2, x4, false) then
+        ret 1
       else
         ret cond(x6, 2, 3)
     ret k5

@@ -17,10 +17,7 @@ export const test1 = (x) => {
   if (x._3 === 1) {
     return "2";
   }
-  if (f$1 === 2 && f$2 === 2) {
-    return "3";
-  }
-  return "catch";
+  return f$1 === 2 && f$2 === 2 ? "3" : "catch";
 };
 
 /**
