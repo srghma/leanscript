@@ -16,6 +16,7 @@ import JsTerm.Lower.FromTerm
 import JsTerm.Lower.Module
 import JsTerm.Lower.Ident
 import JsTerm.Syntax.Pretty
+import RuntimeSpec.InlineShift
 
 /-!
 # The expensive checks of `TyTests`/`TermTests`, run compiled
@@ -1949,6 +1950,54 @@ def esPrecedence02Spec : Spec := describe "EsPrecedence02" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 40 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/EsPrecedence03.lean`: `UInt32.shiftRight` is written inline as
+    JavaScript's `>>>` (`(a >>> b) >>> b`, `a >>> (b >>> b)`), and `Int32.shiftRight` /
+    `Int32.shiftLeft` as `>>` / `<<`, instead of calls of `runtime.js`: JavaScript takes the shift
+    count modulo 32 itself (`RuntimeSpec.uint32_shift_right_inline`, …). -/
+def esPrecedence03Spec : Spec := describe "EsPrecedence03" do
+  let us : List UInt32 := [0, 1, 2, 5, 13, 31, 32, 33, 63, 64, 0x7fffffff, 0x80000000, 0xffffffff]
+  let is : List Int32 := [0, 1, -1, 3, -7, 31, 32, -32, 33, 12, 2147483647, -2147483648]
+  it "the model of JavaScript's shifts agrees with Lean's on samples" do
+    for a in us do
+      for b in us do
+        assertEq s!"{a} >>> {b}" ((a >>> b).toNat : Int) (RuntimeSpec.ushr a.toNat b.toNat)
+    for a in is do
+      for b in is do
+        assertEq s!"{a} >> {b}" (a >>> b).toInt (RuntimeSpec.sar a.toInt b.toInt)
+        assertEq s!"{a} << {b}" (a <<< b).toInt (RuntimeSpec.shl a.toInt b.toInt)
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/esPrecedence03"
+    IO.FS.createDirAll dir
+    -- the file of the snapshot, and the shifts of `Int32` (no snapshot has them)
+    IO.FS.writeFile s!"{dir}/Int32Shifts.lean"
+      "def shr (a b : Int32) : Int32 := a >>> b\ndef shl (a b : Int32) : Int32 := a <<< b\n"
+    let files : List (String × String × List String × Nat) := [
+        (s!"Tests/SnapshotsPBOPure/EsPrecedence03.lean", "EsPrecedence03",
+          ["export const test1 = (a, b) => (a >>> b) >>> b;",
+           "export const test2 = (a, b) => a >>> (b >>> b);"], 36),
+        (s!"{dir}/Int32Shifts.lean", "Int32Shifts",
+          ["export const shr = (a, b) => a >> b;", "export const shl = (a, b) => a << b;"], 34)]
+    for (src, file, lines, n) in files do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", src]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+        for l in lines do
+          assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+        assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: {n} passed, 0 failed"
+          run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1971,6 +2020,7 @@ def spec : Spec := do
   escapeIdentifiersSpec
   esPrecedence01Spec
   esPrecedence02Spec
+  esPrecedence03Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

@@ -173,11 +173,11 @@ def «cands_lean_int32_of_nat» : List Cand :=
 
 /-- The operations of `lean_int32_shift_left`. -/
 def «cands_lean_int32_shift_left» : List Cand :=
-  [⟨_, _, _, _, .imported .int32__lean_int32_shift_left⟩]
+  [⟨_, _, _, _, .inlined .int32__lean_int32_shift_left⟩]
 
 /-- The operations of `lean_int32_shift_right`. -/
 def «cands_lean_int32_shift_right» : List Cand :=
-  [⟨_, _, _, _, .imported .int32__lean_int32_shift_right⟩]
+  [⟨_, _, _, _, .inlined .int32__lean_int32_shift_right⟩]
 
 /-- The operations of `lean_int32_sub`. -/
 def «cands_lean_int32_sub» : List Cand :=

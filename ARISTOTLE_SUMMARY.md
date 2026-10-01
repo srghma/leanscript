@@ -1,3 +1,34 @@
+# Summary of changes for run 527b5d4f-7879-418b-8147-0ed74feaaeba
+The JavaScript for `Tests/SnapshotsPBOPure/EsPrecedence03.lean` now matches the legacy purescript-backend-optimizer output in shape, and it uses the right operator for Lean's types. Both presets print:
+
+```js
+export const test1 = (a, b) => (a >>> b) >>> b;   // legacy: (a >> b) >> b
+export const test2 = (a, b) => a >>> (b >>> b);   // legacy: a >> (b >> b)
+```
+
+**What was wrong:** the optimised `Term` was already minimal (just the two shift calls), so nothing was left for the Term optimiser to do. The only gap was that `UInt32.shiftRight` became a call to `runtime.js` (`uint32__lean_uint32_shift_right(...)`, which is `a >>> (b % 32)`), plus an import.
+
+**Why the fix is in the `Term -[convert]-> JsTerm` step:** `Term` has no notion of JavaScript operators, so this couldn't go in the `Term -[optimize]-> Term` phase. In the conversion step, the choice of operator for each extern comes from `scripts/js_ops_inline.json`. I added three entries there and regenerated `JsTerm/Ops/*` with `scripts/gen_js_ops.py`:
+- `UInt32.shiftRight` → `a >>> b`
+- `Int32.shiftRight` → `a >> b`
+- `Int32.shiftLeft` → `a << b`
+
+JavaScript already takes the shift count as `b & 31`, so the `% 32` in the runtime function is redundant. The `>>>` is deliberate: legacy's `>>` is signed, which works for PureScript's `Int` but would make a `UInt32` of `2^31` or more negative. The 8- and 16-bit shifts keep their runtime functions, because their count is taken modulo 8 or 16. The printer still parenthesises nested shifts (`(a >>> b) >>> b`), as Prettier does and as legacy's output has it. There is no recursion in this file, so labeled blocks and loops weren't involved.
+
+**Proofs** (new `RuntimeSpec/InlineShift.lean`, no `sorry`, standard axioms only). These use the existing model of JavaScript's 32-bit operators in `RuntimeSpec/Model.lean`:
+- `uint32_shift_right_inline`: JavaScript's `>>>` on two `UInt32`s is Lean's `>>>`, for every input.
+- `int32_shift_right_inline` and `int32_shift_left_inline`: the same for `>>` and `<<` on `Int32`.
+
+**Tests:**
+- New `esPrecedence03Spec` in `Tests/Main.lean`:
+  - It checks the model against Lean's shifts on sample values, including negative shift counts and counts of 32 or more.
+  - It runs `leanscript --check` and node on `EsPrecedence03`: no runtime import, the expected lines, and 36/36 checks passing per preset.
+  - It does the same for a temporary file of `Int32` shifts (34/34 per preset), since no snapshot covers those.
+- `lake exe tests` passes 108/108.
+- I regenerated all snapshots. Only one other file changed: `PrimOpIntBit01NonConfigurable` now has inline `a >>> b`, `a << b` and `a >> b`, and its 564 checks per preset still pass. The only failures are the existing "literal too big" errors in `PrimOp*Configurable` under `pbo`.
+
+I also updated the `RuntimeSpec` row in `README.md`, and everything is committed. As before, the `LeanScript` library as a whole doesn't build because `UsageAlgebra.lean` imports Mathlib, which the project doesn't depend on. I built the targets I needed individually.
+
 # Summary of changes for run 18d59ff4-b25d-46ca-b72b-b946e933d0d0
 The JavaScript for `Tests/SnapshotsPBOPure/EsPrecedence02.lean` now matches the legacy purescript-backend-optimizer output on 4 of the 5 functions and is shorter on `test3`. Results are unchanged, and that is proved in Lean. Both presets print:
 

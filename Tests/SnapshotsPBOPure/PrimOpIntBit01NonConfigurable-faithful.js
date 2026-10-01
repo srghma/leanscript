@@ -17,7 +17,6 @@ import {
   uint32__lean_uint32_land,
   uint32__lean_uint32_lor,
   uint32__lean_uint32_shift_left,
-  uint32__lean_uint32_shift_right,
   uint32__lean_uint32_xor,
   uint32__lean_uint32_complement,
   int8__lean_int8_land,
@@ -34,8 +33,6 @@ import {
   int16__lean_int16_complement,
   int32__lean_int32_land,
   int32__lean_int32_lor,
-  int32__lean_int32_shift_left,
-  int32__lean_int32_shift_right,
   int32__lean_int32_xor,
   int32__lean_int32_complement,
 } from "../../runtime.js";
@@ -168,8 +165,7 @@ export const TestUInt32$shiftLeft = (a, b) =>
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$shiftRight = (a, b) =>
-  uint32__lean_uint32_shift_right(a, b);
+export const TestUInt32$shiftRight = (a, b) => a >>> b;
 
 /**
  * `TestUInt32.xor`
@@ -303,7 +299,7 @@ export const TestInt32$lor = (a, b) => int32__lean_int32_lor(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$shiftLeft = (a, b) => int32__lean_int32_shift_left(a, b);
+export const TestInt32$shiftLeft = (a, b) => a << b;
 
 /**
  * `TestInt32.shiftRight`
@@ -311,8 +307,7 @@ export const TestInt32$shiftLeft = (a, b) => int32__lean_int32_shift_left(a, b);
  * @param {int32} b
  * @returns {int32}
  */
-export const TestInt32$shiftRight = (a, b) =>
-  int32__lean_int32_shift_right(a, b);
+export const TestInt32$shiftRight = (a, b) => a >> b;
 
 /**
  * `TestInt32.xor`

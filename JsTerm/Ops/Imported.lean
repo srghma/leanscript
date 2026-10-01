@@ -422,8 +422,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bool__lean_bool_to_uint32 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .uint32)
   /-- UInt32.div -/
   | uint32__lean_uint32_div : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
-  /-- UInt32.shiftRight -/
-  | uint32__lean_uint32_shift_right : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- UInt32.neg -/
   | uint32__lean_uint32_neg : JsOpImported .pure .doesntThrow [(.terminal .uint32)] (.terminal .uint32)
   /-- UInt32.lor -/
@@ -584,10 +582,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | int32__lean_int32_abs : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
   /-- Int32.xor -/
   | int32__lean_int32_xor : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.shiftLeft -/
-  | int32__lean_int32_shift_left : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.shiftRight -/
-  | int32__lean_int32_shift_right : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- Int32.complement -/
   | int32__lean_int32_complement : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
   /-- Bool.toInt32 -/

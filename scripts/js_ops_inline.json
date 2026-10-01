@@ -143,6 +143,30 @@
 0
 ]
 ],
+"int32__lean_int32_shift_left": [
+"bin",
+"<<",
+[
+"arg",
+0
+],
+[
+"arg",
+1
+]
+],
+"int32__lean_int32_shift_right": [
+"bin",
+">>",
+[
+"arg",
+0
+],
+[
+"arg",
+1
+]
+],
 "int53__lean_int64_to_float32": [
 "call",
 "Math.fround",
@@ -157,6 +181,18 @@
 "string__lean_string_dec_lt": [
 "bin",
 "<",
+[
+"arg",
+0
+],
+[
+"arg",
+1
+]
+],
+"uint32__lean_uint32_shift_right": [
+"bin",
+">>>",
 [
 "arg",
 0

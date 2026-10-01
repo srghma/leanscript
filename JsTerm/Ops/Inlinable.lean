@@ -216,6 +216,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | uint16__lean_uint16_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .bool)
   /-- `a <= b` (UInt16.decLe) -/
   | uint16__lean_uint16_dec_le : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .bool)
+  /-- `a >>> b` (UInt32.shiftRight) -/
+  | uint32__lean_uint32_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `a <= b` (UInt64.decLe) -/
   | bigint_nat__lean_uint64_dec_le : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bool)
   /-- `a <= b` (UInt64.decLe) -/
@@ -268,6 +270,10 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | int32__lean_int32_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .bool)
   /-- `a < b` (Int32.decLt) -/
   | int32__lean_int32_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .bool)
+  /-- `a << b` (Int32.shiftLeft) -/
+  | int32__lean_int32_shift_left : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
+  /-- `a >> b` (Int32.shiftRight) -/
+  | int32__lean_int32_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `BigInt(a)` (Int32.toInt) -/
   | bigint_int__lean_int32_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .bigint_int)
   /-- `a` (Int32.toInt) -/

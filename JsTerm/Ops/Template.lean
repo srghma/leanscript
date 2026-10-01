@@ -119,6 +119,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint8__lean_uint8_to_uint16 => .arg 0
   | .uint16__lean_uint16_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .uint16__lean_uint16_dec_le => .bin "<=" (.arg 0) (.arg 1)
+  | .uint32__lean_uint32_shift_right => .bin ">>>" (.arg 0) (.arg 1)
   | .bigint_nat__lean_uint64_dec_le => .bin "<=" (.arg 0) (.arg 1)
   | .uint53__lean_uint64_dec_le => .bin "<=" (.arg 0) (.arg 1)
   | .bigint_nat__lean_uint64_dec_lt => .bin "<" (.arg 0) (.arg 1)
@@ -145,6 +146,8 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .int53__lean_int32_to_int64 => .arg 0
   | .int32__lean_int32_dec_eq => .bin "===" (.arg 0) (.arg 1)
   | .int32__lean_int32_dec_lt => .bin "<" (.arg 0) (.arg 1)
+  | .int32__lean_int32_shift_left => .bin "<<" (.arg 0) (.arg 1)
+  | .int32__lean_int32_shift_right => .bin ">>" (.arg 0) (.arg 1)
   | .bigint_int__lean_int32_to_int => .call "BigInt" [.arg 0]
   | .int53__lean_int32_to_int => .arg 0
   | .bigint_int__lean_int64_dec_lt => .bin "<" (.arg 0) (.arg 1)

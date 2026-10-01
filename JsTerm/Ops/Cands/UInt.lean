@@ -193,7 +193,7 @@ def «cands_lean_uint32_shift_left» : List Cand :=
 
 /-- The operations of `lean_uint32_shift_right`. -/
 def «cands_lean_uint32_shift_right» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_shift_right⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_shift_right⟩]
 
 /-- The operations of `lean_uint32_sub`. -/
 def «cands_lean_uint32_sub» : List Cand :=
