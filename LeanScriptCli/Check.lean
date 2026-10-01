@@ -15,7 +15,9 @@ Only functions whose parameters and result are all of a *sample type* are checke
 `Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
 `String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
 printed as its array, `#[…]`), structures of such fields (a structure of one field is unboxed:
-its sample is its field's), and some unions.
+its sample is its field's), and some unions; a parameter can also be a function of one
+argument (`Int → String`, `Nat → Nat`, …: `SType.fn`), passed a few fixed functions spelled in
+both languages.
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
 -/
@@ -49,7 +51,18 @@ inductive SType where
       `{ tag: i, _1: …, … }`.  `ctors` are the constructors applied to the parameters.  Only a
       parameter can have this type (a result is not compared). -/
   | tree (ctors : List (Expr × List (Option SType)))
+  /-- A function of one argument (`Int → String`, behind an `abbrev F := Int → String` too):
+      `String` of `Nat`, `Int` or `String`, `Nat` of `Nat`, or `Int` of `Int`.  Only a parameter
+      can have this type (a result is not compared); its samples are a few fixed functions
+      that tell their arguments apart (`fun x => "[" ++ toString x ++ "]"`), spelled in Lean
+      and in JavaScript. -/
+  | fn (dom cod : SType)
   deriving Inhabited, BEq
+
+/-- The functions `dom → cod` the checks have samples of (`SType.fn`). -/
+def fnSampleOk : SType → SType → Bool
+  | .nat, .string | .int, .string | .string, .string | .nat, .nat | .int, .int => true
+  | _, _ => false
 
 mutual
 
@@ -101,6 +114,11 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
       return some (.list t)
     | _ => return none
+  -- a function of one argument (`fnSampleOk`)
+  if let .forallE _ d c _ ← whnfR e then
+    if c.hasLooseBVars then return none
+    let (some dt, some ct) := (← stypeOf? d, ← stypeOf? c) | return none
+    return if fnSampleOk dt ct then some (.fn dt ct) else none
   -- a structure-like type of two or more fields of sample types
   let some (c, lvls) := e.getAppFn.const? | return none
   let some (.inductInfo ind) := (← getEnv).find? c | return none
@@ -116,7 +134,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       -- JavaScript value: no sample
       if t.hasAnyFVar (fun _ => true) then return none
       match ← stypeOf? t with
-      | some .float | none => return none
+      | some .float | some (.fn ..) | none => return none
       | some ft => out := out.push ft
     return some out.toList
   match fields? with
@@ -195,6 +213,29 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
     let grow (vs : List Sample) : List Sample :=
       vs ++ (treeLayer cfg ctors nats vs).filter fun v => !vs.any (·.js == v.js)
     (grow (grow (grow []))).take treeCap
+  | .fn dom cod =>
+    -- two functions, different from each other, whose answers show their argument
+    let x : Expr := .bvar 0
+    let lam (body : Expr) : Expr := mkLambda `x .default (elemTy dom) body
+    match cod with
+    | .string =>
+      let shown : Expr := match dom with
+        | .nat => mkApp (mkConst ``Nat.repr) x
+        | .int => mkApp (mkConst ``Int.repr) x
+        | _ => x
+      let wrap (l r : String) : Sample :=
+        ⟨lam (mkApp2 (mkConst ``String.append) (toExpr l)
+            (mkApp2 (mkConst ``String.append) shown (toExpr r))),
+         s!"(x) => {jsStringLit l} + String(x) + {jsStringLit r}"⟩
+      [wrap "[" "]", wrap "(" ")"]
+    | .nat =>
+      let big := cfg.natRepr == .bigint
+      [⟨lam (mkApp2 (mkConst ``Nat.add) x (mkNatLit 1)), s!"(x) => x + {intLit big 1}"⟩,
+       ⟨lam (mkApp2 (mkConst ``Nat.mul) x (mkNatLit 3)), s!"(x) => x * {intLit big 3}"⟩]
+    | _ =>
+      let big := cfg.intRepr == .bigint
+      [⟨lam (mkApp2 (mkConst ``Int.add) x (toExpr (1 : Int))), s!"(x) => x + {intLit big 1}"⟩,
+       ⟨lam (mkApp2 (mkConst ``Int.sub) (toExpr (2 : Int)) x), s!"(x) => {intLit big 2} - x"⟩]
 where
   /-- The values built by one constructor on top of the values `sub` (the leaves among their
       first two samples, and a `Nat` leaf among the literals `nats` too), at every
@@ -424,7 +465,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
   -- a type parameter (`{α : Type}`) is passed `Nat`: the JavaScript of a polymorphic function
   -- is the same at every instance (the translation reads it at `Nat` too), so any instance checks it
   let some (ps, res, tyPos) ← forallTelescope ci.type (fun xs r => do
-      let tys ← xs.filterM fun x => do return (← whnf (← inferType x)) == mkSort levelOne
+      let tys ← xs.filterM fun x => do return (← whnf (← inferType x)) == mkSort Level.one
       let sub (e : Expr) : Expr := e.replaceFVars tys (tys.map fun _ => mkConst ``Nat)
       let mut ps : Array SType := #[]
       let mut tyPos : Array Bool := #[]
@@ -438,7 +479,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
-      if rt matches .tree _ then return none
+      if rt matches .tree _ | .fn .. then return none
       return some (ps.toList, rt, tyPos.toList))
     | return none
   -- the arguments of the Lean call: `Nat` at the type parameters, the samples elsewhere

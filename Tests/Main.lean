@@ -1713,6 +1713,30 @@ def four (f : Nat → String) (i : Nat) (n : Nat) : String :=
     -- `fi` and `fn` are free
     assertEq s!"{file}: fi named" true ((js.splitOn "const fi = f(i);").length == 2)
     assertEq s!"{file}: fn named" true ((js.splitOn "const fn = f(n);").length == 2)
+    -- the shared calls come in source order: `f i` (the first call) before `f n`
+    assertEq s!"{file}: calls in source order" true
+      ((js.splitOn "const fi = f(i);\n  const fn = f(n);\n  return fi + fn + fi + fn;").length == 2)
+  it "the differential checks call the functions on sample functions (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesSemigroupCheck"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesSemigroup01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript --check" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      -- both functions, on every sample of `f`, `g` (two functions each) and `x` (seven
+      -- integers), at most 24 combinations per function
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 28 passed, 0 failed"
+        run.stdout.trimAscii.toString
 
 def spec : Spec := do
   tcoSpec

@@ -42,6 +42,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test((x) => x + 1n)", () => M.test((x) => x + 1n), "{2, 3, 3}", false);
+check("test((x) => 2n - x)", () => M.test((x) => 2n - x), "{1, 0, 0}", false);
 
 console.log(`FloatLetRegression01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

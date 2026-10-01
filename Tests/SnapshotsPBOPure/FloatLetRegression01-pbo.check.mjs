@@ -42,6 +42,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test((x) => x + 1)", () => M.test((x) => x + 1), "{2, 3, 3}", false);
+check("test((x) => 2 - x)", () => M.test((x) => 2 - x), "{1, 0, 0}", false);
 
 console.log(`FloatLetRegression01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

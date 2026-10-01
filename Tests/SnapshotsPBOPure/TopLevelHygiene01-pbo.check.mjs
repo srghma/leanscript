@@ -42,6 +42,16 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1((x) => x + 1, 0)", () => M.test1((x) => x + 1, 0), "1", false);
+check("test1((x) => x + 1, 1)", () => M.test1((x) => x + 1, 1), "2", false);
+check("test1((x) => x * 3, 0)", () => M.test1((x) => x * 3, 0), "0", false);
+check("test1((x) => x + 1, 2)", () => M.test1((x) => x + 1, 2), "3", false);
+check("test1((x) => x * 3, 1)", () => M.test1((x) => x * 3, 1), "3", false);
+check("test1((x) => x + 1, 5)", () => M.test1((x) => x + 1, 5), "6", false);
+check("test1((x) => x * 3, 2)", () => M.test1((x) => x * 3, 2), "6", false);
+check("test1((x) => x + 1, 13)", () => M.test1((x) => x + 1, 13), "14", false);
+check("test1((x) => x * 3, 5)", () => M.test1((x) => x * 3, 5), "15", false);
+check("test1((x) => x * 3, 13)", () => M.test1((x) => x * 3, 13), "39", false);
 
 console.log(`TopLevelHygiene01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

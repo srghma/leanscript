@@ -42,6 +42,16 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1((x) => x + 1n, 0n)", () => M.test1((x) => x + 1n, 0n), "1", false);
+check("test1((x) => x + 1n, 1n)", () => M.test1((x) => x + 1n, 1n), "2", false);
+check("test1((x) => x * 3n, 0n)", () => M.test1((x) => x * 3n, 0n), "0", false);
+check("test1((x) => x + 1n, 2n)", () => M.test1((x) => x + 1n, 2n), "3", false);
+check("test1((x) => x * 3n, 1n)", () => M.test1((x) => x * 3n, 1n), "3", false);
+check("test1((x) => x + 1n, 5n)", () => M.test1((x) => x + 1n, 5n), "6", false);
+check("test1((x) => x * 3n, 2n)", () => M.test1((x) => x * 3n, 2n), "6", false);
+check("test1((x) => x + 1n, 13n)", () => M.test1((x) => x + 1n, 13n), "14", false);
+check("test1((x) => x * 3n, 5n)", () => M.test1((x) => x * 3n, 5n), "15", false);
+check("test1((x) => x * 3n, 13n)", () => M.test1((x) => x * 3n, 13n), "39", false);
 
 console.log(`TopLevelHygiene01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

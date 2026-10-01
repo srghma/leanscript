@@ -1,3 +1,45 @@
+# Summary of changes for run d6b412ee-0fd1-4457-aafb-517a80513eca
+The generated JavaScript for `Tests/SnapshotsPBOPure/DefaultRulesSemigroup01.lean` already matched purescript-backend-optimizer's `legacy-backend/DefaultRulesSemigroup01.js`. I regenerated it with the current code and nothing changed. Ours is slightly better because it takes all parameters at once instead of curried, so it builds no intermediate closures:
+
+```js
+export const test1 = (f, g, x) => f(x) + g(x);
+export const test2 = (f, g, x) => {
+  const fx = f(x);
+  const gx = g(x);
+  return fx + gx + fx + gx;
+};
+```
+
+The duplicate `f x` and `g x` calls in the unoptimised Term are already merged by the existing `Term -[optimize]-> Term` phase. This file has no recursion, so labeled blocks and loops don't apply here.
+
+**Analysis of the output files**
+- **`-Term-unoptimized.txt`:** `test2` calls `x2 x6` and `x4 x6` twice each.
+- **`-Term-optimized.txt`:** each call is bound once (`x7`, `x8`).
+- **`-pbo.js` / `-faithful.js`:** the same code as above under both presets; only the doc comments (JSDoc) differ.
+- **`.check.mjs`:** before this run they had no checks, because the check generator could not make arguments of function type.
+
+**Changes**
+1. **Shared calls now come out in source order** (`LeanScript/TermElab/ToTerm/Expr/Calls.lean`). For a variant like `f i ++ f n ++ f i ++ f n`, the output used to compute `f(n)` before `f(i)`.
+   - **Cause:** the Lean-to-`Term` step bound a repeated argument of a built-in call before the argument that contained it.
+   - **Fix:** that step now leaves calls of local functions alone, and the `Term` optimiser's existing duplicate-call merging shares them in first-use order. The output is now `const fi = f(i); const fn = f(n);`.
+   - No JavaScript snapshot changed from this, so no existing output depended on the old order.
+2. **Automatic checks for function parameters** (`LeanScriptCli/Check.lean`).
+   - Parameters of type `Nat/Int/String → String`, `Nat → Nat` or `Int → Int` (also behind an `abbrev` like `F`) now get two fixed sample functions, written in both Lean and JavaScript, e.g. `fun x => "[" ++ Int.repr x ++ "]"` and `(x) => "[" + String(x) + "]"`.
+   - `DefaultRulesSemigroup01-*.check.mjs` now runs 28 checks per preset against Lean's answers, and all pass.
+   - Eight other snapshots also gained passing checks: `TcoHyper`, `TcoMc91`, `KnownConstructor07`, `RecordUpdate`, `FloatLetRegression01`, `TopLevelHygiene01/02`, and `DefaultRulesSemigroup01` itself.
+   - I also replaced a deprecated `levelOne` with `Level.one`.
+
+**Tests** (`Tests/Main.lean`)
+- One new assertion checks that the four-call variant keeps its calls in source order.
+- One new IO test runs `leanscript --check` on this file and checks that node reports `28 passed, 0 failed` under both presets.
+
+**Checks run**
+- `lake exe tests` passes 95/95.
+- `leanscript`, `tests`, `TermTests`, `TyTests`, `JsTerm` and `LeanScriptCli` build.
+- I regenerated all snapshots with `scripts/leanscript-snapshots.sh`. Only `.check.mjs` files changed, and every node check passes. The script still exits with status 1, but only because of the "literal too big" errors that were already there in the `PrimOp*Configurable` files under `pbo`.
+
+This was a code-generation task, so there are no new Lean theorems. Everything is committed.
+
 # Summary of changes for run 7a8ddc39-7385-488d-923d-58150ef23663
 `DefaultRulesSemigroup01` now produces the same JavaScript as purescript-backend-optimizer's `legacy-backend/DefaultRulesSemigroup01.js`, except that it takes all parameters at once instead of curried. That part is better: no intermediate closures are built.
 

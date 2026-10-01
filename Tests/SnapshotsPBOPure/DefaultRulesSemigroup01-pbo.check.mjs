@@ -42,6 +42,34 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", -7)", () => M.test1((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", -7), "[-7][-7]", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", -7)", () => M.test1((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", -7), "(-7)[-7]", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 0)", () => M.test1((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 0), "[0][0]", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", -1)", () => M.test1((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", -1), "[-1](-1)", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 0)", () => M.test1((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 0), "(0)[0]", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", -1)", () => M.test1((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", -1), "(-1)(-1)", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 2)", () => M.test1((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 2), "[2][2]", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", 1)", () => M.test1((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", 1), "[1](1)", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 2)", () => M.test1((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 2), "(2)[2]", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", 1)", () => M.test1((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", 1), "(1)(1)", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 12)", () => M.test1((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 12), "[12][12]", false);
+check("test1((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", 3)", () => M.test1((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", 3), "[3](3)", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 12)", () => M.test1((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 12), "(12)[12]", false);
+check("test1((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", 3)", () => M.test1((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", 3), "(3)(3)", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", -7)", () => M.test2((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", -7), "[-7][-7][-7][-7]", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", -7)", () => M.test2((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", -7), "(-7)[-7](-7)[-7]", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 0)", () => M.test2((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 0), "[0][0][0][0]", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", -1)", () => M.test2((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", -1), "[-1](-1)[-1](-1)", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 0)", () => M.test2((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 0), "(0)[0](0)[0]", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", -1)", () => M.test2((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", -1), "(-1)(-1)(-1)(-1)", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 2)", () => M.test2((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 2), "[2][2][2][2]", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", 1)", () => M.test2((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", 1), "[1](1)[1](1)", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 2)", () => M.test2((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 2), "(2)[2](2)[2]", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", 1)", () => M.test2((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", 1), "(1)(1)(1)(1)", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"[\" + String(x) + \"]\", 12)", () => M.test2((x) => "[" + String(x) + "]", (x) => "[" + String(x) + "]", 12), "[12][12][12][12]", false);
+check("test2((x) => \"[\" + String(x) + \"]\", (x) => \"(\" + String(x) + \")\", 3)", () => M.test2((x) => "[" + String(x) + "]", (x) => "(" + String(x) + ")", 3), "[3](3)[3](3)", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"[\" + String(x) + \"]\", 12)", () => M.test2((x) => "(" + String(x) + ")", (x) => "[" + String(x) + "]", 12), "(12)[12](12)[12]", false);
+check("test2((x) => \"(\" + String(x) + \")\", (x) => \"(\" + String(x) + \")\", 3)", () => M.test2((x) => "(" + String(x) + ")", (x) => "(" + String(x) + ")", 3), "(3)(3)(3)(3)", false);
 
 console.log(`DefaultRulesSemigroup01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

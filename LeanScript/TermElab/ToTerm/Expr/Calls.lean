@@ -153,8 +153,13 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
   -- an argument that another argument also computes (the array of `(xs.map f).filter p`,
   -- whose default bound is `(xs.map f).size`) is bound once: `let a := xs.map f; a.filter p 0
   -- a.size`, not two computations of `xs.map f`
+  -- A call of a local function (`f x`) is left alone: the optimiser's common subexpression
+  -- elimination (`Term.cseLetE`) shares it, keeping the calls in source order, whereas binding
+  -- it here would compute it before the argument containing it (`f i ++ f n ++ f i ++ f n`
+  -- would compute `f n` first).
   let trivial (v : Expr) : Bool :=
-    v.isFVar || v.isConst || v.isLit || v.isLambda || v.hasLooseBVars || v.isMVar
+    v.isFVar || v.isConst || v.isLit || v.isLambda || v.hasLooseBVars || v.isMVar ||
+    v.getAppFn.isFVar
   if let some v := vals.find? fun v => !trivial v &&
       vals.any fun w => w != v && (w.find? (· == v)).isSome then
     let call := mkAppN fn args

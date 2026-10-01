@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test7((x) => x + 1, -7)", () => M.test7((x) => x + 1, -7), "{-5, -8, -6}", false);
+check("test7((x) => x + 1, -1)", () => M.test7((x) => x + 1, -1), "{1, -2, 0}", false);
+check("test7((x) => 2 - x, -7)", () => M.test7((x) => 2 - x, -7), "{10, 7, 9}", false);
+check("test7((x) => x + 1, 0)", () => M.test7((x) => x + 1, 0), "{2, -1, 1}", false);
+check("test7((x) => 2 - x, -1)", () => M.test7((x) => 2 - x, -1), "{4, 1, 3}", false);
+check("test7((x) => x + 1, 1)", () => M.test7((x) => x + 1, 1), "{3, 0, 2}", false);
+check("test7((x) => 2 - x, 0)", () => M.test7((x) => 2 - x, 0), "{3, 0, 2}", false);
+check("test7((x) => x + 1, 2)", () => M.test7((x) => x + 1, 2), "{4, 1, 3}", false);
+check("test7((x) => 2 - x, 1)", () => M.test7((x) => 2 - x, 1), "{2, -1, 1}", false);
+check("test7((x) => x + 1, 3)", () => M.test7((x) => x + 1, 3), "{5, 2, 4}", false);
+check("test7((x) => 2 - x, 2)", () => M.test7((x) => 2 - x, 2), "{1, -2, 0}", false);
+check("test7((x) => x + 1, 12)", () => M.test7((x) => x + 1, 12), "{14, 11, 13}", false);
+check("test7((x) => 2 - x, 3)", () => M.test7((x) => 2 - x, 3), "{0, -3, -1}", false);
+check("test7((x) => 2 - x, 12)", () => M.test7((x) => 2 - x, 12), "{-9, -12, -10}", false);
 
 console.log(`RecordUpdate-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

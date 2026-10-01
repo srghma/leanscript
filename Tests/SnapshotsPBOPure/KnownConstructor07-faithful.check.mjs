@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test((x) => x + 1n, -7n)", () => M.test((x) => x + 1n, -7n), "{-5, -8}", false);
+check("test((x) => x + 1n, -1n)", () => M.test((x) => x + 1n, -1n), "{1, -2}", false);
+check("test((x) => 2n - x, -7n)", () => M.test((x) => 2n - x, -7n), "{10, 7}", false);
+check("test((x) => x + 1n, 0n)", () => M.test((x) => x + 1n, 0n), "{2, -1}", false);
+check("test((x) => 2n - x, -1n)", () => M.test((x) => 2n - x, -1n), "{4, 1}", false);
+check("test((x) => x + 1n, 1n)", () => M.test((x) => x + 1n, 1n), "{3, 0}", false);
+check("test((x) => 2n - x, 0n)", () => M.test((x) => 2n - x, 0n), "{3, 0}", false);
+check("test((x) => x + 1n, 2n)", () => M.test((x) => x + 1n, 2n), "{4, 1}", false);
+check("test((x) => 2n - x, 1n)", () => M.test((x) => 2n - x, 1n), "{2, -1}", false);
+check("test((x) => x + 1n, 3n)", () => M.test((x) => x + 1n, 3n), "{5, 2}", false);
+check("test((x) => 2n - x, 2n)", () => M.test((x) => 2n - x, 2n), "{1, -2}", false);
+check("test((x) => x + 1n, 12n)", () => M.test((x) => x + 1n, 12n), "{14, 11}", false);
+check("test((x) => 2n - x, 3n)", () => M.test((x) => 2n - x, 3n), "{0, -3}", false);
+check("test((x) => 2n - x, 12n)", () => M.test((x) => 2n - x, 12n), "{-9, -12}", false);
 
 console.log(`KnownConstructor07-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

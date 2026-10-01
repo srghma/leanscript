@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test((x) => x + 1, -7)", () => M.test((x) => x + 1, -7), "{-5, -8}", false);
+check("test((x) => x + 1, -1)", () => M.test((x) => x + 1, -1), "{1, -2}", false);
+check("test((x) => 2 - x, -7)", () => M.test((x) => 2 - x, -7), "{10, 7}", false);
+check("test((x) => x + 1, 0)", () => M.test((x) => x + 1, 0), "{2, -1}", false);
+check("test((x) => 2 - x, -1)", () => M.test((x) => 2 - x, -1), "{4, 1}", false);
+check("test((x) => x + 1, 1)", () => M.test((x) => x + 1, 1), "{3, 0}", false);
+check("test((x) => 2 - x, 0)", () => M.test((x) => 2 - x, 0), "{3, 0}", false);
+check("test((x) => x + 1, 2)", () => M.test((x) => x + 1, 2), "{4, 1}", false);
+check("test((x) => 2 - x, 1)", () => M.test((x) => 2 - x, 1), "{2, -1}", false);
+check("test((x) => x + 1, 3)", () => M.test((x) => x + 1, 3), "{5, 2}", false);
+check("test((x) => 2 - x, 2)", () => M.test((x) => 2 - x, 2), "{1, -2}", false);
+check("test((x) => x + 1, 12)", () => M.test((x) => x + 1, 12), "{14, 11}", false);
+check("test((x) => 2 - x, 3)", () => M.test((x) => 2 - x, 3), "{0, -3}", false);
+check("test((x) => 2 - x, 12)", () => M.test((x) => 2 - x, 12), "{-9, -12}", false);
 
 console.log(`KnownConstructor07-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
