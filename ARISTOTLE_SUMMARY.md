@@ -1,3 +1,31 @@
+# Summary of changes for run c94407ab-d1ec-4176-bed3-7a8ba4063fb7
+I removed the special-casing you pointed out and replaced it with one rule in one place. The generated JavaScript is the same as before.
+
+**What was wrong.** The printer named a constant like this:
+- It first printed the bound value to JavaScript.
+- Then, only if the binder's hint happened to be the string `"x"`, it pattern-matched the printed `f(x)` and checked the set of counter-free names to see whether `f` and `x` were parameters.
+- So the hint string was quietly overridden from the outside, and the rule worked on printer output instead of on the program being printed.
+
+**What it is now** (`JsTerm/Print/Mini/Block.lean`, `JsTerm/Print/Mini/Basic.lean`):
+- `constName sc hint e` decides the name of every printed `const`:
+  ```lean
+  match ← e.valueName? sc with
+  | some n => niceName n      -- named after its value, no counter if free
+  | none => freshName hint    -- named after its binder, `hint$k`
+  ```
+- `JsExpr.valueName?` matches on the program itself (`.app (.cvar f) (.cons (.cvar a) .nil)`), not on the printed text. It answers `fx` when both variables are local names without a counter.
+- A small helper, `plainLocal?`, answers "is this a local name without a counter?". It replaces the old `callHint?` (removed) and the inline lookup in `blockToMini`.
+- The `hint == "x"` test is gone, so the rule no longer depends on which hint string the lowering happened to pass.
+- The `.const` case in `blockToMini` is now three lines. It prints the value first, as before, so the numbering of names created inside the value doesn't change.
+- I updated the module documentation in `JsTerm/Print/Mini.lean` to match.
+
+**Checks**
+- `JsTerm`, `leanscript` and `tests` build.
+- `lake exe tests` passes 95/95, including the naming tests for `DefaultRulesSemigroup01` (`const fx = f(x);`, the `fx$1` fallback when `fx` is taken, and so on).
+- I regenerated every snapshot with `scripts/leanscript-snapshots.sh`. No output file changed, and every node check reports 0 failed, so the generated code is the same as before.
+
+This change only touches how code is written; there are no new theorems. The work is committed.
+
 # Summary of changes for run d6b412ee-0fd1-4457-aafb-517a80513eca
 The generated JavaScript for `Tests/SnapshotsPBOPure/DefaultRulesSemigroup01.lean` already matched purescript-backend-optimizer's `legacy-backend/DefaultRulesSemigroup01.js`. I regenerated it with the current code and nothing changed. Ours is slightly better because it takes all parameters at once instead of curried, so it builds no intermediate closures:
 

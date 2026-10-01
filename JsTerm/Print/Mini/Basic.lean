@@ -181,15 +181,11 @@ def niceName (hint : String) : PM String := do
     return hint
   else freshName hint
 
-/-- The name of the result of a call of a local function on a local value, both named without
-    a counter (`taken`: parameters, or names given so): `fx` for `f(x)`, as
-    purescript-backend-optimizer names it. -/
-def callHint? (taken : List String) : MiniExpr → Option String
-  | .call (.ident f) [.ident a] =>
-    if taken.contains f.toString && taken.contains a.toString then
-      some (f.toString ++ a.toString)
-    else none
-  | _ => none
+/-- The name of a local variable written without a counter (a parameter, or a name `niceName`
+    gave), when the expression is one. -/
+def plainLocal? : MiniExpr → PM (Option String)
+  | .ident x => do return if (← get).taken.contains x.toString then some x.toString else none
+  | _ => pure none
 
 /-- A new label, `j$k`. -/
 def freshLabel : PM String :=

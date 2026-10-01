@@ -106,6 +106,27 @@ def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n :
       let us := uses j
       us.isEmpty || (us.size == 1 && !us.any (·.again))
 
+/-! ## Names of constants -/
+
+/-- The name of the value of `e` when it is a call of a local function on a local value, both
+    named without a counter: `fx` for `f(x)`, as purescript-backend-optimizer names it. -/
+def JsExpr.valueName? {C M : List JsTy} {τ : JsTy} (sc : Scope) :
+    JsExpr S C M τ → PM (Option String)
+  | .app (.cvar f) (.cons (.cvar a) .nil) => do
+    match ← plainLocal? (exprAt sc.c f.index), ← plainLocal? (exprAt sc.c a.index) with
+    | some f, some a => return some (f ++ a)
+    | _, _ => return none
+  | _ => pure none
+
+/-- The name of a new constant holding `e`: named after its value (`JsExpr.valueName?`), without
+    a counter when that name is free (`niceName`), otherwise after the hint of its binder,
+    `hint$k`. -/
+def constName {C M : List JsTy} {τ : JsTy} (sc : Scope) (hint : String) (e : JsExpr S C M τ) :
+    PM String := do
+  match ← e.valueName? sc with
+  | some n => niceName n
+  | none => freshName hint
+
 mutual
 /-- An expression as a `MiniAST` expression. -/
 partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M τ → PM MiniExpr
@@ -236,13 +257,9 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     if constInline e rest then
       let m ← exprToMini sc e
       return ← blockToMini { sc with c := m :: sc.c } tl rest
-    let e ← exprToMini sc e
-    -- the result of a call of a parameter on a parameter is named after them (`fx = f(x)`)
-    let taken := (← get).taken
-    let x ← match (if hint == "x" then callHint? taken e else none) with
-      | some h => niceName h
-      | none => freshName hint
-    return constDecl x e :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
+    let m ← exprToMini sc e
+    let x ← constName sc hint e
+    return constDecl x m :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
   | .letMut hint e rest => do
     let e ← exprToMini sc e
     let x ← freshName hint

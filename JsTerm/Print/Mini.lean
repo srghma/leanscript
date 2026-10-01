@@ -21,9 +21,11 @@ modules.
 The variables of the grammar are de Bruijn indices into three contexts (constants, mutable
 variables, join points); the printer names them, from the hints of their binders: `x$1`,
 `acc$2`, … (a counter per function, so that no name hides another), and the parameters of an
-exported function keep their names.  The result of a call of a parameter on a parameter is
-named after them, without a counter (`const fx = f(x);`, as purescript-backend-optimizer
-names it), when that name is free: not a parameter or another such name, not a name of the
+exported function keep their names.  A constant holding the result of a call of a local
+function on a local value, both named without a counter (parameters, or names given so), is
+named after its value rather than after its binder (`constName`), without a counter
+(`const fx = f(x);`, as purescript-backend-optimizer names it), when that name is free: not a
+parameter or another name without a counter, not a name of the
 module (`JsModule.toJs` passes them), not a reserved word or a global of JavaScript
 (`niceName`); otherwise it gets a counter (`fx$1`).
 
