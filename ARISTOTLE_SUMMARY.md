@@ -1,3 +1,24 @@
+# Summary of changes for run 58b66ce9-33df-41e1-bb9a-57ab8d9deb43
+I wrote `proposals/ExactUsageProposals.md` with four proposals for making `Term` usages exact by construction. Each one has a toy `Term` in `proposals/ExactUsageToy.lean`. Nothing under `LeanScript/` was changed. The toy file compiles with `lake env lean proposals/ExactUsageToy.lean` with no errors, warnings or `sorry`, and its main theorems use only Lean's standard axioms. It isn't part of the Lake build, so there are no build targets to report.
+
+**What causes the wrong usages**
+- The Lean-to-`Term` step never counts. `TermElab/Anf.lean` and `Anf/Emit.lean` write `.many` on every binder on purpose: `letE`, `letV`, `join`, `Val.lam`, the fold parameters, and case fields (passed as `[]`, which becomes `many`). They leave exact counts to `Term.dce`.
+- The current types only rule out referencing a binder marked `zero`. Nothing links `one` or `many` to the body, so even marking a variable `one` when it is used twice would type-check.
+- In the snapshot, `k1 [ω]` is the wrong one (it is used once). `x2 [ω]` (4 uses) is correct under today's three-value `0 | 1 | ω`; it only becomes wrong once counts are exact (`x2 [4]`).
+- **Step 0**, needed whichever proposal you pick: the elaborator already computes each piece's level bottom-up (`Out.lv`). It can compute a `uses` field the same way and read each binder's count from it instead of writing `.many`.
+
+**Usage types.** All proposals use `UsageN` (0, 1, 2, …, ω) and `UsageNPos` (1, …, ω), with `+` along a path, `max` across branch arms, and ω inside closure or loop bodies. With `UsageNPos` on definition binders, dead code no longer type-checks. That clashes with `Term.dce` deliberately keeping some dead bindings to preserve levels; the document gives two ways around it.
+
+**The four proposals.** Each toy keeps the three contexts (known values, unknowns, join points) and has an erasure to a shared untyped syntax, a reference count, an evaluator, and the `AssocArrayAppend` example. For each, I proved that the usages it carries equal the recount of its erasure:
+1. **QTT contexts:** each context entry carries its exact count, and terms split contexts with `Add`/`Max`/`Scale` witnesses. Proved: `P1.Term.exact`, `binder_exact`, `unique`. Downside: the split is an input, so the elaborator has to compute it, and evaluation splits environments.
+2. **Hodas–Miller `{Γ} t : τ {Δ}`:** input and output counters are threaded through; a binder enters at 0 and its annotation is the count it leaves with. Lean computes the outputs itself (`body4.1 = ⟨[], [4], []⟩` by `rfl`), and the snapshot's annotations are rejected. Proved: `P2.Term.exact`, `exact_closed`.
+3. **Usage vector as an index, like `Lvl` today** (your proposal 1 taken literally): binders store nothing, and the annotation is read from the head of the scope's vector. Proved: `P3.Term.exact`, `letV_use_exact`. With input counters at 0, this is the same information as proposal 2.
+4. **Checked cache:** the term type is unchanged, and smart constructors build a subtype that only holds exact annotations. Proved: `P4.ETerm.unique`, and the snapshot's annotation is refuted by `decide`.
+
+**Recommendation.** Do step 0, then proposal 3, which is the smallest change because passes already return levels the same way. Choose proposal 2 if you want the counter to belong to the context. The document also covers migration cost file by file, and two pitfalls found while building the toys:
+- output indices must be built from separate variables, not from projections of one variable;
+- counter functions must use structural recursion, or Lean can't compute them while type-checking.
+
 # Summary of changes for run a7239854-c4a8-45d9-8654-2214fbdfe359
 I added Lean proofs to `Tests/TyTests/OnePointFieldTest.lean` showing that dropping a one-value field like `Fin m → Unit` loses no information. They also show that the two types still refused really have only one value, and that translated functions on `UF` give the same results as the Lean definitions. The `TyTests` target builds, there is no `sorry`, and the proofs use only Lean's standard axioms (`propext`, `Quot.sound`, `Classical.choice`).
 
