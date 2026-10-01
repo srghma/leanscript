@@ -42,9 +42,21 @@ def arrTest3 (arr : Array String) : Array String :=
 def arrEmpty (arr : Array Nat) : Array Nat :=
   #[1] ++ (#[2] ++ (arr ++ #[])) ++ #[3]
 
+/-- A record built with a constant array literal and appended to another one: once the
+    append is inlined, its operand names the literal (`val k := #["h"]`); the optimiser writes
+    the literal in place (`Term.knownLits`), so that the append starts with it. -/
+structure RA where
+  s : String
+  a : Array String
+
+def appendRA (x y : RA) : RA := { s := x.s ++ y.s, a := x.a ++ y.a }
+
+def knownLit (y : RA) : RA := appendRA { s := "h", a := #["h"] } y
+
 def arrTest1T := #leanscript_to_term arrTest1
 def arrTest3T := #leanscript_to_term arrTest3
 def arrEmptyT := #leanscript_to_term arrEmpty
+def knownLitT := #leanscript_to_term knownLit
 
 /-- The optimised statement computes the function, for every input. -/
 example (arr : Array String) :

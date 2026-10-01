@@ -337,6 +337,18 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
       done := done.push { name := n, ty, params := dedupNames (ps.map jsIdent), term := ct,
                           optimized := opt.withOwnership }
     | .error e => refused := refused.push (n, e)
+  -- the definitions that only rename one translated before them: another name of its function
+  let aliases : List (String × String) ← runTermElab el do
+    let mut acc : List (String × String) := []
+    for (t, i) in done.toList.zipIdx do
+      if let some c ← aliasOf? t.name ((done.toList.take i).map (·.name)).toArray then
+        let some tc := done.find? (·.name == c) | continue
+        -- the versions owning parameters are renamed one by one (the same, since the two
+        -- definitions have the same translation)
+        let sfx (x : Translated) := (x.optimized.versions.drop 1).map (·.suffix)
+        if sfx t == sfx tc then
+          acc := acc ++ ("" :: sfx t).map fun v => (jsFunName t.name ++ v, jsFunName c ++ v)
+    return acc
   let oneLine (s : String) : String :=
     " ".intercalate (s.splitOn "\n" |>.map fun l => l.trimAscii.toString)
   let notTranslated (extra : Array (Name × String)) : List String :=
@@ -407,7 +419,8 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
         jsRefused := jsRefused.push (t.name, e)
     -- functions that differ only in the literal initial value of their first variable share one
     -- worker (`JsTerm.Print.Share`: the `mutual` groups recursing on a `Nat`)
-    let m := mkModule cfg (shareWorkers funs.toList)
+    -- (and a definition that only renames another one is another name of its function)
+    let m := mkModule cfg (aliasFuns aliases (shareWorkers funs.toList))
     for n in missingExports rtSrc m.imports do
       fatal := fatal.push s!"preset {preset}: the runtime {rtFile} does not export {n}"
     let header (what : String) : List String :=

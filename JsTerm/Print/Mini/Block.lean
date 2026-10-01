@@ -206,12 +206,21 @@ partial def argsToMini {C M σs : List JsTy} (sc : Scope) : JsArgs S C M σs →
   | .nil => pure []
   | .cons a as => do return (← exprToMini sc a) :: (← argsToMini sc as)
 
-/-- The parts of an array literal (a spread `...a`). -/
+/-- The parts of an array literal (a spread `...a`).  A spread of an array literal is its
+    elements (`[...[x, ...a], y]` is `[x, ...a, y]`): the literal may only appear here, once a
+    constant read once is written where it is read. -/
 partial def partsToMini {C M : List JsTy} {A E : JsTy} (sc : Scope) :
     JsParts S C M A E → PM (List MiniExpr)
   | .nil => pure []
   | .elem e rest => do return (← exprToMini sc e) :: (← partsToMini sc rest)
-  | .spread a rest => do return .spread (← exprToMini sc a) :: (← partsToMini sc rest)
+  | .spread a rest => do
+    let m ← exprToMini sc a
+    let here : List MiniExpr := match m with
+      | .array els =>
+        let es := els.filterMap fun | .elem e => some e | .hole => none
+        if es.length == els.length then es else [.spread m]
+      | m => [.spread m]
+    return here ++ (← partsToMini sc rest)
 
 /-- The subject of a case analysis or the bound of a loop: itself when it is an atom,
     otherwise a new constant (`const s$k = e;`) holding it. -/

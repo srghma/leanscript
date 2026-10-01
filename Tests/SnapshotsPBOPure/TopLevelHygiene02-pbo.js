@@ -21,4 +21,4 @@ export const test1 = (wat, a) => wat(a);
  * @param {uint53(number)} a
  * @returns {uint53(number)}
  */
-export const test2 = (f, a) => f(a);
+export const test2 = test1;

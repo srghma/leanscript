@@ -74,13 +74,14 @@ def JsFun.toMini (f : JsFun) (globals : List String := []) : MiniModuleItem :=
       if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
     modify fun s => { s with taken := params.toList, globals := f.name :: globals }
     let sc : Scope := { c := params.toList.reverse.map ident }
-    let e ← match f.delegate? with
-      | some (w, lit) =>
+    let e ← match f.alias?, f.delegate? with
+      | some g, _ => pure (ident g)
+      | none, some (w, lit) =>
         -- a call of the worker it shares (`JsTerm.Print.Share`)
         pure (.arrow false (params.toList.map fun p => MiniParam.plain (.ident (nes p)))
           (.expr (.call (ident w) (shapeExpr lit :: params.toList.map ident))))
-      | none => arrowToMini sc params.toList f.body
-    let e := if f.isConst then
+      | none, none => arrowToMini sc params.toList f.body
+    let e := if f.isConst && f.alias?.isNone then
         match e with
         | .arrow _ [] (.expr v) => v
         | e => .call e []

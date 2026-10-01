@@ -1,3 +1,39 @@
+# Summary of changes for run 7b417144-dae3-4fc6-89da-213e81ee6e7b
+The generated JavaScript for `DefaultRulesSemigroup02` now matches the legacy purescript-backend-optimizer output, and is ahead of it in a few places. Both presets (`pbo`, `faithful`) pass all 244 generated runtime checks.
+
+**What was wrong at the start**
+- `test4` was not translated at all. Adding two constant arrays failed with a type mismatch, because a constant array result could not be turned into a literal.
+- `test3` called the runtime array-append function on `["hello"]`, which pulled in an import.
+- `test1` and `test2` were full copies of `appendR` instead of other names for it.
+
+**Changes, by pipeline phase**
+1. **Term → Term optimizer.** I added a new pass, `Term.knownLits`, in `LeanScript/Term/Optimize/KnownLit.lean`. Inside array and list append chains, it writes known constant array/list literals in place. It runs as part of `Term.optimize`, after `condWalk` and before `appendWalk`. It is proved not to change evaluation (`Term.knownLits_eval`), and the overall theorem that the optimizer preserves evaluation (`optimize_eval`) and the call-count proofs still hold. Both theorems use only the standard axioms, and the files contain no `sorry`.
+   - In the Term step that turns an append of fixed results into a literal (`LeanScript/TermElab/Anf/Render.lean`), array/list appends and pushes of literals now become a literal. This is what fixes `test4`.
+2. **Term → JsTerm conversion and the CLI.** A definition that only renames an earlier one is now printed as `export const test1 = Inline$appendR;`, with no import collected for it. Constants whose value is a literal are left as literals, so InlineNever still prints `test = "foo"`.
+3. **Printing.** A spread of an array literal is spliced into the surrounding array, so `[...[x, ...a], y]` prints as `[x, ...a, y]`.
+
+**Result compared with legacy**, in all four namespaces:
+- `appendR` is a single function taking both arguments, `(a, b) => ({_1: a._1 + b._1, _2: [...a._2, ...b._2]})`. Legacy curries it into two nested functions.
+- `test1` and `test2` are other names for `appendR`, as in legacy.
+- `test3` is `(b) => ({_1: "hello" + b._1, _2: ["hello", ...b._2]})` everywhere. Legacy gets this form only in AlwaysInline and leaves a partial call elsewhere.
+- `test4` is the constant `{_1: "hello, World!", _2: ["hello", "World!"]}` everywhere. In Noinline, legacy still makes the calls.
+- There are no runtime imports.
+- Two differences remain:
+  - Field names are `_1`/`_2` rather than `foo`/`bar`. That is the project-wide naming convention, which I did not change.
+  - Legacy splits record parameters into separate fields (`a_bar, a_foo`); I did not do this.
+- The labeled blocks/loops preference did not come up, because this file has no recursion.
+
+**Other effects and fixes**
+- `STArray02` used to fail to translate with the same mismatch as `test4`. It now translates and passes its 16 checks.
+- `TopLevelHygiene02` now prints `test2 = test1`.
+- Generating checks for `SnapshotsMy/Html` hit a stack overflow, recursing from `Array Html` back to `Html`. That is fixed in `LeanScriptCli/Check.lean`.
+
+**Tests**
+- I added `knownLitSpec` and `defaultRulesSemigroup02Spec` to `Tests/Main.lean`; `lake exe tests` passes 97/97.
+- I regenerated all snapshots. The only failures are ones that were already there: the `PrimOp*Configurable` files whose integer literals are too big for a JavaScript number under the `num` preset.
+
+Everything is committed.
+
 # Summary of changes for run c94407ab-d1ec-4176-bed3-7a8ba4063fb7
 I removed the special-casing you pointed out and replaced it with one rule in one place. The generated JavaScript is the same as before.
 

@@ -564,6 +564,16 @@ def autoSignature (el : Elaborated) (cands : Array Name) : IO Elaborated := do
   | some env => return { el with env }
   | none => return el
 
+/-- The definition among `among` that the definition `n` only renames: its value, η-reduced,
+    is that constant (`def test1 : R → R → R := appendR`, `def test2 (a b : R) : R :=
+    appendR a b`).  Its JavaScript is then another name of that function
+    (`MoreJs.JsFun.alias?`). -/
+def aliasOf? (n : Name) (among : Array Name) : MetaM (Option Name) := do
+  let some v := (← getConstInfo n).value? | return none
+  match (← instantiateMVars v).eta.consumeMData with
+  | .const c _ => return if c != n && among.contains c then some c else none
+  | _ => return none
+
 /-- The type of a definition, as Lean prints it. -/
 def typeString (n : Name) : MetaM String := do
   return toString (← ppExpr (← getConstInfo n).type)

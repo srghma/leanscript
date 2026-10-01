@@ -156,6 +156,27 @@ def appendSpec : Spec := describe "Term.appendWalk" do
     assertEq "value" (AppendTest.arrEmpty #[7, 8])
       (((AppendTest.arrEmptyT (Δ := DSig.nil)).optimizeN 3).run (#[7, 8] : Array Nat))
 
+/-- `Tests/TermTests/Optimize/AppendTest.lean`, `knownLit`: the operand of an append that names
+    a `val` of a constant array literal is the literal itself (`Term.knownLits`), and the `val`
+    is dropped. -/
+def knownLitSpec : Spec := describe "Term.knownLits" do
+  it "AppendTest.knownLit: the literal written in place" do
+    let t := AppendTest.knownLitT (Δ := DSig.nil)
+    -- the translation names the literal, and appends the name
+    assertEq "a val of the literal" true ((t.pretty.splitOn ":= #[\"h\"]").length > 1)
+    assertEq "no append starts with the literal" false
+      ((t.pretty.splitOn "lean_array_append(#[\"h\"]").length > 1)
+    -- `Term.knownLits` alone writes it in place
+    assertEq "Term.knownLits" true
+      ((t.knownLits.pretty.splitOn "lean_array_append(#[\"h\"], ").length > 1)
+    assertEq "printed" ("val k1 [1] : ((String × (Array String)) → (String × (Array String))) := " ++
+      "fun x2 [1] : (String × (Array String)) => (closed)\n" ++
+      "  let ⟨f3 [1] : String, f4 [1] : (Array String)⟩ := x2\n" ++
+      "  ret ⟨lean_string_append__String_append(\"h\", f3), lean_array_append(#[\"h\"], f4)⟩\n" ++
+      "ret k1") (t.optimizeN 3).pretty
+    assertEq "value" (AppendTest.knownLit ⟨"x", #["y"]⟩).a
+      (((AppendTest.knownLitT (Δ := DSig.nil)).optimizeN 3).run ("x", #["y"])).2
+
 /-- `Tests/TermTests/Optimize/ArithTest.lean`: the optimiser folds the literals of chains of
     `+` and `*`, counts the copies of an unknown in a sum (`x * k`) and in a product (`x ^ k`)
     and combines the operands from the left (`Term.arithWalk`); the optimised statements, printed, and their values (compiled). -/
@@ -1738,6 +1759,41 @@ def four (f : Nat → String) (i : Nat) (n : Nat) : String :=
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 28 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+def defaultRulesSemigroup02Spec : Spec := describe "DefaultRulesSemigroup02" do
+  it "renamings, literals and closed appends of purescript-backend-optimizer (needs node and leanscript)" do
+    -- purescript-backend-optimizer (`legacy-backend/DefaultRulesSemigroup02.js`): `test1` and
+    -- `test2` are other names of `appendR`, `test4` is the record literal, and the inlined
+    -- `test3` appends onto the literal `["hello", ...b_bar]`.  Ours: the same, uncurried, and
+    -- `test3`/`test4` computed in every namespace (also `Noinline`).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesSemigroup02"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesSemigroup02"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      -- only `instReprR.repr` (a `Char` leaf) is not translated
+      assertEq s!"{file}-{preset}: every test translated" 1 (js.splitOn "test4:").length
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for ns in ["Inline", "Noinline", "AlwaysInline", "InlineIfReduceInline"] do
+        for l in [s!"export const {ns}$test1 = {ns}$appendR;",
+            s!"export const {ns}$test2 = {ns}$appendR;",
+            s!"export const {ns}$test3 = (b) => (\{\n  _1: \"hello\" + b._1,\n  _2: [\"hello\", ...b._2],\n});",
+            "_1: \"hello, World!\"", "_2: [\"hello\", \"World!\"]"] do
+          assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 244 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1745,6 +1801,7 @@ def spec : Spec := do
   roseSpec
   optimizeSpec
   appendSpec
+  knownLitSpec
   arithSpec
   moreJsSpec
   caseRedBlackTreeSpec
@@ -1755,6 +1812,7 @@ def spec : Spec := do
   defaultRulesFunctorSpec
   defaultRulesMonoidSpec
   defaultRulesSemigroupSpec
+  defaultRulesSemigroup02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

@@ -88,7 +88,42 @@ end
 
 /-- The functions of the runtime the functions call, each once, in order of first use. -/
 def collectImports (funs : List JsFun) : List String :=
-  (funs.foldl (fun acc f => f.body.runtimeNames acc) #[]).toList
+  (funs.foldl (fun acc f => if f.alias?.isSome then acc else f.body.runtimeNames acc) #[]).toList
+
+/-- Is the expression a literal? -/
+def JsExpr.isLit {S : JsSig} {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .lit _ => true
+  | _ => false
+
+/-- Is the block `return e;` for a literal `e`? -/
+def JsBlock.isRetLit {S : JsSig} {C M J : List JsTy} {τ : JsTy} :
+    JsBlock S C M J (.ret τ) → Bool
+  | .ret e => e.isLit
+  | _ => false
+
+/-- Is the function a constant whose value is a literal (`export const foo = "foo";`)? -/
+def JsFun.isLitConst (f : JsFun) : Bool :=
+  f.isConst && f.body.isRetLit
+
+/-- The functions `funs`, each `(name, target)` of `aliases` written as another name of the
+    function `target` (`JsFun.alias?`, `export const name = target;`) when `target` comes before
+    it, is not itself another name, and has the same parameter types and result.  A constant
+    whose value is a literal stays the literal (`export const test = "foo";`, not `= foo;`). -/
+def aliasFuns (aliases : List (String × String)) (funs : List JsFun) : List JsFun := Id.run do
+  let mut out : Array JsFun := #[]
+  for f in funs do
+    let f' := match aliases.lookup f.name with
+      | some tgt =>
+        if f.isLitConst then f else
+        match out.find? (·.name == tgt) with
+        | some g =>
+          if g.alias?.isNone && g.params.map (·.2) == f.params.map (·.2) && g.ret == f.ret then
+            { f with alias? := some tgt, delegate? := none }
+          else f
+        | none => f
+      | none => f
+    out := out.push f'
+  return out.toList
 
 /-- The module of the functions `funs`, with the imports they need; the operations the module
     defines itself (`localHelper?`) are not imported but written with it (`locals`). -/

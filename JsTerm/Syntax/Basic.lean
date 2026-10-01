@@ -595,6 +595,11 @@ structure JsFun where
       literal it passes first: `(params) => worker(lit, params)` (`JsTerm.Print.Share`); the
       body, which computes the same, is then not printed. -/
   delegate? : Option (String × JsLitShape) := none
+  /-- Another name of a function of the module before it (`export const name = other;`), when
+      its Lean definition only renames that one's (`def test1 := appendR`,
+      `def test2 a b := appendR a b`): the same code, written once.  The body, which computes
+      the same, is then not printed. -/
+  alias? : Option String := none
 
 /-- A top-level definition without parameters (its type is not a function, `termToJs`) is a
     constant: it is exported as the value its body computes, `export const name = value;`,

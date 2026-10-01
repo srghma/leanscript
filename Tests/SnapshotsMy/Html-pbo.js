@@ -2,5 +2,40 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 // not translated:
 //   instReprHtml.repr: a `partial` definition
-//   test: Application type mismatch: The argument rfl has type ?m.7452 = ?m.7452 but is expected to have type LeanScript.Lvl.meet (some 2) ((LeanScript.Lvl.meet none (LeanScript.Lvl.meet ?m.7177 none)).meet none) = some ?m.7128 in the application LeanScript.Neu.extern (LeanScript.LeanInitPureExtern.lean_array_push (LeanScript.Ty.data (LeanScript.Ref.here 0))) (LeanScript.Args.cons (LeanScript.PExpr.neu (LeanScript.Neu.var (LeanScript.UVar.head ⋯))) (LeanScript.Args.cons (LeanScriptAutoSig.Html.elem (LeanScript.PExpr.lit LeanScript.LeanPrimTy.string "article") ?m.7446) LeanScript.Args.nil)) ⋯
 
+import { array__lean_array_push_mutable } from "../../runtime.js";
+
+/**
+ * `test`
+ * @param {string} user
+ * @returns {D0}
+ */
+export const test = (user) => {
+  const k_mut$4 = (x$1) => {
+    const k_mut$3 = (x$2) =>
+      array__lean_array_push_mutable(x$2, { tag: 1, _1: "Posts for " + user });
+    return array__lean_array_push_mutable(
+      array__lean_array_push_mutable(x$1, {
+        tag: 0,
+        _1: "h1",
+        _2: k_mut$3([]),
+      }),
+      {
+        tag: 0,
+        _1: "article",
+        _2: [
+          { tag: 0, _1: "h2", _2: [{ tag: 1, _1: "The first post" }] },
+          {
+            tag: 0,
+            _1: "p",
+            _2: [
+              { tag: 1, _1: "This is the first post." },
+              { tag: 1, _1: "Not much else to say." },
+            ],
+          },
+        ],
+      },
+    );
+  };
+  return { tag: 0, _1: "section", _2: k_mut$4([]) };
+};

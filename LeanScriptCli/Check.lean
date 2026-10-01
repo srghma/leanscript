@@ -81,6 +81,9 @@ partial def treeOf? (e : Expr) (ind : InductiveVal) (lvls : List Level) :
         let t ← instantiateMVars (← inferType x)
         if t.hasAnyFVar (fun _ => true) then return none
         if t == e then fs := fs.push none
+        -- a field holding the type in a container (`Array Html`) has no sample (and asking
+        -- for the sample type of the container would ask for this one again)
+        else if (t.find? (· == e)).isSome then return none
         else
           let some ft ← stypeOf? t | return none
           unless [SType.nat, .int, .bool, .string, .char].contains ft do return none

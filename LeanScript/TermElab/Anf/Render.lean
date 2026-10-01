@@ -154,20 +154,36 @@ def dataOutSem (b j : Lean.Term) (s : Sem) : TermElabM Sem := do
       throwError "cannot take apart a value of unknown shape (a Lean term) while normalising"
     return .dataOut b j s
 
+/-- The name of the entry of the catalogue an extern `e` is (`lean_array_append` of
+    `LeanInitPureExtern.lean_array_append _`). -/
+def entryName (e : Lean.Term) : String :=
+  let f := if e.raw.isIdent then e.raw else e.raw[0]
+  if f.isIdent then f.getId.getString! else ""
+
 /-- Is the extern `e` (`LeanInitPureExtern.lean_panic_fn _`) the one of `panicCore`? -/
 def isPanicEntry (e : Lean.Term) : Bool :=
-  let f := if e.raw.isIdent then e.raw else e.raw[0]
-  f.isIdent && f.getId.getString! == "lean_panic_fn"
+  entryName e == "lean_panic_fn"
 
 /-- Is the extern `e` one of `Array.emptyWithCapacity` / `Array.mkEmpty`? -/
 def isEmptyArrayEntry (e : Lean.Term) : Bool :=
-  let f := if e.raw.isIdent then e.raw else e.raw[0]
-  f.isIdent && (f.getId.getString!.startsWith "lean_mk_empty_array_with_capacity")
+  (entryName e).startsWith "lean_mk_empty_array_with_capacity"
+
+/-- A call of an extern building a sequence from closed sequence literals, as the literal it
+    computes: `#[a] ++ #[b]` is `#[a, b]`, `#[a].push b` is `#[a, b]`, and the same for lists
+    (`[a] ++ [b]`, `b :: [a]` is no extern).  Its result is no leaf, so it cannot be a
+    `PExpr.externLit`, and with no open argument it cannot be a call (`Neu.extern`) either. -/
+def seqLitSem? (e : Lean.Term) (fs : Array Sem) : Option Sem :=
+  match entryName e, fs.toList.map Sem.strip with
+  | "lean_array_append", [.array xs _, .array ys _] => some (.array (xs ++ ys) none)
+  | "lean_array_push", [.array xs _, _] => some (.array (xs.push fs[1]!) none)
+  | "lean_list_append", [.list xs _, .list ys _] => some (.list (xs ++ ys) none)
+  | _, _ => none
 
 /-- A call of an extern: computed when every argument is closed (`PExpr.externLit`), else a
     neutral call. -/
 def externSem (e : Lean.Term) (fs : Array Sem) : TermElabM Sem := do
   if (Sem.lvAll fs.toList).isNone then
+    if let some s := seqLitSem? e fs then return s
     -- `panicCore d msg` on a closed message is its value `d` (the language has no call on
     -- closed arguments; the JavaScript of an open one throws)
     if isPanicEntry e && fs.size == 2 then return fs[0]!
