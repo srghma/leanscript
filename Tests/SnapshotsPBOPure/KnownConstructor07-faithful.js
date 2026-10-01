@@ -83,6 +83,6 @@ export const instReprPairBox$repr = (x, prec) => {
  * @returns {{ _1: int(bigint), _2: int(bigint) }}
  */
 export const test = (f, y) => {
-  const x$1 = f(y);
-  return { _1: x$1 + 1n, _2: x$1 - 2n };
+  const fy = f(y);
+  return { _1: fy + 1n, _2: fy - 2n };
 };

@@ -22,8 +22,8 @@ export const test1 = (fn, val) => {
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
 export const test7 = (f, y) => {
-  const x$1 = f(y);
-  return { _1: x$1 + 1n, _2: x$1 - 2n, _3: x$1 };
+  const fy = f(y);
+  return { _1: fy + 1n, _2: fy - 2n, _3: fy };
 };
 
 /**

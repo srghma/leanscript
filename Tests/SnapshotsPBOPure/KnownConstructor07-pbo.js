@@ -81,6 +81,6 @@ export const instReprPairBox$repr = (x, prec) => {
  * @returns {{ _1: int53(number), _2: int53(number) }}
  */
 export const test = (f, y) => {
-  const x$1 = f(y);
-  return { _1: int53__lean_int_add(x$1, 1), _2: int53__lean_int_sub(x$1, 2) };
+  const fy = f(y);
+  return { _1: int53__lean_int_add(fy, 1), _2: int53__lean_int_sub(fy, 2) };
 };

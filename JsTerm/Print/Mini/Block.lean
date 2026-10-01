@@ -237,7 +237,11 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
       let m ← exprToMini sc e
       return ← blockToMini { sc with c := m :: sc.c } tl rest
     let e ← exprToMini sc e
-    let x ← freshName hint
+    -- the result of a call of a parameter on a parameter is named after them (`fx = f(x)`)
+    let taken := (← get).taken
+    let x ← match (if hint == "x" then callHint? taken e else none) with
+      | some h => niceName h
+      | none => freshName hint
     return constDecl x e :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
   | .letMut hint e rest => do
     let e ← exprToMini sc e

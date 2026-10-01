@@ -24,11 +24,11 @@ export const test1 = (fn, val) => {
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const test7 = (f, y) => {
-  const x$1 = f(y);
+  const fy = f(y);
   return {
-    _1: int53__lean_int_add(x$1, 1),
-    _2: int53__lean_int_sub(x$1, 2),
-    _3: x$1,
+    _1: int53__lean_int_add(fy, 1),
+    _2: int53__lean_int_sub(fy, 2),
+    _3: fy,
   };
 };
 

@@ -134,6 +134,12 @@ def unreadJoinVar : String := "$unread"
 structure PrintSt where
   names : Nat := 1
   labels : Nat := 1
+  /-- The names without a counter in use in the function: its parameters and the names
+      `niceName` gave (every name `freshName` gives has a `$`, so it is never one of them). -/
+  taken : List String := []
+  /-- The names of the module (its functions, the runtime functions it imports, its own
+      helpers), which a local name must not hide. -/
+  globals : List String := []
 
 /-- The printer. -/
 abbrev PM := StateM PrintSt
@@ -141,6 +147,49 @@ abbrev PM := StateM PrintSt
 /-- A new name, from the hint of a binder: `hint$k`. -/
 def freshName (hint : String) : PM String :=
   modifyGet fun s => (s!"{hint}${s.names}", { s with names := s.names + 1 })
+
+/-- The reserved words of JavaScript and the global names the printed code may read (the
+    templates of the inlined operations call `BigInt`, `Math`, `Number`, `String`; a `throw`
+    builds an `Error`): a local name is never one of them. -/
+def jsReservedNames : List String :=
+  ["await", "break", "case", "catch", "class", "const", "continue", "debugger", "default",
+   "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for",
+   "function", "if", "implements", "import", "in", "instanceof", "interface", "let", "new",
+   "null", "package", "private", "protected", "public", "return", "static", "super",
+   "switch", "this", "throw", "true", "try", "typeof", "var", "void", "while", "with",
+   "yield", "async", "of", "get", "set", "arguments", "eval", "undefined", "NaN", "Infinity",
+   "globalThis", "BigInt", "Math", "Number", "String", "Error", "Array", "Object", "Symbol",
+   "JSON", "Boolean", "Date", "RegExp", "Map", "Set", "Promise", "Reflect", "Proxy",
+   "isNaN", "isFinite", "parseInt", "parseFloat", "console", "require", "module",
+   "exports"]
+
+/-- A name made of ASCII letters and digits, starting with a letter. -/
+def isPlainName (s : String) : Bool :=
+  match s.toList with
+  | c :: cs => (c.isAlpha && c.toNat < 128) && cs.all fun c => c.isAlphanum && c.toNat < 128
+  | [] => false
+
+/-- A new name from a hint, written without a counter when the hint is a plain name that is
+    free (not a parameter or another name given so, not a name of the module, not reserved),
+    otherwise `freshName hint`.  Either way no name of the function hides another, or a name
+    of the module or of JavaScript. -/
+def niceName (hint : String) : PM String := do
+  let s ← get
+  if isPlainName hint && hint.length ≤ 16 && !s.taken.contains hint &&
+      !s.globals.contains hint && !jsReservedNames.contains hint then
+    set { s with taken := hint :: s.taken }
+    return hint
+  else freshName hint
+
+/-- The name of the result of a call of a local function on a local value, both named without
+    a counter (`taken`: parameters, or names given so): `fx` for `f(x)`, as
+    purescript-backend-optimizer names it. -/
+def callHint? (taken : List String) : MiniExpr → Option String
+  | .call (.ident f) [.ident a] =>
+    if taken.contains f.toString && taken.contains a.toString then
+      some (f.toString ++ a.toString)
+    else none
+  | _ => none
 
 /-- A new label, `j$k`. -/
 def freshLabel : PM String :=

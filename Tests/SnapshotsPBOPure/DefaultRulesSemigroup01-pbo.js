@@ -5,20 +5,20 @@
  * `test1`
  * @param {(int53(number)) => string} f
  * @param {(int53(number)) => string} g
- * @param {int53(number)} a
+ * @param {int53(number)} x
  * @returns {string}
  */
-export const test1 = (f, g, a) => f(a) + g(a);
+export const test1 = (f, g, x) => f(x) + g(x);
 
 /**
  * `test2`
  * @param {(int53(number)) => string} f
  * @param {(int53(number)) => string} g
- * @param {int53(number)} a
+ * @param {int53(number)} x
  * @returns {string}
  */
-export const test2 = (f, g, a) => {
-  const x$1 = f(a);
-  const x$2 = g(a);
-  return x$1 + x$2 + x$1 + x$2;
+export const test2 = (f, g, x) => {
+  const fx = f(x);
+  const gx = g(x);
+  return fx + gx + fx + gx;
 };

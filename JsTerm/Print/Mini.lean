@@ -21,7 +21,11 @@ modules.
 The variables of the grammar are de Bruijn indices into three contexts (constants, mutable
 variables, join points); the printer names them, from the hints of their binders: `x$1`,
 `acc$2`, … (a counter per function, so that no name hides another), and the parameters of an
-exported function keep their names.
+exported function keep their names.  The result of a call of a parameter on a parameter is
+named after them, without a counter (`const fx = f(x);`, as purescript-backend-optimizer
+names it), when that name is free: not a parameter or another such name, not a name of the
+module (`JsModule.toJs` passes them), not a reserved word or a global of JavaScript
+(`niceName`); otherwise it gets a counter (`fx$1`).
 
 The mapping is direct:
 
@@ -61,11 +65,12 @@ open Language.JavaScript Language.JavaScript.MiniAST NonEmpty.String
     translated program is pure and total, so computing it there instead of at each call does
     not change it.  A body that is not a single `return e` is computed by an arrow called on
     the spot, `export const name = (() => { … })();`. -/
-def JsFun.toMini (f : JsFun) : MiniModuleItem :=
+def JsFun.toMini (f : JsFun) (globals : List String := []) : MiniModuleItem :=
   let go : PM MiniModuleItem := do
     -- the parameters keep their names (a name met twice gets a fresh one)
     let params ← f.params.foldlM (fun (acc : Array String) (p, _) =>
       if acc.contains p then do return acc.push (← freshName p) else return acc.push p) #[]
+    modify fun s => { s with taken := params.toList, globals := f.name :: globals }
     let sc : Scope := { c := params.toList.reverse.map ident }
     let e ← match f.delegate? with
       | some (w, lit) =>
@@ -107,7 +112,9 @@ def JsModule.toJs (m : JsModule) (header : List String) (runtime : String) : Str
     printProgram ⟨[importToMini runtime m.imports]⟩ ++ "\n"
   let localsTxt := String.join (m.locals.filterMap fun n =>
     (localHelper? n).map (· ++ "\n"))
-  let funs := m.funs.map fun f => f.docComment ++ "\n" ++ printProgram ⟨[f.toMini]⟩
+  -- the names a local name must not hide
+  let globals := m.funs.map (·.name) ++ m.imports ++ m.locals
+  let funs := m.funs.map fun f => f.docComment ++ "\n" ++ printProgram ⟨[f.toMini globals]⟩
   head ++ "\n" ++ importsTxt ++ localsTxt ++ "\n".intercalate funs
 
 end MoreJs

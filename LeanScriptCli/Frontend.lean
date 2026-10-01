@@ -352,7 +352,18 @@ def paramNames (n : Name) : MetaM (List String) := do
       lambdaTelescope v fun xs body => do
         let mut out := #[]
         for x in xs do if ← keep x then out := out.push (← name? x)
-        return out ++ (← fromType (← inferType body))
+        -- a body that is a function once its instances are unfolded (`f ++ g` for the
+        -- pointwise `Append` of functions is `fun x => f x ++ g x`): the binders of its `fun`s
+        let isFn := (← whnf (← inferType body)).isForall
+        let body' ← if !isFn then pure body else
+          try withTransparency .instances (whnf body) catch _ => pure body
+        let etaNames ← if body'.isLambda then
+            lambdaTelescope body' fun ys rest => do
+              let mut out := #[]
+              for y in ys do if ← keep y then out := out.push (← name? y)
+              return out ++ (← fromType (← inferType rest))
+          else fromType (← inferType body)
+        return out ++ etaNames
     | none => pure #[]
   let n := max tyNames.size valNames.size
   return (List.range n).map fun i => (valNames[i]?.join).getD (tyNames[i]?.getD s!"p{i}")

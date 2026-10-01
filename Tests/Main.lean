@@ -1650,6 +1650,70 @@ console.log([M.test1(true), M.test1(false), M.test2(f, true), M.test2(f, false)]
       assertEq s!"{file}-{preset}: the answers" "[1,2,3]|[]|[2,4,6]|[]|1"
         run.stdout.trimAscii.toString
 
+def defaultRulesSemigroupSpec : Spec := describe "DefaultRulesSemigroup01" do
+  it "the code and the names of purescript-backend-optimizer, uncurried (needs node and leanscript)" do
+    -- purescript-backend-optimizer (`legacy-backend/DefaultRulesSemigroup01.js`):
+    -- `test1 = (f) => (g) => (x) => f(x) + g(x)` and `test2` binding `fx = f(x)`, `gx = g(x)`
+    -- once each.  Ours: the same bodies and names, with all the parameters at once (the
+    -- parameter `x` is the binder of the instance's `fun`, the repeated calls are shared by
+    -- `Term.optimize`, and a call of a parameter on a parameter is named after them).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesSemigroup"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesSemigroup01"
+    let args := #["--quiet", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let n := if preset == "pbo" then "" else "n"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: every function translated" 1 (js.splitOn "not translated").length
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for l in ["export const test1 = (f, g, x) => f(x) + g(x);",
+          "export const test2 = (f, g, x) => {\n  const fx = f(x);\n  const gx = g(x);\n  return fx + gx + fx + gx;\n};"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length == 2)
+      -- recording functions: each is called once per function
+      let script := s!"import * as M from '{dir}/{file}-{preset}.js';
+let calls = 0;
+const f = (x) => \{ calls++; return '[' + x + ']'; }, g = (x) => \{ calls++; return '(' + x + ')'; };
+console.log([M.test1(f, g, 5{n}), M.test2(f, g, 5{n})].join('|') + '|' + calls);"
+      let run ← IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      assertEq s!"{file}-{preset}: node -e" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: the answers" "[5](5)|[5](5)[5](5)|4"
+        run.stdout.trimAscii.toString
+  it "a name made of a call never hides a name of the module (needs leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let dir := s!"{← IO.currentDir}/.lake/build/callNames"
+    IO.FS.createDirAll dir
+    let file := "CallNames"
+    IO.FS.writeFile s!"{dir}/{file}.lean" "def fx (f : Int → String) (x : Int) : String :=
+  f x ++ f x
+
+def ab (a : Int → String) (b : Int) : String :=
+  a b ++ a b
+
+def four (f : Nat → String) (i : Nat) (n : Nat) : String :=
+  f i ++ f n ++ f i ++ f n
+"
+    let args := #["--quiet", s!"--out-dir={dir}", s!"{dir}/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let js ← IO.FS.readFile s!"{dir}/{file}-pbo.js"
+    -- `fx` and `ab` are functions of the module: the results keep a counter
+    assertEq s!"{file}: fx keeps a counter" true ((js.splitOn "const fx$1 = f(x);").length == 2)
+    assertEq s!"{file}: ab keeps a counter" true ((js.splitOn "const ab$1 = a(b);").length == 2)
+    -- `fi` and `fn` are free
+    assertEq s!"{file}: fi named" true ((js.splitOn "const fi = f(i);").length == 2)
+    assertEq s!"{file}: fn named" true ((js.splitOn "const fn = f(n);").length == 2)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1666,6 +1730,7 @@ def spec : Spec := do
   oneValueResultSpec
   defaultRulesFunctorSpec
   defaultRulesMonoidSpec
+  defaultRulesSemigroupSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

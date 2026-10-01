@@ -1,3 +1,42 @@
+# Summary of changes for run 7a8ddc39-7385-488d-923d-58150ef23663
+`DefaultRulesSemigroup01` now produces the same JavaScript as purescript-backend-optimizer's `legacy-backend/DefaultRulesSemigroup01.js`, except that it takes all parameters at once instead of curried. That part is better: no intermediate closures are built.
+
+**What I found.** Before this run, the generated code was already as good as the legacy file. Only the names differed:
+- `test1` printed `(f, g, a) => f(a) + g(a)`. Legacy uses `x` for the last parameter.
+- `test2` named its two shared calls `x$1` and `x$2`. Legacy uses `fx` and `gx`.
+
+The work on the code itself was already done in `Term -[optimize]-> Term`. The unoptimised Term (`-Term-unoptimized.txt`) calls `f x` and `g x` twice each, and the existing `Term` optimiser merges them into one call each. So no new optimisation was needed in any of your three preferred phases. This file has no recursion, so labeled blocks and loops don't come into it.
+
+**Changes.** Both are about naming, so they live in the front end and the printer rather than in the optimisation phases:
+1. **Parameter names** (`LeanScriptCli/Frontend.lean`, `paramNames`): when a definition's body is itself a function once instances are unfolded, its parameter names are taken from that function. Here, `f ++ g` unfolds to the instance's `fun x => f x ++ g x`, so the parameter is now `x`. This step only runs when the body has a function type.
+2. **Names for call results** (`JsTerm/Print/Mini/Basic.lean`, `Block.lean`, `Mini.lean`): when a parameter is called on a parameter, the result is named after both, with no counter (`const fx = f(x);`). The name is only used if it is free. Otherwise it keeps a counter (`fx$1`). A name counts as free if it is not:
+   - a parameter or another name chosen this way;
+   - a name defined in the module (its functions, imported runtime functions, its own helpers);
+   - a JavaScript reserved word or a global the generated code may read (`BigInt`, `Math`, `undefined`, …).
+
+**Result** (both presets):
+```js
+export const test1 = (f, g, x) => f(x) + g(x);
+export const test2 = (f, g, x) => {
+  const fx = f(x);
+  const gx = g(x);
+  return fx + gx + fx + gx;
+};
+```
+
+**Tests and checks**
+- New IO test `defaultRulesSemigroupSpec` in `Tests/Main.lean`:
+  - It checks the exact output under both presets. It also runs both functions in node with call-counting `f` and `g`: the answers are `[5](5)` and `[5](5)[5](5)`, with 4 calls in total, so each call is made only once.
+  - A second case checks the naming fallback: in modules with functions called `fx` and `ab`, the results stay `fx$1` and `ab$1`, while free names `fi` and `fn` are used as is.
+- `lake exe tests` passes 94/94. `leanscript`, `tests`, `JsTerm`, `JsSpec`, `TermTests`, `TyTests`, `LeanScriptCli` and `LanguageJavascriptMini` build.
+- I regenerated all snapshots with `scripts/leanscript-snapshots.sh`. Only `DefaultRulesSemigroup01-*.js` and `RecordUpdate-*.js` changed (`x$1 = f(y)` became `fy = f(y)`). All node checks pass. The script still exits with status 1, but only because of the "literal too big" errors that were already there in the `PrimOp*Configurable` files under `pbo`.
+
+**Remaining gaps**
+- `DefaultRulesSemigroup01-*.check.mjs` contains no automatic checks, because the check generator can't make sample function arguments. The new IO test covers this file by hand.
+- In a variant I tried, `f i ++ f n ++ f i ++ f n`, the shared calls come out in reverse order (`f(n)` before `f(i)`). The order is already reversed in the unoptimised Term output. That is harmless because the code is pure, and I didn't change it.
+
+This was a code-generation task, so there are no new Lean theorems. Everything is committed.
+
 # Summary of changes for run 58b66ce9-33df-41e1-bb9a-57ab8d9deb43
 I wrote `proposals/ExactUsageProposals.md` with four proposals for making `Term` usages exact by construction. Each one has a toy `Term` in `proposals/ExactUsageToy.lean`. Nothing under `LeanScript/` was changed. The toy file compiles with `lake env lean proposals/ExactUsageToy.lean` with no errors, warnings or `sorry`, and its main theorems use only Lean's standard axioms. It isn't part of the Lake build, so there are no build targets to report.
 
