@@ -1,3 +1,28 @@
+# Summary of changes for run a7239854-c4a8-45d9-8654-2214fbdfe359
+I added Lean proofs to `Tests/TyTests/OnePointFieldTest.lean` showing that dropping a one-value field like `Fin m → Unit` loses no information. They also show that the two types still refused really have only one value, and that translated functions on `UF` give the same results as the Lean definitions. The `TyTests` target builds, there is no `sorry`, and the proofs use only Lean's standard axioms (`propext`, `Quot.sound`, `Classical.choice`).
+
+One part can't be proved directly: the check that decides which fields count as one-value (`isOnePointType`) runs while Lean elaborates and isn't stated as a Lean function. So what's proved is that each kind of type it accepts has one value, plus the specific examples below.
+
+**Why erasing the field is safe**
+- `pi_subsingleton`: if every result type of a function has at most one value, so does the function type, dependent or not. `finUnit_eq` and `unitFinUnit_eq` apply this to show `Fin m → Unit` and `Unit → Fin m → Unit` each have exactly one value.
+- `prod_subsingleton`: a pair of one-value types has one value. `uf4Field_eq` combines both results to show `(n : Nat) → Fin n → Unit × PUnit` has exactly one value.
+
+**`UF` is just a `Nat`**
+- `UF.ofNat_m` and `UF.m_ofNat`: going from `UF` to `Nat` and back gives the original value, in both directions.
+- `Ty.Den Ok₁.Δ Ok₁.t = Nat` holds by `rfl`, so the declared layout of `UF` stands for exactly `Nat`.
+- The same holds for `UF₄`, which is read as `Nat × Bool` (`UF₄.ofPair_toPair` and `UF₄.toPair_ofPair`).
+
+**The two types still refused have one value**
+- `UF₂.eq` and `UF₃.eq` prove that any two values of each type are equal.
+- I used `Fin 3` where you wrote `Fin m`, because Lean rejects `Fin m` when `m : Unit`.
+
+**Translated functions match the Lean definitions**
+- `ufMT_run`: the translation of `UF.m` returns `u.m` for every `u : UF`.
+- `ufUseT_run`: the translation of `UF.use`, which reads the erased field through `match f ⟨0, h⟩ with | () => …`, equals `UF.use u` for every `u`.
+- `ufvT_run`: the translation of the sample value `ufv` is its `Nat`, 3.
+
+The three main results are in the Properties table, marked proved. Everything is committed.
+
 # Summary of changes for run 81f40312-c000-44b6-95d1-4ed24f2803ea
 Functions whose result has only one value, like `test1 (f g : F) (a : Unit) : Unit`, can no longer be translated, and the `leanscript` tool now skips them silently. The test functions now use `Nat` instead. All the targets I touched build without `sorry`, and `lake exe tests` passes 92/92.
 

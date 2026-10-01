@@ -163,18 +163,20 @@ which depends on the value of an earlier field (or of the argument of a dependen
 #guard_msgs in
 #leanscript_get_ty ByCase
 
-/-- Types of no, one or two values stay refused, also behind a dependency. -/
+/-- A field of one value behind a dependency (`Fin n → Unit`) is erased
+    (`isOnePointField`): `UnitBehind` is read as its `n`, a `Nat`. -/
 structure UnitBehind where
   n : Nat
   u : Fin n → Unit
 
 /--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
+info: DependentFieldTest.UnitBehind.leanScriptTy {ks : List Nat} : Ty ks :=
+  fun {ks} => Ty.prim LeanPrimTy.nat
 -/
 #guard_msgs in
 #leanscript_get_ty UnitBehind
+
+/-! Types of no, one or two values stay refused. -/
 
 /-- error: LeanScript: `Fin 0` has no value -/
 #guard_msgs in

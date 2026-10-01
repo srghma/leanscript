@@ -59,27 +59,61 @@ def builtinListOption : Name := `leanscript.builtinList
 def useBuiltinList : MetaM Bool :=
   return (← getOptions).getBool builtinListOption false
 
-/-- Is a field of this type erased: a proof or an instance?  (A `Unit` field of a
-    constructor is erased too, but only there: see `isUnitField`.) -/
+/-- Is a field of this type erased: a proof or an instance?  (A constructor field of a type
+    of one value is erased too, but only there: see `isOnePointField`.) -/
 def isErasedField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
   if ← isProp t then return true
   if bi.isInstImplicit then return true
   return (← isClass? t).isSome
 
-/-- Is a constructor field of this type erased because it is `Unit` (`PUnit`)?  `Unit` has one
-    value, so a field of it carries no information: it is dropped from the constructor, and
-    the value of the field is `()` wherever it is read.  So `Option Unit` has two field-less
-    constructors, and is read as `Bool` (two values are only ever `Bool`: `none` is `false`,
-    `some ()` is `true`), and `Nat × Unit` as `Nat`.  `Unit` itself still has no type in the
-    language (a value of type `Unit` that is not a constructor field is refused). -/
-def isUnitField (t : Expr) : MetaM Bool := do
-  let t ← whnfR t
-  return t.isConstOf ``Unit || t.getAppFn.isConstOf ``PUnit
+/-- Does the type `T` have exactly one value, read off its shape:
+    * `Unit`/`PUnit`;
+    * a function type, dependent or not, whose result has one value whatever the arguments
+      (`Fin m → Unit`, `Unit → Fin 3 → Unit`, `(n : Nat) → Fin n → Unit`): its one value is
+      the constant function;
+    * a non-recursive structure (one constructor, no index) whose fields are proofs or of such
+      a type (`Unit × PUnit`, `{ u : Unit // True }`, `Unit × (Nat → Unit)`).
 
-/-- Is a constructor field of this type erased (`isErasedField`, `isUnitField`)? -/
+    `fuel` bounds the depth of the nesting. -/
+partial def isOnePointType (T : Expr) (fuel : Nat := 8) : MetaM Bool := do
+  if fuel == 0 then return false
+  let T ← whnf T
+  if T.isConstOf ``Unit || T.getAppFn.isConstOf ``PUnit then return true
+  if T.isForall then
+    return ← forallTelescopeReducing T fun _ r => do
+      if (← whnf r).isSort then return false
+      if ← isProp r then return false
+      isOnePointType r (fuel - 1)
+  let some (c, _) := T.getAppFn.const? | return false
+  let some (.inductInfo info) := (← getEnv).find? c | return false
+  unless info.ctors.length == 1 && info.numIndices == 0 && !info.isRec do return false
+  let params := T.getAppArgs
+  unless params.size == info.numParams do return false
+  let ctorTy ← instantiateForall ((← getConstInfo info.ctors[0]!).instantiateTypeLevelParams
+    T.getAppFn.constLevels!) params
+  forallTelescopeReducing ctorTy fun ys _ => do
+    for y in ys do
+      let t ← inferType y
+      if ← isProp t then continue
+      unless ← isOnePointType t (fuel - 1) do return false
+    return true
+
+/-- Is a constructor field of this type erased because its type has one value
+    (`isOnePointType`: `Unit`, `Fin m → Unit`, `Unit × PUnit`, …)?  Such a field carries no
+    information: it is dropped from the constructor, and the value of the field is its one
+    value wherever it is read (`()`, `fun _ => ()`, …).  So `Option Unit` has two field-less
+    constructors, and is read as `Bool` (two values are only ever `Bool`: `none` is `false`,
+    `some ()` is `true`), `Nat × Unit` as `Nat`, and the one-constructor type
+    `node : (m : Nat) → (Fin m → Unit) → UF` as `Nat` (its only field kept is `m`).  A type of
+    one value itself still has no type in the language (a value of type `Unit` that is not a
+    constructor field is refused). -/
+def isOnePointField (t : Expr) : MetaM Bool :=
+  isOnePointType t
+
+/-- Is a constructor field of this type erased (`isErasedField`, `isOnePointField`)? -/
 def isErasedCtorField (bi : BinderInfo) (t : Expr) : MetaM Bool := do
   if ← isErasedField bi t then return true
-  isUnitField t
+  isOnePointField t
 
 /-- The inductive family (with indices, valued in `Type`) a type is a full application of:
     its information, universe levels, parameters and indices. -/

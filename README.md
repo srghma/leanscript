@@ -74,10 +74,14 @@ such a function always answers its one value and does nothing else.  `#leanscrip
 refuses it and the `leanscript` tool skips it silently, like a definition of a type or a
 proposition, even when it is total and terminating (`Gen.resultIsOnePoint`).  `DefaultRulesFunction01` is the example:
 `test1 = (f, g, a) => f(1, g("foo", a))`, `test4 = (f, b, a) => f(b, a)`, `test6 = (a) => a`.
-A `Unit` field of a constructor is erased (`isUnitField` in `GenElab/Read/Base.lean`): it
-carries nothing, so `Option Unit` has two field-less constructors and is read as `Bool`
-(`some ()` is `true`), `Nat × Unit` as `Nat`, and a case analysis of the `()` read from such a
-field is its one branch.  `DefaultRulesFunctor01` is the example: `test2 = (mb) => mb.tag !== 0`
+A constructor field of a type of one value is erased (`isOnePointField`, `isOnePointType` in
+`GenElab/Read/Base.lean`): `Unit`/`PUnit`, a function type, dependent or not, whose result has
+one value (`Fin m → Unit`, `Unit → Fin 3 → Unit`), or a non-recursive structure of such fields
+and proofs (`Unit × PUnit`).  It carries nothing, so `Option Unit` has two field-less
+constructors and is read as `Bool` (`some ()` is `true`), `Nat × Unit` as `Nat`,
+`node : (m : Nat) → (Fin m → Unit) → UF` as `Nat`, and a case analysis of the `()` read from
+such a field is its one branch.  A type all of whose fields are erased this way
+(`node : Unit → (Unit → Fin 3 → Unit) → UF`) has one value and is still refused.  `DefaultRulesFunctor01` is the example: `test2 = (mb) => mb.tag !== 0`
 (`Functor.mapConst () mb`), and `test5` (`(const <$> mb) <@> 12`) is `mb` itself when it is a
 `some` (`Term.joinCtor`, `Term.openCall`), where purescript-backend-optimizer rebuilds it.
 The type of the translation of a definition with a rank-2 parameter is the one with that

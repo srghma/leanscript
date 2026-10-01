@@ -265,27 +265,6 @@ translation: `#leanscript_to_term` refuses it, and the `leanscript` tool skips i
 definition of a type or of a proposition, even when it is total and terminating
 (`test1 (f g : F) (a : Unit) : Unit`). -/
 
-/-- Does the type `T` have exactly one value, read off its shape: `Unit`/`PUnit`, or a
-    non-recursive structure (one constructor, no index) whose fields are proofs or of such a
-    type (`Unit × PUnit`, `{ u : Unit // True }`)?  `fuel` bounds the depth of the nesting. -/
-partial def isOnePointType (T : Expr) (fuel : Nat := 8) : MetaM Bool := do
-  if fuel == 0 then return false
-  if ← isUnitType T then return true
-  let T ← whnf T
-  let some (c, _) := T.getAppFn.const? | return false
-  let some (.inductInfo info) := (← getEnv).find? c | return false
-  unless info.ctors.length == 1 && info.numIndices == 0 && !info.isRec do return false
-  let params := T.getAppArgs
-  unless params.size == info.numParams do return false
-  let ctorTy ← instantiateForall ((← getConstInfo info.ctors[0]!).instantiateTypeLevelParams
-    T.getAppFn.constLevels!) params
-  forallTelescopeReducing ctorTy fun ys _ => do
-    for y in ys do
-      let t ← inferType y
-      if ← isProp t then continue
-      unless ← isOnePointType t (fuel - 1) do return false
-    return true
-
 /-- Does the definition of type `T` answer a value of one point (`isOnePointType` of its
     result, after all its parameters: `F → F → Unit → Unit`)? -/
 def resultIsOnePoint (T : Expr) : MetaM Bool :=

@@ -85,7 +85,7 @@ def swapT := #leanscript_to_term swap
 
 theorem swapT_run (a : Nat) (b : Nat) : (swapT (Δ := DSig.nil)).run (a, b) = swap (a, b) := rfl
 
-/-- `Option Unit` is read as `Bool` (its `Unit` field erased, `isUnitField`): `some ()` is
+/-- `Option Unit` is read as `Bool` (its `Unit` field erased, `isOnePointField`): `some ()` is
     `true`. -/
 def isSomeU (o : Option Unit) : Bool := o.isSome
 def isSomeUT := #leanscript_to_term isSomeU

@@ -321,7 +321,7 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src
   let major := args[nP + 1]!
   let extra := args[nP + 2 + nM:].toArray
   let minors := (args[nP + 2 : nP + 2 + nM].toArray).map fun m => m
-  -- a case analysis of a `()` (the field of a constructor, erased: `isUnitField`) is its one
+  -- a case analysis of a `()` (the field of a constructor, erased: `isOnePointField`) is its one
   -- branch
   if ind.name == ``PUnit then
     return ← tr L (mkAppN minors[0]! extra).headBeta

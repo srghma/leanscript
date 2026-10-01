@@ -205,7 +205,7 @@ so it can only be used by a function generic in the index
 #guard_msgs in
 #leanscript_to_term headNat
 
--- a `Unit` element is a constructor field of `Unit`, erased (`isUnitField`): `Nest Unit` is read
+-- a `Unit` element is a constructor field of `Unit`, erased (`isOnePointField`): `Nest Unit` is read
 -- with field-less elements; an `Empty` element stays refused (an empty field)
 #guard_msgs in
 leanscript_signature ProgUnit where

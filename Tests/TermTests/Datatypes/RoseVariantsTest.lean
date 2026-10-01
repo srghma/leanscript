@@ -349,7 +349,7 @@ example : roseSSizeT.run roseST.run = (3 : Nat) := by kernel_rfl
 /-! ## Refusals: no, one or two values -/
 
 -- (`RoseTreeL Unit` and `RoseTreeA Unit` are not refused: a `Unit` label is a constructor field
--- of `Unit`, erased (`isUnitField`), so their nodes are label-less.  They are not declared here,
+-- of `Unit`, erased (`isOnePointField`), so their nodes are label-less.  They are not declared here,
 -- so that `Prog` stays the signature the proofs read.)
 
 /--
@@ -361,18 +361,11 @@ has no constructor (it has no value)
 leanscript_signature Bad₂ where
   t := RoseTreeF Empty
 
-/-- Children on a function from `Fin m` to a type of one value are refused too. -/
-inductive UF where
-  | node : (m : Nat) → (Fin m → Unit) → UF
-
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
-#guard_msgs in
-leanscript_signature Bad₄ where
-  t := UF
+-- Children on a function from `Fin m` to a type of one value are not refused:
+-- `node : (m : Nat) → (Fin m → Unit) → UF` has a field `Fin m → Unit` of one value, erased
+-- (`isOnePointField`), and `UF` is read as its `m`, a `Nat`.  It is declared in
+-- `Tests/TyTests/OnePointFieldTest.lean`, not here, so that `Prog` stays the signature the
+-- proofs read.
 
 /-- A recursive type with no finite value is still refused: here `Fin (m + 1)` is never
     empty, so every node has a child. -/

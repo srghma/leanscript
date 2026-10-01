@@ -181,7 +181,7 @@ def twoPointCtor? (cinfo : ConstructorVal) (us : List Level := []) (args : Array
   let ind ← getConstInfoInduct cinfo.induct
   unless ind.ctors.length == 2 && ind.numIndices == 0 do return none
   -- at its parameters, when they are given: a constructor whose fields are all erased there
-  -- (`Option.some () : Option Unit`, its `Unit` field erased, `isUnitField`)
+  -- (`Option.some () : Option Unit`, its `Unit` field erased, `isOnePointField`)
   if cinfo.numParams > 0 && args.size ≥ cinfo.numParams then
     let ps := args[:cinfo.numParams].toArray
     for ctor in ind.ctors do
