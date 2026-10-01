@@ -23,7 +23,9 @@ now translates float literals) and optimised (`Term.optimizeN 3`).
   every input (the general `Term.optimizeN_run`).
 * `testN_optimized_pretty`: the optimised statement is exactly the one of
   `AssocNumberOps-Term-optimized.txt`: the unit operand `1.0 *` of `test4`–`test6` is dropped
-  (`Neu.floatUnit`, exact), and nothing else changes — the chains are **not** regrouped.
+  (`Neu.floatUnit`, exact), the operands of `+`/`*` are commuted where that saves parentheses
+  in JavaScript (`Neu.floatComm`, exact), and nothing else changes — the chains are **not**
+  regrouped.
 * **Why not regroup** as the legacy backend does (`legacy-backend/AssocNumberOps.js`:
   `3.0 + x + x + x + x + 7.0`): that changes the result.  `test1_ne_legacy` is a concrete input
   (`x = 3/7`) at which `test1` and the legacy body differ, and
@@ -83,10 +85,12 @@ theorem test4_optimized_run (x : HashableFloat) :
 
 /-! ## The optimised statements -/
 
-/-- `test1`: unchanged (no unit operand; the chain is not regrouped). -/
+/-- `test1`: the chain is not regrouped; only the operands of the outer additions are
+    commuted (`Neu.floatComm`, exact), so that the JavaScript needs no parentheses:
+    `2 + x + x + x + x + 3 + 1 + 4`. -/
 theorem test1_optimized_pretty :
     ((test1T (Δ := DSig.nil)).optimizeN 3).pretty =
-      printedFloatFn "lean_float_add(lean_float_add(1.000000, lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(2.000000, x2), x2), x2), x2), 3.000000)), 4.000000)" := by
+      printedFloatFn "lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(2.000000, x2), x2), x2), x2), 3.000000), 1.000000), 4.000000)" := by
   native_decide
 
 /-- `test4`: the unit operand `1.0 *` is dropped. -/
@@ -95,16 +99,18 @@ theorem test4_optimized_pretty :
       printedFloatFn "lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(2.000000, x2), x2), x2), x2), 3.000000), 4.000000)" := by
   native_decide
 
-/-- `test5`: the unit operand `1.0 *` is dropped. -/
+/-- `test5`: the unit operand `1.0 *` is dropped, and the operands of the products are
+    commuted (exact): `x * 3 * x * x * x * 2 * 4`. -/
 theorem test5_optimized_pretty :
     ((test5T (Δ := DSig.nil)).optimizeN 3).pretty =
-      printedFloatFn "lean_float_mul(lean_float_mul(2.000000, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, 3.000000))))), 4.000000)" := by
+      printedFloatFn "lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(x2, 3.000000), x2), x2), x2), 2.000000), 4.000000)" := by
   native_decide
 
-/-- `test6`: the unit operand `1.0 *` is dropped. -/
+/-- `test6`: the unit operand `1.0 *` is dropped, and the operands of the products are
+    commuted (exact). -/
 theorem test6_optimized_pretty :
     ((test6T (Δ := DSig.nil)).optimizeN 3).pretty =
-      printedFloatFn "lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(2.000000, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, 3.000000))))), 4.000000), lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)" := by
+      printedFloatFn "lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(x2, 3.000000), x2), x2), x2), 2.000000), 4.000000), lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)" := by
   native_decide
 
 /-! ## Regrouping float chains changes results -/
@@ -121,17 +127,19 @@ def legacyTest1 (x : Float) : Float := 3.0 + x + x + x + x + 7.0
 theorem test1_ne_legacy : test1 (3.0 / 7.0) ≠ legacyTest1 (3.0 / 7.0) := by
   native_decide
 
-/-- The opt-in pass `Term.floatReassoc` rewrites the optimised `test1` into the legacy body
+/-- The opt-in pass `Term.floatReassoc`, run before and after optimising (as
+    `leanscript --float-reassoc` does), rewrites `test1` into the legacy body
     `3.0 + x + x + x + x + 7.0`… -/
 theorem test1_floatReassoc_pretty :
-    ((test1T (Δ := DSig.nil)).optimizeN 3).floatReassoc.pretty =
+    (((test1T (Δ := DSig.nil)).floatReassoc.optimizeN 3).floatReassoc).pretty =
       printedFloatFn "lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(3.000000, x2), x2), x2), x2), 7.000000)" := by
   native_decide
 
 /-- …and so it **changes the result** of the translation (at `x = 3/7`): unlike the passes
     of `Term.optimize`, it does not preserve `Term.eval`. -/
 theorem test1_floatReassoc_changes_result :
-    runF ((test1T (Δ := DSig.nil)).optimizeN 3).floatReassoc (HashableFloat.normalize (3.0 / 7.0)) ≠
+    runF (((test1T (Δ := DSig.nil)).floatReassoc.optimizeN 3).floatReassoc)
+        (HashableFloat.normalize (3.0 / 7.0)) ≠
       runF (test1T (Δ := DSig.nil)) (HashableFloat.normalize (3.0 / 7.0)) := by
   native_decide
 

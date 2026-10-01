@@ -2,17 +2,17 @@
 
 -- test1 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(lean_float_add(1.000000, lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(2.000000, x2), x2), x2), x2), 3.000000)), 4.000000)
+  ret lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(2.000000, x2), x2), x2), x2), 3.000000), 1.000000), 4.000000)
 ret k1
 
 -- test2 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(lean_float_add(1.000000, lean_float_add(2.000000, lean_float_add(x2, lean_float_add(x2, lean_float_add(x2, lean_float_add(x2, 3.000000)))))), 4.000000)
+  ret lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(x2, 3.000000), x2), x2), x2), 2.000000), 1.000000), 4.000000)
 ret k1
 
 -- test3 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(lean_float_add(lean_float_add(lean_float_add(1.000000, lean_float_add(2.000000, lean_float_add(x2, lean_float_add(x2, lean_float_add(x2, lean_float_add(x2, 3.000000)))))), 4.000000), lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)
+  ret lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(x2, 3.000000), x2), x2), x2), 2.000000), 1.000000), 4.000000), lean_float_add(lean_float_add(lean_float_add(lean_float_add(lean_float_add(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)
 ret k1
 
 -- test4 : Float → Float
@@ -22,10 +22,10 @@ ret k1
 
 -- test5 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_mul(lean_float_mul(2.000000, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, 3.000000))))), 4.000000)
+  ret lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(x2, 3.000000), x2), x2), x2), 2.000000), 4.000000)
 ret k1
 
 -- test6 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(2.000000, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, lean_float_mul(x2, 3.000000))))), 4.000000), lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)
+  ret lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(x2, 3.000000), x2), x2), x2), 2.000000), 4.000000), lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(lean_float_mul(5.000000, x2), x2), x2), x2), 6.000000)), 7.000000)
 ret k1

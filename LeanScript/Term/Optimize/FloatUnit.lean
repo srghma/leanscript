@@ -24,9 +24,10 @@ for `Float` (`lean_float_*`) and `Float32` (`lean_float32_*`).  These hold for *
 `x` only when `x` is not `-0.0` (`-0.0 + 0.0` is `+0.0`), which holds for `HashableFloat` but
 not for every JavaScript number a caller may pass.
 
-Nothing else is done to float chains.  In particular they are **not re-associated** (as the
-integer chains are by `Term.arithWalk`): `1.0 + (2.0 + x)` is not `3.0 + x` in IEEE arithmetic
-(it differs at `x = 3/7`, see `Tests/TermTests/Optimize/AssocNumberOpsTest.lean`).
+Float chains are **not re-associated** (as the integer chains are by `Term.arithWalk`):
+`1.0 + (2.0 + x)` is not `3.0 + x` in IEEE arithmetic (it differs at `x = 3/7`, see
+`Tests/TermTests/Optimize/AssocNumberOpsTest.lean`).  Their operands are only commuted, which is
+exact, to save parentheses in JavaScript (`LeanScript.Term.Optimize.FloatComm`).
 
 `Neu.floatUnit` is applied by `Term.arithWalk` at every neutral expression of a leaf type
 (`Neu.normArithPrim`), bottom-up.  Proved: the value is unchanged (`Neu.floatUnit_eval`).

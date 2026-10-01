@@ -6,14 +6,14 @@
  * @param {float} x
  * @returns {float}
  */
-export const test1 = (x) => 1 + (2 + x + x + x + x + 3) + 4;
+export const test1 = (x) => 2 + x + x + x + x + 3 + 1 + 4;
 
 /**
  * `test2`
  * @param {float} x
  * @returns {float}
  */
-export const test2 = (x) => 1 + (2 + (x + (x + (x + (x + 3))))) + 4;
+export const test2 = (x) => x + 3 + x + x + x + 2 + 1 + 4;
 
 /**
  * `test3`
@@ -21,7 +21,7 @@ export const test2 = (x) => 1 + (2 + (x + (x + (x + (x + 3))))) + 4;
  * @returns {float}
  */
 export const test3 = (x) =>
-  1 + (2 + (x + (x + (x + (x + 3))))) + 4 + (5 + x + x + x + x + 6) + 7;
+  x + 3 + x + x + x + 2 + 1 + 4 + (5 + x + x + x + x + 6) + 7;
 
 /**
  * `test4`
@@ -35,7 +35,7 @@ export const test4 = (x) => 2 * x * x * x * x * 3 * 4;
  * @param {float} x
  * @returns {float}
  */
-export const test5 = (x) => 2 * (x * (x * (x * (x * 3)))) * 4;
+export const test5 = (x) => x * 3 * x * x * x * 2 * 4;
 
 /**
  * `test6`
@@ -43,4 +43,4 @@ export const test5 = (x) => 2 * (x * (x * (x * (x * 3)))) * 4;
  * @returns {float}
  */
 export const test6 = (x) =>
-  2 * (x * (x * (x * (x * 3)))) * 4 * (5 * x * x * x * x * 6) * 7;
+  x * 3 * x * x * x * 2 * 4 * (5 * x * x * x * x * 6) * 7;

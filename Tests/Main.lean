@@ -9,6 +9,7 @@ import TermTests.Optimize.WFTermTest
 import TermTests.Optimize.AppendTest
 import TermTests.Optimize.ArithTest
 import TermTests.Optimize.CseTest
+import TermTests.Optimize.FloatCommTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
@@ -1894,6 +1895,60 @@ def esPrecedence01Spec : Spec := describe "EsPrecedence01" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 2 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/EsPrecedence02.lean`: the operands of the float additions are
+    commuted (and `(a - a) + (a + a)` regrouped) so that every function prints without
+    parentheses, `a + a + a + a` or `a - a + a + a`, as the legacy backend's output does, with
+    the results unchanged (`Neu.floatComm`, `Tests/TermTests/Optimize/FloatCommTest.lean`). -/
+def esPrecedence02Spec : Spec := describe "EsPrecedence02" do
+  let fns : List (String × (Float → Float) × (HashableFloat → HashableFloat) × String) := [
+    ("test1", FloatCommTest.test1, ((FloatCommTest.test1T (Δ := DSig.nil)).optimizeN 3).run,
+      "lean_float_add(lean_float_add(lean_float_add(x2, x2), x2), x2)"),
+    ("test2", FloatCommTest.test2, ((FloatCommTest.test2T (Δ := DSig.nil)).optimizeN 3).run,
+      "lean_float_add(lean_float_add(lean_float_add(x2, x2), x2), x2)"),
+    ("test3", FloatCommTest.test3, ((FloatCommTest.test3T (Δ := DSig.nil)).optimizeN 3).run,
+      "lean_float_add(lean_float_add(lean_float_sub(x2, x2), x2), x2)"),
+    ("test4", FloatCommTest.test4, ((FloatCommTest.test4T (Δ := DSig.nil)).optimizeN 3).run,
+      "lean_float_add(lean_float_add(lean_float_sub(x2, x2), x2), x2)"),
+    ("test5", FloatCommTest.test5, ((FloatCommTest.test5T (Δ := DSig.nil)).optimizeN 3).run,
+      "lean_float_add(lean_float_add(lean_float_sub(x2, x2), x2), x2)")]
+  let pretties := [((FloatCommTest.test1T (Δ := DSig.nil)).optimizeN 3).pretty,
+    ((FloatCommTest.test2T (Δ := DSig.nil)).optimizeN 3).pretty,
+    ((FloatCommTest.test3T (Δ := DSig.nil)).optimizeN 3).pretty,
+    ((FloatCommTest.test4T (Δ := DSig.nil)).optimizeN 3).pretty,
+    ((FloatCommTest.test5T (Δ := DSig.nil)).optimizeN 3).pretty]
+  it "the optimised statements, and their values (the bits of the Lean function's)" do
+    for ((name, f, run, body), pretty) in fns.zip pretties do
+      assertEq s!"{name}: printed" (FloatCommTest.printedFloatFn body) pretty
+      for x in [(0 : Float), 0.1, 0.5, 1, 3 / 7, -1.5, 1e308, -1e308, 2.5e-324, 30] do
+        assertEq s!"{name} {x}" (HashableFloat.normalize (f x)).toFloat.toBits
+          (run (HashableFloat.normalize x)).toFloat.toBits
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/esPrecedence02"
+    IO.FS.createDirAll dir
+    let file := "EsPrecedence02"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      for l in ["export const test1 = (a) => a + a + a + a;",
+          "export const test2 = (a) => a + a + a + a;",
+          "export const test3 = (a) => a - a + a + a;",
+          "export const test4 = (a) => a - a + a + a;",
+          "export const test5 = (a) => a - a + a + a;"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 40 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1915,6 +1970,7 @@ def spec : Spec := do
   defaultRulesSemigroup02Spec
   escapeIdentifiersSpec
   esPrecedence01Spec
+  esPrecedence02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

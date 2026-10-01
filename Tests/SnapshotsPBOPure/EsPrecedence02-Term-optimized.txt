@@ -2,7 +2,7 @@
 
 -- test1 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(x2, lean_float_add(x2, lean_float_add(x2, x2)))
+  ret lean_float_add(lean_float_add(lean_float_add(x2, x2), x2), x2)
 ret k1
 
 -- test2 : Float → Float
@@ -12,7 +12,7 @@ ret k1
 
 -- test3 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(x2, lean_float_add(x2, lean_float_sub(x2, x2)))
+  ret lean_float_add(lean_float_add(lean_float_sub(x2, x2), x2), x2)
 ret k1
 
 -- test4 : Float → Float
@@ -22,5 +22,5 @@ ret k1
 
 -- test5 : Float → Float
 val k1 [1] : (Float → Float) := fun x2 [ω] : Float => (closed)
-  ret lean_float_add(lean_float_sub(x2, x2), lean_float_add(x2, x2))
+  ret lean_float_add(lean_float_add(lean_float_sub(x2, x2), x2), x2)
 ret k1

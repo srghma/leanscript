@@ -76,8 +76,9 @@ structure CliOptions where
   /-- How the constructors without fields of a union are represented, at both presets
       (`JsConfig.nullaryRepr`: objects `{ tag: i }` by default, or the numbers `i`). -/
   nullary : NullaryRepr := .cells
-  /-- Re-associate float chains after optimising (`Term.floatReassoc`), as the legacy backend
-      does: **changes results** (IEEE arithmetic is not associative), so off by default. -/
+  /-- Re-associate float chains before and after optimising (`Term.floatReassoc`), as the legacy
+      backend does: **changes results** (IEEE arithmetic is not associative), so off by
+      default. -/
   floatReassoc : Bool := false
   /-- (Internal, `LeanScript.Cli.panicsOf`.)  Mark each evaluation of a check on the standard
       error, for the parent process to see which calls make Lean panic. -/
@@ -357,8 +358,12 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
           (fun e => return Except.error (← e.toMessageData.toString)))
     match r with
     | .ok (ct, ty, ps) =>
-      let t := ct.term.optimizeN o.rounds
-      let opt : ClosedTerm := { ct with term := if o.floatReassoc then t.floatReassoc else t }
+      -- `--float-reassoc`: the chains are regrouped before optimising (as they are written,
+      -- before `Neu.floatComm` commutes their operands) and again after (the chains inlining
+      -- makes)
+      let t := if o.floatReassoc then (ct.term.floatReassoc.optimizeN o.rounds).floatReassoc
+        else ct.term.optimizeN o.rounds
+      let opt : ClosedTerm := { ct with term := t }
       done := done.push { name := n, ty, params := dedupNames (ps.map jsParamName), term := ct,
                           optimized := opt.withOwnership }
     | .error e => refused := refused.push (n, e)

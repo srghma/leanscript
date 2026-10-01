@@ -6,7 +6,7 @@
  * @param {float} a
  * @returns {float}
  */
-export const test1 = (a) => a + (a + (a + a));
+export const test1 = (a) => a + a + a + a;
 
 /**
  * `test2`
@@ -20,7 +20,7 @@ export const test2 = (a) => a + a + a + a;
  * @param {float} a
  * @returns {float}
  */
-export const test3 = (a) => a + (a + (a - a));
+export const test3 = (a) => a - a + a + a;
 
 /**
  * `test4`
@@ -34,4 +34,4 @@ export const test4 = (a) => a - a + a + a;
  * @param {float} a
  * @returns {float}
  */
-export const test5 = (a) => a - a + (a + a);
+export const test5 = (a) => a - a + a + a;

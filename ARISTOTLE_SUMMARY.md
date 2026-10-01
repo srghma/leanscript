@@ -1,3 +1,40 @@
+# Summary of changes for run 18d59ff4-b25d-46ca-b72b-b946e933d0d0
+The JavaScript for `Tests/SnapshotsPBOPure/EsPrecedence02.lean` now matches the legacy purescript-backend-optimizer output on 4 of the 5 functions and is shorter on `test3`. Results are unchanged, and that is proved in Lean. Both presets print:
+
+```js
+export const test1 = (a) => a + a + a + a;   // legacy: same
+export const test2 = (a) => a + a + a + a;   // legacy: same
+export const test3 = (a) => a - a + a + a;   // legacy: a + a + (a - a)
+export const test4 = (a) => a - a + a + a;   // legacy: same
+export const test5 = (a) => a - a + a + a;   // legacy: same
+```
+
+**What was wrong.** The old output was already correct; it only had extra parentheses (`a + (a + (a + a))`, `a + (a + (a - a))`, `a - a + (a + a)`). Legacy drops them by regrouping, but IEEE addition is not associative, so that is not safe in general. Legacy only gets the right answer here because every operand is the same `a`.
+
+**The fix is in the `Term -[optimize]-> Term` phase.** It is a new step in `Term.arithWalk`, in `LeanScript/Term/Optimize/FloatComm.lean`, and uses only exact float identities:
+- **Swapping operands:** the two sides of a float `+` or `*` are swapped when that needs fewer parentheses. So `a + (a + a)` becomes `(a + a) + a`, and `x * (y / z)` becomes `y / z * x`.
+- **One regrouping:** `(b - b) + (y + z)` (or the mirror image) becomes `((b - b) + y) + z`, when both `b` are written the same way. This is what fixes `test5`.
+
+**Proofs** (no `sorry`, standard axioms only):
+- `Neu.floatComm_eval`: the new step does not change evaluation, so `Term.optimize_eval` still builds.
+- `Float.add_comm` and `Float.mul_comm` (with Float32 versions), in `HashableFloat/Commute.lean`: these hold bit for bit for every float, `NaN`, infinities and `-0` included, in Lean's float model.
+- `Float.sub_self_add_add`, in `HashableFloat/SubSelf.lean`: `(b - b) + (y + z) = ((b - b) + y) + z` bit for bit for every float. On the way it proves that `b - b` is `+0` or `NaN`, and that a sum is `-0` only when both operands are `-0`. So the generated JavaScript stays exact even on inputs Lean's `HashableFloat` excludes.
+
+**Side effects:**
+- `AssocNumberOps` output changed. For example, `1 + (2 + x + x + x + x + 3) + 4` is now `2 + x + x + x + x + 3 + 1 + 4`. Its node checks still pass; no other snapshot changed.
+- `--float-reassoc` now regroups both before and after optimising, so it still reproduces the legacy `AssocNumberOps` output exactly.
+
+**Tests:**
+- New file `Tests/TermTests/Optimize/FloatCommTest.lean`. It checks evaluation is preserved for `test1`, `test3` and `test5`, and checks the printed optimised `Term` for all five functions plus three extra cases. One of those confirms `a - (a + 2)` is left alone.
+- `Tests/TermTests/Optimize/AssocNumberOpsTest.lean` was updated to the new printed forms.
+- `esPrecedence02Spec` in `Tests/Main.lean` compares values with the Lean functions bit for bit on sample floats, and runs `leanscript --check` plus node on both presets (40/40 checks each).
+- `lake exe tests` passes 106/106.
+- I regenerated all snapshots. The only failures are the existing "literal too big" ones in `PrimOp*Configurable` under `pbo`.
+
+This file has no recursion, so labeled blocks and loops didn't come into it. The READMEs and module docs are updated, and everything is committed.
+
+One thing in the existing project: the `LeanScript` library target as a whole doesn't build, because `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which the project doesn't depend on. I built the needed modules individually instead.
+
 # Summary of changes for run eb49fd69-3145-4583-8065-cbbc647ed39a
 `EsPrecedence01.test1` now compiles to `export const test1 = (f) => f;` under both presets (`pbo`, `faithful`). That beats the legacy purescript-backend-optimizer output, which still calls `f` up to three times plus `f(b)` and builds nested closures. The change is a new pass in the `Term -[optimize]-> Term` phase, and it is proved not to change `Term.eval`.
 
