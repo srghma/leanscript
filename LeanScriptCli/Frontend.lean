@@ -12,7 +12,8 @@ longer exist still elaborates as far as it can.
 
 `candidates` lists the definitions of the file the tool tries to translate: the public,
 non-auxiliary, non-`partial`, computable definitions of values (not of types or
-propositions), in the order of the file: structurally recursive ones and ones defined by
+propositions, nor functions whose result has one value, `test1 (f g : F) (a : Unit) : Unit`:
+the language is pure, so such a function does nothing; `Gen.resultIsOnePoint`), in the order of the file: structurally recursive ones and ones defined by
 well-founded recursion alike.
 
 A function defined by well-founded recursion (or a member of a `mutual` block, or a function
@@ -153,6 +154,9 @@ def classify (n : Name) (ci : ConstantInfo) : MetaM (Option Skip) := do
     if r.isSort then return false
     return !(← isProp r)
   unless isData do return some .silent
+  -- a function whose result has one value (`test1 (f g : F) (a : Unit) : Unit`) does nothing
+  -- in a pure language: it carries no value either, even when it is total and terminating
+  if ← LeanScript.Gen.resultIsOnePoint d.type then return some .silent
   if d.value.hasSorry then
     return some (.refused "the definition does not elaborate (it contains errors or `sorry`)")
   if mentions d.type (fun c => [``IO.RealWorld, ``EStateM, ``ST, ``EST, ``EIO, ``BaseIO,
@@ -319,12 +323,8 @@ def candidates (el : Elaborated) : IO (Array Name × Array (Name × String)) := 
 /-- The names of the parameters of a definition that the translation keeps (not types,
     instances, propositions or `Unit`), sanitised later by the printer: the binders of the
     leading `fun`s of its value, then those of its type (unfolded: `test4 (f : F) : F` for
-    `F := ∀ {α β γ}, α → β → γ` takes `f` and then the parameters of `F`).  When the definition
-    was translated through its generalisation over `Unit` (`Gen.unitGenName`, declared by the
-    translation), the names are the generalisation's, whose `Unit`s are parameters. -/
+    `F := ∀ {α β γ}, α → β → γ` takes `f` and then the parameters of `F`). -/
 def paramNames (n : Name) : MetaM (List String) := do
-  let g := LeanScript.Gen.unitGenName n
-  let n := if (← getEnv).contains g then g else n
   let ci ← getConstInfo n
   let keep (x : Expr) : MetaM Bool := do
     let t ← inferType x

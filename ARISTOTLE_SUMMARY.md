@@ -1,3 +1,25 @@
+# Summary of changes for run 81f40312-c000-44b6-95d1-4ed24f2803ea
+Functions whose result has only one value, like `test1 (f g : F) (a : Unit) : Unit`, can no longer be translated, and the `leanscript` tool now skips them silently. The test functions now use `Nat` instead. All the targets I touched build without `sorry`, and `lake exe tests` passes 92/92.
+
+**What changed**
+- **One-value test** (`LeanScript/TermElab/ToTerm.lean`): a new check, `Gen.resultIsOnePoint`, looks at a definition's result type after all its parameters. It counts as one value if it is `Unit` or `PUnit`, or a non-recursive structure built only from such fields and proofs (for example `Unit × PUnit`). It covers `F → F → Unit → Unit` as well.
+- **`#leanscript_to_term` refuses these definitions** with the error "the result of `f` has one value: in a pure language the function always answers it and does nothing else, so it has no translation".
+- **Removed the `Unit`-generalisation path:** `unitGeneralize?` and the `f._leanscript_unit_gen` declarations are gone. That path existed only to make such functions translatable.
+- **The `leanscript` tool skips them** (`LeanScriptCli/Frontend.lean`, `classify`). They are handled like definitions of types or propositions: not exported and not listed under "not translated", even when total and terminating. `paramNames` no longer looks for the removed generalisation.
+- The README and module docs are updated to match.
+
+**Tests**
+- **Changed to `Nat`:** `test1`, `test2` (`(a : Nat) : Nat`) and `test3` (`Nat → Nat`) in `Tests/SnapshotsPBOPure/DefaultRulesFunction01.lean` and in the copy in `Tests/TermTests/ToTerm/PolymorphismTest.lean`.
+- **Proofs:** `test1T_run`, `test2T_run` and `test3T_run` now prove, by `rfl`, that each translation computes the Lean definition itself on every argument. Before, they were stated against the removed generalisation, and `test1_eq_gen` is deleted.
+- **New refusal checks:** two `#guard_msgs` tests, `unitResult` (the old `Unit` version of `test1`) and `unitPairResult` (result `Unit × PUnit`), check that the translator refuses them.
+- **New IO test** in `Tests/Main.lean`, `oneValueResultSpec`. It runs the binary on a file containing `unitFn`, `unitThunk`, `unitPair` and `natFn`. Under both presets it checks that only `natFn` is emitted (`export const natFn = (f, g, a) => f(1, g("foo", a));`) and that the other three names do not appear anywhere in the output. The `DefaultRulesFunction01` IO test still passes unchanged.
+
+**Snapshots**
+- I regenerated all snapshots. Only the two `DefaultRulesFunction01-Term-*.txt` files changed: their headers now read `F → F → Nat → Nat`. The generated JavaScript is byte-identical, so no other snapshot had relied on the removed path.
+- All node checks passed. The snapshot script still exits with code 1, but nothing in its log points to a failing check; I did not track down why.
+
+All work is committed.
+
 # Summary of changes for run f8dff525-64d2-4a0c-8bb6-3e032a2f9bad
 I removed `LeanPrimTy.tyParam` and the `LeanScript.TyParam` structure. Type parameters are now handled entirely with types the language already has: each one is read at the stand-in `Nat`, i.e. `Ty.nat`.
 

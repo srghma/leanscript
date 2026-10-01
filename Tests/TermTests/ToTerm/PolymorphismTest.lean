@@ -12,9 +12,9 @@ set_option autoImplicit false
 
 A definition generic in types is translated at one instance: every type parameter is fixed to
 the stand-in `Nat` (the language has no leaf type for a type parameter), a rank-2 parameter
-(`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance at which the body uses it, and a
-definition that passes a `Unit` around is translated through its generalisation over `Unit`
-(`f._leanscript_unit_gen`, `Unit` replaced by a type parameter).
+(`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance at which the body uses it.  A
+definition whose result has one value (`Unit`) is refused: the language is pure, so such a
+function does nothing.
 
 The definitions of `Tests/SnapshotsPBOPure/DefaultRulesFunction01.lean` are copied here (that
 file is not a module of a library), and each translation is proved to compute the Lean
@@ -29,13 +29,13 @@ open LeanScript
 
 def F := ∀ {α β γ : Type}, α → β → γ
 
-def test1 (f : F) (g : F) (a : Unit) : Unit :=
-  f 1 <| (g "foo" a : Unit)
+def test1 (f : F) (g : F) (a : Nat) : Nat :=
+  f 1 <| (g "foo" a : Nat)
 
-def test2 (f : F) (g : F) (a : Unit) : Unit :=
-  (a |> g "foo" : Unit) |> f 1
+def test2 (f : F) (g : F) (a : Nat) : Nat :=
+  (a |> g "foo" : Nat) |> f 1
 
-def test3 (f : F) (g : F) : Unit → Unit :=
+def test3 (f : F) (g : F) : Nat → Nat :=
   fun _ => flip f 3 $ (flip g 2 1 : Int)
 
 def test4 (f : F) : F :=
@@ -54,24 +54,17 @@ def test4T := #leanscript_to_term test4
 def test5T := #leanscript_to_term test5
 def test6T := #leanscript_to_term test6
 
-/-- `test1` passes `a : Unit` to `g` and answers a `Unit`: it is translated through its
-    generalisation over `Unit`, at `P := Nat`; the rank-2 parameters are read at their
-    instances `@f Nat P P` and `@g String P P`.  The translation computes the generalisation
-    on every argument, and `test1` is the generalisation at `P := Unit`. -/
+/-- The rank-2 parameters of `test1` are read at their instances `@f Nat Nat Nat` and
+    `@g String Nat Nat`; the translation computes `test1` on every argument. -/
 theorem test1T_run (f : F) (g : F) (a : Nat) :
-    (test1T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a =
-      test1._leanscript_unit_gen Nat f g a := rfl
-
-theorem test1_eq_gen : test1 = test1._leanscript_unit_gen Unit := rfl
+    (test1T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a = test1 f g a := rfl
 
 theorem test2T_run (f : F) (g : F) (a : Nat) :
-    (test2T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a =
-      test2._leanscript_unit_gen Nat f g a := rfl
+    (test2T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a = test2 f g a := rfl
 
-/-- `test3` calls `g` at `Nat Nat Int` and `f` at `Int Nat P`. -/
+/-- `test3` calls `g` at `Nat Nat Int` and `f` at `Int Nat Nat`; its argument is unused. -/
 theorem test3T_run (f : F) (g : F) (u : Nat) :
-    (test3T (Δ := DSig.nil)).run (@f Int Nat Nat) (@g Nat Nat Int) u =
-      test3._leanscript_unit_gen Nat f g u := rfl
+    (test3T (Δ := DSig.nil)).run (@f Int Nat Nat) (@g Nat Nat Int) u = test3 f g u := rfl
 
 /-- The result of `test4` is itself polymorphic (`F`): it is read at `Nat Nat Nat`, and `f` at
     the instance the body uses, `@f Nat Nat Nat`. -/
@@ -112,8 +105,7 @@ def G := ∀ {α : Type}, α → α
 /-- `∅ : Array Int` is the extern `Array.emptyWithCapacity 0` on a closed argument; its result
     is no leaf, so it is the array literal `#[]`. -/
 def monoidTest1 : Bool → Array Int := flip guardM #[1, 2, 3]
-/-- A rank-2 parameter whose result is no `Unit` (no generalisation over `Unit`): the type of
-    the translation is the one of `f` read at its instance, `Array Int → Array Int`. -/
+/-- A rank-2 parameter: the type of the translation is the one of `f` read at its instance, `Array Int → Array Int`. -/
 def monoidTest2 (f : G) : Bool → Array Int := flip guardM (f #[1, 2, 3])
 
 def monoidTest1T := #leanscript_to_term monoidTest1
@@ -144,7 +136,7 @@ and is used at 2 different instances: the language reads it at one
 #guard_msgs in
 #leanscript_to_term twice
 
-/-- A body that builds `()` itself cannot be generalised over `Unit`: still refused. -/
+/-- A `let` of type `Unit` is refused (the language has no type of one value). -/
 def letUnit (n : Nat) : Nat := let _u : Unit := (); n
 /--
 error: LeanScript: the type
@@ -153,6 +145,26 @@ has one constructor and no field (it has one value)
 -/
 #guard_msgs in
 #leanscript_to_term letUnit
+
+/-! ## Results of one value
+
+The language is pure, so a function whose result has one value always answers it and does
+nothing else: it has no translation, even when it is total and terminating. -/
+
+def unitResult (f : F) (g : F) (a : Unit) : Unit :=
+  f 1 <| (g "foo" a : Unit)
+/--
+error: LeanScript: the result of `PolymorphismTest.unitResult` has one value: in a pure language the function always answers it and does nothing else, so it has no translation
+-/
+#guard_msgs in
+#leanscript_to_term unitResult
+
+def unitPairResult : Nat → Unit × PUnit := fun _ => ((), ())
+/--
+error: LeanScript: the result of `PolymorphismTest.unitPairResult` has one value: in a pure language the function always answers it and does nothing else, so it has no translation
+-/
+#guard_msgs in
+#leanscript_to_term unitPairResult
 
 end PolymorphismTest
 

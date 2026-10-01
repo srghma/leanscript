@@ -1485,9 +1485,9 @@ def defaultRulesFunctionSpec : Spec := describe "DefaultRulesFunction01" do
   it "every function is translated, to one call with flip/const gone (needs node and leanscript)" do
     -- purescript-backend-optimizer (`legacy-backend/DefaultRulesFunction01.js`) writes each
     -- function as one curried call (`(f) => (g) => (_unit) => f(1)(g("foo")())`).  Ours are
-    -- the same calls, uncurried: the type parameters are erased (read at the stand-in `Nat`), a
-    -- rank-2 parameter is read at its one instance, and a `Unit` passed around is a type
-    -- parameter (the definition's generalisation over `Unit`).
+    -- the same calls, uncurried: the type parameters are erased (read at the stand-in `Nat`), and
+    -- a rank-2 parameter is read at its one instance.  (`test1`–`test3` answer a `Nat` here: with
+    -- a result of `Unit` they would do nothing, and are skipped, `oneValueResultSpec`.)
     let bin : System.FilePath := ".lake/build/bin/leanscript"
     let built : Bool ← (bin.pathExists : IO Bool)
     if !built then return  -- `lake build leanscript` first
@@ -1534,6 +1534,43 @@ console.log([M.test1(f, g, 'u'), M.test2(f, g, 'u'), M.test3(f, g, 'u'), M.test4
       assertEq s!"{file}-{preset}: the calls"
         "f(1,g(foo,u))|f(1,g(foo,u))|f(g(1,2),3)|f(b,a)|a|a"
         run.stdout.trimAscii.toString
+
+/-- A function whose result has one value (`Unit`, `Unit × PUnit`) does nothing in a pure
+    language: the `leanscript` tool skips it silently (it is neither exported nor listed as not
+    translated), even when it is total and terminating, and translates the rest of the file. -/
+def oneValueResultSpec : Spec := describe "results of one value" do
+  it "a function answering a Unit is skipped (needs leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let dir := s!"{← IO.currentDir}/.lake/build/oneValueResult"
+    IO.FS.createDirAll dir
+    let file := "OneValueResult"
+    IO.FS.writeFile s!"{dir}/{file}.lean" "def F := ∀ {α β γ : Type}, α → β → γ
+
+def unitFn (f : F) (g : F) (a : Unit) : Unit :=
+  f 1 <| (g \"foo\" a : Unit)
+
+def unitThunk (f : F) (g : F) : Unit → Unit :=
+  fun _ => flip f 3 $ (flip g 2 1 : Int)
+
+def unitPair : Nat → Unit × PUnit := fun _ => ((), ())
+
+def natFn (f : F) (g : F) (a : Nat) : Nat :=
+  f 1 <| (g \"foo\" a : Nat)
+"
+    let args := #["--quiet", s!"--out-dir={dir}", s!"{dir}/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let n := if preset == "pbo" then "" else "n"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: natFn translated" true
+        ((js.splitOn s!"export const natFn = (f, g, a) => f(1{n}, g(\"foo\", a));").length == 2)
+      assertEq s!"{file}-{preset}: nothing listed as not translated" 1
+        (js.splitOn "not translated").length
+      for f in ["unitFn", "unitThunk", "unitPair"] do
+        assertEq s!"{file}-{preset}: {f} skipped" 1 (js.splitOn f).length
 
 def defaultRulesFunctorSpec : Spec := describe "DefaultRulesFunctor01" do
   it "every function is one test of the option, with no closure (needs node and leanscript)" do
@@ -1626,6 +1663,7 @@ def spec : Spec := do
   caseStringSpec
   caseSumSpec
   defaultRulesFunctionSpec
+  oneValueResultSpec
   defaultRulesFunctorSpec
   defaultRulesMonoidSpec
   wfTermSpec

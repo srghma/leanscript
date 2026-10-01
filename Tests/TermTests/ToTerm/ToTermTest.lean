@@ -185,7 +185,8 @@ info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ 0 [] [] ((Ty.prim L
 
 /-! ## Refusals -/
 
--- `Option Unit` is translated through its generalisation over `Unit` (`PolymorphismTest`)
+-- `Option Unit` is read as `Bool` (its `Unit` field erased); a result of `Unit` is refused
+-- (`PolymorphismTest`)
 
 def letUnit (n : Nat) : Nat := let _u : Unit := (); n
 /--

@@ -44,7 +44,6 @@ given with the constructor it becomes:
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
 | a type parameter (`{α : Type}` in `test6 {α : Type} : α → α`), a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`) | nothing: fixed to the stand-in `Nat` (`## Polymorphism`); a recursive call must pass it unchanged |
 | a rank-2 parameter (`f : F`) | a parameter of the one instance at which the body uses it (`@f Nat Unit Unit`); used at two instances, refused |
-| a definition that answers or passes a `Unit` without building `()` (`test1 (f g : F) (a : Unit) : Unit`), not recursive, that cannot be translated otherwise | the translation of its generalisation over `Unit` (`f._leanscript_unit_gen`, `Unit` a type parameter) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
 | a value of a quotient `Quot r` / `Quotient s` (read as its carrier): `Quot.mk r a`, `⟦a⟧` | the representative `a` |
@@ -84,7 +83,8 @@ of the subvalues and their answers, so it can only be folded, applied, or passed
 recursive call.
 
 Everything else is refused with an error, in particular a type with one value or none
-(`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a type of two values
+(`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a definition whose result
+has one value (`test1 (f g : F) (a : Unit) : Unit`: pure, it does nothing; `resultIsOnePoint`), a type of two values
 other than `Bool` (such a type *is* `bool`), a parameter that is an instance or a type of a
 higher kind (`m : Type → Type`), a rank-2 parameter used at two instances,
 mutual recursion through a helper, a recursive call that is not on a subvalue, a pattern on a numeral other than
@@ -256,55 +256,42 @@ where
         go (i + 1) (xs.set i x') (substRank2 x n x' rhs) next
     else k xs rhs next
 
-/-! ### `Unit` as a type parameter
+/-! ### Definitions whose result has one value
 
-`Unit` has one value, so the language has no type for it (a parameter `_ : Unit` is a lazy
-delay, `Unit → τ`).  A definition that answers a `Unit` or passes one around
-(`test1 (f g : F) (a : Unit) : Unit := f 1 (g "foo" a : Unit)`) is translated through its
-*generalisation*: the definition `f._leanscript_unit_gen {P : Type}` whose type and body are the
-ones of `f` with `Unit` replaced by the new type parameter `P`.  It is declared (so the kernel
-checks it), and `f` is `f._leanscript_unit_gen (P := Unit)` by definition.  This is only possible
-when the body never builds the value `()` itself, and only tried when `f` is not recursive and
-cannot be translated otherwise. -/
+The language is pure: a function has no effect, so a function whose result has one value
+(`Unit`, `PUnit`, a structure of such fields and proofs) always answers that value and does
+nothing else.  It carries no information (it is one point, like `Unit` itself), so it has no
+translation: `#leanscript_to_term` refuses it, and the `leanscript` tool skips it, like a
+definition of a type or of a proposition, even when it is total and terminating
+(`test1 (f g : F) (a : Unit) : Unit`). -/
 
-/-- The name of the generalisation of `f` over `Unit`. -/
-def unitGenName (f : Name) : Name := f ++ `_leanscript_unit_gen
+/-- Does the type `T` have exactly one value, read off its shape: `Unit`/`PUnit`, or a
+    non-recursive structure (one constructor, no index) whose fields are proofs or of such a
+    type (`Unit × PUnit`, `{ u : Unit // True }`)?  `fuel` bounds the depth of the nesting. -/
+partial def isOnePointType (T : Expr) (fuel : Nat := 8) : MetaM Bool := do
+  if fuel == 0 then return false
+  if ← isUnitType T then return true
+  let T ← whnf T
+  let some (c, _) := T.getAppFn.const? | return false
+  let some (.inductInfo info) := (← getEnv).find? c | return false
+  unless info.ctors.length == 1 && info.numIndices == 0 && !info.isRec do return false
+  let params := T.getAppArgs
+  unless params.size == info.numParams do return false
+  let ctorTy ← instantiateForall ((← getConstInfo info.ctors[0]!).instantiateTypeLevelParams
+    T.getAppFn.constLevels!) params
+  forallTelescopeReducing ctorTy fun ys _ => do
+    for y in ys do
+      let t ← inferType y
+      if ← isProp t then continue
+      unless ← isOnePointType t (fuel - 1) do return false
+    return true
 
-/-- Is `e` the type `Unit` (`Unit` or `PUnit.{1}`)? -/
-def isUnitConst (e : Expr) : Bool :=
-  e.isConstOf ``Unit || e == Lean.mkConst ``PUnit [Level.one]
-
-/-- Declare the generalisation of `f` over `Unit` (`unitGenName f`), if `f` mentions `Unit`, is
-    not recursive and never builds `()`; its name, or `none`. -/
-def unitGeneralize? (f : Name) : TermElabM (Option Name) := do
-  let env ← getEnv
-  let g := unitGenName f
-  if env.contains g then return some g
-  let some (.defnInfo info) := env.find? f | return none
-  unless info.levelParams.isEmpty do return none
-  let v := info.value
-  let T := info.type
-  unless (v.find? isUnitConst).isSome || (T.find? isUnitConst).isSome do return none
-  if (v.find? (fun e => e.isConstOf ``Unit.unit || e.isConstOf ``PUnit.unit)).isSome then
-    return none
-  -- not recursive: its unfolding equation does not call it (nor another member of its group)
-  let some eqn ← getUnfoldEqnFor? f (nonRec := true) | return none
-  let group ← mutualGroup f
-  let eqRhs ← forallTelescope (← inferType (mkConst eqn)) fun _ eq => pure (eq.eq?.map (·.2.2))
-  let some rhs := eqRhs | return none
-  if group.any (fun h => (rhs.find? (·.isConstOf h)).isSome) then return none
-  -- `fun (P : Type) => v[P/Unit]`: the body may already have loose `bvar`s under its binders,
-  -- so `Unit` is replaced by a free variable first, then abstracted
-  let (T', v') ← withLocalDeclD `P (mkSort Level.one) fun P => do
-    let sub (e : Expr) : Expr := e.replace fun s => if isUnitConst s then some P else none
-    return (← mkForallFVars #[P] (sub T), ← mkLambdaFVars #[P] (sub v))
-  try
-    addDecl (.defnDecl { name := g, levelParams := [], type := T', value := v',
-                         hints := .abbrev, safety := .safe })
-    -- its unfolding equation is generated on demand
-    enableRealizationsForConst g
-  catch _ => return none
-  return some g
+/-- Does the definition of type `T` answer a value of one point (`isOnePointType` of its
+    result, after all its parameters: `F → F → Unit → Unit`)? -/
+def resultIsOnePoint (T : Expr) : MetaM Bool :=
+  forallTelescopeReducing T fun _ r => do
+    if (← whnf r).isSort then return false
+    isOnePointType r
 
 /-- The translation of the definition `f` as it is (see `translateDef`). -/
 def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
@@ -424,27 +411,13 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
   instantiateMVars v
 
 /-- The translation of the definition `f`, elaborated against `expected?`; `named` gives the
-    type indices it is generic in (`(α := Nat)`).  A definition that cannot be translated as
-    it is, but whose generalisation over `Unit` can (`unitGeneralize?`), is translated through
-    the generalisation. -/
+    type indices it is generic in (`(α := Nat)`).  A definition whose result has one value
+    (`resultIsOnePoint`) is refused: in a pure language it does nothing. -/
 def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
     TermElabM Expr := do
-  -- an attempt fails when it throws or logs an error (the elaboration of the syntax it builds
-  -- logs some)
-  let attempt (f : Name) : TermElabM (Option Expr) := do
-    let before := (← getThe Core.State).messages
-    modifyThe Core.State fun st => { st with messages := {} }
-    let r ← try pure (some (← translateDefCore f expected? named)) catch _ => pure none
-    let after := (← getThe Core.State).messages
-    modifyThe Core.State fun st => { st with messages := before ++ after }
-    return if after.hasErrors then none else r
-  let s0 ← saveState
-  if let some v ← attempt f then return v
-  s0.restore
-  if let some g ← (try unitGeneralize? f catch _ => pure none) then
-    if let some v ← attempt g then return v
-  -- neither works: the error of `f` itself
-  s0.restore
+  if ← resultIsOnePoint (← getConstInfo f).type then
+    fail m!"the result of `{f}` has one value: in a pure language the function always answers \
+      it and does nothing else, so it has no translation"
   translateDefCore f expected? named
 
 /-- `#leanscript_to_term f`: the translation of the Lean definition `f` to a closed

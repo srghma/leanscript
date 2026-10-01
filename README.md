@@ -66,11 +66,13 @@ types are erased (`LeanScript/TermElab/ToTerm.lean`, `## Polymorphism`;
 `Tests/TermTests/ToTerm/PolymorphismTest.lean`): a type parameter (`{α : Type}`, also a leading
 `∀` of the result's type) is fixed to the stand-in `Nat` (the language has no leaf type for a
 type parameter; `Nat` never selects a specialised container such as a typed array); a rank-2
-parameter (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance the body uses it at;
-and a definition that answers or passes a `Unit` around without building `()` is translated
-through its generalisation over `Unit` (`f._leanscript_unit_gen`, declared and checked by the
-kernel, `f` being it at `Unit`), whose `Unit`s are then ordinary parameters.  The differential
-checks call a polymorphic function at `Nat`.  `DefaultRulesFunction01` is the example:
+parameter (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance the body uses it at.
+The differential checks call a polymorphic function at `Nat`.
+**A function whose result has one value** (`Unit`, `PUnit`, a structure of such fields and
+proofs; `test1 (f g : F) (a : Unit) : Unit`) is not representable: the language is pure, so
+such a function always answers its one value and does nothing else.  `#leanscript_to_term`
+refuses it and the `leanscript` tool skips it silently, like a definition of a type or a
+proposition, even when it is total and terminating (`Gen.resultIsOnePoint`).  `DefaultRulesFunction01` is the example:
 `test1 = (f, g, a) => f(1, g("foo", a))`, `test4 = (f, b, a) => f(b, a)`, `test6 = (a) => a`.
 A `Unit` field of a constructor is erased (`isUnitField` in `GenElab/Read/Base.lean`): it
 carries nothing, so `Option Unit` has two field-less constructors and is read as `Bool`
@@ -79,7 +81,7 @@ field is its one branch.  `DefaultRulesFunctor01` is the example: `test2 = (mb) 
 (`Functor.mapConst () mb`), and `test5` (`(const <$> mb) <@> 12`) is `mb` itself when it is a
 `some` (`Term.joinCtor`, `Term.openCall`), where purescript-backend-optimizer rebuilds it.
 The type of the translation of a definition with a rank-2 parameter is the one with that
-parameter read at its instance, whether or not the definition is also generalised over `Unit`.
+parameter read at its instance.
 An empty array of a closed capacity (`∅`, `Array.empty`, `Array.emptyWithCapacity 5`) is the
 literal `#[]` (`isEmptyArrayEntry` in `TermElab/Anf/Render.lean`; its result is no leaf, so it
 is no `PExpr.externLit`).  `DefaultRulesMonoid01` is the example: `test1 = (a) => (a ? [1, 2,
