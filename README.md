@@ -78,6 +78,14 @@ carries nothing, so `Option Unit` has two field-less constructors and is read as
 field is its one branch.  `DefaultRulesFunctor01` is the example: `test2 = (mb) => mb.tag !== 0`
 (`Functor.mapConst () mb`), and `test5` (`(const <$> mb) <@> 12`) is `mb` itself when it is a
 `some` (`Term.joinCtor`, `Term.openCall`), where purescript-backend-optimizer rebuilds it.
+The type of the translation of a definition with a rank-2 parameter is the one with that
+parameter read at its instance, whether or not the definition is also generalised over `Unit`.
+An empty array of a closed capacity (`∅`, `Array.empty`, `Array.emptyWithCapacity 5`) is the
+literal `#[]` (`isEmptyArrayEntry` in `TermElab/Anf/Render.lean`; its result is no leaf, so it
+is no `PExpr.externLit`).  `DefaultRulesMonoid01` is the example: `test1 = (a) => (a ? [1, 2,
+3] : [])`, and `test2 = (f, a) => { if (a) { return f([1, 2, 3]); } return []; }`, which takes
+both arguments at once and calls `f` only when its answer is needed, where
+purescript-backend-optimizer calls `f` first and answers a closure.
 
 `JsTerm` is simply typed (`JsTy`: the leaves `JsTerminalTy` — `bool`, `bigint_nat`, `uint53`,
 `bigint_int`, `int53`, bit vectors, the fixed-width integers, `float`, `float32`, `string`, … —

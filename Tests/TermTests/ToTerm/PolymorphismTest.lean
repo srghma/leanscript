@@ -107,6 +107,38 @@ theorem isSomeUT_run (o : Option Unit) :
     (isSomeUT (Δ := DSig.nil)).run o.isSome = isSomeU o := by
   cases o <;> rfl
 
+/-! ## `DefaultRulesMonoid01` -/
+
+/-- `Monoid.guard` of `Tests/SnapshotsPBOPure/DefaultRulesMonoid01.lean`. -/
+def guardM {M : Type} [EmptyCollection M] (b : Bool) (a : M) : M :=
+  if b then a else ∅
+
+def G := ∀ {α : Type}, α → α
+
+/-- `∅ : Array Int` is the extern `Array.emptyWithCapacity 0` on a closed argument; its result
+    is no leaf, so it is the array literal `#[]`. -/
+def monoidTest1 : Bool → Array Int := flip guardM #[1, 2, 3]
+/-- A rank-2 parameter whose result is no `Unit` (no generalisation over `Unit`): the type of
+    the translation is the one of `f` read at its instance, `Array Int → Array Int`. -/
+def monoidTest2 (f : G) : Bool → Array Int := flip guardM (f #[1, 2, 3])
+
+def monoidTest1T := #leanscript_to_term monoidTest1
+def monoidTest2T := #leanscript_to_term monoidTest2
+
+theorem monoidTest1T_run (b : Bool) : (monoidTest1T (Δ := DSig.nil)).run b = monoidTest1 b := by
+  cases b <;> rfl
+
+theorem monoidTest2T_run (f : G) (b : Bool) :
+    (monoidTest2T (Δ := DSig.nil)).run (@f (Array Int)) b = monoidTest2 f b := by
+  cases b <;> rfl
+
+/-- Other empty arrays of a closed capacity. -/
+def emptyCap (b : Bool) : Array Nat := if b then #[1] else Array.emptyWithCapacity 5
+def emptyCapT := #leanscript_to_term emptyCap
+
+theorem emptyCapT_run (b : Bool) : (emptyCapT (Δ := DSig.nil)).run b = emptyCap b := by
+  cases b <;> rfl
+
 /-- A rank-2 parameter used at two different instances is refused (the language reads a
     parameter at one type). -/
 def twice (f : ∀ {α : Type}, α → α) : Nat × String := (f 1, f "a")

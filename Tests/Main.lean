@@ -1574,6 +1574,43 @@ console.log([M.test1(none), M.test1(some(-3{n})), M.test2(none), M.test2(some('a
         "none|some -3|false|true|none|some 42|none|some 42|none|some a"
         run.stdout.trimAscii.toString
 
+def defaultRulesMonoidSpec : Spec := describe "DefaultRulesMonoid01" do
+  it "both functions translated, one test and no closure (needs node and leanscript)" do
+    -- purescript-backend-optimizer (`legacy-backend/DefaultRulesMonoid01.js`): `test1` is one
+    -- test answering `[1, 2, 3]` or `[]`; `test2` calls `f` first and answers a closure.  Ours:
+    -- `test1` the same test; `test2` takes both arguments at once and calls `f` only when it is
+    -- needed (no closure is built).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesMonoid"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesMonoid01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let n := if preset == "pbo" then "" else "n"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: every function translated" 1 (js.splitOn "not translated").length
+      assertEq s!"{file}-{preset}: test1 is one test" true
+        ((js.splitOn s!"export const test1 = (a) => (a ? [1{n}, 2{n}, 3{n}] : []);").length > 1)
+      assertEq s!"{file}-{preset}: test2 takes both arguments" true
+        ((js.splitOn "export const test2 = (f, a) => {").length > 1)
+      let script := s!"import * as M from '{dir}/{file}-{preset}.js';
+let calls = 0;
+const f = (xs) => \{ calls++; return xs.map((x) => x + x); };
+console.log([M.test1(true), M.test1(false), M.test2(f, true), M.test2(f, false)]
+  .map((xs) => '[' + xs.join(',') + ']').join('|') + '|' + calls);"
+      let run ← IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      assertEq s!"{file}-{preset}: node -e" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: the answers" "[1,2,3]|[]|[2,4,6]|[]|1"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1588,6 +1625,7 @@ def spec : Spec := do
   caseSumSpec
   defaultRulesFunctionSpec
   defaultRulesFunctorSpec
+  defaultRulesMonoidSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

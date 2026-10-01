@@ -350,8 +350,10 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
     if recursive && resultBinders then
       fail m!"`{f}` is recursive and its result is polymorphic"
     let polymorphic := !tyParams.isEmpty || resultBinders
+    let kept0 := kept
     withRank2Params f kept rhs next fun kept rhs next' => do
-    let polymorphic := polymorphic || next' != next
+    -- a rank-2 parameter read at its instance changes the type of the translation too
+    let polymorphic := polymorphic || next' != next || kept != kept0
     if recursive && next' != next then
       fail m!"`{f}` is recursive and has a parameter of a polymorphic type"
     -- a parameter `_ : Unit` is a lazy delay of the rest of the function: no variable

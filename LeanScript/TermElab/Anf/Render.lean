@@ -159,6 +159,11 @@ def isPanicEntry (e : Lean.Term) : Bool :=
   let f := if e.raw.isIdent then e.raw else e.raw[0]
   f.isIdent && f.getId.getString! == "lean_panic_fn"
 
+/-- Is the extern `e` one of `Array.emptyWithCapacity` / `Array.mkEmpty`? -/
+def isEmptyArrayEntry (e : Lean.Term) : Bool :=
+  let f := if e.raw.isIdent then e.raw else e.raw[0]
+  f.isIdent && (f.getId.getString!.startsWith "lean_mk_empty_array_with_capacity")
+
 /-- A call of an extern: computed when every argument is closed (`PExpr.externLit`), else a
     neutral call. -/
 def externSem (e : Lean.Term) (fs : Array Sem) : TermElabM Sem := do
@@ -166,6 +171,10 @@ def externSem (e : Lean.Term) (fs : Array Sem) : TermElabM Sem := do
     -- `panicCore d msg` on a closed message is its value `d` (the language has no call on
     -- closed arguments; the JavaScript of an open one throws)
     if isPanicEntry e && fs.size == 2 then return fs[0]!
+    -- an empty array of a closed capacity (`∅`, `Array.empty`, `Array.emptyWithCapacity n`) is
+    -- the array literal `#[]` (the capacity is not observable); its result is no leaf, so it is
+    -- no `PExpr.externLit`
+    if isEmptyArrayEntry e then return .array #[] none
     let args ← argsStx (← fs.toList.mapM (render · {} true))
     let stx ← `(LeanScript.PExpr.externLit $e $args)
     -- its value, as a literal, when it is found while normalising

@@ -1,3 +1,42 @@
+# Summary of changes for run 3e6471fe-0c3e-46b9-b579-b9931da47bf9
+Both functions in `Tests/SnapshotsPBOPure/DefaultRulesMonoid01.lean` are now translated under both presets. Before this change neither was. The output is on par with purescript-backend-optimizer's `legacy-backend/DefaultRulesMonoid01.js`, and better on `test2`.
+
+**What was wrong:** both failures were bugs in the step that turns Lean code into `Term`, not missing optimizations.
+- **`test1`** stopped with an internal type mismatch. `∅ : Array Int` unfolds to `Array.emptyWithCapacity 0`, a call of a built-in function where every argument is a constant. The translator wrote any such call as a constant of a basic type (number, boolean and so on), which an array is not.
+- **`test2`** was refused with "dependent function type". When a parameter has a polymorphic type (`f : F`, `F := ∀ {α}, α → α`), the body is translated with `f` at the one type it is used at (`Array Int → Array Int`). But the declared type of the result still had the polymorphic `F`. This only worked before when the definition also went through the existing "replace `Unit` by a type parameter" path, as all the `DefaultRulesFunction01` examples did.
+
+**Fixes:**
+1. `LeanScript/TermElab/ToTerm.lean`: if a polymorphic parameter is fixed at one type, the type of the result is now built from that fixed type.
+2. `LeanScript/TermElab/Anf/Render.lean`: an empty array with a constant capacity (`∅`, `Array.empty`, `Array.emptyWithCapacity n`) becomes the array literal `#[]`.
+
+**Output now (pbo preset):**
+```js
+export const test1 = (a) => (a ? [1, 2, 3] : []);
+export const test2 = (f, a) => {
+  if (a) {
+    return f([1, 2, 3]);
+  }
+  return [];
+};
+```
+- **`test1`** is the same single test as theirs.
+- **`test2`**: theirs calls `f` first and returns a closure. Ours takes both arguments at once, builds no closure, and calls `f` only when `a` is true.
+- The `faithful` preset gives the same shape with bigint literals.
+
+None of your three optimization phases needed changing for this file. It has no loops and no shared tails, so labeled blocks and loops did not come up.
+
+**Tests:**
+- **Proofs:** I added `monoidTest1T_run`, `monoidTest2T_run` and `emptyCapT_run` to `Tests/TermTests/ToTerm/PolymorphismTest.lean`. They use copies of the two functions (renamed `monoidTest1`/`monoidTest2`), since the snapshot file cannot be imported. Each proves the translation computes the same result as the Lean definition for every input.
+- **IO test:** I added `defaultRulesMonoidSpec` to `Tests/Main.lean`. Under node it checks:
+  - the exact shape of both functions;
+  - their answers;
+  - that `f` is called exactly once over the calls `test2(f, true)` and `test2(f, false)`.
+- **Results:** `lake exe tests` passes 91/91. `TyTests`, `TermTests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `LeanScriptCli`, `tests` and `leanscript` build, and there is no `sorry` in the edited test file.
+- **Snapshots:** `scripts/leanscript-snapshots.sh` was re-run. Only the `DefaultRulesMonoid01` outputs changed and all node checks pass. The script still exits 1 because of the "literal too big" errors in the `PrimOp*Configurable` files under the pbo preset; those were there before.
+- **Known build failure:** a full default `lake build` still fails in `LeanScript.Term.Syntax.UsageAlgebra`, because that file imports Mathlib and the project has no Mathlib dependency. This was also there before.
+
+The README has a short note on both fixes. The two `DefaultRulesMonoid01` translation theorems are recorded as proved in the Properties table, and everything is committed.
+
 # Summary of changes for run 8cf09b29-942b-4548-a354-226a0add82e5
 The JavaScript for `Tests/SnapshotsPBOPure/DefaultRulesFunctor01.lean` is now on par with purescript-backend-optimizer's `legacy-backend/DefaultRulesFunctor01.js`, and better on `test2` and `test5`. All five functions are translated under both presets.
 
