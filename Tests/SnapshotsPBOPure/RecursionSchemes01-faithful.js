@@ -8,14 +8,13 @@
 
 /**
  * `mapExprF`
- * @template A, B
- * @param {(A) => B} f
- * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: A, _2: A } | { tag: 2, _1: A, _2: A })} a
- * @returns {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: B, _2: B } | { tag: 2, _1: B, _2: B })}
+ * @param {(nat(bigint)) => nat(bigint)} f
+ * @param {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: nat(bigint), _2: nat(bigint) } | { tag: 2, _1: nat(bigint), _2: nat(bigint) })} a
+ * @returns {({ tag: 0, _1: int(bigint) } | { tag: 1, _1: nat(bigint), _2: nat(bigint) } | { tag: 2, _1: nat(bigint), _2: nat(bigint) })}
  */
 export const mapExprF = (f, a) => {
   if (a.tag === 0) {
-    return { tag: 0, _1: a._1 };
+    return a;
   }
   if (a.tag === 1) {
     return { tag: 1, _1: f(a._1), _2: f(a._2) };

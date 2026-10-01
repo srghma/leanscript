@@ -3,9 +3,8 @@
 
 /**
  * `stringValues`
- * @template A
- * @param {(string, string) => A} op
- * @returns {Array<A>}
+ * @param {(string, string) => nat(bigint)} op
+ * @returns {Array<nat(bigint)>}
  */
 export const stringValues = (op) => {
   const x$1 = op("a", "a");

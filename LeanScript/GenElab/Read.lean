@@ -343,9 +343,6 @@ partial def classify (e : Expr) : MetaM Head := do
   | ``Float.Model, 0 => p (← `(LeanPrimTy.floatModel))
   | ``Float32.Model, 0 => p (← `(LeanPrimTy.float32Model))
   | ``Lean.Name, 0 => return .leanName
-  | ``LeanScript.TyParam, 1 =>
-    let some n ← natLit? args[0]! | fail m!"the number of{indentExpr e}\nis not a numeral"
-    p (← `(LeanPrimTy.tyParam $(quote n)))
   | ``BitVec, 1 =>
     let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
     if n = 0 then fail m!"`BitVec 0` has one value"

@@ -6,18 +6,18 @@
 --   test2: LeanScript: the parameter `α` of `cata` is a type
 
 -- mapExprF : {α β : Type} → (α → β) → ExprF α → ExprF β
-val k1 [ω] : (((tyParam 0) → (tyParam 1)) → (([Int] | [(tyParam 0), (tyParam 0)] | [(tyParam 0), (tyParam 0)]) → ([Int] | [(tyParam 1), (tyParam 1)] | [(tyParam 1), (tyParam 1)]))) := fun x2 [ω] : ((tyParam 0) → (tyParam 1)) => (closed)
-  val k3 [ω] : (([Int] | [(tyParam 0), (tyParam 0)] | [(tyParam 0), (tyParam 0)]) → ([Int] | [(tyParam 1), (tyParam 1)] | [(tyParam 1), (tyParam 1)])) := fun x4 [ω] : ([Int] | [(tyParam 0), (tyParam 0)] | [(tyParam 0), (tyParam 0)]) => (open)
+val k1 [ω] : ((Nat → Nat) → (([Int] | [Nat, Nat] | [Nat, Nat]) → ([Int] | [Nat, Nat] | [Nat, Nat]))) := fun x2 [ω] : (Nat → Nat) => (closed)
+  val k3 [ω] : (([Int] | [Nat, Nat] | [Nat, Nat]) → ([Int] | [Nat, Nat] | [Nat, Nat])) := fun x4 [ω] : ([Int] | [Nat, Nat] | [Nat, Nat]) => (open)
     case x4 of
     | ctor#0(f5 [ω] : Int) =>
       ret ctor#0(f5)
-    | ctor#1(f6 [ω] : (tyParam 0), f7 [ω] : (tyParam 0)) =>
-      let x8 [ω] : (tyParam 1) := x2 f6
-      let x9 [ω] : (tyParam 1) := x2 f7
+    | ctor#1(f6 [ω] : Nat, f7 [ω] : Nat) =>
+      let x8 [ω] : Nat := x2 f6
+      let x9 [ω] : Nat := x2 f7
       ret ctor#1(x8, x9)
-    | ctor#2(f10 [ω] : (tyParam 0), f11 [ω] : (tyParam 0)) =>
-      let x12 [ω] : (tyParam 1) := x2 f10
-      let x13 [ω] : (tyParam 1) := x2 f11
+    | ctor#2(f10 [ω] : Nat, f11 [ω] : Nat) =>
+      let x12 [ω] : Nat := x2 f10
+      let x13 [ω] : Nat := x2 f11
       ret ctor#2(x12, x13)
   ret k3
 ret k1

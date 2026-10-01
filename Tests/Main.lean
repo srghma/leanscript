@@ -1485,7 +1485,7 @@ def defaultRulesFunctionSpec : Spec := describe "DefaultRulesFunction01" do
   it "every function is translated, to one call with flip/const gone (needs node and leanscript)" do
     -- purescript-backend-optimizer (`legacy-backend/DefaultRulesFunction01.js`) writes each
     -- function as one curried call (`(f) => (g) => (_unit) => f(1)(g("foo")())`).  Ours are
-    -- the same calls, uncurried: the type parameters are erased (`LeanScript.TyParam`), a
+    -- the same calls, uncurried: the type parameters are erased (read at the stand-in `Nat`), a
     -- rank-2 parameter is read at its one instance, and a `Unit` passed around is a type
     -- parameter (the definition's generalisation over `Unit`).
     let bin : System.FilePath := ".lake/build/bin/leanscript"
@@ -1516,8 +1516,10 @@ def defaultRulesFunctionSpec : Spec := describe "DefaultRulesFunction01" do
       assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
       for l in expected do
         assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length == 2)
-      assertEq s!"{file}-{preset}: test4 is generic in three types" true
-        ((js.splitOn " * @template A, B, C\n * @param {(A, B) => C} f").length == 2)
+      -- its three type parameters are read at the stand-in `Nat`
+      let nat := if preset == "pbo" then "uint53(number)" else "nat(bigint)"
+      assertEq s!"{file}-{preset}: test4 is read at the stand-in Nat" true
+        ((js.splitOn s!" * `test4`\n * @param \{({nat}, {nat}) => {nat}} f").length == 2)
       let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
       assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
       assertEq s!"{file}-{preset}: checks run, none failed" true

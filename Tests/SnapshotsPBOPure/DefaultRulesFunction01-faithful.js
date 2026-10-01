@@ -3,57 +3,51 @@
 
 /**
  * `test1`
- * @template A
- * @param {(nat(bigint), A) => A} f
- * @param {(string, A) => A} g
- * @param {A} a
- * @returns {A}
+ * @param {(nat(bigint), nat(bigint)) => nat(bigint)} f
+ * @param {(string, nat(bigint)) => nat(bigint)} g
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test1 = (f, g, a) => f(1n, g("foo", a));
 
 /**
  * `test2`
- * @template A
- * @param {(nat(bigint), A) => A} f
- * @param {(string, A) => A} g
- * @param {A} a
- * @returns {A}
+ * @param {(nat(bigint), nat(bigint)) => nat(bigint)} f
+ * @param {(string, nat(bigint)) => nat(bigint)} g
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test2 = (f, g, a) => f(1n, g("foo", a));
 
 /**
  * `test3`
- * @template A
- * @param {(int(bigint), nat(bigint)) => A} f
+ * @param {(int(bigint), nat(bigint)) => nat(bigint)} f
  * @param {(nat(bigint), nat(bigint)) => int(bigint)} g
- * @param {A} a
- * @returns {A}
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test3 = (f, g, a) => f(g(1n, 2n), 3n);
 
 /**
  * `test4`
- * @template A, B, C
- * @param {(A, B) => C} f
- * @param {A} b
- * @param {B} a
- * @returns {C}
+ * @param {(nat(bigint), nat(bigint)) => nat(bigint)} f
+ * @param {nat(bigint)} b
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test4 = (f, b, a) => f(b, a);
 
 /**
  * `test5`
- * @template A, B
- * @param {A} a
- * @param {B} a1
- * @returns {A}
+ * @param {nat(bigint)} a
+ * @param {nat(bigint)} a1
+ * @returns {nat(bigint)}
  */
 export const test5 = (a, a1) => a;
 
 /**
  * `test6`
- * @template A
- * @param {A} a
- * @returns {A}
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test6 = (a) => a;

@@ -3,9 +3,8 @@
 
 /**
  * `TestUInt8.intValues`
- * @template A
- * @param {(uint8, uint8) => A} op
- * @returns {Array<A>}
+ * @param {(uint8, uint8) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestUInt8$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -85,9 +84,8 @@ export const TestUInt8$test11 = [255, 1];
 
 /**
  * `TestUInt16.intValues`
- * @template A
- * @param {(uint16, uint16) => A} op
- * @returns {Array<A>}
+ * @param {(uint16, uint16) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestUInt16$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -167,9 +165,8 @@ export const TestUInt16$test11 = [65535, 1];
 
 /**
  * `TestUInt32.intValues`
- * @template A
- * @param {(uint32, uint32) => A} op
- * @returns {Array<A>}
+ * @param {(uint32, uint32) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestUInt32$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -249,9 +246,8 @@ export const TestUInt32$test11 = [4294967295, 1];
 
 /**
  * `TestInt8.intValues`
- * @template A
- * @param {(int8, int8) => A} op
- * @returns {Array<A>}
+ * @param {(int8, int8) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestInt8$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -331,9 +327,8 @@ export const TestInt8$test11 = [-1, 1];
 
 /**
  * `TestInt16.intValues`
- * @template A
- * @param {(int16, int16) => A} op
- * @returns {Array<A>}
+ * @param {(int16, int16) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestInt16$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -413,9 +408,8 @@ export const TestInt16$test11 = [-1, 1];
 
 /**
  * `TestInt32.intValues`
- * @template A
- * @param {(int32, int32) => A} op
- * @returns {Array<A>}
+ * @param {(int32, int32) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestInt32$intValues = (op) => {
   const x$1 = op(1, 1);

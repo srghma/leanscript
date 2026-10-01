@@ -42,7 +42,7 @@ given with the constructor it becomes:
 | a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |
 | a proof parameter of a function that is not recursive (`(h : Safe n)`; in particular of the open definitions `leanscript` builds for well-founded recursion) | nothing: it is erased, like the proofs of the body that mention it |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
-| a type parameter (`{α : Type}` in `test6 {α : Type} : α → α`), a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`) | nothing: fixed to its stand-in `LeanScript.TyParam i`, the leaf `LeanPrimTy.tyParam i` (`## Polymorphism`); a recursive call must pass it unchanged |
+| a type parameter (`{α : Type}` in `test6 {α : Type} : α → α`), a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`) | nothing: fixed to the stand-in `Nat` (`## Polymorphism`); a recursive call must pass it unchanged |
 | a rank-2 parameter (`f : F`) | a parameter of the one instance at which the body uses it (`@f Nat Unit Unit`); used at two instances, refused |
 | a definition that answers or passes a `Unit` without building `()` (`test1 (f g : F) (a : Unit) : Unit`), not recursive, that cannot be translated otherwise | the translation of its generalisation over `Unit` (`f._leanscript_unit_gen`, `Unit` a type parameter) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
@@ -159,11 +159,13 @@ where
 
 /-! ## Polymorphism
 
-A definition generic in types is translated at one instance, every type parameter fixed to its
-own stand-in `LeanScript.TyParam i` (a leaf of the language, `LeanPrimTy.tyParam i`).  The body
-has no instance to look into a value of a type parameter with (a parameter that is an instance
-is refused), so the translation of that instance is the translation of every instance once the
-types are erased, as JavaScript erases them.  Three places bind a type:
+A definition generic in types is translated at one instance, every type parameter fixed to the
+stand-in `Nat` (the language has no leaf for a type parameter: it only has the types of Lean).
+The body has no instance to look into a value of a type parameter with (a parameter that is an
+instance is refused), so the translation of that instance is the translation of every instance
+once the types are erased, as JavaScript erases them.  `Nat` serves as the stand-in because its
+representation never selects a specialised container (an `Array Nat` is a generic array, not a
+typed array) and it has many values for the differential checks.  Three places bind a type:
 
 * a parameter of the definition (`{α : Type}` in `test6 {α : Type} : α → α`);
 * a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`):
@@ -173,8 +175,8 @@ types are erased, as JavaScript erases them.  Three places bind a type:
   instances is refused, an unused one is read at fresh stand-ins.
 -/
 
-/-- `TyParam i`, the stand-in for the type parameter number `i`. -/
-def tyParamExpr (i : Nat) : Expr := mkApp (mkConst ``LeanScript.TyParam) (mkNatLit i)
+/-- `Nat`, the stand-in for a type parameter (`## Polymorphism`). -/
+def tyParamStandIn : Expr := mkConst ``Nat
 
 /-- Is `T` (in weak head normal form) the sort `Type`, the type of a type parameter? -/
 def isTypeSort (T : Expr) : MetaM Bool := do
@@ -245,7 +247,7 @@ where
         let ts ← ts.mapM instantiateMVars
         unless insts.contains ts do insts := insts.push ts
       let (ts, next) ← match insts.toList with
-        | [] => pure ((Array.range n).map (tyParamExpr <| next + ·), next + n)
+        | [] => pure (Array.replicate n tyParamStandIn, next + n)
         | [ts] => pure (ts, next)
         | _ => fail m!"the parameter `{name}` of `{f}` has the polymorphic type{indentExpr T}\n\
             and is used at {insts.size} different instances: the language reads it at one"
@@ -317,12 +319,12 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
   let (idxParams, tyParams, vals) ← forallTelescope eqTy fun xs _ => do
     let idxParams ← indexParams xs
     let mut vals ← typeIndexValues f xs idxParams named prog?
-    -- a type parameter (`{α : Type}`) is fixed to its stand-in `TyParam i` (`## Polymorphism`)
+    -- a type parameter (`{α : Type}`) is fixed to the stand-in `Nat` (`## Polymorphism`)
     let mut tyParams : Array Nat := #[]
     for i in [0:xs.size] do
       if idxParams.contains i then continue
       if ← isTypeSort (← inferType xs[i]!) then
-        vals := vals.set! i (some (tyParamExpr tyParams.size))
+        vals := vals.set! i (some tyParamStandIn)
         tyParams := tyParams.push i
     return (idxParams ++ tyParams, tyParams, vals)
   let eqTy := instBinders eqTy vals
@@ -343,8 +345,8 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
     repeat
       let .forallE _ d _ _ ← whnf (← inferType lhs) | break
       unless ← isTypeSort d do break
-      lhs := mkApp lhs (tyParamExpr next)
-      rhs := (mkApp rhs (tyParamExpr next)).headBeta
+      lhs := mkApp lhs tyParamStandIn
+      rhs := (mkApp rhs tyParamStandIn).headBeta
       next := next + 1
       resultBinders := true
     if recursive && resultBinders then

@@ -6,16 +6,14 @@
 
 /**
  * `test1`
- * @template A
- * @param {Array<A>} a
+ * @param {Array<uint53(number)>} a
  * @returns {int53(number)}
  */
 export const test1 = (a) => a.length;
 
 /**
  * `test3`
- * @template A
- * @param {Array<A>} a
+ * @param {Array<uint53(number)>} a
  * @returns {int53(number)}
  */
 export const test3 = (a) => a.length;

@@ -10,37 +10,37 @@ val k1 [1] : ((• | [Int]) → (• | [String])) := fun x2 [1] : (• | [Int]) 
 ret k1
 
 -- test2 : {α : Type} → Option α → Option Unit
-val k1 [1] : ((• | [(tyParam 0)]) → Bool) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+val k1 [1] : ((• | [Nat]) → Bool) := fun x2 [1] : (• | [Nat]) => (closed)
   case x2 of
   | ctor#0() =>
     ret false
-  | ctor#1(f3 [0] : (tyParam 0)) =>
+  | ctor#1(f3 [0] : Nat) =>
     ret true
 ret k1
 
 -- test3 : {α : Type} → Option α → Option Int
-val k1 [1] : ((• | [(tyParam 0)]) → (• | [Int])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+val k1 [1] : ((• | [Nat]) → (• | [Int])) := fun x2 [1] : (• | [Nat]) => (closed)
   case x2 of
   | ctor#0() =>
     ret ctor#0()
-  | ctor#1(f3 [0] : (tyParam 0)) =>
+  | ctor#1(f3 [0] : Nat) =>
     ret ctor#1(42)
 ret k1
 
 -- test4 : {α : Type} → Option α → Option Int
-val k1 [1] : ((• | [(tyParam 0)]) → (• | [Int])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+val k1 [1] : ((• | [Nat]) → (• | [Int])) := fun x2 [1] : (• | [Nat]) => (closed)
   case x2 of
   | ctor#0() =>
     ret ctor#0()
-  | ctor#1(f3 [0] : (tyParam 0)) =>
+  | ctor#1(f3 [0] : Nat) =>
     ret ctor#1(42)
 ret k1
 
 -- test5 : {α : Type} → Option α → Option α
-val k1 [1] : ((• | [(tyParam 0)]) → (• | [(tyParam 0)])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+val k1 [1] : ((• | [Nat]) → (• | [Nat])) := fun x2 [1] : (• | [Nat]) => (closed)
   case x2 of
   | ctor#0() =>
     ret ctor#0()
-  | ctor#1(f3 [1] : (tyParam 0)) =>
+  | ctor#1(f3 [1] : Nat) =>
     ret ctor#1(f3)
 ret k1

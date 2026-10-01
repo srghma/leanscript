@@ -63,7 +63,6 @@ def lowerScalarPrim (cfg : JsConfig) (prim : LeanPrimTy) : JsTerminalTy :=
   | .stringSlice => .stringSlice
   | .floatModel => .float
   | .float32Model => .float32
-  | .tyParam i => .tyParam i
 
 /-- The element of the typed array an array of `BitVec n` is stored in, if any: `exact` says
     whether only the widths of a typed array (`8`, `16`, `32`, `64`) are.  A bit vector of

@@ -53,18 +53,6 @@ values other than `bool` is refused as well.  This is why `bitvec n` requires `2
 two: its start and its end).  Every other leaf has at least three values.
 -/
 
-/-- The stand-in for the type parameter number `i` of a polymorphic definition.
-
-A definition generic in a type (`def swap {α β : Type} (p : α × β) : β × α`) is translated at
-the instance `α := TyParam 0`, `β := TyParam 1`: the body cannot look into a value of a type
-parameter (it has no instance to do it with), so the translation of that one instance is a
-translation of every instance once types are erased, as they are in JavaScript.  A `TyParam i`
-holds a natural number only so that the type has many values (the language has no type of one
-value) and so that the differential checks have values to pass. -/
-structure TyParam (i : Nat) where
-  val : Nat
-  deriving Inhabited, Repr, DecidableEq, Hashable
-
 /-- A terminal type: a leaf of a `Ty`, with a built-in LEAN TYPE!!! representation
 
 (not javascript!
@@ -133,9 +121,6 @@ inductive LeanPrimTy where
   | float32   : LeanPrimTy
   | floatModel   : LeanPrimTy
   | float32Model   : LeanPrimTy
-  /-- A type parameter of a polymorphic definition, by its number (`LeanScript.TyParam i`).
-      In JS: any value; the code never looks into it. -/
-  | tyParam (i : Nat) : LeanPrimTy
   -- A Lean name (`Lean.Name`) is not a leaf: it is the recursive union
   -- `anonymous | str (pre : Name) (s : String) | num (pre : Name) (i : Nat)`, isomorphic to
   -- the list of its components, so it is the type `Ty.leanName := .list Ty.nameComponent`
@@ -178,7 +163,6 @@ def pretty : LeanPrimTy → String
   | .float => "float" | .float32 => "float32"
   | .floatModel => "floatModel"
   | .float32Model => "float32Model"
-  | .tyParam i => "(tyParam " ++ toString i ++ ")"
   -- | .shareCommonObject => "shareCommonObject"
   -- | .shareCommonState _ => "shareCommonState"
 
@@ -206,7 +190,7 @@ def isNumberConfigurable : LeanPrimTy → Bool
     represented by a string and two positions, and equal slices of different strings are equal)
     and for the float models (structures, not numbers). -/
 def isObjectKey : LeanPrimTy → Bool
-  | .substringRaw | .stringSlice | .floatModel | .float32Model | .tyParam _ => false
+  | .substringRaw | .stringSlice | .floatModel | .float32Model => false
   | _ => true
 
 /-- The Lean type a terminal type describes: the type of the values its literals hold.
@@ -235,7 +219,6 @@ def isObjectKey : LeanPrimTy → Bool
   | .float32 => HashableFloat32
   | .floatModel => Float.Model
   | .float32Model => Float32.Model
-  | .tyParam i => TyParam i
   -- | .shareCommonObject => ShareCommon.Object
   -- | .shareCommonState σ => ShareCommon.State σ
   -- `.childProcess`, `.shareCommonObject` and `.shareCommonState` are commented out of

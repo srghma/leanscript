@@ -3,9 +3,8 @@
 
 /**
  * `test1`
- * @template A, B
- * @param {(A) => B} wat
- * @param {A} a
- * @returns {B}
+ * @param {(uint53(number)) => uint53(number)} wat
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test1 = (wat, a) => wat(a);

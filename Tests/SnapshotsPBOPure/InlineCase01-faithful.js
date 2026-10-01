@@ -16,11 +16,10 @@ export const test1 = (f, o) => {
 
 /**
  * `test2`
- * @template A, B
- * @param {() => B} f
- * @param {(int(bigint), A) => B} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} o
- * @returns {B}
+ * @param {() => nat(bigint)} f
+ * @param {(int(bigint), nat(bigint)) => nat(bigint)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: nat(bigint) })} o
+ * @returns {nat(bigint)}
  */
 export const test2 = (f, g, o) => {
   if (o.tag === 0) {
@@ -44,11 +43,10 @@ export const test3 = (f, a) => {
 
 /**
  * `test4`
- * @template A, B
- * @param {() => B} f
- * @param {(int(bigint), A) => B} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} a
- * @returns {B}
+ * @param {() => nat(bigint)} f
+ * @param {(int(bigint), nat(bigint)) => nat(bigint)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: nat(bigint) })} a
+ * @returns {nat(bigint)}
  */
 export const test4 = (f, g, a) => {
   if (a.tag === 0) {
@@ -59,10 +57,9 @@ export const test4 = (f, g, a) => {
 
 /**
  * `test5`
- * @template A
  * @param {int(bigint)} a
- * @param {(int(bigint), A) => int(bigint)} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} a1
+ * @param {(int(bigint), nat(bigint)) => int(bigint)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: nat(bigint) })} a1
  * @returns {int(bigint)}
  */
 export const test5 = (a, g, a1) => {

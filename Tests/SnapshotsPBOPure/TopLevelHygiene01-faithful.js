@@ -3,9 +3,8 @@
 
 /**
  * `test1`
- * @template A, B
- * @param {(A) => B} wat
- * @param {A} a
- * @returns {B}
+ * @param {(nat(bigint)) => nat(bigint)} wat
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test1 = (wat, a) => wat(a);

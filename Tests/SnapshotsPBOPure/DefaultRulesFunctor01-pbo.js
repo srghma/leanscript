@@ -15,16 +15,14 @@ export const test1 = (mb) => {
 
 /**
  * `test2`
- * @template A
- * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} mb
  * @returns {boolean}
  */
 export const test2 = (mb) => mb.tag !== 0;
 
 /**
  * `test3`
- * @template A
- * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} mb
  * @returns {({ tag: 0 } | { tag: 1, _1: int53(number) })}
  */
 export const test3 = (mb) => {
@@ -36,8 +34,7 @@ export const test3 = (mb) => {
 
 /**
  * `test4`
- * @template A
- * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} mb
  * @returns {({ tag: 0 } | { tag: 1, _1: int53(number) })}
  */
 export const test4 = (mb) => {
@@ -49,9 +46,8 @@ export const test4 = (mb) => {
 
 /**
  * `test5`
- * @template A
- * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
- * @returns {({ tag: 0 } | { tag: 1, _1: A })}
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} mb
+ * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
 export const test5 = (mb) => {
   if (mb.tag === 0) {

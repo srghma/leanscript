@@ -1,3 +1,36 @@
+# Summary of changes for run f8dff525-64d2-4a0c-8bb6-3e032a2f9bad
+I removed `LeanPrimTy.tyParam` and the `LeanScript.TyParam` structure. Type parameters are now handled entirely with types the language already has: each one is read at the stand-in `Nat`, i.e. `Ty.nat`.
+
+**How it works now**
+- In `LeanScript/TermElab/ToTerm.lean` (`## Polymorphism`), `tyParamExpr i` is replaced by `tyParamStandIn := Nat`. It is used in all three places that bind a type:
+  - a parameter like `{α : Type}`;
+  - a leading `∀` of the result's type;
+  - an unused rank-2 parameter, read at fresh stand-ins.
+- The recursive-call check (a type parameter must be passed through unchanged) is the same as before.
+- This works for the same reason as the old approach: the body has no instance to look inside a value of type `α` with, so translating one instance translates every instance once types are erased.
+- `Nat` is a safe stand-in because its representation never picks a specialised container (an `Array Nat` is a plain array, not a typed array). The differential checks also already ran type parameters at `Nat`.
+
+**Removed along with the leaf**
+- The `tyParam` cases in `LeanPrimTy` (`pretty`, `isObjectKey`, `denote`), `GenElab/Read.lean`, `Ty/Den/Two.lean`, `Ty/Den/Three.lean` and `Term/Pretty.lean`.
+- On the JavaScript side: `JsTerminalTy.tyParam`, `tyParamName`, its cases in `Ty/Lower.lean`, `Ty/Config.lean` and `Lower/Basic.lean`, and the `@template` code in `JsTerm/Print/Mini.lean`. Once the Term type carries no type-parameter marker, there is nothing for these to work from.
+
+**One visible trade-off:** JSDoc no longer prints `@template A, B, …`. It now shows the stand-in type instead, e.g. `@param {(uint53(number), uint53(number)) => uint53(number)} f` under `pbo`, or `nat(bigint)` under `faithful`.
+
+**Tests**
+- In `Tests/TermTests/ToTerm/PolymorphismTest.lean`, `P0`/`P1`/`P2` are replaced by `Nat`. All the `rfl` theorems (`test1T_run` … `swapT_run`) still prove that each translation computes the Lean definition.
+- The example in `ToTermTest.lean` is now `run (5 : Nat) = (5 : Nat)`.
+- In `Tests/Main.lean`, the `@template` assertion now checks the `test4` doc line at the stand-in type.
+- Comments in `ToTerm/Basic.lean` and `LeanScriptCli/Check.lean`, and the README section on polymorphic definitions, are updated.
+
+**Checks run**
+- `JsTerm`, `TermTests`, `TyTests`, `LeanScriptCli`, `leanscript`, `tests`, `JsSpec` and `LanguageJavascriptMini` build. There is no `sorry` in the edited test files.
+- `lake exe tests` passes 91/91.
+- I re-ran `scripts/leanscript-snapshots.sh` and committed the regenerated snapshots (60 files). All node checks pass. The script still exits 1 only because of the existing "literal too big" errors in the `PrimOp*Configurable` files under `pbo`.
+- Almost all snapshot changes are doc comments and printed types. The one change to code: in `RecursionSchemes01`, `mapExprF` now returns its argument `a` in the literal case instead of rebuilding `{ tag: 0, _1: a._1 }`. Its parameter and result types are now the same, and the reuse is still correct once types are erased.
+- As before, a full default `lake build` fails in `LeanScript.Term.Syntax.UsageAlgebra`, which imports Mathlib, a library this project doesn't depend on.
+
+All work is committed.
+
 # Summary of changes for run 3e6471fe-0c3e-46b9-b579-b9931da47bf9
 Both functions in `Tests/SnapshotsPBOPure/DefaultRulesMonoid01.lean` are now translated under both presets. Before this change neither was. The output is on par with purescript-backend-optimizer's `legacy-backend/DefaultRulesMonoid01.js`, and better on `test2`.
 

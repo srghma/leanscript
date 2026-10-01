@@ -3,57 +3,51 @@
 
 /**
  * `test1`
- * @template A
- * @param {(uint53(number), A) => A} f
- * @param {(string, A) => A} g
- * @param {A} a
- * @returns {A}
+ * @param {(uint53(number), uint53(number)) => uint53(number)} f
+ * @param {(string, uint53(number)) => uint53(number)} g
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test1 = (f, g, a) => f(1, g("foo", a));
 
 /**
  * `test2`
- * @template A
- * @param {(uint53(number), A) => A} f
- * @param {(string, A) => A} g
- * @param {A} a
- * @returns {A}
+ * @param {(uint53(number), uint53(number)) => uint53(number)} f
+ * @param {(string, uint53(number)) => uint53(number)} g
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test2 = (f, g, a) => f(1, g("foo", a));
 
 /**
  * `test3`
- * @template A
- * @param {(int53(number), uint53(number)) => A} f
+ * @param {(int53(number), uint53(number)) => uint53(number)} f
  * @param {(uint53(number), uint53(number)) => int53(number)} g
- * @param {A} a
- * @returns {A}
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test3 = (f, g, a) => f(g(1, 2), 3);
 
 /**
  * `test4`
- * @template A, B, C
- * @param {(A, B) => C} f
- * @param {A} b
- * @param {B} a
- * @returns {C}
+ * @param {(uint53(number), uint53(number)) => uint53(number)} f
+ * @param {uint53(number)} b
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test4 = (f, b, a) => f(b, a);
 
 /**
  * `test5`
- * @template A, B
- * @param {A} a
- * @param {B} a1
- * @returns {A}
+ * @param {uint53(number)} a
+ * @param {uint53(number)} a1
+ * @returns {uint53(number)}
  */
 export const test5 = (a, a1) => a;
 
 /**
  * `test6`
- * @template A
- * @param {A} a
- * @returns {A}
+ * @param {uint53(number)} a
+ * @returns {uint53(number)}
  */
 export const test6 = (a) => a;

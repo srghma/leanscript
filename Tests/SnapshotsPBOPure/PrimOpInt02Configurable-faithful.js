@@ -28,9 +28,8 @@
 
 /**
  * `TestUInt64.intValues`
- * @template A
- * @param {(nat(bigint), nat(bigint)) => A} op
- * @returns {Array<A>}
+ * @param {(nat(bigint), nat(bigint)) => nat(bigint)} op
+ * @returns {Array<nat(bigint)>}
  */
 export const TestUInt64$intValues = (op) => {
   const x$1 = op(1n, 1n);
@@ -138,9 +137,8 @@ export const TestUInt64$test11 = BigUint64Array.of(18446744073709551615n, 1n);
 
 /**
  * `TestNat.intValues`
- * @template A
- * @param {(nat(bigint), nat(bigint)) => A} op
- * @returns {Array<A>}
+ * @param {(nat(bigint), nat(bigint)) => nat(bigint)} op
+ * @returns {Array<nat(bigint)>}
  */
 export const TestNat$intValues = (op) => {
   const x$1 = op(1n, 1n);
@@ -214,9 +212,8 @@ export const TestNat$test10 = [1n, 0n, 2n, 0n, 0n, 0n];
 
 /**
  * `TestInt64.intValues`
- * @template A
- * @param {(int(bigint), int(bigint)) => A} op
- * @returns {Array<A>}
+ * @param {(int(bigint), int(bigint)) => nat(bigint)} op
+ * @returns {Array<nat(bigint)>}
  */
 export const TestInt64$intValues = (op) => {
   const x$1 = op(1n, 1n);
@@ -296,9 +293,8 @@ export const TestInt64$test11 = BigInt64Array.of(-1n, 1n);
 
 /**
  * `TestInt.intValues`
- * @template A
- * @param {(int(bigint), int(bigint)) => A} op
- * @returns {Array<A>}
+ * @param {(int(bigint), int(bigint)) => nat(bigint)} op
+ * @returns {Array<nat(bigint)>}
  */
 export const TestInt$intValues = (op) => {
   const x$1 = op(1n, 1n);

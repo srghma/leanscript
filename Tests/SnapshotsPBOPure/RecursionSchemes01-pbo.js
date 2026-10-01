@@ -10,14 +10,13 @@ import { int53__lean_int_add, int53__lean_int_mul } from "../../runtime.js";
 
 /**
  * `mapExprF`
- * @template A, B
- * @param {(A) => B} f
- * @param {({ tag: 0, _1: int53(number) } | { tag: 1, _1: A, _2: A } | { tag: 2, _1: A, _2: A })} a
- * @returns {({ tag: 0, _1: int53(number) } | { tag: 1, _1: B, _2: B } | { tag: 2, _1: B, _2: B })}
+ * @param {(uint53(number)) => uint53(number)} f
+ * @param {({ tag: 0, _1: int53(number) } | { tag: 1, _1: uint53(number), _2: uint53(number) } | { tag: 2, _1: uint53(number), _2: uint53(number) })} a
+ * @returns {({ tag: 0, _1: int53(number) } | { tag: 1, _1: uint53(number), _2: uint53(number) } | { tag: 2, _1: uint53(number), _2: uint53(number) })}
  */
 export const mapExprF = (f, a) => {
   if (a.tag === 0) {
-    return { tag: 0, _1: a._1 };
+    return a;
   }
   if (a.tag === 1) {
     return { tag: 1, _1: f(a._1), _2: f(a._2) };

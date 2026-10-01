@@ -3,8 +3,7 @@
 
 /**
  * `fn`
- * @template A
- * @param {A} x
+ * @param {nat(bigint)} x
  * @returns {int(bigint)}
  */
 export const fn = (x) => 0n;

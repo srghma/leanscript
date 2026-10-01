@@ -64,8 +64,8 @@ with their configuration.
 **Polymorphic definitions** are translated at one instance, which serves every instance once
 types are erased (`LeanScript/TermElab/ToTerm.lean`, `## Polymorphism`;
 `Tests/TermTests/ToTerm/PolymorphismTest.lean`): a type parameter (`{α : Type}`, also a leading
-`∀` of the result's type) is fixed to its stand-in `LeanScript.TyParam i`, the leaf
-`LeanPrimTy.tyParam i` (`JsTerminalTy.tyParam i`, documented as `@template A, B, …`); a rank-2
+`∀` of the result's type) is fixed to the stand-in `Nat` (the language has no leaf type for a
+type parameter; `Nat` never selects a specialised container such as a typed array); a rank-2
 parameter (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance the body uses it at;
 and a definition that answers or passes a `Unit` around without building `()` is translated
 through its generalisation over `Unit` (`f._leanscript_unit_gen`, declared and checked by the

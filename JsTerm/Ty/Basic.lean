@@ -25,11 +25,6 @@ instance : Coe JsTerminalTy JsTy := ⟨JsTy.terminal⟩
 
 namespace JsTerminalTy
 
-/-- The name of the type parameter number `i` in the documentation comments: `A`, `B`, …, `Z`,
-    then `T26`, `T27`, …. -/
-def tyParamName (i : Nat) : String :=
-  if i < 26 then String.singleton (Char.ofNat ('A'.toNat + i)) else s!"T{i}"
-
 /-- Is a value of this type a `BigInt` at run time? -/
 def isBigInt : JsTerminalTy → Bool
   | .bigint_nat | .bigint_int | .bigint_bitvec_big .. => true
@@ -47,7 +42,6 @@ def name : JsTerminalTy → String
   | .int8 => "int8" | .int16 => "int16" | .int32 => "int32"
   | .float => "float" | .float32 => "float32"
   | .string => "string" | .substring => "substring" | .stringSlice => "stringSlice"
-  | .tyParam i => tyParamName i
 
 /-- A rendering for the `-JsTerm.txt` dump. -/
 def pretty : JsTerminalTy → String

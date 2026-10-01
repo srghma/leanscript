@@ -9,18 +9,16 @@ export const wat = 42n;
 
 /**
  * `test1`
- * @template A, B
- * @param {(A) => B} wat
- * @param {A} a
- * @returns {B}
+ * @param {(nat(bigint)) => nat(bigint)} wat
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test1 = (wat, a) => wat(a);
 
 /**
  * `test2`
- * @template A, B
- * @param {(A) => B} f
- * @param {A} a
- * @returns {B}
+ * @param {(nat(bigint)) => nat(bigint)} f
+ * @param {nat(bigint)} a
+ * @returns {nat(bigint)}
  */
 export const test2 = (f, a) => f(a);

@@ -18,11 +18,10 @@ export const test1 = (f, o) => {
 
 /**
  * `test2`
- * @template A, B
- * @param {() => B} f
- * @param {(int53(number), A) => B} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} o
- * @returns {B}
+ * @param {() => uint53(number)} f
+ * @param {(int53(number), uint53(number)) => uint53(number)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} o
+ * @returns {uint53(number)}
  */
 export const test2 = (f, g, o) => {
   if (o.tag === 0) {
@@ -46,11 +45,10 @@ export const test3 = (f, a) => {
 
 /**
  * `test4`
- * @template A, B
- * @param {() => B} f
- * @param {(int53(number), A) => B} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} a
- * @returns {B}
+ * @param {() => uint53(number)} f
+ * @param {(int53(number), uint53(number)) => uint53(number)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} a
+ * @returns {uint53(number)}
  */
 export const test4 = (f, g, a) => {
   if (a.tag === 0) {
@@ -61,10 +59,9 @@ export const test4 = (f, g, a) => {
 
 /**
  * `test5`
- * @template A
  * @param {int53(number)} a
- * @param {(int53(number), A) => int53(number)} g
- * @param {({ tag: 0 } | { tag: 1, _1: A })} a1
+ * @param {(int53(number), uint53(number)) => int53(number)} g
+ * @param {({ tag: 0 } | { tag: 1, _1: uint53(number) })} a1
  * @returns {int53(number)}
  */
 export const test5 = (a, g, a1) => {

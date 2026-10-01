@@ -6,16 +6,14 @@
 
 /**
  * `test1`
- * @template A
- * @param {Array<A>} a
+ * @param {Array<nat(bigint)>} a
  * @returns {int(bigint)}
  */
 export const test1 = (a) => BigInt(a.length);
 
 /**
  * `test3`
- * @template A
- * @param {Array<A>} a
+ * @param {Array<nat(bigint)>} a
  * @returns {int(bigint)}
  */
 export const test3 = (a) => BigInt(a.length);

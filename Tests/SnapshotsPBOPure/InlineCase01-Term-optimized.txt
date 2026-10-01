@@ -13,16 +13,16 @@ val k1 [1] : ((Lazy Int) → ((• | [Int]) → Int)) := fun x2 [ω] : (Lazy Int
 ret k1
 
 -- test2 : {α β : Type} → (Unit → β) → (Int → α → β) → Option α → β
-val k1 [1] : ((Lazy (tyParam 1)) → ((Int → ((tyParam 0) → (tyParam 1))) → ((• | [(tyParam 0)]) → (tyParam 1)))) := fun x2 [ω] : (Lazy (tyParam 1)) => (closed)
-  val k3 [1] : ((Int → ((tyParam 0) → (tyParam 1))) → ((• | [(tyParam 0)]) → (tyParam 1))) := fun x4 [ω] : (Int → ((tyParam 0) → (tyParam 1))) => (open)
-    val k5 [1] : ((• | [(tyParam 0)]) → (tyParam 1)) := fun x6 [1] : (• | [(tyParam 0)]) => (open)
+val k1 [1] : ((Lazy Nat) → ((Int → (Nat → Nat)) → ((• | [Nat]) → Nat))) := fun x2 [ω] : (Lazy Nat) => (closed)
+  val k3 [1] : ((Int → (Nat → Nat)) → ((• | [Nat]) → Nat)) := fun x4 [ω] : (Int → (Nat → Nat)) => (open)
+    val k5 [1] : ((• | [Nat]) → Nat) := fun x6 [1] : (• | [Nat]) => (open)
       case x6 of
       | ctor#0() =>
-        let x7 [1] : (tyParam 1) := x2 ()
+        let x7 [1] : Nat := x2 ()
         ret x7
-      | ctor#1(f8 [1] : (tyParam 0)) =>
-        let x9 [1] : ((tyParam 0) → (tyParam 1)) := x4 1
-        let x10 [1] : (tyParam 1) := x9 f8
+      | ctor#1(f8 [1] : Nat) =>
+        let x9 [1] : (Nat → Nat) := x4 1
+        let x10 [1] : Nat := x9 f8
         ret x10
     ret k5
   ret k3
@@ -41,30 +41,30 @@ val k1 [1] : ((Lazy Int) → ((• | [Int]) → Int)) := fun x2 [ω] : (Lazy Int
 ret k1
 
 -- test4 : {α β : Type} → (Unit → β) → (Int → α → β) → Option α → β
-val k1 [1] : ((Lazy (tyParam 1)) → ((Int → ((tyParam 0) → (tyParam 1))) → ((• | [(tyParam 0)]) → (tyParam 1)))) := fun x2 [ω] : (Lazy (tyParam 1)) => (closed)
-  val k3 [1] : ((Int → ((tyParam 0) → (tyParam 1))) → ((• | [(tyParam 0)]) → (tyParam 1))) := fun x4 [ω] : (Int → ((tyParam 0) → (tyParam 1))) => (open)
-    val k5 [1] : ((• | [(tyParam 0)]) → (tyParam 1)) := fun x6 [1] : (• | [(tyParam 0)]) => (open)
+val k1 [1] : ((Lazy Nat) → ((Int → (Nat → Nat)) → ((• | [Nat]) → Nat))) := fun x2 [ω] : (Lazy Nat) => (closed)
+  val k3 [1] : ((Int → (Nat → Nat)) → ((• | [Nat]) → Nat)) := fun x4 [ω] : (Int → (Nat → Nat)) => (open)
+    val k5 [1] : ((• | [Nat]) → Nat) := fun x6 [1] : (• | [Nat]) => (open)
       case x6 of
       | ctor#0() =>
-        let x7 [1] : (tyParam 1) := x2 ()
+        let x7 [1] : Nat := x2 ()
         ret x7
-      | ctor#1(f8 [1] : (tyParam 0)) =>
-        let x9 [1] : ((tyParam 0) → (tyParam 1)) := x4 1
-        let x10 [1] : (tyParam 1) := x9 f8
+      | ctor#1(f8 [1] : Nat) =>
+        let x9 [1] : (Nat → Nat) := x4 1
+        let x10 [1] : Nat := x9 f8
         ret x10
     ret k5
   ret k3
 ret k1
 
 -- test5 : {α : Type} → Int → (Int → α → Int) → Option α → Int
-val k1 [1] : (Int → ((Int → ((tyParam 0) → Int)) → ((• | [(tyParam 0)]) → Int))) := fun x2 [ω] : Int => (closed)
-  val k3 [1] : ((Int → ((tyParam 0) → Int)) → ((• | [(tyParam 0)]) → Int)) := fun x4 [ω] : (Int → ((tyParam 0) → Int)) => (open)
-    val k5 [1] : ((• | [(tyParam 0)]) → Int) := fun x6 [1] : (• | [(tyParam 0)]) => (open)
+val k1 [1] : (Int → ((Int → (Nat → Int)) → ((• | [Nat]) → Int))) := fun x2 [ω] : Int => (closed)
+  val k3 [1] : ((Int → (Nat → Int)) → ((• | [Nat]) → Int)) := fun x4 [ω] : (Int → (Nat → Int)) => (open)
+    val k5 [1] : ((• | [Nat]) → Int) := fun x6 [1] : (• | [Nat]) => (open)
       case x6 of
       | ctor#0() =>
         ret lean_int_add(x2, 1)
-      | ctor#1(f7 [1] : (tyParam 0)) =>
-        let x8 [1] : ((tyParam 0) → Int) := x4 1
+      | ctor#1(f7 [1] : Nat) =>
+        let x8 [1] : (Nat → Int) := x4 1
         let x9 [1] : Int := x8 f7
         ret x9
     ret k5

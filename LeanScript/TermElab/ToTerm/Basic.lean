@@ -90,7 +90,7 @@ structure Loc where
       recursive call may change them. -/
   idxParams : Array Nat := #[]
   /-- The positions of its type parameters (`{α}` in `swap {α β} (p : α × β)`), also in
-      `idxParams`: they are fixed to `LeanScript.TyParam i`, so a recursive call must pass them
+      `idxParams`: they are fixed to the stand-in `Nat`, so a recursive call must pass them
       unchanged. -/
   tyParams : Array Nat := #[]
   /-- The program. -/

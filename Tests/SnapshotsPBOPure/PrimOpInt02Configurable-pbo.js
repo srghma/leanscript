@@ -70,9 +70,8 @@ export const TestUInt64$test8 = [true, false, true, false, true, true];
 
 /**
  * `TestNat.intValues`
- * @template A
- * @param {(uint53(number), uint53(number)) => A} op
- * @returns {Array<A>}
+ * @param {(uint53(number), uint53(number)) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestNat$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -146,9 +145,8 @@ export const TestNat$test10 = [1, 0, 2, 0, 0, 0];
 
 /**
  * `TestInt64.intValues`
- * @template A
- * @param {(int53(number), int53(number)) => A} op
- * @returns {Array<A>}
+ * @param {(int53(number), int53(number)) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestInt64$intValues = (op) => {
   const x$1 = op(1, 1);
@@ -228,9 +226,8 @@ export const TestInt64$test11 = [-1, 1];
 
 /**
  * `TestInt.intValues`
- * @template A
- * @param {(int53(number), int53(number)) => A} op
- * @returns {Array<A>}
+ * @param {(int53(number), int53(number)) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const TestInt$intValues = (op) => {
   const x$1 = op(1, 1);

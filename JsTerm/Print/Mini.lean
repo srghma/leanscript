@@ -89,25 +89,10 @@ def importToMini (path : String) (names : List String) : MiniModuleItem :=
   .importDecl (.clause (MiniImportClause.mk none none
     (some (names.map fun n => Specifier.mk (nes n) none)) (nes path) [] (Or.inr (Or.inr rfl))))
 
-/-- The type parameters a type mentions (`JsTerminalTy.tyParam`), the declared datatypes of the
-    signature `S` unfolded. -/
-partial def JsTy.tyParams (S : JsSig) (seen : List Nat := []) : JsTy → List Nat
-  | .terminal (.tyParam i) => [i]
-  | .terminal _ | .typedArray _ | .enum .. => []
-  | .array e | .list e | .thunk e => e.tyParams S seen
-  | .fn ds c => ds.flatMap (·.tyParams S seen) ++ c.tyParams S seen
-  | .obj (.decl i) args =>
-    args.flatMap (·.tyParams S seen) ++
-      (if seen.contains i then [] else (S.body i).tyParams S (i :: seen))
-  | .obj _ args => args.flatMap (·.tyParams S seen)
-
-/-- The comment above an exported function: its Lean name, the type parameters of a
-    polymorphic function (`@template A, B`), and the types of its parameters and result. -/
+/-- The comment above an exported function: its Lean name and the types of its parameters and
+    result. -/
 def JsFun.docComment (f : JsFun) : String :=
-  let tps := (f.params.flatMap (·.2.tyParams f.sig) ++ f.ret.tyParams f.sig).eraseDups.mergeSort
-  let tpl := if tps.isEmpty then [] else
-    [s!" * @template {", ".intercalate (tps.map JsTerminalTy.tyParamName)}"]
-  let ps := tpl ++ f.params.map fun (x, ty) => s!" * @param \{{ty}} {x}"
+  let ps := f.params.map fun (x, ty) => s!" * @param \{{ty}} {x}"
   let notes := f.notes.map fun l => s!" * {l}"
   -- a constant has a type, a function a result
   let ret := if f.isConst then s!" * @type \{{f.ret}}" else s!" * @returns \{{f.ret}}"

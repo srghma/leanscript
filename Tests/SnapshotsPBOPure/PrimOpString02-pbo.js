@@ -3,9 +3,8 @@
 
 /**
  * `stringValues`
- * @template A
- * @param {(string, string) => A} op
- * @returns {Array<A>}
+ * @param {(string, string) => uint53(number)} op
+ * @returns {Array<uint53(number)>}
  */
 export const stringValues = (op) => {
   const x$1 = op("a", "a");

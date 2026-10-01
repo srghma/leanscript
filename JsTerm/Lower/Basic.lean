@@ -95,7 +95,6 @@ def primLit (cfg : JsConfig) : (p : LeanPrimTy) → p.denote → Except String (
   | .float32, f => pure ⟨_, .float32 f.toFloat32⟩
   | .floatModel, m => pure ⟨_, .float (Float.ofModel m)⟩
   | .float32Model, m => pure ⟨_, .float32 (Float32.ofModel m)⟩
-  | .tyParam i, _ => throw s!"internal: a literal of the type parameter {i}"
 where
   tooBig (what : String) (n : Int) : String :=
     literalTooBigPrefix ++

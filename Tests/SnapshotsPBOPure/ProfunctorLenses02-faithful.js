@@ -3,9 +3,8 @@
 
 /**
  * `preview_left`
- * @template A, B
- * @param {({ tag: 0, _1: A } | { tag: 1, _1: B })} a
- * @returns {({ tag: 0 } | { tag: 1, _1: A })}
+ * @param {({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
 export const preview_left = (a) => {
   if (a.tag === 0) {
@@ -16,9 +15,8 @@ export const preview_left = (a) => {
 
 /**
  * `preview_left_right`
- * @template A, B, C
- * @param {({ tag: 0, _1: ({ tag: 0, _1: A } | { tag: 1, _1: B }) } | { tag: 1, _1: C })} a
- * @returns {({ tag: 0 } | { tag: 1, _1: B })}
+ * @param {({ tag: 0, _1: ({ tag: 0, _1: nat(bigint) } | { tag: 1, _1: nat(bigint) }) } | { tag: 1, _1: nat(bigint) })} a
+ * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
 export const preview_left_right = (a) => {
   if (a.tag === 0 && a._1.tag === 1) {

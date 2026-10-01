@@ -3,8 +3,7 @@
 
 /**
  * `fn`
- * @template A
- * @param {A} x
+ * @param {uint53(number)} x
  * @returns {int53(number)}
  */
 export const fn = (x) => 0;

@@ -11,7 +11,7 @@ set_option autoImplicit false
 # Polymorphic definitions
 
 A definition generic in types is translated at one instance: every type parameter is fixed to
-its stand-in `LeanScript.TyParam i` (the leaf `LeanPrimTy.tyParam i`), a rank-2 parameter
+the stand-in `Nat` (the language has no leaf type for a type parameter), a rank-2 parameter
 (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance at which the body uses it, and a
 definition that passes a `Unit` around is translated through its generalisation over `Unit`
 (`f._leanscript_unit_gen`, `Unit` replaced by a type parameter).
@@ -54,41 +54,35 @@ def test4T := #leanscript_to_term test4
 def test5T := #leanscript_to_term test5
 def test6T := #leanscript_to_term test6
 
-/-- `TyParam 0`, the stand-in for the first type parameter. -/
-abbrev P0 := TyParam 0
-/-- `TyParam 1`. -/
-abbrev P1 := TyParam 1
-/-- `TyParam 2`. -/
-abbrev P2 := TyParam 2
-
 /-- `test1` passes `a : Unit` to `g` and answers a `Unit`: it is translated through its
-    generalisation over `Unit`, at `P := TyParam 0`; the rank-2 parameters are read at their
+    generalisation over `Unit`, at `P := Nat`; the rank-2 parameters are read at their
     instances `@f Nat P P` and `@g String P P`.  The translation computes the generalisation
     on every argument, and `test1` is the generalisation at `P := Unit`. -/
-theorem test1T_run (f : F) (g : F) (a : P0) :
-    (test1T (Δ := DSig.nil)).run (@f Nat P0 P0) (@g String P0 P0) a =
-      test1._leanscript_unit_gen P0 f g a := rfl
+theorem test1T_run (f : F) (g : F) (a : Nat) :
+    (test1T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a =
+      test1._leanscript_unit_gen Nat f g a := rfl
 
 theorem test1_eq_gen : test1 = test1._leanscript_unit_gen Unit := rfl
 
-theorem test2T_run (f : F) (g : F) (a : P0) :
-    (test2T (Δ := DSig.nil)).run (@f Nat P0 P0) (@g String P0 P0) a =
-      test2._leanscript_unit_gen P0 f g a := rfl
+theorem test2T_run (f : F) (g : F) (a : Nat) :
+    (test2T (Δ := DSig.nil)).run (@f Nat Nat Nat) (@g String Nat Nat) a =
+      test2._leanscript_unit_gen Nat f g a := rfl
 
 /-- `test3` calls `g` at `Nat Nat Int` and `f` at `Int Nat P`. -/
-theorem test3T_run (f : F) (g : F) (u : P0) :
-    (test3T (Δ := DSig.nil)).run (@f Int Nat P0) (@g Nat Nat Int) u =
-      test3._leanscript_unit_gen P0 f g u := rfl
+theorem test3T_run (f : F) (g : F) (u : Nat) :
+    (test3T (Δ := DSig.nil)).run (@f Int Nat Nat) (@g Nat Nat Int) u =
+      test3._leanscript_unit_gen Nat f g u := rfl
 
-/-- The result of `test4` is itself polymorphic (`F`): it is read at `P0 P1 P2`, and `f` at the
-    instance the body uses, `@f P0 P1 P2`. -/
-theorem test4T_run (f : F) (b : P0) (a : P1) :
-    (test4T (Δ := DSig.nil)).run (@f P0 P1 P2) b a = test4 f (α := P0) (β := P1) (γ := P2) b a :=
-  rfl
+/-- The result of `test4` is itself polymorphic (`F`): it is read at `Nat Nat Nat`, and `f` at
+    the instance the body uses, `@f Nat Nat Nat`. -/
+theorem test4T_run (f : F) (b : Nat) (a : Nat) :
+    (test4T (Δ := DSig.nil)).run (@f Nat Nat Nat) b a =
+      test4 f (α := Nat) (β := Nat) (γ := Nat) b a := rfl
 
-theorem test5T_run (a : P0) (b : P1) : (test5T (Δ := DSig.nil)).run a b = test5 P0 P1 a b := rfl
+theorem test5T_run (a : Nat) (b : Nat) :
+    (test5T (Δ := DSig.nil)).run a b = test5 Nat Nat a b := rfl
 
-theorem test6T_run (a : P0) : (test6T (Δ := DSig.nil)).run a = test6 a := rfl
+theorem test6T_run (a : Nat) : (test6T (Δ := DSig.nil)).run a = test6 a := rfl
 
 /-! ## More shapes -/
 
@@ -96,7 +90,7 @@ theorem test6T_run (a : P0) : (test6T (Δ := DSig.nil)).run a = test6 a := rfl
 def swap {α β : Type} (p : α × β) : β × α := (p.2, p.1)
 def swapT := #leanscript_to_term swap
 
-theorem swapT_run (a : P0) (b : P1) : (swapT (Δ := DSig.nil)).run (a, b) = swap (a, b) := rfl
+theorem swapT_run (a : Nat) (b : Nat) : (swapT (Δ := DSig.nil)).run (a, b) = swap (a, b) := rfl
 
 /-- `Option Unit` is read as `Bool` (its `Unit` field erased, `isUnitField`): `some ()` is
     `true`. -/

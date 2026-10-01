@@ -217,10 +217,10 @@ is not structural: it must pass the parameters unchanged except the one recursed
 #guard_msgs in
 #leanscript_to_term fib
 
--- a type parameter is fixed to its stand-in `TyParam i` (`PolymorphismTest`)
+-- a type parameter is fixed to the stand-in `Nat` (`PolymorphismTest`)
 def idT (α : Type) (a : α) : α := a
 def idTT := #leanscript_to_term idT
-example : (idTT (Δ := DSig.nil)).run (⟨5⟩ : TyParam 0) = ⟨5⟩ := rfl
+example : (idTT (Δ := DSig.nil)).run (5 : Nat) = (5 : Nat) := rfl
 
 /-! ## Delays
 

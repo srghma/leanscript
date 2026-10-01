@@ -422,7 +422,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     MetaM (Option (List CheckCase)) := do
   let ci ← getConstInfo n
   -- a type parameter (`{α : Type}`) is passed `Nat`: the JavaScript of a polymorphic function
-  -- is the same at every instance (`LeanScript.TyParam`), so any instance checks it
+  -- is the same at every instance (the translation reads it at `Nat` too), so any instance checks it
   let some (ps, res, tyPos) ← forallTelescope ci.type (fun xs r => do
       let tys ← xs.filterM fun x => do return (← whnf (← inferType x)) == mkSort levelOne
       let sub (e : Expr) : Expr := e.replaceFVars tys (tys.map fun _ => mkConst ``Nat)
