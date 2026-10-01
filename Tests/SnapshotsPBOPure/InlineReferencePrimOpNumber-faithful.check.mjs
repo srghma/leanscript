@@ -42,6 +42,11 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("fn(0n)", () => M.fn(0n), "0", true);
+check("fn(1n)", () => M.fn(1n), "0", true);
+check("fn(2n)", () => M.fn(2n), "0", true);
+check("fn(5n)", () => M.fn(5n), "0", true);
+check("fn(13n)", () => M.fn(13n), "0", true);
 check("test1", () => M.test1, "4637440978796412928", true);
 check("test2", () => M.test2, "4635892866424504320", true);
 check("test3", () => M.test3, "4652504288096944128", true);

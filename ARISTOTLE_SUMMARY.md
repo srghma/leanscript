@@ -1,3 +1,53 @@
+# Summary of changes for run c55b7d53-48fd-4cb9-9afa-906b52afcb16
+`Tests/SnapshotsPBOPure/DefaultRulesFunction01.lean` now translates fully. The JS output matches the legacy purescript-backend-optimizer output, and in a few places it is better. Before this change all six functions were rejected:
+- `test1`–`test4` failed on the rank-2 type `F := ∀ {α β γ}, α → β → γ`.
+- `test5`–`test6` failed with "parameter α is a type".
+
+**New output (pbo preset):**
+```js
+export const test1 = (f, g, a) => f(1, g("foo", a));
+export const test2 = (f, g, a) => f(1, g("foo", a));
+export const test3 = (f, g, a) => f(g(1, 2), 3);
+export const test4 = (f, b, a) => f(b, a);
+export const test5 = (a, a1) => a;
+export const test6 = (a) => a;
+```
+
+**Compared with the legacy backend:**
+- **Same shape:** each function is a single expression, with no intermediate `const`s.
+- **Calls:** we use multi-argument calls instead of curried ones.
+- **Types:** JSDoc now includes `@template A, B, …`.
+- **`test1`/`test2`:** the Unit argument is passed through as `a` instead of being replaced by `()`.
+- **`test4`:** legacy prints `f(a)(b)` only because it names the parameters differently. Ours is `fun b a => flip f a b = f b a`.
+
+**What I changed, by pipeline phase:**
+1. **Translation (Lean → Term):**
+   - Type parameters become a new leaf type `LeanScript.TyParam i`.
+   - A rank-2 parameter like `F` is read at the one type it is actually used at. Two different uses are refused.
+   - If a definition only fails because of `Unit`, it is retried with `Unit` replaced by a type parameter, declared as `f._leanscript_unit_gen`.
+   - Main code is in `LeanScript/TermElab/ToTerm.lean` (section "Polymorphism"), with recursive-call checks in `Expr/Cases.lean`.
+2. **Types (Term → JsTerm):** I added `JsTerminalTy.tyParam` and updated the lowering and type files to handle it.
+3. **Printer:** a constant argument such as a literal sitting between uses no longer forces a temporary. `f(g(1), 3)` is now written inline (`JsTerm/Syntax/Vars/Occs.lean`). JSDoc `@template` is printed in `JsTerm/Print/Mini.lean`.
+4. **CLI:** parameter names come from the user's own lambda binders, and the differential checks run type parameters at `Nat`.
+
+No change to the Term optimizer was needed for this file. Labelled blocks and loops never came up, because the file has no recursion and no shared tail.
+
+**Verification:**
+- The targets `TermTests.ToTerm.PolymorphismTest`, `TermTests.ToTerm.ToTermTest`, `LeanScriptCli` and `tests` build with no `sorry`.
+- The new test file has `rfl` theorems checking that the translated Terms evaluate the same as the Lean originals, plus tests that a rank-2 use at two different types is refused.
+- I also added a `defaultRulesFunctionSpec` to `Tests/Main.lean`.
+- `lake exe tests` reports 89/89 passed. The node checks for this file pass: 18 per preset.
+- There is a new README section, "Polymorphic definitions".
+
+**Other effects and known issues:**
+- **Other snapshots changed.** I regenerated them; about 116 files changed. Some now translate more functions (e.g. `DefaultRulesFunctor01` `test3`–`test5`), and some have different parameter names (e.g. `AppArity`).
+- **Remaining gap:** `DefaultRulesFunctor01` `test5` still leaves a closure call `k$3(12)` that is not inlined.
+- **Failures that existed before this work:**
+  - The snapshot script still exits with code 1 because of "literal too big" errors in the `PrimOp*Configurable` files.
+  - `LeanScript.Term.Syntax.UsageAlgebra` still fails in the full build because the project has no Mathlib dependency.
+
+All work is committed.
+
 # Summary of changes for run e3409c00-d31f-4f1f-b262-a7a0a1fd216b
 `CaseSum` already compiled to JavaScript that matches or beats `legacy-backend/CaseSum.js`, so I left all three compilation phases unchanged. What I changed is the testing: the generated check files never called `test1` with `.L 2`, so the `"2"` arm had never been run. Now it is, and a new test compares our output with PBO's.
 

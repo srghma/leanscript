@@ -17,9 +17,10 @@ pure expressions (`PExpr`) by the constructor functions of `#leanscript_get_ctor
 `Option`, an enum, `Bool` and a structure, projections, `let`, structural recursion on `Nat`
 (`nat_rec`), on `List Nat` and on a binary tree (`data_rec`), a map that builds a list
 (`data_in` through `#leanscript_get_ctor`), and course-of-values recursion (`data_brec`).
-Then the refusals: every unit-like type (`Option Unit`, a `let` of `()`), a library function
-that is not the Lean function of an extern (`List.length`), a non-structural recursive call, a
-type parameter.  Last the delays `Thunk τ` and `Unit → τ`.
+Then the refusals: a unit-like value the body builds (a `let` of `()`), a library function
+that is not the Lean function of an extern (`List.length`), a non-structural recursive call; a
+type parameter is fixed to its stand-in (`PolymorphismTest`).  Last the delays `Thunk τ` and
+`Unit → τ`.
 -/
 
 namespace ToTermTest
@@ -184,14 +185,7 @@ info: sumTo : {ks : List Nat} → {Δ : DSig ks} → Term Δ 0 [] [] ((Ty.prim L
 
 /-! ## Refusals -/
 
-def isSomeU (o : Option Unit) : Bool := o.isSome
-/--
-error: LeanScript: the type
-  PUnit
-has one constructor and no field (it has one value)
--/
-#guard_msgs in
-#leanscript_to_term isSomeU
+-- `Option Unit` is translated through its generalisation over `Unit` (`PolymorphismTest`)
 
 def letUnit (n : Nat) : Nat := let _u : Unit := (); n
 /--
@@ -223,12 +217,10 @@ is not structural: it must pass the parameters unchanged except the one recursed
 #guard_msgs in
 #leanscript_to_term fib
 
+-- a type parameter is fixed to its stand-in `TyParam i` (`PolymorphismTest`)
 def idT (α : Type) (a : α) : α := a
-/--
-error: LeanScript: the parameter `α` of `ToTermTest.idT` is a type
--/
-#guard_msgs in
-#leanscript_to_term idT
+def idTT := #leanscript_to_term idT
+example : (idTT (Δ := DSig.nil)).run (⟨5⟩ : TyParam 0) = ⟨5⟩ := rfl
 
 /-! ## Delays
 

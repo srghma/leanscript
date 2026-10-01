@@ -5,34 +5,34 @@
  * `test1`
  * @param {(int53(number)) => int53(number)} f
  * @param {(int53(number)) => int53(number)} g
- * @param {int53(number)} p2
+ * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test1 = (f, g, p2) => f(g(p2));
+export const test1 = (f, g, a) => f(g(a));
 
 /**
  * `test2`
  * @param {(int53(number)) => int53(number)} f
  * @param {(int53(number)) => int53(number)} g
- * @param {int53(number)} p2
+ * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test2 = (f, g, p2) => g(f(g(p2)));
+export const test2 = (f, g, a) => g(f(g(a)));
 
 /**
  * `test3`
  * @param {(int53(number)) => int53(number)} f
  * @param {(int53(number)) => int53(number)} g
- * @param {int53(number)} p2
+ * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test3 = (f, g, p2) => f(g(f(g(p2))));
+export const test3 = (f, g, a) => f(g(f(g(a))));
 
 /**
  * `test4`
  * @param {(int53(number)) => int53(number)} f
  * @param {(int53(number)) => int53(number)} g
- * @param {int53(number)} p2
+ * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test4 = (f, g, p2) => g(f(g(f(g(p2)))));
+export const test4 = (f, g, a) => g(f(g(f(g(a)))));

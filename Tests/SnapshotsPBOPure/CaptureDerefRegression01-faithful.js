@@ -12,10 +12,10 @@ export const test1 = (v, b) => v._1 + b;
 /**
  * `test2`
  * @param {{ _1: int(bigint), _2: int(bigint) }} v
- * @param {int(bigint)} a
+ * @param {int(bigint)} b
  * @returns {int(bigint)}
  */
-export const test2 = (v, a) => v._1 + a;
+export const test2 = (v, b) => v._1 + b;
 
 /**
  * `test3`

@@ -23,12 +23,12 @@ export const Inline$appendR = (a, b) => ({
 /**
  * `Inline.test1`
  * @param {{ _1: string, _2: Array<string> }} a
- * @param {{ _1: string, _2: Array<string> }} a1
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test1 = (a, a1) => ({
-  _1: a._1 + a1._1,
-  _2: [...a._2, ...a1._2],
+export const Inline$test1 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
 });
 
 /**
@@ -44,12 +44,12 @@ export const Inline$test2 = (a, b) => ({
 
 /**
  * `Inline.test3`
- * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Inline$test3 = (a) => ({
-  _1: "hello" + a._1,
-  _2: array__lean_array_append_mutable(["hello"], a._2),
+export const Inline$test3 = (b) => ({
+  _1: "hello" + b._1,
+  _2: array__lean_array_append_mutable(["hello"], b._2),
 });
 
 /**
@@ -66,12 +66,12 @@ export const Noinline$appendR = (a, b) => ({
 /**
  * `Noinline.test1`
  * @param {{ _1: string, _2: Array<string> }} a
- * @param {{ _1: string, _2: Array<string> }} a1
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test1 = (a, a1) => ({
-  _1: a._1 + a1._1,
-  _2: [...a._2, ...a1._2],
+export const Noinline$test1 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
 });
 
 /**
@@ -87,12 +87,12 @@ export const Noinline$test2 = (a, b) => ({
 
 /**
  * `Noinline.test3`
- * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test3 = (a) => ({
-  _1: "hello" + a._1,
-  _2: array__lean_array_append_mutable(["hello"], a._2),
+export const Noinline$test3 = (b) => ({
+  _1: "hello" + b._1,
+  _2: array__lean_array_append_mutable(["hello"], b._2),
 });
 
 /**
@@ -109,12 +109,12 @@ export const AlwaysInline$appendR = (a, b) => ({
 /**
  * `AlwaysInline.test1`
  * @param {{ _1: string, _2: Array<string> }} a
- * @param {{ _1: string, _2: Array<string> }} a1
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test1 = (a, a1) => ({
-  _1: a._1 + a1._1,
-  _2: [...a._2, ...a1._2],
+export const AlwaysInline$test1 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
 });
 
 /**
@@ -130,12 +130,12 @@ export const AlwaysInline$test2 = (a, b) => ({
 
 /**
  * `AlwaysInline.test3`
- * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test3 = (a) => ({
-  _1: "hello" + a._1,
-  _2: array__lean_array_append_mutable(["hello"], a._2),
+export const AlwaysInline$test3 = (b) => ({
+  _1: "hello" + b._1,
+  _2: array__lean_array_append_mutable(["hello"], b._2),
 });
 
 /**
@@ -152,12 +152,12 @@ export const InlineIfReduceInline$appendR = (a, b) => ({
 /**
  * `InlineIfReduceInline.test1`
  * @param {{ _1: string, _2: Array<string> }} a
- * @param {{ _1: string, _2: Array<string> }} a1
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test1 = (a, a1) => ({
-  _1: a._1 + a1._1,
-  _2: [...a._2, ...a1._2],
+export const InlineIfReduceInline$test1 = (a, b) => ({
+  _1: a._1 + b._1,
+  _2: [...a._2, ...b._2],
 });
 
 /**
@@ -173,10 +173,10 @@ export const InlineIfReduceInline$test2 = (a, b) => ({
 
 /**
  * `InlineIfReduceInline.test3`
- * @param {{ _1: string, _2: Array<string> }} a
+ * @param {{ _1: string, _2: Array<string> }} b
  * @returns {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test3 = (a) => ({
-  _1: "hello" + a._1,
-  _2: array__lean_array_append_mutable(["hello"], a._2),
+export const InlineIfReduceInline$test3 = (b) => ({
+  _1: "hello" + b._1,
+  _2: array__lean_array_append_mutable(["hello"], b._2),
 });

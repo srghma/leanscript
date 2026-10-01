@@ -14,10 +14,10 @@ export const test1 = (v, b) => int53__lean_int_add(v._1, b);
 /**
  * `test2`
  * @param {{ _1: int53(number), _2: int53(number) }} v
- * @param {int53(number)} a
+ * @param {int53(number)} b
  * @returns {int53(number)}
  */
-export const test2 = (v, a) => int53__lean_int_add(v._1, a);
+export const test2 = (v, b) => int53__lean_int_add(v._1, b);
 
 /**
  * `test3`

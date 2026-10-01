@@ -42,6 +42,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test5(0, 0)", () => M.test5(0, 0), "0", false);
+check("test5(0, 2)", () => M.test5(0, 2), "0", false);
+check("test5(1, 1)", () => M.test5(1, 1), "1", false);
+check("test5(2, 0)", () => M.test5(2, 0), "2", false);
+check("test5(0, 13)", () => M.test5(0, 13), "0", false);
+check("test5(1, 5)", () => M.test5(1, 5), "1", false);
+check("test5(2, 2)", () => M.test5(2, 2), "2", false);
+check("test5(5, 1)", () => M.test5(5, 1), "5", false);
+check("test5(13, 0)", () => M.test5(13, 0), "13", false);
+check("test5(2, 13)", () => M.test5(2, 13), "2", false);
+check("test5(5, 5)", () => M.test5(5, 5), "5", false);
+check("test5(13, 2)", () => M.test5(13, 2), "13", false);
+check("test5(13, 13)", () => M.test5(13, 13), "13", false);
+check("test6(0)", () => M.test6(0), "0", false);
+check("test6(1)", () => M.test6(1), "1", false);
+check("test6(2)", () => M.test6(2), "2", false);
+check("test6(5)", () => M.test6(5), "5", false);
+check("test6(13)", () => M.test6(13), "13", false);
 
 console.log(`DefaultRulesFunction01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

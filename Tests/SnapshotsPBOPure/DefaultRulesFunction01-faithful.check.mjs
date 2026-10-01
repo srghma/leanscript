@@ -42,6 +42,24 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test5(0n, 0n)", () => M.test5(0n, 0n), "0", false);
+check("test5(0n, 2n)", () => M.test5(0n, 2n), "0", false);
+check("test5(1n, 1n)", () => M.test5(1n, 1n), "1", false);
+check("test5(2n, 0n)", () => M.test5(2n, 0n), "2", false);
+check("test5(0n, 13n)", () => M.test5(0n, 13n), "0", false);
+check("test5(1n, 5n)", () => M.test5(1n, 5n), "1", false);
+check("test5(2n, 2n)", () => M.test5(2n, 2n), "2", false);
+check("test5(5n, 1n)", () => M.test5(5n, 1n), "5", false);
+check("test5(13n, 0n)", () => M.test5(13n, 0n), "13", false);
+check("test5(2n, 13n)", () => M.test5(2n, 13n), "2", false);
+check("test5(5n, 5n)", () => M.test5(5n, 5n), "5", false);
+check("test5(13n, 2n)", () => M.test5(13n, 2n), "13", false);
+check("test5(13n, 13n)", () => M.test5(13n, 13n), "13", false);
+check("test6(0n)", () => M.test6(0n), "0", false);
+check("test6(1n)", () => M.test6(1n), "1", false);
+check("test6(2n)", () => M.test6(2n), "2", false);
+check("test6(5n)", () => M.test6(5n), "5", false);
+check("test6(13n)", () => M.test6(13n), "13", false);
 
 console.log(`DefaultRulesFunction01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

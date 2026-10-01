@@ -326,8 +326,8 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     let r ← runTermElab el (do
         tryCatchRuntimeEx (do
           let ty ← typeString n
-          let ps ← paramNames n
           let ct ← translate n
+          let ps ← paramNames n
           return Except.ok (ct, ty, ps))
           (fun e => return Except.error (← e.toMessageData.toString)))
     match r with

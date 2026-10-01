@@ -4,10 +4,7 @@
 --   «term_<$_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 --   «term_$>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 --   «term_<@>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
---   test2: LeanScript: the parameter `α` of `test2` is a type
---   test3: LeanScript: the parameter `α` of `test3` is a type
---   test4: LeanScript: the parameter `α` of `test4` is a type
---   test5: LeanScript: the parameter `α` of `test5` is a type
+--   test2: LeanScript: the type PUnit has one constructor and no field (it has one value)
 
 -- test1 : Option Int → Option String
 val k1 [1] : ((• | [Int]) → (• | [String])) := fun x2 [1] : (• | [Int]) => (closed)
@@ -16,4 +13,40 @@ val k1 [1] : ((• | [Int]) → (• | [String])) := fun x2 [1] : (• | [Int]) 
     ret ctor#0()
   | ctor#1(f3 [1] : Int) =>
     ret ctor#1(lean_int_repr(f3))
+ret k1
+
+-- test3 : {α : Type} → Option α → Option Int
+val k1 [1] : ((• | [(tyParam 0)]) → (• | [Int])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+  case x2 of
+  | ctor#0() =>
+    ret ctor#0()
+  | ctor#1(f3 [0] : (tyParam 0)) =>
+    ret ctor#1(42)
+ret k1
+
+-- test4 : {α : Type} → Option α → Option Int
+val k1 [1] : ((• | [(tyParam 0)]) → (• | [Int])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+  case x2 of
+  | ctor#0() =>
+    ret ctor#0()
+  | ctor#1(f3 [0] : (tyParam 0)) =>
+    ret ctor#1(42)
+ret k1
+
+-- test5 : {α : Type} → Option α → Option α
+val k1 [1] : ((• | [(tyParam 0)]) → (• | [(tyParam 0)])) := fun x2 [1] : (• | [(tyParam 0)]) => (closed)
+  join j3 [1] (x4 [1] : (• | [(Nat → (tyParam 0))])) :=
+    case x4 of
+    | ctor#0() =>
+      ret ctor#0()
+    | ctor#1(f5 [1] : (Nat → (tyParam 0))) =>
+      let x6 [1] : (tyParam 0) := f5 12
+      ret ctor#1(x6)
+  case x2 of
+  | ctor#0() =>
+    jump j3 ctor#0()
+  | ctor#1(f7 [ω] : (tyParam 0)) =>
+    val k8 [1] : (Nat → (tyParam 0)) := fun x9 [0] : Nat => (open)
+      ret f7
+    jump j3 ctor#1(k8)
 ret k1

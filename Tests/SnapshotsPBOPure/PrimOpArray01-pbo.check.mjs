@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1([])", () => M.test1([]), "0", false);
+check("test1([]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([]), "0", false);
+check("test1([0])", () => M.test1([0]), "1", false);
+check("test1([0]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0]), "1", false);
+check("test1([0, 1, 2])", () => M.test1([0, 1, 2]), "3", false);
+check("test1([0, 1, 2]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0, 1, 2]), "3", false);
+check("test1([13, 5, 2, 1])", () => M.test1([13, 5, 2, 1]), "4", false);
+check("test1([13, 5, 2, 1]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([13, 5, 2, 1]), "4", false);
 
 console.log(`PrimOpArray01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

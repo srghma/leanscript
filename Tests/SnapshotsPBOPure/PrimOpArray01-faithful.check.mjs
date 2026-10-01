@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1([])", () => M.test1([]), "0", false);
+check("test1([]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([]), "0", false);
+check("test1([0n])", () => M.test1([0n]), "1", false);
+check("test1([0n]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0n]), "1", false);
+check("test1([0n, 1n, 2n])", () => M.test1([0n, 1n, 2n]), "3", false);
+check("test1([0n, 1n, 2n]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([0n, 1n, 2n]), "3", false);
+check("test1([13n, 5n, 2n, 1n])", () => M.test1([13n, 5n, 2n, 1n]), "4", false);
+check("test1([13n, 5n, 2n, 1n]) twice", () => ((a0) => (M.test1(a0), M.test1(a0)))([13n, 5n, 2n, 1n]), "4", false);
 
 console.log(`PrimOpArray01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

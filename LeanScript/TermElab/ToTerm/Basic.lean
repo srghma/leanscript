@@ -89,6 +89,10 @@ structure Loc where
       (`n` in `Vec.sum {n} (v : Vec Nat n)`): they have no value in the language, and a
       recursive call may change them. -/
   idxParams : Array Nat := #[]
+  /-- The positions of its type parameters (`{α}` in `swap {α β} (p : α × β)`), also in
+      `idxParams`: they are fixed to `LeanScript.TyParam i`, so a recursive call must pass them
+      unchanged. -/
+  tyParams : Array Nat := #[]
   /-- The program. -/
   prog? : Option ProgInfo := none
   /-- The number of visible blocks (those of the program). -/

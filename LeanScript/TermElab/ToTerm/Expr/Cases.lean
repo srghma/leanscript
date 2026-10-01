@@ -148,6 +148,11 @@ partial def trRecCall (L : Loc) (e : Expr) : TM Src := do
   let mut varyArgs : Array Src := #[]
   for i in [0:min args.size n] do
     let a := args[i]!
+    if L.tyParams.contains i then
+      unless a == L.params[i]! do
+        fail m!"the recursive call{indentExpr e}\npasses another type than `{L.params[i]!}` for a \
+          type parameter (polymorphic recursion)"
+      continue
     if L.idxParams.contains i then continue
     if L.vary.contains i then
       varyArgs := varyArgs.push (← tr L a)

@@ -5,10 +5,7 @@
 //   «term_<$_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 //   «term_$>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
 //   «term_<@>_»: LeanScript: the recursive type Lean.ParserDescr is not declared in any signature; declare it with `leanscript_signature`
-//   test2: LeanScript: the parameter `α` of `test2` is a type
-//   test3: LeanScript: the parameter `α` of `test3` is a type
-//   test4: LeanScript: the parameter `α` of `test4` is a type
-//   test5: LeanScript: the parameter `α` of `test5` is a type
+//   test2: LeanScript: the type PUnit has one constructor and no field (it has one value)
 
 /**
  * `test1`
@@ -20,4 +17,45 @@ export const test1 = (mb) => {
     return { tag: 0 };
   }
   return { tag: 1, _1: String(mb._1) };
+};
+
+/**
+ * `test3`
+ * @template A
+ * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
+ */
+export const test3 = (mb) => {
+  if (mb.tag === 0) {
+    return { tag: 0 };
+  }
+  return { tag: 1, _1: 42n };
+};
+
+/**
+ * `test4`
+ * @template A
+ * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @returns {({ tag: 0 } | { tag: 1, _1: int(bigint) })}
+ */
+export const test4 = (mb) => {
+  if (mb.tag === 0) {
+    return { tag: 0 };
+  }
+  return { tag: 1, _1: 42n };
+};
+
+/**
+ * `test5`
+ * @template A
+ * @param {({ tag: 0 } | { tag: 1, _1: A })} mb
+ * @returns {({ tag: 0 } | { tag: 1, _1: A })}
+ */
+export const test5 = (mb) => {
+  if (mb.tag === 0) {
+    return { tag: 0 };
+  }
+  const { _1: f$1 } = mb;
+  const k$3 = (x$2) => f$1;
+  return { tag: 1, _1: k$3(12n) };
 };

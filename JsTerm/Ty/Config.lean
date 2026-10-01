@@ -218,6 +218,7 @@ def knobOfPrim? : LeanPrimTy → Option String
   | .bool | .uint8 | .uint16 | .uint32 | .int8 | .int16 | .int32 => none
   | .char | .string | .stringPos _ _ | .stringPosRaw | .substringRaw | .stringSlice => none
   | .float | .float32 | .floatModel | .float32Model => none
+  | .tyParam _ => none
 
 /-- How a *terminal* type is represented.  There is no catch-all case. -/
 def reprOfPrim (cfg : JsConfig) : LeanPrimTy → JsNumRepr
@@ -229,6 +230,7 @@ def reprOfPrim (cfg : JsConfig) : LeanPrimTy → JsNumRepr
   | .bool | .uint8 | .uint16 | .uint32 | .int8 | .int16 | .int32 => .num
   | .char | .string | .stringPos _ _ | .stringPosRaw | .substringRaw | .stringSlice => .num
   | .float | .float32 | .floatModel | .float32Model => .num
+  | .tyParam _ => .num
 
 /-- How a numeric representation is spelled on the command line. -/
 def reprName : JsNumRepr → String

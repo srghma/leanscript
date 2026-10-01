@@ -7,10 +7,7 @@
  * @param {(int(bigint)) => int(bigint)} g
  * @returns {int(bigint)}
  */
-export const test1 = (f, g) => {
-  const x$1 = g(1n);
-  return f(x$1, 2n, 3n);
-};
+export const test1 = (f, g) => f(g(1n), 2n, 3n);
 
 /**
  * `test2`
@@ -19,10 +16,7 @@ export const test1 = (f, g) => {
  * @param {int(bigint)} i
  * @returns {int(bigint)}
  */
-export const test2 = (f, g, i) => {
-  const x$1 = g(1n);
-  return f(x$1, 2n, i);
-};
+export const test2 = (f, g, i) => f(g(1n), 2n, i);
 
 /**
  * `test3`

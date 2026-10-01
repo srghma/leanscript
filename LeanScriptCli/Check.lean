@@ -421,22 +421,42 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     (probe : Bool := false) (panics : Std.HashMap String String := {}) :
     MetaM (Option (List CheckCase)) := do
   let ci ← getConstInfo n
-  let some (ps, res) ← forallTelescope ci.type (fun xs r => do
+  -- a type parameter (`{α : Type}`) is passed `Nat`: the JavaScript of a polymorphic function
+  -- is the same at every instance (`LeanScript.TyParam`), so any instance checks it
+  let some (ps, res, tyPos) ← forallTelescope ci.type (fun xs r => do
+      let tys ← xs.filterM fun x => do return (← whnf (← inferType x)) == mkSort levelOne
+      let sub (e : Expr) : Expr := e.replaceFVars tys (tys.map fun _ => mkConst ``Nat)
       let mut ps : Array SType := #[]
+      let mut tyPos : Array Bool := #[]
       for x in xs do
-        let some t ← stypeOf? (← inferType x) | return none
+        if tys.contains x then
+          tyPos := tyPos.push true
+          continue
+        tyPos := tyPos.push false
+        let some t ← stypeOf? (sub (← inferType x)) | return none
         ps := ps.push t
+      let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
       if rt matches .tree _ then return none
-      return some (ps.toList, rt))
+      return some (ps.toList, rt, tyPos.toList))
     | return none
+  -- the arguments of the Lean call: `Nat` at the type parameters, the samples elsewhere
+  let leanArgs (vals : List Expr) : Array Expr := Id.run do
+    let mut out : Array Expr := #[]
+    let mut vs := vals
+    for isTy in tyPos do
+      if isTy then out := out.push (mkConst ``Nat)
+      else
+        out := out.push (vs.headD (mkConst ``Nat))
+        vs := vs.tail
+    return out ++ vs.toArray
   let mut out : Array CheckCase := #[]
   let cap := if ps.any (· matches .tree _) then 48 else 24
   let strs ← if ps.contains .string then stringLitsOf n else pure []
   let nats ← if ps.any (· matches .tree _) then natLitsOf n else pure []
   for args in combos cfg ps cap strs nats do
-    let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (args.map (·.lean)).toArray
+    let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (leanArgs (args.map (·.lean)))
     let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)
     let thunk := mkLambda `u .default (mkConst ``Unit) shown

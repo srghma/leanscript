@@ -5,10 +5,10 @@
  * `mkAdd`
  * @param {nat(bigint)} n
  * @param {nat(bigint)} a
- * @param {nat(bigint)} a1
+ * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const mkAdd = (n, a, a1) => a + a1 + n;
+export const mkAdd = (n, a, b) => a + b + n;
 
 /**
  * `test1`
@@ -27,10 +27,10 @@ export const test1 = (n, x, y) => {
  * `mkMul`
  * @param {nat(bigint)} n
  * @param {nat(bigint)} a
- * @param {nat(bigint)} a1
+ * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const mkMul = (n, a, a1) => a * a1 * n;
+export const mkMul = (n, a, b) => a * b * n;
 
 /**
  * `test2`
@@ -49,11 +49,11 @@ export const test2 = (n, x, y) => {
  * `mkSum3`
  * @param {nat(bigint)} n
  * @param {nat(bigint)} a
- * @param {nat(bigint)} a1
- * @param {nat(bigint)} a2
+ * @param {nat(bigint)} b
+ * @param {nat(bigint)} c
  * @returns {nat(bigint)}
  */
-export const mkSum3 = (n, a, a1, a2) => a + a1 + a2 + n;
+export const mkSum3 = (n, a, b, c) => a + b + c + n;
 
 /**
  * `test3`

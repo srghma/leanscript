@@ -7,10 +7,7 @@
  * @param {(int53(number)) => int53(number)} g
  * @returns {int53(number)}
  */
-export const test1 = (f, g) => {
-  const x$1 = g(1);
-  return f(x$1, 2, 3);
-};
+export const test1 = (f, g) => f(g(1), 2, 3);
 
 /**
  * `test2`
@@ -19,10 +16,7 @@ export const test1 = (f, g) => {
  * @param {int53(number)} i
  * @returns {int53(number)}
  */
-export const test2 = (f, g, i) => {
-  const x$1 = g(1);
-  return f(x$1, 2, i);
-};
+export const test2 = (f, g, i) => f(g(1), 2, i);
 
 /**
  * `test3`

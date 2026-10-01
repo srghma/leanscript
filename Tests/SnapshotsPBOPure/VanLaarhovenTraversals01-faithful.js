@@ -4,8 +4,8 @@
 //   rewriteBottomUpM: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   instReprFun.repr: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
 //   instDecidableEqFun.decEq: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
-//   traverseFun1: LeanScript: not a type former application Type
+//   traverseFun1: LeanScript: the parameter `f` of `traverseFun1` has the polymorphic type Type → Type and is not always applied to the types of an instance
 //   Fun.size: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
-//   traverseFun1D: LeanScript: not a type former application Type
+//   traverseFun1D: LeanScript: the parameter `f` of `traverseFun1D` has the polymorphic type Type → Type and is not always applied to the types of an instance
 //   rewriteBottomUp: LeanScript: the recursive type Fun is not declared in the signature `LeanScriptAutoSig`; add it to `leanscript_signature LeanScriptAutoSig`
 

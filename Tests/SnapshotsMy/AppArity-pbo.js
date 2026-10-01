@@ -7,11 +7,11 @@ import { uint53__lean_nat_add, uint53__lean_nat_mul } from "../../runtime.js";
  * `mkAdd`
  * @param {uint53(number)} n
  * @param {uint53(number)} a
- * @param {uint53(number)} a1
+ * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const mkAdd = (n, a, a1) =>
-  uint53__lean_nat_add(uint53__lean_nat_add(a, a1), n);
+export const mkAdd = (n, a, b) =>
+  uint53__lean_nat_add(uint53__lean_nat_add(a, b), n);
 
 /**
  * `test1`
@@ -31,11 +31,11 @@ export const test1 = (n, x, y) => {
  * `mkMul`
  * @param {uint53(number)} n
  * @param {uint53(number)} a
- * @param {uint53(number)} a1
+ * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const mkMul = (n, a, a1) =>
-  uint53__lean_nat_mul(uint53__lean_nat_mul(a, a1), n);
+export const mkMul = (n, a, b) =>
+  uint53__lean_nat_mul(uint53__lean_nat_mul(a, b), n);
 
 /**
  * `test2`
@@ -55,15 +55,12 @@ export const test2 = (n, x, y) => {
  * `mkSum3`
  * @param {uint53(number)} n
  * @param {uint53(number)} a
- * @param {uint53(number)} a1
- * @param {uint53(number)} a2
+ * @param {uint53(number)} b
+ * @param {uint53(number)} c
  * @returns {uint53(number)}
  */
-export const mkSum3 = (n, a, a1, a2) =>
-  uint53__lean_nat_add(
-    uint53__lean_nat_add(uint53__lean_nat_add(a, a1), a2),
-    n,
-  );
+export const mkSum3 = (n, a, b, c) =>
+  uint53__lean_nat_add(uint53__lean_nat_add(uint53__lean_nat_add(a, b), c), n);
 
 /**
  * `test3`

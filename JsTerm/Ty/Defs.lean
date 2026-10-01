@@ -108,6 +108,9 @@ inductive JsTerminalTy where
   | substring
   /-- A `String.Slice`: `[str, startPos, stopPos]`. -/
   | stringSlice
+  /-- A value of the type parameter number `i` of a polymorphic definition
+      (`LeanScript.TyParam i`): any JavaScript value, never looked into. -/
+  | tyParam (i : Nat)
   deriving Inhabited, Repr, DecidableEq
 
 /-- The typed arrays of JavaScript. -/

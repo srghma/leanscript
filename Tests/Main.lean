@@ -1479,6 +1479,60 @@ def caseSumSpec : Spec := describe "CaseSum" do
             assertEq s!"{file}-{preset}: test1 ({v}) makes one comparison" "1" oc
         | _ => assertEq s!"{file}-{preset}: a line of the results" "o|p|oc|pc|or|pr" l
 
+/-- `DefaultRulesFunction01`: `flip`, `Function.const`, `<|` and `|>` on polymorphic functions,
+    and on rank-2 parameters `f g : F` for `F := ∀ {α β γ : Type}, α → β → γ`. -/
+def defaultRulesFunctionSpec : Spec := describe "DefaultRulesFunction01" do
+  it "every function is translated, to one call with flip/const gone (needs node and leanscript)" do
+    -- purescript-backend-optimizer (`legacy-backend/DefaultRulesFunction01.js`) writes each
+    -- function as one curried call (`(f) => (g) => (_unit) => f(1)(g("foo")())`).  Ours are
+    -- the same calls, uncurried: the type parameters are erased (`LeanScript.TyParam`), a
+    -- rank-2 parameter is read at its one instance, and a `Unit` passed around is a type
+    -- parameter (the definition's generalisation over `Unit`).
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/defaultRulesFunction"
+    IO.FS.createDirAll dir
+    let file := "DefaultRulesFunction01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      -- the literals are `BigInt`s at the preset `faithful`
+      let n := if preset == "pbo" then "" else "n"
+      let expected : List String := [
+        s!"export const test1 = (f, g, a) => f(1{n}, g(\"foo\", a));",
+        s!"export const test2 = (f, g, a) => f(1{n}, g(\"foo\", a));",
+        s!"export const test3 = (f, g, a) => f(g(1{n}, 2{n}), 3{n});",
+        "export const test4 = (f, b, a) => f(b, a);",
+        "export const test5 = (a, a1) => a;",
+        "export const test6 = (a) => a;"]
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: every function translated" 1 (js.splitOn "not translated").length
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for l in expected do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length == 2)
+      assertEq s!"{file}-{preset}: test4 is generic in three types" true
+        ((js.splitOn " * @template A, B, C\n * @param {(A, B) => C} f").length == 2)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{file}-{preset}.check.mjs"], cwd := dir }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: checks run, none failed" true
+        ((run.stdout.splitOn " 0 failed").length > 1 && (run.stdout.splitOn " 0 passed").length == 1)
+      -- the rank-2 parameters called on recording functions: the calls Lean makes
+      let script := s!"import * as M from '{dir}/{file}-{preset}.js';
+const f = (x, y) => 'f(' + x + ',' + y + ')', g = (x, y) => 'g(' + x + ',' + y + ')';
+console.log([M.test1(f, g, 'u'), M.test2(f, g, 'u'), M.test3(f, g, 'u'), M.test4(f, 'b', 'a'),
+  M.test5('a', 'x'), M.test6('a')].join('|'));"
+      let run ← IO.Process.output { cmd := "node", args := #["--input-type=module", "-e", script] }
+      assertEq s!"{file}-{preset}: node -e" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: the calls"
+        "f(1,g(foo,u))|f(1,g(foo,u))|f(g(1,2),3)|f(b,a)|a|a"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -1491,6 +1545,7 @@ def spec : Spec := do
   caseRedBlackTreeSpec
   caseStringSpec
   caseSumSpec
+  defaultRulesFunctionSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

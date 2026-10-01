@@ -332,7 +332,10 @@ partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (re
     else match fuel with
       | 0 => false
       | fuel + 1 =>
-        constInline a r fuel && r.useFirst strict reads (x + 1) (0 :: bars.map (· + 1)) fuel
+        -- a constant that can be computed anywhere (`movable`: a literal, a variable) is no
+        -- obstacle wherever it ends up, so it is not one of `bars`
+        let bars' := if a.movable then bars.map (· + 1) else 0 :: bars.map (· + 1)
+        constInline a r fuel && r.useFirst strict reads (x + 1) bars' fuel
   | .assign y a r =>
     if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
     else !strict && a.waits strict bars && !reads.contains y.index &&

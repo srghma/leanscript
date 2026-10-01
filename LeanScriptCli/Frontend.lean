@@ -313,17 +313,45 @@ def candidates (el : Elaborated) : IO (Array Name × Array (Name × String)) := 
   return (sortedOk.map (·.2), sortedRefused.map (·.2))
 
 /-- The names of the parameters of a definition that the translation keeps (not types,
-    instances, propositions or `Unit`), sanitised later by the printer. -/
+    instances, propositions or `Unit`), sanitised later by the printer: the binders of the
+    leading `fun`s of its value, then those of its type (unfolded: `test4 (f : F) : F` for
+    `F := ∀ {α β γ}, α → β → γ` takes `f` and then the parameters of `F`).  When the definition
+    was translated through its generalisation over `Unit` (`Gen.unitGenName`, declared by the
+    translation), the names are the generalisation's, whose `Unit`s are parameters. -/
 def paramNames (n : Name) : MetaM (List String) := do
+  let g := LeanScript.Gen.unitGenName n
+  let n := if (← getEnv).contains g then g else n
   let ci ← getConstInfo n
-  forallTelescope ci.type fun xs _ => do
+  let keep (x : Expr) : MetaM Bool := do
+    let t ← inferType x
+    if (← isType x) || (← isProp t) || (← isClass? t).isSome then return false
+    if (← whnf t).isConstOf ``Unit || (← whnf t).isConstOf ``PUnit then return false
+    return true
+  -- a binder written by the user, or `none` for one Lean made up (`x✝` of a `match`)
+  let name? (x : Expr) : MetaM (Option String) := do
+    let n ← x.fvarId!.getUserName
+    return if n.hasMacroScopes then none else some n.toString
+  let name (x : Expr) : MetaM String := do
+    return (← x.fvarId!.getUserName).eraseMacroScopes.toString
+  let fromType (T : Expr) : MetaM (Array (Option String)) :=
+    forallTelescopeReducing T fun ys _ => do
+      let mut out := #[]
+      for y in ys do if ← keep y then out := out.push (← name? y)
+      return out
+  -- the names of the type, used where the value's `fun`s give none written by the user
+  let tyNames ← forallTelescopeReducing ci.type fun ys _ => do
     let mut out := #[]
-    for x in xs do
-      let t ← inferType x
-      if (← isType x) || (← isProp t) || (← isClass? t).isSome then continue
-      if (← whnf t).isConstOf ``Unit || (← whnf t).isConstOf ``PUnit then continue
-      out := out.push (← x.fvarId!.getUserName).eraseMacroScopes.toString
-    return out.toList
+    for y in ys do if ← keep y then out := out.push (← name y)
+    return out
+  let valNames ← match ci.value? with
+    | some v =>
+      lambdaTelescope v fun xs body => do
+        let mut out := #[]
+        for x in xs do if ← keep x then out := out.push (← name? x)
+        return out ++ (← fromType (← inferType body))
+    | none => pure #[]
+  let n := max tyNames.size valNames.size
+  return (List.range n).map fun i => (valNames[i]?.join).getD (tyNames[i]?.getD s!"p{i}")
 
 /-- Is `e` a value the tool can evaluate at once: literals and constructors (of values;
     types and proofs are skipped), and primitives implemented natively (`@[extern]`,

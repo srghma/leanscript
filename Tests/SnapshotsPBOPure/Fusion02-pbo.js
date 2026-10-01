@@ -3,12 +3,12 @@
 // not translated:
 //   toArrayLoop: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 //   filterMapStep: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
-//   fromArray: LeanScript: the parameter `α` of `fromArray` is a type
-//   toArray: LeanScript: the parameter `α` of `toArray` is a type
-//   mapU: LeanScript: the parameter `α` of `mapU` is a type
-//   filterMapU: LeanScript: the parameter `α` of `filterMapU` is a type
-//   filterU: LeanScript: the parameter `α` of `filterU` is a type
-//   overArray: LeanScript: the parameter `α` of `overArray` is a type
+//   fromArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
+//   toArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
+//   mapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
+//   filterMapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
+//   filterU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
+//   overArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 //   dropPrefix1: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 //   test: LeanScript: the parameter `α` of `overArray` is a type
 

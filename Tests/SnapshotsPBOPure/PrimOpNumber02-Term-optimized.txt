@@ -12,7 +12,7 @@
 --   testDiv: LeanScript: `testDiv` is universe polymorphic
 --   testNeg: LeanScript: `testNeg` is universe polymorphic
 --   TestFloat.nan: the closed float `0.0 / 0.0` is NaN, which the language's floats (`HashableFloat`) cannot represent
---   TestFloat.numValues: LeanScript: the parameter `α` of `TestFloat.numValues` is a type
+--   TestFloat.numValues: the closed float `TestFloat.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat.test1: the closed float `1.0 + TestFloat.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat.test2: the closed float `1.0 - TestFloat.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat.test3: the closed value `1.5 == 1.0` could not be computed at compile time
@@ -24,7 +24,7 @@
 --   TestFloat.test9: the closed float `1.0 * TestFloat.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat.test10: the closed float `1.0 / TestFloat.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat32.nan: the closed float `0.0 / 0.0` is NaN, which the language's floats (`HashableFloat`) cannot represent
---   TestFloat32.numValues: LeanScript: the parameter `α` of `TestFloat32.numValues` is a type
+--   TestFloat32.numValues: the closed float `TestFloat32.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat32.test1: the closed float `1.0 + TestFloat32.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat32.test2: the closed float `1.0 - TestFloat32.nan` is NaN, which the language's floats (`HashableFloat`) cannot represent
 --   TestFloat32.test3: the closed value `1.5 == 1.0` could not be computed at compile time

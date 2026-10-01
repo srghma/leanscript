@@ -42,6 +42,9 @@ given with the constructor it becomes:
 | a projection applied to arguments (`c.data i` for a function field) | `Comp.app` |
 | a proof parameter of a function that is not recursive (`(h : Safe n)`; in particular of the open definitions `leanscript` builds for well-founded recursion) | nothing: it is erased, like the proofs of the body that mention it |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
+| a type parameter (`{α : Type}` in `test6 {α : Type} : α → α`), a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`) | nothing: fixed to its stand-in `LeanScript.TyParam i`, the leaf `LeanPrimTy.tyParam i` (`## Polymorphism`); a recursive call must pass it unchanged |
+| a rank-2 parameter (`f : F`) | a parameter of the one instance at which the body uses it (`@f Nat Unit Unit`); used at two instances, refused |
+| a definition that answers or passes a `Unit` without building `()` (`test1 (f g : F) (a : Unit) : Unit`), not recursive, that cannot be translated otherwise | the translation of its generalisation over `Unit` (`f._leanscript_unit_gen`, `Unit` a type parameter) |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
 | a value of a quotient `Quot r` / `Quotient s` (read as its carrier): `Quot.mk r a`, `⟦a⟧` | the representative `a` |
@@ -82,7 +85,8 @@ recursive call.
 
 Everything else is refused with an error, in particular a type with one value or none
 (`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a type of two values
-other than `Bool` (such a type *is* `bool`), a parameter that is a type or an instance,
+other than `Bool` (such a type *is* `bool`), a parameter that is an instance or a type of a
+higher kind (`m : Type → Type`), a rank-2 parameter used at two instances,
 mutual recursion through a helper, a recursive call that is not on a subvalue, a pattern on a numeral other than
 `0`/`n + 1`, a call of a library function that is not the Lean function of an extern and cannot be
 unfolded (`List.length`), and a call returning a quotient that does
@@ -153,9 +157,155 @@ where
       | none => .forallE n d (go b (i + 1)) bi
     | e => e
 
-/-- The translation of the definition `f`, elaborated against `expected?`; `named` gives the
-    type indices it is generic in (`(α := Nat)`). -/
-def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
+/-! ## Polymorphism
+
+A definition generic in types is translated at one instance, every type parameter fixed to its
+own stand-in `LeanScript.TyParam i` (a leaf of the language, `LeanPrimTy.tyParam i`).  The body
+has no instance to look into a value of a type parameter with (a parameter that is an instance
+is refused), so the translation of that instance is the translation of every instance once the
+types are erased, as JavaScript erases them.  Three places bind a type:
+
+* a parameter of the definition (`{α : Type}` in `test6 {α : Type} : α → α`);
+* a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`):
+  the result is applied to stand-ins first, and its own parameters follow;
+* the type of a parameter (a *rank-2* parameter `f : F`): the parameter is read at the one
+  instance at which the body uses it (`@f Nat Unit Unit`); a parameter used at two different
+  instances is refused, an unused one is read at fresh stand-ins.
+-/
+
+/-- `TyParam i`, the stand-in for the type parameter number `i`. -/
+def tyParamExpr (i : Nat) : Expr := mkApp (mkConst ``LeanScript.TyParam) (mkNatLit i)
+
+/-- Is `T` (in weak head normal form) the sort `Type`, the type of a type parameter? -/
+def isTypeSort (T : Expr) : MetaM Bool := do
+  return (← whnf T) == mkSort Level.one
+
+/-- The number of leading `∀`s binding a type (`α : Type`) in the type `T`. -/
+partial def leadingTypeBinders (T : Expr) : MetaM Nat := do
+  match ← whnf T with
+  | .forallE n d b bi =>
+    if ← isTypeSort d then
+      withLocalDecl n bi d fun a => return (← leadingTypeBinders (b.instantiate1 a)) + 1
+    else return 0
+  | _ => return 0
+
+/-- The instances at which the body `e` uses the rank-2 parameter `x` (whose type starts with
+    `n` binders of types): the first `n` arguments of each occurrence of `x`; `none` when an
+    occurrence is not applied to `n` closed types. -/
+partial def rank2Uses (x : Expr) (n : Nat) (e : Expr) : Option (Array (Array Expr)) :=
+  match e with
+  | .app .. =>
+    let fn := e.getAppFn
+    let args := e.getAppArgs
+    let sub := args.foldl (init := some #[]) fun acc a => do
+      let acc ← acc
+      return acc ++ (← rank2Uses x n a)
+    if fn == x then do
+      let sub ← sub
+      if args.size < n then none
+      let ts := args[:n].toArray
+      if ts.any (fun t => t.hasLooseBVars || t.hasFVar) then none
+      return sub.push ts
+    else do
+      return (← sub) ++ (← rank2Uses x n fn)
+  | .fvar _ => if e == x then none else some #[]
+  | .lam _ t b _ | .forallE _ t b _ => do return (← rank2Uses x n t) ++ (← rank2Uses x n b)
+  | .letE _ t v b _ => do
+    return (← rank2Uses x n t) ++ (← rank2Uses x n v) ++ (← rank2Uses x n b)
+  | .mdata _ b | .proj _ _ b => rank2Uses x n b
+  | _ => some #[]
+
+/-- The body `e` with every occurrence `x t₁ … tₙ a₁ …` of the rank-2 parameter `x` (applied to
+    the types of its instance) replaced by `x' a₁ …`. -/
+partial def substRank2 (x : Expr) (n : Nat) (x' : Expr) (e : Expr) : Expr :=
+  e.replace fun s =>
+    if s.isApp && s.getAppFn == x && s.getAppNumArgs ≥ n then
+      some (mkAppN x' (s.getAppArgs[n:].toArray.map (substRank2 x n x')))
+    else none
+
+/-- Run `k` on the parameters `xs` and the body `rhs` with every rank-2 parameter (a parameter
+    whose type binds types, `f : ∀ {α β γ : Type}, α → β → γ`) replaced by a new local of the
+    one instance at which the body uses it.  `next` is the number of the next fresh stand-in. -/
+partial def withRank2Params {α : Type} (f : Name) (xs : Array Expr) (rhs : Expr) (next : Nat)
+    (k : Array Expr → Expr → Nat → TermElabM α) : TermElabM α :=
+  go 0 xs rhs next
+where
+  go (i : Nat) (xs : Array Expr) (rhs : Expr) (next : Nat) : TermElabM α := do
+    if h : i < xs.size then
+      let x := xs[i]
+      let T ← inferType x
+      let n ← leadingTypeBinders T
+      if n == 0 then return ← go (i + 1) xs rhs next
+      let name ← x.fvarId!.getUserName
+      let some uses := rank2Uses x n rhs
+        | fail m!"the parameter `{name}` of `{f}` has the polymorphic type{indentExpr T}\nand is \
+            not always applied to the types of an instance"
+      let mut insts : Array (Array Expr) := #[]
+      for ts in uses do
+        let ts ← ts.mapM instantiateMVars
+        unless insts.contains ts do insts := insts.push ts
+      let (ts, next) ← match insts.toList with
+        | [] => pure ((Array.range n).map (tyParamExpr <| next + ·), next + n)
+        | [ts] => pure (ts, next)
+        | _ => fail m!"the parameter `{name}` of `{f}` has the polymorphic type{indentExpr T}\n\
+            and is used at {insts.size} different instances: the language reads it at one"
+      let T' ← instantiateForall T ts
+      withLocalDeclD name T' fun x' =>
+        go (i + 1) (xs.set i x') (substRank2 x n x' rhs) next
+    else k xs rhs next
+
+/-! ### `Unit` as a type parameter
+
+`Unit` has one value, so the language has no type for it (a parameter `_ : Unit` is a lazy
+delay, `Unit → τ`).  A definition that answers a `Unit` or passes one around
+(`test1 (f g : F) (a : Unit) : Unit := f 1 (g "foo" a : Unit)`) is translated through its
+*generalisation*: the definition `f._leanscript_unit_gen {P : Type}` whose type and body are the
+ones of `f` with `Unit` replaced by the new type parameter `P`.  It is declared (so the kernel
+checks it), and `f` is `f._leanscript_unit_gen (P := Unit)` by definition.  This is only possible
+when the body never builds the value `()` itself, and only tried when `f` is not recursive and
+cannot be translated otherwise. -/
+
+/-- The name of the generalisation of `f` over `Unit`. -/
+def unitGenName (f : Name) : Name := f ++ `_leanscript_unit_gen
+
+/-- Is `e` the type `Unit` (`Unit` or `PUnit.{1}`)? -/
+def isUnitConst (e : Expr) : Bool :=
+  e.isConstOf ``Unit || e == Lean.mkConst ``PUnit [Level.one]
+
+/-- Declare the generalisation of `f` over `Unit` (`unitGenName f`), if `f` mentions `Unit`, is
+    not recursive and never builds `()`; its name, or `none`. -/
+def unitGeneralize? (f : Name) : TermElabM (Option Name) := do
+  let env ← getEnv
+  let g := unitGenName f
+  if env.contains g then return some g
+  let some (.defnInfo info) := env.find? f | return none
+  unless info.levelParams.isEmpty do return none
+  let v := info.value
+  let T := info.type
+  unless (v.find? isUnitConst).isSome || (T.find? isUnitConst).isSome do return none
+  if (v.find? (fun e => e.isConstOf ``Unit.unit || e.isConstOf ``PUnit.unit)).isSome then
+    return none
+  -- not recursive: its unfolding equation does not call it (nor another member of its group)
+  let some eqn ← getUnfoldEqnFor? f (nonRec := true) | return none
+  let group ← mutualGroup f
+  let eqRhs ← forallTelescope (← inferType (mkConst eqn)) fun _ eq => pure (eq.eq?.map (·.2.2))
+  let some rhs := eqRhs | return none
+  if group.any (fun h => (rhs.find? (·.isConstOf h)).isSome) then return none
+  -- `fun (P : Type) => v[P/Unit]`: the body may already have loose `bvar`s under its binders,
+  -- so `Unit` is replaced by a free variable first, then abstracted
+  let (T', v') ← withLocalDeclD `P (mkSort Level.one) fun P => do
+    let sub (e : Expr) : Expr := e.replace fun s => if isUnitConst s then some P else none
+    return (← mkForallFVars #[P] (sub T), ← mkLambdaFVars #[P] (sub v))
+  try
+    addDecl (.defnDecl { name := g, levelParams := [], type := T', value := v',
+                         hints := .abbrev, safety := .safe })
+    -- its unfolding equation is generated on demand
+    enableRealizationsForConst g
+  catch _ => return none
+  return some g
+
+/-- The translation of the definition `f` as it is (see `translateDef`). -/
+def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
     TermElabM Expr := do
   let info ← getConstInfo f
   unless info.levelParams.isEmpty do fail m!"`{f}` is universe polymorphic"
@@ -164,9 +314,17 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
   let prog? ← currentProg?
   let eqTy ← inferType (mkConst eqn)
   -- a type index a parameter's family is generic in is fixed first
-  let (idxParams, vals) ← forallTelescope eqTy fun xs _ => do
+  let (idxParams, tyParams, vals) ← forallTelescope eqTy fun xs _ => do
     let idxParams ← indexParams xs
-    return (idxParams, ← typeIndexValues f xs idxParams named prog?)
+    let mut vals ← typeIndexValues f xs idxParams named prog?
+    -- a type parameter (`{α : Type}`) is fixed to its stand-in `TyParam i` (`## Polymorphism`)
+    let mut tyParams : Array Nat := #[]
+    for i in [0:xs.size] do
+      if idxParams.contains i then continue
+      if ← isTypeSort (← inferType xs[i]!) then
+        vals := vals.set! i (some (tyParamExpr tyParams.size))
+        tyParams := tyParams.push i
+    return (idxParams ++ tyParams, tyParams, vals)
   let eqTy := instBinders eqTy vals
   let stx ← forallTelescope eqTy fun xs eq => do
     let some (_, lhs, rhs) := eq.eq? | fail m!"unexpected unfolding equation of `{f}`"
@@ -177,6 +335,25 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
     let group ← mutualGroup f
     let recursive := group.any fun g => (rhs.find? (·.isConstOf g)).isSome
     let kept := (List.range params.size).toArray.filter (!idxParams.contains ·) |>.map (params[·]!)
+    -- the leading type binders of the result (`test4 (f : F) : F`): applied to stand-ins
+    let mut lhs := lhs
+    let mut rhs := rhs
+    let mut next := tyParams.size
+    let mut resultBinders := false
+    repeat
+      let .forallE _ d _ _ ← whnf (← inferType lhs) | break
+      unless ← isTypeSort d do break
+      lhs := mkApp lhs (tyParamExpr next)
+      rhs := (mkApp rhs (tyParamExpr next)).headBeta
+      next := next + 1
+      resultBinders := true
+    if recursive && resultBinders then
+      fail m!"`{f}` is recursive and its result is polymorphic"
+    let polymorphic := !tyParams.isEmpty || resultBinders
+    withRank2Params f kept rhs next fun kept rhs next' => do
+    let polymorphic := polymorphic || next' != next
+    if recursive && next' != next then
+      fail m!"`{f}` is recursive and has a parameter of a polymorphic type"
     -- a parameter `_ : Unit` is a lazy delay of the rest of the function: no variable
     let units ← kept.mapM fun x => do isUnitType (← inferType x)
     if recursive && units.any id then
@@ -189,7 +366,8 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
     let dataKept := (List.range kept.size).toArray.filter (!proofs[·]!) |>.map (kept[·]!)
     let L : Loc := { slots := slotted.map (some ·.fvarId!), fns := if recursive then group else #[],
                      fn := f,
-                     params, idxParams, prog?, c := prog?.map (·.members.size) |>.getD 0 }
+                     params, idxParams, tyParams, prog?,
+                     c := prog?.map (·.members.size) |>.getD 0 }
     let go (L : Loc) : TM (Anf.Src × Lean.Term) := do
       for x in kept do
         if ← isUnitType (← inferType x) then continue
@@ -207,7 +385,7 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
         else body := Anf.Src.lam (some (← tyStx L (← inferType kept[i]!))) body
       -- the type of the translation: the parameters kept, then the result (an index
       -- parameter only occurs in indices, which are erased)
-      let ty ← if idxParams.isEmpty && !proofs.any id then pure info.type
+      let ty ← if idxParams.isEmpty && !proofs.any id && !polymorphic then pure info.type
         else mkForallFVars dataKept (← inferType lhs)
       return (body, ← tyStx L ty)
     -- the depth of the course-of-values recursion: the first that works
@@ -240,6 +418,30 @@ def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × L
   let v ← elabTerm stx expected?
   synthesizeSyntheticMVarsNoPostponing
   instantiateMVars v
+
+/-- The translation of the definition `f`, elaborated against `expected?`; `named` gives the
+    type indices it is generic in (`(α := Nat)`).  A definition that cannot be translated as
+    it is, but whose generalisation over `Unit` can (`unitGeneralize?`), is translated through
+    the generalisation. -/
+def translateDef (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
+    TermElabM Expr := do
+  -- an attempt fails when it throws or logs an error (the elaboration of the syntax it builds
+  -- logs some)
+  let attempt (f : Name) : TermElabM (Option Expr) := do
+    let before := (← getThe Core.State).messages
+    modifyThe Core.State fun st => { st with messages := {} }
+    let r ← try pure (some (← translateDefCore f expected? named)) catch _ => pure none
+    let after := (← getThe Core.State).messages
+    modifyThe Core.State fun st => { st with messages := before ++ after }
+    return if after.hasErrors then none else r
+  let s0 ← saveState
+  if let some v ← attempt f then return v
+  s0.restore
+  if let some g ← (try unitGeneralize? f catch _ => pure none) then
+    if let some v ← attempt g then return v
+  -- neither works: the error of `f` itself
+  s0.restore
+  translateDefCore f expected? named
 
 /-- `#leanscript_to_term f`: the translation of the Lean definition `f` to a closed
     `LeanScript.Term`. -/

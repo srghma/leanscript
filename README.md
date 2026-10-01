@@ -61,6 +61,18 @@ the definition, such as `2` in `| .L 2 => …`, so that every arm is taken).  Ev
 the definitions that were not translated, with the reason; the JavaScript outputs also start
 with their configuration.
 
+**Polymorphic definitions** are translated at one instance, which serves every instance once
+types are erased (`LeanScript/TermElab/ToTerm.lean`, `## Polymorphism`;
+`Tests/TermTests/ToTerm/PolymorphismTest.lean`): a type parameter (`{α : Type}`, also a leading
+`∀` of the result's type) is fixed to its stand-in `LeanScript.TyParam i`, the leaf
+`LeanPrimTy.tyParam i` (`JsTerminalTy.tyParam i`, documented as `@template A, B, …`); a rank-2
+parameter (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance the body uses it at;
+and a definition that answers or passes a `Unit` around without building `()` is translated
+through its generalisation over `Unit` (`f._leanscript_unit_gen`, declared and checked by the
+kernel, `f` being it at `Unit`), whose `Unit`s are then ordinary parameters.  The differential
+checks call a polymorphic function at `Nat`.  `DefaultRulesFunction01` is the example:
+`test1 = (f, g, a) => f(1, g("foo", a))`, `test4 = (f, b, a) => f(b, a)`, `test6 = (a) => a`.
+
 `JsTerm` is simply typed (`JsTy`: the leaves `JsTerminalTy` — `bool`, `bigint_nat`, `uint53`,
 `bigint_int`, `int53`, bit vectors, the fixed-width integers, `float`, `float32`, `string`, … —
 generic and typed arrays, lists, functions, records, unions, enums, thunks) and intrinsically

@@ -86,6 +86,7 @@ def LeanPrimTy.prettyLit : (p : LeanPrimTy) → p.denote → String
   | .float32, f => toString f.toFloat32
   | .floatModel, _ => "<Float.Model>"
   | .float32Model, _ => "<Float32.Model>"
+  | .tyParam i, v => s!"<tyParam {i}: {v.val}>"
 
 /-! ## Terms -/
 
