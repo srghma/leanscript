@@ -2461,6 +2461,77 @@ def heterogeneous01Spec : Spec := describe "Heterogeneous01" do
       let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
       assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+namespace HtmlSnap
+
+/-- A copy of `Tests/SnapshotsPBOPure/Html.lean` (whose definitions are private). -/
+inductive Html where
+  | elem (tag : String) (children : List Html)
+  | text (content : String)
+
+def render : Html → String
+  | .text content => s!"Html.text {repr content}"
+  | .elem tag children =>
+      let childrenStr := String.intercalate ", " (children.attach.map fun ⟨c, _⟩ => render c)
+      s!"Html.elem {repr tag} [{childrenStr}]"
+
+def test (user : String) : Html :=
+  Html.elem "section"
+    [ Html.elem "h1" [Html.text ("Posts for " ++ user)]
+    , Html.elem "article"
+        [ Html.elem "h2" [Html.text "The first post"]
+        , Html.elem "p"
+            [ Html.text "This is the first post."
+            , Html.text "Not much else to say."
+            ]
+        ]
+    ]
+
+/-- The users the JavaScript `test` is called on. -/
+def users : List String := ["", "alice", "Bob \"the\" builder"]
+
+end HtmlSnap
+
+/-- `Tests/SnapshotsPBOPure/Html.lean`: `test` builds a tree of a type recursive through `List`
+    (`children : List Html`).  Its JavaScript is one object literal, the list of children
+    cons cells (`{ tag: 1, _1: head, _2: tail }`, as `List Html` is part of the recursion of
+    `Html`); rendered in JavaScript, it gives what Lean's `render (test user)` gives. -/
+def htmlSpec : Spec := describe "Html" do
+  it "`test` is one object literal, and renders as in Lean (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/html"
+    IO.FS.createDirAll dir
+    let file := "Html"
+    let args := #["--quiet", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let expected := String.join (HtmlSnap.users.map fun u => HtmlSnap.render (HtmlSnap.test u) ++ "\n")
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: `test` is one object literal" true
+        ((js.splitOn "export const test = (user) => ({\n  tag: 0,\n  _1: \"section\",").length > 1)
+      let body := (js.splitOn "export const test = ").getLast!
+      assertEq s!"{file}-{preset}: no statement, no call" 1
+        ((body.splitOn "const ").length + (body.splitOn "return").length +
+          (body.splitOn "(").length - (body.splitOn "(user)").length - (body.splitOn "({").length)
+      let users := ", ".intercalate (HtmlSnap.users.map fun u => (Lean.Json.str u).compress)
+      let script := s!"import \{ test } from {(Lean.Json.str s!"{dir}/{file}-{preset}.js").compress};
+const list = (l) => \{ const a = []; for (; l.tag === 1; l = l._2) a.push(l._1); return a; };
+const render = (v) => v.tag === 1 ? \"Html.text \" + JSON.stringify(v._1)
+  : \"Html.elem \" + JSON.stringify(v._1) + \" [\" + list(v._2).map(render).join(\", \") + \"]\";
+for (const u of [{users}]) console.log(render(test(u)));
+"
+      let path := s!"{dir}/{file}-{preset}.render.mjs"
+      IO.FS.writeFile path script
+      let run ← IO.Process.output { cmd := "node", args := #[path] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: rendered as in Lean" expected run.stdout
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2492,6 +2563,7 @@ def spec : Spec := do
   functionCompose03Spec
   fusion02Spec
   heterogeneous01Spec
+  htmlSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

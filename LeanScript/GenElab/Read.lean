@@ -332,6 +332,42 @@ partial def readCtors (e : Expr) : MetaM (Array (Name × Array Expr)) := do
 
 end
 
+/-- The applications of constants in a closed type (`Html`, `RoseTree Nat`, `Prod Html Nat`,
+    …), outermost first. -/
+partial def constApps (e : Expr) : Array Expr :=
+  match e with
+  | .app .. =>
+    let rest := e.getAppArgs.foldl (fun acc a => acc ++ constApps a) #[]
+    if e.getAppFn.isConst then #[e] ++ rest else rest
+  | .const .. => #[e]
+  | .forallE _ a b _ => constApps a ++ constApps b
+  | .mdata _ b => constApps b
+  | _ => #[]
+
+/-- Is the list type `L = List T` a field type of a constructor of a nested inductive type
+    that `T` mentions (`Html.elem : String → List Html → Html`, `RoseTree.node : α →
+    List (RoseTree α) → …` at `List (RoseTree Nat)`, `Obj.mk : List (String × Obj) → Obj` at
+    `List (String × Obj)`)?  Such a list is part of the recursion of that type, and a recursive
+    occurrence cannot sit inside the built-in list (`Ty.list`): under `builtinListOption` it is
+    then still read as a datatype (`nil | cons T L`), a member of the block of that type,
+    everywhere the program mentions it (the reading of a type does not depend on where it
+    occurs). -/
+def listNestedInElem (T L : Expr) : MetaM Bool := do
+  for I in constApps T do
+    let some (c, us) := I.getAppFn.const? | continue
+    let some (.inductInfo info) := (← getEnv).find? c | continue
+    unless info.numNested > 0 && info.numIndices == 0 do continue
+    let args := I.getAppArgs
+    unless args.size == info.numParams do continue
+    if I.hasLooseBVars then continue
+    let found ← info.ctors.anyM fun ctor => do
+      let cty ← instantiateForall ((← getConstInfo ctor).instantiateTypeLevelParams us) args
+      forallTelescopeReducing cty fun xs _ => xs.anyM fun x => do
+        let t ← instantiateMVars (← inferType x)
+        return (t.find? (· == L)).isSome
+    if found then return true
+  return false
+
 /-- The head of a (normalised) type. -/
 partial def classify (e : Expr) : MetaM Head := do
   if let .forallE _ a b _ := e then
@@ -399,7 +435,8 @@ partial def classify (e : Expr) : MetaM Head := do
     return .node e
   | ``Array, 1 => return .array args[0]!
   | ``List, 1 =>
-    if ← useBuiltinList then return .list args[0]!
+    if ← useBuiltinList then
+      unless ← listNestedInElem args[0]! e do return .list args[0]!
     return .node e
   | ``Thunk, 1 => return .thunk args[0]!
   | _, _ =>

@@ -1,3 +1,36 @@
+# Summary of changes for run dfaddf62-079a-4fe4-949a-709d317bbd04
+`test` in `Tests/SnapshotsPBOPure/Html.lean` now translates to JavaScript that matches `legacy-backend/Html.js` and is slightly smaller. Before this change nothing in the file was translated. All tests pass and the work is committed.
+
+**What the output files showed.** `Html-pbo.js`, `Html-faithful.js` and both `-Term-*.txt` files were empty apart from the "not translated" notes. `test` was refused with "the recursive type Html is not declared in any signature". The reason is that `Html` is recursive through `List` (`children : List Html`). The tool normally reads `List α` as a plain JavaScript array, and a datatype can't have a recursive field inside one. So the tool's automatic declaration of the file's recursive types rejected `Html`.
+
+**The fix.** It is in `LeanScript/GenElab/Read.lean` (`listNestedInElem`, used by `classify`). This is the step that turns Lean into `Term`, before the three phases you listed. When a list type is a constructor field of a type that recurses through it (`List Html`, `List (RoseTree Nat)`, `List (String × Obj)`), that list is now read as a cons-cell datatype in the same group as the type. All other lists (`List String`, …) stay arrays. The choice depends only on the type, so a given list type is read the same way everywhere in a program. The `Term` optimiser, the conversion and the `JsTerm` optimiser needed no changes: the optimised `Term` of `test` is already a single constructor tree.
+
+**Result (both presets, identical apart from the header):**
+```js
+export const test = (user) => ({
+  tag: 0, _1: "section",
+  _2: { tag: 1, _1: { tag: 0, _1: "h1", _2: { tag: 1, _1: { tag: 1, _1: "Posts for " + user }, _2: { tag: 0 } } }, _2: … },
+});
+```
+Like the legacy output, this is one object literal with children as cons cells. The differences:
+- **Tags and fields:** numeric tags and `_1`/`_2` fields (the convention used throughout this project) instead of `"elem"`, `_tag`, `_children`.
+- **No `render`:** the legacy file emits `render` without exporting it, so it is unused code there. Ours leaves it out because it is `private`.
+
+`test` has no loops or recursion, so labeled blocks and loops didn't come into it.
+
+**Testing.**
+- A new `htmlSpec` in `Tests/Main.lean` runs on both presets. It checks that `test` is a single object literal with no statements or calls. It then runs it under node for three users (one containing quotes), renders the result in JavaScript the same way the file's `render` does, and compares that with Lean's `render (test user)` on a copy of the definitions.
+- `leanscript --check` still writes 0 checks for this file, because the check generator can't yet print a value of a recursive datatype. The node test above is what exercises the output.
+- I regenerated every snapshot: only the `Html` outputs changed and every node check passed. The log also contains Lean "index out of bounds" backtraces. Since no other output changed, they don't come from this change, but I didn't trace where they come from.
+- I also tried a scratch file: `List (String × Obj)` and `Rose α` with `List (Rose α)` now translate and their checks pass. `List.length` on such a datatype list is still refused.
+- `lake build leanscript tests TyTests TermTests JsTerm` succeeds and `lake exe tests` passes 123/123.
+
+No theorems were involved, so nothing was added to the Properties table. The full comparison is in `Tests/SnapshotsPBOPure/Html.md`.
+
+**Not done:**
+- If `render` were made public it would still be refused, because it is defined by well-founded recursion (through `List.map`).
+- The parts of the tree that don't depend on `user` could be built once as module-level constants instead of on every call. The legacy backend doesn't do this either.
+
 # Summary of changes for run 6defa27c-394c-4442-9081-1bc91e21c7c1
 The JavaScript we generate for `Tests/SnapshotsPBOPure/Heterogeneous01.lean` was already on par with `legacy-backend/Heterogeneous01.js`, so I didn't change the compiler's output. What was missing was testing: the file's check modules contained no checks, so the output had never been compared against Lean. I fixed that and added a regression test; all checks and tests pass.
 

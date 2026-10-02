@@ -2,5 +2,58 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 // not translated:
 //   instReprHtml.repr: a `partial` definition
-//   test: LeanScript: the recursive type Html is not declared in any signature; declare it with `leanscript_signature`
 
+/**
+ * `test`
+ * @param {string} user
+ * @returns {D0}
+ */
+export const test = (user) => ({
+  tag: 0,
+  _1: "section",
+  _2: {
+    tag: 1,
+    _1: {
+      tag: 0,
+      _1: "h1",
+      _2: { tag: 1, _1: { tag: 1, _1: "Posts for " + user }, _2: { tag: 0 } },
+    },
+    _2: {
+      tag: 1,
+      _1: {
+        tag: 0,
+        _1: "article",
+        _2: {
+          tag: 1,
+          _1: {
+            tag: 0,
+            _1: "h2",
+            _2: {
+              tag: 1,
+              _1: { tag: 1, _1: "The first post" },
+              _2: { tag: 0 },
+            },
+          },
+          _2: {
+            tag: 1,
+            _1: {
+              tag: 0,
+              _1: "p",
+              _2: {
+                tag: 1,
+                _1: { tag: 1, _1: "This is the first post." },
+                _2: {
+                  tag: 1,
+                  _1: { tag: 1, _1: "Not much else to say." },
+                  _2: { tag: 0 },
+                },
+              },
+            },
+            _2: { tag: 0 },
+          },
+        },
+      },
+      _2: { tag: 0 },
+    },
+  },
+});
