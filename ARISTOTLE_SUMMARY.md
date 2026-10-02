@@ -1,3 +1,25 @@
+# Summary of changes for run 762ace71-d69b-4930-afd2-2bd5a4bda392
+The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose02.lean` already matches purescript-backend-optimizer's `legacy-backend/FunctionCompose02.js`, and is slightly better. An earlier run on this project reached the same conclusion. I checked it again against a fresh build and didn't change the compiler or any files, so there was nothing new to commit.
+
+**What the output files show.** I rebuilt `leanscript` and ran it on the file. All six outputs came out byte-identical to the committed ones.
+- `-Term-unoptimized.txt` / `-Term-optimized.txt`: each `testN` is three nested closures (`f`, `g`, `x`). The body is a straight chain of calls, e.g. `test4` is `x4 x6; x2 x7; x4 x8; x2 x9; x4 x10`. The `∘` compositions are already gone at the `Term` level, and no closure is created for them. The only change optimisation makes is to the usage counts (`[ω]` becomes `[1]`). `f` and `g` are parameters, so their calls can't be inlined and there is nothing more for the `Term` optimiser to remove.
+- JavaScript, on both the `pbo` and `faithful` presets:
+```js
+export const test4 = (f, g, a) => g(f(g(f(g(a)))));   // ours
+const test4 = (f) => (g) => (x) => g(f(g(f(g(x)))));  // legacy
+```
+The body is the same call chain. Ours is uncurried, so a call builds no intermediate closures. The only other difference is the name of the last parameter (`a` instead of `x`), which is cosmetic.
+
+So there is nothing left to optimise in any of the three phases (`Term` optimise, convert, `JsTerm` optimise). The file has no loops or recursion, so labeled blocks and loops don't come into it.
+
+**Checks for this run.**
+- `lake build leanscript tests TermTests` succeeds.
+- `lake exe tests` passes 118/118. This includes `functionCompose02Spec`, which checks the exact `export const …` lines on both presets and runs the generated JavaScript under node against Lean's values.
+- `Tests/TermTests/Optimize/FunctionCompose02Test.lean` has no `sorry`. It proves that the optimised translation computes each `testN` for every `f`, `g`, `x`, and that `test1`–`test4` make 2, 3, 4 and 5 calls after optimisation. The proofs of the printed text and of the call counts after optimisation use `native_decide`, like the existing snapshot tests.
+- The Properties table entries for these results are already marked proved.
+
+**One gap:** `leanscript --check` still writes 0 checks for this file, because it can't make sample inputs for parameters that are functions. The JavaScript is exercised only by the node script in `functionCompose02Spec`.
+
 # Summary of changes for run ef3caf4c-0cce-4577-b803-5f23b0c558d0
 The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose02.lean` was already as good as purescript-backend-optimizer's `legacy-backend/FunctionCompose02.js`, and slightly better, so I didn't change the compiler. I added proofs and a test so it stays that way.
 
