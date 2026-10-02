@@ -672,8 +672,9 @@ partial def cComp {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
             .app (← base.get (.fn (args.map (·.2)) (lowerTy cfg τ))) (← refArgsCopy args copies)
           return (JsBlock.const "x" call (← k (.c C₂.length) _ M)))
   | .share e => do
-    let ee ← cNeu e n C M
-    return (JsBlock.const "x" ee (← k (.c C.length) _ M))
+    -- a neutral expression that lowers to a constant already (`"".push c` is `c`) is that
+    -- constant, not a copy of it (`bindConst`)
+    bindConst (← cNeu e n C M) fun r C' => k r C' M
   | Comp.nat_rec (τ := ρ) cnt z s _ => do
     let N := lowerTy cfg (Ty.nat : Ty ks)
     let some nt := JsNatTy.of? N | throw "internal: the representation of a Nat"

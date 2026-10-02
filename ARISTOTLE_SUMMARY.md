@@ -1,3 +1,35 @@
+# Summary of changes for run 794bc8c7-faff-473e-9934-026dcfbec113
+The `Term`-level changes for `FloatLetRegression01` are now formalised in Lean, with no `sorry`. The JavaScript step, and the claim that the JavaScript matches the legacy output, are still only checked by tests, because the JavaScript conversion and printer are `partial def`s and Lean can't prove anything about those.
+
+**Proved in the previous turn, still building**
+- `Term.sinkWalk_eval` (`LeanScript/Term/Optimize/SinkLet.lean`): the new pass doesn't change `Term.eval`.
+- `Term.numCalls_sinkWalk`: it doesn't change the number of calls.
+- `Term.optimize_eval`, `optimizeN_eval` and `numCalls_optimize` include the new pass.
+- `SinkLetTest.test_optimized_run`: the optimised translation of `test` computes `test` for every `f : Int → Int`. `litShare_optimized_run` does the same for a second example with repeated `String` and `Nat` literal arguments.
+
+**Added in this turn**
+- **What one step of the moving pass does** (`SinkLet.lean`):
+  - `Term.sinkLet_letE`: in front of a `let` that isn't used once and doesn't read the moved computation, the computation moves past it and keeps going.
+  - `Term.sinkLet_letE_one`: it stops in front of a `let` that is used once, so those keep their order.
+- **When a call on a literal can be shared** (`Atom.lean`):
+  - `SimpleComp.ofComp?_app_int`, `_nat` and `_str`: a call on an `Int`, `Nat` or `String` literal that doesn't return a function counts as one computation, which common-subexpression elimination can share.
+  - `ofComp?_app_lit_fn`: a partial application on a literal never does.
+- **Call counts for `FloatLetRegression01`** (`Tests/TermTests/Optimize/SinkLetTest.lean`):
+  - `test_numCalls`: the translation makes 3 calls, checked by the kernel.
+  - `test_optimized_numCalls`: the optimised translation makes 2, so `f 2` is computed once.
+  - `litShare_numCalls` and `litShare_optimized_numCalls`: 4 calls, then 2.
+  - The two counts after optimisation use `native_decide`, as the existing printed-`Term` theorems do, because evaluating three optimiser rounds in the kernel ran out of time.
+
+The proofs not using `native_decide` rely only on `propext`, `Classical.choice` and `Quot.sound`.
+
+**Not formally proved**
+- The lowering change in `JsTerm/Lower/FromTerm.lean` (reusing an existing variable instead of declaring `const x$1 = a;`).
+- The exact JavaScript text (`const x$1 = f(2); return { _1: f(1), _2: x$1, _3: x$1 };`).
+
+Both are covered only by `floatLetRegressionSpec` in `Tests/Main.lean`, which runs `leanscript --check` and node on both presets.
+
+**Checks:** `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `LeanScriptCli`, `HashableFloat`, `NonEmpty`, `leanscript` and `tests` all build, and `lake exe tests` passes 114/114. The new results are in the Properties table, and everything is committed.
+
 # Summary of changes for run 0c9fd108-6c5c-4895-b250-8f546071d590
 The JavaScript for `Tests/SnapshotsPBOPure/EtaReduceRegression01.lean` now matches the legacy output (`legacy-backend/EtaReduceRegression01.js`), and is better on two of the three functions. Before this change only `test` was translated. `identity` and `fold` were refused as "universe polymorphic", and `fold` would also have been refused for its instance parameters and its `f : Type → Type` parameter.
 

@@ -60,11 +60,10 @@ export const test2 = (n) => {
  * @returns {uint53(number)}
  */
 export const test3 = (a, b) => {
-  const x$1 = a < b ? uint53__lean_nat_sub(b, a) : uint53__lean_nat_sub(a, b);
-  const x$2 = uint53__lean_nat_add(a, 1);
+  const x$1 = uint53__lean_nat_add(a, 1);
   return uint53__lean_nat_add(
-    x$1,
-    b < x$2 ? uint53__lean_nat_sub(x$2, b) : uint53__lean_nat_sub(b, x$2),
+    a < b ? uint53__lean_nat_sub(b, a) : uint53__lean_nat_sub(a, b),
+    b < x$1 ? uint53__lean_nat_sub(x$1, b) : uint53__lean_nat_sub(b, x$1),
   );
 };
 

@@ -47,10 +47,10 @@ ret k1
 -- test3 : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
-    let x5 [1] : Nat := share cond(lean_nat_dec_lt(x2, x4), lean_nat_sub(x4, x2), lean_nat_sub(x2, x4))
-    let x6 [ω] : Nat := share lean_nat_add(x2, 1)
-    let x7 [1] : Nat := share cond(lean_nat_dec_lt(x4, x6), lean_nat_sub(x6, x4), lean_nat_sub(x4, x6))
-    ret lean_nat_add(x5, x7)
+    let x5 [ω] : Nat := share lean_nat_add(x2, 1)
+    let x6 [1] : Nat := share cond(lean_nat_dec_lt(x2, x4), lean_nat_sub(x4, x2), lean_nat_sub(x2, x4))
+    let x7 [1] : Nat := share cond(lean_nat_dec_lt(x4, x5), lean_nat_sub(x5, x4), lean_nat_sub(x4, x5))
+    ret lean_nat_add(x6, x7)
   ret k3
 ret k1
 

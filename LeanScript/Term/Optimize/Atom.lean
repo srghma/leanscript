@@ -108,6 +108,9 @@ inductive AtomKey where
   | u (i : Nat)
   | k (i : Nat)
   | bool (b : Bool)
+  | nat (n : Nat)
+  | int (i : Int)
+  | str (s : String)
   deriving DecidableEq
 
 /-- What identifies a simple computation in its context. -/
@@ -117,11 +120,15 @@ inductive CompKey where
   | thunkForce (a : AtomKey)
   deriving DecidableEq
 
-/-- An atom: an unknown, a known value or a literal. -/
+/-- An atom: an unknown, a known value or a literal (of `Bool`, `Nat`, `Int` or `String`, the
+    leaves whose literals are compared structurally). -/
 inductive Atom (Φ : KCtx ks) (Γ : UCtx ks) : Ty ks → Type where
   | u {τ : Ty ks} {ℓ : Nat} (x : UVar Γ τ ℓ) : Atom Φ Γ τ
   | k {τ : Ty ks} {o : Lvl} (x : KVar Φ τ o) : Atom Φ Γ τ
   | bool (b : Bool) : Atom Φ Γ .bool
+  | nat (n : Nat) : Atom Φ Γ (.prim .nat)
+  | int (i : Int) : Atom Φ Γ (.prim .int)
+  | str (s : String) : Atom Φ Γ (.prim .string)
 
 /-- A simple computation: a call of an atom on an atom, or a force of an atom. -/
 inductive SimpleComp (Φ : KCtx ks) (Γ : UCtx ks) : Ty ks → Type where
@@ -137,12 +144,18 @@ def eval {τ : Ty ks} : Atom Φ Γ τ → KEnv Δ Φ → UEnv Δ Γ → Ty.Den �
   | .u x, _, ρ => ρ.get x
   | .k x, κ, _ => κ.get x
   | .bool b, _, _ => b
+  | .nat n, _, _ => n
+  | .int i, _, _ => i
+  | .str s, _, _ => s
 
 /-- What identifies the atom. -/
 def key {τ : Ty ks} : Atom Φ Γ τ → AtomKey
   | .u x => .u x.index
   | .k x => .k x.index
   | .bool b => .bool b
+  | .nat n => .nat n
+  | .int i => .int i
+  | .str s => .str s
 
 /-- Two atoms with the same key have the same type and the same value. -/
 theorem eq_of_key_eq {τ τ' : Ty ks} (a : Atom Φ Γ τ) (a' : Atom Φ Γ τ') (h : a.key = a'.key) :
@@ -164,12 +177,27 @@ theorem eq_of_key_eq {τ τ' : Ty ks} (a : Atom Φ Γ τ) (a' : Atom Φ Γ τ') 
       cases a' with
       | bool b' => simp only [key, AtomKey.bool.injEq] at h; subst h; exact ⟨rfl, fun _ _ => HEq.rfl⟩
       | _ => simp [key] at h
+  | nat n =>
+      cases a' with
+      | nat n' => simp only [key, AtomKey.nat.injEq] at h; subst h; exact ⟨rfl, fun _ _ => HEq.rfl⟩
+      | _ => simp [key] at h
+  | int i =>
+      cases a' with
+      | int i' => simp only [key, AtomKey.int.injEq] at h; subst h; exact ⟨rfl, fun _ _ => HEq.rfl⟩
+      | _ => simp [key] at h
+  | str s =>
+      cases a' with
+      | str s' => simp only [key, AtomKey.str.injEq] at h; subst h; exact ⟨rfl, fun _ _ => HEq.rfl⟩
+      | _ => simp [key] at h
 
 /-- The atom under one more unknown. -/
 def wkU {τ : Ty ks} (b : UBinder ks) : Atom Φ Γ τ → Atom Φ (b :: Γ) τ
   | .u x => .u x.tail
   | .k x => .k x
   | .bool v => .bool v
+  | .nat n => .nat n
+  | .int i => .int i
+  | .str s => .str s
 
 /-- The atom under more unknowns. -/
 def wkUN {τ : Ty ks} : (bs : UCtx ks) → Atom Φ Γ τ → Atom Φ (bs ++ Γ) τ
@@ -181,6 +209,9 @@ def wkK {τ : Ty ks} (b : KBinder ks) : Atom Φ Γ τ → Atom (b :: Φ) Γ τ
   | .u x => .u x
   | .k x => .k x.tail
   | .bool v => .bool v
+  | .nat n => .nat n
+  | .int i => .int i
+  | .str s => .str s
 
 @[simp] theorem wkU_eval {τ : Ty ks} (b : UBinder ks) (a : Atom Φ Γ τ) (κ : KEnv Δ Φ)
     (ρ : UEnv Δ Γ) (v : Ty.Den Δ b.ty) : (a.wkU b).eval κ (Tuple.cons v ρ) = a.eval κ ρ := by
@@ -200,13 +231,16 @@ theorem wkUN_eval {τ : Ty ks} : (bs : UCtx ks) → (a : Atom Φ Γ τ) → (κ 
 def lvl {τ : Ty ks} : Atom Φ Γ τ → Lvl
   | @Atom.u _ _ _ _ ℓ _ => some ℓ
   | @Atom.k _ _ _ _ o _ => o
-  | .bool _ => none
+  | .bool _ | .nat _ | .int _ | .str _ => none
 
 /-- An atom as a pure expression. -/
 def toPExpr {τ : Ty ks} : (a : Atom Φ Γ τ) → PExpr Δ Φ Γ τ a.lvl
   | .u x => .neu (.var x)
   | .k x => .kvar x
   | .bool b => .lit .bool b
+  | .nat n => .lit .nat n
+  | .int i => .lit .int i
+  | .str s => .lit .string s
 
 @[simp] theorem toPExpr_eval {τ : Ty ks} (a : Atom Φ Γ τ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (a.toPExpr (Δ := Δ)).eval κ ρ = a.eval κ ρ := by
@@ -223,12 +257,58 @@ theorem ofPExpr?_eval {τ : Ty ks} {o : Lvl} (e : PExpr Δ Φ Γ τ o) {a : Atom
   unfold ofPExpr? at h
   split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h <;> subst h <;> rfl
 
+/-- A literal is not an unknown nor a known value. -/
+@[simp] theorem ofPExpr?_lit (p : LeanPrimTy) (v : p.denote) :
+    ofPExpr? (PExpr.lit (Δ := Δ) (Φ := Φ) (Γ := Γ) p v) = none := rfl
+
+/-- A literal of `Bool`, `Nat`, `Int` or `String`, as an atom. -/
+def ofLit? {τ : Ty ks} {o : Lvl} : PExpr Δ Φ Γ τ o → Option (Atom Φ Γ τ)
+  | .lit .bool b => some (.bool b)
+  | .lit .nat n => some (.nat n)
+  | .lit .int i => some (.int i)
+  | .lit .string s => some (.str s)
+  | _ => none
+
+theorem ofLit?_eval {τ : Ty ks} {o : Lvl} (e : PExpr Δ Φ Γ τ o) {a : Atom Φ Γ τ}
+    (h : ofLit? e = some a) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) : a.eval κ ρ = e.eval κ ρ := by
+  unfold ofLit? at h
+  split at h <;> simp only [Option.some.injEq, reduceCtorEq] at h <;> subst h <;> rfl
+
+/-- Does a computation of this type answer a function (a partial application, when it is a
+    call)? -/
+def _root_.LeanScript.Ty.answersFn : Ty ks → Bool
+  | .fn _ _ => true
+  | _ => false
+
+/-- The argument of a call, as an atom: an unknown or a known value (`ofPExpr?`), or a literal
+    (`ofLit?`) when the call does not answer a function.  (A partial application on a literal,
+    `f "a"`, is not worth sharing: the JavaScript calls `f` with all its arguments at once.) -/
+def ofArg? {τ : Ty ks} {o : Lvl} (answersFn : Bool) (e : PExpr Δ Φ Γ τ o) :
+    Option (Atom Φ Γ τ) :=
+  match ofPExpr? e with
+  | some a => some a
+  | none => if answersFn then none else ofLit? e
+
+theorem ofArg?_eval {τ : Ty ks} {o : Lvl} (answersFn : Bool) (e : PExpr Δ Φ Γ τ o)
+    {a : Atom Φ Γ τ} (h : ofArg? answersFn e = some a) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    a.eval κ ρ = e.eval κ ρ := by
+  unfold ofArg? at h
+  split at h
+  · rename_i a' ha'
+    cases h; exact ofPExpr?_eval e ha' κ ρ
+  · split at h
+    · cases h
+    · exact ofLit?_eval e h κ ρ
+
 /-- An atom of the context under one more unknown that does not mention it, as an atom of
     the context without it. -/
 def strengthen? {τ : Ty ks} {b : UBinder ks} : Atom Φ (b :: Γ) τ → Option (Atom Φ Γ τ)
   | .u x => x.pred?.map .u
   | .k x => some (.k x)
   | .bool v => some (.bool v)
+  | .nat n => some (.nat n)
+  | .int i => some (.int i)
+  | .str s => some (.str s)
 
 theorem strengthen?_eval {τ : Ty ks} {b : UBinder ks} (a : Atom Φ (b :: Γ) τ) {a' : Atom Φ Γ τ}
     (h : strengthen? a = some a') (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (v : Ty.Den Δ b.ty) :
@@ -240,6 +320,9 @@ theorem strengthen?_eval {τ : Ty ks} {b : UBinder ks} (a : Atom Φ (b :: Γ) τ
       exact UVar.pred?_get x hy ρ v
   | k x => simp only [strengthen?, Option.some.injEq] at h; subst h; rfl
   | bool v => simp only [strengthen?, Option.some.injEq] at h; subst h; rfl
+  | nat n => simp only [strengthen?, Option.some.injEq] at h; subst h; rfl
+  | int i => simp only [strengthen?, Option.some.injEq] at h; subst h; rfl
+  | str s => simp only [strengthen?, Option.some.injEq] at h; subst h; rfl
 
 end Atom
 
@@ -328,7 +411,7 @@ theorem wkUN_eval {τ : Ty ks} (bs : UCtx ks) (s : SimpleComp Φ Γ τ) (κ : KE
 def ofComp? {d : Nat} {τ : Ty ks} {ℓ : Nat} : Comp Δ d Φ Γ τ ℓ → Option (SimpleComp Φ Γ τ)
   | .app f a _ => do
       let f ← Atom.ofPExpr? f
-      let a ← Atom.ofPExpr? a
+      let a ← Atom.ofArg? τ.answersFn a
       pure (.app f a)
   | .lazy_force e => (Atom.ofPExpr? e).map .lazyForce
   | .thunk_force e => (Atom.ofPExpr? e).map .thunkForce
@@ -342,7 +425,7 @@ theorem ofComp?_eval {d : Nat} {τ : Ty ks} {ℓ : Nat} (c : Comp Δ d Φ Γ τ 
       simp only [ofComp?, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
       obtain ⟨f', hf, a', ha, h⟩ := h
       cases h
-      simp only [eval, Comp.eval, Atom.ofPExpr?_eval f hf, Atom.ofPExpr?_eval a ha]
+      simp only [eval, Comp.eval, Atom.ofPExpr?_eval f hf, Atom.ofArg?_eval _ a ha]
   | lazy_force e =>
       simp only [ofComp?, Option.map_eq_some_iff] at h
       obtain ⟨a, ha, rfl⟩ := h
@@ -352,6 +435,40 @@ theorem ofComp?_eval {d : Nat} {τ : Ty ks} {ℓ : Nat} (c : Comp Δ d Φ Γ τ 
       obtain ⟨a, ha, rfl⟩ := h
       simp only [eval, Comp.eval, Atom.ofPExpr?_eval e ha]
   | _ => simp [ofComp?] at h
+
+/-- A call of an atom on an `Int` literal that does not answer a function is a simple
+    computation (so that `f 2`, repeated, is shared by common subexpression elimination). -/
+theorem ofComp?_app_int {d : Nat} {σ τ : Ty ks} {ℓ : Nat} {of : Lvl} {f : PExpr Δ Φ Γ (.fn σ τ) of}
+    {af : Atom Φ Γ (.fn σ τ)} (hf : Atom.ofPExpr? f = some af) (hτ : τ.answersFn = false)
+    (hσ : σ = .prim .int) (n : Int) (h : Lvl.meet of none = some ℓ) :
+    ofComp? (d := d) (.app f (hσ ▸ PExpr.lit .int n) h) = some (.app af (hσ ▸ Atom.int n)) := by
+  subst hσ
+  simp [ofComp?, hf, Atom.ofArg?, Atom.ofPExpr?_lit, Atom.ofLit?, hτ]
+
+/-- The same for a `Nat` literal. -/
+theorem ofComp?_app_nat {d : Nat} {σ τ : Ty ks} {ℓ : Nat} {of : Lvl} {f : PExpr Δ Φ Γ (.fn σ τ) of}
+    {af : Atom Φ Γ (.fn σ τ)} (hf : Atom.ofPExpr? f = some af) (hτ : τ.answersFn = false)
+    (hσ : σ = .prim .nat) (n : Nat) (h : Lvl.meet of none = some ℓ) :
+    ofComp? (d := d) (.app f (hσ ▸ PExpr.lit .nat n) h) = some (.app af (hσ ▸ Atom.nat n)) := by
+  subst hσ
+  simp [ofComp?, hf, Atom.ofArg?, Atom.ofPExpr?_lit, Atom.ofLit?, hτ]
+
+/-- The same for a `String` literal. -/
+theorem ofComp?_app_str {d : Nat} {σ τ : Ty ks} {ℓ : Nat} {of : Lvl} {f : PExpr Δ Φ Γ (.fn σ τ) of}
+    {af : Atom Φ Γ (.fn σ τ)} (hf : Atom.ofPExpr? f = some af) (hτ : τ.answersFn = false)
+    (hσ : σ = .prim .string) (s : String) (h : Lvl.meet of none = some ℓ) :
+    ofComp? (d := d) (.app f (hσ ▸ PExpr.lit .string s) h) = some (.app af (hσ ▸ Atom.str s)) := by
+  subst hσ
+  simp [ofComp?, hf, Atom.ofArg?, Atom.ofPExpr?_lit, Atom.ofLit?, hτ]
+
+/-- A partial application on a literal (a call answering a function) is not a simple
+    computation: it is left alone. -/
+theorem ofComp?_app_lit_fn {d : Nat} {τ₁ τ₂ : Ty ks} {ℓ : Nat} {of : Lvl} (p : LeanPrimTy)
+    (f : PExpr Δ Φ Γ (.fn (.prim p) (.fn τ₁ τ₂)) of) (v : p.denote)
+    (h : Lvl.meet of none = some ℓ) :
+    ofComp? (d := d) (.app f (PExpr.lit p v) h) = none := by
+  cases hf : Atom.ofPExpr? f <;>
+    simp [ofComp?, hf, Atom.ofArg?, Atom.ofPExpr?_lit, Ty.answersFn]
 
 end SimpleComp
 

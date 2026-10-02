@@ -12,7 +12,8 @@ set_option autoImplicit false
 Three rewrites of normal-form terms, each proved to preserve the value (`Term.eval`):
 
 * **Common subexpression elimination** (`Term.cseLetE`): in `let x := c; b`, where `c` is a
-  simple computation (`f a`, `t ()`, `force t` on atoms, `SimpleComp`), every `let y := c'; b'`
+  simple computation (`f a`, `t ()`, `force t` on atoms, `SimpleComp`; the argument `a` may also
+  be a literal of `Bool`, `Nat`, `Int` or `String` when the call does not answer a function), every `let y := c'; b'`
   inside `b`, at the same depth, whose computation is the same (`SimpleComp.key`) becomes `b'`
   with `y` renamed to `x`.  The language is pure and total, so the second computation always
   gives the value of the first.  (Computations inside closures, delays and loop bodies are
@@ -372,7 +373,7 @@ theorem Atom.eval_of_key_zero {Φ : KCtx ks} {Γ : UCtx ks} {b : UBinder ks} {τ
       | head => simp [Atom.eval]
       | tail x => simp [Atom.key, UVar.index] at h
   | k x => simp [Atom.key] at h
-  | bool b => simp [Atom.key] at h
+  | bool _ | nat _ | int _ | str _ => simp [Atom.key] at h
 
 /-- The replacement of the jumps to a join point whose body is trivial: `ret a` for an atom
     `a` that is not the parameter, or `ret x` for the parameter `x`. -/

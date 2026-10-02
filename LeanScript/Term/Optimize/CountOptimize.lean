@@ -486,6 +486,8 @@ theorem Term.numCalls_optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
     (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet
   have h7 := Term.numCalls_dce
     (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk
+  have h8 := Term.numCalls_sinkWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce
   simp only [Term.optimize]; omega
 
 /-- Running the optimiser any number of times never adds calls either. -/

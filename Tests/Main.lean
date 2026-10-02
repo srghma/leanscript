@@ -11,6 +11,7 @@ import TermTests.Optimize.ArithTest
 import TermTests.Optimize.CseTest
 import TermTests.Optimize.FloatCommTest
 import TermTests.Optimize.MergeTestTest
+import TermTests.Optimize.SinkLetTest
 import TermTests.ToTerm.PolymorphismTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
@@ -2123,6 +2124,52 @@ def etaReduceRegressionSpec : Spec := describe "EtaReduceRegression01" do
       assertEq s!"{file}-{preset}: fold on the dictionaries" "[\"\",\"ab\",\"x\",\"cd\",\"\"]"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/FloatLetRegression01.lean`: the call `f 2`, which the translation
+    repeats, is computed once (common subexpression elimination, `2` being an atom), and the
+    call `f 1`, used once, is moved down to its use (`Term.sinkWalk`,
+    `Tests/TermTests/Optimize/SinkLetTest.lean`), so the JavaScript is
+    `const x$1 = f(2); return { _1: f(1), _2: x$1, _3: x$1 };`, the shape of
+    purescript-backend-optimizer's `legacy-backend/FloatLetRegression01.js`. -/
+def floatLetRegressionSpec : Spec := describe "FloatLetRegression01" do
+  it "the optimised statements, and their values (the Lean functions')" do
+    assertEq "test: printed" SinkLetTest.testPrinted
+      ((SinkLetTest.testT (Δ := DSig.nil)).optimizeN 3).pretty
+    assertEq "litShare: printed" SinkLetTest.litSharePrinted
+      ((SinkLetTest.litShareT (Δ := DSig.nil)).optimizeN 3).pretty
+    let fs : List (String × (Int → Int)) :=
+      [("x + 1", (· + 1)), ("2 - x", (2 - ·)), ("x * x", fun x => x * x)]
+    for (name, f) in fs do
+      let r := SinkLetTest.test f
+      assertEq s!"test ({name})" (r.b, r.c1, r.c2)
+        ((((SinkLetTest.testT (Δ := DSig.nil)).optimizeN 3).run f : Int × Int × Int))
+    let g : String → Nat := String.length
+    let h : Nat → Nat := (· * 7)
+    assertEq "litShare" (SinkLetTest.litShare g h)
+      ((((SinkLetTest.litShareT (Δ := DSig.nil)).optimizeN 3).run g h : Nat × Nat × Nat × Nat))
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/floatLetRegression"
+    IO.FS.createDirAll dir
+    let file := "FloatLetRegression01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, n) in [("pbo", ""), ("faithful", "n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      for l in ["export const test = (f) => {\n  const x$1 = f(2" ++ n ++ ");\n  return { _1: f(1" ++ n ++
+          "), _2: x$1, _3: x$1 };\n};"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 2 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2148,6 +2195,7 @@ def spec : Spec := do
   esPrecedence03Spec
   esSharedElseSpec
   etaReduceRegressionSpec
+  floatLetRegressionSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

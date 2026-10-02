@@ -7,6 +7,6 @@
  * @returns {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
 export const test = (f) => {
-  const x$1 = f(1);
-  return { _1: x$1, _2: f(2), _3: f(2) };
+  const x$1 = f(2);
+  return { _1: f(1), _2: x$1, _3: x$1 };
 };

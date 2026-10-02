@@ -15,6 +15,7 @@ public import LeanScript.Term.Optimize.InlineRetEval
 public import LeanScript.Term.Optimize.JoinCtorEval
 public import LeanScript.Term.Optimize.OpenCallEval
 public import LeanScript.Term.Optimize.DelayEtaEval
+public import LeanScript.Term.Optimize.SinkLet
 
 @[expose] public section
 
@@ -124,6 +125,10 @@ it keeps the level index of the statement (like the drops of `Term.dce`), which 
 the spot; otherwise the statement is kept as it is.
 Last, `Term.dce` drops the dead bindings and counts the usages again, the fields of case
 analyses included (a field that is never read is annotated `0`).
+Then a computation used once is moved down past the `let`s that follow it and do not read it
+(`Term.sinkWalk`, `LeanScript.Term.Optimize.SinkLet`): `let x [1] := f 1; let y [ω] := f 2;
+ret ⟨x, y, y⟩` is `let y [ω] := f 2; let x [1] := f 1; ret ⟨x, y, y⟩`, so that the JavaScript
+printer can write `f(1)` at its use.
 
 `Term.optimizeN k` runs `optimize` `k` times (a rewrite can expose another one).
 -/
@@ -429,10 +434,12 @@ end
     (`Term.knownLits`), the append chains (`Term.appendWalk`), the delays that only force another
     delay replaced by it (`Term.delayEta`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
-    (`Term.arithWalk`), then dead-code elimination. -/
+    (`Term.arithWalk`), then dead-code elimination, and last the computations used once moved
+    down to their uses (`Term.sinkWalk`, on the usages that dead-code elimination has just
+    counted). -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce
+  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -636,7 +643,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
     Term.hoistWalk_eval, Term.cseWalk_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

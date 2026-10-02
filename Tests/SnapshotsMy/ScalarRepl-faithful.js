@@ -59,14 +59,12 @@ export const test2 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test3 = (a, b) => {
-  const x$1 =
-    a < b ? bigint_nat__lean_nat_sub(b, a) : bigint_nat__lean_nat_sub(a, b);
-  const x$2 = a + 1n;
+  const x$1 = a + 1n;
   return (
-    x$1 +
-    (b < x$2
-      ? bigint_nat__lean_nat_sub(x$2, b)
-      : bigint_nat__lean_nat_sub(b, x$2))
+    (a < b ? bigint_nat__lean_nat_sub(b, a) : bigint_nat__lean_nat_sub(a, b)) +
+    (b < x$1
+      ? bigint_nat__lean_nat_sub(x$1, b)
+      : bigint_nat__lean_nat_sub(b, x$1))
   );
 };
 

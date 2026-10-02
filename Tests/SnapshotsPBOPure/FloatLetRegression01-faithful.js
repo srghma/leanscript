@@ -7,6 +7,6 @@
  * @returns {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
 export const test = (f) => {
-  const x$1 = f(1n);
-  return { _1: x$1, _2: f(2n), _3: f(2n) };
+  const x$1 = f(2n);
+  return { _1: f(1n), _2: x$1, _3: x$1 };
 };

@@ -55,10 +55,10 @@ val k1 [1] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
               let x26 [1] : Nat := x25 x16
               ret x26
             ret k15
-          let x27 [1] : (Nat → Nat) := k13 x12
-          let x28 [ω] : Nat := share lean_nat_add(i10, 1)
+          let x27 [ω] : Nat := share lean_nat_add(i10, 1)
+          let x28 [1] : (Nat → Nat) := k13 x12
           val k29 [1] : (Nat → Nat) := fun x30 [ω] : Nat => (open)
-            let x39 [1] : Nat := nat_rec x28 1 fun acc31 i32 => (open)
+            let x39 [1] : Nat := nat_rec x27 1 fun acc31 i32 => (open)
               let x38 [1] : Nat := nat_rec i32 x30 fun acc33 i34 => (closed)
                 let x37 [1] : Nat := nat_rec i34 0 fun acc35 i36 => (closed)
                   ret 1
@@ -66,7 +66,7 @@ val k1 [1] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
               ret x38
             ret x39
           let x40 [1] : Nat := k29 x4
-          let x41 [1] : Nat := x27 x40
+          let x41 [1] : Nat := x28 x40
           ret x41
         ret k11
       let x43 [1] : Nat := x42 x6
