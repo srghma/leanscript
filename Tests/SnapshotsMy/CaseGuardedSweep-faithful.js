@@ -85,10 +85,8 @@ export const test4 = (a, a1) => {
 export const sweep1 = (lo) => {
   let acc$1 = { tag: 1, _1: "" };
   for (let i$2 = 0n; i$2 < 110n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
       const x$4 = lo + i$2;
       let x$5;
       if (x$4 < 1n) {
@@ -96,7 +94,7 @@ export const sweep1 = (lo) => {
       } else {
         x$5 = 1n < x$4 && x$4 < 100n ? "1 < x < 100: " + x$4 : "catch";
       }
-      acc$1 = { tag: 1, _1: a$3._1 + x$5 + ";" };
+      acc$1 = { tag: 1, _1: f$3 + x$5 + ";" };
     }
   }
   return acc$1._1;
@@ -110,76 +108,59 @@ export const sweep1 = (lo) => {
 export const sweep4 = (lo) => {
   let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < 4n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      let acc$4 = a$3;
-      for (let i$5 = 0n; i$5 < 3n; i$5++) {
-        const a$6 = acc$4;
-        if (a$6.tag === 0) {
-          acc$4 = a$6;
-        } else {
-          let acc$7 = a$6;
-          for (let i$8 = 0n; i$8 < 7n; i$8++) {
-            const a$9 = acc$7;
-            if (a$9.tag === 0) {
-              acc$7 = a$9;
-            } else {
-              let acc$10 = a$9;
-              for (let i$11 = 0n; i$11 < 2n; i$11++) {
-                const a$12 = acc$10;
-                if (a$12.tag === 0) {
-                  acc$10 = a$12;
-                } else {
-                  let acc$13 = a$12;
-                  for (let i$14 = 0n; i$14 < 3n; i$14++) {
-                    const a$15 = acc$13;
-                    if (a$15.tag === 0) {
-                      acc$13 = a$15;
-                    } else {
-                      let acc$16 = a$15;
-                      for (let i$17 = 0n; i$17 < 3n; i$17++) {
-                        const a$18 = acc$16;
-                        if (a$18.tag === 0) {
-                          acc$16 = a$18;
-                        } else {
-                          const x$19 = test4(
-                            { _1: lo + i$2, _2: lo + i$5, _3: lo + i$14 },
+    if (acc$1.tag === 1) {
+      let acc$3 = acc$1;
+      for (let i$4 = 0n; i$4 < 3n; i$4++) {
+        if (acc$3.tag === 1) {
+          let acc$5 = acc$3;
+          for (let i$6 = 0n; i$6 < 7n; i$6++) {
+            if (acc$5.tag === 1) {
+              let acc$7 = acc$5;
+              for (let i$8 = 0n; i$8 < 2n; i$8++) {
+                if (acc$7.tag === 1) {
+                  let acc$9 = acc$7;
+                  for (let i$10 = 0n; i$10 < 3n; i$10++) {
+                    if (acc$9.tag === 1) {
+                      let acc$11 = acc$9;
+                      for (let i$12 = 0n; i$12 < 3n; i$12++) {
+                        if (acc$11.tag === 1) {
+                          const { _1: f$13 } = acc$11;
+                          const x$14 = test4(
+                            { _1: lo + i$2, _2: lo + i$4, _3: lo + i$10 },
                             {
-                              _1: lo + i$8,
-                              _2: lo + i$17,
-                              _3: lo + (i$11 + 9n),
+                              _1: lo + i$6,
+                              _2: lo + i$12,
+                              _3: lo + (i$8 + 9n),
                             },
                           );
-                          acc$16 = {
+                          acc$11 = {
                             tag: 1,
                             _1:
                               bigint_int__lean_int_emod(
-                                a$18._1 * 31n,
+                                f$13 * 31n,
                                 1000000007n,
-                              ) + x$19,
+                              ) + x$14,
                           };
                         }
                       }
-                      const x$20 = acc$16._1;
-                      acc$13 = { tag: 1, _1: x$20 };
+                      const x$15 = acc$11._1;
+                      acc$9 = { tag: 1, _1: x$15 };
                     }
                   }
-                  const x$21 = acc$13._1;
-                  acc$10 = { tag: 1, _1: x$21 };
+                  const x$16 = acc$9._1;
+                  acc$7 = { tag: 1, _1: x$16 };
                 }
               }
-              const x$22 = acc$10._1;
-              acc$7 = { tag: 1, _1: x$22 };
+              const x$17 = acc$7._1;
+              acc$5 = { tag: 1, _1: x$17 };
             }
           }
-          const x$23 = acc$7._1;
-          acc$4 = { tag: 1, _1: x$23 };
+          const x$18 = acc$5._1;
+          acc$3 = { tag: 1, _1: x$18 };
         }
       }
-      const x$24 = acc$4._1;
-      acc$1 = { tag: 1, _1: x$24 };
+      const x$19 = acc$3._1;
+      acc$1 = { tag: 1, _1: x$19 };
     }
   }
   return acc$1._1;

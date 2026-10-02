@@ -62,11 +62,9 @@ export const someList = ["a", "b"];
 export const sumTo = (n) => {
   let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      acc$1 = { tag: 1, _1: uint53__lean_nat_add(a$3._1, i$2) };
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 1, _1: uint53__lean_nat_add(f$3, i$2) };
     }
   }
   return acc$1._1;

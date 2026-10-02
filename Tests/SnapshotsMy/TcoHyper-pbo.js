@@ -15,18 +15,15 @@ import { uint53__lean_nat_add } from "../../runtime.js";
 export const hyperBase = (a, a1) => {
   let acc$1 = 1;
   for (let i$2 = 0; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    let acc$4 = a1;
-    for (let i$5 = 0; i$5 < i$2; i$5++) {
-      const a$6 = acc$4;
-      let acc$7 = 0;
-      for (let i$8 = 0; i$8 < i$5; i$8++) {
-        const a$9 = acc$7;
-        acc$7 = 1;
+    let acc$3 = a1;
+    for (let i$4 = 0; i$4 < i$2; i$4++) {
+      let acc$5 = 0;
+      for (let i$6 = 0; i$6 < i$4; i$6++) {
+        acc$5 = 1;
       }
-      acc$4 = acc$7;
+      acc$3 = acc$5;
     }
-    acc$1 = acc$4;
+    acc$1 = acc$3;
   }
   return acc$1;
 };
@@ -74,25 +71,22 @@ export const hyperTCO = (a, a1, a2) => {
         }
       };
       const x$11 = uint53__lean_nat_add(i$3, 1);
-      const k$22 = (x$12) => {
+      const k$19 = (x$12) => {
         let acc$13 = 1;
         for (let i$14 = 0; i$14 < x$11; i$14++) {
-          const a$15 = acc$13;
-          let acc$16 = x$12;
-          for (let i$17 = 0; i$17 < i$14; i$17++) {
-            const a$18 = acc$16;
-            let acc$19 = 0;
-            for (let i$20 = 0; i$20 < i$17; i$20++) {
-              const a$21 = acc$19;
-              acc$19 = 1;
+          let acc$15 = x$12;
+          for (let i$16 = 0; i$16 < i$14; i$16++) {
+            let acc$17 = 0;
+            for (let i$18 = 0; i$18 < i$16; i$18++) {
+              acc$17 = 1;
             }
-            acc$16 = acc$19;
+            acc$15 = acc$17;
           }
-          acc$13 = acc$16;
+          acc$13 = acc$15;
         }
         return acc$13;
       };
-      return k$10(x$5, k$22(a1));
+      return k$10(x$5, k$19(a1));
     };
   }
   return acc$2(a2);
@@ -111,35 +105,30 @@ export const hyperWhile = (a, a1, a2) => {
     const a$4 = acc$2;
     acc$2 = (x$5) => {
       const x$6 = uint53__lean_nat_add(i$3, 1);
-      const k$17 = (x$7) => {
+      const k$14 = (x$7) => {
         let acc$8 = 1;
         for (let i$9 = 0; i$9 < x$6; i$9++) {
-          const a$10 = acc$8;
-          let acc$11 = x$7;
-          for (let i$12 = 0; i$12 < i$9; i$12++) {
-            const a$13 = acc$11;
-            let acc$14 = 0;
-            for (let i$15 = 0; i$15 < i$12; i$15++) {
-              const a$16 = acc$14;
-              acc$14 = 1;
+          let acc$10 = x$7;
+          for (let i$11 = 0; i$11 < i$9; i$11++) {
+            let acc$12 = 0;
+            for (let i$13 = 0; i$13 < i$11; i$13++) {
+              acc$12 = 1;
             }
-            acc$11 = acc$14;
+            acc$10 = acc$12;
           }
-          acc$8 = acc$11;
+          acc$8 = acc$10;
         }
         return acc$8;
       };
-      const x$18 = k$17(a1);
-      let acc$19 = { tag: 1, _1: x$18 };
-      for (let i$20 = 0; i$20 < x$5; i$20++) {
-        const a$21 = acc$19;
-        if (a$21.tag === 0) {
-          acc$19 = a$21;
-        } else {
-          acc$19 = { tag: 1, _1: a$4(a$21._1) };
+      const x$15 = k$14(a1);
+      let acc$16 = { tag: 1, _1: x$15 };
+      for (let i$17 = 0; i$17 < x$5; i$17++) {
+        if (acc$16.tag === 1) {
+          const { _1: f$18 } = acc$16;
+          acc$16 = { tag: 1, _1: a$4(f$18) };
         }
       }
-      return acc$19._1;
+      return acc$16._1;
     };
   }
   return acc$2(a2);

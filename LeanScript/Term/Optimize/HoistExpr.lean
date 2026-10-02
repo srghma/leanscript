@@ -95,11 +95,11 @@ theorem wkUN_eval (bs : UCtx ks) {σs : List (Ty ks)} (as : AtomArgs Φ Γ σs)
   | nil => rfl
   | cons a as ih => simp [wkK, eval, ih]
 
-/-- Arguments that are all atoms, as such. -/
+/-- Arguments that are all atoms (unknowns, known values by name, literals), as such. -/
 def ofArgs? : {σs : List (Ty ks)} → {o : Lvl} → Args Δ Φ Γ σs o → Option (AtomArgs Φ Γ σs)
   | _, _, .nil => some .nil
   | _, _, .cons a as => do
-      let a ← Atom.ofPExpr? a
+      let a ← Atom.ofArg? false a
       let as ← ofArgs? as
       pure (.cons a as)
 
@@ -111,7 +111,7 @@ theorem ofArgs?_eval : {σs : List (Ty ks)} → {o : Lvl} → (args : Args Δ Φ
       simp only [ofArgs?, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
         Option.some.injEq] at h
       obtain ⟨a', ha, as', has, rfl⟩ := h
-      simp only [eval, Args.eval, Atom.ofPExpr?_eval a ha, ofArgs?_eval as has κ ρ]
+      simp only [eval, Args.eval, Atom.ofArg?_eval false a ha, ofArgs?_eval as has κ ρ]
 
 end AtomArgs
 

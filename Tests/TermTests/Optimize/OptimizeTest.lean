@@ -74,7 +74,7 @@ def copyOpt : T 0 [] [] (.fn .nat .nat) none :=
       (.ret (.neu (.extern .lean_nat_mul (.cons (x0 (τ := .nat)) (.cons (.lit .nat (2 : Nat)) .nil)) rfl)))))
     (.ret (.kvar .head))
 
-example : copy.optimize = copyOpt := by rfl
+example : copy.optimize = copyOpt := by kernel_rfl
 example : copy.optimize.run (21 : Nat) = (42 : Nat) := by rw [copy.optimize_run]; rfl
 
 /-! ## Dead case analysis -/

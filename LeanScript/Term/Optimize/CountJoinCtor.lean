@@ -39,6 +39,52 @@ theorem Branch.numCalls_joinCtor {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : T
           · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact hn
           · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; exact Nat.le_refl _
 
+theorem Branch.numCalls_caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
+    {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o) :
+    (Branch.caseCond n brs).2.numCalls ≤ brs.numCalls := by
+  unfold Branch.caseCond
+  cases n.caseCond? brs with
+  | none => exact Nat.le_refl _
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ brs.numCalls
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact hn
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; exact Nat.le_refl _
+
+theorem Term.numCalls_caseCondTop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
+    {js : JCtx ks} (r : (o : Lvl) × Term Δ d Φ Γ τ js o) :
+    (Term.caseCondTop r).2.numCalls ≤ r.2.numCalls := by
+  obtain ⟨o, t⟩ := r
+  cases t with
+  | branch br =>
+      cases br with
+      | union_casesOn n brs =>
+          simp only [Term.caseCondTop, Term.numCalls, Branch.numCalls]
+          exact Branch.numCalls_caseCond _ _
+      | _ => exact Nat.le_refl _
+  | _ => exact Nat.le_refl _
+
+theorem Term.numCalls_shareCase {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
+    {js : JCtx ks} {ℓ : Nat} {o' : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') :
+    (Term.shareCase u c b).2.numCalls ≤ c.numCalls + b.numCalls := by
+  cases c with
+  | share n =>
+      simp only [Term.shareCase, Comp.numCalls]
+      by_cases hc : (u = .one ∧ n.isCond = true ∧ b.isCaseOnHead = true)
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
+        cases b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL))
+            JRen.id with
+        | none => simp [Term.numCalls, Comp.numCalls]
+        | some r =>
+            simp only
+            by_cases hn : (Term.caseCondTop r).2.numCalls ≤ b.numCalls
+            · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; omega
+            · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; simp [Term.numCalls, Comp.numCalls]
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hc)]; simp [Term.numCalls, Comp.numCalls]
+  | _ => exact Nat.le_refl _
+
 mutual
 theorem Val.numCalls_jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
     {o : Lvl} → (v : Val Δ d Φ Γ τ o) → v.jcWalk.numCalls ≤ v.numCalls
@@ -88,6 +134,7 @@ theorem Term.numCalls_jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} �
   | _, _, _, _, _, _, .letE u c b => by
       have hc := Comp.numCalls_jcWalk c
       have hb := Term.numCalls_jcWalk b
+      have h := Term.numCalls_shareCase u c.jcWalk b.jcWalk.2
       simp only [Term.jcWalk, Term.numCalls]; omega
   | _, _, _, _, _, _, .record_casesOn us n b => by
       simp only [Term.jcWalk, Term.numCalls]; exact Term.numCalls_jcWalk b
@@ -106,7 +153,8 @@ theorem Branch.numCalls_jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks}
       simp only [Branch.jcWalk, Branch.numCalls]
       exact Fin.sumNat_le _ (fun i => Term.numCalls_jcWalk (bs i))
   | _, _, _, _, _, _, .union_casesOn e bs => by
-      simp only [Branch.jcWalk, Branch.numCalls]; exact Branches.numCalls_jcWalk bs
+      simp only [Branch.jcWalk, Branch.numCalls]
+      exact Nat.le_trans (Branch.numCalls_caseCond _ _) (Branches.numCalls_jcWalk bs)
   | _, _, _, _, _, _, .join σ u uₓ body main => by
       have h₁ := Term.numCalls_jcWalk body
       have h₂ := Branch.numCalls_jcWalk main

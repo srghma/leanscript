@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7n)", () => M.test1(-7n), "#[, World, , Universe]", false);
+check("test1(-1n)", () => M.test1(-1n), "#[, World, , Universe]", false);
+check("test1(0n)", () => M.test1(0n), "#[, World, , Universe]", false);
+check("test1(1n)", () => M.test1(1n), "#[, World, , Universe]", false);
+check("test1(2n)", () => M.test1(2n), "#[, World, , Universe]", false);
+check("test1(3n)", () => M.test1(3n), "#[, World, , Universe]", false);
+check("test1(12n)", () => M.test1(12n), "#[, World, , Universe]", false);
+check("test3(-7n)", () => M.test3(-7n), "false", false);
+check("test3(-1n)", () => M.test3(-1n), "false", false);
+check("test3(0n)", () => M.test3(0n), "false", false);
+check("test3(1n)", () => M.test3(1n), "false", false);
+check("test3(2n)", () => M.test3(2n), "false", false);
+check("test3(3n)", () => M.test3(3n), "false", false);
+check("test3(12n)", () => M.test3(12n), "false", false);
 
 console.log(`KnownConstructors04-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

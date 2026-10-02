@@ -15,7 +15,7 @@ these statements otherwise):
 
 * **the end of a loop body** (`JsBlock.retToNext`): the body of a loop is converted from a
   statement that returns the new accumulator; each `return e` becomes `acc = e;` and the end
-  of the iteration;
+  of the iteration (only the end when `e` is `acc` itself);
 * **returns as jumps** (`JsBlock.retToJump`): each `return e` becomes a jump to a new join
   point (how a block computing a function is applied to more arguments).
 -/
@@ -26,12 +26,16 @@ variable {S : JsSig}
 
 /-! ## The end of a loop body -/
 
+/-- Is the expression the mutable variable at position `i`? -/
+def JsExpr.isMVarAt {C M : List JsTy} {τ : JsTy} (i : Nat) : JsExpr S C M τ → Bool
+  | .mvar x => x.index == i
+  | _ => false
 
 mutual
 /-- Every `return e` of a loop body becomes `acc = e;` and the end of the iteration. -/
 partial def JsBlock.retToNext {C M J : List JsTy} {α : JsTy} (acc : JsMem M α) :
     JsBlock S C M J (.ret α) → JsBlock S C M J .loop
-  | .ret e => .assign acc e .next
+  | .ret e => if e.isMVarAt acc.index then .next else .assign acc e .next
   | .jump j e => .jump j e
   | .throw msg => .throw msg
   | .raise e => .raise e

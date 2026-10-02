@@ -14,11 +14,9 @@ import {
 export const sumCount = (n) => {
   let acc$1 = { tag: 1, _1: { _1: 0n, _2: 0n } };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      acc$1 = { tag: 1, _1: { _1: a$3._1._1 + i$2, _2: a$3._1._2 + 1n } };
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
+      acc$1 = { tag: 1, _1: { _1: f$3._1 + i$2, _2: f$3._2 + 1n } };
     }
   }
   const x$4 = acc$1._1;
@@ -33,12 +31,10 @@ export const sumCount = (n) => {
 export const fib = (n) => {
   let acc$1 = { tag: 1, _1: { _1: 0n, _2: 1n } };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      const { _2: f$4 } = a$3._1;
-      acc$1 = { tag: 1, _1: { _1: f$4, _2: a$3._1._1 + f$4 } };
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
+      const { _2: f$4 } = f$3;
+      acc$1 = { tag: 1, _1: { _1: f$4, _2: f$3._1 + f$4 } };
     }
   }
   const x$5 = acc$1._1;
@@ -53,12 +49,10 @@ export const fib = (n) => {
 export const minMaxSum = (n) => {
   let acc$1 = { tag: 1, _1: { _1: 1000000n, _2: { _1: 0n, _2: 0n } } };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      const { _1: f$4 } = a$3._1;
-      const { _1: f$5, _2: f$6 } = a$3._1._2;
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
+      const { _1: f$4 } = f$3;
+      const { _1: f$5, _2: f$6 } = f$3._2;
       const x$7 = bigint_nat__lean_nat_mod__Nat_mod(i$2 * 7n, 11n);
       const k$11 = () => (x$8) => {
         const k$10 = () => (x$9) => ({
@@ -90,11 +84,8 @@ export const minMaxSum = (n) => {
 export const firstAbove = (n, k) => {
   let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
-      acc$1 = k < i$2 * i$2 ? { tag: 0, _1: i$2 } : a$3;
+    if (acc$1.tag === 1 && k < i$2 * i$2) {
+      acc$1 = { tag: 0, _1: i$2 };
     }
   }
   return acc$1._1;
@@ -109,17 +100,14 @@ export const firstAbove = (n, k) => {
 export const repeatCount = (s, n) => {
   let acc$1 = { tag: 1, _1: { _1: "", _2: 0n } };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
       acc$1 = {
         tag: 1,
         _1: {
-          _1: a$3._1._1 + s,
+          _1: f$3._1 + s,
           _2:
-            a$3._1._2 +
-            bigint_nat__lean_string_length__String_Internal_length(s),
+            f$3._2 + bigint_nat__lean_string_length__String_Internal_length(s),
         },
       };
     }

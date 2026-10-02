@@ -3,7 +3,15 @@
 --   test1: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 --   test2: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 --   test3: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Nat is not declared in any signature; declare it with `leanscript_signature`
---   test4: Expected type must not contain metavariables ?m.100 ≠ LeanScript.Usage01ω.zero
+
+-- test4 : Bool → String
+val k1 [1] : (Bool → String) := fun x2 [1] : Bool => (closed)
+  case cond(x2, ctor#1(0), ctor#0()) of
+  | ctor#0() =>
+    ret "none"
+  | ctor#1(f3 [1] : Nat) =>
+    ret lean_nat_repr(f3)
+ret k1
 
 -- test5 : Nat → Array (Option Nat)
 val k1 [1] : (Nat → (Array (• | [Nat]))) := fun x2 [1] : Nat => (closed)
@@ -13,14 +21,12 @@ ret k1
 -- test6 : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
-    val k5 [1] : (Array (• | [Nat])) := #[ctor#1(x2), ctor#0()]
-    if lean_nat_dec_lt(x4, lean_array_get_size(k5)) then
-      val k6 [1] : (Array (• | [Nat])) := #[ctor#1(x2), ctor#0()]
-      case lean_array_get(ctor#0(), k6, x4) of
+    if lean_nat_dec_lt(x4, lean_array_get_size(#[ctor#1(x2), ctor#0()])) then
+      case lean_array_get(ctor#0(), #[ctor#1(x2), ctor#0()], x4) of
       | ctor#0() =>
         ret 1
-      | ctor#1(f7 [1] : Nat) =>
-        ret f7
+      | ctor#1(f5 [1] : Nat) =>
+        ret f5
     else
       ret 2
   ret k3

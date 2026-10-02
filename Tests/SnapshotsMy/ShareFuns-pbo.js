@@ -55,15 +55,15 @@ export const plus = (a, b) => uint53__lean_nat_add(a, b);
 export const maxMod = (n) => {
   let acc$1 = { tag: 1, _1: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
       const x$4 = uint53__lean_nat_mod__Nat_mod(
         uint53__lean_nat_mul(i$2, 3),
         10,
       );
-      acc$1 = a$3._1 < x$4 ? { tag: 1, _1: x$4 } : a$3;
+      if (f$3 < x$4) {
+        acc$1 = { tag: 1, _1: x$4 };
+      }
     }
   }
   return acc$1._1;

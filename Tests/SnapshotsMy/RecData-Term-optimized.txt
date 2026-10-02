@@ -222,12 +222,11 @@ ret k1
 
 -- RecData.roseKidsTest : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [1] : Nat => (closed)
-  val k3 [1] : ((data LeanScript.Ref.there (LeanScript.Ref.here 0)) → Nat) := fun x4 [1] : (data LeanScript.Ref.there (LeanScript.Ref.here 0)) => (closed)
-    let x5 [1] : (Array (data LeanScript.Ref.there (LeanScript.Ref.here 0))) := share out#0(x4)
-    ret lean_array_get_size(x5)
-  val k6 [1] : (data LeanScript.Ref.there (LeanScript.Ref.here 0)) := in#0(cond(lean_nat_dec_lt(2, x2), #[in#0(#[]), in#0(#[in#0(#[])])], #[in#0(#[in#0(#[]), in#0(#[])])]))
-  let x7 [1] : Nat := k3 k6
-  ret x7
+  val k3 [1] : (Nat → (data LeanScript.Ref.there (LeanScript.Ref.here 0))) := fun x4 [1] : Nat => (closed)
+    ret in#0(cond(lean_nat_dec_lt(2, x4), #[in#0(#[]), in#0(#[in#0(#[])])], #[in#0(#[in#0(#[]), in#0(#[])])]))
+  let x5 [1] : (data LeanScript.Ref.there (LeanScript.Ref.here 0)) := k3 x2
+  let x6 [1] : (Array (data LeanScript.Ref.there (LeanScript.Ref.here 0))) := share out#0(x5)
+  ret lean_array_get_size(x6)
 ret k1
 
 -- RecData.RoseF.size : RecData.RoseF → Nat
@@ -287,27 +286,26 @@ val k1 [1] : (Nat → Nat) := fun x2 [ω] : Nat => (closed)
       ret in#0(ctor#1(in#1(⟨2, k5⟩)))
     else
       ret in#0(ctor#0())
-  val k9 [1] : (data LeanScript.Ref.here 1) := in#1(⟨x2, k3⟩)
-  let x26 [1] : Nat := data_rec#1 k9
-    | branch 0 fun r10 => (closed)
-      case r10 of
+  let x25 [1] : Nat := data_rec#1 in#1(⟨x2, k3⟩)
+    | branch 0 fun r9 => (closed)
+      case r9 of
       | ctor#0() =>
         ret ctor#0()
-      | ctor#1(f11 [1] : ((data LeanScript.Ref.here 1) × Nat)) =>
-        let ⟨f12 [0] : (data LeanScript.Ref.here 1), f13 [1] : Nat⟩ := f11
-        ret ctor#1(f13)
-    | branch 1 fun r14 => (closed)
-      let ⟨f15 [1] : Nat, f16 [ω] : (Nat → ((data LeanScript.Ref.here 0) × (• | [Nat])))⟩ := r14
-      let x25 [1] : Nat := nat_rec f15 1 fun acc17 i18 => (open)
-        let x19 [1] : ((data LeanScript.Ref.here 0) × (• | [Nat])) := f16 i18
-        let ⟨f20 [0] : (data LeanScript.Ref.here 0), f21 [1] : (• | [Nat])⟩ := x19
-        join j22 [1] (x23 [1] : Nat) :=
-          ret lean_nat_add(acc17, x23)
-        case f21 of
+      | ctor#1(f10 [1] : ((data LeanScript.Ref.here 1) × Nat)) =>
+        let ⟨f11 [0] : (data LeanScript.Ref.here 1), f12 [1] : Nat⟩ := f10
+        ret ctor#1(f12)
+    | branch 1 fun r13 => (closed)
+      let ⟨f14 [1] : Nat, f15 [ω] : (Nat → ((data LeanScript.Ref.here 0) × (• | [Nat])))⟩ := r13
+      let x24 [1] : Nat := nat_rec f14 1 fun acc16 i17 => (open)
+        let x18 [1] : ((data LeanScript.Ref.here 0) × (• | [Nat])) := f15 i17
+        let ⟨f19 [0] : (data LeanScript.Ref.here 0), f20 [1] : (• | [Nat])⟩ := x18
+        join j21 [1] (x22 [1] : Nat) :=
+          ret lean_nat_add(acc16, x22)
+        case f20 of
         | ctor#0() =>
-          jump j22 0
-        | ctor#1(f24 [1] : Nat) =>
-          jump j22 f24
-      ret x25
-  ret x26
+          jump j21 0
+        | ctor#1(f23 [1] : Nat) =>
+          jump j21 f23
+      ret x24
+  ret x25
 ret k1

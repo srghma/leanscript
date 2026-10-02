@@ -9,8 +9,9 @@
  * @returns {int(bigint)}
  */
 export const testP = (a, a1, a2) => {
+  const x$1 = a1 === 2n;
   if (a === 1n) {
-    if (a1 === 2n) {
+    if (x$1) {
       if (a2 === 1n) {
         return 1n;
       }
@@ -23,7 +24,7 @@ export const testP = (a, a1, a2) => {
     }
     return a2 === 4n ? 4n : 5n;
   }
-  return a1 === 2n && a2 === 3n ? 3n : 5n;
+  return x$1 && a2 === 3n ? 3n : 5n;
 };
 
 /**

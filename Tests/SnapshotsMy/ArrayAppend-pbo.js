@@ -42,13 +42,14 @@ export const test5 = (n) => {
   const x$1 = [];
   let acc$2 = { tag: 1, _1: x$1 };
   for (let i$3 = 0; i$3 < n; i$3++) {
-    const a$4 = acc$2;
-    if (a$4.tag === 0) {
-      acc$2 = { tag: 0, _1: a$4._1 };
+    if (acc$2.tag === 0) {
+      const { _1: f$4 } = acc$2;
+      acc$2 = { tag: 0, _1: f$4 };
     } else {
+      const { _1: f$5 } = acc$2;
       acc$2 = {
         tag: 1,
-        _1: array__lean_array_append_mutable(a$4._1, [
+        _1: array__lean_array_append_mutable(f$5, [
           i$3,
           uint53__lean_nat_mul(i$3, i$3),
         ]),

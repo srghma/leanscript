@@ -42,6 +42,20 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(-7)", () => M.test1(-7), "#[, World, , Universe]", false);
+check("test1(-1)", () => M.test1(-1), "#[, World, , Universe]", false);
+check("test1(0)", () => M.test1(0), "#[, World, , Universe]", false);
+check("test1(1)", () => M.test1(1), "#[, World, , Universe]", false);
+check("test1(2)", () => M.test1(2), "#[, World, , Universe]", false);
+check("test1(3)", () => M.test1(3), "#[, World, , Universe]", false);
+check("test1(12)", () => M.test1(12), "#[, World, , Universe]", false);
+check("test3(-7)", () => M.test3(-7), "false", false);
+check("test3(-1)", () => M.test3(-1), "false", false);
+check("test3(0)", () => M.test3(0), "false", false);
+check("test3(1)", () => M.test3(1), "false", false);
+check("test3(2)", () => M.test3(2), "false", false);
+check("test3(3)", () => M.test3(3), "false", false);
+check("test3(12)", () => M.test3(12), "false", false);
 
 console.log(`KnownConstructors04-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

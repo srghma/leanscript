@@ -1,3 +1,40 @@
+# Summary of changes for run d6a455d5-a356-4e1c-add6-c40a83ec91dd
+For `test` in `Tests/SnapshotsPBOPure/Fusion01.lean`, the JavaScript output is now better than the purescript-backend-optimizer output in `legacy-backend/Fusion01.js`. The six `Fold`-typed helpers still aren't translated, while the legacy backend does emit them. All builds and tests pass.
+
+**Output for `test`.** The legacy backend builds a cons list in a specialised `foldrMUnsafe` loop and converts it with `$lean_array_mk`. It also re-creates the step closure on every iteration, expands `startsWith`/`drop` into `memcmp` and `String.Slice` records, and goes through `Nat_reprFast`. Ours (`Fusion01-pbo.js`, 8/8 node checks pass on both presets) is one `for … of` loop that pushes straight onto the result array. It has no intermediate list, no closures and no recursion:
+```js
+let acc$1 = [];
+for (const e$2 of arr) {
+  const x$3 = String(int53__lean_int_add(e$2, 1));
+  if (string__lean_string_isprefixof("1", x$3)) {
+    const x$4 = "2" + uint53__lean_string_drop(x$3, 1);
+    if (x$4 !== "wat") { acc$1 = array__lean_array_push_mutable(acc$1, x$4 + "1"); }
+  }
+}
+return acc$1;
+```
+`dropPrefix1`, which didn't translate at all before, is now a single conditional expression.
+
+**Changes, by phase (preferring the earliest phase that worked):**
+- **Elaboration to Term** (`LeanScript/TermElab/ToTerm/Fusion.lean`):
+  - inlines the non-recursive helpers, `flip`/`∘`/`id`, and projections of `Fold.run` out of structure literals;
+  - rewrites `List.toArray (Array.foldr f [] xs)`, when the step only conses, into an `Array.foldl` that pushes;
+  - rewrites the string slice operations to the `String.Internal` primitives.
+  - Also fixed an existing bug: a `match` on an `if` failed to elaborate.
+- **Term optimiser** (every pass proved to preserve the value):
+  - New rewrite: a `case` on an `if` whose arms are constructors becomes an `if`, plus sharing into the case. `Term.caseCondTop_eval` and related lemmas are proved, along with "never adds calls" lemmas.
+  - Calls with literal arguments can now be hoisted.
+  - Dead bindings are now dropped *before* common-subexpression elimination and hoisting. Without this, a dead computation in `RecordUpdate` made `val + 1` run on every path. `Term.optimize_eval` and `Term.numCalls_optimize` were updated and rebuilt with only the standard axioms.
+- **Term → JsTerm conversion** (`JsTerm/Lower/LoopAcc.lean`, `Tail.lean`, `Basic.lean`): a loop body now reads the accumulator variable directly instead of copying it into `const a = acc`. An iteration that leaves the accumulator unchanged emits nothing. The copy is kept when a closure in the body reads it. Loops stay plain `for` loops, so there's no stack growth.
+
+**Snapshots.** I regenerated all of them. Many loop snapshots got simpler: `LoopState`, `CaseGuardedSweep`, `TcoHyper`, `LoopClosure`, `ArrayInPlace` and others no longer have the `const a$ = acc$; … acc$ = a$;` pattern. `KnownConstructors03/04` and `OptionUnbox` now translate more. All node checks pass. The only failures in the run are the existing "literal too big" errors in the `*Configurable` files on the pbo preset. The `PANIC` lines printed for `KnownConstructors04` come from Lean evaluating `get!` on `none` while generating expected values, not from the translator.
+
+**Tests.** `lake build leanscript tests TermTests TyTests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `LeanScript.WFTerm.Optimize` and `LeanScript.Term.Optimize.CountOptimize` all build, with no `sorry`. `lake exe tests` passes 120/120. One test example in `Tests/TermTests/Optimize/OptimizeTest.lean` (`copy.optimize = copyOpt`) now uses `kernel_rfl` because elaborator `rfl` timed out after the extra pass. As before, a plain `lake build` fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib; I didn't touch that file.
+
+**Not translated.** `mapF`, `filterMapF`, `filterF`, `fromArray`, `toArray` and `overArray` take or return a `Fold`, a structure in `Type 1` with a field polymorphic over types. The Term language has no polymorphism over types, so these are still reported as "not translated". Inside a first-order definition like `test` they are inlined and fused away.
+
+The analysis and a phase-by-phase table are in `Tests/SnapshotsPBOPure/Fusion01.md`. I removed the temporary debug hook, and everything is committed.
+
 # Summary of changes for run f2675ed5-5421-4ee7-b66e-3b998422fefe
 The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose03.lean` now matches `legacy-backend/FunctionCompose03.js` and is a bit shorter: `test1` is a single expression, and `test2` keeps one constant instead of two. All of this is committed.
 

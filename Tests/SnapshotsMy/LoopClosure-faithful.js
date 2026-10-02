@@ -12,14 +12,12 @@
 export const test1 = (k, n) => {
   let acc$1 = { tag: 1, _1: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    const a$3 = acc$1;
-    if (a$3.tag === 0) {
-      acc$1 = a$3;
-    } else {
+    if (acc$1.tag === 1) {
+      const { _1: f$3 } = acc$1;
       const x$4 = k + 1n;
       const x$5 = k + 2n;
       const x$6 = k + 3n;
-      acc$1 = { tag: 1, _1: a$3._1 + (x$4 + x$5 + x$6) };
+      acc$1 = { tag: 1, _1: f$3 + (x$4 + x$5 + x$6) };
     }
   }
   return acc$1._1;

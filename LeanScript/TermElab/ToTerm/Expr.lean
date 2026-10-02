@@ -1,6 +1,7 @@
 module
 
 public meta import LeanScript.TermElab.ToTerm.Expr.Cases
+public meta import LeanScript.TermElab.ToTerm.Fusion
 
 @[expose] public section
 
@@ -75,6 +76,8 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
       if (← whnfR s).isApp && (← whnfR s).getAppFn.isConst &&
           (← getEnv).isConstructor (← whnfR s).getAppFn.constName! then
         return ← tr L e'
+    -- a projection of a helper that unfolds to a constructor application (`headNorm`)
+    if let some e' ← projByInlining? e then return ← tr L e'
     trProj L S i s
   | _ =>
     let T ← inferType e
@@ -162,6 +165,12 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
   | .const c _ =>
     let env ← getEnv
     if L.fns.contains c then return ← trRecCall tr L e
+    -- the functions of the new string API that go through a slice (`stringRewrite?`)
+    if let some e' ← stringRewrite? e then return ← tr L e'
+    -- `List.toArray (Array.foldr f [] xs)` that only conses: a fold pushing onto an array
+    if c == ``List.toArray && args.size == 2 then
+      if (← listLit? args[1]!).isNone then
+        if let some e' ← fuseToArrayFoldr? args[1]! then return ← tr L e'
     -- delays: `Thunk.pure a`, `Thunk.mk f` and `t.get` are their values up to the delays
     if (c == ``Thunk.pure || c == ``Thunk.mk || c == ``Thunk.get) && args.size ≥ 2 then
       let e₂ := mkAppN fn args[:2].toArray
@@ -303,9 +312,18 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if !(← isLibraryDecl c) then
       if let some (.defnInfo _) := env.find? c then
         return ← (try trHelperCall tr L c e args
-          catch ex => try trExtern tr L e fn args catch _ => throw ex)
+          catch ex =>
+            -- a helper that cannot be translated on its own (its parameter is a type, its
+            -- type is in `Type 1`, …) and is not recursive: unfolded where it is used
+            try
+              unless ← isInlinableHelper c do throw ex
+              let some e' ← unfoldDefinition? e | throw ex
+              tr L e'
+            catch _ => try trExtern tr L e fn args catch _ => throw ex)
     trExtern tr L e fn args
   | .proj .. =>
+    -- a projection of a helper that unfolds to a constructor application (`headNorm`)
+    if let some e' ← projByInlining? e then return ← tr L e'
     -- a projection applied to arguments (`c.data i` for a function field)
     appArgs tr L fn (← tr L fn) args
   | _ => fail m!"cannot translate the application{indentExpr e}"

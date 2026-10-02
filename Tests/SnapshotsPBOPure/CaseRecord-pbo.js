@@ -26,12 +26,12 @@ export const test1 = (x) => {
  * @returns {int53(number)}
  */
 export const Test2$test2 = (x) => {
-  const { _1: f$1 } = x._1;
   if (x._1._2 === 2) {
+    const x$1 = x._1._1 === 1;
     if (x._2._1 === 1 && x._2._2 === 2) {
-      return f$1 === 1 ? 1 : 2;
+      return x$1 ? 1 : 2;
     }
-    return f$1 === 1 ? 3 : 4;
+    return x$1 ? 3 : 4;
   }
   return 4;
 };

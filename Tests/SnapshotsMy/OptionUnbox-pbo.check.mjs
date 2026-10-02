@@ -42,6 +42,8 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test4(false)", () => M.test4(false), "none", false);
+check("test4(true)", () => M.test4(true), "0", false);
 check("test6(0, 0)", () => M.test6(0, 0), "0", false);
 check("test6(0, 2)", () => M.test6(0, 2), "2", false);
 check("test6(1, 1)", () => M.test6(1, 1), "1", false);

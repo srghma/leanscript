@@ -54,7 +54,9 @@ analyses, in the same order) and differ only in their answers, `p` is pushed int
 `if q then (p ? a : c) else (p ? b : d)` (never more tests on any path, the shared tests
 written once).
 
-Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
+Then the dead bindings are dropped (`Term.dce`), so that a computation the statement never uses
+does not make the walks below share (and so compute on every path) a computation that is
+otherwise made in one arm only.  Then another walk (`Term.cseWalk`) does the rewrites of `LeanScript.Term.Optimize.Cse`:
 
 * **common subexpressions** (`Term.cseLetE`): a simple computation (`f a`, `t ()`, `force t`
   on atoms) repeated at the same depth in the scope of its first occurrence is computed once;
@@ -439,7 +441,7 @@ end
     counted). -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
+  (t.inlineKnown.simp.widenFields.reuseFields []).shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -644,7 +646,7 @@ theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} 
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
   rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
-    Term.hoistWalk_eval, Term.cseWalk_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval,
+    Term.hoistWalk_eval, Term.cseWalk_eval, Term.dce_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]
 

@@ -9,8 +9,9 @@
  * @returns {int53(number)}
  */
 export const testP = (a, a1, a2) => {
+  const x$1 = a1 === 2;
   if (a === 1) {
-    if (a1 === 2) {
+    if (x$1) {
       if (a2 === 1) {
         return 1;
       }
@@ -23,7 +24,7 @@ export const testP = (a, a1, a2) => {
     }
     return a2 === 4 ? 4 : 5;
   }
-  return a1 === 2 && a2 === 3 ? 3 : 5;
+  return x$1 && a2 === 3 ? 3 : 5;
 };
 
 /**

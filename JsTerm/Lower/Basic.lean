@@ -3,7 +3,7 @@ module
 public import JsTerm.Ty.Lower
 public import JsTerm.Ty.Canon
 public import JsTerm.Lower.Extern
-public import JsTerm.Lower.Tail
+public import JsTerm.Lower.LoopAcc
 public import LeanScript.Term.Syntax.Packed
 public import LeanScript.Term.Ownership.Walk
 
@@ -587,10 +587,13 @@ def argsOfList? {C M : List JsTy} :
 /-- The body of a loop whose accumulator is the mutable variable `acc`, the body reading the
     accumulator as its innermost constant: the body starts with a `const` copy of `acc` (a
     closure built by the body captures the value of this iteration, not the variable the loop
-    reassigns), and every `return e` becomes `acc = e;`. -/
+    reassigns), and every `return e` becomes `acc = e;`.  When no closure reads the copy, the
+    body reads `acc` itself instead (`JsBlock.accAsMut?`) and the copy is not built. -/
 def loopBody {C M : List JsTy} {α E : JsTy} (acc : JsMem M α)
     (body : JsBlock S (α :: E :: C) M [] (.ret α)) : JsBlock S (E :: C) M [] .loop :=
-  .const "a" (.mvar acc) (body.retToNext acc)
+  match body.accAsMut? acc with
+  | some body' => body'.retToNext acc
+  | none => .const "a" (.mvar acc) (body.retToNext acc)
 
 end MoreJs
 

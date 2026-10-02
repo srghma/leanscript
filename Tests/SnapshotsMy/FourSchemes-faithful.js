@@ -38,8 +38,7 @@ export const sumAcc = (a, a1) => {
 export const factD = (a) => {
   let acc$1 = 1n;
   for (let i$2 = 0n; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = (i$2 + 1n) * a$3;
+    acc$1 = (i$2 + 1n) * acc$1;
   }
   return acc$1;
 };

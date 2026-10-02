@@ -9,6 +9,19 @@
 //   filterMapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 //   filterU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 //   overArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
-//   dropPrefix1: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 //   test: LeanScript: the parameter `α` of `overArray` is a type
 
+import {
+  string__lean_string_isprefixof,
+  uint53__lean_string_drop,
+} from "../../runtime.js";
+
+/**
+ * `dropPrefix1`
+ * @param {string} s
+ * @returns {({ tag: 0 } | { tag: 1, _1: string })}
+ */
+export const dropPrefix1 = (s) =>
+  string__lean_string_isprefixof("1", s)
+    ? { tag: 1, _1: uint53__lean_string_drop(s, 1) }
+    : { tag: 0 };

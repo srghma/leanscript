@@ -4,8 +4,9 @@
 val k1 [1] : (Int → (Int → (Int → Int))) := fun x2 [ω] : Int => (closed)
   val k3 [1] : (Int → (Int → Int)) := fun x4 [ω] : Int => (open)
     val k5 [1] : (Int → Int) := fun x6 [ω] : Int => (open)
+      let x7 [1] : Bool := share lean_int_dec_eq(x4, 2)
       if lean_int_dec_eq(x2, 1) then
-        if lean_int_dec_eq(x4, 2) then
+        if x7 then
           if lean_int_dec_eq(x6, 1) then
             ret 1
           else
@@ -19,7 +20,7 @@ val k1 [1] : (Int → (Int → (Int → Int))) := fun x2 [ω] : Int => (closed)
         else
           ret cond(lean_int_dec_eq(x6, 4), 4, 5)
       else
-        ret cond(cond(lean_int_dec_eq(x4, 2), lean_int_dec_eq(x6, 3), false), 3, 5)
+        ret cond(cond(x7, lean_int_dec_eq(x6, 3), false), 3, 5)
     ret k5
   ret k3
 ret k1

@@ -335,6 +335,121 @@ theorem Branch.joinCtor_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks
             exact Branch.jcRepl_eval _ main κ ρ _ (JPos.Agree.init body hC κ ρ jκ)
           · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]
 
+/-! ## A case analysis of a conditional of constructors -/
+
+theorem Term.substFields_eval (d : Nat) {Φ : KCtx ks} {τ : Ty ks} {js : JCtx ks}
+    (ts : List (Ty ks)) (us : List Usage01ω) : (fuel : Nat) → {Γ : UCtx ks} → {o oa : Lvl} →
+    (t : Term Δ d Φ (UCtx.annot d ts us ++ Γ) τ js o) → (args : Args Δ Φ Γ ts oa) →
+    {r : (o' : Lvl) × Term Δ d Φ Γ τ js o'} → Term.substFields d ts us fuel t args = some r →
+    (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
+    r.2.eval κ ρ jκ = t.eval κ (Tuple.append (UEnv.ofDL d ts us (args.eval κ ρ)) ρ) jκ
+  | 0, _, _, _, t, args, _, h, κ, ρ, jκ =>
+      Term.subst_eval (KLRen.Agree.id κ)
+        (USub.Agree.ofArgs (USub.Agree.ofRen (ULRen.Agree.idL ρ)) d ts us args)
+        (JRen.Agree.id jκ) t h
+  | fuel + 1, _, _, _, t, args, _, h, κ, ρ, jκ => by
+      simp only [Term.substFields] at h
+      split at h
+      · rename_i r' hs
+        cases h
+        exact Term.subst_eval (KLRen.Agree.id κ)
+          (USub.Agree.ofArgs (USub.Agree.ofRen (ULRen.Agree.idL ρ)) d ts us args)
+          (JRen.Agree.id jκ) t hs
+      · split at h
+        · cases h
+        · rename_i τ' ℓn n o'' args' hsf
+          split at h
+          · cases h
+          · rename_i t' hren
+            simp only [Option.map_eq_some_iff] at h
+            obtain ⟨r', hr', rfl⟩ := h
+            have hargs := Args.shareFirst_eval d κ ρ args hsf
+            simp only at hargs
+            simp only [Term.eval, Comp.eval]
+            rw [Term.substFields_eval d ts us fuel t' args' hr', hargs]
+            exact Term.rename_eval (KRen.Agree.id κ) (URen.Agree.liftN (URen.Agree.wk1 ρ _) _ _)
+              (JRen.Agree.id jκ) t hren
+
+theorem Branches.caseLit?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
+    {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ cs τ js o) {o' : Lvl} (e : PExpr Δ Φ Γ (.union cs (h := h)) o')
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} (hr : brs.caseLit? e = some r)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = brs.eval κ ρ jκ (e.eval κ ρ) := by
+  unfold Branches.caseLit? at hr
+  split at hr
+  · cases hr
+  · rename_i b c ix o'' args hl
+    rw [Term.substFields_eval d c.binds (brs.select ix).1 _ _ args hr κ ρ jκ,
+      PExpr.unionLit?_eval κ ρ e hl, Branches.select_eval]
+
+theorem Neu.caseCond?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
+    {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o)
+    {r : (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'} (hr : n.caseCond? brs = some r)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = brs.eval κ ρ jκ (n.eval κ ρ) := by
+  unfold Neu.caseCond? at hr
+  split at hr
+  · rename_i c a b
+    split at hr
+    · rename_i ta tb ha hb
+      cases hr
+      simp only [Branch.eval, Neu.eval]
+      split <;> simp only [Branches.caseLit?_eval brs _ ha, Branches.caseLit?_eval brs _ hb]
+    · cases hr
+  · cases hr
+
+theorem Branch.caseCond_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
+    {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Branch.caseCond n brs).2.eval κ ρ jκ = brs.eval κ ρ jκ (n.eval κ ρ) := by
+  unfold Branch.caseCond
+  cases hc : n.caseCond? brs with
+  | none => rfl
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ brs.numCalls
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact Neu.caseCond?_eval n brs hc κ ρ jκ
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; rfl
+
+theorem Term.caseCondTop_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    (r : (o : Lvl) × Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.caseCondTop r).2.eval κ ρ jκ = r.2.eval κ ρ jκ := by
+  obtain ⟨o, t⟩ := r
+  cases t with
+  | branch br =>
+      cases br with
+      | union_casesOn n brs =>
+          simp only [Term.caseCondTop, Term.eval, Branch.eval]
+          exact Branch.caseCond_eval _ _ _ _ _
+      | _ => rfl
+  | _ => rfl
+
+theorem Term.shareCase_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    {ℓ : Nat} {o' : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) :
+    (Term.shareCase u c b).2.eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ := by
+  cases c with
+  | share n =>
+      simp only [Term.shareCase]
+      by_cases hc : (u = .one ∧ n.isCond = true ∧ b.isCaseOnHead = true)
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
+        cases hs : b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL))
+            JRen.id with
+        | none => rfl
+        | some r =>
+            simp only
+            by_cases hn : (Term.caseCondTop r).2.numCalls ≤ b.numCalls
+            · rw [ite_eq_left_of_eq_true _ _ (eq_true hn), Term.caseCondTop_eval]
+              exact Term.subst_eval (KLRen.Agree.id κ)
+                (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) b hs
+            · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hc)]
+  | _ => rfl
+
 /-! ## The walk -/
 
 mutual
@@ -391,7 +506,9 @@ theorem Term.jcWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {
       simp only [Term.jcWalk, Term.eval, Val.jcWalk_eval v κ ρ]
       exact Term.jcWalk_eval b _ ρ jκ
   | _, _, _, _, _, _, .letE u c b, κ, ρ, jκ => by
-      simp only [Term.jcWalk, Term.eval, Comp.jcWalk_eval c κ ρ]
+      simp only [Term.jcWalk]
+      rw [Term.shareCase_eval]
+      simp only [Term.eval, Comp.jcWalk_eval c κ ρ]
       exact Term.jcWalk_eval b κ _ jκ
   | _, _, _, _, _, _, .record_casesOn us n b, κ, ρ, jκ => by
       simp only [Term.jcWalk, Term.eval]
@@ -410,7 +527,8 @@ theorem Branch.jcWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
   | _, _, _, _, _, _, .enum_casesOn e bs, κ, ρ, jκ => by
       simp only [Branch.jcWalk, Branch.eval]; exact Term.jcWalk_eval _ κ ρ jκ
   | _, _, _, _, _, _, .union_casesOn e bs, κ, ρ, jκ => by
-      simp only [Branch.jcWalk, Branch.eval]; exact Branches.jcWalk_eval bs κ ρ jκ _
+      simp only [Branch.jcWalk, Branch.eval]
+      rw [Branch.caseCond_eval]; exact Branches.jcWalk_eval bs κ ρ jκ _
   | _, _, _, _, _, _, .join σ u uₓ body main, κ, ρ, jκ => by
       simp only [Branch.jcWalk]
       rw [Branch.joinCtor_eval]

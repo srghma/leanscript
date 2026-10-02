@@ -7,6 +7,38 @@
 //   fromArray: LeanScript: not a type former application Type
 //   toArray: LeanScript: the polymorphic function fold.1 is applied to the type List Nat where the language reads it at the stand-in Nat
 //   overArray: LeanScript: the parameter `α` of `toArray` is a type
-//   dropPrefix1: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
-//   test: LeanScript: the parameter `α` of `overArray` is a type
 
+import {
+  string__lean_string_isprefixof,
+  bigint_nat__lean_string_drop,
+  array__lean_array_push_mutable,
+} from "../../runtime.js";
+
+/**
+ * `dropPrefix1`
+ * @param {string} s
+ * @returns {({ tag: 0 } | { tag: 1, _1: string })}
+ */
+export const dropPrefix1 = (s) =>
+  string__lean_string_isprefixof("1", s)
+    ? { tag: 1, _1: bigint_nat__lean_string_drop(s, 1n) }
+    : { tag: 0 };
+
+/**
+ * `test`
+ * @param {Array<int(bigint)>} arr
+ * @returns {Array<string>}
+ */
+export const test = (arr) => {
+  let acc$1 = [];
+  for (const e$2 of arr) {
+    const x$3 = String(e$2 + 1n);
+    if (string__lean_string_isprefixof("1", x$3)) {
+      const x$4 = "2" + bigint_nat__lean_string_drop(x$3, 1n);
+      if (x$4 !== "wat") {
+        acc$1 = array__lean_array_push_mutable(acc$1, x$4 + "1");
+      }
+    }
+  }
+  return acc$1;
+};

@@ -64,6 +64,12 @@ partial def renderNeu (s : Sem) (c : Core) (inline : Bool) : TermElabM Lean.Term
       `(LeanScript.Neu.cond $(← renderNeu x c inline) $(← render a c inline) $(← render b c inline))
   | .extern e as => do
       `(LeanScript.Neu.extern $e $(← argsStx (← as.toList.mapM (render · c inline))) rfl)
+  | .ascribe (.cond x a b) ty =>
+      -- the type given to the conditional itself, not by an ascription: an ascription
+      -- elaborates its contexts as holes, so the variables of the branches (`UVar.head (by
+      -- decide)`) would be checked against an unknown context
+      `(LeanScript.Neu.cond (τ := $ty) $(← renderNeu x c inline) $(← render a c inline)
+        $(← render b c inline))
   | .ascribe s ty => `(($(← renderNeu s c inline) : LeanScript.Neu _ _ _ $ty _))
   | _ => throwError "internal error of the normaliser: a value of known shape is not neutral"
 

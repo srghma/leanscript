@@ -192,6 +192,101 @@ def Branch.joinCtor {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
           else ⟨_, .join σ u uₓ body main⟩
       | none => ⟨_, .join σ u uₓ body main⟩
 
+/-! ## A case analysis of a conditional of constructors -/
+
+/-- `t[fields := args]`, `t` under the fields `ts` (used `us` times) of a case analysis: the
+    fields substituted by the arguments (`Term.subst`); when that fails (an argument that
+    computes something, for a field used more than once), the first neutral argument that is not
+    an unknown is named by `let` first (`Args.shareFirst`), and so on, at most `fuel` times. -/
+def Term.substFields (d : Nat) {Φ : KCtx ks} {τ : Ty ks} {js : JCtx ks} (ts : List (Ty ks))
+    (us : List Usage01ω) : (fuel : Nat) → {Γ : UCtx ks} → {o oa : Lvl} →
+    Term Δ d Φ (UCtx.annot d ts us ++ Γ) τ js o → Args Δ Φ Γ ts oa →
+    Option ((o' : Lvl) × Term Δ d Φ Γ τ js o')
+  | 0, _, _, _, t, args =>
+      t.subst (D' := d) KLRen.id (USub.ofArgs (USub.ofRen ULRen.idL) d ts us args) JRen.id
+  | fuel + 1, _, _, _, t, args =>
+      match t.subst (D' := d) KLRen.id (USub.ofArgs (USub.ofRen ULRen.idL) d ts us args) JRen.id with
+      | some r => some r
+      | none =>
+          match Args.shareFirst d args with
+          | none => none
+          | some ⟨_, _, n, _, args'⟩ =>
+              match t.rename KRen.id (URen.liftN URen.wk1 (UCtx.annot d ts us)) JRen.id with
+              | none => none
+              | some t' =>
+                  (Term.substFields d ts us fuel t' args').map fun r =>
+                    ⟨_, .letE .many (.share n) r.2⟩
+
+/-- `case e of brs` for a union literal `e`: the arm of its constructor, its fields bound to the
+    fields of `e` (`Term.substFields`). -/
+def Branches.caseLit? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} (brs : Branches Δ d Φ Γ cs τ js o)
+    {o' : Lvl} (e : PExpr Δ Φ Γ (.union cs (h := h)) o') :
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'') :=
+  match e.unionLit? with
+  | none => none
+  | some ⟨_, c, ix, _, args⟩ =>
+      let sel := brs.select ix
+      Term.substFields d c.binds sel.1 c.binds.length sel.2.2 args
+
+/-- `case (c ? a : b) of brs`, where `a` and `b` are constructor literals: `if c then (case a
+    of brs) else (case b of brs)`, each case analysis of a literal reduced to its arm
+    (`Branches.caseLit?`).  This is what `match (if c then some x else none) with …` becomes. -/
+def Neu.caseCond? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o) :
+    Option ((ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ') :=
+  match n with
+  | .cond c a b =>
+      match brs.caseLit? a, brs.caseLit? b with
+      | some ta, some tb => some ⟨_, .ite c ta.2 tb.2⟩
+      | _, _ => none
+  | _ => none
+
+/-- `case n of brs`, rewritten by `Neu.caseCond?` when that adds no call (an arm selected by
+    both constructors would be written twice). -/
+def Branch.caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o) :
+    (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ' :=
+  match n.caseCond? brs with
+  | some r => if r.2.numCalls ≤ brs.numCalls then r else ⟨_, .union_casesOn n brs⟩
+  | none => ⟨_, .union_casesOn n brs⟩
+
+/-- A statement that is a case analysis: `Branch.caseCond` on it. -/
+def Term.caseCondTop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} :
+    (o : Lvl) × Term Δ d Φ Γ τ js o → (o : Lvl) × Term Δ d Φ Γ τ js o
+  | ⟨_, .branch (.union_casesOn n brs)⟩ => ⟨_, .branch (Branch.caseCond n brs).2⟩
+  | r => r
+
+/-- Is the neutral expression a conditional? -/
+def Neu.isCond {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} : Neu Δ Φ Γ τ ℓ → Bool
+  | .cond .. => true
+  | _ => false
+
+/-- Is the statement a case analysis of the innermost unknown? -/
+def Term.isCaseOnHead {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat}
+    {τ : Ty ks} {js : JCtx ks} : {o : Lvl} → Term Δ d Φ (⟨σ, u, ℓ⟩ :: Γ) τ js o → Bool
+  | _, .branch (.union_casesOn n _) => n.isHead?.isSome
+  | _, _ => false
+
+/-- `let x [1] := share (c ? a : b); case x of brs`: the conditional is written in the case
+    analysis (`x` is used once, there; `Term.subst`), which `Branch.caseCond` then rewrites into
+    `if c then … else …`.  Kept only when it adds no call. -/
+def Term.shareCase {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
+    {o' : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') : (o : Lvl) × Term Δ d Φ Γ τ js o :=
+  match c with
+  | .share n =>
+      if u = .one ∧ n.isCond = true ∧ b.isCaseOnHead = true then
+        match b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id with
+        | some r =>
+            if (Term.caseCondTop r).2.numCalls ≤ b.numCalls then Term.caseCondTop r
+            else ⟨_, .letE u (.share n) b⟩
+        | none => ⟨_, .letE u (.share n) b⟩
+      else ⟨_, .letE u (.share n) b⟩
+  | c => ⟨_, .letE u c b⟩
+
 /-! ## The walk -/
 
 mutual
@@ -229,7 +324,7 @@ def Term.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty k
     {o : Lvl} → Term Δ d Φ Γ τ js o → (o' : Lvl) × Term Δ d Φ Γ τ js o'
   | _, _, _, _, _, _, .ret e => ⟨_, .ret e⟩
   | _, _, _, _, _, _, .letV u v b => ⟨_, .letV u v.jcWalk b.jcWalk.2⟩
-  | _, _, _, _, _, _, .letE u c b => ⟨_, .letE u c.jcWalk b.jcWalk.2⟩
+  | _, _, _, _, _, _, .letE u c b => Term.shareCase u c.jcWalk b.jcWalk.2
   | _, _, _, _, _, _, .record_casesOn us n b => ⟨_, .record_casesOn us n b.jcWalk.2⟩
   | _, _, _, _, _, _, .branch br => ⟨_, .branch br.jcWalk.2⟩
   | _, _, _, _, _, _, .jump j e => ⟨_, .jump j e⟩
@@ -238,7 +333,7 @@ def Branch.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty
     {ℓ : Nat} → Branch Δ d Φ Γ τ js ℓ → (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'
   | _, _, _, _, _, _, .ite c t e => ⟨_, .ite c t.jcWalk.2 e.jcWalk.2⟩
   | _, _, _, _, _, _, .enum_casesOn e bs => ⟨_, .enum_casesOn e (fun i => (bs i).jcWalk.2)⟩
-  | _, _, _, _, _, _, .union_casesOn e bs => ⟨_, .union_casesOn e bs.jcWalk.2⟩
+  | _, _, _, _, _, _, .union_casesOn e bs => Branch.caseCond e bs.jcWalk.2
   | _, _, _, _, _, _, .join σ u uₓ body main => Branch.joinCtor σ u uₓ body.jcWalk.2 main.jcWalk.2
 /-- `Term.jcWalk` in the branches of a union's case analysis. -/
 def Branches.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : List Bool} →

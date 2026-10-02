@@ -29,631 +29,615 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → String) := fun x2 [ω] : (data Le
     | ctor#0(f5 [0] : (data LeanScript.Ref.here 0), f6 [0] : (data LeanScript.Ref.here 0)) =>
       case out#0(f4) of
       | ctor#0(f7 [0] : (data LeanScript.Ref.here 0), f8 [0] : (data LeanScript.Ref.here 0)) =>
-        val k9 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x26 [1] : String := data_rec#0 k9
-          | branch 0 fun r10 => (closed)
-            case r10 of
-            | ctor#0(f11 [1] : ((data LeanScript.Ref.here 0) × String), f12 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f13 [0] : (data LeanScript.Ref.here 0), f14 [1] : String⟩ := f11
-              let ⟨f15 [0] : (data LeanScript.Ref.here 0), f16 [1] : String⟩ := f12
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f14), " "), f16), ")")
-            | ctor#1(f17 [1] : ((data LeanScript.Ref.here 0) × String), f18 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f19 [0] : (data LeanScript.Ref.here 0), f20 [1] : String⟩ := f17
-              let ⟨f21 [0] : (data LeanScript.Ref.here 0), f22 [1] : String⟩ := f18
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f20), " "), f22), ")")
-            | ctor#2(f23 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f24 [0] : (data LeanScript.Ref.here 0), f25 [1] : String⟩ := f23
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f25), ")")
+        let x25 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r9 => (closed)
+            case r9 of
+            | ctor#0(f10 [1] : ((data LeanScript.Ref.here 0) × String), f11 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f12 [0] : (data LeanScript.Ref.here 0), f13 [1] : String⟩ := f10
+              let ⟨f14 [0] : (data LeanScript.Ref.here 0), f15 [1] : String⟩ := f11
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f13), " "), f15), ")")
+            | ctor#1(f16 [1] : ((data LeanScript.Ref.here 0) × String), f17 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f18 [0] : (data LeanScript.Ref.here 0), f19 [1] : String⟩ := f16
+              let ⟨f20 [0] : (data LeanScript.Ref.here 0), f21 [1] : String⟩ := f17
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f19), " "), f21), ")")
+            | ctor#2(f22 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f23 [0] : (data LeanScript.Ref.here 0), f24 [1] : String⟩ := f22
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f24), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x26)
-      | ctor#1(f27 [0] : (data LeanScript.Ref.here 0), f28 [0] : (data LeanScript.Ref.here 0)) =>
-        val k29 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x46 [1] : String := data_rec#0 k29
-          | branch 0 fun r30 => (closed)
-            case r30 of
-            | ctor#0(f31 [1] : ((data LeanScript.Ref.here 0) × String), f32 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f33 [0] : (data LeanScript.Ref.here 0), f34 [1] : String⟩ := f31
-              let ⟨f35 [0] : (data LeanScript.Ref.here 0), f36 [1] : String⟩ := f32
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f34), " "), f36), ")")
-            | ctor#1(f37 [1] : ((data LeanScript.Ref.here 0) × String), f38 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f39 [0] : (data LeanScript.Ref.here 0), f40 [1] : String⟩ := f37
-              let ⟨f41 [0] : (data LeanScript.Ref.here 0), f42 [1] : String⟩ := f38
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f40), " "), f42), ")")
-            | ctor#2(f43 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f44 [0] : (data LeanScript.Ref.here 0), f45 [1] : String⟩ := f43
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f45), ")")
+        ret lean_string_append__String_append("e7: ", x25)
+      | ctor#1(f26 [0] : (data LeanScript.Ref.here 0), f27 [0] : (data LeanScript.Ref.here 0)) =>
+        let x44 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r28 => (closed)
+            case r28 of
+            | ctor#0(f29 [1] : ((data LeanScript.Ref.here 0) × String), f30 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f31 [0] : (data LeanScript.Ref.here 0), f32 [1] : String⟩ := f29
+              let ⟨f33 [0] : (data LeanScript.Ref.here 0), f34 [1] : String⟩ := f30
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f32), " "), f34), ")")
+            | ctor#1(f35 [1] : ((data LeanScript.Ref.here 0) × String), f36 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f37 [0] : (data LeanScript.Ref.here 0), f38 [1] : String⟩ := f35
+              let ⟨f39 [0] : (data LeanScript.Ref.here 0), f40 [1] : String⟩ := f36
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f38), " "), f40), ")")
+            | ctor#2(f41 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f42 [0] : (data LeanScript.Ref.here 0), f43 [1] : String⟩ := f41
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f43), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x46)
-      | ctor#2(f47 [0] : (data LeanScript.Ref.here 0)) =>
-        val k48 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x65 [1] : String := data_rec#0 k48
-          | branch 0 fun r49 => (closed)
-            case r49 of
-            | ctor#0(f50 [1] : ((data LeanScript.Ref.here 0) × String), f51 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f52 [0] : (data LeanScript.Ref.here 0), f53 [1] : String⟩ := f50
-              let ⟨f54 [0] : (data LeanScript.Ref.here 0), f55 [1] : String⟩ := f51
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f53), " "), f55), ")")
-            | ctor#1(f56 [1] : ((data LeanScript.Ref.here 0) × String), f57 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f58 [0] : (data LeanScript.Ref.here 0), f59 [1] : String⟩ := f56
-              let ⟨f60 [0] : (data LeanScript.Ref.here 0), f61 [1] : String⟩ := f57
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f59), " "), f61), ")")
-            | ctor#2(f62 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f63 [0] : (data LeanScript.Ref.here 0), f64 [1] : String⟩ := f62
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f64), ")")
+        ret lean_string_append__String_append("e7: ", x44)
+      | ctor#2(f45 [0] : (data LeanScript.Ref.here 0)) =>
+        let x62 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r46 => (closed)
+            case r46 of
+            | ctor#0(f47 [1] : ((data LeanScript.Ref.here 0) × String), f48 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f49 [0] : (data LeanScript.Ref.here 0), f50 [1] : String⟩ := f47
+              let ⟨f51 [0] : (data LeanScript.Ref.here 0), f52 [1] : String⟩ := f48
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f50), " "), f52), ")")
+            | ctor#1(f53 [1] : ((data LeanScript.Ref.here 0) × String), f54 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f55 [0] : (data LeanScript.Ref.here 0), f56 [1] : String⟩ := f53
+              let ⟨f57 [0] : (data LeanScript.Ref.here 0), f58 [1] : String⟩ := f54
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f56), " "), f58), ")")
+            | ctor#2(f59 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f60 [0] : (data LeanScript.Ref.here 0), f61 [1] : String⟩ := f59
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f61), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x65)
+        ret lean_string_append__String_append("e7: ", x62)
       | ctor#3() =>
-        let x82 [1] : String := data_rec#0 f3
-          | branch 0 fun r66 => (closed)
-            case r66 of
-            | ctor#0(f67 [1] : ((data LeanScript.Ref.here 0) × String), f68 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f69 [0] : (data LeanScript.Ref.here 0), f70 [1] : String⟩ := f67
-              let ⟨f71 [0] : (data LeanScript.Ref.here 0), f72 [1] : String⟩ := f68
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f70), " "), f72), ")")
-            | ctor#1(f73 [1] : ((data LeanScript.Ref.here 0) × String), f74 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f75 [0] : (data LeanScript.Ref.here 0), f76 [1] : String⟩ := f73
-              let ⟨f77 [0] : (data LeanScript.Ref.here 0), f78 [1] : String⟩ := f74
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f76), " "), f78), ")")
-            | ctor#2(f79 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f80 [0] : (data LeanScript.Ref.here 0), f81 [1] : String⟩ := f79
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f81), ")")
+        let x79 [1] : String := data_rec#0 f3
+          | branch 0 fun r63 => (closed)
+            case r63 of
+            | ctor#0(f64 [1] : ((data LeanScript.Ref.here 0) × String), f65 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f66 [0] : (data LeanScript.Ref.here 0), f67 [1] : String⟩ := f64
+              let ⟨f68 [0] : (data LeanScript.Ref.here 0), f69 [1] : String⟩ := f65
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f67), " "), f69), ")")
+            | ctor#1(f70 [1] : ((data LeanScript.Ref.here 0) × String), f71 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f72 [0] : (data LeanScript.Ref.here 0), f73 [1] : String⟩ := f70
+              let ⟨f74 [0] : (data LeanScript.Ref.here 0), f75 [1] : String⟩ := f71
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f73), " "), f75), ")")
+            | ctor#2(f76 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f77 [0] : (data LeanScript.Ref.here 0), f78 [1] : String⟩ := f76
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f78), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e6: ", x82)
-    | ctor#1(f83 [0] : (data LeanScript.Ref.here 0), f84 [0] : (data LeanScript.Ref.here 0)) =>
+        ret lean_string_append__String_append("e6: ", x79)
+    | ctor#1(f80 [0] : (data LeanScript.Ref.here 0), f81 [0] : (data LeanScript.Ref.here 0)) =>
       case out#0(f4) of
-      | ctor#0(f85 [0] : (data LeanScript.Ref.here 0), f86 [0] : (data LeanScript.Ref.here 0)) =>
-        val k87 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x104 [1] : String := data_rec#0 k87
-          | branch 0 fun r88 => (closed)
-            case r88 of
-            | ctor#0(f89 [1] : ((data LeanScript.Ref.here 0) × String), f90 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f91 [0] : (data LeanScript.Ref.here 0), f92 [1] : String⟩ := f89
-              let ⟨f93 [0] : (data LeanScript.Ref.here 0), f94 [1] : String⟩ := f90
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f92), " "), f94), ")")
-            | ctor#1(f95 [1] : ((data LeanScript.Ref.here 0) × String), f96 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f97 [0] : (data LeanScript.Ref.here 0), f98 [1] : String⟩ := f95
-              let ⟨f99 [0] : (data LeanScript.Ref.here 0), f100 [1] : String⟩ := f96
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f98), " "), f100), ")")
-            | ctor#2(f101 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f102 [0] : (data LeanScript.Ref.here 0), f103 [1] : String⟩ := f101
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f103), ")")
+      | ctor#0(f82 [0] : (data LeanScript.Ref.here 0), f83 [0] : (data LeanScript.Ref.here 0)) =>
+        let x100 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r84 => (closed)
+            case r84 of
+            | ctor#0(f85 [1] : ((data LeanScript.Ref.here 0) × String), f86 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f87 [0] : (data LeanScript.Ref.here 0), f88 [1] : String⟩ := f85
+              let ⟨f89 [0] : (data LeanScript.Ref.here 0), f90 [1] : String⟩ := f86
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f88), " "), f90), ")")
+            | ctor#1(f91 [1] : ((data LeanScript.Ref.here 0) × String), f92 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f93 [0] : (data LeanScript.Ref.here 0), f94 [1] : String⟩ := f91
+              let ⟨f95 [0] : (data LeanScript.Ref.here 0), f96 [1] : String⟩ := f92
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f94), " "), f96), ")")
+            | ctor#2(f97 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f98 [0] : (data LeanScript.Ref.here 0), f99 [1] : String⟩ := f97
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f99), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x104)
-      | ctor#1(f105 [0] : (data LeanScript.Ref.here 0), f106 [0] : (data LeanScript.Ref.here 0)) =>
-        val k107 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x124 [1] : String := data_rec#0 k107
-          | branch 0 fun r108 => (closed)
-            case r108 of
-            | ctor#0(f109 [1] : ((data LeanScript.Ref.here 0) × String), f110 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f111 [0] : (data LeanScript.Ref.here 0), f112 [1] : String⟩ := f109
-              let ⟨f113 [0] : (data LeanScript.Ref.here 0), f114 [1] : String⟩ := f110
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f112), " "), f114), ")")
-            | ctor#1(f115 [1] : ((data LeanScript.Ref.here 0) × String), f116 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f117 [0] : (data LeanScript.Ref.here 0), f118 [1] : String⟩ := f115
-              let ⟨f119 [0] : (data LeanScript.Ref.here 0), f120 [1] : String⟩ := f116
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f118), " "), f120), ")")
-            | ctor#2(f121 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f122 [0] : (data LeanScript.Ref.here 0), f123 [1] : String⟩ := f121
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f123), ")")
+        ret lean_string_append__String_append("e7: ", x100)
+      | ctor#1(f101 [0] : (data LeanScript.Ref.here 0), f102 [0] : (data LeanScript.Ref.here 0)) =>
+        let x119 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r103 => (closed)
+            case r103 of
+            | ctor#0(f104 [1] : ((data LeanScript.Ref.here 0) × String), f105 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f106 [0] : (data LeanScript.Ref.here 0), f107 [1] : String⟩ := f104
+              let ⟨f108 [0] : (data LeanScript.Ref.here 0), f109 [1] : String⟩ := f105
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f107), " "), f109), ")")
+            | ctor#1(f110 [1] : ((data LeanScript.Ref.here 0) × String), f111 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f112 [0] : (data LeanScript.Ref.here 0), f113 [1] : String⟩ := f110
+              let ⟨f114 [0] : (data LeanScript.Ref.here 0), f115 [1] : String⟩ := f111
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f113), " "), f115), ")")
+            | ctor#2(f116 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f117 [0] : (data LeanScript.Ref.here 0), f118 [1] : String⟩ := f116
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f118), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x124)
-      | ctor#2(f125 [0] : (data LeanScript.Ref.here 0)) =>
-        val k126 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f3, f4))
-        let x143 [1] : String := data_rec#0 k126
-          | branch 0 fun r127 => (closed)
-            case r127 of
-            | ctor#0(f128 [1] : ((data LeanScript.Ref.here 0) × String), f129 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+        ret lean_string_append__String_append("e7: ", x119)
+      | ctor#2(f120 [0] : (data LeanScript.Ref.here 0)) =>
+        let x137 [1] : String := data_rec#0 in#0(ctor#0(f3, f4))
+          | branch 0 fun r121 => (closed)
+            case r121 of
+            | ctor#0(f122 [1] : ((data LeanScript.Ref.here 0) × String), f123 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f124 [0] : (data LeanScript.Ref.here 0), f125 [1] : String⟩ := f122
+              let ⟨f126 [0] : (data LeanScript.Ref.here 0), f127 [1] : String⟩ := f123
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f125), " "), f127), ")")
+            | ctor#1(f128 [1] : ((data LeanScript.Ref.here 0) × String), f129 [1] : ((data LeanScript.Ref.here 0) × String)) =>
               let ⟨f130 [0] : (data LeanScript.Ref.here 0), f131 [1] : String⟩ := f128
               let ⟨f132 [0] : (data LeanScript.Ref.here 0), f133 [1] : String⟩ := f129
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f131), " "), f133), ")")
-            | ctor#1(f134 [1] : ((data LeanScript.Ref.here 0) × String), f135 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f136 [0] : (data LeanScript.Ref.here 0), f137 [1] : String⟩ := f134
-              let ⟨f138 [0] : (data LeanScript.Ref.here 0), f139 [1] : String⟩ := f135
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f137), " "), f139), ")")
-            | ctor#2(f140 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f141 [0] : (data LeanScript.Ref.here 0), f142 [1] : String⟩ := f140
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f142), ")")
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f131), " "), f133), ")")
+            | ctor#2(f134 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f135 [0] : (data LeanScript.Ref.here 0), f136 [1] : String⟩ := f134
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f136), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x143)
+        ret lean_string_append__String_append("e7: ", x137)
       | ctor#3() =>
-        let x160 [1] : String := data_rec#0 f3
-          | branch 0 fun r144 => (closed)
-            case r144 of
-            | ctor#0(f145 [1] : ((data LeanScript.Ref.here 0) × String), f146 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+        let x154 [1] : String := data_rec#0 f3
+          | branch 0 fun r138 => (closed)
+            case r138 of
+            | ctor#0(f139 [1] : ((data LeanScript.Ref.here 0) × String), f140 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f141 [0] : (data LeanScript.Ref.here 0), f142 [1] : String⟩ := f139
+              let ⟨f143 [0] : (data LeanScript.Ref.here 0), f144 [1] : String⟩ := f140
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f142), " "), f144), ")")
+            | ctor#1(f145 [1] : ((data LeanScript.Ref.here 0) × String), f146 [1] : ((data LeanScript.Ref.here 0) × String)) =>
               let ⟨f147 [0] : (data LeanScript.Ref.here 0), f148 [1] : String⟩ := f145
               let ⟨f149 [0] : (data LeanScript.Ref.here 0), f150 [1] : String⟩ := f146
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f148), " "), f150), ")")
-            | ctor#1(f151 [1] : ((data LeanScript.Ref.here 0) × String), f152 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f153 [0] : (data LeanScript.Ref.here 0), f154 [1] : String⟩ := f151
-              let ⟨f155 [0] : (data LeanScript.Ref.here 0), f156 [1] : String⟩ := f152
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f154), " "), f156), ")")
-            | ctor#2(f157 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f158 [0] : (data LeanScript.Ref.here 0), f159 [1] : String⟩ := f157
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f159), ")")
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f148), " "), f150), ")")
+            | ctor#2(f151 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f152 [0] : (data LeanScript.Ref.here 0), f153 [1] : String⟩ := f151
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f153), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e6: ", x160)
-    | ctor#2(f161 [1] : (data LeanScript.Ref.here 0)) =>
-      let x178 [1] : String := data_rec#0 f161
-        | branch 0 fun r162 => (closed)
-          case r162 of
-          | ctor#0(f163 [1] : ((data LeanScript.Ref.here 0) × String), f164 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+        ret lean_string_append__String_append("e6: ", x154)
+    | ctor#2(f155 [1] : (data LeanScript.Ref.here 0)) =>
+      let x172 [1] : String := data_rec#0 f155
+        | branch 0 fun r156 => (closed)
+          case r156 of
+          | ctor#0(f157 [1] : ((data LeanScript.Ref.here 0) × String), f158 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f159 [0] : (data LeanScript.Ref.here 0), f160 [1] : String⟩ := f157
+            let ⟨f161 [0] : (data LeanScript.Ref.here 0), f162 [1] : String⟩ := f158
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f160), " "), f162), ")")
+          | ctor#1(f163 [1] : ((data LeanScript.Ref.here 0) × String), f164 [1] : ((data LeanScript.Ref.here 0) × String)) =>
             let ⟨f165 [0] : (data LeanScript.Ref.here 0), f166 [1] : String⟩ := f163
             let ⟨f167 [0] : (data LeanScript.Ref.here 0), f168 [1] : String⟩ := f164
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f166), " "), f168), ")")
-          | ctor#1(f169 [1] : ((data LeanScript.Ref.here 0) × String), f170 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f171 [0] : (data LeanScript.Ref.here 0), f172 [1] : String⟩ := f169
-            let ⟨f173 [0] : (data LeanScript.Ref.here 0), f174 [1] : String⟩ := f170
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f172), " "), f174), ")")
-          | ctor#2(f175 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f176 [0] : (data LeanScript.Ref.here 0), f177 [1] : String⟩ := f175
-            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f177), ")")
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f166), " "), f168), ")")
+          | ctor#2(f169 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f170 [0] : (data LeanScript.Ref.here 0), f171 [1] : String⟩ := f169
+            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f171), ")")
           | ctor#3() =>
             ret "Zero"
-      let x195 [1] : String := data_rec#0 f4
-        | branch 0 fun r179 => (closed)
-          case r179 of
-          | ctor#0(f180 [1] : ((data LeanScript.Ref.here 0) × String), f181 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+      let x189 [1] : String := data_rec#0 f4
+        | branch 0 fun r173 => (closed)
+          case r173 of
+          | ctor#0(f174 [1] : ((data LeanScript.Ref.here 0) × String), f175 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f176 [0] : (data LeanScript.Ref.here 0), f177 [1] : String⟩ := f174
+            let ⟨f178 [0] : (data LeanScript.Ref.here 0), f179 [1] : String⟩ := f175
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f177), " "), f179), ")")
+          | ctor#1(f180 [1] : ((data LeanScript.Ref.here 0) × String), f181 [1] : ((data LeanScript.Ref.here 0) × String)) =>
             let ⟨f182 [0] : (data LeanScript.Ref.here 0), f183 [1] : String⟩ := f180
             let ⟨f184 [0] : (data LeanScript.Ref.here 0), f185 [1] : String⟩ := f181
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f183), " "), f185), ")")
-          | ctor#1(f186 [1] : ((data LeanScript.Ref.here 0) × String), f187 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f188 [0] : (data LeanScript.Ref.here 0), f189 [1] : String⟩ := f186
-            let ⟨f190 [0] : (data LeanScript.Ref.here 0), f191 [1] : String⟩ := f187
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f189), " "), f191), ")")
-          | ctor#2(f192 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f193 [0] : (data LeanScript.Ref.here 0), f194 [1] : String⟩ := f192
-            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f194), ")")
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f183), " "), f185), ")")
+          | ctor#2(f186 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f187 [0] : (data LeanScript.Ref.here 0), f188 [1] : String⟩ := f186
+            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f188), ")")
           | ctor#3() =>
             ret "Zero"
-      ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e3: ", x178), " "), x195)
+      ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e3: ", x172), " "), x189)
     | ctor#3() =>
       case out#0(f4) of
-      | ctor#0(f196 [0] : (data LeanScript.Ref.here 0), f197 [0] : (data LeanScript.Ref.here 0)) =>
-        val k198 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(in#0(ctor#3()), f4))
-        let x215 [1] : String := data_rec#0 k198
-          | branch 0 fun r199 => (closed)
-            case r199 of
-            | ctor#0(f200 [1] : ((data LeanScript.Ref.here 0) × String), f201 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f202 [0] : (data LeanScript.Ref.here 0), f203 [1] : String⟩ := f200
-              let ⟨f204 [0] : (data LeanScript.Ref.here 0), f205 [1] : String⟩ := f201
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f203), " "), f205), ")")
-            | ctor#1(f206 [1] : ((data LeanScript.Ref.here 0) × String), f207 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f208 [0] : (data LeanScript.Ref.here 0), f209 [1] : String⟩ := f206
-              let ⟨f210 [0] : (data LeanScript.Ref.here 0), f211 [1] : String⟩ := f207
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f209), " "), f211), ")")
-            | ctor#2(f212 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f213 [0] : (data LeanScript.Ref.here 0), f214 [1] : String⟩ := f212
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f214), ")")
+      | ctor#0(f190 [0] : (data LeanScript.Ref.here 0), f191 [0] : (data LeanScript.Ref.here 0)) =>
+        let x208 [1] : String := data_rec#0 in#0(ctor#0(in#0(ctor#3()), f4))
+          | branch 0 fun r192 => (closed)
+            case r192 of
+            | ctor#0(f193 [1] : ((data LeanScript.Ref.here 0) × String), f194 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f195 [0] : (data LeanScript.Ref.here 0), f196 [1] : String⟩ := f193
+              let ⟨f197 [0] : (data LeanScript.Ref.here 0), f198 [1] : String⟩ := f194
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f196), " "), f198), ")")
+            | ctor#1(f199 [1] : ((data LeanScript.Ref.here 0) × String), f200 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f201 [0] : (data LeanScript.Ref.here 0), f202 [1] : String⟩ := f199
+              let ⟨f203 [0] : (data LeanScript.Ref.here 0), f204 [1] : String⟩ := f200
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f202), " "), f204), ")")
+            | ctor#2(f205 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f206 [0] : (data LeanScript.Ref.here 0), f207 [1] : String⟩ := f205
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f207), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x215)
-      | ctor#1(f216 [0] : (data LeanScript.Ref.here 0), f217 [0] : (data LeanScript.Ref.here 0)) =>
-        val k218 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(in#0(ctor#3()), f4))
-        let x235 [1] : String := data_rec#0 k218
-          | branch 0 fun r219 => (closed)
-            case r219 of
-            | ctor#0(f220 [1] : ((data LeanScript.Ref.here 0) × String), f221 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f222 [0] : (data LeanScript.Ref.here 0), f223 [1] : String⟩ := f220
-              let ⟨f224 [0] : (data LeanScript.Ref.here 0), f225 [1] : String⟩ := f221
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f223), " "), f225), ")")
-            | ctor#1(f226 [1] : ((data LeanScript.Ref.here 0) × String), f227 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f228 [0] : (data LeanScript.Ref.here 0), f229 [1] : String⟩ := f226
-              let ⟨f230 [0] : (data LeanScript.Ref.here 0), f231 [1] : String⟩ := f227
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f229), " "), f231), ")")
-            | ctor#2(f232 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f233 [0] : (data LeanScript.Ref.here 0), f234 [1] : String⟩ := f232
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f234), ")")
+        ret lean_string_append__String_append("e7: ", x208)
+      | ctor#1(f209 [0] : (data LeanScript.Ref.here 0), f210 [0] : (data LeanScript.Ref.here 0)) =>
+        let x227 [1] : String := data_rec#0 in#0(ctor#0(in#0(ctor#3()), f4))
+          | branch 0 fun r211 => (closed)
+            case r211 of
+            | ctor#0(f212 [1] : ((data LeanScript.Ref.here 0) × String), f213 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f214 [0] : (data LeanScript.Ref.here 0), f215 [1] : String⟩ := f212
+              let ⟨f216 [0] : (data LeanScript.Ref.here 0), f217 [1] : String⟩ := f213
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f215), " "), f217), ")")
+            | ctor#1(f218 [1] : ((data LeanScript.Ref.here 0) × String), f219 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f220 [0] : (data LeanScript.Ref.here 0), f221 [1] : String⟩ := f218
+              let ⟨f222 [0] : (data LeanScript.Ref.here 0), f223 [1] : String⟩ := f219
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f221), " "), f223), ")")
+            | ctor#2(f224 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f225 [0] : (data LeanScript.Ref.here 0), f226 [1] : String⟩ := f224
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f226), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x235)
-      | ctor#2(f236 [0] : (data LeanScript.Ref.here 0)) =>
-        val k237 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(in#0(ctor#3()), f4))
-        let x254 [1] : String := data_rec#0 k237
-          | branch 0 fun r238 => (closed)
-            case r238 of
-            | ctor#0(f239 [1] : ((data LeanScript.Ref.here 0) × String), f240 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f241 [0] : (data LeanScript.Ref.here 0), f242 [1] : String⟩ := f239
-              let ⟨f243 [0] : (data LeanScript.Ref.here 0), f244 [1] : String⟩ := f240
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f242), " "), f244), ")")
-            | ctor#1(f245 [1] : ((data LeanScript.Ref.here 0) × String), f246 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f247 [0] : (data LeanScript.Ref.here 0), f248 [1] : String⟩ := f245
-              let ⟨f249 [0] : (data LeanScript.Ref.here 0), f250 [1] : String⟩ := f246
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f248), " "), f250), ")")
-            | ctor#2(f251 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f252 [0] : (data LeanScript.Ref.here 0), f253 [1] : String⟩ := f251
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f253), ")")
+        ret lean_string_append__String_append("e7: ", x227)
+      | ctor#2(f228 [0] : (data LeanScript.Ref.here 0)) =>
+        let x245 [1] : String := data_rec#0 in#0(ctor#0(in#0(ctor#3()), f4))
+          | branch 0 fun r229 => (closed)
+            case r229 of
+            | ctor#0(f230 [1] : ((data LeanScript.Ref.here 0) × String), f231 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f232 [0] : (data LeanScript.Ref.here 0), f233 [1] : String⟩ := f230
+              let ⟨f234 [0] : (data LeanScript.Ref.here 0), f235 [1] : String⟩ := f231
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f233), " "), f235), ")")
+            | ctor#1(f236 [1] : ((data LeanScript.Ref.here 0) × String), f237 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f238 [0] : (data LeanScript.Ref.here 0), f239 [1] : String⟩ := f236
+              let ⟨f240 [0] : (data LeanScript.Ref.here 0), f241 [1] : String⟩ := f237
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f239), " "), f241), ")")
+            | ctor#2(f242 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f243 [0] : (data LeanScript.Ref.here 0), f244 [1] : String⟩ := f242
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f244), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x254)
+        ret lean_string_append__String_append("e7: ", x245)
       | ctor#3() =>
         ret "e1"
-  | ctor#1(f255 [ω] : (data LeanScript.Ref.here 0), f256 [ω] : (data LeanScript.Ref.here 0)) =>
-    case out#0(f255) of
-    | ctor#0(f257 [1] : (data LeanScript.Ref.here 0), f258 [1] : (data LeanScript.Ref.here 0)) =>
-      case out#0(f256) of
-      | ctor#0(f259 [0] : (data LeanScript.Ref.here 0), f260 [0] : (data LeanScript.Ref.here 0)) =>
-        let x277 [1] : String := data_rec#0 f257
-          | branch 0 fun r261 => (closed)
-            case r261 of
-            | ctor#0(f262 [1] : ((data LeanScript.Ref.here 0) × String), f263 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f264 [0] : (data LeanScript.Ref.here 0), f265 [1] : String⟩ := f262
-              let ⟨f266 [0] : (data LeanScript.Ref.here 0), f267 [1] : String⟩ := f263
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f265), " "), f267), ")")
-            | ctor#1(f268 [1] : ((data LeanScript.Ref.here 0) × String), f269 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f270 [0] : (data LeanScript.Ref.here 0), f271 [1] : String⟩ := f268
-              let ⟨f272 [0] : (data LeanScript.Ref.here 0), f273 [1] : String⟩ := f269
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f271), " "), f273), ")")
-            | ctor#2(f274 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f275 [0] : (data LeanScript.Ref.here 0), f276 [1] : String⟩ := f274
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f276), ")")
+  | ctor#1(f246 [ω] : (data LeanScript.Ref.here 0), f247 [ω] : (data LeanScript.Ref.here 0)) =>
+    case out#0(f246) of
+    | ctor#0(f248 [1] : (data LeanScript.Ref.here 0), f249 [1] : (data LeanScript.Ref.here 0)) =>
+      case out#0(f247) of
+      | ctor#0(f250 [0] : (data LeanScript.Ref.here 0), f251 [0] : (data LeanScript.Ref.here 0)) =>
+        let x268 [1] : String := data_rec#0 f248
+          | branch 0 fun r252 => (closed)
+            case r252 of
+            | ctor#0(f253 [1] : ((data LeanScript.Ref.here 0) × String), f254 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f255 [0] : (data LeanScript.Ref.here 0), f256 [1] : String⟩ := f253
+              let ⟨f257 [0] : (data LeanScript.Ref.here 0), f258 [1] : String⟩ := f254
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f256), " "), f258), ")")
+            | ctor#1(f259 [1] : ((data LeanScript.Ref.here 0) × String), f260 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f261 [0] : (data LeanScript.Ref.here 0), f262 [1] : String⟩ := f259
+              let ⟨f263 [0] : (data LeanScript.Ref.here 0), f264 [1] : String⟩ := f260
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f262), " "), f264), ")")
+            | ctor#2(f265 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f266 [0] : (data LeanScript.Ref.here 0), f267 [1] : String⟩ := f265
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f267), ")")
             | ctor#3() =>
               ret "Zero"
-        let x294 [1] : String := data_rec#0 f258
-          | branch 0 fun r278 => (closed)
-            case r278 of
-            | ctor#0(f279 [1] : ((data LeanScript.Ref.here 0) × String), f280 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f281 [0] : (data LeanScript.Ref.here 0), f282 [1] : String⟩ := f279
-              let ⟨f283 [0] : (data LeanScript.Ref.here 0), f284 [1] : String⟩ := f280
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f282), " "), f284), ")")
-            | ctor#1(f285 [1] : ((data LeanScript.Ref.here 0) × String), f286 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f287 [0] : (data LeanScript.Ref.here 0), f288 [1] : String⟩ := f285
-              let ⟨f289 [0] : (data LeanScript.Ref.here 0), f290 [1] : String⟩ := f286
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f288), " "), f290), ")")
-            | ctor#2(f291 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f292 [0] : (data LeanScript.Ref.here 0), f293 [1] : String⟩ := f291
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f293), ")")
+        let x285 [1] : String := data_rec#0 f249
+          | branch 0 fun r269 => (closed)
+            case r269 of
+            | ctor#0(f270 [1] : ((data LeanScript.Ref.here 0) × String), f271 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f272 [0] : (data LeanScript.Ref.here 0), f273 [1] : String⟩ := f270
+              let ⟨f274 [0] : (data LeanScript.Ref.here 0), f275 [1] : String⟩ := f271
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f273), " "), f275), ")")
+            | ctor#1(f276 [1] : ((data LeanScript.Ref.here 0) × String), f277 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f278 [0] : (data LeanScript.Ref.here 0), f279 [1] : String⟩ := f276
+              let ⟨f280 [0] : (data LeanScript.Ref.here 0), f281 [1] : String⟩ := f277
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f279), " "), f281), ")")
+            | ctor#2(f282 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f283 [0] : (data LeanScript.Ref.here 0), f284 [1] : String⟩ := f282
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f284), ")")
             | ctor#3() =>
               ret "Zero"
-        let x311 [1] : String := data_rec#0 f256
-          | branch 0 fun r295 => (closed)
-            case r295 of
-            | ctor#0(f296 [1] : ((data LeanScript.Ref.here 0) × String), f297 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f298 [0] : (data LeanScript.Ref.here 0), f299 [1] : String⟩ := f296
-              let ⟨f300 [0] : (data LeanScript.Ref.here 0), f301 [1] : String⟩ := f297
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f299), " "), f301), ")")
-            | ctor#1(f302 [1] : ((data LeanScript.Ref.here 0) × String), f303 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f304 [0] : (data LeanScript.Ref.here 0), f305 [1] : String⟩ := f302
-              let ⟨f306 [0] : (data LeanScript.Ref.here 0), f307 [1] : String⟩ := f303
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f305), " "), f307), ")")
-            | ctor#2(f308 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f309 [0] : (data LeanScript.Ref.here 0), f310 [1] : String⟩ := f308
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f310), ")")
+        let x302 [1] : String := data_rec#0 f247
+          | branch 0 fun r286 => (closed)
+            case r286 of
+            | ctor#0(f287 [1] : ((data LeanScript.Ref.here 0) × String), f288 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f289 [0] : (data LeanScript.Ref.here 0), f290 [1] : String⟩ := f287
+              let ⟨f291 [0] : (data LeanScript.Ref.here 0), f292 [1] : String⟩ := f288
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f290), " "), f292), ")")
+            | ctor#1(f293 [1] : ((data LeanScript.Ref.here 0) × String), f294 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f295 [0] : (data LeanScript.Ref.here 0), f296 [1] : String⟩ := f293
+              let ⟨f297 [0] : (data LeanScript.Ref.here 0), f298 [1] : String⟩ := f294
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f296), " "), f298), ")")
+            | ctor#2(f299 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f300 [0] : (data LeanScript.Ref.here 0), f301 [1] : String⟩ := f299
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f301), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x277), " "), x294), " "), x311)
-      | ctor#1(f312 [0] : (data LeanScript.Ref.here 0), f313 [0] : (data LeanScript.Ref.here 0)) =>
-        let x330 [1] : String := data_rec#0 f257
-          | branch 0 fun r314 => (closed)
-            case r314 of
-            | ctor#0(f315 [1] : ((data LeanScript.Ref.here 0) × String), f316 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f317 [0] : (data LeanScript.Ref.here 0), f318 [1] : String⟩ := f315
-              let ⟨f319 [0] : (data LeanScript.Ref.here 0), f320 [1] : String⟩ := f316
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f318), " "), f320), ")")
-            | ctor#1(f321 [1] : ((data LeanScript.Ref.here 0) × String), f322 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f323 [0] : (data LeanScript.Ref.here 0), f324 [1] : String⟩ := f321
-              let ⟨f325 [0] : (data LeanScript.Ref.here 0), f326 [1] : String⟩ := f322
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f324), " "), f326), ")")
-            | ctor#2(f327 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f328 [0] : (data LeanScript.Ref.here 0), f329 [1] : String⟩ := f327
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f329), ")")
+        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x268), " "), x285), " "), x302)
+      | ctor#1(f303 [0] : (data LeanScript.Ref.here 0), f304 [0] : (data LeanScript.Ref.here 0)) =>
+        let x321 [1] : String := data_rec#0 f248
+          | branch 0 fun r305 => (closed)
+            case r305 of
+            | ctor#0(f306 [1] : ((data LeanScript.Ref.here 0) × String), f307 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f308 [0] : (data LeanScript.Ref.here 0), f309 [1] : String⟩ := f306
+              let ⟨f310 [0] : (data LeanScript.Ref.here 0), f311 [1] : String⟩ := f307
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f309), " "), f311), ")")
+            | ctor#1(f312 [1] : ((data LeanScript.Ref.here 0) × String), f313 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f314 [0] : (data LeanScript.Ref.here 0), f315 [1] : String⟩ := f312
+              let ⟨f316 [0] : (data LeanScript.Ref.here 0), f317 [1] : String⟩ := f313
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f315), " "), f317), ")")
+            | ctor#2(f318 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f319 [0] : (data LeanScript.Ref.here 0), f320 [1] : String⟩ := f318
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f320), ")")
             | ctor#3() =>
               ret "Zero"
-        let x347 [1] : String := data_rec#0 f258
-          | branch 0 fun r331 => (closed)
-            case r331 of
-            | ctor#0(f332 [1] : ((data LeanScript.Ref.here 0) × String), f333 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f334 [0] : (data LeanScript.Ref.here 0), f335 [1] : String⟩ := f332
-              let ⟨f336 [0] : (data LeanScript.Ref.here 0), f337 [1] : String⟩ := f333
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f335), " "), f337), ")")
-            | ctor#1(f338 [1] : ((data LeanScript.Ref.here 0) × String), f339 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f340 [0] : (data LeanScript.Ref.here 0), f341 [1] : String⟩ := f338
-              let ⟨f342 [0] : (data LeanScript.Ref.here 0), f343 [1] : String⟩ := f339
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f341), " "), f343), ")")
-            | ctor#2(f344 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f345 [0] : (data LeanScript.Ref.here 0), f346 [1] : String⟩ := f344
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f346), ")")
+        let x338 [1] : String := data_rec#0 f249
+          | branch 0 fun r322 => (closed)
+            case r322 of
+            | ctor#0(f323 [1] : ((data LeanScript.Ref.here 0) × String), f324 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f325 [0] : (data LeanScript.Ref.here 0), f326 [1] : String⟩ := f323
+              let ⟨f327 [0] : (data LeanScript.Ref.here 0), f328 [1] : String⟩ := f324
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f326), " "), f328), ")")
+            | ctor#1(f329 [1] : ((data LeanScript.Ref.here 0) × String), f330 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f331 [0] : (data LeanScript.Ref.here 0), f332 [1] : String⟩ := f329
+              let ⟨f333 [0] : (data LeanScript.Ref.here 0), f334 [1] : String⟩ := f330
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f332), " "), f334), ")")
+            | ctor#2(f335 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f336 [0] : (data LeanScript.Ref.here 0), f337 [1] : String⟩ := f335
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f337), ")")
             | ctor#3() =>
               ret "Zero"
-        let x364 [1] : String := data_rec#0 f256
-          | branch 0 fun r348 => (closed)
-            case r348 of
-            | ctor#0(f349 [1] : ((data LeanScript.Ref.here 0) × String), f350 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f351 [0] : (data LeanScript.Ref.here 0), f352 [1] : String⟩ := f349
-              let ⟨f353 [0] : (data LeanScript.Ref.here 0), f354 [1] : String⟩ := f350
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f352), " "), f354), ")")
-            | ctor#1(f355 [1] : ((data LeanScript.Ref.here 0) × String), f356 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f357 [0] : (data LeanScript.Ref.here 0), f358 [1] : String⟩ := f355
-              let ⟨f359 [0] : (data LeanScript.Ref.here 0), f360 [1] : String⟩ := f356
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f358), " "), f360), ")")
-            | ctor#2(f361 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f362 [0] : (data LeanScript.Ref.here 0), f363 [1] : String⟩ := f361
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f363), ")")
+        let x355 [1] : String := data_rec#0 f247
+          | branch 0 fun r339 => (closed)
+            case r339 of
+            | ctor#0(f340 [1] : ((data LeanScript.Ref.here 0) × String), f341 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f342 [0] : (data LeanScript.Ref.here 0), f343 [1] : String⟩ := f340
+              let ⟨f344 [0] : (data LeanScript.Ref.here 0), f345 [1] : String⟩ := f341
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f343), " "), f345), ")")
+            | ctor#1(f346 [1] : ((data LeanScript.Ref.here 0) × String), f347 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f348 [0] : (data LeanScript.Ref.here 0), f349 [1] : String⟩ := f346
+              let ⟨f350 [0] : (data LeanScript.Ref.here 0), f351 [1] : String⟩ := f347
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f349), " "), f351), ")")
+            | ctor#2(f352 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f353 [0] : (data LeanScript.Ref.here 0), f354 [1] : String⟩ := f352
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f354), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x330), " "), x347), " "), x364)
-      | ctor#2(f365 [0] : (data LeanScript.Ref.here 0)) =>
-        let x382 [1] : String := data_rec#0 f257
-          | branch 0 fun r366 => (closed)
-            case r366 of
-            | ctor#0(f367 [1] : ((data LeanScript.Ref.here 0) × String), f368 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f369 [0] : (data LeanScript.Ref.here 0), f370 [1] : String⟩ := f367
-              let ⟨f371 [0] : (data LeanScript.Ref.here 0), f372 [1] : String⟩ := f368
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f370), " "), f372), ")")
-            | ctor#1(f373 [1] : ((data LeanScript.Ref.here 0) × String), f374 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f375 [0] : (data LeanScript.Ref.here 0), f376 [1] : String⟩ := f373
-              let ⟨f377 [0] : (data LeanScript.Ref.here 0), f378 [1] : String⟩ := f374
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f376), " "), f378), ")")
-            | ctor#2(f379 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f380 [0] : (data LeanScript.Ref.here 0), f381 [1] : String⟩ := f379
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f381), ")")
+        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x321), " "), x338), " "), x355)
+      | ctor#2(f356 [0] : (data LeanScript.Ref.here 0)) =>
+        let x373 [1] : String := data_rec#0 f248
+          | branch 0 fun r357 => (closed)
+            case r357 of
+            | ctor#0(f358 [1] : ((data LeanScript.Ref.here 0) × String), f359 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f360 [0] : (data LeanScript.Ref.here 0), f361 [1] : String⟩ := f358
+              let ⟨f362 [0] : (data LeanScript.Ref.here 0), f363 [1] : String⟩ := f359
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f361), " "), f363), ")")
+            | ctor#1(f364 [1] : ((data LeanScript.Ref.here 0) × String), f365 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f366 [0] : (data LeanScript.Ref.here 0), f367 [1] : String⟩ := f364
+              let ⟨f368 [0] : (data LeanScript.Ref.here 0), f369 [1] : String⟩ := f365
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f367), " "), f369), ")")
+            | ctor#2(f370 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f371 [0] : (data LeanScript.Ref.here 0), f372 [1] : String⟩ := f370
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f372), ")")
             | ctor#3() =>
               ret "Zero"
-        let x399 [1] : String := data_rec#0 f258
-          | branch 0 fun r383 => (closed)
-            case r383 of
-            | ctor#0(f384 [1] : ((data LeanScript.Ref.here 0) × String), f385 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f386 [0] : (data LeanScript.Ref.here 0), f387 [1] : String⟩ := f384
-              let ⟨f388 [0] : (data LeanScript.Ref.here 0), f389 [1] : String⟩ := f385
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f387), " "), f389), ")")
-            | ctor#1(f390 [1] : ((data LeanScript.Ref.here 0) × String), f391 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f392 [0] : (data LeanScript.Ref.here 0), f393 [1] : String⟩ := f390
-              let ⟨f394 [0] : (data LeanScript.Ref.here 0), f395 [1] : String⟩ := f391
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f393), " "), f395), ")")
-            | ctor#2(f396 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f397 [0] : (data LeanScript.Ref.here 0), f398 [1] : String⟩ := f396
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f398), ")")
+        let x390 [1] : String := data_rec#0 f249
+          | branch 0 fun r374 => (closed)
+            case r374 of
+            | ctor#0(f375 [1] : ((data LeanScript.Ref.here 0) × String), f376 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f377 [0] : (data LeanScript.Ref.here 0), f378 [1] : String⟩ := f375
+              let ⟨f379 [0] : (data LeanScript.Ref.here 0), f380 [1] : String⟩ := f376
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f378), " "), f380), ")")
+            | ctor#1(f381 [1] : ((data LeanScript.Ref.here 0) × String), f382 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f383 [0] : (data LeanScript.Ref.here 0), f384 [1] : String⟩ := f381
+              let ⟨f385 [0] : (data LeanScript.Ref.here 0), f386 [1] : String⟩ := f382
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f384), " "), f386), ")")
+            | ctor#2(f387 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f388 [0] : (data LeanScript.Ref.here 0), f389 [1] : String⟩ := f387
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f389), ")")
             | ctor#3() =>
               ret "Zero"
-        let x416 [1] : String := data_rec#0 f256
-          | branch 0 fun r400 => (closed)
-            case r400 of
-            | ctor#0(f401 [1] : ((data LeanScript.Ref.here 0) × String), f402 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f403 [0] : (data LeanScript.Ref.here 0), f404 [1] : String⟩ := f401
-              let ⟨f405 [0] : (data LeanScript.Ref.here 0), f406 [1] : String⟩ := f402
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f404), " "), f406), ")")
-            | ctor#1(f407 [1] : ((data LeanScript.Ref.here 0) × String), f408 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f409 [0] : (data LeanScript.Ref.here 0), f410 [1] : String⟩ := f407
-              let ⟨f411 [0] : (data LeanScript.Ref.here 0), f412 [1] : String⟩ := f408
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f410), " "), f412), ")")
-            | ctor#2(f413 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f414 [0] : (data LeanScript.Ref.here 0), f415 [1] : String⟩ := f413
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f415), ")")
+        let x407 [1] : String := data_rec#0 f247
+          | branch 0 fun r391 => (closed)
+            case r391 of
+            | ctor#0(f392 [1] : ((data LeanScript.Ref.here 0) × String), f393 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f394 [0] : (data LeanScript.Ref.here 0), f395 [1] : String⟩ := f392
+              let ⟨f396 [0] : (data LeanScript.Ref.here 0), f397 [1] : String⟩ := f393
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f395), " "), f397), ")")
+            | ctor#1(f398 [1] : ((data LeanScript.Ref.here 0) × String), f399 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f400 [0] : (data LeanScript.Ref.here 0), f401 [1] : String⟩ := f398
+              let ⟨f402 [0] : (data LeanScript.Ref.here 0), f403 [1] : String⟩ := f399
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f401), " "), f403), ")")
+            | ctor#2(f404 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f405 [0] : (data LeanScript.Ref.here 0), f406 [1] : String⟩ := f404
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f406), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x382), " "), x399), " "), x416)
+        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("e5: ", x373), " "), x390), " "), x407)
       | ctor#3() =>
-        val k417 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0(f257, f258))
-        let x434 [1] : String := data_rec#0 k417
-          | branch 0 fun r418 => (closed)
-            case r418 of
-            | ctor#0(f419 [1] : ((data LeanScript.Ref.here 0) × String), f420 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f421 [0] : (data LeanScript.Ref.here 0), f422 [1] : String⟩ := f419
-              let ⟨f423 [0] : (data LeanScript.Ref.here 0), f424 [1] : String⟩ := f420
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f422), " "), f424), ")")
-            | ctor#1(f425 [1] : ((data LeanScript.Ref.here 0) × String), f426 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f427 [0] : (data LeanScript.Ref.here 0), f428 [1] : String⟩ := f425
-              let ⟨f429 [0] : (data LeanScript.Ref.here 0), f430 [1] : String⟩ := f426
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f428), " "), f430), ")")
-            | ctor#2(f431 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f432 [0] : (data LeanScript.Ref.here 0), f433 [1] : String⟩ := f431
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f433), ")")
+        let x424 [1] : String := data_rec#0 in#0(ctor#0(f248, f249))
+          | branch 0 fun r408 => (closed)
+            case r408 of
+            | ctor#0(f409 [1] : ((data LeanScript.Ref.here 0) × String), f410 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f411 [0] : (data LeanScript.Ref.here 0), f412 [1] : String⟩ := f409
+              let ⟨f413 [0] : (data LeanScript.Ref.here 0), f414 [1] : String⟩ := f410
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f412), " "), f414), ")")
+            | ctor#1(f415 [1] : ((data LeanScript.Ref.here 0) × String), f416 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f417 [0] : (data LeanScript.Ref.here 0), f418 [1] : String⟩ := f415
+              let ⟨f419 [0] : (data LeanScript.Ref.here 0), f420 [1] : String⟩ := f416
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f418), " "), f420), ")")
+            | ctor#2(f421 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f422 [0] : (data LeanScript.Ref.here 0), f423 [1] : String⟩ := f421
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f423), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e4: ", x434)
-    | ctor#1(f435 [0] : (data LeanScript.Ref.here 0), f436 [0] : (data LeanScript.Ref.here 0)) =>
-      case out#0(f256) of
-      | ctor#0(f437 [0] : (data LeanScript.Ref.here 0), f438 [0] : (data LeanScript.Ref.here 0)) =>
-        val k439 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x456 [1] : String := data_rec#0 k439
-          | branch 0 fun r440 => (closed)
-            case r440 of
-            | ctor#0(f441 [1] : ((data LeanScript.Ref.here 0) × String), f442 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f443 [0] : (data LeanScript.Ref.here 0), f444 [1] : String⟩ := f441
-              let ⟨f445 [0] : (data LeanScript.Ref.here 0), f446 [1] : String⟩ := f442
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f444), " "), f446), ")")
-            | ctor#1(f447 [1] : ((data LeanScript.Ref.here 0) × String), f448 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f449 [0] : (data LeanScript.Ref.here 0), f450 [1] : String⟩ := f447
-              let ⟨f451 [0] : (data LeanScript.Ref.here 0), f452 [1] : String⟩ := f448
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f450), " "), f452), ")")
-            | ctor#2(f453 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f454 [0] : (data LeanScript.Ref.here 0), f455 [1] : String⟩ := f453
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f455), ")")
+        ret lean_string_append__String_append("e4: ", x424)
+    | ctor#1(f425 [0] : (data LeanScript.Ref.here 0), f426 [0] : (data LeanScript.Ref.here 0)) =>
+      case out#0(f247) of
+      | ctor#0(f427 [0] : (data LeanScript.Ref.here 0), f428 [0] : (data LeanScript.Ref.here 0)) =>
+        let x445 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r429 => (closed)
+            case r429 of
+            | ctor#0(f430 [1] : ((data LeanScript.Ref.here 0) × String), f431 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f432 [0] : (data LeanScript.Ref.here 0), f433 [1] : String⟩ := f430
+              let ⟨f434 [0] : (data LeanScript.Ref.here 0), f435 [1] : String⟩ := f431
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f433), " "), f435), ")")
+            | ctor#1(f436 [1] : ((data LeanScript.Ref.here 0) × String), f437 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f438 [0] : (data LeanScript.Ref.here 0), f439 [1] : String⟩ := f436
+              let ⟨f440 [0] : (data LeanScript.Ref.here 0), f441 [1] : String⟩ := f437
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f439), " "), f441), ")")
+            | ctor#2(f442 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f443 [0] : (data LeanScript.Ref.here 0), f444 [1] : String⟩ := f442
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f444), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x456)
-      | ctor#1(f457 [0] : (data LeanScript.Ref.here 0), f458 [0] : (data LeanScript.Ref.here 0)) =>
-        val k459 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x476 [1] : String := data_rec#0 k459
-          | branch 0 fun r460 => (closed)
-            case r460 of
-            | ctor#0(f461 [1] : ((data LeanScript.Ref.here 0) × String), f462 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f463 [0] : (data LeanScript.Ref.here 0), f464 [1] : String⟩ := f461
-              let ⟨f465 [0] : (data LeanScript.Ref.here 0), f466 [1] : String⟩ := f462
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f464), " "), f466), ")")
-            | ctor#1(f467 [1] : ((data LeanScript.Ref.here 0) × String), f468 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+        ret lean_string_append__String_append("e7: ", x445)
+      | ctor#1(f446 [0] : (data LeanScript.Ref.here 0), f447 [0] : (data LeanScript.Ref.here 0)) =>
+        let x464 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r448 => (closed)
+            case r448 of
+            | ctor#0(f449 [1] : ((data LeanScript.Ref.here 0) × String), f450 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f451 [0] : (data LeanScript.Ref.here 0), f452 [1] : String⟩ := f449
+              let ⟨f453 [0] : (data LeanScript.Ref.here 0), f454 [1] : String⟩ := f450
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f452), " "), f454), ")")
+            | ctor#1(f455 [1] : ((data LeanScript.Ref.here 0) × String), f456 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f457 [0] : (data LeanScript.Ref.here 0), f458 [1] : String⟩ := f455
+              let ⟨f459 [0] : (data LeanScript.Ref.here 0), f460 [1] : String⟩ := f456
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f458), " "), f460), ")")
+            | ctor#2(f461 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f462 [0] : (data LeanScript.Ref.here 0), f463 [1] : String⟩ := f461
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f463), ")")
+            | ctor#3() =>
+              ret "Zero"
+        ret lean_string_append__String_append("e7: ", x464)
+      | ctor#2(f465 [0] : (data LeanScript.Ref.here 0)) =>
+        let x482 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r466 => (closed)
+            case r466 of
+            | ctor#0(f467 [1] : ((data LeanScript.Ref.here 0) × String), f468 [1] : ((data LeanScript.Ref.here 0) × String)) =>
               let ⟨f469 [0] : (data LeanScript.Ref.here 0), f470 [1] : String⟩ := f467
               let ⟨f471 [0] : (data LeanScript.Ref.here 0), f472 [1] : String⟩ := f468
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f470), " "), f472), ")")
-            | ctor#2(f473 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f474 [0] : (data LeanScript.Ref.here 0), f475 [1] : String⟩ := f473
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f475), ")")
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f470), " "), f472), ")")
+            | ctor#1(f473 [1] : ((data LeanScript.Ref.here 0) × String), f474 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f475 [0] : (data LeanScript.Ref.here 0), f476 [1] : String⟩ := f473
+              let ⟨f477 [0] : (data LeanScript.Ref.here 0), f478 [1] : String⟩ := f474
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f476), " "), f478), ")")
+            | ctor#2(f479 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f480 [0] : (data LeanScript.Ref.here 0), f481 [1] : String⟩ := f479
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f481), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x476)
-      | ctor#2(f477 [0] : (data LeanScript.Ref.here 0)) =>
-        val k478 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x495 [1] : String := data_rec#0 k478
-          | branch 0 fun r479 => (closed)
-            case r479 of
-            | ctor#0(f480 [1] : ((data LeanScript.Ref.here 0) × String), f481 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f482 [0] : (data LeanScript.Ref.here 0), f483 [1] : String⟩ := f480
-              let ⟨f484 [0] : (data LeanScript.Ref.here 0), f485 [1] : String⟩ := f481
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f483), " "), f485), ")")
-            | ctor#1(f486 [1] : ((data LeanScript.Ref.here 0) × String), f487 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f488 [0] : (data LeanScript.Ref.here 0), f489 [1] : String⟩ := f486
-              let ⟨f490 [0] : (data LeanScript.Ref.here 0), f491 [1] : String⟩ := f487
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f489), " "), f491), ")")
-            | ctor#2(f492 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f493 [0] : (data LeanScript.Ref.here 0), f494 [1] : String⟩ := f492
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f494), ")")
-            | ctor#3() =>
-              ret "Zero"
-        ret lean_string_append__String_append("e7: ", x495)
+        ret lean_string_append__String_append("e7: ", x482)
       | ctor#3() =>
-        let x512 [1] : String := data_rec#0 f255
-          | branch 0 fun r496 => (closed)
-            case r496 of
-            | ctor#0(f497 [1] : ((data LeanScript.Ref.here 0) × String), f498 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f499 [0] : (data LeanScript.Ref.here 0), f500 [1] : String⟩ := f497
-              let ⟨f501 [0] : (data LeanScript.Ref.here 0), f502 [1] : String⟩ := f498
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f500), " "), f502), ")")
-            | ctor#1(f503 [1] : ((data LeanScript.Ref.here 0) × String), f504 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f505 [0] : (data LeanScript.Ref.here 0), f506 [1] : String⟩ := f503
-              let ⟨f507 [0] : (data LeanScript.Ref.here 0), f508 [1] : String⟩ := f504
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f506), " "), f508), ")")
-            | ctor#2(f509 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f510 [0] : (data LeanScript.Ref.here 0), f511 [1] : String⟩ := f509
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f511), ")")
+        let x499 [1] : String := data_rec#0 f246
+          | branch 0 fun r483 => (closed)
+            case r483 of
+            | ctor#0(f484 [1] : ((data LeanScript.Ref.here 0) × String), f485 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f486 [0] : (data LeanScript.Ref.here 0), f487 [1] : String⟩ := f484
+              let ⟨f488 [0] : (data LeanScript.Ref.here 0), f489 [1] : String⟩ := f485
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f487), " "), f489), ")")
+            | ctor#1(f490 [1] : ((data LeanScript.Ref.here 0) × String), f491 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f492 [0] : (data LeanScript.Ref.here 0), f493 [1] : String⟩ := f490
+              let ⟨f494 [0] : (data LeanScript.Ref.here 0), f495 [1] : String⟩ := f491
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f493), " "), f495), ")")
+            | ctor#2(f496 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f497 [0] : (data LeanScript.Ref.here 0), f498 [1] : String⟩ := f496
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f498), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e4: ", x512)
-    | ctor#2(f513 [0] : (data LeanScript.Ref.here 0)) =>
-      case out#0(f256) of
-      | ctor#0(f514 [0] : (data LeanScript.Ref.here 0), f515 [0] : (data LeanScript.Ref.here 0)) =>
-        val k516 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x533 [1] : String := data_rec#0 k516
-          | branch 0 fun r517 => (closed)
-            case r517 of
-            | ctor#0(f518 [1] : ((data LeanScript.Ref.here 0) × String), f519 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f520 [0] : (data LeanScript.Ref.here 0), f521 [1] : String⟩ := f518
-              let ⟨f522 [0] : (data LeanScript.Ref.here 0), f523 [1] : String⟩ := f519
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f521), " "), f523), ")")
-            | ctor#1(f524 [1] : ((data LeanScript.Ref.here 0) × String), f525 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f526 [0] : (data LeanScript.Ref.here 0), f527 [1] : String⟩ := f524
-              let ⟨f528 [0] : (data LeanScript.Ref.here 0), f529 [1] : String⟩ := f525
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f527), " "), f529), ")")
-            | ctor#2(f530 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f531 [0] : (data LeanScript.Ref.here 0), f532 [1] : String⟩ := f530
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f532), ")")
+        ret lean_string_append__String_append("e4: ", x499)
+    | ctor#2(f500 [0] : (data LeanScript.Ref.here 0)) =>
+      case out#0(f247) of
+      | ctor#0(f501 [0] : (data LeanScript.Ref.here 0), f502 [0] : (data LeanScript.Ref.here 0)) =>
+        let x519 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r503 => (closed)
+            case r503 of
+            | ctor#0(f504 [1] : ((data LeanScript.Ref.here 0) × String), f505 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f506 [0] : (data LeanScript.Ref.here 0), f507 [1] : String⟩ := f504
+              let ⟨f508 [0] : (data LeanScript.Ref.here 0), f509 [1] : String⟩ := f505
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f507), " "), f509), ")")
+            | ctor#1(f510 [1] : ((data LeanScript.Ref.here 0) × String), f511 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f512 [0] : (data LeanScript.Ref.here 0), f513 [1] : String⟩ := f510
+              let ⟨f514 [0] : (data LeanScript.Ref.here 0), f515 [1] : String⟩ := f511
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f513), " "), f515), ")")
+            | ctor#2(f516 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f517 [0] : (data LeanScript.Ref.here 0), f518 [1] : String⟩ := f516
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f518), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x533)
-      | ctor#1(f534 [0] : (data LeanScript.Ref.here 0), f535 [0] : (data LeanScript.Ref.here 0)) =>
-        val k536 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x553 [1] : String := data_rec#0 k536
-          | branch 0 fun r537 => (closed)
-            case r537 of
-            | ctor#0(f538 [1] : ((data LeanScript.Ref.here 0) × String), f539 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f540 [0] : (data LeanScript.Ref.here 0), f541 [1] : String⟩ := f538
-              let ⟨f542 [0] : (data LeanScript.Ref.here 0), f543 [1] : String⟩ := f539
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f541), " "), f543), ")")
-            | ctor#1(f544 [1] : ((data LeanScript.Ref.here 0) × String), f545 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f546 [0] : (data LeanScript.Ref.here 0), f547 [1] : String⟩ := f544
-              let ⟨f548 [0] : (data LeanScript.Ref.here 0), f549 [1] : String⟩ := f545
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f547), " "), f549), ")")
-            | ctor#2(f550 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f551 [0] : (data LeanScript.Ref.here 0), f552 [1] : String⟩ := f550
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f552), ")")
+        ret lean_string_append__String_append("e7: ", x519)
+      | ctor#1(f520 [0] : (data LeanScript.Ref.here 0), f521 [0] : (data LeanScript.Ref.here 0)) =>
+        let x538 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r522 => (closed)
+            case r522 of
+            | ctor#0(f523 [1] : ((data LeanScript.Ref.here 0) × String), f524 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f525 [0] : (data LeanScript.Ref.here 0), f526 [1] : String⟩ := f523
+              let ⟨f527 [0] : (data LeanScript.Ref.here 0), f528 [1] : String⟩ := f524
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f526), " "), f528), ")")
+            | ctor#1(f529 [1] : ((data LeanScript.Ref.here 0) × String), f530 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f531 [0] : (data LeanScript.Ref.here 0), f532 [1] : String⟩ := f529
+              let ⟨f533 [0] : (data LeanScript.Ref.here 0), f534 [1] : String⟩ := f530
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f532), " "), f534), ")")
+            | ctor#2(f535 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f536 [0] : (data LeanScript.Ref.here 0), f537 [1] : String⟩ := f535
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f537), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x553)
-      | ctor#2(f554 [0] : (data LeanScript.Ref.here 0)) =>
-        val k555 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(f255, f256))
-        let x572 [1] : String := data_rec#0 k555
-          | branch 0 fun r556 => (closed)
-            case r556 of
-            | ctor#0(f557 [1] : ((data LeanScript.Ref.here 0) × String), f558 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f559 [0] : (data LeanScript.Ref.here 0), f560 [1] : String⟩ := f557
-              let ⟨f561 [0] : (data LeanScript.Ref.here 0), f562 [1] : String⟩ := f558
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f560), " "), f562), ")")
-            | ctor#1(f563 [1] : ((data LeanScript.Ref.here 0) × String), f564 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f565 [0] : (data LeanScript.Ref.here 0), f566 [1] : String⟩ := f563
-              let ⟨f567 [0] : (data LeanScript.Ref.here 0), f568 [1] : String⟩ := f564
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f566), " "), f568), ")")
-            | ctor#2(f569 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f570 [0] : (data LeanScript.Ref.here 0), f571 [1] : String⟩ := f569
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f571), ")")
+        ret lean_string_append__String_append("e7: ", x538)
+      | ctor#2(f539 [0] : (data LeanScript.Ref.here 0)) =>
+        let x556 [1] : String := data_rec#0 in#0(ctor#1(f246, f247))
+          | branch 0 fun r540 => (closed)
+            case r540 of
+            | ctor#0(f541 [1] : ((data LeanScript.Ref.here 0) × String), f542 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f543 [0] : (data LeanScript.Ref.here 0), f544 [1] : String⟩ := f541
+              let ⟨f545 [0] : (data LeanScript.Ref.here 0), f546 [1] : String⟩ := f542
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f544), " "), f546), ")")
+            | ctor#1(f547 [1] : ((data LeanScript.Ref.here 0) × String), f548 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f549 [0] : (data LeanScript.Ref.here 0), f550 [1] : String⟩ := f547
+              let ⟨f551 [0] : (data LeanScript.Ref.here 0), f552 [1] : String⟩ := f548
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f550), " "), f552), ")")
+            | ctor#2(f553 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f554 [0] : (data LeanScript.Ref.here 0), f555 [1] : String⟩ := f553
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f555), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e7: ", x572)
+        ret lean_string_append__String_append("e7: ", x556)
       | ctor#3() =>
-        let x589 [1] : String := data_rec#0 f255
-          | branch 0 fun r573 => (closed)
-            case r573 of
-            | ctor#0(f574 [1] : ((data LeanScript.Ref.here 0) × String), f575 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f576 [0] : (data LeanScript.Ref.here 0), f577 [1] : String⟩ := f574
-              let ⟨f578 [0] : (data LeanScript.Ref.here 0), f579 [1] : String⟩ := f575
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f577), " "), f579), ")")
-            | ctor#1(f580 [1] : ((data LeanScript.Ref.here 0) × String), f581 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f582 [0] : (data LeanScript.Ref.here 0), f583 [1] : String⟩ := f580
-              let ⟨f584 [0] : (data LeanScript.Ref.here 0), f585 [1] : String⟩ := f581
-              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f583), " "), f585), ")")
-            | ctor#2(f586 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-              let ⟨f587 [0] : (data LeanScript.Ref.here 0), f588 [1] : String⟩ := f586
-              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f588), ")")
+        let x573 [1] : String := data_rec#0 f246
+          | branch 0 fun r557 => (closed)
+            case r557 of
+            | ctor#0(f558 [1] : ((data LeanScript.Ref.here 0) × String), f559 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f560 [0] : (data LeanScript.Ref.here 0), f561 [1] : String⟩ := f558
+              let ⟨f562 [0] : (data LeanScript.Ref.here 0), f563 [1] : String⟩ := f559
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f561), " "), f563), ")")
+            | ctor#1(f564 [1] : ((data LeanScript.Ref.here 0) × String), f565 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f566 [0] : (data LeanScript.Ref.here 0), f567 [1] : String⟩ := f564
+              let ⟨f568 [0] : (data LeanScript.Ref.here 0), f569 [1] : String⟩ := f565
+              ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f567), " "), f569), ")")
+            | ctor#2(f570 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+              let ⟨f571 [0] : (data LeanScript.Ref.here 0), f572 [1] : String⟩ := f570
+              ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f572), ")")
             | ctor#3() =>
               ret "Zero"
-        ret lean_string_append__String_append("e4: ", x589)
+        ret lean_string_append__String_append("e4: ", x573)
     | ctor#3() =>
-      let x606 [1] : String := data_rec#0 f256
-        | branch 0 fun r590 => (closed)
-          case r590 of
-          | ctor#0(f591 [1] : ((data LeanScript.Ref.here 0) × String), f592 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f593 [0] : (data LeanScript.Ref.here 0), f594 [1] : String⟩ := f591
-            let ⟨f595 [0] : (data LeanScript.Ref.here 0), f596 [1] : String⟩ := f592
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f594), " "), f596), ")")
-          | ctor#1(f597 [1] : ((data LeanScript.Ref.here 0) × String), f598 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f599 [0] : (data LeanScript.Ref.here 0), f600 [1] : String⟩ := f597
-            let ⟨f601 [0] : (data LeanScript.Ref.here 0), f602 [1] : String⟩ := f598
-            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f600), " "), f602), ")")
-          | ctor#2(f603 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-            let ⟨f604 [0] : (data LeanScript.Ref.here 0), f605 [1] : String⟩ := f603
-            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f605), ")")
+      let x590 [1] : String := data_rec#0 f247
+        | branch 0 fun r574 => (closed)
+          case r574 of
+          | ctor#0(f575 [1] : ((data LeanScript.Ref.here 0) × String), f576 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f577 [0] : (data LeanScript.Ref.here 0), f578 [1] : String⟩ := f575
+            let ⟨f579 [0] : (data LeanScript.Ref.here 0), f580 [1] : String⟩ := f576
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f578), " "), f580), ")")
+          | ctor#1(f581 [1] : ((data LeanScript.Ref.here 0) × String), f582 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f583 [0] : (data LeanScript.Ref.here 0), f584 [1] : String⟩ := f581
+            let ⟨f585 [0] : (data LeanScript.Ref.here 0), f586 [1] : String⟩ := f582
+            ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f584), " "), f586), ")")
+          | ctor#2(f587 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+            let ⟨f588 [0] : (data LeanScript.Ref.here 0), f589 [1] : String⟩ := f587
+            ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f589), ")")
           | ctor#3() =>
             ret "Zero"
-      ret lean_string_append__String_append("e2: ", x606)
-  | ctor#2(f607 [0] : (data LeanScript.Ref.here 0)) =>
-    let x624 [1] : String := data_rec#0 x2
-      | branch 0 fun r608 => (closed)
-        case r608 of
-        | ctor#0(f609 [1] : ((data LeanScript.Ref.here 0) × String), f610 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f611 [0] : (data LeanScript.Ref.here 0), f612 [1] : String⟩ := f609
-          let ⟨f613 [0] : (data LeanScript.Ref.here 0), f614 [1] : String⟩ := f610
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f612), " "), f614), ")")
-        | ctor#1(f615 [1] : ((data LeanScript.Ref.here 0) × String), f616 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f617 [0] : (data LeanScript.Ref.here 0), f618 [1] : String⟩ := f615
-          let ⟨f619 [0] : (data LeanScript.Ref.here 0), f620 [1] : String⟩ := f616
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f618), " "), f620), ")")
-        | ctor#2(f621 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f622 [0] : (data LeanScript.Ref.here 0), f623 [1] : String⟩ := f621
-          ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f623), ")")
+      ret lean_string_append__String_append("e2: ", x590)
+  | ctor#2(f591 [0] : (data LeanScript.Ref.here 0)) =>
+    let x608 [1] : String := data_rec#0 x2
+      | branch 0 fun r592 => (closed)
+        case r592 of
+        | ctor#0(f593 [1] : ((data LeanScript.Ref.here 0) × String), f594 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f595 [0] : (data LeanScript.Ref.here 0), f596 [1] : String⟩ := f593
+          let ⟨f597 [0] : (data LeanScript.Ref.here 0), f598 [1] : String⟩ := f594
+          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f596), " "), f598), ")")
+        | ctor#1(f599 [1] : ((data LeanScript.Ref.here 0) × String), f600 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f601 [0] : (data LeanScript.Ref.here 0), f602 [1] : String⟩ := f599
+          let ⟨f603 [0] : (data LeanScript.Ref.here 0), f604 [1] : String⟩ := f600
+          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f602), " "), f604), ")")
+        | ctor#2(f605 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f606 [0] : (data LeanScript.Ref.here 0), f607 [1] : String⟩ := f605
+          ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f607), ")")
         | ctor#3() =>
           ret "Zero"
-    ret lean_string_append__String_append("e7: ", x624)
+    ret lean_string_append__String_append("e7: ", x608)
   | ctor#3() =>
-    let x641 [1] : String := data_rec#0 x2
-      | branch 0 fun r625 => (closed)
-        case r625 of
-        | ctor#0(f626 [1] : ((data LeanScript.Ref.here 0) × String), f627 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f628 [0] : (data LeanScript.Ref.here 0), f629 [1] : String⟩ := f626
-          let ⟨f630 [0] : (data LeanScript.Ref.here 0), f631 [1] : String⟩ := f627
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f629), " "), f631), ")")
-        | ctor#1(f632 [1] : ((data LeanScript.Ref.here 0) × String), f633 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f634 [0] : (data LeanScript.Ref.here 0), f635 [1] : String⟩ := f632
-          let ⟨f636 [0] : (data LeanScript.Ref.here 0), f637 [1] : String⟩ := f633
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f635), " "), f637), ")")
-        | ctor#2(f638 [1] : ((data LeanScript.Ref.here 0) × String)) =>
-          let ⟨f639 [0] : (data LeanScript.Ref.here 0), f640 [1] : String⟩ := f638
-          ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f640), ")")
+    let x625 [1] : String := data_rec#0 x2
+      | branch 0 fun r609 => (closed)
+        case r609 of
+        | ctor#0(f610 [1] : ((data LeanScript.Ref.here 0) × String), f611 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f612 [0] : (data LeanScript.Ref.here 0), f613 [1] : String⟩ := f610
+          let ⟨f614 [0] : (data LeanScript.Ref.here 0), f615 [1] : String⟩ := f611
+          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Add(", f613), " "), f615), ")")
+        | ctor#1(f616 [1] : ((data LeanScript.Ref.here 0) × String), f617 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f618 [0] : (data LeanScript.Ref.here 0), f619 [1] : String⟩ := f616
+          let ⟨f620 [0] : (data LeanScript.Ref.here 0), f621 [1] : String⟩ := f617
+          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("Mul(", f619), " "), f621), ")")
+        | ctor#2(f622 [1] : ((data LeanScript.Ref.here 0) × String)) =>
+          let ⟨f623 [0] : (data LeanScript.Ref.here 0), f624 [1] : String⟩ := f622
+          ret lean_string_append__String_append(lean_string_append__String_append("Succ(", f624), ")")
         | ctor#3() =>
           ret "Zero"
-    ret lean_string_append__String_append("e7: ", x641)
+    ret lean_string_append__String_append("e7: ", x625)
 ret k1

@@ -7,15 +7,13 @@ val k1 [1] : (String → (data LeanScript.Ref.here 0)) := fun x2 [ω] : String =
   val k3 [1] : ((Array (data LeanScript.Ref.here 0)) → (Array (data LeanScript.Ref.here 0))) := fun x4 [1] : (Array (data LeanScript.Ref.here 0)) => (open)
     val k5 [1] : ((Array (data LeanScript.Ref.here 0)) → (Array (data LeanScript.Ref.here 0))) := fun x6 [1] : (Array (data LeanScript.Ref.here 0)) => (open)
       let x7 [1] : String := share lean_string_append__String_append("Posts for ", x2)
-      val k8 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#1(x7))
-      ret lean_array_push(x6, k8)
-    let x9 [1] : (Array (data LeanScript.Ref.here 0)) := k5 #[]
-    val k10 [1] : (data LeanScript.Ref.here 0) := in#0(ctor#0("h1", x9))
-    let x11 [1] : (Array (data LeanScript.Ref.here 0)) := share lean_array_push(x4, k10)
-    val k12 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#1("The first post"))]
-    val k13 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#1("This is the first post.")), in#0(ctor#1("Not much else to say."))]
-    val k14 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#0("h2", k12)), in#0(ctor#0("p", k13))]
-    ret lean_array_push(x11, in#0(ctor#0("article", k14)))
-  let x15 [1] : (Array (data LeanScript.Ref.here 0)) := k3 #[]
-  ret in#0(ctor#0("section", x15))
+      ret lean_array_push(x6, in#0(ctor#1(x7)))
+    let x8 [1] : (Array (data LeanScript.Ref.here 0)) := k5 #[]
+    let x9 [1] : (Array (data LeanScript.Ref.here 0)) := share lean_array_push(x4, in#0(ctor#0("h1", x8)))
+    val k10 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#1("The first post"))]
+    val k11 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#1("This is the first post.")), in#0(ctor#1("Not much else to say."))]
+    val k12 [1] : (Array (data LeanScript.Ref.here 0)) := #[in#0(ctor#0("h2", k10)), in#0(ctor#0("p", k11))]
+    ret lean_array_push(x9, in#0(ctor#0("article", k12)))
+  let x13 [1] : (Array (data LeanScript.Ref.here 0)) := k3 #[]
+  ret in#0(ctor#0("section", x13))
 ret k1

@@ -42,6 +42,13 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test(-7n)", () => M.test(-7n), "", false);
+check("test(-1n)", () => M.test(-1n), "", false);
+check("test(0n)", () => M.test(0n), "", false);
+check("test(1n)", () => M.test(1n), "", false);
+check("test(2n)", () => M.test(2n), "", false);
+check("test(3n)", () => M.test(3n), "", false);
+check("test(12n)", () => M.test(12n), "", false);
 
 console.log(`KnownConstructors03-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

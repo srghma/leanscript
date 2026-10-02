@@ -40,8 +40,7 @@ export const sumAcc = (a, a1) => {
 export const factD = (a) => {
   let acc$1 = 1;
   for (let i$2 = 0; i$2 < a; i$2++) {
-    const a$3 = acc$1;
-    acc$1 = uint53__lean_nat_mul(uint53__lean_nat_add(i$2, 1), a$3);
+    acc$1 = uint53__lean_nat_mul(uint53__lean_nat_add(i$2, 1), acc$1);
   }
   return acc$1;
 };

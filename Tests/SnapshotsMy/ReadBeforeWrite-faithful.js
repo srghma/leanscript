@@ -76,21 +76,22 @@ export const test5 = (n) => {
   const x$1 = bigint_nat__lean_mk_array(4n, n);
   let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0n } };
   for (let i$3 = 0n; i$3 < 4n; i$3++) {
-    const a$4 = acc$2;
-    if (a$4.tag === 0) {
-      acc$2 = { tag: 0, _1: a$4._1 };
+    if (acc$2.tag === 0) {
+      const { _1: f$4 } = acc$2;
+      acc$2 = { tag: 0, _1: f$4 };
     } else {
-      const { _1: f$5 } = a$4._1;
-      const x$6 = bigint_nat__lean_array_get(0n, f$5, i$3);
+      const { _1: f$5 } = acc$2;
+      const { _1: f$6 } = f$5;
+      const x$7 = bigint_nat__lean_array_get(0n, f$6, i$3);
       acc$2 = {
         tag: 1,
         _1: {
-          _1: bigint_nat__lean_array_set_mutable(f$5, i$3, i$3 + 1n),
-          _2: a$4._1._2 + x$6,
+          _1: bigint_nat__lean_array_set_mutable(f$6, i$3, i$3 + 1n),
+          _2: f$5._2 + x$7,
         },
       };
     }
   }
-  const x$7 = acc$2._1;
-  return x$7._2;
+  const x$8 = acc$2._1;
+  return x$8._2;
 };

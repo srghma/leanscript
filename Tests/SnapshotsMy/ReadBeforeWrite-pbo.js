@@ -76,25 +76,26 @@ export const test5 = (n) => {
   const x$1 = uint53__lean_mk_array(4, n);
   let acc$2 = { tag: 1, _1: { _1: x$1, _2: 0 } };
   for (let i$3 = 0; i$3 < 4; i$3++) {
-    const a$4 = acc$2;
-    if (a$4.tag === 0) {
-      acc$2 = { tag: 0, _1: a$4._1 };
+    if (acc$2.tag === 0) {
+      const { _1: f$4 } = acc$2;
+      acc$2 = { tag: 0, _1: f$4 };
     } else {
-      const { _1: f$5 } = a$4._1;
-      const x$6 = uint53__lean_array_get(0, f$5, i$3);
+      const { _1: f$5 } = acc$2;
+      const { _1: f$6 } = f$5;
+      const x$7 = uint53__lean_array_get(0, f$6, i$3);
       acc$2 = {
         tag: 1,
         _1: {
           _1: uint53__lean_array_set_mutable(
-            f$5,
+            f$6,
             i$3,
             uint53__lean_nat_add(i$3, 1),
           ),
-          _2: uint53__lean_nat_add(a$4._1._2, x$6),
+          _2: uint53__lean_nat_add(f$5._2, x$7),
         },
       };
     }
   }
-  const x$7 = acc$2._1;
-  return x$7._2;
+  const x$8 = acc$2._1;
+  return x$8._2;
 };

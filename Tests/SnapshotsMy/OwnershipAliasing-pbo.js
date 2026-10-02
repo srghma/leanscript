@@ -167,8 +167,7 @@ export const BagSig$ks = [0];
 export const Bag$ofArray = (xs) => {
   let acc$1 = { tag: 1, _1: xs, _2: { tag: 0 } };
   for (const e$2 of xs) {
-    const a$3 = acc$1;
-    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: a$3 };
+    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: acc$1 };
   }
   return acc$1;
 };
@@ -229,8 +228,7 @@ export const Bag$twice = (a) => {
 export const bag1 = (xs) => {
   let acc$1 = { tag: 1, _1: xs, _2: { tag: 0 } };
   for (const e$2 of xs) {
-    const a$3 = acc$1;
-    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: a$3 };
+    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: acc$1 };
   }
   return array__lean_array_append_mutable(
     array__lean_array_append_mutable(Bag$collect(acc$1), Bag$collect(acc$1)),
@@ -246,8 +244,7 @@ export const bag1 = (xs) => {
 export const bag2 = (xs) => {
   let acc$1 = { tag: 1, _1: xs, _2: { tag: 0 } };
   for (const e$2 of xs) {
-    const a$3 = acc$1;
-    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: a$3 };
+    acc$1 = { tag: 1, _1: uint53__lean_mk_array(e$2, e$2), _2: acc$1 };
   }
   return array__lean_array_append_mutable(
     array__lean_array_append_mutable(Bag$firstItems(acc$1), Bag$collect(acc$1)),
@@ -264,8 +261,7 @@ export const bag3 = (xs) => {
   const x$1 = uint53__lean_array_extract(xs, 0, 4);
   let acc$2 = { tag: 1, _1: x$1, _2: { tag: 0 } };
   for (const e$3 of x$1) {
-    const a$4 = acc$2;
-    acc$2 = { tag: 1, _1: uint53__lean_mk_array(e$3, e$3), _2: a$4 };
+    acc$2 = { tag: 1, _1: uint53__lean_mk_array(e$3, e$3), _2: acc$2 };
   }
   return array__lean_array_append_mutable(Bag$twice(acc$2), Bag$collect(acc$2));
 };

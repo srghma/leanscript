@@ -8,6 +8,12 @@
 --   filterMapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   filterU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   overArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
---   dropPrefix1: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 --   test: LeanScript: the parameter `α` of `overArray` is a type
 
+-- dropPrefix1 : String → Option String
+val k1 [ω] : (String → (• | [String])) := fun x2 [ω] : String => (closed)
+  if lean_string_isprefixof("1", x2) then
+    ret ctor#1(lean_string_drop(x2, 1))
+  else
+    ret ctor#0()
+ret k1
