@@ -13,6 +13,7 @@ import TermTests.Optimize.FloatCommTest
 import TermTests.Optimize.MergeTestTest
 import TermTests.Optimize.SinkLetTest
 import TermTests.Optimize.FunctionComposeTest
+import TermTests.Optimize.FunctionCompose02Test
 import TermTests.ToTerm.PolymorphismTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
@@ -2228,6 +2229,91 @@ def functionCompose01Spec : Spec := describe "FunctionCompose01" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 31 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/FunctionCompose02.lean`: compositions of the parameters `f` and `g`
+    (unknown functions, so nothing to inline) become a chain of calls with no intermediate
+    closure (`Tests/TermTests/Optimize/FunctionCompose02Test.lean`):
+    `export const test2 = (f, g, a) => g(f(g(a)));`, as purescript-backend-optimizer's
+    `legacy-backend/FunctionCompose02.js` (`(f) => (g) => (x) => g(f(g(x)))`), uncurried.
+    `leanscript --check` makes no check of a function with function parameters, so this runs
+    the JavaScript with node on sample `f`, `g` and compares with Lean. -/
+def functionCompose02Spec : Spec := describe "FunctionCompose02" do
+  let f : Int → Int := fun x => 2 * x + 1
+  let g : Int → Int := fun x => x - 3
+  let xs : List Int := [-7, 0, 1, 42]
+  it "the optimised statements, and their values (the Lean functions')" do
+    -- (name, the Lean function, the calls (innermost first: `f`?), and of the optimised
+    -- translation: the printed statements, the number of calls, the function it computes)
+    let ts : List (String × (FunctionCompose02Test.F → FunctionCompose02Test.F →
+        FunctionCompose02Test.F) × List Bool × String × Nat ×
+        (FunctionCompose02Test.F → FunctionCompose02Test.F → FunctionCompose02Test.F)) :=
+      [("test1", FunctionCompose02Test.test1, [false, true],
+          ((FunctionCompose02Test.test1T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionCompose02Test.test1T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionCompose02Test.test1T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test2", FunctionCompose02Test.test2, [false, true, false],
+          ((FunctionCompose02Test.test2T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionCompose02Test.test2T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionCompose02Test.test2T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test3", FunctionCompose02Test.test3, [false, true, false, true],
+          ((FunctionCompose02Test.test3T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionCompose02Test.test3T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionCompose02Test.test3T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test4", FunctionCompose02Test.test4, [false, true, false, true, false],
+          ((FunctionCompose02Test.test4T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionCompose02Test.test4T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionCompose02Test.test4T (Δ := DSig.nil)).optimizeN 3).run)]
+    for (name, fn, calls, printed, numCalls, run) in ts do
+      assertEq s!"{name}: printed" (FunctionCompose02Test.chainPrinted calls) printed
+      assertEq s!"{name}: one call per composed function" calls.length numCalls
+      for x in xs do
+        assertEq s!"{name} {x}" (fn f g x) (run f g x)
+        assertEq s!"{name} {x} (swapped)" (fn g f x) (run g f x)
+  it "the JavaScript, run with node (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/functionCompose02"
+    IO.FS.createDirAll dir
+    let file := "FunctionCompose02"
+    let args := #["--quiet", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    let tests : List (String × (FunctionCompose02Test.F → FunctionCompose02Test.F →
+        FunctionCompose02Test.F)) :=
+      [("test1", FunctionCompose02Test.test1), ("test2", FunctionCompose02Test.test2),
+       ("test3", FunctionCompose02Test.test3), ("test4", FunctionCompose02Test.test4)]
+    -- (preset, the suffix of an integer literal)
+    for (preset, n) in [("pbo", ""), ("faithful", "n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for l in ["export const test1 = (f, g, a) => f(g(a));",
+          "export const test2 = (f, g, a) => g(f(g(a)));",
+          "export const test3 = (f, g, a) => f(g(f(g(a))));",
+          "export const test4 = (f, g, a) => g(f(g(f(g(a)))));"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      -- a module that prints `testN(f, g, x)` and `testN(g, f, x)` for every sample
+      let lit (x : Int) : String := s!"{x}{n}"
+      let mut prog := s!"import * as M from \"./{file}-{preset}.js\";\n" ++
+        s!"const f = (x) => {lit 2} * x + {lit 1};\nconst g = (x) => x - {lit 3};\n" ++
+        "const out = [];\n"
+      let mut expected : List String := []
+      for (name, fn) in tests do
+        for x in xs do
+          prog := prog ++ s!"out.push(String(M.{name}(f, g, {lit x})));\n" ++
+            s!"out.push(String(M.{name}(g, f, {lit x})));\n"
+          expected := expected ++ [toString (fn f g x), toString (fn g f x)]
+      prog := prog ++ "console.log(out.join(\"\\n\"));\n"
+      let runner := s!"{dir}/{file}-{preset}.run.mjs"
+      IO.FS.writeFile runner prog
+      let run ← IO.Process.output { cmd := "node", args := #[runner] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
+      assertEq s!"{file}-{preset}: the values" ("\n".intercalate expected)
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2255,6 +2341,7 @@ def spec : Spec := do
   etaReduceRegressionSpec
   floatLetRegressionSpec
   functionCompose01Spec
+  functionCompose02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
