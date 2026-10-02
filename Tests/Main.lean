@@ -12,6 +12,7 @@ import TermTests.Optimize.CseTest
 import TermTests.Optimize.FloatCommTest
 import TermTests.Optimize.MergeTestTest
 import TermTests.Optimize.SinkLetTest
+import TermTests.Optimize.FunctionComposeTest
 import TermTests.ToTerm.PolymorphismTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
@@ -2170,6 +2171,63 @@ def floatLetRegressionSpec : Spec := describe "FloatLetRegression01" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 2 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/FunctionCompose01.lean`: the compositions of `f` and `g` (closed
+    functions that return a literal) are inlined by the `Term` optimiser
+    (`Tests/TermTests/Optimize/FunctionComposeTest.lean`), so each `testN` is a function that
+    returns the literal, with no call: `export const test1 = (a) => "a";`, as
+    purescript-backend-optimizer's `legacy-backend/FunctionCompose01.js`. -/
+def functionCompose01Spec : Spec := describe "FunctionCompose01" do
+  it "the optimised statements, and their values (the Lean functions')" do
+    -- (name, literal, the Lean function, and of the optimised translation: the printed
+    -- statements, the number of calls, the function it computes)
+    let ts : List (String × String × (String → String) × String × Nat × (String → String)) :=
+      [("test1", "a", FunctionComposeTest.test1,
+          ((FunctionComposeTest.test1T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionComposeTest.test1T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionComposeTest.test1T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test2", "b", FunctionComposeTest.test2,
+          ((FunctionComposeTest.test2T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionComposeTest.test2T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionComposeTest.test2T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test3", "a", FunctionComposeTest.test3,
+          ((FunctionComposeTest.test3T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionComposeTest.test3T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionComposeTest.test3T (Δ := DSig.nil)).optimizeN 3).run),
+       ("test4", "b", FunctionComposeTest.test4,
+          ((FunctionComposeTest.test4T (Δ := DSig.nil)).optimizeN 3).pretty,
+          ((FunctionComposeTest.test4T (Δ := DSig.nil)).optimizeN 3).numCalls,
+          ((FunctionComposeTest.test4T (Δ := DSig.nil)).optimizeN 3).run)]
+    for (name, lit, fn, printed, calls, run) in ts do
+      assertEq s!"{name}: printed" (FunctionComposeTest.constPrinted lit) printed
+      assertEq s!"{name}: no call left" 0 calls
+      for s in ["", "a", "héllo"] do
+        assertEq s!"{name} {s}" (fn s) (run s)
+  it "the JavaScript and its checks (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/functionCompose01"
+    IO.FS.createDirAll dir
+    let file := "FunctionCompose01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for l in ["export const f = (x) => \"a\";", "export const g = (x) => \"b\";",
+          "export const test1 = (a) => \"a\";", "export const test2 = (a) => \"b\";",
+          "export const test3 = (a) => \"a\";", "export const test4 = (a) => \"b\";"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 31 passed, 0 failed"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2196,6 +2254,7 @@ def spec : Spec := do
   esSharedElseSpec
   etaReduceRegressionSpec
   floatLetRegressionSpec
+  functionCompose01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

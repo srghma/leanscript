@@ -1,3 +1,29 @@
+# Summary of changes for run 75db1f90-3818-41ae-9be8-acabdcdbe08b
+The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose01.lean` was already as good as the legacy `legacy-backend/FunctionCompose01.js`, so I didn't change the compiler. I added proofs and a regression test so it stays that way.
+
+**What the output files show.** I rebuilt `leanscript` and ran it on the file. All six outputs are byte-identical to the committed ones, and node's checks pass 31/31 on both presets.
+- `-Term-unoptimized.txt`: `test4` declares five closures and calls them in a chain. `test1`–`test3` do the same with 2, 3 and 4.
+- `-Term-optimized.txt`: every `testN` is a closure that returns its literal (`ret "a"` or `ret "b"`). The `Term` optimiser has already inlined the calls and removed the closures.
+- The JavaScript therefore matches legacy line for line:
+```js
+export const test1 = (a) => "a";   // legacy: const test1 = (_ignored) => "a";
+export const test4 = (a) => "b";   // legacy: const test4 = (_ignored) => "b";
+```
+All the simplification already happens in the `Term -[optimize]-> Term` phase, so nothing was left for the later phases. There are no loops or recursion in this file, so labeled blocks and loops didn't come into it.
+
+**Proofs.** These are in the new `Tests/TermTests/Optimize/FunctionComposeTest.lean`, stated on copies of the snapshot's definitions, with no `sorry`:
+- `test1_optimized_run` … `test4_optimized_run`: the optimised translation computes the Lean function on every input. These use only `propext`, `Classical.choice` and `Quot.sound`.
+- `test1_numCalls` … `test4_numCalls`: the translations make 2, 3, 4 and 5 calls. These are checked by the kernel with `rfl`.
+- `…_optimized_numCalls`: no calls are left after optimisation.
+- `…_optimized_pretty`: the printed optimised statements match `-Term-optimized.txt`.
+- The last two groups use `native_decide`, as the existing snapshot tests do, because a kernel `rfl` ran out of heartbeats.
+
+**Tests.** A new `functionCompose01Spec` in `Tests/Main.lean` does two things:
+- It runs the compiled optimised translations and compares them with Lean.
+- On both presets it runs `leanscript --check` and node, and checks the six exact `export const …` lines, that there's no runtime import, and that 31/31 checks pass.
+
+`lake build tests` succeeds, and the test executable passes 116/116. The two new results are in the Properties table, and everything is committed.
+
 # Summary of changes for run 794bc8c7-faff-473e-9934-026dcfbec113
 The `Term`-level changes for `FloatLetRegression01` are now formalised in Lean, with no `sorry`. The JavaScript step, and the claim that the JavaScript matches the legacy output, are still only checked by tests, because the JavaScript conversion and printer are `partial def`s and Lean can't prove anything about those.
 
