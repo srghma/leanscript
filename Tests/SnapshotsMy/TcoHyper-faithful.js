@@ -93,8 +93,7 @@ export const hyperTCO = (a, a1, a2) => {
       return k$10(x$5, k$22(a1));
     };
   }
-  const x$23 = acc$2;
-  return x$23(a2);
+  return acc$2(a2);
 };
 
 /**
@@ -141,6 +140,5 @@ export const hyperWhile = (a, a1, a2) => {
       return acc$19._1;
     };
   }
-  const x$22 = acc$2;
-  return x$22(a2);
+  return acc$2(a2);
 };

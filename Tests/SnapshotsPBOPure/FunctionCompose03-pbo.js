@@ -8,11 +8,7 @@
  * @param {int53(number)} a
  * @returns {int53(number)}
  */
-export const test1 = (f, g, a) => {
-  const x$1 = f();
-  const x$2 = g();
-  return x$1(x$2(a));
-};
+export const test1 = (f, g, a) => f()(g()(a));
 
 /**
  * `test2`
@@ -23,8 +19,7 @@ export const test1 = (f, g, a) => {
  */
 export const test2 = (f, g, a) => {
   const x$1 = g();
-  const x$2 = f();
-  return x$1(x$2(x$1(a)));
+  return x$1(f()(x$1(a)));
 };
 
 /**

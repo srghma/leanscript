@@ -1,3 +1,41 @@
+# Summary of changes for run f2675ed5-5421-4ee7-b66e-3b998422fefe
+The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose03.lean` now matches `legacy-backend/FunctionCompose03.js` and is a bit shorter: `test1` is a single expression, and `test2` keeps one constant instead of two. All of this is committed.
+
+**What the output files showed.** Before this change:
+- `-Term-unoptimized.txt` forces the thunks again at every use. `test4` forces `x4 ()`/`x2 ()` five times.
+- `-Term-optimized.txt`: the `Term` optimiser's common-subexpression elimination already shared these, so each thunk was forced once per call. That is the behaviour the comment in the file asks for.
+- So the JavaScript was already correct. The only gap was cosmetic: the printer wouldn't put a constant used once in the function position of a call. For example, it printed `const x$1 = f(); const x$2 = g(); return x$1(x$2(a));`.
+
+**The fix.** This step is about writing a value directly where it is used inside an expression. The `Term` is in A-normal form, where every intermediate result gets its own named binding, so the `Term` phase can't do it. The existing mechanism for it is in the JavaScript printer, so I extended that rather than adding a new pass. The changes are in `JsTerm/Syntax/Vars/Occs.lean`:
+- **Function position:** a constant used once can now be written as the function being called. JavaScript evaluates the function before its arguments, so `f()(g()(a))` still calls `f`, then `g`, in the original order.
+- **Chains of such constants:** the order check now accepts a chain where each constant is written inside the next. Previously it refused to inline `x$1` in `test1`.
+
+Result (same on both presets, apart from number types):
+```js
+export const test1 = (f, g, a) => f()(g()(a));
+export const test2 = (f, g, a) => { const x$1 = g(); return x$1(f()(x$1(a))); };
+// test3/test4: two shared constants, as legacy
+```
+Legacy returns a closure from `(f, g)`; ours takes all three arguments at once, so a full call creates no closure. The trade-off: if Lean code partially applies `testN f g` and reuses the result, our version forces the thunks on every call, while legacy forces them once. There are no loops or recursion in this file, so labeled blocks and loops didn't come into it.
+
+**Other snapshots.** I regenerated all 182 snapshot files. Only three others changed, all in the same harmless way:
+- `LoopState` now prints `k$10()(x$7)`.
+- `TcoHyper` now prints `return acc$2(a2)`.
+- `UnpackArray01` now writes `uint53__lean_array_get(…)` directly as an argument of `fn1`.
+
+Every node differential check passed. The script still exits non-zero, but only because of the same "literal too big" refusals on the `pbo` preset for the `PrimOpInt*Configurable` files as before; those outputs didn't change.
+
+**Proofs** (new file `Tests/TermTests/Optimize/FunctionCompose03Test.lean`, stated on copies of the snapshot's definitions, no `sorry`):
+- `test1_optimized_run` … `test4_optimized_run`: the optimised translation computes the Lean function for every `f`, `g`, `x`. These use only the standard axioms.
+- Call counts before optimisation (4, 6, 8, 10) are checked by the kernel with `rfl`.
+- Call counts after optimisation (4, 5, 6, 7) use `native_decide`, as the existing snapshot tests do. They show each thunk is forced once.
+
+**Tests.** A new `functionCompose03Spec` in `Tests/Main.lean` does two things:
+- It checks the compiled translations against Lean.
+- On both presets it checks the exact `export const …` text, then runs the JavaScript under node with thunks that count how often they are forced. It checks both the values and that each thunk is forced exactly once per call.
+
+`lake build leanscript tests TermTests` succeeds, and `lake exe tests` passes 120/120. Both proofs are in the Properties table, marked proved.
+
 # Summary of changes for run 762ace71-d69b-4930-afd2-2bd5a4bda392
 The JavaScript for `Tests/SnapshotsPBOPure/FunctionCompose02.lean` already matches purescript-backend-optimizer's `legacy-backend/FunctionCompose02.js`, and is slightly better. An earlier run on this project reached the same conclusion. I checked it again against a fresh build and didn't change the compiler or any files, so there was nothing new to commit.
 

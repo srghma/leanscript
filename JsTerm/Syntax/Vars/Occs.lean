@@ -268,8 +268,10 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x bars
   | .enumEq a b => JsExpr.readFirst2 strict x bars a b
   | .index _ _ a i => JsExpr.readFirst2 strict x bars a i
+  -- JavaScript computes the function called before its arguments (`f()(g()(a))` calls `f`,
+  -- then `g`): a constant read first by the function called can be computed there
   | .app f as =>
-    if f.mentions ⟨false, x⟩ then false
+    if f.mentions ⟨false, x⟩ then f.readFirst strict x bars
     else f.waits strict bars && as.readFirst strict x bars
   | .imported _ as | .listOp _ as => as.readFirst strict x bars
   -- an inlined operation may write its arguments in another order: the others must all wait
@@ -324,8 +326,10 @@ partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (re
   | .const _ a r =>
     if a.mentions ⟨false, x⟩ then
       -- read by a constant that is itself moved to its use: it might then be read after a
-      -- constant of `bars`
-      if !bars.isEmpty && constInline a r fuel then false
+      -- constant of `bars`, unless `a` reads all of them (each is read once, so only there,
+      -- after `x`, which `a` reads first: `const x = f(); const y = g(); const z = x(y(a));`)
+      if !bars.isEmpty && constInline a r fuel &&
+          !bars.all (fun b => a.mentions ⟨false, b⟩) then false
       else a.readFirst strict x bars
     else if !strict && a.waits strict bars then
       r.useFirst strict reads (x + 1) (bars.map (· + 1)) fuel
@@ -333,8 +337,10 @@ partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (re
       | 0 => false
       | fuel + 1 =>
         -- a constant that can be computed anywhere (`movable`: a literal, a variable) is no
-        -- obstacle wherever it ends up, so it is not one of `bars`
-        let bars' := if a.movable then bars.map (· + 1) else 0 :: bars.map (· + 1)
+        -- obstacle wherever it ends up, so it is not one of `bars`; a constant of `bars` that
+        -- `a` reads is read (once) inside `a`, so it is after `x` once `a` is
+        let bars' := if a.movable then bars.map (· + 1)
+          else 0 :: (bars.filter (fun b => !a.mentions ⟨false, b⟩)).map (· + 1)
         constInline a r fuel && r.useFirst strict reads (x + 1) bars' fuel
   | .assign y a r =>
     if a.mentions ⟨false, x⟩ then a.readFirst strict x bars

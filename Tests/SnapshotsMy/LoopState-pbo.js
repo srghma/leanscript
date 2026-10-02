@@ -74,29 +74,25 @@ export const minMaxSum = (n) => {
         uint53__lean_nat_mul(i$2, 7),
         11,
       );
-      const k$13 = () => (x$8) => {
+      const k$11 = () => (x$8) => {
         const k$10 = () => (x$9) => ({
           tag: 1,
           _1: { _1: x$8, _2: { _1: x$9, _2: uint53__lean_nat_add(f$6, x$7) } },
         });
         if (f$5 < x$7) {
-          const x$11 = k$10();
-          return x$11(x$7);
+          return k$10()(x$7);
         }
-        const x$12 = k$10();
-        return x$12(f$5);
+        return k$10()(f$5);
       };
       if (x$7 < f$4) {
-        const x$14 = k$13();
-        acc$1 = x$14(x$7);
+        acc$1 = k$11()(x$7);
       } else {
-        const x$15 = k$13();
-        acc$1 = x$15(f$4);
+        acc$1 = k$11()(f$4);
       }
     }
   }
-  const x$16 = acc$1._1;
-  return { _1: x$16._1, _2: { _1: x$16._2._1, _2: x$16._2._2 } };
+  const x$12 = acc$1._1;
+  return { _1: x$12._1, _2: { _1: x$12._2._1, _2: x$12._2._2 } };
 };
 
 /**
