@@ -42,6 +42,10 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1", () => ((v) => "{" + [show(v._1), ((v) => "{" + [show(v._1), floatBits(v._2)].join(", ") + "}")(v._2), show(v._3)].join(", ") + "}")(M.test1), "{13, {bar, 4631107791820423168}, false}", false);
+check("test2({ _1: -7n, _2: 0.5, _3: false })", () => ((v) => "{" + [show(v._1), ((v) => "{" + [show(v._1), floatBits(v._2)].join(", ") + "}")(v._2), show(v._3)].join(", ") + "}")(M.test2({ _1: -7n, _2: 0.5, _3: false })), "{-6, {bar, 4602678819172646912}, true}", false);
+check("test2({ _1: -1n, _2: 1, _3: true })", () => ((v) => "{" + [show(v._1), ((v) => "{" + [show(v._1), floatBits(v._2)].join(", ") + "}")(v._2), show(v._3)].join(", ") + "}")(M.test2({ _1: -1n, _2: 1, _3: true })), "{0, {bar, 4607182418800017408}, false}", false);
+check("test2({ _1: 0n, _2: 2, _3: false })", () => ((v) => "{" + [show(v._1), ((v) => "{" + [show(v._1), floatBits(v._2)].join(", ") + "}")(v._2), show(v._3)].join(", ") + "}")(M.test2({ _1: 0n, _2: 2, _3: false })), "{1, {bar, 4611686018427387904}, true}", false);
 
 console.log(`Heterogeneous01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -1,3 +1,19 @@
+# Summary of changes for run 6defa27c-394c-4442-9081-1bc91e21c7c1
+The JavaScript we generate for `Tests/SnapshotsPBOPure/Heterogeneous01.lean` was already on par with `legacy-backend/Heterogeneous01.js`, so I didn't change the compiler's output. What was missing was testing: the file's check modules contained no checks, so the output had never been compared against Lean. I fixed that and added a regression test; all checks and tests pass.
+
+**Output compared with the legacy backend.** Both translate `test1` to a constant record and `test2` to one record literal. Neither keeps the `Fns` record of closures, a `zipRecord` call or an intermediate `Args`. The `Term -[optimize]-> Term` phase already does all of this. The optimised `Term` for `test2` is one function: it destructures `args` once, does the add and the `!`, and builds one constructor. The later phases only print it, so there was nothing to add to the convert phase or the `JsTerm` optimiser. The file has no control flow, so labeled blocks and loops don't come into it. Three differences remain, all deliberate:
+- **Integer addition:** the legacy `(1 + r1.a) | 0` wraps around at 32 bits, which is wrong for Lean's unbounded `Int`. Ours gives the exact result: on the `pbo` preset it throws once the result no longer fits in 53 bits, and on `faithful` it uses `bigint`.
+- **Field names:** ours are `_1`, `_2`, … instead of `a`, `fst`, …, which is the naming used for every generated record in this project.
+- **Parameter name:** ours keeps the Lean name `args` instead of `r1`.
+
+**The fix: check generation (`LeanScriptCli/Check.lean`).** Checks weren't generated because the generator refused records containing a `Float`, and both `R1` (through `String × Float`) and `Args` have one. The reason for the refusal: Lean prints a float as `42.000000` while JavaScript prints `42`. Floats are now allowed as record fields, including in nested records. When a result holds a float inside a record, the check prints it by its bits, as Lean's side already did. Each preset now has 4 checks (`test1` and three calls of `test2`), and all pass under node.
+
+**Testing.**
+- I regenerated all snapshots with `scripts/leanscript-snapshots.sh`. Only the two `Heterogeneous01-*.check.mjs` files changed, and no node check failed. The script still exits non-zero for the same reasons as before: the "literal too big" refusals on the `pbo` preset, and Lean panic messages printed while computing expected values.
+- I added `heterogeneous01Spec` to `Tests/Main.lean`. On both presets it pins the shape of `test1` and `test2`, checks there's no closure record or `zipRecord`, expects exactly 4 checks, and runs them under node. `lake build leanscript tests` succeeds and `lake exe tests` passes 122/122.
+
+The full comparison is in `Tests/SnapshotsPBOPure/Heterogeneous01.md`. No theorems were involved, so nothing was added to the Properties table. Everything is committed.
+
 # Summary of changes for run b13fba58-0869-4f88-9a27-d06188bdcb25
 `test` in `Tests/SnapshotsPBOPure/Fusion02.lean` now compiles to one plain `for … of` loop that pushes onto the result array. Before this change it wasn't translated at all, and the output is now ahead of `legacy-backend/Fusion02.js`. The new code is in `Term -[convert]-> JsTerm` (`LeanScript/TermElab/ToTerm/StreamFusion.lean`). Node checks pass 8/8 on both presets, `lake exe tests` passes 121/121, and all work is committed. The rewrite is not proved correct; only the node checks and tests back it.
 

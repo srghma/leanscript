@@ -14,8 +14,8 @@ Only functions whose parameters and result are all of a *sample type* are checke
 `Int`, `Bool`, `String`, `Char`, `Float`, the fixed-width integers (`UInt8` … `UInt64`,
 `Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
 `String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
-printed as its array, `#[…]`), structures of such fields (a structure of one field is unboxed:
-its sample is its field's), and some unions; a parameter can also be a function of one
+printed as its array, `#[…]`), structures of such fields, a `Float` or another structure among them (a structure of one field
+is unboxed: its sample is its field's), and some unions; a parameter can also be a function of one
 argument (`Int → String`, `Nat → Nat`, …: `SType.fn`), passed a few fixed functions spelled in
 both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
 of the checked function are one call `()` of the delay it answers (`test1(() => true)()`).
@@ -37,7 +37,7 @@ inductive SType where
   | arr (t : SType)
   | list (t : SType)
   /-- A value of a structure-like type (one constructor, no index, not recursive) of two or
-      more fields, all of sample types other than `Float` (`Int × Int`, a `Box2 Int`): a
+      more fields, all of sample types (`Int × Int`, a `Box2 Int`, `String × Float`): a
       JavaScript record `{ _1: …, _2: … }`.  `ind` is the type, `ctor` its constructor applied
       to the parameters. -/
   | record (ind : Name) (ctor : Expr) (fields : List SType)
@@ -144,7 +144,9 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       -- JavaScript value: no sample
       if t.hasAnyFVar (fun _ => true) then return none
       match ← stypeOf? t with
-      | some .float | some (.fn ..) | some .unit | none => return none
+      | some (.fn ..) | some .unit | none => return none
+      -- a `Float` field is a JavaScript number in the record (shown by its bits: `jsShowOf`)
+      | some .float => if xs.size == 1 then return none else out := out.push .float
       | some ft => out := out.push ft
     return some out.toList
   match fields? with
@@ -453,6 +455,32 @@ def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
   let rest := args.drop arity
   s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
 
+/-- Whether a value of the sample type `t` holds a `Float` inside a record (`{a, 2.5}`): the
+    generic `show` of the check module would print the number as JavaScript does (`2.5`), not
+    as its bits (what `showExpr` prints in Lean), so such a value is shown by `jsShowOf`. -/
+partial def floatInRecord : SType → Bool
+  | .record _ _ fs => fs.any fun f => f == .float || floatInRecord f
+  | .wrap _ _ t => floatInRecord t
+  | _ => false
+
+/-- A JavaScript function printing a value of the sample type `t` as `showExpr` prints it in
+    Lean, guided by the type: a `Float` by its bits (`floatBits`), a record field by field,
+    anything else by the generic `show`. -/
+partial def jsShowOf : SType → String
+  | .float => "floatBits"
+  | .record _ _ fs =>
+    let call (f : String) (a : String) : String :=
+      if f.startsWith "(" then s!"({f})({a})" else s!"{f}({a})"
+    let parts := fs.zipIdx.map fun (f, i) => call (jsShowOf f) s!"v._{i + 1}"
+    "(v) => \"{\" + [" ++ ", ".intercalate parts ++ "].join(\", \") + \"}\""
+  | .wrap _ _ t => jsShowOf t
+  | _ => "show"
+
+/-- The JavaScript expression of the value of the call `e` (of result type `t`) that `check`
+    compares: `e` itself, or, when `t` holds a `Float` in a record, its print (`jsShowOf`). -/
+def jsShown (t : SType) (e : String) : String :=
+  if floatInRecord t then s!"({jsShowOf t})({e})" else e
+
 /-- The Lean expression printing the value `e` of the sample type `t` as the check module
     prints the JavaScript value (`show`): `toString`, of the bits of a `Float`, of the array
     of a `List`, and `{a, b}` for a record. -/
@@ -553,12 +581,15 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
         | none => false
       if num64 && tooBig then continue
       let js := args.map (·.js)
-      out := out.push { call := jsCall jsName arity js, expected := e, isFloat := res == .float }
+      let typed (call : String) : Option String :=
+        if floatInRecord res then some (jsShown res s!"M.{call}") else none
+      out := out.push { call := jsCall jsName arity js, expected := e, isFloat := res == .float,
+                        expr := typed (jsCall jsName arity js) }
       -- the versions owning some parameters (`LeanScript.Term.Ownership`): the same answer on
       -- arguments nobody else holds (each call builds its own)
       for sfx in versions do
         out := out.push { call := jsCall (jsName ++ sfx) arity js, expected := e,
-                          isFloat := res == .float }
+                          isFloat := res == .float, expr := typed (jsCall (jsName ++ sfx) arity js) }
       -- the version borrowing its parameters leaves them alone: called twice on the same
       -- arguments, it answers the same
       let js := js.take nArgs
@@ -567,8 +598,8 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
         let call := jsCall jsName arity xs
         out := out.push { call := s!"{jsCall jsName arity js} twice", expected := e,
                           isFloat := res == .float,
-                          expr := some s!"(({", ".intercalate xs}) => (M.{call}, M.{call}))\
-                            ({", ".intercalate js})" }
+                          expr := some (jsShown res s!"(({", ".intercalate xs}) => (M.{call}, M.{call}))\
+                            ({", ".intercalate js})") }
     | none => break
   return some out.toList
 

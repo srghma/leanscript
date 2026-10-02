@@ -2433,6 +2433,34 @@ def fusion02Spec : Spec := describe "Fusion02" do
       let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
       assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+def heterogeneous01Spec : Spec := describe "Heterogeneous01" do
+  it "`test1` is a constant record, `test2` one record literal, and the checks run (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/heterogeneous01"
+    IO.FS.createDirAll dir
+    let file := "Heterogeneous01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, one) in [("pbo", "int53__lean_int_add(args._1, 1)"), ("faithful", "args._1 + 1n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: `test1` is folded to a constant" true
+        ((js.splitOn "export const test1 = { _1: 13").length > 1)
+      assertEq s!"{file}-{preset}: `test2` builds its record directly" true
+        ((js.splitOn s!"export const test2 = (args) => (\{\n  _1: {one},\n  _2: \{ _1: \"bar\", _2: args._2 },\n  _3: !args._3,\n});").length > 1)
+      assertEq s!"{file}-{preset}: no closure record, no `zipRecord`" 1
+        ((js.splitOn "zipRecord").length + (js.splitOn "=> (x").length - 1)
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      assertEq s!"{file}-{preset}: 4 checks" 5 (checks.splitOn "\ncheck(").length
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2463,6 +2491,7 @@ def spec : Spec := do
   functionCompose02Spec
   functionCompose03Spec
   fusion02Spec
+  heterogeneous01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
