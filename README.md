@@ -68,6 +68,21 @@ types are erased (`LeanScript/TermElab/ToTerm.lean`, `## Polymorphism`;
 type parameter; `Nat` never selects a specialised container such as a typed array); a rank-2
 parameter (`f : ∀ {α β γ : Type}, α → β → γ`) is read at the one instance the body uses it at.
 The differential checks call a polymorphic function at `Nat`.
+A type-constructor parameter (`f : Type → Type`) is fixed to the stand-in `fun _ => Nat`; a
+definition **polymorphic in universes** is read at one instance of its universes (`α : Sort u`
+at `Type`, any other universe at `0`; `### Universe polymorphism`); an **instance parameter**
+(`[Monoid α]`, `[Foldable f]`) is an ordinary parameter, its dictionary (a record of the
+fields, or the one field of a one-field class); a **polymorphic field** of a class
+(`foldMap : {α m : Type} → [Monoid m] → (α → m) → f α → m`) is read at the stand-ins
+(`eraseDeps`), and a use of it must pass the stand-ins (`appArgs`); a **point-free** definition
+that is not recursive (`fold : … → f α → α := Foldable.foldMap identity`) is read in eta-long
+form (`withEtaParams`), so its JavaScript calls instead of building a closure to call at once.
+A closure that reads only its parameters and is the code of a function of the module that is
+not recursive is that function, by its name (`JsTerm/Lower/Globals.lean`, `JsExpr.linkFuns`;
+`Term` has no global definitions, so this is done on the JavaScript).
+`EtaReduceRegression01` is the example: `identity = (x) => x`, `fold = (dictFoldable,
+dictMonoid, a) => dictFoldable(dictMonoid, identity, a)` (purescript-backend-optimizer's is
+curried and answers a closure), `test = (a) => (a.tag === 0 ? "" : a._1)`.
 **A function whose result has one value** (`Unit`, `PUnit`, a structure of such fields and
 proofs; `test1 (f g : F) (a : Unit) : Unit`) is not representable: the language is pure, so
 such a function always answers its one value and does nothing else.  `#leanscript_to_term`

@@ -261,10 +261,8 @@ export const RecData$roseKids = (a) => BigInt(a.length);
  * @param {nat(bigint)} x
  * @returns {nat(bigint)}
  */
-export const RecData$roseKidsTest = (x) => {
-  const k$2 = (x$1) => BigInt(x$1.length);
-  return k$2(2n < x ? [[], [[]]] : [[[], []]]);
-};
+export const RecData$roseKidsTest = (x) =>
+  RecData$roseKids(2n < x ? [[], [[]]] : [[[], []]]);
 
 /**
  * `RecData.RoseF.size`

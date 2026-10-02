@@ -43,6 +43,11 @@ given with the constructor it becomes:
 | a proof parameter of a function that is not recursive (`(h : Safe n)`; in particular of the open definitions `leanscript` builds for well-founded recursion) | nothing: it is erased, like the proofs of the body that mention it |
 | a parameter that only names an index of a later parameter's type (`{n}` in `Vec.sum {n} (v : Vec Nat n)`) | nothing: indices are erased, so it is not a parameter of the translation (and cannot be used as a value) |
 | a type parameter (`{α : Type}` in `test6 {α : Type} : α → α`), a leading `∀` of the type of the result (`test4 (f : F) : F` for `F := ∀ {α β γ : Type}, α → β → γ`) | nothing: fixed to the stand-in `Nat` (`## Polymorphism`); a recursive call must pass it unchanged |
+| a type-constructor parameter (`{f : Type → Type}`) | nothing: fixed to the stand-in `fun _ => Nat` |
+| a definition polymorphic in universes (`identity {α : Sort u}`) | its translation at one instance of the universes (`### Universe polymorphism`) |
+| an instance parameter (`[Monoid α]`, `[Foldable f]`) | a parameter: the dictionary, a record of the fields of the class (the field itself for a class of one field) |
+| a use of a polymorphic field of a class (`Foldable.foldMap` at `α`, `m`) | the field read at the stand-ins (`eraseDeps`): its type arguments must be the stand-ins, and are dropped (`appArgs`) |
+| a point-free definition that is not recursive (`fold : … → f α → α := Foldable.foldMap identity`) | read in eta-long form, `fold d₁ d₂ x` (`### Point-free definitions`) |
 | a rank-2 parameter (`f : F`) | a parameter of the one instance at which the body uses it (`@f Nat Unit Unit`); used at two instances, refused |
 | a type parameter that only names the index of a type-indexed family (`{α}` in `Nest.length {α} (n : Nest α)`) | nothing: it is fixed to the index the family is read at (`Nest.Elem Nat`: the one the program declares, or `#leanscript_to_term f (α := Nat)`), so a recursive call at `α × α` is a call on the tail |
 | a field of type `α` of a type-indexed family (`a` in `Nest.cons {α} a r`) | in a constructor application, the value put in the element type (`(2, 3)` is `Nest.Elem.node (leaf 2) (leaf 3)`); in a case analysis at an index other than the one read at (`Nest Nat`), refused if used |
@@ -85,8 +90,8 @@ recursive call.
 Everything else is refused with an error, in particular a type with one value or none
 (`Unit`, `Empty`, …: as a parameter, a `let`, a field or a value), a definition whose result
 has one value (`test1 (f g : F) (a : Unit) : Unit`: pure, it does nothing; `resultIsOnePoint`), a type of two values
-other than `Bool` (such a type *is* `bool`), a parameter that is an instance or a type of a
-higher kind (`m : Type → Type`), a rank-2 parameter used at two instances,
+other than `Bool` (such a type *is* `bool`), a rank-2 parameter used at two instances,
+a polymorphic field of a class used at types other than the stand-ins,
 mutual recursion through a helper, a recursive call that is not on a subvalue, a pattern on a numeral other than
 `0`/`n + 1`, a call of a library function that is not the Lean function of an extern and cannot be
 unfolded (`List.length`), and a call returning a quotient that does
@@ -175,12 +180,35 @@ typed array) and it has many values for the differential checks.  Three places b
   instances is refused, an unused one is read at fresh stand-ins.
 -/
 
-/-- `Nat`, the stand-in for a type parameter (`## Polymorphism`). -/
-def tyParamStandIn : Expr := mkConst ``Nat
+/-! ### Universe polymorphism
 
-/-- Is `T` (in weak head normal form) the sort `Type`, the type of a type parameter? -/
-def isTypeSort (T : Expr) : MetaM Bool := do
-  return (← whnf T) == mkSort Level.one
+A definition polymorphic in universes (`identity {α : Sort u} (x : α) : α`, `fold {f : Type u →
+Type v} …`) is translated at one instance of its universes, like a definition polymorphic in
+types is translated at one instance of its types: the code does not depend on the universes
+once the types are erased.  A universe `u` that is the sort of a parameter (`α : Sort u`) is
+fixed to `1`, so the parameter is a type (`α : Type`) and not a proposition; any other (`α :
+Type u`) is fixed to `0`. -/
+
+/-- The universes at which the definition of type `T` with universe parameters `ps` is
+    translated (`### Universe polymorphism`). -/
+def standInLevels (ps : List Name) (T : Expr) : MetaM (List Level) := do
+  if ps.isEmpty then return []
+  let sorts ← forallTelescopeReducing T fun ys _ => do
+    let mut out : Array Name := #[]
+    for y in ys do
+      if let .sort (.param u) ← whnf (← inferType y) then out := out.push u
+    return out
+  return ps.map fun u => if sorts.contains u then Level.one else Level.zero
+
+/-- The type of the constant `c` at the universes `us` given to the universe parameters
+    `ps` of the definition it belongs to (a parameter of `c` not in `ps` is fixed to `0`). -/
+def constTypeAt (c : Name) (ps : List Name) (us : List Level) : MetaM Expr := do
+  let ci ← getConstInfo c
+  let ls := ci.levelParams.map fun p =>
+    match (ps.zip us).find? (·.1 == p) with
+    | some (_, l) => l
+    | none => Level.zero
+  return ci.type.instantiateLevelParams ci.levelParams ls
 
 /-- The number of leading `∀`s binding a type (`α : Type`) in the type `T`. -/
 partial def leadingTypeBinders (T : Expr) : MetaM Nat := do
@@ -272,15 +300,44 @@ def resultIsOnePoint (T : Expr) : MetaM Bool :=
     if (← whnf r).isSort then return false
     isOnePointType r
 
+/-! ### Point-free definitions
+
+A definition that is not recursive and answers a function without binding its parameters
+(`fold [Foldable f] [Monoid α] : f α → α := Foldable.foldMap identity`) is read in eta-long
+form, `fold d₁ d₂ x = Foldable.foldMap identity x`: Lean identifies the two (eta is
+definitional), and the JavaScript function takes all the parameters of its type at once
+anyway.  Read point-free, the body would answer a partial application, which the JavaScript
+builds as a closure only to call it at once (`const f = (y) => g(d, k, y); return f(x);`);
+read eta-long, it is the call `g(d, k, x)`.  Only the plain value parameters of the result are
+added: not a type, a proof, `Unit` (a delay), nor a dependent arrow. -/
+
+/-- Run `k` on new locals `ys` for the leading value parameters of the type of `lhs` (when
+    `enabled`), `lhs` and `rhs` applied to them (`### Point-free definitions`). -/
+partial def withEtaParams {α : Type} (enabled : Bool) (lhs rhs : Expr)
+    (k : Array Expr → Expr → Expr → TermElabM α) : TermElabM α :=
+  go #[] lhs rhs
+where
+  go (ys : Array Expr) (lhs rhs : Expr) : TermElabM α := do
+    if !enabled then return ← k ys lhs rhs
+    let .forallE n d b bi ← whnf (← inferType lhs) | k ys lhs rhs
+    if b.hasLooseBVars || (← isProp d) || (← isUnitType d) || (← whnf d).isSort ||
+        (← typeStandIn? d).isSome then
+      return ← k ys lhs rhs
+    let n := if n.hasMacroScopes || n.isAnonymous then `a else n
+    withLocalDecl n (if bi.isInstImplicit then bi else .default) d fun y =>
+      go (ys.push y) (mkApp lhs y) (mkApp rhs y).headBeta
+
 /-- The translation of the definition `f` as it is (see `translateDef`). -/
 def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident × Lean.Term) := #[]) :
     TermElabM Expr := do
   let info ← getConstInfo f
-  unless info.levelParams.isEmpty do fail m!"`{f}` is universe polymorphic"
+  -- a definition polymorphic in universes is read at one instance (`### Universe polymorphism`)
+  let us ← standInLevels info.levelParams info.type
+  let infoType ← constTypeAt f info.levelParams us
   let some eqn ← getUnfoldEqnFor? f (nonRec := true)
     | fail m!"`{f}` is not a definition that can be unfolded"
   let prog? ← currentProg?
-  let eqTy ← inferType (mkConst eqn)
+  let eqTy ← constTypeAt eqn info.levelParams us
   -- a type index a parameter's family is generic in is fixed first
   let (idxParams, tyParams, vals) ← forallTelescope eqTy fun xs _ => do
     let idxParams ← indexParams xs
@@ -289,11 +346,13 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
     let mut tyParams : Array Nat := #[]
     for i in [0:xs.size] do
       if idxParams.contains i then continue
-      if ← isTypeSort (← inferType xs[i]!) then
-        vals := vals.set! i (some tyParamStandIn)
+      if let some v ← typeStandIn? (← inferType xs[i]!) then
+        vals := vals.set! i (some v)
         tyParams := tyParams.push i
     return (idxParams ++ tyParams, tyParams, vals)
   let eqTy := instBinders eqTy vals
+  -- a type constructor's stand-in `fun _ => Nat` applied (`f α`) is `Nat`
+  let eqTy ← if vals.any (·.any (·.isLambda)) then Core.betaReduce eqTy else pure eqTy
   let stx ← forallTelescope eqTy fun xs eq => do
     let some (_, lhs, rhs) := eq.eq? | fail m!"unexpected unfolding equation of `{f}`"
     let params := lhs.getAppArgs
@@ -310,14 +369,19 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
     let mut resultBinders := false
     repeat
       let .forallE _ d _ _ ← whnf (← inferType lhs) | break
-      unless ← isTypeSort d do break
-      lhs := mkApp lhs tyParamStandIn
-      rhs := (mkApp rhs tyParamStandIn).headBeta
+      let some v ← typeStandIn? d | break
+      lhs := mkApp lhs v
+      rhs := (mkApp rhs v).headBeta
       next := next + 1
       resultBinders := true
     if recursive && resultBinders then
       fail m!"`{f}` is recursive and its result is polymorphic"
     let polymorphic := !tyParams.isEmpty || resultBinders
+    -- a definition that is not recursive and answers a function (point-free, `fold : … → f α →
+    -- α := Foldable.foldMap identity`) is read with the parameters of that function too
+    -- (`etaParams`): the JavaScript function takes them anyway
+    withEtaParams (!recursive) lhs rhs fun ys lhs rhs => do
+    let kept := kept ++ ys
     let kept0 := kept
     withRank2Params f kept rhs next fun kept rhs next' => do
     -- a rank-2 parameter read at its instance changes the type of the translation too
@@ -343,8 +407,6 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
         if ← isUnitType (← inferType x) then continue
         if !recursive && (← isProof x) then continue
         if ← isType x then fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is a type"
-        if (← isClass? (← inferType x)).isSome then
-          fail m!"the parameter `{← x.fvarId!.getUserName}` of `{f}` is an instance"
         discard <| cirOf L (← inferType x)
       let mut body ← tr L rhs
       for i in (List.range kept.size).reverse do
@@ -355,7 +417,7 @@ def translateDefCore (f : Name) (expected? : Option Expr) (named : Array (Ident 
         else body := Anf.Src.lam (some (← tyStx L (← inferType kept[i]!))) body
       -- the type of the translation: the parameters kept, then the result (an index
       -- parameter only occurs in indices, which are erased)
-      let ty ← if idxParams.isEmpty && !proofs.any id && !polymorphic then pure info.type
+      let ty ← if idxParams.isEmpty && !proofs.any id && !polymorphic then pure infoType
         else mkForallFVars dataKept (← inferType lhs)
       return (body, ← tyStx L ty)
     -- the depth of the course-of-values recursion: the first that works

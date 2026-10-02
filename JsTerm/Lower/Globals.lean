@@ -35,7 +35,11 @@ This pass links them back (`linkGlobals`), on the functions of a module:
 * **calls by name** (`JsBlock.linkFuns`): a local function (`const go = (…) => B; rest`) whose
   code is the code of such a function `f` of the module (the same dump, `JsBlock.pretty`, once
   both are written with their recursive calls as calls of `f`, and `B` reads nothing else) is
-  not defined again: `rest` calls `f`.
+  not defined again: `rest` calls `f`;
+* **closures by name** (`JsExpr.linkFuns`): a closure `(xs) => B` that reads nothing but its
+  parameters and whose code is the code of a function `f` of the module that is not recursive
+  (`(x) => x` for `identity`, which a definition calling `identity` inlines, since `Term` has
+  no global definitions) is `f` itself, by its name.
 
 Both rewrites keep what the code computes: the functions are the same code, the local function
 closed over nothing, so calling the function of the module is calling the same code.  A function
@@ -215,7 +219,12 @@ def JsFun.direct? (f : JsFun) (self : String := f.name) :
 /-- What a local function must be to be `f` (after `direct?`): the types of its parameters and
     result, and the dump of its code with its recursive calls calls of `selfPlaceholder`. -/
 def JsFun.linkKey? (f : JsFun) : Option (List JsTy × JsTy × String) :=
-  (f.direct? selfPlaceholder).map fun b => (f.params.map (·.2), f.ret, b.pretty "")
+  match f.direct? selfPlaceholder with
+  | some b => some (f.params.map (·.2), f.ret, b.pretty "")
+  -- a function that is not recursive: its own code
+  | none =>
+    if f.isConst || f.delegate?.isSome then none
+    else some (f.params.map (·.2), f.ret, f.body.pretty "")
 
 /-! ## Calls by name -/
 
@@ -226,7 +235,19 @@ partial def JsExpr.linkFuns {C M : List JsTy} {τ : JsTy} (tbl : List (List JsTy
   | .imported op as => .imported op (as.linkFuns tbl)
   | .inlined op as => .inlined op (as.linkFuns tbl)
   | .app f as => .app (f.linkFuns tbl) (as.linkFuns tbl)
-  | .lam hints body => .lam hints (body.linkFuns tbl)
+  | .lam (σs := σs) (τ := ρ) hints body =>
+    let body := body.linkFuns tbl
+    -- a closure that reads nothing but its parameters and is the code of a function of the
+    -- module (`identity` passed as `(x) => x`): that function, by its name
+    let closed : Option (JsBlock S (pushAll σs []) [] [] (.ret ρ)) :=
+      body.substG (JsSubG.liftAll σs (fun _ => none)) (fun _ => none)
+    match closed with
+    | some cb =>
+      let key := cb.pretty ""
+      match tbl.find? fun (σs', ρ', k', _) => σs' == σs && ρ' == ρ && k' == key with
+      | some (_, _, _, name) => .global name
+      | none => .lam hints body
+    | none => .lam hints body
   | .record_mk fs => .record_mk (fs.linkFuns tbl)
   | .union_mk ix as => .union_mk ix (as.linkFuns tbl)
   | .enumIndex nt e => .enumIndex nt (e.linkFuns tbl)

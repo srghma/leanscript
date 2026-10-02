@@ -11,6 +11,7 @@ import TermTests.Optimize.ArithTest
 import TermTests.Optimize.CseTest
 import TermTests.Optimize.FloatCommTest
 import TermTests.Optimize.MergeTestTest
+import TermTests.ToTerm.PolymorphismTest
 import LeanScript.Term.Pretty
 import LeanScript.Term.Optimize.Basic
 import JsTerm.Lower.FromTerm
@@ -2055,6 +2056,73 @@ def esSharedElseSpec : Spec := describe "EsSharedElse" do
       assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 8 passed, 0 failed"
         run.stdout.trimAscii.toString
 
+/-- A `EFoldable` instance at the stand-in `fun _ => Nat` for the compiled checks of
+    `etaReduceRegressionSpec`: `n` appends the unit `n + 1` times. -/
+@[instance_reducible] def etaFoldableNat : PolymorphismTest.EFoldable.{0, 0, 0} (fun _ => Nat) where
+  foldMap := fun {_ m} [inst : PolymorphismTest.EMonoid m] _ n =>
+    (List.range n).foldl (fun acc _ => inst.append acc inst.empty) (inst.append inst.empty inst.empty)
+
+/-- `Tests/SnapshotsPBOPure/EtaReduceRegression01.lean`: the definitions polymorphic in
+    universes (`identity`, `fold`) are translated, an instance parameter is a parameter (its
+    dictionary), and the point-free `fold` is read in eta-long form, so the JavaScript is
+    `export const fold = (dictFoldable, dictMonoid, a) => dictFoldable(dictMonoid, identity, a);`,
+    the closure `(x) => x` linked to the function `identity` of the module, as
+    purescript-backend-optimizer's `legacy-backend/EtaReduceRegression01.js` (which is curried
+    and returns a closure). -/
+def etaReduceRegressionSpec : Spec := describe "EtaReduceRegression01" do
+  it "the translations compute the Lean definitions (compiled `Term.eval`)" do
+    for a in ([0, 1, 7, 1000] : List Nat) do
+      assertEq s!"identity {a}" (PolymorphismTest.identity a)
+        ((PolymorphismTest.identityT (Δ := DSig.nil)).run a : Nat)
+    let monoids : List (PolymorphismTest.EMonoid Nat) :=
+      [⟨0, (· + ·)⟩, ⟨1, (· * ·)⟩, ⟨3, fun a b => a + 2 * b⟩]
+    for M in monoids do
+      for x in ([0, 1, 4] : List Nat) do
+        assertEq s!"fold {M.empty} {x}" (@PolymorphismTest.fold (fun _ => Nat) Nat etaFoldableNat M x)
+          ((PolymorphismTest.foldT (Δ := DSig.nil)).run
+            (fun m g y => @etaFoldableNat.foldMap Nat Nat ⟨m.1, m.2⟩ g y) (M.empty, M.append) x : Nat)
+  it "the JavaScript, its checks, and `fold` on the dictionaries of `Option`/`String` (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/etaReduceRegression"
+    IO.FS.createDirAll dir
+    let file := "EtaReduceRegression01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: nothing left untranslated" false
+        ((js.splitOn "not translated").length > 1)
+      assertEq s!"{file}-{preset}: no call of the runtime" 1 (js.splitOn "import").length
+      for l in ["export const identity = (x) => x;",
+          "export const fold = (dictFoldable, dictMonoid, a) =>\n  dictFoldable(dictMonoid, identity, a);",
+          "export const test = (a) => (a.tag === 0 ? \"\" : a._1);"] do
+        assertEq s!"{file}-{preset}: {l}" true ((js.splitOn l).length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stdout)
+      assertEq s!"{file}-{preset}: the checks" s!"{file}-{preset}.js: 3 passed, 0 failed"
+        run.stdout.trimAscii.toString
+      -- `fold` called on the dictionaries of the file's instances (`Foldable Option`: its one
+      -- field `foldMap`; `Monoid String`: the record of `empty` and `append`), as `test` is
+      let main := s!"{dir}/{file}-{preset}-dict.mjs"
+      IO.FS.writeFile main (s!"import * as M from \"./{file}-{preset}.js\";\n" ++
+        "const foldableOption = (dictMonoid, f, o) => (o.tag === 0 ? dictMonoid._1 : f(o._1));\n" ++
+        "const monoidString = { _1: \"\", _2: (a, b) => a + b };\n" ++
+        "const r = [M.fold(foldableOption, monoidString, { tag: 0 }),\n" ++
+        "  M.fold(foldableOption, monoidString, { tag: 1, _1: \"ab\" }),\n" ++
+        "  M.identity(\"x\"), M.test({ tag: 1, _1: \"cd\" }), M.test({ tag: 0 })];\n" ++
+        "console.log(JSON.stringify(r));\n")
+      let run ← IO.Process.output { cmd := "node", args := #[main] }
+      -- Lean: `test none = ""`, `test (some s) = s`, `identity x = x`
+      assertEq s!"{file}-{preset}: fold on the dictionaries" "[\"\",\"ab\",\"x\",\"cd\",\"\"]"
+        run.stdout.trimAscii.toString
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2079,6 +2147,7 @@ def spec : Spec := do
   esPrecedence02Spec
   esPrecedence03Spec
   esSharedElseSpec
+  etaReduceRegressionSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

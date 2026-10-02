@@ -55,6 +55,16 @@ partial def appArgs (L : Loc) (fn : Expr) (r : Src) (args : Array Expr) :
   let mut r := r
   for i in [0:args.size] do
     let a := args[i]!
+    -- a type argument of a field of a polymorphic type, read at the stand-ins (`eraseDeps`):
+    -- erased, when it is the stand-in
+    if ← isType a then
+      let .forallE _ d _ _ ← whnf (← inferType (mkAppN fn args[:i].toArray))
+        | fail m!"the type argument{indentExpr a}\nof{indentExpr fn}\nis not expected"
+      if let some v ← typeStandIn? d then
+        unless ← isDefEq a v do
+          fail m!"the polymorphic function{indentExpr fn}\nis applied to the type{indentExpr a}\n\
+            where the language reads it at the stand-in{indentExpr v}"
+        continue
     if ← isUnitType (← inferType a) then
       r ← delayCoerceTy L (← inferType (mkAppN fn args[:i].toArray))
         (← inferType (mkAppN fn args[:i+1].toArray)) r

@@ -257,10 +257,8 @@ export const RecData$roseKids = (a) => a.length;
  * @param {uint53(number)} x
  * @returns {uint53(number)}
  */
-export const RecData$roseKidsTest = (x) => {
-  const k$2 = (x$1) => x$1.length;
-  return k$2(2 < x ? [[], [[]]] : [[[], []]]);
-};
+export const RecData$roseKidsTest = (x) =>
+  RecData$roseKids(2 < x ? [[], [[]]] : [[[], []]]);
 
 /**
  * `RecData.RoseF.size`

@@ -1,3 +1,53 @@
+# Summary of changes for run 0c9fd108-6c5c-4895-b250-8f546071d590
+The JavaScript for `Tests/SnapshotsPBOPure/EtaReduceRegression01.lean` now matches the legacy output (`legacy-backend/EtaReduceRegression01.js`), and is better on two of the three functions. Before this change only `test` was translated. `identity` and `fold` were refused as "universe polymorphic", and `fold` would also have been refused for its instance parameters and its `f : Type → Type` parameter.
+
+Both presets now print:
+```js
+export const identity = (x) => x;                       // legacy: same
+export const fold = (dictFoldable, dictMonoid, a) =>    // legacy: curried, returns a closure
+  dictFoldable(dictMonoid, identity, a);
+export const test = (a) => (a.tag === 0 ? "" : a._1);   // legacy: if-chain + throw "UNREACHABLE"
+```
+
+**What changed, by pipeline phase.** None of the changes is in the `Term -[optimize]-> Term` phase.
+
+1. **Lean → Term.** Nothing was missing from the optimiser; the definitions were refused by the translator itself (`ToTerm.lean`, `GenElab/Read.lean`, `Expr/Loops.lean`).
+   - **Universes:** a definition polymorphic in universes is translated at one choice of universes (`α : Sort u` becomes `Type`, any other universe becomes `0`).
+   - **Type constructors:** a parameter like `f : Type → Type` is replaced by the stand-in `fun _ => Nat`, just as type parameters are replaced by `Nat`.
+   - **Instance parameters:** these are now ordinary parameters holding the dictionary. That is a record of the class's fields, or the field itself for a class with one field.
+   - **Polymorphic class fields:** a field like `foldMap : {α m} → [Monoid m] → …` is read at the stand-ins. Using it at any other type is refused with an error.
+   - **Point-free definitions:** a non-recursive definition that returns a function is read with that function's arguments added (eta-long form). Lean treats the two forms as equal by definition.
+   - **Why eta is done here and not in the Term optimiser:** in the optimiser it would mean moving statements inside a lambda and re-proving the pass correct. Here it needs no new proof obligation. Without it, `fold` built a closure only to call it straight away.
+2. **Term → JsTerm.** No change needed.
+3. **JsTerm → JsTerm** (`JsTerm/Lower/Globals.lean`). A closure that reads only its own parameters, and whose code is exactly the code of a non-recursive function of the same module, is replaced by that function's name. So `(x) => x` becomes `identity`. This can't be done earlier because `Term` has no global definitions.
+
+Parameter names in the output now skip type-constructor parameters but include instance parameters (`LeanScriptCli/Frontend.lean`). This file has no recursion, so labeled blocks and loops didn't come into it.
+
+**Proofs** (in `Tests/TermTests/ToTerm/PolymorphismTest.lean`, on copies of the definitions; no `sorry`; only `propext`, `Classical.choice` and `Quot.sound`):
+- `identityT_run`: the translation of `identity` computes `identity` on every argument.
+- `foldT_run`: the translation of `fold` computes `fold` for every `Foldable` dictionary, every `Monoid` dictionary and every argument.
+
+**Tests.**
+- A new `etaReduceRegressionSpec` in `Tests/Main.lean` does three things:
+  - It compares the compiled translations with Lean.
+  - On both presets it checks that nothing is left untranslated, that the three exact lines above appear, and that node's 3/3 checks pass.
+  - It calls `fold` from node with the `Foldable Option` and `Monoid String` dictionaries and gets the answers Lean gives.
+- `lake exe tests`: 112/112 pass.
+- `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `LeanScriptCli`, `leanscript` and `tests` build.
+- The README and the module docs are updated.
+
+**Effects on other snapshots.** I regenerated them; every node check that ran passes.
+- `CaseGuardedSweep` and `RecData` now call the module's own function (`test4(…)`, `RecData$roseKids(…)`) instead of redefining it as a local closure.
+- These are now translated: `InlineReferenceIfThenElse.fn`, `PrimOpArray01` `test2`/`test4`, and the generic `test*` helpers in `PrimOpNumber02` and `PrimOpIntDivConfigurable`. The last three take their instances as dictionary parameters.
+- Some refusal messages changed wording (`Fusion01`, `InlineReferenceOpIsTag`).
+
+**Known issues, all present before this change:**
+- `KnownConstructors`, `KnownConstructors05` and `KnownConstructors06` hit the snapshot script's 600-second timeout, so their committed outputs were not regenerated. A build of the original commit run side by side was just as slow (`test6` alone takes over 100 seconds either way).
+- `PrimOp*Configurable` still fail with "literal too big" under `pbo`.
+- The `LeanScript` library as a whole still doesn't build, because `UsageAlgebra.lean` imports Mathlib; I built the targets above individually.
+
+Everything is committed.
+
 # Summary of changes for run f51e836d-36aa-4e87-921d-62a6e2ca14ca
 The JavaScript for `Tests/SnapshotsPBOPure/EsSharedElse.lean` was already on par with the legacy output, and slightly shorter. The one gap was where the work happened: the merge was done by the JavaScript-side pass, not the `Term` optimiser. I moved it into the `Term -[optimize]-> Term` phase and proved it doesn't change `Term.eval`. The JS for this file is unchanged:
 

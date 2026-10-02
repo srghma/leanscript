@@ -54,8 +54,11 @@ ret k1
 
 -- test1 : RecFooBaz → Int
 val k1 [ω] : ((Int × Int) → Int) := fun x2 [ω] : (Int × Int) => (closed)
-  let ⟨f3 [ω] : Int, f4 [ω] : Int⟩ := x2
-  ret f3
+  val k3 [ω] : ((Int × Int) → Int) := fun x4 [ω] : (Int × Int) => (closed)
+    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x4
+    ret f5
+  let x7 [ω] : Int := k3 x2
+  ret x7
 ret k1
 
 -- test2 : RecFooBaz → Int
@@ -65,21 +68,24 @@ val k1 [ω] : ((Int × Int) → Int) := fun x2 [ω] : (Int × Int) => (closed)
 ret k1
 
 -- test3 : RecFooBar → RecFooBar
-val k1 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x2 [ω] : (Int → Int) => (closed)
-  val k3 [ω] : ((Int × Int) → (Int × Int)) := fun x4 [ω] : (Int × Int) => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x4
-    let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x4
-    let x9 [ω] : Int := x2 f8
-    ret ⟨f5, x9⟩
-  ret k3
-val k10 [ω] : (Int → Int) := fun x11 [ω] : Int => (closed)
-  ret lean_int_add(x11, 1)
-val k12 [ω] : ((Int × Int) → (Int × Int)) := fun x13 [ω] : (Int × Int) => (closed)
-  let ⟨f14 [ω] : Int, f15 [ω] : Int⟩ := x13
-  let ⟨f16 [ω] : Int, f17 [ω] : Int⟩ := x13
-  let x18 [ω] : Int := k10 f17
-  ret ⟨f14, x18⟩
-ret k12
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  val k3 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x4 [ω] : (Int → Int) => (closed)
+    val k5 [ω] : ((Int × Int) → (Int × Int)) := fun x6 [ω] : (Int × Int) => (open)
+      let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x6
+      let ⟨f9 [ω] : Int, f10 [ω] : Int⟩ := x6
+      let x11 [ω] : Int := x4 f10
+      ret ⟨f7, x11⟩
+    ret k5
+  val k12 [ω] : (Int → Int) := fun x13 [ω] : Int => (closed)
+    ret lean_int_add(x13, 1)
+  val k14 [ω] : ((Int × Int) → (Int × Int)) := fun x15 [ω] : (Int × Int) => (closed)
+    let ⟨f16 [ω] : Int, f17 [ω] : Int⟩ := x15
+    let ⟨f18 [ω] : Int, f19 [ω] : Int⟩ := x15
+    let x20 [ω] : Int := k12 f19
+    ret ⟨f16, x20⟩
+  let x21 [ω] : (Int × Int) := k14 x2
+  ret x21
+ret k1
 
 -- test4 : RecFooBar → RecFooBar
 val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
@@ -89,23 +95,26 @@ val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (
 ret k1
 
 -- test5 : RecFooBaz → RecFooBaz
-val k1 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x2 [ω] : (Int → Int) => (closed)
-  val k3 [ω] : ((Int × Int) → (Int × Int)) := fun x4 [ω] : (Int × Int) => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int⟩ := x4
-    let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x4
-    let ⟨f9 [ω] : Int, f10 [ω] : Int⟩ := x4
-    let x11 [ω] : Int := x2 f10
-    ret ⟨f5, x11⟩
-  ret k3
-val k12 [ω] : (Int → Int) := fun x13 [ω] : Int => (closed)
-  ret lean_int_add(x13, 1)
-val k14 [ω] : ((Int × Int) → (Int × Int)) := fun x15 [ω] : (Int × Int) => (closed)
-  let ⟨f16 [ω] : Int, f17 [ω] : Int⟩ := x15
-  let ⟨f18 [ω] : Int, f19 [ω] : Int⟩ := x15
-  let ⟨f20 [ω] : Int, f21 [ω] : Int⟩ := x15
-  let x22 [ω] : Int := k12 f21
-  ret ⟨f16, x22⟩
-ret k14
+val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)
+  val k3 [ω] : ((Int → Int) → ((Int × Int) → (Int × Int))) := fun x4 [ω] : (Int → Int) => (closed)
+    val k5 [ω] : ((Int × Int) → (Int × Int)) := fun x6 [ω] : (Int × Int) => (open)
+      let ⟨f7 [ω] : Int, f8 [ω] : Int⟩ := x6
+      let ⟨f9 [ω] : Int, f10 [ω] : Int⟩ := x6
+      let ⟨f11 [ω] : Int, f12 [ω] : Int⟩ := x6
+      let x13 [ω] : Int := x4 f12
+      ret ⟨f7, x13⟩
+    ret k5
+  val k14 [ω] : (Int → Int) := fun x15 [ω] : Int => (closed)
+    ret lean_int_add(x15, 1)
+  val k16 [ω] : ((Int × Int) → (Int × Int)) := fun x17 [ω] : (Int × Int) => (closed)
+    let ⟨f18 [ω] : Int, f19 [ω] : Int⟩ := x17
+    let ⟨f20 [ω] : Int, f21 [ω] : Int⟩ := x17
+    let ⟨f22 [ω] : Int, f23 [ω] : Int⟩ := x17
+    let x24 [ω] : Int := k14 f23
+    ret ⟨f18, x24⟩
+  let x25 [ω] : (Int × Int) := k16 x2
+  ret x25
+ret k1
 
 -- test6 : RecFooBaz → RecFooBaz
 val k1 [ω] : ((Int × Int) → (Int × Int)) := fun x2 [ω] : (Int × Int) => (closed)

@@ -106,6 +106,31 @@ def checkClosedIndices (e : Expr) (info : InductiveVal) (us : List Level)
 def quotCarrier? (e : Expr) : Option Expr :=
   if e.isAppOfArity ``Quot 2 then some e.appFn!.appArg! else none
 
+/-- `Nat`, the stand-in for a type parameter (`## Polymorphism`). -/
+def tyParamStandIn : Expr := mkConst ``Nat
+
+/-- Is `T` (in weak head normal form) the sort `Type`, the type of a type parameter? -/
+def isTypeSort (T : Expr) : MetaM Bool := do
+  match ← whnf T with
+  | .sort l => return l.normalize == Level.one
+  | _ => return false
+
+/-- The stand-in for a parameter of type `T`: `Nat` when `T` is `Type`, and `fun _ … => Nat`
+    when `T` is the kind of a type constructor (`f : Type → Type` in
+    `fold {f : Type → Type} [Foldable f]`).  A type constructor is erased like a type: the body
+    has no instance to look into a value of `f α` with (an instance of a class on `f`, such as
+    `Foldable f`, only passes it on), so reading every `f α` as the stand-in `Nat` translates
+    every instance once the types are erased. -/
+partial def typeStandIn? (T : Expr) : MetaM (Option Expr) := do
+  if ← isTypeSort T then return some tyParamStandIn
+  match ← whnf T with
+  | .forallE n d b bi =>
+    if b.hasLooseBVars then return none
+    unless (← typeStandIn? d).isSome do return none
+    let some b' ← typeStandIn? b | return none
+    return some (.lam n d b' bi)
+  | _ => return none
+
 /-- Normalise a type: head normal form, type arguments normalised.  The indices of an
     inductive family are erased: `Vec α n` is normalised to `Vec α` (the datatype of vectors
     of every length), after a check that at closed indices it has at least three values
@@ -221,11 +246,20 @@ mutual
     a type computed from the value, `cond b Nat Bool`, …) is refused.  The erasure never
     mentions `deps`; `ctor` is the constructor, named by the errors.  A type that mentions no local of `deps` and no dependent arrow is only
     normalised. -/
-partial def eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) : MetaM Expr := do
+partial def eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) (tyBinders : Bool := false) :
+    MetaM Expr := do
   let t ← normType t
   let mentions (e : Expr) : Bool := deps.any fun d => e.containsFVar d.fvarId!
   match t with
   | .forallE n a b bi =>
+    -- a field of a polymorphic type (`foldMap : {α m : Type} → [Monoid m] → (α → m) → f α → m`
+    -- of a class): read at the stand-ins (`## Polymorphism` of `ToTerm`), like a type
+    -- parameter; a use of the field passes the stand-ins (`appArgs`)
+    if tyBinders && b.hasLooseBVars then
+      if let some v ← typeStandIn? a then
+        return ← eraseDeps ctor deps (← Core.betaReduce (b.instantiate1 v)) tyBinders
+    let eraseDeps (ctor : Name) (deps : Array Expr) (t : Expr) : MetaM Expr :=
+      eraseDeps ctor deps t tyBinders
     let a' ← eraseDeps ctor deps a
     -- `Fin m → T` on a recursive cycle is `Nat → Option T` (`finOptArrow`)
     let opt ← finOptArrow ctor deps a b
@@ -289,7 +323,7 @@ partial def readCtors (e : Expr) : MetaM (Array (Name × Array Expr)) := do
         if (← whnf t).isSort then
           fail m!"the constructor `{ctor}` has a field whose value is a type \
             (existential typing is not supported)"
-        let t' ← eraseDeps ctor xs t
+        let t' ← eraseDeps ctor xs t (tyBinders := true)
         if xs.any (fun d => t'.containsFVar d.fvarId!) then
           fail m!"a field of the constructor `{ctor}` has a type that depends on an earlier \
             field{indentExpr t}"

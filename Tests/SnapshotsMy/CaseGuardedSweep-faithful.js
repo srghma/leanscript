@@ -144,62 +144,7 @@ export const sweep4 = (lo) => {
                         if (a$18.tag === 0) {
                           acc$16 = a$18;
                         } else {
-                          const k$29 = (x$19, x$20) => {
-                            const { _1: f$21, _3: f$22 } = x$19;
-                            if (f$21 === 1n) {
-                              const { _1: f$23 } = x$20;
-                              if (f$23 === 1n) {
-                                return 1n;
-                              }
-                              if (f$23 === 2n) {
-                                return 2n;
-                              }
-                              if (f$23 === 3n) {
-                                return 3n;
-                              }
-                              if (f$23 === 4n) {
-                                return 4n;
-                              }
-                              return f$23 === 5n ? 5n : f$22 + x$20._3 + 11n;
-                            }
-                            if (f$21 === 2n) {
-                              const { _1: f$24, _2: f$25 } = x$20;
-                              if (f$24 === 2n) {
-                                return 2n;
-                              }
-                              if (f$24 === 3n) {
-                                return 3n;
-                              }
-                              if (f$24 === 1n) {
-                                return 6n;
-                              }
-                              if (f$24 === 4n) {
-                                if (f$22 === f$25) {
-                                  return 7n;
-                                }
-                                return f$22 < f$25 ? 8n : 9n;
-                              }
-                              return f$22 + x$20._3 + 11n;
-                            }
-                            const { _1: f$26, _2: f$27, _3: f$28 } = x$20;
-                            if (f$26 === 2n) {
-                              return 2n;
-                            }
-                            if (f$26 === 3n) {
-                              return 3n;
-                            }
-                            if (f$26 === 4n) {
-                              if (f$22 === f$27) {
-                                return 7n;
-                              }
-                              return f$22 < f$27 ? 8n : 9n;
-                            }
-                            if (f$26 === 1n && f$28 === 10n) {
-                              return x$19._2 === 2n ? 10n : f$22 + 21n;
-                            }
-                            return f$22 + f$28 + 11n;
-                          };
-                          const x$30 = k$29(
+                          const x$19 = test4(
                             { _1: lo + i$2, _2: lo + i$5, _3: lo + i$14 },
                             {
                               _1: lo + i$8,
@@ -213,28 +158,28 @@ export const sweep4 = (lo) => {
                               bigint_int__lean_int_emod(
                                 a$18._1 * 31n,
                                 1000000007n,
-                              ) + x$30,
+                              ) + x$19,
                           };
                         }
                       }
-                      const x$31 = acc$16._1;
-                      acc$13 = { tag: 1, _1: x$31 };
+                      const x$20 = acc$16._1;
+                      acc$13 = { tag: 1, _1: x$20 };
                     }
                   }
-                  const x$32 = acc$13._1;
-                  acc$10 = { tag: 1, _1: x$32 };
+                  const x$21 = acc$13._1;
+                  acc$10 = { tag: 1, _1: x$21 };
                 }
               }
-              const x$33 = acc$10._1;
-              acc$7 = { tag: 1, _1: x$33 };
+              const x$22 = acc$10._1;
+              acc$7 = { tag: 1, _1: x$22 };
             }
           }
-          const x$34 = acc$7._1;
-          acc$4 = { tag: 1, _1: x$34 };
+          const x$23 = acc$7._1;
+          acc$4 = { tag: 1, _1: x$23 };
         }
       }
-      const x$35 = acc$4._1;
-      acc$1 = { tag: 1, _1: x$35 };
+      const x$24 = acc$4._1;
+      acc$1 = { tag: 1, _1: x$24 };
     }
   }
   return acc$1._1;

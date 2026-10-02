@@ -146,6 +146,45 @@ has one constructor and no field (it has one value)
 #guard_msgs in
 #leanscript_to_term letUnit
 
+/-! ## `EtaReduceRegression01`
+
+The definitions of `Tests/SnapshotsPBOPure/EtaReduceRegression01.lean` (classes renamed): a
+definition polymorphic in universes is read at one instance of its universes
+(`α : Sort u` at `Type`, `f : Type u → Type v` at `Type → Type`), a type constructor parameter
+is fixed to the stand-in `fun _ => Nat`, an instance parameter is a parameter (its dictionary,
+a record, or its one field), the polymorphic field `foldMap` of a class is read at the
+stand-ins, and the point-free `fold` is read in eta-long form. -/
+
+universe u v w
+
+def identity {α : Sort u} (x : α) : α := x
+
+class EMonoid (α : Type u) where
+  empty : α
+  append : α → α → α
+
+class EFoldable (f : Type u → Type v) where
+  foldMap : {α : Type u} → {m : Type w} → [EMonoid m] → (α → m) → f α → m
+
+def fold {f : Type u → Type v} {α : Type u}
+    [dictFoldable : EFoldable f] [dictMonoid : EMonoid α] : f α → α :=
+  EFoldable.foldMap identity
+
+def identityT := #leanscript_to_term identity
+def foldT := #leanscript_to_term fold
+
+/-- `identity` at `Type`, its type parameter at the stand-in. -/
+theorem identityT_run (a : Nat) : (identityT (Δ := DSig.nil)).run a = identity a := rfl
+
+/-- `fold` at the stand-ins: the dictionary of `EFoldable` is its one field `foldMap` (at
+    the stand-ins), the dictionary of `EMonoid` the pair of its fields; the translation takes
+    the argument of the point-free result too, and computes `fold` on every dictionary and
+    argument. -/
+theorem foldT_run (F : EFoldable.{0, 0, 0} (fun _ => Nat)) (M : EMonoid Nat) (x : Nat) :
+    (foldT (Δ := DSig.nil)).run (fun m g y => @F.foldMap Nat Nat ⟨m.1, m.2⟩ g y)
+      (M.empty, M.append) x = @fold (fun _ => Nat) Nat F M x := by
+  cases M; rfl
+
 /-! ## Results of one value
 
 The language is pure, so a function whose result has one value always answers it and does

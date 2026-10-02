@@ -151,75 +151,7 @@ export const sweep4 = (lo) => {
                         if (a$18.tag === 0) {
                           acc$16 = a$18;
                         } else {
-                          const k$29 = (x$19, x$20) => {
-                            const { _1: f$21, _3: f$22 } = x$19;
-                            if (f$21 === 1) {
-                              const { _1: f$23 } = x$20;
-                              if (f$23 === 1) {
-                                return 1;
-                              }
-                              if (f$23 === 2) {
-                                return 2;
-                              }
-                              if (f$23 === 3) {
-                                return 3;
-                              }
-                              if (f$23 === 4) {
-                                return 4;
-                              }
-                              return f$23 === 5
-                                ? 5
-                                : int53__lean_int_add(
-                                    int53__lean_int_add(f$22, x$20._3),
-                                    11,
-                                  );
-                            }
-                            if (f$21 === 2) {
-                              const { _1: f$24, _2: f$25 } = x$20;
-                              if (f$24 === 2) {
-                                return 2;
-                              }
-                              if (f$24 === 3) {
-                                return 3;
-                              }
-                              if (f$24 === 1) {
-                                return 6;
-                              }
-                              if (f$24 === 4) {
-                                if (f$22 === f$25) {
-                                  return 7;
-                                }
-                                return f$22 < f$25 ? 8 : 9;
-                              }
-                              return int53__lean_int_add(
-                                int53__lean_int_add(f$22, x$20._3),
-                                11,
-                              );
-                            }
-                            const { _1: f$26, _2: f$27, _3: f$28 } = x$20;
-                            if (f$26 === 2) {
-                              return 2;
-                            }
-                            if (f$26 === 3) {
-                              return 3;
-                            }
-                            if (f$26 === 4) {
-                              if (f$22 === f$27) {
-                                return 7;
-                              }
-                              return f$22 < f$27 ? 8 : 9;
-                            }
-                            if (f$26 === 1 && f$28 === 10) {
-                              return x$19._2 === 2
-                                ? 10
-                                : int53__lean_int_add(f$22, 21);
-                            }
-                            return int53__lean_int_add(
-                              int53__lean_int_add(f$22, f$28),
-                              11,
-                            );
-                          };
-                          const x$30 = k$29(
+                          const x$19 = test4(
                             {
                               _1: int53__lean_int_add(lo, i$2),
                               _2: int53__lean_int_add(lo, i$5),
@@ -241,29 +173,29 @@ export const sweep4 = (lo) => {
                                 int53__lean_int_mul(a$18._1, 31),
                                 1000000007,
                               ),
-                              x$30,
+                              x$19,
                             ),
                           };
                         }
                       }
-                      const x$31 = acc$16._1;
-                      acc$13 = { tag: 1, _1: x$31 };
+                      const x$20 = acc$16._1;
+                      acc$13 = { tag: 1, _1: x$20 };
                     }
                   }
-                  const x$32 = acc$13._1;
-                  acc$10 = { tag: 1, _1: x$32 };
+                  const x$21 = acc$13._1;
+                  acc$10 = { tag: 1, _1: x$21 };
                 }
               }
-              const x$33 = acc$10._1;
-              acc$7 = { tag: 1, _1: x$33 };
+              const x$22 = acc$10._1;
+              acc$7 = { tag: 1, _1: x$22 };
             }
           }
-          const x$34 = acc$7._1;
-          acc$4 = { tag: 1, _1: x$34 };
+          const x$23 = acc$7._1;
+          acc$4 = { tag: 1, _1: x$23 };
         }
       }
-      const x$35 = acc$4._1;
-      acc$1 = { tag: 1, _1: x$35 };
+      const x$24 = acc$4._1;
+      acc$1 = { tag: 1, _1: x$24 };
     }
   }
   return acc$1._1;

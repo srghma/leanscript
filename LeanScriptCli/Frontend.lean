@@ -328,7 +328,9 @@ def paramNames (n : Name) : MetaM (List String) := do
   let ci ← getConstInfo n
   let keep (x : Expr) : MetaM Bool := do
     let t ← inferType x
-    if (← isType x) || (← isProp t) || (← isClass? t).isSome then return false
+    if (← isType x) || (← isProp t) then return false
+    -- a type constructor (`f : Type → Type`) is erased like a type
+    if ← forallTelescopeReducing t fun _ r => return (← whnf r).isSort then return false
     if (← whnf t).isConstOf ``Unit || (← whnf t).isConstOf ``PUnit then return false
     return true
   -- a binder written by the user, or `none` for one Lean made up (`x✝` of a `match`)
