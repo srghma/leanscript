@@ -2,6 +2,7 @@ module
 
 public meta import LeanScript.TermElab.ToTerm.Expr.Cases
 public meta import LeanScript.TermElab.ToTerm.Fusion
+public meta import LeanScript.TermElab.ToTerm.StreamFusion
 
 @[expose] public section
 
@@ -308,6 +309,10 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if let some pinfo ← getProjectionFnInfo? c then
       if !pinfo.fromClass then
         if let some e' ← unfoldDefinition? e then return ← tr L e'
+    -- a definition by well-founded recursion that drains a stream (an unfold) built over an
+    -- array: one `Array.foldl` (`fuseStreamDrain?`)
+    if ← isWfHelper c then
+      if let some e' ← (try fuseStreamDrain? e catch _ => pure none) then return ← tr L e'
     -- a call of a helper definition (not from the library): its own translation, applied
     if !(← isLibraryDecl c) then
       if let some (.defnInfo _) := env.find? c then

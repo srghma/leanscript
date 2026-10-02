@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test([])", () => M.test([]), "#[]", false);
+check("test([]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([]), "#[]", false);
+check("test([-7n])", () => M.test([-7n]), "#[]", false);
+check("test([-7n]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([-7n]), "#[]", false);
+check("test([-7n, -1n, 0n])", () => M.test([-7n, -1n, 0n]), "#[21]", false);
+check("test([-7n, -1n, 0n]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([-7n, -1n, 0n]), "#[21]", false);
+check("test([12n, 3n, 2n, 1n])", () => M.test([12n, 3n, 2n, 1n]), "#[231]", false);
+check("test([12n, 3n, 2n, 1n]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([12n, 3n, 2n, 1n]), "#[231]", false);
 
 console.log(`Fusion02-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

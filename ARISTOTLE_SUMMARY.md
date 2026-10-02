@@ -1,3 +1,50 @@
+# Summary of changes for run b13fba58-0869-4f88-9a27-d06188bdcb25
+`test` in `Tests/SnapshotsPBOPure/Fusion02.lean` now compiles to one plain `for … of` loop that pushes onto the result array. Before this change it wasn't translated at all, and the output is now ahead of `legacy-backend/Fusion02.js`. The new code is in `Term -[convert]-> JsTerm` (`LeanScript/TermElab/ToTerm/StreamFusion.lean`). Node checks pass 8/8 on both presets, `lake exe tests` passes 121/121, and all work is committed. The rewrite is not proved correct; only the node checks and tests back it.
+
+**Starting point.** Only `dropPrefix1` was translated. After inlining, `test`'s body was `toArrayLoop U U.seed #[]`, which couldn't be translated for two reasons:
+- `toArrayLoop` (and `filterMapStep`) use well-founded recursion, and the `Term` language has only bounded loops.
+- `U` is an `Unfold`, a structure with a field that is a type.
+
+**The legacy backend's output** translates everything, since JavaScript is untyped, but at runtime it still has the whole structure:
+- a chain of stream records whose `step` closures call each other;
+- a `while (true)` inside `filterMapStep`, called through those closures;
+- an outer `while (true)` in `toArrayLoop`;
+- an `Option`/`Prod` record allocated per element at each stage;
+- a copy of the array on every push (`[...v5, x]`), so building the result takes quadratic time.
+
+**Output now (`Fusion02-pbo.js`):**
+```js
+export const test = (arr) => {
+  let acc$1 = [];
+  for (const e$2 of arr) {
+    const x$3 = String(int53__lean_int_add(e$2, 1));
+    if (string__lean_string_isprefixof("1", x$3)) {
+      const x$4 = "2" + uint53__lean_string_drop(x$3, 1);
+      if (x$4 !== "wat") { acc$1 = array__lean_array_push_mutable(acc$1, x$4 + "1"); }
+    }
+  }
+  return acc$1;
+};
+```
+There are no stream records, closures, `Option`/`Prod` values or recursion, so the stack can't overflow, and the push is in place. It's the same code as `Fusion01`'s `test`.
+
+**How it works.** All the new code is in that one phase (the `Term` optimiser and the JavaScript phases are unchanged). It turns the whole pipeline into one `Array.foldl`, which the existing pieces then simplify and print as the loop. It matches the shape of each definition's body (read from its unfolding equation), not its name:
+- **The loop that drains the stream** (here `toArrayLoop`): when the stream is empty it returns the accumulator; otherwise it calls itself with the next state and an updated accumulator.
+- **Transformers** (here `mapU`, and `filterMapU`/`filterU` going through `filterMapStep`): each step either emits a value or skips to the next state, chosen by `if`/`match`.
+- **The source** (here `fromArray`): `if h : s < arr.size then some (s+1, arr[s]) else none`.
+
+The per-element work is composed from the draining loop down to the source and becomes the body of a fold over `arr`. If any part doesn't match these shapes, the rewrite does nothing and translation goes on as before. It's hooked into `trApp` in `Expr.lean`.
+
+**Limitation:** the other `Unfold` definitions (`fromArray`, `toArray`, `mapU`, `filterMapU`, `filterU`, `overArray`, `toArrayLoop`, `filterMapStep`) are still listed as not translated, because the typed `Term` language can't represent a structure with a type-valued field. This is the same situation as the `Fold` helpers in Fusion01. Inside a first-order definition like `test` they are inlined and fused away.
+
+**Testing.**
+- I regenerated every snapshot. Only the `Fusion02` outputs changed, and every node check passed. The snapshot script still exits non-zero for the same reasons as before: the "literal too big" refusals on the `pbo` preset, and Lean panics printed while computing expected values (for example `get!` on `none`).
+- A new `fusion02Spec` in `Tests/Main.lean` checks, on both presets, that `test` is translated as a single `for … of` loop with no `while`, no `toArrayLoop(` or `filterMapStep(` calls and an in-place push, and that the generated checks pass under node.
+- `lake build leanscript tests TermTests TyTests JsTerm JsSpec LanguageJavascriptMini` succeeds, with no `sorry` in the new code.
+- On a first run, 7 node-based tests hit their 30-second timeout because the snapshot script was running at the same time; run on its own, all 121 passed.
+
+There were no new theorems this run, so I didn't add anything to the Properties table. The analysis and a phase-by-phase table are in `Tests/SnapshotsPBOPure/Fusion02.md`.
+
 # Summary of changes for run d6a455d5-a356-4e1c-add6-c40a83ec91dd
 For `test` in `Tests/SnapshotsPBOPure/Fusion01.lean`, the JavaScript output is now better than the purescript-backend-optimizer output in `legacy-backend/Fusion01.js`. The six `Fold`-typed helpers still aren't translated, while the legacy backend does emit them. All builds and tests pass.
 

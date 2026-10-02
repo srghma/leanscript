@@ -42,6 +42,14 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test([])", () => M.test([]), "#[]", false);
+check("test([]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([]), "#[]", false);
+check("test([-7])", () => M.test([-7]), "#[]", false);
+check("test([-7]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([-7]), "#[]", false);
+check("test([-7, -1, 0])", () => M.test([-7, -1, 0]), "#[21]", false);
+check("test([-7, -1, 0]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([-7, -1, 0]), "#[21]", false);
+check("test([12, 3, 2, 1])", () => M.test([12, 3, 2, 1]), "#[231]", false);
+check("test([12, 3, 2, 1]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([12, 3, 2, 1]), "#[231]", false);
 
 console.log(`Fusion02-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

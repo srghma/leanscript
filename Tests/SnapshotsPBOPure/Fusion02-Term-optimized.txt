@@ -8,9 +8,21 @@
 --   filterMapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   filterU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   overArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
---   test: LeanScript: the parameter `α` of `overArray` is a type
 
 -- dropPrefix1 : String → Option String
 val k1 [1] : (String → (• | [String])) := fun x2 [ω] : String => (closed)
   ret cond(lean_string_isprefixof("1", x2), ctor#1(lean_string_drop(x2, 1)), ctor#0())
+ret k1
+
+-- test : Array Int → Array String
+val k1 [1] : ((Array Int) → (Array String)) := fun x2 [1] : (Array Int) => (closed)
+  let x8 [1] : (Array String) := array_foldl x2 #[] fun e3 acc4 => (closed)
+    let x5 [1] : Int := share lean_int_add(e3, 1)
+    let x6 [ω] : String := share lean_int_repr(x5)
+    if lean_string_isprefixof("1", x6) then
+      let x7 [ω] : String := share lean_string_append__String_append("2", lean_string_drop(x6, 1))
+      ret cond(lean_string_dec_eq(x7, "wat"), acc4, lean_array_push(acc4, lean_string_append__String_append(x7, "1")))
+    else
+      ret acc4
+  ret x8
 ret k1

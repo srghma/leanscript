@@ -2401,6 +2401,38 @@ def functionCompose03Spec : Spec := describe "FunctionCompose03" do
       assertEq s!"{file}-{preset}: the values, and each thunk forced once"
         ("\n".intercalate expected) run.stdout.trimAscii.toString
 
+/-- `Tests/SnapshotsPBOPure/Fusion02.lean`: the pipeline over an unfold (`toArrayLoop` and
+    `filterMapStep`, by well-founded recursion) is fused into one `for … of` loop that pushes
+    onto the result (`LeanScript.TermElab.ToTerm.StreamFusion`), and the differential checks
+    against Lean pass under node. -/
+def fusion02Spec : Spec := describe "Fusion02" do
+  it "the JavaScript of `test` is one loop, and its checks pass (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/fusion02"
+    IO.FS.createDirAll dir
+    let file := "Fusion02"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for preset in ["pbo", "faithful"] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      assertEq s!"{file}-{preset}: `test` is translated" true
+        ((js.splitOn "export const test = (arr) => {").length > 1)
+      assertEq s!"{file}-{preset}: one `for … of` loop" 2 (js.splitOn "for (const ").length
+      assertEq s!"{file}-{preset}: no `while`, no closure, no recursion" 1
+        ((js.splitOn "while").length + (js.splitOn "toArrayLoop(").length +
+          (js.splitOn "filterMapStep(").length - 2)
+      assertEq s!"{file}-{preset}: pushes onto the result in place" true
+        ((js.splitOn "array__lean_array_push_mutable(acc$").length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2430,6 +2462,7 @@ def spec : Spec := do
   functionCompose01Spec
   functionCompose02Spec
   functionCompose03Spec
+  fusion02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

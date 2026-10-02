@@ -8,7 +8,6 @@
 --   filterMapU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   filterU: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
 --   overArray: LeanScript: the constructor `Unfold.mk` has a field whose value is a type (existential typing is not supported)
---   test: LeanScript: the parameter `α` of `overArray` is a type
 
 -- dropPrefix1 : String → Option String
 val k1 [ω] : (String → (• | [String])) := fun x2 [ω] : String => (closed)
@@ -16,4 +15,25 @@ val k1 [ω] : (String → (• | [String])) := fun x2 [ω] : String => (closed)
     ret ctor#1(lean_string_drop(x2, 1))
   else
     ret ctor#0()
+ret k1
+
+-- test : Array Int → Array String
+val k1 [ω] : ((Array Int) → (Array String)) := fun x2 [ω] : (Array Int) => (closed)
+  let x10 [ω] : (Array String) := array_foldl x2 #[] fun e3 acc4 => (closed)
+    val k5 [ω] : (String → (• | [String])) := fun x6 [ω] : String => (closed)
+      if lean_string_isprefixof("1", x6) then
+        ret ctor#1(lean_string_drop(x6, 1))
+      else
+        ret ctor#0()
+    let x7 [ω] : (• | [String]) := k5 lean_int_repr(lean_int_add(e3, 1))
+    case x7 of
+    | ctor#0() =>
+      ret acc4
+    | ctor#1(f8 [ω] : String) =>
+      case cond(cond(lean_string_dec_eq(lean_string_append__String_append("2", f8), "wat"), false, true), ctor#1(lean_string_append__String_append("2", f8)), ctor#0()) of
+      | ctor#0() =>
+        ret acc4
+      | ctor#1(f9 [ω] : String) =>
+        ret lean_array_push(acc4, lean_string_append__String_append(f9, "1"))
+  ret x10
 ret k1
