@@ -1,9 +1,10 @@
 /-! Variants of `Tests/SnapshotsPBOPure/InlineReferencePrimOpInt.lean`.
 
 * `if x != k then x else k` (and the other ways of writing it) is `x`, whatever `x` is: when the
-  test holds the two arms are equal (`Neu.condIsElse`, `Neu.eqView?`).  Only for the equalities
-  of `Int`, `Nat`, `String` and the fixed-width integers: the equality of `Float` is not the
-  equality of the values (`0.0 == -0.0`), so `if x == 0.0 then 0.0 else x` stays.
+  test holds the two arms are equal (`Neu.condIsElse`, `Neu.eqView?`).  For the equalities
+  of `Int`, `Nat`, `String` and the fixed-width integers; for `Float` only against a literal
+  that is not a zero (`PrimOpNumberBottom.lean`): `0.0 == -0.0`, so
+  `if x == 0.0 then 0.0 else x` stays.
 * A record constant read in the body of a function after it: the function reads the constant
   (`f(extern)`), as purescript-backend-optimizer writes it, instead of building the record again
   (`shareConstValues`, `JsExpr.isFrozen`).  An array is never shared so: a function may update

@@ -1,3 +1,34 @@
+# Summary of changes for run acc8ae86-11b7-41c8-8c4b-dadec03905e9
+For `Tests/SnapshotsPBOPure/InlineReferencePrimOpNumber.lean` as you wrote it, our JavaScript was already better than the legacy purescript-backend-optimizer output on every definition, so that file's output is unchanged. The work was on the part of the original your Lean port leaves out. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpNumber.md`.
+
+**Comparison with legacy (your file):**
+- **`test1`–`test8`:** the constants `110`, `88`, `1089` and `9`, as in legacy.
+- **`extern`:** a flat record `{ _1: 99, _2: 0, _3: 11 }`. Legacy builds nested records and calls `fn({})` when the module loads.
+- **`localTest`:** `(f) => f({ _1: 99, _2: 0, _3: 11 })`.
+- **`externTest`:** `(f) => f(extern)`. Legacy has 5 statements.
+
+**What your Lean file leaves out:** the PureScript original (`.purs`) has a test against `bottom`, which is `-Infinity`: `if res /= bottom then res else …`. Your Lean port doesn't. I added a version that has it, `Tests/SnapshotsMy/PrimOpNumberBottom.lean`. Before this change our `externTest` there still read `x$1 === -Infinity ? -Infinity : x$1`.
+
+**The change, in the `Term → Term` optimise phase** (`LeanScript/Term/Optimize/KnownCond.lean`):
+- `x == k ? k : x` and `if x != k then x else k` now become `x` for `Float`/`Float32` too, when `k` is a literal that is not zero (`-Infinity`, `5.0`, `-0.5`, …).
+- **Why only non-zero literals:** for such a `k`, `x === k` holds only when `x` is exactly `k`, so the JavaScript is exact for every number, including `-0` and `NaN`. Against `0.0` it would not be, because `-0 === 0`, so `x === 0 ? 0 : x` stays as it is.
+- **Proof:** the existing `Neu.condIsElse_eval` / `Term.optimize_eval` proofs needed no changes and use only the standard axioms. This works because floats in the `Term` model can never be `NaN` or `-0.0`.
+- **One supporting change:** float literals can now be recognised as written the same way (`LeanPrimTy.litBEq` in `ShareTest.lean`). Without it, the `-Infinity` in the test and the one in the branch were not matched.
+- No change was needed in the `Term → JsTerm` or `JsTerm → JsTerm` phases. This file has no loops or recursion, so labeled blocks and loops don't come into it.
+
+**Result for the version with the test:**
+- `externTest = (f) => f(extern)`.
+- `localTest` is `const x$1 = f({…}); return x$1 === -Infinity ? 0 : x$1;`. Legacy has an `if`, two returns and a call to `fn(rec)`.
+- In the same file, `selNegInf`, `selPosInf`, `selFive` and `selNegHalf` become `(x) => x`, and `selCall` becomes `(f, x) => f(x)`. The cases against zero, against a different value, and between two variables stay conditionals.
+
+**Tests:**
+- **New spec** `InlineReferencePrimOpNumber` in `Tests/Main.lean`, covering both files at both presets: 13 and 92 node checks, all passing.
+- **`lake exe tests`:** 133/133 pass.
+- **Build:** `lake build TermTests TyTests JsTerm JsSpec tests leanscript` succeeds, with no `sorry` in the changed modules.
+- **Snapshots:** I regenerated all of them, and no existing output changed. Every node check passes. The script still exits non-zero, but only because of the existing "UInt64 literal too big" errors in the `*Configurable.lean` files. The `Option.get!` panic messages come from `KnownConstructors04.lean`, which calls `get!` on `none` on purpose; its checks pass.
+
+I updated the existing proved rewrite theorem in the Properties table to say it now covers non-zero `Float` literals. Everything is committed.
+
 # Summary of changes for run e65a88e3-445a-49ab-8fdd-3d9ad38ae830
 Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferencePrimOpInt.lean` is now better than the legacy purescript-backend-optimizer output on every definition. The one that needed work was `externTest`; the rest already matched legacy or beat it. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpInt.md`.
 

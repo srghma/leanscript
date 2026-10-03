@@ -250,8 +250,23 @@ structure Neu.EqSplit {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) where
   y : PExpr Δ Φ Γ σ o₂
   eval : ∀ κ ρ, (c.eval κ ρ : Bool) = true ↔ x.eval κ ρ = y.eval κ ρ
 
+/-- The operand is a `Float` literal that is not a zero (its bits other than the sign are not
+    all `0`): `-Infinity`, `5.0`, ….  A float `x` with `x == k` for such a `k` has the bits of
+    `k`, for **every** float (`NaN` and `-0.0` included, `LeanScript.Gen.float_eq_iff_beq_of_finite`),
+    so `x == k ? k : x` is `x` in JavaScript too.  Against a zero it is not: `-0.0 == 0.0`. -/
+def PExpr.floatNonzeroLit : {o : Lvl} → PExpr Δ Φ Γ (.prim .float) o → Bool
+  | _, .lit _ v => (HashableFloat.toFloat v).toBits &&& 0x7FFFFFFFFFFFFFFF != 0
+  | _, _ => false
+
+/-- `PExpr.floatNonzeroLit` at `Float32`. -/
+def PExpr.float32NonzeroLit : {o : Lvl} → PExpr Δ Φ Γ (.prim .float32) o → Bool
+  | _, .lit _ v => (HashableFloat32.toFloat32 v).toBits &&& 0x7FFFFFFF != 0
+  | _, _ => false
+
 /-- The operands, when the condition is a call of the equality of a leaf type (`Int`, `Nat`,
-    `String`, the fixed-width integers). -/
+    `String`, the fixed-width integers), or of `Float`/`Float32` with an operand that is a
+    literal other than a zero (`PExpr.floatNonzeroLit`; on the values of the language, which are
+    neither `NaN` nor `-0.0`, `==` is equality, `HashableFloat.beq_iff_eq`). -/
 def Neu.eqView? {ℓ : Nat} : (c : Neu Δ Φ Γ .bool ℓ) → Option (Neu.EqSplit c)
   | .extern (.intBasicExtern .lean_int_dec_eq) (.cons x (.cons y .nil)) _ =>
       some ⟨_, _, _, x, y, fun κ ρ =>
@@ -290,6 +305,15 @@ def Neu.eqView? {ℓ : Nat} : (c : Neu Δ Φ Γ .bool ℓ) → Option (Neu.EqSpl
       some ⟨_, _, _, x, y, fun κ ρ =>
         ⟨Nat.eq_of_beq_eq_true, fun h => by
           show Nat.beq (x.eval κ ρ) (y.eval κ ρ) = true; rw [h]; exact Nat.beq_refl _⟩⟩
+  | .extern (.floatExtern .lean_float_beq) (.cons x (.cons y .nil)) _ =>
+      if x.floatNonzeroLit || y.floatNonzeroLit then
+        some ⟨_, _, _, x, y, fun κ ρ => HashableFloat.beq_iff_eq (a := x.eval κ ρ) (b := y.eval κ ρ)⟩
+      else none
+  | .extern (.float32Extern .lean_float32_beq) (.cons x (.cons y .nil)) _ =>
+      if x.float32NonzeroLit || y.float32NonzeroLit then
+        some ⟨_, _, _, x, y, fun κ ρ =>
+          HashableFloat32.beq_iff_eq (a := x.eval κ ρ) (b := y.eval κ ρ)⟩
+      else none
   | _ => none
 
 /-- `c ? a : b` is `b` when `c` tests the equality of `b` and `a`: `x == k ? k : x` (and

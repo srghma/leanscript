@@ -61,6 +61,8 @@ def LeanPrimTy.litBEq : (p : LeanPrimTy) → p.denote → p.denote → Bool
   | .int64, a, b => decide (a = b)
   | .char, a, b => decide (a = b)
   | .string, a, b => decide (a = b)
+  | .float, a, b => decide (a = b)
+  | .float32, a, b => decide (a = b)
   | _, _, _ => false
 
 theorem LeanPrimTy.eq_of_litBEq (p : LeanPrimTy) (a b : p.denote) (h : p.litBEq a b = true) :

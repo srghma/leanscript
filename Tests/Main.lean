@@ -2904,6 +2904,57 @@ def inlineReferencePrimOpIntSpec : Spec := describe "InlineReferencePrimOpInt" d
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `InlineReferencePrimOpNumber.lean`: the `Float` arithmetic on the fields of a known record is
+    computed at compile time and `externTest = (f) => f(extern)`.  Its faithful variant
+    `PrimOpNumberBottom.lean` puts back the test against `bottom` (`-Infinity`) of the PureScript
+    original: `if res != k then res else k` is `res` for a `Float` literal `k` that is not a zero
+    (`Neu.condIsElse`, `PExpr.floatNonzeroLit`), and stays against `0.0` (`-0.0 == 0.0`). -/
+def inlineReferencePrimOpNumberSpec : Spec := describe "InlineReferencePrimOpNumber" do
+  it "known float arithmetic and float equality selects (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefprimopnumber"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferencePrimOpNumber",
+          ["export const localTest = (f) => f({ _1: 99, _2: 0, _3: 11 });",
+           "export const test1 = 110;", "export const test2 = 88;", "export const test3 = 1089;",
+           "export const test4 = 9;", "export const test8 = 9;",
+           "export const extern = { _1: 99, _2: 0, _3: 11 };",
+           "export const externTest = (f) => f(extern);"],
+          ["if (", " ? ", "fn("], (13 : Nat)),
+        ("Tests/SnapshotsMy", "PrimOpNumberBottom",
+          ["export const bottom = -Infinity;",
+           "return x$1 === -Infinity ? 0 : x$1;",
+           "export const test1 = 110;", "export const test4 = 9;", "export const test8 = 9;",
+           "export const externTest = (f) => f(extern);",
+           "export const selNegInf = (x) => x;", "export const selPosInf = (x) => x;",
+           "export const selFive = (x) => x;", "export const selFiveFlip = (x) => 5;",
+           "export const selNegHalf = (x) => x;", "export const selCall = (f, x) => f(x);",
+           "export const keepZero = (x) => (x === 0 ? 0 : x);",
+           "export const keepOther = (x) => (x === 5 ? 6 : x);",
+           "export const keepVars = (x, y) => (x === y ? y : x);"],
+          ["-Infinity : x$1", "fn("], 92)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2945,6 +2996,7 @@ def spec : Spec := do
   inlineReferenceOpIsTagSpec
   inlineReferencePrimOpBooleanSpec
   inlineReferencePrimOpIntSpec
+  inlineReferencePrimOpNumberSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
