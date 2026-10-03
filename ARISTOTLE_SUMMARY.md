@@ -1,3 +1,36 @@
+# Summary of changes for run 1fa0c318-29e2-42cc-af8c-1999b48ec9bd
+The JavaScript we generate for `Tests/SnapshotsPBOPure/InlineCase01.lean` was already better than `legacy-backend/InlineCase01.js`, so I didn't change the compiler's output. What was missing was testing: `test2`, `test4` and `test5` had never been compared with Lean. That gap is now closed, and all checks and tests pass.
+
+**Our output compared with the legacy backend.** The `Term -[optimize]-> Term` phase already inlines `maybe`, `maybe'` and `Option.elim`. It also moves the call to the lazy default `f ()` into the `none` branch. The convert phase then makes each `testN` a single function of all its parameters, and turns `g 1` applied to the field into one call:
+```js
+export const test2 = (f, g, o) => {
+  if (o.tag === 0) {
+    return f();
+  }
+  return g(1, o._1);
+};
+```
+Where the legacy output differs:
+- **Closures:** it is curried and allocates closures (`v2 => …`, and `$0 = g(1)`). Ours allocates none.
+- **Eager call:** it calls `f()` up front, even when the option is `some`. Ours calls it only in the `none` branch.
+- **Dead code:** it ends with an unreachable `throw new Error("UNREACHABLE")`. Ours has one tag test and no `throw`.
+- **Integer addition:** its `1 + v2._val | 0` wraps around at 32 bits, which is wrong for Lean's `Int`. Ours gives the exact result: on the `pbo` preset it throws once the result no longer fits in 53 bits, and on `faithful` it uses `bigint`.
+
+The file has no loops or recursion, so labeled blocks and loops didn't come into it.
+
+Two small differences remain, both cosmetic:
+- **Parameter names:** the option parameter is called `a` (`a1` in `test5`), the name Lean gives an unnamed parameter.
+- **JSDoc:** the type parameters `α`/`β` are documented as `uint53(number)`, because they are read as `Nat`. The code itself works on values of any type.
+
+**What I changed: check generation (`LeanScriptCli/Check.lean`).** The check generator could not produce sample arguments for a parameter that is a function of two arguments, such as `g : Int → α → β`. So `test2`, `test4` and `test5` got no checks. I added samples for such functions when both arguments and the result are `Nat` or `Int`. Each is passed as two fixed functions, written in Lean and as a JavaScript `(x, y) => …`, which is how the generated code calls them. Each preset now has 78 checks instead of 12, and all pass under node.
+
+**Testing.**
+- I regenerated every snapshot. Apart from this file, two others gained checks, all passing: 17 per preset in `SnapshotsMy/AppArity` and 4 per preset in `PrimOpInt02Configurable`. No `.js` file changed. The script still exits non-zero for the same reasons as before: the "literal too big" refusals on the `pbo` preset, and Lean panic messages printed while computing expected values.
+- I added `inlineCase01Spec` to `Tests/Main.lean`. On both presets it checks the exact shape of each `testN`, checks there's no `maybe`, `elim` or returned closure, expects the 78 checks, and runs them under node.
+- `lake build leanscript tests TyTests TermTests JsTerm` succeeds, and `lake exe tests` passes 125/125.
+
+The full comparison is in `Tests/SnapshotsPBOPure/InlineCase01.md`. No theorems were involved, so nothing was added to the Properties table. Everything is committed.
+
 # Summary of changes for run 41d95556-3d46-40de-ab73-cb1cd682ce85
 The JavaScript we generate for `Tests/SnapshotsPBOPure/InlineArrayIndex.lean` was already as good as `InlineArrayIndex.js`, so its output hasn't changed. Each `test` is a constant: `{ tag: 1, _1: 1 }` … `{ tag: 0 }` for `test4`. The differences from the legacy output:
 - **Encoding:** numeric tags and `_1` fields instead of `"some"`/`_val`. This is the encoding used for every union in the project.

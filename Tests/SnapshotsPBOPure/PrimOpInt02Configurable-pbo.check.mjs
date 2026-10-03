@@ -54,6 +54,8 @@ check("TestUInt64$test5", () => M.TestUInt64$test5, "#[false, true, false, true,
 check("TestUInt64$test6", () => M.TestUInt64$test6, "#[false, false, true, false, true, false]", false);
 check("TestUInt64$test7", () => M.TestUInt64$test7, "#[true, true, false, true, false, true]", false);
 check("TestUInt64$test8", () => M.TestUInt64$test8, "#[true, false, true, false, true, true]", false);
+check("TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y))", () => M.TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y)), "#[11, 12, 21, 10, 2, 0]", false);
+check("TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x))", () => M.TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x)), "#[2, 5, 1, 0, 6, 0]", false);
 check("TestNat$test1", () => M.TestNat$test1, "#[2, 3, 3, 1, 2, 0]", false);
 check("TestNat$test2", () => M.TestNat$test2, "#[0, 0, 1, 1, 0, 0]", false);
 check("TestNat$test3", () => M.TestNat$test3, "#[true, false, false, false, false, true]", false);
@@ -70,6 +72,8 @@ check("TestInt64$test5", () => M.TestInt64$test5, "#[false, true, false, false, 
 check("TestInt64$test6", () => M.TestInt64$test6, "#[false, false, true, true, false, false]", false);
 check("TestInt64$test7", () => M.TestInt64$test7, "#[true, true, false, false, true, true]", false);
 check("TestInt64$test8", () => M.TestInt64$test8, "#[true, false, true, true, false, true]", false);
+check("TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y))", () => M.TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y)), "#[11, 12, 21, 8, 0, 0]", false);
+check("TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x))", () => M.TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x)), "#[2, 5, 1, 0, 7, 0]", false);
 check("TestInt$test1", () => M.TestInt$test1, "#[2, 3, 3, -1, 1, -2]", false);
 check("TestInt$test2", () => M.TestInt$test2, "#[0, -1, 1, 3, -3, 0]", false);
 check("TestInt$test3", () => M.TestInt$test3, "#[true, false, false, false, false, true]", false);

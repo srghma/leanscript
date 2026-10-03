@@ -2500,6 +2500,49 @@ def inlineArrayIndexSpec : Spec := describe "InlineArrayIndex" do
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+/-- `Tests/SnapshotsPBOPure/InlineCase01.lean`: `maybe`/`maybe'` (`@[inline]`) are inlined into
+    each `testN`, which is one function of all its parameters (no closure returned, no
+    `Option.elim`, no `maybe`): one test of the tag, the lazy default forced only in the `none`
+    branch, the partial application `g 1` a direct call `g(1, …)`.  The checks, which pass
+    functions of two arguments too (`SType.fn2`), run under node. -/
+def inlineCase01Spec : Spec := describe "InlineCase01" do
+  it "each `testN` is one test of the tag, and the checks run (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinecase01"
+    IO.FS.createDirAll dir
+    let file := "InlineCase01"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, add, one) in [("pbo", fun (x : String) => s!"int53__lean_int_add({x}, 1)", "1"),
+        ("faithful", fun (x : String) => s!"{x} + 1n", "1n")] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      let fn (name ps o noneArm someArm : String) : String :=
+        s!"export const {name} = ({ps}) => \{\n  if ({o}.tag === 0) \{\n    return {noneArm};\n  }\n  return {someArm};\n};"
+      for (n, frag) in [
+          ("test1", fn "test1" "f, o" "o" "f()" (add "o._1")),
+          ("test2", fn "test2" "f, g, o" "o" "f()" s!"g({one}, o._1)"),
+          ("test3", fn "test3" "f, a" "a" "f()" (add "a._1")),
+          ("test4", fn "test4" "f, g, a" "a" "f()" s!"g({one}, a._1)"),
+          ("test5", fn "test5" "a, g, a1" "a1" (add "a") s!"g({one}, a1._1)")] do
+        assertEq s!"{file}-{preset}: `{n}` is one test of the tag" true ((js.splitOn frag).length > 1)
+      assertEq s!"{file}-{preset}: no `maybe`, no `Option.elim`, no returned closure" 1
+        ((js.splitOn "maybe").length + (js.splitOn "elim").length + (js.splitOn "=> (").length - 2)
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      -- 6 for each of `test1`, `test3`; 12 for each of `test2`, `test4`; 42 for `test5`
+      assertEq s!"{file}-{preset}: 78 checks" 79 (checks.splitOn "\ncheck(").length
+      for n in ["test2", "test4", "test5"] do
+        assertEq s!"{file}-{preset}: `{n}` is checked with functions of two arguments" true
+          ((checks.splitOn s!"M.{n}(").length > 1 && (checks.splitOn "(x, y) =>").length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 namespace HtmlSnap
 
 /-- A copy of `Tests/SnapshotsPBOPure/Html.lean` (whose definitions are private). -/
@@ -2604,6 +2647,7 @@ def spec : Spec := do
   heterogeneous01Spec
   htmlSpec
   inlineArrayIndexSpec
+  inlineCase01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

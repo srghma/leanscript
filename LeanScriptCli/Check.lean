@@ -16,8 +16,8 @@ Only functions whose parameters and result are all of a *sample type* are checke
 `String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
 printed as its array, `#[…]`), structures of such fields, a `Float` or another structure among them (a structure of one field
 is unboxed: its sample is its field's), and some unions; a parameter can also be a function of one
-argument (`Int → String`, `Nat → Nat`, …: `SType.fn`), passed a few fixed functions spelled in
-both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
+argument (`Int → String`, `Nat → Nat`, …: `SType.fn`) or of two integer arguments
+(`Int → Nat → Nat`: `SType.fn2`), passed a few fixed functions spelled in both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
 of the checked function are one call `()` of the delay it answers (`test1(() => true)()`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
@@ -59,6 +59,11 @@ inductive SType where
       that tell their arguments apart (`fun x => "[" ++ toString x ++ "]"`), spelled in Lean
       and in JavaScript. -/
   | fn (dom cod : SType)
+  /-- A function of two arguments (`Int → Nat → Nat`): each argument and the answer a `Nat` or
+      an `Int` (`fn2SampleOk`).  Only a parameter can have this type; JavaScript passes it as
+      a function of two parameters (`(x, y) => …`, the generated code calls it `g(a, b)`), and
+      its samples are two fixed functions that tell both arguments apart. -/
+  | fn2 (dom1 dom2 cod : SType)
   /-- `Unit`: only as the domain of a lazy parameter (`f : Unit → Bool`, a JavaScript
       `() => …`), or as a trailing parameter of the checked function (`(a b : Unit)`), whose run
       of `Unit` parameters is one call `()` in JavaScript (the delays collapse into one). -/
@@ -70,6 +75,10 @@ def fnSampleOk : SType → SType → Bool
   | .nat, .string | .int, .string | .string, .string | .nat, .nat | .int, .int => true
   | .unit, .bool | .unit, .nat | .unit, .int | .unit, .string => true
   | _, _ => false
+
+/-- The functions `dom1 → dom2 → cod` the checks have samples of (`SType.fn2`). -/
+def fn2SampleOk (d1 d2 c : SType) : Bool :=
+  [SType.nat, .int].contains d1 && [SType.nat, .int].contains d2 && [SType.nat, .int].contains c
 
 mutual
 
@@ -128,6 +137,12 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   -- a function of one argument (`fnSampleOk`)
   if let .forallE _ d c _ ← whnfR e then
     if c.hasLooseBVars then return none
+    -- a function of two arguments (`fn2SampleOk`)
+    if let .forallE _ d2 c2 _ ← whnfR c then
+      if c2.hasLooseBVars then return none
+      let (some dt, some dt2, some ct2) := (← stypeOf? d, ← stypeOf? d2, ← stypeOf? c2)
+        | return none
+      return if fn2SampleOk dt dt2 ct2 then some (.fn2 dt dt2 ct2) else none
     let (some dt, some ct) := (← stypeOf? d, ← stypeOf? c) | return none
     return if fnSampleOk dt ct then some (.fn dt ct) else none
   -- a structure-like type of two or more fields of sample types
@@ -145,7 +160,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       -- JavaScript value: no sample
       if t.hasAnyFVar (fun _ => true) then return none
       match ← stypeOf? t with
-      | some (.fn ..) | some .unit | none => return none
+      | some (.fn ..) | some (.fn2 ..) | some .unit | none => return none
       -- a `Float` field is a JavaScript number in the record (shown by its bits: `jsShowOf`)
       | some .float => if xs.size == 1 then return none else out := out.push .float
       | some ft => out := out.push ft
@@ -255,6 +270,30 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
       let big := cfg.intRepr == .bigint
       [⟨lam (mkApp2 (mkConst ``Int.add) x (toExpr (1 : Int))), s!"(x) => x + {intLit big 1}"⟩,
        ⟨lam (mkApp2 (mkConst ``Int.sub) (toExpr (2 : Int)) x), s!"(x) => {intLit big 2} - x"⟩]
+  | .fn2 d1 d2 cod =>
+    -- two functions computing on the two arguments read as integers, `x * 10 + y` and
+    -- `y * 3 - x` (cut at 0 for a `Nat` answer), so that the answer shows both arguments
+    let big (t : SType) : Bool := if t == .nat then cfg.natRepr == .bigint else cfg.intRepr == .bigint
+    let intBig := cfg.intRepr == .bigint
+    let conv (fromBig toBig : Bool) (e : String) : String :=
+      if fromBig == toBig then e else if toBig then s!"BigInt({e})" else s!"Number({e})"
+    let toInt (t : SType) (e : Expr) : Expr := if t == .nat then mkApp (mkConst ``Int.ofNat) e else e
+    let x := toInt d1 (.bvar 1)
+    let y := toInt d2 (.bvar 0)
+    let xj := conv (big d1) intBig "x"
+    let yj := conv (big d2) intBig "y"
+    let lit (i : Int) := intLit intBig i
+    let lam (body : Expr) : Expr :=
+      mkLambda `x .default (elemTy d1) (mkLambda `y .default (elemTy d2) body)
+    let finish (body : Expr) (js : String) : Sample :=
+      if cod == .nat then
+        ⟨lam (mkApp (mkConst ``Int.toNat) body),
+         s!"(x, y) => " ++ conv intBig (big .nat) s!"((v) => (v > {lit 0} ? v : {lit 0}))({js})"⟩
+      else ⟨lam body, s!"(x, y) => {js}"⟩
+    [finish (mkApp2 (mkConst ``Int.add) (mkApp2 (mkConst ``Int.mul) x (toExpr (10 : Int))) y)
+        s!"{xj} * {lit 10} + {yj}",
+     finish (mkApp2 (mkConst ``Int.sub) (mkApp2 (mkConst ``Int.mul) y (toExpr (3 : Int))) x)
+        s!"{yj} * {lit 3} - {xj}"]
 where
   /-- The values built by one constructor on top of the values `sub` (the leaves among their
       first two samples, and a `Nat` leaf among the literals `nats` too), at every
@@ -559,7 +598,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
-      if rt matches .fn .. | .unit then return none
+      if rt matches .fn .. | .fn2 .. | .unit then return none
       -- a union result only of leaf fields (`Option Int`); a recursive one is not printed
       unless resultPrintable rt do return none
       -- `Unit` parameters only at the end (one delay, called with `()` in JavaScript)
