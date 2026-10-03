@@ -1,3 +1,21 @@
+# Summary of changes for run bfdae323-332d-4050-94b4-977c33721f58
+The analysis of `InlineReferenceIfThenElse` is now formalized in Lean, in `Tests/TermTests/Optimize/KnownTestTest.lean`. Every theorem in it builds with no `sorry`.
+
+That file sits on top of the formal work from the previous turn: the new optimizer rewrite `Term.knownTests` (`LeanScript/Term/Optimize/KnownTest.lean`), which drops a repeated test on the same condition. Its proofs are `Term.knownTests_eval` (the result of `eval` doesn't change) and `Term.numCalls_knownTests` (no calls are added). I also added `Term.knownTests_run`, the same result stated for a whole program.
+
+The new file copies the snapshot's definitions (`RecA`/`RecB`/`RecC`, `fn`, `test1`, `extern1`, `test2`) and the variants `test7`–`test10` from `Tests/SnapshotsMy/IfThenElseKnownField.lean`, and translates them to `Term` inside Lean. It proves:
+- **The snapshot itself:** the translations of `test1` and `test2` are already `ret 42`, they compute `test1`/`test2`, and their optimized versions compute `42`. This matches `const test1 = 42; const test2 = 42;` in the legacy output.
+- **The optimizer computes the Lean functions:** for every input, the translations and the optimized versions of `test7` … `test10` compute `test7` … `test10` (`…_translation_run`, `…_optimized_run`). The same holds for `test7` after `Term.knownTests` alone (`test7_knownTests_run`).
+- **The repeated tests are actually removed:**
+  - The translation of `test7` tests `c` three times.
+  - After `Term.knownTests` alone, one `if` is left: `if x2 then ret x4 else ret lean_int_add(x4, 2)`.
+  - After the whole optimizer, it is one conditional, `cond(x2, x4, lean_int_add(x4, 2))`, which becomes `c ? x : x + 2` in JavaScript.
+  - The final optimized forms of `test8`–`test10` are stated the same way.
+
+The `…_run` theorems are checked by the kernel and use only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`). The theorems that compare printed statements use `native_decide`, like the project's other snapshot tests, so they also rely on that tactic's compiler axiom.
+
+`lake build leanscript tests TyTests TermTests JsTerm LeanScript.Term.Optimize.CountOptimize` succeeds. The new theorems are described in `Tests/SnapshotsPBOPure/InlineReferenceIfThenElse.md` and recorded as proved in the Properties table. Everything is committed.
+
 # Summary of changes for run 7e41ece6-9e22-40ff-9720-4a9018452f9d
 Our JavaScript for `Tests/SnapshotsPBOPure/InlineNever.lean` was already better than `InlineNever.js`, so its output hasn't changed. I added support for Lean's `@[noinline]` attribute, which is the Lean version of the `inline never` directive behind the reference output, plus a regression test. All tests pass.
 

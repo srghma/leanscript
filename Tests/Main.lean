@@ -2646,6 +2646,45 @@ def inlineNeverSpec : Spec := describe "InlineNever" do
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+/-- `InlineReferenceIfThenElse.lean` (the tests decided while Lean is turned into `Term`) and its
+    variants `IfThenElseKnownField.lean` (the tests whose answer is known from an enclosing `if`,
+    dropped by `Term.knownTests`). -/
+def inlineReferenceIfThenElseSpec : Spec := describe "InlineReferenceIfThenElse" do
+  it "known tests are dropped (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefite"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments that must be present, fragments that must be absent)
+    for (path, file, frags, absent) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferenceIfThenElse",
+          ["export const test1 = 42", "export const test2 = 42",
+           "export const extern1 = { _1: true, _2: 0"],
+          ["if (", " ? "]),
+        ("Tests/SnapshotsMy", "IfThenElseKnownField",
+          ["export const test3 = (x) => 42", "export const test5 = (x) => x;",
+           "export const test6 = (r) => (r._1 ? r._2 : 0",
+           "export const test7 = (c, x) => (c ? x : ",
+           "export const test8 = (r) => (r._1 ? r._2 : 1",
+           "export const test9 = (c, x) => (c ? "],
+          ["return c ?", "c ? 0", "c ? 1 :", "c ? 1n"])] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2681,6 +2720,7 @@ def spec : Spec := do
   inlineArrayIndexSpec
   inlineCase01Spec
   inlineNeverSpec
+  inlineReferenceIfThenElseSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
