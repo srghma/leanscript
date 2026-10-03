@@ -1,9 +1,8 @@
 module
 
-public import LeanScript.Term.Optimize.FieldsWalk
-public import LeanScript.Term.Optimize.Cond
-public import LeanScript.Term.Optimize.CountDce
-public import LeanScript.Term.Optimize.Atom
+public import LeanScript.Term.Optimize.KnownCond
+public import LeanScript.Term.Optimize.InlineSubstEval
+public import LeanScript.Term.Optimize.CountSubst
 
 @[expose] public section
 
@@ -25,8 +24,15 @@ set_option autoImplicit false
 * when `c` is a known unknown (or the negation `!x` of one, `Neu.negView?`), the `if` is replaced
   by the arm it takes (`Term.knownTestWalk` answers a statement of *another* level: the walk
   returns the level with the statement);
-* otherwise `t` is walked knowing that `c` holds, and `e` knowing that it does not
-  (`BoolFact.extend`).
+* otherwise `c` is first simplified under the facts (`Neu.condSimp`: `c && false`, `c || true`,
+  `c && c`, `!c || c`, `c ? a : a`, known unknowns), then `t` is walked knowing what `c` holding
+  tells (`Neu.factsOf`: both operands of `p && q`, the negated facts of `!p`) and `e` knowing what
+  `c` failing tells (both operands of `p || q` false).
+
+At type `Bool`, `if c then jump j a else jump j b` is `jump j (c ? a : b)` (`Term.mkIteJ`), and a
+join point whose main statement is then `jump j v` is the value `v`, substituted when its
+parameter is used once (`Term.joinOrLet`, `Term.letEOrSubst`): `&&` and `||` that Lean compiles
+into join points become operators (`Tests/SnapshotsMy/PrimOpBooleanKnownField.lean`).
 
 The conditional answer `ret (c ? a : b)` on a known `c` is the answer `ret a` (or `ret b`).  The
 facts are weakened under binders (`BoolFact.weaken`, `BoolFact.weakenN`), carried into open
@@ -42,190 +48,288 @@ namespace LeanScript
 
 variable {ks : List Nat} {Δ : DSig ks}
 
-/-! ## Facts -/
+/-! ## Both arms jump to the same join point -/
 
-/-- A boolean unknown whose value is known. -/
-structure BoolFact (Γ : UCtx ks) where
-  lv : Nat
-  x : UVar Γ .bool lv
-  val : Bool
+section Jumps
+variable {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
 
-namespace BoolFact
+/-- Is it the same join point (then its parameter has the same type)? -/
+def JVar.sameK? : {js : JCtx ks} → {σ' σ : Ty ks} → JVar js σ' → JVar js σ →
+    Option (PLift (σ' = σ))
+  | _, _, _, .head, .head => some ⟨rfl⟩
+  | _, _, _, .tail a, .tail b => JVar.sameK? a b
+  | _, _, _, _, _ => none
 
-variable {Γ : UCtx ks}
+theorem JVar.sameK?_eq : {js : JCtx ks} → {σ' σ : Ty ks} → (a : JVar js σ') → (b : JVar js σ) →
+    {h : PLift (σ' = σ)} → JVar.sameK? a b = some h → h.down ▸ a = b
+  | _, _, _, .head, .head, _, _ => rfl
+  | _, _, _, .tail a, .tail b, h, hs => by
+      simp only [JVar.sameK?] at hs
+      have := JVar.sameK?_eq a b hs
+      obtain ⟨hh⟩ := h
+      subst hh
+      simp only at this ⊢
+      rw [this]
+  | _, _, _, .head, .tail _, _, hs => by simp [JVar.sameK?] at hs
+  | _, _, _, .tail _, .head, _, hs => by simp [JVar.sameK?] at hs
 
-/-- The fact holds in an environment. -/
-def Holds (f : BoolFact Γ) (ρ : UEnv Δ Γ) : Prop := (ρ.get f.x : Bool) = f.val
-
-/-- Under one more binder. -/
-def weaken (b : UBinder ks) (f : BoolFact Γ) : BoolFact (b :: Γ) := ⟨f.lv, .tail f.x, f.val⟩
-
-/-- Under the binders `bs`. -/
-def weakenN (bs : UCtx ks) (f : BoolFact Γ) : BoolFact (bs ++ Γ) :=
-  ⟨f.lv, UVar.weakenN bs f.x, f.val⟩
-
-/-- The value of an unknown, if a fact gives it. -/
-def find? : List (BoolFact Γ) → {ℓ : Nat} → UVar Γ .bool ℓ → Option Bool
-  | [], _, _ => none
-  | f :: fs, _, y => if f.x.index = y.index then some f.val else find? fs y
-
-theorem map_weaken_holds {b : UBinder ks} (v : Ty.Den Δ b.ty) {ρ : UEnv Δ Γ}
-    {facts : List (BoolFact Γ)} (h : ∀ f ∈ facts, f.Holds ρ) :
-    ∀ f ∈ facts.map (BoolFact.weaken b), f.Holds (Tuple.cons v ρ) := by
-  intro f hf
-  obtain ⟨g, hg, rfl⟩ := List.mem_map.1 hf
-  have := h g hg
-  simp only [Holds, weaken] at this ⊢
-  simpa using this
-
-theorem map_weakenN_holds (bs : UCtx ks) (vs : UEnv Δ bs) {ρ : UEnv Δ Γ}
-    {facts : List (BoolFact Γ)} (h : ∀ f ∈ facts, f.Holds ρ) :
-    ∀ f ∈ facts.map (BoolFact.weakenN bs), f.Holds (Tuple.append vs ρ) := by
-  intro f hf
-  obtain ⟨g, hg, rfl⟩ := List.mem_map.1 hf
-  have := h g hg
-  simp only [Holds, weakenN] at this ⊢
-  rw [UEnv.get_weakenN]; exact this
-
-theorem find?_holds {ρ : UEnv Δ Γ} : (facts : List (BoolFact Γ)) → (∀ f ∈ facts, f.Holds ρ) →
-    {ℓ : Nat} → (y : UVar Γ .bool ℓ) → (b : Bool) → find? facts y = some b →
-    (ρ.get y : Bool) = b
-  | [], _, _, _, _, hb => by simp [find?] at hb
-  | f :: fs, h, _, y, b, hb => by
-      simp only [find?] at hb
-      split at hb
-      · rename_i hi
-        cases hb
-        have ⟨_, hx⟩ := UVar.eq_of_index_eq (Δ := Δ) f.x y hi
-        have := h f (List.mem_cons_self ..)
-        simp only [Holds] at this
-        rw [← this]; exact (eq_of_heq (hx ρ)).symm
-      · exact find?_holds fs (fun g hg => h g (List.mem_cons_of_mem _ hg)) y b hb
-
-end BoolFact
-
-section Cond
-variable {Φ : KCtx ks} {Γ : UCtx ks}
-
-/-- The unknown a neutral expression is, if it is one. -/
-def Neu.uvar? {τ : Ty ks} {ℓ : Nat} : Neu Δ Φ Γ τ ℓ → Option (UVar Γ τ ℓ)
-  | .var x => some x
-  | _ => none
-
-theorem Neu.uvar?_eval {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) (x : UVar Γ τ ℓ)
-    (h : n.uvar? = some x) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) : n.eval κ ρ = ρ.get x := by
-  cases n with
-  | var y => simp only [Neu.uvar?, Option.some.injEq] at h; subst h; rfl
-  | _ => simp [Neu.uvar?] at h
-
-/-- The condition as an unknown and a polarity: `x` (`true`) or `!x` (`false`). -/
-def Neu.boolVar? {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) : Option (UVar Γ .bool ℓ × Bool) :=
-  match c.uvar? with
-  | some x => some (x, true)
-  | none =>
-    match c.negView? with
-    | some c' => c'.uvar?.map fun x => (x, false)
+/-- `if c then jump j a else jump j b` is `jump j (c ? a : b)`, for a boolean parameter. -/
+def Term.mergeJumps? {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ) :
+    Term Δ d Φ Γ τ js o₁ → Term Δ d Φ Γ τ js o₂ → Option ((o : Lvl) × Term Δ d Φ Γ τ js o)
+  | .jump (σ := σ) j₁ a, .jump j₂ b => match JVar.sameK? j₁ j₂ with
+    | some h => if σ = .bool then some ⟨_, .jump j₂ (.neu (Neu.mkCond c (h.down ▸ a) b))⟩
+      else none
     | none => none
+  | _, _ => none
 
-theorem Neu.boolVar?_eval {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (x : UVar Γ .bool ℓ) (p : Bool)
-    (h : c.boolVar? = some (x, p)) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
-    (c.eval κ ρ : Bool) = (if p then (ρ.get x : Bool) else !(ρ.get x : Bool)) := by
-  unfold Neu.boolVar? at h
+theorem Term.mergeJumps?_eval {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (t : Term Δ d Φ Γ τ js o₁) (e : Term Δ d Φ Γ τ js o₂) (r : (o : Lvl) × Term Δ d Φ Γ τ js o)
+    (h : Term.mergeJumps? c t e = some r) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = (Branch.ite c t e).eval κ ρ jκ := by
+  cases t <;> cases e <;> simp only [Term.mergeJumps?, reduceCtorEq] at h
+  rename_i σ₁ j₁ a σ₂ j₂ b
   split at h
-  · rename_i y hy
-    simp only [Option.some.injEq, Prod.mk.injEq] at h
-    obtain ⟨rfl, rfl⟩ := h
-    simp [Neu.uvar?_eval c _ hy κ ρ]
-  · split at h
-    · rename_i c' hc'
-      simp only [Option.map_eq_some_iff, Prod.mk.injEq] at h
-      obtain ⟨y, hy, rfl, rfl⟩ := h
-      rw [Neu.negView?_eval c c' hc' κ ρ, Neu.uvar?_eval c' _ hy κ ρ]
-      rfl
+  · rename_i hh hs
+    split at h
     · cases h
-
-/-- The value of a condition, when the facts give it. -/
-def Neu.knownBool? {ℓ : Nat} (facts : List (BoolFact Γ)) (c : Neu Δ Φ Γ .bool ℓ) :
-    Option Bool :=
-  match c.boolVar? with
-  | some (x, p) => (BoolFact.find? facts x).map fun v => if p then v else !v
-  | none => none
-
-theorem Neu.knownBool?_eval {ℓ : Nat} (facts : List (BoolFact Γ)) (c : Neu Δ Φ Γ .bool ℓ)
-    (b : Bool) (h : c.knownBool? facts = some b) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
-    (hf : ∀ f ∈ facts, f.Holds ρ) : (c.eval κ ρ : Bool) = b := by
-  unfold Neu.knownBool? at h
-  split at h
-  · rename_i x p hx
-    simp only [Option.map_eq_some_iff] at h
-    obtain ⟨v, hv, rfl⟩ := h
-    rw [Neu.boolVar?_eval c x p hx κ ρ, BoolFact.find?_holds facts hf x v hv]
-    rfl
+      obtain ⟨hσ⟩ := hh
+      subst hσ
+      have hj := JVar.sameK?_eq j₁ j₂ hs
+      simp only at hj
+      subst hj
+      simp only [Term.eval, PExpr.eval, Neu.mkCond_eval, Branch.eval]
+      rw [Neu.eval_cond_ite]
+      cases (c.eval κ ρ : Bool) <;> rfl
+    · cases h
   · cases h
 
-/-- The facts known in an arm of `if c`: `c` has the value `b`. -/
-def BoolFact.extend {ℓ : Nat} (facts : List (BoolFact Γ)) (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) :
-    List (BoolFact Γ) :=
-  match c.boolVar? with
-  | some (x, p) => ⟨_, x, if p then b else !b⟩ :: facts
-  | none => facts
+/-- The argument of a jump to the innermost join point, if the statement is one. -/
+def Term.jumpHead? {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} :
+    Term Δ d Φ Γ τ (⟨σ, u⟩ :: js) o → Option ((o' : Lvl) × PExpr Δ Φ Γ σ o')
+  | .jump j a => match JVar.sameK? j (JVar.head (u := u) (js := js)) with
+    | some h => some ⟨_, h.down ▸ a⟩
+    | none => none
+  | _ => none
 
-theorem BoolFact.extend_holds {ℓ : Nat} (facts : List (BoolFact Γ)) (c : Neu Δ Φ Γ .bool ℓ)
-    (b : Bool) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (hf : ∀ f ∈ facts, f.Holds ρ)
-    (hc : (c.eval κ ρ : Bool) = b) : ∀ f ∈ BoolFact.extend facts c b, f.Holds ρ := by
-  unfold BoolFact.extend
+theorem Term.jumpHead?_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl}
+    (t : Term Δ d Φ Γ τ (⟨σ, u⟩ :: js) o) {o' : Lvl} (a : PExpr Δ Φ Γ σ o')
+    (h : t.jumpHead? = some ⟨o', a⟩) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js)
+    (f : Ty.Den Δ σ → Ty.Den Δ τ) :
+    t.eval κ ρ (Tuple.cons f jκ) = f (a.eval κ ρ) := by
+  cases t <;> simp only [Term.jumpHead?, reduceCtorEq] at h
+  rename_i σ₁ j₁ a₁
+  split at h
+  · rename_i hh hs
+    simp only [Option.some.injEq, Sigma.mk.injEq] at h
+    obtain ⟨rfl, h⟩ := h
+    obtain ⟨hσ⟩ := hh
+    subst hσ
+    cases h
+    have hj := JVar.sameK?_eq _ _ hs
+    simp only at hj
+    subst hj
+    simp only [Term.eval, JEnv.get, Tuple.head_cons]
+  · cases h
+
+/-- The main part of a join point of a boolean parameter when it is
+    `if c then jump j a else jump j b`, `j` the join point: the argument `c ? a : b` it is jumped
+    to with (what `p && q` and `p || q` become when an operand computes something first).  Only at
+    `bool`: a test whose arms jump with constructors is better left to `Term.joinCtor` and
+    `Term.knownSizes`. -/
+def Branch.jumpArg? {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {ℓ : Nat} :
+    Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ → Option ((ℓ' : Nat) × Neu Δ Φ Γ σ ℓ')
+  | .ite c t e => if σ = .bool then
+      match t.jumpHead?, e.jumpHead? with
+      | some ⟨_, a⟩, some ⟨_, b⟩ => some ⟨_, Neu.mkCond c a b⟩
+      | _, _ => none
+    else none
+  | _ => none
+
+theorem Branch.jumpArg?_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {ℓ : Nat}
+    (br : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) {ℓ' : Nat} (n : Neu Δ Φ Γ σ ℓ')
+    (h : br.jumpArg? = some ⟨ℓ', n⟩) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js)
+    (f : Ty.Den Δ σ → Ty.Den Δ τ) :
+    br.eval κ ρ (Tuple.cons f jκ) = f (n.eval κ ρ) := by
+  cases br <;> simp only [Branch.jumpArg?, reduceCtorEq] at h
+  rename_i c t e
+  split at h
+  · split at h
+    · rename_i o₁ a o₂ b ha hb
+      simp only [Option.some.injEq, Sigma.mk.injEq] at h
+      obtain ⟨rfl, h⟩ := h
+      cases h
+      simp only [Branch.eval, Neu.mkCond_eval]
+      rw [Neu.eval_cond_ite]
+      cases (c.eval κ ρ : Bool)
+      · exact Term.jumpHead?_eval e b hb κ ρ jκ f
+      · exact Term.jumpHead?_eval t a ha κ ρ jκ f
+    · cases h
+  · cases h
+
+/-- `if c then t else e`, or `jump j (c ? a : b)` when both arms jump to `j`
+    (`Term.mergeJumps?`). -/
+def Term.mkIteJ {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (t : Term Δ d Φ Γ τ js o₁) (e : Term Δ d Φ Γ τ js o₂) : (o : Lvl) × Term Δ d Φ Γ τ js o :=
+  match Term.mergeJumps? c t e with
+  | some r => r
+  | none => ⟨_, .branch (.ite c t e)⟩
+
+theorem Term.mkIteJ_eval {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (t : Term Δ d Φ Γ τ js o₁) (e : Term Δ d Φ Γ τ js o₂) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) : (Term.mkIteJ c t e).2.eval κ ρ jκ = (Branch.ite c t e).eval κ ρ jκ := by
+  unfold Term.mkIteJ
   split
-  · rename_i x p hx
-    intro f hf'
-    rcases List.mem_cons.1 hf' with rfl | hf'
-    · have := Neu.boolVar?_eval c x p hx κ ρ
-      rw [hc] at this
-      simp only [BoolFact.Holds]
-      obtain ⟨v, hv⟩ : ∃ v : Bool, ρ.get x = v := ⟨_, rfl⟩
-      rw [hv] at this ⊢
-      subst this
-      cases p <;> cases v <;> rfl
-    · exact hf f hf'
-  · exact hf
+  · rename_i r hr; exact Term.mergeJumps?_eval c t e r hr κ ρ jκ
+  · rfl
 
-/-- A conditional `c ? a : b` on a known `c` is `a` (or `b`); returned with its level. -/
-def Neu.knownCond {τ : Ty ks} {ℓ : Nat} (facts : List (BoolFact Γ)) :
-    Neu Δ Φ Γ τ ℓ → (o' : Lvl) × PExpr Δ Φ Γ τ o'
-  | .cond c a b => match c.knownBool? facts with
-    | some true => ⟨_, a⟩
-    | some false => ⟨_, b⟩
-    | none => ⟨_, .neu (.cond c a b)⟩
-  | n => ⟨_, .neu n⟩
+theorem Term.numCalls_mkIteJ {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (t : Term Δ d Φ Γ τ js o₁) (e : Term Δ d Φ Γ τ js o₂) :
+    (Term.mkIteJ c t e).2.numCalls ≤ t.numCalls + e.numCalls := by
+  unfold Term.mkIteJ
+  split
+  · rename_i r hr
+    cases t <;> cases e <;> simp only [Term.mergeJumps?, reduceCtorEq] at hr
+    split at hr
+    · split at hr
+      · cases hr; simp [Term.numCalls]
+      · cases hr
+    · cases hr
+  · simp [Term.numCalls, Branch.numCalls]
 
-theorem Neu.knownCond_eval {τ : Ty ks} {ℓ : Nat} (facts : List (BoolFact Γ))
-    (n : Neu Δ Φ Γ τ ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (hf : ∀ f ∈ facts, f.Holds ρ) :
-    (n.knownCond facts).2.eval κ ρ = n.eval κ ρ := by
-  cases n with
-  | cond c a b =>
-    simp only [Neu.knownCond]
+/-- `join j (x : σ) := body; main`, or `let x := c ? a : b; body` when `main` is
+    `if c then jump j a else jump j b` (`Branch.jumpArg?`; not when `x` is unused).  When `x` is
+    used once, `c ? a : b` is written in its place (`Term.subst`), so that the tests of `x` are
+    tests of `c ? a : b`, whose operands the walk then knows in the arms (`Neu.factsOf`). -/
+def Term.joinOrLet {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat} :
+    (uₓ : Usage01ω) → Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o → Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ →
+    (o' : Lvl) × Term Δ d Φ Γ τ js o'
+  | .one, body, main => match main.jumpArg? with
+    | some ⟨_, n⟩ =>
+      (body.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id).getD
+        ⟨_, .letE .one (.share n) body⟩
+    | none => ⟨_, .branch (.join σ u .one body main)⟩
+  | .many, body, main => match main.jumpArg? with
+    | some ⟨_, n⟩ => ⟨_, .letE .many (.share n) body⟩
+    | none => ⟨_, .branch (.join σ u .many body main)⟩
+  | .zero, body, main => ⟨_, .branch (.join σ u .zero body main)⟩
+
+theorem Term.joinOrLet_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
+    (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.joinOrLet uₓ body main).2.eval κ ρ jκ = (Branch.join σ u uₓ body main).eval κ ρ jκ := by
+  cases uₓ with
+  | zero => rfl
+  | one =>
+    simp only [Term.joinOrLet]
     split
-    · rename_i h
-      simp only [Neu.eval, Neu.knownBool?_eval facts c true h κ ρ hf]
-    · rename_i h
-      simp only [Neu.eval, Neu.knownBool?_eval facts c false h κ ρ hf]
+    · rename_i n hn
+      simp only [Branch.eval]
+      rw [Branch.jumpArg?_eval main n hn]
+      cases hs : body.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL))
+          JRen.id with
+      | some r =>
+        exact Term.subst_eval (KLRen.Agree.id κ)
+          (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) body hs
+      | none => rfl
     · rfl
-  | _ => rfl
+  | many =>
+    simp only [Term.joinOrLet]
+    split
+    · rename_i n hn
+      simp only [Term.eval, Comp.eval, Branch.eval]
+      rw [Branch.jumpArg?_eval main n hn]; rfl
+    · rfl
 
-/-- The answer `ret e`, where `e` is a conditional `c ? a : b` on a known `c`, is the answer
-    `ret a` (or `ret b`); returned with its level. -/
-def PExpr.knownCond {τ : Ty ks} {o : Lvl} (facts : List (BoolFact Γ)) :
-    PExpr Δ Φ Γ τ o → (o' : Lvl) × PExpr Δ Φ Γ τ o'
-  | .neu n => n.knownCond facts
-  | e => ⟨_, e⟩
+theorem Term.numCalls_joinOrLet {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
+    (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) :
+    (Term.joinOrLet uₓ body main).2.numCalls ≤ body.numCalls + main.numCalls := by
+  cases uₓ with
+  | zero => simp [Term.joinOrLet, Term.numCalls, Branch.numCalls]
+  | one =>
+    simp only [Term.joinOrLet]
+    split
+    · simp only [Option.getD]
+      split
+      · rename_i r hs
+        have := Term.numCalls_subst body hs
+        dsimp only; omega
+      · simp [Term.numCalls, Comp.numCalls]
+    · simp [Term.numCalls, Branch.numCalls]
+  | many =>
+    simp only [Term.joinOrLet]
+    split <;> simp [Term.numCalls, Comp.numCalls, Branch.numCalls]
 
-theorem PExpr.knownCond_eval {τ : Ty ks} {o : Lvl} (facts : List (BoolFact Γ))
-    (e : PExpr Δ Φ Γ τ o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (hf : ∀ f ∈ facts, f.Holds ρ) :
-    (e.knownCond facts).2.eval κ ρ = e.eval κ ρ := by
-  cases e with
-  | neu n => exact Neu.knownCond_eval facts n κ ρ hf
-  | _ => rfl
+/-- The neutral expression a computation shares, if it is `share n`. -/
+def Comp.share? {σ : Ty ks} {ℓ : Nat} : Comp Δ d Φ Γ σ ℓ → Option (Neu Δ Φ Γ σ ℓ)
+  | .share n => some n
+  | _ => none
 
-end Cond
+theorem Comp.share?_eval {σ : Ty ks} {ℓ : Nat} (c : Comp Δ d Φ Γ σ ℓ) (n : Neu Δ Φ Γ σ ℓ)
+    (h : c.share? = some n) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) : c.eval κ ρ = n.eval κ ρ := by
+  cases c <;> simp only [Comp.share?, Option.some.injEq, reduceCtorEq] at h
+  subst h; rfl
+
+/-- `let x := c; b`, or `b[x := n]` when `c` is `share n`, a boolean used once
+    (`Term.subst`): a condition `x` bound by `let` is tested as `n`, whose operands the walk then
+    knows in the arms (`Neu.factsOf`).  (`Term.joinOrLet` writes such `let`s.) -/
+def Term.letEOrSubst {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} :
+    (u : Usage1ω) → Comp Δ d Φ Γ σ ℓ → Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o' →
+    (o : Lvl) × Term Δ d Φ Γ τ js o
+  | .one, c, b => match c.share? with
+    | some n =>
+      if σ = .bool then
+        (b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id).getD
+          ⟨_, .letE .one c b⟩
+      else ⟨_, .letE .one c b⟩
+    | none => ⟨_, .letE .one c b⟩
+  | .many, c, b => ⟨_, .letE .many c b⟩
+
+theorem Term.letEOrSubst_eval {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} (u : Usage1ω)
+    (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o') (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.letEOrSubst u c b).2.eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ := by
+  cases u with
+  | many => rfl
+  | one =>
+    simp only [Term.letEOrSubst]
+    cases hn : c.share? with
+    | none => rfl
+    | some n =>
+      dsimp only
+      by_cases hσ : σ = .bool
+      · rw [if_pos hσ]
+        simp only [Option.getD]
+        split
+        · rename_i r hs
+          rw [Term.subst_eval (KLRen.Agree.id κ)
+            (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) b hs]
+          simp only [Term.eval, Comp.share?_eval c n hn κ ρ, PExpr.eval]
+        · rfl
+      · rw [if_neg hσ]
+
+theorem Term.numCalls_letEOrSubst {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} (u : Usage1ω)
+    (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o') :
+    (Term.letEOrSubst u c b).2.numCalls ≤ c.numCalls + b.numCalls := by
+  cases u with
+  | many => simp [Term.letEOrSubst, Term.numCalls]
+  | one =>
+    simp only [Term.letEOrSubst]
+    cases c.share? with
+    | none => simp [Term.numCalls]
+    | some n =>
+      dsimp only
+      by_cases hσ : σ = .bool
+      · rw [if_pos hσ]
+        simp only [Option.getD]
+        split
+        · rename_i r hs
+          have := Term.numCalls_subst b hs
+          dsimp only; omega
+        · simp [Term.numCalls]
+      · rw [if_neg hσ]; simp [Term.numCalls]
+
+end Jumps
 
 /-! ## The walk -/
 
@@ -268,36 +372,41 @@ def Comp.knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ
 def Term.knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
     {js : JCtx ks} → {o : Lvl} → List (BoolFact Γ) → Term Δ d Φ Γ τ js o →
     (o' : Lvl) × Term Δ d Φ Γ τ js o'
-  | _, _, _, _, _, _, facts, .ret e => ⟨_, .ret (e.knownCond facts).2⟩
+  | _, _, _, _, _, _, facts, .ret e => ⟨_, .ret (e.condSimp facts).2⟩
   | _, _, _, _, _, _, facts, .letV u v b =>
       ⟨_, .letV u (v.knownTestWalk facts) (b.knownTestWalk facts).2⟩
   | _, _, _, _, _, _, facts, .letE u c b =>
-      ⟨_, .letE u (c.knownTestWalk facts)
-        (b.knownTestWalk (facts.map (BoolFact.weaken _))).2⟩
+      Term.letEOrSubst u (c.knownTestWalk facts)
+        (b.knownTestWalk (facts.map (BoolFact.weaken _))).2
   | _, _, _, _, _, _, facts, .record_casesOn us n b =>
       ⟨_, .record_casesOn us n (b.knownTestWalk (facts.map (BoolFact.weakenN _))).2⟩
   | _, _, _, _, _, _, facts, .branch (.ite c t e) =>
-      match c.knownBool? facts with
+      match (c.condSimp facts).2.boolLit? with
       | some true => t.knownTestWalk facts
       | some false => e.knownTestWalk facts
-      | none => ⟨_, .branch (.ite c (t.knownTestWalk (BoolFact.extend facts c true)).2
-          (e.knownTestWalk (BoolFact.extend facts c false)).2)⟩
+      | none => match (c.condSimp facts).2.neu? with
+        | some ⟨_, n⟩ => Term.mkIteJ n (t.knownTestWalk (Neu.factsOf facts n true)).2
+            (e.knownTestWalk (Neu.factsOf facts n false)).2
+        | none => ⟨_, .branch (.ite c (t.knownTestWalk facts).2 (e.knownTestWalk facts).2)⟩
   | _, _, _, _, _, _, facts, .branch (.enum_casesOn e bs) =>
       ⟨_, .branch (.enum_casesOn e (fun i => ((bs i).knownTestWalk facts).2))⟩
   | _, _, _, _, _, _, facts, .branch (.union_casesOn e bs) =>
       ⟨_, .branch (.union_casesOn e (bs.knownTestWalk facts).2)⟩
   | _, _, _, _, _, _, facts, .branch (.join σ u uₓ body main) =>
-      ⟨_, .branch (.join σ u uₓ (body.knownTestWalk (facts.map (BoolFact.weaken _))).2
-        (main.knownTestWalk facts).2)⟩
-  | _, _, _, _, _, _, _, .jump j e => ⟨_, .jump j e⟩
+      Term.joinOrLet uₓ (body.knownTestWalk (facts.map (BoolFact.weaken _))).2
+        (main.knownTestWalk facts).2
+  | _, _, _, _, _, _, facts, .jump j e => ⟨_, .jump j (e.condSimp facts).2⟩
 /-- `Term.knownTestWalk` in a branch that must stay a branch (the main part of a join point):
     no `if` is dropped at its head. -/
 def Branch.knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
     {js : JCtx ks} → {ℓ : Nat} → List (BoolFact Γ) → Branch Δ d Φ Γ τ js ℓ →
     (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'
   | _, _, _, _, _, _, facts, .ite c t e =>
-      ⟨_, .ite c (t.knownTestWalk (BoolFact.extend facts c true)).2
-        (e.knownTestWalk (BoolFact.extend facts c false)).2⟩
+      match (c.condSimp facts).2.neu? with
+      | some ⟨_, n⟩ => ⟨_, .ite n (t.knownTestWalk (Neu.factsOf facts n true)).2
+          (e.knownTestWalk (Neu.factsOf facts n false)).2⟩
+      | none => ⟨_, .ite c (t.knownTestWalk (Neu.factsOf facts c true)).2
+          (e.knownTestWalk (Neu.factsOf facts c false)).2⟩
   | _, _, _, _, _, _, facts, .enum_casesOn e bs =>
       ⟨_, .enum_casesOn e (fun i => ((bs i).knownTestWalk facts).2)⟩
   | _, _, _, _, _, _, facts, .union_casesOn e bs => ⟨_, .union_casesOn e (bs.knownTestWalk facts).2⟩
@@ -375,32 +484,46 @@ theorem Term.knownTestWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks
     (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) → (∀ f ∈ facts, f.Holds ρ) →
     (t.knownTestWalk facts).2.eval κ ρ jκ = t.eval κ ρ jκ
   | _, _, _, _, _, _, .ret e, facts, κ, ρ, _, h => by
-      simp only [Term.knownTestWalk, Term.eval]; exact PExpr.knownCond_eval facts e κ ρ h
+      simp only [Term.knownTestWalk, Term.eval]; exact PExpr.condSimp_eval facts e κ ρ h
   | _, _, _, _, _, _, .letV u v b, facts, κ, ρ, jκ, h => by
       simp only [Term.knownTestWalk, Term.eval, Val.knownTestWalk_eval v facts κ ρ h]
       exact Term.knownTestWalk_eval b facts _ ρ jκ h
   | _, _, _, _, _, _, .letE u c b, facts, κ, ρ, jκ, h => by
-      simp only [Term.knownTestWalk, Term.eval, Comp.knownTestWalk_eval c facts κ ρ h]
+      simp only [Term.knownTestWalk]
+      rw [Term.letEOrSubst_eval]
+      simp only [Term.eval, Comp.knownTestWalk_eval c facts κ ρ h]
       exact Term.knownTestWalk_eval b _ κ _ jκ (BoolFact.map_weaken_holds _ h)
   | _, _, _, _, _, _, .record_casesOn us n b, facts, κ, ρ, jκ, h => by
       simp only [Term.knownTestWalk, Term.eval]
       exact Term.knownTestWalk_eval b _ κ _ jκ (BoolFact.map_weakenN_holds _ _ h)
   | _, _, _, _, _, _, .branch (.ite c t e), facts, κ, ρ, jκ, h => by
+      have ihc := Neu.condSimp_eval facts c κ ρ h
+      have iht := fun fs (hf : ∀ f ∈ fs, BoolFact.Holds f ρ) => Term.knownTestWalk_eval t fs κ ρ jκ hf
+      have ihe := fun fs (hf : ∀ f ∈ fs, BoolFact.Holds f ρ) => Term.knownTestWalk_eval e fs κ ρ jκ hf
       simp only [Term.knownTestWalk]
-      split
-      · rename_i hc
-        rw [Term.knownTestWalk_eval t facts κ ρ jκ h]
-        simp only [Term.eval, Branch.eval, Neu.knownBool?_eval facts c true hc κ ρ h]
-      · rename_i hc
-        rw [Term.knownTestWalk_eval e facts κ ρ jκ h]
-        simp only [Term.eval, Branch.eval, Neu.knownBool?_eval facts c false hc κ ρ h]
-      · simp only [Term.eval, Branch.eval]
-        split
-        · rename_i hv
-          exact Term.knownTestWalk_eval t _ κ ρ jκ (BoolFact.extend_holds facts c true κ ρ h hv)
-        · rename_i hv
-          exact Term.knownTestWalk_eval e _ κ ρ jκ
-            (BoolFact.extend_holds facts c false κ ρ h hv)
+      cases hb : (c.condSimp facts).2.boolLit? with
+      | some v =>
+        rw [PExpr.boolLit?_eval _ v hb κ ρ] at ihc
+        cases v
+        · dsimp only; rw [ihe facts h]; simp only [Term.eval, Branch.eval, ← ihc]
+        · dsimp only; rw [iht facts h]; simp only [Term.eval, Branch.eval, ← ihc]
+      | none =>
+        dsimp only
+        cases hn : (c.condSimp facts).2.neu? with
+        | some p =>
+          obtain ⟨_, n⟩ := p
+          rw [PExpr.neu?_eval _ _ n hn κ ρ] at ihc
+          dsimp only
+          rw [Term.mkIteJ_eval]
+          simp only [Term.eval, Branch.eval, ihc]
+          split
+          · rename_i hv
+            exact iht _ (Neu.factsOf_holds facts n true κ ρ h rfl (heq_of_eq (ihc.trans hv)))
+          · rename_i hv
+            exact ihe _ (Neu.factsOf_holds facts n false κ ρ h rfl (heq_of_eq (ihc.trans hv)))
+        | none =>
+          dsimp only
+          simp only [Term.eval, Branch.eval, iht facts h, ihe facts h]
   | _, _, _, _, _, _, .branch (.enum_casesOn e bs), facts, κ, ρ, jκ, h => by
       simp only [Term.knownTestWalk, Term.eval, Branch.eval]
       exact Term.knownTestWalk_eval _ facts κ ρ jκ h
@@ -408,25 +531,44 @@ theorem Term.knownTestWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks
       simp only [Term.knownTestWalk, Term.eval, Branch.eval]
       exact Branches.knownTestWalk_eval bs facts κ ρ jκ h _
   | _, _, _, _, _, _, .branch (.join σ u uₓ body main), facts, κ, ρ, jκ, h => by
-      simp only [Term.knownTestWalk, Term.eval, Branch.eval,
-        Branch.knownTestWalk_eval main facts κ ρ _ h]
+      simp only [Term.knownTestWalk]
+      rw [Term.joinOrLet_eval]
+      simp only [Term.eval, Branch.eval, Branch.knownTestWalk_eval main facts κ ρ _ h]
       congr 2
       funext v
       exact Term.knownTestWalk_eval body _ κ _ jκ
         (BoolFact.map_weaken_holds (b := ⟨σ, uₓ, _⟩) v h)
-  | _, _, _, _, _, _, .jump _ _, _, _, _, _, _ => rfl
+  | _, _, _, _, _, _, .jump j e, facts, κ, ρ, jκ, h => by
+      simp only [Term.knownTestWalk, Term.eval, PExpr.condSimp_eval facts e κ ρ h]
   termination_by structural _ _ _ _ _ _ x _ _ _ _ _ => x
 theorem Branch.knownTestWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
     {js : JCtx ks} → {ℓ : Nat} → (br : Branch Δ d Φ Γ τ js ℓ) → (facts : List (BoolFact Γ)) →
     (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) → (∀ f ∈ facts, f.Holds ρ) →
     (br.knownTestWalk facts).2.eval κ ρ jκ = br.eval κ ρ jκ
   | _, _, _, _, _, _, .ite c t e, facts, κ, ρ, jκ, h => by
-      simp only [Branch.knownTestWalk, Branch.eval]
-      split
-      · rename_i hv
-        exact Term.knownTestWalk_eval t _ κ ρ jκ (BoolFact.extend_holds facts c true κ ρ h hv)
-      · rename_i hv
-        exact Term.knownTestWalk_eval e _ κ ρ jκ (BoolFact.extend_holds facts c false κ ρ h hv)
+      have ihc := Neu.condSimp_eval facts c κ ρ h
+      have iht := fun fs (hf : ∀ f ∈ fs, BoolFact.Holds f ρ) => Term.knownTestWalk_eval t fs κ ρ jκ hf
+      have ihe := fun fs (hf : ∀ f ∈ fs, BoolFact.Holds f ρ) => Term.knownTestWalk_eval e fs κ ρ jκ hf
+      simp only [Branch.knownTestWalk]
+      cases hn : (c.condSimp facts).2.neu? with
+      | some p =>
+        obtain ⟨_, n⟩ := p
+        rw [PExpr.neu?_eval _ _ n hn κ ρ] at ihc
+        dsimp only
+        simp only [Branch.eval, ihc]
+        split
+        · rename_i hv
+          exact iht _ (Neu.factsOf_holds facts n true κ ρ h rfl (heq_of_eq (ihc.trans hv)))
+        · rename_i hv
+          exact ihe _ (Neu.factsOf_holds facts n false κ ρ h rfl (heq_of_eq (ihc.trans hv)))
+      | none =>
+        dsimp only
+        simp only [Branch.eval]
+        split
+        · rename_i hv
+          exact iht _ (Neu.factsOf_holds facts c true κ ρ h rfl (heq_of_eq hv))
+        · rename_i hv
+          exact ihe _ (Neu.factsOf_holds facts c false κ ρ h rfl (heq_of_eq hv))
   | _, _, _, _, _, _, .enum_casesOn e bs, facts, κ, ρ, jκ, h => by
       simp only [Branch.knownTestWalk, Branch.eval]
       exact Term.knownTestWalk_eval _ facts κ ρ jκ h
@@ -521,17 +663,32 @@ theorem Term.numCalls_knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCt
   | _, _, _, _, _, _, .letE u c b, facts => by
       have h₁ := Comp.numCalls_knownTestWalk c facts
       have h₂ := Term.numCalls_knownTestWalk b (facts.map (BoolFact.weaken _))
+      have h₃ := Term.numCalls_letEOrSubst u (c.knownTestWalk facts)
+        (b.knownTestWalk (facts.map (BoolFact.weaken _))).2
       simp only [Term.knownTestWalk, Term.numCalls]; omega
   | _, _, _, _, _, _, .record_casesOn us n b, facts => by
       simp only [Term.knownTestWalk, Term.numCalls]
       exact Term.numCalls_knownTestWalk b _
   | _, _, _, _, _, _, .branch (.ite c t e), facts => by
-      have h₁ := Term.numCalls_knownTestWalk t facts
-      have h₂ := Term.numCalls_knownTestWalk e facts
-      have h₃ := Term.numCalls_knownTestWalk t (BoolFact.extend facts c true)
-      have h₄ := Term.numCalls_knownTestWalk e (BoolFact.extend facts c false)
+      have iht := fun fs => Term.numCalls_knownTestWalk t fs
+      have ihe := fun fs => Term.numCalls_knownTestWalk e fs
+      have h₁ := iht facts
+      have h₂ := ihe facts
       simp only [Term.knownTestWalk]
-      split <;> simp only [Term.numCalls, Branch.numCalls] <;> omega
+      cases (c.condSimp facts).2.boolLit? with
+      | some v => cases v <;> simp only [Term.numCalls, Branch.numCalls] <;> omega
+      | none =>
+        dsimp only
+        cases (c.condSimp facts).2.neu? with
+        | some p =>
+          obtain ⟨_, n⟩ := p
+          dsimp only
+          have h₃ := Term.numCalls_mkIteJ n (t.knownTestWalk (Neu.factsOf facts n true)).2
+            (e.knownTestWalk (Neu.factsOf facts n false)).2
+          have h₄ := iht (Neu.factsOf facts n true)
+          have h₅ := ihe (Neu.factsOf facts n false)
+          simp only [Term.numCalls, Branch.numCalls]; omega
+        | none => dsimp only; simp only [Term.numCalls, Branch.numCalls]; omega
   | _, _, _, _, _, _, .branch (.enum_casesOn e bs), facts => by
       simp only [Term.knownTestWalk, Term.numCalls, Branch.numCalls]
       exact Fin.sumNat_le _ (fun i => Term.numCalls_knownTestWalk (bs i) facts)
@@ -541,6 +698,8 @@ theorem Term.numCalls_knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCt
   | _, _, _, _, _, _, .branch (.join σ u uₓ body main), facts => by
       have h₁ := Term.numCalls_knownTestWalk body (facts.map (BoolFact.weaken _))
       have h₂ := Branch.numCalls_knownTestWalk main facts
+      have h₃ := Term.numCalls_joinOrLet uₓ
+        (body.knownTestWalk (facts.map (BoolFact.weaken _))).2 (main.knownTestWalk facts).2
       simp only [Term.knownTestWalk, Term.numCalls, Branch.numCalls]; omega
   | _, _, _, _, _, _, .jump _ _, _ => Nat.le_refl _
   termination_by structural _ _ _ _ _ _ x _ => x
@@ -548,9 +707,19 @@ theorem Branch.numCalls_knownTestWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : U
     {τ : Ty ks} → {js : JCtx ks} → {ℓ : Nat} → (br : Branch Δ d Φ Γ τ js ℓ) →
     (facts : List (BoolFact Γ)) → (br.knownTestWalk facts).2.numCalls ≤ br.numCalls
   | _, _, _, _, _, _, .ite c t e, facts => by
-      have h₁ := Term.numCalls_knownTestWalk t (BoolFact.extend facts c true)
-      have h₂ := Term.numCalls_knownTestWalk e (BoolFact.extend facts c false)
-      simp only [Branch.knownTestWalk, Branch.numCalls]; omega
+      have iht := fun fs => Term.numCalls_knownTestWalk t fs
+      have ihe := fun fs => Term.numCalls_knownTestWalk e fs
+      simp only [Branch.knownTestWalk]
+      cases (c.condSimp facts).2.neu? with
+      | some p =>
+        obtain ⟨_, n⟩ := p
+        have h₁ := iht (Neu.factsOf facts n true)
+        have h₂ := ihe (Neu.factsOf facts n false)
+        dsimp only; simp only [Branch.numCalls]; omega
+      | none =>
+        have h₁ := iht (Neu.factsOf facts c true)
+        have h₂ := ihe (Neu.factsOf facts c false)
+        dsimp only; simp only [Branch.numCalls]; omega
   | _, _, _, _, _, _, .enum_casesOn e bs, facts => by
       simp only [Branch.knownTestWalk, Branch.numCalls]
       exact Fin.sumNat_le _ (fun i => Term.numCalls_knownTestWalk (bs i) facts)

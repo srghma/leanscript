@@ -96,15 +96,9 @@ export const testEq = (inst, noInline, a, b, expected) => {
   const x$1 = inst(a, b);
   let x$2;
   if (x$1) {
-    if (noInline(a, b)) {
-      x$2 = true;
-    } else {
-      x$2 = false;
-    }
-  } else if (noInline(a, b)) {
-    x$2 = false;
+    x$2 = noInline(a, b);
   } else {
-    x$2 = true;
+    x$2 = !noInline(a, b);
   }
   if (x$2) {
     return x$1 ? expected : !expected;
@@ -125,15 +119,9 @@ export const testNe = (inst, noInline, a, b, expected) => {
   const x$1 = inst(a, b);
   let x$2;
   if (x$1) {
-    if (noInline(a, b)) {
-      x$2 = false;
-    } else {
-      x$2 = true;
-    }
-  } else if (noInline(a, b)) {
-    x$2 = true;
+    x$2 = !noInline(a, b);
   } else {
-    x$2 = false;
+    x$2 = noInline(a, b);
   }
   if (x$2) {
     return x$1 ? !expected : expected;

@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Optimize.ShareTest
+public import LeanScript.Term.Optimize.KnownCond
 
 @[expose] public section
 
@@ -54,21 +55,7 @@ variable {ks : List Nat} {Δ : DSig ks}
 section Conn
 variable {Φ : KCtx ks} {Γ : UCtx ks}
 
-/-- The neutral expression a pure expression is, if it is one. -/
-def PExpr.neu? {τ : Ty ks} {o : Lvl} : PExpr Δ Φ Γ τ o → Option ((ℓ : Nat) × Neu Δ Φ Γ τ ℓ)
-  | .neu n => some ⟨_, n⟩
-  | _ => none
-
-theorem PExpr.neu?_eval {τ : Ty ks} {o : Lvl} (e : PExpr Δ Φ Γ τ o) (ℓ : Nat)
-    (n : Neu Δ Φ Γ τ ℓ) (h : e.neu? = some ⟨ℓ, n⟩) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
-    e.eval κ ρ = n.eval κ ρ := by
-  cases e with
-  | neu n' =>
-    simp only [PExpr.neu?, Option.some.injEq, Sigma.mk.injEq] at h
-    obtain ⟨rfl, h⟩ := h
-    cases h
-    rfl
-  | _ => simp [PExpr.neu?] at h
+-- `PExpr.neu?` and `PExpr.neu?_eval`: `LeanScript.Term.Optimize.KnownCond`.
 
 /-- A pair of conditions. -/
 abbrev CondPair (Δ : DSig ks) (Φ : KCtx ks) (Γ : UCtx ks) :=

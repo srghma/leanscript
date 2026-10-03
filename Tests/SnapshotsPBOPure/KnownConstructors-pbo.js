@@ -51,7 +51,7 @@ export const test4 = (f, x) => {
  * @param {int53(number)} x
  * @returns {boolean}
  */
-export const test5 = (x) => 42 < x && false;
+export const test5 = (x) => false;
 
 /**
  * `fromString`

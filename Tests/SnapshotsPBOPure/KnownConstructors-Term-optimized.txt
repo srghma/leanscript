@@ -36,8 +36,8 @@ val k1 [1] : ((String → (String → String)) → (Int → String)) := fun x2 [
 ret k1
 
 -- test5 : Int → Bool
-val k1 [1] : (Int → Bool) := fun x2 [1] : Int => (closed)
-  ret cond(lean_int_dec_lt(42, x2), false, false)
+val k1 [1] : (Int → Bool) := fun x2 [0] : Int => (closed)
+  ret false
 ret k1
 
 -- fromString : String → Option TestEnum

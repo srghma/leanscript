@@ -105,17 +105,11 @@ val k1 [1] : ((Nat → (Nat → Bool)) → ((Nat → (Nat → Bool)) → (Nat �
           if x12 then
             let x15 [1] : (Nat → Bool) := x4 x6
             let x16 [1] : Bool := x15 x8
-            if x16 then
-              jump j13 true
-            else
-              jump j13 false
+            jump j13 x16
           else
             let x17 [1] : (Nat → Bool) := x4 x6
             let x18 [1] : Bool := x17 x8
-            if x18 then
-              jump j13 false
-            else
-              jump j13 true
+            jump j13 cond(x18, false, true)
         ret k9
       ret k7
     ret k5
@@ -138,17 +132,11 @@ val k1 [1] : ((Nat → (Nat → Bool)) → ((Nat → (Nat → Bool)) → (Nat �
           if x12 then
             let x15 [1] : (Nat → Bool) := x4 x6
             let x16 [1] : Bool := x15 x8
-            if x16 then
-              jump j13 false
-            else
-              jump j13 true
+            jump j13 cond(x16, false, true)
           else
             let x17 [1] : (Nat → Bool) := x4 x6
             let x18 [1] : Bool := x17 x8
-            if x18 then
-              jump j13 true
-            else
-              jump j13 false
+            jump j13 x18
         ret k9
       ret k7
     ret k5

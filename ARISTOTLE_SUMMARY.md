@@ -1,3 +1,36 @@
+# Summary of changes for run b139fa25-46ad-433b-af29-3c7e3c9ac896
+**Analysis of `InlineReferencePrimOpBoolean`.** The JavaScript we generate for this file was already as good as the legacy purescript-backend-optimizer output, and a little better. In both, `test1`–`test6` come out as the constant `42` with no conditionals left. Our `extern1` is the literal `{ _1: true, _2: 0, _3: true, _4: false }`, computed at compile time. Legacy calls `fn({})` when the module loads and builds three nested objects. The conditions get decided while the Lean code is turned into `Term`, and this file has no loops, so labeled loops/blocks don't come up. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpBoolean.md`.
+
+Because that file was already decided, I added variants where the record or the boolean operands are parameters: `Tests/SnapshotsMy/PrimOpBooleanKnownField.lean` (`test7`–`test22`). That is where the optimiser has to do the work. Sample output:
+- `test9 = (r) => (r._1 && r._3 ? 42 : 0)`
+- `test12 = (c, d, x) => (c && d ? x : 2)`
+- `test13 = (c, d, x) => (c || d ? 1 : 2)`
+- `test15 = … => 7` (`c && false`), `test17 = (c) => c` (`c && c`), `test18 = (c) => true` (`!c || c`), `test19 = … => 7` (`c ? 7 : 7`)
+- plain `&&` / `||` stay operators.
+
+**Where the optimisations live.** Almost all of it is in the `Term → Term` optimise phase (`LeanScript/Term/Optimize/KnownTest.lean`, plus the new `LeanScript/Term/Optimize/KnownCond.lean`). Every rewrite comes with a sorry-free Lean proof that it does not change `Term.eval`:
+- **Facts from conditions:** inside the true branch of `p && q`, both `p` and `q` are known true. Inside the false branch of `p || q`, both are known false. For `!p`, the facts are reversed.
+- **Simplifying conditions under known facts:** `c && false`, `c || true`, `c && c`, `!c || c`, `c ? a : a`, and conditions whose value is already known.
+- **Boolean join points become values:** when both branches jump to the same boolean join point, the join point is replaced by the value `c ? a : b`. If that value is used once, it is substituted in place. This only applies at type `Bool`, so the other optimisations still see constructor jumps.
+
+There is one small fallback in the `Term → JsTerm` conversion (`JsTerm/Lower/FromTerm.lean`), which applies the same condition simplification inside function bodies. That covers cases like `c ? 7 : 7` that the `Term` pass leaves there. No change was needed in the `JsTerm → JsTerm` phase.
+
+**Effects on other snapshots:** all improvements, with every check passing.
+- `KnownConstructors` `test5`: `42 < x && false` became `false`.
+- `PrimOpNumber02` (`testEq` / `testNe`): `if (noInline(a, b)) { x$2 = true; } else { x$2 = false; }` became `x$2 = noInline(a, b);` (or its negation).
+
+**Tests:**
+- **New spec:** `InlineReferencePrimOpBoolean` in `Tests/Main.lean` checks the JS fragments at both presets and runs the generated checks in node: 12 for the original file and 141 for the variants.
+- **Timeout raised:** the existing `InlineReferenceOpIsTag` spec now has a 120-second timeout instead of 30. It sometimes timed out under parallel load because generating the checks for `RecursiveUnionChecks` takes about 20 seconds; the optimiser itself takes about 3.
+- **Results:**
+  - `lake exe tests`: 131/131 pass.
+  - The snapshot script regenerated all snapshots and every node check passed.
+  - The script still exits non-zero, but only because of the three `*Configurable.lean` files that fail with "UInt64 literal too big" at the `pbo` preset; those errors were there before.
+  - The script also prints "index out of bounds" messages; these come from Lean evaluating `PrimOpArray01`'s deliberate `a[2]!` on short arrays when it computes the expected results, and that file's 48 checks pass.
+- **Build:** `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `tests` and `leanscript` build, with no `sorry` in the changed modules.
+
+All work is committed.
+
 # Summary of changes for run 83129ed6-47c2-4da8-9ec4-361123676817
 Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferenceOpIsTag.lean` already matched or beat the legacy output on every definition, so the generated JavaScript is unchanged. What was missing was testing: the file had **0 differential checks against Lean**, because the check tool skipped results of recursive datatypes like `MyList Int`. I fixed that, and the file now has 13 checks per preset, all passing.
 

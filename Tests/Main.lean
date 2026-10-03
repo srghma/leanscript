@@ -2759,7 +2759,10 @@ def inlineReferenceIfThenElseSpec : Spec := describe "InlineReferenceIfThenElse"
     `Tests/SnapshotsMy/RecursiveUnionChecks.lean` (a tree, a value deeper than that depth, unboxed
     structures, a lazy parameter answering a list). -/
 def inlineReferenceOpIsTagSpec : Spec := describe "InlineReferenceOpIsTag" do
-  it "the tests of a known constructor are decided (needs node and leanscript)" do
+  -- `--check` on `RecursiveUnionChecks` evaluates its 242 checks in Lean (about 20 s alone),
+  -- so under a parallel load the default 30 s are not enough.
+  it "the tests of a known constructor are decided (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
     let bin : System.FilePath := ".lake/build/bin/leanscript"
     let built : Bool ← (bin.pathExists : IO Bool)
     if !built then return  -- `lake build leanscript` first
@@ -2781,6 +2784,55 @@ def inlineReferenceOpIsTagSpec : Spec := describe "InlineReferenceOpIsTag" do
           ["if (", " ? ", ".tag", "=== 0", "switch", "fn_prime("], (13 : Nat)),
         ("Tests/SnapshotsMy", "RecursiveUnionChecks",
           ["export const wrapMirror = ", "export const consForced = (f) => "], [], [], [], 242)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for (preset, own) in [("pbo", pboFrags), ("faithful", faithfulFrags)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags ++ own do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
+def inlineReferencePrimOpBooleanSpec : Spec := describe "InlineReferencePrimOpBoolean" do
+  it "known boolean fields and conditions are decided or simplified (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefprimopbool"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, at `pbo`, at `faithful`, absent, checks)
+    for (path, file, frags, pboFrags, faithfulFrags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferencePrimOpBoolean", [],
+          ["export const test1 = 42;", "export const test6 = 42;",
+           "export const extern1 = { _1: true, _2: 0, _3: true, _4: false };"],
+          ["export const test1 = 42n;", "export const test6 = 42n;",
+           "export const extern1 = { _1: true, _2: 0n, _3: true, _4: false };"],
+          ["if (", " ? ", "fn("], (12 : Nat)),
+        ("Tests/SnapshotsMy", "PrimOpBooleanKnownField",
+          ["export const test7 = (x, g) => x;", "export const test16 = (c, x) => x;",
+           "export const test17 = (c) => c;", "export const test18 = (c) => true;",
+           "export const test21 = (c, d) => c && d;", "export const test22 = (c, d) => c || !d;",
+           "if (f$1 && r._3) {"],
+          ["export const test9 = (r) => (r._1 && r._3 ? 42 : 0);",
+           "export const test10 = (r) => (r._4 || r._1 ? 42 : r._2);",
+           "export const test12 = (c, d, x) => (c && d ? x : 2);",
+           "export const test13 = (c, d, x) => (c || d ? 1 : 2);",
+           "export const test15 = (c, x) => 7;", "export const test19 = (c, x) => 7;"],
+          ["export const test9 = (r) => (r._1 && r._3 ? 42n : 0n);",
+           "export const test10 = (r) => (r._4 || r._1 ? 42n : r._2);",
+           "export const test12 = (c, d, x) => (c && d ? x : 2n);",
+           "export const test13 = (c, d, x) => (c || d ? 1n : 2n);",
+           "export const test15 = (c, x) => 7n;", "export const test19 = (c, x) => 7n;"],
+          [], 141)] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
       let out ← IO.Process.output { cmd := bin.toString, args }
       assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
@@ -2834,6 +2886,7 @@ def spec : Spec := do
   nestedEnumCasesSpec
   inlineReferenceIfThenElseSpec
   inlineReferenceOpIsTagSpec
+  inlineReferencePrimOpBooleanSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

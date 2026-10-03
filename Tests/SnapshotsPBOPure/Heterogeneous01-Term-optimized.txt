@@ -7,6 +7,5 @@ ret ⟨13, ⟨"bar", 42.000000⟩, false⟩
 val k1 [1] : ((Int × Float × Bool) → (Int × (String × Float) × Bool)) := fun x2 [1] : (Int × Float × Bool) => (closed)
   let ⟨f3 [1] : Int, f4 [1] : Float, f5 [1] : Bool⟩ := x2
   let x6 [1] : Int := share lean_int_add(f3, 1)
-  let x7 [1] : Bool := share cond(f5, false, true)
-  ret ⟨x6, ⟨"bar", f4⟩, x7⟩
+  ret ⟨x6, ⟨"bar", f4⟩, cond(f5, false, true)⟩
 ret k1

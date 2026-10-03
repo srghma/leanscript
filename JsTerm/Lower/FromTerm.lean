@@ -2,6 +2,7 @@ module
 
 public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
+public import LeanScript.Term.Optimize.KnownCond
 
 @[expose] public section
 
@@ -21,7 +22,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `PExpr.lit` | a literal at the configured representation (`12n` or `12`); a literal that does not fit in a `number` is refused |
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` (`listRepr = stdListToJsArray`) or `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` (`listRepr = taggedUnion`) |
 | `enum_mk i` | the number `shift + i` |
-| `Neu.cond` | `c ? a : b` |
+| `Neu.cond` | `c ? a : b`, simplified first (`Neu.condSimp`: `c ? 7 : 7` is `7`, `(c && false) ? a : b` is `b`) |
 | `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
 | `Val.lam` | `(x, y) => { … }`, of all the parameters of its type (uncurried) |
 | `Val.thunk_mk`, `Val.lazy_mk` | `thunk__lean_mk_thunk(() => { … })`, `() => { … }` |
@@ -360,9 +361,14 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
   | .var x => (n.u.getD x.index .none).get _
   | Neu.data_out b j e => do unfoldE (← cNeu e n C M) (lowerTy cfg ((Δ.block b).unfold j))
   | .cond c a b => do
-    let ce ← castE (← cNeu c n C M) (.terminal .bool)
-    let (nt, ne) := n.splitOn c
-    return .cond ce (← cPExpr a nt C M) (← cPExpr b ne C M)
+    -- the conditions the optimiser could not simplify without changing the level of an open
+    -- body (`c ? 7 : 7`, `(c && false) ? x : 7`): simplified here (`Neu.condSimp`)
+    match Neu.condSimp ([] : List (BoolFact Γ)) (Neu.cond c a b) with
+    | ⟨_, .neu (.cond c' a' b')⟩ =>
+      let ce ← castE (← cNeu c' n C M) (.terminal .bool)
+      let (nt, ne) := n.splitOn c'
+      return .cond ce (← cPExpr a' nt C M) (← cPExpr b' ne C M)
+    | ⟨_, e'⟩ => cPExpr e' n C M
   | Neu.extern (σs := σs) (τ := τ) e args h => do
     let nm := externName e
     -- `l ++ l'` on cons cells: the whole chain of appends, built from its end (`cConsAppend`)

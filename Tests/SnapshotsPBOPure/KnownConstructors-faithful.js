@@ -51,7 +51,7 @@ export const test4 = (f, x) => {
  * @param {int(bigint)} x
  * @returns {boolean}
  */
-export const test5 = (x) => 42n < x && false;
+export const test5 = (x) => false;
 
 /**
  * `fromString`
