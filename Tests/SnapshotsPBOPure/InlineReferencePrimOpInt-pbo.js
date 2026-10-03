@@ -53,10 +53,7 @@ export const extern = { _1: 99, _2: 0, _3: 11 };
  * @param {({ _1: int53(number), _2: int53(number), _3: int53(number) }) => int53(number)} f
  * @returns {int53(number)}
  */
-export const externTest = (f) => {
-  const x$1 = f({ _1: 99, _2: 0, _3: 11 });
-  return x$1 === -2147483648 ? -2147483648 : x$1;
-};
+export const externTest = (f) => f(extern);
 
 /**
  * `test5`

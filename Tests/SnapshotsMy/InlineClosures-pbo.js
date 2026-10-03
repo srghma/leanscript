@@ -75,7 +75,7 @@ export const ordered = (a, b) => {
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const keep = (x) => (x === 7 ? 7 : x);
+export const keep = (x) => x;
 
 /**
  * `around`

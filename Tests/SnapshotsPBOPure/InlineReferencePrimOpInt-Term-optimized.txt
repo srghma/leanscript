@@ -28,8 +28,8 @@ ret ⟨99, 0, 11⟩
 
 -- externTest : (Rec → Int) → Int
 val k1 [1] : (((Int × Int × Int) → Int) → Int) := fun x2 [1] : ((Int × Int × Int) → Int) => (closed)
-  let x3 [ω] : Int := x2 ⟨99, 0, 11⟩
-  ret cond(lean_int_dec_eq(x3, -2147483648), -2147483648, x3)
+  let x3 [1] : Int := x2 ⟨99, 0, 11⟩
+  ret x3
 ret k1
 
 -- test5 : Int

@@ -90,7 +90,7 @@ export const ordered = (a, b) => {
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const keep = (x) => (x === 7n ? 7n : x);
+export const keep = (x) => x;
 
 /**
  * `around`

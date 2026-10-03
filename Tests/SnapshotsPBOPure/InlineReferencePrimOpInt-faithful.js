@@ -53,10 +53,7 @@ export const extern = { _1: 99n, _2: 0n, _3: 11n };
  * @param {({ _1: int(bigint), _2: int(bigint), _3: int(bigint) }) => int(bigint)} f
  * @returns {int(bigint)}
  */
-export const externTest = (f) => {
-  const x$1 = f({ _1: 99n, _2: 0n, _3: 11n });
-  return x$1 === -2147483648n ? -2147483648n : x$1;
-};
+export const externTest = (f) => f(extern);
 
 /**
  * `test5`

@@ -1,3 +1,35 @@
+# Summary of changes for run e65a88e3-445a-49ab-8fdd-3d9ad38ae830
+Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferencePrimOpInt.lean` is now better than the legacy purescript-backend-optimizer output on every definition. The one that needed work was `externTest`; the rest already matched legacy or beat it. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpInt.md`.
+
+**Comparison with legacy:**
+- **`test1`–`test8`:** constants `110`, `88`, `1089` and `9`, as in legacy.
+- **`extern`:** a flat record `{ _1: 99, _2: 0, _3: 11 }`. Legacy builds nested records and calls `fn({})` when the module loads.
+- **`localTest`:** `const x$1 = f({ _1: 99, _2: 0, _3: 11 }); return x$1 === -2147483648 ? 0 : x$1;`. Legacy builds nested records and calls `fn` twice.
+- **`externTest`:** before, it rebuilt the record and tested `x$1 === -2147483648 ? -2147483648 : x$1`. It is now `export const externTest = (f) => f(extern);`. Legacy reads `extern` but keeps the test and two returns.
+
+**Changes, by phase:**
+1. **`Term → Term` optimise phase** (`LeanScript/Term/Optimize/KnownCond.lean`): `x == k ? k : x` becomes `x`, as does `if res != k then res else k`. When the test holds, both arms are equal.
+   - It applies to the equalities of `Int`, `Nat`, `String`, `UInt8`–`UInt64` and `Int8`–`Int64`. `Float` is left out on purpose, because its `==` is not equality of values (`0.0 == -0.0`).
+   - It is proved, with no `sorry`, not to change `Term.eval` (`Neu.condIsElse_eval`, plus the updated `Neu.mkCondS_eval`). The overall `Term.optimize_eval` still uses only the standard axioms.
+2. **`Term → JsTerm` conversion phase, at module level** (`shareConstValues` in `JsTerm/Lower/ShareConsts.lean`): a function body now uses the name of an earlier constant instead of rebuilding the same record. This is what gives `f(extern)`.
+   - Only values made of literals, enums, records and constructors are shared. Arrays and lists never are, because a function may update an array it owns in place.
+   - Only constants defined *before* the function are used, so a constant is never read before it has been set. That is why `localTest`, which comes before `extern`, keeps its record literal.
+
+No labeled blocks or loops are involved, because this file has no loops or recursion.
+
+**Tests:**
+- **New variants file** `Tests/SnapshotsMy/PrimOpIntEqSelect.lean`: the other equality types, `5 == x ? x : 5` giving `5`, a case with a different value and a `Float` case (both stay conditionals), `f(origin)` sharing a record, and an array that is correctly not shared. It has 99 checks per preset, all passing under node.
+- **New spec** `InlineReferencePrimOpInt` in `Tests/Main.lean`, covering both files at both presets.
+- **Snapshots regenerated:**
+  - Every node check passes.
+  - Only three other outputs changed, all for the better: `InlineClosures` `keep` is now `(x) => x`, and `InlineReferencePrimOpNumber` `externTest` is now `f(extern)` in both presets.
+  - The snapshot script still exits non-zero, but only because of the existing "UInt64 literal too big" errors in the `*Configurable.lean` files.
+- **Build and test run:** `lake build TermTests TyTests JsTerm JsSpec tests leanscript` succeeds, and `lake exe tests` passes 132/132.
+  - To get there I raised the timeout of the existing "constructors without fields as numbers" spec to 120 s. Generating the checks for `RecData` takes about 18 s on its own, and the code from before this session takes just as long. Under parallel load it was going over 30 s.
+- **Plain `lake build` fails, for a reason unrelated to this work:** `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which this project does not depend on. That file was already like this and I did not touch it.
+
+I added the proved rewrite theorem to the Properties table. Everything is committed.
+
 # Summary of changes for run b139fa25-46ad-433b-af29-3c7e3c9ac896
 **Analysis of `InlineReferencePrimOpBoolean`.** The JavaScript we generate for this file was already as good as the legacy purescript-backend-optimizer output, and a little better. In both, `test1`–`test6` come out as the constant `42` with no conditionals left. Our `extern1` is the literal `{ _1: true, _2: 0, _3: true, _4: false }`, computed at compile time. Legacy calls `fn({})` when the module loads and builds three nested objects. The conditions get decided while the Lean code is turned into `Term`, and this file has no loops, so labeled loops/blocks don't come up. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpBoolean.md`.
 

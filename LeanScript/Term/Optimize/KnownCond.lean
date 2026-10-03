@@ -238,24 +238,113 @@ theorem BoolFact.lookup_eval {τ : Ty ks} {ℓ : Nat} (facts : List (BoolFact Γ
     exact (BoolFact.find?_holds facts hf x v hv).symm
   · cases h
 
+/-! ## Equality tests -/
+
+/-- The two operands of a call of an equality extern (`lean_int_dec_eq x y`), with the fact
+    that the call is true exactly when they are equal. -/
+structure Neu.EqSplit {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) where
+  σ : Ty ks
+  o₁ : Lvl
+  o₂ : Lvl
+  x : PExpr Δ Φ Γ σ o₁
+  y : PExpr Δ Φ Γ σ o₂
+  eval : ∀ κ ρ, (c.eval κ ρ : Bool) = true ↔ x.eval κ ρ = y.eval κ ρ
+
+/-- The operands, when the condition is a call of the equality of a leaf type (`Int`, `Nat`,
+    `String`, the fixed-width integers). -/
+def Neu.eqView? {ℓ : Nat} : (c : Neu Δ Φ Γ .bool ℓ) → Option (Neu.EqSplit c)
+  | .extern (.intBasicExtern .lean_int_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Int.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_nat_dec_eq__Nat_decEq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Nat.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_string_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (String.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_uint8_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (UInt8.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_uint16_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (UInt16.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_uint32_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (UInt32.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_uint64_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (UInt64.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.int8BasicExtern .lean_int8_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Int8.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.int16BasicExtern .lean_int16_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Int16.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.int32BasicExtern .lean_int32_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Int32.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.int64BasicExtern .lean_int64_dec_eq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        @decide_eq_true_iff (x.eval κ ρ = y.eval κ ρ) (Int64.decEq (x.eval κ ρ) (y.eval κ ρ))⟩
+  | .extern (.preludeExtern .lean_nat_dec_eq__Nat_beq) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, fun κ ρ =>
+        ⟨Nat.eq_of_beq_eq_true, fun h => by
+          show Nat.beq (x.eval κ ρ) (y.eval κ ρ) = true; rw [h]; exact Nat.beq_refl _⟩⟩
+  | _ => none
+
+/-- `c ? a : b` is `b` when `c` tests the equality of `b` and `a`: `x == k ? k : x` (and
+    `k == x ? k : x`, `x == k ? x : k`, `k == x ? x : k`) is `x`. -/
+def Neu.condIsElse {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) : Bool :=
+  match c.eqView? with
+  | some s => (a.same s.y && b.same s.x) || (a.same s.x && b.same s.y)
+  | none => false
+
+theorem Neu.condIsElse_eval {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
+    (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) (h : Neu.condIsElse c a b = true)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) : (Neu.cond c a b).eval κ ρ = b.eval κ ρ := by
+  unfold Neu.condIsElse at h
+  split at h
+  · rename_i s _
+    rw [Neu.eval_cond_ite]
+    cases hc : (c.eval κ ρ : Bool)
+    · rfl
+    · have hxy := (s.eval κ ρ).1 hc
+      simp only [Bool.or_eq_true, Bool.and_eq_true] at h
+      show a.eval κ ρ = b.eval κ ρ
+      rcases h with ⟨ha, hb⟩ | ⟨ha, hb⟩
+      · have ha' := (PExpr.same_eval a s.y ha).2 κ ρ
+        have hb' := (PExpr.same_eval b s.x hb).2 κ ρ
+        exact eq_of_heq ((ha'.trans (heq_of_eq hxy.symm)).trans hb'.symm)
+      · have ha' := (PExpr.same_eval a s.x ha).2 κ ρ
+        have hb' := (PExpr.same_eval b s.y hb).2 κ ρ
+        exact eq_of_heq ((ha'.trans (heq_of_eq hxy)).trans hb'.symm)
+  · cases h
+
 /-- `c ? a : b` (`Neu.mkCond`), or `a` when both arms are written the same way
-    (`PExpr.same`: `c ? 7 : 7` is `7`, `c ? x : x` is `x`). -/
+    (`PExpr.same`: `c ? 7 : 7` is `7`, `c ? x : x` is `x`), or `b` when `c` tests the equality
+    of the two arms (`Neu.condIsElse`: `x == k ? k : x` is `x`). -/
 def Neu.mkCondS {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
     (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) : (o : Lvl) × PExpr Δ Φ Γ τ o :=
-  if a.same b then ⟨_, a⟩ else ⟨_, .neu (Neu.mkCond c a b)⟩
+  if a.same b then ⟨_, a⟩
+  else if Neu.condIsElse c a b then ⟨_, b⟩
+  else ⟨_, .neu (Neu.mkCond c a b)⟩
 
 theorem Neu.mkCondS_eval {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ)
     (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (Neu.mkCondS c a b).2.eval κ ρ = (Neu.cond c a b).eval κ ρ := by
   unfold Neu.mkCondS
   by_cases hs : a.same b = true
-  · rw [if_pos hs]
+  · rw [ite_eq_left_of_eq_true _ _ (eq_true hs)]
     have hab := eq_of_heq ((PExpr.same_eval a b hs).2 κ ρ)
     rw [Neu.eval_cond_ite]
     cases (c.eval κ ρ : Bool)
     · exact hab
     · rfl
-  · rw [if_neg hs]; exact Neu.mkCond_eval c a b κ ρ
+  · rw [ite_eq_right_of_eq_false _ _ (eq_false hs)]
+    by_cases he : Neu.condIsElse c a b = true
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true he)]; exact (Neu.condIsElse_eval c a b he κ ρ).symm
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false he)]; exact Neu.mkCond_eval c a b κ ρ
 
 mutual
 /-- **Known conditions in a pure expression**: a boolean unknown that a fact gives is its

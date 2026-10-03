@@ -372,7 +372,10 @@ def moreJsSpec : Spec := describe "JsTerm" do
       assertEq "node" "" (if out.exitCode == 0 then "" else out.stderr)
       assertEq "output" ["[0,2,{\"tag\":1,\"_1\":\"a\"}]", "[{\"tag\":0},{\"tag\":2},{\"tag\":1,\"_1\":\"a\"}]"]
         ((out.stdout.splitOn "\n").filter (· ≠ ""))
-  it "constructors without fields as numbers: the generated code runs (needs node and leanscript)" do
+  -- `--check` on `RecData` evaluates its checks in Lean (about 18 s alone), so under a parallel
+  -- load the default 30 s are not enough.
+  it "constructors without fields as numbers: the generated code runs (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
     -- `leanscript --nullary=int` on programs over declared datatypes, `Option`s and lists, and
     -- the differential checks it writes run against Lean's answers
     let bin : System.FilePath := ".lake/build/bin/leanscript"
@@ -2847,6 +2850,60 @@ def inlineReferencePrimOpBooleanSpec : Spec := describe "InlineReferencePrimOpBo
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `InlineReferencePrimOpInt.lean`: the arithmetic on the fields of a known record is computed at
+    compile time; `if res != k then res else k` is `res` (`Neu.condIsElse`), so
+    `externTest = (f) => f(extern)`, reading the constant `extern` instead of building the record
+    again (`shareConstValues`, frozen values only).  Its variants `PrimOpIntEqSelect.lean` (the
+    other equalities, `Float` kept, an array never shared). -/
+def inlineReferencePrimOpIntSpec : Spec := describe "InlineReferencePrimOpInt" do
+  it "known arithmetic, equality selects and shared record constants (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefprimopint"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, at `pbo`, at `faithful`, absent, checks)
+    for (path, file, frags, pboFrags, faithfulFrags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferencePrimOpInt",
+          ["export const externTest = (f) => f(extern);"],
+          ["export const test1 = 110;", "export const test2 = 88;", "export const test3 = 1089;",
+           "export const test4 = 9;", "export const test8 = 9;",
+           "export const extern = { _1: 99, _2: 0, _3: 11 };",
+           "return x$1 === -2147483648 ? 0 : x$1;"],
+          ["export const test1 = 110n;", "export const test4 = 9n;",
+           "export const extern = { _1: 99n, _2: 0n, _3: 11n };",
+           "return x$1 === -2147483648n ? 0n : x$1;"],
+          ["-2147483648 : x$1", "-2147483648n : x$1"], (14 : Nat)),
+        ("Tests/SnapshotsMy", "PrimOpIntEqSelect",
+          ["export const selInt = (x) => x;", "export const selIntEq = (x) => x;",
+           "export const selIntVars = (x, y) => x;", "export const selNat = (n) => n;",
+           "export const selString = (s) => s;", "export const selUInt8 = (x) => x;",
+           "export const selInt32 = (x) => x;", "export const selCall = (f, x) => f(x);",
+           "export const keepFloat = (x) => (x === 0 ? 0 : x);",
+           "export const applyOrigin = (f) => f(origin);"],
+          ["export const selIntFlip = (x) => 5;", "export const keepOther = (x) => (x === 5 ? 6 : x);",
+           "export const applyArr = (f) => f([1, 2, 3]);"],
+          ["export const selIntFlip = (x) => 5n;", "export const keepOther = (x) => (x === 5n ? 6n : x);",
+           "export const applyArr = (f) => f([1n, 2n, 3n]);"],
+          ["f(arr)"], 99)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for (preset, own) in [("pbo", pboFrags), ("faithful", faithfulFrags)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags ++ own do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2887,6 +2944,7 @@ def spec : Spec := do
   inlineReferenceIfThenElseSpec
   inlineReferenceOpIsTagSpec
   inlineReferencePrimOpBooleanSpec
+  inlineReferencePrimOpIntSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

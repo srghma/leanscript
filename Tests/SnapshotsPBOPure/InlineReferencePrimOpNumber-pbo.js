@@ -50,7 +50,7 @@ export const extern = { _1: 99, _2: 0, _3: 11 };
  * @param {({ _1: float, _2: float, _3: float }) => float} f
  * @returns {float}
  */
-export const externTest = (f) => f({ _1: 99, _2: 0, _3: 11 });
+export const externTest = (f) => f(extern);
 
 /**
  * `test5`
