@@ -34,16 +34,16 @@ export const extern1 = [1n, 2n, 0n];
  * `extern2`
  * @type {Array<Array<int(bigint)>>}
  */
-export const extern2 = [[1n, 2n, 0n], [3n], [0n]];
+export const extern2 = [extern1, [3n], [0n]];
 
 /**
  * `test3`
  * @type {Array<int(bigint)>}
  */
-export const test3 = [1n, 2n, 0n];
+export const test3 = extern1;
 
 /**
  * `test4`
  * @type {Array<Array<int(bigint)>>}
  */
-export const test4 = [[1n, 2n, 0n], [3n], [0n]];
+export const test4 = extern2;

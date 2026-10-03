@@ -8,9 +8,7 @@
  */
 export const charValues = (op) => {
   const x$1 = op("a", "a");
-  const x$2 = op("a", "b");
-  const x$3 = op("b", "a");
-  return [x$1, x$2, x$3];
+  return [x$1, op("a", "b"), op("b", "a")];
 };
 
 /**

@@ -11,9 +11,7 @@ export const TestUInt8$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, 254);
-  const x$5 = op(255, 2);
-  const x$6 = op(255, 255);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(255, 2), op(255, 255)];
 };
 
 /**
@@ -92,9 +90,7 @@ export const TestUInt16$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, 65534);
-  const x$5 = op(65535, 2);
-  const x$6 = op(65535, 65535);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(65535, 2), op(65535, 65535)];
 };
 
 /**
@@ -113,37 +109,37 @@ export const TestUInt16$test2 = [0, 65535, 1, 3, 65533, 0];
  * `TestUInt16.test3`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test3 = [true, false, false, false, false, true];
+export const TestUInt16$test3 = TestUInt8$test3;
 
 /**
  * `TestUInt16.test4`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test4 = [false, true, true, true, true, false];
+export const TestUInt16$test4 = TestUInt8$test4;
 
 /**
  * `TestUInt16.test5`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test5 = [false, true, false, true, false, false];
+export const TestUInt16$test5 = TestUInt8$test5;
 
 /**
  * `TestUInt16.test6`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test6 = [false, false, true, false, true, false];
+export const TestUInt16$test6 = TestUInt8$test6;
 
 /**
  * `TestUInt16.test7`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test7 = [true, true, false, true, false, true];
+export const TestUInt16$test7 = TestUInt8$test7;
 
 /**
  * `TestUInt16.test8`
  * @type {Array<boolean>}
  */
-export const TestUInt16$test8 = [true, false, true, false, true, true];
+export const TestUInt16$test8 = TestUInt8$test8;
 
 /**
  * `TestUInt16.test9`
@@ -173,9 +169,7 @@ export const TestUInt32$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, 4294967294);
-  const x$5 = op(4294967295, 2);
-  const x$6 = op(4294967295, 4294967295);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(4294967295, 2), op(4294967295, 4294967295)];
 };
 
 /**
@@ -194,37 +188,37 @@ export const TestUInt32$test2 = [0, 4294967295, 1, 3, 4294967293, 0];
  * `TestUInt32.test3`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test3 = [true, false, false, false, false, true];
+export const TestUInt32$test3 = TestUInt8$test3;
 
 /**
  * `TestUInt32.test4`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test4 = [false, true, true, true, true, false];
+export const TestUInt32$test4 = TestUInt8$test4;
 
 /**
  * `TestUInt32.test5`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test5 = [false, true, false, true, false, false];
+export const TestUInt32$test5 = TestUInt8$test5;
 
 /**
  * `TestUInt32.test6`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test6 = [false, false, true, false, true, false];
+export const TestUInt32$test6 = TestUInt8$test6;
 
 /**
  * `TestUInt32.test7`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test7 = [true, true, false, true, false, true];
+export const TestUInt32$test7 = TestUInt8$test7;
 
 /**
  * `TestUInt32.test8`
  * @type {Array<boolean>}
  */
-export const TestUInt32$test8 = [true, false, true, false, true, true];
+export const TestUInt32$test8 = TestUInt8$test8;
 
 /**
  * `TestUInt32.test9`
@@ -254,9 +248,7 @@ export const TestInt8$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, -2);
-  const x$5 = op(-1, 2);
-  const x$6 = op(-1, -1);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
 };
 
 /**
@@ -275,13 +267,13 @@ export const TestInt8$test2 = [0, -1, 1, 3, -3, 0];
  * `TestInt8.test3`
  * @type {Array<boolean>}
  */
-export const TestInt8$test3 = [true, false, false, false, false, true];
+export const TestInt8$test3 = TestUInt8$test3;
 
 /**
  * `TestInt8.test4`
  * @type {Array<boolean>}
  */
-export const TestInt8$test4 = [false, true, true, true, true, false];
+export const TestInt8$test4 = TestUInt8$test4;
 
 /**
  * `TestInt8.test5`
@@ -335,76 +327,74 @@ export const TestInt16$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, -2);
-  const x$5 = op(-1, 2);
-  const x$6 = op(-1, -1);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
 };
 
 /**
  * `TestInt16.test1`
  * @type {Array<int16>}
  */
-export const TestInt16$test1 = [2, 3, 3, -1, 1, -2];
+export const TestInt16$test1 = TestInt8$test1;
 
 /**
  * `TestInt16.test2`
  * @type {Array<int16>}
  */
-export const TestInt16$test2 = [0, -1, 1, 3, -3, 0];
+export const TestInt16$test2 = TestInt8$test2;
 
 /**
  * `TestInt16.test3`
  * @type {Array<boolean>}
  */
-export const TestInt16$test3 = [true, false, false, false, false, true];
+export const TestInt16$test3 = TestUInt8$test3;
 
 /**
  * `TestInt16.test4`
  * @type {Array<boolean>}
  */
-export const TestInt16$test4 = [false, true, true, true, true, false];
+export const TestInt16$test4 = TestUInt8$test4;
 
 /**
  * `TestInt16.test5`
  * @type {Array<boolean>}
  */
-export const TestInt16$test5 = [false, true, false, false, true, false];
+export const TestInt16$test5 = TestInt8$test5;
 
 /**
  * `TestInt16.test6`
  * @type {Array<boolean>}
  */
-export const TestInt16$test6 = [false, false, true, true, false, false];
+export const TestInt16$test6 = TestInt8$test6;
 
 /**
  * `TestInt16.test7`
  * @type {Array<boolean>}
  */
-export const TestInt16$test7 = [true, true, false, false, true, true];
+export const TestInt16$test7 = TestInt8$test7;
 
 /**
  * `TestInt16.test8`
  * @type {Array<boolean>}
  */
-export const TestInt16$test8 = [true, false, true, true, false, true];
+export const TestInt16$test8 = TestInt8$test8;
 
 /**
  * `TestInt16.test9`
  * @type {Array<int16>}
  */
-export const TestInt16$test9 = [1, 2, 2, -2, -2, 1];
+export const TestInt16$test9 = TestInt8$test9;
 
 /**
  * `TestInt16.test10`
  * @type {Array<int16>}
  */
-export const TestInt16$test10 = [1, 0, 2, 0, 0, 1];
+export const TestInt16$test10 = TestInt8$test10;
 
 /**
  * `TestInt16.test11`
  * @type {Array<int16>}
  */
-export const TestInt16$test11 = [-1, 1];
+export const TestInt16$test11 = TestInt8$test11;
 
 /**
  * `TestInt32.intValues`
@@ -416,73 +406,71 @@ export const TestInt32$intValues = (op) => {
   const x$2 = op(1, 2);
   const x$3 = op(2, 1);
   const x$4 = op(1, -2);
-  const x$5 = op(-1, 2);
-  const x$6 = op(-1, -1);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
 };
 
 /**
  * `TestInt32.test1`
  * @type {Array<int32>}
  */
-export const TestInt32$test1 = [2, 3, 3, -1, 1, -2];
+export const TestInt32$test1 = TestInt8$test1;
 
 /**
  * `TestInt32.test2`
  * @type {Array<int32>}
  */
-export const TestInt32$test2 = [0, -1, 1, 3, -3, 0];
+export const TestInt32$test2 = TestInt8$test2;
 
 /**
  * `TestInt32.test3`
  * @type {Array<boolean>}
  */
-export const TestInt32$test3 = [true, false, false, false, false, true];
+export const TestInt32$test3 = TestUInt8$test3;
 
 /**
  * `TestInt32.test4`
  * @type {Array<boolean>}
  */
-export const TestInt32$test4 = [false, true, true, true, true, false];
+export const TestInt32$test4 = TestUInt8$test4;
 
 /**
  * `TestInt32.test5`
  * @type {Array<boolean>}
  */
-export const TestInt32$test5 = [false, true, false, false, true, false];
+export const TestInt32$test5 = TestInt8$test5;
 
 /**
  * `TestInt32.test6`
  * @type {Array<boolean>}
  */
-export const TestInt32$test6 = [false, false, true, true, false, false];
+export const TestInt32$test6 = TestInt8$test6;
 
 /**
  * `TestInt32.test7`
  * @type {Array<boolean>}
  */
-export const TestInt32$test7 = [true, true, false, false, true, true];
+export const TestInt32$test7 = TestInt8$test7;
 
 /**
  * `TestInt32.test8`
  * @type {Array<boolean>}
  */
-export const TestInt32$test8 = [true, false, true, true, false, true];
+export const TestInt32$test8 = TestInt8$test8;
 
 /**
  * `TestInt32.test9`
  * @type {Array<int32>}
  */
-export const TestInt32$test9 = [1, 2, 2, -2, -2, 1];
+export const TestInt32$test9 = TestInt8$test9;
 
 /**
  * `TestInt32.test10`
  * @type {Array<int32>}
  */
-export const TestInt32$test10 = [1, 0, 2, 0, 0, 1];
+export const TestInt32$test10 = TestInt8$test10;
 
 /**
  * `TestInt32.test11`
  * @type {Array<int32>}
  */
-export const TestInt32$test11 = [-1, 1];
+export const TestInt32$test11 = TestInt8$test11;

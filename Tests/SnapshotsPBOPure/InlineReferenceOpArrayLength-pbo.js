@@ -34,16 +34,16 @@ export const extern1 = [1, 2, 0];
  * `extern2`
  * @type {Array<Array<int53(number)>>}
  */
-export const extern2 = [[1, 2, 0], [3], [0]];
+export const extern2 = [extern1, [3], [0]];
 
 /**
  * `test3`
  * @type {Array<int53(number)>}
  */
-export const test3 = [1, 2, 0];
+export const test3 = extern1;
 
 /**
  * `test4`
  * @type {Array<Array<int53(number)>>}
  */
-export const test4 = [[1, 2, 0], [3], [0]];
+export const test4 = extern2;

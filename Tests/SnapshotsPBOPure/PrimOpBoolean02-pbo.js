@@ -9,9 +9,7 @@
 export const boolValues = (op) => {
   const x$1 = op(true, true);
   const x$2 = op(true, false);
-  const x$3 = op(false, true);
-  const x$4 = op(false, false);
-  return [x$1, x$2, x$3, x$4];
+  return [x$1, x$2, op(false, true), op(false, false)];
 };
 
 /**

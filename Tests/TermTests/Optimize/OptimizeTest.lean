@@ -52,7 +52,7 @@ def sharedTailOpt : T 0 [] [] (.fn .nat .nat) none :=
       (.ret (.neu (.extern .lean_nat_mul (.cons (x0 (τ := .nat)) (.cons (.lit .nat 7) .nil)) rfl)))))
     (.ret (.kvar .head))
 
-example : sharedTail.optimize = sharedTailOpt := by rfl
+example : sharedTail.optimize = sharedTailOpt := by kernel_rfl
 example : sharedTail.optimize.run (6 : Nat) = (42 : Nat) := by rw [sharedTail.optimize_run]; rfl
 
 /-! ## Copy propagation -/
@@ -93,7 +93,7 @@ def deadCasesOpt : T 0 [] [] (.fn (.record .nat (.one .nat)) (.record .nat (.one
     (.lam (u := .one) (.closed (.ret (x0 (τ := .record .nat (.one .nat))))))
     (.ret (.kvar .head))
 
-example : deadCases.optimize = deadCasesOpt := by rfl
+example : deadCases.optimize = deadCasesOpt := by kernel_rfl
 
 /-! ## Nothing to do -/
 
@@ -104,7 +104,7 @@ def addOne : T 0 [] [] (.fn .nat .nat) none :=
       (.ret (.neu (.extern .lean_nat_add (.cons (x0 (τ := .nat)) (.cons (.lit .nat 1) .nil)) rfl)))))
     (.ret (.kvar .head))
 
-example : addOne.optimize = addOne := by rfl
+example : addOne.optimize = addOne := by kernel_rfl
 
 /-! ## Translated programs -/
 

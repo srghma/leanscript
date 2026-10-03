@@ -8,6 +8,7 @@ import JsTerm.Lower.FromTerm
 import JsTerm.Print.Mini
 import JsTerm.Print.Share
 import JsTerm.Lower.Module
+import JsTerm.Lower.ShareConsts
 import JsTerm.Lower.Ident
 import LanguageJavascriptCommon.Unicode
 
@@ -453,8 +454,10 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
         jsRefused := jsRefused.push (t.name, e)
     -- functions that differ only in the literal initial value of their first variable share one
     -- worker (`JsTerm.Print.Share`: the `mutual` groups recursing on a `Nat`)
-    -- (and a definition that only renames another one is another name of its function)
-    let m := mkModule cfg (aliasFuns aliases (shareWorkers funs.toList) noInline)
+    -- (and a definition that only renames another one is another name of its function; the
+    -- value of a constant reads the values of the constants before it by their names,
+    -- `shareConstValues`)
+    let m := mkModule cfg (shareConstValues (aliasFuns aliases (shareWorkers funs.toList) noInline))
     for n in missingExports rtSrc m.imports do
       fatal := fatal.push s!"preset {preset}: the runtime {rtFile} does not export {n}"
     let header (what : String) : List String :=

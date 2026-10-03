@@ -2646,6 +2646,71 @@ def inlineNeverSpec : Spec := describe "InlineNever" do
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+/-- `Tests/SnapshotsPBOPure/InlineReferenceOpArrayLength.lean`: the tests of the size of a known
+    array are decided, and a constant reads the values of the constants before it by their names
+    (`shareConstValues`: `extern2 = [extern1, [3], [0]]`, `test3 = extern1`, `test4 = extern2`, as
+    purescript-backend-optimizer writes them); `Tests/SnapshotsMy/ShareConstValues.lean`: its
+    edge cases (empty arrays, typed arrays, functions not rewritten).  The checks run under node. -/
+def inlineReferenceOpArrayLengthSpec : Spec := describe "InlineReferenceOpArrayLength" do
+  it "constants share the values of the constants before them (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefarrlen"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, at `pbo`, at `faithful`, absent, checks)
+    for (path, file, frags, pboFrags, faithfulFrags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferenceOpArrayLength",
+          ["export const test1 = (fn) => [1", "export const extern2 = [extern1, [3", "export const test3 = extern1;",
+           "export const test4 = extern2;"],
+          ["const x$1 = fn();\n  return [[1, 2, x$1], [3, 4], [x$1]];"],
+          ["const x$1 = fn();\n  return [[1n, 2n, x$1], [3n, 4n], [x$1]];"],
+          ["if (", " ? ", ".length", "lean_array"], (9 : Nat)),
+        ("Tests/SnapshotsMy", "ShareConstValues",
+          ["export const same = table;", "export const nested = [table, [4", "export const nested2 = nested;",
+           "export const pair = { _1: table, _2: { tag: 1, _1: table } };", "export const empty2 = [];",
+           "export const freshConst = (x) => [1", "export const later = [[4", "], table];"],
+          ["export const bytes = table;"], ["export const bytes = Uint8Array.of(1, 2, 3);"],
+          ["(n) => table", "(x) => table"], 17)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for (preset, own) in [("pbo", pboFrags), ("faithful", faithfulFrags)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags ++ own do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
+/-- `Tests/SnapshotsPBOPure/BranchSpecialization01.lean`: nested case analyses of an enum of four
+    constructors (a derived `BEq`).  The renamings and substitutions read each branch of a case
+    analysis several times (`Fin.optAll`); before `Fin.optAllMemo` computed each once, the
+    optimiser took minutes on this file (exponential in the nesting).  It must take seconds. -/
+def nestedEnumCasesSpec : Spec := describe "Nested enum case analyses" do
+  it "BranchSpecialization01 is translated in seconds (needs leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let dir := s!"{← IO.currentDir}/.lake/build/nestedenum"
+    IO.FS.createDirAll dir
+    let t0 ← IO.monoMsNow
+    let args := #["--quiet", s!"--out-dir={dir}", "Tests/SnapshotsPBOPure/BranchSpecialization01.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    let ms := (← IO.monoMsNow) - t0
+    assertEq "leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    assertEq s!"under 60 s (took {ms} ms)" true (ms < 60000)
+    let js ← IO.FS.readFile s!"{dir}/BranchSpecialization01-pbo.js"
+    assertEq "test1 is a comparison of the enum" true
+      ((js.splitOn "export const test1 = (a) => a === 2;").length > 1)
+
 /-- `InlineReferenceIfThenElse.lean` (the tests decided while Lean is turned into `Term`) and its
     variants `IfThenElseKnownField.lean` (the tests whose answer is known from an enclosing `if`,
     dropped by `Term.knownTests`). -/
@@ -2720,6 +2785,8 @@ def spec : Spec := do
   inlineArrayIndexSpec
   inlineCase01Spec
   inlineNeverSpec
+  inlineReferenceOpArrayLengthSpec
+  nestedEnumCasesSpec
   inlineReferenceIfThenElseSpec
   wfTermSpec
 

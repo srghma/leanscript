@@ -36,9 +36,14 @@ export const TestUInt64$intValues = (op) => {
   const x$2 = op(1n, 2n);
   const x$3 = op(2n, 1n);
   const x$4 = op(1n, 18446744073709551614n);
-  const x$5 = op(18446744073709551615n, 2n);
-  const x$6 = op(18446744073709551615n, 18446744073709551615n);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [
+    x$1,
+    x$2,
+    x$3,
+    x$4,
+    op(18446744073709551615n, 2n),
+    op(18446744073709551615n, 18446744073709551615n),
+  ];
 };
 
 /**
@@ -145,9 +150,7 @@ export const TestNat$intValues = (op) => {
   const x$2 = op(1n, 2n);
   const x$3 = op(2n, 1n);
   const x$4 = op(1n, 0n);
-  const x$5 = op(0n, 2n);
-  const x$6 = op(0n, 0n);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(0n, 2n), op(0n, 0n)];
 };
 
 /**
@@ -166,13 +169,13 @@ export const TestNat$test2 = [0n, 0n, 1n, 1n, 0n, 0n];
  * `TestNat.test3`
  * @type {Array<boolean>}
  */
-export const TestNat$test3 = [true, false, false, false, false, true];
+export const TestNat$test3 = TestUInt64$test3;
 
 /**
  * `TestNat.test4`
  * @type {Array<boolean>}
  */
-export const TestNat$test4 = [false, true, true, true, true, false];
+export const TestNat$test4 = TestUInt64$test4;
 
 /**
  * `TestNat.test5`
@@ -220,9 +223,7 @@ export const TestInt64$intValues = (op) => {
   const x$2 = op(1n, 2n);
   const x$3 = op(2n, 1n);
   const x$4 = op(1n, -2n);
-  const x$5 = op(-1n, 2n);
-  const x$6 = op(-1n, -1n);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(-1n, 2n), op(-1n, -1n)];
 };
 
 /**
@@ -241,37 +242,37 @@ export const TestInt64$test2 = BigInt64Array.of(0n, -1n, 1n, 3n, -3n, 0n);
  * `TestInt64.test3`
  * @type {Array<boolean>}
  */
-export const TestInt64$test3 = [true, false, false, false, false, true];
+export const TestInt64$test3 = TestUInt64$test3;
 
 /**
  * `TestInt64.test4`
  * @type {Array<boolean>}
  */
-export const TestInt64$test4 = [false, true, true, true, true, false];
+export const TestInt64$test4 = TestUInt64$test4;
 
 /**
  * `TestInt64.test5`
  * @type {Array<boolean>}
  */
-export const TestInt64$test5 = [false, true, false, false, true, false];
+export const TestInt64$test5 = TestNat$test5;
 
 /**
  * `TestInt64.test6`
  * @type {Array<boolean>}
  */
-export const TestInt64$test6 = [false, false, true, true, false, false];
+export const TestInt64$test6 = TestNat$test6;
 
 /**
  * `TestInt64.test7`
  * @type {Array<boolean>}
  */
-export const TestInt64$test7 = [true, true, false, false, true, true];
+export const TestInt64$test7 = TestNat$test7;
 
 /**
  * `TestInt64.test8`
  * @type {Array<boolean>}
  */
-export const TestInt64$test8 = [true, false, true, true, false, true];
+export const TestInt64$test8 = TestNat$test8;
 
 /**
  * `TestInt64.test9`
@@ -301,9 +302,7 @@ export const TestInt$intValues = (op) => {
   const x$2 = op(1n, 2n);
   const x$3 = op(2n, 1n);
   const x$4 = op(1n, -2n);
-  const x$5 = op(-1n, 2n);
-  const x$6 = op(-1n, -1n);
-  return [x$1, x$2, x$3, x$4, x$5, x$6];
+  return [x$1, x$2, x$3, x$4, op(-1n, 2n), op(-1n, -1n)];
 };
 
 /**
@@ -322,37 +321,37 @@ export const TestInt$test2 = [0n, -1n, 1n, 3n, -3n, 0n];
  * `TestInt.test3`
  * @type {Array<boolean>}
  */
-export const TestInt$test3 = [true, false, false, false, false, true];
+export const TestInt$test3 = TestUInt64$test3;
 
 /**
  * `TestInt.test4`
  * @type {Array<boolean>}
  */
-export const TestInt$test4 = [false, true, true, true, true, false];
+export const TestInt$test4 = TestUInt64$test4;
 
 /**
  * `TestInt.test5`
  * @type {Array<boolean>}
  */
-export const TestInt$test5 = [false, true, false, false, true, false];
+export const TestInt$test5 = TestNat$test5;
 
 /**
  * `TestInt.test6`
  * @type {Array<boolean>}
  */
-export const TestInt$test6 = [false, false, true, true, false, false];
+export const TestInt$test6 = TestNat$test6;
 
 /**
  * `TestInt.test7`
  * @type {Array<boolean>}
  */
-export const TestInt$test7 = [true, true, false, false, true, true];
+export const TestInt$test7 = TestNat$test7;
 
 /**
  * `TestInt.test8`
  * @type {Array<boolean>}
  */
-export const TestInt$test8 = [true, false, true, true, false, true];
+export const TestInt$test8 = TestNat$test8;
 
 /**
  * `TestInt.test9`

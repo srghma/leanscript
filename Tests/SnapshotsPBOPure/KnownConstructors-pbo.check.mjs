@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -47,6 +53,27 @@ check("test1({ tag: 0, _1: -7 })", () => M.test1({ tag: 0, _1: -7 }), "-7", fals
 check("test1({ tag: 0, _1: -1 })", () => M.test1({ tag: 0, _1: -1 }), "-1", false);
 check("test1({ tag: 1, _1: -7 })", () => M.test1({ tag: 1, _1: -7 }), "-7", false);
 check("test1({ tag: 1, _1: -1 })", () => M.test1({ tag: 1, _1: -1 }), "-1", false);
+check("test2(-7)", () => M.test2(-7), "", false);
+check("test2(-1)", () => M.test2(-1), "", false);
+check("test2(0)", () => M.test2(0), "", false);
+check("test2(1)", () => M.test2(1), "", false);
+check("test2(2)", () => M.test2(2), "", false);
+check("test2(3)", () => M.test2(3), "", false);
+check("test2(12)", () => M.test2(12), "", false);
+check("test3(-7)", () => M.test3(-7), "#[Default, World, Default, Universe]", false);
+check("test3(-1)", () => M.test3(-1), "#[Default, World, Default, Universe]", false);
+check("test3(0)", () => M.test3(0), "#[Default, World, Default, Universe]", false);
+check("test3(1)", () => M.test3(1), "#[Default, World, Default, Universe]", false);
+check("test3(2)", () => M.test3(2), "#[Default, World, Default, Universe]", false);
+check("test3(3)", () => M.test3(3), "#[Default, World, Default, Universe]", false);
+check("test3(12)", () => M.test3(12), "#[Default, World, Default, Universe]", false);
+check("test5(-7)", () => M.test5(-7), "false", false);
+check("test5(-1)", () => M.test5(-1), "false", false);
+check("test5(0)", () => M.test5(0), "false", false);
+check("test5(1)", () => M.test5(1), "false", false);
+check("test5(2)", () => M.test5(2), "false", false);
+check("test5(3)", () => M.test5(3), "false", false);
+check("test5(12)", () => M.test5(12), "false", false);
 check("test6(\"\")", () => M.test6(""), "0", false);
 check("test6(\"a\")", () => M.test6("a"), "0", false);
 check("test6(\"hello world\")", () => M.test6("hello world"), "0", false);

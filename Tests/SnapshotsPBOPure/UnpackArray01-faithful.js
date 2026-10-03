@@ -10,10 +10,9 @@ import { bigint_nat__lean_array_get } from "../../runtime.js";
  * @returns {string}
  */
 export const test = (fn1, fn2) => {
-  const x$1 = fn2();
-  const k$2 = ["foo", "bar", "baz", x$1];
+  const k$1 = ["foo", "bar", "baz", fn2()];
   return fn1(
-    bigint_nat__lean_array_get("", k$2, 0n),
-    bigint_nat__lean_array_get("", k$2, 2n),
+    bigint_nat__lean_array_get("", k$1, 0n),
+    bigint_nat__lean_array_get("", k$1, 2n),
   );
 };

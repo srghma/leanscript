@@ -52,31 +52,28 @@ export const extern1 = { tag: 0, _1: 1n, _2: { tag: 1 } };
  * `extern2`
  * @type {D1}
  */
-export const extern2 = { tag: 0, _1: 1n, _2: { tag: 1 } };
+export const extern2 = extern1;
 
 /**
  * `extern3`
  * @type {{ _1: D1, _2: D1 }}
  */
-export const extern3 = {
-  _1: { tag: 0, _1: 1n, _2: { tag: 1 } },
-  _2: { tag: 1 },
-};
+export const extern3 = { _1: extern1, _2: { tag: 1 } };
 
 /**
  * `test4`
  * @type {D1}
  */
-export const test4 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };
+export const test4 = { tag: 0, _1: 0n, _2: extern1 };
 
 /**
  * `test5`
  * @type {D1}
  */
-export const test5 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };
+export const test5 = test4;
 
 /**
  * `test6`
  * @type {D1}
  */
-export const test6 = { tag: 0, _1: 0n, _2: { tag: 0, _1: 1n, _2: { tag: 1 } } };
+export const test6 = test4;

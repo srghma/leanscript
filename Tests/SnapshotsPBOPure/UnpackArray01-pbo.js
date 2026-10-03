@@ -10,10 +10,9 @@ import { uint53__lean_array_get } from "../../runtime.js";
  * @returns {string}
  */
 export const test = (fn1, fn2) => {
-  const x$1 = fn2();
-  const k$2 = ["foo", "bar", "baz", x$1];
+  const k$1 = ["foo", "bar", "baz", fn2()];
   return fn1(
-    uint53__lean_array_get("", k$2, 0),
-    uint53__lean_array_get("", k$2, 2),
+    uint53__lean_array_get("", k$1, 0),
+    uint53__lean_array_get("", k$1, 2),
   );
 };

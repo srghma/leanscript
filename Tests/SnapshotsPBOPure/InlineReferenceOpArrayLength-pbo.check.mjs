@@ -50,9 +50,13 @@ function check(label, thunk, expected, isFloat) {
 
 check("test1(() => 12)", () => M.test1(() => 12), "#[1, 2, 12]", false);
 check("test1(() => 3)", () => M.test1(() => 3), "#[1, 2, 3]", false);
+check("test2(() => 12)", () => M.test2(() => 12), "#[#[1, 2, 12], #[3, 4], #[12]]", false);
+check("test2(() => 3)", () => M.test2(() => 3), "#[#[1, 2, 3], #[3, 4], #[3]]", false);
 check("fn_x27", () => M.fn_x27, "0", false);
 check("extern1", () => M.extern1, "#[1, 2, 0]", false);
+check("extern2", () => M.extern2, "#[#[1, 2, 0], #[3], #[0]]", false);
 check("test3", () => M.test3, "#[1, 2, 0]", false);
+check("test4", () => M.test4, "#[#[1, 2, 0], #[3], #[0]]", false);
 
 console.log(`InlineReferenceOpArrayLength-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -204,7 +204,7 @@ export const TestFloat$test11 = [-1.5, 1.5];
  * `TestFloat32.test11`
  * @type {Array<float32>}
  */
-export const TestFloat32$test11 = [-1.5, 1.5];
+export const TestFloat32$test11 = TestFloat$test11;
 
 /**
  * `TestFloat32.addNoInline`

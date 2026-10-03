@@ -13,7 +13,7 @@ status when one fails.
 Only functions whose parameters and result are all of a *sample type* are checked: `Nat`,
 `Int`, `Bool`, `String`, `Char`, `Float`, the fixed-width integers (`UInt8` … `UInt64`,
 `Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
-`String` (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
+`String`, `Array` of such arrays (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
 printed as its array, `#[…]`), structures of such fields, a `Float` or another structure among them (a structure of one field
 is unboxed: its sample is its field's), and some unions; a parameter can also be a function of one
 argument (`Int → String`, `Nat → Nat`, …: `SType.fn`) or of two integer arguments
@@ -128,6 +128,9 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     match ← stypeOf? e.appArg! with
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
       return some (.arr t)
+    -- an array of arrays of those (`Array (Array Int)`, printed `#[#[1, 2], #[3]]` on both sides)
+    | some t@(SType.arr SType.nat) | some t@(SType.arr SType.int) | some t@(SType.arr SType.bool)
+    | some t@(SType.arr SType.string) => return some (.arr t)
     | _ => return none
   if e.isAppOfArity ``List 1 then
     match ← stypeOf? e.appArg! with
@@ -343,6 +346,7 @@ where
   elemTy : SType → Expr
     | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
     | .unit => mkConst ``Unit
+    | .arr t => mkApp (mkConst ``Array [.zero]) (elemTy t)
     | _ => mkConst ``String
 
 /-- All combinations of samples of the parameter types, at most `cap` of them, spread over

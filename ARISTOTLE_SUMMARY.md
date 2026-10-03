@@ -1,3 +1,47 @@
+# Summary of changes for run 0d1082e6-1724-4bd0-a6fa-54d40319d898
+Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferenceOpArrayLength.lean` now matches the legacy output's shape on every definition, and is better on `test2` and `extern1`/`extern2`. While regenerating the snapshots I also found and fixed an optimiser slowdown that blew up exponentially. All checks and tests pass.
+
+**Output compared with the legacy backend** (preset `pbo`):
+```js
+export const test1 = (fn) => [1, 2, fn()];
+export const test2 = (fn) => { const x$1 = fn(); return [[1, 2, x$1], [3, 4], [x$1]]; };
+export const fn_x27 = 0;
+export const extern1 = [1, 2, 0];
+export const extern2 = [extern1, [3], [0]];
+export const test3 = extern1;
+export const test4 = extern2;
+```
+- **Size tests:** these were already decided in the `Term -[optimize]-> Term` phase by `Term.knownSizes`.
+- **`test2`:** calls `fn` once, where the legacy output calls it twice.
+- **`extern1`/`extern2`:** computed to `0` at translation time, where the legacy output calls `fn$p(undefined)` when the module loads.
+- **What was missing:** `extern2`, `test3` and `test4` used to repeat the earlier constants' values (`test3 = [1, 2, 0]`, …).
+
+**Change 1: constants refer to earlier constants (`JsTerm/Lower/ShareConsts.lean`, `shareConstValues`).**
+- **What it does:** inside a constant's value, any non-empty array, list, record or constructor that is written exactly like an earlier constant's whole value is replaced by that constant's name.
+- **Phase:** `Term -[convert]-> JsTerm`, run next to `aliasFuns`. `Term` has no global names, so the `Term` phase can't express this.
+- **What it doesn't touch:** function bodies keep their own literals (callers may update a returned array in place). Empty arrays are never shared.
+- **Side effect elsewhere:** equal constants from unrelated definitions are also shared, e.g. `TestUInt16$test3 = TestUInt8$test3`. This is correct, because constants are never updated in place, but the legacy backend doesn't do it.
+
+**Change 2: checks for nested arrays (`LeanScriptCli/Check.lean`).** `Array (Array …)` can now be checked against Lean, so `test2`, `extern2` and `test4` are compared too: 9 checks per preset instead of 5.
+
+**Change 3: optimiser speed fix.** `BranchSpecialization01.lean` (nested case analyses on a four-constructor enum) didn't finish in 10 minutes; it now takes about 2 s.
+- **Cause:** `Fin.optAll`, used by the renaming and substitution functions that every pass relies on, computed each branch several times, once per level of nesting.
+- **Fix:** `Fin.optAllMemo` computes each branch once into an array (`LeanScript/Term/FinMemo.lean`). A `@[csimp]` theorem proves it equal to `Fin.optAll`, so only the compiled code changes and no existing proof is affected.
+- **Side effect:** three `t.optimize = t'` examples in `Tests/TermTests/Optimize/OptimizeTest.lean` hit the heartbeat limit. This started when `Term.knownSizes` was added in an earlier run, not with this fix. They now use `kernel_rfl`, as an earlier example already did.
+
+**Testing**
+- **New snapshot:** `Tests/SnapshotsMy/ShareConstValues.lean` covers the edge cases (records, `Option`, empty arrays, `Array UInt8` on both presets, functions). It has 17 checks per preset.
+- **New specs in `Tests/Main.lean`:** `inlineReferenceOpArrayLengthSpec`, and `nestedEnumCasesSpec`, which fails if `BranchSpecialization01` takes more than 60 s.
+- **All snapshots regenerated:** every check passes under node. Some outputs changed that came from earlier optimiser work and had never been regenerated; for example `KnownConstructors` `test2`–`test5` are now translated.
+- **Builds:** `lake build leanscript tests TyTests TermTests JsTerm` succeeds, and `lake exe tests` passes 129/129.
+- **Known build failure:** building the whole `LeanScript` library still fails on `UsageAlgebra.lean`, which imports Mathlib; I didn't touch that file.
+
+The file has no loops or recursion, so labeled blocks and loops didn't come into it. The full comparison is in `Tests/SnapshotsPBOPure/InlineReferenceOpArrayLength.md`. No theorems were requested, so nothing was added to the Properties table. Everything is committed.
+
+## Suggested follow-up
+
+Possible inconsistency I noticed but did not change: a top-level definition of type `Unit → Int` (like `fn'`) is exported as a plain value (`export const fn_x27 = 0;`). A parameter of the same type is taken as a JavaScript thunk (`test1 = (fn) => [1, 2, fn()]`). So `test1(fn_x27)` would fail in JavaScript. If you want these to work together, I can make such top-level definitions export as `() => value`, or document it as intended.
+
 # Summary of changes for run c70a79e2-172d-4c6b-a9c0-e32d4d7e85a3
 
 

@@ -360,6 +360,14 @@ check("ArrStd$tFlatMap([0, 1, 2])", () => M.ArrStd$tFlatMap([0, 1, 2]), "#[0, 0,
 check("ArrStd$tFlatMap([0, 1, 2]) twice", () => ((a0) => (M.ArrStd$tFlatMap(a0), M.ArrStd$tFlatMap(a0)))([0, 1, 2]), "#[0, 0, 1, 1, 2, 2]", false);
 check("ArrStd$tFlatMap([13, 5, 2, 1])", () => M.ArrStd$tFlatMap([13, 5, 2, 1]), "#[13, 13, 5, 5, 2, 2, 1, 1]", false);
 check("ArrStd$tFlatMap([13, 5, 2, 1]) twice", () => ((a0) => (M.ArrStd$tFlatMap(a0), M.ArrStd$tFlatMap(a0)))([13, 5, 2, 1]), "#[13, 13, 5, 5, 2, 2, 1, 1]", false);
+check("ArrStd$tFlatten([])", () => M.ArrStd$tFlatten([]), "#[]", false);
+check("ArrStd$tFlatten([]) twice", () => ((a0) => (M.ArrStd$tFlatten(a0), M.ArrStd$tFlatten(a0)))([]), "#[]", false);
+check("ArrStd$tFlatten([[]])", () => M.ArrStd$tFlatten([[]]), "#[]", false);
+check("ArrStd$tFlatten([[]]) twice", () => ((a0) => (M.ArrStd$tFlatten(a0), M.ArrStd$tFlatten(a0)))([[]]), "#[]", false);
+check("ArrStd$tFlatten([[], [0], [0, 1, 2]])", () => M.ArrStd$tFlatten([[], [0], [0, 1, 2]]), "#[0, 0, 1, 2]", false);
+check("ArrStd$tFlatten([[], [0], [0, 1, 2]]) twice", () => ((a0) => (M.ArrStd$tFlatten(a0), M.ArrStd$tFlatten(a0)))([[], [0], [0, 1, 2]]), "#[0, 0, 1, 2]", false);
+check("ArrStd$tFlatten([[13, 5, 2, 1], [0, 1, 2], [0], []])", () => M.ArrStd$tFlatten([[13, 5, 2, 1], [0, 1, 2], [0], []]), "#[13, 5, 2, 1, 0, 1, 2, 0]", false);
+check("ArrStd$tFlatten([[13, 5, 2, 1], [0, 1, 2], [0], []]) twice", () => ((a0) => (M.ArrStd$tFlatten(a0), M.ArrStd$tFlatten(a0)))([[13, 5, 2, 1], [0, 1, 2], [0], []]), "#[13, 5, 2, 1, 0, 1, 2, 0]", false);
 check("ArrStd$tBack([])", () => (showUnion)(M.ArrStd$tBack([])), "0()", false);
 check("ArrStd$tBack([]) twice", () => (showUnion)(((a0) => (M.ArrStd$tBack(a0), M.ArrStd$tBack(a0)))([])), "0()", false);
 check("ArrStd$tBack([0])", () => (showUnion)(M.ArrStd$tBack([0])), "1(0)", false);

@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Semantics.Eval
+public import LeanScript.Term.FinMemo
 
 @[expose] public section
 
@@ -113,6 +114,21 @@ def JRen.nil : JRen ([] : JCtx ks) [] := fun x => nomatch x
 def Fin.optAll {n : Nat} {β : Fin n → Type} (f : (i : Fin n) → Option (β i)) :
     Option ((i : Fin n) → β i) :=
   if h : ∀ i, (f i).isSome = true then some (fun i => (f i).get (h i)) else none
+
+/-- `Fin.optAll`, each `f i` computed once (`Fin.memoArr`): `Fin.optAll` reads each `f i` twice
+    (to test that all are some, then to take them), and the function it answers reads it again
+    at each call, which nested case analyses of enums (each branch renamed or substituted by a
+    call of the walk on it) make exponential. -/
+def Fin.optAllMemo {n : Nat} {β : Fin n → Type} (f : (i : Fin n) → Option (β i)) :
+    Option ((i : Fin n) → β i) :=
+  let a := Fin.memoArr f
+  if h : ∀ i, (Fin.memoGet a i).isSome = true then some (fun i => (Fin.memoGet a i).get (h i))
+  else none
+
+/-- The compiled code of `Fin.optAll` is that of `Fin.optAllMemo`. -/
+@[csimp] theorem Fin.optAll_eq_optAllMemo : @Fin.optAll = @Fin.optAllMemo := by
+  funext n β f
+  simp only [Fin.optAll, Fin.optAllMemo, Fin.memoGet_eq]
 
 theorem Fin.optAll_eq_some {n : Nat} {β : Fin n → Type} {f : (i : Fin n) → Option (β i)}
     {g : (i : Fin n) → β i} (h : Fin.optAll f = some g) (i : Fin n) : f i = some (g i) := by

@@ -87,7 +87,7 @@ export const Noinline$test3 = (b) => ({
  * `Noinline.test4`
  * @type {{ _1: string, _2: Array<string> }}
  */
-export const Noinline$test4 = { _1: "hello, World!", _2: ["hello", "World!"] };
+export const Noinline$test4 = Inline$test4;
 
 /**
  * `AlwaysInline.appendR`
@@ -130,10 +130,7 @@ export const AlwaysInline$test3 = (b) => ({
  * `AlwaysInline.test4`
  * @type {{ _1: string, _2: Array<string> }}
  */
-export const AlwaysInline$test4 = {
-  _1: "hello, World!",
-  _2: ["hello", "World!"],
-};
+export const AlwaysInline$test4 = Inline$test4;
 
 /**
  * `InlineIfReduceInline.appendR`
@@ -176,7 +173,4 @@ export const InlineIfReduceInline$test3 = (b) => ({
  * `InlineIfReduceInline.test4`
  * @type {{ _1: string, _2: Array<string> }}
  */
-export const InlineIfReduceInline$test4 = {
-  _1: "hello, World!",
-  _2: ["hello", "World!"],
-};
+export const InlineIfReduceInline$test4 = Inline$test4;
