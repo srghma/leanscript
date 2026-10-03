@@ -1,6 +1,6 @@
 module
 
-public import LeanScript.Term.Optimize.ShareTest
+public import LeanScript.Term.Optimize.SameJump
 public import LeanScript.Term.Optimize.InlineBlockEval
 public import LeanScript.Term.Optimize.CountDce
 
@@ -14,7 +14,8 @@ set_option autoImplicit false
 `Term.zipTest fuel p t e`: when the two arms `t` and `e` of `if p then t else e` make **the same
 tests in the same order** (the same conditions, `Neu.same`, and the same record case analyses,
 of the same scrutinee), and differ only in their answers, the statement is the common decision
-tree whose answers are `p ? a : b` (or just `a` when the answers `a` and `b` are the same):
+tree whose answers are `p ? a : b` (or just `a` when the answers `a` and `b` are the same; two
+jumps to the same join point with the same argument are that jump):
 
 ```
 if p then (let ⟨x, y⟩ := r;               let ⟨x, y⟩ := r
@@ -83,6 +84,10 @@ def Term.zipTest : Nat → {Γ : UCtx ks} → {ℓ : Nat} → {o₁ o₂ : Lvl} 
       match t, e with
       | .ret a, .ret b =>
         if a.same b then some ⟨_, .ret a⟩ else some ⟨_, .ret (.neu (.cond p a b))⟩
+      | .jump j₁ a, .jump j₂ b =>
+        match JVar.sameK? j₁ j₂ with
+        | some h => if (h.down ▸ a).same b then some ⟨_, .jump j₂ b⟩ else none
+        | none => none
       | .record_casesOn (t := t₁) (fs := fs₁) us₁ n₁ b₁,
         .record_casesOn us₂ n₂ b₂ =>
         if hs : n₂.same n₁ = true then
@@ -144,6 +149,23 @@ theorem Term.zipTest_eval : (fuel : Nat) → {Γ : UCtx ks} → {ℓ : Nat} → 
           cases (p.eval κ ρ : Bool) <;> simp [this]
         · cases h
           simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+      · -- two jumps
+        rename_i σ₁ j₁ σ₂ j₂ b a _
+        split at h
+        · rename_i hh hs
+          split at h
+          · rename_i hab
+            cases h
+            obtain ⟨hσ⟩ := hh
+            subst hσ
+            have hj := JVar.sameK?_eq j₁ j₂ hs
+            simp only at hj hab
+            subst hj
+            have := eq_of_heq ((PExpr.same_eval a b hab).2 κ ρ)
+            simp only [Term.eval, Branch.eval]
+            cases (p.eval κ ρ : Bool) <;> simp [this]
+          · cases h
+        · cases h
       · -- two record case analyses
         rename_i t₁ fs₁ ℓ₁ o₁' us₁ n₁ b₁ t₂ fs₂ ℓ₂ o₂' us₂ n₂ b₂ _
         split at h
@@ -201,6 +223,11 @@ theorem Term.zipTest_numCalls : (fuel : Nat) → {Γ : UCtx ks} → {ℓ : Nat} 
       · split at h
         · cases h; rfl
         · cases h; rfl
+      · split at h
+        · split at h
+          · cases h; rfl
+          · cases h
+        · cases h
       · split at h
         · split at h
           · split at h

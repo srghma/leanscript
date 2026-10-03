@@ -47,7 +47,8 @@ already bound is dropped, its fields renamed to the ones already bound (`Term.re
 Then the tests whose answer is already known are dropped (`Term.knownTests`,
 `LeanScript.Term.Optimize.KnownTest`): inside an arm of `if x` (`x` a boolean unknown, or its
 negation) the value of `x` is known, so `if x then (if x then X else Y) else Z` is
-`if x then X else Z`, and `ret (x ? a : b)` there is `ret a`.
+`if x then X else Z`, and `ret (x ? a : b)` there is `ret a`.  A join point whose test jumps
+to it with the same argument in both arms is its body (`Term.joinSame`).
 
 Then a test that both arms of an `if` begin with, and that leads to the same answer (or jump)
 in both, is made first (`Term.shareTestWalk`, `LeanScript.Term.Optimize.ShareTest`):

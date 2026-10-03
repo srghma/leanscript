@@ -3003,6 +3003,49 @@ def inlineReferenceRecordUpdateSpec : Spec := describe "InlineReferenceRecordUpd
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `KnownConstructor07.lean`: `test` makes one call and builds the record, as legacy does, and the
+    derived `Repr` instance is one expression: each arm of the sign test of `Repr Int` reads the
+    field again, and both jump to the join point with the same text (`Branch.sameJumpArg?`,
+    `Term.joinSame`), so the join points and the tests disappear in the `Term` optimiser.  Its
+    variants `ReprSameJump.lean`: nested and mixed derived instances, `repr` of an `Int`, and a
+    test whose two identical arms read the record (`Term.joinViaZip`). -/
+def knownConstructor07Spec : Spec := describe "KnownConstructor07" do
+  it "one call, derived Repr without tests (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructor07"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructor07",
+          ["export const instReprPairBox$repr = (x, prec) => ({",
+           "_2: { tag: 3, _1: String(x._1) } }", "_2: { tag: 3, _1: String(x._2) } }",
+           "const fy = f(y);"],
+          ["if (", " ? ", "const x$1", "let "], (14 : Nat)),
+        ("Tests/SnapshotsMy", "ReprSameJump",
+          ["export const fmtInt = (x) => ({ tag: 3, _1: String(x) });",
+           "export const sameArg = (g, t, c) => g(",
+           "export const otherArg = (g, t, c) => {"],
+          ["x < 0", "< 0)"], 24)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3046,6 +3089,7 @@ def spec : Spec := do
   inlineReferencePrimOpIntSpec
   inlineReferencePrimOpNumberSpec
   inlineReferenceRecordUpdateSpec
+  knownConstructor07Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

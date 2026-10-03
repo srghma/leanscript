@@ -28,58 +28,16 @@ ret k1
 -- instReprRec1.repr : Rec1 → Nat → Std.Format
 val k1 [1] : ((Int × Int × Int) → (Nat → (data LeanScript.Ref.here 0))) := fun x2 [ω] : (Int × Int × Int) => (closed)
   val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [0] : Nat => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int, f7 [ω] : Int⟩ := x2
-    join j8 [1] (x9 [1] : (data LeanScript.Ref.here 0)) :=
-      join j10 [1] (x11 [1] : (data LeanScript.Ref.here 0)) :=
-        join j12 [1] (x13 [1] : (data LeanScript.Ref.here 0)) :=
-          ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("a")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x9)), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("b")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x11)), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("c")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x13)), false)))))), in#0(ctor#3(" }")))))), false))
-        if lean_int_dec_lt(f7, 0) then
-          let ⟨f14 [0] : Int, f15 [0] : Int, f16 [0] : Int⟩ := x2
-          jump j12 in#0(ctor#3(lean_int_repr(f7)))
-        else
-          let ⟨f17 [0] : Int, f18 [0] : Int, f19 [0] : Int⟩ := x2
-          jump j12 in#0(ctor#3(lean_int_repr(f7)))
-      if lean_int_dec_lt(f6, 0) then
-        let ⟨f20 [0] : Int, f21 [0] : Int, f22 [0] : Int⟩ := x2
-        jump j10 in#0(ctor#3(lean_int_repr(f6)))
-      else
-        let ⟨f23 [0] : Int, f24 [0] : Int, f25 [0] : Int⟩ := x2
-        jump j10 in#0(ctor#3(lean_int_repr(f6)))
-    if lean_int_dec_lt(f5, 0) then
-      let ⟨f26 [0] : Int, f27 [0] : Int, f28 [0] : Int⟩ := x2
-      jump j8 in#0(ctor#3(lean_int_repr(f5)))
-    else
-      let ⟨f29 [0] : Int, f30 [0] : Int, f31 [0] : Int⟩ := x2
-      jump j8 in#0(ctor#3(lean_int_repr(f5)))
+    let ⟨f5 [1] : Int, f6 [1] : Int, f7 [1] : Int⟩ := x2
+    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("a")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f5))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("b")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f6))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("c")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f7))))), false)))))), in#0(ctor#3(" }")))))), false))
   ret k3
 ret k1
 
 -- instReprRec2.repr : Rec2 → Nat → Std.Format
 val k1 [1] : ((Int × Int × Int) → (Nat → (data LeanScript.Ref.here 0))) := fun x2 [ω] : (Int × Int × Int) => (closed)
   val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [0] : Nat => (open)
-    let ⟨f5 [ω] : Int, f6 [ω] : Int, f7 [ω] : Int⟩ := x2
-    join j8 [1] (x9 [1] : (data LeanScript.Ref.here 0)) :=
-      join j10 [1] (x11 [1] : (data LeanScript.Ref.here 0)) :=
-        join j12 [1] (x13 [1] : (data LeanScript.Ref.here 0)) :=
-          ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("d")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x9)), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("e")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x11)), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("f")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, x13)), false)))))), in#0(ctor#3(" }")))))), false))
-        if lean_int_dec_lt(f7, 0) then
-          let ⟨f14 [0] : Int, f15 [0] : Int, f16 [0] : Int⟩ := x2
-          jump j12 in#0(ctor#3(lean_int_repr(f7)))
-        else
-          let ⟨f17 [0] : Int, f18 [0] : Int, f19 [0] : Int⟩ := x2
-          jump j12 in#0(ctor#3(lean_int_repr(f7)))
-      if lean_int_dec_lt(f6, 0) then
-        let ⟨f20 [0] : Int, f21 [0] : Int, f22 [0] : Int⟩ := x2
-        jump j10 in#0(ctor#3(lean_int_repr(f6)))
-      else
-        let ⟨f23 [0] : Int, f24 [0] : Int, f25 [0] : Int⟩ := x2
-        jump j10 in#0(ctor#3(lean_int_repr(f6)))
-    if lean_int_dec_lt(f5, 0) then
-      let ⟨f26 [0] : Int, f27 [0] : Int, f28 [0] : Int⟩ := x2
-      jump j8 in#0(ctor#3(lean_int_repr(f5)))
-    else
-      let ⟨f29 [0] : Int, f30 [0] : Int, f31 [0] : Int⟩ := x2
-      jump j8 in#0(ctor#3(lean_int_repr(f5)))
+    let ⟨f5 [1] : Int, f6 [1] : Int, f7 [1] : Int⟩ := x2
+    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("d")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f5))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("e")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f6))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("f")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(5, in#0(ctor#3(lean_int_repr(f7))))), false)))))), in#0(ctor#3(" }")))))), false))
   ret k3
 ret k1
 

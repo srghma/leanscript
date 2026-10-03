@@ -1,3 +1,38 @@
+# Summary of changes for run 241b72f9-5f15-4070-b52f-8aac616b7ea3
+For `Tests/SnapshotsPBOPure/KnownConstructor07.lean`, our JavaScript for `test` was already on par with the legacy output, so the work went into the derived `Repr` instance. It is now one expression, built in the `Term → Term` phase. The full write-up is in `Tests/SnapshotsPBOPure/KnownConstructor07.md`.
+
+**`test` compared with legacy:**
+- Ours is `const fy = f(y); return { _1: int53__lean_int_add(fy, 1), _2: int53__lean_int_sub(fy, 2) };`.
+- Like legacy, it calls `f` once and builds no intermediate records.
+- Legacy's `(z + 1) | 0` wraps around at 32 bits, as PureScript's `Int` does. Lean's `Int` has no bound, so under `int=num` the checked addition is needed to report a result that doesn't fit in 53 bits.
+- Legacy names the constant `z`; ours is `fy`. The `Term` language does not keep source names, so the printer names `f(y)` the way the legacy backend does when it has no name.
+
+**`instReprPairBox.repr` (the `deriving Repr`; the PureScript file has nothing like it):**
+- **Before:** `const x$1 = { tag: 3, _1: String(x._1) }; const x$2 = …; return {…}`.
+- **Now:** `(x, prec) => ({ … { tag: 3, _1: String(x._1) } … })`.
+- **Why the constants were there:** `Repr Int` tests the sign, and both arms give the same text. Lean reads the field again in each arm, so both arms take the record apart (without using it) and jump to a join point with the same argument. Before, the two arms were only merged in the `JsTerm` phase, which left the constants behind.
+
+**The change, all in the `Term → Term` phase:**
+- **`LeanScript/Term/Optimize/SameJump.lean`:** recognises a test whose two arms jump to the same join point with the same argument, looking through record case analyses whose fields are unused (`Term.deadJumpHead?`, `Branch.sameJumpArg?`).
+- **`Term.joinSame` in `KnownTest.lean`:** such a join point is replaced by its body, with the argument written in for its parameter. When both arms are the same statement and do read the record, the body is written at the one remaining jump instead (`Term.inlineTailJump`, `Term.joinViaZip`). Either happens only if the parameter is used at most once, so nothing is copied.
+- **`Term.zipTest`:** now also merges two identical jumps.
+- **Proofs:** none of this changes the value (`Term.joinSame_eval`) or adds a call (`Term.numCalls_joinSame`). There is no `sorry`, and `Term.optimize_eval` still uses only `propext`, `Classical.choice` and `Quot.sound`. Both theorems are in the Properties table as proved.
+- **Other phases:** no change was needed in `Term → JsTerm` or `JsTerm → JsTerm`. The file has no loops or recursion, so labeled blocks and loops don't come into it.
+
+**Variants file `Tests/SnapshotsMy/ReprSameJump.lean`:**
+- `fmtInt` is `(x) => ({ tag: 3, _1: String(x) })`.
+- The derived instances for three `Int`s, a nested structure, and mixed `Nat`/`Int`/`String` fields have no sign tests left.
+- `sameArg` is `(g, t, c) => g(int53__lean_int_add(t._1, t._2))`.
+- `otherArg`, whose arms differ, keeps its `if`.
+
+**Tests:**
+- **New spec** `knownConstructor07Spec` in `Tests/Main.lean`: it checks the output fragments of both files at both presets, plus the node checks (14 and 24 per preset).
+- **`lake exe tests`:** 135/135 pass.
+- **Build:** `lake build leanscript TermTests TyTests JsTerm JsSpec tests` succeeds.
+- **Snapshots:** I regenerated all of them and every node check passes. Three other outputs changed, the same way and all smaller: `CaseGuarded`, `RecordUpdate` and `ProfunctorLenses01`, which also have derived `Repr` instances with `Int` fields.
+
+Everything is committed.
+
 # Summary of changes for run 12b0c38f-7bed-4633-bc93-c7ffa100141e
 For `Tests/SnapshotsPBOPure/InlineReferenceRecordUpdate.lean` as written, our JavaScript was already as good as the legacy purescript-backend-optimizer output or better, so that file's output didn't change. The work was on record updates of records that aren't known at compile time, which the file doesn't exercise. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferenceRecordUpdate.md`.
 

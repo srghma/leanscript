@@ -1,6 +1,7 @@
 module
 
-public import LeanScript.Term.Optimize.KnownCond
+public import LeanScript.Term.Optimize.SameJump
+public import LeanScript.Term.Optimize.ZipTest
 public import LeanScript.Term.Optimize.InlineSubstEval
 public import LeanScript.Term.Optimize.CountSubst
 
@@ -34,6 +35,15 @@ join point whose main statement is then `jump j v` is the value `v`, substituted
 parameter is used once (`Term.joinOrLet`, `Term.letEOrSubst`): `&&` and `||` that Lean compiles
 into join points become operators (`Tests/SnapshotsMy/PrimOpBooleanKnownField.lean`).
 
+At any type, a join point whose main statement is `if c then (…; jump j a) else (…; jump j a)`,
+both arms jumping with the same argument, possibly behind case analyses of records whose fields
+are not used (`Branch.sameJumpArg?`, `LeanScript.Term.Optimize.SameJump`), is its body with `a`
+for its parameter; and when both arms are the same statement ending in the jump
+(`Term.zipTest`), the join point is written at that jump (`Term.inlineTailJump`,
+`Term.joinViaZip`).  Both only when the parameter is used at most once (`Term.joinSame`): this is
+what the sign test of the derived `Repr Int` becomes
+(`Tests/SnapshotsPBOPure/KnownConstructor07.lean`, `Tests/SnapshotsMy/ReprSameJump.lean`).
+
 The conditional answer `ret (c ? a : b)` on a known `c` is the answer `ret a` (or `ret b`).  The
 facts are weakened under binders (`BoolFact.weaken`, `BoolFact.weakenN`), carried into open
 bodies (whose environment extends the one where the facts hold) and dropped in closed bodies.  A
@@ -52,26 +62,6 @@ variable {ks : List Nat} {Δ : DSig ks}
 
 section Jumps
 variable {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
-
-/-- Is it the same join point (then its parameter has the same type)? -/
-def JVar.sameK? : {js : JCtx ks} → {σ' σ : Ty ks} → JVar js σ' → JVar js σ →
-    Option (PLift (σ' = σ))
-  | _, _, _, .head, .head => some ⟨rfl⟩
-  | _, _, _, .tail a, .tail b => JVar.sameK? a b
-  | _, _, _, _, _ => none
-
-theorem JVar.sameK?_eq : {js : JCtx ks} → {σ' σ : Ty ks} → (a : JVar js σ') → (b : JVar js σ) →
-    {h : PLift (σ' = σ)} → JVar.sameK? a b = some h → h.down ▸ a = b
-  | _, _, _, .head, .head, _, _ => rfl
-  | _, _, _, .tail a, .tail b, h, hs => by
-      simp only [JVar.sameK?] at hs
-      have := JVar.sameK?_eq a b hs
-      obtain ⟨hh⟩ := h
-      subst hh
-      simp only at this ⊢
-      rw [this]
-  | _, _, _, .head, .tail _, _, hs => by simp [JVar.sameK?] at hs
-  | _, _, _, .tail _, .head, _, hs => by simp [JVar.sameK?] at hs
 
 /-- `if c then jump j a else jump j b` is `jump j (c ? a : b)`, for a boolean parameter. -/
 def Term.mergeJumps? {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu Δ Φ Γ .bool ℓ) :
@@ -196,6 +186,193 @@ theorem Term.numCalls_mkIteJ {js : JCtx ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : N
     · cases hr
   · simp [Term.numCalls, Branch.numCalls]
 
+/-- A renaming that may change levels, followed by a weakening under the binders `bs`. -/
+def ULRen.wkAfter {Γ₀ Γ : UCtx ks} (bs : UCtx ks) (w : ULRen Γ₀ Γ) : ULRen Γ₀ (bs ++ Γ) :=
+  fun x => (w x).map fun p => ⟨p.1, UVar.weakenN bs p.2⟩
+
+theorem ULRen.Agree.wkAfter {Γ₀ Γ : UCtx ks} {w : ULRen Γ₀ Γ} {ρ₀ : UEnv Δ Γ₀} {ρ : UEnv Δ Γ}
+    (h : ULRen.Agree w ρ₀ ρ) (bs : UCtx ks) (vs : UEnv Δ bs) :
+    ULRen.Agree (ULRen.wkAfter bs w) ρ₀ (Tuple.append vs ρ) := by
+  intro _ _ x p hp
+  simp only [ULRen.wkAfter, Option.map_eq_some_iff] at hp
+  obtain ⟨q, hq, rfl⟩ := hp
+  rw [UEnv.get_weakenN ρ bs vs q.2]
+  exact h x q hq
+
+/-- `let ⟨…⟩ := n₁; …; let ⟨…⟩ := nₖ; jump j a`, `j` the innermost join point (of parameter `x`
+    and body `body`, seen from here along `w`), with `body[x := a]` in place of the jump: the join
+    point inlined at its jump, under the case analyses. -/
+def Term.inlineTailJump {Γ₀ : UCtx ks} {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {uₓ : Usage01ω}
+    {ob : Lvl} (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ₀) τ js ob) :
+    {Γ : UCtx ks} → ULRen Γ₀ Γ → {o : Lvl} → Term Δ d Φ Γ τ (⟨σ, u⟩ :: js) o →
+    Option ((o' : Lvl) × Term Δ d Φ Γ τ js o')
+  | _, w, _, .jump j a => match JVar.sameK? j (JVar.head (u := u) (js := js)) with
+    | some h => body.subst (D' := d) KLRen.id (USub.cons ⟨_, h.down ▸ a⟩ (USub.ofRen w)) JRen.id
+    | none => none
+  | _, w, _, .record_casesOn (t := t) (fs := fs) us n b =>
+    (Term.inlineTailJump body (ULRen.wkAfter (UCtx.annot d (t :: fs.toList) us) w) b).map
+      fun r => ⟨_, .record_casesOn us n r.2⟩
+  | _, _, _, .ret _ => none
+  | _, _, _, .letV _ _ _ => none
+  | _, _, _, .letE _ _ _ => none
+  | _, _, _, .branch _ => none
+
+theorem Term.inlineTailJump_eval {Γ₀ : UCtx ks} {js : JCtx ks} {σ : Ty ks} {u : Usage1ω}
+    {uₓ : Usage01ω} {ob : Lvl} (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ₀) τ js ob) (κ : KEnv Δ Φ)
+    (ρ₀ : UEnv Δ Γ₀) (jκ : JEnv Δ τ js) :
+    {Γ : UCtx ks} → (w : ULRen Γ₀ Γ) → {o : Lvl} → (t : Term Δ d Φ Γ τ (⟨σ, u⟩ :: js) o) →
+    (r : (o' : Lvl) × Term Δ d Φ Γ τ js o') → Term.inlineTailJump body w t = some r →
+    (ρ : UEnv Δ Γ) → ULRen.Agree w ρ₀ ρ →
+    r.2.eval κ ρ jκ =
+      t.eval κ ρ (Tuple.cons (fun v => body.eval κ (Tuple.cons v ρ₀) jκ) jκ)
+  | _, w, _, .jump j a, r, h, ρ, hw => by
+    simp only [Term.inlineTailJump] at h
+    split at h
+    · rename_i hh hs
+      obtain ⟨hσ⟩ := hh
+      subst hσ
+      have hj := JVar.sameK?_eq _ _ hs
+      simp only at hj h
+      subst hj
+      simp only [Term.eval, JEnv.get, Tuple.head_cons]
+      exact Term.subst_eval (KLRen.Agree.id κ) (USub.Agree.cons (USub.Agree.ofRen hw) _)
+        (JRen.Agree.id jκ) body h
+    · cases h
+  | _, w, _, .record_casesOn (t := t) (fs := fs) us n b, r, h, ρ, hw => by
+    simp only [Term.inlineTailJump, Option.map_eq_some_iff] at h
+    obtain ⟨r', hr', rfl⟩ := h
+    simp only [Term.eval]
+    exact Term.inlineTailJump_eval body κ ρ₀ jκ _ b r' hr' _ (ULRen.Agree.wkAfter hw _ _)
+  | _, _, _, .ret _, _, h, _, _ => by simp [Term.inlineTailJump] at h
+  | _, _, _, .letV _ _ _, _, h, _, _ => by simp [Term.inlineTailJump] at h
+  | _, _, _, .letE _ _ _, _, h, _, _ => by simp [Term.inlineTailJump] at h
+  | _, _, _, .branch _, _, h, _, _ => by simp [Term.inlineTailJump] at h
+
+theorem Term.numCalls_inlineTailJump {Γ₀ : UCtx ks} {js : JCtx ks} {σ : Ty ks} {u : Usage1ω}
+    {uₓ : Usage01ω} {ob : Lvl} (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ₀) τ js ob) :
+    {Γ : UCtx ks} → (w : ULRen Γ₀ Γ) → {o : Lvl} → (t : Term Δ d Φ Γ τ (⟨σ, u⟩ :: js) o) →
+    (r : (o' : Lvl) × Term Δ d Φ Γ τ js o') → Term.inlineTailJump body w t = some r →
+    r.2.numCalls ≤ body.numCalls
+  | _, w, _, .jump j a, r, h => by
+    simp only [Term.inlineTailJump] at h
+    split at h
+    · exact Term.numCalls_subst body h
+    · cases h
+  | _, w, _, .record_casesOn (t := t) (fs := fs) us n b, r, h => by
+    simp only [Term.inlineTailJump, Option.map_eq_some_iff] at h
+    obtain ⟨r', hr', rfl⟩ := h
+    simp only [Term.numCalls]
+    exact Term.numCalls_inlineTailJump body _ b r' hr'
+  | _, _, _, .ret _, _, h => by simp [Term.inlineTailJump] at h
+  | _, _, _, .letV _ _ _, _, h => by simp [Term.inlineTailJump] at h
+  | _, _, _, .letE _ _ _, _, h => by simp [Term.inlineTailJump] at h
+  | _, _, _, .branch _, _, h => by simp [Term.inlineTailJump] at h
+
+/-- The join point `join j x := body; if p then t else e` inlined, when both arms are the same
+    statement (`Term.zipTest`: the same case analyses, and the same jump to `j`), which ends in a
+    jump to `j` after case analyses of records (`Term.inlineTailJump`). -/
+def Term.joinViaZip {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {uₓ : Usage01ω} {o : Lvl}
+    (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o) {ℓ : Nat} :
+    Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ → Option ((o' : Lvl) × Term Δ d Φ Γ τ js o')
+  | .ite p t e => match Term.zipTest Term.zipFuel p t e with
+    | some r => Term.inlineTailJump body ULRen.idL r.2
+    | none => none
+  | _ => none
+
+theorem Term.joinViaZip_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {uₓ : Usage01ω} {o : Lvl}
+    (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o) {ℓ : Nat}
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) (r : (o' : Lvl) × Term Δ d Φ Γ τ js o')
+    (h : Term.joinViaZip body main = some r) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = (Branch.join σ u uₓ body main).eval κ ρ jκ := by
+  cases main <;> simp only [Term.joinViaZip, reduceCtorEq] at h
+  rename_i p t e
+  split at h
+  · rename_i r' hz
+    rw [Term.inlineTailJump_eval body κ ρ jκ ULRen.idL r'.2 r h ρ (ULRen.Agree.idL ρ),
+      Term.zipTest_eval _ p t e r' hz κ ρ]
+    rfl
+  · cases h
+
+theorem Term.numCalls_joinViaZip {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {uₓ : Usage01ω}
+    {o : Lvl} (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o) {ℓ : Nat}
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) (r : (o' : Lvl) × Term Δ d Φ Γ τ js o')
+    (h : Term.joinViaZip body main = some r) : r.2.numCalls ≤ body.numCalls := by
+  cases main <;> simp only [Term.joinViaZip, reduceCtorEq] at h
+  split at h
+  · exact Term.numCalls_inlineTailJump body _ _ r h
+  · cases h
+
+/-- `join j (x : σ) := body; main`, or `body[x := a]` when both arms of the test `main` jump to
+    `j` with the same argument `a` (`Branch.sameJumpArg?`, through case analyses whose fields are
+    not used), or, when both arms are the same statement ending in a jump to `j`, that statement
+    with the jump replaced by `body[x := a]` (`Term.joinViaZip`); only when `x` is used at most
+    once (`Term.countU`, so that `a` is not copied; the usage annotation may not be up to date). -/
+def Term.joinSame {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
+    (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) : (o' : Lvl) × Term Δ d Φ Γ τ js o' :=
+  go main.sameJumpArg? (body.countU 0).atMostOnce
+where
+  /-- `Term.joinSame`, the argument and the count given. -/
+  go : Option ((o : Lvl) × PExpr Δ Φ Γ σ o) → Bool → (o' : Lvl) × Term Δ d Φ Γ τ js o'
+    | some a, true =>
+      match body.subst (D' := d) KLRen.id (USub.cons a (USub.ofRen ULRen.idL)) JRen.id with
+      | some r => r
+      | none => ⟨_, .branch (.join σ u uₓ body main)⟩
+    | none, true => (Term.joinViaZip body main).getD ⟨_, .branch (.join σ u uₓ body main)⟩
+    | _, false => ⟨_, .branch (.join σ u uₓ body main)⟩
+
+theorem Term.joinSame_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
+    (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.joinSame uₓ body main).2.eval κ ρ jκ = (Branch.join σ u uₓ body main).eval κ ρ jκ := by
+  unfold Term.joinSame
+  generalize ha : main.sameJumpArg? = r
+  generalize (body.countU 0).atMostOnce = c
+  cases c with
+  | false => cases r <;> rfl
+  | true =>
+    cases r with
+    | none =>
+      simp only [Term.joinSame.go]
+      cases hz : Term.joinViaZip body main with
+      | none => rfl
+      | some r => exact Term.joinViaZip_eval body main r hz κ ρ jκ
+    | some a =>
+      simp only [Term.joinSame.go]
+      cases hs : body.subst (D' := d) KLRen.id (USub.cons a (USub.ofRen ULRen.idL)) JRen.id with
+      | none => rfl
+      | some r =>
+        simp only [Branch.eval]
+        rw [Branch.sameJumpArg?_eval main a.2 ha κ ρ jκ]
+        exact Term.subst_eval (KLRen.Agree.id κ)
+          (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) body hs
+
+theorem Term.numCalls_joinSame {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
+    (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
+    (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) :
+    (Term.joinSame uₓ body main).2.numCalls ≤ body.numCalls + main.numCalls := by
+  unfold Term.joinSame
+  generalize main.sameJumpArg? = r
+  generalize (body.countU 0).atMostOnce = c
+  cases c with
+  | false => cases r <;> simp [Term.joinSame.go, Term.numCalls, Branch.numCalls]
+  | true =>
+    cases r with
+    | none =>
+      simp only [Term.joinSame.go]
+      cases hz : Term.joinViaZip body main with
+      | none => simp [Term.numCalls, Branch.numCalls]
+      | some r =>
+        have := Term.numCalls_joinViaZip body main r hz
+        simp only [Option.getD]; omega
+    | some a =>
+      simp only [Term.joinSame.go]
+      cases hs : body.subst (D' := d) KLRen.id (USub.cons a (USub.ofRen ULRen.idL)) JRen.id with
+      | none => simp [Term.numCalls, Branch.numCalls]
+      | some r =>
+        have := Term.numCalls_subst body hs
+        simp only; omega
+
 /-- `join j (x : σ) := body; main`, or `let x := c ? a : b; body` when `main` is
     `if c then jump j a else jump j b` (`Branch.jumpArg?`; not when `x` is unused).  When `x` is
     used once, `c ? a : b` is written in its place (`Term.subst`), so that the tests of `x` are
@@ -207,18 +384,18 @@ def Term.joinOrLet {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : N
     | some ⟨_, n⟩ =>
       (body.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id).getD
         ⟨_, .letE .one (.share n) body⟩
-    | none => ⟨_, .branch (.join σ u .one body main)⟩
+    | none => Term.joinSame .one body main
   | .many, body, main => match main.jumpArg? with
     | some ⟨_, n⟩ => ⟨_, .letE .many (.share n) body⟩
-    | none => ⟨_, .branch (.join σ u .many body main)⟩
-  | .zero, body, main => ⟨_, .branch (.join σ u .zero body main)⟩
+    | none => Term.joinSame .many body main
+  | .zero, body, main => Term.joinSame .zero body main
 
 theorem Term.joinOrLet_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
     (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
     (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     (Term.joinOrLet uₓ body main).2.eval κ ρ jκ = (Branch.join σ u uₓ body main).eval κ ρ jκ := by
   cases uₓ with
-  | zero => rfl
+  | zero => exact Term.joinSame_eval _ body main κ ρ jκ
   | one =>
     simp only [Term.joinOrLet]
     split
@@ -231,21 +408,21 @@ theorem Term.joinOrLet_eval {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl}
         exact Term.subst_eval (KLRen.Agree.id κ)
           (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) body hs
       | none => rfl
-    · rfl
+    · exact Term.joinSame_eval _ body main κ ρ jκ
   | many =>
     simp only [Term.joinOrLet]
     split
     · rename_i n hn
       simp only [Term.eval, Comp.eval, Branch.eval]
       rw [Branch.jumpArg?_eval main n hn]; rfl
-    · rfl
+    · exact Term.joinSame_eval _ body main κ ρ jκ
 
 theorem Term.numCalls_joinOrLet {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : Lvl} {ℓ : Nat}
     (uₓ : Usage01ω) (body : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
     (main : Branch Δ d Φ Γ τ (⟨σ, u⟩ :: js) ℓ) :
     (Term.joinOrLet uₓ body main).2.numCalls ≤ body.numCalls + main.numCalls := by
   cases uₓ with
-  | zero => simp [Term.joinOrLet, Term.numCalls, Branch.numCalls]
+  | zero => exact Term.numCalls_joinSame _ body main
   | one =>
     simp only [Term.joinOrLet]
     split
@@ -255,10 +432,12 @@ theorem Term.numCalls_joinOrLet {js : JCtx ks} {σ : Ty ks} {u : Usage1ω} {o : 
         have := Term.numCalls_subst body hs
         dsimp only; omega
       · simp [Term.numCalls, Comp.numCalls]
-    · simp [Term.numCalls, Branch.numCalls]
+    · exact Term.numCalls_joinSame _ body main
   | many =>
     simp only [Term.joinOrLet]
-    split <;> simp [Term.numCalls, Comp.numCalls, Branch.numCalls]
+    split
+    · simp [Term.numCalls, Comp.numCalls]
+    · exact Term.numCalls_joinSame _ body main
 
 /-- The neutral expression a computation shares, if it is `share n`. -/
 def Comp.share? {σ : Ty ks} {ℓ : Nat} : Comp Δ d Φ Γ σ ℓ → Option (Neu Δ Φ Γ σ ℓ)

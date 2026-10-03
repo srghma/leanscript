@@ -46,21 +46,19 @@ export const test3 = (a) => {
  * @param {uint53(number)} prec
  * @returns {D0}
  */
-export const instReprRec1$repr = (x, prec) => {
-  const x$1 = { tag: 3, _1: String(x._1) };
-  const x$2 = { tag: 3, _1: String(x._2) };
-  const x$3 = { tag: 3, _1: String(x._3) };
-  return {
-    tag: 6,
-    _1: {
-      tag: 4,
-      _1: 2,
-      _2: {
+export const instReprRec1$repr = (x, prec) => ({
+  tag: 6,
+  _1: {
+    tag: 4,
+    _1: 2,
+    _2: {
+      tag: 5,
+      _1: {
         tag: 5,
-        _1: {
+        _1: { tag: 3, _1: "{ " },
+        _2: {
           tag: 5,
-          _1: { tag: 3, _1: "{ " },
-          _2: {
+          _1: {
             tag: 5,
             _1: {
               tag: 5,
@@ -84,46 +82,55 @@ export const instReprRec1$repr = (x, prec) => {
                                 tag: 5,
                                 _1: {
                                   tag: 5,
-                                  _1: {
-                                    tag: 5,
-                                    _1: { tag: 0 },
-                                    _2: { tag: 3, _1: "a" },
-                                  },
-                                  _2: { tag: 3, _1: " := " },
+                                  _1: { tag: 0 },
+                                  _2: { tag: 3, _1: "a" },
                                 },
-                                _2: {
-                                  tag: 6,
-                                  _1: { tag: 4, _1: 5, _2: x$1 },
-                                  _2: false,
-                                },
+                                _2: { tag: 3, _1: " := " },
                               },
-                              _2: { tag: 3, _1: "," },
+                              _2: {
+                                tag: 6,
+                                _1: {
+                                  tag: 4,
+                                  _1: 5,
+                                  _2: { tag: 3, _1: String(x._1) },
+                                },
+                                _2: false,
+                              },
                             },
-                            _2: { tag: 1 },
+                            _2: { tag: 3, _1: "," },
                           },
-                          _2: { tag: 3, _1: "b" },
+                          _2: { tag: 1 },
                         },
-                        _2: { tag: 3, _1: " := " },
+                        _2: { tag: 3, _1: "b" },
                       },
-                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$2 }, _2: false },
+                      _2: { tag: 3, _1: " := " },
                     },
-                    _2: { tag: 3, _1: "," },
+                    _2: {
+                      tag: 6,
+                      _1: { tag: 4, _1: 5, _2: { tag: 3, _1: String(x._2) } },
+                      _2: false,
+                    },
                   },
-                  _2: { tag: 1 },
+                  _2: { tag: 3, _1: "," },
                 },
-                _2: { tag: 3, _1: "c" },
+                _2: { tag: 1 },
               },
-              _2: { tag: 3, _1: " := " },
+              _2: { tag: 3, _1: "c" },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$3 }, _2: false },
+            _2: { tag: 3, _1: " := " },
+          },
+          _2: {
+            tag: 6,
+            _1: { tag: 4, _1: 5, _2: { tag: 3, _1: String(x._3) } },
+            _2: false,
           },
         },
-        _2: { tag: 3, _1: " }" },
       },
+      _2: { tag: 3, _1: " }" },
     },
-    _2: false,
-  };
-};
+  },
+  _2: false,
+});
 
 /**
  * `instReprRec2.repr`
@@ -131,21 +138,19 @@ export const instReprRec1$repr = (x, prec) => {
  * @param {uint53(number)} prec
  * @returns {D0}
  */
-export const instReprRec2$repr = (x, prec) => {
-  const x$1 = { tag: 3, _1: String(x._1) };
-  const x$2 = { tag: 3, _1: String(x._2) };
-  const x$3 = { tag: 3, _1: String(x._3) };
-  return {
-    tag: 6,
-    _1: {
-      tag: 4,
-      _1: 2,
-      _2: {
+export const instReprRec2$repr = (x, prec) => ({
+  tag: 6,
+  _1: {
+    tag: 4,
+    _1: 2,
+    _2: {
+      tag: 5,
+      _1: {
         tag: 5,
-        _1: {
+        _1: { tag: 3, _1: "{ " },
+        _2: {
           tag: 5,
-          _1: { tag: 3, _1: "{ " },
-          _2: {
+          _1: {
             tag: 5,
             _1: {
               tag: 5,
@@ -169,46 +174,55 @@ export const instReprRec2$repr = (x, prec) => {
                                 tag: 5,
                                 _1: {
                                   tag: 5,
-                                  _1: {
-                                    tag: 5,
-                                    _1: { tag: 0 },
-                                    _2: { tag: 3, _1: "d" },
-                                  },
-                                  _2: { tag: 3, _1: " := " },
+                                  _1: { tag: 0 },
+                                  _2: { tag: 3, _1: "d" },
                                 },
-                                _2: {
-                                  tag: 6,
-                                  _1: { tag: 4, _1: 5, _2: x$1 },
-                                  _2: false,
-                                },
+                                _2: { tag: 3, _1: " := " },
                               },
-                              _2: { tag: 3, _1: "," },
+                              _2: {
+                                tag: 6,
+                                _1: {
+                                  tag: 4,
+                                  _1: 5,
+                                  _2: { tag: 3, _1: String(x._1) },
+                                },
+                                _2: false,
+                              },
                             },
-                            _2: { tag: 1 },
+                            _2: { tag: 3, _1: "," },
                           },
-                          _2: { tag: 3, _1: "e" },
+                          _2: { tag: 1 },
                         },
-                        _2: { tag: 3, _1: " := " },
+                        _2: { tag: 3, _1: "e" },
                       },
-                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$2 }, _2: false },
+                      _2: { tag: 3, _1: " := " },
                     },
-                    _2: { tag: 3, _1: "," },
+                    _2: {
+                      tag: 6,
+                      _1: { tag: 4, _1: 5, _2: { tag: 3, _1: String(x._2) } },
+                      _2: false,
+                    },
                   },
-                  _2: { tag: 1 },
+                  _2: { tag: 3, _1: "," },
                 },
-                _2: { tag: 3, _1: "f" },
+                _2: { tag: 1 },
               },
-              _2: { tag: 3, _1: " := " },
+              _2: { tag: 3, _1: "f" },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$3 }, _2: false },
+            _2: { tag: 3, _1: " := " },
+          },
+          _2: {
+            tag: 6,
+            _1: { tag: 4, _1: 5, _2: { tag: 3, _1: String(x._3) } },
+            _2: false,
           },
         },
-        _2: { tag: 3, _1: " }" },
       },
+      _2: { tag: 3, _1: " }" },
     },
-    _2: false,
-  };
-};
+  },
+  _2: false,
+});
 
 /**
  * `test4`
