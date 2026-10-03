@@ -19,26 +19,6 @@ variable {ks : List Nat} {Δ : DSig ks}
 
 /-! ## The pieces -/
 
-theorem Ctor.twoCase_inTwo₁ {E : Ref ks → Type} {a b : Bool} {R : Type} (c : Ctor ks a)
-    (d : Ctor ks b) (v : DenList E c.binds) (k₁ : DenList E c.binds → R)
-    (k₂ : DenList E d.binds → R) : Ctor.twoCase c d (Ctor.inTwo₁ c d v) k₁ k₂ = k₁ v := by
-  cases c <;> cases d <;> first | rfl | exact congrArg k₁ (Fields.toDL_ofDL _ _)
-
-theorem Ctor.twoCase_inTwo₂ {E : Ref ks → Type} {a b : Bool} {R : Type} (c : Ctor ks a)
-    (d : Ctor ks b) (v : DenList E d.binds) (k₁ : DenList E c.binds → R)
-    (k₂ : DenList E d.binds → R) : Ctor.twoCase c d (Ctor.inTwo₂ c d v) k₁ k₂ = k₂ v := by
-  cases c <;> cases d <;> first | rfl | exact congrArg k₂ (Fields.toDL_ofDL _ _)
-
-theorem Ctor.consCase_inHead {E : Ref ks → Type} {a : Bool} {R RT : Type} (c : Ctor ks a)
-    (v : DenList E c.binds) (k₁ : DenList E c.binds → R) (k₂ : RT → R) :
-    Ctor.consCase c (Ctor.inHead c v) k₁ k₂ = k₁ v := by
-  cases c <;> first | rfl | exact congrArg k₁ (Fields.toDL_ofDL _ _)
-
-theorem Ctor.consCase_inTail {E : Ref ks → Type} {a : Bool} {R RT : Type} (c : Ctor ks a)
-    (r : RT) (k₁ : DenList E c.binds → R) (k₂ : RT → R) :
-    Ctor.consCase c (Ctor.inTail c r) k₁ k₂ = k₂ r := by
-  cases c <;> rfl
-
 theorem Branches.select_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : List Bool} →
     {cs : Ctors ks bs} → {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} →
     (brs : Branches Δ d Φ Γ cs τ js o) → {b : Bool} → {c : Ctor ks b} → (ix : CtorIx cs c) →
@@ -54,19 +34,6 @@ theorem Branches.select_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} �
       exact Ctor.consCase_inHead _ _ _ _
   | _, _, _, _, _, _, _, _, .cons _ _ bs, _, _, .tail ix, κ, ρ, jκ, v => by
       exact (Ctor.consCase_inTail _ _ _ _).trans (Branches.select_eval bs ix κ ρ jκ v)
-
-theorem PExpr.unionLit?_eval {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
-    {h : UnionShape bs} (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) {o : Lvl}
-    (e : PExpr Δ Φ Γ (.union cs (h := h)) o) {b : Bool} {c : Ctor ks b} {ix : CtorIx cs c}
-    {o' : Lvl} {args : Args Δ Φ Γ c.binds o'}
-    (he : e.unionLit? = some ⟨b, c, ix, o', args⟩) : e.eval κ ρ = ix.inject (args.eval κ ρ) := by
-  cases e with
-  | union_mk ix' args' =>
-      simp only [PExpr.unionLit?, Option.some.injEq, Sigma.mk.injEq] at he
-      obtain ⟨rfl, he⟩ := he
-      cases he
-      rfl
-  | _ => simp [PExpr.unionLit?] at he
 
 theorem Neu.isHead?_cast_eval {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat}
     (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (v : Ty.Den Δ σ) {τ : Ty ks} {ℓ' : Nat}

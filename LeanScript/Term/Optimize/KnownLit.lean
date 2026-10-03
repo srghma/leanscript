@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Optimize.Append
 public import LeanScript.Term.Rename.Weaken
+public import LeanScript.Term.Optimize.Fold
 
 @[expose] public section
 
@@ -17,7 +18,7 @@ the literal `["a", "b", ...xs]`.
 
 `Term.knownLits` (`Term.litWalk`) walks a statement knowing, for each known value in scope, whether it is a
 **constant** array or list literal (`LitOf`: a literal whose elements mention no variable at
-all, `PExpr.cst?`), and replaces every operand of an append (`lean_array_append`,
+all, `PExpr.cst?`, in `LeanScript.Term.Optimize.Fold`), and replaces every operand of an append (`lean_array_append`,
 `lean_list_append`) that names such a value by the literal itself (`Neu.litOpnds`).
 `Term.appendWalk`, run right after it, then merges the literal with its neighbours, and
 dead-code elimination drops the `val` when nothing else refers to it.
@@ -34,96 +35,6 @@ call is added: only pure expressions change).
 namespace LeanScript
 
 variable {ks : List Nat} {Δ : DSig ks}
-
-/-! ## Constant pure expressions -/
-
-section Cst
-variable {Φ : KCtx ks} {Γ : UCtx ks}
-
-mutual
-/-- The pure expression as a constant (no variable, so in the empty contexts), when it mentions
-    no variable at all: a literal, or a literal constructor of constants. -/
-def PExpr.cst? : {τ : Ty ks} → {o : Lvl} → PExpr Δ Φ Γ τ o → Option (PExpr Δ [] [] τ none)
-  | _, _, .neu _ => none
-  | _, _, .kvar _ => none
-  | _, _, .lit p v => some (.lit p v)
-  | _, _, .enum_mk s i => some (.enum_mk s i)
-  | _, _, .record_mk args => args.cst?.map .record_mk
-  | _, _, .union_mk ix args => args.cst?.map (.union_mk ix)
-  | _, _, .array_mk es => es.cst?.map .array_mk
-  | _, _, .list_mk es => es.cst?.map .list_mk
-  | _, _, .data_in b j e => e.cst?.map (.data_in b j)
-/-- Constant arguments. -/
-def Args.cst? : {σs : List (Ty ks)} → {o : Lvl} → Args Δ Φ Γ σs o →
-    Option (Args Δ [] [] σs none)
-  | _, _, .nil => some .nil
-  | _, _, .cons a as =>
-    match a.cst?, as.cst? with
-    | some a', some as' => some (.cons a' as')
-    | _, _ => none
-/-- Constant elements. -/
-def Elems.cst? : {t : Ty ks} → {o : Lvl} → Elems Δ Φ Γ t o → Option (Elems Δ [] [] t none)
-  | _, _, .nil => some .nil
-  | _, _, .cons e es =>
-    match e.cst?, es.cst? with
-    | some e', some es' => some (.cons e' es')
-    | _, _ => none
-end
-
-mutual
-theorem PExpr.cst?_eval : {τ : Ty ks} → {o : Lvl} → (e : PExpr Δ Φ Γ τ o) →
-    (c : PExpr Δ [] [] τ none) → e.cst? = some c → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) →
-    e.eval κ ρ = c.eval Tuple.nil Tuple.nil
-  | _, _, .neu _, _, h, _, _ => by simp [PExpr.cst?] at h
-  | _, _, .kvar _, _, h, _, _ => by simp [PExpr.cst?] at h
-  | _, _, .lit _ _, c, h, _, _ => by simp only [PExpr.cst?, Option.some.injEq] at h; subst h; rfl
-  | _, _, .enum_mk _ _, c, h, _, _ => by
-      simp only [PExpr.cst?, Option.some.injEq] at h; subst h; rfl
-  | _, _, .record_mk args, c, h, κ, ρ => by
-      simp only [PExpr.cst?, Option.map_eq_some_iff] at h
-      obtain ⟨a', ha, rfl⟩ := h
-      simp only [PExpr.eval, Args.cst?_eval args a' ha κ ρ] <;> rfl
-  | _, _, .union_mk _ args, c, h, κ, ρ => by
-      simp only [PExpr.cst?, Option.map_eq_some_iff] at h
-      obtain ⟨a', ha, rfl⟩ := h
-      simp only [PExpr.eval, Args.cst?_eval args a' ha κ ρ] <;> rfl
-  | _, _, .array_mk es, c, h, κ, ρ => by
-      simp only [PExpr.cst?, Option.map_eq_some_iff] at h
-      obtain ⟨e', he, rfl⟩ := h
-      simp only [PExpr.eval, Elems.cst?_eval es e' he κ ρ] <;> rfl
-  | _, _, .list_mk es, c, h, κ, ρ => by
-      simp only [PExpr.cst?, Option.map_eq_some_iff] at h
-      obtain ⟨e', he, rfl⟩ := h
-      simp only [PExpr.eval, Elems.cst?_eval es e' he κ ρ] <;> rfl
-  | _, _, .data_in _ _ e, c, h, κ, ρ => by
-      simp only [PExpr.cst?, Option.map_eq_some_iff] at h
-      obtain ⟨e', he, rfl⟩ := h
-      simp only [PExpr.eval, PExpr.cst?_eval e e' he κ ρ] <;> rfl
-theorem Args.cst?_eval : {σs : List (Ty ks)} → {o : Lvl} → (as : Args Δ Φ Γ σs o) →
-    (c : Args Δ [] [] σs none) → as.cst? = some c → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) →
-    as.eval κ ρ = c.eval Tuple.nil Tuple.nil
-  | _, _, .nil, c, h, _, _ => by simp only [Args.cst?, Option.some.injEq] at h; subst h; rfl
-  | _, _, .cons a as, c, h, κ, ρ => by
-      simp only [Args.cst?] at h
-      split at h
-      · rename_i a' as' ha has
-        cases h
-        simp only [Args.eval, PExpr.cst?_eval a a' ha κ ρ, Args.cst?_eval as as' has κ ρ]
-      · cases h
-theorem Elems.cst?_eval : {t : Ty ks} → {o : Lvl} → (es : Elems Δ Φ Γ t o) →
-    (c : Elems Δ [] [] t none) → es.cst? = some c → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) →
-    es.eval κ ρ = c.eval Tuple.nil Tuple.nil
-  | _, _, .nil, c, h, _, _ => by simp only [Elems.cst?, Option.some.injEq] at h; subst h; rfl
-  | _, _, .cons e es, c, h, κ, ρ => by
-      simp only [Elems.cst?] at h
-      split at h
-      · rename_i e' es' he hes
-        cases h
-        simp only [Elems.eval, PExpr.cst?_eval e e' he κ ρ, Elems.cst?_eval es es' hes κ ρ]
-      · cases h
-end
-
-end Cst
 
 /-! ## Constants in any context -/
 

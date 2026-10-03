@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Term.Optimize.InlineBlock
+public import LeanScript.Term.Optimize.Fold
 
 @[expose] public section
 
@@ -18,9 +19,13 @@ must be replaced by a **pure expression**: a known variable, a literal, a constr
 contexts (the known values by a `KLRen`, as in `Term.relvl`).  A pure expression replaces the
 unknown wherever it is used as a pure expression; where a *neutral* expression is needed (the
 operand of a case analysis, of `share`, of `data_out`, the condition of `cond`) the result must
-still be neutral, otherwise the substitution fails (`none`) — with one exception, which is a
-step of normalisation: a case analysis `record_casesOn` of a record literal binds its fields to
-the fields of the literal (the fields are substituted in turn) and disappears.
+still be neutral, otherwise the substitution fails (`none`) — with a few exceptions, which are
+steps of normalisation: a case analysis `record_casesOn` of a record literal binds its fields to
+the fields of the literal (the fields are substituted in turn) and disappears, and so does a
+case analysis of an enum or union literal (its arm is kept); an `if` or a conditional `c ? a :
+b` whose condition becomes a boolean literal is the arm it takes; an extern call whose
+arguments all become constants is the literal of its value when the result is of a leaf type
+(`Neu.mkExtern?`: `lean_nat_dec_eq 3 3` is `true`).
 
 No computation is repeated: inside a body (of a closure, a delay, a loop) only the pure
 expressions that cost nothing to repeat are substituted (`USub.cheapOnly`: an unknown, a known
@@ -146,14 +151,17 @@ def Neu.subst : {τ : Ty ks} → {ℓ : Nat} → Neu Δ Φ Γ τ ℓ → Option 
       pure ⟨_, .neu (.data_out b j m.2)⟩
   | _, _, .cond c a b => do
       let p ← Neu.subst c
-      let m ← p.2.toNeu?
-      let a ← PExpr.subst a
-      let b ← PExpr.subst b
-      pure ⟨_, .neu (.cond m.2 a.2 b.2)⟩
+      match p.2.boolLit? with
+      | some true => PExpr.subst a
+      | some false => PExpr.subst b
+      | none =>
+          let m ← p.2.toNeu?
+          let a ← PExpr.subst a
+          let b ← PExpr.subst b
+          pure ⟨_, .neu (.cond m.2 a.2 b.2)⟩
   | _, _, .extern e args _ => do
       let as ← Args.subst args
-      let h ← Lvl.some? as.1
-      pure ⟨_, .neu (.extern e as.2 h.2)⟩
+      Neu.mkExtern? e as.2
 /-- Substitute in a pure expression, recomputing its level. -/
 def PExpr.subst : {τ : Ty ks} → {o : Lvl} → PExpr Δ Φ Γ τ o →
     Option ((o' : Lvl) × PExpr Δ Φ' Γ' τ o')
@@ -214,6 +222,13 @@ def Term.asJump? {D : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx
     {o : Lvl} → Term Δ D Φ Γ τ js o →
       Option ((σ : Ty ks) × JVar js σ × (o' : Lvl) × PExpr Δ Φ Γ σ o')
   | _, .jump j a => some ⟨_, j, _, a⟩
+  | _, _ => none
+
+/-- The constructor and the fields of a union literal. -/
+def PExpr.unionLit? {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} : {o : Lvl} → PExpr Δ Φ Γ (.union cs (h := h)) o →
+    Option ((b : Bool) × (c : Ctor ks b) × CtorIx cs c × (o' : Lvl) × Args Δ Φ Γ c.binds o')
+  | _, .union_mk ix args => some ⟨_, _, ix, _, args⟩
   | _, _ => none
 
 /-! ## Statements -/
@@ -314,7 +329,9 @@ def Term.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} → 
       pure ⟨_, .jump j e.2⟩
 /-- Substitute in a branch and move it from depth `D` to depth `D'`; the result is a statement,
     because a case analysis of a constructor that the substitution makes known is reduced:
-    `case e of …` where `e` becomes an enum literal is the arm of its constructor, and a join
+    `case e of …` where `e` becomes an enum literal is the arm of its constructor (and so for a
+    union literal, its fields bound to the fields of the literal, `Branches.substSel`),
+    `if c then t else e` where `c` becomes a boolean literal is the arm it takes, and a join
     point whose branch becomes a jump is gone (`join j x := body; jump j a` is `body[x := a]`,
     when `a` costs nothing to repeat or `x` is used at most once; a jump to a join point further
     out stays that jump). -/
@@ -322,10 +339,15 @@ def Branch.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} �
     KLRen Φ Φ' → USub Δ Φ' Γ Γ' → JRen js js' → {τ : Ty ks} → {ℓ : Nat} →
     Branch Δ D Φ Γ τ js ℓ → Option ((o' : Lvl) × Term Δ D' Φ' Γ' τ js' o')
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .ite c t e => do
-      let c ← c.substN rk s
-      let t ← t.subst rk s rj
-      let e ← e.subst rk s rj
-      pure ⟨_, .branch (.ite c.2 t.2 e.2)⟩
+      let p ← c.subst rk s
+      match p.2.boolLit? with
+      | some true => t.subst rk s rj
+      | some false => e.subst rk s rj
+      | none =>
+          let c ← p.2.toNeu?
+          let t ← t.subst rk s rj
+          let e ← e.subst rk s rj
+          pure ⟨_, .branch (.ite c.2 t.2 e.2)⟩
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .enum_casesOn e bs => do
       let p ← e.subst rk s
       match p.2.toNeu? with
@@ -336,9 +358,14 @@ def Branch.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} �
           let i ← p.2.enumLit?
           (bs i).subst rk s rj
   | _, _, _, _, _, _, _, _, rk, s, rj, _, _, .union_casesOn e bs => do
-      let e ← e.substN rk s
-      let bs ← bs.subst rk s rj
-      pure ⟨_, .branch (.union_casesOn e.2 bs.2)⟩
+      let p ← e.subst rk s
+      match p.2.toNeu? with
+      | some m =>
+          let bs ← bs.subst rk s rj
+          pure ⟨_, .branch (.union_casesOn m.2 bs.2)⟩
+      | none =>
+          let ⟨_, _, ix, _, args⟩ ← p.2.unionLit?
+          bs.substSel rk s rj ix args
   | D, D', _, _, _, _, _, _, rk, s, rj, _, _, .join σ u uₓ body main => do
       let m ← main.subst rk s (JRen.lift rj _)
       match m.2.asBranch? with
@@ -368,6 +395,22 @@ def Branches.subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} 
       let b ← b.subst (D' := D') rk (USub.liftAnnot s D D' c.binds us) rj
       let bs ← bs.subst rk s rj
       pure ⟨_, .cons us b.2 bs.2⟩
+/-- Substitute in the arm of the constructor `ix` of a union's case analysis, its fields bound
+    to the fields `args` of a union literal (`USub.ofArgs`): the case analysis of a literal is
+    reduced. -/
+def Branches.substSel : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} → {js js' : JCtx ks} →
+    KLRen Φ Φ' → USub Δ Φ' Γ Γ' → JRen js js' → {bs : List Bool} → {cs : Ctors ks bs} →
+    {τ : Ty ks} → {o : Lvl} → Branches Δ D Φ Γ cs τ js o → {b : Bool} → {c : Ctor ks b} →
+    CtorIx cs c → {oa : Lvl} → Args Δ Φ' Γ' c.binds oa →
+    Option ((o' : Lvl) × Term Δ D' Φ' Γ' τ js' o')
+  | D, D', _, _, _, _, _, _, rk, s, rj, _, _, _, _, .two (c₁ := c₁) us₁ _ b₁ _, _, _, .two₁, _, args =>
+      b₁.subst (D' := D') rk (USub.ofArgs s D c₁.binds us₁ args) rj
+  | D, D', _, _, _, _, _, _, rk, s, rj, _, _, _, _, .two (c₂ := c₂) _ us₂ _ b₂, _, _, .two₂, _, args =>
+      b₂.subst (D' := D') rk (USub.ofArgs s D c₂.binds us₂ args) rj
+  | D, D', _, _, _, _, _, _, rk, s, rj, _, _, _, _, .cons (c := c) us b _, _, _, .head, _, args =>
+      b.subst (D' := D') rk (USub.ofArgs s D c.binds us args) rj
+  | _, _, _, _, _, _, _, _, rk, s, rj, _, _, _, _, .cons _ _ bs, _, _, .tail ix, _, args =>
+      bs.substSel rk s rj ix args
 end
 
 end LeanScript

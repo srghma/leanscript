@@ -13,7 +13,8 @@ set_option autoImplicit false
 `Term.numCalls_subst`: `Term.subst` replaces unknowns by pure expressions and recomputes
 levels; a case analysis of a record literal that disappears has no call, and a case analysis of
 an enum literal (or a join point whose branch becomes a jump) that is reduced keeps the calls of
-one of its parts only.
+one of its parts only (so does an `if` on a condition that becomes a literal, and a case
+analysis of a union literal, `Branches.numCalls_substSel`).
 -/
 
 namespace LeanScript
@@ -183,11 +184,17 @@ theorem Branch.numCalls_subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' 
     {p : (o' : Lvl) × Term Δ D' Φ' Γ' τ js' o'} → br.subst rk s rj = some p →
     p.2.numCalls ≤ br.numCalls
   | _, _, _, _, _, _, _, _, _, _, _, _, _, .ite c t e, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨_, _, t', ht, e', he, rfl⟩ := h
-      have := Term.numCalls_subst t ht; have := Term.numCalls_subst e he
-      simp only [Term.numCalls, Branch.numCalls]; omega
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨_, _, h⟩ := h
+      split at h
+      · have := Term.numCalls_subst t h
+        simp only [Branch.numCalls]; omega
+      · have := Term.numCalls_subst e h
+        simp only [Branch.numCalls]; omega
+      · simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨_, _, t', ht, e', he, rfl⟩ := h
+        have := Term.numCalls_subst t ht; have := Term.numCalls_subst e he
+        simp only [Term.numCalls, Branch.numCalls]; omega
   | _, _, _, _, _, _, _, _, _, _, _, _, _, .enum_casesOn e bs, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
       obtain ⟨q, _, h⟩ := h
@@ -201,10 +208,15 @@ theorem Branch.numCalls_subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' 
         simp only [Branch.numCalls]
         exact Nat.le_trans (Term.numCalls_subst (bs i) h) (Fin.le_sumNat _ (fun i => (bs i).numCalls) i)
   | _, _, _, _, _, _, _, _, _, _, _, _, _, .union_casesOn e bs, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨_, _, bs', hbs, rfl⟩ := h
-      simp only [Term.numCalls, Branch.numCalls]; exact Branches.numCalls_subst bs hbs
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨_, _, h⟩ := h
+      split at h
+      · simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨bs', hbs, rfl⟩ := h
+        simp only [Term.numCalls, Branch.numCalls]; exact Branches.numCalls_subst bs hbs
+      · simp only [Option.bind_eq_some_iff] at h
+        obtain ⟨⟨_, _, ix, _, args⟩, _, h⟩ := h
+        simp only [Branch.numCalls]; exact Branches.numCalls_substSel bs ix args h
   | _, _, _, _, _, _, _, _, _, _, _, _, _, .join σ u uₓ body main, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
       obtain ⟨m, hm, h⟩ := h
@@ -245,6 +257,30 @@ theorem Branches.numCalls_subst : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ
       have := Term.numCalls_subst b hb; have := Branches.numCalls_subst bs hbs
       simp only [Branches.numCalls]; omega
   termination_by structural _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x _ _ => x
+theorem Branches.numCalls_substSel : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} →
+    {js js' : JCtx ks} → {rk : KLRen Φ Φ'} → {s : USub Δ Φ' Γ Γ'} → {rj : JRen js js'} →
+    {bs : List Bool} → {cs : Ctors ks bs} → {τ : Ty ks} → {o : Lvl} →
+    (br : Branches Δ D Φ Γ cs τ js o) → {b : Bool} → {c : Ctor ks b} → (ix : CtorIx cs c) →
+    {oa : Lvl} → (args : Args Δ Φ' Γ' c.binds oa) →
+    {p : (o' : Lvl) × Term Δ D' Φ' Γ' τ js' o'} → br.substSel rk s rj ix args = some p →
+    p.2.numCalls ≤ br.numCalls
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .two _ _ b₁ b₂, _, _, .two₁, _, _, _, h => by
+      simp only [Branches.substSel] at h
+      have := Term.numCalls_subst b₁ h
+      simp only [Branches.numCalls]; omega
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .two _ _ b₁ b₂, _, _, .two₂, _, _, _, h => by
+      simp only [Branches.substSel] at h
+      have := Term.numCalls_subst b₂ h
+      simp only [Branches.numCalls]; omega
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .cons _ b bs, _, _, .head, _, _, _, h => by
+      simp only [Branches.substSel] at h
+      have := Term.numCalls_subst b h
+      simp only [Branches.numCalls]; omega
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .cons _ b bs, _, _, .tail ix, _, args, _, h => by
+      simp only [Branches.substSel] at h
+      have := Branches.numCalls_substSel bs ix args h
+      simp only [Branches.numCalls]; omega
+  termination_by structural _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x _ _ _ _ _ _ _ => x
 end
 
 end LeanScript

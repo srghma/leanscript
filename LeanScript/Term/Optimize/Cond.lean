@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Term.Semantics.Eval
 public import LeanScript.Term.Optimize.Count
+public import LeanScript.Term.Optimize.Fold
 
 @[expose] public section
 
@@ -52,23 +53,6 @@ theorem Branch.castLvlC_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks
   subst h; rfl
 
 /-! ## Boolean literals and negations -/
-
-/-- The boolean a pure expression is, when it is a boolean literal. -/
-def PExpr.boolLit? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} :
-    PExpr Δ Φ Γ τ o → Option Bool
-  | .lit p v => match p, v with
-    | .bool, v => some v
-    | _, _ => none
-  | _ => none
-
-theorem PExpr.boolLit?_eval {Φ : KCtx ks} {Γ : UCtx ks} {o : Lvl} (e : PExpr Δ Φ Γ .bool o)
-    (b : Bool) (h : e.boolLit? = some b) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
-    (e.eval κ ρ : Bool) = b := by
-  cases e with
-  | lit _ v =>
-    simp only [PExpr.boolLit?, Option.some.injEq] at h
-    exact h
-  | _ => simp [PExpr.boolLit?] at h
 
 /-- `c` when the condition is `c ? false : true`, the negation of `c`. -/
 def Neu.negView? {Φ : KCtx ks} {Γ : UCtx ks} {ℓ : Nat} :

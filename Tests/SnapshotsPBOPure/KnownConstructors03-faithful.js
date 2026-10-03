@@ -6,10 +6,4 @@
  * @param {int(bigint)} x
  * @returns {string}
  */
-export const test = (x) => {
-  const s$1 = 42n < x ? { tag: 1, _1: "Hello" } : { tag: 0 };
-  if (s$1.tag === 0) {
-    return "";
-  }
-  return s$1._1 + ", World!";
-};
+export const test = (x) => (42n < x ? "Hello, World!" : "");

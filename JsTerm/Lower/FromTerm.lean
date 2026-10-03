@@ -587,7 +587,18 @@ partial def cApplyTerm {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o :
       castRet ((JsBlock.join "f" ((blk.retToJump (k := .ret c)))
         ((JsBlock.ret call)))) r
     | _ => throw "internal: applying a value that is not a function"
-  if ps.isEmpty then whole else
+  if ps.isEmpty then
+    -- a delay applied to nothing, `val k := lazy body; ret k` forced: its body, in place
+    -- (`export const c = 0;`, not `const f = () => 0; return f();`)
+    match t with
+    | .letV _ v (.ret (.kvar k)) =>
+      if k.index != 0 then whole else
+      match v with
+      | Val.lazy_mk b =>
+        if lowerTy cfg τ = r then whole else do castRet (← cBody b n C M [] []) r
+      | _ => whole
+    | _ => whole
+  else
   match t with
   | .letV _ v (.ret (.kvar k)) =>
     if k.index != 0 then whole else

@@ -3,28 +3,14 @@
 --   test6: LeanScript: `String.Pos.Raw` is a leaf of the language: its values are literals, not constructor applications
 
 -- test1 : Nat → String
-val k1 [1] : (Nat → String) := fun x2 [ω] : Nat => (closed)
-  val k3 [1] : ((• | [String]) → String) := fun x4 [1] : (• | [String]) => (open)
-    case x4 of
-    | ctor#0() =>
-      ret lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ")")
-    | ctor#1(f5 [1] : String) =>
-      ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ", "), f5), ")")
-  let x6 [1] : String := k3 ctor#0()
-  ret x6
+val k1 [1] : (Nat → String) := fun x2 [1] : Nat => (closed)
+  ret lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ")")
 ret k1
 
 -- test2 : Nat → String → String
 val k1 [1] : (Nat → (String → String)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (String → String) := fun x4 [1] : String => (open)
-    val k5 [1] : ((• | [String]) → String) := fun x6 [1] : (• | [String]) => (open)
-      case x6 of
-      | ctor#0() =>
-        ret lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ")")
-      | ctor#1(f7 [1] : String) =>
-        ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ", "), f7), ")")
-    let x8 [1] : String := k5 ctor#1(x4)
-    ret x8
+    ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append("count (", lean_nat_repr(x2)), ", "), x4), ")")
   ret k3
 ret k1
 

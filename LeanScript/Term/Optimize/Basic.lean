@@ -4,6 +4,7 @@ public import LeanScript.Term.Optimize.Cse
 public import LeanScript.Term.Optimize.Hoist
 public import LeanScript.Term.Optimize.FieldsWalk
 public import LeanScript.Term.Optimize.KnownTest
+public import LeanScript.Term.Optimize.KnownSize
 public import LeanScript.Term.Optimize.Cond
 public import LeanScript.Term.Optimize.ShareTest
 public import LeanScript.Term.Optimize.MergeTest
@@ -434,7 +435,8 @@ end
 /-- **The optimiser**: the inlining of known closures that compute an expression
     (`Term.inlineKnown`), the rewrites of `Term.simp`, the known fields (`Term.widenFields`,
     then `Term.reuseFields`), the tests whose answer is already known dropped
-    (`Term.knownTests`), the tests shared by both arms of an `if` made first
+    (`Term.knownTests`), the known sizes of array literals and the tests and join points
+    they decide (`Term.knownSizes`), the tests shared by both arms of an `if` made first
     (`Term.shareTestWalk`), a test pushed into the answers when both arms of an `if` make the
     same other tests (`Term.zipTestWalk`), those of `Term.cseWalk`, the hoisting of the extern calls every
     path computes (`Term.hoistWalk`), the boolean conditions
@@ -448,7 +450,7 @@ end
     counted). -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
+  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -653,7 +655,7 @@ theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} 
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
   rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
-    Term.hoistWalk_eval, Term.cseWalk_eval, Term.dce_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval, Term.knownTests_eval,
+    Term.hoistWalk_eval, Term.cseWalk_eval, Term.dce_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval, Term.knownSizes_eval, Term.knownTests_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]
 

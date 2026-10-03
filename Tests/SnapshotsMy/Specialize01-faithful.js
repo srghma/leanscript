@@ -8,15 +8,7 @@
  * @param {nat(bigint)} n
  * @returns {string}
  */
-export const test1 = (n) => {
-  const k$2 = (x$1) => {
-    if (x$1.tag === 0) {
-      return "count (" + n + ")";
-    }
-    return "count (" + n + ", " + x$1._1 + ")";
-  };
-  return k$2({ tag: 0 });
-};
+export const test1 = (n) => "count (" + n + ")";
 
 /**
  * `test2`
@@ -24,15 +16,7 @@ export const test1 = (n) => {
  * @param {string} s
  * @returns {string}
  */
-export const test2 = (n, s) => {
-  const k$2 = (x$1) => {
-    if (x$1.tag === 0) {
-      return "count (" + n + ")";
-    }
-    return "count (" + n + ", " + x$1._1 + ")";
-  };
-  return k$2({ tag: 1, _1: s });
-};
+export const test2 = (n, s) => "count (" + n + ", " + s + ")";
 
 /**
  * `test3`

@@ -40,10 +40,7 @@ export const test3 = (fn) => ({
  * `fn_prime`
  * @type {D1}
  */
-export const fn_prime = (() => {
-  const f$1 = () => ({ tag: 1 });
-  return f$1();
-})();
+export const fn_prime = { tag: 1 };
 
 /**
  * `extern1`

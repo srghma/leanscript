@@ -6,11 +6,7 @@
 
 -- test4 : Bool → String
 val k1 [1] : (Bool → String) := fun x2 [1] : Bool => (closed)
-  case cond(x2, ctor#1(0), ctor#0()) of
-  | ctor#0() =>
-    ret "none"
-  | ctor#1(f3 [1] : Nat) =>
-    ret lean_nat_repr(f3)
+  ret cond(x2, "0", "none")
 ret k1
 
 -- test5 : Nat → Array (Option Nat)

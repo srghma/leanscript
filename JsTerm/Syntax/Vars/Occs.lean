@@ -281,6 +281,8 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
     else as.readFirstAny strict x bars
   | .record_mk fs => fs.readFirst strict x bars
   | .union_mk _ as => as.readFirst strict x bars
+  -- an array literal computes its elements (and spreads) from left to right
+  | .array_mk _ ps | .list_mk ps => ps.readFirst strict x bars
   | .cond c a b =>
     if c.mentions ⟨false, x⟩ then c.readFirst strict x bars
     else c.waits strict bars &&
@@ -298,6 +300,16 @@ partial def JsArgs.readFirst {C M σs : List JsTy} (strict : Bool) (x : Nat) (ba
   | .cons a as =>
     if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
     else a.waits strict bars && as.readFirst strict x bars
+/-- `readFirst` of the parts of an array literal, computed in order. -/
+partial def JsParts.readFirst {C M : List JsTy} {A E : JsTy} (strict : Bool) (x : Nat)
+    (bars : List Nat) : JsParts S C M A E → Bool
+  | .nil => false
+  | .elem a rest =>
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+    else a.waits strict bars && rest.readFirst strict x bars
+  | .spread a rest =>
+    if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
+    else a.waits strict bars && rest.readFirst strict x bars
 /-- `readFirst` of arguments computed in any order: the one reading the constant reads it
     first, and all the others can wait. -/
 partial def JsArgs.readFirstAny {C M σs : List JsTy} (strict : Bool) (x : Nat) (bars : List Nat) :

@@ -81,15 +81,7 @@ export const test4 = (a, b) => {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const test5 = (a, b) => {
-  const k$2 = (x$1) => {
-    if (x$1.tag === 0) {
-      return 0n;
-    }
-    return x$1._1._1 + x$1._1._2;
-  };
-  return k$2({ tag: 1, _1: { _1: a, _2: b } });
-};
+export const test5 = (a, b) => a + b;
 
 /**
  * `test6`

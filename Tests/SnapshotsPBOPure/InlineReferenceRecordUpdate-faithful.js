@@ -12,10 +12,7 @@ export const test1 = (fn) => fn()._3;
  * `fn_prime`
  * @type {{ _1: int(bigint), _2: int(bigint), _3: int(bigint) }}
  */
-export const fn_prime = (() => {
-  const f$1 = () => ({ _1: 1n, _2: 2n, _3: 3n });
-  return f$1();
-})();
+export const fn_prime = { _1: 1n, _2: 2n, _3: 3n };
 
 /**
  * `extern1`

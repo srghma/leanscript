@@ -192,16 +192,28 @@ theorem Neu.subst_eval (hk : KLRen.Agree rk κ κ') (hs : USub.Agree s κ' ρ ρ
       obtain ⟨q, hq, m, hm, rfl⟩ := h
       simp only [PExpr.eval, Neu.eval, PExpr.toNeu?_eval κ' ρ' q.2 hm, Neu.subst_eval hk hs n hq]
   | _, _, .cond c a b, _, h => by
-      simp only [Neu.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨q, hq, m, hm, a', ha, b', hb, rfl⟩ := h
-      simp only [PExpr.eval, Neu.eval, PExpr.toNeu?_eval κ' ρ' q.2 hm, Neu.subst_eval hk hs c hq,
-        PExpr.subst_eval hk hs a ha, PExpr.subst_eval hk hs b hb]
+      simp only [Neu.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨q, hq, h⟩ := h
+      have hc := Neu.subst_eval hk hs c hq
+      split at h
+      · rename_i hb
+        have hv := PExpr.boolLit?_eval q.2 true hb κ' ρ'
+        rw [hc] at hv
+        simp only [Neu.eval, hv]
+        exact PExpr.subst_eval hk hs a h
+      · rename_i hb
+        have hv := PExpr.boolLit?_eval q.2 false hb κ' ρ'
+        rw [hc] at hv
+        simp only [Neu.eval, hv]
+        exact PExpr.subst_eval hk hs b h
+      · simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨m, hm, a', ha, b', hb, rfl⟩ := h
+        simp only [PExpr.eval, Neu.eval, PExpr.toNeu?_eval κ' ρ' q.2 hm, hc,
+          PExpr.subst_eval hk hs a ha, PExpr.subst_eval hk hs b hb]
   | _, _, .extern e args _, _, h => by
-      simp only [Neu.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨as', has, q, hq, rfl⟩ := h
-      simp only [PExpr.eval, Neu.eval, Args.subst_eval hk hs args has]
+      simp only [Neu.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨as', has, h⟩ := h
+      rw [Neu.mkExtern?_eval e as'.2 _ h κ' ρ', Args.subst_eval hk hs args has]; rfl
 theorem PExpr.subst_eval (hk : KLRen.Agree rk κ κ') (hs : USub.Agree s κ' ρ ρ') :
     {τ : Ty ks} → {o : Lvl} → (e : PExpr Δ Φ Γ τ o) → {p : (o' : Lvl) × PExpr Δ Φ' Γ' τ o'} →
     e.subst rk s = some p → p.2.eval κ' ρ' = e.eval κ ρ
@@ -328,6 +340,39 @@ theorem PExpr.eval_cast {Φ : KCtx ks} {Γ : UCtx ks} {τ σ : Ty ks} {o : Lvl} 
     (a : PExpr Δ Φ Γ τ o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (h ▸ a : PExpr Δ Φ Γ σ o).eval κ ρ = h ▸ a.eval κ ρ := by
   subst h; rfl
+
+theorem Ctor.twoCase_inTwo₁ {E : Ref ks → Type} {a b : Bool} {R : Type} (c : Ctor ks a)
+    (d : Ctor ks b) (v : DenList E c.binds) (k₁ : DenList E c.binds → R)
+    (k₂ : DenList E d.binds → R) : Ctor.twoCase c d (Ctor.inTwo₁ c d v) k₁ k₂ = k₁ v := by
+  cases c <;> cases d <;> first | rfl | exact congrArg k₁ (Fields.toDL_ofDL _ _)
+
+theorem Ctor.twoCase_inTwo₂ {E : Ref ks → Type} {a b : Bool} {R : Type} (c : Ctor ks a)
+    (d : Ctor ks b) (v : DenList E d.binds) (k₁ : DenList E c.binds → R)
+    (k₂ : DenList E d.binds → R) : Ctor.twoCase c d (Ctor.inTwo₂ c d v) k₁ k₂ = k₂ v := by
+  cases c <;> cases d <;> first | rfl | exact congrArg k₂ (Fields.toDL_ofDL _ _)
+
+theorem Ctor.consCase_inHead {E : Ref ks → Type} {a : Bool} {R RT : Type} (c : Ctor ks a)
+    (v : DenList E c.binds) (k₁ : DenList E c.binds → R) (k₂ : RT → R) :
+    Ctor.consCase c (Ctor.inHead c v) k₁ k₂ = k₁ v := by
+  cases c <;> first | rfl | exact congrArg k₁ (Fields.toDL_ofDL _ _)
+
+theorem Ctor.consCase_inTail {E : Ref ks → Type} {a : Bool} {R RT : Type} (c : Ctor ks a)
+    (r : RT) (k₁ : DenList E c.binds → R) (k₂ : RT → R) :
+    Ctor.consCase c (Ctor.inTail c r) k₁ k₂ = k₂ r := by
+  cases c <;> rfl
+
+theorem PExpr.unionLit?_eval {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) {o : Lvl}
+    (e : PExpr Δ Φ Γ (.union cs (h := h)) o) {b : Bool} {c : Ctor ks b} {ix : CtorIx cs c}
+    {o' : Lvl} {args : Args Δ Φ Γ c.binds o'}
+    (he : e.unionLit? = some ⟨b, c, ix, o', args⟩) : e.eval κ ρ = ix.inject (args.eval κ ρ) := by
+  cases e with
+  | union_mk ix' args' =>
+      simp only [PExpr.unionLit?, Option.some.injEq, Sigma.mk.injEq] at he
+      obtain ⟨rfl, he⟩ := he
+      cases he
+      rfl
+  | _ => simp [PExpr.unionLit?] at he
 
 /-! ## Statements -/
 
@@ -524,12 +569,25 @@ theorem Branch.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UC
     KLRen.Agree rk κ κ' → USub.Agree s κ' ρ ρ' → JRen.Agree rj jκ jκ' →
     {ℓ : Nat} → (br : Branch Δ D Φ Γ τ js ℓ) → {p : (o' : Lvl) × Term Δ D' Φ' Γ' τ js' o'} →
     br.subst rk s rj = some p → p.2.eval κ' ρ' jκ' = br.eval κ ρ jκ
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .ite c t e, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨c', hc, t', ht, e', he, rfl⟩ := h
-      simp only [Term.eval, Branch.eval, Neu.substN_eval hk hs c hc, Term.subst_eval hk hs hj t ht,
-        Term.subst_eval hk hs hj e he]
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, κ', _, ρ', _, _, hk, hs, hj, _, .ite c t e, _, h => by
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨q, hq, h⟩ := h
+      have hc := Neu.subst_eval hk hs c hq
+      split at h
+      · rename_i hb
+        have hv := PExpr.boolLit?_eval q.2 true hb κ' ρ'
+        rw [hc] at hv
+        simp only [Branch.eval, hv]
+        exact Term.subst_eval hk hs hj t h
+      · rename_i hb
+        have hv := PExpr.boolLit?_eval q.2 false hb κ' ρ'
+        rw [hc] at hv
+        simp only [Branch.eval, hv]
+        exact Term.subst_eval hk hs hj e h
+      · simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨c', hc', t', ht, e', he, rfl⟩ := h
+        simp only [Term.eval, Branch.eval, PExpr.toNeu?_eval κ' ρ' q.2 hc', hc,
+          Term.subst_eval hk hs hj t ht, Term.subst_eval hk hs hj e he]
   | _, _, _, _, _, _, _, _, _, _, _, _, _, κ', _, ρ', _, _, hk, hs, hj, _,
       .enum_casesOn e bs, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -549,12 +607,25 @@ theorem Branch.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UC
         simp only [Branch.eval]
         rw [hv]
         exact Term.subst_eval hk hs hj _ h
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, .union_casesOn e bs, _, h => by
-      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def,
-        Option.some.injEq] at h
-      obtain ⟨e', he, bs', hbs, rfl⟩ := h
-      simp only [Term.eval, Branch.eval, Neu.substN_eval hk hs e he]
-      exact Branches.subst_eval hk hs hj bs hbs _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, κ', _, ρ', _, _, hk, hs, hj, _,
+      .union_casesOn e bs, _, h => by
+      simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨q, hq, h⟩ := h
+      have he := Neu.subst_eval hk hs e hq
+      split at h
+      · rename_i m hm
+        simp only [Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
+        obtain ⟨bs', hbs, rfl⟩ := h
+        simp only [Term.eval, Branch.eval]
+        rw [PExpr.toNeu?_eval κ' ρ' q.2 hm, he]
+        exact Branches.subst_eval hk hs hj bs hbs _
+      · simp only [Option.bind_eq_some_iff] at h
+        obtain ⟨⟨_, _, ix, _, args⟩, hu, h⟩ := h
+        have hv := PExpr.unionLit?_eval κ' ρ' q.2 hu
+        rw [he] at hv
+        simp only [Branch.eval]
+        rw [hv]
+        exact Branches.substSel_eval hk hs hj bs ix args h
   | _, _, _, _, _, _, _, _, _, _, _, _, κ, κ', ρ, ρ', jκ, jκ', hk, hs, hj, _,
       .join σ u uₓ body main, _, h => by
       simp only [Branch.subst, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
@@ -617,6 +688,40 @@ theorem Branches.subst_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : 
       · funext v; exact Term.subst_eval hk (hs.liftAnnot _ _ _ _ _) hj b hb
       · funext r; exact Branches.subst_eval hk hs hj bs hbs r
   termination_by structural _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x _ _ _ => x
+theorem Branches.substSel_eval : {D D' : Nat} → {Φ Φ' : KCtx ks} → {Γ Γ' : UCtx ks} →
+    {js js' : JCtx ks} → {τ : Ty ks} → {rk : KLRen Φ Φ'} → {s : USub Δ Φ' Γ Γ'} →
+    {rj : JRen js js'} → {κ : KEnv Δ Φ} → {κ' : KEnv Δ Φ'} → {ρ : UEnv Δ Γ} →
+    {ρ' : UEnv Δ Γ'} → {jκ : JEnv Δ τ js} → {jκ' : JEnv Δ τ js'} →
+    KLRen.Agree rk κ κ' → USub.Agree s κ' ρ ρ' → JRen.Agree rj jκ jκ' →
+    {bs : List Bool} → {cs : Ctors ks bs} → {o : Lvl} → (br : Branches Δ D Φ Γ cs τ js o) →
+    {b : Bool} → {c : Ctor ks b} → (ix : CtorIx cs c) → {oa : Lvl} →
+    (args : Args Δ Φ' Γ' c.binds oa) → {p : (o' : Lvl) × Term Δ D' Φ' Γ' τ js' o'} →
+    br.substSel rk s rj ix args = some p →
+    p.2.eval κ' ρ' jκ' = br.eval κ ρ jκ (ix.inject (args.eval κ' ρ'))
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, _, _,
+      .two _ _ b₁ _, _, _, .two₁, _, args, _, h => by
+      simp only [Branches.substSel] at h
+      rw [Term.subst_eval hk (hs.ofArgs _ _ _ args) hj b₁ h]
+      symm
+      exact Ctor.twoCase_inTwo₁ _ _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, _, _,
+      .two _ _ _ b₂, _, _, .two₂, _, args, _, h => by
+      simp only [Branches.substSel] at h
+      rw [Term.subst_eval hk (hs.ofArgs _ _ _ args) hj b₂ h]
+      symm
+      exact Ctor.twoCase_inTwo₂ _ _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, _, _,
+      .cons _ b _, _, _, .head, _, args, _, h => by
+      simp only [Branches.substSel] at h
+      rw [Term.subst_eval hk (hs.ofArgs _ _ _ args) hj b h]
+      symm
+      exact Ctor.consCase_inHead _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hk, hs, hj, _, _, _,
+      .cons _ _ bs, _, _, .tail ix, _, args, _, h => by
+      simp only [Branches.substSel] at h
+      exact (Branches.substSel_eval hk hs hj bs ix args h).trans
+        (Ctor.consCase_inTail _ _ _ _).symm
+  termination_by structural _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ x _ _ _ _ _ _ _ => x
 end
 
 end LeanScript

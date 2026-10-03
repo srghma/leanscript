@@ -2,9 +2,5 @@
 
 -- test : Int → String
 val k1 [1] : (Int → String) := fun x2 [1] : Int => (closed)
-  case cond(lean_int_dec_lt(42, x2), ctor#1("Hello"), ctor#0()) of
-  | ctor#0() =>
-    ret ""
-  | ctor#1(f3 [1] : String) =>
-    ret lean_string_append__String_append(f3, ", World!")
+  ret cond(lean_int_dec_lt(42, x2), "Hello, World!", "")
 ret k1

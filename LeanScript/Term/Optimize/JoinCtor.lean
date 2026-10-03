@@ -45,12 +45,6 @@ def Branches.select : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : 
   | _, _, _, _, _, _, _, _, .cons us b _, _, _, .head => ⟨us, _, b⟩
   | _, _, _, _, _, _, _, _, .cons _ _ bs, _, _, .tail ix => bs.select ix
 
-/-- The constructor and the fields of a union literal. -/
-def PExpr.unionLit? {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
-    {h : UnionShape bs} : {o : Lvl} → PExpr Δ Φ Γ (.union cs (h := h)) o →
-    Option ((b : Bool) × (c : Ctor ks b) × CtorIx cs c × (o' : Lvl) × Args Δ Φ Γ c.binds o')
-  | _, .union_mk ix args => some ⟨_, _, ix, _, args⟩
-  | _, _ => none
 
 /-- The body of a join point that is a case analysis of its parameter (of type `σ`). -/
 structure CaseJoin (Δ : DSig ks) (d : Nat) (Φ : KCtx ks) (Γ : UCtx ks) (σ : Ty ks)

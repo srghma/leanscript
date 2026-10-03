@@ -94,10 +94,7 @@ export const alias4 = (n) => {
   };
   const k$10 = (x$9) => k_mut$8(uint53__lean_mk_array(x$9, 5));
   const x$11 = uint53__lean_mk_array(n, 3);
-  const x$12 = k$10(1);
-  const x$13 = k$10(2);
-  const x$14 = k$4(x$11);
-  return [...x$12, ...x$13, ...x$14, ...x$11];
+  return [...k$10(1), ...k$10(2), ...k$4(x$11), ...x$11];
 };
 
 /**

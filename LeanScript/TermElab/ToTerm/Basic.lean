@@ -353,10 +353,11 @@ partial def listLit? (e : Expr) : MetaM (Option (Array Expr)) := do
     return some (#[e.appFn!.appArg!] ++ rest)
   return none
 
-/-- Is `e` an array literal `#[a, b, …]` (`List.toArray [a, b, …]`)? -/
+/-- Is `e` an array literal `#[a, b, …]` (`List.toArray [a, b, …]`, or `Array.mk [a, b, …]`)? -/
 def arrayLit? (e : Expr) : MetaM Bool := do
   let e ← instantiateMVars e
-  if e.isAppOfArity ``List.toArray 2 then return (← listLit? e.appArg!).isSome
+  if e.isAppOfArity ``List.toArray 2 || e.isAppOfArity ``Array.mk 2 then
+    return (← listLit? e.appArg!).isSome
   return false
 
 /-- Is the loose bound variable `i` of `e` used at most once, and not under a `fun` (where

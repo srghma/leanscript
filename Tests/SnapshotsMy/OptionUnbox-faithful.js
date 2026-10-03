@@ -12,13 +12,7 @@ import { bigint_nat__lean_array_get } from "../../runtime.js";
  * @param {boolean} b
  * @returns {string}
  */
-export const test4 = (b) => {
-  const s$1 = b ? { tag: 1, _1: 0n } : { tag: 0 };
-  if (s$1.tag === 0) {
-    return "none";
-  }
-  return String(s$1._1);
-};
+export const test4 = (b) => (b ? "0" : "none");
 
 /**
  * `test5`

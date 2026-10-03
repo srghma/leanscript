@@ -67,12 +67,27 @@ def elemOf? : List JsTy → JsTy
   | .fn [] t :: _ => t
   | _ :: ts => elemOf? ts
 
-/-- The layout of the array among the argument types (the first one that is an array). -/
-def layoutOf? : List JsTy → Option (Σ a e, JsArrayLayout a e)
+/-- The first array among the types. -/
+def firstLayoutOf? : List JsTy → Option (Σ a e, JsArrayLayout a e)
   | [] => none
   | t :: ts => match JsArrayLayout.of? t with
     | some ⟨e, l⟩ => some ⟨t, e, l⟩
-    | none => layoutOf? ts
+    | none => firstLayoutOf? ts
+
+/-- The first array among `ts` whose element type is also among `all`. -/
+def elemLayoutOf? (all : List JsTy) : List JsTy → Option (Σ a e, JsArrayLayout a e)
+  | [] => none
+  | t :: ts => match JsArrayLayout.of? t with
+    | some ⟨e, l⟩ => if all.contains e then some ⟨t, e, l⟩ else elemLayoutOf? all ts
+    | none => elemLayoutOf? all ts
+
+/-- The layout of the array among the argument types: the first array whose element type is
+    also among the types (the array of `lean_array_get : [E, A, Nat] → E` when `E` is itself an
+    array type, not the default `E`), else the first array. -/
+def layoutOf? (ts : List JsTy) : Option (Σ a e, JsArrayLayout a e) :=
+  match elemLayoutOf? ts ts with
+  | some r => some r
+  | none => firstLayoutOf? ts
 
 end JsOp
 

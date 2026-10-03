@@ -167,7 +167,5 @@ export const test7 = (n) => {
       p$2 = array__lean_array_push_mutable(p$2, j$3);
     }
   };
-  const x$5 = k_mut$4([]);
-  const x$6 = k_mut$4([1]);
-  return [...x$5, ...x$6];
+  return [...k_mut$4([]), ...k_mut$4([1])];
 };

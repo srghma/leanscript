@@ -12,10 +12,7 @@ export const test1 = (fn) => fn()._3;
  * `fn_prime`
  * @type {{ _1: int53(number), _2: int53(number), _3: int53(number) }}
  */
-export const fn_prime = (() => {
-  const f$1 = () => ({ _1: 1, _2: 2, _3: 3 });
-  return f$1();
-})();
+export const fn_prime = { _1: 1, _2: 2, _3: 3 };
 
 /**
  * `extern1`

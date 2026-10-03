@@ -68,15 +68,7 @@ ret k1
 -- test5 : Nat → Nat → Nat
 val k1 [1] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)
-    val k5 [1] : ((• | [(Nat × Nat)]) → Nat) := fun x6 [1] : (• | [(Nat × Nat)]) => (closed)
-      case x6 of
-      | ctor#0() =>
-        ret 0
-      | ctor#1(f7 [1] : (Nat × Nat)) =>
-        let ⟨f8 [1] : Nat, f9 [1] : Nat⟩ := f7
-        ret lean_nat_add(f8, f9)
-    let x10 [1] : Nat := k5 ctor#1(⟨x2, x4⟩)
-    ret x10
+    ret lean_nat_add(x2, x4)
   ret k3
 ret k1
 

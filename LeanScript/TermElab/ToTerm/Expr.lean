@@ -262,7 +262,8 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
     if c == ``Fin.foldl && args.size == 4 then
       return ← trFinFoldl tr L args[0]! args[1]! args[2]! args[3]!
     -- an array literal `#[a, b, …]` (`List.toArray [a, b, …]`)
-    if c == ``List.toArray && args.size == 2 then
+    -- (also `Array.mk [a, b, …]`, the head normal form of a default `#[]` of `Inhabited`)
+    if (c == ``List.toArray || c == ``Array.mk) && args.size == 2 then
       if let some xs ← listLit? args[1]! then
         discard <| cirOf L (← inferType e) false
         return Src.arrayMk (← xs.mapM (tr L))

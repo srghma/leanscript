@@ -80,15 +80,7 @@ export const test4 = (a, b) => {
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const test5 = (a, b) => {
-  const k$2 = (x$1) => {
-    if (x$1.tag === 0) {
-      return 0;
-    }
-    return uint53__lean_nat_add(x$1._1._1, x$1._1._2);
-  };
-  return k$2({ tag: 1, _1: { _1: a, _2: b } });
-};
+export const test5 = (a, b) => uint53__lean_nat_add(a, b);
 
 /**
  * `test6`
