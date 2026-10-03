@@ -34,6 +34,12 @@ The `let`s used once keep their order among themselves (a `let` used once stops 
 `let` used once), so that the printer can write all of them at their uses, in order.  Moving
 stops at anything that is not a `let` of a computation (a `val`, a case analysis, a branch,
 the answer), and after `Term.sinkFuel` steps.
+
+Where it stops in front of an `if` (any computation, used once or not), it moves on into the
+arm of the `if` that reads it, when the condition and the other arm do not (`Term.sinkArm`):
+`let x := fn (); if v == 42 then v + 1 else x.c` is `if v == 42 then v + 1 else (let x := fn ();
+x.c)`, so the path through the first arm no longer makes the call
+(`return fn()._3;` in the `else`, as purescript-backend-optimizer writes it).
 -/
 
 namespace LeanScript
@@ -68,6 +74,116 @@ theorem URen.Agree.swap {Γ : UCtx ks} (b₁ b₂ : UBinder ks) (v₁ : Ty.Den �
           simp only [URen.swap, Option.some.injEq] at hxy
           subst hxy; simp
 
+/-! ## Moving a computation into the arm of a test that reads it -/
+
+/-- `let x [u] := c; b`, with the computation moved into the arm of `b`'s `if` that reads it,
+    when the condition and the other arm do not read `x` (and again inside that arm, at most
+    `fuel` times): `let x := c; if p then t else e` is `if p then (let x := c; t) else e`, so
+    that the paths through `e` no longer compute `c`.  Done only when it keeps the level index
+    (decided on the spot). -/
+def Term.sinkArm : Nat → {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {σ τ : Ty ks} →
+    {js : JCtx ks} → {ℓ : Nat} → {o : Lvl} → (u : Usage1ω) → Comp Δ d Φ Γ σ ℓ →
+    Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o → Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ o))
+  | 0, _, _, _, _, _, _, _, _, u, c, b => .letE u c b
+  | fuel + 1, _, _, _, _, _, _, ℓ, _, u, c,
+      .branch (.ite (ℓ := ℓn) (o₁ := o₁) (o₂ := o₂) n t e) =>
+      match n.rename KRen.id URen.drop with
+      | some n' =>
+          match e.rename KRen.id URen.drop JRen.id with
+          | some e' =>
+              if h : some (Lvl.meetL ℓn (Lvl.meet (some (Lvl.meetL ℓ o₁)) o₂)) =
+                  some (Lvl.meetL ℓ (some (Lvl.meetL ℓn (Lvl.meet o₁ o₂)))) then
+                (Term.branch (Branch.ite n' (Term.sinkArm fuel u c t) e')).castLvl h
+              else .letE u c (.branch (.ite n t e))
+          | none =>
+              match t.rename KRen.id URen.drop JRen.id with
+              | some t' =>
+                  if h : some (Lvl.meetL ℓn (Lvl.meet o₁ (some (Lvl.meetL ℓ o₂)))) =
+                      some (Lvl.meetL ℓ (some (Lvl.meetL ℓn (Lvl.meet o₁ o₂)))) then
+                    (Term.branch (Branch.ite n' t' (Term.sinkArm fuel u c e))).castLvl h
+                  else .letE u c (.branch (.ite n t e))
+              | none => .letE u c (.branch (.ite n t e))
+      | none => .letE u c (.branch (.ite n t e))
+  | _ + 1, _, _, _, _, _, _, _, _, u, c, b => .letE u c b
+
+theorem Term.sinkArm_eval : (fuel : Nat) → {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
+    {σ τ : Ty ks} → {js : JCtx ks} → {ℓ : Nat} → {o : Lvl} → (u : Usage1ω) →
+    (c : Comp Δ d Φ Γ σ ℓ) → (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o) →
+    (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
+    (Term.sinkArm fuel u c b).eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ
+  | 0, _, _, _, _, _, _, _, _, u, c, b, κ, ρ, jκ => by simp only [Term.sinkArm]
+  | fuel + 1, _, _, _, _, _, _, _, _, u, c, b, κ, ρ, jκ => by
+      cases b with
+      | branch br =>
+          cases br with
+          | ite n t e =>
+              simp only [Term.sinkArm]
+              split
+              · rename_i n' hn
+                have en : n'.eval κ ρ = n.eval κ (Tuple.cons (c.eval κ ρ) ρ) :=
+                  Neu.rename_eval (KRen.Agree.id κ) (URen.Agree.drop _ ρ) n hn
+                split
+                · rename_i e' he
+                  have ee : e'.eval κ ρ jκ = e.eval κ (Tuple.cons (c.eval κ ρ) ρ) jκ :=
+                    Term.rename_eval (KRen.Agree.id κ) (URen.Agree.drop _ ρ) (JRen.Agree.id jκ)
+                      e he
+                  split
+                  · rw [Term.eval_castLvl]
+                    simp only [Term.eval, Branch.eval, en, ee]
+                    rw [Term.sinkArm_eval fuel u c t κ ρ jκ]
+                    simp only [Term.eval]
+                  · rfl
+                · split
+                  · rename_i t' ht
+                    have et : t'.eval κ ρ jκ = t.eval κ (Tuple.cons (c.eval κ ρ) ρ) jκ :=
+                      Term.rename_eval (KRen.Agree.id κ) (URen.Agree.drop _ ρ)
+                        (JRen.Agree.id jκ) t ht
+                    split
+                    · rw [Term.eval_castLvl]
+                      simp only [Term.eval, Branch.eval, en, et]
+                      rw [Term.sinkArm_eval fuel u c e κ ρ jκ]
+                      simp only [Term.eval]
+                    · rfl
+                  · rfl
+              · rfl
+          | _ => simp only [Term.sinkArm]
+      | _ => simp only [Term.sinkArm]
+
+theorem Term.numCalls_sinkArm : (fuel : Nat) → {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
+    {σ τ : Ty ks} → {js : JCtx ks} → {ℓ : Nat} → {o : Lvl} → (u : Usage1ω) →
+    (c : Comp Δ d Φ Γ σ ℓ) → (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o) →
+    (Term.sinkArm fuel u c b).numCalls = (Term.letE u c b).numCalls
+  | 0, _, _, _, _, _, _, _, _, u, c, b => by simp only [Term.sinkArm]
+  | fuel + 1, _, _, _, _, _, _, _, _, u, c, b => by
+      cases b with
+      | branch br =>
+          cases br with
+          | ite n t e =>
+              simp only [Term.sinkArm]
+              split
+              · split
+                · rename_i e' he
+                  split
+                  · rw [Term.numCalls_castLvl]
+                    simp only [Term.numCalls, Branch.numCalls]
+                    rw [Term.numCalls_sinkArm fuel u c t, Term.numCalls_rename e he]
+                    simp only [Term.numCalls]
+                    omega
+                  · rfl
+                · split
+                  · rename_i t' ht
+                    split
+                    · rw [Term.numCalls_castLvl]
+                      simp only [Term.numCalls, Branch.numCalls]
+                      rw [Term.numCalls_sinkArm fuel u c e, Term.numCalls_rename t ht]
+                      simp only [Term.numCalls]
+                      omega
+                    · rfl
+                  · rfl
+              · rfl
+          | _ => simp only [Term.sinkArm]
+      | _ => simp only [Term.sinkArm]
+
 /-! ## Moving one computation down -/
 
 theorem Lvl.meetL_swap (ℓ₁ ℓ₂ : Nat) (o : Lvl) :
@@ -91,7 +207,7 @@ def Term.sinkLet : Nat → {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {
       | some c₂', some c', some b₂' =>
           (Term.letE u₂ c₂' (Term.sinkLet fuel u c' b₂')).castLvl (Lvl.meetL_swap _ ℓ₂ o₂)
       | _, _, _ => .letE u c (.letE u₂ c₂ b₂)
-  | _ + 1, _, _, _, _, _, _, _, _, u, c, b => .letE u c b
+  | _ + 1, _, _, _, _, _, _, _, _, u, c, b => Term.sinkArm Term.sinkFuel u c b
 
 /-- **What `sinkLet` does**: in front of a `let` that is not used once, whose computation does
     not read `x` (`c₂.rename … URen.drop = some c₂'`), the computation `c` moves past it, and
@@ -143,7 +259,7 @@ theorem Term.sinkLet_eval : (fuel : Nat) → {d : Nat} → {Φ : KCtx ks} → {�
               rw [Term.rename_eval (KRen.Agree.id κ) (URen.Agree.swap _ _ _ _ ρ)
                 (JRen.Agree.id jκ) b₂ hb₂, e₂]
             · rfl
-      | _ => simp only [Term.sinkLet]
+      | _ => simp only [Term.sinkLet]; exact Term.sinkArm_eval _ _ _ _ _ _ _
 
 theorem Term.numCalls_sinkLet : (fuel : Nat) → {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
     {σ τ : Ty ks} → {js : JCtx ks} → {ℓ : Nat} → {o : Lvl} → (u : Usage1ω) →
@@ -166,13 +282,13 @@ theorem Term.numCalls_sinkLet : (fuel : Nat) → {d : Nat} → {Φ : KCtx ks} �
                 Term.numCalls_rename b₂ hb₂]
               omega
             · rfl
-      | _ => simp only [Term.sinkLet]
+      | _ => simp only [Term.sinkLet]; exact Term.numCalls_sinkArm _ _ _ _
 
 /-- `let x [u] := c; b`, moved down when it is used once (`Term.sinkLet`). -/
 def Term.sinkLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {ℓ : Nat}
     {o : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
     (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o) : Term Δ d Φ Γ τ js (some (Lvl.meetL ℓ o)) :=
-  if u = .one then Term.sinkLet Term.sinkFuel u c b else .letE u c b
+  if u = .one then Term.sinkLet Term.sinkFuel u c b else Term.sinkArm Term.sinkFuel u c b
 
 theorem Term.sinkLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
     {ℓ : Nat} {o : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
@@ -181,7 +297,7 @@ theorem Term.sinkLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty k
   unfold Term.sinkLetE
   split
   · exact Term.sinkLet_eval _ u c b κ ρ jκ
-  · rfl
+  · exact Term.sinkArm_eval _ u c b κ ρ jκ
 
 theorem Term.numCalls_sinkLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
     {js : JCtx ks} {ℓ : Nat} {o : Lvl} (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
@@ -190,7 +306,7 @@ theorem Term.numCalls_sinkLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : 
   unfold Term.sinkLetE
   split
   · exact Term.numCalls_sinkLet _ u c b
-  · rfl
+  · exact Term.numCalls_sinkArm _ u c b
 
 /-! ## The walk -/
 

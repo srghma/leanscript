@@ -1,6 +1,7 @@
 module
 
 public import JsTerm.Syntax.Pretty
+public import JsTerm.Syntax.Vars.Occs
 
 @[expose] public section
 
@@ -30,6 +31,13 @@ when `E` and `E'` are the same statements (the same dump, `JsBlock.pretty`: the 
 de Bruijn indices, and both are in the same scope, so the same dump is the same statements).
 `a && b` is `a ? b : false` and `a || b` is `a ? true : b` (`JsExpr.cond`, which the printer
 writes with the operators); a chain is grouped to the left (`a && b && c`).
+
+It also rewrites `if (c) { T } else { T' }` to `T`, and `c ? a : a'` to `a`, when `T` and `T'`
+(`a` and `a'`) are the same dump and the test `c` has no effect (`JsExpr.noEffect`): Lean is
+pure, so a test whose two arms are the same is dead.  The `Term` optimiser already does this
+for answers and jumps (`PExpr.same`); it cannot when each arm takes a record apart for nothing
+(dropping that case analysis changes the level index of the arm), which the lowering does not
+write, so the arms come out the same here.
 
 **Why the value is the same.**  JavaScript evaluates `b` in `a && b` (resp. `a || b`) exactly
 when the original evaluated the inner test: after `a`, when `a` is true (resp. false).  The
@@ -63,6 +71,8 @@ partial def JsExpr.mkOr {C M : List JsTy} (a b : JsExpr S C M (.terminal .bool))
     module documentation). -/
 def JsBlock.mkIte {C M J : List JsTy} {k : JsEnd} (c : JsExpr S C M (.terminal .bool))
     (t e : JsBlock S C M J k) : JsBlock S C M J k :=
+  let tp := t.pretty ""
+  if c.noEffect && tp == e.pretty "" then t else
   let viaAnd? : Option (JsBlock S C M J k) := match t with
     | .ite b t' e' =>
       if e'.pretty "" == e.pretty "" then some (.ite (JsExpr.mkAnd c b) t' e') else none
@@ -72,7 +82,7 @@ def JsBlock.mkIte {C M J : List JsTy} {k : JsEnd} (c : JsExpr S C M (.terminal .
   | none =>
     match e with
     | .ite b e' t' =>
-      if t.pretty "" == e'.pretty "" then .ite (JsExpr.mkOr c b) t t' else .ite c t e
+      if tp == e'.pretty "" then .ite (JsExpr.mkOr c b) t t' else .ite c t e
     | _ => .ite c t e
 
 mutual
@@ -89,7 +99,10 @@ partial def JsExpr.mergeIte {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → 
   | .index l nt a i => .index l nt a.mergeIte i.mergeIte
   | .array_mk l ps => .array_mk l ps.mergeIte
   | .list_mk ps => .list_mk ps.mergeIte
-  | .cond c a b => .cond c.mergeIte a.mergeIte b.mergeIte
+  | .cond c a b =>
+    let a := a.mergeIte
+    let b := b.mergeIte
+    if c.noEffect && a.pretty "" == b.pretty "" then a else .cond c.mergeIte a b
   | .listOp op as => .listOp op as.mergeIte
   | .fold i e => .fold i e.mergeIte
   | .unfold i e => .unfold i e.mergeIte

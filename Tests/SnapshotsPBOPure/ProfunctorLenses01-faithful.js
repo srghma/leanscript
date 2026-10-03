@@ -7,9 +7,46 @@
  * @param {nat(bigint)} prec
  * @returns {D0}
  */
-export const instReprRecBaz$repr = (x, prec) => {
-  const x$1 = String(x);
-  return {
+export const instReprRecBaz$repr = (x, prec) => ({
+  tag: 6,
+  _1: {
+    tag: 4,
+    _1: 2n,
+    _2: {
+      tag: 5,
+      _1: {
+        tag: 5,
+        _1: { tag: 3, _1: "{ " },
+        _2: {
+          tag: 5,
+          _1: {
+            tag: 5,
+            _1: { tag: 5, _1: { tag: 0 }, _2: { tag: 3, _1: "baz" } },
+            _2: { tag: 3, _1: " := " },
+          },
+          _2: {
+            tag: 6,
+            _1: { tag: 4, _1: 7n, _2: { tag: 3, _1: String(x) } },
+            _2: false,
+          },
+        },
+      },
+      _2: { tag: 3, _1: " }" },
+    },
+  },
+  _2: false,
+});
+
+/**
+ * `instReprRecFooBaz.repr`
+ * @param {{ _1: int(bigint), _2: int(bigint) }} x
+ * @param {nat(bigint)} prec
+ * @returns {D0}
+ */
+export const instReprRecFooBaz$repr = (x, prec) => {
+  const { _2: f$1 } = x;
+  const x$2 = { tag: 3, _1: String(x._1) };
+  const k$4 = (x$3) => ({
     tag: 6,
     _1: {
       tag: 4,
@@ -28,11 +65,7 @@ export const instReprRecBaz$repr = (x, prec) => {
             },
             _2: {
               tag: 6,
-              _1: {
-                tag: 4,
-                _1: 7n,
-                _2: x < 0n ? { tag: 3, _1: x$1 } : { tag: 3, _1: x$1 },
-              },
+              _1: { tag: 4, _1: 7n, _2: { tag: 3, _1: String(f$1) } },
               _2: false,
             },
           },
@@ -41,60 +74,8 @@ export const instReprRecBaz$repr = (x, prec) => {
       },
     },
     _2: false,
-  };
-};
-
-/**
- * `instReprRecFooBaz.repr`
- * @param {{ _1: int(bigint), _2: int(bigint) }} x
- * @param {nat(bigint)} prec
- * @returns {D0}
- */
-export const instReprRecFooBaz$repr = (x, prec) => {
-  const { _1: f$1, _2: f$2 } = x;
-  let x$3;
-  if (f$1 < 0n) {
-    x$3 = { tag: 3, _1: String(f$1) };
-  } else {
-    x$3 = { tag: 3, _1: String(f$1) };
-  }
-  const k$6 = (x$4) => {
-    const x$5 = String(f$2);
-    return {
-      tag: 6,
-      _1: {
-        tag: 4,
-        _1: 2n,
-        _2: {
-          tag: 5,
-          _1: {
-            tag: 5,
-            _1: { tag: 3, _1: "{ " },
-            _2: {
-              tag: 5,
-              _1: {
-                tag: 5,
-                _1: { tag: 5, _1: { tag: 0 }, _2: { tag: 3, _1: "baz" } },
-                _2: { tag: 3, _1: " := " },
-              },
-              _2: {
-                tag: 6,
-                _1: {
-                  tag: 4,
-                  _1: 7n,
-                  _2: f$2 < 0n ? { tag: 3, _1: x$5 } : { tag: 3, _1: x$5 },
-                },
-                _2: false,
-              },
-            },
-          },
-          _2: { tag: 3, _1: " }" },
-        },
-      },
-      _2: false,
-    };
-  };
-  const x$7 = k$6(0n);
+  });
+  const x$5 = k$4(0n);
   return {
     tag: 6,
     _1: {
@@ -128,7 +109,7 @@ export const instReprRecFooBaz$repr = (x, prec) => {
                       },
                       _2: {
                         tag: 6,
-                        _1: { tag: 4, _1: 7n, _2: x$3 },
+                        _1: { tag: 4, _1: 7n, _2: x$2 },
                         _2: false,
                       },
                     },
@@ -140,7 +121,7 @@ export const instReprRecFooBaz$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$7 }, _2: false },
+            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$5 }, _2: false },
           },
         },
         _2: { tag: 3, _1: " }" },
@@ -157,19 +138,8 @@ export const instReprRecFooBaz$repr = (x, prec) => {
  * @returns {D0}
  */
 export const instReprRecFooBar$repr = (x, prec) => {
-  const { _1: f$1, _2: f$2 } = x;
-  let x$3;
-  if (f$1 < 0n) {
-    x$3 = { tag: 3, _1: String(f$1) };
-  } else {
-    x$3 = { tag: 3, _1: String(f$1) };
-  }
-  let x$4;
-  if (f$2 < 0n) {
-    x$4 = { tag: 3, _1: String(f$2) };
-  } else {
-    x$4 = { tag: 3, _1: String(f$2) };
-  }
+  const x$1 = { tag: 3, _1: String(x._1) };
+  const x$2 = { tag: 3, _1: String(x._2) };
   return {
     tag: 6,
     _1: {
@@ -203,7 +173,7 @@ export const instReprRecFooBar$repr = (x, prec) => {
                       },
                       _2: {
                         tag: 6,
-                        _1: { tag: 4, _1: 7n, _2: x$3 },
+                        _1: { tag: 4, _1: 7n, _2: x$1 },
                         _2: false,
                       },
                     },
@@ -215,7 +185,7 @@ export const instReprRecFooBar$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$4 }, _2: false },
+            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$2 }, _2: false },
           },
         },
         _2: { tag: 3, _1: " }" },

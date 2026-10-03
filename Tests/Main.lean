@@ -2955,6 +2955,54 @@ def inlineReferencePrimOpNumberSpec : Spec := describe "InlineReferencePrimOpNum
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `InlineReferenceRecordUpdate.lean`: the record updates of known records are computed at compile
+    time (`extern1 = { _1: 42, _2: 2, _3: 3 }`, `test2 = 3`) and `test1 = (fn) => fn()._3`.  Its
+    variants `RecordUpdateKnownField.lean` update an unknown record: the field just set is known
+    (`updKnown = (r) => r._3`), the call only one arm needs is made in that arm
+    (`Term.sinkArm`), a join point taking a record apart is written at its jumps (`joinCtor`), a
+    test whose arms build the same record is dropped (`PExpr.same`), and a field of a loop's
+    record passed on unchanged is not assigned (`p$2 = p$2;`). -/
+def inlineReferenceRecordUpdateSpec : Spec := describe "InlineReferenceRecordUpdate" do
+  it "record updates of known and unknown records (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefrecordupdate"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferenceRecordUpdate",
+          ["export const test1 = (fn) => fn()._3;",
+           "export const fn_prime = { _1: 1",
+           "export const extern1 = { _1: 42",
+           "export const test2 = 3"],
+          ["if (", " ? ", "..."], (3 : Nat)),
+        ("Tests/SnapshotsMy", "RecordUpdateKnownField",
+          ["export const updKnown = (r) => r._3;",
+           "export const updOther = (r) => r._2;",
+           "export const updAll = (r, x) => ({ _1: x, _2: x, _3: x });",
+           "return fn()._3;",
+           "return b ? ",
+           "export const updSameBranches = (r, x) => ({ _1: 0"],
+          ["const x$1 = fn();", "p$2 = p$2;", "x < 0 ?"], 93)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2997,6 +3045,7 @@ def spec : Spec := do
   inlineReferencePrimOpBooleanSpec
   inlineReferencePrimOpIntSpec
   inlineReferencePrimOpNumberSpec
+  inlineReferenceRecordUpdateSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

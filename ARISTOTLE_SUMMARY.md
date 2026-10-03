@@ -1,3 +1,40 @@
+# Summary of changes for run 12b0c38f-7bed-4633-bc93-c7ffa100141e
+For `Tests/SnapshotsPBOPure/InlineReferenceRecordUpdate.lean` as written, our JavaScript was already as good as the legacy purescript-backend-optimizer output or better, so that file's output didn't change. The work was on record updates of records that aren't known at compile time, which the file doesn't exercise. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferenceRecordUpdate.md`.
+
+**Comparison with legacy (your file):**
+- **`test1`:** `(fn) => fn()._3`, the same as legacy's `fn({}).c`.
+- **`fn_prime`:** a constant record. Legacy keeps a function.
+- **`extern1`:** `{ _1: 42, _2: 2, _3: 3 }`, computed at compile time. Legacy spreads a call at load time.
+- **`test2`:** `3`. Legacy runs a function when the module loads.
+
+**New variants file** `Tests/SnapshotsMy/RecordUpdateKnownField.lean`, which updates an unknown record. Each item says what the output looked like before and what it is now:
+- `updLazy`: it called `fn()` before the `if`. Now it is `if (v === 42) return v + 1; return fn()._3;`.
+- `updCond`: it built a record in each arm. Now it is `b ? f$1 + 1 : f$1 + 2`.
+- `updSameBranches`: it was `x < 0 ? {…} : {…}`, the same record twice. Now it is just the record.
+- `updLoop`: the loop body had `p$2 = p$2;`, which is gone.
+- `updKnown`, `updOther` and `updAll` were already ideal; for example `updKnown = (r) => r._3`.
+
+**Changes, by phase:**
+1. **`Term → Term`, `Term.sinkArm`** (`LeanScript/Term/Optimize/SinkLet.lean`): a computation in front of an `if` that only one arm reads moves into that arm. It is proved not to change the value (`Term.sinkArm_eval`) or the number of calls (`Term.numCalls_sinkArm`).
+2. **`Term → Term`, `PExpr.same`** (`ShareTest.lean`): record, union, array, list and `data` literals are now compared field by field, so `c ? a : a` simplifies for records too. It is proved (`PExpr.same_eval`, `Elems.same_eval`).
+3. **`Term → Term`, `Term.joinCtor`** (`JoinCtor.lean`): a join point whose body takes its record parameter apart is now written out at each jump that passes a record literal. As for unions, this only happens when the join point disappears and no call is added. It is proved (`Term.joinCtor_eval`).
+4. **`JsTerm → JsTerm`** (`JsTerm/Lower/MergeIte.lean`): `if (c) { T } else { T }` becomes `T`, and `c ? a : a` becomes `a`, when `c` has no side effect.
+   - **Why not `Term`:** in derived `Repr` instances, each arm takes the record apart for nothing. Removing that changes a level index that `Term` records in its types, so the two arms are not the same `Term`, although they print as the same JavaScript.
+   - **Effect:** every derived `Repr` with `Int` fields loses its `if (f < 0) { x = A } else { x = A }` blocks.
+5. **Printer** (`JsTerm/Print/Mini/Block.lean`): `x = x;` assignments are dropped. This is the one change made after the `JsTerm` phase, because the assignment only appears there: a variable that copies `p$2` is written at its use.
+
+No change was needed in the `Term → JsTerm` conversion. The only loop involved is already printed as a labeled `while (true)` loop.
+
+`Term.optimize_eval` still uses only `propext`, `Classical.choice` and `Quot.sound`, and the changed files contain no `sorry`. I added the three proved theorems to the Properties table.
+
+**Tests:**
+- **New spec** `inlineReferenceRecordUpdateSpec` in `Tests/Main.lean`: it checks the JavaScript at both presets and runs the node checks (3 for the original file, 93 for the variants).
+- **`lake exe tests`:** 134/134 pass.
+- **Build:** `lake build TermTests TyTests JsTerm JsSpec tests leanscript` succeeds.
+- **Snapshots:** I regenerated all of them and every node check passes. Four other outputs changed, and all got smaller: `RecordUpdate`, `CaseGuarded`, `KnownConstructor07` and `ProfunctorLenses01`.
+
+Everything is committed.
+
 # Summary of changes for run acc8ae86-11b7-41c8-8c4b-dadec03905e9
 For `Tests/SnapshotsPBOPure/InlineReferencePrimOpNumber.lean` as you wrote it, our JavaScript was already better than the legacy purescript-backend-optimizer output on every definition, so that file's output is unchanged. The work was on the part of the original your Lean port leaves out. The full write-up is in `Tests/SnapshotsPBOPure/InlineReferencePrimOpNumber.md`.
 

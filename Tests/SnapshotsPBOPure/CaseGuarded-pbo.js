@@ -47,25 +47,9 @@ export const test3 = (a) => {
  * @returns {D0}
  */
 export const instReprRec1$repr = (x, prec) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = x;
-  let x$4;
-  if (f$1 < 0) {
-    x$4 = { tag: 3, _1: String(f$1) };
-  } else {
-    x$4 = { tag: 3, _1: String(f$1) };
-  }
-  let x$5;
-  if (f$2 < 0) {
-    x$5 = { tag: 3, _1: String(f$2) };
-  } else {
-    x$5 = { tag: 3, _1: String(f$2) };
-  }
-  let x$6;
-  if (f$3 < 0) {
-    x$6 = { tag: 3, _1: String(f$3) };
-  } else {
-    x$6 = { tag: 3, _1: String(f$3) };
-  }
+  const x$1 = { tag: 3, _1: String(x._1) };
+  const x$2 = { tag: 3, _1: String(x._2) };
+  const x$3 = { tag: 3, _1: String(x._3) };
   return {
     tag: 6,
     _1: {
@@ -109,7 +93,7 @@ export const instReprRec1$repr = (x, prec) => {
                                 },
                                 _2: {
                                   tag: 6,
-                                  _1: { tag: 4, _1: 5, _2: x$4 },
+                                  _1: { tag: 4, _1: 5, _2: x$1 },
                                   _2: false,
                                 },
                               },
@@ -121,7 +105,7 @@ export const instReprRec1$repr = (x, prec) => {
                         },
                         _2: { tag: 3, _1: " := " },
                       },
-                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$5 }, _2: false },
+                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$2 }, _2: false },
                     },
                     _2: { tag: 3, _1: "," },
                   },
@@ -131,7 +115,7 @@ export const instReprRec1$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$6 }, _2: false },
+            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$3 }, _2: false },
           },
         },
         _2: { tag: 3, _1: " }" },
@@ -148,25 +132,9 @@ export const instReprRec1$repr = (x, prec) => {
  * @returns {D0}
  */
 export const instReprRec2$repr = (x, prec) => {
-  const { _1: f$1, _2: f$2, _3: f$3 } = x;
-  let x$4;
-  if (f$1 < 0) {
-    x$4 = { tag: 3, _1: String(f$1) };
-  } else {
-    x$4 = { tag: 3, _1: String(f$1) };
-  }
-  let x$5;
-  if (f$2 < 0) {
-    x$5 = { tag: 3, _1: String(f$2) };
-  } else {
-    x$5 = { tag: 3, _1: String(f$2) };
-  }
-  let x$6;
-  if (f$3 < 0) {
-    x$6 = { tag: 3, _1: String(f$3) };
-  } else {
-    x$6 = { tag: 3, _1: String(f$3) };
-  }
+  const x$1 = { tag: 3, _1: String(x._1) };
+  const x$2 = { tag: 3, _1: String(x._2) };
+  const x$3 = { tag: 3, _1: String(x._3) };
   return {
     tag: 6,
     _1: {
@@ -210,7 +178,7 @@ export const instReprRec2$repr = (x, prec) => {
                                 },
                                 _2: {
                                   tag: 6,
-                                  _1: { tag: 4, _1: 5, _2: x$4 },
+                                  _1: { tag: 4, _1: 5, _2: x$1 },
                                   _2: false,
                                 },
                               },
@@ -222,7 +190,7 @@ export const instReprRec2$repr = (x, prec) => {
                         },
                         _2: { tag: 3, _1: " := " },
                       },
-                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$5 }, _2: false },
+                      _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$2 }, _2: false },
                     },
                     _2: { tag: 3, _1: "," },
                   },
@@ -232,7 +200,7 @@ export const instReprRec2$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$6 }, _2: false },
+            _2: { tag: 6, _1: { tag: 4, _1: 5, _2: x$3 }, _2: false },
           },
         },
         _2: { tag: 3, _1: " }" },

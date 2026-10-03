@@ -48,6 +48,18 @@ theorem Neu.isHead?_cast_eval {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Us
   | cond => simp [Neu.isHead?] at hn
   | extern => simp [Neu.isHead?] at hn
 
+theorem PExpr.recordLit?_eval {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks}
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) {o : Lvl} (e : PExpr Δ Φ Γ (.record t fs) o) {o' : Lvl}
+    {args : Args Δ Φ Γ (t :: fs.toList) o'} (he : e.recordLit? = some ⟨o', args⟩) :
+    e.eval κ ρ = ((args.eval κ ρ).head, Fields.ofDL fs (args.eval κ ρ).tail) := by
+  cases e with
+  | record_mk args' =>
+      simp only [PExpr.recordLit?, Option.some.injEq, Sigma.mk.injEq] at he
+      obtain ⟨rfl, he⟩ := he
+      cases he
+      rfl
+  | _ => simp [PExpr.recordLit?] at he
+
 theorem Term.caseJoin?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {uₓ : Usage01ω}
     {τ : Ty ks} {js : JCtx ks} {o : Lvl} (t : Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o)
     {C : CaseJoin Δ d Φ Γ σ uₓ τ js} (hC : t.caseJoin? = some C) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
@@ -59,6 +71,11 @@ theorem Term.caseJoin?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks}
     obtain ⟨h, hh, rfl⟩ := hC
     simp only [Term.eval, Branch.eval, CaseJoin.sem]
     rw [Neu.isHead?_cast_eval κ ρ x n hh]; rfl
+  · rename_i us n b
+    simp only [Option.map_eq_some_iff] at hC
+    obtain ⟨h, hh, rfl⟩ := hC
+    simp only [Term.eval, CaseJoin.sem]
+    rw [Neu.isHead?_cast_eval κ ρ x n hh]
   · cases hC
 
 theorem JVar.same?_eq : {js : JCtx ks} → {σ' σ : Ty ks} → (a : JVar js σ') → (b : JVar js σ) →
@@ -177,37 +194,71 @@ theorem JPos.jump?_eval {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : J
     (hP : JPos.Agree C P κ₀ ρ₀ jκ₀ κ ρ jκ) {σ' : Ty ks} (j : JVar js σ') {o : Lvl}
     (e : PExpr Δ Φ Γ σ' o) {r : (o' : Lvl) × Term Δ d Φ Γ τ js o'}
     (h : JPos.jump? C P j e = some r) : r.2.eval κ ρ jκ = jκ.get j (e.eval κ ρ) := by
-  obtain ⟨bs, cs, hsh, hσ, oC, brs⟩ := C
-  subst hσ
-  unfold JPos.jump? at h
-  split at h
-  · cases h
-  · rename_i hh hs
-    have hj := JVar.same?_eq j P.jv hs
-    obtain ⟨hσ'⟩ := hh
-    subst hσ'
-    simp only at hj
-    rw [hj, hP.hv]
-    simp only at h
+  cases C with
+  | union bs cs hsh hσ oC brs =>
+    cases hσ
+    unfold JPos.jump? at h
     split at h
     · cases h
-    · rename_i b c ix o' args hl
-      have hv := PExpr.unionLit?_eval κ ρ e hl
-      have hs : USub.Agree (USub.ofArgs (USub.consOpt (u := uₓ) (L := d)
-          (if uₓ.atMostOnce = true then some ⟨o, e⟩ else none) (USub.ofRen P.ru))
-          d c.binds (brs.select ix).1 args) κ
-          (Tuple.append (UEnv.ofDL d c.binds (brs.select ix).1 (args.eval κ ρ))
-            (Tuple.cons (e.eval κ ρ) ρ₀)) ρ := by
-        refine USub.Agree.ofArgs (USub.Agree.consOpt (USub.Agree.ofRen hP.hu) _ _ ?_) _ _ _ _
-        intro p hp
-        split at hp
-        · cases hp; rfl
-        · cases hp
-      rw [Term.subst_eval hP.hk hs hP.hj _ h,
-        ← Branches.select_eval brs ix κ₀ (Tuple.cons (e.eval κ ρ) ρ₀) jκ₀ (args.eval κ ρ)]
-      simp only [CaseJoin.sem]
-      rw [← hv]
-      rfl
+    · rename_i hh hs
+      have hj := JVar.same?_eq j P.jv hs
+      obtain ⟨hσ'⟩ := hh
+      subst hσ'
+      simp only at hj
+      rw [hj, hP.hv]
+      simp only at h
+      split at h
+      · cases h
+      · rename_i b c ix o' args hl
+        have hv := PExpr.unionLit?_eval κ ρ e hl
+        have hs : USub.Agree (USub.ofArgs (USub.consOpt (u := uₓ) (L := d)
+            (if uₓ.atMostOnce = true then some ⟨o, e⟩ else none) (USub.ofRen P.ru))
+            d c.binds (brs.select ix).1 args) κ
+            (Tuple.append (UEnv.ofDL d c.binds (brs.select ix).1 (args.eval κ ρ))
+              (Tuple.cons (e.eval κ ρ) ρ₀)) ρ := by
+          refine USub.Agree.ofArgs (USub.Agree.consOpt (USub.Agree.ofRen hP.hu) _ _ ?_) _ _ _ _
+          intro p hp
+          split at hp
+          · cases hp; rfl
+          · cases hp
+        rw [Term.subst_eval hP.hk hs hP.hj _ h,
+          ← Branches.select_eval brs ix κ₀ (Tuple.cons (e.eval κ ρ) ρ₀) jκ₀ (args.eval κ ρ)]
+        simp only [CaseJoin.sem]
+        rw [← hv]
+        rfl
+  | record t fs hσ us oC body =>
+    cases hσ
+    unfold JPos.jump? at h
+    split at h
+    · cases h
+    · rename_i hh hs
+      have hj := JVar.same?_eq j P.jv hs
+      obtain ⟨hσ'⟩ := hh
+      subst hσ'
+      simp only at hj
+      rw [hj, hP.hv]
+      simp only at h
+      split at h
+      · cases h
+      · rename_i o' args hl
+        have hv := PExpr.recordLit?_eval κ ρ e hl
+        have hs : USub.Agree (USub.ofArgs (USub.consOpt (u := uₓ) (L := d)
+            (if uₓ.atMostOnce = true then some ⟨o, e⟩ else none) (USub.ofRen P.ru))
+            d (t :: fs.toList) us args) κ
+            (Tuple.append (UEnv.ofDL d (t :: fs.toList) us (args.eval κ ρ))
+              (Tuple.cons (e.eval κ ρ) ρ₀)) ρ := by
+          refine USub.Agree.ofArgs (USub.Agree.consOpt (USub.Agree.ofRen hP.hu) _ _ ?_) _ _ _ _
+          intro p hp
+          split at hp
+          · cases hp; rfl
+          · cases hp
+        rw [Term.subst_eval hP.hk hs hP.hj _ h]
+        have key : (Tuple.cons (e.eval κ ρ).1 (Fields.toDL fs (e.eval κ ρ).2) :
+            DenList (DSig.refDen Δ) (t :: fs.toList)) = args.eval κ ρ := by
+          rw [hv]
+          simp only [Fields.toDL_ofDL, Tuple.cons_head_tail]
+        simp only [CaseJoin.sem, cast_eq]
+        rw [key]
 
 /-! ## Replacing the jumps -/
 

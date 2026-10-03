@@ -277,6 +277,8 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .assign x e rest => do
     let e ← exprToMini sc e
     let v := nameAt sc.m x.index
+    -- `x = x;` (a constant holding the value of `x`, written at its use) changes nothing
+    if e == v then return ← blockToMini sc tl rest
     -- `x = c ? a : x;` is `if (c) x = a;` (and `x = c ? x : b;` is `if (!c) x = b;`)
     let s : MiniStatement := match e with
       | .ternary c a b =>

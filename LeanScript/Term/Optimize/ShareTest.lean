@@ -164,6 +164,16 @@ theorem Extern.hbeq_eq {σs σs' : List (Ty ks)} {τ τ' : Ty ks} {e : Extern ks
 
 /-! ## Syntactic equality of pure expressions -/
 
+theorem Fields.toList_inj : {fs fs' : Fields ks} → fs.toList = fs'.toList → fs = fs'
+  | .one _, .one _, h => by simp only [Fields.toList, List.cons.injEq, and_true] at h; rw [h]
+  | .one _, .cons _ fs', h => by
+      cases fs' <;> simp [Fields.toList] at h
+  | .cons _ fs, .one _, h => by
+      cases fs <;> simp [Fields.toList] at h
+  | .cons _ _, .cons _ _, h => by
+      simp only [Fields.toList, List.cons.injEq] at h
+      rw [h.1, Fields.toList_inj h.2]
+
 section Same
 variable {Φ : KCtx ks} {Γ : UCtx ks}
 
@@ -197,11 +207,32 @@ def PExpr.same : {τ τ' : Ty ks} → {o o' : Lvl} → PExpr Δ Φ Γ τ o → P
   | _, _, _, _, .enum_mk s i, e' => match e' with
     | .enum_mk s' i' => if h : s = s' then (h ▸ i) == i' else false
     | _ => false
-  | _, _, _, _, .record_mk _, _ => false
-  | _, _, _, _, .union_mk _ _, _ => false
-  | _, _, _, _, .array_mk _, _ => false
-  | _, _, _, _, .list_mk _, _ => false
-  | _, _, _, _, .data_in _ _ _, _ => false
+  | _, _, _, _, .record_mk args, e' => match e' with
+    | .record_mk args' => args.same args'
+    | _ => false
+  | _, _, _, _, .union_mk (bs := bs) (b := b) (cs := cs) (c := c) ix args, e' => match e' with
+    | .union_mk (bs := bs') (b := b') (cs := cs') (c := c') ix' args' =>
+        if (⟨bs, cs, b, c, ix⟩ : (bs : List Bool) × (cs : Ctors ks bs) × (b : Bool) ×
+            (c : Ctor ks b) × CtorIx cs c) = ⟨bs', cs', b', c', ix'⟩ then args.same args'
+        else false
+    | _ => false
+  | _, _, _, _, .array_mk es, e' => match e' with
+    | .array_mk es' => es.same es'
+    | _ => false
+  | _, _, _, _, .list_mk es, e' => match e' with
+    | .list_mk es' => es.same es'
+    | _ => false
+  | _, _, _, _, .data_in b j e, e' => match e' with
+    | .data_in b' j' e'' => if h : b = b' then (h ▸ j) == j' && e.same e'' else false
+    | _ => false
+/-- Are the two element lists written the same way (of the same element type)? -/
+def Elems.same : {t t' : Ty ks} → {o o' : Lvl} → Elems Δ Φ Γ t o → Elems Δ Φ Γ t' o' → Bool
+  | t, t', _, _, .nil, es' => match es' with
+    | .nil => decide (t = t')
+    | _ => false
+  | _, _, _, _, .cons e es, es' => match es' with
+    | .cons e' es' => e.same e' && es.same es'
+    | _ => false
 /-- Are the two argument lists written the same way? -/
 def Args.same : {σs σs' : List (Ty ks)} → {o o' : Lvl} → Args Δ Φ Γ σs o →
     Args Δ Φ Γ σs' o' → Bool
@@ -293,11 +324,89 @@ theorem PExpr.same_eval : {τ τ' : Ty ks} → {o o' : Lvl} → (e : PExpr Δ Φ
             exact ⟨rfl, fun _ _ => HEq.rfl⟩
           · cases h
       | _ => simp [PExpr.same] at h
-  | _, _, _, _, .record_mk _, _, h => by simp [PExpr.same] at h
-  | _, _, _, _, .union_mk _ _, _, h => by simp [PExpr.same] at h
-  | _, _, _, _, .array_mk _, _, h => by simp [PExpr.same] at h
-  | _, _, _, _, .list_mk _, _, h => by simp [PExpr.same] at h
-  | _, _, _, _, .data_in _ _ _, _, h => by simp [PExpr.same] at h
+  | _, _, _, _, .record_mk args, e', h => by
+      cases e' with
+      | record_mk args' =>
+          simp only [PExpr.same] at h
+          have ⟨h1, h2⟩ := Args.same_eval args args' h
+          simp only [List.cons.injEq] at h1
+          obtain ⟨rfl, h3⟩ := h1
+          have := Fields.toList_inj h3
+          subst this
+          refine ⟨rfl, fun κ ρ => ?_⟩
+          simp only [PExpr.eval, eq_of_heq (h2 κ ρ)]
+          exact HEq.rfl
+      | _ => simp [PExpr.same] at h
+  | _, _, _, _, .union_mk ix args, e', h => by
+      cases e' with
+      | union_mk ix' args' =>
+          simp only [PExpr.same] at h
+          split at h
+          · rename_i hs
+            cases hs
+            have ⟨_, h2⟩ := Args.same_eval args args' h
+            refine ⟨rfl, fun κ ρ => ?_⟩
+            simp only [PExpr.eval, eq_of_heq (h2 κ ρ)]
+            exact HEq.rfl
+          · cases h
+      | _ => simp [PExpr.same] at h
+  | _, _, _, _, .array_mk es, e', h => by
+      cases e' with
+      | array_mk es' =>
+          simp only [PExpr.same] at h
+          have ⟨h1, h2⟩ := Elems.same_eval es es' h
+          subst h1
+          refine ⟨rfl, fun κ ρ => ?_⟩
+          simp only [PExpr.eval, eq_of_heq (h2 κ ρ)]
+          exact HEq.rfl
+      | _ => simp [PExpr.same] at h
+  | _, _, _, _, .list_mk es, e', h => by
+      cases e' with
+      | list_mk es' =>
+          simp only [PExpr.same] at h
+          have ⟨h1, h2⟩ := Elems.same_eval es es' h
+          subst h1
+          refine ⟨rfl, fun κ ρ => ?_⟩
+          simp only [PExpr.eval, eq_of_heq (h2 κ ρ)]
+          exact HEq.rfl
+      | _ => simp [PExpr.same] at h
+  | _, _, _, _, .data_in b j e, e', h => by
+      cases e' with
+      | data_in b' j' e'' =>
+          simp only [PExpr.same] at h
+          split at h
+          · rename_i hb
+            subst hb
+            simp only [Bool.and_eq_true, beq_iff_eq] at h
+            obtain ⟨rfl, h1⟩ := h
+            have ⟨_, h2⟩ := PExpr.same_eval e e'' h1
+            refine ⟨rfl, fun κ ρ => ?_⟩
+            simp only [PExpr.eval, eq_of_heq (h2 κ ρ)]
+            exact HEq.rfl
+          · cases h
+      | _ => simp [PExpr.same] at h
+/-- Two element lists written the same way have the same element type and the same values. -/
+theorem Elems.same_eval : {t t' : Ty ks} → {o o' : Lvl} → (es : Elems Δ Φ Γ t o) →
+    (es' : Elems Δ Φ Γ t' o') → es.same es' = true →
+    t = t' ∧ ∀ (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ), HEq (es.eval κ ρ) (es'.eval κ ρ)
+  | _, _, _, _, .nil, es', h => by
+      cases es' with
+      | nil =>
+          simp only [Elems.same, decide_eq_true_eq] at h
+          subst h
+          exact ⟨rfl, fun _ _ => HEq.rfl⟩
+      | _ => simp [Elems.same.eq_def] at h
+  | _, _, _, _, .cons e es, es', h => by
+      cases es' with
+      | cons e' es' =>
+          simp only [Elems.same, Bool.and_eq_true] at h
+          have ⟨h1, h2⟩ := PExpr.same_eval e e' h.1
+          have ⟨_, h4⟩ := Elems.same_eval es es' h.2
+          subst h1
+          refine ⟨rfl, fun κ ρ => ?_⟩
+          simp only [Elems.eval, eq_of_heq (h2 κ ρ), eq_of_heq (h4 κ ρ)]
+          exact HEq.rfl
+      | _ => simp [Elems.same.eq_def] at h
 /-- Two argument lists written the same way have the same types and the same values. -/
 theorem Args.same_eval : {σs σs' : List (Ty ks)} → {o o' : Lvl} → (as : Args Δ Φ Γ σs o) →
     (as' : Args Δ Φ Γ σs' o') → as.same as' = true →

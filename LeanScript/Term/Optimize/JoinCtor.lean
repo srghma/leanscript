@@ -18,8 +18,10 @@ When the body of a join point is a case analysis of its parameter (a *case-of-ca
 what Lean's `match (match e with …) with …` and `Option.map f (Option.map g x)` become), a jump
 that passes a constructor literal `cᵢ args` is replaced by the arm `bᵢ` of that constructor, its
 fields bound to `args` (`Term.subst`: the substitution is moved from the context of the join
-point to the context of the jump, `JPos`).  When no jump to `j` is left, the join point is
-dropped.  The rewrite is only kept when the join point disappears and the number of calls does
+point to the context of the jump, `JPos`).  The same for a join point whose body takes
+its parameter, a record, apart (`join j (x : σ) := let ⟨fs⟩ := x; b`): a jump passing a record
+literal is `b` with the fields bound to the literal's.  When no jump to `j` is left, the join
+point is dropped.  The rewrite is only kept when the join point disappears and the number of calls does
 not grow (`Branch.joinCtor`), so no call is duplicated.
 
 The walk is `Term.jcWalk`; it may change the level of a statement, which is kept where the
@@ -46,27 +48,38 @@ def Branches.select : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {bs : 
   | _, _, _, _, _, _, _, _, .cons _ _ bs, _, _, .tail ix => bs.select ix
 
 
-/-- The body of a join point that is a case analysis of its parameter (of type `σ`). -/
-structure CaseJoin (Δ : DSig ks) (d : Nat) (Φ : KCtx ks) (Γ : UCtx ks) (σ : Ty ks)
+/-- The body of a join point that is a case analysis of its parameter (of type `σ`): of a union
+    (its arms), or of a record (the rest of the body, under the fields). -/
+inductive CaseJoin (Δ : DSig ks) (d : Nat) (Φ : KCtx ks) (Γ : UCtx ks) (σ : Ty ks)
     (uₓ : Usage01ω) (τ : Ty ks) (js : JCtx ks) where
-  bs : List Bool
-  cs : Ctors ks bs
-  h : UnionShape bs
-  hσ : σ = Ty.union cs (h := h)
-  o : Lvl
-  brs : Branches Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) cs τ js o
+  | union (bs : List Bool) (cs : Ctors ks bs) (h : UnionShape bs) (hσ : σ = Ty.union cs (h := h))
+      (o : Lvl) (brs : Branches Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) cs τ js o)
+  | record (t : Ty ks) (fs : Fields ks) (hσ : σ = Ty.record t fs) (us : List Usage01ω) (o : Lvl)
+      (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ ⟨σ, uₓ, d⟩ :: Γ) τ js o)
 
 /-- The value of the join point's body on `x`. -/
 def CaseJoin.sem {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {uₓ : Usage01ω} {τ : Ty ks}
-    {js : JCtx ks} (C : CaseJoin Δ d Φ Γ σ uₓ τ js) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
-    (jκ : JEnv Δ τ js) (x : Ty.Den Δ σ) : Ty.Den Δ τ :=
-  C.brs.eval κ (Tuple.cons x ρ) jκ (cast (congrArg (Ty.Den Δ) C.hσ) x)
+    {js : JCtx ks} : CaseJoin Δ d Φ Γ σ uₓ τ js → KEnv Δ Φ → UEnv Δ Γ → JEnv Δ τ js →
+    Ty.Den Δ σ → Ty.Den Δ τ
+  | .union _ _ _ hσ _ brs, κ, ρ, jκ, x =>
+      brs.eval κ (Tuple.cons x ρ) jκ (cast (congrArg (Ty.Den Δ) hσ) x)
+  | .record _ fs hσ us _ body, κ, ρ, jκ, x =>
+      let r := cast (congrArg (Ty.Den Δ) hσ) x
+      body.eval κ (Tuple.append (UEnv.ofDL d _ us (Tuple.cons r.1 (Fields.toDL fs r.2)))
+        (Tuple.cons x ρ)) jκ
 
 /-- The body of a join point, when it is a case analysis of its parameter. -/
 def Term.caseJoin? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {uₓ : Usage01ω}
     {τ : Ty ks} {js : JCtx ks} :
     {o : Lvl} → Term Δ d Φ (⟨σ, uₓ, d⟩ :: Γ) τ js o → Option (CaseJoin Δ d Φ Γ σ uₓ τ js)
-  | _, .branch (.union_casesOn n brs) => n.isHead?.map fun h => ⟨_, _, _, h.down.symm, _, brs⟩
+  | _, .branch (.union_casesOn n brs) => n.isHead?.map fun h => .union _ _ _ h.down.symm _ brs
+  | _, .record_casesOn us n b => n.isHead?.map fun h => .record _ _ h.down.symm us _ b
+  | _, _ => none
+
+/-- The fields of a record literal. -/
+def PExpr.recordLit? {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks} :
+    {o : Lvl} → PExpr Δ Φ Γ (.record t fs) o → Option ((o' : Lvl) × Args Δ Φ Γ (t :: fs.toList) o')
+  | _, .record_mk args => some ⟨_, args⟩
   | _, _ => none
 
 /-- Is the jump to the join point `b` (then its parameter has the type of `b`'s)? -/
@@ -125,14 +138,22 @@ def JPos.jump? {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : JCtx ks} {
   match JVar.same? j P.jv with
   | none => none
   | some h =>
-      match ((h.down.trans C.hσ) ▸ e : PExpr Δ Φ Γ (.union C.cs (h := C.h)) o).unionLit? with
-      | none => none
-      | some ⟨_, c, ix, _, args⟩ =>
-          let sel := C.brs.select ix
-          let xs : Option ((o : Lvl) × PExpr Δ Φ Γ σ o) :=
-            if uₓ.atMostOnce then some ⟨_, h.down ▸ e⟩ else none
-          sel.2.2.subst (D' := d) P.rk
-            (USub.ofArgs (USub.consOpt xs (USub.ofRen P.ru)) d c.binds sel.1 args) P.rj
+      let xs : Option ((o : Lvl) × PExpr Δ Φ Γ σ o) :=
+        if uₓ.atMostOnce then some ⟨_, h.down ▸ e⟩ else none
+      match C with
+      | .union _ cs hsh hσ _ brs =>
+          match ((h.down.trans hσ) ▸ e : PExpr Δ Φ Γ (.union cs (h := hsh)) o).unionLit? with
+          | none => none
+          | some ⟨_, c, ix, _, args⟩ =>
+              let sel := brs.select ix
+              sel.2.2.subst (D' := d) P.rk
+                (USub.ofArgs (USub.consOpt xs (USub.ofRen P.ru)) d c.binds sel.1 args) P.rj
+      | .record t fs hσ us _ body =>
+          match ((h.down.trans hσ) ▸ e : PExpr Δ Φ Γ (.record t fs) o).recordLit? with
+          | none => none
+          | some ⟨_, args⟩ =>
+              body.subst (D' := d) P.rk
+                (USub.ofArgs (USub.consOpt xs (USub.ofRen P.ru)) d (t :: fs.toList) us args) P.rj
 
 /-! ## Replacing the jumps -/
 

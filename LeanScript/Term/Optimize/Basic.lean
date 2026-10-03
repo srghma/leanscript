@@ -137,7 +137,8 @@ analyses included (a field that is never read is annotated `0`).
 Then a computation used once is moved down past the `let`s that follow it and do not read it
 (`Term.sinkWalk`, `LeanScript.Term.Optimize.SinkLet`): `let x [1] := f 1; let y [ω] := f 2;
 ret ⟨x, y, y⟩` is `let y [ω] := f 2; let x [1] := f 1; ret ⟨x, y, y⟩`, so that the JavaScript
-printer can write `f(1)` at its use.
+printer can write `f(1)` at its use; and a computation in front of an `if` that only one arm
+reads is moved into that arm (`Term.sinkArm`).
 
 `Term.optimizeN k` runs `optimize` `k` times (a rewrite can expose another one).
 -/

@@ -8,19 +8,8 @@
  * @returns {D0}
  */
 export const instReprPairBox$repr = (x, prec) => {
-  const { _1: f$1, _2: f$2 } = x;
-  let x$3;
-  if (f$1 < 0n) {
-    x$3 = { tag: 3, _1: String(f$1) };
-  } else {
-    x$3 = { tag: 3, _1: String(f$1) };
-  }
-  let x$4;
-  if (f$2 < 0n) {
-    x$4 = { tag: 3, _1: String(f$2) };
-  } else {
-    x$4 = { tag: 3, _1: String(f$2) };
-  }
+  const x$1 = { tag: 3, _1: String(x._1) };
+  const x$2 = { tag: 3, _1: String(x._2) };
   return {
     tag: 6,
     _1: {
@@ -54,7 +43,7 @@ export const instReprPairBox$repr = (x, prec) => {
                       },
                       _2: {
                         tag: 6,
-                        _1: { tag: 4, _1: 7n, _2: x$3 },
+                        _1: { tag: 4, _1: 7n, _2: x$1 },
                         _2: false,
                       },
                     },
@@ -66,7 +55,7 @@ export const instReprPairBox$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$4 }, _2: false },
+            _2: { tag: 6, _1: { tag: 4, _1: 7n, _2: x$2 }, _2: false },
           },
         },
         _2: { tag: 3, _1: " }" },
