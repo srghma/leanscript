@@ -119,14 +119,11 @@ export const hyperWhile = (a, a1, a2) => {
         return acc$8;
       };
       const x$15 = k$14(a1);
-      let acc$16 = { tag: 1, _1: x$15 };
+      let acc$16 = x$15;
       for (let i$17 = 0n; i$17 < x$5; i$17++) {
-        if (acc$16.tag === 1) {
-          const { _1: f$18 } = acc$16;
-          acc$16 = { tag: 1, _1: a$4(f$18) };
-        }
+        acc$16 = a$4(acc$16);
       }
-      return acc$16._1;
+      return acc$16;
     };
   }
   return acc$2(a2);

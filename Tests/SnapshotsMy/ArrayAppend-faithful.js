@@ -37,18 +37,9 @@ export const test4 = (b) => [1n, 2n, ...b];
  */
 export const test5 = (n) => {
   const x$1 = [];
-  let acc$2 = { tag: 1, _1: x$1 };
+  let acc$2 = x$1;
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$4 } = acc$2;
-      acc$2 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$2;
-      acc$2 = {
-        tag: 1,
-        _1: array__lean_array_append_mutable(f$5, [i$3, i$3 * i$3]),
-      };
-    }
+    acc$2 = array__lean_array_append_mutable(acc$2, [i$3, i$3 * i$3]);
   }
-  return acc$2._1;
+  return acc$2;
 };

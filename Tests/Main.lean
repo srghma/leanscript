@@ -3046,6 +3046,46 @@ def knownConstructor07Spec : Spec := describe "KnownConstructor07" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+def knownConstructors01Spec : Spec := describe "KnownConstructors01" do
+  it "a known constructor is folded, loop states unboxed (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors01"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors01",
+          ["export const test1 = \"b\";"], ["tag:", ".tag", "=>"], (1 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorOption",
+          ["export const mapConstArg = (x) => \"b\";",
+           "export const mapFnArg = (f) => f(\"c\");",
+           "export const mapBoth = (f, x) => f(x);",
+           "export const mapNone = (f) => \"a\";",
+           "export const mapTwice = (f, g, x) => g(f(x));",
+           "export const exceptKnown = (f, x) => f(x);",
+           "  return acc$1;\n};\n\n/**\n * `loopPair`",
+           "    let acc$3 = acc$1;", "acc$1 = acc$3;",
+           "if (acc$1.tag === 1 && k < i$2) {"],
+          ["if (acc$1.tag === 1) {", "return acc$1._1;\n};\n\n/**\n * `loopPair`"], 113)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3090,6 +3130,7 @@ def spec : Spec := do
   inlineReferencePrimOpNumberSpec
   inlineReferenceRecordUpdateSpec
   knownConstructor07Spec
+  knownConstructors01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

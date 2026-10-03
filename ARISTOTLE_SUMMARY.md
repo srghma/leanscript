@@ -1,3 +1,35 @@
+# Summary of changes for run 970b4c50-42a9-4e5a-ad59-6a43d528852b
+**KnownConstructors01 was already on par.** purescript-backend-optimizer outputs `const test1 = "b";`. Both of our presets output `export const test1 = "b";`. Lean's compiler folds the known `some` before our pipeline sees the code, so even the unoptimised `Term` is `ret "b"`.
+
+To find real gaps, I wrote variants in `Tests/SnapshotsMy/KnownCtorOption.lean`:
+- **Unknown payload or mapped function:** cases like `map`, `getD`, `Except.map`, inlined helpers and two maps in a row already produce the best possible output, e.g. `mapBoth = (f, x) => f(x)` and `mapTwice = (f, g, x) => g(f(x))`.
+- **Loops:** there was a real gap here. In `for` loops, the `ForInStep` state was boxed as `{ tag: 1, _1: … }`. It was tested and taken apart on every iteration, even when the body always ends in `yield`.
+
+**The fix is in the `Term → Term` optimiser, as you preferred.** I added a new pass, `Term.loopYield`, in `LeanScript/Term/Optimize/LoopYield.lean`, and wired it into `Term.optimize`:
+- It rewrites `let x := nat_rec n (C a) step; rest` to `let y := nat_rec n a step'; rest[x := C y]` when every return of `step` is `C`.
+- It also reduces `let ⟨a,b⟩ := x; ret ⟨a,b⟩` to `ret x`.
+
+As a result, loops are now plain JS `for` loops on the bare accumulator, so they can't overflow the stack: `let acc$1 = 0; for (…) acc$1 = add(acc$1, i$2); return acc$1;`.
+- Nested loops lose both boxes.
+- Record states keep only their record.
+- Loops with `break` correctly keep their box, with the test merged into the loop's condition.
+
+**Proofs (no `sorry`):**
+- `Term.loopYield_eval` (`LoopYieldEval.lean`): the pass does not change `Term.eval`. It feeds into `Term.optimize_eval`, so the whole optimiser is still proved not to change the result.
+- `Term.numCalls_loopYield` (`CountLoopYield.lean`): the pass never adds calls. It feeds into `Term.numCalls_optimize`.
+
+Both are marked proved in the Properties table.
+
+**Snapshots and tests:**
+- About 10 files in `Tests/SnapshotsMy` changed, every one smaller (`ScalarRepl`, `ArrayInPlace`, `CaseGuardedSweep`, `StringWalk`, …).
+- A final regeneration run made no further changes, and every check reports 0 failed. The script itself still exits with status 1, as it did before this work, because `KnownConstructors04` triggers its existing, expected `get!` panics.
+- New spec `knownConstructors01Spec` in `Tests/Main.lean`: it runs leanscript on both files, checks output fragments at both presets (and that `test1` has no tags or closures), and runs the generated node checks (1 and 113).
+- `lake build tests` succeeds, and `lake exe tests` passes 136/136.
+
+**Not improved:** `LoopState.minMaxSum`. Its join points become closures, so its `yield`s aren't visible to the pass. This pattern only appears in that file.
+
+The full comparison is in `Tests/SnapshotsPBOPure/KnownConstructors01.md`. Everything is committed.
+
 # Summary of changes for run 241b72f9-5f15-4070-b52f-8aac616b7ea3
 For `Tests/SnapshotsPBOPure/KnownConstructor07.lean`, our JavaScript for `test` was already on par with the legacy output, so the work went into the derived `Repr` instance. It is now one expression, built in the `Term → Term` phase. The full write-up is in `Tests/SnapshotsPBOPure/KnownConstructor07.md`.
 

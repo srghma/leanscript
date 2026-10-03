@@ -69,156 +69,88 @@ ret k1
 
 -- sweep1 : Int → String
 val k1 [1] : (Int → String) := fun x2 [ω] : Int => (closed)
-  let x11 [1] : ([String] | [String]) := nat_rec 110 ctor#1("") fun acc3 i4 => (open)
-    case acc3 of
-    | ctor#0(f5 [1] : String) =>
-      ret ctor#0(f5)
-    | ctor#1(f6 [1] : String) =>
-      let x7 [ω] : Int := share lean_int_add(x2, lean_nat_to_int(i4))
-      join j8 [1] (x9 [1] : String) :=
-        let x10 [1] : String := share lean_string_append__String_append(lean_string_append__String_append(f6, x9), ";")
-        ret ctor#1(x10)
-      if lean_int_dec_lt(x7, 1) then
-        jump j8 lean_string_append__String_append("n: ", lean_int_repr(x7))
-      else
-        jump j8 cond(cond(lean_int_dec_lt(1, x7), lean_int_dec_lt(x7, 100), false), lean_string_append__String_append("1 < x < 100: ", lean_int_repr(x7)), "catch")
-  case x11 of
-  | ctor#0(f12 [1] : String) =>
-    ret f12
-  | ctor#1(f13 [1] : String) =>
-    ret f13
+  let x8 [1] : String := nat_rec 110 "" fun acc3 i4 => (open)
+    let x5 [ω] : Int := share lean_int_add(x2, lean_nat_to_int(i4))
+    join j6 [1] (x7 [1] : String) :=
+      ret lean_string_append__String_append(lean_string_append__String_append(acc3, x7), ";")
+    if lean_int_dec_lt(x5, 1) then
+      jump j6 lean_string_append__String_append("n: ", lean_int_repr(x5))
+    else
+      jump j6 cond(cond(lean_int_dec_lt(1, x5), lean_int_dec_lt(x5, 100), false), lean_string_append__String_append("1 < x < 100: ", lean_int_repr(x5)), "catch")
+  ret x8
 ret k1
 
 -- sweep4 : Int → Int
 val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  let x71 [1] : ([Int] | [Int]) := nat_rec 4 ctor#1(0) fun acc3 i4 => (open)
-    case acc3 of
-    | ctor#0(f5 [1] : Int) =>
-      ret ctor#0(f5)
-    | ctor#1(f6 [1] : Int) =>
-      let x66 [1] : ([Int] | [Int]) := nat_rec 3 ctor#1(f6) fun acc7 i8 => (open)
-        case acc7 of
-        | ctor#0(f9 [1] : Int) =>
-          ret ctor#0(f9)
-        | ctor#1(f10 [1] : Int) =>
-          let x61 [1] : ([Int] | [Int]) := nat_rec 7 ctor#1(f10) fun acc11 i12 => (open)
-            case acc11 of
-            | ctor#0(f13 [1] : Int) =>
-              ret ctor#0(f13)
-            | ctor#1(f14 [1] : Int) =>
-              let x56 [1] : ([Int] | [Int]) := nat_rec 2 ctor#1(f14) fun acc15 i16 => (open)
-                case acc15 of
-                | ctor#0(f17 [1] : Int) =>
-                  ret ctor#0(f17)
-                | ctor#1(f18 [1] : Int) =>
-                  let x51 [1] : ([Int] | [Int]) := nat_rec 3 ctor#1(f18) fun acc19 i20 => (open)
-                    case acc19 of
-                    | ctor#0(f21 [1] : Int) =>
-                      ret ctor#0(f21)
-                    | ctor#1(f22 [1] : Int) =>
-                      let x46 [1] : ([Int] | [Int]) := nat_rec 3 ctor#1(f22) fun acc23 i24 => (open)
-                        case acc23 of
-                        | ctor#0(f25 [1] : Int) =>
-                          ret ctor#0(f25)
-                        | ctor#1(f26 [1] : Int) =>
-                          val k27 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x28 [ω] : (Int × Int × Int) => (closed)
-                            val k29 [1] : ((Int × Int × Int) → Int) := fun x30 [1] : (Int × Int × Int) => (open)
-                              let ⟨f31 [ω] : Int, f32 [1] : Int, f33 [ω] : Int⟩ := x28
-                              if lean_int_dec_eq(f31, 1) then
-                                let ⟨f34 [ω] : Int, f35 [0] : Int, f36 [1] : Int⟩ := x30
-                                if lean_int_dec_eq(f34, 1) then
-                                  ret 1
-                                else
-                                  if lean_int_dec_eq(f34, 2) then
-                                    ret 2
-                                  else
-                                    if lean_int_dec_eq(f34, 3) then
-                                      ret 3
-                                    else
-                                      if lean_int_dec_eq(f34, 4) then
-                                        ret 4
-                                      else
-                                        ret cond(lean_int_dec_eq(f34, 5), 5, lean_int_add(lean_int_add(f33, f36), 11))
+  let x38 [1] : Int := nat_rec 4 0 fun acc3 i4 => (open)
+    let x37 [1] : Int := nat_rec 3 acc3 fun acc5 i6 => (open)
+      let x36 [1] : Int := nat_rec 7 acc5 fun acc7 i8 => (open)
+        let x35 [1] : Int := nat_rec 2 acc7 fun acc9 i10 => (open)
+          let x34 [1] : Int := nat_rec 3 acc9 fun acc11 i12 => (open)
+            let x33 [1] : Int := nat_rec 3 acc11 fun acc13 i14 => (open)
+              val k15 [1] : ((Int × Int × Int) → ((Int × Int × Int) → Int)) := fun x16 [ω] : (Int × Int × Int) => (closed)
+                val k17 [1] : ((Int × Int × Int) → Int) := fun x18 [1] : (Int × Int × Int) => (open)
+                  let ⟨f19 [ω] : Int, f20 [1] : Int, f21 [ω] : Int⟩ := x16
+                  if lean_int_dec_eq(f19, 1) then
+                    let ⟨f22 [ω] : Int, f23 [0] : Int, f24 [1] : Int⟩ := x18
+                    if lean_int_dec_eq(f22, 1) then
+                      ret 1
+                    else
+                      if lean_int_dec_eq(f22, 2) then
+                        ret 2
+                      else
+                        if lean_int_dec_eq(f22, 3) then
+                          ret 3
+                        else
+                          if lean_int_dec_eq(f22, 4) then
+                            ret 4
+                          else
+                            ret cond(lean_int_dec_eq(f22, 5), 5, lean_int_add(lean_int_add(f21, f24), 11))
+                  else
+                    if lean_int_dec_eq(f19, 2) then
+                      let ⟨f25 [ω] : Int, f26 [ω] : Int, f27 [1] : Int⟩ := x18
+                      if lean_int_dec_eq(f25, 2) then
+                        ret 2
+                      else
+                        if lean_int_dec_eq(f25, 3) then
+                          ret 3
+                        else
+                          if lean_int_dec_eq(f25, 1) then
+                            ret 6
+                          else
+                            if lean_int_dec_eq(f25, 4) then
+                              if lean_int_dec_eq(f21, f26) then
+                                ret 7
                               else
-                                if lean_int_dec_eq(f31, 2) then
-                                  let ⟨f37 [ω] : Int, f38 [ω] : Int, f39 [1] : Int⟩ := x30
-                                  if lean_int_dec_eq(f37, 2) then
-                                    ret 2
-                                  else
-                                    if lean_int_dec_eq(f37, 3) then
-                                      ret 3
-                                    else
-                                      if lean_int_dec_eq(f37, 1) then
-                                        ret 6
-                                      else
-                                        if lean_int_dec_eq(f37, 4) then
-                                          if lean_int_dec_eq(f33, f38) then
-                                            ret 7
-                                          else
-                                            ret cond(lean_int_dec_lt(f33, f38), 8, 9)
-                                        else
-                                          ret lean_int_add(lean_int_add(f33, f39), 11)
-                                else
-                                  let ⟨f40 [ω] : Int, f41 [ω] : Int, f42 [ω] : Int⟩ := x30
-                                  if lean_int_dec_eq(f40, 2) then
-                                    ret 2
-                                  else
-                                    if lean_int_dec_eq(f40, 3) then
-                                      ret 3
-                                    else
-                                      if lean_int_dec_eq(f40, 4) then
-                                        if lean_int_dec_eq(f33, f41) then
-                                          ret 7
-                                        else
-                                          ret cond(lean_int_dec_lt(f33, f41), 8, 9)
-                                      else
-                                        if cond(lean_int_dec_eq(f40, 1), lean_int_dec_eq(f42, 10), false) then
-                                          ret cond(lean_int_dec_eq(f32, 2), 10, lean_int_add(f33, 21))
-                                        else
-                                          ret lean_int_add(lean_int_add(f33, f42), 11)
-                            ret k29
-                          let x43 [1] : ((Int × Int × Int) → Int) := k27 ⟨lean_int_add(x2, lean_nat_to_int(i4)), lean_int_add(x2, lean_nat_to_int(i8)), lean_int_add(x2, lean_nat_to_int(i20))⟩
-                          let x44 [1] : Int := x43 ⟨lean_int_add(x2, lean_nat_to_int(i12)), lean_int_add(x2, lean_nat_to_int(i24)), lean_int_add(x2, lean_nat_to_int(lean_nat_add(i16, 9)))⟩
-                          let x45 [1] : Int := share lean_int_add(lean_int_emod(lean_int_mul(f26, 31), 1000000007), x44)
-                          ret ctor#1(x45)
-                      join j47 [1] (x48 [1] : Int) :=
-                        ret ctor#1(x48)
-                      case x46 of
-                      | ctor#0(f49 [1] : Int) =>
-                        jump j47 f49
-                      | ctor#1(f50 [1] : Int) =>
-                        jump j47 f50
-                  join j52 [1] (x53 [1] : Int) :=
-                    ret ctor#1(x53)
-                  case x51 of
-                  | ctor#0(f54 [1] : Int) =>
-                    jump j52 f54
-                  | ctor#1(f55 [1] : Int) =>
-                    jump j52 f55
-              join j57 [1] (x58 [1] : Int) :=
-                ret ctor#1(x58)
-              case x56 of
-              | ctor#0(f59 [1] : Int) =>
-                jump j57 f59
-              | ctor#1(f60 [1] : Int) =>
-                jump j57 f60
-          join j62 [1] (x63 [1] : Int) :=
-            ret ctor#1(x63)
-          case x61 of
-          | ctor#0(f64 [1] : Int) =>
-            jump j62 f64
-          | ctor#1(f65 [1] : Int) =>
-            jump j62 f65
-      join j67 [1] (x68 [1] : Int) :=
-        ret ctor#1(x68)
-      case x66 of
-      | ctor#0(f69 [1] : Int) =>
-        jump j67 f69
-      | ctor#1(f70 [1] : Int) =>
-        jump j67 f70
-  case x71 of
-  | ctor#0(f72 [1] : Int) =>
-    ret f72
-  | ctor#1(f73 [1] : Int) =>
-    ret f73
+                                ret cond(lean_int_dec_lt(f21, f26), 8, 9)
+                            else
+                              ret lean_int_add(lean_int_add(f21, f27), 11)
+                    else
+                      let ⟨f28 [ω] : Int, f29 [ω] : Int, f30 [ω] : Int⟩ := x18
+                      if lean_int_dec_eq(f28, 2) then
+                        ret 2
+                      else
+                        if lean_int_dec_eq(f28, 3) then
+                          ret 3
+                        else
+                          if lean_int_dec_eq(f28, 4) then
+                            if lean_int_dec_eq(f21, f29) then
+                              ret 7
+                            else
+                              ret cond(lean_int_dec_lt(f21, f29), 8, 9)
+                          else
+                            if cond(lean_int_dec_eq(f28, 1), lean_int_dec_eq(f30, 10), false) then
+                              ret cond(lean_int_dec_eq(f20, 2), 10, lean_int_add(f21, 21))
+                            else
+                              ret lean_int_add(lean_int_add(f21, f30), 11)
+                ret k17
+              let x31 [1] : ((Int × Int × Int) → Int) := k15 ⟨lean_int_add(x2, lean_nat_to_int(i4)), lean_int_add(x2, lean_nat_to_int(i6)), lean_int_add(x2, lean_nat_to_int(i12))⟩
+              let x32 [1] : Int := x31 ⟨lean_int_add(x2, lean_nat_to_int(i8)), lean_int_add(x2, lean_nat_to_int(i14)), lean_int_add(x2, lean_nat_to_int(lean_nat_add(i10, 9)))⟩
+              ret lean_int_add(lean_int_emod(lean_int_mul(acc13, 31), 1000000007), x32)
+            ret x33
+          ret x34
+        ret x35
+      ret x36
+    ret x37
+  ret x38
 ret k1

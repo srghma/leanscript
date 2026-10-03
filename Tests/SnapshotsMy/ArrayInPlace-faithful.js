@@ -21,17 +21,11 @@ import {
  */
 export const test1 = (n) => {
   const x$1 = [];
-  let acc$2 = { tag: 1, _1: x$1 };
+  let acc$2 = x$1;
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$4 } = acc$2;
-      acc$2 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 1, _1: array__lean_array_push_mutable(f$5, i$3 * i$3) };
-    }
+    acc$2 = array__lean_array_push_mutable(acc$2, i$3 * i$3);
   }
-  return acc$2._1;
+  return acc$2;
 };
 
 /**
@@ -40,25 +34,16 @@ export const test1 = (n) => {
  * @returns {Array<nat(bigint)>}
  */
 export const test3 = (a0) => {
-  let acc$1 = { tag: 1, _1: [...a0] };
+  let acc$1 = [...a0];
   const n$2 = BigInt(a0.length);
   for (let i$3 = 0n; i$3 < n$2; i$3++) {
-    if (acc$1.tag === 0) {
-      const { _1: f$4 } = acc$1;
-      acc$1 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$1;
-      acc$1 = {
-        tag: 1,
-        _1: bigint_nat__lean_array_set_mutable(
-          f$5,
-          i$3,
-          bigint_nat__lean_array_get(0n, f$5, i$3) * 2n,
-        ),
-      };
-    }
+    acc$1 = bigint_nat__lean_array_set_mutable(
+      acc$1,
+      i$3,
+      bigint_nat__lean_array_get(0n, acc$1, i$3) * 2n,
+    );
   }
-  return acc$1._1;
+  return acc$1;
 };
 
 /**
@@ -68,25 +53,16 @@ export const test3 = (a0) => {
  * @returns {Array<nat(bigint)>}
  */
 export const test3$$mut_0 = (a0) => {
-  let acc$1 = { tag: 1, _1: a0 };
+  let acc$1 = a0;
   const n$2 = BigInt(a0.length);
   for (let i$3 = 0n; i$3 < n$2; i$3++) {
-    if (acc$1.tag === 0) {
-      const { _1: f$4 } = acc$1;
-      acc$1 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$1;
-      acc$1 = {
-        tag: 1,
-        _1: bigint_nat__lean_array_set_mutable(
-          f$5,
-          i$3,
-          bigint_nat__lean_array_get(0n, f$5, i$3) * 2n,
-        ),
-      };
-    }
+    acc$1 = bigint_nat__lean_array_set_mutable(
+      acc$1,
+      i$3,
+      bigint_nat__lean_array_get(0n, acc$1, i$3) * 2n,
+    );
   }
-  return acc$1._1;
+  return acc$1;
 };
 
 /**
@@ -106,37 +82,20 @@ export const test4 = (n) => {
  */
 export const test5 = (n) => {
   const x$1 = [];
-  let acc$2 = { tag: 1, _1: x$1 };
+  let acc$2 = x$1;
   for (let i$3 = 0n; i$3 < n; i$3++) {
-    if (acc$2.tag === 0) {
-      const { _1: f$4 } = acc$2;
-      acc$2 = { tag: 0, _1: f$4 };
-    } else {
-      const { _1: f$5 } = acc$2;
-      acc$2 = { tag: 1, _1: array__lean_array_push_mutable(f$5, i$3) };
-    }
+    acc$2 = array__lean_array_push_mutable(acc$2, i$3);
   }
-  const x$6 = acc$2._1;
-  let acc$7 = { tag: 1, _1: x$6 };
-  const n$8 = bigint_nat__lean_nat_div(n, 2n);
-  for (let i$9 = 0n; i$9 < n$8; i$9++) {
-    if (acc$7.tag === 0) {
-      const { _1: f$10 } = acc$7;
-      acc$7 = { tag: 0, _1: f$10 };
-    } else {
-      const { _1: f$11 } = acc$7;
-      acc$7 = {
-        tag: 1,
-        _1: bigint_nat__lean_array_swap_mutable(
-          f$11,
-          i$9,
-          bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(n, i$9), 1n),
-        ),
-      };
-    }
+  let acc$4 = acc$2;
+  const n$5 = bigint_nat__lean_nat_div(n, 2n);
+  for (let i$6 = 0n; i$6 < n$5; i$6++) {
+    acc$4 = bigint_nat__lean_array_swap_mutable(
+      acc$4,
+      i$6,
+      bigint_nat__lean_nat_sub(bigint_nat__lean_nat_sub(n, i$6), 1n),
+    );
   }
-  const x$12 = acc$7._1;
-  return array__lean_array_pop_mutable(x$12);
+  return array__lean_array_pop_mutable(acc$4);
 };
 
 /**

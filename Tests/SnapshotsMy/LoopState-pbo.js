@@ -14,21 +14,15 @@ import {
  * @returns {{ _1: uint53(number), _2: uint53(number) }}
  */
 export const sumCount = (n) => {
-  let acc$1 = { tag: 1, _1: { _1: 0, _2: 0 } };
+  let acc$1 = { _1: 0, _2: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      acc$1 = {
-        tag: 1,
-        _1: {
-          _1: uint53__lean_nat_add(f$3._1, i$2),
-          _2: uint53__lean_nat_add(f$3._2, 1),
-        },
-      };
-    }
+    const { _1: f$3, _2: f$4 } = acc$1;
+    acc$1 = {
+      _1: uint53__lean_nat_add(f$3, i$2),
+      _2: uint53__lean_nat_add(f$4, 1),
+    };
   }
-  const x$4 = acc$1._1;
-  return { _1: x$4._1, _2: x$4._2 };
+  return acc$1;
 };
 
 /**
@@ -37,19 +31,12 @@ export const sumCount = (n) => {
  * @returns {uint53(number)}
  */
 export const fib = (n) => {
-  let acc$1 = { tag: 1, _1: { _1: 0, _2: 1 } };
+  let acc$1 = { _1: 0, _2: 1 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      const { _2: f$4 } = f$3;
-      acc$1 = {
-        tag: 1,
-        _1: { _1: f$4, _2: uint53__lean_nat_add(f$3._1, f$4) },
-      };
-    }
+    const { _1: f$3, _2: f$4 } = acc$1;
+    acc$1 = { _1: f$4, _2: uint53__lean_nat_add(f$3, f$4) };
   }
-  const x$5 = acc$1._1;
-  return x$5._1;
+  return acc$1._1;
 };
 
 /**
@@ -112,22 +99,16 @@ export const firstAbove = (n, k) => {
  * @returns {{ _1: string, _2: uint53(number) }}
  */
 export const repeatCount = (s, n) => {
-  let acc$1 = { tag: 1, _1: { _1: "", _2: 0 } };
+  let acc$1 = { _1: "", _2: 0 };
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      acc$1 = {
-        tag: 1,
-        _1: {
-          _1: f$3._1 + s,
-          _2: uint53__lean_nat_add(
-            f$3._2,
-            uint53__lean_string_length__String_Internal_length(s),
-          ),
-        },
-      };
-    }
+    const { _1: f$3, _2: f$4 } = acc$1;
+    acc$1 = {
+      _1: f$3 + s,
+      _2: uint53__lean_nat_add(
+        f$4,
+        uint53__lean_string_length__String_Internal_length(s),
+      ),
+    };
   }
-  const x$4 = acc$1._1;
-  return { _1: x$4._1, _2: x$4._2 };
+  return acc$1;
 };

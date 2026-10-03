@@ -35,22 +35,12 @@ ret k1
 -- test5 : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [1] : Nat => (closed)
   let x3 [1] : (Array Nat) := share lean_mk_array(4, x2)
-  let x13 [1] : ([((Array Nat) × Nat)] | [((Array Nat) × Nat)]) := nat_rec 4 ctor#1(⟨x3, 0⟩) fun acc4 i5 => (closed)
-    case acc4 of
-    | ctor#0(f6 [1] : ((Array Nat) × Nat)) =>
-      ret ctor#0(f6)
-    | ctor#1(f7 [1] : ((Array Nat) × Nat)) =>
-      let ⟨f8 [ω] : (Array Nat), f9 [1] : Nat⟩ := f7
-      let x10 [1] : Nat := share lean_array_get(0, f8, i5)
-      let x11 [1] : (Array Nat) := share lean_array_set(f8, i5, lean_nat_add(i5, 1))
-      let x12 [1] : Nat := share lean_nat_add(f9, x10)
-      ret ctor#1(⟨x11, x12⟩)
-  join j14 [1] (x15 [1] : ((Array Nat) × Nat)) :=
-    let ⟨f16 [0] : (Array Nat), f17 [1] : Nat⟩ := x15
-    ret f17
-  case x13 of
-  | ctor#0(f18 [1] : ((Array Nat) × Nat)) =>
-    jump j14 f18
-  | ctor#1(f19 [1] : ((Array Nat) × Nat)) =>
-    jump j14 f19
+  let x11 [1] : ((Array Nat) × Nat) := nat_rec 4 ⟨x3, 0⟩ fun acc4 i5 => (closed)
+    let ⟨f6 [ω] : (Array Nat), f7 [1] : Nat⟩ := acc4
+    let x8 [1] : Nat := share lean_array_get(0, f6, i5)
+    let x9 [1] : (Array Nat) := share lean_array_set(f6, i5, lean_nat_add(i5, 1))
+    let x10 [1] : Nat := share lean_nat_add(f7, x8)
+    ret ⟨x9, x10⟩
+  let ⟨f12 [0] : (Array Nat), f13 [1] : Nat⟩ := x11
+  ret f13
 ret k1

@@ -2,43 +2,22 @@
 
 -- sumCount : Nat → Nat × Nat
 val k1 [1] : (Nat → (Nat × Nat)) := fun x2 [1] : Nat => (closed)
-  let x11 [1] : ([(Nat × Nat)] | [(Nat × Nat)]) := nat_rec x2 ctor#1(⟨0, 0⟩) fun acc3 i4 => (closed)
-    case acc3 of
-    | ctor#0(f5 [1] : (Nat × Nat)) =>
-      ret ctor#0(f5)
-    | ctor#1(f6 [1] : (Nat × Nat)) =>
-      let ⟨f7 [1] : Nat, f8 [1] : Nat⟩ := f6
-      let x9 [1] : Nat := share lean_nat_add(f7, i4)
-      let x10 [1] : Nat := share lean_nat_add(f8, 1)
-      ret ctor#1(⟨x9, x10⟩)
-  join j12 [1] (x13 [1] : (Nat × Nat)) :=
-    let ⟨f14 [1] : Nat, f15 [1] : Nat⟩ := x13
-    ret ⟨f14, f15⟩
-  case x11 of
-  | ctor#0(f16 [1] : (Nat × Nat)) =>
-    jump j12 f16
-  | ctor#1(f17 [1] : (Nat × Nat)) =>
-    jump j12 f17
+  let x9 [1] : (Nat × Nat) := nat_rec x2 ⟨0, 0⟩ fun acc3 i4 => (closed)
+    let ⟨f5 [1] : Nat, f6 [1] : Nat⟩ := acc3
+    let x7 [1] : Nat := share lean_nat_add(f5, i4)
+    let x8 [1] : Nat := share lean_nat_add(f6, 1)
+    ret ⟨x7, x8⟩
+  ret x9
 ret k1
 
 -- fib : Nat → Nat
 val k1 [1] : (Nat → Nat) := fun x2 [1] : Nat => (closed)
-  let x10 [1] : ([(Nat × Nat)] | [(Nat × Nat)]) := nat_rec x2 ctor#1(⟨0, 1⟩) fun acc3 i4 => (closed)
-    case acc3 of
-    | ctor#0(f5 [1] : (Nat × Nat)) =>
-      ret ctor#0(f5)
-    | ctor#1(f6 [1] : (Nat × Nat)) =>
-      let ⟨f7 [1] : Nat, f8 [ω] : Nat⟩ := f6
-      let x9 [1] : Nat := share lean_nat_add(f7, f8)
-      ret ctor#1(⟨f8, x9⟩)
-  join j11 [1] (x12 [1] : (Nat × Nat)) :=
-    let ⟨f13 [1] : Nat, f14 [0] : Nat⟩ := x12
-    ret f13
-  case x10 of
-  | ctor#0(f15 [1] : (Nat × Nat)) =>
-    jump j11 f15
-  | ctor#1(f16 [1] : (Nat × Nat)) =>
-    jump j11 f16
+  let x8 [1] : (Nat × Nat) := nat_rec x2 ⟨0, 1⟩ fun acc3 i4 => (closed)
+    let ⟨f5 [1] : Nat, f6 [ω] : Nat⟩ := acc3
+    let x7 [1] : Nat := share lean_nat_add(f5, f6)
+    ret ⟨f6, x7⟩
+  let ⟨f9 [1] : Nat, f10 [0] : Nat⟩ := x8
+  ret f9
 ret k1
 
 -- minMaxSum : Nat → Nat × Nat × Nat
@@ -106,22 +85,11 @@ ret k1
 -- repeatCount : String → Nat → String × Nat
 val k1 [1] : (String → (Nat → (String × Nat))) := fun x2 [ω] : String => (closed)
   val k3 [1] : (Nat → (String × Nat)) := fun x4 [1] : Nat => (open)
-    let x13 [1] : ([(String × Nat)] | [(String × Nat)]) := nat_rec x4 ctor#1(⟨"", 0⟩) fun acc5 i6 => (open)
-      case acc5 of
-      | ctor#0(f7 [1] : (String × Nat)) =>
-        ret ctor#0(f7)
-      | ctor#1(f8 [1] : (String × Nat)) =>
-        let ⟨f9 [1] : String, f10 [1] : Nat⟩ := f8
-        let x11 [1] : String := share lean_string_append__String_append(f9, x2)
-        let x12 [1] : Nat := share lean_nat_add(f10, lean_string_length__String_length(x2))
-        ret ctor#1(⟨x11, x12⟩)
-    join j14 [1] (x15 [1] : (String × Nat)) :=
-      let ⟨f16 [1] : String, f17 [1] : Nat⟩ := x15
-      ret ⟨f16, f17⟩
-    case x13 of
-    | ctor#0(f18 [1] : (String × Nat)) =>
-      jump j14 f18
-    | ctor#1(f19 [1] : (String × Nat)) =>
-      jump j14 f19
+    let x11 [1] : (String × Nat) := nat_rec x4 ⟨"", 0⟩ fun acc5 i6 => (open)
+      let ⟨f7 [1] : String, f8 [1] : Nat⟩ := acc5
+      let x9 [1] : String := share lean_string_append__String_append(f7, x2)
+      let x10 [1] : Nat := share lean_nat_add(f8, lean_string_length__String_length(x2))
+      ret ⟨x9, x10⟩
+    ret x11
   ret k3
 ret k1

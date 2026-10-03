@@ -19,16 +19,7 @@ ret k1
 -- test5 : Nat → Array Nat
 val k1 [1] : (Nat → (Array Nat)) := fun x2 [ω] : Nat => (closed)
   let x3 [1] : (Array Nat) := share lean_mk_empty_array_with_capacity__Array_emptyWithCapacity(x2)
-  let x9 [1] : ([(Array Nat)] | [(Array Nat)]) := nat_rec x2 ctor#1(x3) fun acc4 i5 => (closed)
-    case acc4 of
-    | ctor#0(f6 [1] : (Array Nat)) =>
-      ret ctor#0(f6)
-    | ctor#1(f7 [1] : (Array Nat)) =>
-      let x8 [1] : (Array Nat) := share lean_array_append(f7, #[i5, lean_nat_mul(i5, i5)])
-      ret ctor#1(x8)
-  case x9 of
-  | ctor#0(f10 [1] : (Array Nat)) =>
-    ret f10
-  | ctor#1(f11 [1] : (Array Nat)) =>
-    ret f11
+  let x6 [1] : (Array Nat) := nat_rec x2 x3 fun acc4 i5 => (closed)
+    ret lean_array_append(acc4, #[i5, lean_nat_mul(i5, i5)])
+  ret x6
 ret k1

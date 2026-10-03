@@ -17,15 +17,11 @@ import { bigint_nat__lean_string_utf8_byte_size } from "../../runtime.js";
  * @returns {nat(bigint)}
  */
 export const test3 = (s, n) => {
-  let acc$1 = { tag: 1, _1: { _1: s, _2: 0n } };
+  let acc$1 = { _1: s, _2: 0n };
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      const { _1: f$4 } = f$3;
-      const x$5 = f$3._2 + bigint_nat__lean_string_utf8_byte_size(f$4);
-      acc$1 = { tag: 1, _1: { _1: f$4 + "x", _2: x$5 } };
-    }
+    const { _1: f$3, _2: f$4 } = acc$1;
+    const x$5 = f$4 + bigint_nat__lean_string_utf8_byte_size(f$3);
+    acc$1 = { _1: f$3 + "x", _2: x$5 };
   }
-  const x$6 = acc$1._1;
-  return x$6._2;
+  return acc$1._2;
 };

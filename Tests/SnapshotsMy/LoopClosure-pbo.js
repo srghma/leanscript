@@ -12,21 +12,13 @@ import { uint53__lean_nat_add } from "../../runtime.js";
  * @returns {uint53(number)}
  */
 export const test1 = (k, n) => {
-  let acc$1 = { tag: 1, _1: 0 };
+  let acc$1 = 0;
   for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      const x$4 = uint53__lean_nat_add(k, 1);
-      const x$5 = uint53__lean_nat_add(k, 2);
-      const x$6 = uint53__lean_nat_add(k, 3);
-      acc$1 = {
-        tag: 1,
-        _1: uint53__lean_nat_add(
-          f$3,
-          uint53__lean_nat_add(uint53__lean_nat_add(x$4, x$5), x$6),
-        ),
-      };
-    }
+    const x$3 = uint53__lean_nat_add(k, 1);
+    const x$4 = uint53__lean_nat_add(k, 2);
+    const x$5 = uint53__lean_nat_add(k, 3);
+    const x$6 = uint53__lean_nat_add(uint53__lean_nat_add(x$3, x$4), x$5);
+    acc$1 = uint53__lean_nat_add(acc$1, x$6);
   }
-  return acc$1._1;
+  return acc$1;
 };

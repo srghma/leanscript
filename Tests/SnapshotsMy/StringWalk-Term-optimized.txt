@@ -10,22 +10,12 @@
 -- test3 : String → Nat → Nat
 val k1 [1] : (String → (Nat → Nat)) := fun x2 [ω] : String => (closed)
   val k3 [1] : (Nat → Nat) := fun x4 [1] : Nat => (open)
-    let x13 [1] : ([(String × Nat)] | [(String × Nat)]) := nat_rec x4 ctor#1(⟨x2, 0⟩) fun acc5 i6 => (closed)
-      case acc5 of
-      | ctor#0(f7 [1] : (String × Nat)) =>
-        ret ctor#0(f7)
-      | ctor#1(f8 [1] : (String × Nat)) =>
-        let ⟨f9 [ω] : String, f10 [1] : Nat⟩ := f8
-        let x11 [1] : Nat := share lean_nat_add(f10, lean_string_utf8_byte_size(f9))
-        let x12 [1] : String := share lean_string_append__String_append(f9, "x")
-        ret ctor#1(⟨x12, x11⟩)
-    join j14 [1] (x15 [1] : (String × Nat)) :=
-      let ⟨f16 [0] : String, f17 [1] : Nat⟩ := x15
-      ret f17
-    case x13 of
-    | ctor#0(f18 [1] : (String × Nat)) =>
-      jump j14 f18
-    | ctor#1(f19 [1] : (String × Nat)) =>
-      jump j14 f19
+    let x11 [1] : (String × Nat) := nat_rec x4 ⟨x2, 0⟩ fun acc5 i6 => (closed)
+      let ⟨f7 [ω] : String, f8 [1] : Nat⟩ := acc5
+      let x9 [1] : Nat := share lean_nat_add(f8, lean_string_utf8_byte_size(f7))
+      let x10 [1] : String := share lean_string_append__String_append(f7, "x")
+      ret ⟨x10, x9⟩
+    let ⟨f12 [0] : String, f13 [1] : Nat⟩ := x11
+    ret f13
   ret k3
 ret k1

@@ -12,14 +12,11 @@ import {
  * @returns {nat(bigint)}
  */
 export const test1 = (n) => {
-  let acc$1 = { tag: 1, _1: 0n };
+  let acc$1 = 0n;
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      acc$1 = { tag: 1, _1: f$3 + i$2 };
-    }
+    acc$1 = acc$1 + i$2;
   }
-  return acc$1._1;
+  return acc$1;
 };
 
 /**
@@ -28,21 +25,15 @@ export const test1 = (n) => {
  * @returns {nat(bigint)}
  */
 export const test2 = (n) => {
-  let acc$1 = { tag: 1, _1: 0n };
+  let acc$1 = 0n;
   for (let i$2 = 0n; i$2 < n; i$2++) {
-    if (acc$1.tag === 1) {
-      let acc$3 = acc$1;
-      for (let i$4 = 0n; i$4 < i$2; i$4++) {
-        if (acc$3.tag === 1) {
-          const { _1: f$5 } = acc$3;
-          acc$3 = { tag: 1, _1: f$5 + i$4 };
-        }
-      }
-      const x$6 = acc$3._1;
-      acc$1 = { tag: 1, _1: x$6 };
+    let acc$3 = acc$1;
+    for (let i$4 = 0n; i$4 < i$2; i$4++) {
+      acc$3 = acc$3 + i$4;
     }
+    acc$1 = acc$3;
   }
-  return acc$1._1;
+  return acc$1;
 };
 
 /**

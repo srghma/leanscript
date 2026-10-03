@@ -15,6 +15,7 @@ public import LeanScript.Term.Optimize.Arith
 public import LeanScript.Term.Optimize.InlineEval
 public import LeanScript.Term.Optimize.InlineRetEval
 public import LeanScript.Term.Optimize.JoinCtorEval
+public import LeanScript.Term.Optimize.LoopYieldEval
 public import LeanScript.Term.Optimize.OpenCallEval
 public import LeanScript.Term.Optimize.DelayEtaEval
 public import LeanScript.Term.Optimize.SinkLet
@@ -100,6 +101,13 @@ literals are dropped and neighbouring literals are merged (`#[a] ++ (#[b] ++ x) 
 `String.append`s (and of `String.push`es of a literal character) is regrouped to the left, its
 empty literals dropped and neighbouring literals merged (`"a" ++ ("b" ++ x) ++ "c"` is
 `("ab" ++ x) ++ "c"`, `LeanScript.Term.Optimize.StringAppend`).
+
+Then the loops whose state is always the same constructor (`Term.loopYield`,
+`LeanScript.Term.Optimize.LoopYield`): when the initial state of a `nat_rec` is a literal `C a`
+of a constructor with one field, the step takes the state apart and the arm of `C` answers
+`C e` on every path, the loop is written over the field of `C` (`let y := nat_rec n a step';
+rest[x := C y]`, the case analyses of `x` in `rest` reduced).  This is the `ForInStep` of a
+`for` loop without `break`: its state becomes the mutable variables themselves.
 
 Then the delays that only force another delay (`Term.delayEta`,
 `LeanScript.Term.Optimize.DelayEta`): a known `val k := lazy (let x := e (); ret x)` (or the same
@@ -444,7 +452,9 @@ end
     path computes (`Term.hoistWalk`), the boolean conditions
     (`Term.condWalk`), two tests that end in the same answer merged into one condition
     (`Term.mergeTestWalk`), the known constant literals written in place in append chains
-    (`Term.knownLits`), the append chains (`Term.appendWalk`), the delays that only force another
+    (`Term.knownLits`), the append chains (`Term.appendWalk`), the join points written at their
+    jumps (`Term.joinCtor`), the loops whose state is always the same constructor written over
+    its field (`Term.loopYield`), the delays that only force another
     delay replaced by it (`Term.delayEta`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
     (`Term.arithWalk`), then dead-code elimination, and last the computations used once moved
@@ -452,7 +462,7 @@ end
     counted). -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
+  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -656,7 +666,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.loopYield_eval, Term.joinCtor_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
     Term.hoistWalk_eval, Term.cseWalk_eval, Term.dce_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval, Term.knownSizes_eval, Term.knownTests_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

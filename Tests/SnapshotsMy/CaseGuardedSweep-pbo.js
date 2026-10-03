@@ -90,21 +90,18 @@ export const test4 = (a, a1) => {
  * @returns {string}
  */
 export const sweep1 = (lo) => {
-  let acc$1 = { tag: 1, _1: "" };
+  let acc$1 = "";
   for (let i$2 = 0; i$2 < 110; i$2++) {
-    if (acc$1.tag === 1) {
-      const { _1: f$3 } = acc$1;
-      const x$4 = int53__lean_int_add(lo, i$2);
-      let x$5;
-      if (x$4 < 1) {
-        x$5 = "n: " + x$4;
-      } else {
-        x$5 = 1 < x$4 && x$4 < 100 ? "1 < x < 100: " + x$4 : "catch";
-      }
-      acc$1 = { tag: 1, _1: f$3 + x$5 + ";" };
+    const x$3 = int53__lean_int_add(lo, i$2);
+    let x$4;
+    if (x$3 < 1) {
+      x$4 = "n: " + x$3;
+    } else {
+      x$4 = 1 < x$3 && x$3 < 100 ? "1 < x < 100: " + x$3 : "catch";
     }
+    acc$1 = acc$1 + x$4 + ";";
   }
-  return acc$1._1;
+  return acc$1;
 };
 
 /**
@@ -113,71 +110,47 @@ export const sweep1 = (lo) => {
  * @returns {int53(number)}
  */
 export const sweep4 = (lo) => {
-  let acc$1 = { tag: 1, _1: 0 };
+  let acc$1 = 0;
   for (let i$2 = 0; i$2 < 4; i$2++) {
-    if (acc$1.tag === 1) {
-      let acc$3 = acc$1;
-      for (let i$4 = 0; i$4 < 3; i$4++) {
-        if (acc$3.tag === 1) {
-          let acc$5 = acc$3;
-          for (let i$6 = 0; i$6 < 7; i$6++) {
-            if (acc$5.tag === 1) {
-              let acc$7 = acc$5;
-              for (let i$8 = 0; i$8 < 2; i$8++) {
-                if (acc$7.tag === 1) {
-                  let acc$9 = acc$7;
-                  for (let i$10 = 0; i$10 < 3; i$10++) {
-                    if (acc$9.tag === 1) {
-                      let acc$11 = acc$9;
-                      for (let i$12 = 0; i$12 < 3; i$12++) {
-                        if (acc$11.tag === 1) {
-                          const { _1: f$13 } = acc$11;
-                          const x$14 = test4(
-                            {
-                              _1: int53__lean_int_add(lo, i$2),
-                              _2: int53__lean_int_add(lo, i$4),
-                              _3: int53__lean_int_add(lo, i$10),
-                            },
-                            {
-                              _1: int53__lean_int_add(lo, i$6),
-                              _2: int53__lean_int_add(lo, i$12),
-                              _3: int53__lean_int_add(
-                                lo,
-                                uint53__lean_nat_add(i$8, 9),
-                              ),
-                            },
-                          );
-                          acc$11 = {
-                            tag: 1,
-                            _1: int53__lean_int_add(
-                              int53__lean_int_emod(
-                                int53__lean_int_mul(f$13, 31),
-                                1000000007,
-                              ),
-                              x$14,
-                            ),
-                          };
-                        }
-                      }
-                      const x$15 = acc$11._1;
-                      acc$9 = { tag: 1, _1: x$15 };
-                    }
-                  }
-                  const x$16 = acc$9._1;
-                  acc$7 = { tag: 1, _1: x$16 };
-                }
-              }
-              const x$17 = acc$7._1;
-              acc$5 = { tag: 1, _1: x$17 };
+    let acc$3 = acc$1;
+    for (let i$4 = 0; i$4 < 3; i$4++) {
+      let acc$5 = acc$3;
+      for (let i$6 = 0; i$6 < 7; i$6++) {
+        let acc$7 = acc$5;
+        for (let i$8 = 0; i$8 < 2; i$8++) {
+          let acc$9 = acc$7;
+          for (let i$10 = 0; i$10 < 3; i$10++) {
+            let acc$11 = acc$9;
+            for (let i$12 = 0; i$12 < 3; i$12++) {
+              const x$13 = test4(
+                {
+                  _1: int53__lean_int_add(lo, i$2),
+                  _2: int53__lean_int_add(lo, i$4),
+                  _3: int53__lean_int_add(lo, i$10),
+                },
+                {
+                  _1: int53__lean_int_add(lo, i$6),
+                  _2: int53__lean_int_add(lo, i$12),
+                  _3: int53__lean_int_add(lo, uint53__lean_nat_add(i$8, 9)),
+                },
+              );
+              acc$11 = int53__lean_int_add(
+                int53__lean_int_emod(
+                  int53__lean_int_mul(acc$11, 31),
+                  1000000007,
+                ),
+                x$13,
+              );
             }
+            acc$9 = acc$11;
           }
-          const x$18 = acc$5._1;
-          acc$3 = { tag: 1, _1: x$18 };
+          acc$7 = acc$9;
         }
+        acc$5 = acc$7;
       }
-      const x$19 = acc$3._1;
-      acc$1 = { tag: 1, _1: x$19 };
+      acc$3 = acc$5;
     }
+    acc$1 = acc$3;
   }
-  return acc$1._1;
+  return acc$1;
 };
