@@ -108,13 +108,17 @@ def JsFun.isLitConst (f : JsFun) : Bool :=
 /-- The functions `funs`, each `(name, target)` of `aliases` written as another name of the
     function `target` (`JsFun.alias?`, `export const name = target;`) when `target` comes before
     it, is not itself another name, and has the same parameter types and result.  A constant
-    whose value is a literal stays the literal (`export const test = "foo";`, not `= foo;`). -/
-def aliasFuns (aliases : List (String × String)) (funs : List JsFun) : List JsFun := Id.run do
+    whose value is a literal stays the literal (`export const test = "foo";`, not `= foo;`),
+    unless `target` is one of `noInline` (a Lean definition marked `@[noinline]`): the source
+    asked for it not to be inlined, so its readers refer to it (`export const test = foo;`, as
+    purescript-backend-optimizer writes a definition marked `inline never`). -/
+def aliasFuns (aliases : List (String × String)) (funs : List JsFun)
+    (noInline : List String := []) : List JsFun := Id.run do
   let mut out : Array JsFun := #[]
   for f in funs do
     let f' := match aliases.lookup f.name with
       | some tgt =>
-        if f.isLitConst then f else
+        if f.isLitConst && !noInline.contains tgt then f else
         match out.find? (·.name == tgt) with
         | some g =>
           if g.alias?.isNone && g.params.map (·.2) == f.params.map (·.2) && g.ret == f.ret then

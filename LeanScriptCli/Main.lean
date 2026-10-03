@@ -379,6 +379,10 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
         if sfx t == sfx tc then
           acc := acc ++ ("" :: sfx t).map fun v => (jsFunName t.name ++ v, jsFunName c ++ v)
     return acc
+  -- the translated definitions marked `@[noinline]`: a literal constant renaming one of them
+  -- still refers to it (`aliasFuns`)
+  let noInline : List String := (done.toList.filter fun t =>
+      Lean.Compiler.hasNoInlineAttribute el.env t.name).map fun t => jsFunName t.name
   let oneLine (s : String) : String :=
     " ".intercalate (s.splitOn "\n" |>.map fun l => l.trimAscii.toString)
   let notTranslated (extra : Array (Name × String)) : List String :=
@@ -450,7 +454,7 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     -- functions that differ only in the literal initial value of their first variable share one
     -- worker (`JsTerm.Print.Share`: the `mutual` groups recursing on a `Nat`)
     -- (and a definition that only renames another one is another name of its function)
-    let m := mkModule cfg (aliasFuns aliases (shareWorkers funs.toList))
+    let m := mkModule cfg (aliasFuns aliases (shareWorkers funs.toList) noInline)
     for n in missingExports rtSrc m.imports do
       fatal := fatal.push s!"preset {preset}: the runtime {rtFile} does not export {n}"
     let header (what : String) : List String :=

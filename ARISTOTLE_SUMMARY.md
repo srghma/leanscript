@@ -1,3 +1,38 @@
+# Summary of changes for run 7e41ece6-9e22-40ff-9720-4a9018452f9d
+Our JavaScript for `Tests/SnapshotsPBOPure/InlineNever.lean` was already better than `InlineNever.js`, so its output hasn't changed. I added support for Lean's `@[noinline]` attribute, which is the Lean version of the `inline never` directive behind the reference output, plus a regression test. All tests pass.
+
+**This file compared with the reference.**
+- Ours: `export const foo = "foo"; export const test = "foo";`
+- Reference: `const foo = "foo"; const test = foo; export { foo, test };`
+
+The two are the same size, and ours doesn't make `test` read another binding. The reference keeps `test = foo` only because its PureScript source marks `foo` as `inline never`. The Lean file has no such marking, so writing the literal is the better output.
+
+Nothing needed changing in any of the three phases:
+- Turning Lean into `Term` already gives `ret "foo"` for `test` (see `InlineNever-Term-unoptimized.txt`).
+- The convert step deliberately keeps a constant whose value is a literal as that literal (`aliasFuns` in `JsTerm/Lower/Module.lean`).
+
+The file has no loops or recursion, so labeled blocks and loops didn't come into it.
+
+**What I added: `@[noinline]`.**
+- **New behaviour:** if a definition is just another name for one marked `@[noinline]`, the JavaScript now refers to that definition, even when its value is a literal (`export const test = foo;`). This matches what the reference does for `inline never`.
+- **How:** `aliasFuns` in `JsTerm/Lower/Module.lean` takes a new optional list of `@[noinline]` names. `LeanScriptCli/Main.lean` collects those names from the Lean environment and passes them in. Both are part of the `Term -[convert]-> JsTerm` phase.
+- **Why not the `Term` optimizer:** `Term` has no global names, so it has no way to refer to `foo`.
+- **Limitation:** inside a larger expression the marked definition is still inlined and computed. For example, `foo ++ "!"` becomes `"foo!"`. Keeping a reference there would need global names in `Term`.
+
+**Testing.**
+- New snapshot `Tests/SnapshotsMy/NoInlineAlias.lean`, with its generated outputs. It covers:
+  - a marked string, which becomes `test = foo`
+  - an unmarked one, which stays `test2 = "bar"`
+  - a marked array, which becomes `test3 = big`
+  - a marked definition used inside an expression, which becomes `test4 = "foo!"`
+
+  Its checks pass under node on both presets (7 each).
+- I regenerated the other 9 snapshots that use `@[noinline]`. None of their outputs changed.
+- New `inlineNeverSpec` in `Tests/Main.lean`, run on both presets. It checks the expected lines for both files and runs their checks under node.
+- `lake build leanscript tests` succeeds and `lake exe tests` passes 126/126.
+
+The full comparison is in `Tests/SnapshotsPBOPure/InlineNever.md`. No theorems were involved, so nothing was added to the Properties table. Everything is committed.
+
 # Summary of changes for run 1fa0c318-29e2-42cc-af8c-1999b48ec9bd
 The JavaScript we generate for `Tests/SnapshotsPBOPure/InlineCase01.lean` was already better than `legacy-backend/InlineCase01.js`, so I didn't change the compiler's output. What was missing was testing: `test2`, `test4` and `test5` had never been compared with Lean. That gap is now closed, and all checks and tests pass.
 

@@ -2614,6 +2614,38 @@ for (const u of [{users}]) console.log(render(test(u)));
       assertEq s!"{file}-{preset}: node" "" (if run.exitCode == 0 then "" else run.stderr)
       assertEq s!"{file}-{preset}: rendered as in Lean" expected run.stdout
 
+/-- `Tests/SnapshotsPBOPure/InlineNever.lean`: `test` reads the literal constant `foo`; its
+    JavaScript is the literal itself (`export const test = "foo";`, no indirection), on both
+    presets.  `Tests/SnapshotsMy/NoInlineAlias.lean`: when the definition read is marked
+    `@[noinline]`, the reader refers to it instead (`export const test = foo;`, as
+    purescript-backend-optimizer does for `inline never`); the checks run under node. -/
+def inlineNeverSpec : Spec := describe "InlineNever" do
+  it "a literal constant stays the literal, unless `@[noinline]` (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinenever"
+    IO.FS.createDirAll dir
+    for (path, file, frags) in [
+        ("Tests/SnapshotsPBOPure", "InlineNever",
+          ["export const foo = \"foo\";", "export const test = \"foo\";"]),
+        ("Tests/SnapshotsMy", "NoInlineAlias",
+          ["export const test = foo;", "export const test2 = \"bar\";",
+           "export const test3 = big;", "export const test4 = \"foo!\";"])] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2648,6 +2680,7 @@ def spec : Spec := do
   htmlSpec
   inlineArrayIndexSpec
   inlineCase01Spec
+  inlineNeverSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
