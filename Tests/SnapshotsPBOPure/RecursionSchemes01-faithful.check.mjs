@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -42,6 +48,26 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("mapExprF((x) => x + 1n, { tag: 0, _1: -7n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 0, _1: -7n })), "0(-7)", false);
+check("mapExprF((x) => x + 1n, { tag: 0, _1: -1n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 0, _1: -1n })), "0(-1)", false);
+check("mapExprF((x) => x * 3n, { tag: 0, _1: -7n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 0, _1: -7n })), "0(-7)", false);
+check("mapExprF((x) => x + 1n, { tag: 1, _1: 0n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 1, _1: 0n, _2: 0n })), "1(1, 1)", false);
+check("mapExprF((x) => x * 3n, { tag: 0, _1: -1n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 0, _1: -1n })), "0(-1)", false);
+check("mapExprF((x) => x + 1n, { tag: 1, _1: 0n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 1, _1: 0n, _2: 1n })), "1(1, 2)", false);
+check("mapExprF((x) => x * 3n, { tag: 1, _1: 0n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 1, _1: 0n, _2: 0n })), "1(0, 0)", false);
+check("mapExprF((x) => x + 1n, { tag: 1, _1: 1n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 1, _1: 1n, _2: 0n })), "1(2, 1)", false);
+check("mapExprF((x) => x * 3n, { tag: 1, _1: 0n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 1, _1: 0n, _2: 1n })), "1(0, 3)", false);
+check("mapExprF((x) => x + 1n, { tag: 1, _1: 1n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 1, _1: 1n, _2: 1n })), "1(2, 2)", false);
+check("mapExprF((x) => x * 3n, { tag: 1, _1: 1n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 1, _1: 1n, _2: 0n })), "1(3, 0)", false);
+check("mapExprF((x) => x + 1n, { tag: 2, _1: 0n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 2, _1: 0n, _2: 0n })), "2(1, 1)", false);
+check("mapExprF((x) => x * 3n, { tag: 1, _1: 1n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 1, _1: 1n, _2: 1n })), "1(3, 3)", false);
+check("mapExprF((x) => x + 1n, { tag: 2, _1: 0n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 2, _1: 0n, _2: 1n })), "2(1, 2)", false);
+check("mapExprF((x) => x * 3n, { tag: 2, _1: 0n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 2, _1: 0n, _2: 0n })), "2(0, 0)", false);
+check("mapExprF((x) => x + 1n, { tag: 2, _1: 1n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 2, _1: 1n, _2: 0n })), "2(2, 1)", false);
+check("mapExprF((x) => x * 3n, { tag: 2, _1: 0n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 2, _1: 0n, _2: 1n })), "2(0, 3)", false);
+check("mapExprF((x) => x + 1n, { tag: 2, _1: 1n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x + 1n, { tag: 2, _1: 1n, _2: 1n })), "2(2, 2)", false);
+check("mapExprF((x) => x * 3n, { tag: 2, _1: 1n, _2: 0n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 2, _1: 1n, _2: 0n })), "2(3, 0)", false);
+check("mapExprF((x) => x * 3n, { tag: 2, _1: 1n, _2: 1n })", () => (showUnion)(M.mapExprF((x) => x * 3n, { tag: 2, _1: 1n, _2: 1n })), "2(3, 3)", false);
 check("eval_x({ tag: 0, _1: -7n })", () => M.eval_x({ tag: 0, _1: -7n }), "-7", false);
 check("eval_x({ tag: 0, _1: -1n })", () => M.eval_x({ tag: 0, _1: -1n }), "-1", false);
 check("eval_x({ tag: 1, _1: -7n, _2: -7n })", () => M.eval_x({ tag: 1, _1: -7n, _2: -7n }), "-14", false);
@@ -52,6 +78,16 @@ check("eval_x({ tag: 2, _1: -7n, _2: -7n })", () => M.eval_x({ tag: 2, _1: -7n, 
 check("eval_x({ tag: 2, _1: -7n, _2: -1n })", () => M.eval_x({ tag: 2, _1: -7n, _2: -1n }), "7", false);
 check("eval_x({ tag: 2, _1: -1n, _2: -7n })", () => M.eval_x({ tag: 2, _1: -1n, _2: -7n }), "7", false);
 check("eval_x({ tag: 2, _1: -1n, _2: -1n })", () => M.eval_x({ tag: 2, _1: -1n, _2: -1n }), "1", false);
+check("bump({ tag: 0, _1: -7n })", () => (showUnion)(M.bump({ tag: 0, _1: -7n })), "0(-6)", false);
+check("bump({ tag: 0, _1: -1n })", () => (showUnion)(M.bump({ tag: 0, _1: -1n })), "0(0)", false);
+check("bump({ tag: 1, _1: -7n, _2: -7n })", () => (showUnion)(M.bump({ tag: 1, _1: -7n, _2: -7n })), "1(-7, -7)", false);
+check("bump({ tag: 1, _1: -7n, _2: -1n })", () => (showUnion)(M.bump({ tag: 1, _1: -7n, _2: -1n })), "1(-7, -1)", false);
+check("bump({ tag: 1, _1: -1n, _2: -7n })", () => (showUnion)(M.bump({ tag: 1, _1: -1n, _2: -7n })), "1(-1, -7)", false);
+check("bump({ tag: 1, _1: -1n, _2: -1n })", () => (showUnion)(M.bump({ tag: 1, _1: -1n, _2: -1n })), "1(-1, -1)", false);
+check("bump({ tag: 2, _1: -7n, _2: -7n })", () => (showUnion)(M.bump({ tag: 2, _1: -7n, _2: -7n })), "2(-7, -7)", false);
+check("bump({ tag: 2, _1: -7n, _2: -1n })", () => (showUnion)(M.bump({ tag: 2, _1: -7n, _2: -1n })), "2(-7, -1)", false);
+check("bump({ tag: 2, _1: -1n, _2: -7n })", () => (showUnion)(M.bump({ tag: 2, _1: -1n, _2: -7n })), "2(-1, -7)", false);
+check("bump({ tag: 2, _1: -1n, _2: -1n })", () => (showUnion)(M.bump({ tag: 2, _1: -1n, _2: -1n })), "2(-1, -1)", false);
 
 console.log(`RecursionSchemes01-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

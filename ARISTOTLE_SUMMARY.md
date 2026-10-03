@@ -1,3 +1,23 @@
+# Summary of changes for run 41d95556-3d46-40de-ab73-cb1cd682ce85
+The JavaScript we generate for `Tests/SnapshotsPBOPure/InlineArrayIndex.lean` was already as good as `InlineArrayIndex.js`, so its output hasn't changed. Each `test` is a constant: `{ tag: 1, _1: 1 }` … `{ tag: 0 }` for `test4`. The differences from the legacy output:
+- **Encoding:** numeric tags and `_1` fields instead of `"some"`/`_val`. This is the encoding used for every union in the project.
+- **`array` is exported:** it is a public Lean definition. `@[inline]` makes it inlined where it's used, but doesn't remove it from the module.
+
+**Answer to the "need to inline?" comment:** no. I checked: without `@[inline]` the output is the same. Calls whose arguments are all known are computed while Lean is turned into `Term`, so the unoptimised `Term` is already `ctor#1(1)`. None of the three phases had work left for this file.
+
+**What was missing, and what I fixed:**
+1. **The output had never been compared with Lean.** The check generator only checked `array`, because it never compared results of union types like `Option Int`. Now non-recursive union results are printed as `i(fields…)` on both sides (`LeanScriptCli/Check.lean`). This file now has 5 checks per preset, and all pass under node. Regenerating every snapshot added 274 checks to other files (e.g. `OptionUnbox`, `Variant01`). They all pass, and no generated `.js` file changed.
+2. **The bounds were checked twice when the index is a parameter.** This is the variant `array[i]?` with `i` a parameter, which is not in the file itself. It used to compile to `i < 3 ? { tag: 1, _1: uint53__lean_array_get(0, [1, 2, 3], i) } : { tag: 0 }`. It now compiles to `i < 3 ? { tag: 1, _1: [1, 2, 3][i] } : { tag: 0 }`.
+   - **How:** the convert step's bounds tracking (`JsTerm/Lower/Bounds.lean`) now also learns from tests of the index against a literal (`i < k`, `i ≤ k`, `i == k`, `k ≤ i`, `k < i`). An index known to be below `k` gets the plain `a[i]`, both on an array literal of at least `k` elements and on an array variable known to hold at least `k`.
+   - **Why not the `Term` phase:** `Term` has no unchecked array access, because the proof that the index is in bounds is erased.
+   - **Snapshot:** the new `Tests/SnapshotsMy/ArrayIndexBounds.lean` covers these cases. It also has two where the test doesn't prove the bounds (`i < 4` on 3 elements), and those correctly keep the checked call. Its checks pass: 106 per preset.
+
+The file has no loops or recursion, so labeled blocks and loops didn't come into it.
+
+**Testing:** a new `inlineArrayIndexSpec` in `Tests/Main.lean` runs on both presets. It checks that `test1` … `test4` are those constants, that there are 5 checks, and that only the two unproved accesses in `ArrayIndexBounds` keep the checked call. It also runs all the check modules under node. `lake build leanscript tests TyTests TermTests JsTerm` succeeds, and `lake exe tests` passes 124/124. No theorems were involved, so nothing was added to the Properties table.
+
+The full comparison is in `Tests/SnapshotsPBOPure/InlineArrayIndex.md`. Everything is committed.
+
 # Summary of changes for run dfaddf62-079a-4fe4-949a-709d317bbd04
 `test` in `Tests/SnapshotsPBOPure/Html.lean` now translates to JavaScript that matches `legacy-backend/Html.js` and is slightly smaller. Before this change nothing in the file was translated. All tests pass and the work is committed.
 

@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }

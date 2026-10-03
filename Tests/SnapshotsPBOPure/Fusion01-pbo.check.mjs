@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -42,6 +48,12 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("dropPrefix1(\"\")", () => (showUnion)(M.dropPrefix1("")), "0()", false);
+check("dropPrefix1(\"a\")", () => (showUnion)(M.dropPrefix1("a")), "0()", false);
+check("dropPrefix1(\"hello world\")", () => (showUnion)(M.dropPrefix1("hello world")), "0()", false);
+check("dropPrefix1(\"héllo, wörld\")", () => (showUnion)(M.dropPrefix1("héllo, wörld")), "0()", false);
+check("dropPrefix1(\"abcabc\")", () => (showUnion)(M.dropPrefix1("abcabc")), "0()", false);
+check("dropPrefix1(\"1\")", () => (showUnion)(M.dropPrefix1("1")), "1()", false);
 check("test([])", () => M.test([]), "#[]", false);
 check("test([]) twice", () => ((a0) => (M.test(a0), M.test(a0)))([]), "#[]", false);
 check("test([-7])", () => M.test([-7]), "#[]", false);

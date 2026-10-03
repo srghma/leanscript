@@ -160,6 +160,8 @@ structure BoundFacts where
   /-- `(i, a)`: the natural number in the variable `i` is smaller than the size of the array in
       the variable `a`. -/
   idxLt : List (VarKey × VarKey) := []
+  /-- `(i, k)`: the natural number in the variable `i` is smaller than the literal `k`. -/
+  idxLtLit : List (VarKey × Nat) := []
   deriving Inhabited
 
 /-- What an argument of a constructor expression is, for `knownCtorLvl?`: the constant of a

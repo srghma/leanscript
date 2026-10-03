@@ -2461,6 +2461,45 @@ def heterogeneous01Spec : Spec := describe "Heterogeneous01" do
       let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
       assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+/-- `Tests/SnapshotsPBOPure/InlineArrayIndex.lean`: `array[i]?` at a literal index is folded to
+    the constant option (`{ tag: 1, _1: 1 }`, `{ tag: 0 }` out of bounds), as in the legacy
+    output; the checks compare the options with Lean (`showUnion`).  And
+    `Tests/SnapshotsMy/ArrayIndexBounds.lean`: an access under a test of its index against a
+    literal that proves the bounds is the plain `a[i]` (`JsTerm.Lower.Bounds`), and only there. -/
+def inlineArrayIndexSpec : Spec := describe "InlineArrayIndex" do
+  it "the options are constants, accesses in bounds are plain, and the checks run (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinearrayindex"
+    IO.FS.createDirAll dir
+    for src in ["Tests/SnapshotsPBOPure/InlineArrayIndex.lean", "Tests/SnapshotsMy/ArrayIndexBounds.lean"] do
+      let out ← IO.Process.output { cmd := bin.toString, args := #["--quiet", "--check", s!"--out-dir={dir}", src] }
+      assertEq s!"{src}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+    for (preset, one, two, three) in [("pbo", "1", "2", "3"), ("faithful", "1n", "2n", "3n")] do
+      let file := "InlineArrayIndex"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      for (n, v) in [("test1", s!"\{ tag: 1, _1: {one} }"), ("test2", s!"\{ tag: 1, _1: {two} }"),
+          ("test3", s!"\{ tag: 1, _1: {three} }"), ("test4", "{ tag: 0 }")] do
+        assertEq s!"{file}-{preset}: `{n}` is a constant" true
+          ((js.splitOn s!"export const {n} = {v};").length > 1)
+      let checks ← IO.FS.readFile s!"{dir}/{file}-{preset}.check.mjs"
+      assertEq s!"{file}-{preset}: 5 checks" 6 (checks.splitOn "\ncheck(").length
+      let file := "ArrayIndexBounds"
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      -- `getUnproved` and `getSizedUnproved` only
+      assertEq s!"{file}-{preset}: two accesses check their bounds" 3
+        (js.splitOn "__lean_array_get(").length
+      for frag in ["export const getLe = (i) => (", "export const getGe = (i) => (", "export const getD = (i) => ("] do
+        assertEq s!"{file}-{preset}: {frag}… is one conditional" true ((js.splitOn frag).length > 1)
+      for file in ["InlineArrayIndex", "ArrayIndexBounds"] do
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+
 namespace HtmlSnap
 
 /-- A copy of `Tests/SnapshotsPBOPure/Html.lean` (whose definitions are private). -/
@@ -2564,6 +2603,7 @@ def spec : Spec := do
   fusion02Spec
   heterogeneous01Spec
   htmlSpec
+  inlineArrayIndexSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

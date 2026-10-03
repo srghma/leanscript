@@ -27,8 +27,14 @@ array, both local to the expression being converted:
   | `a.size ≤ k` | | `a.size ≥ k + 1` |
   | `i < a.size` | `i < a.size` | |
   | `a.size ≤ i` | | `i < a.size` |
+  | `i < k` | `i < k` | |
+  | `i ≤ k`, `i == k` | `i < k + 1` | |
+  | `k ≤ i` | | `i < k` |
+  | `k < i` | | `i < k + 1` |
 
-  (`a`, `i` variables, `k` a literal).  This is the shape Lean compiles a match on array
+  (`a`, `i` variables, `k` a literal).  An index `i < k` is in bounds of an array of at least
+  `k` elements, and of an array literal of at least `k` elements (`#[1, 2, 3][i]` under
+  `if i < 3`, the shape of `xs[i]?` once `xs` is inlined).  This is the shape Lean compiles a match on array
   literals to (`| #[_, 2] => …` is `if a.size = 2 then if a[1]! = 2 then …`), and the shape of
   `if h : i < a.size then a[i] else …`.  A variable is named by its de Bruijn level, which
   does not change under binders, and keeps the value the test saw everywhere below the test: a
@@ -120,6 +126,10 @@ def addMin (f : BoundFacts) (a : VarKey) (k : Nat) : BoundFacts := { f with minS
 /-- The natural in `i` is smaller than the size of the array in `a`. -/
 def addIdx (f : BoundFacts) (i a : VarKey) : BoundFacts := { f with idxLt := (i, a) :: f.idxLt }
 
+/-- The natural in `i` is smaller than the literal `k`. -/
+def addIdxLit (f : BoundFacts) (i : VarKey) (k : Nat) : BoundFacts :=
+  { f with idxLtLit := (i, k) :: f.idxLtLit }
+
 /-- The facts below a test, in its two branches (the table of the module documentation). -/
 def split (f : BoundFacts) : NatCmp × NatAtom × NatAtom → BoundFacts × BoundFacts
   | (.eq, .size a, .lit k) | (.eq, .lit k, .size a) =>
@@ -130,12 +140,24 @@ def split (f : BoundFacts) : NatCmp × NatAtom × NatAtom → BoundFacts × Boun
   | (.le, .size a, .lit k) => (f, f.addMin a (k + 1))
   | (.lt, .const i, .size a) => (f.addIdx i a, f)
   | (.le, .size a, .const i) => (f, f.addIdx i a)
+  | (.lt, .const i, .lit k) => (f.addIdxLit i k, f)
+  | (.le, .const i, .lit k) => (f.addIdxLit i (k + 1), f)
+  | (.lt, .lit k, .const i) => (f, f.addIdxLit i (k + 1))
+  | (.le, .lit k, .const i) => (f, f.addIdxLit i k)
+  | (.eq, .const i, .lit k) | (.eq, .lit k, .const i) => (f.addIdxLit i (k + 1), f)
   | _ => (f, f)
 
 /-- Is the index `i` known to be smaller than the size of the array in `a`? -/
 def inBounds (f : BoundFacts) (a : VarKey) : NatAtom → Bool
   | .lit k => f.minSize.any fun (a', m) => a' == a && k < m
-  | .const i => f.idxLt.any fun (i', a') => i' == i && a' == a
+  | .const i => f.idxLt.any (fun (i', a') => i' == i && a' == a) ||
+      f.idxLtLit.any fun (i', k) => i' == i && f.minSize.any fun (a', m) => a' == a && k ≤ m
+  | .size _ => false
+
+/-- Is the index `i` known to be smaller than `n`, the length of an array literal? -/
+def inBoundsLit (f : BoundFacts) (n : Nat) : NatAtom → Bool
+  | .lit k => k < n
+  | .const i => f.idxLtLit.any fun (i', k) => i' == i && k ≤ n
   | .size _ => false
 
 end BoundFacts
@@ -147,13 +169,23 @@ def Names.splitOn {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {
   | some v => let (t, e) := n.bounds.split v; ({ n with bounds := t }, { n with bounds := e })
   | none => (n, n)
 
+/-- The number of elements of an array or list literal. -/
+def elemsLength {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} :
+    {o : Lvl} → Elems Δ Φ Γ t o → Nat
+  | _, .nil => 0
+  | _, .cons _ es => elemsLength es + 1
+
 /-- Is the call of `lean_array_get` (or `lean_array_get_borrowed`) on the arguments `args`
     (the default, the array, the index) known to be in bounds? -/
 def Names.getInBounds {ks : List Nat} {Δ : DSig ks} {Φ : KCtx ks} {Γ : UCtx ks}
     {σs : List (Ty ks)} {o : Lvl} (n : Names) : Args Δ Φ Γ σs o → Bool
   | .cons _ (.cons a (.cons i .nil)) =>
-    match pexprConst? n a, pexprAtom? n i with
-    | some a, some i => n.bounds.inBounds a i
+    match a, pexprAtom? n i with
+    | .array_mk es, some i => n.bounds.inBoundsLit (elemsLength es) i
+    | _, some i =>
+      match pexprConst? n a with
+      | some a => n.bounds.inBounds a i
+      | none => false
     | _, _ => false
   | _ => false
 

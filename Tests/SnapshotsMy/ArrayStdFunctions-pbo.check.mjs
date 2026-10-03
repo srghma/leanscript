@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -162,6 +168,62 @@ check("ArrStd$tContains([13, 5, 2, 1], 5)", () => M.ArrStd$tContains([13, 5, 2, 
 check("ArrStd$tContains([13, 5, 2, 1], 5) twice", () => ((a0, a1) => (M.ArrStd$tContains(a0, a1), M.ArrStd$tContains(a0, a1)))([13, 5, 2, 1], 5), "true", false);
 check("ArrStd$tContains([13, 5, 2, 1], 13)", () => M.ArrStd$tContains([13, 5, 2, 1], 13), "true", false);
 check("ArrStd$tContains([13, 5, 2, 1], 13) twice", () => ((a0, a1) => (M.ArrStd$tContains(a0, a1), M.ArrStd$tContains(a0, a1)))([13, 5, 2, 1], 13), "true", false);
+check("ArrStd$tFind([])", () => (showUnion)(M.ArrStd$tFind([])), "0()", false);
+check("ArrStd$tFind([]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFind(a0), M.ArrStd$tFind(a0)))([])), "0()", false);
+check("ArrStd$tFind([0])", () => (showUnion)(M.ArrStd$tFind([0])), "0()", false);
+check("ArrStd$tFind([0]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFind(a0), M.ArrStd$tFind(a0)))([0])), "0()", false);
+check("ArrStd$tFind([0, 1, 2])", () => (showUnion)(M.ArrStd$tFind([0, 1, 2])), "0()", false);
+check("ArrStd$tFind([0, 1, 2]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFind(a0), M.ArrStd$tFind(a0)))([0, 1, 2])), "0()", false);
+check("ArrStd$tFind([13, 5, 2, 1])", () => (showUnion)(M.ArrStd$tFind([13, 5, 2, 1])), "1(13)", false);
+check("ArrStd$tFind([13, 5, 2, 1]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFind(a0), M.ArrStd$tFind(a0)))([13, 5, 2, 1])), "1(13)", false);
+check("ArrStd$tFindIdx([])", () => (showUnion)(M.ArrStd$tFindIdx([])), "0()", false);
+check("ArrStd$tFindIdx([]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFindIdx(a0), M.ArrStd$tFindIdx(a0)))([])), "0()", false);
+check("ArrStd$tFindIdx([0])", () => (showUnion)(M.ArrStd$tFindIdx([0])), "0()", false);
+check("ArrStd$tFindIdx([0]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFindIdx(a0), M.ArrStd$tFindIdx(a0)))([0])), "0()", false);
+check("ArrStd$tFindIdx([0, 1, 2])", () => (showUnion)(M.ArrStd$tFindIdx([0, 1, 2])), "0()", false);
+check("ArrStd$tFindIdx([0, 1, 2]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFindIdx(a0), M.ArrStd$tFindIdx(a0)))([0, 1, 2])), "0()", false);
+check("ArrStd$tFindIdx([13, 5, 2, 1])", () => (showUnion)(M.ArrStd$tFindIdx([13, 5, 2, 1])), "1(0)", false);
+check("ArrStd$tFindIdx([13, 5, 2, 1]) twice", () => (showUnion)(((a0) => (M.ArrStd$tFindIdx(a0), M.ArrStd$tFindIdx(a0)))([13, 5, 2, 1])), "1(0)", false);
+check("ArrStd$tIdxOf([], \"\")", () => (showUnion)(M.ArrStd$tIdxOf([], "")), "0()", false);
+check("ArrStd$tIdxOf([], \"\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([], "")), "0()", false);
+check("ArrStd$tIdxOf([], \"a\")", () => (showUnion)(M.ArrStd$tIdxOf([], "a")), "0()", false);
+check("ArrStd$tIdxOf([], \"a\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([], "a")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"\")", () => (showUnion)(M.ArrStd$tIdxOf([""], "")), "1(0)", false);
+check("ArrStd$tIdxOf([\"\"], \"\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([""], "")), "1(0)", false);
+check("ArrStd$tIdxOf([], \"hello world\")", () => (showUnion)(M.ArrStd$tIdxOf([], "hello world")), "0()", false);
+check("ArrStd$tIdxOf([], \"hello world\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([], "hello world")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"a\")", () => (showUnion)(M.ArrStd$tIdxOf([""], "a")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"a\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([""], "a")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"\")", () => (showUnion)(M.ArrStd$tIdxOf(["", "a", "hello world"], "")), "1(0)", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["", "a", "hello world"], "")), "1(0)", false);
+check("ArrStd$tIdxOf([], \"héllo, wörld\")", () => (showUnion)(M.ArrStd$tIdxOf([], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([], \"héllo, wörld\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"hello world\")", () => (showUnion)(M.ArrStd$tIdxOf([""], "hello world")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"hello world\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([""], "hello world")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"a\")", () => (showUnion)(M.ArrStd$tIdxOf(["", "a", "hello world"], "a")), "1(1)", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"a\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["", "a", "hello world"], "a")), "1(1)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"\")", () => (showUnion)(M.ArrStd$tIdxOf(["abcabc", "héllo, wörld", "hello world", "a"], "")), "0()", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["abcabc", "héllo, wörld", "hello world", "a"], "")), "0()", false);
+check("ArrStd$tIdxOf([], \"abcabc\")", () => (showUnion)(M.ArrStd$tIdxOf([], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([], \"abcabc\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"héllo, wörld\")", () => (showUnion)(M.ArrStd$tIdxOf([""], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"héllo, wörld\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([""], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"hello world\")", () => (showUnion)(M.ArrStd$tIdxOf(["", "a", "hello world"], "hello world")), "1(2)", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"hello world\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["", "a", "hello world"], "hello world")), "1(2)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"a\")", () => (showUnion)(M.ArrStd$tIdxOf(["abcabc", "héllo, wörld", "hello world", "a"], "a")), "1(3)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"a\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["abcabc", "héllo, wörld", "hello world", "a"], "a")), "1(3)", false);
+check("ArrStd$tIdxOf([\"\"], \"abcabc\")", () => (showUnion)(M.ArrStd$tIdxOf([""], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([\"\"], \"abcabc\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))([""], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"héllo, wörld\")", () => (showUnion)(M.ArrStd$tIdxOf(["", "a", "hello world"], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"héllo, wörld\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["", "a", "hello world"], "héllo, wörld")), "0()", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"hello world\")", () => (showUnion)(M.ArrStd$tIdxOf(["abcabc", "héllo, wörld", "hello world", "a"], "hello world")), "1(2)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"hello world\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["abcabc", "héllo, wörld", "hello world", "a"], "hello world")), "1(2)", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"abcabc\")", () => (showUnion)(M.ArrStd$tIdxOf(["", "a", "hello world"], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([\"\", \"a\", \"hello world\"], \"abcabc\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["", "a", "hello world"], "abcabc")), "0()", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"héllo, wörld\")", () => (showUnion)(M.ArrStd$tIdxOf(["abcabc", "héllo, wörld", "hello world", "a"], "héllo, wörld")), "1(1)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"héllo, wörld\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["abcabc", "héllo, wörld", "hello world", "a"], "héllo, wörld")), "1(1)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"abcabc\")", () => (showUnion)(M.ArrStd$tIdxOf(["abcabc", "héllo, wörld", "hello world", "a"], "abcabc")), "1(0)", false);
+check("ArrStd$tIdxOf([\"abcabc\", \"héllo, wörld\", \"hello world\", \"a\"], \"abcabc\") twice", () => (showUnion)(((a0, a1) => (M.ArrStd$tIdxOf(a0, a1), M.ArrStd$tIdxOf(a0, a1)))(["abcabc", "héllo, wörld", "hello world", "a"], "abcabc")), "1(0)", false);
 check("ArrStd$tErase([], 0)", () => M.ArrStd$tErase([], 0), "#[]", false);
 check("ArrStd$tErase([], 0) twice", () => ((a0, a1) => (M.ArrStd$tErase(a0, a1), M.ArrStd$tErase(a0, a1)))([], 0), "#[]", false);
 check("ArrStd$tErase([], 1)", () => M.ArrStd$tErase([], 1), "#[]", false);
@@ -298,6 +360,14 @@ check("ArrStd$tFlatMap([0, 1, 2])", () => M.ArrStd$tFlatMap([0, 1, 2]), "#[0, 0,
 check("ArrStd$tFlatMap([0, 1, 2]) twice", () => ((a0) => (M.ArrStd$tFlatMap(a0), M.ArrStd$tFlatMap(a0)))([0, 1, 2]), "#[0, 0, 1, 1, 2, 2]", false);
 check("ArrStd$tFlatMap([13, 5, 2, 1])", () => M.ArrStd$tFlatMap([13, 5, 2, 1]), "#[13, 13, 5, 5, 2, 2, 1, 1]", false);
 check("ArrStd$tFlatMap([13, 5, 2, 1]) twice", () => ((a0) => (M.ArrStd$tFlatMap(a0), M.ArrStd$tFlatMap(a0)))([13, 5, 2, 1]), "#[13, 13, 5, 5, 2, 2, 1, 1]", false);
+check("ArrStd$tBack([])", () => (showUnion)(M.ArrStd$tBack([])), "0()", false);
+check("ArrStd$tBack([]) twice", () => (showUnion)(((a0) => (M.ArrStd$tBack(a0), M.ArrStd$tBack(a0)))([])), "0()", false);
+check("ArrStd$tBack([0])", () => (showUnion)(M.ArrStd$tBack([0])), "1(0)", false);
+check("ArrStd$tBack([0]) twice", () => (showUnion)(((a0) => (M.ArrStd$tBack(a0), M.ArrStd$tBack(a0)))([0])), "1(0)", false);
+check("ArrStd$tBack([0, 1, 2])", () => (showUnion)(M.ArrStd$tBack([0, 1, 2])), "1(2)", false);
+check("ArrStd$tBack([0, 1, 2]) twice", () => (showUnion)(((a0) => (M.ArrStd$tBack(a0), M.ArrStd$tBack(a0)))([0, 1, 2])), "1(2)", false);
+check("ArrStd$tBack([13, 5, 2, 1])", () => (showUnion)(M.ArrStd$tBack([13, 5, 2, 1])), "1(1)", false);
+check("ArrStd$tBack([13, 5, 2, 1]) twice", () => (showUnion)(((a0) => (M.ArrStd$tBack(a0), M.ArrStd$tBack(a0)))([13, 5, 2, 1])), "1(1)", false);
 check("ArrStd$tCount([])", () => M.ArrStd$tCount([]), "0", false);
 check("ArrStd$tCount([]) twice", () => ((a0) => (M.ArrStd$tCount(a0), M.ArrStd$tCount(a0)))([]), "0", false);
 check("ArrStd$tCount([0])", () => M.ArrStd$tCount([0]), "0", false);

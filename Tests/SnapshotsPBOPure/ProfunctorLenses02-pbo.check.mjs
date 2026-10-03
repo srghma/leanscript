@@ -17,6 +17,12 @@ function show(v) {
   }
   return String(v);
 }
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -42,6 +48,18 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("preview_left({ tag: 0, _1: 0 })", () => (showUnion)(M.preview_left({ tag: 0, _1: 0 })), "1(0)", false);
+check("preview_left({ tag: 0, _1: 1 })", () => (showUnion)(M.preview_left({ tag: 0, _1: 1 })), "1(1)", false);
+check("preview_left({ tag: 1, _1: 0 })", () => (showUnion)(M.preview_left({ tag: 1, _1: 0 })), "0()", false);
+check("preview_left({ tag: 1, _1: 1 })", () => (showUnion)(M.preview_left({ tag: 1, _1: 1 })), "0()", false);
+check("test1({ tag: 0, _1: -7 })", () => (showUnion)(M.test1({ tag: 0, _1: -7 })), "1(-7)", false);
+check("test1({ tag: 0, _1: -1 })", () => (showUnion)(M.test1({ tag: 0, _1: -1 })), "1(-1)", false);
+check("test1({ tag: 1, _1: -7 })", () => (showUnion)(M.test1({ tag: 1, _1: -7 })), "0()", false);
+check("test1({ tag: 1, _1: -1 })", () => (showUnion)(M.test1({ tag: 1, _1: -1 })), "0()", false);
+check("test2({ tag: 0, _1: -7 })", () => (showUnion)(M.test2({ tag: 0, _1: -7 })), "1(-7)", false);
+check("test2({ tag: 0, _1: -1 })", () => (showUnion)(M.test2({ tag: 0, _1: -1 })), "1(-1)", false);
+check("test2({ tag: 1, _1: -7 })", () => (showUnion)(M.test2({ tag: 1, _1: -7 })), "0()", false);
+check("test2({ tag: 1, _1: -1 })", () => (showUnion)(M.test2({ tag: 1, _1: -1 })), "0()", false);
 
 console.log(`ProfunctorLenses02-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -49,8 +49,9 @@ inductive SType where
   /-- A value of a (recursive) inductive type of two or more constructors, one of them at
       least with fields, each field the type itself (`none`) or of a sample type among `Nat`,
       `Int`, `Bool`, `String`, `Char` (`Expr`, `Tree Nat`): a JavaScript union
-      `{ tag: i, _1: …, … }`.  `ctors` are the constructors applied to the parameters.  Only a
-      parameter can have this type (a result is not compared). -/
+      `{ tag: i, _1: …, … }`.  `ctors` are the constructors applied to the parameters.  A result
+      of this type is compared only when it is not recursive (`Option Int`, `resultPrintable`),
+      printed `i(…, …)`: the constructor index, then the fields. -/
   | tree (ctors : List (Expr × List (Option SType)))
   /-- A function of one argument (`Int → String`, behind an `abbrev F := Int → String` too):
       `String` of `Nat`, `Int` or `String`, `Nat` of `Nat`, or `Int` of `Int`.  Only a parameter
@@ -455,12 +456,23 @@ def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
   let rest := args.drop arity
   s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
 
-/-- Whether a value of the sample type `t` holds a `Float` inside a record (`{a, 2.5}`): the
-    generic `show` of the check module would print the number as JavaScript does (`2.5`), not
-    as its bits (what `showExpr` prints in Lean), so such a value is shown by `jsShowOf`. -/
-partial def floatInRecord : SType → Bool
-  | .record _ _ fs => fs.any fun f => f == .float || floatInRecord f
-  | .wrap _ _ t => floatInRecord t
+/-- Whether a result of the sample type `t` can be printed and compared: a union
+    (`SType.tree`) only when it is not recursive (`Option Int`), also inside a record. -/
+partial def resultPrintable : SType → Bool
+  | .tree cs => cs.all (·.2.all (·.isSome))
+  | .record _ _ fs => fs.all resultPrintable
+  | .wrap _ _ t => resultPrintable t
+  | _ => true
+
+/-- Whether a value of the sample type `t` is shown by `jsShowOf` rather than by the generic
+    `show` of the check module: when it holds a `Float` inside a record (`{a, 2.5}`; `show`
+    would print the number as JavaScript does, `2.5`, not as its bits, what `showExpr` prints
+    in Lean), or a union (`{ tag: 1, _1: 2 }`, which `show` would take for a list of cons
+    cells; printed `1(2)`, as `showExpr` prints `some 2`). -/
+partial def needsTypedShow : SType → Bool
+  | .record _ _ fs => fs.any fun f => f == .float || needsTypedShow f
+  | .wrap _ _ t => needsTypedShow t
+  | .tree _ => true
   | _ => false
 
 /-- A JavaScript function printing a value of the sample type `t` as `showExpr` prints it in
@@ -474,12 +486,14 @@ partial def jsShowOf : SType → String
     let parts := fs.zipIdx.map fun (f, i) => call (jsShowOf f) s!"v._{i + 1}"
     "(v) => \"{\" + [" ++ ", ".intercalate parts ++ "].join(\", \") + \"}\""
   | .wrap _ _ t => jsShowOf t
+  -- a union `{ tag: i, _1: …, … }` (of leaf fields: `resultPrintable`) as `i(…, …)`
+  | .tree _ => "showUnion"
   | _ => "show"
 
 /-- The JavaScript expression of the value of the call `e` (of result type `t`) that `check`
     compares: `e` itself, or, when `t` holds a `Float` in a record, its print (`jsShowOf`). -/
 def jsShown (t : SType) (e : String) : String :=
-  if floatInRecord t then s!"({jsShowOf t})({e})" else e
+  if needsTypedShow t then s!"({jsShowOf t})({e})" else e
 
 /-- The Lean expression printing the value `e` of the sample type `t` as the check module
     prints the JavaScript value (`show`): `toString`, of the bits of a `Float`, of the array
@@ -496,6 +510,27 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
       | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
     app (← app (toExpr "{") body) (toExpr "}")
   | .wrap ind _ t => showExpr t (.proj ind 0 e)
+  | .tree ctors =>
+    -- `i(…, …)`: the index of the constructor, then its fields (`casesOn`)
+    let some (c0, _) := ctors.head? | mkAppM ``toString #[e]
+    let some (cn, lvls) := c0.getAppFn.const? | mkAppM ``toString #[e]
+    let some (.ctorInfo cv) := (← getEnv).find? cn | mkAppM ``toString #[e]
+    let params := c0.getAppArgs
+    let casesName := mkCasesOnName cv.induct
+    let casesInfo ← getConstInfo casesName
+    let lvls' := if casesInfo.levelParams.length == lvls.length + 1 then levelOne :: lvls else lvls
+    let indTy := mkAppN (mkConst cv.induct lvls) params
+    let motive := mkLambda `x .default indTy (mkConst ``String)
+    let minors ← ctors.zipIdx.mapM fun ((ctor, fs), i) => do
+      forallTelescopeReducing (← inferType ctor) fun xs _ => do
+        let parts ← (xs.toList.zip fs).mapM fun (x, ft?) => showExpr (ft?.getD .nat) x
+        let app (a b : Expr) : MetaM Expr := mkAppM ``HAppend.hAppend #[a, b]
+        let body ← match parts with
+          | [] => pure (toExpr "")
+          | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
+        let body ← app (← app (toExpr s!"{i}(") body) (toExpr ")")
+        mkLambdaFVars xs body
+    return mkAppN (mkConst casesName lvls') (params ++ #[motive, e] ++ minors.toArray)
   | _ => mkAppM ``toString #[e]
 
 /-- The checks of one function: `none` when its type is not one of sample types.  Each
@@ -524,7 +559,9 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
-      if rt matches .tree _ | .fn .. | .unit then return none
+      if rt matches .fn .. | .unit then return none
+      -- a union result only of leaf fields (`Option Int`); a recursive one is not printed
+      unless resultPrintable rt do return none
       -- `Unit` parameters only at the end (one delay, called with `()` in JavaScript)
       let firstUnit := ps.toList.findIdx (· == .unit)
       unless (ps.toList.drop firstUnit).all (· == .unit) do return none
@@ -582,7 +619,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       if num64 && tooBig then continue
       let js := args.map (·.js)
       let typed (call : String) : Option String :=
-        if floatInRecord res then some (jsShown res s!"M.{call}") else none
+        if needsTypedShow res then some (jsShown res s!"M.{call}") else none
       out := out.push { call := jsCall jsName arity js, expected := e, isFloat := res == .float,
                         expr := typed (jsCall jsName arity js) }
       -- the versions owning some parameters (`LeanScript.Term.Ownership`): the same answer on
@@ -620,6 +657,12 @@ function show(v) {
     return \"{\" + fs.join(\", \") + \"}\";
   }
   return String(v);
+}
+// a union `{ tag: i, _1: …, … }` of leaf fields is shown as `i(…, …)`
+function showUnion(v) {
+  const fs = [];
+  for (let i = 1; (\"_\" + i) in v; i++) fs.push(show(v[\"_\" + i]));
+  return v.tag + \"(\" + fs.join(\", \") + \")\";
 }
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
