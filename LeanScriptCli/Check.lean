@@ -42,7 +42,7 @@ inductive SType where
       to the parameters. -/
   | record (ind : Name) (ctor : Expr) (fields : List SType)
   /-- A value of a structure-like type (one constructor, no index, not recursive) of exactly one
-      field, of a sample type other than `Float` and a union (`structure NewTypeInt where val : Int`): the
+      field, of a sample type other than `Float` (`structure NewTypeInt where val : Int`, a `RecA` holding a union): the
       structure is unboxed, its JavaScript value is the field's.  `ind` is the type, `ctor` its
       constructor applied to the parameters. -/
   | wrap (ind : Name) (ctor : Expr) (field : SType)
@@ -50,8 +50,8 @@ inductive SType where
       least with fields, each field the type itself (`none`) or of a sample type among `Nat`,
       `Int`, `Bool`, `String`, `Char` (`Expr`, `Tree Nat`): a JavaScript union
       `{ tag: i, _1: …, … }`.  `ctors` are the constructors applied to the parameters.  A result
-      of this type is compared only when it is not recursive (`Option Int`, `resultPrintable`),
-      printed `i(…, …)`: the constructor index, then the fields. -/
+      of this type is printed `i(…, …)`: the constructor index, then the fields, a recursive one
+      cut at the depth `treeShowDepth` (`showExpr`, `showTree` in JavaScript). -/
   | tree (ctors : List (Expr × List (Option SType)))
   /-- A function of one argument (`Int → String`, behind an `abbrev F := Int → String` too):
       `String` of `Nat`, `Int` or `String`, `Nat` of `Nat`, or `Int` of `Int`.  Only a parameter
@@ -74,6 +74,7 @@ inductive SType where
 def fnSampleOk : SType → SType → Bool
   | .nat, .string | .int, .string | .string, .string | .nat, .nat | .int, .int => true
   | .unit, .bool | .unit, .nat | .unit, .int | .unit, .string => true
+  | .unit, .tree _ => true
   | _, _ => false
 
 /-- The functions `dom1 → dom2 → cod` the checks have samples of (`SType.fn2`). -/
@@ -169,7 +170,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       | some ft => out := out.push ft
     return some out.toList
   match fields? with
-  | some [f] => if f matches .tree _ then return none else return some (.wrap c ctor f)
+  | some [f] => return some (.wrap c ctor f)
   | some fs => if fs.length ≥ 2 then return some (.record c ctor fs) else return none
   | none => return none
 
@@ -252,7 +253,9 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
     let lam (body : Expr) : Expr := mkLambda `x .default (elemTy dom) body
     if dom == .unit then
       -- a lazy value `Unit → cod`: two constant delays `() => c`
-      (samplesOf cfg cod nats |>.reverse.take 2).map fun c => ⟨lam c.lean, s!"() => {c.js}"⟩
+      -- (in parentheses: `() => ({ tag: 1 })` answers the object, `() => { tag: 1 }` is a block)
+      (samplesOf cfg cod nats |>.reverse.take 2).map fun c =>
+        ⟨lam c.lean, if c.js.startsWith "{" then s!"() => ({c.js})" else s!"() => {c.js}"⟩
     else
     match cod with
     | .string =>
@@ -499,10 +502,14 @@ def jsCall (jsName : String) (arity : Nat) (args : List String) : String :=
   let rest := args.drop arity
   s!"{jsName}({", ".intercalate first})" ++ String.join (rest.map fun a => s!"({a})")
 
-/-- Whether a result of the sample type `t` can be printed and compared: a union
-    (`SType.tree`) only when it is not recursive (`Option Int`), also inside a record. -/
+/-- How deep a value of a recursive union is printed by the checks (`showExpr`, and `showTree`
+    in JavaScript): the constructors below that depth are cut, `…`, on both sides. -/
+def treeShowDepth : Nat := 32
+
+/-- Whether a result of the sample type `t` can be printed and compared: every one now (a
+    recursive union, `MyList Int`, is printed to the depth `treeShowDepth`). -/
 partial def resultPrintable : SType → Bool
-  | .tree cs => cs.all (·.2.all (·.isSome))
+  | .tree _ => true
   | .record _ _ fs => fs.all resultPrintable
   | .wrap _ _ t => resultPrintable t
   | _ => true
@@ -529,14 +536,48 @@ partial def jsShowOf : SType → String
     let parts := fs.zipIdx.map fun (f, i) => call (jsShowOf f) s!"v._{i + 1}"
     "(v) => \"{\" + [" ++ ", ".intercalate parts ++ "].join(\", \") + \"}\""
   | .wrap _ _ t => jsShowOf t
-  -- a union `{ tag: i, _1: …, … }` (of leaf fields: `resultPrintable`) as `i(…, …)`
-  | .tree _ => "showUnion"
+  -- a union `{ tag: i, _1: …, … }` of leaf fields as `i(…, …)`; a recursive one by `showTree`,
+  -- told which fields of each constructor are the type itself, to the depth `treeShowDepth`
+  | .tree cs =>
+    if cs.all (·.2.all (·.isSome)) then "showUnion" else
+    let mask := cs.map fun (_, fs) =>
+      "[" ++ ", ".intercalate (fs.map fun f => if f.isNone then "true" else "false") ++ "]"
+    s!"(v) => showTree(v, [{", ".intercalate mask}], {treeShowDepth})"
   | _ => "show"
 
 /-- The JavaScript expression of the value of the call `e` (of result type `t`) that `check`
     compares: `e` itself, or, when `t` holds a `Float` in a record, its print (`jsShowOf`). -/
 def jsShown (t : SType) (e : String) : String :=
   if needsTypedShow t then s!"({jsShowOf t})({e})" else e
+
+mutual
+
+/-- The case analysis of the value `e` of a union (`SType.tree`) printing it `i(…, …)`: the
+    index of its constructor, then its fields, a leaf by `showExpr`, a recursive field by
+    `showRec`. -/
+partial def treeCases (ctors : List (Expr × List (Option SType))) (e : Expr)
+    (showRec : Expr → MetaM Expr) : MetaM Expr := do
+  let some (c0, _) := ctors.head? | mkAppM ``toString #[e]
+  let some (cn, lvls) := c0.getAppFn.const? | mkAppM ``toString #[e]
+  let some (.ctorInfo cv) := (← getEnv).find? cn | mkAppM ``toString #[e]
+  let params := c0.getAppArgs
+  let casesName := mkCasesOnName cv.induct
+  let casesInfo ← getConstInfo casesName
+  let lvls' := if casesInfo.levelParams.length == lvls.length + 1 then Level.one :: lvls else lvls
+  let indTy := mkAppN (mkConst cv.induct lvls) params
+  let motive := mkLambda `x .default indTy (mkConst ``String)
+  let minors ← ctors.zipIdx.mapM fun ((ctor, fs), i) => do
+    forallTelescopeReducing (← inferType ctor) fun xs _ => do
+      let parts ← (xs.toList.zip fs).mapM fun (x, ft?) => match ft? with
+        | some ft => showExpr ft x
+        | none => showRec x
+      let app (a b : Expr) : MetaM Expr := mkAppM ``HAppend.hAppend #[a, b]
+      let body ← match parts with
+        | [] => pure (toExpr "")
+        | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
+      let body ← app (← app (toExpr s!"{i}(") body) (toExpr ")")
+      mkLambdaFVars xs body
+  return mkAppN (mkConst casesName lvls') (params ++ #[motive, e] ++ minors.toArray)
 
 /-- The Lean expression printing the value `e` of the sample type `t` as the check module
     prints the JavaScript value (`show`): `toString`, of the bits of a `Float`, of the array
@@ -558,23 +599,27 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
     let some (c0, _) := ctors.head? | mkAppM ``toString #[e]
     let some (cn, lvls) := c0.getAppFn.const? | mkAppM ``toString #[e]
     let some (.ctorInfo cv) := (← getEnv).find? cn | mkAppM ``toString #[e]
-    let params := c0.getAppArgs
-    let casesName := mkCasesOnName cv.induct
-    let casesInfo ← getConstInfo casesName
-    let lvls' := if casesInfo.levelParams.length == lvls.length + 1 then levelOne :: lvls else lvls
-    let indTy := mkAppN (mkConst cv.induct lvls) params
-    let motive := mkLambda `x .default indTy (mkConst ``String)
-    let minors ← ctors.zipIdx.mapM fun ((ctor, fs), i) => do
-      forallTelescopeReducing (← inferType ctor) fun xs _ => do
-        let parts ← (xs.toList.zip fs).mapM fun (x, ft?) => showExpr (ft?.getD .nat) x
-        let app (a b : Expr) : MetaM Expr := mkAppM ``HAppend.hAppend #[a, b]
-        let body ← match parts with
-          | [] => pure (toExpr "")
-          | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
-        let body ← app (← app (toExpr s!"{i}(") body) (toExpr ")")
-        mkLambdaFVars xs body
-    return mkAppN (mkConst casesName lvls') (params ++ #[motive, e] ++ minors.toArray)
+    let indTy := mkAppN (mkConst cv.induct lvls) c0.getAppArgs
+    if ctors.all (·.2.all (·.isSome)) then
+      treeCases ctors e fun _ => pure (toExpr "…")
+    else
+      -- a recursive union: the functions `f₀ … f_D` printing a value to depth `0 … D` (a
+      -- value deeper than that is cut, `…`, at the same depth as `showTree` in JavaScript),
+      -- each one a `let` reading the one before it at the recursive fields
+      let fnTy := mkForall `x .default indTy (mkConst ``String)
+      let base := mkLambda `x .default indTy (toExpr "…")
+      let step (prev : Expr) : MetaM Expr :=
+        withLocalDeclD `x indTy fun x => do
+          mkLambdaFVars #[x] (← treeCases ctors x fun y => pure (mkApp prev y))
+      let rec go : Nat → Expr → MetaM Expr
+        | 0, prev => pure (mkApp prev e)
+        | k + 1, prev => do
+          let v ← step prev
+          withLetDecl `f fnTy v fun f => do mkLetFVars #[f] (← go k f)
+      withLetDecl `f fnTy base fun f0 => do mkLetFVars #[f0] (← go treeShowDepth f0)
   | _ => mkAppM ``toString #[e]
+
+end
 
 /-- The checks of one function: `none` when its type is not one of sample types.  Each
     expected answer is computed by Lean with a time budget of `timeoutMs` milliseconds; the
@@ -705,6 +750,17 @@ function show(v) {
 function showUnion(v) {
   const fs = [];
   for (let i = 1; (\"_\" + i) in v; i++) fs.push(show(v[\"_\" + i]));
+  return v.tag + \"(\" + fs.join(\", \") + \")\";
+}
+// a recursive union: as `showUnion`, the fields marked in `rec[tag]` (the type itself) printed
+// the same way, one level less deep (`…` at depth 0, as `showExpr` cuts it in Lean)
+function showTree(v, rec, d) {
+  if (d === 0) return \"…\";
+  if (typeof v === \"number\") return v + \"()\";
+  const r = rec[v.tag] || [];
+  const fs = [];
+  for (let i = 1; (\"_\" + i) in v; i++)
+    fs.push(r[i - 1] ? showTree(v[\"_\" + i], rec, d - 1) : show(v[\"_\" + i]));
   return v.tag + \"(\" + fs.join(\", \") + \")\";
 }
 function floatBits(x) {

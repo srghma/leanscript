@@ -1,3 +1,36 @@
+# Summary of changes for run 83129ed6-47c2-4da8-9ec4-361123676817
+Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferenceOpIsTag.lean` already matched or beat the legacy output on every definition, so the generated JavaScript is unchanged. What was missing was testing: the file had **0 differential checks against Lean**, because the check tool skipped results of recursive datatypes like `MyList Int`. I fixed that, and the file now has 13 checks per preset, all passing.
+
+**Comparison with the legacy output** (the full write-up is in `Tests/SnapshotsPBOPure/InlineReferenceOpIsTag.md`):
+- **`test1`–`test3`:** the same as legacy. Each is `(fn) => ({ tag: 0, _1: 0, _2: { tag: 0, _1: 1, _2: fn() } })`. The `match` on the known constructor is already decided when Lean is turned into `Term`. `Term.optimize` then drops the unused `fn ()` call in `test3`.
+- **`extern1`–`extern3`:** better. They are computed at compile time, where legacy calls `fn$p({})` when the module loads. Because one-field records are unboxed, `extern2 = extern1` instead of a nested record.
+- **`test4`:** the same as legacy (`{ tag: 0, _1: 0, _2: extern1 }`).
+- **`test5`, `test6`:** better. They are just `test4`, where legacy builds a new object in an immediately-called function for each.
+- **Phases:** every decision happens in `Term -[optimize]-> Term`. The sharing of `extern1`/`test4` happens in `Term -[convert]-> JsTerm`, because `Term` has no global names. The file has no loops or recursion, so labeled blocks and loops don't come into it.
+
+**Change to the check tool (`LeanScriptCli/Check.lean`):**
+- **Recursive datatypes are now compared.** On the Lean side, the printer is a chain of `let`-bound functions that each read the previous one. This stays linear in size and can be compiled for evaluation. On the JavaScript side, a new `showTree` function in every check module prints the same format. Both cut values at depth 32 the same way, so deeper values are still compared on their first 32 levels.
+- **Lazy parameters returning such a type** (`Unit → MyList Int`) now get samples, written `() => ({ … })`.
+- **A one-field structure holding a union** (`RecA`) is now handled, matching how the translation unboxes it.
+- **Sanity check:** deliberately breaking `test4` by hand makes `test4`, `test5` and `test6` fail, as they should.
+
+**Testing:**
+- **New snapshot `Tests/SnapshotsMy/RecursiveUnionChecks.lean`:** list append, a 40-element list (deeper than the depth-32 cut), a tree mirror and insert, wrapped and paired structures, and a lazy list parameter. It has 242 checks per preset, all passing under node.
+- **New `inlineReferenceOpIsTagSpec` in `Tests/Main.lean`:** checks the expected and absent lines on both presets, the number of checks, and runs the checks under node.
+- **All snapshots regenerated:**
+  - No generated JavaScript changed.
+  - The check modules only gained lines: the new printer in each, and new checks in `RecData` and `InlineReferenceOpIsTag`. Every check passes under node.
+  - The snapshot script still exits non-zero, as before: three `*Configurable.lean` files report "UInt64 literal too big" at preset `pbo`. Their outputs are unchanged, and the error comes from translation, not from the checks.
+- `lake build leanscript tests` succeeds, and `lake exe tests` passes 130/130.
+
+No theorems were involved, so nothing was added to the Properties table. Everything is committed.
+
+## Suggested follow-up
+
+Two things I noticed but didn't change:
+1. `fn_prime` (type `Unit → MyList Int`) is exported as a plain value, but a parameter of the same type is treated as a function to call. So `test1(fn_prime)` would fail in JavaScript. This is the project's general convention for `Unit → τ` definitions. I can export them as `() => value` instead if you'd like.
+2. While writing the new test file I saw that structural recursion on your own datatypes (e.g. `MyList.app`) translates to a helper that builds a table of results and returns closures, rather than a loop or labeled block. It is correct (all checks pass) but slow and not stack-safe. I can work on translating it as a loop.
+
 # Summary of changes for run 0d1082e6-1724-4bd0-a6fa-54d40319d898
 Our JavaScript for `Tests/SnapshotsPBOPure/InlineReferenceOpArrayLength.lean` now matches the legacy output's shape on every definition, and is better on `test2` and `extern1`/`extern2`. While regenerating the snapshots I also found and fixed an optimiser slowdown that blew up exponentially. All checks and tests pass.
 

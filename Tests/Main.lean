@@ -2750,6 +2750,51 @@ def inlineReferenceIfThenElseSpec : Spec := describe "InlineReferenceIfThenElse"
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
 
+/-- `InlineReferenceOpIsTag.lean`: the tests of the constructor of a value built in place (`match
+    Cons 1 (fn ()) with | Cons .. => …`, through records too) are decided while Lean is turned
+    into `Term` and by `Term.optimize`; the constants read the earlier constants
+    (`shareConstValues`), a structure of one field is its field (`extern2 = extern1`).  Its
+    results are of a recursive datatype of the source (`MyList Int`): the checks print them to the
+    depth `treeShowDepth` (`showTree`), so they are compared with Lean too, and so are those of
+    `Tests/SnapshotsMy/RecursiveUnionChecks.lean` (a tree, a value deeper than that depth, unboxed
+    structures, a lazy parameter answering a list). -/
+def inlineReferenceOpIsTagSpec : Spec := describe "InlineReferenceOpIsTag" do
+  it "the tests of a known constructor are decided (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/inlinerefistag"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, at `pbo`, at `faithful`, absent, checks)
+    for (path, file, frags, pboFrags, faithfulFrags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "InlineReferenceOpIsTag",
+          ["export const extern2 = extern1;", "export const extern3 = { _1: extern1, _2: { tag: 1 } };",
+           "export const test5 = test4;", "export const test6 = test4;"],
+          ["export const test1 = (fn) => ({\n  tag: 0,\n  _1: 0,\n  _2: { tag: 0, _1: 1, _2: fn() },\n});",
+           "export const test4 = { tag: 0, _1: 0, _2: extern1 };"],
+          ["export const test1 = (fn) => ({\n  tag: 0,\n  _1: 0n,\n  _2: { tag: 0, _1: 1n, _2: fn() },\n});",
+           "export const test4 = { tag: 0, _1: 0n, _2: extern1 };"],
+          ["if (", " ? ", ".tag", "=== 0", "switch", "fn_prime("], (13 : Nat)),
+        ("Tests/SnapshotsMy", "RecursiveUnionChecks",
+          ["export const wrapMirror = ", "export const consForced = (f) => "], [], [], [], 242)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for (preset, own) in [("pbo", pboFrags), ("faithful", faithfulFrags)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags ++ own do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -2788,6 +2833,7 @@ def spec : Spec := do
   inlineReferenceOpArrayLengthSpec
   nestedEnumCasesSpec
   inlineReferenceIfThenElseSpec
+  inlineReferenceOpIsTagSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

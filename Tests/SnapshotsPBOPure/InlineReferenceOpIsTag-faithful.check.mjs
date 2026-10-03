@@ -23,6 +23,17 @@ function showUnion(v) {
   for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
   return v.tag + "(" + fs.join(", ") + ")";
 }
+// a recursive union: as `showUnion`, the fields marked in `rec[tag]` (the type itself) printed
+// the same way, one level less deep (`…` at depth 0, as `showExpr` cuts it in Lean)
+function showTree(v, rec, d) {
+  if (d === 0) return "…";
+  if (typeof v === "number") return v + "()";
+  const r = rec[v.tag] || [];
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++)
+    fs.push(r[i - 1] ? showTree(v["_" + i], rec, d - 1) : show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
@@ -48,6 +59,19 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test1(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-1, 1()))))", false);
+check("test1(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test1(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-7, 1()))))", false);
+check("test2(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test2(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-1, 1()))))", false);
+check("test2(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test2(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-7, 1()))))", false);
+check("test3(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test3(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -1n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-1, 1()))))", false);
+check("test3(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))", () => ((v) => showTree(v, [[false, true], []], 32))(M.test3(() => ({ tag: 0, _1: -1n, _2: { tag: 0, _1: -7n, _2: { tag: 1 } } }))), "0(0, 0(1, 0(-1, 0(-7, 1()))))", false);
+check("fn_prime", () => ((v) => showTree(v, [[false, true], []], 32))(M.fn_prime), "1()", false);
+check("extern1", () => ((v) => showTree(v, [[false, true], []], 32))(M.extern1), "0(1, 1())", false);
+check("extern2", () => ((v) => showTree(v, [[false, true], []], 32))(M.extern2), "0(1, 1())", false);
+check("extern3", () => ((v) => "{" + [((v) => showTree(v, [[false, true], []], 32))(v._1), ((v) => showTree(v, [[false, true], []], 32))(v._2)].join(", ") + "}")(M.extern3), "{0(1, 1()), 1()}", false);
+check("test4", () => ((v) => showTree(v, [[false, true], []], 32))(M.test4), "0(0, 0(1, 1()))", false);
+check("test5", () => ((v) => showTree(v, [[false, true], []], 32))(M.test5), "0(0, 0(1, 1()))", false);
+check("test6", () => ((v) => showTree(v, [[false, true], []], 32))(M.test6), "0(0, 0(1, 1()))", false);
 
 console.log(`InlineReferenceOpIsTag-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

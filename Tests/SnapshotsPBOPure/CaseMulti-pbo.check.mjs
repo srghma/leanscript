@@ -23,6 +23,17 @@ function showUnion(v) {
   for (let i = 1; ("_" + i) in v; i++) fs.push(show(v["_" + i]));
   return v.tag + "(" + fs.join(", ") + ")";
 }
+// a recursive union: as `showUnion`, the fields marked in `rec[tag]` (the type itself) printed
+// the same way, one level less deep (`…` at depth 0, as `showExpr` cuts it in Lean)
+function showTree(v, rec, d) {
+  if (d === 0) return "…";
+  if (typeof v === "number") return v + "()";
+  const r = rec[v.tag] || [];
+  const fs = [];
+  for (let i = 1; ("_" + i) in v; i++)
+    fs.push(r[i - 1] ? showTree(v["_" + i], rec, d - 1) : show(v["_" + i]));
+  return v.tag + "(" + fs.join(", ") + ")";
+}
 function floatBits(x) {
   return String(new BigUint64Array(new Float64Array([x]).buffer)[0]);
 }
