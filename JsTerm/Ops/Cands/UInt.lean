@@ -21,11 +21,11 @@ namespace JsOp
 
 /-- The operations of `lean_uint16_add`. -/
 def «cands_lean_uint16_add» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_add⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_add⟩]
 
 /-- The operations of `lean_uint16_complement`. -/
 def «cands_lean_uint16_complement» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_complement⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_complement⟩]
 
 /-- The operations of `lean_uint16_dec_eq`. -/
 def «cands_lean_uint16_dec_eq» : List Cand :=
@@ -45,7 +45,7 @@ def «cands_lean_uint16_div» : List Cand :=
 
 /-- The operations of `lean_uint16_land`. -/
 def «cands_lean_uint16_land» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_land⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_land⟩]
 
 /-- The operations of `lean_uint16_log2`. -/
 def «cands_lean_uint16_log2» : List Cand :=
@@ -53,7 +53,7 @@ def «cands_lean_uint16_log2» : List Cand :=
 
 /-- The operations of `lean_uint16_lor`. -/
 def «cands_lean_uint16_lor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_lor⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_lor⟩]
 
 /-- The operations of `lean_uint16_mod`. -/
 def «cands_lean_uint16_mod» : List Cand :=
@@ -61,11 +61,11 @@ def «cands_lean_uint16_mod» : List Cand :=
 
 /-- The operations of `lean_uint16_mul`. -/
 def «cands_lean_uint16_mul» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_mul⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_mul⟩]
 
 /-- The operations of `lean_uint16_neg`. -/
 def «cands_lean_uint16_neg» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_neg⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_neg⟩]
 
 /-- The operations of `lean_uint16_of_nat__UInt16_ofNat`. -/
 def «cands_lean_uint16_of_nat__UInt16_ofNat» : List Cand :=
@@ -89,7 +89,7 @@ def «cands_lean_uint16_shift_right» : List Cand :=
 
 /-- The operations of `lean_uint16_sub`. -/
 def «cands_lean_uint16_sub» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_sub⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_sub⟩]
 
 /-- The operations of `lean_uint16_to_float`. -/
 def «cands_lean_uint16_to_float» : List Cand :=
@@ -121,15 +121,15 @@ def «cands_lean_uint16_to_uint8» : List Cand :=
 
 /-- The operations of `lean_uint16_xor`. -/
 def «cands_lean_uint16_xor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_xor⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_xor⟩]
 
 /-- The operations of `lean_uint32_add`. -/
 def «cands_lean_uint32_add» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_add⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_add⟩]
 
 /-- The operations of `lean_uint32_complement`. -/
 def «cands_lean_uint32_complement» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_complement⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_complement⟩]
 
 /-- The operations of `lean_uint32_dec_eq`. -/
 def «cands_lean_uint32_dec_eq» : List Cand :=
@@ -149,7 +149,7 @@ def «cands_lean_uint32_div» : List Cand :=
 
 /-- The operations of `lean_uint32_land`. -/
 def «cands_lean_uint32_land» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_land⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_land⟩]
 
 /-- The operations of `lean_uint32_log2`. -/
 def «cands_lean_uint32_log2» : List Cand :=
@@ -157,7 +157,7 @@ def «cands_lean_uint32_log2» : List Cand :=
 
 /-- The operations of `lean_uint32_lor`. -/
 def «cands_lean_uint32_lor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_lor⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_lor⟩]
 
 /-- The operations of `lean_uint32_mod`. -/
 def «cands_lean_uint32_mod» : List Cand :=
@@ -165,11 +165,11 @@ def «cands_lean_uint32_mod» : List Cand :=
 
 /-- The operations of `lean_uint32_mul`. -/
 def «cands_lean_uint32_mul» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_mul⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_mul⟩]
 
 /-- The operations of `lean_uint32_neg`. -/
 def «cands_lean_uint32_neg» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_neg⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_neg⟩]
 
 /-- The operations of `lean_uint32_of_nat__Char_ofNatAux`. -/
 def «cands_lean_uint32_of_nat__Char_ofNatAux» : List Cand :=
@@ -197,7 +197,7 @@ def «cands_lean_uint32_shift_right» : List Cand :=
 
 /-- The operations of `lean_uint32_sub`. -/
 def «cands_lean_uint32_sub» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_sub⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_sub⟩]
 
 /-- The operations of `lean_uint32_to_float`. -/
 def «cands_lean_uint32_to_float» : List Cand :=
@@ -229,15 +229,15 @@ def «cands_lean_uint32_to_uint8» : List Cand :=
 
 /-- The operations of `lean_uint32_xor`. -/
 def «cands_lean_uint32_xor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_xor⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_xor⟩]
 
 /-- The operations of `lean_uint64_add`. -/
 def «cands_lean_uint64_add» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_add⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_add⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_add⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_add⟩]
 
 /-- The operations of `lean_uint64_complement`. -/
 def «cands_lean_uint64_complement» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_complement⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_complement⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_complement⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_complement⟩]
 
 /-- The operations of `lean_uint64_dec_eq`. -/
 def «cands_lean_uint64_dec_eq» : List Cand :=
@@ -257,7 +257,7 @@ def «cands_lean_uint64_div» : List Cand :=
 
 /-- The operations of `lean_uint64_land`. -/
 def «cands_lean_uint64_land» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_land⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_land⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_land⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_land⟩]
 
 /-- The operations of `lean_uint64_log2`. -/
 def «cands_lean_uint64_log2» : List Cand :=
@@ -265,7 +265,7 @@ def «cands_lean_uint64_log2» : List Cand :=
 
 /-- The operations of `lean_uint64_lor`. -/
 def «cands_lean_uint64_lor» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_lor⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_lor⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_lor⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_lor⟩]
 
 /-- The operations of `lean_uint64_mix_hash`. -/
 def «cands_lean_uint64_mix_hash» : List Cand :=
@@ -277,11 +277,11 @@ def «cands_lean_uint64_mod» : List Cand :=
 
 /-- The operations of `lean_uint64_mul`. -/
 def «cands_lean_uint64_mul» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_mul⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_mul⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_mul⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_mul⟩]
 
 /-- The operations of `lean_uint64_neg`. -/
 def «cands_lean_uint64_neg» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_neg⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_neg⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_neg⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_neg⟩]
 
 /-- The operations of `lean_uint64_of_nat__UInt64_ofNat`. -/
 def «cands_lean_uint64_of_nat__UInt64_ofNat» : List Cand :=
@@ -305,7 +305,7 @@ def «cands_lean_uint64_shift_right» : List Cand :=
 
 /-- The operations of `lean_uint64_sub`. -/
 def «cands_lean_uint64_sub» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_sub⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_sub⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_sub⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_sub⟩]
 
 /-- The operations of `lean_uint64_to_float`. -/
 def «cands_lean_uint64_to_float» : List Cand :=
@@ -337,15 +337,15 @@ def «cands_lean_uint64_to_uint8» : List Cand :=
 
 /-- The operations of `lean_uint64_xor`. -/
 def «cands_lean_uint64_xor» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_xor⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_xor⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_xor⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_xor⟩]
 
 /-- The operations of `lean_uint8_add`. -/
 def «cands_lean_uint8_add» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_add⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_add⟩]
 
 /-- The operations of `lean_uint8_complement`. -/
 def «cands_lean_uint8_complement» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_complement⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_complement⟩]
 
 /-- The operations of `lean_uint8_dec_eq`. -/
 def «cands_lean_uint8_dec_eq» : List Cand :=
@@ -365,7 +365,7 @@ def «cands_lean_uint8_div» : List Cand :=
 
 /-- The operations of `lean_uint8_land`. -/
 def «cands_lean_uint8_land» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_land⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_land⟩]
 
 /-- The operations of `lean_uint8_log2`. -/
 def «cands_lean_uint8_log2» : List Cand :=
@@ -373,7 +373,7 @@ def «cands_lean_uint8_log2» : List Cand :=
 
 /-- The operations of `lean_uint8_lor`. -/
 def «cands_lean_uint8_lor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_lor⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_lor⟩]
 
 /-- The operations of `lean_uint8_mod`. -/
 def «cands_lean_uint8_mod» : List Cand :=
@@ -381,11 +381,11 @@ def «cands_lean_uint8_mod» : List Cand :=
 
 /-- The operations of `lean_uint8_mul`. -/
 def «cands_lean_uint8_mul» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_mul⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_mul⟩]
 
 /-- The operations of `lean_uint8_neg`. -/
 def «cands_lean_uint8_neg» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_neg⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_neg⟩]
 
 /-- The operations of `lean_uint8_of_nat__UInt8_ofNat`. -/
 def «cands_lean_uint8_of_nat__UInt8_ofNat» : List Cand :=
@@ -409,7 +409,7 @@ def «cands_lean_uint8_shift_right» : List Cand :=
 
 /-- The operations of `lean_uint8_sub`. -/
 def «cands_lean_uint8_sub» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_sub⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_sub⟩]
 
 /-- The operations of `lean_uint8_to_float`. -/
 def «cands_lean_uint8_to_float» : List Cand :=
@@ -441,7 +441,7 @@ def «cands_lean_uint8_to_uint64» : List Cand :=
 
 /-- The operations of `lean_uint8_xor`. -/
 def «cands_lean_uint8_xor» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_xor⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_xor⟩]
 
 /-- The candidates of the extern `name`, when it is one of the unsigned fixed-width integers. -/
 def candsUInt? (name : String) : Option (List Cand) :=

@@ -25,11 +25,7 @@
 //   TestISize.neg: LeanScript: the width of BitVec System.Platform.numBits is not a numeral
 
 import {
-  bigint_nat__lean_uint64_add,
-  bigint_nat__lean_uint64_sub,
-  bigint_nat__lean_uint64_mul,
   bigint_nat__lean_uint64_div,
-  bigint_nat__lean_uint64_neg,
   bigint_nat__lean_nat_sub,
   bigint_nat__lean_nat_div,
   bigint_int__lean_int64_add,
@@ -46,7 +42,7 @@ import {
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$add = (a, b) => bigint_nat__lean_uint64_add(a, b);
+export const TestUInt64$add = (a, b) => BigInt.asUintN(64, a + b);
 
 /**
  * `TestUInt64.sub`
@@ -54,7 +50,7 @@ export const TestUInt64$add = (a, b) => bigint_nat__lean_uint64_add(a, b);
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$sub = (a, b) => bigint_nat__lean_uint64_sub(a, b);
+export const TestUInt64$sub = (a, b) => BigInt.asUintN(64, a - b);
 
 /**
  * `TestUInt64.eq`
@@ -110,7 +106,7 @@ export const TestUInt64$ge = (a, b) => b <= a;
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$mul = (a, b) => bigint_nat__lean_uint64_mul(a, b);
+export const TestUInt64$mul = (a, b) => BigInt.asUintN(64, a * b);
 
 /**
  * `TestUInt64.div`
@@ -125,7 +121,7 @@ export const TestUInt64$div = (a, b) => bigint_nat__lean_uint64_div(a, b);
  * @param {nat(bigint)} a
  * @returns {nat(bigint)}
  */
-export const TestUInt64$neg = (a) => bigint_nat__lean_uint64_neg(a);
+export const TestUInt64$neg = (a) => BigInt.asUintN(64, -a);
 
 /**
  * `TestNat.add`

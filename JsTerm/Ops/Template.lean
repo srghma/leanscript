@@ -107,8 +107,10 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint16__lean_uint16_to_uint32 => .arg 0
   | .bigint_nat__lean_uint32_to_uint64 => .call "BigInt" [.arg 0]
   | .uint53__lean_uint32_to_uint64 => .arg 0
+  | .uint32__lean_uint32_sub => .bin ">>>" (.bin "-" (.arg 0) (.arg 1)) (.num 0)
   | .bigint_nat__lean_uint16_to_nat__UInt16_toNat => .call "BigInt" [.arg 0]
   | .uint53__lean_uint16_to_nat__UInt16_toNat => .arg 0
+  | .uint32__lean_uint32_add => .bin ">>>" (.bin "+" (.arg 0) (.arg 1)) (.num 0)
   | .bigint_nat__lean_uint8_to_uint64 => .call "BigInt" [.arg 0]
   | .uint53__lean_uint8_to_uint64 => .arg 0
   | .bigint_nat__lean_uint8_to_nat__UInt8_toNat => .call "BigInt" [.arg 0]
@@ -117,13 +119,43 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .bigint_nat__lean_uint16_to_uint64 => .call "BigInt" [.arg 0]
   | .uint53__lean_uint16_to_uint64 => .arg 0
   | .uint8__lean_uint8_to_uint16 => .arg 0
+  | .uint8__lean_uint8_sub => .bin "&" (.bin "-" (.arg 0) (.arg 1)) (.num 255)
+  | .uint8__lean_uint8_neg => .bin "&" (.un "-" (.arg 0)) (.num 255)
+  | .uint8__lean_uint8_lor => .bin "|" (.arg 0) (.arg 1)
+  | .uint8__lean_uint8_land => .bin "&" (.arg 0) (.arg 1)
+  | .uint8__lean_uint8_mul => .bin "&" (.bin "*" (.arg 0) (.arg 1)) (.num 255)
+  | .uint8__lean_uint8_add => .bin "&" (.bin "+" (.arg 0) (.arg 1)) (.num 255)
+  | .uint8__lean_uint8_complement => .bin "&" (.un "~" (.arg 0)) (.num 255)
+  | .uint8__lean_uint8_xor => .bin "^" (.arg 0) (.arg 1)
+  | .uint16__lean_uint16_neg => .bin "&" (.un "-" (.arg 0)) (.num 65535)
+  | .uint16__lean_uint16_add => .bin "&" (.bin "+" (.arg 0) (.arg 1)) (.num 65535)
+  | .uint16__lean_uint16_lor => .bin "|" (.arg 0) (.arg 1)
+  | .uint16__lean_uint16_mul => .bin "&" (.bin "*" (.arg 0) (.arg 1)) (.num 65535)
+  | .uint16__lean_uint16_land => .bin "&" (.arg 0) (.arg 1)
+  | .uint16__lean_uint16_complement => .bin "&" (.un "~" (.arg 0)) (.num 65535)
+  | .uint16__lean_uint16_xor => .bin "^" (.arg 0) (.arg 1)
   | .uint16__lean_uint16_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .uint16__lean_uint16_dec_le => .bin "<=" (.arg 0) (.arg 1)
+  | .uint16__lean_uint16_sub => .bin "&" (.bin "-" (.arg 0) (.arg 1)) (.num 65535)
   | .uint32__lean_uint32_shift_right => .bin ">>>" (.arg 0) (.arg 1)
+  | .uint32__lean_uint32_neg => .bin ">>>" (.un "-" (.arg 0)) (.num 0)
+  | .uint32__lean_uint32_lor => .bin ">>>" (.bin "|" (.arg 0) (.arg 1)) (.num 0)
+  | .uint32__lean_uint32_xor => .bin ">>>" (.bin "^" (.arg 0) (.arg 1)) (.num 0)
+  | .uint32__lean_uint32_mul => .bin ">>>" (.call "Math.imul" [.arg 0, .arg 1]) (.num 0)
+  | .uint32__lean_uint32_land => .bin ">>>" (.bin "&" (.arg 0) (.arg 1)) (.num 0)
+  | .uint32__lean_uint32_complement => .bin ">>>" (.un "~" (.arg 0)) (.num 0)
+  | .bigint_nat__lean_uint64_complement => .call "BigInt.asUintN" [.num 64, .un "~" (.arg 0)]
+  | .bigint_nat__lean_uint64_add => .call "BigInt.asUintN" [.num 64, .bin "+" (.arg 0) (.arg 1)]
+  | .bigint_nat__lean_uint64_lor => .bin "|" (.arg 0) (.arg 1)
+  | .bigint_nat__lean_uint64_mul => .call "BigInt.asUintN" [.num 64, .bin "*" (.arg 0) (.arg 1)]
+  | .bigint_nat__lean_uint64_land => .bin "&" (.arg 0) (.arg 1)
   | .bigint_nat__lean_uint64_dec_le => .bin "<=" (.arg 0) (.arg 1)
   | .uint53__lean_uint64_dec_le => .bin "<=" (.arg 0) (.arg 1)
+  | .bigint_nat__lean_uint64_sub => .call "BigInt.asUintN" [.num 64, .bin "-" (.arg 0) (.arg 1)]
+  | .bigint_nat__lean_uint64_neg => .call "BigInt.asUintN" [.num 64, .un "-" (.arg 0)]
   | .bigint_nat__lean_uint64_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .uint53__lean_uint64_dec_lt => .bin "<" (.arg 0) (.arg 1)
+  | .bigint_nat__lean_uint64_xor => .bin "^" (.arg 0) (.arg 1)
   | .int8__lean_int8_to_int16 => .arg 0
   | .int8__lean_int8_dec_eq => .bin "===" (.arg 0) (.arg 1)
   | .int8__lean_int8_dec_lt => .bin "<" (.arg 0) (.arg 1)

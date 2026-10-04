@@ -2,23 +2,11 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  uint8__lean_uint8_land,
-  uint8__lean_uint8_lor,
   uint8__lean_uint8_shift_left,
   uint8__lean_uint8_shift_right,
-  uint8__lean_uint8_xor,
-  uint8__lean_uint8_complement,
-  uint16__lean_uint16_land,
-  uint16__lean_uint16_lor,
   uint16__lean_uint16_shift_left,
   uint16__lean_uint16_shift_right,
-  uint16__lean_uint16_xor,
-  uint16__lean_uint16_complement,
-  uint32__lean_uint32_land,
-  uint32__lean_uint32_lor,
   uint32__lean_uint32_shift_left,
-  uint32__lean_uint32_xor,
-  uint32__lean_uint32_complement,
   int8__lean_int8_land,
   int8__lean_int8_lor,
   int8__lean_int8_shift_left,
@@ -43,7 +31,7 @@ import {
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$land = (a, b) => uint8__lean_uint8_land(a, b);
+export const TestUInt8$land = (a, b) => a & b;
 
 /**
  * `TestUInt8.lor`
@@ -51,7 +39,7 @@ export const TestUInt8$land = (a, b) => uint8__lean_uint8_land(a, b);
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$lor = (a, b) => uint8__lean_uint8_lor(a, b);
+export const TestUInt8$lor = (a, b) => a | b;
 
 /**
  * `TestUInt8.shiftLeft`
@@ -76,14 +64,14 @@ export const TestUInt8$shiftRight = (a, b) =>
  * @param {uint8} b
  * @returns {uint8}
  */
-export const TestUInt8$xor = (a, b) => uint8__lean_uint8_xor(a, b);
+export const TestUInt8$xor = (a, b) => a ^ b;
 
 /**
  * `TestUInt8.complement`
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8$complement = (a) => uint8__lean_uint8_complement(a);
+export const TestUInt8$complement = (a) => ~a & 255;
 
 /**
  * `TestUInt16.land`
@@ -91,7 +79,7 @@ export const TestUInt8$complement = (a) => uint8__lean_uint8_complement(a);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$land = (a, b) => uint16__lean_uint16_land(a, b);
+export const TestUInt16$land = (a, b) => a & b;
 
 /**
  * `TestUInt16.lor`
@@ -99,7 +87,7 @@ export const TestUInt16$land = (a, b) => uint16__lean_uint16_land(a, b);
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$lor = (a, b) => uint16__lean_uint16_lor(a, b);
+export const TestUInt16$lor = (a, b) => a | b;
 
 /**
  * `TestUInt16.shiftLeft`
@@ -125,14 +113,14 @@ export const TestUInt16$shiftRight = (a, b) =>
  * @param {uint16} b
  * @returns {uint16}
  */
-export const TestUInt16$xor = (a, b) => uint16__lean_uint16_xor(a, b);
+export const TestUInt16$xor = (a, b) => a ^ b;
 
 /**
  * `TestUInt16.complement`
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16$complement = (a) => uint16__lean_uint16_complement(a);
+export const TestUInt16$complement = (a) => ~a & 65535;
 
 /**
  * `TestUInt32.land`
@@ -140,7 +128,7 @@ export const TestUInt16$complement = (a) => uint16__lean_uint16_complement(a);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$land = (a, b) => uint32__lean_uint32_land(a, b);
+export const TestUInt32$land = (a, b) => (a & b) >>> 0;
 
 /**
  * `TestUInt32.lor`
@@ -148,7 +136,7 @@ export const TestUInt32$land = (a, b) => uint32__lean_uint32_land(a, b);
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$lor = (a, b) => uint32__lean_uint32_lor(a, b);
+export const TestUInt32$lor = (a, b) => (a | b) >>> 0;
 
 /**
  * `TestUInt32.shiftLeft`
@@ -173,14 +161,14 @@ export const TestUInt32$shiftRight = (a, b) => a >>> b;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$xor = (a, b) => uint32__lean_uint32_xor(a, b);
+export const TestUInt32$xor = (a, b) => (a ^ b) >>> 0;
 
 /**
  * `TestUInt32.complement`
  * @param {uint32} a
  * @returns {uint32}
  */
-export const TestUInt32$complement = (a) => uint32__lean_uint32_complement(a);
+export const TestUInt32$complement = (a) => ~a >>> 0;
 
 /**
  * `TestInt8.land`

@@ -24,7 +24,6 @@ import {
   array__lean_array_flatten,
   array__lean_array_back_opt,
   bigint_nat__lean_array_count_p,
-  uint8__lean_uint8_add,
   typedArray__lean_array_map,
 } from "../../runtime.js";
 
@@ -224,7 +223,7 @@ export const ArrStd$tTake = (a, n) => bigint_nat__lean_array_extract(a, 0n, n);
 export const ArrStd$tU8 = (a) => {
   const x$2 = typedArray__lean_array_map(
     Uint8Array,
-    (x$1) => uint8__lean_uint8_add(x$1, 1),
+    (x$1) => (x$1 + 1) & 255,
     a,
   );
   return array__lean_array_reverse(

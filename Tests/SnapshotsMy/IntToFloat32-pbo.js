@@ -2,7 +2,6 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 
 import {
-  uint32__lean_uint32_add,
   uint53__lean_uint32_of_nat__UInt32_ofNat,
   int32__lean_int32_add,
   int53__lean_int32_of_int,
@@ -18,12 +17,7 @@ import {
  * @returns {float}
  */
 export const u32ToF32 = (n) =>
-  Math.fround(
-    uint32__lean_uint32_add(
-      uint53__lean_uint32_of_nat__UInt32_ofNat(n),
-      16777216,
-    ),
-  );
+  Math.fround((uint53__lean_uint32_of_nat__UInt32_ofNat(n) + 16777216) >>> 0);
 
 /**
  * `i32ToF32`

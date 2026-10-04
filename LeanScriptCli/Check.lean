@@ -34,6 +34,9 @@ inductive SType where
   | uint (bits : Nat)
   /-- `Int8`, `Int16`, `Int32`, `Int64` (`bits` is the width). -/
   | sint (bits : Nat)
+  /-- `BitVec w`, for a literal width `w ≥ 2` (a JavaScript number, or a `BigInt` above 53 bits
+      when `bitvecRepr` says so); printed as its natural number (`BitVec.toNat`). -/
+  | bitvec (w : Nat)
   | arr (t : SType)
   | list (t : SType)
   /-- A value of a structure-like type (one constructor, no index, not recursive) of two or
@@ -136,6 +139,9 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     if e.isConstOf n then return some (.uint b)
   for (n, b) in [(``Int8, 8), (``Int16, 16), (``Int32, 32), (``Int64, 64)] do
     if e.isConstOf n then return some (.sint b)
+  if e.isAppOfArity ``BitVec 1 then
+    let some w ← evalNat (← whnf e.appArg!) | return none
+    return if 2 ≤ w then some (.bitvec w) else none
   if e.isAppOfArity ``Array 1 then
     match ← stypeOf? e.appArg! with
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
@@ -237,6 +243,13 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
     let big := b == 64 && cfg.uint64Repr == .bigint
     let ns : List Nat := [0, 1, 2, 5, 13] ++ (if b < 64 then [2 ^ b - 1] else [])
     ns.map fun n => ⟨uintExpr b n, intLit big n⟩
+  -- a bit vector: small ones, and the largest one (which overflows at the first addition)
+  -- where it is exact in JavaScript (a number below 2^53, or a `BigInt`)
+  | .bitvec w =>
+    let big := 53 < w && cfg.bitvecRepr == .bigint
+    let ns : List Nat := ([0, 1, 2, 5, 13].filter (· < 2 ^ w)) ++
+      (if w ≤ 53 || big then [2 ^ w - 1] else [])
+    ns.map fun n => ⟨mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n), intLit big n⟩
   | .sint b =>
     let big := b == 64 && cfg.int64Repr == .bigint
     let is : List Int := [-7, -1, 0, 3, 12] ++
@@ -631,6 +644,7 @@ partial def treeCases (ctors : List (Expr × List (Option SType))) (e : Expr)
 partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
   match t with
   | .float => mkAppM ``toString #[mkApp (mkConst ``Float.toBits) e]
+  | .bitvec w => mkAppM ``toString #[mkApp2 (mkConst ``BitVec.toNat) (mkNatLit w) e]
   | .list _ => mkAppM ``toString #[← mkAppM ``List.toArray #[e]]
   | .record ind _ fs =>
     let parts ← fs.zipIdx.mapM fun (ft, i) => showExpr ft (.proj ind i e)
@@ -761,6 +775,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let num64 := match res with
         | .uint 64 => cfg.uint64Repr == .num
         | .sint 64 => cfg.int64Repr == .num
+        | .bitvec w => 53 < w && cfg.bitvecRepr == .num
         | _ => false
       let tooBig : Bool := match e.toInt? with
         | some i => decide (i.natAbs > 2 ^ 53 - 1)

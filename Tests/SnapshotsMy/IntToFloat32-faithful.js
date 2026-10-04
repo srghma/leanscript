@@ -2,12 +2,10 @@
 // configuration: nat=bigint int=bigint uint64=bigint int64=bigint bitvec=bigint array-fixed-int=typed array-float=typed array-uint64=typed array-int64=typed array-bitvec=round-up list=tagged
 
 import {
-  uint32__lean_uint32_add,
   bigint_nat__lean_uint32_of_nat__UInt32_ofNat,
   int32__lean_int32_add,
   bigint_int__lean_int32_of_int,
   bigint_nat__lean_uint64_to_float32,
-  bigint_nat__lean_uint64_add,
   bigint_nat__lean_uint64_of_nat__UInt64_ofNat,
   bigint_int__lean_int64_to_float32,
   bigint_int__lean_int64_add,
@@ -21,10 +19,7 @@ import {
  */
 export const u32ToF32 = (n) =>
   Math.fround(
-    uint32__lean_uint32_add(
-      bigint_nat__lean_uint32_of_nat__UInt32_ofNat(n),
-      16777216,
-    ),
+    (bigint_nat__lean_uint32_of_nat__UInt32_ofNat(n) + 16777216) >>> 0,
   );
 
 /**
@@ -44,9 +39,9 @@ export const i32ToF32 = (i) =>
  */
 export const u64ToF32 = (n) =>
   bigint_nat__lean_uint64_to_float32(
-    bigint_nat__lean_uint64_add(
-      bigint_nat__lean_uint64_of_nat__UInt64_ofNat(n),
-      16777216n,
+    BigInt.asUintN(
+      64,
+      bigint_nat__lean_uint64_of_nat__UInt64_ofNat(n) + 16777216n,
     ),
   );
 

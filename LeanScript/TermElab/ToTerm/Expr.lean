@@ -297,6 +297,10 @@ partial def trApp (L : Loc) (e : Expr) : TM Src := do
       let info ← getConstInfo c
       let v := info.value!.instantiateLevelParams info.levelParams fn.constLevels!
       return ← tr L (← Core.betaReduce (v.beta args))
+    -- the constructor and the projection of a fixed-width unsigned integer (`UInt32.ofBitVec`,
+    -- `UInt32.toBitVec`) are their externs (the identity in JavaScript), not an erased wrapper:
+    -- `UInt32` and `BitVec 32` are different leaves of the language
+    if uintBitVecConv.contains c then return ← trExtern tr L e fn args
     if let some (.ctorInfo cinfo) := env.find? c then
       -- a constructor of a type of two values without fields (`Decidable.isTrue h`, the proof
       -- erased) is a `.bool`: the second constructor is `true`

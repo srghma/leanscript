@@ -318,10 +318,27 @@ end Counts
 
 /-! ## The rewrite -/
 
-/-- The first candidate call that every path of `t` computes and that occurs at least twice. -/
+/-- Is the call a conversion between a fixed-width unsigned integer and its bit vector
+    (`UInt32.ofBitVec`, `UInt32.toBitVec`)?  It is the identity in JavaScript, so naming it
+    would only add a copy (`const x$1 = a;`): it is never hoisted. -/
+def Neu.isUIntBitVecConv {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
+    Neu Δ Φ Γ τ ℓ → Bool
+  | .extern (.preludeExtern .lean_uint8_of_nat_mk) _ _
+  | .extern (.preludeExtern .lean_uint16_of_nat_mk) _ _
+  | .extern (.preludeExtern .lean_uint32_of_nat_mk) _ _
+  | .extern (.preludeExtern .lean_uint64_of_nat_mk) _ _
+  | .extern (.preludeExtern .lean_uint8_to_nat__UInt8_toBitVec) _ _
+  | .extern (.preludeExtern .lean_uint16_to_nat__UInt16_toBitVec) _ _
+  | .extern (.preludeExtern .lean_uint32_to_nat__UInt32_toBitVec) _ _
+  | .extern (.preludeExtern .lean_uint64_to_nat__UInt64_toBitVec) _ _ => true
+  | _ => false
+
+/-- The first candidate call that every path of `t` computes and that occurs at least twice
+    (a conversion that is the identity in JavaScript excepted, `Neu.isUIntBitVecConv`). -/
 def Term.pickHoist {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Option (SomeNeu Δ Φ Γ) :=
   t.cands.find? fun ⟨_, _, n⟩ =>
+    !n.isUIntBitVecConv &&
     match ENeu.ofNeu? n with
     | some s => decide (2 ≤ Term.occ s t) && Term.always s t
     | none => false

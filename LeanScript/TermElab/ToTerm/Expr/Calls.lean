@@ -194,6 +194,72 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
   let argSrcs ← vals.mapM (tr L)
   return .extern entryStx argSrcs
 
+/-- The fixed-width unsigned integer type whose values are the bit vectors of width `w`
+    (`UInt32` for `BitVec 32`: a structure around a `BitVec 32`), if there is one. -/
+def uintOfWidth? : Nat → Option Name
+  | 8 => some ``UInt8
+  | 16 => some ``UInt16
+  | 32 => some ``UInt32
+  | 64 => some ``UInt64
+  | _ => none
+
+/-- The constructors and projections of the fixed-width unsigned integers, between the integer
+    and its bit vector (`UInt32.ofBitVec`, `UInt32.toBitVec`): externs of the catalogue, not
+    erased wrappers, since the integer and the bit vector are different leaves. -/
+def uintBitVecConv : List Name :=
+  [``UInt8.ofBitVec, ``UInt16.ofBitVec, ``UInt32.ofBitVec, ``UInt64.ofBitVec,
+   ``UInt8.toBitVec, ``UInt16.toBitVec, ``UInt32.toBitVec, ``UInt64.toBitVec]
+
+/-- The operations of `BitVec w` that are, at the widths of `uintOfWidth?`, the operation of
+    the same name of the fixed-width integer (an extern): `BitVec.add` is `UInt32.add`, …
+    (`LeanScript/TermElab/ToTerm/BitVecOps.lean`). -/
+def bitvecOpTable : List (Name × Name) :=
+  [(``BitVec.add, `add), (``BitVec.sub, `sub), (``BitVec.mul, `mul), (``BitVec.udiv, `div),
+   (``BitVec.umod, `mod), (``BitVec.neg, `neg), (``BitVec.and, `land), (``BitVec.or, `lor),
+   (``BitVec.xor, `xor), (``BitVec.not, `complement)]
+
+/-- The decisions of `BitVec w` that are, at the widths of `uintOfWidth?`, the decision of the
+    fixed-width integer (an extern): `instDecidableLtBitVec` is `UInt32.decLt`, …
+    (`LeanScript/TermElab/ToTerm/BitVecOps.lean`). -/
+def bitvecDecTable : List (Name × Name) :=
+  [(``instDecidableEqBitVec, `decEq), (``BitVec.decEq, `decEq),
+   (``instDecidableLtBitVec, `decLt), (``instDecidableLeBitVec, `decLe)]
+
+/-- `c w x₁ … xₖ`, a function of `bitvecOpTable` or `bitvecDecTable` (`table`) at a width `w`
+    of `uintOfWidth?`: the fixed-width integer type `U`, the name of its function and the
+    arguments read as values of `U` (`U.ofBitVec xᵢ`, the identity in JavaScript). -/
+def bitvecUIntCall? (table : List (Name × Name)) (c : Name) (args : Array Expr) :
+    MetaM (Option (Name × Name × Array Expr)) := do
+  let some op := table.lookup c | return none
+  let some w := args[0]? | return none
+  let some n ← natLit? w | return none
+  let some u := uintOfWidth? n | return none
+  let xs := args[1:].toArray
+  if xs.isEmpty then return none
+  return some (u, u ++ op, xs.map (mkApp (mkConst (u ++ `ofBitVec))))
+
+/-- An operation of `BitVec w` at a width of a fixed-width integer (`BitVec.add x y` at width
+    `32`): the operation of the integer, on the bit vectors read as integers, read back as a bit
+    vector (`(UInt32.add (.ofBitVec x) (.ofBitVec y)).toBitVec`, proved equal by
+    `bitvec32_add`), or `none`.  The definition of `BitVec.add` takes the leaf apart
+    (`x.toNat`), which has no translation. -/
+def bitvecOpCall? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let some (u, f, xs) ← bitvecUIntCall? bitvecOpTable c args | return none
+  unless xs.size == (if c == ``BitVec.neg || c == ``BitVec.not then 1 else 2) do return none
+  return some (mkApp (mkConst (u ++ `toBitVec)) (mkAppN (mkConst f) xs))
+
+/-- A decision of `BitVec w` at a width of a fixed-width integer (`instDecidableLtBitVec x y`
+    at width `32`): `decide` of the decision of the integer, on the bit vectors read as
+    integers (`decide (UInt32.ofBitVec x < .ofBitVec y)` by `UInt32.decLt`, proved equal by
+    `bitvec32_lt`), or `none`. -/
+def bitvecDecide? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let some (_, f, xs) ← bitvecUIntCall? bitvecDecTable c args | return none
+  unless xs.size == 2 do return none
+  let inst := mkAppN (mkConst f) xs
+  let ty ← whnfR (← inferType inst)
+  unless ty.isAppOfArity ``Decidable 1 do return none
+  return some (mkApp2 (mkConst ``Decidable.decide) ty.appArg! inst)
+
 /-- Is `a` a type of functions (`Nat → Nat`)? -/
 def isFunType (a : Expr) : MetaM Bool := do
   if !(← isType a) then return false
@@ -214,6 +280,8 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
     fail m!"the call{indentExpr e}\nreturns a value of a quotient, read as its carrier: the \
       language would need a representative of the class (`Quot.out` is not computable)"
   let .const c _ := fn | fail m!"cannot translate the application{indentExpr e}"
+  -- an operation of `BitVec w` at the width of a fixed-width integer is the integer's
+  if let some e' ← bitvecOpCall? c args then return ← tr L e'
   if let some entry := externTable.find? c then
     if isStrMapEntry entry && !(← strKeyedHashMapCall args) then
       if let some e' ← unfoldCall? e then return ← tr L e'
@@ -287,6 +355,8 @@ partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
     | .lam _ _ b _ => b
     | e => e
   if let .const c' _ := inst.getAppFn then
+    -- a decision of `BitVec w` at the width of a fixed-width integer is the integer's
+    if let some e' ← bitvecDecide? c' inst.getAppArgs then return ← tr L e'
     if let some entry := externTable.find? c' then
       return ← externCall tr L entry inst.getAppFn inst.getAppArgs
     match c', inst.getAppArgs with

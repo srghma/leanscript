@@ -417,7 +417,10 @@ partial def classify (e : Expr) : MetaM Head := do
     let some n ← natLit? args[0]! | fail m!"the width of{indentExpr e}\nis not a numeral"
     if n = 0 then fail m!"`BitVec 0` has one value"
     if n = 1 then fail m!"`BitVec 1` has two values: two points are only ever `Bool`"
-    p (← `(LeanPrimTy.bitvec $(quote n)))
+    -- the proof of `2 ≤ n` as a term, not the default `by decide`: a pending tactic block is a
+    -- metavariable unification cannot assign, so the type would not unify with the `bitvec n`
+    -- of an extern's signature
+    p (← `(LeanPrimTy.bitvec $(quote n) (Nat.le_of_ble_eq_true rfl)))
   | ``String.Pos, 1 =>
     let some s := (match (← whnf args[0]!) with | .lit (.strVal s) => some s | _ => none)
       | fail m!"the string of{indentExpr e}\nis not a literal"

@@ -26,7 +26,6 @@ import {
   array__lean_array_flatten,
   array__lean_array_back_opt,
   uint53__lean_array_count_p,
-  uint8__lean_uint8_add,
 } from "../../runtime.js";
 
 /**
@@ -227,7 +226,7 @@ export const ArrStd$tTake = (a, n) => uint53__lean_array_extract(a, 0, n);
  * @returns {Array<uint8>}
  */
 export const ArrStd$tU8 = (a) => {
-  const x$2 = array__lean_array_map((x$1) => uint8__lean_uint8_add(x$1, 1), a);
+  const x$2 = array__lean_array_map((x$1) => (x$1 + 1) & 255, a);
   return array__lean_array_reverse(
     uint53__lean_array_filter((x$3) => 3 < x$3, x$2, 0, x$2.length),
   );

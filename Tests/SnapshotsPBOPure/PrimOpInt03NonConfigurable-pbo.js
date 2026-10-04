@@ -2,9 +2,6 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 
 import {
-  uint8__lean_uint8_add,
-  uint16__lean_uint16_add,
-  uint32__lean_uint32_add,
   int8__lean_int8_add,
   int16__lean_int16_add,
   int32__lean_int32_add,
@@ -33,7 +30,7 @@ export const TestUInt8$test3 = 144;
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8$test4 = (a) => uint8__lean_uint8_add(a, 144);
+export const TestUInt8$test4 = (a) => (a + 144) & 255;
 
 /**
  * `TestUInt16.test1`
@@ -58,7 +55,7 @@ export const TestUInt16$test3 = 16960;
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16$test4 = (a) => uint16__lean_uint16_add(a, 34464);
+export const TestUInt16$test4 = (a) => (a + 34464) & 65535;
 
 /**
  * `TestUInt32.test1`
@@ -83,7 +80,7 @@ export const TestUInt32$test3 = 2643460096;
  * @param {uint32} a
  * @returns {uint32}
  */
-export const TestUInt32$test4 = (a) => uint32__lean_uint32_add(a, 1705032704);
+export const TestUInt32$test4 = (a) => (a + 1705032704) >>> 0;
 
 /**
  * `TestInt8.test1`

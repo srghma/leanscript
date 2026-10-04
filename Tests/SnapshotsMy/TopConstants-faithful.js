@@ -4,10 +4,7 @@
 import {
   int32__lean_int32_add,
   int16__lean_int16_neg,
-  uint8__lean_uint8_add,
-  uint32__lean_uint32_mul,
   int8__lean_int8_sub,
-  bigint_nat__lean_uint64_add,
   bigint_int__lean_int64_div,
 } from "../../runtime.js";
 
@@ -90,14 +87,14 @@ export const neg16 = (x) => int16__lean_int16_neg(x);
  * @param {uint8} y
  * @returns {uint8}
  */
-export const addU8 = (x, y) => uint8__lean_uint8_add(x, y);
+export const addU8 = (x, y) => (x + y) & 255;
 
 /**
  * `mulU32`
  * @param {uint32} x
  * @returns {uint32}
  */
-export const mulU32 = (x) => uint32__lean_uint32_mul(x, 3);
+export const mulU32 = (x) => Math.imul(x, 3) >>> 0;
 
 /**
  * `subI8`
@@ -112,7 +109,7 @@ export const subI8 = (x, y) => int8__lean_int8_sub(x, y);
  * @param {nat(bigint)} x
  * @returns {nat(bigint)}
  */
-export const addU64 = (x) => bigint_nat__lean_uint64_add(x, 7n);
+export const addU64 = (x) => BigInt.asUintN(64, x + 7n);
 
 /**
  * `divI64`

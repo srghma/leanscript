@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Optimize.ArithPow
 public import LeanScript.Term.Optimize.FloatUnit
 public import LeanScript.Term.Optimize.FloatComm
+public import LeanScript.Term.Optimize.BitVecConv
 public import LeanScript.Term.Optimize.CondFold
 
 @[expose] public section
@@ -388,16 +389,19 @@ end ArithOp
 /-- `ArithOp.normAt` of every operation, in turn (`ArithOp.all`), on a neutral expression of a
     leaf type: for an integer type, its sums, then its products; then, for a float type, a unit
     operand dropped (`Neu.floatUnit`: `x * 1.0` is `x`, …), and the operands of a `Float` `+`
-    or `*` swapped when that saves parentheses in JavaScript (`Neu.floatComm`). -/
+    or `*` swapped when that saves parentheses in JavaScript (`Neu.floatComm`); last, for a
+    fixed-width unsigned integer, `UInt32.ofBitVec (UInt32.toBitVec y)` is `y`
+    (`Neu.uintRoundTrip`). -/
 def Neu.normArithPrim {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) : Neu Δ Φ Γ (.prim p) ℓ :=
-  Neu.floatComm p (Neu.floatUnit p (ArithOp.all.foldl (fun n a => a.normAt p n) n))
+  Neu.uintRoundTrip p
+    (Neu.floatComm p (Neu.floatUnit p (ArithOp.all.foldl (fun n a => a.normAt p n) n)))
 
 theorem Neu.normArithPrim_eval {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (Neu.normArithPrim p n).eval κ ρ = n.eval κ ρ := by
   unfold Neu.normArithPrim
-  rw [Neu.floatComm_eval, Neu.floatUnit_eval]
+  rw [Neu.uintRoundTrip_eval, Neu.floatComm_eval, Neu.floatUnit_eval]
   generalize ArithOp.all = as
   induction as generalizing n with
   | nil => rfl

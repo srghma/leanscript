@@ -1,3 +1,41 @@
+# Summary of changes for run 2390be09-36cc-4ee1-bd42-68f300c04158
+I compared `Tests/SnapshotsPBOPure/PrimOpBitVec01Configurable.lean` and its outputs against the purescript-backend-optimizer references. Our output is now on par with them or better, and the changes are committed. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBitVec01Configurable.md`.
+
+**Where we started:** none of the file's 22 functions translated. Each one failed with "`BitVec 32` is a leaf of the language".
+
+**Where we are:** all 22 translate. The generated checks pass: 313 at the `pbo` preset and 372 at `faithful`.
+
+**`BitVec 32` output** (same at both presets):
+- Arithmetic is inline: `(a, b) => (a + b) >>> 0`, `Math.imul(a, b) >>> 0`, `-a >>> 0`.
+- Comparisons are plain operators: `a === b`, `a !== b`, `b < a`, `a <= b`.
+- The reference instead calls `BitVec_add(32, v0, v1)` and similar, and writes `ne` as an `if` returning `false`/`true`.
+
+**`BitVec 64` output:**
+- At `faithful` (BigInt), arithmetic is inline, e.g. `BigInt.asUintN(64, a + b)`; the reference calls `BitVec_add(64n, …)`.
+- At `pbo` (number), arithmetic still calls the runtime, e.g. `uint53__lean_uint64_add`. Those calls must throw when a result is not a safe integer.
+- Comparisons are operators at both presets.
+- No call passes a width argument.
+
+**What changed, in your order of preference:**
+1. **Lean → Term (elaborator):** `BitVec` operations at widths 8/16/32/64 are now read as the matching fixed-width integer operations, and `=`, `<`, `≤` as the integer's decisions. Two elaborator bugs had to be fixed for any of this to translate: the `UIntW.ofBitVec`/`toBitVec` conversions were wrongly erased as a one-field wrapper, and a `BitVec n` parameter's type was written with an unresolved proof that unification couldn't fill in. Each reading is proved equal to the original in `LeanScript/TermElab/ToTerm/BitVecOps.lean`.
+2. **Term → Term (optimiser):** a new rule simplifies `UIntW.ofBitVec (UIntW.toBitVec y)` to `y`, with a proof that it doesn't change the result of `eval` (`LeanScript/Term/Optimize/BitVecConv.lean`). These conversions are also never hoisted into a `let`, which would only print a copy `const x$1 = a;`.
+3. **Term → JsTerm (conversion):** uint8/16/32 and BigInt uint64 arithmetic and bitwise operations are now inline JavaScript expressions instead of runtime calls. Each template is proved correct in `RuntimeSpec/InlineUInt.lean`.
+
+The JsTerm optimiser was not changed. Labelled blocks and loops didn't come up, because this file has no loops.
+
+**Tests:**
+- Added `BitVec` samples to the check generator, a new snapshot `Tests/SnapshotsMy/BitVecArith.lean`, and a `PrimOpBitVec01Configurable` spec in `Tests/Main.lean`.
+- All snapshots were regenerated; every snapshot check run reports 0 failures.
+- The test suite passes 144/144 when run with `--timeout 180`. I raised the timeout to 120 s for two node-backed specs (`KnownConstructors05` and the new one): under parallel load they took more than the default 30 s, and in one earlier run many specs hit that limit.
+
+**Build:** `leanscript`, `tests`, `JsTerm`, `JsSpec`, `TermTests`, `TyTests`, `OpsSpec` and `RuntimeSpec` build, and the new proof files contain no `sorry`. The `LeanScript` library target as a whole still fails, because `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which the project doesn't depend on; that failure predates this work.
+
+**Not done yet:**
+- uint32 `div` is still a runtime call.
+- Nested masks are not merged, e.g. `((Math.imul(a,b)>>>0)+c)>>>0`.
+- `BitVec` shifts (in `PrimOpBitVec02`) still don't translate.
+- Widths other than 8/16/32/64 are not supported.
+
 # Summary of changes for run cd5b1087-c21c-4134-af0d-b185508b855d
 `PrimOpArray01` now matches legacy on every function, and on `test2`/`test4` it is also correct where legacy is not.
 
