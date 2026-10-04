@@ -3328,6 +3328,49 @@ def knownConstructors06Spec : Spec := describe "KnownConstructors06" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `KnownConstructors.lean` (all the `KnownConstructors0*` cases in one file): `test4` chooses its
+    string by a test between two constants and appends constants to it twice; the choice is now
+    written at each append (`Term.shareSubst`, `Term.onlyFoldUse`), each append folds into a
+    conditional of two literals, and the test is computed once.  Its variants
+    `Tests/SnapshotsMy/KnownCtorCondConst.lean` are checked against Lean. -/
+def knownConstructorsSpec : Spec := describe "KnownConstructors" do
+  it "a shared conditional of constants folds at each use (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors",
+          ["export const test1 = (a) => a._1;",
+           "    x$1 ? \"Hello, World\" : \"Default, World\",\n    x$1 ? \"Hello, Universe\" : \"Default, Universe\",",
+           "export const test5 = (x) => false;",
+           "  if (a === \"foo\") {\n    return 1"],
+          ["x$1 + \", World\"", "throw", "tag: 1, _1: \"Hello\""], (31 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorCondConst",
+          [" < x ? [\"pos!\", \"<pos\", \"yes\"] : [\"neg!\", \"<neg\", \"no\"]",
+           "return f(x$1 ? \"a1\" : \"b1\");",
+           "  return f(x$1, x$1 + \"!\");"],
+          ["throw", "while"], 51)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3378,6 +3421,7 @@ def spec : Spec := do
   knownConstructors04Spec
   knownConstructors05Spec
   knownConstructors06Spec
+  knownConstructorsSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

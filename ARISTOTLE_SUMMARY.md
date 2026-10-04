@@ -1,3 +1,43 @@
+# Summary of changes for run 9e5b5227-7d59-47d3-8aa3-bbe1bd77200b
+The JavaScript for `KnownConstructors.lean` is now on par with or better than purescript-backend-optimizer for every function. Only `test4` was behind, and it's fixed with a change in the `Term → Term` optimiser, the phase you preferred.
+
+**About the reference file:** `legacy-backend/KnownConstructors.js` doesn't exist. `KnownConstructors.lean` combines the cases of `KnownConstructors02`–`06`, so I compared each function against `legacy-backend/KnownConstructors0*.js`.
+
+**Before this change** (`pbo` preset; `faithful` is the same with `42n`):
+- `known1` → `"b"`. There is no legacy counterpart.
+- `test1` → `(a) => a._1`. Legacy has two tag tests and a `throw`, so ours is better.
+- `test2` matches legacy, written as a ternary.
+- `test3` builds no record, does one test and folds every string.
+- `test5` → `false`. Better than legacy, which throws.
+- `fromString` and `test6` are the same `if` chain as legacy.
+- `test4` was the one gap: it concatenated strings at run time, `const x$1 = 42 < x ? "Hello" : "Default"; return f(x$1 + ", World", x$1 + ", Universe");`.
+
+**`test4` now:**
+```js
+export const test4 = (f, x) => {
+  const x$1 = 42 < x;
+  return f(x$1 ? "Hello, World" : "Default, World", x$1 ? "Hello, Universe" : "Default, Universe");
+};
+```
+Every string is a literal and there is one comparison, no record and one call of `f`. I didn't produce `42 < x ? f(…) : f(…)`, because that copies the call and the optimiser is proved never to add calls.
+
+**The change** (`LeanScript/Term/Optimize/CondJump.lean`): the optimiser already wrote a shared conditional `let x := c ? a : b` at each place `x` is used, but only when `x` was used once or only by `match`es. It now also does this when:
+- `a` and `b` are constants, and
+- every use of `x` is an argument of a built-in operation (such as `++`) whose other arguments are constants.
+
+An existing pass then folds each such operation into a conditional of two literals, and hoisting computes the test once again. The new condition is named `Term.shareSubstOk`.
+
+**Proofs:** `Term.shareSubst_eval` and `Term.numCalls_shareSubst` build unchanged, apart from referring to `Term.shareSubstOk`. The whole-optimiser theorems `Term.optimize_eval` (the result of `eval` is unchanged) and `Term.numCalls_optimize` (no call is added) still hold, depend only on `propext`, `Classical.choice` and `Quot.sound`, and contain no `sorry`.
+
+**Tests:**
+- **New variants file** `Tests/SnapshotsMy/KnownCtorCondConst.lean` covers appends, `Int` and `Nat` arithmetic, three uses, uses inside the arms of a later `if`, and a case where `x` is also passed as is. That last one deliberately stays a shared variable.
+- **Checks against Lean's evaluation:** 31 per preset for `KnownConstructors` and 51 per preset for the variants, all passing.
+- **New spec** `knownConstructorsSpec` in `Tests/Main.lean`. `lake exe tests` passes 142/142.
+- **Build:** `lake build leanscript tests TermTests TyTests JsTerm JsSpec` succeeds.
+- **Snapshots:** after regenerating them, nothing changed except `KnownConstructors`, and no check failed. The script still exits 1, from the same expected `get!` and index panics as before.
+
+There are no loops or recursion in this file, so labelled blocks and loops weren't needed. The full side-by-side comparison is in `Tests/SnapshotsPBOPure/KnownConstructors.md`. Everything is committed.
+
 # Summary of changes for run 0bb9ca33-b84b-442c-9e62-38ef114ea8f5
 The JavaScript for `KnownConstructors06` now matches the legacy purescript-backend-optimizer output, and in a few ways is better. All the changes are in the `Term → Term` optimiser, as you preferred.
 

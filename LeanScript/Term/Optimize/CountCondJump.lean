@@ -26,7 +26,7 @@ theorem Term.numCalls_shareSubst {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ 
   cases c with
   | share n =>
       simp only [Term.shareSubst, Comp.numCalls]
-      by_cases hc : (n.isCond = true ∧ (u = .one ∨ b.onlyScrut 0 = true))
+      by_cases hc : Term.shareSubstOk u n b = true
       · rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
         cases hs : b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL))
             JRen.id with

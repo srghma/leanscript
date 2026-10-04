@@ -18,7 +18,12 @@ Three rewrites, done by one walk (`Term.cjWalk`, at the top `Term.condJump`):
   `let o := if c then some v else none; … o.get! … o.get! …` becomes: each `case x of …` is now a
   case analysis of a conditional of constructor literals, which `Branch.caseCond`
   (`LeanScript.Term.Optimize.JoinCtor`) rewrites into `if c then (arm of a) else (arm of b)`, so
-  that no record is built for `o`.
+  that no record is built for `o`.  Also when `c ? a : b` is a conditional of two constants and
+  `x` is used only as an argument of extern calls whose other arguments are constants
+  (`Term.onlyFoldUse`): each call then folds into a conditional of two constants
+  (`Neu.condFold`, run later by `Term.arithWalk`), and the repeated test is shared again by
+  hoisting; `let s := c ? "Hello" : "Default"; f (s ++ ", World") (s ++ ", Universe")` becomes
+  `let b := c; f (b ? "Hello, World" : "Default, World") (b ? "Hello, Universe" : …)`.
 * **A test whose two arms jump to the same join point** (`Term.condJumps`):
   `if c then jump j a else jump j b` is `jump j (c ? a : b)`.
 * **A join point that only one jump reaches, from its own branch** (`Branch.joinJump`):
@@ -79,6 +84,100 @@ def Branches.onlyScrut (i : Nat) : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx k
   | _, _, _, _, _, _, _, _, .cons (c := c) _ b bs => b.onlyScrut (i + c.binds.length) && bs.onlyScrut i
 end
 
+/-! ## Uses of an unknown only as an argument of extern calls on constants -/
+
+/-- Every argument is a constant or the unknown at position `i` itself. -/
+def Args.cstOrVar (i : Nat) {Φ : KCtx ks} {Γ : UCtx ks} : {σs : List (Ty ks)} → {o : Lvl} →
+    Args Δ Φ Γ σs o → Bool
+  | _, _, .nil => true
+  | _, _, .cons a as =>
+      (a.cst?.isSome || (match a with | .neu n => n.isVarAt i | _ => false)) && as.cstOrVar i
+
+mutual
+/-- The unknown at position `i` occurs only as an argument of extern calls whose other arguments
+    are constants (so that, written as a conditional of constants, each such call folds
+    into a conditional of constants, `Neu.condFold`). -/
+def Neu.onlyFoldArg (i : Nat) {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {ℓ : Nat} →
+    Neu Δ Φ Γ τ ℓ → Bool
+  | _, _, .var x => x.index != i
+  | _, _, .data_out _ _ n => n.onlyFoldArg i
+  | _, _, .cond c a b => c.onlyFoldArg i && a.onlyFoldArg i && b.onlyFoldArg i
+  | _, _, .extern _ args _ => args.cstOrVar i || args.onlyFoldArg i
+/-- `Neu.onlyFoldArg` in a pure expression. -/
+def PExpr.onlyFoldArg (i : Nat) {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o : Lvl} →
+    PExpr Δ Φ Γ τ o → Bool
+  | _, _, .neu n => n.onlyFoldArg i
+  | _, _, .kvar _ => true
+  | _, _, .lit _ _ => true
+  | _, _, .enum_mk _ _ => true
+  | _, _, .record_mk args => args.onlyFoldArg i
+  | _, _, .union_mk _ args => args.onlyFoldArg i
+  | _, _, .array_mk es => es.onlyFoldArg i
+  | _, _, .list_mk es => es.onlyFoldArg i
+  | _, _, .data_in _ _ e => e.onlyFoldArg i
+/-- `Neu.onlyFoldArg` in arguments. -/
+def Args.onlyFoldArg (i : Nat) {Φ : KCtx ks} {Γ : UCtx ks} : {σs : List (Ty ks)} → {o : Lvl} →
+    Args Δ Φ Γ σs o → Bool
+  | _, _, .nil => true
+  | _, _, .cons a as => a.onlyFoldArg i && as.onlyFoldArg i
+/-- `Neu.onlyFoldArg` in elements. -/
+def Elems.onlyFoldArg (i : Nat) {Φ : KCtx ks} {Γ : UCtx ks} : {t : Ty ks} → {o : Lvl} →
+    Elems Δ Φ Γ t o → Bool
+  | _, _, .nil => true
+  | _, _, .cons e es => e.onlyFoldArg i && es.onlyFoldArg i
+end
+
+/-- `Neu.onlyFoldArg` in a computation (not inside the bodies of loops). -/
+def Comp.onlyFoldArg (i : Nat) {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
+    Comp Δ d Φ Γ τ ℓ → Bool
+  | .app f a _ => f.onlyFoldArg i && a.onlyFoldArg i
+  | .share n => n.onlyFoldArg i
+  | c => c.countU i == Usage01ω.zero
+
+mutual
+/-- The unknown at position `i` is used only as an argument of extern calls on constants
+    (`Neu.onlyFoldArg`), and not inside the bodies of closures, delays and loops. -/
+def Term.onlyFoldUse (i : Nat) : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
+    {js : JCtx ks} → {o : Lvl} → Term Δ d Φ Γ τ js o → Bool
+  | _, _, _, _, _, _, .ret e => e.onlyFoldArg i
+  | _, _, _, _, _, _, .letV _ v b => v.countU i == Usage01ω.zero && b.onlyFoldUse i
+  | _, _, _, _, _, _, .letE _ c b => c.onlyFoldArg i && b.onlyFoldUse (i + 1)
+  | _, _, _, _, _, _, .record_casesOn (t := t) (fs := fs) _ n b =>
+      n.onlyFoldArg i && b.onlyFoldUse (i + (t :: fs.toList).length)
+  | _, _, _, _, _, _, .branch br => br.onlyFoldUse i
+  | _, _, _, _, _, _, .jump _ e => e.onlyFoldArg i
+/-- `Term.onlyFoldUse` in a branch. -/
+def Branch.onlyFoldUse (i : Nat) : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
+    {js : JCtx ks} → {ℓ : Nat} → Branch Δ d Φ Γ τ js ℓ → Bool
+  | _, _, _, _, _, _, .ite c t e => c.onlyFoldArg i && t.onlyFoldUse i && e.onlyFoldUse i
+  | _, _, _, _, _, _, .enum_casesOn e bs =>
+      e.onlyFoldArg i && Fin.allCJ _ (fun j => (bs j).onlyFoldUse i)
+  | _, _, _, _, _, _, .union_casesOn e bs => e.onlyFoldArg i && bs.onlyFoldUse i
+  | _, _, _, _, _, _, .join _ _ _ body main => body.onlyFoldUse (i + 1) && main.onlyFoldUse i
+/-- `Term.onlyFoldUse` in the branches of a union's case analysis. -/
+def Branches.onlyFoldUse (i : Nat) : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
+    {bs : List Bool} → {cs : Ctors ks bs} → {τ : Ty ks} → {js : JCtx ks} → {o : Lvl} →
+    Branches Δ d Φ Γ cs τ js o → Bool
+  | _, _, _, _, _, _, _, _, .two (c₁ := c₁) (c₂ := c₂) _ _ b₁ b₂ =>
+      b₁.onlyFoldUse (i + c₁.binds.length) && b₂.onlyFoldUse (i + c₂.binds.length)
+  | _, _, _, _, _, _, _, _, .cons (c := c) _ b bs =>
+      b.onlyFoldUse (i + c.binds.length) && bs.onlyFoldUse i
+end
+
+/-- Is the neutral expression a conditional of two constants? -/
+def Neu.isCondCst {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} : Neu Δ Φ Γ τ ℓ → Bool
+  | .cond _ a b => a.cst?.isSome && b.cst?.isSome
+  | _ => false
+
+/-- When `let x := share n; b` is rewritten into `b[x := n]` (`Term.shareSubst`): `n` is a
+    conditional, and `x` is used once, or only as the operand of union case analyses, or (`n`
+    being a conditional of constants) only as an argument of extern calls on constants, each of
+    which then folds into a conditional of constants. -/
+def Term.shareSubstOk {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    {ℓ : Nat} {o' : Lvl} (u : Usage1ω) (n : Neu Δ Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') : Bool :=
+  n.isCond && (u == .one || b.onlyScrut 0 || (n.isCondCst && b.onlyFoldUse 0))
+
 /-! ## The rewrites -/
 
 /-- `let x := share (c ? a : b); body` is `body[x := c ? a : b]` when `x` is used once or only as
@@ -88,7 +187,7 @@ def Term.shareSubst {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js 
     (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') : (o : Lvl) × Term Δ d Φ Γ τ js o :=
   match c with
   | .share n =>
-      if n.isCond = true ∧ (u = .one ∨ b.onlyScrut 0 = true) then
+      if Term.shareSubstOk u n b then
         match b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id with
         | some r => r
         | none => ⟨_, .letE u (.share n) b⟩

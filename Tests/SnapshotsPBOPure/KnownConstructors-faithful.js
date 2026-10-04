@@ -38,8 +38,11 @@ export const test3 = (x) =>
  * @returns {string}
  */
 export const test4 = (f, x) => {
-  const x$1 = 42n < x ? "Hello" : "Default";
-  return f(x$1 + ", World", x$1 + ", Universe");
+  const x$1 = 42n < x;
+  return f(
+    x$1 ? "Hello, World" : "Default, World",
+    x$1 ? "Hello, Universe" : "Default, Universe",
+  );
 };
 
 /**
